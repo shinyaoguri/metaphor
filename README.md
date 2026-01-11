@@ -205,34 +205,6 @@ Syphon allows real-time video sharing between applications. Use apps like:
 - [Mad Mapper](https://madmapper.com/) - Projection mapping
 - [Resolume](https://resolume.com/) - VJ software
 
-## Project Structure
-
-```
-metaphor/
-├── Sources/metaphor/
-│   ├── Core/
-│   │   ├── MetaphorRenderer.swift
-│   │   └── TextureManager.swift
-│   ├── Syphon/
-│   │   └── SyphonOutput.swift
-│   ├── UI/
-│   │   └── MetaphorView.swift
-│   └── Utilities/
-│       ├── Math.swift
-│       └── Time.swift
-├── Examples/
-│   ├── RotatingCube/
-│   └── Particles/
-├── Vendor/
-│   └── Syphon-Framework/    # Git submodule
-├── Frameworks/
-│   └── Syphon.xcframework   # Built locally (gitignored)
-├── scripts/
-│   └── build-syphon.sh
-├── Makefile
-└── Package.swift
-```
-
 ## Makefile Commands
 
 ```bash
