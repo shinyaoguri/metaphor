@@ -8,30 +8,67 @@ Swift + Metal creative coding library with Syphon output support.
 - Xcode 15.0+
 - Swift 6.0+
 
-## Setup
+---
 
-```bash
-# Clone with submodules
-git clone --recursive https://github.com/shinyaoguri/metaphor.git
-cd metaphor
+## Installation
 
-# Build Syphon.xcframework
-make setup
+### Swift Package Manager
 
-# Build the library
-make build
+Add metaphor to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.1.0"),
+]
 ```
 
-## Usage
+Or in Xcode: File → Add Package Dependencies → enter the repository URL.
 
-### Basic Example
+---
+
+## Quick Start
+
+### 1. Create your project
+
+```bash
+mkdir MyMetalApp && cd MyMetalApp
+swift package init --type executable --name MyMetalApp
+```
+
+### 2. Edit Package.swift
+
+```swift
+// swift-tools-version: 6.0
+
+import PackageDescription
+
+let package = Package(
+    name: "MyMetalApp",
+    platforms: [.macOS(.v14)],
+    dependencies: [
+        .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.1.0"),
+    ],
+    targets: [
+        .executableTarget(
+            name: "MyMetalApp",
+            dependencies: [
+                .product(name: "metaphor", package: "metaphor")
+            ]
+        ),
+    ]
+)
+```
+
+### 3. Write your app
+
+Replace `Sources/MyMetalApp/main.swift`:
 
 ```swift
 import SwiftUI
 import metaphor
 
 @main
-struct MyApp: App {
+struct MyMetalApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -55,11 +92,8 @@ struct ContentView: View {
 
     private func setupRenderer() {
         guard let renderer = MetaphorRenderer(width: 1920, height: 1080) else { return }
+        renderer.startSyphonServer(name: "MyMetalApp")
 
-        // Start Syphon server
-        renderer.startSyphonServer(name: "MyApp")
-
-        // Set draw callback
         renderer.onDraw = { encoder, time in
             // Your Metal rendering code here
         }
@@ -69,18 +103,24 @@ struct ContentView: View {
 }
 ```
 
-### Adding as Dependency
+### 4. Build and run
 
-```swift
-// Package.swift
-dependencies: [
-    .package(path: "/path/to/metaphor"),
-]
+```bash
+swift build && swift run
 ```
 
-Note: Users must run `make setup` in the metaphor directory first to build Syphon.xcframework.
+---
 
-## Components
+## Examples
+
+See [Examples/](Examples/) for complete working samples:
+
+- **RotatingCube** - 3D cube with lighting
+- **Particles** - 100K particle system with compute shaders
+
+---
+
+## API Reference
 
 ### MetaphorRenderer
 
@@ -88,8 +128,8 @@ Main renderer class that manages Metal device, command queue, and Syphon output.
 
 ```swift
 let renderer = MetaphorRenderer(
-    width: 1920,      // Offscreen texture width
-    height: 1080,     // Offscreen texture height
+    width: 1920,
+    height: 1080,
     clearColor: .black
 )
 
@@ -176,45 +216,76 @@ timer.deltaTime          // frame delta
 timer.fps                // current FPS
 ```
 
-## Examples
-
-### RotatingCube
-
-3D rotating cube with per-face colors and lighting.
-
-```bash
-cd Examples/RotatingCube
-swift build && swift run
-```
-
-### Particles
-
-100,000 particles with compute shader physics and additive blending.
-
-```bash
-cd Examples/Particles
-swift build && swift run
-```
+---
 
 ## Syphon
 
-Syphon allows real-time video sharing between applications. Use apps like:
+Syphon allows real-time video sharing between applications. Compatible apps:
 
 - [Syphon Recorder](https://github.com/Syphon/Recorder) - Record output
 - [Simple Client](https://github.com/Syphon/Simple) - View output
 - [Mad Mapper](https://madmapper.com/) - Projection mapping
 - [Resolume](https://resolume.com/) - VJ software
 
-## Makefile Commands
+---
+
+## For Library Developers
+
+This section is for those who want to contribute to metaphor itself.
+
+### Setup
+
+Clone with submodules and build Syphon locally:
 
 ```bash
-make setup      # Initialize submodules + build Syphon
-make build      # Build the Swift package
+git clone --recursive https://github.com/shinyaoguri/metaphor.git
+cd metaphor
+make setup
+```
+
+### Development Commands
+
+```bash
+make setup      # Initialize submodules + build Syphon.xcframework
+make build      # Build the library
 make test       # Run tests
 make clean      # Clean build artifacts
 make check      # Check setup status
-make help       # Show all commands
 ```
+
+### Project Structure
+
+```
+metaphor/
+├── Sources/metaphor/       # Library source code
+├── Tests/                  # Unit tests
+├── Examples/               # Example projects
+├── Vendor/Syphon-Framework # Syphon submodule
+├── Frameworks/             # Built Syphon.xcframework (local only)
+├── scripts/                # Build scripts
+└── Package.swift           # Swift package manifest
+```
+
+### How It Works
+
+- **Local development**: When `Frameworks/Syphon.xcframework` exists, Package.swift uses the local path.
+- **SPM users**: When the framework doesn't exist, Package.swift fetches the pre-built XCFramework from GitHub Releases.
+
+### Release Process
+
+1. Tag a new version:
+   ```bash
+   git tag v0.2.0
+   git push --tags
+   ```
+
+2. GitHub Actions will automatically:
+   - Build Syphon.xcframework
+   - Create a GitHub Release with the XCFramework
+   - Update Package.swift with the new URL and checksum
+   - Commit the changes to main
+
+---
 
 ## License
 

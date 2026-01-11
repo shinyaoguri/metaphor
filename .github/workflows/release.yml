@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Syphon.xcframework
+        run: |
+          ./scripts/build-syphon.sh
+
+      - name: Create ZIP and checksum
+        run: |
+          cd Frameworks
+          zip -r Syphon.xcframework.zip Syphon.xcframework
+          shasum -a 256 Syphon.xcframework.zip > checksum.txt
+          echo "CHECKSUM=$(cat checksum.txt | awk '{print $1}')" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Frameworks/Syphon.xcframework.zip
+            Frameworks/checksum.txt
+          body: |
+            ## Syphon.xcframework
+
+            Checksum (SHA256): `${{ env.CHECKSUM }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Package.swift
+        run: |
+          TAG=${{ github.ref_name }}
+          # Update the release URL
+          sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG}/|g" Package.swift
+          # Update the checksum
+          sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
+
+      - name: Commit and push Package.swift
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Package.swift
+          git diff --cached --quiet || git commit -m "Update Syphon binary URL for ${{ github.ref_name }}"
+          git push origin HEAD:main
