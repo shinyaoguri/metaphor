@@ -8,12 +8,14 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        .package(path: "../.."),
+        .package(name: "metaphor", path: "../.."),
     ],
     targets: [
         .executableTarget(
             name: "RotatingCube",
-            dependencies: ["metaphor"],
+            dependencies: [
+                .product(name: "metaphor", package: "metaphor")
+            ],
             path: "RotatingCube"
         ),
     ]
