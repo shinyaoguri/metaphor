@@ -20,10 +20,12 @@ if [[ "$XCODE_PATH" == *"CommandLineTools"* ]]; then
     exit 1
 fi
 
-# Check if Metal Toolchain is available
-if ! xcodebuild -downloadComponent MetalToolchain -checkComponents 2>/dev/null; then
-    echo "Metal Toolchain not found. Downloading..."
-    xcodebuild -downloadComponent MetalToolchain
+# Check if Metal Toolchain is available (skip in CI)
+if [ -z "$CI" ]; then
+    if ! xcodebuild -downloadComponent MetalToolchain -checkComponents 2>/dev/null; then
+        echo "Metal Toolchain not found. Downloading..."
+        xcodebuild -downloadComponent MetalToolchain
+    fi
 fi
 
 # Check if submodule exists
@@ -49,8 +51,7 @@ xcodebuild archive \
     -archivePath "$BUILD_DIR/Syphon-macOS.xcarchive" \
     SKIP_INSTALL=NO \
     BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
-    ONLY_ACTIVE_ARCH=NO \
-    2>&1 | grep -E "(Build|error:|warning:|\*\*)"
+    ONLY_ACTIVE_ARCH=NO
 
 # Check if archive was created
 if [ ! -d "$BUILD_DIR/Syphon-macOS.xcarchive" ]; then
@@ -58,12 +59,25 @@ if [ ! -d "$BUILD_DIR/Syphon-macOS.xcarchive" ]; then
     exit 1
 fi
 
+# Find the framework in the archive (path may vary)
+echo "Searching for framework in archive..."
+FRAMEWORK_PATH=$(find "$BUILD_DIR/Syphon-macOS.xcarchive" -name "Syphon.framework" -type d | head -1)
+
+if [ -z "$FRAMEWORK_PATH" ]; then
+    echo "Error: Syphon.framework not found in archive"
+    echo "Archive contents:"
+    find "$BUILD_DIR/Syphon-macOS.xcarchive" -type d
+    exit 1
+fi
+
+echo "Found framework at: $FRAMEWORK_PATH"
+
 # Create XCFramework
 echo "Creating XCFramework..."
 rm -rf "$OUTPUT_DIR/Syphon.xcframework"
 
 xcodebuild -create-xcframework \
-    -framework "$BUILD_DIR/Syphon-macOS.xcarchive/Products/Library/Frameworks/Syphon.framework" \
+    -framework "$FRAMEWORK_PATH" \
     -output "$OUTPUT_DIR/Syphon.xcframework"
 
 # Verify
