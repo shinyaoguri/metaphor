@@ -111,14 +111,6 @@ swift build && swift run
 
 ---
 
-## Examples
-
-See [Examples/](Examples/) for complete working samples:
-
-- **RotatingCube** - 3D cube with lighting
-- **Particles** - 100K particle system with compute shaders
-
----
 
 ## API Reference
 
