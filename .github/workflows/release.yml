@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v0.2.0)'
+        required: true
 
 permissions:
   contents: write
@@ -33,9 +37,18 @@ jobs:
           shasum -a 256 Syphon.xcframework.zip > checksum.txt
           echo "CHECKSUM=$(cat checksum.txt | awk '{print $1}')" >> $GITHUB_ENV
 
+      - name: Set tag name
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ env.TAG_NAME }}
           files: |
             Frameworks/Syphon.xcframework.zip
             Frameworks/checksum.txt
@@ -53,9 +66,8 @@ jobs:
           git fetch origin main
           git checkout main
           git pull origin main
-          TAG=${{ github.ref_name }}
-          sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG}/|g" Package.swift
+          sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
           git add Package.swift
-          git diff --cached --quiet || git commit -m "Update Syphon binary URL for ${{ github.ref_name }}"
+          git diff --cached --quiet || git commit -m "Update Syphon binary URL for ${TAG_NAME}"
           git push origin main
