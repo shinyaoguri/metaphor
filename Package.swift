@@ -3,8 +3,11 @@
 import PackageDescription
 import Foundation
 
+// Get the directory containing this Package.swift
+let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 let localFrameworkPath = "Frameworks/Syphon.xcframework"
-let useLocalSyphon = FileManager.default.fileExists(atPath: localFrameworkPath)
+let absoluteFrameworkPath = packageDir + "/" + localFrameworkPath
+let useLocalSyphon = FileManager.default.fileExists(atPath: absoluteFrameworkPath)
 
 let syphonTarget: Target = useLocalSyphon
     ? .binaryTarget(name: "Syphon", path: localFrameworkPath)

@@ -9,6 +9,23 @@ OUTPUT_DIR="$ROOT_DIR/Frameworks"
 
 echo "Building Syphon.xcframework..."
 
+# Check Xcode developer path (should be Xcode.app, not CommandLineTools)
+XCODE_PATH=$(xcode-select -p)
+if [[ "$XCODE_PATH" == *"CommandLineTools"* ]]; then
+    echo "Error: Xcode developer path is set to Command Line Tools."
+    echo "Current path: $XCODE_PATH"
+    echo ""
+    echo "Please switch to Xcode.app by running:"
+    echo "  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+    exit 1
+fi
+
+# Check if Metal Toolchain is available
+if ! xcodebuild -downloadComponent MetalToolchain -checkComponents 2>/dev/null; then
+    echo "Metal Toolchain not found. Downloading..."
+    xcodebuild -downloadComponent MetalToolchain
+fi
+
 # Check if submodule exists
 if [ ! -d "$SYPHON_SOURCE" ]; then
     echo "Error: Syphon-Framework submodule not found."
