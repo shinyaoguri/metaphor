@@ -14,6 +14,31 @@ Write a few lines of Swift, and get a window with real-time graphics.
 
 ## Quick Start
 
+```bash
+mkdir MySketch && cd MySketch
+swift package init --type executable
+```
+
+Add metaphor to `Package.swift`:
+
+```swift
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "MySketch",
+    platforms: [.macOS(.v14)],
+    dependencies: [
+        .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.1.0")
+    ],
+    targets: [
+        .executableTarget(name: "MySketch", dependencies: ["metaphor"])
+    ]
+)
+```
+
+Write `Sources/main.swift`:
+
 ```swift
 import metaphor
 

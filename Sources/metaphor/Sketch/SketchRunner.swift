@@ -14,6 +14,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var canvas3D: Canvas3D?
     private var context: SketchContext?
     private var sketchRef: (any Sketch)?
+    private var renderTimer: DispatchSourceTimer?
+    private var activity: NSObjectProtocol?
 
     // MARK: - Entry Point
 
@@ -92,9 +94,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // MTKView
         let mtkView = MetaphorMTKView()
         mtkView.frame = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
-        mtkView.preferredFramesPerSecond = config.fps
         mtkView.enableSetNeedsDisplay = false
-        mtkView.isPaused = false
         renderer.configure(view: mtkView)
         window.contentView = mtkView
         self.mtkView = mtkView
@@ -102,6 +102,35 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // Syphon
         if let syphonName = config.syphonName {
             renderer.startSyphonServer(name: syphonName)
+            // Syphon使用時: レンダリングをウィンドウから完全に独立させる
+            renderer.useExternalRenderLoop = true
+
+            // MTKView: display linkはプレビュー表示専用（スロットルOK）
+            mtkView.preferredFramesPerSecond = config.fps
+            mtkView.isPaused = false
+
+            // App Nap無効化
+            activity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .latencyCritical],
+                reason: "Syphon output requires consistent frame rate"
+            )
+
+            // DispatchSourceTimer: renderFrame()専用（Syphon出力）
+            // needsDisplayは触らない → currentDrawableのブロッキングを回避
+            let interval = 1.0 / Double(max(config.fps, 1))
+            let timer = DispatchSource.makeTimerSource(flags: .strict, queue: .main)
+            timer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
+            timer.setEventHandler { [weak renderer] in
+                MainActor.assumeIsolated {
+                    renderer?.renderFrame()
+                }
+            }
+            timer.resume()
+            renderTimer = timer
+        } else {
+            // Syphon不使用: MTKView標準のdisplay link駆動（VSync対応）
+            mtkView.preferredFramesPerSecond = config.fps
+            mtkView.isPaused = false
         }
 
         // 入力コールバック → Sketchイベント

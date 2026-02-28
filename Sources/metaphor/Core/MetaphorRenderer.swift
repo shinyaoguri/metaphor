@@ -48,6 +48,9 @@ public final class MetaphorRenderer: NSObject {
 
     private var blitPipelineState: MTLRenderPipelineState?
 
+    /// 外部レンダーループ使用フラグ（trueの場合、draw(in:)はブリットのみ行う）
+    public var useExternalRenderLoop: Bool = false
+
     // MARK: - Screenshot
 
     private var pendingSavePath: String?
@@ -305,6 +308,71 @@ public final class MetaphorRenderer: NSObject {
         encoder.setFragmentTexture(textureManager.colorTexture, index: 0)
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
     }
+
+    // MARK: - Render Loop
+
+    /// オフスクリーン描画 + Syphon送信（ウィンドウに依存しない）
+    ///
+    /// Compute → Offscreen Draw → Screenshot → Syphon の順に実行する。
+    /// 画面へのブリットは含まない。
+    public func renderFrame() {
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+
+        input.updateFrame()
+        let time = elapsedTime
+
+        // コンピュートフェーズ
+        onCompute?(commandBuffer, time)
+
+        // オフスクリーンテクスチャに描画
+        if let encoder = commandBuffer.makeRenderCommandEncoder(
+            descriptor: textureManager.renderPassDescriptor
+        ) {
+            onDraw?(encoder, time)
+            encoder.endEncoding()
+        }
+
+        // スクリーンショット保存
+        if let savePath = pendingSavePath {
+            pendingSavePath = nil
+            let staging = getOrCreateStagingTexture()
+            if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
+                blitEncoder.copy(
+                    from: textureManager.colorTexture,
+                    sourceSlice: 0, sourceLevel: 0,
+                    sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                    sourceSize: MTLSize(
+                        width: textureManager.width,
+                        height: textureManager.height,
+                        depth: 1
+                    ),
+                    to: staging,
+                    destinationSlice: 0, destinationLevel: 0,
+                    destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+                )
+                blitEncoder.synchronize(resource: staging)
+                blitEncoder.endEncoding()
+            }
+
+            let width = textureManager.width
+            let height = textureManager.height
+            let path = savePath
+            commandBuffer.addCompletedHandler { _ in
+                MetaphorRenderer.writePNG(
+                    texture: staging, width: width, height: height, path: path
+                )
+            }
+        }
+
+        // Syphonに送信
+        syphonOutput?.publish(
+            texture: textureManager.colorTexture,
+            commandBuffer: commandBuffer,
+            flipped: true
+        )
+
+        commandBuffer.commit()
+    }
 }
 
 // MARK: - MTKViewDelegate
@@ -314,66 +382,22 @@ extension MetaphorRenderer: MTKViewDelegate {
 
     public nonisolated func draw(in view: MTKView) {
         MainActor.assumeIsolated {
-            guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
-
-            input.updateFrame()
-            let time = elapsedTime
-
-            // 0. コンピュートフェーズ
-            onCompute?(commandBuffer, time)
-
-            // 1. オフスクリーンテクスチャに描画
-            if let encoder = commandBuffer.makeRenderCommandEncoder(
-                descriptor: textureManager.renderPassDescriptor
-            ) {
-                onDraw?(encoder, time)
-                encoder.endEncoding()
+            // 外部レンダーループでない場合は、ここでフレームを描画
+            if !useExternalRenderLoop {
+                renderFrame()
             }
 
-            // 1.5 スクリーンショット保存
-            if let savePath = pendingSavePath {
-                pendingSavePath = nil
-                let staging = getOrCreateStagingTexture()
-                if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
-                    blitEncoder.copy(
-                        from: textureManager.colorTexture,
-                        sourceSlice: 0, sourceLevel: 0,
-                        sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                        sourceSize: MTLSize(
-                            width: textureManager.width,
-                            height: textureManager.height,
-                            depth: 1
-                        ),
-                        to: staging,
-                        destinationSlice: 0, destinationLevel: 0,
-                        destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
-                    )
-                    blitEncoder.synchronize(resource: staging)
-                    blitEncoder.endEncoding()
-                }
-
-                let width = textureManager.width
-                let height = textureManager.height
-                let path = savePath
-                commandBuffer.addCompletedHandler { _ in
-                    MetaphorRenderer.writePNG(
-                        texture: staging, width: width, height: height, path: path
-                    )
-                }
-            }
-
-            // 2. Syphonに送信
-            syphonOutput?.publish(
-                texture: textureManager.colorTexture,
-                commandBuffer: commandBuffer
-            )
-
-            // 3. 画面にブリット
-            guard let drawable = view.currentDrawable,
-                  let descriptor = view.currentRenderPassDescriptor else {
-                commandBuffer.commit()
+            // ウィンドウが隠れている場合はブリットをスキップ
+            // (currentDrawableがブロックしてレンダータイマーを止めるのを防ぐ)
+            if let window = view.window,
+               !window.occlusionState.contains(.visible) {
                 return
             }
+
+            // 画面にブリット（プレビュー表示）
+            guard let drawable = view.currentDrawable,
+                  let descriptor = view.currentRenderPassDescriptor,
+                  let commandBuffer = commandQueue.makeCommandBuffer() else { return }
 
             let viewport = calculateViewport(
                 drawableSize: view.drawableSize,

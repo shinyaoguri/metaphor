@@ -1,83 +1,82 @@
-/* metaphor docs - custom theme overrides */
+/* metaphor docs - clean light theme */
 
 :root {
-  /* Accent color - Metal/Apple blue */
-  --theme-color: #4a9eff;
+  /* Accent */
+  --theme-color: #1a1a1a;
 
   /* Sidebar */
-  --sidebar-width: 260px;
-  --sidebar-background: #1a1a2e;
-  --sidebar-nav-link-color: #a0a0b8;
-  --sidebar-nav-link-color--active: #4a9eff;
+  --sidebar-width: 240px;
+  --sidebar-background: #fafafa;
+  --sidebar-border-color: #eee;
+  --sidebar-nav-link-color: #555;
+  --sidebar-nav-link-color--active: #1a1a1a;
   --sidebar-nav-link-font-weight--active: 600;
-  --sidebar-name-color: #e0e0f0;
-  --sidebar-name-font-size: 1.4rem;
-  --sidebar-name-font-weight: 700;
+  --sidebar-name-color: #1a1a1a;
+  --sidebar-name-font-size: 1.2rem;
+  --sidebar-name-font-weight: 600;
 
   /* Content */
-  --base-background-color: #0f0f1a;
-  --base-color: #d0d0e0;
+  --base-background-color: #fff;
+  --base-color: #333;
   --base-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --base-font-size: 15px;
-  --base-line-height: 1.7;
+  --base-line-height: 1.75;
 
   /* Headings */
-  --heading-color: #f0f0ff;
-  --heading-font-weight: 700;
-  --heading-h1-font-size: 2rem;
-  --heading-h2-font-size: 1.5rem;
-  --heading-h2-border-color: #2a2a40;
+  --heading-color: #1a1a1a;
+  --heading-font-weight: 600;
+  --heading-h1-font-size: 1.8rem;
+  --heading-h2-font-size: 1.35rem;
+  --heading-h2-border-color: #eee;
 
   /* Code */
-  --code-font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace;
+  --code-font-family: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   --code-font-size: 0.85em;
-  --code-inline-background: #1e1e32;
-  --code-inline-color: #7dbeff;
-  --code-block-background: #141425;
-  --code-block-border-radius: 8px;
+  --code-inline-background: #f5f5f5;
+  --code-inline-color: #d14;
+  --code-block-background: #f8f8f8;
+  --code-block-border-radius: 6px;
   --code-block-padding: 1.2em;
 
   /* Links */
-  --link-color: #4a9eff;
-  --link-color--hover: #7dbeff;
+  --link-color: #0969da;
+  --link-color--hover: #0550ae;
   --link-text-decoration: none;
   --link-text-decoration--hover: underline;
 
-  /* Cover (unused but just in case) */
-  --cover-background-color: #0f0f1a;
-
   /* Blockquote */
-  --blockquote-border-color: #4a9eff;
-  --blockquote-background: #1a1a30;
+  --blockquote-border-color: #ddd;
+  --blockquote-background: #fafafa;
 
   /* Table */
-  --table-head-background: #1a1a2e;
-  --table-cell-border-color: #2a2a40;
+  --table-head-background: #fafafa;
+  --table-cell-border-color: #eee;
 
-  /* Docsify copy code */
-  --docsifyCopyCode-button-color: #a0a0b8;
+  /* Copy code button */
+  --docsifyCopyCode-button-color: #999;
 }
 
-/* Hero section on landing page */
+/* ── Hero section ── */
+
 .hero-section {
   text-align: center;
-  padding: 60px 20px 40px;
+  padding: 56px 20px 32px;
 }
 
 .hero-section h1 {
-  font-size: 3.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.3em;
-  background: linear-gradient(135deg, #4a9eff, #a855f7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.2em;
+  color: #1a1a1a;
+  -webkit-text-fill-color: #1a1a1a;
+  background: none;
 }
 
 .hero-section .tagline {
-  font-size: 1.2rem;
-  color: #8888a8;
+  font-size: 1.1rem;
+  color: #888;
+  font-weight: 400;
   margin-bottom: 2em;
 }
 
@@ -86,52 +85,53 @@
 }
 
 .hero-section .badges img {
-  margin: 0 4px;
+  margin: 0 3px;
 }
 
-/* Feature grid */
+/* ── Feature grid ── */
+
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
   margin: 2em 0;
 }
 
 .feature {
-  background: #1a1a2e;
-  border: 1px solid #2a2a40;
-  border-radius: 10px;
-  padding: 20px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 18px 20px;
 }
 
 .feature h3 {
-  color: #4a9eff;
-  font-size: 1rem;
+  color: #1a1a1a;
+  font-size: 0.9rem;
+  font-weight: 600;
   margin-top: 0;
+  margin-bottom: 6px;
 }
 
 .feature p {
-  color: #8888a8;
-  font-size: 0.9rem;
+  color: #666;
+  font-size: 0.85rem;
+  line-height: 1.5;
   margin-bottom: 0;
 }
 
-/* Quick start code block */
-.quickstart pre {
-  border: 1px solid #2a2a40;
-  border-radius: 10px;
-}
+/* ── API method signatures ── */
 
-/* API method signature styling */
 h3 code,
 h4 code {
-  background: #1e1e32 !important;
-  padding: 2px 8px !important;
-  border-radius: 4px;
-  font-size: 0.9em;
+  background: #f5f5f5 !important;
+  padding: 2px 6px !important;
+  border-radius: 3px;
+  font-size: 0.88em;
+  color: #1a1a1a !important;
 }
 
-/* Parameter tables */
+/* ── Tables ── */
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -140,27 +140,32 @@ table {
 table th {
   text-align: left;
   font-weight: 600;
-  color: #c0c0d8;
+  font-size: 0.85em;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 table td code {
-  color: #7dbeff;
+  color: #d14;
 }
 
-/* Sidebar section headers */
+/* ── Sidebar section headers ── */
+
 .sidebar-nav > ul > li > p {
-  font-weight: 700;
-  color: #e0e0f0;
-  font-size: 0.75rem;
+  font-weight: 600;
+  color: #999;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 1.5em 0 0.5em;
+  letter-spacing: 0.06em;
+  margin: 1.8em 0 0.4em;
 }
 
-/* Scrollbar */
+/* ── Scrollbar ── */
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -168,35 +173,44 @@ table td code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a2a40;
+  background: #ddd;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a55;
+  background: #ccc;
 }
 
-/* Smooth transitions */
+/* ── Transitions ── */
+
 .sidebar-nav a {
   transition: color 0.15s ease;
 }
 
-/* Search input */
+/* ── Search ── */
+
 .search input {
-  background: #1a1a2e !important;
-  border: 1px solid #2a2a40 !important;
-  color: #d0d0e0 !important;
+  background: #fff !important;
+  border: 1px solid #ddd !important;
+  color: #333 !important;
   border-radius: 6px !important;
 }
 
 .search input::placeholder {
-  color: #6666888 !important;
+  color: #aaa !important;
 }
 
-/* Mobile responsive */
+/* ── Code blocks border ── */
+
+pre {
+  border: 1px solid #eee;
+}
+
+/* ── Mobile ── */
+
 @media (max-width: 768px) {
   .hero-section h1 {
-    font-size: 2.2rem;
+    font-size: 2rem;
   }
   .features {
     grid-template-columns: 1fr;
