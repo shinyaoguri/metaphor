@@ -113,6 +113,18 @@ public final class MetaphorRenderer: NSObject {
         syphonOutput = nil
     }
 
+    // MARK: - Canvas Resize
+
+    /// キャンバスサイズを変更（テクスチャ再作成）
+    public func resizeCanvas(width: Int, height: Int) {
+        textureManager = TextureManager(
+            device: device,
+            width: width,
+            height: height
+        )
+        stagingTexture = nil
+    }
+
     // MARK: - Rendering
 
     /// 現在の経過時間を取得

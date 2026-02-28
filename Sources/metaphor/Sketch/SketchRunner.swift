@@ -76,6 +76,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         self.context = context
         _activeSketchContext = context
 
+        // createCanvasコールバック（setup()内からキャンバスサイズを変更可能にする）
+        context.onCreateCanvas = { [weak self] width, height in
+            self?.handleCreateCanvas(width: width, height: height, config: config)
+        }
+
         // ウィンドウサイズ
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
@@ -83,11 +88,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let windowRect = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
         let window = NSWindow(
             contentRect: windowRect,
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = config.title
+        window.contentAspectRatio = NSSize(width: config.width, height: config.height)
         window.center()
         self.window = window
 
@@ -95,6 +101,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let mtkView = MetaphorMTKView()
         mtkView.frame = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
         mtkView.enableSetNeedsDisplay = false
+        mtkView.autoresizingMask = [.width, .height]
         renderer.configure(view: mtkView)
         window.contentView = mtkView
         self.mtkView = mtkView
@@ -164,6 +171,30 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // ウィンドウ表示
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// createCanvas()ハンドラ — テクスチャ・Canvas・ウィンドウを再構築
+    private func handleCreateCanvas(width: Int, height: Int, config: SketchConfig) {
+        guard let renderer, let context else { return }
+
+        // テクスチャリサイズ
+        renderer.resizeCanvas(width: width, height: height)
+
+        // Canvas2D / Canvas3D 再構築
+        guard let newCanvas = try? Canvas2D(renderer: renderer),
+              let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+            return
+        }
+        self.canvas = newCanvas
+        self.canvas3D = newCanvas3D
+        context.rebuildCanvas(canvas: newCanvas, canvas3D: newCanvas3D)
+
+        // ウィンドウサイズ更新
+        let windowWidth = CGFloat(Float(width) * config.windowScale)
+        let windowHeight = CGFloat(Float(height) * config.windowScale)
+        window?.setContentSize(NSSize(width: windowWidth, height: windowHeight))
+        window?.contentAspectRatio = NSSize(width: width, height: height)
+        window?.center()
     }
 
     private func connectInput(sketch: any Sketch, input: InputManager) {

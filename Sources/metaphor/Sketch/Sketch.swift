@@ -124,6 +124,15 @@ extension Sketch {
     }
 }
 
+// MARK: - Canvas Setup
+
+extension Sketch {
+    /// キャンバスサイズを設定（setup()内で呼ぶ、p5.js風）
+    public func createCanvas(width: Int, height: Int) {
+        _activeSketchContext?.createCanvas(width: width, height: height)
+    }
+}
+
 // MARK: - Drawing Methods (ctx省略用)
 
 extension Sketch {

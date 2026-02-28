@@ -10,10 +10,10 @@ public final class SketchContext {
     // MARK: - Public Properties
 
     /// キャンバスの幅（ピクセル）
-    public let width: Float
+    public private(set) var width: Float
 
     /// キャンバスの高さ（ピクセル）
-    public let height: Float
+    public private(set) var height: Float
 
     /// 経過時間（秒）
     public var time: Float = 0
@@ -36,10 +36,28 @@ public final class SketchContext {
     public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
 
     /// Canvas2D（上級者向け）
-    public let canvas: Canvas2D
+    public private(set) var canvas: Canvas2D
 
     /// Canvas3D（上級者向け）
-    public let canvas3D: Canvas3D
+    public private(set) var canvas3D: Canvas3D
+
+    // MARK: - Canvas Resize
+
+    /// createCanvas コールバック（SketchRunnerが設定）
+    var onCreateCanvas: ((Int, Int) -> Void)?
+
+    /// キャンバスサイズを設定（setup()内で呼ぶ）
+    public func createCanvas(width: Int, height: Int) {
+        onCreateCanvas?(width, height)
+    }
+
+    /// キャンバスを再構築（内部用）
+    func rebuildCanvas(canvas: Canvas2D, canvas3D: Canvas3D) {
+        self.canvas = canvas
+        self.canvas3D = canvas3D
+        self.width = canvas.width
+        self.height = canvas.height
+    }
 
     // MARK: - Compute State (internal)
 
