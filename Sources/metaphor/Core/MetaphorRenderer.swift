@@ -1,4 +1,4 @@
-import Metal
+@preconcurrency import Metal
 import MetalKit
 import simd
 
@@ -20,11 +20,26 @@ public final class MetaphorRenderer: NSObject {
     /// Syphon出力（オプション）
     public private(set) var syphonOutput: SyphonOutput?
 
+    /// シェーダーライブラリ
+    public let shaderLibrary: ShaderLibrary
+
+    /// 深度ステンシルキャッシュ
+    public let depthStencilCache: DepthStencilCache
+
+    /// 入力マネージャ
+    public let input: InputManager
+
     /// 描画コールバック
     /// - Parameters:
     ///   - encoder: レンダーコマンドエンコーダ
     ///   - time: 開始からの経過時間（秒）
     public var onDraw: ((MTLRenderCommandEncoder, Double) -> Void)?
+
+    /// コンピュートコールバック（描画前に呼ばれる）
+    /// - Parameters:
+    ///   - commandBuffer: MTLCommandBuffer（コンピュートエンコーダ作成用）
+    ///   - time: 開始からの経過時間（秒）
+    public var onCompute: ((MTLCommandBuffer, Double) -> Void)?
 
     /// 開始時刻
     private let startTime: CFAbsoluteTime
@@ -32,6 +47,11 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - Blit Pipeline
 
     private var blitPipelineState: MTLRenderPipelineState?
+
+    // MARK: - Screenshot
+
+    private var pendingSavePath: String?
+    private var stagingTexture: MTLTexture?
 
     // MARK: - Initialization
 
@@ -61,6 +81,15 @@ public final class MetaphorRenderer: NSObject {
             clearColor: clearColor
         )
         self.startTime = CFAbsoluteTimeGetCurrent()
+
+        do {
+            self.shaderLibrary = try ShaderLibrary(device: device)
+        } catch {
+            print("Failed to initialize ShaderLibrary: \(error)")
+            return nil
+        }
+        self.depthStencilCache = DepthStencilCache(device: device)
+        self.input = InputManager()
 
         super.init()
 
@@ -96,61 +125,66 @@ public final class MetaphorRenderer: NSObject {
         view.depthStencilPixelFormat = .depth32Float
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         view.delegate = self
+
+        if let mtkView = view as? MetaphorMTKView {
+            mtkView.rendererRef = self
+        }
+    }
+
+    // MARK: - Screenshot
+
+    /// 次のフレームでスクリーンショットを保存
+    public func saveScreenshot(to path: String) {
+        pendingSavePath = path
+    }
+
+    // MARK: - Coordinate Conversion
+
+    /// ビュー座標をテクスチャ座標に変換
+    public func viewToTextureCoordinates(
+        viewPoint: CGPoint,
+        viewSize: CGSize,
+        drawableSize: CGSize
+    ) -> (Float, Float) {
+        let viewWidth = Float(viewSize.width)
+        let viewHeight = Float(viewSize.height)
+
+        // NSView座標（左下原点）→ drawable座標（左上原点）
+        let scaleX = Float(drawableSize.width) / viewWidth
+        let scaleY = Float(drawableSize.height) / viewHeight
+        let drawX = Float(viewPoint.x) * scaleX
+        let drawY = (viewHeight - Float(viewPoint.y)) * scaleY
+
+        // ビューポート → テクスチャ座標
+        let viewport = calculateViewport(
+            drawableSize: drawableSize,
+            targetAspect: textureManager.aspectRatio
+        )
+
+        let texX = (drawX - Float(viewport.originX)) / Float(viewport.width) * Float(textureManager.width)
+        let texY = (drawY - Float(viewport.originY)) / Float(viewport.height) * Float(textureManager.height)
+
+        return (texX, texY)
     }
 
     // MARK: - Private
 
     private func buildBlitPipeline() {
-        let shaderSource = """
-        #include <metal_stdlib>
-        using namespace metal;
-
-        struct BlitVertexOut {
-            float4 position [[position]];
-            float2 texCoord;
-        };
-
-        vertex BlitVertexOut metaphor_blitVertex(uint vertexID [[vertex_id]]) {
-            float2 positions[4] = {
-                float2(-1, -1),
-                float2( 1, -1),
-                float2(-1,  1),
-                float2( 1,  1)
-            };
-
-            float2 texCoords[4] = {
-                float2(0, 1),
-                float2(1, 1),
-                float2(0, 0),
-                float2(1, 0)
-            };
-
-            BlitVertexOut out;
-            out.position = float4(positions[vertexID], 0, 1);
-            out.texCoord = texCoords[vertexID];
-            return out;
-        }
-
-        fragment float4 metaphor_blitFragment(
-            BlitVertexOut in [[stage_in]],
-            texture2d<float> texture [[texture(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            return texture.sample(s, in.texCoord);
-        }
-        """
-
         do {
-            let library = try device.makeLibrary(source: shaderSource, options: nil)
-            let vertexFunction = library.makeFunction(name: "metaphor_blitVertex")
-            let fragmentFunction = library.makeFunction(name: "metaphor_blitFragment")
+            let vertexFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitVertex,
+                from: ShaderLibrary.BuiltinKey.blit
+            )
+            let fragmentFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitFragment,
+                from: ShaderLibrary.BuiltinKey.blit
+            )
 
-            let descriptor = MTLRenderPipelineDescriptor()
-            descriptor.vertexFunction = vertexFunction
-            descriptor.fragmentFunction = fragmentFunction
-            descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-
-            blitPipelineState = try device.makeRenderPipelineState(descriptor: descriptor)
+            blitPipelineState = try PipelineFactory(device: device)
+                .vertex(vertexFn)
+                .fragment(fragmentFn)
+                .noDepth()
+                .build()
         } catch {
             print("Failed to create blit pipeline: \(error)")
         }
@@ -191,6 +225,77 @@ public final class MetaphorRenderer: NSObject {
         )
     }
 
+    /// ステージングテクスチャを取得または作成
+    private func getOrCreateStagingTexture() -> MTLTexture {
+        if let existing = stagingTexture,
+           existing.width == textureManager.width,
+           existing.height == textureManager.height {
+            return existing
+        }
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: textureManager.width,
+            height: textureManager.height,
+            mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .managed
+        let tex = device.makeTexture(descriptor: desc)!
+        stagingTexture = tex
+        return tex
+    }
+
+    /// PNG書き出し（completionHandler内から呼ぶためnonisolated static）
+    nonisolated private static func writePNG(
+        texture: MTLTexture, width: Int, height: Int, path: String
+    ) {
+        let bytesPerRow = width * 4
+        var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
+        texture.getBytes(
+            &pixels,
+            bytesPerRow: bytesPerRow,
+            from: MTLRegionMake2D(0, 0, width, height),
+            mipmapLevel: 0
+        )
+
+        // BGRA → RGBA
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            let b = pixels[i]
+            pixels[i] = pixels[i + 2]
+            pixels[i + 2] = b
+        }
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ),
+        let cgImage = ctx.makeImage() else {
+            print("[metaphor] Failed to create CGImage for screenshot")
+            return
+        }
+
+        // ディレクトリが存在しない場合は作成
+        let url = URL(fileURLWithPath: path)
+        let dir = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        guard let dest = CGImageDestinationCreateWithURL(
+            url as CFURL, "public.png" as CFString, 1, nil
+        ) else {
+            print("[metaphor] Failed to create image destination: \(path)")
+            return
+        }
+        CGImageDestinationAddImage(dest, cgImage, nil)
+        CGImageDestinationFinalize(dest)
+    }
+
     /// オフスクリーンテクスチャを画面にブリット
     private func blitToScreen(encoder: MTLRenderCommandEncoder, viewport: MTLViewport) {
         guard let pipeline = blitPipelineState else { return }
@@ -211,7 +316,11 @@ extension MetaphorRenderer: MTKViewDelegate {
         MainActor.assumeIsolated {
             guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
 
+            input.updateFrame()
             let time = elapsedTime
+
+            // 0. コンピュートフェーズ
+            onCompute?(commandBuffer, time)
 
             // 1. オフスクリーンテクスチャに描画
             if let encoder = commandBuffer.makeRenderCommandEncoder(
@@ -219,6 +328,38 @@ extension MetaphorRenderer: MTKViewDelegate {
             ) {
                 onDraw?(encoder, time)
                 encoder.endEncoding()
+            }
+
+            // 1.5 スクリーンショット保存
+            if let savePath = pendingSavePath {
+                pendingSavePath = nil
+                let staging = getOrCreateStagingTexture()
+                if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
+                    blitEncoder.copy(
+                        from: textureManager.colorTexture,
+                        sourceSlice: 0, sourceLevel: 0,
+                        sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                        sourceSize: MTLSize(
+                            width: textureManager.width,
+                            height: textureManager.height,
+                            depth: 1
+                        ),
+                        to: staging,
+                        destinationSlice: 0, destinationLevel: 0,
+                        destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+                    )
+                    blitEncoder.synchronize(resource: staging)
+                    blitEncoder.endEncoding()
+                }
+
+                let width = textureManager.width
+                let height = textureManager.height
+                let path = savePath
+                commandBuffer.addCompletedHandler { _ in
+                    MetaphorRenderer.writePNG(
+                        texture: staging, width: width, height: height, path: path
+                    )
+                }
             }
 
             // 2. Syphonに送信

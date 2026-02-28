@@ -127,6 +127,11 @@ public func lerp<T: FloatingPoint>(_ a: T, _ b: T, _ t: T) -> T {
     a + (b - a) * t
 }
 
+/// SIMD2の線形補間
+public func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float> {
+    a + (b - a) * t
+}
+
 /// SIMD3の線形補間
 public func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float> {
     a + (b - a) * t

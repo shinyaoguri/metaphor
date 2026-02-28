@@ -1,0 +1,585 @@
+import Metal
+import simd
+
+/// Sketch内で使う描画コンテキスト
+///
+/// Canvas2D/Canvas3Dの描画メソッドを転送し、時間・入力などの便利プロパティを提供する。
+/// 上級者向けに `renderer`, `encoder`, `canvas`, `canvas3D` へのエスケープハッチも用意。
+@MainActor
+public final class SketchContext {
+    // MARK: - Public Properties
+
+    /// キャンバスの幅（ピクセル）
+    public let width: Float
+
+    /// キャンバスの高さ（ピクセル）
+    public let height: Float
+
+    /// 経過時間（秒）
+    public var time: Float = 0
+
+    /// フレーム間の時間（秒）
+    public var deltaTime: Float = 0
+
+    /// フレーム番号
+    public var frameCount: Int = 0
+
+    /// 入力マネージャ
+    public let input: InputManager
+
+    // MARK: - Escape Hatches
+
+    /// MetaphorRenderer（上級者向け）
+    public let renderer: MetaphorRenderer
+
+    /// 現在のレンダーコマンドエンコーダ（フレーム中のみ有効）
+    public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
+
+    /// Canvas2D（上級者向け）
+    public let canvas: Canvas2D
+
+    /// Canvas3D（上級者向け）
+    public let canvas3D: Canvas3D
+
+    // MARK: - Compute State (internal)
+
+    /// 現在のコマンドバッファ（コンピュートフェーズ中のみ有効）
+    private var _commandBuffer: MTLCommandBuffer?
+
+    /// 遅延作成されるコンピュートエンコーダ
+    private var _computeEncoder: MTLComputeCommandEncoder?
+
+    // MARK: - Initialization
+
+    init(renderer: MetaphorRenderer, canvas: Canvas2D, canvas3D: Canvas3D, input: InputManager) {
+        self.renderer = renderer
+        self.canvas = canvas
+        self.canvas3D = canvas3D
+        self.input = input
+        self.width = canvas.width
+        self.height = canvas.height
+    }
+
+    // MARK: - Compute Frame Management (internal)
+
+    /// コンピュートフェーズ開始
+    func beginCompute(commandBuffer: MTLCommandBuffer, time: Float, deltaTime: Float) {
+        self._commandBuffer = commandBuffer
+        self.time = time
+        self.deltaTime = deltaTime
+    }
+
+    /// コンピュートフェーズ終了（エンコーダがある場合のみendEncoding）
+    func endCompute() {
+        _computeEncoder?.endEncoding()
+        _computeEncoder = nil
+        _commandBuffer = nil
+    }
+
+    // MARK: - Frame Management (internal)
+
+    func beginFrame(encoder: MTLRenderCommandEncoder, time: Float, deltaTime: Float) {
+        self.time = time
+        self.deltaTime = deltaTime
+        self.frameCount += 1
+        canvas3D.begin(encoder: encoder, time: time)
+        canvas.begin(encoder: encoder)
+    }
+
+    func endFrame() {
+        canvas3D.end()
+        canvas.end()
+    }
+
+    // MARK: - Background
+
+    /// 背景を塗りつぶす
+    public func background(_ color: Color) {
+        canvas.background(color)
+    }
+
+    /// グレースケール背景
+    public func background(_ gray: Float) {
+        canvas.background(gray)
+    }
+
+    // MARK: - Style (2D + 3D共有)
+
+    /// 塗りつぶし色を設定（2D/3D両方に反映）
+    public func fill(_ color: Color) {
+        canvas.fill(color)
+        canvas3D.fill(color)
+    }
+
+    /// 塗りつぶし色をRGBAで設定（2D/3D両方に反映）
+    public func fill(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
+        canvas.fill(r, g, b, a)
+        canvas3D.fill(r, g, b, a)
+    }
+
+    /// 塗りつぶしなし（2Dのみ）
+    public func noFill() {
+        canvas.noFill()
+    }
+
+    /// 線の色を設定（2Dのみ）
+    public func stroke(_ color: Color) {
+        canvas.stroke(color)
+    }
+
+    /// 線の色をRGBAで設定（2Dのみ）
+    public func stroke(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
+        canvas.stroke(r, g, b, a)
+    }
+
+    /// 線なし（2Dのみ）
+    public func noStroke() {
+        canvas.noStroke()
+    }
+
+    /// 線の太さを設定（2Dのみ）
+    public func strokeWeight(_ weight: Float) {
+        canvas.strokeWeight(weight)
+    }
+
+    /// ブレンドモードを設定
+    public func blendMode(_ mode: BlendMode) {
+        canvas.blendMode(mode)
+    }
+
+    // MARK: - Image
+
+    /// 画像を読み込み
+    public func loadImage(_ path: String) throws -> MImage {
+        try MImage(path: path, device: renderer.device)
+    }
+
+    /// 画像を描画
+    public func image(_ img: MImage, _ x: Float, _ y: Float) {
+        canvas.image(img, x, y)
+    }
+
+    /// 画像をサイズ指定で描画
+    public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.image(img, x, y, w, h)
+    }
+
+    // MARK: - Text
+
+    /// テキストサイズを設定
+    public func textSize(_ size: Float) {
+        canvas.textSize(size)
+    }
+
+    /// フォントを設定
+    public func textFont(_ family: String) {
+        canvas.textFont(family)
+    }
+
+    /// テキスト揃えを設定
+    public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
+        canvas.textAlign(horizontal, vertical)
+    }
+
+    /// テキストを描画
+    public func text(_ string: String, _ x: Float, _ y: Float) {
+        canvas.text(string, x, y)
+    }
+
+    // MARK: - Screenshot
+
+    /// スクリーンショットを保存
+    public func save(_ path: String) {
+        renderer.saveScreenshot(to: path)
+    }
+
+    /// タイムスタンプ付きでデスクトップに保存
+    public func save() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd_HHmmss"
+        let name = "metaphor_\(formatter.string(from: Date())).png"
+        let path = NSHomeDirectory() + "/Desktop/" + name
+        save(path)
+    }
+
+    // MARK: - 2D Transform Stack
+
+    /// 2Dトランスフォームを保存
+    public func push() {
+        canvas.push()
+    }
+
+    /// 2Dトランスフォームを復元
+    public func pop() {
+        canvas.pop()
+    }
+
+    /// 2D平行移動
+    public func translate(_ x: Float, _ y: Float) {
+        canvas.translate(x, y)
+    }
+
+    /// 2D回転（ラジアン）
+    public func rotate(_ angle: Float) {
+        canvas.rotate(angle)
+    }
+
+    /// 2Dスケール
+    public func scale(_ sx: Float, _ sy: Float) {
+        canvas.scale(sx, sy)
+    }
+
+    /// 2D均一スケール
+    public func scale(_ s: Float) {
+        canvas.scale(s)
+    }
+
+    // MARK: - 2D Shapes
+
+    /// 矩形
+    public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.rect(x, y, w, h)
+    }
+
+    /// 楕円
+    public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.ellipse(x, y, w, h)
+    }
+
+    /// 円
+    public func circle(_ x: Float, _ y: Float, _ diameter: Float) {
+        canvas.circle(x, y, diameter)
+    }
+
+    /// 直線
+    public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
+        canvas.line(x1, y1, x2, y2)
+    }
+
+    /// 三角形
+    public func triangle(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float
+    ) {
+        canvas.triangle(x1, y1, x2, y2, x3, y3)
+    }
+
+    /// 多角形
+    public func polygon(_ points: [(Float, Float)]) {
+        canvas.polygon(points)
+    }
+
+    /// 円弧
+    public func arc(
+        _ x: Float, _ y: Float,
+        _ w: Float, _ h: Float,
+        _ startAngle: Float, _ stopAngle: Float
+    ) {
+        canvas.arc(x, y, w, h, startAngle, stopAngle)
+    }
+
+    /// 3次ベジェ曲線
+    public func bezier(
+        _ x1: Float, _ y1: Float,
+        _ cx1: Float, _ cy1: Float,
+        _ cx2: Float, _ cy2: Float,
+        _ x2: Float, _ y2: Float
+    ) {
+        canvas.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2)
+    }
+
+    /// 点
+    public func point(_ x: Float, _ y: Float) {
+        canvas.point(x, y)
+    }
+
+    // MARK: - Custom Shapes (beginShape / endShape)
+
+    /// 頂点ベースの形状記録を開始
+    public func beginShape(_ mode: ShapeMode = .polygon) {
+        canvas.beginShape(mode)
+    }
+
+    /// 形状に頂点を追加
+    public func vertex(_ x: Float, _ y: Float) {
+        canvas.vertex(x, y)
+    }
+
+    /// 形状記録を終了して描画
+    public func endShape(_ close: CloseMode = .open) {
+        canvas.endShape(close)
+    }
+
+    // MARK: - 3D Camera
+
+    /// カメラ位置を設定
+    public func camera(
+        eye: SIMD3<Float>,
+        center: SIMD3<Float>,
+        up: SIMD3<Float> = SIMD3(0, 1, 0)
+    ) {
+        canvas3D.camera(eye: eye, center: center, up: up)
+    }
+
+    /// カメラ位置を設定（位置引数版、p5.js風）
+    public func camera(
+        _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
+        _ centerX: Float, _ centerY: Float, _ centerZ: Float,
+        _ upX: Float, _ upY: Float, _ upZ: Float
+    ) {
+        canvas3D.camera(
+            eye: SIMD3(eyeX, eyeY, eyeZ),
+            center: SIMD3(centerX, centerY, centerZ),
+            up: SIMD3(upX, upY, upZ)
+        )
+    }
+
+    /// 透視投影を設定
+    public func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000) {
+        canvas3D.perspective(fov: fov, near: near, far: far)
+    }
+
+    // MARK: - 3D Lighting
+
+    /// デフォルトライティングを有効化
+    public func lights() {
+        canvas3D.lights()
+    }
+
+    /// 全ライトを除去
+    public func noLights() {
+        canvas3D.noLights()
+    }
+
+    /// 平行光源の方向を設定
+    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
+        canvas3D.directionalLight(x, y, z)
+    }
+
+    /// 平行光源の方向と色を設定
+    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
+        canvas3D.directionalLight(x, y, z, color: color)
+    }
+
+    /// ポイントライトを追加
+    public func pointLight(
+        _ x: Float, _ y: Float, _ z: Float,
+        color: Color = .white,
+        falloff: Float = 0.1
+    ) {
+        canvas3D.pointLight(x, y, z, color: color, falloff: falloff)
+    }
+
+    /// スポットライトを追加
+    public func spotLight(
+        _ x: Float, _ y: Float, _ z: Float,
+        _ dirX: Float, _ dirY: Float, _ dirZ: Float,
+        angle: Float = Float.pi / 6,
+        falloff: Float = 0.01,
+        color: Color = .white
+    ) {
+        canvas3D.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
+    }
+
+    /// アンビエント光の強さを設定
+    public func ambientLight(_ strength: Float) {
+        canvas3D.ambientLight(strength)
+    }
+
+    /// アンビエント光をRGBで設定
+    public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
+        canvas3D.ambientLight(r, g, b)
+    }
+
+    // MARK: - 3D Material
+
+    /// スペキュラ色を設定
+    public func specular(_ color: Color) {
+        canvas3D.specular(color)
+    }
+
+    /// スペキュラ色をグレースケールで設定
+    public func specular(_ gray: Float) {
+        canvas3D.specular(gray)
+    }
+
+    /// シャイネスを設定
+    public func shininess(_ value: Float) {
+        canvas3D.shininess(value)
+    }
+
+    /// エミッシブ色を設定
+    public func emissive(_ color: Color) {
+        canvas3D.emissive(color)
+    }
+
+    /// エミッシブ色をグレースケールで設定
+    public func emissive(_ gray: Float) {
+        canvas3D.emissive(gray)
+    }
+
+    /// メタリック係数を設定
+    public func metallic(_ value: Float) {
+        canvas3D.metallic(value)
+    }
+
+    // MARK: - 3D Texture
+
+    /// テクスチャを設定
+    public func texture(_ img: MImage) {
+        canvas3D.texture(img)
+    }
+
+    /// テクスチャを解除
+    public func noTexture() {
+        canvas3D.noTexture()
+    }
+
+    // MARK: - 3D Transform Stack
+
+    /// 3Dトランスフォームを保存
+    public func pushMatrix() {
+        canvas3D.pushMatrix()
+    }
+
+    /// 3Dトランスフォームを復元
+    public func popMatrix() {
+        canvas3D.popMatrix()
+    }
+
+    /// 3D平行移動
+    public func translate(_ x: Float, _ y: Float, _ z: Float) {
+        canvas3D.translate(x, y, z)
+    }
+
+    /// X軸回転
+    public func rotateX(_ angle: Float) {
+        canvas3D.rotateX(angle)
+    }
+
+    /// Y軸回転
+    public func rotateY(_ angle: Float) {
+        canvas3D.rotateY(angle)
+    }
+
+    /// Z軸回転
+    public func rotateZ(_ angle: Float) {
+        canvas3D.rotateZ(angle)
+    }
+
+    /// 3Dスケール
+    public func scale(_ x: Float, _ y: Float, _ z: Float) {
+        canvas3D.scale(x, y, z)
+    }
+
+    // MARK: - 3D Shapes
+
+    /// ボックス
+    public func box(_ width: Float, _ height: Float, _ depth: Float) {
+        canvas3D.box(width, height, depth)
+    }
+
+    /// 均一ボックス
+    public func box(_ size: Float) {
+        canvas3D.box(size)
+    }
+
+    /// 球体
+    public func sphere(_ radius: Float, detail: Int = 24) {
+        canvas3D.sphere(radius, detail: detail)
+    }
+
+    /// 平面
+    public func plane(_ width: Float, _ height: Float) {
+        canvas3D.plane(width, height)
+    }
+
+    /// シリンダー
+    public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+        canvas3D.cylinder(radius: radius, height: height, detail: detail)
+    }
+
+    /// コーン
+    public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+        canvas3D.cone(radius: radius, height: height, detail: detail)
+    }
+
+    /// トーラス
+    public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
+        canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
+    }
+
+    /// カスタムメッシュを描画
+    public func mesh(_ mesh: Mesh) {
+        canvas3D.mesh(mesh)
+    }
+
+    // MARK: - Compute
+
+    /// コンピュートカーネルを作成
+    /// - Parameters:
+    ///   - source: MSLソースコード
+    ///   - function: カーネル関数名
+    public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
+        try ComputeKernel(device: renderer.device, source: source, functionName: function)
+    }
+
+    /// 型付きGPUバッファを作成（ゼロ初期化）
+    public func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>? {
+        GPUBuffer<T>(device: renderer.device, count: count)
+    }
+
+    /// 配列からGPUバッファを作成
+    public func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>? {
+        GPUBuffer<T>(device: renderer.device, data: data)
+    }
+
+    /// 1Dコンピュートディスパッチ
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        threads: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        guard let encoder = ensureComputeEncoder() else { return }
+        encoder.setComputePipelineState(kernel.pipelineState)
+        configure(encoder)
+
+        let w = kernel.threadExecutionWidth
+        let threadsPerGroup = MTLSize(width: w, height: 1, depth: 1)
+        let gridSize = MTLSize(width: threads, height: 1, depth: 1)
+        encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
+    }
+
+    /// 2Dコンピュートディスパッチ
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        width: Int,
+        height: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        guard let encoder = ensureComputeEncoder() else { return }
+        encoder.setComputePipelineState(kernel.pipelineState)
+        configure(encoder)
+
+        let w = kernel.threadExecutionWidth
+        let h = max(1, kernel.maxTotalThreadsPerThreadgroup / w)
+        let threadsPerGroup = MTLSize(width: w, height: h, depth: 1)
+        let gridSize = MTLSize(width: width, height: height, depth: 1)
+        encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
+    }
+
+    /// コンピュートメモリバリア（ディスパッチ間のデータ依存解決用）
+    public func computeBarrier() {
+        _computeEncoder?.memoryBarrier(scope: .buffers)
+    }
+
+    /// コンピュートエンコーダを遅延作成
+    private func ensureComputeEncoder() -> MTLComputeCommandEncoder? {
+        if let existing = _computeEncoder { return existing }
+        guard let cb = _commandBuffer else { return nil }
+        let encoder = cb.makeComputeCommandEncoder()
+        _computeEncoder = encoder
+        return encoder
+    }
+}

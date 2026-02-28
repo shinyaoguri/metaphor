@@ -1,0 +1,204 @@
+/* metaphor docs - custom theme overrides */
+
+:root {
+  /* Accent color - Metal/Apple blue */
+  --theme-color: #4a9eff;
+
+  /* Sidebar */
+  --sidebar-width: 260px;
+  --sidebar-background: #1a1a2e;
+  --sidebar-nav-link-color: #a0a0b8;
+  --sidebar-nav-link-color--active: #4a9eff;
+  --sidebar-nav-link-font-weight--active: 600;
+  --sidebar-name-color: #e0e0f0;
+  --sidebar-name-font-size: 1.4rem;
+  --sidebar-name-font-weight: 700;
+
+  /* Content */
+  --base-background-color: #0f0f1a;
+  --base-color: #d0d0e0;
+  --base-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --base-font-size: 15px;
+  --base-line-height: 1.7;
+
+  /* Headings */
+  --heading-color: #f0f0ff;
+  --heading-font-weight: 700;
+  --heading-h1-font-size: 2rem;
+  --heading-h2-font-size: 1.5rem;
+  --heading-h2-border-color: #2a2a40;
+
+  /* Code */
+  --code-font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace;
+  --code-font-size: 0.85em;
+  --code-inline-background: #1e1e32;
+  --code-inline-color: #7dbeff;
+  --code-block-background: #141425;
+  --code-block-border-radius: 8px;
+  --code-block-padding: 1.2em;
+
+  /* Links */
+  --link-color: #4a9eff;
+  --link-color--hover: #7dbeff;
+  --link-text-decoration: none;
+  --link-text-decoration--hover: underline;
+
+  /* Cover (unused but just in case) */
+  --cover-background-color: #0f0f1a;
+
+  /* Blockquote */
+  --blockquote-border-color: #4a9eff;
+  --blockquote-background: #1a1a30;
+
+  /* Table */
+  --table-head-background: #1a1a2e;
+  --table-cell-border-color: #2a2a40;
+
+  /* Docsify copy code */
+  --docsifyCopyCode-button-color: #a0a0b8;
+}
+
+/* Hero section on landing page */
+.hero-section {
+  text-align: center;
+  padding: 60px 20px 40px;
+}
+
+.hero-section h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.3em;
+  background: linear-gradient(135deg, #4a9eff, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-section .tagline {
+  font-size: 1.2rem;
+  color: #8888a8;
+  margin-bottom: 2em;
+}
+
+.hero-section .badges {
+  margin-bottom: 2em;
+}
+
+.hero-section .badges img {
+  margin: 0 4px;
+}
+
+/* Feature grid */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin: 2em 0;
+}
+
+.feature {
+  background: #1a1a2e;
+  border: 1px solid #2a2a40;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.feature h3 {
+  color: #4a9eff;
+  font-size: 1rem;
+  margin-top: 0;
+}
+
+.feature p {
+  color: #8888a8;
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+/* Quick start code block */
+.quickstart pre {
+  border: 1px solid #2a2a40;
+  border-radius: 10px;
+}
+
+/* API method signature styling */
+h3 code,
+h4 code {
+  background: #1e1e32 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Parameter tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th {
+  text-align: left;
+  font-weight: 600;
+  color: #c0c0d8;
+}
+
+table td code {
+  color: #7dbeff;
+}
+
+/* Sidebar section headers */
+.sidebar-nav > ul > li > p {
+  font-weight: 700;
+  color: #e0e0f0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 1.5em 0 0.5em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a40;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a55;
+}
+
+/* Smooth transitions */
+.sidebar-nav a {
+  transition: color 0.15s ease;
+}
+
+/* Search input */
+.search input {
+  background: #1a1a2e !important;
+  border: 1px solid #2a2a40 !important;
+  color: #d0d0e0 !important;
+  border-radius: 6px !important;
+}
+
+.search input::placeholder {
+  color: #6666888 !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .hero-section h1 {
+    font-size: 2.2rem;
+  }
+  .features {
+    grid-template-columns: 1fr;
+  }
+}

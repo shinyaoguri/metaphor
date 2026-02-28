@@ -1,47 +1,34 @@
-import SwiftUI
 import metaphor
 
 @main
-struct RotatingCubeApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
-
-struct ContentView: View {
-    @State private var renderer: MetaphorRenderer?
-    @State private var cubeRenderer: CubeRenderer?
-
-    var body: some View {
-        Group {
-            if let renderer = renderer {
-                MetaphorView(renderer: renderer, preferredFPS: 60)
-            } else {
-                Text("Initializing...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .onAppear {
-            setupRenderer()
-        }
+final class RotatingCube: Sketch {
+    var config: SketchConfig {
+        SketchConfig(title: "Rotating Cube", syphonName: "RotatingCube")
     }
 
-    private func setupRenderer() {
-        guard let renderer = MetaphorRenderer(width: 1920, height: 1080) else {
-            return
-        }
+    func draw() {
+        background(Color(gray: 0.05))
 
-        let cube = CubeRenderer(device: renderer.device)
-        self.cubeRenderer = cube
+        lights()
+        directionalLight(1, 1, 1)
+        ambientLight(0.3)
 
-        renderer.startSyphonServer(name: "RotatingCube")
+        // 回転するキューブ
+        pushMatrix()
+        rotateY(time * 0.5)
+        rotateX(time * 0.35)
 
-        renderer.onDraw = { [weak cube] encoder, time in
-            cube?.draw(encoder: encoder, time: time, aspect: 1920.0 / 1080.0)
-        }
+        let hue = (time * 0.05).truncatingRemainder(dividingBy: 1.0)
+        fill(Color(hue: hue, saturation: 0.8, brightness: 1.0))
+        box(200)
+        popMatrix()
 
-        self.renderer = renderer
+        // 床面
+        pushMatrix()
+        translate(0, -200, 0)
+        rotateX(-Float.pi / 2)
+        fill(Color(gray: 0.15))
+        plane(600, 600)
+        popMatrix()
     }
 }

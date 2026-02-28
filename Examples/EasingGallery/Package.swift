@@ -1,0 +1,22 @@
+// swift-tools-version: 6.0
+
+import PackageDescription
+
+let package = Package(
+    name: "EasingGallery",
+    platforms: [
+        .macOS(.v14)
+    ],
+    dependencies: [
+        .package(name: "metaphor", path: "../.."),
+    ],
+    targets: [
+        .executableTarget(
+            name: "EasingGallery",
+            dependencies: [
+                .product(name: "metaphor", package: "metaphor")
+            ],
+            path: "EasingGallery"
+        ),
+    ]
+)
