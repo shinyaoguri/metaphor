@@ -6,13 +6,13 @@ import AppKit
 @MainActor
 public final class MImage {
     /// Metal テクスチャ
-    public let texture: MTLTexture
+    public private(set) var texture: MTLTexture
 
     /// 画像の幅（ピクセル）
-    public let width: Float
+    public private(set) var width: Float
 
     /// 画像の高さ（ピクセル）
-    public let height: Float
+    public private(set) var height: Float
 
     /// ファイルパスから読み込み
     public init(path: String, device: MTLDevice) throws {
@@ -142,6 +142,14 @@ public final class MImage {
         pixels[i + 1] = UInt8(max(0, min(255, color.g * 255)))
         pixels[i + 2] = UInt8(max(0, min(255, color.b * 255)))
         pixels[i + 3] = UInt8(max(0, min(255, color.a * 255)))
+    }
+
+    /// テクスチャを差し替える（GPU フィルタ適用後に使用）
+    internal func replaceTexture(_ newTexture: MTLTexture) {
+        self.texture = newTexture
+        self.width = Float(newTexture.width)
+        self.height = Float(newTexture.height)
+        self.pixels = []
     }
 
     /// フィルタを適用（loadPixels→処理→updatePixels を一括実行）

@@ -153,7 +153,7 @@ public final class SketchContext {
         self.deltaTime = deltaTime
         self.frameCount += 1
         canvas3D.begin(encoder: encoder, time: time)
-        canvas.begin(encoder: encoder)
+        canvas.begin(encoder: encoder, bufferIndex: renderer.frameBufferIndex)
     }
 
     func endFrame() {
@@ -309,9 +309,9 @@ public final class SketchContext {
         MImage.createImage(width, height, device: renderer.device)
     }
 
-    /// 画像にフィルタを適用
+    /// 画像にフィルタを適用（GPU版）
     public func filter(_ image: MImage, _ type: FilterType) {
-        ImageFilter.apply(type, to: image)
+        renderer.imageFilterGPU.apply(type, to: image)
     }
 
     /// オフスクリーン描画バッファを作成
@@ -386,6 +386,28 @@ public final class SketchContext {
         let name = "metaphor_\(formatter.string(from: Date())).png"
         let path = NSHomeDirectory() + "/Desktop/" + name
         save(path)
+    }
+
+    // MARK: - Post Process
+
+    /// ポストプロセスエフェクトを追加
+    public func addPostEffect(_ effect: PostEffect) {
+        renderer.addPostEffect(effect)
+    }
+
+    /// ポストプロセスエフェクトを削除
+    public func removePostEffect(at index: Int) {
+        renderer.removePostEffect(at: index)
+    }
+
+    /// 全ポストプロセスエフェクトを削除
+    public func clearPostEffects() {
+        renderer.clearPostEffects()
+    }
+
+    /// ポストプロセスエフェクトを一括設定
+    public func setPostEffects(_ effects: [PostEffect]) {
+        renderer.setPostEffects(effects)
     }
 
     // MARK: - 2D Transform Stack

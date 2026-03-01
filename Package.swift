@@ -32,7 +32,8 @@ let package = Package(
         syphonTarget,
         .target(
             name: "metaphor",
-            dependencies: ["Syphon"]
+            dependencies: ["Syphon"],
+            resources: [.process("Shaders/Metal")]
         ),
         .testTarget(
             name: "metaphorTests",

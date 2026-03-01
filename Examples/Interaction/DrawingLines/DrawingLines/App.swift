@@ -7,7 +7,7 @@ final class DrawingLines: Sketch {
     }
 
     func draw() {
-        background(Color(gray: 0.05, alpha: 0.05))
+        background(.black)
 
         if input.isMouseDown {
             let mx = input.mouseX

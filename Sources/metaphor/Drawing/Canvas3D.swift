@@ -120,7 +120,8 @@ public final class Canvas3D {
             shaderLibrary: renderer.shaderLibrary,
             depthStencilCache: renderer.depthStencilCache,
             width: Float(renderer.textureManager.width),
-            height: Float(renderer.textureManager.height)
+            height: Float(renderer.textureManager.height),
+            sampleCount: renderer.textureManager.sampleCount
         )
     }
 
@@ -129,7 +130,8 @@ public final class Canvas3D {
         shaderLibrary: ShaderLibrary,
         depthStencilCache: DepthStencilCache,
         width: Float,
-        height: Float
+        height: Float,
+        sampleCount: Int = 1
     ) throws {
         self.device = device
         self.width = width
@@ -149,6 +151,7 @@ public final class Canvas3D {
             .fragment(fragmentFn)
             .vertexLayout(.positionNormalColor)
             .blending(.alpha)
+            .sampleCount(sampleCount)
             .build()
 
         // Textured パイプライン
@@ -165,6 +168,7 @@ public final class Canvas3D {
             .fragment(texFragmentFn)
             .vertexLayout(.positionNormalUV)
             .blending(.alpha)
+            .sampleCount(sampleCount)
             .build()
 
         self.depthState = depthStencilCache.state(for: .readWrite)

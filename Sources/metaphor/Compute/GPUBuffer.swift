@@ -53,7 +53,7 @@ public final class GPUBuffer<T> {
         self.count = count
         self.pointer = buffer.contents().bindMemory(to: T.self, capacity: count)
         data.withUnsafeBufferPointer { src in
-            memcpy(buffer.contents(), src.baseAddress!, byteLength)
+            _ = memcpy(buffer.contents(), src.baseAddress!, byteLength)
         }
     }
 
@@ -80,7 +80,7 @@ public final class GPUBuffer<T> {
     public func copyFrom(_ data: [T]) {
         let copyCount = min(data.count, count)
         data.withUnsafeBufferPointer { src in
-            memcpy(pointer, src.baseAddress!, MemoryLayout<T>.stride * copyCount)
+            _ = memcpy(pointer, src.baseAddress!, MemoryLayout<T>.stride * copyCount)
         }
     }
 

@@ -43,13 +43,14 @@ public final class Graphics {
             throw GraphicsError.commandQueueCreationFailed
         }
         self.commandQueue = queue
-        self.textureManager = TextureManager(device: device, width: width, height: height)
+        self.textureManager = TextureManager(device: device, width: width, height: height, sampleCount: 1)
         self.canvas = try Canvas2D(
             device: device,
             shaderLibrary: shaderLibrary,
             depthStencilCache: depthStencilCache,
             width: Float(width),
-            height: Float(height)
+            height: Float(height),
+            sampleCount: 1
         )
     }
 

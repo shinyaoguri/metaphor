@@ -59,6 +59,13 @@ public final class InputManager {
     /// キー解放コールバック (keyCode)
     public var onKeyUp: ((UInt16) -> Void)?
 
+    // MARK: - Private State
+
+    /// 前フレーム開始時のマウス位置（2フレームバッファ）
+    private var _savedMouseX: Float = 0
+    private var _savedMouseY: Float = 0
+    private var _isFirstFrame: Bool = true
+
     // MARK: - Initialization
 
     public init() {}
@@ -73,9 +80,23 @@ public final class InputManager {
     // MARK: - Frame Update
 
     /// フレーム開始時に呼ばれる（前フレーム座標を更新）
+    ///
+    /// RunLoop上でマウスイベントは renderFrame() の前に処理されるため、
+    /// 単純に `pmouseX = mouseX` とすると常に同じ値になる。
+    /// 2フレームバッファ方式で前フレームの位置を正しく保持する。
     func updateFrame() {
-        pmouseX = mouseX
-        pmouseY = mouseY
+        if _isFirstFrame {
+            _savedMouseX = mouseX
+            _savedMouseY = mouseY
+            pmouseX = mouseX
+            pmouseY = mouseY
+            _isFirstFrame = false
+        } else {
+            pmouseX = _savedMouseX
+            pmouseY = _savedMouseY
+            _savedMouseX = mouseX
+            _savedMouseY = mouseY
+        }
     }
 
     // MARK: - Event Handlers (MetaphorMTKViewから呼ばれる)

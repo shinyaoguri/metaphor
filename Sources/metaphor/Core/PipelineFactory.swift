@@ -224,6 +224,7 @@ public struct PipelineFactory {
     private var colorFormat: MTLPixelFormat = .bgra8Unorm
     private var depthFormat: MTLPixelFormat = .depth32Float
     private var blendMode: BlendMode = .opaque
+    private var rasterSampleCount: Int = 1
 
     // MARK: - Initialization
 
@@ -291,6 +292,13 @@ public struct PipelineFactory {
         return copy
     }
 
+    /// MSAAサンプル数を設定
+    public func sampleCount(_ count: Int) -> PipelineFactory {
+        var copy = self
+        copy.rasterSampleCount = count
+        return copy
+    }
+
     // MARK: - Build
 
     /// RenderPipelineStateをビルド
@@ -302,6 +310,7 @@ public struct PipelineFactory {
         descriptor.fragmentFunction = fragmentFunction
         descriptor.vertexDescriptor = vertexDescriptor
         descriptor.colorAttachments[0].pixelFormat = colorFormat
+        descriptor.rasterSampleCount = rasterSampleCount
         blendMode.apply(to: descriptor.colorAttachments[0])
 
         if depthFormat != .invalid {

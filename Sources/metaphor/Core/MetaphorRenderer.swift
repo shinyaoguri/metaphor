@@ -51,6 +51,30 @@ public final class MetaphorRenderer: NSObject {
     /// 外部レンダーループ使用フラグ（trueの場合、draw(in:)はブリットのみ行う）
     public var useExternalRenderLoop: Bool = false
 
+    // MARK: - Triple Buffering
+
+    /// in-flight フレーム数を制御するセマフォ
+    private let inflightSemaphore = DispatchSemaphore(value: 3)
+
+    /// 現在のフレームで使用するバッファインデックス (0-2)
+    public private(set) var frameBufferIndex: Int = 0
+
+    /// 次に使うバッファインデックス
+    private var nextBufferIndex: Int = 0
+
+    // MARK: - Post Processing
+
+    /// ポストプロセスパイプライン
+    public private(set) var postProcessPipeline: PostProcessPipeline?
+
+    /// ポストプロセス後の最終出力テクスチャ（blitToScreenで使用）
+    private var lastOutputTexture: MTLTexture?
+
+    /// GPU画像フィルタエンジン
+    public private(set) lazy var imageFilterGPU: ImageFilterGPU = {
+        ImageFilterGPU(device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
+    }()
+
     // MARK: - Screenshot
 
     private var pendingSavePath: String?
@@ -97,6 +121,14 @@ public final class MetaphorRenderer: NSObject {
         super.init()
 
         buildBlitPipeline()
+
+        do {
+            self.postProcessPipeline = try PostProcessPipeline(
+                device: device, shaderLibrary: shaderLibrary
+            )
+        } catch {
+            print("[metaphor] Failed to create PostProcessPipeline: \(error)")
+        }
     }
 
     // MARK: - Syphon
@@ -123,6 +155,29 @@ public final class MetaphorRenderer: NSObject {
             height: height
         )
         stagingTexture = nil
+        postProcessPipeline?.invalidateTextures()
+    }
+
+    // MARK: - Post Process API
+
+    /// ポストプロセスエフェクトを追加
+    public func addPostEffect(_ effect: PostEffect) {
+        postProcessPipeline?.add(effect)
+    }
+
+    /// ポストプロセスエフェクトを削除
+    public func removePostEffect(at index: Int) {
+        postProcessPipeline?.remove(at: index)
+    }
+
+    /// 全ポストプロセスエフェクトを削除
+    public func clearPostEffects() {
+        postProcessPipeline?.removeAll()
+    }
+
+    /// ポストプロセスエフェクトを一括設定
+    public func setPostEffects(_ effects: [PostEffect]) {
+        postProcessPipeline?.set(effects)
     }
 
     // MARK: - Rendering
@@ -317,7 +372,8 @@ public final class MetaphorRenderer: NSObject {
 
         encoder.setRenderPipelineState(pipeline)
         encoder.setViewport(viewport)
-        encoder.setFragmentTexture(textureManager.colorTexture, index: 0)
+        let tex = lastOutputTexture ?? textureManager.colorTexture
+        encoder.setFragmentTexture(tex, index: 0)
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
     }
 
@@ -328,7 +384,20 @@ public final class MetaphorRenderer: NSObject {
     /// Compute → Offscreen Draw → Screenshot → Syphon の順に実行する。
     /// 画面へのブリットは含まない。
     public func renderFrame() {
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        inflightSemaphore.wait()
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            inflightSemaphore.signal()
+            return
+        }
+
+        // バッファインデックスを設定して進める
+        frameBufferIndex = nextBufferIndex
+        nextBufferIndex = (nextBufferIndex + 1) % 3
+
+        commandBuffer.addCompletedHandler { [weak self] _ in
+            self?.inflightSemaphore.signal()
+        }
 
         input.updateFrame()
         let time = elapsedTime
@@ -344,13 +413,25 @@ public final class MetaphorRenderer: NSObject {
             encoder.endEncoding()
         }
 
+        // ポストプロセス適用
+        let outputTexture: MTLTexture
+        if let pipeline = postProcessPipeline, !pipeline.effects.isEmpty {
+            outputTexture = pipeline.apply(
+                source: textureManager.colorTexture,
+                commandBuffer: commandBuffer
+            )
+        } else {
+            outputTexture = textureManager.colorTexture
+        }
+        lastOutputTexture = outputTexture
+
         // スクリーンショット保存
         if let savePath = pendingSavePath {
             pendingSavePath = nil
             let staging = getOrCreateStagingTexture()
             if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
                 blitEncoder.copy(
-                    from: textureManager.colorTexture,
+                    from: outputTexture,
                     sourceSlice: 0, sourceLevel: 0,
                     sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                     sourceSize: MTLSize(
@@ -378,7 +459,7 @@ public final class MetaphorRenderer: NSObject {
 
         // Syphonに送信
         syphonOutput?.publish(
-            texture: textureManager.colorTexture,
+            texture: outputTexture,
             commandBuffer: commandBuffer,
             flipped: true
         )

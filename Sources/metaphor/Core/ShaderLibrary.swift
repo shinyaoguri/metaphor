@@ -1,15 +1,18 @@
 import Metal
+import Foundation
 
 /// Metalシェーダーのコンパイルとキャッシュを管理するライブラリ
 ///
-/// MSLソース文字列からMTLLibrary/MTLFunctionをコンパイルし、
-/// 同じソースの再コンパイルを避けるためにキャッシュする。
-/// metaphorの組み込みシェーダーは自動的に登録される。
+/// 事前コンパイル済み metallib を優先的にロードし、
+/// 見つからない場合は MSL ソース文字列からコンパイルする。
 @MainActor
 public final class ShaderLibrary {
     private let device: MTLDevice
     private var libraries: [String: MTLLibrary] = [:]
     private var functions: [String: MTLFunction] = [:]
+
+    /// metallib からロードされたかどうか
+    public private(set) var usesPrecompiledMetalLib = false
 
     // MARK: - Built-in Library Keys
 
@@ -23,33 +26,36 @@ public final class ShaderLibrary {
         public static let canvas3D = "metaphor.canvas3D"
         public static let canvas2DTextured = "metaphor.canvas2DTextured"
         public static let canvas3DTextured = "metaphor.canvas3DTextured"
+        public static let postProcess = "metaphor.postProcess"
+        public static let imageFilter = "metaphor.imageFilter"
+
+        /// 全ビルトインキーのリスト
+        static let all: [String] = [
+            blit, flatColor, vertexColor, lit,
+            canvas2D, canvas3D, canvas2DTextured, canvas3DTextured,
+            postProcess, imageFilter,
+        ]
     }
 
     // MARK: - Initialization
 
-    /// 初期化。組み込みシェーダーを自動的に登録する。
+    /// 初期化。事前コンパイル済み metallib を優先ロードし、
+    /// なければ MSL ソース文字列からコンパイルする。
     /// - Parameter device: MTLDevice
     public init(device: MTLDevice) throws {
         self.device = device
-        try registerBuiltins()
+        try loadBuiltins()
     }
 
     // MARK: - Registration
 
     /// MSLソース文字列をコンパイルして登録
-    /// - Parameters:
-    ///   - source: MSLソースコード
-    ///   - key: ライブラリの識別キー
-    /// - Throws: シェーダーコンパイルエラー
     public func register(source: String, as key: String) throws {
         let library = try device.makeLibrary(source: source, options: nil)
         libraries[key] = library
     }
 
     /// 事前コンパイル済みMTLLibraryを登録
-    /// - Parameters:
-    ///   - library: MTLLibrary
-    ///   - key: ライブラリの識別キー
     public func register(library: MTLLibrary, as key: String) {
         libraries[key] = library
     }
@@ -57,10 +63,6 @@ public final class ShaderLibrary {
     // MARK: - Function Access
 
     /// 指定したライブラリから関数を取得
-    /// - Parameters:
-    ///   - name: 関数名
-    ///   - key: ライブラリの識別キー
-    /// - Returns: MTLFunction（見つからない場合はnil）
     public func function(named name: String, from key: String) -> MTLFunction? {
         let cacheKey = "\(key).\(name)"
         if let cached = functions[cacheKey] {
@@ -88,7 +90,21 @@ public final class ShaderLibrary {
 
     // MARK: - Private
 
-    private func registerBuiltins() throws {
+    private func loadBuiltins() throws {
+        // 1) Bundle.module から事前コンパイル済み metallib をロード
+        if let metallib = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+            for key in BuiltinKey.all {
+                libraries[key] = metallib
+            }
+            usesPrecompiledMetalLib = true
+            return
+        }
+
+        // 2) フォールバック: MSL ソース文字列からコンパイル
+        try registerBuiltinsFromSource()
+    }
+
+    private func registerBuiltinsFromSource() throws {
         try register(source: BuiltinShaders.blitSource, as: BuiltinKey.blit)
         try register(source: BuiltinShaders.flatColorSource, as: BuiltinKey.flatColor)
         try register(source: BuiltinShaders.vertexColorSource, as: BuiltinKey.vertexColor)
@@ -97,5 +113,7 @@ public final class ShaderLibrary {
         try register(source: BuiltinShaders.canvas3DSource, as: BuiltinKey.canvas3D)
         try register(source: BuiltinShaders.canvas2DTexturedSource, as: BuiltinKey.canvas2DTextured)
         try register(source: BuiltinShaders.canvas3DTexturedSource, as: BuiltinKey.canvas3DTextured)
+        try register(source: PostProcessShaders.source, as: BuiltinKey.postProcess)
+        try register(source: ImageFilterShaders.source, as: BuiltinKey.imageFilter)
     }
 }

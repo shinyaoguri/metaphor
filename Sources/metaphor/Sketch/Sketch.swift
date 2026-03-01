@@ -727,6 +727,30 @@ extension Sketch {
     }
 }
 
+// MARK: - Post Process
+
+extension Sketch {
+    /// ポストプロセスエフェクトを追加
+    public func addPostEffect(_ effect: PostEffect) {
+        _activeSketchContext?.addPostEffect(effect)
+    }
+
+    /// ポストプロセスエフェクトを削除
+    public func removePostEffect(at index: Int) {
+        _activeSketchContext?.removePostEffect(at: index)
+    }
+
+    /// 全ポストプロセスエフェクトを削除
+    public func clearPostEffects() {
+        _activeSketchContext?.clearPostEffects()
+    }
+
+    /// ポストプロセスエフェクトを一括設定
+    public func setPostEffects(_ effects: [PostEffect]) {
+        _activeSketchContext?.setPostEffects(effects)
+    }
+}
+
 // MARK: - Cursor Control
 
 extension Sketch {

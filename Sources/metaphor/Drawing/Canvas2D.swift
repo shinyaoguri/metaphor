@@ -98,8 +98,22 @@ public final class Canvas2D {
     private let pipelineStates: [BlendMode: MTLRenderPipelineState]
     private let texturedPipelineStates: [BlendMode: MTLRenderPipelineState]
     private let depthStencilState: MTLDepthStencilState?
-    private let vertexBuffer: MTLBuffer
-    private let vertices: UnsafeMutablePointer<Vertex2D>
+
+    /// トリプルバッファ (CPU/GPU同期競合を回避)
+    private static let bufferCount = 3
+    private let vertexBuffers: [MTLBuffer]
+    private let verticesArray: [UnsafeMutablePointer<Vertex2D>]
+    private var currentBufferIndex: Int = 0
+
+    /// 現在のバッファの頂点ポインタ
+    private var vertices: UnsafeMutablePointer<Vertex2D> {
+        verticesArray[currentBufferIndex]
+    }
+
+    /// 現在のバッファ
+    private var vertexBuffer: MTLBuffer {
+        vertexBuffers[currentBufferIndex]
+    }
 
     // MARK: - Dimensions
 
@@ -111,7 +125,7 @@ public final class Canvas2D {
 
     // MARK: - Constants
 
-    private let maxVertices: Int = 65536
+    private let maxVertices: Int = 131072
     private let ellipseSegments: Int = 32
 
     // MARK: - Per-frame State
@@ -231,7 +245,8 @@ public final class Canvas2D {
             shaderLibrary: renderer.shaderLibrary,
             depthStencilCache: renderer.depthStencilCache,
             width: Float(renderer.textureManager.width),
-            height: Float(renderer.textureManager.height)
+            height: Float(renderer.textureManager.height),
+            sampleCount: renderer.textureManager.sampleCount
         )
     }
 
@@ -241,20 +256,27 @@ public final class Canvas2D {
         shaderLibrary: ShaderLibrary,
         depthStencilCache: DepthStencilCache,
         width: Float,
-        height: Float
+        height: Float,
+        sampleCount: Int = 1
     ) throws {
         self.device = device
         self.shaderLibrary = shaderLibrary
         self.width = width
         self.height = height
 
-        // 頂点バッファ（事前確保）
+        // トリプル頂点バッファ（事前確保）
         let bufferSize = maxVertices * MemoryLayout<Vertex2D>.stride
-        guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
-            throw Canvas2DError.bufferCreationFailed
+        var buffers: [MTLBuffer] = []
+        var pointers: [UnsafeMutablePointer<Vertex2D>] = []
+        for _ in 0..<Self.bufferCount {
+            guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
+                throw Canvas2DError.bufferCreationFailed
+            }
+            buffers.append(buffer)
+            pointers.append(buffer.contents().bindMemory(to: Vertex2D.self, capacity: maxVertices))
         }
-        self.vertexBuffer = buffer
-        self.vertices = buffer.contents().bindMemory(to: Vertex2D.self, capacity: maxVertices)
+        self.vertexBuffers = buffers
+        self.verticesArray = pointers
 
         // カラーパイプライン（全BlendMode分）
         let vertexFn = shaderLibrary.function(
@@ -273,6 +295,7 @@ public final class Canvas2D {
                 .fragment(fragmentFn)
                 .vertexLayout(.position2DColor)
                 .blending(mode)
+                .sampleCount(sampleCount)
                 .build()
         }
         self.pipelineStates = colorPipelines
@@ -294,6 +317,7 @@ public final class Canvas2D {
                 .fragment(texFragmentFn)
                 .vertexLayout(.position2DTexCoordColor)
                 .blending(mode)
+                .sampleCount(sampleCount)
                 .build()
         }
         self.texturedPipelineStates = texPipelines
@@ -320,9 +344,13 @@ public final class Canvas2D {
 
     // MARK: - Frame Control
 
-    /// 描画開始。毎フレームencoderを渡す。
-    public func begin(encoder: MTLRenderCommandEncoder) {
+    /// 描画開始。毎フレームencoderとバッファインデックスを渡す。
+    /// - Parameters:
+    ///   - encoder: レンダーコマンドエンコーダ
+    ///   - bufferIndex: トリプルバッファのインデックス（0-2）
+    public func begin(encoder: MTLRenderCommandEncoder, bufferIndex: Int = 0) {
         self.encoder = encoder
+        self.currentBufferIndex = bufferIndex % Self.bufferCount
         self.vertexCount = 0
         self.bufferOffset = 0
         self.currentTransform = float3x3(1)
@@ -1238,7 +1266,12 @@ public final class Canvas2D {
 
     /// トランスフォームを適用して頂点を追加
     private func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
-        guard bufferOffset + vertexCount < maxVertices else { return }
+        if bufferOffset + vertexCount >= maxVertices {
+            flush()
+            if bufferOffset + vertexCount >= maxVertices {
+                return  // フラッシュ後もバッファが埋まっている場合はスキップ
+            }
+        }
         let p = currentTransform * SIMD3<Float>(x, y, 1)
         vertices[bufferOffset + vertexCount] = Vertex2D(
             posX: p.x, posY: p.y,
@@ -1249,7 +1282,12 @@ public final class Canvas2D {
 
     /// トランスフォームなしで頂点を追加（background用）
     private func addVertexRaw(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
-        guard bufferOffset + vertexCount < maxVertices else { return }
+        if bufferOffset + vertexCount >= maxVertices {
+            flush()
+            if bufferOffset + vertexCount >= maxVertices {
+                return
+            }
+        }
         vertices[bufferOffset + vertexCount] = Vertex2D(
             posX: x, posY: y,
             r: color.x, g: color.y, b: color.z, a: color.w
