@@ -86,6 +86,12 @@ public final class MetaphorRenderer: NSObject {
     public let frameExporter: FrameExporter = FrameExporter()
     private var exportStagingTexture: MTLTexture?
 
+    // MARK: - Video Export
+
+    /// ビデオエクスポーター
+    public let videoExporter: VideoExporter = VideoExporter()
+    private var videoStagingTexture: MTLTexture?
+
     // MARK: - Initialization
 
     /// 初期化
@@ -162,6 +168,7 @@ public final class MetaphorRenderer: NSObject {
         )
         stagingTexture = nil
         exportStagingTexture = nil
+        videoStagingTexture = nil
         postProcessPipeline?.invalidateTextures()
     }
 
@@ -344,6 +351,27 @@ public final class MetaphorRenderer: NSObject {
         return tex
     }
 
+    /// ビデオエクスポート用ステージングテクスチャを取得または作成
+    private func getOrCreateVideoStagingTexture() -> MTLTexture {
+        if let existing = videoStagingTexture,
+           existing.width == textureManager.width,
+           existing.height == textureManager.height {
+            return existing
+        }
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: textureManager.width,
+            height: textureManager.height,
+            mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .managed
+        let tex = device.makeTexture(descriptor: desc)!
+        videoStagingTexture = tex
+        return tex
+    }
+
     /// PNG書き出し（completionHandler内から呼ぶためnonisolated static）
     nonisolated static func writePNG(
         texture: MTLTexture, width: Int, height: Int, path: String
@@ -491,6 +519,18 @@ public final class MetaphorRenderer: NSObject {
             frameExporter.captureFrame(
                 sourceTexture: outputTexture,
                 stagingTexture: exportStaging,
+                commandBuffer: commandBuffer,
+                width: textureManager.width,
+                height: textureManager.height
+            )
+        }
+
+        // ビデオエクスポート（録画中なら毎フレーム）
+        if videoExporter.isRecording {
+            let videoStaging = getOrCreateVideoStagingTexture()
+            videoExporter.captureFrame(
+                sourceTexture: outputTexture,
+                stagingTexture: videoStaging,
                 commandBuffer: commandBuffer,
                 width: textureManager.width,
                 height: textureManager.height

@@ -524,6 +524,15 @@ extension Mesh {
         return mesh
     }
 
+    /// Model I/O を使って OBJ / USDZ / ABC ファイルを読み込み
+    /// - Parameters:
+    ///   - device: MTLDevice
+    ///   - url: モデルファイルの URL
+    ///   - normalize: true ならバウンディングボックスを [-1,1] に正規化
+    public static func load(device: MTLDevice, url: URL, normalize: Bool = true) throws -> Mesh {
+        return try ModelIOLoader.load(device: device, url: url, normalize: normalize)
+    }
+
     /// OBJ文字列からメッシュを生成
     public static func loadOBJ(device: MTLDevice, source: String) -> Mesh? {
         var positions: [SIMD3<Float>] = []

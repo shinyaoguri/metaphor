@@ -28,12 +28,14 @@ public final class ShaderLibrary {
         public static let canvas3DTextured = "metaphor.canvas3DTextured"
         public static let postProcess = "metaphor.postProcess"
         public static let imageFilter = "metaphor.imageFilter"
+        public static let kawaseBlur = "metaphor.kawaseBlur"
+        public static let particle = "metaphor.particle"
 
         /// 全ビルトインキーのリスト
         static let all: [String] = [
             blit, flatColor, vertexColor, lit,
             canvas2D, canvas3D, canvas2DTextured, canvas3DTextured,
-            postProcess, imageFilter,
+            postProcess, imageFilter, kawaseBlur, particle,
         ]
     }
 
@@ -115,5 +117,7 @@ public final class ShaderLibrary {
         try register(source: BuiltinShaders.canvas3DTexturedSource, as: BuiltinKey.canvas3DTextured)
         try register(source: PostProcessShaders.source, as: BuiltinKey.postProcess)
         try register(source: ImageFilterShaders.source, as: BuiltinKey.imageFilter)
+        try register(source: KawaseBlurShaders.source, as: BuiltinKey.kawaseBlur)
+        try register(source: ParticleShaders.source, as: BuiltinKey.particle)
     }
 }

@@ -111,6 +111,11 @@ public final class SketchContext {
         self.height = canvas.height
     }
 
+    // MARK: - Tween Manager
+
+    /// Tween 自動更新マネージャー
+    public let tweenManager = TweenManager()
+
     // MARK: - Compute State (internal)
 
     /// 現在のコマンドバッファ（コンピュートフェーズ中のみ有効）
@@ -152,6 +157,7 @@ public final class SketchContext {
         self.time = time
         self.deltaTime = deltaTime
         self.frameCount += 1
+        tweenManager.update(deltaTime)
         canvas3D.begin(encoder: encoder, time: time)
         canvas.begin(encoder: encoder, bufferIndex: renderer.frameBufferIndex)
     }
@@ -180,14 +186,16 @@ public final class SketchContext {
 
     // MARK: - Color Mode
 
-    /// 色空間と最大値を設定
+    /// 色空間と最大値を設定（2D/3D両方に反映）
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
         canvas.colorMode(space, max1, max2, max3, maxA)
+        canvas3D.colorMode(space, max1, max2, max3, maxA)
     }
 
-    /// 色空間と均一な最大値を設定
+    /// 色空間と均一な最大値を設定（2D/3D両方に反映）
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         canvas.colorMode(space, maxAll)
+        canvas3D.colorMode(space, maxAll)
     }
 
     // MARK: - Background
@@ -218,46 +226,55 @@ public final class SketchContext {
     /// 塗りつぶし色を設定（colorModeに従って解釈、2D/3D両方に反映）
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         canvas.fill(v1, v2, v3, a)
+        canvas3D.fill(v1, v2, v3, a)
     }
 
-    /// グレースケールで塗りつぶし色を設定
+    /// グレースケールで塗りつぶし色を設定（2D/3D両方に反映）
     public func fill(_ gray: Float) {
         canvas.fill(gray)
+        canvas3D.fill(gray)
     }
 
-    /// グレースケール＋アルファで塗りつぶし色を設定
+    /// グレースケール＋アルファで塗りつぶし色を設定（2D/3D両方に反映）
     public func fill(_ gray: Float, _ alpha: Float) {
         canvas.fill(gray, alpha)
+        canvas3D.fill(gray, alpha)
     }
 
-    /// 塗りつぶしなし（2Dのみ）
+    /// 塗りつぶしなし（2D/3D両方に反映）
     public func noFill() {
         canvas.noFill()
+        canvas3D.noFill()
     }
 
-    /// 線の色を設定（2Dのみ）
+    /// 線の色を設定（2D/3D両方に反映）
     public func stroke(_ color: Color) {
         canvas.stroke(color)
+        canvas3D.stroke(color)
     }
 
-    /// 線の色を設定（colorModeに従って解釈、2Dのみ）
+    /// 線の色を設定（colorModeに従って解釈、2D/3D両方に反映）
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         canvas.stroke(v1, v2, v3, a)
+        canvas3D.stroke(v1, v2, v3, a)
     }
 
-    /// グレースケールで線の色を設定
+    /// グレースケールで線の色を設定（2D/3D両方に反映）
     public func stroke(_ gray: Float) {
         canvas.stroke(gray)
+        canvas3D.stroke(gray)
     }
 
-    /// グレースケール＋アルファで線の色を設定
+    /// グレースケール＋アルファで線の色を設定（2D/3D両方に反映）
     public func stroke(_ gray: Float, _ alpha: Float) {
         canvas.stroke(gray, alpha)
+        canvas3D.stroke(gray, alpha)
     }
 
-    /// 線なし（2Dのみ）
+    /// 線なし（2D/3D両方に反映）
     public func noStroke() {
         canvas.noStroke()
+        canvas3D.noStroke()
     }
 
     /// 線の太さを設定（2Dのみ）
@@ -335,6 +352,17 @@ public final class SketchContext {
         )
     }
 
+    /// 3D オフスクリーン描画バッファを作成
+    public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
+        try? Graphics3D(
+            device: renderer.device,
+            shaderLibrary: renderer.shaderLibrary,
+            depthStencilCache: renderer.depthStencilCache,
+            width: w,
+            height: h
+        )
+    }
+
     /// 画像を描画
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         canvas.image(img, x, y)
@@ -347,6 +375,16 @@ public final class SketchContext {
 
     /// Graphicsバッファをサイズ指定で描画
     public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.image(pg.toImage(), x, y, w, h)
+    }
+
+    /// Graphics3Dバッファを描画
+    public func image(_ pg: Graphics3D, _ x: Float, _ y: Float) {
+        canvas.image(pg.toImage(), x, y)
+    }
+
+    /// Graphics3Dバッファをサイズ指定で描画
+    public func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.image(pg.toImage(), x, y, w, h)
     }
 
@@ -430,6 +468,33 @@ public final class SketchContext {
         renderer.frameExporter.endSequence()
     }
 
+    /// ビデオ録画を開始
+    /// - Parameters:
+    ///   - path: 出力ファイルパス（nilならデスクトップに自動生成）
+    ///   - config: ビデオエクスポート設定
+    public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
+        let actualPath: String
+        if let path {
+            actualPath = path
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).\(config.format.fileExtension)"
+        }
+        try? renderer.videoExporter.beginRecord(
+            path: actualPath,
+            width: renderer.textureManager.width,
+            height: renderer.textureManager.height,
+            config: config
+        )
+    }
+
+    /// ビデオ録画を終了
+    /// - Parameter completion: 書き出し完了時に呼ばれるコールバック
+    public func endVideoRecord(completion: (@Sendable () -> Void)? = nil) {
+        renderer.videoExporter.endRecord(completion: completion)
+    }
+
     /// 現在フレームを単発で保存（Processing互換）
     public func saveFrame(_ filename: String? = nil) {
         let name: String
@@ -453,6 +518,24 @@ public final class SketchContext {
 
     // MARK: - Post Process
 
+    /// カスタムポストプロセスエフェクトを作成
+    ///
+    /// MSLフラグメントシェーダーソースからカスタムエフェクトを作成する。
+    /// シェーダーには `PostProcessShaders.commonStructs` をプリフィックスとして含めること。
+    /// - Parameters:
+    ///   - name: エフェクト名（ライブラリキーに使用）
+    ///   - source: MSLシェーダーソースコード
+    ///   - fragmentFunction: フラグメントシェーダー関数名
+    /// - Returns: CustomPostEffect インスタンス
+    public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
+        let key = "user.posteffect.\(name)"
+        try renderer.shaderLibrary.register(source: source, as: key)
+        guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {
+            throw PostProcessError.shaderNotFound(fragmentFunction)
+        }
+        return CustomPostEffect(name: name, fragmentFunctionName: fragmentFunction, libraryKey: key)
+    }
+
     /// ポストプロセスエフェクトを追加
     public func addPostEffect(_ effect: PostEffect) {
         renderer.addPostEffect(effect)
@@ -473,16 +556,18 @@ public final class SketchContext {
         renderer.setPostEffects(effects)
     }
 
-    // MARK: - 2D Transform Stack
+    // MARK: - Unified Transform Stack
 
-    /// 2Dトランスフォームとスタイルを保存
+    /// 2D/3Dトランスフォームとスタイルを保存
     public func push() {
         canvas.push()
+        canvas3D.pushMatrix()
     }
 
-    /// 2Dトランスフォームとスタイルを復元
+    /// 2D/3Dトランスフォームとスタイルを復元
     public func pop() {
         canvas.pop()
+        canvas3D.popMatrix()
     }
 
     /// スタイル状態のみを保存
@@ -658,6 +743,16 @@ public final class SketchContext {
         canvas.curveTightness(t)
     }
 
+    /// コンター（穴）の記録を開始
+    public func beginContour() {
+        canvas.beginContour()
+    }
+
+    /// コンター（穴）の記録を終了
+    public func endContour() {
+        canvas.endContour()
+    }
+
     /// 形状記録を終了して描画
     public func endShape(_ close: CloseMode = .open) {
         canvas.endShape(close)
@@ -795,6 +890,35 @@ public final class SketchContext {
         canvas3D.metallic(value)
     }
 
+    // MARK: - 3D Custom Material
+
+    /// カスタムフラグメントシェーダーマテリアルを作成
+    ///
+    /// MSLソースをコンパイルし、指定したフラグメント関数からCustomMaterialを生成する。
+    /// ソースには `BuiltinShaders.canvas3DStructs` をプレフィックスとして含めること。
+    /// - Parameters:
+    ///   - source: MSLシェーダーソースコード
+    ///   - fragmentFunction: フラグメントシェーダー関数名
+    /// - Returns: CustomMaterial インスタンス
+    public func createMaterial(source: String, fragmentFunction: String) throws -> CustomMaterial {
+        let key = "user.material.\(fragmentFunction)"
+        try renderer.shaderLibrary.register(source: source, as: key)
+        guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
+            throw CustomMaterialError.shaderNotFound(fragmentFunction)
+        }
+        return CustomMaterial(fragmentFunction: fn, functionName: fragmentFunction, libraryKey: key)
+    }
+
+    /// カスタムマテリアルを適用
+    public func material(_ customMaterial: CustomMaterial) {
+        canvas3D.material(customMaterial)
+    }
+
+    /// カスタムマテリアルを解除（組み込みシェーダーに戻す）
+    public func noMaterial() {
+        canvas3D.noMaterial()
+    }
+
     // MARK: - 3D Texture
 
     /// テクスチャを設定
@@ -809,14 +933,14 @@ public final class SketchContext {
 
     // MARK: - 3D Transform Stack
 
-    /// 3Dトランスフォームを保存
+    /// 3Dトランスフォームを保存（push()のエイリアス）
     public func pushMatrix() {
-        canvas3D.pushMatrix()
+        push()
     }
 
-    /// 3Dトランスフォームを復元
+    /// 3Dトランスフォームを復元（pop()のエイリアス）
     public func popMatrix() {
-        canvas3D.popMatrix()
+        pop()
     }
 
     /// 3D平行移動
@@ -886,10 +1010,13 @@ public final class SketchContext {
         canvas3D.mesh(mesh)
     }
 
-    /// OBJファイルからメッシュを読み込み
-    public func loadModel(_ path: String) -> Mesh? {
+    /// 3Dモデルファイルを読み込み（OBJ / USDZ / ABC 対応）
+    /// - Parameters:
+    ///   - path: ファイルパス
+    ///   - normalize: true ならバウンディングボックスを [-1,1] に正規化（デフォルト true）
+    public func loadModel(_ path: String, normalize: Bool = true) -> Mesh? {
         let url = URL(fileURLWithPath: path)
-        return try? Mesh.loadOBJ(device: renderer.device, url: url)
+        return try? Mesh.load(device: renderer.device, url: url, normalize: normalize)
     }
 
     // MARK: - Compute
@@ -958,5 +1085,64 @@ public final class SketchContext {
         let encoder = cb.makeComputeCommandEncoder()
         _computeEncoder = encoder
         return encoder
+    }
+
+    // MARK: - Particle System
+
+    /// GPU パーティクルシステムを作成
+    /// - Parameter count: パーティクル数（デフォルト100,000）
+    public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
+        try ParticleSystem(
+            device: renderer.device,
+            shaderLibrary: renderer.shaderLibrary,
+            sampleCount: renderer.textureManager.sampleCount,
+            count: count
+        )
+    }
+
+    /// パーティクルシステムを更新（compute() 内で呼ぶ）
+    public func updateParticles(_ system: ParticleSystem) {
+        guard let encoder = ensureComputeEncoder() else { return }
+        system.update(encoder: encoder, deltaTime: deltaTime, time: time)
+    }
+
+    /// パーティクルシステムを描画（draw() 内で呼ぶ）
+    public func drawParticles(_ system: ParticleSystem) {
+        canvas.flush()
+        guard let enc = canvas.currentEncoder else { return }
+        system.draw(
+            encoder: enc,
+            viewProjection: canvas3D.currentViewProjection,
+            cameraRight: canvas3D.currentCameraRight,
+            cameraUp: canvas3D.currentCameraUp
+        )
+    }
+
+    // MARK: - Audio
+
+    /// オーディオ入力アナライザーを作成
+    /// - Parameter fftSize: FFT サイズ（デフォルト1024）
+    public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
+        AudioAnalyzer(fftSize: fftSize)
+    }
+
+    // MARK: - OSC
+
+    /// OSC レシーバーを作成
+    /// - Parameter port: UDP ポート番号
+    public func createOSCReceiver(port: UInt16) -> OSCReceiver {
+        OSCReceiver(port: port)
+    }
+
+    // MARK: - Tween
+
+    /// Tween を作成し TweenManager に登録
+    @discardableResult
+    public func tween<T: Interpolatable>(
+        from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
+    ) -> Tween<T> {
+        let t = Tween(from: from, to: to, duration: duration, easing: easing)
+        tweenManager.add(t)
+        return t
     }
 }

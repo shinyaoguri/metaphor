@@ -220,6 +220,12 @@ public final class Canvas2D {
         return arr
     }()
 
+    // MARK: - Contour State (穴あき多角形用)
+
+    private var contourVertices: [[(Float, Float)]] = []
+    private var isRecordingContour: Bool = false
+    private var currentContour: [(Float, Float)] = []
+
     // MARK: - Style Snapshot (push/pop用)
 
     private struct StyleState {
@@ -1009,18 +1015,21 @@ public final class Canvas2D {
         }
     }
 
-    /// 多角形（頂点配列）
+    /// 多角形（頂点配列）— 凹多角形対応
     public func polygon(_ points: [(Float, Float)]) {
         guard points.count >= 3 else { return }
 
         if hasFill {
-            for i in 1..<(points.count - 1) {
+            let indices = EarClipTriangulator.triangulate(points)
+            var i = 0
+            while i + 2 < indices.count {
                 addTriangle(
-                    points[0].0, points[0].1,
-                    points[i].0, points[i].1,
-                    points[i + 1].0, points[i + 1].1,
+                    points[indices[i]].0, points[indices[i]].1,
+                    points[indices[i + 1]].0, points[indices[i + 1]].1,
+                    points[indices[i + 2]].0, points[indices[i + 2]].1,
                     fillColor
                 )
+                i += 3
             }
         }
         if hasStroke {
@@ -1208,6 +1217,36 @@ public final class Canvas2D {
     /// テキストを描画
     public func text(_ string: String, _ x: Float, _ y: Float) {
         guard !string.isEmpty else { return }
+
+        // アトラスベースの高速パスを試行
+        if let (atlasTex, glyphs) = textRenderer.textGlyphs(
+            string: string, fontSize: currentTextSize, fontFamily: currentFontFamily
+        ), !glyphs.isEmpty {
+            // テキスト全体の幅と高さを計算
+            let totalWidth = glyphs.last.map { $0.x + $0.width } ?? 0
+            let ascent = textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+            let descent = textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+            let totalHeight = ascent + descent
+
+            var drawX = x
+            var drawY = y
+            switch currentTextAlignH {
+            case .left: break
+            case .center: drawX -= totalWidth / 2
+            case .right: drawX -= totalWidth
+            }
+            switch currentTextAlignV {
+            case .top: break
+            case .center: drawY -= totalHeight / 2
+            case .baseline: drawY -= ascent
+            case .bottom: drawY -= totalHeight
+            }
+
+            drawTextFromAtlas(texture: atlasTex, glyphs: glyphs, x: drawX, y: drawY)
+            return
+        }
+
+        // フォールバック: 従来の per-string テクスチャ
         guard let cached = textRenderer.textTexture(
             string: string,
             fontSize: currentTextSize,
@@ -1269,12 +1308,18 @@ public final class Canvas2D {
         isRecordingShape = true
         shapeMode = mode
         shapeVertexList.removeAll(keepingCapacity: true)
+        contourVertices.removeAll(keepingCapacity: true)
+        isRecordingContour = false
     }
 
     /// 形状に頂点を追加（beginShape〜endShape間で使用）
     public func vertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
-        shapeVertexList.append(.normal(x, y))
+        if isRecordingContour {
+            currentContour.append((x, y))
+        } else {
+            shapeVertexList.append(.normal(x, y))
+        }
     }
 
     /// 3次ベジェ曲線の制御点と終点を追加（beginShape〜endShape間で使用）
@@ -1291,6 +1336,22 @@ public final class Canvas2D {
     public func curveVertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
         shapeVertexList.append(.curve(x, y))
+    }
+
+    /// コンター（穴）の記録を開始（beginShape〜endShape間で使用）
+    public func beginContour() {
+        guard isRecordingShape else { return }
+        isRecordingContour = true
+        currentContour.removeAll(keepingCapacity: true)
+    }
+
+    /// コンター（穴）の記録を終了
+    public func endContour() {
+        guard isRecordingContour else { return }
+        isRecordingContour = false
+        if currentContour.count >= 3 {
+            contourVertices.append(currentContour)
+        }
     }
 
     /// カーブの分割数を設定
@@ -1424,17 +1485,39 @@ public final class Canvas2D {
 
     // MARK: - Private: Shape Tessellation
 
-    /// 多角形の描画（fill: fanテッセレーション、stroke: エッジライン）
+    /// 多角形の描画（fill: ear-clippingテッセレーション、stroke: エッジライン）
     private func drawPolygonShape(_ verts: [(Float, Float)], close: CloseMode) {
-        // Fill: fan tessellation（凸多角形で正確）
+        // Fill: ear-clipping tessellation（凹多角形対応）
         if hasFill && verts.count >= 3 {
-            for i in 1..<(verts.count - 1) {
-                addTriangle(
-                    verts[0].0, verts[0].1,
-                    verts[i].0, verts[i].1,
-                    verts[i + 1].0, verts[i + 1].1,
-                    fillColor
+            if contourVertices.isEmpty {
+                // 穴なし: 直接テッセレーション
+                let indices = EarClipTriangulator.triangulate(verts)
+                var i = 0
+                while i + 2 < indices.count {
+                    addTriangle(
+                        verts[indices[i]].0, verts[indices[i]].1,
+                        verts[indices[i + 1]].0, verts[indices[i + 1]].1,
+                        verts[indices[i + 2]].0, verts[indices[i + 2]].1,
+                        fillColor
+                    )
+                    i += 3
+                }
+            } else {
+                // 穴あり: 外周と穴を結合してからテッセレーション
+                let (merged, indices) = EarClipTriangulator.triangulateWithHoles(
+                    outer: verts,
+                    holes: contourVertices
                 )
+                var i = 0
+                while i + 2 < indices.count {
+                    addTriangle(
+                        merged[indices[i]].0, merged[indices[i]].1,
+                        merged[indices[i + 1]].0, merged[indices[i + 1]].1,
+                        merged[indices[i + 2]].0, merged[indices[i + 2]].1,
+                        fillColor
+                    )
+                    i += 3
+                }
             }
         }
 
@@ -1531,9 +1614,7 @@ public final class Canvas2D {
     private func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         if bufferOffset + vertexCount >= maxVertices {
             flush()
-            if bufferOffset + vertexCount >= maxVertices {
-                return  // フラッシュ後もバッファが埋まっている場合はスキップ
-            }
+            bufferOffset = 0  // フラッシュ済みデータはGPUコマンドバッファに取り込まれているため再利用可能
         }
         let p = currentTransform * SIMD3<Float>(x, y, 1)
         vertices[bufferOffset + vertexCount] = Vertex2D(
@@ -1547,9 +1628,7 @@ public final class Canvas2D {
     private func addVertexRaw(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         if bufferOffset + vertexCount >= maxVertices {
             flush()
-            if bufferOffset + vertexCount >= maxVertices {
-                return
-            }
+            bufferOffset = 0
         }
         vertices[bufferOffset + vertexCount] = Vertex2D(
             posX: x, posY: y,
@@ -1867,6 +1946,55 @@ public final class Canvas2D {
         encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
         encoder.setFragmentTexture(texture, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+    }
+
+    /// アトラスからバッチテキスト描画（全グリフを1回のドローコールで描画）
+    private func drawTextFromAtlas(
+        texture: MTLTexture,
+        glyphs: [PositionedGlyph],
+        x: Float, y: Float
+    ) {
+        guard let encoder = encoder, !glyphs.isEmpty else { return }
+
+        flush()
+
+        let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
+        let r = tint.x, g = tint.y, b = tint.z, a = tint.w
+
+        var verts: [TexturedVertex2D] = []
+        verts.reserveCapacity(glyphs.count * 6)
+
+        for glyph in glyphs {
+            let gx = x + glyph.x
+            let gy = y + glyph.y
+            let gw = glyph.width
+            let gh = glyph.height
+
+            let p0 = currentTransform * SIMD3<Float>(gx, gy, 1)
+            let p1 = currentTransform * SIMD3<Float>(gx + gw, gy, 1)
+            let p2 = currentTransform * SIMD3<Float>(gx + gw, gy + gh, 1)
+            let p3 = currentTransform * SIMD3<Float>(gx, gy + gh, 1)
+
+            verts.append(TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a))
+            verts.append(TexturedVertex2D(posX: p1.x, posY: p1.y, u: glyph.u1, v: glyph.v0, r: r, g: g, b: b, a: a))
+            verts.append(TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a))
+            verts.append(TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a))
+            verts.append(TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a))
+            verts.append(TexturedVertex2D(posX: p3.x, posY: p3.y, u: glyph.u0, v: glyph.v1, r: r, g: g, b: b, a: a))
+        }
+
+        guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
+        encoder.setRenderPipelineState(texPipeline)
+        if let depthState = depthStencilState {
+            encoder.setDepthStencilState(depthState)
+        }
+        encoder.setCullMode(.none)
+        encoder.setVertexBytes(&verts, length: MemoryLayout<TexturedVertex2D>.stride * verts.count, index: 0)
+
+        var proj = projectionMatrix
+        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
+        encoder.setFragmentTexture(texture, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verts.count)
     }
 }
 

@@ -27,6 +27,9 @@ public enum PostEffect: Sendable {
 
     /// ガウシアンブラー
     case blur(radius: Float = 5.0)
+
+    /// カスタムポストプロセスエフェクト
+    case custom(CustomPostEffect)
 }
 
 /// ポストプロセスシェーダー用のユニフォーム構造体

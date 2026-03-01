@@ -59,11 +59,18 @@ public final class Canvas3D {
     // MARK: - Metal Resources
 
     private let device: MTLDevice
+    private let shaderLibrary: ShaderLibrary
+    private let sampleCount: Int
     private let pipelineState: MTLRenderPipelineState
     private let texturedPipelineState: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState?
 
     private static let maxLights = 8
+
+    // MARK: - Custom Material State
+
+    private var currentCustomMaterial: CustomMaterial?
+    private var customPipelineCache: [String: MTLRenderPipelineState] = [:]
 
     // MARK: - Dimensions
 
@@ -106,12 +113,28 @@ public final class Canvas3D {
 
     // MARK: - Transform Stack
 
-    private var transformStack: [float4x4] = []
+    private struct Canvas3DState {
+        var transform: float4x4
+        var fillColor: SIMD4<Float>
+        var hasFill: Bool
+        var hasStroke3D: Bool
+        var strokeColor3D: SIMD4<Float>
+        var material: Material3D
+        var customMaterial: CustomMaterial?
+        var texture: MTLTexture?
+        var colorModeConfig: ColorModeConfig
+    }
+
+    private var stateStack: [Canvas3DState] = []
     private var currentTransform: float4x4 = .identity
 
     // MARK: - Style
 
     private var fillColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
+    private var hasFill: Bool = true
+    private var hasStroke3D: Bool = false
+    private var strokeColor3D: SIMD4<Float> = SIMD4(1, 1, 1, 1)
+    private var colorModeConfig: ColorModeConfig = ColorModeConfig()
 
     // MARK: - Mesh Cache
 
@@ -139,6 +162,8 @@ public final class Canvas3D {
         sampleCount: Int = 1
     ) throws {
         self.device = device
+        self.shaderLibrary = shaderLibrary
+        self.sampleCount = sampleCount
         self.width = width
         self.height = height
 
@@ -185,12 +210,16 @@ public final class Canvas3D {
         self.encoder = encoder
         self.currentTime = time
         self.currentTransform = .identity
-        self.transformStack.removeAll(keepingCapacity: true)
+        self.stateStack.removeAll(keepingCapacity: true)
         self.fillColor = SIMD4(1, 1, 1, 1)
+        self.hasFill = true
+        self.hasStroke3D = false
+        self.strokeColor3D = SIMD4(1, 1, 1, 1)
         self.lightArray.removeAll(keepingCapacity: true)
         self.ambientColor = SIMD3(0.2, 0.2, 0.2)
         self.currentMaterial = .default
         self.currentTexture = nil
+        self.currentCustomMaterial = nil
 
         let defaultZ = (height / 2) / tan(fov / 2)
         self.cameraEye = SIMD3(0, 0, defaultZ)
@@ -202,6 +231,26 @@ public final class Canvas3D {
 
     func end() {
         self.encoder = nil
+    }
+
+    // MARK: - Public Camera Accessors
+
+    /// 現在のビュー・プロジェクション行列
+    public var currentViewProjection: float4x4 {
+        computeViewProjection()
+    }
+
+    /// カメラの右方向ベクトル（ビルボード用）
+    public var currentCameraRight: SIMD3<Float> {
+        let z = normalize(cameraEye - cameraCenter)
+        return normalize(cross(cameraUp, z))
+    }
+
+    /// カメラの上方向ベクトル（ビルボード用）
+    public var currentCameraUp: SIMD3<Float> {
+        let z = normalize(cameraEye - cameraCenter)
+        let x = normalize(cross(cameraUp, z))
+        return cross(z, x)
     }
 
     // MARK: - Camera
@@ -374,6 +423,18 @@ public final class Canvas3D {
         currentMaterial.emissiveAndMetallic.w = value
     }
 
+    // MARK: - Custom Material
+
+    /// カスタムフラグメントシェーダーマテリアルを適用
+    public func material(_ custom: CustomMaterial) {
+        currentCustomMaterial = custom
+    }
+
+    /// カスタムマテリアルを解除（組み込みシェーダーに戻す）
+    public func noMaterial() {
+        currentCustomMaterial = nil
+    }
+
     // MARK: - Texture
 
     public func texture(_ img: MImage) {
@@ -386,8 +447,32 @@ public final class Canvas3D {
 
     // MARK: - Transform Stack
 
-    public func pushMatrix() { transformStack.append(currentTransform) }
-    public func popMatrix() { if let s = transformStack.popLast() { currentTransform = s } }
+    public func pushMatrix() {
+        stateStack.append(Canvas3DState(
+            transform: currentTransform,
+            fillColor: fillColor,
+            hasFill: hasFill,
+            hasStroke3D: hasStroke3D,
+            strokeColor3D: strokeColor3D,
+            material: currentMaterial,
+            customMaterial: currentCustomMaterial,
+            texture: currentTexture,
+            colorModeConfig: colorModeConfig
+        ))
+    }
+
+    public func popMatrix() {
+        guard let saved = stateStack.popLast() else { return }
+        currentTransform = saved.transform
+        fillColor = saved.fillColor
+        hasFill = saved.hasFill
+        hasStroke3D = saved.hasStroke3D
+        strokeColor3D = saved.strokeColor3D
+        currentMaterial = saved.material
+        currentCustomMaterial = saved.customMaterial
+        currentTexture = saved.texture
+        colorModeConfig = saved.colorModeConfig
+    }
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         currentTransform = currentTransform * float4x4(translation: SIMD3(x, y, z))
     }
@@ -401,8 +486,62 @@ public final class Canvas3D {
 
     // MARK: - Style
 
-    public func fill(_ color: Color) { fillColor = color.simd }
-    public func fill(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) { fillColor = SIMD4(r, g, b, a) }
+    public func fill(_ color: Color) { fillColor = color.simd; hasFill = true }
+
+    /// 塗りつぶし色を設定（colorModeに従って解釈）
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
+        hasFill = true
+    }
+
+    /// グレースケールで塗りつぶし色を設定
+    public func fill(_ gray: Float) {
+        fillColor = colorModeConfig.toGray(gray).simd
+        hasFill = true
+    }
+
+    /// グレースケール＋アルファで塗りつぶし色を設定
+    public func fill(_ gray: Float, _ alpha: Float) {
+        fillColor = colorModeConfig.toGray(gray, alpha).simd
+        hasFill = true
+    }
+
+    /// 塗りつぶしなし
+    public func noFill() { hasFill = false }
+
+    /// 線の色を設定
+    public func stroke(_ color: Color) { strokeColor3D = color.simd; hasStroke3D = true }
+
+    /// 線の色を設定（colorModeに従って解釈）
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        strokeColor3D = colorModeConfig.toColor(v1, v2, v3, a).simd
+        hasStroke3D = true
+    }
+
+    /// グレースケールで線の色を設定
+    public func stroke(_ gray: Float) {
+        strokeColor3D = colorModeConfig.toGray(gray).simd
+        hasStroke3D = true
+    }
+
+    /// グレースケール＋アルファで線の色を設定
+    public func stroke(_ gray: Float, _ alpha: Float) {
+        strokeColor3D = colorModeConfig.toGray(gray, alpha).simd
+        hasStroke3D = true
+    }
+
+    /// 線なし
+    public func noStroke() { hasStroke3D = false }
+
+    /// 色空間と最大値を設定
+    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
+        colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxA)
+    }
+
+    /// 色空間と均一な最大値を設定
+    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
+        colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
+    }
 
     // MARK: - 3D Shapes
 
@@ -452,10 +591,17 @@ public final class Canvas3D {
 
     private func drawMesh(_ mesh: Mesh) {
         guard let encoder = encoder else { return }
+        guard hasFill || hasStroke3D else { return }
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
-        encoder.setRenderPipelineState(isTextured ? texturedPipelineState : pipelineState)
+        // カスタムマテリアルが設定されている場合はカスタムパイプラインを使用
+        if let customMat = currentCustomMaterial,
+           let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured) {
+            encoder.setRenderPipelineState(customPipeline)
+        } else {
+            encoder.setRenderPipelineState(isTextured ? texturedPipelineState : pipelineState)
+        }
         if let depthState = depthState {
             encoder.setDepthStencilState(depthState)
         }
@@ -465,55 +611,147 @@ public final class Canvas3D {
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let viewProj = computeViewProjection()
 
-        var uniforms = Canvas3DUniforms(
-            modelMatrix: currentTransform,
-            viewProjectionMatrix: viewProj,
-            normalMatrix: normalMatrix,
-            color: fillColor,
-            cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
-            time: currentTime,
-            lightCount: UInt32(lightArray.count),
-            hasTexture: isTextured ? 1 : 0
-        )
-
         if isTextured, let uvBuffer = mesh.uvVertexBuffer {
             encoder.setVertexBuffer(uvBuffer, offset: 0, index: 0)
         } else {
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
         }
 
-        // setVertexBytes/setFragmentBytes でデータをコマンドバッファにコピー
-        // （共有バッファを上書きすると、同一エンコーダ内の複数draw間でデータが壊れる）
-        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+        // --- Fill pass ---
+        if hasFill {
+            var uniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: fillColor,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: UInt32(lightArray.count),
+                hasTexture: isTextured ? 1 : 0
+            )
 
-        if lightArray.isEmpty {
-            var dummy = Light3D.zero
-            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
-        } else {
-            lightArray.withUnsafeBufferPointer { ptr in
-                encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+            // setVertexBytes/setFragmentBytes でデータをコマンドバッファにコピー
+            // （共有バッファを上書きすると、同一エンコーダ内の複数draw間でデータが壊れる）
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            if lightArray.isEmpty {
+                var dummy = Light3D.zero
+                encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            } else {
+                lightArray.withUnsafeBufferPointer { ptr in
+                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                }
+            }
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            // カスタムマテリアルのパラメータをbuffer(4)にバインド
+            if let customMat = currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
+                encoder.setFragmentBytes(&params, length: params.count, index: 4)
+            }
+
+            if isTextured, let tex = currentTexture {
+                encoder.setFragmentTexture(tex, index: 0)
+            }
+
+            if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: mesh.indexCount,
+                    indexType: mesh.indexType, indexBuffer: indexBuffer, indexBufferOffset: 0
+                )
+            } else {
+                encoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0,
+                    vertexCount: isTextured ? mesh.uvVertexCount : mesh.vertexCount
+                )
             }
         }
 
-        var mat = currentMaterial
-        encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+        // --- Wireframe (stroke) pass ---
+        if hasStroke3D {
+            encoder.setTriangleFillMode(.lines)
 
-        if isTextured, let tex = currentTexture {
-            encoder.setFragmentTexture(tex, index: 0)
+            // ワイヤフレームはライティングなし・テクスチャなしで描画
+            var wireUniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: strokeColor3D,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: 0,
+                hasTexture: 0
+            )
+
+            // ワイヤフレームは常にuntexturedパイプラインを使用
+            encoder.setRenderPipelineState(pipelineState)
+            encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
+            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            var dummy = Light3D.zero
+            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: mesh.indexCount,
+                    indexType: mesh.indexType, indexBuffer: indexBuffer, indexBufferOffset: 0
+                )
+            } else {
+                encoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0,
+                    vertexCount: mesh.vertexCount
+                )
+            }
+
+            encoder.setTriangleFillMode(.fill)
+        }
+    }
+
+    // MARK: - Custom Pipeline
+
+    /// カスタムフラグメントシェーダー用パイプラインを取得（キャッシュ付き）
+    private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool) -> MTLRenderPipelineState? {
+        let cacheKey = "\(fragmentFunction.name)_\(isTextured)_\(sampleCount)"
+        if let cached = customPipelineCache[cacheKey] {
+            return cached
         }
 
-        if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
-            encoder.drawIndexedPrimitives(
-                type: .triangle, indexCount: mesh.indexCount,
-                indexType: mesh.indexType, indexBuffer: indexBuffer, indexBufferOffset: 0
+        let vertexFn: MTLFunction?
+        let layout: VertexLayout
+
+        if isTextured {
+            vertexFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.canvas3DTexturedVertex,
+                from: ShaderLibrary.BuiltinKey.canvas3DTextured
             )
+            layout = .positionNormalUV
         } else {
-            encoder.drawPrimitives(
-                type: .triangle, vertexStart: 0,
-                vertexCount: isTextured ? mesh.uvVertexCount : mesh.vertexCount
+            vertexFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.canvas3DVertex,
+                from: ShaderLibrary.BuiltinKey.canvas3D
             )
+            layout = .positionNormalColor
         }
+
+        guard let pipeline = try? PipelineFactory(device: device)
+            .vertex(vertexFn)
+            .fragment(fragmentFunction)
+            .vertexLayout(layout)
+            .blending(.alpha)
+            .sampleCount(sampleCount)
+            .build()
+        else {
+            return nil
+        }
+
+        customPipelineCache[cacheKey] = pipeline
+        return pipeline
     }
 
     // MARK: - Private Helpers

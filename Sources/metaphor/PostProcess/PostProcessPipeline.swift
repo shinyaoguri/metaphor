@@ -26,6 +26,11 @@ public final class PostProcessPipeline {
     /// bloom composite用パイプライン (テクスチャ2枚入力)
     private var bloomCompositePipeline: MTLRenderPipelineState?
 
+    /// Kawaseブラー用テクスチャチェーン（ダウンサンプル解像度列）
+    private var kawaseChain: [MTLTexture] = []
+    private var kawaseChainWidth: Int = 0
+    private var kawaseChainHeight: Int = 0
+
     /// blit頂点シェーダー（全パスで共有）
     private let blitVertexFunction: MTLFunction
 
@@ -83,12 +88,9 @@ public final class PostProcessPipeline {
         for effect in effects {
             switch effect {
             case .bloom(let intensity, let threshold):
-                // 4パス: extract → blurH → blurV → composite
+                // Kawaseブラーベースのbloom: extract → kawaseBlur → composite
                 let bloomParams = makeParams(
                     texelSize: texelSize, intensity: intensity, threshold: threshold
-                )
-                let blurParams = makeParams(
-                    texelSize: texelSize, radius: 8
                 )
 
                 // 1. Extract: currentInput → texA
@@ -98,51 +100,66 @@ public final class PostProcessPipeline {
                     fragmentName: PostProcessShaders.FunctionName.postBloomExtract,
                     params: bloomParams
                 )
-                // 2. BlurH: texA → texB
-                renderPass(
+                // 2. Kawase blur: texA → texB
+                let _ = applyKawaseBlur(
                     commandBuffer: commandBuffer,
-                    input: texA, output: texB,
-                    fragmentName: PostProcessShaders.FunctionName.postBlurH,
-                    params: blurParams
+                    source: texA, output: texB,
+                    iterations: 4
                 )
-                // 3. BlurV: texB → texA (texA = blurred bloom)
-                renderPass(
-                    commandBuffer: commandBuffer,
-                    input: texB, output: texA,
-                    fragmentName: PostProcessShaders.FunctionName.postBlurV,
-                    params: blurParams
-                )
-                // 4. Composite: currentInput(original) + texA(bloom) → texB
+                // 3. Composite: currentInput(original) + texB(bloom) → texA
                 renderCompositePass(
                     commandBuffer: commandBuffer,
-                    original: currentInput, bloom: texA,
-                    output: texB,
+                    original: currentInput, bloom: texB,
+                    output: texA,
                     params: bloomParams
                 )
-                currentInput = texB
-                useA = true
+                currentInput = texA
+                useA = false
 
             case .blur(let radius):
-                // 2パス separable blur
-                let params = makeParams(texelSize: texelSize, radius: radius)
-                let target1 = useA ? texA : texB
-                let target2 = useA ? texB : texA
-                // H pass
+                let output = useA ? texA : texB
+                if radius >= 4 {
+                    // Kawaseブラー（大半径で高速）
+                    let iterations = max(2, min(Int(log2(radius)), 6))
+                    let _ = applyKawaseBlur(
+                        commandBuffer: commandBuffer,
+                        source: currentInput, output: output,
+                        iterations: iterations
+                    )
+                } else {
+                    // 小半径はGaussianを維持
+                    let params = makeParams(texelSize: texelSize, radius: radius)
+                    let mid = useA ? texB : texA
+                    renderPass(
+                        commandBuffer: commandBuffer,
+                        input: currentInput, output: mid,
+                        fragmentName: PostProcessShaders.FunctionName.postBlurH,
+                        params: params
+                    )
+                    renderPass(
+                        commandBuffer: commandBuffer,
+                        input: mid, output: output,
+                        fragmentName: PostProcessShaders.FunctionName.postBlurV,
+                        params: params
+                    )
+                }
+                currentInput = output
+                useA = !useA
+
+            case .custom(let custom):
+                // カスタムエフェクト（単パス）
+                let output = useA ? texA : texB
+                let params = makeParams(texelSize: texelSize, effect: effect)
                 renderPass(
                     commandBuffer: commandBuffer,
-                    input: currentInput, output: target1,
-                    fragmentName: PostProcessShaders.FunctionName.postBlurH,
-                    params: params
+                    input: currentInput, output: output,
+                    fragmentName: custom.fragmentFunctionName,
+                    params: params,
+                    libraryKey: custom.libraryKey,
+                    customParams: custom.hasCustomParameters ? custom.parameters : nil
                 )
-                // V pass
-                renderPass(
-                    commandBuffer: commandBuffer,
-                    input: target1, output: target2,
-                    fragmentName: PostProcessShaders.FunctionName.postBlurV,
-                    params: params
-                )
-                currentInput = target2
-                useA = (target2 === texA)
+                currentInput = output
+                useA = !useA
 
             default:
                 // 単パスエフェクト
@@ -168,6 +185,9 @@ public final class PostProcessPipeline {
         textureB = nil
         currentWidth = 0
         currentHeight = 0
+        kawaseChain.removeAll()
+        kawaseChainWidth = 0
+        kawaseChainHeight = 0
     }
 
     // MARK: - Private: Texture Management
@@ -190,14 +210,88 @@ public final class PostProcessPipeline {
         currentHeight = height
     }
 
-    // MARK: - Private: Render Passes
+    // MARK: - Private: Kawase Blur
 
-    private func renderPass(
+    private func ensureKawaseChain(width: Int, height: Int, iterations: Int) {
+        guard width != kawaseChainWidth || height != kawaseChainHeight
+              || kawaseChain.count != iterations else { return }
+
+        kawaseChain.removeAll()
+        var w = width / 2
+        var h = height / 2
+        for _ in 0..<iterations {
+            w = max(1, w)
+            h = max(1, h)
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false
+            )
+            desc.usage = [.renderTarget, .shaderRead]
+            desc.storageMode = .private
+            if let tex = device.makeTexture(descriptor: desc) {
+                kawaseChain.append(tex)
+            }
+            w /= 2
+            h /= 2
+        }
+        kawaseChainWidth = width
+        kawaseChainHeight = height
+    }
+
+    /// Kawase ダウン/アップサンプルによるブラーを適用し、結果テクスチャを返す
+    private func applyKawaseBlur(
+        commandBuffer: MTLCommandBuffer,
+        source: MTLTexture,
+        output: MTLTexture,
+        iterations: Int
+    ) -> MTLTexture {
+        let iters = max(1, min(iterations, 6))
+        ensureKawaseChain(width: source.width, height: source.height, iterations: iters)
+        guard kawaseChain.count == iters else { return source }
+
+        // ダウンサンプルパス: source → chain[0] → chain[1] → ... → chain[n-1]
+        var input = source
+        for i in 0..<iters {
+            let dst = kawaseChain[i]
+            var texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
+            renderKawasePass(
+                commandBuffer: commandBuffer,
+                input: input, output: dst,
+                functionName: KawaseBlurShaders.FunctionName.kawaseDownsample,
+                texelSize: &texelSize
+            )
+            input = dst
+        }
+
+        // アップサンプルパス: chain[n-1] → chain[n-2] → ... → chain[0] → output
+        for i in stride(from: iters - 2, through: 0, by: -1) {
+            let dst = kawaseChain[i]
+            var texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
+            renderKawasePass(
+                commandBuffer: commandBuffer,
+                input: input, output: dst,
+                functionName: KawaseBlurShaders.FunctionName.kawaseUpsample,
+                texelSize: &texelSize
+            )
+            input = dst
+        }
+
+        // 最終アップサンプル: chain[0] → output（元解像度）
+        var texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
+        renderKawasePass(
+            commandBuffer: commandBuffer,
+            input: input, output: output,
+            functionName: KawaseBlurShaders.FunctionName.kawaseUpsample,
+            texelSize: &texelSize
+        )
+        return output
+    }
+
+    private func renderKawasePass(
         commandBuffer: MTLCommandBuffer,
         input: MTLTexture,
         output: MTLTexture,
-        fragmentName: String,
-        params: PostProcessParams
+        functionName: String,
+        texelSize: inout SIMD2<Float>
     ) {
         let rpd = MTLRenderPassDescriptor()
         rpd.colorAttachments[0].texture = output
@@ -205,7 +299,39 @@ public final class PostProcessPipeline {
         rpd.colorAttachments[0].storeAction = .store
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd),
-              let pipeline = getOrCreatePipeline(fragmentName: fragmentName) else {
+              let pipeline = getOrCreatePipeline(
+                  fragmentName: functionName,
+                  libraryKey: ShaderLibrary.BuiltinKey.kawaseBlur
+              ) else { return }
+
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setFragmentTexture(input, index: 0)
+        encoder.setFragmentBytes(&texelSize, length: MemoryLayout<SIMD2<Float>>.size, index: 0)
+        encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        encoder.endEncoding()
+    }
+
+    // MARK: - Private: Render Passes
+
+    private func renderPass(
+        commandBuffer: MTLCommandBuffer,
+        input: MTLTexture,
+        output: MTLTexture,
+        fragmentName: String,
+        params: PostProcessParams,
+        libraryKey: String? = nil,
+        customParams: [UInt8]? = nil
+    ) {
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = output
+        rpd.colorAttachments[0].loadAction = .dontCare
+        rpd.colorAttachments[0].storeAction = .store
+
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd),
+              let pipeline = getOrCreatePipeline(
+                  fragmentName: fragmentName,
+                  libraryKey: libraryKey
+              ) else {
             return
         }
 
@@ -214,6 +340,16 @@ public final class PostProcessPipeline {
 
         var p = params
         encoder.setFragmentBytes(&p, length: MemoryLayout<PostProcessParams>.size, index: 0)
+
+        if let customParams, !customParams.isEmpty {
+            customParams.withUnsafeBufferPointer { ptr in
+                encoder.setFragmentBytes(
+                    ptr.baseAddress!,
+                    length: ptr.count,
+                    index: 1
+                )
+            }
+        }
 
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         encoder.endEncoding()
@@ -249,14 +385,19 @@ public final class PostProcessPipeline {
 
     // MARK: - Private: Pipeline Management
 
-    private func getOrCreatePipeline(fragmentName: String) -> MTLRenderPipelineState? {
-        if let cached = pipelineCache[fragmentName] {
+    private func getOrCreatePipeline(
+        fragmentName: String,
+        libraryKey: String? = nil
+    ) -> MTLRenderPipelineState? {
+        let cacheKey = libraryKey.map { "\($0).\(fragmentName)" } ?? fragmentName
+        if let cached = pipelineCache[cacheKey] {
             return cached
         }
 
+        let key = libraryKey ?? ShaderLibrary.BuiltinKey.postProcess
         guard let fragmentFn = shaderLibrary.function(
             named: fragmentName,
-            from: ShaderLibrary.BuiltinKey.postProcess
+            from: key
         ) else {
             return nil
         }
@@ -267,7 +408,7 @@ public final class PostProcessPipeline {
                 .fragment(fragmentFn)
                 .noDepth()
                 .build()
-            pipelineCache[fragmentName] = pipeline
+            pipelineCache[cacheKey] = pipeline
             return pipeline
         } catch {
             return nil
@@ -310,6 +451,7 @@ public final class PostProcessPipeline {
         case .colorGrade: PostProcessShaders.FunctionName.postColorGrade
         case .blur: PostProcessShaders.FunctionName.postBlurH
         case .bloom: PostProcessShaders.FunctionName.postBloomExtract
+        case .custom(let custom): custom.fragmentFunctionName
         }
     }
 
@@ -337,6 +479,14 @@ public final class PostProcessPipeline {
         case .bloom(let intensity, let threshold):
             return makeParams(
                 texelSize: texelSize, intensity: intensity, threshold: threshold
+            )
+        case .custom(let custom):
+            return PostProcessParams(
+                texelSize: texelSize,
+                intensity: custom.intensity,
+                threshold: custom.threshold,
+                radius: custom.radius,
+                smoothness: custom.smoothness
             )
         }
     }

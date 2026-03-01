@@ -279,3 +279,130 @@ struct Phase3MaterialDefaultTests {
         #expect(mat.emissiveAndMetallic == SIMD4(0, 0, 0, 0))
     }
 }
+
+// MARK: - Phase 3: Canvas3D Fill/Stroke Unification Tests
+
+@Suite("Phase3 Canvas3D FillStroke", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct Phase3Canvas3DFillStrokeTests {
+
+    @Test("Canvas3D noFill does not crash when drawing")
+    func noFillNoCrash() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        // noFill → box should not crash (drawMesh early-returns with no encoder)
+        canvas3D.noFill()
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D stroke sets wireframe state without crash")
+    func strokeNoCrash() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        // stroke → box should not crash (drawMesh early-returns with no encoder)
+        canvas3D.stroke(Color.red)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D noFill + noStroke skips drawing without crash")
+    func noFillNoStrokeNoCrash() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.noFill()
+        canvas3D.noStroke()
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D fill(gray) can be called")
+    func fillGray() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.fill(0.5 as Float)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D fill(v1,v2,v3) can be called")
+    func fillV1V2V3() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.fill(0.2, 0.4, 0.6)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D stroke(gray) can be called")
+    func strokeGray() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.stroke(0.5 as Float)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D stroke(v1,v2,v3) can be called")
+    func strokeV1V2V3() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.stroke(0.2, 0.4, 0.6)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D colorMode can be set")
+    func colorModeSet() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.colorMode(.hsb, 360, 100, 100)
+        canvas3D.fill(180, 50, 50)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D fill(gray, alpha) can be called")
+    func fillGrayAlpha() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.fill(0.5 as Float, 0.8 as Float)
+        canvas3D.box(1)
+    }
+
+    @Test("Canvas3D stroke(gray, alpha) can be called")
+    func strokeGrayAlpha() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.stroke(0.5 as Float, 0.8 as Float)
+        canvas3D.box(1)
+    }
+
+    @Test("SketchContext fill dispatches to both 2D and 3D")
+    func sketchContextFillDispatches() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        // Should not crash — dispatches to both canvases
+        context.fill(0.5 as Float)
+        context.fill(0.2, 0.4, 0.6)
+        context.noFill()
+    }
+
+    @Test("SketchContext stroke dispatches to both 2D and 3D")
+    func sketchContextStrokeDispatches() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        // Should not crash — dispatches to both canvases
+        context.stroke(Color.red)
+        context.stroke(0.5 as Float)
+        context.stroke(0.2, 0.4, 0.6)
+        context.noStroke()
+    }
+
+    @Test("SketchContext colorMode dispatches to both 2D and 3D")
+    func sketchContextColorModeDispatches() throws {
+        let renderer = MetaphorRenderer()!
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        // Should not crash — dispatches to both canvases
+        context.colorMode(.hsb, 360, 100, 100)
+        context.fill(180, 50, 50)
+    }
+}

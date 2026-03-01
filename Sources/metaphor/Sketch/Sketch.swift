@@ -357,11 +357,23 @@ extension Sketch {
         _activeSketchContext?.createGraphics(w, h)
     }
 
+    public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
+        _activeSketchContext?.createGraphics3D(w, h)
+    }
+
     public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
         _activeSketchContext?.image(pg, x, y)
     }
 
     public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        _activeSketchContext?.image(pg, x, y, w, h)
+    }
+
+    public func image(_ pg: Graphics3D, _ x: Float, _ y: Float) {
+        _activeSketchContext?.image(pg, x, y)
+    }
+
+    public func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         _activeSketchContext?.image(pg, x, y, w, h)
     }
 
@@ -431,6 +443,18 @@ extension Sketch {
 
     public func saveFrame(_ filename: String? = nil) {
         _activeSketchContext?.saveFrame(filename)
+    }
+
+    // MARK: Video Recording
+
+    /// ビデオ録画を開始
+    public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
+        _activeSketchContext?.beginVideoRecord(path, config: config)
+    }
+
+    /// ビデオ録画を終了
+    public func endVideoRecord(completion: (@Sendable () -> Void)? = nil) {
+        _activeSketchContext?.endVideoRecord(completion: completion)
     }
 
     // MARK: 2D Transform Stack
@@ -588,6 +612,14 @@ extension Sketch {
         _activeSketchContext?.curveTightness(t)
     }
 
+    public func beginContour() {
+        _activeSketchContext?.beginContour()
+    }
+
+    public func endContour() {
+        _activeSketchContext?.endContour()
+    }
+
     public func curve(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -699,6 +731,27 @@ extension Sketch {
 
     public func metallic(_ value: Float) {
         _activeSketchContext?.metallic(value)
+    }
+
+    // MARK: 3D Custom Material
+
+    /// カスタムフラグメントシェーダーマテリアルを作成
+    public func createMaterial(source: String, fragmentFunction: String) throws -> CustomMaterial {
+        guard let ctx = _activeSketchContext else {
+            throw NSError(domain: "metaphor.Sketch", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "No active sketch context"])
+        }
+        return try ctx.createMaterial(source: source, fragmentFunction: fragmentFunction)
+    }
+
+    /// カスタムマテリアルを適用
+    public func material(_ customMaterial: CustomMaterial) {
+        _activeSketchContext?.material(customMaterial)
+    }
+
+    /// カスタムマテリアルを解除
+    public func noMaterial() {
+        _activeSketchContext?.noMaterial()
     }
 
     // MARK: 3D Texture
@@ -815,9 +868,63 @@ extension Sketch {
     }
 }
 
+// MARK: - Particle System
+
+extension Sketch {
+    /// GPU パーティクルシステムを作成
+    public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
+        try _activeSketchContext!.createParticleSystem(count: count)
+    }
+
+    /// パーティクルシステムを更新（compute() 内で呼ぶ）
+    public func updateParticles(_ system: ParticleSystem) {
+        _activeSketchContext?.updateParticles(system)
+    }
+
+    /// パーティクルシステムを描画（draw() 内で呼ぶ）
+    public func drawParticles(_ system: ParticleSystem) {
+        _activeSketchContext?.drawParticles(system)
+    }
+}
+
+// MARK: - Audio
+
+extension Sketch {
+    /// オーディオ入力アナライザーを作成
+    public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
+        _activeSketchContext!.createAudioInput(fftSize: fftSize)
+    }
+}
+
+// MARK: - OSC
+
+extension Sketch {
+    /// OSC レシーバーを作成
+    public func createOSCReceiver(port: UInt16) -> OSCReceiver {
+        _activeSketchContext!.createOSCReceiver(port: port)
+    }
+}
+
+// MARK: - Tween
+
+extension Sketch {
+    /// Tween を作成・登録（自動的に TweenManager に追加される）
+    @discardableResult
+    public func tween<T: Interpolatable>(
+        from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
+    ) -> Tween<T> {
+        _activeSketchContext!.tween(from: from, to: to, duration: duration, easing: easing)
+    }
+}
+
 // MARK: - Post Process
 
 extension Sketch {
+    /// カスタムポストプロセスエフェクトを作成
+    public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
+        try _activeSketchContext!.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
+    }
+
     /// ポストプロセスエフェクトを追加
     public func addPostEffect(_ effect: PostEffect) {
         _activeSketchContext?.addPostEffect(effect)

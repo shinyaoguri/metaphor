@@ -240,7 +240,17 @@ public enum BuiltinShaders {
     // MARK: - Canvas3D Shared Structures (3Dシェーダー共通定義)
 
     /// Canvas3D用のGPU構造体定義（untextured / textured で共有）
-    static let canvas3DStructs = """
+    ///
+    /// カスタムマテリアルシェーダーを作成する際に、MSLソースのプレフィックスとして使用する。
+    /// ```swift
+    /// let source = """
+    /// #include <metal_stdlib>
+    /// using namespace metal;
+    /// \(BuiltinShaders.canvas3DStructs)
+    /// // カスタムフラグメントシェーダー ...
+    /// """
+    /// ```
+    public static let canvas3DStructs = """
     struct Canvas3DUniforms {
         float4x4 modelMatrix;
         float4x4 viewProjectionMatrix;
@@ -268,7 +278,9 @@ public enum BuiltinShaders {
     """
 
     /// Canvas3D用のBlinn-Phongライティング関数
-    static let canvas3DLightingFn = """
+    ///
+    /// カスタムマテリアルシェーダーで組み込みライティング計算を利用する場合に使用する。
+    public static let canvas3DLightingFn = """
     float3 calculateLighting(
         float3 worldPos,
         float3 normal,

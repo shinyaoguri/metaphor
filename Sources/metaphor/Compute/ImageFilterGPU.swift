@@ -231,6 +231,10 @@ public final class ImageFilterGPU {
         case .blur: "filter_gaussian_h"
         case .erode: "filter_erode"
         case .dilate: "filter_dilate"
+        case .edgeDetect: "filter_edgeDetect"
+        case .sharpen: "filter_sharpen"
+        case .sepia: "filter_sepia"
+        case .pixelate: "filter_pixelate"
         }
     }
 
@@ -239,6 +243,8 @@ public final class ImageFilterGPU {
         case .threshold(let level): level
         case .posterize(let levels): Float(max(2, min(255, levels)))
         case .blur(let radius): Float(max(1, radius))
+        case .sharpen(let amount): amount
+        case .pixelate(let blockSize): Float(max(1, blockSize))
         default: 0
         }
     }

@@ -76,16 +76,39 @@ public final class MImage {
         let bytesPerRow = w * 4
         pixels = [UInt8](repeating: 0, count: bytesPerRow * h)
 
-        if texture.storageMode == .private {
-            // private storageの場合はBlitで一時テクスチャにコピーが必要
-            // ここでは直接読み取りを試みるが、privateの場合は空になる可能性あり
-            // 完全なサポートにはcommand bufferが必要
-            return
-        }
-
         let region = MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
                                size: MTLSize(width: w, height: h, depth: 1))
-        texture.getBytes(&pixels, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
+
+        if texture.storageMode == .private {
+            // Private texture: blit で managed ステージングテクスチャにコピーしてから読み取る
+            let device = texture.device
+            guard let commandQueue = device.makeCommandQueue(),
+                  let commandBuffer = commandQueue.makeCommandBuffer() else {
+                pixels = []
+                return
+            }
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
+            desc.storageMode = .managed
+            desc.usage = .shaderRead
+            guard let staging = device.makeTexture(descriptor: desc),
+                  let blit = commandBuffer.makeBlitCommandEncoder() else {
+                pixels = []
+                return
+            }
+            blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
+                      sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                      sourceSize: MTLSize(width: w, height: h, depth: 1),
+                      to: staging, destinationSlice: 0, destinationLevel: 0,
+                      destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            blit.synchronize(resource: staging)
+            blit.endEncoding()
+            commandBuffer.commit()
+            commandBuffer.waitUntilCompleted()
+            staging.getBytes(&pixels, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
+        } else {
+            texture.getBytes(&pixels, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
+        }
 
         // BGRA → RGBA 変換
         for i in stride(from: 0, to: pixels.count, by: 4) {
@@ -112,7 +135,19 @@ public final class MImage {
 
         let region = MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
                                size: MTLSize(width: w, height: h, depth: 1))
-        texture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
+
+        if texture.storageMode == .private {
+            // Private texture には CPU 書き込みできないので managed テクスチャを新規作成して置換
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
+            desc.storageMode = .managed
+            desc.usage = [.shaderRead]
+            guard let newTexture = texture.device.makeTexture(descriptor: desc) else { return }
+            newTexture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
+            self.texture = newTexture
+        } else {
+            texture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
+        }
     }
 
     /// 指定座標のピクセル色を返す（loadPixels()後に有効）
