@@ -98,7 +98,7 @@ struct BlendModeTests {
     @Test("all cases are present")
     func allCases() {
         let cases = BlendMode.allCases
-        #expect(cases.count == 8)
+        #expect(cases.count == 10)
     }
 
     @Test("screen blend factor correctness")

@@ -99,6 +99,16 @@ public class MetaphorMTKView: MTKView {
         }
     }
 
+    // MARK: - Scroll Events
+
+    public override func scrollWheel(with event: NSEvent) {
+        let dx = Float(event.scrollingDeltaX)
+        let dy = Float(event.scrollingDeltaY)
+        MainActor.assumeIsolated {
+            rendererRef?.input.handleMouseScrolled(dx: dx, dy: dy)
+        }
+    }
+
     // MARK: - Keyboard Events
 
     public override func keyDown(with event: NSEvent) {

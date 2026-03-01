@@ -105,6 +105,8 @@ public final class Graphics {
     public func stroke(_ gray: Float, _ alpha: Float) { canvas.stroke(gray, alpha) }
     public func noStroke() { canvas.noStroke() }
     public func strokeWeight(_ weight: Float) { canvas.strokeWeight(weight) }
+    public func strokeCap(_ cap: StrokeCap) { canvas.strokeCap(cap) }
+    public func strokeJoin(_ join: StrokeJoin) { canvas.strokeJoin(join) }
 
     public func blendMode(_ mode: BlendMode) { canvas.blendMode(mode) }
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) { canvas.colorMode(space, max1, max2, max3, maxA) }
@@ -153,6 +155,8 @@ public final class Graphics {
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) { canvas.textAlign(horizontal, vertical) }
     public func text(_ string: String, _ x: Float, _ y: Float) { canvas.text(string, x, y) }
     public func textWidth(_ string: String) -> Float { canvas.textWidth(string) }
+    public func textAscent() -> Float { canvas.textAscent() }
+    public func textDescent() -> Float { canvas.textDescent() }
 }
 
 // MARK: - Errors

@@ -213,6 +213,28 @@ public enum BuiltinShaders {
     ) {
         return in.color;
     }
+
+    fragment float4 metaphor_canvas2DDifferenceFragment(
+        Canvas2DVertexOut in [[stage_in]],
+        float4 dest [[color(0)]]
+    ) {
+        float4 src = in.color;
+        float a = src.a + dest.a * (1.0 - src.a);
+        float3 blended = abs(src.rgb - dest.rgb);
+        float3 result = mix(dest.rgb, blended, src.a);
+        return float4(result, a);
+    }
+
+    fragment float4 metaphor_canvas2DExclusionFragment(
+        Canvas2DVertexOut in [[stage_in]],
+        float4 dest [[color(0)]]
+    ) {
+        float4 src = in.color;
+        float a = src.a + dest.a * (1.0 - src.a);
+        float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
+        float3 result = mix(dest.rgb, blended, src.a);
+        return float4(result, a);
+    }
     """
 
     // MARK: - Canvas3D Shared Structures (3Dシェーダー共通定義)
@@ -475,6 +497,32 @@ public enum BuiltinShaders {
         float4 texColor = tex.sample(s, in.texCoord);
         return texColor * in.color;
     }
+
+    fragment float4 metaphor_canvas2DTexturedDifferenceFragment(
+        Canvas2DTexVertexOut in [[stage_in]],
+        texture2d<float> tex [[texture(0)]],
+        float4 dest [[color(0)]]
+    ) {
+        constexpr sampler s(filter::linear, address::clamp_to_edge);
+        float4 src = tex.sample(s, in.texCoord) * in.color;
+        float a = src.a + dest.a * (1.0 - src.a);
+        float3 blended = abs(src.rgb - dest.rgb);
+        float3 result = mix(dest.rgb, blended, src.a);
+        return float4(result, a);
+    }
+
+    fragment float4 metaphor_canvas2DTexturedExclusionFragment(
+        Canvas2DTexVertexOut in [[stage_in]],
+        texture2d<float> tex [[texture(0)]],
+        float4 dest [[color(0)]]
+    ) {
+        constexpr sampler s(filter::linear, address::clamp_to_edge);
+        float4 src = tex.sample(s, in.texCoord) * in.color;
+        float a = src.a + dest.a * (1.0 - src.a);
+        float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
+        float3 result = mix(dest.rgb, blended, src.a);
+        return float4(result, a);
+    }
     """
 
     // MARK: - Shader Function Names
@@ -491,10 +539,14 @@ public enum BuiltinShaders {
         public static let litFragment = "metaphor_litFragment"
         public static let canvas2DVertex = "metaphor_canvas2DVertex"
         public static let canvas2DFragment = "metaphor_canvas2DFragment"
+        public static let canvas2DDifferenceFragment = "metaphor_canvas2DDifferenceFragment"
+        public static let canvas2DExclusionFragment = "metaphor_canvas2DExclusionFragment"
         public static let canvas3DVertex = "metaphor_canvas3DVertex"
         public static let canvas3DFragment = "metaphor_canvas3DFragment"
         public static let canvas2DTexturedVertex = "metaphor_canvas2DTexturedVertex"
         public static let canvas2DTexturedFragment = "metaphor_canvas2DTexturedFragment"
+        public static let canvas2DTexturedDifferenceFragment = "metaphor_canvas2DTexturedDifferenceFragment"
+        public static let canvas2DTexturedExclusionFragment = "metaphor_canvas2DTexturedExclusionFragment"
         public static let canvas3DTexturedVertex = "metaphor_canvas3DTexturedVertex"
         public static let canvas3DTexturedFragment = "metaphor_canvas3DTexturedFragment"
     }

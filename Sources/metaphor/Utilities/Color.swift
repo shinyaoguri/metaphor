@@ -146,6 +146,13 @@ public struct Color: Sendable, Equatable {
     public static let clear = Color(r: 0, g: 0, b: 0, a: 0)
 }
 
+// MARK: - Global Color Functions
+
+/// 2色間を線形補間
+public func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color {
+    c1.lerp(to: c2, t: t)
+}
+
 // MARK: - Color Space
 
 /// 色空間

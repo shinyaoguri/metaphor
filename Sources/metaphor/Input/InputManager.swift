@@ -26,6 +26,12 @@ public final class InputManager {
     /// 押されているマウスボタン（0=左, 1=右, 2=中央）
     public private(set) var mouseButton: Int = 0
 
+    /// 現フレームのスクロールX量
+    public private(set) var scrollX: Float = 0
+
+    /// 現フレームのスクロールY量
+    public private(set) var scrollY: Float = 0
+
     // MARK: - Keyboard State
 
     /// いずれかのキーが押されているか
@@ -59,6 +65,9 @@ public final class InputManager {
     /// キー解放コールバック (keyCode)
     public var onKeyUp: ((UInt16) -> Void)?
 
+    /// マウススクロールコールバック (dx, dy)
+    public var onMouseScrolled: ((Float, Float) -> Void)?
+
     // MARK: - Private State
 
     /// 前フレーム開始時のマウス位置（2フレームバッファ）
@@ -85,6 +94,9 @@ public final class InputManager {
     /// 単純に `pmouseX = mouseX` とすると常に同じ値になる。
     /// 2フレームバッファ方式で前フレームの位置を正しく保持する。
     func updateFrame() {
+        scrollX = 0
+        scrollY = 0
+
         if _isFirstFrame {
             _savedMouseX = mouseX
             _savedMouseY = mouseY
@@ -138,5 +150,11 @@ public final class InputManager {
     func handleKeyUp(keyCode: UInt16) {
         pressedKeys.remove(keyCode)
         onKeyUp?(keyCode)
+    }
+
+    func handleMouseScrolled(dx: Float, dy: Float) {
+        scrollX = dx
+        scrollY = dy
+        onMouseScrolled?(dx, dy)
     }
 }

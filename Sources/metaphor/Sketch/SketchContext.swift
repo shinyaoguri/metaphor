@@ -265,6 +265,16 @@ public final class SketchContext {
         canvas.strokeWeight(weight)
     }
 
+    /// ストロークの端点スタイルを設定
+    public func strokeCap(_ cap: StrokeCap) {
+        canvas.strokeCap(cap)
+    }
+
+    /// ストロークの接合スタイルを設定
+    public func strokeJoin(_ join: StrokeJoin) {
+        canvas.strokeJoin(join)
+    }
+
     /// ブレンドモードを設定
     public func blendMode(_ mode: BlendMode) {
         canvas.blendMode(mode)
@@ -362,9 +372,24 @@ public final class SketchContext {
         canvas.textAlign(horizontal, vertical)
     }
 
+    /// テキストの行間を設定
+    public func textLeading(_ leading: Float) {
+        canvas.textLeading(leading)
+    }
+
     /// テキストの描画幅を取得
     public func textWidth(_ string: String) -> Float {
         canvas.textWidth(string)
+    }
+
+    /// フォントのアセントを取得
+    public func textAscent() -> Float {
+        canvas.textAscent()
+    }
+
+    /// フォントのディセントを取得
+    public func textDescent() -> Float {
+        canvas.textDescent()
     }
 
     /// テキストを描画
@@ -372,10 +397,48 @@ public final class SketchContext {
         canvas.text(string, x, y)
     }
 
+    /// ボックス内にテキストを描画（自動折り返し）
+    public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.text(string, x, y, w, h)
+    }
+
     // MARK: - Screenshot
 
     /// スクリーンショットを保存
     public func save(_ path: String) {
+        renderer.saveScreenshot(to: path)
+    }
+
+    /// 連番フレーム書き出しを開始
+    /// - Parameters:
+    ///   - directory: 出力先（nilならデスクトップに自動作成）
+    ///   - pattern: ファイル名パターン
+    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
+        let dir: String
+        if let directory {
+            dir = directory
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            dir = NSHomeDirectory() + "/Desktop/metaphor_frames_\(formatter.string(from: Date()))"
+        }
+        renderer.frameExporter.beginSequence(directory: dir, pattern: pattern)
+    }
+
+    /// 連番フレーム書き出しを停止
+    public func endRecord() {
+        renderer.frameExporter.endSequence()
+    }
+
+    /// 現在フレームを単発で保存（Processing互換）
+    public func saveFrame(_ filename: String? = nil) {
+        let name: String
+        if let filename {
+            name = filename
+        } else {
+            name = "screen-\(String(format: "%04d", frameCount)).png"
+        }
+        let path = NSHomeDirectory() + "/Desktop/" + name
         renderer.saveScreenshot(to: path)
     }
 
@@ -447,9 +510,10 @@ public final class SketchContext {
         canvas.scale(sx, sy)
     }
 
-    /// 2D均一スケール
+    /// 均一スケール（Canvas2D / Canvas3D 両方に適用）
     public func scale(_ s: Float) {
         canvas.scale(s)
+        canvas3D.scale(s, s, s)
     }
 
     // MARK: - 2D Shapes
@@ -457,6 +521,36 @@ public final class SketchContext {
     /// 矩形
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.rect(x, y, w, h)
+    }
+
+    /// 角丸矩形（均一コーナー半径）
+    public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
+        canvas.rect(x, y, w, h, r)
+    }
+
+    /// 角丸矩形（コーナー別半径）
+    public func rect(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
+    ) {
+        canvas.rect(x, y, w, h, tl, tr, br, bl)
+    }
+
+    /// 線形グラデーション矩形を描画
+    public func linearGradient(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
+    ) {
+        canvas.linearGradient(x, y, w, h, c1, c2, axis: axis)
+    }
+
+    /// 放射状グラデーションを描画
+    public func radialGradient(
+        _ cx: Float, _ cy: Float, _ radius: Float,
+        _ innerColor: Color, _ outerColor: Color,
+        segments: Int = 36
+    ) {
+        canvas.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
     }
 
     /// 楕円
@@ -606,6 +700,15 @@ public final class SketchContext {
     /// 透視投影を設定
     public func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000) {
         canvas3D.perspective(fov: fov, near: near, far: far)
+    }
+
+    /// 正射影カメラに切り替え
+    public func ortho(
+        left: Float? = nil, right: Float? = nil,
+        bottom: Float? = nil, top: Float? = nil,
+        near: Float = -1000, far: Float = 1000
+    ) {
+        canvas3D.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far)
     }
 
     // MARK: - 3D Lighting
@@ -781,6 +884,12 @@ public final class SketchContext {
     /// カスタムメッシュを描画
     public func mesh(_ mesh: Mesh) {
         canvas3D.mesh(mesh)
+    }
+
+    /// OBJファイルからメッシュを読み込み
+    public func loadModel(_ path: String) -> Mesh? {
+        let url = URL(fileURLWithPath: path)
+        return try? Mesh.loadOBJ(device: renderer.device, url: url)
     }
 
     // MARK: - Compute

@@ -275,6 +275,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         input.onMouseDragged = { [weak sketch] _, _ in
             sketch?.mouseDragged()
         }
+        input.onMouseScrolled = { [weak sketch] _, _ in
+            sketch?.mouseScrolled()
+        }
         input.onKeyDown = { [weak sketch] _, _ in
             sketch?.keyPressed()
         }

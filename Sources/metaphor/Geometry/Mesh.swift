@@ -105,6 +105,49 @@ public final class Mesh {
             self.hasUVs = false
         }
     }
+
+    /// UInt32インデックス対応イニシャライザ（大規模メッシュ用）
+    init(device: MTLDevice, vertices: [Vertex3D], indices32: [UInt32],
+         uvVertices: [Vertex3DTextured]? = nil) {
+        self.vertexCount = vertices.count
+
+        let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
+        self.vertexBuffer = device.makeBuffer(
+            bytes: vertices,
+            length: vertexSize,
+            options: .storageModeShared
+        )!
+
+        if !indices32.isEmpty {
+            self.indexCount = indices32.count
+            let indexSize = indices32.count * MemoryLayout<UInt32>.stride
+            self.indexBuffer = device.makeBuffer(
+                bytes: indices32,
+                length: indexSize,
+                options: .storageModeShared
+            )
+            self.indexType = .uint32
+        } else {
+            self.indexCount = 0
+            self.indexBuffer = nil
+            self.indexType = .uint32
+        }
+
+        if let uvVerts = uvVertices, !uvVerts.isEmpty {
+            self.uvVertexCount = uvVerts.count
+            let uvSize = uvVerts.count * MemoryLayout<Vertex3DTextured>.stride
+            self.uvVertexBuffer = device.makeBuffer(
+                bytes: uvVerts,
+                length: uvSize,
+                options: .storageModeShared
+            )
+            self.hasUVs = true
+        } else {
+            self.uvVertexCount = 0
+            self.uvVertexBuffer = nil
+            self.hasUVs = false
+        }
+    }
 }
 
 // MARK: - Box
@@ -461,5 +504,191 @@ extension Mesh {
         }
 
         return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+    }
+}
+
+// MARK: - OBJ Loader
+
+public enum MeshError: Error {
+    case fileNotFound
+    case parseError(String)
+}
+
+extension Mesh {
+    /// OBJファイルをURLから読み込み
+    public static func loadOBJ(device: MTLDevice, url: URL) throws -> Mesh {
+        let source = try String(contentsOf: url, encoding: .utf8)
+        guard let mesh = loadOBJ(device: device, source: source) else {
+            throw MeshError.parseError("Failed to parse OBJ data")
+        }
+        return mesh
+    }
+
+    /// OBJ文字列からメッシュを生成
+    public static func loadOBJ(device: MTLDevice, source: String) -> Mesh? {
+        var positions: [SIMD3<Float>] = []
+        var normals: [SIMD3<Float>] = []
+        var texCoords: [SIMD2<Float>] = []
+
+        struct FaceIndex: Hashable {
+            let v: Int
+            let vt: Int  // -1 = なし
+            let vn: Int  // -1 = なし
+        }
+
+        var indexMap: [FaceIndex: Int] = [:]
+        var vertices: [Vertex3D] = []
+        var uvVertices: [Vertex3DTextured] = []
+        var indices: [UInt32] = []
+        var hasUVs = false
+        var hasNormals = false
+
+        let white = SIMD4<Float>(1, 1, 1, 1)
+
+        /// face頂点トークンをパースし、頂点インデックスとUV/法線の有無を返す
+        func resolveIndex(_ token: String) -> (index: Int, hasUV: Bool, hasNormal: Bool) {
+            let parts = token.split(separator: "/", omittingEmptySubsequences: false)
+            let vi = Int(parts[0])! - 1
+            let vti: Int
+            let vni: Int
+            var foundUV = false
+            var foundNormal = false
+
+            if parts.count > 1 && !parts[1].isEmpty {
+                vti = Int(parts[1])! - 1
+                foundUV = true
+            } else {
+                vti = -1
+            }
+
+            if parts.count > 2 && !parts[2].isEmpty {
+                vni = Int(parts[2])! - 1
+                foundNormal = true
+            } else {
+                vni = -1
+            }
+
+            let faceIdx = FaceIndex(v: vi, vt: vti, vn: vni)
+            if let existing = indexMap[faceIdx] {
+                return (existing, foundUV, foundNormal)
+            }
+
+            let pos = positions[vi]
+            let norm = vni >= 0 ? normals[vni] : SIMD3<Float>(0, 0, 0)
+            let uv = vti >= 0 ? texCoords[vti] : SIMD2<Float>(0, 0)
+
+            let newIndex = vertices.count
+            vertices.append(Vertex3D(position: pos, normal: norm, color: white))
+            uvVertices.append(Vertex3DTextured(position: pos, normal: norm, uv: uv))
+            indexMap[faceIdx] = newIndex
+            return (newIndex, foundUV, foundNormal)
+        }
+
+        for line in source.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+
+            let parts = trimmed.split(separator: " ", omittingEmptySubsequences: true)
+            guard !parts.isEmpty else { continue }
+
+            switch parts[0] {
+            case "v":
+                guard parts.count >= 4,
+                      let x = Float(parts[1]),
+                      let y = Float(parts[2]),
+                      let z = Float(parts[3]) else { continue }
+                positions.append(SIMD3(x, y, z))
+
+            case "vn":
+                guard parts.count >= 4,
+                      let x = Float(parts[1]),
+                      let y = Float(parts[2]),
+                      let z = Float(parts[3]) else { continue }
+                normals.append(SIMD3(x, y, z))
+
+            case "vt":
+                guard parts.count >= 3,
+                      let u = Float(parts[1]),
+                      let v = Float(parts[2]) else { continue }
+                texCoords.append(SIMD2(u, v))
+
+            case "f":
+                let faceCount = parts.count - 1
+                guard faceCount >= 3 else { continue }
+
+                var faceVertexIndices: [Int] = []
+                for i in 1..<parts.count {
+                    let result = resolveIndex(String(parts[i]))
+                    faceVertexIndices.append(result.index)
+                    if result.hasUV { hasUVs = true }
+                    if result.hasNormal { hasNormals = true }
+                }
+
+                // fan tessellation
+                for i in 1..<(faceCount - 1) {
+                    indices.append(contentsOf: [
+                        UInt32(faceVertexIndices[0]),
+                        UInt32(faceVertexIndices[i]),
+                        UInt32(faceVertexIndices[i + 1]),
+                    ])
+                }
+
+            default:
+                continue
+            }
+        }
+
+        guard !vertices.isEmpty, !indices.isEmpty else { return nil }
+
+        // 法線が無い場合は面法線を自動計算
+        if !hasNormals {
+            for i in 0..<vertices.count {
+                vertices[i].normal = .zero
+                uvVertices[i].normal = .zero
+            }
+
+            var tri = 0
+            while tri < indices.count {
+                let i0 = Int(indices[tri])
+                let i1 = Int(indices[tri + 1])
+                let i2 = Int(indices[tri + 2])
+                let p0 = vertices[i0].position
+                let p1 = vertices[i1].position
+                let p2 = vertices[i2].position
+                let edge1 = p1 - p0
+                let edge2 = p2 - p0
+                let faceNormal = simd_cross(edge1, edge2)
+
+                for idx in [i0, i1, i2] {
+                    vertices[idx].normal += faceNormal
+                    uvVertices[idx].normal += faceNormal
+                }
+                tri += 3
+            }
+
+            for i in 0..<vertices.count {
+                let len = simd_length(vertices[i].normal)
+                let normalized = len > 0 ? vertices[i].normal / len : SIMD3<Float>(0, 1, 0)
+                vertices[i].normal = normalized
+                uvVertices[i].normal = normalized
+            }
+        }
+
+        if vertices.count <= 65535 {
+            let indices16 = indices.map { UInt16($0) }
+            return Mesh(
+                device: device,
+                vertices: vertices,
+                indices: indices16,
+                uvVertices: hasUVs ? uvVertices : nil
+            )
+        } else {
+            return Mesh(
+                device: device,
+                vertices: vertices,
+                indices32: indices,
+                uvVertices: hasUVs ? uvVertices : nil
+            )
+        }
     }
 }

@@ -108,6 +108,18 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
     case lightest
     /// 暗い方を残す（min）
     case darkest
+    /// 差分ブレンディング（|src - dst|）
+    case difference
+    /// 除外ブレンディング（src + dst - 2*src*dst）
+    case exclusion
+
+    /// フレームバッファフェッチが必要なモードかどうか
+    public var requiresFramebufferFetch: Bool {
+        switch self {
+        case .difference, .exclusion: return true
+        default: return false
+        }
+    }
 
     /// MTLRenderPipelineColorAttachmentDescriptorにブレンド設定を適用
     func apply(to attachment: MTLRenderPipelineColorAttachmentDescriptor) {
@@ -169,6 +181,10 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
             attachment.destinationRGBBlendFactor = .one
             attachment.sourceAlphaBlendFactor = .one
             attachment.destinationAlphaBlendFactor = .one
+
+        case .difference, .exclusion:
+            // フレームバッファフェッチでシェーダー側が合成する
+            attachment.isBlendingEnabled = false
         }
     }
 }

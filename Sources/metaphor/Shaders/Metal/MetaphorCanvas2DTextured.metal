@@ -32,3 +32,29 @@ fragment float4 metaphor_canvas2DTexturedFragment(
     float4 texColor = tex.sample(s, in.texCoord);
     return texColor * in.color;
 }
+
+fragment float4 metaphor_canvas2DTexturedDifferenceFragment(
+    Canvas2DTexVertexOut in [[stage_in]],
+    texture2d<float> tex [[texture(0)]],
+    float4 dest [[color(0)]]
+) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float4 src = tex.sample(s, in.texCoord) * in.color;
+    float a = src.a + dest.a * (1.0 - src.a);
+    float3 blended = abs(src.rgb - dest.rgb);
+    float3 result = mix(dest.rgb, blended, src.a);
+    return float4(result, a);
+}
+
+fragment float4 metaphor_canvas2DTexturedExclusionFragment(
+    Canvas2DTexVertexOut in [[stage_in]],
+    texture2d<float> tex [[texture(0)]],
+    float4 dest [[color(0)]]
+) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float4 src = tex.sample(s, in.texCoord) * in.color;
+    float a = src.a + dest.a * (1.0 - src.a);
+    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
+    float3 result = mix(dest.rgb, blended, src.a);
+    return float4(result, a);
+}

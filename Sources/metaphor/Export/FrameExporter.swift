@@ -1,0 +1,89 @@
+@preconcurrency import Metal
+import Foundation
+
+/// 連番PNGフレームの書き出しを管理するクラス
+///
+/// `beginSequence()` で録画を開始し、`endSequence()` で停止する。
+/// 録画中は毎フレーム自動的にPNGが書き出される。
+///
+/// ```swift
+/// // setup()内で
+/// beginRecord()
+///
+/// // 100フレーム後に
+/// endRecord()
+/// ```
+@MainActor
+public final class FrameExporter {
+    /// 録画中かどうか
+    public private(set) var isRecording: Bool = false
+
+    /// 現在のフレームインデックス
+    private var frameIndex: Int = 0
+
+    /// 出力先ディレクトリ
+    private var outputDirectory: String = ""
+
+    /// ファイル名パターン（printf形式）
+    private var filenamePattern: String = "frame_%05d.png"
+
+    public init() {}
+
+    /// 連番フレーム書き出しを開始
+    /// - Parameters:
+    ///   - directory: 出力先ディレクトリ（存在しない場合は自動作成）
+    ///   - pattern: ファイル名パターン（%dでフレーム番号が入る）
+    public func beginSequence(directory: String, pattern: String = "frame_%05d.png") {
+        self.outputDirectory = directory
+        self.filenamePattern = pattern
+        self.frameIndex = 0
+        self.isRecording = true
+
+        try? FileManager.default.createDirectory(
+            at: URL(fileURLWithPath: directory),
+            withIntermediateDirectories: true
+        )
+    }
+
+    /// 連番フレーム書き出しを停止
+    public func endSequence() {
+        isRecording = false
+    }
+
+    /// 現在フレームをキャプチャ（MetaphorRenderer.renderFrame()内から呼ばれる）
+    func captureFrame(
+        sourceTexture: MTLTexture,
+        stagingTexture: MTLTexture,
+        commandBuffer: MTLCommandBuffer,
+        width: Int,
+        height: Int
+    ) {
+        guard isRecording else { return }
+
+        let currentFrame = frameIndex
+        frameIndex += 1
+
+        let filename = String(format: filenamePattern, currentFrame)
+        let path = (outputDirectory as NSString).appendingPathComponent(filename)
+
+        if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
+            blitEncoder.copy(
+                from: sourceTexture,
+                sourceSlice: 0, sourceLevel: 0,
+                sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                sourceSize: MTLSize(width: width, height: height, depth: 1),
+                to: stagingTexture,
+                destinationSlice: 0, destinationLevel: 0,
+                destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+            )
+            blitEncoder.synchronize(resource: stagingTexture)
+            blitEncoder.endEncoding()
+        }
+
+        commandBuffer.addCompletedHandler { _ in
+            MetaphorRenderer.writePNG(
+                texture: stagingTexture, width: width, height: height, path: path
+            )
+        }
+    }
+}

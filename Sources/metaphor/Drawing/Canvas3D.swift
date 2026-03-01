@@ -85,6 +85,11 @@ public final class Canvas3D {
     private var farPlane: Float = 10000
     private var viewProjectionDirty: Bool = true
     private var cachedViewProjection: float4x4 = .identity
+    private var useOrthographic: Bool = false
+    private var orthoLeft: Float = 0
+    private var orthoRight: Float = 0
+    private var orthoBottom: Float = 0
+    private var orthoTop: Float = 0
 
     // MARK: - Lighting State
 
@@ -192,6 +197,7 @@ public final class Canvas3D {
         self.cameraCenter = .zero
         self.cameraUp = SIMD3(0, 1, 0)
         self.viewProjectionDirty = true
+        self.useOrthographic = false
     }
 
     func end() {
@@ -217,6 +223,30 @@ public final class Canvas3D {
         far: Float = 10000
     ) {
         self.fov = fov
+        self.nearPlane = near
+        self.farPlane = far
+        self.useOrthographic = false
+        self.viewProjectionDirty = true
+    }
+
+    /// 正射影カメラに切り替え
+    /// - Parameters:
+    ///   - left: 左端（nilならば0）
+    ///   - right: 右端（nilならばwidth）
+    ///   - bottom: 下端（nilならばheight）
+    ///   - top: 上端（nilならば0）
+    ///   - near: ニアクリップ
+    ///   - far: ファークリップ
+    public func ortho(
+        left: Float? = nil, right: Float? = nil,
+        bottom: Float? = nil, top: Float? = nil,
+        near: Float = -1000, far: Float = 1000
+    ) {
+        self.useOrthographic = true
+        self.orthoLeft = left ?? 0
+        self.orthoRight = right ?? width
+        self.orthoBottom = bottom ?? height
+        self.orthoTop = top ?? 0
         self.nearPlane = near
         self.farPlane = far
         self.viewProjectionDirty = true
@@ -490,9 +520,18 @@ public final class Canvas3D {
 
     private func computeViewProjection() -> float4x4 {
         if viewProjectionDirty {
-            let aspect = width / height
             let view = float4x4(lookAt: cameraEye, center: cameraCenter, up: cameraUp)
-            let proj = float4x4(perspectiveFov: fov, aspect: aspect, near: nearPlane, far: farPlane)
+            let proj: float4x4
+            if useOrthographic {
+                proj = float4x4(
+                    orthographic: orthoLeft, right: orthoRight,
+                    bottom: orthoBottom, top: orthoTop,
+                    near: nearPlane, far: farPlane
+                )
+            } else {
+                let aspect = width / height
+                proj = float4x4(perspectiveFov: fov, aspect: aspect, near: nearPlane, far: farPlane)
+            }
             cachedViewProjection = proj * view
             viewProjectionDirty = false
         }

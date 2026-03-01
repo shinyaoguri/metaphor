@@ -47,6 +47,40 @@ public enum ArcMode: Sendable {
     case pie
 }
 
+// MARK: - Stroke Cap / Join
+
+/// ストロークの端点スタイル
+public enum StrokeCap: Sendable {
+    /// 丸型（Processing デフォルト）
+    case round
+    /// 正方形（半strokeWeight分延長）
+    case square
+    /// 延長なし
+    case butt
+}
+
+/// ストロークの接合スタイル
+public enum StrokeJoin: Sendable {
+    /// 鋭角接合（デフォルト）
+    case miter
+    /// 平面接合
+    case bevel
+    /// 円弧接合
+    case round
+}
+
+// MARK: - Gradient Axis
+
+/// グラデーションの方向
+public enum GradientAxis: Sendable {
+    /// 上から下
+    case vertical
+    /// 左から右
+    case horizontal
+    /// 左上から右下
+    case diagonal
+}
+
 // MARK: - Shape Mode
 
 /// beginShape()で使用する形状モード
@@ -152,6 +186,8 @@ public final class Canvas2D {
     private var colorModeConfig: ColorModeConfig = ColorModeConfig()
     private var tintColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
     private var hasTint: Bool = false
+    private var currentStrokeCap: StrokeCap = .round
+    private var currentStrokeJoin: StrokeJoin = .miter
 
     // MARK: - Text State
 
@@ -159,6 +195,7 @@ public final class Canvas2D {
     private var currentFontFamily: String = "Helvetica"
     private var currentTextAlignH: TextAlignH = .left
     private var currentTextAlignV: TextAlignV = .baseline
+    private var currentTextLeading: Float = 1.2
     private let textRenderer: TextRenderer
     private var frameCounter: Int = 0
 
@@ -203,8 +240,11 @@ public final class Canvas2D {
         var fontFamily: String
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
+        var textLeading: Float
         var curveDetail: Int
         var curveTightness: Float
+        var strokeCap: StrokeCap
+        var strokeJoin: StrokeJoin
     }
 
     // MARK: - Transform & Style Stack
@@ -287,12 +327,26 @@ public final class Canvas2D {
             named: BuiltinShaders.FunctionName.canvas2DFragment,
             from: ShaderLibrary.BuiltinKey.canvas2D
         )
+        let diffFragFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.canvas2DDifferenceFragment,
+            from: ShaderLibrary.BuiltinKey.canvas2D
+        )
+        let exclFragFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.canvas2DExclusionFragment,
+            from: ShaderLibrary.BuiltinKey.canvas2D
+        )
 
         var colorPipelines: [BlendMode: MTLRenderPipelineState] = [:]
         for mode in BlendMode.allCases {
+            let fragFn: MTLFunction?
+            switch mode {
+            case .difference: fragFn = diffFragFn
+            case .exclusion: fragFn = exclFragFn
+            default: fragFn = fragmentFn
+            }
             colorPipelines[mode] = try PipelineFactory(device: device)
                 .vertex(vertexFn)
-                .fragment(fragmentFn)
+                .fragment(fragFn)
                 .vertexLayout(.position2DColor)
                 .blending(mode)
                 .sampleCount(sampleCount)
@@ -309,12 +363,26 @@ public final class Canvas2D {
             named: BuiltinShaders.FunctionName.canvas2DTexturedFragment,
             from: ShaderLibrary.BuiltinKey.canvas2DTextured
         )
+        let texDiffFragFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.canvas2DTexturedDifferenceFragment,
+            from: ShaderLibrary.BuiltinKey.canvas2DTextured
+        )
+        let texExclFragFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.canvas2DTexturedExclusionFragment,
+            from: ShaderLibrary.BuiltinKey.canvas2DTextured
+        )
 
         var texPipelines: [BlendMode: MTLRenderPipelineState] = [:]
         for mode in BlendMode.allCases {
+            let fragFn: MTLFunction?
+            switch mode {
+            case .difference: fragFn = texDiffFragFn
+            case .exclusion: fragFn = texExclFragFn
+            default: fragFn = texFragmentFn
+            }
             texPipelines[mode] = try PipelineFactory(device: device)
                 .vertex(texVertexFn)
-                .fragment(texFragmentFn)
+                .fragment(fragFn)
                 .vertexLayout(.position2DTexCoordColor)
                 .blending(mode)
                 .sampleCount(sampleCount)
@@ -369,10 +437,13 @@ public final class Canvas2D {
         self.hasTint = false
         self.curveDetailCount = 20
         self.curveTightnessValue = 0.0
+        self.currentStrokeCap = .round
+        self.currentStrokeJoin = .miter
         self.currentTextSize = 32
         self.currentFontFamily = "Helvetica"
         self.currentTextAlignH = .left
         self.currentTextAlignV = .baseline
+        self.currentTextLeading = 1.2
         self.frameCounter += 1
     }
 
@@ -538,6 +609,16 @@ public final class Canvas2D {
         currentStrokeWeight = weight
     }
 
+    /// ストロークの端点スタイルを設定
+    public func strokeCap(_ cap: StrokeCap) {
+        currentStrokeCap = cap
+    }
+
+    /// ストロークの接合スタイルを設定
+    public func strokeJoin(_ join: StrokeJoin) {
+        currentStrokeJoin = join
+    }
+
     // MARK: - Background
 
     /// 背景を塗りつぶす（トランスフォーム無視）
@@ -584,8 +665,11 @@ public final class Canvas2D {
             fontFamily: currentFontFamily,
             textAlignH: currentTextAlignH,
             textAlignV: currentTextAlignV,
+            textLeading: currentTextLeading,
             curveDetail: curveDetailCount,
-            curveTightness: curveTightnessValue
+            curveTightness: curveTightnessValue,
+            strokeCap: currentStrokeCap,
+            strokeJoin: currentStrokeJoin
         ))
     }
 
@@ -610,8 +694,11 @@ public final class Canvas2D {
         currentFontFamily = saved.fontFamily
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
+        currentTextLeading = saved.textLeading
         curveDetailCount = saved.curveDetail
         curveTightnessValue = saved.curveTightness
+        currentStrokeCap = saved.strokeCap
+        currentStrokeJoin = saved.strokeJoin
         // ブレンドモードが変わった場合はフラッシュ
         if prevBlendMode != currentBlendMode {
             flush()
@@ -686,10 +773,87 @@ public final class Canvas2D {
             addTriangle(rx, ry, rx + rw, ry + rh, rx, ry + rh, fillColor)
         }
         if hasStroke {
-            strokeLine(rx, ry, rx + rw, ry)
-            strokeLine(rx + rw, ry, rx + rw, ry + rh)
-            strokeLine(rx + rw, ry + rh, rx, ry + rh)
-            strokeLine(rx, ry + rh, rx, ry)
+            strokePolyline([
+                (rx, ry), (rx + rw, ry), (rx + rw, ry + rh), (rx, ry + rh)
+            ], closed: true)
+        }
+    }
+
+    /// 角丸矩形（均一コーナー半径）
+    public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
+        rect(x, y, w, h, r, r, r, r)
+    }
+
+    /// 角丸矩形（コーナー別半径: tl=左上, tr=右上, br=右下, bl=左下）
+    public func rect(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
+    ) {
+        // 全コーナーが0なら通常のrect
+        if tl <= 0 && tr <= 0 && br <= 0 && bl <= 0 {
+            rect(x, y, w, h)
+            return
+        }
+
+        // RectModeに応じて左上角(rx, ry)と幅高(rw, rh)を算出
+        let rx: Float, ry: Float, rw: Float, rh: Float
+        switch currentRectMode {
+        case .corner:
+            rx = x; ry = y; rw = w; rh = h
+        case .corners:
+            rx = min(x, w); ry = min(y, h); rw = abs(w - x); rh = abs(h - y)
+        case .center:
+            rx = x - w / 2; ry = y - h / 2; rw = w; rh = h
+        case .radius:
+            rx = x - w; ry = y - h; rw = w * 2; rh = h * 2
+        }
+
+        // コーナー半径をクランプ
+        let maxR = min(rw, rh) * 0.5
+        let rtl = min(max(tl, 0), maxR)
+        let rtr = min(max(tr, 0), maxR)
+        let rbr = min(max(br, 0), maxR)
+        let rbl = min(max(bl, 0), maxR)
+
+        // 輪郭頂点を生成（時計回り、スクリーン座標系）
+        let segments = 8
+        var outline: [(Float, Float)] = []
+        outline.reserveCapacity((segments + 1) * 4)
+
+        // 左上コーナー: center (rx+rtl, ry+rtl), angle PI → 3PI/2
+        for j in 0...segments {
+            let a = Float.pi + Float.pi * 0.5 * Float(j) / Float(segments)
+            outline.append((rx + rtl + rtl * cos(a), ry + rtl + rtl * sin(a)))
+        }
+        // 右上コーナー: center (rx+rw-rtr, ry+rtr), angle 3PI/2 → 2PI
+        for j in 0...segments {
+            let a = Float.pi * 1.5 + Float.pi * 0.5 * Float(j) / Float(segments)
+            outline.append((rx + rw - rtr + rtr * cos(a), ry + rtr + rtr * sin(a)))
+        }
+        // 右下コーナー: center (rx+rw-rbr, ry+rh-rbr), angle 0 → PI/2
+        for j in 0...segments {
+            let a = Float.pi * 0.5 * Float(j) / Float(segments)
+            outline.append((rx + rw - rbr + rbr * cos(a), ry + rh - rbr + rbr * sin(a)))
+        }
+        // 左下コーナー: center (rx+rbl, ry+rh-rbl), angle PI/2 → PI
+        for j in 0...segments {
+            let a = Float.pi * 0.5 + Float.pi * 0.5 * Float(j) / Float(segments)
+            outline.append((rx + rbl + rbl * cos(a), ry + rh - rbl + rbl * sin(a)))
+        }
+
+        // 塗り: 重心からのfan tessellation
+        if hasFill && outline.count >= 3 {
+            let cx = rx + rw * 0.5
+            let cy = ry + rh * 0.5
+            for i in 0..<outline.count {
+                let next = (i + 1) % outline.count
+                addTriangle(cx, cy, outline[i].0, outline[i].1, outline[next].0, outline[next].1, fillColor)
+            }
+        }
+
+        // ストローク: 輪郭をstrokePolylineで描画
+        if hasStroke && outline.count >= 2 {
+            strokePolyline(outline, closed: true)
         }
     }
 
@@ -715,6 +879,67 @@ public final class Canvas2D {
             strokeLine(x3, y3, x4, y4)
             strokeLine(x4, y4, x1, y1)
         }
+    }
+
+    // MARK: - Gradient
+
+    /// 線形グラデーション矩形を描画
+    public func linearGradient(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
+    ) {
+        let sc1 = c1.simd
+        let sc2 = c2.simd
+
+        let tl: SIMD4<Float>, tr: SIMD4<Float>, bl: SIMD4<Float>, br: SIMD4<Float>
+        switch axis {
+        case .vertical:
+            tl = sc1; tr = sc1; bl = sc2; br = sc2
+        case .horizontal:
+            tl = sc1; tr = sc2; bl = sc1; br = sc2
+        case .diagonal:
+            tl = sc1; tr = lerpSIMD(sc1, sc2, 0.5)
+            bl = lerpSIMD(sc1, sc2, 0.5); br = sc2
+        }
+
+        // 2 triangles
+        addVertex(x, y, tl)
+        addVertex(x + w, y, tr)
+        addVertex(x + w, y + h, br)
+
+        addVertex(x, y, tl)
+        addVertex(x + w, y + h, br)
+        addVertex(x, y + h, bl)
+    }
+
+    /// 放射状グラデーションを描画
+    public func radialGradient(
+        _ cx: Float, _ cy: Float, _ radius: Float,
+        _ innerColor: Color, _ outerColor: Color,
+        segments: Int = 36
+    ) {
+        let sc1 = innerColor.simd
+        let sc2 = outerColor.simd
+        let segs = max(segments, 6)
+
+        for i in 0..<segs {
+            let a1 = Float(i) / Float(segs) * Float.pi * 2
+            let a2 = Float(i + 1) / Float(segs) * Float.pi * 2
+
+            let ex1 = cx + cos(a1) * radius
+            let ey1 = cy + sin(a1) * radius
+            let ex2 = cx + cos(a2) * radius
+            let ey2 = cy + sin(a2) * radius
+
+            addVertex(cx, cy, sc1)
+            addVertex(ex1, ey1, sc2)
+            addVertex(ex2, ey2, sc2)
+        }
+    }
+
+    /// SIMD4 の線形補間（内部ヘルパー）
+    private func lerpSIMD(_ a: SIMD4<Float>, _ b: SIMD4<Float>, _ t: Float) -> SIMD4<Float> {
+        a + (b - a) * t
     }
 
     /// 楕円（座標解釈はellipseModeに依存）
@@ -960,9 +1185,24 @@ public final class Canvas2D {
         currentTextAlignV = vertical
     }
 
+    /// テキストの行間を設定（1.0=ぴったり、1.2=デフォルト）
+    public func textLeading(_ leading: Float) {
+        currentTextLeading = leading
+    }
+
     /// テキストの描画幅を取得
     public func textWidth(_ string: String) -> Float {
         textRenderer.textWidth(string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
+    }
+
+    /// フォントのアセントを取得
+    public func textAscent() -> Float {
+        textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+    }
+
+    /// フォントのディセントを取得
+    public func textDescent() -> Float {
+        textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
     /// テキストを描画
@@ -987,6 +1227,36 @@ public final class Canvas2D {
         case .center: drawY -= cached.height / 2
         case .baseline: drawY -= cached.height * 0.8
         case .bottom: drawY -= cached.height
+        }
+
+        drawTexturedQuad(texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height)
+    }
+
+    /// ボックス内にテキストを描画（自動折り返し）
+    public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        guard !string.isEmpty else { return }
+        guard let cached = textRenderer.textTextureMultiline(
+            string: string,
+            fontSize: currentTextSize,
+            fontFamily: currentFontFamily,
+            maxWidth: w,
+            maxHeight: h,
+            leading: currentTextLeading,
+            frameCount: frameCounter
+        ) else { return }
+
+        var drawX = x
+        var drawY = y
+        switch currentTextAlignH {
+        case .left: break
+        case .center: drawX += (w - cached.width) / 2
+        case .right: drawX += w - cached.width
+        }
+        switch currentTextAlignV {
+        case .top: break
+        case .center: drawY += (h - cached.height) / 2
+        case .baseline: drawY += (h - cached.height) * 0.8
+        case .bottom: drawY += h - cached.height
         }
 
         drawTexturedQuad(texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height)
@@ -1168,16 +1438,9 @@ public final class Canvas2D {
             }
         }
 
-        // Stroke: エッジを描画
+        // Stroke: strokePolylineでエッジを描画
         if hasStroke && verts.count >= 2 {
-            for i in 0..<(verts.count - 1) {
-                strokeLine(verts[i].0, verts[i].1, verts[i + 1].0, verts[i + 1].1)
-            }
-            if close == .close {
-                let last = verts[verts.count - 1]
-                let first = verts[0]
-                strokeLine(last.0, last.1, first.0, first.1)
-            }
+            strokePolyline(verts, closed: close == .close)
         }
     }
 
@@ -1307,8 +1570,9 @@ public final class Canvas2D {
         addVertex(x3, y3, color)
     }
 
-    /// ストロークライン（quad展開）
-    private func strokeLine(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
+    /// ストロークライン（quad展開 + キャップ）
+    private func strokeLine(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float,
+                            capStart: Bool = true, capEnd: Bool = true) {
         let dx = x2 - x1
         let dy = y2 - y1
         let len = sqrt(dx * dx + dy * dy)
@@ -1317,13 +1581,254 @@ public final class Canvas2D {
         let hw = currentStrokeWeight * 0.5
         let nx = -dy / len * hw
         let ny = dx / len * hw
+        // 方向ベクトル（正規化済み * hw）
+        let tx = dx / len * hw
+        let ty = dy / len * hw
 
-        addVertex(x1 + nx, y1 + ny, strokeColor)
-        addVertex(x1 - nx, y1 - ny, strokeColor)
-        addVertex(x2 + nx, y2 + ny, strokeColor)
-        addVertex(x1 - nx, y1 - ny, strokeColor)
-        addVertex(x2 - nx, y2 - ny, strokeColor)
-        addVertex(x2 + nx, y2 + ny, strokeColor)
+        // square cap: 始点/終点をhw分延長
+        var sx1 = x1, sy1 = y1, sx2 = x2, sy2 = y2
+        if currentStrokeCap == .square {
+            if capStart { sx1 -= tx; sy1 -= ty }
+            if capEnd   { sx2 += tx; sy2 += ty }
+        }
+
+        // メインquad
+        addVertex(sx1 + nx, sy1 + ny, strokeColor)
+        addVertex(sx1 - nx, sy1 - ny, strokeColor)
+        addVertex(sx2 + nx, sy2 + ny, strokeColor)
+        addVertex(sx1 - nx, sy1 - ny, strokeColor)
+        addVertex(sx2 - nx, sy2 - ny, strokeColor)
+        addVertex(sx2 + nx, sy2 + ny, strokeColor)
+
+        // round cap: 半円fan
+        if currentStrokeCap == .round {
+            let capSegments = 8
+            if capStart {
+                let baseAngle = atan2(-dy, -dx) // 始点から逆方向
+                for i in 0..<capSegments {
+                    let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(capSegments)
+                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(capSegments)
+                    addVertex(x1, y1, strokeColor)
+                    addVertex(x1 + hw * cos(a0), y1 + hw * sin(a0), strokeColor)
+                    addVertex(x1 + hw * cos(a1), y1 + hw * sin(a1), strokeColor)
+                }
+            }
+            if capEnd {
+                let baseAngle = atan2(dy, dx) // 終点方向
+                for i in 0..<capSegments {
+                    let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(capSegments)
+                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(capSegments)
+                    addVertex(x2, y2, strokeColor)
+                    addVertex(x2 + hw * cos(a0), y2 + hw * sin(a0), strokeColor)
+                    addVertex(x2 + hw * cos(a1), y2 + hw * sin(a1), strokeColor)
+                }
+            }
+        }
+    }
+
+    /// ポリラインストローク描画（join対応）
+    private func strokePolyline(_ points: [(Float, Float)], closed: Bool) {
+        let count = points.count
+        guard count >= 2 else { return }
+
+        let hw = currentStrokeWeight * 0.5
+        let joinSegments = 8
+
+        // 各セグメントの方向・法線を事前計算
+        struct SegInfo {
+            var dx: Float; var dy: Float; var len: Float
+            var nx: Float; var ny: Float
+        }
+
+        let segCount = closed ? count : count - 1
+        var segs: [SegInfo] = []
+        segs.reserveCapacity(segCount)
+
+        for i in 0..<segCount {
+            let j = (i + 1) % count
+            let dx = points[j].0 - points[i].0
+            let dy = points[j].1 - points[i].1
+            let len = sqrt(dx * dx + dy * dy)
+            if len > 0 {
+                segs.append(SegInfo(dx: dx, dy: dy, len: len,
+                                    nx: -dy / len * hw, ny: dx / len * hw))
+            } else {
+                segs.append(SegInfo(dx: 0, dy: 0, len: 0, nx: 0, ny: 0))
+            }
+        }
+
+        // 各セグメントをquad描画（キャップなし）
+        for i in 0..<segCount {
+            let s = segs[i]
+            guard s.len > 0 else { continue }
+            let p0 = points[i]
+            let p1 = points[(i + 1) % count]
+            addVertex(p0.0 + s.nx, p0.1 + s.ny, strokeColor)
+            addVertex(p0.0 - s.nx, p0.1 - s.ny, strokeColor)
+            addVertex(p1.0 + s.nx, p1.1 + s.ny, strokeColor)
+            addVertex(p0.0 - s.nx, p0.1 - s.ny, strokeColor)
+            addVertex(p1.0 - s.nx, p1.1 - s.ny, strokeColor)
+            addVertex(p1.0 + s.nx, p1.1 + s.ny, strokeColor)
+        }
+
+        // joinジオメトリ
+        let joinCount = closed ? count : count - 2
+        let joinStart = closed ? 0 : 1
+        for k in 0..<joinCount {
+            let idx = (joinStart + k) % count
+            let prevSeg = closed ? (idx - 1 + segCount) % segCount : idx - 1
+            let nextSeg = closed ? idx : idx
+
+            let s0 = segs[prevSeg]
+            let s1 = segs[nextSeg]
+            guard s0.len > 0 && s1.len > 0 else { continue }
+
+            let px = points[idx].0
+            let py = points[idx].1
+
+            // 外積で曲がる方向を判定（正=左折、負=右折）
+            let cross = s0.dx * s1.dy - s0.dy * s1.dx
+
+            switch currentStrokeJoin {
+            case .bevel:
+                // 外側に三角形1枚
+                if cross > 0 {
+                    // 左折: 外側は法線の(-)側
+                    addVertex(px, py, strokeColor)
+                    addVertex(px - s0.nx, py - s0.ny, strokeColor)
+                    addVertex(px - s1.nx, py - s1.ny, strokeColor)
+                } else {
+                    // 右折: 外側は法線の(+)側
+                    addVertex(px, py, strokeColor)
+                    addVertex(px + s0.nx, py + s0.ny, strokeColor)
+                    addVertex(px + s1.nx, py + s1.ny, strokeColor)
+                }
+
+            case .miter:
+                // miter接合: 法線の交差点を計算
+                let dot = s0.nx * s1.nx + s0.ny * s1.ny
+                let miterLen = hw / max(sqrt((1.0 + dot / (hw * hw)) * 0.5), 0.001)
+                // miter limit (4x) を超えたらbevel fallback
+                if miterLen > hw * 4.0 {
+                    // bevel fallback
+                    if cross > 0 {
+                        addVertex(px, py, strokeColor)
+                        addVertex(px - s0.nx, py - s0.ny, strokeColor)
+                        addVertex(px - s1.nx, py - s1.ny, strokeColor)
+                    } else {
+                        addVertex(px, py, strokeColor)
+                        addVertex(px + s0.nx, py + s0.ny, strokeColor)
+                        addVertex(px + s1.nx, py + s1.ny, strokeColor)
+                    }
+                } else {
+                    // miter: 外側の2辺の延長線の交点
+                    if cross > 0 {
+                        // 外側: (-)方向
+                        let mx = -(s0.nx + s1.nx)
+                        let my = -(s0.ny + s1.ny)
+                        let mlen = sqrt(mx * mx + my * my)
+                        if mlen > 0 {
+                            let scale = miterLen / mlen
+                            addVertex(px, py, strokeColor)
+                            addVertex(px - s0.nx, py - s0.ny, strokeColor)
+                            addVertex(px + mx * scale, py + my * scale, strokeColor)
+                            addVertex(px, py, strokeColor)
+                            addVertex(px + mx * scale, py + my * scale, strokeColor)
+                            addVertex(px - s1.nx, py - s1.ny, strokeColor)
+                        }
+                    } else {
+                        let mx = s0.nx + s1.nx
+                        let my = s0.ny + s1.ny
+                        let mlen = sqrt(mx * mx + my * my)
+                        if mlen > 0 {
+                            let scale = miterLen / mlen
+                            addVertex(px, py, strokeColor)
+                            addVertex(px + s0.nx, py + s0.ny, strokeColor)
+                            addVertex(px + mx * scale, py + my * scale, strokeColor)
+                            addVertex(px, py, strokeColor)
+                            addVertex(px + mx * scale, py + my * scale, strokeColor)
+                            addVertex(px + s1.nx, py + s1.ny, strokeColor)
+                        }
+                    }
+                }
+
+            case .round:
+                // 円弧fan
+                let angle0: Float
+                let angle1: Float
+                if cross > 0 {
+                    angle0 = atan2(-s0.ny, -s0.nx)
+                    angle1 = atan2(-s1.ny, -s1.nx)
+                } else {
+                    angle0 = atan2(s0.ny, s0.nx)
+                    angle1 = atan2(s1.ny, s1.nx)
+                }
+                var sweep = angle1 - angle0
+                if cross > 0 {
+                    if sweep > 0 { sweep -= Float.pi * 2 }
+                } else {
+                    if sweep < 0 { sweep += Float.pi * 2 }
+                }
+
+                for i in 0..<joinSegments {
+                    let a0 = angle0 + sweep * Float(i) / Float(joinSegments)
+                    let a1 = angle0 + sweep * Float(i + 1) / Float(joinSegments)
+                    addVertex(px, py, strokeColor)
+                    addVertex(px + hw * cos(a0), py + hw * sin(a0), strokeColor)
+                    addVertex(px + hw * cos(a1), py + hw * sin(a1), strokeColor)
+                }
+            }
+        }
+
+        // 開いたパスの端にキャップ
+        if !closed {
+            let s0 = segs[0]
+            let sLast = segs[segCount - 1]
+
+            if currentStrokeCap == .round && s0.len > 0 {
+                let baseAngle = atan2(-s0.dy, -s0.dx)
+                let p = points[0]
+                for i in 0..<joinSegments {
+                    let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(joinSegments)
+                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(joinSegments)
+                    addVertex(p.0, p.1, strokeColor)
+                    addVertex(p.0 + hw * cos(a0), p.1 + hw * sin(a0), strokeColor)
+                    addVertex(p.0 + hw * cos(a1), p.1 + hw * sin(a1), strokeColor)
+                }
+            } else if currentStrokeCap == .square && s0.len > 0 {
+                let tx = s0.dx / s0.len * hw
+                let ty = s0.dy / s0.len * hw
+                let p = points[0]
+                addVertex(p.0 + s0.nx - tx, p.1 + s0.ny - ty, strokeColor)
+                addVertex(p.0 - s0.nx - tx, p.1 - s0.ny - ty, strokeColor)
+                addVertex(p.0 + s0.nx, p.1 + s0.ny, strokeColor)
+                addVertex(p.0 - s0.nx - tx, p.1 - s0.ny - ty, strokeColor)
+                addVertex(p.0 - s0.nx, p.1 - s0.ny, strokeColor)
+                addVertex(p.0 + s0.nx, p.1 + s0.ny, strokeColor)
+            }
+
+            if currentStrokeCap == .round && sLast.len > 0 {
+                let baseAngle = atan2(sLast.dy, sLast.dx)
+                let p = points[count - 1]
+                for i in 0..<joinSegments {
+                    let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(joinSegments)
+                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(joinSegments)
+                    addVertex(p.0, p.1, strokeColor)
+                    addVertex(p.0 + hw * cos(a0), p.1 + hw * sin(a0), strokeColor)
+                    addVertex(p.0 + hw * cos(a1), p.1 + hw * sin(a1), strokeColor)
+                }
+            } else if currentStrokeCap == .square && sLast.len > 0 {
+                let tx = sLast.dx / sLast.len * hw
+                let ty = sLast.dy / sLast.len * hw
+                let p = points[count - 1]
+                addVertex(p.0 + sLast.nx, p.1 + sLast.ny, strokeColor)
+                addVertex(p.0 - sLast.nx, p.1 - sLast.ny, strokeColor)
+                addVertex(p.0 + sLast.nx + tx, p.1 + sLast.ny + ty, strokeColor)
+                addVertex(p.0 - sLast.nx, p.1 - sLast.ny, strokeColor)
+                addVertex(p.0 - sLast.nx + tx, p.1 - sLast.ny + ty, strokeColor)
+                addVertex(p.0 + sLast.nx + tx, p.1 + sLast.ny + ty, strokeColor)
+            }
+        }
     }
 
     // MARK: - Private: Textured Quad

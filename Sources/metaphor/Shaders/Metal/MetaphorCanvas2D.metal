@@ -26,3 +26,25 @@ fragment float4 metaphor_canvas2DFragment(
 ) {
     return in.color;
 }
+
+fragment float4 metaphor_canvas2DDifferenceFragment(
+    Canvas2DVertexOut in [[stage_in]],
+    float4 dest [[color(0)]]
+) {
+    float4 src = in.color;
+    float a = src.a + dest.a * (1.0 - src.a);
+    float3 blended = abs(src.rgb - dest.rgb);
+    float3 result = mix(dest.rgb, blended, src.a);
+    return float4(result, a);
+}
+
+fragment float4 metaphor_canvas2DExclusionFragment(
+    Canvas2DVertexOut in [[stage_in]],
+    float4 dest [[color(0)]]
+) {
+    float4 src = in.color;
+    float a = src.a + dest.a * (1.0 - src.a);
+    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
+    float3 result = mix(dest.rgb, blended, src.a);
+    return float4(result, a);
+}

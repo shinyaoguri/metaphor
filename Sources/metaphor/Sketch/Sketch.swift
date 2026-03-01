@@ -61,6 +61,9 @@ public protocol Sketch: AnyObject {
     /// マウスがドラッグされた
     func mouseDragged()
 
+    /// マウスホイールがスクロールされた
+    func mouseScrolled()
+
     /// キーが押された
     func keyPressed()
 
@@ -86,6 +89,7 @@ extension Sketch {
     public func mouseReleased() {}
     public func mouseMoved() {}
     public func mouseDragged() {}
+    public func mouseScrolled() {}
     public func keyPressed() {}
     public func keyReleased() {}
 }
@@ -131,6 +135,16 @@ extension Sketch {
     /// マウスボタンが押されているか
     public var isMousePressed: Bool {
         _activeSketchContext?.input.isMouseDown ?? false
+    }
+
+    /// 現フレームのスクロールX量
+    public var scrollX: Float {
+        _activeSketchContext?.input.scrollX ?? 0
+    }
+
+    /// 現フレームのスクロールY量
+    public var scrollY: Float {
+        _activeSketchContext?.input.scrollY ?? 0
     }
 
     /// 押されているマウスボタン (0=左, 1=右, 2=中)
@@ -295,6 +309,14 @@ extension Sketch {
         _activeSketchContext?.strokeWeight(weight)
     }
 
+    public func strokeCap(_ cap: StrokeCap) {
+        _activeSketchContext?.strokeCap(cap)
+    }
+
+    public func strokeJoin(_ join: StrokeJoin) {
+        _activeSketchContext?.strokeJoin(join)
+    }
+
     public func blendMode(_ mode: BlendMode) {
         _activeSketchContext?.blendMode(mode)
     }
@@ -365,15 +387,31 @@ extension Sketch {
         _activeSketchContext?.textAlign(horizontal, vertical)
     }
 
+    public func textLeading(_ leading: Float) {
+        _activeSketchContext?.textLeading(leading)
+    }
+
     public func text(_ string: String, _ x: Float, _ y: Float) {
         _activeSketchContext?.text(string, x, y)
+    }
+
+    public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        _activeSketchContext?.text(string, x, y, w, h)
     }
 
     public func textWidth(_ string: String) -> Float {
         _activeSketchContext?.textWidth(string) ?? 0
     }
 
-    // MARK: Screenshot
+    public func textAscent() -> Float {
+        _activeSketchContext?.textAscent() ?? 0
+    }
+
+    public func textDescent() -> Float {
+        _activeSketchContext?.textDescent() ?? 0
+    }
+
+    // MARK: Screenshot & Recording
 
     public func save(_ path: String) {
         _activeSketchContext?.save(path)
@@ -381,6 +419,18 @@ extension Sketch {
 
     public func save() {
         _activeSketchContext?.save()
+    }
+
+    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
+        _activeSketchContext?.beginRecord(directory: directory, pattern: pattern)
+    }
+
+    public func endRecord() {
+        _activeSketchContext?.endRecord()
+    }
+
+    public func saveFrame(_ filename: String? = nil) {
+        _activeSketchContext?.saveFrame(filename)
     }
 
     // MARK: 2D Transform Stack
@@ -421,6 +471,32 @@ extension Sketch {
 
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         _activeSketchContext?.rect(x, y, w, h)
+    }
+
+    public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
+        _activeSketchContext?.rect(x, y, w, h, r)
+    }
+
+    public func rect(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
+    ) {
+        _activeSketchContext?.rect(x, y, w, h, tl, tr, br, bl)
+    }
+
+    public func linearGradient(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
+    ) {
+        _activeSketchContext?.linearGradient(x, y, w, h, c1, c2, axis: axis)
+    }
+
+    public func radialGradient(
+        _ cx: Float, _ cy: Float, _ radius: Float,
+        _ innerColor: Color, _ outerColor: Color,
+        segments: Int = 36
+    ) {
+        _activeSketchContext?.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
     }
 
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
@@ -545,6 +621,14 @@ extension Sketch {
 
     public func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000) {
         _activeSketchContext?.perspective(fov: fov, near: near, far: far)
+    }
+
+    public func ortho(
+        left: Float? = nil, right: Float? = nil,
+        bottom: Float? = nil, top: Float? = nil,
+        near: Float = -1000, far: Float = 1000
+    ) {
+        _activeSketchContext?.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far)
     }
 
     // MARK: 3D Lighting
@@ -689,6 +773,10 @@ extension Sketch {
 
     public func mesh(_ mesh: Mesh) {
         _activeSketchContext?.mesh(mesh)
+    }
+
+    public func loadModel(_ path: String) -> Mesh? {
+        _activeSketchContext?.loadModel(path)
     }
 
     // MARK: Compute

@@ -80,6 +80,12 @@ public final class MetaphorRenderer: NSObject {
     private var pendingSavePath: String?
     private var stagingTexture: MTLTexture?
 
+    // MARK: - Frame Export
+
+    /// フレームエクスポーター
+    public let frameExporter: FrameExporter = FrameExporter()
+    private var exportStagingTexture: MTLTexture?
+
     // MARK: - Initialization
 
     /// 初期化
@@ -155,6 +161,7 @@ public final class MetaphorRenderer: NSObject {
             height: height
         )
         stagingTexture = nil
+        exportStagingTexture = nil
         postProcessPipeline?.invalidateTextures()
     }
 
@@ -316,8 +323,29 @@ public final class MetaphorRenderer: NSObject {
         return tex
     }
 
+    /// フレームエクスポート用ステージングテクスチャを取得または作成
+    private func getOrCreateExportStagingTexture() -> MTLTexture {
+        if let existing = exportStagingTexture,
+           existing.width == textureManager.width,
+           existing.height == textureManager.height {
+            return existing
+        }
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: textureManager.width,
+            height: textureManager.height,
+            mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .managed
+        let tex = device.makeTexture(descriptor: desc)!
+        exportStagingTexture = tex
+        return tex
+    }
+
     /// PNG書き出し（completionHandler内から呼ぶためnonisolated static）
-    nonisolated private static func writePNG(
+    nonisolated static func writePNG(
         texture: MTLTexture, width: Int, height: Int, path: String
     ) {
         let bytesPerRow = width * 4
@@ -455,6 +483,18 @@ public final class MetaphorRenderer: NSObject {
                     texture: staging, width: width, height: height, path: path
                 )
             }
+        }
+
+        // フレームエクスポート（録画中なら毎フレーム）
+        if frameExporter.isRecording {
+            let exportStaging = getOrCreateExportStagingTexture()
+            frameExporter.captureFrame(
+                sourceTexture: outputTexture,
+                stagingTexture: exportStaging,
+                commandBuffer: commandBuffer,
+                width: textureManager.width,
+                height: textureManager.height
+            )
         }
 
         // Syphonに送信
