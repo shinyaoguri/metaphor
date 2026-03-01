@@ -68,6 +68,16 @@ final class TextRenderer {
         return result
     }
 
+    /// テキストの幅を計算（描画せずにサイズだけ取得）
+    func textWidth(string: String, fontSize: Float, fontFamily: String) -> Float {
+        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let attrString = NSAttributedString(string: string, attributes: attributes)
+        let line = CTLineCreateWithAttributedString(attrString)
+        let bounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
+        return Float(ceil(bounds.width))
+    }
+
     // MARK: - Private
 
     private func renderText(string: String, fontSize: Float, fontFamily: String) -> CachedText? {

@@ -81,6 +81,20 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             self?.handleCreateCanvas(width: width, height: height, config: config)
         }
 
+        // Animation Controlコールバック
+        context.onLoop = { [weak self] in
+            self?.handleLoop()
+        }
+        context.onNoLoop = { [weak self] in
+            self?.handleNoLoop()
+        }
+        context.onRedraw = { [weak self] in
+            self?.handleRedraw()
+        }
+        context.onFrameRate = { [weak self] fps in
+            self?.handleFrameRate(fps)
+        }
+
         // ウィンドウサイズ
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
@@ -171,6 +185,57 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // ウィンドウ表示
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        // フルスクリーン
+        if config.fullScreen {
+            window.toggleFullScreen(nil)
+        }
+    }
+
+    // MARK: - Animation Control
+
+    private func handleLoop() {
+        if let renderTimer {
+            renderTimer.resume()
+        } else {
+            mtkView?.isPaused = false
+        }
+    }
+
+    private func handleNoLoop() {
+        if let renderTimer {
+            renderTimer.suspend()
+        } else {
+            mtkView?.isPaused = true
+        }
+    }
+
+    private func handleRedraw() {
+        if renderTimer != nil {
+            // Syphon時: 1フレームだけレンダリング
+            renderer?.renderFrame()
+        } else {
+            // 通常時: MTKViewに1フレーム描画を要求
+            mtkView?.isPaused = false
+            DispatchQueue.main.async { [weak self] in
+                self?.mtkView?.isPaused = !(self?.context?.isLooping ?? true)
+            }
+        }
+    }
+
+    private func handleFrameRate(_ fps: Int) {
+        if let renderTimer {
+            // Syphon時: タイマーを再スケジュール
+            renderTimer.suspend()
+            let interval = 1.0 / Double(max(fps, 1))
+            renderTimer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
+            if context?.isLooping ?? true {
+                renderTimer.resume()
+            }
+        } else {
+            // 通常時: MTKViewのFPSを変更
+            mtkView?.preferredFramesPerSecond = fps
+        }
     }
 
     /// createCanvas()ハンドラ — テクスチャ・Canvas・ウィンドウを再構築

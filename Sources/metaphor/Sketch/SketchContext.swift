@@ -1,3 +1,4 @@
+import AppKit
 import Metal
 import simd
 
@@ -40,6 +41,57 @@ public final class SketchContext {
 
     /// Canvas3D（上級者向け）
     public private(set) var canvas3D: Canvas3D
+
+    // MARK: - Animation Control
+
+    /// ループ中かどうか
+    public private(set) var isLooping: Bool = true
+
+    /// loop() コールバック（SketchRunnerが設定）
+    var onLoop: (() -> Void)?
+
+    /// noLoop() コールバック（SketchRunnerが設定）
+    var onNoLoop: (() -> Void)?
+
+    /// redraw() コールバック（SketchRunnerが設定）
+    var onRedraw: (() -> Void)?
+
+    /// frameRate() コールバック（SketchRunnerが設定）
+    var onFrameRate: ((Int) -> Void)?
+
+    /// アニメーションを再開
+    public func loop() {
+        isLooping = true
+        onLoop?()
+    }
+
+    /// アニメーションを停止
+    public func noLoop() {
+        isLooping = false
+        onNoLoop?()
+    }
+
+    /// 1フレームだけ描画（noLoop時に使用）
+    public func redraw() {
+        onRedraw?()
+    }
+
+    /// フレームレートを動的に変更
+    public func frameRate(_ fps: Int) {
+        onFrameRate?(fps)
+    }
+
+    // MARK: - Cursor Control
+
+    /// カーソルを表示
+    public func cursor() {
+        NSCursor.unhide()
+    }
+
+    /// カーソルを非表示
+    public func noCursor() {
+        NSCursor.hide()
+    }
 
     // MARK: - Canvas Resize
 
@@ -109,6 +161,35 @@ public final class SketchContext {
         canvas.end()
     }
 
+    // MARK: - Shape Mode Settings
+
+    /// 矩形の座標解釈モードを設定
+    public func rectMode(_ mode: RectMode) {
+        canvas.rectMode(mode)
+    }
+
+    /// 楕円の座標解釈モードを設定
+    public func ellipseMode(_ mode: EllipseMode) {
+        canvas.ellipseMode(mode)
+    }
+
+    /// 画像の座標解釈モードを設定
+    public func imageMode(_ mode: ImageMode) {
+        canvas.imageMode(mode)
+    }
+
+    // MARK: - Color Mode
+
+    /// 色空間と最大値を設定
+    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
+        canvas.colorMode(space, max1, max2, max3, maxA)
+    }
+
+    /// 色空間と均一な最大値を設定
+    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
+        canvas.colorMode(space, maxAll)
+    }
+
     // MARK: - Background
 
     /// 背景を塗りつぶす
@@ -121,6 +202,11 @@ public final class SketchContext {
         canvas.background(gray)
     }
 
+    /// 背景色を設定（colorModeに従って解釈）
+    public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.background(v1, v2, v3, a)
+    }
+
     // MARK: - Style (2D + 3D共有)
 
     /// 塗りつぶし色を設定（2D/3D両方に反映）
@@ -129,10 +215,19 @@ public final class SketchContext {
         canvas3D.fill(color)
     }
 
-    /// 塗りつぶし色をRGBAで設定（2D/3D両方に反映）
-    public func fill(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
-        canvas.fill(r, g, b, a)
-        canvas3D.fill(r, g, b, a)
+    /// 塗りつぶし色を設定（colorModeに従って解釈、2D/3D両方に反映）
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.fill(v1, v2, v3, a)
+    }
+
+    /// グレースケールで塗りつぶし色を設定
+    public func fill(_ gray: Float) {
+        canvas.fill(gray)
+    }
+
+    /// グレースケール＋アルファで塗りつぶし色を設定
+    public func fill(_ gray: Float, _ alpha: Float) {
+        canvas.fill(gray, alpha)
     }
 
     /// 塗りつぶしなし（2Dのみ）
@@ -145,9 +240,19 @@ public final class SketchContext {
         canvas.stroke(color)
     }
 
-    /// 線の色をRGBAで設定（2Dのみ）
-    public func stroke(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
-        canvas.stroke(r, g, b, a)
+    /// 線の色を設定（colorModeに従って解釈、2Dのみ）
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.stroke(v1, v2, v3, a)
+    }
+
+    /// グレースケールで線の色を設定
+    public func stroke(_ gray: Float) {
+        canvas.stroke(gray)
+    }
+
+    /// グレースケール＋アルファで線の色を設定
+    public func stroke(_ gray: Float, _ alpha: Float) {
+        canvas.stroke(gray, alpha)
     }
 
     /// 線なし（2Dのみ）
@@ -165,6 +270,33 @@ public final class SketchContext {
         canvas.blendMode(mode)
     }
 
+    // MARK: - Tint
+
+    /// 画像のティント色を設定
+    public func tint(_ color: Color) {
+        canvas.tint(color)
+    }
+
+    /// 画像のティント色を設定（colorModeに従って解釈）
+    public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.tint(v1, v2, v3, a)
+    }
+
+    /// グレースケールでティント色を設定
+    public func tint(_ gray: Float) {
+        canvas.tint(gray)
+    }
+
+    /// グレースケール＋アルファでティント色を設定
+    public func tint(_ gray: Float, _ alpha: Float) {
+        canvas.tint(gray, alpha)
+    }
+
+    /// ティントを無効化
+    public func noTint() {
+        canvas.noTint()
+    }
+
     // MARK: - Image
 
     /// 画像を読み込み
@@ -172,9 +304,40 @@ public final class SketchContext {
         try MImage(path: path, device: renderer.device)
     }
 
+    /// 空の画像を作成（ピクセル操作用）
+    public func createImage(_ width: Int, _ height: Int) -> MImage? {
+        MImage.createImage(width, height, device: renderer.device)
+    }
+
+    /// 画像にフィルタを適用
+    public func filter(_ image: MImage, _ type: FilterType) {
+        ImageFilter.apply(type, to: image)
+    }
+
+    /// オフスクリーン描画バッファを作成
+    public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
+        try? Graphics(
+            device: renderer.device,
+            shaderLibrary: renderer.shaderLibrary,
+            depthStencilCache: renderer.depthStencilCache,
+            width: w,
+            height: h
+        )
+    }
+
     /// 画像を描画
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         canvas.image(img, x, y)
+    }
+
+    /// Graphicsバッファを描画
+    public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
+        canvas.image(pg.toImage(), x, y)
+    }
+
+    /// Graphicsバッファをサイズ指定で描画
+    public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.image(pg.toImage(), x, y, w, h)
     }
 
     /// 画像をサイズ指定で描画
@@ -197,6 +360,11 @@ public final class SketchContext {
     /// テキスト揃えを設定
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         canvas.textAlign(horizontal, vertical)
+    }
+
+    /// テキストの描画幅を取得
+    public func textWidth(_ string: String) -> Float {
+        canvas.textWidth(string)
     }
 
     /// テキストを描画
@@ -222,14 +390,24 @@ public final class SketchContext {
 
     // MARK: - 2D Transform Stack
 
-    /// 2Dトランスフォームを保存
+    /// 2Dトランスフォームとスタイルを保存
     public func push() {
         canvas.push()
     }
 
-    /// 2Dトランスフォームを復元
+    /// 2Dトランスフォームとスタイルを復元
     public func pop() {
         canvas.pop()
+    }
+
+    /// スタイル状態のみを保存
+    public func pushStyle() {
+        canvas.pushStyle()
+    }
+
+    /// スタイル状態のみを復元
+    public func popStyle() {
+        canvas.popStyle()
     }
 
     /// 2D平行移動
@@ -269,6 +447,21 @@ public final class SketchContext {
         canvas.circle(x, y, diameter)
     }
 
+    /// 正方形
+    public func square(_ x: Float, _ y: Float, _ size: Float) {
+        canvas.square(x, y, size)
+    }
+
+    /// 四辺形
+    public func quad(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        canvas.quad(x1, y1, x2, y2, x3, y3, x4, y4)
+    }
+
     /// 直線
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
         canvas.line(x1, y1, x2, y2)
@@ -292,9 +485,10 @@ public final class SketchContext {
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
-        _ startAngle: Float, _ stopAngle: Float
+        _ startAngle: Float, _ stopAngle: Float,
+        _ mode: ArcMode = .open
     ) {
-        canvas.arc(x, y, w, h, startAngle, stopAngle)
+        canvas.arc(x, y, w, h, startAngle, stopAngle, mode)
     }
 
     /// 3次ベジェ曲線
@@ -324,9 +518,43 @@ public final class SketchContext {
         canvas.vertex(x, y)
     }
 
+    /// ベジェ曲線の制御点と終点を追加
+    public func bezierVertex(
+        _ cx1: Float, _ cy1: Float,
+        _ cx2: Float, _ cy2: Float,
+        _ x: Float, _ y: Float
+    ) {
+        canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y)
+    }
+
+    /// Catmull-Romスプラインの頂点を追加
+    public func curveVertex(_ x: Float, _ y: Float) {
+        canvas.curveVertex(x, y)
+    }
+
+    /// カーブの分割数を設定
+    public func curveDetail(_ n: Int) {
+        canvas.curveDetail(n)
+    }
+
+    /// カーブの張り具合を設定
+    public func curveTightness(_ t: Float) {
+        canvas.curveTightness(t)
+    }
+
     /// 形状記録を終了して描画
     public func endShape(_ close: CloseMode = .open) {
         canvas.endShape(close)
+    }
+
+    /// Catmull-Romスプライン曲線
+    public func curve(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
     // MARK: - 3D Camera

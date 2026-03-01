@@ -145,3 +145,41 @@ public struct Color: Sendable, Equatable {
     public static let orange = Color(r: 1, g: 0.6, b: 0)
     public static let clear = Color(r: 0, g: 0, b: 0, a: 0)
 }
+
+// MARK: - Color Space
+
+/// 色空間
+public enum ColorSpace: Sendable {
+    case rgb
+    case hsb
+}
+
+// MARK: - Color Mode Config
+
+/// colorMode()の設定を保持する構造体
+///
+/// ユーザーが指定した値を正規化してColorに変換する。
+public struct ColorModeConfig: Sendable, Equatable {
+    public var space: ColorSpace = .rgb
+    public var max1: Float = 1.0   // R or H の最大値
+    public var max2: Float = 1.0   // G or S の最大値
+    public var max3: Float = 1.0   // B or B の最大値
+    public var maxAlpha: Float = 1.0
+
+    /// 3値+αからColorに変換
+    public func toColor(_ v1: Float, _ v2: Float, _ v3: Float, _ alpha: Float? = nil) -> Color {
+        let nA = (alpha ?? maxAlpha) / maxAlpha
+        switch space {
+        case .rgb:
+            return Color(r: v1 / max1, g: v2 / max2, b: v3 / max3, a: nA)
+        case .hsb:
+            return Color(hue: v1 / max1, saturation: v2 / max2, brightness: v3 / max3, alpha: nA)
+        }
+    }
+
+    /// グレースケール+αからColorに変換
+    public func toGray(_ gray: Float, _ alpha: Float? = nil) -> Color {
+        let nA = (alpha ?? maxAlpha) / maxAlpha
+        return Color(gray: gray / max1, alpha: nA)
+    }
+}

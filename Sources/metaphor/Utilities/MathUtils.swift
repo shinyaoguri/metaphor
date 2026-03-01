@@ -85,3 +85,37 @@ public func random(_ low: Float, _ high: Float) -> Float {
 public func randomSeed(_ seed: UInt64) {
     _seededRNG = SeededRandomNumberGenerator(seed: seed)
 }
+
+// MARK: - Bezier Math
+
+/// 3次ベジェ曲線上の点を返す
+public func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
+    let u = 1 - t
+    return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d
+}
+
+/// 3次ベジェ曲線の接線を返す
+public func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
+    let u = 1 - t
+    return 3 * u * u * (b - a) + 6 * u * t * (c - b) + 3 * t * t * (d - c)
+}
+
+// MARK: - Catmull-Rom Curve Math
+
+/// Catmull-Romスプライン上の点を返す
+public func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
+    let t2 = t * t
+    let t3 = t2 * t
+    return 0.5 * ((2 * b) +
+                   (-a + c) * t +
+                   (2 * a - 5 * b + 4 * c - d) * t2 +
+                   (-a + 3 * b - 3 * c + d) * t3)
+}
+
+/// Catmull-Romスプラインの接線を返す
+public func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
+    let t2 = t * t
+    return 0.5 * ((-a + c) +
+                   (4 * a - 10 * b + 8 * c - 2 * d) * t +
+                   (-3 * a + 9 * b - 9 * c + 3 * d) * t2)
+}

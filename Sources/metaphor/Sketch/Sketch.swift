@@ -108,6 +108,51 @@ extension Sketch {
         _activeSketchContext!.input
     }
 
+    /// マウスX座標
+    public var mouseX: Float {
+        _activeSketchContext?.input.mouseX ?? 0
+    }
+
+    /// マウスY座標
+    public var mouseY: Float {
+        _activeSketchContext?.input.mouseY ?? 0
+    }
+
+    /// 前フレームのマウスX座標
+    public var pmouseX: Float {
+        _activeSketchContext?.input.pmouseX ?? 0
+    }
+
+    /// 前フレームのマウスY座標
+    public var pmouseY: Float {
+        _activeSketchContext?.input.pmouseY ?? 0
+    }
+
+    /// マウスボタンが押されているか
+    public var isMousePressed: Bool {
+        _activeSketchContext?.input.isMouseDown ?? false
+    }
+
+    /// 押されているマウスボタン (0=左, 1=右, 2=中)
+    public var mouseButton: Int {
+        _activeSketchContext?.input.mouseButton ?? 0
+    }
+
+    /// キーが押されているか
+    public var isKeyPressed: Bool {
+        _activeSketchContext?.input.isKeyPressed ?? false
+    }
+
+    /// 最後に押されたキー
+    public var key: Character? {
+        _activeSketchContext?.input.lastKey
+    }
+
+    /// 最後に押されたキーコード
+    public var keyCode: UInt16? {
+        _activeSketchContext?.input.lastKeyCode
+    }
+
     /// 経過時間（秒）
     public var time: Float {
         _activeSketchContext?.time ?? 0
@@ -133,9 +178,62 @@ extension Sketch {
     }
 }
 
+// MARK: - Animation Control
+
+extension Sketch {
+    /// アニメーションループ中かどうか
+    public var isLooping: Bool {
+        _activeSketchContext?.isLooping ?? true
+    }
+
+    /// アニメーションを再開
+    public func loop() {
+        _activeSketchContext?.loop()
+    }
+
+    /// アニメーションを停止
+    public func noLoop() {
+        _activeSketchContext?.noLoop()
+    }
+
+    /// 1フレームだけ描画（noLoop時に使用）
+    public func redraw() {
+        _activeSketchContext?.redraw()
+    }
+
+    /// フレームレートを動的に変更
+    public func frameRate(_ fps: Int) {
+        _activeSketchContext?.frameRate(fps)
+    }
+}
+
 // MARK: - Drawing Methods (ctx省略用)
 
 extension Sketch {
+
+    // MARK: Shape Mode Settings
+
+    public func rectMode(_ mode: RectMode) {
+        _activeSketchContext?.rectMode(mode)
+    }
+
+    public func ellipseMode(_ mode: EllipseMode) {
+        _activeSketchContext?.ellipseMode(mode)
+    }
+
+    public func imageMode(_ mode: ImageMode) {
+        _activeSketchContext?.imageMode(mode)
+    }
+
+    // MARK: Color Mode
+
+    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
+        _activeSketchContext?.colorMode(space, max1, max2, max3, maxA)
+    }
+
+    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
+        _activeSketchContext?.colorMode(space, maxAll)
+    }
 
     // MARK: Background
 
@@ -147,14 +245,26 @@ extension Sketch {
         _activeSketchContext?.background(gray)
     }
 
+    public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        _activeSketchContext?.background(v1, v2, v3, a)
+    }
+
     // MARK: Style
 
     public func fill(_ color: Color) {
         _activeSketchContext?.fill(color)
     }
 
-    public func fill(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
-        _activeSketchContext?.fill(r, g, b, a)
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        _activeSketchContext?.fill(v1, v2, v3, a)
+    }
+
+    public func fill(_ gray: Float) {
+        _activeSketchContext?.fill(gray)
+    }
+
+    public func fill(_ gray: Float, _ alpha: Float) {
+        _activeSketchContext?.fill(gray, alpha)
     }
 
     public func noFill() {
@@ -165,8 +275,16 @@ extension Sketch {
         _activeSketchContext?.stroke(color)
     }
 
-    public func stroke(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
-        _activeSketchContext?.stroke(r, g, b, a)
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        _activeSketchContext?.stroke(v1, v2, v3, a)
+    }
+
+    public func stroke(_ gray: Float) {
+        _activeSketchContext?.stroke(gray)
+    }
+
+    public func stroke(_ gray: Float, _ alpha: Float) {
+        _activeSketchContext?.stroke(gray, alpha)
     }
 
     public func noStroke() {
@@ -181,10 +299,48 @@ extension Sketch {
         _activeSketchContext?.blendMode(mode)
     }
 
+    // MARK: Tint
+
+    public func tint(_ color: Color) {
+        _activeSketchContext?.tint(color)
+    }
+
+    public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        _activeSketchContext?.tint(v1, v2, v3, a)
+    }
+
+    public func tint(_ gray: Float) {
+        _activeSketchContext?.tint(gray)
+    }
+
+    public func tint(_ gray: Float, _ alpha: Float) {
+        _activeSketchContext?.tint(gray, alpha)
+    }
+
+    public func noTint() {
+        _activeSketchContext?.noTint()
+    }
+
     // MARK: Image
 
     public func loadImage(_ path: String) throws -> MImage {
         try _activeSketchContext!.loadImage(path)
+    }
+
+    public func createImage(_ width: Int, _ height: Int) -> MImage? {
+        _activeSketchContext?.createImage(width, height)
+    }
+
+    public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
+        _activeSketchContext?.createGraphics(w, h)
+    }
+
+    public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
+        _activeSketchContext?.image(pg, x, y)
+    }
+
+    public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        _activeSketchContext?.image(pg, x, y, w, h)
     }
 
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
@@ -213,6 +369,10 @@ extension Sketch {
         _activeSketchContext?.text(string, x, y)
     }
 
+    public func textWidth(_ string: String) -> Float {
+        _activeSketchContext?.textWidth(string) ?? 0
+    }
+
     // MARK: Screenshot
 
     public func save(_ path: String) {
@@ -231,6 +391,14 @@ extension Sketch {
 
     public func pop() {
         _activeSketchContext?.pop()
+    }
+
+    public func pushStyle() {
+        _activeSketchContext?.pushStyle()
+    }
+
+    public func popStyle() {
+        _activeSketchContext?.popStyle()
     }
 
     public func translate(_ x: Float, _ y: Float) {
@@ -263,6 +431,19 @@ extension Sketch {
         _activeSketchContext?.circle(x, y, diameter)
     }
 
+    public func square(_ x: Float, _ y: Float, _ size: Float) {
+        _activeSketchContext?.square(x, y, size)
+    }
+
+    public func quad(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        _activeSketchContext?.quad(x1, y1, x2, y2, x3, y3, x4, y4)
+    }
+
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
         _activeSketchContext?.line(x1, y1, x2, y2)
     }
@@ -282,9 +463,10 @@ extension Sketch {
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
-        _ startAngle: Float, _ stopAngle: Float
+        _ startAngle: Float, _ stopAngle: Float,
+        _ mode: ArcMode = .open
     ) {
-        _activeSketchContext?.arc(x, y, w, h, startAngle, stopAngle)
+        _activeSketchContext?.arc(x, y, w, h, startAngle, stopAngle, mode)
     }
 
     public func bezier(
@@ -308,6 +490,35 @@ extension Sketch {
 
     public func vertex(_ x: Float, _ y: Float) {
         _activeSketchContext?.vertex(x, y)
+    }
+
+    public func bezierVertex(
+        _ cx1: Float, _ cy1: Float,
+        _ cx2: Float, _ cy2: Float,
+        _ x: Float, _ y: Float
+    ) {
+        _activeSketchContext?.bezierVertex(cx1, cy1, cx2, cy2, x, y)
+    }
+
+    public func curveVertex(_ x: Float, _ y: Float) {
+        _activeSketchContext?.curveVertex(x, y)
+    }
+
+    public func curveDetail(_ n: Int) {
+        _activeSketchContext?.curveDetail(n)
+    }
+
+    public func curveTightness(_ t: Float) {
+        _activeSketchContext?.curveTightness(t)
+    }
+
+    public func curve(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        _activeSketchContext?.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
     public func endShape(_ close: CloseMode = .open) {
@@ -516,6 +727,20 @@ extension Sketch {
     }
 }
 
+// MARK: - Cursor Control
+
+extension Sketch {
+    /// カーソルを表示
+    public func cursor() {
+        _activeSketchContext?.cursor()
+    }
+
+    /// カーソルを非表示
+    public func noCursor() {
+        _activeSketchContext?.noCursor()
+    }
+}
+
 // MARK: - @main Entry Point
 
 extension Sketch {
@@ -547,13 +772,17 @@ public struct SketchConfig: Sendable {
     /// ウィンドウサイズのスケール（テクスチャサイズ × scale）
     public var windowScale: Float
 
+    /// フルスクリーンで起動
+    public var fullScreen: Bool
+
     public init(
         width: Int = 1920,
         height: Int = 1080,
         title: String = "metaphor",
         fps: Int = 60,
         syphonName: String? = nil,
-        windowScale: Float = 0.5
+        windowScale: Float = 0.5,
+        fullScreen: Bool = false
     ) {
         self.width = width
         self.height = height
@@ -561,5 +790,6 @@ public struct SketchConfig: Sendable {
         self.fps = fps
         self.syphonName = syphonName
         self.windowScale = windowScale
+        self.fullScreen = fullScreen
     }
 }

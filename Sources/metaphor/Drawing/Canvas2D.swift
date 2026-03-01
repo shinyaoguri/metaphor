@@ -1,6 +1,52 @@
 import Metal
 import simd
 
+// MARK: - Rect / Ellipse / Image Mode
+
+/// rect()の座標解釈モード
+public enum RectMode: Sendable {
+    /// x,y = 左上角、w,h = 幅と高さ（デフォルト）
+    case corner
+    /// x,y = 左上角、w,h = 右下角の座標
+    case corners
+    /// x,y = 中心、w,h = 幅と高さ
+    case center
+    /// x,y = 中心、w,h = 半幅と半高
+    case radius
+}
+
+/// ellipse()の座標解釈モード
+public enum EllipseMode: Sendable {
+    /// x,y = 中心、w,h = 幅と高さ（デフォルト）
+    case center
+    /// x,y = 中心、w,h = 半径
+    case radius
+    /// x,y = 左上角、w,h = 幅と高さ
+    case corner
+    /// x,y = 左上角、w,h = 右下角の座標
+    case corners
+}
+
+/// image()の座標解釈モード
+public enum ImageMode: Sendable {
+    /// x,y = 左上角（デフォルト）
+    case corner
+    /// x,y = 中心
+    case center
+    /// x,y = 左上角、w,h = 右下角の座標
+    case corners
+}
+
+/// arc()の描画モード
+public enum ArcMode: Sendable {
+    /// 弧のみ（端点を接続しない）
+    case open
+    /// 端点間を直線で接続
+    case chord
+    /// 端点から中心への線（パイ型）
+    case pie
+}
+
 // MARK: - Shape Mode
 
 /// beginShape()で使用する形状モード
@@ -86,6 +132,12 @@ public final class Canvas2D {
     private var hasFill: Bool = true
     private var hasStroke: Bool = true
     private var currentBlendMode: BlendMode = .alpha
+    private var currentRectMode: RectMode = .corner
+    private var currentEllipseMode: EllipseMode = .center
+    private var currentImageMode: ImageMode = .corner
+    private var colorModeConfig: ColorModeConfig = ColorModeConfig()
+    private var tintColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
+    private var hasTint: Bool = false
 
     // MARK: - Text State
 
@@ -96,19 +148,54 @@ public final class Canvas2D {
     private let textRenderer: TextRenderer
     private var frameCounter: Int = 0
 
+    // MARK: - Curve State
+
+    private var curveDetailCount: Int = 20
+    private var curveTightnessValue: Float = 0.0
+
     // MARK: - Shape Building State
+
+    private enum ShapeVertexType {
+        case normal(Float, Float)
+        case bezier(cx1: Float, cy1: Float, cx2: Float, cy2: Float, x: Float, y: Float)
+        case curve(Float, Float)
+    }
 
     private var isRecordingShape: Bool = false
     private var shapeMode: ShapeMode = .polygon
-    private var shapeVertices: [(Float, Float)] = {
-        var arr: [(Float, Float)] = []
+    private var shapeVertexList: [ShapeVertexType] = {
+        var arr: [ShapeVertexType] = []
         arr.reserveCapacity(64)
         return arr
     }()
 
-    // MARK: - Transform Stack
+    // MARK: - Style Snapshot (push/pop用)
 
-    private var transformStack: [float3x3] = []
+    private struct StyleState {
+        var transform: float3x3
+        var fillColor: SIMD4<Float>
+        var strokeColor: SIMD4<Float>
+        var strokeWeight: Float
+        var hasFill: Bool
+        var hasStroke: Bool
+        var blendMode: BlendMode
+        var rectMode: RectMode
+        var ellipseMode: EllipseMode
+        var imageMode: ImageMode
+        var colorModeConfig: ColorModeConfig
+        var tintColor: SIMD4<Float>
+        var hasTint: Bool
+        var textSize: Float
+        var fontFamily: String
+        var textAlignH: TextAlignH
+        var textAlignV: TextAlignV
+        var curveDetail: Int
+        var curveTightness: Float
+    }
+
+    // MARK: - Transform & Style Stack
+
+    private var stateStack: [StyleState] = []
     private var currentTransform: float3x3 = float3x3(1)
 
     // MARK: - Vertex Layout (packed, 24 bytes)
@@ -239,13 +326,21 @@ public final class Canvas2D {
         self.vertexCount = 0
         self.bufferOffset = 0
         self.currentTransform = float3x3(1)
-        self.transformStack.removeAll(keepingCapacity: true)
+        self.stateStack.removeAll(keepingCapacity: true)
         self.fillColor = SIMD4<Float>(1, 1, 1, 1)
         self.strokeColor = SIMD4<Float>(1, 1, 1, 1)
         self.currentStrokeWeight = 1.0
         self.hasFill = true
         self.hasStroke = true
         self.currentBlendMode = .alpha
+        self.currentRectMode = .corner
+        self.currentEllipseMode = .center
+        self.currentImageMode = .corner
+        self.colorModeConfig = ColorModeConfig()
+        self.tintColor = SIMD4<Float>(1, 1, 1, 1)
+        self.hasTint = false
+        self.curveDetailCount = 20
+        self.curveTightnessValue = 0.0
         self.currentTextSize = 32
         self.currentFontFamily = "Helvetica"
         self.currentTextAlignH = .left
@@ -289,6 +384,67 @@ public final class Canvas2D {
         }
     }
 
+    // MARK: - Shape Mode Settings
+
+    /// 矩形の座標解釈モードを設定
+    public func rectMode(_ mode: RectMode) {
+        currentRectMode = mode
+    }
+
+    /// 楕円の座標解釈モードを設定
+    public func ellipseMode(_ mode: EllipseMode) {
+        currentEllipseMode = mode
+    }
+
+    /// 画像の座標解釈モードを設定
+    public func imageMode(_ mode: ImageMode) {
+        currentImageMode = mode
+    }
+
+    // MARK: - Color Mode
+
+    /// 色空間と最大値を設定
+    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
+        colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxA)
+    }
+
+    /// 色空間と均一な最大値を設定
+    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
+        colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
+    }
+
+    // MARK: - Tint
+
+    /// 画像のティント色を設定
+    public func tint(_ color: Color) {
+        tintColor = color.simd
+        hasTint = true
+    }
+
+    /// 画像のティント色を設定（colorModeに従って解釈）
+    public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        tintColor = colorModeConfig.toColor(v1, v2, v3, a).simd
+        hasTint = true
+    }
+
+    /// グレースケールでティント色を設定
+    public func tint(_ gray: Float) {
+        tintColor = colorModeConfig.toGray(gray).simd
+        hasTint = true
+    }
+
+    /// グレースケール＋アルファでティント色を設定
+    public func tint(_ gray: Float, _ alpha: Float) {
+        tintColor = colorModeConfig.toGray(gray, alpha).simd
+        hasTint = true
+    }
+
+    /// ティントを無効化
+    public func noTint() {
+        tintColor = SIMD4<Float>(1, 1, 1, 1)
+        hasTint = false
+    }
+
     // MARK: - Style
 
     /// 塗りつぶし色を設定
@@ -297,9 +453,21 @@ public final class Canvas2D {
         hasFill = true
     }
 
-    /// 塗りつぶし色をSIMDで設定
-    public func fill(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
-        fillColor = SIMD4<Float>(r, g, b, a)
+    /// 塗りつぶし色を設定（colorModeに従って解釈）
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
+        hasFill = true
+    }
+
+    /// グレースケールで塗りつぶし色を設定
+    public func fill(_ gray: Float) {
+        fillColor = colorModeConfig.toGray(gray).simd
+        hasFill = true
+    }
+
+    /// グレースケール＋アルファで塗りつぶし色を設定
+    public func fill(_ gray: Float, _ alpha: Float) {
+        fillColor = colorModeConfig.toGray(gray, alpha).simd
         hasFill = true
     }
 
@@ -314,9 +482,21 @@ public final class Canvas2D {
         hasStroke = true
     }
 
-    /// 線の色をSIMDで設定
-    public func stroke(_ r: Float, _ g: Float, _ b: Float, _ a: Float = 1.0) {
-        strokeColor = SIMD4<Float>(r, g, b, a)
+    /// 線の色を設定（colorModeに従って解釈）
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        strokeColor = colorModeConfig.toColor(v1, v2, v3, a).simd
+        hasStroke = true
+    }
+
+    /// グレースケールで線の色を設定
+    public func stroke(_ gray: Float) {
+        strokeColor = colorModeConfig.toGray(gray).simd
+        hasStroke = true
+    }
+
+    /// グレースケール＋アルファで線の色を設定
+    public func stroke(_ gray: Float, _ alpha: Float) {
+        strokeColor = colorModeConfig.toGray(gray, alpha).simd
         hasStroke = true
     }
 
@@ -346,21 +526,78 @@ public final class Canvas2D {
 
     /// グレースケール背景
     public func background(_ gray: Float) {
-        background(Color(gray: gray))
+        background(colorModeConfig.toGray(gray))
+    }
+
+    /// 背景色を設定（colorModeに従って解釈）
+    public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        background(colorModeConfig.toColor(v1, v2, v3, a))
     }
 
     // MARK: - Transform Stack
 
-    /// 現在のトランスフォームを保存
+    /// 現在のトランスフォームとスタイルを保存（Processing互換）
     public func push() {
-        transformStack.append(currentTransform)
+        stateStack.append(StyleState(
+            transform: currentTransform,
+            fillColor: fillColor,
+            strokeColor: strokeColor,
+            strokeWeight: currentStrokeWeight,
+            hasFill: hasFill,
+            hasStroke: hasStroke,
+            blendMode: currentBlendMode,
+            rectMode: currentRectMode,
+            ellipseMode: currentEllipseMode,
+            imageMode: currentImageMode,
+            colorModeConfig: colorModeConfig,
+            tintColor: tintColor,
+            hasTint: hasTint,
+            textSize: currentTextSize,
+            fontFamily: currentFontFamily,
+            textAlignH: currentTextAlignH,
+            textAlignV: currentTextAlignV,
+            curveDetail: curveDetailCount,
+            curveTightness: curveTightnessValue
+        ))
     }
 
-    /// 保存したトランスフォームを復元
+    /// 保存したトランスフォームとスタイルを復元（Processing互換）
     public func pop() {
-        if let saved = transformStack.popLast() {
-            currentTransform = saved
+        guard let saved = stateStack.popLast() else { return }
+        let prevBlendMode = currentBlendMode
+        currentTransform = saved.transform
+        fillColor = saved.fillColor
+        strokeColor = saved.strokeColor
+        currentStrokeWeight = saved.strokeWeight
+        hasFill = saved.hasFill
+        hasStroke = saved.hasStroke
+        currentBlendMode = saved.blendMode
+        currentRectMode = saved.rectMode
+        currentEllipseMode = saved.ellipseMode
+        currentImageMode = saved.imageMode
+        colorModeConfig = saved.colorModeConfig
+        tintColor = saved.tintColor
+        hasTint = saved.hasTint
+        currentTextSize = saved.textSize
+        currentFontFamily = saved.fontFamily
+        currentTextAlignH = saved.textAlignH
+        currentTextAlignV = saved.textAlignV
+        curveDetailCount = saved.curveDetail
+        curveTightnessValue = saved.curveTightness
+        // ブレンドモードが変わった場合はフラッシュ
+        if prevBlendMode != currentBlendMode {
+            flush()
         }
+    }
+
+    /// スタイル状態のみを保存（トランスフォームは含まない）
+    public func pushStyle() {
+        push()
+    }
+
+    /// スタイル状態のみを復元
+    public func popStyle() {
+        pop()
     }
 
     /// 平行移動
@@ -402,45 +639,92 @@ public final class Canvas2D {
 
     // MARK: - Shapes
 
-    /// 矩形 (x, y は左上角)
+    /// 矩形（座標解釈はrectModeに依存）
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        // RectModeに応じて左上角(rx, ry)と幅高(rw, rh)を算出
+        let rx: Float, ry: Float, rw: Float, rh: Float
+        switch currentRectMode {
+        case .corner:
+            rx = x; ry = y; rw = w; rh = h
+        case .corners:
+            rx = min(x, w); ry = min(y, h); rw = abs(w - x); rh = abs(h - y)
+        case .center:
+            rx = x - w / 2; ry = y - h / 2; rw = w; rh = h
+        case .radius:
+            rx = x - w; ry = y - h; rw = w * 2; rh = h * 2
+        }
         if hasFill {
-            addTriangle(x, y, x + w, y, x + w, y + h, fillColor)
-            addTriangle(x, y, x + w, y + h, x, y + h, fillColor)
+            addTriangle(rx, ry, rx + rw, ry, rx + rw, ry + rh, fillColor)
+            addTriangle(rx, ry, rx + rw, ry + rh, rx, ry + rh, fillColor)
         }
         if hasStroke {
-            strokeLine(x, y, x + w, y)
-            strokeLine(x + w, y, x + w, y + h)
-            strokeLine(x + w, y + h, x, y + h)
-            strokeLine(x, y + h, x, y)
+            strokeLine(rx, ry, rx + rw, ry)
+            strokeLine(rx + rw, ry, rx + rw, ry + rh)
+            strokeLine(rx + rw, ry + rh, rx, ry + rh)
+            strokeLine(rx, ry + rh, rx, ry)
         }
     }
 
-    /// 楕円 (x, y は中心)
+    /// 矩形のショートカット（正方形）
+    public func square(_ x: Float, _ y: Float, _ size: Float) {
+        rect(x, y, size, size)
+    }
+
+    /// 四辺形
+    public func quad(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        if hasFill {
+            addTriangle(x1, y1, x2, y2, x3, y3, fillColor)
+            addTriangle(x1, y1, x3, y3, x4, y4, fillColor)
+        }
+        if hasStroke {
+            strokeLine(x1, y1, x2, y2)
+            strokeLine(x2, y2, x3, y3)
+            strokeLine(x3, y3, x4, y4)
+            strokeLine(x4, y4, x1, y1)
+        }
+    }
+
+    /// 楕円（座標解釈はellipseModeに依存）
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        let rx = w * 0.5
-        let ry = h * 0.5
+        // EllipseModeに応じて中心(cx, cy)と半径(rx, ry)を算出
+        let cx: Float, cy: Float, rx: Float, ry: Float
+        switch currentEllipseMode {
+        case .center:
+            cx = x; cy = y; rx = w * 0.5; ry = h * 0.5
+        case .radius:
+            cx = x; cy = y; rx = w; ry = h
+        case .corner:
+            rx = w * 0.5; ry = h * 0.5; cx = x + rx; cy = y + ry
+        case .corners:
+            rx = abs(w - x) * 0.5; ry = abs(h - y) * 0.5
+            cx = min(x, w) + rx; cy = min(y, h) + ry
+        }
         let step = Float.pi * 2.0 / Float(ellipseSegments)
 
         if hasFill {
             for i in 0..<ellipseSegments {
                 let a0 = step * Float(i)
                 let a1 = step * Float(i + 1)
-                let px0 = x + rx * cos(a0)
-                let py0 = y + ry * sin(a0)
-                let px1 = x + rx * cos(a1)
-                let py1 = y + ry * sin(a1)
-                addTriangle(x, y, px0, py0, px1, py1, fillColor)
+                let px0 = cx + rx * cos(a0)
+                let py0 = cy + ry * sin(a0)
+                let px1 = cx + rx * cos(a1)
+                let py1 = cy + ry * sin(a1)
+                addTriangle(cx, cy, px0, py0, px1, py1, fillColor)
             }
         }
         if hasStroke {
             for i in 0..<ellipseSegments {
                 let a0 = step * Float(i)
                 let a1 = step * Float(i + 1)
-                let px0 = x + rx * cos(a0)
-                let py0 = y + ry * sin(a0)
-                let px1 = x + rx * cos(a1)
-                let py1 = y + ry * sin(a1)
+                let px0 = cx + rx * cos(a0)
+                let py0 = cy + ry * sin(a0)
+                let px1 = cx + rx * cos(a1)
+                let py1 = cy + ry * sin(a1)
                 strokeLine(px0, py0, px1, py1)
             }
         }
@@ -498,7 +782,8 @@ public final class Canvas2D {
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
-        _ startAngle: Float, _ stopAngle: Float
+        _ startAngle: Float, _ stopAngle: Float,
+        _ mode: ArcMode = .open
     ) {
         let rx = w * 0.5
         let ry = h * 0.5
@@ -518,6 +803,7 @@ public final class Canvas2D {
             }
         }
         if hasStroke {
+            // 弧のストローク
             for i in 0..<segments {
                 let a0 = startAngle + step * Float(i)
                 let a1 = startAngle + step * Float(i + 1)
@@ -526,6 +812,20 @@ public final class Canvas2D {
                 let px1 = x + rx * cos(a1)
                 let py1 = y + ry * sin(a1)
                 strokeLine(px0, py0, px1, py1)
+            }
+            // モード別の追加ストローク
+            let firstX = x + rx * cos(startAngle)
+            let firstY = y + ry * sin(startAngle)
+            let lastX = x + rx * cos(stopAngle)
+            let lastY = y + ry * sin(stopAngle)
+            switch mode {
+            case .open:
+                break
+            case .chord:
+                strokeLine(lastX, lastY, firstX, firstY)
+            case .pie:
+                strokeLine(firstX, firstY, x, y)
+                strokeLine(x, y, lastX, lastY)
             }
         }
     }
@@ -558,6 +858,28 @@ public final class Canvas2D {
         }
     }
 
+    /// Catmull-Romスプライン曲線（4点: 制御点1, 開始点, 終了点, 制御点2）
+    public func curve(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        guard hasStroke else { return }
+        let segments = curveDetailCount
+        var prevX = x2
+        var prevY = y2
+
+        for i in 1...segments {
+            let t = Float(i) / Float(segments)
+            let px = curvePoint(x1, x2, x3, x4, t)
+            let py = curvePoint(y1, y2, y3, y4, t)
+            strokeLine(prevX, prevY, px, py)
+            prevX = px
+            prevY = py
+        }
+    }
+
     /// 点（小さい円として描画）
     public func point(_ x: Float, _ y: Float) {
         let r = currentStrokeWeight * 0.5
@@ -578,9 +900,18 @@ public final class Canvas2D {
         image(img, x, y, img.width, img.height)
     }
 
-    /// 画像をサイズ指定で描画（fillColorでティント）
+    /// 画像をサイズ指定で描画（座標解釈はimageModeに依存）
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        drawTexturedQuad(texture: img.texture, x: x, y: y, w: w, h: h)
+        let dx: Float, dy: Float, dw: Float, dh: Float
+        switch currentImageMode {
+        case .corner:
+            dx = x; dy = y; dw = w; dh = h
+        case .center:
+            dx = x - w / 2; dy = y - h / 2; dw = w; dh = h
+        case .corners:
+            dx = min(x, w); dy = min(y, h); dw = abs(w - x); dh = abs(h - y)
+        }
+        drawTexturedQuad(texture: img.texture, x: dx, y: dy, w: dw, h: dh)
     }
 
     // MARK: - Text
@@ -599,6 +930,11 @@ public final class Canvas2D {
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         currentTextAlignH = horizontal
         currentTextAlignV = vertical
+    }
+
+    /// テキストの描画幅を取得
+    public func textWidth(_ string: String) -> Float {
+        textRenderer.textWidth(string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
     /// テキストを描画
@@ -634,13 +970,39 @@ public final class Canvas2D {
     public func beginShape(_ mode: ShapeMode = .polygon) {
         isRecordingShape = true
         shapeMode = mode
-        shapeVertices.removeAll(keepingCapacity: true)
+        shapeVertexList.removeAll(keepingCapacity: true)
     }
 
     /// 形状に頂点を追加（beginShape〜endShape間で使用）
     public func vertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
-        shapeVertices.append((x, y))
+        shapeVertexList.append(.normal(x, y))
+    }
+
+    /// 3次ベジェ曲線の制御点と終点を追加（beginShape〜endShape間で使用）
+    public func bezierVertex(
+        _ cx1: Float, _ cy1: Float,
+        _ cx2: Float, _ cy2: Float,
+        _ x: Float, _ y: Float
+    ) {
+        guard isRecordingShape else { return }
+        shapeVertexList.append(.bezier(cx1: cx1, cy1: cy1, cx2: cx2, cy2: cy2, x: x, y: y))
+    }
+
+    /// Catmull-Romスプラインの頂点を追加（beginShape〜endShape間で使用）
+    public func curveVertex(_ x: Float, _ y: Float) {
+        guard isRecordingShape else { return }
+        shapeVertexList.append(.curve(x, y))
+    }
+
+    /// カーブの分割数を設定
+    public func curveDetail(_ n: Int) {
+        curveDetailCount = max(1, n)
+    }
+
+    /// カーブの張り具合を設定（-5.0〜5.0、0.0がCatmull-Rom）
+    public func curveTightness(_ t: Float) {
+        curveTightnessValue = t
     }
 
     /// 形状記録を終了してテッセレーション・描画
@@ -648,7 +1010,10 @@ public final class Canvas2D {
         guard isRecordingShape else { return }
         isRecordingShape = false
 
-        let verts = shapeVertices
+        guard !shapeVertexList.isEmpty else { return }
+
+        // カーブ/ベジェ頂点を展開して(Float, Float)に変換
+        let verts = expandShapeVertices()
         guard !verts.isEmpty else { return }
 
         switch shapeMode {
@@ -665,6 +1030,98 @@ public final class Canvas2D {
         case .triangleFan:
             drawTriangleFanShape(verts)
         }
+    }
+
+    /// ShapeVertexType配列を展開して(Float, Float)の配列に変換
+    private func expandShapeVertices() -> [(Float, Float)] {
+        var result: [(Float, Float)] = []
+        result.reserveCapacity(shapeVertexList.count * 4)
+
+        // カーブ頂点だけを集めてバッチ処理
+        var curvePoints: [(Float, Float)] = []
+        var hasCurves = false
+        var hasBeziers = false
+
+        for v in shapeVertexList {
+            switch v {
+            case .curve: hasCurves = true
+            case .bezier: hasBeziers = true
+            case .normal: break
+            }
+        }
+
+        if !hasCurves && !hasBeziers {
+            // 最適化: 全部normalなら直接変換
+            for v in shapeVertexList {
+                if case .normal(let x, let y) = v {
+                    result.append((x, y))
+                }
+            }
+            return result
+        }
+
+        // カーブ頂点がある場合: curve頂点をまとめて展開
+        if hasCurves {
+            for v in shapeVertexList {
+                if case .curve(let x, let y) = v {
+                    curvePoints.append((x, y))
+                }
+            }
+            // Catmull-Romは4点必要。最初と最後は制御点。
+            if curvePoints.count >= 4 {
+                let s = (1 - curveTightnessValue) / 2
+                for i in 1..<(curvePoints.count - 2) {
+                    let p0 = curvePoints[i - 1]
+                    let p1 = curvePoints[i]
+                    let p2 = curvePoints[i + 1]
+                    let p3 = curvePoints[i + 2]
+                    if i == 1 { result.append(p1) }
+                    for step in 1...curveDetailCount {
+                        let t = Float(step) / Float(curveDetailCount)
+                        let t2 = t * t
+                        let t3 = t2 * t
+                        let x = s * ((-p0.0 + 3 * p1.0 - 3 * p2.0 + p3.0) * t3
+                                    + (2 * p0.0 - 5 * p1.0 + 4 * p2.0 - p3.0) * t2
+                                    + (-p0.0 + p2.0) * t
+                                    + 2 * p1.0) / 1.0
+                            + (1 - s) * curvePointLinear(p1.0, p2.0, t)
+                        let y = s * ((-p0.1 + 3 * p1.1 - 3 * p2.1 + p3.1) * t3
+                                    + (2 * p0.1 - 5 * p1.1 + 4 * p2.1 - p3.1) * t2
+                                    + (-p0.1 + p2.1) * t
+                                    + 2 * p1.1) / 1.0
+                            + (1 - s) * curvePointLinear(p1.1, p2.1, t)
+                        result.append((x, y))
+                    }
+                }
+            }
+            return result
+        }
+
+        // ベジェ頂点がある場合: normal + bezier を順に展開
+        var lastX: Float = 0, lastY: Float = 0
+        for v in shapeVertexList {
+            switch v {
+            case .normal(let x, let y):
+                result.append((x, y))
+                lastX = x; lastY = y
+            case .bezier(let cx1, let cy1, let cx2, let cy2, let x, let y):
+                let segments = curveDetailCount
+                for step in 1...segments {
+                    let t = Float(step) / Float(segments)
+                    let px = bezierPoint(lastX, cx1, cx2, x, t)
+                    let py = bezierPoint(lastY, cy1, cy2, y, t)
+                    result.append((px, py))
+                }
+                lastX = x; lastY = y
+            case .curve:
+                break // カーブとベジェの混在はカーブ側で処理済み
+            }
+        }
+        return result
+    }
+
+    private func curvePointLinear(_ a: Float, _ b: Float, _ t: Float) -> Float {
+        a + (b - a) * t
     }
 
     // MARK: - Private: Shape Tessellation
@@ -840,7 +1297,7 @@ public final class Canvas2D {
         // 現在の頂点カラージオメトリをフラッシュ
         flush()
 
-        let tint = hasFill ? fillColor : SIMD4<Float>(1, 1, 1, 1)
+        let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
         let p0 = currentTransform * SIMD3<Float>(x, y, 1)
         let p1 = currentTransform * SIMD3<Float>(x + w, y, 1)
         let p2 = currentTransform * SIMD3<Float>(x + w, y + h, 1)
