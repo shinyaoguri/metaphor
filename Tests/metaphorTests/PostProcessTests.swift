@@ -250,7 +250,8 @@ struct CustomPostEffectPipelineTests {
         )
         custom.intensity = 0.5
 
-        let pipeline = try PostProcessPipeline(device: device, shaderLibrary: shaderLib)
+        let queue = device.makeCommandQueue()!
+        let pipeline = try PostProcessPipeline(device: device, commandQueue: queue, shaderLibrary: shaderLib)
         pipeline.add(.custom(custom))
 
         #expect(pipeline.effects.count == 1)

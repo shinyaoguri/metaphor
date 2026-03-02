@@ -33,6 +33,14 @@ public final class Canvas2D {
     private let verticesArray: [UnsafeMutablePointer<Vertex2D>]
     private var currentBufferIndex: Int = 0
 
+    /// テクスチャ付きトリプルバッファ
+    private let texturedVertexBuffers: [MTLBuffer]
+    private let texturedVerticesArray: [UnsafeMutablePointer<TexturedVertex2D>]
+    var texturedVertexCount: Int = 0
+    var texturedBufferOffset: Int = 0
+    var currentBoundTexture: MTLTexture?
+    let maxTexturedVertices: Int = 65536
+
     /// 現在のバッファの頂点ポインタ
     var vertices: UnsafeMutablePointer<Vertex2D> {
         verticesArray[currentBufferIndex]
@@ -41,6 +49,16 @@ public final class Canvas2D {
     /// 現在のバッファ
     var vertexBuffer: MTLBuffer {
         vertexBuffers[currentBufferIndex]
+    }
+
+    /// 現在のテクスチャバッファの頂点ポインタ
+    var texturedVertices: UnsafeMutablePointer<TexturedVertex2D> {
+        texturedVerticesArray[currentBufferIndex]
+    }
+
+    /// 現在のテクスチャバッファ
+    private var texturedVertexBuffer: MTLBuffer {
+        texturedVertexBuffers[currentBufferIndex]
     }
 
     // MARK: - Dimensions
@@ -230,6 +248,20 @@ public final class Canvas2D {
         self.vertexBuffers = buffers
         self.verticesArray = pointers
 
+        // テクスチャ付きトリプル頂点バッファ
+        let texBufSize = 65536 * MemoryLayout<TexturedVertex2D>.stride
+        var texBuffers: [MTLBuffer] = []
+        var texPointers: [UnsafeMutablePointer<TexturedVertex2D>] = []
+        for _ in 0..<Self.bufferCount {
+            guard let buffer = device.makeBuffer(length: texBufSize, options: .storageModeShared) else {
+                throw Canvas2DError.bufferCreationFailed
+            }
+            texBuffers.append(buffer)
+            texPointers.append(buffer.contents().bindMemory(to: TexturedVertex2D.self, capacity: 65536))
+        }
+        self.texturedVertexBuffers = texBuffers
+        self.texturedVerticesArray = texPointers
+
         // カラーパイプライン（全BlendMode分）
         let vertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas2DVertex,
@@ -330,6 +362,9 @@ public final class Canvas2D {
         self.currentBufferIndex = bufferIndex % Self.bufferCount
         self.vertexCount = 0
         self.bufferOffset = 0
+        self.texturedVertexCount = 0
+        self.texturedBufferOffset = 0
+        self.currentBoundTexture = nil
         self.currentTransform = float3x3(1)
         self.stateStack.removeAll(keepingCapacity: true)
         self.fillColor = SIMD4<Float>(1, 1, 1, 1)
@@ -363,8 +398,14 @@ public final class Canvas2D {
         encoder = nil
     }
 
-    /// 蓄積した頂点を描画（バッファをリセット）
+    /// 蓄積した全頂点を描画（カラー＋テクスチャ両方）
     public func flush() {
+        flushColorVertices()
+        flushTexturedVertices()
+    }
+
+    /// カラー頂点のみフラッシュ
+    func flushColorVertices() {
         guard let encoder = encoder, vertexCount > 0 else { return }
 
         guard let pipeline = pipelineStates[currentBlendMode] else { return }
@@ -381,6 +422,28 @@ public final class Canvas2D {
         encoder.drawPrimitives(type: .triangle, vertexStart: bufferOffset, vertexCount: vertexCount)
         bufferOffset += vertexCount
         vertexCount = 0
+    }
+
+    /// テクスチャ付き頂点のみフラッシュ
+    func flushTexturedVertices() {
+        guard let encoder = encoder, texturedVertexCount > 0 else { return }
+        guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
+        guard let texture = currentBoundTexture else { return }
+
+        encoder.setRenderPipelineState(texPipeline)
+        if let depthState = depthStencilState {
+            encoder.setDepthStencilState(depthState)
+        }
+        encoder.setCullMode(.none)
+        encoder.setVertexBuffer(texturedVertexBuffer, offset: 0, index: 0)
+
+        var proj = projectionMatrix
+        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
+        encoder.setFragmentTexture(texture, index: 0)
+
+        encoder.drawPrimitives(type: .triangle, vertexStart: texturedBufferOffset, vertexCount: texturedVertexCount)
+        texturedBufferOffset += texturedVertexCount
+        texturedVertexCount = 0
     }
 
     // MARK: - Blend Mode

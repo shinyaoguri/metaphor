@@ -1268,6 +1268,92 @@ extension Sketch {
     }
 }
 
+// MARK: - CoreML / Vision
+
+extension Sketch {
+    /// CoreML モデルラッパーを作成
+    public func createMLProcessor() -> MLProcessor {
+        activeContext().createMLProcessor()
+    }
+
+    /// Vision フレームワークラッパーを作成
+    public func createVision() -> MLVision {
+        activeContext().createVision()
+    }
+
+    /// スタイル転送ラッパーを作成
+    public func createStyleTransfer() -> MLStyleTransfer {
+        activeContext().createStyleTransfer()
+    }
+
+    /// CoreML モデルを読み込む
+    public func loadMLModel(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
+        try activeContext().loadMLModel(path, computeUnit: computeUnit)
+    }
+
+    /// バンドルリソースから CoreML モデルを読み込む
+    public func loadMLModel(named name: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
+        try activeContext().loadMLModel(named: name, computeUnit: computeUnit)
+    }
+
+    /// スタイル転送モデルを読み込む
+    public func loadStyleTransfer(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLStyleTransfer {
+        try activeContext().loadStyleTransfer(path, computeUnit: computeUnit)
+    }
+
+    /// テクスチャコンバーター（上級者向け）
+    public func createMLTextureConverter() -> MLTextureConverter {
+        activeContext().createMLTextureConverter()
+    }
+}
+
+// MARK: - GameplayKit Noise
+
+extension Sketch {
+    /// GameplayKit ノイズジェネレーターを作成
+    public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper {
+        activeContext().createNoise(type, config: config)
+    }
+
+    /// ノイズテクスチャを生成（便利メソッド）
+    public func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage? {
+        activeContext().noiseTexture(type, width: width, height: height, config: config)
+    }
+}
+
+// MARK: - MPS
+
+extension Sketch {
+    /// MPS 画像フィルタを作成
+    public func createMPSFilter() -> MPSImageFilterWrapper {
+        activeContext().createMPSFilter()
+    }
+
+    /// MPS レイトレーサーを作成
+    public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
+        try activeContext().createRayTracer(width: width, height: height)
+    }
+}
+
+// MARK: - CoreImage Filter
+
+extension Sketch {
+    /// CoreImage フィルタを MImage に適用（プリセット）
+    public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
+        activeContext().ciFilter(image, preset)
+    }
+
+    /// CoreImage フィルタを MImage に適用（フィルタ名直接指定）
+    public func ciFilter(_ image: MImage, name: String, parameters: [String: Any] = [:]) {
+        activeContext().ciFilter(image, name: name, parameters: parameters)
+    }
+
+    /// CoreImage ジェネレーターフィルタで画像を生成
+    public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
+        activeContext().ciGenerate(preset, width: width, height: height)
+    }
+}
+
 // MARK: - @main Entry Point
 
 extension Sketch {

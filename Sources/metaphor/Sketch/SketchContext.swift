@@ -184,7 +184,7 @@ public final class SketchContext {
         self.deltaTime = deltaTime
         self.frameCount += 1
         tweenManager.update(deltaTime)
-        canvas3D.begin(encoder: encoder, time: time)
+        canvas3D.begin(encoder: encoder, time: time, bufferIndex: renderer.frameBufferIndex)
         canvas.begin(encoder: encoder, bufferIndex: renderer.frameBufferIndex)
     }
 
@@ -1567,6 +1567,7 @@ public final class SketchContext {
             input,
             effects: effects,
             device: renderer.device,
+            commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary
         )
     }
@@ -1590,5 +1591,113 @@ public final class SketchContext {
     /// - Parameter graph: RenderGraph（nil で解除）
     public func setRenderGraph(_ graph: RenderGraph?) {
         renderer.renderGraph = graph
+    }
+
+    // MARK: - CoreML / Vision
+
+    /// CoreML モデルラッパーを作成
+    public func createMLProcessor() -> MLProcessor {
+        MLProcessor(device: renderer.device, commandQueue: renderer.commandQueue)
+    }
+
+    /// Vision フレームワークラッパーを作成
+    public func createVision() -> MLVision {
+        MLVision(device: renderer.device, commandQueue: renderer.commandQueue)
+    }
+
+    /// スタイル転送ラッパーを作成
+    public func createStyleTransfer() -> MLStyleTransfer {
+        MLStyleTransfer(device: renderer.device, commandQueue: renderer.commandQueue)
+    }
+
+    /// CoreML モデルを読み込んで MLProcessor を返す
+    public func loadMLModel(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
+        let processor = createMLProcessor()
+        processor.computeUnit = computeUnit
+        try processor.load(path)
+        return processor
+    }
+
+    /// バンドルリソースから CoreML モデルを読み込む
+    public func loadMLModel(named name: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
+        let processor = createMLProcessor()
+        processor.computeUnit = computeUnit
+        try processor.load(named: name)
+        return processor
+    }
+
+    /// スタイル転送モデルを読み込む
+    public func loadStyleTransfer(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLStyleTransfer {
+        let st = createStyleTransfer()
+        try st.load(path, computeUnit: computeUnit)
+        return st
+    }
+
+    /// テクスチャコンバーター（上級者向け）
+    public func createMLTextureConverter() -> MLTextureConverter {
+        MLTextureConverter(device: renderer.device, commandQueue: renderer.commandQueue)
+    }
+
+    // MARK: - GameplayKit Noise
+
+    /// GameplayKit ノイズジェネレーターを作成
+    public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper {
+        GKNoiseWrapper(type: type, config: config, device: renderer.device)
+    }
+
+    /// ノイズテクスチャを生成（便利メソッド）
+    public func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage? {
+        let noise = GKNoiseWrapper(type: type, config: config, device: renderer.device)
+        return noise.image(width: width, height: height)
+    }
+
+    // MARK: - MPS Image Filter
+
+    /// MPS 画像フィルタを作成
+    public func createMPSFilter() -> MPSImageFilterWrapper {
+        MPSImageFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
+    }
+
+    /// MPS レイトレーサーを作成
+    public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
+        try MPSRayTracer(device: renderer.device, commandQueue: renderer.commandQueue, width: width, height: height)
+    }
+
+    // MARK: - CoreImage Filter
+
+    private var _ciFilterWrapper: CIFilterWrapper?
+
+    private func ensureCIFilterWrapper() -> CIFilterWrapper {
+        if let wrapper = _ciFilterWrapper { return wrapper }
+        let wrapper = CIFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
+        _ciFilterWrapper = wrapper
+        return wrapper
+    }
+
+    /// CoreImage フィルタを MImage に適用（プリセット）
+    public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
+        ensureCIFilterWrapper().apply(
+            filterName: preset.filterName,
+            parameters: preset.parameters(textureSize: CGSize(
+                width: CGFloat(image.width), height: CGFloat(image.height)
+            )),
+            to: image
+        )
+    }
+
+    /// CoreImage フィルタを MImage に適用（フィルタ名直接指定）
+    public func ciFilter(_ image: MImage, name: String, parameters: [String: Any] = [:]) {
+        ensureCIFilterWrapper().apply(filterName: name, parameters: parameters, to: image)
+    }
+
+    /// CoreImage ジェネレーターフィルタで画像を生成
+    public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
+        guard let tex = ensureCIFilterWrapper().generate(
+            filterName: preset.filterName,
+            parameters: preset.parameters(textureSize: CGSize(width: width, height: height)),
+            width: width,
+            height: height
+        ) else { return nil }
+        return MImage(texture: tex)
     }
 }

@@ -8,8 +8,13 @@ extension Canvas2D {
     /// トランスフォームを適用して頂点を追加
     func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         hasDrawnAnything = true
+        // テクスチャモードからカラーモードに戻る時にフラッシュ（描画順序保持）
+        if texturedVertexCount > 0 {
+            flushTexturedVertices()
+            currentBoundTexture = nil
+        }
         if bufferOffset + vertexCount >= maxVertices {
-            flush()
+            flushColorVertices()
             bufferOffset = 0
         }
         let p = currentTransform * SIMD3<Float>(x, y, 1)
@@ -22,8 +27,12 @@ extension Canvas2D {
 
     /// トランスフォームなしで頂点を追加（background用）
     func addVertexRaw(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
+        if texturedVertexCount > 0 {
+            flushTexturedVertices()
+            currentBoundTexture = nil
+        }
         if bufferOffset + vertexCount >= maxVertices {
-            flush()
+            flushColorVertices()
             bufferOffset = 0
         }
         vertices[bufferOffset + vertexCount] = Vertex2D(

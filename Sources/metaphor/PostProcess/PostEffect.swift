@@ -1,7 +1,7 @@
 import simd
 
 /// ポストプロセスエフェクトの種類
-public enum PostEffect: Sendable {
+public enum PostEffect: @unchecked Sendable {
     /// ブルーム（高輝度部分のグロー）
     case bloom(intensity: Float = 1.0, threshold: Float = 0.8)
 
@@ -30,6 +30,24 @@ public enum PostEffect: Sendable {
 
     /// カスタムポストプロセスエフェクト
     case custom(CustomPostEffect)
+
+    // MARK: - MPS Effects
+
+    /// MPS ガウシアンブラー（sigma 値指定、ハードウェア最適化）
+    case mpsBlur(sigma: Float)
+    /// MPS Sobel エッジ検出
+    case mpsSobel
+    /// MPS モルフォロジー収縮
+    case mpsErode(radius: Int = 1)
+    /// MPS モルフォロジー膨張
+    case mpsDilate(radius: Int = 1)
+
+    // MARK: - CoreImage Effects
+
+    /// CoreImage フィルタ（プリセット）
+    case ciFilter(CIFilterPreset)
+    /// CoreImage フィルタ（フィルタ名 + パラメータ辞書で直接指定）
+    case ciFilterRaw(name: String, parameters: [String: Any])
 }
 
 /// ポストプロセスシェーダー用のユニフォーム構造体

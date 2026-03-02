@@ -35,12 +35,14 @@ public final class ShaderLibrary {
         public static let kawaseBlur = "metaphor.kawaseBlur"
         public static let particle = "metaphor.particle"
         public static let merge = "metaphor.merge"
+        public static let canvas3DInstanced = "metaphor.canvas3DInstanced"
 
         /// 全ビルトインキーのリスト
         static let all: [String] = [
             blit, flatColor, vertexColor, lit,
             canvas2D, canvas3D, canvas2DTextured, canvas3DTextured,
             postProcess, imageFilter, kawaseBlur, particle, merge,
+            canvas3DInstanced,
         ]
     }
 
@@ -152,5 +154,6 @@ public final class ShaderLibrary {
         try register(source: KawaseBlurShaders.source, as: BuiltinKey.kawaseBlur)
         try register(source: ParticleShaders.source, as: BuiltinKey.particle)
         try register(source: MergeShaders.source, as: BuiltinKey.merge)
+        try register(source: Canvas3DInstancedShaders.source, as: BuiltinKey.canvas3DInstanced)
     }
 }

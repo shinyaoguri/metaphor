@@ -26,6 +26,23 @@ public enum FilterType: Sendable {
     case sepia
     /// ピクセレート（ブロックサイズ）
     case pixelate(Int)
+
+    // MARK: - MPS Filters
+
+    /// MPS ガウシアンブラー（sigma 値指定、ハードウェア最適化）
+    case mpsBlur(sigma: Float)
+    /// MPS Sobel エッジ検出
+    case mpsSobel
+    /// MPS ラプラシアン
+    case mpsLaplacian
+    /// MPS モルフォロジー収縮
+    case mpsErode(radius: Int)
+    /// MPS モルフォロジー膨張
+    case mpsDilate(radius: Int)
+    /// MPS メディアンフィルタ
+    case mpsMedian(diameter: Int)
+    /// MPS 閾値二値化
+    case mpsThreshold(Float)
 }
 
 // MARK: - Image Filter (CPU)
@@ -69,6 +86,9 @@ public enum ImageFilter {
             applySepia(pixels: &pixels)
         case .pixelate(let blockSize):
             applyPixelate(pixels: &pixels, width: width, height: height, blockSize: max(1, blockSize))
+        // MPS filters are GPU-only; CPU fallback is no-op
+        case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
+            break
         }
     }
 

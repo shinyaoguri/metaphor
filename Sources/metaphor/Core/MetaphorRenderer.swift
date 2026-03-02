@@ -169,7 +169,7 @@ public final class MetaphorRenderer: NSObject {
 
         do {
             self.postProcessPipeline = try PostProcessPipeline(
-                device: device, shaderLibrary: shaderLibrary
+                device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary
             )
         } catch {
             print("[metaphor] Failed to create PostProcessPipeline: \(error)")

@@ -32,6 +32,11 @@ public final class ImageFilterGPU {
     /// ShaderLibrary からの事前コンパイル済みライブラリ参照
     private weak var shaderLibrary: ShaderLibrary?
 
+    /// MPS 画像フィルタ（lazy）
+    private lazy var mpsFilter: MPSImageFilterWrapper = {
+        MPSImageFilterWrapper(device: device, commandQueue: commandQueue)
+    }()
+
     init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary? = nil) {
         self.device = device
         self.commandQueue = commandQueue
@@ -47,6 +52,26 @@ public final class ImageFilterGPU {
         let h = srcTex.height
 
         guard let outTex = getOrCreateTexture(width: w, height: h, tag: "output") else { return }
+
+        // MPS フィルタは専用パスに委譲
+        switch filter {
+        case .mpsBlur(let sigma):
+            mpsFilter.gaussianBlur(image, sigma: sigma); return
+        case .mpsSobel:
+            mpsFilter.sobel(image); return
+        case .mpsLaplacian:
+            mpsFilter.laplacian(image); return
+        case .mpsErode(let radius):
+            mpsFilter.erode(image, radius: radius); return
+        case .mpsDilate(let radius):
+            mpsFilter.dilate(image, radius: radius); return
+        case .mpsMedian(let diameter):
+            mpsFilter.median(image, diameter: diameter); return
+        case .mpsThreshold(let value):
+            mpsFilter.threshold(image, value: value); return
+        default:
+            break
+        }
 
         switch filter {
         case .blur(let radius):
@@ -235,6 +260,9 @@ public final class ImageFilterGPU {
         case .sharpen: "filter_sharpen"
         case .sepia: "filter_sepia"
         case .pixelate: "filter_pixelate"
+        // MPS cases are handled via early return in apply()
+        case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
+            "filter_gray"
         }
     }
 
@@ -245,6 +273,9 @@ public final class ImageFilterGPU {
         case .blur(let radius): Float(max(1, radius))
         case .sharpen(let amount): amount
         case .pixelate(let blockSize): Float(max(1, blockSize))
+        // MPS cases are handled via early return in apply()
+        case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
+            0
         default: 0
         }
     }

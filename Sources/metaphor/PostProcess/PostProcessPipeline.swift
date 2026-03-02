@@ -1,4 +1,5 @@
 @preconcurrency import Metal
+import MetalPerformanceShaders
 import simd
 
 /// ポストプロセスエフェクトチェーンを管理し、ping-pongテクスチャ方式で適用する
@@ -12,6 +13,7 @@ public final class PostProcessPipeline {
     // MARK: - Private
 
     private let device: MTLDevice
+    let commandQueue: MTLCommandQueue
     private let shaderLibrary: ShaderLibrary
 
     /// Ping-pong テクスチャ
@@ -34,10 +36,21 @@ public final class PostProcessPipeline {
     /// blit頂点シェーダー（全パスで共有）
     private let blitVertexFunction: MTLFunction
 
+    /// MPS 画像フィルタ（lazy）
+    private lazy var mpsFilter: MPSImageFilterWrapper = {
+        MPSImageFilterWrapper(device: device, commandQueue: commandQueue)
+    }()
+
+    /// CoreImage フィルタラッパー（lazy）
+    private lazy var ciFilterWrapper: CIFilterWrapper = {
+        CIFilterWrapper(device: device, commandQueue: commandQueue)
+    }()
+
     // MARK: - Initialization
 
-    init(device: MTLDevice, shaderLibrary: ShaderLibrary) throws {
+    init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary) throws {
         self.device = device
+        self.commandQueue = commandQueue
         self.shaderLibrary = shaderLibrary
 
         guard let vertexFn = shaderLibrary.function(
@@ -161,8 +174,69 @@ public final class PostProcessPipeline {
                 currentInput = output
                 useA = !useA
 
+            // MARK: MPS Effects
+            case .mpsBlur(let sigma):
+                let output = useA ? texA : texB
+                mpsFilter.encodeGaussianBlur(
+                    commandBuffer: commandBuffer,
+                    source: currentInput, destination: output, sigma: sigma
+                )
+                currentInput = output
+                useA = !useA
+
+            case .mpsSobel:
+                let output = useA ? texA : texB
+                mpsFilter.encodeSobel(
+                    commandBuffer: commandBuffer,
+                    source: currentInput, destination: output
+                )
+                currentInput = output
+                useA = !useA
+
+            case .mpsErode(let radius):
+                let output = useA ? texA : texB
+                mpsFilter.encodeErode(
+                    commandBuffer: commandBuffer,
+                    source: currentInput, destination: output, radius: radius
+                )
+                currentInput = output
+                useA = !useA
+
+            case .mpsDilate(let radius):
+                let output = useA ? texA : texB
+                mpsFilter.encodeDilate(
+                    commandBuffer: commandBuffer,
+                    source: currentInput, destination: output, radius: radius
+                )
+                currentInput = output
+                useA = !useA
+
+            // MARK: CoreImage Effects
+            case .ciFilter(let preset):
+                let output = useA ? texA : texB
+                let texSize = CGSize(width: currentInput.width, height: currentInput.height)
+                ciFilterWrapper.apply(
+                    filterName: preset.filterName,
+                    parameters: preset.parameters(textureSize: texSize),
+                    source: currentInput, destination: output,
+                    commandBuffer: commandBuffer
+                )
+                currentInput = output
+                useA = !useA
+
+            case .ciFilterRaw(let name, let params):
+                let output = useA ? texA : texB
+                ciFilterWrapper.apply(
+                    filterName: name,
+                    parameters: params,
+                    source: currentInput, destination: output,
+                    commandBuffer: commandBuffer
+                )
+                currentInput = output
+                useA = !useA
+
             default:
-                // 単パスエフェクト
+                // 単パスエフェクト (invert, grayscale, vignette, chromaticAberration, colorGrade)
                 let output = useA ? texA : texB
                 let params = makeParams(texelSize: texelSize, effect: effect)
                 renderPass(
@@ -188,6 +262,7 @@ public final class PostProcessPipeline {
         kawaseChain.removeAll()
         kawaseChainWidth = 0
         kawaseChainHeight = 0
+        ciFilterWrapper.invalidateTextures()
     }
 
     /// パイプラインキャッシュを破棄（シェーダーホットリロード時に呼ぶ）
@@ -457,6 +532,10 @@ public final class PostProcessPipeline {
         case .blur: PostProcessShaders.FunctionName.postBlurH
         case .bloom: PostProcessShaders.FunctionName.postBloomExtract
         case .custom(let custom): custom.fragmentFunctionName
+        // MPS/CI effects are handled in apply() directly, not via fragmentName
+        case .mpsBlur, .mpsSobel, .mpsErode, .mpsDilate,
+             .ciFilter, .ciFilterRaw:
+            "" // never reached
         }
     }
 
@@ -493,6 +572,10 @@ public final class PostProcessPipeline {
                 radius: custom.radius,
                 smoothness: custom.smoothness
             )
+        // MPS/CI effects don't use PostProcessParams
+        case .mpsBlur, .mpsSobel, .mpsErode, .mpsDilate,
+             .ciFilter, .ciFilterRaw:
+            return PostProcessParams(texelSize: texelSize)
         }
     }
 

@@ -36,11 +36,12 @@ public final class EffectPass: RenderPassNode {
         _ input: RenderPassNode,
         effects: [PostEffect],
         device: MTLDevice,
+        commandQueue: MTLCommandQueue,
         shaderLibrary: ShaderLibrary
     ) throws {
         self.label = "effect(\(input.label))"
         self.inputPass = input
-        self.pipeline = try PostProcessPipeline(device: device, shaderLibrary: shaderLibrary)
+        self.pipeline = try PostProcessPipeline(device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
         self.pipeline.set(effects)
     }
 

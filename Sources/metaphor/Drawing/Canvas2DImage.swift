@@ -36,16 +36,33 @@ extension Canvas2D {
         )
     }
 
-    // MARK: - Private: Textured Quad
+    // MARK: - Private: Textured Quad (Batched)
 
-    /// テクスチャ付きクワッドを描画（image/text共通）
+    /// テクスチャ付きクワッドをバッファに蓄積（同一テクスチャはバッチされる）
     func drawTexturedQuad(
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
         srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
     ) {
-        guard let encoder = encoder else { return }
+        guard encoder != nil else { return }
 
-        flush()
+        // カラー頂点が蓄積されていたら先にフラッシュ（描画順序保持）
+        if vertexCount > 0 {
+            flushColorVertices()
+        }
+
+        // テクスチャが変わったらフラッシュ
+        if let current = currentBoundTexture, current !== texture {
+            flushTexturedVertices()
+        }
+
+        currentBoundTexture = texture
+        hasDrawnAnything = true
+
+        // バッファオーバーフロー検査
+        if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
+            flushTexturedVertices()
+            texturedBufferOffset = 0
+        }
 
         let tw = Float(texture.width)
         let th = Float(texture.height)
@@ -55,49 +72,58 @@ extension Canvas2D {
         let v1 = (srcY + (srcH ?? th)) / th
 
         let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
+        let r = tint.x, g = tint.y, b = tint.z, a = tint.w
         let p0 = currentTransform * SIMD3<Float>(x, y, 1)
         let p1 = currentTransform * SIMD3<Float>(x + w, y, 1)
         let p2 = currentTransform * SIMD3<Float>(x + w, y + h, 1)
         let p3 = currentTransform * SIMD3<Float>(x, y + h, 1)
 
-        var verts: [TexturedVertex2D] = [
-            TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p1.x, posY: p1.y, u: u1, v: v0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p3.x, posY: p3.y, u: u0, v: v1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-        ]
+        let verts = texturedVertices
+        let off = texturedBufferOffset + texturedVertexCount
 
-        guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
-        encoder.setRenderPipelineState(texPipeline)
-        if let depthState = depthStencilState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-        encoder.setVertexBytes(&verts, length: MemoryLayout<TexturedVertex2D>.stride * 6, index: 0)
+        verts[off + 0] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: r, g: g, b: b, a: a)
+        verts[off + 1] = TexturedVertex2D(posX: p1.x, posY: p1.y, u: u1, v: v0, r: r, g: g, b: b, a: a)
+        verts[off + 2] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: r, g: g, b: b, a: a)
+        verts[off + 3] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: r, g: g, b: b, a: a)
+        verts[off + 4] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: r, g: g, b: b, a: a)
+        verts[off + 5] = TexturedVertex2D(posX: p3.x, posY: p3.y, u: u0, v: v1, r: r, g: g, b: b, a: a)
 
-        var proj = projectionMatrix
-        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
-        encoder.setFragmentTexture(texture, index: 0)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+        texturedVertexCount += 6
     }
 
-    /// アトラスからバッチテキスト描画（全グリフを1回のドローコールで描画）
+    /// アトラスからバッチテキスト描画（グリフをテクスチャバッファに蓄積）
     func drawTextFromAtlas(
         texture: MTLTexture,
         glyphs: [PositionedGlyph],
         x: Float, y: Float
     ) {
-        guard let encoder = encoder, !glyphs.isEmpty else { return }
+        guard encoder != nil, !glyphs.isEmpty else { return }
 
-        flush()
+        // カラー頂点が蓄積されていたら先にフラッシュ
+        if vertexCount > 0 {
+            flushColorVertices()
+        }
+
+        // テクスチャが変わったらフラッシュ
+        if let current = currentBoundTexture, current !== texture {
+            flushTexturedVertices()
+        }
+
+        currentBoundTexture = texture
+        hasDrawnAnything = true
+
+        let verticesNeeded = glyphs.count * 6
+
+        // バッファオーバーフロー検査
+        if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
+            flushTexturedVertices()
+            texturedBufferOffset = 0
+        }
 
         let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
         let r = tint.x, g = tint.y, b = tint.z, a = tint.w
-
-        var verts: [TexturedVertex2D] = []
-        verts.reserveCapacity(glyphs.count * 6)
+        let verts = texturedVertices
+        var off = texturedBufferOffset + texturedVertexCount
 
         for glyph in glyphs {
             let gx = x + glyph.x
@@ -110,25 +136,15 @@ extension Canvas2D {
             let p2 = currentTransform * SIMD3<Float>(gx + gw, gy + gh, 1)
             let p3 = currentTransform * SIMD3<Float>(gx, gy + gh, 1)
 
-            verts.append(TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a))
-            verts.append(TexturedVertex2D(posX: p1.x, posY: p1.y, u: glyph.u1, v: glyph.v0, r: r, g: g, b: b, a: a))
-            verts.append(TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a))
-            verts.append(TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a))
-            verts.append(TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a))
-            verts.append(TexturedVertex2D(posX: p3.x, posY: p3.y, u: glyph.u0, v: glyph.v1, r: r, g: g, b: b, a: a))
+            verts[off + 0] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a)
+            verts[off + 1] = TexturedVertex2D(posX: p1.x, posY: p1.y, u: glyph.u1, v: glyph.v0, r: r, g: g, b: b, a: a)
+            verts[off + 2] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a)
+            verts[off + 3] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a)
+            verts[off + 4] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a)
+            verts[off + 5] = TexturedVertex2D(posX: p3.x, posY: p3.y, u: glyph.u0, v: glyph.v1, r: r, g: g, b: b, a: a)
+            off += 6
         }
 
-        guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
-        encoder.setRenderPipelineState(texPipeline)
-        if let depthState = depthStencilState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-        encoder.setVertexBytes(&verts, length: MemoryLayout<TexturedVertex2D>.stride * verts.count, index: 0)
-
-        var proj = projectionMatrix
-        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
-        encoder.setFragmentTexture(texture, index: 0)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verts.count)
+        texturedVertexCount += verticesNeeded
     }
 }

@@ -68,6 +68,11 @@ public final class Canvas3D {
     private let depthState: MTLDepthStencilState?
     private let dummyShadowTexture: MTLTexture?
 
+    // Instanced rendering pipelines
+    private let instancedPipelineState: MTLRenderPipelineState
+    private let instancedTexturedPipelineState: MTLRenderPipelineState
+    private let instanceBatcher: InstanceBatcher3D
+
     private static let maxLights = 8
 
     // MARK: - Custom Material State
@@ -222,6 +227,42 @@ public final class Canvas3D {
 
         self.depthState = depthStencilCache.state(for: .readWrite)
 
+        // Instanced パイプライン（untextured）
+        let instVertexFn = shaderLibrary.function(
+            named: Canvas3DInstancedShaders.vertexFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas3DInstanced
+        )
+        let instFragmentFn = shaderLibrary.function(
+            named: Canvas3DInstancedShaders.fragmentFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas3DInstanced
+        )
+        self.instancedPipelineState = try PipelineFactory(device: device)
+            .vertex(instVertexFn)
+            .fragment(instFragmentFn)
+            .vertexLayout(.positionNormalColor)
+            .blending(.alpha)
+            .sampleCount(sampleCount)
+            .build()
+
+        // Instanced パイプライン（textured）
+        let instTexVertexFn = shaderLibrary.function(
+            named: Canvas3DInstancedShaders.texturedVertexFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas3DInstanced
+        )
+        let instTexFragmentFn = shaderLibrary.function(
+            named: Canvas3DInstancedShaders.texturedFragmentFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas3DInstanced
+        )
+        self.instancedTexturedPipelineState = try PipelineFactory(device: device)
+            .vertex(instTexVertexFn)
+            .fragment(instTexFragmentFn)
+            .vertexLayout(.positionNormalUV)
+            .blending(.alpha)
+            .sampleCount(sampleCount)
+            .build()
+
+        self.instanceBatcher = InstanceBatcher3D(device: device)
+
         // ダミー 1x1 シャドウテクスチャ（シャドウ無効時にバインド）
         let dummyDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .depth32Float, width: 1, height: 1, mipmapped: false
@@ -233,7 +274,7 @@ public final class Canvas3D {
 
     // MARK: - Frame Lifecycle
 
-    func begin(encoder: MTLRenderCommandEncoder, time: Float) {
+    func begin(encoder: MTLRenderCommandEncoder, time: Float, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentTime = time
         self.currentTransform = .identity
@@ -255,9 +296,12 @@ public final class Canvas3D {
         self.cameraUp = SIMD3(0, 1, 0)
         self.viewProjectionDirty = true
         self.useOrthographic = false
+
+        instanceBatcher.beginFrame(bufferIndex: bufferIndex)
     }
 
     func end() {
+        flushInstanceBatch()
         self.encoder = nil
     }
 
@@ -678,6 +722,9 @@ public final class Canvas3D {
               let vb = mesh.vertexBuffer else { return }
         guard hasFill || hasStroke3D else { return }
 
+        // DynamicMesh はインスタンシング対象外
+        flushInstanceBatch()
+
         encoder.setRenderPipelineState(pipelineState)
         if let depthState = depthState {
             encoder.setDepthStencilState(depthState)
@@ -851,6 +898,9 @@ public final class Canvas3D {
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
         guard let encoder = encoder, !vertices.isEmpty else { return }
         guard hasFill || hasStroke3D else { return }
+
+        // beginShape/endShape は個別頂点描画なのでインスタンスバッチをフラッシュ
+        flushInstanceBatch()
 
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let viewProj = computeViewProjection()
@@ -1084,7 +1134,7 @@ public final class Canvas3D {
     // MARK: - Internal Drawing
 
     private func drawMesh(_ mesh: Mesh) {
-        guard let encoder = encoder else { return }
+        guard encoder != nil else { return }
         guard hasFill || hasStroke3D else { return }
 
         let isTextured = currentTexture != nil && mesh.hasUVs
@@ -1105,7 +1155,228 @@ public final class Canvas3D {
             ))
         }
 
-        // カスタムマテリアルが設定されている場合はカスタムパイプラインを使用
+        // カスタム頂点シェーダー使用時はインスタンシング不可 → immediate path
+        if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {
+            flushInstanceBatch()
+            drawMeshImmediate(mesh)
+            return
+        }
+
+        // バッチキーを生成
+        let normalMatrix = computeNormalMatrix(from: currentTransform)
+        let key = InstanceBatcher3D.BatchKey(
+            meshID: ObjectIdentifier(mesh),
+            isTextured: isTextured,
+            textureID: currentTexture.map { ObjectIdentifier($0 as AnyObject) },
+            material: currentMaterial,
+            customMaterialID: currentCustomMaterial.map { ObjectIdentifier($0) },
+            hasFill: hasFill,
+            hasStroke: hasStroke3D,
+            strokeColor: strokeColor3D
+        )
+
+        // インスタンスバッチに蓄積を試行
+        if !instanceBatcher.tryAddInstance(
+            key: key,
+            mesh: mesh,
+            texture: currentTexture,
+            material: currentMaterial,
+            customMaterial: currentCustomMaterial,
+            hasFill: hasFill,
+            hasStroke: hasStroke3D,
+            strokeColor: strokeColor3D,
+            transform: currentTransform,
+            normalMatrix: normalMatrix,
+            color: fillColor
+        ) {
+            // キー不一致またはバッファ満杯 → 現在のバッチをフラッシュして再試行
+            flushInstanceBatch()
+            let _ = instanceBatcher.tryAddInstance(
+                key: key,
+                mesh: mesh,
+                texture: currentTexture,
+                material: currentMaterial,
+                customMaterial: currentCustomMaterial,
+                hasFill: hasFill,
+                hasStroke: hasStroke3D,
+                strokeColor: strokeColor3D,
+                transform: currentTransform,
+                normalMatrix: normalMatrix,
+                color: fillColor
+            )
+        }
+    }
+
+    // MARK: - Instanced Batch Flush
+
+    /// 蓄積されたインスタンスバッチを instanced draw call で一括描画する
+    private func flushInstanceBatch() {
+        guard let encoder = encoder,
+              instanceBatcher.instanceCount > 0,
+              let mesh = instanceBatcher.currentMesh else { return }
+
+        let isTextured = instanceBatcher.currentBatchKey?.isTextured ?? false
+        let batchHasFill = instanceBatcher.currentHasFill
+        let batchHasStroke = instanceBatcher.currentHasStroke
+
+        // パイプライン選択
+        if let customMat = instanceBatcher.currentCustomMaterial,
+           let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured) {
+            encoder.setRenderPipelineState(customPipeline)
+        } else {
+            encoder.setRenderPipelineState(isTextured ? instancedTexturedPipelineState : instancedPipelineState)
+        }
+
+        if let depthState = depthState {
+            encoder.setDepthStencilState(depthState)
+        }
+        encoder.setFrontFacing(.counterClockwise)
+        encoder.setCullMode(.none)
+
+        // 頂点バッファ
+        if isTextured, let uvBuffer = mesh.uvVertexBuffer {
+            encoder.setVertexBuffer(uvBuffer, offset: 0, index: 0)
+        } else {
+            encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
+        }
+
+        // インスタンスバッファ → buffer(6)
+        encoder.setVertexBuffer(instanceBatcher.currentBuffer, offset: 0, index: 6)
+
+        // --- Fill pass ---
+        if batchHasFill {
+            var sceneUniforms = InstancedSceneUniforms(
+                viewProjectionMatrix: computeViewProjection(),
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: UInt32(lightArray.count),
+                hasTexture: isTextured ? 1 : 0
+            )
+            encoder.setVertexBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+
+            // ライト
+            if lightArray.isEmpty {
+                var dummy = Light3D.zero
+                encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            } else {
+                lightArray.withUnsafeBufferPointer { ptr in
+                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                }
+            }
+
+            // マテリアル
+            var mat = instanceBatcher.currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            // カスタムマテリアルパラメータ
+            if let customMat = instanceBatcher.currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
+                encoder.setFragmentBytes(&params, length: params.count, index: 4)
+            }
+
+            // シャドウ
+            if let shadow = shadowMap {
+                var shadowUniforms = ShadowFragmentUniforms(
+                    lightSpaceMatrix: shadow.lightSpaceMatrix,
+                    shadowBias: shadow.shadowBias,
+                    shadowEnabled: 1.0
+                )
+                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+                encoder.setFragmentTexture(shadow.shadowTexture, index: 1)
+            } else {
+                var shadowUniforms = ShadowFragmentUniforms(
+                    lightSpaceMatrix: .identity,
+                    shadowBias: 0,
+                    shadowEnabled: 0
+                )
+                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+                if let dummy = dummyShadowTexture {
+                    encoder.setFragmentTexture(dummy, index: 1)
+                }
+            }
+
+            // テクスチャ
+            if isTextured, let tex = instanceBatcher.currentTexture {
+                encoder.setFragmentTexture(tex, index: 0)
+            }
+
+            // instanced draw
+            if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: mesh.indexCount,
+                    indexType: mesh.indexType, indexBuffer: indexBuffer,
+                    indexBufferOffset: 0, instanceCount: instanceBatcher.instanceCount
+                )
+            } else {
+                let vc = isTextured ? mesh.uvVertexCount : mesh.vertexCount
+                encoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0, vertexCount: vc,
+                    instanceCount: instanceBatcher.instanceCount
+                )
+            }
+        }
+
+        // --- Wireframe (stroke) pass ---
+        if batchHasStroke {
+            encoder.setTriangleFillMode(.lines)
+            encoder.setRenderPipelineState(instancedPipelineState)
+            encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
+
+            // ワイヤフレームではライティングなし。stroke color は全インスタンス共通
+            // (BatchKey で strokeColor が一致しないと別バッチになる)
+            // stroke 用にインスタンスバッファの color を上書きする代わりに、
+            // scene uniforms で lightCount=0 にし、インスタンスの color をそのまま使う。
+            // ただし stroke color は BatchKey で統一されているので、
+            // 一時的にインスタンスバッファを書き換えずにシンプルに immediate で処理。
+            var wireSceneUniforms = InstancedSceneUniforms(
+                viewProjectionMatrix: computeViewProjection(),
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: 0,
+                hasTexture: 0
+            )
+            encoder.setVertexBytes(&wireSceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&wireSceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+
+            var dummy = Light3D.zero
+            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            var mat = instanceBatcher.currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            // シャドウ（wireframeでは無効）
+            var shadowOff = ShadowFragmentUniforms(lightSpaceMatrix: .identity, shadowBias: 0, shadowEnabled: 0)
+            encoder.setFragmentBytes(&shadowOff, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+            if let dummyTex = dummyShadowTexture {
+                encoder.setFragmentTexture(dummyTex, index: 1)
+            }
+
+            if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: mesh.indexCount,
+                    indexType: mesh.indexType, indexBuffer: indexBuffer,
+                    indexBufferOffset: 0, instanceCount: instanceBatcher.instanceCount
+                )
+            } else {
+                encoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount,
+                    instanceCount: instanceBatcher.instanceCount
+                )
+            }
+
+            encoder.setTriangleFillMode(.fill)
+        }
+
+        instanceBatcher.reset()
+    }
+
+    // MARK: - Immediate Drawing (fallback, non-instanced)
+
+    /// インスタンシング不可の場合のフォールバック描画（カスタム頂点シェーダー等）
+    private func drawMeshImmediate(_ mesh: Mesh) {
+        guard let encoder = encoder else { return }
+
+        let isTextured = currentTexture != nil && mesh.hasUVs
+
         if let customMat = currentCustomMaterial,
            let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured, customVertexFunction: customMat.vertexFunction) {
             encoder.setRenderPipelineState(customPipeline)
@@ -1140,8 +1411,6 @@ public final class Canvas3D {
                 hasTexture: isTextured ? 1 : 0
             )
 
-            // setVertexBytes/setFragmentBytes でデータをコマンドバッファにコピー
-            // （共有バッファを上書きすると、同一エンコーダ内の複数draw間でデータが壊れる）
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
@@ -1157,12 +1426,10 @@ public final class Canvas3D {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
-            // カスタムマテリアルのパラメータをbuffer(4)にバインド
             if let customMat = currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
                 encoder.setFragmentBytes(&params, length: params.count, index: 4)
             }
 
-            // シャドウマップをバインド（無効時はダミーテクスチャ）
             if let shadow = shadowMap {
                 var shadowUniforms = ShadowFragmentUniforms(
                     lightSpaceMatrix: shadow.lightSpaceMatrix,
@@ -1204,7 +1471,6 @@ public final class Canvas3D {
         if hasStroke3D {
             encoder.setTriangleFillMode(.lines)
 
-            // ワイヤフレームはライティングなし・テクスチャなしで描画
             var wireUniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
                 viewProjectionMatrix: viewProj,
@@ -1216,7 +1482,6 @@ public final class Canvas3D {
                 hasTexture: 0
             )
 
-            // ワイヤフレームは常にuntexturedパイプラインを使用
             encoder.setRenderPipelineState(pipelineState)
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
             encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
