@@ -49,10 +49,10 @@ public final class Graphics3D {
     ) throws {
         self.device = device
         guard let queue = device.makeCommandQueue() else {
-            throw GraphicsError.commandQueueCreationFailed
+            throw MetaphorError.commandQueueCreationFailed
         }
         self.commandQueue = queue
-        self.textureManager = TextureManager(
+        self.textureManager = try TextureManager(
             device: device, width: width, height: height, sampleCount: 1
         )
         self.canvas3D = try Canvas3D(
@@ -156,6 +156,9 @@ public final class Graphics3D {
     public func emissive(_ color: Color) { canvas3D.emissive(color) }
     public func emissive(_ gray: Float) { canvas3D.emissive(gray) }
     public func metallic(_ value: Float) { canvas3D.metallic(value) }
+    public func roughness(_ value: Float) { canvas3D.roughness(value) }
+    public func ambientOcclusion(_ value: Float) { canvas3D.ambientOcclusion(value) }
+    public func pbr(_ enabled: Bool) { canvas3D.pbr(enabled) }
     public func material(_ custom: CustomMaterial) { canvas3D.material(custom) }
     public func noMaterial() { canvas3D.noMaterial() }
 

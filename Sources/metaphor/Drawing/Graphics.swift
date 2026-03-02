@@ -40,10 +40,10 @@ public final class Graphics {
     init(device: MTLDevice, shaderLibrary: ShaderLibrary, depthStencilCache: DepthStencilCache, width: Int, height: Int) throws {
         self.device = device
         guard let queue = device.makeCommandQueue() else {
-            throw GraphicsError.commandQueueCreationFailed
+            throw MetaphorError.commandQueueCreationFailed
         }
         self.commandQueue = queue
-        self.textureManager = TextureManager(device: device, width: width, height: height, sampleCount: 1)
+        self.textureManager = try TextureManager(device: device, width: width, height: height, sampleCount: 1)
         self.canvas = try Canvas2D(
             device: device,
             shaderLibrary: shaderLibrary,
@@ -159,8 +159,3 @@ public final class Graphics {
     public func textDescent() -> Float { canvas.textDescent() }
 }
 
-// MARK: - Errors
-
-public enum GraphicsError: Error {
-    case commandQueueCreationFailed
-}

@@ -18,7 +18,12 @@ import Foundation
 @main
 final class PhaseShowcase: Sketch {
     var config: SketchConfig {
-        SketchConfig(width: 1280, height: 720, title: "Phase A~D Showcase", windowScale: 1.0)
+        SketchConfig(
+            width: 1280,
+            height: 720,
+            title: "Phase A~D Showcase",
+            windowScale: 1.0,
+        )
     }
 
     // MARK: - State

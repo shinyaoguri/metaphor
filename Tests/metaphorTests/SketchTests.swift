@@ -46,7 +46,7 @@ struct SketchContextTests {
 
     @Test("context has correct dimensions")
     func dimensions() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
@@ -56,7 +56,7 @@ struct SketchContextTests {
 
     @Test("context initial state")
     func initialState() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
@@ -67,7 +67,7 @@ struct SketchContextTests {
 
     @Test("context exposes renderer")
     func escapteHatch() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
@@ -78,7 +78,7 @@ struct SketchContextTests {
 
     @Test("context encoder is nil outside frame")
     func encoderOutsideFrame() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
@@ -94,7 +94,7 @@ struct SketchContextComputeTests {
 
     @Test("createComputeKernel compiles MSL source")
     func createKernel() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(
@@ -114,7 +114,7 @@ struct SketchContextComputeTests {
 
     @Test("createBuffer creates typed GPU buffer")
     func createTypedBuffer() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(
@@ -128,7 +128,7 @@ struct SketchContextComputeTests {
 
     @Test("createBuffer from array preserves data")
     func createBufferFromArray() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(

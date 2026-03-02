@@ -101,7 +101,7 @@ struct Canvas2DTests {
 
     @Test("can create Canvas2D from renderer")
     func createFromRenderer() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         #expect(canvas.width == 1920)
         #expect(canvas.height == 1080)
@@ -116,7 +116,7 @@ struct Canvas2DEncoderTests {
 
     @Test("currentEncoder is nil before begin")
     func encoderNilBeforeBegin() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         #expect(canvas.currentEncoder == nil)
     }
@@ -228,7 +228,7 @@ struct Canvas3DTests {
 
     @Test("can create Canvas3D from renderer")
     func createFromRenderer() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         #expect(canvas3D.width == 1920)
         #expect(canvas3D.height == 1080)

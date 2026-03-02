@@ -101,8 +101,8 @@ struct InputManagerTests {
 struct RendererInputTests {
 
     @Test("renderer has input manager")
-    func rendererHasInput() {
-        let renderer = MetaphorRenderer()!
+    func rendererHasInput() throws {
+        let renderer = try MetaphorRenderer()
         #expect(renderer.input.mouseX == 0)
         #expect(renderer.input.isMouseDown == false)
     }
@@ -255,8 +255,8 @@ struct TextRendererTests {
 struct ScreenshotTests {
 
     @Test("renderer has saveScreenshot method")
-    func saveScreenshotAPI() {
-        let renderer = MetaphorRenderer()!
+    func saveScreenshotAPI() throws {
+        let renderer = try MetaphorRenderer()
         // pendingSavePath が設定されることを確認（直接アクセスはできないがクラッシュしないことを検証）
         renderer.saveScreenshot(to: "/tmp/test_screenshot.png")
     }

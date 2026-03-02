@@ -1,0 +1,20 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct ShadowUniforms {
+    float4x4 modelMatrix;
+    float4x4 lightSpaceMatrix;
+};
+
+struct ShadowVertexIn {
+    float3 position [[attribute(0)]];
+};
+
+// Depth-only vertex shader for shadow map generation
+vertex float4 metaphor_shadowDepthVertex(
+    ShadowVertexIn in [[stage_in]],
+    constant ShadowUniforms &uniforms [[buffer(1)]]
+) {
+    float4 worldPos = uniforms.modelMatrix * float4(in.position, 1.0);
+    return uniforms.lightSpaceMatrix * worldPos;
+}

@@ -1,6 +1,10 @@
 import Metal
 import MetalKit
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 
 /// 画像を表すクラス。MTLTextureをラップする。
 @MainActor
@@ -41,6 +45,7 @@ public final class MImage {
         self.height = Float(texture.height)
     }
 
+    #if os(macOS)
     /// NSImageから生成
     public init(nsImage: NSImage, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
@@ -56,6 +61,23 @@ public final class MImage {
         self.width = Float(texture.width)
         self.height = Float(texture.height)
     }
+    #elseif os(iOS)
+    /// UIImageから生成
+    public init(uiImage: UIImage, device: MTLDevice) throws {
+        let loader = MTKTextureLoader(device: device)
+        guard let cgImage = uiImage.cgImage else {
+            throw MImageError.invalidImage
+        }
+        let options: [MTKTextureLoader.Option: Any] = [
+            .textureUsage: MTLTextureUsage.shaderRead.rawValue,
+            .textureStorageMode: MTLStorageMode.private.rawValue,
+            .SRGB: false
+        ]
+        self.texture = try loader.newTexture(cgImage: cgImage, options: options)
+        self.width = Float(texture.width)
+        self.height = Float(texture.height)
+    }
+    #endif
 
     /// 既存のMTLTextureから生成
     public init(texture: MTLTexture) {

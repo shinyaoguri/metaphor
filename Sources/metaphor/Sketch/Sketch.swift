@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 @preconcurrency import Metal
 
 /// p5.js風のスケッチプロトコル
@@ -74,6 +78,10 @@ public protocol Sketch: AnyObject {
 // MARK: - Active Context (internal global)
 
 /// SketchRunnerが設定するアクティブなコンテキスト
+///
+/// スレッド安全性: `@MainActor` によりメインスレッドからのみアクセス可能。
+/// Processing / p5.js / openFrameworks と同様、単一コンテキストモデルを採用。
+/// 同時に複数の Sketch インスタンスを実行することはサポートしない。
 @MainActor
 var _activeSketchContext: SketchContext?
 
@@ -386,6 +394,21 @@ extension Sketch {
 
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         _activeSketchContext?.createGraphics3D(w, h)
+    }
+
+    /// カメラキャプチャデバイスを作成
+    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice? {
+        _activeSketchContext?.createCapture(width: width, height: height, position: position)
+    }
+
+    /// CaptureDeviceの最新フレームを描画
+    public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float) {
+        _activeSketchContext?.image(capture, x, y)
+    }
+
+    /// CaptureDeviceの最新フレームをサイズ指定で描画
+    public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        _activeSketchContext?.image(capture, x, y, w, h)
     }
 
     public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
@@ -819,6 +842,23 @@ extension Sketch {
         _activeSketchContext?.ambientLight(r, g, b)
     }
 
+    // MARK: Shadow Mapping
+
+    /// シャドウマッピングを有効にする
+    public func enableShadows(resolution: Int = 2048) {
+        _activeSketchContext?.enableShadows(resolution: resolution)
+    }
+
+    /// シャドウマッピングを無効にする
+    public func disableShadows() {
+        _activeSketchContext?.disableShadows()
+    }
+
+    /// シャドウバイアスを設定
+    public func shadowBias(_ value: Float) {
+        _activeSketchContext?.shadowBias(value)
+    }
+
     // MARK: 3D Material
 
     public func specular(_ color: Color) {
@@ -843,6 +883,21 @@ extension Sketch {
 
     public func metallic(_ value: Float) {
         _activeSketchContext?.metallic(value)
+    }
+
+    /// PBR roughness を設定（自動的に PBR モードに切り替わる）
+    public func roughness(_ value: Float) {
+        _activeSketchContext?.roughness(value)
+    }
+
+    /// PBR アンビエントオクルージョンを設定
+    public func ambientOcclusion(_ value: Float) {
+        _activeSketchContext?.ambientOcclusion(value)
+    }
+
+    /// PBR モードを明示的に切り替える
+    public func pbr(_ enabled: Bool) {
+        _activeSketchContext?.pbr(enabled)
     }
 
     // MARK: 3D Custom Material
@@ -1063,6 +1118,20 @@ extension Sketch {
     }
 }
 
+// MARK: - Performance HUD
+
+extension Sketch {
+    /// パフォーマンス HUD を有効化
+    public func enablePerformanceHUD() {
+        _activeSketchContext?.enablePerformanceHUD()
+    }
+
+    /// パフォーマンス HUD を無効化
+    public func disablePerformanceHUD() {
+        _activeSketchContext?.disablePerformanceHUD()
+    }
+}
+
 // MARK: - Post Process
 
 extension Sketch {
@@ -1138,6 +1207,15 @@ extension Sketch {
     }
 }
 
+// MARK: - Physics 2D
+
+extension Sketch {
+    /// 2D 物理ワールドを作成
+    public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
+        Physics2D(cellSize: cellSize)
+    }
+}
+
 // MARK: - Orbit Camera (D-20)
 
 extension Sketch {
@@ -1149,6 +1227,44 @@ extension Sketch {
     /// オービットカメラへのアクセス
     public var orbitCamera: OrbitCamera {
         activeContext().orbitCamera
+    }
+}
+
+// MARK: - Scene Graph
+
+extension Sketch {
+    /// ノードを作成
+    public func createNode(_ name: String = "") -> Node {
+        Node(name: name)
+    }
+
+    /// シーングラフを描画
+    public func drawScene(_ root: Node) {
+        _activeSketchContext?.drawScene(root)
+    }
+}
+
+// MARK: - Render Graph
+
+extension Sketch {
+    /// ソースパスを作成
+    public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
+        _activeSketchContext?.createSourcePass(label: label, width: width, height: height)
+    }
+
+    /// エフェクトパスを作成
+    public func createEffectPass(_ input: RenderPassNode, effects: [PostEffect]) -> EffectPass? {
+        _activeSketchContext?.createEffectPass(input, effects: effects)
+    }
+
+    /// マージパスを作成
+    public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
+        _activeSketchContext?.createMergePass(a, b, blend: blend)
+    }
+
+    /// レンダーグラフを設定
+    public func setRenderGraph(_ graph: RenderGraph?) {
+        _activeSketchContext?.setRenderGraph(graph)
     }
 }
 

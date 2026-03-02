@@ -51,25 +51,24 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private func setupWindow(sketch: any Sketch) {
         let config = sketch.config
 
-        // レンダラー
-        guard let renderer = MetaphorRenderer(width: config.width, height: config.height) else {
-            fatalError("Failed to create MetaphorRenderer")
+        // レンダラー + Canvas 初期化
+        let renderer: MetaphorRenderer
+        let canvas: Canvas2D
+        let canvas3D: Canvas3D
+        do {
+            renderer = try MetaphorRenderer(width: config.width, height: config.height)
+            canvas = try Canvas2D(renderer: renderer)
+            canvas3D = try Canvas3D(renderer: renderer)
+        } catch {
+            showErrorAlert(error: error)
+            return
         }
         self.renderer = renderer
 
-        // Canvas2D
-        guard let canvas = try? Canvas2D(renderer: renderer) else {
-            fatalError("Failed to create Canvas2D")
-        }
         canvas.onSetClearColor = { [weak renderer] r, g, b, a in
             renderer?.setClearColor(r, g, b, a)
         }
         self.canvas = canvas
-
-        // Canvas3D
-        guard let canvas3D = try? Canvas3D(renderer: renderer) else {
-            fatalError("Failed to create Canvas3D")
-        }
         self.canvas3D = canvas3D
 
         // SketchContext
@@ -77,6 +76,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
         )
         self.context = context
+        precondition(_activeSketchContext == nil, "Only one Sketch instance is supported at a time")
         _activeSketchContext = context
 
         // createCanvasコールバック（setup()内からキャンバスサイズを変更可能にする）
@@ -185,6 +185,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             context.endFrame()
         }
 
+        renderer.onAfterDraw = { [weak context] commandBuffer in
+            guard let context else { return }
+            context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
+        }
+
         // ウィンドウ表示
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -266,6 +271,17 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window?.setContentSize(NSSize(width: windowWidth, height: windowHeight))
         window?.contentAspectRatio = NSSize(width: width, height: height)
         window?.center()
+    }
+
+    /// 初期化エラー時にアラートを表示してアプリを終了
+    private func showErrorAlert(error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "metaphor initialization failed"
+        alert.informativeText = "\(error)"
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Quit")
+        alert.runModal()
+        NSApp.terminate(nil)
     }
 
     private func connectInput(sketch: any Sketch, input: InputManager) {

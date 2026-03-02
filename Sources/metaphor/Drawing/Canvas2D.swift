@@ -454,6 +454,17 @@ public final class Canvas2D {
         hasTint = false
     }
 
+    // MARK: - Style Sync
+
+    /// DrawingStyle から共通スタイルを同期
+    public func syncStyle(_ style: DrawingStyle) {
+        fillColor = style.fillColor
+        strokeColor = style.strokeColor
+        hasFill = style.hasFill
+        hasStroke = style.hasStroke
+        colorModeConfig = style.colorModeConfig
+    }
+
     // MARK: - Style
 
     /// 塗りつぶし色を設定

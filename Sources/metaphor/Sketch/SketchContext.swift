@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Metal
 import simd
 
@@ -121,6 +125,23 @@ public final class SketchContext {
     /// パラメータ GUI インスタンス
     public let gui = ParameterGUI()
 
+    // MARK: - Performance HUD
+
+    /// パフォーマンス HUD（nil なら無効）
+    private var performanceHUD: PerformanceHUD?
+
+    /// パフォーマンス HUD を有効化
+    public func enablePerformanceHUD() {
+        if performanceHUD == nil {
+            performanceHUD = PerformanceHUD()
+        }
+    }
+
+    /// パフォーマンス HUD を無効化
+    public func disablePerformanceHUD() {
+        performanceHUD = nil
+    }
+
     // MARK: - Compute State (internal)
 
     /// 現在のコマンドバッファ（コンピュートフェーズ中のみ有効）
@@ -168,6 +189,12 @@ public final class SketchContext {
     }
 
     func endFrame() {
+        // Performance HUD overlay (before canvas.end() so it's drawn on top)
+        if let hud = performanceHUD {
+            hud.update(deltaTime: deltaTime)
+            hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
+            hud.draw(canvas: canvas, width: Float(renderer.textureManager.width), height: Float(renderer.textureManager.height))
+        }
         canvas3D.end()
         canvas.end()
         // GIF frame capture
@@ -189,6 +216,25 @@ public final class SketchContext {
     /// 画像の座標解釈モードを設定
     public func imageMode(_ mode: ImageMode) {
         canvas.imageMode(mode)
+    }
+
+    // MARK: - Drawing Style
+
+    /// 現在の共通描画スタイルを取得
+    public var drawingStyle: DrawingStyle {
+        get {
+            DrawingStyle(
+                fillColor: canvas.fillColor,
+                strokeColor: canvas.strokeColor,
+                hasFill: canvas.hasFill,
+                hasStroke: canvas.hasStroke,
+                colorModeConfig: canvas.colorModeConfig
+            )
+        }
+        set {
+            canvas.syncStyle(newValue)
+            canvas3D.syncStyle(newValue)
+        }
     }
 
     // MARK: - Color Mode
@@ -368,6 +414,36 @@ public final class SketchContext {
             width: w,
             height: h
         )
+    }
+
+    // MARK: - Camera Capture
+
+    /// カメラキャプチャデバイスを作成（自動で開始）
+    /// - Parameters:
+    ///   - width: 映像幅（デフォルト 1280）
+    ///   - height: 映像高さ（デフォルト 720）
+    ///   - position: カメラ位置（デフォルト .front）
+    /// - Returns: CaptureDevice
+    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice {
+        let capture = CaptureDevice(device: renderer.device, width: width, height: height, position: position)
+        capture.start()
+        return capture
+    }
+
+    /// CaptureDeviceの最新フレームを描画
+    public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float) {
+        capture.read()
+        if let img = capture.toImage() {
+            canvas.image(img, x, y)
+        }
+    }
+
+    /// CaptureDeviceの最新フレームをサイズ指定で描画
+    public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        capture.read()
+        if let img = capture.toImage() {
+            canvas.image(img, x, y, w, h)
+        }
     }
 
     /// 画像を描画
@@ -962,6 +1038,30 @@ public final class SketchContext {
         canvas3D.ambientLight(r, g, b)
     }
 
+    // MARK: - Shadow Mapping
+
+    /// シャドウマッピングを有効にする
+    /// - Parameter resolution: シャドウマップ解像度（デフォルト 2048）
+    public func enableShadows(resolution: Int = 2048) {
+        if canvas3D.shadowMap == nil {
+            canvas3D.shadowMap = try? ShadowMap(
+                device: renderer.device,
+                shaderLibrary: renderer.shaderLibrary,
+                resolution: resolution
+            )
+        }
+    }
+
+    /// シャドウマッピングを無効にする
+    public func disableShadows() {
+        canvas3D.shadowMap = nil
+    }
+
+    /// シャドウバイアスを設定（アクネ防止）
+    public func shadowBias(_ value: Float) {
+        canvas3D.shadowMap?.shadowBias = value
+    }
+
     // MARK: - 3D Material
 
     /// スペキュラ色を設定
@@ -992,6 +1092,24 @@ public final class SketchContext {
     /// メタリック係数を設定
     public func metallic(_ value: Float) {
         canvas3D.metallic(value)
+    }
+
+    /// PBR roughness を設定（自動的に PBR モードに切り替わる）
+    /// - Parameter value: 0.0（鏡面）〜 1.0（完全拡散）
+    public func roughness(_ value: Float) {
+        canvas3D.roughness(value)
+    }
+
+    /// PBR アンビエントオクルージョンを設定
+    /// - Parameter value: 0.0（完全遮蔽）〜 1.0（遮蔽なし）
+    public func ambientOcclusion(_ value: Float) {
+        canvas3D.ambientOcclusion(value)
+    }
+
+    /// PBR モードを明示的に切り替える
+    /// - Parameter enabled: true で PBR（Cook-Torrance GGX）、false で Blinn-Phong
+    public func pbr(_ enabled: Bool) {
+        canvas3D.pbr(enabled)
     }
 
     // MARK: - 3D Custom Material
@@ -1373,6 +1491,13 @@ public final class SketchContext {
         try gifExporter.endRecord(to: actualPath)
     }
 
+    // MARK: - Physics 2D
+
+    /// 2D 物理ワールドを作成
+    public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
+        Physics2D(cellSize: cellSize)
+    }
+
     // MARK: - Orbit Camera (D-20)
 
     /// オービットカメラ
@@ -1401,5 +1526,69 @@ public final class SketchContext {
 
         // Canvas3D に適用
         canvas3D.camera(eye: orbitCamera.eye, center: orbitCamera.target, up: orbitCamera.up)
+    }
+
+    // MARK: - Scene Graph
+
+    /// ノードを作成
+    public func createNode(_ name: String = "") -> Node {
+        Node(name: name)
+    }
+
+    /// シーングラフを描画
+    public func drawScene(_ root: Node) {
+        SceneRenderer.render(node: root, canvas: canvas3D)
+    }
+
+    // MARK: - Render Graph
+
+    /// ソースパスを作成
+    /// - Parameters:
+    ///   - label: ノードのラベル
+    ///   - width: テクスチャの幅
+    ///   - height: テクスチャの高さ
+    /// - Returns: SourcePass（失敗時は nil）
+    public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
+        try? SourcePass(
+            label: label,
+            device: renderer.device,
+            width: width,
+            height: height
+        )
+    }
+
+    /// エフェクトパスを作成
+    /// - Parameters:
+    ///   - input: 入力パスノード
+    ///   - effects: ポストプロセスエフェクト配列
+    /// - Returns: EffectPass（失敗時は nil）
+    public func createEffectPass(_ input: RenderPassNode, effects: [PostEffect]) -> EffectPass? {
+        try? EffectPass(
+            input,
+            effects: effects,
+            device: renderer.device,
+            shaderLibrary: renderer.shaderLibrary
+        )
+    }
+
+    /// マージパスを作成
+    /// - Parameters:
+    ///   - a: ベースパス
+    ///   - b: オーバーレイパス
+    ///   - blend: ブレンドモード
+    /// - Returns: MergePass（失敗時は nil）
+    public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
+        try? MergePass(
+            a, b,
+            blend: blend,
+            device: renderer.device,
+            shaderLibrary: renderer.shaderLibrary
+        )
+    }
+
+    /// レンダーグラフを設定
+    /// - Parameter graph: RenderGraph（nil で解除）
+    public func setRenderGraph(_ graph: RenderGraph?) {
+        renderer.renderGraph = graph
     }
 }

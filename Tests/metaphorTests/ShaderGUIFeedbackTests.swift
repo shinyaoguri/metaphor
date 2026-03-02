@@ -111,7 +111,7 @@ struct ShaderHotReloadTests {
 
     @Test("Canvas3D clearCustomPipelineCache works")
     func canvas3DClearCache() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         // キャッシュクリアがクラッシュしないこと
         canvas3D.clearCustomPipelineCache()
@@ -154,10 +154,10 @@ struct ParameterGUITests {
     }
 
     @Test("SketchContext has gui property")
-    func sketchContextGUI() {
-        let renderer = MetaphorRenderer()!
-        let canvas = try! Canvas2D(renderer: renderer)
-        let canvas3D = try! Canvas3D(renderer: renderer)
+    func sketchContextGUI() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
         let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(ctx.gui.isVisible == true)
     }
@@ -170,15 +170,15 @@ struct ParameterGUITests {
 struct OfflineRenderingTests {
 
     @Test("offlineFrameRate defaults to 60")
-    func defaultFrameRate() {
-        let renderer = MetaphorRenderer()!
+    func defaultFrameRate() throws {
+        let renderer = try MetaphorRenderer()
         #expect(renderer.offlineFrameRate == 60.0)
         #expect(renderer.isOfflineRendering == false)
     }
 
     @Test("elapsedTime uses frame index in offline mode")
-    func offlineElapsedTime() {
-        let renderer = MetaphorRenderer()!
+    func offlineElapsedTime() throws {
+        let renderer = try MetaphorRenderer()
         renderer.isOfflineRendering = true
         renderer.offlineFrameRate = 30.0
         renderer.resetOfflineRendering()
@@ -188,16 +188,16 @@ struct OfflineRenderingTests {
     }
 
     @Test("offlineDeltaTime returns correct value")
-    func offlineDeltaTime() {
-        let renderer = MetaphorRenderer()!
+    func offlineDeltaTime() throws {
+        let renderer = try MetaphorRenderer()
         renderer.offlineFrameRate = 30.0
         let dt = renderer.offlineDeltaTime
         #expect(abs(dt - 1.0 / 30.0) < 0.0001)
     }
 
     @Test("isOfflineRendering can be set directly")
-    func setOfflineFlag() {
-        let renderer = MetaphorRenderer()!
+    func setOfflineFlag() throws {
+        let renderer = try MetaphorRenderer()
         #expect(renderer.isOfflineRendering == false)
         renderer.isOfflineRendering = true
         #expect(renderer.isOfflineRendering == true)
@@ -206,8 +206,8 @@ struct OfflineRenderingTests {
     }
 
     @Test("resetOfflineRendering resets elapsed to 0")
-    func resetOffline() {
-        let renderer = MetaphorRenderer()!
+    func resetOffline() throws {
+        let renderer = try MetaphorRenderer()
         renderer.isOfflineRendering = true
         renderer.offlineFrameRate = 30.0
         renderer.resetOfflineRendering()
@@ -215,10 +215,10 @@ struct OfflineRenderingTests {
     }
 
     @Test("SketchContext offline render API")
-    func sketchContextOffline() {
-        let renderer = MetaphorRenderer()!
-        let canvas = try! Canvas2D(renderer: renderer)
-        let canvas3D = try! Canvas3D(renderer: renderer)
+    func sketchContextOffline() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
         let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         #expect(ctx.isOfflineRendering == false)
@@ -237,17 +237,17 @@ struct OfflineRenderingTests {
 struct FBOFeedbackTests {
 
     @Test("feedbackEnabled defaults to false")
-    func defaultDisabled() {
-        let renderer = MetaphorRenderer()!
+    func defaultDisabled() throws {
+        let renderer = try MetaphorRenderer()
         #expect(renderer.feedbackEnabled == false)
         #expect(renderer.previousFrameTexture == nil)
     }
 
     @Test("enableFeedback sets flag")
-    func enableDisable() {
-        let renderer = MetaphorRenderer()!
-        let canvas = try! Canvas2D(renderer: renderer)
-        let canvas3D = try! Canvas3D(renderer: renderer)
+    func enableDisable() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
         let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         ctx.enableFeedback()
@@ -257,10 +257,10 @@ struct FBOFeedbackTests {
     }
 
     @Test("previousFrame returns nil when feedback disabled")
-    func previousFrameNilWhenDisabled() {
-        let renderer = MetaphorRenderer()!
-        let canvas = try! Canvas2D(renderer: renderer)
-        let canvas3D = try! Canvas3D(renderer: renderer)
+    func previousFrameNilWhenDisabled() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
         let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         let img = ctx.previousFrame()
@@ -268,8 +268,8 @@ struct FBOFeedbackTests {
     }
 
     @Test("previousFrameTexture is nil before any render")
-    func previousFrameTextureNilInitially() {
-        let renderer = MetaphorRenderer()!
+    func previousFrameTextureNilInitially() throws {
+        let renderer = try MetaphorRenderer()
         renderer.feedbackEnabled = true
         // renderFrame() を呼ばない状態では nil
         #expect(renderer.previousFrameTexture == nil)

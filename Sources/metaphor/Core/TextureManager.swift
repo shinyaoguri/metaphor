@@ -50,7 +50,7 @@ public final class TextureManager {
         depthFormat: MTLPixelFormat = .depth32Float,
         clearColor: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1),
         sampleCount: Int = 4
-    ) {
+    ) throws {
         self.device = device
         self.width = width
         self.height = height
@@ -66,7 +66,7 @@ public final class TextureManager {
         colorDescriptor.usage = [.renderTarget, .shaderRead]
         colorDescriptor.storageMode = .private
         guard let colorTex = device.makeTexture(descriptor: colorDescriptor) else {
-            fatalError("[TextureManager] Failed to create color texture (\(width)x\(height))")
+            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
         }
         self.colorTexture = colorTex
 
@@ -80,7 +80,7 @@ public final class TextureManager {
         depthDescriptor.usage = .renderTarget
         depthDescriptor.storageMode = .private
         guard let depthTex = device.makeTexture(descriptor: depthDescriptor) else {
-            fatalError("[TextureManager] Failed to create depth texture (\(width)x\(height))")
+            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "depth")
         }
         self.depthTexture = depthTex
 
@@ -131,18 +131,18 @@ public final class TextureManager {
     }
 
     /// Full HD (1920x1080) プリセット
-    public static func fullHD(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) -> TextureManager {
-        TextureManager(device: device, width: 1920, height: 1080, clearColor: clearColor, sampleCount: sampleCount)
+    public static func fullHD(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
+        try TextureManager(device: device, width: 1920, height: 1080, clearColor: clearColor, sampleCount: sampleCount)
     }
 
     /// 4K (3840x2160) プリセット
-    public static func uhd4K(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) -> TextureManager {
-        TextureManager(device: device, width: 3840, height: 2160, clearColor: clearColor, sampleCount: sampleCount)
+    public static func uhd4K(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
+        try TextureManager(device: device, width: 3840, height: 2160, clearColor: clearColor, sampleCount: sampleCount)
     }
 
     /// 正方形テクスチャ
-    public static func square(device: MTLDevice, size: Int, clearColor: MTLClearColor = .black, sampleCount: Int = 4) -> TextureManager {
-        TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
+    public static func square(device: MTLDevice, size: Int, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
+        try TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
     }
 
     /// クリアカラーを動的に変更
@@ -157,8 +157,8 @@ public final class TextureManager {
         pixelFormat: MTLPixelFormat = .bgra8Unorm,
         depthFormat: MTLPixelFormat = .depth32Float,
         clearColor: MTLClearColor = .black
-    ) -> TextureManager {
-        TextureManager(
+    ) throws -> TextureManager {
+        try TextureManager(
             device: device,
             width: width,
             height: height,

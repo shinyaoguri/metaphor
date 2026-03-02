@@ -14,6 +14,10 @@ public final class ShaderLibrary {
     /// metallib からロードされたかどうか
     public private(set) var usesPrecompiledMetalLib = false
 
+    /// true の場合、metallib より MSL ソース文字列からのコンパイルを優先する
+    /// ホットリロード開発時に使用
+    public var preferSourceCompilation = false
+
     // MARK: - Built-in Library Keys
 
     /// 組み込みライブラリの識別キー
@@ -30,12 +34,13 @@ public final class ShaderLibrary {
         public static let imageFilter = "metaphor.imageFilter"
         public static let kawaseBlur = "metaphor.kawaseBlur"
         public static let particle = "metaphor.particle"
+        public static let merge = "metaphor.merge"
 
         /// 全ビルトインキーのリスト
         static let all: [String] = [
             blit, flatColor, vertexColor, lit,
             canvas2D, canvas3D, canvas2DTextured, canvas3DTextured,
-            postProcess, imageFilter, kawaseBlur, particle,
+            postProcess, imageFilter, kawaseBlur, particle, merge,
         ]
     }
 
@@ -119,8 +124,9 @@ public final class ShaderLibrary {
     // MARK: - Private
 
     private func loadBuiltins() throws {
-        // 1) Bundle.module から事前コンパイル済み metallib をロード
-        if let metallib = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+        // preferSourceCompilation が true の場合は常にソースからコンパイル
+        if !preferSourceCompilation,
+           let metallib = try? device.makeDefaultLibrary(bundle: Bundle.module) {
             for key in BuiltinKey.all {
                 libraries[key] = metallib
             }
@@ -128,7 +134,7 @@ public final class ShaderLibrary {
             return
         }
 
-        // 2) フォールバック: MSL ソース文字列からコンパイル
+        // フォールバック: MSL ソース文字列からコンパイル
         try registerBuiltinsFromSource()
     }
 
@@ -145,5 +151,6 @@ public final class ShaderLibrary {
         try register(source: ImageFilterShaders.source, as: BuiltinKey.imageFilter)
         try register(source: KawaseBlurShaders.source, as: BuiltinKey.kawaseBlur)
         try register(source: ParticleShaders.source, as: BuiltinKey.particle)
+        try register(source: MergeShaders.source, as: BuiltinKey.merge)
     }
 }

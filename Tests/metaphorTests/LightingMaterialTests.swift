@@ -24,9 +24,9 @@ struct Phase3GPUStructTests {
         #expect(MemoryLayout<Light3D>.stride == 64)
     }
 
-    @Test("Material3D stride is 48 bytes")
+    @Test("Material3D stride is 64 bytes (with PBR params)")
     func material3DStride() {
-        #expect(MemoryLayout<Material3D>.stride == 48)
+        #expect(MemoryLayout<Material3D>.stride == 64)
     }
 }
 
@@ -288,7 +288,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D noFill does not crash when drawing")
     func noFillNoCrash() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         // noFill → box should not crash (drawMesh early-returns with no encoder)
         canvas3D.noFill()
@@ -297,7 +297,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D stroke sets wireframe state without crash")
     func strokeNoCrash() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         // stroke → box should not crash (drawMesh early-returns with no encoder)
         canvas3D.stroke(Color.red)
@@ -306,7 +306,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D noFill + noStroke skips drawing without crash")
     func noFillNoStrokeNoCrash() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.noFill()
         canvas3D.noStroke()
@@ -315,7 +315,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D fill(gray) can be called")
     func fillGray() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.fill(0.5 as Float)
         canvas3D.box(1)
@@ -323,7 +323,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D fill(v1,v2,v3) can be called")
     func fillV1V2V3() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.fill(0.2, 0.4, 0.6)
         canvas3D.box(1)
@@ -331,7 +331,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D stroke(gray) can be called")
     func strokeGray() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.stroke(0.5 as Float)
         canvas3D.box(1)
@@ -339,7 +339,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D stroke(v1,v2,v3) can be called")
     func strokeV1V2V3() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.stroke(0.2, 0.4, 0.6)
         canvas3D.box(1)
@@ -347,7 +347,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D colorMode can be set")
     func colorModeSet() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.colorMode(.hsb, 360, 100, 100)
         canvas3D.fill(180, 50, 50)
@@ -356,7 +356,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D fill(gray, alpha) can be called")
     func fillGrayAlpha() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.fill(0.5 as Float, 0.8 as Float)
         canvas3D.box(1)
@@ -364,7 +364,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("Canvas3D stroke(gray, alpha) can be called")
     func strokeGrayAlpha() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
         canvas3D.stroke(0.5 as Float, 0.8 as Float)
         canvas3D.box(1)
@@ -372,7 +372,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("SketchContext fill dispatches to both 2D and 3D")
     func sketchContextFillDispatches() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
@@ -384,7 +384,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("SketchContext stroke dispatches to both 2D and 3D")
     func sketchContextStrokeDispatches() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
@@ -397,7 +397,7 @@ struct Phase3Canvas3DFillStrokeTests {
 
     @Test("SketchContext colorMode dispatches to both 2D and 3D")
     func sketchContextColorModeDispatches() throws {
-        let renderer = MetaphorRenderer()!
+        let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)

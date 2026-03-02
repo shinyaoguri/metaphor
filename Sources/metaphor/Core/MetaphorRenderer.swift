@@ -18,8 +18,10 @@ public final class MetaphorRenderer: NSObject {
     /// オフスクリーンテクスチャマネージャ
     public private(set) var textureManager: TextureManager
 
+    #if os(macOS)
     /// Syphon出力（オプション）
     public private(set) var syphonOutput: SyphonOutput?
+    #endif
 
     /// シェーダーライブラリ
     public let shaderLibrary: ShaderLibrary
@@ -41,6 +43,10 @@ public final class MetaphorRenderer: NSObject {
     ///   - commandBuffer: MTLCommandBuffer（コンピュートエンコーダ作成用）
     ///   - time: 開始からの経過時間（秒）
     public var onCompute: ((MTLCommandBuffer, Double) -> Void)?
+
+    /// メイン描画後に呼ばれるコールバック（シャドウパスなど）
+    /// - Parameter commandBuffer: MTLCommandBuffer
+    public var onAfterDraw: ((MTLCommandBuffer) -> Void)?
 
     /// 開始時刻（単調増加時刻）
     private let startTime: Double
@@ -87,6 +93,11 @@ public final class MetaphorRenderer: NSObject {
         ImageFilterGPU(device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
     }()
 
+    // MARK: - Render Graph
+
+    /// レンダーグラフ（設定時はグラフの出力が最終出力テクスチャとなる）
+    public var renderGraph: RenderGraph?
+
     // MARK: - FBO Feedback
 
     /// フレームバッファフィードバックの有効フラグ
@@ -99,6 +110,12 @@ public final class MetaphorRenderer: NSObject {
 
     private var pendingSavePath: String?
     private var stagingTexture: MTLTexture?
+
+    // MARK: - GPU Time
+
+    /// 最新の GPU 時間（秒）
+    public private(set) var lastGPUStartTime: Double = 0
+    public private(set) var lastGPUEndTime: Double = 0
 
     // MARK: - Frame Export
 
@@ -120,33 +137,29 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンテクスチャの幅
     ///   - height: オフスクリーンテクスチャの高さ
     ///   - clearColor: クリアカラー
-    public init?(
+    public init(
         device: MTLDevice? = nil,
         width: Int = 1920,
         height: Int = 1080,
         clearColor: MTLClearColor = .black
-    ) {
-        guard let device = device ?? MTLCreateSystemDefaultDevice(),
-              let commandQueue = device.makeCommandQueue() else {
-            return nil
+    ) throws {
+        guard let device = device ?? MTLCreateSystemDefaultDevice() else {
+            throw MetaphorError.deviceNotAvailable
+        }
+        guard let commandQueue = device.makeCommandQueue() else {
+            throw MetaphorError.commandQueueCreationFailed
         }
 
         self.device = device
         self.commandQueue = commandQueue
-        self.textureManager = TextureManager(
+        self.textureManager = try TextureManager(
             device: device,
             width: width,
             height: height,
             clearColor: clearColor
         )
         self.startTime = CACurrentMediaTime()
-
-        do {
-            self.shaderLibrary = try ShaderLibrary(device: device)
-        } catch {
-            print("Failed to initialize ShaderLibrary: \(error)")
-            return nil
-        }
+        self.shaderLibrary = try ShaderLibrary(device: device)
         self.depthStencilCache = DepthStencilCache(device: device)
         self.input = InputManager()
 
@@ -163,6 +176,7 @@ public final class MetaphorRenderer: NSObject {
         }
     }
 
+    #if os(macOS)
     // MARK: - Syphon
 
     /// Syphonサーバーを開始
@@ -176,16 +190,22 @@ public final class MetaphorRenderer: NSObject {
         syphonOutput?.stop()
         syphonOutput = nil
     }
+    #endif
 
     // MARK: - Canvas Resize
 
     /// キャンバスサイズを変更（テクスチャ再作成）
     public func resizeCanvas(width: Int, height: Int) {
-        textureManager = TextureManager(
-            device: device,
-            width: width,
-            height: height
-        )
+        do {
+            textureManager = try TextureManager(
+                device: device,
+                width: width,
+                height: height
+            )
+        } catch {
+            print("[metaphor] Failed to resize canvas: \(error)")
+            return
+        }
         stagingTexture = nil
         exportStagingTexture = nil
         videoStagingTexture = nil
@@ -531,8 +551,12 @@ public final class MetaphorRenderer: NSObject {
         frameBufferIndex = nextBufferIndex
         nextBufferIndex = (nextBufferIndex + 1) % 3
 
-        commandBuffer.addCompletedHandler { [weak self] _ in
+        commandBuffer.addCompletedHandler { [weak self] cb in
             self?.inflightSemaphore.signal()
+            Task { @MainActor in
+                self?.lastGPUStartTime = cb.gpuStartTime
+                self?.lastGPUEndTime = cb.gpuEndTime
+            }
         }
 
         input.updateFrame()
@@ -554,15 +578,29 @@ public final class MetaphorRenderer: NSObject {
             encoder.endEncoding()
         }
 
+        // シャドウパス（メイン描画後にシャドウマップを更新 → 次フレームで使用）
+        onAfterDraw?(commandBuffer)
+
+        // レンダーグラフ実行（設定時はグラフの出力を最終出力とする）
+        let baseTexture: MTLTexture
+        if let graph = renderGraph,
+           let graphOutput = graph.execute(
+               commandBuffer: commandBuffer, time: time, renderer: self
+           ) {
+            baseTexture = graphOutput
+        } else {
+            baseTexture = textureManager.colorTexture
+        }
+
         // ポストプロセス適用
         let outputTexture: MTLTexture
         if let pipeline = postProcessPipeline, !pipeline.effects.isEmpty {
             outputTexture = pipeline.apply(
-                source: textureManager.colorTexture,
+                source: baseTexture,
                 commandBuffer: commandBuffer
             )
         } else {
-            outputTexture = textureManager.colorTexture
+            outputTexture = baseTexture
         }
         lastOutputTexture = outputTexture
 
@@ -621,11 +659,13 @@ public final class MetaphorRenderer: NSObject {
         }
 
         // Syphonに送信
+        #if os(macOS)
         syphonOutput?.publish(
             texture: outputTexture,
             commandBuffer: commandBuffer,
             flipped: true
         )
+        #endif
 
         commandBuffer.commit()
 
@@ -663,10 +703,12 @@ extension MetaphorRenderer: MTKViewDelegate {
 
             // ウィンドウが隠れている場合はブリットをスキップ
             // (currentDrawableがブロックしてレンダータイマーを止めるのを防ぐ)
+            #if os(macOS)
             if let window = view.window,
                !window.occlusionState.contains(.visible) {
                 return
             }
+            #endif
 
             // 画面にブリット（プレビュー表示）
             guard let drawable = view.currentDrawable,

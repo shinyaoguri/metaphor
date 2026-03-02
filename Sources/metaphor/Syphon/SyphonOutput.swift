@@ -1,3 +1,4 @@
+#if os(macOS)
 import Metal
 import Syphon
 import Foundation
@@ -72,3 +73,4 @@ public final class SyphonOutput {
         stop()
     }
 }
+#endif

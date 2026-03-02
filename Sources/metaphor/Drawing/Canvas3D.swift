@@ -35,16 +35,18 @@ struct Light3D {
 
 // MARK: - Material3D
 
-/// GPU互換マテリアルデータ（48 bytes）
+/// GPU互換マテリアルデータ（64 bytes）
 struct Material3D {
     var ambientColor: SIMD4<Float>         // xyz=ambient color
     var specularAndShininess: SIMD4<Float> // xyz=specular color, w=shininess
     var emissiveAndMetallic: SIMD4<Float>  // xyz=emissive color, w=metallic
+    var pbrParams: SIMD4<Float>            // x=roughness, y=usePBR(0/1), z=ao, w=reserved
 
     static let `default` = Material3D(
         ambientColor: SIMD4(0.2, 0.2, 0.2, 0),
         specularAndShininess: SIMD4(0, 0, 0, 32),
-        emissiveAndMetallic: SIMD4(0, 0, 0, 0)
+        emissiveAndMetallic: SIMD4(0, 0, 0, 0),
+        pbrParams: SIMD4(0.5, 0, 1, 0)    // roughness=0.5, usePBR=off, ao=1, reserved=0
     )
 }
 
@@ -64,6 +66,7 @@ public final class Canvas3D {
     private let pipelineState: MTLRenderPipelineState
     private let texturedPipelineState: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState?
+    private let dummyShadowTexture: MTLTexture?
 
     private static let maxLights = 8
 
@@ -148,6 +151,14 @@ public final class Canvas3D {
 
     private var meshCache: [String: Mesh] = [:]
 
+    // MARK: - Shadow Mapping State
+
+    /// シャドウマップ（nil = シャドウ無効）
+    var shadowMap: ShadowMap?
+
+    /// シャドウ有効時の記録済み DrawCall
+    private(set) var recordedDrawCalls: [DrawCall3D] = []
+
     // MARK: - Initialization
 
     public convenience init(renderer: MetaphorRenderer) throws {
@@ -210,6 +221,14 @@ public final class Canvas3D {
             .build()
 
         self.depthState = depthStencilCache.state(for: .readWrite)
+
+        // ダミー 1x1 シャドウテクスチャ（シャドウ無効時にバインド）
+        let dummyDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .depth32Float, width: 1, height: 1, mipmapped: false
+        )
+        dummyDesc.usage = .shaderRead
+        dummyDesc.storageMode = .private
+        self.dummyShadowTexture = device.makeTexture(descriptor: dummyDesc)
     }
 
     // MARK: - Frame Lifecycle
@@ -228,6 +247,7 @@ public final class Canvas3D {
         self.currentMaterial = .default
         self.currentTexture = nil
         self.currentCustomMaterial = nil
+        self.recordedDrawCalls.removeAll(keepingCapacity: true)
 
         let defaultZ = (height / 2) / tan(fov / 2)
         self.cameraEye = SIMD3(0, 0, defaultZ)
@@ -239,6 +259,19 @@ public final class Canvas3D {
 
     func end() {
         self.encoder = nil
+    }
+
+    /// シャドウ深度パスを実行する（メインパス終了後に呼ぶ）
+    func performShadowPass(commandBuffer: MTLCommandBuffer) {
+        guard let shadow = shadowMap, !recordedDrawCalls.isEmpty else { return }
+
+        // 最初のディレクショナルライトからライト空間行列を計算
+        if let dirLight = lightArray.first(where: { UInt32($0.positionAndType.w) == 0 }) {
+            let lightDir = SIMD3(dirLight.directionAndCutoff.x, dirLight.directionAndCutoff.y, dirLight.directionAndCutoff.z)
+            shadow.updateLightSpaceMatrix(lightDirection: lightDir, sceneCenter: cameraCenter)
+        }
+
+        shadow.render(drawCalls: recordedDrawCalls, commandBuffer: commandBuffer)
     }
 
     // MARK: - Public Camera Accessors
@@ -431,6 +464,25 @@ public final class Canvas3D {
         currentMaterial.emissiveAndMetallic.w = value
     }
 
+    /// PBR roughness を設定（自動的に PBR モードに切り替わる）
+    /// - Parameter value: 0.0（鏡面）〜 1.0（完全拡散）
+    public func roughness(_ value: Float) {
+        currentMaterial.pbrParams.x = value
+        currentMaterial.pbrParams.y = 1  // 自動で PBR モード ON
+    }
+
+    /// PBR アンビエントオクルージョンを設定
+    /// - Parameter value: 0.0（完全遮蔽）〜 1.0（遮蔽なし）
+    public func ambientOcclusion(_ value: Float) {
+        currentMaterial.pbrParams.z = value
+    }
+
+    /// PBR モードを明示的に切り替える
+    /// - Parameter enabled: true で PBR（Cook-Torrance GGX）、false で Blinn-Phong
+    public func pbr(_ enabled: Bool) {
+        currentMaterial.pbrParams.y = enabled ? 1 : 0
+    }
+
     // MARK: - Custom Material
 
     /// カスタムフラグメントシェーダーマテリアルを適用
@@ -504,6 +556,17 @@ public final class Canvas3D {
         currentTransform = currentTransform * float4x4(scale: SIMD3(x, y, z))
     }
     public func scale(_ s: Float) { currentTransform = currentTransform * float4x4(scale: s) }
+
+    // MARK: - Style Sync
+
+    /// DrawingStyle から共通スタイルを同期
+    public func syncStyle(_ style: DrawingStyle) {
+        fillColor = style.fillColor
+        strokeColor3D = style.strokeColor
+        hasFill = style.hasFill
+        hasStroke3D = style.hasStroke
+        colorModeConfig = style.colorModeConfig
+    }
 
     // MARK: - Style
 
@@ -1026,6 +1089,22 @@ public final class Canvas3D {
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
+        // シャドウ有効時: DrawCall を記録（シャドウパスで使用）
+        if shadowMap != nil {
+            recordedDrawCalls.append(DrawCall3D(
+                mesh: mesh,
+                transform: currentTransform,
+                fillColor: fillColor,
+                material: currentMaterial,
+                customMaterial: currentCustomMaterial,
+                texture: currentTexture,
+                isTextured: isTextured,
+                hasFill: hasFill,
+                hasStroke: hasStroke3D,
+                strokeColor: strokeColor3D
+            ))
+        }
+
         // カスタムマテリアルが設定されている場合はカスタムパイプラインを使用
         if let customMat = currentCustomMaterial,
            let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured, customVertexFunction: customMat.vertexFunction) {
@@ -1081,6 +1160,27 @@ public final class Canvas3D {
             // カスタムマテリアルのパラメータをbuffer(4)にバインド
             if let customMat = currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
                 encoder.setFragmentBytes(&params, length: params.count, index: 4)
+            }
+
+            // シャドウマップをバインド（無効時はダミーテクスチャ）
+            if let shadow = shadowMap {
+                var shadowUniforms = ShadowFragmentUniforms(
+                    lightSpaceMatrix: shadow.lightSpaceMatrix,
+                    shadowBias: shadow.shadowBias,
+                    shadowEnabled: 1.0
+                )
+                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+                encoder.setFragmentTexture(shadow.shadowTexture, index: 1)
+            } else {
+                var shadowUniforms = ShadowFragmentUniforms(
+                    lightSpaceMatrix: .identity,
+                    shadowBias: 0,
+                    shadowEnabled: 0
+                )
+                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+                if let dummy = dummyShadowTexture {
+                    encoder.setFragmentTexture(dummy, index: 1)
+                }
             }
 
             if isTextured, let tex = currentTexture {

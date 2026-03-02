@@ -39,6 +39,7 @@ struct Material3D {
     float4 ambientColor;
     float4 specularAndShininess;
     float4 emissiveAndMetallic;
+    float4 pbrParams;             // x=roughness, y=usePBR(0/1), z=ao, w=reserved
 };
 
 #endif

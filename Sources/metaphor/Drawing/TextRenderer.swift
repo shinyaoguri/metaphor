@@ -1,5 +1,9 @@
 import Metal
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import CoreText
 
 // MARK: - Text Alignment
@@ -130,7 +134,7 @@ final class GlyphAtlas {
         let str = String(char)
         let attrString = NSAttributedString(
             string: str,
-            attributes: [.font: font, .foregroundColor: NSColor.white]
+            attributes: [.font: font, .foregroundColor: PlatformColor.white]
         )
         let line = CTLineCreateWithAttributedString(attrString)
 
@@ -424,7 +428,7 @@ final class TextRenderer {
         let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor.white
+            .foregroundColor: PlatformColor.white
         ]
         let attrString = NSAttributedString(string: string, attributes: attributes)
         let line = CTLineCreateWithAttributedString(attrString)
@@ -488,7 +492,7 @@ final class TextRenderer {
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor.white,
+            .foregroundColor: PlatformColor.white,
             .paragraphStyle: paragraphStyle
         ]
         let attrString = NSAttributedString(string: string, attributes: attributes)
