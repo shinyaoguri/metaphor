@@ -27,6 +27,15 @@ public final class Canvas2D {
     let texturedPipelineStates: [BlendMode: MTLRenderPipelineState]
     let depthStencilState: MTLDepthStencilState?
 
+    // MARK: - 2D Instancing Resources
+
+    let instancedPipelineStates: [BlendMode: MTLRenderPipelineState]
+    let instanceBatcher2D: InstanceBatcher2D
+    let unitCircleBuffer: MTLBuffer
+    let unitCircleVertexCount: Int
+    let unitRectBuffer: MTLBuffer
+    let unitRectVertexCount: Int
+
     /// トリプルバッファ (CPU/GPU同期競合を回避)
     private static let bufferCount = 3
     private let vertexBuffers: [MTLBuffer]
@@ -352,6 +361,42 @@ public final class Canvas2D {
                "Vertex2D stride must be 24 to match position2DColor layout")
         assert(MemoryLayout<TexturedVertex2D>.stride == 32,
                "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
+
+        // 2Dインスタンシングリソース
+        let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device)
+        self.unitCircleBuffer = circleBuf
+        self.unitCircleVertexCount = circleCount
+        let (rectBuf, rectCount) = UnitMesh2D.createRect(device: device)
+        self.unitRectBuffer = rectBuf
+        self.unitRectVertexCount = rectCount
+        self.instanceBatcher2D = InstanceBatcher2D(device: device)
+
+        // インスタンシングパイプライン（全BlendMode分）
+        let instVertexFn = shaderLibrary.function(
+            named: Canvas2DInstancedShaders.vertexFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas2DInstanced
+        )
+        var instPipelines: [BlendMode: MTLRenderPipelineState] = [:]
+        for mode in BlendMode.allCases {
+            let fragName: String
+            switch mode {
+            case .difference: fragName = Canvas2DInstancedShaders.differenceFragmentFunctionName
+            case .exclusion: fragName = Canvas2DInstancedShaders.exclusionFragmentFunctionName
+            default: fragName = Canvas2DInstancedShaders.fragmentFunctionName
+            }
+            let fragFn = shaderLibrary.function(
+                named: fragName,
+                from: ShaderLibrary.BuiltinKey.canvas2DInstanced
+            )
+            instPipelines[mode] = try PipelineFactory(device: device)
+                .vertex(instVertexFn)
+                .fragment(fragFn)
+                .vertexLayout(.position2DOnly)
+                .blending(mode)
+                .sampleCount(sampleCount)
+                .build()
+        }
+        self.instancedPipelineStates = instPipelines
     }
 
     // MARK: - Frame Control
@@ -390,6 +435,7 @@ public final class Canvas2D {
         self.currentTextLeading = 1.2
         self.frameCounter += 1
         self.hasDrawnAnything = false
+        self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
     }
 
     /// 蓄積した頂点を描画して終了
@@ -398,8 +444,9 @@ public final class Canvas2D {
         encoder = nil
     }
 
-    /// 蓄積した全頂点を描画（カラー＋テクスチャ両方）
+    /// 蓄積した全頂点を描画（カラー＋テクスチャ＋インスタンス全部）
     public func flush() {
+        flushInstancedBatch()
         flushColorVertices()
         flushTexturedVertices()
     }
@@ -451,7 +498,9 @@ public final class Canvas2D {
     /// ブレンドモードを変更（現在のバッチをフラッシュしてからスイッチ）
     public func blendMode(_ mode: BlendMode) {
         if mode != currentBlendMode {
-            flush()
+            flushInstancedBatch()
+            flushColorVertices()
+            flushTexturedVertices()
             currentBlendMode = mode
         }
     }
@@ -629,6 +678,81 @@ public final class Canvas2D {
     /// 背景色を設定（colorModeに従って解釈）
     public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         background(colorModeConfig.toColor(v1, v2, v3, a))
+    }
+
+    // MARK: - 2D Instanced Shape Drawing
+
+    /// インスタンスバッチをGPUに発行
+    func flushInstancedBatch() {
+        guard let encoder = encoder,
+              instanceBatcher2D.instanceCount > 0,
+              let batchKey = instanceBatcher2D.currentBatchKey else { return }
+
+        guard let pipeline = instancedPipelineStates[batchKey.blendMode] else { return }
+        encoder.setRenderPipelineState(pipeline)
+        if let depthState = depthStencilState {
+            encoder.setDepthStencilState(depthState)
+        }
+        encoder.setCullMode(.none)
+
+        let (meshBuffer, meshVertexCount) = unitMeshFor(batchKey.shapeType)
+        encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
+        encoder.setVertexBuffer(instanceBatcher2D.currentBuffer, offset: 0, index: 6)
+
+        var proj = projectionMatrix
+        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
+
+        encoder.drawPrimitives(
+            type: .triangle,
+            vertexStart: 0,
+            vertexCount: meshVertexCount,
+            instanceCount: instanceBatcher2D.instanceCount
+        )
+
+        instanceBatcher2D.reset()
+    }
+
+    /// 形状をインスタンスバッチに追加
+    ///
+    /// cx,cy: 形状の中心座標（ローカル空間）
+    /// sx,sy: 形状のスケール（ユニットメッシュに適用）
+    func addShapeInstance(_ shapeType: Shape2DType, cx: Float, cy: Float, sx: Float, sy: Float) {
+        hasDrawnAnything = true
+
+        // 描画順序保持: 非インスタンス頂点が溜まっていたら先にフラッシュ
+        if texturedVertexCount > 0 {
+            flushTexturedVertices()
+            currentBoundTexture = nil
+        }
+        if vertexCount > 0 {
+            flushColorVertices()
+        }
+
+        let key = InstanceBatcher2D.BatchKey2D(
+            shapeType: shapeType,
+            blendMode: currentBlendMode
+        )
+
+        // currentTransform * translate(cx,cy) * scale(sx,sy) を float4x4 に変換
+        let shapeLocal = float3x3(columns: (
+            SIMD3<Float>(sx, 0, 0),
+            SIMD3<Float>(0, sy, 0),
+            SIMD3<Float>(cx, cy, 1)
+        ))
+        let combined = currentTransform * shapeLocal
+        let transform = Canvas2D.embed2DTransform(combined)
+
+        if !instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor) {
+            flushInstancedBatch()
+            let _ = instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor)
+        }
+    }
+
+    private func unitMeshFor(_ shapeType: Shape2DType) -> (MTLBuffer, Int) {
+        switch shapeType {
+        case .ellipse: return (unitCircleBuffer, unitCircleVertexCount)
+        case .rect: return (unitRectBuffer, unitRectVertexCount)
+        }
     }
 
     // MARK: - Transform Stack

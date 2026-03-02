@@ -16,6 +16,8 @@ public enum VertexLayout {
     case position2DColor
     /// float2 position + float2 texCoord + float4 color (stride: 32 bytes, テクスチャ付きCanvas2D用)
     case position2DTexCoordColor
+    /// float2 position のみ (stride: 8 bytes, Canvas2Dインスタンシング用ユニットメッシュ)
+    case position2DOnly
 
     /// MTLVertexDescriptorを生成
     public func makeDescriptor() -> MTLVertexDescriptor {
@@ -82,6 +84,12 @@ public enum VertexLayout {
             descriptor.attributes[2].offset = MemoryLayout<SIMD2<Float>>.stride * 2
             descriptor.attributes[2].bufferIndex = 0
             descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
+
+        case .position2DOnly:
+            descriptor.attributes[0].format = .float2
+            descriptor.attributes[0].offset = 0
+            descriptor.attributes[0].bufferIndex = 0
+            descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride
         }
 
         return descriptor

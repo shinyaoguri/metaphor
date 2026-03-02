@@ -19,10 +19,13 @@ extension Canvas2D {
             rx = x - w; ry = y - h; rw = w * 2; rh = h * 2
         }
         if hasFill {
-            addTriangle(rx, ry, rx + rw, ry, rx + rw, ry + rh, fillColor)
-            addTriangle(rx, ry, rx + rw, ry + rh, rx, ry + rh, fillColor)
+            // GPU インスタンシング: ユニット矩形 [-0.5,0.5]² を中心+サイズに変換
+            let centerX = rx + rw * 0.5
+            let centerY = ry + rh * 0.5
+            addShapeInstance(.rect, cx: centerX, cy: centerY, sx: rw, sy: rh)
         }
         if hasStroke {
+            flushInstancedBatch()
             strokePolyline([
                 (rx, ry), (rx + rw, ry), (rx + rw, ry + rh), (rx, ry + rh)
             ], closed: true)
@@ -191,20 +194,15 @@ extension Canvas2D {
             rx = abs(w - x) * 0.5; ry = abs(h - y) * 0.5
             cx = min(x, w) + rx; cy = min(y, h) + ry
         }
-        let step = Float.pi * 2.0 / Float(ellipseSegments)
 
         if hasFill {
-            for i in 0..<ellipseSegments {
-                let a0 = step * Float(i)
-                let a1 = step * Float(i + 1)
-                let px0 = cx + rx * cos(a0)
-                let py0 = cy + ry * sin(a0)
-                let px1 = cx + rx * cos(a1)
-                let py1 = cy + ry * sin(a1)
-                addTriangle(cx, cy, px0, py0, px1, py1, fillColor)
-            }
+            // GPU インスタンシング: ユニット円メッシュ (diameter=1) を (rx*2, ry*2) にスケール
+            addShapeInstance(.ellipse, cx: cx, cy: cy, sx: rx * 2, sy: ry * 2)
         }
         if hasStroke {
+            // ストロークは描画順序のためインスタンスバッチを先にフラッシュ
+            flushInstancedBatch()
+            let step = Float.pi * 2.0 / Float(ellipseSegments)
             for i in 0..<ellipseSegments {
                 let a0 = step * Float(i)
                 let a1 = step * Float(i + 1)

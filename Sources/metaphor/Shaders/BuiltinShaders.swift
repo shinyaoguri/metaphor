@@ -686,5 +686,9 @@ public enum BuiltinShaders {
         public static let canvas2DTexturedExclusionFragment = "metaphor_canvas2DTexturedExclusionFragment"
         public static let canvas3DTexturedVertex = "metaphor_canvas3DTexturedVertex"
         public static let canvas3DTexturedFragment = "metaphor_canvas3DTexturedFragment"
+        public static let canvas2DInstancedVertex = "metaphor_canvas2DInstancedVertex"
+        public static let canvas2DInstancedFragment = "metaphor_canvas2DInstancedFragment"
+        public static let canvas2DInstancedDifferenceFragment = "metaphor_canvas2DInstancedDifferenceFragment"
+        public static let canvas2DInstancedExclusionFragment = "metaphor_canvas2DInstancedExclusionFragment"
     }
 }

@@ -13,6 +13,10 @@ extension Canvas2D {
             flushTexturedVertices()
             currentBoundTexture = nil
         }
+        // インスタンスバッチが溜まっていたら先にフラッシュ（描画順序保持）
+        if instanceBatcher2D.instanceCount > 0 {
+            flushInstancedBatch()
+        }
         if bufferOffset + vertexCount >= maxVertices {
             flushColorVertices()
             bufferOffset = 0
@@ -30,6 +34,9 @@ extension Canvas2D {
         if texturedVertexCount > 0 {
             flushTexturedVertices()
             currentBoundTexture = nil
+        }
+        if instanceBatcher2D.instanceCount > 0 {
+            flushInstancedBatch()
         }
         if bufferOffset + vertexCount >= maxVertices {
             flushColorVertices()
