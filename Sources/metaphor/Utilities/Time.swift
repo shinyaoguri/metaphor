@@ -1,14 +1,14 @@
-import Foundation
+import QuartzCore
 
 /// フレームタイミングを管理するクラス
 public final class FrameTimer {
-    private var startTime: CFAbsoluteTime
-    private var lastFrameTime: CFAbsoluteTime
+    private var startTime: Double
+    private var lastFrameTime: Double
     private var frameCount: UInt64 = 0
 
     /// 経過時間（秒）
     public var elapsed: Double {
-        CFAbsoluteTimeGetCurrent() - startTime
+        CACurrentMediaTime() - startTime
     }
 
     /// 前フレームからの経過時間（デルタタイム）
@@ -23,7 +23,7 @@ public final class FrameTimer {
     }
 
     public init() {
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = CACurrentMediaTime()
         startTime = now
         lastFrameTime = now
     }
@@ -31,7 +31,7 @@ public final class FrameTimer {
     /// フレームを更新
     /// 毎フレームの最初に呼び出す
     public func update() {
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = CACurrentMediaTime()
         deltaTime = now - lastFrameTime
         fps = deltaTime > 0 ? 1.0 / deltaTime : 0
         lastFrameTime = now
@@ -40,7 +40,7 @@ public final class FrameTimer {
 
     /// タイマーをリセット
     public func reset() {
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = CACurrentMediaTime()
         startTime = now
         lastFrameTime = now
         frameCount = 0

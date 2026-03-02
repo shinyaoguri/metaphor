@@ -116,6 +116,11 @@ public final class SketchContext {
     /// Tween 自動更新マネージャー
     public let tweenManager = TweenManager()
 
+    // MARK: - GUI
+
+    /// パラメータ GUI インスタンス
+    public let gui = ParameterGUI()
+
     // MARK: - Compute State (internal)
 
     /// 現在のコマンドバッファ（コンピュートフェーズ中のみ有効）
@@ -165,6 +170,8 @@ public final class SketchContext {
     func endFrame() {
         canvas3D.end()
         canvas.end()
+        // GIF frame capture
+        captureGIFFrame()
     }
 
     // MARK: - Shape Mode Settings
@@ -393,6 +400,15 @@ public final class SketchContext {
         canvas.image(img, x, y, w, h)
     }
 
+    /// サブイメージ描画（スプライトシート/タイルマップ用）
+    public func image(
+        _ img: MImage,
+        _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
+        _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float
+    ) {
+        canvas.image(img, dx, dy, dw, dh, sx, sy, sw, sh)
+    }
+
     // MARK: - Text
 
     /// テキストサイズを設定
@@ -516,6 +532,52 @@ public final class SketchContext {
         save(path)
     }
 
+    // MARK: - Offline Rendering
+
+    /// オフラインレンダリングモードかどうか
+    public var isOfflineRendering: Bool {
+        renderer.isOfflineRendering
+    }
+
+    /// オフラインレンダリングモードを開始
+    ///
+    /// フレームの経過時間が決定論的になり、フレーム落ちなしの高品質動画レンダリングが可能。
+    /// - Parameter fps: フレームレート（デフォルト60）
+    public func beginOfflineRender(fps: Double = 60) {
+        renderer.isOfflineRendering = true
+        renderer.offlineFrameRate = fps
+        renderer.resetOfflineRendering()
+    }
+
+    /// オフラインレンダリングモードを終了
+    public func endOfflineRender() {
+        renderer.isOfflineRendering = false
+    }
+
+    // MARK: - FBO Feedback
+
+    /// フレームバッファフィードバックを有効化
+    ///
+    /// 有効にすると、毎フレーム開始時に前フレームのカラーテクスチャがコピーされ、
+    /// `previousFrame()` で MImage として取得できるようになる。
+    public func enableFeedback() {
+        renderer.feedbackEnabled = true
+    }
+
+    /// フレームバッファフィードバックを無効化
+    public func disableFeedback() {
+        renderer.feedbackEnabled = false
+    }
+
+    /// 前フレームのレンダリング結果を MImage として取得
+    ///
+    /// `enableFeedback()` を呼んだ後に使用する。
+    /// フィードバック無効時または最初のフレームでは nil を返す。
+    public func previousFrame() -> MImage? {
+        guard let tex = renderer.previousFrameTexture else { return nil }
+        return MImage(texture: tex)
+    }
+
     // MARK: - Post Process
 
     /// カスタムポストプロセスエフェクトを作成
@@ -561,21 +623,21 @@ public final class SketchContext {
     /// 2D/3Dトランスフォームとスタイルを保存
     public func push() {
         canvas.push()
-        canvas3D.pushMatrix()
+        canvas3D.pushState()
     }
 
     /// 2D/3Dトランスフォームとスタイルを復元
     public func pop() {
         canvas.pop()
-        canvas3D.popMatrix()
+        canvas3D.popState()
     }
 
-    /// スタイル状態のみを保存
+    /// スタイル状態のみを保存（2D）
     public func pushStyle() {
         canvas.pushStyle()
     }
 
-    /// スタイル状態のみを復元
+    /// スタイル状態のみを復元（2D）
     public func popStyle() {
         canvas.popStyle()
     }
@@ -682,6 +744,11 @@ public final class SketchContext {
         canvas.polygon(points)
     }
 
+    /// 多角形（Vec2配列版）
+    public func polygon(_ points: [Vec2]) {
+        canvas.polygon(points.map { ($0.x, $0.y) })
+    }
+
     /// 円弧
     public func arc(
         _ x: Float, _ y: Float,
@@ -753,9 +820,46 @@ public final class SketchContext {
         canvas.endContour()
     }
 
+    /// 頂点カラー付きで頂点を追加（2D）
+    public func vertex(_ x: Float, _ y: Float, _ color: Color) {
+        canvas.vertex(x, y, color)
+    }
+
+    /// UV座標付きで頂点を追加（2D）
+    public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
+        canvas.vertex(x, y, u, v)
+    }
+
     /// 形状記録を終了して描画
     public func endShape(_ close: CloseMode = .open) {
         canvas.endShape(close)
+    }
+
+    // MARK: - 3D Custom Shapes (beginShape / endShape)
+
+    /// 3D頂点ベースの形状記録を開始
+    public func beginShape3D(_ mode: ShapeMode = .polygon) {
+        canvas3D.beginShape(mode)
+    }
+
+    /// 3D頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ z: Float) {
+        canvas3D.vertex(x, y, z)
+    }
+
+    /// 頂点カラー付き3D頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
+        canvas3D.vertex(x, y, z, color)
+    }
+
+    /// 次の3D vertex に適用する法線を設定
+    public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
+        canvas3D.normal(nx, ny, nz)
+    }
+
+    /// 3D形状記録を終了して描画
+    public func endShape3D(_ close: CloseMode = .open) {
+        canvas3D.endShape(close)
     }
 
     /// Catmull-Romスプライン曲線
@@ -900,13 +1004,25 @@ public final class SketchContext {
     ///   - source: MSLシェーダーソースコード
     ///   - fragmentFunction: フラグメントシェーダー関数名
     /// - Returns: CustomMaterial インスタンス
-    public func createMaterial(source: String, fragmentFunction: String) throws -> CustomMaterial {
+    public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.register(source: source, as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
             throw CustomMaterialError.shaderNotFound(fragmentFunction)
         }
-        return CustomMaterial(fragmentFunction: fn, functionName: fragmentFunction, libraryKey: key)
+
+        var vtxFn: MTLFunction? = nil
+        if let vtxName = vertexFunction {
+            guard let vf = renderer.shaderLibrary.function(named: vtxName, from: key) else {
+                throw CustomMaterialError.shaderNotFound(vtxName)
+            }
+            vtxFn = vf
+        }
+
+        return CustomMaterial(
+            fragmentFunction: fn, functionName: fragmentFunction, libraryKey: key,
+            vertexFunction: vtxFn, vertexFunctionName: vertexFunction
+        )
     }
 
     /// カスタムマテリアルを適用
@@ -933,14 +1049,16 @@ public final class SketchContext {
 
     // MARK: - 3D Transform Stack
 
-    /// 3Dトランスフォームを保存（push()のエイリアス）
+    /// 3Dトランスフォームのみを保存
     public func pushMatrix() {
-        push()
+        canvas.pushMatrix()
+        canvas3D.pushMatrix()
     }
 
-    /// 3Dトランスフォームを復元（pop()のエイリアス）
+    /// 3Dトランスフォームのみを復元
     public func popMatrix() {
-        pop()
+        canvas.popMatrix()
+        canvas3D.popMatrix()
     }
 
     /// 3D平行移動
@@ -1008,6 +1126,16 @@ public final class SketchContext {
     /// カスタムメッシュを描画
     public func mesh(_ mesh: Mesh) {
         canvas3D.mesh(mesh)
+    }
+
+    /// 動的メッシュを描画
+    public func dynamicMesh(_ mesh: DynamicMesh) {
+        canvas3D.dynamicMesh(mesh)
+    }
+
+    /// 動的メッシュを作成
+    public func createDynamicMesh() -> DynamicMesh {
+        DynamicMesh(device: renderer.device)
     }
 
     /// 3Dモデルファイルを読み込み（OBJ / USDZ / ABC 対応）
@@ -1134,6 +1262,52 @@ public final class SketchContext {
         OSCReceiver(port: port)
     }
 
+    // MARK: - Shader Hot Reload
+
+    /// シェーダーソースを再コンパイルしてパイプラインキャッシュをクリアする
+    ///
+    /// CustomMaterial / CustomPostEffect の reload() と組み合わせて使う。
+    /// - Parameters:
+    ///   - key: ShaderLibrary の登録キー
+    ///   - source: 新しい MSL ソースコード
+    public func reloadShader(key: String, source: String) throws {
+        try renderer.shaderLibrary.reload(key: key, source: source)
+        canvas3D.clearCustomPipelineCache()
+        renderer.postProcessPipeline?.invalidatePipelines()
+    }
+
+    /// 外部ファイルからシェーダーを再読み込みしてパイプラインキャッシュをクリアする
+    /// - Parameters:
+    ///   - key: ShaderLibrary の登録キー
+    ///   - path: MSL ファイルパス
+    public func reloadShaderFromFile(key: String, path: String) throws {
+        try renderer.shaderLibrary.reloadFromFile(key: key, path: path)
+        canvas3D.clearCustomPipelineCache()
+        renderer.postProcessPipeline?.invalidatePipelines()
+    }
+
+    /// 外部ファイルから MSL ソースを読み込んでマテリアルを作成する
+    public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
+        let key = "user.material.\(fragmentFunction)"
+        try renderer.shaderLibrary.registerFromFile(path: path, as: key)
+        guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
+            throw CustomMaterialError.shaderNotFound(fragmentFunction)
+        }
+
+        var vtxFn: MTLFunction? = nil
+        if let vtxName = vertexFunction {
+            guard let vf = renderer.shaderLibrary.function(named: vtxName, from: key) else {
+                throw CustomMaterialError.shaderNotFound(vtxName)
+            }
+            vtxFn = vf
+        }
+
+        return CustomMaterial(
+            fragmentFunction: fn, functionName: fragmentFunction, libraryKey: key,
+            vertexFunction: vtxFn, vertexFunctionName: vertexFunction
+        )
+    }
+
     // MARK: - Tween
 
     /// Tween を作成し TweenManager に登録
@@ -1144,5 +1318,88 @@ public final class SketchContext {
         let t = Tween(from: from, to: to, duration: duration, easing: easing)
         tweenManager.add(t)
         return t
+    }
+
+    // MARK: - Sound File (D-16)
+
+    /// オーディオファイルを読み込む
+    /// - Parameter path: ファイルパス
+    public func loadSound(_ path: String) throws -> SoundFile {
+        try SoundFile(path: path)
+    }
+
+    // MARK: - MIDI (D-17)
+
+    /// MIDI マネージャーを作成
+    public func createMIDI() -> MIDIManager {
+        MIDIManager()
+    }
+
+    // MARK: - GIF Export (D-19)
+
+    /// GIF エクスポーター
+    public let gifExporter = GIFExporter()
+
+    /// GIF 録画を開始
+    /// - Parameter fps: フレームレート（デフォルト15）
+    public func beginGIFRecord(fps: Int = 15) {
+        gifExporter.beginRecord(
+            fps: fps,
+            width: renderer.textureManager.width,
+            height: renderer.textureManager.height
+        )
+    }
+
+    /// GIF フレームをキャプチャ（内部的に毎フレーム呼ばれる）
+    func captureGIFFrame() {
+        guard gifExporter.isRecording else { return }
+        gifExporter.captureFrame(
+            texture: renderer.textureManager.colorTexture,
+            device: renderer.device
+        )
+    }
+
+    /// GIF 録画を終了してファイルに書き出し
+    /// - Parameter path: 出力ファイルパス（nilならデスクトップに自動生成）
+    public func endGIFRecord(_ path: String? = nil) throws {
+        let actualPath: String
+        if let path {
+            actualPath = path
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
+        }
+        try gifExporter.endRecord(to: actualPath)
+    }
+
+    // MARK: - Orbit Camera (D-20)
+
+    /// オービットカメラ
+    public let orbitCamera = OrbitCamera()
+
+    /// オービットコントロールを有効化（draw() 内で呼ぶ）
+    /// マウスドラッグでカメラを回転、スクロールでズーム
+    public func orbitControl() {
+        let inp = input
+
+        // マウスドラッグでカメラを回転
+        if inp.isMouseDown {
+            let dx = inp.mouseX - inp.pmouseX
+            let dy = inp.mouseY - inp.pmouseY
+            orbitCamera.handleMouseDrag(dx: dx, dy: dy)
+        }
+
+        // スクロールでズーム
+        let sy = inp.scrollY
+        if abs(sy) > 0.01 {
+            orbitCamera.handleScroll(delta: sy)
+        }
+
+        // ダンピング更新
+        orbitCamera.update()
+
+        // Canvas3D に適用
+        canvas3D.camera(eye: orbitCamera.eye, center: orbitCamera.target, up: orbitCamera.up)
     }
 }

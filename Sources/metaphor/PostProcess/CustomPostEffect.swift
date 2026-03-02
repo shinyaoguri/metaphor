@@ -76,4 +76,18 @@ public final class CustomPostEffect: @unchecked Sendable {
 
     /// カスタムパラメータが設定されているか
     var hasCustomParameters: Bool { !parameterData.isEmpty }
+
+    // MARK: - Hot Reload
+
+    /// シェーダーライブラリから関数を再取得する
+    ///
+    /// ShaderLibrary の reload 後に呼ぶことで、
+    /// 変更されたシェーダーでポストエフェクトパイプラインが再構築される。
+    public func reload(shaderLibrary: ShaderLibrary) throws {
+        guard shaderLibrary.function(named: fragmentFunctionName, from: libraryKey) != nil else {
+            throw PostProcessError.shaderNotFound(fragmentFunctionName)
+        }
+        // 関数自体は PostProcessPipeline が libraryKey + fragmentFunctionName から都度取得するため、
+        // ShaderLibrary の reload で関数キャッシュがクリアされていれば再取得される
+    }
 }

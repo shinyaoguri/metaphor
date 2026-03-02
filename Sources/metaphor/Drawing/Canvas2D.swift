@@ -208,6 +208,8 @@ public final class Canvas2D {
 
     private enum ShapeVertexType {
         case normal(Float, Float)
+        case colored(Float, Float, SIMD4<Float>)
+        case textured(Float, Float, Float, Float)
         case bezier(cx1: Float, cy1: Float, cx2: Float, cy2: Float, x: Float, y: Float)
         case curve(Float, Float)
     }
@@ -225,6 +227,14 @@ public final class Canvas2D {
     private var contourVertices: [[(Float, Float)]] = []
     private var isRecordingContour: Bool = false
     private var currentContour: [(Float, Float)] = []
+
+    // MARK: - Background Optimization
+
+    /// 何か描画済みかどうか（background() の最適化用）
+    private var hasDrawnAnything: Bool = false
+
+    /// clearColor を設定するクロージャ（MetaphorRenderer から注入）
+    var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
 
     // MARK: - Style Snapshot (push/pop用)
 
@@ -256,6 +266,8 @@ public final class Canvas2D {
     // MARK: - Transform & Style Stack
 
     private var stateStack: [StyleState] = []
+    private var styleOnlyStack: [StyleState] = []
+    private var matrixStack: [float3x3] = []
     private var currentTransform: float3x3 = float3x3(1)
 
     // MARK: - Vertex Layout (packed, 24 bytes)
@@ -451,6 +463,7 @@ public final class Canvas2D {
         self.currentTextAlignV = .baseline
         self.currentTextLeading = 1.2
         self.frameCounter += 1
+        self.hasDrawnAnything = false
     }
 
     /// 蓄積した頂点を描画して終了
@@ -630,6 +643,13 @@ public final class Canvas2D {
     /// 背景を塗りつぶす（トランスフォーム無視）
     public func background(_ color: Color) {
         let c = color.simd
+        // render pass clear color を次フレーム用に更新
+        onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
+        if !hasDrawnAnything {
+            // 描画開始前: render pass の clear で既にクリア済み（quad 不要）
+            return
+        }
+        // 描画途中: 全画面 quad で上書き
         addVertexRaw(0, 0, c)
         addVertexRaw(width, 0, c)
         addVertexRaw(width, height, c)
@@ -713,12 +733,72 @@ public final class Canvas2D {
 
     /// スタイル状態のみを保存（トランスフォームは含まない）
     public func pushStyle() {
-        push()
+        styleOnlyStack.append(StyleState(
+            transform: currentTransform,  // 復元時には使わない
+            fillColor: fillColor,
+            strokeColor: strokeColor,
+            strokeWeight: currentStrokeWeight,
+            hasFill: hasFill,
+            hasStroke: hasStroke,
+            blendMode: currentBlendMode,
+            rectMode: currentRectMode,
+            ellipseMode: currentEllipseMode,
+            imageMode: currentImageMode,
+            colorModeConfig: colorModeConfig,
+            tintColor: tintColor,
+            hasTint: hasTint,
+            textSize: currentTextSize,
+            fontFamily: currentFontFamily,
+            textAlignH: currentTextAlignH,
+            textAlignV: currentTextAlignV,
+            textLeading: currentTextLeading,
+            curveDetail: curveDetailCount,
+            curveTightness: curveTightnessValue,
+            strokeCap: currentStrokeCap,
+            strokeJoin: currentStrokeJoin
+        ))
     }
 
-    /// スタイル状態のみを復元
+    /// スタイル状態のみを復元（トランスフォームはそのまま）
     public func popStyle() {
-        pop()
+        guard let saved = styleOnlyStack.popLast() else { return }
+        let prevBlendMode = currentBlendMode
+        // トランスフォームは復元しない
+        fillColor = saved.fillColor
+        strokeColor = saved.strokeColor
+        currentStrokeWeight = saved.strokeWeight
+        hasFill = saved.hasFill
+        hasStroke = saved.hasStroke
+        currentBlendMode = saved.blendMode
+        currentRectMode = saved.rectMode
+        currentEllipseMode = saved.ellipseMode
+        currentImageMode = saved.imageMode
+        colorModeConfig = saved.colorModeConfig
+        tintColor = saved.tintColor
+        hasTint = saved.hasTint
+        currentTextSize = saved.textSize
+        currentFontFamily = saved.fontFamily
+        currentTextAlignH = saved.textAlignH
+        currentTextAlignV = saved.textAlignV
+        currentTextLeading = saved.textLeading
+        curveDetailCount = saved.curveDetail
+        curveTightnessValue = saved.curveTightness
+        currentStrokeCap = saved.strokeCap
+        currentStrokeJoin = saved.strokeJoin
+        if prevBlendMode != currentBlendMode {
+            flush()
+        }
+    }
+
+    /// トランスフォームのみを保存
+    public func pushMatrix() {
+        matrixStack.append(currentTransform)
+    }
+
+    /// トランスフォームのみを復元
+    public func popMatrix() {
+        guard let saved = matrixStack.popLast() else { return }
+        currentTransform = saved
     }
 
     /// 平行移動
@@ -1176,6 +1256,21 @@ public final class Canvas2D {
         drawTexturedQuad(texture: img.texture, x: dx, y: dy, w: dw, h: dh)
     }
 
+    /// サブイメージ描画（スプライトシート/タイルマップ用）
+    /// - Parameters:
+    ///   - dx/dy/dw/dh: 描画先矩形
+    ///   - sx/sy/sw/sh: ソース矩形（ピクセル単位）
+    public func image(
+        _ img: MImage,
+        _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
+        _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float
+    ) {
+        drawTexturedQuad(
+            texture: img.texture, x: dx, y: dy, w: dw, h: dh,
+            srcX: sx, srcY: sy, srcW: sw, srcH: sh
+        )
+    }
+
     // MARK: - Text
 
     /// テキストサイズを設定
@@ -1322,6 +1417,18 @@ public final class Canvas2D {
         }
     }
 
+    /// 頂点カラー付きで頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ color: Color) {
+        guard isRecordingShape else { return }
+        shapeVertexList.append(.colored(x, y, color.simd))
+    }
+
+    /// UV座標付きで頂点を追加（テクスチャマッピング用）
+    public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
+        guard isRecordingShape else { return }
+        shapeVertexList.append(.textured(x, y, u, v))
+    }
+
     /// 3次ベジェ曲線の制御点と終点を追加（beginShape〜endShape間で使用）
     public func bezierVertex(
         _ cx1: Float, _ cy1: Float,
@@ -1371,33 +1478,67 @@ public final class Canvas2D {
 
         guard !shapeVertexList.isEmpty else { return }
 
-        // カーブ/ベジェ頂点を展開して(Float, Float)に変換
-        let verts = expandShapeVertices()
-        guard !verts.isEmpty else { return }
+        // 頂点カラーまたはUVが含まれるか判定
+        let hasPerVertexColor = shapeVertexList.contains { if case .colored = $0 { return true }; return false }
+        let hasUV = shapeVertexList.contains { if case .textured = $0 { return true }; return false }
 
-        switch shapeMode {
-        case .polygon:
-            drawPolygonShape(verts, close: close)
-        case .points:
-            drawPointsShape(verts)
-        case .lines:
-            drawLinesShape(verts)
-        case .triangles:
-            drawTrianglesShape(verts)
-        case .triangleStrip:
-            drawTriangleStripShape(verts)
-        case .triangleFan:
-            drawTriangleFanShape(verts)
+        if hasPerVertexColor || hasUV {
+            // 拡張頂点パスを使用
+            let exVerts = expandShapeVerticesEx()
+            guard !exVerts.isEmpty else { return }
+
+            switch shapeMode {
+            case .polygon:
+                drawPolygonShapeEx(exVerts, close: close)
+            case .triangles:
+                drawTrianglesShapeEx(exVerts)
+            case .triangleStrip:
+                drawTriangleStripShapeEx(exVerts)
+            case .triangleFan:
+                drawTriangleFanShapeEx(exVerts)
+            case .points:
+                drawPointsShape(exVerts.map { $0.tuple })
+            case .lines:
+                drawLinesShape(exVerts.map { $0.tuple })
+            }
+        } else {
+            // 従来パス（高速）
+            let verts = expandShapeVertices()
+            guard !verts.isEmpty else { return }
+
+            switch shapeMode {
+            case .polygon:
+                drawPolygonShape(verts, close: close)
+            case .points:
+                drawPointsShape(verts)
+            case .lines:
+                drawLinesShape(verts)
+            case .triangles:
+                drawTrianglesShape(verts)
+            case .triangleStrip:
+                drawTriangleStripShape(verts)
+            case .triangleFan:
+                drawTriangleFanShape(verts)
+            }
         }
     }
 
-    /// ShapeVertexType配列を展開して(Float, Float)の配列に変換
-    private func expandShapeVertices() -> [(Float, Float)] {
-        var result: [(Float, Float)] = []
+    /// 展開された頂点データ（位置 + オプションのカラー/UV）
+    private struct ExpandedVertex {
+        var x: Float
+        var y: Float
+        var color: SIMD4<Float>?
+        var u: Float?
+        var v: Float?
+
+        var tuple: (Float, Float) { (x, y) }
+    }
+
+    /// ShapeVertexType配列を展開してExpandedVertexの配列に変換
+    private func expandShapeVerticesEx() -> [ExpandedVertex] {
+        var result: [ExpandedVertex] = []
         result.reserveCapacity(shapeVertexList.count * 4)
 
-        // カーブ頂点だけを集めてバッチ処理
-        var curvePoints: [(Float, Float)] = []
         var hasCurves = false
         var hasBeziers = false
 
@@ -1405,28 +1546,32 @@ public final class Canvas2D {
             switch v {
             case .curve: hasCurves = true
             case .bezier: hasBeziers = true
-            case .normal: break
+            default: break
             }
         }
 
         if !hasCurves && !hasBeziers {
-            // 最適化: 全部normalなら直接変換
             for v in shapeVertexList {
-                if case .normal(let x, let y) = v {
-                    result.append((x, y))
+                switch v {
+                case .normal(let x, let y):
+                    result.append(ExpandedVertex(x: x, y: y))
+                case .colored(let x, let y, let c):
+                    result.append(ExpandedVertex(x: x, y: y, color: c))
+                case .textured(let x, let y, let u, let v):
+                    result.append(ExpandedVertex(x: x, y: y, u: u, v: v))
+                default: break
                 }
             }
             return result
         }
 
-        // カーブ頂点がある場合: curve頂点をまとめて展開
         if hasCurves {
+            var curvePoints: [(Float, Float)] = []
             for v in shapeVertexList {
                 if case .curve(let x, let y) = v {
                     curvePoints.append((x, y))
                 }
             }
-            // Catmull-Romは4点必要。最初と最後は制御点。
             if curvePoints.count >= 4 {
                 let s = (1 - curveTightnessValue) / 2
                 for i in 1..<(curvePoints.count - 2) {
@@ -1434,7 +1579,7 @@ public final class Canvas2D {
                     let p1 = curvePoints[i]
                     let p2 = curvePoints[i + 1]
                     let p3 = curvePoints[i + 2]
-                    if i == 1 { result.append(p1) }
+                    if i == 1 { result.append(ExpandedVertex(x: p1.0, y: p1.1)) }
                     for step in 1...curveDetailCount {
                         let t = Float(step) / Float(curveDetailCount)
                         let t2 = t * t
@@ -1449,19 +1594,24 @@ public final class Canvas2D {
                                     + (-p0.1 + p2.1) * t
                                     + 2 * p1.1) / 1.0
                             + (1 - s) * curvePointLinear(p1.1, p2.1, t)
-                        result.append((x, y))
+                        result.append(ExpandedVertex(x: x, y: y))
                     }
                 }
             }
             return result
         }
 
-        // ベジェ頂点がある場合: normal + bezier を順に展開
         var lastX: Float = 0, lastY: Float = 0
         for v in shapeVertexList {
             switch v {
             case .normal(let x, let y):
-                result.append((x, y))
+                result.append(ExpandedVertex(x: x, y: y))
+                lastX = x; lastY = y
+            case .colored(let x, let y, let c):
+                result.append(ExpandedVertex(x: x, y: y, color: c))
+                lastX = x; lastY = y
+            case .textured(let x, let y, let u, let v):
+                result.append(ExpandedVertex(x: x, y: y, u: u, v: v))
                 lastX = x; lastY = y
             case .bezier(let cx1, let cy1, let cx2, let cy2, let x, let y):
                 let segments = curveDetailCount
@@ -1469,14 +1619,19 @@ public final class Canvas2D {
                     let t = Float(step) / Float(segments)
                     let px = bezierPoint(lastX, cx1, cx2, x, t)
                     let py = bezierPoint(lastY, cy1, cy2, y, t)
-                    result.append((px, py))
+                    result.append(ExpandedVertex(x: px, y: py))
                 }
                 lastX = x; lastY = y
             case .curve:
-                break // カーブとベジェの混在はカーブ側で処理済み
+                break
             }
         }
         return result
+    }
+
+    /// ShapeVertexType配列を展開して(Float, Float)の配列に変換（後方互換）
+    private func expandShapeVertices() -> [(Float, Float)] {
+        expandShapeVerticesEx().map { $0.tuple }
     }
 
     private func curvePointLinear(_ a: Float, _ b: Float, _ t: Float) -> Float {
@@ -1608,10 +1763,91 @@ public final class Canvas2D {
         }
     }
 
+    // MARK: - Private: Per-Vertex Color Shape Drawing
+
+    /// 頂点カラー対応の多角形描画
+    private func drawPolygonShapeEx(_ verts: [ExpandedVertex], close: CloseMode) {
+        if hasFill && verts.count >= 3 {
+            let tuples = verts.map { $0.tuple }
+            let indices = EarClipTriangulator.triangulate(tuples)
+            var i = 0
+            while i + 2 < indices.count {
+                let v0 = verts[indices[i]]
+                let v1 = verts[indices[i + 1]]
+                let v2 = verts[indices[i + 2]]
+                addVertex(v0.x, v0.y, v0.color ?? fillColor)
+                addVertex(v1.x, v1.y, v1.color ?? fillColor)
+                addVertex(v2.x, v2.y, v2.color ?? fillColor)
+                i += 3
+            }
+        }
+        if hasStroke && verts.count >= 2 {
+            strokePolyline(verts.map { $0.tuple }, closed: close == .close)
+        }
+    }
+
+    /// 頂点カラー対応の三角形列描画
+    private func drawTrianglesShapeEx(_ verts: [ExpandedVertex]) {
+        var i = 0
+        while i + 2 < verts.count {
+            if hasFill {
+                addVertex(verts[i].x, verts[i].y, verts[i].color ?? fillColor)
+                addVertex(verts[i+1].x, verts[i+1].y, verts[i+1].color ?? fillColor)
+                addVertex(verts[i+2].x, verts[i+2].y, verts[i+2].color ?? fillColor)
+            }
+            if hasStroke {
+                strokeLine(verts[i].x, verts[i].y, verts[i+1].x, verts[i+1].y)
+                strokeLine(verts[i+1].x, verts[i+1].y, verts[i+2].x, verts[i+2].y)
+                strokeLine(verts[i+2].x, verts[i+2].y, verts[i].x, verts[i].y)
+            }
+            i += 3
+        }
+    }
+
+    /// 頂点カラー対応のトライアングルストリップ描画
+    private func drawTriangleStripShapeEx(_ verts: [ExpandedVertex]) {
+        guard verts.count >= 3 else { return }
+        for i in 0..<(verts.count - 2) {
+            let (a, b, c) = i % 2 == 0
+                ? (verts[i], verts[i + 1], verts[i + 2])
+                : (verts[i + 1], verts[i], verts[i + 2])
+            if hasFill {
+                addVertex(a.x, a.y, a.color ?? fillColor)
+                addVertex(b.x, b.y, b.color ?? fillColor)
+                addVertex(c.x, c.y, c.color ?? fillColor)
+            }
+            if hasStroke {
+                strokeLine(a.x, a.y, b.x, b.y)
+                strokeLine(b.x, b.y, c.x, c.y)
+                strokeLine(c.x, c.y, a.x, a.y)
+            }
+        }
+    }
+
+    /// 頂点カラー対応のトライアングルファン描画
+    private func drawTriangleFanShapeEx(_ verts: [ExpandedVertex]) {
+        guard verts.count >= 3 else { return }
+        for i in 1..<(verts.count - 1) {
+            if hasFill {
+                addVertex(verts[0].x, verts[0].y, verts[0].color ?? fillColor)
+                addVertex(verts[i].x, verts[i].y, verts[i].color ?? fillColor)
+                addVertex(verts[i+1].x, verts[i+1].y, verts[i+1].color ?? fillColor)
+            }
+            if hasStroke {
+                strokeLine(verts[0].x, verts[0].y, verts[i].x, verts[i].y)
+                strokeLine(verts[i].x, verts[i].y, verts[i+1].x, verts[i+1].y)
+            }
+        }
+        if hasStroke && verts.count >= 3 {
+            strokeLine(verts[verts.count - 1].x, verts[verts.count - 1].y, verts[0].x, verts[0].y)
+        }
+    }
+
     // MARK: - Private: Vertex Writing
 
     /// トランスフォームを適用して頂点を追加
     private func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
+        hasDrawnAnything = true
         if bufferOffset + vertexCount >= maxVertices {
             flush()
             bufferOffset = 0  // フラッシュ済みデータはGPUコマンドバッファに取り込まれているため再利用可能
@@ -1913,11 +2149,22 @@ public final class Canvas2D {
     // MARK: - Private: Textured Quad
 
     /// テクスチャ付きクワッドを描画（image/text共通）
-    private func drawTexturedQuad(texture: MTLTexture, x: Float, y: Float, w: Float, h: Float) {
+    /// - Parameters:
+    ///   - srcX/srcY/srcW/srcH: ソース矩形（ピクセル単位、nilで全体）
+    private func drawTexturedQuad(
+        texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
+        srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
+    ) {
         guard let encoder = encoder else { return }
 
-        // 現在の頂点カラージオメトリをフラッシュ
         flush()
+
+        let tw = Float(texture.width)
+        let th = Float(texture.height)
+        let u0 = srcX / tw
+        let v0 = srcY / th
+        let u1 = (srcX + (srcW ?? tw)) / tw
+        let v1 = (srcY + (srcH ?? th)) / th
 
         let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
         let p0 = currentTransform * SIMD3<Float>(x, y, 1)
@@ -1926,12 +2173,12 @@ public final class Canvas2D {
         let p3 = currentTransform * SIMD3<Float>(x, y + h, 1)
 
         var verts: [TexturedVertex2D] = [
-            TexturedVertex2D(posX: p0.x, posY: p0.y, u: 0, v: 0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p1.x, posY: p1.y, u: 1, v: 0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p2.x, posY: p2.y, u: 1, v: 1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p0.x, posY: p0.y, u: 0, v: 0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p2.x, posY: p2.y, u: 1, v: 1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
-            TexturedVertex2D(posX: p3.x, posY: p3.y, u: 0, v: 1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
+            TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
+            TexturedVertex2D(posX: p1.x, posY: p1.y, u: u1, v: v0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
+            TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
+            TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
+            TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
+            TexturedVertex2D(posX: p3.x, posY: p3.y, u: u0, v: v1, r: tint.x, g: tint.y, b: tint.z, a: tint.w),
         ]
 
         guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }

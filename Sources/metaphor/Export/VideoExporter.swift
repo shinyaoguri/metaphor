@@ -98,6 +98,9 @@ public final class VideoExporter {
     /// 現在のFPS（CMTime計算用）
     private var currentFPS: Int = 60
 
+    /// AVAssetWriter 操作を直列化するキュー
+    private let writerQueue = DispatchQueue(label: "metaphor.VideoExporter.writer")
+
     public init() {}
 
     /// 録画を開始
@@ -208,38 +211,39 @@ public final class VideoExporter {
         let capturedStaging = stagingTexture
         let capturedWidth = width
         let capturedHeight = height
-        nonisolated(unsafe) let capturedAdaptor = adaptor
-        nonisolated(unsafe) let capturedInput = input
+        let queue = writerQueue
 
-        commandBuffer.addCompletedHandler { _ in
-            // Get pixel buffer from pool
-            guard capturedInput.isReadyForMoreMediaData else { return }
+        commandBuffer.addCompletedHandler { @Sendable _ in
+            queue.async {
+                // Get pixel buffer from pool
+                guard input.isReadyForMoreMediaData else { return }
 
-            var pixelBuffer: CVPixelBuffer?
-            guard let pool = capturedAdaptor.pixelBufferPool else { return }
+                var pixelBuffer: CVPixelBuffer?
+                guard let pool = adaptor.pixelBufferPool else { return }
 
-            let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
-            guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return }
+                let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
+                guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return }
 
-            CVPixelBufferLockBaseAddress(buffer, [])
-            defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+                CVPixelBufferLockBaseAddress(buffer, [])
+                defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
 
-            guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
-            let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+                guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
+                let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
-            // Read pixels from staging texture (managed, already synchronized)
-            capturedStaging.getBytes(
-                baseAddress,
-                bytesPerRow: bytesPerRow,
-                from: MTLRegionMake2D(0, 0, capturedWidth, capturedHeight),
-                mipmapLevel: 0
-            )
+                // Read pixels from staging texture (managed, already synchronized)
+                capturedStaging.getBytes(
+                    baseAddress,
+                    bytesPerRow: bytesPerRow,
+                    from: MTLRegionMake2D(0, 0, capturedWidth, capturedHeight),
+                    mipmapLevel: 0
+                )
 
-            let presentationTime = CMTime(
-                value: currentFrame,
-                timescale: fps
-            )
-            capturedAdaptor.append(buffer, withPresentationTime: presentationTime)
+                let presentationTime = CMTime(
+                    value: currentFrame,
+                    timescale: fps
+                )
+                adaptor.append(buffer, withPresentationTime: presentationTime)
+            }
         }
     }
 
@@ -259,15 +263,19 @@ public final class VideoExporter {
             return
         }
 
-        input.markAsFinished()
+        // writerQueue 上で markAsFinished → finishWriting を実行し、
+        // 保留中の captureFrame と競合しないようにする
+        writerQueue.async {
+            input.markAsFinished()
 
-        writer.finishWriting { [weak self] in
-            DispatchQueue.main.async {
-                self?.assetWriter = nil
-                self?.writerInput = nil
-                self?.pixelBufferAdaptor = nil
-                self?.frameIndex = 0
-                completion?()
+            writer.finishWriting {
+                DispatchQueue.main.async { [weak self] in
+                    self?.assetWriter = nil
+                    self?.writerInput = nil
+                    self?.pixelBufferAdaptor = nil
+                    self?.frameIndex = 0
+                    completion?()
+                }
             }
         }
     }

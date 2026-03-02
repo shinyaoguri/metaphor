@@ -8,6 +8,9 @@ enum ParticleShaders {
         static let update = "metaphor_particleUpdate"
         static let vertex = "metaphor_particleVertex"
         static let fragment = "metaphor_particleFragment"
+        static let resetCounter = "metaphor_particleResetCounter"
+        static let compact = "metaphor_particleCompact"
+        static let buildIndirectArgs = "metaphor_particleBuildIndirectArgs"
     }
 
     static let source = """
@@ -272,6 +275,54 @@ enum ParticleShaders {
         float dist = length(in.uv - float2(0.5)) * 2.0;
         float alpha = 1.0 - smoothstep(0.7, 1.0, dist);
         return float4(in.color.rgb, in.color.a * alpha);
+    }
+
+    // ---- Indirect Draw: Counter Reset ----
+
+    kernel void metaphor_particleResetCounter(
+        device atomic_uint *counter [[buffer(0)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid == 0) {
+            atomic_store_explicit(counter, 0, memory_order_relaxed);
+        }
+    }
+
+    // ---- Indirect Draw: Compact alive particles ----
+
+    kernel void metaphor_particleCompact(
+        device const Particle *particlesIn [[buffer(0)]],
+        device Particle *particlesOut [[buffer(1)]],
+        device atomic_uint *counter [[buffer(2)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        Particle p = particlesIn[gid];
+        if (p.sizeAndFlags.w >= 0.5) {
+            uint idx = atomic_fetch_add_explicit(counter, 1, memory_order_relaxed);
+            particlesOut[idx] = p;
+        }
+    }
+
+    // ---- Indirect Draw: Build indirect arguments ----
+
+    struct MTLDrawPrimitivesIndirectArguments_s {
+        uint vertexCount;
+        uint instanceCount;
+        uint vertexStart;
+        uint baseInstance;
+    };
+
+    kernel void metaphor_particleBuildIndirectArgs(
+        device atomic_uint *counter [[buffer(0)]],
+        device MTLDrawPrimitivesIndirectArguments_s *args [[buffer(1)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid == 0) {
+            args->vertexCount = 4;
+            args->instanceCount = atomic_load_explicit(counter, memory_order_relaxed);
+            args->vertexStart = 0;
+            args->baseInstance = 0;
+        }
     }
     """
 }

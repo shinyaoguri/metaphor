@@ -1,5 +1,6 @@
 @preconcurrency import Metal
 import MetalKit
+import QuartzCore
 import simd
 
 /// metaphorのメインレンダラー
@@ -41,8 +42,8 @@ public final class MetaphorRenderer: NSObject {
     ///   - time: 開始からの経過時間（秒）
     public var onCompute: ((MTLCommandBuffer, Double) -> Void)?
 
-    /// 開始時刻
-    private let startTime: CFAbsoluteTime
+    /// 開始時刻（単調増加時刻）
+    private let startTime: Double
 
     // MARK: - Blit Pipeline
 
@@ -50,6 +51,17 @@ public final class MetaphorRenderer: NSObject {
 
     /// 外部レンダーループ使用フラグ（trueの場合、draw(in:)はブリットのみ行う）
     public var useExternalRenderLoop: Bool = false
+
+    // MARK: - Offline Rendering
+
+    /// オフラインレンダリングモード（決定論的フレーム時間）
+    public var isOfflineRendering: Bool = false
+
+    /// オフラインモードのフレームレート
+    public var offlineFrameRate: Double = 60.0
+
+    /// オフラインモードの現在フレームインデックス
+    private var offlineFrameIndex: Int = 0
 
     // MARK: - Triple Buffering
 
@@ -74,6 +86,14 @@ public final class MetaphorRenderer: NSObject {
     public private(set) lazy var imageFilterGPU: ImageFilterGPU = {
         ImageFilterGPU(device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
     }()
+
+    // MARK: - FBO Feedback
+
+    /// フレームバッファフィードバックの有効フラグ
+    public var feedbackEnabled: Bool = false
+
+    /// 前フレームのカラーテクスチャ（feedbackEnabled 時のみ有効）
+    public private(set) var previousFrameTexture: MTLTexture?
 
     // MARK: - Screenshot
 
@@ -119,7 +139,7 @@ public final class MetaphorRenderer: NSObject {
             height: height,
             clearColor: clearColor
         )
-        self.startTime = CFAbsoluteTimeGetCurrent()
+        self.startTime = CACurrentMediaTime()
 
         do {
             self.shaderLibrary = try ShaderLibrary(device: device)
@@ -194,11 +214,26 @@ public final class MetaphorRenderer: NSObject {
         postProcessPipeline?.set(effects)
     }
 
+    // MARK: - Clear Color
+
+    /// レンダーパスのクリアカラーを変更
+    public func setClearColor(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1.0) {
+        textureManager.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
+    }
+
     // MARK: - Rendering
 
-    /// 現在の経過時間を取得
+    /// 現在の経過時間を取得（オフラインモードではフレームインデックスベース）
     public var elapsedTime: Double {
-        CFAbsoluteTimeGetCurrent() - startTime
+        if isOfflineRendering {
+            return Double(offlineFrameIndex) / offlineFrameRate
+        }
+        return CACurrentMediaTime() - startTime
+    }
+
+    /// フレーム間デルタ時間（オフラインモードでは固定値）
+    public var offlineDeltaTime: Double {
+        1.0 / offlineFrameRate
     }
 
     /// MTKViewをセットアップ
@@ -252,6 +287,42 @@ public final class MetaphorRenderer: NSObject {
     }
 
     // MARK: - Private
+
+    /// 前フレームのカラーテクスチャをコピー（FBO フィードバック用）
+    private func capturePreviousFrame(commandBuffer: MTLCommandBuffer) {
+        let src = textureManager.colorTexture
+        let w = textureManager.width
+        let h = textureManager.height
+
+        // テクスチャが未作成またはサイズ不一致なら再作成
+        if previousFrameTexture == nil ||
+           previousFrameTexture!.width != w ||
+           previousFrameTexture!.height != h {
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm,
+                width: w,
+                height: h,
+                mipmapped: false
+            )
+            desc.usage = [.shaderRead, .renderTarget]
+            desc.storageMode = .private
+            previousFrameTexture = device.makeTexture(descriptor: desc)
+            previousFrameTexture?.label = "metaphor.previousFrame"
+        }
+
+        guard let dst = previousFrameTexture,
+              let blit = commandBuffer.makeBlitCommandEncoder() else { return }
+        blit.copy(
+            from: src,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: dst,
+            destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blit.endEncoding()
+    }
 
     private func buildBlitPipeline() {
         do {
@@ -458,6 +529,11 @@ public final class MetaphorRenderer: NSObject {
         input.updateFrame()
         let time = elapsedTime
 
+        // FBO フィードバック: 前フレームのカラーテクスチャをコピー
+        if feedbackEnabled {
+            capturePreviousFrame(commandBuffer: commandBuffer)
+        }
+
         // コンピュートフェーズ
         onCompute?(commandBuffer, time)
 
@@ -545,6 +621,24 @@ public final class MetaphorRenderer: NSObject {
         )
 
         commandBuffer.commit()
+
+        if isOfflineRendering {
+            offlineFrameIndex += 1
+        }
+    }
+
+    /// オフラインモードで 1 フレームをレンダリングする
+    ///
+    /// isOfflineRendering を自動で true に設定し、
+    /// renderFrame() を呼び出してフレームインデックスを進める。
+    public func renderOfflineFrame() {
+        isOfflineRendering = true
+        renderFrame()
+    }
+
+    /// オフラインレンダリングをリセット（フレームインデックスを 0 に戻す）
+    public func resetOfflineRendering() {
+        offlineFrameIndex = 0
     }
 }
 

@@ -61,6 +61,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         guard let canvas = try? Canvas2D(renderer: renderer) else {
             fatalError("Failed to create Canvas2D")
         }
+        canvas.onSetClearColor = { [weak renderer] r, g, b, a in
+            renderer?.setClearColor(r, g, b, a)
+        }
         self.canvas = canvas
 
         // Canvas3D
@@ -249,6 +252,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         guard let newCanvas = try? Canvas2D(renderer: renderer),
               let newCanvas3D = try? Canvas3D(renderer: renderer) else {
             return
+        }
+        newCanvas.onSetClearColor = { [weak renderer] r, g, b, a in
+            renderer?.setClearColor(r, g, b, a)
         }
         self.canvas = newCanvas
         self.canvas3D = newCanvas3D

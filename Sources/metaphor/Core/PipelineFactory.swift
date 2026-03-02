@@ -240,7 +240,7 @@ public struct PipelineFactory {
     private var colorFormat: MTLPixelFormat = .bgra8Unorm
     private var depthFormat: MTLPixelFormat = .depth32Float
     private var blendMode: BlendMode = .opaque
-    private var rasterSampleCount: Int = 1
+    private var rasterSampleCount: Int = 4
 
     // MARK: - Initialization
 

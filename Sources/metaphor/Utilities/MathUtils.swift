@@ -86,6 +86,18 @@ public func randomSeed(_ seed: UInt64) {
     _seededRNG = SeededRandomNumberGenerator(seed: seed)
 }
 
+/// ガウス分布に従うランダム値を返す（Box-Muller変換）
+/// - Parameters:
+///   - mean: 平均値（デフォルト0）
+///   - sd: 標準偏差（デフォルト1）
+@MainActor
+public func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float {
+    let u1 = random(Float.leastNormalMagnitude, 1.0)
+    let u2 = random(0, 1.0)
+    let z = sqrt(-2 * log(u1)) * cos(2 * Float.pi * u2)
+    return mean + z * sd
+}
+
 // MARK: - Bezier Math
 
 /// 3次ベジェ曲線上の点を返す

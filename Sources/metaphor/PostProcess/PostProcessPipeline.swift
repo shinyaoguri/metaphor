@@ -190,6 +190,11 @@ public final class PostProcessPipeline {
         kawaseChainHeight = 0
     }
 
+    /// パイプラインキャッシュを破棄（シェーダーホットリロード時に呼ぶ）
+    func invalidatePipelines() {
+        pipelineCache.removeAll()
+    }
+
     // MARK: - Private: Texture Management
 
     private func ensureTextures(width: Int, height: Int) {

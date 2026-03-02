@@ -144,6 +144,18 @@ public final class ParticleSystem {
     private let renderPipeline: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState?
 
+    // MARK: - Indirect Draw Resources
+
+    /// Indirect Draw を使用するかどうか（デフォルト false で後方互換維持）
+    public var useIndirectDraw: Bool = false
+
+    private var compactBuffer: MTLBuffer?
+    private var counterBuffer: MTLBuffer?
+    private var indirectArgsBuffer: MTLBuffer?
+    private let resetCounterPipeline: MTLComputePipelineState?
+    private let compactPipeline: MTLComputePipelineState?
+    private let buildArgsPipeline: MTLComputePipelineState?
+
     // MARK: - Initialization
 
     init(
@@ -201,6 +213,41 @@ public final class ParticleSystem {
         depthDesc.depthCompareFunction = .less
         depthDesc.isDepthWriteEnabled = false
         self.depthState = device.makeDepthStencilState(descriptor: depthDesc)
+
+        // Indirect Draw パイプライン（オプション: ビルドに失敗しても動作は通常モードにフォールバック）
+        if let resetFn = shaderLibrary.function(
+            named: ParticleShaders.FunctionName.resetCounter,
+            from: ShaderLibrary.BuiltinKey.particle
+        ),
+           let compactFn = shaderLibrary.function(
+            named: ParticleShaders.FunctionName.compact,
+            from: ShaderLibrary.BuiltinKey.particle
+        ),
+           let buildArgsFn = shaderLibrary.function(
+            named: ParticleShaders.FunctionName.buildIndirectArgs,
+            from: ShaderLibrary.BuiltinKey.particle
+        ) {
+            self.resetCounterPipeline = try? device.makeComputePipelineState(function: resetFn)
+            self.compactPipeline = try? device.makeComputePipelineState(function: compactFn)
+            self.buildArgsPipeline = try? device.makeComputePipelineState(function: buildArgsFn)
+
+            // Compact 用バッファ
+            self.compactBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared)
+            self.compactBuffer?.label = "metaphor.particle.compact"
+            // Atomic counter バッファ（4 bytes）
+            self.counterBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.size, options: .storageModeShared)
+            self.counterBuffer?.label = "metaphor.particle.counter"
+            // Indirect arguments バッファ（16 bytes）
+            self.indirectArgsBuffer = device.makeBuffer(
+                length: MemoryLayout<MTLDrawPrimitivesIndirectArguments>.size,
+                options: .storageModeShared
+            )
+            self.indirectArgsBuffer?.label = "metaphor.particle.indirectArgs"
+        } else {
+            self.resetCounterPipeline = nil
+            self.compactPipeline = nil
+            self.buildArgsPipeline = nil
+        }
     }
 
     // MARK: - Force Management
@@ -246,6 +293,49 @@ public final class ParticleSystem {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
 
         useBufferA.toggle()
+
+        // Indirect Draw: コンパクトフェーズ
+        if useIndirectDraw {
+            compactAliveParticles(encoder: encoder)
+        }
+    }
+
+    /// 生存パーティクルをコンパクトバッファに詰めて indirect arguments を構築
+    private func compactAliveParticles(encoder: MTLComputeCommandEncoder) {
+        guard let resetPipeline = resetCounterPipeline,
+              let compactPipe = compactPipeline,
+              let buildPipe = buildArgsPipeline,
+              let compactBuf = compactBuffer,
+              let counterBuf = counterBuffer,
+              let argsBuf = indirectArgsBuffer else { return }
+
+        let currentBuffer = useBufferA ? bufferA : bufferB
+
+        // 1) カウンタリセット
+        encoder.setComputePipelineState(resetPipeline)
+        encoder.setBuffer(counterBuf, offset: 0, index: 0)
+        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+
+        encoder.memoryBarrier(scope: .buffers)
+
+        // 2) 生存パーティクルをコンパクト
+        encoder.setComputePipelineState(compactPipe)
+        encoder.setBuffer(currentBuffer, offset: 0, index: 0)
+        encoder.setBuffer(compactBuf, offset: 0, index: 1)
+        encoder.setBuffer(counterBuf, offset: 0, index: 2)
+        let w = compactPipe.threadExecutionWidth
+        encoder.dispatchThreads(MTLSize(width: count, height: 1, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: w, height: 1, depth: 1))
+
+        encoder.memoryBarrier(scope: .buffers)
+
+        // 3) Indirect arguments を構築
+        encoder.setComputePipelineState(buildPipe)
+        encoder.setBuffer(counterBuf, offset: 0, index: 0)
+        encoder.setBuffer(argsBuf, offset: 0, index: 1)
+        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
     }
 
     // MARK: - Draw (Render Phase)
@@ -257,8 +347,6 @@ public final class ParticleSystem {
         cameraRight: SIMD3<Float>,
         cameraUp: SIMD3<Float>
     ) {
-        let currentBuffer = useBufferA ? bufferA : bufferB
-
         var renderUniforms = ParticleRenderUniforms(
             viewProjection: viewProjection,
             cameraRight: SIMD4(cameraRight.x, cameraRight.y, cameraRight.z, 0),
@@ -269,16 +357,29 @@ public final class ParticleSystem {
             encoder.setDepthStencilState(ds)
         }
         encoder.setRenderPipelineState(renderPipeline)
-        encoder.setVertexBuffer(currentBuffer, offset: 0, index: 0)
         encoder.setVertexBytes(&renderUniforms, length: MemoryLayout<ParticleRenderUniforms>.size, index: 1)
 
-        // インスタンスドレンダリング: 4頂点 × N個のビルボードクワッド
-        encoder.drawPrimitives(
-            type: .triangleStrip,
-            vertexStart: 0,
-            vertexCount: 4,
-            instanceCount: count
-        )
+        if useIndirectDraw,
+           let compactBuf = compactBuffer,
+           let argsBuf = indirectArgsBuffer {
+            // Indirect Draw: コンパクトされた生存パーティクルのみを描画
+            encoder.setVertexBuffer(compactBuf, offset: 0, index: 0)
+            encoder.drawPrimitives(
+                type: .triangleStrip,
+                indirectBuffer: argsBuf,
+                indirectBufferOffset: 0
+            )
+        } else {
+            // 通常描画: 全パーティクルをインスタンスドレンダリング
+            let currentBuffer = useBufferA ? bufferA : bufferB
+            encoder.setVertexBuffer(currentBuffer, offset: 0, index: 0)
+            encoder.drawPrimitives(
+                type: .triangleStrip,
+                vertexStart: 0,
+                vertexCount: 4,
+                instanceCount: count
+            )
+        }
     }
 
     // MARK: - Private Helpers

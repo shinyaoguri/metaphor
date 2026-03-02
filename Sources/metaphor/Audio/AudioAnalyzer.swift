@@ -176,11 +176,22 @@ public final class AudioAnalyzer {
     /// オーディオスレッドから受け取ったサンプルを FFT 解析し、
     /// volume / spectrum / waveform / isBeat を更新する。
     public func update() {
-        guard let samples = sampleBuffer.take() else {
+        guard let samples = sampleBuffer.take() ?? injectedSamples else {
             isBeat = false
             return
         }
+        injectedSamples = nil
+        processSamples(samples)
+    }
 
+    /// 外部からサンプルを注入（SoundFile から使用）
+    public func injectSamples(_ samples: [Float]) {
+        injectedSamples = samples
+    }
+
+    private var injectedSamples: [Float]?
+
+    private func processSamples(_ samples: [Float]) {
         // 波形を保存
         waveform = samples
 

@@ -77,6 +77,19 @@ public protocol Sketch: AnyObject {
 @MainActor
 var _activeSketchContext: SketchContext?
 
+// MARK: - Active Context Helper
+
+extension Sketch {
+    /// アクティブなコンテキストを取得（setup/draw 外からの呼び出し時は fatalError）
+    @MainActor
+    fileprivate func activeContext(function: String = #function) -> SketchContext {
+        guard let ctx = _activeSketchContext else {
+            fatalError("[\(function)] must be called inside setup() or draw()")
+        }
+        return ctx
+    }
+}
+
 // MARK: - Default Implementations
 
 extension Sketch {
@@ -109,7 +122,7 @@ extension Sketch {
 
     /// 入力マネージャ（イベントハンドラ内で使用）
     public var input: InputManager {
-        _activeSketchContext!.input
+        activeContext().input
     }
 
     /// マウスX座標
@@ -189,6 +202,20 @@ extension Sketch {
     /// キャンバスサイズを設定（setup()内で呼ぶ、p5.js風）
     public func createCanvas(width: Int, height: Int) {
         _activeSketchContext?.createCanvas(width: width, height: height)
+    }
+}
+
+// MARK: - Vector Factory
+
+extension Sketch {
+    /// 2Dベクトルを作成（Processing PVector互換）
+    public func createVector(_ x: Float = 0, _ y: Float = 0) -> Vec2 {
+        Vec2(x, y)
+    }
+
+    /// 3Dベクトルを作成（Processing PVector互換）
+    public func createVector(_ x: Float, _ y: Float, _ z: Float) -> Vec3 {
+        Vec3(x, y, z)
     }
 }
 
@@ -346,7 +373,7 @@ extension Sketch {
     // MARK: Image
 
     public func loadImage(_ path: String) throws -> MImage {
-        try _activeSketchContext!.loadImage(path)
+        try activeContext().loadImage(path)
     }
 
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
@@ -383,6 +410,15 @@ extension Sketch {
 
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         _activeSketchContext?.image(img, x, y, w, h)
+    }
+
+    /// サブイメージ描画（スプライトシート/タイルマップ用）
+    public func image(
+        _ img: MImage,
+        _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
+        _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float
+    ) {
+        _activeSketchContext?.image(img, dx, dy, dw, dh, sx, sy, sw, sh)
     }
 
     // MARK: Text
@@ -455,6 +491,40 @@ extension Sketch {
     /// ビデオ録画を終了
     public func endVideoRecord(completion: (@Sendable () -> Void)? = nil) {
         _activeSketchContext?.endVideoRecord(completion: completion)
+    }
+
+    // MARK: Offline Rendering
+
+    /// オフラインレンダリングモードかどうか
+    public var isOfflineRendering: Bool {
+        _activeSketchContext?.isOfflineRendering ?? false
+    }
+
+    /// オフラインレンダリングモードを開始（決定論的タイミング）
+    public func beginOfflineRender(fps: Double = 60) {
+        _activeSketchContext?.beginOfflineRender(fps: fps)
+    }
+
+    /// オフラインレンダリングモードを終了
+    public func endOfflineRender() {
+        _activeSketchContext?.endOfflineRender()
+    }
+
+    // MARK: FBO Feedback
+
+    /// フレームバッファフィードバックを有効化
+    public func enableFeedback() {
+        _activeSketchContext?.enableFeedback()
+    }
+
+    /// フレームバッファフィードバックを無効化
+    public func disableFeedback() {
+        _activeSketchContext?.disableFeedback()
+    }
+
+    /// 前フレームのレンダリング結果を取得
+    public func previousFrame() -> MImage? {
+        _activeSketchContext?.previousFrame()
     }
 
     // MARK: 2D Transform Stack
@@ -560,6 +630,11 @@ extension Sketch {
         _activeSketchContext?.polygon(points)
     }
 
+    /// 多角形（Vec2配列版）
+    public func polygon(_ points: [Vec2]) {
+        _activeSketchContext?.polygon(points)
+    }
+
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
@@ -590,6 +665,16 @@ extension Sketch {
 
     public func vertex(_ x: Float, _ y: Float) {
         _activeSketchContext?.vertex(x, y)
+    }
+
+    /// 頂点カラー付きで頂点を追加（2D）
+    public func vertex(_ x: Float, _ y: Float, _ color: Color) {
+        _activeSketchContext?.vertex(x, y, color)
+    }
+
+    /// UV座標付きで頂点を追加（2D）
+    public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
+        _activeSketchContext?.vertex(x, y, u, v)
     }
 
     public func bezierVertex(
@@ -631,6 +716,33 @@ extension Sketch {
 
     public func endShape(_ close: CloseMode = .open) {
         _activeSketchContext?.endShape(close)
+    }
+
+    // MARK: 3D Custom Shapes
+
+    /// 3D頂点ベースの形状記録を開始
+    public func beginShape3D(_ mode: ShapeMode = .polygon) {
+        _activeSketchContext?.beginShape3D(mode)
+    }
+
+    /// 3D頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ z: Float) {
+        _activeSketchContext?.vertex(x, y, z)
+    }
+
+    /// 頂点カラー付き3D頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
+        _activeSketchContext?.vertex(x, y, z, color)
+    }
+
+    /// 次の3D vertex に適用する法線を設定
+    public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
+        _activeSketchContext?.normal(nx, ny, nz)
+    }
+
+    /// 3D形状記録を終了して描画
+    public func endShape3D(_ close: CloseMode = .open) {
+        _activeSketchContext?.endShape3D(close)
     }
 
     // MARK: 3D Camera
@@ -735,13 +847,9 @@ extension Sketch {
 
     // MARK: 3D Custom Material
 
-    /// カスタムフラグメントシェーダーマテリアルを作成
-    public func createMaterial(source: String, fragmentFunction: String) throws -> CustomMaterial {
-        guard let ctx = _activeSketchContext else {
-            throw NSError(domain: "metaphor.Sketch", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "No active sketch context"])
-        }
-        return try ctx.createMaterial(source: source, fragmentFunction: fragmentFunction)
+    /// カスタムシェーダーマテリアルを作成
+    public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
+        try activeContext().createMaterial(source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
 
     /// カスタムマテリアルを適用
@@ -828,6 +936,16 @@ extension Sketch {
         _activeSketchContext?.mesh(mesh)
     }
 
+    /// 動的メッシュを描画
+    public func dynamicMesh(_ mesh: DynamicMesh) {
+        _activeSketchContext?.dynamicMesh(mesh)
+    }
+
+    /// 動的メッシュを作成
+    public func createDynamicMesh() -> DynamicMesh {
+        activeContext().createDynamicMesh()
+    }
+
     public func loadModel(_ path: String) -> Mesh? {
         _activeSketchContext?.loadModel(path)
     }
@@ -835,7 +953,7 @@ extension Sketch {
     // MARK: Compute
 
     public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
-        try _activeSketchContext!.createComputeKernel(source: source, function: function)
+        try activeContext().createComputeKernel(source: source, function: function)
     }
 
     public func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>? {
@@ -873,7 +991,7 @@ extension Sketch {
 extension Sketch {
     /// GPU パーティクルシステムを作成
     public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
-        try _activeSketchContext!.createParticleSystem(count: count)
+        try activeContext().createParticleSystem(count: count)
     }
 
     /// パーティクルシステムを更新（compute() 内で呼ぶ）
@@ -892,7 +1010,7 @@ extension Sketch {
 extension Sketch {
     /// オーディオ入力アナライザーを作成
     public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
-        _activeSketchContext!.createAudioInput(fftSize: fftSize)
+        activeContext().createAudioInput(fftSize: fftSize)
     }
 }
 
@@ -901,7 +1019,7 @@ extension Sketch {
 extension Sketch {
     /// OSC レシーバーを作成
     public func createOSCReceiver(port: UInt16) -> OSCReceiver {
-        _activeSketchContext!.createOSCReceiver(port: port)
+        activeContext().createOSCReceiver(port: port)
     }
 }
 
@@ -913,7 +1031,35 @@ extension Sketch {
     public func tween<T: Interpolatable>(
         from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
     ) -> Tween<T> {
-        _activeSketchContext!.tween(from: from, to: to, duration: duration, easing: easing)
+        activeContext().tween(from: from, to: to, duration: duration, easing: easing)
+    }
+}
+
+// MARK: - Shader Hot Reload
+
+extension Sketch {
+    /// シェーダーソースを再コンパイルしてパイプラインキャッシュをクリアする
+    public func reloadShader(key: String, source: String) throws {
+        try activeContext().reloadShader(key: key, source: source)
+    }
+
+    /// 外部ファイルからシェーダーを再読み込みする
+    public func reloadShaderFromFile(key: String, path: String) throws {
+        try activeContext().reloadShaderFromFile(key: key, path: path)
+    }
+
+    /// 外部ファイルから MSL ソースを読み込んでマテリアルを作成する
+    public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
+        try activeContext().createMaterialFromFile(path: path, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
+    }
+}
+
+// MARK: - GUI
+
+extension Sketch {
+    /// パラメータ GUI インスタンス
+    public var gui: ParameterGUI {
+        activeContext().gui
     }
 }
 
@@ -922,7 +1068,7 @@ extension Sketch {
 extension Sketch {
     /// カスタムポストプロセスエフェクトを作成
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
-        try _activeSketchContext!.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
+        try activeContext().createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
     }
 
     /// ポストプロセスエフェクトを追加
@@ -957,6 +1103,52 @@ extension Sketch {
     /// カーソルを非表示
     public func noCursor() {
         _activeSketchContext?.noCursor()
+    }
+}
+
+// MARK: - Sound File (D-16)
+
+extension Sketch {
+    /// オーディオファイルを読み込む
+    public func loadSound(_ path: String) throws -> SoundFile {
+        try activeContext().loadSound(path)
+    }
+}
+
+// MARK: - MIDI (D-17)
+
+extension Sketch {
+    /// MIDI マネージャーを作成
+    public func createMIDI() -> MIDIManager {
+        activeContext().createMIDI()
+    }
+}
+
+// MARK: - GIF Export (D-19)
+
+extension Sketch {
+    /// GIF 録画を開始
+    public func beginGIFRecord(fps: Int = 15) {
+        _activeSketchContext?.beginGIFRecord(fps: fps)
+    }
+
+    /// GIF 録画を終了してファイルに書き出し
+    public func endGIFRecord(_ path: String? = nil) throws {
+        try activeContext().endGIFRecord(path)
+    }
+}
+
+// MARK: - Orbit Camera (D-20)
+
+extension Sketch {
+    /// オービットコントロールを有効化（draw() 内で呼ぶ）
+    public func orbitControl() {
+        _activeSketchContext?.orbitControl()
+    }
+
+    /// オービットカメラへのアクセス
+    public var orbitCamera: OrbitCamera {
+        activeContext().orbitCamera
     }
 }
 

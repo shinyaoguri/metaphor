@@ -75,6 +75,21 @@ extension SIMD2 where Scalar == Float {
     public func lerp(to other: SIMD2<Float>, t: Float) -> SIMD2<Float> {
         self + (other - self) * t
     }
+
+    /// 指定した長さに設定した新しいベクトルを返す
+    public func withMagnitude(_ len: Float) -> SIMD2<Float> {
+        normalized() * len
+    }
+
+    /// 2D外積（3D外積のz成分に相当）
+    public func cross(_ other: SIMD2<Float>) -> Float {
+        x * other.y - y * other.x
+    }
+
+    /// 2つのベクトル間の角度（ラジアン）
+    public func angleBetween(_ other: SIMD2<Float>) -> Float {
+        atan2(cross(other), dot(other))
+    }
 }
 
 // MARK: - SIMD3<Float> Processing風拡張
@@ -139,5 +154,18 @@ extension SIMD3 where Scalar == Float {
     /// 他のベクトルへの線形補間
     public func lerp(to other: SIMD3<Float>, t: Float) -> SIMD3<Float> {
         self + (other - self) * t
+    }
+
+    /// 指定した長さに設定した新しいベクトルを返す
+    public func withMagnitude(_ len: Float) -> SIMD3<Float> {
+        normalized() * len
+    }
+
+    /// 2つのベクトル間の角度（ラジアン）
+    public func angleBetween(_ other: SIMD3<Float>) -> Float {
+        let d = dot(other)
+        let m = magnitude * other.magnitude
+        guard m > 0 else { return 0 }
+        return acos(Swift.min(Swift.max(d / m, -1), 1))
     }
 }

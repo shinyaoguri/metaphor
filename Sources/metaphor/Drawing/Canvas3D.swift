@@ -126,6 +126,7 @@ public final class Canvas3D {
     }
 
     private var stateStack: [Canvas3DState] = []
+    private var matrixStack: [float4x4] = []
     private var currentTransform: float4x4 = .identity
 
     // MARK: - Style
@@ -135,6 +136,13 @@ public final class Canvas3D {
     private var hasStroke3D: Bool = false
     private var strokeColor3D: SIMD4<Float> = SIMD4(1, 1, 1, 1)
     private var colorModeConfig: ColorModeConfig = ColorModeConfig()
+
+    // MARK: - Shape Building State (3D beginShape/endShape)
+
+    private var isRecordingShape3D: Bool = false
+    private var shapeMode3D: ShapeMode = .polygon
+    private var shapeVertices3D: [Vertex3D] = []
+    private var pendingNormal: SIMD3<Float>?
 
     // MARK: - Mesh Cache
 
@@ -447,7 +455,8 @@ public final class Canvas3D {
 
     // MARK: - Transform Stack
 
-    public func pushMatrix() {
+    /// 全状態を保存（トランスフォーム + スタイル + マテリアル）
+    public func pushState() {
         stateStack.append(Canvas3DState(
             transform: currentTransform,
             fillColor: fillColor,
@@ -461,7 +470,8 @@ public final class Canvas3D {
         ))
     }
 
-    public func popMatrix() {
+    /// 全状態を復元
+    public func popState() {
         guard let saved = stateStack.popLast() else { return }
         currentTransform = saved.transform
         fillColor = saved.fillColor
@@ -472,6 +482,17 @@ public final class Canvas3D {
         currentCustomMaterial = saved.customMaterial
         currentTexture = saved.texture
         colorModeConfig = saved.colorModeConfig
+    }
+
+    /// トランスフォームのみを保存
+    public func pushMatrix() {
+        matrixStack.append(currentTransform)
+    }
+
+    /// トランスフォームのみを復元
+    public func popMatrix() {
+        guard let saved = matrixStack.popLast() else { return }
+        currentTransform = saved
     }
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         currentTransform = currentTransform * float4x4(translation: SIMD3(x, y, z))
@@ -587,6 +608,416 @@ public final class Canvas3D {
 
     public func mesh(_ mesh: Mesh) { drawMesh(mesh) }
 
+    /// 動的メッシュを描画
+    public func dynamicMesh(_ mesh: DynamicMesh) {
+        mesh.ensureBuffers()
+        guard let encoder = encoder,
+              let vb = mesh.vertexBuffer else { return }
+        guard hasFill || hasStroke3D else { return }
+
+        encoder.setRenderPipelineState(pipelineState)
+        if let depthState = depthState {
+            encoder.setDepthStencilState(depthState)
+        }
+        encoder.setFrontFacing(.counterClockwise)
+        encoder.setCullMode(.none)
+
+        let normalMatrix = computeNormalMatrix(from: currentTransform)
+        let viewProj = computeViewProjection()
+
+        encoder.setVertexBuffer(vb, offset: 0, index: 0)
+
+        if hasFill {
+            var uniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: fillColor,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: UInt32(lightArray.count),
+                hasTexture: 0
+            )
+
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            if lightArray.isEmpty {
+                var dummy = Light3D.zero
+                encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            } else {
+                lightArray.withUnsafeBufferPointer { ptr in
+                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                }
+            }
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            if let ib = mesh.indexBuffer, mesh.indexCount > 0 {
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: mesh.indexCount,
+                    indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0
+                )
+            } else {
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
+            }
+        }
+
+        if hasStroke3D {
+            encoder.setTriangleFillMode(.lines)
+
+            var wireUniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: strokeColor3D,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: 0,
+                hasTexture: 0
+            )
+
+            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            var dummy = Light3D.zero
+            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            if let ib = mesh.indexBuffer, mesh.indexCount > 0 {
+                encoder.drawIndexedPrimitives(
+                    type: .triangle, indexCount: mesh.indexCount,
+                    indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0
+                )
+            } else {
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
+            }
+
+            encoder.setTriangleFillMode(.fill)
+        }
+    }
+
+    // MARK: - 3D Custom Shapes (beginShape / endShape)
+
+    /// 3D頂点ベースの形状記録を開始
+    public func beginShape(_ mode: ShapeMode = .polygon) {
+        isRecordingShape3D = true
+        shapeMode3D = mode
+        shapeVertices3D.removeAll(keepingCapacity: true)
+        pendingNormal = nil
+    }
+
+    /// 3D頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ z: Float) {
+        guard isRecordingShape3D else { return }
+        shapeVertices3D.append(Vertex3D(
+            position: SIMD3(x, y, z),
+            normal: pendingNormal ?? SIMD3(0, 1, 0),
+            color: fillColor
+        ))
+    }
+
+    /// 頂点カラー付き3D頂点を追加
+    public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
+        guard isRecordingShape3D else { return }
+        shapeVertices3D.append(Vertex3D(
+            position: SIMD3(x, y, z),
+            normal: pendingNormal ?? SIMD3(0, 1, 0),
+            color: color.simd
+        ))
+    }
+
+    /// 次の vertex に適用する法線を設定
+    public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
+        pendingNormal = SIMD3(nx, ny, nz)
+    }
+
+    /// 3D形状記録を終了して描画
+    public func endShape(_ close: CloseMode = .open) {
+        guard isRecordingShape3D else { return }
+        isRecordingShape3D = false
+
+        guard !shapeVertices3D.isEmpty else { return }
+
+        // 自動法線計算（polygon/triangles モードで法線未設定の場合）
+        if pendingNormal == nil {
+            autoComputeNormals()
+        }
+
+        switch shapeMode3D {
+        case .polygon:
+            drawShape3DPolygon(close: close)
+        case .triangles:
+            drawShape3DTriangles()
+        case .triangleStrip:
+            drawShape3DTriangleStrip()
+        case .triangleFan:
+            drawShape3DTriangleFan()
+        case .points:
+            drawShape3DPoints()
+        case .lines:
+            drawShape3DLines()
+        }
+
+        pendingNormal = nil
+    }
+
+    // MARK: - Private: 3D Shape Tessellation
+
+    private func autoComputeNormals() {
+        // triangles モード: 3頂点ずつフェイス法線を計算
+        var i = 0
+        while i + 2 < shapeVertices3D.count {
+            let p0 = shapeVertices3D[i].position
+            let p1 = shapeVertices3D[i + 1].position
+            let p2 = shapeVertices3D[i + 2].position
+            let edge1 = p1 - p0
+            let edge2 = p2 - p0
+            let n = simd_normalize(simd_cross(edge1, edge2))
+            let safeN = n.x.isNaN ? SIMD3<Float>(0, 1, 0) : n
+            shapeVertices3D[i].normal = safeN
+            shapeVertices3D[i + 1].normal = safeN
+            shapeVertices3D[i + 2].normal = safeN
+            i += 3
+        }
+    }
+
+    private func drawShape3DVertices(_ vertices: [Vertex3D]) {
+        guard let encoder = encoder, !vertices.isEmpty else { return }
+        guard hasFill || hasStroke3D else { return }
+
+        let normalMatrix = computeNormalMatrix(from: currentTransform)
+        let viewProj = computeViewProjection()
+
+        if hasFill {
+            encoder.setRenderPipelineState(pipelineState)
+            if let depthState = depthState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setFrontFacing(.counterClockwise)
+            encoder.setCullMode(.none)
+
+            var uniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: fillColor,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: UInt32(lightArray.count),
+                hasTexture: 0
+            )
+
+            encoder.setVertexBytes(vertices, length: MemoryLayout<Vertex3D>.stride * vertices.count, index: 0)
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            if lightArray.isEmpty {
+                var dummy = Light3D.zero
+                encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            } else {
+                lightArray.withUnsafeBufferPointer { ptr in
+                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                }
+            }
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+        }
+
+        if hasStroke3D {
+            encoder.setTriangleFillMode(.lines)
+            encoder.setRenderPipelineState(pipelineState)
+            if let depthState = depthState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setFrontFacing(.counterClockwise)
+            encoder.setCullMode(.none)
+
+            var wireUniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: strokeColor3D,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: 0,
+                hasTexture: 0
+            )
+
+            encoder.setVertexBytes(vertices, length: MemoryLayout<Vertex3D>.stride * vertices.count, index: 0)
+            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            var dummy = Light3D.zero
+            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+            encoder.setTriangleFillMode(.fill)
+        }
+    }
+
+    private func drawShape3DPolygon(close: CloseMode) {
+        guard shapeVertices3D.count >= 3 else { return }
+
+        // 簡易三角形ファン分割（凸多角形向け）
+        var triangulated: [Vertex3D] = []
+        triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
+
+        // フェイス法線を最初の3頂点から計算
+        let p0 = shapeVertices3D[0].position
+        let p1 = shapeVertices3D[1].position
+        let p2 = shapeVertices3D[2].position
+        let faceNormal = simd_normalize(simd_cross(p1 - p0, p2 - p0))
+        let safeNormal = faceNormal.x.isNaN ? SIMD3<Float>(0, 1, 0) : faceNormal
+
+        for i in 1..<(shapeVertices3D.count - 1) {
+            var v0 = shapeVertices3D[0]
+            var v1 = shapeVertices3D[i]
+            var v2 = shapeVertices3D[i + 1]
+            // 法線未設定頂点にはフェイス法線を適用
+            if pendingNormal == nil {
+                v0.normal = safeNormal
+                v1.normal = safeNormal
+                v2.normal = safeNormal
+            }
+            triangulated.append(v0)
+            triangulated.append(v1)
+            triangulated.append(v2)
+        }
+
+        drawShape3DVertices(triangulated)
+    }
+
+    private func drawShape3DTriangles() {
+        // 3頂点ずつそのまま描画
+        let count = (shapeVertices3D.count / 3) * 3
+        guard count >= 3 else { return }
+        drawShape3DVertices(Array(shapeVertices3D.prefix(count)))
+    }
+
+    private func drawShape3DTriangleStrip() {
+        guard shapeVertices3D.count >= 3 else { return }
+        var triangulated: [Vertex3D] = []
+        triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
+
+        for i in 0..<(shapeVertices3D.count - 2) {
+            if i % 2 == 0 {
+                triangulated.append(shapeVertices3D[i])
+                triangulated.append(shapeVertices3D[i + 1])
+                triangulated.append(shapeVertices3D[i + 2])
+            } else {
+                triangulated.append(shapeVertices3D[i + 1])
+                triangulated.append(shapeVertices3D[i])
+                triangulated.append(shapeVertices3D[i + 2])
+            }
+        }
+        drawShape3DVertices(triangulated)
+    }
+
+    private func drawShape3DTriangleFan() {
+        guard shapeVertices3D.count >= 3 else { return }
+        var triangulated: [Vertex3D] = []
+        triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
+
+        for i in 1..<(shapeVertices3D.count - 1) {
+            triangulated.append(shapeVertices3D[0])
+            triangulated.append(shapeVertices3D[i])
+            triangulated.append(shapeVertices3D[i + 1])
+        }
+        drawShape3DVertices(triangulated)
+    }
+
+    private func drawShape3DPoints() {
+        // 各頂点を小さな十字として描画（簡易実装）
+        // 3Dの点は三角形として描画が必要なため、極小三角形に変換
+        guard let encoder = encoder else { return }
+        guard !shapeVertices3D.isEmpty else { return }
+
+        let normalMatrix = computeNormalMatrix(from: currentTransform)
+        let viewProj = computeViewProjection()
+
+        encoder.setRenderPipelineState(pipelineState)
+        if let depthState = depthState {
+            encoder.setDepthStencilState(depthState)
+        }
+        encoder.setCullMode(.none)
+
+        for v in shapeVertices3D {
+            let s: Float = 0.5
+            let verts = [
+                Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color),
+                Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color),
+                Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color),
+            ]
+
+            var uniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: v.color,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: 0,
+                hasTexture: 0
+            )
+
+            encoder.setVertexBytes(verts, length: MemoryLayout<Vertex3D>.stride * 3, index: 0)
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            var dummy = Light3D.zero
+            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
+    }
+
+    private func drawShape3DLines() {
+        // 2頂点ずつ極細の三角形ペアで線を表現
+        guard shapeVertices3D.count >= 2 else { return }
+        var lineVerts: [Vertex3D] = []
+        lineVerts.reserveCapacity((shapeVertices3D.count / 2) * 6)
+
+        let lineWidth: Float = 0.5
+        var i = 0
+        while i + 1 < shapeVertices3D.count {
+            let p0 = shapeVertices3D[i].position
+            let p1 = shapeVertices3D[i + 1].position
+            let dir = p1 - p0
+            let len = simd_length(dir)
+            guard len > 0 else { i += 2; continue }
+
+            // カメラ方向とラインの外積でオフセットを計算
+            let viewDir = simd_normalize(cameraEye - (p0 + p1) * 0.5)
+            var offset = simd_normalize(simd_cross(dir, viewDir)) * lineWidth * 0.5
+            if offset.x.isNaN { offset = SIMD3(0, lineWidth * 0.5, 0) }
+
+            let n = shapeVertices3D[i].normal
+            let c = shapeVertices3D[i].color
+
+            lineVerts.append(Vertex3D(position: p0 + offset, normal: n, color: c))
+            lineVerts.append(Vertex3D(position: p0 - offset, normal: n, color: c))
+            lineVerts.append(Vertex3D(position: p1 + offset, normal: n, color: c))
+            lineVerts.append(Vertex3D(position: p0 - offset, normal: n, color: c))
+            lineVerts.append(Vertex3D(position: p1 - offset, normal: n, color: c))
+            lineVerts.append(Vertex3D(position: p1 + offset, normal: n, color: c))
+            i += 2
+        }
+
+        drawShape3DVertices(lineVerts)
+    }
+
     // MARK: - Internal Drawing
 
     private func drawMesh(_ mesh: Mesh) {
@@ -597,7 +1028,7 @@ public final class Canvas3D {
 
         // カスタムマテリアルが設定されている場合はカスタムパイプラインを使用
         if let customMat = currentCustomMaterial,
-           let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured) {
+           let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured, customVertexFunction: customMat.vertexFunction) {
             encoder.setRenderPipelineState(customPipeline)
         } else {
             encoder.setRenderPipelineState(isTextured ? texturedPipelineState : pipelineState)
@@ -715,9 +1146,15 @@ public final class Canvas3D {
 
     // MARK: - Custom Pipeline
 
-    /// カスタムフラグメントシェーダー用パイプラインを取得（キャッシュ付き）
-    private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool) -> MTLRenderPipelineState? {
-        let cacheKey = "\(fragmentFunction.name)_\(isTextured)_\(sampleCount)"
+    /// カスタムパイプラインキャッシュをクリア（シェーダーホットリロード時に呼ぶ）
+    public func clearCustomPipelineCache() {
+        customPipelineCache.removeAll()
+    }
+
+    /// カスタムシェーダー用パイプラインを取得（キャッシュ付き）
+    private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool, customVertexFunction: MTLFunction? = nil) -> MTLRenderPipelineState? {
+        let vtxName = customVertexFunction?.name ?? "default"
+        let cacheKey = "\(fragmentFunction.name)_\(vtxName)_\(isTextured)_\(sampleCount)"
         if let cached = customPipelineCache[cacheKey] {
             return cached
         }
@@ -725,7 +1162,10 @@ public final class Canvas3D {
         let vertexFn: MTLFunction?
         let layout: VertexLayout
 
-        if isTextured {
+        if let customVtx = customVertexFunction {
+            vertexFn = customVtx
+            layout = isTextured ? .positionNormalUV : .positionNormalColor
+        } else if isTextured {
             vertexFn = shaderLibrary.function(
                 named: BuiltinShaders.FunctionName.canvas3DTexturedVertex,
                 from: ShaderLibrary.BuiltinKey.canvas3DTextured

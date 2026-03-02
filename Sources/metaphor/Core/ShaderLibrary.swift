@@ -90,6 +90,32 @@ public final class ShaderLibrary {
         libraries[key] != nil
     }
 
+    // MARK: - Hot Reload
+
+    /// 外部ファイルからMSLソースを読み込んで登録
+    public func registerFromFile(path: String, as key: String) throws {
+        let source = try String(contentsOfFile: path, encoding: .utf8)
+        try register(source: source, as: key)
+    }
+
+    /// 指定キーのライブラリとキャッシュ済み関数を破棄し、再登録する
+    public func reload(key: String, source: String) throws {
+        functions = functions.filter { !$0.key.hasPrefix("\(key).") }
+        libraries.removeValue(forKey: key)
+        try register(source: source, as: key)
+    }
+
+    /// 外部ファイルからMSLソースを再読み込みして再登録
+    public func reloadFromFile(key: String, path: String) throws {
+        let source = try String(contentsOfFile: path, encoding: .utf8)
+        try reload(key: key, source: source)
+    }
+
+    /// 指定キーの関数キャッシュのみをクリア（ライブラリは保持）
+    public func invalidateFunctionCache(for key: String) {
+        functions = functions.filter { !$0.key.hasPrefix("\(key).") }
+    }
+
     // MARK: - Private
 
     private func loadBuiltins() throws {

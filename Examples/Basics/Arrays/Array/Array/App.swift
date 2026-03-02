@@ -19,6 +19,20 @@ final class Array: Sketch {
     }
 
     func draw() {
+        var y1 = 0
+        var y2 = height / 2
+        for i in 0..<width {
+            stroke(coswave[i] * 255)
+            line(x1: i, y1: y1, x2: i, y2: y2)
+        }
+        y1 = y2
+        y2 = y1 + y1
+        for i in 0..<width {
+            stroke(coswave[i] * 255 / 4)
+            line(x1: i, y1: y1, x2: i, y2: y2)
+        }
+        y1 = y2
+        y2 = height
         
     }
 }
