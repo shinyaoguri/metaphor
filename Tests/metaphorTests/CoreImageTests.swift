@@ -229,10 +229,10 @@ struct PostEffectCITests {
 
     @Test("ciFilterRaw post effect")
     func ciFilterRawPostEffect() {
-        let effect = PostEffect.ciFilterRaw(name: "CISepiaTone", parameters: ["inputIntensity": 0.8])
+        let effect = PostEffect.ciFilterRaw(name: "CISepiaTone", parameters: ["inputIntensity": .double(0.8)])
         if case .ciFilterRaw(let name, let params) = effect {
             #expect(name == "CISepiaTone")
-            #expect(params["inputIntensity"] as? Double == 0.8)
+            if case .double(let v) = params["inputIntensity"] { #expect(v == 0.8) }
         } else {
             Issue.record("Expected ciFilterRaw case")
         }

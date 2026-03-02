@@ -1,0 +1,64 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-docs:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+      - name: Build Syphon
+        run: make setup
+      - name: Build Library
+        run: swift build
+      - name: Extract Symbol Graphs
+        run: |
+          mkdir -p .build/symbol-graphs
+          xcrun swift-symbolgraph-extract \
+            -module-name metaphor \
+            -target arm64-apple-macosx14.0 \
+            -sdk "$(xcrun --show-sdk-path)" \
+            -I .build/arm64-apple-macosx/debug/Modules \
+            -F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+            -minimum-access-level public \
+            -skip-inherited-docs \
+            -emit-extension-block-symbols \
+            -output-dir .build/symbol-graphs
+      - name: Build Documentation
+        run: |
+          xcrun docc convert Sources/metaphor/metaphor.docc \
+            --additional-symbol-graph-dir .build/symbol-graphs \
+            --transform-for-static-hosting \
+            --hosting-base-path metaphor \
+            --output-path .build/docs
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .build/docs
+
+  deploy:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

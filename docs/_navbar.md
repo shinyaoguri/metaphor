@@ -1,3 +1,0 @@
-- [API Reference](api/sketch.md)
-- [Examples](examples.md)
-- [GitHub](https://github.com/shinyaoguri/metaphor)

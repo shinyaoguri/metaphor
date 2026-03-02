@@ -5,15 +5,15 @@ import simd
 
 extension Canvas2D {
 
-    /// トランスフォームを適用して頂点を追加
+    /// Adds a vertex with the current transform applied.
     func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         hasDrawnAnything = true
-        // テクスチャモードからカラーモードに戻る時にフラッシュ（描画順序保持）
+        // Flush textured vertices when switching back to color mode (preserves draw order)
         if texturedVertexCount > 0 {
             flushTexturedVertices()
             currentBoundTexture = nil
         }
-        // インスタンスバッチが溜まっていたら先にフラッシュ（描画順序保持）
+        // Flush any pending instanced batch first (preserves draw order)
         if instanceBatcher2D.instanceCount > 0 {
             flushInstancedBatch()
         }
@@ -29,7 +29,7 @@ extension Canvas2D {
         vertexCount += 1
     }
 
-    /// トランスフォームなしで頂点を追加（background用）
+    /// Adds a vertex without transform (used for background fills).
     func addVertexRaw(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         if texturedVertexCount > 0 {
             flushTexturedVertices()
@@ -49,7 +49,7 @@ extension Canvas2D {
         vertexCount += 1
     }
 
-    /// トランスフォーム付き三角形を追加
+    /// Adds a triangle with the current transform applied.
     func addTriangle(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -61,7 +61,7 @@ extension Canvas2D {
         addVertex(x3, y3, color)
     }
 
-    /// ストロークライン（quad展開 + キャップ）
+    /// Draws a stroke line as a quad with optional start/end caps.
     func strokeLine(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float,
                     capStart: Bool = true, capEnd: Bool = true) {
         let dx = x2 - x1
@@ -113,7 +113,7 @@ extension Canvas2D {
         }
     }
 
-    /// ポリラインストローク描画（join対応）
+    /// Draws a polyline stroke with join support (bevel, miter, round).
     func strokePolyline(_ points: [(Float, Float)], closed: Bool) {
         let count = points.count
         guard count >= 2 else { return }

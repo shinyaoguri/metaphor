@@ -1,27 +1,28 @@
 import Foundation
 
-/// マージ（合成）用 MSL コンピュートシェーダーソース
+/// Contains embedded MSL source code for texture merge (compositing) compute shaders.
 ///
-/// 2つのテクスチャを指定されたブレンドモードで合成するコンピュートカーネル。
-/// blend_mode パラメータ: 0=add, 1=alpha, 2=multiply, 3=screen
+/// Blends two textures using a specified blend mode via a compute kernel.
+/// Supported blend_mode values: 0=add, 1=alpha, 2=multiply, 3=screen.
 enum MergeShaders {
 
+    /// MSL source code for the texture merge compute kernel.
     static let source = """
     #include <metal_stdlib>
     using namespace metal;
 
-    /// ブレンドモード定数
+    // Blend mode constants
     constant uint BLEND_ADD      = 0;
     constant uint BLEND_ALPHA    = 1;
     constant uint BLEND_MULTIPLY = 2;
     constant uint BLEND_SCREEN   = 3;
 
-    /// マージパラメータ
+    // Merge parameters
     struct MergeParams {
         uint blend_mode;
     };
 
-    /// 2テクスチャ合成コンピュートカーネル
+    // Two-texture compositing compute kernel
     kernel void metaphor_mergeTextures(
         texture2d<float, access::read>  texA   [[texture(0)]],
         texture2d<float, access::read>  texB   [[texture(1)]],
@@ -40,7 +41,7 @@ enum MergeShaders {
                 result = float4(a.rgb + b.rgb, saturate(a.a + b.a));
                 break;
             case BLEND_ALPHA:
-                // B over A (B が前景)
+                // B over A (B is foreground)
                 result = float4(
                     b.rgb * b.a + a.rgb * (1.0 - b.a),
                     b.a + a.a * (1.0 - b.a)
@@ -64,7 +65,9 @@ enum MergeShaders {
     }
     """
 
+    /// Merge shader function name constants.
     enum FunctionName {
+        /// MSL function name for the texture merge compute kernel.
         static let mergeTextures = "metaphor_mergeTextures"
     }
 }

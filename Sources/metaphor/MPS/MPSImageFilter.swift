@@ -1,10 +1,10 @@
 @preconcurrency import Metal
 import MetalPerformanceShaders
 
-/// MPS 最適化画像フィルタ
+/// Provide hardware-optimized image filters using Metal Performance Shaders.
 ///
-/// Apple Silicon のハードウェア最適化カーネルを使い、
-/// 手書きコンピュートシェーダーより高速な画像処理を提供する。
+/// Leverage Apple Silicon hardware-accelerated kernels for image processing
+/// that runs faster than hand-written compute shaders.
 ///
 /// ```swift
 /// let mps = createMPSFilter()
@@ -34,7 +34,10 @@ public final class MPSImageFilterWrapper {
 
     // MARK: - Standalone API (MImage)
 
-    /// ガウシアンブラーを適用（ハードウェア最適化）
+    /// Apply hardware-optimized Gaussian blur to an image.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - sigma: The blur radius in pixels.
     public func gaussianBlur(_ image: MImage, sigma: Float) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateGaussian(sigma: sigma)
@@ -42,7 +45,8 @@ public final class MPSImageFilterWrapper {
         finalize(image: image, dst: dst, commandBuffer: cb)
     }
 
-    /// Sobel エッジ検出を適用
+    /// Apply Sobel edge detection to an image.
+    /// - Parameter image: The image to process.
     public func sobel(_ image: MImage) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateSobel()
@@ -50,7 +54,8 @@ public final class MPSImageFilterWrapper {
         finalize(image: image, dst: dst, commandBuffer: cb)
     }
 
-    /// ラプラシアンフィルタを適用
+    /// Apply a Laplacian filter to an image.
+    /// - Parameter image: The image to process.
     public func laplacian(_ image: MImage) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateLaplacian()
@@ -58,7 +63,10 @@ public final class MPSImageFilterWrapper {
         finalize(image: image, dst: dst, commandBuffer: cb)
     }
 
-    /// 収縮（morphological min）
+    /// Apply morphological erosion (area min) to an image.
+    /// - Parameters:
+    ///   - image: The image to process.
+    ///   - radius: The erosion radius in pixels.
     public func erode(_ image: MImage, radius: Int = 1) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let size = radius * 2 + 1
@@ -67,7 +75,10 @@ public final class MPSImageFilterWrapper {
         finalize(image: image, dst: dst, commandBuffer: cb)
     }
 
-    /// 膨張（morphological max）
+    /// Apply morphological dilation (area max) to an image.
+    /// - Parameters:
+    ///   - image: The image to process.
+    ///   - radius: The dilation radius in pixels.
     public func dilate(_ image: MImage, radius: Int = 1) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let size = radius * 2 + 1
@@ -76,7 +87,10 @@ public final class MPSImageFilterWrapper {
         finalize(image: image, dst: dst, commandBuffer: cb)
     }
 
-    /// メディアンフィルタ
+    /// Apply a median filter to an image.
+    /// - Parameters:
+    ///   - image: The image to process.
+    ///   - diameter: The filter kernel diameter (must be odd, minimum 3).
     public func median(_ image: MImage, diameter: Int = 3) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateMedian(diameter: diameter)
@@ -84,7 +98,10 @@ public final class MPSImageFilterWrapper {
         finalize(image: image, dst: dst, commandBuffer: cb)
     }
 
-    /// 閾値二値化
+    /// Apply binary thresholding to an image.
+    /// - Parameters:
+    ///   - image: The image to process.
+    ///   - value: The threshold value (0.0 to 1.0).
     public func threshold(_ image: MImage, value: Float = 0.5) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateThreshold(value: value)
@@ -94,7 +111,12 @@ public final class MPSImageFilterWrapper {
 
     // MARK: - Encode API (PostProcessPipeline integration)
 
-    /// ガウシアンブラーをコマンドバッファにエンコード
+    /// Encode a Gaussian blur operation into a command buffer.
+    /// - Parameters:
+    ///   - commandBuffer: The command buffer to encode into.
+    ///   - source: The source texture.
+    ///   - destination: The destination texture.
+    ///   - sigma: The blur radius in pixels.
     func encodeGaussianBlur(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
@@ -105,7 +127,11 @@ public final class MPSImageFilterWrapper {
         kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
-    /// Sobel エッジ検出をエンコード
+    /// Encode a Sobel edge detection operation into a command buffer.
+    /// - Parameters:
+    ///   - commandBuffer: The command buffer to encode into.
+    ///   - source: The source texture.
+    ///   - destination: The destination texture.
     func encodeSobel(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
@@ -115,7 +141,11 @@ public final class MPSImageFilterWrapper {
         kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
-    /// ラプラシアンをエンコード
+    /// Encode a Laplacian filter operation into a command buffer.
+    /// - Parameters:
+    ///   - commandBuffer: The command buffer to encode into.
+    ///   - source: The source texture.
+    ///   - destination: The destination texture.
     func encodeLaplacian(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
@@ -125,7 +155,12 @@ public final class MPSImageFilterWrapper {
         kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
-    /// モルフォロジー（erode）をエンコード
+    /// Encode a morphological erosion operation into a command buffer.
+    /// - Parameters:
+    ///   - commandBuffer: The command buffer to encode into.
+    ///   - source: The source texture.
+    ///   - destination: The destination texture.
+    ///   - radius: The erosion radius in pixels.
     func encodeErode(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
@@ -137,7 +172,12 @@ public final class MPSImageFilterWrapper {
         kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
-    /// モルフォロジー（dilate）をエンコード
+    /// Encode a morphological dilation operation into a command buffer.
+    /// - Parameters:
+    ///   - commandBuffer: The command buffer to encode into.
+    ///   - source: The source texture.
+    ///   - destination: The destination texture.
+    ///   - radius: The dilation radius in pixels.
     func encodeDilate(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,

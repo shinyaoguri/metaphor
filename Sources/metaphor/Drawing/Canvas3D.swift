@@ -3,7 +3,7 @@ import simd
 
 // MARK: - Canvas3D Uniforms
 
-/// Canvas3Dシェーダー用ユニフォーム（MSLのCanvas3DUniformsと一致）
+/// Represent uniform data for Canvas3D shaders, matching the MSL `Canvas3DUniforms` layout.
 struct Canvas3DUniforms {
     var modelMatrix: float4x4
     var viewProjectionMatrix: float4x4
@@ -18,7 +18,7 @@ struct Canvas3DUniforms {
 
 // MARK: - Light3D
 
-/// GPU互換ライトデータ（64 bytes、16-byte aligned）
+/// Represent GPU-compatible light data (64 bytes, 16-byte aligned).
 struct Light3D {
     var positionAndType: SIMD4<Float>           // xyz=position, w=type(0=dir,1=point,2=spot)
     var directionAndCutoff: SIMD4<Float>        // xyz=direction, w=cos(innerCutoff)
@@ -35,7 +35,7 @@ struct Light3D {
 
 // MARK: - Material3D
 
-/// GPU互換マテリアルデータ（64 bytes）
+/// Represent GPU-compatible material data (64 bytes).
 struct Material3D {
     var ambientColor: SIMD4<Float>         // xyz=ambient color
     var specularAndShininess: SIMD4<Float> // xyz=specular color, w=shininess
@@ -52,10 +52,10 @@ struct Material3D {
 
 // MARK: - Canvas3D
 
-/// Immediate-mode 3D描画コンテキスト
+/// Provide an immediate-mode 3D drawing context.
 ///
-/// p5.js WEBGL mode風のAPIで3Dシーンを描画する。
-/// Canvas2Dと同一エンコーダを共有し、3D描画は即時実行される。
+/// Draws 3D scenes with a p5.js WEBGL-style API.
+/// Shares the same render command encoder as Canvas2D, executing 3D draw calls immediately.
 @MainActor
 public final class Canvas3D {
     // MARK: - Metal Resources
@@ -82,7 +82,10 @@ public final class Canvas3D {
 
     // MARK: - Dimensions
 
+    /// The width of the 3D canvas in points.
     public let width: Float
+
+    /// The height of the 3D canvas in points.
     public let height: Float
 
     // MARK: - Per-frame State
@@ -158,14 +161,18 @@ public final class Canvas3D {
 
     // MARK: - Shadow Mapping State
 
-    /// シャドウマップ（nil = シャドウ無効）
+    /// The shadow map used for shadow rendering, or `nil` when shadows are disabled.
     var shadowMap: ShadowMap?
 
-    /// シャドウ有効時の記録済み DrawCall
+    /// The draw calls recorded during the current frame for the shadow depth pass.
     private(set) var recordedDrawCalls: [DrawCall3D] = []
 
     // MARK: - Initialization
 
+    /// Create a canvas from a renderer, inheriting its device, shader library, and texture dimensions.
+    ///
+    /// - Parameter renderer: The renderer to derive configuration from.
+    /// - Throws: An error if pipeline state creation fails.
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -177,6 +184,16 @@ public final class Canvas3D {
         )
     }
 
+    /// Create a canvas with explicit Metal resources and dimensions.
+    ///
+    /// - Parameters:
+    ///   - device: The Metal device used for resource allocation.
+    ///   - shaderLibrary: The shader library containing built-in shader functions.
+    ///   - depthStencilCache: The cache for depth-stencil states.
+    ///   - width: The canvas width in points.
+    ///   - height: The canvas height in points.
+    ///   - sampleCount: The MSAA sample count (defaults to 1).
+    /// - Throws: An error if pipeline state creation fails.
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -191,7 +208,7 @@ public final class Canvas3D {
         self.width = width
         self.height = height
 
-        // Untextured パイプライン
+        // Untextured pipeline
         let vertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas3DVertex,
             from: ShaderLibrary.BuiltinKey.canvas3D
@@ -208,7 +225,7 @@ public final class Canvas3D {
             .sampleCount(sampleCount)
             .build()
 
-        // Textured パイプライン
+        // Textured pipeline
         let texVertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas3DTexturedVertex,
             from: ShaderLibrary.BuiltinKey.canvas3DTextured
@@ -227,7 +244,7 @@ public final class Canvas3D {
 
         self.depthState = depthStencilCache.state(for: .readWrite)
 
-        // Instanced パイプライン（untextured）
+        // Instanced pipeline (untextured)
         let instVertexFn = shaderLibrary.function(
             named: Canvas3DInstancedShaders.vertexFunctionName,
             from: ShaderLibrary.BuiltinKey.canvas3DInstanced
@@ -244,7 +261,7 @@ public final class Canvas3D {
             .sampleCount(sampleCount)
             .build()
 
-        // Instanced パイプライン（textured）
+        // Instanced pipeline (textured)
         let instTexVertexFn = shaderLibrary.function(
             named: Canvas3DInstancedShaders.texturedVertexFunctionName,
             from: ShaderLibrary.BuiltinKey.canvas3DInstanced
@@ -263,7 +280,7 @@ public final class Canvas3D {
 
         self.instanceBatcher = InstanceBatcher3D(device: device)
 
-        // ダミー 1x1 シャドウテクスチャ（シャドウ無効時にバインド）
+        // Dummy 1x1 shadow texture (bound when shadows are disabled)
         let dummyDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .depth32Float, width: 1, height: 1, mipmapped: false
         )
@@ -274,6 +291,7 @@ public final class Canvas3D {
 
     // MARK: - Frame Lifecycle
 
+    /// Begin a new frame, resetting per-frame state and configuring the render encoder.
     func begin(encoder: MTLRenderCommandEncoder, time: Float, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentTime = time
@@ -300,16 +318,17 @@ public final class Canvas3D {
         instanceBatcher.beginFrame(bufferIndex: bufferIndex)
     }
 
+    /// End the current frame, flushing any pending instance batches.
     func end() {
         flushInstanceBatch()
         self.encoder = nil
     }
 
-    /// シャドウ深度パスを実行する（メインパス終了後に呼ぶ）
+    /// Execute the shadow depth pass after the main rendering pass completes.
     func performShadowPass(commandBuffer: MTLCommandBuffer) {
         guard let shadow = shadowMap, !recordedDrawCalls.isEmpty else { return }
 
-        // 最初のディレクショナルライトからライト空間行列を計算
+        // Compute light-space matrix from the first directional light
         if let dirLight = lightArray.first(where: { UInt32($0.positionAndType.w) == 0 }) {
             let lightDir = SIMD3(dirLight.directionAndCutoff.x, dirLight.directionAndCutoff.y, dirLight.directionAndCutoff.z)
             shadow.updateLightSpaceMatrix(lightDirection: lightDir, sceneCenter: cameraCenter)
@@ -320,18 +339,18 @@ public final class Canvas3D {
 
     // MARK: - Public Camera Accessors
 
-    /// 現在のビュー・プロジェクション行列
+    /// Return the current view-projection matrix.
     public var currentViewProjection: float4x4 {
         computeViewProjection()
     }
 
-    /// カメラの右方向ベクトル（ビルボード用）
+    /// Return the camera's right direction vector, useful for billboarding.
     public var currentCameraRight: SIMD3<Float> {
         let z = normalize(cameraEye - cameraCenter)
         return normalize(cross(cameraUp, z))
     }
 
-    /// カメラの上方向ベクトル（ビルボード用）
+    /// Return the camera's up direction vector, useful for billboarding.
     public var currentCameraUp: SIMD3<Float> {
         let z = normalize(cameraEye - cameraCenter)
         let x = normalize(cross(cameraUp, z))
@@ -340,6 +359,12 @@ public final class Canvas3D {
 
     // MARK: - Camera
 
+    /// Set the camera position and orientation.
+    ///
+    /// - Parameters:
+    ///   - eye: The camera position in world space.
+    ///   - center: The point the camera looks at.
+    ///   - up: The up direction vector.
     public func camera(
         eye: SIMD3<Float>,
         center: SIMD3<Float>,
@@ -351,6 +376,12 @@ public final class Canvas3D {
         self.viewProjectionDirty = true
     }
 
+    /// Configure perspective projection parameters.
+    ///
+    /// - Parameters:
+    ///   - fov: The vertical field of view in radians.
+    ///   - near: The near clipping plane distance.
+    ///   - far: The far clipping plane distance.
     public func perspective(
         fov: Float = Float.pi / 3,
         near: Float = 0.1,
@@ -363,14 +394,15 @@ public final class Canvas3D {
         self.viewProjectionDirty = true
     }
 
-    /// 正射影カメラに切り替え
+    /// Switch to orthographic projection.
+    ///
     /// - Parameters:
-    ///   - left: 左端（nilならば0）
-    ///   - right: 右端（nilならばwidth）
-    ///   - bottom: 下端（nilならばheight）
-    ///   - top: 上端（nilならば0）
-    ///   - near: ニアクリップ
-    ///   - far: ファークリップ
+    ///   - left: The left edge of the view volume (`nil` defaults to 0).
+    ///   - right: The right edge of the view volume (`nil` defaults to canvas width).
+    ///   - bottom: The bottom edge of the view volume (`nil` defaults to canvas height).
+    ///   - top: The top edge of the view volume (`nil` defaults to 0).
+    ///   - near: The near clipping plane distance.
+    ///   - far: The far clipping plane distance.
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
@@ -388,7 +420,7 @@ public final class Canvas3D {
 
     // MARK: - Lighting
 
-    /// デフォルトライティングを有効化（後方互換）
+    /// Enable default lighting with a single directional light for backward compatibility.
     public func lights() {
         lightArray.removeAll(keepingCapacity: true)
         ambientColor = SIMD3(0.3, 0.3, 0.3)
@@ -402,18 +434,32 @@ public final class Canvas3D {
         lightArray.append(light)
     }
 
+    /// Remove all lights from the scene.
     public func noLights() {
         lightArray.removeAll(keepingCapacity: true)
     }
 
+    /// Add a white directional light with the given direction.
+    ///
+    /// - Parameters:
+    ///   - x: The x component of the light direction.
+    ///   - y: The y component of the light direction.
+    ///   - z: The z component of the light direction.
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
         directionalLight(x, y, z, color: Color.white)
     }
 
+    /// Add a directional light with the given direction and color.
+    ///
+    /// - Parameters:
+    ///   - x: The x component of the light direction.
+    ///   - y: The y component of the light direction.
+    ///   - z: The z component of the light direction.
+    ///   - color: The light color.
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         ensureAmbientIfFirstLight()
-        // ローカル座標系の方向をワールド空間に変換（w=0で平行移動を除外）
+        // Transform local-space direction to world space (w=0 excludes translation)
         let td = currentTransform * SIMD4(x, y, z, 0)
         var light = Light3D.zero
         light.positionAndType = SIMD4(0, 0, 0, 0)
@@ -423,6 +469,14 @@ public final class Canvas3D {
         lightArray.append(light)
     }
 
+    /// Add a point light at the given position.
+    ///
+    /// - Parameters:
+    ///   - x: The x coordinate of the light position.
+    ///   - y: The y coordinate of the light position.
+    ///   - z: The z coordinate of the light position.
+    ///   - color: The light color.
+    ///   - falloff: The attenuation falloff factor.
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
@@ -430,7 +484,7 @@ public final class Canvas3D {
     ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         ensureAmbientIfFirstLight()
-        // ローカル座標系の位置をワールド空間に変換
+        // Transform local-space position to world space
         let tp = currentTransform * SIMD4(x, y, z, 1)
         var light = Light3D.zero
         light.positionAndType = SIMD4(tp.x, tp.y, tp.z, 1)
@@ -439,6 +493,18 @@ public final class Canvas3D {
         lightArray.append(light)
     }
 
+    /// Add a spot light at the given position with a specified direction.
+    ///
+    /// - Parameters:
+    ///   - x: The x coordinate of the light position.
+    ///   - y: The y coordinate of the light position.
+    ///   - z: The z coordinate of the light position.
+    ///   - dirX: The x component of the spotlight direction.
+    ///   - dirY: The y component of the spotlight direction.
+    ///   - dirZ: The z component of the spotlight direction.
+    ///   - angle: The outer cone angle in radians.
+    ///   - falloff: The attenuation falloff factor.
+    ///   - color: The light color.
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
@@ -449,7 +515,7 @@ public final class Canvas3D {
         guard lightArray.count < Canvas3D.maxLights else { return }
         ensureAmbientIfFirstLight()
         let innerAngle = angle * 0.8
-        // ローカル座標系の位置と方向をワールド空間に変換
+        // Transform local-space position and direction to world space
         let tp = currentTransform * SIMD4(x, y, z, 1)
         let td = currentTransform * SIMD4(dirX, dirY, dirZ, 0)
         var light = Light3D.zero
@@ -460,11 +526,20 @@ public final class Canvas3D {
         lightArray.append(light)
     }
 
+    /// Set the ambient light intensity uniformly across all channels.
+    ///
+    /// - Parameter strength: The ambient light intensity value applied to R, G, and B.
     public func ambientLight(_ strength: Float) {
         ambientColor = SIMD3(strength, strength, strength)
         currentMaterial.ambientColor = SIMD4(strength, strength, strength, 0)
     }
 
+    /// Set the ambient light color using individual RGB components.
+    ///
+    /// - Parameters:
+    ///   - r: The red component.
+    ///   - g: The green component.
+    ///   - b: The blue component.
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
         ambientColor = SIMD3(r, g, b)
         currentMaterial.ambientColor = SIMD4(r, g, b, 0)
@@ -472,6 +547,9 @@ public final class Canvas3D {
 
     // MARK: - Material
 
+    /// Set the specular highlight color of the current material.
+    ///
+    /// - Parameter color: The specular color.
     public func specular(_ color: Color) {
         currentMaterial.specularAndShininess = SIMD4(
             color.r, color.g, color.b,
@@ -479,6 +557,9 @@ public final class Canvas3D {
         )
     }
 
+    /// Set the specular highlight color as a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale intensity applied to all channels.
     public func specular(_ gray: Float) {
         currentMaterial.specularAndShininess = SIMD4(
             gray, gray, gray,
@@ -486,10 +567,16 @@ public final class Canvas3D {
         )
     }
 
+    /// Set the shininess exponent of the current material.
+    ///
+    /// - Parameter value: The shininess exponent (higher values produce tighter highlights).
     public func shininess(_ value: Float) {
         currentMaterial.specularAndShininess.w = value
     }
 
+    /// Set the emissive color of the current material.
+    ///
+    /// - Parameter color: The emissive color.
     public func emissive(_ color: Color) {
         currentMaterial.emissiveAndMetallic = SIMD4(
             color.r, color.g, color.b,
@@ -497,6 +584,9 @@ public final class Canvas3D {
         )
     }
 
+    /// Set the emissive color as a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale intensity applied to all channels.
     public func emissive(_ gray: Float) {
         currentMaterial.emissiveAndMetallic = SIMD4(
             gray, gray, gray,
@@ -504,54 +594,66 @@ public final class Canvas3D {
         )
     }
 
+    /// Set the metallic factor of the current material.
+    ///
+    /// - Parameter value: The metallic factor from 0.0 (dielectric) to 1.0 (fully metallic).
     public func metallic(_ value: Float) {
         currentMaterial.emissiveAndMetallic.w = value
     }
 
-    /// PBR roughness を設定（自動的に PBR モードに切り替わる）
-    /// - Parameter value: 0.0（鏡面）〜 1.0（完全拡散）
+    /// Set the PBR roughness, automatically enabling PBR shading mode.
+    ///
+    /// - Parameter value: The roughness from 0.0 (mirror-like) to 1.0 (fully diffuse).
     public func roughness(_ value: Float) {
         currentMaterial.pbrParams.x = value
-        currentMaterial.pbrParams.y = 1  // 自動で PBR モード ON
+        currentMaterial.pbrParams.y = 1  // Automatically enable PBR mode
     }
 
-    /// PBR アンビエントオクルージョンを設定
-    /// - Parameter value: 0.0（完全遮蔽）〜 1.0（遮蔽なし）
+    /// Set the PBR ambient occlusion factor.
+    ///
+    /// - Parameter value: The occlusion from 0.0 (fully occluded) to 1.0 (no occlusion).
     public func ambientOcclusion(_ value: Float) {
         currentMaterial.pbrParams.z = value
     }
 
-    /// PBR モードを明示的に切り替える
-    /// - Parameter enabled: true で PBR（Cook-Torrance GGX）、false で Blinn-Phong
+    /// Toggle PBR shading mode explicitly.
+    ///
+    /// - Parameter enabled: Pass `true` for Cook-Torrance GGX shading, `false` for Blinn-Phong.
     public func pbr(_ enabled: Bool) {
         currentMaterial.pbrParams.y = enabled ? 1 : 0
     }
 
     // MARK: - Custom Material
 
-    /// カスタムフラグメントシェーダーマテリアルを適用
+    /// Apply a custom fragment shader material for subsequent draw calls.
+    ///
+    /// - Parameter custom: The custom material to apply.
     public func material(_ custom: CustomMaterial) {
         currentCustomMaterial = custom
     }
 
-    /// カスタムマテリアルを解除（組み込みシェーダーに戻す）
+    /// Remove the custom material, reverting to the built-in shader.
     public func noMaterial() {
         currentCustomMaterial = nil
     }
 
     // MARK: - Texture
 
+    /// Set the texture for subsequent textured draw calls.
+    ///
+    /// - Parameter img: The image whose texture will be bound.
     public func texture(_ img: MImage) {
         currentTexture = img.texture
     }
 
+    /// Remove the currently bound texture.
     public func noTexture() {
         currentTexture = nil
     }
 
     // MARK: - Transform Stack
 
-    /// 全状態を保存（トランスフォーム + スタイル + マテリアル）
+    /// Save the entire state including transform, style, and material.
     public func pushState() {
         stateStack.append(StyleState3D(
             transform: currentTransform,
@@ -566,7 +668,7 @@ public final class Canvas3D {
         ))
     }
 
-    /// 全状態を復元
+    /// Restore the previously saved state.
     public func popState() {
         guard let saved = stateStack.popLast() else { return }
         currentTransform = saved.transform
@@ -580,30 +682,62 @@ public final class Canvas3D {
         colorModeConfig = saved.colorModeConfig
     }
 
-    /// トランスフォームのみを保存
+    /// Save only the current transform matrix.
     public func pushMatrix() {
         matrixStack.append(currentTransform)
     }
 
-    /// トランスフォームのみを復元
+    /// Restore only the previously saved transform matrix.
     public func popMatrix() {
         guard let saved = matrixStack.popLast() else { return }
         currentTransform = saved
     }
+
+    /// Translate the current transform by the given offsets.
+    ///
+    /// - Parameters:
+    ///   - x: The translation along the x-axis.
+    ///   - y: The translation along the y-axis.
+    ///   - z: The translation along the z-axis.
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         currentTransform = currentTransform * float4x4(translation: SIMD3(x, y, z))
     }
+
+    /// Rotate the current transform around the x-axis.
+    ///
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateX(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationX: angle) }
+
+    /// Rotate the current transform around the y-axis.
+    ///
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateY(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationY: angle) }
+
+    /// Rotate the current transform around the z-axis.
+    ///
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateZ(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationZ: angle) }
+
+    /// Scale the current transform non-uniformly along each axis.
+    ///
+    /// - Parameters:
+    ///   - x: The scale factor along the x-axis.
+    ///   - y: The scale factor along the y-axis.
+    ///   - z: The scale factor along the z-axis.
     public func scale(_ x: Float, _ y: Float, _ z: Float) {
         currentTransform = currentTransform * float4x4(scale: SIMD3(x, y, z))
     }
+
+    /// Scale the current transform uniformly along all axes.
+    ///
+    /// - Parameter s: The uniform scale factor.
     public func scale(_ s: Float) { currentTransform = currentTransform * float4x4(scale: s) }
 
     // MARK: - Style Sync
 
-    /// DrawingStyle から共通スタイルを同期
+    /// Synchronize common style properties from a shared drawing style.
+    ///
+    /// - Parameter style: The drawing style to synchronize from.
     public func syncStyle(_ style: DrawingStyle) {
         fillColor = style.fillColor
         strokeColor3D = style.strokeColor
@@ -614,73 +748,127 @@ public final class Canvas3D {
 
     // MARK: - Style
 
+    /// Set the fill color.
+    ///
+    /// - Parameter color: The fill color.
     public func fill(_ color: Color) { fillColor = color.simd; hasFill = true }
 
-    /// 塗りつぶし色を設定（colorModeに従って解釈）
+    /// Set the fill color using components interpreted according to the current color mode.
+    ///
+    /// - Parameters:
+    ///   - v1: The first color component.
+    ///   - v2: The second color component.
+    ///   - v3: The third color component.
+    ///   - a: The optional alpha component.
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
         hasFill = true
     }
 
-    /// グレースケールで塗りつぶし色を設定
+    /// Set the fill color as a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale intensity.
     public func fill(_ gray: Float) {
         fillColor = colorModeConfig.toGray(gray).simd
         hasFill = true
     }
 
-    /// グレースケール＋アルファで塗りつぶし色を設定
+    /// Set the fill color as a grayscale value with alpha.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale intensity.
+    ///   - alpha: The alpha value.
     public func fill(_ gray: Float, _ alpha: Float) {
         fillColor = colorModeConfig.toGray(gray, alpha).simd
         hasFill = true
     }
 
-    /// 塗りつぶしなし
+    /// Disable fill for subsequent shapes.
     public func noFill() { hasFill = false }
 
-    /// 線の色を設定
+    /// Set the stroke color.
+    ///
+    /// - Parameter color: The stroke color.
     public func stroke(_ color: Color) { strokeColor3D = color.simd; hasStroke3D = true }
 
-    /// 線の色を設定（colorModeに従って解釈）
+    /// Set the stroke color using components interpreted according to the current color mode.
+    ///
+    /// - Parameters:
+    ///   - v1: The first color component.
+    ///   - v2: The second color component.
+    ///   - v3: The third color component.
+    ///   - a: The optional alpha component.
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         strokeColor3D = colorModeConfig.toColor(v1, v2, v3, a).simd
         hasStroke3D = true
     }
 
-    /// グレースケールで線の色を設定
+    /// Set the stroke color as a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale intensity.
     public func stroke(_ gray: Float) {
         strokeColor3D = colorModeConfig.toGray(gray).simd
         hasStroke3D = true
     }
 
-    /// グレースケール＋アルファで線の色を設定
+    /// Set the stroke color as a grayscale value with alpha.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale intensity.
+    ///   - alpha: The alpha value.
     public func stroke(_ gray: Float, _ alpha: Float) {
         strokeColor3D = colorModeConfig.toGray(gray, alpha).simd
         hasStroke3D = true
     }
 
-    /// 線なし
+    /// Disable stroke for subsequent shapes.
     public func noStroke() { hasStroke3D = false }
 
-    /// 色空間と最大値を設定
+    /// Set the color space and per-component maximum values.
+    ///
+    /// - Parameters:
+    ///   - space: The color space to use.
+    ///   - max1: The maximum value for the first component.
+    ///   - max2: The maximum value for the second component.
+    ///   - max3: The maximum value for the third component.
+    ///   - maxA: The maximum value for the alpha component.
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
         colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxA)
     }
 
-    /// 色空間と均一な最大値を設定
+    /// Set the color space with a uniform maximum value for all components.
+    ///
+    /// - Parameters:
+    ///   - space: The color space to use.
+    ///   - maxAll: The maximum value applied to all components including alpha.
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
     }
 
     // MARK: - 3D Shapes
 
+    /// Draw a box with the given dimensions.
+    ///
+    /// - Parameters:
+    ///   - width: The box width.
+    ///   - height: The box height.
+    ///   - depth: The box depth.
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
         let key = "box_\(width)_\(height)_\(depth)"
         let mesh = meshCache[key] ?? { let m = Mesh.box(device: device, width: width, height: height, depth: depth); meshCache[key] = m; return m }()
         drawMesh(mesh)
     }
 
+    /// Draw a cube with equal dimensions.
+    ///
+    /// - Parameter size: The edge length of the cube.
     public func box(_ size: Float) { box(size, size, size) }
 
+    /// Draw a sphere with the given radius and tessellation detail.
+    ///
+    /// - Parameters:
+    ///   - radius: The sphere radius.
+    ///   - detail: The number of longitudinal segments (rings are derived from this).
     public func sphere(_ radius: Float, detail: Int = 24) {
         let rings = max(detail / 2, 4)
         let key = "sphere_\(radius)_\(detail)_\(rings)"
@@ -688,24 +876,47 @@ public final class Canvas3D {
         drawMesh(mesh)
     }
 
+    /// Draw a flat plane with the given dimensions.
+    ///
+    /// - Parameters:
+    ///   - width: The plane width.
+    ///   - height: The plane height.
     public func plane(_ width: Float, _ height: Float) {
         let key = "plane_\(width)_\(height)"
         let mesh = meshCache[key] ?? { let m = Mesh.plane(device: device, width: width, height: height); meshCache[key] = m; return m }()
         drawMesh(mesh)
     }
 
+    /// Draw a cylinder with the given radius, height, and tessellation detail.
+    ///
+    /// - Parameters:
+    ///   - radius: The cylinder radius.
+    ///   - height: The cylinder height.
+    ///   - detail: The number of radial segments.
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         let key = "cylinder_\(radius)_\(height)_\(detail)"
         let mesh = meshCache[key] ?? { let m = Mesh.cylinder(device: device, radius: radius, height: height, segments: detail); meshCache[key] = m; return m }()
         drawMesh(mesh)
     }
 
+    /// Draw a cone with the given radius, height, and tessellation detail.
+    ///
+    /// - Parameters:
+    ///   - radius: The base radius.
+    ///   - height: The cone height.
+    ///   - detail: The number of radial segments.
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         let key = "cone_\(radius)_\(height)_\(detail)"
         let mesh = meshCache[key] ?? { let m = Mesh.cone(device: device, radius: radius, height: height, segments: detail); meshCache[key] = m; return m }()
         drawMesh(mesh)
     }
 
+    /// Draw a torus with the given ring and tube radii.
+    ///
+    /// - Parameters:
+    ///   - ringRadius: The distance from the center of the torus to the center of the tube.
+    ///   - tubeRadius: The radius of the tube.
+    ///   - detail: The number of radial segments around the ring.
     public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
         let tubeDetail = max(detail / 2, 8)
         let key = "torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)"
@@ -713,16 +924,21 @@ public final class Canvas3D {
         drawMesh(mesh)
     }
 
+    /// Draw a pre-built mesh.
+    ///
+    /// - Parameter mesh: The mesh to draw.
     public func mesh(_ mesh: Mesh) { drawMesh(mesh) }
 
-    /// 動的メッシュを描画
+    /// Draw a dynamic mesh that supports runtime vertex modifications.
+    ///
+    /// - Parameter mesh: The dynamic mesh to draw.
     public func dynamicMesh(_ mesh: DynamicMesh) {
         mesh.ensureBuffers()
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
         guard hasFill || hasStroke3D else { return }
 
-        // DynamicMesh はインスタンシング対象外
+        // DynamicMesh is not eligible for instancing
         flushInstanceBatch()
 
         encoder.setRenderPipelineState(pipelineState)
@@ -812,7 +1028,9 @@ public final class Canvas3D {
 
     // MARK: - 3D Custom Shapes (beginShape / endShape)
 
-    /// 3D頂点ベースの形状記録を開始
+    /// Begin recording vertices for a 3D custom shape.
+    ///
+    /// - Parameter mode: The shape tessellation mode.
     public func beginShape(_ mode: ShapeMode = .polygon) {
         isRecordingShape3D = true
         shapeMode3D = mode
@@ -820,7 +1038,12 @@ public final class Canvas3D {
         pendingNormal = nil
     }
 
-    /// 3D頂点を追加
+    /// Add a 3D vertex at the given position.
+    ///
+    /// - Parameters:
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecordingShape3D else { return }
         shapeVertices3D.append(Vertex3D(
@@ -830,7 +1053,13 @@ public final class Canvas3D {
         ))
     }
 
-    /// 頂点カラー付き3D頂点を追加
+    /// Add a 3D vertex with a per-vertex color.
+    ///
+    /// - Parameters:
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
+    ///   - color: The vertex color.
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         guard isRecordingShape3D else { return }
         shapeVertices3D.append(Vertex3D(
@@ -840,19 +1069,26 @@ public final class Canvas3D {
         ))
     }
 
-    /// 次の vertex に適用する法線を設定
+    /// Set the normal vector to apply to subsequent vertices.
+    ///
+    /// - Parameters:
+    ///   - nx: The x component of the normal.
+    ///   - ny: The y component of the normal.
+    ///   - nz: The z component of the normal.
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         pendingNormal = SIMD3(nx, ny, nz)
     }
 
-    /// 3D形状記録を終了して描画
+    /// End recording and draw the 3D shape.
+    ///
+    /// - Parameter close: Whether to close the shape.
     public func endShape(_ close: CloseMode = .open) {
         guard isRecordingShape3D else { return }
         isRecordingShape3D = false
 
         guard !shapeVertices3D.isEmpty else { return }
 
-        // 自動法線計算（polygon/triangles モードで法線未設定の場合）
+        // Auto-compute normals when in polygon/triangles mode and no normal was explicitly set
         if pendingNormal == nil {
             autoComputeNormals()
         }
@@ -877,8 +1113,8 @@ public final class Canvas3D {
 
     // MARK: - Private: 3D Shape Tessellation
 
+    // Compute face normals for every group of 3 vertices.
     private func autoComputeNormals() {
-        // triangles モード: 3頂点ずつフェイス法線を計算
         var i = 0
         while i + 2 < shapeVertices3D.count {
             let p0 = shapeVertices3D[i].position
@@ -895,11 +1131,12 @@ public final class Canvas3D {
         }
     }
 
+    // Draw an array of pre-tessellated 3D vertices with fill and/or wireframe passes.
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
         guard let encoder = encoder, !vertices.isEmpty else { return }
         guard hasFill || hasStroke3D else { return }
 
-        // beginShape/endShape は個別頂点描画なのでインスタンスバッチをフラッシュ
+        // Flush instance batch since beginShape/endShape uses individual vertex drawing
         flushInstanceBatch()
 
         let normalMatrix = computeNormalMatrix(from: currentTransform)
@@ -978,14 +1215,14 @@ public final class Canvas3D {
         }
     }
 
+    // Tessellate a polygon using a simple triangle fan (suitable for convex polygons).
     private func drawShape3DPolygon(close: CloseMode) {
         guard shapeVertices3D.count >= 3 else { return }
 
-        // 簡易三角形ファン分割（凸多角形向け）
         var triangulated: [Vertex3D] = []
         triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
 
-        // フェイス法線を最初の3頂点から計算
+        // Compute face normal from the first 3 vertices
         let p0 = shapeVertices3D[0].position
         let p1 = shapeVertices3D[1].position
         let p2 = shapeVertices3D[2].position
@@ -996,7 +1233,7 @@ public final class Canvas3D {
             var v0 = shapeVertices3D[0]
             var v1 = shapeVertices3D[i]
             var v2 = shapeVertices3D[i + 1]
-            // 法線未設定頂点にはフェイス法線を適用
+            // Apply face normal to vertices that lack an explicit normal
             if pendingNormal == nil {
                 v0.normal = safeNormal
                 v1.normal = safeNormal
@@ -1010,13 +1247,14 @@ public final class Canvas3D {
         drawShape3DVertices(triangulated)
     }
 
+    // Draw vertices directly as independent triangles (every 3 vertices form one triangle).
     private func drawShape3DTriangles() {
-        // 3頂点ずつそのまま描画
         let count = (shapeVertices3D.count / 3) * 3
         guard count >= 3 else { return }
         drawShape3DVertices(Array(shapeVertices3D.prefix(count)))
     }
 
+    // Tessellate a triangle strip into independent triangles.
     private func drawShape3DTriangleStrip() {
         guard shapeVertices3D.count >= 3 else { return }
         var triangulated: [Vertex3D] = []
@@ -1036,6 +1274,7 @@ public final class Canvas3D {
         drawShape3DVertices(triangulated)
     }
 
+    // Tessellate a triangle fan into independent triangles.
     private func drawShape3DTriangleFan() {
         guard shapeVertices3D.count >= 3 else { return }
         var triangulated: [Vertex3D] = []
@@ -1049,9 +1288,8 @@ public final class Canvas3D {
         drawShape3DVertices(triangulated)
     }
 
+    // Draw each vertex as a small triangle to simulate a point.
     private func drawShape3DPoints() {
-        // 各頂点を小さな十字として描画（簡易実装）
-        // 3Dの点は三角形として描画が必要なため、極小三角形に変換
         guard let encoder = encoder else { return }
         guard !shapeVertices3D.isEmpty else { return }
 
@@ -1064,40 +1302,42 @@ public final class Canvas3D {
         }
         encoder.setCullMode(.none)
 
+        // Build triangles for all vertices in a single batch
+        var allVerts: [Vertex3D] = []
+        allVerts.reserveCapacity(shapeVertices3D.count * 3)
+
+        let s: Float = 0.5
         for v in shapeVertices3D {
-            let s: Float = 0.5
-            let verts = [
-                Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color),
-                Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color),
-                Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color),
-            ]
-
-            var uniforms = Canvas3DUniforms(
-                modelMatrix: currentTransform,
-                viewProjectionMatrix: viewProj,
-                normalMatrix: normalMatrix,
-                color: v.color,
-                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
-                time: currentTime,
-                lightCount: 0,
-                hasTexture: 0
-            )
-
-            encoder.setVertexBytes(verts, length: MemoryLayout<Vertex3D>.stride * 3, index: 0)
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-
-            var dummy = Light3D.zero
-            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
-            var mat = currentMaterial
-            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
-
-            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            allVerts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
         }
+
+        var uniforms = Canvas3DUniforms(
+            modelMatrix: currentTransform,
+            viewProjectionMatrix: viewProj,
+            normalMatrix: normalMatrix,
+            color: shapeVertices3D[0].color,
+            cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+            time: currentTime,
+            lightCount: 0,
+            hasTexture: 0
+        )
+
+        encoder.setVertexBytes(allVerts, length: MemoryLayout<Vertex3D>.stride * allVerts.count, index: 0)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+        var dummy = Light3D.zero
+        encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+        var mat = currentMaterial
+        encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: allVerts.count)
     }
 
+    // Draw line segments as thin triangle pairs (2 vertices per segment).
     private func drawShape3DLines() {
-        // 2頂点ずつ極細の三角形ペアで線を表現
         guard shapeVertices3D.count >= 2 else { return }
         var lineVerts: [Vertex3D] = []
         lineVerts.reserveCapacity((shapeVertices3D.count / 2) * 6)
@@ -1111,7 +1351,7 @@ public final class Canvas3D {
             let len = simd_length(dir)
             guard len > 0 else { i += 2; continue }
 
-            // カメラ方向とラインの外積でオフセットを計算
+            // Compute offset using the cross product of the line direction and view direction
             let viewDir = simd_normalize(cameraEye - (p0 + p1) * 0.5)
             var offset = simd_normalize(simd_cross(dir, viewDir)) * lineWidth * 0.5
             if offset.x.isNaN { offset = SIMD3(0, lineWidth * 0.5, 0) }
@@ -1133,13 +1373,14 @@ public final class Canvas3D {
 
     // MARK: - Internal Drawing
 
+    // Route mesh drawing through the instancing path or immediate fallback.
     private func drawMesh(_ mesh: Mesh) {
         guard encoder != nil else { return }
         guard hasFill || hasStroke3D else { return }
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
-        // シャドウ有効時: DrawCall を記録（シャドウパスで使用）
+        // Record draw call for shadow pass when shadows are enabled
         if shadowMap != nil {
             recordedDrawCalls.append(DrawCall3D(
                 mesh: mesh,
@@ -1155,14 +1396,14 @@ public final class Canvas3D {
             ))
         }
 
-        // カスタム頂点シェーダー使用時はインスタンシング不可 → immediate path
+        // Custom vertex shader prevents instancing; fall back to immediate path
         if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {
             flushInstanceBatch()
             drawMeshImmediate(mesh)
             return
         }
 
-        // バッチキーを生成
+        // Generate batch key
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let key = InstanceBatcher3D.BatchKey(
             meshID: ObjectIdentifier(mesh),
@@ -1175,7 +1416,7 @@ public final class Canvas3D {
             strokeColor: strokeColor3D
         )
 
-        // インスタンスバッチに蓄積を試行
+        // Attempt to accumulate into instance batch
         if !instanceBatcher.tryAddInstance(
             key: key,
             mesh: mesh,
@@ -1189,7 +1430,7 @@ public final class Canvas3D {
             normalMatrix: normalMatrix,
             color: fillColor
         ) {
-            // キー不一致またはバッファ満杯 → 現在のバッチをフラッシュして再試行
+            // Key mismatch or buffer full; flush current batch and retry
             flushInstanceBatch()
             let _ = instanceBatcher.tryAddInstance(
                 key: key,
@@ -1209,7 +1450,7 @@ public final class Canvas3D {
 
     // MARK: - Instanced Batch Flush
 
-    /// 蓄積されたインスタンスバッチを instanced draw call で一括描画する
+    /// Flush accumulated instances as a single instanced draw call.
     private func flushInstanceBatch() {
         guard let encoder = encoder,
               instanceBatcher.instanceCount > 0,
@@ -1219,7 +1460,7 @@ public final class Canvas3D {
         let batchHasFill = instanceBatcher.currentHasFill
         let batchHasStroke = instanceBatcher.currentHasStroke
 
-        // パイプライン選択
+        // Select pipeline
         if let customMat = instanceBatcher.currentCustomMaterial,
            let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured) {
             encoder.setRenderPipelineState(customPipeline)
@@ -1233,14 +1474,14 @@ public final class Canvas3D {
         encoder.setFrontFacing(.counterClockwise)
         encoder.setCullMode(.none)
 
-        // 頂点バッファ
+        // Vertex buffer
         if isTextured, let uvBuffer = mesh.uvVertexBuffer {
             encoder.setVertexBuffer(uvBuffer, offset: 0, index: 0)
         } else {
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
         }
 
-        // インスタンスバッファ → buffer(6)
+        // Instance buffer at buffer(6)
         encoder.setVertexBuffer(instanceBatcher.currentBuffer, offset: 0, index: 6)
 
         // --- Fill pass ---
@@ -1255,7 +1496,7 @@ public final class Canvas3D {
             encoder.setVertexBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
 
-            // ライト
+            // Lights
             if lightArray.isEmpty {
                 var dummy = Light3D.zero
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -1265,16 +1506,16 @@ public final class Canvas3D {
                 }
             }
 
-            // マテリアル
+            // Material
             var mat = instanceBatcher.currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
-            // カスタムマテリアルパラメータ
+            // Custom material parameters
             if let customMat = instanceBatcher.currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
                 encoder.setFragmentBytes(&params, length: params.count, index: 4)
             }
 
-            // シャドウ
+            // Shadow
             if let shadow = shadowMap {
                 var shadowUniforms = ShadowFragmentUniforms(
                     lightSpaceMatrix: shadow.lightSpaceMatrix,
@@ -1295,12 +1536,12 @@ public final class Canvas3D {
                 }
             }
 
-            // テクスチャ
+            // Texture
             if isTextured, let tex = instanceBatcher.currentTexture {
                 encoder.setFragmentTexture(tex, index: 0)
             }
 
-            // instanced draw
+            // Instanced draw
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
                     type: .triangle, indexCount: mesh.indexCount,
@@ -1322,12 +1563,10 @@ public final class Canvas3D {
             encoder.setRenderPipelineState(instancedPipelineState)
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
 
-            // ワイヤフレームではライティングなし。stroke color は全インスタンス共通
-            // (BatchKey で strokeColor が一致しないと別バッチになる)
-            // stroke 用にインスタンスバッファの color を上書きする代わりに、
-            // scene uniforms で lightCount=0 にし、インスタンスの color をそのまま使う。
-            // ただし stroke color は BatchKey で統一されているので、
-            // 一時的にインスタンスバッファを書き換えずにシンプルに immediate で処理。
+            // Wireframe uses no lighting. Stroke color is uniform across all instances
+            // (BatchKey requires matching strokeColor, so all instances share the same value).
+            // Instead of overwriting the instance buffer's color for stroke, we simply set
+            // lightCount=0 in scene uniforms and use the instance color as-is.
             var wireSceneUniforms = InstancedSceneUniforms(
                 viewProjectionMatrix: computeViewProjection(),
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
@@ -1343,7 +1582,7 @@ public final class Canvas3D {
             var mat = instanceBatcher.currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
-            // シャドウ（wireframeでは無効）
+            // Shadow disabled for wireframe
             var shadowOff = ShadowFragmentUniforms(lightSpaceMatrix: .identity, shadowBias: 0, shadowEnabled: 0)
             encoder.setFragmentBytes(&shadowOff, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
             if let dummyTex = dummyShadowTexture {
@@ -1371,7 +1610,7 @@ public final class Canvas3D {
 
     // MARK: - Immediate Drawing (fallback, non-instanced)
 
-    /// インスタンシング不可の場合のフォールバック描画（カスタム頂点シェーダー等）
+    // Draw a mesh without instancing (fallback for custom vertex shaders).
     private func drawMeshImmediate(_ mesh: Mesh) {
         guard let encoder = encoder else { return }
 
@@ -1511,12 +1750,12 @@ public final class Canvas3D {
 
     // MARK: - Custom Pipeline
 
-    /// カスタムパイプラインキャッシュをクリア（シェーダーホットリロード時に呼ぶ）
+    /// Clear the custom pipeline cache, typically called after shader hot-reload.
     public func clearCustomPipelineCache() {
         customPipelineCache.removeAll()
     }
 
-    /// カスタムシェーダー用パイプラインを取得（キャッシュ付き）
+    // Retrieve or create a cached pipeline for custom shaders.
     private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool, customVertexFunction: MTLFunction? = nil) -> MTLRenderPipelineState? {
         let vtxName = customVertexFunction?.name ?? "default"
         let cacheKey = "\(fragmentFunction.name)_\(vtxName)_\(isTextured)_\(sampleCount)"
@@ -1561,6 +1800,7 @@ public final class Canvas3D {
 
     // MARK: - Private Helpers
 
+    // Compute and cache the view-projection matrix.
     private func computeViewProjection() -> float4x4 {
         if viewProjectionDirty {
             let view = float4x4(lookAt: cameraEye, center: cameraCenter, up: cameraUp)
@@ -1581,6 +1821,7 @@ public final class Canvas3D {
         return cachedViewProjection
     }
 
+    // Compute the normal matrix (inverse-transpose of the upper-left 3x3) from a model matrix.
     private func computeNormalMatrix(from model: float4x4) -> float4x4 {
         let m3 = float3x3(
             SIMD3(model.columns.0.x, model.columns.0.y, model.columns.0.z),
@@ -1596,6 +1837,7 @@ public final class Canvas3D {
         ))
     }
 
+    // Set default ambient values when the first light is added.
     private func ensureAmbientIfFirstLight() {
         if lightArray.isEmpty {
             ambientColor = SIMD3(0.3, 0.3, 0.3)

@@ -1,11 +1,12 @@
 import Foundation
 
-/// Kawase (Dual-filter) ブラー用MSLシェーダーソース
+/// Contains embedded MSL source code for Kawase (dual-filter) blur shaders.
 ///
-/// 従来のGaussianブラー（ループ回数∝半径）に対し、
-/// ダウン/アップサンプルの階層的パスで同等品質を大幅に高速化する。
+/// Achieves comparable quality to Gaussian blur at significantly higher speed
+/// by using hierarchical down/upsample passes instead of per-pixel kernel loops.
 enum KawaseBlurShaders {
 
+    /// MSL source code for the Kawase downsample and upsample shaders.
     static let source = """
     #include <metal_stdlib>
     using namespace metal;
@@ -15,7 +16,7 @@ enum KawaseBlurShaders {
         float2 texCoord;
     };
 
-    // Kawase downsample: 5タップ（中心 + 4対角）→ 半解像度に縮小
+    // Kawase downsample: 5-tap (center + 4 diagonal) to half resolution
     fragment float4 metaphor_kawaseDownsample(
         PPVertexOut in [[stage_in]],
         texture2d<float> tex [[texture(0)]],
@@ -34,7 +35,7 @@ enum KawaseBlurShaders {
         return sum / 8.0;
     }
 
-    // Kawase upsample: 8タップ（3x3テント、重み付き）→ 倍解像度に拡大
+    // Kawase upsample: 8-tap (3x3 tent, weighted) to double resolution
     fragment float4 metaphor_kawaseUpsample(
         PPVertexOut in [[stage_in]],
         texture2d<float> tex [[texture(0)]],
@@ -60,8 +61,11 @@ enum KawaseBlurShaders {
     }
     """
 
+    /// Kawase blur shader function name constants.
     enum FunctionName {
+        /// MSL function name for the Kawase downsample shader.
         static let kawaseDownsample = "metaphor_kawaseDownsample"
+        /// MSL function name for the Kawase upsample shader.
         static let kawaseUpsample = "metaphor_kawaseUpsample"
     }
 }

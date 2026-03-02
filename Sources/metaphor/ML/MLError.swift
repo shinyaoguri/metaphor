@@ -1,27 +1,27 @@
 import CoreML
 import Foundation
 
-/// CoreML / Vision 統合のエラー型
+/// Represent errors from the CoreML and Vision integration subsystem.
 public enum MLError: Error, LocalizedError {
-    /// モデルファイルが見つからない
+    /// The model file was not found at the specified path.
     case modelNotFound(String)
 
-    /// モデルの読み込みに失敗
+    /// The model failed to load.
     case modelLoadFailed(String, underlying: Error)
 
-    /// 推論に失敗
+    /// Inference failed.
     case inferenceFailed(String)
 
-    /// Vision リクエストに失敗
+    /// A Vision request failed.
     case visionRequestFailed(String, underlying: Error)
 
-    /// テクスチャの変換に失敗
+    /// Texture conversion failed.
     case textureConversionFailed(String)
 
-    /// モデルの入出力形式が不正
+    /// The model has an invalid input/output format.
     case invalidModelFormat(String)
 
-    /// 非対応のフィーチャータイプ
+    /// The feature type is unsupported.
     case unsupportedFeatureType(String)
 
     public var errorDescription: String? {

@@ -1,22 +1,22 @@
 import simd
 
-/// Canvas2D と Canvas3D に共通する描画スタイル
+/// Hold drawing style properties shared between Canvas2D and Canvas3D.
 ///
-/// SketchContext の fill/stroke/colorMode が source of truth として
-/// この構造体を更新し、両 Canvas に同期する。
+/// SketchContext's fill/stroke/colorMode methods serve as the source of truth,
+/// updating this struct and synchronizing it to both canvases.
 public struct DrawingStyle: Sendable {
-    /// フィルカラー (RGBA)
+    /// Fill color (RGBA).
     public var fillColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
 
-    /// ストロークカラー (RGBA)
+    /// Stroke color (RGBA).
     public var strokeColor: SIMD4<Float> = SIMD4(0, 0, 0, 1)
 
-    /// フィルの有効フラグ
+    /// Whether fill is enabled.
     public var hasFill: Bool = true
 
-    /// ストロークの有効フラグ
+    /// Whether stroke is enabled.
     public var hasStroke: Bool = true
 
-    /// カラーモード設定
+    /// Color mode configuration.
     public var colorModeConfig: ColorModeConfig = ColorModeConfig()
 }

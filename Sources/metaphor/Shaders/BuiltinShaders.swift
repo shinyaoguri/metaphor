@@ -1,11 +1,14 @@
 import Foundation
 
-/// metaphorの組み込みMetalシェーダーソース
+/// Contains embedded MSL source code for all built-in rendering shaders.
+///
+/// Includes blit, flat-color, vertex-color, lit (Blinn-Phong), Canvas2D,
+/// Canvas3D (untextured/textured), and Canvas2D textured shaders.
 public enum BuiltinShaders {
 
-    // MARK: - Blit (フルスクリーンテクスチャ転送)
+    // MARK: - Blit (Fullscreen Texture Transfer)
 
-    /// オフスクリーンテクスチャを画面にブリットするシェーダー
+    /// MSL source code for the fullscreen blit shader that copies an offscreen texture to the screen.
     public static let blitSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -47,7 +50,7 @@ public enum BuiltinShaders {
 
     // MARK: - Common Structures
 
-    /// 全シェーダーで共有されるMSL構造体定義
+    /// MSL struct definitions shared across all shaders.
     static let commonStructs = """
     struct MetaphorUniforms {
         float4x4 modelMatrix;
@@ -58,9 +61,9 @@ public enum BuiltinShaders {
     };
     """
 
-    // MARK: - FlatColor (単色・ライティングなし)
+    // MARK: - FlatColor (Solid Color, No Lighting)
 
-    /// 単色で描画するシェーダー (positionのみ vertex descriptor使用)
+    /// MSL source code for the flat-color shader (position-only vertex descriptor, no lighting).
     public static let flatColorSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -93,9 +96,9 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - VertexColor (頂点カラー・ライティングなし)
+    // MARK: - VertexColor (Per-Vertex Color, No Lighting)
 
-    /// 頂点カラーで描画するシェーダー (positionColor or positionNormalColor)
+    /// MSL source code for the vertex-color shader (positionColor or positionNormalColor, no lighting).
     public static let vertexColorSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -131,9 +134,9 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Lit (Blinn-Phongライティング)
+    // MARK: - Lit (Blinn-Phong Lighting)
 
-    /// Blinn-Phongライティング付きシェーダー (positionNormalColor)
+    /// MSL source code for the Blinn-Phong lit shader (positionNormalColor).
     public static let litSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -181,9 +184,9 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Canvas2D (2D描画用 - Phase 2で使用)
+    // MARK: - Canvas2D (2D Drawing)
 
-    /// Canvas2D用のフラットカラーシェーダー
+    /// MSL source code for the Canvas2D flat-color shader with blend mode variants.
     public static let canvas2DSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -237,17 +240,17 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Canvas3D Shared Structures (3Dシェーダー共通定義)
+    // MARK: - Canvas3D Shared Structures (Common 3D Shader Definitions)
 
-    /// Canvas3D用のGPU構造体定義（untextured / textured で共有）
+    /// MSL struct definitions shared by Canvas3D untextured and textured shaders.
     ///
-    /// カスタムマテリアルシェーダーを作成する際に、MSLソースのプレフィックスとして使用する。
+    /// Use as a prefix when writing custom material shaders.
     /// ```swift
     /// let source = """
     /// #include <metal_stdlib>
     /// using namespace metal;
     /// \(BuiltinShaders.canvas3DStructs)
-    /// // カスタムフラグメントシェーダー ...
+    /// // Custom fragment shader ...
     /// """
     /// ```
     public static let canvas3DStructs = """
@@ -285,9 +288,9 @@ public enum BuiltinShaders {
     };
     """
 
-    /// Canvas3D用のライティング関数（Blinn-Phong + PBR Cook-Torrance GGX）
+    /// MSL lighting functions (Blinn-Phong + PBR Cook-Torrance GGX).
     ///
-    /// カスタムマテリアルシェーダーで組み込みライティング計算を利用する場合に使用する。
+    /// Use when custom material shaders need built-in lighting calculations.
     public static let canvas3DLightingFn = """
     // Shadow calculation (PCF 3x3)
     float calculateShadow(
@@ -453,9 +456,9 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Canvas3D (3D描画用)
+    // MARK: - Canvas3D (3D Drawing)
 
-    /// Canvas3D用のマルチライト・マテリアル対応シェーダー（untextured）
+    /// MSL source code for the Canvas3D multi-light material shader (untextured).
     public static let canvas3DSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -512,7 +515,7 @@ public enum BuiltinShaders {
             material
         );
 
-        // シャドウ適用
+        // Apply shadow
         constexpr sampler shadowSampler(filter::linear, address::clamp_to_edge, compare_func::never);
         float shadow = calculateShadow(in.worldPosition, shadowUniforms, shadowMap, shadowSampler);
         float3 ambient = material.ambientColor.xyz * in.color.rgb;
@@ -522,9 +525,9 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Canvas3D Textured (テクスチャ付き3D描画)
+    // MARK: - Canvas3D Textured (Textured 3D Drawing)
 
-    /// Canvas3D用テクスチャ付きシェーダー
+    /// MSL source code for the Canvas3D textured shader.
     public static let canvas3DTexturedSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -586,7 +589,7 @@ public enum BuiltinShaders {
             material
         );
 
-        // シャドウ適用
+        // Apply shadow
         constexpr sampler shadowSampler(filter::linear, address::clamp_to_edge, compare_func::never);
         float shadow = calculateShadow(in.worldPosition, shadowUniforms, shadowMap, shadowSampler);
         float3 ambient = material.ambientColor.xyz * tintedColor.rgb;
@@ -596,9 +599,9 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Canvas2D Textured (テクスチャ付き2D描画)
+    // MARK: - Canvas2D Textured (Textured 2D Drawing)
 
-    /// Canvas2D用テクスチャ付きシェーダー（画像・テキスト描画用）
+    /// MSL source code for the Canvas2D textured shader (used for image and text rendering).
     public static let canvas2DTexturedSource = """
     #include <metal_stdlib>
     using namespace metal;
@@ -664,31 +667,55 @@ public enum BuiltinShaders {
 
     // MARK: - Shader Function Names
 
-    /// 組み込みシェーダーの関数名
+    /// Built-in shader function name constants.
     public enum FunctionName {
+        /// MSL function name for the blit vertex shader.
         public static let blitVertex = "metaphor_blitVertex"
+        /// MSL function name for the blit fragment shader.
         public static let blitFragment = "metaphor_blitFragment"
+        /// MSL function name for the flat-color vertex shader.
         public static let flatColorVertex = "metaphor_flatColorVertex"
+        /// MSL function name for the flat-color fragment shader.
         public static let flatColorFragment = "metaphor_flatColorFragment"
+        /// MSL function name for the vertex-color vertex shader.
         public static let vertexColorVertex = "metaphor_vertexColorVertex"
+        /// MSL function name for the vertex-color fragment shader.
         public static let vertexColorFragment = "metaphor_vertexColorFragment"
+        /// MSL function name for the lit vertex shader.
         public static let litVertex = "metaphor_litVertex"
+        /// MSL function name for the lit fragment shader.
         public static let litFragment = "metaphor_litFragment"
+        /// MSL function name for the Canvas2D vertex shader.
         public static let canvas2DVertex = "metaphor_canvas2DVertex"
+        /// MSL function name for the Canvas2D fragment shader.
         public static let canvas2DFragment = "metaphor_canvas2DFragment"
+        /// MSL function name for the Canvas2D difference blend fragment shader.
         public static let canvas2DDifferenceFragment = "metaphor_canvas2DDifferenceFragment"
+        /// MSL function name for the Canvas2D exclusion blend fragment shader.
         public static let canvas2DExclusionFragment = "metaphor_canvas2DExclusionFragment"
+        /// MSL function name for the Canvas3D vertex shader.
         public static let canvas3DVertex = "metaphor_canvas3DVertex"
+        /// MSL function name for the Canvas3D fragment shader.
         public static let canvas3DFragment = "metaphor_canvas3DFragment"
+        /// MSL function name for the Canvas2D textured vertex shader.
         public static let canvas2DTexturedVertex = "metaphor_canvas2DTexturedVertex"
+        /// MSL function name for the Canvas2D textured fragment shader.
         public static let canvas2DTexturedFragment = "metaphor_canvas2DTexturedFragment"
+        /// MSL function name for the Canvas2D textured difference blend fragment shader.
         public static let canvas2DTexturedDifferenceFragment = "metaphor_canvas2DTexturedDifferenceFragment"
+        /// MSL function name for the Canvas2D textured exclusion blend fragment shader.
         public static let canvas2DTexturedExclusionFragment = "metaphor_canvas2DTexturedExclusionFragment"
+        /// MSL function name for the Canvas3D textured vertex shader.
         public static let canvas3DTexturedVertex = "metaphor_canvas3DTexturedVertex"
+        /// MSL function name for the Canvas3D textured fragment shader.
         public static let canvas3DTexturedFragment = "metaphor_canvas3DTexturedFragment"
+        /// MSL function name for the Canvas2D instanced vertex shader.
         public static let canvas2DInstancedVertex = "metaphor_canvas2DInstancedVertex"
+        /// MSL function name for the Canvas2D instanced fragment shader.
         public static let canvas2DInstancedFragment = "metaphor_canvas2DInstancedFragment"
+        /// MSL function name for the Canvas2D instanced difference blend fragment shader.
         public static let canvas2DInstancedDifferenceFragment = "metaphor_canvas2DInstancedDifferenceFragment"
+        /// MSL function name for the Canvas2D instanced exclusion blend fragment shader.
         public static let canvas2DInstancedExclusionFragment = "metaphor_canvas2DInstancedExclusionFragment"
     }
 }

@@ -3,107 +3,111 @@ import MetalKit
 import QuartzCore
 import simd
 
-/// metaphorのメインレンダラー
-/// Metalレンダリングとオプションのランタイム操作を提供する
+/// Orchestrate Metal rendering and optional runtime operations for metaphor.
 @MainActor
 public final class MetaphorRenderer: NSObject {
     // MARK: - Public Properties
 
-    /// MTLDevice
+    /// The Metal device used for all GPU resource creation.
     public let device: MTLDevice
 
-    /// コマンドキュー
+    /// The command queue used to submit work to the GPU.
     public let commandQueue: MTLCommandQueue
 
-    /// オフスクリーンテクスチャマネージャ
+    /// Manage offscreen render target textures.
     public private(set) var textureManager: TextureManager
 
     #if os(macOS)
-    /// Syphon出力（オプション）
+    /// The optional Syphon output for inter-application video sharing.
     public private(set) var syphonOutput: SyphonOutput?
     #endif
 
-    /// シェーダーライブラリ
+    /// The shader library used for compiling and caching Metal shader functions.
     public let shaderLibrary: ShaderLibrary
 
-    /// 深度ステンシルキャッシュ
+    /// The depth-stencil state cache shared across all render passes.
     public let depthStencilCache: DepthStencilCache
 
-    /// 入力マネージャ
+    /// The input manager for keyboard and mouse event handling.
     public let input: InputManager
 
-    /// 描画コールバック
+    /// The callback invoked each frame to perform user rendering.
+    ///
     /// - Parameters:
-    ///   - encoder: レンダーコマンドエンコーダ
-    ///   - time: 開始からの経過時間（秒）
+    ///   - encoder: The render command encoder for the current offscreen pass.
+    ///   - time: The elapsed time in seconds since the renderer started.
     public var onDraw: ((MTLRenderCommandEncoder, Double) -> Void)?
 
-    /// コンピュートコールバック（描画前に呼ばれる）
+    /// The callback invoked before drawing to perform compute work.
+    ///
     /// - Parameters:
-    ///   - commandBuffer: MTLCommandBuffer（コンピュートエンコーダ作成用）
-    ///   - time: 開始からの経過時間（秒）
+    ///   - commandBuffer: The command buffer to use for creating compute encoders.
+    ///   - time: The elapsed time in seconds since the renderer started.
     public var onCompute: ((MTLCommandBuffer, Double) -> Void)?
 
-    /// メイン描画後に呼ばれるコールバック（シャドウパスなど）
-    /// - Parameter commandBuffer: MTLCommandBuffer
+    /// The callback invoked after the main draw pass for additional rendering such as shadow passes.
+    ///
+    /// - Parameter commandBuffer: The command buffer for encoding additional passes.
     public var onAfterDraw: ((MTLCommandBuffer) -> Void)?
 
-    /// 開始時刻（単調増加時刻）
+    /// The monotonic start time recorded at initialization.
     private let startTime: Double
 
     // MARK: - Blit Pipeline
 
     private var blitPipelineState: MTLRenderPipelineState?
 
-    /// 外部レンダーループ使用フラグ（trueの場合、draw(in:)はブリットのみ行う）
+    /// Indicate whether an external render loop drives frame rendering.
+    ///
+    /// When `true`, `draw(in:)` only blits the offscreen texture to screen without calling `renderFrame()`.
     public var useExternalRenderLoop: Bool = false
 
     // MARK: - Offline Rendering
 
-    /// オフラインレンダリングモード（決定論的フレーム時間）
+    /// Enable offline rendering mode with deterministic frame timing.
     public var isOfflineRendering: Bool = false
 
-    /// オフラインモードのフレームレート
+    /// The frame rate used for time calculation in offline rendering mode.
     public var offlineFrameRate: Double = 60.0
 
-    /// オフラインモードの現在フレームインデックス
+    /// The current frame index in offline rendering mode.
     private var offlineFrameIndex: Int = 0
 
     // MARK: - Triple Buffering
 
-    /// in-flight フレーム数を制御するセマフォ
+    /// The semaphore that limits the number of in-flight frames to three.
     private let inflightSemaphore = DispatchSemaphore(value: 3)
 
-    /// 現在のフレームで使用するバッファインデックス (0-2)
+    /// The buffer index (0-2) for the current frame's triple-buffered resources.
     public private(set) var frameBufferIndex: Int = 0
 
-    /// 次に使うバッファインデックス
+    /// The next buffer index to use.
     private var nextBufferIndex: Int = 0
 
     // MARK: - Post Processing
 
-    /// ポストプロセスパイプライン
+    /// The post-processing effect pipeline.
     public private(set) var postProcessPipeline: PostProcessPipeline?
 
-    /// ポストプロセス後の最終出力テクスチャ（blitToScreenで使用）
+    /// The final output texture after post-processing, used by `blitToScreen`.
     private var lastOutputTexture: MTLTexture?
 
-    /// GPU画像フィルタエンジン
+    /// The GPU image filter engine, created lazily on first access.
     public private(set) lazy var imageFilterGPU: ImageFilterGPU = {
         ImageFilterGPU(device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
     }()
 
     // MARK: - Render Graph
 
-    /// レンダーグラフ（設定時はグラフの出力が最終出力テクスチャとなる）
+    /// The render graph whose output becomes the final texture when set.
     public var renderGraph: RenderGraph?
 
     // MARK: - FBO Feedback
 
-    /// フレームバッファフィードバックの有効フラグ
+    /// Enable frame buffer object feedback to access the previous frame's color texture.
     public var feedbackEnabled: Bool = false
 
-    /// 前フレームのカラーテクスチャ（feedbackEnabled 時のみ有効）
+    /// The previous frame's color texture, available only when ``feedbackEnabled`` is `true`.
     public private(set) var previousFrameTexture: MTLTexture?
 
     // MARK: - Screenshot
@@ -113,30 +117,34 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - GPU Time
 
-    /// 最新の GPU 時間（秒）
+    /// The GPU start timestamp of the most recently completed frame, in seconds.
     public private(set) var lastGPUStartTime: Double = 0
+
+    /// The GPU end timestamp of the most recently completed frame, in seconds.
     public private(set) var lastGPUEndTime: Double = 0
 
     // MARK: - Frame Export
 
-    /// フレームエクスポーター
+    /// The frame exporter for capturing individual frames as image files.
     public let frameExporter: FrameExporter = FrameExporter()
     private var exportStagingTexture: MTLTexture?
 
     // MARK: - Video Export
 
-    /// ビデオエクスポーター
+    /// The video exporter for recording frames to a video file.
     public let videoExporter: VideoExporter = VideoExporter()
     private var videoStagingTexture: MTLTexture?
 
     // MARK: - Initialization
 
-    /// 初期化
+    /// Create a new renderer with the specified device and offscreen texture dimensions.
+    ///
     /// - Parameters:
-    ///   - device: MTLDevice（nilの場合はシステムデフォルト）
-    ///   - width: オフスクリーンテクスチャの幅
-    ///   - height: オフスクリーンテクスチャの高さ
-    ///   - clearColor: クリアカラー
+    ///   - device: The Metal device to use, or `nil` to use the system default.
+    ///   - width: The width of the offscreen render texture in pixels.
+    ///   - height: The height of the offscreen render texture in pixels.
+    ///   - clearColor: The clear color for the offscreen render pass.
+    /// - Throws: ``MetaphorError`` if the device or command queue cannot be created.
     public init(
         device: MTLDevice? = nil,
         width: Int = 1920,
@@ -165,27 +173,28 @@ public final class MetaphorRenderer: NSObject {
 
         super.init()
 
-        buildBlitPipeline()
+        try buildBlitPipeline()
 
         do {
             self.postProcessPipeline = try PostProcessPipeline(
                 device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary
             )
         } catch {
-            print("[metaphor] Failed to create PostProcessPipeline: \(error)")
+            print("[metaphor] Warning: PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
         }
     }
 
     #if os(macOS)
     // MARK: - Syphon
 
-    /// Syphonサーバーを開始
-    /// - Parameter name: サーバー名
+    /// Start a Syphon server with the given name for inter-application texture sharing.
+    ///
+    /// - Parameter name: The name to advertise for the Syphon server.
     public func startSyphonServer(name: String) {
         syphonOutput = SyphonOutput(device: device, name: name)
     }
 
-    /// Syphonサーバーを停止
+    /// Stop the Syphon server and release its resources.
     public func stopSyphonServer() {
         syphonOutput?.stop()
         syphonOutput = nil
@@ -194,7 +203,11 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Canvas Resize
 
-    /// キャンバスサイズを変更（テクスチャ再作成）
+    /// Resize the offscreen canvas by recreating all render target textures.
+    ///
+    /// - Parameters:
+    ///   - width: The new width in pixels.
+    ///   - height: The new height in pixels.
     public func resizeCanvas(width: Int, height: Int) {
         do {
             textureManager = try TextureManager(
@@ -214,36 +227,51 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Post Process API
 
-    /// ポストプロセスエフェクトを追加
+    /// Append a post-processing effect to the pipeline.
+    ///
+    /// - Parameter effect: The post-processing effect to add.
     public func addPostEffect(_ effect: PostEffect) {
         postProcessPipeline?.add(effect)
     }
 
-    /// ポストプロセスエフェクトを削除
+    /// Remove the post-processing effect at the specified index.
+    ///
+    /// - Parameter index: The zero-based index of the effect to remove.
     public func removePostEffect(at index: Int) {
         postProcessPipeline?.remove(at: index)
     }
 
-    /// 全ポストプロセスエフェクトを削除
+    /// Remove all post-processing effects from the pipeline.
     public func clearPostEffects() {
         postProcessPipeline?.removeAll()
     }
 
-    /// ポストプロセスエフェクトを一括設定
+    /// Replace all post-processing effects with the given array.
+    ///
+    /// - Parameter effects: The new set of post-processing effects.
     public func setPostEffects(_ effects: [PostEffect]) {
         postProcessPipeline?.set(effects)
     }
 
     // MARK: - Clear Color
 
-    /// レンダーパスのクリアカラーを変更
+    /// Change the clear color of the offscreen render pass.
+    ///
+    /// - Parameters:
+    ///   - r: The red component (0.0 to 1.0).
+    ///   - g: The green component (0.0 to 1.0).
+    ///   - b: The blue component (0.0 to 1.0).
+    ///   - a: The alpha component (0.0 to 1.0).
     public func setClearColor(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1.0) {
         textureManager.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
     }
 
     // MARK: - Rendering
 
-    /// 現在の経過時間を取得（オフラインモードではフレームインデックスベース）
+    /// Return the current elapsed time in seconds.
+    ///
+    /// In offline rendering mode, the time is derived from the frame index and frame rate
+    /// instead of wall-clock time.
     public var elapsedTime: Double {
         if isOfflineRendering {
             return Double(offlineFrameIndex) / offlineFrameRate
@@ -251,13 +279,14 @@ public final class MetaphorRenderer: NSObject {
         return CACurrentMediaTime() - startTime
     }
 
-    /// フレーム間デルタ時間（オフラインモードでは固定値）
+    /// Return the fixed delta time per frame in offline rendering mode.
     public var offlineDeltaTime: Double {
         1.0 / offlineFrameRate
     }
 
-    /// MTKViewをセットアップ
-    /// - Parameter view: セットアップするMTKView
+    /// Configure an MTKView for use with this renderer.
+    ///
+    /// - Parameter view: The MTKView to set up with the renderer's device and pixel formats.
     public func configure(view: MTKView) {
         view.device = device
         view.colorPixelFormat = .bgra8Unorm
@@ -272,14 +301,22 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Screenshot
 
-    /// 次のフレームでスクリーンショットを保存
+    /// Schedule a screenshot to be saved at the end of the next frame.
+    ///
+    /// - Parameter path: The file path where the PNG image will be written.
     public func saveScreenshot(to path: String) {
         pendingSavePath = path
     }
 
     // MARK: - Coordinate Conversion
 
-    /// ビュー座標をテクスチャ座標に変換
+    /// Convert a point from view coordinates to offscreen texture coordinates.
+    ///
+    /// - Parameters:
+    ///   - viewPoint: The point in view coordinates (origin at bottom-left on macOS).
+    ///   - viewSize: The size of the view in points.
+    ///   - drawableSize: The size of the drawable in pixels.
+    /// - Returns: A tuple of `(x, y)` coordinates in the offscreen texture's pixel space.
     public func viewToTextureCoordinates(
         viewPoint: CGPoint,
         viewSize: CGSize,
@@ -288,13 +325,13 @@ public final class MetaphorRenderer: NSObject {
         let viewWidth = Float(viewSize.width)
         let viewHeight = Float(viewSize.height)
 
-        // NSView座標（左下原点）→ drawable座標（左上原点）
+        // NSView coordinates (bottom-left origin) -> drawable coordinates (top-left origin)
         let scaleX = Float(drawableSize.width) / viewWidth
         let scaleY = Float(drawableSize.height) / viewHeight
         let drawX = Float(viewPoint.x) * scaleX
         let drawY = (viewHeight - Float(viewPoint.y)) * scaleY
 
-        // ビューポート → テクスチャ座標
+        // Viewport -> texture coordinates
         let viewport = calculateViewport(
             drawableSize: drawableSize,
             targetAspect: textureManager.aspectRatio
@@ -308,15 +345,15 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Private
 
-    /// 前フレームのカラーテクスチャをコピー（FBO フィードバック用）
+    /// Copy the current frame's color texture for FBO feedback.
     private func capturePreviousFrame(commandBuffer: MTLCommandBuffer) {
         let src = textureManager.colorTexture
         let w = textureManager.width
         let h = textureManager.height
 
-        // テクスチャが未作成またはサイズ不一致なら再作成
+        // Recreate the texture if it does not exist or the size has changed
         if let existing = previousFrameTexture, existing.width == w, existing.height == h {
-            // 再利用
+            // Reuse existing texture
         } else {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .bgra8Unorm,
@@ -344,28 +381,35 @@ public final class MetaphorRenderer: NSObject {
         blit.endEncoding()
     }
 
-    private func buildBlitPipeline() {
-        do {
-            let vertexFn = shaderLibrary.function(
-                named: BuiltinShaders.FunctionName.blitVertex,
-                from: ShaderLibrary.BuiltinKey.blit
+    private func buildBlitPipeline() throws {
+        guard let vertexFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.blitVertex,
+            from: ShaderLibrary.BuiltinKey.blit
+        ) else {
+            throw MetaphorError.shaderCompilationFailed(
+                name: "blitVertex",
+                underlying: NSError(domain: "metaphor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Blit vertex shader function not found"])
             )
-            let fragmentFn = shaderLibrary.function(
-                named: BuiltinShaders.FunctionName.blitFragment,
-                from: ShaderLibrary.BuiltinKey.blit
-            )
-
-            blitPipelineState = try PipelineFactory(device: device)
-                .vertex(vertexFn)
-                .fragment(fragmentFn)
-                .noDepth()
-                .build()
-        } catch {
-            print("Failed to create blit pipeline: \(error)")
         }
+        guard let fragmentFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.blitFragment,
+            from: ShaderLibrary.BuiltinKey.blit
+        ) else {
+            throw MetaphorError.shaderCompilationFailed(
+                name: "blitFragment",
+                underlying: NSError(domain: "metaphor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Blit fragment shader function not found"])
+            )
+        }
+
+        blitPipelineState = try PipelineFactory(device: device)
+            .vertex(vertexFn)
+            .fragment(fragmentFn)
+            .noDepth()
+            .sampleCount(1)
+            .build()
     }
 
-    /// アスペクト比を維持したビューポートを計算
+    /// Calculate an aspect-ratio-preserving viewport within the given drawable size.
     private func calculateViewport(drawableSize: CGSize, targetAspect: Float) -> MTLViewport {
         let drawableWidth = Float(drawableSize.width)
         let drawableHeight = Float(drawableSize.height)
@@ -377,13 +421,13 @@ public final class MetaphorRenderer: NSObject {
         let viewportY: Float
 
         if drawableAspect > targetAspect {
-            // ピラーボックス（左右に黒帯）
+            // Pillarbox (black bars on left and right)
             viewportHeight = drawableHeight
             viewportWidth = drawableHeight * targetAspect
             viewportX = (drawableWidth - viewportWidth) / 2
             viewportY = 0
         } else {
-            // レターボックス（上下に黒帯）
+            // Letterbox (black bars on top and bottom)
             viewportWidth = drawableWidth
             viewportHeight = drawableWidth / targetAspect
             viewportX = 0
@@ -400,79 +444,53 @@ public final class MetaphorRenderer: NSObject {
         )
     }
 
-    /// ステージングテクスチャを取得または作成
+    /// Return or create a managed staging texture for GPU-to-CPU readback.
+    private func createOrReuseStagingTexture(cache: inout MTLTexture?) -> MTLTexture? {
+        if let existing = cache,
+           existing.width == textureManager.width,
+           existing.height == textureManager.height {
+            return existing
+        }
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: textureManager.width,
+            height: textureManager.height,
+            mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .managed
+        guard let tex = device.makeTexture(descriptor: desc) else {
+            return nil
+        }
+        cache = tex
+        return tex
+    }
+
+    /// Return or create the staging texture used for screenshot capture.
     private func getOrCreateStagingTexture() -> MTLTexture? {
-        if let existing = stagingTexture,
-           existing.width == textureManager.width,
-           existing.height == textureManager.height {
-            return existing
-        }
-
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: textureManager.width,
-            height: textureManager.height,
-            mipmapped: false
-        )
-        desc.usage = .shaderRead
-        desc.storageMode = .managed
-        guard let tex = device.makeTexture(descriptor: desc) else {
-            print("[metaphor] Failed to create staging texture")
-            return nil
-        }
-        stagingTexture = tex
-        return tex
+        createOrReuseStagingTexture(cache: &stagingTexture)
     }
 
-    /// フレームエクスポート用ステージングテクスチャを取得または作成
+    /// Return or create the staging texture used for frame export.
     private func getOrCreateExportStagingTexture() -> MTLTexture? {
-        if let existing = exportStagingTexture,
-           existing.width == textureManager.width,
-           existing.height == textureManager.height {
-            return existing
-        }
-
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: textureManager.width,
-            height: textureManager.height,
-            mipmapped: false
-        )
-        desc.usage = .shaderRead
-        desc.storageMode = .managed
-        guard let tex = device.makeTexture(descriptor: desc) else {
-            print("[metaphor] Failed to create export staging texture")
-            return nil
-        }
-        exportStagingTexture = tex
-        return tex
+        createOrReuseStagingTexture(cache: &exportStagingTexture)
     }
 
-    /// ビデオエクスポート用ステージングテクスチャを取得または作成
+    /// Return or create the staging texture used for video export.
     private func getOrCreateVideoStagingTexture() -> MTLTexture? {
-        if let existing = videoStagingTexture,
-           existing.width == textureManager.width,
-           existing.height == textureManager.height {
-            return existing
-        }
-
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: textureManager.width,
-            height: textureManager.height,
-            mipmapped: false
-        )
-        desc.usage = .shaderRead
-        desc.storageMode = .managed
-        guard let tex = device.makeTexture(descriptor: desc) else {
-            print("[metaphor] Failed to create video staging texture")
-            return nil
-        }
-        videoStagingTexture = tex
-        return tex
+        createOrReuseStagingTexture(cache: &videoStagingTexture)
     }
 
-    /// PNG書き出し（completionHandler内から呼ぶためnonisolated static）
+    /// Write a texture's contents to a PNG file at the specified path.
+    ///
+    /// This method is `nonisolated static` so it can be called safely from a completion handler.
+    ///
+    /// - Parameters:
+    ///   - texture: The managed staging texture containing the pixel data.
+    ///   - width: The width of the image in pixels.
+    ///   - height: The height of the image in pixels.
+    ///   - path: The file path where the PNG will be saved.
     nonisolated static func writePNG(
         texture: MTLTexture, width: Int, height: Int, path: String
     ) {
@@ -485,7 +503,7 @@ public final class MetaphorRenderer: NSObject {
             mipmapLevel: 0
         )
 
-        // BGRA → RGBA
+        // BGRA -> RGBA
         for i in stride(from: 0, to: pixels.count, by: 4) {
             let b = pixels[i]
             pixels[i] = pixels[i + 2]
@@ -507,7 +525,7 @@ public final class MetaphorRenderer: NSObject {
             return
         }
 
-        // ディレクトリが存在しない場合は作成
+        // Create the directory if it does not exist
         let url = URL(fileURLWithPath: path)
         let dir = url.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -522,7 +540,7 @@ public final class MetaphorRenderer: NSObject {
         CGImageDestinationFinalize(dest)
     }
 
-    /// オフスクリーンテクスチャを画面にブリット
+    /// Blit the offscreen texture to the screen drawable with the given viewport.
     private func blitToScreen(encoder: MTLRenderCommandEncoder, viewport: MTLViewport) {
         guard let pipeline = blitPipelineState else { return }
 
@@ -535,10 +553,10 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Render Loop
 
-    /// オフスクリーン描画 + Syphon送信（ウィンドウに依存しない）
+    /// Perform a complete offscreen rendering frame without presenting to screen.
     ///
-    /// Compute → Offscreen Draw → Screenshot → Syphon の順に実行する。
-    /// 画面へのブリットは含まない。
+    /// Execute the full pipeline in order: Compute, Offscreen Draw, Screenshot,
+    /// Post-Processing, Frame/Video Export, and Syphon output.
     public func renderFrame() {
         inflightSemaphore.wait()
 
@@ -547,30 +565,32 @@ public final class MetaphorRenderer: NSObject {
             return
         }
 
-        // バッファインデックスを設定して進める
+        // Set the current buffer index and advance to the next
         frameBufferIndex = nextBufferIndex
         nextBufferIndex = (nextBufferIndex + 1) % 3
 
         commandBuffer.addCompletedHandler { [weak self] cb in
             self?.inflightSemaphore.signal()
-            Task { @MainActor in
-                self?.lastGPUStartTime = cb.gpuStartTime
-                self?.lastGPUEndTime = cb.gpuEndTime
+            let gpuStart = cb.gpuStartTime
+            let gpuEnd = cb.gpuEndTime
+            DispatchQueue.main.async {
+                self?.lastGPUStartTime = gpuStart
+                self?.lastGPUEndTime = gpuEnd
             }
         }
 
         input.updateFrame()
         let time = elapsedTime
 
-        // FBO フィードバック: 前フレームのカラーテクスチャをコピー
+        // FBO feedback: copy the previous frame's color texture
         if feedbackEnabled {
             capturePreviousFrame(commandBuffer: commandBuffer)
         }
 
-        // コンピュートフェーズ
+        // Compute phase
         onCompute?(commandBuffer, time)
 
-        // オフスクリーンテクスチャに描画
+        // Draw to offscreen texture
         if let encoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: textureManager.renderPassDescriptor
         ) {
@@ -578,10 +598,10 @@ public final class MetaphorRenderer: NSObject {
             encoder.endEncoding()
         }
 
-        // シャドウパス（メイン描画後にシャドウマップを更新 → 次フレームで使用）
+        // Shadow pass (update shadow map after main draw; used in the next frame)
         onAfterDraw?(commandBuffer)
 
-        // レンダーグラフ実行（設定時はグラフの出力を最終出力とする）
+        // Execute render graph (use graph output as the base texture when configured)
         let baseTexture: MTLTexture
         if let graph = renderGraph,
            let graphOutput = graph.execute(
@@ -592,7 +612,7 @@ public final class MetaphorRenderer: NSObject {
             baseTexture = textureManager.colorTexture
         }
 
-        // ポストプロセス適用
+        // Apply post-processing effects
         let outputTexture: MTLTexture
         if let pipeline = postProcessPipeline, !pipeline.effects.isEmpty {
             outputTexture = pipeline.apply(
@@ -604,39 +624,40 @@ public final class MetaphorRenderer: NSObject {
         }
         lastOutputTexture = outputTexture
 
-        // スクリーンショット保存
+        // Save screenshot (skip on failure; frame processing continues)
         if let savePath = pendingSavePath {
             pendingSavePath = nil
-            guard let staging = getOrCreateStagingTexture() else { return }
-            if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
-                blitEncoder.copy(
-                    from: outputTexture,
-                    sourceSlice: 0, sourceLevel: 0,
-                    sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                    sourceSize: MTLSize(
-                        width: textureManager.width,
-                        height: textureManager.height,
-                        depth: 1
-                    ),
-                    to: staging,
-                    destinationSlice: 0, destinationLevel: 0,
-                    destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
-                )
-                blitEncoder.synchronize(resource: staging)
-                blitEncoder.endEncoding()
-            }
+            if let staging = getOrCreateStagingTexture() {
+                if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
+                    blitEncoder.copy(
+                        from: outputTexture,
+                        sourceSlice: 0, sourceLevel: 0,
+                        sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                        sourceSize: MTLSize(
+                            width: textureManager.width,
+                            height: textureManager.height,
+                            depth: 1
+                        ),
+                        to: staging,
+                        destinationSlice: 0, destinationLevel: 0,
+                        destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+                    )
+                    blitEncoder.synchronize(resource: staging)
+                    blitEncoder.endEncoding()
+                }
 
-            let width = textureManager.width
-            let height = textureManager.height
-            let path = savePath
-            commandBuffer.addCompletedHandler { _ in
-                MetaphorRenderer.writePNG(
-                    texture: staging, width: width, height: height, path: path
-                )
+                let width = textureManager.width
+                let height = textureManager.height
+                let path = savePath
+                commandBuffer.addCompletedHandler { _ in
+                    MetaphorRenderer.writePNG(
+                        texture: staging, width: width, height: height, path: path
+                    )
+                }
             }
         }
 
-        // フレームエクスポート（録画中なら毎フレーム）
+        // Frame export (capture every frame while recording)
         if frameExporter.isRecording, let exportStaging = getOrCreateExportStagingTexture() {
             frameExporter.captureFrame(
                 sourceTexture: outputTexture,
@@ -647,7 +668,7 @@ public final class MetaphorRenderer: NSObject {
             )
         }
 
-        // ビデオエクスポート（録画中なら毎フレーム）
+        // Video export (capture every frame while recording)
         if videoExporter.isRecording, let videoStaging = getOrCreateVideoStagingTexture() {
             videoExporter.captureFrame(
                 sourceTexture: outputTexture,
@@ -658,7 +679,7 @@ public final class MetaphorRenderer: NSObject {
             )
         }
 
-        // Syphonに送信
+        // Publish to Syphon
         #if os(macOS)
         syphonOutput?.publish(
             texture: outputTexture,
@@ -674,16 +695,16 @@ public final class MetaphorRenderer: NSObject {
         }
     }
 
-    /// オフラインモードで 1 フレームをレンダリングする
+    /// Render a single frame in offline mode with deterministic timing.
     ///
-    /// isOfflineRendering を自動で true に設定し、
-    /// renderFrame() を呼び出してフレームインデックスを進める。
+    /// Automatically set ``isOfflineRendering`` to `true` and call ``renderFrame()``
+    /// to advance the frame index.
     public func renderOfflineFrame() {
         isOfflineRendering = true
         renderFrame()
     }
 
-    /// オフラインレンダリングをリセット（フレームインデックスを 0 に戻す）
+    /// Reset offline rendering by setting the frame index back to zero.
     public func resetOfflineRendering() {
         offlineFrameIndex = 0
     }
@@ -696,13 +717,12 @@ extension MetaphorRenderer: MTKViewDelegate {
 
     public nonisolated func draw(in view: MTKView) {
         MainActor.assumeIsolated {
-            // 外部レンダーループでない場合は、ここでフレームを描画
+            // When not using an external render loop, render the frame here
             if !useExternalRenderLoop {
                 renderFrame()
             }
 
-            // ウィンドウが隠れている場合はブリットをスキップ
-            // (currentDrawableがブロックしてレンダータイマーを止めるのを防ぐ)
+            // Skip blit when the window is occluded to prevent currentDrawable from blocking
             #if os(macOS)
             if let window = view.window,
                !window.occlusionState.contains(.visible) {
@@ -710,7 +730,7 @@ extension MetaphorRenderer: MTKViewDelegate {
             }
             #endif
 
-            // 画面にブリット（プレビュー表示）
+            // Blit to screen (preview display)
             guard let drawable = view.currentDrawable,
                   let descriptor = view.currentRenderPassDescriptor,
                   let commandBuffer = commandQueue.makeCommandBuffer() else { return }

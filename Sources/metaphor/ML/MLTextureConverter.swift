@@ -2,11 +2,11 @@ import CoreML
 import CoreVideo
 import Metal
 
-/// MTLTexture <-> CVPixelBuffer <-> CGImage 変換ユーティリティ
+/// Provide conversion utilities between MTLTexture, CVPixelBuffer, and CGImage.
 ///
-/// CoreML/Vision の入力/出力テクスチャ変換に使用する。
-/// 出力パス（CVPixelBuffer → MTLTexture）は CaptureDevice と同じ
-/// CVMetalTextureCache ゼロコピー方式を使用。
+/// Use this converter for CoreML/Vision input and output texture conversion.
+/// The output path (CVPixelBuffer to MTLTexture) uses the same zero-copy
+/// CVMetalTextureCache approach as CaptureDevice.
 @MainActor
 public final class MLTextureConverter {
 
@@ -28,9 +28,9 @@ public final class MLTextureConverter {
 
     // MARK: - MTLTexture -> CVPixelBuffer
 
-    /// MTLTexture を CVPixelBuffer に変換（コピーベース）
-    /// - Parameter texture: 入力テクスチャ (bgra8Unorm)
-    /// - Returns: CVPixelBuffer (kCVPixelFormatType_32BGRA)
+    /// Convert an MTLTexture to a CVPixelBuffer using a copy-based approach.
+    /// - Parameter texture: The input texture (bgra8Unorm).
+    /// - Returns: A CVPixelBuffer in kCVPixelFormatType_32BGRA format, or nil on failure.
     public func pixelBuffer(from texture: MTLTexture) -> CVPixelBuffer? {
         let width = texture.width
         let height = texture.height
@@ -55,7 +55,7 @@ public final class MLTextureConverter {
         let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
         if texture.storageMode == .private {
-            // Private storage: blit で managed ステージングテクスチャにコピー
+            // Private storage: blit to a managed staging texture then read back
             guard let cmdBuf = commandQueue.makeCommandBuffer() else { return nil }
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
@@ -86,9 +86,9 @@ public final class MLTextureConverter {
 
     // MARK: - CVPixelBuffer -> MTLTexture (zero-copy)
 
-    /// CVPixelBuffer を MTLTexture にゼロコピー変換
-    /// - Parameter pixelBuffer: 入力ピクセルバッファ
-    /// - Returns: MTLTexture (bgra8Unorm)
+    /// Convert a CVPixelBuffer to an MTLTexture using zero-copy Metal texture caching.
+    /// - Parameter pixelBuffer: The input pixel buffer.
+    /// - Returns: An MTLTexture in bgra8Unorm format, or nil on failure.
     public func texture(from pixelBuffer: CVPixelBuffer) -> MTLTexture? {
         guard let cache = textureCache else { return nil }
         let width = CVPixelBufferGetWidth(pixelBuffer)
@@ -105,7 +105,9 @@ public final class MLTextureConverter {
 
     // MARK: - CGImage -> MTLTexture
 
-    /// CGImage を MTLTexture に変換
+    /// Convert a CGImage to an MTLTexture.
+    /// - Parameter cgImage: The input Core Graphics image.
+    /// - Returns: An MTLTexture in bgra8Unorm format, or nil on failure.
     public func texture(from cgImage: CGImage) -> MTLTexture? {
         let width = cgImage.width
         let height = cgImage.height
@@ -142,7 +144,9 @@ public final class MLTextureConverter {
 
     // MARK: - MTLTexture -> CGImage
 
-    /// MTLTexture を CGImage に変換
+    /// Convert an MTLTexture to a CGImage.
+    /// - Parameter texture: The input Metal texture.
+    /// - Returns: A CGImage, or nil on failure.
     public func cgImage(from texture: MTLTexture) -> CGImage? {
         let width = texture.width
         let height = texture.height
@@ -175,7 +179,7 @@ public final class MLTextureConverter {
                            from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         }
 
-        // BGRA → RGBA
+        // BGRA -> RGBA
         for i in stride(from: 0, to: pixels.count, by: 4) {
             let b = pixels[i]
             pixels[i] = pixels[i + 2]
@@ -195,11 +199,11 @@ public final class MLTextureConverter {
 
     // MARK: - MLMultiArray -> MTLTexture
 
-    /// 2D MLMultiArray（グレースケール）を MTLTexture に変換
+    /// Convert a 2D MLMultiArray (grayscale) to an MTLTexture.
     /// - Parameters:
-    ///   - multiArray: 入力 (shape: [1, height, width] or [height, width])
-    ///   - normalize: true の場合 min-max 正規化
-    /// - Returns: bgra8Unorm テクスチャ（グレースケール値を全 RGB チャンネルに展開）
+    ///   - multiArray: The input array (shape: [1, height, width] or [height, width]).
+    ///   - normalize: When true, apply min-max normalization to the data.
+    /// - Returns: A bgra8Unorm texture with the grayscale value replicated across all RGB channels.
     public func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> MTLTexture? {
         let shape = multiArray.shape.map { $0.intValue }
         let width: Int
@@ -233,7 +237,7 @@ public final class MLTextureConverter {
             }
         }
 
-        // Float → BGRA8
+        // Float -> BGRA8
         var pixels = [UInt8](repeating: 255, count: width * height * 4)
         for i in 0..<count {
             let v = UInt8(max(0, min(255, floatData[i] * 255)))

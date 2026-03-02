@@ -1,9 +1,9 @@
 import Metal
 
-/// カスタムフラグメントシェーダーを使用する3Dマテリアル
+/// Represent a 3D material that uses a custom fragment shader.
 ///
-/// `createMaterial()` で作成し、`material()` で適用する。
-/// 適用中はCanvas3Dの描画で組み込みシェーダーの代わりにカスタムフラグメントシェーダーが使用される。
+/// Create an instance with `createMaterial()` and apply it with `material()`.
+/// While applied, Canvas3D drawing uses the custom fragment shader instead of the built-in one.
 ///
 /// ```swift
 /// let mat = try createMaterial(
@@ -17,34 +17,34 @@ import Metal
 /// ```
 @MainActor
 public final class CustomMaterial {
-    /// フラグメントシェーダー関数名
+    /// Name of the fragment shader function.
     public let fragmentFunctionName: String
 
-    /// カスタム頂点シェーダー関数名（nilなら組み込みシェーダーを使用）
+    /// Name of the custom vertex shader function, or nil to use the built-in shader.
     public let vertexFunctionName: String?
 
-    /// コンパイル済みフラグメント関数
+    /// Compiled fragment function.
     private(set) var fragmentFunction: MTLFunction
 
-    /// コンパイル済み頂点関数（nilなら組み込みを使用）
+    /// Compiled vertex function, or nil to use the built-in shader.
     private(set) var vertexFunction: MTLFunction?
 
-    /// ShaderLibraryの登録キー
+    /// Registration key in the ShaderLibrary.
     let libraryKey: String
 
-    /// カスタムパラメータデータ
+    /// Raw bytes of custom parameter data.
     private var parameterData: [UInt8]?
 
-    /// カスタムパラメータをバイト列として設定
+    /// Set custom parameters as raw bytes.
     ///
-    /// シェーダーの `buffer(4)` にバインドされる。
-    /// - Parameter value: GPU構造体と一致する任意の型
+    /// The data is bound to `buffer(4)` in the shader.
+    /// - Parameter value: Any type matching the GPU struct layout.
     public func setParameters<T>(_ value: T) {
         var val = value
         parameterData = withUnsafeBytes(of: &val) { Array($0) }
     }
 
-    /// 設定済みのパラメータバイト列（nilならパラメータなし）
+    /// Return the stored parameter bytes, or nil if no parameters have been set.
     var parameters: [UInt8]? { parameterData }
 
     init(fragmentFunction: MTLFunction, functionName: String, libraryKey: String,
@@ -58,10 +58,12 @@ public final class CustomMaterial {
 
     // MARK: - Hot Reload
 
-    /// シェーダーライブラリから関数を再取得してマテリアルを更新する
+    /// Reload shader functions from the shader library to update this material.
     ///
-    /// ShaderLibrary の reload 後に呼ぶことで、
-    /// 変更されたシェーダーをパイプライン再構築に使えるようになる。
+    /// Call this after `ShaderLibrary.reload` so that the modified shader
+    /// can be used for pipeline reconstruction.
+    /// - Parameter shaderLibrary: The shader library containing the updated source.
+    /// - Throws: `CustomMaterialError.shaderNotFound` if the function name is not found.
     public func reload(shaderLibrary: ShaderLibrary) throws {
         guard let fn = shaderLibrary.function(named: fragmentFunctionName, from: libraryKey) else {
             throw CustomMaterialError.shaderNotFound(fragmentFunctionName)
@@ -79,8 +81,8 @@ public final class CustomMaterial {
 
 // MARK: - Errors
 
-/// カスタムマテリアル関連のエラー
+/// Represent errors related to custom materials.
 public enum CustomMaterialError: Error {
-    /// 指定した関数名がシェーダーライブラリに見つからない
+    /// Indicate that the specified function name was not found in the shader library.
     case shaderNotFound(String)
 }

@@ -1,4 +1,4 @@
-.PHONY: setup build clean test syphon
+.PHONY: setup build clean test syphon docs docs-preview
 
 # Default target
 all: setup build
@@ -56,14 +56,60 @@ check:
 		echo "Syphon submodule: MISSING - run 'make submodules'"; \
 	fi
 
+# Build DocC documentation
+# Uses manual symbol graph extraction to work around SPM binary target issue
+docs:
+	@echo "Building metaphor for documentation..."
+	swift build
+	@echo "Extracting symbol graphs..."
+	@mkdir -p .build/symbol-graphs
+	xcrun swift-symbolgraph-extract \
+		-module-name metaphor \
+		-target arm64-apple-macosx14.0 \
+		-sdk "$$(xcrun --show-sdk-path)" \
+		-I .build/arm64-apple-macosx/debug/Modules \
+		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+		-minimum-access-level public \
+		-skip-inherited-docs \
+		-emit-extension-block-symbols \
+		-output-dir .build/symbol-graphs
+	@echo "Building DocC documentation..."
+	xcrun docc convert Sources/metaphor/metaphor.docc \
+		--additional-symbol-graph-dir .build/symbol-graphs \
+		--transform-for-static-hosting \
+		--hosting-base-path metaphor \
+		--output-path .build/docs
+
+# Preview DocC documentation locally
+docs-preview:
+	@echo "Building metaphor for documentation..."
+	swift build
+	@echo "Extracting symbol graphs..."
+	@mkdir -p .build/symbol-graphs
+	xcrun swift-symbolgraph-extract \
+		-module-name metaphor \
+		-target arm64-apple-macosx14.0 \
+		-sdk "$$(xcrun --show-sdk-path)" \
+		-I .build/arm64-apple-macosx/debug/Modules \
+		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+		-minimum-access-level public \
+		-skip-inherited-docs \
+		-emit-extension-block-symbols \
+		-output-dir .build/symbol-graphs
+	@echo "Previewing DocC documentation..."
+	xcrun docc preview Sources/metaphor/metaphor.docc \
+		--additional-symbol-graph-dir .build/symbol-graphs
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make setup    - Initialize submodules and build Syphon.xcframework"
-	@echo "  make build    - Build the Swift package"
-	@echo "  make release  - Build release version"
-	@echo "  make test     - Run tests"
-	@echo "  make clean    - Clean build artifacts"
-	@echo "  make check    - Check if setup is complete"
-	@echo "  make help     - Show this help"
+	@echo "  make setup        - Initialize submodules and build Syphon.xcframework"
+	@echo "  make build        - Build the Swift package"
+	@echo "  make release      - Build release version"
+	@echo "  make test         - Run tests"
+	@echo "  make clean        - Clean build artifacts"
+	@echo "  make check        - Check if setup is complete"
+	@echo "  make docs         - Build DocC documentation"
+	@echo "  make docs-preview - Preview DocC documentation locally"
+	@echo "  make help         - Show this help"

@@ -1,11 +1,11 @@
-/// Tween の一括管理・自動更新マネージャー
+/// Manage and automatically update a collection of tweens each frame.
 ///
-/// SketchContext の beginFrame() で毎フレーム update() が呼ばれ、
-/// 登録された全 Tween を自動進行させる。完了した Tween は自動除去される。
+/// SketchContext calls `update()` in `beginFrame()` every frame,
+/// automatically advancing all registered tweens. Completed tweens are removed automatically.
 @MainActor
 public final class TweenManager {
 
-    /// 型消去された Tween ラッパー
+    /// Type-erased wrapper for a tween of any interpolatable type.
     private struct AnyTween {
         let update: (Float) -> Void
         let isComplete: () -> Bool
@@ -15,7 +15,9 @@ public final class TweenManager {
 
     public init() {}
 
-    /// Tween を登録
+    /// Register a tween for automatic updates.
+    ///
+    /// - Parameter tween: The tween to add to the manager.
     public func add<T: Interpolatable>(_ tween: Tween<T>) {
         tweens.append(AnyTween(
             update: { dt in tween.update(dt) },
@@ -23,7 +25,9 @@ public final class TweenManager {
         ))
     }
 
-    /// 全 Tween を更新（毎フレーム呼ぶ）
+    /// Update all registered tweens by the given delta time (call once per frame).
+    ///
+    /// - Parameter deltaTime: The elapsed time since the last frame, in seconds.
     public func update(_ deltaTime: Float) {
         for t in tweens {
             t.update(deltaTime)
@@ -31,11 +35,11 @@ public final class TweenManager {
         tweens.removeAll { $0.isComplete() }
     }
 
-    /// 全 Tween をクリア
+    /// Remove all registered tweens.
     public func clear() {
         tweens.removeAll()
     }
 
-    /// 登録中の Tween 数
+    /// Return the number of currently registered tweens.
     public var count: Int { tweens.count }
 }

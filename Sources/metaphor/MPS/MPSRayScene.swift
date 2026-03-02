@@ -2,10 +2,10 @@
 import MetalPerformanceShaders
 import simd
 
-/// レイトレーシング用シーン構築ヘルパー (internal)
+/// Build ray tracing scenes from meshes (internal helper).
 ///
-/// Mesh / DynamicMesh から頂点位置を抽出し、
-/// MPSTriangleAccelerationStructure を構築する。
+/// Extract vertex positions from Mesh and DynamicMesh instances and
+/// construct an MPSTriangleAccelerationStructure for ray intersection.
 @MainActor
 final class MPSRayScene {
 
@@ -24,7 +24,7 @@ final class MPSRayScene {
 
     // MARK: - Add Mesh
 
-    /// Mesh を追加（頂点バッファから position を抽出）
+    /// Add a Mesh by extracting positions from its vertex buffer.
     func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
         let stride = MemoryLayout<Vertex3D>.stride  // 48 bytes
         let ptr = mesh.vertexBuffer.contents()
@@ -58,7 +58,7 @@ final class MPSRayScene {
         entries.append(MeshEntry(positions: positions, indices: indices, transform: transform))
     }
 
-    /// DynamicMesh を追加
+    /// Add a DynamicMesh to the scene.
     func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         var positions = [SIMD3<Float>]()
         let vCount = mesh.vertexCount
@@ -68,7 +68,7 @@ final class MPSRayScene {
             positions.append(mesh.getVertex(i))
         }
 
-        // DynamicMesh は UInt32 インデックス
+        // DynamicMesh uses UInt32 indices
         var indices = [UInt32]()
         if let ib = mesh.indexBuffer {
             let count = mesh.indexCount
@@ -82,7 +82,7 @@ final class MPSRayScene {
         entries.append(MeshEntry(positions: positions, indices: indices, transform: transform))
     }
 
-    /// エントリをクリア
+    /// Clear all mesh entries from the scene.
     func clear() {
         entries.removeAll()
     }
@@ -91,7 +91,9 @@ final class MPSRayScene {
 
     // MARK: - Build Acceleration Structure
 
-    /// 全エントリを統合して MPSTriangleAccelerationStructure を構築
+    /// Build an MPSTriangleAccelerationStructure from all added mesh entries.
+    /// - Throws: ``MPSError`` if the scene is empty or GPU buffer creation fails.
+    /// - Returns: A tuple containing the acceleration structure, vertex buffer, index buffer, normal buffer, and triangle count.
     func buildAccelerationStructure() throws -> (
         accelerationStructure: MPSTriangleAccelerationStructure,
         vertexBuffer: MTLBuffer,

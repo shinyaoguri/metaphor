@@ -1,10 +1,10 @@
 import AVFoundation
 import Foundation
 
-/// オーディオファイル（MP3/WAV/AAC等）の再生とスペクトル解析統合
+/// Play audio files (MP3, WAV, AAC, etc.) with integrated spectrum analysis.
 ///
-/// AVAudioEngine + AVAudioPlayerNode を使用してオーディオファイルを再生し、
-/// AudioAnalyzer と接続してリアルタイムスペクトル解析を行う。
+/// Use AVAudioEngine and AVAudioPlayerNode to play audio files, and connect
+/// to an AudioAnalyzer for real-time spectrum analysis.
 ///
 /// ```swift
 /// var sound: SoundFile!
@@ -30,28 +30,28 @@ public final class SoundFile {
 
     // MARK: - Playback State
 
-    /// 再生中かどうか
+    /// Indicate whether the file is currently playing.
     public private(set) var isPlaying: Bool = false
 
-    /// ループ再生が有効かどうか
+    /// Enable or disable loop playback.
     public var isLooping: Bool = false
 
-    /// ファイルの全長（秒）
+    /// Return the total duration of the file in seconds.
     public let duration: Double
 
-    /// ボリューム（0.0〜1.0）
+    /// Control the playback volume (0.0 to 1.0).
     public var volume: Float {
         get { playerNode.volume }
         set { playerNode.volume = max(0, min(1, newValue)) }
     }
 
-    /// 再生レート（0.5〜2.0）
+    /// Control the playback rate (0.25 to 4.0).
     public var rate: Float {
         get { _rate }
         set {
             _rate = max(0.25, min(4.0, newValue))
             if isPlaying {
-                // レート変更は再生中に反映される（varispeed node経由）
+                // Rate changes are applied during playback via the varispeed node
                 varispeedNode.rate = _rate
             }
         }
@@ -61,23 +61,24 @@ public final class SoundFile {
 
     // MARK: - Analysis Integration
 
-    /// 内蔵の AudioAnalyzer（ファイル再生のスペクトル解析用）
+    /// Internal AudioAnalyzer for spectrum analysis of file playback.
     private var _analyzer: AudioAnalyzer?
     private let sampleBuffer = SoundSampleBuffer()
 
-    /// スペクトルデータ（AudioAnalyzer接続時）
+    /// Return the spectrum data (available when analysis is enabled).
     public var spectrum: [Float] { _analyzer?.spectrum ?? [] }
 
-    /// RMS ボリュームレベル（AudioAnalyzer接続時）
+    /// Return the RMS volume level (available when analysis is enabled).
     public var analysisVolume: Float { _analyzer?.volume ?? 0 }
 
-    /// ビート検出フラグ（AudioAnalyzer接続時）
+    /// Return the beat detection flag (available when analysis is enabled).
     public var isBeat: Bool { _analyzer?.isBeat ?? false }
 
     // MARK: - Initialization
 
-    /// オーディオファイルを読み込む
-    /// - Parameter path: ファイルパス
+    /// Load an audio file from the given path.
+    /// - Parameter path: File system path to the audio file.
+    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist.
     public init(path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
@@ -92,16 +93,23 @@ public final class SoundFile {
         self.playerNode = AVAudioPlayerNode()
         self.varispeedNode = AVAudioUnitVarispeed()
 
-        // ノードを接続: playerNode → varispeed → mainMixer → output
+        // Connect nodes: playerNode -> varispeed -> mainMixer -> output
         engine.attach(playerNode)
         engine.attach(varispeedNode)
         engine.connect(playerNode, to: varispeedNode, format: audioFormat)
         engine.connect(varispeedNode, to: engine.mainMixerNode, format: audioFormat)
     }
 
+    deinit {
+        MainActor.assumeIsolated {
+            playerNode.stop()
+            engine.stop()
+        }
+    }
+
     // MARK: - Playback Control
 
-    /// 再生を開始
+    /// Start playback.
     public func play() {
         if !engine.isRunning {
             do {
@@ -118,25 +126,25 @@ public final class SoundFile {
         isPlaying = true
     }
 
-    /// 再生を一時停止
+    /// Pause playback.
     public func pause() {
         playerNode.pause()
         isPlaying = false
     }
 
-    /// 再生を停止（先頭に戻る）
+    /// Stop playback and reset to the beginning.
     public func stop() {
         playerNode.stop()
         isPlaying = false
     }
 
-    /// ループ再生を有効化して再生
+    /// Enable looping and start playback.
     public func loop() {
         isLooping = true
         play()
     }
 
-    /// 現在の再生位置（秒）
+    /// Access or set the current playback position in seconds.
     public var position: Double {
         get {
             guard let nodeTime = playerNode.lastRenderTime,
@@ -174,8 +182,8 @@ public final class SoundFile {
 
     // MARK: - Analysis
 
-    /// スペクトル解析を有効化
-    /// - Parameter fftSize: FFT サイズ（デフォルト1024）
+    /// Enable spectrum analysis on the audio output.
+    /// - Parameter fftSize: FFT size (defaults to 1024).
     public func enableAnalysis(fftSize: Int = 1024) {
         guard _analyzer == nil else { return }
         _analyzer = AudioAnalyzer(fftSize: fftSize)
@@ -183,7 +191,7 @@ public final class SoundFile {
         let capturedBuffer = sampleBuffer
         let capturedFFTSize = fftSize
 
-        // mainMixer の出力にタップを設置
+        // Install a tap on the main mixer output
         let mixerFormat = engine.mainMixerNode.outputFormat(forBus: 0)
         engine.mainMixerNode.installTap(
             onBus: 0,
@@ -202,7 +210,7 @@ public final class SoundFile {
         }
     }
 
-    /// 解析データを更新（draw() の先頭で呼ぶ）
+    /// Update analysis data (call at the beginning of `draw()`).
     public func update() {
         guard let analyzer = _analyzer else { return }
         if let samples = sampleBuffer.take() {
@@ -211,7 +219,9 @@ public final class SoundFile {
         analyzer.update()
     }
 
-    /// バンドエネルギーを取得（AudioAnalyzer経由）
+    /// Return the energy of a frequency band (via AudioAnalyzer).
+    /// - Parameter index: Band index (0 = bass, 1 = mid, 2 = treble).
+    /// - Returns: Band energy (0.0 to 1.0).
     public func band(_ index: Int) -> Float {
         _analyzer?.band(index) ?? 0
     }
@@ -243,7 +253,9 @@ public final class SoundFile {
 
 // MARK: - Errors
 
+/// Represent errors that occur during SoundFile operations.
 public enum SoundFileError: Error, LocalizedError {
+    /// Indicate that the audio file was not found at the given path.
     case fileNotFound(String)
 
     public var errorDescription: String? {

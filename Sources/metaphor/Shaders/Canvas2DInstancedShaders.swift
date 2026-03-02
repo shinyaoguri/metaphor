@@ -1,18 +1,23 @@
-/// Canvas2D インスタンシング描画用シェーダー
+/// Contains embedded MSL source code for Canvas2D instanced drawing shaders.
 ///
-/// `instance_id` で per-instance データ（transform, color）を読み取り、
-/// 同一形状の大量描画を1回の draw call で処理する。
+/// Uses `instance_id` to read per-instance data (transform, color),
+/// allowing batch rendering of identical shapes in a single draw call.
 enum Canvas2DInstancedShaders {
 
     // MARK: - Function Names
 
+    /// MSL function name for the instanced vertex shader.
     static let vertexFunctionName = "metaphor_canvas2DInstancedVertex"
+    /// MSL function name for the instanced fragment shader.
     static let fragmentFunctionName = "metaphor_canvas2DInstancedFragment"
+    /// MSL function name for the instanced difference blend fragment shader.
     static let differenceFragmentFunctionName = "metaphor_canvas2DInstancedDifferenceFragment"
+    /// MSL function name for the instanced exclusion blend fragment shader.
     static let exclusionFragmentFunctionName = "metaphor_canvas2DInstancedExclusionFragment"
 
     // MARK: - MSL Source
 
+    /// MSL source code for Canvas2D instanced rendering with blend mode variants.
     static let source = """
     #include <metal_stdlib>
     using namespace metal;

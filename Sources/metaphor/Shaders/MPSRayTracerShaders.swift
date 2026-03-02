@@ -1,5 +1,10 @@
-/// MPS レイトレーシング用 Metal シェーダーソース
+/// Contains embedded MSL source code for MPS ray tracing shaders.
+///
+/// Includes primary ray generation, ambient occlusion shading and accumulation,
+/// and simple diffuse shading with hemisphere lighting.
 enum MPSRayTracerShaders {
+
+    /// MSL source code for all MPS ray tracing shaders.
     static let source = """
     #include <metal_stdlib>
     #include <metal_raytracing>

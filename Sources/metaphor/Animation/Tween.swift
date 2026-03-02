@@ -2,9 +2,15 @@ import simd
 
 // MARK: - Interpolatable Protocol
 
-/// 補間可能な型のプロトコル
+/// Define a type that supports linear interpolation between two values.
 public protocol Interpolatable {
-    /// 2つの値を t (0.0〜1.0) で線形補間
+    /// Linearly interpolate between two values by parameter t (0.0 to 1.0).
+    ///
+    /// - Parameters:
+    ///   - from: The start value.
+    ///   - to: The end value.
+    ///   - t: The interpolation factor, clamped conceptually to 0.0...1.0.
+    /// - Returns: The interpolated value.
     static func interpolate(from: Self, to: Self, t: Float) -> Self
 }
 
@@ -47,13 +53,13 @@ extension Color: Interpolatable {
 
 // MARK: - Tween
 
-/// イージング関数を使った値の自動アニメーション
+/// Animate a value automatically over time using an easing function.
 ///
 /// ```swift
 /// let size = tween(from: 0.0, to: 200.0, duration: 1.5, easing: easeOutElastic)
 /// size.start()
 ///
-/// // draw() 内で自動更新
+/// // Automatically updated each frame inside draw()
 /// circle(width/2, height/2, size.value)
 /// ```
 @MainActor
@@ -61,13 +67,13 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Public Properties
 
-    /// 現在の補間値
+    /// The current interpolated value.
     public private(set) var value: T
 
-    /// アニメーション完了フラグ
+    /// Indicate whether the animation has completed.
     public var isComplete: Bool { state == .complete }
 
-    /// アニメーション中かどうか
+    /// Indicate whether the animation is currently running.
     public var isActive: Bool { state == .running }
 
     // MARK: - Configuration
@@ -98,12 +104,13 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Initialization
 
-    /// Tween を作成
+    /// Create a new tween animation.
+    ///
     /// - Parameters:
-    ///   - from: 開始値
-    ///   - to: 終了値
-    ///   - duration: 所要時間（秒）
-    ///   - easing: イージング関数（デフォルト: easeInOutCubic）
+    ///   - from: The start value.
+    ///   - to: The end value.
+    ///   - duration: The animation duration in seconds.
+    ///   - easing: The easing function to apply (defaults to easeInOutCubic).
     public init(from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic) {
         self.fromValue = from
         self.toValue = to
@@ -114,28 +121,39 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Builder Methods
 
-    /// 開始前のディレイを設定
+    /// Set the delay before the animation starts.
+    ///
+    /// - Parameter seconds: The delay duration in seconds.
+    /// - Returns: This tween instance for method chaining.
     @discardableResult
     public func delay(_ seconds: Float) -> Self {
         self.delayDuration = seconds
         return self
     }
 
-    /// 完了時のコールバック
+    /// Set a callback to invoke when the animation completes.
+    ///
+    /// - Parameter handler: The closure to call on completion.
+    /// - Returns: This tween instance for method chaining.
     @discardableResult
     public func onComplete(_ handler: @escaping () -> Void) -> Self {
         self.completionHandler = handler
         return self
     }
 
-    /// リピート回数（0=無限）
+    /// Set the number of times the animation repeats (0 means infinite).
+    ///
+    /// - Parameter n: The repeat count.
+    /// - Returns: This tween instance for method chaining.
     @discardableResult
     public func repeatCount(_ n: Int) -> Self {
         self.repeatTotal = max(0, n)
         return self
     }
 
-    /// 往復モード
+    /// Enable yoyo mode, which reverses the animation direction on each cycle.
+    ///
+    /// - Returns: This tween instance for method chaining.
     @discardableResult
     public func yoyo() -> Self {
         self.isYoyo = true
@@ -144,7 +162,7 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Control
 
-    /// アニメーションを開始
+    /// Start the animation from the beginning.
     public func start() {
         elapsed = 0
         repeatCount = 0
@@ -158,7 +176,7 @@ public final class Tween<T: Interpolatable> {
         }
     }
 
-    /// アニメーションをリセット
+    /// Reset the animation to its idle state with the initial value.
     public func reset() {
         state = .idle
         elapsed = 0
@@ -167,9 +185,9 @@ public final class Tween<T: Interpolatable> {
         value = fromValue
     }
 
-    // MARK: - Update (TweenManager が呼ぶ)
+    // MARK: - Update (called by TweenManager)
 
-    /// 内部更新（TweenManager から毎フレーム呼ばれる）
+    /// Update the tween state by the given delta time (called each frame by TweenManager).
     func update(_ dt: Float) {
         switch state {
         case .idle, .complete:
@@ -181,7 +199,7 @@ public final class Tween<T: Interpolatable> {
                 let remaining = elapsed - delayDuration
                 elapsed = 0
                 state = .running
-                // 余った時間を即座に反映
+                // Apply the remaining time immediately
                 if remaining > 0 {
                     update(remaining)
                 }
@@ -192,18 +210,18 @@ public final class Tween<T: Interpolatable> {
             elapsed += dt
 
             if elapsed >= duration {
-                // サイクル完了
+                // Cycle complete
                 repeatCount += 1
 
                 if repeatTotal > 0 && repeatCount >= repeatTotal {
-                    // 全リピート完了
+                    // All repeats finished
                     value = forward ? toValue : fromValue
                     state = .complete
                     completionHandler?()
                     return
                 }
 
-                // 次のサイクル
+                // Start next cycle
                 elapsed -= duration
                 if isYoyo {
                     forward.toggle()

@@ -3,36 +3,50 @@ import Metal
 import Syphon
 import Foundation
 
-/// Syphon経由でテクスチャを他のアプリケーションに送信するためのラッパー
+/// Publish Metal textures to other applications via a Syphon server.
+///
+/// ``SyphonOutput`` wraps a `SyphonMetalServer` and provides a simple
+/// interface for sharing rendered frames with Syphon-compatible client
+/// applications (e.g. MadMapper, VDMX, Resolume).
+///
+/// ```swift
+/// let syphon = SyphonOutput(device: device, name: "MyApp")
+/// syphon.publish(texture: outputTexture, commandBuffer: commandBuffer)
+/// ```
 public final class SyphonOutput {
+    /// The underlying Syphon Metal server instance.
     private var server: SyphonMetalServer?
+
+    /// The Metal device used for server creation.
     private let device: MTLDevice
 
-    /// Syphonサーバーの名前
+    /// The name of the Syphon server as seen by client applications.
     public var serverName: String? {
         server?.name
     }
 
-    /// サーバーがアクティブかどうか
+    /// Indicate whether the Syphon server is currently active.
     public var isActive: Bool {
         server != nil
     }
 
-    /// 初期化
+    /// Create a new Syphon output server.
+    ///
     /// - Parameters:
-    ///   - device: MTLDevice
-    ///   - name: Syphonサーバー名（他のアプリから見える名前）
+    ///   - device: The Metal device used by the server.
+    ///   - name: The server name visible to Syphon client applications.
     public init(device: MTLDevice, name: String) {
         self.device = device
         self.server = SyphonMetalServer(name: name, device: device, options: nil)
     }
 
-    /// テクスチャをSyphon経由で送信
+    /// Publish a texture frame to all connected Syphon clients.
+    ///
     /// - Parameters:
-    ///   - texture: 送信するテクスチャ
-    ///   - commandBuffer: コマンドバッファ
-    ///   - region: 送信する領域（nilの場合はテクスチャ全体）
-    ///   - flipped: Y軸を反転するか
+    ///   - texture: The Metal texture to publish.
+    ///   - commandBuffer: The command buffer associated with this frame.
+    ///   - region: The sub-region of the texture to publish, or `nil` to publish the entire texture.
+    ///   - flipped: Whether to flip the image along the Y axis.
     public func publish(
         texture: MTLTexture,
         commandBuffer: MTLCommandBuffer,
@@ -56,14 +70,15 @@ public final class SyphonOutput {
         )
     }
 
-    /// サーバー名を変更
-    /// - Parameter name: 新しいサーバー名
+    /// Rename the Syphon server by stopping the current one and creating a new one.
+    ///
+    /// - Parameter name: The new server name.
     public func rename(_ name: String) {
         server?.stop()
         server = SyphonMetalServer(name: name, device: device, options: nil)
     }
 
-    /// サーバーを停止
+    /// Stop and release the Syphon server.
     public func stop() {
         server?.stop()
         server = nil

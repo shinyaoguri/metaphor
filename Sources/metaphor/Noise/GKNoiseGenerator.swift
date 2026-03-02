@@ -2,10 +2,10 @@ import GameplayKit
 import Metal
 import simd
 
-/// GameplayKit ノイズシステムのラッパー
+/// Wrap the GameplayKit noise system for procedural noise generation.
 ///
-/// 複数のノイズアルゴリズム（Voronoi, Billow, Ridged等）をサポートし、
-/// ポイントサンプリングとテクスチャ生成の両方を提供する。
+/// Support multiple noise algorithms (Voronoi, Billow, Ridged, etc.) and
+/// provide both point sampling and texture generation.
 ///
 /// ```swift
 /// let noise = createNoise(.voronoi)
@@ -14,10 +14,10 @@ import simd
 /// ```
 @MainActor
 public final class GKNoiseWrapper {
-    /// ノイズタイプ
+    /// Return the noise type.
     public let type: NoiseType
 
-    /// 設定
+    /// Access or modify the noise configuration.
     public var config: NoiseConfig {
         didSet { invalidateCache() }
     }
@@ -38,20 +38,35 @@ public final class GKNoiseWrapper {
 
     // MARK: - Point Sampling
 
-    /// 2D ポイントサンプリング（normalized: 0.0〜1.0, otherwise: -1.0〜1.0）
+    /// Sample the noise value at a 2D point.
+    ///
+    /// When `config.normalized` is true, the returned value is in the 0.0-1.0 range;
+    /// otherwise, the raw range of -1.0 to 1.0 is returned.
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
+    /// - Returns: Noise value at the given point.
     public func sample(x: Float, y: Float) -> Float {
         let raw = gkNoise.value(atPosition: vector_float2(x, y))
         return config.normalized ? (raw + 1.0) * 0.5 : raw
     }
 
-    /// 2D ポイントサンプリング（Double 版）
+    /// Sample the noise value at a 2D point (Double precision input).
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
+    /// - Returns: Noise value at the given point.
     public func sample(x: Double, y: Double) -> Float {
         sample(x: Float(x), y: Float(y))
     }
 
     // MARK: - Grid Sampling
 
-    /// 2D 配列としてノイズ値を生成
+    /// Generate noise values as a 2D grid.
+    /// - Parameters:
+    ///   - width: Grid width in samples.
+    ///   - height: Grid height in samples.
+    /// - Returns: Flat array of noise values in row-major order.
     public func sampleGrid(width: Int, height: Int) -> [Float] {
         let map = makeNoiseMap(width: width, height: height)
         var result = [Float](repeating: 0, count: width * height)
@@ -67,7 +82,11 @@ public final class GKNoiseWrapper {
 
     // MARK: - Texture Generation
 
-    /// ノイズテクスチャを生成（グレースケール BGRA8）
+    /// Generate a grayscale BGRA8 noise texture.
+    /// - Parameters:
+    ///   - width: Texture width in pixels.
+    ///   - height: Texture height in pixels.
+    /// - Returns: Metal texture containing the noise, or nil on failure.
     public func texture(width: Int, height: Int) -> MTLTexture? {
         let values = sampleGrid(width: width, height: height)
         return NoiseTextureBuilder.buildTexture(
@@ -75,13 +94,22 @@ public final class GKNoiseWrapper {
         )
     }
 
-    /// ノイズテクスチャを MImage として生成
+    /// Generate a noise image.
+    /// - Parameters:
+    ///   - width: Image width in pixels.
+    ///   - height: Image height in pixels.
+    /// - Returns: Image generated from the noise, or nil on failure.
     public func image(width: Int, height: Int) -> MImage? {
         guard let tex = texture(width: width, height: height) else { return nil }
         return MImage(texture: tex)
     }
 
-    /// カラーマップ付きノイズテクスチャを生成
+    /// Generate a color-mapped noise texture using gradient stops.
+    /// - Parameters:
+    ///   - width: Texture width in pixels.
+    ///   - height: Texture height in pixels.
+    ///   - colorStops: Array of (position, BGRA color) pairs defining the gradient.
+    /// - Returns: Metal texture with the color-mapped noise, or nil on failure.
     public func colorMappedTexture(
         width: Int, height: Int,
         colorStops: [(Float, SIMD4<UInt8>)]
@@ -95,31 +123,38 @@ public final class GKNoiseWrapper {
 
     // MARK: - Composable Operations
 
-    /// ノイズを合成（加算）
+    /// Compose noise by adding another noise source.
+    /// - Parameter other: Noise wrapper to add.
     public func add(_ other: GKNoiseWrapper) {
         gkNoise.add(other.gkNoise)
         invalidateCache()
     }
 
-    /// ノイズを合成（乗算）
+    /// Compose noise by multiplying with another noise source.
+    /// - Parameter other: Noise wrapper to multiply.
     public func multiply(_ other: GKNoiseWrapper) {
         gkNoise.multiply(other.gkNoise)
         invalidateCache()
     }
 
-    /// 出力値を反転
+    /// Invert the output values.
     public func invert() {
         gkNoise.invert()
         invalidateCache()
     }
 
-    /// 絶対値
+    /// Apply absolute value to the output.
     public func applyAbsoluteValue() {
         gkNoise.applyAbsoluteValue()
         invalidateCache()
     }
 
-    /// タービュレンスを適用
+    /// Apply turbulence distortion to the noise.
+    /// - Parameters:
+    ///   - frequency: Turbulence frequency.
+    ///   - power: Turbulence power.
+    ///   - roughness: Number of turbulence octaves.
+    ///   - seed: Seed value for the turbulence.
     public func applyTurbulence(frequency: Double, power: Double, roughness: Int, seed: Int32) {
         gkNoise.applyTurbulence(
             frequency: frequency,
@@ -130,13 +165,17 @@ public final class GKNoiseWrapper {
         invalidateCache()
     }
 
-    /// 値の範囲をクランプ
+    /// Clamp the output values to a range.
+    /// - Parameters:
+    ///   - min: Lower bound.
+    ///   - max: Upper bound.
     public func clamp(min: Double, max: Double) {
         gkNoise.clamp(lowerBound: min, upperBound: max)
         invalidateCache()
     }
 
-    /// 値をべき乗で変形
+    /// Raise the output values to a power.
+    /// - Parameter exponent: The exponent to apply.
     public func raiseToPower(_ exponent: Double) {
         gkNoise.raiseToPower(exponent)
         invalidateCache()

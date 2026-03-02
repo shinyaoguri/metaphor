@@ -1,13 +1,13 @@
 import Metal
 import simd
 
-/// シャドウ深度パス用のユニフォーム
+/// Hold uniforms for the shadow depth pass.
 struct ShadowUniforms {
     var modelMatrix: float4x4
     var lightSpaceMatrix: float4x4
 }
 
-/// シャドウマッピング用のフラグメントシェーダーに渡すユニフォーム
+/// Hold uniforms passed to the fragment shader for shadow mapping.
 struct ShadowFragmentUniforms {
     var lightSpaceMatrix: float4x4
     var shadowBias: Float
@@ -15,7 +15,7 @@ struct ShadowFragmentUniforms {
     var _pad: SIMD2<Float> = .zero
 }
 
-/// Canvas3D 用 DrawCall 記録
+/// Record a draw call for Canvas3D shadow rendering.
 struct DrawCall3D {
     var mesh: Mesh
     var transform: float4x4
@@ -29,28 +29,28 @@ struct DrawCall3D {
     var strokeColor: SIMD4<Float>
 }
 
-/// ディレクショナルライト用シャドウマップ
+/// Manage a directional light shadow map.
 ///
-/// 深度テクスチャにライト視点のシーンを描画し、
-/// メインパスでサンプリングしてソフトシャドウを生成する。
+/// Render the scene from the light's perspective into a depth texture,
+/// then sample it during the main pass to produce soft shadows.
 @MainActor
 public final class ShadowMap {
 
     // MARK: - Properties
 
-    /// シャドウ深度テクスチャ
+    /// Shadow depth texture.
     public let shadowTexture: MTLTexture
 
-    /// シャドウマップ解像度
+    /// Shadow map resolution in pixels.
     public let resolution: Int
 
-    /// シャドウバイアス（アクネ防止）
+    /// Shadow bias for acne prevention.
     public var shadowBias: Float = 0.005
 
-    /// PCF サンプリング半径
+    /// PCF sampling radius.
     public var pcfRadius: Int = 2
 
-    /// ライト空間行列
+    /// Light-space transformation matrix.
     public private(set) var lightSpaceMatrix: float4x4 = .identity
 
     private let device: MTLDevice
@@ -61,11 +61,16 @@ public final class ShadowMap {
 
     // MARK: - Initialization
 
+    /// - Parameters:
+    ///   - device: The Metal device.
+    ///   - shaderLibrary: The shader library for compiling shadow depth shaders.
+    ///   - resolution: The shadow map resolution in pixels.
+    /// - Throws: `MetaphorError` if texture creation or shader compilation fails.
     init(device: MTLDevice, shaderLibrary: ShaderLibrary, resolution: Int = 2048) throws {
         self.device = device
         self.resolution = resolution
 
-        // シャドウ深度テクスチャ作成
+        // Create shadow depth texture
         let texDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .depth32Float,
             width: resolution,
@@ -81,7 +86,7 @@ public final class ShadowMap {
         tex.label = "ShadowMap Depth"
         self.shadowTexture = tex
 
-        // レンダーパスディスクリプタ（depth only、カラーアタッチメントなし）
+        // Render pass descriptor (depth only, no color attachment)
         let rpd = MTLRenderPassDescriptor()
         rpd.depthAttachment.texture = shadowTexture
         rpd.depthAttachment.loadAction = .clear
@@ -89,7 +94,7 @@ public final class ShadowMap {
         rpd.depthAttachment.clearDepth = 1.0
         self.renderPassDescriptor = rpd
 
-        // シャドウ深度シェーダーコンパイル
+        // Compile shadow depth shaders
         let shadowKey = "metaphor.shadowDepth"
         if !shaderLibrary.hasLibrary(for: shadowKey) {
             try shaderLibrary.register(source: ShadowShaders.depthSource, as: shadowKey)
@@ -98,7 +103,7 @@ public final class ShadowMap {
             throw MetaphorError.shaderCompilationFailed(name: "metaphor_shadowDepthVertex", underlying: NSError(domain: "ShadowMap", code: -1))
         }
 
-        // Untextured (positionNormalColor stride=40) 用パイプライン
+        // Pipeline for untextured geometry (positionNormalColor stride=40)
         let untexDesc = MTLRenderPipelineDescriptor()
         untexDesc.vertexFunction = vertexFn
         untexDesc.fragmentFunction = nil
@@ -107,7 +112,7 @@ public final class ShadowMap {
         untexDesc.rasterSampleCount = 1
         self.depthPipelineUntextured = try device.makeRenderPipelineState(descriptor: untexDesc)
 
-        // Textured (positionNormalUV stride=48) 用パイプライン
+        // Pipeline for textured geometry (positionNormalUV stride=48)
         let texPipeDesc = MTLRenderPipelineDescriptor()
         texPipeDesc.vertexFunction = vertexFn
         texPipeDesc.fragmentFunction = nil
@@ -116,7 +121,7 @@ public final class ShadowMap {
         texPipeDesc.rasterSampleCount = 1
         self.depthPipelineTextured = try device.makeRenderPipelineState(descriptor: texPipeDesc)
 
-        // 深度ステンシル
+        // Depth stencil state
         let dsDesc = MTLDepthStencilDescriptor()
         dsDesc.depthCompareFunction = .less
         dsDesc.isDepthWriteEnabled = true
@@ -125,12 +130,17 @@ public final class ShadowMap {
 
     // MARK: - Light Space Matrix
 
-    /// ディレクショナルライトからライト空間行列を計算
+    /// Compute the light-space matrix from a directional light.
+    ///
+    /// - Parameters:
+    ///   - lightDirection: The direction vector of the light.
+    ///   - sceneCenter: The center of the scene to shadow.
+    ///   - sceneRadius: The radius of the scene bounding sphere.
     func updateLightSpaceMatrix(lightDirection: SIMD3<Float>, sceneCenter: SIMD3<Float> = .zero, sceneRadius: Float = 500) {
         let dir = normalize(lightDirection)
         let lightPos = sceneCenter - dir * sceneRadius
 
-        // up ベクトルがライト方向と平行にならないよう調整
+        // Adjust up vector to avoid being parallel to the light direction
         var up = SIMD3<Float>(0, 1, 0)
         if abs(dot(dir, up)) > 0.99 {
             up = SIMD3<Float>(1, 0, 0)
@@ -147,7 +157,11 @@ public final class ShadowMap {
 
     // MARK: - Shadow Pass Rendering
 
-    /// 記録された DrawCall をライト視点で深度テクスチャに描画
+    /// Render recorded draw calls from the light's perspective into the depth texture.
+    ///
+    /// - Parameters:
+    ///   - drawCalls: The array of recorded 3D draw calls.
+    ///   - commandBuffer: The command buffer to encode into.
     func render(drawCalls: [DrawCall3D], commandBuffer: MTLCommandBuffer) {
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
         encoder.label = "Shadow Depth Pass"
@@ -156,7 +170,7 @@ public final class ShadowMap {
             encoder.setDepthStencilState(ds)
         }
         encoder.setFrontFacing(.counterClockwise)
-        encoder.setCullMode(.front)  // フロントフェイスカリング（Peter Panning 軽減）
+        encoder.setCullMode(.front)  // Front-face culling (reduces Peter Panning)
         encoder.setDepthBias(0.01, slopeScale: 1.5, clamp: 0.02)
 
         for call in drawCalls {

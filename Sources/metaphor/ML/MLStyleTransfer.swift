@@ -1,10 +1,10 @@
 import CoreML
 import Metal
 
-/// スタイル転送 / 画像変換モデルラッパー
+/// Wrap an image-to-image CoreML model for style transfer.
 ///
-/// image-to-image 型の CoreML モデルを簡単に使用するための
-/// 特化クラス。MLProcessor の薄いラッパー。
+/// Provide a thin convenience layer over MLProcessor tailored for
+/// style transfer and image transformation models.
 ///
 /// ```swift
 /// var style: MLStyleTransfer!
@@ -25,16 +25,16 @@ public final class MLStyleTransfer {
 
     // MARK: - Public Properties
 
-    /// 出力テクスチャ（apply() + update() 後に有効）
+    /// Store the output texture (available after `apply()` + `update()`).
     public private(set) var outputTexture: MImage?
 
-    /// 推論実行中かどうか
+    /// Indicate whether an inference request is in progress.
     public private(set) var isProcessing: Bool = false
 
-    /// 最後の推論にかかった時間（秒）
+    /// Store the elapsed time in seconds for the last inference.
     public private(set) var inferenceTime: Double = 0
 
-    /// モデルが読み込み済みかどうか
+    /// Indicate whether the model has been loaded.
     public var isLoaded: Bool { model.isLoaded }
 
     // MARK: - Private
@@ -47,13 +47,21 @@ public final class MLStyleTransfer {
 
     // MARK: - Loading
 
-    /// モデルを読み込む
+    /// Load a style transfer model from a file path.
+    /// - Parameters:
+    ///   - path: Path to a .mlmodelc, .mlpackage, or .mlmodel file.
+    ///   - computeUnit: The compute unit preference for inference.
+    /// - Throws: ``MLError`` if the file is not found or loading fails.
     public func load(_ path: String, computeUnit: MLComputeUnit = .all) throws {
         model.computeUnit = computeUnit
         try model.load(path)
     }
 
-    /// バンドルリソースから読み込む
+    /// Load a style transfer model from a bundle resource.
+    /// - Parameters:
+    ///   - name: The resource name without extension.
+    ///   - computeUnit: The compute unit preference for inference.
+    /// - Throws: ``MLError`` if the resource is not found or loading fails.
     public func load(named name: String, computeUnit: MLComputeUnit = .all) throws {
         model.computeUnit = computeUnit
         try model.load(named: name)
@@ -61,21 +69,25 @@ public final class MLStyleTransfer {
 
     // MARK: - Apply
 
-    /// テクスチャにスタイル転送を適用（非同期推論）
+    /// Apply style transfer to a Metal texture asynchronously.
+    /// - Parameter texture: The input texture to stylize.
     public func apply(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         isProcessing = true
         model.predict(texture: texture)
     }
 
-    /// MImage にスタイル転送を適用
+    /// Apply style transfer to an MImage asynchronously.
+    /// - Parameter image: The input image to stylize.
     public func apply(_ image: MImage) {
         apply(image.texture)
     }
 
     // MARK: - Update
 
-    /// 毎フレーム呼ぶ更新メソッド
+    /// Flush pending inference results into public properties.
+    ///
+    /// Call this every frame to receive the latest style transfer output.
     public func update() {
         model.update()
         if model.outputTexture != nil {

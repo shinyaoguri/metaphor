@@ -1,8 +1,8 @@
 import simd
 
-/// ランタイムでパラメータを調整できる軽量即時モード GUI
+/// Provide a lightweight immediate-mode GUI for adjusting parameters at runtime.
 ///
-/// Canvas2D のプリミティブで描画される。`draw()` 内で毎フレーム呼び出す。
+/// Renders using Canvas2D primitives. Call widget methods every frame inside `draw()`.
 /// ```swift
 /// var radius: Float = 50
 /// var speed: Float = 1.0
@@ -21,60 +21,61 @@ import simd
 public final class ParameterGUI {
     // MARK: - Layout Constants
 
-    /// GUI の X 位置
+    /// The X position of the GUI panel.
     public var x: Float = 10
-    /// GUI の Y 位置
+    /// The Y position of the GUI panel.
     public var y: Float = 10
-    /// ウィジェットの幅
+    /// The width of each widget.
     public var widgetWidth: Float = 200
-    /// スライダーの高さ
+    /// The height of a slider track.
     public var sliderHeight: Float = 16
-    /// トグルのサイズ
+    /// The size of a toggle checkbox.
     public var toggleSize: Float = 16
-    /// ウィジェット間の余白
+    /// The spacing between widgets.
     public var padding: Float = 4
-    /// ラベルのフォントサイズ
+    /// The font size for labels.
     public var fontSize: Float = 12
-    /// パネル背景色
+    /// The background color of the panel.
     public var backgroundColor: Color = Color(r: 0.0, g: 0.0, b: 0.0, a: 0.6)
-    /// スライダートラック色
+    /// The color of the slider track.
     public var trackColor: Color = Color(r: 0.3, g: 0.3, b: 0.3, a: 1.0)
-    /// スライダーフィル色
+    /// The fill color of the slider.
     public var fillColor: Color = Color(r: 0.3, g: 0.6, b: 1.0, a: 1.0)
-    /// トグルオン色
+    /// The color of the toggle when enabled.
     public var toggleOnColor: Color = Color(r: 0.3, g: 0.6, b: 1.0, a: 1.0)
-    /// ラベル色
+    /// The color of label text.
     public var labelColor: Color = Color(r: 1.0, g: 1.0, b: 1.0, a: 0.9)
-    /// 値テキスト色
+    /// The color of value text.
     public var valueColor: Color = Color(r: 0.8, g: 0.8, b: 0.8, a: 0.7)
 
-    /// GUI が表示されているか
+    /// Whether the GUI is visible.
     public var isVisible: Bool = true
 
     // MARK: - Internal State
 
-    /// 現在ドラッグ中のスライダー ID
+    /// The ID of the slider currently being dragged.
     private var activeSliderID: String?
-    /// 前フレームまでの累積 Y 位置（次のウィジェットの描画位置）
+    /// The accumulated Y position for the next widget.
     private var currentY: Float = 0
-    /// パネルの最大幅（描画後に確定）
+    /// The computed panel width after layout.
     private var panelWidth: Float = 0
-    /// パネルの最大高さ
+    /// The computed panel height after layout.
     private var panelHeight: Float = 0
 
+    /// Create a new ParameterGUI instance.
     public init() {}
 
     // MARK: - Frame Management
 
-    /// フレーム開始（draw() の最初に自動的に呼ばれる）
+    /// Begin a new frame of GUI layout (call at the start of `draw()`).
     public func begin() {
         currentY = y + padding
         panelWidth = widgetWidth + padding * 2
         panelHeight = 0
     }
 
-    /// フレーム終了（draw() の最後に自動的に呼ばれる）
-    /// - Returns: パネルの矩形 (x, y, w, h)
+    /// End the current frame of GUI layout (call at the end of `draw()`).
+    /// - Returns: The panel rectangle as (x, y, width, height).
     @discardableResult
     public func end() -> (Float, Float, Float, Float) {
         panelHeight = currentY - y + padding
@@ -83,12 +84,14 @@ public final class ParameterGUI {
 
     // MARK: - Slider
 
-    /// スライダーウィジェットを描画し、値を更新する
+    /// Draw a slider widget and update the bound value.
     /// - Parameters:
-    ///   - label: ラベル
-    ///   - value: バインドする値
-    ///   - min: 最小値
-    ///   - max: 最大値
+    ///   - label: The display label for the slider.
+    ///   - value: The value to bind (modified in place).
+    ///   - minVal: The minimum allowed value.
+    ///   - maxVal: The maximum allowed value.
+    ///   - canvas: The Canvas2D instance used for drawing.
+    ///   - input: The InputManager providing mouse state.
     public func slider(
         _ label: String,
         _ value: inout Float,
@@ -104,25 +107,25 @@ public final class ParameterGUI {
         let labelY = sliderY
         let trackY = labelY + fontSize + 2
 
-        // ラベル + 値
+        // Label + value text
         drawLabel(label, at: sliderX, y: labelY, canvas: canvas)
         let valStr = String(format: "%.2f", value)
         drawValue(valStr, at: sliderX + widgetWidth, y: labelY, canvas: canvas)
 
-        // トラック背景
+        // Track background
         canvas.push()
         canvas.noStroke()
         canvas.fill(trackColor)
         canvas.rect(sliderX, trackY, widgetWidth, sliderHeight)
 
-        // フィル
+        // Fill bar
         let ratio = (value - minVal) / (maxVal - minVal)
         let fillWidth = widgetWidth * max(0, min(1, ratio))
         canvas.fill(fillColor)
         canvas.rect(sliderX, trackY, fillWidth, sliderHeight)
         canvas.pop()
 
-        // マウスインタラクション
+        // Mouse interaction
         let mx = input.mouseX
         let my = input.mouseY
         let id = "slider.\(label)"
@@ -147,10 +150,12 @@ public final class ParameterGUI {
 
     // MARK: - Toggle
 
-    /// トグルウィジェットを描画し、値を更新する
+    /// Draw a toggle widget and update the bound value.
     /// - Parameters:
-    ///   - label: ラベル
-    ///   - value: バインドする値
+    ///   - label: The display label for the toggle.
+    ///   - value: The boolean value to bind (modified in place).
+    ///   - canvas: The Canvas2D instance used for drawing.
+    ///   - input: The InputManager providing mouse state.
     public func toggle(
         _ label: String,
         _ value: inout Bool,
@@ -162,7 +167,7 @@ public final class ParameterGUI {
         let toggleX = x + padding
         let toggleY = currentY + 2
 
-        // チェックボックス
+        // Checkbox background
         canvas.push()
         canvas.noStroke()
         if value {
@@ -172,7 +177,7 @@ public final class ParameterGUI {
         }
         canvas.rect(toggleX, toggleY, toggleSize, toggleSize)
 
-        // チェックマーク
+        // Check mark
         if value {
             canvas.stroke(.white)
             canvas.strokeWeight(2)
@@ -187,10 +192,10 @@ public final class ParameterGUI {
         }
         canvas.pop()
 
-        // ラベル
+        // Label
         drawLabel(label, at: toggleX + toggleSize + 6, y: toggleY, canvas: canvas)
 
-        // クリック判定（マウスダウンの瞬間のみ）
+        // Click detection (triggers only on the frame mouse goes down)
         let mx = input.mouseX
         let my = input.mouseY
         if input.isMouseDown && !wasMouseDown {
@@ -205,7 +210,12 @@ public final class ParameterGUI {
 
     // MARK: - Color Picker (Simple)
 
-    /// 簡易カラーピッカー（R/G/B スライダー）
+    /// Draw a simple color picker composed of R/G/B sliders.
+    /// - Parameters:
+    ///   - label: The display label for the color picker.
+    ///   - value: The color value to bind (modified in place).
+    ///   - canvas: The Canvas2D instance used for drawing.
+    ///   - input: The InputManager providing mouse state.
     public func colorPicker(
         _ label: String,
         _ value: inout Color,
@@ -220,7 +230,7 @@ public final class ParameterGUI {
         drawLabel(label, at: pickerX, y: labelY, canvas: canvas)
         currentY = labelY + fontSize + 2
 
-        // 色プレビュー
+        // Color preview swatch
         canvas.push()
         canvas.noStroke()
         canvas.fill(value)
@@ -228,7 +238,7 @@ public final class ParameterGUI {
         canvas.pop()
         currentY += sliderHeight + 2
 
-        // R/G/B スライダー
+        // R/G/B sliders
         var simd = value.simd
         let savedFill = fillColor
         fillColor = Color(r: 0.9, g: 0.3, b: 0.3, a: 1.0)
@@ -244,7 +254,8 @@ public final class ParameterGUI {
 
     // MARK: - Panel Background
 
-    /// パネル背景を描画（begin() の後、ウィジェットの前に呼ぶ）
+    /// Draw the panel background (call after `begin()` and before any widgets).
+    /// - Parameter canvas: The Canvas2D instance used for drawing.
     public func drawBackground(canvas: Canvas2D) {
         guard isVisible else { return }
         canvas.push()
@@ -256,15 +267,18 @@ public final class ParameterGUI {
 
     // MARK: - Update State
 
-    /// 入力状態を更新（フレーム末尾で呼ぶ）
+    /// Update the internal input tracking state (call at the end of each frame).
+    /// - Parameter input: The InputManager providing current mouse state.
     public func updateInput(input: InputManager) {
         wasMouseDown = input.isMouseDown
     }
 
     // MARK: - Private
 
+    /// Whether the mouse was pressed on the previous frame.
     private var wasMouseDown: Bool = false
 
+    /// Draw a left-aligned label at the given position.
     private func drawLabel(_ text: String, at x: Float, y: Float, canvas: Canvas2D) {
         canvas.push()
         canvas.fill(labelColor)
@@ -275,6 +289,7 @@ public final class ParameterGUI {
         canvas.pop()
     }
 
+    /// Draw a right-aligned value string at the given position.
     private func drawValue(_ text: String, at rightX: Float, y: Float, canvas: Canvas2D) {
         canvas.push()
         canvas.fill(valueColor)

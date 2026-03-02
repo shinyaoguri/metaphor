@@ -1,24 +1,30 @@
 import Metal
 
-/// metaphor ライブラリの統一エラー型
-public enum MetaphorError: Error, CustomStringConvertible {
-    /// Metal デバイスの取得に失敗
+/// Unified error type for the metaphor library.
+///
+/// All errors thrown by metaphor's core systems are represented by cases of this enum,
+/// providing consistent error handling across the library.
+public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
+    /// The Metal device could not be obtained.
     case deviceNotAvailable
 
-    /// テクスチャの作成に失敗
+    /// A texture could not be created with the specified dimensions and format.
     case textureCreationFailed(width: Int, height: Int, format: String)
 
-    /// コマンドキューの作成に失敗
+    /// The Metal command queue could not be created.
     case commandQueueCreationFailed
 
-    /// シェーダーのコンパイルに失敗
+    /// A shader failed to compile.
     case shaderCompilationFailed(name: String, underlying: Error)
 
-    /// レンダーパイプラインの作成に失敗
+    /// A render pipeline state could not be created.
     case pipelineCreationFailed(name: String, underlying: Error)
 
-    /// バッファの作成に失敗
+    /// A Metal buffer could not be allocated.
     case bufferCreationFailed(size: Int)
+
+    /// The specified post-process shader was not found in the shader library.
+    case postProcessShaderNotFound(String)
 
     public var description: String {
         switch self {
@@ -34,6 +40,10 @@ public enum MetaphorError: Error, CustomStringConvertible {
             return "[metaphor] Failed to create pipeline '\(name)': \(err)"
         case .bufferCreationFailed(let size):
             return "[metaphor] Failed to create buffer (size: \(size))"
+        case .postProcessShaderNotFound(let name):
+            return "[metaphor] Post-process shader not found: '\(name)'"
         }
     }
+
+    public var errorDescription: String? { description }
 }

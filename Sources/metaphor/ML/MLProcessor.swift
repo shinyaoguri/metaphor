@@ -45,11 +45,11 @@ private final class MLResultBuffer: Sendable {
 
 // MARK: - MLProcessor
 
-/// CoreML モデルラッパー
+/// Wrap a CoreML model for general-purpose inference.
 ///
-/// .mlmodelc / .mlpackage / .mlmodel ファイルを読み込み、
-/// テクスチャや MLMultiArray を入力として推論を実行する。
-/// 非同期推論をサポートし、draw loop をブロックしない。
+/// Load .mlmodelc, .mlpackage, or .mlmodel files and run inference
+/// using textures or MLMultiArray inputs. Supports asynchronous inference
+/// so the draw loop is never blocked.
 ///
 /// ```swift
 /// var ml: MLProcessor!
@@ -68,35 +68,35 @@ public final class MLProcessor {
 
     // MARK: - Public Properties
 
-    /// モデルが読み込み済みかどうか
+    /// Indicate whether the model has been loaded.
     public private(set) var isLoaded: Bool = false
 
-    /// 推論実行中かどうか
+    /// Indicate whether an inference request is in progress.
     public private(set) var isProcessing: Bool = false
 
-    /// 最後の推論にかかった時間（秒）
+    /// Store the elapsed time in seconds for the last inference.
     public private(set) var inferenceTime: Double = 0
 
-    /// モデルの説明（メタデータ）
+    /// Return the model description metadata string, if available.
     public var modelDescription: String? {
         coreMLModel?.modelDescription.metadata[.description] as? String
     }
 
-    /// 出力テクスチャ（image-to-image モデル用、update() 後に有効）
+    /// Store the output texture for image-to-image models (available after `update()`).
     public private(set) var outputTexture: MImage?
 
-    /// 出力 MLMultiArray（汎用モデル用）
+    /// Store the output MLMultiArray for general-purpose models.
     public private(set) var outputMultiArray: MLMultiArray?
 
-    /// 出力分類結果
+    /// Store the output classification results.
     public private(set) var outputClassifications: [MLClassification] = []
 
-    /// 出力辞書（dict 型出力）
+    /// Store the output dictionary for dict-type model outputs.
     public private(set) var outputDictionary: [String: Double]?
 
     // MARK: - Configuration
 
-    /// コンピュートユニット設定
+    /// Set the compute unit preference for inference.
     public var computeUnit: MLComputeUnit = .all
 
     // MARK: - Private
@@ -116,8 +116,9 @@ public final class MLProcessor {
 
     // MARK: - Loading
 
-    /// モデルファイルを読み込む
-    /// - Parameter path: .mlmodelc / .mlpackage / .mlmodel ファイルパス
+    /// Load a model from a file path.
+    /// - Parameter path: Path to a .mlmodelc, .mlpackage, or .mlmodel file.
+    /// - Throws: ``MLError`` if the file is not found or loading fails.
     public func load(_ path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
@@ -135,7 +136,11 @@ public final class MLProcessor {
         }
     }
 
-    /// バンドルリソースからモデルを読み込む
+    /// Load a model from a bundle resource.
+    /// - Parameters:
+    ///   - name: The resource name without extension.
+    ///   - bundle: The bundle to search for the resource.
+    /// - Throws: ``MLError`` if the resource is not found or loading fails.
     public func load(named name: String, bundle: Bundle = .main) throws {
         guard let url = bundle.url(forResource: name, withExtension: "mlmodelc")
                 ?? bundle.url(forResource: name, withExtension: "mlpackage") else {
@@ -153,7 +158,10 @@ public final class MLProcessor {
         }
     }
 
-    /// 非同期でモデルを読み込む（大きなモデル用）
+    /// Load a model asynchronously (for large models).
+    /// - Parameters:
+    ///   - path: Path to the model file.
+    ///   - completion: Called on the main thread when loading completes or fails.
     public func loadAsync(_ path: String, completion: @escaping @MainActor (Error?) -> Void) {
         let computeUnit = self.computeUnit
         inferenceQueue.async { [weak self] in
@@ -178,8 +186,10 @@ public final class MLProcessor {
 
     // MARK: - Inference (Texture -> Texture)
 
-    /// テクスチャを入力として非同期推論（image-to-image）
-    /// 結果は次の update() で outputTexture に反映される
+    /// Run asynchronous inference with a texture input (image-to-image).
+    ///
+    /// The result becomes available via `outputTexture` after the next `update()` call.
+    /// - Parameter texture: The input Metal texture.
     public func predict(texture: MTLTexture) {
         guard isLoaded, !isProcessing, let capturedModel = coreMLModel else { return }
 
@@ -192,7 +202,7 @@ public final class MLProcessor {
         inferenceQueue.async {
             do {
                 let featureValue = MLFeatureValue(pixelBuffer: pixelBuffer)
-                // 画像入力名をモデル定義から自動検出
+                // Auto-detect the image input name from the model definition
                 let inputName = capturedModel.modelDescription.inputDescriptionsByName.first(
                     where: { $0.value.type == .image }
                 )?.key ?? "image"
@@ -204,7 +214,7 @@ public final class MLProcessor {
 
                 let elapsed = CACurrentMediaTime() - startTime
 
-                // 画像型出力を検索
+                // Search for an image-type output
                 let outputName = capturedModel.modelDescription.outputDescriptionsByName.first(
                     where: { $0.value.type == .image }
                 )?.key
@@ -222,14 +232,16 @@ public final class MLProcessor {
         }
     }
 
-    /// MImage を入力として非同期推論
+    /// Run asynchronous inference with an MImage input.
+    /// - Parameter image: The input image.
     public func predict(image: MImage) {
         predict(texture: image.texture)
     }
 
     // MARK: - Inference (Generic)
 
-    /// 汎用入力で非同期推論
+    /// Run asynchronous inference with generic feature value inputs.
+    /// - Parameter inputs: A dictionary mapping input names to MLFeatureValue instances.
     public func predict(inputs: [String: MLFeatureValue]) {
         guard isLoaded, !isProcessing, let capturedModel = coreMLModel else { return }
         isProcessing = true
@@ -251,7 +263,11 @@ public final class MLProcessor {
 
     // MARK: - Synchronous Inference
 
-    /// 同期推論（小さなモデル向け、draw loop をブロックする）
+    /// Run synchronous inference with a texture input (blocks the draw loop).
+    ///
+    /// Use this for small models where latency is acceptable.
+    /// - Parameter texture: The input Metal texture.
+    /// - Throws: ``MLError`` if the model is not loaded or inference fails.
     public func predictSync(texture: MTLTexture) throws {
         guard isLoaded, let capturedModel = coreMLModel else {
             throw MLError.inferenceFailed("Model not loaded")
@@ -290,8 +306,9 @@ public final class MLProcessor {
 
     // MARK: - Update (per-frame)
 
-    /// 毎フレーム呼ぶ更新メソッド（draw() の先頭で呼ぶ）
-    /// 非同期推論の結果を公開プロパティに反映する
+    /// Flush pending asynchronous inference results into public properties.
+    ///
+    /// Call this at the beginning of every `draw()` frame.
     public func update() {
         guard let result = resultBuffer.take() else { return }
         isProcessing = false
@@ -330,7 +347,7 @@ public final class MLProcessor {
 
     // MARK: - Metadata
 
-    /// モデルの入力名・型一覧
+    /// Return a list of the model's input names and types.
     public var inputDescriptions: [(name: String, type: String)] {
         guard let model = coreMLModel else { return [] }
         return model.modelDescription.inputDescriptionsByName.map {
@@ -338,7 +355,7 @@ public final class MLProcessor {
         }
     }
 
-    /// モデルの出力名・型一覧
+    /// Return a list of the model's output names and types.
     public var outputDescriptions: [(name: String, type: String)] {
         guard let model = coreMLModel else { return [] }
         return model.modelDescription.outputDescriptionsByName.map {
@@ -346,6 +363,6 @@ public final class MLProcessor {
         }
     }
 
-    /// 内部の CoreML.MLModel へのアクセス（上級者向け）
+    /// Access the underlying CoreML.MLModel instance (advanced use).
     public var rawModel: CoreML.MLModel? { coreMLModel }
 }

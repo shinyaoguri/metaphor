@@ -3,112 +3,114 @@ import simd
 
 // MARK: - Rect / Ellipse / Image Mode
 
-/// rect()の座標解釈モード
+/// Defines how coordinates are interpreted for `rect()` calls.
 public enum RectMode: Sendable {
-    /// x,y = 左上角、w,h = 幅と高さ（デフォルト）
+    /// Interprets x, y as the top-left corner and w, h as width and height (default).
     case corner
-    /// x,y = 左上角、w,h = 右下角の座標
+    /// Interprets x, y as the top-left corner and w, h as the bottom-right corner coordinates.
     case corners
-    /// x,y = 中心、w,h = 幅と高さ
+    /// Interprets x, y as the center and w, h as width and height.
     case center
-    /// x,y = 中心、w,h = 半幅と半高
+    /// Interprets x, y as the center and w, h as half-width and half-height.
     case radius
 }
 
-/// ellipse()の座標解釈モード
+/// Defines how coordinates are interpreted for `ellipse()` calls.
 public enum EllipseMode: Sendable {
-    /// x,y = 中心、w,h = 幅と高さ（デフォルト）
+    /// Interprets x, y as the center and w, h as width and height (default).
     case center
-    /// x,y = 中心、w,h = 半径
+    /// Interprets x, y as the center and w, h as radii.
     case radius
-    /// x,y = 左上角、w,h = 幅と高さ
+    /// Interprets x, y as the top-left corner and w, h as width and height.
     case corner
-    /// x,y = 左上角、w,h = 右下角の座標
+    /// Interprets x, y as the top-left corner and w, h as the bottom-right corner coordinates.
     case corners
 }
 
-/// image()の座標解釈モード
+/// Defines how coordinates are interpreted for `image()` calls.
 public enum ImageMode: Sendable {
-    /// x,y = 左上角（デフォルト）
+    /// Interprets x, y as the top-left corner (default).
     case corner
-    /// x,y = 中心
+    /// Interprets x, y as the center.
     case center
-    /// x,y = 左上角、w,h = 右下角の座標
+    /// Interprets x, y as the top-left corner and w, h as the bottom-right corner coordinates.
     case corners
 }
 
-/// arc()の描画モード
+/// Specifies the drawing mode for `arc()` calls.
 public enum ArcMode: Sendable {
-    /// 弧のみ（端点を接続しない）
+    /// Draws the arc only without connecting the endpoints.
     case open
-    /// 端点間を直線で接続
+    /// Connects the endpoints with a straight line.
     case chord
-    /// 端点から中心への線（パイ型）
+    /// Draws lines from the endpoints to the center, forming a pie shape.
     case pie
 }
 
 // MARK: - Stroke Cap / Join
 
-/// ストロークの端点スタイル
+/// Specifies the style applied to the endpoints of strokes.
 public enum StrokeCap: Sendable {
-    /// 丸型（Processing デフォルト）
+    /// Applies a rounded cap to stroke endpoints (default).
     case round
-    /// 正方形（半strokeWeight分延長）
+    /// Applies a square cap that extends by half the stroke weight beyond the endpoint.
     case square
-    /// 延長なし
+    /// Applies no extension beyond the endpoint.
     case butt
 }
 
-/// ストロークの接合スタイル
+/// Specifies the style applied to the joints between connected stroke segments.
 public enum StrokeJoin: Sendable {
-    /// 鋭角接合（デフォルト）
+    /// Joins segments with a sharp corner (default).
     case miter
-    /// 平面接合
+    /// Joins segments with a flat bevel.
     case bevel
-    /// 円弧接合
+    /// Joins segments with a rounded arc.
     case round
 }
 
 // MARK: - Gradient Axis
 
-/// グラデーションの方向
+/// Specifies the direction of a gradient fill.
 public enum GradientAxis: Sendable {
-    /// 上から下
+    /// Applies the gradient from top to bottom.
     case vertical
-    /// 左から右
+    /// Applies the gradient from left to right.
     case horizontal
-    /// 左上から右下
+    /// Applies the gradient diagonally from the top-left to the bottom-right.
     case diagonal
 }
 
 // MARK: - Shape Mode
 
-/// beginShape()で使用する形状モード
+/// Specifies the primitive type used with `beginShape()`.
 public enum ShapeMode: Sendable {
-    /// 任意の多角形（デフォルト）
+    /// Draws an arbitrary polygon (default).
     case polygon
-    /// 点の集合
+    /// Draws a set of individual points.
     case points
-    /// 線分のペア
+    /// Draws pairs of vertices as separate line segments.
     case lines
-    /// 三角形の列（3頂点ずつ）
+    /// Draws groups of three vertices as individual triangles.
     case triangles
-    /// トライアングルストリップ
+    /// Draws vertices as a triangle strip.
     case triangleStrip
-    /// トライアングルファン
+    /// Draws vertices as a triangle fan.
     case triangleFan
 }
 
-/// endShape()で使用する閉じモード
+/// Specifies whether a shape is closed when calling `endShape()`.
 public enum CloseMode: Sendable {
-    /// 形状を閉じない
+    /// Leaves the shape open without connecting the last vertex to the first.
     case open
-    /// 最後の頂点と最初の頂点を接続して閉じる
+    /// Closes the shape by connecting the last vertex to the first.
     case close
 }
 
 // MARK: - Errors
 
+/// Represents errors that can occur during Canvas2D operations.
 public enum Canvas2DError: Error {
+    /// Indicates that a Metal buffer could not be created.
     case bufferCreationFailed
 }

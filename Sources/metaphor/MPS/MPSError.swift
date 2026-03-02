@@ -1,14 +1,14 @@
-/// MPS サブシステムのエラー型
+/// Represent errors from the MPS subsystem.
 public enum MPSError: Error, LocalizedError, Sendable {
-    /// デバイスが MPS をサポートしていない
+    /// The device does not support Metal Performance Shaders.
     case deviceNotSupported
-    /// アクセラレーション構造体の構築に失敗
+    /// The acceleration structure failed to build.
     case accelerationStructureBuildFailed(String)
-    /// テクスチャ操作に失敗
+    /// A texture operation failed.
     case textureOperationFailed(String)
-    /// レイトレーシング交差テストに失敗
+    /// A ray intersection test failed.
     case intersectionFailed(String)
-    /// 無効なシーン構成
+    /// The scene configuration is invalid.
     case invalidScene(String)
 
     public var errorDescription: String? {

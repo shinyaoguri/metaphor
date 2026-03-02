@@ -1,21 +1,23 @@
 import Metal
 
-/// レンダーパスノードプロトコル
+/// Define the interface for a node in a ``RenderGraph``.
 ///
-/// RenderGraph の各ノードが準拠するプロトコル。
-/// ノードは execute() で描画を行い、結果を output テクスチャに書き出す。
+/// Each node conforming to ``RenderPassNode`` performs rendering work in its
+/// ``execute(commandBuffer:time:renderer:)`` method and exposes the result
+/// via the ``output`` texture property.
 @MainActor
 public protocol RenderPassNode: AnyObject {
-    /// ノードのラベル（デバッグ用）
+    /// The debug label identifying this node.
     var label: String { get }
 
-    /// 実行後の出力テクスチャ
+    /// The output texture produced after execution, or `nil` if not yet executed.
     var output: MTLTexture? { get }
 
-    /// ノードを実行して出力テクスチャを生成する
+    /// Execute this node's rendering work and populate the ``output`` texture.
+    ///
     /// - Parameters:
-    ///   - commandBuffer: コマンドバッファ
-    ///   - time: 経過時間（秒）
-    ///   - renderer: MetaphorRenderer への参照
+    ///   - commandBuffer: The Metal command buffer to encode work into.
+    ///   - time: The elapsed time in seconds.
+    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
     func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)
 }

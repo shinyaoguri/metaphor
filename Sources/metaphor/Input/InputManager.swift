@@ -1,98 +1,112 @@
 import Foundation
 
-/// マウス・キーボード入力を管理するクラス
+/// Manage mouse and keyboard input state for the sketch.
 ///
-/// MetaphorMTKViewからイベントを受け取り、テクスチャ座標系での
-/// マウス位置やキー状態を提供する。
+/// ``InputManager`` receives events from ``MetaphorMTKView`` and provides
+/// the current mouse position (in texture coordinate space), key states,
+/// and optional callbacks for each input event type.
+///
+/// Mouse coordinates are expressed in the offscreen texture coordinate system,
+/// not the window coordinate system, so they remain consistent regardless of
+/// window size.
 @MainActor
 public final class InputManager {
     // MARK: - Mouse State
 
-    /// マウスX座標（テクスチャ座標系）
+    /// The current mouse x-coordinate in texture coordinate space.
     public private(set) var mouseX: Float = 0
 
-    /// マウスY座標（テクスチャ座標系）
+    /// The current mouse y-coordinate in texture coordinate space.
     public private(set) var mouseY: Float = 0
 
-    /// 前フレームのマウスX座標
+    /// The mouse x-coordinate from the previous frame.
     public private(set) var pmouseX: Float = 0
 
-    /// 前フレームのマウスY座標
+    /// The mouse y-coordinate from the previous frame.
     public private(set) var pmouseY: Float = 0
 
-    /// マウスボタンが押されているか
+    /// Indicate whether any mouse button is currently pressed.
     public private(set) var isMouseDown: Bool = false
 
-    /// 押されているマウスボタン（0=左, 1=右, 2=中央）
+    /// The index of the currently pressed mouse button (0 = left, 1 = right, 2 = middle).
     public private(set) var mouseButton: Int = 0
 
-    /// 現フレームのスクロールX量
+    /// The horizontal scroll delta for the current frame.
     public private(set) var scrollX: Float = 0
 
-    /// 現フレームのスクロールY量
+    /// The vertical scroll delta for the current frame.
     public private(set) var scrollY: Float = 0
 
     // MARK: - Keyboard State
 
-    /// いずれかのキーが押されているか
+    /// Indicate whether any key is currently pressed.
     public var isKeyPressed: Bool { !pressedKeys.isEmpty }
 
-    /// 最後に押されたキーの文字
+    /// The character of the most recently pressed key.
     public private(set) var lastKey: Character?
 
-    /// 最後に押されたキーコード
+    /// The key code of the most recently pressed key.
     public private(set) var lastKeyCode: UInt16?
 
+    /// The set of currently pressed key codes.
     private var pressedKeys: Set<UInt16> = []
 
     // MARK: - Callbacks
 
-    /// マウス押下コールバック (x, y, button)
+    /// The callback invoked when a mouse button is pressed (x, y, button).
     public var onMousePressed: ((Float, Float, Int) -> Void)?
 
-    /// マウス解放コールバック (x, y, button)
+    /// The callback invoked when a mouse button is released (x, y, button).
     public var onMouseReleased: ((Float, Float, Int) -> Void)?
 
-    /// マウス移動コールバック (x, y)
+    /// The callback invoked when the mouse moves without any button pressed (x, y).
     public var onMouseMoved: ((Float, Float) -> Void)?
 
-    /// マウスドラッグコールバック (x, y)
+    /// The callback invoked when the mouse moves while a button is pressed (x, y).
     public var onMouseDragged: ((Float, Float) -> Void)?
 
-    /// キー押下コールバック (keyCode, characters)
+    /// The callback invoked when a key is pressed (keyCode, characters).
     public var onKeyDown: ((UInt16, String?) -> Void)?
 
-    /// キー解放コールバック (keyCode)
+    /// The callback invoked when a key is released (keyCode).
     public var onKeyUp: ((UInt16) -> Void)?
 
-    /// マウススクロールコールバック (dx, dy)
+    /// The callback invoked when the mouse scroll wheel is used (dx, dy).
     public var onMouseScrolled: ((Float, Float) -> Void)?
 
     // MARK: - Private State
 
-    /// 前フレーム開始時のマウス位置（2フレームバッファ）
+    // Two-frame buffer for previous mouse position tracking.
+    // Because mouse events arrive on the run loop before renderFrame(), simply
+    // assigning `pmouseX = mouseX` would always yield the same value. This
+    // two-frame buffer correctly preserves the position from the prior frame.
     private var _savedMouseX: Float = 0
     private var _savedMouseY: Float = 0
     private var _isFirstFrame: Bool = true
 
     // MARK: - Initialization
 
+    /// Create a new input manager with default state.
     public init() {}
 
     // MARK: - Query
 
-    /// 指定したキーコードが押されているか
+    /// Check whether a specific key is currently held down.
+    ///
+    /// - Parameter keyCode: The hardware key code to check.
+    /// - Returns: `true` if the key is currently pressed.
     public func isKeyDown(_ keyCode: UInt16) -> Bool {
         pressedKeys.contains(keyCode)
     }
 
     // MARK: - Frame Update
 
-    /// フレーム開始時に呼ばれる（前フレーム座標を更新）
+    /// Update the previous-frame mouse coordinates at the start of a new frame.
     ///
-    /// RunLoop上でマウスイベントは renderFrame() の前に処理されるため、
-    /// 単純に `pmouseX = mouseX` とすると常に同じ値になる。
-    /// 2フレームバッファ方式で前フレームの位置を正しく保持する。
+    /// This uses a two-frame buffer strategy to correctly track the mouse
+    /// position from the prior frame, avoiding the issue where run-loop
+    /// event processing would make `pmouseX`/`pmouseY` identical to the
+    /// current position.
     func updateFrame() {
         scrollX = 0
         scrollY = 0
@@ -111,8 +125,9 @@ public final class InputManager {
         }
     }
 
-    // MARK: - Event Handlers (MetaphorMTKViewから呼ばれる)
+    // MARK: - Event Handlers (called from MetaphorMTKView)
 
+    /// Handle a mouse button press event.
     func handleMouseDown(x: Float, y: Float, button: Int) {
         mouseX = x
         mouseY = y
@@ -121,6 +136,7 @@ public final class InputManager {
         onMousePressed?(x, y, button)
     }
 
+    /// Handle a mouse button release event.
     func handleMouseUp(x: Float, y: Float, button: Int) {
         mouseX = x
         mouseY = y
@@ -128,18 +144,21 @@ public final class InputManager {
         onMouseReleased?(x, y, button)
     }
 
+    /// Handle a mouse movement event (no button pressed).
     func handleMouseMoved(x: Float, y: Float) {
         mouseX = x
         mouseY = y
         onMouseMoved?(x, y)
     }
 
+    /// Handle a mouse drag event (button held while moving).
     func handleMouseDragged(x: Float, y: Float) {
         mouseX = x
         mouseY = y
         onMouseDragged?(x, y)
     }
 
+    /// Handle a key press event.
     func handleKeyDown(keyCode: UInt16, characters: String?) {
         pressedKeys.insert(keyCode)
         lastKeyCode = keyCode
@@ -147,11 +166,13 @@ public final class InputManager {
         onKeyDown?(keyCode, characters)
     }
 
+    /// Handle a key release event.
     func handleKeyUp(keyCode: UInt16) {
         pressedKeys.remove(keyCode)
         onKeyUp?(keyCode)
     }
 
+    /// Handle a mouse scroll event.
     func handleMouseScrolled(dx: Float, dy: Float) {
         scrollX = dx
         scrollY = dy

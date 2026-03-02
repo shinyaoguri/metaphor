@@ -3,14 +3,19 @@ import ModelIO
 import MetalKit
 import simd
 
-/// Model I/O フレームワークを使ったモデル読み込みユーティリティ
+/// Load 3D model files using the Model I/O framework.
 ///
-/// OBJ / USDZ / ABC などのフォーマットを MDLAsset 経由で読み込み、
-/// metaphor の Mesh 形式に変換する。
+/// Reads OBJ, USDZ, ABC, and other formats via MDLAsset and converts
+/// the result into the metaphor Mesh format.
 @MainActor
 enum ModelIOLoader {
 
-    /// モデルファイルを読み込んで Mesh に変換
+    /// Load a model file and convert it to a Mesh.
+    /// - Parameters:
+    ///   - device: The Metal device to create GPU buffers on.
+    ///   - url: The URL of the model file.
+    ///   - normalize: If true, normalizes the bounding box to [-1, 1].
+    /// - Returns: A Mesh instance containing the loaded model data.
     static func load(device: MTLDevice, url: URL, normalize: Bool) throws -> Mesh {
         let allocator = MTKMeshBufferAllocator(device: device)
         let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
@@ -19,12 +24,12 @@ enum ModelIOLoader {
             throw MeshError.parseError("No mesh found in \(url.lastPathComponent)")
         }
 
-        // 法線がなければ自動生成
+        // Auto-generate normals if none exist
         if !hasNormals(mdlMesh) {
             mdlMesh.addNormals(withAttributeNamed: MDLVertexAttributeNormal, creaseThreshold: 0.5)
         }
 
-        // 頂点データを読み取り
+        // Read vertex attribute data
         let positionAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition)
         let normalAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeNormal)
         let uvAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate)
@@ -54,7 +59,7 @@ enum ModelIOLoader {
             }
         }
 
-        // インデックスデータ
+        // Read index data
         var allIndices: [UInt32] = []
         for submesh in mdlMesh.submeshes as? [MDLSubmesh] ?? [] {
             let indexBuffer = submesh.indexBuffer
@@ -78,7 +83,7 @@ enum ModelIOLoader {
             throw MeshError.parseError("Empty mesh")
         }
 
-        // 正規化（バウンディングボックスを [-1,1] に）
+        // Normalize bounding box to [-1, 1]
         if normalize {
             if hasUVData {
                 normalizeVertices(&vertices, uvVertices: &uvVertices)
@@ -87,7 +92,7 @@ enum ModelIOLoader {
             }
         }
 
-        // Mesh 作成
+        // Create Mesh
         if vertices.count <= 65535 && allIndices.allSatisfy({ $0 <= 65535 }) {
             let indices16 = allIndices.map { UInt16($0) }
             return Mesh(
@@ -128,7 +133,7 @@ enum ModelIOLoader {
             let v4 = ptr.assumingMemoryBound(to: SIMD4<Float>.self).pointee
             return SIMD3(v4.x, v4.y, v4.z)
         default:
-            // フォールバック: float3 として読む
+            // Fallback: read as float3
             let floats = ptr.assumingMemoryBound(to: Float.self)
             return SIMD3(floats[0], floats[1], floats[2])
         }

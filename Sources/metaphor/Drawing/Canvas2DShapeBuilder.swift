@@ -5,7 +5,8 @@ import simd
 
 extension Canvas2D {
 
-    /// 頂点ベースの形状記録を開始
+    /// Begin recording vertices for a custom shape.
+    /// - Parameter mode: The shape mode (polygon, triangles, etc.).
     public func beginShape(_ mode: ShapeMode = .polygon) {
         isRecordingShape = true
         shapeMode = mode
@@ -14,7 +15,10 @@ extension Canvas2D {
         isRecordingContour = false
     }
 
-    /// 形状に頂点を追加（beginShape〜endShape間で使用）
+    /// Add a vertex to the current shape (used between beginShape and endShape).
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
     public func vertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
         if isRecordingContour {
@@ -24,19 +28,35 @@ extension Canvas2D {
         }
     }
 
-    /// 頂点カラー付きで頂点を追加
+    /// Add a vertex with a per-vertex color.
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
+    ///   - color: Vertex color.
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
         guard isRecordingShape else { return }
         shapeVertexList.append(.colored(x, y, color.simd))
     }
 
-    /// UV座標付きで頂点を追加（テクスチャマッピング用）
+    /// Add a vertex with UV coordinates for texture mapping.
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
+    ///   - u: Horizontal texture coordinate.
+    ///   - v: Vertical texture coordinate.
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         guard isRecordingShape else { return }
         shapeVertexList.append(.textured(x, y, u, v))
     }
 
-    /// 3次ベジェ曲線の制御点と終点を追加（beginShape〜endShape間で使用）
+    /// Add a cubic Bezier curve's control points and endpoint (used between beginShape and endShape).
+    /// - Parameters:
+    ///   - cx1: First control point X.
+    ///   - cy1: First control point Y.
+    ///   - cx2: Second control point X.
+    ///   - cy2: Second control point Y.
+    ///   - x: End point X.
+    ///   - y: End point Y.
     public func bezierVertex(
         _ cx1: Float, _ cy1: Float,
         _ cx2: Float, _ cy2: Float,
@@ -46,20 +66,23 @@ extension Canvas2D {
         shapeVertexList.append(.bezier(cx1: cx1, cy1: cy1, cx2: cx2, cy2: cy2, x: x, y: y))
     }
 
-    /// Catmull-Romスプラインの頂点を追加（beginShape〜endShape間で使用）
+    /// Add a Catmull-Rom spline vertex (used between beginShape and endShape).
+    /// - Parameters:
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
     public func curveVertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
         shapeVertexList.append(.curve(x, y))
     }
 
-    /// コンター（穴）の記録を開始（beginShape〜endShape間で使用）
+    /// Begin recording a contour (hole) within the current shape (used between beginShape and endShape).
     public func beginContour() {
         guard isRecordingShape else { return }
         isRecordingContour = true
         currentContour.removeAll(keepingCapacity: true)
     }
 
-    /// コンター（穴）の記録を終了
+    /// End recording the current contour (hole).
     public func endContour() {
         guard isRecordingContour else { return }
         isRecordingContour = false
@@ -68,17 +91,20 @@ extension Canvas2D {
         }
     }
 
-    /// カーブの分割数を設定
+    /// Set the number of segments used to approximate curves.
+    /// - Parameter n: Segment count (minimum 1).
     public func curveDetail(_ n: Int) {
         curveDetailCount = max(1, n)
     }
 
-    /// カーブの張り具合を設定（-5.0〜5.0、0.0がCatmull-Rom）
+    /// Set the curve tightness (-5.0 to 5.0; 0.0 is standard Catmull-Rom).
+    /// - Parameter t: Tightness value.
     public func curveTightness(_ t: Float) {
         curveTightnessValue = t
     }
 
-    /// 形状記録を終了してテッセレーション・描画
+    /// End shape recording and tessellate/draw the recorded vertices.
+    /// - Parameter close: Whether to close the shape.
     public func endShape(_ close: CloseMode = .open) {
         guard isRecordingShape else { return }
         isRecordingShape = false
@@ -127,7 +153,7 @@ extension Canvas2D {
         }
     }
 
-    /// 展開された頂点データ（位置 + オプションのカラー/UV）
+    /// Represent an expanded vertex with position and optional per-vertex color or UV coordinates.
     struct ExpandedVertex {
         var x: Float
         var y: Float
@@ -138,7 +164,7 @@ extension Canvas2D {
         var tuple: (Float, Float) { (x, y) }
     }
 
-    /// ShapeVertexType配列を展開してExpandedVertexの配列に変換
+    /// Expand the recorded ShapeVertexType array into an array of ExpandedVertex values.
     func expandShapeVerticesEx() -> [ExpandedVertex] {
         var result: [ExpandedVertex] = []
         result.reserveCapacity(shapeVertexList.count * 4)

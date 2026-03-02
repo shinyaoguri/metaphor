@@ -1,7 +1,20 @@
-/// シーングラフをCanvas3Dで描画する
+/// Render a scene graph tree using a ``Canvas3D`` instance.
+///
+/// ``SceneRenderer`` performs a depth-first traversal of the node hierarchy,
+/// applying each node's local transform via push/pop matrix and drawing any
+/// attached mesh or invoking custom draw callbacks.
 @MainActor
 public final class SceneRenderer {
-    /// DFS でツリーを走査し、各ノードで pushMatrix -> applyTransform -> 描画 -> 子 -> popMatrix
+    /// Traverse the node tree depth-first and render each visible node.
+    ///
+    /// For each node, the renderer pushes the matrix stack, applies the node's
+    /// local transform (translate, rotate, scale), sets the fill color if
+    /// specified, draws the mesh if present, invokes the custom draw callback,
+    /// recurses into children, and finally pops the matrix stack.
+    ///
+    /// - Parameters:
+    ///   - node: The root node of the tree (or subtree) to render.
+    ///   - canvas: The ``Canvas3D`` instance used for drawing.
     public static func render(node: Node, canvas: Canvas3D) {
         guard node.isVisible else { return }
 

@@ -2,20 +2,25 @@ import AVFoundation
 import CoreVideo
 import Metal
 
-/// カメラ位置
+/// Specify the camera position to use for capture.
 public enum CameraPosition {
+    /// The front-facing camera.
     case front
+    /// The rear-facing camera.
     case back
 }
 
-/// カメラ入力デバイス
+/// Capture live video frames from a camera and provide them as Metal textures.
 ///
-/// AVCaptureSession + CVMetalTextureCache を使用して、
-/// カメラフレームを MTLTexture としてゼロコピーで取得する。
+/// ``CaptureDevice`` uses an `AVCaptureSession` and a `CVMetalTextureCache`
+/// to deliver camera frames as `MTLTexture` instances with zero-copy
+/// GPU access. Call ``read()`` each frame to update the texture with the
+/// latest camera frame.
 ///
 /// ```swift
 /// let cam = createCapture()
-/// // draw() 内で:
+/// // In draw():
+/// cam.read()
 /// image(cam, 0, 0, width, height)
 /// ```
 @MainActor
@@ -23,34 +28,44 @@ public final class CaptureDevice: NSObject {
 
     // MARK: - Public Properties
 
-    /// 最新フレームのテクスチャ（read() 後に有効）
+    /// The latest camera frame as a Metal texture, available after calling ``read()``.
     public private(set) var texture: MTLTexture?
 
-    /// カメラが使用可能かどうか
+    /// Indicate whether the camera is available and the capture session was configured successfully.
     public private(set) var isAvailable: Bool = false
 
-    /// リクエストされた幅
+    /// The requested capture width in pixels.
     public let width: Int
 
-    /// リクエストされた高さ
+    /// The requested capture height in pixels.
     public let height: Int
 
     // MARK: - Private Properties
 
+    /// The Metal device used for texture cache creation.
     private let device: MTLDevice
+
+    /// The AVFoundation capture session.
     private var captureSession: AVCaptureSession?
+
+    /// The Metal texture cache for zero-copy pixel buffer conversion.
     private var textureCache: CVMetalTextureCache?
+
+    /// The delegate helper that receives sample buffers on a background thread.
     private let delegateHelper: CaptureDelegate
+
+    /// Whether the capture session is currently running.
     private var isRunning: Bool = false
 
     // MARK: - Initialization
 
-    /// カメラ入力デバイスを初期化
+    /// Create a new camera capture device.
+    ///
     /// - Parameters:
-    ///   - device: MTLDevice
-    ///   - width: 映像幅（デフォルト 1280）
-    ///   - height: 映像高さ（デフォルト 720）
-    ///   - position: カメラ位置（デフォルト .front）
+    ///   - device: The Metal device for texture cache creation.
+    ///   - width: The requested video width in pixels (defaults to 1280).
+    ///   - height: The requested video height in pixels (defaults to 720).
+    ///   - position: The camera position to use (defaults to `.front`).
     init(device: MTLDevice, width: Int = 1280, height: Int = 720, position: CameraPosition = .front) {
         self.device = device
         self.width = width
@@ -64,7 +79,9 @@ public final class CaptureDevice: NSObject {
 
     // MARK: - Public Methods
 
-    /// キャプチャを開始
+    /// Start the camera capture session.
+    ///
+    /// The session starts asynchronously on a background thread.
     public func start() {
         guard !isRunning, let session = captureSession else { return }
         isRunning = true
@@ -73,7 +90,9 @@ public final class CaptureDevice: NSObject {
         }
     }
 
-    /// キャプチャを停止
+    /// Stop the camera capture session.
+    ///
+    /// The session stops asynchronously on a background thread.
     public func stop() {
         guard isRunning, let session = captureSession else { return }
         isRunning = false
@@ -82,7 +101,11 @@ public final class CaptureDevice: NSObject {
         }
     }
 
-    /// 最新フレームをテクスチャに反映
+    /// Update the ``texture`` property with the latest camera frame.
+    ///
+    /// Call this once per frame before using the texture for rendering.
+    /// The texture is created from the latest pixel buffer via the
+    /// `CVMetalTextureCache` for zero-copy GPU access.
     public func read() {
         guard let pixelBuffer = delegateHelper.latestPixelBuffer else { return }
 
@@ -101,7 +124,9 @@ public final class CaptureDevice: NSObject {
         texture = CVMetalTextureGetTexture(cvTex)
     }
 
-    /// 最新フレームを MImage として取得
+    /// Convert the latest camera frame to an ``MImage`` instance.
+    ///
+    /// - Returns: An ``MImage`` wrapping the current texture, or `nil` if no frame is available.
     public func toImage() -> MImage? {
         guard let tex = texture else { return nil }
         return MImage(texture: tex)
@@ -109,12 +134,14 @@ public final class CaptureDevice: NSObject {
 
     // MARK: - Private Setup
 
+    /// Create the CVMetalTextureCache for zero-copy texture conversion.
     private func setupTextureCache() {
         var cache: CVMetalTextureCache?
         CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
         self.textureCache = cache
     }
 
+    /// Configure the AVCaptureSession with the requested camera and output settings.
     private func setupCaptureSession(position: CameraPosition) {
         let session = AVCaptureSession()
         session.sessionPreset = .high
@@ -158,18 +185,29 @@ public final class CaptureDevice: NSObject {
 
 // MARK: - Capture Delegate (Thread-safe)
 
-/// AVCaptureVideoDataOutputSampleBufferDelegate（非 @MainActor、バックグラウンドスレッドで動作）
+/// Receive video sample buffers on a background thread and store the latest pixel buffer.
+///
+/// This class is intentionally not marked `@MainActor` because it operates
+/// on the capture session's background dispatch queue. Thread safety is
+/// ensured via an `NSLock`.
 private final class CaptureDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    /// The dispatch queue for receiving sample buffers.
     let queue = DispatchQueue(label: "metaphor.capture", qos: .userInteractive)
+
+    /// The lock protecting access to the latest pixel buffer.
     private let lock = NSLock()
+
+    /// The backing storage for the latest pixel buffer.
     private var _latestPixelBuffer: CVPixelBuffer?
 
+    /// The most recently captured pixel buffer, accessed in a thread-safe manner.
     var latestPixelBuffer: CVPixelBuffer? {
         lock.lock()
         defer { lock.unlock() }
         return _latestPixelBuffer
     }
 
+    /// Store the pixel buffer from the incoming sample buffer.
     func captureOutput(
         _ output: AVCaptureOutput,
         didOutput sampleBuffer: CMSampleBuffer,

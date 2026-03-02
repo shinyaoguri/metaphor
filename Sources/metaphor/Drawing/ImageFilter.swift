@@ -2,58 +2,62 @@ import Metal
 
 // MARK: - Filter Type
 
-/// 画像フィルタの種類（Processing互換 + 拡張）
+/// Define image filter types (Processing-compatible and extended).
 public enum FilterType: Sendable {
-    /// 閾値フィルタ（0.0〜1.0）
+    /// Threshold filter (0.0 to 1.0).
     case threshold(Float)
-    /// グレースケール変換
+    /// Grayscale conversion.
     case gray
-    /// 色反転
+    /// Color inversion.
     case invert
-    /// ポスタライズ（2〜255段階）
+    /// Posterize effect (2 to 255 levels).
     case posterize(Int)
-    /// ぼかし（半径）
+    /// Blur effect (radius).
     case blur(Int)
-    /// 収縮（暗い部分を拡大）
+    /// Erosion (expand dark regions).
     case erode
-    /// 膨張（明るい部分を拡大）
+    /// Dilation (expand bright regions).
     case dilate
-    /// エッジ検出（Sobelフィルタ）
+    /// Edge detection (Sobel filter).
     case edgeDetect
-    /// シャープ化（amount: 強度、0.5〜3.0推奨）
+    /// Sharpen effect (amount: recommended range 0.5 to 3.0).
     case sharpen(Float)
-    /// セピア調
+    /// Sepia tone.
     case sepia
-    /// ピクセレート（ブロックサイズ）
+    /// Pixelate effect (block size).
     case pixelate(Int)
 
     // MARK: - MPS Filters
 
-    /// MPS ガウシアンブラー（sigma 値指定、ハードウェア最適化）
+    /// MPS Gaussian blur (sigma value, hardware-optimized).
     case mpsBlur(sigma: Float)
-    /// MPS Sobel エッジ検出
+    /// MPS Sobel edge detection.
     case mpsSobel
-    /// MPS ラプラシアン
+    /// MPS Laplacian filter.
     case mpsLaplacian
-    /// MPS モルフォロジー収縮
+    /// MPS morphological erosion.
     case mpsErode(radius: Int)
-    /// MPS モルフォロジー膨張
+    /// MPS morphological dilation.
     case mpsDilate(radius: Int)
-    /// MPS メディアンフィルタ
+    /// MPS median filter.
     case mpsMedian(diameter: Int)
-    /// MPS 閾値二値化
+    /// MPS threshold binarization.
     case mpsThreshold(Float)
 }
 
 // MARK: - Image Filter (CPU)
 
-/// MImageのpixels配列に対してフィルタを適用するユーティリティ
+/// Provide CPU-based filter operations on MImage pixel arrays.
 ///
-/// 使用前にloadPixels()、使用後にupdatePixels()が必要。
+/// Call loadPixels() before and updatePixels() after processing.
 @MainActor
 public enum ImageFilter {
 
-    /// MImageにフィルタを適用（loadPixels→処理→updatePixels を一括実行）
+    /// Apply a filter to an MImage, performing loadPixels, processing, and updatePixels in one step.
+    ///
+    /// - Parameters:
+    ///   - filter: The filter type to apply.
+    ///   - image: The target image.
     public static func apply(_ filter: FilterType, to image: MImage) {
         image.loadPixels()
         guard !image.pixels.isEmpty else { return }
@@ -61,7 +65,13 @@ public enum ImageFilter {
         image.updatePixels()
     }
 
-    /// ピクセル配列に直接フィルタを適用
+    /// Apply a filter directly to a pixel array.
+    ///
+    /// - Parameters:
+    ///   - filter: The filter type to apply.
+    ///   - pixels: The RGBA pixel data to modify in place.
+    ///   - width: The image width in pixels.
+    ///   - height: The image height in pixels.
     public static func applyToPixels(_ filter: FilterType, pixels: inout [UInt8], width: Int, height: Int) {
         switch filter {
         case .threshold(let level):
@@ -132,10 +142,10 @@ public enum ImageFilter {
     }
 
     private static func applyBlur(pixels: inout [UInt8], width: Int, height: Int, radius: Int) {
-        // Box blur（高速近似）
+        // Box blur (fast approximation)
         var temp = pixels
 
-        // 水平パス
+        // Horizontal pass
         for y in 0..<height {
             for x in 0..<width {
                 var rSum: Int = 0, gSum: Int = 0, bSum: Int = 0, aSum: Int = 0
@@ -158,7 +168,7 @@ public enum ImageFilter {
             }
         }
 
-        // 垂直パス
+        // Vertical pass
         for y in 0..<height {
             for x in 0..<width {
                 var rSum: Int = 0, gSum: Int = 0, bSum: Int = 0, aSum: Int = 0

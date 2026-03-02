@@ -1,12 +1,14 @@
 import Foundation
 
-/// ポストプロセスエフェクト用のMSLシェーダーソース
+/// Contains embedded MSL source code for post-processing effect shaders.
+///
+/// Includes invert, grayscale, vignette, chromatic aberration, color grading,
+/// gaussian blur (horizontal/vertical), bloom extract, and bloom composite.
 public enum PostProcessShaders {
 
-    /// カスタムシェーダーで使う共通構造体定義
+    /// MSL common struct definitions for custom post-process shaders.
     ///
-    /// ユーザーがカスタムポストプロセスシェーダーを書く際に、
-    /// このソースをプリフィックスとして使用する。
+    /// Use as a prefix when writing custom post-process shaders.
     /// ```swift
     /// let source = PostProcessShaders.commonStructs + """
     /// fragment float4 myEffect(
@@ -42,12 +44,12 @@ public enum PostProcessShaders {
     };
     """
 
-    /// 全ポストプロセスシェーダーを含むMSLソース
+    /// MSL source code for all post-process effect shaders.
     public static let source = """
     #include <metal_stdlib>
     using namespace metal;
 
-    // BlitVertexOut構造体（metaphor_blitVertexと同じ出力）
+    // PPVertexOut struct (same output as metaphor_blitVertex)
     struct PPVertexOut {
         float4 position [[position]];
         float2 texCoord;
@@ -226,16 +228,25 @@ public enum PostProcessShaders {
     }
     """
 
-    /// ポストプロセスシェーダーの関数名
+    /// Post-process shader function name constants.
     public enum FunctionName {
+        /// MSL function name for the invert post-process shader.
         public static let postInvert = "metaphor_postInvert"
+        /// MSL function name for the grayscale post-process shader.
         public static let postGrayscale = "metaphor_postGrayscale"
+        /// MSL function name for the vignette post-process shader.
         public static let postVignette = "metaphor_postVignette"
+        /// MSL function name for the chromatic aberration post-process shader.
         public static let postChromaticAberration = "metaphor_postChromaticAberration"
+        /// MSL function name for the color grading post-process shader.
         public static let postColorGrade = "metaphor_postColorGrade"
+        /// MSL function name for the horizontal gaussian blur post-process shader.
         public static let postBlurH = "metaphor_postBlurH"
+        /// MSL function name for the vertical gaussian blur post-process shader.
         public static let postBlurV = "metaphor_postBlurV"
+        /// MSL function name for the bloom extract post-process shader.
         public static let postBloomExtract = "metaphor_postBloomExtract"
+        /// MSL function name for the bloom composite post-process shader.
         public static let postBloomComposite = "metaphor_postBloomComposite"
     }
 }

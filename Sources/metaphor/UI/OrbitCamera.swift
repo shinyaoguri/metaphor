@@ -1,13 +1,14 @@
 import simd
 import Foundation
 
-/// マウスドラッグによるインタラクティブ 3D カメラオービットコントローラー
+/// Control a 3D camera orbit interactively via mouse drag and scroll.
 ///
-/// 球面座標系でカメラ位置を管理し、マウスドラッグで回転、スクロールでズームを行う。
+/// Manages camera position in spherical coordinates. Mouse drag rotates the camera
+/// around the target, and scroll input adjusts the zoom distance.
 ///
 /// ```swift
 /// func draw() {
-///     orbitControl()  // 自動でマウスドラッグ → カメラ回転
+///     orbitControl()  // automatically maps mouse drag to camera rotation
 ///     box(100)
 /// }
 /// ```
@@ -16,51 +17,53 @@ public final class OrbitCamera {
 
     // MARK: - Camera Parameters
 
-    /// 注視点
+    /// The point the camera looks at.
     public var target: SIMD3<Float> = .zero
 
-    /// カメラ距離
+    /// The distance from the camera to the target.
     public var distance: Float = 500
 
-    /// 水平角（ラジアン）
+    /// The horizontal angle in radians (rotation around the Y axis).
     public var azimuth: Float = 0
 
-    /// 垂直角（ラジアン）
+    /// The vertical angle in radians (rotation above/below the horizon).
     public var elevation: Float = 0.3
 
     // MARK: - Sensitivity
 
-    /// マウスドラッグの感度
+    /// The sensitivity of mouse drag rotation.
     public var sensitivity: Float = 0.005
 
-    /// スクロールズームの感度
+    /// The sensitivity of scroll wheel zoom.
     public var zoomSensitivity: Float = 0.1
 
     // MARK: - Limits
 
-    /// 最小距離
+    /// The minimum allowed distance from the target.
     public var minDistance: Float = 1.0
 
-    /// 最大距離
+    /// The maximum allowed distance from the target.
     public var maxDistance: Float = 10000.0
 
-    /// 最小仰角
+    /// The minimum elevation angle in radians.
     public var minElevation: Float = -Float.pi / 2 + 0.01
 
-    /// 最大仰角
+    /// The maximum elevation angle in radians.
     public var maxElevation: Float = Float.pi / 2 - 0.01
 
     // MARK: - Damping
 
-    /// ダンピング係数（0 = ダンピングなし、1 に近いほど慣性が強い）
+    /// The damping coefficient (0 = no damping, closer to 1 = stronger inertia).
     public var damping: Float = 0
 
+    /// The current rotational velocity around the Y axis.
     private var velocityAzimuth: Float = 0
+    /// The current rotational velocity around the horizontal axis.
     private var velocityElevation: Float = 0
 
     // MARK: - Computed Properties
 
-    /// カメラの位置（球面座標 → 直交座標）
+    /// Compute the camera position by converting spherical coordinates to Cartesian.
     public var eye: SIMD3<Float> {
         let x = distance * cos(elevation) * sin(azimuth)
         let y = distance * sin(elevation)
@@ -68,14 +71,19 @@ public final class OrbitCamera {
         return target + SIMD3(x, y, z)
     }
 
-    /// カメラのアップベクトル
+    /// Return the camera up vector.
     public var up: SIMD3<Float> {
         SIMD3(0, 1, 0)
     }
 
+    /// Create a new OrbitCamera with default parameters.
     public init() {}
 
-    /// カスタム初期設定
+    /// Create a new OrbitCamera with custom initial settings.
+    /// - Parameters:
+    ///   - distance: The initial distance from the target.
+    ///   - azimuth: The initial horizontal angle in radians (default: 0).
+    ///   - elevation: The initial vertical angle in radians (default: 0.3).
     public init(distance: Float, azimuth: Float = 0, elevation: Float = 0.3) {
         self.distance = distance
         self.azimuth = azimuth
@@ -84,10 +92,10 @@ public final class OrbitCamera {
 
     // MARK: - Input Handling
 
-    /// マウスドラッグを処理
+    /// Apply mouse drag deltas to rotate the camera.
     /// - Parameters:
-    ///   - dx: X方向のドラッグ量（ピクセル）
-    ///   - dy: Y方向のドラッグ量（ピクセル）
+    ///   - dx: The horizontal drag amount in pixels.
+    ///   - dy: The vertical drag amount in pixels.
     public func handleMouseDrag(dx: Float, dy: Float) {
         let dAzimuth = -dx * sensitivity
         let dElevation = dy * sensitivity
@@ -102,14 +110,14 @@ public final class OrbitCamera {
         }
     }
 
-    /// スクロール（ズーム）を処理
-    /// - Parameter delta: スクロール量
+    /// Apply scroll input to adjust the zoom distance.
+    /// - Parameter delta: The scroll delta value.
     public func handleScroll(delta: Float) {
         distance -= delta * zoomSensitivity * distance * 0.01
         distance = max(minDistance, min(maxDistance, distance))
     }
 
-    /// ダンピング更新（毎フレーム呼ぶ）
+    /// Apply damping to velocities and update angles (call every frame).
     public func update() {
         guard damping > 0 else { return }
 
@@ -120,12 +128,16 @@ public final class OrbitCamera {
         velocityAzimuth *= damping
         velocityElevation *= damping
 
-        // 微小な速度はゼロに
+        // Zero out negligible velocities
         if abs(velocityAzimuth) < 0.0001 { velocityAzimuth = 0 }
         if abs(velocityElevation) < 0.0001 { velocityElevation = 0 }
     }
 
-    /// カメラをリセット
+    /// Reset the camera to the specified state.
+    /// - Parameters:
+    ///   - distance: The distance to reset to (default: 500).
+    ///   - azimuth: The azimuth angle to reset to (default: 0).
+    ///   - elevation: The elevation angle to reset to (default: 0.3).
     public func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3) {
         self.distance = distance
         self.azimuth = azimuth

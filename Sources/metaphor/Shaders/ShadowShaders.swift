@@ -1,9 +1,9 @@
 import Foundation
 
-/// シャドウマッピング用シェーダーソース
+/// Contains embedded MSL source code for shadow mapping shaders.
 public enum ShadowShaders {
 
-    /// シャドウ深度パス用の MSL ソース
+    /// MSL source code for the shadow depth pass shader.
     public static let depthSource = """
     #include <metal_stdlib>
     using namespace metal;

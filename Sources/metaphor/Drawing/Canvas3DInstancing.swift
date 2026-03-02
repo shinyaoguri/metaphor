@@ -3,59 +3,78 @@ import simd
 
 // MARK: - Per-Instance GPU Data
 
-/// Canvas3D インスタンシング用 per-instance データ（160 bytes, 16-byte aligned）
+/// Per-instance data for Canvas3D instanced drawing (160 bytes, 16-byte aligned).
 ///
-/// vertex shader が instance_id でインデックスし、
-/// 各インスタンスの transform と color を読み取る。
+/// The vertex shader indexes by `instance_id` to read each instance's transform and color.
 struct InstanceData3D {
+    /// The model transform matrix for this instance.
     var modelMatrix: float4x4       // 64 bytes
+    /// The normal transform matrix for this instance.
     var normalMatrix: float4x4      // 64 bytes
+    /// The tint color (RGBA) for this instance.
     var color: SIMD4<Float>         // 16 bytes
+    /// Padding for 16-byte alignment.
     var _pad: SIMD4<Float> = .zero  // 16 bytes (alignment)
 }
 
 // MARK: - Scene Uniforms (per-batch, shared across instances)
 
-/// インスタンシング描画のシーン共通ユニフォーム（96 bytes）
+/// Scene-wide uniforms shared across all instances in a batch (96 bytes).
 ///
-/// 全インスタンスで共有される view/projection、カメラ、ライト数を保持する。
+/// Contains view/projection matrix, camera position, and light count.
 struct InstancedSceneUniforms {
+    /// The combined view-projection matrix.
     var viewProjectionMatrix: float4x4  // 64 bytes
+    /// The camera position in world space.
     var cameraPosition: SIMD4<Float>    // 16 bytes
+    /// The current frame time.
     var time: Float                      // 4 bytes
+    /// The number of active lights.
     var lightCount: UInt32               // 4 bytes
+    /// Whether the mesh has a texture bound.
     var hasTexture: UInt32 = 0           // 4 bytes
+    /// Padding for alignment.
     var _pad2: UInt32 = 0                // 4 bytes
 }
 
 // MARK: - Instance Batcher
 
-/// Canvas3D の自動インスタンシングバッチャー
+/// Automatic instancing batcher for Canvas3D.
 ///
-/// 同一メッシュ＋同一マテリアル＋同一テクスチャの連続描画を検出し、
-/// per-instance データをバッファに蓄積する。
-/// flush 時に1回の instanced draw call で一括描画する。
+/// Detects consecutive draws of the same mesh, material, and texture,
+/// accumulates per-instance data into a buffer, and issues a single
+/// instanced draw call on flush.
 @MainActor
 final class InstanceBatcher3D {
 
     // MARK: - Constants
 
+    /// Maximum number of instances per batch.
     static let maxInstancesPerBatch: Int = 16384
+    /// Number of triple-buffered GPU buffers.
     static let bufferCount: Int = 3
 
     // MARK: - Batch Key
 
-    /// バッチング可否を判定するキー
+    /// Key that determines whether draws can be batched together.
     ///
-    /// 全フィールドが一致する連続描画のみバッチされる。
+    /// All fields must match for consecutive draws to be batched.
     struct BatchKey: Equatable {
+        /// Object identifier of the mesh.
         let meshID: ObjectIdentifier
+        /// Whether the mesh uses texture coordinates.
         let isTextured: Bool
+        /// Object identifier of the bound texture, if any.
         let textureID: ObjectIdentifier?
+        /// The material properties for this batch.
         let material: Material3D
+        /// Object identifier of a custom material, if any.
         let customMaterialID: ObjectIdentifier?
+        /// Whether fill drawing is enabled.
         let hasFill: Bool
+        /// Whether stroke (wireframe) drawing is enabled.
         let hasStroke: Bool
+        /// The stroke color for wireframe rendering.
         let strokeColor: SIMD4<Float>
 
         static func == (lhs: BatchKey, rhs: BatchKey) -> Bool {
@@ -75,25 +94,39 @@ final class InstanceBatcher3D {
 
     // MARK: - GPU Buffers
 
+    /// The Metal device used to create buffers.
     private let device: MTLDevice
+    /// Triple-buffered instance data buffers.
     private let instanceBuffers: [MTLBuffer]
+    /// Raw pointers into each instance buffer for fast writes.
     private let instancePointers: [UnsafeMutablePointer<InstanceData3D>]
+    /// Index of the currently active buffer in the triple-buffer ring.
     private var currentBufferIndex: Int = 0
 
     // MARK: - Current Batch State
 
+    /// The batch key for the current in-progress batch, or nil if no batch is active.
     private(set) var currentBatchKey: BatchKey?
+    /// The number of instances accumulated in the current batch.
     private(set) var instanceCount: Int = 0
+    /// The mesh used in the current batch.
     private(set) var currentMesh: Mesh?
+    /// The texture bound in the current batch.
     private(set) var currentTexture: MTLTexture?
+    /// The material used in the current batch.
     private(set) var currentMaterial: Material3D = .default
+    /// The custom material used in the current batch, if any.
     private(set) var currentCustomMaterial: CustomMaterial?
+    /// Whether fill drawing is enabled in the current batch.
     private(set) var currentHasFill: Bool = true
+    /// Whether stroke drawing is enabled in the current batch.
     private(set) var currentHasStroke: Bool = false
+    /// The stroke color used in the current batch.
     private(set) var currentStrokeColor: SIMD4<Float> = .one
 
     // MARK: - Init
 
+    /// Creates a new 3D instance batcher with triple-buffered GPU storage.
     init(device: MTLDevice) {
         self.device = device
         let stride = MemoryLayout<InstanceData3D>.stride
@@ -114,6 +147,7 @@ final class InstanceBatcher3D {
 
     // MARK: - Frame Lifecycle
 
+    /// Prepares the batcher for a new frame by selecting the buffer and resetting state.
     func beginFrame(bufferIndex: Int) {
         currentBufferIndex = bufferIndex % Self.bufferCount
         reset()
@@ -121,10 +155,10 @@ final class InstanceBatcher3D {
 
     // MARK: - Instance Accumulation
 
-    /// インスタンスをバッチに追加する。
+    /// Tries to add an instance to the current batch.
     ///
-    /// key が現在のバッチと一致し、バッファに空きがあれば追加して true を返す。
-    /// key 不一致またはバッファ満杯の場合は false を返す（呼び出し側で flush が必要）。
+    /// Returns `true` if the key matches the current batch and there is buffer space.
+    /// Returns `false` if the key differs or the buffer is full (caller must flush first).
     func tryAddInstance(
         key: BatchKey,
         mesh: Mesh,
@@ -143,7 +177,7 @@ final class InstanceBatcher3D {
                 return false
             }
         } else {
-            // 新しいバッチを開始
+            // Start a new batch
             currentBatchKey = key
             currentMesh = mesh
             currentTexture = texture
@@ -163,12 +197,12 @@ final class InstanceBatcher3D {
         return true
     }
 
-    /// 現在のインスタンスバッファ
+    /// The currently active instance data buffer.
     var currentBuffer: MTLBuffer {
         instanceBuffers[currentBufferIndex]
     }
 
-    /// バッチをリセット
+    /// Resets the batch state for a new batch.
     func reset() {
         instanceCount = 0
         currentBatchKey = nil

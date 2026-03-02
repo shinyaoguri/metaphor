@@ -1,18 +1,23 @@
-/// Canvas3D インスタンシング描画用シェーダー
+/// Contains embedded MSL source code for Canvas3D instanced drawing shaders.
 ///
-/// `instance_id` で per-instance データ（transform, color）を読み取り、
-/// 同一メッシュの大量描画を1回の draw call で処理する。
+/// Uses `instance_id` to read per-instance data (transform, color),
+/// allowing batch rendering of identical meshes in a single draw call.
 enum Canvas3DInstancedShaders {
 
     // MARK: - Function Names
 
+    /// MSL function name for the untextured instanced vertex shader.
     static let vertexFunctionName = "metaphor_canvas3DInstancedVertex"
+    /// MSL function name for the untextured instanced fragment shader.
     static let fragmentFunctionName = "metaphor_canvas3DInstancedFragment"
+    /// MSL function name for the textured instanced vertex shader.
     static let texturedVertexFunctionName = "metaphor_canvas3DTexInstancedVertex"
+    /// MSL function name for the textured instanced fragment shader.
     static let texturedFragmentFunctionName = "metaphor_canvas3DTexInstancedFragment"
 
     // MARK: - MSL Source
 
+    /// MSL source code for Canvas3D instanced rendering (untextured and textured variants).
     static let source = """
     #include <metal_stdlib>
     using namespace metal;

@@ -6,19 +6,24 @@ import AppKit
 import UIKit
 #endif
 
-/// 画像を表すクラス。MTLTextureをラップする。
+/// Represent an image by wrapping an `MTLTexture`.
 @MainActor
 public final class MImage {
-    /// Metal テクスチャ
+    /// The underlying Metal texture backing this image.
     public private(set) var texture: MTLTexture
 
-    /// 画像の幅（ピクセル）
+    /// The width of the image in pixels.
     public private(set) var width: Float
 
-    /// 画像の高さ（ピクセル）
+    /// The height of the image in pixels.
     public private(set) var height: Float
 
-    /// ファイルパスから読み込み
+    /// Create an image by loading a texture from a file path.
+    ///
+    /// - Parameters:
+    ///   - path: The absolute file path to the image.
+    ///   - device: The Metal device used to create the texture.
+    /// - Throws: An error if the texture cannot be loaded from the given path.
     public init(path: String, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         let url = URL(fileURLWithPath: path)
@@ -32,7 +37,12 @@ public final class MImage {
         self.height = Float(texture.height)
     }
 
-    /// バンドルリソースから読み込み
+    /// Create an image by loading a named resource from the app bundle.
+    ///
+    /// - Parameters:
+    ///   - name: The name of the image resource in the bundle.
+    ///   - device: The Metal device used to create the texture.
+    /// - Throws: An error if the named resource cannot be found or loaded.
     public init(named name: String, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         let options: [MTKTextureLoader.Option: Any] = [
@@ -46,7 +56,12 @@ public final class MImage {
     }
 
     #if os(macOS)
-    /// NSImageから生成
+    /// Create an image from an `NSImage`.
+    ///
+    /// - Parameters:
+    ///   - nsImage: The `NSImage` to convert into a Metal texture.
+    ///   - device: The Metal device used to create the texture.
+    /// - Throws: ``MImageError/invalidImage`` if the `NSImage` cannot be converted to a `CGImage`.
     public init(nsImage: NSImage, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         guard let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -62,7 +77,12 @@ public final class MImage {
         self.height = Float(texture.height)
     }
     #elseif os(iOS)
-    /// UIImageから生成
+    /// Create an image from a `UIImage`.
+    ///
+    /// - Parameters:
+    ///   - uiImage: The `UIImage` to convert into a Metal texture.
+    ///   - device: The Metal device used to create the texture.
+    /// - Throws: ``MImageError/invalidImage`` if the `UIImage` does not contain a valid `CGImage`.
     public init(uiImage: UIImage, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         guard let cgImage = uiImage.cgImage else {
@@ -79,7 +99,9 @@ public final class MImage {
     }
     #endif
 
-    /// 既存のMTLTextureから生成
+    /// Create an image from an existing `MTLTexture`.
+    ///
+    /// - Parameter texture: The Metal texture to wrap.
     public init(texture: MTLTexture) {
         self.texture = texture
         self.width = Float(texture.width)
@@ -88,10 +110,14 @@ public final class MImage {
 
     // MARK: - Pixel Access
 
-    /// ピクセルデータ（RGBA、loadPixels()後に有効）
+    /// The raw RGBA pixel data, populated after calling ``loadPixels()``.
     public var pixels: [UInt8] = []
 
-    /// GPUテクスチャからCPUにピクセルデータを読み込む
+    /// Load pixel data from the GPU texture into the ``pixels`` array on the CPU.
+    ///
+    /// For textures with private storage mode, this method creates a staging
+    /// texture with managed storage and performs a blit copy before reading.
+    /// The resulting data is converted from BGRA to RGBA order.
     public func loadPixels() {
         let w = Int(width)
         let h = Int(height)
@@ -102,7 +128,7 @@ public final class MImage {
                                size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
-            // Private texture: blit で managed ステージングテクスチャにコピーしてから読み取る
+            // Private texture: blit to a managed staging texture, then read back
             let device = texture.device
             guard let commandQueue = device.makeCommandQueue(),
                   let commandBuffer = commandQueue.makeCommandBuffer() else {
@@ -132,7 +158,7 @@ public final class MImage {
             texture.getBytes(&pixels, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
         }
 
-        // BGRA → RGBA 変換
+        // Convert BGRA to RGBA
         for i in stride(from: 0, to: pixels.count, by: 4) {
             let b = pixels[i]
             pixels[i] = pixels[i + 2]
@@ -140,14 +166,18 @@ public final class MImage {
         }
     }
 
-    /// CPUのピクセルデータをGPUテクスチャに書き戻す
+    /// Write the CPU ``pixels`` array back to the GPU texture.
+    ///
+    /// The pixel data is converted from RGBA back to BGRA before uploading.
+    /// If the current texture has private storage mode, a new managed texture
+    /// is created to replace it, since private textures cannot be written from the CPU.
     public func updatePixels() {
         let w = Int(width)
         let h = Int(height)
         let bytesPerRow = w * 4
         guard pixels.count == bytesPerRow * h else { return }
 
-        // RGBA → BGRA 変換
+        // Convert RGBA to BGRA
         var bgra = pixels
         for i in stride(from: 0, to: bgra.count, by: 4) {
             let r = bgra[i]
@@ -159,7 +189,7 @@ public final class MImage {
                                size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
-            // Private texture には CPU 書き込みできないので managed テクスチャを新規作成して置換
+            // Cannot write to a private texture from the CPU; create a new managed texture as replacement
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
             desc.storageMode = .managed
@@ -172,7 +202,15 @@ public final class MImage {
         }
     }
 
-    /// 指定座標のピクセル色を返す（loadPixels()後に有効）
+    /// Return the color of the pixel at the specified coordinates.
+    ///
+    /// Call ``loadPixels()`` before using this method to ensure the ``pixels``
+    /// array is populated.
+    ///
+    /// - Parameters:
+    ///   - x: The horizontal pixel coordinate.
+    ///   - y: The vertical pixel coordinate.
+    /// - Returns: The ``Color`` at the given position, or black if out of bounds or pixels are not loaded.
     public func get(_ x: Int, _ y: Int) -> Color {
         let w = Int(width)
         guard x >= 0, x < w, y >= 0, y < Int(height) else { return .black }
@@ -186,7 +224,15 @@ public final class MImage {
         )
     }
 
-    /// 指定座標にピクセル色を設定（updatePixels()で反映）
+    /// Set the color of the pixel at the specified coordinates.
+    ///
+    /// Changes are stored in the ``pixels`` array and are not reflected on
+    /// the GPU until ``updatePixels()`` is called.
+    ///
+    /// - Parameters:
+    ///   - x: The horizontal pixel coordinate.
+    ///   - y: The vertical pixel coordinate.
+    ///   - color: The ``Color`` to write at the given position.
     public func set(_ x: Int, _ y: Int, _ color: Color) {
         let w = Int(width)
         guard x >= 0, x < w, y >= 0, y < Int(height) else { return }
@@ -201,7 +247,11 @@ public final class MImage {
         pixels[i + 3] = UInt8(max(0, min(255, color.a * 255)))
     }
 
-    /// テクスチャを差し替える（GPU フィルタ適用後に使用）
+    /// Replace the backing texture with a new one, typically after applying a GPU filter.
+    ///
+    /// This resets the ``pixels`` array since the CPU data is no longer in sync.
+    ///
+    /// - Parameter newTexture: The new Metal texture to use.
     internal func replaceTexture(_ newTexture: MTLTexture) {
         self.texture = newTexture
         self.width = Float(newTexture.width)
@@ -209,12 +259,23 @@ public final class MImage {
         self.pixels = []
     }
 
-    /// フィルタを適用（loadPixels→処理→updatePixels を一括実行）
+    /// Apply an image filter by performing ``loadPixels()``, processing, and ``updatePixels()`` in one step.
+    ///
+    /// - Parameter type: The ``FilterType`` specifying which filter to apply.
     public func filter(_ type: FilterType) {
         ImageFilter.apply(type, to: self)
     }
 
-    /// 空のMImageを作成（ピクセル操作用）
+    /// Create an empty image suitable for pixel manipulation.
+    ///
+    /// The returned image has managed storage mode with both shader read and
+    /// write usage, and its ``pixels`` array is pre-allocated with zeroes.
+    ///
+    /// - Parameters:
+    ///   - width: The width of the image in pixels.
+    ///   - height: The height of the image in pixels.
+    ///   - device: The Metal device used to create the texture.
+    /// - Returns: A new ``MImage`` instance, or `nil` if the texture could not be created.
     public static func createImage(_ width: Int, _ height: Int, device: MTLDevice) -> MImage? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm,
@@ -231,6 +292,8 @@ public final class MImage {
     }
 }
 
+/// Represent errors that can occur when creating an ``MImage``.
 public enum MImageError: Error {
+    /// The source image is invalid or could not be converted to a `CGImage`.
     case invalidImage
 }

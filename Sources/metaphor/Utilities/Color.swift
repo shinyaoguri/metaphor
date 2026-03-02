@@ -1,19 +1,29 @@
 import Metal
 import simd
 
-/// RGBA色表現
+/// Represents an RGBA color with floating-point components.
 ///
-/// 全ての値は0.0〜1.0の範囲。
-/// RGB、HSB、グレースケール、hex形式の初期化に対応。
+/// All component values are in the range 0.0 to 1.0.
+/// Supports initialization from RGB, HSB, grayscale, and hex formats.
 public struct Color: Sendable, Equatable {
+    /// The red component, in the range 0.0 to 1.0.
     public var r: Float
+    /// The green component, in the range 0.0 to 1.0.
     public var g: Float
+    /// The blue component, in the range 0.0 to 1.0.
     public var b: Float
+    /// The alpha (opacity) component, in the range 0.0 to 1.0.
     public var a: Float
 
     // MARK: - RGB
 
-    /// RGBコンポーネントから生成（0.0〜1.0）
+    /// Creates a color from RGB components in the range 0.0 to 1.0.
+    ///
+    /// - Parameters:
+    ///   - r: The red component.
+    ///   - g: The green component.
+    ///   - b: The blue component.
+    ///   - a: The alpha component. Defaults to 1.0 (fully opaque).
     public init(r: Float, g: Float, b: Float, a: Float = 1.0) {
         self.r = r
         self.g = g
@@ -23,7 +33,11 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Grayscale
 
-    /// グレースケールから生成（0.0 = 黒、1.0 = 白）
+    /// Creates a grayscale color where 0.0 is black and 1.0 is white.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale value.
+    ///   - alpha: The alpha component. Defaults to 1.0 (fully opaque).
     public init(gray: Float, alpha: Float = 1.0) {
         self.r = gray
         self.g = gray
@@ -33,12 +47,13 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - HSB
 
-    /// HSB（色相・彩度・明度）から生成
+    /// Creates a color from hue, saturation, and brightness components.
+    ///
     /// - Parameters:
-    ///   - hue: 色相 0.0〜1.0
-    ///   - saturation: 彩度 0.0〜1.0
-    ///   - brightness: 明度 0.0〜1.0
-    ///   - alpha: 不透明度 0.0〜1.0
+    ///   - hue: The hue value in the range 0.0 to 1.0.
+    ///   - saturation: The saturation value in the range 0.0 to 1.0.
+    ///   - brightness: The brightness value in the range 0.0 to 1.0.
+    ///   - alpha: The alpha component. Defaults to 1.0 (fully opaque).
     public init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0) {
         let h = ((hue.truncatingRemainder(dividingBy: 1.0)) + 1.0)
             .truncatingRemainder(dividingBy: 1.0) * 6.0
@@ -69,7 +84,9 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Hex
 
-    /// hex値から生成（0xRRGGBB または 0xAARRGGBB）
+    /// Creates a color from an integer hex value in the format 0xRRGGBB or 0xAARRGGBB.
+    ///
+    /// - Parameter hex: The hex color value. Values greater than 0xFFFFFF are treated as AARRGGBB.
     public init(hex: UInt32) {
         if hex > 0xFFFFFF {
             self.a = Float((hex >> 24) & 0xFF) / 255.0
@@ -84,7 +101,9 @@ public struct Color: Sendable, Equatable {
         }
     }
 
-    /// hex文字列から生成（"#RRGGBB" または "#AARRGGBB"）
+    /// Creates a color from a hex string in the format "#RRGGBB" or "#AARRGGBB".
+    ///
+    /// - Parameter hex: The hex color string, optionally prefixed with "#".
     public init?(hex: String) {
         var str = hex
         if str.hasPrefix("#") { str.removeFirst() }
@@ -94,12 +113,14 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - SIMD Conversion
 
-    /// SIMD4<Float>表現 (r, g, b, a)
+    /// Returns the color as a `SIMD4<Float>` in (r, g, b, a) order.
     public var simd: SIMD4<Float> {
         SIMD4<Float>(r, g, b, a)
     }
 
-    /// SIMD4<Float>から生成
+    /// Creates a color from a `SIMD4<Float>` vector interpreted as (r, g, b, a).
+    ///
+    /// - Parameter simd: The SIMD vector containing color components.
     public init(_ simd: SIMD4<Float>) {
         self.r = simd.x
         self.g = simd.y
@@ -109,19 +130,27 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Metal Conversion
 
-    /// MTLClearColor表現
+    /// Returns the color as an `MTLClearColor` for use with Metal render passes.
     public var clearColor: MTLClearColor {
         MTLClearColor(red: Double(r), green: Double(g), blue: Double(b), alpha: Double(a))
     }
 
     // MARK: - Color Manipulation
 
-    /// アルファ値を変更した新しい色を返す
+    /// Returns a new color with the specified alpha value.
+    ///
+    /// - Parameter alpha: The new alpha value.
+    /// - Returns: A copy of this color with the given alpha.
     public func withAlpha(_ alpha: Float) -> Color {
         Color(r: r, g: g, b: b, a: alpha)
     }
 
-    /// 2つの色の線形補間
+    /// Performs linear interpolation between this color and another.
+    ///
+    /// - Parameters:
+    ///   - other: The target color.
+    ///   - t: The interpolation factor, clamped to the range 0...1.
+    /// - Returns: The interpolated color.
     public func lerp(to other: Color, t: Float) -> Color {
         let t = max(0, min(1, t))
         return Color(
@@ -134,46 +163,76 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Named Colors
 
+    /// Pure black.
     public static let black = Color(gray: 0)
+    /// Pure white.
     public static let white = Color(gray: 1)
+    /// Pure red.
     public static let red = Color(r: 1, g: 0, b: 0)
+    /// Pure green.
     public static let green = Color(r: 0, g: 1, b: 0)
+    /// Pure blue.
     public static let blue = Color(r: 0, g: 0, b: 1)
+    /// Pure yellow.
     public static let yellow = Color(r: 1, g: 1, b: 0)
+    /// Pure cyan.
     public static let cyan = Color(r: 0, g: 1, b: 1)
+    /// Pure magenta.
     public static let magenta = Color(r: 1, g: 0, b: 1)
+    /// Orange.
     public static let orange = Color(r: 1, g: 0.6, b: 0)
+    /// Fully transparent black.
     public static let clear = Color(r: 0, g: 0, b: 0, a: 0)
 }
 
 // MARK: - Global Color Functions
 
-/// 2色間を線形補間
+/// Performs linear interpolation between two colors.
+///
+/// - Parameters:
+///   - c1: The starting color.
+///   - c2: The ending color.
+///   - t: The interpolation factor.
+/// - Returns: The interpolated color.
 public func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color {
     c1.lerp(to: c2, t: t)
 }
 
 // MARK: - Color Space
 
-/// 色空間
+/// Defines the color space used for color interpretation.
 public enum ColorSpace: Sendable {
+    /// Red, green, blue color space.
     case rgb
+    /// Hue, saturation, brightness color space.
     case hsb
 }
 
 // MARK: - Color Mode Config
 
-/// colorMode()の設定を保持する構造体
+/// Holds the configuration for the `colorMode()` function.
 ///
-/// ユーザーが指定した値を正規化してColorに変換する。
+/// Normalizes user-specified values and converts them into a ``Color`` instance.
 public struct ColorModeConfig: Sendable, Equatable {
+    /// The active color space.
     public var space: ColorSpace = .rgb
-    public var max1: Float = 1.0   // R or H の最大値
-    public var max2: Float = 1.0   // G or S の最大値
-    public var max3: Float = 1.0   // B or B の最大値
+    /// The maximum value for the first component (red or hue).
+    public var max1: Float = 1.0
+    /// The maximum value for the second component (green or saturation).
+    public var max2: Float = 1.0
+    /// The maximum value for the third component (blue or brightness).
+    public var max3: Float = 1.0
+    /// The maximum value for the alpha component.
     public var maxAlpha: Float = 1.0
 
-    /// 3値+αからColorに変換
+    /// Converts three component values and an optional alpha into a color.
+    ///
+    /// - Parameters:
+    ///   - v1: The first component value (red or hue).
+    ///   - v2: The second component value (green or saturation).
+    ///   - v3: The third component value (blue or brightness).
+    ///   - alpha: The alpha value. Defaults to `maxAlpha` when `nil`.
+    /// - Returns: The resulting color with normalized components.
     public func toColor(_ v1: Float, _ v2: Float, _ v3: Float, _ alpha: Float? = nil) -> Color {
         let nA = (alpha ?? maxAlpha) / maxAlpha
         switch space {
@@ -184,7 +243,12 @@ public struct ColorModeConfig: Sendable, Equatable {
         }
     }
 
-    /// グレースケール+αからColorに変換
+    /// Converts a grayscale value and an optional alpha into a color.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale value.
+    ///   - alpha: The alpha value. Defaults to `maxAlpha` when `nil`.
+    /// - Returns: The resulting grayscale color with normalized components.
     public func toGray(_ gray: Float, _ alpha: Float? = nil) -> Color {
         let nA = (alpha ?? maxAlpha) / maxAlpha
         return Color(gray: gray / max1, alpha: nA)

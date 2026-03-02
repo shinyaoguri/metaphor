@@ -1,9 +1,9 @@
 import CoreMIDI
 import Foundation
 
-/// MIDI 入出力マネージャー
+/// Manage MIDI input and output connections.
 ///
-/// CoreMIDI を使用して MIDI デバイスとの接続、メッセージの送受信を行う。
+/// Use CoreMIDI to connect to MIDI devices and send/receive messages.
 ///
 /// ```swift
 /// var midi: MIDIManager!
@@ -31,10 +31,10 @@ public final class MIDIManager {
 
     private var isRunning = false
 
-    /// CC 値のキャッシュ（[channel][cc] = value）
+    /// Cached CC values indexed by [channel][cc].
     private var ccValues: [[UInt8]] = Array(repeating: Array(repeating: 0, count: 128), count: 16)
 
-    /// 現在押されているノート
+    /// Currently held notes.
     private var activeNotes: Set<UInt16> = []  // channel << 8 | note
 
     // MARK: - Thread-safe Message Queue
@@ -49,24 +49,25 @@ public final class MIDIManager {
 
     // MARK: - Initialization
 
+    /// Create a MIDI manager.
     public init() {}
 
     // MARK: - Lifecycle
 
-    /// MIDI 入出力を開始
+    /// Start MIDI input and output.
     public func start() {
         guard !isRunning else { return }
 
         let buffer = messageBuffer
 
-        // MIDI Client 作成
+        // Create MIDI client
         var clientRef: MIDIClientRef = 0
         MIDIClientCreateWithBlock("metaphor.midi" as CFString, &clientRef) { _ in
-            // デバイス接続/切断通知（必要なら将来対応）
+            // Device connect/disconnect notifications (future use)
         }
         client = clientRef
 
-        // Input Port 作成
+        // Create input port
         var inPort: MIDIPortRef = 0
         MIDIInputPortCreateWithProtocol(
             client,
@@ -74,18 +75,18 @@ public final class MIDIManager {
             ._1_0,
             &inPort
         ) { eventList, _ in
-            // MIDIEventList をパース
+            // Parse MIDIEventList
             let messages = MIDIManager.parseEventList(eventList)
             buffer.append(messages)
         }
         inputPort = inPort
 
-        // Output Port 作成
+        // Create output port
         var outPort: MIDIPortRef = 0
         MIDIOutputPortCreate(client, "metaphor.midi.out" as CFString, &outPort)
         outputPort = outPort
 
-        // 全ソースに接続
+        // Connect to all available sources
         let sourceCount = MIDIGetNumberOfSources()
         for i in 0..<sourceCount {
             let source = MIDIGetSource(i)
@@ -95,7 +96,13 @@ public final class MIDIManager {
         isRunning = true
     }
 
-    /// MIDI 入出力を停止
+    deinit {
+        MIDIPortDispose(inputPort)
+        MIDIPortDispose(outputPort)
+        MIDIClientDispose(client)
+    }
+
+    /// Stop MIDI input and output.
     public func stop() {
         guard isRunning else { return }
 
@@ -111,8 +118,10 @@ public final class MIDIManager {
 
     // MARK: - Input: Polling
 
-    /// 受信したメッセージを取得してコールバックを呼ぶ
-    /// draw() の先頭で呼ぶ
+    /// Poll received messages and invoke registered callbacks.
+    ///
+    /// Call at the beginning of `draw()`.
+    /// - Returns: Array of received MIDI messages.
     public func poll() -> [MIDIMessage] {
         let messages = messageBuffer.drain()
         for msg in messages {
@@ -123,59 +132,80 @@ public final class MIDIManager {
 
     // MARK: - Input: CC Value Access
 
-    /// CC 値を取得（0〜127）
+    /// Return the normalized CC value (0.0 to 1.0).
     /// - Parameters:
-    ///   - cc: CC 番号（0-127）
-    ///   - channel: MIDI チャンネル（0-15、デフォルト0）
+    ///   - cc: CC number (0-127).
+    ///   - channel: MIDI channel (0-15, defaults to 0).
+    /// - Returns: Normalized CC value.
     public func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float {
         guard channel < 16, cc < 128 else { return 0 }
         return Float(ccValues[Int(channel)][Int(cc)]) / 127.0
     }
 
-    /// CC の生値を取得（0〜127）
+    /// Return the raw CC value (0 to 127).
+    /// - Parameters:
+    ///   - cc: CC number (0-127).
+    ///   - channel: MIDI channel (0-15, defaults to 0).
+    /// - Returns: Raw CC value.
     public func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8 {
         guard channel < 16, cc < 128 else { return 0 }
         return ccValues[Int(channel)][Int(cc)]
     }
 
-    /// ノートが押されているか
+    /// Check whether a note is currently held down.
+    /// - Parameters:
+    ///   - note: MIDI note number (0-127).
+    ///   - channel: MIDI channel (0-15, defaults to 0).
+    /// - Returns: `true` if the note is active.
     public func isNoteActive(_ note: UInt8, channel: UInt8 = 0) -> Bool {
         activeNotes.contains(UInt16(channel) << 8 | UInt16(note))
     }
 
     // MARK: - Input: Callbacks
 
-    /// Note On コールバック設定
-    /// - Parameter handler: (channel, note, velocity) -> Void
+    /// Register a Note On callback.
+    /// - Parameter handler: Closure invoked with (channel, note, velocity).
     public func onNoteOn(_ handler: @escaping (UInt8, UInt8, UInt8) -> Void) {
         noteOnHandler = handler
     }
 
-    /// Note Off コールバック設定
-    /// - Parameter handler: (channel, note, velocity) -> Void
+    /// Register a Note Off callback.
+    /// - Parameter handler: Closure invoked with (channel, note, velocity).
     public func onNoteOff(_ handler: @escaping (UInt8, UInt8, UInt8) -> Void) {
         noteOffHandler = handler
     }
 
-    /// Control Change コールバック設定
-    /// - Parameter handler: (channel, cc, value) -> Void
+    /// Register a Control Change callback.
+    /// - Parameter handler: Closure invoked with (channel, cc, value).
     public func onControlChange(_ handler: @escaping (UInt8, UInt8, UInt8) -> Void) {
         controlChangeHandler = handler
     }
 
     // MARK: - Output
 
-    /// Note On を送信
+    /// Send a Note On message.
+    /// - Parameters:
+    ///   - note: MIDI note number (0-127).
+    ///   - velocity: Note velocity (0-127, defaults to 100).
+    ///   - channel: MIDI channel (0-15, defaults to 0).
     public func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0) {
         sendMessage(status: 0x90 | (channel & 0x0F), data1: note, data2: velocity)
     }
 
-    /// Note Off を送信
+    /// Send a Note Off message.
+    /// - Parameters:
+    ///   - note: MIDI note number (0-127).
+    ///   - velocity: Release velocity (0-127, defaults to 0).
+    ///   - channel: MIDI channel (0-15, defaults to 0).
     public func sendNoteOff(note: UInt8, velocity: UInt8 = 0, channel: UInt8 = 0) {
         sendMessage(status: 0x80 | (channel & 0x0F), data1: note, data2: velocity)
     }
 
-    /// Control Change を送信
+    /// Send a Control Change message.
+    /// - Parameters:
+    ///   - cc: CC number (0-127).
+    ///   - value: CC value (0-127).
+    ///   - channel: MIDI channel (0-15, defaults to 0).
     public func sendControlChange(cc: UInt8, value: UInt8, channel: UInt8 = 0) {
         sendMessage(status: 0xB0 | (channel & 0x0F), data1: cc, data2: value)
     }
@@ -224,7 +254,7 @@ public final class MIDIManager {
                 let p = packet.pointee
                 let timestamp = p.timeStamp
 
-                // UMP 1.0: 各ワードを解析
+                // UMP 1.0: parse each word
                 withUnsafePointer(to: p.words) { wordsPtr in
                     wordsPtr.withMemoryRebound(to: UInt32.self, capacity: Int(p.wordCount)) { words in
                         for i in 0..<Int(p.wordCount) {

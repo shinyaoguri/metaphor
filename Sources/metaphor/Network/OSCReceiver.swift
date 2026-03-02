@@ -3,7 +3,7 @@ import Network
 
 // MARK: - OSC Value
 
-/// OSC メッセージの値
+/// Represent a value within an OSC message.
 public enum OSCValue: Sendable {
     case int(Int32)
     case float(Float)
@@ -44,10 +44,10 @@ private final class OSCMessageQueue: Sendable {
 
 // MARK: - OSCReceiver
 
-/// UDP OSC メッセージレシーバー
+/// Receive UDP OSC messages using Network.framework.
 ///
-/// Network.framework の NWListener を使って OSC 1.0 メッセージを受信する。
-/// VJ やインスタレーションでの外部制御に使用する。
+/// Use an NWListener to receive OSC 1.0 messages for external control
+/// in VJ and installation scenarios.
 ///
 /// ```swift
 /// let osc = createOSCReceiver(port: 9000)
@@ -57,7 +57,7 @@ private final class OSCMessageQueue: Sendable {
 ///     }
 /// }
 /// try osc.start()
-/// // draw() 内で自動ディスパッチ
+/// // Call in draw() for automatic dispatch
 /// osc.poll()
 /// ```
 @MainActor
@@ -65,49 +65,57 @@ public final class OSCReceiver {
 
     // MARK: - Public Properties
 
-    /// リッスンポート
+    /// Return the listening port number.
     public let port: UInt16
 
     // MARK: - Private
 
-    private var listener: NWListener?
-    private var isRunning = false
+    private nonisolated(unsafe) var listener: NWListener?
+    private nonisolated(unsafe) var isRunning = false
 
-    /// アドレス → ハンドラーマッピング
+    /// Address-to-handler mapping.
     private var handlers: [String: ([OSCValue]) -> Void] = [:]
 
-    /// ワイルドカードハンドラー（全メッセージ受信）
+    /// Wildcard handler that receives all messages.
     private var wildcardHandler: ((String, [OSCValue]) -> Void)?
 
-    /// スレッド安全なメッセージキュー
+    /// Thread-safe message queue.
     private let messageQueue = OSCMessageQueue()
 
     // MARK: - Initialization
 
-    /// OSCReceiver を作成
-    /// - Parameter port: UDP ポート番号
+    /// Create an OSC receiver.
+    /// - Parameter port: UDP port number to listen on.
     public init(port: UInt16) {
         self.port = port
     }
 
     // MARK: - Public API
 
-    /// 指定アドレスパターンのハンドラーを登録
+    /// Register a handler for a specific OSC address pattern.
+    /// - Parameters:
+    ///   - address: OSC address pattern to match.
+    ///   - handler: Closure invoked with the message values.
     public func on(_ address: String, handler: @escaping ([OSCValue]) -> Void) {
         handlers[address] = handler
     }
 
-    /// 全メッセージを受け取るワイルドカードハンドラーを登録
+    /// Register a wildcard handler that receives all messages.
+    /// - Parameter handler: Closure invoked with the address and values.
     public func onAny(handler: @escaping (String, [OSCValue]) -> Void) {
         wildcardHandler = handler
     }
 
-    /// 受信開始
+    /// Start listening for incoming OSC messages.
+    /// - Throws: `OSCReceiverError.invalidPort` if the port is invalid.
     public func start() throws {
         guard !isRunning else { return }
 
         let params = NWParameters.udp
-        let listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+            throw OSCReceiverError.invalidPort(port)
+        }
+        let listener = try NWListener(using: params, on: nwPort)
 
         let queue = messageQueue
 
@@ -130,7 +138,11 @@ public final class OSCReceiver {
         self.isRunning = true
     }
 
-    /// 受信停止
+    deinit {
+        listener?.cancel()
+    }
+
+    /// Stop listening for OSC messages.
     public func stop() {
         guard isRunning else { return }
         listener?.cancel()
@@ -138,7 +150,7 @@ public final class OSCReceiver {
         isRunning = false
     }
 
-    /// メインスレッドでキューされたメッセージをディスパッチ（draw() 内で呼ぶ）
+    /// Dispatch queued messages on the main thread (call inside `draw()`).
     public func poll() {
         let messages = messageQueue.dequeueAll()
         for msg in messages {
@@ -169,10 +181,12 @@ public final class OSCReceiver {
 
 // MARK: - OSC Parser
 
-/// OSC 1.0 バイナリパーサー
+/// Parse OSC 1.0 binary messages.
 enum OSCParser {
 
-    /// データをパースして OSCMessage の配列を返す
+    /// Parse binary data and return an array of OSC messages.
+    /// - Parameter data: Raw OSC binary data.
+    /// - Returns: Parsed OSC messages.
     static func parse(data: Data) -> [OSCMessage] {
         if data.count >= 8, String(data: data.prefix(8), encoding: .ascii)?.hasPrefix("#bundle") == true {
             return parseBundle(data: data)
@@ -184,7 +198,7 @@ enum OSCParser {
         }
     }
 
-    /// バンドルをパース
+    /// Parse an OSC bundle.
     private static func parseBundle(data: Data) -> [OSCMessage] {
         var messages: [OSCMessage] = []
         // #bundle\0 (8 bytes) + timetag (8 bytes) = 16 bytes header
@@ -206,15 +220,15 @@ enum OSCParser {
         return messages
     }
 
-    /// 単一メッセージをパース
+    /// Parse a single OSC message.
     private static func parseMessage(data: Data, offset: Int) -> (message: OSCMessage, bytesRead: Int)? {
         var pos = offset
 
-        // アドレスパターン
+        // Address pattern
         guard let address = readString(data: data, offset: pos) else { return nil }
         pos += alignedSize(address.utf8.count + 1)  // +1 for null terminator
 
-        // タイプタグ文字列
+        // Type tag string
         guard pos < data.count, data[pos] == 0x2C else {  // ','
             return (OSCMessage(address: address, values: []), pos - offset)
         }
@@ -222,7 +236,7 @@ enum OSCParser {
         guard let typeTags = readString(data: data, offset: pos) else { return nil }
         pos += alignedSize(typeTags.utf8.count + 1)
 
-        // 値をパース（先頭の ',' をスキップ）
+        // Parse values (skip the leading ',')
         var values: [OSCValue] = []
         for ch in typeTags.dropFirst() {  // skip ','
             switch ch {
@@ -260,7 +274,7 @@ enum OSCParser {
 
     // MARK: - Binary Helpers
 
-    /// null終端文字列を読む
+    /// Read a null-terminated string.
     private static func readString(data: Data, offset: Int) -> String? {
         guard offset < data.count else { return nil }
         var end = offset
@@ -271,7 +285,7 @@ enum OSCParser {
         return String(data: data[offset..<end], encoding: .ascii)
     }
 
-    /// Big-endian Int32 を読む
+    /// Read a big-endian Int32.
     private static func readInt32(data: Data, offset: Int) -> Int32 {
         data.withUnsafeBytes { ptr in
             let raw = ptr.load(fromByteOffset: offset, as: UInt32.self)
@@ -279,7 +293,7 @@ enum OSCParser {
         }
     }
 
-    /// Big-endian Float32 を読む
+    /// Read a big-endian Float32.
     private static func readFloat32(data: Data, offset: Int) -> Float {
         data.withUnsafeBytes { ptr in
             let raw = ptr.load(fromByteOffset: offset, as: UInt32.self)
@@ -288,8 +302,23 @@ enum OSCParser {
         }
     }
 
-    /// 4バイトアラインメント
+    /// Round a size up to 4-byte alignment.
     private static func alignedSize(_ size: Int) -> Int {
         (size + 3) & ~3
+    }
+}
+
+// MARK: - Error
+
+/// Represent errors that occur during OSC receiver operations.
+public enum OSCReceiverError: Error, LocalizedError {
+    /// Indicate that the specified port is invalid.
+    case invalidPort(UInt16)
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidPort(let p):
+            return "[metaphor] Invalid OSC port: \(p)"
+        }
     }
 }

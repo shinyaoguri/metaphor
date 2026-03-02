@@ -4,19 +4,19 @@ import simd
 
 // MARK: - Ray Trace Mode
 
-/// レイトレーシングのレンダリングモード
+/// Represent the rendering mode for ray tracing.
 public enum RayTraceMode: Sendable {
-    /// アンビエントオクルージョン
+    /// Ambient occlusion with configurable sample count and radius.
     case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)
-    /// ソフトシャドウ（指向性ライト）
+    /// Soft shadow from a directional light source.
     case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)
-    /// 簡易ディフューズシェーディング
+    /// Simple diffuse shading.
     case diffuse
 }
 
 // MARK: - RayTraceUniforms
 
-/// GPU に渡すユニフォーム
+/// Store the uniform data passed to ray tracing GPU shaders.
 struct RayTraceUniforms {
     var inverseView: float4x4
     var inverseProjection: float4x4
@@ -32,10 +32,11 @@ struct RayTraceUniforms {
 
 // MARK: - MPSRayTracer
 
-/// MPS ベースのレイトレーシングシステム
+/// Provide an MPS-based ray tracing system.
 ///
-/// MPSRayIntersector と MPSTriangleAccelerationStructure を使用し、
-/// GPU 上でレイトレーシングを実行する。
+/// Use MPSRayIntersector and MPSTriangleAccelerationStructure to perform
+/// GPU-accelerated ray tracing for ambient occlusion, soft shadows, and
+/// diffuse shading.
 ///
 /// ```swift
 /// let rt = try createRayTracer(width: 512, height: 512)
@@ -76,7 +77,7 @@ public final class MPSRayTracer {
     private var accumulateAOPipeline: MTLComputePipelineState?
     private var shadeDiffusePipeline: MTLComputePipelineState?
 
-    /// レイトレーシング結果テクスチャ
+    /// Return the ray tracing result texture.
     public var outputTexture: MTLTexture? { _outputTexture }
 
     // MARK: - Init
@@ -96,24 +97,33 @@ public final class MPSRayTracer {
 
     // MARK: - Public: Scene Building
 
-    /// メッシュをシーンに追加
+    /// Add a mesh to the ray tracing scene.
+    /// - Parameters:
+    ///   - mesh: The mesh to add.
+    ///   - transform: The world-space transform matrix to apply.
     public func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
         scene.addMesh(mesh, transform: transform)
     }
 
-    /// DynamicMesh をシーンに追加
+    /// Add a dynamic mesh to the ray tracing scene.
+    /// - Parameters:
+    ///   - mesh: The dynamic mesh to add.
+    ///   - transform: The world-space transform matrix to apply.
     public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         scene.addDynamicMesh(mesh, transform: transform)
     }
 
-    /// シーンをクリア
+    /// Clear all meshes from the scene and reset the acceleration structure.
     public func clearScene() {
         scene.clear()
         accelerationStructure = nil
         normalBuffer = nil
     }
 
-    /// アクセラレーション構造体を構築（メッシュ追加後に呼ぶ）
+    /// Build the acceleration structure from all added meshes.
+    ///
+    /// Call this after adding meshes and before tracing rays.
+    /// - Throws: ``MPSError`` if the scene is empty or buffer creation fails.
     public func buildAccelerationStructure() throws {
         let result = try scene.buildAccelerationStructure()
         self.accelerationStructure = result.accelerationStructure
@@ -129,11 +139,10 @@ public final class MPSRayTracer {
 
     // MARK: - Public: Tracing
 
-    /// レイトレーシングを実行
-    ///
+    /// Execute ray tracing with the specified mode and camera parameters.
     /// - Parameters:
-    ///   - mode: レンダリングモード
-    ///   - camera: カメラパラメータ (eye, center, up, fov)
+    ///   - mode: The rendering mode (ambient occlusion, soft shadow, or diffuse).
+    ///   - camera: The camera parameters (eye position, look-at center, up vector, and field of view).
     public func trace(
         mode: RayTraceMode,
         camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float)

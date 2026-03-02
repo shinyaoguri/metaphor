@@ -1,10 +1,10 @@
 import Metal
 import simd
 
-/// Immediate-mode 2D描画コンテキスト
+/// Provide an immediate-mode 2D drawing context powered by Metal.
 ///
-/// p5.js風のAPIでMetalの2D描画を行う。
-/// 事前確保した頂点バッファに形状を蓄積し、`end()`で一括描画する。
+/// Offers a p5.js-style API for 2D rendering with Metal.
+/// Accumulates shapes into pre-allocated vertex buffers and draws them in a single batch on ``end()``.
 ///
 /// ```swift
 /// let canvas = Canvas2D(renderer: renderer)
@@ -36,13 +36,13 @@ public final class Canvas2D {
     let unitRectBuffer: MTLBuffer
     let unitRectVertexCount: Int
 
-    /// トリプルバッファ (CPU/GPU同期競合を回避)
+    // Triple buffers to avoid CPU/GPU synchronization conflicts
     private static let bufferCount = 3
     private let vertexBuffers: [MTLBuffer]
     private let verticesArray: [UnsafeMutablePointer<Vertex2D>]
     private var currentBufferIndex: Int = 0
 
-    /// テクスチャ付きトリプルバッファ
+    // Textured triple buffers
     private let texturedVertexBuffers: [MTLBuffer]
     private let texturedVerticesArray: [UnsafeMutablePointer<TexturedVertex2D>]
     var texturedVertexCount: Int = 0
@@ -50,32 +50,32 @@ public final class Canvas2D {
     var currentBoundTexture: MTLTexture?
     let maxTexturedVertices: Int = 65536
 
-    /// 現在のバッファの頂点ポインタ
+    // Vertex pointer for the current buffer
     var vertices: UnsafeMutablePointer<Vertex2D> {
         verticesArray[currentBufferIndex]
     }
 
-    /// 現在のバッファ
+    // Current vertex buffer
     var vertexBuffer: MTLBuffer {
         vertexBuffers[currentBufferIndex]
     }
 
-    /// 現在のテクスチャバッファの頂点ポインタ
+    // Vertex pointer for the current textured buffer
     var texturedVertices: UnsafeMutablePointer<TexturedVertex2D> {
         texturedVerticesArray[currentBufferIndex]
     }
 
-    /// 現在のテクスチャバッファ
+    // Current textured vertex buffer
     private var texturedVertexBuffer: MTLBuffer {
         texturedVertexBuffers[currentBufferIndex]
     }
 
     // MARK: - Dimensions
 
-    /// キャンバスの幅（ピクセル）
+    /// The width of the canvas in pixels.
     public let width: Float
 
-    /// キャンバスの高さ（ピクセル）
+    /// The height of the canvas in pixels.
     public let height: Float
 
     // MARK: - Constants
@@ -87,7 +87,7 @@ public final class Canvas2D {
 
     var encoder: MTLRenderCommandEncoder?
 
-    /// 現在のレンダーコマンドエンコーダ（フレーム中のみ有効、上級者向け）
+    /// Access the current render command encoder, valid only during a frame.
     public var currentEncoder: MTLRenderCommandEncoder? { encoder }
     var vertexCount: Int = 0
     var bufferOffset: Int = 0
@@ -143,7 +143,7 @@ public final class Canvas2D {
         return arr
     }()
 
-    // MARK: - Contour State (穴あき多角形用)
+    // MARK: - Contour State (for polygons with holes)
 
     var contourVertices: [[(Float, Float)]] = []
     var isRecordingContour: Bool = false
@@ -151,13 +151,13 @@ public final class Canvas2D {
 
     // MARK: - Background Optimization
 
-    /// 何か描画済みかどうか（background() の最適化用）
+    // Tracks whether anything has been drawn (for background() optimization)
     var hasDrawnAnything: Bool = false
 
-    /// clearColor を設定するクロージャ（MetaphorRenderer から注入）
+    // Closure to set the clear color, injected by MetaphorRenderer
     var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
 
-    // MARK: - Style Snapshot (push/pop用)
+    // MARK: - Style Snapshot (for push/pop)
 
     struct StyleState {
         var transform: float3x3
@@ -217,7 +217,10 @@ public final class Canvas2D {
 
     // MARK: - Initialization
 
-    /// MetaphorRendererから生成
+    /// Create a canvas from a ``MetaphorRenderer`` instance.
+    ///
+    /// - Parameter renderer: The renderer that provides the Metal device, shader library, and texture dimensions.
+    /// - Throws: ``Canvas2DError`` if buffer or pipeline creation fails.
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -229,7 +232,16 @@ public final class Canvas2D {
         )
     }
 
-    /// コンポーネントから生成
+    /// Create a canvas from individual components.
+    ///
+    /// - Parameters:
+    ///   - device: The Metal device used to allocate buffers and pipelines.
+    ///   - shaderLibrary: The shader library containing built-in 2D shaders.
+    ///   - depthStencilCache: A cache providing depth-stencil states.
+    ///   - width: The canvas width in pixels.
+    ///   - height: The canvas height in pixels.
+    ///   - sampleCount: The MSAA sample count for pipeline creation.
+    /// - Throws: ``Canvas2DError`` if buffer or pipeline creation fails.
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -243,7 +255,7 @@ public final class Canvas2D {
         self.width = width
         self.height = height
 
-        // トリプル頂点バッファ（事前確保）
+        // Triple vertex buffers (pre-allocated)
         let bufferSize = maxVertices * MemoryLayout<Vertex2D>.stride
         var buffers: [MTLBuffer] = []
         var pointers: [UnsafeMutablePointer<Vertex2D>] = []
@@ -257,7 +269,7 @@ public final class Canvas2D {
         self.vertexBuffers = buffers
         self.verticesArray = pointers
 
-        // テクスチャ付きトリプル頂点バッファ
+        // Textured triple vertex buffers
         let texBufSize = 65536 * MemoryLayout<TexturedVertex2D>.stride
         var texBuffers: [MTLBuffer] = []
         var texPointers: [UnsafeMutablePointer<TexturedVertex2D>] = []
@@ -271,7 +283,7 @@ public final class Canvas2D {
         self.texturedVertexBuffers = texBuffers
         self.texturedVerticesArray = texPointers
 
-        // カラーパイプライン（全BlendMode分）
+        // Color pipelines (one per BlendMode)
         let vertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas2DVertex,
             from: ShaderLibrary.BuiltinKey.canvas2D
@@ -307,7 +319,7 @@ public final class Canvas2D {
         }
         self.pipelineStates = colorPipelines
 
-        // テクスチャパイプライン（全BlendMode分）
+        // Textured pipelines (one per BlendMode)
         let texVertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas2DTexturedVertex,
             from: ShaderLibrary.BuiltinKey.canvas2DTextured
@@ -343,13 +355,13 @@ public final class Canvas2D {
         }
         self.texturedPipelineStates = texPipelines
 
-        // 深度テスト無効
+        // Depth test disabled
         self.depthStencilState = depthStencilCache.state(for: .disabled)
 
-        // テキストレンダラー
+        // Text renderer
         self.textRenderer = TextRenderer(device: device)
 
-        // 射影行列（左上原点、ピクセル座標）
+        // Projection matrix (top-left origin, pixel coordinates)
         self.projectionMatrix = float4x4(columns: (
             SIMD4<Float>(2.0 / width, 0, 0, 0),
             SIMD4<Float>(0, -2.0 / height, 0, 0),
@@ -362,7 +374,7 @@ public final class Canvas2D {
         assert(MemoryLayout<TexturedVertex2D>.stride == 32,
                "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
 
-        // 2Dインスタンシングリソース
+        // 2D instancing resources
         let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device)
         self.unitCircleBuffer = circleBuf
         self.unitCircleVertexCount = circleCount
@@ -371,7 +383,7 @@ public final class Canvas2D {
         self.unitRectVertexCount = rectCount
         self.instanceBatcher2D = InstanceBatcher2D(device: device)
 
-        // インスタンシングパイプライン（全BlendMode分）
+        // Instanced pipelines (one per BlendMode)
         let instVertexFn = shaderLibrary.function(
             named: Canvas2DInstancedShaders.vertexFunctionName,
             from: ShaderLibrary.BuiltinKey.canvas2DInstanced
@@ -401,7 +413,14 @@ public final class Canvas2D {
 
     // MARK: - Frame Control
 
-    /// 描画開始。毎フレームencoderとバッファインデックスを渡す。
+    /// Begin a new drawing frame with the given render command encoder.
+    ///
+    /// Resets all per-frame state including vertex counts, style, and transform.
+    /// Call this at the start of each frame before issuing draw commands.
+    ///
+    /// - Parameters:
+    ///   - encoder: The render command encoder for the current frame.
+    ///   - bufferIndex: The triple-buffer index for this frame.
     public func begin(encoder: MTLRenderCommandEncoder, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentBufferIndex = bufferIndex % Self.bufferCount
@@ -438,20 +457,20 @@ public final class Canvas2D {
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
     }
 
-    /// 蓄積した頂点を描画して終了
+    /// End the current frame by flushing all accumulated vertices and releasing the encoder.
     public func end() {
         flush()
         encoder = nil
     }
 
-    /// 蓄積した全頂点を描画（カラー＋テクスチャ＋インスタンス全部）
+    /// Flush all pending draw batches including color, textured, and instanced vertices.
     public func flush() {
         flushInstancedBatch()
         flushColorVertices()
         flushTexturedVertices()
     }
 
-    /// カラー頂点のみフラッシュ
+    // Flush only the color vertex batch
     func flushColorVertices() {
         guard let encoder = encoder, vertexCount > 0 else { return }
 
@@ -471,7 +490,7 @@ public final class Canvas2D {
         vertexCount = 0
     }
 
-    /// テクスチャ付き頂点のみフラッシュ
+    // Flush only the textured vertex batch
     func flushTexturedVertices() {
         guard let encoder = encoder, texturedVertexCount > 0 else { return }
         guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
@@ -495,7 +514,9 @@ public final class Canvas2D {
 
     // MARK: - Blend Mode
 
-    /// ブレンドモードを変更（現在のバッチをフラッシュしてからスイッチ）
+    /// Set the blend mode, flushing the current batch before switching.
+    ///
+    /// - Parameter mode: The blend mode to apply to subsequent draw calls.
     public func blendMode(_ mode: BlendMode) {
         if mode != currentBlendMode {
             flushInstancedBatch()
@@ -507,60 +528,91 @@ public final class Canvas2D {
 
     // MARK: - Shape Mode Settings
 
-    /// 矩形の座標解釈モードを設定
+    /// Set the coordinate interpretation mode for rectangles.
+    ///
+    /// - Parameter mode: The rectangle mode (e.g., `.corner`, `.center`).
     public func rectMode(_ mode: RectMode) {
         currentRectMode = mode
     }
 
-    /// 楕円の座標解釈モードを設定
+    /// Set the coordinate interpretation mode for ellipses.
+    ///
+    /// - Parameter mode: The ellipse mode (e.g., `.center`, `.corner`).
     public func ellipseMode(_ mode: EllipseMode) {
         currentEllipseMode = mode
     }
 
-    /// 画像の座標解釈モードを設定
+    /// Set the coordinate interpretation mode for images.
+    ///
+    /// - Parameter mode: The image mode (e.g., `.corner`, `.center`).
     public func imageMode(_ mode: ImageMode) {
         currentImageMode = mode
     }
 
     // MARK: - Color Mode
 
-    /// 色空間と最大値を設定
+    /// Set the color space and per-channel maximum values.
+    ///
+    /// - Parameters:
+    ///   - space: The color space to use (e.g., `.rgb`, `.hsb`).
+    ///   - max1: The maximum value for the first channel.
+    ///   - max2: The maximum value for the second channel.
+    ///   - max3: The maximum value for the third channel.
+    ///   - maxA: The maximum value for the alpha channel.
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
         colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxA)
     }
 
-    /// 色空間と均一な最大値を設定
+    /// Set the color space with a uniform maximum value for all channels.
+    ///
+    /// - Parameters:
+    ///   - space: The color space to use.
+    ///   - maxAll: The maximum value applied to all channels including alpha.
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
     }
 
     // MARK: - Tint
 
-    /// 画像のティント色を設定
+    /// Set the tint color for images.
+    ///
+    /// - Parameter color: The tint color to apply.
     public func tint(_ color: Color) {
         tintColor = color.simd
         hasTint = true
     }
 
-    /// 画像のティント色を設定（colorModeに従って解釈）
+    /// Set the tint color for images using color mode values.
+    ///
+    /// - Parameters:
+    ///   - v1: The first color channel value, interpreted according to the current color mode.
+    ///   - v2: The second color channel value.
+    ///   - v3: The third color channel value.
+    ///   - a: The optional alpha value.
     public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         tintColor = colorModeConfig.toColor(v1, v2, v3, a).simd
         hasTint = true
     }
 
-    /// グレースケールでティント色を設定
+    /// Set the tint color using a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale brightness value.
     public func tint(_ gray: Float) {
         tintColor = colorModeConfig.toGray(gray).simd
         hasTint = true
     }
 
-    /// グレースケール＋アルファでティント色を設定
+    /// Set the tint color using grayscale and alpha values.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale brightness value.
+    ///   - alpha: The alpha transparency value.
     public func tint(_ gray: Float, _ alpha: Float) {
         tintColor = colorModeConfig.toGray(gray, alpha).simd
         hasTint = true
     }
 
-    /// ティントを無効化
+    /// Disable image tinting.
     public func noTint() {
         tintColor = SIMD4<Float>(1, 1, 1, 1)
         hasTint = false
@@ -568,7 +620,9 @@ public final class Canvas2D {
 
     // MARK: - Style Sync
 
-    /// DrawingStyle から共通スタイルを同期
+    /// Synchronize shared style properties from a ``DrawingStyle`` instance.
+    ///
+    /// - Parameter style: The drawing style to synchronize from.
     public func syncStyle(_ style: DrawingStyle) {
         fillColor = style.fillColor
         strokeColor = style.strokeColor
@@ -579,82 +633,121 @@ public final class Canvas2D {
 
     // MARK: - Style
 
-    /// 塗りつぶし色を設定
+    /// Set the fill color for subsequent shapes.
+    ///
+    /// - Parameter color: The fill color.
     public func fill(_ color: Color) {
         fillColor = color.simd
         hasFill = true
     }
 
-    /// 塗りつぶし色を設定（colorModeに従って解釈）
+    /// Set the fill color using color mode values.
+    ///
+    /// - Parameters:
+    ///   - v1: The first color channel value, interpreted according to the current color mode.
+    ///   - v2: The second color channel value.
+    ///   - v3: The third color channel value.
+    ///   - a: The optional alpha value.
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
         hasFill = true
     }
 
-    /// グレースケールで塗りつぶし色を設定
+    /// Set the fill color using a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale brightness value.
     public func fill(_ gray: Float) {
         fillColor = colorModeConfig.toGray(gray).simd
         hasFill = true
     }
 
-    /// グレースケール＋アルファで塗りつぶし色を設定
+    /// Set the fill color using grayscale and alpha values.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale brightness value.
+    ///   - alpha: The alpha transparency value.
     public func fill(_ gray: Float, _ alpha: Float) {
         fillColor = colorModeConfig.toGray(gray, alpha).simd
         hasFill = true
     }
 
-    /// 塗りつぶしなし
+    /// Disable filling for subsequent shapes.
     public func noFill() {
         hasFill = false
     }
 
-    /// 線の色を設定
+    /// Set the stroke color for subsequent shapes.
+    ///
+    /// - Parameter color: The stroke color.
     public func stroke(_ color: Color) {
         strokeColor = color.simd
         hasStroke = true
     }
 
-    /// 線の色を設定（colorModeに従って解釈）
+    /// Set the stroke color using color mode values.
+    ///
+    /// - Parameters:
+    ///   - v1: The first color channel value, interpreted according to the current color mode.
+    ///   - v2: The second color channel value.
+    ///   - v3: The third color channel value.
+    ///   - a: The optional alpha value.
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         strokeColor = colorModeConfig.toColor(v1, v2, v3, a).simd
         hasStroke = true
     }
 
-    /// グレースケールで線の色を設定
+    /// Set the stroke color using a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale brightness value.
     public func stroke(_ gray: Float) {
         strokeColor = colorModeConfig.toGray(gray).simd
         hasStroke = true
     }
 
-    /// グレースケール＋アルファで線の色を設定
+    /// Set the stroke color using grayscale and alpha values.
+    ///
+    /// - Parameters:
+    ///   - gray: The grayscale brightness value.
+    ///   - alpha: The alpha transparency value.
     public func stroke(_ gray: Float, _ alpha: Float) {
         strokeColor = colorModeConfig.toGray(gray, alpha).simd
         hasStroke = true
     }
 
-    /// 線なし
+    /// Disable stroke for subsequent shapes.
     public func noStroke() {
         hasStroke = false
     }
 
-    /// 線の太さを設定
+    /// Set the stroke weight (line thickness) in pixels.
+    ///
+    /// - Parameter weight: The stroke thickness.
     public func strokeWeight(_ weight: Float) {
         currentStrokeWeight = weight
     }
 
-    /// ストロークの端点スタイルを設定
+    /// Set the stroke cap style for line endpoints.
+    ///
+    /// - Parameter cap: The cap style (e.g., `.round`, `.square`, `.project`).
     public func strokeCap(_ cap: StrokeCap) {
         currentStrokeCap = cap
     }
 
-    /// ストロークの接合スタイルを設定
+    /// Set the stroke join style for line corners.
+    ///
+    /// - Parameter join: The join style (e.g., `.miter`, `.bevel`, `.round`).
     public func strokeJoin(_ join: StrokeJoin) {
         currentStrokeJoin = join
     }
 
     // MARK: - Background
 
-    /// 背景を塗りつぶす（トランスフォーム無視）
+    /// Fill the entire canvas with a solid color, ignoring the current transform.
+    ///
+    /// When nothing has been drawn yet this frame, only updates the clear color
+    /// for optimal performance.
+    ///
+    /// - Parameter color: The background color.
     public func background(_ color: Color) {
         let c = color.simd
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
@@ -670,19 +763,27 @@ public final class Canvas2D {
         flush()
     }
 
-    /// グレースケール背景
+    /// Fill the background with a grayscale value.
+    ///
+    /// - Parameter gray: The grayscale brightness value.
     public func background(_ gray: Float) {
         background(colorModeConfig.toGray(gray))
     }
 
-    /// 背景色を設定（colorModeに従って解釈）
+    /// Fill the background using color mode values.
+    ///
+    /// - Parameters:
+    ///   - v1: The first color channel value, interpreted according to the current color mode.
+    ///   - v2: The second color channel value.
+    ///   - v3: The third color channel value.
+    ///   - a: The optional alpha value.
     public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         background(colorModeConfig.toColor(v1, v2, v3, a))
     }
 
     // MARK: - 2D Instanced Shape Drawing
 
-    /// インスタンスバッチをGPUに発行
+    // Submit the current instanced batch to the GPU
     func flushInstancedBatch() {
         guard let encoder = encoder,
               instanceBatcher2D.instanceCount > 0,
@@ -712,14 +813,13 @@ public final class Canvas2D {
         instanceBatcher2D.reset()
     }
 
-    /// 形状をインスタンスバッチに追加
-    ///
-    /// cx,cy: 形状の中心座標（ローカル空間）
-    /// sx,sy: 形状のスケール（ユニットメッシュに適用）
+    // Add a shape to the instanced batch.
+    // cx, cy: center position in local space
+    // sx, sy: scale factors applied to the unit mesh
     func addShapeInstance(_ shapeType: Shape2DType, cx: Float, cy: Float, sx: Float, sy: Float) {
         hasDrawnAnything = true
 
-        // 描画順序保持: 非インスタンス頂点が溜まっていたら先にフラッシュ
+        // Preserve draw order: flush non-instanced vertices first if pending
         if texturedVertexCount > 0 {
             flushTexturedVertices()
             currentBoundTexture = nil
@@ -733,7 +833,7 @@ public final class Canvas2D {
             blendMode: currentBlendMode
         )
 
-        // currentTransform * translate(cx,cy) * scale(sx,sy) を float4x4 に変換
+        // Convert currentTransform * translate(cx,cy) * scale(sx,sy) to float4x4
         let shapeLocal = float3x3(columns: (
             SIMD3<Float>(sx, 0, 0),
             SIMD3<Float>(0, sy, 0),
@@ -757,7 +857,9 @@ public final class Canvas2D {
 
     // MARK: - Transform Stack
 
-    /// 現在のトランスフォームとスタイルを保存（Processing互換）
+    /// Save the current transform and style state onto the stack.
+    ///
+    /// Use ``pop()`` to restore the saved state. Compatible with the Processing API.
     public func push() {
         stateStack.append(StyleState(
             transform: currentTransform,
@@ -785,7 +887,9 @@ public final class Canvas2D {
         ))
     }
 
-    /// 保存したトランスフォームとスタイルを復元（Processing互換）
+    /// Restore the most recently saved transform and style state from the stack.
+    ///
+    /// Flushes the current batch if the blend mode changed. Compatible with the Processing API.
     public func pop() {
         guard let saved = stateStack.popLast() else { return }
         let prevBlendMode = currentBlendMode
@@ -816,7 +920,7 @@ public final class Canvas2D {
         }
     }
 
-    /// スタイル状態のみを保存（トランスフォームは含まない）
+    /// Save only the style state onto the style-only stack, excluding the transform.
     public func pushStyle() {
         styleOnlyStack.append(StyleState(
             transform: currentTransform,
@@ -844,7 +948,7 @@ public final class Canvas2D {
         ))
     }
 
-    /// スタイル状態のみを復元（トランスフォームはそのまま）
+    /// Restore only the style state from the style-only stack, leaving the transform unchanged.
     public func popStyle() {
         guard let saved = styleOnlyStack.popLast() else { return }
         let prevBlendMode = currentBlendMode
@@ -874,18 +978,22 @@ public final class Canvas2D {
         }
     }
 
-    /// トランスフォームのみを保存
+    /// Save only the current transform matrix onto the matrix stack.
     public func pushMatrix() {
         matrixStack.append(currentTransform)
     }
 
-    /// トランスフォームのみを復元
+    /// Restore only the transform matrix from the matrix stack.
     public func popMatrix() {
         guard let saved = matrixStack.popLast() else { return }
         currentTransform = saved
     }
 
-    /// 平行移動
+    /// Apply a translation to the current transform.
+    ///
+    /// - Parameters:
+    ///   - x: The horizontal translation in pixels.
+    ///   - y: The vertical translation in pixels.
     public func translate(_ x: Float, _ y: Float) {
         let t = float3x3(columns: (
             SIMD3<Float>(1, 0, 0),
@@ -895,7 +1003,9 @@ public final class Canvas2D {
         currentTransform = currentTransform * t
     }
 
-    /// 回転（ラジアン）
+    /// Apply a rotation to the current transform.
+    ///
+    /// - Parameter angle: The rotation angle in radians.
     public func rotate(_ angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
@@ -907,7 +1017,11 @@ public final class Canvas2D {
         currentTransform = currentTransform * r
     }
 
-    /// スケール
+    /// Apply a non-uniform scale to the current transform.
+    ///
+    /// - Parameters:
+    ///   - sx: The horizontal scale factor.
+    ///   - sy: The vertical scale factor.
     public func scale(_ sx: Float, _ sy: Float) {
         let s = float3x3(columns: (
             SIMD3<Float>(sx, 0, 0),
@@ -917,7 +1031,9 @@ public final class Canvas2D {
         currentTransform = currentTransform * s
     }
 
-    /// 均一スケール
+    /// Apply a uniform scale to the current transform.
+    ///
+    /// - Parameter s: The scale factor applied to both axes.
     public func scale(_ s: Float) {
         scale(s, s)
     }

@@ -5,12 +5,22 @@ import simd
 
 extension Canvas2D {
 
-    /// 画像を描画（元サイズ）
+    /// Draw an image at its original size.
+    /// - Parameters:
+    ///   - img: The image to draw.
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         image(img, x, y, img.width, img.height)
     }
 
-    /// 画像をサイズ指定で描画（座標解釈はimageModeに依存）
+    /// Draw an image at a specified size (coordinate interpretation depends on imageMode).
+    /// - Parameters:
+    ///   - img: The image to draw.
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
+    ///   - w: Width.
+    ///   - h: Height.
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         let dx: Float, dy: Float, dw: Float, dh: Float
         switch currentImageMode {
@@ -24,7 +34,17 @@ extension Canvas2D {
         drawTexturedQuad(texture: img.texture, x: dx, y: dy, w: dw, h: dh)
     }
 
-    /// サブイメージ描画（スプライトシート/タイルマップ用）
+    /// Draw a sub-region of an image (for sprite sheets and tile maps).
+    /// - Parameters:
+    ///   - img: The source image.
+    ///   - dx: Destination X coordinate.
+    ///   - dy: Destination Y coordinate.
+    ///   - dw: Destination width.
+    ///   - dh: Destination height.
+    ///   - sx: Source region X coordinate.
+    ///   - sy: Source region Y coordinate.
+    ///   - sw: Source region width.
+    ///   - sh: Source region height.
     public func image(
         _ img: MImage,
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
@@ -38,19 +58,19 @@ extension Canvas2D {
 
     // MARK: - Private: Textured Quad (Batched)
 
-    /// テクスチャ付きクワッドをバッファに蓄積（同一テクスチャはバッチされる）
+    /// Accumulate a textured quad into the vertex buffer (same-texture quads are batched).
     func drawTexturedQuad(
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
         srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
     ) {
         guard encoder != nil else { return }
 
-        // カラー頂点が蓄積されていたら先にフラッシュ（描画順序保持）
+        // Flush accumulated color vertices first to preserve draw order
         if vertexCount > 0 {
             flushColorVertices()
         }
 
-        // テクスチャが変わったらフラッシュ
+        // Flush if the texture changed
         if let current = currentBoundTexture, current !== texture {
             flushTexturedVertices()
         }
@@ -58,7 +78,7 @@ extension Canvas2D {
         currentBoundTexture = texture
         hasDrawnAnything = true
 
-        // バッファオーバーフロー検査
+        // Check for buffer overflow
         if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
             flushTexturedVertices()
             texturedBufferOffset = 0
@@ -91,7 +111,7 @@ extension Canvas2D {
         texturedVertexCount += 6
     }
 
-    /// アトラスからバッチテキスト描画（グリフをテクスチャバッファに蓄積）
+    /// Draw batched text glyphs from an atlas texture (accumulates glyphs into the textured vertex buffer).
     func drawTextFromAtlas(
         texture: MTLTexture,
         glyphs: [PositionedGlyph],
@@ -99,12 +119,12 @@ extension Canvas2D {
     ) {
         guard encoder != nil, !glyphs.isEmpty else { return }
 
-        // カラー頂点が蓄積されていたら先にフラッシュ
+        // Flush accumulated color vertices first
         if vertexCount > 0 {
             flushColorVertices()
         }
 
-        // テクスチャが変わったらフラッシュ
+        // Flush if the texture changed
         if let current = currentBoundTexture, current !== texture {
             flushTexturedVertices()
         }
@@ -114,7 +134,7 @@ extension Canvas2D {
 
         let verticesNeeded = glyphs.count * 6
 
-        // バッファオーバーフロー検査
+        // Check for buffer overflow
         if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
             flushTexturedVertices()
             texturedBufferOffset = 0

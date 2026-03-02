@@ -5,43 +5,57 @@ import simd
 
 extension Canvas2D {
 
-    /// テキストサイズを設定
+    /// Set the text size.
+    /// - Parameter size: Font size in points.
     public func textSize(_ size: Float) {
         currentTextSize = size
     }
 
-    /// フォントを設定
+    /// Set the font family.
+    /// - Parameter family: Font family name.
     public func textFont(_ family: String) {
         currentFontFamily = family
     }
 
-    /// テキスト揃えを設定
+    /// Set the text alignment.
+    /// - Parameters:
+    ///   - horizontal: Horizontal alignment.
+    ///   - vertical: Vertical alignment.
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         currentTextAlignH = horizontal
         currentTextAlignV = vertical
     }
 
-    /// テキストの行間を設定（1.0=ぴったり、1.2=デフォルト）
+    /// Set the text line spacing (1.0 = tight, 1.2 = default).
+    /// - Parameter leading: Line spacing multiplier.
     public func textLeading(_ leading: Float) {
         currentTextLeading = leading
     }
 
-    /// テキストの描画幅を取得
+    /// Return the rendered width of a text string.
+    /// - Parameter string: The text to measure.
+    /// - Returns: The width in pixels.
     public func textWidth(_ string: String) -> Float {
         textRenderer.textWidth(string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
-    /// フォントのアセントを取得
+    /// Return the ascent of the current font.
+    /// - Returns: The font ascent in pixels.
     public func textAscent() -> Float {
         textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
-    /// フォントのディセントを取得
+    /// Return the descent of the current font.
+    /// - Returns: The font descent in pixels.
     public func textDescent() -> Float {
         textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
-    /// テキストを描画
+    /// Draw a text string at the specified position.
+    /// - Parameters:
+    ///   - string: The text to draw.
+    ///   - x: X coordinate.
+    ///   - y: Y coordinate.
     public func text(_ string: String, _ x: Float, _ y: Float) {
         guard !string.isEmpty else { return }
 
@@ -95,7 +109,13 @@ extension Canvas2D {
         drawTexturedQuad(texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height)
     }
 
-    /// ボックス内にテキストを描画（自動折り返し）
+    /// Draw text within a bounding box with automatic word wrapping.
+    /// - Parameters:
+    ///   - string: The text to draw.
+    ///   - x: X coordinate of the bounding box.
+    ///   - y: Y coordinate of the bounding box.
+    ///   - w: Width of the bounding box.
+    ///   - h: Height of the bounding box.
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         guard !string.isEmpty else { return }
         guard let cached = textRenderer.textTextureMultiline(

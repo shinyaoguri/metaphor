@@ -1,8 +1,12 @@
 import Foundation
 
-/// GPU画像フィルタ用のMSLコンピュートシェーダーソース
+/// Contains embedded MSL source code for GPU image filter compute shaders.
+///
+/// Includes threshold, grayscale, invert, posterize, gaussian blur (H/V),
+/// erode, dilate, edge detect (Sobel), sharpen, sepia, and pixelate filters.
 enum ImageFilterShaders {
 
+    /// MSL source code for all image filter compute kernels.
     static let source = """
     #include <metal_stdlib>
     using namespace metal;

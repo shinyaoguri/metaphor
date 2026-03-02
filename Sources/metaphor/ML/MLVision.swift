@@ -49,7 +49,7 @@ private final class VisionResultBuffer: Sendable {
 
 // MARK: - Mask Extraction Helper (file-private)
 
-/// CVPixelBuffer から Float 配列を抽出するヘルパー
+/// Extract a Float array from a CVPixelBuffer mask.
 private func extractFloatMaskData(from pixelBuffer: CVPixelBuffer) -> [Float] {
     let maskWidth = CVPixelBufferGetWidth(pixelBuffer)
     let maskHeight = CVPixelBufferGetHeight(pixelBuffer)
@@ -128,11 +128,11 @@ private final class TrackingState: Sendable {
 
 // MARK: - MLVision
 
-/// Vision フレームワークラッパー
+/// Wrap the Vision framework for creative coding use.
 ///
-/// 画像分類、オブジェクト検出、ポーズ推定、セグメンテーション、
-/// テキスト認識、顔検出、サリエンシーなどの Vision API をラップする。
-/// 全て非同期推論を実行し、draw loop をブロックしない。
+/// Provides asynchronous image classification, object detection, pose estimation,
+/// segmentation, text recognition, face detection, saliency, and more.
+/// All inference runs off the main thread so the draw loop is never blocked.
 ///
 /// ```swift
 /// var vision: MLVision!
@@ -152,120 +152,120 @@ public final class MLVision {
 
     // MARK: - Public Results
 
-    /// 最新の分類結果
+    /// Store the latest classification results.
     public private(set) var classifications: [MLClassification] = []
 
-    /// 最新のオブジェクト検出結果
+    /// Store the latest object detection results.
     public private(set) var detections: [MLDetection] = []
 
-    /// 最新のポーズ推定結果
+    /// Store the latest pose estimation results.
     public private(set) var poses: [MLPose] = []
 
-    /// 最新のセグメンテーションマスク
+    /// Store the latest segmentation mask.
     public private(set) var segmentMask: MLSegmentMask?
 
-    /// セグメンテーションマスクのテクスチャ（描画用）
+    /// Store the segmentation mask as a renderable texture.
     public private(set) var segmentMaskTexture: MImage?
 
-    /// 最新の顔検出結果
+    /// Store the latest face detection results.
     public private(set) var faces: [MLFace] = []
 
-    /// 最新のテキスト認識結果
+    /// Store the latest text recognition results.
     public private(set) var texts: [MLText] = []
 
-    /// 最新のサリエンシー
+    /// Store the latest saliency heatmap.
     public private(set) var saliency: MLSaliency?
 
-    /// サリエンシーテクスチャ（描画用）
+    /// Store the saliency heatmap as a renderable texture.
     public private(set) var saliencyTexture: MImage?
 
-    /// 最新のバーコード/QR検出結果
+    /// Store the latest barcode/QR detection results.
     public private(set) var barcodes: [MLBarcode] = []
 
-    /// 最新の輪郭検出結果
+    /// Store the latest contour detection results.
     public private(set) var contours: [MLContour] = []
 
-    /// 最新の3Dポーズ推定結果
+    /// Store the latest 3D pose estimation results.
     public private(set) var poses3D: [MLPose3D] = []
 
-    /// 最新の動物検出結果
+    /// Store the latest animal detection results.
     public private(set) var animalDetections: [MLDetection] = []
 
-    /// 最新の動物ポーズ推定結果
+    /// Store the latest animal pose estimation results.
     public private(set) var animalPoses: [MLPose] = []
 
-    /// 最新の人物矩形検出結果
+    /// Store the latest human rectangle detection results.
     public private(set) var humanRectangles: [MLDetection] = []
 
-    /// 最新の矩形検出結果
+    /// Store the latest rectangle detection results.
     public private(set) var rectangles: [MLRectangle] = []
 
-    /// 最新の画像特徴ベクトル
+    /// Store the latest image feature print vector.
     public private(set) var featurePrint: MLFeaturePrint?
 
-    /// 最新の前景インスタンスマスク
+    /// Store the latest foreground instance mask.
     public private(set) var foregroundInstanceMask: MLInstanceMask?
 
-    /// 前景インスタンスマスクのテクスチャ（統合マスク、描画用）
+    /// Store the foreground instance mask as a renderable texture (combined mask).
     public private(set) var foregroundMaskTexture: MImage?
 
-    /// 最新の人物インスタンスマスク
+    /// Store the latest person instance mask.
     public private(set) var personInstanceMask: MLInstanceMask?
 
-    /// 人物インスタンスマスクのテクスチャ（統合マスク、描画用）
+    /// Store the person instance mask as a renderable texture (combined mask).
     public private(set) var personMaskTexture: MImage?
 
-    /// 最新のオブジェクトトラッキング結果
+    /// Store the latest object tracking result.
     public private(set) var trackedObject: MLTrackedObject?
 
-    /// オブジェクトトラッキングが有効かどうか
+    /// Indicate whether object tracking is active.
     public private(set) var isTracking: Bool = false
 
-    /// 最新のオプティカルフロー結果
+    /// Store the latest optical flow result.
     public private(set) var opticalFlow: MLOpticalFlow?
 
-    /// オプティカルフローテクスチャ（可視化用）
+    /// Store the optical flow field as a renderable texture for visualization.
     public private(set) var opticalFlowTexture: MImage?
 
-    /// 推論実行中かどうか
+    /// Indicate whether an inference request is in progress.
     public private(set) var isProcessing: Bool = false
 
-    /// 最後の推論にかかった時間（秒）
+    /// Store the elapsed time in seconds for the last inference.
     public private(set) var inferenceTime: Double = 0
 
     // MARK: - Configuration
 
-    /// 分類結果の最大数
+    /// Set the maximum number of classification results to return.
     public var maxClassifications: Int = 5
 
-    /// 検出の信頼度閾値
+    /// Set the confidence threshold for detection results.
     public var confidenceThreshold: Float = 0.5
 
-    /// テキスト認識の認識レベル
+    /// Set the recognition level for text recognition requests.
     public var textRecognitionLevel: VNRequestTextRecognitionLevel = .accurate
 
-    /// テキスト認識の言語
+    /// Set the languages for text recognition.
     public var textRecognitionLanguages: [String] = ["en", "ja"]
 
-    /// 顔ランドマーク取得を有効にするか
+    /// Enable or disable face landmark detection.
     public var detectFaceLandmarks: Bool = true
 
-    /// 矩形検出: 最小アスペクト比
+    /// Set the minimum aspect ratio for rectangle detection.
     public var rectangleMinAspectRatio: Float = 0.0
 
-    /// 矩形検出: 最大アスペクト比
+    /// Set the maximum aspect ratio for rectangle detection.
     public var rectangleMaxAspectRatio: Float = 1.0
 
-    /// 矩形検出: 最小サイズ（画像比率 0.0〜1.0）
+    /// Set the minimum size for rectangle detection (image-relative ratio, 0.0 to 1.0).
     public var rectangleMinSize: Float = 0.1
 
-    /// 矩形検出: 最大検出数
+    /// Set the maximum number of rectangles to detect.
     public var maxRectangles: Int = 10
 
-    /// オプティカルフロー: 計算精度レベル
+    /// Set the computation accuracy level for optical flow.
     public var opticalFlowAccuracy: VNGenerateOpticalFlowRequest.ComputationAccuracy = .medium
 
-    /// トラッキング: 信頼度閾値（これ以下でトラッキング失敗とみなす）
+    /// Set the confidence threshold below which tracking is considered lost.
     public var trackingConfidenceThreshold: Float = 0.3
 
     // MARK: - Private
@@ -275,20 +275,20 @@ public final class MLVision {
     private let resultBuffer = VisionResultBuffer()
     private let inferenceQueue = DispatchQueue(label: "metaphor.vision.inference", qos: .userInitiated)
 
-    /// カスタム CoreML モデル（Vision で使用）
+    /// Custom CoreML model for use with Vision requests.
     private var customModel: VNCoreMLModel?
 
-    /// トラッキング用状態（スレッドセーフ）
+    /// Thread-safe tracking state.
     private let trackingState = TrackingState()
 
-    /// トラッキング用 VNSequenceRequestHandler（フレーム間で永続）
+    /// Sequence request handler persisted across frames for tracking.
     private var trackingSequenceHandler: VNSequenceRequestHandler?
 
-    /// トラッキング画像サイズ（座標変換用）
+    /// Image dimensions used for coordinate conversion during tracking.
     private var trackingImageWidth: Float = 0
     private var trackingImageHeight: Float = 0
 
-    /// オプティカルフロー用: 前フレームの CVPixelBuffer
+    /// Previous frame pixel buffer for optical flow computation.
     private var previousFramePixelBuffer: CVPixelBuffer?
 
     init(device: MTLDevice, commandQueue: MTLCommandQueue) {
@@ -298,7 +298,11 @@ public final class MLVision {
 
     // MARK: - Custom Model Loading
 
-    /// Vision で使用するカスタム CoreML モデルを読み込む
+    /// Load a custom CoreML model for use with Vision requests.
+    /// - Parameters:
+    ///   - path: File path to a .mlmodelc, .mlpackage, or .mlmodel file.
+    ///   - computeUnit: The compute unit preference for inference.
+    /// - Throws: ``MLError`` if the model file is not found or fails to load.
     public func loadModel(_ path: String, computeUnit: MLComputeUnit = .all) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
@@ -310,7 +314,11 @@ public final class MLVision {
         self.customModel = try VNCoreMLModel(for: mlModel)
     }
 
-    /// バンドルリソースからカスタムモデルを読み込む
+    /// Load a custom model from a bundle resource.
+    /// - Parameters:
+    ///   - name: The resource name without extension.
+    ///   - computeUnit: The compute unit preference for inference.
+    /// - Throws: ``MLError`` if the model resource is not found or fails to load.
     public func loadModel(named name: String, computeUnit: MLComputeUnit = .all) throws {
         guard let url = Bundle.main.url(forResource: name, withExtension: "mlmodelc")
                 ?? Bundle.main.url(forResource: name, withExtension: "mlpackage") else {
@@ -324,8 +332,10 @@ public final class MLVision {
 
     // MARK: - Update (per-frame)
 
-    /// 毎フレーム呼ぶ更新メソッド（draw() の先頭で呼ぶ）
-    /// 非同期推論の結果を公開プロパティに反映する
+    /// Flush pending asynchronous inference results into public properties.
+    ///
+    /// Call this at the beginning of every `draw()` frame to receive the latest
+    /// results from background Vision requests.
     public func update() {
         let results = resultBuffer.takeAll()
         guard !results.isEmpty else { return }
@@ -430,7 +440,8 @@ public final class MLVision {
 
     // MARK: - Classification
 
-    /// 画像分類を実行（非同期）
+    /// Perform image classification asynchronously.
+    /// - Parameter texture: The input Metal texture to classify.
     public func classify(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -461,14 +472,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage を分類
+    /// Perform image classification on an MImage asynchronously.
+    /// - Parameter image: The input image to classify.
     public func classify(_ image: MImage) {
         classify(image.texture)
     }
 
     // MARK: - Object Detection (with custom model)
 
-    /// カスタムモデルでオブジェクト検出（非同期）
+    /// Perform object detection using the loaded custom model asynchronously.
+    /// - Parameter texture: The input Metal texture to detect objects in.
     public func detect(_ texture: MTLTexture) {
         guard !isProcessing, let model = customModel else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -493,7 +506,7 @@ public final class MLVision {
                     .filter { $0.confidence >= threshold }
                     .map { obs -> MLDetection in
                         let bb = obs.boundingBox
-                        // Vision: 正規化座標（左下原点）→ ピクセル座標（左上原点）
+                        // Vision: normalized coordinates (bottom-left origin) -> pixel coordinates (top-left origin)
                         return MLDetection(
                             label: obs.labels.first?.identifier ?? "unknown",
                             confidence: obs.confidence,
@@ -512,14 +525,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage で検出
+    /// Perform object detection on an MImage asynchronously.
+    /// - Parameter image: The input image to detect objects in.
     public func detect(_ image: MImage) {
         detect(image.texture)
     }
 
     // MARK: - Pose Estimation
 
-    /// ボディポーズ推定（非同期）
+    /// Perform body pose estimation asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func detectPose(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -564,12 +579,14 @@ public final class MLVision {
         }
     }
 
-    /// MImage でポーズ推定
+    /// Perform body pose estimation on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectPose(_ image: MImage) {
         detectPose(image.texture)
     }
 
-    /// ハンドポーズ推定（非同期）
+    /// Perform hand pose estimation asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func detectHandPose(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -615,14 +632,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage でハンドポーズ推定
+    /// Perform hand pose estimation on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectHandPose(_ image: MImage) {
         detectHandPose(image.texture)
     }
 
     // MARK: - Person Segmentation
 
-    /// 人物セグメンテーション（非同期）
+    /// Perform person segmentation asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func segmentPerson(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -658,14 +677,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage でセグメンテーション
+    /// Perform person segmentation on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func segmentPerson(_ image: MImage) {
         segmentPerson(image.texture)
     }
 
     // MARK: - Text Recognition
 
-    /// テキスト認識 / OCR（非同期）
+    /// Perform text recognition (OCR) asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func recognizeText(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -709,14 +730,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage でテキスト認識
+    /// Perform text recognition on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func recognizeText(_ image: MImage) {
         recognizeText(image.texture)
     }
 
     // MARK: - Face Detection
 
-    /// 顔検出（非同期）
+    /// Perform face detection asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func detectFaces(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -802,20 +825,24 @@ public final class MLVision {
         }
     }
 
-    /// MImage で顔検出
+    /// Perform face detection on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectFaces(_ image: MImage) {
         detectFaces(image.texture)
     }
 
     // MARK: - Saliency
 
-    /// サリエンシー種別
+    /// Represent the type of saliency analysis.
     public enum SaliencyType {
         case attention
         case objectness
     }
 
-    /// サリエンシー検出（非同期）
+    /// Perform saliency detection asynchronously.
+    /// - Parameters:
+    ///   - texture: The input Metal texture.
+    ///   - type: The saliency analysis type (attention or objectness).
     public func detectSaliency(_ texture: MTLTexture, type: SaliencyType = .attention) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -856,14 +883,18 @@ public final class MLVision {
         }
     }
 
-    /// MImage でサリエンシー検出
+    /// Perform saliency detection on an MImage asynchronously.
+    /// - Parameters:
+    ///   - image: The input image.
+    ///   - type: The saliency analysis type.
     public func detectSaliency(_ image: MImage, type: SaliencyType = .attention) {
         detectSaliency(image.texture, type: type)
     }
 
     // MARK: - Barcode / QR Detection
 
-    /// バーコード/QR コード検出（非同期）
+    /// Perform barcode and QR code detection asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func detectBarcodes(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -903,14 +934,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage でバーコード検出
+    /// Perform barcode detection on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectBarcodes(_ image: MImage) {
         detectBarcodes(image.texture)
     }
 
     // MARK: - Contour Detection
 
-    /// 輪郭検出（非同期）
+    /// Perform contour detection asynchronously.
+    /// - Parameter texture: The input Metal texture.
     public func detectContours(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -952,15 +985,19 @@ public final class MLVision {
         }
     }
 
-    /// MImage で輪郭検出
+    /// Perform contour detection on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectContours(_ image: MImage) {
         detectContours(image.texture)
     }
 
     // MARK: - Custom Model Inference via Vision
 
-    /// カスタム CoreML モデルで Vision 推論（非同期）
-    /// 結果はモデルの出力型に応じて classifications / detections / segmentMask に格納される
+    /// Perform inference with the loaded custom CoreML model via Vision asynchronously.
+    ///
+    /// Results are stored in `classifications`, `detections`, or `segmentMask`
+    /// depending on the model's output type.
+    /// - Parameter texture: The input Metal texture.
     public func predict(_ texture: MTLTexture) {
         guard !isProcessing, let model = customModel else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1026,15 +1063,18 @@ public final class MLVision {
         }
     }
 
-    /// MImage でカスタムモデル推論
+    /// Perform custom model inference on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func predict(_ image: MImage) {
         predict(image.texture)
     }
 
     // MARK: - 3D Body Pose Estimation
 
-    /// 3Dボディポーズ推定（非同期）
-    /// カメラ空間でのメートル単位の3D関節位置を取得
+    /// Perform 3D body pose estimation asynchronously.
+    ///
+    /// Retrieve meter-scale 3D joint positions in camera space.
+    /// - Parameter texture: The input Metal texture.
     public func detectPose3D(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1089,14 +1129,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage で3Dポーズ推定
+    /// Perform 3D pose estimation on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectPose3D(_ image: MImage) {
         detectPose3D(image.texture)
     }
 
     // MARK: - Animal Recognition
 
-    /// 動物認識（非同期）— 猫/犬を検出
+    /// Perform animal recognition asynchronously (detects cats and dogs).
+    /// - Parameter texture: The input Metal texture.
     public func detectAnimals(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1139,14 +1181,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage で動物認識
+    /// Perform animal recognition on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectAnimals(_ image: MImage) {
         detectAnimals(image.texture)
     }
 
     // MARK: - Animal Body Pose
 
-    /// 動物ポーズ推定（非同期）— 猫/犬の25関節を検出
+    /// Perform animal body pose estimation asynchronously (detects 25 joints for cats/dogs).
+    /// - Parameter texture: The input Metal texture.
     public func detectAnimalPose(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1190,14 +1234,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage で動物ポーズ推定
+    /// Perform animal pose estimation on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectAnimalPose(_ image: MImage) {
         detectAnimalPose(image.texture)
     }
 
     // MARK: - Human Rectangle Detection
 
-    /// 人物矩形検出（非同期）— ポーズより軽量な人物検出
+    /// Perform human rectangle detection asynchronously (lighter weight than full pose estimation).
+    /// - Parameter texture: The input Metal texture.
     public func detectHumanRectangles(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1237,14 +1283,16 @@ public final class MLVision {
         }
     }
 
-    /// MImage で人物矩形検出
+    /// Perform human rectangle detection on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectHumanRectangles(_ image: MImage) {
         detectHumanRectangles(image.texture)
     }
 
     // MARK: - Rectangle Detection
 
-    /// 矩形検出（非同期）— 4コーナーの矩形を検出
+    /// Perform rectangle detection asynchronously (detects quadrilaterals with 4 corner points).
+    /// - Parameter texture: The input Metal texture.
     public func detectRectangles(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1293,15 +1341,18 @@ public final class MLVision {
         }
     }
 
-    /// MImage で矩形検出
+    /// Perform rectangle detection on an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func detectRectangles(_ image: MImage) {
         detectRectangles(image.texture)
     }
 
     // MARK: - Image Feature Print
 
-    /// 画像特徴ベクトルを生成（非同期）
-    /// 類似画像検索やコンテンツ比較に使用
+    /// Generate an image feature print vector asynchronously.
+    ///
+    /// Use the resulting feature vector for similar image search or content comparison.
+    /// - Parameter texture: The input Metal texture.
     public func generateFeaturePrint(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1358,15 +1409,18 @@ public final class MLVision {
         }
     }
 
-    /// MImage で特徴ベクトル生成
+    /// Generate a feature print from an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func generateFeaturePrint(_ image: MImage) {
         generateFeaturePrint(image.texture)
     }
 
     // MARK: - Foreground Instance Mask
 
-    /// 前景インスタンスマスク生成（非同期）
-    /// 人物以外も含む前景オブジェクトを個別にセグメンテーション
+    /// Generate a foreground instance mask asynchronously.
+    ///
+    /// Segment foreground objects (including non-person objects) into individual instances.
+    /// - Parameter texture: The input Metal texture.
     public func segmentForeground(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1427,15 +1481,18 @@ public final class MLVision {
         }
     }
 
-    /// MImage で前景マスク生成
+    /// Generate a foreground instance mask from an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func segmentForeground(_ image: MImage) {
         segmentForeground(image.texture)
     }
 
     // MARK: - Person Instance Mask
 
-    /// 人物インスタンスマスク生成（非同期）
-    /// 各人物を個別にセグメンテーション
+    /// Generate a person instance mask asynchronously.
+    ///
+    /// Segment each person in the image into an individual instance mask.
+    /// - Parameter texture: The input Metal texture.
     public func segmentPersonInstances(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1496,23 +1553,24 @@ public final class MLVision {
         }
     }
 
-    /// MImage で人物インスタンスマスク生成
+    /// Generate a person instance mask from an MImage asynchronously.
+    /// - Parameter image: The input image.
     public func segmentPersonInstances(_ image: MImage) {
         segmentPersonInstances(image.texture)
     }
 
     // MARK: - Object Tracking
 
-    /// オブジェクトトラッキングを開始
+    /// Start object tracking with the given bounding box.
     /// - Parameters:
-    ///   - x: バウンディングボックス x（ピクセル座標、左上原点）
-    ///   - y: バウンディングボックス y
-    ///   - w: バウンディングボックス幅
-    ///   - h: バウンディングボックス高さ
-    ///   - imageWidth: 画像の幅
-    ///   - imageHeight: 画像の高さ
+    ///   - x: Bounding box x position in pixel coordinates (top-left origin).
+    ///   - y: Bounding box y position in pixel coordinates (top-left origin).
+    ///   - w: Bounding box width in pixels.
+    ///   - h: Bounding box height in pixels.
+    ///   - imageWidth: Width of the image in pixels.
+    ///   - imageHeight: Height of the image in pixels.
     public func startTracking(x: Float, y: Float, w: Float, h: Float, imageWidth: Float, imageHeight: Float) {
-        // ピクセル座標（左上原点）→ 正規化座標（左下原点）
+        // Pixel coordinates (top-left origin) -> normalized coordinates (bottom-left origin)
         let normX = CGFloat(x / imageWidth)
         let normY = CGFloat(1.0 - (y + h) / imageHeight)
         let normW = CGFloat(w / imageWidth)
@@ -1528,7 +1586,8 @@ public final class MLVision {
         trackingState.setProcessing(false)
     }
 
-    /// 毎フレームのトラッキング更新（非同期）
+    /// Update object tracking for the current frame asynchronously.
+    /// - Parameter texture: The current frame Metal texture.
     public func trackObject(_ texture: MTLTexture) {
         guard isTracking, !trackingState.getProcessing() else { return }
         guard let prevObservation = trackingState.getObservation() else { return }
@@ -1576,12 +1635,13 @@ public final class MLVision {
         }
     }
 
-    /// MImage でトラッキング
+    /// Update object tracking on an MImage asynchronously.
+    /// - Parameter image: The current frame image.
     public func trackObject(_ image: MImage) {
         trackObject(image.texture)
     }
 
-    /// トラッキングを停止
+    /// Stop object tracking and reset tracking state.
     public func stopTracking() {
         isTracking = false
         trackingState.setProcessing(false)
@@ -1592,8 +1652,11 @@ public final class MLVision {
 
     // MARK: - Optical Flow
 
-    /// オプティカルフロー計算（非同期）
-    /// 前フレームと現フレーム間のピクセル単位の動きベクトルを計算
+    /// Compute optical flow between the previous and current frame asynchronously.
+    ///
+    /// Calculate per-pixel motion vectors between consecutive frames.
+    /// The first call stores the frame for comparison; results appear from the second call onward.
+    /// - Parameter texture: The current frame Metal texture.
     public func computeOpticalFlow(_ texture: MTLTexture) {
         guard !isProcessing else { return }
         guard let currentPixelBuffer = converter.pixelBuffer(from: texture) else { return }
@@ -1655,12 +1718,13 @@ public final class MLVision {
         }
     }
 
-    /// MImage でオプティカルフロー計算
+    /// Compute optical flow on an MImage asynchronously.
+    /// - Parameter image: The current frame image.
     public func computeOpticalFlow(_ image: MImage) {
         computeOpticalFlow(image.texture)
     }
 
-    /// オプティカルフローの前フレームバッファをリセット
+    /// Reset the optical flow previous-frame buffer.
     public func resetOpticalFlow() {
         previousFramePixelBuffer = nil
         opticalFlow = nil

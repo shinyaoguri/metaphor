@@ -4,7 +4,7 @@ import Foundation
 
 // MARK: - Thread-safe Sample Buffer
 
-/// オーディオスレッド → メインスレッド間のサンプル受け渡し用
+/// Transfer audio samples from the audio thread to the main thread.
 private final class AudioSampleBuffer: Sendable {
     private let lock = NSLock()
     private nonisolated(unsafe) var _samples: [Float]?
@@ -26,10 +26,10 @@ private final class AudioSampleBuffer: Sendable {
 
 // MARK: - AudioAnalyzer
 
-/// マイク/ライン入力からの FFT 解析 + ビート検出
+/// Perform FFT analysis and beat detection from microphone or line input.
 ///
-/// オーディオスレッドでキャプチャしたサンプルを FFT 解析し、
-/// メインスレッドからスペクトル・波形・ビート情報にアクセスできる。
+/// Capture audio samples on the audio thread, run FFT analysis, and expose
+/// spectrum, waveform, and beat information on the main thread.
 ///
 /// ```swift
 /// let audio = createAudioInput()
@@ -47,22 +47,22 @@ public final class AudioAnalyzer {
 
     // MARK: - Public Properties
 
-    /// RMS ボリューム（0.0〜1.0）
+    /// RMS volume level (0.0 to 1.0).
     public private(set) var volume: Float = 0
 
-    /// FFT スペクトル（正規化済み、0.0〜1.0）
+    /// Normalized FFT spectrum (0.0 to 1.0).
     public private(set) var spectrum: [Float] = []
 
-    /// 生波形データ
+    /// Raw waveform data.
     public private(set) var waveform: [Float] = []
 
-    /// ビート検出フラグ（update() 毎にリセット）
+    /// Beat detection flag (reset on each call to `update()`).
     public private(set) var isBeat: Bool = false
 
-    /// スペクトルの EMA スムージング係数（0.0=スムージングなし, 0.99=非常に滑らか）
+    /// EMA smoothing coefficient for the spectrum (0.0 = no smoothing, 0.99 = very smooth).
     public var smoothing: Float = 0.8
 
-    /// ビート検出の感度（大きいほど鈍感）
+    /// Beat detection sensitivity (higher values make detection less sensitive).
     public var beatThreshold: Float = 1.5
 
     // MARK: - Audio Engine
@@ -91,12 +91,12 @@ public final class AudioAnalyzer {
     private var previousSpectrum: [Float]
     private var magnitudes: [Float]
     private var fluxHistory: [Float] = []
-    private let fluxHistorySize = 43  // ~0.7秒分（60fps）
+    private let fluxHistorySize = 43  // ~0.7 seconds at 60 fps
 
     // MARK: - Initialization
 
-    /// AudioAnalyzer を作成
-    /// - Parameter fftSize: FFT サイズ（2の冪乗、デフォルト1024）
+    /// Create an audio analyzer.
+    /// - Parameter fftSize: FFT size (must be a power of two, defaults to 1024).
     public init(fftSize: Int = 1024) {
         self.fftSize = fftSize
         self.halfFFTSize = fftSize / 2
@@ -112,10 +112,10 @@ public final class AudioAnalyzer {
         self.spectrum = [Float](repeating: 0, count: fftSize / 2)
         self.waveform = [Float](repeating: 0, count: fftSize)
 
-        // Hann 窓を事前計算
+        // Pre-compute Hann window
         vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
 
-        // vDSP DFT セットアップ
+        // vDSP DFT setup
         self.fftSetup = vDSP_DFT_zop_CreateSetup(
             nil,
             vDSP_Length(fftSize),
@@ -131,7 +131,8 @@ public final class AudioAnalyzer {
 
     // MARK: - Public API
 
-    /// オーディオキャプチャを開始
+    /// Start audio capture.
+    /// - Throws: An error if the audio engine fails to start.
     public func start() throws {
         guard !isRunning else { return }
 
@@ -164,7 +165,7 @@ public final class AudioAnalyzer {
         self.isRunning = true
     }
 
-    /// オーディオキャプチャを停止
+    /// Stop audio capture.
     public func stop() {
         guard isRunning else { return }
         engine?.inputNode.removeTap(onBus: 0)
@@ -173,10 +174,10 @@ public final class AudioAnalyzer {
         isRunning = false
     }
 
-    /// 毎フレーム呼ぶ更新メソッド（draw() の先頭で呼ぶ）
+    /// Update analysis data each frame (call at the beginning of `draw()`).
     ///
-    /// オーディオスレッドから受け取ったサンプルを FFT 解析し、
-    /// volume / spectrum / waveform / isBeat を更新する。
+    /// Process samples received from the audio thread through FFT and update
+    /// `volume`, `spectrum`, `waveform`, and `isBeat`.
     public func update() {
         guard let samples = sampleBuffer.take() ?? injectedSamples else {
             isBeat = false
@@ -186,7 +187,8 @@ public final class AudioAnalyzer {
         processSamples(samples)
     }
 
-    /// 外部からサンプルを注入（SoundFile から使用）
+    /// Inject samples from an external source (used by SoundFile).
+    /// - Parameter samples: Audio sample array to inject.
     public func injectSamples(_ samples: [Float]) {
         injectedSamples = samples
     }
@@ -194,7 +196,7 @@ public final class AudioAnalyzer {
     private var injectedSamples: [Float]?
 
     private func processSamples(_ samples: [Float]) {
-        // 波形を保存（in-place コピーで配列バッファ再確保を回避）
+        // Store waveform (in-place copy to avoid array buffer reallocation)
         let copyCount = min(samples.count, waveform.count)
         for i in 0..<copyCount {
             waveform[i] = samples[i]
@@ -203,7 +205,7 @@ public final class AudioAnalyzer {
             waveform[i] = 0
         }
 
-        // RMS ボリューム計算
+        // Compute RMS volume
         var rms: Float = 0
         vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
         volume = min(rms * 4.0, 1.0)
@@ -211,13 +213,13 @@ public final class AudioAnalyzer {
         // FFT
         performFFT(samples)
 
-        // ビート検出
+        // Beat detection
         detectBeat()
     }
 
-    /// バンドエネルギーを取得（0=低音, 1=中音, 2=高音）
-    /// - Parameter index: バンドインデックス（0, 1, 2）
-    /// - Returns: バンドエネルギー（0.0〜1.0）
+    /// Return the energy of a frequency band.
+    /// - Parameter index: Band index (0 = bass, 1 = mid, 2 = treble).
+    /// - Returns: Band energy (0.0 to 1.0).
     public func band(_ index: Int) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
@@ -229,13 +231,13 @@ public final class AudioAnalyzer {
         switch index {
         case 0:
             start = 0
-            end = bins / 8           // 低音 (~0-250Hz)
+            end = bins / 8           // Bass (~0-250 Hz)
         case 1:
             start = bins / 8
-            end = bins / 2           // 中音 (~250-2kHz)
+            end = bins / 2           // Mid (~250-2 kHz)
         case 2:
             start = bins / 2
-            end = bins               // 高音 (~2kHz+)
+            end = bins               // Treble (~2 kHz+)
         default:
             return 0
         }
@@ -249,11 +251,11 @@ public final class AudioAnalyzer {
         return sum / Float(end - start)
     }
 
-    /// 任意の周波数帯域のエネルギーを取得
+    /// Return the energy of an arbitrary frequency range.
     /// - Parameters:
-    ///   - lowFreq: 下限周波数（Hz）
-    ///   - highFreq: 上限周波数（Hz）
-    /// - Returns: エネルギー（0.0〜1.0）
+    ///   - lowFreq: Lower bound frequency in Hz.
+    ///   - highFreq: Upper bound frequency in Hz.
+    /// - Returns: Energy level (0.0 to 1.0).
     public func bandEnergy(lowFreq: Float, highFreq: Float) -> Float {
         guard !spectrum.isEmpty, let engine else { return 0 }
 
@@ -277,22 +279,22 @@ public final class AudioAnalyzer {
     private func performFFT(_ samples: [Float]) {
         guard let setup = fftSetup else { return }
 
-        // 窓関数適用
+        // Apply window function
         vDSP_vmul(samples, 1, window, 1, &realIn, 1, vDSP_Length(fftSize))
-        // 虚部はゼロ
+        // Imaginary part is zero
         vDSP.fill(&imagIn, with: 0)
 
-        // DFT 実行
+        // Execute DFT
         vDSP_DFT_Execute(setup, realIn, imagIn, &realOut, &imagOut)
 
-        // マグニチュード計算（pre-allocated バッファを再利用）
+        // Compute magnitudes (reuse pre-allocated buffer)
         for i in 0..<halfFFTSize {
             let re = realOut[i]
             let im = imagOut[i]
             magnitudes[i] = sqrt(re * re + im * im) / Float(fftSize)
         }
 
-        // 正規化（最大値を1.0に）
+        // Normalize (scale maximum to 1.0)
         var maxMag: Float = 0
         vDSP_maxv(magnitudes, 1, &maxMag, vDSP_Length(halfFFTSize))
         if maxMag > 0.001 {
@@ -300,13 +302,13 @@ public final class AudioAnalyzer {
             vDSP_vsmul(magnitudes, 1, &scale, &magnitudes, 1, vDSP_Length(halfFFTSize))
         }
 
-        // EMA スムージング
+        // EMA smoothing
         let alpha = 1.0 - smoothing
         for i in 0..<halfFFTSize {
             smoothedSpectrum[i] = smoothedSpectrum[i] * smoothing + magnitudes[i] * alpha
         }
 
-        // spectrum へ in-place コピー（CoW による遅延コピーを回避）
+        // Copy to spectrum in-place (avoid CoW deferred copy)
         for i in 0..<halfFFTSize {
             spectrum[i] = smoothedSpectrum[i]
         }
@@ -315,7 +317,7 @@ public final class AudioAnalyzer {
     // MARK: - Private: Beat Detection (Spectral Flux)
 
     private func detectBeat() {
-        // スペクトルフラックス: 現在のスペクトルと前フレームの差分の正の部分の合計
+        // Spectral flux: sum of positive differences between current and previous spectrum
         var flux: Float = 0
         let lowBins = min(halfFFTSize / 4, spectrum.count)
         for i in 0..<lowBins {
@@ -323,12 +325,12 @@ public final class AudioAnalyzer {
             if diff > 0 { flux += diff }
         }
 
-        // 前フレームのスペクトルを保存（in-place コピー）
+        // Store previous spectrum (in-place copy)
         for i in 0..<min(spectrum.count, previousSpectrum.count) {
             previousSpectrum[i] = spectrum[i]
         }
 
-        // フラックス履歴の平均と比較
+        // Compare against average flux history
         fluxHistory.append(flux)
         if fluxHistory.count > fluxHistorySize {
             fluxHistory.removeFirst()

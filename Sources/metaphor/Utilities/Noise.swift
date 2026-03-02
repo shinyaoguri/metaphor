@@ -1,21 +1,22 @@
 import Foundation
 
-/// Perlinノイズジェネレーター
+/// Generate Perlin noise in 1D, 2D, and 3D.
 ///
-/// 1D、2D、3Dのノイズを生成する。出力範囲は0.0〜1.0。
-/// octavesとfalloffでフラクタルノイズの詳細度を調整可能。
+/// Produces noise values in the range 0.0 to 1.0.
+/// Use octaves and falloff to control fractal noise detail.
 public struct NoiseGenerator: Sendable {
-    /// オクターブ数（重ね合わせる層の数）
+    /// Number of octaves (layers to combine).
     public var octaves: Int = 4
 
-    /// オクターブごとの振幅減衰率
+    /// Amplitude decay rate per octave.
     public var falloff: Float = 0.5
 
     private let perm: [Int]
 
     // MARK: - Initialization
 
-    /// シード値でノイズジェネレーターを生成
+    /// Create a noise generator with the given seed value.
+    /// - Parameter seed: The seed for the permutation table. Use 0 for the default table.
     public init(seed: UInt64 = 0) {
         var base = Self.defaultPermutation
         if seed != 0 {
@@ -31,17 +32,28 @@ public struct NoiseGenerator: Sendable {
 
     // MARK: - Public Interface
 
-    /// 1Dノイズ（出力: 0.0〜1.0）
+    /// Sample 1D noise at the given coordinate.
+    /// - Parameter x: The input coordinate.
+    /// - Returns: A noise value in the range 0.0 to 1.0.
     public func noise(_ x: Float) -> Float {
         evaluate(x, 0, 0)
     }
 
-    /// 2Dノイズ（出力: 0.0〜1.0）
+    /// Sample 2D noise at the given coordinates.
+    /// - Parameters:
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    /// - Returns: A noise value in the range 0.0 to 1.0.
     public func noise(_ x: Float, _ y: Float) -> Float {
         evaluate(x, y, 0)
     }
 
-    /// 3Dノイズ（出力: 0.0〜1.0）
+    /// Sample 3D noise at the given coordinates.
+    /// - Parameters:
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
+    /// - Returns: A noise value in the range 0.0 to 1.0.
     public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
         evaluate(x, y, z)
     }
@@ -64,7 +76,7 @@ public struct NoiseGenerator: Sendable {
         return (total / maxAmplitude + 1) * 0.5
     }
 
-    /// 単一オクターブのPerlinノイズ（範囲: -1..1）
+    /// Compute a single octave of Perlin noise (range: -1 to 1).
     private func rawNoise(_ x: Float, _ y: Float, _ z: Float) -> Float {
         let xi = Int(floor(x)) & 255
         let yi = Int(floor(y)) & 255
@@ -137,36 +149,51 @@ public struct NoiseGenerator: Sendable {
 
 // MARK: - Global Noise Functions
 
-/// グローバルノイズジェネレーター（MainActorスコープ）
+/// Global noise generator scoped to MainActor.
 @MainActor
 private var _noiseGenerator = NoiseGenerator()
 
-/// 1Dノイズ（出力: 0.0〜1.0）
+/// Sample 1D Perlin noise at the given coordinate.
+/// - Parameter x: The input coordinate.
+/// - Returns: A noise value in the range 0.0 to 1.0.
 @MainActor
 public func noise(_ x: Float) -> Float {
     _noiseGenerator.noise(x)
 }
 
-/// 2Dノイズ（出力: 0.0〜1.0）
+/// Sample 2D Perlin noise at the given coordinates.
+/// - Parameters:
+///   - x: The x coordinate.
+///   - y: The y coordinate.
+/// - Returns: A noise value in the range 0.0 to 1.0.
 @MainActor
 public func noise(_ x: Float, _ y: Float) -> Float {
     _noiseGenerator.noise(x, y)
 }
 
-/// 3Dノイズ（出力: 0.0〜1.0）
+/// Sample 3D Perlin noise at the given coordinates.
+/// - Parameters:
+///   - x: The x coordinate.
+///   - y: The y coordinate.
+///   - z: The z coordinate.
+/// - Returns: A noise value in the range 0.0 to 1.0.
 @MainActor
 public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
     _noiseGenerator.noise(x, y, z)
 }
 
-/// ノイズの詳細度を設定
+/// Configure the noise detail level by setting octaves and falloff.
+/// - Parameters:
+///   - octaves: The number of noise layers to combine.
+///   - falloff: The amplitude decay rate per octave.
 @MainActor
 public func noiseDetail(octaves: Int = 4, falloff: Float = 0.5) {
     _noiseGenerator.octaves = octaves
     _noiseGenerator.falloff = falloff
 }
 
-/// ノイズのシード値を設定
+/// Reinitialize the noise generator with a new seed value.
+/// - Parameter seed: The seed for the permutation table.
 @MainActor
 public func noiseSeed(_ seed: UInt64) {
     _noiseGenerator = NoiseGenerator(seed: seed)

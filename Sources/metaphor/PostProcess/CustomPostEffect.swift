@@ -1,9 +1,8 @@
 import Metal
 
-/// カスタムポストプロセスエフェクト
+/// Apply a custom post-process effect using a user-defined MSL fragment shader.
 ///
-/// ユーザー定義のMSLフラグメントシェーダーでポストプロセスを適用する。
-/// `createPostEffect()` で作成し、`addPostEffect(.custom(...))` でチェーンに追加する。
+/// Create with `createPostEffect()` and add to the chain with `addPostEffect(.custom(...))`.
 ///
 /// ```swift
 /// let effect = try createPostEffect(
@@ -26,28 +25,28 @@ import Metal
 /// ```
 @MainActor
 public final class CustomPostEffect: @unchecked Sendable {
-    /// エフェクト名
+    /// The name of this effect.
     public let name: String
 
-    /// フラグメントシェーダー関数名
+    /// The fragment shader function name.
     public let fragmentFunctionName: String
 
-    /// ShaderLibraryに登録されたキー
+    /// The key under which the shader is registered in ShaderLibrary.
     let libraryKey: String
 
-    /// エフェクトの強さ（PostProcessParams.intensityにマッピング）
+    /// The effect intensity, mapped to PostProcessParams.intensity.
     public var intensity: Float = 0
 
-    /// 閾値（PostProcessParams.thresholdにマッピング）
+    /// The threshold value, mapped to PostProcessParams.threshold.
     public var threshold: Float = 0
 
-    /// 半径（PostProcessParams.radiusにマッピング）
+    /// The radius value, mapped to PostProcessParams.radius.
     public var radius: Float = 0
 
-    /// 滑らかさ（PostProcessParams.smoothnessにマッピング）
+    /// The smoothness value, mapped to PostProcessParams.smoothness.
     public var smoothness: Float = 0
 
-    /// カスタムパラメータデータ（buffer(1)にバインドされる）
+    /// Raw bytes for custom parameter data bound to buffer(1).
     private var parameterData: [UInt8] = []
 
     init(name: String, fragmentFunctionName: String, libraryKey: String) {
@@ -56,9 +55,9 @@ public final class CustomPostEffect: @unchecked Sendable {
         self.libraryKey = libraryKey
     }
 
-    /// カスタムパラメータを設定（buffer(1)として渡される）
+    /// Set custom parameters to pass to the shader as buffer(1).
     ///
-    /// 任意のPOD構造体をシェーダーに渡すために使用する。
+    /// Use this to send any plain-old-data struct to the fragment shader.
     /// ```swift
     /// struct MyParams {
     ///     var amount: Float
@@ -66,28 +65,33 @@ public final class CustomPostEffect: @unchecked Sendable {
     /// }
     /// effect.setParameters(MyParams(amount: 0.5, color: SIMD3(1, 0, 0)))
     /// ```
+    ///
+    /// - Parameter value: A POD struct whose bytes are copied to the GPU buffer.
     public func setParameters<T>(_ value: T) {
         var val = value
         parameterData = withUnsafeBytes(of: &val) { Array($0) }
     }
 
-    /// カスタムパラメータのバイト配列
+    /// Return the raw byte array of the custom parameters.
     var parameters: [UInt8] { parameterData }
 
-    /// カスタムパラメータが設定されているか
+    /// Indicate whether custom parameters have been set.
     var hasCustomParameters: Bool { !parameterData.isEmpty }
 
     // MARK: - Hot Reload
 
-    /// シェーダーライブラリから関数を再取得する
+    /// Re-fetch the shader function from the shader library after a hot reload.
     ///
-    /// ShaderLibrary の reload 後に呼ぶことで、
-    /// 変更されたシェーダーでポストエフェクトパイプラインが再構築される。
+    /// Call this after `ShaderLibrary.reload()` to ensure the post-effect pipeline
+    /// rebuilds with the updated shader.
+    ///
+    /// - Parameter shaderLibrary: The shader library to look up the function from.
+    /// - Throws: `MetaphorError.postProcessShaderNotFound` if the function is not found.
     public func reload(shaderLibrary: ShaderLibrary) throws {
         guard shaderLibrary.function(named: fragmentFunctionName, from: libraryKey) != nil else {
-            throw PostProcessError.shaderNotFound(fragmentFunctionName)
+            throw MetaphorError.postProcessShaderNotFound(fragmentFunctionName)
         }
-        // 関数自体は PostProcessPipeline が libraryKey + fragmentFunctionName から都度取得するため、
-        // ShaderLibrary の reload で関数キャッシュがクリアされていれば再取得される
+        // The function itself is fetched by PostProcessPipeline via libraryKey + fragmentFunctionName,
+        // so clearing the function cache in ShaderLibrary.reload() triggers re-fetching automatically.
     }
 }

@@ -3,9 +3,9 @@ import simd
 
 // MARK: - Vertex3D
 
-/// 3D頂点データ（positionNormalColor レイアウト、48 bytes/vertex）
+/// Represent a 3D vertex with position, normal, and color (positionNormalColor layout, 48 bytes/vertex).
 ///
-/// `VertexLayout.positionNormalColor` と一致するメモリレイアウトを持つ。
+/// Has a memory layout matching `VertexLayout.positionNormalColor`.
 struct Vertex3D {
     var position: SIMD3<Float>  // 16 bytes (SIMD3 stride)
     var normal: SIMD3<Float>    // 16 bytes
@@ -14,10 +14,10 @@ struct Vertex3D {
 
 // MARK: - Vertex3DTextured
 
-/// 3Dテクスチャ付き頂点データ（positionNormalUV レイアウト、48 bytes/vertex）
+/// Represent a 3D textured vertex with position, normal, and UV (positionNormalUV layout, 48 bytes/vertex).
 ///
-/// `VertexLayout.positionNormalUV` と一致するメモリレイアウトを持つ。
-/// SIMD3のアラインメント（16バイト）により、stride=48（uv後に8バイトのパディング）。
+/// Has a memory layout matching `VertexLayout.positionNormalUV`.
+/// Due to SIMD3 alignment (16 bytes), the stride is 48 (8 bytes of padding after uv).
 struct Vertex3DTextured {
     var position: SIMD3<Float>  // 16 bytes
     var normal: SIMD3<Float>    // 16 bytes
@@ -26,11 +26,11 @@ struct Vertex3DTextured {
 
 // MARK: - Mesh
 
-/// 3Dメッシュデータ
+/// Store 3D mesh data including vertex and optional index buffers.
 ///
-/// 頂点バッファとオプションのインデックスバッファを保持する。
-/// 静的ファクトリメソッドで基本プリミティブを生成可能。
-/// テクスチャマッピング用のUV頂点バッファもオプションで保持。
+/// Holds a vertex buffer and an optional index buffer.
+/// Provides static factory methods for generating basic primitives.
+/// Optionally holds a UV vertex buffer for texture mapping.
 ///
 /// ```swift
 /// let box = Mesh.box(device: device)
@@ -38,28 +38,28 @@ struct Vertex3DTextured {
 /// ```
 @MainActor
 public final class Mesh {
-    /// 頂点バッファ（Vertex3D）
+    /// Vertex buffer containing Vertex3D data.
     public let vertexBuffer: MTLBuffer
 
-    /// インデックスバッファ（nilの場合は非インデックス描画）
+    /// Index buffer, or nil for non-indexed drawing.
     public let indexBuffer: MTLBuffer?
 
-    /// 頂点数
+    /// Number of vertices.
     public let vertexCount: Int
 
-    /// インデックス数
+    /// Number of indices.
     public let indexCount: Int
 
-    /// インデックス型
+    /// Index element type.
     public let indexType: MTLIndexType
 
-    /// UV付き頂点バッファ（Vertex3DTextured、テクスチャマッピング用）
+    /// UV vertex buffer containing Vertex3DTextured data for texture mapping.
     public let uvVertexBuffer: MTLBuffer?
 
-    /// UV付き頂点数
+    /// Number of UV vertices.
     public let uvVertexCount: Int
 
-    /// UV座標を持つかどうか
+    /// Whether this mesh has UV coordinates.
     public let hasUVs: Bool
 
     // MARK: - Initialization
@@ -69,11 +69,14 @@ public final class Mesh {
         self.vertexCount = vertices.count
 
         let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
-        self.vertexBuffer = device.makeBuffer(
+        guard let vb = device.makeBuffer(
             bytes: vertices,
             length: vertexSize,
             options: .storageModeShared
-        )!
+        ) else {
+            fatalError("[metaphor] Failed to create vertex buffer (size: \(vertexSize) bytes, \(vertices.count) vertices). GPU memory may be exhausted.")
+        }
+        self.vertexBuffer = vb
 
         if let indices = indices, !indices.isEmpty {
             self.indexCount = indices.count
@@ -106,17 +109,20 @@ public final class Mesh {
         }
     }
 
-    /// UInt32インデックス対応イニシャライザ（大規模メッシュ用）
+    /// Initialize a mesh with UInt32 indices for large meshes.
     init(device: MTLDevice, vertices: [Vertex3D], indices32: [UInt32],
          uvVertices: [Vertex3DTextured]? = nil) {
         self.vertexCount = vertices.count
 
         let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
-        self.vertexBuffer = device.makeBuffer(
+        guard let vb = device.makeBuffer(
             bytes: vertices,
             length: vertexSize,
             options: .storageModeShared
-        )!
+        ) else {
+            fatalError("[metaphor] Failed to create vertex buffer (size: \(vertexSize) bytes, \(vertices.count) vertices). GPU memory may be exhausted.")
+        }
+        self.vertexBuffer = vb
 
         if !indices32.isEmpty {
             self.indexCount = indices32.count
@@ -153,7 +159,7 @@ public final class Mesh {
 // MARK: - Box
 
 extension Mesh {
-    /// ボックスメッシュ（24頂点、36インデックス、フラット法線、UV付き）
+    /// Create a box mesh with 24 vertices, 36 indices, flat normals, and UV coordinates.
     public static func box(
         device: MTLDevice,
         width: Float = 1,
@@ -163,7 +169,7 @@ extension Mesh {
         let hw = width / 2, hh = height / 2, hd = depth / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
 
-        // 各面のUV座標（bottom-left, bottom-right, top-right, top-left）
+        // UV coordinates for each face (bottom-left, bottom-right, top-right, top-left)
         let faceUVs: [SIMD2<Float>] = [
             SIMD2(0, 1), SIMD2(1, 1), SIMD2(1, 0), SIMD2(0, 0),
         ]
@@ -224,7 +230,7 @@ extension Mesh {
 // MARK: - Sphere
 
 extension Mesh {
-    /// UV球メッシュ（スムース法線、UV付き）
+    /// Create a UV sphere mesh with smooth normals and UV coordinates.
     public static func sphere(
         device: MTLDevice,
         radius: Float = 0.5,
@@ -275,7 +281,7 @@ extension Mesh {
 // MARK: - Plane
 
 extension Mesh {
-    /// 平面メッシュ（XY平面、+Z法線、UV付き）
+    /// Create a plane mesh on the XY plane with +Z normals and UV coordinates.
     public static func plane(
         device: MTLDevice,
         width: Float = 1,
@@ -306,7 +312,7 @@ extension Mesh {
 // MARK: - Cylinder
 
 extension Mesh {
-    /// シリンダーメッシュ（側面 + 上下キャップ、UV付き）
+    /// Create a cylinder mesh with side surface, top and bottom caps, and UV coordinates.
     public static func cylinder(
         device: MTLDevice,
         radius: Float = 0.5,
@@ -319,18 +325,18 @@ extension Mesh {
         var uvVertices: [Vertex3DTextured] = []
         var indices: [UInt16] = []
 
-        // --- 側面 ---
+        // --- Side surface ---
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
             let c = cos(angle), s = sin(angle)
             let normal = SIMD3<Float>(c, 0, s)
             let u = Float(i) / Float(segments)
 
-            // 上リング
+            // Top ring
             let topPos = SIMD3(c * radius, hh, s * radius)
             vertices.append(Vertex3D(position: topPos, normal: normal, color: white))
             uvVertices.append(Vertex3DTextured(position: topPos, normal: normal, uv: SIMD2(u, 0)))
-            // 下リング
+            // Bottom ring
             let botPos = SIMD3(c * radius, -hh, s * radius)
             vertices.append(Vertex3D(position: botPos, normal: normal, color: white))
             uvVertices.append(Vertex3DTextured(position: botPos, normal: normal, uv: SIMD2(u, 1)))
@@ -344,7 +350,7 @@ extension Mesh {
             indices.append(contentsOf: [topA, botA, topB, botA, botB, topB])
         }
 
-        // --- 上キャップ ---
+        // --- Top cap ---
         let topCenter = UInt16(vertices.count)
         let topCenterPos = SIMD3<Float>(0, hh, 0)
         let topNormal = SIMD3<Float>(0, 1, 0)
@@ -365,7 +371,7 @@ extension Mesh {
             indices.append(contentsOf: [topCenter, a, a + 1])
         }
 
-        // --- 下キャップ（反転ワインディング） ---
+        // --- Bottom cap (reversed winding) ---
         let botCenter = UInt16(vertices.count)
         let botCenterPos = SIMD3<Float>(0, -hh, 0)
         let botNormal = SIMD3<Float>(0, -1, 0)
@@ -393,7 +399,7 @@ extension Mesh {
 // MARK: - Cone
 
 extension Mesh {
-    /// コーンメッシュ（側面 + 底キャップ、UV付き）
+    /// Create a cone mesh with side surface, bottom cap, and UV coordinates.
     public static func cone(
         device: MTLDevice,
         radius: Float = 0.5,
@@ -406,18 +412,18 @@ extension Mesh {
         var uvVertices: [Vertex3DTextured] = []
         var indices: [UInt16] = []
 
-        // --- 側面 ---
+        // --- Side surface ---
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
             let c = cos(angle), s = sin(angle)
             let normal = normalize(SIMD3<Float>(c * height, radius, s * height))
             let u = Float(i) / Float(segments)
 
-            // 先端
+            // Tip
             let tipPos = SIMD3<Float>(0, hh, 0)
             vertices.append(Vertex3D(position: tipPos, normal: normal, color: white))
             uvVertices.append(Vertex3DTextured(position: tipPos, normal: normal, uv: SIMD2(u, 0)))
-            // 底面
+            // Base
             let basePos = SIMD3(c * radius, -hh, s * radius)
             vertices.append(Vertex3D(position: basePos, normal: normal, color: white))
             uvVertices.append(Vertex3DTextured(position: basePos, normal: normal, uv: SIMD2(u, 1)))
@@ -430,7 +436,7 @@ extension Mesh {
             indices.append(contentsOf: [tipI, baseI, baseNext])
         }
 
-        // --- 底キャップ ---
+        // --- Bottom cap ---
         let botCenter = UInt16(vertices.count)
         let botCenterPos = SIMD3<Float>(0, -hh, 0)
         let botNormal = SIMD3<Float>(0, -1, 0)
@@ -458,7 +464,7 @@ extension Mesh {
 // MARK: - Torus
 
 extension Mesh {
-    /// トーラスメッシュ（パラメトリック面、UV付き）
+    /// Create a torus mesh using a parametric surface with UV coordinates.
     public static func torus(
         device: MTLDevice,
         ringRadius: Float = 0.5,
@@ -515,7 +521,7 @@ public enum MeshError: Error {
 }
 
 extension Mesh {
-    /// OBJファイルをURLから読み込み
+    /// Load a mesh from an OBJ file at the given URL.
     public static func loadOBJ(device: MTLDevice, url: URL) throws -> Mesh {
         let source = try String(contentsOf: url, encoding: .utf8)
         guard let mesh = loadOBJ(device: device, source: source) else {
@@ -524,16 +530,17 @@ extension Mesh {
         return mesh
     }
 
-    /// Model I/O を使って OBJ / USDZ / ABC ファイルを読み込み
+    /// Load a model file using Model I/O (supports OBJ, USDZ, ABC formats).
     /// - Parameters:
-    ///   - device: MTLDevice
-    ///   - url: モデルファイルの URL
-    ///   - normalize: true ならバウンディングボックスを [-1,1] に正規化
+    ///   - device: The Metal device to create GPU buffers on.
+    ///   - url: The URL of the model file.
+    ///   - normalize: If true, normalizes the bounding box to [-1, 1].
+    /// - Returns: A Mesh instance containing the loaded model data.
     public static func load(device: MTLDevice, url: URL, normalize: Bool = true) throws -> Mesh {
         return try ModelIOLoader.load(device: device, url: url, normalize: normalize)
     }
 
-    /// OBJ文字列からメッシュを生成
+    /// Parse an OBJ format string and generate a mesh.
     public static func loadOBJ(device: MTLDevice, source: String) -> Mesh? {
         var positions: [SIMD3<Float>] = []
         var normals: [SIMD3<Float>] = []
@@ -541,8 +548,8 @@ extension Mesh {
 
         struct FaceIndex: Hashable {
             let v: Int
-            let vt: Int  // -1 = なし
-            let vn: Int  // -1 = なし
+            let vt: Int  // -1 = none
+            let vn: Int  // -1 = none
         }
 
         var indexMap: [FaceIndex: Int] = [:]
@@ -554,24 +561,25 @@ extension Mesh {
 
         let white = SIMD4<Float>(1, 1, 1, 1)
 
-        /// face頂点トークンをパースし、頂点インデックスとUV/法線の有無を返す
+        /// Parse a face vertex token and return the vertex index along with UV/normal presence flags.
         func resolveIndex(_ token: String) -> (index: Int, hasUV: Bool, hasNormal: Bool) {
             let parts = token.split(separator: "/", omittingEmptySubsequences: false)
-            let vi = Int(parts[0])! - 1
+            guard let viRaw = Int(parts[0]) else { return (0, false, false) }
+            let vi = viRaw - 1
             let vti: Int
             let vni: Int
             var foundUV = false
             var foundNormal = false
 
-            if parts.count > 1 && !parts[1].isEmpty {
-                vti = Int(parts[1])! - 1
+            if parts.count > 1 && !parts[1].isEmpty, let vtiRaw = Int(parts[1]) {
+                vti = vtiRaw - 1
                 foundUV = true
             } else {
                 vti = -1
             }
 
-            if parts.count > 2 && !parts[2].isEmpty {
-                vni = Int(parts[2])! - 1
+            if parts.count > 2 && !parts[2].isEmpty, let vniRaw = Int(parts[2]) {
+                vni = vniRaw - 1
                 foundNormal = true
             } else {
                 vni = -1
@@ -649,7 +657,7 @@ extension Mesh {
 
         guard !vertices.isEmpty, !indices.isEmpty else { return nil }
 
-        // 法線が無い場合は面法線を自動計算
+        // Auto-compute face normals when none are provided
         if !hasNormals {
             for i in 0..<vertices.count {
                 vertices[i].normal = .zero

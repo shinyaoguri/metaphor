@@ -3,7 +3,7 @@ import AVFoundation
 import CoreVideo
 import Foundation
 
-/// ビデオコーデック
+/// Represent the video codec to use for encoding.
 public enum VideoCodec: Sendable {
     case h264
     case h265
@@ -16,7 +16,7 @@ public enum VideoCodec: Sendable {
     }
 }
 
-/// ビデオコンテナ形式
+/// Represent the container format for video output.
 public enum VideoFormat: Sendable {
     case mp4
     case mov
@@ -28,7 +28,7 @@ public enum VideoFormat: Sendable {
         }
     }
 
-    /// ファイル拡張子
+    /// Return the file extension string for this format.
     public var fileExtension: String {
         switch self {
         case .mp4: return "mp4"
@@ -37,18 +37,18 @@ public enum VideoFormat: Sendable {
     }
 }
 
-/// ビデオエクスポート設定
+/// Configure video export parameters.
 public struct VideoExportConfig: Sendable {
-    /// コーデック
+    /// The video codec to use.
     public var codec: VideoCodec
 
-    /// コンテナ形式
+    /// The container format for the output file.
     public var format: VideoFormat
 
-    /// フレームレート
+    /// The target frame rate in frames per second.
     public var fps: Int
 
-    /// ビットレート（bps）
+    /// The target bitrate in bits per second.
     public var bitrate: Int
 
     public init(
@@ -64,51 +64,52 @@ public struct VideoExportConfig: Sendable {
     }
 }
 
-/// AVFoundationを使用してスケッチ出力からMP4/MOVビデオを録画するクラス
+/// Record MP4/MOV video from sketch output using AVFoundation.
 ///
-/// `beginRecord()` で録画を開始し、`endRecord()` で停止する。
-/// 録画中は毎フレーム自動的にビデオフレームが書き出される。
+/// Call `beginRecord()` to start recording and `endRecord()` to stop.
+/// While recording, each frame is automatically written to the video file.
 ///
 /// ```swift
-/// // 録画開始
+/// // Start recording
 /// beginVideoRecord()
 ///
-/// // 録画終了
+/// // Stop recording
 /// endVideoRecord {
-///     print("録画完了")
+///     print("Recording complete")
 /// }
 /// ```
 @MainActor
 public final class VideoExporter {
-    /// 録画中かどうか
+    /// Indicate whether recording is currently in progress.
     public private(set) var isRecording: Bool = false
 
-    /// 現在のフレームインデックス
+    /// The current frame index.
     private var frameIndex: Int64 = 0
 
-    /// AVAssetWriter
+    /// The AVAssetWriter for the current recording session.
     private var assetWriter: AVAssetWriter?
 
-    /// ビデオ入力
+    /// The video writer input.
     private var writerInput: AVAssetWriterInput?
 
-    /// ピクセルバッファアダプタ
+    /// The pixel buffer adaptor for appending frames.
     private var pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
 
-    /// 現在のFPS（CMTime計算用）
+    /// The current frame rate used for CMTime calculations.
     private var currentFPS: Int = 60
 
-    /// AVAssetWriter 操作を直列化するキュー
+    /// Serial dispatch queue to serialize AVAssetWriter operations.
     private let writerQueue = DispatchQueue(label: "metaphor.VideoExporter.writer")
 
     public init() {}
 
-    /// 録画を開始
+    /// Start recording to a video file.
     /// - Parameters:
-    ///   - path: 出力ファイルパス
-    ///   - width: ビデオ幅
-    ///   - height: ビデオ高さ
-    ///   - config: エクスポート設定
+    ///   - path: The output file path.
+    ///   - width: The video width in pixels.
+    ///   - height: The video height in pixels.
+    ///   - config: The export configuration.
+    /// - Throws: An error if the writer cannot be created or started.
     public func beginRecord(
         path: String,
         width: Int,
@@ -119,11 +120,11 @@ public final class VideoExporter {
 
         let url = URL(fileURLWithPath: path)
 
-        // ディレクトリが存在しない場合は作成
+        // Create the output directory if it does not exist
         let dir = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        // 既存ファイルがあれば削除
+        // Remove existing file if present
         if FileManager.default.fileExists(atPath: path) {
             try FileManager.default.removeItem(atPath: path)
         }
@@ -176,7 +177,7 @@ public final class VideoExporter {
         self.isRecording = true
     }
 
-    /// 現在フレームをキャプチャ（MetaphorRenderer.renderFrame()内から呼ばれる）
+    /// Capture the current frame (called from MetaphorRenderer.renderFrame()).
     func captureFrame(
         sourceTexture: MTLTexture,
         stagingTexture: MTLTexture,
@@ -192,7 +193,7 @@ public final class VideoExporter {
         frameIndex += 1
         let fps = Int32(currentFPS)
 
-        // Blit source → staging texture
+        // Blit source -> staging texture
         if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
             blitEncoder.copy(
                 from: sourceTexture,
@@ -247,8 +248,8 @@ public final class VideoExporter {
         }
     }
 
-    /// 録画を終了
-    /// - Parameter completion: 書き出し完了時に呼ばれるコールバック
+    /// Stop recording and finalize the video file.
+    /// - Parameter completion: An optional callback invoked on the main thread when writing completes.
     public func endRecord(completion: (@Sendable () -> Void)? = nil) {
         guard isRecording else {
             completion?()
@@ -263,8 +264,8 @@ public final class VideoExporter {
             return
         }
 
-        // writerQueue 上で markAsFinished → finishWriting を実行し、
-        // 保留中の captureFrame と競合しないようにする
+        // Execute markAsFinished and finishWriting on the writer queue
+        // to avoid racing with pending captureFrame calls
         writerQueue.async {
             input.markAsFinished()
 

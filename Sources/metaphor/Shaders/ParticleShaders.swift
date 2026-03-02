@@ -1,18 +1,29 @@
 import Foundation
 
-/// GPU パーティクルシステム用 MSL シェーダーソース
+/// Contains embedded MSL source code for GPU particle system shaders.
+///
+/// Includes compute kernels for particle update, indirect draw support
+/// (counter reset, compact, build arguments), and vertex/fragment shaders
+/// for billboard quad rendering with soft circle appearance.
 enum ParticleShaders {
 
-    /// シェーダー関数名
+    /// Particle shader function name constants.
     enum FunctionName {
+        /// MSL function name for the particle update compute kernel.
         static let update = "metaphor_particleUpdate"
+        /// MSL function name for the particle billboard vertex shader.
         static let vertex = "metaphor_particleVertex"
+        /// MSL function name for the particle soft-circle fragment shader.
         static let fragment = "metaphor_particleFragment"
+        /// MSL function name for the atomic counter reset compute kernel.
         static let resetCounter = "metaphor_particleResetCounter"
+        /// MSL function name for the alive-particle compaction compute kernel.
         static let compact = "metaphor_particleCompact"
+        /// MSL function name for the indirect draw arguments builder compute kernel.
         static let buildIndirectArgs = "metaphor_particleBuildIndirectArgs"
     }
 
+    /// MSL source code for all particle system shaders.
     static let source = """
     #include <metal_stdlib>
     using namespace metal;
@@ -183,10 +194,10 @@ enum ParticleShaders {
                 float nz = metaphor_noise3d(noisePos + float3(0.0, 47.2, 0.0)) * 2.0 - 1.0;
                 acceleration += float3(nx, ny, nz) * strength;
             } else if (forceType == 4u) {
-                // Vortex: Y軸周りの回転力（yzw = 渦の中心座標）
+                // Vortex: rotational force around Y-axis (yzw = vortex center)
                 float3 center = forces[i].typeAndParams.yzw;
                 float3 toParticle = p.position.xyz - center;
-                // XZ平面での接線方向（Y軸回転）
+                // Tangent direction in XZ plane (Y-axis rotation)
                 float3 tangent = float3(-toParticle.z, 0.0, toParticle.x);
                 float tLen = length(tangent);
                 if (tLen > 0.001) {

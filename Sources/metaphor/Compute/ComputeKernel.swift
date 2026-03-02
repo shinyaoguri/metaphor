@@ -1,9 +1,9 @@
 @preconcurrency import Metal
 
-/// GPUコンピュートカーネルをラップするクラス
+/// Wrap a GPU compute kernel with its pipeline state and metadata.
 ///
-/// MSLソース文字列からコンパイルしたコンピュートパイプラインステートを保持し、
-/// スレッドグループサイズなどのメタデータを提供する。
+/// Compile a compute pipeline state from an MSL source string and expose
+/// thread-group size metadata for dispatch configuration.
 ///
 /// ```swift
 /// let kernel = try createComputeKernel(
@@ -13,24 +13,26 @@
 /// ```
 @MainActor
 public final class ComputeKernel {
-    /// コンピュートパイプラインステート
+    /// The compiled compute pipeline state.
     public let pipelineState: MTLComputePipelineState
 
-    /// スレッドグループあたりの最大スレッド数
+    /// Return the maximum number of threads per threadgroup.
     public var maxTotalThreadsPerThreadgroup: Int {
         pipelineState.maxTotalThreadsPerThreadgroup
     }
 
-    /// 推奨1Dスレッドグループサイズ（SIMD幅）
+    /// Return the recommended 1D threadgroup size (SIMD width).
     public var threadExecutionWidth: Int {
         pipelineState.threadExecutionWidth
     }
 
-    /// MSLソースからコンピュートカーネルを作成
+    /// Create a compute kernel by compiling MSL source code at runtime.
     /// - Parameters:
-    ///   - device: MTLDevice
-    ///   - source: MSLソースコード
-    ///   - functionName: カーネル関数名
+    ///   - device: The Metal device used for compilation.
+    ///   - source: The MSL source code string.
+    ///   - functionName: The name of the kernel function to look up.
+    /// - Throws: `ComputeKernelError.functionNotFound` if the function name is not found,
+    ///   or a Metal compilation error.
     public init(device: MTLDevice, source: String, functionName: String) throws {
         let library = try device.makeLibrary(source: source, options: nil)
         guard let function = library.makeFunction(name: functionName) else {
@@ -39,16 +41,17 @@ public final class ComputeKernel {
         self.pipelineState = try device.makeComputePipelineState(function: function)
     }
 
-    /// 事前コンパイル済みMTLFunctionからコンピュートカーネルを作成
+    /// Create a compute kernel from a pre-compiled Metal function.
     /// - Parameters:
-    ///   - device: MTLDevice
-    ///   - function: MTLFunction
+    ///   - device: The Metal device used to create the pipeline state.
+    ///   - function: A pre-compiled `MTLFunction`.
+    /// - Throws: A Metal pipeline creation error.
     public init(device: MTLDevice, function: MTLFunction) throws {
         self.pipelineState = try device.makeComputePipelineState(function: function)
     }
 }
 
-/// コンピュートカーネルのエラー
+/// Represent errors that can occur when creating a compute kernel.
 public enum ComputeKernelError: Error, CustomStringConvertible {
     case functionNotFound(String)
 

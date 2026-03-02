@@ -1,8 +1,14 @@
 import Metal
 
-/// GKNoiseMap の Float 配列から MTLTexture を生成するヘルパー
+/// Build Metal textures from noise value arrays.
 enum NoiseTextureBuilder {
-    /// Float 配列（0.0〜1.0）からグレースケール BGRA8 テクスチャを作成
+    /// Create a grayscale BGRA8 texture from a float array (0.0 to 1.0).
+    /// - Parameters:
+    ///   - device: Metal device to create the texture on.
+    ///   - values: Flat array of noise values in row-major order.
+    ///   - width: Texture width in pixels.
+    ///   - height: Texture height in pixels.
+    /// - Returns: Metal texture containing the grayscale noise, or nil on failure.
     static func buildTexture(
         device: MTLDevice,
         values: [Float],
@@ -44,7 +50,14 @@ enum NoiseTextureBuilder {
         return tex
     }
 
-    /// Float 配列からカラーマップテクスチャを作成（グラデーションストップ指定）
+    /// Create a color-mapped texture from a float array using gradient stops.
+    /// - Parameters:
+    ///   - device: Metal device to create the texture on.
+    ///   - values: Flat array of noise values in row-major order.
+    ///   - width: Texture width in pixels.
+    ///   - height: Texture height in pixels.
+    ///   - colorStops: Array of (position, BGRA color) pairs defining the gradient.
+    /// - Returns: Metal texture with the color-mapped noise, or nil on failure.
     static func buildColorMappedTexture(
         device: MTLDevice,
         values: [Float],

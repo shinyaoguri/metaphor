@@ -1,21 +1,22 @@
-/// 耳刈り法(Ear Clipping)による2D多角形テッセレーション
+/// Tessellate 2D polygons using the ear clipping algorithm.
 ///
-/// 凹多角形と穴（contour）をサポートする。
-/// O(n²)だが、クリエイティブコーディングの多角形は通常100頂点未満なので十分高速。
+/// Supports concave polygons and holes (contours).
+/// Runs in O(n^2), which is fast enough for creative coding polygons
+/// that typically have fewer than 100 vertices.
 enum EarClipTriangulator {
 
     // MARK: - Public API
 
-    /// 単純多角形を三角形に分割
-    /// - Parameter polygon: 頂点列（3頂点以上）
-    /// - Returns: 三角形インデックスの配列（元の頂点配列へのインデックス、3個ずつ）
+    /// Triangulate a simple polygon into triangles.
+    /// - Parameter polygon: An array of vertices (at least 3).
+    /// - Returns: An array of triangle indices referencing the original vertex array, in groups of 3.
     static func triangulate(_ polygon: [(Float, Float)]) -> [Int] {
         guard polygon.count >= 3 else { return [] }
 
         var verts = polygon
         ensureCCW(&verts)
 
-        // インデックスリストを構築（リンクドリスト的に管理）
+        // Build an index list managed like a linked list
         var indices = Array(0..<verts.count)
         var result: [Int] = []
         result.reserveCapacity((verts.count - 2) * 3)
@@ -45,7 +46,7 @@ enum EarClipTriangulator {
             if !earFound {
                 failCount += 1
                 if failCount > n {
-                    // 自己交差等で耳が見つからない場合、残りをファンで処理
+                    // When no ear is found due to self-intersection, fall back to fan tessellation
                     for i in 1..<(n - 1) {
                         result.append(indices[0])
                         result.append(indices[i])
@@ -56,7 +57,7 @@ enum EarClipTriangulator {
             }
         }
 
-        // 最後の三角形
+        // Last triangle
         if n == 3 {
             result.append(indices[0])
             result.append(indices[1])
@@ -66,11 +67,11 @@ enum EarClipTriangulator {
         return result
     }
 
-    /// 穴付き多角形を三角形に分割
+    /// Triangulate a polygon with holes.
     /// - Parameters:
-    ///   - outer: 外周頂点
-    ///   - holes: 穴の頂点列の配列
-    /// - Returns: 統合された頂点配列と三角形インデックスの配列
+    ///   - outer: The outer boundary vertices.
+    ///   - holes: An array of hole vertex arrays.
+    /// - Returns: A tuple of the merged vertex array and the triangle index array.
     static func triangulateWithHoles(
         outer: [(Float, Float)],
         holes: [[(Float, Float)]]
@@ -87,7 +88,7 @@ enum EarClipTriangulator {
 
     // MARK: - Geometry Helpers
 
-    /// 多角形の符号付き面積を計算（正=CCW、負=CW）
+    /// Compute the signed area of a polygon (positive = CCW, negative = CW).
     static func signedArea(_ verts: [(Float, Float)]) -> Float {
         var area: Float = 0
         let n = verts.count
@@ -99,7 +100,7 @@ enum EarClipTriangulator {
         return area * 0.5
     }
 
-    /// 点が三角形の内部にあるか判定（境界上は含まない）
+    /// Determine whether a point lies inside a triangle (excluding the boundary).
     static func pointInTriangle(
         _ p: (Float, Float),
         _ a: (Float, Float), _ b: (Float, Float), _ c: (Float, Float)
@@ -116,14 +117,14 @@ enum EarClipTriangulator {
 
     // MARK: - Private Helpers
 
-    /// CCW順序を保証（CWならば反転）
+    /// Ensure counter-clockwise winding order; reverse if clockwise.
     private static func ensureCCW(_ polygon: inout [(Float, Float)]) {
         if signedArea(polygon) < 0 {
             polygon.reverse()
         }
     }
 
-    /// 2D外積（符号で回転方向を判定）
+    /// Compute the 2D cross product (sign indicates rotation direction).
     private static func cross2D(
         _ p: (Float, Float),
         _ a: (Float, Float),
@@ -132,7 +133,7 @@ enum EarClipTriangulator {
         (a.0 - p.0) * (b.1 - p.1) - (a.1 - p.1) * (b.0 - p.0)
     }
 
-    /// 頂点が凸かどうか（CCW順の多角形で、左回りなら凸）
+    /// Determine whether a vertex is convex (left turn in a CCW polygon).
     private static func isConvex(
         _ prev: (Float, Float),
         _ curr: (Float, Float),
@@ -141,7 +142,7 @@ enum EarClipTriangulator {
         cross2D(prev, curr, next) > 0
     }
 
-    /// 頂点が「耳」かどうか判定
+    /// Determine whether a vertex is an "ear" that can be clipped.
     private static func isEar(
         _ verts: [(Float, Float)],
         _ indices: [Int],
@@ -153,16 +154,16 @@ enum EarClipTriangulator {
         let b = verts[curr]
         let c = verts[next]
 
-        // 凸頂点でなければ耳ではない
+        // Not an ear if the vertex is reflex (not convex)
         guard isConvex(a, b, c) else { return false }
 
-        // 三角形ABCの内部に他の頂点がないか確認
+        // Check that no other vertex lies inside triangle ABC
         for i in 0..<count {
             let idx = allIndices[i]
             if idx == prev || idx == curr || idx == next { continue }
 
             let p = verts[idx]
-            // 三角形の頂点と一致する場合はスキップ
+            // Skip vertices that coincide with a triangle vertex
             if (p.0 == a.0 && p.1 == a.1) ||
                (p.0 == b.0 && p.1 == b.1) ||
                (p.0 == c.0 && p.1 == c.1) { continue }
@@ -175,10 +176,11 @@ enum EarClipTriangulator {
         return true
     }
 
-    /// 穴を外周にブリッジで結合
+    /// Merge holes into the outer boundary using bridge edges.
     ///
-    /// 各穴の最も右の頂点から外周の可視エッジを探し、
-    /// ブリッジ（重複頂点2個）を挿入して1つの多角形に統合する。
+    /// For each hole, find the rightmost vertex and search for a visible edge
+    /// on the outer boundary. Insert a bridge (two duplicate vertices) to
+    /// combine everything into a single polygon.
     private static func mergeHoles(
         outer: [(Float, Float)],
         holes: [[(Float, Float)]]
@@ -186,7 +188,7 @@ enum EarClipTriangulator {
         var result = outer
         ensureCCW(&result)
 
-        // 穴をCW順に正規化し、最右頂点のX座標でソート（右から処理）
+        // Normalize holes to CW order and sort by rightmost vertex X coordinate
         struct HoleInfo {
             var vertices: [(Float, Float)]
             var rightmostIndex: Int
@@ -196,7 +198,7 @@ enum EarClipTriangulator {
         var holeInfos: [HoleInfo] = holes.compactMap { hole in
             guard hole.count >= 3 else { return nil }
             var h = hole
-            // 穴はCW順にする
+            // Holes must be in CW order
             if signedArea(h) > 0 {
                 h.reverse()
             }
@@ -211,20 +213,20 @@ enum EarClipTriangulator {
             return HoleInfo(vertices: h, rightmostIndex: maxIdx, rightmostX: maxX)
         }
 
-        // X座標が大きい（右側の）穴から処理
+        // Process holes from right to left (largest X first)
         holeInfos.sort { $0.rightmostX > $1.rightmostX }
 
         for holeInfo in holeInfos {
             let holePoint = holeInfo.vertices[holeInfo.rightmostIndex]
 
-            // 外周で最も近い可視エッジの端点を探す
+            // Find the nearest visible edge endpoint on the outer boundary
             var bestIdx = 0
             var bestDist: Float = .infinity
 
             for i in 0..<result.count {
                 let a = result[i]
 
-                // holePointから右に水平レイを飛ばして最も近い可視頂点を探す
+                // Cast a horizontal ray rightward from holePoint to find the nearest visible vertex
                 if a.0 >= holePoint.0 {
                     let dist = (a.0 - holePoint.0) * (a.0 - holePoint.0) + (a.1 - holePoint.1) * (a.1 - holePoint.1)
                     if dist < bestDist {
@@ -234,7 +236,7 @@ enum EarClipTriangulator {
                 }
             }
 
-            // 可視点が見つからない場合（穴が外周の右側にある稀なケース）、最近傍点を使う
+            // If no visible point is found (rare case where hole is to the right of outer), use nearest point
             if bestDist == .infinity {
                 for i in 0..<result.count {
                     let a = result[i]
@@ -246,8 +248,8 @@ enum EarClipTriangulator {
                 }
             }
 
-            // ブリッジを挿入: 外周の bestIdx の後に穴の頂点を挿入
-            // 穴の頂点を rightmostIndex から順に並べ直す
+            // Insert bridge: add hole vertices after bestIdx in the outer boundary
+            // Reorder hole vertices starting from rightmostIndex
             let n = holeInfo.vertices.count
             var reorderedHole: [(Float, Float)] = []
             reorderedHole.reserveCapacity(n)
@@ -255,7 +257,7 @@ enum EarClipTriangulator {
                 reorderedHole.append(holeInfo.vertices[(holeInfo.rightmostIndex + i) % n])
             }
 
-            // 挿入: [... outer[bestIdx], hole[0], hole[1], ..., hole[n-1], hole[0], outer[bestIdx], ...]
+            // Insert: [... outer[bestIdx], hole[0], hole[1], ..., hole[n-1], hole[0], outer[bestIdx], ...]
             var merged: [(Float, Float)] = []
             merged.reserveCapacity(result.count + reorderedHole.count + 2)
             for i in 0...bestIdx {
@@ -264,7 +266,7 @@ enum EarClipTriangulator {
             for v in reorderedHole {
                 merged.append(v)
             }
-            // ブリッジバック: 穴の開始点と外周の接続点を重複追加
+            // Bridge back: duplicate the hole start point and the outer connection point
             merged.append(reorderedHole[0])
             merged.append(result[bestIdx])
             for i in (bestIdx + 1)..<result.count {

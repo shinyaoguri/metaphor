@@ -3,17 +3,24 @@ import simd
 
 // MARK: - Particle (GPU Compatible, 64 bytes)
 
-/// GPU互換パーティクル構造体（64 bytes, 16-byte aligned）
+/// Represent a single GPU-compatible particle (64 bytes, 16-byte aligned).
+///
+/// This struct is shared between Swift and MSL and must maintain exact
+/// layout compatibility with the Metal shader counterpart.
 public struct Particle {
-    /// xyz=位置, w=残り寿命
+    /// The position (xyz) and remaining lifetime (w).
     public var position: SIMD4<Float>
-    /// xyz=速度, w=経過時間
+
+    /// The velocity (xyz) and elapsed time (w).
     public var velocity: SIMD4<Float>
-    /// RGBA カラー
+
+    /// The RGBA color of the particle.
     public var color: SIMD4<Float>
-    /// x=サイズ, y=初期寿命, z=未使用, w=生存フラグ(1.0/0.0)
+
+    /// Packed fields: x = size, y = initial lifetime, z = unused, w = alive flag (1.0 or 0.0).
     public var sizeAndFlags: SIMD4<Float>
 
+    /// Create a zeroed-out particle (dead by default).
     public init() {
         position = .zero
         velocity = .zero
@@ -24,45 +31,56 @@ public struct Particle {
 
 // MARK: - Particle Force
 
-/// パーティクルに適用するフォース
+/// Define a force type that can be applied to particles each frame.
 public enum ParticleForce {
-    /// 重力（方向ベクトル = 加速度）
+    /// Constant gravitational acceleration in the given direction.
     case gravity(Float, Float, Float)
-    /// 引力（指定点に向かう力）
+
+    /// Attraction toward a point with the given strength.
     case attraction(x: Float, y: Float, z: Float, strength: Float)
-    /// 反発力（指定点から離れる力）
+
+    /// Repulsion away from a point with the given strength.
     case repulsion(x: Float, y: Float, z: Float, strength: Float)
-    /// ノイズフォース（scale: ノイズスケール, strength: 強度）
+
+    /// Noise-based force with configurable scale and strength.
     case noise(scale: Float, strength: Float)
-    /// 渦フォース（軸周りの回転力）
+
+    /// Vortex force rotating around an axis with the given strength.
     case vortex(x: Float, y: Float, z: Float, strength: Float)
-    /// 減衰（速度を毎フレーム減衰させる）
+
+    /// Velocity damping that decays speed each frame by the given factor.
     case damping(Float)
 }
 
 // MARK: - Emitter Shape
 
-/// パーティクルの発生形状
+/// Define the spatial shape from which particles are emitted.
 public enum EmitterShape {
-    /// 点
+    /// Emit from a single point.
     case point(Float, Float, Float)
-    /// 線分
+
+    /// Emit along a line segment between two endpoints.
     case line(x1: Float, y1: Float, z1: Float, x2: Float, y2: Float, z2: Float)
-    /// 円（XY平面）
+
+    /// Emit from a circle on the XY plane.
     case circle(x: Float, y: Float, z: Float, radius: Float)
-    /// 球
+
+    /// Emit from the surface of a sphere.
     case sphere(x: Float, y: Float, z: Float, radius: Float)
 }
 
-// MARK: - GPU Structs (Swift ↔ MSL 一致)
+// MARK: - GPU Structs (Swift <-> MSL matching)
 
-/// フォース記述子（32 bytes）
+/// Describe a force for the GPU compute shader (32 bytes).
+///
+/// - `typeAndParams`: x = force type index, yzw = position or direction parameters.
+/// - `strengthAndExtra`: x = strength, yzw = extra parameters (e.g. noise scale).
 struct ForceDescriptor {
     var typeAndParams: SIMD4<Float>       // x=type, yzw=params
     var strengthAndExtra: SIMD4<Float>    // x=strength, yzw=extra
 }
 
-/// パーティクルユニフォーム
+/// Hold per-frame uniform data for the particle update compute shader.
 struct ParticleUniforms {
     var deltaTime: Float
     var time: Float
@@ -82,82 +100,119 @@ struct ParticleUniforms {
     var emitterParam2: SIMD4<Float>
 }
 
-/// レンダリングユニフォーム（96 bytes）
+/// Hold per-frame uniform data for the particle render vertex shader (96 bytes).
 struct ParticleRenderUniforms {
     var viewProjection: float4x4
-    var cameraRight: SIMD4<Float>    // xyz 使用
-    var cameraUp: SIMD4<Float>       // xyz 使用
+    var cameraRight: SIMD4<Float>    // xyz used
+    var cameraUp: SIMD4<Float>       // xyz used
 }
 
 // MARK: - ParticleSystem
 
-/// Metal Compute で駆動する GPU パーティクルシステム
+/// Drive a GPU-based particle system using Metal compute shaders.
 ///
-/// ダブルバッファリングでパーティクルデータを毎フレーム更新し、
-/// インスタンスドレンダリングでビルボードクワッドを描画する。
+/// ``ParticleSystem`` double-buffers particle data and updates all particles
+/// in parallel on the GPU each frame. Rendering uses instanced billboard quads
+/// with additive blending.
 ///
 /// ```swift
 /// let ps = try createParticleSystem(count: 100_000)
 /// ps.setEmitter(.sphere(x: 0, y: 0, z: 0, radius: 1.0))
 /// ps.addForce(.gravity(0, -9.8, 0))
-/// // compute() で updateParticles(ps)
-/// // draw() で drawParticles(ps)
+/// // In compute(): updateParticles(ps)
+/// // In draw(): drawParticles(ps)
 /// ```
 @MainActor
 public final class ParticleSystem {
-    /// パーティクル数
+    /// The maximum number of particles in this system.
     public let count: Int
 
     // MARK: - Emitter Settings
 
-    /// 発生形状
+    /// The shape from which new particles are emitted.
     public var emitter: EmitterShape = .point(0, 0, 0)
 
-    /// 発生レート（particles/sec）
+    /// The emission rate in particles per second.
     public var emissionRate: Float = 10000
 
-    /// パーティクル寿命（秒）
+    /// The lifetime of each particle in seconds.
     public var particleLife: Float = 2.0
 
-    /// パーティクルサイズ（ワールド単位）
+    /// The size of each particle in world units.
     public var particleSize: Float = 0.05
 
-    /// 開始カラー
+    /// The color of newly emitted particles.
     public var startColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
 
-    /// 終了カラー（寿命末期に向かって補間）
+    /// The color particles interpolate toward at the end of their lifetime.
     public var endColor: SIMD4<Float> = SIMD4(1, 1, 1, 0)
 
     // MARK: - Forces
 
-    /// 適用中のフォース一覧
+    /// The list of forces currently applied to the system.
     public private(set) var forces: [ParticleForce] = []
 
     // MARK: - Metal Resources
 
+    /// The Metal device used for buffer and pipeline creation.
     private let device: MTLDevice
+
+    /// The first particle buffer (double-buffering: source or destination).
     private var bufferA: MTLBuffer
+
+    /// The second particle buffer (double-buffering: source or destination).
     private var bufferB: MTLBuffer
+
+    /// Toggle indicating which buffer is the current source.
     private var useBufferA = true
+
+    /// The GPU buffer containing force descriptors, or nil if no forces are active.
     private var forceBuffer: MTLBuffer?
+
+    /// The compute pipeline state for the particle update kernel.
     private let updatePipeline: MTLComputePipelineState
+
+    /// The render pipeline state for drawing billboard quads.
     private let renderPipeline: MTLRenderPipelineState
+
+    /// The depth stencil state (depth test enabled, write disabled).
     private let depthState: MTLDepthStencilState?
 
     // MARK: - Indirect Draw Resources
 
-    /// Indirect Draw を使用するかどうか（デフォルト false で後方互換維持）
+    /// Enable indirect draw to render only alive particles (defaults to `false` for backward compatibility).
     public var useIndirectDraw: Bool = false
 
+    /// The buffer holding compacted alive particles for indirect draw.
     private var compactBuffer: MTLBuffer?
+
+    /// The atomic counter buffer (4 bytes) for compaction.
     private var counterBuffer: MTLBuffer?
+
+    /// The indirect arguments buffer (16 bytes) for `drawPrimitives(indirectBuffer:)`.
     private var indirectArgsBuffer: MTLBuffer?
+
+    /// The compute pipeline for resetting the atomic counter.
     private let resetCounterPipeline: MTLComputePipelineState?
+
+    /// The compute pipeline for compacting alive particles.
     private let compactPipeline: MTLComputePipelineState?
+
+    /// The compute pipeline for building indirect draw arguments.
     private let buildArgsPipeline: MTLComputePipelineState?
 
     // MARK: - Initialization
 
+    /// Create a new particle system with the specified capacity.
+    ///
+    /// - Parameters:
+    ///   - device: The Metal device for resource creation.
+    ///   - shaderLibrary: The shader library containing particle shader functions.
+    ///   - sampleCount: The MSAA sample count for the render pipeline.
+    ///   - count: The maximum number of particles.
+    /// - Throws: ``ParticleError/bufferCreationFailed`` if GPU buffers cannot be
+    ///   allocated, or ``ParticleError/shaderNotFound(_:)`` if required shader
+    ///   functions are missing.
     init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -167,7 +222,7 @@ public final class ParticleSystem {
         self.device = device
         self.count = count
 
-        // パーティクルバッファ（ダブルバッファ）
+        // Double-buffered particle data
         let bufferSize = MemoryLayout<Particle>.stride * count
         guard let a = device.makeBuffer(length: bufferSize, options: .storageModeShared),
               let b = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
@@ -180,7 +235,7 @@ public final class ParticleSystem {
         memset(a.contents(), 0, bufferSize)
         memset(b.contents(), 0, bufferSize)
 
-        // コンピュートパイプライン
+        // Compute pipeline for particle update
         guard let updateFn = shaderLibrary.function(
             named: ParticleShaders.FunctionName.update,
             from: ShaderLibrary.BuiltinKey.particle
@@ -189,7 +244,7 @@ public final class ParticleSystem {
         }
         self.updatePipeline = try device.makeComputePipelineState(function: updateFn)
 
-        // レンダーパイプライン（頂点ディスクリプタなし: バッファから直接読み取り）
+        // Render pipeline (no vertex descriptor: reads directly from buffer)
         guard let vertexFn = shaderLibrary.function(
             named: ParticleShaders.FunctionName.vertex,
             from: ShaderLibrary.BuiltinKey.particle
@@ -208,13 +263,13 @@ public final class ParticleSystem {
             .sampleCount(sampleCount)
             .build()
 
-        // 深度ステート（テスト有効・書き込み無効）
+        // Depth stencil state (test enabled, write disabled for additive blending)
         let depthDesc = MTLDepthStencilDescriptor()
         depthDesc.depthCompareFunction = .less
         depthDesc.isDepthWriteEnabled = false
         self.depthState = device.makeDepthStencilState(descriptor: depthDesc)
 
-        // Indirect Draw パイプライン（オプション: ビルドに失敗しても動作は通常モードにフォールバック）
+        // Indirect draw pipelines (optional: falls back to normal mode on failure)
         if let resetFn = shaderLibrary.function(
             named: ParticleShaders.FunctionName.resetCounter,
             from: ShaderLibrary.BuiltinKey.particle
@@ -231,13 +286,13 @@ public final class ParticleSystem {
             self.compactPipeline = try? device.makeComputePipelineState(function: compactFn)
             self.buildArgsPipeline = try? device.makeComputePipelineState(function: buildArgsFn)
 
-            // Compact 用バッファ
+            // Compact buffer for alive particles
             self.compactBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared)
             self.compactBuffer?.label = "metaphor.particle.compact"
-            // Atomic counter バッファ（4 bytes）
+            // Atomic counter buffer (4 bytes)
             self.counterBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.size, options: .storageModeShared)
             self.counterBuffer?.label = "metaphor.particle.counter"
-            // Indirect arguments バッファ（16 bytes）
+            // Indirect arguments buffer (16 bytes)
             self.indirectArgsBuffer = device.makeBuffer(
                 length: MemoryLayout<MTLDrawPrimitivesIndirectArguments>.size,
                 options: .storageModeShared
@@ -252,26 +307,39 @@ public final class ParticleSystem {
 
     // MARK: - Force Management
 
-    /// フォースを追加
+    /// Add a force to the particle system.
+    ///
+    /// - Parameter force: The force to add.
     public func addForce(_ force: ParticleForce) {
         forces.append(force)
         rebuildForceBuffer()
     }
 
-    /// 全フォースをクリア
+    /// Remove all forces from the particle system.
     public func clearForces() {
         forces.removeAll()
         forceBuffer = nil
     }
 
-    /// エミッターの形状を設定
+    /// Set the emitter shape for particle spawning.
+    ///
+    /// - Parameter shape: The new emitter shape.
     public func setEmitter(_ shape: EmitterShape) {
         self.emitter = shape
     }
 
     // MARK: - Update (Compute Phase)
 
-    /// コンピュートエンコーダでパーティクルを更新（compute() 内で呼ぶ）
+    /// Dispatch the particle update compute kernel.
+    ///
+    /// Call this during the compute phase of the frame. The kernel reads from
+    /// the current source buffer, writes updated particles to the destination
+    /// buffer, and swaps them for the next frame.
+    ///
+    /// - Parameters:
+    ///   - encoder: The compute command encoder.
+    ///   - deltaTime: The time since the last frame in seconds.
+    ///   - time: The total elapsed time in seconds.
     func update(encoder: MTLComputeCommandEncoder, deltaTime: Float, time: Float) {
         let src = useBufferA ? bufferA : bufferB
         let dst = useBufferA ? bufferB : bufferA
@@ -294,13 +362,13 @@ public final class ParticleSystem {
 
         useBufferA.toggle()
 
-        // Indirect Draw: コンパクトフェーズ
+        // Indirect draw: compact alive particles
         if useIndirectDraw {
             compactAliveParticles(encoder: encoder)
         }
     }
 
-    /// 生存パーティクルをコンパクトバッファに詰めて indirect arguments を構築
+    /// Compact alive particles into a contiguous buffer and build indirect draw arguments.
     private func compactAliveParticles(encoder: MTLComputeCommandEncoder) {
         guard let resetPipeline = resetCounterPipeline,
               let compactPipe = compactPipeline,
@@ -311,7 +379,7 @@ public final class ParticleSystem {
 
         let currentBuffer = useBufferA ? bufferA : bufferB
 
-        // 1) カウンタリセット
+        // 1) Reset the atomic counter
         encoder.setComputePipelineState(resetPipeline)
         encoder.setBuffer(counterBuf, offset: 0, index: 0)
         encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
@@ -319,7 +387,7 @@ public final class ParticleSystem {
 
         encoder.memoryBarrier(scope: .buffers)
 
-        // 2) 生存パーティクルをコンパクト
+        // 2) Compact alive particles into the compact buffer
         encoder.setComputePipelineState(compactPipe)
         encoder.setBuffer(currentBuffer, offset: 0, index: 0)
         encoder.setBuffer(compactBuf, offset: 0, index: 1)
@@ -330,7 +398,7 @@ public final class ParticleSystem {
 
         encoder.memoryBarrier(scope: .buffers)
 
-        // 3) Indirect arguments を構築
+        // 3) Build indirect draw arguments from the counter
         encoder.setComputePipelineState(buildPipe)
         encoder.setBuffer(counterBuf, offset: 0, index: 0)
         encoder.setBuffer(argsBuf, offset: 0, index: 1)
@@ -340,7 +408,16 @@ public final class ParticleSystem {
 
     // MARK: - Draw (Render Phase)
 
-    /// レンダーエンコーダでパーティクルを描画（draw() 内で呼ぶ）
+    /// Render the particles as instanced billboard quads.
+    ///
+    /// Call this during the render phase of the frame. Each alive particle is
+    /// drawn as a camera-facing quad with additive blending.
+    ///
+    /// - Parameters:
+    ///   - encoder: The render command encoder.
+    ///   - viewProjection: The combined view-projection matrix.
+    ///   - cameraRight: The camera's right direction vector (for billboard orientation).
+    ///   - cameraUp: The camera's up direction vector (for billboard orientation).
     func draw(
         encoder: MTLRenderCommandEncoder,
         viewProjection: float4x4,
@@ -362,7 +439,7 @@ public final class ParticleSystem {
         if useIndirectDraw,
            let compactBuf = compactBuffer,
            let argsBuf = indirectArgsBuffer {
-            // Indirect Draw: コンパクトされた生存パーティクルのみを描画
+            // Indirect draw: render only compacted alive particles
             encoder.setVertexBuffer(compactBuf, offset: 0, index: 0)
             encoder.drawPrimitives(
                 type: .triangleStrip,
@@ -370,7 +447,7 @@ public final class ParticleSystem {
                 indirectBufferOffset: 0
             )
         } else {
-            // 通常描画: 全パーティクルをインスタンスドレンダリング
+            // Standard draw: instanced rendering of all particle slots
             let currentBuffer = useBufferA ? bufferA : bufferB
             encoder.setVertexBuffer(currentBuffer, offset: 0, index: 0)
             encoder.drawPrimitives(
@@ -384,6 +461,7 @@ public final class ParticleSystem {
 
     // MARK: - Private Helpers
 
+    /// Build the uniform struct for the particle update compute kernel.
     private func makeUniforms(deltaTime: Float, time: Float) -> ParticleUniforms {
         let (emitterType, param1, param2) = emitterParams()
 
@@ -403,6 +481,7 @@ public final class ParticleSystem {
         )
     }
 
+    /// Convert the current emitter shape to GPU-compatible parameters.
     private func emitterParams() -> (UInt32, SIMD4<Float>, SIMD4<Float>) {
         switch emitter {
         case .point(let x, let y, let z):
@@ -416,6 +495,7 @@ public final class ParticleSystem {
         }
     }
 
+    /// Rebuild the GPU force buffer from the current forces array.
     private func rebuildForceBuffer() {
         var descriptors: [ForceDescriptor] = []
         for force in forces {
@@ -467,9 +547,12 @@ public final class ParticleSystem {
 
 // MARK: - ParticleError
 
-/// パーティクルシステムのエラー
+/// Represent errors that can occur when creating a ``ParticleSystem``.
 public enum ParticleError: Error, CustomStringConvertible {
+    /// Indicate that GPU buffer allocation failed.
     case bufferCreationFailed
+
+    /// Indicate that a required shader function was not found.
     case shaderNotFound(String)
 
     public var description: String {

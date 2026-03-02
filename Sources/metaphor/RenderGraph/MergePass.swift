@@ -1,8 +1,10 @@
 @preconcurrency import Metal
 
-/// マージパス: 2つのパスの出力をブレンド合成するノード
+/// Blend the outputs of two upstream render passes into a single texture.
 ///
-/// コンピュートシェーダーを使い、指定されたブレンドモードで2テクスチャを合成する。
+/// ``MergePass`` uses a compute shader to composite two input textures with
+/// a configurable blend mode (add, alpha, multiply, or screen).
+///
 /// ```swift
 /// let merged = try MergePass(scenePass, fxPass, blend: .add, device: device, shaderLibrary: shaderLibrary)
 /// ```
@@ -10,18 +12,18 @@
 public final class MergePass: RenderPassNode {
     // MARK: - Blend Type
 
-    /// マージ時のブレンドモード
+    /// Define the blend mode used when merging two textures.
     public enum BlendType: String, CaseIterable, Sendable {
-        /// 加算合成
+        /// Additive blending (A + B).
         case add
-        /// アルファ合成（B over A）
+        /// Alpha compositing (B over A).
         case alpha
-        /// 乗算合成
+        /// Multiplicative blending (A * B).
         case multiply
-        /// スクリーン合成
+        /// Screen blending (1 - (1-A) * (1-B)).
         case screen
 
-        /// シェーダーに渡すブレンドモード値
+        /// The raw index value passed to the merge compute shader.
         var rawIndex: UInt32 {
             switch self {
             case .add:      return 0
@@ -34,38 +36,56 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - MergeParams (GPU struct)
 
-    /// コンピュートシェーダーに渡すパラメータ
+    /// The parameters passed to the merge compute shader.
     private struct MergeParams {
         var blend_mode: UInt32
     }
 
     // MARK: - Public Properties
 
+    /// The debug label identifying this merge pass.
     public let label: String
+
+    /// The output texture after merging both inputs.
     public var output: MTLTexture?
 
-    /// ブレンドモード（実行時に変更可能）
+    /// The blend mode used for compositing, which can be changed at runtime.
     public var blendType: BlendType
 
     // MARK: - Private Properties
 
+    /// The base (background) render pass.
     private let passA: RenderPassNode
+
+    /// The overlay (foreground) render pass.
     private let passB: RenderPassNode
+
+    /// The Metal device used to create textures.
     private let device: MTLDevice
+
+    /// The compute pipeline state for the merge shader.
     private let mergePipeline: MTLComputePipelineState
+
+    /// The cached output texture, recreated when dimensions change.
     private var outputTexture: MTLTexture?
+
+    /// The current width of the output texture.
     private var outputWidth: Int = 0
+
+    /// The current height of the output texture.
     private var outputHeight: Int = 0
 
     // MARK: - Initialization
 
-    /// 初期化
+    /// Create a new merge pass that blends two upstream passes.
+    ///
     /// - Parameters:
-    ///   - a: ベースパス（背景レイヤー）
-    ///   - b: オーバーレイパス（前景レイヤー）
-    ///   - blend: ブレンドモード
-    ///   - device: MTLDevice
-    ///   - shaderLibrary: ShaderLibrary
+    ///   - a: The base (background layer) render pass.
+    ///   - b: The overlay (foreground layer) render pass.
+    ///   - blend: The blend mode for compositing.
+    ///   - device: The Metal device used to create pipeline states and textures.
+    ///   - shaderLibrary: The shader library providing the merge compute function.
+    /// - Throws: An error if the merge shader cannot be found or pipeline creation fails.
     public init(
         _ a: RenderPassNode,
         _ b: RenderPassNode,
@@ -79,7 +99,7 @@ public final class MergePass: RenderPassNode {
         self.blendType = blend
         self.device = device
 
-        // マージ用コンピュートパイプラインを作成
+        // Create the merge compute pipeline
         guard let function = shaderLibrary.function(
             named: MergeShaders.FunctionName.mergeTextures,
             from: ShaderLibrary.BuiltinKey.merge
@@ -91,14 +111,20 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - RenderPassNode
 
+    /// Execute both input passes and merge their outputs using the blend mode.
+    ///
+    /// - Parameters:
+    ///   - commandBuffer: The Metal command buffer to encode work into.
+    ///   - time: The elapsed time in seconds.
+    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
-        // 入力パスを実行
+        // Execute input passes
         passA.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)
         passB.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)
 
         guard let texA = passA.output, let texB = passB.output else { return }
 
-        // 出力テクスチャのサイズを大きい方に合わせる
+        // Size the output texture to the larger of the two inputs
         let w = max(texA.width, texB.width)
         let h = max(texA.height, texB.height)
         ensureOutputTexture(width: w, height: h)
@@ -115,7 +141,7 @@ public final class MergePass: RenderPassNode {
         var params = MergeParams(blend_mode: blendType.rawIndex)
         encoder.setBytes(&params, length: MemoryLayout<MergeParams>.size, index: 0)
 
-        // スレッドグループサイズを計算
+        // Calculate threadgroup size
         let threadWidth = mergePipeline.threadExecutionWidth
         let threadHeight = mergePipeline.maxTotalThreadsPerThreadgroup / threadWidth
         let threadsPerGroup = MTLSize(width: threadWidth, height: threadHeight, depth: 1)
@@ -133,6 +159,7 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - Private
 
+    /// Ensure the output texture exists with the required dimensions, recreating it if needed.
     private func ensureOutputTexture(width: Int, height: Int) {
         guard width != outputWidth || height != outputHeight else { return }
 
@@ -154,6 +181,8 @@ public final class MergePass: RenderPassNode {
 
 // MARK: - Error
 
+/// Represent errors that can occur when creating a ``MergePass``.
 enum MergePassError: Error {
+    /// The required merge shader function was not found.
     case shaderNotFound(String)
 }

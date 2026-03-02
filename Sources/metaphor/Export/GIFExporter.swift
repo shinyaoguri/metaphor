@@ -4,14 +4,14 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// GIF アニメーション出力エクスポーター
+/// Export captured frames as an animated GIF file.
 ///
-/// Metal テクスチャのフレームをキャプチャし、アニメーション GIF ファイルとして出力する。
-/// SNS 共有用のジェネラティブアート出力に最適。
+/// Capture Metal texture frames and write them out as an animated GIF.
+/// Ideal for sharing generative art output on social media.
 ///
 /// ```swift
 /// beginGIFRecord(fps: 15)
-/// // ... フレーム描画 ...
+/// // ... draw frames ...
 /// endGIFRecord("output.gif")
 /// ```
 @MainActor
@@ -19,44 +19,44 @@ public final class GIFExporter {
 
     // MARK: - State
 
-    /// 録画中かどうか
+    /// Indicate whether recording is currently in progress.
     public private(set) var isRecording: Bool = false
 
-    /// キャプチャ済みフレーム数
+    /// Return the number of frames captured so far.
     public private(set) var frameCount: Int = 0
 
-    /// フレーム間隔（秒）
+    /// The delay between frames in seconds.
     private var frameDelay: Double = 1.0 / 15.0
 
-    /// キャプチャされたフレーム
+    /// The array of captured CGImage frames.
     private var frames: [CGImage] = []
 
-    /// ステージングテクスチャ（GPU → CPU 読み出し用）
+    /// Staging texture for GPU-to-CPU pixel readback.
     private var stagingTexture: MTLTexture?
 
-    /// キャプチャする幅
+    /// The capture width in pixels.
     private var captureWidth: Int = 0
 
-    /// キャプチャする高さ
+    /// The capture height in pixels.
     private var captureHeight: Int = 0
 
     // MARK: - GIF Options
 
-    /// GIF のループ回数（0 = 無限ループ）
+    /// The number of times the GIF loops (0 means infinite loop).
     public var loopCount: Int = 0
 
-    /// ディザリングを有効にするか
+    /// Whether dithering is enabled for color quantization.
     public var dithering: Bool = true
 
     public init() {}
 
     // MARK: - Public API
 
-    /// GIF 録画を開始
+    /// Start GIF recording.
     /// - Parameters:
-    ///   - fps: フレームレート（デフォルト15）
-    ///   - width: キャプチャ幅（ソーステクスチャの幅を使用）
-    ///   - height: キャプチャ高さ
+    ///   - fps: The frame rate (default is 15).
+    ///   - width: The capture width (uses source texture width if 0).
+    ///   - height: The capture height (uses source texture height if 0).
     public func beginRecord(fps: Int = 15, width: Int = 0, height: Int = 0) {
         self.frameDelay = 1.0 / Double(max(1, fps))
         self.captureWidth = width
@@ -66,15 +66,17 @@ public final class GIFExporter {
         self.isRecording = true
     }
 
-    /// 現在のフレームをキャプチャ
-    /// - Parameter texture: キャプチャ対象の Metal テクスチャ
+    /// Capture the current frame from a Metal texture.
+    /// - Parameters:
+    ///   - texture: The Metal texture to capture.
+    ///   - device: The Metal device used to create the staging texture if needed.
     public func captureFrame(texture: MTLTexture, device: MTLDevice) {
         guard isRecording else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
         let h = captureHeight > 0 ? captureHeight : texture.height
 
-        // ステージングテクスチャの確保（サイズが変わったら再作成）
+        // Allocate or recreate the staging texture if the size changed
         if stagingTexture == nil || stagingTexture!.width != w || stagingTexture!.height != h {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .bgra8Unorm,
@@ -87,7 +89,7 @@ public final class GIFExporter {
             stagingTexture = device.makeTexture(descriptor: desc)
         }
 
-        // テクスチャからピクセルデータを読み出し
+        // Read pixel data from the texture
         let bytesPerRow = w * 4
         var pixelData = [UInt8](repeating: 0, count: bytesPerRow * h)
 
@@ -99,7 +101,7 @@ public final class GIFExporter {
             mipmapLevel: 0
         )
 
-        // BGRA → RGBA に変換
+        // Convert BGRA to RGBA
         for i in stride(from: 0, to: pixelData.count, by: 4) {
             let b = pixelData[i]
             let r = pixelData[i + 2]
@@ -107,7 +109,7 @@ public final class GIFExporter {
             pixelData[i + 2] = b
         }
 
-        // CGImage を作成
+        // Create a CGImage from the pixel data
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(
                 data: &pixelData,
@@ -126,8 +128,9 @@ public final class GIFExporter {
         frameCount += 1
     }
 
-    /// GIF 録画を終了してファイルに書き出し
-    /// - Parameter path: 出力ファイルパス
+    /// Stop recording and write the captured frames to a GIF file.
+    /// - Parameter path: The output file path.
+    /// - Throws: `GIFExporterError` if no frames were captured or the file could not be written.
     public func endRecord(to path: String) throws {
         guard isRecording else { return }
         isRecording = false
@@ -138,7 +141,7 @@ public final class GIFExporter {
 
         let url = URL(fileURLWithPath: path) as CFURL
 
-        // ディレクトリが存在しない場合は作成
+        // Create the output directory if it does not exist
         let dir = URL(fileURLWithPath: path).deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
@@ -151,7 +154,7 @@ public final class GIFExporter {
             throw GIFExporterError.destinationCreationFailed
         }
 
-        // GIF プロパティ（ループ回数）
+        // Set GIF properties (loop count)
         let gifProperties: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [
                 kCGImagePropertyGIFLoopCount as String: loopCount
@@ -159,7 +162,7 @@ public final class GIFExporter {
         ]
         CGImageDestinationSetProperties(destination, gifProperties as CFDictionary)
 
-        // 各フレームを追加
+        // Add each frame to the destination
         let frameProperties: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [
                 kCGImagePropertyGIFDelayTime as String: frameDelay
@@ -174,7 +177,7 @@ public final class GIFExporter {
             throw GIFExporterError.finalizationFailed
         }
 
-        // メモリを解放
+        // Release memory
         frames.removeAll()
         stagingTexture = nil
     }
@@ -182,6 +185,7 @@ public final class GIFExporter {
 
 // MARK: - Errors
 
+/// Represent errors that can occur during GIF export.
 public enum GIFExporterError: Error, LocalizedError {
     case noFrames
     case destinationCreationFailed

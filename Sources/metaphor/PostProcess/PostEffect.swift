@@ -1,11 +1,36 @@
+import CoreImage
 import simd
 
-/// ポストプロセスエフェクトの種類
-public enum PostEffect: @unchecked Sendable {
-    /// ブルーム（高輝度部分のグロー）
+/// Wrap a CoreImage filter parameter value in a Sendable-safe container.
+public enum CIFilterValue: Sendable {
+    case float(Float)
+    case double(Double)
+    case int(Int)
+    case string(String)
+    case vector(SIMD4<Float>)
+    case bool(Bool)
+
+    /// Convert to an `Any` value suitable for passing to a CIFilter.
+    ///
+    /// - Returns: The underlying value as `Any`, with SIMD4 converted to CIVector.
+    public var anyValue: Any {
+        switch self {
+        case .float(let v): return v
+        case .double(let v): return v
+        case .int(let v): return v
+        case .string(let v): return v
+        case .vector(let v): return CIVector(x: CGFloat(v.x), y: CGFloat(v.y), z: CGFloat(v.z), w: CGFloat(v.w))
+        case .bool(let v): return v
+        }
+    }
+}
+
+/// Represent a post-process effect type applied to the rendered frame.
+public enum PostEffect: Sendable {
+    /// Apply bloom (glow around high-luminance areas).
     case bloom(intensity: Float = 1.0, threshold: Float = 0.8)
 
-    /// カラーグレーディング
+    /// Apply color grading adjustments.
     case colorGrade(
         brightness: Float = 0.0,
         contrast: Float = 1.0,
@@ -13,44 +38,44 @@ public enum PostEffect: @unchecked Sendable {
         temperature: Float = 0.0
     )
 
-    /// 色収差
+    /// Apply chromatic aberration (color fringing).
     case chromaticAberration(intensity: Float = 0.005)
 
-    /// ビネット
+    /// Apply a vignette darkening at the edges.
     case vignette(intensity: Float = 0.5, smoothness: Float = 0.5)
 
-    /// 色反転
+    /// Invert all colors.
     case invert
 
-    /// グレースケール
+    /// Convert to grayscale.
     case grayscale
 
-    /// ガウシアンブラー
+    /// Apply a Gaussian blur.
     case blur(radius: Float = 5.0)
 
-    /// カスタムポストプロセスエフェクト
+    /// Apply a custom post-process effect with a user-defined shader.
     case custom(CustomPostEffect)
 
     // MARK: - MPS Effects
 
-    /// MPS ガウシアンブラー（sigma 値指定、ハードウェア最適化）
+    /// Apply an MPS hardware-optimized Gaussian blur with the given sigma value.
     case mpsBlur(sigma: Float)
-    /// MPS Sobel エッジ検出
+    /// Apply MPS Sobel edge detection.
     case mpsSobel
-    /// MPS モルフォロジー収縮
+    /// Apply MPS morphological erosion.
     case mpsErode(radius: Int = 1)
-    /// MPS モルフォロジー膨張
+    /// Apply MPS morphological dilation.
     case mpsDilate(radius: Int = 1)
 
     // MARK: - CoreImage Effects
 
-    /// CoreImage フィルタ（プリセット）
+    /// Apply a CoreImage filter from a preset.
     case ciFilter(CIFilterPreset)
-    /// CoreImage フィルタ（フィルタ名 + パラメータ辞書で直接指定）
-    case ciFilterRaw(name: String, parameters: [String: Any])
+    /// Apply a CoreImage filter specified directly by name and parameter dictionary.
+    case ciFilterRaw(name: String, parameters: [String: CIFilterValue])
 }
 
-/// ポストプロセスシェーダー用のユニフォーム構造体
+/// Store uniform parameters for post-process shaders.
 struct PostProcessParams {
     var texelSize: SIMD2<Float> = .zero
     var intensity: Float = 0

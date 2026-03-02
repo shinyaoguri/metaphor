@@ -6,108 +6,113 @@ import UIKit
 import Metal
 import simd
 
-/// Sketch内で使う描画コンテキスト
+/// Provides the drawing context used within a Sketch.
 ///
-/// Canvas2D/Canvas3Dの描画メソッドを転送し、時間・入力などの便利プロパティを提供する。
-/// 上級者向けに `renderer`, `encoder`, `canvas`, `canvas3D` へのエスケープハッチも用意。
+/// Forwards drawing methods from Canvas2D and Canvas3D, and exposes convenience
+/// properties for time, input, and frame state. Advanced users can access
+/// `renderer`, `encoder`, `canvas`, and `canvas3D` as escape hatches.
 @MainActor
 public final class SketchContext {
     // MARK: - Public Properties
 
-    /// キャンバスの幅（ピクセル）
+    /// The canvas width in pixels.
     public private(set) var width: Float
 
-    /// キャンバスの高さ（ピクセル）
+    /// The canvas height in pixels.
     public private(set) var height: Float
 
-    /// 経過時間（秒）
+    /// The elapsed time in seconds since the sketch started.
     public var time: Float = 0
 
-    /// フレーム間の時間（秒）
+    /// The time elapsed in seconds since the previous frame.
     public var deltaTime: Float = 0
 
-    /// フレーム番号
+    /// The number of frames rendered so far.
     public var frameCount: Int = 0
 
-    /// 入力マネージャ
+    /// The input manager for mouse and keyboard state.
     public let input: InputManager
 
     // MARK: - Escape Hatches
 
-    /// MetaphorRenderer（上級者向け）
+    /// The underlying renderer (for advanced usage).
     public let renderer: MetaphorRenderer
 
-    /// 現在のレンダーコマンドエンコーダ（フレーム中のみ有効）
+    /// The current render command encoder, valid only during a frame.
     public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
 
-    /// Canvas2D（上級者向け）
+    /// The 2D canvas (for advanced usage).
     public private(set) var canvas: Canvas2D
 
-    /// Canvas3D（上級者向け）
+    /// The 3D canvas (for advanced usage).
     public private(set) var canvas3D: Canvas3D
 
     // MARK: - Animation Control
 
-    /// ループ中かどうか
+    /// Indicates whether the draw loop is currently running.
     public private(set) var isLooping: Bool = true
 
-    /// loop() コールバック（SketchRunnerが設定）
+    /// Callback invoked when looping resumes (set by SketchRunner).
     var onLoop: (() -> Void)?
 
-    /// noLoop() コールバック（SketchRunnerが設定）
+    /// Callback invoked when looping stops (set by SketchRunner).
     var onNoLoop: (() -> Void)?
 
-    /// redraw() コールバック（SketchRunnerが設定）
+    /// Callback invoked on a single-frame redraw (set by SketchRunner).
     var onRedraw: (() -> Void)?
 
-    /// frameRate() コールバック（SketchRunnerが設定）
+    /// Callback invoked when the frame rate changes (set by SketchRunner).
     var onFrameRate: ((Int) -> Void)?
 
-    /// アニメーションを再開
+    /// Resumes the animation loop.
     public func loop() {
         isLooping = true
         onLoop?()
     }
 
-    /// アニメーションを停止
+    /// Stops the animation loop.
     public func noLoop() {
         isLooping = false
         onNoLoop?()
     }
 
-    /// 1フレームだけ描画（noLoop時に使用）
+    /// Draws a single frame (used when the loop is stopped).
     public func redraw() {
         onRedraw?()
     }
 
-    /// フレームレートを動的に変更
+    /// Changes the target frame rate dynamically.
+    /// - Parameter fps: The desired frames per second.
     public func frameRate(_ fps: Int) {
         onFrameRate?(fps)
     }
 
     // MARK: - Cursor Control
 
-    /// カーソルを表示
+    /// Shows the mouse cursor.
     public func cursor() {
         NSCursor.unhide()
     }
 
-    /// カーソルを非表示
+    /// Hides the mouse cursor.
     public func noCursor() {
         NSCursor.hide()
     }
 
     // MARK: - Canvas Resize
 
-    /// createCanvas コールバック（SketchRunnerが設定）
+    /// Callback invoked when the canvas is resized (set by SketchRunner).
     var onCreateCanvas: ((Int, Int) -> Void)?
 
-    /// キャンバスサイズを設定（setup()内で呼ぶ）
+    /// Sets the canvas size (call during setup).
+    /// - Parameters:
+    ///   - width: The canvas width in pixels.
+    ///   - height: The canvas height in pixels.
     public func createCanvas(width: Int, height: Int) {
         onCreateCanvas?(width, height)
     }
 
-    /// キャンバスを再構築（内部用）
+    /// Rebuilds the internal canvases after a resize (internal use).
     func rebuildCanvas(canvas: Canvas2D, canvas3D: Canvas3D) {
         self.canvas = canvas
         self.canvas3D = canvas3D
@@ -117,37 +122,37 @@ public final class SketchContext {
 
     // MARK: - Tween Manager
 
-    /// Tween 自動更新マネージャー
+    /// The tween manager that automatically updates registered tweens each frame.
     public let tweenManager = TweenManager()
 
     // MARK: - GUI
 
-    /// パラメータ GUI インスタンス
+    /// The parameter GUI instance for immediate-mode controls.
     public let gui = ParameterGUI()
 
     // MARK: - Performance HUD
 
-    /// パフォーマンス HUD（nil なら無効）
+    /// The performance HUD instance, or nil if disabled.
     private var performanceHUD: PerformanceHUD?
 
-    /// パフォーマンス HUD を有効化
+    /// Enables the performance HUD overlay.
     public func enablePerformanceHUD() {
         if performanceHUD == nil {
             performanceHUD = PerformanceHUD()
         }
     }
 
-    /// パフォーマンス HUD を無効化
+    /// Disables the performance HUD overlay.
     public func disablePerformanceHUD() {
         performanceHUD = nil
     }
 
     // MARK: - Compute State (internal)
 
-    /// 現在のコマンドバッファ（コンピュートフェーズ中のみ有効）
+    /// The current command buffer, valid only during the compute phase.
     private var _commandBuffer: MTLCommandBuffer?
 
-    /// 遅延作成されるコンピュートエンコーダ
+    /// The lazily created compute command encoder.
     private var _computeEncoder: MTLComputeCommandEncoder?
 
     // MARK: - Initialization
@@ -163,14 +168,14 @@ public final class SketchContext {
 
     // MARK: - Compute Frame Management (internal)
 
-    /// コンピュートフェーズ開始
+    /// Begins the compute phase.
     func beginCompute(commandBuffer: MTLCommandBuffer, time: Float, deltaTime: Float) {
         self._commandBuffer = commandBuffer
         self.time = time
         self.deltaTime = deltaTime
     }
 
-    /// コンピュートフェーズ終了（エンコーダがある場合のみendEncoding）
+    /// Ends the compute phase, finalizing the encoder if one was created.
     func endCompute() {
         _computeEncoder?.endEncoding()
         _computeEncoder = nil
@@ -203,24 +208,27 @@ public final class SketchContext {
 
     // MARK: - Shape Mode Settings
 
-    /// 矩形の座標解釈モードを設定
+    /// Sets the coordinate interpretation mode for rectangles.
+    /// - Parameter mode: The rectangle drawing mode.
     public func rectMode(_ mode: RectMode) {
         canvas.rectMode(mode)
     }
 
-    /// 楕円の座標解釈モードを設定
+    /// Sets the coordinate interpretation mode for ellipses.
+    /// - Parameter mode: The ellipse drawing mode.
     public func ellipseMode(_ mode: EllipseMode) {
         canvas.ellipseMode(mode)
     }
 
-    /// 画像の座標解釈モードを設定
+    /// Sets the coordinate interpretation mode for images.
+    /// - Parameter mode: The image drawing mode.
     public func imageMode(_ mode: ImageMode) {
         canvas.imageMode(mode)
     }
 
     // MARK: - Drawing Style
 
-    /// 現在の共通描画スタイルを取得
+    /// Returns the current shared drawing style.
     public var drawingStyle: DrawingStyle {
         get {
             DrawingStyle(
@@ -239,13 +247,22 @@ public final class SketchContext {
 
     // MARK: - Color Mode
 
-    /// 色空間と最大値を設定（2D/3D両方に反映）
+    /// Sets the color space and maximum channel values for both 2D and 3D canvases.
+    /// - Parameters:
+    ///   - space: The color space to use.
+    ///   - max1: The maximum value for the first channel.
+    ///   - max2: The maximum value for the second channel.
+    ///   - max3: The maximum value for the third channel.
+    ///   - maxA: The maximum value for the alpha channel.
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
         canvas.colorMode(space, max1, max2, max3, maxA)
         canvas3D.colorMode(space, max1, max2, max3, maxA)
     }
 
-    /// 色空間と均一な最大値を設定（2D/3D両方に反映）
+    /// Sets the color space with a uniform maximum value for both 2D and 3D canvases.
+    /// - Parameters:
+    ///   - space: The color space to use.
+    ///   - maxAll: The uniform maximum value for all channels.
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         canvas.colorMode(space, maxAll)
         canvas3D.colorMode(space, maxAll)
@@ -253,148 +270,202 @@ public final class SketchContext {
 
     // MARK: - Background
 
-    /// 背景を塗りつぶす
+    /// Fills the background with the specified color.
+    /// - Parameter color: The background color.
     public func background(_ color: Color) {
         canvas.background(color)
     }
 
-    /// グレースケール背景
+    /// Fills the background with a grayscale value.
+    /// - Parameter gray: The grayscale intensity.
     public func background(_ gray: Float) {
         canvas.background(gray)
     }
 
-    /// 背景色を設定（colorModeに従って解釈）
+    /// Fills the background with color components interpreted according to the current color mode.
+    /// - Parameters:
+    ///   - v1: The first color component.
+    ///   - v2: The second color component.
+    ///   - v3: The third color component.
+    ///   - a: The optional alpha value.
     public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         canvas.background(v1, v2, v3, a)
     }
 
-    // MARK: - Style (2D + 3D共有)
+    // MARK: - Style (2D + 3D shared)
 
-    /// 塗りつぶし色を設定（2D/3D両方に反映）
+    /// Sets the fill color for both 2D and 3D canvases.
+    /// - Parameter color: The fill color.
     public func fill(_ color: Color) {
         canvas.fill(color)
         canvas3D.fill(color)
     }
 
-    /// 塗りつぶし色を設定（colorModeに従って解釈、2D/3D両方に反映）
+    /// Sets the fill color interpreted according to the current color mode for both 2D and 3D canvases.
+    /// - Parameters:
+    ///   - v1: The first color component.
+    ///   - v2: The second color component.
+    ///   - v3: The third color component.
+    ///   - a: The optional alpha value.
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         canvas.fill(v1, v2, v3, a)
         canvas3D.fill(v1, v2, v3, a)
     }
 
-    /// グレースケールで塗りつぶし色を設定（2D/3D両方に反映）
+    /// Sets the fill color using a grayscale value for both 2D and 3D canvases.
+    /// - Parameter gray: The grayscale intensity.
     public func fill(_ gray: Float) {
         canvas.fill(gray)
         canvas3D.fill(gray)
     }
 
-    /// グレースケール＋アルファで塗りつぶし色を設定（2D/3D両方に反映）
+    /// Sets the fill color using a grayscale value with alpha for both 2D and 3D canvases.
+    /// - Parameters:
+    ///   - gray: The grayscale intensity.
+    ///   - alpha: The alpha value.
     public func fill(_ gray: Float, _ alpha: Float) {
         canvas.fill(gray, alpha)
         canvas3D.fill(gray, alpha)
     }
 
-    /// 塗りつぶしなし（2D/3D両方に反映）
+    /// Disables fill for both 2D and 3D canvases.
     public func noFill() {
         canvas.noFill()
         canvas3D.noFill()
     }
 
-    /// 線の色を設定（2D/3D両方に反映）
+    /// Sets the stroke color for both 2D and 3D canvases.
+    /// - Parameter color: The stroke color.
     public func stroke(_ color: Color) {
         canvas.stroke(color)
         canvas3D.stroke(color)
     }
 
-    /// 線の色を設定（colorModeに従って解釈、2D/3D両方に反映）
+    /// Sets the stroke color interpreted according to the current color mode for both 2D and 3D canvases.
+    /// - Parameters:
+    ///   - v1: The first color component.
+    ///   - v2: The second color component.
+    ///   - v3: The third color component.
+    ///   - a: The optional alpha value.
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         canvas.stroke(v1, v2, v3, a)
         canvas3D.stroke(v1, v2, v3, a)
     }
 
-    /// グレースケールで線の色を設定（2D/3D両方に反映）
+    /// Sets the stroke color using a grayscale value for both 2D and 3D canvases.
+    /// - Parameter gray: The grayscale intensity.
     public func stroke(_ gray: Float) {
         canvas.stroke(gray)
         canvas3D.stroke(gray)
     }
 
-    /// グレースケール＋アルファで線の色を設定（2D/3D両方に反映）
+    /// Sets the stroke color using a grayscale value with alpha for both 2D and 3D canvases.
+    /// - Parameters:
+    ///   - gray: The grayscale intensity.
+    ///   - alpha: The alpha value.
     public func stroke(_ gray: Float, _ alpha: Float) {
         canvas.stroke(gray, alpha)
         canvas3D.stroke(gray, alpha)
     }
 
-    /// 線なし（2D/3D両方に反映）
+    /// Disables stroke for both 2D and 3D canvases.
     public func noStroke() {
         canvas.noStroke()
         canvas3D.noStroke()
     }
 
-    /// 線の太さを設定（2Dのみ）
+    /// Sets the stroke weight (2D only).
+    /// - Parameter weight: The line thickness in pixels.
     public func strokeWeight(_ weight: Float) {
         canvas.strokeWeight(weight)
     }
 
-    /// ストロークの端点スタイルを設定
+    /// Sets the stroke cap style.
+    /// - Parameter cap: The end-cap style for strokes.
     public func strokeCap(_ cap: StrokeCap) {
         canvas.strokeCap(cap)
     }
 
-    /// ストロークの接合スタイルを設定
+    /// Sets the stroke join style.
+    /// - Parameter join: The join style for stroke corners.
     public func strokeJoin(_ join: StrokeJoin) {
         canvas.strokeJoin(join)
     }
 
-    /// ブレンドモードを設定
+    /// Sets the blend mode for rendering.
+    /// - Parameter mode: The blend mode to apply.
     public func blendMode(_ mode: BlendMode) {
         canvas.blendMode(mode)
     }
 
     // MARK: - Tint
 
-    /// 画像のティント色を設定
+    /// Sets the tint color for images.
+    /// - Parameter color: The tint color.
     public func tint(_ color: Color) {
         canvas.tint(color)
     }
 
-    /// 画像のティント色を設定（colorModeに従って解釈）
+    /// Sets the tint color interpreted according to the current color mode.
+    /// - Parameters:
+    ///   - v1: The first color component.
+    ///   - v2: The second color component.
+    ///   - v3: The third color component.
+    ///   - a: The optional alpha value.
     public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         canvas.tint(v1, v2, v3, a)
     }
 
-    /// グレースケールでティント色を設定
+    /// Sets the tint color using a grayscale value.
+    /// - Parameter gray: The grayscale intensity.
     public func tint(_ gray: Float) {
         canvas.tint(gray)
     }
 
-    /// グレースケール＋アルファでティント色を設定
+    /// Sets the tint color using a grayscale value with alpha.
+    /// - Parameters:
+    ///   - gray: The grayscale intensity.
+    ///   - alpha: The alpha value.
     public func tint(_ gray: Float, _ alpha: Float) {
         canvas.tint(gray, alpha)
     }
 
-    /// ティントを無効化
+    /// Disables the image tint.
     public func noTint() {
         canvas.noTint()
     }
 
     // MARK: - Image
 
-    /// 画像を読み込み
+    /// Loads an image from the specified file path.
+    /// - Parameter path: The file path to the image.
+    /// - Returns: The loaded image.
     public func loadImage(_ path: String) throws -> MImage {
         try MImage(path: path, device: renderer.device)
     }
 
-    /// 空の画像を作成（ピクセル操作用）
+    /// Creates an empty image for pixel manipulation.
+    /// - Parameters:
+    ///   - width: The image width in pixels.
+    ///   - height: The image height in pixels.
+    /// - Returns: A new blank image, or nil on failure.
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         MImage.createImage(width, height, device: renderer.device)
     }
 
-    /// 画像にフィルタを適用（GPU版）
+    /// Applies a GPU image filter to an image.
+    /// - Parameters:
+    ///   - image: The target image.
+    ///   - type: The filter type to apply.
     public func filter(_ image: MImage, _ type: FilterType) {
         renderer.imageFilterGPU.apply(type, to: image)
     }
 
-    /// オフスクリーン描画バッファを作成
+    /// Creates an offscreen 2D drawing buffer.
+    /// - Parameters:
+    ///   - w: The buffer width in pixels.
+    ///   - h: The buffer height in pixels.
+    /// - Returns: A new Graphics instance, or nil on failure.
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
         try? Graphics(
             device: renderer.device,
@@ -405,7 +476,11 @@ public final class SketchContext {
         )
     }
 
-    /// 3D オフスクリーン描画バッファを作成
+    /// Creates an offscreen 3D drawing buffer.
+    /// - Parameters:
+    ///   - w: The buffer width in pixels.
+    ///   - h: The buffer height in pixels.
+    /// - Returns: A new Graphics3D instance, or nil on failure.
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         try? Graphics3D(
             device: renderer.device,
@@ -418,19 +493,23 @@ public final class SketchContext {
 
     // MARK: - Camera Capture
 
-    /// カメラキャプチャデバイスを作成（自動で開始）
+    /// Creates a camera capture device and starts capturing automatically.
     /// - Parameters:
-    ///   - width: 映像幅（デフォルト 1280）
-    ///   - height: 映像高さ（デフォルト 720）
-    ///   - position: カメラ位置（デフォルト .front）
-    /// - Returns: CaptureDevice
+    ///   - width: The capture width in pixels (default 1280).
+    ///   - height: The capture height in pixels (default 720).
+    ///   - position: The camera position (default `.front`).
+    /// - Returns: A started `CaptureDevice` instance.
     public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice {
         let capture = CaptureDevice(device: renderer.device, width: width, height: height, position: position)
         capture.start()
         return capture
     }
 
-    /// CaptureDeviceの最新フレームを描画
+    /// Draws the latest frame from a capture device at the given position.
+    /// - Parameters:
+    ///   - capture: The capture device.
+    ///   - x: The x-coordinate of the top-left corner.
+    ///   - y: The y-coordinate of the top-left corner.
     public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float) {
         capture.read()
         if let img = capture.toImage() {
@@ -438,7 +517,13 @@ public final class SketchContext {
         }
     }
 
-    /// CaptureDeviceの最新フレームをサイズ指定で描画
+    /// Draws the latest frame from a capture device with explicit size.
+    /// - Parameters:
+    ///   - capture: The capture device.
+    ///   - x: The x-coordinate of the top-left corner.
+    ///   - y: The y-coordinate of the top-left corner.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         capture.read()
         if let img = capture.toImage() {
@@ -446,37 +531,77 @@ public final class SketchContext {
         }
     }
 
-    /// 画像を描画
+    /// Draws an image at the specified position.
+    /// - Parameters:
+    ///   - img: The image to draw.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         canvas.image(img, x, y)
     }
 
-    /// Graphicsバッファを描画
+    /// Draws a Graphics buffer at the specified position.
+    /// - Parameters:
+    ///   - pg: The offscreen graphics buffer.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
         canvas.image(pg.toImage(), x, y)
     }
 
-    /// Graphicsバッファをサイズ指定で描画
+    /// Draws a Graphics buffer with explicit size.
+    /// - Parameters:
+    ///   - pg: The offscreen graphics buffer.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.image(pg.toImage(), x, y, w, h)
     }
 
-    /// Graphics3Dバッファを描画
+    /// Draws a Graphics3D buffer at the specified position.
+    /// - Parameters:
+    ///   - pg: The offscreen 3D graphics buffer.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func image(_ pg: Graphics3D, _ x: Float, _ y: Float) {
         canvas.image(pg.toImage(), x, y)
     }
 
-    /// Graphics3Dバッファをサイズ指定で描画
+    /// Draws a Graphics3D buffer with explicit size.
+    /// - Parameters:
+    ///   - pg: The offscreen 3D graphics buffer.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.image(pg.toImage(), x, y, w, h)
     }
 
-    /// 画像をサイズ指定で描画
+    /// Draws an image with explicit size.
+    /// - Parameters:
+    ///   - img: The image to draw.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.image(img, x, y, w, h)
     }
 
-    /// サブイメージ描画（スプライトシート/タイルマップ用）
+    /// Draws a sub-region of an image (for sprite sheets and tile maps).
+    /// - Parameters:
+    ///   - img: The source image.
+    ///   - dx: The destination x-coordinate.
+    ///   - dy: The destination y-coordinate.
+    ///   - dw: The destination width.
+    ///   - dh: The destination height.
+    ///   - sx: The source x-coordinate.
+    ///   - sy: The source y-coordinate.
+    ///   - sw: The source width.
+    ///   - sh: The source height.
     public func image(
         _ img: MImage,
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
@@ -487,62 +612,83 @@ public final class SketchContext {
 
     // MARK: - Text
 
-    /// テキストサイズを設定
+    /// Sets the text rendering size.
+    /// - Parameter size: The font size in points.
     public func textSize(_ size: Float) {
         canvas.textSize(size)
     }
 
-    /// フォントを設定
+    /// Sets the font family for text rendering.
+    /// - Parameter family: The font family name.
     public func textFont(_ family: String) {
         canvas.textFont(family)
     }
 
-    /// テキスト揃えを設定
+    /// Sets the text alignment.
+    /// - Parameters:
+    ///   - horizontal: The horizontal alignment.
+    ///   - vertical: The vertical alignment (default `.baseline`).
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         canvas.textAlign(horizontal, vertical)
     }
 
-    /// テキストの行間を設定
+    /// Sets the line spacing for multi-line text.
+    /// - Parameter leading: The line height in pixels.
     public func textLeading(_ leading: Float) {
         canvas.textLeading(leading)
     }
 
-    /// テキストの描画幅を取得
+    /// Calculates the rendered width of a string.
+    /// - Parameter string: The text to measure.
+    /// - Returns: The width in pixels.
     public func textWidth(_ string: String) -> Float {
         canvas.textWidth(string)
     }
 
-    /// フォントのアセントを取得
+    /// Returns the font ascent for the current text settings.
+    /// - Returns: The ascent value in pixels.
     public func textAscent() -> Float {
         canvas.textAscent()
     }
 
-    /// フォントのディセントを取得
+    /// Returns the font descent for the current text settings.
+    /// - Returns: The descent value in pixels.
     public func textDescent() -> Float {
         canvas.textDescent()
     }
 
-    /// テキストを描画
+    /// Draws text at the specified position.
+    /// - Parameters:
+    ///   - string: The text to draw.
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func text(_ string: String, _ x: Float, _ y: Float) {
         canvas.text(string, x, y)
     }
 
-    /// ボックス内にテキストを描画（自動折り返し）
+    /// Draws text within a bounding box with automatic word wrapping.
+    /// - Parameters:
+    ///   - string: The text to draw.
+    ///   - x: The x-coordinate of the box.
+    ///   - y: The y-coordinate of the box.
+    ///   - w: The box width.
+    ///   - h: The box height.
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.text(string, x, y, w, h)
     }
 
     // MARK: - Screenshot
 
-    /// スクリーンショットを保存
+    /// Saves a screenshot to the specified file path.
+    /// - Parameter path: The output file path.
     public func save(_ path: String) {
         renderer.saveScreenshot(to: path)
     }
 
-    /// 連番フレーム書き出しを開始
+    /// Begins sequential frame export.
     /// - Parameters:
-    ///   - directory: 出力先（nilならデスクトップに自動作成）
-    ///   - pattern: ファイル名パターン
+    ///   - directory: The output directory (nil creates one on the Desktop automatically).
+    ///   - pattern: The filename pattern with a frame number placeholder.
     public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
         let dir: String
         if let directory {
@@ -555,15 +701,15 @@ public final class SketchContext {
         renderer.frameExporter.beginSequence(directory: dir, pattern: pattern)
     }
 
-    /// 連番フレーム書き出しを停止
+    /// Stops sequential frame export.
     public func endRecord() {
         renderer.frameExporter.endSequence()
     }
 
-    /// ビデオ録画を開始
+    /// Begins video recording.
     /// - Parameters:
-    ///   - path: 出力ファイルパス（nilならデスクトップに自動生成）
-    ///   - config: ビデオエクスポート設定
+    ///   - path: The output file path (nil generates one on the Desktop automatically).
+    ///   - config: The video export configuration.
     public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
         let actualPath: String
         if let path {
@@ -581,13 +727,14 @@ public final class SketchContext {
         )
     }
 
-    /// ビデオ録画を終了
-    /// - Parameter completion: 書き出し完了時に呼ばれるコールバック
+    /// Ends video recording.
+    /// - Parameter completion: A callback invoked when writing finishes.
     public func endVideoRecord(completion: (@Sendable () -> Void)? = nil) {
         renderer.videoExporter.endRecord(completion: completion)
     }
 
-    /// 現在フレームを単発で保存（Processing互換）
+    /// Saves the current frame as a single image file (Processing-compatible).
+    /// - Parameter filename: The output filename (nil auto-generates a numbered name).
     public func saveFrame(_ filename: String? = nil) {
         let name: String
         if let filename {
@@ -599,7 +746,7 @@ public final class SketchContext {
         renderer.saveScreenshot(to: path)
     }
 
-    /// タイムスタンプ付きでデスクトップに保存
+    /// Saves a timestamped screenshot to the Desktop.
     public func save() {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd_HHmmss"
@@ -610,45 +757,47 @@ public final class SketchContext {
 
     // MARK: - Offline Rendering
 
-    /// オフラインレンダリングモードかどうか
+    /// Indicates whether offline rendering mode is active.
     public var isOfflineRendering: Bool {
         renderer.isOfflineRendering
     }
 
-    /// オフラインレンダリングモードを開始
+    /// Begins offline rendering mode.
     ///
-    /// フレームの経過時間が決定論的になり、フレーム落ちなしの高品質動画レンダリングが可能。
-    /// - Parameter fps: フレームレート（デフォルト60）
+    /// Elapsed time becomes deterministic, enabling high-quality video rendering
+    /// without frame drops.
+    /// - Parameter fps: The target frame rate (default 60).
     public func beginOfflineRender(fps: Double = 60) {
         renderer.isOfflineRendering = true
         renderer.offlineFrameRate = fps
         renderer.resetOfflineRendering()
     }
 
-    /// オフラインレンダリングモードを終了
+    /// Ends offline rendering mode.
     public func endOfflineRender() {
         renderer.isOfflineRendering = false
     }
 
     // MARK: - FBO Feedback
 
-    /// フレームバッファフィードバックを有効化
+    /// Enables frame buffer feedback.
     ///
-    /// 有効にすると、毎フレーム開始時に前フレームのカラーテクスチャがコピーされ、
-    /// `previousFrame()` で MImage として取得できるようになる。
+    /// When enabled, the previous frame's color texture is copied at the start
+    /// of each frame and can be retrieved as an `MImage` via ``previousFrame()``.
     public func enableFeedback() {
         renderer.feedbackEnabled = true
     }
 
-    /// フレームバッファフィードバックを無効化
+    /// Disables frame buffer feedback.
     public func disableFeedback() {
         renderer.feedbackEnabled = false
     }
 
-    /// 前フレームのレンダリング結果を MImage として取得
+    /// Returns the previous frame's rendering result as an image.
     ///
-    /// `enableFeedback()` を呼んだ後に使用する。
-    /// フィードバック無効時または最初のフレームでは nil を返す。
+    /// Call ``enableFeedback()`` before using this method. Returns nil when
+    /// feedback is disabled or on the very first frame.
+    /// - Returns: The previous frame as an `MImage`, or nil.
     public func previousFrame() -> MImage? {
         guard let tex = renderer.previousFrameTexture else { return nil }
         return MImage(texture: tex)
@@ -656,84 +805,94 @@ public final class SketchContext {
 
     // MARK: - Post Process
 
-    /// カスタムポストプロセスエフェクトを作成
+    /// Creates a custom post-processing effect from MSL fragment shader source.
     ///
-    /// MSLフラグメントシェーダーソースからカスタムエフェクトを作成する。
-    /// シェーダーには `PostProcessShaders.commonStructs` をプリフィックスとして含めること。
+    /// The shader source should include `PostProcessShaders.commonStructs` as a prefix.
     /// - Parameters:
-    ///   - name: エフェクト名（ライブラリキーに使用）
-    ///   - source: MSLシェーダーソースコード
-    ///   - fragmentFunction: フラグメントシェーダー関数名
-    /// - Returns: CustomPostEffect インスタンス
+    ///   - name: The effect name (used as the library key).
+    ///   - source: The MSL shader source code.
+    ///   - fragmentFunction: The fragment shader function name.
+    /// - Returns: A `CustomPostEffect` instance.
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         let key = "user.posteffect.\(name)"
         try renderer.shaderLibrary.register(source: source, as: key)
         guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {
-            throw PostProcessError.shaderNotFound(fragmentFunction)
+            throw MetaphorError.postProcessShaderNotFound(fragmentFunction)
         }
         return CustomPostEffect(name: name, fragmentFunctionName: fragmentFunction, libraryKey: key)
     }
 
-    /// ポストプロセスエフェクトを追加
+    /// Adds a post-processing effect to the pipeline.
+    /// - Parameter effect: The post-processing effect to add.
     public func addPostEffect(_ effect: PostEffect) {
         renderer.addPostEffect(effect)
     }
 
-    /// ポストプロセスエフェクトを削除
+    /// Removes a post-processing effect at the specified index.
+    /// - Parameter index: The index of the effect to remove.
     public func removePostEffect(at index: Int) {
         renderer.removePostEffect(at: index)
     }
 
-    /// 全ポストプロセスエフェクトを削除
+    /// Removes all post-processing effects from the pipeline.
     public func clearPostEffects() {
         renderer.clearPostEffects()
     }
 
-    /// ポストプロセスエフェクトを一括設定
+    /// Replaces all post-processing effects with the given array.
+    /// - Parameter effects: The new array of post-processing effects.
     public func setPostEffects(_ effects: [PostEffect]) {
         renderer.setPostEffects(effects)
     }
 
     // MARK: - Unified Transform Stack
 
-    /// 2D/3Dトランスフォームとスタイルを保存
+    /// Saves both 2D and 3D transform and style state onto the stack.
     public func push() {
         canvas.push()
         canvas3D.pushState()
     }
 
-    /// 2D/3Dトランスフォームとスタイルを復元
+    /// Restores both 2D and 3D transform and style state from the stack.
     public func pop() {
         canvas.pop()
         canvas3D.popState()
     }
 
-    /// スタイル状態のみを保存（2D）
+    /// Saves only the 2D style state onto the stack.
     public func pushStyle() {
         canvas.pushStyle()
     }
 
-    /// スタイル状態のみを復元（2D）
+    /// Restores only the 2D style state from the stack.
     public func popStyle() {
         canvas.popStyle()
     }
 
-    /// 2D平行移動
+    /// Applies a 2D translation.
+    /// - Parameters:
+    ///   - x: The horizontal translation.
+    ///   - y: The vertical translation.
     public func translate(_ x: Float, _ y: Float) {
         canvas.translate(x, y)
     }
 
-    /// 2D回転（ラジアン）
+    /// Applies a 2D rotation.
+    /// - Parameter angle: The rotation angle in radians.
     public func rotate(_ angle: Float) {
         canvas.rotate(angle)
     }
 
-    /// 2Dスケール
+    /// Applies a 2D scale.
+    /// - Parameters:
+    ///   - sx: The horizontal scale factor.
+    ///   - sy: The vertical scale factor.
     public func scale(_ sx: Float, _ sy: Float) {
         canvas.scale(sx, sy)
     }
 
-    /// 均一スケール（Canvas2D / Canvas3D 両方に適用）
+    /// Applies a uniform scale to both the 2D and 3D canvases.
+    /// - Parameter s: The uniform scale factor.
     public func scale(_ s: Float) {
         canvas.scale(s)
         canvas3D.scale(s, s, s)
@@ -741,17 +900,37 @@ public final class SketchContext {
 
     // MARK: - 2D Shapes
 
-    /// 矩形
+    /// Draws a rectangle.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.rect(x, y, w, h)
     }
 
-    /// 角丸矩形（均一コーナー半径）
+    /// Draws a rounded rectangle with a uniform corner radius.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
+    ///   - r: The corner radius.
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
         canvas.rect(x, y, w, h, r)
     }
 
-    /// 角丸矩形（コーナー別半径）
+    /// Draws a rounded rectangle with individual corner radii.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
+    ///   - tl: The top-left corner radius.
+    ///   - tr: The top-right corner radius.
+    ///   - br: The bottom-right corner radius.
+    ///   - bl: The bottom-left corner radius.
     public func rect(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
@@ -759,7 +938,15 @@ public final class SketchContext {
         canvas.rect(x, y, w, h, tl, tr, br, bl)
     }
 
-    /// 線形グラデーション矩形を描画
+    /// Draws a rectangle filled with a linear gradient.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
+    ///   - c1: The start color.
+    ///   - c2: The end color.
+    ///   - axis: The gradient direction (default `.vertical`).
     public func linearGradient(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
@@ -767,7 +954,14 @@ public final class SketchContext {
         canvas.linearGradient(x, y, w, h, c1, c2, axis: axis)
     }
 
-    /// 放射状グラデーションを描画
+    /// Draws a radial gradient.
+    /// - Parameters:
+    ///   - cx: The center x-coordinate.
+    ///   - cy: The center y-coordinate.
+    ///   - radius: The gradient radius.
+    ///   - innerColor: The color at the center.
+    ///   - outerColor: The color at the edge.
+    ///   - segments: The number of segments (default 36).
     public func radialGradient(
         _ cx: Float, _ cy: Float, _ radius: Float,
         _ innerColor: Color, _ outerColor: Color,
@@ -776,22 +970,44 @@ public final class SketchContext {
         canvas.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
     }
 
-    /// 楕円
+    /// Draws an ellipse.
+    /// - Parameters:
+    ///   - x: The center x-coordinate.
+    ///   - y: The center y-coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         canvas.ellipse(x, y, w, h)
     }
 
-    /// 円
+    /// Draws a circle.
+    /// - Parameters:
+    ///   - x: The center x-coordinate.
+    ///   - y: The center y-coordinate.
+    ///   - diameter: The circle diameter.
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) {
         canvas.circle(x, y, diameter)
     }
 
-    /// 正方形
+    /// Draws a square.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - size: The side length.
     public func square(_ x: Float, _ y: Float, _ size: Float) {
         canvas.square(x, y, size)
     }
 
-    /// 四辺形
+    /// Draws a quadrilateral defined by four corner points.
+    /// - Parameters:
+    ///   - x1: The x-coordinate of the first vertex.
+    ///   - y1: The y-coordinate of the first vertex.
+    ///   - x2: The x-coordinate of the second vertex.
+    ///   - y2: The y-coordinate of the second vertex.
+    ///   - x3: The x-coordinate of the third vertex.
+    ///   - y3: The y-coordinate of the third vertex.
+    ///   - x4: The x-coordinate of the fourth vertex.
+    ///   - y4: The y-coordinate of the fourth vertex.
     public func quad(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -801,12 +1017,24 @@ public final class SketchContext {
         canvas.quad(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
-    /// 直線
+    /// Draws a line between two points.
+    /// - Parameters:
+    ///   - x1: The start x-coordinate.
+    ///   - y1: The start y-coordinate.
+    ///   - x2: The end x-coordinate.
+    ///   - y2: The end y-coordinate.
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
         canvas.line(x1, y1, x2, y2)
     }
 
-    /// 三角形
+    /// Draws a triangle defined by three vertices.
+    /// - Parameters:
+    ///   - x1: The x-coordinate of the first vertex.
+    ///   - y1: The y-coordinate of the first vertex.
+    ///   - x2: The x-coordinate of the second vertex.
+    ///   - y2: The y-coordinate of the second vertex.
+    ///   - x3: The x-coordinate of the third vertex.
+    ///   - y3: The y-coordinate of the third vertex.
     public func triangle(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -815,17 +1043,27 @@ public final class SketchContext {
         canvas.triangle(x1, y1, x2, y2, x3, y3)
     }
 
-    /// 多角形
+    /// Draws a polygon from an array of coordinate tuples.
+    /// - Parameter points: An array of (x, y) coordinate tuples.
     public func polygon(_ points: [(Float, Float)]) {
         canvas.polygon(points)
     }
 
-    /// 多角形（Vec2配列版）
+    /// Draws a polygon from an array of Vec2 points.
+    /// - Parameter points: An array of Vec2 points.
     public func polygon(_ points: [Vec2]) {
         canvas.polygon(points.map { ($0.x, $0.y) })
     }
 
-    /// 円弧
+    /// Draws an arc.
+    /// - Parameters:
+    ///   - x: The center x-coordinate.
+    ///   - y: The center y-coordinate.
+    ///   - w: The width of the bounding ellipse.
+    ///   - h: The height of the bounding ellipse.
+    ///   - startAngle: The starting angle in radians.
+    ///   - stopAngle: The ending angle in radians.
+    ///   - mode: The arc drawing mode (default `.open`).
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
@@ -835,7 +1073,16 @@ public final class SketchContext {
         canvas.arc(x, y, w, h, startAngle, stopAngle, mode)
     }
 
-    /// 3次ベジェ曲線
+    /// Draws a cubic Bezier curve.
+    /// - Parameters:
+    ///   - x1: The start point x-coordinate.
+    ///   - y1: The start point y-coordinate.
+    ///   - cx1: The first control point x-coordinate.
+    ///   - cy1: The first control point y-coordinate.
+    ///   - cx2: The second control point x-coordinate.
+    ///   - cy2: The second control point y-coordinate.
+    ///   - x2: The end point x-coordinate.
+    ///   - y2: The end point y-coordinate.
     public func bezier(
         _ x1: Float, _ y1: Float,
         _ cx1: Float, _ cy1: Float,
@@ -845,24 +1092,38 @@ public final class SketchContext {
         canvas.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2)
     }
 
-    /// 点
+    /// Draws a single point.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func point(_ x: Float, _ y: Float) {
         canvas.point(x, y)
     }
 
     // MARK: - Custom Shapes (beginShape / endShape)
 
-    /// 頂点ベースの形状記録を開始
+    /// Begins recording a vertex-based custom shape.
+    /// - Parameter mode: The shape drawing mode (default `.polygon`).
     public func beginShape(_ mode: ShapeMode = .polygon) {
         canvas.beginShape(mode)
     }
 
-    /// 形状に頂点を追加
+    /// Adds a vertex to the current shape.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func vertex(_ x: Float, _ y: Float) {
         canvas.vertex(x, y)
     }
 
-    /// ベジェ曲線の制御点と終点を追加
+    /// Adds a cubic Bezier vertex with control points and an endpoint.
+    /// - Parameters:
+    ///   - cx1: The first control point x-coordinate.
+    ///   - cy1: The first control point y-coordinate.
+    ///   - cx2: The second control point x-coordinate.
+    ///   - cy2: The second control point y-coordinate.
+    ///   - x: The endpoint x-coordinate.
+    ///   - y: The endpoint y-coordinate.
     public func bezierVertex(
         _ cx1: Float, _ cy1: Float,
         _ cx2: Float, _ cy2: Float,
@@ -871,74 +1132,113 @@ public final class SketchContext {
         canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y)
     }
 
-    /// Catmull-Romスプラインの頂点を追加
+    /// Adds a Catmull-Rom spline vertex.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
     public func curveVertex(_ x: Float, _ y: Float) {
         canvas.curveVertex(x, y)
     }
 
-    /// カーブの分割数を設定
+    /// Sets the number of subdivisions for curve segments.
+    /// - Parameter n: The subdivision count.
     public func curveDetail(_ n: Int) {
         canvas.curveDetail(n)
     }
 
-    /// カーブの張り具合を設定
+    /// Sets the tightness of Catmull-Rom curves.
+    /// - Parameter t: The tightness value.
     public func curveTightness(_ t: Float) {
         canvas.curveTightness(t)
     }
 
-    /// コンター（穴）の記録を開始
+    /// Begins recording a contour (hole) within the current shape.
     public func beginContour() {
         canvas.beginContour()
     }
 
-    /// コンター（穴）の記録を終了
+    /// Ends the current contour (hole) recording.
     public func endContour() {
         canvas.endContour()
     }
 
-    /// 頂点カラー付きで頂点を追加（2D）
+    /// Adds a vertex with a per-vertex color (2D).
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - color: The vertex color.
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
         canvas.vertex(x, y, color)
     }
 
-    /// UV座標付きで頂点を追加（2D）
+    /// Adds a vertex with UV texture coordinates (2D).
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - u: The U texture coordinate.
+    ///   - v: The V texture coordinate.
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         canvas.vertex(x, y, u, v)
     }
 
-    /// 形状記録を終了して描画
+    /// Ends the current shape recording and draws the shape.
+    /// - Parameter close: Whether to close the shape (default `.open`).
     public func endShape(_ close: CloseMode = .open) {
         canvas.endShape(close)
     }
 
     // MARK: - 3D Custom Shapes (beginShape / endShape)
 
-    /// 3D頂点ベースの形状記録を開始
+    /// Begins recording a 3D vertex-based custom shape.
+    /// - Parameter mode: The shape drawing mode (default `.polygon`).
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         canvas3D.beginShape(mode)
     }
 
-    /// 3D頂点を追加
+    /// Adds a 3D vertex to the current shape.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - z: The z-coordinate.
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         canvas3D.vertex(x, y, z)
     }
 
-    /// 頂点カラー付き3D頂点を追加
+    /// Adds a 3D vertex with a per-vertex color.
+    /// - Parameters:
+    ///   - x: The x-coordinate.
+    ///   - y: The y-coordinate.
+    ///   - z: The z-coordinate.
+    ///   - color: The vertex color.
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         canvas3D.vertex(x, y, z, color)
     }
 
-    /// 次の3D vertex に適用する法線を設定
+    /// Sets the normal vector for the next 3D vertex.
+    /// - Parameters:
+    ///   - nx: The normal x-component.
+    ///   - ny: The normal y-component.
+    ///   - nz: The normal z-component.
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         canvas3D.normal(nx, ny, nz)
     }
 
-    /// 3D形状記録を終了して描画
+    /// Ends the 3D shape recording and draws the shape.
+    /// - Parameter close: Whether to close the shape (default `.open`).
     public func endShape3D(_ close: CloseMode = .open) {
         canvas3D.endShape(close)
     }
 
-    /// Catmull-Romスプライン曲線
+    /// Draws a Catmull-Rom spline curve through four points.
+    /// - Parameters:
+    ///   - x1: The first guide point x-coordinate.
+    ///   - y1: The first guide point y-coordinate.
+    ///   - x2: The start of the visible curve x-coordinate.
+    ///   - y2: The start of the visible curve y-coordinate.
+    ///   - x3: The end of the visible curve x-coordinate.
+    ///   - y3: The end of the visible curve y-coordinate.
+    ///   - x4: The second guide point x-coordinate.
+    ///   - y4: The second guide point y-coordinate.
     public func curve(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -950,7 +1250,11 @@ public final class SketchContext {
 
     // MARK: - 3D Camera
 
-    /// カメラ位置を設定
+    /// Sets the camera position and orientation.
+    /// - Parameters:
+    ///   - eye: The camera position.
+    ///   - center: The point the camera looks at.
+    ///   - up: The up direction vector (default Y-up).
     public func camera(
         eye: SIMD3<Float>,
         center: SIMD3<Float>,
@@ -959,7 +1263,17 @@ public final class SketchContext {
         canvas3D.camera(eye: eye, center: center, up: up)
     }
 
-    /// カメラ位置を設定（位置引数版、p5.js風）
+    /// Sets the camera position and orientation using positional arguments (p5.js-style).
+    /// - Parameters:
+    ///   - eyeX: The camera x-position.
+    ///   - eyeY: The camera y-position.
+    ///   - eyeZ: The camera z-position.
+    ///   - centerX: The look-at target x-coordinate.
+    ///   - centerY: The look-at target y-coordinate.
+    ///   - centerZ: The look-at target z-coordinate.
+    ///   - upX: The up vector x-component.
+    ///   - upY: The up vector y-component.
+    ///   - upZ: The up vector z-component.
     public func camera(
         _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
         _ centerX: Float, _ centerY: Float, _ centerZ: Float,
@@ -972,12 +1286,23 @@ public final class SketchContext {
         )
     }
 
-    /// 透視投影を設定
+    /// Configures perspective projection.
+    /// - Parameters:
+    ///   - fov: The field of view in radians (default pi/3).
+    ///   - near: The near clipping plane distance (default 0.1).
+    ///   - far: The far clipping plane distance (default 10000).
     public func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000) {
         canvas3D.perspective(fov: fov, near: near, far: far)
     }
 
-    /// 正射影カメラに切り替え
+    /// Switches to orthographic projection.
+    /// - Parameters:
+    ///   - left: The left clipping plane (nil uses canvas bounds).
+    ///   - right: The right clipping plane (nil uses canvas bounds).
+    ///   - bottom: The bottom clipping plane (nil uses canvas bounds).
+    ///   - top: The top clipping plane (nil uses canvas bounds).
+    ///   - near: The near clipping plane distance (default -1000).
+    ///   - far: The far clipping plane distance (default 1000).
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
@@ -988,27 +1313,42 @@ public final class SketchContext {
 
     // MARK: - 3D Lighting
 
-    /// デフォルトライティングを有効化
+    /// Enables default lighting.
     public func lights() {
         canvas3D.lights()
     }
 
-    /// 全ライトを除去
+    /// Removes all lights from the scene.
     public func noLights() {
         canvas3D.noLights()
     }
 
-    /// 平行光源の方向を設定
+    /// Sets the direction of the directional light.
+    /// - Parameters:
+    ///   - x: The direction x-component.
+    ///   - y: The direction y-component.
+    ///   - z: The direction z-component.
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
         canvas3D.directionalLight(x, y, z)
     }
 
-    /// 平行光源の方向と色を設定
+    /// Sets the direction and color of the directional light.
+    /// - Parameters:
+    ///   - x: The direction x-component.
+    ///   - y: The direction y-component.
+    ///   - z: The direction z-component.
+    ///   - color: The light color.
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
         canvas3D.directionalLight(x, y, z, color: color)
     }
 
-    /// ポイントライトを追加
+    /// Adds a point light to the scene.
+    /// - Parameters:
+    ///   - x: The light x-position.
+    ///   - y: The light y-position.
+    ///   - z: The light z-position.
+    ///   - color: The light color (default white).
+    ///   - falloff: The attenuation factor (default 0.1).
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
@@ -1017,7 +1357,17 @@ public final class SketchContext {
         canvas3D.pointLight(x, y, z, color: color, falloff: falloff)
     }
 
-    /// スポットライトを追加
+    /// Adds a spot light to the scene.
+    /// - Parameters:
+    ///   - x: The light x-position.
+    ///   - y: The light y-position.
+    ///   - z: The light z-position.
+    ///   - dirX: The spotlight direction x-component.
+    ///   - dirY: The spotlight direction y-component.
+    ///   - dirZ: The spotlight direction z-component.
+    ///   - angle: The cone angle in radians (default pi/6).
+    ///   - falloff: The attenuation factor (default 0.01).
+    ///   - color: The light color (default white).
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
@@ -1028,20 +1378,25 @@ public final class SketchContext {
         canvas3D.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
     }
 
-    /// アンビエント光の強さを設定
+    /// Sets the ambient light intensity.
+    /// - Parameter strength: The ambient light strength.
     public func ambientLight(_ strength: Float) {
         canvas3D.ambientLight(strength)
     }
 
-    /// アンビエント光をRGBで設定
+    /// Sets the ambient light color using RGB components.
+    /// - Parameters:
+    ///   - r: The red component.
+    ///   - g: The green component.
+    ///   - b: The blue component.
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
         canvas3D.ambientLight(r, g, b)
     }
 
     // MARK: - Shadow Mapping
 
-    /// シャドウマッピングを有効にする
-    /// - Parameter resolution: シャドウマップ解像度（デフォルト 2048）
+    /// Enables shadow mapping.
+    /// - Parameter resolution: The shadow map resolution in pixels (default 2048).
     public func enableShadows(resolution: Int = 2048) {
         if canvas3D.shadowMap == nil {
             canvas3D.shadowMap = try? ShadowMap(
@@ -1052,76 +1407,85 @@ public final class SketchContext {
         }
     }
 
-    /// シャドウマッピングを無効にする
+    /// Disables shadow mapping.
     public func disableShadows() {
         canvas3D.shadowMap = nil
     }
 
-    /// シャドウバイアスを設定（アクネ防止）
+    /// Sets the shadow bias to prevent shadow acne.
+    /// - Parameter value: The bias value.
     public func shadowBias(_ value: Float) {
         canvas3D.shadowMap?.shadowBias = value
     }
 
     // MARK: - 3D Material
 
-    /// スペキュラ色を設定
+    /// Sets the specular highlight color.
+    /// - Parameter color: The specular color.
     public func specular(_ color: Color) {
         canvas3D.specular(color)
     }
 
-    /// スペキュラ色をグレースケールで設定
+    /// Sets the specular highlight color using a grayscale value.
+    /// - Parameter gray: The grayscale intensity.
     public func specular(_ gray: Float) {
         canvas3D.specular(gray)
     }
 
-    /// シャイネスを設定
+    /// Sets the specular shininess exponent.
+    /// - Parameter value: The shininess value.
     public func shininess(_ value: Float) {
         canvas3D.shininess(value)
     }
 
-    /// エミッシブ色を設定
+    /// Sets the emissive color.
+    /// - Parameter color: The emissive color.
     public func emissive(_ color: Color) {
         canvas3D.emissive(color)
     }
 
-    /// エミッシブ色をグレースケールで設定
+    /// Sets the emissive color using a grayscale value.
+    /// - Parameter gray: The grayscale intensity.
     public func emissive(_ gray: Float) {
         canvas3D.emissive(gray)
     }
 
-    /// メタリック係数を設定
+    /// Sets the metallic coefficient.
+    /// - Parameter value: The metallic value between 0.0 and 1.0.
     public func metallic(_ value: Float) {
         canvas3D.metallic(value)
     }
 
-    /// PBR roughness を設定（自動的に PBR モードに切り替わる）
-    /// - Parameter value: 0.0（鏡面）〜 1.0（完全拡散）
+    /// Sets the PBR roughness and automatically switches to PBR mode.
+    /// - Parameter value: The roughness from 0.0 (mirror) to 1.0 (fully diffuse).
     public func roughness(_ value: Float) {
         canvas3D.roughness(value)
     }
 
-    /// PBR アンビエントオクルージョンを設定
-    /// - Parameter value: 0.0（完全遮蔽）〜 1.0（遮蔽なし）
+    /// Sets the PBR ambient occlusion factor.
+    /// - Parameter value: The occlusion from 0.0 (fully occluded) to 1.0 (no occlusion).
     public func ambientOcclusion(_ value: Float) {
         canvas3D.ambientOcclusion(value)
     }
 
-    /// PBR モードを明示的に切り替える
-    /// - Parameter enabled: true で PBR（Cook-Torrance GGX）、false で Blinn-Phong
+    /// Toggles PBR mode explicitly.
+    /// - Parameter enabled: Pass true for Cook-Torrance GGX, false for Blinn-Phong.
     public func pbr(_ enabled: Bool) {
         canvas3D.pbr(enabled)
     }
 
     // MARK: - 3D Custom Material
 
-    /// カスタムフラグメントシェーダーマテリアルを作成
+    /// Creates a custom material from MSL shader source.
     ///
-    /// MSLソースをコンパイルし、指定したフラグメント関数からCustomMaterialを生成する。
-    /// ソースには `BuiltinShaders.canvas3DStructs` をプレフィックスとして含めること。
+    /// Compiles the MSL source and builds a `CustomMaterial` from the specified
+    /// fragment function. The source should include `BuiltinShaders.canvas3DStructs`
+    /// as a prefix.
     /// - Parameters:
-    ///   - source: MSLシェーダーソースコード
-    ///   - fragmentFunction: フラグメントシェーダー関数名
-    /// - Returns: CustomMaterial インスタンス
+    ///   - source: The MSL shader source code.
+    ///   - fragmentFunction: The fragment shader function name.
+    ///   - vertexFunction: An optional custom vertex shader function name.
+    /// - Returns: A `CustomMaterial` instance.
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.register(source: source, as: key)
@@ -1143,123 +1507,163 @@ public final class SketchContext {
         )
     }
 
-    /// カスタムマテリアルを適用
+    /// Applies a custom material to subsequent 3D draws.
+    /// - Parameter customMaterial: The custom material to use.
     public func material(_ customMaterial: CustomMaterial) {
         canvas3D.material(customMaterial)
     }
 
-    /// カスタムマテリアルを解除（組み込みシェーダーに戻す）
+    /// Removes the custom material and reverts to the built-in shader.
     public func noMaterial() {
         canvas3D.noMaterial()
     }
 
     // MARK: - 3D Texture
 
-    /// テクスチャを設定
+    /// Sets the texture for subsequent 3D draws.
+    /// - Parameter img: The texture image.
     public func texture(_ img: MImage) {
         canvas3D.texture(img)
     }
 
-    /// テクスチャを解除
+    /// Removes the current texture.
     public func noTexture() {
         canvas3D.noTexture()
     }
 
     // MARK: - 3D Transform Stack
 
-    /// 3Dトランスフォームのみを保存
+    /// Saves the transform matrix for both 2D and 3D canvases.
     public func pushMatrix() {
         canvas.pushMatrix()
         canvas3D.pushMatrix()
     }
 
-    /// 3Dトランスフォームのみを復元
+    /// Restores the transform matrix for both 2D and 3D canvases.
     public func popMatrix() {
         canvas.popMatrix()
         canvas3D.popMatrix()
     }
 
-    /// 3D平行移動
+    /// Applies a 3D translation.
+    /// - Parameters:
+    ///   - x: The x-axis translation.
+    ///   - y: The y-axis translation.
+    ///   - z: The z-axis translation.
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         canvas3D.translate(x, y, z)
     }
 
-    /// X軸回転
+    /// Rotates around the X axis.
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateX(_ angle: Float) {
         canvas3D.rotateX(angle)
     }
 
-    /// Y軸回転
+    /// Rotates around the Y axis.
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateY(_ angle: Float) {
         canvas3D.rotateY(angle)
     }
 
-    /// Z軸回転
+    /// Rotates around the Z axis.
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateZ(_ angle: Float) {
         canvas3D.rotateZ(angle)
     }
 
-    /// 3Dスケール
+    /// Applies a 3D scale.
+    /// - Parameters:
+    ///   - x: The x-axis scale factor.
+    ///   - y: The y-axis scale factor.
+    ///   - z: The z-axis scale factor.
     public func scale(_ x: Float, _ y: Float, _ z: Float) {
         canvas3D.scale(x, y, z)
     }
 
     // MARK: - 3D Shapes
 
-    /// ボックス
+    /// Draws a box with the specified dimensions.
+    /// - Parameters:
+    ///   - width: The box width.
+    ///   - height: The box height.
+    ///   - depth: The box depth.
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
         canvas3D.box(width, height, depth)
     }
 
-    /// 均一ボックス
+    /// Draws a uniform box (cube) with the given side length.
+    /// - Parameter size: The side length.
     public func box(_ size: Float) {
         canvas3D.box(size)
     }
 
-    /// 球体
+    /// Draws a sphere.
+    /// - Parameters:
+    ///   - radius: The sphere radius.
+    ///   - detail: The tessellation level (default 24).
     public func sphere(_ radius: Float, detail: Int = 24) {
         canvas3D.sphere(radius, detail: detail)
     }
 
-    /// 平面
+    /// Draws a plane.
+    /// - Parameters:
+    ///   - width: The plane width.
+    ///   - height: The plane height.
     public func plane(_ width: Float, _ height: Float) {
         canvas3D.plane(width, height)
     }
 
-    /// シリンダー
+    /// Draws a cylinder.
+    /// - Parameters:
+    ///   - radius: The cylinder radius (default 0.5).
+    ///   - height: The cylinder height (default 1).
+    ///   - detail: The tessellation level (default 24).
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         canvas3D.cylinder(radius: radius, height: height, detail: detail)
     }
 
-    /// コーン
+    /// Draws a cone.
+    /// - Parameters:
+    ///   - radius: The base radius (default 0.5).
+    ///   - height: The cone height (default 1).
+    ///   - detail: The tessellation level (default 24).
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         canvas3D.cone(radius: radius, height: height, detail: detail)
     }
 
-    /// トーラス
+    /// Draws a torus.
+    /// - Parameters:
+    ///   - ringRadius: The ring (major) radius (default 0.5).
+    ///   - tubeRadius: The tube (minor) radius (default 0.2).
+    ///   - detail: The tessellation level (default 24).
     public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
         canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 
-    /// カスタムメッシュを描画
+    /// Draws a pre-built mesh.
+    /// - Parameter mesh: The mesh to draw.
     public func mesh(_ mesh: Mesh) {
         canvas3D.mesh(mesh)
     }
 
-    /// 動的メッシュを描画
+    /// Draws a dynamic mesh.
+    /// - Parameter mesh: The dynamic mesh to draw.
     public func dynamicMesh(_ mesh: DynamicMesh) {
         canvas3D.dynamicMesh(mesh)
     }
 
-    /// 動的メッシュを作成
+    /// Creates an empty dynamic mesh for procedural geometry.
+    /// - Returns: A new `DynamicMesh` instance.
     public func createDynamicMesh() -> DynamicMesh {
         DynamicMesh(device: renderer.device)
     }
 
-    /// 3Dモデルファイルを読み込み（OBJ / USDZ / ABC 対応）
+    /// Loads a 3D model file (OBJ, USDZ, or ABC format).
     /// - Parameters:
-    ///   - path: ファイルパス
-    ///   - normalize: true ならバウンディングボックスを [-1,1] に正規化（デフォルト true）
+    ///   - path: The file path to the model.
+    ///   - normalize: Pass true to normalize the bounding box to [-1, 1] (default true).
+    /// - Returns: The loaded mesh, or nil on failure.
     public func loadModel(_ path: String, normalize: Bool = true) -> Mesh? {
         let url = URL(fileURLWithPath: path)
         return try? Mesh.load(device: renderer.device, url: url, normalize: normalize)
@@ -1267,25 +1671,36 @@ public final class SketchContext {
 
     // MARK: - Compute
 
-    /// コンピュートカーネルを作成
+    /// Creates a compute kernel from MSL source code.
     /// - Parameters:
-    ///   - source: MSLソースコード
-    ///   - function: カーネル関数名
+    ///   - source: The MSL source code.
+    ///   - function: The kernel function name.
+    /// - Returns: A `ComputeKernel` instance.
     public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
         try ComputeKernel(device: renderer.device, source: source, functionName: function)
     }
 
-    /// 型付きGPUバッファを作成（ゼロ初期化）
+    /// Creates a zero-initialized typed GPU buffer.
+    /// - Parameters:
+    ///   - count: The number of elements.
+    ///   - type: The element type.
+    /// - Returns: A new `GPUBuffer`, or nil on failure.
     public func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>? {
         GPUBuffer<T>(device: renderer.device, count: count)
     }
 
-    /// 配列からGPUバッファを作成
+    /// Creates a GPU buffer from an array of data.
+    /// - Parameter data: The source data array.
+    /// - Returns: A new `GPUBuffer`, or nil on failure.
     public func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>? {
         GPUBuffer<T>(device: renderer.device, data: data)
     }
 
-    /// 1Dコンピュートディスパッチ
+    /// Dispatches a 1D compute kernel.
+    /// - Parameters:
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - threads: The total number of threads.
+    ///   - configure: A closure to configure the compute encoder before dispatch.
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -1301,7 +1716,12 @@ public final class SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// 2Dコンピュートディスパッチ
+    /// Dispatches a 2D compute kernel.
+    /// - Parameters:
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - width: The grid width in threads.
+    ///   - height: The grid height in threads.
+    ///   - configure: A closure to configure the compute encoder before dispatch.
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -1319,12 +1739,12 @@ public final class SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// コンピュートメモリバリア（ディスパッチ間のデータ依存解決用）
+    /// Inserts a memory barrier between compute dispatches to resolve data dependencies.
     public func computeBarrier() {
         _computeEncoder?.memoryBarrier(scope: .buffers)
     }
 
-    /// コンピュートエンコーダを遅延作成
+    /// Lazily creates and returns the compute command encoder.
     private func ensureComputeEncoder() -> MTLComputeCommandEncoder? {
         if let existing = _computeEncoder { return existing }
         guard let cb = _commandBuffer else { return nil }
@@ -1335,8 +1755,9 @@ public final class SketchContext {
 
     // MARK: - Particle System
 
-    /// GPU パーティクルシステムを作成
-    /// - Parameter count: パーティクル数（デフォルト100,000）
+    /// Creates a GPU particle system.
+    /// - Parameter count: The number of particles (default 100,000).
+    /// - Returns: A `ParticleSystem` instance.
     public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
         try ParticleSystem(
             device: renderer.device,
@@ -1346,13 +1767,15 @@ public final class SketchContext {
         )
     }
 
-    /// パーティクルシステムを更新（compute() 内で呼ぶ）
+    /// Updates a particle system (call during the compute phase).
+    /// - Parameter system: The particle system to update.
     public func updateParticles(_ system: ParticleSystem) {
         guard let encoder = ensureComputeEncoder() else { return }
         system.update(encoder: encoder, deltaTime: deltaTime, time: time)
     }
 
-    /// パーティクルシステムを描画（draw() 内で呼ぶ）
+    /// Draws a particle system (call during the draw phase).
+    /// - Parameter system: The particle system to draw.
     public func drawParticles(_ system: ParticleSystem) {
         canvas.flush()
         guard let enc = canvas.currentEncoder else { return }
@@ -1366,45 +1789,52 @@ public final class SketchContext {
 
     // MARK: - Audio
 
-    /// オーディオ入力アナライザーを作成
-    /// - Parameter fftSize: FFT サイズ（デフォルト1024）
+    /// Creates an audio input analyzer.
+    /// - Parameter fftSize: The FFT window size (default 1024).
+    /// - Returns: An `AudioAnalyzer` instance.
     public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
         AudioAnalyzer(fftSize: fftSize)
     }
 
     // MARK: - OSC
 
-    /// OSC レシーバーを作成
-    /// - Parameter port: UDP ポート番号
+    /// Creates an OSC receiver.
+    /// - Parameter port: The UDP port number to listen on.
+    /// - Returns: An `OSCReceiver` instance.
     public func createOSCReceiver(port: UInt16) -> OSCReceiver {
         OSCReceiver(port: port)
     }
 
     // MARK: - Shader Hot Reload
 
-    /// シェーダーソースを再コンパイルしてパイプラインキャッシュをクリアする
+    /// Recompiles shader source and clears the pipeline cache.
     ///
-    /// CustomMaterial / CustomPostEffect の reload() と組み合わせて使う。
+    /// Use in combination with `CustomMaterial.reload()` or `CustomPostEffect.reload()`.
     /// - Parameters:
-    ///   - key: ShaderLibrary の登録キー
-    ///   - source: 新しい MSL ソースコード
+    ///   - key: The shader library registration key.
+    ///   - source: The new MSL source code.
     public func reloadShader(key: String, source: String) throws {
         try renderer.shaderLibrary.reload(key: key, source: source)
         canvas3D.clearCustomPipelineCache()
         renderer.postProcessPipeline?.invalidatePipelines()
     }
 
-    /// 外部ファイルからシェーダーを再読み込みしてパイプラインキャッシュをクリアする
+    /// Reloads a shader from an external file and clears the pipeline cache.
     /// - Parameters:
-    ///   - key: ShaderLibrary の登録キー
-    ///   - path: MSL ファイルパス
+    ///   - key: The shader library registration key.
+    ///   - path: The file path to the MSL source.
     public func reloadShaderFromFile(key: String, path: String) throws {
         try renderer.shaderLibrary.reloadFromFile(key: key, path: path)
         canvas3D.clearCustomPipelineCache()
         renderer.postProcessPipeline?.invalidatePipelines()
     }
 
-    /// 外部ファイルから MSL ソースを読み込んでマテリアルを作成する
+    /// Creates a custom material from an external MSL file.
+    /// - Parameters:
+    ///   - path: The file path to the MSL source.
+    ///   - fragmentFunction: The fragment shader function name.
+    ///   - vertexFunction: An optional custom vertex shader function name.
+    /// - Returns: A `CustomMaterial` instance.
     public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.registerFromFile(path: path, as: key)
@@ -1428,7 +1858,13 @@ public final class SketchContext {
 
     // MARK: - Tween
 
-    /// Tween を作成し TweenManager に登録
+    /// Creates a tween and registers it with the tween manager.
+    /// - Parameters:
+    ///   - from: The starting value.
+    ///   - to: The ending value.
+    ///   - duration: The tween duration in seconds.
+    ///   - easing: The easing function (default ease-in-out cubic).
+    /// - Returns: The created `Tween` instance.
     @discardableResult
     public func tween<T: Interpolatable>(
         from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
@@ -1440,26 +1876,28 @@ public final class SketchContext {
 
     // MARK: - Sound File (D-16)
 
-    /// オーディオファイルを読み込む
-    /// - Parameter path: ファイルパス
+    /// Loads an audio file from the specified path.
+    /// - Parameter path: The file path to the audio file.
+    /// - Returns: A `SoundFile` instance.
     public func loadSound(_ path: String) throws -> SoundFile {
         try SoundFile(path: path)
     }
 
     // MARK: - MIDI (D-17)
 
-    /// MIDI マネージャーを作成
+    /// Creates a MIDI manager for sending and receiving MIDI messages.
+    /// - Returns: A `MIDIManager` instance.
     public func createMIDI() -> MIDIManager {
         MIDIManager()
     }
 
     // MARK: - GIF Export (D-19)
 
-    /// GIF エクスポーター
+    /// The GIF exporter instance.
     public let gifExporter = GIFExporter()
 
-    /// GIF 録画を開始
-    /// - Parameter fps: フレームレート（デフォルト15）
+    /// Begins GIF recording.
+    /// - Parameter fps: The frame rate for the GIF (default 15).
     public func beginGIFRecord(fps: Int = 15) {
         gifExporter.beginRecord(
             fps: fps,
@@ -1468,7 +1906,7 @@ public final class SketchContext {
         )
     }
 
-    /// GIF フレームをキャプチャ（内部的に毎フレーム呼ばれる）
+    /// Captures a GIF frame (called internally each frame).
     func captureGIFFrame() {
         guard gifExporter.isRecording else { return }
         gifExporter.captureFrame(
@@ -1477,8 +1915,8 @@ public final class SketchContext {
         )
     }
 
-    /// GIF 録画を終了してファイルに書き出し
-    /// - Parameter path: 出力ファイルパス（nilならデスクトップに自動生成）
+    /// Ends GIF recording and writes the file.
+    /// - Parameter path: The output file path (nil generates one on the Desktop automatically).
     public func endGIFRecord(_ path: String? = nil) throws {
         let actualPath: String
         if let path {
@@ -1493,61 +1931,67 @@ public final class SketchContext {
 
     // MARK: - Physics 2D
 
-    /// 2D 物理ワールドを作成
+    /// Creates a 2D physics world.
+    /// - Parameter cellSize: The spatial hash cell size (default 50).
+    /// - Returns: A `Physics2D` instance.
     public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
         Physics2D(cellSize: cellSize)
     }
 
     // MARK: - Orbit Camera (D-20)
 
-    /// オービットカメラ
+    /// The orbit camera instance.
     public let orbitCamera = OrbitCamera()
 
-    /// オービットコントロールを有効化（draw() 内で呼ぶ）
-    /// マウスドラッグでカメラを回転、スクロールでズーム
+    /// Enables orbit camera control (call during the draw phase).
+    ///
+    /// Drag the mouse to rotate the camera and scroll to zoom.
     public func orbitControl() {
         let inp = input
 
-        // マウスドラッグでカメラを回転
+        // Rotate the camera on mouse drag
         if inp.isMouseDown {
             let dx = inp.mouseX - inp.pmouseX
             let dy = inp.mouseY - inp.pmouseY
             orbitCamera.handleMouseDrag(dx: dx, dy: dy)
         }
 
-        // スクロールでズーム
+        // Zoom on scroll
         let sy = inp.scrollY
         if abs(sy) > 0.01 {
             orbitCamera.handleScroll(delta: sy)
         }
 
-        // ダンピング更新
+        // Update damping
         orbitCamera.update()
 
-        // Canvas3D に適用
+        // Apply to Canvas3D
         canvas3D.camera(eye: orbitCamera.eye, center: orbitCamera.target, up: orbitCamera.up)
     }
 
     // MARK: - Scene Graph
 
-    /// ノードを作成
+    /// Creates a scene graph node.
+    /// - Parameter name: An optional name for the node.
+    /// - Returns: A new `Node` instance.
     public func createNode(_ name: String = "") -> Node {
         Node(name: name)
     }
 
-    /// シーングラフを描画
+    /// Draws a scene graph starting from the root node.
+    /// - Parameter root: The root node of the scene graph.
     public func drawScene(_ root: Node) {
         SceneRenderer.render(node: root, canvas: canvas3D)
     }
 
     // MARK: - Render Graph
 
-    /// ソースパスを作成
+    /// Creates a source pass for the render graph.
     /// - Parameters:
-    ///   - label: ノードのラベル
-    ///   - width: テクスチャの幅
-    ///   - height: テクスチャの高さ
-    /// - Returns: SourcePass（失敗時は nil）
+    ///   - label: The node label.
+    ///   - width: The texture width in pixels.
+    ///   - height: The texture height in pixels.
+    /// - Returns: A `SourcePass` instance, or nil on failure.
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
         try? SourcePass(
             label: label,
@@ -1557,11 +2001,11 @@ public final class SketchContext {
         )
     }
 
-    /// エフェクトパスを作成
+    /// Creates an effect pass for the render graph.
     /// - Parameters:
-    ///   - input: 入力パスノード
-    ///   - effects: ポストプロセスエフェクト配列
-    /// - Returns: EffectPass（失敗時は nil）
+    ///   - input: The input render pass node.
+    ///   - effects: An array of post-processing effects.
+    /// - Returns: An `EffectPass` instance, or nil on failure.
     public func createEffectPass(_ input: RenderPassNode, effects: [PostEffect]) -> EffectPass? {
         try? EffectPass(
             input,
@@ -1572,12 +2016,12 @@ public final class SketchContext {
         )
     }
 
-    /// マージパスを作成
+    /// Creates a merge pass that composites two render passes.
     /// - Parameters:
-    ///   - a: ベースパス
-    ///   - b: オーバーレイパス
-    ///   - blend: ブレンドモード
-    /// - Returns: MergePass（失敗時は nil）
+    ///   - a: The base pass.
+    ///   - b: The overlay pass.
+    ///   - blend: The blend type for compositing.
+    /// - Returns: A `MergePass` instance, or nil on failure.
     public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
         try? MergePass(
             a, b,
@@ -1587,30 +2031,37 @@ public final class SketchContext {
         )
     }
 
-    /// レンダーグラフを設定
-    /// - Parameter graph: RenderGraph（nil で解除）
+    /// Sets the active render graph.
+    /// - Parameter graph: The render graph to use, or nil to disable.
     public func setRenderGraph(_ graph: RenderGraph?) {
         renderer.renderGraph = graph
     }
 
     // MARK: - CoreML / Vision
 
-    /// CoreML モデルラッパーを作成
+    /// Creates a CoreML model processor.
+    /// - Returns: An `MLProcessor` instance.
     public func createMLProcessor() -> MLProcessor {
         MLProcessor(device: renderer.device, commandQueue: renderer.commandQueue)
     }
 
-    /// Vision フレームワークラッパーを作成
+    /// Creates a Vision framework wrapper.
+    /// - Returns: An `MLVision` instance.
     public func createVision() -> MLVision {
         MLVision(device: renderer.device, commandQueue: renderer.commandQueue)
     }
 
-    /// スタイル転送ラッパーを作成
+    /// Creates a style transfer wrapper.
+    /// - Returns: An `MLStyleTransfer` instance.
     public func createStyleTransfer() -> MLStyleTransfer {
         MLStyleTransfer(device: renderer.device, commandQueue: renderer.commandQueue)
     }
 
-    /// CoreML モデルを読み込んで MLProcessor を返す
+    /// Loads a CoreML model from a file path and returns a configured processor.
+    /// - Parameters:
+    ///   - path: The file path to the CoreML model.
+    ///   - computeUnit: The compute unit preference (default `.all`).
+    /// - Returns: A loaded `MLProcessor` instance.
     public func loadMLModel(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
         let processor = createMLProcessor()
         processor.computeUnit = computeUnit
@@ -1618,7 +2069,11 @@ public final class SketchContext {
         return processor
     }
 
-    /// バンドルリソースから CoreML モデルを読み込む
+    /// Loads a CoreML model from a bundle resource by name.
+    /// - Parameters:
+    ///   - name: The resource name of the CoreML model.
+    ///   - computeUnit: The compute unit preference (default `.all`).
+    /// - Returns: A loaded `MLProcessor` instance.
     public func loadMLModel(named name: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
         let processor = createMLProcessor()
         processor.computeUnit = computeUnit
@@ -1626,26 +2081,41 @@ public final class SketchContext {
         return processor
     }
 
-    /// スタイル転送モデルを読み込む
+    /// Loads a style transfer model from a file path.
+    /// - Parameters:
+    ///   - path: The file path to the style transfer model.
+    ///   - computeUnit: The compute unit preference (default `.all`).
+    /// - Returns: A loaded `MLStyleTransfer` instance.
     public func loadStyleTransfer(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLStyleTransfer {
         let st = createStyleTransfer()
         try st.load(path, computeUnit: computeUnit)
         return st
     }
 
-    /// テクスチャコンバーター（上級者向け）
+    /// Creates an ML texture converter for advanced texture-to-pixel-buffer conversions.
+    /// - Returns: An `MLTextureConverter` instance.
     public func createMLTextureConverter() -> MLTextureConverter {
         MLTextureConverter(device: renderer.device, commandQueue: renderer.commandQueue)
     }
 
     // MARK: - GameplayKit Noise
 
-    /// GameplayKit ノイズジェネレーターを作成
+    /// Creates a GameplayKit noise generator.
+    /// - Parameters:
+    ///   - type: The noise type to generate.
+    ///   - config: The noise configuration (default settings).
+    /// - Returns: A `GKNoiseWrapper` instance.
     public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper {
         GKNoiseWrapper(type: type, config: config, device: renderer.device)
     }
 
-    /// ノイズテクスチャを生成（便利メソッド）
+    /// Generates a noise texture image as a convenience.
+    /// - Parameters:
+    ///   - type: The noise type to generate.
+    ///   - width: The texture width in pixels.
+    ///   - height: The texture height in pixels.
+    ///   - config: The noise configuration (default settings).
+    /// - Returns: The generated noise image, or nil on failure.
     public func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage? {
         let noise = GKNoiseWrapper(type: type, config: config, device: renderer.device)
         return noise.image(width: width, height: height)
@@ -1653,20 +2123,27 @@ public final class SketchContext {
 
     // MARK: - MPS Image Filter
 
-    /// MPS 画像フィルタを作成
+    /// Creates an MPS image filter wrapper.
+    /// - Returns: An `MPSImageFilterWrapper` instance.
     public func createMPSFilter() -> MPSImageFilterWrapper {
         MPSImageFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
     }
 
-    /// MPS レイトレーサーを作成
+    /// Creates an MPS ray tracer.
+    /// - Parameters:
+    ///   - width: The output image width in pixels.
+    ///   - height: The output image height in pixels.
+    /// - Returns: An `MPSRayTracer` instance.
     public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
         try MPSRayTracer(device: renderer.device, commandQueue: renderer.commandQueue, width: width, height: height)
     }
 
     // MARK: - CoreImage Filter
 
+    /// The lazily initialized CoreImage filter wrapper.
     private var _ciFilterWrapper: CIFilterWrapper?
 
+    /// Returns the shared CIFilterWrapper, creating it if needed.
     private func ensureCIFilterWrapper() -> CIFilterWrapper {
         if let wrapper = _ciFilterWrapper { return wrapper }
         let wrapper = CIFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
@@ -1674,7 +2151,10 @@ public final class SketchContext {
         return wrapper
     }
 
-    /// CoreImage フィルタを MImage に適用（プリセット）
+    /// Applies a CoreImage filter to an image using a preset.
+    /// - Parameters:
+    ///   - image: The target image.
+    ///   - preset: The filter preset to apply.
     public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
         ensureCIFilterWrapper().apply(
             filterName: preset.filterName,
@@ -1685,12 +2165,21 @@ public final class SketchContext {
         )
     }
 
-    /// CoreImage フィルタを MImage に適用（フィルタ名直接指定）
+    /// Applies a CoreImage filter to an image by filter name.
+    /// - Parameters:
+    ///   - image: The target image.
+    ///   - name: The CIFilter name.
+    ///   - parameters: The filter parameters dictionary.
     public func ciFilter(_ image: MImage, name: String, parameters: [String: Any] = [:]) {
         ensureCIFilterWrapper().apply(filterName: name, parameters: parameters, to: image)
     }
 
-    /// CoreImage ジェネレーターフィルタで画像を生成
+    /// Generates an image using a CoreImage generator filter.
+    /// - Parameters:
+    ///   - preset: The generator filter preset.
+    ///   - width: The output width in pixels.
+    ///   - height: The output height in pixels.
+    /// - Returns: The generated image, or nil on failure.
     public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
         guard let tex = ensureCIFilterWrapper().generate(
             filterName: preset.filterName,

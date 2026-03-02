@@ -1,20 +1,25 @@
 import Metal
 
-/// パフォーマンスメトリクスのオーバーレイ表示
+/// Display a performance metrics overlay showing FPS, frame time, and GPU time.
 @MainActor
 public final class PerformanceHUD {
-    // Ring buffer for FPS averaging
+    /// Ring buffer storing recent frame durations for averaging.
     private var frameTimes: [Float] = []
+    /// The maximum number of frame time samples to keep.
     private let maxSamples = 60
 
-    // Metrics
+    /// The averaged frames per second.
     public private(set) var fps: Float = 0
+    /// The averaged frame time in milliseconds.
     public private(set) var frameTime: Float = 0
+    /// The most recent GPU execution time in milliseconds.
     public private(set) var gpuTime: Float = 0
 
+    /// Create a new PerformanceHUD instance.
     public init() {}
 
-    /// Update metrics from deltaTime
+    /// Update metrics from the current frame's delta time.
+    /// - Parameter deltaTime: The elapsed time since the previous frame in seconds.
     func update(deltaTime: Float) {
         frameTimes.append(deltaTime)
         if frameTimes.count > maxSamples {
@@ -25,12 +30,19 @@ public final class PerformanceHUD {
         frameTime = avgDt * 1000 // ms
     }
 
-    /// Update GPU time from command buffer
+    /// Update the GPU execution time from command buffer timestamps.
+    /// - Parameters:
+    ///   - start: The GPU start timestamp in seconds.
+    ///   - end: The GPU end timestamp in seconds.
     func updateGPUTime(start: Double, end: Double) {
         gpuTime = Float((end - start) * 1000) // ms
     }
 
-    /// Draw the HUD overlay using Canvas2D
+    /// Draw the HUD overlay using Canvas2D primitives.
+    /// - Parameters:
+    ///   - canvas: The Canvas2D instance used for drawing.
+    ///   - width: The canvas width in pixels.
+    ///   - height: The canvas height in pixels.
     func draw(canvas: Canvas2D, width: Float, height: Float) {
         // Save style
         canvas.pushStyle()
