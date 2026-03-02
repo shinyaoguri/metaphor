@@ -236,11 +236,12 @@ public final class ShaderLibrary {
         nonisolated(unsafe) let unsafeResults = results
         nonisolated(unsafe) var compilationErrors: [(key: String, error: Error)] = []
         let errorLock = NSLock()
+        let dev = device
 
         DispatchQueue.concurrentPerform(iterations: sources.count) { index in
             let (source, key) = sources[index]
             do {
-                let lib = try device.makeLibrary(source: source, options: nil)
+                let lib = try dev.makeLibrary(source: source, options: nil)
                 unsafeResults[index] = (key, lib)
             } catch {
                 errorLock.lock()

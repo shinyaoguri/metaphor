@@ -1396,7 +1396,7 @@ public final class MLVision {
                                 floatData[i] = Float(doublePtr[i])
                             }
                         }
-                    @unknown default:
+                    default:
                         elementType = "unknown"
                     }
 
