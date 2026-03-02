@@ -32,7 +32,17 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Get Syphon submodule hash
+        id: syphon-hash
+        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Syphon.xcframework
+        id: cache-syphon
+        uses: actions/cache@v4
+        with:
+          path: Frameworks/Syphon.xcframework
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
       - name: Build Syphon.xcframework
+        if: steps.cache-syphon.outputs.cache-hit != 'true'
         run: |
           ./scripts/build-syphon.sh
 
