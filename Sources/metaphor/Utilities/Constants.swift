@@ -56,9 +56,13 @@ public let COMMAND: UInt16 = 55
 
 // MARK: - Time
 
+/// Internal time value updated by SketchContext each frame.
+@MainActor
+var _sketchElapsedTime: Float = 0
+
 /// Return the number of milliseconds elapsed since the sketch started.
 /// - Returns: The elapsed time in milliseconds.
 @MainActor
 public func millis() -> Int {
-    Int((_activeSketchContext?.time ?? 0) * 1000)
+    Int(_sketchElapsedTime * 1000)
 }

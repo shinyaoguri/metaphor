@@ -1,5 +1,6 @@
 import CoreMIDI
 import Foundation
+import os
 
 /// Manage MIDI input and output connections.
 ///
@@ -21,31 +22,31 @@ import Foundation
 // MARK: - Thread-safe CoreMIDI Port State
 
 private final class MIDIPortState: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _client: MIDIClientRef = 0
-    private nonisolated(unsafe) var _inputPort: MIDIPortRef = 0
-    private nonisolated(unsafe) var _outputPort: MIDIPortRef = 0
+    private struct State {
+        var client: MIDIClientRef = 0
+        var inputPort: MIDIPortRef = 0
+        var outputPort: MIDIPortRef = 0
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     func set(client: MIDIClientRef, inputPort: MIDIPortRef, outputPort: MIDIPortRef) {
-        lock.lock()
-        _client = client
-        _inputPort = inputPort
-        _outputPort = outputPort
-        lock.unlock()
+        state.withLock { s in
+            s.client = client
+            s.inputPort = inputPort
+            s.outputPort = outputPort
+        }
     }
 
     var outputPort: MIDIPortRef {
-        lock.lock()
-        defer { lock.unlock() }
-        return _outputPort
+        state.withLock { $0.outputPort }
     }
 
     func dispose() {
-        lock.lock()
-        if _inputPort != 0 { MIDIPortDispose(_inputPort); _inputPort = 0 }
-        if _outputPort != 0 { MIDIPortDispose(_outputPort); _outputPort = 0 }
-        if _client != 0 { MIDIClientDispose(_client); _client = 0 }
-        lock.unlock()
+        state.withLock { s in
+            if s.inputPort != 0 { MIDIPortDispose(s.inputPort); s.inputPort = 0 }
+            if s.outputPort != 0 { MIDIPortDispose(s.outputPort); s.outputPort = 0 }
+            if s.client != 0 { MIDIClientDispose(s.client); s.client = 0 }
+        }
     }
 }
 
@@ -310,20 +311,17 @@ public final class MIDIManager {
 // MARK: - Thread-safe Message Buffer
 
 private final class MIDIMessageBuffer: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _messages: [MIDIMessage] = []
+    private let state = OSAllocatedUnfairLock(initialState: [MIDIMessage]())
 
     func append(_ messages: [MIDIMessage]) {
-        lock.lock()
-        _messages.append(contentsOf: messages)
-        lock.unlock()
+        state.withLock { $0.append(contentsOf: messages) }
     }
 
     func drain() -> [MIDIMessage] {
-        lock.lock()
-        let msgs = _messages
-        _messages.removeAll(keepingCapacity: true)
-        lock.unlock()
-        return msgs
+        state.withLock { s in
+            let msgs = s
+            s.removeAll(keepingCapacity: true)
+            return msgs
+        }
     }
 }

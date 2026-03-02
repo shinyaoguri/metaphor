@@ -1,5 +1,45 @@
 import AVFoundation
 import Foundation
+import os
+
+// MARK: - Audio Engine Holder
+
+/// Manage AVAudioEngine lifecycle for safe cleanup across actor boundaries.
+///
+/// AVAudioEngine and AVAudioPlayerNode are thread-safe for stop operations.
+/// This holder handles cleanup in deinit without requiring nonisolated(unsafe).
+private final class AudioEngineHolder: @unchecked Sendable {
+    let engine: AVAudioEngine
+    let playerNode: AVAudioPlayerNode
+    let varispeedNode: AVAudioUnitVarispeed
+
+    init() {
+        self.engine = AVAudioEngine()
+        self.playerNode = AVAudioPlayerNode()
+        self.varispeedNode = AVAudioUnitVarispeed()
+    }
+
+    deinit {
+        playerNode.stop()
+        engine.stop()
+    }
+}
+
+// MARK: - Thread-safe Sample Buffer for SoundFile
+
+private final class SoundSampleBuffer: Sendable {
+    private let state = OSAllocatedUnfairLock(initialState: [Float]?.none)
+
+    func store(_ samples: [Float]) {
+        state.withLock { $0 = samples }
+    }
+
+    func take() -> [Float]? {
+        state.withLock { s in let v = s; s = nil; return v }
+    }
+}
+
+// MARK: - SoundFile
 
 /// Play audio files (MP3, WAV, AAC, etc.) with integrated spectrum analysis.
 ///
@@ -23,10 +63,7 @@ public final class SoundFile {
 
     // MARK: - Audio Engine
 
-    // nonisolated(unsafe) allows deinit to call stop() from any thread.
-    // AVAudioEngine and AVAudioPlayerNode are thread-safe for stop operations.
-    private nonisolated(unsafe) let engine: AVAudioEngine
-    private nonisolated(unsafe) let playerNode: AVAudioPlayerNode
+    private let audioEngine: AudioEngineHolder
     private let file: AVAudioFile
     private let audioFormat: AVAudioFormat
 
@@ -43,8 +80,8 @@ public final class SoundFile {
 
     /// Control the playback volume (0.0 to 1.0).
     public var volume: Float {
-        get { playerNode.volume }
-        set { playerNode.volume = max(0, min(1, newValue)) }
+        get { audioEngine.playerNode.volume }
+        set { audioEngine.playerNode.volume = max(0, min(1, newValue)) }
     }
 
     /// Control the playback rate (0.25 to 4.0).
@@ -54,12 +91,11 @@ public final class SoundFile {
             _rate = max(0.25, min(4.0, newValue))
             if isPlaying {
                 // Rate changes are applied during playback via the varispeed node
-                varispeedNode.rate = _rate
+                audioEngine.varispeedNode.rate = _rate
             }
         }
     }
     private var _rate: Float = 1.0
-    private let varispeedNode: AVAudioUnitVarispeed
 
     // MARK: - Analysis Integration
 
@@ -91,50 +127,48 @@ public final class SoundFile {
         self.audioFormat = file.processingFormat
         self.duration = Double(file.length) / audioFormat.sampleRate
 
-        self.engine = AVAudioEngine()
-        self.playerNode = AVAudioPlayerNode()
-        self.varispeedNode = AVAudioUnitVarispeed()
+        self.audioEngine = AudioEngineHolder()
 
         // Connect nodes: playerNode -> varispeed -> mainMixer -> output
+        let engine = audioEngine.engine
+        let playerNode = audioEngine.playerNode
+        let varispeedNode = audioEngine.varispeedNode
         engine.attach(playerNode)
         engine.attach(varispeedNode)
         engine.connect(playerNode, to: varispeedNode, format: audioFormat)
         engine.connect(varispeedNode, to: engine.mainMixerNode, format: audioFormat)
     }
 
-    deinit {
-        playerNode.stop()
-        engine.stop()
-    }
-
     // MARK: - Playback Control
 
     /// Start playback.
     public func play() {
+        let engine = audioEngine.engine
         if !engine.isRunning {
             do {
                 engine.prepare()
                 try engine.start()
             } catch {
+                metaphorWarning("Audio engine start failed: \(error)")
                 return
             }
         }
 
         scheduleFile()
-        varispeedNode.rate = _rate
-        playerNode.play()
+        audioEngine.varispeedNode.rate = _rate
+        audioEngine.playerNode.play()
         isPlaying = true
     }
 
     /// Pause playback.
     public func pause() {
-        playerNode.pause()
+        audioEngine.playerNode.pause()
         isPlaying = false
     }
 
     /// Stop playback and reset to the beginning.
     public func stop() {
-        playerNode.stop()
+        audioEngine.playerNode.stop()
         isPlaying = false
     }
 
@@ -147,21 +181,21 @@ public final class SoundFile {
     /// Access or set the current playback position in seconds.
     public var position: Double {
         get {
-            guard let nodeTime = playerNode.lastRenderTime,
-                  let playerTime = playerNode.playerTime(forNodeTime: nodeTime) else {
+            guard let nodeTime = audioEngine.playerNode.lastRenderTime,
+                  let playerTime = audioEngine.playerNode.playerTime(forNodeTime: nodeTime) else {
                 return 0
             }
             return Double(playerTime.sampleTime) / playerTime.sampleRate
         }
         set {
             let wasPlaying = isPlaying
-            playerNode.stop()
+            audioEngine.playerNode.stop()
 
             let samplePosition = AVAudioFramePosition(newValue * audioFormat.sampleRate)
             let remainingFrames = AVAudioFrameCount(file.length - samplePosition)
             guard remainingFrames > 0 else { return }
 
-            playerNode.scheduleSegment(
+            audioEngine.playerNode.scheduleSegment(
                 file,
                 startingFrame: samplePosition,
                 frameCount: remainingFrames,
@@ -174,7 +208,7 @@ public final class SoundFile {
             }
 
             if wasPlaying {
-                playerNode.play()
+                audioEngine.playerNode.play()
                 isPlaying = true
             }
         }
@@ -192,8 +226,8 @@ public final class SoundFile {
         let capturedFFTSize = fftSize
 
         // Install a tap on the main mixer output
-        let mixerFormat = engine.mainMixerNode.outputFormat(forBus: 0)
-        engine.mainMixerNode.installTap(
+        let mixerFormat = audioEngine.engine.mainMixerNode.outputFormat(forBus: 0)
+        audioEngine.engine.mainMixerNode.installTap(
             onBus: 0,
             bufferSize: AVAudioFrameCount(fftSize),
             format: mixerFormat
@@ -229,7 +263,7 @@ public final class SoundFile {
     // MARK: - Private
 
     private func scheduleFile() {
-        playerNode.scheduleFile(
+        audioEngine.playerNode.scheduleFile(
             file,
             at: nil,
             completionCallbackType: .dataPlayedBack
@@ -242,9 +276,9 @@ public final class SoundFile {
 
     private func handlePlaybackCompletion() {
         if isLooping {
-            playerNode.stop()
+            audioEngine.playerNode.stop()
             scheduleFile()
-            playerNode.play()
+            audioEngine.playerNode.play()
         } else {
             isPlaying = false
         }
@@ -263,26 +297,5 @@ public enum SoundFileError: Error, LocalizedError {
         case .fileNotFound(let path):
             return "Audio file not found: \(path)"
         }
-    }
-}
-
-// MARK: - Thread-safe Sample Buffer for SoundFile
-
-private final class SoundSampleBuffer: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _samples: [Float]?
-
-    func store(_ samples: [Float]) {
-        lock.lock()
-        _samples = samples
-        lock.unlock()
-    }
-
-    func take() -> [Float]? {
-        lock.lock()
-        let s = _samples
-        _samples = nil
-        lock.unlock()
-        return s
     }
 }

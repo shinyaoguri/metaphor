@@ -1,6 +1,13 @@
 import Foundation
 
-/// Contains embedded MSL source code for all built-in rendering shaders.
+/// Built-in Metal shader source strings for runtime compilation.
+///
+/// metaphor uses a dual shader system:
+/// - **`.metal` files** (in `Shaders/Metal/`): Pre-compiled by Xcode/SPM, preferred for production.
+/// - **Source strings** (this file): Runtime-compiled via `MTLDevice.makeLibrary(source:)`.
+///   Used as fallback and for shader hot-reload during development.
+///
+/// New shaders should be added as `.metal` files under `Shaders/Metal/`.
 ///
 /// Includes blit, flat-color, vertex-color, lit (Blinn-Phong), Canvas2D,
 /// Canvas3D (untextured/textured), and Canvas2D textured shaders.

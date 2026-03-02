@@ -2,15 +2,15 @@
 import AVFoundation
 import CoreVideo
 import Foundation
+import os
 
 /// A simple thread-safe boolean flag for cross-queue coordination.
 private final class AtomicFlag: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _value: Bool = false
+    private let state = OSAllocatedUnfairLock(initialState: false)
 
     var value: Bool {
-        get { lock.lock(); defer { lock.unlock() }; return _value }
-        set { lock.lock(); _value = newValue; lock.unlock() }
+        get { state.withLock { $0 } }
+        set { state.withLock { $0 = newValue } }
     }
 }
 
@@ -296,7 +296,7 @@ public final class VideoExporter {
             input.markAsFinished()
 
             writer.finishWriting {
-                DispatchQueue.main.async { [weak self] in
+                Task { @MainActor [weak self] in
                     self?.assetWriter = nil
                     self?.writerInput = nil
                     self?.pixelBufferAdaptor = nil

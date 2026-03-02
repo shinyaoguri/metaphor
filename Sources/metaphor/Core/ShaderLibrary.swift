@@ -1,5 +1,6 @@
 import Metal
 import Foundation
+import os
 
 /// Manages compilation and caching of Metal shaders.
 ///
@@ -233,9 +234,9 @@ public final class ShaderLibrary {
         results.initialize(repeating: nil, count: sources.count)
         defer { results.deallocate() }
 
+        // unsafeResults: each thread writes to its own index (no lock needed).
         nonisolated(unsafe) let unsafeResults = results
-        nonisolated(unsafe) var compilationErrors: [(key: String, error: Error)] = []
-        let errorLock = NSLock()
+        let compilationErrors = OSAllocatedUnfairLock(initialState: [(key: String, error: Error)]())
         let dev = device
 
         DispatchQueue.concurrentPerform(iterations: sources.count) { index in
@@ -244,21 +245,20 @@ public final class ShaderLibrary {
                 let lib = try dev.makeLibrary(source: source, options: nil)
                 unsafeResults[index] = (key, lib)
             } catch {
-                errorLock.lock()
-                compilationErrors.append((key: key, error: error))
-                errorLock.unlock()
+                compilationErrors.withLock { $0.append((key: key, error: error)) }
             }
         }
 
         // All-or-nothing: if any shader failed, register none
-        if !compilationErrors.isEmpty {
-            let detail = compilationErrors.map { "  \($0.key): \($0.error)" }.joined(separator: "\n")
+        let errors = compilationErrors.withLock { $0 }
+        if !errors.isEmpty {
+            let detail = errors.map { "  \($0.key): \($0.error)" }.joined(separator: "\n")
             throw MetaphorError.shaderCompilationFailed(
-                name: "builtins (\(compilationErrors.count) failed)",
+                name: "builtins (\(errors.count) failed)",
                 underlying: NSError(
                     domain: "metaphor.ShaderLibrary",
                     code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to compile \(compilationErrors.count) shader(s):\n\(detail)"]
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to compile \(errors.count) shader(s):\n\(detail)"]
                 )
             )
         }

@@ -1,9 +1,12 @@
 import Metal
 
-/// Unified error type for the metaphor library.
+/// Central error type for metaphor initialization and resource creation failures.
 ///
-/// All errors thrown by metaphor's core systems are represented by cases of this enum,
-/// providing consistent error handling across the library.
+/// ## Error handling conventions
+/// - **Initialization failures**: throw ``MetaphorError`` or module-specific error types
+///   (e.g., ``ParticleError``, ``SoundFileError``, ``ComputeKernelError``).
+/// - **Runtime failures** (during draw): log with `metaphorWarning()`, do not throw.
+/// - **Module-specific errors**: defined in their respective files.
 public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     /// The Metal device could not be obtained.
     case deviceNotAvailable

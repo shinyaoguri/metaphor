@@ -369,10 +369,10 @@ public final class Canvas2D {
             SIMD4<Float>(-1, 1, 0, 1)
         ))
 
-        assert(MemoryLayout<Vertex2D>.stride == 24,
-               "Vertex2D stride must be 24 to match position2DColor layout")
-        assert(MemoryLayout<TexturedVertex2D>.stride == 32,
-               "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
+        precondition(MemoryLayout<Vertex2D>.stride == 24,
+                     "Vertex2D stride must be 24 to match position2DColor layout")
+        precondition(MemoryLayout<TexturedVertex2D>.stride == 32,
+                     "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
 
         // 2D instancing resources
         guard let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device) else {

@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import os
 
 // MARK: - OSC Value
 
@@ -21,50 +22,58 @@ struct OSCMessage: Sendable {
 // MARK: - Thread-safe Message Queue
 
 private final class OSCMessageQueue: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _messages: [OSCMessage] = []
+    private struct State {
+        var messages: [OSCMessage] = []
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
     private let maxQueueSize = 10_000
 
     func enqueue(_ message: OSCMessage) {
-        lock.lock()
-        if _messages.count < maxQueueSize {
-            _messages.append(message)
+        state.withLock { s in
+            if s.messages.count < maxQueueSize {
+                s.messages.append(message)
+            } else {
+                metaphorWarning("OSC message queue full, dropping message")
+            }
         }
-        lock.unlock()
     }
 
     func dequeueAll() -> [OSCMessage] {
-        lock.lock()
-        let msgs = _messages
-        _messages.removeAll()
-        lock.unlock()
-        return msgs
+        state.withLock { s in
+            let msgs = s.messages
+            s.messages.removeAll()
+            return msgs
+        }
     }
 }
 
 // MARK: - Thread-safe Listener State
 
 private final class OSCListenerState: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _listener: NWListener?
-    private nonisolated(unsafe) var _isRunning: Bool = false
+    // State contains non-Sendable NWListener
+    // but access is always synchronized via OSAllocatedUnfairLock.
+    private struct State: @unchecked Sendable {
+        var listener: NWListener?
+        var isRunning: Bool = false
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     var listener: NWListener? {
-        get { lock.lock(); defer { lock.unlock() }; return _listener }
-        set { lock.lock(); _listener = newValue; lock.unlock() }
+        get { state.withLock { $0.listener } }
+        set { state.withLock { $0.listener = newValue } }
     }
 
     var isRunning: Bool {
-        get { lock.lock(); defer { lock.unlock() }; return _isRunning }
-        set { lock.lock(); _isRunning = newValue; lock.unlock() }
+        get { state.withLock { $0.isRunning } }
+        set { state.withLock { $0.isRunning = newValue } }
     }
 
     func cancel() {
-        lock.lock()
-        _listener?.cancel()
-        _listener = nil
-        _isRunning = false
-        lock.unlock()
+        state.withLock { s in
+            s.listener?.cancel()
+            s.listener = nil
+            s.isRunning = false
+        }
     }
 }
 

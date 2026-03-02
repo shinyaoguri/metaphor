@@ -1,26 +1,33 @@
 import AVFoundation
 import Accelerate
 import Foundation
+import os
 
 // MARK: - Thread-safe Sample Buffer
 
 /// Transfer audio samples from the audio thread to the main thread.
 private final class AudioSampleBuffer: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _samples: [Float]?
+    private let state = OSAllocatedUnfairLock(initialState: [Float]?.none)
 
     func store(_ samples: [Float]) {
-        lock.lock()
-        _samples = samples
-        lock.unlock()
+        state.withLock { $0 = samples }
     }
 
     func take() -> [Float]? {
-        lock.lock()
-        let s = _samples
-        _samples = nil
-        lock.unlock()
-        return s
+        state.withLock { s in let v = s; s = nil; return v }
+    }
+}
+
+// MARK: - FFT Setup Holder
+
+/// Wrap vDSP_DFT_Setup for safe lifecycle management across actor boundaries.
+private final class FFTSetupHolder: @unchecked Sendable {
+    let setup: vDSP_DFT_Setup?
+    init(size: Int) {
+        setup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(size), .FORWARD)
+    }
+    deinit {
+        if let setup { vDSP_DFT_DestroySetup(setup) }
     }
 }
 
@@ -74,7 +81,7 @@ public final class AudioAnalyzer {
 
     // MARK: - vDSP FFT
 
-    private nonisolated(unsafe) var fftSetup: vDSP_DFT_Setup?
+    private let fftHolder: FFTSetupHolder
     private var window: [Float]
     private var realIn: [Float]
     private var imagIn: [Float]
@@ -115,18 +122,8 @@ public final class AudioAnalyzer {
         // Pre-compute Hann window
         vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
 
-        // vDSP DFT setup
-        self.fftSetup = vDSP_DFT_zop_CreateSetup(
-            nil,
-            vDSP_Length(fftSize),
-            .FORWARD
-        )
-    }
-
-    deinit {
-        if let setup = fftSetup {
-            vDSP_DFT_DestroySetup(setup)
-        }
+        // vDSP DFT setup (holder manages lifecycle for safe deinit)
+        self.fftHolder = FFTSetupHolder(size: fftSize)
     }
 
     // MARK: - Public API
@@ -277,7 +274,7 @@ public final class AudioAnalyzer {
     // MARK: - Private: FFT
 
     private func performFFT(_ samples: [Float]) {
-        guard let setup = fftSetup else { return }
+        guard let setup = fftHolder.setup else { return }
 
         // Apply window function
         vDSP_vmul(samples, 1, window, 1, &realIn, 1, vDSP_Length(fftSize))

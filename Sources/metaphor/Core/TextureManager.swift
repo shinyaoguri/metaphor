@@ -68,7 +68,7 @@ public final class TextureManager {
 
         // Validate sample count: fall back to 1 if the device does not support it
         if sampleCount > 1 && !device.supportsTextureSampleCount(sampleCount) {
-            print("[metaphor] Warning: sampleCount \(sampleCount) is not supported by this device. Falling back to 1.")
+            metaphorWarning("sampleCount \(sampleCount) is not supported by this device. Falling back to 1.")
             self.sampleCount = 1
         } else {
             self.sampleCount = sampleCount

@@ -86,6 +86,9 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Post Processing
 
+    /// Indicate whether post-processing effects are available.
+    public private(set) var isPostProcessAvailable: Bool = false
+
     /// The post-processing effect pipeline.
     public private(set) var postProcessPipeline: PostProcessPipeline?
 
@@ -179,8 +182,9 @@ public final class MetaphorRenderer: NSObject {
             self.postProcessPipeline = try PostProcessPipeline(
                 device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary
             )
+            self.isPostProcessAvailable = true
         } catch {
-            print("[metaphor] Warning: PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
+            metaphorWarning("PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
         }
     }
 
@@ -215,7 +219,7 @@ public final class MetaphorRenderer: NSObject {
         for _ in 0..<3 {
             let result = inflightSemaphore.wait(timeout: .now() + .seconds(5))
             if result == .timedOut {
-                print("[metaphor] Warning: Timed out waiting for in-flight frame during resize")
+                metaphorWarning("Timed out waiting for in-flight frame during resize")
                 break
             }
             acquired += 1
@@ -577,7 +581,7 @@ public final class MetaphorRenderer: NSObject {
     public func renderFrame() {
         let semaphoreResult = inflightSemaphore.wait(timeout: .now() + .seconds(3))
         if semaphoreResult == .timedOut {
-            print("[metaphor] Warning: GPU frame timed out after 3s. Skipping frame.")
+            metaphorWarning("GPU frame timed out after 3s. Skipping frame.")
             return
         }
 

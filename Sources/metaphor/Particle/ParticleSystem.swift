@@ -282,9 +282,18 @@ public final class ParticleSystem {
             named: ParticleShaders.FunctionName.buildIndirectArgs,
             from: ShaderLibrary.BuiltinKey.particle
         ) {
-            self.resetCounterPipeline = try? device.makeComputePipelineState(function: resetFn)
-            self.compactPipeline = try? device.makeComputePipelineState(function: compactFn)
-            self.buildArgsPipeline = try? device.makeComputePipelineState(function: buildArgsFn)
+            self.resetCounterPipeline = {
+                do { return try device.makeComputePipelineState(function: resetFn) }
+                catch { metaphorWarning("Indirect draw pipeline unavailable (resetCounter): \(error)"); return nil }
+            }()
+            self.compactPipeline = {
+                do { return try device.makeComputePipelineState(function: compactFn) }
+                catch { metaphorWarning("Indirect draw pipeline unavailable (compact): \(error)"); return nil }
+            }()
+            self.buildArgsPipeline = {
+                do { return try device.makeComputePipelineState(function: buildArgsFn) }
+                catch { metaphorWarning("Indirect draw pipeline unavailable (buildArgs): \(error)"); return nil }
+            }()
 
             // Compact buffer for alive particles
             self.compactBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared)

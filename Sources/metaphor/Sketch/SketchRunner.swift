@@ -86,8 +86,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
         )
         self.context = context
-        precondition(_activeSketchContext == nil, "Only one Sketch instance is supported at a time")
-        _activeSketchContext = context
+        precondition(sketch._context == nil, "Only one Sketch instance is supported at a time")
+        sketch._context = context
 
         // createCanvas callback (allows resizing from within setup())
         context.onCreateCanvas = { [weak self] width, height in

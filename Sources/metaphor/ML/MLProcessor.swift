@@ -2,44 +2,47 @@ import CoreML
 import CoreVideo
 import Metal
 import QuartzCore
+import os
 
 // MARK: - Thread-safe Result Buffer
 
-private enum MLResultValue {
+// Contains non-Sendable CoreML/CoreVideo types; all access is lock-protected.
+private enum MLResultValue: @unchecked Sendable {
     case image(CVPixelBuffer, inferenceTime: Double)
     case generic(MLFeatureProvider, inferenceTime: Double)
 }
 
 private final class MLResultBuffer: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _result: MLResultValue?
-    private nonisolated(unsafe) var _isComplete = false
+    // State contains non-Sendable types (CVPixelBuffer, MLFeatureProvider)
+    // but access is always synchronized via OSAllocatedUnfairLock.
+    private struct State: @unchecked Sendable {
+        var result: MLResultValue?
+        var isComplete = false
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     func storeImageResult(_ pixelBuffer: CVPixelBuffer, inferenceTime: Double) {
-        lock.lock()
-        _result = .image(pixelBuffer, inferenceTime: inferenceTime)
-        _isComplete = true
-        lock.unlock()
+        state.withLockUnchecked { s in
+            s.result = .image(pixelBuffer, inferenceTime: inferenceTime)
+            s.isComplete = true
+        }
     }
 
     func storeGenericResult(_ provider: MLFeatureProvider, inferenceTime: Double) {
-        lock.lock()
-        _result = .generic(provider, inferenceTime: inferenceTime)
-        _isComplete = true
-        lock.unlock()
+        state.withLockUnchecked { s in
+            s.result = .generic(provider, inferenceTime: inferenceTime)
+            s.isComplete = true
+        }
     }
 
     func take() -> MLResultValue? {
-        lock.lock()
-        guard _isComplete else {
-            lock.unlock()
-            return nil
+        state.withLockUnchecked { s in
+            guard s.isComplete else { return nil }
+            let r = s.result
+            s.result = nil
+            s.isComplete = false
+            return r
         }
-        let r = _result
-        _result = nil
-        _isComplete = false
-        lock.unlock()
-        return r
     }
 }
 
@@ -191,7 +194,10 @@ public final class MLProcessor {
     /// The result becomes available via `outputTexture` after the next `update()` call.
     /// - Parameter texture: The input Metal texture.
     public func predict(texture: MTLTexture) {
-        guard isLoaded, !isProcessing, let capturedModel = coreMLModel else { return }
+        guard isLoaded, !isProcessing, let capturedModel = coreMLModel else {
+            metaphorWarning("predict() skipped: model not loaded or busy")
+            return
+        }
 
         guard let pixelBuffer = converter.pixelBuffer(from: texture) else { return }
         isProcessing = true
@@ -243,7 +249,10 @@ public final class MLProcessor {
     /// Run asynchronous inference with generic feature value inputs.
     /// - Parameter inputs: A dictionary mapping input names to MLFeatureValue instances.
     public func predict(inputs: [String: MLFeatureValue]) {
-        guard isLoaded, !isProcessing, let capturedModel = coreMLModel else { return }
+        guard isLoaded, !isProcessing, let capturedModel = coreMLModel else {
+            metaphorWarning("predict() skipped: model not loaded or busy")
+            return
+        }
         isProcessing = true
 
         let buffer = resultBuffer

@@ -62,11 +62,11 @@ public final class GPUBuffer<T> {
     /// Access the element at the given index.
     public subscript(index: Int) -> T {
         get {
-            assert(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
+            precondition(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
             return pointer[index]
         }
         set {
-            assert(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
+            precondition(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
             pointer[index] = newValue
         }
     }

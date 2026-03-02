@@ -3,10 +3,12 @@ import CoreVideo
 import Metal
 import QuartzCore
 import Vision
+import os
 
 // MARK: - Thread-safe Vision Result Buffer
 
-private enum VisionResultValue {
+// Contains non-Sendable Vision/CoreVideo types; all access is lock-protected.
+private enum VisionResultValue: @unchecked Sendable {
     case classifications([MLClassification], Double)
     case detections([MLDetection], Double)
     case poses([MLPose], Double)
@@ -29,21 +31,23 @@ private enum VisionResultValue {
 }
 
 private final class VisionResultBuffer: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _results: [VisionResultValue] = []
+    // State contains non-Sendable types (CVPixelBuffer, VNObservation)
+    // but access is always synchronized via OSAllocatedUnfairLock.
+    private struct State: @unchecked Sendable {
+        var results: [VisionResultValue] = []
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     func store(_ result: VisionResultValue) {
-        lock.lock()
-        _results.append(result)
-        lock.unlock()
+        state.withLockUnchecked { $0.results.append(result) }
     }
 
     func takeAll() -> [VisionResultValue] {
-        lock.lock()
-        let r = _results
-        _results = []
-        lock.unlock()
-        return r
+        state.withLockUnchecked { s in
+            let r = s.results
+            s.results = []
+            return r
+        }
     }
 }
 
@@ -98,34 +102,28 @@ private func extractFloatMaskData(from pixelBuffer: CVPixelBuffer) -> [Float] {
 // MARK: - Tracking State (thread-safe)
 
 private final class TrackingState: Sendable {
-    private let lock = NSLock()
-    private nonisolated(unsafe) var _observation: VNDetectedObjectObservation?
-    private nonisolated(unsafe) var _isProcessing: Bool = false
+    // State contains non-Sendable VNDetectedObjectObservation
+    // but access is always synchronized via OSAllocatedUnfairLock.
+    private struct State: @unchecked Sendable {
+        var observation: VNDetectedObjectObservation?
+        var isProcessing: Bool = false
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     func setObservation(_ obs: VNDetectedObjectObservation?) {
-        lock.lock()
-        _observation = obs
-        lock.unlock()
+        state.withLockUnchecked { $0.observation = obs }
     }
 
     func getObservation() -> VNDetectedObjectObservation? {
-        lock.lock()
-        let obs = _observation
-        lock.unlock()
-        return obs
+        state.withLockUnchecked { $0.observation }
     }
 
     func setProcessing(_ v: Bool) {
-        lock.lock()
-        _isProcessing = v
-        lock.unlock()
+        state.withLock { $0.isProcessing = v }
     }
 
     func getProcessing() -> Bool {
-        lock.lock()
-        let v = _isProcessing
-        lock.unlock()
-        return v
+        state.withLock { $0.isProcessing }
     }
 }
 
