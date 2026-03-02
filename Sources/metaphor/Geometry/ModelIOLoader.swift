@@ -95,14 +95,14 @@ enum ModelIOLoader {
         // Create Mesh
         if vertices.count <= 65535 && allIndices.allSatisfy({ $0 <= 65535 }) {
             let indices16 = allIndices.map { UInt16($0) }
-            return Mesh(
+            return try Mesh(
                 device: device,
                 vertices: vertices,
                 indices: indices16.isEmpty ? nil : indices16,
                 uvVertices: hasUVData ? uvVertices : nil
             )
         } else {
-            return Mesh(
+            return try Mesh(
                 device: device,
                 vertices: vertices,
                 indices32: allIndices,

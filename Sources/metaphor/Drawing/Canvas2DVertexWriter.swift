@@ -21,8 +21,11 @@ extension Canvas2D {
             flushColorVertices()
             bufferOffset = 0
         }
+        let writeIndex = bufferOffset + vertexCount
+        assert(writeIndex < maxVertices,
+               "[metaphor] Vertex buffer overflow: \(writeIndex) >= \(maxVertices)")
         let p = currentTransform * SIMD3<Float>(x, y, 1)
-        vertices[bufferOffset + vertexCount] = Vertex2D(
+        vertices[writeIndex] = Vertex2D(
             posX: p.x, posY: p.y,
             r: color.x, g: color.y, b: color.z, a: color.w
         )
@@ -42,7 +45,10 @@ extension Canvas2D {
             flushColorVertices()
             bufferOffset = 0
         }
-        vertices[bufferOffset + vertexCount] = Vertex2D(
+        let writeIndex = bufferOffset + vertexCount
+        assert(writeIndex < maxVertices,
+               "[metaphor] Vertex buffer overflow: \(writeIndex) >= \(maxVertices)")
+        vertices[writeIndex] = Vertex2D(
             posX: x, posY: y,
             r: color.x, g: color.y, b: color.z, a: color.w
         )

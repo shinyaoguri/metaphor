@@ -18,14 +18,43 @@ import Foundation
 ///     let val = midi.controllerValue(1) // mod wheel
 /// }
 /// ```
+// MARK: - Thread-safe CoreMIDI Port State
+
+private final class MIDIPortState: Sendable {
+    private let lock = NSLock()
+    private nonisolated(unsafe) var _client: MIDIClientRef = 0
+    private nonisolated(unsafe) var _inputPort: MIDIPortRef = 0
+    private nonisolated(unsafe) var _outputPort: MIDIPortRef = 0
+
+    func set(client: MIDIClientRef, inputPort: MIDIPortRef, outputPort: MIDIPortRef) {
+        lock.lock()
+        _client = client
+        _inputPort = inputPort
+        _outputPort = outputPort
+        lock.unlock()
+    }
+
+    var outputPort: MIDIPortRef {
+        lock.lock()
+        defer { lock.unlock() }
+        return _outputPort
+    }
+
+    func dispose() {
+        lock.lock()
+        if _inputPort != 0 { MIDIPortDispose(_inputPort); _inputPort = 0 }
+        if _outputPort != 0 { MIDIPortDispose(_outputPort); _outputPort = 0 }
+        if _client != 0 { MIDIClientDispose(_client); _client = 0 }
+        lock.unlock()
+    }
+}
+
 @MainActor
 public final class MIDIManager {
 
     // MARK: - CoreMIDI Refs
 
-    private nonisolated(unsafe) var client: MIDIClientRef = 0
-    private nonisolated(unsafe) var inputPort: MIDIPortRef = 0
-    private nonisolated(unsafe) var outputPort: MIDIPortRef = 0
+    private let portState = MIDIPortState()
 
     // MARK: - State
 
@@ -65,12 +94,11 @@ public final class MIDIManager {
         MIDIClientCreateWithBlock("metaphor.midi" as CFString, &clientRef) { _ in
             // Device connect/disconnect notifications (future use)
         }
-        client = clientRef
 
         // Create input port
         var inPort: MIDIPortRef = 0
         MIDIInputPortCreateWithProtocol(
-            client,
+            clientRef,
             "metaphor.midi.in" as CFString,
             ._1_0,
             &inPort
@@ -79,40 +107,31 @@ public final class MIDIManager {
             let messages = MIDIManager.parseEventList(eventList)
             buffer.append(messages)
         }
-        inputPort = inPort
 
         // Create output port
         var outPort: MIDIPortRef = 0
-        MIDIOutputPortCreate(client, "metaphor.midi.out" as CFString, &outPort)
-        outputPort = outPort
+        MIDIOutputPortCreate(clientRef, "metaphor.midi.out" as CFString, &outPort)
+
+        portState.set(client: clientRef, inputPort: inPort, outputPort: outPort)
 
         // Connect to all available sources
         let sourceCount = MIDIGetNumberOfSources()
         for i in 0..<sourceCount {
             let source = MIDIGetSource(i)
-            MIDIPortConnectSource(inputPort, source, nil)
+            MIDIPortConnectSource(inPort, source, nil)
         }
 
         isRunning = true
     }
 
     deinit {
-        MIDIPortDispose(inputPort)
-        MIDIPortDispose(outputPort)
-        MIDIClientDispose(client)
+        portState.dispose()
     }
 
     /// Stop MIDI input and output.
     public func stop() {
         guard isRunning else { return }
-
-        MIDIPortDispose(inputPort)
-        MIDIPortDispose(outputPort)
-        MIDIClientDispose(client)
-
-        inputPort = 0
-        outputPort = 0
-        client = 0
+        portState.dispose()
         isRunning = false
     }
 
@@ -238,9 +257,10 @@ public final class MIDIManager {
         ]
         packet = MIDIEventListAdd(&eventList, 256, packet, 0, words.count, words)
 
+        let outPort = portState.outputPort
         for i in 0..<destCount {
             let dest = MIDIGetDestination(i)
-            MIDISendEventList(outputPort, dest, &eventList)
+            MIDISendEventList(outPort, dest, &eventList)
         }
     }
 

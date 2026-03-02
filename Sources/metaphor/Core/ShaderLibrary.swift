@@ -234,8 +234,8 @@ public final class ShaderLibrary {
         defer { results.deallocate() }
 
         nonisolated(unsafe) let unsafeResults = results
-        nonisolated(unsafe) var firstError: Error?
-        let lock = NSLock()
+        nonisolated(unsafe) var compilationErrors: [(key: String, error: Error)] = []
+        let errorLock = NSLock()
 
         DispatchQueue.concurrentPerform(iterations: sources.count) { index in
             let (source, key) = sources[index]
@@ -243,14 +243,23 @@ public final class ShaderLibrary {
                 let lib = try device.makeLibrary(source: source, options: nil)
                 unsafeResults[index] = (key, lib)
             } catch {
-                lock.lock()
-                if firstError == nil { firstError = error }
-                lock.unlock()
+                errorLock.lock()
+                compilationErrors.append((key: key, error: error))
+                errorLock.unlock()
             }
         }
 
-        if let error = firstError {
-            throw error
+        // All-or-nothing: if any shader failed, register none
+        if !compilationErrors.isEmpty {
+            let detail = compilationErrors.map { "  \($0.key): \($0.error)" }.joined(separator: "\n")
+            throw MetaphorError.shaderCompilationFailed(
+                name: "builtins (\(compilationErrors.count) failed)",
+                underlying: NSError(
+                    domain: "metaphor.ShaderLibrary",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to compile \(compilationErrors.count) shader(s):\n\(detail)"]
+                )
+            )
         }
 
         for i in 0..<sources.count {

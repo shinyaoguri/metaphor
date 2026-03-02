@@ -63,7 +63,7 @@ struct InstanceBatcher2DTests {
     @Test("Batcher accumulates instances")
     func accumulation() {
         let device = MTLCreateSystemDefaultDevice()!
-        let batcher = InstanceBatcher2D(device: device)
+        let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
         let key = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
@@ -76,7 +76,7 @@ struct InstanceBatcher2DTests {
     @Test("Batcher rejects mismatched key")
     func keyMismatch() {
         let device = MTLCreateSystemDefaultDevice()!
-        let batcher = InstanceBatcher2D(device: device)
+        let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
         let k1 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
@@ -89,7 +89,7 @@ struct InstanceBatcher2DTests {
     @Test("Reset clears batch")
     func reset() {
         let device = MTLCreateSystemDefaultDevice()!
-        let batcher = InstanceBatcher2D(device: device)
+        let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
         let key = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
@@ -104,7 +104,7 @@ struct InstanceBatcher2DTests {
     @Test("Triple buffer rotation")
     func tripleBuffering() {
         let device = MTLCreateSystemDefaultDevice()!
-        let batcher = InstanceBatcher2D(device: device)
+        let batcher = try! InstanceBatcher2D(device: device)
 
         // 3回のフレームで異なるバッファが使われること
         var buffers: [MTLBuffer] = []
@@ -125,7 +125,7 @@ struct InstanceBatcher2DTests {
     @Test("Multiple instances with different colors")
     func differentColors() {
         let device = MTLCreateSystemDefaultDevice()!
-        let batcher = InstanceBatcher2D(device: device)
+        let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
         let key = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
@@ -148,7 +148,7 @@ struct UnitMesh2DTests {
     @Test("Unit circle has 96 vertices (32 segments × 3)")
     func circleVertexCount() {
         let device = MTLCreateSystemDefaultDevice()!
-        let (buffer, count) = UnitMesh2D.createCircle(device: device)
+        let (buffer, count) = UnitMesh2D.createCircle(device: device)!
         #expect(count == 96)
         #expect(buffer.length == 96 * MemoryLayout<SIMD2<Float>>.stride)
     }
@@ -156,7 +156,7 @@ struct UnitMesh2DTests {
     @Test("Unit rect has 6 vertices (2 triangles)")
     func rectVertexCount() {
         let device = MTLCreateSystemDefaultDevice()!
-        let (buffer, count) = UnitMesh2D.createRect(device: device)
+        let (buffer, count) = UnitMesh2D.createRect(device: device)!
         #expect(count == 6)
         #expect(buffer.length == 6 * MemoryLayout<SIMD2<Float>>.stride)
     }
@@ -164,7 +164,7 @@ struct UnitMesh2DTests {
     @Test("Unit circle vertices are within [-0.5, 0.5]")
     func circleVertexRange() {
         let device = MTLCreateSystemDefaultDevice()!
-        let (buffer, count) = UnitMesh2D.createCircle(device: device)
+        let (buffer, count) = UnitMesh2D.createCircle(device: device)!
         let ptr = buffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: count)
         for i in 0..<count {
             let v = ptr[i]
@@ -176,7 +176,7 @@ struct UnitMesh2DTests {
     @Test("Unit rect vertices are within [-0.5, 0.5]")
     func rectVertexRange() {
         let device = MTLCreateSystemDefaultDevice()!
-        let (buffer, count) = UnitMesh2D.createRect(device: device)
+        let (buffer, count) = UnitMesh2D.createRect(device: device)!
         let ptr = buffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: count)
         for i in 0..<count {
             let v = ptr[i]

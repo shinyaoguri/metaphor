@@ -290,7 +290,7 @@ struct MPSRayTracerTests {
             return
         }
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
-        let mesh = Mesh.box(device: device)
+        let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
         rt.clearScene()
         // After clear, building should fail due to empty scene
@@ -306,7 +306,7 @@ struct MPSRayTracerTests {
             return
         }
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
-        let mesh = Mesh.box(device: device)
+        let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
         try rt.buildAccelerationStructure()
     }
@@ -318,7 +318,7 @@ struct MPSRayTracerTests {
             return
         }
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
-        let mesh = Mesh.box(device: device)
+        let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
         try rt.buildAccelerationStructure()
 
@@ -336,7 +336,7 @@ struct MPSRayTracerTests {
             return
         }
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
-        let mesh = Mesh.box(device: device)
+        let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
         try rt.buildAccelerationStructure()
 
@@ -354,7 +354,7 @@ struct MPSRayTracerTests {
             return
         }
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
-        let mesh = Mesh.box(device: device)
+        let mesh = try Mesh.box(device: device)
         let t = float4x4(translation: SIMD3<Float>(0, 1, 0))
         rt.addMesh(mesh, transform: t)
         try rt.buildAccelerationStructure()

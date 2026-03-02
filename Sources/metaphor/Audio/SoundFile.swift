@@ -23,8 +23,10 @@ public final class SoundFile {
 
     // MARK: - Audio Engine
 
-    private let engine: AVAudioEngine
-    private let playerNode: AVAudioPlayerNode
+    // nonisolated(unsafe) allows deinit to call stop() from any thread.
+    // AVAudioEngine and AVAudioPlayerNode are thread-safe for stop operations.
+    private nonisolated(unsafe) let engine: AVAudioEngine
+    private nonisolated(unsafe) let playerNode: AVAudioPlayerNode
     private let file: AVAudioFile
     private let audioFormat: AVAudioFormat
 
@@ -101,10 +103,8 @@ public final class SoundFile {
     }
 
     deinit {
-        MainActor.assumeIsolated {
-            playerNode.stop()
-            engine.stop()
-        }
+        playerNode.stop()
+        engine.stop()
     }
 
     // MARK: - Playback Control

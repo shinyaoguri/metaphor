@@ -209,6 +209,23 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: The new width in pixels.
     ///   - height: The new height in pixels.
     public func resizeCanvas(width: Int, height: Int) {
+        // Drain all in-flight frames to ensure GPU is not using old textures.
+        // The semaphore has value 3 (triple buffering); acquire all slots.
+        var acquired = 0
+        for _ in 0..<3 {
+            let result = inflightSemaphore.wait(timeout: .now() + .seconds(5))
+            if result == .timedOut {
+                print("[metaphor] Warning: Timed out waiting for in-flight frame during resize")
+                break
+            }
+            acquired += 1
+        }
+        defer {
+            for _ in 0..<acquired {
+                inflightSemaphore.signal()
+            }
+        }
+
         do {
             textureManager = try TextureManager(
                 device: device,
@@ -558,7 +575,11 @@ public final class MetaphorRenderer: NSObject {
     /// Execute the full pipeline in order: Compute, Offscreen Draw, Screenshot,
     /// Post-Processing, Frame/Video Export, and Syphon output.
     public func renderFrame() {
-        inflightSemaphore.wait()
+        let semaphoreResult = inflightSemaphore.wait(timeout: .now() + .seconds(3))
+        if semaphoreResult == .timedOut {
+            print("[metaphor] Warning: GPU frame timed out after 3s. Skipping frame.")
+            return
+        }
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             inflightSemaphore.signal()

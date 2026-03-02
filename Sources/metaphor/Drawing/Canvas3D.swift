@@ -278,7 +278,7 @@ public final class Canvas3D {
             .sampleCount(sampleCount)
             .build()
 
-        self.instanceBatcher = InstanceBatcher3D(device: device)
+        self.instanceBatcher = try InstanceBatcher3D(device: device)
 
         // Dummy 1x1 shadow texture (bound when shadows are disabled)
         let dummyDesc = MTLTextureDescriptor.texture2DDescriptor(
@@ -855,7 +855,7 @@ public final class Canvas3D {
     ///   - depth: The box depth.
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
         let key = "box_\(width)_\(height)_\(depth)"
-        let mesh = meshCache[key] ?? { let m = Mesh.box(device: device, width: width, height: height, depth: depth); meshCache[key] = m; return m }()
+        guard let mesh = cachedMesh(key: key, create: { try Mesh.box(device: device, width: width, height: height, depth: depth) }) else { return }
         drawMesh(mesh)
     }
 
@@ -872,7 +872,7 @@ public final class Canvas3D {
     public func sphere(_ radius: Float, detail: Int = 24) {
         let rings = max(detail / 2, 4)
         let key = "sphere_\(radius)_\(detail)_\(rings)"
-        let mesh = meshCache[key] ?? { let m = Mesh.sphere(device: device, radius: radius, segments: detail, rings: rings); meshCache[key] = m; return m }()
+        guard let mesh = cachedMesh(key: key, create: { try Mesh.sphere(device: device, radius: radius, segments: detail, rings: rings) }) else { return }
         drawMesh(mesh)
     }
 
@@ -883,7 +883,7 @@ public final class Canvas3D {
     ///   - height: The plane height.
     public func plane(_ width: Float, _ height: Float) {
         let key = "plane_\(width)_\(height)"
-        let mesh = meshCache[key] ?? { let m = Mesh.plane(device: device, width: width, height: height); meshCache[key] = m; return m }()
+        guard let mesh = cachedMesh(key: key, create: { try Mesh.plane(device: device, width: width, height: height) }) else { return }
         drawMesh(mesh)
     }
 
@@ -895,7 +895,7 @@ public final class Canvas3D {
     ///   - detail: The number of radial segments.
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         let key = "cylinder_\(radius)_\(height)_\(detail)"
-        let mesh = meshCache[key] ?? { let m = Mesh.cylinder(device: device, radius: radius, height: height, segments: detail); meshCache[key] = m; return m }()
+        guard let mesh = cachedMesh(key: key, create: { try Mesh.cylinder(device: device, radius: radius, height: height, segments: detail) }) else { return }
         drawMesh(mesh)
     }
 
@@ -907,7 +907,7 @@ public final class Canvas3D {
     ///   - detail: The number of radial segments.
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         let key = "cone_\(radius)_\(height)_\(detail)"
-        let mesh = meshCache[key] ?? { let m = Mesh.cone(device: device, radius: radius, height: height, segments: detail); meshCache[key] = m; return m }()
+        guard let mesh = cachedMesh(key: key, create: { try Mesh.cone(device: device, radius: radius, height: height, segments: detail) }) else { return }
         drawMesh(mesh)
     }
 
@@ -920,8 +920,21 @@ public final class Canvas3D {
     public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
         let tubeDetail = max(detail / 2, 8)
         let key = "torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)"
-        let mesh = meshCache[key] ?? { let m = Mesh.torus(device: device, ringRadius: ringRadius, tubeRadius: tubeRadius, segments: detail, tubeSegments: tubeDetail); meshCache[key] = m; return m }()
+        guard let mesh = cachedMesh(key: key, create: { try Mesh.torus(device: device, ringRadius: ringRadius, tubeRadius: tubeRadius, segments: detail, tubeSegments: tubeDetail) }) else { return }
         drawMesh(mesh)
+    }
+
+    /// Look up or create a cached mesh, logging errors on failure.
+    private func cachedMesh(key: String, create: () throws -> Mesh) -> Mesh? {
+        if let cached = meshCache[key] { return cached }
+        do {
+            let mesh = try create()
+            meshCache[key] = mesh
+            return mesh
+        } catch {
+            print("[metaphor] Failed to create mesh '\(key)': \(error)")
+            return nil
+        }
     }
 
     /// Draw a pre-built mesh.

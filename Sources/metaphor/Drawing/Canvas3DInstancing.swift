@@ -127,7 +127,7 @@ final class InstanceBatcher3D {
     // MARK: - Init
 
     /// Creates a new 3D instance batcher with triple-buffered GPU storage.
-    init(device: MTLDevice) {
+    init(device: MTLDevice) throws {
         self.device = device
         let stride = MemoryLayout<InstanceData3D>.stride
         let bufferSize = Self.maxInstancesPerBatch * stride
@@ -135,7 +135,7 @@ final class InstanceBatcher3D {
         var pointers: [UnsafeMutablePointer<InstanceData3D>] = []
         for i in 0..<Self.bufferCount {
             guard let buf = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
-                fatalError("Failed to create instance buffer \(i)")
+                throw MetaphorError.bufferCreationFailed(size: bufferSize)
             }
             buf.label = "metaphor.instance3D.\(i)"
             buffers.append(buf)

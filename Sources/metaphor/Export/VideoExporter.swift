@@ -3,6 +3,17 @@ import AVFoundation
 import CoreVideo
 import Foundation
 
+/// A simple thread-safe boolean flag for cross-queue coordination.
+private final class AtomicFlag: Sendable {
+    private let lock = NSLock()
+    private nonisolated(unsafe) var _value: Bool = false
+
+    var value: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _value }
+        set { lock.lock(); _value = newValue; lock.unlock() }
+    }
+}
+
 /// Represent the video codec to use for encoding.
 public enum VideoCodec: Sendable {
     case h264
@@ -100,6 +111,9 @@ public final class VideoExporter {
 
     /// Serial dispatch queue to serialize AVAssetWriter operations.
     private let writerQueue = DispatchQueue(label: "metaphor.VideoExporter.writer")
+
+    /// Thread-safe flag to reject late frames after endRecord (accessed only from writerQueue).
+    private let endingFlag = AtomicFlag()
 
     public init() {}
 
@@ -214,8 +228,12 @@ public final class VideoExporter {
         let capturedHeight = height
         let queue = writerQueue
 
+        let flag = endingFlag
+
         commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
+                // Reject frames arriving after endRecord was called
+                guard !flag.value else { return }
                 // Get pixel buffer from pool
                 guard input.isReadyForMoreMediaData else { return }
 
@@ -264,8 +282,16 @@ public final class VideoExporter {
             return
         }
 
-        // Execute markAsFinished and finishWriting on the writer queue
-        // to avoid racing with pending captureFrame calls
+        let flag = endingFlag
+
+        // Set the ending flag synchronously on the writer queue.
+        // This ensures all previously enqueued frame writes complete first,
+        // then the flag prevents any late-arriving frames from being written.
+        writerQueue.sync {
+            flag.value = true
+        }
+
+        // Finalize the video file on the writer queue
         writerQueue.async {
             input.markAsFinished()
 
@@ -275,6 +301,7 @@ public final class VideoExporter {
                     self?.writerInput = nil
                     self?.pixelBufferAdaptor = nil
                     self?.frameIndex = 0
+                    flag.value = false
                     completion?()
                 }
             }

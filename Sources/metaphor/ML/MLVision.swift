@@ -64,6 +64,7 @@ private func extractFloatMaskData(from pixelBuffer: CVPixelBuffer) -> [Float] {
     let formatType = CVPixelBufferGetPixelFormatType(pixelBuffer)
 
     if formatType == kCVPixelFormatType_OneComponent8 {
+        guard bytesPerRow >= maskWidth else { return floatData }
         for y in 0..<maskHeight {
             let row = baseAddress.advanced(by: y * bytesPerRow)
                 .assumingMemoryBound(to: UInt8.self)
@@ -72,6 +73,7 @@ private func extractFloatMaskData(from pixelBuffer: CVPixelBuffer) -> [Float] {
             }
         }
     } else if formatType == kCVPixelFormatType_OneComponent32Float {
+        guard bytesPerRow >= maskWidth * MemoryLayout<Float>.size else { return floatData }
         for y in 0..<maskHeight {
             let row = baseAddress.advanced(by: y * bytesPerRow)
                 .assumingMemoryBound(to: Float.self)
@@ -80,6 +82,7 @@ private func extractFloatMaskData(from pixelBuffer: CVPixelBuffer) -> [Float] {
             }
         }
     } else if formatType == kCVPixelFormatType_32BGRA {
+        guard bytesPerRow >= maskWidth * 4 else { return floatData }
         for y in 0..<maskHeight {
             let row = baseAddress.advanced(by: y * bytesPerRow)
                 .assumingMemoryBound(to: UInt8.self)

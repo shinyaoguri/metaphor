@@ -140,7 +140,7 @@ struct Phase3MeshUVTests {
     @Test("box has UV vertices")
     func boxUVs() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.box(device: device)
+        let mesh = try! Mesh.box(device: device)
         #expect(mesh.hasUVs)
         #expect(mesh.uvVertexBuffer != nil)
         #expect(mesh.uvVertexCount == 24)
@@ -149,7 +149,7 @@ struct Phase3MeshUVTests {
     @Test("sphere has UV vertices")
     func sphereUVs() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.sphere(device: device, radius: 1, segments: 8, rings: 4)
+        let mesh = try! Mesh.sphere(device: device, radius: 1, segments: 8, rings: 4)
         #expect(mesh.hasUVs)
         #expect(mesh.uvVertexBuffer != nil)
         #expect(mesh.uvVertexCount == 45)
@@ -158,7 +158,7 @@ struct Phase3MeshUVTests {
     @Test("plane has UV vertices")
     func planeUVs() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.plane(device: device)
+        let mesh = try! Mesh.plane(device: device)
         #expect(mesh.hasUVs)
         #expect(mesh.uvVertexBuffer != nil)
         #expect(mesh.uvVertexCount == 4)
@@ -167,7 +167,7 @@ struct Phase3MeshUVTests {
     @Test("cylinder has UV vertices")
     func cylinderUVs() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.cylinder(device: device, segments: 8)
+        let mesh = try! Mesh.cylinder(device: device, segments: 8)
         #expect(mesh.hasUVs)
         #expect(mesh.uvVertexBuffer != nil)
         #expect(mesh.uvVertexCount > 0)
@@ -176,7 +176,7 @@ struct Phase3MeshUVTests {
     @Test("cone has UV vertices")
     func coneUVs() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.cone(device: device, segments: 8)
+        let mesh = try! Mesh.cone(device: device, segments: 8)
         #expect(mesh.hasUVs)
         #expect(mesh.uvVertexBuffer != nil)
         #expect(mesh.uvVertexCount > 0)
@@ -185,7 +185,7 @@ struct Phase3MeshUVTests {
     @Test("torus has UV vertices")
     func torusUVs() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.torus(device: device, segments: 8, tubeSegments: 4)
+        let mesh = try! Mesh.torus(device: device, segments: 8, tubeSegments: 4)
         #expect(mesh.hasUVs)
         #expect(mesh.uvVertexBuffer != nil)
         #expect(mesh.uvVertexCount == 45)

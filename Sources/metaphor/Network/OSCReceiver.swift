@@ -42,6 +42,32 @@ private final class OSCMessageQueue: Sendable {
     }
 }
 
+// MARK: - Thread-safe Listener State
+
+private final class OSCListenerState: Sendable {
+    private let lock = NSLock()
+    private nonisolated(unsafe) var _listener: NWListener?
+    private nonisolated(unsafe) var _isRunning: Bool = false
+
+    var listener: NWListener? {
+        get { lock.lock(); defer { lock.unlock() }; return _listener }
+        set { lock.lock(); _listener = newValue; lock.unlock() }
+    }
+
+    var isRunning: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _isRunning }
+        set { lock.lock(); _isRunning = newValue; lock.unlock() }
+    }
+
+    func cancel() {
+        lock.lock()
+        _listener?.cancel()
+        _listener = nil
+        _isRunning = false
+        lock.unlock()
+    }
+}
+
 // MARK: - OSCReceiver
 
 /// Receive UDP OSC messages using Network.framework.
@@ -70,8 +96,7 @@ public final class OSCReceiver {
 
     // MARK: - Private
 
-    private nonisolated(unsafe) var listener: NWListener?
-    private nonisolated(unsafe) var isRunning = false
+    private let listenerState = OSCListenerState()
 
     /// Address-to-handler mapping.
     private var handlers: [String: ([OSCValue]) -> Void] = [:]
@@ -109,7 +134,7 @@ public final class OSCReceiver {
     /// Start listening for incoming OSC messages.
     /// - Throws: `OSCReceiverError.invalidPort` if the port is invalid.
     public func start() throws {
-        guard !isRunning else { return }
+        guard !listenerState.isRunning else { return }
 
         let params = NWParameters.udp
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
@@ -134,20 +159,18 @@ public final class OSCReceiver {
         }
 
         listener.start(queue: .global(qos: .userInteractive))
-        self.listener = listener
-        self.isRunning = true
+        listenerState.listener = listener
+        listenerState.isRunning = true
     }
 
     deinit {
-        listener?.cancel()
+        listenerState.cancel()
     }
 
     /// Stop listening for OSC messages.
     public func stop() {
-        guard isRunning else { return }
-        listener?.cancel()
-        listener = nil
-        isRunning = false
+        guard listenerState.isRunning else { return }
+        listenerState.cancel()
     }
 
     /// Dispatch queued messages on the main thread (call inside `draw()`).

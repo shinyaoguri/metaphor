@@ -65,7 +65,7 @@ public final class Mesh {
     // MARK: - Initialization
 
     init(device: MTLDevice, vertices: [Vertex3D], indices: [UInt16]? = nil,
-         uvVertices: [Vertex3DTextured]? = nil) {
+         uvVertices: [Vertex3DTextured]? = nil) throws {
         self.vertexCount = vertices.count
 
         let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
@@ -74,7 +74,7 @@ public final class Mesh {
             length: vertexSize,
             options: .storageModeShared
         ) else {
-            fatalError("[metaphor] Failed to create vertex buffer (size: \(vertexSize) bytes, \(vertices.count) vertices). GPU memory may be exhausted.")
+            throw MetaphorError.bufferCreationFailed(size: vertexSize)
         }
         self.vertexBuffer = vb
 
@@ -111,7 +111,7 @@ public final class Mesh {
 
     /// Initialize a mesh with UInt32 indices for large meshes.
     init(device: MTLDevice, vertices: [Vertex3D], indices32: [UInt32],
-         uvVertices: [Vertex3DTextured]? = nil) {
+         uvVertices: [Vertex3DTextured]? = nil) throws {
         self.vertexCount = vertices.count
 
         let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
@@ -120,7 +120,7 @@ public final class Mesh {
             length: vertexSize,
             options: .storageModeShared
         ) else {
-            fatalError("[metaphor] Failed to create vertex buffer (size: \(vertexSize) bytes, \(vertices.count) vertices). GPU memory may be exhausted.")
+            throw MetaphorError.bufferCreationFailed(size: vertexSize)
         }
         self.vertexBuffer = vb
 
@@ -165,7 +165,7 @@ extension Mesh {
         width: Float = 1,
         height: Float = 1,
         depth: Float = 1
-    ) -> Mesh {
+    ) throws -> Mesh {
         let hw = width / 2, hh = height / 2, hd = depth / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
 
@@ -223,7 +223,7 @@ extension Mesh {
             indices.append(contentsOf: [base, base + 1, base + 2, base, base + 2, base + 3])
         }
 
-        return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -236,7 +236,7 @@ extension Mesh {
         radius: Float = 0.5,
         segments: Int = 24,
         rings: Int = 16
-    ) -> Mesh {
+    ) throws -> Mesh {
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
         vertices.reserveCapacity((rings + 1) * (segments + 1))
@@ -274,7 +274,7 @@ extension Mesh {
             }
         }
 
-        return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -286,7 +286,7 @@ extension Mesh {
         device: MTLDevice,
         width: Float = 1,
         height: Float = 1
-    ) -> Mesh {
+    ) throws -> Mesh {
         let hw = width / 2, hh = height / 2
         let normal = SIMD3<Float>(0, 0, 1)
         let white = SIMD4<Float>(1, 1, 1, 1)
@@ -305,7 +305,7 @@ extension Mesh {
         ]
         let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
 
-        return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -318,7 +318,7 @@ extension Mesh {
         radius: Float = 0.5,
         height: Float = 1,
         segments: Int = 24
-    ) -> Mesh {
+    ) throws -> Mesh {
         let hh = height / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
@@ -392,7 +392,7 @@ extension Mesh {
             indices.append(contentsOf: [botCenter, a + 1, a])
         }
 
-        return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -405,7 +405,7 @@ extension Mesh {
         radius: Float = 0.5,
         height: Float = 1,
         segments: Int = 24
-    ) -> Mesh {
+    ) throws -> Mesh {
         let hh = height / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
@@ -457,7 +457,7 @@ extension Mesh {
             indices.append(contentsOf: [botCenter, a + 1, a])
         }
 
-        return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -471,7 +471,7 @@ extension Mesh {
         tubeRadius: Float = 0.2,
         segments: Int = 24,
         tubeSegments: Int = 16
-    ) -> Mesh {
+    ) throws -> Mesh {
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
         vertices.reserveCapacity((segments + 1) * (tubeSegments + 1))
@@ -509,7 +509,7 @@ extension Mesh {
             }
         }
 
-        return Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -693,14 +693,14 @@ extension Mesh {
 
         if vertices.count <= 65535 {
             let indices16 = indices.map { UInt16($0) }
-            return Mesh(
+            return try? Mesh(
                 device: device,
                 vertices: vertices,
                 indices: indices16,
                 uvVertices: hasUVs ? uvVertices : nil
             )
         } else {
-            return Mesh(
+            return try? Mesh(
                 device: device,
                 vertices: vertices,
                 indices32: indices,

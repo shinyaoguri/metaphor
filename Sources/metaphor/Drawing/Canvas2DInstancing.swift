@@ -74,7 +74,7 @@ final class InstanceBatcher2D {
     // MARK: - Init
 
     /// Creates a new 2D instance batcher with triple-buffered GPU storage.
-    init(device: MTLDevice) {
+    init(device: MTLDevice) throws {
         self.device = device
         let stride = MemoryLayout<InstanceData2D>.stride
         let bufferSize = Self.maxInstancesPerBatch * stride
@@ -82,7 +82,7 @@ final class InstanceBatcher2D {
         var pointers: [UnsafeMutablePointer<InstanceData2D>] = []
         for i in 0..<Self.bufferCount {
             guard let buf = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
-                fatalError("Failed to create 2D instance buffer \(i)")
+                throw MetaphorError.bufferCreationFailed(size: bufferSize)
             }
             buf.label = "metaphor.instance2D.\(i)"
             buffers.append(buf)
@@ -145,8 +145,8 @@ final class InstanceBatcher2D {
 enum UnitMesh2D {
 
     /// Creates a unit circle mesh: 32-segment triangle fan, radius 0.5, centered at origin.
-    /// - Returns: A tuple of (MTLBuffer, vertex count).
-    static func createCircle(device: MTLDevice, segments: Int = 32) -> (MTLBuffer, Int) {
+    /// - Returns: A tuple of (MTLBuffer, vertex count), or nil if buffer creation fails.
+    static func createCircle(device: MTLDevice, segments: Int = 32) -> (MTLBuffer, Int)? {
         var verts: [SIMD2<Float>] = []
         verts.reserveCapacity(segments * 3)
         let step = Float.pi * 2.0 / Float(segments)
@@ -157,27 +157,27 @@ enum UnitMesh2D {
             verts.append(SIMD2(0.5 * cos(a0), 0.5 * sin(a0)))
             verts.append(SIMD2(0.5 * cos(a1), 0.5 * sin(a1)))
         }
-        let buf = device.makeBuffer(
+        guard let buf = device.makeBuffer(
             bytes: verts,
             length: verts.count * MemoryLayout<SIMD2<Float>>.stride,
             options: .storageModeShared
-        )!
+        ) else { return nil }
         buf.label = "metaphor.unitCircle"
         return (buf, verts.count)
     }
 
     /// Creates a unit rectangle mesh: 2 triangles, from [-0.5, -0.5] to [0.5, 0.5].
-    /// - Returns: A tuple of (MTLBuffer, vertex count).
-    static func createRect(device: MTLDevice) -> (MTLBuffer, Int) {
+    /// - Returns: A tuple of (MTLBuffer, vertex count), or nil if buffer creation fails.
+    static func createRect(device: MTLDevice) -> (MTLBuffer, Int)? {
         let verts: [SIMD2<Float>] = [
             SIMD2(-0.5, -0.5), SIMD2(0.5, -0.5), SIMD2(0.5, 0.5),
             SIMD2(-0.5, -0.5), SIMD2(0.5, 0.5), SIMD2(-0.5, 0.5),
         ]
-        let buf = device.makeBuffer(
+        guard let buf = device.makeBuffer(
             bytes: verts,
             length: verts.count * MemoryLayout<SIMD2<Float>>.stride,
             options: .storageModeShared
-        )!
+        ) else { return nil }
         buf.label = "metaphor.unitRect"
         return (buf, verts.count)
     }

@@ -117,7 +117,7 @@ struct MeshTests {
     @Test("box has 24 vertices and 36 indices")
     func boxCounts() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.box(device: device)
+        let mesh = try! Mesh.box(device: device)
         #expect(mesh.vertexCount == 24)
         #expect(mesh.indexCount == 36)
         #expect(mesh.indexBuffer != nil)
@@ -126,7 +126,7 @@ struct MeshTests {
     @Test("sphere has expected vertex count")
     func sphereCounts() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.sphere(device: device, radius: 1, segments: 8, rings: 4)
+        let mesh = try! Mesh.sphere(device: device, radius: 1, segments: 8, rings: 4)
         // (rings+1) * (segments+1) = 5 * 9 = 45
         #expect(mesh.vertexCount == 45)
         // rings * segments * 6 = 4 * 8 * 6 = 192
@@ -136,7 +136,7 @@ struct MeshTests {
     @Test("plane has 4 vertices and 6 indices")
     func planeCounts() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.plane(device: device)
+        let mesh = try! Mesh.plane(device: device)
         #expect(mesh.vertexCount == 4)
         #expect(mesh.indexCount == 6)
     }
@@ -144,7 +144,7 @@ struct MeshTests {
     @Test("cylinder has expected index count")
     func cylinderCounts() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.cylinder(device: device, segments: 8)
+        let mesh = try! Mesh.cylinder(device: device, segments: 8)
         // Side: 8*6=48, Top cap: 8*3=24, Bot cap: 8*3=24 = 96
         #expect(mesh.indexCount == 96)
     }
@@ -152,7 +152,7 @@ struct MeshTests {
     @Test("cone has expected index count")
     func coneCounts() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.cone(device: device, segments: 8)
+        let mesh = try! Mesh.cone(device: device, segments: 8)
         // Side: 8*3=24, Bot cap: 8*3=24 = 48
         #expect(mesh.indexCount == 48)
     }
@@ -160,7 +160,7 @@ struct MeshTests {
     @Test("torus has expected vertex count")
     func torusCounts() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.torus(device: device, segments: 8, tubeSegments: 4)
+        let mesh = try! Mesh.torus(device: device, segments: 8, tubeSegments: 4)
         // (segments+1) * (tubeSegments+1) = 9 * 5 = 45
         #expect(mesh.vertexCount == 45)
         // segments * tubeSegments * 6 = 8 * 4 * 6 = 192
@@ -170,7 +170,7 @@ struct MeshTests {
     @Test("box with custom dimensions")
     func boxCustom() {
         let device = MTLCreateSystemDefaultDevice()!
-        let mesh = Mesh.box(device: device, width: 2, height: 3, depth: 4)
+        let mesh = try! Mesh.box(device: device, width: 2, height: 3, depth: 4)
         #expect(mesh.vertexCount == 24)
         #expect(mesh.indexCount == 36)
     }

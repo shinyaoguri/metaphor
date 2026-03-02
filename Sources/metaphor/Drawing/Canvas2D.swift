@@ -375,13 +375,17 @@ public final class Canvas2D {
                "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
 
         // 2D instancing resources
-        let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device)
+        guard let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device) else {
+            throw MetaphorError.bufferCreationFailed(size: 32 * 3 * MemoryLayout<SIMD2<Float>>.stride)
+        }
         self.unitCircleBuffer = circleBuf
         self.unitCircleVertexCount = circleCount
-        let (rectBuf, rectCount) = UnitMesh2D.createRect(device: device)
+        guard let (rectBuf, rectCount) = UnitMesh2D.createRect(device: device) else {
+            throw MetaphorError.bufferCreationFailed(size: 6 * MemoryLayout<SIMD2<Float>>.stride)
+        }
         self.unitRectBuffer = rectBuf
         self.unitRectVertexCount = rectCount
-        self.instanceBatcher2D = InstanceBatcher2D(device: device)
+        self.instanceBatcher2D = try InstanceBatcher2D(device: device)
 
         // Instanced pipelines (one per BlendMode)
         let instVertexFn = shaderLibrary.function(
