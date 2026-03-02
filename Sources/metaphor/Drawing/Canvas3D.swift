@@ -113,7 +113,7 @@ public final class Canvas3D {
 
     // MARK: - Transform Stack
 
-    private struct Canvas3DState {
+    private struct StyleState3D {
         var transform: float4x4
         var fillColor: SIMD4<Float>
         var hasFill: Bool
@@ -125,7 +125,7 @@ public final class Canvas3D {
         var colorModeConfig: ColorModeConfig
     }
 
-    private var stateStack: [Canvas3DState] = []
+    private var stateStack: [StyleState3D] = []
     private var matrixStack: [float4x4] = []
     private var currentTransform: float4x4 = .identity
 
@@ -457,7 +457,7 @@ public final class Canvas3D {
 
     /// 全状態を保存（トランスフォーム + スタイル + マテリアル）
     public func pushState() {
-        stateStack.append(Canvas3DState(
+        stateStack.append(StyleState3D(
             transform: currentTransform,
             fillColor: fillColor,
             hasFill: hasFill,
@@ -1237,10 +1237,4 @@ public final class Canvas3D {
             currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)
         }
     }
-}
-
-// MARK: - Errors
-
-public enum Canvas3DError: Error {
-    case bufferCreationFailed
 }

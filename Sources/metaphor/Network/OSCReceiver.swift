@@ -23,10 +23,13 @@ struct OSCMessage: Sendable {
 private final class OSCMessageQueue: Sendable {
     private let lock = NSLock()
     private nonisolated(unsafe) var _messages: [OSCMessage] = []
+    private let maxQueueSize = 10_000
 
     func enqueue(_ message: OSCMessage) {
         lock.lock()
-        _messages.append(message)
+        if _messages.count < maxQueueSize {
+            _messages.append(message)
+        }
         lock.unlock()
     }
 

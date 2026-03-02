@@ -89,6 +89,7 @@ public final class AudioAnalyzer {
 
     private var smoothedSpectrum: [Float]
     private var previousSpectrum: [Float]
+    private var magnitudes: [Float]
     private var fluxHistory: [Float] = []
     private let fluxHistorySize = 43  // ~0.7秒分（60fps）
 
@@ -107,6 +108,7 @@ public final class AudioAnalyzer {
         self.imagOut = [Float](repeating: 0, count: fftSize)
         self.smoothedSpectrum = [Float](repeating: 0, count: fftSize / 2)
         self.previousSpectrum = [Float](repeating: 0, count: fftSize / 2)
+        self.magnitudes = [Float](repeating: 0, count: fftSize / 2)
         self.spectrum = [Float](repeating: 0, count: fftSize / 2)
         self.waveform = [Float](repeating: 0, count: fftSize)
 
@@ -192,8 +194,14 @@ public final class AudioAnalyzer {
     private var injectedSamples: [Float]?
 
     private func processSamples(_ samples: [Float]) {
-        // 波形を保存
-        waveform = samples
+        // 波形を保存（in-place コピーで配列バッファ再確保を回避）
+        let copyCount = min(samples.count, waveform.count)
+        for i in 0..<copyCount {
+            waveform[i] = samples[i]
+        }
+        for i in copyCount..<waveform.count {
+            waveform[i] = 0
+        }
 
         // RMS ボリューム計算
         var rms: Float = 0
@@ -277,8 +285,7 @@ public final class AudioAnalyzer {
         // DFT 実行
         vDSP_DFT_Execute(setup, realIn, imagIn, &realOut, &imagOut)
 
-        // マグニチュード計算
-        var magnitudes = [Float](repeating: 0, count: halfFFTSize)
+        // マグニチュード計算（pre-allocated バッファを再利用）
         for i in 0..<halfFFTSize {
             let re = realOut[i]
             let im = imagOut[i]
@@ -299,7 +306,10 @@ public final class AudioAnalyzer {
             smoothedSpectrum[i] = smoothedSpectrum[i] * smoothing + magnitudes[i] * alpha
         }
 
-        spectrum = smoothedSpectrum
+        // spectrum へ in-place コピー（CoW による遅延コピーを回避）
+        for i in 0..<halfFFTSize {
+            spectrum[i] = smoothedSpectrum[i]
+        }
     }
 
     // MARK: - Private: Beat Detection (Spectral Flux)
@@ -313,8 +323,10 @@ public final class AudioAnalyzer {
             if diff > 0 { flux += diff }
         }
 
-        // 前フレームのスペクトルを保存
-        previousSpectrum = spectrum
+        // 前フレームのスペクトルを保存（in-place コピー）
+        for i in 0..<min(spectrum.count, previousSpectrum.count) {
+            previousSpectrum[i] = spectrum[i]
+        }
 
         // フラックス履歴の平均と比較
         fluxHistory.append(flux)

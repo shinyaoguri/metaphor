@@ -295,9 +295,9 @@ public final class MetaphorRenderer: NSObject {
         let h = textureManager.height
 
         // テクスチャが未作成またはサイズ不一致なら再作成
-        if previousFrameTexture == nil ||
-           previousFrameTexture!.width != w ||
-           previousFrameTexture!.height != h {
+        if let existing = previousFrameTexture, existing.width == w, existing.height == h {
+            // 再利用
+        } else {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .bgra8Unorm,
                 width: w,
@@ -381,7 +381,7 @@ public final class MetaphorRenderer: NSObject {
     }
 
     /// ステージングテクスチャを取得または作成
-    private func getOrCreateStagingTexture() -> MTLTexture {
+    private func getOrCreateStagingTexture() -> MTLTexture? {
         if let existing = stagingTexture,
            existing.width == textureManager.width,
            existing.height == textureManager.height {
@@ -396,13 +396,16 @@ public final class MetaphorRenderer: NSObject {
         )
         desc.usage = .shaderRead
         desc.storageMode = .managed
-        let tex = device.makeTexture(descriptor: desc)!
+        guard let tex = device.makeTexture(descriptor: desc) else {
+            print("[metaphor] Failed to create staging texture")
+            return nil
+        }
         stagingTexture = tex
         return tex
     }
 
     /// フレームエクスポート用ステージングテクスチャを取得または作成
-    private func getOrCreateExportStagingTexture() -> MTLTexture {
+    private func getOrCreateExportStagingTexture() -> MTLTexture? {
         if let existing = exportStagingTexture,
            existing.width == textureManager.width,
            existing.height == textureManager.height {
@@ -417,13 +420,16 @@ public final class MetaphorRenderer: NSObject {
         )
         desc.usage = .shaderRead
         desc.storageMode = .managed
-        let tex = device.makeTexture(descriptor: desc)!
+        guard let tex = device.makeTexture(descriptor: desc) else {
+            print("[metaphor] Failed to create export staging texture")
+            return nil
+        }
         exportStagingTexture = tex
         return tex
     }
 
     /// ビデオエクスポート用ステージングテクスチャを取得または作成
-    private func getOrCreateVideoStagingTexture() -> MTLTexture {
+    private func getOrCreateVideoStagingTexture() -> MTLTexture? {
         if let existing = videoStagingTexture,
            existing.width == textureManager.width,
            existing.height == textureManager.height {
@@ -438,7 +444,10 @@ public final class MetaphorRenderer: NSObject {
         )
         desc.usage = .shaderRead
         desc.storageMode = .managed
-        let tex = device.makeTexture(descriptor: desc)!
+        guard let tex = device.makeTexture(descriptor: desc) else {
+            print("[metaphor] Failed to create video staging texture")
+            return nil
+        }
         videoStagingTexture = tex
         return tex
     }
@@ -560,7 +569,7 @@ public final class MetaphorRenderer: NSObject {
         // スクリーンショット保存
         if let savePath = pendingSavePath {
             pendingSavePath = nil
-            let staging = getOrCreateStagingTexture()
+            guard let staging = getOrCreateStagingTexture() else { return }
             if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
                 blitEncoder.copy(
                     from: outputTexture,
@@ -590,8 +599,7 @@ public final class MetaphorRenderer: NSObject {
         }
 
         // フレームエクスポート（録画中なら毎フレーム）
-        if frameExporter.isRecording {
-            let exportStaging = getOrCreateExportStagingTexture()
+        if frameExporter.isRecording, let exportStaging = getOrCreateExportStagingTexture() {
             frameExporter.captureFrame(
                 sourceTexture: outputTexture,
                 stagingTexture: exportStaging,
@@ -602,8 +610,7 @@ public final class MetaphorRenderer: NSObject {
         }
 
         // ビデオエクスポート（録画中なら毎フレーム）
-        if videoExporter.isRecording {
-            let videoStaging = getOrCreateVideoStagingTexture()
+        if videoExporter.isRecording, let videoStaging = getOrCreateVideoStagingTexture() {
             videoExporter.captureFrame(
                 sourceTexture: outputTexture,
                 stagingTexture: videoStaging,
