@@ -68,6 +68,25 @@ jobs:
             --transform-for-static-hosting \
             --hosting-base-path metaphor \
             --output-path .build/docs
+      - name: Prepare for GitHub Pages
+        run: |
+          # Disable Jekyll processing (preserves _-prefixed files)
+          touch .build/docs/.nojekyll
+          # Redirect root to documentation page
+          cat > .build/docs/index.html << 'REDIRECT'
+          <!doctype html>
+          <html>
+          <head>
+            <meta http-equiv="refresh" content="0; url=/metaphor/documentation/metaphor">
+            <link rel="canonical" href="/metaphor/documentation/metaphor">
+          </head>
+          <body>
+            <p><a href="/metaphor/documentation/metaphor">Redirecting to documentation...</a></p>
+          </body>
+          </html>
+          REDIRECT
+          # SPA fallback for client-side routing
+          cp .build/docs/documentation/metaphor/index.html .build/docs/404.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
