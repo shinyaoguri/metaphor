@@ -7,6 +7,7 @@ on:
       - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
+      - 'website/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -61,36 +62,40 @@ jobs:
             -skip-inherited-docs \
             -emit-extension-block-symbols \
             -output-dir .build/symbol-graphs
-      - name: Build Documentation
+      - name: Build DocC Documentation
         run: |
           xcrun docc convert Sources/metaphor/metaphor.docc \
             --additional-symbol-graph-dir .build/symbol-graphs \
             --transform-for-static-hosting \
             --hosting-base-path metaphor \
             --output-path .build/docs
-      - name: Prepare for GitHub Pages
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+      - name: Build Landing Page
         run: |
-          # Disable Jekyll processing (preserves _-prefixed files)
-          touch .build/docs/.nojekyll
-          # Redirect root to documentation page
-          cat > .build/docs/index.html << 'REDIRECT'
-          <!doctype html>
-          <html>
-          <head>
-            <meta http-equiv="refresh" content="0; url=/metaphor/documentation/metaphor">
-            <link rel="canonical" href="/metaphor/documentation/metaphor">
-          </head>
-          <body>
-            <p><a href="/metaphor/documentation/metaphor">Redirecting to documentation...</a></p>
-          </body>
-          </html>
-          REDIRECT
-          # SPA fallback for client-side routing
-          cp .build/docs/documentation/metaphor/index.html .build/docs/404.html
+          cd website
+          npm ci
+          npm run build
+      - name: Merge DocC into Astro output
+        run: |
+          # Copy DocC directories into Astro output
+          for dir in documentation data css js img index tutorials; do
+            if [ -d ".build/docs/$dir" ]; then
+              cp -R ".build/docs/$dir" "website/dist/$dir"
+            fi
+          done
+          # Copy DocC's SPA fallback for client-side routing
+          cp .build/docs/documentation/metaphor/index.html website/dist/404.html
+          # Disable Jekyll processing
+          touch website/dist/.nojekyll
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .build/docs
+          path: website/dist
 
   deploy:
     needs: build-docs

@@ -1,0 +1,75 @@
+---
+const codeHtml = `<span class="text-purple-400">import</span> <span class="text-text">metaphor</span>
+
+<span class="text-purple-400">@main</span>
+<span class="text-purple-400">final class</span> <span class="text-green-400">MySketch</span>: <span class="text-cyan-400">Sketch</span> {
+    <span class="text-purple-400">func</span> <span class="text-blue-400">setup</span>() {
+        <span class="text-text">size</span>(<span class="text-orange-400">1280</span>, <span class="text-orange-400">720</span>)
+    }
+
+    <span class="text-purple-400">func</span> <span class="text-blue-400">draw</span>() {
+        <span class="text-text">background</span>(<span class="text-orange-400">0.1</span>)
+
+        <span class="text-text">fill</span>(.<span class="text-cyan-400">white</span>)
+        <span class="text-text">circle</span>(width / <span class="text-orange-400">2</span>, height / <span class="text-orange-400">2</span>, <span class="text-orange-400">200</span>)
+
+        <span class="text-text">noFill</span>()
+        <span class="text-text">stroke</span>(.<span class="text-cyan-400">red</span>)
+        <span class="text-text">strokeWeight</span>(<span class="text-orange-400">2</span>)
+        <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> <span class="text-orange-400">0</span>..&lt;<span class="text-orange-400">12</span> {
+            <span class="text-purple-400">let</span> angle = Float(i) * <span class="text-orange-400">.pi</span> / <span class="text-orange-400">6</span>
+            <span class="text-purple-400">let</span> r = <span class="text-orange-400">150</span> + <span class="text-text">sin</span>(time + angle) * <span class="text-orange-400">30</span>
+            <span class="text-text">ellipse</span>(
+                width / <span class="text-orange-400">2</span> + <span class="text-text">cos</span>(angle) * r,
+                height / <span class="text-orange-400">2</span> + <span class="text-text">sin</span>(angle) * r,
+                <span class="text-orange-400">40</span>, <span class="text-orange-400">40</span>
+            )
+        }
+    }
+}`;
+---
+
+<section class="relative px-6 py-32">
+  <div class="mx-auto max-w-6xl">
+    <div class="grid items-center gap-12 lg:grid-cols-2">
+      <div>
+        <h2 class="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
+          Familiar API,<br />
+          <span class="text-accent">powerful engine</span>
+        </h2>
+        <p class="mb-6 text-lg leading-relaxed text-text-muted">
+          Implement the <code class="rounded bg-bg-card px-1.5 py-0.5 font-mono text-sm text-accent">Sketch</code> protocol
+          and start drawing. The library handles window creation, render loop, and GPU pipeline setup.
+        </p>
+        <ul class="space-y-3 text-sm text-text-muted">
+          <li class="flex items-center gap-2">
+            <span class="text-accent">&#10003;</span>
+            Processing-like immediate-mode API
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="text-accent">&#10003;</span>
+            Automatic GPU instancing and batching
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="text-accent">&#10003;</span>
+            Two-pass rendering at fixed resolution
+          </li>
+          <li class="flex items-center gap-2">
+            <span class="text-accent">&#10003;</span>
+            macOS 14+ and iOS 17+ support
+          </li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-border bg-bg-card overflow-hidden">
+        <div class="flex items-center gap-2 border-b border-border px-4 py-3">
+          <div class="h-3 w-3 rounded-full bg-[#ff5f57]"></div>
+          <div class="h-3 w-3 rounded-full bg-[#febc2e]"></div>
+          <div class="h-3 w-3 rounded-full bg-[#28c840]"></div>
+          <span class="ml-2 text-xs text-text-muted">MySketch.swift</span>
+        </div>
+        <pre class="overflow-x-auto p-5 text-sm leading-relaxed"><code class="font-mono" set:html={codeHtml} /></pre>
+      </div>
+    </div>
+  </div>
+</section>
