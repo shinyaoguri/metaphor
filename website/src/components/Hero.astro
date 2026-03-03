@@ -30,7 +30,7 @@ const base = import.meta.env.BASE_URL;
 
     <div class="flex flex-wrap items-center justify-center gap-4">
       <a
-        href={`${base}documentation/metaphor/`}
+        href={`${base.replace(/\/$/, '')}/documentation/metaphor/`}
         class="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent-glow transition-all hover:bg-accent-light hover:shadow-xl hover:shadow-accent-glow"
       >
         Documentation
