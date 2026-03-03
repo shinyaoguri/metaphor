@@ -13,6 +13,10 @@ public final class MLTextureConverter {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private var textureCache: CVMetalTextureCache?
+    private var stagingTextureCache: MTLTexture?
+    private var pixelBufferPool: CVPixelBufferPool?
+    private var poolWidth: Int = 0
+    private var poolHeight: Int = 0
 
     init(device: MTLDevice, commandQueue: MTLCommandQueue) {
         self.device = device
@@ -26,6 +30,43 @@ public final class MLTextureConverter {
         self.textureCache = cache
     }
 
+    private func getOrCreateStagingTexture(width: Int, height: Int) -> MTLTexture? {
+        if let existing = stagingTextureCache,
+           existing.width == width, existing.height == height {
+            return existing
+        }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        #if os(macOS)
+        desc.storageMode = .managed
+        #else
+        desc.storageMode = .shared
+        #endif
+        desc.usage = .shaderRead
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        stagingTextureCache = tex
+        return tex
+    }
+
+    private func getOrCreatePixelBufferPool(width: Int, height: Int) -> CVPixelBufferPool? {
+        if let pool = pixelBufferPool, poolWidth == width, poolHeight == height {
+            return pool
+        }
+        let attrs: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ]
+        var pool: CVPixelBufferPool?
+        CVPixelBufferPoolCreate(nil, nil, attrs as CFDictionary, &pool)
+        pixelBufferPool = pool
+        poolWidth = width
+        poolHeight = height
+        return pool
+    }
+
     // MARK: - MTLTexture -> CVPixelBuffer
 
     /// Convert an MTLTexture to a CVPixelBuffer using a copy-based approach.
@@ -35,17 +76,9 @@ public final class MLTextureConverter {
         let width = texture.width
         let height = texture.height
 
+        guard let pool = getOrCreatePixelBufferPool(width: width, height: height) else { return nil }
         var pixelBuffer: CVPixelBuffer?
-        let attrs: [String: Any] = [
-            kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ]
-        let status = CVPixelBufferCreate(
-            nil, width, height,
-            kCVPixelFormatType_32BGRA,
-            attrs as CFDictionary,
-            &pixelBuffer
-        )
+        let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
         guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return nil }
 
         CVPixelBufferLockBaseAddress(buffer, [])
@@ -55,17 +88,8 @@ public final class MLTextureConverter {
         let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
         if texture.storageMode == .private {
-            // Private storage: blit to a managed staging texture then read back
-            guard let cmdBuf = commandQueue.makeCommandBuffer() else { return nil }
-            let desc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
-            #if os(macOS)
-            desc.storageMode = .managed
-            #else
-            desc.storageMode = .shared
-            #endif
-            desc.usage = .shaderRead
-            guard let staging = device.makeTexture(descriptor: desc),
+            guard let staging = getOrCreateStagingTexture(width: width, height: height),
+                  let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: texture, to: staging)
             #if os(macOS)
@@ -154,16 +178,8 @@ public final class MLTextureConverter {
         var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
 
         if texture.storageMode == .private {
-            guard let cmdBuf = commandQueue.makeCommandBuffer() else { return nil }
-            let desc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
-            #if os(macOS)
-            desc.storageMode = .managed
-            #else
-            desc.storageMode = .shared
-            #endif
-            desc.usage = .shaderRead
-            guard let staging = device.makeTexture(descriptor: desc),
+            guard let staging = getOrCreateStagingTexture(width: width, height: height),
+                  let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: texture, to: staging)
             #if os(macOS)
@@ -179,19 +195,12 @@ public final class MLTextureConverter {
                            from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         }
 
-        // BGRA -> RGBA
-        for i in stride(from: 0, to: pixels.count, by: 4) {
-            let b = pixels[i]
-            pixels[i] = pixels[i + 2]
-            pixels[i + 2] = b
-        }
-
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         guard let context = CGContext(
             data: &pixels, width: width, height: height,
             bitsPerComponent: 8, bytesPerRow: bytesPerRow,
             space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         ) else { return nil }
 
         return context.makeImage()
