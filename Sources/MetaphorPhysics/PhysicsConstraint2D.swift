@@ -1,3 +1,5 @@
+import simd
+
 /// Represent a constraint between two physics bodies or between a body and a fixed world point.
 ///
 /// ``PhysicsConstraint2D`` supports two modes:

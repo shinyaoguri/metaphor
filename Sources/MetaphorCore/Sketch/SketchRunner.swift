@@ -133,25 +133,43 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window.contentView = mtkView
         self.mtkView = mtkView
 
-        // Syphon
+        // Determine render loop mode.
+        // If syphonName is set but renderLoopMode is still displayLink,
+        // automatically switch to timer mode for Syphon compatibility.
+        let loopMode: RenderLoopMode
+        if config.syphonName != nil && config.renderLoopMode == .displayLink {
+            loopMode = .timer(fps: config.fps)
+        } else {
+            loopMode = config.renderLoopMode
+        }
+
+        // Legacy Syphon support
         if let syphonName = config.syphonName {
             renderer.startSyphonServer(name: syphonName)
-            // When using Syphon: decouple rendering entirely from the window
-            renderer.useExternalRenderLoop = true
+        }
 
-            // MTKView: display link serves only as preview (throttling is acceptable)
+        // Configure render loop
+        switch loopMode {
+        case .displayLink:
             mtkView.preferredFramesPerSecond = config.fps
             mtkView.isPaused = false
 
-            // Disable App Nap
+        case .timer(let fps):
+            // Decouple rendering from the display link
+            renderer.useExternalRenderLoop = true
+
+            // MTKView: display link serves only as preview (throttling is acceptable)
+            mtkView.preferredFramesPerSecond = fps
+            mtkView.isPaused = false
+
+            // Disable App Nap for consistent frame rate
             activity = ProcessInfo.processInfo.beginActivity(
                 options: [.userInitiated, .latencyCritical],
-                reason: "Syphon output requires consistent frame rate"
+                reason: "Timer-based render loop requires consistent frame rate"
             )
 
-            // DispatchSourceTimer: dedicated to renderFrame() for Syphon output.
-            // Does not touch needsDisplay, avoiding blocking on currentDrawable.
-            let interval = 1.0 / Double(max(config.fps, 1))
+            // DispatchSourceTimer: drives renderFrame() independently of display link
+            let interval = 1.0 / Double(max(fps, 1))
             let timer = DispatchSource.makeTimerSource(flags: .strict, queue: .main)
             timer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
             timer.setEventHandler { [weak renderer] in
@@ -161,10 +179,6 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             }
             timer.resume()
             renderTimer = timer
-        } else {
-            // Without Syphon: use MTKView's standard display-link driven rendering (VSync)
-            mtkView.preferredFramesPerSecond = config.fps
-            mtkView.isPaused = false
         }
 
         // Connect input callbacks to sketch event methods
@@ -233,10 +247,10 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// Triggers a single-frame redraw.
     private func handleRedraw() {
         if renderTimer != nil {
-            // Syphon mode: render exactly one frame
+            // Timer mode: render exactly one frame
             renderer?.renderFrame()
         } else {
-            // Standard mode: request a single frame draw from MTKView
+            // Display link mode: request a single frame draw from MTKView
             mtkView?.isPaused = false
             DispatchQueue.main.async { [weak self] in
                 self?.mtkView?.isPaused = !(self?.context?.isLooping ?? true)
@@ -249,7 +263,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// - Parameter fps: The target frames per second.
     private func handleFrameRate(_ fps: Int) {
         if let renderTimer {
-            // Syphon mode: reschedule the timer
+            // Timer mode: reschedule the timer
             renderTimer.suspend()
             let interval = 1.0 / Double(max(fps, 1))
             renderTimer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
@@ -257,7 +271,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
                 renderTimer.resume()
             }
         } else {
-            // Standard mode: update MTKView's preferred frame rate
+            // Display link mode: update MTKView's preferred frame rate
             mtkView?.preferredFramesPerSecond = fps
         }
     }

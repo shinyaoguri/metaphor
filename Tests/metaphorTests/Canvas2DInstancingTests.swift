@@ -2,6 +2,7 @@ import Testing
 import Metal
 import simd
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - InstanceData2D Layout Tests
 

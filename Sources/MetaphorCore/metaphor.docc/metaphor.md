@@ -133,26 +133,7 @@ and video export at a fixed resolution.
 
 ### Machine Learning
 
-- ``MLVision``
-- ``MLProcessor``
-- ``MLStyleTransfer``
 - ``MLTextureConverter``
-- ``MLClassification``
-- ``MLDetection``
-- ``MLPose``
-- ``MLSegmentMask``
-- ``MLFace``
-- ``MLText``
-- ``MLSaliency``
-- ``MLBarcode``
-- ``MLContour``
-- ``MLPose3D``
-- ``MLLandmark3D``
-- ``MLRectangle``
-- ``MLFeaturePrint``
-- ``MLInstanceMask``
-- ``MLTrackedObject``
-- ``MLOpticalFlow``
 
 ### Metal Performance Shaders
 

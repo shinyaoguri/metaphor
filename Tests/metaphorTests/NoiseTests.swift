@@ -3,6 +3,7 @@ import Metal
 import GameplayKit
 import simd
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - NoiseType Tests
 

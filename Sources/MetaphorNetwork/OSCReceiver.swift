@@ -33,7 +33,7 @@ private final class OSCMessageQueue: Sendable {
             if s.messages.count < maxQueueSize {
                 s.messages.append(message)
             } else {
-                metaphorWarning("OSC message queue full, dropping message")
+                debugWarning("OSC message queue full, dropping message")
             }
         }
     }

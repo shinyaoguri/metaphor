@@ -3,6 +3,7 @@ import Metal
 import MetalPerformanceShaders
 import simd
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - MPSError Tests
 

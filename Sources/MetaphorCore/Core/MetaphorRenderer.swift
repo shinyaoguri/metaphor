@@ -138,6 +138,11 @@ public final class MetaphorRenderer: NSObject {
     public let videoExporter: VideoExporter = VideoExporter()
     private var videoStagingTexture: MTLTexture?
 
+    // MARK: - Plugins
+
+    /// The registered plugins that receive lifecycle callbacks.
+    private var plugins: [MetaphorPlugin] = []
+
     // MARK: - Initialization
 
     /// Create a new renderer with the specified device and offscreen texture dimensions.
@@ -205,6 +210,35 @@ public final class MetaphorRenderer: NSObject {
     }
     #endif
 
+    // MARK: - Plugin Management
+
+    /// Register a plugin with this renderer.
+    ///
+    /// The plugin's ``MetaphorPlugin/onAttach(renderer:)`` method is called immediately.
+    /// - Parameter plugin: The plugin to register.
+    public func addPlugin(_ plugin: MetaphorPlugin) {
+        plugins.append(plugin)
+        plugin.onAttach(renderer: self)
+    }
+
+    /// Remove a plugin by its identifier.
+    ///
+    /// The plugin's ``MetaphorPlugin/onDetach()`` method is called before removal.
+    /// - Parameter id: The ``MetaphorPlugin/pluginID`` of the plugin to remove.
+    public func removePlugin(id: String) {
+        if let idx = plugins.firstIndex(where: { $0.pluginID == id }) {
+            plugins[idx].onDetach()
+            plugins.remove(at: idx)
+        }
+    }
+
+    /// Return the registered plugin with the given identifier, if any.
+    /// - Parameter id: The ``MetaphorPlugin/pluginID`` to search for.
+    /// - Returns: The matching plugin, or `nil` if not found.
+    public func plugin(id: String) -> MetaphorPlugin? {
+        plugins.first(where: { $0.pluginID == id })
+    }
+
     // MARK: - Canvas Resize
 
     /// Resize the offscreen canvas by recreating all render target textures.
@@ -244,6 +278,10 @@ public final class MetaphorRenderer: NSObject {
         exportStagingTexture = nil
         videoStagingTexture = nil
         postProcessPipeline?.invalidateTextures()
+
+        for plugin in plugins {
+            plugin.onResize(width: width, height: height)
+        }
     }
 
     // MARK: - Post Process API
@@ -607,6 +645,11 @@ public final class MetaphorRenderer: NSObject {
         input.updateFrame()
         let time = elapsedTime
 
+        // Plugin: before render
+        for plugin in plugins {
+            plugin.onBeforeRender(commandBuffer: commandBuffer, time: time)
+        }
+
         // FBO feedback: copy the previous frame's color texture
         if feedbackEnabled {
             capturePreviousFrame(commandBuffer: commandBuffer)
@@ -704,7 +747,12 @@ public final class MetaphorRenderer: NSObject {
             )
         }
 
-        // Publish to Syphon
+        // Plugin: after render (provides final texture for output plugins)
+        for plugin in plugins {
+            plugin.onAfterRender(texture: outputTexture, commandBuffer: commandBuffer)
+        }
+
+        // Publish to Syphon (legacy; will be replaced by SyphonPlugin)
         #if os(macOS)
         syphonOutput?.publish(
             texture: outputTexture,

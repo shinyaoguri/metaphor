@@ -2,6 +2,7 @@ import Testing
 import Metal
 import simd
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - B-6: Per-vertex Color Shape Tests
 

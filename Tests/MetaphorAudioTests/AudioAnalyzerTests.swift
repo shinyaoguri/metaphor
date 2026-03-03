@@ -1,5 +1,6 @@
 import Testing
-@testable import metaphor
+import Foundation
+@testable import MetaphorAudio
 
 // MARK: - AudioAnalyzer
 
@@ -75,5 +76,67 @@ struct AudioAnalyzerTests {
         let analyzer = AudioAnalyzer()
         analyzer.beatThreshold = 2.0
         #expect(analyzer.beatThreshold == 2.0)
+    }
+}
+
+// MARK: - SoundFile
+
+@Suite("SoundFile")
+@MainActor
+struct SoundFileTests {
+
+    @Test("SoundFileError for non-existent file")
+    func fileNotFound() {
+        #expect(throws: SoundFileError.self) {
+            _ = try SoundFile(path: "/nonexistent/audio.mp3")
+        }
+    }
+
+    @Test("SoundFileError has description")
+    func errorDescription() {
+        let error = SoundFileError.fileNotFound("/test/path.mp3")
+        #expect(error.errorDescription?.contains("Audio file not found") == true)
+    }
+}
+
+// MARK: - AudioAnalyzer injectSamples
+
+@Suite("AudioAnalyzer injectSamples")
+@MainActor
+struct AudioAnalyzerInjectTests {
+
+    @Test("injectSamples feeds data to update")
+    func injectSamples() {
+        let analyzer = AudioAnalyzer(fftSize: 256)
+
+        // Generate a simple sine wave
+        var samples = [Float](repeating: 0, count: 256)
+        for i in 0..<256 {
+            samples[i] = sin(Float(i) * 2 * Float.pi / 256.0) * 0.5
+        }
+
+        analyzer.injectSamples(samples)
+        analyzer.update()
+
+        // After update, volume should be non-zero
+        #expect(analyzer.volume > 0)
+        // Waveform should be populated
+        #expect(analyzer.waveform.count == 256)
+        // Spectrum should be populated
+        #expect(analyzer.spectrum.count == 128)
+    }
+
+    @Test("injectSamples without update has no effect")
+    func injectWithoutUpdate() {
+        let analyzer = AudioAnalyzer(fftSize: 256)
+
+        var samples = [Float](repeating: 0, count: 256)
+        for i in 0..<256 {
+            samples[i] = sin(Float(i) * 2 * Float.pi / 256.0) * 0.5
+        }
+
+        analyzer.injectSamples(samples)
+        // Don't call update
+        #expect(analyzer.volume == 0)
     }
 }

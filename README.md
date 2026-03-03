@@ -210,82 +210,6 @@ timer.fps                // current FPS
 
 ---
 
-## Examples
-
-`Examples/` directory contains runnable sample projects organized by category.
-
-```bash
-cd Examples/Math/Clock && swift build && swift run
-```
-
-### Basics
-
-| Example | Description |
-|---------|-------------|
-| [ShapePrimitives](Examples/Basics/ShapePrimitives/) | Basic shape primitives (rect, ellipse, circle, arc, line, triangle, polygon, bezier, point) |
-| [ColorDemo](Examples/Basics/ColorDemo/) | RGB/HSB color modes, gradients, and color application |
-| [TextDemo](Examples/Basics/TextDemo/) | Text size, font families, alignment, and animated coloring |
-| [BlendModes](Examples/Basics/BlendModes/) | Visual comparison of 8 blend modes using RGB Venn diagrams |
-
-### Transform
-
-| Example | Description |
-|---------|-------------|
-| [Translate](Examples/Transform/Translate/) | Absolute vs relative positioning, nested translations with bounce |
-| [Rotate](Examples/Transform/Rotate/) | 25 rotating squares with varying speeds, nested rotation |
-| [Scale](Examples/Transform/Scale/) | Pulsing circles, nested scaling, non-uniform scale |
-
-### Math & Motion
-
-| Example | Description |
-|---------|-------------|
-| [SineAndCosine](Examples/Math/SineAndCosine/) | Decomposing circular motion into sin/cos waveforms |
-| [EasingGallery](Examples/Math/EasingGallery/) | 30 easing functions displayed in a 6x5 animated grid |
-| [NoiseField](Examples/Math/NoiseField/) | Perlin noise-driven flow field visualization |
-| [Clock](Examples/Math/Clock/) | Real-time analog clock with animated hands |
-
-### Interaction
-
-| Example | Description |
-|---------|-------------|
-| [Aim](Examples/Interaction/Aim/) | Mouse-tracking eye demo |
-| [DrawingLines](Examples/Interaction/DrawingLines/) | Freehand drawing with velocity-based stroke weight |
-| [ScreenCapture](Examples/Interaction/ScreenCapture/) | Lissajous curve with spacebar screenshot capture |
-
-### Simulation
-
-| Example | Description |
-|---------|-------------|
-| [Particles](Examples/Simulation/Particles/) | 2000 particles spiraling outward from center |
-| [ConnectedParticles](Examples/Simulation/ConnectedParticles/) | Mouse-attracted particles with proximity-based connections |
-| [Flocking](Examples/Simulation/Flocking/) | Boid flocking simulation (separation, alignment, cohesion) |
-| [Snowflakes](Examples/Simulation/Snowflakes/) | 200 falling snowflakes with Perlin noise drift |
-| [GameOfLife](Examples/Simulation/GameOfLife/) | Conway's Game of Life via GPU compute shader |
-
-### Generative Art
-
-| Example | Description |
-|---------|-------------|
-| [RecursiveTree](Examples/GenerativeArt/RecursiveTree/) | Recursive branching tree with wind animation |
-| [ColorWheel](Examples/GenerativeArt/ColorWheel/) | Rotating hue wheel with saturation gradient |
-
-### 3D
-
-| Example | Description |
-|---------|-------------|
-| [RotatingCube](Examples/3D/RotatingCube/) | Simple 3D cube and floor with Syphon output |
-| [Geometries](Examples/3D/Geometries/) | 6 mesh primitives (box, sphere, plane, cylinder, cone, torus) |
-| [Lighting3D](Examples/3D/Lighting3D/) | Directional/point/spot lights with material properties |
-| [Sketch3D](Examples/3D/Sketch3D/) | 3D sketch demo with multiple mesh types |
-
-### Integration
-
-| Example | Description |
-|---------|-------------|
-| [Sketch2D](Examples/Integration/Sketch2D/) | 2D sketch API demo with shapes, noise, and mouse input |
-
----
-
 ## Syphon
 
 Syphon allows real-time video sharing between applications. Compatible apps:
@@ -321,18 +245,6 @@ make clean      # Clean build artifacts
 make check      # Check setup status
 ```
 
-### Project Structure
-
-```
-metaphor/
-├── Sources/metaphor/       # Library source code
-├── Tests/                  # Unit tests
-├── Examples/               # Example projects
-├── Vendor/Syphon-Framework # Syphon submodule
-├── Frameworks/             # Built Syphon.xcframework (local only)
-├── scripts/                # Build scripts
-└── Package.swift           # Swift package manifest
-```
 
 ### How It Works
 
@@ -354,7 +266,3 @@ metaphor/
    - Commit the changes to main
 
 ---
-
-## License
-
-MIT License

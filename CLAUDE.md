@@ -22,7 +22,21 @@ cd Examples/_Legacy/Simulation/GPUParticles && swift build && swift run
 
 ## Architecture Overview
 
-metaphor is a Swift + Metal creative coding library inspired by Processing/p5.js/openFrameworks. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, ML, audio, and more. Supports macOS 14+ and iOS 17+.
+metaphor is a Swift + Metal creative coding library inspired by Processing/p5.js/openFrameworks. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, audio, and more. Supports macOS 14+ and iOS 17+.
+
+### Module Structure
+
+metaphor uses a multi-target SPM architecture. Users can `import metaphor` for full functionality (backward compatible) or import individual modules:
+
+| Module | Purpose |
+|--------|---------|
+| `metaphor` | Umbrella target — re-exports all modules via `@_exported import` |
+| `MetaphorCore` | Core rendering engine, drawing, shaders, and tightly-coupled subsystems |
+| `MetaphorAudio` | Audio analysis (FFT, beat detection) and sound file playback (zero Core dependency) |
+| `MetaphorNetwork` | OSC receiver (UDP) and MIDI manager (zero Core dependency) |
+| `MetaphorPhysics` | 2D physics simulation with Verlet integration (zero Core dependency) |
+
+The umbrella `metaphor` target provides bridge extensions (`Sketch+AudioBridge.swift`, etc.) so that `import metaphor` users retain convenience methods like `createAudioInput()`, `createOSCReceiver()`, `createPhysics2D()`.
 
 ### Rendering Pipeline
 
@@ -72,11 +86,11 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 - **SketchContext** (`Sketch/SketchContext.swift`): Holds Canvas2D, Canvas3D, renderer, input, time state. Provides all drawing methods.
 - **SketchRunner** (`Sketch/SketchRunner.swift`): NSApplicationDelegate that creates window, MTKView, renderer, and drives the frame loop.
 
-### Core Components (Sources/metaphor/)
+### Core Components (Sources/MetaphorCore/)
 
 | Directory | Purpose |
 |-----------|---------|
-| `Core/` | MetaphorRenderer (orchestrator), TextureManager, PipelineFactory, ShaderLibrary |
+| `Core/` | MetaphorRenderer (orchestrator), TextureManager, PipelineFactory, ShaderLibrary, MetaphorPlugin protocol, RenderLoopMode |
 | `Drawing/` | Canvas2D (2D vector), Canvas3D (3D meshes/lights/materials), GPU instancing, CustomMaterial, ShadowMap |
 | `Shaders/` | MSL shader source (Swift wrappers) + `Metal/` compiled .metal files |
 | `Sketch/` | Sketch protocol, SketchContext, SketchRunner |
@@ -85,20 +99,25 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 | `Compute/` | ComputeKernel, GPUBuffer\<T\>, ImageFilterGPU |
 | `Particle/` | ParticleSystem (GPU compute + instanced billboard) |
 | `Animation/` | Tween\<T\>, TweenManager |
-| `Audio/` | AudioAnalyzer (FFT + beat detection), SoundFile (AVAudioEngine playback) |
-| `Physics/` | Physics2D world, PhysicsBody2D, constraints, SpatialHash2D |
-| `ML/` | MLProcessor (CoreML), MLVision (22 VNRequest types), MLStyleTransfer |
+| `ML/` | MLTextureConverter (Metal ↔ CVPixelBuffer ↔ CGImage bridge utility) |
 | `MPS/` | MPSImageFilter, MPSRayTracer (AO/shadow/diffuse) |
 | `CoreImage/` | CIFilterWrapper (zero-copy Metal interop), CIFilterPreset (30 filters) |
 | `Noise/` | GKNoiseWrapper (8 noise types), NoiseTexture |
 | `RenderGraph/` | DAG-based multi-pass rendering (SourcePass, EffectPass, MergePass) |
 | `SceneGraph/` | Node hierarchy, SceneRenderer |
-| `Network/` | OSCReceiver (UDP), MIDIManager (CoreMIDI) |
 | `Export/` | VideoExporter (H.264), GIFExporter, FrameExporter |
 | `Input/` | InputManager (mouse/keyboard/touch), CaptureDevice (camera) |
 | `UI/` | MetaphorView (SwiftUI), ParameterGUI, PerformanceHUD, OrbitCamera |
 | `Utilities/` | Math (float4x4), Time (FrameTimer), Easing (30 functions), Color, Vector, Platform |
 | `Syphon/` | SyphonOutput (inter-app video sharing, macOS only) |
+
+### Standalone Modules
+
+| Module | Directory | Files |
+|--------|-----------|-------|
+| MetaphorAudio | `Sources/MetaphorAudio/` | AudioAnalyzer.swift, SoundFile.swift |
+| MetaphorNetwork | `Sources/MetaphorNetwork/` | OSCReceiver.swift, MIDIManager.swift, MIDIMessage.swift |
+| MetaphorPhysics | `Sources/MetaphorPhysics/` | Physics2D.swift, PhysicsBody2D.swift, PhysicsConstraint2D.swift, SpatialHash2D.swift |
 
 ### Key Design Patterns
 
@@ -110,6 +129,8 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 - **Shader hot reload**: ShaderLibrary supports runtime MSL reloading for CustomMaterial/CustomPostEffect
 - **Compute lifecycle**: `onCompute(commandBuffer, time)` runs before `onDraw(renderEncoder, time)` each frame
 - **Conditional compilation**: `#if os(macOS)` / `#if os(iOS)` for platform-specific code (Platform.swift type aliases)
+- **Plugin protocol**: `MetaphorPlugin` provides lifecycle hooks (onBeforeRender, onAfterRender, onResize, etc.) for extending the render loop
+- **Modular architecture**: Audio, Network, Physics are standalone SPM targets with zero Core dependency; umbrella target re-exports all
 
 ### Syphon Framework Handling
 
@@ -124,4 +145,11 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 
 ## Testing
 
-~562 tests across 25 test suites in `Tests/metaphorTests/`. Tests cover all major subsystems. Run with `make test` or `swift test`.
+~500 tests across 4 test targets. Run with `make test` or `swift test`.
+
+| Test Target | Tests |
+|-------------|-------|
+| `metaphorTests` | Core integration tests (Canvas2D, Canvas3D, Compute, PostProcess, etc.) |
+| `MetaphorAudioTests` | AudioAnalyzer, SoundFile tests |
+| `MetaphorNetworkTests` | OSC parser/receiver, MIDI message/manager tests |
+| `MetaphorPhysicsTests` | Physics2D basic tests |

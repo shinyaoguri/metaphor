@@ -1,5 +1,6 @@
 import XCTest
 @testable import metaphor
+@testable import MetaphorCore
 
 final class EarClipTests: XCTestCase {
 

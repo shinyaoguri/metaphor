@@ -604,24 +604,6 @@ extension SketchContext {
         )
     }
 
-    // MARK: - Audio
-
-    /// Creates an audio input analyzer.
-    /// - Parameter fftSize: The FFT window size (default 1024).
-    /// - Returns: An `AudioAnalyzer` instance.
-    public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
-        AudioAnalyzer(fftSize: fftSize)
-    }
-
-    // MARK: - OSC
-
-    /// Creates an OSC receiver.
-    /// - Parameter port: The UDP port number to listen on.
-    /// - Returns: An `OSCReceiver` instance.
-    public func createOSCReceiver(port: UInt16) -> OSCReceiver {
-        OSCReceiver(port: port)
-    }
-
     // MARK: - Shader Hot Reload
 
     /// Recompiles shader source and clears the pipeline cache.
@@ -691,23 +673,6 @@ extension SketchContext {
         return t
     }
 
-    // MARK: - Sound File (D-16)
-
-    /// Loads an audio file from the specified path.
-    /// - Parameter path: The file path to the audio file.
-    /// - Returns: A `SoundFile` instance.
-    public func loadSound(_ path: String) throws -> SoundFile {
-        try SoundFile(path: path)
-    }
-
-    // MARK: - MIDI (D-17)
-
-    /// Creates a MIDI manager for sending and receiving MIDI messages.
-    /// - Returns: A `MIDIManager` instance.
-    public func createMIDI() -> MIDIManager {
-        MIDIManager()
-    }
-
     // MARK: - GIF Export (D-19)
 
     /// Begins GIF recording.
@@ -741,15 +706,6 @@ extension SketchContext {
             actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
         }
         try gifExporter.endRecord(to: actualPath)
-    }
-
-    // MARK: - Physics 2D
-
-    /// Creates a 2D physics world.
-    /// - Parameter cellSize: The spatial hash cell size (default 50).
-    /// - Returns: A `Physics2D` instance.
-    public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
-        Physics2D(cellSize: cellSize)
     }
 
     // MARK: - Orbit Camera (D-20)
@@ -848,62 +804,9 @@ extension SketchContext {
         renderer.renderGraph = graph
     }
 
-    // MARK: - CoreML / Vision
+    // MARK: - MLTextureConverter
 
-    /// Creates a CoreML model processor.
-    /// - Returns: An `MLProcessor` instance.
-    public func createMLProcessor() -> MLProcessor {
-        MLProcessor(device: renderer.device, commandQueue: renderer.commandQueue)
-    }
-
-    /// Creates a Vision framework wrapper.
-    /// - Returns: An `MLVision` instance.
-    public func createVision() -> MLVision {
-        MLVision(device: renderer.device, commandQueue: renderer.commandQueue)
-    }
-
-    /// Creates a style transfer wrapper.
-    /// - Returns: An `MLStyleTransfer` instance.
-    public func createStyleTransfer() -> MLStyleTransfer {
-        MLStyleTransfer(device: renderer.device, commandQueue: renderer.commandQueue)
-    }
-
-    /// Loads a CoreML model from a file path and returns a configured processor.
-    /// - Parameters:
-    ///   - path: The file path to the CoreML model.
-    ///   - computeUnit: The compute unit preference (default `.all`).
-    /// - Returns: A loaded `MLProcessor` instance.
-    public func loadMLModel(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
-        let processor = createMLProcessor()
-        processor.computeUnit = computeUnit
-        try processor.load(path)
-        return processor
-    }
-
-    /// Loads a CoreML model from a bundle resource by name.
-    /// - Parameters:
-    ///   - name: The resource name of the CoreML model.
-    ///   - computeUnit: The compute unit preference (default `.all`).
-    /// - Returns: A loaded `MLProcessor` instance.
-    public func loadMLModel(named name: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
-        let processor = createMLProcessor()
-        processor.computeUnit = computeUnit
-        try processor.load(named: name)
-        return processor
-    }
-
-    /// Loads a style transfer model from a file path.
-    /// - Parameters:
-    ///   - path: The file path to the style transfer model.
-    ///   - computeUnit: The compute unit preference (default `.all`).
-    /// - Returns: A loaded `MLStyleTransfer` instance.
-    public func loadStyleTransfer(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLStyleTransfer {
-        let st = createStyleTransfer()
-        try st.load(path, computeUnit: computeUnit)
-        return st
-    }
-
-    /// Creates an ML texture converter for advanced texture-to-pixel-buffer conversions.
+    /// Creates an ML texture converter for Metal-CoreML interoperability.
     /// - Returns: An `MLTextureConverter` instance.
     public func createMLTextureConverter() -> MLTextureConverter {
         MLTextureConverter(device: renderer.device, commandQueue: renderer.commandQueue)

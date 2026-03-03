@@ -153,6 +153,14 @@ public struct SketchConfig: Sendable {
     /// Launch the sketch in full-screen mode.
     public var fullScreen: Bool
 
+    /// The render loop mode.
+    ///
+    /// Use `.displayLink` (default) for standard rendering driven by the display
+    /// refresh rate. Use `.timer(fps:)` for decoupled frame timing, which is
+    /// useful for Syphon output or video recording where rendering should not
+    /// stall when the window is occluded.
+    public var renderLoopMode: RenderLoopMode
+
     /// Create a new sketch configuration.
     ///
     /// - Parameters:
@@ -163,6 +171,7 @@ public struct SketchConfig: Sendable {
     ///   - syphonName: The Syphon server name (`nil` to disable).
     ///   - windowScale: The window size scale factor.
     ///   - fullScreen: Whether to launch in full-screen mode.
+    ///   - renderLoopMode: The render loop mode (default: `.displayLink`).
     public init(
         width: Int = 1920,
         height: Int = 1080,
@@ -170,7 +179,8 @@ public struct SketchConfig: Sendable {
         fps: Int = 60,
         syphonName: String? = nil,
         windowScale: Float = 0.5,
-        fullScreen: Bool = false
+        fullScreen: Bool = false,
+        renderLoopMode: RenderLoopMode = .displayLink
     ) {
         self.width = width
         self.height = height
@@ -179,5 +189,6 @@ public struct SketchConfig: Sendable {
         self.syphonName = syphonName
         self.windowScale = windowScale
         self.fullScreen = fullScreen
+        self.renderLoopMode = renderLoopMode
     }
 }

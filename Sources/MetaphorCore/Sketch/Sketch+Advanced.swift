@@ -94,30 +94,6 @@ extension Sketch {
     }
 }
 
-// MARK: - Audio
-
-extension Sketch {
-    /// Create an audio input analyzer for real-time FFT and beat detection.
-    ///
-    /// - Parameter fftSize: The FFT window size (must be a power of two).
-    /// - Returns: A new ``AudioAnalyzer`` instance.
-    public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
-        activeContext().createAudioInput(fftSize: fftSize)
-    }
-}
-
-// MARK: - OSC
-
-extension Sketch {
-    /// Create an OSC (Open Sound Control) receiver.
-    ///
-    /// - Parameter port: The UDP port to listen on.
-    /// - Returns: A new ``OSCReceiver`` instance.
-    public func createOSCReceiver(port: UInt16) -> OSCReceiver {
-        activeContext().createOSCReceiver(port: port)
-    }
-}
-
 // MARK: - Tween
 
 extension Sketch {
@@ -248,29 +224,6 @@ extension Sketch {
     }
 }
 
-// MARK: - Sound File (D-16)
-
-extension Sketch {
-    /// Load an audio file for playback and analysis.
-    ///
-    /// - Parameter path: The file path to the audio file.
-    /// - Returns: A new ``SoundFile`` instance.
-    public func loadSound(_ path: String) throws -> SoundFile {
-        try activeContext().loadSound(path)
-    }
-}
-
-// MARK: - MIDI (D-17)
-
-extension Sketch {
-    /// Create a MIDI manager for input and output.
-    ///
-    /// - Returns: A new ``MIDIManager`` instance.
-    public func createMIDI() -> MIDIManager {
-        activeContext().createMIDI()
-    }
-}
-
 // MARK: - GIF Export (D-19)
 
 extension Sketch {
@@ -286,18 +239,6 @@ extension Sketch {
     /// - Parameter path: The output file path (auto-generated if `nil`).
     public func endGIFRecord(_ path: String? = nil) throws {
         try activeContext().endGIFRecord(path)
-    }
-}
-
-// MARK: - Physics 2D
-
-extension Sketch {
-    /// Create a 2D physics simulation world.
-    ///
-    /// - Parameter cellSize: The spatial hash cell size for broad-phase collision detection.
-    /// - Returns: A new ``Physics2D`` instance.
-    public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
-        Physics2D(cellSize: cellSize)
     }
 }
 
@@ -377,61 +318,13 @@ extension Sketch {
     }
 }
 
-// MARK: - CoreML / Vision
+// MARK: - MLTextureConverter
 
 extension Sketch {
-    /// Create a CoreML model processor.
+    /// Create a texture converter for Metal-CoreML interoperability.
     ///
-    /// - Returns: A new ``MLProcessor`` instance.
-    public func createMLProcessor() -> MLProcessor {
-        activeContext().createMLProcessor()
-    }
-
-    /// Create a Vision framework wrapper for image analysis.
-    ///
-    /// - Returns: A new ``MLVision`` instance.
-    public func createVision() -> MLVision {
-        activeContext().createVision()
-    }
-
-    /// Create a style transfer wrapper for image-to-image models.
-    ///
-    /// - Returns: A new ``MLStyleTransfer`` instance.
-    public func createStyleTransfer() -> MLStyleTransfer {
-        activeContext().createStyleTransfer()
-    }
-
-    /// Load a CoreML model from a file path.
-    ///
-    /// - Parameters:
-    ///   - path: The file path to the `.mlmodelc` or `.mlpackage` file.
-    ///   - computeUnit: The compute unit preference for inference.
-    /// - Returns: An ``MLProcessor`` loaded with the model.
-    public func loadMLModel(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
-        try activeContext().loadMLModel(path, computeUnit: computeUnit)
-    }
-
-    /// Load a CoreML model from a bundle resource by name.
-    ///
-    /// - Parameters:
-    ///   - name: The resource name of the model.
-    ///   - computeUnit: The compute unit preference for inference.
-    /// - Returns: An ``MLProcessor`` loaded with the model.
-    public func loadMLModel(named name: String, computeUnit: MLComputeUnit = .all) throws -> MLProcessor {
-        try activeContext().loadMLModel(named: name, computeUnit: computeUnit)
-    }
-
-    /// Load a style transfer model from a file path.
-    ///
-    /// - Parameters:
-    ///   - path: The file path to the style transfer model.
-    ///   - computeUnit: The compute unit preference for inference.
-    /// - Returns: An ``MLStyleTransfer`` loaded with the model.
-    public func loadStyleTransfer(_ path: String, computeUnit: MLComputeUnit = .all) throws -> MLStyleTransfer {
-        try activeContext().loadStyleTransfer(path, computeUnit: computeUnit)
-    }
-
-    /// Create a texture converter for Metal-CoreML interoperability (advanced).
+    /// Use this to convert between MTLTexture, CVPixelBuffer, and CGImage
+    /// when working with CoreML or Vision frameworks directly.
     ///
     /// - Returns: A new ``MLTextureConverter`` instance.
     public func createMLTextureConverter() -> MLTextureConverter {

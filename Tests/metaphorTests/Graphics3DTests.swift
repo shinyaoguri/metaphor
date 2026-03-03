@@ -1,5 +1,6 @@
 import XCTest
 @testable import metaphor
+@testable import MetaphorCore
 
 @MainActor
 final class Graphics3DTests: XCTestCase {

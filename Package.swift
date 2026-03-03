@@ -24,26 +24,47 @@ let package = Package(
         .iOS(.v17)
     ],
     products: [
-        .library(
-            name: "metaphor",
-            targets: ["metaphor"]
-        ),
+        .library(name: "metaphor", targets: ["metaphor"]),
+        .library(name: "MetaphorCore", targets: ["MetaphorCore"]),
+        .library(name: "MetaphorAudio", targets: ["MetaphorAudio"]),
+        .library(name: "MetaphorNetwork", targets: ["MetaphorNetwork"]),
+        .library(name: "MetaphorPhysics", targets: ["MetaphorPhysics"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
     ],
     targets: [
         syphonTarget,
+
+        // Core: rendering engine, drawing, sketch protocol, shaders, and all tightly-coupled subsystems
         .target(
-            name: "metaphor",
+            name: "MetaphorCore",
             dependencies: [
                 .target(name: "Syphon", condition: .when(platforms: [.macOS]))
             ],
             resources: [.process("Shaders/Metal")]
         ),
-        .testTarget(
-            name: "metaphorTests",
-            dependencies: ["metaphor"]
+
+        // Tier 1 modules: zero dependency on MetaphorCore
+        .target(name: "MetaphorAudio"),
+        .target(name: "MetaphorNetwork"),
+        .target(name: "MetaphorPhysics"),
+
+        // Umbrella: re-exports everything for backward compatibility
+        .target(
+            name: "metaphor",
+            dependencies: [
+                "MetaphorCore",
+                "MetaphorAudio",
+                "MetaphorNetwork",
+                "MetaphorPhysics",
+            ]
         ),
+
+        // Tests
+        .testTarget(name: "MetaphorAudioTests", dependencies: ["MetaphorAudio"]),
+        .testTarget(name: "MetaphorNetworkTests", dependencies: ["MetaphorNetwork"]),
+        .testTarget(name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics"]),
+        .testTarget(name: "metaphorTests", dependencies: ["metaphor"]),
     ]
 )

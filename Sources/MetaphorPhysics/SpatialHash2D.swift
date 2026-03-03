@@ -1,3 +1,5 @@
+import simd
+
 /// Provide broad-phase collision detection using a uniform spatial hash grid.
 ///
 /// Objects are inserted into grid cells based on their bounding extent. After

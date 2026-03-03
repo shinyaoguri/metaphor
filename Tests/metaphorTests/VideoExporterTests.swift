@@ -1,5 +1,6 @@
 import Testing
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - VideoExportConfig Tests
 

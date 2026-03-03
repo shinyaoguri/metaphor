@@ -149,7 +149,7 @@ public final class SoundFile {
                 engine.prepare()
                 try engine.start()
             } catch {
-                metaphorWarning("Audio engine start failed: \(error)")
+                debugWarning("Audio engine start failed: \(error)")
                 return
             }
         }

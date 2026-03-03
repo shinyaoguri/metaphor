@@ -1,5 +1,5 @@
 import XCTest
-@testable import metaphor
+@testable import MetaphorNetwork
 import Foundation
 
 // MARK: - OSC Parser Tests
@@ -257,7 +257,7 @@ final class OSCValueTests: XCTestCase {
 // MARK: - OSC Receiver Tests
 
 @MainActor
-final class OSCReceiverTests: XCTestCase {
+final class OSCReceiverFunctionalTests: XCTestCase {
 
     func testInitialization() {
         let osc = OSCReceiver(port: 9000)
