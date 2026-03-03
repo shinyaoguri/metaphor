@@ -1,10 +1,10 @@
 # metaphor
 
-Swift + Metal creative coding library with Syphon output support.
+Swift + Metal creative coding library inspired by Processing / p5.js / openFrameworks.
 
 ## Requirements
 
-- macOS 14.0+
+- macOS 14.0+ / iOS 17.0+
 - Xcode 15.0+
 - Swift 6.0+
 
@@ -22,20 +22,45 @@ dependencies: [
 ]
 ```
 
-Or in Xcode: File → Add Package Dependencies → enter the repository URL.
+Or in Xcode: File -> Add Package Dependencies -> enter the repository URL.
 
 ---
 
 ## Quick Start
 
-### 1. Create your project
+### Sketch Protocol (Recommended)
+
+The simplest way to get started. `import metaphor` gives you Processing-like global functions:
+
+```swift
+import metaphor
+
+@main
+final class MySketch: Sketch {
+    var config: SketchConfig {
+        SketchConfig(title: "My Sketch", width: 1920, height: 1080)
+    }
+
+    func setup() {
+        // One-time initialization
+    }
+
+    func draw() {
+        background(.black)
+        fill(.white)
+        circle(width / 2, height / 2, 200)
+    }
+}
+```
+
+### Minimal Project Setup
 
 ```bash
 mkdir MyMetalApp && cd MyMetalApp
 swift package init --type executable --name MyMetalApp
 ```
 
-### 2. Edit Package.swift
+Edit `Package.swift`:
 
 ```swift
 // swift-tools-version: 6.0
@@ -59,51 +84,7 @@ let package = Package(
 )
 ```
 
-### 3. Write your app
-
-Replace `Sources/MyMetalApp/main.swift`:
-
-```swift
-import SwiftUI
-import metaphor
-
-@main
-struct MyMetalApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
-
-struct ContentView: View {
-    @State private var renderer: MetaphorRenderer?
-
-    var body: some View {
-        Group {
-            if let renderer = renderer {
-                MetaphorView(renderer: renderer)
-            } else {
-                Text("Initializing...")
-            }
-        }
-        .onAppear { setupRenderer() }
-    }
-
-    private func setupRenderer() {
-        guard let renderer = MetaphorRenderer(width: 1920, height: 1080) else { return }
-        renderer.startSyphonServer(name: "MyMetalApp")
-
-        renderer.onDraw = { encoder, time in
-            // Your Metal rendering code here
-        }
-
-        self.renderer = renderer
-    }
-}
-```
-
-### 4. Build and run
+Build and run:
 
 ```bash
 swift build && swift run
@@ -111,102 +92,100 @@ swift build && swift run
 
 ---
 
+## Features
 
-## API Reference
-
-### MetaphorRenderer
-
-Main renderer class that manages Metal device, command queue, and Syphon output.
+### 2D Drawing
 
 ```swift
-let renderer = MetaphorRenderer(
-    width: 1920,
-    height: 1080,
-    clearColor: .black
-)
+func draw() {
+    background(.black)
+    fill(.red)
+    stroke(.white)
+    strokeWeight(2)
+    circle(width / 2, height / 2, 200)
+    rect(100, 100, 300, 200)
+}
+```
 
-// Syphon output
-renderer.startSyphonServer(name: "ServerName")
-renderer.stopSyphonServer()
+### 3D Drawing
 
-// Draw callback
-renderer.onDraw = { encoder, time in
-    // encoder: MTLRenderCommandEncoder
-    // time: elapsed time in seconds
+```swift
+func draw() {
+    background(.black)
+    lights()
+    orbitControl()
+
+    fill(.blue)
+    push()
+    translate(0, 0, 0)
+    rotateY(frameCount * 0.01)
+    box(100)
+    pop()
+}
+```
+
+### Audio Analysis
+
+```swift
+let analyzer = AudioAnalyzer(fftSize: 1024)
+analyzer.start()
+analyzer.update()
+
+let volume = analyzer.volume
+let spectrum = analyzer.spectrum
+let isBeat = analyzer.isBeat
+```
+
+### OSC / MIDI
+
+```swift
+let osc = OSCReceiver(port: 9000)
+osc.on("/control") { values in
+    // Handle OSC messages
+}
+osc.start()
+
+let midi = MIDIManager()
+midi.start()
+let cc = midi.controllerValue(1)
+```
+
+### 2D Physics
+
+```swift
+let world = Physics2D(cellSize: 50)
+world.addGravity(0, 980)
+let ball = world.addCircle(x: 100, y: 100, radius: 20)
+world.step(1.0 / 60.0)
+```
+
+### Plugin System
+
+Extend the render loop with custom plugins:
+
+```swift
+class MyPlugin: MetaphorPlugin {
+    var pluginID: String { "my-plugin" }
+
+    func onAfterRender(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {
+        // Process rendered frame
+    }
 }
 
-// Access properties
-renderer.device          // MTLDevice
-renderer.commandQueue    // MTLCommandQueue
-renderer.elapsedTime     // Double
+renderer.addPlugin(MyPlugin())
 ```
 
-### MetaphorView
+### More Features
 
-SwiftUI view for displaying Metal content.
-
-```swift
-MetaphorView(renderer: renderer, preferredFPS: 60)
-```
-
-### TextureManager
-
-Manages offscreen render targets.
-
-```swift
-// Presets
-let texture = TextureManager.fullHD(device: device)    // 1920x1080
-let texture = TextureManager.uhd4K(device: device)     // 3840x2160
-let texture = TextureManager.square(device: device, size: 1024)
-
-// Custom
-let texture = TextureManager(
-    device: device,
-    width: 1280,
-    height: 720,
-    clearColor: MTLClearColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1)
-)
-```
-
-### SyphonOutput
-
-Direct Syphon server control.
-
-```swift
-let syphon = SyphonOutput(device: device, name: "ServerName")
-syphon.publish(texture: texture, commandBuffer: commandBuffer)
-syphon.stop()
-```
-
-### Math Utilities
-
-```swift
-// Matrix creation
-let model = float4x4(rotationY: angle) * float4x4(translation: position)
-let view = float4x4(lookAt: eye, center: center, up: up)
-let proj = float4x4(perspectiveFov: .pi/4, aspect: 16/9, near: 0.1, far: 100)
-
-// Helpers
-radians(90)              // degrees to radians
-lerp(a, b, t)            // linear interpolation
-smoothstep(0, 1, x)      // smooth interpolation
-```
-
-### Time Utilities
-
-```swift
-// Animation helpers
-sine01(time, frequency: 1.0)      // 0...1 sine wave
-triangle(time, frequency: 1.0)    // 0...1 triangle wave
-sawtooth(time, frequency: 1.0)    // 0...1 sawtooth wave
-
-// Frame timing
-let timer = FrameTimer()
-timer.update()           // call each frame
-timer.elapsed            // total time
-timer.deltaTime          // frame delta
-timer.fps                // current FPS
-```
+- **GPU Compute**: ComputeKernel, GPUBuffer for general-purpose GPU programming
+- **Post-Processing**: Built-in effects (bloom, blur, chromatic aberration, etc.) and custom shaders
+- **Particle System**: GPU-accelerated particle simulation with instanced rendering
+- **Syphon Output**: Real-time video sharing to VJ software (macOS only)
+- **Core Image**: Zero-copy CIFilter integration with 30+ presets
+- **MPS Ray Tracing**: Ambient occlusion, shadow, diffuse via Metal Performance Shaders
+- **Noise**: 8 noise types via GameplayKit (Perlin, simplex, Voronoi, etc.)
+- **Export**: H.264 video, GIF, and frame sequence export
+- **Tweens**: 30 easing functions with chainable animations
 
 ---
 
@@ -240,13 +219,30 @@ make setup
 ```bash
 make setup      # Initialize submodules + build Syphon.xcframework
 make build      # Build the library
-make test       # Run tests
+make test       # Run tests (~500 tests across 4 test targets)
 make clean      # Clean build artifacts
 make check      # Check setup status
+make docs       # Build DocC documentation
 ```
 
+### Project Structure
 
-### How It Works
+```
+Sources/
+  MetaphorCore/       Core rendering engine (Metal, 2D/3D drawing, shaders, etc.)
+  MetaphorAudio/      Standalone audio module (FFT, beat detection, playback)
+  MetaphorNetwork/    Standalone network module (OSC, MIDI)
+  MetaphorPhysics/    Standalone physics module (2D Verlet, spatial hashing)
+  metaphor/           Umbrella target (re-exports + bridge extensions)
+
+Tests/
+  metaphorTests/          Core integration tests
+  MetaphorAudioTests/     Audio module tests
+  MetaphorNetworkTests/   Network module tests
+  MetaphorPhysicsTests/   Physics module tests
+```
+
+### How Syphon Works
 
 - **Local development**: When `Frameworks/Syphon.xcframework` exists, Package.swift uses the local path.
 - **SPM users**: When the framework doesn't exist, Package.swift fetches the pre-built XCFramework from GitHub Releases.
