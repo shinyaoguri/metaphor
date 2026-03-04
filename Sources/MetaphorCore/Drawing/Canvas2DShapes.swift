@@ -471,13 +471,14 @@ extension Canvas2D {
     ///   - y: The y-coordinate of the point.
     public func point(_ x: Float, _ y: Float) {
         let r = currentStrokeWeight * 0.5
-        let saved = (hasFill, fillColor, hasStroke)
-        hasFill = true
-        fillColor = strokeColor
-        hasStroke = false
-        ellipse(x, y, r * 2, r * 2)
-        hasFill = saved.0
-        fillColor = saved.1
-        hasStroke = saved.2
+        let color = strokeColor
+        // Draw as a simple quad (6 vertices) for efficiency.
+        // Avoids the ellipse/instancing path which is too heavy for pixel-level usage.
+        addVertex(x - r, y - r, color)
+        addVertex(x + r, y - r, color)
+        addVertex(x + r, y + r, color)
+        addVertex(x - r, y - r, color)
+        addVertex(x + r, y + r, color)
+        addVertex(x - r, y + r, color)
     }
 }

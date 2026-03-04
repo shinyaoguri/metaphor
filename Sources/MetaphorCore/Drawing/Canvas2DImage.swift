@@ -81,7 +81,9 @@ extension Canvas2D {
         // Check for buffer overflow
         if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
             flushTexturedVertices()
-            texturedBufferOffset = 0
+            if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
+                return
+            }
         }
 
         let tw = Float(texture.width)
@@ -137,7 +139,9 @@ extension Canvas2D {
         // Check for buffer overflow
         if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
             flushTexturedVertices()
-            texturedBufferOffset = 0
+            if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
+                return
+            }
         }
 
         let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)

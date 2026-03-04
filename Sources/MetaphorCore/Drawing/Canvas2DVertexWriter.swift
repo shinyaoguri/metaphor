@@ -19,11 +19,15 @@ extension Canvas2D {
         }
         if bufferOffset + vertexCount >= maxVertices {
             flushColorVertices()
-            bufferOffset = 0
+            // After flush, bufferOffset has advanced past maxVertices.
+            // Cannot safely reuse buffer[0..] within the same frame because
+            // already-encoded GPU draw calls reference that data.
+            // Drop excess vertices to prevent data corruption.
+            if bufferOffset + vertexCount >= maxVertices {
+                return
+            }
         }
         let writeIndex = bufferOffset + vertexCount
-        precondition(writeIndex < maxVertices,
-                     "[metaphor] Vertex buffer overflow: \(writeIndex) >= \(maxVertices)")
         let p = currentTransform * SIMD3<Float>(x, y, 1)
         vertices[writeIndex] = Vertex2D(
             posX: p.x, posY: p.y,
@@ -43,11 +47,11 @@ extension Canvas2D {
         }
         if bufferOffset + vertexCount >= maxVertices {
             flushColorVertices()
-            bufferOffset = 0
+            if bufferOffset + vertexCount >= maxVertices {
+                return
+            }
         }
         let writeIndex = bufferOffset + vertexCount
-        precondition(writeIndex < maxVertices,
-                     "[metaphor] Vertex buffer overflow: \(writeIndex) >= \(maxVertices)")
         vertices[writeIndex] = Vertex2D(
             posX: x, posY: y,
             r: color.x, g: color.y, b: color.z, a: color.w

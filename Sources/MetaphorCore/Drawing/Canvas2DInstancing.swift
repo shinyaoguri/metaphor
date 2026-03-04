@@ -116,8 +116,13 @@ final class InstanceBatcher2D {
         transform: float4x4,
         color: SIMD4<Float>
     ) -> Bool {
+        // Bounds check must run unconditionally to prevent buffer overflow
+        if (frameOffset + instanceCount) >= Self.maxInstancesPerBatch {
+            return false
+        }
+
         if let currentKey = currentBatchKey {
-            if currentKey != key || (frameOffset + instanceCount) >= Self.maxInstancesPerBatch {
+            if currentKey != key {
                 return false
             }
         } else {

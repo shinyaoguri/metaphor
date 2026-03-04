@@ -80,7 +80,7 @@ public final class Canvas2D {
 
     // MARK: - Constants
 
-    let maxVertices: Int = 131072
+    let maxVertices: Int = 786432
     let ellipseSegments: Int = 32
 
     // MARK: - Per-frame State
@@ -843,7 +843,38 @@ public final class Canvas2D {
 
         if !instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor) {
             flushInstancedBatch()
-            let _ = instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor)
+            if !instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor) {
+                // Instance buffer exhausted for this frame — fall back to color vertices
+                addShapeFallback(shapeType, cx: cx, cy: cy, sx: sx, sy: sy)
+            }
+        }
+    }
+
+    /// Fallback: draw a shape as non-instanced color vertices when instance buffer is full.
+    private func addShapeFallback(_ shapeType: Shape2DType, cx: Float, cy: Float, sx: Float, sy: Float) {
+        let color = fillColor
+        switch shapeType {
+        case .ellipse:
+            let segments = 16
+            let step = Float.pi * 2.0 / Float(segments)
+            let rx = sx * 0.5
+            let ry = sy * 0.5
+            for i in 0..<segments {
+                let a0 = step * Float(i)
+                let a1 = step * Float(i + 1)
+                addVertex(cx, cy, color)
+                addVertex(cx + rx * cos(a0), cy + ry * sin(a0), color)
+                addVertex(cx + rx * cos(a1), cy + ry * sin(a1), color)
+            }
+        case .rect:
+            let hx = sx * 0.5
+            let hy = sy * 0.5
+            addVertex(cx - hx, cy - hy, color)
+            addVertex(cx + hx, cy - hy, color)
+            addVertex(cx + hx, cy + hy, color)
+            addVertex(cx - hx, cy - hy, color)
+            addVertex(cx + hx, cy + hy, color)
+            addVertex(cx - hx, cy + hy, color)
         }
     }
 
