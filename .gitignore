@@ -104,3 +104,6 @@ Temporary Items
 
 # Sandbox (local experiments, not tracked)
 sandbox/
+
+# Generated reports
+examples-report.md
