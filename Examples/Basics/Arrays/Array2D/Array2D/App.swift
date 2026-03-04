@@ -4,7 +4,7 @@ import metaphor
 final class Array2D: Sketch {
     var distances: [[Float]] = []
     let spacer = 10
-    var config: SketchConfig { SketchConfig(title: "Array 2D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Array 2D") }
     func setup() {
         let maxDist = dist(width / 2, height / 2, width, height)
         distances = (0..<Int(width)).map { x in

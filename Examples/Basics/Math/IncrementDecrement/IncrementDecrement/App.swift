@@ -3,7 +3,7 @@ import metaphor
 @main
 final class IncrementDecrement: Sketch {
     var a: Float = 0; var b: Float = 0; var direction = true
-    var config: SketchConfig { SketchConfig(title: "Increment Decrement", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Increment Decrement") }
     func setup() { colorMode(.rgb, width); b = width; frameRate(30) }
     func draw() {
         a += 1

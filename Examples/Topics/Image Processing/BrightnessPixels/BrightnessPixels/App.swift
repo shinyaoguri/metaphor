@@ -3,7 +3,7 @@ import metaphor
 @main
 final class BrightnessPixels: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "BrightnessPixels", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "BrightnessPixels")
     }
 
     var srcImg: MImage!

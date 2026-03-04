@@ -7,7 +7,7 @@ final class Constrain: Sketch {
     let easing: Float = 0.05
     let radius: Float = 24
     let edge: Float = 100
-    var config: SketchConfig { SketchConfig(title: "Constrain", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Constrain") }
     func setup() {
         noStroke()
         ellipseMode(.radius)

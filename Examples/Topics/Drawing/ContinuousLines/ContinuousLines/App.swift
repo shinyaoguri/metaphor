@@ -3,7 +3,7 @@ import metaphor
 @main
 final class ContinuousLines: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Continuous Lines", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Continuous Lines")
     }
 
     func setup() {

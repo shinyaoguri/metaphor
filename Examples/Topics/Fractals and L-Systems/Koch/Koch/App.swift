@@ -39,7 +39,7 @@ struct KochLine {
 @main
 final class Koch: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Koch", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Koch")
     }
 
     var lines: [KochLine] = []

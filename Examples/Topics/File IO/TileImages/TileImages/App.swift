@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TileImages: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TileImages", width: 600, height: 600)
+        SketchConfig(width: 600, height: 600, title: "TileImages")
     }
 
     let scaleValue: Int = 3

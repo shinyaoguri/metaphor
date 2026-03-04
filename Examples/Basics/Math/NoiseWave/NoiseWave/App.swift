@@ -3,7 +3,7 @@ import metaphor
 @main
 final class NoiseWave: Sketch {
     var yoff: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Noise Wave", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Noise Wave") }
     func draw() {
         background(51)
         fill(255)

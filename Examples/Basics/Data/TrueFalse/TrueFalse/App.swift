@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class TrueFalse: Sketch {
-    var config: SketchConfig { SketchConfig(title: "True/False", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "True/False") }
     func setup() { noLoop() }
     func draw() {
         background(0)

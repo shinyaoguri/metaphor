@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Mandelbrot: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Mandelbrot", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Mandelbrot")
     }
 
     var img: MImage!

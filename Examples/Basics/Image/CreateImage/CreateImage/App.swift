@@ -3,7 +3,7 @@ import metaphor
 @main
 final class CreateImage: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Create Image", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Create Image")
     }
 
     var img: MImage?

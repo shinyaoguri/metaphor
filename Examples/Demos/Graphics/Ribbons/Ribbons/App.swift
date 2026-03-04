@@ -7,7 +7,7 @@ import metaphor
 @main
 final class Ribbons: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Ribbons (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Ribbons (Stub)")
     }
 
     func setup() {

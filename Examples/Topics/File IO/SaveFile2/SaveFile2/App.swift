@@ -3,7 +3,7 @@ import metaphor
 @main
 final class SaveFile2: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "SaveFile2", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "SaveFile2")
     }
 
     var positions: [(Int, Int)] = []

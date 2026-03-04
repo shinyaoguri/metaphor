@@ -7,7 +7,7 @@ import metaphor
 @main
 final class GetChild: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "GetChild (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "GetChild (Stub)")
     }
 
     func setup() { noLoop() }

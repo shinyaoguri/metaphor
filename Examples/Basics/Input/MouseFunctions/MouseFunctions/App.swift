@@ -9,7 +9,7 @@ final class MouseFunctions: Sketch {
     var locked = false
     var xOffset: Float = 0
     var yOffset: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Mouse Functions", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Mouse Functions") }
     func setup() {
         bx = width / 2
         by = height / 2

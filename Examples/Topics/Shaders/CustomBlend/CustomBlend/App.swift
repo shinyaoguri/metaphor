@@ -6,7 +6,7 @@ import metaphor
 @main
 final class CustomBlend: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "CustomBlend", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "CustomBlend")
     }
 
     var destImg: MImage!
@@ -53,8 +53,8 @@ final class CustomBlend: Sketch {
     }
 
     func blendImages(_ mode: String) -> MImage {
-        let w = destImg.width, h = destImg.height
-        let result = createImage(w, h)
+        let w = Int(destImg.width), h = Int(destImg.height)
+        let result = createImage(w, h)!
         destImg.loadPixels()
         srcImg.loadPixels()
         result.loadPixels()

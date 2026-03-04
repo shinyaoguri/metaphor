@@ -7,7 +7,7 @@ import metaphor
 @main
 final class ShapeVertices: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "ShapeVertices (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "ShapeVertices (Stub)")
     }
 
     func setup() { noLoop() }

@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class OperatorPrecedence: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Operator Precedence", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Operator Precedence") }
     func setup() { noLoop() }
     func draw() {
         background(51)

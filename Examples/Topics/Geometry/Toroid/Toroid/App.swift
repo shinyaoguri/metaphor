@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Toroid: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Toroid", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Toroid")
     }
 
     var pts = 40
@@ -82,10 +82,10 @@ final class Toroid: Sketch {
     }
 
     func keyPressed() {
-        if keyCode == .upArrow && pts < 40 { pts += 1 }
-        if keyCode == .downArrow && pts > 3 { pts -= 1 }
-        if keyCode == .leftArrow && segments > 3 { segments -= 1 }
-        if keyCode == .rightArrow && segments < 80 { segments += 1 }
+        if keyCode == 126 && pts < 40 { pts += 1 }       // up arrow
+        if keyCode == 125 && pts > 3 { pts -= 1 }        // down arrow
+        if keyCode == 123 && segments > 3 { segments -= 1 } // left arrow
+        if keyCode == 124 && segments < 80 { segments += 1 } // right arrow
         if key == "a" && latheRadius > 0 { latheRadius -= 1 }
         if key == "s" { latheRadius += 1 }
         if key == "z" && radius > 10 { radius -= 1 }

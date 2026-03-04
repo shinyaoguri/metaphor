@@ -3,7 +3,7 @@ import metaphor
 @main
 final class DepthSort: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "DepthSort", width: 640, height: 720)
+        SketchConfig(width: 640, height: 720, title: "DepthSort")
     }
 
     func setup() {
@@ -23,17 +23,17 @@ final class DepthSort: Sketch {
         rotateX(radians(rot / 60.0 * 10))
         rotateY(radians(rot / 60.0 * 30))
 
-        blendMode(.add)
+        blendMode(.additive)
 
         for i in 0..<100 {
             let hue = map(Float(i % 10), 0, 10, 0, 100)
             fill(hue, 100, 100, 30)
 
-            beginShape(.triangles)
+            beginShape3D(.triangles)
             vertex(200, 50, -50)
             vertex(100, 100, 50)
             vertex(100, 0, 20)
-            endShape()
+            endShape3D()
 
             rotateY(radians(270.0 / 100))
         }

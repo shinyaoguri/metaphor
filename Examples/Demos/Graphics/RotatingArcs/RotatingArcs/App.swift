@@ -3,7 +3,7 @@ import metaphor
 @main
 final class RotatingArcs: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "RotatingArcs", width: 1024, height: 768)
+        SketchConfig(width: 1024, height: 768, title: "RotatingArcs")
     }
 
     let COUNT = 150

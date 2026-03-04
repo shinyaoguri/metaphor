@@ -3,7 +3,7 @@ import metaphor
 @main
 final class QuadRendering: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "QuadRendering", width: 800, height: 600)
+        SketchConfig(width: 800, height: 600, title: "QuadRendering")
     }
 
     func setup() {

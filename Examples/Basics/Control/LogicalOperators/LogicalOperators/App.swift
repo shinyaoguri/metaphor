@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class LogicalOperators: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Logical Operators", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Logical Operators") }
     func setup() { noLoop() }
     func draw() {
         background(126)

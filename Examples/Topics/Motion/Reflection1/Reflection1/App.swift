@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Reflection1: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Reflection 1", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Reflection 1")
     }
 
     var base1x: Float = 0, base1y: Float = 0

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class LinearImage: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LinearImage", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LinearImage")
     }
 
     var img: MImage!

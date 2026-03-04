@@ -4,7 +4,7 @@ let package = Package(
     name: "TessUpdate",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(name: "metaphor", path: "../../.."),
+        .package(name: "metaphor", path: "../../../.."),
     ],
     targets: [
         .executableTarget(

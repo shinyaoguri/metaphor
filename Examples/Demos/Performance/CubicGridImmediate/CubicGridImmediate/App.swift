@@ -3,7 +3,7 @@ import metaphor
 @main
 final class CubicGridImmediate: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "CubicGridImmediate", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "CubicGridImmediate")
     }
 
     let boxSize: Float = 20

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextureCube: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TextureCube", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "TextureCube")
     }
 
     var tex: MImage!
@@ -47,28 +47,28 @@ final class TextureCube: Sketch {
         texture(tex)
 
         // +Z front face (2 triangles per quad)
-        vertex(-1, -1, 1, 0, 0); vertex(1, -1, 1, 1, 0); vertex(1, 1, 1, 1, 1)
-        vertex(-1, -1, 1, 0, 0); vertex(1, 1, 1, 1, 1); vertex(-1, 1, 1, 0, 1)
+        vertex(-1, -1, 1); vertex(1, -1, 1); vertex(1, 1, 1)
+        vertex(-1, -1, 1); vertex(1, 1, 1); vertex(-1, 1, 1)
 
         // -Z back face
-        vertex(1, -1, -1, 0, 0); vertex(-1, -1, -1, 1, 0); vertex(-1, 1, -1, 1, 1)
-        vertex(1, -1, -1, 0, 0); vertex(-1, 1, -1, 1, 1); vertex(1, 1, -1, 0, 1)
+        vertex(1, -1, -1); vertex(-1, -1, -1); vertex(-1, 1, -1)
+        vertex(1, -1, -1); vertex(-1, 1, -1); vertex(1, 1, -1)
 
         // +Y bottom face
-        vertex(-1, 1, 1, 0, 0); vertex(1, 1, 1, 1, 0); vertex(1, 1, -1, 1, 1)
-        vertex(-1, 1, 1, 0, 0); vertex(1, 1, -1, 1, 1); vertex(-1, 1, -1, 0, 1)
+        vertex(-1, 1, 1); vertex(1, 1, 1); vertex(1, 1, -1)
+        vertex(-1, 1, 1); vertex(1, 1, -1); vertex(-1, 1, -1)
 
         // -Y top face
-        vertex(-1, -1, -1, 0, 0); vertex(1, -1, -1, 1, 0); vertex(1, -1, 1, 1, 1)
-        vertex(-1, -1, -1, 0, 0); vertex(1, -1, 1, 1, 1); vertex(-1, -1, 1, 0, 1)
+        vertex(-1, -1, -1); vertex(1, -1, -1); vertex(1, -1, 1)
+        vertex(-1, -1, -1); vertex(1, -1, 1); vertex(-1, -1, 1)
 
         // +X right face
-        vertex(1, -1, 1, 0, 0); vertex(1, -1, -1, 1, 0); vertex(1, 1, -1, 1, 1)
-        vertex(1, -1, 1, 0, 0); vertex(1, 1, -1, 1, 1); vertex(1, 1, 1, 0, 1)
+        vertex(1, -1, 1); vertex(1, -1, -1); vertex(1, 1, -1)
+        vertex(1, -1, 1); vertex(1, 1, -1); vertex(1, 1, 1)
 
         // -X left face
-        vertex(-1, -1, -1, 0, 0); vertex(-1, -1, 1, 1, 0); vertex(-1, 1, 1, 1, 1)
-        vertex(-1, -1, -1, 0, 0); vertex(-1, 1, 1, 1, 1); vertex(-1, 1, -1, 0, 1)
+        vertex(-1, -1, -1); vertex(-1, -1, 1); vertex(-1, 1, 1)
+        vertex(-1, -1, -1); vertex(-1, 1, 1); vertex(-1, 1, -1)
 
         endShape()
     }

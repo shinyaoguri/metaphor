@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextRotation: Sketch {
     var angleRotate: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Text Rotation", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Text Rotation") }
     func setup() {
         background(0)
         textFont("Menlo")

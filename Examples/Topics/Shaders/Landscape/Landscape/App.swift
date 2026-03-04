@@ -6,7 +6,7 @@ import metaphor
 @main
 final class Landscape: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Landscape", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Landscape")
     }
 
     func setup() {

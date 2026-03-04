@@ -3,7 +3,7 @@ import metaphor
 @main
 final class CountingStrings: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "CountingStrings", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "CountingStrings")
     }
 
     var concordance: [String: Int] = [:]

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class BeginEndContour: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "BeginEndContour", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "BeginEndContour")
     }
 
     var angle: Float = 0

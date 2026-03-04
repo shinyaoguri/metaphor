@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextureTriangle: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TextureTriangle", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "TextureTriangle")
     }
 
     var img: MImage!
@@ -32,9 +32,9 @@ final class TextureTriangle: Sketch {
 
         beginShape(.triangles)
         texture(img)
-        vertex(-100, -100, 0, 0, 0)
-        vertex(100, -40, 0, 300, 120)
-        vertex(0, 100, 0, 200, 400)
+        vertex(-100, -100, 0)
+        vertex(100, -40, 0)
+        vertex(0, 100, 0)
         endShape()
     }
 }

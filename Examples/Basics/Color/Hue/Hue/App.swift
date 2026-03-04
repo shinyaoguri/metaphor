@@ -4,7 +4,7 @@ import metaphor
 final class Hue: Sketch {
     var barWidth: Float = 20
     var lastBar: Int = -1
-    var config: SketchConfig { SketchConfig(title: "Hue", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Hue") }
     func setup() {
         colorMode(.hsb, height, height, height)
         noStroke()

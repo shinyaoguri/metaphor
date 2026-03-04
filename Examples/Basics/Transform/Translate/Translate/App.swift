@@ -4,7 +4,7 @@ import metaphor
 final class Translate: Sketch {
     var x: Float = 0
     let dim: Float = 80
-    var config: SketchConfig { SketchConfig(title: "Translate", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Translate") }
     func setup() { noStroke() }
     func draw() {
         background(102)

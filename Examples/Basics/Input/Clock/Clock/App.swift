@@ -9,7 +9,7 @@ final class Clock: Sketch {
     var minutesRadius: Float = 0
     var hoursRadius: Float = 0
     var clockDiameter: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Clock", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Clock") }
     func setup() {
         stroke(255)
         let radius = min(width, height) / 2

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Transparency: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Transparency", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Transparency")
     }
 
     var img: MImage?

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Follow2: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Follow 2", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Follow 2")
     }
 
     var x: [Float] = [0, 0]

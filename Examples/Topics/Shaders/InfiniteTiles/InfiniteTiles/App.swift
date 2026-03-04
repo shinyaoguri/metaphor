@@ -6,7 +6,7 @@ import metaphor
 @main
 final class InfiniteTiles: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "InfiniteTiles", width: 640, height: 480)
+        SketchConfig(width: 640, height: 480, title: "InfiniteTiles")
     }
 
     var tileImg: MImage!

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class OffscreenTest: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "OffscreenTest", width: 400, height: 400)
+        SketchConfig(width: 400, height: 400, title: "OffscreenTest")
     }
 
     var offscreen: MImage!

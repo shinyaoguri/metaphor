@@ -3,7 +3,7 @@ import metaphor
 @main
 final class MovingOnCurves: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Moving On Curves", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Moving On Curves")
     }
 
     var beginX: Float = 20, beginY: Float = 10

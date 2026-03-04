@@ -3,7 +3,7 @@ import metaphor
 @main
 final class PenroseTile: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "PenroseTile", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "PenroseTile")
     }
 
     var production = ""

@@ -6,7 +6,7 @@ final class SineWave: Sketch {
     var w: Float = 0; var theta: Float = 0
     let amplitude: Float = 75; let period: Float = 500
     var dx: Float = 0; var yvalues: [Float] = []
-    var config: SketchConfig { SketchConfig(title: "Sine Wave", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Sine Wave") }
     func setup() {
         w = width + 16
         dx = (Float.pi * 2 / period) * xspacing

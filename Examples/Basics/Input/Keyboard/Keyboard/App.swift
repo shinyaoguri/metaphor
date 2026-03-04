@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Keyboard: Sketch {
     var rectW: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Keyboard", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Keyboard") }
     func setup() {
         noStroke()
         background(0)
@@ -11,7 +11,7 @@ final class Keyboard: Sketch {
     }
     func draw() {}
     func keyPressed() {
-        let k = key
+        guard let k = key else { return }
         var keyIndex = -1
         if k >= "A" && k <= "Z" {
             keyIndex = Int(k.asciiValue! - Character("A").asciiValue!)

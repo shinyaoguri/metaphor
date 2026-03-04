@@ -3,7 +3,7 @@ import metaphor
 @main
 final class AccelerationWithVectors: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Acceleration With Vectors", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Acceleration With Vectors")
     }
 
     var locX: Float = 0, locY: Float = 0

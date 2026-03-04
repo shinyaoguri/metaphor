@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Bounce: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Bounce", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Bounce")
     }
 
     let rad: Float = 60

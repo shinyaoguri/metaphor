@@ -6,7 +6,7 @@ import AppKit
 @main
 final class EmbeddedLinks: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Embedded Links", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Embedded Links")
     }
 
     var overButton = false

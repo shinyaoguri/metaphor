@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Alphamask: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Alpha Mask", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Alpha Mask")
     }
 
     var img: MImage?

@@ -6,7 +6,7 @@ import metaphor
 @main
 final class EdgeDetect: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "EdgeDetect", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "EdgeDetect")
     }
 
     var img: MImage!

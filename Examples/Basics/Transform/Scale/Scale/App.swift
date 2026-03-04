@@ -4,7 +4,7 @@ import metaphor
 final class Scale: Sketch {
     var a: Float = 0
     var s: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Scale", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Scale") }
     func setup() {
         noStroke()
         rectMode(.center)

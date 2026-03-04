@@ -9,7 +9,7 @@ struct FMover {
 
 @main
 final class ForcesWithVectors: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Forces With Vectors", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Forces With Vectors") }
 
     var movers: [FMover] = []
     let liquidY: Float = 180

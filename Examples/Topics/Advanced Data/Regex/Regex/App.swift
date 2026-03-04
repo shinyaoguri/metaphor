@@ -4,7 +4,7 @@ import Foundation
 @main
 final class Regex: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Regex", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Regex")
     }
 
     var links: [String] = []

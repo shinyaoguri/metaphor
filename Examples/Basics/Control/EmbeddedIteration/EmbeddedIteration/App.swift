@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class EmbeddedIteration: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Embedding Iteration", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Embedding Iteration") }
     func setup() { noLoop() }
     func draw() {
         background(0)

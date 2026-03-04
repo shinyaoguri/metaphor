@@ -11,7 +11,7 @@ struct BBall {
 @main
 final class BouncyBubbles: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Bouncy Bubbles", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Bouncy Bubbles")
     }
 
     let numBalls = 12

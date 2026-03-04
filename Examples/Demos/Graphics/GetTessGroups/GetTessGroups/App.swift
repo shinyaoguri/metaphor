@@ -7,7 +7,7 @@ import metaphor
 @main
 final class GetTessGroups: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "GetTessGroups (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "GetTessGroups (Stub)")
     }
 
     func setup() {

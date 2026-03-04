@@ -4,7 +4,7 @@ import metaphor
 final class Noise1D: Sketch {
     var xoff: Float = 0
     let xincrement: Float = 0.01
-    var config: SketchConfig { SketchConfig(title: "Noise 1D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Noise 1D") }
     func setup() { background(0); noStroke() }
     func draw() {
         fill(0, 10); rect(0, 0, width, height)

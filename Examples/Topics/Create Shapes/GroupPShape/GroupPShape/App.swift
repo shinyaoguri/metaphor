@@ -7,7 +7,7 @@ import metaphor
 @main
 final class GroupPShape: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "GroupPShape (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "GroupPShape (Stub)")
     }
 
     func setup() {

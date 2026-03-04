@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Functions: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Functions", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Functions") }
     func setup() {
         background(51)
         noStroke()

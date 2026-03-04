@@ -4,13 +4,13 @@ import metaphor
 final class LinearGradient: Sketch {
     let Y_AXIS = 1
     let X_AXIS = 2
-    var config: SketchConfig { SketchConfig(title: "Linear Gradient", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Linear Gradient") }
     func setup() { noLoop() }
     func draw() {
         let b1 = Color.white
         let b2 = Color.black
-        let c1 = Color(204.0/255, 102.0/255, 0)
-        let c2 = Color(0, 102.0/255, 153.0/255)
+        let c1 = Color(r: 204.0/255, g: 102.0/255, b: 0)
+        let c2 = Color(r: 0, g: 102.0/255, b: 153.0/255)
         setGradient(0, 0, width / 2, height, b1, b2, X_AXIS)
         setGradient(width / 2, 0, width / 2, height, b2, b1, X_AXIS)
         setGradient(50, 90, 540, 80, c1, c2, Y_AXIS)

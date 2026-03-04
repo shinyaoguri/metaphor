@@ -7,7 +7,7 @@ import metaphor
 @main
 final class PathPShape: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "PathPShape (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "PathPShape (Stub)")
     }
 
     func setup() {

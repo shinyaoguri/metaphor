@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Map: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Map", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Map") }
     func setup() { noStroke() }
     func draw() {
         background(0)

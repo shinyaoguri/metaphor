@@ -5,7 +5,7 @@ final class MouseSignals: Sketch {
     var xvals: [Float] = []
     var yvals: [Float] = []
     var bvals: [Float] = []
-    var config: SketchConfig { SketchConfig(title: "Mouse Signals", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Mouse Signals") }
     func setup() {
         xvals = [Float](repeating: 0, count: Int(width))
         yvals = [Float](repeating: 0, count: Int(width))

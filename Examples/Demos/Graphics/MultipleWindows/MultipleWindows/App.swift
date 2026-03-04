@@ -7,7 +7,7 @@ import metaphor
 @main
 final class MultipleWindows: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "MultipleWindows (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "MultipleWindows (Stub)")
     }
 
     func setup() {

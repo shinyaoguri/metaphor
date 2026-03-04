@@ -5,7 +5,7 @@ import metaphor
 @main
 final class XMLYahooWeather: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "XMLYahooWeather (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "XMLYahooWeather (Stub)")
     }
     func setup() { noLoop() }
     func draw() {

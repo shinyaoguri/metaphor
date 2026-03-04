@@ -31,7 +31,7 @@ struct HScrollbar {
 
 @main
 final class Scrollbar: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Scrollbar", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Scrollbar") }
 
     var hs1: HScrollbar?
     var hs2: HScrollbar?

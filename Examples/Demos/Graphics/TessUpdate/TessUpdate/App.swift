@@ -7,7 +7,7 @@ import metaphor
 @main
 final class TessUpdate: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TessUpdate (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "TessUpdate (Stub)")
     }
 
     func setup() {

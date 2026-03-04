@@ -4,7 +4,7 @@ import metaphor
 final class Saturation: Sketch {
     var barWidth: Float = 20
     var lastBar: Int = -1
-    var config: SketchConfig { SketchConfig(title: "Saturation", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Saturation") }
     func setup() {
         colorMode(.hsb, width, height, 100)
         noStroke()

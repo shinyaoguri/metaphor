@@ -26,7 +26,7 @@ class EggRing {
 @main
 final class CompositeObjects: Sketch {
     var er1: EggRing!; var er2: EggRing!
-    var config: SketchConfig { SketchConfig(title: "Composite Objects", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Composite Objects") }
     func setup() {
         er1 = EggRing(width * 0.45, height * 0.5, 2, 120)
         er2 = EggRing(width * 0.65, height * 0.8, 10, 180)

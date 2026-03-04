@@ -31,7 +31,7 @@ struct WordItem {
 @main
 final class HashMapClass: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "HashMapClass", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "HashMapClass")
     }
 
     var words: [String: WordItem] = [:]

@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Conditionals2: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Conditionals 2", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Conditionals 2") }
     func setup() { noLoop() }
     func draw() {
         background(0)

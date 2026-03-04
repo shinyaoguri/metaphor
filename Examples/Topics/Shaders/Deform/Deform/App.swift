@@ -6,7 +6,7 @@ import metaphor
 @main
 final class Deform: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Deform", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Deform")
     }
 
     var tex: MImage!
@@ -37,7 +37,7 @@ final class Deform: Sketch {
     }
 
     func draw() {
-        let w = displayImg.width, h = displayImg.height
+        let w = Int(displayImg.width), h = Int(displayImg.height)
         let t = Float(millis()) / 1000.0
         let mx = mouseX / width
         let my = mouseY / height

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Sine: Sketch {
     var diameter: Float = 0; var angle: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Sine", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Sine") }
     func setup() { diameter = height - 10; noStroke(); fill(255, 204, 0) }
     func draw() {
         background(0)

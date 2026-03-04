@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Histogram: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Histogram", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Histogram")
     }
 
     func setup() {
@@ -14,7 +14,7 @@ final class Histogram: Sketch {
         let w = Int(width), h = Int(height)
 
         // Generate image
-        let img = createImage(w, h)
+        guard let img = createImage(w, h) else { return }
         img.loadPixels()
         for y in 0..<h {
             for x in 0..<w {

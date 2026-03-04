@@ -3,7 +3,7 @@ import metaphor
 @main
 final class PieChart: Sketch {
     let angles: [Float] = [30, 10, 45, 35, 60, 38, 75, 67]
-    var config: SketchConfig { SketchConfig(title: "Pie Chart", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Pie Chart") }
     func setup() {
         noStroke()
         noLoop()

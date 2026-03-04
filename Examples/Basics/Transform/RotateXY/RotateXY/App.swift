@@ -4,7 +4,7 @@ import metaphor
 final class RotateXY: Sketch {
     var a: Float = 0
     var rSize: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Rotate XY", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Rotate XY") }
     func setup() {
         rSize = width / 6
         noStroke()
@@ -14,7 +14,7 @@ final class RotateXY: Sketch {
         background(126)
         a += 0.005
         if a > Float.pi * 2 { a = 0 }
-        translate3D(width / 2, height / 2, 0)
+        translate(width / 2, height / 2, 0)
         rotateX(a)
         rotateY(a * 2)
         fill(255)

@@ -7,7 +7,7 @@ import metaphor
 @main
 final class Trefoil: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Trefoil (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Trefoil (Stub)")
     }
 
     func setup() {

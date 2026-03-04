@@ -3,7 +3,7 @@ import metaphor
 @main
 final class RedrawTest: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "RedrawTest", width: 400, height: 400)
+        SketchConfig(width: 400, height: 400, title: "RedrawTest")
     }
 
     func setup() {

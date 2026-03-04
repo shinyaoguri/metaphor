@@ -6,7 +6,7 @@ import metaphor
 @main
 final class ToonShading: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "ToonShading", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "ToonShading")
     }
 
     var shaderEnabled = true
@@ -20,7 +20,7 @@ final class ToonShading: Sketch {
 
         let dirY = (mouseY / height - 0.5) * 2
         let dirX = (mouseX / width - 0.5) * 2
-        directionalLight(204, 204, 204, -dirX, -dirY, -1)
+        directionalLight(-dirX, -dirY, -1, color: Color(gray: 204.0/255))
 
         translate(width / 2, height / 2)
 

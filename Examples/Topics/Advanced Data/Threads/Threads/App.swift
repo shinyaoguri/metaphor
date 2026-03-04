@@ -4,7 +4,7 @@ import Foundation
 @main
 final class Threads: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Threads", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Threads")
     }
 
     var finished = false
@@ -75,7 +75,7 @@ final class Threads: Sketch {
 
             for i in 0..<sampleTexts.count {
                 // Simulate processing delay
-                Thread.sleep(forTimeInterval: 0.15)
+                try? await Task.sleep(for: .milliseconds(150))
 
                 let words = sampleTexts[i].split(separator: " ").map { String($0).lowercased() }
                 allWords.append(contentsOf: words)

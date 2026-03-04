@@ -9,7 +9,7 @@ class SpotShape {
 @main
 final class MultipleConstructors: Sketch {
     var sp1: SpotShape!; var sp2: SpotShape!
-    var config: SketchConfig { SketchConfig(title: "Multiple Constructors", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Multiple Constructors") }
     func setup() {
         background(204)
         noLoop()

@@ -16,7 +16,7 @@ class MRect {
 @main
 final class Objects: Sketch {
     var r1: MRect!; var r2: MRect!; var r3: MRect!; var r4: MRect!
-    var config: SketchConfig { SketchConfig(title: "Objects", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Objects") }
     func setup() {
         fill(255, 204); noStroke()
         r1 = MRect(1, 134, 0.532, 0.1 * height, 10, 60)

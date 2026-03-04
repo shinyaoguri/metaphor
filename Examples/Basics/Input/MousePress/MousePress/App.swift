@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class MousePress: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Mouse Press", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Mouse Press") }
     func setup() {
         fill(126)
         background(102)

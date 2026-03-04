@@ -3,7 +3,7 @@ import metaphor
 @main
 final class RadialGradient: Sketch {
     var dim: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Radial Gradient", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Radial Gradient") }
     func setup() {
         dim = width / 2
         background(0)

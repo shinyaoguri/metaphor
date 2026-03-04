@@ -5,7 +5,7 @@ import metaphor
 @main
 final class LoadSaveTable: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LoadSaveTable (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LoadSaveTable (Stub)")
     }
     func setup() { noLoop() }
     func draw() {

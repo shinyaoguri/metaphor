@@ -7,7 +7,7 @@ import metaphor
 @main
 final class LoadDisplaySVG: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LoadDisplaySVG (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LoadDisplaySVG (Stub)")
     }
 
     func setup() { noLoop() }

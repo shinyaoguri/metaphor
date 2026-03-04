@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Bezier: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Bezier", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Bezier") }
     func setup() {
         stroke(255)
         noFill()

@@ -106,7 +106,7 @@ struct BezierCurve {
 @main
 final class ArcLengthParametrization: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "ArcLengthParametrization", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "ArcLengthParametrization")
     }
 
     var curve: BezierCurve!

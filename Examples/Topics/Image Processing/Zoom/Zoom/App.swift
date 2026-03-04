@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Zoom: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Zoom", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Zoom")
     }
 
     var imgPixels: [[UInt32]] = []
@@ -20,7 +20,7 @@ final class Zoom: Sketch {
 
         imgW = 200
         imgH = 150
-        let img = createImage(imgW, imgH)
+        guard let img = createImage(imgW, imgH) else { return }
         img.loadPixels()
         imgPixels = Array(repeating: Array(repeating: 0, count: imgH), count: imgW)
 
@@ -69,7 +69,9 @@ final class Zoom: Sketch {
                 let bb = Float(packed & 0xFF)
                 let tt = rr + gg + bb
                 stroke(rr, gg, bb)
-                line(Float(i), Float(j), tt / 10 - 20, Float(i), Float(j), tt / 10)
+                beginShape3D(.lines)
+                vertex(Float(i), Float(j), tt / 10 - 20); vertex(Float(i), Float(j), tt / 10)
+                endShape3D()
             }
         }
     }

@@ -6,7 +6,7 @@ import metaphor
 @main
 final class Monjori: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Monjori", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Monjori")
     }
 
     var img: MImage!
@@ -18,7 +18,7 @@ final class Monjori: Sketch {
     }
 
     func draw() {
-        let w = img.width, h = img.height
+        let w = Int(img.width), h = Int(img.height)
         let t = Float(millis()) / 1000.0
 
         img.loadPixels()

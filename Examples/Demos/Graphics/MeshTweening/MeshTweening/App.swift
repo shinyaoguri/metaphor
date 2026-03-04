@@ -7,7 +7,7 @@ import metaphor
 @main
 final class MeshTweening: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "MeshTweening (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "MeshTweening (Stub)")
     }
 
     func setup() {

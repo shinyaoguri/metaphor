@@ -5,7 +5,7 @@ final class Arm: Sketch {
     var x: Float = 0
     var y: Float = 0
     let segLength: Float = 100
-    var config: SketchConfig { SketchConfig(title: "Arm", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Arm") }
     func setup() {
         strokeWeight(30)
         stroke(255, 160)

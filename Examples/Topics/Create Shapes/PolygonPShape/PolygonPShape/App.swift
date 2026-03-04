@@ -7,7 +7,7 @@ import metaphor
 @main
 final class PolygonPShape: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "PolygonPShape (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "PolygonPShape (Stub)")
     }
 
     func setup() {

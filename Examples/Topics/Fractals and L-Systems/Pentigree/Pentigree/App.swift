@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Pentigree: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Pentigree", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Pentigree")
     }
 
     var production = ""

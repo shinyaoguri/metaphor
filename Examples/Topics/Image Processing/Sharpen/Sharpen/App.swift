@@ -3,18 +3,19 @@ import metaphor
 @main
 final class Sharpen: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Sharpen", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Sharpen")
     }
 
     var img: MImage!
 
     func setup() {
         noLoop()
-        img = generateTestImage(Int(width) / 2, Int(height))
+        guard let generated = generateTestImage(Int(width) / 2, Int(height)) else { return }
+        img = generated
     }
 
-    func generateTestImage(_ w: Int, _ h: Int) -> MImage {
-        let img = createImage(w, h)
+    func generateTestImage(_ w: Int, _ h: Int) -> MImage? {
+        guard let img = createImage(w, h) else { return nil }
         img.loadPixels()
         for y in 0..<h {
             for x in 0..<w {
@@ -26,8 +27,10 @@ final class Sharpen: Sketch {
                 let base = (1.0 - d * 2) * 200 + sin(nx * 20) * 30 + cos(ny * 15) * 20
                 let v = UInt8(max(0, min(255, Int(base))))
                 img.pixels[idx] = v
-                img.pixels[idx + 1] = UInt8(max(0, min(255, Int(Float(v) * 0.8 + ny * 50))))
-                img.pixels[idx + 2] = UInt8(max(0, min(255, Int(Float(v) * 0.6 + nx * 80))))
+                let greenVal = Float(v) * 0.8 + ny * 50
+                img.pixels[idx + 1] = UInt8(max(0, min(255, Int(greenVal))))
+                let blueVal = Float(v) * 0.6 + nx * 80
+                img.pixels[idx + 2] = UInt8(max(0, min(255, Int(blueVal))))
                 img.pixels[idx + 3] = 255
             }
         }
@@ -42,8 +45,8 @@ final class Sharpen: Sketch {
         let kernel: [[Float]] = [[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]
 
         img.loadPixels()
-        let w = img.width, h = img.height
-        let sharpImg = createImage(w, h)
+        let w = Int(img.width), h = Int(img.height)
+        guard let sharpImg = createImage(w, h) else { return }
         sharpImg.loadPixels()
 
         for y in 1..<(h - 1) {

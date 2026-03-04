@@ -4,7 +4,7 @@ import metaphor
 final class SineCosine: Sketch {
     var angle1: Float = 0; var angle2: Float = 0
     let scalar: Float = 70
-    var config: SketchConfig { SketchConfig(title: "Sine Cosine", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Sine Cosine") }
     func setup() { noStroke(); rectMode(.center) }
     func draw() {
         background(0)

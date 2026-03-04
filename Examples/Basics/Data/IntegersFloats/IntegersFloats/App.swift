@@ -5,7 +5,7 @@ final class IntegersFloats: Sketch {
     var a: Float = 0
     var b: Float = 0
 
-    var config: SketchConfig { SketchConfig(title: "Integers Floats", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Integers Floats") }
 
     func setup() {
         stroke(255)

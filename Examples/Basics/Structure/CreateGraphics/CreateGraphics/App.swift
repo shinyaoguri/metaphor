@@ -3,7 +3,7 @@ import metaphor
 @main
 final class CreateGraphics: Sketch {
     var pg: Graphics!
-    var config: SketchConfig { SketchConfig(title: "Create Graphics", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Create Graphics") }
     func setup() {
         pg = createGraphics(400, 200)
     }

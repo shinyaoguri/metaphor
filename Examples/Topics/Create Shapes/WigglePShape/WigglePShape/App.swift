@@ -7,7 +7,7 @@ import metaphor
 @main
 final class WigglePShape: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "WigglePShape (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "WigglePShape (Stub)")
     }
 
     func setup() {

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Reach3: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Reach 3", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Reach 3")
     }
 
     let numSegments = 8

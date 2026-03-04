@@ -7,7 +7,7 @@ import metaphor
 @main
 final class Planets: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Planets (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Planets (Stub)")
     }
 
     func setup() {

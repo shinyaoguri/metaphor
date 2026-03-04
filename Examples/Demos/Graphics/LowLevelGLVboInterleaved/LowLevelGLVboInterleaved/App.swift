@@ -7,7 +7,7 @@ import metaphor
 @main
 final class LowLevelGLVboInterleaved: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LowLevelGLVboInterleaved (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LowLevelGLVboInterleaved (Stub)")
     }
 
     func setup() {

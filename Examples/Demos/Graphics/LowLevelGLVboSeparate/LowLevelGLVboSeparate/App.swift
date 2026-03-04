@@ -7,7 +7,7 @@ import metaphor
 @main
 final class LowLevelGLVboSeparate: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LowLevelGLVboSeparate (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LowLevelGLVboSeparate (Stub)")
     }
 
     func setup() {

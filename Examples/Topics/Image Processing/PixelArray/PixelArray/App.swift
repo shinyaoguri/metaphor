@@ -3,7 +3,7 @@ import metaphor
 @main
 final class PixelArray: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "PixelArray", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "PixelArray")
     }
 
     var img: MImage!
@@ -40,15 +40,15 @@ final class PixelArray: Sketch {
         }
 
         if isMousePressed {
-            let mx = Int(constrain(mouseX, 0, Float(img.width - 1)))
-            let my = Int(constrain(mouseY, 0, Float(img.height - 1)))
-            signal = Float(my * img.width + mx)
+            let mx = Int(constrain(mouseX, 0, img.width - 1))
+            let my = Int(constrain(mouseY, 0, img.height - 1))
+            signal = Float(my * Int(img.width) + mx)
         } else {
             signal += 0.33 * Float(direction)
         }
 
-        let sx = Int(signal) % img.width
-        let sy = Int(signal) / img.width
+        let sx = Int(signal) % Int(img.width)
+        let sy = Int(signal) / Int(img.width)
 
         if isKeyPressed {
             image(img, 0, 0)
@@ -56,9 +56,9 @@ final class PixelArray: Sketch {
             rect(Float(sx) - 5, Float(sy) - 5, 10, 10)
         } else {
             img.loadPixels()
-            let clampedSy = max(0, min(img.height - 1, sy))
-            let clampedSx = max(0, min(img.width - 1, sx))
-            let idx = (clampedSy * img.width + clampedSx) * 4
+            let clampedSy = max(0, min(Int(img.height) - 1, sy))
+            let clampedSx = max(0, min(Int(img.width) - 1, sx))
+            let idx = (clampedSy * Int(img.width) + clampedSx) * 4
             let r = Float(img.pixels[idx])
             let g = Float(img.pixels[idx + 1])
             let b = Float(img.pixels[idx + 2])

@@ -6,7 +6,7 @@ import metaphor
 @main
 final class ImageMask: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "ImageMask", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "ImageMask")
     }
 
     var srcImg: MImage!

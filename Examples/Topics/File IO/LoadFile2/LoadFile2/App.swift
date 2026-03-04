@@ -7,7 +7,7 @@ import metaphor
 @main
 final class LoadFile2: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LoadFile2 (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LoadFile2 (Stub)")
     }
 
     func setup() {

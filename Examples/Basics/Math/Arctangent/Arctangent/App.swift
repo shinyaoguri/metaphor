@@ -14,7 +14,7 @@ final class Arctangent: Sketch {
     var e1: Eye!
     var e2: Eye!
     var e3: Eye!
-    var config: SketchConfig { SketchConfig(title: "Arctangent", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Arctangent") }
     func setup() {
         noStroke()
         e1 = Eye(250, 16, 120)

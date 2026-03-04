@@ -10,7 +10,7 @@ struct Handle {
 
 @main
 final class Handles: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Handles", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Handles") }
 
     var handles: [Handle] = []
     var firstPress = false

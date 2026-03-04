@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Redraw: Sketch {
     var y: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Redraw", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Redraw") }
     func setup() {
         stroke(255)
         noLoop()

@@ -4,7 +4,7 @@ import metaphor
 final class ResizeTest: Sketch {
     var config: SketchConfig {
         // Note: windowResizable not directly available in metaphor
-        SketchConfig(title: "ResizeTest", width: 400, height: 400)
+        SketchConfig(width: 400, height: 400, title: "ResizeTest")
     }
 
     func setup() {}

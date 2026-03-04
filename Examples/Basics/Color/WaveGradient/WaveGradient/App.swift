@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class WaveGradient: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Wave Gradient", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Wave Gradient") }
     func setup() {
         noLoop()
     }

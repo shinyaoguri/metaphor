@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Sequential: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Sequential", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Sequential")
     }
 
     let numFrames = 12
@@ -17,7 +17,7 @@ final class Sequential: Sketch {
 
         // Generate 12 frames with rotating line patterns
         for i in 0..<numFrames {
-            let img = createImage(frameW, frameH)
+            guard let img = createImage(frameW, frameH) else { return }
             img.loadPixels()
             let angle = Float(i) / Float(numFrames) * .pi * 2
             let cx = Float(frameW) / 2

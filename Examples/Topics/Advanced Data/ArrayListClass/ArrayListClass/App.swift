@@ -30,7 +30,7 @@ struct ABall {
 @main
 final class ArrayListClass: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "ArrayListClass", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "ArrayListClass")
     }
 
     var balls: [ABall] = []

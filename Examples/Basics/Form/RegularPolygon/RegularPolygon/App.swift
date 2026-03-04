@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class RegularPolygon: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Regular Polygon", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Regular Polygon") }
     func draw() {
         background(102)
 

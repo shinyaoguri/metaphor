@@ -9,7 +9,7 @@ struct SmkParticle {
 
 @main
 final class SmokeParticleSystem: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Smoke Particle System", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Smoke Particle System") }
 
     var particles: [SmkParticle] = []
     var originX: Float = 0, originY: Float = 0

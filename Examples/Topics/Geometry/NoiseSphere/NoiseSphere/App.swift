@@ -17,7 +17,7 @@ struct Pelo {
 @main
 final class NoiseSphere: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "NoiseSphere", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "NoiseSphere")
     }
 
     let count = 4000
@@ -72,7 +72,10 @@ final class NoiseSphere: Sketch {
             let zb = zo * p.largo
 
             stroke(200, 150)
-            line(x, y, z, xb, yb, zb)
+            beginShape3D(.lines)
+            vertex(x, y, z)
+            vertex(xb, yb, zb)
+            endShape3D()
         }
     }
 }

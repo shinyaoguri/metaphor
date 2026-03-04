@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextureCylinder: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TextureCylinder", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "TextureCylinder")
     }
 
     let tubeRes = 32
@@ -47,21 +47,20 @@ final class TextureCylinder: Sketch {
         for i in 0..<tubeRes {
             let x = tubeX[i] * 100
             let z = tubeY[i] * 100
-            let u = Float(img.width) / Float(tubeRes) * Float(i)
-            vertex(x, -100, z, u, 0)
-            vertex(x, 100, z, u, Float(img.height))
+            vertex(x, -100, z)
+            vertex(x, 100, z)
         }
         endShape()
 
         // Side quad
         beginShape(.triangles)
         texture(img)
-        vertex(0, -100, 0, 0, 0)
-        vertex(100, -100, 0, 100, 0)
-        vertex(100, 100, 0, 100, 100)
-        vertex(0, -100, 0, 0, 0)
-        vertex(100, 100, 0, 100, 100)
-        vertex(0, 100, 0, 0, 100)
+        vertex(0, -100, 0)
+        vertex(100, -100, 0)
+        vertex(100, 100, 0)
+        vertex(0, -100, 0)
+        vertex(100, 100, 0)
+        vertex(0, 100, 0)
         endShape()
     }
 }

@@ -11,13 +11,13 @@ final class KeyboardFunctions: Sketch {
     var newletter = false
     let numChars = 26
     var colors: [Color] = []
-    var config: SketchConfig { SketchConfig(title: "Keyboard Functions", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Keyboard Functions") }
     func setup() {
         noStroke()
         colorMode(.hsb, Float(numChars), Float(numChars), Float(numChars))
         background(Float(numChars) / 2)
         for i in 0..<numChars {
-            colors.append(Color(Float(i) / Float(numChars), 1.0, 1.0))
+            colors.append(Color(hue: Float(i) / Float(numChars), saturation: 1.0, brightness: 1.0))
         }
     }
     func draw() {
@@ -33,7 +33,7 @@ final class KeyboardFunctions: Sketch {
         }
     }
     func keyPressed() {
-        let k = key
+        guard let k = key else { return }
         if (k >= "A" && k <= "Z") || (k >= "a" && k <= "z") {
             var keyIndex: Int
             if k <= "Z" {

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class LoadDisplayOBJ: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Load Display OBJ", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Load Display OBJ")
     }
 
     var ry: Float = 0
@@ -18,11 +18,11 @@ final class LoadDisplayOBJ: Sketch {
     func draw() {
         background(0)
         lights()
-        translate3D(width / 2, height / 2 + 100, -200)
+        translate(width / 2, height / 2 + 100, -200)
         rotateZ(Float.pi)
         rotateY(ry)
         fill(200, 200, 220)
-        box(0, 0, 0, 60, 160, 60)
+        box(60, 160, 60)
         ry += 0.02
     }
 }

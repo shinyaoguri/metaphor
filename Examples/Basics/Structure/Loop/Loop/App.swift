@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Loop: Sketch {
     var y: Float = 180
-    var config: SketchConfig { SketchConfig(title: "Loop", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Loop") }
     func setup() {
         stroke(255)
         noLoop()

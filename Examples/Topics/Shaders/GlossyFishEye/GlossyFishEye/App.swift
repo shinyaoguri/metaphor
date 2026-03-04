@@ -6,7 +6,7 @@ import metaphor
 @main
 final class GlossyFishEye: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "GlossyFishEye", width: 640, height: 640)
+        SketchConfig(width: 640, height: 640, title: "GlossyFishEye")
     }
 
     var useFishEye = true
@@ -21,7 +21,7 @@ final class GlossyFishEye: Sketch {
         // Rotating light
         let lightX = 1000 * cos(Float(frameCount) * 0.01)
         let lightZ = 1000 * sin(Float(frameCount) * 0.01)
-        pointLight(204, 204, 204, lightX, 1000, lightZ)
+        pointLight(lightX, 1000, lightZ, color: Color(r: 0.8, g: 0.8, b: 0.8))
 
         fill(230, 50, 50)
 

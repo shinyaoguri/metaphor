@@ -9,7 +9,7 @@ final class AdditiveWave: Sketch {
     var dx: [Float] = []
     var yvalues: [Float] = []
     var w: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Additive Wave", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Additive Wave") }
     func setup() {
         frameRate(30)
         w = width + 16

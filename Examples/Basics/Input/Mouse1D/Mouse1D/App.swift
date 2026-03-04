@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Mouse1D: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Mouse 1D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Mouse 1D") }
     func setup() {
         noStroke()
         colorMode(.rgb, height, height, height)

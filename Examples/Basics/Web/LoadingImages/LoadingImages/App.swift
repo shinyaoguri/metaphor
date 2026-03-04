@@ -7,7 +7,7 @@ import metaphor
 @main
 final class LoadingImages: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Loading Images", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Loading Images")
     }
 
     var img: MImage?

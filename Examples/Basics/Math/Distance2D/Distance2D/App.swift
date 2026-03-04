@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Distance2D: Sketch {
     var maxDist: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Distance 2D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Distance 2D") }
     func setup() {
         noStroke()
         maxDist = dist(0, 0, width, height)

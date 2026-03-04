@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Brownian: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Brownian", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Brownian")
     }
 
     let num = 2000

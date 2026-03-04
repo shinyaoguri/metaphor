@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Extrusion: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Extrusion", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Extrusion")
     }
 
     var values: [[Int]] = []
@@ -16,7 +16,7 @@ final class Extrusion: Sketch {
         imgW = 200
         imgH = 150
 
-        let img = createImage(imgW, imgH)
+        guard let img = createImage(imgW, imgH) else { return }
         img.loadPixels()
         values = Array(repeating: Array(repeating: 0, count: imgH), count: imgW)
 
@@ -49,7 +49,9 @@ final class Extrusion: Sketch {
                 stroke(Float(v), 255)
                 let xp = Float(j) - Float(imgW) / 2
                 let yp = Float(i) - Float(imgH) / 2
-                line(xp, yp, Float(-v), xp, yp, Float(-v) - 10)
+                beginShape3D(.lines)
+                vertex(xp, yp, Float(-v)); vertex(xp, yp, Float(-v) - 10)
+                endShape3D()
             }
         }
     }

@@ -6,7 +6,7 @@ import metaphor
 @main
 final class Nebula: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Nebula", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Nebula")
     }
 
     var img: MImage!
@@ -18,7 +18,7 @@ final class Nebula: Sketch {
     }
 
     func draw() {
-        let w = img.width, h = img.height
+        let w = Int(img.width), h = Int(img.height)
         let t = Float(millis()) / 500.0
 
         img.loadPixels()

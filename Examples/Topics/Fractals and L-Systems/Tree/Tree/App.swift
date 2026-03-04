@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Tree: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Tree", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Tree")
     }
 
     var theta: Float = 0

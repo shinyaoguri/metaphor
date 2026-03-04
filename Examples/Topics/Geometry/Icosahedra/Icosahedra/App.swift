@@ -40,7 +40,7 @@ struct Icosahedron {
 @main
 final class Icosahedra: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Icosahedra", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Icosahedra")
     }
 
     var ico: Icosahedron!

@@ -5,7 +5,7 @@ final class CharactersStrings: Sketch {
     var letter: Character = " "
     var words: String = "Begin..."
 
-    var config: SketchConfig { SketchConfig(title: "Characters Strings", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Characters Strings") }
 
     func setup() {
         textFont("Menlo")
@@ -22,7 +22,7 @@ final class CharactersStrings: Sketch {
     }
 
     func keyPressed() {
-        let c = key
+        guard let c = key else { return }
         if (c >= "A" && c <= "z") || c == " " {
             letter = c
             words += String(c)

@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Spore1: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Spore 1", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Spore 1") }
 
     let maxCells = 6700
     var cellX: [Int] = []

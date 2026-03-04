@@ -5,7 +5,7 @@ let package = Package(
     name: "OffscreenTest",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(name: "metaphor", path: "../../.."),
+        .package(name: "metaphor", path: "../../../.."),
     ],
     targets: [
         .executableTarget(

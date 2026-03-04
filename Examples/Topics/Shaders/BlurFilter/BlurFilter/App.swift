@@ -6,7 +6,7 @@ import metaphor
 @main
 final class BlurFilter: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "BlurFilter", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "BlurFilter")
     }
 
     func setup() {

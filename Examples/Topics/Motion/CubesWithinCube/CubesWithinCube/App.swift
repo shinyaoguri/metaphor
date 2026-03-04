@@ -11,7 +11,7 @@ struct InnerCube {
 @main
 final class CubesWithinCube: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Cubes Within Cube", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Cubes Within Cube")
     }
 
     var cubies: [InnerCube] = []
@@ -34,13 +34,13 @@ final class CubesWithinCube: Sketch {
     func draw() {
         background(50)
         lights()
-        translate3D(width / 2, height / 2, -130)
+        translate(width / 2, height / 2, -130)
         rotateX(Float(frameCount) * 0.001)
         rotateY(Float(frameCount) * 0.002)
         rotateZ(Float(frameCount) * 0.001)
         stroke(255)
         noFill()
-        box(0, 0, 0, bounds, bounds, bounds)
+        box(bounds, bounds, bounds)
         for i in 0..<cubies.count {
             cubies[i].px += cubies[i].vx
             cubies[i].py += cubies[i].vy
@@ -49,13 +49,13 @@ final class CubesWithinCube: Sketch {
             if cubies[i].py > bounds / 2 || cubies[i].py < -bounds / 2 { cubies[i].vy *= -1 }
             if cubies[i].pz > bounds / 2 || cubies[i].pz < -bounds / 2 { cubies[i].vz *= -1 }
             pushMatrix()
-            translate3D(cubies[i].px, cubies[i].py, cubies[i].pz)
+            translate(cubies[i].px, cubies[i].py, cubies[i].pz)
             rotateX(Float(frameCount) * Float.pi / cubies[i].rx)
             rotateY(Float(frameCount) * Float.pi / cubies[i].ry)
             rotateZ(Float(frameCount) * Float.pi / cubies[i].rz)
             noStroke()
             fill(cubies[i].gray)
-            box(0, 0, 0, cubies[i].size, cubies[i].size, cubies[i].size)
+            box(cubies[i].size, cubies[i].size, cubies[i].size)
             popMatrix()
         }
     }

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Linear: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Linear", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Linear")
     }
 
     var a: Float = 0

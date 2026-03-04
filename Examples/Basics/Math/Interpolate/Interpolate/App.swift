@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Interpolate: Sketch {
     var x: Float = 0; var y: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Interpolate", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Interpolate") }
     func setup() { noStroke() }
     func draw() {
         background(51)

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class LoadFile1: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LoadFile1", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LoadFile1")
     }
 
     var lines: [(Float, Float)] = []

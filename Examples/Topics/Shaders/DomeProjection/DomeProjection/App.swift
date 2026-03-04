@@ -6,7 +6,7 @@ import metaphor
 @main
 final class DomeProjection: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "DomeProjection (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "DomeProjection (Stub)")
     }
     func setup() { noLoop() }
     func draw() {

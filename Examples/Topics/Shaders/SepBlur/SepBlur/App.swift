@@ -6,7 +6,7 @@ import metaphor
 @main
 final class SepBlur: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "SepBlur", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "SepBlur")
     }
 
     var blurSize = 9

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Morph: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Morph", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Morph")
     }
 
     var circleVerts: [(Float, Float)] = []

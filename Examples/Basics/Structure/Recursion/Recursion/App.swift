@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Recursion: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Recursion", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Recursion") }
     func setup() {
         noStroke()
         noLoop()

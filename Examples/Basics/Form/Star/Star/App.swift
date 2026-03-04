@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Star: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Star", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Star") }
     func draw() {
         background(102)
 

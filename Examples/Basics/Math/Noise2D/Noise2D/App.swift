@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Noise2D: Sketch {
     let increment: Float = 0.02
-    var config: SketchConfig { SketchConfig(title: "Noise 2D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Noise 2D") }
     func draw() {
         let detail = map(mouseX, 0, width, 0.1, 0.6)
         noiseDetail(octaves: 8, falloff: detail)

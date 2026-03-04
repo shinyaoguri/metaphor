@@ -17,7 +17,7 @@ class Module {
 final class ArrayObjects: Sketch {
     var mods: [Module] = []
     let unit: Float = 40
-    var config: SketchConfig { SketchConfig(title: "Array Objects", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Array Objects") }
     func setup() {
         noStroke()
         let wideCount = Int(width / unit); let highCount = Int(height / unit)

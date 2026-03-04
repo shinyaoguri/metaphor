@@ -3,7 +3,7 @@ import metaphor
 @main
 final class AnimatedSprite: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "AnimatedSprite", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "AnimatedSprite")
     }
 
     var animation1: [MImage] = []
@@ -23,7 +23,7 @@ final class AnimatedSprite: Sketch {
 
         // Generate animation 1: shifting colored circles
         for i in 0..<numFrames1 {
-            let img = createImage(spriteSize, spriteSize)
+            guard let img = createImage(spriteSize, spriteSize) else { return }
             img.loadPixels()
             let hue = Float(i) / Float(numFrames1)
             for y in 0..<spriteSize {
@@ -55,7 +55,7 @@ final class AnimatedSprite: Sketch {
 
         // Generate animation 2: shifting colored squares
         for i in 0..<numFrames2 {
-            let img = createImage(spriteSize, spriteSize)
+            guard let img = createImage(spriteSize, spriteSize) else { return }
             img.loadPixels()
             let phase = Float(i) / Float(numFrames2)
             for y in 0..<spriteSize {

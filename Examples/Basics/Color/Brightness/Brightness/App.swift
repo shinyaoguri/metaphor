@@ -4,7 +4,7 @@ import metaphor
 final class Brightness: Sketch {
     var barWidth: Float = 20
     var lastBar: Int = -1
-    var config: SketchConfig { SketchConfig(title: "Brightness", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Brightness") }
     func setup() {
         colorMode(.hsb, width, 100, height)
         noStroke()

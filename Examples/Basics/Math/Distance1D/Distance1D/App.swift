@@ -4,7 +4,7 @@ import metaphor
 final class Distance1D: Sketch {
     var xpos1: Float = 0; var xpos2: Float = 0; var xpos3: Float = 0; var xpos4: Float = 0
     let thin: Float = 8; let thick: Float = 36
-    var config: SketchConfig { SketchConfig(title: "Distance 1D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Distance 1D") }
     func setup() {
         noStroke()
         xpos1 = width / 2; xpos2 = width / 2; xpos3 = width / 2; xpos4 = width / 2

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextureSphere: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TextureSphere", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "TextureSphere")
     }
 
     var ptsW = 30
@@ -84,11 +84,6 @@ final class TextureSphere: Sketch {
     }
 
     func drawTexSphere(_ rx: Float, _ ry: Float, _ rz: Float) {
-        let changeU = Float(img.width) / Float(numPointsW - 1)
-        let changeV = Float(img.height) / Float(numPointsH - 1)
-        var u: Float = 0
-        var v: Float = 0
-
         for i in 0..<(numPointsH - 1) {
             let coory = coorY[i]
             let cooryPlus = coorY[i + 1]
@@ -97,24 +92,21 @@ final class TextureSphere: Sketch {
 
             beginShape(.triangleStrip)
             texture(img)
-            u = 0
             for j in 0..<numPointsW {
                 normal(-coorX[j] * mxz, -coory, -coorZ[j] * mxz)
-                vertex(coorX[j] * mxz * rx, coory * ry, coorZ[j] * mxz * rz, u, v)
+                vertex(coorX[j] * mxz * rx, coory * ry, coorZ[j] * mxz * rz)
                 normal(-coorX[j] * mxzPlus, -cooryPlus, -coorZ[j] * mxzPlus)
-                vertex(coorX[j] * mxzPlus * rx, cooryPlus * ry, coorZ[j] * mxzPlus * rz, u, v + changeV)
-                u += changeU
+                vertex(coorX[j] * mxzPlus * rx, cooryPlus * ry, coorZ[j] * mxzPlus * rz)
             }
             endShape()
-            v += changeV
         }
     }
 
     func keyPressed() {
-        if keyCode == .upArrow { ptsH += 1 }
-        if keyCode == .downArrow && ptsH > 2 { ptsH -= 1 }
-        if keyCode == .leftArrow && ptsW > 1 { ptsW -= 1 }
-        if keyCode == .rightArrow { ptsW += 1 }
+        if keyCode == 126 { ptsH += 1 }           // up arrow
+        if keyCode == 125 && ptsH > 2 { ptsH -= 1 } // down arrow
+        if keyCode == 123 && ptsW > 1 { ptsW -= 1 } // left arrow
+        if keyCode == 124 { ptsW += 1 }           // right arrow
         initSphere(ptsW, ptsH)
     }
 }

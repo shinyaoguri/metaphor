@@ -9,7 +9,7 @@ struct Planet {
 
 @main
 final class GravitationalAttraction3D: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Gravitational Attraction 3D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Gravitational Attraction 3D") }
 
     var planets: [Planet] = []
     let sunMass: Float = 20
@@ -30,11 +30,11 @@ final class GravitationalAttraction3D: Sketch {
     func draw() {
         background(0)
         lights()
-        translate3D(width / 2, height / 2, 0)
+        translate(width / 2, height / 2, 0)
         rotateY(angle)
         // Sun
         stroke(255); noFill()
-        sphere(0, 0, 0, sunMass * 2)
+        sphere(sunMass * 2)
         // Planets
         for i in 0..<planets.count {
             var fx = -planets[i].px, fy = -planets[i].py, fz = -planets[i].pz
@@ -49,7 +49,10 @@ final class GravitationalAttraction3D: Sketch {
             planets[i].px += planets[i].vx; planets[i].py += planets[i].vy; planets[i].pz += planets[i].vz
             planets[i].ax = 0; planets[i].ay = 0; planets[i].az = 0
             noStroke(); fill(255)
-            sphere(planets[i].px, planets[i].py, planets[i].pz, planets[i].mass * 8)
+            pushMatrix()
+            translate(planets[i].px, planets[i].py, planets[i].pz)
+            sphere(planets[i].mass * 8)
+            popMatrix()
         }
         angle += 0.003
     }

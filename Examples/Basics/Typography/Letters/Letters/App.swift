@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Letters: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Letters", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Letters") }
     func setup() {
         background(0)
         textFont("Menlo")

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class SaveFrames: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "SaveFrames", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "SaveFrames")
     }
 
     var recording = false

@@ -3,18 +3,19 @@ import metaphor
 @main
 final class Blur: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Blur", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Blur")
     }
 
     var img: MImage!
 
     func setup() {
         noLoop()
-        img = generateTestImage(Int(width) / 2, Int(height))
+        guard let generated = generateTestImage(Int(width) / 2, Int(height)) else { return }
+        img = generated
     }
 
-    func generateTestImage(_ w: Int, _ h: Int) -> MImage {
-        let img = createImage(w, h)
+    func generateTestImage(_ w: Int, _ h: Int) -> MImage? {
+        guard let img = createImage(w, h) else { return nil }
         img.loadPixels()
         for y in 0..<h {
             for x in 0..<w {
@@ -24,10 +25,12 @@ final class Blur: Sketch {
                 let cx = nx - 0.5, cy = ny - 0.5
                 let d = sqrt(cx * cx + cy * cy)
                 let base = (1.0 - d * 2) * 200 + sin(nx * 20) * 30 + cos(ny * 15) * 20
-                let v = UInt8(clamped: Int(max(0, min(255, base))))
+                let v = UInt8(max(0, min(255, Int(base))))
                 img.pixels[idx] = v
-                img.pixels[idx + 1] = UInt8(clamped: Int(max(0, min(255, Float(v) * 0.8 + ny * 50))))
-                img.pixels[idx + 2] = UInt8(clamped: Int(max(0, min(255, Float(v) * 0.6 + nx * 80))))
+                let greenVal = Float(v) * 0.8 + ny * 50
+                img.pixels[idx + 1] = UInt8(max(0, min(255, Int(greenVal))))
+                let blueVal = Float(v) * 0.6 + nx * 80
+                img.pixels[idx + 2] = UInt8(max(0, min(255, Int(blueVal))))
                 img.pixels[idx + 3] = 255
             }
         }
@@ -43,9 +46,9 @@ final class Blur: Sketch {
         let kernel: [[Float]] = [[v, v, v], [v, v, v], [v, v, v]]
 
         img.loadPixels()
-        let w = img.width
-        let h = img.height
-        let blurImg = createImage(w, h)
+        let w = Int(img.width)
+        let h = Int(img.height)
+        guard let blurImg = createImage(w, h) else { return }
         blurImg.loadPixels()
 
         for y in 1..<(h - 1) {

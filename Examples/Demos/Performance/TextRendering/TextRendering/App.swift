@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextRendering: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TextRendering", width: 800, height: 600)
+        SketchConfig(width: 800, height: 600, title: "TextRendering")
     }
 
     func setup() {

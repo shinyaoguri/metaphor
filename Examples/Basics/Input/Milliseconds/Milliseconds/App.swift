@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Milliseconds: Sketch {
     var s: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Milliseconds", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Milliseconds") }
     func setup() {
         noStroke()
         s = width / 20

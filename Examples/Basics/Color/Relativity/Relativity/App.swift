@@ -2,12 +2,12 @@ import metaphor
 
 @main
 final class Relativity: Sketch {
-    var a = Color(165.0/255, 167.0/255, 20.0/255)
-    var b = Color(77.0/255, 86.0/255, 59.0/255)
-    var c = Color(42.0/255, 106.0/255, 105.0/255)
-    var d = Color(165.0/255, 89.0/255, 20.0/255)
-    var e = Color(146.0/255, 150.0/255, 127.0/255)
-    var config: SketchConfig { SketchConfig(title: "Relativity", width: 640, height: 360) }
+    var a = Color(r: 165.0/255, g: 167.0/255, b: 20.0/255)
+    var b = Color(r: 77.0/255, g: 86.0/255, b: 59.0/255)
+    var c = Color(r: 42.0/255, g: 106.0/255, b: 105.0/255)
+    var d = Color(r: 165.0/255, g: 89.0/255, b: 20.0/255)
+    var e = Color(r: 146.0/255, g: 150.0/255, b: 127.0/255)
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Relativity") }
     func setup() {
         noStroke()
         noLoop()

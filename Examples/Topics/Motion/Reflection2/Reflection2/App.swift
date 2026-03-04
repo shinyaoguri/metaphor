@@ -15,7 +15,7 @@ struct GroundSegment {
 @main
 final class Reflection2: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Reflection 2", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Reflection 2")
     }
 
     var orbX: Float = 50, orbY: Float = 50

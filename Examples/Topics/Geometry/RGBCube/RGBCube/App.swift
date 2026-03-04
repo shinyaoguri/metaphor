@@ -3,7 +3,7 @@ import metaphor
 @main
 final class RGBCube: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "RGBCube", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "RGBCube")
     }
 
     var xmag: Float = 0

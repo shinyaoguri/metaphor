@@ -6,7 +6,7 @@ import metaphor
 @main
 final class Conway: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Conway", width: 400, height: 400)
+        SketchConfig(width: 400, height: 400, title: "Conway")
     }
 
     let cellSize = 4

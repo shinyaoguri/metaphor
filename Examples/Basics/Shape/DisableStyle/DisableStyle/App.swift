@@ -7,7 +7,7 @@ import metaphor
 @main
 final class DisableStyle: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "DisableStyle (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "DisableStyle (Stub)")
     }
 
     func setup() { noLoop() }

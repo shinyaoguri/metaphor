@@ -3,7 +3,7 @@ import metaphor
 @main
 final class DynamicParticlesImmediate: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "DynamicParticlesImmediate", width: 640, height: 480)
+        SketchConfig(width: 640, height: 480, title: "DynamicParticlesImmediate")
     }
 
     let npartTotal = 10000

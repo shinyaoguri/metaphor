@@ -160,7 +160,7 @@ class Gesture {
 @main
 final class Yellowtail: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Yellowtail", width: 1024, height: 768)
+        SketchConfig(width: 1024, height: 768, title: "Yellowtail")
     }
 
     let nGestures = 36

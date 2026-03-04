@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Iteration: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Iteration", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Iteration") }
     func setup() { noLoop() }
     func draw() {
         background(102)

@@ -11,7 +11,7 @@ struct Boid {
 
 @main
 final class Flocking: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Flocking", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Flocking") }
 
     var boids: [Boid] = []
 

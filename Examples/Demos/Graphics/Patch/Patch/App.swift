@@ -4,7 +4,7 @@ import Foundation
 @main
 final class Patch: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Patch", width: 1024, height: 768)
+        SketchConfig(width: 1024, height: 768, title: "Patch")
     }
 
     let ni = 4

@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class DatatypeConversion: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Datatype Conversion", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Datatype Conversion") }
     func setup() { noLoop() }
     func draw() {
         background(0)

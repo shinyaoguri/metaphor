@@ -7,7 +7,7 @@ import metaphor
 @main
 final class DynamicParticlesRetained: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "DynamicParticlesRetained (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "DynamicParticlesRetained (Stub)")
     }
 
     func setup() {

@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Rollover: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Rollover", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Rollover") }
 
     var rectX: Float = 0, rectY: Float = 0
     var circleX: Float = 0, circleY: Float = 0

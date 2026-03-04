@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class GameOfLife: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Game of Life", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Game of Life") }
 
     let cellSize = 5
     var cells: [[Int]] = []
@@ -28,9 +28,9 @@ final class GameOfLife: Sketch {
                 rect(Float(x * cellSize), Float(y * cellSize), Float(cellSize), Float(cellSize))
             }
         }
-        if millis - lastTime > 100 && !paused {
+        if millis() - lastTime > 100 && !paused {
             iteration()
-            lastTime = millis
+            lastTime = millis()
         }
         if paused && isMousePressed {
             let xc = max(0, min(Int(mouseX) / cellSize, cols - 1))

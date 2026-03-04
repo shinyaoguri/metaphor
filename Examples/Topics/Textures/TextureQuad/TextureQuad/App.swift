@@ -3,7 +3,7 @@ import metaphor
 @main
 final class TextureQuad: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "TextureQuad", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "TextureQuad")
     }
 
     var img: MImage!
@@ -33,12 +33,12 @@ final class TextureQuad: Sketch {
 
         beginShape(.triangles)
         texture(img)
-        vertex(-100, -100, 0, 0, 0)
-        vertex(100, -100, 0, Float(img.width), 0)
-        vertex(100, 100, 0, Float(img.width), Float(img.height))
-        vertex(-100, -100, 0, 0, 0)
-        vertex(100, 100, 0, Float(img.width), Float(img.height))
-        vertex(-100, 100, 0, 0, Float(img.height))
+        vertex(-100, -100, 0)
+        vertex(100, -100, 0)
+        vertex(100, 100, 0)
+        vertex(-100, -100, 0)
+        vertex(100, 100, 0)
+        vertex(-100, 100, 0)
         endShape()
     }
 }

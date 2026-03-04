@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class PointsLines: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Points and Lines", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Points and Lines") }
     func setup() { noLoop() }
     func draw() {
         let d: Float = 70

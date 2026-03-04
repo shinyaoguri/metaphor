@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class ShapePrimitives: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Shape Primitives", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Shape Primitives") }
     func setup() { noLoop() }
     func draw() {
         background(0)

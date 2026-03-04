@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Variables: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Variables", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Variables") }
     func setup() { noLoop() }
     func draw() {
         background(0)

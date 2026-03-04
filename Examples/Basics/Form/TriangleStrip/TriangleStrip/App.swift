@@ -4,7 +4,7 @@ import metaphor
 final class TriangleStrip: Sketch {
     let outsideRadius: Float = 150
     let insideRadius: Float = 100
-    var config: SketchConfig { SketchConfig(title: "Triangle Strip", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Triangle Strip") }
     func draw() {
         background(204)
         let x = width / 2

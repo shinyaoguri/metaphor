@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class SoftBody: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Soft Body", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Soft Body") }
 
     var centerX: Float = 0, centerY: Float = 0
     let radius: Float = 45

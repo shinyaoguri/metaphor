@@ -5,7 +5,7 @@ import Foundation
 final class Rotate: Sketch {
     var angle: Float = 0
     var jitter: Float = 0
-    var config: SketchConfig { SketchConfig(title: "Rotate", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Rotate") }
     func setup() {
         noStroke()
         fill(255)

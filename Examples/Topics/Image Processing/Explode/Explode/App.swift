@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Explode: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Explode", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Explode")
     }
 
     var img: MImage!
@@ -44,8 +44,8 @@ final class Explode: Sketch {
             for j in 0..<rows {
                 let x = i * cellSize + cellSize / 2
                 let y = j * cellSize + cellSize / 2
-                if x < img.width && y < img.height {
-                    let loc = (y * img.width + x) * 4
+                if x < Int(img.width) && y < Int(img.height) {
+                    let loc = (y * Int(img.width) + x) * 4
                     let r = Float(img.pixels[loc])
                     let g = Float(img.pixels[loc + 1])
                     let b = Float(img.pixels[loc + 2])

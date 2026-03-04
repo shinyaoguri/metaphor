@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class WidthHeight: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Width and Height", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Width and Height") }
     func draw() {
         background(127)
         noStroke()

@@ -3,7 +3,7 @@ import metaphor
 @main
 final class StaticParticlesImmediate: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "StaticParticlesImmediate", width: 800, height: 600)
+        SketchConfig(width: 800, height: 600, title: "StaticParticlesImmediate")
     }
 
     let npartTotal = 5000

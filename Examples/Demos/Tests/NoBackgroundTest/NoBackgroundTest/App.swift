@@ -3,7 +3,7 @@ import metaphor
 @main
 final class NoBackgroundTest: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "NoBackgroundTest", width: 400, height: 400)
+        SketchConfig(width: 400, height: 400, title: "NoBackgroundTest")
     }
 
     func setup() {

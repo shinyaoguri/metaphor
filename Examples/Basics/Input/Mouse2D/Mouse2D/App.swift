@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Mouse2D: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Mouse 2D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Mouse 2D") }
     func setup() {
         noStroke()
         rectMode(.center)

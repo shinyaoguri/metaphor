@@ -6,7 +6,7 @@ import metaphor
 @main
 final class SpecsTest: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "SpecsTest (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "SpecsTest (Stub)")
     }
 
     func setup() {

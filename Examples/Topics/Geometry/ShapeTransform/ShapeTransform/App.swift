@@ -3,7 +3,7 @@ import metaphor
 @main
 final class ShapeTransform: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "ShapeTransform", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "ShapeTransform")
     }
 
     var pts = 4
@@ -76,8 +76,8 @@ final class ShapeTransform: Sketch {
     }
 
     func keyPressed() {
-        if keyCode == .upArrow && pts < 90 { pts += 1 }
-        if keyCode == .downArrow && pts > 4 { pts -= 1 }
+        if keyCode == 126 && pts < 90 { pts += 1 }  // up arrow
+        if keyCode == 125 && pts > 4 { pts -= 1 }   // down arrow
         if key == "p" { isPyramid = !isPyramid }
     }
 }

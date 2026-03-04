@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Wolfram: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Wolfram CA", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Wolfram CA") }
 
     var cells: [Int] = []
     var rules: [Int] = [0, 1, 0, 1, 1, 0, 1, 0]

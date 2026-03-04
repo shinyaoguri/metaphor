@@ -3,7 +3,7 @@ import metaphor
 @main
 final class SaveFile1: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "SaveFile1", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "SaveFile1")
     }
 
     var xPoints: [Float] = []

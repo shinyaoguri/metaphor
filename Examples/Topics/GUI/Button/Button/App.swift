@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Button: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Button", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Button") }
 
     var rectX: Float = 0, rectY: Float = 0
     var circleX: Float = 0, circleY: Float = 0

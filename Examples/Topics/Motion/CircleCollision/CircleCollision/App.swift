@@ -15,7 +15,7 @@ struct CollisionBall {
 @main
 final class CircleCollision: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Circle Collision", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Circle Collision")
     }
 
     var balls: [CollisionBall] = []

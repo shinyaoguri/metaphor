@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Graphing2DEquation: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Graphing 2D Equation", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Graphing 2D Equation") }
     func draw() {
         let n = (mouseX * 10) / width
         let w: Float = 16; let h: Float = 16

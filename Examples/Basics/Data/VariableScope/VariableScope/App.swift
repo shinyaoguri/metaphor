@@ -4,7 +4,7 @@ import metaphor
 final class VariableScope: Sketch {
     let a: Float = 80
 
-    var config: SketchConfig { SketchConfig(title: "Variable Scope", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Variable Scope") }
 
     func setup() {
         background(0)

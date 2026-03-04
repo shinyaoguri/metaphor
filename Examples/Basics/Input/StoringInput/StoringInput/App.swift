@@ -5,7 +5,7 @@ final class StoringInput: Sketch {
     let num = 60
     var mx: [Float] = []
     var my: [Float] = []
-    var config: SketchConfig { SketchConfig(title: "Storing Input", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Storing Input") }
     func setup() {
         noStroke()
         fill(255, 153)

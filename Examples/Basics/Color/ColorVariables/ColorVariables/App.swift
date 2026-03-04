@@ -2,14 +2,14 @@ import metaphor
 
 @main
 final class ColorVariables: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Color Variables", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Color Variables") }
     func setup() { noLoop() }
     func draw() {
         noStroke()
         background(51, 0, 0)
-        let inside = Color(204.0/255, 102.0/255, 0)
-        let middle = Color(204.0/255, 153.0/255, 0)
-        let outside = Color(153.0/255, 51.0/255, 0)
+        let inside = Color(r: 204.0/255, g: 102.0/255, b: 0)
+        let middle = Color(r: 204.0/255, g: 153.0/255, b: 0)
+        let outside = Color(r: 153.0/255, g: 51.0/255, b: 0)
 
         push()
         translate(80, 80)

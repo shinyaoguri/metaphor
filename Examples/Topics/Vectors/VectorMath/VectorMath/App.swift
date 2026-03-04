@@ -3,7 +3,7 @@ import metaphor
 @main
 final class VectorMath: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Vector Math", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Vector Math")
     }
 
     func draw() {

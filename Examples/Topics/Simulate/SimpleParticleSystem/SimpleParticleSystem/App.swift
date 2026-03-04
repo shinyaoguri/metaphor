@@ -9,7 +9,7 @@ struct SParticle {
 
 @main
 final class SimpleParticleSystem: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Simple Particle System", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Simple Particle System") }
 
     var particles: [SParticle] = []
     var originX: Float = 0, originY: Float = 50

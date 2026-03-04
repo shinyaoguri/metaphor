@@ -17,7 +17,7 @@ struct Pelo {
 @main
 final class Esfera: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Esfera", width: 1024, height: 768)
+        SketchConfig(width: 1024, height: 768, title: "Esfera")
     }
 
     let cuantos = 16000
@@ -67,9 +67,11 @@ final class Esfera: Sketch {
             let yb = yo * pelo.largo
             let zb = zo * pelo.largo
 
-            strokeWeight(1)
             stroke(200, 150)
-            line(x, y, z, xb, yb, zb)
+            beginShape3D(.lines)
+            vertex(x, y, z)
+            vertex(xb, yb, zb)
+            endShape3D()
         }
     }
 }

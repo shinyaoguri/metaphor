@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Pointillism: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Pointillism", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Pointillism")
     }
 
     var img: MImage?
@@ -35,8 +35,8 @@ final class Pointillism: Sketch {
         let pointillize = map(mouseX, 0, width, smallPoint, largePoint)
         let x = Float.random(in: 0..<img.width)
         let y = Float.random(in: 0..<img.height)
-        let c = img.get(x: Int(x), y: Int(y))
-        fill(c.red * 255, c.green * 255, c.blue * 255, 128)
+        let c = img.get(Int(x), Int(y))
+        fill(c.r * 255, c.g * 255, c.b * 255, 128)
         ellipse(x, y, pointillize, pointillize)
     }
 }

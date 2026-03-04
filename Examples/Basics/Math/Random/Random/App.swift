@@ -2,7 +2,7 @@ import metaphor
 
 @main
 final class Random: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Random", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Random") }
     func setup() { background(0); strokeWeight(20); frameRate(2) }
     func draw() {
         for i in 0..<Int(width) {

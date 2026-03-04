@@ -5,7 +5,7 @@ import metaphor
 @main
 final class LoadSaveJSON: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "LoadSaveJSON (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "LoadSaveJSON (Stub)")
     }
     func setup() { noLoop() }
     func draw() {

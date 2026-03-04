@@ -3,7 +3,7 @@ import metaphor
 @main
 final class SetupDraw: Sketch {
     var y: Float = 180
-    var config: SketchConfig { SketchConfig(title: "Setup and Draw", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Setup and Draw") }
     func setup() {
         stroke(255)
     }

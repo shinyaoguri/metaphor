@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Follow1: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Follow 1", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Follow 1")
     }
 
     var x: Float = 100

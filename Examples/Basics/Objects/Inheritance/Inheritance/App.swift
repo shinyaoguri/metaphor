@@ -21,7 +21,7 @@ class SpinSpots: Spin {
 @main
 final class Inheritance: Sketch {
     var arm: SpinArm!; var spots: SpinSpots!
-    var config: SketchConfig { SketchConfig(title: "Inheritance", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Inheritance") }
     func setup() {
         arm = SpinArm(width / 2, height / 2, 0.01)
         spots = SpinSpots(width / 2, height / 2, -0.02, 90)

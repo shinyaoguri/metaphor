@@ -7,7 +7,7 @@ import metaphor
 @main
 final class Wiggling: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Wiggling (Stub)", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Wiggling (Stub)")
     }
 
     func setup() {

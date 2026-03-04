@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Vertices: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Vertices", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Vertices")
     }
 
     func setup() {}

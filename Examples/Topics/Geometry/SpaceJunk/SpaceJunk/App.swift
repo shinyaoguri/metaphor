@@ -12,7 +12,7 @@ struct JunkCube {
 @main
 final class SpaceJunk: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "SpaceJunk", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "SpaceJunk")
     }
 
     let limit = 500
@@ -37,8 +37,8 @@ final class SpaceJunk: Sketch {
         background(0)
         fill(200)
 
-        pointLight(51, 102, 255, 65, 60, 100)
-        pointLight(200, 40, 60, -65, -60, -150)
+        pointLight(65, 60, 100, color: Color(r: 51/255.0, g: 102/255.0, b: 1.0))
+        pointLight(-65, -60, -150, color: Color(r: 200/255.0, g: 40/255.0, b: 60/255.0))
         ambientLight(70, 70, 10)
 
         translate(width / 2, height / 2, -200 + mouseX * 0.65)

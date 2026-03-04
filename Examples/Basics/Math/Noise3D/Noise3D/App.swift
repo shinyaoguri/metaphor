@@ -5,7 +5,7 @@ final class Noise3D: Sketch {
     let increment: Float = 0.01
     var zoff: Float = 0
     let zincrement: Float = 0.02
-    var config: SketchConfig { SketchConfig(title: "Noise 3D", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Noise 3D") }
     func setup() { frameRate(30) }
     func draw() {
         var xoff: Float = 0

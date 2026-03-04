@@ -3,7 +3,7 @@ import metaphor
 @main
 final class BackgroundImage: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Background Image", width: 640, height: 360)
+        SketchConfig(width: 640, height: 360, title: "Background Image")
     }
 
     var bg: MImage?

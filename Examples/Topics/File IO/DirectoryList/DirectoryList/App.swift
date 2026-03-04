@@ -4,7 +4,7 @@ import Foundation
 @main
 final class DirectoryList: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "DirectoryList", width: 640, height: 480)
+        SketchConfig(width: 640, height: 480, title: "DirectoryList")
     }
 
     var fileInfoLines: [String] = []

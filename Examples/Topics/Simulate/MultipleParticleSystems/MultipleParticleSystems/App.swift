@@ -15,7 +15,7 @@ struct MParticleSystem {
 
 @main
 final class MultipleParticleSystems: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Multiple Particle Systems", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Multiple Particle Systems") }
 
     var systems: [MParticleSystem] = []
 

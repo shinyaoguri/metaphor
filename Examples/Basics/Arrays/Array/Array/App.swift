@@ -3,7 +3,7 @@ import metaphor
 @main
 final class Array: Sketch {
     var coswave: [Float] = []
-    var config: SketchConfig { SketchConfig(title: "Array", width: 640, height: 360) }
+    var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Array") }
     func setup() {
         coswave = (0..<Int(width)).map { i in
             abs(cos(map(Float(i), 0, width, 0, Float.pi)))
