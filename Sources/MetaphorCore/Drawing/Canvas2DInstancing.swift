@@ -36,8 +36,9 @@ final class InstanceBatcher2D {
 
     // MARK: - Constants
 
-    /// Maximum number of instances per batch.
-    static let maxInstancesPerBatch: Int = 16384
+    /// Maximum number of instances per frame (across all batches).
+    /// frameOffset advances after each flush, so this is the total budget.
+    static let maxInstancesPerBatch: Int = 65536
     /// Number of triple-buffered GPU buffers.
     static let bufferCount: Int = 3
 
