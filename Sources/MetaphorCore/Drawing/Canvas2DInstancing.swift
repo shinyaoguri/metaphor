@@ -66,6 +66,10 @@ final class InstanceBatcher2D {
 
     // MARK: - Current Batch State
 
+    /// Running offset into the instance buffer across batches within a single frame.
+    /// Each flushed batch advances this offset so subsequent batches write to
+    /// fresh memory, avoiding data races with already-encoded GPU draw calls.
+    private var frameOffset: Int = 0
     /// The batch key for the current in-progress batch, or nil if no batch is active.
     private(set) var currentBatchKey: BatchKey2D?
     /// The number of instances accumulated in the current batch.
@@ -97,6 +101,7 @@ final class InstanceBatcher2D {
     /// Prepares the batcher for a new frame by selecting the buffer and resetting state.
     func beginFrame(bufferIndex: Int) {
         currentBufferIndex = bufferIndex % Self.bufferCount
+        frameOffset = 0
         reset()
     }
 
@@ -112,14 +117,14 @@ final class InstanceBatcher2D {
         color: SIMD4<Float>
     ) -> Bool {
         if let currentKey = currentBatchKey {
-            if currentKey != key || instanceCount >= Self.maxInstancesPerBatch {
+            if currentKey != key || (frameOffset + instanceCount) >= Self.maxInstancesPerBatch {
                 return false
             }
         } else {
             currentBatchKey = key
         }
 
-        instancePointers[currentBufferIndex][instanceCount] = InstanceData2D(
+        instancePointers[currentBufferIndex][frameOffset + instanceCount] = InstanceData2D(
             transform: transform,
             color: color
         )
@@ -132,8 +137,15 @@ final class InstanceBatcher2D {
         instanceBuffers[currentBufferIndex]
     }
 
-    /// Resets the batch state for a new batch.
+    /// The byte offset into the current buffer where the active batch starts.
+    var currentBufferOffset: Int {
+        frameOffset * MemoryLayout<InstanceData2D>.stride
+    }
+
+    /// Resets the batch state for a new batch, advancing the frame offset
+    /// so that already-encoded draw calls are not overwritten.
     func reset() {
+        frameOffset += instanceCount
         instanceCount = 0
         currentBatchKey = nil
     }

@@ -154,6 +154,14 @@ public final class Canvas2D {
     // Tracks whether anything has been drawn (for background() optimization)
     var hasDrawnAnything: Bool = false
 
+    /// Whether background() was called during the current frame's draw().
+    /// Used to determine loadAction for the next frame.
+    var backgroundCalledThisFrame: Bool = false
+
+    /// Whether the current frame will clear via Metal's loadAction.
+    /// When true, background() can skip drawing a quad if nothing else has been drawn.
+    var frameWillClear: Bool = true
+
     // Closure to set the clear color, injected by MetaphorRenderer
     var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
 
@@ -428,6 +436,7 @@ public final class Canvas2D {
     public func begin(encoder: MTLRenderCommandEncoder, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentBufferIndex = bufferIndex % Self.bufferCount
+        // Reset per-frame rendering state
         self.vertexCount = 0
         self.bufferOffset = 0
         self.texturedVertexCount = 0
@@ -435,29 +444,11 @@ public final class Canvas2D {
         self.currentBoundTexture = nil
         self.currentTransform = float3x3(1)
         self.stateStack.removeAll(keepingCapacity: true)
-        self.fillColor = SIMD4<Float>(1, 1, 1, 1)
-        self.strokeColor = SIMD4<Float>(1, 1, 1, 1)
-        self.currentStrokeWeight = 1.0
-        self.hasFill = true
-        self.hasStroke = true
-        self.currentBlendMode = .alpha
-        self.currentRectMode = .corner
-        self.currentEllipseMode = .center
-        self.currentImageMode = .corner
-        self.colorModeConfig = ColorModeConfig()
-        self.tintColor = SIMD4<Float>(1, 1, 1, 1)
-        self.hasTint = false
-        self.curveDetailCount = 20
-        self.curveTightnessValue = 0.0
-        self.currentStrokeCap = .round
-        self.currentStrokeJoin = .miter
-        self.currentTextSize = 32
-        self.currentFontFamily = "Helvetica"
-        self.currentTextAlignH = .left
-        self.currentTextAlignV = .baseline
-        self.currentTextLeading = 1.2
+        // Style state (fill, stroke, colorMode, etc.) is preserved across frames
+        // to match Processing behavior where setup() styles carry into draw().
         self.frameCounter += 1
         self.hasDrawnAnything = false
+        self.backgroundCalledThisFrame = false
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
     }
 
@@ -754,10 +745,14 @@ public final class Canvas2D {
     /// - Parameter color: The background color.
     public func background(_ color: Color) {
         let c = color.simd
+        backgroundCalledThisFrame = true
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
-        if !hasDrawnAnything {
+        if !hasDrawnAnything && frameWillClear {
+            // Metal's loadAction = .clear will handle clearing
             return
         }
+        // Draw a full-screen quad (either because something was already drawn,
+        // or because loadAction = .load and we need to explicitly clear)
         addVertexRaw(0, 0, c)
         addVertexRaw(width, 0, c)
         addVertexRaw(width, height, c)
@@ -802,7 +797,7 @@ public final class Canvas2D {
 
         let (meshBuffer, meshVertexCount) = unitMeshFor(batchKey.shapeType)
         encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
-        encoder.setVertexBuffer(instanceBatcher2D.currentBuffer, offset: 0, index: 6)
+        encoder.setVertexBuffer(instanceBatcher2D.currentBuffer, offset: instanceBatcher2D.currentBufferOffset, index: 6)
 
         var proj = projectionMatrix
         encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)

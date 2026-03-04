@@ -848,6 +848,7 @@ extension SketchContext {
     ///   - width: The output image width in pixels.
     ///   - height: The output image height in pixels.
     /// - Returns: An `MPSRayTracer` instance.
+    @available(macOS, deprecated: 14.0, message: "Uses deprecated MPS ray tracing APIs; migrate to Metal ray tracing APIs")
     public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
         try MPSRayTracer(device: renderer.device, commandQueue: renderer.commandQueue, width: width, height: height)
     }

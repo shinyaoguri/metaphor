@@ -217,13 +217,13 @@ public struct ColorModeConfig: Sendable, Equatable {
     /// The active color space.
     public var space: ColorSpace = .rgb
     /// The maximum value for the first component (red or hue).
-    public var max1: Float = 1.0
+    public var max1: Float = 255.0
     /// The maximum value for the second component (green or saturation).
-    public var max2: Float = 1.0
+    public var max2: Float = 255.0
     /// The maximum value for the third component (blue or brightness).
-    public var max3: Float = 1.0
+    public var max3: Float = 255.0
     /// The maximum value for the alpha component.
-    public var maxAlpha: Float = 1.0
+    public var maxAlpha: Float = 255.0
 
     /// Converts three component values and an optional alpha into a color.
     ///

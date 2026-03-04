@@ -218,6 +218,14 @@ public final class SketchContext {
         }
         canvas3D.end()
         canvas.end()
+
+        // Determine loadAction for the next frame based on whether background()
+        // was called during this frame's draw(). If not called, preserve the
+        // previous frame's content (Processing behavior).
+        let shouldClearNext = canvas.backgroundCalledThisFrame
+        renderer.textureManager.setShouldClear(shouldClearNext)
+        canvas.frameWillClear = shouldClearNext
+
         // GIF frame capture
         captureGIFFrame()
     }

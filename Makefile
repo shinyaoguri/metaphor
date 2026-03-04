@@ -1,4 +1,4 @@
-.PHONY: setup build clean test syphon docs docs-preview
+.PHONY: setup build clean test syphon docs docs-preview examples examples-check examples-list
 
 # Default target
 all: setup build
@@ -100,16 +100,31 @@ docs-preview:
 	xcrun docc preview Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs
 
+# Run examples interactively (excludes _Legacy/ by default)
+examples:
+	@./scripts/run-examples.sh
+
+# Build-only verification of all examples
+examples-check:
+	@./scripts/run-examples.sh --build-only
+
+# List all available examples
+examples-list:
+	@./scripts/run-examples.sh --list
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make setup        - Initialize submodules and build Syphon.xcframework"
-	@echo "  make build        - Build the Swift package"
-	@echo "  make release      - Build release version"
-	@echo "  make test         - Run tests"
-	@echo "  make clean        - Clean build artifacts"
-	@echo "  make check        - Check if setup is complete"
-	@echo "  make docs         - Build DocC documentation"
-	@echo "  make docs-preview - Preview DocC documentation locally"
-	@echo "  make help         - Show this help"
+	@echo "  make setup          - Initialize submodules and build Syphon.xcframework"
+	@echo "  make build          - Build the Swift package"
+	@echo "  make release        - Build release version"
+	@echo "  make test           - Run tests"
+	@echo "  make clean          - Clean build artifacts"
+	@echo "  make check          - Check if setup is complete"
+	@echo "  make docs           - Build DocC documentation"
+	@echo "  make docs-preview   - Preview DocC documentation locally"
+	@echo "  make examples       - Run examples interactively"
+	@echo "  make examples-check - Build-only verification of all examples"
+	@echo "  make examples-list  - List all available examples"
+	@echo "  make help           - Show this help"

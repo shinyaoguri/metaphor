@@ -195,6 +195,22 @@ public final class TextureManager {
         renderPassDescriptor.colorAttachments[0].clearColor = color
     }
 
+    /// Sets whether the next render pass should clear or preserve the previous frame.
+    ///
+    /// - Parameter shouldClear: If true, uses `.clear` load action; if false, uses `.load`.
+    public func setShouldClear(_ shouldClear: Bool) {
+        renderPassDescriptor.colorAttachments[0].loadAction = shouldClear ? .clear : .load
+        // Depth should always clear for correct z-testing each frame
+
+        // When preserving the previous frame with MSAA, the MSAA texture must
+        // retain its content. Use .storeAndMultisampleResolve instead of
+        // .multisampleResolve so the MSAA texture is available for .load next frame.
+        if sampleCount > 1 {
+            renderPassDescriptor.colorAttachments[0].storeAction =
+                shouldClear ? .multisampleResolve : .storeAndMultisampleResolve
+        }
+    }
+
     /// Creates a new texture manager with different dimensions, preserving the sample count.
     ///
     /// Since `TextureManager` is immutable, resizing returns a new instance.

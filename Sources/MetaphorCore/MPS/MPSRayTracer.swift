@@ -45,6 +45,7 @@ struct RayTraceUniforms {
 /// rt.trace(mode: .ambientOcclusion(samples: 32, radius: 2.0),
 ///          camera: (eye: SIMD3(0,2,5), center: .zero, up: SIMD3(0,1,0), fov: .pi/3))
 /// ```
+@available(macOS, deprecated: 14.0, message: "Uses deprecated MPS ray tracing APIs; migrate to Metal ray tracing APIs")
 @MainActor
 public final class MPSRayTracer {
     private let device: MTLDevice

@@ -6,6 +6,7 @@ import simd
 ///
 /// Extract vertex positions from Mesh and DynamicMesh instances and
 /// construct an MPSTriangleAccelerationStructure for ray intersection.
+@available(macOS, deprecated: 14.0, message: "MPSTriangleAccelerationStructure is deprecated; migrate to Metal ray tracing APIs")
 @MainActor
 final class MPSRayScene {
 

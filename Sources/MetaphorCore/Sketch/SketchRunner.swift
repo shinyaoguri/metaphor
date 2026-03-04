@@ -7,7 +7,7 @@ import MetalKit
 /// the window, `MTKView`, and renderer. Users do not interact with
 /// this class directly.
 @MainActor
-final class SketchRunner: NSObject, @preconcurrency NSApplicationDelegate {
+final class SketchRunner: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
     private var mtkView: MetaphorMTKView?
     private var renderer: MetaphorRenderer?
@@ -183,8 +183,17 @@ final class SketchRunner: NSObject, @preconcurrency NSApplicationDelegate {
         // Connect input callbacks to sketch event methods
         connectInput(sketch: sketch, input: renderer.input)
 
+        // Temporarily suppress noLoop handler during setup() to prevent
+        // premature pausing before onDraw is configured.
+        context.onNoLoop = nil
+
         // setup()
         sketch.setup()
+
+        // Restore noLoop handler
+        context.onNoLoop = { [weak self] in
+            self?.handleNoLoop()
+        }
 
         // Compute phase + draw loop
         var prevTime: Float = 0
@@ -211,6 +220,18 @@ final class SketchRunner: NSObject, @preconcurrency NSApplicationDelegate {
         renderer.onAfterDraw = { [weak context] commandBuffer in
             guard let context else { return }
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
+        }
+
+        // If noLoop() was called during setup(), the render loop is still
+        // running (handler was suppressed). Wrap onDraw to let one frame
+        // render, then pause.
+        if !context.isLooping {
+            let userOnDraw = renderer.onDraw
+            renderer.onDraw = { [weak self, weak renderer] encoder, time in
+                userOnDraw?(encoder, time)
+                renderer?.onDraw = userOnDraw
+                self?.handleNoLoop()
+            }
         }
 
         // Show the window

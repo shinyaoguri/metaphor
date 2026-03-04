@@ -62,6 +62,12 @@ public final class MetaphorRenderer: NSObject {
     /// When `true`, `draw(in:)` only blits the offscreen texture to screen without calling `renderFrame()`.
     public var useExternalRenderLoop: Bool = false
 
+    /// Whether at least one frame has been blitted to the screen.
+    /// Used to skip the occlusion check on the very first blit so that
+    /// noLoop() sketches display their content before the window's
+    /// occlusion state has been updated.
+    private var hasBlittedOnce: Bool = false
+
     // MARK: - Offline Rendering
 
     /// Enable offline rendering mode with deterministic frame timing.
@@ -785,7 +791,7 @@ public final class MetaphorRenderer: NSObject {
 
 // MARK: - MTKViewDelegate
 
-extension MetaphorRenderer: @preconcurrency MTKViewDelegate {
+extension MetaphorRenderer: MTKViewDelegate {
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     public func draw(in view: MTKView) {
@@ -794,9 +800,12 @@ extension MetaphorRenderer: @preconcurrency MTKViewDelegate {
             renderFrame()
         }
 
-        // Skip blit when the window is occluded to prevent currentDrawable from blocking
+        // Skip blit when the window is occluded to prevent currentDrawable from blocking.
+        // Always allow the first blit so that noLoop() sketches display their content
+        // even when the window's occlusion state hasn't updated yet.
         #if os(macOS)
-        if let window = view.window,
+        if hasBlittedOnce,
+           let window = view.window,
            !window.occlusionState.contains(.visible) {
             return
         }
@@ -819,5 +828,6 @@ extension MetaphorRenderer: @preconcurrency MTKViewDelegate {
 
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        hasBlittedOnce = true
     }
 }

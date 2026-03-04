@@ -98,7 +98,8 @@ public final class Canvas3D {
     private var cameraEye: SIMD3<Float> = SIMD3(0, 0, 5)
     private var cameraCenter: SIMD3<Float> = .zero
     private var cameraUp: SIMD3<Float> = SIMD3(0, 1, 0)
-    private var fov: Float = Float.pi / 3
+    private static let defaultFov: Float = Float.pi / 3
+    private var fov: Float = Canvas3D.defaultFov
     private var nearPlane: Float = 0.1
     private var farPlane: Float = 10000
     private var viewProjectionDirty: Bool = true
@@ -295,12 +296,9 @@ public final class Canvas3D {
     func begin(encoder: MTLRenderCommandEncoder, time: Float, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentTime = time
+        // Reset per-frame state (transform, camera, lights, draw calls)
         self.currentTransform = .identity
         self.stateStack.removeAll(keepingCapacity: true)
-        self.fillColor = SIMD4(1, 1, 1, 1)
-        self.hasFill = true
-        self.hasStroke3D = false
-        self.strokeColor3D = SIMD4(1, 1, 1, 1)
         self.lightArray.removeAll(keepingCapacity: true)
         self.ambientColor = SIMD3(0.2, 0.2, 0.2)
         self.currentMaterial = .default
@@ -308,13 +306,20 @@ public final class Canvas3D {
         self.currentCustomMaterial = nil
         self.recordedDrawCalls.removeAll(keepingCapacity: true)
 
-        let defaultZ = (height / 2) / tan(fov / 2)
-        self.cameraEye = SIMD3(0, 0, defaultZ)
-        self.cameraCenter = .zero
+        // Reset projection to Processing-like defaults each frame.
+        // Users must call perspective()/ortho() every frame for custom projection.
+        let defaultZ = (height / 2) / tan(Canvas3D.defaultFov / 2)
+        self.fov = Canvas3D.defaultFov
+        self.nearPlane = defaultZ / 10
+        self.farPlane = defaultZ * 10
+        self.cameraEye = SIMD3(width / 2, height / 2, defaultZ)
+        self.cameraCenter = SIMD3(width / 2, height / 2, 0)
         self.cameraUp = SIMD3(0, 1, 0)
         self.viewProjectionDirty = true
         self.useOrthographic = false
 
+        // Style state (fill, stroke) is preserved across frames
+        // to match Processing behavior.
         instanceBatcher.beginFrame(bufferIndex: bufferIndex)
     }
 
@@ -1495,7 +1500,7 @@ public final class Canvas3D {
         }
 
         // Instance buffer at buffer(6)
-        encoder.setVertexBuffer(instanceBatcher.currentBuffer, offset: 0, index: 6)
+        encoder.setVertexBuffer(instanceBatcher.currentBuffer, offset: instanceBatcher.currentBufferOffset, index: 6)
 
         // --- Fill pass ---
         if batchHasFill {
@@ -1828,7 +1833,10 @@ public final class Canvas3D {
                 let aspect = width / height
                 proj = float4x4(perspectiveFov: fov, aspect: aspect, near: nearPlane, far: farPlane)
             }
-            cachedViewProjection = proj * view
+            // Flip Y so 3D matches Processing's Y-down convention (same as Canvas2D).
+            var flipY = float4x4(1)
+            flipY.columns.1.y = -1
+            cachedViewProjection = flipY * proj * view
             viewProjectionDirty = false
         }
         return cachedViewProjection
