@@ -158,7 +158,14 @@ public final class Canvas3D {
 
     // MARK: - Mesh Cache
 
-    private var meshCache: [String: Mesh] = [:]
+    private struct CachedMesh {
+        let mesh: Mesh
+        var lastUsedFrame: Int
+    }
+
+    private var meshCache: [String: CachedMesh] = [:]
+    private var meshCacheFrameCounter: Int = 0
+    private static let maxMeshCacheSize = 64
 
     // MARK: - Shadow Mapping State
 
@@ -305,6 +312,7 @@ public final class Canvas3D {
         self.currentTexture = nil
         self.currentCustomMaterial = nil
         self.recordedDrawCalls.removeAll(keepingCapacity: true)
+        self.meshCacheFrameCounter += 1
 
         // Reset projection to Processing-like defaults each frame.
         // Users must call perspective()/ortho() every frame for custom projection.
@@ -931,14 +939,30 @@ public final class Canvas3D {
 
     /// Look up or create a cached mesh, logging errors on failure.
     private func cachedMesh(key: String, create: () throws -> Mesh) -> Mesh? {
-        if let cached = meshCache[key] { return cached }
+        if var cached = meshCache[key] {
+            cached.lastUsedFrame = meshCacheFrameCounter
+            meshCache[key] = cached
+            return cached.mesh
+        }
         do {
             let mesh = try create()
-            meshCache[key] = mesh
+            meshCache[key] = CachedMesh(mesh: mesh, lastUsedFrame: meshCacheFrameCounter)
+            if meshCache.count > Self.maxMeshCacheSize {
+                evictStaleMeshes()
+            }
             return mesh
         } catch {
             print("[metaphor] Failed to create mesh '\(key)': \(error)")
             return nil
+        }
+    }
+
+    /// Evict the least recently used half of the mesh cache.
+    private func evictStaleMeshes() {
+        let sorted = meshCache.sorted { $0.value.lastUsedFrame < $1.value.lastUsedFrame }
+        let removeCount = meshCache.count - Self.maxMeshCacheSize / 2
+        for (key, _) in sorted.prefix(removeCount) {
+            meshCache.removeValue(forKey: key)
         }
     }
 
@@ -1768,6 +1792,11 @@ public final class Canvas3D {
 
     // MARK: - Custom Pipeline
 
+    /// Clear the mesh cache, releasing all cached GPU mesh buffers.
+    public func clearMeshCache() {
+        meshCache.removeAll()
+    }
+
     /// Clear the custom pipeline cache, typically called after shader hot-reload.
     public func clearCustomPipelineCache() {
         customPipelineCache.removeAll()
@@ -1813,6 +1842,12 @@ public final class Canvas3D {
         }
 
         customPipelineCache[cacheKey] = pipeline
+        if customPipelineCache.count > 32 {
+            let keysToRemove = Array(customPipelineCache.keys).prefix(customPipelineCache.count - 16)
+            for key in keysToRemove {
+                customPipelineCache.removeValue(forKey: key)
+            }
+        }
         return pipeline
     }
 

@@ -17,6 +17,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var sketchRef: (any Sketch)?
     private var renderTimer: DispatchSourceTimer?
     private var activity: NSObjectProtocol?
+    private var sharedResources: SharedMetalResources?
 
     // MARK: - Entry Point
 
@@ -48,7 +49,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        // Only terminate when the primary window has been closed.
+        !(window?.isVisible ?? false)
     }
 
     // MARK: - Setup
@@ -59,18 +61,25 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private func setupWindow(sketch: any Sketch) {
         let config = sketch.config
 
-        // Initialize renderer + canvases
+        // Initialize shared resources + renderer + canvases
+        let shared: SharedMetalResources
         let renderer: MetaphorRenderer
         let canvas: Canvas2D
         let canvas3D: Canvas3D
         do {
-            renderer = try MetaphorRenderer(width: config.width, height: config.height)
+            shared = try SharedMetalResources()
+            renderer = try MetaphorRenderer(
+                sharedResources: shared,
+                width: config.width,
+                height: config.height
+            )
             canvas = try Canvas2D(renderer: renderer)
             canvas3D = try Canvas3D(renderer: renderer)
         } catch {
             showErrorAlert(error: error)
             return
         }
+        self.sharedResources = shared
         self.renderer = renderer
 
         canvas.onSetClearColor = { [weak renderer] r, g, b, a in
@@ -84,7 +93,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
         )
         self.context = context
-        precondition(sketch._context == nil, "Only one Sketch instance is supported at a time")
+        context.isPrimary = true
+        context._sharedResources = shared
+        assert(sketch._context == nil, "Sketch context already set — this may indicate duplicate setup")
         sketch._context = context
 
         // createCanvas callback (allows resizing from within setup())

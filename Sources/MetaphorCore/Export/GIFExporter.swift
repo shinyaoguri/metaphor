@@ -181,6 +181,63 @@ public final class GIFExporter {
         frames.removeAll()
         stagingTexture = nil
     }
+
+    /// Stop recording and write the captured frames to a GIF file asynchronously.
+    ///
+    /// Performs the file write on a background thread to avoid blocking the main thread.
+    /// - Parameter path: The output file path.
+    /// - Throws: ``GIFExporterError`` if no frames were captured or the file could not be written.
+    public func endRecordAsync(to path: String) async throws {
+        guard isRecording else { return }
+        isRecording = false
+
+        guard !frames.isEmpty else {
+            throw GIFExporterError.noFrames
+        }
+
+        let capturedFrames = frames
+        let capturedDelay = frameDelay
+        let capturedLoopCount = loopCount
+        frames.removeAll()
+        frameCount = 0
+        stagingTexture = nil
+
+        try await Task.detached {
+            let url = URL(fileURLWithPath: path) as CFURL
+            let dir = URL(fileURLWithPath: path).deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+            guard let destination = CGImageDestinationCreateWithURL(
+                url,
+                UTType.gif.identifier as CFString,
+                capturedFrames.count,
+                nil
+            ) else {
+                throw GIFExporterError.destinationCreationFailed
+            }
+
+            let gifProperties: [String: Any] = [
+                kCGImagePropertyGIFDictionary as String: [
+                    kCGImagePropertyGIFLoopCount as String: capturedLoopCount
+                ]
+            ]
+            CGImageDestinationSetProperties(destination, gifProperties as CFDictionary)
+
+            let frameProperties: [String: Any] = [
+                kCGImagePropertyGIFDictionary as String: [
+                    kCGImagePropertyGIFDelayTime as String: capturedDelay
+                ]
+            ]
+
+            for frame in capturedFrames {
+                CGImageDestinationAddImage(destination, frame, frameProperties as CFDictionary)
+            }
+
+            guard CGImageDestinationFinalize(destination) else {
+                throw GIFExporterError.finalizationFailed
+            }
+        }.value
+    }
 }
 
 // MARK: - Errors

@@ -290,6 +290,11 @@ extension Sketch {
         _context?.endVideoRecord(completion: completion)
     }
 
+    /// Stop recording video and finalize the file asynchronously.
+    public func endVideoRecord() async {
+        await _context?.endVideoRecord()
+    }
+
     // MARK: Offline Rendering
 
     /// Indicate whether offline rendering mode is active.

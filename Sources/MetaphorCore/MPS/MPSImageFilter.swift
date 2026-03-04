@@ -189,10 +189,30 @@ public final class MPSImageFilterWrapper {
         kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
+    // MARK: - Cache Management
+
+    private static let maxGaussianCacheSize = 32
+    private static let maxAreaCacheSize = 16
+
+    /// Clear all cached MPS kernels and textures.
+    public func clearCache() {
+        gaussianCache.removeAll()
+        areaMinCache.removeAll()
+        areaMaxCache.removeAll()
+        medianCache.removeAll()
+        texturePool.removeAll()
+    }
+
     // MARK: - Private: Kernel Caching
 
     private func getOrCreateGaussian(sigma: Float) -> MPSImageGaussianBlur {
         if let cached = gaussianCache[sigma] { return cached }
+        if gaussianCache.count >= Self.maxGaussianCacheSize {
+            let keysToRemove = Array(gaussianCache.keys).prefix(gaussianCache.count / 2)
+            for key in keysToRemove {
+                gaussianCache.removeValue(forKey: key)
+            }
+        }
         let kernel = MPSImageGaussianBlur(device: device, sigma: sigma)
         kernel.edgeMode = .clamp
         gaussianCache[sigma] = kernel
@@ -215,6 +235,10 @@ public final class MPSImageFilterWrapper {
 
     private func getOrCreateAreaMin(size: Int) -> MPSImageAreaMin {
         if let cached = areaMinCache[size] { return cached }
+        if areaMinCache.count >= Self.maxAreaCacheSize {
+            let keysToRemove = Array(areaMinCache.keys).prefix(areaMinCache.count / 2)
+            for key in keysToRemove { areaMinCache.removeValue(forKey: key) }
+        }
         let kernel = MPSImageAreaMin(device: device, kernelWidth: size, kernelHeight: size)
         kernel.edgeMode = .clamp
         areaMinCache[size] = kernel
@@ -223,6 +247,10 @@ public final class MPSImageFilterWrapper {
 
     private func getOrCreateAreaMax(size: Int) -> MPSImageAreaMax {
         if let cached = areaMaxCache[size] { return cached }
+        if areaMaxCache.count >= Self.maxAreaCacheSize {
+            let keysToRemove = Array(areaMaxCache.keys).prefix(areaMaxCache.count / 2)
+            for key in keysToRemove { areaMaxCache.removeValue(forKey: key) }
+        }
         let kernel = MPSImageAreaMax(device: device, kernelWidth: size, kernelHeight: size)
         kernel.edgeMode = .clamp
         areaMaxCache[size] = kernel
@@ -232,6 +260,10 @@ public final class MPSImageFilterWrapper {
     private func getOrCreateMedian(diameter: Int) -> MPSImageMedian {
         let d = max(3, diameter | 1) // must be odd, minimum 3
         if let cached = medianCache[d] { return cached }
+        if medianCache.count >= Self.maxAreaCacheSize {
+            let keysToRemove = Array(medianCache.keys).prefix(medianCache.count / 2)
+            for key in keysToRemove { medianCache.removeValue(forKey: key) }
+        }
         let kernel = MPSImageMedian(device: device, kernelDiameter: d)
         medianCache[d] = kernel
         return kernel

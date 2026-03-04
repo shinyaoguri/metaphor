@@ -472,13 +472,18 @@ extension Canvas2D {
     public func point(_ x: Float, _ y: Float) {
         let r = currentStrokeWeight * 0.5
         let color = strokeColor
-        // Draw as a simple quad (6 vertices) for efficiency.
-        // Avoids the ellipse/instancing path which is too heavy for pixel-level usage.
-        addVertex(x - r, y - r, color)
-        addVertex(x + r, y - r, color)
-        addVertex(x + r, y + r, color)
-        addVertex(x - r, y - r, color)
-        addVertex(x + r, y + r, color)
-        addVertex(x - r, y + r, color)
+        // Draw as a triangle-fan circle (8 segments = 24 vertices).
+        // Visually indistinguishable from a true circle at typical point sizes,
+        // while staying much lighter than the ellipse/instancing path.
+        let segments = 8
+        let angleStep = Float.pi * 2.0 / Float(segments)
+        var a0 = Float(0)
+        for _ in 0..<segments {
+            let a1 = a0 + angleStep
+            addVertex(x, y, color)
+            addVertex(x + r * cos(a0), y + r * sin(a0), color)
+            addVertex(x + r * cos(a1), y + r * sin(a1), color)
+            a0 = a1
+        }
     }
 }

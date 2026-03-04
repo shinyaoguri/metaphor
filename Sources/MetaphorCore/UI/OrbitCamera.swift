@@ -98,7 +98,7 @@ public final class OrbitCamera {
     ///   - dy: The vertical drag amount in pixels.
     public func handleMouseDrag(dx: Float, dy: Float) {
         let dAzimuth = -dx * sensitivity
-        let dElevation = dy * sensitivity
+        let dElevation = -dy * sensitivity
 
         if damping > 0 {
             velocityAzimuth += dAzimuth

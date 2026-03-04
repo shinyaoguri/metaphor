@@ -45,10 +45,11 @@ public final class ImageFilterGPU {
 
     // MARK: - Cache Management
 
-    /// Clear the texture pool and weight buffer cache.
+    /// Clear all caches including texture pool, weight buffers, and compiled kernels.
     public func clearCache() {
         texturePool.removeAll()
         weightBufferCache.removeAll()
+        kernelCache.removeAll()
     }
 
     /// Remove texture pool entries that do not match the specified dimensions.

@@ -240,6 +240,14 @@ extension Sketch {
     public func endGIFRecord(_ path: String? = nil) throws {
         try activeContext().endGIFRecord(path)
     }
+
+    /// Stop recording and write the GIF to a file asynchronously.
+    ///
+    /// Performs file writing on a background thread to avoid blocking.
+    /// - Parameter path: The output file path (auto-generated if `nil`).
+    public func endGIFRecord(_ path: String? = nil) async throws {
+        try await activeContext().endGIFRecordAsync(path)
+    }
 }
 
 // MARK: - Orbit Camera (D-20)
@@ -411,5 +419,12 @@ extension Sketch {
     /// - Returns: The generated image, or `nil` if generation fails.
     public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
         _context?.ciGenerate(preset, width: width, height: height)
+    }
+
+    // MARK: - Cache Management
+
+    /// Clear all internal caches to reclaim GPU memory.
+    public func clearCaches() {
+        _context?.clearCaches()
     }
 }

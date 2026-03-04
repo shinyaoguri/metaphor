@@ -28,6 +28,9 @@ public final class MetaphorRenderer: NSObject {
     /// The depth-stencil state cache shared across all render passes.
     public let depthStencilCache: DepthStencilCache
 
+    /// The shared Metal resources, available when this renderer was created with shared resources.
+    public private(set) var sharedResources: SharedMetalResources?
+
     /// The input manager for keyboard and mouse event handling.
     public let input: InputManager
 
@@ -183,6 +186,51 @@ public final class MetaphorRenderer: NSObject {
         self.startTime = CACurrentMediaTime()
         self.shaderLibrary = try ShaderLibrary(device: device)
         self.depthStencilCache = DepthStencilCache(device: device)
+        self.input = InputManager()
+
+        super.init()
+
+        try buildBlitPipeline()
+
+        do {
+            self.postProcessPipeline = try PostProcessPipeline(
+                device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary
+            )
+            self.isPostProcessAvailable = true
+        } catch {
+            metaphorWarning("PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
+        }
+    }
+
+    /// Create a renderer that shares Metal resources with other renderers.
+    ///
+    /// Use this initializer for multi-window setups where multiple renderers
+    /// share the same device, command queue, shader library, and depth-stencil cache.
+    ///
+    /// - Parameters:
+    ///   - sharedResources: The shared Metal resources to reuse.
+    ///   - width: The width of the offscreen render texture in pixels.
+    ///   - height: The height of the offscreen render texture in pixels.
+    ///   - clearColor: The clear color for the offscreen render pass.
+    /// - Throws: ``MetaphorError`` if texture or pipeline creation fails.
+    public init(
+        sharedResources: SharedMetalResources,
+        width: Int = 1920,
+        height: Int = 1080,
+        clearColor: MTLClearColor = .black
+    ) throws {
+        self.device = sharedResources.device
+        self.commandQueue = sharedResources.commandQueue
+        self.shaderLibrary = sharedResources.shaderLibrary
+        self.depthStencilCache = sharedResources.depthStencilCache
+        self.sharedResources = sharedResources
+        self.textureManager = try TextureManager(
+            device: sharedResources.device,
+            width: width,
+            height: height,
+            clearColor: clearColor
+        )
+        self.startTime = CACurrentMediaTime()
         self.input = InputManager()
 
         super.init()

@@ -708,6 +708,20 @@ extension SketchContext {
         try gifExporter.endRecord(to: actualPath)
     }
 
+    /// Ends GIF recording and writes the file asynchronously on a background thread.
+    /// - Parameter path: The output file path (nil generates one on the Desktop automatically).
+    public func endGIFRecordAsync(_ path: String? = nil) async throws {
+        let actualPath: String
+        if let path {
+            actualPath = path
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
+        }
+        try await gifExporter.endRecordAsync(to: actualPath)
+    }
+
     // MARK: - Orbit Camera (D-20)
 
     /// Enables orbit camera control (call during the draw phase).

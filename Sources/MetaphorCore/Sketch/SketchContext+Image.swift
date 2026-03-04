@@ -302,6 +302,11 @@ extension SketchContext {
         renderer.videoExporter.endRecord(completion: completion)
     }
 
+    /// Ends video recording asynchronously.
+    public func endVideoRecord() async {
+        await renderer.videoExporter.endRecord()
+    }
+
     /// Saves the current frame as a single image file (Processing-compatible).
     /// - Parameter filename: The output filename (nil auto-generates a numbered name).
     public func saveFrame(_ filename: String? = nil) {

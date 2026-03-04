@@ -99,6 +99,17 @@ public final class SketchContext {
         NSCursor.hide()
     }
 
+    // MARK: - Cache Management
+
+    /// Clear all internal caches (mesh, pipeline, texture, and filter caches).
+    ///
+    /// Call this when switching scenes or to reclaim GPU memory.
+    public func clearCaches() {
+        canvas3D.clearMeshCache()
+        canvas3D.clearCustomPipelineCache()
+        renderer.imageFilterGPU.clearCache()
+    }
+
     // MARK: - Canvas Resize
 
     /// Callback invoked when the canvas is resized (set by SketchRunner).
@@ -170,6 +181,47 @@ public final class SketchContext {
     /// The lazily initialized CoreImage filter wrapper.
     var _ciFilterWrapper: CIFilterWrapper?
 
+    // MARK: - Multi-Window
+
+    /// The shared Metal resources, set by SketchRunner for the primary window.
+    var _sharedResources: SharedMetalResources?
+
+    /// Whether this is the primary sketch context (controls global elapsed time).
+    var isPrimary: Bool = false
+
+    #if os(macOS)
+    /// The secondary windows created from this context.
+    private var secondaryWindows: [SketchWindow] = []
+
+    /// Create a new secondary window.
+    ///
+    /// - Parameter config: The window configuration.
+    /// - Returns: A new ``SketchWindow`` instance, or `nil` if creation fails.
+    public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
+        guard let shared = _sharedResources else {
+            metaphorWarning("Cannot create window: shared resources unavailable")
+            return nil
+        }
+
+        do {
+            let window = try SketchWindow(config: config, sharedResources: shared)
+            secondaryWindows.append(window)
+            return window
+        } catch {
+            metaphorWarning("Failed to create window: \(error)")
+            return nil
+        }
+    }
+
+    /// Close all secondary windows and release their resources.
+    public func closeAllWindows() {
+        for window in secondaryWindows {
+            window.close()
+        }
+        secondaryWindows.removeAll()
+    }
+    #endif
+
     // MARK: - Initialization
 
     init(renderer: MetaphorRenderer, canvas: Canvas2D, canvas3D: Canvas3D, input: InputManager) {
@@ -201,7 +253,9 @@ public final class SketchContext {
 
     func beginFrame(encoder: MTLRenderCommandEncoder, time: Float, deltaTime: Float) {
         self.time = time
-        _sketchElapsedTime = time
+        if isPrimary {
+            _sketchElapsedTime = time
+        }
         self.deltaTime = deltaTime
         self.frameCount += 1
         tweenManager.update(deltaTime)
