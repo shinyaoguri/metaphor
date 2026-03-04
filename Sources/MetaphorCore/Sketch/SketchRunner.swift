@@ -7,7 +7,7 @@ import MetalKit
 /// the window, `MTKView`, and renderer. Users do not interact with
 /// this class directly.
 @MainActor
-final class SketchRunner: NSObject, NSApplicationDelegate {
+final class SketchRunner: NSObject, @preconcurrency NSApplicationDelegate {
     private var window: NSWindow?
     private var mtkView: MetaphorMTKView?
     private var renderer: MetaphorRenderer?
@@ -42,14 +42,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     // MARK: - NSApplicationDelegate
 
-    nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
-        MainActor.assumeIsolated {
-            guard let sketch = sketchRef else { return }
-            setupWindow(sketch: sketch)
-        }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard let sketch = sketchRef else { return }
+        setupWindow(sketch: sketch)
     }
 
-    nonisolated func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
 
@@ -173,6 +171,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             let timer = DispatchSource.makeTimerSource(flags: .strict, queue: .main)
             timer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
             timer.setEventHandler { [weak renderer] in
+                dispatchPrecondition(condition: .onQueue(.main))
                 MainActor.assumeIsolated {
                     renderer?.renderFrame()
                 }
@@ -205,7 +204,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             let dt = t - prevTime
             prevTime = t
             context.beginFrame(encoder: encoder, time: t, deltaTime: dt)
-            sketch.draw(context)
+            sketch.draw()
             context.endFrame()
         }
 

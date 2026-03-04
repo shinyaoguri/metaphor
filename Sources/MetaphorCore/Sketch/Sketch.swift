@@ -13,17 +13,6 @@ import ObjectiveC
 /// is called every frame.
 ///
 /// ```swift
-/// // Style A: Explicit context parameter
-/// @main
-/// final class MySketch: Sketch {
-///     func draw(_ ctx: SketchContext) {
-///         ctx.background(.black)
-///         ctx.fill(.white)
-///         ctx.circle(ctx.width / 2, ctx.height / 2, 200)
-///     }
-/// }
-///
-/// // Style B: No parameter (call drawing methods directly)
 /// @main
 /// final class MySketch: Sketch {
 ///     func draw() {
@@ -44,10 +33,7 @@ public protocol Sketch: AnyObject {
     /// Perform one-time initialization (optional).
     func setup()
 
-    /// Draw a single frame using the provided context (implement one of the two `draw` variants).
-    func draw(_ ctx: SketchContext)
-
-    /// Draw a single frame without an explicit context (call drawing methods directly).
+    /// Draw a single frame (call drawing methods directly).
     func draw()
 
     /// Execute GPU compute work before each frame (optional).
@@ -92,11 +78,11 @@ extension Sketch {
         set { objc_setAssociatedObject(self, &sketchContextKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
-    /// Retrieve the active context, raising a fatal error if called outside `setup()` or `draw()`.
+    /// Retrieve the active context, throwing an error if called outside `setup()` or `draw()`.
     @MainActor
-    internal func activeContext(function: String = #function) -> SketchContext {
+    internal func activeContext(function: String = #function) throws -> SketchContext {
         guard let ctx = _context else {
-            fatalError("[\(function)] must be called inside setup() or draw()")
+            throw MetaphorError.contextUnavailable(method: function)
         }
         return ctx
     }
@@ -107,7 +93,6 @@ extension Sketch {
 extension Sketch {
     public var config: SketchConfig { SketchConfig() }
     public func setup() {}
-    public func draw(_ ctx: SketchContext) { draw() }
     public func draw() {}
     public func compute() {}
     public func mousePressed() {}
@@ -117,6 +102,16 @@ extension Sketch {
     public func mouseScrolled() {}
     public func keyPressed() {}
     public func keyReleased() {}
+}
+
+// MARK: - Deprecated
+
+extension Sketch {
+    /// Draw a single frame using an explicit context parameter.
+    ///
+    /// - Parameter ctx: The sketch context.
+    @available(*, deprecated, message: "Use draw() instead. Access context via self properties or self._context.")
+    public func draw(_ ctx: SketchContext) { draw() }
 }
 
 // MARK: - @main Entry Point

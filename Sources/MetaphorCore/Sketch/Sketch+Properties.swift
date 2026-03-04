@@ -12,8 +12,8 @@ extension Sketch {
     }
 
     /// Access the input manager (use inside event handlers).
-    public var input: InputManager {
-        activeContext().input
+    public var input: InputManager? {
+        _context?.input
     }
 
     /// Return the current mouse x-coordinate.
@@ -69,6 +69,14 @@ extension Sketch {
     /// Return the key code of the last key that was pressed.
     public var keyCode: UInt16? {
         _context?.input.lastKeyCode
+    }
+
+    /// Check whether a specific key is currently held down.
+    ///
+    /// - Parameter keyCode: The hardware key code to check.
+    /// - Returns: `true` if the key is currently pressed.
+    public func isKeyDown(_ keyCode: UInt16) -> Bool {
+        _context?.input.isKeyDown(keyCode) ?? false
     }
 
     /// Return the elapsed time in seconds since the sketch started.

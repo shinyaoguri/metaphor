@@ -785,41 +785,39 @@ public final class MetaphorRenderer: NSObject {
 
 // MARK: - MTKViewDelegate
 
-extension MetaphorRenderer: MTKViewDelegate {
-    public nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+extension MetaphorRenderer: @preconcurrency MTKViewDelegate {
+    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
-    public nonisolated func draw(in view: MTKView) {
-        MainActor.assumeIsolated {
-            // When not using an external render loop, render the frame here
-            if !useExternalRenderLoop {
-                renderFrame()
-            }
-
-            // Skip blit when the window is occluded to prevent currentDrawable from blocking
-            #if os(macOS)
-            if let window = view.window,
-               !window.occlusionState.contains(.visible) {
-                return
-            }
-            #endif
-
-            // Blit to screen (preview display)
-            guard let drawable = view.currentDrawable,
-                  let descriptor = view.currentRenderPassDescriptor,
-                  let commandBuffer = commandQueue.makeCommandBuffer() else { return }
-
-            let viewport = calculateViewport(
-                drawableSize: view.drawableSize,
-                targetAspect: textureManager.aspectRatio
-            )
-
-            if let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) {
-                blitToScreen(encoder: encoder, viewport: viewport)
-                encoder.endEncoding()
-            }
-
-            commandBuffer.present(drawable)
-            commandBuffer.commit()
+    public func draw(in view: MTKView) {
+        // When not using an external render loop, render the frame here
+        if !useExternalRenderLoop {
+            renderFrame()
         }
+
+        // Skip blit when the window is occluded to prevent currentDrawable from blocking
+        #if os(macOS)
+        if let window = view.window,
+           !window.occlusionState.contains(.visible) {
+            return
+        }
+        #endif
+
+        // Blit to screen (preview display)
+        guard let drawable = view.currentDrawable,
+              let descriptor = view.currentRenderPassDescriptor,
+              let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+
+        let viewport = calculateViewport(
+            drawableSize: view.drawableSize,
+            targetAspect: textureManager.aspectRatio
+        )
+
+        if let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) {
+            blitToScreen(encoder: encoder, viewport: viewport)
+            encoder.endEncoding()
+        }
+
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
     }
 }

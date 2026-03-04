@@ -29,6 +29,9 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     /// The specified post-process shader was not found in the shader library.
     case postProcessShaderNotFound(String)
 
+    /// The sketch context is not available (called outside `setup()` or `draw()`).
+    case contextUnavailable(method: String)
+
     public var description: String {
         switch self {
         case .deviceNotAvailable:
@@ -45,6 +48,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
             return "[metaphor] Failed to create buffer (size: \(size))"
         case .postProcessShaderNotFound(let name):
             return "[metaphor] Post-process shader not found: '\(name)'"
+        case .contextUnavailable(let method):
+            return "[metaphor] Sketch context is not available in \(method). Ensure this is called inside setup() or draw()."
         }
     }
 

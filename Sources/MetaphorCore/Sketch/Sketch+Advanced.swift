@@ -104,12 +104,12 @@ extension Sketch {
     ///   - to: The end value.
     ///   - duration: The animation duration in seconds.
     ///   - easing: The easing function.
-    /// - Returns: A new ``Tween`` instance.
+    /// - Returns: A new ``Tween`` instance, or `nil` if the context is unavailable.
     @discardableResult
     public func tween<T: Interpolatable>(
         from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
-    ) -> Tween<T> {
-        activeContext().tween(from: from, to: to, duration: duration, easing: easing)
+    ) -> Tween<T>? {
+        _context?.tween(from: from, to: to, duration: duration, easing: easing)
     }
 }
 
@@ -150,8 +150,8 @@ extension Sketch {
 
 extension Sketch {
     /// Access the parameter GUI for creating immediate-mode UI controls.
-    public var gui: ParameterGUI {
-        activeContext().gui
+    public var gui: ParameterGUI? {
+        _context?.gui
     }
 }
 
@@ -251,8 +251,8 @@ extension Sketch {
     }
 
     /// Access the orbit camera for manual configuration.
-    public var orbitCamera: OrbitCamera {
-        activeContext().orbitCamera
+    public var orbitCamera: OrbitCamera? {
+        _context?.orbitCamera
     }
 }
 
@@ -326,9 +326,9 @@ extension Sketch {
     /// Use this to convert between MTLTexture, CVPixelBuffer, and CGImage
     /// when working with CoreML or Vision frameworks directly.
     ///
-    /// - Returns: A new ``MLTextureConverter`` instance.
-    public func createMLTextureConverter() -> MLTextureConverter {
-        activeContext().createMLTextureConverter()
+    /// - Returns: A new ``MLTextureConverter`` instance, or `nil` if the context is unavailable.
+    public func createMLTextureConverter() -> MLTextureConverter? {
+        _context?.createMLTextureConverter()
     }
 }
 
@@ -340,9 +340,9 @@ extension Sketch {
     /// - Parameters:
     ///   - type: The noise algorithm type.
     ///   - config: The noise generation configuration.
-    /// - Returns: A new ``GKNoiseWrapper`` instance.
-    public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper {
-        activeContext().createNoise(type, config: config)
+    /// - Returns: A new ``GKNoiseWrapper`` instance, or `nil` if the context is unavailable.
+    public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper? {
+        _context?.createNoise(type, config: config)
     }
 
     /// Generate a noise texture as an image (convenience method).
@@ -354,7 +354,7 @@ extension Sketch {
     ///   - config: The noise generation configuration.
     /// - Returns: The generated noise image, or `nil` if generation fails.
     public func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage? {
-        activeContext().noiseTexture(type, width: width, height: height, config: config)
+        _context?.noiseTexture(type, width: width, height: height, config: config)
     }
 }
 
@@ -363,9 +363,9 @@ extension Sketch {
 extension Sketch {
     /// Create an MPS (Metal Performance Shaders) image filter.
     ///
-    /// - Returns: A new ``MPSImageFilterWrapper`` instance.
-    public func createMPSFilter() -> MPSImageFilterWrapper {
-        activeContext().createMPSFilter()
+    /// - Returns: A new ``MPSImageFilterWrapper`` instance, or `nil` if the context is unavailable.
+    public func createMPSFilter() -> MPSImageFilterWrapper? {
+        _context?.createMPSFilter()
     }
 
     /// Create an MPS ray tracer for GPU-accelerated ray intersection queries.
@@ -388,7 +388,7 @@ extension Sketch {
     ///   - image: The image to filter.
     ///   - preset: The filter preset to apply.
     public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
-        activeContext().ciFilter(image, preset)
+        _context?.ciFilter(image, preset)
     }
 
     /// Apply a CoreImage filter to an image by name with custom parameters.
@@ -398,7 +398,7 @@ extension Sketch {
     ///   - name: The CIFilter name.
     ///   - parameters: The filter parameters.
     public func ciFilter(_ image: MImage, name: String, parameters: [String: Any] = [:]) {
-        activeContext().ciFilter(image, name: name, parameters: parameters)
+        _context?.ciFilter(image, name: name, parameters: parameters)
     }
 
     /// Generate an image using a CoreImage generator filter.
@@ -409,6 +409,6 @@ extension Sketch {
     ///   - height: The output image height in pixels.
     /// - Returns: The generated image, or `nil` if generation fails.
     public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
-        activeContext().ciGenerate(preset, width: width, height: height)
+        _context?.ciGenerate(preset, width: width, height: height)
     }
 }

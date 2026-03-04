@@ -5,6 +5,7 @@ import MetalKit
 ///
 /// Forwards all input events to `InputManager` and converts window coordinates
 /// to the offscreen texture coordinate system via the renderer.
+@MainActor
 public class MetaphorMTKView: MTKView {
     /// Weak reference to the renderer used for coordinate conversion.
     weak var rendererRef: MetaphorRenderer?
@@ -35,15 +36,13 @@ public class MetaphorMTKView: MTKView {
     /// - Parameter event: The incoming mouse event.
     /// - Returns: A tuple of (x, y) in texture coordinate space.
     private func textureCoords(from event: NSEvent) -> (Float, Float) {
-        MainActor.assumeIsolated {
-            guard let renderer = rendererRef else { return (0, 0) }
-            let point = convert(event.locationInWindow, from: nil)
-            return renderer.viewToTextureCoordinates(
-                viewPoint: point,
-                viewSize: bounds.size,
-                drawableSize: drawableSize
-            )
-        }
+        guard let renderer = rendererRef else { return (0, 0) }
+        let point = convert(event.locationInWindow, from: nil)
+        return renderer.viewToTextureCoordinates(
+            viewPoint: point,
+            viewSize: bounds.size,
+            drawableSize: drawableSize
+        )
     }
 
     /// Determine the mouse button index from an event type.
@@ -62,57 +61,43 @@ public class MetaphorMTKView: MTKView {
     /// Handle left mouse button press.
     public override func mouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseDown(x: x, y: y, button: 0)
-        }
+        rendererRef?.input.handleMouseDown(x: x, y: y, button: 0)
     }
 
     /// Handle left mouse button release.
     public override func mouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseUp(x: x, y: y, button: 0)
-        }
+        rendererRef?.input.handleMouseUp(x: x, y: y, button: 0)
     }
 
     /// Handle mouse movement without any button pressed.
     public override func mouseMoved(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseMoved(x: x, y: y)
-        }
+        rendererRef?.input.handleMouseMoved(x: x, y: y)
     }
 
     /// Handle mouse movement while the left button is held.
     public override func mouseDragged(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseDragged(x: x, y: y)
-        }
+        rendererRef?.input.handleMouseDragged(x: x, y: y)
     }
 
     /// Handle right mouse button press.
     public override func rightMouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseDown(x: x, y: y, button: 1)
-        }
+        rendererRef?.input.handleMouseDown(x: x, y: y, button: 1)
     }
 
     /// Handle right mouse button release.
     public override func rightMouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseUp(x: x, y: y, button: 1)
-        }
+        rendererRef?.input.handleMouseUp(x: x, y: y, button: 1)
     }
 
     /// Handle mouse movement while the right button is held.
     public override func rightMouseDragged(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseDragged(x: x, y: y)
-        }
+        rendererRef?.input.handleMouseDragged(x: x, y: y)
     }
 
     // MARK: - Scroll Events
@@ -121,27 +106,21 @@ public class MetaphorMTKView: MTKView {
     public override func scrollWheel(with event: NSEvent) {
         let dx = Float(event.scrollingDeltaX)
         let dy = Float(event.scrollingDeltaY)
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleMouseScrolled(dx: dx, dy: dy)
-        }
+        rendererRef?.input.handleMouseScrolled(dx: dx, dy: dy)
     }
 
     // MARK: - Keyboard Events
 
     /// Handle key press events.
     public override func keyDown(with event: NSEvent) {
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleKeyDown(
-                keyCode: event.keyCode,
-                characters: event.characters
-            )
-        }
+        rendererRef?.input.handleKeyDown(
+            keyCode: event.keyCode,
+            characters: event.characters
+        )
     }
 
     /// Handle key release events.
     public override func keyUp(with event: NSEvent) {
-        MainActor.assumeIsolated {
-            rendererRef?.input.handleKeyUp(keyCode: event.keyCode)
-        }
+        rendererRef?.input.handleKeyUp(keyCode: event.keyCode)
     }
 }

@@ -462,8 +462,8 @@ extension Sketch {
     /// Create a new empty dynamic mesh.
     ///
     /// - Returns: A new ``DynamicMesh`` instance.
-    public func createDynamicMesh() -> DynamicMesh {
-        activeContext().createDynamicMesh()
+    public func createDynamicMesh() throws -> DynamicMesh {
+        try activeContext().createDynamicMesh()
     }
 
     /// Load a 3D model from a file (OBJ, USDZ, ABC).

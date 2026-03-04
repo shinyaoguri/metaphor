@@ -1,0 +1,16 @@
+// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(
+    name: "LoadDisplaySVG",
+    platforms: [.macOS(.v14)],
+    dependencies: [
+        .package(name: "metaphor", path: "../../../.."),
+    ],
+    targets: [
+        .executableTarget(
+            name: "LoadDisplaySVG",
+            dependencies: [.product(name: "metaphor", package: "metaphor")],
+            path: "LoadDisplaySVG"
+        ),
+    ]
+)
