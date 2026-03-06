@@ -1,4 +1,5 @@
 @preconcurrency import Metal
+import MetalPerformanceShaders
 
 /// Hold uniform parameters for GPU image filter compute kernels.
 struct FilterParams {
@@ -32,10 +33,15 @@ public final class ImageFilterGPU {
     /// Reference to a pre-compiled library via ShaderLibrary.
     private weak var shaderLibrary: ShaderLibrary?
 
-    /// Lazily initialized MPS image filter wrapper.
-    private lazy var mpsFilter: MPSImageFilterWrapper = {
-        MPSImageFilterWrapper(device: device, commandQueue: commandQueue)
-    }()
+    // MARK: - MPS Kernel Cache
+
+    private var gaussianCache: [Float: MPSImageGaussianBlur] = [:]
+    private var sobelKernel: MPSImageSobel?
+    private var laplacianKernel: MPSImageLaplacian?
+    private var areaMinCache: [Int: MPSImageAreaMin] = [:]
+    private var areaMaxCache: [Int: MPSImageAreaMax] = [:]
+    private var medianCache: [Int: MPSImageMedian] = [:]
+    private var thresholdKernel: MPSImageThresholdBinary?
 
     init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary? = nil) {
         self.device = device
@@ -50,6 +56,13 @@ public final class ImageFilterGPU {
         texturePool.removeAll()
         weightBufferCache.removeAll()
         kernelCache.removeAll()
+        gaussianCache.removeAll()
+        sobelKernel = nil
+        laplacianKernel = nil
+        areaMinCache.removeAll()
+        areaMaxCache.removeAll()
+        medianCache.removeAll()
+        thresholdKernel = nil
     }
 
     /// Remove texture pool entries that do not match the specified dimensions.
@@ -89,27 +102,27 @@ public final class ImageFilterGPU {
         pruneTexturePool(keepWidth: w, keepHeight: h)
         pruneWeightBufferCache()
 
-        guard let outTex = getOrCreateTexture(width: w, height: h, tag: "output") else { return }
-
         // Delegate MPS filters to the dedicated MPS path
         switch filter {
         case .mpsBlur(let sigma):
-            mpsFilter.gaussianBlur(image, sigma: sigma); return
+            applyMPS(image) { self.getOrCreateGaussian(sigma: sigma) }; return
         case .mpsSobel:
-            mpsFilter.sobel(image); return
+            applyMPS(image) { self.getOrCreateSobel() }; return
         case .mpsLaplacian:
-            mpsFilter.laplacian(image); return
+            applyMPS(image) { self.getOrCreateLaplacian() }; return
         case .mpsErode(let radius):
-            mpsFilter.erode(image, radius: radius); return
+            applyMPS(image) { self.getOrCreateAreaMin(size: radius * 2 + 1) }; return
         case .mpsDilate(let radius):
-            mpsFilter.dilate(image, radius: radius); return
+            applyMPS(image) { self.getOrCreateAreaMax(size: radius * 2 + 1) }; return
         case .mpsMedian(let diameter):
-            mpsFilter.median(image, diameter: diameter); return
+            applyMPS(image) { self.getOrCreateMedian(diameter: diameter) }; return
         case .mpsThreshold(let value):
-            mpsFilter.threshold(image, value: value); return
+            applyMPS(image) { self.getOrCreateThreshold(value: value) }; return
         default:
             break
         }
+
+        guard let outTex = getOrCreateTexture(width: w, height: h, tag: "output") else { return }
 
         switch filter {
         case .blur(let radius):
@@ -147,6 +160,69 @@ public final class ImageFilterGPU {
 
         image.replaceTexture(outTex)
         texturePool.removeValue(forKey: "\(w)_\(h)_output")
+    }
+
+    // MARK: - Private: MPS Filter Application
+
+    private func applyMPS(_ image: MImage, kernel: () -> MPSUnaryImageKernel) {
+        let src = image.texture
+        let w = src.width, h = src.height
+        guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output"),
+              let cb = commandQueue.makeCommandBuffer() else { return }
+        kernel().encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
+        cb.commit()
+        cb.waitUntilCompleted()
+        image.replaceTexture(dst)
+        texturePool.removeValue(forKey: "\(w)_\(h)_mps_output")
+    }
+
+    private func getOrCreateGaussian(sigma: Float) -> MPSImageGaussianBlur {
+        if let cached = gaussianCache[sigma] { return cached }
+        let kernel = MPSImageGaussianBlur(device: device, sigma: sigma)
+        gaussianCache[sigma] = kernel
+        return kernel
+    }
+
+    private func getOrCreateSobel() -> MPSImageSobel {
+        if let k = sobelKernel { return k }
+        let k = MPSImageSobel(device: device)
+        sobelKernel = k
+        return k
+    }
+
+    private func getOrCreateLaplacian() -> MPSImageLaplacian {
+        if let k = laplacianKernel { return k }
+        let k = MPSImageLaplacian(device: device)
+        laplacianKernel = k
+        return k
+    }
+
+    private func getOrCreateAreaMin(size: Int) -> MPSImageAreaMin {
+        if let cached = areaMinCache[size] { return cached }
+        let k = MPSImageAreaMin(device: device, kernelWidth: size, kernelHeight: size)
+        areaMinCache[size] = k
+        return k
+    }
+
+    private func getOrCreateAreaMax(size: Int) -> MPSImageAreaMax {
+        if let cached = areaMaxCache[size] { return cached }
+        let k = MPSImageAreaMax(device: device, kernelWidth: size, kernelHeight: size)
+        areaMaxCache[size] = k
+        return k
+    }
+
+    private func getOrCreateMedian(diameter: Int) -> MPSImageMedian {
+        if let cached = medianCache[diameter] { return cached }
+        let k = MPSImageMedian(device: device, kernelDiameter: diameter)
+        medianCache[diameter] = k
+        return k
+    }
+
+    private func getOrCreateThreshold(value: Float) -> MPSImageThresholdBinary {
+        if let k = thresholdKernel { return k }
+        let k = MPSImageThresholdBinary(device: device, thresholdValue: value, maximumValue: 1.0, linearGrayColorTransform: nil)
+        thresholdKernel = k
+        return k
     }
 
     // MARK: - Private: Single Pass
@@ -251,7 +327,11 @@ public final class ImageFilterGPU {
     private func ensureLibrary() -> MTLLibrary? {
         if let lib = library { return lib }
         do {
-            let lib = try device.makeLibrary(source: ImageFilterShaders.source, options: nil)
+            guard let source = ShaderLibrary.loadShaderSource("imageFilter") else {
+                print("[metaphor] Failed to load imageFilter shader source")
+                return nil
+            }
+            let lib = try device.makeLibrary(source: source, options: nil)
             self.library = lib
             return lib
         } catch {

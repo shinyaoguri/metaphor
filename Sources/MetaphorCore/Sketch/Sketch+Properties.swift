@@ -3,72 +3,61 @@
 extension Sketch {
     /// Return the canvas width in pixels.
     public var width: Float {
-        _context?.width ?? 0
-    }
+        context.width    }
 
     /// Return the canvas height in pixels.
     public var height: Float {
-        _context?.height ?? 0
-    }
+        context.height    }
 
     /// Access the input manager (use inside event handlers).
-    public var input: InputManager? {
-        _context?.input
+    public var input: InputManager {
+        context.input
     }
 
     /// Return the current mouse x-coordinate.
     public var mouseX: Float {
-        _context?.input.mouseX ?? 0
-    }
+        context.input.mouseX    }
 
     /// Return the current mouse y-coordinate.
     public var mouseY: Float {
-        _context?.input.mouseY ?? 0
-    }
+        context.input.mouseY    }
 
     /// Return the mouse x-coordinate from the previous frame.
     public var pmouseX: Float {
-        _context?.input.pmouseX ?? 0
-    }
+        context.input.pmouseX    }
 
     /// Return the mouse y-coordinate from the previous frame.
     public var pmouseY: Float {
-        _context?.input.pmouseY ?? 0
-    }
+        context.input.pmouseY    }
 
     /// Indicate whether a mouse button is currently pressed.
     public var isMousePressed: Bool {
-        _context?.input.isMouseDown ?? false
-    }
+        context.input.isMouseDown    }
 
     /// Return the horizontal scroll amount for the current frame.
     public var scrollX: Float {
-        _context?.input.scrollX ?? 0
-    }
+        context.input.scrollX    }
 
     /// Return the vertical scroll amount for the current frame.
     public var scrollY: Float {
-        _context?.input.scrollY ?? 0
-    }
+        context.input.scrollY    }
 
     /// Return the currently pressed mouse button (0 = left, 1 = right, 2 = middle).
     public var mouseButton: Int {
-        _context?.input.mouseButton ?? 0
-    }
+        context.input.mouseButton    }
 
     /// Indicate whether a key is currently pressed.
     public var isKeyPressed: Bool {
-        _context?.input.isKeyPressed ?? false
-    }
+        context.input.isKeyPressed    }
 
     /// Return the last key that was pressed.
     public var key: Character? {
-        _context?.input.lastKey
+        context.input.lastKey
     }
 
     /// Return the key code of the last key that was pressed.
     public var keyCode: UInt16? {
-        _context?.input.lastKeyCode
+        context.input.lastKeyCode
     }
 
     /// Check whether a specific key is currently held down.
@@ -76,23 +65,19 @@ extension Sketch {
     /// - Parameter keyCode: The hardware key code to check.
     /// - Returns: `true` if the key is currently pressed.
     public func isKeyDown(_ keyCode: UInt16) -> Bool {
-        _context?.input.isKeyDown(keyCode) ?? false
-    }
+        context.input.isKeyDown(keyCode)    }
 
     /// Return the elapsed time in seconds since the sketch started.
     public var time: Float {
-        _context?.time ?? 0
-    }
+        context.time    }
 
     /// Return the time elapsed since the previous frame in seconds.
     public var deltaTime: Float {
-        _context?.deltaTime ?? 0
-    }
+        context.deltaTime    }
 
     /// Return the total number of frames rendered so far.
     public var frameCount: Int {
-        _context?.frameCount ?? 0
-    }
+        context.frameCount    }
 }
 
 // MARK: - Canvas Setup
@@ -104,7 +89,7 @@ extension Sketch {
     ///   - width: The canvas width in pixels.
     ///   - height: The canvas height in pixels.
     public func createCanvas(width: Int, height: Int) {
-        _context?.createCanvas(width: width, height: height)
+        context.createCanvas(width: width, height: height)
     }
 }
 
@@ -138,28 +123,27 @@ extension Sketch {
 extension Sketch {
     /// Indicate whether the animation loop is currently running.
     public var isLooping: Bool {
-        _context?.isLooping ?? true
-    }
+        context.isLooping    }
 
     /// Resume the animation loop.
     public func loop() {
-        _context?.loop()
+        context.loop()
     }
 
     /// Stop the animation loop.
     public func noLoop() {
-        _context?.noLoop()
+        context.noLoop()
     }
 
     /// Render a single frame (use after calling ``noLoop()``).
     public func redraw() {
-        _context?.redraw()
+        context.redraw()
     }
 
     /// Change the frame rate dynamically.
     ///
     /// - Parameter fps: The target frames per second.
     public func frameRate(_ fps: Int) {
-        _context?.frameRate(fps)
+        context.frameRate(fps)
     }
 }

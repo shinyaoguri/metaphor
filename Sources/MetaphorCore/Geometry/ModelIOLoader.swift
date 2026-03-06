@@ -21,7 +21,7 @@ enum ModelIOLoader {
         let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
 
         guard let mdlMesh = asset.childObjects(of: MDLMesh.self).first as? MDLMesh else {
-            throw MeshError.parseError("No mesh found in \(url.lastPathComponent)")
+            throw MetaphorError.mesh(.parseError("No mesh found in \(url.lastPathComponent)"))
         }
 
         // Auto-generate normals if none exist
@@ -35,7 +35,7 @@ enum ModelIOLoader {
         let uvAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate)
 
         guard let posData = positionAttr else {
-            throw MeshError.parseError("No position data in mesh")
+            throw MetaphorError.mesh(.parseError("No position data in mesh"))
         }
 
         let vertexCount = mdlMesh.vertexCount
@@ -80,7 +80,7 @@ enum ModelIOLoader {
         }
 
         guard !vertices.isEmpty else {
-            throw MeshError.parseError("Empty mesh")
+            throw MetaphorError.mesh(.parseError("Empty mesh"))
         }
 
         // Normalize bounding box to [-1, 1]

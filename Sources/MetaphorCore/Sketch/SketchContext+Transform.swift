@@ -16,14 +16,14 @@ extension SketchContext {
         let key = "user.posteffect.\(name)"
         try renderer.shaderLibrary.register(source: source, as: key)
         guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {
-            throw MetaphorError.postProcessShaderNotFound(fragmentFunction)
+            throw MetaphorError.shaderNotFound(fragmentFunction)
         }
         return CustomPostEffect(name: name, fragmentFunctionName: fragmentFunction, libraryKey: key)
     }
 
     /// Adds a post-processing effect to the pipeline.
     /// - Parameter effect: The post-processing effect to add.
-    public func addPostEffect(_ effect: PostEffect) {
+    public func addPostEffect(_ effect: any PostEffect) {
         renderer.addPostEffect(effect)
     }
 
@@ -40,7 +40,7 @@ extension SketchContext {
 
     /// Replaces all post-processing effects with the given array.
     /// - Parameter effects: The new array of post-processing effects.
-    public func setPostEffects(_ effects: [PostEffect]) {
+    public func setPostEffects(_ effects: [any PostEffect]) {
         renderer.setPostEffects(effects)
     }
 

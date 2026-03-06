@@ -80,7 +80,8 @@ struct ParticleShaderCompilationTests {
     @MainActor
     func shaderCompiles() throws {
         let device = MTLCreateSystemDefaultDevice()!
-        let lib = try device.makeLibrary(source: ParticleShaders.source, options: nil)
+        let source = try #require(ShaderLibrary.loadShaderSource("particle"))
+        let lib = try device.makeLibrary(source: source, options: nil)
 
         let updateFn = lib.makeFunction(name: ParticleShaders.FunctionName.update)
         #expect(updateFn != nil)

@@ -36,42 +36,48 @@ struct Phase3GPUStructTests {
 @Suite("Phase3 Shader Sources")
 struct Phase3ShaderSourceTests {
 
-    @Test("canvas3DSource contains calculateLighting function")
+    @Test("canvas3D resource contains calculateLighting function")
     func canvas3DLightingFn() {
-        #expect(BuiltinShaders.canvas3DSource.contains("calculateLighting"))
+        let source = ShaderLibrary.loadShaderSource("canvas3D")
+        #expect(source?.contains("calculateLighting") == true)
     }
 
-    @Test("canvas3DTexturedSource contains texture sampling")
+    @Test("canvas3DTextured resource contains texture sampling")
     func canvas3DTexturedSampling() {
-        #expect(BuiltinShaders.canvas3DTexturedSource.contains("tex.sample"))
+        let source = ShaderLibrary.loadShaderSource("canvas3DTextured")
+        #expect(source?.contains("tex.sample") == true)
     }
 
-    @Test("canvas3DSource contains normalMatrix")
+    @Test("canvas3D resource contains normalMatrix")
     func canvas3DNormalMatrix() {
-        #expect(BuiltinShaders.canvas3DSource.contains("normalMatrix"))
+        let source = ShaderLibrary.loadShaderSource("canvas3D")
+        #expect(source?.contains("normalMatrix") == true)
     }
 
-    @Test("canvas3DSource contains cameraPosition")
+    @Test("canvas3D resource contains cameraPosition")
     func canvas3DCameraPosition() {
-        #expect(BuiltinShaders.canvas3DSource.contains("cameraPosition"))
+        let source = ShaderLibrary.loadShaderSource("canvas3D")
+        #expect(source?.contains("cameraPosition") == true)
     }
 
-    @Test("canvas3DTexturedSource contains Light3D struct")
+    @Test("canvas3DTextured resource contains Light3D struct")
     func canvas3DTexturedLight3D() {
-        #expect(BuiltinShaders.canvas3DTexturedSource.contains("Light3D"))
+        let source = ShaderLibrary.loadShaderSource("canvas3DTextured")
+        #expect(source?.contains("Light3D") == true)
     }
 
-    @Test("canvas3DTexturedSource contains Material3D struct")
+    @Test("canvas3DTextured resource contains Material3D struct")
     func canvas3DTexturedMaterial3D() {
-        #expect(BuiltinShaders.canvas3DTexturedSource.contains("Material3D"))
+        let source = ShaderLibrary.loadShaderSource("canvas3DTextured")
+        #expect(source?.contains("Material3D") == true)
     }
 
-    @Test("FunctionName constants exist in shader source")
-    func functionNamesInSource() {
-        #expect(BuiltinShaders.canvas3DSource.contains(BuiltinShaders.FunctionName.canvas3DVertex))
-        #expect(BuiltinShaders.canvas3DSource.contains(BuiltinShaders.FunctionName.canvas3DFragment))
-        #expect(BuiltinShaders.canvas3DTexturedSource.contains(BuiltinShaders.FunctionName.canvas3DTexturedVertex))
-        #expect(BuiltinShaders.canvas3DTexturedSource.contains(BuiltinShaders.FunctionName.canvas3DTexturedFragment))
+    @Test("FunctionName constants have expected values")
+    func functionNamesMatchExpected() {
+        #expect(BuiltinShaders.FunctionName.canvas3DVertex == "metaphor_canvas3DVertex")
+        #expect(BuiltinShaders.FunctionName.canvas3DFragment == "metaphor_canvas3DFragment")
+        #expect(BuiltinShaders.FunctionName.canvas3DTexturedVertex == "metaphor_canvas3DTexturedVertex")
+        #expect(BuiltinShaders.FunctionName.canvas3DTexturedFragment == "metaphor_canvas3DTexturedFragment")
     }
 }
 

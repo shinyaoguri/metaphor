@@ -315,6 +315,17 @@ public func mag(_ x: Float, _ y: Float) -> Float {
     sqrt(x * x + y * y)
 }
 
+/// Computes the magnitude of a 3D vector.
+///
+/// - Parameters:
+///   - x: The x-component of the vector.
+///   - y: The y-component of the vector.
+///   - z: The z-component of the vector.
+/// - Returns: The magnitude (length) of the vector.
+public func mag(_ x: Float, _ y: Float, _ z: Float) -> Float {
+    sqrt(x * x + y * y + z * z)
+}
+
 // MARK: - Random
 
 /// Provides a seedable random number generator based on a linear congruential generator.

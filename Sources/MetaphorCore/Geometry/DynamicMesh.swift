@@ -151,5 +151,5 @@ public final class DynamicMesh {
     internal var vertexBuffer: MTLBuffer? { cachedVertexBuffer }
 
     /// Return the index buffer (valid after calling ensureBuffers).
-    internal var indexBuffer: MTLBuffer? { cachedIndexBuffer }
+    public var indexBuffer: MTLBuffer? { cachedIndexBuffer }
 }

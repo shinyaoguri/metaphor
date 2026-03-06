@@ -150,53 +150,46 @@ struct BlendModeTests {
 @Suite("BuiltinShaders")
 struct BuiltinShadersTests {
 
-    @Test("blit shader source contains expected function names")
-    func blitShaderFunctions() {
-        #expect(BuiltinShaders.blitSource.contains("metaphor_blitVertex"))
-        #expect(BuiltinShaders.blitSource.contains("metaphor_blitFragment"))
+    @Test("function name constants are non-empty")
+    func functionNameConstants() {
+        #expect(!BuiltinShaders.FunctionName.blitVertex.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.blitFragment.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.flatColorVertex.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.flatColorFragment.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.vertexColorVertex.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.vertexColorFragment.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.litVertex.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.litFragment.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.canvas2DVertex.isEmpty)
+        #expect(!BuiltinShaders.FunctionName.canvas2DFragment.isEmpty)
     }
 
-    @Test("flatColor shader source contains expected function names")
-    func flatColorShaderFunctions() {
-        #expect(BuiltinShaders.flatColorSource.contains("metaphor_flatColorVertex"))
-        #expect(BuiltinShaders.flatColorSource.contains("metaphor_flatColorFragment"))
+    @Test("function name constants have expected values")
+    func functionNamesMatchExpected() {
+        #expect(BuiltinShaders.FunctionName.blitVertex == "metaphor_blitVertex")
+        #expect(BuiltinShaders.FunctionName.blitFragment == "metaphor_blitFragment")
+        #expect(BuiltinShaders.FunctionName.flatColorVertex == "metaphor_flatColorVertex")
+        #expect(BuiltinShaders.FunctionName.flatColorFragment == "metaphor_flatColorFragment")
+        #expect(BuiltinShaders.FunctionName.litVertex == "metaphor_litVertex")
+        #expect(BuiltinShaders.FunctionName.litFragment == "metaphor_litFragment")
     }
 
-    @Test("vertexColor shader source contains expected function names")
-    func vertexColorShaderFunctions() {
-        #expect(BuiltinShaders.vertexColorSource.contains("metaphor_vertexColorVertex"))
-        #expect(BuiltinShaders.vertexColorSource.contains("metaphor_vertexColorFragment"))
+    @Test("shader resource files can be loaded")
+    func shaderResourceFilesExist() {
+        #expect(ShaderLibrary.loadShaderSource("blit") != nil)
+        #expect(ShaderLibrary.loadShaderSource("flatColor") != nil)
+        #expect(ShaderLibrary.loadShaderSource("vertexColor") != nil)
+        #expect(ShaderLibrary.loadShaderSource("lit") != nil)
+        #expect(ShaderLibrary.loadShaderSource("canvas2D") != nil)
     }
 
-    @Test("lit shader source contains expected function names")
-    func litShaderFunctions() {
-        #expect(BuiltinShaders.litSource.contains("metaphor_litVertex"))
-        #expect(BuiltinShaders.litSource.contains("metaphor_litFragment"))
-    }
-
-    @Test("canvas2D shader source contains expected function names")
-    func canvas2DShaderFunctions() {
-        #expect(BuiltinShaders.canvas2DSource.contains("metaphor_canvas2DVertex"))
-        #expect(BuiltinShaders.canvas2DSource.contains("metaphor_canvas2DFragment"))
-    }
-
-    @Test("function name constants match shader source")
-    func functionNamesMatchSource() {
-        #expect(BuiltinShaders.blitSource.contains(BuiltinShaders.FunctionName.blitVertex))
-        #expect(BuiltinShaders.blitSource.contains(BuiltinShaders.FunctionName.blitFragment))
-        #expect(BuiltinShaders.flatColorSource.contains(BuiltinShaders.FunctionName.flatColorVertex))
-        #expect(BuiltinShaders.flatColorSource.contains(BuiltinShaders.FunctionName.flatColorFragment))
-        #expect(BuiltinShaders.litSource.contains(BuiltinShaders.FunctionName.litVertex))
-        #expect(BuiltinShaders.litSource.contains(BuiltinShaders.FunctionName.litFragment))
-    }
-
-    @Test("all shaders include metal_stdlib")
-    func shadersIncludeMetalStdlib() {
-        #expect(BuiltinShaders.blitSource.contains("#include <metal_stdlib>"))
-        #expect(BuiltinShaders.flatColorSource.contains("#include <metal_stdlib>"))
-        #expect(BuiltinShaders.vertexColorSource.contains("#include <metal_stdlib>"))
-        #expect(BuiltinShaders.litSource.contains("#include <metal_stdlib>"))
-        #expect(BuiltinShaders.canvas2DSource.contains("#include <metal_stdlib>"))
+    @Test("shader resource files contain metal_stdlib")
+    func shaderResourcesIncludeMetalStdlib() {
+        #expect(ShaderLibrary.loadShaderSource("blit")?.contains("#include <metal_stdlib>") == true)
+        #expect(ShaderLibrary.loadShaderSource("flatColor")?.contains("#include <metal_stdlib>") == true)
+        #expect(ShaderLibrary.loadShaderSource("vertexColor")?.contains("#include <metal_stdlib>") == true)
+        #expect(ShaderLibrary.loadShaderSource("lit")?.contains("#include <metal_stdlib>") == true)
+        #expect(ShaderLibrary.loadShaderSource("canvas2D")?.contains("#include <metal_stdlib>") == true)
     }
 }
 

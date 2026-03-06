@@ -218,14 +218,6 @@ and video export at a fixed resolution.
 ### Errors
 
 - ``MetaphorError``
-- ``Canvas2DError``
-- ``MImageError``
-- ``CustomMaterialError``
-- ``ComputeKernelError``
-- ``MeshError``
-- ``ParticleError``
 - ``SoundFileError``
 - ``OSCReceiverError``
-- ``GIFExporterError``
 - ``MLError``
-- ``MPSError``

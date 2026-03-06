@@ -97,7 +97,10 @@ public final class ShadowMap {
         // Compile shadow depth shaders
         let shadowKey = "metaphor.shadowDepth"
         if !shaderLibrary.hasLibrary(for: shadowKey) {
-            try shaderLibrary.register(source: ShadowShaders.depthSource, as: shadowKey)
+            guard let shadowSource = ShaderLibrary.loadShaderSource("shadowDepth") else {
+                throw MetaphorError.shaderCompilationFailed(name: "shadowDepth", underlying: NSError(domain: "ShadowMap", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to load shadowDepth shader source"]))
+            }
+            try shaderLibrary.register(source: shadowSource, as: shadowKey)
         }
         guard let vertexFn = shaderLibrary.function(named: "metaphor_shadowDepthVertex", from: shadowKey) else {
             throw MetaphorError.shaderCompilationFailed(name: "metaphor_shadowDepthVertex", underlying: NSError(domain: "ShadowMap", code: -1))

@@ -66,3 +66,35 @@ var _sketchElapsedTime: Float = 0
 public func millis() -> Int {
     Int(_sketchElapsedTime * 1000)
 }
+
+// MARK: - Calendar Time (Processing-compatible)
+
+/// Return the current second (0–59).
+public func second() -> Int {
+    Calendar.current.component(.second, from: Date())
+}
+
+/// Return the current minute (0–59).
+public func minute() -> Int {
+    Calendar.current.component(.minute, from: Date())
+}
+
+/// Return the current hour (0–23).
+public func hour() -> Int {
+    Calendar.current.component(.hour, from: Date())
+}
+
+/// Return the current day of the month (1–31).
+public func day() -> Int {
+    Calendar.current.component(.day, from: Date())
+}
+
+/// Return the current month (1–12).
+public func month() -> Int {
+    Calendar.current.component(.month, from: Date())
+}
+
+/// Return the current year.
+public func year() -> Int {
+    Calendar.current.component(.year, from: Date())
+}

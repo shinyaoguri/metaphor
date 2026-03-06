@@ -128,22 +128,25 @@ struct Canvas2DEncoderTests {
 @Suite("Canvas3D Shader")
 struct Canvas3DShaderTests {
 
-    @Test("canvas3D shader source contains expected function names")
+    @Test("canvas3D function name constants have expected values")
     func shaderFunctions() {
-        #expect(BuiltinShaders.canvas3DSource.contains("metaphor_canvas3DVertex"))
-        #expect(BuiltinShaders.canvas3DSource.contains("metaphor_canvas3DFragment"))
+        #expect(BuiltinShaders.FunctionName.canvas3DVertex == "metaphor_canvas3DVertex")
+        #expect(BuiltinShaders.FunctionName.canvas3DFragment == "metaphor_canvas3DFragment")
     }
 
-    @Test("canvas3D shader includes Canvas3DUniforms struct")
+    @Test("canvas3D shader resource contains Canvas3DUniforms struct")
     func uniformsStruct() {
-        #expect(BuiltinShaders.canvas3DSource.contains("Canvas3DUniforms"))
-        #expect(BuiltinShaders.canvas3DSource.contains("normalMatrix"))
-        #expect(BuiltinShaders.canvas3DSource.contains("lightCount"))
+        let source = ShaderLibrary.loadShaderSource("canvas3D")
+        #expect(source != nil)
+        #expect(source?.contains("Canvas3DUniforms") == true)
+        #expect(source?.contains("normalMatrix") == true)
+        #expect(source?.contains("lightCount") == true)
     }
 
-    @Test("canvas3D shader includes metal_stdlib")
+    @Test("canvas3D shader resource includes metal_stdlib")
     func metalStdlib() {
-        #expect(BuiltinShaders.canvas3DSource.contains("metal_stdlib"))
+        let source = ShaderLibrary.loadShaderSource("canvas3D")
+        #expect(source?.contains("metal_stdlib") == true)
     }
 }
 

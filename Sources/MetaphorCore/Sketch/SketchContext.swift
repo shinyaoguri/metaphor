@@ -38,6 +38,9 @@ public final class SketchContext {
     /// The underlying renderer (for advanced usage).
     public let renderer: MetaphorRenderer
 
+    /// The async resource loader for background image/model loading.
+    public let resourceLoader: ResourceLoader
+
     /// The current render command encoder, valid only during a frame.
     public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
 
@@ -176,11 +179,6 @@ public final class SketchContext {
     /// The orbit camera instance.
     public let orbitCamera = OrbitCamera()
 
-    // MARK: - CoreImage Filter
-
-    /// The lazily initialized CoreImage filter wrapper.
-    var _ciFilterWrapper: CIFilterWrapper?
-
     // MARK: - Multi-Window
 
     /// The shared Metal resources, set by SketchRunner for the primary window.
@@ -226,6 +224,7 @@ public final class SketchContext {
 
     init(renderer: MetaphorRenderer, canvas: Canvas2D, canvas3D: Canvas3D, input: InputManager) {
         self.renderer = renderer
+        self.resourceLoader = ResourceLoader(device: renderer.device)
         self.canvas = canvas
         self.canvas3D = canvas3D
         self.input = input

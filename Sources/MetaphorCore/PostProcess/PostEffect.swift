@@ -1,79 +1,7 @@
-import CoreImage
+@preconcurrency import Metal
 import simd
 
-/// Wrap a CoreImage filter parameter value in a Sendable-safe container.
-public enum CIFilterValue: Sendable {
-    case float(Float)
-    case double(Double)
-    case int(Int)
-    case string(String)
-    case vector(SIMD4<Float>)
-    case bool(Bool)
-
-    /// Convert to an `Any` value suitable for passing to a CIFilter.
-    ///
-    /// - Returns: The underlying value as `Any`, with SIMD4 converted to CIVector.
-    public var anyValue: Any {
-        switch self {
-        case .float(let v): return v
-        case .double(let v): return v
-        case .int(let v): return v
-        case .string(let v): return v
-        case .vector(let v): return CIVector(x: CGFloat(v.x), y: CGFloat(v.y), z: CGFloat(v.z), w: CGFloat(v.w))
-        case .bool(let v): return v
-        }
-    }
-}
-
-/// Represent a post-process effect type applied to the rendered frame.
-public enum PostEffect: Sendable {
-    /// Apply bloom (glow around high-luminance areas).
-    case bloom(intensity: Float = 1.0, threshold: Float = 0.8)
-
-    /// Apply color grading adjustments.
-    case colorGrade(
-        brightness: Float = 0.0,
-        contrast: Float = 1.0,
-        saturation: Float = 1.0,
-        temperature: Float = 0.0
-    )
-
-    /// Apply chromatic aberration (color fringing).
-    case chromaticAberration(intensity: Float = 0.005)
-
-    /// Apply a vignette darkening at the edges.
-    case vignette(intensity: Float = 0.5, smoothness: Float = 0.5)
-
-    /// Invert all colors.
-    case invert
-
-    /// Convert to grayscale.
-    case grayscale
-
-    /// Apply a Gaussian blur.
-    case blur(radius: Float = 5.0)
-
-    /// Apply a custom post-process effect with a user-defined shader.
-    case custom(CustomPostEffect)
-
-    // MARK: - MPS Effects
-
-    /// Apply an MPS hardware-optimized Gaussian blur with the given sigma value.
-    case mpsBlur(sigma: Float)
-    /// Apply MPS Sobel edge detection.
-    case mpsSobel
-    /// Apply MPS morphological erosion.
-    case mpsErode(radius: Int = 1)
-    /// Apply MPS morphological dilation.
-    case mpsDilate(radius: Int = 1)
-
-    // MARK: - CoreImage Effects
-
-    /// Apply a CoreImage filter from a preset.
-    case ciFilter(CIFilterPreset)
-    /// Apply a CoreImage filter specified directly by name and parameter dictionary.
-    case ciFilterRaw(name: String, parameters: [String: CIFilterValue])
-}
+// MARK: - PostProcessParams
 
 /// Store uniform parameters for post-process shaders.
 struct PostProcessParams {
@@ -89,3 +17,196 @@ struct PostProcessParams {
     var _pad0: Float = 0
     var _pad1: Float = 0
 }
+
+// MARK: - PostEffect Protocol
+
+/// A post-process effect applied to the rendered frame.
+///
+/// Implement this protocol to create custom effects. Built-in effects include
+/// ``BloomEffect``, ``BlurEffect``, ``InvertEffect``, ``GrayscaleEffect``,
+/// ``VignetteEffect``, ``ChromaticAberrationEffect``, and ``ColorGradeEffect``.
+@MainActor
+public protocol PostEffect: AnyObject {
+    /// The display name of this effect.
+    var name: String { get }
+
+    /// Apply this effect, reading from `input` and writing the result to `output`.
+    func apply(
+        input: MTLTexture, output: MTLTexture,
+        commandBuffer: MTLCommandBuffer, context: PostEffectContext
+    )
+}
+
+// MARK: - Built-in Effects: Bloom
+
+/// Apply bloom (glow around high-luminance areas).
+@MainActor
+public final class BloomEffect: PostEffect {
+    public let name = "bloom"
+    public var intensity: Float
+    public var threshold: Float
+
+    public init(intensity: Float = 1.0, threshold: Float = 0.8) {
+        self.intensity = intensity
+        self.threshold = threshold
+    }
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
+        let params = PostProcessParams(texelSize: texelSize, intensity: intensity, threshold: threshold)
+
+        // 1. Extract bright areas: input → output (temp)
+        context.renderPass(
+            commandBuffer: commandBuffer, input: input, output: output,
+            fragmentName: PostProcessShaders.FunctionName.postBloomExtract, params: params
+        )
+        // 2. Kawase blur: output → scratch
+        guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else { return }
+        context.applyKawaseBlur(commandBuffer: commandBuffer, source: output, output: scratch, iterations: 4)
+        // 3. Composite: original + bloom → output
+        context.renderCompositePass(
+            commandBuffer: commandBuffer, original: input, bloom: scratch,
+            output: output, params: params
+        )
+    }
+}
+
+// MARK: - Built-in Effects: Blur
+
+/// Apply a blur effect (Kawase for large radii, Gaussian for small).
+@MainActor
+public final class BlurEffect: PostEffect {
+    public let name = "blur"
+    public var radius: Float
+
+    public init(radius: Float = 5.0) {
+        self.radius = radius
+    }
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        if radius >= 4 {
+            let iterations = max(2, min(Int(log2(radius)), 6))
+            context.applyKawaseBlur(commandBuffer: commandBuffer, source: input, output: output, iterations: iterations)
+        } else {
+            let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
+            let params = PostProcessParams(texelSize: texelSize, radius: radius)
+            guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else { return }
+            context.renderPass(
+                commandBuffer: commandBuffer, input: input, output: scratch,
+                fragmentName: PostProcessShaders.FunctionName.postBlurH, params: params
+            )
+            context.renderPass(
+                commandBuffer: commandBuffer, input: scratch, output: output,
+                fragmentName: PostProcessShaders.FunctionName.postBlurV, params: params
+            )
+        }
+    }
+}
+
+// MARK: - Built-in Effects: Simple Single-Pass
+
+/// Invert all colors.
+@MainActor
+public final class InvertEffect: PostEffect {
+    public let name = "invert"
+    public init() {}
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let params = PostProcessParams(texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)))
+        context.renderPass(
+            commandBuffer: commandBuffer, input: input, output: output,
+            fragmentName: PostProcessShaders.FunctionName.postInvert, params: params
+        )
+    }
+}
+
+/// Convert to grayscale.
+@MainActor
+public final class GrayscaleEffect: PostEffect {
+    public let name = "grayscale"
+    public init() {}
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let params = PostProcessParams(texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)))
+        context.renderPass(
+            commandBuffer: commandBuffer, input: input, output: output,
+            fragmentName: PostProcessShaders.FunctionName.postGrayscale, params: params
+        )
+    }
+}
+
+/// Apply a vignette darkening at the edges.
+@MainActor
+public final class VignetteEffect: PostEffect {
+    public let name = "vignette"
+    public var intensity: Float
+    public var smoothness: Float
+
+    public init(intensity: Float = 0.5, smoothness: Float = 0.5) {
+        self.intensity = intensity
+        self.smoothness = smoothness
+    }
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let params = PostProcessParams(
+            texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)),
+            intensity: intensity, smoothness: smoothness
+        )
+        context.renderPass(
+            commandBuffer: commandBuffer, input: input, output: output,
+            fragmentName: PostProcessShaders.FunctionName.postVignette, params: params
+        )
+    }
+}
+
+/// Apply chromatic aberration (color fringing).
+@MainActor
+public final class ChromaticAberrationEffect: PostEffect {
+    public let name = "chromaticAberration"
+    public var intensity: Float
+
+    public init(intensity: Float = 0.005) {
+        self.intensity = intensity
+    }
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let params = PostProcessParams(
+            texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)),
+            intensity: intensity
+        )
+        context.renderPass(
+            commandBuffer: commandBuffer, input: input, output: output,
+            fragmentName: PostProcessShaders.FunctionName.postChromaticAberration, params: params
+        )
+    }
+}
+
+/// Apply color grading adjustments.
+@MainActor
+public final class ColorGradeEffect: PostEffect {
+    public let name = "colorGrade"
+    public var brightness: Float
+    public var contrast: Float
+    public var saturation: Float
+    public var temperature: Float
+
+    public init(brightness: Float = 0.0, contrast: Float = 1.0, saturation: Float = 1.0, temperature: Float = 0.0) {
+        self.brightness = brightness
+        self.contrast = contrast
+        self.saturation = saturation
+        self.temperature = temperature
+    }
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let params = PostProcessParams(
+            texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)),
+            brightness: brightness, contrast: contrast,
+            saturation: saturation, temperature: temperature
+        )
+        context.renderPass(
+            commandBuffer: commandBuffer, input: input, output: output,
+            fragmentName: PostProcessShaders.FunctionName.postColorGrade, params: params
+        )
+    }
+}
+

@@ -57,7 +57,7 @@ struct Material3D {
 /// Draws 3D scenes with a p5.js WEBGL-style API.
 /// Shares the same render command encoder as Canvas2D, executing 3D draw calls immediately.
 @MainActor
-public final class Canvas3D {
+public final class Canvas3D: CanvasStyle {
     // MARK: - Metal Resources
 
     private let device: MTLDevice
@@ -129,8 +129,8 @@ public final class Canvas3D {
         var transform: float4x4
         var fillColor: SIMD4<Float>
         var hasFill: Bool
-        var hasStroke3D: Bool
-        var strokeColor3D: SIMD4<Float>
+        var hasStroke: Bool
+        var strokeColor: SIMD4<Float>
         var material: Material3D
         var customMaterial: CustomMaterial?
         var texture: MTLTexture?
@@ -143,11 +143,11 @@ public final class Canvas3D {
 
     // MARK: - Style
 
-    private var fillColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
-    private var hasFill: Bool = true
-    private var hasStroke3D: Bool = false
-    private var strokeColor3D: SIMD4<Float> = SIMD4(1, 1, 1, 1)
-    private var colorModeConfig: ColorModeConfig = ColorModeConfig()
+    public var fillColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
+    public var hasFill: Bool = true
+    public var hasStroke: Bool = false
+    public var strokeColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
+    public var colorModeConfig: ColorModeConfig = ColorModeConfig()
 
     // MARK: - Shape Building State (3D beginShape/endShape)
 
@@ -672,8 +672,8 @@ public final class Canvas3D {
             transform: currentTransform,
             fillColor: fillColor,
             hasFill: hasFill,
-            hasStroke3D: hasStroke3D,
-            strokeColor3D: strokeColor3D,
+            hasStroke: hasStroke,
+            strokeColor: strokeColor,
             material: currentMaterial,
             customMaterial: currentCustomMaterial,
             texture: currentTexture,
@@ -687,8 +687,8 @@ public final class Canvas3D {
         currentTransform = saved.transform
         fillColor = saved.fillColor
         hasFill = saved.hasFill
-        hasStroke3D = saved.hasStroke3D
-        strokeColor3D = saved.strokeColor3D
+        hasStroke = saved.hasStroke
+        strokeColor = saved.strokeColor
         currentMaterial = saved.material
         currentCustomMaterial = saved.customMaterial
         currentTexture = saved.texture
@@ -746,116 +746,11 @@ public final class Canvas3D {
     /// - Parameter s: The uniform scale factor.
     public func scale(_ s: Float) { currentTransform = currentTransform * float4x4(scale: s) }
 
-    // MARK: - Style Sync
-
-    /// Synchronize common style properties from a shared drawing style.
+    /// Multiply the current transform by the given matrix.
     ///
-    /// - Parameter style: The drawing style to synchronize from.
-    public func syncStyle(_ style: DrawingStyle) {
-        fillColor = style.fillColor
-        strokeColor3D = style.strokeColor
-        hasFill = style.hasFill
-        hasStroke3D = style.hasStroke
-        colorModeConfig = style.colorModeConfig
-    }
-
-    // MARK: - Style
-
-    /// Set the fill color.
-    ///
-    /// - Parameter color: The fill color.
-    public func fill(_ color: Color) { fillColor = color.simd; hasFill = true }
-
-    /// Set the fill color using components interpreted according to the current color mode.
-    ///
-    /// - Parameters:
-    ///   - v1: The first color component.
-    ///   - v2: The second color component.
-    ///   - v3: The third color component.
-    ///   - a: The optional alpha component.
-    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
-        fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
-        hasFill = true
-    }
-
-    /// Set the fill color as a grayscale value.
-    ///
-    /// - Parameter gray: The grayscale intensity.
-    public func fill(_ gray: Float) {
-        fillColor = colorModeConfig.toGray(gray).simd
-        hasFill = true
-    }
-
-    /// Set the fill color as a grayscale value with alpha.
-    ///
-    /// - Parameters:
-    ///   - gray: The grayscale intensity.
-    ///   - alpha: The alpha value.
-    public func fill(_ gray: Float, _ alpha: Float) {
-        fillColor = colorModeConfig.toGray(gray, alpha).simd
-        hasFill = true
-    }
-
-    /// Disable fill for subsequent shapes.
-    public func noFill() { hasFill = false }
-
-    /// Set the stroke color.
-    ///
-    /// - Parameter color: The stroke color.
-    public func stroke(_ color: Color) { strokeColor3D = color.simd; hasStroke3D = true }
-
-    /// Set the stroke color using components interpreted according to the current color mode.
-    ///
-    /// - Parameters:
-    ///   - v1: The first color component.
-    ///   - v2: The second color component.
-    ///   - v3: The third color component.
-    ///   - a: The optional alpha component.
-    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
-        strokeColor3D = colorModeConfig.toColor(v1, v2, v3, a).simd
-        hasStroke3D = true
-    }
-
-    /// Set the stroke color as a grayscale value.
-    ///
-    /// - Parameter gray: The grayscale intensity.
-    public func stroke(_ gray: Float) {
-        strokeColor3D = colorModeConfig.toGray(gray).simd
-        hasStroke3D = true
-    }
-
-    /// Set the stroke color as a grayscale value with alpha.
-    ///
-    /// - Parameters:
-    ///   - gray: The grayscale intensity.
-    ///   - alpha: The alpha value.
-    public func stroke(_ gray: Float, _ alpha: Float) {
-        strokeColor3D = colorModeConfig.toGray(gray, alpha).simd
-        hasStroke3D = true
-    }
-
-    /// Disable stroke for subsequent shapes.
-    public func noStroke() { hasStroke3D = false }
-
-    /// Set the color space and per-component maximum values.
-    ///
-    /// - Parameters:
-    ///   - space: The color space to use.
-    ///   - max1: The maximum value for the first component.
-    ///   - max2: The maximum value for the second component.
-    ///   - max3: The maximum value for the third component.
-    ///   - maxA: The maximum value for the alpha component.
-    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
-        colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxA)
-    }
-
-    /// Set the color space with a uniform maximum value for all components.
-    ///
-    /// - Parameters:
-    ///   - space: The color space to use.
-    ///   - maxAll: The maximum value applied to all components including alpha.
-    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
-        colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
+    /// - Parameter matrix: The 4x4 matrix to concatenate.
+    public func applyMatrix(_ matrix: float4x4) {
+        currentTransform = currentTransform * matrix
     }
 
     // MARK: - 3D Shapes
@@ -978,7 +873,7 @@ public final class Canvas3D {
         mesh.ensureBuffers()
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
-        guard hasFill || hasStroke3D else { return }
+        guard hasFill || hasStroke else { return }
 
         // DynamicMesh is not eligible for instancing
         flushInstanceBatch()
@@ -1032,14 +927,14 @@ public final class Canvas3D {
             }
         }
 
-        if hasStroke3D {
+        if hasStroke {
             encoder.setTriangleFillMode(.lines)
 
             var wireUniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
                 viewProjectionMatrix: viewProj,
                 normalMatrix: normalMatrix,
-                color: strokeColor3D,
+                color: strokeColor,
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
                 time: currentTime,
                 lightCount: 0,
@@ -1176,7 +1071,7 @@ public final class Canvas3D {
     // Draw an array of pre-tessellated 3D vertices with fill and/or wireframe passes.
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
         guard let encoder = encoder, !vertices.isEmpty else { return }
-        guard hasFill || hasStroke3D else { return }
+        guard hasFill || hasStroke else { return }
 
         // Flush instance batch since beginShape/endShape uses individual vertex drawing
         flushInstanceBatch()
@@ -1222,7 +1117,7 @@ public final class Canvas3D {
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
         }
 
-        if hasStroke3D {
+        if hasStroke {
             encoder.setTriangleFillMode(.lines)
             encoder.setRenderPipelineState(pipelineState)
             if let depthState = depthState {
@@ -1235,7 +1130,7 @@ public final class Canvas3D {
                 modelMatrix: currentTransform,
                 viewProjectionMatrix: viewProj,
                 normalMatrix: normalMatrix,
-                color: strokeColor3D,
+                color: strokeColor,
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
                 time: currentTime,
                 lightCount: 0,
@@ -1418,7 +1313,7 @@ public final class Canvas3D {
     // Route mesh drawing through the instancing path or immediate fallback.
     private func drawMesh(_ mesh: Mesh) {
         guard encoder != nil else { return }
-        guard hasFill || hasStroke3D else { return }
+        guard hasFill || hasStroke else { return }
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
@@ -1433,8 +1328,8 @@ public final class Canvas3D {
                 texture: currentTexture,
                 isTextured: isTextured,
                 hasFill: hasFill,
-                hasStroke: hasStroke3D,
-                strokeColor: strokeColor3D
+                hasStroke: hasStroke,
+                strokeColor: strokeColor
             ))
         }
 
@@ -1447,15 +1342,15 @@ public final class Canvas3D {
 
         // Generate batch key
         let normalMatrix = computeNormalMatrix(from: currentTransform)
-        let key = InstanceBatcher3D.BatchKey(
+        let key = BatchKey3D(
             meshID: ObjectIdentifier(mesh),
             isTextured: isTextured,
             textureID: currentTexture.map { ObjectIdentifier($0 as AnyObject) },
             material: currentMaterial,
             customMaterialID: currentCustomMaterial.map { ObjectIdentifier($0) },
             hasFill: hasFill,
-            hasStroke: hasStroke3D,
-            strokeColor: strokeColor3D
+            hasStroke: hasStroke,
+            strokeColor: strokeColor
         )
 
         // Attempt to accumulate into instance batch
@@ -1466,8 +1361,8 @@ public final class Canvas3D {
             material: currentMaterial,
             customMaterial: currentCustomMaterial,
             hasFill: hasFill,
-            hasStroke: hasStroke3D,
-            strokeColor: strokeColor3D,
+            hasStroke: hasStroke,
+            strokeColor: strokeColor,
             transform: currentTransform,
             normalMatrix: normalMatrix,
             color: fillColor
@@ -1481,8 +1376,8 @@ public final class Canvas3D {
                 material: currentMaterial,
                 customMaterial: currentCustomMaterial,
                 hasFill: hasFill,
-                hasStroke: hasStroke3D,
-                strokeColor: strokeColor3D,
+                hasStroke: hasStroke,
+                strokeColor: strokeColor,
                 transform: currentTransform,
                 normalMatrix: normalMatrix,
                 color: fillColor
@@ -1749,14 +1644,14 @@ public final class Canvas3D {
         }
 
         // --- Wireframe (stroke) pass ---
-        if hasStroke3D {
+        if hasStroke {
             encoder.setTriangleFillMode(.lines)
 
             var wireUniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
                 viewProjectionMatrix: viewProj,
                 normalMatrix: normalMatrix,
-                color: strokeColor3D,
+                color: strokeColor,
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
                 time: currentTime,
                 lightCount: 0,

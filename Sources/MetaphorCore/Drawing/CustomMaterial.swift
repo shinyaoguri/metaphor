@@ -63,26 +63,19 @@ public final class CustomMaterial {
     /// Call this after `ShaderLibrary.reload` so that the modified shader
     /// can be used for pipeline reconstruction.
     /// - Parameter shaderLibrary: The shader library containing the updated source.
-    /// - Throws: `CustomMaterialError.shaderNotFound` if the function name is not found.
+    /// - Throws: `MetaphorError.material(.shaderNotFound)` if the function name is not found.
     public func reload(shaderLibrary: ShaderLibrary) throws {
         guard let fn = shaderLibrary.function(named: fragmentFunctionName, from: libraryKey) else {
-            throw CustomMaterialError.shaderNotFound(fragmentFunctionName)
+            throw MetaphorError.material(.shaderNotFound(fragmentFunctionName))
         }
         self.fragmentFunction = fn
 
         if let vtxName = vertexFunctionName {
             guard let vf = shaderLibrary.function(named: vtxName, from: libraryKey) else {
-                throw CustomMaterialError.shaderNotFound(vtxName)
+                throw MetaphorError.material(.shaderNotFound(vtxName))
             }
             self.vertexFunction = vf
         }
     }
 }
 
-// MARK: - Errors
-
-/// Represent errors related to custom materials.
-public enum CustomMaterialError: Error {
-    /// Indicate that the specified function name was not found in the shader library.
-    case shaderNotFound(String)
-}

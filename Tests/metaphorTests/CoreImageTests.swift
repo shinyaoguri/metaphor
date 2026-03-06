@@ -3,6 +3,7 @@ import Metal
 import CoreImage
 @testable import metaphor
 @testable import MetaphorCore
+@testable import MetaphorCoreImage
 
 // MARK: - CIFilterPreset Tests
 
@@ -213,30 +214,24 @@ struct CIFilterPresetTests {
     }
 }
 
-// MARK: - PostEffect CI Cases Tests
+// MARK: - CI PostEffect Classes Tests
 
-@Suite("PostEffect CI Cases")
+@Suite("CI PostEffect Classes")
+@MainActor
 struct PostEffectCITests {
 
-    @Test("ciFilter post effect")
+    @Test("CIFilter post effect")
     func ciFilterPostEffect() {
-        let effect = PostEffect.ciFilter(.comic)
-        if case .ciFilter(let preset) = effect {
-            #expect(preset.filterName == "CIComicEffect")
-        } else {
-            Issue.record("Expected ciFilter case")
-        }
+        let effect = CIFilterEffect(.comic)
+        #expect(effect.name == "ciFilter")
+        #expect(effect.preset.filterName == "CIComicEffect")
     }
 
-    @Test("ciFilterRaw post effect")
+    @Test("CIFilterRaw post effect")
     func ciFilterRawPostEffect() {
-        let effect = PostEffect.ciFilterRaw(name: "CISepiaTone", parameters: ["inputIntensity": .double(0.8)])
-        if case .ciFilterRaw(let name, let params) = effect {
-            #expect(name == "CISepiaTone")
-            if case .double(let v) = params["inputIntensity"] { #expect(v == 0.8) }
-        } else {
-            Issue.record("Expected ciFilterRaw case")
-        }
+        let effect = CIFilterRawEffect(name: "CISepiaTone", parameters: ["inputIntensity": .double(0.8)])
+        #expect(effect.filterName == "CISepiaTone")
+        if case .double(let v) = effect.parameters["inputIntensity"] { #expect(v == 0.8) }
     }
 }
 

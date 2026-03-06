@@ -61,11 +61,11 @@ public final class MImage {
     /// - Parameters:
     ///   - nsImage: The `NSImage` to convert into a Metal texture.
     ///   - device: The Metal device used to create the texture.
-    /// - Throws: ``MImageError/invalidImage`` if the `NSImage` cannot be converted to a `CGImage`.
+    /// - Throws: ``MetaphorError/image(_:)`` if the `NSImage` cannot be converted to a `CGImage`.
     public init(nsImage: NSImage, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         guard let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw MImageError.invalidImage
+            throw MetaphorError.image(.invalidImage)
         }
         let options: [MTKTextureLoader.Option: Any] = [
             .textureUsage: MTLTextureUsage.shaderRead.rawValue,
@@ -82,11 +82,11 @@ public final class MImage {
     /// - Parameters:
     ///   - uiImage: The `UIImage` to convert into a Metal texture.
     ///   - device: The Metal device used to create the texture.
-    /// - Throws: ``MImageError/invalidImage`` if the `UIImage` does not contain a valid `CGImage`.
+    /// - Throws: ``MetaphorError/image(_:)`` if the `UIImage` does not contain a valid `CGImage`.
     public init(uiImage: UIImage, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         guard let cgImage = uiImage.cgImage else {
-            throw MImageError.invalidImage
+            throw MetaphorError.image(.invalidImage)
         }
         let options: [MTKTextureLoader.Option: Any] = [
             .textureUsage: MTLTextureUsage.shaderRead.rawValue,
@@ -252,7 +252,7 @@ public final class MImage {
     /// This resets the ``pixels`` array since the CPU data is no longer in sync.
     ///
     /// - Parameter newTexture: The new Metal texture to use.
-    internal func replaceTexture(_ newTexture: MTLTexture) {
+    public func replaceTexture(_ newTexture: MTLTexture) {
         self.texture = newTexture
         self.width = Float(newTexture.width)
         self.height = Float(newTexture.height)
@@ -292,8 +292,3 @@ public final class MImage {
     }
 }
 
-/// Represent errors that can occur when creating an ``MImage``.
-public enum MImageError: Error {
-    /// The source image is invalid or could not be converted to a `CGImage`.
-    case invalidImage
-}

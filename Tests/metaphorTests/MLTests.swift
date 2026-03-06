@@ -5,6 +5,7 @@ import Metal
 import simd
 @testable import metaphor
 @testable import MetaphorCore
+import MetaphorML
 
 // MARK: - MLTextureConverter Tests
 
@@ -119,11 +120,8 @@ struct SketchContextMLTextureConverterTests {
     @Test("createMLTextureConverter returns valid instance")
     func createMLTextureConverter() throws {
         let renderer = try MetaphorRenderer()
-        let canvas = try Canvas2D(renderer: renderer)
-        let canvas3D = try Canvas3D(renderer: renderer)
-        let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
-        let converter = ctx.createMLTextureConverter()
+        let converter = MLTextureConverter(device: renderer.device, commandQueue: renderer.commandQueue)
         // Converter should be functional
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: 2, height: 2, mipmapped: false)

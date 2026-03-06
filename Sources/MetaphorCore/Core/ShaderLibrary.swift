@@ -193,6 +193,23 @@ public final class ShaderLibrary {
         functions = functions.filter { !$0.key.hasPrefix("\(key).") }
     }
 
+    // MARK: - Resource Loading
+
+    /// Loads an MSL source string from a bundled .txt resource file.
+    ///
+    /// - Parameter name: The shader source name (without extension).
+    /// - Returns: The MSL source string, or `nil` if the resource is not found.
+    public nonisolated static func loadShaderSource(_ name: String) -> String? {
+        guard let url = Bundle.module.url(
+            forResource: name,
+            withExtension: "txt",
+            subdirectory: "ShaderSources"
+        ) else {
+            return nil
+        }
+        return try? String(contentsOf: url, encoding: .utf8)
+    }
+
     // MARK: - Private
 
     private func loadBuiltins() throws {
@@ -210,24 +227,32 @@ public final class ShaderLibrary {
         try registerBuiltinsFromSource()
     }
 
+    /// Mapping from resource file names to builtin keys.
+    private static let shaderResourceNames: [(resource: String, key: String)] = [
+        ("blit", BuiltinKey.blit),
+        ("flatColor", BuiltinKey.flatColor),
+        ("vertexColor", BuiltinKey.vertexColor),
+        ("lit", BuiltinKey.lit),
+        ("canvas2D", BuiltinKey.canvas2D),
+        ("canvas3D", BuiltinKey.canvas3D),
+        ("canvas2DTextured", BuiltinKey.canvas2DTextured),
+        ("canvas3DTextured", BuiltinKey.canvas3DTextured),
+        ("postProcess", BuiltinKey.postProcess),
+        ("imageFilter", BuiltinKey.imageFilter),
+        ("kawaseBlur", BuiltinKey.kawaseBlur),
+        ("particle", BuiltinKey.particle),
+        ("merge", BuiltinKey.merge),
+        ("canvas3DInstanced", BuiltinKey.canvas3DInstanced),
+        ("canvas2DInstanced", BuiltinKey.canvas2DInstanced),
+    ]
+
     private func registerBuiltinsFromSource() throws {
-        let sources: [(source: String, key: String)] = [
-            (BuiltinShaders.blitSource, BuiltinKey.blit),
-            (BuiltinShaders.flatColorSource, BuiltinKey.flatColor),
-            (BuiltinShaders.vertexColorSource, BuiltinKey.vertexColor),
-            (BuiltinShaders.litSource, BuiltinKey.lit),
-            (BuiltinShaders.canvas2DSource, BuiltinKey.canvas2D),
-            (BuiltinShaders.canvas3DSource, BuiltinKey.canvas3D),
-            (BuiltinShaders.canvas2DTexturedSource, BuiltinKey.canvas2DTextured),
-            (BuiltinShaders.canvas3DTexturedSource, BuiltinKey.canvas3DTextured),
-            (PostProcessShaders.source, BuiltinKey.postProcess),
-            (ImageFilterShaders.source, BuiltinKey.imageFilter),
-            (KawaseBlurShaders.source, BuiltinKey.kawaseBlur),
-            (ParticleShaders.source, BuiltinKey.particle),
-            (MergeShaders.source, BuiltinKey.merge),
-            (Canvas3DInstancedShaders.source, BuiltinKey.canvas3DInstanced),
-            (Canvas2DInstancedShaders.source, BuiltinKey.canvas2DInstanced),
-        ]
+        let sources: [(source: String, key: String)] = Self.shaderResourceNames.compactMap { entry in
+            guard let source = Self.loadShaderSource(entry.resource) else {
+                return nil
+            }
+            return (source, entry.key)
+        }
 
         // Parallel compilation (device.makeLibrary is thread-safe)
         let results = UnsafeMutablePointer<(key: String, lib: MTLLibrary)?>.allocate(capacity: sources.count)

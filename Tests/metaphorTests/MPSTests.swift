@@ -4,20 +4,21 @@ import MetalPerformanceShaders
 import simd
 @testable import metaphor
 @testable import MetaphorCore
+@testable import MetaphorMPS
 
-// MARK: - MPSError Tests
+// MARK: - MetaphorError.mps Tests
 
-@Suite("MPSError")
+@Suite("MetaphorError.mps")
 struct MPSErrorTests {
 
     @Test("error descriptions contain context")
     func errorDescriptions() {
-        let errors: [MPSError] = [
-            .deviceNotSupported,
-            .accelerationStructureBuildFailed("test reason"),
-            .textureOperationFailed("texture issue"),
-            .intersectionFailed("ray miss"),
-            .invalidScene("no meshes"),
+        let errors: [MetaphorError] = [
+            .mps(.deviceNotSupported),
+            .mps(.accelerationStructureBuildFailed("test reason")),
+            .mps(.textureOperationFailed("texture issue")),
+            .mps(.intersectionFailed("ray miss")),
+            .mps(.invalidScene("no meshes")),
         ]
         for error in errors {
             let desc = error.errorDescription ?? ""
@@ -27,31 +28,31 @@ struct MPSErrorTests {
 
     @Test("deviceNotSupported message")
     func deviceNotSupported() {
-        let error = MPSError.deviceNotSupported
+        let error = MetaphorError.mps(.deviceNotSupported)
         #expect(error.errorDescription?.contains("Metal Performance Shaders") == true)
     }
 
     @Test("accelerationStructureBuildFailed includes detail")
     func accelBuildFailed() {
-        let error = MPSError.accelerationStructureBuildFailed("vertex buffer too small")
+        let error = MetaphorError.mps(.accelerationStructureBuildFailed("vertex buffer too small"))
         #expect(error.errorDescription?.contains("vertex buffer too small") == true)
     }
 
     @Test("textureOperationFailed includes detail")
     func textureOpFailed() {
-        let error = MPSError.textureOperationFailed("format mismatch")
+        let error = MetaphorError.mps(.textureOperationFailed("format mismatch"))
         #expect(error.errorDescription?.contains("format mismatch") == true)
     }
 
     @Test("intersectionFailed includes detail")
     func intersectionFailed() {
-        let error = MPSError.intersectionFailed("no hits")
+        let error = MetaphorError.mps(.intersectionFailed("no hits"))
         #expect(error.errorDescription?.contains("no hits") == true)
     }
 
     @Test("invalidScene includes detail")
     func invalidScene() {
-        let error = MPSError.invalidScene("empty")
+        let error = MetaphorError.mps(.invalidScene("empty"))
         #expect(error.errorDescription?.contains("empty") == true)
     }
 }
@@ -132,49 +133,37 @@ struct FilterTypeMPSTests {
     }
 }
 
-// MARK: - PostEffect MPS Cases Tests
+// MARK: - MPS PostEffect Classes Tests
 
-@Suite("PostEffect MPS Cases")
+@Suite("MPS PostEffect Classes")
+@MainActor
 struct PostEffectMPSTests {
 
     @Test("MPS blur post effect")
     func mpsBlurPostEffect() {
-        let effect = PostEffect.mpsBlur(sigma: 3.0)
-        if case .mpsBlur(let sigma) = effect {
-            #expect(sigma == 3.0)
-        } else {
-            Issue.record("Expected mpsBlur case")
-        }
+        let effect = MPSBlurEffect(sigma: 3.0)
+        #expect(effect.sigma == 3.0)
+        #expect(effect.name == "mpsBlur")
     }
 
     @Test("MPS sobel post effect")
     func mpsSobelPostEffect() {
-        let effect = PostEffect.mpsSobel
-        if case .mpsSobel = effect {
-            // OK
-        } else {
-            Issue.record("Expected mpsSobel case")
-        }
+        let effect = MPSSobelEffect()
+        #expect(effect.name == "mpsSobel")
     }
 
     @Test("MPS erode post effect")
     func mpsErodePostEffect() {
-        let effect = PostEffect.mpsErode(radius: 2)
-        if case .mpsErode(let r) = effect {
-            #expect(r == 2)
-        } else {
-            Issue.record("Expected mpsErode case")
-        }
+        let effect = MPSErodeEffect(radius: 2)
+        #expect(effect.radius == 2)
+        #expect(effect.name == "mpsErode")
     }
 
     @Test("MPS dilate post effect")
     func mpsDilatePostEffect() {
-        let effect = PostEffect.mpsDilate(radius: 1)
-        if case .mpsDilate(let r) = effect {
-            #expect(r == 1)
-        } else {
-            Issue.record("Expected mpsDilate case")
-        }
+        let effect = MPSDilateEffect(radius: 1)
+        #expect(effect.radius == 1)
+        #expect(effect.name == "mpsDilate")
     }
 }
 
@@ -295,7 +284,7 @@ struct MPSRayTracerTests {
         rt.addMesh(mesh)
         rt.clearScene()
         // After clear, building should fail due to empty scene
-        #expect(throws: MPSError.self) {
+        #expect(throws: MetaphorError.self) {
             try rt.buildAccelerationStructure()
         }
     }

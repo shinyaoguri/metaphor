@@ -6,10 +6,10 @@ import simd
 /// Represent a 3D vertex with position, normal, and color (positionNormalColor layout, 48 bytes/vertex).
 ///
 /// Has a memory layout matching `VertexLayout.positionNormalColor`.
-struct Vertex3D {
-    var position: SIMD3<Float>  // 16 bytes (SIMD3 stride)
-    var normal: SIMD3<Float>    // 16 bytes
-    var color: SIMD4<Float>     // 16 bytes
+public struct Vertex3D {
+    public var position: SIMD3<Float>  // 16 bytes (SIMD3 stride)
+    public var normal: SIMD3<Float>    // 16 bytes
+    public var color: SIMD4<Float>     // 16 bytes
 }
 
 // MARK: - Vertex3DTextured
@@ -515,17 +515,13 @@ extension Mesh {
 
 // MARK: - OBJ Loader
 
-public enum MeshError: Error {
-    case fileNotFound
-    case parseError(String)
-}
 
 extension Mesh {
     /// Load a mesh from an OBJ file at the given URL.
     public static func loadOBJ(device: MTLDevice, url: URL) throws -> Mesh {
         let source = try String(contentsOf: url, encoding: .utf8)
         guard let mesh = loadOBJ(device: device, source: source) else {
-            throw MeshError.parseError("Failed to parse OBJ data")
+            throw MetaphorError.mesh(.parseError("Failed to parse OBJ data"))
         }
         return mesh
     }

@@ -93,6 +93,14 @@ public final class MetaphorRenderer: NSObject {
     /// The next buffer index to use.
     private var nextBufferIndex: Int = 0
 
+    // MARK: - Compute/Render Synchronization
+
+    /// MTLEvent for explicit compute→render synchronization.
+    private var computeEvent: MTLEvent?
+
+    /// The current event counter value.
+    private var computeEventValue: UInt64 = 0
+
     // MARK: - Post Processing
 
     /// Indicate whether post-processing effects are available.
@@ -112,7 +120,7 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - Render Graph
 
     /// The render graph whose output becomes the final texture when set.
-    public var renderGraph: RenderGraph?
+    public var renderGraph: (any RenderGraphExecutable)?
 
     // MARK: - FBO Feedback
 
@@ -190,6 +198,8 @@ public final class MetaphorRenderer: NSObject {
 
         super.init()
 
+        self.computeEvent = device.makeEvent()
+
         try buildBlitPipeline()
 
         do {
@@ -234,6 +244,8 @@ public final class MetaphorRenderer: NSObject {
         self.input = InputManager()
 
         super.init()
+
+        self.computeEvent = device.makeEvent()
 
         try buildBlitPipeline()
 
@@ -343,7 +355,7 @@ public final class MetaphorRenderer: NSObject {
     /// Append a post-processing effect to the pipeline.
     ///
     /// - Parameter effect: The post-processing effect to add.
-    public func addPostEffect(_ effect: PostEffect) {
+    public func addPostEffect(_ effect: any PostEffect) {
         postProcessPipeline?.add(effect)
     }
 
@@ -362,7 +374,7 @@ public final class MetaphorRenderer: NSObject {
     /// Replace all post-processing effects with the given array.
     ///
     /// - Parameter effects: The new set of post-processing effects.
-    public func setPostEffects(_ effects: [PostEffect]) {
+    public func setPostEffects(_ effects: [any PostEffect]) {
         postProcessPipeline?.set(effects)
     }
 
@@ -711,6 +723,13 @@ public final class MetaphorRenderer: NSObject {
 
         // Compute phase
         onCompute?(commandBuffer, time)
+
+        // Signal compute→render barrier if compute was used
+        if let event = computeEvent {
+            computeEventValue += 1
+            commandBuffer.encodeSignalEvent(event, value: computeEventValue)
+            commandBuffer.encodeWaitForEvent(event, value: computeEventValue)
+        }
 
         // Draw to offscreen texture
         if let encoder = commandBuffer.makeRenderCommandEncoder(

@@ -75,23 +75,6 @@ public struct VideoExportConfig: Sendable {
     }
 }
 
-/// Represent errors that can occur during video export.
-public enum VideoExporterError: Error, LocalizedError {
-    /// The AVAssetWriter encountered an error during finalization.
-    case writerFailed(Error?)
-    /// Recording was not active when `endRecord()` was called.
-    case notRecording
-
-    public var errorDescription: String? {
-        switch self {
-        case .writerFailed(let underlying):
-            return "Video export failed: \(underlying?.localizedDescription ?? "unknown error")"
-        case .notRecording:
-            return "Video export ended but was not recording"
-        }
-    }
-}
-
 /// Record MP4/MOV video from sketch output using AVFoundation.
 ///
 /// Call `beginRecord()` to start recording and `endRecord()` to stop.

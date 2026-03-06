@@ -29,6 +29,12 @@ let package = Package(
         .library(name: "MetaphorAudio", targets: ["MetaphorAudio"]),
         .library(name: "MetaphorNetwork", targets: ["MetaphorNetwork"]),
         .library(name: "MetaphorPhysics", targets: ["MetaphorPhysics"]),
+        .library(name: "MetaphorML", targets: ["MetaphorML"]),
+        .library(name: "MetaphorNoise", targets: ["MetaphorNoise"]),
+        .library(name: "MetaphorMPS", targets: ["MetaphorMPS"]),
+        .library(name: "MetaphorCoreImage", targets: ["MetaphorCoreImage"]),
+        .library(name: "MetaphorRenderGraph", targets: ["MetaphorRenderGraph"]),
+        .library(name: "MetaphorSceneGraph", targets: ["MetaphorSceneGraph"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
@@ -42,13 +48,24 @@ let package = Package(
             dependencies: [
                 .target(name: "Syphon", condition: .when(platforms: [.macOS]))
             ],
-            resources: [.process("Shaders/Metal")]
+            resources: [
+                .process("Shaders/Metal"),
+                .copy("Shaders/ShaderSources"),
+            ]
         ),
 
         // Tier 1 modules: zero dependency on MetaphorCore
         .target(name: "MetaphorAudio"),
         .target(name: "MetaphorNetwork"),
         .target(name: "MetaphorPhysics"),
+        .target(name: "MetaphorML"),
+
+        // Tier 2 modules: depend on MetaphorCore
+        .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"]),
+        .target(name: "MetaphorMPS", dependencies: ["MetaphorCore"]),
+        .target(name: "MetaphorCoreImage", dependencies: ["MetaphorCore"]),
+        .target(name: "MetaphorRenderGraph", dependencies: ["MetaphorCore"]),
+        .target(name: "MetaphorSceneGraph", dependencies: ["MetaphorCore"]),
 
         // Umbrella: re-exports everything for backward compatibility
         .target(
@@ -58,6 +75,12 @@ let package = Package(
                 "MetaphorAudio",
                 "MetaphorNetwork",
                 "MetaphorPhysics",
+                "MetaphorML",
+                "MetaphorNoise",
+                "MetaphorMPS",
+                "MetaphorCoreImage",
+                "MetaphorRenderGraph",
+                "MetaphorSceneGraph",
             ]
         ),
 

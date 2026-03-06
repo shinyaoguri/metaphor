@@ -24,7 +24,7 @@ struct GIFExporterTests {
     func noFramesThrows() {
         let exporter = GIFExporter()
         exporter.beginRecord(fps: 10)
-        #expect(throws: GIFExporterError.self) {
+        #expect(throws: MetaphorError.self) {
             try exporter.endRecord(to: NSTemporaryDirectory() + "empty.gif")
         }
     }
@@ -35,11 +35,11 @@ struct GIFExporterTests {
         #expect(exporter.loopCount == 0)  // infinite loop
     }
 
-    @Test("GIFExporterError descriptions")
+    @Test("MetaphorError.export descriptions")
     func errorDescriptions() {
-        #expect(GIFExporterError.noFrames.errorDescription?.contains("No frames") == true)
-        #expect(GIFExporterError.destinationCreationFailed.errorDescription?.contains("destination") == true)
-        #expect(GIFExporterError.finalizationFailed.errorDescription?.contains("finalize") == true)
+        #expect(MetaphorError.export(.noFrames).errorDescription?.contains("frames") == true)
+        #expect(MetaphorError.export(.destinationCreationFailed).errorDescription?.contains("destination") == true)
+        #expect(MetaphorError.export(.finalizationFailed).errorDescription?.contains("finalize") == true)
     }
 }
 

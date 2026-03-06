@@ -1,28 +1,13 @@
 import Foundation
 
-/// Contains embedded MSL source code for shadow mapping shaders.
+/// Shadow mapping shader function name constants.
+///
+/// MSL source code is loaded from bundled .txt resource files at runtime.
 public enum ShadowShaders {
 
-    /// MSL source code for the shadow depth pass shader.
-    public static let depthSource = """
-    #include <metal_stdlib>
-    using namespace metal;
-
-    struct ShadowUniforms {
-        float4x4 modelMatrix;
-        float4x4 lightSpaceMatrix;
-    };
-
-    struct ShadowVertexIn {
-        float3 position [[attribute(0)]];
-    };
-
-    vertex float4 metaphor_shadowDepthVertex(
-        ShadowVertexIn in [[stage_in]],
-        constant ShadowUniforms &uniforms [[buffer(1)]]
-    ) {
-        float4 worldPos = uniforms.modelMatrix * float4(in.position, 1.0);
-        return uniforms.lightSpaceMatrix * worldPos;
+    /// Shadow shader function name constants.
+    public enum FunctionName {
+        /// MSL function name for the shadow depth vertex shader.
+        public static let shadowDepthVertex = "metaphor_shadowDepthVertex"
     }
-    """
 }

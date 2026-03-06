@@ -24,135 +24,66 @@ struct InstanceData2D {
     var color: SIMD4<Float>       // 16 bytes
 }
 
-// MARK: - Instance Batcher
+// MARK: - Batch Key
+
+/// Key that determines whether 2D draws can be batched together.
+///
+/// Color is per-instance data and not included in the key.
+struct BatchKey2D: Equatable {
+    /// The shape type for this batch.
+    let shapeType: Shape2DType
+    /// The blend mode for this batch.
+    let blendMode: BlendMode
+}
+
+// MARK: - 2D Instance Batcher (thin wrapper over generic InstanceBatcher)
 
 /// Automatic instancing batcher for Canvas2D.
 ///
-/// Detects consecutive draws of the same shape type and blend mode,
-/// accumulates per-instance data into a buffer, and issues a single
-/// instanced draw call on flush.
+/// Wraps `InstanceBatcher<InstanceData2D>` with batch key tracking.
 @MainActor
 final class InstanceBatcher2D {
+    private let batcher: InstanceBatcher<InstanceData2D>
 
-    // MARK: - Constants
-
-    /// Maximum number of instances per frame (across all batches).
-    /// frameOffset advances after each flush, so this is the total budget.
-    static let maxInstancesPerBatch: Int = 65536
-    /// Number of triple-buffered GPU buffers.
-    static let bufferCount: Int = 3
-
-    // MARK: - Batch Key
-
-    /// Key that determines whether draws can be batched together.
-    ///
-    /// Color is per-instance data and not included in the key.
-    struct BatchKey2D: Equatable {
-        /// The shape type for this batch.
-        let shapeType: Shape2DType
-        /// The blend mode for this batch.
-        let blendMode: BlendMode
-    }
-
-    // MARK: - GPU Buffers
-
-    /// The Metal device used to create buffers.
-    private let device: MTLDevice
-    /// Triple-buffered instance data buffers.
-    private let instanceBuffers: [MTLBuffer]
-    /// Raw pointers into each instance buffer for fast writes.
-    private let instancePointers: [UnsafeMutablePointer<InstanceData2D>]
-    /// Index of the currently active buffer in the triple-buffer ring.
-    private var currentBufferIndex: Int = 0
-
-    // MARK: - Current Batch State
-
-    /// Running offset into the instance buffer across batches within a single frame.
-    /// Each flushed batch advances this offset so subsequent batches write to
-    /// fresh memory, avoiding data races with already-encoded GPU draw calls.
-    private var frameOffset: Int = 0
     /// The batch key for the current in-progress batch, or nil if no batch is active.
     private(set) var currentBatchKey: BatchKey2D?
+
     /// The number of instances accumulated in the current batch.
-    private(set) var instanceCount: Int = 0
+    var instanceCount: Int { batcher.instanceCount }
 
-    // MARK: - Init
-
-    /// Creates a new 2D instance batcher with triple-buffered GPU storage.
     init(device: MTLDevice) throws {
-        self.device = device
-        let stride = MemoryLayout<InstanceData2D>.stride
-        let bufferSize = Self.maxInstancesPerBatch * stride
-        var buffers: [MTLBuffer] = []
-        var pointers: [UnsafeMutablePointer<InstanceData2D>] = []
-        for i in 0..<Self.bufferCount {
-            guard let buf = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
-                throw MetaphorError.bufferCreationFailed(size: bufferSize)
-            }
-            buf.label = "metaphor.instance2D.\(i)"
-            buffers.append(buf)
-            pointers.append(buf.contents().bindMemory(to: InstanceData2D.self, capacity: Self.maxInstancesPerBatch))
-        }
-        self.instanceBuffers = buffers
-        self.instancePointers = pointers
+        self.batcher = try InstanceBatcher<InstanceData2D>(
+            device: device, maxInstances: 65536, label: "metaphor.instance2D"
+        )
     }
 
-    // MARK: - Frame Lifecycle
-
-    /// Prepares the batcher for a new frame by selecting the buffer and resetting state.
     func beginFrame(bufferIndex: Int) {
-        currentBufferIndex = bufferIndex % Self.bufferCount
-        frameOffset = 0
-        reset()
+        batcher.beginFrame(bufferIndex: bufferIndex)
+        currentBatchKey = nil
     }
 
-    // MARK: - Instance Accumulation
-
-    /// Tries to add an instance to the current batch.
-    ///
-    /// Returns `true` if the key matches the current batch and there is buffer space.
-    /// Returns `false` if the key differs or the buffer is full (caller must flush first).
     func tryAddInstance(
         key: BatchKey2D,
         transform: float4x4,
         color: SIMD4<Float>
     ) -> Bool {
-        // Bounds check must run unconditionally to prevent buffer overflow
-        if (frameOffset + instanceCount) >= Self.maxInstancesPerBatch {
-            return false
-        }
+        guard batcher.canAdd else { return false }
 
         if let currentKey = currentBatchKey {
-            if currentKey != key {
-                return false
-            }
+            if currentKey != key { return false }
         } else {
             currentBatchKey = key
         }
 
-        instancePointers[currentBufferIndex][frameOffset + instanceCount] = InstanceData2D(
-            transform: transform,
-            color: color
-        )
-        instanceCount += 1
+        batcher.addInstance(InstanceData2D(transform: transform, color: color))
         return true
     }
 
-    /// The currently active instance data buffer.
-    var currentBuffer: MTLBuffer {
-        instanceBuffers[currentBufferIndex]
-    }
+    var currentBuffer: MTLBuffer { batcher.currentBuffer }
+    var currentBufferOffset: Int { batcher.currentBufferOffset }
 
-    /// The byte offset into the current buffer where the active batch starts.
-    var currentBufferOffset: Int {
-        frameOffset * MemoryLayout<InstanceData2D>.stride
-    }
-
-    /// Resets the batch state for a new batch, advancing the frame offset
-    /// so that already-encoded draw calls are not overwritten.
     func reset() {
-        frameOffset += instanceCount
-        instanceCount = 0
+        batcher.advanceBatch()
         currentBatchKey = nil
     }
 }

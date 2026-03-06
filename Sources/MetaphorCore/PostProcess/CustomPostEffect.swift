@@ -1,4 +1,5 @@
 import Metal
+import simd
 
 /// Apply a custom post-process effect using a user-defined MSL fragment shader.
 ///
@@ -24,7 +25,7 @@ import Metal
 /// addPostEffect(.custom(effect))
 /// ```
 @MainActor
-public final class CustomPostEffect: @unchecked Sendable {
+public final class CustomPostEffect: PostEffect, @unchecked Sendable {
     /// The name of this effect.
     public let name: String
 
@@ -78,6 +79,27 @@ public final class CustomPostEffect: @unchecked Sendable {
     /// Indicate whether custom parameters have been set.
     var hasCustomParameters: Bool { !parameterData.isEmpty }
 
+    // MARK: - PostEffect
+
+    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+        let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
+        let params = PostProcessParams(
+            texelSize: texelSize,
+            intensity: intensity,
+            threshold: threshold,
+            radius: radius,
+            smoothness: smoothness
+        )
+        context.renderPass(
+            commandBuffer: commandBuffer,
+            input: input, output: output,
+            fragmentName: fragmentFunctionName,
+            params: params,
+            libraryKey: libraryKey,
+            customParams: hasCustomParameters ? parameters : nil
+        )
+    }
+
     // MARK: - Hot Reload
 
     /// Re-fetch the shader function from the shader library after a hot reload.
@@ -86,10 +108,10 @@ public final class CustomPostEffect: @unchecked Sendable {
     /// rebuilds with the updated shader.
     ///
     /// - Parameter shaderLibrary: The shader library to look up the function from.
-    /// - Throws: `MetaphorError.postProcessShaderNotFound` if the function is not found.
+    /// - Throws: `MetaphorError.shaderNotFound` if the function is not found.
     public func reload(shaderLibrary: ShaderLibrary) throws {
         guard shaderLibrary.function(named: fragmentFunctionName, from: libraryKey) != nil else {
-            throw MetaphorError.postProcessShaderNotFound(fragmentFunctionName)
+            throw MetaphorError.shaderNotFound(fragmentFunctionName)
         }
         // The function itself is fetched by PostProcessPipeline via libraryKey + fragmentFunctionName,
         // so clearing the function cache in ShaderLibrary.reload() triggers re-fetching automatically.
