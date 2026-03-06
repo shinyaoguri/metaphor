@@ -94,12 +94,16 @@ public final class SketchContext {
 
     /// Shows the mouse cursor.
     public func cursor() {
+        #if os(macOS)
         NSCursor.unhide()
+        #endif
     }
 
     /// Hides the mouse cursor.
     public func noCursor() {
+        #if os(macOS)
         NSCursor.hide()
+        #endif
     }
 
     // MARK: - Cache Management

@@ -137,7 +137,11 @@ public final class MImage {
             }
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
+            #if os(macOS)
             desc.storageMode = .managed
+            #else
+            desc.storageMode = .shared
+            #endif
             desc.usage = .shaderRead
             guard let staging = device.makeTexture(descriptor: desc),
                   let blit = commandBuffer.makeBlitCommandEncoder() else {
@@ -192,7 +196,11 @@ public final class MImage {
             // Cannot write to a private texture from the CPU; create a new managed texture as replacement
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
+            #if os(macOS)
             desc.storageMode = .managed
+            #else
+            desc.storageMode = .shared
+            #endif
             desc.usage = [.shaderRead]
             guard let newTexture = texture.device.makeTexture(descriptor: desc) else { return }
             newTexture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
@@ -284,7 +292,11 @@ public final class MImage {
             mipmapped: false
         )
         desc.usage = [.shaderRead, .shaderWrite]
+        #if os(macOS)
         desc.storageMode = .managed
+        #else
+        desc.storageMode = .shared
+        #endif
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
         let img = MImage(texture: texture)
         img.pixels = [UInt8](repeating: 0, count: width * height * 4)

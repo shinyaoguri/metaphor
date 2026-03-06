@@ -257,7 +257,10 @@ public final class ShaderLibrary {
         // Parallel compilation (device.makeLibrary is thread-safe)
         let results = UnsafeMutablePointer<(key: String, lib: MTLLibrary)?>.allocate(capacity: sources.count)
         results.initialize(repeating: nil, count: sources.count)
-        defer { results.deallocate() }
+        defer {
+            results.deinitialize(count: sources.count)
+            results.deallocate()
+        }
 
         // unsafeResults: each thread writes to its own index (no lock needed).
         nonisolated(unsafe) let unsafeResults = results
@@ -280,11 +283,7 @@ public final class ShaderLibrary {
             let detail = errors.map { "  \($0.key): \($0.error)" }.joined(separator: "\n")
             throw MetaphorError.shaderCompilationFailed(
                 name: "builtins (\(errors.count) failed)",
-                underlying: NSError(
-                    domain: "metaphor.ShaderLibrary",
-                    code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to compile \(errors.count) shader(s):\n\(detail)"]
-                )
+                underlying: SimpleError(message: "Failed to compile \(errors.count) shader(s):\n\(detail)")
             )
         }
 

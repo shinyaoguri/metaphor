@@ -84,7 +84,11 @@ public final class GIFExporter {
                 height: h,
                 mipmapped: false
             )
+            #if os(macOS)
             desc.storageMode = .managed
+            #else
+            desc.storageMode = .shared
+            #endif
             desc.usage = .shaderRead
             stagingTexture = device.makeTexture(descriptor: desc)
         }

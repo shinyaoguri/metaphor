@@ -239,3 +239,10 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     public var errorDescription: String? { description }
 }
 
+/// A simple error carrying only a message string, used as a lightweight
+/// replacement for NSError when a description-only error is needed.
+struct SimpleError: Error, LocalizedError, Sendable {
+    let message: String
+    var errorDescription: String? { message }
+}
+

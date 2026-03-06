@@ -100,13 +100,17 @@ docs-preview:
 	xcrun docc preview Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs
 
-# Run examples interactively (excludes _Legacy/ by default)
+# Run examples in parallel (excludes _Legacy/ by default)
 examples:
-	@./scripts/run-examples.sh
+	@./scripts/run-examples.sh --parallel 10
 
-# Build-only verification of all examples
+# Build-only verification of all examples (parallel)
 examples-check:
-	@./scripts/run-examples.sh --build-only
+	@./scripts/run-examples.sh --build-only --parallel 10
+
+# Run examples sequentially (interactive, with note prompts)
+examples-seq:
+	@./scripts/run-examples.sh
 
 # List all available examples
 examples-list:
@@ -124,7 +128,8 @@ help:
 	@echo "  make check          - Check if setup is complete"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
-	@echo "  make examples       - Run examples interactively"
-	@echo "  make examples-check - Build-only verification of all examples"
+	@echo "  make examples       - Run examples in parallel (10 workers)"
+	@echo "  make examples-seq   - Run examples sequentially (interactive)"
+	@echo "  make examples-check - Build-only verification (parallel)"
 	@echo "  make examples-list  - List all available examples"
 	@echo "  make help           - Show this help"

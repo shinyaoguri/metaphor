@@ -973,4 +973,11 @@ public final class Canvas2D: CanvasStyle {
     public func scale(_ s: Float) {
         scale(s, s)
     }
+
+    /// Multiply the current 2D transform by the given matrix.
+    ///
+    /// - Parameter matrix: The 3x3 matrix to concatenate.
+    public func applyMatrix(_ matrix: float3x3) {
+        currentTransform = currentTransform * matrix
+    }
 }

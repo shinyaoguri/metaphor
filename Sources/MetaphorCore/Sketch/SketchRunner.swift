@@ -247,7 +247,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // Show the window
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
 
         // Enter full screen if configured
         if config.fullScreen {

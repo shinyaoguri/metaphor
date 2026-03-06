@@ -511,19 +511,13 @@ public final class MetaphorRenderer: NSObject {
             named: BuiltinShaders.FunctionName.blitVertex,
             from: ShaderLibrary.BuiltinKey.blit
         ) else {
-            throw MetaphorError.shaderCompilationFailed(
-                name: "blitVertex",
-                underlying: NSError(domain: "metaphor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Blit vertex shader function not found"])
-            )
+            throw MetaphorError.shaderNotFound("blitVertex")
         }
         guard let fragmentFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.blitFragment,
             from: ShaderLibrary.BuiltinKey.blit
         ) else {
-            throw MetaphorError.shaderCompilationFailed(
-                name: "blitFragment",
-                underlying: NSError(domain: "metaphor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Blit fragment shader function not found"])
-            )
+            throw MetaphorError.shaderNotFound("blitFragment")
         }
 
         blitPipelineState = try PipelineFactory(device: device)
@@ -584,7 +578,11 @@ public final class MetaphorRenderer: NSObject {
             mipmapped: false
         )
         desc.usage = .shaderRead
+        #if os(macOS)
         desc.storageMode = .managed
+        #else
+        desc.storageMode = .shared
+        #endif
         guard let tex = device.makeTexture(descriptor: desc) else {
             return nil
         }

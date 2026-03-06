@@ -25,7 +25,7 @@ import simd
 /// addPostEffect(.custom(effect))
 /// ```
 @MainActor
-public final class CustomPostEffect: PostEffect, @unchecked Sendable {
+public final class CustomPostEffect: PostEffect {
     /// The name of this effect.
     public let name: String
 

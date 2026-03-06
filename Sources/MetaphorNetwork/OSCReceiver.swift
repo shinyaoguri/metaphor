@@ -77,6 +77,9 @@ private final class OSCListenerState: Sendable {
     }
 }
 
+/// Dedicated serial queue for OSC network I/O (file-scope to avoid @MainActor isolation).
+private let oscNetworkQueue = DispatchQueue(label: "metaphor.osc.network", qos: .userInitiated)
+
 // MARK: - OSCReceiver
 
 /// Receive UDP OSC messages using Network.framework.
@@ -154,7 +157,7 @@ public final class OSCReceiver {
         let queue = messageQueue
 
         listener.newConnectionHandler = { connection in
-            connection.start(queue: .global(qos: .userInteractive))
+            connection.start(queue: oscNetworkQueue)
             Self.receiveLoop(connection: connection, queue: queue)
         }
 
@@ -167,7 +170,7 @@ public final class OSCReceiver {
             }
         }
 
-        listener.start(queue: .global(qos: .userInteractive))
+        listener.start(queue: oscNetworkQueue)
         listenerState.listener = listener
         listenerState.isRunning = true
     }

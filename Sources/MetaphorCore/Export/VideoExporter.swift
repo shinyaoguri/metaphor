@@ -1,5 +1,5 @@
 @preconcurrency import Metal
-import AVFoundation
+@preconcurrency import AVFoundation
 import CoreVideo
 import Foundation
 import os
@@ -174,11 +174,7 @@ public final class VideoExporter {
         writer.add(input)
 
         guard writer.startWriting() else {
-            throw writer.error ?? NSError(
-                domain: "metaphor.VideoExporter",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to start writing"]
-            )
+            throw writer.error ?? MetaphorError.export(.writerFailed("Failed to start writing"))
         }
 
         writer.startSession(atSourceTime: .zero)
@@ -230,15 +226,19 @@ public final class VideoExporter {
 
         let flag = endingFlag
 
+        // These captures are safe: all access is serialized on writerQueue.
+        nonisolated(unsafe) let capturedInput = input
+        nonisolated(unsafe) let capturedAdaptor = adaptor
+
         commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
                 // Reject frames arriving after endRecord was called
                 guard !flag.value else { return }
                 // Get pixel buffer from pool
-                guard input.isReadyForMoreMediaData else { return }
+                guard capturedInput.isReadyForMoreMediaData else { return }
 
                 var pixelBuffer: CVPixelBuffer?
-                guard let pool = adaptor.pixelBufferPool else { return }
+                guard let pool = capturedAdaptor.pixelBufferPool else { return }
 
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
                 guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return }
@@ -261,7 +261,7 @@ public final class VideoExporter {
                     value: currentFrame,
                     timescale: fps
                 )
-                adaptor.append(buffer, withPresentationTime: presentationTime)
+                capturedAdaptor.append(buffer, withPresentationTime: presentationTime)
             }
         }
     }
@@ -291,11 +291,15 @@ public final class VideoExporter {
             flag.value = true
         }
 
+        // These captures are safe: all access is serialized on writerQueue.
+        nonisolated(unsafe) let capturedInput = input
+        nonisolated(unsafe) let capturedWriter = writer
+
         // Finalize the video file on the writer queue
         writerQueue.async {
-            input.markAsFinished()
+            capturedInput.markAsFinished()
 
-            writer.finishWriting {
+            capturedWriter.finishWriting {
                 Task { @MainActor [weak self] in
                     self?.assetWriter = nil
                     self?.writerInput = nil

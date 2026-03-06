@@ -455,7 +455,11 @@ public final class MPSRayTracer {
             mipmapped: false
         )
         desc.usage = [.shaderRead, .shaderWrite]
+        #if os(macOS)
         desc.storageMode = .managed
+        #else
+        desc.storageMode = .shared
+        #endif
         _outputTexture = device.makeTexture(descriptor: desc)
     }
 

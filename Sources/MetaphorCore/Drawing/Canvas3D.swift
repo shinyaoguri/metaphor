@@ -117,11 +117,11 @@ public final class Canvas3D: CanvasStyle {
 
     // MARK: - Material State
 
-    private var currentMaterial: Material3D = .default
+    var currentMaterial: Material3D = .default
 
     // MARK: - Texture State
 
-    private var currentTexture: MTLTexture?
+    var currentTexture: MTLTexture?
 
     // MARK: - Transform Stack
 
@@ -139,7 +139,7 @@ public final class Canvas3D: CanvasStyle {
 
     private var stateStack: [StyleState3D] = []
     private var matrixStack: [float4x4] = []
-    private var currentTransform: float4x4 = .identity
+    var currentTransform: float4x4 = .identity
 
     // MARK: - Style
 

@@ -115,7 +115,7 @@ enum ModelIOLoader {
 
     private static func hasNormals(_ mesh: MDLMesh) -> Bool {
         let layout = mesh.vertexDescriptor
-        for attr in layout.attributes as! [MDLVertexAttribute] {
+        for case let attr as MDLVertexAttribute in layout.attributes {
             if attr.name == MDLVertexAttributeNormal { return true }
         }
         return false

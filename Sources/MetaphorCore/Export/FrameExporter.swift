@@ -64,7 +64,7 @@ public final class FrameExporter {
         frameIndex += 1
 
         let filename = String(format: filenamePattern, currentFrame)
-        let path = (outputDirectory as NSString).appendingPathComponent(filename)
+        let path = URL(fileURLWithPath: outputDirectory).appendingPathComponent(filename).path
 
         if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
             blitEncoder.copy(
