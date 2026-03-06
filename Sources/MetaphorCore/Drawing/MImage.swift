@@ -1,10 +1,6 @@
 import Metal
 import MetalKit
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 
 /// Represent an image by wrapping an `MTLTexture`.
 @MainActor
@@ -55,7 +51,6 @@ public final class MImage {
         self.height = Float(texture.height)
     }
 
-    #if os(macOS)
     /// Create an image from an `NSImage`.
     ///
     /// - Parameters:
@@ -76,28 +71,6 @@ public final class MImage {
         self.width = Float(texture.width)
         self.height = Float(texture.height)
     }
-    #elseif os(iOS)
-    /// Create an image from a `UIImage`.
-    ///
-    /// - Parameters:
-    ///   - uiImage: The `UIImage` to convert into a Metal texture.
-    ///   - device: The Metal device used to create the texture.
-    /// - Throws: ``MetaphorError/image(_:)`` if the `UIImage` does not contain a valid `CGImage`.
-    public init(uiImage: UIImage, device: MTLDevice) throws {
-        let loader = MTKTextureLoader(device: device)
-        guard let cgImage = uiImage.cgImage else {
-            throw MetaphorError.image(.invalidImage)
-        }
-        let options: [MTKTextureLoader.Option: Any] = [
-            .textureUsage: MTLTextureUsage.shaderRead.rawValue,
-            .textureStorageMode: MTLStorageMode.private.rawValue,
-            .SRGB: false
-        ]
-        self.texture = try loader.newTexture(cgImage: cgImage, options: options)
-        self.width = Float(texture.width)
-        self.height = Float(texture.height)
-    }
-    #endif
 
     /// Create an image from an existing `MTLTexture`.
     ///
@@ -137,11 +110,7 @@ public final class MImage {
             }
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
-            #if os(macOS)
             desc.storageMode = .managed
-            #else
-            desc.storageMode = .shared
-            #endif
             desc.usage = .shaderRead
             guard let staging = device.makeTexture(descriptor: desc),
                   let blit = commandBuffer.makeBlitCommandEncoder() else {
@@ -196,11 +165,7 @@ public final class MImage {
             // Cannot write to a private texture from the CPU; create a new managed texture as replacement
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
-            #if os(macOS)
             desc.storageMode = .managed
-            #else
-            desc.storageMode = .shared
-            #endif
             desc.usage = [.shaderRead]
             guard let newTexture = texture.device.makeTexture(descriptor: desc) else { return }
             newTexture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
@@ -292,11 +257,7 @@ public final class MImage {
             mipmapped: false
         )
         desc.usage = [.shaderRead, .shaderWrite]
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
         let img = MImage(texture: texture)
         img.pixels = [UInt8](repeating: 0, count: width * height * 4)

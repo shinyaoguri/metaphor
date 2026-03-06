@@ -1,6 +1,4 @@
-#if os(macOS)
 import AppKit
-#endif
 
 extension SketchContext {
 

@@ -1,8 +1,4 @@
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 import Metal
 import simd
 
@@ -94,16 +90,12 @@ public final class SketchContext {
 
     /// Shows the mouse cursor.
     public func cursor() {
-        #if os(macOS)
         NSCursor.unhide()
-        #endif
     }
 
     /// Hides the mouse cursor.
     public func noCursor() {
-        #if os(macOS)
         NSCursor.hide()
-        #endif
     }
 
     // MARK: - Cache Management
@@ -191,7 +183,6 @@ public final class SketchContext {
     /// Whether this is the primary sketch context (controls global elapsed time).
     var isPrimary: Bool = false
 
-    #if os(macOS)
     /// The secondary windows created from this context.
     private var secondaryWindows: [SketchWindow] = []
 
@@ -222,7 +213,6 @@ public final class SketchContext {
         }
         secondaryWindows.removeAll()
     }
-    #endif
 
     // MARK: - Initialization
 

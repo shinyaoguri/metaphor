@@ -85,11 +85,7 @@ public final class GIFExporter {
                 height: h,
                 mipmapped: false
             )
-            #if os(macOS)
             desc.storageMode = .managed
-            #else
-            desc.storageMode = .shared
-            #endif
             desc.usage = [.shaderRead, .shaderWrite]
             stagingTexture = device.makeTexture(descriptor: desc)
         }
@@ -101,9 +97,7 @@ public final class GIFExporter {
                   let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return }
             blit.copy(from: texture, to: staging)
-            #if os(macOS)
             blit.synchronize(resource: staging)
-            #endif
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()

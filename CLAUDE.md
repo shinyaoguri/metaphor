@@ -22,7 +22,7 @@ cd Examples/_Legacy/Simulation/GPUParticles && swift build && swift run
 
 ## Architecture Overview
 
-metaphor is a Swift + Metal creative coding library inspired by Processing/p5.js/openFrameworks. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, audio, and more. Supports macOS 14+ and iOS 17+.
+metaphor is a Swift + Metal creative coding library inspired by Processing/p5.js/openFrameworks. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, audio, and more. macOS (Apple Silicon) only.
 
 ### Module Structure
 
@@ -106,10 +106,10 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 | `RenderGraph/` | DAG-based multi-pass rendering (SourcePass, EffectPass, MergePass) |
 | `SceneGraph/` | Node hierarchy, SceneRenderer |
 | `Export/` | VideoExporter (H.264), GIFExporter, FrameExporter |
-| `Input/` | InputManager (mouse/keyboard/touch), CaptureDevice (camera) |
+| `Input/` | InputManager (mouse/keyboard), CaptureDevice (camera) |
 | `UI/` | MetaphorView (SwiftUI), ParameterGUI, PerformanceHUD, OrbitCamera |
 | `Utilities/` | Math (float4x4), Time (FrameTimer), Easing (30 functions), Color, Vector, Platform |
-| `Syphon/` | SyphonOutput (inter-app video sharing, macOS only) |
+| `Syphon/` | SyphonOutput (inter-app video sharing) |
 
 ### Standalone Modules
 
@@ -128,7 +128,7 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 - **Shadow mapping**: DrawCall recording → depth-only shadow pass → PCF 3x3 filtering
 - **Shader hot reload**: ShaderLibrary supports runtime MSL reloading for CustomMaterial/CustomPostEffect
 - **Compute lifecycle**: `onCompute(commandBuffer, time)` runs before `onDraw(renderEncoder, time)` each frame
-- **Conditional compilation**: `#if os(macOS)` / `#if os(iOS)` for platform-specific code (Platform.swift type aliases)
+- **macOS only**: All code targets macOS (Apple Silicon); no iOS conditional compilation
 - **Plugin protocol**: `MetaphorPlugin` provides lifecycle hooks (onBeforeRender, onAfterRender, onResize, etc.) for extending the render loop
 - **Modular architecture**: Audio, Network, Physics are standalone SPM targets with zero Core dependency; umbrella target re-exports all
 
@@ -139,7 +139,7 @@ Sketch protocol extensions  ← User-facing (Processing-like globals)
 
 ## Requirements
 
-- macOS 14.0+ / iOS 17.0+
+- macOS 14.0+ (Apple Silicon)
 - Swift 6.0+
 - Xcode 15.0+
 

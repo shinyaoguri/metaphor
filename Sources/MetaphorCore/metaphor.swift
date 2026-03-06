@@ -24,6 +24,4 @@
 @_exported import Metal
 @_exported import MetalKit
 @_exported import simd
-#if os(macOS)
 @_exported import Syphon
-#endif

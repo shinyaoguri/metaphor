@@ -17,10 +17,8 @@ public final class MetaphorRenderer: NSObject {
     /// Manage offscreen render target textures.
     public private(set) var textureManager: TextureManager
 
-    #if os(macOS)
     /// The optional Syphon output for inter-application video sharing.
     public private(set) var syphonOutput: SyphonOutput?
-    #endif
 
     /// The shader library used for compiling and caching Metal shader functions.
     public let shaderLibrary: ShaderLibrary
@@ -259,7 +257,6 @@ public final class MetaphorRenderer: NSObject {
         }
     }
 
-    #if os(macOS)
     // MARK: - Syphon
 
     /// Start a Syphon server with the given name for inter-application texture sharing.
@@ -274,7 +271,6 @@ public final class MetaphorRenderer: NSObject {
         syphonOutput?.stop()
         syphonOutput = nil
     }
-    #endif
 
     // MARK: - Plugin Management
 
@@ -578,11 +574,7 @@ public final class MetaphorRenderer: NSObject {
             mipmapped: false
         )
         desc.usage = .shaderRead
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
         guard let tex = device.makeTexture(descriptor: desc) else {
             return nil
         }
@@ -824,13 +816,11 @@ public final class MetaphorRenderer: NSObject {
         }
 
         // Publish to Syphon (legacy; will be replaced by SyphonPlugin)
-        #if os(macOS)
         syphonOutput?.publish(
             texture: outputTexture,
             commandBuffer: commandBuffer,
             flipped: true
         )
-        #endif
 
         commandBuffer.commit()
 
@@ -868,13 +858,11 @@ extension MetaphorRenderer: MTKViewDelegate {
         // Skip blit when the window is occluded to prevent currentDrawable from blocking.
         // Always allow the first blit so that noLoop() sketches display their content
         // even when the window's occlusion state hasn't updated yet.
-        #if os(macOS)
         if hasBlittedOnce,
            let window = view.window,
            !window.occlusionState.contains(.visible) {
             return
         }
-        #endif
 
         // Blit to screen (preview display)
         guard let drawable = view.currentDrawable,

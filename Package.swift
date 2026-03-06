@@ -20,8 +20,7 @@ let syphonTarget: Target = useLocalSyphon
 let package = Package(
     name: "metaphor",
     platforms: [
-        .macOS(.v14),
-        .iOS(.v17)
+        .macOS(.v14)
     ],
     products: [
         .library(name: "metaphor", targets: ["metaphor"]),
@@ -46,7 +45,7 @@ let package = Package(
         .target(
             name: "MetaphorCore",
             dependencies: [
-                .target(name: "Syphon", condition: .when(platforms: [.macOS]))
+                "Syphon"
             ],
             resources: [
                 .process("Shaders/Metal"),

@@ -1,10 +1,6 @@
 import Metal
 import MetalKit
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 
 /// Load resources asynchronously to avoid blocking the main thread.
 ///
@@ -56,7 +52,6 @@ public final class ResourceLoader {
         return MImage(texture: texture)
     }
 
-    #if os(macOS)
     /// Load an image from an `NSImage` asynchronously.
     ///
     /// - Parameter nsImage: The `NSImage` to convert.
@@ -70,21 +65,6 @@ public final class ResourceLoader {
         )
         return MImage(texture: texture)
     }
-    #elseif os(iOS)
-    /// Load an image from a `UIImage` asynchronously.
-    ///
-    /// - Parameter uiImage: The `UIImage` to convert.
-    /// - Returns: A new ``MImage`` backed by the loaded texture.
-    public func loadImageAsync(uiImage: UIImage) async throws -> MImage {
-        guard let cgImage = uiImage.cgImage else {
-            throw MetaphorError.image(.invalidImage)
-        }
-        let texture = try await textureLoader.newTexture(
-            cgImage: cgImage, options: Self.textureOptions
-        )
-        return MImage(texture: texture)
-    }
-    #endif
 
     // MARK: - Async Model Loading
 

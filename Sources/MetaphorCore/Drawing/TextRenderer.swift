@@ -1,9 +1,5 @@
 import Metal
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 import CoreText
 
 // MARK: - Text Alignment
@@ -251,11 +247,7 @@ final class GlyphAtlas {
             mipmapped: false
         )
         desc.usage = .shaderRead
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
         return device.makeTexture(descriptor: desc)
     }
 
@@ -521,11 +513,7 @@ final class TextRenderer {
             mipmapped: false
         )
         descriptor.usage = .shaderRead
-        #if os(macOS)
         descriptor.storageMode = .managed
-        #else
-        descriptor.storageMode = .shared
-        #endif
 
         guard let texture = device.makeTexture(descriptor: descriptor),
               let data = ctx.data else { return nil }
@@ -607,11 +595,7 @@ final class TextRenderer {
             mipmapped: false
         )
         descriptor.usage = .shaderRead
-        #if os(macOS)
         descriptor.storageMode = .managed
-        #else
-        descriptor.storageMode = .shared
-        #endif
 
         guard let texture = device.makeTexture(descriptor: descriptor),
               let data = ctx.data else { return nil }

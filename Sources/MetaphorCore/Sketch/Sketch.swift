@@ -1,8 +1,4 @@
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 @preconcurrency import Metal
 
 /// Define a sketch by conforming to this protocol.

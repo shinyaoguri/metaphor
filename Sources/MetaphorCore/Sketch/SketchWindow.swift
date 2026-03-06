@@ -1,4 +1,3 @@
-#if os(macOS)
 import AppKit
 import MetalKit
 
@@ -110,11 +109,9 @@ public final class SketchWindow {
         setupRenderLoop()
         connectInput()
 
-        #if os(macOS)
         if let syphonName = config.syphonName {
             renderer.startSyphonServer(name: syphonName)
         }
-        #endif
     }
 
     // MARK: - Drawing API
@@ -321,4 +318,3 @@ public final class SketchWindow {
         }
     }
 }
-#endif

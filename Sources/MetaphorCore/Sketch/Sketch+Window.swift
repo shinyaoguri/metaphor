@@ -1,5 +1,3 @@
-#if os(macOS)
-
 extension Sketch {
     /// Create a secondary window for multi-window output.
     ///
@@ -39,5 +37,3 @@ extension Sketch {
         context.closeAllWindows()
     }
 }
-
-#endif

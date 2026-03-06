@@ -34,11 +34,7 @@ enum NoiseTextureBuilder {
             mipmapped: false
         )
         desc.usage = [.shaderRead]
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
 
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         tex.replace(
@@ -86,11 +82,7 @@ enum NoiseTextureBuilder {
             mipmapped: false
         )
         desc.usage = [.shaderRead]
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
 
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         tex.replace(

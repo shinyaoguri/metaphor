@@ -37,11 +37,7 @@ public final class MLTextureConverter {
         }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
         desc.usage = .shaderRead
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         stagingTextureCache = tex
@@ -92,9 +88,7 @@ public final class MLTextureConverter {
                   let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: texture, to: staging)
-            #if os(macOS)
             blit.synchronize(resource: staging)
-            #endif
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
@@ -138,11 +132,7 @@ public final class MLTextureConverter {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
         desc.usage = [.shaderRead]
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
 
         let bytesPerRow = width * 4
@@ -182,9 +172,7 @@ public final class MLTextureConverter {
                   let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: texture, to: staging)
-            #if os(macOS)
             blit.synchronize(resource: staging)
-            #endif
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
@@ -287,11 +275,7 @@ public final class MLTextureConverter {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
         desc.usage = [.shaderRead]
-        #if os(macOS)
         desc.storageMode = .managed
-        #else
-        desc.storageMode = .shared
-        #endif
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
 
         tex.replace(
