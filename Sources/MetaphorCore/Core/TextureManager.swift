@@ -103,13 +103,13 @@ public final class TextureManager {
         self.depthTexture = depthTex
 
         // MSAA textures
-        if sampleCount > 1 {
+        if self.sampleCount > 1 {
             let msaaColorDesc = MTLTextureDescriptor()
             msaaColorDesc.textureType = .type2DMultisample
             msaaColorDesc.pixelFormat = pixelFormat
             msaaColorDesc.width = width
             msaaColorDesc.height = height
-            msaaColorDesc.sampleCount = sampleCount
+            msaaColorDesc.sampleCount = self.sampleCount
             msaaColorDesc.usage = .renderTarget
             msaaColorDesc.storageMode = .private
             guard let msaaColorTex = device.makeTexture(descriptor: msaaColorDesc) else {
@@ -139,7 +139,7 @@ public final class TextureManager {
         rpd.depthAttachment.storeAction = .dontCare
         rpd.depthAttachment.clearDepth = 1.0
 
-        if sampleCount > 1 {
+        if self.sampleCount > 1 {
             // MSAA: render to multisample texture, resolve to colorTexture
             rpd.colorAttachments[0].texture = msaaColorTexture
             rpd.colorAttachments[0].resolveTexture = colorTexture

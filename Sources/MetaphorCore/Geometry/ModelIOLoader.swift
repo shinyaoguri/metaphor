@@ -121,6 +121,10 @@ enum ModelIOLoader {
         return false
     }
 
+    private static func halfToFloat(_ h: UInt16) -> Float {
+        return Float(Float16(bitPattern: h))
+    }
+
     private static func readFloat3(from data: MDLVertexAttributeData, index: Int) -> SIMD3<Float> {
         let stride = data.stride
         let offset = index * stride
@@ -132,10 +136,15 @@ enum ModelIOLoader {
         case .float4:
             let v4 = ptr.assumingMemoryBound(to: SIMD4<Float>.self).pointee
             return SIMD3(v4.x, v4.y, v4.z)
+        case .half3:
+            let halfs = ptr.assumingMemoryBound(to: UInt16.self)
+            return SIMD3(halfToFloat(halfs[0]), halfToFloat(halfs[1]), halfToFloat(halfs[2]))
+        case .half4:
+            let halfs = ptr.assumingMemoryBound(to: UInt16.self)
+            return SIMD3(halfToFloat(halfs[0]), halfToFloat(halfs[1]), halfToFloat(halfs[2]))
         default:
-            // Fallback: read as float3
-            let floats = ptr.assumingMemoryBound(to: Float.self)
-            return SIMD3(floats[0], floats[1], floats[2])
+            metaphorWarning("Unsupported vertex format \(data.format.rawValue) for float3 attribute, using zero vector")
+            return .zero
         }
     }
 
@@ -147,9 +156,18 @@ enum ModelIOLoader {
         switch data.format {
         case .float2:
             return ptr.assumingMemoryBound(to: SIMD2<Float>.self).pointee
-        default:
+        case .float3:
             let floats = ptr.assumingMemoryBound(to: Float.self)
             return SIMD2(floats[0], floats[1])
+        case .half2:
+            let halfs = ptr.assumingMemoryBound(to: UInt16.self)
+            return SIMD2(halfToFloat(halfs[0]), halfToFloat(halfs[1]))
+        case .half3:
+            let halfs = ptr.assumingMemoryBound(to: UInt16.self)
+            return SIMD2(halfToFloat(halfs[0]), halfToFloat(halfs[1]))
+        default:
+            metaphorWarning("Unsupported vertex format \(data.format.rawValue) for float2 attribute, using zero vector")
+            return .zero
         }
     }
 

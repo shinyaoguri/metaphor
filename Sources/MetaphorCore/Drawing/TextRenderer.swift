@@ -220,12 +220,11 @@ final class GlyphAtlas {
                 // Copy existing data
                 copyTexture(from: texture!, to: newTex, width: atlasWidth, height: atlasHeight)
                 texture = newTex
-                atlasHeight = newHeight
 
-                // Recalculate UV coordinates
+                // Recalculate UV coordinates (scale before updating atlasHeight)
+                let scale = Float(atlasHeight) / Float(newHeight)
                 var updated: [Character: GlyphInfo] = [:]
                 for (char, old) in glyphMap {
-                    let scale = Float(atlasHeight) / Float(newHeight)
                     updated[char] = GlyphInfo(
                         u0: old.u0, v0: old.v0 * scale,
                         u1: old.u1, v1: old.v1 * scale,
@@ -235,6 +234,7 @@ final class GlyphAtlas {
                     )
                 }
                 glyphMap = updated
+                atlasHeight = newHeight
 
                 // Retry with the new shelf
                 return findSpace(width: width, height: height)

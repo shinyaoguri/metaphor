@@ -689,7 +689,8 @@ extension SketchContext {
         guard gifExporter.isRecording else { return }
         gifExporter.captureFrame(
             texture: renderer.textureManager.colorTexture,
-            device: renderer.device
+            device: renderer.device,
+            commandQueue: renderer.commandQueue
         )
     }
 

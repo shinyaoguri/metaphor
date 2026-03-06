@@ -242,7 +242,7 @@ extension Mesh {
         vertices.reserveCapacity((rings + 1) * (segments + 1))
         var uvVertices: [Vertex3DTextured] = []
         uvVertices.reserveCapacity((rings + 1) * (segments + 1))
-        var indices: [UInt16] = []
+        var indices: [UInt32] = []
         indices.reserveCapacity(rings * segments * 6)
 
         for lat in 0...rings {
@@ -268,13 +268,17 @@ extension Mesh {
         let cols = segments + 1
         for lat in 0..<rings {
             for lon in 0..<segments {
-                let a = UInt16(lat * cols + lon)
-                let b = a + UInt16(cols)
+                let a = UInt32(lat * cols + lon)
+                let b = a + UInt32(cols)
                 indices.append(contentsOf: [a, b, a + 1, b, b + 1, a + 1])
             }
         }
 
-        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        if vertices.count <= 65535 {
+            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+        } else {
+            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+        }
     }
 }
 
@@ -323,7 +327,7 @@ extension Mesh {
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
         var uvVertices: [Vertex3DTextured] = []
-        var indices: [UInt16] = []
+        var indices: [UInt32] = []
 
         // --- Side surface ---
         for i in 0...segments {
@@ -343,7 +347,7 @@ extension Mesh {
         }
 
         for i in 0..<segments {
-            let topA = UInt16(i * 2)
+            let topA = UInt32(i * 2)
             let botA = topA + 1
             let topB = topA + 2
             let botB = topA + 3
@@ -351,7 +355,7 @@ extension Mesh {
         }
 
         // --- Top cap ---
-        let topCenter = UInt16(vertices.count)
+        let topCenter = UInt32(vertices.count)
         let topCenterPos = SIMD3<Float>(0, hh, 0)
         let topNormal = SIMD3<Float>(0, 1, 0)
         vertices.append(Vertex3D(position: topCenterPos, normal: topNormal, color: white))
@@ -367,12 +371,12 @@ extension Mesh {
             ))
         }
         for i in 0..<segments {
-            let a = topCenter + 1 + UInt16(i)
+            let a = topCenter + 1 + UInt32(i)
             indices.append(contentsOf: [topCenter, a, a + 1])
         }
 
         // --- Bottom cap (reversed winding) ---
-        let botCenter = UInt16(vertices.count)
+        let botCenter = UInt32(vertices.count)
         let botCenterPos = SIMD3<Float>(0, -hh, 0)
         let botNormal = SIMD3<Float>(0, -1, 0)
         vertices.append(Vertex3D(position: botCenterPos, normal: botNormal, color: white))
@@ -388,11 +392,15 @@ extension Mesh {
             ))
         }
         for i in 0..<segments {
-            let a = botCenter + 1 + UInt16(i)
+            let a = botCenter + 1 + UInt32(i)
             indices.append(contentsOf: [botCenter, a + 1, a])
         }
 
-        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        if vertices.count <= 65535 {
+            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+        } else {
+            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+        }
     }
 }
 
@@ -410,7 +418,7 @@ extension Mesh {
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
         var uvVertices: [Vertex3DTextured] = []
-        var indices: [UInt16] = []
+        var indices: [UInt32] = []
 
         // --- Side surface ---
         for i in 0...segments {
@@ -430,14 +438,14 @@ extension Mesh {
         }
 
         for i in 0..<segments {
-            let tipI = UInt16(i * 2)
+            let tipI = UInt32(i * 2)
             let baseI = tipI + 1
             let baseNext = tipI + 3
             indices.append(contentsOf: [tipI, baseI, baseNext])
         }
 
         // --- Bottom cap ---
-        let botCenter = UInt16(vertices.count)
+        let botCenter = UInt32(vertices.count)
         let botCenterPos = SIMD3<Float>(0, -hh, 0)
         let botNormal = SIMD3<Float>(0, -1, 0)
         vertices.append(Vertex3D(position: botCenterPos, normal: botNormal, color: white))
@@ -453,11 +461,15 @@ extension Mesh {
             ))
         }
         for i in 0..<segments {
-            let a = botCenter + 1 + UInt16(i)
+            let a = botCenter + 1 + UInt32(i)
             indices.append(contentsOf: [botCenter, a + 1, a])
         }
 
-        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        if vertices.count <= 65535 {
+            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+        } else {
+            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+        }
     }
 }
 
@@ -477,7 +489,7 @@ extension Mesh {
         vertices.reserveCapacity((segments + 1) * (tubeSegments + 1))
         var uvVertices: [Vertex3DTextured] = []
         uvVertices.reserveCapacity((segments + 1) * (tubeSegments + 1))
-        var indices: [UInt16] = []
+        var indices: [UInt32] = []
         indices.reserveCapacity(segments * tubeSegments * 6)
 
         for i in 0...segments {
@@ -503,13 +515,17 @@ extension Mesh {
         let cols = tubeSegments + 1
         for i in 0..<segments {
             for j in 0..<tubeSegments {
-                let a = UInt16(i * cols + j)
-                let b = a + UInt16(cols)
+                let a = UInt32(i * cols + j)
+                let b = a + UInt32(cols)
                 indices.append(contentsOf: [a, b, a + 1, b, b + 1, a + 1])
             }
         }
 
-        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        if vertices.count <= 65535 {
+            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+        } else {
+            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+        }
     }
 }
 

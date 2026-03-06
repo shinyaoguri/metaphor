@@ -196,9 +196,9 @@ public final class MPSRayTracer {
               let shadowIntBuf = shadowIntersectionBuffer,
               let normalBuf = normalBuffer else { return }
 
-        for sampleIdx in 0..<samples {
-            guard let cb = commandQueue.makeCommandBuffer() else { continue }
+        guard let cb = commandQueue.makeCommandBuffer() else { return }
 
+        for sampleIdx in 0..<samples {
             var uniforms = RayTraceUniforms(
                 inverseView: inverseView, inverseProjection: inverseProjection,
                 width: UInt32(width), height: UInt32(height),
@@ -263,10 +263,10 @@ public final class MPSRayTracer {
                 dispatchGrid(encoder: encoder, pipeline: pipeline)
                 encoder.endEncoding()
             }
-
-            cb.commit()
-            cb.waitUntilCompleted()
         }
+
+        cb.commit()
+        cb.waitUntilCompleted()
     }
 
     // MARK: - Private: Soft Shadow
@@ -289,9 +289,9 @@ public final class MPSRayTracer {
               let shadowIntBuf = shadowIntersectionBuffer,
               let normalBuf = normalBuffer else { return }
 
-        for sampleIdx in 0..<samples {
-            guard let cb = commandQueue.makeCommandBuffer() else { continue }
+        guard let cb = commandQueue.makeCommandBuffer() else { return }
 
+        for sampleIdx in 0..<samples {
             var uniforms = RayTraceUniforms(
                 inverseView: inverseView, inverseProjection: inverseProjection,
                 width: UInt32(width), height: UInt32(height),
@@ -352,10 +352,10 @@ public final class MPSRayTracer {
                 dispatchGrid(encoder: encoder, pipeline: pipeline)
                 encoder.endEncoding()
             }
-
-            cb.commit()
-            cb.waitUntilCompleted()
         }
+
+        cb.commit()
+        cb.waitUntilCompleted()
     }
 
     // MARK: - Private: Diffuse Shading

@@ -70,7 +70,8 @@ public final class GIFExporter {
     /// - Parameters:
     ///   - texture: The Metal texture to capture.
     ///   - device: The Metal device used to create the staging texture if needed.
-    public func captureFrame(texture: MTLTexture, device: MTLDevice) {
+    ///   - commandQueue: The command queue used to blit private textures for CPU readback.
+    public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) {
         guard isRecording else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
@@ -89,15 +90,33 @@ public final class GIFExporter {
             #else
             desc.storageMode = .shared
             #endif
-            desc.usage = .shaderRead
+            desc.usage = [.shaderRead, .shaderWrite]
             stagingTexture = device.makeTexture(descriptor: desc)
         }
 
-        // Read pixel data from the texture
+        // Blit from private texture to staging for CPU readback
+        let readTexture: MTLTexture
+        if texture.storageMode == .private {
+            guard let staging = stagingTexture,
+                  let cmdBuf = commandQueue.makeCommandBuffer(),
+                  let blit = cmdBuf.makeBlitCommandEncoder() else { return }
+            blit.copy(from: texture, to: staging)
+            #if os(macOS)
+            blit.synchronize(resource: staging)
+            #endif
+            blit.endEncoding()
+            cmdBuf.commit()
+            cmdBuf.waitUntilCompleted()
+            readTexture = staging
+        } else {
+            readTexture = texture
+        }
+
+        // Read pixel data from the (now CPU-accessible) texture
         let bytesPerRow = w * 4
         var pixelData = [UInt8](repeating: 0, count: bytesPerRow * h)
 
-        texture.getBytes(
+        readTexture.getBytes(
             &pixelData,
             bytesPerRow: bytesPerRow,
             from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
