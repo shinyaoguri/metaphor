@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "RequestImage",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "RequestImage"
+            path: "RequestImage",
+            resources: [.copy("Resources")]
         ),
     ]
 )

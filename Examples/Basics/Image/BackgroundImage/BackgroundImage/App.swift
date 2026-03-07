@@ -1,4 +1,5 @@
 import metaphor
+import Foundation
 
 @main
 final class BackgroundImage: Sketch {
@@ -7,28 +8,23 @@ final class BackgroundImage: Sketch {
     }
 
     var bg: MImage?
+    var y: Float = 0
 
     func setup() {
-        bg = createImage(640, 360)
-        guard let bg = bg else { return }
-        bg.loadPixels()
-        for y in 0..<Int(bg.height) {
-            for x in 0..<Int(bg.width) {
-                let idx = (y * Int(bg.width) + x) * 4
-                bg.pixels[idx] = UInt8(Float(x) / bg.width * 180)
-                bg.pixels[idx + 1] = UInt8(Float(y) / bg.height * 150)
-                bg.pixels[idx + 2] = 130
-                bg.pixels[idx + 3] = 255
-            }
-        }
-        bg.updatePixels()
+        guard let path = Bundle.module.path(forResource: "moonwalk", ofType: "jpg", inDirectory: "Resources") else { return }
+        bg = try? loadImage(path)
     }
 
     func draw() {
         guard let bg = bg else { return }
         image(bg, 0, 0)
-        let lineX = Float(frameCount % Int(width))
-        stroke(255)
-        line(lineX, 0, lineX, height)
+
+        stroke(226, 204, 0)
+        line(0, y, width, y)
+
+        y += 1
+        if y > height {
+            y = 0
+        }
     }
 }

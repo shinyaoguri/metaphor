@@ -1,4 +1,5 @@
 import metaphor
+import Foundation
 
 @main
 final class LoadDisplayOBJ: Sketch {
@@ -6,13 +7,12 @@ final class LoadDisplayOBJ: Sketch {
         SketchConfig(width: 640, height: 360, title: "Load Display OBJ")
     }
 
+    var rocket: Mesh?
     var ry: Float = 0
 
     func setup() {
-        // NOTE: The original Processing example loads rocket.obj via loadShape().
-        // In metaphor, use ModelIOLoader.load(path:) to load OBJ files:
-        //   let mesh = try ModelIOLoader.load(path: "/path/to/rocket.obj")
-        // This example uses a simple box as a placeholder.
+        guard let path = Bundle.module.path(forResource: "rocket", ofType: "obj", inDirectory: "Resources") else { return }
+        rocket = loadModel(path)
     }
 
     func draw() {
@@ -21,8 +21,12 @@ final class LoadDisplayOBJ: Sketch {
         translate(width / 2, height / 2 + 100, -200)
         rotateZ(Float.pi)
         rotateY(ry)
-        fill(200, 200, 220)
-        box(60, 160, 60)
+        if let rocket = rocket {
+            mesh(rocket)
+        } else {
+            fill(200, 200, 220)
+            box(60, 160, 60)
+        }
         ry += 0.02
     }
 }

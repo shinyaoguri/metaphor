@@ -159,6 +159,12 @@ public final class Canvas2D: CanvasStyle {
     /// When true, background() can skip drawing a quad if nothing else has been drawn.
     var frameWillClear: Bool = true
 
+    /// Whether the clear color has been successfully applied to the render pass
+    /// descriptor before the current encoder was created. On the first frame,
+    /// this is false because background() sets the clear color *after* the encoder
+    /// is already created, so Metal's loadAction uses the stale default (black).
+    var clearColorApplied: Bool = false
+
     // Closure to set the clear color, injected by MetaphorRenderer
     var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
 
@@ -353,12 +359,15 @@ public final class Canvas2D: CanvasStyle {
         // Text renderer
         self.textRenderer = TextRenderer(device: device)
 
-        // Projection matrix (top-left origin, pixel coordinates)
+        // Projection matrix (top-left origin, pixel coordinates).
+        // The half-pixel offset (1/w, -1/h) maps integer coordinates to pixel
+        // centers (e.g. canvas x=4 → viewport x=4.5), matching Processing's
+        // behaviour and ensuring crisp lines/shapes with MSAA.
         self.projectionMatrix = float4x4(columns: (
             SIMD4<Float>(2.0 / width, 0, 0, 0),
             SIMD4<Float>(0, -2.0 / height, 0, 0),
             SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(-1, 1, 0, 1)
+            SIMD4<Float>(-1.0 + 1.0 / width, 1.0 - 1.0 / height, 0, 1)
         ))
 
         precondition(MemoryLayout<Vertex2D>.stride == 24,
@@ -653,8 +662,11 @@ public final class Canvas2D: CanvasStyle {
         let c = color.simd
         backgroundCalledThisFrame = true
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
-        if !hasDrawnAnything && frameWillClear {
-            // Metal's loadAction = .clear will handle clearing
+        if !hasDrawnAnything && frameWillClear && clearColorApplied {
+            // Metal's loadAction = .clear will handle clearing.
+            // Skip this optimisation on the first frame: the encoder was
+            // created before background() set the clearColor, so Metal's
+            // clear would use the stale default (black).
             return
         }
         // Draw a full-screen quad (either because something was already drawn,

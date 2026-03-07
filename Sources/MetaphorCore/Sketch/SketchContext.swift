@@ -272,6 +272,13 @@ public final class SketchContext {
         let shouldClearNext = canvas.backgroundCalledThisFrame
         renderer.textureManager.setShouldClear(shouldClearNext)
         canvas.frameWillClear = shouldClearNext
+        // After the first background() call, the clearColor in the render pass
+        // descriptor matches what the user requested. On subsequent frames the
+        // encoder will be created with this clearColor, so the optimisation in
+        // background() (skip drawing a quad when Metal clears for us) is safe.
+        if shouldClearNext {
+            canvas.clearColorApplied = true
+        }
 
         // GIF frame capture
         captureGIFFrame()

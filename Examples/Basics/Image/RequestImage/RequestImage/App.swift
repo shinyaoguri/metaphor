@@ -1,4 +1,5 @@
 import metaphor
+import Foundation
 
 @main
 final class RequestImage: Sketch {
@@ -6,42 +7,60 @@ final class RequestImage: Sketch {
         SketchConfig(width: 640, height: 360, title: "Request Image")
     }
 
-    var images: [MImage] = []
+    let imgCount = 12
+    var imgs: [MImage] = []
+    var loadStates: [Bool] = []
+    var loaderX: Float = 0
+    var loaderY: Float = 0
+    var theta: Float = 0
 
     func setup() {
-        // Generate 12 sample images (replaces requestImage() calls)
-        for i in 0..<12 {
-            guard let img = createImage(160, 120) else { continue }
-            img.loadPixels()
-            let hue = Float(i) / 12.0
-            for y in 0..<Int(img.height) {
-                for x in 0..<Int(img.width) {
-                    let idx = (y * Int(img.width) + x) * 4
-                    let r = sin(hue * Float.pi * 2) * 127 + 128
-                    let g = sin(hue * Float.pi * 2 + 2.094) * 127 + 128
-                    let b = sin(hue * Float.pi * 2 + 4.189) * 127 + 128
-                    let brightness = Float(x + y) / (img.width + img.height)
-                    img.pixels[idx] = UInt8(r * brightness)
-                    img.pixels[idx + 1] = UInt8(g * brightness)
-                    img.pixels[idx + 2] = UInt8(b * brightness)
-                    img.pixels[idx + 3] = 255
-                }
-            }
-            img.updatePixels()
-            images.append(img)
+        loadStates = [Bool](repeating: false, count: imgCount)
+        for i in 0..<imgCount {
+            let name = String(format: "PT_anim%04d", i)
+            guard let path = Bundle.module.path(forResource: name, ofType: "gif", inDirectory: "Resources"),
+                  let img = try? loadImage(path) else { continue }
+            imgs.append(img)
         }
-        noLoop()
     }
 
     func draw() {
         background(0)
-        let cols = 4
-        for (i, img) in images.enumerated() {
-            let col = i % cols
-            let row = i / cols
-            let x = Float(col) * img.width
-            let y = Float(row) * img.height
-            image(img, x, y)
+
+        // Check load states
+        for i in 0..<imgs.count {
+            if imgs[i].width != 0 {
+                loadStates[i] = true
+            }
         }
+
+        if checkLoadStates() {
+            drawImages()
+        } else {
+            // Loading animation
+            fill(255)
+            noStroke()
+            ellipse(loaderX, loaderY, 10, 10)
+            loaderX += 2
+            loaderY = height / 2 + sin(theta) * (height / 8)
+            theta += Float.pi / 22
+            if loaderX > width + 5 {
+                loaderX = -5
+            }
+        }
+    }
+
+    private func drawImages() {
+        guard !imgs.isEmpty else { return }
+        let y = (height - imgs[0].height) / 2
+        let imgW = width / Float(imgs.count)
+        for (i, img) in imgs.enumerated() {
+            image(img, imgW * Float(i), y, img.height, img.height)
+        }
+    }
+
+    private func checkLoadStates() -> Bool {
+        guard loadStates.count == imgCount else { return false }
+        return !loadStates.contains(false)
     }
 }
