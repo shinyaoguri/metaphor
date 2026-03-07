@@ -83,10 +83,19 @@ let package = Package(
             ]
         ),
 
+        // Test support (internal only, not a published product)
+        .target(name: "MetaphorTestSupport", dependencies: ["MetaphorCore"]),
+
         // Tests
         .testTarget(name: "MetaphorAudioTests", dependencies: ["MetaphorAudio"]),
         .testTarget(name: "MetaphorNetworkTests", dependencies: ["MetaphorNetwork"]),
         .testTarget(name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics"]),
-        .testTarget(name: "metaphorTests", dependencies: ["metaphor"]),
+        .testTarget(name: "MetaphorMLTests", dependencies: ["MetaphorML"]),
+        .testTarget(name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"]),
+        .testTarget(name: "MetaphorMPSTests", dependencies: ["MetaphorMPS", "MetaphorCore"]),
+        .testTarget(name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"]),
+        .testTarget(name: "MetaphorRenderGraphTests", dependencies: ["MetaphorRenderGraph", "MetaphorCore"]),
+        .testTarget(name: "MetaphorSceneGraphTests", dependencies: ["MetaphorSceneGraph", "MetaphorCore"]),
+        .testTarget(name: "metaphorTests", dependencies: ["metaphor", "MetaphorTestSupport"]),
     ]
 )

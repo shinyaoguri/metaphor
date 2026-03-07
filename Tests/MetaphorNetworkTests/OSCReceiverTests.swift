@@ -1,289 +1,300 @@
-import XCTest
+import Testing
 @testable import MetaphorNetwork
 import Foundation
 
-// MARK: - OSC Parser Tests
+// MARK: - OSC Binary Helpers
 
-final class OSCParserTests: XCTestCase {
-
-    // MARK: - Helper: OSC メッセージ構築
+/// OSC バイナリメッセージ構築用ヘルパー
+private enum OSCBinaryHelper {
 
     /// 4バイトアラインメントしたサイズ
-    private func aligned(_ size: Int) -> Int {
+    static func aligned(_ size: Int) -> Int {
         (size + 3) & ~3
     }
 
     /// null 終端 + 4バイトアラインメントされた文字列をバイト列に追加
-    private func appendOSCString(_ string: String, to data: inout Data) {
+    static func appendOSCString(_ string: String, to data: inout Data) {
         data.append(contentsOf: string.utf8)
-        // null 終端 + パディング（4バイト境界まで）
         let paddingCount = aligned(string.utf8.count + 1) - string.utf8.count
         data.append(contentsOf: [UInt8](repeating: 0, count: paddingCount))
     }
 
     /// Big-endian Int32 をバイト列に追加
-    private func appendInt32(_ value: Int32, to data: inout Data) {
+    static func appendInt32(_ value: Int32, to data: inout Data) {
         var bigEndian = value.bigEndian
         data.append(contentsOf: withUnsafeBytes(of: &bigEndian) { Array($0) })
     }
 
     /// Big-endian Float32 をバイト列に追加
-    private func appendFloat32(_ value: Float, to data: inout Data) {
+    static func appendFloat32(_ value: Float, to data: inout Data) {
         var bits = value.bitPattern.bigEndian
         data.append(contentsOf: withUnsafeBytes(of: &bits) { Array($0) })
     }
+}
+
+// MARK: - OSC Parser Tests
+
+@Suite("OSC Parser")
+struct OSCParserTests {
 
     // MARK: - Single Message Tests
 
-    func testParseIntMessage() {
+    @Test("parse int message")
+    func parseIntMessage() {
         var data = Data()
-        appendOSCString("/test", to: &data)
-        appendOSCString(",i", to: &data)
-        appendInt32(42, to: &data)
+        OSCBinaryHelper.appendOSCString("/test", to: &data)
+        OSCBinaryHelper.appendOSCString(",i", to: &data)
+        OSCBinaryHelper.appendInt32(42, to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].address, "/test")
-        XCTAssertEqual(messages[0].values.count, 1)
+        #expect(messages.count == 1)
+        #expect(messages[0].address == "/test")
+        #expect(messages[0].values.count == 1)
         if case .int(let v) = messages[0].values[0] {
-            XCTAssertEqual(v, 42)
+            #expect(v == 42)
         } else {
-            XCTFail("Expected .int value")
+            Issue.record("Expected .int value")
         }
     }
 
-    func testParseFloatMessage() {
+    @Test("parse float message")
+    func parseFloatMessage() {
         var data = Data()
-        appendOSCString("/volume", to: &data)
-        appendOSCString(",f", to: &data)
-        appendFloat32(0.75, to: &data)
+        OSCBinaryHelper.appendOSCString("/volume", to: &data)
+        OSCBinaryHelper.appendOSCString(",f", to: &data)
+        OSCBinaryHelper.appendFloat32(0.75, to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].address, "/volume")
+        #expect(messages.count == 1)
+        #expect(messages[0].address == "/volume")
         if case .float(let v) = messages[0].values[0] {
-            XCTAssertEqual(v, 0.75, accuracy: 0.001)
+            #expect(abs(v - 0.75) < 0.001)
         } else {
-            XCTFail("Expected .float value")
+            Issue.record("Expected .float value")
         }
     }
 
-    func testParseStringMessage() {
+    @Test("parse string message")
+    func parseStringMessage() {
         var data = Data()
-        appendOSCString("/name", to: &data)
-        appendOSCString(",s", to: &data)
-        appendOSCString("hello", to: &data)
+        OSCBinaryHelper.appendOSCString("/name", to: &data)
+        OSCBinaryHelper.appendOSCString(",s", to: &data)
+        OSCBinaryHelper.appendOSCString("hello", to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
+        #expect(messages.count == 1)
         if case .string(let v) = messages[0].values[0] {
-            XCTAssertEqual(v, "hello")
+            #expect(v == "hello")
         } else {
-            XCTFail("Expected .string value")
+            Issue.record("Expected .string value")
         }
     }
 
-    func testParseBlobMessage() {
+    @Test("parse blob message")
+    func parseBlobMessage() {
         var data = Data()
-        appendOSCString("/data", to: &data)
-        appendOSCString(",b", to: &data)
+        OSCBinaryHelper.appendOSCString("/data", to: &data)
+        OSCBinaryHelper.appendOSCString(",b", to: &data)
         let blobData: [UInt8] = [0xDE, 0xAD, 0xBE, 0xEF]
-        appendInt32(Int32(blobData.count), to: &data)
-        data.append(contentsOf: blobData)  // 4 bytes, already aligned
+        OSCBinaryHelper.appendInt32(Int32(blobData.count), to: &data)
+        data.append(contentsOf: blobData)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
+        #expect(messages.count == 1)
         if case .blob(let v) = messages[0].values[0] {
-            XCTAssertEqual(v.count, 4)
-            XCTAssertEqual([UInt8](v), blobData)
+            #expect(v.count == 4)
+            #expect([UInt8](v) == blobData)
         } else {
-            XCTFail("Expected .blob value")
+            Issue.record("Expected .blob value")
         }
     }
 
-    func testParseMultipleValues() {
+    @Test("parse multiple values")
+    func parseMultipleValues() {
         var data = Data()
-        appendOSCString("/multi", to: &data)
-        appendOSCString(",ifs", to: &data)
-        appendInt32(100, to: &data)
-        appendFloat32(3.14, to: &data)
-        appendOSCString("world", to: &data)
+        OSCBinaryHelper.appendOSCString("/multi", to: &data)
+        OSCBinaryHelper.appendOSCString(",ifs", to: &data)
+        OSCBinaryHelper.appendInt32(100, to: &data)
+        OSCBinaryHelper.appendFloat32(3.14, to: &data)
+        OSCBinaryHelper.appendOSCString("world", to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].values.count, 3)
+        #expect(messages.count == 1)
+        #expect(messages[0].values.count == 3)
 
         if case .int(let v) = messages[0].values[0] {
-            XCTAssertEqual(v, 100)
-        } else { XCTFail("Expected .int") }
+            #expect(v == 100)
+        } else { Issue.record("Expected .int") }
 
         if case .float(let v) = messages[0].values[1] {
-            XCTAssertEqual(v, 3.14, accuracy: 0.01)
-        } else { XCTFail("Expected .float") }
+            #expect(abs(v - 3.14) < 0.01)
+        } else { Issue.record("Expected .float") }
 
         if case .string(let v) = messages[0].values[2] {
-            XCTAssertEqual(v, "world")
-        } else { XCTFail("Expected .string") }
+            #expect(v == "world")
+        } else { Issue.record("Expected .string") }
     }
 
-    func testParseNoArgMessage() {
+    @Test("parse no-arg message")
+    func parseNoArgMessage() {
         var data = Data()
-        appendOSCString("/ping", to: &data)
-        appendOSCString(",", to: &data)
+        OSCBinaryHelper.appendOSCString("/ping", to: &data)
+        OSCBinaryHelper.appendOSCString(",", to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].address, "/ping")
-        XCTAssertEqual(messages[0].values.count, 0)
+        #expect(messages.count == 1)
+        #expect(messages[0].address == "/ping")
+        #expect(messages[0].values.count == 0)
     }
 
-    func testParseMessageWithoutTypeTags() {
-        // アドレスのみ、タイプタグなし
+    @Test("parse message without type tags")
+    func parseMessageWithoutTypeTags() {
         var data = Data()
-        appendOSCString("/bare", to: &data)
+        OSCBinaryHelper.appendOSCString("/bare", to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].address, "/bare")
-        XCTAssertEqual(messages[0].values.count, 0)
+        #expect(messages.count == 1)
+        #expect(messages[0].address == "/bare")
+        #expect(messages[0].values.count == 0)
     }
 
     // MARK: - Bundle Tests
 
-    func testParseBundleWithOneMessage() {
-        var bundle = Data()
-        // #bundle ヘッダー
-        bundle.append(contentsOf: "#bundle".utf8)
-        bundle.append(0)  // null terminator (total 8 bytes)
-        // timetag (8 bytes, all zeros = immediate)
-        bundle.append(contentsOf: [UInt8](repeating: 0, count: 8))
-
-        // 内部メッセージ構築
-        var msg = Data()
-        appendOSCString("/bundled", to: &msg)
-        appendOSCString(",i", to: &msg)
-        appendInt32(99, to: &msg)
-
-        // サイズプレフィックス + メッセージ
-        appendInt32(Int32(msg.count), to: &bundle)
-        bundle.append(msg)
-
-        let messages = OSCParser.parse(data: bundle)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].address, "/bundled")
-        if case .int(let v) = messages[0].values[0] {
-            XCTAssertEqual(v, 99)
-        } else { XCTFail("Expected .int") }
-    }
-
-    func testParseBundleWithMultipleMessages() {
+    @Test("parse bundle with one message")
+    func parseBundleWithOneMessage() {
         var bundle = Data()
         bundle.append(contentsOf: "#bundle".utf8)
         bundle.append(0)
         bundle.append(contentsOf: [UInt8](repeating: 0, count: 8))
 
-        // メッセージ 1
+        var msg = Data()
+        OSCBinaryHelper.appendOSCString("/bundled", to: &msg)
+        OSCBinaryHelper.appendOSCString(",i", to: &msg)
+        OSCBinaryHelper.appendInt32(99, to: &msg)
+
+        OSCBinaryHelper.appendInt32(Int32(msg.count), to: &bundle)
+        bundle.append(msg)
+
+        let messages = OSCParser.parse(data: bundle)
+        #expect(messages.count == 1)
+        #expect(messages[0].address == "/bundled")
+        if case .int(let v) = messages[0].values[0] {
+            #expect(v == 99)
+        } else { Issue.record("Expected .int") }
+    }
+
+    @Test("parse bundle with multiple messages")
+    func parseBundleWithMultipleMessages() {
+        var bundle = Data()
+        bundle.append(contentsOf: "#bundle".utf8)
+        bundle.append(0)
+        bundle.append(contentsOf: [UInt8](repeating: 0, count: 8))
+
         var msg1 = Data()
-        appendOSCString("/a", to: &msg1)
-        appendOSCString(",i", to: &msg1)
-        appendInt32(1, to: &msg1)
-        appendInt32(Int32(msg1.count), to: &bundle)
+        OSCBinaryHelper.appendOSCString("/a", to: &msg1)
+        OSCBinaryHelper.appendOSCString(",i", to: &msg1)
+        OSCBinaryHelper.appendInt32(1, to: &msg1)
+        OSCBinaryHelper.appendInt32(Int32(msg1.count), to: &bundle)
         bundle.append(msg1)
 
-        // メッセージ 2
         var msg2 = Data()
-        appendOSCString("/b", to: &msg2)
-        appendOSCString(",f", to: &msg2)
-        appendFloat32(2.5, to: &msg2)
-        appendInt32(Int32(msg2.count), to: &bundle)
+        OSCBinaryHelper.appendOSCString("/b", to: &msg2)
+        OSCBinaryHelper.appendOSCString(",f", to: &msg2)
+        OSCBinaryHelper.appendFloat32(2.5, to: &msg2)
+        OSCBinaryHelper.appendInt32(Int32(msg2.count), to: &bundle)
         bundle.append(msg2)
 
         let messages = OSCParser.parse(data: bundle)
-        XCTAssertEqual(messages.count, 2)
-        XCTAssertEqual(messages[0].address, "/a")
-        XCTAssertEqual(messages[1].address, "/b")
+        #expect(messages.count == 2)
+        #expect(messages[0].address == "/a")
+        #expect(messages[1].address == "/b")
     }
 
     // MARK: - Edge Cases
 
-    func testEmptyData() {
+    @Test("empty data returns no messages")
+    func emptyData() {
         let messages = OSCParser.parse(data: Data())
-        XCTAssertEqual(messages.count, 0)
+        #expect(messages.count == 0)
     }
 
-    func testNegativeInt() {
+    @Test("negative int value")
+    func negativeInt() {
         var data = Data()
-        appendOSCString("/neg", to: &data)
-        appendOSCString(",i", to: &data)
-        appendInt32(-123, to: &data)
+        OSCBinaryHelper.appendOSCString("/neg", to: &data)
+        OSCBinaryHelper.appendOSCString(",i", to: &data)
+        OSCBinaryHelper.appendInt32(-123, to: &data)
 
         let messages = OSCParser.parse(data: data)
         if case .int(let v) = messages[0].values[0] {
-            XCTAssertEqual(v, -123)
-        } else { XCTFail("Expected .int") }
+            #expect(v == -123)
+        } else { Issue.record("Expected .int") }
     }
 
-    func testLongAddress() {
+    @Test("long address pattern")
+    func longAddress() {
         let longAddr = "/this/is/a/very/long/osc/address/pattern"
         var data = Data()
-        appendOSCString(longAddr, to: &data)
-        appendOSCString(",f", to: &data)
-        appendFloat32(1.0, to: &data)
+        OSCBinaryHelper.appendOSCString(longAddr, to: &data)
+        OSCBinaryHelper.appendOSCString(",f", to: &data)
+        OSCBinaryHelper.appendFloat32(1.0, to: &data)
 
         let messages = OSCParser.parse(data: data)
-        XCTAssertEqual(messages.count, 1)
-        XCTAssertEqual(messages[0].address, longAddr)
+        #expect(messages.count == 1)
+        #expect(messages[0].address == longAddr)
     }
 }
 
 // MARK: - OSC Value Tests
 
-final class OSCValueTests: XCTestCase {
+@Suite("OSC Value")
+struct OSCValueTests {
 
-    func testValueIsSendable() {
-        // Sendable 準拠を確認（コンパイル時チェック）
+    @Test("values are Sendable")
+    func valueSendable() {
         let values: [OSCValue] = [
             .int(42),
             .float(1.5),
             .string("test"),
             .blob(Data([0x01, 0x02]))
         ]
-        // Sendable プロトコルに準拠しているのでタスクに渡せる
         let _: [any Sendable] = values
-        XCTAssertEqual(values.count, 4)
+        #expect(values.count == 4)
     }
 }
 
-// MARK: - OSC Receiver Tests
+// MARK: - OSC Receiver Functional Tests
 
+@Suite("OSC Receiver")
 @MainActor
-final class OSCReceiverFunctionalTests: XCTestCase {
+struct OSCReceiverFunctionalTests {
 
-    func testInitialization() {
+    @Test("initialization with port")
+    func initialization() {
         let osc = OSCReceiver(port: 9000)
-        XCTAssertEqual(osc.port, 9000)
+        #expect(osc.port == 9000)
     }
 
-    func testHandlerRegistration() {
+    @Test("handler registration does not trigger callback")
+    func handlerRegistration() {
         let osc = OSCReceiver(port: 9001)
         var received = false
         osc.on("/test") { _ in received = true }
-        // ハンドラーが登録されただけで、まだ呼ばれない
-        XCTAssertFalse(received)
+        #expect(!received)
     }
 
-    func testPollWithNoMessages() {
+    @Test("poll with no messages is safe")
+    func pollWithNoMessages() {
         let osc = OSCReceiver(port: 9002)
         var callCount = 0
         osc.on("/test") { _ in callCount += 1 }
-        // メッセージなしで poll しても安全
         osc.poll()
-        XCTAssertEqual(callCount, 0)
+        #expect(callCount == 0)
     }
 
-    func testStopWithoutStart() {
+    @Test("stop without start is safe")
+    func stopWithoutStart() {
         let osc = OSCReceiver(port: 9003)
-        // start() せずに stop() しても安全
         osc.stop()
     }
 }

@@ -143,7 +143,7 @@ public final class TextureManager {
             // MSAA: render to multisample texture, resolve to colorTexture
             rpd.colorAttachments[0].texture = msaaColorTexture
             rpd.colorAttachments[0].resolveTexture = colorTexture
-            rpd.colorAttachments[0].storeAction = .multisampleResolve
+            rpd.colorAttachments[0].storeAction = .storeAndMultisampleResolve
             rpd.depthAttachment.texture = msaaDepthTexture
         } else {
             // No MSAA: render directly to colorTexture
@@ -202,12 +202,14 @@ public final class TextureManager {
         renderPassDescriptor.colorAttachments[0].loadAction = shouldClear ? .clear : .load
         // Depth should always clear for correct z-testing each frame
 
-        // When preserving the previous frame with MSAA, the MSAA texture must
-        // retain its content. Use .storeAndMultisampleResolve instead of
-        // .multisampleResolve so the MSAA texture is available for .load next frame.
+        // Always use .storeAndMultisampleResolve with MSAA to preserve the
+        // multisample texture content. This ensures .load on a subsequent frame
+        // reads valid data even when the transition from clearing to preserving
+        // happens unexpectedly (the store action is committed before we know
+        // whether the next frame will call background()).
+        // The extra bandwidth cost on Apple Silicon is negligible.
         if sampleCount > 1 {
-            renderPassDescriptor.colorAttachments[0].storeAction =
-                shouldClear ? .multisampleResolve : .storeAndMultisampleResolve
+            renderPassDescriptor.colorAttachments[0].storeAction = .storeAndMultisampleResolve
         }
     }
 

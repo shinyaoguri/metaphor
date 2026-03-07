@@ -110,12 +110,13 @@ struct ShaderHotReloadTests {
         #expect(mat.fragmentFunctionName == "reloadTestFrag")
     }
 
-    @Test("Canvas3D clearCustomPipelineCache works")
+    @Test("Canvas3D clearCustomPipelineCache preserves dimensions")
     func canvas3DClearCache() throws {
         let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
-        // キャッシュクリアがクラッシュしないこと
         canvas3D.clearCustomPipelineCache()
+        #expect(canvas3D.width == 1920)
+        #expect(canvas3D.height == 1080)
     }
 }
 
@@ -314,6 +315,7 @@ struct IndirectDrawParticleTests {
         encoder.endEncoding()
         cb.commit()
         cb.waitUntilCompleted()
-        // クラッシュしなければ成功
+        #expect(cb.status == .completed)
+        #expect(ps.count == 100)
     }
 }

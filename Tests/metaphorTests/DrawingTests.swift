@@ -30,6 +30,9 @@ struct BeginShapeTests {
         canvas.vertex(200, 100)
         canvas.vertex(150, 200)
         canvas.endShape(.close)
+        // キャンバスの寸法が保持されていること
+        #expect(canvas.width == 1920)
+        #expect(canvas.height == 1080)
     }
 
     @Test("vertex outside beginShape is ignored")
@@ -46,9 +49,9 @@ struct BeginShapeTests {
             height: 1080
         )
 
-        // beginShape外のvertexは無視される
+        // beginShape外のvertexは無視される — currentEncoder が nil のまま
         canvas.vertex(100, 100)
-        // クラッシュしなければOK
+        #expect(canvas.currentEncoder == nil)
     }
 
     @Test("all shape modes can be used without crash")
@@ -74,6 +77,8 @@ struct BeginShapeTests {
             canvas.vertex(250, 200)
             canvas.endShape()
         }
+        #expect(modes.count == 6)
+        #expect(canvas.width == 1920)
     }
 }
 

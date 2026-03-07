@@ -1,4 +1,4 @@
-.PHONY: setup build clean test syphon docs docs-preview examples examples-check examples-list
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon docs docs-preview examples examples-check examples-list
 
 # Default target
 all: setup build
@@ -30,6 +30,34 @@ release:
 test:
 	@echo "Running tests..."
 	swift test
+
+# Run tests with verbose output
+test-verbose:
+	@echo "Running tests (verbose)..."
+	swift test --verbose
+
+# Run tests with code coverage report
+test-coverage:
+	@echo "Running tests with coverage..."
+	swift test --enable-code-coverage
+	@echo ""
+	@echo "Coverage report:"
+	@xcrun llvm-cov report \
+		$$(swift test --enable-code-coverage --show-codecov-path 2>/dev/null || echo ".build/debug/metaphorPackageTests.xctest/Contents/MacOS/metaphorPackageTests") \
+		-instr-profile=.build/debug/codecov/default.profdata \
+		-ignore-filename-regex='Tests/|\.build/' 2>/dev/null || \
+	echo "  (coverage report generation requires a successful test run with --enable-code-coverage)"
+
+# Generate LCOV coverage data for CI integration
+test-lcov:
+	@echo "Running tests with coverage (LCOV)..."
+	swift test --enable-code-coverage
+	@xcrun llvm-cov export \
+		$$(swift test --enable-code-coverage --show-codecov-path 2>/dev/null || echo ".build/debug/metaphorPackageTests.xctest/Contents/MacOS/metaphorPackageTests") \
+		-instr-profile=.build/debug/codecov/default.profdata \
+		-ignore-filename-regex='Tests/|\.build/' \
+		-format=lcov > .build/coverage.lcov 2>/dev/null || true
+	@echo "LCOV written to .build/coverage.lcov"
 
 # Clean build artifacts
 clean:
@@ -124,6 +152,9 @@ help:
 	@echo "  make build          - Build the Swift package"
 	@echo "  make release        - Build release version"
 	@echo "  make test           - Run tests"
+	@echo "  make test-verbose   - Run tests with verbose output"
+	@echo "  make test-coverage  - Run tests and show coverage report"
+	@echo "  make test-lcov     - Run tests and generate LCOV for CI"
 	@echo "  make clean          - Clean build artifacts"
 	@echo "  make check          - Check if setup is complete"
 	@echo "  make docs           - Build DocC documentation"

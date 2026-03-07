@@ -255,10 +255,13 @@ struct TextRendererTests {
 @MainActor
 struct ScreenshotTests {
 
-    @Test("renderer has saveScreenshot method")
+    @Test("saveScreenshot does not affect renderer state")
     func saveScreenshotAPI() throws {
         let renderer = try MetaphorRenderer()
-        // pendingSavePath が設定されることを確認（直接アクセスはできないがクラッシュしないことを検証）
+        let widthBefore = renderer.textureManager.width
         renderer.saveScreenshot(to: "/tmp/test_screenshot.png")
+        // saveScreenshot はパスを保持するだけで、レンダラーの状態を壊さない
+        #expect(renderer.textureManager.width == widthBefore)
+        #expect(renderer.feedbackEnabled == false)
     }
 }

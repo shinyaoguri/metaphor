@@ -317,7 +317,7 @@ struct PipelineFactoryTests {
             .noDepth()
             .build()
 
-        #expect(pipeline.label == nil || true) // pipeline was created successfully
+        #expect(pipeline.device === device)
     }
 
     @Test("can build vertex color pipeline with layout")
@@ -340,7 +340,7 @@ struct PipelineFactoryTests {
             .vertexLayout(.positionNormalColor)
             .build()
 
-        #expect(pipeline.label == nil || true)
+        #expect(pipeline.device === device)
     }
 
     @Test("can build pipeline with alpha blending")
@@ -364,7 +364,7 @@ struct PipelineFactoryTests {
             .blending(.alpha)
             .build()
 
-        #expect(pipeline.label == nil || true)
+        #expect(pipeline.device === device)
     }
 
     @Test("can build pipeline with functions from ShaderLibrary")
@@ -387,7 +387,7 @@ struct PipelineFactoryTests {
             .noDepth()
             .build()
 
-        #expect(pipeline.label == nil || true)
+        #expect(pipeline.device === device)
     }
 }
 
