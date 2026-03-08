@@ -36,7 +36,7 @@ let package = Package(
         .library(name: "MetaphorSceneGraph", targets: ["MetaphorSceneGraph"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.6"),
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
     ],
     targets: [
         syphonTarget,
