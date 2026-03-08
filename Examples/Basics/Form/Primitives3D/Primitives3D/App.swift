@@ -6,9 +6,7 @@ final class Primitives3D: Sketch {
     func setup() { noLoop() }
     func draw() {
         background(0)
-        ambientLight(128, 128, 128)
-        directionalLight(0, 0, -1, color: Color(gray: 128.0/255))
-
+        lights()
         noStroke()
         push()
         translate(130, height / 2, 0)

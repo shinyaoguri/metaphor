@@ -86,26 +86,44 @@ public final class MImage {
     /// The raw RGBA pixel data, populated after calling ``loadPixels()``.
     public var pixels: [UInt8] = []
 
+    /// Whether the GPU texture may have changed since the last ``loadPixels()`` call.
+    /// When true, the next ``loadPixels()`` reads from the GPU; otherwise it
+    /// reuses the existing CPU array (avoiding allocation, readback, and conversion).
+    private var needsGPUReadback: Bool = true
+
     /// Load pixel data from the GPU texture into the ``pixels`` array on the CPU.
     ///
     /// For textures with private storage mode, this method creates a staging
     /// texture with managed storage and performs a blit copy before reading.
     /// The resulting data is converted from BGRA to RGBA order.
+    ///
+    /// If the CPU array is already populated and the GPU texture has not changed
+    /// (no ``replaceTexture(_:)`` or GPU filter since the last call), this method
+    /// returns immediately — avoiding allocation, readback, and conversion overhead.
     public func loadPixels() {
         let w = Int(width)
         let h = Int(height)
         let bytesPerRow = w * 4
-        pixels = [UInt8](repeating: 0, count: bytesPerRow * h)
+        let count = bytesPerRow * h
+
+        // Reuse existing CPU data when the texture hasn't changed.
+        if !needsGPUReadback && pixels.count == count {
+            return
+        }
+
+        if pixels.count != count {
+            pixels = [UInt8](repeating: 0, count: count)
+        }
 
         let region = MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
                                size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
-            // Private texture: blit to a managed staging texture, then read back
+            // Private texture: blit to a shared staging texture, then read back
             let device = texture.device
             guard let commandQueue = device.makeCommandQueue(),
                   let commandBuffer = commandQueue.makeCommandBuffer() else {
-                pixels = []
+                pixels = [UInt8](repeating: 0, count: count)
                 return
             }
             let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -114,7 +132,7 @@ public final class MImage {
             desc.usage = .shaderRead
             guard let staging = device.makeTexture(descriptor: desc),
                   let blit = commandBuffer.makeBlitCommandEncoder() else {
-                pixels = []
+                pixels = [UInt8](repeating: 0, count: count)
                 return
             }
             blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
@@ -131,11 +149,16 @@ public final class MImage {
         }
 
         // Convert BGRA to RGBA
-        for i in stride(from: 0, to: pixels.count, by: 4) {
-            let b = pixels[i]
-            pixels[i] = pixels[i + 2]
-            pixels[i + 2] = b
+        pixels.withUnsafeMutableBufferPointer { buf in
+            let ptr = buf.baseAddress!
+            for i in stride(from: 0, to: count, by: 4) {
+                let tmp = ptr[i]
+                ptr[i] = ptr[i + 2]
+                ptr[i + 2] = tmp
+            }
         }
+
+        needsGPUReadback = false
     }
 
     /// Write the CPU ``pixels`` array back to the GPU texture.
@@ -252,6 +275,7 @@ public final class MImage {
         self.width = Float(newTexture.width)
         self.height = Float(newTexture.height)
         self.pixels = []
+        self.needsGPUReadback = true
     }
 
     /// Apply an image filter by performing ``loadPixels()``, processing, and ``updatePixels()`` in one step.

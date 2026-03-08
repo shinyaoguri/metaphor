@@ -257,7 +257,7 @@ build_example() {
 
     spinner_start "Building"
     local build_output
-    build_output=$(cd "$dir" && rm -rf .build && swift build 2>&1)
+    build_output=$(cd "$dir" && rm -rf .build && swift build -c release 2>&1)
     local rc=$?
     spinner_stop
 
@@ -280,7 +280,7 @@ run_example() {
     SKIP=0
 
     # Run in background so trap can fire during wait
-    (cd "$dir" && exec swift run 2>&1) &
+    (cd "$dir" && exec swift run -c release 2>&1) &
     CHILD_PID=$!
 
     wait "$CHILD_PID" 2>/dev/null
@@ -347,7 +347,7 @@ parallel_job() {
 
     # Build (clean first to ensure fresh build including metaphor library)
     local build_output
-    build_output=$(cd "$dir" && rm -rf .build && swift build 2>&1)
+    build_output=$(cd "$dir" && rm -rf .build && swift build -c release 2>&1)
     local build_rc=$?
 
     if [[ $build_rc -ne 0 ]]; then
@@ -367,7 +367,7 @@ parallel_job() {
     fi
 
     # Run (GUI app — user closes window to finish)
-    (cd "$dir" && exec swift run) > "$log_file" 2>&1
+    (cd "$dir" && exec swift run -c release) > "$log_file" 2>&1
     local run_rc=$?
 
     local end_ts

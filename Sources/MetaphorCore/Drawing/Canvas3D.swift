@@ -114,6 +114,7 @@ public final class Canvas3D: CanvasStyle {
 
     private var lightArray: [Light3D] = []
     private var ambientColor: SIMD3<Float> = SIMD3(0.2, 0.2, 0.2)
+    private var userSetAmbient: Bool = false
 
     // MARK: - Material State
 
@@ -308,6 +309,7 @@ public final class Canvas3D: CanvasStyle {
         self.stateStack.removeAll(keepingCapacity: true)
         self.lightArray.removeAll(keepingCapacity: true)
         self.ambientColor = SIMD3(0.2, 0.2, 0.2)
+        self.userSetAmbient = false
         self.currentMaterial = .default
         self.currentTexture = nil
         self.currentCustomMaterial = nil
@@ -543,8 +545,10 @@ public final class Canvas3D: CanvasStyle {
     ///
     /// - Parameter strength: The ambient light intensity value applied to R, G, and B.
     public func ambientLight(_ strength: Float) {
-        ambientColor = SIMD3(strength, strength, strength)
-        currentMaterial.ambientColor = SIMD4(strength, strength, strength, 0)
+        let c = colorModeConfig.toGray(strength)
+        ambientColor = SIMD3(c.r, c.g, c.b)
+        currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
+        userSetAmbient = true
     }
 
     /// Set the ambient light color using individual RGB components.
@@ -554,8 +558,10 @@ public final class Canvas3D: CanvasStyle {
     ///   - g: The green component.
     ///   - b: The blue component.
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
-        ambientColor = SIMD3(r, g, b)
-        currentMaterial.ambientColor = SIMD4(r, g, b, 0)
+        let c = colorModeConfig.toColor(r, g, b, nil)
+        ambientColor = SIMD3(c.r, c.g, c.b)
+        currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
+        userSetAmbient = true
     }
 
     // MARK: - Material
@@ -1790,7 +1796,7 @@ public final class Canvas3D: CanvasStyle {
 
     // Set default ambient values when the first light is added.
     private func ensureAmbientIfFirstLight() {
-        if lightArray.isEmpty {
+        if lightArray.isEmpty && !userSetAmbient {
             ambientColor = SIMD3(0.3, 0.3, 0.3)
             currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)
         }
