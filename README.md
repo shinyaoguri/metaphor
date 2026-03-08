@@ -4,7 +4,7 @@ Swift + Metal creative coding library inspired by Processing / p5.js / openFrame
 
 ## Requirements
 
-- macOS 14.0+ / iOS 17.0+
+- macOS 14.0+
 - Xcode 15.0+
 - Swift 6.0+
 
@@ -27,33 +27,6 @@ Or in Xcode: File -> Add Package Dependencies -> enter the repository URL.
 ---
 
 ## Quick Start
-
-### Sketch Protocol (Recommended)
-
-The simplest way to get started. `import metaphor` gives you Processing-like global functions:
-
-```swift
-import metaphor
-
-@main
-final class MySketch: Sketch {
-    var config: SketchConfig {
-        SketchConfig(title: "My Sketch", width: 1920, height: 1080)
-    }
-
-    func setup() {
-        // One-time initialization
-    }
-
-    func draw() {
-        background(.black)
-        fill(.white)
-        circle(width / 2, height / 2, 200)
-    }
-}
-```
-
-### Minimal Project Setup
 
 ```bash
 mkdir MyMetalApp && cd MyMetalApp
@@ -223,23 +196,6 @@ make test       # Run tests (~500 tests across 4 test targets)
 make clean      # Clean build artifacts
 make check      # Check setup status
 make docs       # Build DocC documentation
-```
-
-### Project Structure
-
-```
-Sources/
-  MetaphorCore/       Core rendering engine (Metal, 2D/3D drawing, shaders, etc.)
-  MetaphorAudio/      Standalone audio module (FFT, beat detection, playback)
-  MetaphorNetwork/    Standalone network module (OSC, MIDI)
-  MetaphorPhysics/    Standalone physics module (2D Verlet, spatial hashing)
-  metaphor/           Umbrella target (re-exports + bridge extensions)
-
-Tests/
-  metaphorTests/          Core integration tests
-  MetaphorAudioTests/     Audio module tests
-  MetaphorNetworkTests/   Network module tests
-  MetaphorPhysicsTests/   Physics module tests
 ```
 
 ### How Syphon Works
