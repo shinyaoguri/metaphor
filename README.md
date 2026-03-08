@@ -110,3 +110,15 @@ make docs       # Build DocC documentation
    - Commit the changes to main
 
 ---
+
+## Acknowledgments
+
+Many examples in the [Examples/](Examples/) directory are Swift/Metal ports of
+[Processing](https://processing.org/) example sketches, originally written by
+Casey Reas, Ben Fry, and Daniel Shiffman (public domain).
+See each file's header comment for specific attribution details.
+
+- Processing: https://processing.org/
+- Processing examples: https://github.com/processing/processing-examples
+
+---
