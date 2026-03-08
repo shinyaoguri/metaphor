@@ -160,10 +160,15 @@ public final class Canvas2D: CanvasStyle {
     var frameWillClear: Bool = true
 
     /// Whether the clear color has been successfully applied to the render pass
-    /// descriptor before the current encoder was created. On the first frame,
-    /// this is false because background() sets the clear color *after* the encoder
-    /// is already created, so Metal's loadAction uses the stale default (black).
-    var clearColorApplied: Bool = false
+    /// descriptor before the current encoder was created.  Starts true so that
+    /// background() uses Metal's loadAction = .clear from the very first frame,
+    /// avoiding a full-screen quad whose vertex processing can introduce
+    /// sub-pixel rasterisation artefacts.  The default render-pass clear colour
+    /// (black) matches Processing's default background, so the optimisation is
+    /// safe for the common case.  For non-default backgrounds the colour is
+    /// captured by onSetClearColor and takes effect on the next frame; see the
+    /// noLoop() two-frame path in SketchRunner for details.
+    var clearColorApplied: Bool = true
 
     // Closure to set the clear color, injected by MetaphorRenderer
     var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
@@ -361,8 +366,10 @@ public final class Canvas2D: CanvasStyle {
 
         // Projection matrix (top-left origin, pixel coordinates).
         // The half-pixel offset (1/w, -1/h) maps integer coordinates to pixel
-        // centers (e.g. canvas x=4 → viewport x=4.5), matching Processing's
-        // behaviour and ensuring crisp lines/shapes with MSAA.
+        // centers — e.g. canvas x=10 → viewport x=10.5. This is required
+        // because Metal's rasterizer tests coverage at pixel centers (i+0.5,
+        // j+0.5). Without this offset, a strokeWeight(1) line at integer x
+        // would straddle two pixels instead of filling one crisply.
         self.projectionMatrix = float4x4(columns: (
             SIMD4<Float>(2.0 / width, 0, 0, 0),
             SIMD4<Float>(0, -2.0 / height, 0, 0),
@@ -670,7 +677,7 @@ public final class Canvas2D: CanvasStyle {
             return
         }
         // Draw a full-screen quad (either because something was already drawn,
-        // or because loadAction = .load and we need to explicitly clear)
+        // or because loadAction = .load and we need to explicitly clear).
         addVertexRaw(0, 0, c)
         addVertexRaw(width, 0, c)
         addVertexRaw(width, height, c)

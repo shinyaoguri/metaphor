@@ -110,7 +110,7 @@ public final class MImage {
             }
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
-            desc.storageMode = .managed
+            desc.storageMode = .shared
             desc.usage = .shaderRead
             guard let staging = device.makeTexture(descriptor: desc),
                   let blit = commandBuffer.makeBlitCommandEncoder() else {
@@ -122,7 +122,6 @@ public final class MImage {
                       sourceSize: MTLSize(width: w, height: h, depth: 1),
                       to: staging, destinationSlice: 0, destinationLevel: 0,
                       destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
-            blit.synchronize(resource: staging)
             blit.endEncoding()
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
@@ -148,30 +147,53 @@ public final class MImage {
         let w = Int(width)
         let h = Int(height)
         let bytesPerRow = w * 4
-        guard pixels.count == bytesPerRow * h else { return }
+        let count = bytesPerRow * h
+        guard pixels.count == count else { return }
 
-        // Convert RGBA to BGRA
-        var bgra = pixels
-        for i in stride(from: 0, to: bgra.count, by: 4) {
-            let r = bgra[i]
-            bgra[i] = bgra[i + 2]
-            bgra[i + 2] = r
+        // Convert RGBA to BGRA in-place using unsafe pointer for bounds-check-free access
+        pixels.withUnsafeMutableBufferPointer { buf in
+            let ptr = buf.baseAddress!
+            for i in stride(from: 0, to: count, by: 4) {
+                let tmp = ptr[i]
+                ptr[i] = ptr[i + 2]
+                ptr[i + 2] = tmp
+            }
         }
 
         let region = MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
                                size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
-            // Cannot write to a private texture from the CPU; create a new managed texture as replacement
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
-            desc.storageMode = .managed
+            desc.storageMode = .shared
             desc.usage = [.shaderRead]
-            guard let newTexture = texture.device.makeTexture(descriptor: desc) else { return }
-            newTexture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
+            guard let newTexture = texture.device.makeTexture(descriptor: desc) else {
+                // Swap back on failure
+                pixels.withUnsafeMutableBufferPointer { buf in
+                    let ptr = buf.baseAddress!
+                    for i in stride(from: 0, to: count, by: 4) {
+                        let tmp = ptr[i]
+                        ptr[i] = ptr[i + 2]
+                        ptr[i + 2] = tmp
+                    }
+                }
+                return
+            }
+            newTexture.replace(region: region, mipmapLevel: 0, withBytes: pixels, bytesPerRow: bytesPerRow)
             self.texture = newTexture
         } else {
-            texture.replace(region: region, mipmapLevel: 0, withBytes: bgra, bytesPerRow: bytesPerRow)
+            texture.replace(region: region, mipmapLevel: 0, withBytes: pixels, bytesPerRow: bytesPerRow)
+        }
+
+        // Convert back to RGBA so pixels array stays in user-facing format
+        pixels.withUnsafeMutableBufferPointer { buf in
+            let ptr = buf.baseAddress!
+            for i in stride(from: 0, to: count, by: 4) {
+                let tmp = ptr[i]
+                ptr[i] = ptr[i + 2]
+                ptr[i + 2] = tmp
+            }
         }
     }
 
@@ -257,7 +279,7 @@ public final class MImage {
             mipmapped: false
         )
         desc.usage = [.shaderRead, .shaderWrite]
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
         let img = MImage(texture: texture)
         img.pixels = [UInt8](repeating: 0, count: width * height * 4)

@@ -76,7 +76,6 @@ public final class FrameExporter {
                 destinationSlice: 0, destinationLevel: 0,
                 destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
             )
-            blitEncoder.synchronize(resource: stagingTexture)
             blitEncoder.endEncoding()
         }
 

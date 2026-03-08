@@ -574,7 +574,7 @@ public final class MetaphorRenderer: NSObject {
             mipmapped: false
         )
         desc.usage = .shaderRead
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         guard let tex = device.makeTexture(descriptor: desc) else {
             return nil
         }
@@ -773,7 +773,6 @@ public final class MetaphorRenderer: NSObject {
                         destinationSlice: 0, destinationLevel: 0,
                         destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
                     )
-                    blitEncoder.synchronize(resource: staging)
                     blitEncoder.endEncoding()
                 }
 

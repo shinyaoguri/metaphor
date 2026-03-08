@@ -214,7 +214,6 @@ public final class VideoExporter {
                 destinationSlice: 0, destinationLevel: 0,
                 destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
             )
-            blitEncoder.synchronize(resource: stagingTexture)
             blitEncoder.endEncoding()
         }
 
@@ -249,7 +248,7 @@ public final class VideoExporter {
                 guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
-                // Read pixels from staging texture (managed, already synchronized)
+                // Read pixels from staging texture (shared, coherent via unified memory)
                 capturedStaging.getBytes(
                     baseAddress,
                     bytesPerRow: bytesPerRow,

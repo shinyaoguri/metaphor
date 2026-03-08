@@ -362,12 +362,15 @@ public func random(_ high: Float) -> Float {
 /// - Returns: A random float in the range [`low`, `high`).
 @MainActor
 public func random(_ low: Float, _ high: Float) -> Float {
+    let lo = min(low, high)
+    let hi = max(low, high)
+    guard lo < hi else { return lo }
     if var rng = _seededRNG {
-        let result = Float.random(in: low..<high, using: &rng)
+        let result = Float.random(in: lo..<hi, using: &rng)
         _seededRNG = rng
         return result
     }
-    return Float.random(in: low..<high)
+    return Float.random(in: lo..<hi)
 }
 
 /// Sets the seed for the random number generator.

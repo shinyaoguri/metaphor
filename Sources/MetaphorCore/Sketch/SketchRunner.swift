@@ -157,11 +157,15 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer.startSyphonServer(name: syphonName)
         }
 
-        // Configure render loop
+        // Configure render loop.
+        // Both modes start with the display link PAUSED to avoid a race
+        // where CVDisplayLink fires before onDraw is set up.  The display
+        // link is unpaused (or one explicit frame is drawn) after all
+        // setup is complete — see the bottom of this method.
         switch loopMode {
         case .displayLink:
             mtkView.preferredFramesPerSecond = config.fps
-            mtkView.isPaused = false
+            mtkView.isPaused = true
 
         case .timer(let fps):
             // Decouple rendering from the display link
@@ -233,25 +237,47 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
 
-        // If noLoop() was called during setup(), the render loop is still
-        // running (handler was suppressed). Wrap onDraw to let one frame
-        // render, then pause.
-        if !context.isLooping {
-            let userOnDraw = renderer.onDraw
-            renderer.onDraw = { [weak self, weak renderer] encoder, time in
-                userOnDraw?(encoder, time)
-                renderer?.onDraw = userOnDraw
-                self?.handleNoLoop()
-            }
-        }
-
-        // Show the window
+        // Show the window before starting the render loop so the drawable
+        // is properly sized (e.g. Retina contentsScale is resolved).
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(mtkView)
         NSApp.activate()
 
         // Enter full screen if configured
         if config.fullScreen {
             window.toggleFullScreen(nil)
+        }
+
+        // Now start the render loop.  The display link was kept paused
+        // during setup to guarantee that the first draw(in:) call only
+        // fires after onDraw / onCompute are fully configured.
+        if context.isLooping {
+            // Looping sketch: unpause the display link.
+            // (Timer mode is already running from above.)
+            if renderTimer == nil {
+                mtkView.isPaused = false
+            }
+        } else {
+            // noLoop(): render exactly one frame synchronously.
+            // Because isPaused stays true, no further frames are produced
+            // — eliminating the race where CVDisplayLink could fire a
+            // second time before isPaused took effect.
+            if let renderTimer {
+                renderTimer.suspend()
+            }
+            // Render a preliminary (off-screen only) frame so that
+            // background() registers the user's clear colour in the
+            // render-pass descriptor.  On this first pass the background
+            // quad is drawn because clearColorApplied is still false;
+            // the result is never presented to the screen.
+            renderer.renderFrame()
+            // The 2nd frame has clearColorApplied == true, so
+            // background() lets Metal's loadAction = .clear handle the
+            // fill with the colour that was captured above.
+            let wasExternal = renderer.useExternalRenderLoop
+            renderer.useExternalRenderLoop = false
+            mtkView.draw()
+            renderer.useExternalRenderLoop = wasExternal
         }
     }
 
@@ -276,17 +302,19 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     }
 
     /// Triggers a single-frame redraw.
+    ///
+    /// Calls ``MTKView/draw()`` synchronously, which invokes the delegate's
+    /// ``MTKViewDelegate/draw(in:)`` exactly once. This avoids the timing
+    /// uncertainty of toggling ``MTKView/isPaused``.
     private func handleRedraw() {
         if renderTimer != nil {
-            // Timer mode: render exactly one frame
+            // Timer mode: render offscreen first (draw(in:) only blits)
             renderer?.renderFrame()
-        } else {
-            // Display link mode: request a single frame draw from MTKView
-            mtkView?.isPaused = false
-            DispatchQueue.main.async { [weak self] in
-                self?.mtkView?.isPaused = !(self?.context?.isLooping ?? true)
-            }
         }
+        // MTKView.draw() triggers draw(in:) synchronously.
+        // Display link mode: renderFrame() + blit in one call.
+        // Timer mode: blit the just-rendered offscreen texture.
+        mtkView?.draw()
     }
 
     /// Updates the frame rate of the render loop.
@@ -372,6 +400,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
         input.onMouseScrolled = { [weak sketch] _, _ in
             sketch?.mouseScrolled()
+        }
+        input.onMouseClicked = { [weak sketch] _, _, _ in
+            sketch?.mouseClicked()
         }
         input.onKeyDown = { [weak sketch] _, _ in
             sketch?.keyPressed()

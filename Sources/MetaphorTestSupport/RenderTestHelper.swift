@@ -75,7 +75,7 @@ public struct RenderTestHelper {
             mipmapped: false
         )
         desc.usage = .shaderRead
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         guard let staging = dev.makeTexture(descriptor: desc) else {
             throw MetaphorError.textureCreationFailed(width: width, height: height, format: "staging")
         }
@@ -116,7 +116,6 @@ public struct RenderTestHelper {
                 destinationSlice: 0, destinationLevel: 0,
                 destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
             )
-            blitEncoder.synchronize(resource: stagingTexture)
             blitEncoder.endEncoding()
         }
 

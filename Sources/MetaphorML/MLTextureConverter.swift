@@ -37,7 +37,7 @@ public final class MLTextureConverter {
         }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         desc.usage = .shaderRead
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         stagingTextureCache = tex
@@ -88,7 +88,6 @@ public final class MLTextureConverter {
                   let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: texture, to: staging)
-            blit.synchronize(resource: staging)
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
@@ -132,7 +131,7 @@ public final class MLTextureConverter {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
         desc.usage = [.shaderRead]
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
 
         let bytesPerRow = width * 4
@@ -172,7 +171,6 @@ public final class MLTextureConverter {
                   let cmdBuf = commandQueue.makeCommandBuffer(),
                   let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
             blit.copy(from: texture, to: staging)
-            blit.synchronize(resource: staging)
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
@@ -275,7 +273,7 @@ public final class MLTextureConverter {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
         desc.usage = [.shaderRead]
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
 
         tex.replace(

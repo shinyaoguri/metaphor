@@ -60,7 +60,7 @@ struct InputManagerTests {
     @Test("key down/up tracking")
     func keyTracking() {
         let input = InputManager()
-        input.handleKeyDown(keyCode: 49, characters: " ")
+        input.handleKeyDown(keyCode: 49, characters: " ", isRepeat: false)
         #expect(input.isKeyPressed == true)
         #expect(input.isKeyDown(49) == true)
         #expect(input.lastKeyCode == 49)
@@ -74,8 +74,8 @@ struct InputManagerTests {
     @Test("multiple keys tracked independently")
     func multipleKeys() {
         let input = InputManager()
-        input.handleKeyDown(keyCode: 0, characters: "a")
-        input.handleKeyDown(keyCode: 1, characters: "s")
+        input.handleKeyDown(keyCode: 0, characters: "a", isRepeat: false)
+        input.handleKeyDown(keyCode: 1, characters: "s", isRepeat: false)
         #expect(input.isKeyDown(0) == true)
         #expect(input.isKeyDown(1) == true)
 
@@ -92,6 +92,94 @@ struct InputManagerTests {
         input.onMousePressed = { _, _, _ in called = true }
         input.handleMouseDown(x: 0, y: 0, button: 0)
         #expect(called == true)
+    }
+
+    @Test("middle mouse button updates state")
+    func middleMouseButton() {
+        let input = InputManager()
+        input.handleMouseDown(x: 50, y: 60, button: 2)
+        #expect(input.isMouseDown == true)
+        #expect(input.mouseButton == 2)
+        #expect(input.mouseX == 50)
+        #expect(input.mouseY == 60)
+
+        input.handleMouseUp(x: 50, y: 60, button: 2)
+        #expect(input.isMouseDown == false)
+    }
+
+    @Test("scroll deltas accumulate within a frame")
+    func scrollAccumulation() {
+        let input = InputManager()
+        input.updateFrame()
+        input.handleMouseScrolled(dx: 1.5, dy: 2.0)
+        input.handleMouseScrolled(dx: 0.5, dy: -1.0)
+        #expect(input.scrollX == 2.0)
+        #expect(input.scrollY == 1.0)
+
+        // Reset on next frame
+        input.updateFrame()
+        #expect(input.scrollX == 0)
+        #expect(input.scrollY == 0)
+    }
+
+    @Test("isKeyRepeat tracks auto-repeat state")
+    func keyRepeat() {
+        let input = InputManager()
+        input.handleKeyDown(keyCode: 0, characters: "a", isRepeat: false)
+        #expect(input.isKeyRepeat == false)
+
+        input.handleKeyDown(keyCode: 0, characters: "a", isRepeat: true)
+        #expect(input.isKeyRepeat == true)
+
+        // Different key resets
+        input.handleKeyDown(keyCode: 1, characters: "s", isRepeat: false)
+        #expect(input.isKeyRepeat == false)
+    }
+
+    @Test("mouseClicked fires on press-release without drag")
+    func mouseClicked() {
+        let input = InputManager()
+        var clickCount = 0
+        var lastButton = -1
+        input.onMouseClicked = { _, _, button in
+            clickCount += 1
+            lastButton = button
+        }
+
+        input.handleMouseDown(x: 10, y: 20, button: 0)
+        input.handleMouseUp(x: 10, y: 20, button: 0)
+        #expect(clickCount == 1)
+        #expect(lastButton == 0)
+    }
+
+    @Test("mouseClicked suppressed when dragged")
+    func mouseClickedSuppressedOnDrag() {
+        let input = InputManager()
+        var clickCount = 0
+        input.onMouseClicked = { _, _, _ in clickCount += 1 }
+
+        input.handleMouseDown(x: 10, y: 20, button: 0)
+        input.handleMouseDragged(x: 50, y: 60)
+        input.handleMouseUp(x: 50, y: 60, button: 0)
+        #expect(clickCount == 0)
+    }
+
+    @Test("mouseClicked resets after drag-release cycle")
+    func mouseClickedResetsAfterDrag() {
+        let input = InputManager()
+        var clickCount = 0
+        input.onMouseClicked = { _, _, _ in clickCount += 1 }
+
+        // First: drag (no click)
+        input.handleMouseDown(x: 0, y: 0, button: 0)
+        input.handleMouseDragged(x: 100, y: 100)
+        input.handleMouseUp(x: 100, y: 100, button: 0)
+        #expect(clickCount == 0)
+
+        // Second: clean click
+        input.handleMouseDown(x: 50, y: 50, button: 0)
+        input.handleMouseUp(x: 50, y: 50, button: 0)
+        #expect(clickCount == 1)
     }
 }
 

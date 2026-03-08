@@ -51,6 +51,9 @@ public protocol Sketch: AnyObject {
     /// Respond to a mouse scroll event.
     func mouseScrolled()
 
+    /// Respond to a mouse click (press and release without dragging).
+    func mouseClicked()
+
     /// Respond to a key press.
     func keyPressed()
 
@@ -101,6 +104,7 @@ extension Sketch {
     public func mouseMoved() {}
     public func mouseDragged() {}
     public func mouseScrolled() {}
+    public func mouseClicked() {}
     public func keyPressed() {}
     public func keyReleased() {}
 }

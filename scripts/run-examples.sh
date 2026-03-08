@@ -257,7 +257,7 @@ build_example() {
 
     spinner_start "Building"
     local build_output
-    build_output=$(cd "$dir" && swift build 2>&1)
+    build_output=$(cd "$dir" && rm -rf .build && swift build 2>&1)
     local rc=$?
     spinner_stop
 
@@ -345,9 +345,9 @@ parallel_job() {
     local start_ts
     start_ts=$(date +%s)
 
-    # Build
+    # Build (clean first to ensure fresh build including metaphor library)
     local build_output
-    build_output=$(cd "$dir" && swift build 2>&1)
+    build_output=$(cd "$dir" && rm -rf .build && swift build 2>&1)
     local build_rc=$?
 
     if [[ $build_rc -ne 0 ]]; then

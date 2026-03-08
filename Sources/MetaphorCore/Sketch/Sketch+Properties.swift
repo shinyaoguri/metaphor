@@ -67,6 +67,10 @@ extension Sketch {
     public func isKeyDown(_ keyCode: UInt16) -> Bool {
         context.input.isKeyDown(keyCode)    }
 
+    /// Indicate whether the most recent key-down event was an auto-repeat.
+    public var isKeyRepeat: Bool {
+        context.input.isKeyRepeat    }
+
     /// Return the elapsed time in seconds since the sketch started.
     public var time: Float {
         context.time    }

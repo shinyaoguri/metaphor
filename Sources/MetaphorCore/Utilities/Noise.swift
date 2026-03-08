@@ -11,7 +11,9 @@ public struct NoiseGenerator: Sendable {
     /// Amplitude decay rate per octave.
     public var falloff: Float = 0.5
 
-    private let perm: [Int]
+    /// Permutation table stored as Int32 for cache efficiency (2KB vs 4KB).
+    @usableFromInline
+    let perm: ContiguousArray<Int32>
 
     // MARK: - Initialization
 
@@ -27,7 +29,7 @@ public struct NoiseGenerator: Sendable {
                 base.swapAt(i, j)
             }
         }
-        self.perm = base + base
+        self.perm = ContiguousArray(base + base)
     }
 
     // MARK: - Public Interface
@@ -35,6 +37,7 @@ public struct NoiseGenerator: Sendable {
     /// Sample 1D noise at the given coordinate.
     /// - Parameter x: The input coordinate.
     /// - Returns: A noise value in the range 0.0 to 1.0.
+    @inlinable
     public func noise(_ x: Float) -> Float {
         evaluate(x, 0, 0)
     }
@@ -44,6 +47,7 @@ public struct NoiseGenerator: Sendable {
     ///   - x: The x coordinate.
     ///   - y: The y coordinate.
     /// - Returns: A noise value in the range 0.0 to 1.0.
+    @inlinable
     public func noise(_ x: Float, _ y: Float) -> Float {
         evaluate(x, y, 0)
     }
@@ -54,50 +58,69 @@ public struct NoiseGenerator: Sendable {
     ///   - y: The y coordinate.
     ///   - z: The z coordinate.
     /// - Returns: A noise value in the range 0.0 to 1.0.
+    @inlinable
     public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
         evaluate(x, y, z)
     }
 
     // MARK: - Internal
 
-    private func evaluate(_ x: Float, _ y: Float, _ z: Float) -> Float {
-        var total: Float = 0
-        var amplitude: Float = 1
-        var frequency: Float = 1
-        var maxAmplitude: Float = 0
+    @inlinable
+    func evaluate(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        perm.withUnsafeBufferPointer { p in
+            var total: Float = 0
+            var amplitude: Float = 1
+            var frequency: Float = 1
+            var maxAmplitude: Float = 0
 
-        for _ in 0..<octaves {
-            total += rawNoise(x * frequency, y * frequency, z * frequency) * amplitude
-            maxAmplitude += amplitude
-            amplitude *= falloff
-            frequency *= 2
+            for _ in 0..<octaves {
+                total += rawNoise(x * frequency, y * frequency, z * frequency, p) * amplitude
+                maxAmplitude += amplitude
+                amplitude *= falloff
+                frequency *= 2
+            }
+
+            return (total / maxAmplitude + 1) * 0.5
         }
-
-        return (total / maxAmplitude + 1) * 0.5
     }
 
     /// Compute a single octave of Perlin noise (range: -1 to 1).
-    private func rawNoise(_ x: Float, _ y: Float, _ z: Float) -> Float {
-        let xi = Int(floor(x)) & 255
-        let yi = Int(floor(y)) & 255
-        let zi = Int(floor(z)) & 255
+    @inlinable
+    func rawNoise(
+        _ x: Float, _ y: Float, _ z: Float,
+        _ p: UnsafeBufferPointer<Int32>
+    ) -> Float {
+        let fx = floor(x)
+        let fy = floor(y)
+        let fz = floor(z)
 
-        let xf = x - floor(x)
-        let yf = y - floor(y)
-        let zf = z - floor(z)
+        let xi = Int(fx) & 255
+        let yi = Int(fy) & 255
+        let zi = Int(fz) & 255
+
+        let xf = x - fx
+        let yf = y - fy
+        let zf = z - fz
 
         let u = fade(xf)
         let v = fade(yf)
         let w = fade(zf)
 
-        let aaa = perm[perm[perm[xi] + yi] + zi]
-        let aba = perm[perm[perm[xi] + yi + 1] + zi]
-        let aab = perm[perm[perm[xi] + yi] + zi + 1]
-        let abb = perm[perm[perm[xi] + yi + 1] + zi + 1]
-        let baa = perm[perm[perm[xi + 1] + yi] + zi]
-        let bba = perm[perm[perm[xi + 1] + yi + 1] + zi]
-        let bab = perm[perm[perm[xi + 1] + yi] + zi + 1]
-        let bbb = perm[perm[perm[xi + 1] + yi + 1] + zi + 1]
+        let pxi = Int(p[xi])
+        let pxi1 = Int(p[xi + 1])
+        let pA = Int(p[pxi + yi])
+        let pB = Int(p[pxi + yi + 1])
+        let pC = Int(p[pxi1 + yi])
+        let pD = Int(p[pxi1 + yi + 1])
+
+        let aaa = Int(p[pA + zi])
+        let aba = Int(p[pB + zi])
+        let aab = Int(p[pA + zi + 1])
+        let abb = Int(p[pB + zi + 1])
+        let baa = Int(p[pC + zi])
+        let bba = Int(p[pD + zi])
+        let bab = Int(p[pC + zi + 1])
+        let bbb = Int(p[pD + zi + 1])
 
         let x1 = mix(grad(aaa, xf, yf, zf), grad(baa, xf - 1, yf, zf), u)
         let x2 = mix(grad(aba, xf, yf - 1, zf), grad(bba, xf - 1, yf - 1, zf), u)
@@ -110,15 +133,18 @@ public struct NoiseGenerator: Sendable {
         return mix(y1, y2, w)
     }
 
-    private func fade(_ t: Float) -> Float {
+    @inlinable
+    func fade(_ t: Float) -> Float {
         t * t * t * (t * (t * 6 - 15) + 10)
     }
 
-    private func mix(_ a: Float, _ b: Float, _ t: Float) -> Float {
+    @inlinable
+    func mix(_ a: Float, _ b: Float, _ t: Float) -> Float {
         a + t * (b - a)
     }
 
-    private func grad(_ hash: Int, _ x: Float, _ y: Float, _ z: Float) -> Float {
+    @inlinable
+    func grad(_ hash: Int, _ x: Float, _ y: Float, _ z: Float) -> Float {
         let h = hash & 15
         let u: Float = h < 8 ? x : y
         let v: Float = h < 4 ? y : (h == 12 || h == 14 ? x : z)
@@ -127,7 +153,7 @@ public struct NoiseGenerator: Sendable {
 
     // MARK: - Default Permutation Table (Ken Perlin)
 
-    private static let defaultPermutation: [Int] = [
+    private static let defaultPermutation: [Int32] = [
         151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225,
         140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148,
         247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32,
