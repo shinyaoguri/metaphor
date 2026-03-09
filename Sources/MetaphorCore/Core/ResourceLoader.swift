@@ -16,7 +16,7 @@ public final class ResourceLoader {
         self.textureLoader = MTKTextureLoader(device: device)
     }
 
-    private static var textureOptions: [MTKTextureLoader.Option: Any] {
+    private nonisolated static var textureOptions: [MTKTextureLoader.Option: Any] {
         [
             .textureUsage: MTLTextureUsage.shaderRead.rawValue,
             .textureStorageMode: MTLStorageMode.private.rawValue,
