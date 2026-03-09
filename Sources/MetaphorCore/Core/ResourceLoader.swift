@@ -1,5 +1,5 @@
-import Metal
-import MetalKit
+@preconcurrency import Metal
+@preconcurrency import MetalKit
 import AppKit
 
 /// Load resources asynchronously to avoid blocking the main thread.
