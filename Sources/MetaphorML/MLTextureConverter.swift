@@ -233,14 +233,16 @@ public final class MLTextureConverter {
             for i in 0..<count {
                 floatData[i] = Float(ptr[i])
             }
+        case .float16:
+            let ptr = multiArray.dataPointer.bindMemory(to: Float16.self, capacity: count)
+            for i in 0..<count {
+                floatData[i] = Float(ptr[i])
+            }
         default:
-            if #available(macOS 26.0, *), multiArray.dataType == .int8 {
+            // MLMultiArrayDataType.int8 (rawValue 131080) is only available in macOS 26.0+ SDK,
+            // so we compare by rawValue to avoid compile errors on older SDKs.
+            if multiArray.dataType.rawValue == 131080 {
                 let ptr = multiArray.dataPointer.bindMemory(to: Int8.self, capacity: count)
-                for i in 0..<count {
-                    floatData[i] = Float(ptr[i])
-                }
-            } else if #available(macOS 26.0, *), multiArray.dataType == .float16 {
-                let ptr = multiArray.dataPointer.bindMemory(to: Float16.self, capacity: count)
                 for i in 0..<count {
                     floatData[i] = Float(ptr[i])
                 }
