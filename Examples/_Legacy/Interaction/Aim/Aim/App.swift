@@ -3,7 +3,7 @@ import metaphor
 @main
 final class AimExample: Sketch {
     var config: SketchConfig {
-        SketchConfig(title: "Aim")
+        SketchConfig(title: "Aim"),
     }
 
     func draw() {

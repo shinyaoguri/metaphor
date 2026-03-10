@@ -9,14 +9,10 @@ OUTPUT_DIR="$ROOT_DIR/Frameworks"
 
 echo "Building Syphon.xcframework..."
 
-# Check Xcode developer path (should be Xcode.app, not CommandLineTools)
-XCODE_PATH=$(xcode-select -p)
-if [[ "$XCODE_PATH" == *"CommandLineTools"* ]]; then
-    echo "Error: Xcode developer path is set to Command Line Tools."
-    echo "Current path: $XCODE_PATH"
-    echo ""
-    echo "Please switch to Xcode.app by running:"
-    echo "  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+# Quick sanity check (full validation is done by preflight-check.sh)
+XCODE_PATH=$(xcode-select -p 2>/dev/null)
+if [[ -z "$XCODE_PATH" || "$XCODE_PATH" == *"CommandLineTools"* ]]; then
+    echo "Error: Xcode.app is required. Run 'make preflight' for details."
     exit 1
 fi
 

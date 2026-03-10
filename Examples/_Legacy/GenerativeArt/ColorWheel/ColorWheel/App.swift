@@ -1,7 +1,9 @@
 import metaphor
 
 @main final class ColorWheel: Sketch {
-    var config: SketchConfig { SketchConfig(title: "Color Wheel") }
+    var config: SketchConfig { 
+        SketchConfig(title: "Color Wheel")
+    }
 
     func draw() {
         background(Color(gray: 0.05))

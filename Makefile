@@ -1,10 +1,14 @@
-.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon docs docs-preview examples examples-check examples-list
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list
 
 # Default target
 all: setup build
 
+# Preflight check - verify required tools and environment
+preflight:
+	@./scripts/preflight-check.sh
+
 # Initial setup - clone submodules and build Syphon
-setup: submodules syphon
+setup: preflight submodules syphon
 
 # Update git submodules
 submodules:
@@ -148,6 +152,7 @@ help:
 	@echo "metaphor Makefile"
 	@echo ""
 	@echo "Usage:"
+	@echo "  make preflight      - Check required tools and environment"
 	@echo "  make setup          - Initialize submodules and build Syphon.xcframework"
 	@echo "  make build          - Build the Swift package"
 	@echo "  make release        - Build release version"
