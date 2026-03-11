@@ -1,6 +1,5 @@
 import Metal
 import simd
-import CoreML
 
 extension SketchContext {
 
@@ -307,13 +306,13 @@ extension SketchContext {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.register(source: source, as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
-            throw CustomMaterialError.shaderNotFound(fragmentFunction)
+            throw MetaphorError.material(.shaderNotFound(fragmentFunction))
         }
 
         var vtxFn: MTLFunction? = nil
         if let vtxName = vertexFunction {
             guard let vf = renderer.shaderLibrary.function(named: vtxName, from: key) else {
-                throw CustomMaterialError.shaderNotFound(vtxName)
+                throw MetaphorError.material(.shaderNotFound(vtxName))
             }
             vtxFn = vf
         }
@@ -638,13 +637,13 @@ extension SketchContext {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.registerFromFile(path: path, as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
-            throw CustomMaterialError.shaderNotFound(fragmentFunction)
+            throw MetaphorError.material(.shaderNotFound(fragmentFunction))
         }
 
         var vtxFn: MTLFunction? = nil
         if let vtxName = vertexFunction {
             guard let vf = renderer.shaderLibrary.function(named: vtxName, from: key) else {
-                throw CustomMaterialError.shaderNotFound(vtxName)
+                throw MetaphorError.material(.shaderNotFound(vtxName))
             }
             vtxFn = vf
         }
@@ -690,7 +689,8 @@ extension SketchContext {
         guard gifExporter.isRecording else { return }
         gifExporter.captureFrame(
             texture: renderer.textureManager.colorTexture,
-            device: renderer.device
+            device: renderer.device,
+            commandQueue: renderer.commandQueue
         )
     }
 
@@ -750,169 +750,4 @@ extension SketchContext {
         canvas3D.camera(eye: orbitCamera.eye, center: orbitCamera.target, up: orbitCamera.up)
     }
 
-    // MARK: - Scene Graph
-
-    /// Creates a scene graph node.
-    /// - Parameter name: An optional name for the node.
-    /// - Returns: A new `Node` instance.
-    public func createNode(_ name: String = "") -> Node {
-        Node(name: name)
-    }
-
-    /// Draws a scene graph starting from the root node.
-    /// - Parameter root: The root node of the scene graph.
-    public func drawScene(_ root: Node) {
-        SceneRenderer.render(node: root, canvas: canvas3D)
-    }
-
-    // MARK: - Render Graph
-
-    /// Creates a source pass for the render graph.
-    /// - Parameters:
-    ///   - label: The node label.
-    ///   - width: The texture width in pixels.
-    ///   - height: The texture height in pixels.
-    /// - Returns: A `SourcePass` instance, or nil on failure.
-    public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
-        try? SourcePass(
-            label: label,
-            device: renderer.device,
-            width: width,
-            height: height
-        )
-    }
-
-    /// Creates an effect pass for the render graph.
-    /// - Parameters:
-    ///   - input: The input render pass node.
-    ///   - effects: An array of post-processing effects.
-    /// - Returns: An `EffectPass` instance, or nil on failure.
-    public func createEffectPass(_ input: RenderPassNode, effects: [PostEffect]) -> EffectPass? {
-        try? EffectPass(
-            input,
-            effects: effects,
-            device: renderer.device,
-            commandQueue: renderer.commandQueue,
-            shaderLibrary: renderer.shaderLibrary
-        )
-    }
-
-    /// Creates a merge pass that composites two render passes.
-    /// - Parameters:
-    ///   - a: The base pass.
-    ///   - b: The overlay pass.
-    ///   - blend: The blend type for compositing.
-    /// - Returns: A `MergePass` instance, or nil on failure.
-    public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
-        try? MergePass(
-            a, b,
-            blend: blend,
-            device: renderer.device,
-            shaderLibrary: renderer.shaderLibrary
-        )
-    }
-
-    /// Sets the active render graph.
-    /// - Parameter graph: The render graph to use, or nil to disable.
-    public func setRenderGraph(_ graph: RenderGraph?) {
-        renderer.renderGraph = graph
-    }
-
-    // MARK: - MLTextureConverter
-
-    /// Creates an ML texture converter for Metal-CoreML interoperability.
-    /// - Returns: An `MLTextureConverter` instance.
-    public func createMLTextureConverter() -> MLTextureConverter {
-        MLTextureConverter(device: renderer.device, commandQueue: renderer.commandQueue)
-    }
-
-    // MARK: - GameplayKit Noise
-
-    /// Creates a GameplayKit noise generator.
-    /// - Parameters:
-    ///   - type: The noise type to generate.
-    ///   - config: The noise configuration (default settings).
-    /// - Returns: A `GKNoiseWrapper` instance.
-    public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper {
-        GKNoiseWrapper(type: type, config: config, device: renderer.device)
-    }
-
-    /// Generates a noise texture image as a convenience.
-    /// - Parameters:
-    ///   - type: The noise type to generate.
-    ///   - width: The texture width in pixels.
-    ///   - height: The texture height in pixels.
-    ///   - config: The noise configuration (default settings).
-    /// - Returns: The generated noise image, or nil on failure.
-    public func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage? {
-        let noise = GKNoiseWrapper(type: type, config: config, device: renderer.device)
-        return noise.image(width: width, height: height)
-    }
-
-    // MARK: - MPS Image Filter
-
-    /// Creates an MPS image filter wrapper.
-    /// - Returns: An `MPSImageFilterWrapper` instance.
-    public func createMPSFilter() -> MPSImageFilterWrapper {
-        MPSImageFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
-    }
-
-    /// Creates an MPS ray tracer.
-    /// - Parameters:
-    ///   - width: The output image width in pixels.
-    ///   - height: The output image height in pixels.
-    /// - Returns: An `MPSRayTracer` instance.
-    @available(macOS, deprecated: 14.0, message: "Uses deprecated MPS ray tracing APIs; migrate to Metal ray tracing APIs")
-    public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
-        try MPSRayTracer(device: renderer.device, commandQueue: renderer.commandQueue, width: width, height: height)
-    }
-
-    // MARK: - CoreImage Filter
-
-    /// Returns the shared CIFilterWrapper, creating it if needed.
-    func ensureCIFilterWrapper() -> CIFilterWrapper {
-        if let wrapper = _ciFilterWrapper { return wrapper }
-        let wrapper = CIFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
-        _ciFilterWrapper = wrapper
-        return wrapper
-    }
-
-    /// Applies a CoreImage filter to an image using a preset.
-    /// - Parameters:
-    ///   - image: The target image.
-    ///   - preset: The filter preset to apply.
-    public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
-        ensureCIFilterWrapper().apply(
-            filterName: preset.filterName,
-            parameters: preset.parameters(textureSize: CGSize(
-                width: CGFloat(image.width), height: CGFloat(image.height)
-            )),
-            to: image
-        )
-    }
-
-    /// Applies a CoreImage filter to an image by filter name.
-    /// - Parameters:
-    ///   - image: The target image.
-    ///   - name: The CIFilter name.
-    ///   - parameters: The filter parameters dictionary.
-    public func ciFilter(_ image: MImage, name: String, parameters: [String: Any] = [:]) {
-        ensureCIFilterWrapper().apply(filterName: name, parameters: parameters, to: image)
-    }
-
-    /// Generates an image using a CoreImage generator filter.
-    /// - Parameters:
-    ///   - preset: The generator filter preset.
-    ///   - width: The output width in pixels.
-    ///   - height: The output height in pixels.
-    /// - Returns: The generated image, or nil on failure.
-    public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
-        guard let tex = ensureCIFilterWrapper().generate(
-            filterName: preset.filterName,
-            parameters: preset.parameters(textureSize: CGSize(width: width, height: height)),
-            width: width,
-            height: height
-        ) else { return nil }
-        return MImage(texture: tex)
-    }
 }

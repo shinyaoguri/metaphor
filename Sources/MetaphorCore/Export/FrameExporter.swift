@@ -64,7 +64,7 @@ public final class FrameExporter {
         frameIndex += 1
 
         let filename = String(format: filenamePattern, currentFrame)
-        let path = (outputDirectory as NSString).appendingPathComponent(filename)
+        let path = URL(fileURLWithPath: outputDirectory).appendingPathComponent(filename).path
 
         if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
             blitEncoder.copy(
@@ -76,7 +76,6 @@ public final class FrameExporter {
                 destinationSlice: 0, destinationLevel: 0,
                 destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
             )
-            blitEncoder.synchronize(resource: stagingTexture)
             blitEncoder.endEncoding()
         }
 

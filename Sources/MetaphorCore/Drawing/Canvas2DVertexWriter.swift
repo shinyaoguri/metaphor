@@ -5,6 +5,22 @@ import simd
 
 extension Canvas2D {
 
+    /// Ensures the color buffer has room for at least one more vertex.
+    /// Flushes first, then grows if needed.
+    private func ensureColorCapacity() -> Bool {
+        if bufferOffset + vertexCount >= maxVertices {
+            flushColorVertices()
+            if bufferOffset + vertexCount >= maxVertices {
+                // Buffer is full even after flush — try to grow
+                let needed = bufferOffset + vertexCount + 1
+                if !colorBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: bufferOffset) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
     /// Adds a vertex with the current transform applied.
     func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         hasDrawnAnything = true
@@ -17,16 +33,7 @@ extension Canvas2D {
         if instanceBatcher2D.instanceCount > 0 {
             flushInstancedBatch()
         }
-        if bufferOffset + vertexCount >= maxVertices {
-            flushColorVertices()
-            // After flush, bufferOffset has advanced past maxVertices.
-            // Cannot safely reuse buffer[0..] within the same frame because
-            // already-encoded GPU draw calls reference that data.
-            // Drop excess vertices to prevent data corruption.
-            if bufferOffset + vertexCount >= maxVertices {
-                return
-            }
-        }
+        guard ensureColorCapacity() else { return }
         let writeIndex = bufferOffset + vertexCount
         let p = currentTransform * SIMD3<Float>(x, y, 1)
         vertices[writeIndex] = Vertex2D(
@@ -45,12 +52,7 @@ extension Canvas2D {
         if instanceBatcher2D.instanceCount > 0 {
             flushInstancedBatch()
         }
-        if bufferOffset + vertexCount >= maxVertices {
-            flushColorVertices()
-            if bufferOffset + vertexCount >= maxVertices {
-                return
-            }
-        }
+        guard ensureColorCapacity() else { return }
         let writeIndex = bufferOffset + vertexCount
         vertices[writeIndex] = Vertex2D(
             posX: x, posY: y,

@@ -70,7 +70,8 @@ public final class GIFExporter {
     /// - Parameters:
     ///   - texture: The Metal texture to capture.
     ///   - device: The Metal device used to create the staging texture if needed.
-    public func captureFrame(texture: MTLTexture, device: MTLDevice) {
+    ///   - commandQueue: The command queue used to blit private textures for CPU readback.
+    public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) {
         guard isRecording else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
@@ -84,16 +85,31 @@ public final class GIFExporter {
                 height: h,
                 mipmapped: false
             )
-            desc.storageMode = .managed
-            desc.usage = .shaderRead
+            desc.storageMode = .shared
+            desc.usage = [.shaderRead, .shaderWrite]
             stagingTexture = device.makeTexture(descriptor: desc)
         }
 
-        // Read pixel data from the texture
+        // Blit from private texture to staging for CPU readback
+        let readTexture: MTLTexture
+        if texture.storageMode == .private {
+            guard let staging = stagingTexture,
+                  let cmdBuf = commandQueue.makeCommandBuffer(),
+                  let blit = cmdBuf.makeBlitCommandEncoder() else { return }
+            blit.copy(from: texture, to: staging)
+            blit.endEncoding()
+            cmdBuf.commit()
+            cmdBuf.waitUntilCompleted()
+            readTexture = staging
+        } else {
+            readTexture = texture
+        }
+
+        // Read pixel data from the (now CPU-accessible) texture
         let bytesPerRow = w * 4
         var pixelData = [UInt8](repeating: 0, count: bytesPerRow * h)
 
-        texture.getBytes(
+        readTexture.getBytes(
             &pixelData,
             bytesPerRow: bytesPerRow,
             from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
@@ -130,13 +146,13 @@ public final class GIFExporter {
 
     /// Stop recording and write the captured frames to a GIF file.
     /// - Parameter path: The output file path.
-    /// - Throws: `GIFExporterError` if no frames were captured or the file could not be written.
+    /// - Throws: ``MetaphorError`` if no frames were captured or the file could not be written.
     public func endRecord(to path: String) throws {
         guard isRecording else { return }
         isRecording = false
 
         guard !frames.isEmpty else {
-            throw GIFExporterError.noFrames
+            throw MetaphorError.export(.noFrames)
         }
 
         let url = URL(fileURLWithPath: path) as CFURL
@@ -151,7 +167,7 @@ public final class GIFExporter {
             frames.count,
             nil
         ) else {
-            throw GIFExporterError.destinationCreationFailed
+            throw MetaphorError.export(.destinationCreationFailed)
         }
 
         // Set GIF properties (loop count)
@@ -174,7 +190,7 @@ public final class GIFExporter {
         }
 
         guard CGImageDestinationFinalize(destination) else {
-            throw GIFExporterError.finalizationFailed
+            throw MetaphorError.export(.finalizationFailed)
         }
 
         // Release memory
@@ -186,13 +202,13 @@ public final class GIFExporter {
     ///
     /// Performs the file write on a background thread to avoid blocking the main thread.
     /// - Parameter path: The output file path.
-    /// - Throws: ``GIFExporterError`` if no frames were captured or the file could not be written.
+    /// - Throws: ``MetaphorError`` if no frames were captured or the file could not be written.
     public func endRecordAsync(to path: String) async throws {
         guard isRecording else { return }
         isRecording = false
 
         guard !frames.isEmpty else {
-            throw GIFExporterError.noFrames
+            throw MetaphorError.export(.noFrames)
         }
 
         let capturedFrames = frames
@@ -213,7 +229,7 @@ public final class GIFExporter {
                 capturedFrames.count,
                 nil
             ) else {
-                throw GIFExporterError.destinationCreationFailed
+                throw MetaphorError.export(.destinationCreationFailed)
             }
 
             let gifProperties: [String: Any] = [
@@ -234,28 +250,9 @@ public final class GIFExporter {
             }
 
             guard CGImageDestinationFinalize(destination) else {
-                throw GIFExporterError.finalizationFailed
+                throw MetaphorError.export(.finalizationFailed)
             }
         }.value
     }
 }
 
-// MARK: - Errors
-
-/// Represent errors that can occur during GIF export.
-public enum GIFExporterError: Error, LocalizedError {
-    case noFrames
-    case destinationCreationFailed
-    case finalizationFailed
-
-    public var errorDescription: String? {
-        switch self {
-        case .noFrames:
-            return "No frames captured for GIF export"
-        case .destinationCreationFailed:
-            return "Failed to create GIF image destination"
-        case .finalizationFailed:
-            return "Failed to finalize GIF file"
-        }
-    }
-}

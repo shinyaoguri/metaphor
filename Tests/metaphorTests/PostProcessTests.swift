@@ -3,6 +3,7 @@ import Metal
 import simd
 @testable import metaphor
 @testable import MetaphorCore
+import MetaphorMPS
 
 // MARK: - CustomPostEffect Tests
 
@@ -78,29 +79,42 @@ struct CustomPostEffectTests {
     }
 }
 
-// MARK: - PostEffect Custom Case Tests
+// MARK: - PostEffect Protocol Conformance Tests
 
-@Suite("PostEffect.custom")
+@Suite("PostEffect Protocol")
 @MainActor
-struct PostEffectCustomCaseTests {
+struct PostEffectProtocolTests {
 
-    @Test("custom case wraps CustomPostEffect")
-    func customCaseWorks() {
+    @Test("CustomPostEffect conforms to PostEffect protocol")
+    func customConformsToProtocol() {
         let custom = CustomPostEffect(
             name: "sepia",
             fragmentFunctionName: "sepiaFragment",
             libraryKey: "user.posteffect.sepia"
         )
         custom.intensity = 0.7
-        let effect = PostEffect.custom(custom)
+        let effect: any PostEffect = custom
+        #expect(effect.name == "sepia")
+    }
 
-        if case .custom(let inner) = effect {
-            #expect(inner.name == "sepia")
-            #expect(inner.intensity == 0.7)
-            #expect(inner.fragmentFunctionName == "sepiaFragment")
-        } else {
-            Issue.record("Expected .custom case")
-        }
+    @Test("Built-in effects conform to PostEffect protocol")
+    func builtinEffects() {
+        let effects: [any PostEffect] = [
+            BloomEffect(),
+            BlurEffect(),
+            InvertEffect(),
+            GrayscaleEffect(),
+            VignetteEffect(),
+            ChromaticAberrationEffect(),
+            ColorGradeEffect(),
+            MPSBlurEffect(sigma: 3.0),
+            MPSSobelEffect(),
+            MPSErodeEffect(),
+            MPSDilateEffect(),
+        ]
+        #expect(effects.count == 11)
+        #expect(effects[0].name == "bloom")
+        #expect(effects[2].name == "invert")
     }
 }
 
@@ -253,7 +267,7 @@ struct CustomPostEffectPipelineTests {
 
         let queue = device.makeCommandQueue()!
         let pipeline = try PostProcessPipeline(device: device, commandQueue: queue, shaderLibrary: shaderLib)
-        pipeline.add(.custom(custom))
+        pipeline.add(custom)
 
         #expect(pipeline.effects.count == 1)
     }

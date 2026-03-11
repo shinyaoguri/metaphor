@@ -48,6 +48,9 @@ public final class InputManager {
     /// The key code of the most recently pressed key.
     public private(set) var lastKeyCode: UInt16?
 
+    /// Whether the most recent key-down event was an auto-repeat.
+    public private(set) var isKeyRepeat: Bool = false
+
     /// The set of currently pressed key codes.
     private var pressedKeys: Set<UInt16> = []
 
@@ -71,6 +74,9 @@ public final class InputManager {
     /// The callback invoked when a key is released (keyCode).
     public var onKeyUp: ((UInt16) -> Void)?
 
+    /// The callback invoked when a complete click occurs (press + release without drag).
+    public var onMouseClicked: ((Float, Float, Int) -> Void)?
+
     /// The callback invoked when the mouse scroll wheel is used (dx, dy).
     public var onMouseScrolled: ((Float, Float) -> Void)?
 
@@ -83,6 +89,7 @@ public final class InputManager {
     private var _savedMouseX: Float = 0
     private var _savedMouseY: Float = 0
     private var _isFirstFrame: Bool = true
+    private var _didDragSinceMouseDown: Bool = false
 
     // MARK: - Initialization
 
@@ -133,6 +140,7 @@ public final class InputManager {
         mouseY = y
         isMouseDown = true
         mouseButton = button
+        _didDragSinceMouseDown = false
         onMousePressed?(x, y, button)
     }
 
@@ -142,6 +150,9 @@ public final class InputManager {
         mouseY = y
         isMouseDown = false
         onMouseReleased?(x, y, button)
+        if !_didDragSinceMouseDown {
+            onMouseClicked?(x, y, button)
+        }
     }
 
     /// Handle a mouse movement event (no button pressed).
@@ -155,11 +166,13 @@ public final class InputManager {
     func handleMouseDragged(x: Float, y: Float) {
         mouseX = x
         mouseY = y
+        _didDragSinceMouseDown = true
         onMouseDragged?(x, y)
     }
 
     /// Handle a key press event.
-    func handleKeyDown(keyCode: UInt16, characters: String?) {
+    func handleKeyDown(keyCode: UInt16, characters: String?, isRepeat: Bool) {
+        isKeyRepeat = isRepeat
         pressedKeys.insert(keyCode)
         lastKeyCode = keyCode
         lastKey = characters?.first
@@ -173,9 +186,13 @@ public final class InputManager {
     }
 
     /// Handle a mouse scroll event.
+    ///
+    /// Scroll deltas are accumulated within a frame so that multiple events
+    /// (e.g. trackpad momentum) are captured rather than only the last one.
+    /// ``updateFrame()`` resets both values to zero at the start of each frame.
     func handleMouseScrolled(dx: Float, dy: Float) {
-        scrollX = dx
-        scrollY = dy
+        scrollX += dx
+        scrollY += dy
         onMouseScrolled?(dx, dy)
     }
 }

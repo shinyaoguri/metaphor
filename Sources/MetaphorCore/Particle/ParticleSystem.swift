@@ -210,8 +210,8 @@ public final class ParticleSystem {
     ///   - shaderLibrary: The shader library containing particle shader functions.
     ///   - sampleCount: The MSAA sample count for the render pipeline.
     ///   - count: The maximum number of particles.
-    /// - Throws: ``ParticleError/bufferCreationFailed`` if GPU buffers cannot be
-    ///   allocated, or ``ParticleError/shaderNotFound(_:)`` if required shader
+    /// - Throws: ``MetaphorError/particle(_:)`` if GPU buffers cannot be
+    ///   allocated, or if required shader
     ///   functions are missing.
     init(
         device: MTLDevice,
@@ -226,7 +226,7 @@ public final class ParticleSystem {
         let bufferSize = MemoryLayout<Particle>.stride * count
         guard let a = device.makeBuffer(length: bufferSize, options: .storageModeShared),
               let b = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
-            throw ParticleError.bufferCreationFailed
+            throw MetaphorError.particle(.bufferCreationFailed)
         }
         self.bufferA = a
         self.bufferB = b
@@ -240,7 +240,7 @@ public final class ParticleSystem {
             named: ParticleShaders.FunctionName.update,
             from: ShaderLibrary.BuiltinKey.particle
         ) else {
-            throw ParticleError.shaderNotFound(ParticleShaders.FunctionName.update)
+            throw MetaphorError.particle(.shaderNotFound(ParticleShaders.FunctionName.update))
         }
         self.updatePipeline = try device.makeComputePipelineState(function: updateFn)
 
@@ -253,7 +253,7 @@ public final class ParticleSystem {
             named: ParticleShaders.FunctionName.fragment,
             from: ShaderLibrary.BuiltinKey.particle
         ) else {
-            throw ParticleError.shaderNotFound("particle vertex/fragment")
+            throw MetaphorError.particle(.shaderNotFound("particle vertex/fragment"))
         }
 
         self.renderPipeline = try PipelineFactory(device: device)
@@ -554,22 +554,3 @@ public final class ParticleSystem {
     }
 }
 
-// MARK: - ParticleError
-
-/// Represent errors that can occur when creating a ``ParticleSystem``.
-public enum ParticleError: Error, CustomStringConvertible {
-    /// Indicate that GPU buffer allocation failed.
-    case bufferCreationFailed
-
-    /// Indicate that a required shader function was not found.
-    case shaderNotFound(String)
-
-    public var description: String {
-        switch self {
-        case .bufferCreationFailed:
-            return "Failed to create particle buffers"
-        case .shaderNotFound(let name):
-            return "Particle shader '\(name)' not found"
-        }
-    }
-}

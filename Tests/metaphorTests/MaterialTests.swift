@@ -318,18 +318,18 @@ struct Canvas3DCustomMaterialStateTests {
     }
 }
 
-// MARK: - CustomMaterialError Tests
+// MARK: - MetaphorError.material Tests
 
-@Suite("CustomMaterialError")
+@Suite("MetaphorError.material")
 struct CustomMaterialErrorTests {
 
     @Test("shaderNotFound error contains function name")
     func shaderNotFoundError() {
-        let error = CustomMaterialError.shaderNotFound("nonExistentFunction")
-        if case .shaderNotFound(let name) = error {
+        let error = MetaphorError.material(.shaderNotFound("nonExistentFunction"))
+        if case .material(.shaderNotFound(let name)) = error {
             #expect(name == "nonExistentFunction")
         } else {
-            Issue.record("Expected shaderNotFound error")
+            Issue.record("Expected material shaderNotFound error")
         }
     }
 }

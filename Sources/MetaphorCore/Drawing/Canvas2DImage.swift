@@ -78,11 +78,14 @@ extension Canvas2D {
         currentBoundTexture = texture
         hasDrawnAnything = true
 
-        // Check for buffer overflow
+        // Check for buffer overflow — flush then grow if needed
         if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
             flushTexturedVertices()
             if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
-                return
+                let needed = texturedBufferOffset + texturedVertexCount + 6
+                if !texturedBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: texturedBufferOffset) {
+                    return
+                }
             }
         }
 
@@ -136,11 +139,14 @@ extension Canvas2D {
 
         let verticesNeeded = glyphs.count * 6
 
-        // Check for buffer overflow
+        // Check for buffer overflow — flush then grow if needed
         if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
             flushTexturedVertices()
             if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
-                return
+                let needed = texturedBufferOffset + texturedVertexCount + verticesNeeded
+                if !texturedBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: texturedBufferOffset) {
+                    return
+                }
             }
         }
 

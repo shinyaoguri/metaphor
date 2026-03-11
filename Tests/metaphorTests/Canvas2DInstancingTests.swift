@@ -35,22 +35,22 @@ struct BatchKey2DTests {
 
     @Test("Equal keys match")
     func equalKeys() {
-        let k1 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
-        let k2 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let k1 = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let k2 = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
         #expect(k1 == k2)
     }
 
     @Test("Different shape types don't match")
     func differentShapeType() {
-        let k1 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
-        let k2 = InstanceBatcher2D.BatchKey2D(shapeType: .rect, blendMode: .alpha)
+        let k1 = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let k2 = BatchKey2D(shapeType: .rect, blendMode: .alpha)
         #expect(k1 != k2)
     }
 
     @Test("Different blend modes don't match")
     func differentBlendMode() {
-        let k1 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
-        let k2 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .additive)
+        let k1 = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let k2 = BatchKey2D(shapeType: .ellipse, blendMode: .additive)
         #expect(k1 != k2)
     }
 }
@@ -67,7 +67,7 @@ struct InstanceBatcher2DTests {
         let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
-        let key = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let key = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
         #expect(batcher.tryAddInstance(key: key, transform: float4x4(1), color: .one))
         #expect(batcher.instanceCount == 1)
         #expect(batcher.tryAddInstance(key: key, transform: float4x4(1), color: .one))
@@ -80,8 +80,8 @@ struct InstanceBatcher2DTests {
         let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
-        let k1 = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
-        let k2 = InstanceBatcher2D.BatchKey2D(shapeType: .rect, blendMode: .alpha)
+        let k1 = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let k2 = BatchKey2D(shapeType: .rect, blendMode: .alpha)
 
         #expect(batcher.tryAddInstance(key: k1, transform: float4x4(1), color: .one))
         #expect(!batcher.tryAddInstance(key: k2, transform: float4x4(1), color: .one))
@@ -93,7 +93,7 @@ struct InstanceBatcher2DTests {
         let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
-        let key = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let key = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
         let _ = batcher.tryAddInstance(key: key, transform: float4x4(1), color: .one)
         #expect(batcher.instanceCount == 1)
 
@@ -129,7 +129,7 @@ struct InstanceBatcher2DTests {
         let batcher = try! InstanceBatcher2D(device: device)
         batcher.beginFrame(bufferIndex: 0)
 
-        let key = InstanceBatcher2D.BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
+        let key = BatchKey2D(shapeType: .ellipse, blendMode: .alpha)
         let red = SIMD4<Float>(1, 0, 0, 1)
         let blue = SIMD4<Float>(0, 0, 1, 1)
 

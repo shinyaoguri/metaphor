@@ -1,4 +1,5 @@
 import metaphor
+import Foundation
 
 @main
 final class Transparency: Sketch {
@@ -8,35 +9,20 @@ final class Transparency: Sketch {
 
     var img: MImage?
     var offset: Float = 0
-    var easing: Float = 0.05
+    let easing: Float = 0.05
 
     func setup() {
-        // Generate a sample image (replaces moonwalk.jpg)
-        img = createImage(640, 360)
-        guard let img = img else { return }
-        img.loadPixels()
-        for y in 0..<Int(img.height) {
-            for x in 0..<Int(img.width) {
-                let idx = (y * Int(img.width) + x) * 4
-                img.pixels[idx] = UInt8(Float(x) / img.width * 200)
-                img.pixels[idx + 1] = UInt8(100)
-                img.pixels[idx + 2] = UInt8(Float(y) / img.height * 255)
-                img.pixels[idx + 3] = 255
-            }
-        }
-        img.updatePixels()
+        guard let path = Bundle.module.path(forResource: "moonwalk", ofType: "jpg", inDirectory: "Resources"),
+              let loaded = try? loadImage(path) else { return }
+        img = loaded
     }
 
     func draw() {
-        background(0)
         guard let img = img else { return }
+        image(img, 0, 0) // Display at full opacity
         let dx = (mouseX - img.width / 2) - offset
         offset += dx * easing
-
-        tint(255)
-        image(img, 0, 0)
-
-        tint(255.0, 127.0)
-        image(img, offset, height / 2 - img.height / 2)
+        tint(255, 127) // Display at half opacity
+        image(img, offset, 0)
     }
 }

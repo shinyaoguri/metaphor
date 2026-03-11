@@ -35,7 +35,7 @@ struct ComputeKernelTests {
             buf[id] = 0;
         }
         """
-        #expect(throws: ComputeKernelError.self) {
+        #expect(throws: MetaphorError.self) {
             try ComputeKernel(device: device, source: source, functionName: "nonExistent")
         }
     }

@@ -18,7 +18,7 @@ import simd
 /// }
 /// ```
 @MainActor
-public final class Canvas2D {
+public final class Canvas2D: CanvasStyle {
     // MARK: - Metal Resources
 
     let device: MTLDevice
@@ -38,36 +38,32 @@ public final class Canvas2D {
 
     // Triple buffers to avoid CPU/GPU synchronization conflicts
     private static let bufferCount = 3
-    private let vertexBuffers: [MTLBuffer]
-    private let verticesArray: [UnsafeMutablePointer<Vertex2D>]
-    private var currentBufferIndex: Int = 0
+    let colorBuffer: GrowableGPUBuffer<Vertex2D>
+    let texturedBuffer: GrowableGPUBuffer<TexturedVertex2D>
+    var currentBufferIndex: Int = 0
 
-    // Textured triple buffers
-    private let texturedVertexBuffers: [MTLBuffer]
-    private let texturedVerticesArray: [UnsafeMutablePointer<TexturedVertex2D>]
     var texturedVertexCount: Int = 0
     var texturedBufferOffset: Int = 0
     var currentBoundTexture: MTLTexture?
-    let maxTexturedVertices: Int = 65536
 
     // Vertex pointer for the current buffer
     var vertices: UnsafeMutablePointer<Vertex2D> {
-        verticesArray[currentBufferIndex]
+        colorBuffer.pointer(for: currentBufferIndex)
     }
 
     // Current vertex buffer
     var vertexBuffer: MTLBuffer {
-        vertexBuffers[currentBufferIndex]
+        colorBuffer.buffer(for: currentBufferIndex)
     }
 
     // Vertex pointer for the current textured buffer
     var texturedVertices: UnsafeMutablePointer<TexturedVertex2D> {
-        texturedVerticesArray[currentBufferIndex]
+        texturedBuffer.pointer(for: currentBufferIndex)
     }
 
     // Current textured vertex buffer
     private var texturedVertexBuffer: MTLBuffer {
-        texturedVertexBuffers[currentBufferIndex]
+        texturedBuffer.buffer(for: currentBufferIndex)
     }
 
     // MARK: - Dimensions
@@ -80,7 +76,8 @@ public final class Canvas2D {
 
     // MARK: - Constants
 
-    let maxVertices: Int = 786432
+    var maxVertices: Int { colorBuffer.capacity }
+    var maxTexturedVertices: Int { texturedBuffer.capacity }
     let ellipseSegments: Int = 32
 
     // MARK: - Per-frame State
@@ -95,16 +92,16 @@ public final class Canvas2D {
 
     // MARK: - Style State
 
-    var fillColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
-    var strokeColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
+    public var fillColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
+    public var strokeColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
     var currentStrokeWeight: Float = 1.0
-    var hasFill: Bool = true
-    var hasStroke: Bool = true
+    public var hasFill: Bool = true
+    public var hasStroke: Bool = true
     var currentBlendMode: BlendMode = .alpha
     var currentRectMode: RectMode = .corner
     var currentEllipseMode: EllipseMode = .center
     var currentImageMode: ImageMode = .corner
-    var colorModeConfig: ColorModeConfig = ColorModeConfig()
+    public var colorModeConfig: ColorModeConfig = ColorModeConfig()
     var tintColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
     var hasTint: Bool = false
     var currentStrokeCap: StrokeCap = .round
@@ -162,6 +159,17 @@ public final class Canvas2D {
     /// When true, background() can skip drawing a quad if nothing else has been drawn.
     var frameWillClear: Bool = true
 
+    /// Whether the clear color has been successfully applied to the render pass
+    /// descriptor before the current encoder was created.  Starts true so that
+    /// background() uses Metal's loadAction = .clear from the very first frame,
+    /// avoiding a full-screen quad whose vertex processing can introduce
+    /// sub-pixel rasterisation artefacts.  The default render-pass clear colour
+    /// (black) matches Processing's default background, so the optimisation is
+    /// safe for the common case.  For non-default backgrounds the colour is
+    /// captured by onSetClearColor and takes effect on the next frame; see the
+    /// noLoop() two-frame path in SketchRunner for details.
+    var clearColorApplied: Bool = true
+
     // Closure to set the clear color, injected by MetaphorRenderer
     var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
 
@@ -191,6 +199,11 @@ public final class Canvas2D {
         var strokeCap: StrokeCap
         var strokeJoin: StrokeJoin
     }
+
+    // MARK: - Clipping State
+
+    private var clipRect: MTLScissorRect?
+    private var clipStack: [MTLScissorRect?] = []
 
     // MARK: - Transform & Style Stack
 
@@ -228,7 +241,7 @@ public final class Canvas2D {
     /// Create a canvas from a ``MetaphorRenderer`` instance.
     ///
     /// - Parameter renderer: The renderer that provides the Metal device, shader library, and texture dimensions.
-    /// - Throws: ``Canvas2DError`` if buffer or pipeline creation fails.
+    /// - Throws: ``MetaphorError`` if buffer or pipeline creation fails.
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -249,7 +262,7 @@ public final class Canvas2D {
     ///   - width: The canvas width in pixels.
     ///   - height: The canvas height in pixels.
     ///   - sampleCount: The MSAA sample count for pipeline creation.
-    /// - Throws: ``Canvas2DError`` if buffer or pipeline creation fails.
+    /// - Throws: ``MetaphorError`` if buffer or pipeline creation fails.
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -263,33 +276,15 @@ public final class Canvas2D {
         self.width = width
         self.height = height
 
-        // Triple vertex buffers (pre-allocated)
-        let bufferSize = maxVertices * MemoryLayout<Vertex2D>.stride
-        var buffers: [MTLBuffer] = []
-        var pointers: [UnsafeMutablePointer<Vertex2D>] = []
-        for _ in 0..<Self.bufferCount {
-            guard let buffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
-                throw Canvas2DError.bufferCreationFailed
-            }
-            buffers.append(buffer)
-            pointers.append(buffer.contents().bindMemory(to: Vertex2D.self, capacity: maxVertices))
-        }
-        self.vertexBuffers = buffers
-        self.verticesArray = pointers
-
-        // Textured triple vertex buffers
-        let texBufSize = 65536 * MemoryLayout<TexturedVertex2D>.stride
-        var texBuffers: [MTLBuffer] = []
-        var texPointers: [UnsafeMutablePointer<TexturedVertex2D>] = []
-        for _ in 0..<Self.bufferCount {
-            guard let buffer = device.makeBuffer(length: texBufSize, options: .storageModeShared) else {
-                throw Canvas2DError.bufferCreationFailed
-            }
-            texBuffers.append(buffer)
-            texPointers.append(buffer.contents().bindMemory(to: TexturedVertex2D.self, capacity: 65536))
-        }
-        self.texturedVertexBuffers = texBuffers
-        self.texturedVerticesArray = texPointers
+        // Growable triple vertex buffers (start small, grow on demand)
+        self.colorBuffer = try GrowableGPUBuffer<Vertex2D>(
+            device: device, initialCapacity: 4096, maxCapacity: 1_000_000,
+            label: "metaphor.canvas2D.color"
+        )
+        self.texturedBuffer = try GrowableGPUBuffer<TexturedVertex2D>(
+            device: device, initialCapacity: 4096, maxCapacity: 1_000_000,
+            label: "metaphor.canvas2D.textured"
+        )
 
         // Color pipelines (one per BlendMode)
         let vertexFn = shaderLibrary.function(
@@ -369,12 +364,17 @@ public final class Canvas2D {
         // Text renderer
         self.textRenderer = TextRenderer(device: device)
 
-        // Projection matrix (top-left origin, pixel coordinates)
+        // Projection matrix (top-left origin, pixel coordinates).
+        // The half-pixel offset (1/w, -1/h) maps integer coordinates to pixel
+        // centers — e.g. canvas x=10 → viewport x=10.5. This is required
+        // because Metal's rasterizer tests coverage at pixel centers (i+0.5,
+        // j+0.5). Without this offset, a strokeWeight(1) line at integer x
+        // would straddle two pixels instead of filling one crisply.
         self.projectionMatrix = float4x4(columns: (
             SIMD4<Float>(2.0 / width, 0, 0, 0),
             SIMD4<Float>(0, -2.0 / height, 0, 0),
             SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(-1, 1, 0, 1)
+            SIMD4<Float>(-1.0 + 1.0 / width, 1.0 - 1.0 / height, 0, 1)
         ))
 
         precondition(MemoryLayout<Vertex2D>.stride == 24,
@@ -455,7 +455,49 @@ public final class Canvas2D {
     /// End the current frame by flushing all accumulated vertices and releasing the encoder.
     public func end() {
         flush()
+        // Reset clip state at end of frame
+        if clipRect != nil {
+            clipRect = nil
+            clipStack.removeAll(keepingCapacity: true)
+        }
         encoder = nil
+    }
+
+    // MARK: - Clipping
+
+    /// Begin clipping subsequent draws to the specified rectangle.
+    ///
+    /// Uses Metal's scissor test for hardware-accelerated clipping.
+    /// Call ``endClip()`` to restore the previous clip region.
+    /// Nested clips are supported via a stack.
+    ///
+    /// - Parameters:
+    ///   - x: The x-coordinate of the clip region.
+    ///   - y: The y-coordinate of the clip region.
+    ///   - w: The width of the clip region.
+    ///   - h: The height of the clip region.
+    public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        flush()
+        clipStack.append(clipRect)
+        let sx = max(0, Int(x))
+        let sy = max(0, Int(y))
+        let sw = max(0, min(Int(w), Int(width) - sx))
+        let sh = max(0, min(Int(h), Int(height) - sy))
+        clipRect = MTLScissorRect(x: sx, y: sy, width: sw, height: sh)
+        encoder?.setScissorRect(clipRect!)
+    }
+
+    /// End the current clip region and restore the previous one.
+    public func endClip() {
+        flush()
+        clipRect = clipStack.popLast() ?? nil
+        if let rect = clipRect {
+            encoder?.setScissorRect(rect)
+        } else {
+            // Restore full viewport
+            let fullRect = MTLScissorRect(x: 0, y: 0, width: Int(width), height: Int(height))
+            encoder?.setScissorRect(fullRect)
+        }
     }
 
     /// Flush all pending draw batches including color, textured, and instanced vertices.
@@ -546,27 +588,6 @@ public final class Canvas2D {
 
     // MARK: - Color Mode
 
-    /// Set the color space and per-channel maximum values.
-    ///
-    /// - Parameters:
-    ///   - space: The color space to use (e.g., `.rgb`, `.hsb`).
-    ///   - max1: The maximum value for the first channel.
-    ///   - max2: The maximum value for the second channel.
-    ///   - max3: The maximum value for the third channel.
-    ///   - maxA: The maximum value for the alpha channel.
-    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
-        colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxA)
-    }
-
-    /// Set the color space with a uniform maximum value for all channels.
-    ///
-    /// - Parameters:
-    ///   - space: The color space to use.
-    ///   - maxAll: The maximum value applied to all channels including alpha.
-    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
-        colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
-    }
-
     // MARK: - Tint
 
     /// Set the tint color for images.
@@ -613,106 +634,7 @@ public final class Canvas2D {
         hasTint = false
     }
 
-    // MARK: - Style Sync
-
-    /// Synchronize shared style properties from a ``DrawingStyle`` instance.
-    ///
-    /// - Parameter style: The drawing style to synchronize from.
-    public func syncStyle(_ style: DrawingStyle) {
-        fillColor = style.fillColor
-        strokeColor = style.strokeColor
-        hasFill = style.hasFill
-        hasStroke = style.hasStroke
-        colorModeConfig = style.colorModeConfig
-    }
-
-    // MARK: - Style
-
-    /// Set the fill color for subsequent shapes.
-    ///
-    /// - Parameter color: The fill color.
-    public func fill(_ color: Color) {
-        fillColor = color.simd
-        hasFill = true
-    }
-
-    /// Set the fill color using color mode values.
-    ///
-    /// - Parameters:
-    ///   - v1: The first color channel value, interpreted according to the current color mode.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: The optional alpha value.
-    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
-        fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
-        hasFill = true
-    }
-
-    /// Set the fill color using a grayscale value.
-    ///
-    /// - Parameter gray: The grayscale brightness value.
-    public func fill(_ gray: Float) {
-        fillColor = colorModeConfig.toGray(gray).simd
-        hasFill = true
-    }
-
-    /// Set the fill color using grayscale and alpha values.
-    ///
-    /// - Parameters:
-    ///   - gray: The grayscale brightness value.
-    ///   - alpha: The alpha transparency value.
-    public func fill(_ gray: Float, _ alpha: Float) {
-        fillColor = colorModeConfig.toGray(gray, alpha).simd
-        hasFill = true
-    }
-
-    /// Disable filling for subsequent shapes.
-    public func noFill() {
-        hasFill = false
-    }
-
-    /// Set the stroke color for subsequent shapes.
-    ///
-    /// - Parameter color: The stroke color.
-    public func stroke(_ color: Color) {
-        strokeColor = color.simd
-        hasStroke = true
-    }
-
-    /// Set the stroke color using color mode values.
-    ///
-    /// - Parameters:
-    ///   - v1: The first color channel value, interpreted according to the current color mode.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: The optional alpha value.
-    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
-        strokeColor = colorModeConfig.toColor(v1, v2, v3, a).simd
-        hasStroke = true
-    }
-
-    /// Set the stroke color using a grayscale value.
-    ///
-    /// - Parameter gray: The grayscale brightness value.
-    public func stroke(_ gray: Float) {
-        strokeColor = colorModeConfig.toGray(gray).simd
-        hasStroke = true
-    }
-
-    /// Set the stroke color using grayscale and alpha values.
-    ///
-    /// - Parameters:
-    ///   - gray: The grayscale brightness value.
-    ///   - alpha: The alpha transparency value.
-    public func stroke(_ gray: Float, _ alpha: Float) {
-        strokeColor = colorModeConfig.toGray(gray, alpha).simd
-        hasStroke = true
-    }
-
-    /// Disable stroke for subsequent shapes.
-    public func noStroke() {
-        hasStroke = false
-    }
+    // MARK: - Canvas2D-specific Style
 
     /// Set the stroke weight (line thickness) in pixels.
     ///
@@ -747,12 +669,15 @@ public final class Canvas2D {
         let c = color.simd
         backgroundCalledThisFrame = true
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
-        if !hasDrawnAnything && frameWillClear {
-            // Metal's loadAction = .clear will handle clearing
+        if !hasDrawnAnything && frameWillClear && clearColorApplied {
+            // Metal's loadAction = .clear will handle clearing.
+            // Skip this optimisation on the first frame: the encoder was
+            // created before background() set the clearColor, so Metal's
+            // clear would use the stale default (black).
             return
         }
         // Draw a full-screen quad (either because something was already drawn,
-        // or because loadAction = .load and we need to explicitly clear)
+        // or because loadAction = .load and we need to explicitly clear).
         addVertexRaw(0, 0, c)
         addVertexRaw(width, 0, c)
         addVertexRaw(width, height, c)
@@ -827,7 +752,7 @@ public final class Canvas2D {
             flushColorVertices()
         }
 
-        let key = InstanceBatcher2D.BatchKey2D(
+        let key = BatchKey2D(
             shapeType: shapeType,
             blendMode: currentBlendMode
         )
@@ -1066,5 +991,12 @@ public final class Canvas2D {
     /// - Parameter s: The scale factor applied to both axes.
     public func scale(_ s: Float) {
         scale(s, s)
+    }
+
+    /// Multiply the current 2D transform by the given matrix.
+    ///
+    /// - Parameter matrix: The 3x3 matrix to concatenate.
+    public func applyMatrix(_ matrix: float3x3) {
+        currentTransform = currentTransform * matrix
     }
 }

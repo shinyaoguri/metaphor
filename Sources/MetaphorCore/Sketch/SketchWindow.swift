@@ -1,4 +1,3 @@
-#if os(macOS)
 import AppKit
 import MetalKit
 
@@ -61,6 +60,9 @@ public final class SketchWindow {
     /// Called when the scroll wheel is used in this window.
     public var onMouseScrolled: ((@MainActor (SketchWindow) -> Void))?
 
+    /// Called when a mouse click completes (press and release without drag).
+    public var onMouseClicked: ((@MainActor (SketchWindow) -> Void))?
+
     /// Called when a key is pressed in this window.
     public var onKeyPressed: ((@MainActor (SketchWindow) -> Void))?
 
@@ -110,11 +112,9 @@ public final class SketchWindow {
         setupRenderLoop()
         connectInput()
 
-        #if os(macOS)
         if let syphonName = config.syphonName {
             renderer.startSyphonServer(name: syphonName)
         }
-        #endif
     }
 
     // MARK: - Drawing API
@@ -275,6 +275,10 @@ public final class SketchWindow {
             guard let self else { return }
             self.onMouseScrolled?(self)
         }
+        input.onMouseClicked = { [weak self] _, _, _ in
+            guard let self else { return }
+            self.onMouseClicked?(self)
+        }
         input.onKeyDown = { [weak self] _, _ in
             guard let self else { return }
             self.onKeyPressed?(self)
@@ -321,4 +325,3 @@ public final class SketchWindow {
         }
     }
 }
-#endif

@@ -1,6 +1,7 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import CoreVideo
 import Metal
+import os
 
 /// Specify the camera position to use for capture.
 public enum CameraPosition {
@@ -24,7 +25,7 @@ public enum CameraPosition {
 /// image(cam, 0, 0, width, height)
 /// ```
 @MainActor
-public final class CaptureDevice: NSObject {
+public final class CaptureDevice {
 
     // MARK: - Public Properties
 
@@ -71,7 +72,6 @@ public final class CaptureDevice: NSObject {
         self.width = width
         self.height = height
         self.delegateHelper = CaptureDelegate()
-        super.init()
 
         setupTextureCache()
         setupCaptureSession(position: position)
@@ -189,7 +189,8 @@ public final class CaptureDevice: NSObject {
 ///
 /// This class is intentionally not marked `@MainActor` because it operates
 /// on the capture session's background dispatch queue. Thread safety is
-/// ensured via an `NSLock`.
+/// ensured via an `NSLock` (CVPixelBuffer is not Sendable, so
+/// OSAllocatedUnfairLock cannot be used here).
 private final class CaptureDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     /// The dispatch queue for receiving sample buffers.
     let queue = DispatchQueue(label: "metaphor.capture", qos: .userInteractive)

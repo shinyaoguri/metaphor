@@ -1,8 +1,4 @@
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 import Metal
 import simd
 
@@ -37,6 +33,9 @@ public final class SketchContext {
 
     /// The underlying renderer (for advanced usage).
     public let renderer: MetaphorRenderer
+
+    /// The async resource loader for background image/model loading.
+    public let resourceLoader: ResourceLoader
 
     /// The current render command encoder, valid only during a frame.
     public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
@@ -176,11 +175,6 @@ public final class SketchContext {
     /// The orbit camera instance.
     public let orbitCamera = OrbitCamera()
 
-    // MARK: - CoreImage Filter
-
-    /// The lazily initialized CoreImage filter wrapper.
-    var _ciFilterWrapper: CIFilterWrapper?
-
     // MARK: - Multi-Window
 
     /// The shared Metal resources, set by SketchRunner for the primary window.
@@ -189,7 +183,6 @@ public final class SketchContext {
     /// Whether this is the primary sketch context (controls global elapsed time).
     var isPrimary: Bool = false
 
-    #if os(macOS)
     /// The secondary windows created from this context.
     private var secondaryWindows: [SketchWindow] = []
 
@@ -220,12 +213,12 @@ public final class SketchContext {
         }
         secondaryWindows.removeAll()
     }
-    #endif
 
     // MARK: - Initialization
 
     init(renderer: MetaphorRenderer, canvas: Canvas2D, canvas3D: Canvas3D, input: InputManager) {
         self.renderer = renderer
+        self.resourceLoader = ResourceLoader(device: renderer.device)
         self.canvas = canvas
         self.canvas3D = canvas3D
         self.input = input
@@ -279,6 +272,13 @@ public final class SketchContext {
         let shouldClearNext = canvas.backgroundCalledThisFrame
         renderer.textureManager.setShouldClear(shouldClearNext)
         canvas.frameWillClear = shouldClearNext
+        // After the first background() call, the clearColor in the render pass
+        // descriptor matches what the user requested. On subsequent frames the
+        // encoder will be created with this clearColor, so the optimisation in
+        // background() (skip drawing a quad when Metal clears for us) is safe.
+        if shouldClearNext {
+            canvas.clearColorApplied = true
+        }
 
         // GIF frame capture
         captureGIFFrame()

@@ -1,4 +1,3 @@
-#if os(macOS)
 import SwiftUI
 import MetalKit
 
@@ -140,4 +139,3 @@ public struct SketchView: NSViewRepresentable {
         }
     }
 }
-#endif

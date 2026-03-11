@@ -17,10 +17,8 @@ public final class MetaphorRenderer: NSObject {
     /// Manage offscreen render target textures.
     public private(set) var textureManager: TextureManager
 
-    #if os(macOS)
     /// The optional Syphon output for inter-application video sharing.
     public private(set) var syphonOutput: SyphonOutput?
-    #endif
 
     /// The shader library used for compiling and caching Metal shader functions.
     public let shaderLibrary: ShaderLibrary
@@ -93,6 +91,14 @@ public final class MetaphorRenderer: NSObject {
     /// The next buffer index to use.
     private var nextBufferIndex: Int = 0
 
+    // MARK: - Compute/Render Synchronization
+
+    /// MTLEvent for explicit compute→render synchronization.
+    private var computeEvent: MTLEvent?
+
+    /// The current event counter value.
+    private var computeEventValue: UInt64 = 0
+
     // MARK: - Post Processing
 
     /// Indicate whether post-processing effects are available.
@@ -112,7 +118,7 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - Render Graph
 
     /// The render graph whose output becomes the final texture when set.
-    public var renderGraph: RenderGraph?
+    public var renderGraph: (any RenderGraphExecutable)?
 
     // MARK: - FBO Feedback
 
@@ -190,6 +196,8 @@ public final class MetaphorRenderer: NSObject {
 
         super.init()
 
+        self.computeEvent = device.makeEvent()
+
         try buildBlitPipeline()
 
         do {
@@ -235,6 +243,8 @@ public final class MetaphorRenderer: NSObject {
 
         super.init()
 
+        self.computeEvent = device.makeEvent()
+
         try buildBlitPipeline()
 
         do {
@@ -247,7 +257,6 @@ public final class MetaphorRenderer: NSObject {
         }
     }
 
-    #if os(macOS)
     // MARK: - Syphon
 
     /// Start a Syphon server with the given name for inter-application texture sharing.
@@ -262,7 +271,6 @@ public final class MetaphorRenderer: NSObject {
         syphonOutput?.stop()
         syphonOutput = nil
     }
-    #endif
 
     // MARK: - Plugin Management
 
@@ -343,7 +351,7 @@ public final class MetaphorRenderer: NSObject {
     /// Append a post-processing effect to the pipeline.
     ///
     /// - Parameter effect: The post-processing effect to add.
-    public func addPostEffect(_ effect: PostEffect) {
+    public func addPostEffect(_ effect: any PostEffect) {
         postProcessPipeline?.add(effect)
     }
 
@@ -362,7 +370,7 @@ public final class MetaphorRenderer: NSObject {
     /// Replace all post-processing effects with the given array.
     ///
     /// - Parameter effects: The new set of post-processing effects.
-    public func setPostEffects(_ effects: [PostEffect]) {
+    public func setPostEffects(_ effects: [any PostEffect]) {
         postProcessPipeline?.set(effects)
     }
 
@@ -499,19 +507,13 @@ public final class MetaphorRenderer: NSObject {
             named: BuiltinShaders.FunctionName.blitVertex,
             from: ShaderLibrary.BuiltinKey.blit
         ) else {
-            throw MetaphorError.shaderCompilationFailed(
-                name: "blitVertex",
-                underlying: NSError(domain: "metaphor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Blit vertex shader function not found"])
-            )
+            throw MetaphorError.shaderNotFound("blitVertex")
         }
         guard let fragmentFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.blitFragment,
             from: ShaderLibrary.BuiltinKey.blit
         ) else {
-            throw MetaphorError.shaderCompilationFailed(
-                name: "blitFragment",
-                underlying: NSError(domain: "metaphor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Blit fragment shader function not found"])
-            )
+            throw MetaphorError.shaderNotFound("blitFragment")
         }
 
         blitPipelineState = try PipelineFactory(device: device)
@@ -572,7 +574,7 @@ public final class MetaphorRenderer: NSObject {
             mipmapped: false
         )
         desc.usage = .shaderRead
-        desc.storageMode = .managed
+        desc.storageMode = .shared
         guard let tex = device.makeTexture(descriptor: desc) else {
             return nil
         }
@@ -712,6 +714,13 @@ public final class MetaphorRenderer: NSObject {
         // Compute phase
         onCompute?(commandBuffer, time)
 
+        // Signal compute→render barrier if compute was used
+        if let event = computeEvent {
+            computeEventValue += 1
+            commandBuffer.encodeSignalEvent(event, value: computeEventValue)
+            commandBuffer.encodeWaitForEvent(event, value: computeEventValue)
+        }
+
         // Draw to offscreen texture
         if let encoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: textureManager.renderPassDescriptor
@@ -764,7 +773,6 @@ public final class MetaphorRenderer: NSObject {
                         destinationSlice: 0, destinationLevel: 0,
                         destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
                     )
-                    blitEncoder.synchronize(resource: staging)
                     blitEncoder.endEncoding()
                 }
 
@@ -807,13 +815,11 @@ public final class MetaphorRenderer: NSObject {
         }
 
         // Publish to Syphon (legacy; will be replaced by SyphonPlugin)
-        #if os(macOS)
         syphonOutput?.publish(
             texture: outputTexture,
             commandBuffer: commandBuffer,
             flipped: true
         )
-        #endif
 
         commandBuffer.commit()
 
@@ -851,13 +857,11 @@ extension MetaphorRenderer: MTKViewDelegate {
         // Skip blit when the window is occluded to prevent currentDrawable from blocking.
         // Always allow the first blit so that noLoop() sketches display their content
         // even when the window's occlusion state hasn't updated yet.
-        #if os(macOS)
         if hasBlittedOnce,
            let window = view.window,
            !window.occlusionState.contains(.visible) {
             return
         }
-        #endif
 
         // Blit to screen (preview display)
         guard let drawable = view.currentDrawable,

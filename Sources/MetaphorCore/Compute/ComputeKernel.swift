@@ -31,12 +31,12 @@ public final class ComputeKernel {
     ///   - device: The Metal device used for compilation.
     ///   - source: The MSL source code string.
     ///   - functionName: The name of the kernel function to look up.
-    /// - Throws: `ComputeKernelError.functionNotFound` if the function name is not found,
+    /// - Throws: `MetaphorError.compute(.functionNotFound)` if the function name is not found,
     ///   or a Metal compilation error.
     public init(device: MTLDevice, source: String, functionName: String) throws {
         let library = try device.makeLibrary(source: source, options: nil)
         guard let function = library.makeFunction(name: functionName) else {
-            throw ComputeKernelError.functionNotFound(functionName)
+            throw MetaphorError.compute(.functionNotFound(functionName))
         }
         self.pipelineState = try device.makeComputePipelineState(function: function)
     }
@@ -51,14 +51,3 @@ public final class ComputeKernel {
     }
 }
 
-/// Represent errors that can occur when creating a compute kernel.
-public enum ComputeKernelError: Error, CustomStringConvertible {
-    case functionNotFound(String)
-
-    public var description: String {
-        switch self {
-        case .functionNotFound(let name):
-            return "Compute function '\(name)' not found in shader source"
-        }
-    }
-}

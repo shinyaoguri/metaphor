@@ -1,65 +1,11 @@
 import Foundation
 
-/// Contains embedded MSL source code for Kawase (dual-filter) blur shaders.
+/// Kawase (dual-filter) blur shader function name constants.
 ///
+/// MSL source code is loaded from bundled .txt resource files at runtime.
 /// Achieves comparable quality to Gaussian blur at significantly higher speed
 /// by using hierarchical down/upsample passes instead of per-pixel kernel loops.
 enum KawaseBlurShaders {
-
-    /// MSL source code for the Kawase downsample and upsample shaders.
-    static let source = """
-    #include <metal_stdlib>
-    using namespace metal;
-
-    struct PPVertexOut {
-        float4 position [[position]];
-        float2 texCoord;
-    };
-
-    // Kawase downsample: 5-tap (center + 4 diagonal) to half resolution
-    fragment float4 metaphor_kawaseDownsample(
-        PPVertexOut in [[stage_in]],
-        texture2d<float> tex [[texture(0)]],
-        constant float2 &texelSize [[buffer(0)]]
-    ) {
-        constexpr sampler s(filter::linear, address::clamp_to_edge);
-        float2 uv = in.texCoord;
-        float2 ht = texelSize * 0.5;
-
-        float4 sum = tex.sample(s, uv) * 4.0;
-        sum += tex.sample(s, uv + float2(-ht.x, -ht.y));
-        sum += tex.sample(s, uv + float2( ht.x, -ht.y));
-        sum += tex.sample(s, uv + float2(-ht.x,  ht.y));
-        sum += tex.sample(s, uv + float2( ht.x,  ht.y));
-
-        return sum / 8.0;
-    }
-
-    // Kawase upsample: 8-tap (3x3 tent, weighted) to double resolution
-    fragment float4 metaphor_kawaseUpsample(
-        PPVertexOut in [[stage_in]],
-        texture2d<float> tex [[texture(0)]],
-        constant float2 &texelSize [[buffer(0)]]
-    ) {
-        constexpr sampler s(filter::linear, address::clamp_to_edge);
-        float2 uv = in.texCoord;
-        float2 t = texelSize;
-
-        float4 sum = float4(0.0);
-        // 4 corners (weight 1)
-        sum += tex.sample(s, uv + float2(-t.x, -t.y));
-        sum += tex.sample(s, uv + float2( t.x, -t.y));
-        sum += tex.sample(s, uv + float2(-t.x,  t.y));
-        sum += tex.sample(s, uv + float2( t.x,  t.y));
-        // 4 edges (weight 2)
-        sum += tex.sample(s, uv + float2(0, -t.y)) * 2.0;
-        sum += tex.sample(s, uv + float2(0,  t.y)) * 2.0;
-        sum += tex.sample(s, uv + float2(-t.x, 0)) * 2.0;
-        sum += tex.sample(s, uv + float2( t.x, 0)) * 2.0;
-
-        return sum / 12.0;
-    }
-    """
 
     /// Kawase blur shader function name constants.
     enum FunctionName {

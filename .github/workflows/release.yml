@@ -1,9 +1,6 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       bump:
@@ -19,7 +16,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  release:
     runs-on: macos-14
     steps:
       - name: Checkout
@@ -32,67 +29,64 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      # --- Syphon build ---
       - name: Get Syphon submodule hash
         id: syphon-hash
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
       - name: Cache Syphon.xcframework
         id: cache-syphon
         uses: actions/cache@v4
         with:
           path: Frameworks/Syphon.xcframework
           key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+
       - name: Build Syphon.xcframework
         if: steps.cache-syphon.outputs.cache-hit != 'true'
-        run: |
-          ./scripts/build-syphon.sh
+        run: ./scripts/build-syphon.sh
 
       - name: Create ZIP and checksum
         run: |
           cd Frameworks
           zip -r Syphon.xcframework.zip Syphon.xcframework
           shasum -a 256 Syphon.xcframework.zip > checksum.txt
-          echo "CHECKSUM=$(cat checksum.txt | awk '{print $1}')" >> $GITHUB_ENV
+          echo "CHECKSUM=$(awk '{print $1}' checksum.txt)" >> $GITHUB_ENV
 
-      - name: Set tag name
+      # --- Version bump ---
+      - name: Compute next version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # Get latest tag
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-            echo "Latest tag: $LATEST_TAG"
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          VERSION=${LATEST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          case "${{ github.event.inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          TAG_NAME="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $TAG_NAME"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
 
-            # Parse version numbers
-            VERSION=${LATEST_TAG#v}
-            MAJOR=$(echo $VERSION | cut -d. -f1)
-            MINOR=$(echo $VERSION | cut -d. -f2)
-            PATCH=$(echo $VERSION | cut -d. -f3)
+      # --- Update Package.swift, commit, THEN tag ---
+      - name: Update Package.swift and commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
+          sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
+          git add Package.swift
+          git diff --cached --quiet || git commit -m "Release ${TAG_NAME}"
+          git push origin main
 
-            # Increment based on bump type
-            case "${{ github.event.inputs.bump }}" in
-              major)
-                MAJOR=$((MAJOR + 1))
-                MINOR=0
-                PATCH=0
-                ;;
-              minor)
-                MINOR=$((MINOR + 1))
-                PATCH=0
-                ;;
-              patch)
-                PATCH=$((PATCH + 1))
-                ;;
-            esac
+      - name: Create tag on updated commit
+        run: |
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
 
-            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-            echo "New tag: $NEW_TAG"
-            echo "TAG_NAME=$NEW_TAG" >> $GITHUB_ENV
-
-            # Create and push the new tag
-            git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-            git push origin "$NEW_TAG"
-          else
-            echo "TAG_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
-          fi
-
+      # --- GitHub Release ---
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -100,22 +94,10 @@ jobs:
           files: |
             Frameworks/Syphon.xcframework.zip
             Frameworks/checksum.txt
+          generate_release_notes: true
           body: |
             ## Syphon.xcframework
 
             Checksum (SHA256): `${{ env.CHECKSUM }}`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update and push Package.swift
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git checkout main
-          git pull origin main
-          sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
-          sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
-          git add Package.swift
-          git diff --cached --quiet || git commit -m "Update Syphon binary URL for ${TAG_NAME}"
-          git push origin main

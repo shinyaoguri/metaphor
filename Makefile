@@ -1,10 +1,14 @@
-.PHONY: setup build clean test syphon docs docs-preview examples examples-check examples-list
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list
 
 # Default target
 all: setup build
 
+# Preflight check - verify required tools and environment
+preflight:
+	@./scripts/preflight-check.sh
+
 # Initial setup - clone submodules and build Syphon
-setup: submodules syphon
+setup: preflight submodules syphon
 
 # Update git submodules
 submodules:
@@ -30,6 +34,34 @@ release:
 test:
 	@echo "Running tests..."
 	swift test
+
+# Run tests with verbose output
+test-verbose:
+	@echo "Running tests (verbose)..."
+	swift test --verbose
+
+# Run tests with code coverage report
+test-coverage:
+	@echo "Running tests with coverage..."
+	swift test --enable-code-coverage
+	@echo ""
+	@echo "Coverage report:"
+	@xcrun llvm-cov report \
+		$$(swift test --enable-code-coverage --show-codecov-path 2>/dev/null || echo ".build/debug/metaphorPackageTests.xctest/Contents/MacOS/metaphorPackageTests") \
+		-instr-profile=.build/debug/codecov/default.profdata \
+		-ignore-filename-regex='Tests/|\.build/' 2>/dev/null || \
+	echo "  (coverage report generation requires a successful test run with --enable-code-coverage)"
+
+# Generate LCOV coverage data for CI integration
+test-lcov:
+	@echo "Running tests with coverage (LCOV)..."
+	swift test --enable-code-coverage
+	@xcrun llvm-cov export \
+		$$(swift test --enable-code-coverage --show-codecov-path 2>/dev/null || echo ".build/debug/metaphorPackageTests.xctest/Contents/MacOS/metaphorPackageTests") \
+		-instr-profile=.build/debug/codecov/default.profdata \
+		-ignore-filename-regex='Tests/|\.build/' \
+		-format=lcov > .build/coverage.lcov 2>/dev/null || true
+	@echo "LCOV written to .build/coverage.lcov"
 
 # Clean build artifacts
 clean:
@@ -104,13 +136,17 @@ docs-preview:
 	xcrun docc preview Sources/MetaphorCore/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs
 
-# Run examples interactively (excludes _Legacy/ by default)
+# Run examples in parallel (excludes _Legacy/ by default)
 examples:
-	@./scripts/run-examples.sh
+	@./scripts/run-examples.sh --parallel 10
 
-# Build-only verification of all examples
+# Build-only verification of all examples (parallel)
 examples-check:
-	@./scripts/run-examples.sh --build-only
+	@./scripts/run-examples.sh --build-only --parallel 10
+
+# Run examples sequentially (interactive, with note prompts)
+examples-seq:
+	@./scripts/run-examples.sh
 
 # List all available examples
 examples-list:
@@ -120,15 +156,20 @@ help:
 	@echo "metaphor Makefile"
 	@echo ""
 	@echo "Usage:"
+	@echo "  make preflight      - Check required tools and environment"
 	@echo "  make setup          - Initialize submodules and build Syphon.xcframework"
 	@echo "  make build          - Build the Swift package"
 	@echo "  make release        - Build release version"
 	@echo "  make test           - Run tests"
+	@echo "  make test-verbose   - Run tests with verbose output"
+	@echo "  make test-coverage  - Run tests and show coverage report"
+	@echo "  make test-lcov     - Run tests and generate LCOV for CI"
 	@echo "  make clean          - Clean build artifacts"
 	@echo "  make check          - Check if setup is complete"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
-	@echo "  make examples       - Run examples interactively"
-	@echo "  make examples-check - Build-only verification of all examples"
+	@echo "  make examples       - Run examples in parallel (10 workers)"
+	@echo "  make examples-seq   - Run examples sequentially (interactive)"
+	@echo "  make examples-check - Build-only verification (parallel)"
 	@echo "  make examples-list  - List all available examples"
 	@echo "  make help           - Show this help"

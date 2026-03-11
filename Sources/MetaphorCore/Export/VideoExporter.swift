@@ -1,5 +1,5 @@
 @preconcurrency import Metal
-import AVFoundation
+@preconcurrency import AVFoundation
 import CoreVideo
 import Foundation
 import os
@@ -72,23 +72,6 @@ public struct VideoExportConfig: Sendable {
         self.format = format
         self.fps = fps
         self.bitrate = bitrate
-    }
-}
-
-/// Represent errors that can occur during video export.
-public enum VideoExporterError: Error, LocalizedError {
-    /// The AVAssetWriter encountered an error during finalization.
-    case writerFailed(Error?)
-    /// Recording was not active when `endRecord()` was called.
-    case notRecording
-
-    public var errorDescription: String? {
-        switch self {
-        case .writerFailed(let underlying):
-            return "Video export failed: \(underlying?.localizedDescription ?? "unknown error")"
-        case .notRecording:
-            return "Video export ended but was not recording"
-        }
     }
 }
 
@@ -191,11 +174,7 @@ public final class VideoExporter {
         writer.add(input)
 
         guard writer.startWriting() else {
-            throw writer.error ?? NSError(
-                domain: "metaphor.VideoExporter",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Failed to start writing"]
-            )
+            throw writer.error ?? MetaphorError.export(.writerFailed("Failed to start writing"))
         }
 
         writer.startSession(atSourceTime: .zero)
@@ -235,7 +214,6 @@ public final class VideoExporter {
                 destinationSlice: 0, destinationLevel: 0,
                 destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
             )
-            blitEncoder.synchronize(resource: stagingTexture)
             blitEncoder.endEncoding()
         }
 
@@ -247,15 +225,19 @@ public final class VideoExporter {
 
         let flag = endingFlag
 
+        // These captures are safe: all access is serialized on writerQueue.
+        nonisolated(unsafe) let capturedInput = input
+        nonisolated(unsafe) let capturedAdaptor = adaptor
+
         commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
                 // Reject frames arriving after endRecord was called
                 guard !flag.value else { return }
                 // Get pixel buffer from pool
-                guard input.isReadyForMoreMediaData else { return }
+                guard capturedInput.isReadyForMoreMediaData else { return }
 
                 var pixelBuffer: CVPixelBuffer?
-                guard let pool = adaptor.pixelBufferPool else { return }
+                guard let pool = capturedAdaptor.pixelBufferPool else { return }
 
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
                 guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return }
@@ -266,7 +248,7 @@ public final class VideoExporter {
                 guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
-                // Read pixels from staging texture (managed, already synchronized)
+                // Read pixels from staging texture (shared, coherent via unified memory)
                 capturedStaging.getBytes(
                     baseAddress,
                     bytesPerRow: bytesPerRow,
@@ -278,7 +260,7 @@ public final class VideoExporter {
                     value: currentFrame,
                     timescale: fps
                 )
-                adaptor.append(buffer, withPresentationTime: presentationTime)
+                capturedAdaptor.append(buffer, withPresentationTime: presentationTime)
             }
         }
     }
@@ -308,11 +290,15 @@ public final class VideoExporter {
             flag.value = true
         }
 
+        // These captures are safe: all access is serialized on writerQueue.
+        nonisolated(unsafe) let capturedInput = input
+        nonisolated(unsafe) let capturedWriter = writer
+
         // Finalize the video file on the writer queue
         writerQueue.async {
-            input.markAsFinished()
+            capturedInput.markAsFinished()
 
-            writer.finishWriting {
+            capturedWriter.finishWriting {
                 Task { @MainActor [weak self] in
                     self?.assetWriter = nil
                     self?.writerInput = nil

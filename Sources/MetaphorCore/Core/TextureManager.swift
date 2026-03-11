@@ -103,13 +103,13 @@ public final class TextureManager {
         self.depthTexture = depthTex
 
         // MSAA textures
-        if sampleCount > 1 {
+        if self.sampleCount > 1 {
             let msaaColorDesc = MTLTextureDescriptor()
             msaaColorDesc.textureType = .type2DMultisample
             msaaColorDesc.pixelFormat = pixelFormat
             msaaColorDesc.width = width
             msaaColorDesc.height = height
-            msaaColorDesc.sampleCount = sampleCount
+            msaaColorDesc.sampleCount = self.sampleCount
             msaaColorDesc.usage = .renderTarget
             msaaColorDesc.storageMode = .private
             guard let msaaColorTex = device.makeTexture(descriptor: msaaColorDesc) else {
@@ -139,11 +139,11 @@ public final class TextureManager {
         rpd.depthAttachment.storeAction = .dontCare
         rpd.depthAttachment.clearDepth = 1.0
 
-        if sampleCount > 1 {
+        if self.sampleCount > 1 {
             // MSAA: render to multisample texture, resolve to colorTexture
             rpd.colorAttachments[0].texture = msaaColorTexture
             rpd.colorAttachments[0].resolveTexture = colorTexture
-            rpd.colorAttachments[0].storeAction = .multisampleResolve
+            rpd.colorAttachments[0].storeAction = .storeAndMultisampleResolve
             rpd.depthAttachment.texture = msaaDepthTexture
         } else {
             // No MSAA: render directly to colorTexture
@@ -202,12 +202,14 @@ public final class TextureManager {
         renderPassDescriptor.colorAttachments[0].loadAction = shouldClear ? .clear : .load
         // Depth should always clear for correct z-testing each frame
 
-        // When preserving the previous frame with MSAA, the MSAA texture must
-        // retain its content. Use .storeAndMultisampleResolve instead of
-        // .multisampleResolve so the MSAA texture is available for .load next frame.
+        // Always use .storeAndMultisampleResolve with MSAA to preserve the
+        // multisample texture content. This ensures .load on a subsequent frame
+        // reads valid data even when the transition from clearing to preserving
+        // happens unexpectedly (the store action is committed before we know
+        // whether the next frame will call background()).
+        // The extra bandwidth cost on Apple Silicon is negligible.
         if sampleCount > 1 {
-            renderPassDescriptor.colorAttachments[0].storeAction =
-                shouldClear ? .multisampleResolve : .storeAndMultisampleResolve
+            renderPassDescriptor.colorAttachments[0].storeAction = .storeAndMultisampleResolve
         }
     }
 

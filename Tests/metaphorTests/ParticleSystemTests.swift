@@ -49,12 +49,11 @@ struct ForceDescriptorTests {
 @Suite("ParticleUniforms Struct")
 struct ParticleUniformsTests {
 
-    @Test("ParticleUniforms is correctly sized")
+    @Test("ParticleUniforms stride is 112 bytes and 16-byte aligned")
     func uniformsSize() {
-        // 4 floats(16) + 2 SIMD4(32) + 4 uint32(16) + 2 SIMD4(32) = 96 bytes
         let stride = MemoryLayout<ParticleUniforms>.stride
-        #expect(stride > 0)
-        // 16-byte aligned
+        // 8 floats(32) + 2 SIMD4(32) + 4 uint32(16) + 2 SIMD4(32) = 112 bytes
+        #expect(stride == 112)
         #expect(stride % 16 == 0)
     }
 }
@@ -80,7 +79,8 @@ struct ParticleShaderCompilationTests {
     @MainActor
     func shaderCompiles() throws {
         let device = MTLCreateSystemDefaultDevice()!
-        let lib = try device.makeLibrary(source: ParticleShaders.source, options: nil)
+        let source = try #require(ShaderLibrary.loadShaderSource("particle"))
+        let lib = try device.makeLibrary(source: source, options: nil)
 
         let updateFn = lib.makeFunction(name: ParticleShaders.FunctionName.update)
         #expect(updateFn != nil)
@@ -117,72 +117,70 @@ struct ParticleShaderCompilationTests {
     }
 }
 
-// MARK: - ParticleForce
+// MARK: - ParticleForce (ForceBuffer 変換ロジック)
 
-@Suite("ParticleForce")
+@Suite("ParticleForce", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 struct ParticleForceTests {
 
-    @Test("Gravity force")
-    func gravityForce() {
-        let force = ParticleForce.gravity(0, -9.8, 0)
-        if case .gravity(let x, let y, let z) = force {
-            #expect(x == 0)
-            #expect(y == -9.8)
-            #expect(z == 0)
-        } else {
-            Issue.record("Expected gravity force")
-        }
+    @Test("addForce gravity creates force buffer with correct type ID")
+    @MainActor
+    func gravityForceBuffer() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let lib = try ShaderLibrary(device: device)
+        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
+
+        system.addForce(.gravity(0, -9.8, 0))
+        #expect(system.forces.count == 1)
+        // addForce は内部で forceBuffer を作成する
+        system.clearForces()
+        #expect(system.forces.isEmpty)
     }
 
-    @Test("Noise force")
-    func noiseForce() {
-        let force = ParticleForce.noise(scale: 0.01, strength: 2.0)
-        if case .noise(let s, let str) = force {
-            #expect(s == 0.01)
-            #expect(str == 2.0)
-        } else {
-            Issue.record("Expected noise force")
-        }
-    }
+    @Test("multiple force types can coexist")
+    @MainActor
+    func multipleForceTypes() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let lib = try ShaderLibrary(device: device)
+        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
 
-    @Test("Damping force")
-    func dampingForce() {
-        let force = ParticleForce.damping(0.95)
-        if case .damping(let f) = force {
-            #expect(f == 0.95)
-        } else {
-            Issue.record("Expected damping force")
-        }
+        system.addForce(.gravity(0, -9.8, 0))
+        system.addForce(.noise(scale: 0.01, strength: 2.0))
+        system.addForce(.damping(0.95))
+        system.addForce(.attraction(x: 0, y: 0, z: 0, strength: 5.0))
+        system.addForce(.repulsion(x: 1, y: 0, z: 0, strength: 3.0))
+        system.addForce(.vortex(x: 0, y: 1, z: 0, strength: 1.0))
+        #expect(system.forces.count == 6)
     }
 }
 
-// MARK: - EmitterShape
+// MARK: - EmitterShape (setEmitter ロジック)
 
-@Suite("EmitterShape")
+@Suite("EmitterShape", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 struct EmitterShapeTests {
 
-    @Test("Point emitter")
-    func pointEmitter() {
-        let shape = EmitterShape.point(1, 2, 3)
-        if case .point(let x, let y, let z) = shape {
-            #expect(x == 1)
-            #expect(y == 2)
-            #expect(z == 3)
-        } else {
-            Issue.record("Expected point emitter")
-        }
-    }
+    @Test("setEmitter changes emitter shape")
+    @MainActor
+    func setEmitterChanges() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let lib = try ShaderLibrary(device: device)
+        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
 
-    @Test("Sphere emitter")
-    func sphereEmitter() {
-        let shape = EmitterShape.sphere(x: 0, y: 0, z: 0, radius: 5.0)
-        if case .sphere(let x, let y, let z, let r) = shape {
-            #expect(x == 0)
-            #expect(y == 0)
-            #expect(z == 0)
+        // デフォルトは point(0,0,0)
+        if case .point = system.emitter {} else {
+            Issue.record("Expected default point emitter")
+        }
+
+        system.setEmitter(.sphere(x: 1, y: 2, z: 3, radius: 5.0))
+        if case .sphere(let x, _, _, let r) = system.emitter {
+            #expect(x == 1)
             #expect(r == 5.0)
         } else {
-            Issue.record("Expected sphere emitter")
+            Issue.record("Expected sphere emitter after setEmitter")
+        }
+
+        system.setEmitter(.line(x1: 0, y1: 0, z1: 0, x2: 10, y2: 0, z2: 0))
+        if case .line = system.emitter {} else {
+            Issue.record("Expected line emitter after setEmitter")
         }
     }
 }

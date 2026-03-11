@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 5.10
 import PackageDescription
 let package = Package(
     name: "Transparency",
@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "Transparency",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "Transparency"
+            path: "Transparency",
+            resources: [.copy("Resources")]
         ),
     ]
 )

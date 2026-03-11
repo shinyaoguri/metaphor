@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 5.10
 import PackageDescription
 let package = Package(
     name: "RequestImage",
@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "RequestImage",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "RequestImage"
+            path: "RequestImage",
+            resources: [.copy("Resources")]
         ),
     ]
 )

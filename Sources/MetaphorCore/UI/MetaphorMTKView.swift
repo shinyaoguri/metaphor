@@ -100,6 +100,24 @@ public class MetaphorMTKView: MTKView {
         rendererRef?.input.handleMouseDragged(x: x, y: y)
     }
 
+    /// Handle middle mouse button press.
+    public override func otherMouseDown(with event: NSEvent) {
+        let (x, y) = textureCoords(from: event)
+        rendererRef?.input.handleMouseDown(x: x, y: y, button: 2)
+    }
+
+    /// Handle middle mouse button release.
+    public override func otherMouseUp(with event: NSEvent) {
+        let (x, y) = textureCoords(from: event)
+        rendererRef?.input.handleMouseUp(x: x, y: y, button: 2)
+    }
+
+    /// Handle mouse movement while the middle button is held.
+    public override func otherMouseDragged(with event: NSEvent) {
+        let (x, y) = textureCoords(from: event)
+        rendererRef?.input.handleMouseDragged(x: x, y: y)
+    }
+
     // MARK: - Scroll Events
 
     /// Handle scroll wheel input for zooming or scrolling.
@@ -115,7 +133,8 @@ public class MetaphorMTKView: MTKView {
     public override func keyDown(with event: NSEvent) {
         rendererRef?.input.handleKeyDown(
             keyCode: event.keyCode,
-            characters: event.characters
+            characters: event.characters,
+            isRepeat: event.isARepeat
         )
     }
 

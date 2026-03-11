@@ -38,5 +38,14 @@ jobs:
           restore-keys: spm-deps-
       - name: Build
         run: swift build
-      - name: Test
-        run: swift test
+      - name: Test with Coverage
+        run: swift test --enable-code-coverage
+      - name: Coverage Report
+        if: always()
+        run: |
+          BIN=$(find .build/debug -name 'metaphorPackageTests' -type f | head -1)
+          if [ -n "$BIN" ] && [ -f .build/debug/codecov/default.profdata ]; then
+            xcrun llvm-cov report "$BIN" \
+              -instr-profile=.build/debug/codecov/default.profdata \
+              -ignore-filename-regex='Tests/|\.build/'
+          fi

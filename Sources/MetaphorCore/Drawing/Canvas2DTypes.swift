@@ -107,10 +107,3 @@ public enum CloseMode: Sendable {
     case close
 }
 
-// MARK: - Errors
-
-/// Represents errors that can occur during Canvas2D operations.
-public enum Canvas2DError: Error {
-    /// Indicates that a Metal buffer could not be created.
-    case bufferCreationFailed
-}

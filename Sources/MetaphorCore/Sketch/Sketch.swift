@@ -1,10 +1,5 @@
-#if os(macOS)
 import AppKit
-#elseif os(iOS)
-import UIKit
-#endif
 @preconcurrency import Metal
-import ObjectiveC
 
 /// Define a sketch by conforming to this protocol.
 ///
@@ -56,6 +51,9 @@ public protocol Sketch: AnyObject {
     /// Respond to a mouse scroll event.
     func mouseScrolled()
 
+    /// Respond to a mouse click (press and release without dragging).
+    func mouseClicked()
+
     /// Respond to a key press.
     func keyPressed()
 
@@ -63,26 +61,32 @@ public protocol Sketch: AnyObject {
     func keyReleased()
 }
 
-// MARK: - Per-Instance Context (Associated Object)
+// MARK: - Per-Instance Context (Pure Swift Storage)
 
-// Address used as the key for objc_getAssociatedObject/objc_setAssociatedObject.
-// The value is never mutated at runtime; only its pointer is used.
-private nonisolated(unsafe) var sketchContextKey: UInt8 = 0
+/// Storage for Sketch → SketchContext mapping (replaces objc_getAssociatedObject).
+@MainActor
+private var _sketchContextStorage: [ObjectIdentifier: SketchContext] = [:]
 
 extension Sketch {
     /// The sketch context associated with this instance.
     /// Set by SketchRunner during setup.
     @MainActor
     internal var _context: SketchContext? {
-        get { objc_getAssociatedObject(self, &sketchContextKey) as? SketchContext }
-        set { objc_setAssociatedObject(self, &sketchContextKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+        get { _sketchContextStorage[ObjectIdentifier(self)] }
+        set {
+            if let newValue {
+                _sketchContextStorage[ObjectIdentifier(self)] = newValue
+            } else {
+                _sketchContextStorage.removeValue(forKey: ObjectIdentifier(self))
+            }
+        }
     }
 
-    /// Retrieve the active context, throwing an error if called outside `setup()` or `draw()`.
+    /// The active context. Crashes with a clear message if called outside setup()/draw().
     @MainActor
-    internal func activeContext(function: String = #function) throws -> SketchContext {
+    public var context: SketchContext {
         guard let ctx = _context else {
-            throw MetaphorError.contextUnavailable(method: function)
+            fatalError("[metaphor] Drawing methods cannot be called outside setup()/draw(). Ensure SketchRunner has initialized the context.")
         }
         return ctx
     }
@@ -100,6 +104,7 @@ extension Sketch {
     public func mouseMoved() {}
     public func mouseDragged() {}
     public func mouseScrolled() {}
+    public func mouseClicked() {}
     public func keyPressed() {}
     public func keyReleased() {}
 }

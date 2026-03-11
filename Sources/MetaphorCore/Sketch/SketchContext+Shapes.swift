@@ -288,4 +288,22 @@ extension SketchContext {
     public func endShape(_ close: CloseMode = .open) {
         canvas.endShape(close)
     }
+
+    // MARK: - Clipping
+
+    /// Begin clipping subsequent draws to the specified rectangle.
+    ///
+    /// - Parameters:
+    ///   - x: The x-coordinate of the clip region.
+    ///   - y: The y-coordinate of the clip region.
+    ///   - w: The width of the clip region.
+    ///   - h: The height of the clip region.
+    public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.beginClip(x, y, w, h)
+    }
+
+    /// End the current clip region and restore the previous one.
+    public func endClip() {
+        canvas.endClip()
+    }
 }

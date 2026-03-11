@@ -86,86 +86,60 @@ extension SketchContext {
         canvas.background(v1, v2, v3, a)
     }
 
-    // MARK: - Style (2D + 3D shared)
+    // MARK: - Style (2D + 3D shared via CanvasStyle protocol)
+
+    /// Both canvases as an array for shared style operations.
+    private var canvases: [any CanvasStyle] { [canvas, canvas3D] }
 
     /// Sets the fill color for both 2D and 3D canvases.
     /// - Parameter color: The fill color.
     public func fill(_ color: Color) {
-        canvas.fill(color)
-        canvas3D.fill(color)
+        canvases.forEach { $0.fill(color) }
     }
 
     /// Sets the fill color interpreted according to the current color mode for both 2D and 3D canvases.
-    /// - Parameters:
-    ///   - v1: The first color component.
-    ///   - v2: The second color component.
-    ///   - v3: The third color component.
-    ///   - a: The optional alpha value.
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
-        canvas.fill(v1, v2, v3, a)
-        canvas3D.fill(v1, v2, v3, a)
+        canvases.forEach { $0.fill(v1, v2, v3, a) }
     }
 
     /// Sets the fill color using a grayscale value for both 2D and 3D canvases.
-    /// - Parameter gray: The grayscale intensity.
     public func fill(_ gray: Float) {
-        canvas.fill(gray)
-        canvas3D.fill(gray)
+        canvases.forEach { $0.fill(gray) }
     }
 
     /// Sets the fill color using a grayscale value with alpha for both 2D and 3D canvases.
-    /// - Parameters:
-    ///   - gray: The grayscale intensity.
-    ///   - alpha: The alpha value.
     public func fill(_ gray: Float, _ alpha: Float) {
-        canvas.fill(gray, alpha)
-        canvas3D.fill(gray, alpha)
+        canvases.forEach { $0.fill(gray, alpha) }
     }
 
     /// Disables fill for both 2D and 3D canvases.
     public func noFill() {
-        canvas.noFill()
-        canvas3D.noFill()
+        canvases.forEach { $0.noFill() }
     }
 
     /// Sets the stroke color for both 2D and 3D canvases.
-    /// - Parameter color: The stroke color.
     public func stroke(_ color: Color) {
-        canvas.stroke(color)
-        canvas3D.stroke(color)
+        canvases.forEach { $0.stroke(color) }
     }
 
     /// Sets the stroke color interpreted according to the current color mode for both 2D and 3D canvases.
-    /// - Parameters:
-    ///   - v1: The first color component.
-    ///   - v2: The second color component.
-    ///   - v3: The third color component.
-    ///   - a: The optional alpha value.
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
-        canvas.stroke(v1, v2, v3, a)
-        canvas3D.stroke(v1, v2, v3, a)
+        canvases.forEach { $0.stroke(v1, v2, v3, a) }
     }
 
     /// Sets the stroke color using a grayscale value for both 2D and 3D canvases.
-    /// - Parameter gray: The grayscale intensity.
     public func stroke(_ gray: Float) {
-        canvas.stroke(gray)
-        canvas3D.stroke(gray)
+        canvases.forEach { $0.stroke(gray) }
     }
 
     /// Sets the stroke color using a grayscale value with alpha for both 2D and 3D canvases.
-    /// - Parameters:
-    ///   - gray: The grayscale intensity.
-    ///   - alpha: The alpha value.
     public func stroke(_ gray: Float, _ alpha: Float) {
-        canvas.stroke(gray, alpha)
-        canvas3D.stroke(gray, alpha)
+        canvases.forEach { $0.stroke(gray, alpha) }
     }
 
     /// Disables stroke for both 2D and 3D canvases.
     public func noStroke() {
-        canvas.noStroke()
-        canvas3D.noStroke()
+        canvases.forEach { $0.noStroke() }
     }
 
     /// Sets the stroke weight (2D only).

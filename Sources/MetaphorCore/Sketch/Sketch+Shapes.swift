@@ -6,22 +6,22 @@ extension Sketch {
 
     /// Save the current transform and style state onto the stack.
     public func push() {
-        _context?.push()
+        context.push()
     }
 
     /// Restore the most recently saved transform and style state from the stack.
     public func pop() {
-        _context?.pop()
+        context.pop()
     }
 
     /// Save the current style state (fill, stroke, etc.) onto the stack.
     public func pushStyle() {
-        _context?.pushStyle()
+        context.pushStyle()
     }
 
     /// Restore the most recently saved style state from the stack.
     public func popStyle() {
-        _context?.popStyle()
+        context.popStyle()
     }
 
     /// Apply a 2D translation to the current transform.
@@ -30,14 +30,14 @@ extension Sketch {
     ///   - x: The horizontal translation amount.
     ///   - y: The vertical translation amount.
     public func translate(_ x: Float, _ y: Float) {
-        _context?.translate(x, y)
+        context.translate(x, y)
     }
 
     /// Apply a 2D rotation to the current transform.
     ///
     /// - Parameter angle: The rotation angle in radians.
     public func rotate(_ angle: Float) {
-        _context?.rotate(angle)
+        context.rotate(angle)
     }
 
     /// Apply a non-uniform 2D scale to the current transform.
@@ -46,14 +46,14 @@ extension Sketch {
     ///   - sx: The horizontal scale factor.
     ///   - sy: The vertical scale factor.
     public func scale(_ sx: Float, _ sy: Float) {
-        _context?.scale(sx, sy)
+        context.scale(sx, sy)
     }
 
     /// Apply a uniform 2D scale to the current transform.
     ///
     /// - Parameter s: The uniform scale factor.
     public func scale(_ s: Float) {
-        _context?.scale(s)
+        context.scale(s)
     }
 
     // MARK: 2D Shapes
@@ -66,7 +66,7 @@ extension Sketch {
     ///   - w: The width.
     ///   - h: The height.
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        _context?.rect(x, y, w, h)
+        context.rect(x, y, w, h)
     }
 
     /// Draw a rounded rectangle with a uniform corner radius.
@@ -78,7 +78,7 @@ extension Sketch {
     ///   - h: The height.
     ///   - r: The corner radius.
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
-        _context?.rect(x, y, w, h, r)
+        context.rect(x, y, w, h, r)
     }
 
     /// Draw a rounded rectangle with individual corner radii.
@@ -96,7 +96,7 @@ extension Sketch {
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
     ) {
-        _context?.rect(x, y, w, h, tl, tr, br, bl)
+        context.rect(x, y, w, h, tl, tr, br, bl)
     }
 
     /// Draw a linear gradient rectangle.
@@ -113,7 +113,7 @@ extension Sketch {
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
     ) {
-        _context?.linearGradient(x, y, w, h, c1, c2, axis: axis)
+        context.linearGradient(x, y, w, h, c1, c2, axis: axis)
     }
 
     /// Draw a radial gradient circle.
@@ -130,7 +130,7 @@ extension Sketch {
         _ innerColor: Color, _ outerColor: Color,
         segments: Int = 36
     ) {
-        _context?.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
+        context.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
     }
 
     /// Draw an ellipse.
@@ -141,7 +141,7 @@ extension Sketch {
     ///   - w: The width (horizontal diameter).
     ///   - h: The height (vertical diameter).
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        _context?.ellipse(x, y, w, h)
+        context.ellipse(x, y, w, h)
     }
 
     /// Draw a circle.
@@ -151,7 +151,7 @@ extension Sketch {
     ///   - y: The center y-coordinate.
     ///   - diameter: The diameter of the circle.
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) {
-        _context?.circle(x, y, diameter)
+        context.circle(x, y, diameter)
     }
 
     /// Draw a square.
@@ -161,7 +161,7 @@ extension Sketch {
     ///   - y: The y-coordinate.
     ///   - size: The side length.
     public func square(_ x: Float, _ y: Float, _ size: Float) {
-        _context?.square(x, y, size)
+        context.square(x, y, size)
     }
 
     /// Draw a quadrilateral defined by four corner points.
@@ -181,7 +181,7 @@ extension Sketch {
         _ x3: Float, _ y3: Float,
         _ x4: Float, _ y4: Float
     ) {
-        _context?.quad(x1, y1, x2, y2, x3, y3, x4, y4)
+        context.quad(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
     /// Draw a line between two points.
@@ -192,7 +192,7 @@ extension Sketch {
     ///   - x2: The x-coordinate of the end point.
     ///   - y2: The y-coordinate of the end point.
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
-        _context?.line(x1, y1, x2, y2)
+        context.line(x1, y1, x2, y2)
     }
 
     /// Draw a triangle defined by three corner points.
@@ -209,21 +209,21 @@ extension Sketch {
         _ x2: Float, _ y2: Float,
         _ x3: Float, _ y3: Float
     ) {
-        _context?.triangle(x1, y1, x2, y2, x3, y3)
+        context.triangle(x1, y1, x2, y2, x3, y3)
     }
 
     /// Draw a polygon from an array of coordinate tuples.
     ///
     /// - Parameter points: The polygon vertices as `(x, y)` tuples.
     public func polygon(_ points: [(Float, Float)]) {
-        _context?.polygon(points)
+        context.polygon(points)
     }
 
     /// Draw a polygon from an array of ``Vec2`` points.
     ///
     /// - Parameter points: The polygon vertices.
     public func polygon(_ points: [Vec2]) {
-        _context?.polygon(points)
+        context.polygon(points)
     }
 
     /// Draw an arc.
@@ -242,7 +242,7 @@ extension Sketch {
         _ startAngle: Float, _ stopAngle: Float,
         _ mode: ArcMode = .open
     ) {
-        _context?.arc(x, y, w, h, startAngle, stopAngle, mode)
+        context.arc(x, y, w, h, startAngle, stopAngle, mode)
     }
 
     /// Draw a cubic Bezier curve.
@@ -262,7 +262,7 @@ extension Sketch {
         _ cx2: Float, _ cy2: Float,
         _ x2: Float, _ y2: Float
     ) {
-        _context?.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2)
+        context.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2)
     }
 
     /// Draw a single point.
@@ -271,7 +271,7 @@ extension Sketch {
     ///   - x: The x-coordinate.
     ///   - y: The y-coordinate.
     public func point(_ x: Float, _ y: Float) {
-        _context?.point(x, y)
+        context.point(x, y)
     }
 
     // MARK: Custom Shapes (beginShape / endShape)
@@ -280,7 +280,7 @@ extension Sketch {
     ///
     /// - Parameter mode: The shape mode (e.g., polygon, triangles, lines).
     public func beginShape(_ mode: ShapeMode = .polygon) {
-        _context?.beginShape(mode)
+        context.beginShape(mode)
     }
 
     /// Add a 2D vertex to the current shape.
@@ -289,7 +289,7 @@ extension Sketch {
     ///   - x: The x-coordinate.
     ///   - y: The y-coordinate.
     public func vertex(_ x: Float, _ y: Float) {
-        _context?.vertex(x, y)
+        context.vertex(x, y)
     }
 
     /// Add a 2D vertex with a per-vertex color to the current shape.
@@ -299,7 +299,7 @@ extension Sketch {
     ///   - y: The y-coordinate.
     ///   - color: The vertex color.
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
-        _context?.vertex(x, y, color)
+        context.vertex(x, y, color)
     }
 
     /// Add a 2D vertex with texture coordinates to the current shape.
@@ -310,7 +310,7 @@ extension Sketch {
     ///   - u: The horizontal texture coordinate.
     ///   - v: The vertical texture coordinate.
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
-        _context?.vertex(x, y, u, v)
+        context.vertex(x, y, u, v)
     }
 
     /// Add a cubic Bezier vertex to the current shape.
@@ -327,7 +327,7 @@ extension Sketch {
         _ cx2: Float, _ cy2: Float,
         _ x: Float, _ y: Float
     ) {
-        _context?.bezierVertex(cx1, cy1, cx2, cy2, x, y)
+        context.bezierVertex(cx1, cy1, cx2, cy2, x, y)
     }
 
     /// Add a Catmull-Rom spline vertex to the current shape.
@@ -336,31 +336,31 @@ extension Sketch {
     ///   - x: The x-coordinate.
     ///   - y: The y-coordinate.
     public func curveVertex(_ x: Float, _ y: Float) {
-        _context?.curveVertex(x, y)
+        context.curveVertex(x, y)
     }
 
     /// Set the number of segments used for curve interpolation.
     ///
     /// - Parameter n: The curve detail level.
     public func curveDetail(_ n: Int) {
-        _context?.curveDetail(n)
+        context.curveDetail(n)
     }
 
     /// Set the tightness of Catmull-Rom spline curves.
     ///
     /// - Parameter t: The tightness value (0 = default, 1 = straight lines).
     public func curveTightness(_ t: Float) {
-        _context?.curveTightness(t)
+        context.curveTightness(t)
     }
 
     /// Begin defining a contour (hole) within the current shape.
     public func beginContour() {
-        _context?.beginContour()
+        context.beginContour()
     }
 
     /// End the current contour definition.
     public func endContour() {
-        _context?.endContour()
+        context.endContour()
     }
 
     /// Draw a Catmull-Rom spline curve through four points.
@@ -380,13 +380,31 @@ extension Sketch {
         _ x3: Float, _ y3: Float,
         _ x4: Float, _ y4: Float
     ) {
-        _context?.curve(x1, y1, x2, y2, x3, y3, x4, y4)
+        context.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
     /// Finish recording the current shape and draw it.
     ///
     /// - Parameter close: Whether to close the shape by connecting the last vertex to the first.
     public func endShape(_ close: CloseMode = .open) {
-        _context?.endShape(close)
+        context.endShape(close)
+    }
+
+    // MARK: - Clipping
+
+    /// Begin clipping subsequent draws to the specified rectangle.
+    ///
+    /// - Parameters:
+    ///   - x: The x-coordinate of the clip region.
+    ///   - y: The y-coordinate of the clip region.
+    ///   - w: The width of the clip region.
+    ///   - h: The height of the clip region.
+    public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        context.beginClip(x, y, w, h)
+    }
+
+    /// End the current clip region and restore the previous one.
+    public func endClip() {
+        context.endClip()
     }
 }

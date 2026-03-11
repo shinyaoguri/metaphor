@@ -1,168 +1,185 @@
-import XCTest
+import Testing
 @testable import metaphor
 @testable import MetaphorCore
 
-final class EarClipTests: XCTestCase {
+// MARK: - Basic Triangulation
 
-    // MARK: - Basic Triangulation
+@Suite("EarClip Triangulation")
+struct EarClipTriangulationTests {
 
-    func testTriangle() {
-        // 3頂点 → 1三角形
+    @Test("triangle produces 3 indices")
+    func triangle() {
         let polygon: [(Float, Float)] = [(0, 0), (1, 0), (0.5, 1)]
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, 3, "三角形は3インデックス")
-        // インデックスが有効な範囲内か
+        #expect(indices.count == 3)
         for idx in indices {
-            XCTAssertTrue(idx >= 0 && idx < polygon.count)
+            #expect(idx >= 0 && idx < polygon.count)
         }
     }
 
-    func testConvexQuad() {
-        // 凸四角形 → 2三角形
+    @Test("convex quad produces 6 indices")
+    func convexQuad() {
         let polygon: [(Float, Float)] = [(0, 0), (1, 0), (1, 1), (0, 1)]
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, 6, "四角形は6インデックス（2三角形）")
+        #expect(indices.count == 6)
     }
 
-    func testConvexPentagon() {
-        // 凸五角形 → 3三角形
+    @Test("convex pentagon produces 9 indices")
+    func convexPentagon() {
         let polygon: [(Float, Float)] = [
             (0.5, 0), (1, 0.4), (0.8, 1), (0.2, 1), (0, 0.4)
         ]
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, 9, "五角形は9インデックス（3三角形）")
+        #expect(indices.count == 9)
     }
+}
 
-    // MARK: - Concave Polygon
+// MARK: - Concave Polygon
 
-    func testConcaveArrow() {
-        // 矢印型の凹多角形（L字型）
+@Suite("EarClip Concave")
+struct EarClipConcaveTests {
+
+    @Test("concave arrow (L-shape) produces 12 indices")
+    func concaveArrow() {
         let polygon: [(Float, Float)] = [
             (0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)
         ]
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, 12, "6頂点は12インデックス（4三角形）")
-        // すべてのインデックスが有効
+        #expect(indices.count == 12)
         for idx in indices {
-            XCTAssertTrue(idx >= 0 && idx < polygon.count)
+            #expect(idx >= 0 && idx < polygon.count)
         }
     }
 
-    func testConcaveStar() {
-        // 凹の星型（8頂点）
+    @Test("concave star (8 vertices) produces 18 indices")
+    func concaveStar() {
         let polygon: [(Float, Float)] = [
             (0.5, 0), (0.6, 0.35), (1, 0.35),
             (0.7, 0.55), (0.8, 0.9),
             (0.5, 0.7), (0.2, 0.9), (0.3, 0.55)
         ]
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, 18, "8頂点は18インデックス（6三角形）")
+        #expect(indices.count == 18)
     }
+}
 
-    // MARK: - Winding Order
+// MARK: - Winding Order
 
-    func testClockwiseInput() {
-        // CW入力は自動的にCCWに正規化される
+@Suite("EarClip Winding")
+struct EarClipWindingTests {
+
+    @Test("CW input is handled correctly")
+    func clockwiseInput() {
         let ccw: [(Float, Float)] = [(0, 0), (1, 0), (1, 1), (0, 1)]
         let cw: [(Float, Float)] = [(0, 0), (0, 1), (1, 1), (1, 0)]
-
         let indicesCCW = EarClipTriangulator.triangulate(ccw)
         let indicesCW = EarClipTriangulator.triangulate(cw)
-
-        // 両方とも有効な三角形分割を返す
-        XCTAssertEqual(indicesCCW.count, 6)
-        XCTAssertEqual(indicesCW.count, 6)
+        #expect(indicesCCW.count == 6)
+        #expect(indicesCW.count == 6)
     }
+}
 
-    // MARK: - Edge Cases
+// MARK: - Edge Cases
 
-    func testTwoVertices() {
+@Suite("EarClip Edge Cases")
+struct EarClipEdgeCaseTests {
+
+    @Test("two vertices returns empty")
+    func twoVertices() {
         let polygon: [(Float, Float)] = [(0, 0), (1, 1)]
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, 0, "2頂点以下は空")
+        #expect(indices.count == 0)
     }
 
-    func testEmptyPolygon() {
+    @Test("empty polygon returns empty")
+    func emptyPolygon() {
         let indices = EarClipTriangulator.triangulate([])
-        XCTAssertEqual(indices.count, 0, "空多角形は空")
+        #expect(indices.count == 0)
     }
 
-    func testCollinearPoints() {
-        // 同一直線上の3点
+    @Test("collinear points does not crash")
+    func collinearPoints() {
         let polygon: [(Float, Float)] = [(0, 0), (1, 0), (2, 0)]
         let indices = EarClipTriangulator.triangulate(polygon)
-        // 退化三角形を生成する場合もあるが、クラッシュしない
-        XCTAssertTrue(indices.count >= 0)
+        #expect(indices.count >= 0)
     }
+}
 
-    // MARK: - Holes
+// MARK: - Holes
 
-    func testHoleInSquare() {
+@Suite("EarClip Holes")
+struct EarClipHoleTests {
+
+    @Test("hole in square")
+    func holeInSquare() {
         let outer: [(Float, Float)] = [(0, 0), (10, 0), (10, 10), (0, 10)]
         let hole: [(Float, Float)] = [(3, 3), (7, 3), (7, 7), (3, 7)]
         let (merged, indices) = EarClipTriangulator.triangulateWithHoles(
             outer: outer, holes: [hole]
         )
-        // 統合後の頂点数 = 4(外周) + 4(穴) + 2(ブリッジ重複)
-        XCTAssertGreaterThan(merged.count, 8)
-        // 三角形が生成される
-        XCTAssertGreaterThan(indices.count, 0)
-        XCTAssertTrue(indices.count % 3 == 0, "インデックスは3の倍数")
+        #expect(merged.count > 8)
+        #expect(indices.count > 0)
+        #expect(indices.count % 3 == 0)
     }
 
-    func testMultipleHoles() {
+    @Test("multiple holes")
+    func multipleHoles() {
         let outer: [(Float, Float)] = [(0, 0), (20, 0), (20, 10), (0, 10)]
         let hole1: [(Float, Float)] = [(2, 2), (5, 2), (5, 5), (2, 5)]
         let hole2: [(Float, Float)] = [(8, 2), (11, 2), (11, 5), (8, 5)]
-
         let (merged, indices) = EarClipTriangulator.triangulateWithHoles(
             outer: outer, holes: [hole1, hole2]
         )
-        XCTAssertGreaterThan(merged.count, 12)
-        XCTAssertGreaterThan(indices.count, 0)
-        XCTAssertTrue(indices.count % 3 == 0)
+        #expect(merged.count > 12)
+        #expect(indices.count > 0)
+        #expect(indices.count % 3 == 0)
     }
 
-    func testNoHoles() {
+    @Test("no holes")
+    func noHoles() {
         let outer: [(Float, Float)] = [(0, 0), (1, 0), (1, 1), (0, 1)]
         let (merged, indices) = EarClipTriangulator.triangulateWithHoles(
             outer: outer, holes: []
         )
-        XCTAssertEqual(merged.count, 4)
-        XCTAssertEqual(indices.count, 6)
+        #expect(merged.count == 4)
+        #expect(indices.count == 6)
     }
+}
 
-    // MARK: - Helper Functions
+// MARK: - Helper Functions
 
-    func testSignedArea() {
-        // CCW四角形は正の面積
+@Suite("EarClip Helpers")
+struct EarClipHelperTests {
+
+    @Test("signedArea CCW positive, CW negative")
+    func signedArea() {
         let ccw: [(Float, Float)] = [(0, 0), (1, 0), (1, 1), (0, 1)]
         let areaCCW = EarClipTriangulator.signedArea(ccw)
-        XCTAssertGreaterThan(areaCCW, 0, "CCW多角形は正の面積")
+        #expect(areaCCW > 0)
 
-        // CW四角形は負の面積
         let cw: [(Float, Float)] = [(0, 0), (0, 1), (1, 1), (1, 0)]
         let areaCW = EarClipTriangulator.signedArea(cw)
-        XCTAssertLessThan(areaCW, 0, "CW多角形は負の面積")
+        #expect(areaCW < 0)
     }
 
-    func testPointInTriangle() {
+    @Test("pointInTriangle inside and outside")
+    func pointInTriangle() {
         let a: (Float, Float) = (0, 0)
         let b: (Float, Float) = (4, 0)
         let c: (Float, Float) = (2, 3)
-
-        // 内部の点
-        XCTAssertTrue(EarClipTriangulator.pointInTriangle((2, 1), a, b, c))
-        // 外部の点
-        XCTAssertFalse(EarClipTriangulator.pointInTriangle((5, 5), a, b, c))
-        // 明らかに外側
-        XCTAssertFalse(EarClipTriangulator.pointInTriangle((-1, -1), a, b, c))
+        #expect(EarClipTriangulator.pointInTriangle((2, 1), a, b, c) == true)
+        #expect(EarClipTriangulator.pointInTriangle((5, 5), a, b, c) == false)
+        #expect(EarClipTriangulator.pointInTriangle((-1, -1), a, b, c) == false)
     }
+}
 
-    // MARK: - Stress Test
+// MARK: - Stress Test
 
-    func testLargerPolygon() {
-        // 20頂点の円形多角形
+@Suite("EarClip Stress")
+struct EarClipStressTests {
+
+    @Test("20-vertex circular polygon")
+    func largerPolygon() {
         var polygon: [(Float, Float)] = []
         let n = 20
         for i in 0..<n {
@@ -170,6 +187,6 @@ final class EarClipTests: XCTestCase {
             polygon.append((cos(angle), sin(angle)))
         }
         let indices = EarClipTriangulator.triangulate(polygon)
-        XCTAssertEqual(indices.count, (n - 2) * 3, "\(n)頂点は\((n - 2) * 3)インデックス")
+        #expect(indices.count == (n - 2) * 3)
     }
 }

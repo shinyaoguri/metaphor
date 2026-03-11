@@ -1,5 +1,3 @@
-#if os(macOS)
-
 extension Sketch {
     /// Create a secondary window for multi-window output.
     ///
@@ -31,13 +29,11 @@ extension Sketch {
     /// - Parameter config: The window configuration.
     /// - Returns: A new ``SketchWindow``, or `nil` if creation fails.
     public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
-        _context?.createWindow(config)
+        context.createWindow(config)
     }
 
     /// Close all secondary windows created from this sketch.
     public func closeAllWindows() {
-        _context?.closeAllWindows()
+        context.closeAllWindows()
     }
 }
-
-#endif
