@@ -1,12 +1,18 @@
 # metaphor
 
+[![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
+[![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
+[![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
+[![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
+[![License MIT](https://img.shields.io/github/license/shinyaoguri/metaphor)](LICENSE)
+
 Swift + Metal creative coding library inspired by Processing / p5.js / openFrameworks.
 
 ## Requirements
 
 - macOS 14.0+
 - Xcode 15.0+
-- Swift 6.0+
+- Swift 5.10+
 
 ---
 
@@ -18,7 +24,7 @@ Add metaphor to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.1"),
 ]
 ```
 
@@ -36,7 +42,7 @@ swift package init --type executable --name MyMetalApp
 Edit `Package.swift`:
 
 ```swift
-// swift-tools-version: 6.0
+// swift-tools-version: 5.10
 
 import PackageDescription
 
@@ -44,7 +50,7 @@ let package = Package(
     name: "MyMetalApp",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.0"),
+        .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.1"),
     ],
     targets: [
         .executableTarget(
