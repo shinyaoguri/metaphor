@@ -128,6 +128,40 @@ extension Sketch {
     }
 }
 
+// MARK: - PluginFactory
+
+/// A factory that creates a plugin instance for use in ``SketchConfig``.
+///
+/// Because ``SketchConfig`` is `Sendable` and plugins are reference types,
+/// plugin creation is deferred via a factory closure.
+///
+/// ```swift
+/// var config: SketchConfig {
+///     SketchConfig(
+///         title: "My Sketch",
+///         plugins: [
+///             PluginFactory { MyPlugin() },
+///             PluginFactory { NDIOutput(port: 5960) },
+///         ]
+///     )
+/// }
+/// ```
+public struct PluginFactory: @unchecked Sendable {
+    private let _create: @MainActor () -> MetaphorPlugin
+
+    /// Create a factory from a closure that produces a plugin.
+    /// - Parameter create: A closure that returns a new plugin instance.
+    public init(_ create: @MainActor @escaping () -> MetaphorPlugin) {
+        self._create = create
+    }
+
+    /// Instantiate the plugin.
+    @MainActor
+    public func create() -> MetaphorPlugin {
+        _create()
+    }
+}
+
 // MARK: - SketchConfig
 
 /// Configure the sketch window, canvas, and rendering settings.
@@ -161,6 +195,16 @@ public struct SketchConfig: Sendable {
     /// stall when the window is occluded.
     public var renderLoopMode: RenderLoopMode
 
+    /// Plugin factories to register during sketch setup.
+    ///
+    /// Plugins are instantiated and attached to the sketch before ``Sketch/setup()`` is called.
+    /// ```swift
+    /// var config: SketchConfig {
+    ///     SketchConfig(plugins: [PluginFactory { MyPlugin() }])
+    /// }
+    /// ```
+    public var plugins: [PluginFactory]
+
     /// Create a new sketch configuration.
     ///
     /// - Parameters:
@@ -180,7 +224,8 @@ public struct SketchConfig: Sendable {
         syphonName: String? = nil,
         windowScale: Float = 0.5,
         fullScreen: Bool = false,
-        renderLoopMode: RenderLoopMode = .displayLink
+        renderLoopMode: RenderLoopMode = .displayLink,
+        plugins: [PluginFactory] = []
     ) {
         self.width = width
         self.height = height
@@ -190,5 +235,6 @@ public struct SketchConfig: Sendable {
         self.windowScale = windowScale
         self.fullScreen = fullScreen
         self.renderLoopMode = renderLoopMode
+        self.plugins = plugins
     }
 }

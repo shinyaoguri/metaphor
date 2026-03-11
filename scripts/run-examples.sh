@@ -172,10 +172,21 @@ spinner_stop() {
     fi
 }
 
+# ─── Terminal protection ─────────────────────────────────────
+
+# Reset terminal to sane state (fixes Kitty keyboard protocol, raw mode, etc.)
+reset_terminal() {
+    # Disable Kitty keyboard protocol (CSI > u sequences)
+    printf '\x1b[<u' 2>/dev/null
+    # Reset terminal to sane mode
+    stty sane 2>/dev/null
+}
+
 # ─── Signal handlers ─────────────────────────────────────────
 
 handle_sigint() {
     spinner_stop
+    reset_terminal
     local now
     now=$(date +%s)
     if (( now - LAST_SIGINT_TIME <= 2 )); then
@@ -288,8 +299,8 @@ run_example() {
 
     CHILD_PID=0
 
-    # Restore terminal settings (GUI apps may leave terminal in raw mode)
-    stty sane 2>/dev/null
+    # Restore terminal settings (GUI apps may leave terminal in raw mode / Kitty protocol)
+    reset_terminal
 
     if [[ "$ABORT" -eq 1 ]]; then
         return 2
@@ -367,7 +378,9 @@ parallel_job() {
     fi
 
     # Run (GUI app — user closes window to finish)
-    (cd "$dir" && exec swift run -c release) > "$log_file" 2>&1
+    # Detach from controlling terminal to prevent GUI apps from
+    # enabling Kitty keyboard protocol or altering terminal settings
+    (cd "$dir" && exec swift run -c release) > "$log_file" 2>&1 < /dev/null
     local run_rc=$?
 
     local end_ts
@@ -583,10 +596,18 @@ run_parallel() {
     parallel_show_progress "$total"
 
     # Main loop: poll for finished jobs, start new ones
+    local tick=0
     while [[ $PARALLEL_COMPLETED -lt $total ]]; do
         [[ "$ABORT" -eq 1 ]] && break
         sleep 0.2
         parallel_check_slots "$total"
+
+        # Periodically reset terminal to prevent GUI apps from corrupting it
+        # (e.g. Kitty keyboard protocol, raw mode)
+        (( tick++ ))
+        if (( tick % 10 == 0 )); then
+            reset_terminal
+        fi
 
         # Fill any freed slots
         while [[ $next -lt $total ]] && [[ "$ABORT" -ne 1 ]]; do
@@ -619,8 +640,8 @@ run_parallel() {
         done
     fi
 
-    # Restore terminal
-    stty sane 2>/dev/null
+    # Restore terminal (Kitty keyboard protocol + stty)
+    reset_terminal
 
     # Cleanup temp dir
     [[ -n "$PARALLEL_TMPDIR" ]] && rm -rf "$PARALLEL_TMPDIR"

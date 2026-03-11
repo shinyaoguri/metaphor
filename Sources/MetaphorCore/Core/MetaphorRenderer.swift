@@ -274,9 +274,23 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - Plugin Management
 
-    /// Register a plugin with this renderer.
+    /// Register a plugin with this renderer and a sketch reference.
     ///
-    /// The plugin's ``MetaphorPlugin/onAttach(renderer:)`` method is called immediately.
+    /// The plugin's ``MetaphorPlugin/onAttach(sketch:)`` method is called immediately,
+    /// giving the plugin access to the full sketch (renderer, input, canvas, etc.).
+    /// - Parameters:
+    ///   - plugin: The plugin to register.
+    ///   - sketch: The sketch this plugin is attached to.
+    public func addPlugin(_ plugin: MetaphorPlugin, sketch: any Sketch) {
+        plugins.append(plugin)
+        plugin.onAttach(sketch: sketch)
+        plugin.onAttach(renderer: self)
+    }
+
+    /// Register a plugin with this renderer (legacy).
+    ///
+    /// Prefer ``addPlugin(_:sketch:)`` for new code. This method only calls
+    /// ``MetaphorPlugin/onAttach(renderer:)``.
     /// - Parameter plugin: The plugin to register.
     public func addPlugin(_ plugin: MetaphorPlugin) {
         plugins.append(plugin)
@@ -299,6 +313,22 @@ public final class MetaphorRenderer: NSObject {
     /// - Returns: The matching plugin, or `nil` if not found.
     public func plugin(id: String) -> MetaphorPlugin? {
         plugins.first(where: { $0.pluginID == id })
+    }
+
+    // MARK: - Plugin Input Forwarding
+
+    /// Forward a mouse event to all registered plugins.
+    internal func notifyPluginsMouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {
+        for plugin in plugins {
+            plugin.mouseEvent(x: x, y: y, button: button, type: type)
+        }
+    }
+
+    /// Forward a keyboard event to all registered plugins.
+    internal func notifyPluginsKeyEvent(key: Character?, keyCode: UInt16, type: KeyEventType) {
+        for plugin in plugins {
+            plugin.keyEvent(key: key, keyCode: keyCode, type: type)
+        }
     }
 
     // MARK: - Canvas Resize
@@ -703,6 +733,7 @@ public final class MetaphorRenderer: NSObject {
 
         // Plugin: before render
         for plugin in plugins {
+            plugin.pre(commandBuffer: commandBuffer, time: time)
             plugin.onBeforeRender(commandBuffer: commandBuffer, time: time)
         }
 
@@ -811,6 +842,7 @@ public final class MetaphorRenderer: NSObject {
 
         // Plugin: after render (provides final texture for output plugins)
         for plugin in plugins {
+            plugin.post(texture: outputTexture, commandBuffer: commandBuffer)
             plugin.onAfterRender(texture: outputTexture, commandBuffer: commandBuffer)
         }
 

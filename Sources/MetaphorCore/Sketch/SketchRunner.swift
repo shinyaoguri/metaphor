@@ -196,7 +196,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
 
         // Connect input callbacks to sketch event methods
-        connectInput(sketch: sketch, input: renderer.input)
+        connectInput(sketch: sketch, input: renderer.input, renderer: renderer)
+
+        // Register plugins from config (before setup() so they are available)
+        for factory in config.plugins {
+            let plugin = factory.create()
+            renderer.addPlugin(plugin, sketch: sketch)
+        }
 
         // Temporarily suppress noLoop handler during setup() to prevent
         // premature pausing before onDraw is configured.
@@ -380,35 +386,46 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    /// Connects input manager callbacks to the sketch's event methods.
+    /// Connects input manager callbacks to the sketch's event methods and plugin forwarding.
     ///
     /// - Parameters:
     ///   - sketch: The sketch instance that receives input events.
     ///   - input: The input manager providing raw input callbacks.
-    private func connectInput(sketch: any Sketch, input: InputManager) {
-        input.onMousePressed = { [weak sketch] _, _, _ in
+    ///   - renderer: The renderer whose plugins also receive input events.
+    private func connectInput(sketch: any Sketch, input: InputManager, renderer: MetaphorRenderer) {
+        input.onMousePressed = { [weak sketch, weak renderer] x, y, button in
             sketch?.mousePressed()
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: button, type: .pressed)
         }
-        input.onMouseReleased = { [weak sketch] _, _, _ in
+        input.onMouseReleased = { [weak sketch, weak renderer] x, y, button in
             sketch?.mouseReleased()
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: button, type: .released)
         }
-        input.onMouseMoved = { [weak sketch] _, _ in
+        input.onMouseMoved = { [weak sketch, weak renderer] x, y in
             sketch?.mouseMoved()
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: 0, type: .moved)
         }
-        input.onMouseDragged = { [weak sketch] _, _ in
+        input.onMouseDragged = { [weak sketch, weak renderer] x, y in
             sketch?.mouseDragged()
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: 0, type: .dragged)
         }
-        input.onMouseScrolled = { [weak sketch] _, _ in
+        input.onMouseScrolled = { [weak sketch, weak renderer] dx, dy in
             sketch?.mouseScrolled()
+            let mx = renderer?.input.mouseX ?? 0
+            let my = renderer?.input.mouseY ?? 0
+            renderer?.notifyPluginsMouseEvent(x: mx, y: my, button: 0, type: .scrolled)
         }
-        input.onMouseClicked = { [weak sketch] _, _, _ in
+        input.onMouseClicked = { [weak sketch, weak renderer] x, y, button in
             sketch?.mouseClicked()
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: button, type: .clicked)
         }
-        input.onKeyDown = { [weak sketch] _, _ in
+        input.onKeyDown = { [weak sketch, weak renderer] keyCode, characters in
             sketch?.keyPressed()
+            renderer?.notifyPluginsKeyEvent(key: characters?.first, keyCode: keyCode, type: .pressed)
         }
-        input.onKeyUp = { [weak sketch] _ in
+        input.onKeyUp = { [weak sketch, weak renderer] keyCode in
             sketch?.keyReleased()
+            renderer?.notifyPluginsKeyEvent(key: nil, keyCode: keyCode, type: .released)
         }
     }
 }

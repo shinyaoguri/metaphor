@@ -1,5 +1,38 @@
 @preconcurrency import Metal
 
+// MARK: - Plugin Management
+
+extension Sketch {
+    /// Register a plugin with this sketch.
+    ///
+    /// The plugin receives lifecycle callbacks (``MetaphorPlugin/pre(commandBuffer:time:)``,
+    /// ``MetaphorPlugin/post(texture:commandBuffer:)``), input events
+    /// (``MetaphorPlugin/mouseEvent(x:y:button:type:)``), and more.
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     registerPlugin(MyPlugin())
+    /// }
+    /// ```
+    /// - Parameter plugin: The plugin to register.
+    public func registerPlugin(_ plugin: MetaphorPlugin) {
+        context.renderer.addPlugin(plugin, sketch: self)
+    }
+
+    /// Remove a registered plugin by its identifier.
+    /// - Parameter id: The ``MetaphorPlugin/pluginID`` of the plugin to remove.
+    public func removePlugin(id: String) {
+        context.renderer.removePlugin(id: id)
+    }
+
+    /// Look up a registered plugin by its identifier.
+    /// - Parameter id: The ``MetaphorPlugin/pluginID`` to search for.
+    /// - Returns: The matching plugin, or `nil` if not found.
+    public func plugin(id: String) -> MetaphorPlugin? {
+        context.renderer.plugin(id: id)
+    }
+}
+
 // MARK: - Compute
 
 extension Sketch {
