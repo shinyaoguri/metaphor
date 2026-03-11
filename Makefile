@@ -63,18 +63,20 @@ docs:
 	swift build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
-	xcrun swift-symbolgraph-extract \
-		-module-name metaphor \
-		-target arm64-apple-macosx14.0 \
-		-sdk "$$(xcrun --show-sdk-path)" \
-		-I .build/arm64-apple-macosx/debug/Modules \
-		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
-		-minimum-access-level public \
-		-skip-inherited-docs \
-		-emit-extension-block-symbols \
-		-output-dir .build/symbol-graphs
+	@for module in metaphor MetaphorCore MetaphorAudio MetaphorNetwork MetaphorPhysics; do \
+		xcrun swift-symbolgraph-extract \
+			-module-name $$module \
+			-target arm64-apple-macosx14.0 \
+			-sdk "$$(xcrun --show-sdk-path)" \
+			-I .build/arm64-apple-macosx/debug/Modules \
+			-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+			-minimum-access-level public \
+			-skip-inherited-docs \
+			-emit-extension-block-symbols \
+			-output-dir .build/symbol-graphs; \
+	done
 	@echo "Building DocC documentation..."
-	xcrun docc convert Sources/metaphor/metaphor.docc \
+	xcrun docc convert Sources/MetaphorCore/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
 		--hosting-base-path metaphor \
@@ -86,18 +88,20 @@ docs-preview:
 	swift build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
-	xcrun swift-symbolgraph-extract \
-		-module-name metaphor \
-		-target arm64-apple-macosx14.0 \
-		-sdk "$$(xcrun --show-sdk-path)" \
-		-I .build/arm64-apple-macosx/debug/Modules \
-		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
-		-minimum-access-level public \
-		-skip-inherited-docs \
-		-emit-extension-block-symbols \
-		-output-dir .build/symbol-graphs
+	@for module in metaphor MetaphorCore MetaphorAudio MetaphorNetwork MetaphorPhysics; do \
+		xcrun swift-symbolgraph-extract \
+			-module-name $$module \
+			-target arm64-apple-macosx14.0 \
+			-sdk "$$(xcrun --show-sdk-path)" \
+			-I .build/arm64-apple-macosx/debug/Modules \
+			-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+			-minimum-access-level public \
+			-skip-inherited-docs \
+			-emit-extension-block-symbols \
+			-output-dir .build/symbol-graphs; \
+	done
 	@echo "Previewing DocC documentation..."
-	xcrun docc preview Sources/metaphor/metaphor.docc \
+	xcrun docc preview Sources/MetaphorCore/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs
 
 # Run examples interactively (excludes _Legacy/ by default)
