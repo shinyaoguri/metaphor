@@ -75,7 +75,7 @@ public struct AABB: Sendable {
 ///
 /// Nodes can optionally hold a ``mesh`` for rendering and/or an ``onDraw``
 /// callback for custom drawing logic. Use ``SceneRenderer`` to traverse and
-/// render the tree with a ``Canvas3D``.
+/// render the tree with a `Canvas3D`.
 ///
 /// ```swift
 /// let root = Node(name: "root")

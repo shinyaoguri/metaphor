@@ -216,6 +216,7 @@ public struct SketchConfig: Sendable {
     ///   - windowScale: The window size scale factor.
     ///   - fullScreen: Whether to launch in full-screen mode.
     ///   - renderLoopMode: The render loop mode (default: `.displayLink`).
+    ///   - plugins: An array of plugin factories to register with the sketch.
     public init(
         width: Int = 1920,
         height: Int = 1080,

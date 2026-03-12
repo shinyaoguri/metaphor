@@ -5,7 +5,7 @@ A Swift + Metal creative coding library inspired by Processing, p5.js, and openF
 ## Overview
 
 metaphor provides an immediate-mode creative coding environment powered by Metal.
-Implement the ``Sketch`` protocol and start drawing — the library handles window creation,
+Implement the `Sketch` protocol and start drawing — the library handles window creation,
 render loop, and GPU pipeline setup automatically.
 
 ```swift
@@ -47,177 +47,176 @@ and video export at a fixed resolution.
 
 - <doc:GettingStarted>
 - <doc:Architecture>
-- ``Sketch``
-- ``SketchConfig``
+- ``MetaphorCore/Sketch``
+- ``MetaphorCore/SketchConfig``
 
 ### Core
 
-- ``MetaphorRenderer``
-- ``TextureManager``
-- ``ShaderLibrary``
-- ``PipelineFactory``
-- ``MetaphorError``
+- ``MetaphorCore/MetaphorRenderer``
+- ``MetaphorCore/TextureManager``
+- ``MetaphorCore/ShaderLibrary``
+- ``MetaphorCore/PipelineFactory``
+- ``MetaphorCore/MetaphorError``
 
 ### 2D Drawing
 
-- ``Canvas2D``
-- ``Graphics``
-- ``MImage``
-- ``DrawingStyle``
-- ``ImageFilter``
-- ``FilterType``
-- ``TextAlignH``
-- ``TextAlignV``
+- ``MetaphorCore/Canvas2D``
+- ``MetaphorCore/Graphics``
+- ``MetaphorCore/MImage``
+- ``MetaphorCore/DrawingStyle``
+- ``MetaphorCore/ImageFilter``
+- ``MetaphorCore/FilterType``
+- ``MetaphorCore/TextAlignH``
+- ``MetaphorCore/TextAlignV``
 
 ### 2D Drawing Modes
 
-- ``RectMode``
-- ``EllipseMode``
-- ``ImageMode``
-- ``ArcMode``
-- ``ShapeMode``
-- ``CloseMode``
-- ``StrokeCap``
-- ``StrokeJoin``
-- ``GradientAxis``
+- ``MetaphorCore/RectMode``
+- ``MetaphorCore/EllipseMode``
+- ``MetaphorCore/ImageMode``
+- ``MetaphorCore/ArcMode``
+- ``MetaphorCore/ShapeMode``
+- ``MetaphorCore/CloseMode``
+- ``MetaphorCore/StrokeCap``
+- ``MetaphorCore/StrokeJoin``
+- ``MetaphorCore/GradientAxis``
 
 ### 3D Drawing
 
-- ``Canvas3D``
-- ``Graphics3D``
-- ``CustomMaterial``
-- ``ShadowMap``
+- ``MetaphorCore/Canvas3D``
+- ``MetaphorCore/Graphics3D``
+- ``MetaphorCore/CustomMaterial``
+- ``MetaphorCore/ShadowMap``
 
 ### Geometry
 
-- ``Mesh``
-- ``DynamicMesh``
+- ``MetaphorCore/Mesh``
+- ``MetaphorCore/DynamicMesh``
 
 ### Animation
 
-- ``Tween``
-- ``Interpolatable``
-- ``TweenManager``
+- ``MetaphorCore/Tween``
+- ``MetaphorCore/Interpolatable``
+- ``MetaphorCore/TweenManager``
 
 ### Compute
 
-- ``ComputeKernel``
-- ``GPUBuffer``
-- ``ImageFilterGPU``
+- ``MetaphorCore/ComputeKernel``
+- ``MetaphorCore/GPUBuffer``
+- ``MetaphorCore/ImageFilterGPU``
 
 ### Post-Processing
 
-- ``PostEffect``
-- ``CustomPostEffect``
-- ``PostProcessPipeline``
+- ``MetaphorCore/PostEffect``
+- ``MetaphorCore/CustomPostEffect``
+- ``MetaphorCore/PostProcessPipeline``
 
 ### Particle System
 
-- ``ParticleSystem``
-- ``Particle``
-- ``ParticleForce``
-- ``EmitterShape``
+- ``MetaphorCore/ParticleSystem``
+- ``MetaphorCore/Particle``
+- ``MetaphorCore/ParticleForce``
+- ``MetaphorCore/EmitterShape``
 
 ### Audio
 
-- ``AudioAnalyzer``
-- ``SoundFile``
+- ``MetaphorAudio/AudioAnalyzer``
+- ``MetaphorAudio/SoundFile``
 
 ### Network
 
-- ``OSCReceiver``
-- ``OSCValue``
-- ``MIDIManager``
-- ``MIDIMessage``
-- ``MIDIMessageType``
+- ``MetaphorNetwork/OSCReceiver``
+- ``MetaphorNetwork/OSCValue``
+- ``MetaphorNetwork/MIDIManager``
+- ``MetaphorNetwork/MIDIMessage``
+- ``MetaphorNetwork/MIDIMessageType``
 
 ### Machine Learning
 
-- ``MLTextureConverter``
+- ``MetaphorML/MLTextureConverter``
 
 ### Metal Performance Shaders
 
-- ``MPSImageFilterWrapper``
-- ``MPSRayTracer``
-- ``RayTraceMode``
+- ``MetaphorMPS/MPSImageFilterWrapper``
+- ``MetaphorMPS/MPSRayTracer``
+- ``MetaphorMPS/RayTraceMode``
 
 ### Core Image
 
-- ``CIFilterPreset``
-- ``CIFilterWrapper``
+- ``MetaphorCoreImage/CIFilterPreset``
+- ``MetaphorCoreImage/CIFilterWrapper``
 
 ### Noise Generation
 
-- ``NoiseType``
-- ``NoiseConfig``
-- ``GKNoiseWrapper``
+- ``MetaphorNoise/NoiseType``
+- ``MetaphorNoise/NoiseConfig``
+- ``MetaphorNoise/GKNoiseWrapper``
 
 ### Physics
 
-- ``Physics2D``
-- ``PhysicsBody2D``
-- ``PhysicsShape2D``
-- ``PhysicsConstraint2D``
-- ``SpatialHash2D``
+- ``MetaphorPhysics/Physics2D``
+- ``MetaphorPhysics/PhysicsBody2D``
+- ``MetaphorPhysics/PhysicsShape2D``
+- ``MetaphorPhysics/PhysicsConstraint2D``
+- ``MetaphorPhysics/SpatialHash2D``
 
 ### Scene Graph
 
-- ``Node``
-- ``SceneRenderer``
+- ``MetaphorSceneGraph/Node``
+- ``MetaphorSceneGraph/SceneRenderer``
 
 ### Render Graph
 
-- ``RenderGraph``
-- ``RenderPassNode``
-- ``SourcePass``
-- ``EffectPass``
-- ``MergePass``
+- ``MetaphorRenderGraph/RenderGraph``
+- ``MetaphorRenderGraph/RenderPassNode``
+- ``MetaphorRenderGraph/SourcePass``
+- ``MetaphorRenderGraph/EffectPass``
+- ``MetaphorRenderGraph/MergePass``
 
 ### UI
 
-- ``MetaphorView``
-- ``ParameterGUI``
-- ``OrbitCamera``
-- ``PerformanceHUD``
+- ``MetaphorCore/MetaphorView``
+- ``MetaphorCore/ParameterGUI``
+- ``MetaphorCore/OrbitCamera``
+- ``MetaphorCore/PerformanceHUD``
 
 ### Input
 
-- ``InputManager``
-- ``CaptureDevice``
-- ``CameraPosition``
+- ``MetaphorCore/InputManager``
+- ``MetaphorCore/CaptureDevice``
+- ``MetaphorCore/CameraPosition``
 
 ### Export
 
-- ``VideoExporter``
-- ``VideoCodec``
-- ``VideoFormat``
-- ``VideoExportConfig``
-- ``GIFExporter``
-- ``FrameExporter``
+- ``MetaphorCore/VideoExporter``
+- ``MetaphorCore/VideoCodec``
+- ``MetaphorCore/VideoFormat``
+- ``MetaphorCore/VideoExportConfig``
+- ``MetaphorCore/GIFExporter``
+- ``MetaphorCore/FrameExporter``
 
 ### Syphon
 
-- ``SyphonOutput``
+- ``MetaphorCore/SyphonOutput``
 
 ### Color
 
-- ``Color``
-- ``ColorSpace``
-- ``ColorModeConfig``
+- ``MetaphorCore/Color``
+- ``MetaphorCore/ColorSpace``
+- ``MetaphorCore/ColorModeConfig``
 
 ### Math & Vectors
 
-- ``Vec2``
-- ``Vec3``
-- ``FrameTimer``
+- ``MetaphorCore/Vec2``
+- ``MetaphorCore/Vec3``
+- ``MetaphorCore/FrameTimer``
 
 ### Utilities
 
-- ``NoiseGenerator``
+- ``MetaphorCore/NoiseGenerator``
 
 ### Errors
 
-- ``MetaphorError``
-- ``SoundFileError``
-- ``OSCReceiverError``
-- ``MLError``
+- ``MetaphorCore/MetaphorError``
+- ``MetaphorAudio/SoundFileError``
+- ``MetaphorNetwork/OSCReceiverError``

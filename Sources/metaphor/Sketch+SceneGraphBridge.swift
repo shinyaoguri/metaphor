@@ -7,7 +7,7 @@ extension Sketch {
     /// Create a scene graph node.
     ///
     /// - Parameter name: The optional name for the node.
-    /// - Returns: A new ``Node`` instance.
+    /// - Returns: A new ``MetaphorSceneGraph/Node`` instance.
     public func createNode(_ name: String = "") -> Node {
         Node(name: name)
     }

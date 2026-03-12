@@ -1,7 +1,7 @@
 import MetaphorCore
 import simd
 
-/// Render a scene graph tree using a ``Canvas3D`` instance.
+/// Render a scene graph tree using a `Canvas3D` instance.
 ///
 /// ``SceneRenderer`` performs a depth-first traversal of the node hierarchy,
 /// applying each node's local transform via push/pop matrix and drawing any
@@ -26,7 +26,7 @@ public final class SceneRenderer {
     ///
     /// - Parameters:
     ///   - node: The root node of the tree (or subtree) to render.
-    ///   - canvas: The ``Canvas3D`` instance used for drawing.
+    ///   - canvas: The `Canvas3D` instance used for drawing.
     public static func render(node: Node, canvas: Canvas3D) {
         guard node.isVisible else { return }
 

@@ -5,7 +5,7 @@ Set up your first creative coding project with metaphor.
 ## Overview
 
 metaphor is a Swift + Metal creative coding library. You create a sketch by implementing the
-``Sketch`` protocol, and the library handles window creation, Metal setup, and the render loop.
+``MetaphorCore/Sketch`` protocol, and the library handles window creation, Metal setup, and the render loop.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ Then add it to your target's dependencies:
 
 ## Creating Your First Sketch
 
-Create a new Swift file and implement the ``Sketch`` protocol:
+Create a new Swift file and implement the ``MetaphorCore/Sketch`` protocol:
 
 ```swift
 import metaphor
@@ -63,15 +63,15 @@ Mark your sketch class with `@main` to make it the entry point of your applicati
 
 ## The Sketch Lifecycle
 
-The ``Sketch`` protocol provides callback methods that are called at specific points:
+The ``MetaphorCore/Sketch`` protocol provides callback methods that are called at specific points:
 
-- ``Sketch/setup()`` — Called once when the sketch starts. Use this to configure canvas size,
+- `setup()` — Called once when the sketch starts. Use this to configure canvas size,
   load resources, and initialize state.
-- ``Sketch/draw()`` — Called every frame. This is where you put your drawing code.
+- `draw()` — Called every frame. This is where you put your drawing code.
 
 ## Configuration
 
-Use ``SketchConfig`` to customize the sketch behavior:
+Use ``MetaphorCore/SketchConfig`` to customize the sketch behavior:
 
 ```swift
 func setup() {
@@ -81,7 +81,7 @@ func setup() {
 
 ### Built-in Properties
 
-Every ``Sketch`` implementation has access to these properties:
+Every ``MetaphorCore/Sketch`` implementation has access to these properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -127,7 +127,7 @@ Both styles are equivalent. The direct style uses the active sketch context impl
 
 ## Next Steps
 
-- Explore 2D drawing with ``Canvas2D``
-- Learn about 3D rendering with ``Canvas3D``
-- Add post-processing effects with ``PostEffect``
-- Set up Syphon output with ``SyphonOutput``
+- Explore 2D drawing with ``MetaphorCore/Canvas2D``
+- Learn about 3D rendering with ``MetaphorCore/Canvas3D``
+- Add post-processing effects with ``MetaphorCore/PostEffect``
+- Set up Syphon output with ``MetaphorCore/SyphonOutput``

@@ -19,6 +19,6 @@ public protocol RenderPassNode: AnyObject {
     /// - Parameters:
     ///   - commandBuffer: The Metal command buffer to encode work into.
     ///   - time: The elapsed time in seconds.
-    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
+    ///   - renderer: The `MetaphorRenderer` reference providing shared resources.
     func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)
 }

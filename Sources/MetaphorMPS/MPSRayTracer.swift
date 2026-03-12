@@ -125,7 +125,7 @@ public final class MPSRayTracer {
     /// Build the acceleration structure from all added meshes.
     ///
     /// Call this after adding meshes and before tracing rays.
-    /// - Throws: ``MetaphorError`` if the scene is empty or buffer creation fails.
+    /// - Throws: `MetaphorError` if the scene is empty or buffer creation fails.
     public func buildAccelerationStructure() throws {
         let result = try scene.buildAccelerationStructure()
         self.accelerationStructure = result.accelerationStructure

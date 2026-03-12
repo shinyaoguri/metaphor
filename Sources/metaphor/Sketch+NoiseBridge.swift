@@ -9,7 +9,7 @@ extension Sketch {
     /// - Parameters:
     ///   - type: The noise algorithm type.
     ///   - config: The noise generation configuration.
-    /// - Returns: A new ``GKNoiseWrapper`` instance.
+    /// - Returns: A new ``MetaphorNoise/GKNoiseWrapper`` instance.
     public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper {
         GKNoiseWrapper(type: type, config: config, device: context.renderer.device)
     }

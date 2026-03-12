@@ -10,7 +10,7 @@ extension Sketch {
     ///   - label: The debug label for the pass.
     ///   - width: The render target width in pixels.
     ///   - height: The render target height in pixels.
-    /// - Returns: A new ``SourcePass`` instance, or `nil` if creation fails.
+    /// - Returns: A new ``MetaphorRenderGraph/SourcePass`` instance, or `nil` if creation fails.
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
         try? SourcePass(
             label: label,
@@ -25,7 +25,7 @@ extension Sketch {
     /// - Parameters:
     ///   - input: The input render pass node.
     ///   - effects: The post-processing effects to apply.
-    /// - Returns: A new ``EffectPass`` instance, or `nil` if creation fails.
+    /// - Returns: A new ``MetaphorRenderGraph/EffectPass`` instance, or `nil` if creation fails.
     public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass? {
         try? EffectPass(
             input,
@@ -42,7 +42,7 @@ extension Sketch {
     ///   - a: The first input render pass node.
     ///   - b: The second input render pass node.
     ///   - blend: The blend type for compositing.
-    /// - Returns: A new ``MergePass`` instance, or `nil` if creation fails.
+    /// - Returns: A new ``MetaphorRenderGraph/MergePass`` instance, or `nil` if creation fails.
     public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
         try? MergePass(
             a, b,

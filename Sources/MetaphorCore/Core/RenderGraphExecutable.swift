@@ -3,7 +3,7 @@
 /// Define the interface for a render graph that can be executed by the renderer.
 ///
 /// This protocol breaks the circular dependency between MetaphorCore and
-/// MetaphorRenderGraph. The concrete ``RenderGraph`` class in MetaphorRenderGraph
+/// MetaphorRenderGraph. The concrete `RenderGraph` class in MetaphorRenderGraph
 /// conforms to this protocol, while ``MetaphorRenderer`` only references the protocol.
 @MainActor
 public protocol RenderGraphExecutable: AnyObject {

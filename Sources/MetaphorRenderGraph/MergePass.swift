@@ -117,7 +117,7 @@ public final class MergePass: RenderPassNode {
     /// - Parameters:
     ///   - commandBuffer: The Metal command buffer to encode work into.
     ///   - time: The elapsed time in seconds.
-    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
+    ///   - renderer: The `MetaphorRenderer` reference providing shared resources.
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         // Execute input passes
         passA.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)

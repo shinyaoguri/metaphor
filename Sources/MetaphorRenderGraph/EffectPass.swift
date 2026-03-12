@@ -3,7 +3,7 @@ import MetaphorCore
 
 /// Apply a chain of post-process effects to the output of an upstream render pass.
 ///
-/// ``EffectPass`` wraps a ``PostProcessPipeline`` and applies it to the input
+/// ``EffectPass`` wraps a `PostProcessPipeline` and applies it to the input
 /// node's output texture. If the effect list is empty, the input texture is
 /// passed through unchanged.
 ///
@@ -67,7 +67,7 @@ public final class EffectPass: RenderPassNode {
     /// - Parameters:
     ///   - commandBuffer: The Metal command buffer to encode work into.
     ///   - time: The elapsed time in seconds.
-    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
+    ///   - renderer: The `MetaphorRenderer` reference providing shared resources.
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         // Execute the input pass first
         inputPass.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)

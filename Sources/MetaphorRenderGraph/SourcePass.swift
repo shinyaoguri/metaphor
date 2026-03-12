@@ -3,7 +3,7 @@ import MetaphorCore
 
 /// Provide an offscreen render target where user code draws content.
 ///
-/// ``SourcePass`` owns a dedicated ``TextureManager`` and exposes an
+/// ``SourcePass`` owns a dedicated `TextureManager` and exposes an
 /// ``onDraw`` callback where user rendering code is executed. The resulting
 /// color texture becomes the node's output.
 ///
@@ -69,7 +69,7 @@ public final class SourcePass: RenderPassNode {
     /// - Parameters:
     ///   - commandBuffer: The Metal command buffer to encode work into.
     ///   - time: The elapsed time in seconds.
-    ///   - renderer: The ``MetaphorRenderer`` reference (unused by source passes).
+    ///   - renderer: The `MetaphorRenderer` reference (unused by source passes).
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         guard let encoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: textureManager.renderPassDescriptor
