@@ -52,7 +52,10 @@ jobs:
       - name: Extract Symbol Graphs
         run: |
           mkdir -p .build/symbol-graphs
-          for module in metaphor MetaphorCore MetaphorAudio MetaphorNetwork MetaphorPhysics; do
+          for module in metaphor MetaphorCore \
+            MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML \
+            MetaphorNoise MetaphorMPS MetaphorCoreImage \
+            MetaphorRenderGraph MetaphorSceneGraph; do
             xcrun swift-symbolgraph-extract \
               -module-name "$module" \
               -target arm64-apple-macosx14.0 \
@@ -66,7 +69,7 @@ jobs:
           done
       - name: Build DocC Documentation
         run: |
-          xcrun docc convert Sources/MetaphorCore/metaphor.docc \
+          xcrun docc convert Sources/metaphor/metaphor.docc \
             --additional-symbol-graph-dir .build/symbol-graphs \
             --transform-for-static-hosting \
             --hosting-base-path metaphor \
