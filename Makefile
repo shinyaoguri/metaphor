@@ -95,7 +95,10 @@ docs:
 	swift build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
-	@for module in metaphor MetaphorCore MetaphorAudio MetaphorNetwork MetaphorPhysics; do \
+	@for module in metaphor MetaphorCore \
+		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML \
+		MetaphorNoise MetaphorMPS MetaphorCoreImage \
+		MetaphorRenderGraph MetaphorSceneGraph; do \
 		xcrun swift-symbolgraph-extract \
 			-module-name $$module \
 			-target arm64-apple-macosx14.0 \
@@ -108,7 +111,7 @@ docs:
 			-output-dir .build/symbol-graphs; \
 	done
 	@echo "Building DocC documentation..."
-	xcrun docc convert Sources/MetaphorCore/metaphor.docc \
+	xcrun docc convert Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
 		--hosting-base-path metaphor \
@@ -120,7 +123,10 @@ docs-preview:
 	swift build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
-	@for module in metaphor MetaphorCore MetaphorAudio MetaphorNetwork MetaphorPhysics; do \
+	@for module in metaphor MetaphorCore \
+		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML \
+		MetaphorNoise MetaphorMPS MetaphorCoreImage \
+		MetaphorRenderGraph MetaphorSceneGraph; do \
 		xcrun swift-symbolgraph-extract \
 			-module-name $$module \
 			-target arm64-apple-macosx14.0 \
@@ -133,7 +139,7 @@ docs-preview:
 			-output-dir .build/symbol-graphs; \
 	done
 	@echo "Previewing DocC documentation..."
-	xcrun docc preview Sources/MetaphorCore/metaphor.docc \
+	xcrun docc preview Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs
 
 # Run examples in parallel (excludes _Legacy/ by default)
