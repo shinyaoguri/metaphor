@@ -27,7 +27,7 @@ jobs:
   build-docs:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Select Xcode
@@ -37,7 +37,7 @@ jobs:
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
       - name: Cache Syphon.xcframework
         id: cache-syphon
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: Frameworks/Syphon.xcframework
           key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
@@ -45,7 +45,7 @@ jobs:
         if: steps.cache-syphon.outputs.cache-hit != 'true'
         run: make setup
       - name: Cache SPM dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .build/artifacts
           key: spm-deps-${{ hashFiles('Package.resolved') }}
@@ -78,7 +78,7 @@ jobs:
             --hosting-base-path metaphor \
             --output-path .build/docs
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -101,7 +101,7 @@ jobs:
           # Disable Jekyll processing
           touch website/dist/.nojekyll
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: website/dist
 
