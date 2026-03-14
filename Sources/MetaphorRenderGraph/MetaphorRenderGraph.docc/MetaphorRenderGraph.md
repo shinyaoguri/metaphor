@@ -15,8 +15,7 @@ two pass outputs together. Connect them into a ``RenderGraph`` for automatic
 execution.
 
 This module depends on MetaphorCore.
-When using the umbrella module (`import metaphor`), render graph features are
-accessible through convenience methods like `createRenderGraph(root:)`.
+Import `MetaphorRenderGraph` directly or use the umbrella module (`import metaphor`).
 
 ### Quick Start
 

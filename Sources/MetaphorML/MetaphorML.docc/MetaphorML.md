@@ -10,8 +10,7 @@ and the data formats used by Core ML. Convert freely between `MTLTexture`,
 into ML models or visualize model outputs as textures.
 
 This module has no dependency on MetaphorCore and can be used standalone.
-When using the umbrella module (`import metaphor`), ML features are
-accessible through convenience methods like `createMLConverter()`.
+Import `MetaphorML` directly or use the umbrella module (`import metaphor`).
 
 ### Quick Start
 

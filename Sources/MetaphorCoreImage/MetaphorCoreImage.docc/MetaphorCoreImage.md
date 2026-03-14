@@ -13,8 +13,7 @@ The module also provides ``PostEffect`` implementations (``CIFilterEffect``,
 ``CIFilterRawEffect``) for direct use in a post-processing pipeline.
 
 This module depends on MetaphorCore.
-When using the umbrella module (`import metaphor`), Core Image features are
-accessible through convenience methods like `createCIFilter()`.
+Import `MetaphorCoreImage` directly or use the umbrella module (`import metaphor`).
 
 ### Quick Start
 

@@ -90,7 +90,7 @@ make setup
 ```bash
 make setup      # Initialize submodules + build Syphon.xcframework
 make build      # Build the library
-make test       # Run tests (~500 tests across 4 test targets)
+make test       # Run tests (~900 tests across 10 test targets)
 make clean      # Clean build artifacts
 make check      # Check setup status
 make docs       # Build DocC documentation

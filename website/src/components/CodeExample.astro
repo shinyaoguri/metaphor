@@ -3,8 +3,8 @@ const codeHtml = `<span class="text-purple-400">import</span> <span class="text-
 
 <span class="text-purple-400">@main</span>
 <span class="text-purple-400">final class</span> <span class="text-green-400">MySketch</span>: <span class="text-cyan-400">Sketch</span> {
-    <span class="text-purple-400">func</span> <span class="text-blue-400">setup</span>() {
-        <span class="text-text">size</span>(<span class="text-orange-400">1280</span>, <span class="text-orange-400">720</span>)
+    <span class="text-purple-400">var</span> <span class="text-text">config</span>: <span class="text-cyan-400">SketchConfig</span> {
+        <span class="text-cyan-400">SketchConfig</span>(width: <span class="text-orange-400">1280</span>, height: <span class="text-orange-400">720</span>)
     }
 
     <span class="text-purple-400">func</span> <span class="text-blue-400">draw</span>() {
@@ -56,7 +56,7 @@ const codeHtml = `<span class="text-purple-400">import</span> <span class="text-
           </li>
           <li class="flex items-center gap-2">
             <span class="text-accent">&#10003;</span>
-            macOS 14+ and iOS 17+ support
+            macOS 14+ (Apple Silicon)
           </li>
         </ul>
       </div>
