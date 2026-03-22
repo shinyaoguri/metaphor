@@ -1,9 +1,9 @@
 import Metal
 import simd
 
-// MARK: - Canvas3D Uniforms
+// MARK: - Canvas3D ユニフォーム
 
-/// Represent uniform data for Canvas3D shaders, matching the MSL `Canvas3DUniforms` layout.
+/// Canvas3D シェーダー用のユニフォームデータ。MSL の `Canvas3DUniforms` レイアウトに対応します。
 struct Canvas3DUniforms {
     var modelMatrix: float4x4
     var viewProjectionMatrix: float4x4
@@ -18,12 +18,12 @@ struct Canvas3DUniforms {
 
 // MARK: - Light3D
 
-/// Represent GPU-compatible light data (64 bytes, 16-byte aligned).
+/// GPU 互換のライトデータ（64バイト、16バイトアラインメント）。
 struct Light3D {
-    var positionAndType: SIMD4<Float>           // xyz=position, w=type(0=dir,1=point,2=spot)
-    var directionAndCutoff: SIMD4<Float>        // xyz=direction, w=cos(innerCutoff)
-    var colorAndIntensity: SIMD4<Float>         // xyz=color, w=intensity
-    var attenuationAndOuterCutoff: SIMD4<Float> // xyz=(const,linear,quad), w=cos(outerCutoff)
+    var positionAndType: SIMD4<Float>           // xyz=位置, w=タイプ(0=ディレクショナル,1=ポイント,2=スポット)
+    var directionAndCutoff: SIMD4<Float>        // xyz=方向, w=cos(内側カットオフ)
+    var colorAndIntensity: SIMD4<Float>         // xyz=色, w=強度
+    var attenuationAndOuterCutoff: SIMD4<Float> // xyz=(定数,線形,二次), w=cos(外側カットオフ)
 
     static let zero = Light3D(
         positionAndType: .zero,
@@ -35,12 +35,12 @@ struct Light3D {
 
 // MARK: - Material3D
 
-/// Represent GPU-compatible material data (64 bytes).
+/// GPU 互換のマテリアルデータ（64バイト）。
 struct Material3D {
-    var ambientColor: SIMD4<Float>         // xyz=ambient color
-    var specularAndShininess: SIMD4<Float> // xyz=specular color, w=shininess
-    var emissiveAndMetallic: SIMD4<Float>  // xyz=emissive color, w=metallic
-    var pbrParams: SIMD4<Float>            // x=roughness, y=usePBR(0/1), z=ao, w=reserved
+    var ambientColor: SIMD4<Float>         // xyz=アンビエント色
+    var specularAndShininess: SIMD4<Float> // xyz=スペキュラ色, w=光沢度
+    var emissiveAndMetallic: SIMD4<Float>  // xyz=エミッシブ色, w=メタリック
+    var pbrParams: SIMD4<Float>            // x=ラフネス, y=usePBR(0/1), z=ao, w=予約
 
     static let `default` = Material3D(
         ambientColor: SIMD4(0.2, 0.2, 0.2, 0),
@@ -52,13 +52,13 @@ struct Material3D {
 
 // MARK: - Canvas3D
 
-/// Provide an immediate-mode 3D drawing context.
+/// イミディエイトモード 3D 描画コンテキストを提供します。
 ///
-/// Draws 3D scenes with a p5.js WEBGL-style API.
-/// Shares the same render command encoder as Canvas2D, executing 3D draw calls immediately.
+/// p5.js WEBGL スタイルの API で 3D シーンを描画します。
+/// Canvas2D と同じレンダーコマンドエンコーダーを共有し、3D 描画コマンドを即時実行します。
 @MainActor
 public final class Canvas3D: CanvasStyle {
-    // MARK: - Metal Resources
+    // MARK: - Metal リソース
 
     private let device: MTLDevice
     private let shaderLibrary: ShaderLibrary
@@ -68,32 +68,32 @@ public final class Canvas3D: CanvasStyle {
     private let depthState: MTLDepthStencilState?
     private let dummyShadowTexture: MTLTexture?
 
-    // Instanced rendering pipelines
+    // インスタンスレンダリングパイプライン
     private let instancedPipelineState: MTLRenderPipelineState
     private let instancedTexturedPipelineState: MTLRenderPipelineState
     private let instanceBatcher: InstanceBatcher3D
 
     private static let maxLights = 8
 
-    // MARK: - Custom Material State
+    // MARK: - カスタムマテリアル状態
 
     private var currentCustomMaterial: CustomMaterial?
     private var customPipelineCache: [String: MTLRenderPipelineState] = [:]
 
-    // MARK: - Dimensions
+    // MARK: - 寸法
 
-    /// The width of the 3D canvas in points.
+    /// 3D キャンバスの幅（ポイント単位）。
     public let width: Float
 
-    /// The height of the 3D canvas in points.
+    /// 3D キャンバスの高さ（ポイント単位）。
     public let height: Float
 
-    // MARK: - Per-frame State
+    // MARK: - フレームごとの状態
 
     private var encoder: MTLRenderCommandEncoder?
     private var currentTime: Float = 0
 
-    // MARK: - Camera State
+    // MARK: - カメラ状態
 
     private var cameraEye: SIMD3<Float> = SIMD3(0, 0, 5)
     private var cameraCenter: SIMD3<Float> = .zero
@@ -110,21 +110,21 @@ public final class Canvas3D: CanvasStyle {
     private var orthoBottom: Float = 0
     private var orthoTop: Float = 0
 
-    // MARK: - Lighting State
+    // MARK: - ライティング状態
 
     private var lightArray: [Light3D] = []
     private var ambientColor: SIMD3<Float> = SIMD3(0.2, 0.2, 0.2)
     private var userSetAmbient: Bool = false
 
-    // MARK: - Material State
+    // MARK: - マテリアル状態
 
     var currentMaterial: Material3D = .default
 
-    // MARK: - Texture State
+    // MARK: - テクスチャ状態
 
     var currentTexture: MTLTexture?
 
-    // MARK: - Transform Stack
+    // MARK: - 変換スタック
 
     private struct StyleState3D {
         var transform: float4x4
@@ -142,7 +142,7 @@ public final class Canvas3D: CanvasStyle {
     private var matrixStack: [float4x4] = []
     var currentTransform: float4x4 = .identity
 
-    // MARK: - Style
+    // MARK: - スタイル
 
     public var fillColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
     public var hasFill: Bool = true
@@ -150,14 +150,14 @@ public final class Canvas3D: CanvasStyle {
     public var strokeColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
     public var colorModeConfig: ColorModeConfig = ColorModeConfig()
 
-    // MARK: - Shape Building State (3D beginShape/endShape)
+    // MARK: - シェイプ構築状態（3D beginShape/endShape）
 
     private var isRecordingShape3D: Bool = false
     private var shapeMode3D: ShapeMode = .polygon
     private var shapeVertices3D: [Vertex3D] = []
     private var pendingNormal: SIMD3<Float>?
 
-    // MARK: - Mesh Cache
+    // MARK: - メッシュキャッシュ
 
     private struct CachedMesh {
         let mesh: Mesh
@@ -168,20 +168,20 @@ public final class Canvas3D: CanvasStyle {
     private var meshCacheFrameCounter: Int = 0
     private static let maxMeshCacheSize = 64
 
-    // MARK: - Shadow Mapping State
+    // MARK: - シャドウマッピング状態
 
-    /// The shadow map used for shadow rendering, or `nil` when shadows are disabled.
+    /// シャドウレンダリングに使用するシャドウマップ。シャドウ無効時は `nil`。
     var shadowMap: ShadowMap?
 
-    /// The draw calls recorded during the current frame for the shadow depth pass.
+    /// 現在のフレームでシャドウ深度パス用に記録されたドローコール。
     private(set) var recordedDrawCalls: [DrawCall3D] = []
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
-    /// Create a canvas from a renderer, inheriting its device, shader library, and texture dimensions.
+    /// レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
     ///
-    /// - Parameter renderer: The renderer to derive configuration from.
-    /// - Throws: An error if pipeline state creation fails.
+    /// - Parameter renderer: 設定の派生元となるレンダラー。
+    /// - Throws: パイプラインステートの生成に失敗した場合にエラー。
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -193,16 +193,16 @@ public final class Canvas3D: CanvasStyle {
         )
     }
 
-    /// Create a canvas with explicit Metal resources and dimensions.
+    /// 明示的な Metal リソースと寸法でキャンバスを生成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device used for resource allocation.
-    ///   - shaderLibrary: The shader library containing built-in shader functions.
-    ///   - depthStencilCache: The cache for depth-stencil states.
-    ///   - width: The canvas width in points.
-    ///   - height: The canvas height in points.
-    ///   - sampleCount: The MSAA sample count (defaults to 1).
-    /// - Throws: An error if pipeline state creation fails.
+    ///   - device: リソース割り当てに使用する Metal デバイス。
+    ///   - shaderLibrary: 組み込みシェーダー関数を含むシェーダーライブラリ。
+    ///   - depthStencilCache: 深度ステンシルステートのキャッシュ。
+    ///   - width: キャンバスの幅（ポイント単位）。
+    ///   - height: キャンバスの高さ（ポイント単位）。
+    ///   - sampleCount: MSAA サンプル数（デフォルト: 1）。
+    /// - Throws: パイプラインステートの生成に失敗した場合にエラー。
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -217,7 +217,7 @@ public final class Canvas3D: CanvasStyle {
         self.width = width
         self.height = height
 
-        // Untextured pipeline
+        // 非テクスチャパイプライン
         let vertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas3DVertex,
             from: ShaderLibrary.BuiltinKey.canvas3D
@@ -234,7 +234,7 @@ public final class Canvas3D: CanvasStyle {
             .sampleCount(sampleCount)
             .build()
 
-        // Textured pipeline
+        // テクスチャパイプライン
         let texVertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas3DTexturedVertex,
             from: ShaderLibrary.BuiltinKey.canvas3DTextured
@@ -253,7 +253,7 @@ public final class Canvas3D: CanvasStyle {
 
         self.depthState = depthStencilCache.state(for: .readWrite)
 
-        // Instanced pipeline (untextured)
+        // インスタンスパイプライン（非テクスチャ）
         let instVertexFn = shaderLibrary.function(
             named: Canvas3DInstancedShaders.vertexFunctionName,
             from: ShaderLibrary.BuiltinKey.canvas3DInstanced
@@ -270,7 +270,7 @@ public final class Canvas3D: CanvasStyle {
             .sampleCount(sampleCount)
             .build()
 
-        // Instanced pipeline (textured)
+        // インスタンスパイプライン（テクスチャ）
         let instTexVertexFn = shaderLibrary.function(
             named: Canvas3DInstancedShaders.texturedVertexFunctionName,
             from: ShaderLibrary.BuiltinKey.canvas3DInstanced
@@ -289,7 +289,7 @@ public final class Canvas3D: CanvasStyle {
 
         self.instanceBatcher = try InstanceBatcher3D(device: device)
 
-        // Dummy 1x1 shadow texture (bound when shadows are disabled)
+        // ダミー 1x1 シャドウテクスチャ（シャドウ無効時にバインド）
         let dummyDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .depth32Float, width: 1, height: 1, mipmapped: false
         )
@@ -298,13 +298,13 @@ public final class Canvas3D: CanvasStyle {
         self.dummyShadowTexture = device.makeTexture(descriptor: dummyDesc)
     }
 
-    // MARK: - Frame Lifecycle
+    // MARK: - フレームライフサイクル
 
-    /// Begin a new frame, resetting per-frame state and configuring the render encoder.
+    /// フレームごとの状態をリセットし、レンダーエンコーダーを設定して新しいフレームを開始します。
     func begin(encoder: MTLRenderCommandEncoder, time: Float, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentTime = time
-        // Reset per-frame state (transform, camera, lights, draw calls)
+        // フレームごとの状態をリセット（変換、カメラ、ライト、ドローコール）
         self.currentTransform = .identity
         self.stateStack.removeAll(keepingCapacity: true)
         self.lightArray.removeAll(keepingCapacity: true)
@@ -316,8 +316,8 @@ public final class Canvas3D: CanvasStyle {
         self.recordedDrawCalls.removeAll(keepingCapacity: true)
         self.meshCacheFrameCounter += 1
 
-        // Reset projection to Processing-like defaults each frame.
-        // Users must call perspective()/ortho() every frame for custom projection.
+        // 各フレームで Processing 風のデフォルトに投影をリセット。
+        // カスタム投影には毎フレーム perspective()/ortho() を呼ぶ必要があります。
         let defaultZ = (height / 2) / tan(Canvas3D.defaultFov / 2)
         self.fov = Canvas3D.defaultFov
         self.nearPlane = defaultZ / 10
@@ -328,22 +328,22 @@ public final class Canvas3D: CanvasStyle {
         self.viewProjectionDirty = true
         self.useOrthographic = false
 
-        // Style state (fill, stroke) is preserved across frames
-        // to match Processing behavior.
+        // スタイル状態（fill、stroke）はフレーム間で保持される。
+        // Processing の動作に合わせます。
         instanceBatcher.beginFrame(bufferIndex: bufferIndex)
     }
 
-    /// End the current frame, flushing any pending instance batches.
+    /// 保留中のインスタンスバッチをフラッシュして現在のフレームを終了します。
     func end() {
         flushInstanceBatch()
         self.encoder = nil
     }
 
-    /// Execute the shadow depth pass after the main rendering pass completes.
+    /// メインレンダリングパス完了後にシャドウ深度パスを実行します。
     func performShadowPass(commandBuffer: MTLCommandBuffer) {
         guard let shadow = shadowMap, !recordedDrawCalls.isEmpty else { return }
 
-        // Compute light-space matrix from the first directional light
+        // 最初のディレクショナルライトからライト空間行列を計算
         if let dirLight = lightArray.first(where: { UInt32($0.positionAndType.w) == 0 }) {
             let lightDir = SIMD3(dirLight.directionAndCutoff.x, dirLight.directionAndCutoff.y, dirLight.directionAndCutoff.z)
             shadow.updateLightSpaceMatrix(lightDirection: lightDir, sceneCenter: cameraCenter)
@@ -352,34 +352,34 @@ public final class Canvas3D: CanvasStyle {
         shadow.render(drawCalls: recordedDrawCalls, commandBuffer: commandBuffer)
     }
 
-    // MARK: - Public Camera Accessors
+    // MARK: - パブリックカメラアクセサ
 
-    /// Return the current view-projection matrix.
+    /// 現在のビュー投影行列を返します。
     public var currentViewProjection: float4x4 {
         computeViewProjection()
     }
 
-    /// Return the camera's right direction vector, useful for billboarding.
+    /// カメラの右方向ベクトルを返します。ビルボーディングに便利です。
     public var currentCameraRight: SIMD3<Float> {
         let z = normalize(cameraEye - cameraCenter)
         return normalize(cross(cameraUp, z))
     }
 
-    /// Return the camera's up direction vector, useful for billboarding.
+    /// カメラの上方向ベクトルを返します。ビルボーディングに便利です。
     public var currentCameraUp: SIMD3<Float> {
         let z = normalize(cameraEye - cameraCenter)
         let x = normalize(cross(cameraUp, z))
         return cross(z, x)
     }
 
-    // MARK: - Camera
+    // MARK: - カメラ
 
-    /// Set the camera position and orientation.
+    /// カメラの位置と向きを設定します。
     ///
     /// - Parameters:
-    ///   - eye: The camera position in world space.
-    ///   - center: The point the camera looks at.
-    ///   - up: The up direction vector.
+    ///   - eye: ワールド空間でのカメラ位置。
+    ///   - center: カメラの注視点。
+    ///   - up: 上方向ベクトル。
     public func camera(
         eye: SIMD3<Float>,
         center: SIMD3<Float>,
@@ -391,12 +391,12 @@ public final class Canvas3D: CanvasStyle {
         self.viewProjectionDirty = true
     }
 
-    /// Configure perspective projection parameters.
+    /// 透視投影パラメータを設定します。
     ///
     /// - Parameters:
-    ///   - fov: The vertical field of view in radians.
-    ///   - near: The near clipping plane distance.
-    ///   - far: The far clipping plane distance.
+    ///   - fov: 垂直視野角（ラジアン）。
+    ///   - near: ニアクリッピング面の距離。
+    ///   - far: ファークリッピング面の距離。
     public func perspective(
         fov: Float = Float.pi / 3,
         near: Float = 0.1,
@@ -409,15 +409,15 @@ public final class Canvas3D: CanvasStyle {
         self.viewProjectionDirty = true
     }
 
-    /// Switch to orthographic projection.
+    /// 正射影に切り替えます。
     ///
     /// - Parameters:
-    ///   - left: The left edge of the view volume (`nil` defaults to 0).
-    ///   - right: The right edge of the view volume (`nil` defaults to canvas width).
-    ///   - bottom: The bottom edge of the view volume (`nil` defaults to canvas height).
-    ///   - top: The top edge of the view volume (`nil` defaults to 0).
-    ///   - near: The near clipping plane distance.
-    ///   - far: The far clipping plane distance.
+    ///   - left: ビューボリュームの左端（`nil` の場合デフォルト 0）。
+    ///   - right: ビューボリュームの右端（`nil` の場合デフォルトはキャンバス幅）。
+    ///   - bottom: ビューボリュームの下端（`nil` の場合デフォルトはキャンバス高さ）。
+    ///   - top: ビューボリュームの上端（`nil` の場合デフォルト 0）。
+    ///   - near: ニアクリッピング面の距離。
+    ///   - far: ファークリッピング面の距離。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
@@ -433,9 +433,9 @@ public final class Canvas3D: CanvasStyle {
         self.viewProjectionDirty = true
     }
 
-    // MARK: - Lighting
+    // MARK: - ライティング
 
-    /// Enable default lighting with a single directional light for backward compatibility.
+    /// 後方互換性のため、単一のディレクショナルライトでデフォルトライティングを有効にします。
     public func lights() {
         lightArray.removeAll(keepingCapacity: true)
         ambientColor = SIMD3(0.3, 0.3, 0.3)
@@ -449,32 +449,32 @@ public final class Canvas3D: CanvasStyle {
         lightArray.append(light)
     }
 
-    /// Remove all lights from the scene.
+    /// シーンからすべてのライトを除去します。
     public func noLights() {
         lightArray.removeAll(keepingCapacity: true)
     }
 
-    /// Add a white directional light with the given direction.
+    /// 指定方向の白色ディレクショナルライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x component of the light direction.
-    ///   - y: The y component of the light direction.
-    ///   - z: The z component of the light direction.
+    ///   - x: ライト方向のx成分。
+    ///   - y: ライト方向のy成分。
+    ///   - z: ライト方向のz成分。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
         directionalLight(x, y, z, color: Color.white)
     }
 
-    /// Add a directional light with the given direction and color.
+    /// 指定方向・色のディレクショナルライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x component of the light direction.
-    ///   - y: The y component of the light direction.
-    ///   - z: The z component of the light direction.
-    ///   - color: The light color.
+    ///   - x: ライト方向のx成分。
+    ///   - y: ライト方向のy成分。
+    ///   - z: ライト方向のz成分。
+    ///   - color: ライトの色。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         ensureAmbientIfFirstLight()
-        // Transform local-space direction to world space (w=0 excludes translation)
+        // ローカル空間の方向をワールド空間に変換（w=0 で平行移動を除外）
         let td = currentTransform * SIMD4(x, y, z, 0)
         var light = Light3D.zero
         light.positionAndType = SIMD4(0, 0, 0, 0)
@@ -484,14 +484,14 @@ public final class Canvas3D: CanvasStyle {
         lightArray.append(light)
     }
 
-    /// Add a point light at the given position.
+    /// 指定位置にポイントライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x coordinate of the light position.
-    ///   - y: The y coordinate of the light position.
-    ///   - z: The z coordinate of the light position.
-    ///   - color: The light color.
-    ///   - falloff: The attenuation falloff factor.
+    ///   - x: ライト位置のx座標。
+    ///   - y: ライト位置のy座標。
+    ///   - z: ライト位置のz座標。
+    ///   - color: ライトの色。
+    ///   - falloff: 減衰フォールオフ係数。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
@@ -499,7 +499,7 @@ public final class Canvas3D: CanvasStyle {
     ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         ensureAmbientIfFirstLight()
-        // Transform local-space position to world space
+        // ローカル空間の位置をワールド空間に変換
         let tp = currentTransform * SIMD4(x, y, z, 1)
         var light = Light3D.zero
         light.positionAndType = SIMD4(tp.x, tp.y, tp.z, 1)
@@ -508,18 +508,18 @@ public final class Canvas3D: CanvasStyle {
         lightArray.append(light)
     }
 
-    /// Add a spot light at the given position with a specified direction.
+    /// 指定位置・方向にスポットライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x coordinate of the light position.
-    ///   - y: The y coordinate of the light position.
-    ///   - z: The z coordinate of the light position.
-    ///   - dirX: The x component of the spotlight direction.
-    ///   - dirY: The y component of the spotlight direction.
-    ///   - dirZ: The z component of the spotlight direction.
-    ///   - angle: The outer cone angle in radians.
-    ///   - falloff: The attenuation falloff factor.
-    ///   - color: The light color.
+    ///   - x: ライト位置のx座標。
+    ///   - y: ライト位置のy座標。
+    ///   - z: ライト位置のz座標。
+    ///   - dirX: スポットライト方向のx成分。
+    ///   - dirY: スポットライト方向のy成分。
+    ///   - dirZ: スポットライト方向のz成分。
+    ///   - angle: 外側コーン角度（ラジアン）。
+    ///   - falloff: 減衰フォールオフ係数。
+    ///   - color: ライトの色。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
@@ -530,7 +530,7 @@ public final class Canvas3D: CanvasStyle {
         guard lightArray.count < Canvas3D.maxLights else { return }
         ensureAmbientIfFirstLight()
         let innerAngle = angle * 0.8
-        // Transform local-space position and direction to world space
+        // ローカル空間の位置と方向をワールド空間に変換
         let tp = currentTransform * SIMD4(x, y, z, 1)
         let td = currentTransform * SIMD4(dirX, dirY, dirZ, 0)
         var light = Light3D.zero
@@ -541,9 +541,9 @@ public final class Canvas3D: CanvasStyle {
         lightArray.append(light)
     }
 
-    /// Set the ambient light intensity uniformly across all channels.
+    /// 全チャンネル均一にアンビエントライトの強度を設定します。
     ///
-    /// - Parameter strength: The ambient light intensity value applied to R, G, and B.
+    /// - Parameter strength: R、G、B に適用されるアンビエントライト強度値。
     public func ambientLight(_ strength: Float) {
         let c = colorModeConfig.toGray(strength)
         ambientColor = SIMD3(c.r, c.g, c.b)
@@ -551,12 +551,12 @@ public final class Canvas3D: CanvasStyle {
         userSetAmbient = true
     }
 
-    /// Set the ambient light color using individual RGB components.
+    /// 個別の RGB 成分でアンビエントライトの色を設定します。
     ///
     /// - Parameters:
-    ///   - r: The red component.
-    ///   - g: The green component.
-    ///   - b: The blue component.
+    ///   - r: 赤成分。
+    ///   - g: 緑成分。
+    ///   - b: 青成分。
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
         let c = colorModeConfig.toColor(r, g, b, nil)
         ambientColor = SIMD3(c.r, c.g, c.b)
@@ -564,11 +564,11 @@ public final class Canvas3D: CanvasStyle {
         userSetAmbient = true
     }
 
-    // MARK: - Material
+    // MARK: - マテリアル
 
-    /// Set the specular highlight color of the current material.
+    /// 現在のマテリアルのスペキュラハイライト色を設定します。
     ///
-    /// - Parameter color: The specular color.
+    /// - Parameter color: スペキュラ色。
     public func specular(_ color: Color) {
         currentMaterial.specularAndShininess = SIMD4(
             color.r, color.g, color.b,
@@ -576,9 +576,9 @@ public final class Canvas3D: CanvasStyle {
         )
     }
 
-    /// Set the specular highlight color as a grayscale value.
+    /// グレースケール値でスペキュラハイライト色を設定します。
     ///
-    /// - Parameter gray: The grayscale intensity applied to all channels.
+    /// - Parameter gray: 全チャンネルに適用されるグレースケール強度。
     public func specular(_ gray: Float) {
         currentMaterial.specularAndShininess = SIMD4(
             gray, gray, gray,
@@ -586,16 +586,16 @@ public final class Canvas3D: CanvasStyle {
         )
     }
 
-    /// Set the shininess exponent of the current material.
+    /// 現在のマテリアルの光沢度指数を設定します。
     ///
-    /// - Parameter value: The shininess exponent (higher values produce tighter highlights).
+    /// - Parameter value: 光沢度指数（値が大きいほどハイライトが鋭くなります）。
     public func shininess(_ value: Float) {
         currentMaterial.specularAndShininess.w = value
     }
 
-    /// Set the emissive color of the current material.
+    /// 現在のマテリアルのエミッシブ色を設定します。
     ///
-    /// - Parameter color: The emissive color.
+    /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) {
         currentMaterial.emissiveAndMetallic = SIMD4(
             color.r, color.g, color.b,
@@ -603,9 +603,9 @@ public final class Canvas3D: CanvasStyle {
         )
     }
 
-    /// Set the emissive color as a grayscale value.
+    /// グレースケール値でエミッシブ色を設定します。
     ///
-    /// - Parameter gray: The grayscale intensity applied to all channels.
+    /// - Parameter gray: 全チャンネルに適用されるグレースケール強度。
     public func emissive(_ gray: Float) {
         currentMaterial.emissiveAndMetallic = SIMD4(
             gray, gray, gray,
@@ -613,66 +613,66 @@ public final class Canvas3D: CanvasStyle {
         )
     }
 
-    /// Set the metallic factor of the current material.
+    /// 現在のマテリアルのメタリック係数を設定します。
     ///
-    /// - Parameter value: The metallic factor from 0.0 (dielectric) to 1.0 (fully metallic).
+    /// - Parameter value: メタリック係数。0.0（誘電体）から 1.0（完全金属）まで。
     public func metallic(_ value: Float) {
         currentMaterial.emissiveAndMetallic.w = value
     }
 
-    /// Set the PBR roughness, automatically enabling PBR shading mode.
+    /// PBR ラフネスを設定し、自動的に PBR シェーディングモードを有効にします。
     ///
-    /// - Parameter value: The roughness from 0.0 (mirror-like) to 1.0 (fully diffuse).
+    /// - Parameter value: ラフネス。0.0（鏡面）から 1.0（完全拡散）まで。
     public func roughness(_ value: Float) {
         currentMaterial.pbrParams.x = value
-        currentMaterial.pbrParams.y = 1  // Automatically enable PBR mode
+        currentMaterial.pbrParams.y = 1  // 自動的に PBR モードを有効化
     }
 
-    /// Set the PBR ambient occlusion factor.
+    /// PBR アンビエントオクルージョン係数を設定します。
     ///
-    /// - Parameter value: The occlusion from 0.0 (fully occluded) to 1.0 (no occlusion).
+    /// - Parameter value: オクルージョン。0.0（完全遮蔽）から 1.0（遮蔽なし）まで。
     public func ambientOcclusion(_ value: Float) {
         currentMaterial.pbrParams.z = value
     }
 
-    /// Toggle PBR shading mode explicitly.
+    /// PBR シェーディングモードを明示的に切り替えます。
     ///
-    /// - Parameter enabled: Pass `true` for Cook-Torrance GGX shading, `false` for Blinn-Phong.
+    /// - Parameter enabled: `true` で Cook-Torrance GGX シェーディング、`false` で Blinn-Phong。
     public func pbr(_ enabled: Bool) {
         currentMaterial.pbrParams.y = enabled ? 1 : 0
     }
 
-    // MARK: - Custom Material
+    // MARK: - カスタムマテリアル
 
-    /// Apply a custom fragment shader material for subsequent draw calls.
+    /// 以降の描画コマンドにカスタムフラグメントシェーダーマテリアルを適用します。
     ///
-    /// - Parameter custom: The custom material to apply.
+    /// - Parameter custom: 適用するカスタムマテリアル。
     public func material(_ custom: CustomMaterial) {
         currentCustomMaterial = custom
     }
 
-    /// Remove the custom material, reverting to the built-in shader.
+    /// カスタムマテリアルを除去し、組み込みシェーダーに戻します。
     public func noMaterial() {
         currentCustomMaterial = nil
     }
 
-    // MARK: - Texture
+    // MARK: - テクスチャ
 
-    /// Set the texture for subsequent textured draw calls.
+    /// 以降のテクスチャ付き描画コマンドにテクスチャを設定します。
     ///
-    /// - Parameter img: The image whose texture will be bound.
+    /// - Parameter img: テクスチャがバインドされる画像。
     public func texture(_ img: MImage) {
         currentTexture = img.texture
     }
 
-    /// Remove the currently bound texture.
+    /// 現在バインドされているテクスチャを除去します。
     public func noTexture() {
         currentTexture = nil
     }
 
-    // MARK: - Transform Stack
+    // MARK: - 変換スタック
 
-    /// Save the entire state including transform, style, and material.
+    /// 変換、スタイル、マテリアルを含む全状態を保存します。
     public func pushState() {
         stateStack.append(StyleState3D(
             transform: currentTransform,
@@ -687,7 +687,7 @@ public final class Canvas3D: CanvasStyle {
         ))
     }
 
-    /// Restore the previously saved state.
+    /// 直前に保存した状態を復元します。
     public func popState() {
         guard let saved = stateStack.popLast() else { return }
         currentTransform = saved.transform
@@ -701,88 +701,88 @@ public final class Canvas3D: CanvasStyle {
         colorModeConfig = saved.colorModeConfig
     }
 
-    /// Save only the current transform matrix.
+    /// 現在の変換行列のみを保存します。
     public func pushMatrix() {
         matrixStack.append(currentTransform)
     }
 
-    /// Restore only the previously saved transform matrix.
+    /// 直前に保存した変換行列のみを復元します。
     public func popMatrix() {
         guard let saved = matrixStack.popLast() else { return }
         currentTransform = saved
     }
 
-    /// Translate the current transform by the given offsets.
+    /// 現在の変換に指定オフセットの平行移動を適用します。
     ///
     /// - Parameters:
-    ///   - x: The translation along the x-axis.
-    ///   - y: The translation along the y-axis.
-    ///   - z: The translation along the z-axis.
+    ///   - x: x軸方向の移動量。
+    ///   - y: y軸方向の移動量。
+    ///   - z: z軸方向の移動量。
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         currentTransform = currentTransform * float4x4(translation: SIMD3(x, y, z))
     }
 
-    /// Rotate the current transform around the x-axis.
+    /// 現在の変換をx軸周りに回転させます。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: 回転角度（ラジアン）。
     public func rotateX(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationX: angle) }
 
-    /// Rotate the current transform around the y-axis.
+    /// 現在の変換をy軸周りに回転させます。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: 回転角度（ラジアン）。
     public func rotateY(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationY: angle) }
 
-    /// Rotate the current transform around the z-axis.
+    /// 現在の変換をz軸周りに回転させます。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: 回転角度（ラジアン）。
     public func rotateZ(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationZ: angle) }
 
-    /// Scale the current transform non-uniformly along each axis.
+    /// 各軸に沿った非均一スケールを現在の変換に適用します。
     ///
     /// - Parameters:
-    ///   - x: The scale factor along the x-axis.
-    ///   - y: The scale factor along the y-axis.
-    ///   - z: The scale factor along the z-axis.
+    ///   - x: x軸方向のスケール係数。
+    ///   - y: y軸方向のスケール係数。
+    ///   - z: z軸方向のスケール係数。
     public func scale(_ x: Float, _ y: Float, _ z: Float) {
         currentTransform = currentTransform * float4x4(scale: SIMD3(x, y, z))
     }
 
-    /// Scale the current transform uniformly along all axes.
+    /// 全軸に均一スケールを現在の変換に適用します。
     ///
-    /// - Parameter s: The uniform scale factor.
+    /// - Parameter s: 均一スケール係数。
     public func scale(_ s: Float) { currentTransform = currentTransform * float4x4(scale: s) }
 
-    /// Multiply the current transform by the given matrix.
+    /// 現在の変換に指定した行列を乗算します。
     ///
-    /// - Parameter matrix: The 4x4 matrix to concatenate.
+    /// - Parameter matrix: 連結する 4x4 行列。
     public func applyMatrix(_ matrix: float4x4) {
         currentTransform = currentTransform * matrix
     }
 
-    // MARK: - 3D Shapes
+    // MARK: - 3D シェイプ
 
-    /// Draw a box with the given dimensions.
+    /// 指定した寸法でボックスを描画します。
     ///
     /// - Parameters:
-    ///   - width: The box width.
-    ///   - height: The box height.
-    ///   - depth: The box depth.
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
         let key = "box_\(width)_\(height)_\(depth)"
         guard let mesh = cachedMesh(key: key, create: { try Mesh.box(device: device, width: width, height: height, depth: depth) }) else { return }
         drawMesh(mesh)
     }
 
-    /// Draw a cube with equal dimensions.
+    /// 同じ寸法の立方体を描画します。
     ///
-    /// - Parameter size: The edge length of the cube.
+    /// - Parameter size: 立方体の辺の長さ。
     public func box(_ size: Float) { box(size, size, size) }
 
-    /// Draw a sphere with the given radius and tessellation detail.
+    /// 指定した半径とテッセレーション詳細度で球を描画します。
     ///
     /// - Parameters:
-    ///   - radius: The sphere radius.
-    ///   - detail: The number of longitudinal segments (rings are derived from this).
+    ///   - radius: 球の半径。
+    ///   - detail: 経度方向のセグメント数（リングはここから導出されます）。
     public func sphere(_ radius: Float, detail: Int = 24) {
         let rings = max(detail / 2, 4)
         let key = "sphere_\(radius)_\(detail)_\(rings)"
@@ -790,47 +790,47 @@ public final class Canvas3D: CanvasStyle {
         drawMesh(mesh)
     }
 
-    /// Draw a flat plane with the given dimensions.
+    /// 指定した寸法で平面を描画します。
     ///
     /// - Parameters:
-    ///   - width: The plane width.
-    ///   - height: The plane height.
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
     public func plane(_ width: Float, _ height: Float) {
         let key = "plane_\(width)_\(height)"
         guard let mesh = cachedMesh(key: key, create: { try Mesh.plane(device: device, width: width, height: height) }) else { return }
         drawMesh(mesh)
     }
 
-    /// Draw a cylinder with the given radius, height, and tessellation detail.
+    /// 指定した半径、高さ、テッセレーション詳細度で円柱を描画します。
     ///
     /// - Parameters:
-    ///   - radius: The cylinder radius.
-    ///   - height: The cylinder height.
-    ///   - detail: The number of radial segments.
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
+    ///   - detail: 放射方向のセグメント数。
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         let key = "cylinder_\(radius)_\(height)_\(detail)"
         guard let mesh = cachedMesh(key: key, create: { try Mesh.cylinder(device: device, radius: radius, height: height, segments: detail) }) else { return }
         drawMesh(mesh)
     }
 
-    /// Draw a cone with the given radius, height, and tessellation detail.
+    /// 指定した半径、高さ、テッセレーション詳細度で円錐を描画します。
     ///
     /// - Parameters:
-    ///   - radius: The base radius.
-    ///   - height: The cone height.
-    ///   - detail: The number of radial segments.
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
+    ///   - detail: 放射方向のセグメント数。
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         let key = "cone_\(radius)_\(height)_\(detail)"
         guard let mesh = cachedMesh(key: key, create: { try Mesh.cone(device: device, radius: radius, height: height, segments: detail) }) else { return }
         drawMesh(mesh)
     }
 
-    /// Draw a torus with the given ring and tube radii.
+    /// 指定したリング半径とチューブ半径でトーラスを描画します。
     ///
     /// - Parameters:
-    ///   - ringRadius: The distance from the center of the torus to the center of the tube.
-    ///   - tubeRadius: The radius of the tube.
-    ///   - detail: The number of radial segments around the ring.
+    ///   - ringRadius: トーラスの中心からチューブ中心までの距離。
+    ///   - tubeRadius: チューブの半径。
+    ///   - detail: リング周囲の放射方向セグメント数。
     public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
         let tubeDetail = max(detail / 2, 8)
         let key = "torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)"
@@ -838,7 +838,7 @@ public final class Canvas3D: CanvasStyle {
         drawMesh(mesh)
     }
 
-    /// Look up or create a cached mesh, logging errors on failure.
+    /// キャッシュ済みメッシュを検索または生成します。失敗時はエラーをログ出力します。
     private func cachedMesh(key: String, create: () throws -> Mesh) -> Mesh? {
         if var cached = meshCache[key] {
             cached.lastUsedFrame = meshCacheFrameCounter
@@ -858,7 +858,7 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    /// Evict the least recently used half of the mesh cache.
+    /// メッシュキャッシュの最も古い半分を削除します。
     private func evictStaleMeshes() {
         let sorted = meshCache.sorted { $0.value.lastUsedFrame < $1.value.lastUsedFrame }
         let removeCount = meshCache.count - Self.maxMeshCacheSize / 2
@@ -867,21 +867,21 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    /// Draw a pre-built mesh.
+    /// ビルド済みメッシュを描画します。
     ///
-    /// - Parameter mesh: The mesh to draw.
+    /// - Parameter mesh: 描画するメッシュ。
     public func mesh(_ mesh: Mesh) { drawMesh(mesh) }
 
-    /// Draw a dynamic mesh that supports runtime vertex modifications.
+    /// 実行時の頂点変更に対応するダイナミックメッシュを描画します。
     ///
-    /// - Parameter mesh: The dynamic mesh to draw.
+    /// - Parameter mesh: 描画するダイナミックメッシュ。
     public func dynamicMesh(_ mesh: DynamicMesh) {
         mesh.ensureBuffers()
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
         guard hasFill || hasStroke else { return }
 
-        // DynamicMesh is not eligible for instancing
+        // DynamicMesh はインスタンシング対象外
         flushInstanceBatch()
 
         encoder.setRenderPipelineState(pipelineState)
@@ -969,11 +969,11 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    // MARK: - 3D Custom Shapes (beginShape / endShape)
+    // MARK: - 3D カスタムシェイプ (beginShape / endShape)
 
-    /// Begin recording vertices for a 3D custom shape.
+    /// 3D カスタムシェイプの頂点記録を開始します。
     ///
-    /// - Parameter mode: The shape tessellation mode.
+    /// - Parameter mode: シェイプのテッセレーションモード。
     public func beginShape(_ mode: ShapeMode = .polygon) {
         isRecordingShape3D = true
         shapeMode3D = mode
@@ -981,12 +981,12 @@ public final class Canvas3D: CanvasStyle {
         pendingNormal = nil
     }
 
-    /// Add a 3D vertex at the given position.
+    /// 指定位置に 3D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x coordinate.
-    ///   - y: The y coordinate.
-    ///   - z: The z coordinate.
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - z: z座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecordingShape3D else { return }
         shapeVertices3D.append(Vertex3D(
@@ -996,13 +996,13 @@ public final class Canvas3D: CanvasStyle {
         ))
     }
 
-    /// Add a 3D vertex with a per-vertex color.
+    /// 頂点カラー付きの 3D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x coordinate.
-    ///   - y: The y coordinate.
-    ///   - z: The z coordinate.
-    ///   - color: The vertex color.
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - z: z座標。
+    ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         guard isRecordingShape3D else { return }
         shapeVertices3D.append(Vertex3D(
@@ -1012,26 +1012,26 @@ public final class Canvas3D: CanvasStyle {
         ))
     }
 
-    /// Set the normal vector to apply to subsequent vertices.
+    /// 以降の頂点に適用する法線ベクトルを設定します。
     ///
     /// - Parameters:
-    ///   - nx: The x component of the normal.
-    ///   - ny: The y component of the normal.
-    ///   - nz: The z component of the normal.
+    ///   - nx: 法線のx成分。
+    ///   - ny: 法線のy成分。
+    ///   - nz: 法線のz成分。
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         pendingNormal = SIMD3(nx, ny, nz)
     }
 
-    /// End recording and draw the 3D shape.
+    /// 記録を終了して 3D シェイプを描画します。
     ///
-    /// - Parameter close: Whether to close the shape.
+    /// - Parameter close: シェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         guard isRecordingShape3D else { return }
         isRecordingShape3D = false
 
         guard !shapeVertices3D.isEmpty else { return }
 
-        // Auto-compute normals when in polygon/triangles mode and no normal was explicitly set
+        // polygon/triangles モードで法線が明示的に設定されていない場合、自動計算
         if pendingNormal == nil {
             autoComputeNormals()
         }
@@ -1054,9 +1054,9 @@ public final class Canvas3D: CanvasStyle {
         pendingNormal = nil
     }
 
-    // MARK: - Private: 3D Shape Tessellation
+    // MARK: - プライベート: 3D シェイプテッセレーション
 
-    // Compute face normals for every group of 3 vertices.
+    // 3頂点ごとに面法線を計算
     private func autoComputeNormals() {
         var i = 0
         while i + 2 < shapeVertices3D.count {
@@ -1074,12 +1074,12 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    // Draw an array of pre-tessellated 3D vertices with fill and/or wireframe passes.
+    // テッセレーション済み 3D 頂点配列を塗りつぶし・ワイヤーフレームパスで描画
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
         guard let encoder = encoder, !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
 
-        // Flush instance batch since beginShape/endShape uses individual vertex drawing
+        // beginShape/endShape は個別頂点描画を使用するため、インスタンスバッチをフラッシュ
         flushInstanceBatch()
 
         let normalMatrix = computeNormalMatrix(from: currentTransform)
@@ -1158,14 +1158,14 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    // Tessellate a polygon using a simple triangle fan (suitable for convex polygons).
+    // 単純な三角形ファンでポリゴンをテッセレーション（凸ポリゴン向け）
     private func drawShape3DPolygon(close: CloseMode) {
         guard shapeVertices3D.count >= 3 else { return }
 
         var triangulated: [Vertex3D] = []
         triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
 
-        // Compute face normal from the first 3 vertices
+        // 最初の3頂点から面法線を計算
         let p0 = shapeVertices3D[0].position
         let p1 = shapeVertices3D[1].position
         let p2 = shapeVertices3D[2].position
@@ -1176,7 +1176,7 @@ public final class Canvas3D: CanvasStyle {
             var v0 = shapeVertices3D[0]
             var v1 = shapeVertices3D[i]
             var v2 = shapeVertices3D[i + 1]
-            // Apply face normal to vertices that lack an explicit normal
+            // 明示的な法線がない頂点に面法線を適用
             if pendingNormal == nil {
                 v0.normal = safeNormal
                 v1.normal = safeNormal
@@ -1190,14 +1190,14 @@ public final class Canvas3D: CanvasStyle {
         drawShape3DVertices(triangulated)
     }
 
-    // Draw vertices directly as independent triangles (every 3 vertices form one triangle).
+    // 独立した三角形として頂点を直接描画（3頂点ごとに1つの三角形）
     private func drawShape3DTriangles() {
         let count = (shapeVertices3D.count / 3) * 3
         guard count >= 3 else { return }
         drawShape3DVertices(Array(shapeVertices3D.prefix(count)))
     }
 
-    // Tessellate a triangle strip into independent triangles.
+    // 三角形ストリップを独立した三角形にテッセレーション
     private func drawShape3DTriangleStrip() {
         guard shapeVertices3D.count >= 3 else { return }
         var triangulated: [Vertex3D] = []
@@ -1217,7 +1217,7 @@ public final class Canvas3D: CanvasStyle {
         drawShape3DVertices(triangulated)
     }
 
-    // Tessellate a triangle fan into independent triangles.
+    // 三角形ファンを独立した三角形にテッセレーション
     private func drawShape3DTriangleFan() {
         guard shapeVertices3D.count >= 3 else { return }
         var triangulated: [Vertex3D] = []
@@ -1231,7 +1231,7 @@ public final class Canvas3D: CanvasStyle {
         drawShape3DVertices(triangulated)
     }
 
-    // Draw each vertex as a small triangle to simulate a point.
+    // 各頂点を小さな三角形として描画し、ポイントをシミュレート
     private func drawShape3DPoints() {
         guard let encoder = encoder else { return }
         guard !shapeVertices3D.isEmpty else { return }
@@ -1245,7 +1245,7 @@ public final class Canvas3D: CanvasStyle {
         }
         encoder.setCullMode(.none)
 
-        // Build triangles for all vertices in a single batch
+        // すべての頂点の三角形を単一バッチで構築
         var allVerts: [Vertex3D] = []
         allVerts.reserveCapacity(shapeVertices3D.count * 3)
 
@@ -1279,7 +1279,7 @@ public final class Canvas3D: CanvasStyle {
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: allVerts.count)
     }
 
-    // Draw line segments as thin triangle pairs (2 vertices per segment).
+    // 線分を細い三角形ペアとして描画（セグメントあたり2頂点）
     private func drawShape3DLines() {
         guard shapeVertices3D.count >= 2 else { return }
         var lineVerts: [Vertex3D] = []
@@ -1294,7 +1294,7 @@ public final class Canvas3D: CanvasStyle {
             let len = simd_length(dir)
             guard len > 0 else { i += 2; continue }
 
-            // Compute offset using the cross product of the line direction and view direction
+            // 線方向とビュー方向の外積を使用してオフセットを計算
             let viewDir = simd_normalize(cameraEye - (p0 + p1) * 0.5)
             var offset = simd_normalize(simd_cross(dir, viewDir)) * lineWidth * 0.5
             if offset.x.isNaN { offset = SIMD3(0, lineWidth * 0.5, 0) }
@@ -1314,16 +1314,16 @@ public final class Canvas3D: CanvasStyle {
         drawShape3DVertices(lineVerts)
     }
 
-    // MARK: - Internal Drawing
+    // MARK: - 内部描画
 
-    // Route mesh drawing through the instancing path or immediate fallback.
+    // インスタンシングパスまたはイミディエイトフォールバックを通してメッシュ描画をルーティング
     private func drawMesh(_ mesh: Mesh) {
         guard encoder != nil else { return }
         guard hasFill || hasStroke else { return }
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
-        // Record draw call for shadow pass when shadows are enabled
+        // シャドウ有効時、シャドウパス用にドローコールを記録
         if shadowMap != nil {
             recordedDrawCalls.append(DrawCall3D(
                 mesh: mesh,
@@ -1339,14 +1339,14 @@ public final class Canvas3D: CanvasStyle {
             ))
         }
 
-        // Custom vertex shader prevents instancing; fall back to immediate path
+        // カスタム頂点シェーダーはインスタンシング不可; イミディエイトパスにフォールバック
         if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {
             flushInstanceBatch()
             drawMeshImmediate(mesh)
             return
         }
 
-        // Generate batch key
+        // バッチキーを生成
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let key = BatchKey3D(
             meshID: ObjectIdentifier(mesh),
@@ -1359,7 +1359,7 @@ public final class Canvas3D: CanvasStyle {
             strokeColor: strokeColor
         )
 
-        // Attempt to accumulate into instance batch
+        // インスタンスバッチへの蓄積を試みる
         if !instanceBatcher.tryAddInstance(
             key: key,
             mesh: mesh,
@@ -1373,7 +1373,7 @@ public final class Canvas3D: CanvasStyle {
             normalMatrix: normalMatrix,
             color: fillColor
         ) {
-            // Key mismatch or buffer full; flush current batch and retry
+            // キー不一致またはバッファ満杯; 現在のバッチをフラッシュしてリトライ
             flushInstanceBatch()
             let _ = instanceBatcher.tryAddInstance(
                 key: key,
@@ -1391,9 +1391,9 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    // MARK: - Instanced Batch Flush
+    // MARK: - インスタンスバッチフラッシュ
 
-    /// Flush accumulated instances as a single instanced draw call.
+    /// 蓄積されたインスタンスを単一のインスタンス描画コールとしてフラッシュします。
     private func flushInstanceBatch() {
         guard let encoder = encoder,
               instanceBatcher.instanceCount > 0,
@@ -1403,7 +1403,7 @@ public final class Canvas3D: CanvasStyle {
         let batchHasFill = instanceBatcher.currentHasFill
         let batchHasStroke = instanceBatcher.currentHasStroke
 
-        // Select pipeline
+        // パイプラインを選択
         if let customMat = instanceBatcher.currentCustomMaterial,
            let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured) {
             encoder.setRenderPipelineState(customPipeline)
@@ -1417,17 +1417,17 @@ public final class Canvas3D: CanvasStyle {
         encoder.setFrontFacing(.counterClockwise)
         encoder.setCullMode(.none)
 
-        // Vertex buffer
+        // 頂点バッファ
         if isTextured, let uvBuffer = mesh.uvVertexBuffer {
             encoder.setVertexBuffer(uvBuffer, offset: 0, index: 0)
         } else {
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
         }
 
-        // Instance buffer at buffer(6)
+        // インスタンスバッファを buffer(6) に設定
         encoder.setVertexBuffer(instanceBatcher.currentBuffer, offset: instanceBatcher.currentBufferOffset, index: 6)
 
-        // --- Fill pass ---
+        // --- 塗りつぶしパス ---
         if batchHasFill {
             var sceneUniforms = InstancedSceneUniforms(
                 viewProjectionMatrix: computeViewProjection(),
@@ -1439,7 +1439,7 @@ public final class Canvas3D: CanvasStyle {
             encoder.setVertexBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
 
-            // Lights
+            // ライト
             if lightArray.isEmpty {
                 var dummy = Light3D.zero
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -1449,16 +1449,16 @@ public final class Canvas3D: CanvasStyle {
                 }
             }
 
-            // Material
+            // マテリアル
             var mat = instanceBatcher.currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
-            // Custom material parameters
+            // カスタムマテリアルパラメータ
             if let customMat = instanceBatcher.currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
                 encoder.setFragmentBytes(&params, length: params.count, index: 4)
             }
 
-            // Shadow
+            // シャドウ
             if let shadow = shadowMap {
                 var shadowUniforms = ShadowFragmentUniforms(
                     lightSpaceMatrix: shadow.lightSpaceMatrix,
@@ -1479,12 +1479,12 @@ public final class Canvas3D: CanvasStyle {
                 }
             }
 
-            // Texture
+            // テクスチャ
             if isTextured, let tex = instanceBatcher.currentTexture {
                 encoder.setFragmentTexture(tex, index: 0)
             }
 
-            // Instanced draw
+            // インスタンス描画
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
                     type: .triangle, indexCount: mesh.indexCount,
@@ -1500,16 +1500,16 @@ public final class Canvas3D: CanvasStyle {
             }
         }
 
-        // --- Wireframe (stroke) pass ---
+        // --- ワイヤーフレーム（ストローク）パス ---
         if batchHasStroke {
             encoder.setTriangleFillMode(.lines)
             encoder.setRenderPipelineState(instancedPipelineState)
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
 
-            // Wireframe uses no lighting. Stroke color is uniform across all instances
-            // (BatchKey requires matching strokeColor, so all instances share the same value).
-            // Instead of overwriting the instance buffer's color for stroke, we simply set
-            // lightCount=0 in scene uniforms and use the instance color as-is.
+            // ワイヤーフレームはライティングなし。ストローク色は全インスタンスで統一
+            // （BatchKey が同一 strokeColor を要求するため、全インスタンスが同じ値を共有）。
+            // ストローク用にインスタンスバッファの色を上書きする代わりに、
+            // シーンユニフォームで lightCount=0 とし、インスタンスの色をそのまま使用します。
             var wireSceneUniforms = InstancedSceneUniforms(
                 viewProjectionMatrix: computeViewProjection(),
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
@@ -1525,7 +1525,7 @@ public final class Canvas3D: CanvasStyle {
             var mat = instanceBatcher.currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
-            // Shadow disabled for wireframe
+            // ワイヤーフレームではシャドウ無効
             var shadowOff = ShadowFragmentUniforms(lightSpaceMatrix: .identity, shadowBias: 0, shadowEnabled: 0)
             encoder.setFragmentBytes(&shadowOff, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
             if let dummyTex = dummyShadowTexture {
@@ -1551,9 +1551,9 @@ public final class Canvas3D: CanvasStyle {
         instanceBatcher.reset()
     }
 
-    // MARK: - Immediate Drawing (fallback, non-instanced)
+    // MARK: - イミディエイト描画（フォールバック、非インスタンス）
 
-    // Draw a mesh without instancing (fallback for custom vertex shaders).
+    // インスタンシングなしでメッシュを描画（カスタム頂点シェーダー用フォールバック）
     private func drawMeshImmediate(_ mesh: Mesh) {
         guard let encoder = encoder else { return }
 
@@ -1580,7 +1580,7 @@ public final class Canvas3D: CanvasStyle {
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
         }
 
-        // --- Fill pass ---
+        // --- 塗りつぶしパス ---
         if hasFill {
             var uniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
@@ -1649,7 +1649,7 @@ public final class Canvas3D: CanvasStyle {
             }
         }
 
-        // --- Wireframe (stroke) pass ---
+        // --- ワイヤーフレーム（ストローク）パス ---
         if hasStroke {
             encoder.setTriangleFillMode(.lines)
 
@@ -1691,19 +1691,19 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
-    // MARK: - Custom Pipeline
+    // MARK: - カスタムパイプライン
 
-    /// Clear the mesh cache, releasing all cached GPU mesh buffers.
+    /// メッシュキャッシュをクリアし、キャッシュ済みの GPU メッシュバッファをすべて解放します。
     public func clearMeshCache() {
         meshCache.removeAll()
     }
 
-    /// Clear the custom pipeline cache, typically called after shader hot-reload.
+    /// カスタムパイプラインキャッシュをクリアします。通常、シェーダーホットリロード後に呼び出します。
     public func clearCustomPipelineCache() {
         customPipelineCache.removeAll()
     }
 
-    // Retrieve or create a cached pipeline for custom shaders.
+    // キャッシュ済みカスタムシェーダーパイプラインを取得または生成
     private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool, customVertexFunction: MTLFunction? = nil) -> MTLRenderPipelineState? {
         let vtxName = customVertexFunction?.name ?? "default"
         let cacheKey = "\(fragmentFunction.name)_\(vtxName)_\(isTextured)_\(sampleCount)"
@@ -1752,9 +1752,9 @@ public final class Canvas3D: CanvasStyle {
         return pipeline
     }
 
-    // MARK: - Private Helpers
+    // MARK: - プライベートヘルパー
 
-    // Compute and cache the view-projection matrix.
+    // ビュー投影行列を計算してキャッシュ
     private func computeViewProjection() -> float4x4 {
         if viewProjectionDirty {
             let view = float4x4(lookAt: cameraEye, center: cameraCenter, up: cameraUp)
@@ -1769,7 +1769,7 @@ public final class Canvas3D: CanvasStyle {
                 let aspect = width / height
                 proj = float4x4(perspectiveFov: fov, aspect: aspect, near: nearPlane, far: farPlane)
             }
-            // Flip Y so 3D matches Processing's Y-down convention (same as Canvas2D).
+            // Processing のY軸下向き規則（Canvas2D と同じ）に合わせてY軸を反転
             var flipY = float4x4(1)
             flipY.columns.1.y = -1
             cachedViewProjection = flipY * proj * view
@@ -1778,7 +1778,7 @@ public final class Canvas3D: CanvasStyle {
         return cachedViewProjection
     }
 
-    // Compute the normal matrix (inverse-transpose of the upper-left 3x3) from a model matrix.
+    // モデル行列の左上 3x3 の逆転置から法線行列を計算
     private func computeNormalMatrix(from model: float4x4) -> float4x4 {
         let m3 = float3x3(
             SIMD3(model.columns.0.x, model.columns.0.y, model.columns.0.z),
@@ -1794,7 +1794,7 @@ public final class Canvas3D: CanvasStyle {
         ))
     }
 
-    // Set default ambient values when the first light is added.
+    // 最初のライト追加時にデフォルトのアンビエント値を設定
     private func ensureAmbientIfFirstLight() {
         if lightArray.isEmpty && !userSetAmbient {
             ambientColor = SIMD3(0.3, 0.3, 0.3)

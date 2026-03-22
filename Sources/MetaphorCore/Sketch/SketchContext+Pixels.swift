@@ -4,10 +4,10 @@ import Metal
 
 extension SketchContext {
 
-    /// The pixel buffer for direct pixel manipulation, lazily created.
+    /// 直接ピクセル操作用のピクセルバッファ（遅延生成）。
     private static var _pixelBufferKey: UInt8 = 0
 
-    /// Access the pixel buffer, creating it if needed.
+    /// ピクセルバッファにアクセスし、必要に応じて作成します。
     var pixelBuffer: PixelBuffer? {
         get {
             objc_getAssociatedObject(self, &Self._pixelBufferKey) as? PixelBuffer
@@ -17,9 +17,9 @@ extension SketchContext {
         }
     }
 
-    /// Ensure the pixel buffer exists and matches the canvas dimensions.
+    /// ピクセルバッファが存在しキャンバスサイズと一致することを保証します。
     ///
-    /// Creates a new pixel buffer on first call or when the canvas size changes.
+    /// 初回呼び出し時またはキャンバスサイズが変更された際に新しいピクセルバッファを作成します。
     public func loadPixels() {
         let w = Int(width)
         let h = Int(height)
@@ -31,9 +31,9 @@ extension SketchContext {
         pixelBuffer = PixelBuffer(width: w, height: h, device: renderer.device)
     }
 
-    /// Upload the pixel buffer to the GPU and draw it as a full-screen quad.
+    /// ピクセルバッファを GPU にアップロードしフルスクリーンクワッドとして描画します。
     ///
-    /// Call this after modifying the `pixels` buffer to display the changes.
+    /// `pixels` バッファの変更後にこれを呼び出して変更を表示してください。
     public func updatePixels() {
         guard let pb = pixelBuffer else { return }
         pb.upload()

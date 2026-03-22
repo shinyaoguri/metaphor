@@ -4,59 +4,59 @@ extension Sketch {
 
     // MARK: 3D Custom Shapes
 
-    /// Begin recording vertices for a 3D custom shape.
+    /// 3D カスタムシェイプの頂点記録を開始します。
     ///
-    /// - Parameter mode: The shape mode (e.g., polygon, triangles, lines).
+    /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         context.beginShape3D(mode)
     }
 
-    /// Add a 3D vertex to the current shape.
+    /// 現在のシェイプに 3D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - z: The z-coordinate.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - z: z 座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         context.vertex(x, y, z)
     }
 
-    /// Add a 3D vertex with a per-vertex color to the current shape.
+    /// 現在のシェイプに頂点カラー付き 3D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - z: The z-coordinate.
-    ///   - color: The vertex color.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - z: z 座標。
+    ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         context.vertex(x, y, z, color)
     }
 
-    /// Set the normal vector for subsequent 3D vertices.
+    /// 以降の 3D 頂点の法線ベクトルを設定します。
     ///
     /// - Parameters:
-    ///   - nx: The x-component of the normal.
-    ///   - ny: The y-component of the normal.
-    ///   - nz: The z-component of the normal.
+    ///   - nx: 法線の x 成分。
+    ///   - ny: 法線の y 成分。
+    ///   - nz: 法線の z 成分。
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         context.normal(nx, ny, nz)
     }
 
-    /// Finish recording the current 3D shape and draw it.
+    /// 現在の 3D シェイプの記録を終了し描画します。
     ///
-    /// - Parameter close: Whether to close the shape by connecting the last vertex to the first.
+    /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
     public func endShape3D(_ close: CloseMode = .open) {
         context.endShape3D(close)
     }
 
     // MARK: 3D Camera
 
-    /// Set the 3D camera using eye, center, and up vectors.
+    /// eye、center、up ベクトルで 3D カメラを設定します。
     ///
     /// - Parameters:
-    ///   - eye: The camera position.
-    ///   - center: The point the camera looks at.
-    ///   - up: The up direction vector.
+    ///   - eye: カメラの位置。
+    ///   - center: カメラが注視する点。
+    ///   - up: 上方向ベクトル。
     public func camera(
         eye: SIMD3<Float>,
         center: SIMD3<Float>,
@@ -65,18 +65,18 @@ extension Sketch {
         context.camera(eye: eye, center: center, up: up)
     }
 
-    /// Set the 3D camera using individual float components.
+    /// 個別の float 成分で 3D カメラを設定します。
     ///
     /// - Parameters:
-    ///   - eyeX: The x-coordinate of the camera position.
-    ///   - eyeY: The y-coordinate of the camera position.
-    ///   - eyeZ: The z-coordinate of the camera position.
-    ///   - centerX: The x-coordinate of the look-at target.
-    ///   - centerY: The y-coordinate of the look-at target.
-    ///   - centerZ: The z-coordinate of the look-at target.
-    ///   - upX: The x-component of the up vector.
-    ///   - upY: The y-component of the up vector.
-    ///   - upZ: The z-component of the up vector.
+    ///   - eyeX: カメラ位置の x 座標。
+    ///   - eyeY: カメラ位置の y 座標。
+    ///   - eyeZ: カメラ位置の z 座標。
+    ///   - centerX: 注視点の x 座標。
+    ///   - centerY: 注視点の y 座標。
+    ///   - centerZ: 注視点の z 座標。
+    ///   - upX: 上方向ベクトルの x 成分。
+    ///   - upY: 上方向ベクトルの y 成分。
+    ///   - upZ: 上方向ベクトルの z 成分。
     public func camera(
         _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
         _ centerX: Float, _ centerY: Float, _ centerZ: Float,
@@ -85,25 +85,25 @@ extension Sketch {
         context.camera(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ)
     }
 
-    /// Set the perspective projection.
+    /// 透視投影を設定します。
     ///
     /// - Parameters:
-    ///   - fov: The field of view angle in radians.
-    ///   - near: The near clipping plane distance.
-    ///   - far: The far clipping plane distance.
+    ///   - fov: ラジアン単位の視野角。
+    ///   - near: ニアクリッピング面の距離。
+    ///   - far: ファークリッピング面の距離。
     public func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000) {
         context.perspective(fov: fov, near: near, far: far)
     }
 
-    /// Set the orthographic projection.
+    /// 正射影を設定します。
     ///
     /// - Parameters:
-    ///   - left: The left clipping plane (defaults to canvas bounds).
-    ///   - right: The right clipping plane (defaults to canvas bounds).
-    ///   - bottom: The bottom clipping plane (defaults to canvas bounds).
-    ///   - top: The top clipping plane (defaults to canvas bounds).
-    ///   - near: The near clipping plane distance.
-    ///   - far: The far clipping plane distance.
+    ///   - left: 左クリッピング面（デフォルトはキャンバス境界）。
+    ///   - right: 右クリッピング面（デフォルトはキャンバス境界）。
+    ///   - bottom: 下クリッピング面（デフォルトはキャンバス境界）。
+    ///   - top: 上クリッピング面（デフォルトはキャンバス境界）。
+    ///   - near: ニアクリッピング面の距離。
+    ///   - far: ファークリッピング面の距離。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
@@ -114,45 +114,45 @@ extension Sketch {
 
     // MARK: 3D Lighting
 
-    /// Enable default lighting (a directional light and ambient light).
+    /// デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
     public func lights() {
         context.lights()
     }
 
-    /// Disable all lights.
+    /// すべてのライトを無効にします。
     public func noLights() {
         context.noLights()
     }
 
-    /// Add a directional light with the default color.
+    /// デフォルト色のディレクショナルライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-component of the light direction.
-    ///   - y: The y-component of the light direction.
-    ///   - z: The z-component of the light direction.
+    ///   - x: ライト方向の x 成分。
+    ///   - y: ライト方向の y 成分。
+    ///   - z: ライト方向の z 成分。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
         context.directionalLight(x, y, z)
     }
 
-    /// Add a directional light with a specified color.
+    /// 色を指定してディレクショナルライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-component of the light direction.
-    ///   - y: The y-component of the light direction.
-    ///   - z: The z-component of the light direction.
-    ///   - color: The light color.
+    ///   - x: ライト方向の x 成分。
+    ///   - y: ライト方向の y 成分。
+    ///   - z: ライト方向の z 成分。
+    ///   - color: ライトの色。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
         context.directionalLight(x, y, z, color: color)
     }
 
-    /// Add a point light at the specified position.
+    /// 指定位置にポイントライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate of the light position.
-    ///   - y: The y-coordinate of the light position.
-    ///   - z: The z-coordinate of the light position.
-    ///   - color: The light color.
-    ///   - falloff: The attenuation factor.
+    ///   - x: ライト位置の x 座標。
+    ///   - y: ライト位置の y 座標。
+    ///   - z: ライト位置の z 座標。
+    ///   - color: ライトの色。
+    ///   - falloff: 減衰係数。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
@@ -161,18 +161,18 @@ extension Sketch {
         context.pointLight(x, y, z, color: color, falloff: falloff)
     }
 
-    /// Add a spot light at the specified position pointing in the given direction.
+    /// 指定位置・方向にスポットライトを追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate of the light position.
-    ///   - y: The y-coordinate of the light position.
-    ///   - z: The z-coordinate of the light position.
-    ///   - dirX: The x-component of the light direction.
-    ///   - dirY: The y-component of the light direction.
-    ///   - dirZ: The z-component of the light direction.
-    ///   - angle: The cone angle in radians.
-    ///   - falloff: The attenuation factor.
-    ///   - color: The light color.
+    ///   - x: ライト位置の x 座標。
+    ///   - y: ライト位置の y 座標。
+    ///   - z: ライト位置の z 座標。
+    ///   - dirX: ライト方向の x 成分。
+    ///   - dirY: ライト方向の y 成分。
+    ///   - dirZ: ライト方向の z 成分。
+    ///   - angle: ラジアン単位のコーン角度。
+    ///   - falloff: 減衰係数。
+    ///   - color: ライトの色。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
@@ -183,303 +183,303 @@ extension Sketch {
         context.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
     }
 
-    /// Set the ambient light intensity using a single grayscale value.
+    /// グレースケール値でアンビエントライトの強度を設定します。
     ///
-    /// - Parameter strength: The ambient light strength.
+    /// - Parameter strength: アンビエントライトの強度。
     public func ambientLight(_ strength: Float) {
         context.ambientLight(strength)
     }
 
-    /// Set the ambient light color using RGB values.
+    /// RGB 値でアンビエントライトの色を設定します。
     ///
     /// - Parameters:
-    ///   - r: The red component.
-    ///   - g: The green component.
-    ///   - b: The blue component.
+    ///   - r: 赤成分。
+    ///   - g: 緑成分。
+    ///   - b: 青成分。
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
         context.ambientLight(r, g, b)
     }
 
     // MARK: Shadow Mapping
 
-    /// Enable shadow mapping.
+    /// シャドウマッピングを有効にします。
     ///
-    /// - Parameter resolution: The shadow map resolution in pixels.
+    /// - Parameter resolution: シャドウマップの解像度（ピクセル単位）。
     public func enableShadows(resolution: Int = 2048) {
         context.enableShadows(resolution: resolution)
     }
 
-    /// Disable shadow mapping.
+    /// シャドウマッピングを無効にします。
     public func disableShadows() {
         context.disableShadows()
     }
 
-    /// Set the shadow depth bias to reduce shadow acne.
+    /// シャドウアクネを軽減するためのシャドウデプスバイアスを設定します。
     ///
-    /// - Parameter value: The bias value.
+    /// - Parameter value: バイアス値。
     public func shadowBias(_ value: Float) {
         context.shadowBias(value)
     }
 
     // MARK: 3D Material
 
-    /// Set the specular highlight color.
+    /// スペキュラーハイライトの色を設定します。
     ///
-    /// - Parameter color: The specular color.
+    /// - Parameter color: スペキュラー色。
     public func specular(_ color: Color) {
         context.specular(color)
     }
 
-    /// Set the specular highlight color using a grayscale value.
+    /// グレースケール値でスペキュラーハイライトの色を設定します。
     ///
-    /// - Parameter gray: The grayscale brightness.
+    /// - Parameter gray: グレースケールの明るさ。
     public func specular(_ gray: Float) {
         context.specular(gray)
     }
 
-    /// Set the specular shininess exponent.
+    /// スペキュラーの光沢度指数を設定します。
     ///
-    /// - Parameter value: The shininess value (higher values produce smaller highlights).
+    /// - Parameter value: 光沢度（値が大きいほどハイライトが小さくなります）。
     public func shininess(_ value: Float) {
         context.shininess(value)
     }
 
-    /// Set the emissive (self-illumination) color.
+    /// エミッシブ（自己発光）色を設定します。
     ///
-    /// - Parameter color: The emissive color.
+    /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) {
         context.emissive(color)
     }
 
-    /// Set the emissive color using a grayscale value.
+    /// グレースケール値でエミッシブ色を設定します。
     ///
-    /// - Parameter gray: The grayscale brightness.
+    /// - Parameter gray: グレースケールの明るさ。
     public func emissive(_ gray: Float) {
         context.emissive(gray)
     }
 
-    /// Set the metallic factor for the material.
+    /// マテリアルのメタリック係数を設定します。
     ///
-    /// - Parameter value: The metallic value (0 = dielectric, 1 = metal).
+    /// - Parameter value: メタリック値（0 = 誘電体、1 = 金属）。
     public func metallic(_ value: Float) {
         context.metallic(value)
     }
 
-    /// Set the PBR roughness (automatically enables PBR mode).
+    /// PBR ラフネスを設定します（自動的に PBR モードに切り替わります）。
     ///
-    /// - Parameter value: The roughness value (0 = smooth, 1 = rough).
+    /// - Parameter value: ラフネス値（0 = 滑らか、1 = 粗い）。
     public func roughness(_ value: Float) {
         context.roughness(value)
     }
 
-    /// Set the PBR ambient occlusion factor.
+    /// PBR アンビエントオクルージョン係数を設定します。
     ///
-    /// - Parameter value: The ambient occlusion value (0 = fully occluded, 1 = none).
+    /// - Parameter value: アンビエントオクルージョン値（0 = 完全に遮蔽、1 = 遮蔽なし）。
     public func ambientOcclusion(_ value: Float) {
         context.ambientOcclusion(value)
     }
 
-    /// Toggle PBR rendering mode explicitly.
+    /// PBR レンダリングモードを明示的に切り替えます。
     ///
-    /// - Parameter enabled: Whether to enable PBR rendering.
+    /// - Parameter enabled: PBR レンダリングを有効にするかどうか。
     public func pbr(_ enabled: Bool) {
         context.pbr(enabled)
     }
 
     // MARK: 3D Custom Material
 
-    /// Create a custom shader material from MSL source code.
+    /// MSL ソースコードからカスタムシェーダーマテリアルを作成します。
     ///
     /// - Parameters:
-    ///   - source: The Metal Shading Language source code.
-    ///   - fragmentFunction: The name of the fragment function.
-    ///   - vertexFunction: The optional name of a custom vertex function.
-    /// - Returns: A new ``CustomMaterial`` instance.
+    ///   - source: Metal Shading Language のソースコード。
+    ///   - fragmentFunction: フラグメント関数の名前。
+    ///   - vertexFunction: カスタム頂点関数の名前（オプション）。
+    /// - Returns: 新しい ``CustomMaterial`` インスタンス。
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         try context.createMaterial(source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
 
-    /// Apply a custom material to subsequent 3D draws.
+    /// カスタムマテリアルを以降の 3D 描画に適用します。
     ///
-    /// - Parameter customMaterial: The custom material to apply.
+    /// - Parameter customMaterial: 適用するカスタムマテリアル。
     public func material(_ customMaterial: CustomMaterial) {
         context.material(customMaterial)
     }
 
-    /// Remove the active custom material and return to the default shading.
+    /// アクティブなカスタムマテリアルを解除しデフォルトシェーディングに戻します。
     public func noMaterial() {
         context.noMaterial()
     }
 
     // MARK: 3D Texture
 
-    /// Set the texture for subsequent 3D shapes.
+    /// 以降の 3D シェイプのテクスチャを設定します。
     ///
-    /// - Parameter img: The texture image.
+    /// - Parameter img: テクスチャ画像。
     public func texture(_ img: MImage) {
         context.texture(img)
     }
 
-    /// Remove the active texture.
+    /// アクティブなテクスチャを解除します。
     public func noTexture() {
         context.noTexture()
     }
 
     // MARK: 3D Transform Stack
 
-    /// Save the current 3D transformation matrix onto the stack.
+    /// 現在の 3D 変換行列をスタックに保存します。
     public func pushMatrix() {
         context.pushMatrix()
     }
 
-    /// Restore the most recently saved 3D transformation matrix from the stack.
+    /// 最後に保存された 3D 変換行列をスタックから復元します。
     public func popMatrix() {
         context.popMatrix()
     }
 
-    /// Apply a 3D translation to the current transform.
+    /// 現在の変換に 3D 平行移動を適用します。
     ///
     /// - Parameters:
-    ///   - x: The translation along the x-axis.
-    ///   - y: The translation along the y-axis.
-    ///   - z: The translation along the z-axis.
+    ///   - x: x 軸方向の移動量。
+    ///   - y: y 軸方向の移動量。
+    ///   - z: z 軸方向の移動量。
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         context.translate(x, y, z)
     }
 
-    /// Apply a rotation around the x-axis.
+    /// x 軸周りの回転を適用します。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateX(_ angle: Float) {
         context.rotateX(angle)
     }
 
-    /// Apply a rotation around the y-axis.
+    /// y 軸周りの回転を適用します。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateY(_ angle: Float) {
         context.rotateY(angle)
     }
 
-    /// Apply a rotation around the z-axis.
+    /// z 軸周りの回転を適用します。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateZ(_ angle: Float) {
         context.rotateZ(angle)
     }
 
-    /// Apply a non-uniform 3D scale to the current transform.
+    /// 現在の変換に非均一 3D スケールを適用します。
     ///
     /// - Parameters:
-    ///   - x: The scale factor along the x-axis.
-    ///   - y: The scale factor along the y-axis.
-    ///   - z: The scale factor along the z-axis.
+    ///   - x: x 軸方向のスケール係数。
+    ///   - y: y 軸方向のスケール係数。
+    ///   - z: z 軸方向のスケール係数。
     public func scale(_ x: Float, _ y: Float, _ z: Float) {
         context.scale(x, y, z)
     }
 
     // MARK: 3D Shapes
 
-    /// Draw a box with the specified dimensions.
+    /// 指定したサイズのボックスを描画します。
     ///
     /// - Parameters:
-    ///   - width: The width of the box.
-    ///   - height: The height of the box.
-    ///   - depth: The depth of the box.
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
         context.box(width, height, depth)
     }
 
-    /// Draw a cube with equal side lengths.
+    /// 辺の長さが等しいキューブを描画します。
     ///
-    /// - Parameter size: The side length.
+    /// - Parameter size: 辺の長さ。
     public func box(_ size: Float) {
         context.box(size)
     }
 
-    /// Draw a sphere.
+    /// 球を描画します。
     ///
     /// - Parameters:
-    ///   - radius: The sphere radius.
-    ///   - detail: The number of subdivisions for mesh tessellation.
+    ///   - radius: 球の半径。
+    ///   - detail: メッシュテッセレーションの分割数。
     public func sphere(_ radius: Float, detail: Int = 24) {
         context.sphere(radius, detail: detail)
     }
 
-    /// Draw a flat plane.
+    /// 平面を描画します。
     ///
     /// - Parameters:
-    ///   - width: The plane width.
-    ///   - height: The plane height.
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
     public func plane(_ width: Float, _ height: Float) {
         context.plane(width, height)
     }
 
-    /// Draw a cylinder.
+    /// 円柱を描画します。
     ///
     /// - Parameters:
-    ///   - radius: The cylinder radius.
-    ///   - height: The cylinder height.
-    ///   - detail: The number of subdivisions around the circumference.
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
+    ///   - detail: 円周方向の分割数。
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         context.cylinder(radius: radius, height: height, detail: detail)
     }
 
-    /// Draw a cone.
+    /// 円錐を描画します。
     ///
     /// - Parameters:
-    ///   - radius: The base radius.
-    ///   - height: The cone height.
-    ///   - detail: The number of subdivisions around the circumference.
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
+    ///   - detail: 円周方向の分割数。
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
         context.cone(radius: radius, height: height, detail: detail)
     }
 
-    /// Draw a torus (donut shape).
+    /// トーラス（ドーナツ形状）を描画します。
     ///
     /// - Parameters:
-    ///   - ringRadius: The distance from the center of the torus to the center of the tube.
-    ///   - tubeRadius: The radius of the tube.
-    ///   - detail: The number of subdivisions.
+    ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
+    ///   - tubeRadius: チューブの半径。
+    ///   - detail: 分割数。
     public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
         context.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 
-    /// Draw a prebuilt mesh.
+    /// ビルド済みメッシュを描画します。
     ///
-    /// - Parameter mesh: The mesh to draw.
+    /// - Parameter mesh: 描画するメッシュ。
     public func mesh(_ mesh: Mesh) {
         context.mesh(mesh)
     }
 
-    /// Draw a dynamic mesh.
+    /// ダイナミックメッシュを描画します。
     ///
-    /// - Parameter mesh: The dynamic mesh to draw.
+    /// - Parameter mesh: 描画するダイナミックメッシュ。
     public func dynamicMesh(_ mesh: DynamicMesh) {
         context.dynamicMesh(mesh)
     }
 
-    /// Create a new empty dynamic mesh.
+    /// 新しい空のダイナミックメッシュを作成します。
     ///
-    /// - Returns: A new ``DynamicMesh`` instance.
+    /// - Returns: 新しい ``DynamicMesh`` インスタンス。
     public func createDynamicMesh() -> DynamicMesh {
         context.createDynamicMesh()
     }
 
-    /// Load a 3D model from a file (OBJ, USDZ, ABC).
+    /// ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
     ///
-    /// - Parameter path: The file path to the model.
-    /// - Returns: The loaded mesh, or `nil` if loading fails.
+    /// - Parameter path: モデルのファイルパス。
+    /// - Returns: 読み込まれたメッシュ。読み込みに失敗した場合は `nil`。
     public func loadModel(_ path: String) -> Mesh? {
         context.loadModel(path)
     }
 
-    /// Load a 3D model asynchronously (parsing off the main thread).
+    /// 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
     ///
     /// - Parameters:
-    ///   - path: The file path to the model.
-    ///   - normalize: Whether to normalize the bounding box (defaults to `true`).
-    /// - Returns: The loaded mesh.
+    ///   - path: モデルのファイルパス。
+    ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
+    /// - Returns: 読み込まれたメッシュ。
     public func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh {
         try await context.resourceLoader.loadModelAsync(path: path, normalize: normalize)
     }

@@ -1,9 +1,9 @@
 @preconcurrency import Metal
 
-/// Provide a typed GPU buffer accessible from both CPU and GPU.
+/// CPU と GPU の両方からアクセス可能な型付き GPU バッファを提供します。
 ///
-/// Use `storageModeShared` so that Apple Silicon unified memory enables
-/// zero-copy access from both the CPU and GPU sides.
+/// `storageModeShared` を使用し、Apple Silicon ユニファイドメモリにより
+/// CPU と GPU の両側からゼロコピーアクセスを実現します。
 ///
 /// ```swift
 /// var positions = createBuffer(count: 1000, type: SIMD2<Float>.self)
@@ -11,21 +11,21 @@
 /// ```
 @MainActor
 public final class GPUBuffer<T> {
-    /// The underlying Metal buffer.
+    /// 基盤となる Metal バッファ
     public let buffer: MTLBuffer
 
-    /// The number of elements in the buffer.
+    /// バッファ内の要素数
     public let count: Int
 
-    /// Typed pointer to the buffer contents.
+    /// バッファ内容への型付きポインタ
     private let pointer: UnsafeMutablePointer<T>
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
-    /// Create an empty zero-initialized buffer with the given element count.
+    /// 指定された要素数でゼロ初期化された空のバッファを作成します。
     /// - Parameters:
-    ///   - device: The Metal device used to allocate the buffer.
-    ///   - count: The number of elements to allocate.
+    ///   - device: バッファ確保に使用する Metal デバイス
+    ///   - count: 確保する要素数
     public init?(device: MTLDevice, count: Int) {
         let byteLength = MemoryLayout<T>.stride * count
         guard byteLength > 0,
@@ -38,10 +38,10 @@ public final class GPUBuffer<T> {
         memset(buffer.contents(), 0, byteLength)
     }
 
-    /// Create a buffer initialized from an array of elements.
+    /// 要素の配列で初期化されたバッファを作成します。
     /// - Parameters:
-    ///   - device: The Metal device used to allocate the buffer.
-    ///   - data: The array of initial data to copy into the buffer.
+    ///   - device: バッファ確保に使用する Metal デバイス
+    ///   - data: バッファにコピーする初期データの配列
     public init?(device: MTLDevice, data: [T]) {
         let count = data.count
         let byteLength = MemoryLayout<T>.stride * count
@@ -57,9 +57,9 @@ public final class GPUBuffer<T> {
         }
     }
 
-    // MARK: - Element Access
+    // MARK: - 要素アクセス
 
-    /// Access the element at the given index.
+    /// 指定されたインデックスの要素にアクセスします。
     public subscript(index: Int) -> T {
         get {
             precondition(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
@@ -71,14 +71,14 @@ public final class GPUBuffer<T> {
         }
     }
 
-    /// Copy the buffer contents into a Swift array.
-    /// - Returns: A new array containing all elements from the buffer.
+    /// バッファの内容を Swift 配列にコピーします。
+    /// - Returns: バッファの全要素を含む新しい配列
     public func toArray() -> [T] {
         Array(UnsafeBufferPointer(start: pointer, count: count))
     }
 
-    /// Copy elements from a Swift array into the buffer.
-    /// - Parameter data: The source array. Only `min(data.count, count)` elements are copied.
+    /// Swift 配列の要素をバッファにコピーします。
+    /// - Parameter data: ソース配列。`min(data.count, count)` 要素のみがコピーされます
     public func copyFrom(_ data: [T]) {
         let copyCount = min(data.count, count)
         data.withUnsafeBufferPointer { src in
@@ -86,8 +86,8 @@ public final class GPUBuffer<T> {
         }
     }
 
-    /// Provide direct access to the buffer contents as an unsafe mutable buffer pointer.
-    /// - Returns: An `UnsafeMutableBufferPointer` over all elements for high-performance bulk operations.
+    /// バッファ内容への直接アクセスを unsafe mutable buffer pointer として提供します。
+    /// - Returns: 高パフォーマンスな一括操作用の全要素にわたる `UnsafeMutableBufferPointer`
     public var contents: UnsafeMutableBufferPointer<T> {
         UnsafeMutableBufferPointer(start: pointer, count: count)
     }

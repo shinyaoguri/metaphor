@@ -1,20 +1,20 @@
 import Metal
 
-/// Generic GPU instance buffer manager for triple-buffered instanced rendering.
+/// トリプルバッファリングされたインスタンスレンダリング用の汎用 GPU インスタンスバッファマネージャー。
 ///
-/// Handles GPU buffer allocation, triple-buffering lifecycle, bounds checking,
-/// and per-instance data writing. Used by both `Canvas2D` and `Canvas3D`
-/// instancing systems.
+/// GPU バッファの割り当て、トリプルバッファリングのライフサイクル、境界チェック、
+/// インスタンスごとのデータ書き込みを処理します。`Canvas2D` と `Canvas3D`
+/// の両方のインスタンシングシステムで使用されます。
 ///
 /// - Parameters:
-///   - T: The per-instance data type (e.g., `InstanceData2D`, `InstanceData3D`).
+///   - T: インスタンスごとのデータ型（例: `InstanceData2D`、`InstanceData3D`）。
 @MainActor
 final class InstanceBatcher<T> {
 
-    /// Number of triple-buffered GPU buffers.
+    /// トリプルバッファリングされた GPU バッファの数。
     static var bufferCount: Int { 3 }
 
-    /// Maximum number of instances per frame (across all batches).
+    /// フレームあたりの最大インスタンス数（全バッチ合計）。
     let maxInstances: Int
 
     private let device: MTLDevice
@@ -22,18 +22,18 @@ final class InstanceBatcher<T> {
     private let instancePointers: [UnsafeMutablePointer<T>]
     private var currentBufferIndex: Int = 0
 
-    /// Running offset into the instance buffer across batches within a single frame.
+    /// 単一フレーム内のバッチ間で蓄積されるインスタンスバッファへのオフセット。
     private(set) var frameOffset: Int = 0
 
-    /// The number of instances accumulated in the current batch.
+    /// 現在のバッチに蓄積されたインスタンス数。
     private(set) var instanceCount: Int = 0
 
-    /// Creates a new instance batcher with triple-buffered GPU storage.
+    /// トリプルバッファリングされた GPU ストレージで新しいインスタンスバッチャーを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device used to create buffers.
-    ///   - maxInstances: The maximum number of instances per frame.
-    ///   - label: A label prefix for the GPU buffers.
+    ///   - device: バッファ作成に使用する Metal デバイス。
+    ///   - maxInstances: フレームあたりの最大インスタンス数。
+    ///   - label: GPU バッファのラベルプレフィックス。
     init(device: MTLDevice, maxInstances: Int = 65536, label: String = "metaphor.instance") throws {
         self.device = device
         self.maxInstances = maxInstances
@@ -53,38 +53,38 @@ final class InstanceBatcher<T> {
         self.instancePointers = pointers
     }
 
-    /// Prepares the batcher for a new frame by selecting the buffer and resetting state.
+    /// バッファを選択し状態をリセットして、新しいフレームの準備をします。
     func beginFrame(bufferIndex: Int) {
         currentBufferIndex = bufferIndex % Self.bufferCount
         frameOffset = 0
         instanceCount = 0
     }
 
-    /// Whether there is room for another instance in the current frame.
+    /// 現在のフレームにもう1つインスタンスを追加する余地があるかどうか。
     var canAdd: Bool {
         (frameOffset + instanceCount) < maxInstances
     }
 
-    /// Writes per-instance data at the current position and advances the instance count.
+    /// 現在位置にインスタンスごとのデータを書き込み、インスタンスカウントを進めます。
     ///
-    /// - Parameter data: The per-instance data to write.
-    /// - Precondition: ``canAdd`` must be `true`.
+    /// - Parameter data: 書き込むインスタンスごとのデータ。
+    /// - Precondition: ``canAdd`` が `true` である必要があります。
     func addInstance(_ data: T) {
         instancePointers[currentBufferIndex][frameOffset + instanceCount] = data
         instanceCount += 1
     }
 
-    /// The currently active instance data buffer.
+    /// 現在アクティブなインスタンスデータバッファ。
     var currentBuffer: MTLBuffer {
         instanceBuffers[currentBufferIndex]
     }
 
-    /// The byte offset into the current buffer where the active batch starts.
+    /// アクティブなバッチが開始する現在のバッファへのバイトオフセット。
     var currentBufferOffset: Int {
         frameOffset * MemoryLayout<T>.stride
     }
 
-    /// Advances the frame offset by the current instance count and resets the batch.
+    /// 現在のインスタンスカウント分だけフレームオフセットを進め、バッチをリセットします。
     func advanceBatch() {
         frameOffset += instanceCount
         instanceCount = 0

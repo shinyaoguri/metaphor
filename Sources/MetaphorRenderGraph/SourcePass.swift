@@ -1,51 +1,51 @@
 @preconcurrency import Metal
 import MetaphorCore
 
-/// Provide an offscreen render target where user code draws content.
+/// ユーザーコードがコンテンツを描画するオフスクリーンレンダーターゲットを提供します。
 ///
-/// ``SourcePass`` owns a dedicated `TextureManager` and exposes an
-/// ``onDraw`` callback where user rendering code is executed. The resulting
-/// color texture becomes the node's output.
+/// ``SourcePass`` は専用の `TextureManager` を保持し、
+/// ユーザーのレンダリングコードが実行される ``onDraw`` コールバックを公開します。
+/// 結果のカラーテクスチャがノードの出力になります。
 ///
 /// ```swift
 /// let pass = try SourcePass(label: "scene", device: device, width: 1920, height: 1080)
 /// pass.onDraw = { encoder, time in
-///     // Metal rendering code
+///     // Metal レンダリングコード
 /// }
 /// ```
 @MainActor
 public final class SourcePass: RenderPassNode {
-    // MARK: - Public Properties
+    // MARK: - パブリックプロパティ
 
-    /// The debug label identifying this source pass.
+    /// このソースパスを識別するデバッグラベル。
     public let label: String
 
-    /// The output color texture produced by this pass.
+    /// このパスで生成される出力カラーテクスチャ。
     public var output: MTLTexture? { textureManager.colorTexture }
 
-    /// The draw callback invoked during execution.
+    /// 実行時に呼び出される描画コールバック。
     ///
     /// - Parameters:
-    ///   - encoder: The render command encoder for the offscreen render target.
-    ///   - time: The elapsed time in seconds.
+    ///   - encoder: オフスクリーンレンダーターゲット用のレンダーコマンドエンコーダー。
+    ///   - time: 経過時間（秒）。
     public var onDraw: ((MTLRenderCommandEncoder, Double) -> Void)?
 
-    // MARK: - Private Properties
+    // MARK: - プライベートプロパティ
 
-    /// The offscreen texture manager providing render targets.
+    /// レンダーターゲットを提供するオフスクリーンテクスチャマネージャー。
     let textureManager: TextureManager
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
-    /// Create a new source pass with a dedicated offscreen render target.
+    /// 専用オフスクリーンレンダーターゲットで新しいソースパスを作成します。
     ///
     /// - Parameters:
-    ///   - label: The debug label for this pass.
-    ///   - device: The Metal device used to create textures.
-    ///   - width: The width of the offscreen texture in pixels.
-    ///   - height: The height of the offscreen texture in pixels.
-    ///   - sampleCount: The MSAA sample count (defaults to 1 for post-process compatibility).
-    /// - Throws: An error if texture creation fails.
+    ///   - label: このパスのデバッグラベル。
+    ///   - device: テクスチャ作成に使用する Metal デバイス。
+    ///   - width: オフスクリーンテクスチャの幅（ピクセル単位）。
+    ///   - height: オフスクリーンテクスチャの高さ（ピクセル単位）。
+    ///   - sampleCount: MSAA サンプル数（ポストプロセス互換のためデフォルトは1）。
+    /// - Throws: テクスチャ作成に失敗した場合にエラーをスローします。
     public init(
         label: String,
         device: MTLDevice,
@@ -64,12 +64,12 @@ public final class SourcePass: RenderPassNode {
 
     // MARK: - RenderPassNode
 
-    /// Execute the source pass by creating a render encoder and invoking the draw callback.
+    /// レンダーエンコーダーを作成し、描画コールバックを呼び出してソースパスを実行します。
     ///
     /// - Parameters:
-    ///   - commandBuffer: The Metal command buffer to encode work into.
-    ///   - time: The elapsed time in seconds.
-    ///   - renderer: The `MetaphorRenderer` reference (unused by source passes).
+    ///   - commandBuffer: 処理をエンコードする Metal コマンドバッファ。
+    ///   - time: 経過時間（秒）。
+    ///   - renderer: `MetaphorRenderer` 参照（ソースパスでは未使用）。
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         guard let encoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: textureManager.renderPassDescriptor

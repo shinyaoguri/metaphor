@@ -1,17 +1,17 @@
 import Metal
 import simd
 
-// MARK: - Vertex Writing
+// MARK: - 頂点書き込み
 
 extension Canvas2D {
 
-    /// Ensures the color buffer has room for at least one more vertex.
-    /// Flushes first, then grows if needed.
+    /// カラーバッファに少なくとも1頂点分の空きがあることを保証します。
+    /// 必要に応じてフラッシュし、その後バッファを拡張します。
     private func ensureColorCapacity() -> Bool {
         if bufferOffset + vertexCount >= maxVertices {
             flushColorVertices()
             if bufferOffset + vertexCount >= maxVertices {
-                // Buffer is full even after flush — try to grow
+                // フラッシュ後もバッファが満杯 — 拡張を試みる
                 let needed = bufferOffset + vertexCount + 1
                 if !colorBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: bufferOffset) {
                     return false
@@ -21,15 +21,15 @@ extension Canvas2D {
         return true
     }
 
-    /// Adds a vertex with the current transform applied.
+    /// 現在の変換を適用して頂点を追加します。
     func addVertex(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         hasDrawnAnything = true
-        // Flush textured vertices when switching back to color mode (preserves draw order)
+        // カラーモードに戻る際、テクスチャ頂点をフラッシュ（描画順序の保持）
         if texturedVertexCount > 0 {
             flushTexturedVertices()
             currentBoundTexture = nil
         }
-        // Flush any pending instanced batch first (preserves draw order)
+        // 保留中のインスタンスバッチを先にフラッシュ（描画順序の保持）
         if instanceBatcher2D.instanceCount > 0 {
             flushInstancedBatch()
         }
@@ -43,7 +43,7 @@ extension Canvas2D {
         vertexCount += 1
     }
 
-    /// Adds a vertex without transform (used for background fills).
+    /// 変換なしで頂点を追加します（背景塗りつぶしに使用）。
     func addVertexRaw(_ x: Float, _ y: Float, _ color: SIMD4<Float>) {
         if texturedVertexCount > 0 {
             flushTexturedVertices()
@@ -61,7 +61,7 @@ extension Canvas2D {
         vertexCount += 1
     }
 
-    /// Adds a triangle with the current transform applied.
+    /// 現在の変換を適用して三角形を追加します。
     func addTriangle(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -73,7 +73,7 @@ extension Canvas2D {
         addVertex(x3, y3, color)
     }
 
-    /// Draws a stroke line as a quad with optional start/end caps.
+    /// オプションの始端・終端キャップ付きでストロークラインをクワッドとして描画します。
     func strokeLine(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float,
                     capStart: Bool = true, capEnd: Bool = true) {
         let dx = x2 - x1
@@ -125,7 +125,7 @@ extension Canvas2D {
         }
     }
 
-    /// Draws a polyline stroke with join support (bevel, miter, round).
+    /// ジョイン対応（bevel、miter、round）のポリラインストロークを描画します。
     func strokePolyline(_ points: [(Float, Float)], closed: Bool) {
         let count = points.count
         guard count >= 2 else { return }

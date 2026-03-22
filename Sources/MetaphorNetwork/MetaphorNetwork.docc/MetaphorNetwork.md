@@ -1,23 +1,22 @@
 # ``MetaphorNetwork``
 
-OSC and MIDI communication for interactive and live performance applications.
+インタラクティブ・ライブパフォーマンス向けの OSC / MIDI 通信。
 
 ## Overview
 
-MetaphorNetwork provides real-time communication protocols commonly used in
-creative coding and live performance. ``OSCReceiver`` listens for UDP-based
-Open Sound Control messages, while ``MIDIManager`` handles CoreMIDI input
-and output for controllers, synthesizers, and other MIDI devices.
+MetaphorNetwork はクリエイティブコーディングやライブパフォーマンスで広く使われる
+リアルタイム通信プロトコルを提供します。``OSCReceiver`` は UDP ベースの
+Open Sound Control メッセージを受信し、``MIDIManager`` はコントローラー、
+シンセサイザーなどの MIDI デバイスとの CoreMIDI 入出力を処理します。
 
-This module has no dependency on MetaphorCore and can be used standalone.
-When using the umbrella module (`import metaphor`), network features are
-accessible through convenience methods like `createOSCReceiver(port:)` and
-`createMIDI()`.
+このモジュールは MetaphorCore に依存せず、単独で使用できます。
+アンブレラモジュール（`import metaphor`）使用時は、`createOSCReceiver(port:)` や
+`createMIDI()` などの便利なメソッドからアクセスできます。
 
-### Quick Start
+### クイックスタート
 
 ```swift
-// Receive OSC messages
+// OSC メッセージの受信
 let osc = OSCReceiver(port: 9000)
 osc.on("/sensor/value") { args in
     if case .float(let value) = args.first {
@@ -26,11 +25,11 @@ osc.on("/sensor/value") { args in
 }
 try osc.start()
 
-// MIDI controller input
+// MIDI コントローラー入力
 let midi = MIDIManager()
 midi.start()
 let messages = midi.poll()
-let knobValue = midi.controllerValue(1)  // CC#1 normalized to 0.0-1.0
+let knobValue = midi.controllerValue(1)  // CC#1 を 0.0〜1.0 に正規化
 ```
 
 ## Topics

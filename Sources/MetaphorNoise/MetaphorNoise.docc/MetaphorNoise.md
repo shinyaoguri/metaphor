@@ -1,20 +1,19 @@
 # ``MetaphorNoise``
 
-Procedural noise generation using GameplayKit.
+GameplayKit を使用したプロシージャルノイズ生成。
 
 ## Overview
 
-MetaphorNoise wraps GameplayKit's noise system for creative coding use.
-Generate Perlin, Voronoi, billow, ridged, and other noise types as float
-values, 2D grids, or Metal textures. Supports fractal configuration,
-noise composition (add, multiply), and transformations (turbulence, clamp,
-power).
+MetaphorNoise は GameplayKit のノイズシステムをクリエイティブコーディング向けにラップします。
+Perlin、Voronoi、billow、ridged などのノイズを float 値、2D グリッド、
+または Metal テクスチャとして生成できます。フラクタル設定、
+ノイズ合成（加算・乗算）、変換（タービュランス、クランプ、べき乗）をサポートします。
 
-This module depends on MetaphorCore for `MImage` and Metal texture handling.
-When using the umbrella module (`import metaphor`), noise features are
-accessible through convenience methods like `createNoise(type:config:)`.
+このモジュールは `MImage` および Metal テクスチャ処理のために MetaphorCore に依存します。
+アンブレラモジュール（`import metaphor`）使用時は、`createNoise(type:config:)` などの
+便利なメソッドからアクセスできます。
 
-### Quick Start
+### クイックスタート
 
 ```swift
 let noise = GKNoiseWrapper(
@@ -23,23 +22,23 @@ let noise = GKNoiseWrapper(
     device: device
 )
 
-// Sample individual points
+// 個別の点をサンプリング
 let value = noise.sample(x: 0.5, y: 0.3)
 
-// Generate a texture for rendering
+// レンダリング用テクスチャを生成
 let texture = noise.texture(width: 512, height: 512)
 ```
 
 ## Topics
 
-### Noise Types
+### ノイズタイプ
 
 - ``NoiseType``
 
-### Configuration
+### 設定
 
 - ``NoiseConfig``
 
-### Generator
+### ジェネレータ
 
 - ``GKNoiseWrapper``

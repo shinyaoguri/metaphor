@@ -1,7 +1,7 @@
-/// Configuration for a secondary sketch window.
+/// セカンダリスケッチウィンドウの設定。
 ///
-/// Used with ``SketchWindow`` to define the render resolution, window title,
-/// frame rate, and optional Syphon output for a secondary window.
+/// ``SketchWindow`` と共に使用し、セカンダリウィンドウのレンダー解像度、
+/// ウィンドウタイトル、フレームレート、オプションの Syphon 出力を定義します。
 ///
 /// ```swift
 /// let config = SketchWindowConfig(
@@ -12,41 +12,41 @@
 /// let window = createWindow(config)
 /// ```
 public struct SketchWindowConfig: Sendable {
-    /// The offscreen render texture width in pixels.
+    /// オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
     public var width: Int
 
-    /// The offscreen render texture height in pixels.
+    /// オフスクリーンレンダーテクスチャの高さ（ピクセル単位）。
     public var height: Int
 
-    /// The window title.
+    /// ウィンドウタイトル。
     public var title: String
 
-    /// The target frame rate.
+    /// 目標フレームレート。
     public var fps: Int
 
-    /// The window scale factor (window size = texture size * scale).
+    /// ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
     public var windowScale: Float
 
-    /// The Syphon server name, or `nil` to disable Syphon output.
+    /// Syphon サーバー名。Syphon 出力を無効にするには `nil`。
     public var syphonName: String?
 
-    /// The render loop mode.
+    /// レンダーループモード。
     ///
-    /// Defaults to ``RenderLoopMode/displayLink``. When ``syphonName`` is set
-    /// and this remains `.displayLink`, the window automatically switches to
-    /// ``RenderLoopMode/timer(fps:)`` for reliable Syphon output.
+    /// デフォルトは ``RenderLoopMode/displayLink``。``syphonName`` が設定されており
+    /// `.displayLink` のままの場合、信頼性のある Syphon 出力のために自動的に
+    /// ``RenderLoopMode/timer(fps:)`` に切り替わります。
     public var renderLoopMode: RenderLoopMode = .displayLink
 
-    /// Create a new secondary window configuration.
+    /// 新しいセカンダリウィンドウ設定を作成します。
     ///
     /// - Parameters:
-    ///   - width: The offscreen render texture width in pixels.
-    ///   - height: The offscreen render texture height in pixels.
-    ///   - title: The window title.
-    ///   - fps: The target frame rate.
-    ///   - windowScale: The window scale factor.
-    ///   - syphonName: The Syphon server name, or `nil` to disable.
-    ///   - renderLoopMode: The render loop mode (default: `.displayLink`).
+    ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
+    ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル単位）。
+    ///   - title: ウィンドウタイトル。
+    ///   - fps: 目標フレームレート。
+    ///   - windowScale: ウィンドウのスケール係数。
+    ///   - syphonName: Syphon サーバー名。無効にするには `nil`。
+    ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
     public init(
         width: Int = 800,
         height: Int = 600,

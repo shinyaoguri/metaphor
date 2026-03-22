@@ -1,18 +1,18 @@
-/// Canvas2D instanced drawing shader function name constants.
+/// Canvas2D インスタンス描画シェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Uses `instance_id` to read per-instance data (transform, color),
-/// allowing batch rendering of identical shapes in a single draw call.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// `instance_id` を使用してインスタンスごとのデータ（トランスフォーム、カラー）を読み取り、
+/// 同一形状を単一のドローコールでバッチレンダリングします。
 enum Canvas2DInstancedShaders {
 
-    // MARK: - Function Names
+    // MARK: - 関数名
 
-    /// MSL function name for the instanced vertex shader.
+    /// インスタンス描画頂点シェーダーのMSL関数名。
     static let vertexFunctionName = "metaphor_canvas2DInstancedVertex"
-    /// MSL function name for the instanced fragment shader.
+    /// インスタンス描画フラグメントシェーダーのMSL関数名。
     static let fragmentFunctionName = "metaphor_canvas2DInstancedFragment"
-    /// MSL function name for the instanced difference blend fragment shader.
+    /// インスタンス描画差分ブレンドフラグメントシェーダーのMSL関数名。
     static let differenceFragmentFunctionName = "metaphor_canvas2DInstancedDifferenceFragment"
-    /// MSL function name for the instanced exclusion blend fragment shader.
+    /// インスタンス描画除外ブレンドフラグメントシェーダーのMSL関数名。
     static let exclusionFragmentFunctionName = "metaphor_canvas2DInstancedExclusionFragment"
 }

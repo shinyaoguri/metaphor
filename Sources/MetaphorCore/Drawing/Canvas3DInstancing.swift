@@ -3,61 +3,61 @@ import simd
 
 // MARK: - Per-Instance GPU Data
 
-/// Per-instance data for Canvas3D instanced drawing (160 bytes, 16-byte aligned).
+/// Canvas3D インスタンス描画用のインスタンスごとのデータ（160バイト、16バイトアライメント）。
 ///
-/// The vertex shader indexes by `instance_id` to read each instance's transform and color.
+/// 頂点シェーダーが `instance_id` でインデックスし、各インスタンスのトランスフォームと色を読み取ります。
 struct InstanceData3D {
-    /// The model transform matrix for this instance.
+    /// このインスタンスのモデル変換行列。
     var modelMatrix: float4x4       // 64 bytes
-    /// The normal transform matrix for this instance.
+    /// このインスタンスの法線変換行列。
     var normalMatrix: float4x4      // 64 bytes
-    /// The tint color (RGBA) for this instance.
+    /// このインスタンスのティント色（RGBA）。
     var color: SIMD4<Float>         // 16 bytes
-    /// Padding for 16-byte alignment.
+    /// 16バイトアライメント用パディング。
     var _pad: SIMD4<Float> = .zero  // 16 bytes (alignment)
 }
 
 // MARK: - Scene Uniforms (per-batch, shared across instances)
 
-/// Scene-wide uniforms shared across all instances in a batch (96 bytes).
+/// バッチ内の全インスタンスで共有されるシーン全体のユニフォーム（96バイト）。
 ///
-/// Contains view/projection matrix, camera position, and light count.
+/// ビュー/プロジェクション行列、カメラ位置、ライト数を含みます。
 struct InstancedSceneUniforms {
-    /// The combined view-projection matrix.
+    /// 結合されたビュー・プロジェクション行列。
     var viewProjectionMatrix: float4x4  // 64 bytes
-    /// The camera position in world space.
+    /// ワールド空間でのカメラ位置。
     var cameraPosition: SIMD4<Float>    // 16 bytes
-    /// The current frame time.
+    /// 現在のフレーム時間。
     var time: Float                      // 4 bytes
-    /// The number of active lights.
+    /// アクティブなライトの数。
     var lightCount: UInt32               // 4 bytes
-    /// Whether the mesh has a texture bound.
+    /// メッシュにテクスチャがバインドされているかどうか。
     var hasTexture: UInt32 = 0           // 4 bytes
-    /// Padding for alignment.
+    /// アライメント用パディング。
     var _pad2: UInt32 = 0                // 4 bytes
 }
 
 // MARK: - Batch Key
 
-/// Key that determines whether 3D draws can be batched together.
+/// 3D描画をバッチ化できるかどうかを決定するキー。
 ///
-/// All fields must match for consecutive draws to be batched.
+/// 連続する描画がバッチ化されるには、すべてのフィールドが一致する必要があります。
 struct BatchKey3D: Equatable {
-    /// Object identifier of the mesh.
+    /// メッシュのオブジェクト識別子。
     let meshID: ObjectIdentifier
-    /// Whether the mesh uses texture coordinates.
+    /// メッシュがテクスチャ座標を使用するかどうか。
     let isTextured: Bool
-    /// Object identifier of the bound texture, if any.
+    /// バインドされたテクスチャのオブジェクト識別子（存在する場合）。
     let textureID: ObjectIdentifier?
-    /// The material properties for this batch.
+    /// このバッチのマテリアルプロパティ。
     let material: Material3D
-    /// Object identifier of a custom material, if any.
+    /// カスタムマテリアルのオブジェクト識別子（存在する場合）。
     let customMaterialID: ObjectIdentifier?
-    /// Whether fill drawing is enabled.
+    /// 塗りつぶし描画が有効かどうか。
     let hasFill: Bool
-    /// Whether stroke (wireframe) drawing is enabled.
+    /// ストローク（ワイヤーフレーム）描画が有効かどうか。
     let hasStroke: Bool
-    /// The stroke color for wireframe rendering.
+    /// ワイヤーフレームレンダリングのストローク色。
     let strokeColor: SIMD4<Float>
 
     static func == (lhs: BatchKey3D, rhs: BatchKey3D) -> Bool {
@@ -77,32 +77,32 @@ struct BatchKey3D: Equatable {
 
 // MARK: - 3D Instance Batcher (thin wrapper over generic InstanceBatcher)
 
-/// Automatic instancing batcher for Canvas3D.
+/// Canvas3D の自動インスタンシングバッチャー。
 ///
-/// Wraps `InstanceBatcher<InstanceData3D>` with batch key and per-batch state tracking.
+/// `InstanceBatcher<InstanceData3D>` をバッチキーとバッチごとの状態トラッキング付きでラップします。
 @MainActor
 final class InstanceBatcher3D {
     private let batcher: InstanceBatcher<InstanceData3D>
 
-    /// The batch key for the current in-progress batch, or nil if no batch is active.
+    /// 進行中のバッチのバッチキー。バッチがアクティブでない場合は nil。
     private(set) var currentBatchKey: BatchKey3D?
 
-    /// The number of instances accumulated in the current batch.
+    /// 現在のバッチに蓄積されたインスタンス数。
     var instanceCount: Int { batcher.instanceCount }
 
-    /// The mesh used in the current batch.
+    /// 現在のバッチで使用されるメッシュ。
     private(set) var currentMesh: Mesh?
-    /// The texture bound in the current batch.
+    /// 現在のバッチでバインドされたテクスチャ。
     private(set) var currentTexture: MTLTexture?
-    /// The material used in the current batch.
+    /// 現在のバッチで使用されるマテリアル。
     private(set) var currentMaterial: Material3D = .default
-    /// The custom material used in the current batch, if any.
+    /// 現在のバッチで使用されるカスタムマテリアル（存在する場合）。
     private(set) var currentCustomMaterial: CustomMaterial?
-    /// Whether fill drawing is enabled in the current batch.
+    /// 現在のバッチで塗りつぶし描画が有効かどうか。
     private(set) var currentHasFill: Bool = true
-    /// Whether stroke drawing is enabled in the current batch.
+    /// 現在のバッチでストローク描画が有効かどうか。
     private(set) var currentHasStroke: Bool = false
-    /// The stroke color used in the current batch.
+    /// 現在のバッチで使用されるストローク色。
     private(set) var currentStrokeColor: SIMD4<Float> = .one
 
     init(device: MTLDevice) throws {

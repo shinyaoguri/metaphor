@@ -1,22 +1,21 @@
 # ``MetaphorSceneGraph``
 
-Hierarchical scene graph for organizing 3D objects.
+3D オブジェクトを整理するための階層型シーングラフ。
 
 ## Overview
 
-MetaphorSceneGraph provides a tree-based scene structure for 3D rendering.
-``Node`` represents an object with position, orientation, scale, optional
-mesh, and child nodes. Transforms propagate through the hierarchy so that
-moving a parent node moves all of its children.
+MetaphorSceneGraph は 3D レンダリングのためのツリーベースのシーン構造を提供します。
+``Node`` は位置、向き、スケール、オプションのメッシュ、子ノードを持つオブジェクトを表します。
+トランスフォームは階層を通じて伝播するため、親ノードを移動するとすべての子ノードも移動します。
 
-``SceneRenderer`` traverses the node tree and renders visible meshes using
-Canvas3D, with optional frustum culling via ``AABB`` bounding boxes.
+``SceneRenderer`` はノードツリーを走査し、Canvas3D を使って可視メッシュをレンダリングします。
+``AABB`` バウンディングボックスによるオプションのフラスタムカリングにも対応しています。
 
-This module depends on MetaphorCore.
-When using the umbrella module (`import metaphor`), scene graph features are
-accessible through convenience methods like `createNode(name:)`.
+このモジュールは MetaphorCore に依存します。
+アンブレラモジュール（`import metaphor`）使用時は、`createNode(name:)` などの
+便利なメソッドからアクセスできます。
 
-### Quick Start
+### クイックスタート
 
 ```swift
 let root = Node(name: "root")
@@ -26,17 +25,17 @@ cube.mesh = Mesh.box(1, 1, 1)
 cube.position = SIMD3(0, 1, 0)
 root.addChild(cube)
 
-// In your draw loop:
+// 描画ループ内:
 SceneRenderer.render(node: root, canvas: canvas3D)
 ```
 
 ## Topics
 
-### Scene Nodes
+### シーンノード
 
 - ``Node``
 - ``AABB``
 
-### Rendering
+### レンダリング
 
 - ``SceneRenderer``

@@ -2,11 +2,11 @@ import CoreML
 import CoreVideo
 import Metal
 
-/// Provide conversion utilities between MTLTexture, CVPixelBuffer, and CGImage.
+/// MTLTexture、CVPixelBuffer、CGImage 間の変換ユーティリティを提供します。
 ///
-/// Use this converter for CoreML/Vision input and output texture conversion.
-/// The output path (CVPixelBuffer to MTLTexture) uses the same zero-copy
-/// CVMetalTextureCache approach as CaptureDevice.
+/// CoreML/Vision の入出力テクスチャ変換に使用します。
+/// 出力パス（CVPixelBuffer → MTLTexture）は CaptureDevice と同じ
+/// ゼロコピーの CVMetalTextureCache アプローチを使用します。
 @MainActor
 public final class MLTextureConverter {
 
@@ -65,9 +65,9 @@ public final class MLTextureConverter {
 
     // MARK: - MTLTexture -> CVPixelBuffer
 
-    /// Convert an MTLTexture to a CVPixelBuffer using a copy-based approach.
-    /// - Parameter texture: The input texture (bgra8Unorm).
-    /// - Returns: A CVPixelBuffer in kCVPixelFormatType_32BGRA format, or nil on failure.
+    /// MTLTexture をコピーベースのアプローチで CVPixelBuffer に変換します。
+    /// - Parameter texture: 入力テクスチャ（bgra8Unorm）。
+    /// - Returns: kCVPixelFormatType_32BGRA 形式の CVPixelBuffer。失敗時は nil。
     public func pixelBuffer(from texture: MTLTexture) -> CVPixelBuffer? {
         let width = texture.width
         let height = texture.height
@@ -101,11 +101,11 @@ public final class MLTextureConverter {
         return buffer
     }
 
-    // MARK: - CVPixelBuffer -> MTLTexture (zero-copy)
+    // MARK: - CVPixelBuffer -> MTLTexture（ゼロコピー）
 
-    /// Convert a CVPixelBuffer to an MTLTexture using zero-copy Metal texture caching.
-    /// - Parameter pixelBuffer: The input pixel buffer.
-    /// - Returns: An MTLTexture in bgra8Unorm format, or nil on failure.
+    /// CVPixelBuffer をゼロコピーの Metal テクスチャキャッシュを使用して MTLTexture に変換します。
+    /// - Parameter pixelBuffer: 入力ピクセルバッファ。
+    /// - Returns: bgra8Unorm 形式の MTLTexture。失敗時は nil。
     public func texture(from pixelBuffer: CVPixelBuffer) -> MTLTexture? {
         guard let cache = textureCache else { return nil }
         let width = CVPixelBufferGetWidth(pixelBuffer)
@@ -122,9 +122,9 @@ public final class MLTextureConverter {
 
     // MARK: - CGImage -> MTLTexture
 
-    /// Convert a CGImage to an MTLTexture.
-    /// - Parameter cgImage: The input Core Graphics image.
-    /// - Returns: An MTLTexture in bgra8Unorm format, or nil on failure.
+    /// CGImage を MTLTexture に変換します。
+    /// - Parameter cgImage: 入力 Core Graphics 画像。
+    /// - Returns: bgra8Unorm 形式の MTLTexture。失敗時は nil。
     public func texture(from cgImage: CGImage) -> MTLTexture? {
         let width = cgImage.width
         let height = cgImage.height
@@ -157,9 +157,9 @@ public final class MLTextureConverter {
 
     // MARK: - MTLTexture -> CGImage
 
-    /// Convert an MTLTexture to a CGImage.
-    /// - Parameter texture: The input Metal texture.
-    /// - Returns: A CGImage, or nil on failure.
+    /// MTLTexture を CGImage に変換します。
+    /// - Parameter texture: 入力 Metal テクスチャ。
+    /// - Returns: CGImage。失敗時は nil。
     public func cgImage(from texture: MTLTexture) -> CGImage? {
         let width = texture.width
         let height = texture.height
@@ -194,11 +194,11 @@ public final class MLTextureConverter {
 
     // MARK: - MLMultiArray -> MTLTexture
 
-    /// Convert a 2D MLMultiArray (grayscale) to an MTLTexture.
+    /// 2D MLMultiArray（グレースケール）を MTLTexture に変換します。
     /// - Parameters:
-    ///   - multiArray: The input array (shape: [1, height, width] or [height, width]).
-    ///   - normalize: When true, apply min-max normalization to the data.
-    /// - Returns: A bgra8Unorm texture with the grayscale value replicated across all RGB channels.
+    ///   - multiArray: 入力配列（形状: [1, height, width] または [height, width]）。
+    ///   - normalize: true の場合、データに最小-最大正規化を適用します。
+    /// - Returns: グレースケール値を全 RGB チャンネルに複製した bgra8Unorm テクスチャ。
     public func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> MTLTexture? {
         let shape = multiArray.shape.map { $0.intValue }
         let width: Int
@@ -239,8 +239,8 @@ public final class MLTextureConverter {
                 floatData[i] = Float(ptr[i])
             }
         default:
-            // MLMultiArrayDataType.int8 (rawValue 131080) is only available in macOS 26.0+ SDK,
-            // so we compare by rawValue to avoid compile errors on older SDKs.
+            // MLMultiArrayDataType.int8 (rawValue 131080) は macOS 26.0+ SDK でのみ利用可能なため、
+            // 古い SDK でのコンパイルエラーを避けるために rawValue で比較します。
             if multiArray.dataType.rawValue == 131080 {
                 let ptr = multiArray.dataPointer.bindMemory(to: Int8.self, capacity: count)
                 for i in 0..<count {

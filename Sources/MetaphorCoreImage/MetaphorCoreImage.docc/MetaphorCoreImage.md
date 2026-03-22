@@ -1,47 +1,47 @@
 # ``MetaphorCoreImage``
 
-Core Image filter integration for Metal-based creative coding.
+Metal ベースのクリエイティブコーディングのための Core Image フィルタ統合。
 
 ## Overview
 
-MetaphorCoreImage bridges Apple's Core Image framework with Metal textures.
-Apply a curated set of filter presets — distortion, stylize, blur, color
-effects, generators, and more — through ``CIFilterPreset``, or use any
-Core Image filter by name with ``CIFilterWrapper``.
+MetaphorCoreImage は Apple の Core Image フレームワークと Metal テクスチャを橋渡しします。
+``CIFilterPreset`` で厳選されたフィルタプリセット（ディストーション、スタイライズ、ブラー、
+カラーエフェクト、ジェネレータなど）を適用するか、``CIFilterWrapper`` で任意の
+Core Image フィルタを名前で使用できます。
 
-The module also provides ``PostEffect`` implementations (``CIFilterEffect``,
-``CIFilterRawEffect``) for direct use in a post-processing pipeline.
+``PostEffect`` 実装（``CIFilterEffect``、``CIFilterRawEffect``）も含まれており、
+ポストプロセスパイプラインで直接使用できます。
 
-This module depends on MetaphorCore.
-Import `MetaphorCoreImage` directly or use the umbrella module (`import metaphor`).
+このモジュールは MetaphorCore に依存します。
+`MetaphorCoreImage` を直接インポートするか、アンブレラモジュール（`import metaphor`）を使用してください。
 
-### Quick Start
+### クイックスタート
 
 ```swift
 let ci = CIFilterWrapper(device: device, commandQueue: queue)
 
-// Apply a preset filter to an image
+// プリセットフィルタを画像に適用
 ci.apply(filterName: CIFilterPreset.twirl.filterName,
          parameters: CIFilterPreset.twirl.parameters(textureSize: size),
          to: image)
 
-// Use as a post-processing effect
+// ポストプロセスエフェクトとして使用
 let effect = CIFilterEffect(.kaleidoscope)
 postProcess(effect)
 ```
 
 ## Topics
 
-### Filter Presets
+### フィルタプリセット
 
 - ``CIFilterPreset``
 
-### Filter Wrapper
+### フィルタラッパー
 
 - ``CIFilterWrapper``
 - ``CIFilterValue``
 
-### Post-Processing Effects
+### ポストプロセスエフェクト
 
 - ``CIFilterEffect``
 - ``CIFilterRawEffect``

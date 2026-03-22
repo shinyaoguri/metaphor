@@ -1,25 +1,24 @@
 # ``MetaphorCore``
 
-The rendering engine, drawing system, and sketch protocol at the heart of metaphor.
+metaphor の中核となるレンダリングエンジン、描画システム、Sketch プロトコル。
 
 ## Overview
 
-MetaphorCore provides the core Metal rendering pipeline, 2D/3D drawing backends,
-compute shader support, and the ``Sketch`` protocol that ties everything together.
+MetaphorCore は Metal レンダリングパイプライン、2D/3D 描画バックエンド、
+コンピュートシェーダーサポート、そしてすべてを統合する ``Sketch`` プロトコルを提供します。
 
-Most users should `import metaphor` (the umbrella module) rather than importing
-MetaphorCore directly. See the
-[full API reference](https://shinyaoguri.github.io/metaphor/documentation/metaphor)
-for all modules including audio, physics, ML, and more.
+通常は MetaphorCore を直接インポートせず、`import metaphor`（アンブレラモジュール）を使用してください。
+すべてのモジュール（オーディオ、物理演算、ML など）を含む
+[完全な API リファレンスはこちら](https://shinyaoguri.github.io/metaphor/documentation/metaphor)。
 
 ## Topics
 
-### Sketch Protocol
+### Sketch プロトコル
 
 - ``Sketch``
 - ``SketchConfig``
 
-### Core Infrastructure
+### コアインフラ
 
 - ``MetaphorRenderer``
 - ``TextureManager``
@@ -27,7 +26,7 @@ for all modules including audio, physics, ML, and more.
 - ``PipelineFactory``
 - ``MetaphorError``
 
-### 2D Drawing
+### 2D 描画
 
 - ``Canvas2D``
 - ``Graphics``
@@ -47,38 +46,38 @@ for all modules including audio, physics, ML, and more.
 - ``StrokeJoin``
 - ``GradientAxis``
 
-### 3D Drawing
+### 3D 描画
 
 - ``Canvas3D``
 - ``Graphics3D``
 - ``CustomMaterial``
 - ``ShadowMap``
 
-### Geometry
+### ジオメトリ
 
 - ``Mesh``
 - ``DynamicMesh``
 
-### Compute
+### コンピュート
 
 - ``ComputeKernel``
 - ``GPUBuffer``
 - ``ImageFilterGPU``
 
-### Post-Processing
+### ポストプロセス
 
 - ``PostEffect``
 - ``CustomPostEffect``
 - ``PostProcessPipeline``
 
-### Particle System
+### パーティクルシステム
 
 - ``ParticleSystem``
 - ``Particle``
 - ``ParticleForce``
 - ``EmitterShape``
 
-### Animation
+### アニメーション
 
 - ``Tween``
 - ``Interpolatable``
@@ -91,13 +90,13 @@ for all modules including audio, physics, ML, and more.
 - ``OrbitCamera``
 - ``PerformanceHUD``
 
-### Input
+### 入力
 
 - ``InputManager``
 - ``CaptureDevice``
 - ``CameraPosition``
 
-### Export
+### エクスポート
 
 - ``VideoExporter``
 - ``VideoCodec``
@@ -110,22 +109,22 @@ for all modules including audio, physics, ML, and more.
 
 - ``SyphonOutput``
 
-### Color
+### カラー
 
 - ``Color``
 - ``ColorSpace``
 - ``ColorModeConfig``
 
-### Math & Vectors
+### 数学・ベクトル
 
 - ``Vec2``
 - ``Vec3``
 - ``FrameTimer``
 
-### Utilities
+### ユーティリティ
 
 - ``NoiseGenerator``
 
-### Errors
+### エラー
 
 - ``MetaphorError``

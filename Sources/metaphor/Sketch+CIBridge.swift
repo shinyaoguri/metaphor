@@ -1,13 +1,13 @@
 import MetaphorCore
 import MetaphorCoreImage
 
-// MARK: - CoreImage Filter Bridge
+// MARK: - CoreImage フィルタブリッジ
 
 @MainActor
 private var _ciWrapperStorage: [ObjectIdentifier: CIFilterWrapper] = [:]
 
 extension SketchContext {
-    /// The lazily initialized CoreImage filter wrapper (stored externally).
+    /// 遅延初期化される CoreImage フィルタラッパー（外部ストレージ）。
     var _ciFilterWrapper: CIFilterWrapper? {
         get { _ciWrapperStorage[ObjectIdentifier(self)] }
         set {
@@ -19,7 +19,7 @@ extension SketchContext {
         }
     }
 
-    /// Returns the shared CIFilterWrapper, creating it if needed.
+    /// 共有の CIFilterWrapper を返し、必要に応じて作成します。
     func ensureCIFilterWrapper() -> CIFilterWrapper {
         if let wrapper = _ciFilterWrapper { return wrapper }
         let wrapper = CIFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
@@ -29,11 +29,11 @@ extension SketchContext {
 }
 
 extension Sketch {
-    /// Apply a CoreImage filter preset to an image.
+    /// CoreImage フィルタプリセットを画像に適用します。
     ///
     /// - Parameters:
-    ///   - image: The image to filter.
-    ///   - preset: The filter preset to apply.
+    ///   - image: フィルタを適用する画像。
+    ///   - preset: 適用するフィルタプリセット。
     public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
         context.ensureCIFilterWrapper().apply(
             filterName: preset.filterName,
@@ -44,23 +44,23 @@ extension Sketch {
         )
     }
 
-    /// Apply a CoreImage filter to an image by name with custom parameters.
+    /// 名前とカスタムパラメータを指定して CoreImage フィルタを画像に適用します。
     ///
     /// - Parameters:
-    ///   - image: The image to filter.
-    ///   - name: The CIFilter name.
-    ///   - parameters: The filter parameters.
+    ///   - image: フィルタを適用する画像。
+    ///   - name: CIFilter 名。
+    ///   - parameters: フィルタパラメータ。
     public func ciFilter(_ image: MImage, name: String, parameters: [String: Any] = [:]) {
         context.ensureCIFilterWrapper().apply(filterName: name, parameters: parameters, to: image)
     }
 
-    /// Generate an image using a CoreImage generator filter.
+    /// CoreImage ジェネレーターフィルタを使用して画像を生成します。
     ///
     /// - Parameters:
-    ///   - preset: The generator filter preset.
-    ///   - width: The output image width in pixels.
-    ///   - height: The output image height in pixels.
-    /// - Returns: The generated image, or `nil` if generation fails.
+    ///   - preset: ジェネレーターフィルタプリセット。
+    ///   - width: 出力画像の幅（ピクセル単位）。
+    ///   - height: 出力画像の高さ（ピクセル単位）。
+    /// - Returns: 生成された画像。生成に失敗した場合は `nil`。
     public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
         guard let tex = context.ensureCIFilterWrapper().generate(
             filterName: preset.filterName,

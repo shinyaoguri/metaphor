@@ -1,27 +1,27 @@
 import Metal
 
-// MARK: - Vertex Descriptor Presets
+// MARK: - 頂点デスクリプタプリセット
 
-/// Represent predefined vertex attribute layouts for Metal render pipelines.
+/// Metal レンダーパイプライン用の定義済み頂点属性レイアウト
 public enum VertexLayout {
-    /// Store only a float3 position (stride: 12 bytes).
+    /// float3 位置のみ格納 (ストライド: 12 バイト)
     case position
-    /// Store a float3 position and a float4 color (stride: 28 bytes).
+    /// float3 位置と float4 カラーを格納 (ストライド: 28 バイト)
     case positionColor
-    /// Store a float3 position, float3 normal, and float4 color (stride: 40 bytes).
+    /// float3 位置、float3 法線、float4 カラーを格納 (ストライド: 40 バイト)
     case positionNormalColor
-    /// Store a float3 position, float3 normal, and float2 UV (stride: 48 bytes, including alignment padding).
+    /// float3 位置、float3 法線、float2 UV を格納 (ストライド: 48 バイト、アライメントパディング含む)
     case positionNormalUV
-    /// Store a float2 position and a float4 color (stride: 24 bytes, designed for Canvas2D).
+    /// float2 位置と float4 カラーを格納 (ストライド: 24 バイト、Canvas2D 用)
     case position2DColor
-    /// Store a float2 position, float2 texture coordinate, and float4 color (stride: 32 bytes, designed for textured Canvas2D).
+    /// float2 位置、float2 テクスチャ座標、float4 カラーを格納 (ストライド: 32 バイト、テクスチャ付き Canvas2D 用)
     case position2DTexCoordColor
-    /// Store only a float2 position (stride: 8 bytes, designed for Canvas2D instancing unit meshes).
+    /// float2 位置のみ格納 (ストライド: 8 バイト、Canvas2D インスタンシングユニットメッシュ用)
     case position2DOnly
 
-    /// Create a Metal vertex descriptor matching this layout.
+    /// このレイアウトに一致する Metal 頂点デスクリプタを作成します。
     ///
-    /// - Returns: A configured `MTLVertexDescriptor` with the appropriate attribute formats, offsets, and strides.
+    /// - Returns: 適切な属性フォーマット、オフセット、ストライドで構成された `MTLVertexDescriptor`
     public func makeDescriptor() -> MTLVertexDescriptor {
         let descriptor = MTLVertexDescriptor()
 
@@ -63,7 +63,7 @@ public enum VertexLayout {
             descriptor.attributes[2].format = .float2
             descriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride * 2
             descriptor.attributes[2].bufferIndex = 0
-            // stride = 48: SIMD3(16) + SIMD3(16) + SIMD2(8) + 8bytes alignment padding
+            // ストライド = 48: SIMD3(16) + SIMD3(16) + SIMD2(8) + 8バイトのアライメントパディング
             descriptor.layouts[0].stride = MemoryLayout<SIMD3<Float>>.stride * 3
 
         case .position2DColor:
@@ -76,13 +76,13 @@ public enum VertexLayout {
             descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
 
         case .position2DTexCoordColor:
-            descriptor.attributes[0].format = .float2   // position
+            descriptor.attributes[0].format = .float2   // 位置
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
-            descriptor.attributes[1].format = .float2   // texCoord
+            descriptor.attributes[1].format = .float2   // テクスチャ座標
             descriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.stride
             descriptor.attributes[1].bufferIndex = 0
-            descriptor.attributes[2].format = .float4   // color (tint)
+            descriptor.attributes[2].format = .float4   // カラー (ティント)
             descriptor.attributes[2].offset = MemoryLayout<SIMD2<Float>>.stride * 2
             descriptor.attributes[2].bufferIndex = 0
             descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
@@ -98,32 +98,32 @@ public enum VertexLayout {
     }
 }
 
-// MARK: - Blend Mode Presets
+// MARK: - ブレンドモードプリセット
 
-/// Define predefined blend modes for Metal color attachment configuration.
+/// Metal カラーアタッチメント設定用の定義済みブレンドモード
 public enum BlendMode: CaseIterable, Hashable, Sendable {
-    /// Disable blending (opaque rendering).
+    /// ブレンド無効（不透明レンダリング）
     case opaque
-    /// Perform standard alpha blending.
+    /// 標準アルファブレンド
     case alpha
-    /// Perform additive blending.
+    /// 加算ブレンド
     case additive
-    /// Perform multiplicative blending.
+    /// 乗算ブレンド
     case multiply
-    /// Perform screen blending (suitable for glow effects).
+    /// スクリーンブレンド（グロウエフェクト向き）
     case screen
-    /// Perform subtractive blending.
+    /// 減算ブレンド
     case subtract
-    /// Keep the lighter value (max operation).
+    /// 明るい方の値を保持（max 演算）
     case lightest
-    /// Keep the darker value (min operation).
+    /// 暗い方の値を保持（min 演算）
     case darkest
-    /// Perform difference blending (|src - dst|).
+    /// 差分ブレンド (|src - dst|)
     case difference
-    /// Perform exclusion blending (src + dst - 2*src*dst).
+    /// 除外ブレンド (src + dst - 2*src*dst)
     case exclusion
 
-    /// Indicate whether this blend mode requires framebuffer fetch.
+    /// このブレンドモードがフレームバッファフェッチを必要とするかどうか
     public var requiresFramebufferFetch: Bool {
         switch self {
         case .difference, .exclusion: return true
@@ -131,9 +131,9 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
         }
     }
 
-    /// Apply this blend mode's configuration to a color attachment descriptor.
+    /// このブレンドモードの設定をカラーアタッチメントデスクリプタに適用します。
     ///
-    /// - Parameter attachment: The color attachment descriptor to configure.
+    /// - Parameter attachment: 設定するカラーアタッチメントデスクリプタ
     func apply(to attachment: MTLRenderPipelineColorAttachmentDescriptor) {
         switch self {
         case .opaque:
@@ -195,27 +195,27 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
             attachment.destinationAlphaBlendFactor = .one
 
         case .difference, .exclusion:
-            // Compositing is handled on the shader side via framebuffer fetch.
+            // コンポジットはフレームバッファフェッチ経由でシェーダー側で処理
             attachment.isBlendingEnabled = false
         }
     }
 }
 
-// MARK: - Depth Stencil Presets
+// MARK: - デプスステンシルプリセット
 
-/// Define predefined depth-stencil configurations for Metal render pipelines.
+/// Metal レンダーパイプライン用の定義済みデプスステンシル設定
 public enum DepthMode {
-    /// Enable depth testing and writing (standard 3D rendering).
+    /// デプステストと書き込みを有効化（標準 3D レンダリング）
     case readWrite
-    /// Enable depth testing but disable writing.
+    /// デプステストを有効化、書き込みは無効化
     case readOnly
-    /// Disable depth testing (suitable for 2D rendering).
+    /// デプステストを無効化（2D レンダリング向き）
     case disabled
 
-    /// Create a depth-stencil state for this mode.
+    /// このモード用のデプスステンシルステートを作成します。
     ///
-    /// - Parameter device: The Metal device used to create the state object.
-    /// - Returns: A configured `MTLDepthStencilState`, or `nil` if creation fails.
+    /// - Parameter device: ステートオブジェクト作成に使用する Metal デバイス
+    /// - Returns: 設定済みの `MTLDepthStencilState`。作成に失敗した場合は `nil`
     public func makeState(device: MTLDevice) -> MTLDepthStencilState? {
         let descriptor = MTLDepthStencilDescriptor()
 
@@ -235,9 +235,9 @@ public enum DepthMode {
     }
 }
 
-// MARK: - Pipeline Factory
+// MARK: - パイプラインファクトリ
 
-/// Build Metal render pipeline states using a fluent builder pattern.
+/// フルーエントビルダーパターンで Metal レンダーパイプラインステートを構築します。
 ///
 /// ```swift
 /// let pipeline = try PipelineFactory(device: device)
@@ -257,112 +257,112 @@ public struct PipelineFactory {
     private var blendMode: BlendMode = .opaque
     private var rasterSampleCount: Int = 4
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
-    /// Create a new pipeline factory bound to the given Metal device.
+    /// 指定された Metal デバイスにバインドされた新しいパイプラインファクトリを作成します。
     ///
-    /// - Parameter device: The Metal device used to create pipeline states.
+    /// - Parameter device: パイプラインステート作成に使用する Metal デバイス
     public init(device: MTLDevice) {
         self.device = device
     }
 
-    // MARK: - Builder Methods
+    // MARK: - ビルダーメソッド
 
-    /// Set the vertex shader function.
+    /// 頂点シェーダー関数を設定します。
     ///
-    /// - Parameter function: The vertex function to use, or `nil` to clear.
-    /// - Returns: A copy of this factory with the vertex function applied.
+    /// - Parameter function: 使用する頂点関数。クリアする場合は `nil`
+    /// - Returns: 頂点関数が適用されたこのファクトリのコピー
     public func vertex(_ function: MTLFunction?) -> PipelineFactory {
         var copy = self
         copy.vertexFunction = function
         return copy
     }
 
-    /// Set the fragment shader function.
+    /// フラグメントシェーダー関数を設定します。
     ///
-    /// - Parameter function: The fragment function to use, or `nil` to clear.
-    /// - Returns: A copy of this factory with the fragment function applied.
+    /// - Parameter function: 使用するフラグメント関数。クリアする場合は `nil`
+    /// - Returns: フラグメント関数が適用されたこのファクトリのコピー
     public func fragment(_ function: MTLFunction?) -> PipelineFactory {
         var copy = self
         copy.fragmentFunction = function
         return copy
     }
 
-    /// Set the vertex layout using a predefined preset.
+    /// 定義済みプリセットを使用して頂点レイアウトを設定します。
     ///
-    /// - Parameter layout: The vertex layout preset to apply.
-    /// - Returns: A copy of this factory with the vertex descriptor configured.
+    /// - Parameter layout: 適用する頂点レイアウトプリセット
+    /// - Returns: 頂点デスクリプタが設定されたこのファクトリのコピー
     public func vertexLayout(_ layout: VertexLayout) -> PipelineFactory {
         var copy = self
         copy.vertexDescriptor = layout.makeDescriptor()
         return copy
     }
 
-    /// Set a custom vertex descriptor.
+    /// カスタム頂点デスクリプタを設定します。
     ///
-    /// - Parameter descriptor: The Metal vertex descriptor to use.
-    /// - Returns: A copy of this factory with the custom vertex descriptor applied.
+    /// - Parameter descriptor: 使用する Metal 頂点デスクリプタ
+    /// - Returns: カスタム頂点デスクリプタが適用されたこのファクトリのコピー
     public func vertexDescriptor(_ descriptor: MTLVertexDescriptor) -> PipelineFactory {
         var copy = self
         copy.vertexDescriptor = descriptor
         return copy
     }
 
-    /// Set the color attachment pixel format.
+    /// カラーアタッチメントのピクセルフォーマットを設定します。
     ///
-    /// - Parameter format: The pixel format for the color attachment.
-    /// - Returns: A copy of this factory with the color format applied.
+    /// - Parameter format: カラーアタッチメントのピクセルフォーマット
+    /// - Returns: カラーフォーマットが適用されたこのファクトリのコピー
     public func colorFormat(_ format: MTLPixelFormat) -> PipelineFactory {
         var copy = self
         copy.colorFormat = format
         return copy
     }
 
-    /// Set the depth attachment pixel format.
+    /// デプスアタッチメントのピクセルフォーマットを設定します。
     ///
-    /// - Parameter format: The pixel format for the depth attachment.
-    /// - Returns: A copy of this factory with the depth format applied.
+    /// - Parameter format: デプスアタッチメントのピクセルフォーマット
+    /// - Returns: デプスフォーマットが適用されたこのファクトリのコピー
     public func depthFormat(_ format: MTLPixelFormat) -> PipelineFactory {
         var copy = self
         copy.depthFormat = format
         return copy
     }
 
-    /// Disable the depth attachment by setting its format to invalid.
+    /// フォーマットを invalid に設定してデプスアタッチメントを無効化します。
     ///
-    /// - Returns: A copy of this factory with depth disabled.
+    /// - Returns: デプスが無効化されたこのファクトリのコピー
     public func noDepth() -> PipelineFactory {
         var copy = self
         copy.depthFormat = .invalid
         return copy
     }
 
-    /// Set the blend mode for the color attachment.
+    /// カラーアタッチメントのブレンドモードを設定します。
     ///
-    /// - Parameter mode: The blend mode to apply.
-    /// - Returns: A copy of this factory with the blend mode applied.
+    /// - Parameter mode: 適用するブレンドモード
+    /// - Returns: ブレンドモードが適用されたこのファクトリのコピー
     public func blending(_ mode: BlendMode) -> PipelineFactory {
         var copy = self
         copy.blendMode = mode
         return copy
     }
 
-    /// Set the MSAA rasterization sample count.
+    /// MSAA ラスタライゼーションサンプル数を設定します。
     ///
-    /// - Parameter count: The number of samples per pixel.
-    /// - Returns: A copy of this factory with the sample count applied.
+    /// - Parameter count: ピクセルあたりのサンプル数
+    /// - Returns: サンプル数が適用されたこのファクトリのコピー
     public func sampleCount(_ count: Int) -> PipelineFactory {
         var copy = self
         copy.rasterSampleCount = count
         return copy
     }
 
-    // MARK: - Build
+    // MARK: - ビルド
 
-    /// Build and return a configured render pipeline state.
+    /// 設定済みのレンダーパイプラインステートをビルドして返します。
     ///
-    /// - Returns: A compiled `MTLRenderPipelineState` ready for use.
-    /// - Throws: An error if pipeline creation fails.
+    /// - Returns: 使用可能なコンパイル済み `MTLRenderPipelineState`
+    /// - Throws: パイプライン作成に失敗した場合のエラー
     public func build() throws -> MTLRenderPipelineState {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
@@ -379,15 +379,15 @@ public struct PipelineFactory {
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 
-    // MARK: - Compute Pipeline
+    // MARK: - コンピュートパイプライン
 
-    /// Build a compute pipeline state from the given function.
+    /// 指定された関数からコンピュートパイプラインステートをビルドします。
     ///
     /// - Parameters:
-    ///   - device: The Metal device used to create the pipeline state.
-    ///   - function: The compute shader function.
-    /// - Returns: A compiled `MTLComputePipelineState` ready for use.
-    /// - Throws: An error if pipeline creation fails.
+    ///   - device: パイプラインステート作成に使用する Metal デバイス
+    ///   - function: コンピュートシェーダー関数
+    /// - Returns: 使用可能なコンパイル済み `MTLComputePipelineState`
+    /// - Throws: パイプライン作成に失敗した場合のエラー
     public static func buildCompute(
         device: MTLDevice,
         function: MTLFunction
@@ -396,25 +396,25 @@ public struct PipelineFactory {
     }
 }
 
-// MARK: - Depth State Cache
+// MARK: - デプスステートキャッシュ
 
-/// Cache depth-stencil states to avoid redundant creation for the same depth mode.
+/// 同一デプスモードの冗長な作成を回避するためにデプスステンシルステートをキャッシュします。
 @MainActor
 public final class DepthStencilCache {
     private let device: MTLDevice
     private var cache: [DepthMode: MTLDepthStencilState] = [:]
 
-    /// Create a new depth-stencil cache bound to the given Metal device.
+    /// 指定された Metal デバイスにバインドされた新しいデプスステンシルキャッシュを作成します。
     ///
-    /// - Parameter device: The Metal device used to create depth-stencil states.
+    /// - Parameter device: デプスステンシルステート作成に使用する Metal デバイス
     public init(device: MTLDevice) {
         self.device = device
     }
 
-    /// Retrieve the depth-stencil state for the specified mode, using a cached instance if available.
+    /// 指定されたモードのデプスステンシルステートを取得します。キャッシュ済みインスタンスがあればそれを使用します。
     ///
-    /// - Parameter mode: The depth mode to look up.
-    /// - Returns: The corresponding `MTLDepthStencilState`, or `nil` if creation fails.
+    /// - Parameter mode: ルックアップするデプスモード
+    /// - Returns: 対応する `MTLDepthStencilState`。作成に失敗した場合は `nil`
     public func state(for mode: DepthMode) -> MTLDepthStencilState? {
         if let cached = cache[mode] {
             return cached

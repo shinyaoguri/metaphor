@@ -3,21 +3,21 @@ import MetalPerformanceShaders
 import MetaphorCore
 import simd
 
-// MARK: - Ray Trace Mode
+// MARK: - レイトレースモード
 
-/// Represent the rendering mode for ray tracing.
+/// レイトレーシングのレンダリングモードを表します。
 public enum RayTraceMode: Sendable {
-    /// Ambient occlusion with configurable sample count and radius.
+    /// 設定可能なサンプル数と半径によるアンビエントオクルージョン。
     case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)
-    /// Soft shadow from a directional light source.
+    /// 平行光源からのソフトシャドウ。
     case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)
-    /// Simple diffuse shading.
+    /// シンプルなディフューズシェーディング。
     case diffuse
 }
 
 // MARK: - RayTraceUniforms
 
-/// Store the uniform data passed to ray tracing GPU shaders.
+/// レイトレーシング GPU シェーダーに渡されるユニフォームデータを格納します。
 struct RayTraceUniforms {
     var inverseView: float4x4
     var inverseProjection: float4x4
@@ -33,11 +33,11 @@ struct RayTraceUniforms {
 
 // MARK: - MPSRayTracer
 
-/// Provide an MPS-based ray tracing system.
+/// MPS ベースのレイトレーシングシステムを提供します。
 ///
-/// Use MPSRayIntersector and MPSTriangleAccelerationStructure to perform
-/// GPU-accelerated ray tracing for ambient occlusion, soft shadows, and
-/// diffuse shading.
+/// MPSRayIntersector と MPSTriangleAccelerationStructure を使用して、
+/// GPU アクセラレーションによるレイトレーシングでアンビエントオクルージョン、
+/// ソフトシャドウ、ディフューズシェーディングを行います。
 ///
 /// ```swift
 /// let rt = try createRayTracer(width: 512, height: 512)
@@ -55,34 +55,34 @@ public final class MPSRayTracer {
     private let height: Int
     private let rayCount: Int
 
-    // Scene
+    // シーン
     private let scene: MPSRayScene
     private var accelerationStructure: MPSTriangleAccelerationStructure?
     private var normalBuffer: MTLBuffer?
 
-    // MPS objects
+    // MPS オブジェクト
     private var intersector: MPSRayIntersector?
 
-    // Buffers
+    // バッファ
     private var rayBuffer: MTLBuffer?
     private var shadowRayBuffer: MTLBuffer?
     private var intersectionBuffer: MTLBuffer?
     private var shadowIntersectionBuffer: MTLBuffer?
 
-    // Output
+    // 出力
     private var _outputTexture: MTLTexture?
 
-    // Pipelines
+    // パイプライン
     private var library: MTLLibrary?
     private var generateRaysPipeline: MTLComputePipelineState?
     private var shadeAOPipeline: MTLComputePipelineState?
     private var accumulateAOPipeline: MTLComputePipelineState?
     private var shadeDiffusePipeline: MTLComputePipelineState?
 
-    /// Return the ray tracing result texture.
+    /// レイトレーシング結果テクスチャを返します。
     public var outputTexture: MTLTexture? { _outputTexture }
 
-    // MARK: - Init
+    // MARK: - 初期化
 
     public init(device: MTLDevice, commandQueue: MTLCommandQueue, width: Int, height: Int) throws {
         self.device = device
@@ -97,41 +97,41 @@ public final class MPSRayTracer {
         setupOutputTexture()
     }
 
-    // MARK: - Public: Scene Building
+    // MARK: - パブリック: シーン構築
 
-    /// Add a mesh to the ray tracing scene.
+    /// レイトレーシングシーンにメッシュを追加します。
     /// - Parameters:
-    ///   - mesh: The mesh to add.
-    ///   - transform: The world-space transform matrix to apply.
+    ///   - mesh: 追加するメッシュ。
+    ///   - transform: 適用するワールド空間の変換行列。
     public func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
         scene.addMesh(mesh, transform: transform)
     }
 
-    /// Add a dynamic mesh to the ray tracing scene.
+    /// レイトレーシングシーンにダイナミックメッシュを追加します。
     /// - Parameters:
-    ///   - mesh: The dynamic mesh to add.
-    ///   - transform: The world-space transform matrix to apply.
+    ///   - mesh: 追加するダイナミックメッシュ。
+    ///   - transform: 適用するワールド空間の変換行列。
     public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         scene.addDynamicMesh(mesh, transform: transform)
     }
 
-    /// Clear all meshes from the scene and reset the acceleration structure.
+    /// シーンからすべてのメッシュをクリアし、アクセラレーション構造をリセットします。
     public func clearScene() {
         scene.clear()
         accelerationStructure = nil
         normalBuffer = nil
     }
 
-    /// Build the acceleration structure from all added meshes.
+    /// 追加されたすべてのメッシュからアクセラレーション構造を構築します。
     ///
-    /// Call this after adding meshes and before tracing rays.
-    /// - Throws: `MetaphorError` if the scene is empty or buffer creation fails.
+    /// メッシュを追加した後、レイをトレースする前に呼び出してください。
+    /// - Throws: シーンが空またはバッファ作成に失敗した場合に `MetaphorError` をスローします。
     public func buildAccelerationStructure() throws {
         let result = try scene.buildAccelerationStructure()
         self.accelerationStructure = result.accelerationStructure
         self.normalBuffer = result.normalBuffer
 
-        // Setup intersector
+        // インターセクターをセットアップ
         let intersector = MPSRayIntersector(device: device)
         intersector.rayDataType = .originMinDistanceDirectionMaxDistance
         intersector.rayStride = MemoryLayout<Float>.stride * 8  // packed_float3 + float + packed_float3 + float
@@ -139,12 +139,12 @@ public final class MPSRayTracer {
         self.intersector = intersector
     }
 
-    // MARK: - Public: Tracing
+    // MARK: - パブリック: トレーシング
 
-    /// Execute ray tracing with the specified mode and camera parameters.
+    /// 指定モードとカメラパラメータでレイトレーシングを実行します。
     /// - Parameters:
-    ///   - mode: The rendering mode (ambient occlusion, soft shadow, or diffuse).
-    ///   - camera: The camera parameters (eye position, look-at center, up vector, and field of view).
+    ///   - mode: レンダリングモード（アンビエントオクルージョン、ソフトシャドウ、またはディフューズ）。
+    ///   - camera: カメラパラメータ（視点位置、注視点、上方向ベクトル、視野角）。
     public func trace(
         mode: RayTraceMode,
         camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float)
@@ -179,7 +179,7 @@ public final class MPSRayTracer {
         }
     }
 
-    // MARK: - Private: AO Tracing
+    // MARK: - プライベート: AO トレーシング
 
     private func traceAO(
         accel: MPSTriangleAccelerationStructure,
@@ -206,7 +206,7 @@ public final class MPSRayTracer {
                 aoRadius: radius, shadowSoftness: 0, maxBounces: 0, padding: 0
             )
 
-            // 1. Generate primary rays (first sample only)
+            // 1. プライマリレイを生成（最初のサンプルのみ）
             if sampleIdx == 0 {
                 if let encoder = cb.makeComputeCommandEncoder(),
                    let pipeline = generateRaysPipeline {
@@ -217,7 +217,7 @@ public final class MPSRayTracer {
                     encoder.endEncoding()
                 }
 
-                // 2. Primary ray intersection
+                // 2. プライマリレイの交差判定
                 intersector.encodeIntersection(
                     commandBuffer: cb,
                     intersectionType: .nearest,
@@ -228,7 +228,7 @@ public final class MPSRayTracer {
                 )
             }
 
-            // 3. Shade AO (generate shadow rays)
+            // 3. AO シェーディング（シャドウレイを生成）
             if let encoder = cb.makeComputeCommandEncoder(),
                let pipeline = shadeAOPipeline {
                 encoder.setComputePipelineState(pipeline)
@@ -242,7 +242,7 @@ public final class MPSRayTracer {
                 encoder.endEncoding()
             }
 
-            // 4. Shadow ray intersection
+            // 4. シャドウレイの交差判定
             intersector.encodeIntersection(
                 commandBuffer: cb,
                 intersectionType: .any,
@@ -252,7 +252,7 @@ public final class MPSRayTracer {
                 accelerationStructure: accel
             )
 
-            // 5. Accumulate AO
+            // 5. AO を累積
             if let encoder = cb.makeComputeCommandEncoder(),
                let pipeline = accumulateAOPipeline {
                 encoder.setComputePipelineState(pipeline)
@@ -269,7 +269,7 @@ public final class MPSRayTracer {
         cb.waitUntilCompleted()
     }
 
-    // MARK: - Private: Soft Shadow
+    // MARK: - プライベート: ソフトシャドウ
 
     private func traceSoftShadow(
         accel: MPSTriangleAccelerationStructure,
@@ -283,8 +283,8 @@ public final class MPSRayTracer {
         softness: Float,
         samples: Int
     ) {
-        // Soft shadow uses same pipeline as AO but with light-direction-based shadow rays
-        // For simplicity, reuse AO pipeline with light direction encoded in uniforms
+        // ソフトシャドウは AO と同じパイプラインを使用するが、ライト方向ベースのシャドウレイを使用
+        // 簡略化のため、ライト方向をユニフォームにエンコードして AO パイプラインを再利用
         guard let shadowRayBuf = shadowRayBuffer,
               let shadowIntBuf = shadowIntersectionBuffer,
               let normalBuf = normalBuffer else { return }
@@ -319,7 +319,7 @@ public final class MPSRayTracer {
                 )
             }
 
-            // Generate shadow rays toward light with jitter
+            // ジッター付きでライト方向へのシャドウレイを生成
             if let encoder = cb.makeComputeCommandEncoder(),
                let pipeline = shadeAOPipeline {
                 encoder.setComputePipelineState(pipeline)
@@ -358,7 +358,7 @@ public final class MPSRayTracer {
         cb.waitUntilCompleted()
     }
 
-    // MARK: - Private: Diffuse Shading
+    // MARK: - プライベート: ディフューズシェーディング
 
     private func traceDiffuse(
         accel: MPSTriangleAccelerationStructure,
@@ -379,7 +379,7 @@ public final class MPSRayTracer {
             aoRadius: 0, shadowSoftness: 0, maxBounces: 0, padding: 0
         )
 
-        // Generate rays
+        // レイを生成
         if let encoder = cb.makeComputeCommandEncoder(),
            let pipeline = generateRaysPipeline {
             encoder.setComputePipelineState(pipeline)
@@ -389,7 +389,7 @@ public final class MPSRayTracer {
             encoder.endEncoding()
         }
 
-        // Intersect
+        // 交差判定
         intersector.encodeIntersection(
             commandBuffer: cb,
             intersectionType: .nearest,
@@ -399,7 +399,7 @@ public final class MPSRayTracer {
             accelerationStructure: accel
         )
 
-        // Shade
+        // シェーディング
         if let encoder = cb.makeComputeCommandEncoder(),
            let pipeline = shadeDiffusePipeline {
             encoder.setComputePipelineState(pipeline)
@@ -416,7 +416,7 @@ public final class MPSRayTracer {
         cb.waitUntilCompleted()
     }
 
-    // MARK: - Private: Setup
+    // MARK: - プライベート: セットアップ
 
     private func setupPipelines() throws {
         guard let source = ShaderLibrary.loadShaderSource("mpsRayTracer") else {

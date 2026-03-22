@@ -3,10 +3,10 @@ import MetalPerformanceShaders
 import MetaphorCore
 import simd
 
-/// Build ray tracing scenes from meshes (internal helper).
+/// メッシュからレイトレーシングシーンを構築します（内部ヘルパー）。
 ///
-/// Extract vertex positions from Mesh and DynamicMesh instances and
-/// construct an MPSTriangleAccelerationStructure for ray intersection.
+/// Mesh および DynamicMesh インスタンスから頂点位置を抽出し、
+/// レイ交差判定用の MPSTriangleAccelerationStructure を構築します。
 @available(macOS, deprecated: 14.0, message: "MPSTriangleAccelerationStructure is deprecated; migrate to Metal ray tracing APIs")
 @MainActor
 final class MPSRayScene {
@@ -24,11 +24,11 @@ final class MPSRayScene {
         self.device = device
     }
 
-    // MARK: - Add Mesh
+    // MARK: - メッシュ追加
 
-    /// Add a Mesh by extracting positions from its vertex buffer.
+    /// 頂点バッファから位置を抽出して Mesh を追加します。
     public func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
-        let stride = MemoryLayout<Vertex3D>.stride  // 48 bytes
+        let stride = MemoryLayout<Vertex3D>.stride  // 48バイト
         let ptr = mesh.vertexBuffer.contents()
         var positions = [SIMD3<Float>]()
         positions.reserveCapacity(mesh.vertexCount)
@@ -53,14 +53,14 @@ final class MPSRayScene {
                 break
             }
         } else {
-            // Non-indexed: generate sequential indices
+            // インデックスなし: 連番インデックスを生成
             indices = (0..<UInt32(mesh.vertexCount)).map { $0 }
         }
 
         entries.append(MeshEntry(positions: positions, indices: indices, transform: transform))
     }
 
-    /// Add a DynamicMesh to the scene.
+    /// DynamicMesh をシーンに追加します。
     public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         var positions = [SIMD3<Float>]()
         let vCount = mesh.vertexCount
@@ -70,7 +70,7 @@ final class MPSRayScene {
             positions.append(mesh.getVertex(i))
         }
 
-        // DynamicMesh uses UInt32 indices
+        // DynamicMesh は UInt32 インデックスを使用
         var indices = [UInt32]()
         if let ib = mesh.indexBuffer {
             let count = mesh.indexCount
@@ -84,18 +84,18 @@ final class MPSRayScene {
         entries.append(MeshEntry(positions: positions, indices: indices, transform: transform))
     }
 
-    /// Clear all mesh entries from the scene.
+    /// シーンからすべてのメッシュエントリをクリアします。
     func clear() {
         entries.removeAll()
     }
 
     var isEmpty: Bool { entries.isEmpty }
 
-    // MARK: - Build Acceleration Structure
+    // MARK: - アクセラレーション構造の構築
 
-    /// Build an MPSTriangleAccelerationStructure from all added mesh entries.
-    /// - Throws: ``MetaphorError`` if the scene is empty or GPU buffer creation fails.
-    /// - Returns: A tuple containing the acceleration structure, vertex buffer, index buffer, normal buffer, and triangle count.
+    /// 追加されたすべてのメッシュエントリから MPSTriangleAccelerationStructure を構築します。
+    /// - Throws: シーンが空または GPU バッファ作成に失敗した場合に ``MetaphorError`` をスローします。
+    /// - Returns: アクセラレーション構造、頂点バッファ、インデックスバッファ、法線バッファ、三角形数を含むタプル。
     func buildAccelerationStructure() throws -> (
         accelerationStructure: MPSTriangleAccelerationStructure,
         vertexBuffer: MTLBuffer,
@@ -107,7 +107,7 @@ final class MPSRayScene {
             throw MetaphorError.mps(.invalidScene("No meshes added to scene"))
         }
 
-        // Flatten all entries into unified vertex/index arrays
+        // すべてのエントリを統一された頂点・インデックス配列にフラット化
         var allPositions = [SIMD3<Float>]()
         var allIndices = [UInt32]()
         var allNormals = [SIMD3<Float>]()
@@ -115,19 +115,19 @@ final class MPSRayScene {
         for entry in entries {
             let baseVertex = UInt32(allPositions.count)
 
-            // Apply transform to positions
+            // 位置にトランスフォームを適用
             for pos in entry.positions {
                 let transformed = entry.transform * SIMD4<Float>(pos, 1.0)
                 allPositions.append(SIMD3<Float>(transformed.x, transformed.y, transformed.z))
             }
 
-            // Offset indices
+            // インデックスをオフセット
             for idx in entry.indices {
                 allIndices.append(idx + baseVertex)
             }
         }
 
-        // Compute per-triangle face normals
+        // 三角形ごとの面法線を計算
         let triangleCount = allIndices.count / 3
         allNormals.reserveCapacity(triangleCount)
         for t in 0..<triangleCount {
@@ -141,7 +141,7 @@ final class MPSRayScene {
             allNormals.append(n)
         }
 
-        // Create GPU buffers
+        // GPU バッファを作成
         guard let vertexBuffer = device.makeBuffer(
             bytes: allPositions,
             length: allPositions.count * MemoryLayout<SIMD3<Float>>.stride,
@@ -166,10 +166,10 @@ final class MPSRayScene {
             throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create normal buffer"))
         }
 
-        // Build acceleration structure
+        // アクセラレーション構造を構築
         let accel = MPSTriangleAccelerationStructure(device: device)
         accel.vertexBuffer = vertexBuffer
-        accel.vertexStride = MemoryLayout<SIMD3<Float>>.stride  // 16 bytes
+        accel.vertexStride = MemoryLayout<SIMD3<Float>>.stride  // 16バイト
         accel.indexBuffer = indexBuffer
         accel.indexType = .uInt32
         accel.triangleCount = triangleCount

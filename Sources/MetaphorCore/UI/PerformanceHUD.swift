@@ -1,25 +1,25 @@
 import Metal
 
-/// Display a performance metrics overlay showing FPS, frame time, and GPU time.
+/// FPS、フレーム時間、GPU時間を表示するパフォーマンスメトリクスオーバーレイ
 @MainActor
 public final class PerformanceHUD {
-    /// Ring buffer storing recent frame durations for averaging.
+    /// 平均化のための直近フレーム時間を格納するリングバッファ
     private var frameTimes: [Float] = []
-    /// The maximum number of frame time samples to keep.
+    /// 保持するフレーム時間サンプルの最大数
     private let maxSamples = 60
 
-    /// The averaged frames per second.
+    /// 平均フレームレート（fps）
     public private(set) var fps: Float = 0
-    /// The averaged frame time in milliseconds.
+    /// 平均フレーム時間（ミリ秒）
     public private(set) var frameTime: Float = 0
-    /// The most recent GPU execution time in milliseconds.
+    /// 直近のGPU実行時間（ミリ秒）
     public private(set) var gpuTime: Float = 0
 
-    /// Create a new PerformanceHUD instance.
+    /// 新しい PerformanceHUD インスタンスを作成します。
     public init() {}
 
-    /// Update metrics from the current frame's delta time.
-    /// - Parameter deltaTime: The elapsed time since the previous frame in seconds.
+    /// 現在のフレームのデルタタイムからメトリクスを更新します。
+    /// - Parameter deltaTime: 前フレームからの経過時間（秒）。
     func update(deltaTime: Float) {
         frameTimes.append(deltaTime)
         if frameTimes.count > maxSamples {
@@ -30,25 +30,25 @@ public final class PerformanceHUD {
         frameTime = avgDt * 1000 // ms
     }
 
-    /// Update the GPU execution time from command buffer timestamps.
+    /// コマンドバッファのタイムスタンプからGPU実行時間を更新します。
     /// - Parameters:
-    ///   - start: The GPU start timestamp in seconds.
-    ///   - end: The GPU end timestamp in seconds.
+    ///   - start: GPU開始タイムスタンプ（秒）。
+    ///   - end: GPU終了タイムスタンプ（秒）。
     func updateGPUTime(start: Double, end: Double) {
         gpuTime = Float((end - start) * 1000) // ms
     }
 
-    /// Draw the HUD overlay using Canvas2D primitives.
+    /// Canvas2D プリミティブを使用してHUDオーバーレイを描画します。
     /// - Parameters:
-    ///   - canvas: The Canvas2D instance used for drawing.
-    ///   - width: The canvas width in pixels.
-    ///   - height: The canvas height in pixels.
+    ///   - canvas: 描画に使用する Canvas2D インスタンス。
+    ///   - width: キャンバス幅（ピクセル）。
+    ///   - height: キャンバス高さ（ピクセル）。
     func draw(canvas: Canvas2D, width: Float, height: Float) {
-        // Save style
+        // スタイルを保存
         canvas.pushStyle()
 
-        // Background
-        canvas.fill(0, 0, 0, 0.6)   // semi-transparent black
+        // 背景
+        canvas.fill(0, 0, 0, 0.6)   // 半透明の黒
         canvas.noStroke()
         let hudWidth: Float = 180
         let hudHeight: Float = 80
@@ -56,8 +56,8 @@ public final class PerformanceHUD {
         let y: Float = 10
         canvas.rect(x, y, hudWidth, hudHeight, 4)
 
-        // Text
-        canvas.fill(0, 1, 0, 1)     // green text
+        // テキスト
+        canvas.fill(0, 1, 0, 1)     // 緑色のテキスト
         canvas.textSize(12)
         canvas.textAlign(.left, .top)
 

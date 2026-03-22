@@ -1,22 +1,22 @@
 import MetaphorCore
 import MetaphorMPS
 
-// MARK: - MPS Bridge
+// MARK: - MPS ブリッジ
 
 extension Sketch {
-    /// Create an MPS (Metal Performance Shaders) image filter.
+    /// MPS（Metal Performance Shaders）画像フィルタを作成します。
     ///
-    /// - Returns: A new ``MetaphorMPS/MPSImageFilterWrapper`` instance.
+    /// - Returns: 新しい ``MetaphorMPS/MPSImageFilterWrapper`` インスタンス。
     public func createMPSFilter() -> MPSImageFilterWrapper {
         MPSImageFilterWrapper(device: context.renderer.device, commandQueue: context.renderer.commandQueue)
     }
 
-    /// Create an MPS ray tracer for GPU-accelerated ray intersection queries.
+    /// GPU アクセラレーションによるレイ交差クエリ用の MPS レイトレーサーを作成します。
     ///
     /// - Parameters:
-    ///   - width: The output image width in pixels.
-    ///   - height: The output image height in pixels.
-    /// - Returns: A new ``MetaphorMPS/MPSRayTracer`` instance.
+    ///   - width: 出力画像の幅（ピクセル単位）。
+    ///   - height: 出力画像の高さ（ピクセル単位）。
+    /// - Returns: 新しい ``MetaphorMPS/MPSRayTracer`` インスタンス。
     @available(macOS, deprecated: 14.0, message: "Uses deprecated MPS ray tracing APIs; migrate to Metal ray tracing APIs")
     public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
         try MPSRayTracer(device: context.renderer.device, commandQueue: context.renderer.commandQueue, width: width, height: height)

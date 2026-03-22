@@ -1,10 +1,10 @@
 import Metal
 import simd
 
-/// Provide an offscreen 2D drawing buffer (equivalent to Processing's `createGraphics()`).
+/// オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
 ///
-/// Owns an independent Canvas2D and can draw separately from the main canvas.
-/// The result can be extracted as an MImage and rendered onto the main canvas with `image()`.
+/// 独立した Canvas2D を所有し、メインキャンバスとは別に描画できます。
+/// 結果は MImage として取得し、`image()` でメインキャンバスに描画できます。
 ///
 /// ```swift
 /// let pg = createGraphics(400, 400)
@@ -26,13 +26,13 @@ public final class Graphics {
     private var commandBuffer: MTLCommandBuffer?
     private var encoder: MTLRenderCommandEncoder?
 
-    /// Return the width in pixels.
+    /// 幅をピクセル単位で返します。
     public var width: Float { canvas.width }
 
-    /// Return the height in pixels.
+    /// 高さをピクセル単位で返します。
     public var height: Float { canvas.height }
 
-    /// Return the internal color texture for MImage extraction.
+    /// MImage 取得用の内部カラーテクスチャを返します。
     public var texture: MTLTexture { textureManager.colorTexture }
 
     // MARK: - Initialization
@@ -56,7 +56,7 @@ public final class Graphics {
 
     // MARK: - Draw Lifecycle
 
-    /// Begin drawing by creating a command buffer and render command encoder.
+    /// コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
     public func beginDraw() {
         guard let cb = commandQueue.makeCommandBuffer() else { return }
         self.commandBuffer = cb
@@ -70,7 +70,7 @@ public final class Graphics {
         canvas.begin(encoder: enc)
     }
 
-    /// End drawing by flushing, committing, and waiting for GPU completion.
+    /// フラッシュ、コミット、GPU完了待機により描画を終了します。
     public func endDraw() {
         canvas.end()
         encoder?.endEncoding()
@@ -82,346 +82,346 @@ public final class Graphics {
 
     // MARK: - MImage Conversion
 
-    /// Return the offscreen texture as an MImage.
-    /// - Returns: An MImage wrapping the internal color texture.
+    /// オフスクリーンテクスチャを MImage として返します。
+    /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
         MImage(texture: textureManager.colorTexture)
     }
 
     // MARK: - Drawing Methods (forwarded to Canvas2D)
 
-    /// Set the background color.
-    /// - Parameter color: The background color.
+    /// 背景色を設定します。
+    /// - Parameter color: 背景色。
     public func background(_ color: Color) { canvas.background(color) }
 
-    /// Set the background to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// 背景をグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func background(_ gray: Float) { canvas.background(gray) }
 
-    /// Set the background color using channel values.
+    /// チャンネル値で背景色を設定します。
     /// - Parameters:
-    ///   - v1: The first color channel value.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: Optional alpha value.
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
     public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.background(v1, v2, v3, a) }
 
-    /// Set the fill color.
-    /// - Parameter color: The fill color.
+    /// 塗りつぶし色を設定します。
+    /// - Parameter color: 塗りつぶし色。
     public func fill(_ color: Color) { canvas.fill(color) }
 
-    /// Set the fill color using channel values.
+    /// チャンネル値で塗りつぶし色を設定します。
     /// - Parameters:
-    ///   - v1: The first color channel value.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: Optional alpha value.
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.fill(v1, v2, v3, a) }
 
-    /// Set the fill to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// 塗りつぶしをグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func fill(_ gray: Float) { canvas.fill(gray) }
 
-    /// Set the fill to a grayscale value with alpha.
+    /// 塗りつぶしをグレースケール値とアルファで設定します。
     /// - Parameters:
-    ///   - gray: The grayscale value.
-    ///   - alpha: The alpha value.
+    ///   - gray: グレースケール値。
+    ///   - alpha: アルファ値。
     public func fill(_ gray: Float, _ alpha: Float) { canvas.fill(gray, alpha) }
 
-    /// Disable filling shapes.
+    /// シェイプの塗りつぶしを無効にします。
     public func noFill() { canvas.noFill() }
 
-    /// Set the stroke color.
-    /// - Parameter color: The stroke color.
+    /// ストローク色を設定します。
+    /// - Parameter color: ストローク色。
     public func stroke(_ color: Color) { canvas.stroke(color) }
 
-    /// Set the stroke color using channel values.
+    /// チャンネル値でストローク色を設定します。
     /// - Parameters:
-    ///   - v1: The first color channel value.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: Optional alpha value.
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.stroke(v1, v2, v3, a) }
 
-    /// Set the stroke to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// ストロークをグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func stroke(_ gray: Float) { canvas.stroke(gray) }
 
-    /// Set the stroke to a grayscale value with alpha.
+    /// ストロークをグレースケール値とアルファで設定します。
     /// - Parameters:
-    ///   - gray: The grayscale value.
-    ///   - alpha: The alpha value.
+    ///   - gray: グレースケール値。
+    ///   - alpha: アルファ値。
     public func stroke(_ gray: Float, _ alpha: Float) { canvas.stroke(gray, alpha) }
 
-    /// Disable stroking shapes.
+    /// シェイプのストロークを無効にします。
     public func noStroke() { canvas.noStroke() }
 
-    /// Set the stroke weight.
-    /// - Parameter weight: The stroke width in pixels.
+    /// ストロークの太さを設定します。
+    /// - Parameter weight: ストロークの太さ（ピクセル単位）。
     public func strokeWeight(_ weight: Float) { canvas.strokeWeight(weight) }
 
-    /// Set the stroke cap style.
-    /// - Parameter cap: The cap style.
+    /// ストロークキャップスタイルを設定します。
+    /// - Parameter cap: キャップスタイル。
     public func strokeCap(_ cap: StrokeCap) { canvas.strokeCap(cap) }
 
-    /// Set the stroke join style.
-    /// - Parameter join: The join style.
+    /// ストロークジョインスタイルを設定します。
+    /// - Parameter join: ジョインスタイル。
     public func strokeJoin(_ join: StrokeJoin) { canvas.strokeJoin(join) }
 
-    /// Set the blend mode for subsequent drawing operations.
-    /// - Parameter mode: The blend mode.
+    /// 後続の描画操作のブレンドモードを設定します。
+    /// - Parameter mode: ブレンドモード。
     public func blendMode(_ mode: BlendMode) { canvas.blendMode(mode) }
 
-    /// Set the color mode and optional maximum channel values.
+    /// カラーモードとオプションの最大チャンネル値を設定します。
     /// - Parameters:
-    ///   - space: The color space (RGB or HSB).
-    ///   - max1: Maximum value for the first channel.
-    ///   - max2: Maximum value for the second channel.
-    ///   - max3: Maximum value for the third channel.
-    ///   - maxA: Maximum value for the alpha channel.
+    ///   - space: カラースペース（RGB または HSB）。
+    ///   - max1: 第1チャンネルの最大値。
+    ///   - max2: 第2チャンネルの最大値。
+    ///   - max3: 第3チャンネルの最大値。
+    ///   - maxA: アルファチャンネルの最大値。
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) { canvas.colorMode(space, max1, max2, max3, maxA) }
 
-    /// Set the color mode with a uniform maximum for all channels.
+    /// 全チャンネルに均一な最大値を持つカラーモードを設定します。
     /// - Parameters:
-    ///   - space: The color space.
-    ///   - maxAll: Maximum value applied to all channels.
+    ///   - space: カラースペース。
+    ///   - maxAll: 全チャンネルに適用される最大値。
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) { canvas.colorMode(space, maxAll) }
 
-    /// Set the rectangle drawing mode.
-    /// - Parameter mode: The rect mode.
+    /// 矩形の描画モードを設定します。
+    /// - Parameter mode: 矩形モード。
     public func rectMode(_ mode: RectMode) { canvas.rectMode(mode) }
 
-    /// Set the ellipse drawing mode.
-    /// - Parameter mode: The ellipse mode.
+    /// 楕円の描画モードを設定します。
+    /// - Parameter mode: 楕円モード。
     public func ellipseMode(_ mode: EllipseMode) { canvas.ellipseMode(mode) }
 
-    /// Set the image drawing mode.
-    /// - Parameter mode: The image mode.
+    /// 画像の描画モードを設定します。
+    /// - Parameter mode: 画像モード。
     public func imageMode(_ mode: ImageMode) { canvas.imageMode(mode) }
 
-    /// Set the tint color for images.
-    /// - Parameter color: The tint color.
+    /// 画像のティント色を設定します。
+    /// - Parameter color: ティント色。
     public func tint(_ color: Color) { canvas.tint(color) }
 
-    /// Set the tint color using channel values.
+    /// チャンネル値でティント色を設定します。
     /// - Parameters:
-    ///   - v1: The first color channel value.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: Optional alpha value.
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
     public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.tint(v1, v2, v3, a) }
 
-    /// Disable image tinting.
+    /// 画像のティントを無効にします。
     public func noTint() { canvas.noTint() }
 
-    /// Push the current drawing state (style and transform) onto the stack.
+    /// 現在の描画状態（スタイルとトランスフォーム）をスタックにプッシュします。
     public func push() { canvas.push() }
 
-    /// Pop the most recent drawing state (style and transform) from the stack.
+    /// 最後に保存した描画状態（スタイルとトランスフォーム）をスタックからポップします。
     public func pop() { canvas.pop() }
 
-    /// Translate the coordinate system by the given offset.
+    /// 指定されたオフセットで座標系を平行移動します。
     /// - Parameters:
-    ///   - x: Horizontal offset.
-    ///   - y: Vertical offset.
+    ///   - x: 水平オフセット。
+    ///   - y: 垂直オフセット。
     public func translate(_ x: Float, _ y: Float) { canvas.translate(x, y) }
 
-    /// Rotate the coordinate system by the given angle in radians.
-    /// - Parameter angle: Rotation angle in radians.
+    /// ラジアン単位の角度で座標系を回転します。
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) { canvas.rotate(angle) }
 
-    /// Scale the coordinate system by the given factors.
+    /// 指定されたファクターで座標系をスケーリングします。
     /// - Parameters:
-    ///   - sx: Horizontal scale factor.
-    ///   - sy: Vertical scale factor.
+    ///   - sx: 水平スケールファクター。
+    ///   - sy: 垂直スケールファクター。
     public func scale(_ sx: Float, _ sy: Float) { canvas.scale(sx, sy) }
 
-    /// Scale the coordinate system uniformly.
-    /// - Parameter s: Uniform scale factor.
+    /// 座標系を均一にスケーリングします。
+    /// - Parameter s: 均一スケールファクター。
     public func scale(_ s: Float) { canvas.scale(s) }
 
-    /// Draw a rectangle.
+    /// 矩形を描画します。
     /// - Parameters:
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
-    ///   - w: Width.
-    ///   - h: Height.
+    ///   - x: X座標。
+    ///   - y: Y座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.rect(x, y, w, h) }
 
-    /// Draw a square.
+    /// 正方形を描画します。
     /// - Parameters:
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
-    ///   - size: Side length.
+    ///   - x: X座標。
+    ///   - y: Y座標。
+    ///   - size: 辺の長さ。
     public func square(_ x: Float, _ y: Float, _ size: Float) { canvas.square(x, y, size) }
 
-    /// Draw an ellipse.
+    /// 楕円を描画します。
     /// - Parameters:
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
-    ///   - w: Width.
-    ///   - h: Height.
+    ///   - x: X座標。
+    ///   - y: Y座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.ellipse(x, y, w, h) }
 
-    /// Draw a circle.
+    /// 円を描画します。
     /// - Parameters:
-    ///   - x: Center X coordinate.
-    ///   - y: Center Y coordinate.
-    ///   - diameter: Diameter of the circle.
+    ///   - x: 中心のX座標。
+    ///   - y: 中心のY座標。
+    ///   - diameter: 円の直径。
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) { canvas.circle(x, y, diameter) }
 
-    /// Draw a line between two points.
+    /// 2点間に線を描画します。
     /// - Parameters:
-    ///   - x1: Start X.
-    ///   - y1: Start Y.
-    ///   - x2: End X.
-    ///   - y2: End Y.
+    ///   - x1: 始点X。
+    ///   - y1: 始点Y。
+    ///   - x2: 終点X。
+    ///   - y2: 終点Y。
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) { canvas.line(x1, y1, x2, y2) }
 
-    /// Draw a triangle.
+    /// 三角形を描画します。
     /// - Parameters:
-    ///   - x1: First vertex X.
-    ///   - y1: First vertex Y.
-    ///   - x2: Second vertex X.
-    ///   - y2: Second vertex Y.
-    ///   - x3: Third vertex X.
-    ///   - y3: Third vertex Y.
+    ///   - x1: 第1頂点X。
+    ///   - y1: 第1頂点Y。
+    ///   - x2: 第2頂点X。
+    ///   - y2: 第2頂点Y。
+    ///   - x3: 第3頂点X。
+    ///   - y3: 第3頂点Y。
     public func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float) { canvas.triangle(x1, y1, x2, y2, x3, y3) }
 
-    /// Draw a quadrilateral.
+    /// 四角形を描画します。
     /// - Parameters:
-    ///   - x1: First vertex X.
-    ///   - y1: First vertex Y.
-    ///   - x2: Second vertex X.
-    ///   - y2: Second vertex Y.
-    ///   - x3: Third vertex X.
-    ///   - y3: Third vertex Y.
-    ///   - x4: Fourth vertex X.
-    ///   - y4: Fourth vertex Y.
+    ///   - x1: 第1頂点X。
+    ///   - y1: 第1頂点Y。
+    ///   - x2: 第2頂点X。
+    ///   - y2: 第2頂点Y。
+    ///   - x3: 第3頂点X。
+    ///   - y3: 第3頂点Y。
+    ///   - x4: 第4頂点X。
+    ///   - y4: 第4頂点Y。
     public func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float) { canvas.quad(x1, y1, x2, y2, x3, y3, x4, y4) }
 
-    /// Draw a single point.
+    /// 点を描画します。
     /// - Parameters:
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - x: X座標。
+    ///   - y: Y座標。
     public func point(_ x: Float, _ y: Float) { canvas.point(x, y) }
 
-    /// Draw an arc.
+    /// 弧を描画します。
     /// - Parameters:
-    ///   - x: Center X coordinate.
-    ///   - y: Center Y coordinate.
-    ///   - w: Width.
-    ///   - h: Height.
-    ///   - startAngle: Start angle in radians.
-    ///   - stopAngle: Stop angle in radians.
-    ///   - mode: Arc drawing mode.
+    ///   - x: 中心のX座標。
+    ///   - y: 中心のY座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
+    ///   - startAngle: ラジアン単位の開始角度。
+    ///   - stopAngle: ラジアン単位の終了角度。
+    ///   - mode: 弧の描画モード。
     public func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .open) { canvas.arc(x, y, w, h, startAngle, stopAngle, mode) }
 
-    /// Draw a polygon from an array of points.
-    /// - Parameter points: Array of (x, y) tuples defining the polygon vertices.
+    /// ポイント配列からポリゴンを描画します。
+    /// - Parameter points: ポリゴン頂点を定義する (x, y) タプルの配列。
     public func polygon(_ points: [(Float, Float)]) { canvas.polygon(points) }
 
-    /// Draw a cubic Bezier curve.
+    /// 三次ベジェ曲線を描画します。
     /// - Parameters:
-    ///   - x1: Start point X.
-    ///   - y1: Start point Y.
-    ///   - cx1: First control point X.
-    ///   - cy1: First control point Y.
-    ///   - cx2: Second control point X.
-    ///   - cy2: Second control point Y.
-    ///   - x2: End point X.
-    ///   - y2: End point Y.
+    ///   - x1: 始点X。
+    ///   - y1: 始点Y。
+    ///   - cx1: 第1制御点X。
+    ///   - cy1: 第1制御点Y。
+    ///   - cx2: 第2制御点X。
+    ///   - cy2: 第2制御点Y。
+    ///   - x2: 終点X。
+    ///   - y2: 終点Y。
     public func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float) { canvas.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2) }
 
-    /// Draw a Catmull-Rom spline curve.
+    /// Catmull-Rom スプライン曲線を描画します。
     /// - Parameters:
-    ///   - x1: First control point X.
-    ///   - y1: First control point Y.
-    ///   - x2: Start point X.
-    ///   - y2: Start point Y.
-    ///   - x3: End point X.
-    ///   - y3: End point Y.
-    ///   - x4: Second control point X.
-    ///   - y4: Second control point Y.
+    ///   - x1: 第1制御点X。
+    ///   - y1: 第1制御点Y。
+    ///   - x2: 始点X。
+    ///   - y2: 始点Y。
+    ///   - x3: 終点X。
+    ///   - y3: 終点Y。
+    ///   - x4: 第2制御点X。
+    ///   - y4: 第2制御点Y。
     public func curve(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float) { canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4) }
 
-    /// Begin recording vertices for a custom shape.
-    /// - Parameter mode: The shape mode (polygon, triangles, etc.).
+    /// カスタムシェイプの頂点記録を開始します。
+    /// - Parameter mode: シェイプモード（polygon、triangles など）。
     public func beginShape(_ mode: ShapeMode = .polygon) { canvas.beginShape(mode) }
 
-    /// Add a vertex to the current shape being recorded.
+    /// 記録中のシェイプに頂点を追加します。
     /// - Parameters:
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - x: X座標。
+    ///   - y: Y座標。
     public func vertex(_ x: Float, _ y: Float) { canvas.vertex(x, y) }
 
-    /// Add a cubic Bezier vertex to the current shape.
+    /// 現在のシェイプに三次ベジェ頂点を追加します。
     /// - Parameters:
-    ///   - cx1: First control point X.
-    ///   - cy1: First control point Y.
-    ///   - cx2: Second control point X.
-    ///   - cy2: Second control point Y.
-    ///   - x: End point X.
-    ///   - y: End point Y.
+    ///   - cx1: 第1制御点X。
+    ///   - cy1: 第1制御点Y。
+    ///   - cx2: 第2制御点X。
+    ///   - cy2: 第2制御点Y。
+    ///   - x: 終点X。
+    ///   - y: 終点Y。
     public func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float) { canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y) }
 
-    /// Add a Catmull-Rom spline vertex to the current shape.
+    /// 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
     /// - Parameters:
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - x: X座標。
+    ///   - y: Y座標。
     public func curveVertex(_ x: Float, _ y: Float) { canvas.curveVertex(x, y) }
 
-    /// End recording and draw the current shape.
-    /// - Parameter close: Whether to close the shape.
+    /// 頂点の記録を終了し、現在のシェイプを描画します。
+    /// - Parameter close: シェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) { canvas.endShape(close) }
 
-    /// Draw an image at its original size.
+    /// 画像を元のサイズで描画します。
     /// - Parameters:
-    ///   - img: The image to draw.
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - img: 描画する画像。
+    ///   - x: X座標。
+    ///   - y: Y座標。
     public func image(_ img: MImage, _ x: Float, _ y: Float) { canvas.image(img, x, y) }
 
-    /// Draw an image at a specified size.
+    /// 指定されたサイズで画像を描画します。
     /// - Parameters:
-    ///   - img: The image to draw.
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
-    ///   - w: Width.
-    ///   - h: Height.
+    ///   - img: 描画する画像。
+    ///   - x: X座標。
+    ///   - y: Y座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.image(img, x, y, w, h) }
 
-    /// Set the text size.
-    /// - Parameter size: Font size in points.
+    /// テキストサイズを設定します。
+    /// - Parameter size: ポイント単位のフォントサイズ。
     public func textSize(_ size: Float) { canvas.textSize(size) }
 
-    /// Set the font family.
-    /// - Parameter family: Font family name.
+    /// フォントファミリーを設定します。
+    /// - Parameter family: フォントファミリー名。
     public func textFont(_ family: String) { canvas.textFont(family) }
 
-    /// Set the text alignment.
+    /// テキストの配置を設定します。
     /// - Parameters:
-    ///   - horizontal: Horizontal alignment.
-    ///   - vertical: Vertical alignment.
+    ///   - horizontal: 水平方向の配置。
+    ///   - vertical: 垂直方向の配置。
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) { canvas.textAlign(horizontal, vertical) }
 
-    /// Draw a text string at the specified position.
+    /// 指定位置にテキスト文字列を描画します。
     /// - Parameters:
-    ///   - string: The text to draw.
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - string: 描画するテキスト。
+    ///   - x: X座標。
+    ///   - y: Y座標。
     public func text(_ string: String, _ x: Float, _ y: Float) { canvas.text(string, x, y) }
 
-    /// Return the rendered width of a text string.
-    /// - Parameter string: The text to measure.
-    /// - Returns: The width in pixels.
+    /// テキスト文字列のレンダリング幅を返します。
+    /// - Parameter string: 計測するテキスト。
+    /// - Returns: ピクセル単位の幅。
     public func textWidth(_ string: String) -> Float { canvas.textWidth(string) }
 
-    /// Return the ascent of the current font.
-    /// - Returns: The font ascent in pixels.
+    /// 現在のフォントのアセントを返します。
+    /// - Returns: ピクセル単位のフォントアセント。
     public func textAscent() -> Float { canvas.textAscent() }
 
-    /// Return the descent of the current font.
-    /// - Returns: The font descent in pixels.
+    /// 現在のフォントのディセントを返します。
+    /// - Returns: ピクセル単位のフォントディセント。
     public func textDescent() -> Float { canvas.textDescent() }
 }

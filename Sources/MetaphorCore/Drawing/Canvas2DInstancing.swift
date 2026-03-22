@@ -3,52 +3,52 @@ import simd
 
 // MARK: - Shape Type
 
-/// Shape type for 2D instanced drawing.
+/// 2D インスタンス描画用のシェイプタイプ。
 enum Shape2DType: UInt8, Hashable {
-    /// Ellipse / circle shape.
+    /// 楕円 / 円シェイプ。
     case ellipse
-    /// Rectangle / square shape.
+    /// 矩形 / 正方形シェイプ。
     case rect
 }
 
 // MARK: - Per-Instance GPU Data
 
-/// Per-instance data for Canvas2D instanced drawing (80 bytes, 16-byte aligned).
+/// Canvas2D インスタンス描画用のインスタンスごとのデータ（80バイト、16バイトアライメント）。
 ///
-/// The vertex shader indexes by `instance_id` to read each instance's transform and color.
-/// The 2D affine transform from `float3x3` is embedded in a `float4x4` (same pattern as 3D).
+/// 頂点シェーダーが `instance_id` でインデックスし、各インスタンスのトランスフォームと色を読み取ります。
+/// `float3x3` の2Dアフィン変換は `float4x4` に埋め込まれます（3Dと同じパターン）。
 struct InstanceData2D {
-    /// 2D affine transform embedded in a 4x4 matrix (currentTransform * shapeLocal).
+    /// float4x4 に埋め込まれた2Dアフィン変換（currentTransform * shapeLocal）。
     var transform: float4x4       // 64 bytes
-    /// Fill color (RGBA).
+    /// 塗りつぶし色（RGBA）。
     var color: SIMD4<Float>       // 16 bytes
 }
 
 // MARK: - Batch Key
 
-/// Key that determines whether 2D draws can be batched together.
+/// 2D描画をバッチ化できるかどうかを決定するキー。
 ///
-/// Color is per-instance data and not included in the key.
+/// カラーはインスタンスごとのデータであり、キーには含まれません。
 struct BatchKey2D: Equatable {
-    /// The shape type for this batch.
+    /// このバッチのシェイプタイプ。
     let shapeType: Shape2DType
-    /// The blend mode for this batch.
+    /// このバッチのブレンドモード。
     let blendMode: BlendMode
 }
 
 // MARK: - 2D Instance Batcher (thin wrapper over generic InstanceBatcher)
 
-/// Automatic instancing batcher for Canvas2D.
+/// Canvas2D の自動インスタンシングバッチャー。
 ///
-/// Wraps `InstanceBatcher<InstanceData2D>` with batch key tracking.
+/// `InstanceBatcher<InstanceData2D>` をバッチキートラッキング付きでラップします。
 @MainActor
 final class InstanceBatcher2D {
     private let batcher: InstanceBatcher<InstanceData2D>
 
-    /// The batch key for the current in-progress batch, or nil if no batch is active.
+    /// 進行中のバッチのバッチキー。バッチがアクティブでない場合は nil。
     private(set) var currentBatchKey: BatchKey2D?
 
-    /// The number of instances accumulated in the current batch.
+    /// 現在のバッチに蓄積されたインスタンス数。
     var instanceCount: Int { batcher.instanceCount }
 
     init(device: MTLDevice) throws {
@@ -90,11 +90,11 @@ final class InstanceBatcher2D {
 
 // MARK: - Unit Mesh Creation
 
-/// Factory for shared unit meshes created once at initialization.
+/// 初期化時に一度だけ作成される共有ユニットメッシュのファクトリ。
 enum UnitMesh2D {
 
-    /// Creates a unit circle mesh: 32-segment triangle fan, radius 0.5, centered at origin.
-    /// - Returns: A tuple of (MTLBuffer, vertex count), or nil if buffer creation fails.
+    /// ユニット円メッシュを作成: 32セグメントのトライアングルファン、半径0.5、原点中心。
+    /// - Returns: (MTLBuffer, 頂点数) のタプル。バッファ作成に失敗した場合は nil。
     static func createCircle(device: MTLDevice, segments: Int = 32) -> (MTLBuffer, Int)? {
         var verts: [SIMD2<Float>] = []
         verts.reserveCapacity(segments * 3)
@@ -115,8 +115,8 @@ enum UnitMesh2D {
         return (buf, verts.count)
     }
 
-    /// Creates a unit rectangle mesh: 2 triangles, from [-0.5, -0.5] to [0.5, 0.5].
-    /// - Returns: A tuple of (MTLBuffer, vertex count), or nil if buffer creation fails.
+    /// ユニット矩形メッシュを作成: 2三角形、[-0.5, -0.5] から [0.5, 0.5]。
+    /// - Returns: (MTLBuffer, 頂点数) のタプル。バッファ作成に失敗した場合は nil。
     static func createRect(device: MTLDevice) -> (MTLBuffer, Int)? {
         let verts: [SIMD2<Float>] = [
             SIMD2(-0.5, -0.5), SIMD2(0.5, -0.5), SIMD2(0.5, 0.5),
@@ -136,7 +136,7 @@ enum UnitMesh2D {
 
 extension Canvas2D {
 
-    /// Embeds a 2D affine transform (float3x3) into a float4x4.
+    /// 2Dアフィン変換（float3x3）を float4x4 に埋め込みます。
     ///
     /// ```
     /// | m00  m01  0  0 |

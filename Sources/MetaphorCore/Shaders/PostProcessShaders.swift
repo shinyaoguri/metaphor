@@ -1,15 +1,15 @@
 import Foundation
 
-/// Post-processing effect shader function names and shared struct definitions.
+/// ポストプロセスエフェクトシェーダー関数名と共有構造体定義。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Includes invert, grayscale, vignette, chromatic aberration, color grading,
-/// gaussian blur (horizontal/vertical), bloom extract, and bloom composite.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// 反転、グレースケール、ビネット、色収差、カラーグレーディング、
+/// ガウシアンブラー（水平/垂直）、ブルーム抽出、ブルーム合成を含みます。
 public enum PostProcessShaders {
 
-    /// MSL common struct definitions for custom post-process shaders.
+    /// カスタムポストプロセスシェーダー用のMSL共通構造体定義。
     ///
-    /// Use as a prefix when writing custom post-process shaders.
+    /// カスタムポストプロセスシェーダー記述時にプレフィックスとして使用します。
     /// ```swift
     /// let source = PostProcessShaders.commonStructs + """
     /// fragment float4 myEffect(
@@ -45,25 +45,25 @@ public enum PostProcessShaders {
     };
     """
 
-    /// Post-process shader function name constants.
+    /// ポストプロセスシェーダー関数名定数。
     public enum FunctionName {
-        /// MSL function name for the invert post-process shader.
+        /// 反転ポストプロセスシェーダーのMSL関数名。
         public static let postInvert = "metaphor_postInvert"
-        /// MSL function name for the grayscale post-process shader.
+        /// グレースケールポストプロセスシェーダーのMSL関数名。
         public static let postGrayscale = "metaphor_postGrayscale"
-        /// MSL function name for the vignette post-process shader.
+        /// ビネットポストプロセスシェーダーのMSL関数名。
         public static let postVignette = "metaphor_postVignette"
-        /// MSL function name for the chromatic aberration post-process shader.
+        /// 色収差ポストプロセスシェーダーのMSL関数名。
         public static let postChromaticAberration = "metaphor_postChromaticAberration"
-        /// MSL function name for the color grading post-process shader.
+        /// カラーグレーディングポストプロセスシェーダーのMSL関数名。
         public static let postColorGrade = "metaphor_postColorGrade"
-        /// MSL function name for the horizontal gaussian blur post-process shader.
+        /// 水平ガウシアンブラーポストプロセスシェーダーのMSL関数名。
         public static let postBlurH = "metaphor_postBlurH"
-        /// MSL function name for the vertical gaussian blur post-process shader.
+        /// 垂直ガウシアンブラーポストプロセスシェーダーのMSL関数名。
         public static let postBlurV = "metaphor_postBlurV"
-        /// MSL function name for the bloom extract post-process shader.
+        /// ブルーム抽出ポストプロセスシェーダーのMSL関数名。
         public static let postBloomExtract = "metaphor_postBloomExtract"
-        /// MSL function name for the bloom composite post-process shader.
+        /// ブルーム合成ポストプロセスシェーダーのMSL関数名。
         public static let postBloomComposite = "metaphor_postBloomComposite"
     }
 }

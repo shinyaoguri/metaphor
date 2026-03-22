@@ -1,15 +1,15 @@
 import MetaphorCore
 import MetaphorML
 
-// MARK: - MLTextureConverter Bridge
+// MARK: - MLTextureConverter ブリッジ
 
 extension Sketch {
-    /// Create a texture converter for Metal-CoreML interoperability.
+    /// Metal-CoreML 相互運用のためのテクスチャコンバーターを作成します。
     ///
-    /// Use this to convert between MTLTexture, CVPixelBuffer, and CGImage
-    /// when working with CoreML or Vision frameworks directly.
+    /// CoreML や Vision フレームワークを直接使用する際に、
+    /// MTLTexture、CVPixelBuffer、CGImage 間の変換に使用します。
     ///
-    /// - Returns: A new ``MetaphorML/MLTextureConverter`` instance.
+    /// - Returns: 新しい ``MetaphorML/MLTextureConverter`` インスタンス。
     public func createMLTextureConverter() -> MLTextureConverter {
         MLTextureConverter(device: context.renderer.device, commandQueue: context.renderer.commandQueue)
     }

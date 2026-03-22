@@ -2,15 +2,15 @@ import simd
 
 // MARK: - Interpolatable Protocol
 
-/// Define a type that supports linear interpolation between two values.
+/// 2つの値の間で線形補間をサポートする型を定義します。
 public protocol Interpolatable {
-    /// Linearly interpolate between two values by parameter t (0.0 to 1.0).
+    /// パラメータ t（0.0〜1.0）で2つの値を線形補間します。
     ///
     /// - Parameters:
-    ///   - from: The start value.
-    ///   - to: The end value.
-    ///   - t: The interpolation factor, clamped conceptually to 0.0...1.0.
-    /// - Returns: The interpolated value.
+    ///   - from: 開始値。
+    ///   - to: 終了値。
+    ///   - t: 補間係数。概念的に 0.0...1.0 にクランプされます。
+    /// - Returns: 補間された値。
     static func interpolate(from: Self, to: Self, t: Float) -> Self
 }
 
@@ -53,13 +53,13 @@ extension Color: Interpolatable {
 
 // MARK: - Tween
 
-/// Animate a value automatically over time using an easing function.
+/// イージング関数を使用して値を時間経過で自動的にアニメーションします。
 ///
 /// ```swift
 /// let size = tween(from: 0.0, to: 200.0, duration: 1.5, easing: easeOutElastic)
 /// size.start()
 ///
-/// // Automatically updated each frame inside draw()
+/// // draw() 内で毎フレーム自動更新
 /// circle(width/2, height/2, size.value)
 /// ```
 @MainActor
@@ -67,13 +67,13 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Public Properties
 
-    /// The current interpolated value.
+    /// 現在の補間値
     public private(set) var value: T
 
-    /// Indicate whether the animation has completed.
+    /// アニメーションが完了したかどうか
     public var isComplete: Bool { state == .complete }
 
-    /// Indicate whether the animation is currently running.
+    /// アニメーションが現在実行中かどうか
     public var isActive: Bool { state == .running }
 
     // MARK: - Configuration
@@ -104,13 +104,13 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Initialization
 
-    /// Create a new tween animation.
+    /// 新しいトゥイーンアニメーションを作成します。
     ///
     /// - Parameters:
-    ///   - from: The start value.
-    ///   - to: The end value.
-    ///   - duration: The animation duration in seconds.
-    ///   - easing: The easing function to apply (defaults to easeInOutCubic).
+    ///   - from: 開始値。
+    ///   - to: 終了値。
+    ///   - duration: アニメーション時間（秒）。
+    ///   - easing: 適用するイージング関数（デフォルト: easeInOutCubic）。
     public init(from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic) {
         self.fromValue = from
         self.toValue = to
@@ -121,39 +121,39 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Builder Methods
 
-    /// Set the delay before the animation starts.
+    /// アニメーション開始前のディレイを設定します。
     ///
-    /// - Parameter seconds: The delay duration in seconds.
-    /// - Returns: This tween instance for method chaining.
+    /// - Parameter seconds: ディレイ時間（秒）。
+    /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
     public func delay(_ seconds: Float) -> Self {
         self.delayDuration = seconds
         return self
     }
 
-    /// Set a callback to invoke when the animation completes.
+    /// アニメーション完了時に呼び出すコールバックを設定します。
     ///
-    /// - Parameter handler: The closure to call on completion.
-    /// - Returns: This tween instance for method chaining.
+    /// - Parameter handler: 完了時に呼ばれるクロージャ。
+    /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
     public func onComplete(_ handler: @escaping () -> Void) -> Self {
         self.completionHandler = handler
         return self
     }
 
-    /// Set the number of times the animation repeats (0 means infinite).
+    /// アニメーションのリピート回数を設定します（0は無限）。
     ///
-    /// - Parameter n: The repeat count.
-    /// - Returns: This tween instance for method chaining.
+    /// - Parameter n: リピート回数。
+    /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
     public func repeatCount(_ n: Int) -> Self {
         self.repeatTotal = max(0, n)
         return self
     }
 
-    /// Enable yoyo mode, which reverses the animation direction on each cycle.
+    /// ヨーヨーモードを有効にします。各サイクルでアニメーション方向が反転します。
     ///
-    /// - Returns: This tween instance for method chaining.
+    /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
     public func yoyo() -> Self {
         self.isYoyo = true
@@ -162,7 +162,7 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Control
 
-    /// Start the animation from the beginning.
+    /// アニメーションを最初から開始します。
     public func start() {
         elapsed = 0
         repeatCount = 0
@@ -176,7 +176,7 @@ public final class Tween<T: Interpolatable> {
         }
     }
 
-    /// Reset the animation to its idle state with the initial value.
+    /// アニメーションを初期値のアイドル状態にリセットします。
     public func reset() {
         state = .idle
         elapsed = 0
@@ -187,7 +187,7 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Update (called by TweenManager)
 
-    /// Update the tween state by the given delta time (called each frame by TweenManager).
+    /// 指定されたデルタタイムでトゥイーン状態を更新します（TweenManager により毎フレーム呼ばれます）。
     func update(_ dt: Float) {
         switch state {
         case .idle, .complete:
@@ -199,7 +199,7 @@ public final class Tween<T: Interpolatable> {
                 let remaining = elapsed - delayDuration
                 elapsed = 0
                 state = .running
-                // Apply the remaining time immediately
+                // 残り時間を即座に適用
                 if remaining > 0 {
                     update(remaining)
                 }
@@ -210,18 +210,18 @@ public final class Tween<T: Interpolatable> {
             elapsed += dt
 
             if elapsed >= duration {
-                // Cycle complete
+                // サイクル完了
                 repeatCount += 1
 
                 if repeatTotal > 0 && repeatCount >= repeatTotal {
-                    // All repeats finished
+                    // すべてのリピートが終了
                     value = forward ? toValue : fromValue
                     state = .complete
                     completionHandler?()
                     return
                 }
 
-                // Start next cycle
+                // 次のサイクルを開始
                 elapsed -= duration
                 if isYoyo {
                     forward.toggle()

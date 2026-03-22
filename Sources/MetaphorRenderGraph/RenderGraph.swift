@@ -1,14 +1,14 @@
 @preconcurrency import Metal
 import MetaphorCore
 
-/// Manage a directed acyclic graph of render passes for multi-pass rendering.
+/// マルチパスレンダリングのためのレンダーパスの有向非巡回グラフを管理します。
 ///
-/// ``RenderGraph`` executes a tree of ``RenderPassNode`` instances and returns
-/// the final output texture. Combine ``SourcePass``, ``EffectPass``, and
-/// ``MergePass`` nodes to build complex compositing pipelines.
+/// ``RenderGraph`` は ``RenderPassNode`` インスタンスのツリーを実行し、
+/// 最終的な出力テクスチャを返します。``SourcePass``、``EffectPass``、
+/// ``MergePass`` ノードを組み合わせて複雑なコンポジティングパイプラインを構築します。
 ///
 /// ```swift
-/// // Draw two scenes, apply bloom to one, then composite them
+/// // 2つのシーンを描画し、一方にブルームを適用してから合成
 /// let scene1 = try SourcePass(label: "bg", device: device, width: 1920, height: 1080)
 /// let scene2 = try SourcePass(label: "fg", device: device, width: 1920, height: 1080)
 /// let bloomed = try EffectPass(scene2, effects: [.bloom()], device: device, shaderLibrary: shaderLibrary)
@@ -19,26 +19,26 @@ import MetaphorCore
 /// ```
 @MainActor
 public final class RenderGraph: RenderGraphExecutable {
-    /// The root node of the graph, which provides the final output texture.
+    /// 最終出力テクスチャを提供するグラフのルートノード。
     public let root: RenderPassNode
 
-    /// Create a new render graph with the given root node.
+    /// 指定ルートノードで新しいレンダーグラフを作成します。
     ///
-    /// - Parameter root: The root node that produces the final output of the graph.
+    /// - Parameter root: グラフの最終出力を生成するルートノード。
     public init(root: RenderPassNode) {
         self.root = root
     }
 
-    /// Execute the entire graph and return the final output texture.
+    /// グラフ全体を実行し、最終出力テクスチャを返します。
     ///
-    /// This recursively executes all nodes starting from the root, encoding
-    /// their work into the provided command buffer.
+    /// ルートからすべてのノードを再帰的に実行し、
+    /// 提供されたコマンドバッファにレンダリング処理をエンコードします。
     ///
     /// - Parameters:
-    ///   - commandBuffer: The Metal command buffer to encode render work into.
-    ///   - time: The elapsed time in seconds, passed to each node.
-    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
-    /// - Returns: The final output texture, or `nil` if execution failed.
+    ///   - commandBuffer: レンダリング処理をエンコードする Metal コマンドバッファ。
+    ///   - time: 各ノードに渡される経過時間（秒）。
+    ///   - renderer: 共有リソースを提供する ``MetaphorRenderer`` 参照。
+    /// - Returns: 最終出力テクスチャ。実行失敗時は `nil`。
     @discardableResult
     public func execute(
         commandBuffer: MTLCommandBuffer,

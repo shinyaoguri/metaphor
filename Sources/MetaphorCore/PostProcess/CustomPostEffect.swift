@@ -1,9 +1,9 @@
 import Metal
 import simd
 
-/// Apply a custom post-process effect using a user-defined MSL fragment shader.
+/// ユーザー定義の MSL フラグメントシェーダーを使用してカスタムポストプロセスエフェクトを適用します。
 ///
-/// Create with `createPostEffect()` and add to the chain with `addPostEffect(.custom(...))`.
+/// `createPostEffect()` で作成し、`addPostEffect(.custom(...))` でチェーンに追加します。
 ///
 /// ```swift
 /// let effect = try createPostEffect(
@@ -26,28 +26,28 @@ import simd
 /// ```
 @MainActor
 public final class CustomPostEffect: PostEffect {
-    /// The name of this effect.
+    /// このエフェクトの名前
     public let name: String
 
-    /// The fragment shader function name.
+    /// フラグメントシェーダー関数名
     public let fragmentFunctionName: String
 
-    /// The key under which the shader is registered in ShaderLibrary.
+    /// ShaderLibrary にシェーダーが登録されているキー
     let libraryKey: String
 
-    /// The effect intensity, mapped to PostProcessParams.intensity.
+    /// エフェクト強度。PostProcessParams.intensity にマッピング
     public var intensity: Float = 0
 
-    /// The threshold value, mapped to PostProcessParams.threshold.
+    /// しきい値。PostProcessParams.threshold にマッピング
     public var threshold: Float = 0
 
-    /// The radius value, mapped to PostProcessParams.radius.
+    /// 半径値。PostProcessParams.radius にマッピング
     public var radius: Float = 0
 
-    /// The smoothness value, mapped to PostProcessParams.smoothness.
+    /// 滑らかさ値。PostProcessParams.smoothness にマッピング
     public var smoothness: Float = 0
 
-    /// Raw bytes for custom parameter data bound to buffer(1).
+    /// buffer(1) にバインドされるカスタムパラメータデータの生バイト列
     private var parameterData: [UInt8] = []
 
     init(name: String, fragmentFunctionName: String, libraryKey: String) {
@@ -56,9 +56,9 @@ public final class CustomPostEffect: PostEffect {
         self.libraryKey = libraryKey
     }
 
-    /// Set custom parameters to pass to the shader as buffer(1).
+    /// シェーダーに buffer(1) として渡すカスタムパラメータを設定します。
     ///
-    /// Use this to send any plain-old-data struct to the fragment shader.
+    /// 任意の POD 構造体をフラグメントシェーダーに送信するために使用します。
     /// ```swift
     /// struct MyParams {
     ///     var amount: Float
@@ -67,16 +67,16 @@ public final class CustomPostEffect: PostEffect {
     /// effect.setParameters(MyParams(amount: 0.5, color: SIMD3(1, 0, 0)))
     /// ```
     ///
-    /// - Parameter value: A POD struct whose bytes are copied to the GPU buffer.
+    /// - Parameter value: バイト列が GPU バッファにコピーされる POD 構造体
     public func setParameters<T>(_ value: T) {
         var val = value
         parameterData = withUnsafeBytes(of: &val) { Array($0) }
     }
 
-    /// Return the raw byte array of the custom parameters.
+    /// カスタムパラメータの生バイト配列を返します。
     var parameters: [UInt8] { parameterData }
 
-    /// Indicate whether custom parameters have been set.
+    /// カスタムパラメータが設定されているかどうかを示します。
     var hasCustomParameters: Bool { !parameterData.isEmpty }
 
     // MARK: - PostEffect
@@ -100,20 +100,20 @@ public final class CustomPostEffect: PostEffect {
         )
     }
 
-    // MARK: - Hot Reload
+    // MARK: - ホットリロード
 
-    /// Re-fetch the shader function from the shader library after a hot reload.
+    /// ホットリロード後にシェーダーライブラリからシェーダー関数を再取得します。
     ///
-    /// Call this after `ShaderLibrary.reload()` to ensure the post-effect pipeline
-    /// rebuilds with the updated shader.
+    /// `ShaderLibrary.reload()` の後に呼び出して、ポストエフェクトパイプラインが
+    /// 更新されたシェーダーで再ビルドされることを保証します。
     ///
-    /// - Parameter shaderLibrary: The shader library to look up the function from.
-    /// - Throws: `MetaphorError.shaderNotFound` if the function is not found.
+    /// - Parameter shaderLibrary: 関数をルックアップするシェーダーライブラリ
+    /// - Throws: 関数が見つからない場合 `MetaphorError.shaderNotFound`
     public func reload(shaderLibrary: ShaderLibrary) throws {
         guard shaderLibrary.function(named: fragmentFunctionName, from: libraryKey) != nil else {
             throw MetaphorError.shaderNotFound(fragmentFunctionName)
         }
-        // The function itself is fetched by PostProcessPipeline via libraryKey + fragmentFunctionName,
-        // so clearing the function cache in ShaderLibrary.reload() triggers re-fetching automatically.
+        // 関数自体は PostProcessPipeline が libraryKey + fragmentFunctionName で取得するため、
+        // ShaderLibrary.reload() での関数キャッシュクリアにより自動的に再取得されます。
     }
 }

@@ -4,14 +4,14 @@ extension SketchContext {
 
     // MARK: - Post Process
 
-    /// Creates a custom post-processing effect from MSL fragment shader source.
+    /// MSL フラグメントシェーダーソースからカスタムポストプロセスエフェクトを作成します。
     ///
-    /// The shader source should include `PostProcessShaders.commonStructs` as a prefix.
+    /// シェーダーソースには `PostProcessShaders.commonStructs` をプレフィクスとして含める必要があります。
     /// - Parameters:
-    ///   - name: The effect name (used as the library key).
-    ///   - source: The MSL shader source code.
-    ///   - fragmentFunction: The fragment shader function name.
-    /// - Returns: A `CustomPostEffect` instance.
+    ///   - name: エフェクト名（ライブラリキーとして使用）。
+    ///   - source: MSL シェーダーソースコード。
+    ///   - fragmentFunction: フラグメントシェーダー関数名。
+    /// - Returns: `CustomPostEffect` インスタンス。
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         let key = "user.posteffect.\(name)"
         try renderer.shaderLibrary.register(source: source, as: key)
@@ -21,77 +21,77 @@ extension SketchContext {
         return CustomPostEffect(name: name, fragmentFunctionName: fragmentFunction, libraryKey: key)
     }
 
-    /// Adds a post-processing effect to the pipeline.
-    /// - Parameter effect: The post-processing effect to add.
+    /// ポストプロセスエフェクトをパイプラインに追加します。
+    /// - Parameter effect: 追加するポストプロセスエフェクト。
     public func addPostEffect(_ effect: any PostEffect) {
         renderer.addPostEffect(effect)
     }
 
-    /// Removes a post-processing effect at the specified index.
-    /// - Parameter index: The index of the effect to remove.
+    /// 指定インデックスのポストプロセスエフェクトを削除します。
+    /// - Parameter index: 削除するエフェクトのインデックス。
     public func removePostEffect(at index: Int) {
         renderer.removePostEffect(at: index)
     }
 
-    /// Removes all post-processing effects from the pipeline.
+    /// パイプラインからすべてのポストプロセスエフェクトを削除します。
     public func clearPostEffects() {
         renderer.clearPostEffects()
     }
 
-    /// Replaces all post-processing effects with the given array.
-    /// - Parameter effects: The new array of post-processing effects.
+    /// すべてのポストプロセスエフェクトを指定した配列で置き換えます。
+    /// - Parameter effects: 新しいポストプロセスエフェクトの配列。
     public func setPostEffects(_ effects: [any PostEffect]) {
         renderer.setPostEffects(effects)
     }
 
     // MARK: - Unified Transform Stack
 
-    /// Saves both 2D and 3D transform and style state onto the stack.
+    /// 2D・3D 両方の変換とスタイル状態をスタックに保存します。
     public func push() {
         canvas.push()
         canvas3D.pushState()
     }
 
-    /// Restores both 2D and 3D transform and style state from the stack.
+    /// 2D・3D 両方の変換とスタイル状態をスタックから復元します。
     public func pop() {
         canvas.pop()
         canvas3D.popState()
     }
 
-    /// Saves only the 2D style state onto the stack.
+    /// 2D スタイル状態のみをスタックに保存します。
     public func pushStyle() {
         canvas.pushStyle()
     }
 
-    /// Restores only the 2D style state from the stack.
+    /// 2D スタイル状態のみをスタックから復元します。
     public func popStyle() {
         canvas.popStyle()
     }
 
-    /// Applies a 2D translation.
+    /// 2D 平行移動を適用します。
     /// - Parameters:
-    ///   - x: The horizontal translation.
-    ///   - y: The vertical translation.
+    ///   - x: 水平方向の移動量。
+    ///   - y: 垂直方向の移動量。
     public func translate(_ x: Float, _ y: Float) {
         canvas.translate(x, y)
     }
 
-    /// Applies a 2D rotation.
-    /// - Parameter angle: The rotation angle in radians.
+    /// 2D 回転を適用します。
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) {
         canvas.rotate(angle)
     }
 
-    /// Applies a 2D scale.
+    /// 2D スケールを適用します。
     /// - Parameters:
-    ///   - sx: The horizontal scale factor.
-    ///   - sy: The vertical scale factor.
+    ///   - sx: 水平方向のスケール係数。
+    ///   - sy: 垂直方向のスケール係数。
     public func scale(_ sx: Float, _ sy: Float) {
         canvas.scale(sx, sy)
     }
 
-    /// Applies a uniform scale to both the 2D and 3D canvases.
-    /// - Parameter s: The uniform scale factor.
+    /// 2D・3D 両方のキャンバスに均一スケールを適用します。
+    /// - Parameter s: 均一スケール係数。
     public func scale(_ s: Float) {
         canvas.scale(s)
         canvas3D.scale(s, s, s)

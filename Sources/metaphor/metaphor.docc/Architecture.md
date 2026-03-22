@@ -1,76 +1,76 @@
-# Architecture
+# アーキテクチャ
 
-Understand how metaphor's rendering pipeline and API layers work together.
+metaphor のレンダリングパイプラインと API レイヤーの仕組みを解説します。
 
 ## Overview
 
-metaphor is built around three core concepts: a two-pass rendering architecture,
-a three-layer API design, and a GPU-first approach using Metal.
+metaphor は3つのコアコンセプトで構成されています: 2パスレンダリングアーキテクチャ、
+3レイヤー API 設計、そして Metal を活用した GPU ファーストアプローチです。
 
-## Two-Pass Rendering
+## 2パスレンダリング
 
-Every frame goes through two rendering passes:
+すべてのフレームは2つのレンダリングパスを通過します:
 
-### Offscreen Pass
+### オフスクリーンパス
 
-Your drawing code renders to a fixed-resolution offscreen texture managed by ``MetaphorCore/TextureManager``.
-This texture is independent of the window size, so you always work at a consistent resolution.
+描画コードは ``MetaphorCore/TextureManager`` が管理する固定解像度のオフスクリーンテクスチャにレンダリングされます。
+このテクスチャはウィンドウサイズとは独立しているため、常に一定の解像度で描画できます。
 
-### Blit Pass
+### ブリットパス
 
-A built-in pipeline composites the offscreen texture to the screen (or MTKView) with
-automatic aspect-ratio preservation. This pass also feeds into Syphon output if enabled.
+内蔵パイプラインがオフスクリーンテクスチャをスクリーン（または MTKView）にアスペクト比を自動保持して合成します。
+Syphon 出力が有効な場合、このパスで Syphon にも供給されます。
 
-This architecture enables:
+このアーキテクチャにより以下が可能になります:
 
-- **Resolution independence** — Render at 1920x1080 regardless of window size.
-- **Syphon output** — Send your rendered frame to VJ software at a fixed resolution.
-- **Video export** — Capture frames at consistent quality.
-- **Post-processing** — Apply GPU effects to the offscreen texture before display.
+- **解像度の独立性** — ウィンドウサイズに関係なく 1920×1080 でレンダリング。
+- **Syphon 出力** — 固定解像度でレンダリングしたフレームを VJ ソフトウェアに送信。
+- **動画エクスポート** — 一定品質でフレームをキャプチャ。
+- **ポストプロセス** — 表示前にオフスクリーンテクスチャに GPU エフェクトを適用。
 
-## Three-Layer API
+## 3レイヤー API
 
-### Sketch (Top Layer)
+### Sketch（トップレイヤー）
 
-The ``MetaphorCore/Sketch`` protocol is the primary user-facing API. It provides convenience methods
-through protocol extensions that delegate to the underlying layers:
+``MetaphorCore/Sketch`` プロトコルがユーザー向けのメイン API です。
+プロトコルエクステンションを通じて、下位レイヤーに委譲する便利なメソッドを提供します:
 
 ```swift
-// These are equivalent:
-circle(400, 300, 100)           // Sketch extension (implicit context)
-ctx.circle(400, 300, 100)       // SketchContext method
+// 以下は等価:
+circle(400, 300, 100)           // Sketch エクステンション（暗黙的なコンテキスト）
+ctx.circle(400, 300, 100)       // SketchContext メソッド
 ```
 
-### SketchContext (Middle Layer)
+### SketchContext（ミドルレイヤー）
 
-`SketchContext` manages drawing state, coordinate transforms, and the bridge between
-2D and 3D rendering. It holds references to ``MetaphorCore/Canvas2D`` and ``MetaphorCore/Canvas3D`` instances
-and routes drawing calls to the appropriate backend.
+`SketchContext` は描画状態、座標変換、2D/3D レンダリング間のブリッジを管理します。
+``MetaphorCore/Canvas2D`` と ``MetaphorCore/Canvas3D`` のインスタンスを保持し、
+描画呼び出しを適切なバックエンドにルーティングします。
 
-### Canvas2D / Canvas3D (Bottom Layer)
+### Canvas2D / Canvas3D（ボトムレイヤー）
 
-``MetaphorCore/Canvas2D`` and ``MetaphorCore/Canvas3D`` are the low-level drawing backends that directly issue
-Metal render commands. They manage vertex buffers, pipeline states, and GPU resources.
+``MetaphorCore/Canvas2D`` と ``MetaphorCore/Canvas3D`` は Metal レンダーコマンドを直接発行するローレベル描画バックエンドです。
+頂点バッファ、パイプラインステート、GPU リソースを管理します。
 
-## Frame Lifecycle
+## フレームライフサイクル
 
-Each frame follows this sequence:
+各フレームは以下の順序で処理されます:
 
-1. **Compute phase** — `onCompute(commandBuffer, time)` runs GPU compute dispatches.
-2. **Draw phase** — `onDraw(renderEncoder, time)` runs your rendering code.
-3. **Post-process phase** — ``MetaphorCore/PostProcessPipeline`` applies any configured effects.
-4. **Blit phase** — The offscreen texture is composited to the screen.
-5. **Syphon phase** — The frame is published to Syphon if enabled.
+1. **コンピュートフェーズ** — `onCompute(commandBuffer, time)` が GPU コンピュートディスパッチを実行。
+2. **描画フェーズ** — `onDraw(renderEncoder, time)` がレンダリングコードを実行。
+3. **ポストプロセスフェーズ** — ``MetaphorCore/PostProcessPipeline`` が設定済みのエフェクトを適用。
+4. **ブリットフェーズ** — オフスクリーンテクスチャがスクリーンに合成。
+5. **Syphon フェーズ** — 有効な場合、フレームが Syphon に発行。
 
-## Shader Compilation
+## シェーダーコンパイル
 
-metaphor embeds Metal Shading Language (MSL) source code as Swift strings. Shaders are
-compiled at runtime via ``MetaphorCore/ShaderLibrary``, which caches compiled `MTLLibrary` and
-`MTLFunction` instances. Custom shaders can be registered at runtime using
-`ShaderLibrary.register(source:as:)`.
+metaphor は Metal Shading Language (MSL) のソースコードを Swift 文字列として埋め込んでいます。
+シェーダーは ``MetaphorCore/ShaderLibrary`` 経由でランタイムにコンパイルされ、
+コンパイル済みの `MTLLibrary` と `MTLFunction` インスタンスがキャッシュされます。
+カスタムシェーダーは `ShaderLibrary.register(source:as:)` でランタイムに登録できます。
 
-## GPU Instancing
+## GPU インスタンシング
 
-For high-performance rendering, metaphor automatically batches consecutive draw calls
-of the same shape and material into GPU-instanced draw calls. This is handled transparently
-by the instancing layer in ``MetaphorCore/Canvas2D`` and ``MetaphorCore/Canvas3D``.
+高パフォーマンスレンダリングのために、metaphor は同じシェイプ・マテリアルの連続する描画呼び出しを
+自動的に GPU インスタンス描画にバッチ処理します。
+これは ``MetaphorCore/Canvas2D`` と ``MetaphorCore/Canvas3D`` のインスタンシングレイヤーが透過的に処理します。

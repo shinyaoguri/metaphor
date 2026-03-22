@@ -1,50 +1,49 @@
 # ``MetaphorMPS``
 
-Hardware-accelerated image processing and ray tracing using Metal Performance Shaders.
+Metal Performance Shaders によるハードウェアアクセラレーション画像処理とレイトレーシング。
 
 ## Overview
 
-MetaphorMPS provides GPU-optimized image filters and ray tracing through
-Apple's Metal Performance Shaders framework. ``MPSImageFilterWrapper`` offers
-Gaussian blur, Sobel edge detection, morphological operations, and more.
-``MPSRayTracer`` provides mesh-based ray tracing with ambient occlusion,
-soft shadows, and diffuse shading modes.
+MetaphorMPS は Apple の Metal Performance Shaders フレームワークを通じて、
+GPU 最適化された画像フィルタとレイトレーシングを提供します。
+``MPSImageFilterWrapper`` はガウシアンブラー、Sobel エッジ検出、モルフォロジー演算などを提供し、
+``MPSRayTracer`` はメッシュベースのレイトレーシングで、アンビエントオクルージョン、
+ソフトシャドウ、ディフューズシェーディングモードに対応します。
 
-The module also includes ``PostEffect`` implementations (``MPSBlurEffect``,
-``MPSSobelEffect``, etc.) that can be used directly in a post-processing
-pipeline.
+``PostEffect`` 実装（``MPSBlurEffect``、``MPSSobelEffect`` 等）も含まれており、
+ポストプロセスパイプラインで直接使用できます。
 
-This module depends on MetaphorCore.
-When using the umbrella module (`import metaphor`), MPS features are
-accessible through convenience methods like `createMPSFilter()`.
+このモジュールは MetaphorCore に依存します。
+アンブレラモジュール（`import metaphor`）使用時は、`createMPSFilter()` などの
+便利なメソッドからアクセスできます。
 
-### Quick Start
+### クイックスタート
 
 ```swift
 let filter = MPSImageFilterWrapper(device: device, commandQueue: queue)
 
-// Apply Gaussian blur to an image
+// 画像にガウシアンブラーを適用
 filter.gaussianBlur(image, sigma: 5.0)
 
-// Use as a post-processing effect
+// ポストプロセスエフェクトとして使用
 let blur = MPSBlurEffect(sigma: 3.0)
 postProcess(blur)
 ```
 
 ## Topics
 
-### Image Filters
+### 画像フィルタ
 
 - ``MPSImageFilterWrapper``
 
-### Post-Processing Effects
+### ポストプロセスエフェクト
 
 - ``MPSBlurEffect``
 - ``MPSSobelEffect``
 - ``MPSErodeEffect``
 - ``MPSDilateEffect``
 
-### Ray Tracing
+### レイトレーシング
 
 - ``MPSRayTracer``
 - ``RayTraceMode``

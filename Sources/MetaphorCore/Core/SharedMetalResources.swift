@@ -1,28 +1,28 @@
 @preconcurrency import Metal
 
-/// Hold Metal resources that can be shared across multiple windows and renderers.
+/// 複数のウィンドウやレンダラー間で共有可能な Metal リソースを保持します。
 ///
-/// When using multi-window rendering, each ``MetaphorRenderer`` can share the
-/// same device, command queue, shader library, and depth-stencil cache to avoid
-/// duplicating expensive GPU-side objects.
+/// マルチウィンドウレンダリングでは、各 ``MetaphorRenderer`` が同じデバイス、
+/// コマンドキュー、シェーダーライブラリ、デプスステンシルキャッシュを共有することで、
+/// GPU 側の高コストなオブジェクトの重複を回避できます。
 @MainActor
 public final class SharedMetalResources {
-    /// The Metal device used for all GPU resource creation.
+    /// 全 GPU リソース作成に使用される Metal デバイス
     public let device: MTLDevice
 
-    /// The command queue used to submit work to the GPU.
+    /// GPU へのワーク送信に使用されるコマンドキュー
     public let commandQueue: MTLCommandQueue
 
-    /// The shader library containing compiled Metal shader functions.
+    /// コンパイル済み Metal シェーダー関数を含むシェーダーライブラリ
     public let shaderLibrary: ShaderLibrary
 
-    /// The depth-stencil state cache shared across renderers.
+    /// レンダラー間で共有されるデプスステンシルステートキャッシュ
     public let depthStencilCache: DepthStencilCache
 
-    /// Create shared Metal resources.
+    /// 共有 Metal リソースを作成します。
     ///
-    /// - Parameter device: The Metal device to use, or `nil` to use the system default.
-    /// - Throws: ``MetaphorError`` if the device or command queue cannot be created.
+    /// - Parameter device: 使用する Metal デバイス。`nil` の場合はシステムデフォルトを使用
+    /// - Throws: デバイスまたはコマンドキューの作成に失敗した場合 ``MetaphorError``
     public init(device: MTLDevice? = nil) throws {
         guard let device = device ?? MTLCreateSystemDefaultDevice() else {
             throw MetaphorError.deviceNotAvailable

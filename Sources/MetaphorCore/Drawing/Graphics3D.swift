@@ -1,10 +1,10 @@
 import Metal
 import simd
 
-/// Provide a 3D offscreen drawing buffer (used by `createGraphics3D()`).
+/// 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 ///
-/// Owns an independent Canvas3D and can draw 3D content separately from the main canvas.
-/// The result can be extracted as an MImage and rendered onto the main canvas with `image()`.
+/// 独立した Canvas3D を所有し、メインキャンバスとは別に3Dコンテンツを描画できます。
+/// 結果は MImage として取得し、`image()` でメインキャンバスに描画できます。
 ///
 /// ```swift
 /// let pg3d = createGraphics3D(800, 600)
@@ -29,13 +29,13 @@ public final class Graphics3D {
     private var encoder: MTLRenderCommandEncoder?
     private var drawTime: Float = 0
 
-    /// Return the width in pixels.
+    /// 幅をピクセル単位で返します。
     public var width: Float { canvas3D.width }
 
-    /// Return the height in pixels.
+    /// 高さをピクセル単位で返します。
     public var height: Float { canvas3D.height }
 
-    /// Return the internal color texture.
+    /// 内部カラーテクスチャを返します。
     public var texture: MTLTexture { textureManager.colorTexture }
 
     // MARK: - Initialization
@@ -67,8 +67,8 @@ public final class Graphics3D {
 
     // MARK: - Draw Lifecycle
 
-    /// Begin drawing with an optional time value for animations.
-    /// - Parameter time: The elapsed time passed to Canvas3D.
+    /// オプションの時間値でアニメーション用の描画を開始します。
+    /// - Parameter time: Canvas3D に渡される経過時間。
     public func beginDraw(time: Float = 0) {
         guard let cb = commandQueue.makeCommandBuffer() else { return }
         self.commandBuffer = cb
@@ -85,7 +85,7 @@ public final class Graphics3D {
         canvas3D.begin(encoder: enc, time: time)
     }
 
-    /// End drawing and wait for GPU completion.
+    /// 描画を終了し GPU の完了を待機します。
     public func endDraw() {
         canvas3D.end()
         encoder?.endEncoding()
@@ -97,40 +97,40 @@ public final class Graphics3D {
 
     // MARK: - MImage Conversion
 
-    /// Return the offscreen texture as an MImage.
-    /// - Returns: An MImage wrapping the internal color texture.
+    /// オフスクリーンテクスチャを MImage として返します。
+    /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
         MImage(texture: textureManager.colorTexture)
     }
 
     // MARK: - Camera
 
-    /// Set the camera position and orientation.
+    /// カメラの位置と向きを設定します。
     /// - Parameters:
-    ///   - eye: Camera position.
-    ///   - center: Look-at target.
-    ///   - up: Up direction vector.
+    ///   - eye: カメラ位置。
+    ///   - center: 注視点。
+    ///   - up: 上方向ベクトル。
     public func camera(
         eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0)
     ) { canvas3D.camera(eye: eye, center: center, up: up) }
 
-    /// Set the perspective projection.
+    /// 透視投影を設定します。
     /// - Parameters:
-    ///   - fov: Field of view in radians.
-    ///   - near: Near clipping plane distance.
-    ///   - far: Far clipping plane distance.
+    ///   - fov: ラジアン単位の視野角。
+    ///   - near: ニアクリッピング面の距離。
+    ///   - far: ファークリッピング面の距離。
     public func perspective(
         fov: Float = .pi / 3, near: Float = 0.1, far: Float = 10000
     ) { canvas3D.perspective(fov: fov, near: near, far: far) }
 
-    /// Set the orthographic projection.
+    /// 正射影投影を設定します。
     /// - Parameters:
-    ///   - left: Left clipping plane.
-    ///   - right: Right clipping plane.
-    ///   - bottom: Bottom clipping plane.
-    ///   - top: Top clipping plane.
-    ///   - near: Near clipping plane distance.
-    ///   - far: Far clipping plane distance.
+    ///   - left: 左クリッピング面。
+    ///   - right: 右クリッピング面。
+    ///   - bottom: 下クリッピング面。
+    ///   - top: 上クリッピング面。
+    ///   - near: ニアクリッピング面の距離。
+    ///   - far: ファークリッピング面の距離。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
@@ -139,38 +139,38 @@ public final class Graphics3D {
 
     // MARK: - Lighting
 
-    /// Enable default lighting.
+    /// デフォルトライティングを有効にします。
     public func lights() { canvas3D.lights() }
 
-    /// Disable all lighting.
+    /// すべてのライティングを無効にします。
     public func noLights() { canvas3D.noLights() }
 
-    /// Add a directional light with the given direction.
+    /// 指定された方向でディレクショナルライトを追加します。
     /// - Parameters:
-    ///   - x: Light direction X component.
-    ///   - y: Light direction Y component.
-    ///   - z: Light direction Z component.
+    ///   - x: ライト方向のX成分。
+    ///   - y: ライト方向のY成分。
+    ///   - z: ライト方向のZ成分。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
         canvas3D.directionalLight(x, y, z)
     }
 
-    /// Add a directional light with the given direction and color.
+    /// 指定された方向と色でディレクショナルライトを追加します。
     /// - Parameters:
-    ///   - x: Light direction X component.
-    ///   - y: Light direction Y component.
-    ///   - z: Light direction Z component.
-    ///   - color: Light color.
+    ///   - x: ライト方向のX成分。
+    ///   - y: ライト方向のY成分。
+    ///   - z: ライト方向のZ成分。
+    ///   - color: ライトの色。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
         canvas3D.directionalLight(x, y, z, color: color)
     }
 
-    /// Add a point light at the given position.
+    /// 指定された位置にポイントライトを追加します。
     /// - Parameters:
-    ///   - x: Light position X.
-    ///   - y: Light position Y.
-    ///   - z: Light position Z.
-    ///   - color: Light color.
-    ///   - falloff: Attenuation factor.
+    ///   - x: ライト位置X。
+    ///   - y: ライト位置Y。
+    ///   - z: ライト位置Z。
+    ///   - color: ライトの色。
+    ///   - falloff: 減衰ファクター。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white, falloff: Float = 0.1
@@ -178,17 +178,17 @@ public final class Graphics3D {
         canvas3D.pointLight(x, y, z, color: color, falloff: falloff)
     }
 
-    /// Add a spot light at the given position aiming in the given direction.
+    /// 指定された位置と方向でスポットライトを追加します。
     /// - Parameters:
-    ///   - x: Light position X.
-    ///   - y: Light position Y.
-    ///   - z: Light position Z.
-    ///   - dirX: Direction X component.
-    ///   - dirY: Direction Y component.
-    ///   - dirZ: Direction Z component.
-    ///   - angle: Cone half-angle in radians.
-    ///   - falloff: Attenuation factor.
-    ///   - color: Light color.
+    ///   - x: ライト位置X。
+    ///   - y: ライト位置Y。
+    ///   - z: ライト位置Z。
+    ///   - dirX: 方向のX成分。
+    ///   - dirY: 方向のY成分。
+    ///   - dirZ: 方向のZ成分。
+    ///   - angle: ラジアン単位のコーン半角。
+    ///   - falloff: 減衰ファクター。
+    ///   - color: ライトの色。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
@@ -197,226 +197,226 @@ public final class Graphics3D {
         canvas3D.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
     }
 
-    /// Set the ambient light strength.
-    /// - Parameter strength: Ambient light intensity.
+    /// アンビエントライトの強度を設定します。
+    /// - Parameter strength: アンビエントライトの強度。
     public func ambientLight(_ strength: Float) { canvas3D.ambientLight(strength) }
 
-    /// Set the ambient light color using RGB values.
+    /// RGB値でアンビエントライトの色を設定します。
     /// - Parameters:
-    ///   - r: Red component.
-    ///   - g: Green component.
-    ///   - b: Blue component.
+    ///   - r: 赤成分。
+    ///   - g: 緑成分。
+    ///   - b: 青成分。
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) { canvas3D.ambientLight(r, g, b) }
 
     // MARK: - Material
 
-    /// Set the specular highlight color.
-    /// - Parameter color: The specular color.
+    /// スペキュラハイライトの色を設定します。
+    /// - Parameter color: スペキュラ色。
     public func specular(_ color: Color) { canvas3D.specular(color) }
 
-    /// Set the specular highlight to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// スペキュラハイライトをグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func specular(_ gray: Float) { canvas3D.specular(gray) }
 
-    /// Set the shininess exponent for specular highlights.
-    /// - Parameter value: The shininess exponent.
+    /// スペキュラハイライトの光沢指数を設定します。
+    /// - Parameter value: 光沢指数。
     public func shininess(_ value: Float) { canvas3D.shininess(value) }
 
-    /// Set the emissive color.
-    /// - Parameter color: The emissive color.
+    /// エミッシブ色を設定します。
+    /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) { canvas3D.emissive(color) }
 
-    /// Set the emissive to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// エミッシブをグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func emissive(_ gray: Float) { canvas3D.emissive(gray) }
 
-    /// Set the metallic factor for PBR shading.
-    /// - Parameter value: Metallic factor (0.0 to 1.0).
+    /// PBR シェーディングのメタリックファクターを設定します。
+    /// - Parameter value: メタリックファクター（0.0〜1.0）。
     public func metallic(_ value: Float) { canvas3D.metallic(value) }
 
-    /// Set the roughness factor for PBR shading.
-    /// - Parameter value: Roughness factor (0.0 to 1.0).
+    /// PBR シェーディングのラフネスファクターを設定します。
+    /// - Parameter value: ラフネスファクター（0.0〜1.0）。
     public func roughness(_ value: Float) { canvas3D.roughness(value) }
 
-    /// Set the ambient occlusion factor for PBR shading.
-    /// - Parameter value: Ambient occlusion factor (0.0 to 1.0).
+    /// PBR シェーディングのアンビエントオクルージョンファクターを設定します。
+    /// - Parameter value: アンビエントオクルージョンファクター（0.0〜1.0）。
     public func ambientOcclusion(_ value: Float) { canvas3D.ambientOcclusion(value) }
 
-    /// Enable or disable PBR shading.
-    /// - Parameter enabled: Whether to use PBR shading.
+    /// PBR シェーディングを有効または無効にします。
+    /// - Parameter enabled: PBR シェーディングを使用するかどうか。
     public func pbr(_ enabled: Bool) { canvas3D.pbr(enabled) }
 
-    /// Set a custom material for subsequent draw calls.
-    /// - Parameter custom: The custom material to apply.
+    /// 後続の描画呼び出しにカスタムマテリアルを設定します。
+    /// - Parameter custom: 適用するカスタムマテリアル。
     public func material(_ custom: CustomMaterial) { canvas3D.material(custom) }
 
-    /// Reset to the default material.
+    /// デフォルトマテリアルにリセットします。
     public func noMaterial() { canvas3D.noMaterial() }
 
     // MARK: - Texture
 
-    /// Set the texture for subsequent 3D primitives.
-    /// - Parameter img: The image to use as a texture.
+    /// 後続の3Dプリミティブのテクスチャを設定します。
+    /// - Parameter img: テクスチャとして使用する画像。
     public func texture(_ img: MImage) { canvas3D.texture(img) }
 
-    /// Disable texturing.
+    /// テクスチャリングを無効にします。
     public func noTexture() { canvas3D.noTexture() }
 
     // MARK: - Transform
 
-    /// Push the current model matrix onto the stack.
+    /// 現在のモデル行列をスタックにプッシュします。
     public func pushMatrix() { canvas3D.pushMatrix() }
 
-    /// Pop the most recent model matrix from the stack.
+    /// 最後に保存したモデル行列をスタックからポップします。
     public func popMatrix() { canvas3D.popMatrix() }
 
-    /// Translate the model matrix.
+    /// モデル行列を平行移動します。
     /// - Parameters:
-    ///   - x: X translation.
-    ///   - y: Y translation.
-    ///   - z: Z translation.
+    ///   - x: X方向の平行移動量。
+    ///   - y: Y方向の平行移動量。
+    ///   - z: Z方向の平行移動量。
     public func translate(_ x: Float, _ y: Float, _ z: Float) { canvas3D.translate(x, y, z) }
 
-    /// Rotate around the X axis.
-    /// - Parameter angle: Rotation angle in radians.
+    /// X軸周りに回転します。
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateX(_ angle: Float) { canvas3D.rotateX(angle) }
 
-    /// Rotate around the Y axis.
-    /// - Parameter angle: Rotation angle in radians.
+    /// Y軸周りに回転します。
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateY(_ angle: Float) { canvas3D.rotateY(angle) }
 
-    /// Rotate around the Z axis.
-    /// - Parameter angle: Rotation angle in radians.
+    /// Z軸周りに回転します。
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateZ(_ angle: Float) { canvas3D.rotateZ(angle) }
 
-    /// Scale the model matrix by individual axis factors.
+    /// 各軸のファクターでモデル行列をスケーリングします。
     /// - Parameters:
-    ///   - x: X scale factor.
-    ///   - y: Y scale factor.
-    ///   - z: Z scale factor.
+    ///   - x: Xスケールファクター。
+    ///   - y: Yスケールファクター。
+    ///   - z: Zスケールファクター。
     public func scale(_ x: Float, _ y: Float, _ z: Float) { canvas3D.scale(x, y, z) }
 
-    /// Scale the model matrix uniformly.
-    /// - Parameter s: Uniform scale factor.
+    /// モデル行列を均一にスケーリングします。
+    /// - Parameter s: 均一スケールファクター。
     public func scale(_ s: Float) { canvas3D.scale(s) }
 
     // MARK: - Style
 
-    /// Set the fill color.
-    /// - Parameter color: The fill color.
+    /// 塗りつぶし色を設定します。
+    /// - Parameter color: 塗りつぶし色。
     public func fill(_ color: Color) { canvas3D.fill(color) }
 
-    /// Set the fill color using channel values.
+    /// チャンネル値で塗りつぶし色を設定します。
     /// - Parameters:
-    ///   - v1: The first color channel value.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: Optional alpha value.
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas3D.fill(v1, v2, v3, a) }
 
-    /// Set the fill to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// 塗りつぶしをグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func fill(_ gray: Float) { canvas3D.fill(gray) }
 
-    /// Set the fill to a grayscale value with alpha.
+    /// 塗りつぶしをグレースケール値とアルファで設定します。
     /// - Parameters:
-    ///   - gray: The grayscale value.
-    ///   - alpha: The alpha value.
+    ///   - gray: グレースケール値。
+    ///   - alpha: アルファ値。
     public func fill(_ gray: Float, _ alpha: Float) { canvas3D.fill(gray, alpha) }
 
-    /// Disable filling shapes.
+    /// シェイプの塗りつぶしを無効にします。
     public func noFill() { canvas3D.noFill() }
 
-    /// Set the stroke color.
-    /// - Parameter color: The stroke color.
+    /// ストローク色を設定します。
+    /// - Parameter color: ストローク色。
     public func stroke(_ color: Color) { canvas3D.stroke(color) }
 
-    /// Set the stroke color using channel values.
+    /// チャンネル値でストローク色を設定します。
     /// - Parameters:
-    ///   - v1: The first color channel value.
-    ///   - v2: The second color channel value.
-    ///   - v3: The third color channel value.
-    ///   - a: Optional alpha value.
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas3D.stroke(v1, v2, v3, a) }
 
-    /// Set the stroke to a grayscale value.
-    /// - Parameter gray: The grayscale value.
+    /// ストロークをグレースケール値で設定します。
+    /// - Parameter gray: グレースケール値。
     public func stroke(_ gray: Float) { canvas3D.stroke(gray) }
 
-    /// Set the stroke to a grayscale value with alpha.
+    /// ストロークをグレースケール値とアルファで設定します。
     /// - Parameters:
-    ///   - gray: The grayscale value.
-    ///   - alpha: The alpha value.
+    ///   - gray: グレースケール値。
+    ///   - alpha: アルファ値。
     public func stroke(_ gray: Float, _ alpha: Float) { canvas3D.stroke(gray, alpha) }
 
-    /// Disable stroking shapes.
+    /// シェイプのストロークを無効にします。
     public func noStroke() { canvas3D.noStroke() }
 
-    /// Set the color mode and optional maximum channel values.
+    /// カラーモードとオプションの最大チャンネル値を設定します。
     /// - Parameters:
-    ///   - space: The color space (RGB or HSB).
-    ///   - max1: Maximum value for the first channel.
-    ///   - max2: Maximum value for the second channel.
-    ///   - max3: Maximum value for the third channel.
-    ///   - maxA: Maximum value for the alpha channel.
+    ///   - space: カラースペース（RGB または HSB）。
+    ///   - max1: 第1チャンネルの最大値。
+    ///   - max2: 第2チャンネルの最大値。
+    ///   - max3: 第3チャンネルの最大値。
+    ///   - maxA: アルファチャンネルの最大値。
     public func colorMode(
         _ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0,
         _ max3: Float = 1.0, _ maxA: Float = 1.0
     ) { canvas3D.colorMode(space, max1, max2, max3, maxA) }
 
-    /// Set the color mode with a uniform maximum for all channels.
+    /// 全チャンネルに均一な最大値でカラーモードを設定します。
     /// - Parameters:
-    ///   - space: The color space.
-    ///   - maxAll: Maximum value applied to all channels.
+    ///   - space: カラースペース。
+    ///   - maxAll: 全チャンネルに適用される最大値。
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) { canvas3D.colorMode(space, maxAll) }
 
     // MARK: - Primitives
 
-    /// Draw a box with individual dimensions.
+    /// 個別の寸法でボックスを描画します。
     /// - Parameters:
-    ///   - width: Box width.
-    ///   - height: Box height.
-    ///   - depth: Box depth.
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
     public func box(_ width: Float, _ height: Float, _ depth: Float) { canvas3D.box(width, height, depth) }
 
-    /// Draw a cube with uniform size.
-    /// - Parameter size: Side length.
+    /// 均一なサイズでキューブを描画します。
+    /// - Parameter size: 辺の長さ。
     public func box(_ size: Float) { canvas3D.box(size) }
 
-    /// Draw a sphere.
+    /// 球体を描画します。
     /// - Parameters:
-    ///   - radius: Sphere radius.
-    ///   - detail: Tessellation detail level.
+    ///   - radius: 球体の半径。
+    ///   - detail: テッセレーションの詳細レベル。
     public func sphere(_ radius: Float, detail: Int = 24) { canvas3D.sphere(radius, detail: detail) }
 
-    /// Draw a plane.
+    /// 平面を描画します。
     /// - Parameters:
-    ///   - width: Plane width.
-    ///   - height: Plane height.
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
     public func plane(_ width: Float, _ height: Float) { canvas3D.plane(width, height) }
 
-    /// Draw a cylinder.
+    /// シリンダーを描画します。
     /// - Parameters:
-    ///   - radius: Cylinder radius.
-    ///   - height: Cylinder height.
-    ///   - detail: Tessellation detail level.
+    ///   - radius: シリンダーの半径。
+    ///   - height: シリンダーの高さ。
+    ///   - detail: テッセレーションの詳細レベル。
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) { canvas3D.cylinder(radius: radius, height: height, detail: detail) }
 
-    /// Draw a cone.
+    /// コーンを描画します。
     /// - Parameters:
-    ///   - radius: Base radius.
-    ///   - height: Cone height.
-    ///   - detail: Tessellation detail level.
+    ///   - radius: 底面の半径。
+    ///   - height: コーンの高さ。
+    ///   - detail: テッセレーションの詳細レベル。
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) { canvas3D.cone(radius: radius, height: height, detail: detail) }
 
-    /// Draw a torus.
+    /// トーラスを描画します。
     /// - Parameters:
-    ///   - ringRadius: Distance from the center of the torus to the center of the tube.
-    ///   - tubeRadius: Radius of the tube.
-    ///   - detail: Tessellation detail level.
+    ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
+    ///   - tubeRadius: チューブの半径。
+    ///   - detail: テッセレーションの詳細レベル。
     public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) { canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail) }
 
-    /// Draw a custom mesh.
-    /// - Parameter mesh: The mesh to render.
+    /// カスタムメッシュを描画します。
+    /// - Parameter mesh: レンダリングするメッシュ。
     public func mesh(_ mesh: Mesh) { canvas3D.mesh(mesh) }
 }

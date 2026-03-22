@@ -2,12 +2,12 @@ import AVFoundation
 import Foundation
 import os
 
-// MARK: - Audio Engine Holder
+// MARK: - オーディオエンジンホルダー
 
-/// Manage AVAudioEngine lifecycle for safe cleanup across actor boundaries.
+/// アクター境界を越えて安全にクリーンアップするために AVAudioEngine のライフサイクルを管理します。
 ///
-/// AVAudioEngine and AVAudioPlayerNode are thread-safe for stop operations.
-/// This holder handles cleanup in deinit without requiring nonisolated(unsafe).
+/// AVAudioEngine と AVAudioPlayerNode の stop 操作はスレッドセーフです。
+/// このホルダーが nonisolated(unsafe) を必要とせずに deinit でクリーンアップを処理します。
 private final class AudioEngineHolder: @unchecked Sendable {
     let engine: AVAudioEngine
     let playerNode: AVAudioPlayerNode
@@ -25,7 +25,7 @@ private final class AudioEngineHolder: @unchecked Sendable {
     }
 }
 
-// MARK: - Thread-safe Sample Buffer for SoundFile
+// MARK: - SoundFile 用スレッドセーフサンプルバッファ
 
 private final class SoundSampleBuffer: Sendable {
     private let state = OSAllocatedUnfairLock(initialState: [Float]?.none)
@@ -41,10 +41,10 @@ private final class SoundSampleBuffer: Sendable {
 
 // MARK: - SoundFile
 
-/// Play audio files (MP3, WAV, AAC, etc.) with integrated spectrum analysis.
+/// オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
 ///
-/// Use AVAudioEngine and AVAudioPlayerNode to play audio files, and connect
-/// to an AudioAnalyzer for real-time spectrum analysis.
+/// AVAudioEngine と AVAudioPlayerNode を使用してオーディオファイルを再生し、
+/// AudioAnalyzer に接続してリアルタイムスペクトル解析を行います。
 ///
 /// ```swift
 /// var sound: SoundFile!
@@ -61,62 +61,62 @@ private final class SoundSampleBuffer: Sendable {
 @MainActor
 public final class SoundFile {
 
-    // MARK: - Audio Engine
+    // MARK: - オーディオエンジン
 
     private let audioEngine: AudioEngineHolder
     private let file: AVAudioFile
     private let audioFormat: AVAudioFormat
 
-    // MARK: - Playback State
+    // MARK: - 再生状態
 
-    /// Indicate whether the file is currently playing.
+    /// ファイルが現在再生中かどうかを示します。
     public private(set) var isPlaying: Bool = false
 
-    /// Enable or disable loop playback.
+    /// ループ再生の有効・無効を制御します。
     public var isLooping: Bool = false
 
-    /// Return the total duration of the file in seconds.
+    /// ファイルの総再生時間（秒）を返します。
     public let duration: Double
 
-    /// Control the playback volume (0.0 to 1.0).
+    /// 再生音量を制御します（0.0〜1.0）。
     public var volume: Float {
         get { audioEngine.playerNode.volume }
         set { audioEngine.playerNode.volume = max(0, min(1, newValue)) }
     }
 
-    /// Control the playback rate (0.25 to 4.0).
+    /// 再生速度を制御します（0.25〜4.0）。
     public var rate: Float {
         get { _rate }
         set {
             _rate = max(0.25, min(4.0, newValue))
             if isPlaying {
-                // Rate changes are applied during playback via the varispeed node
+                // 再生中の速度変更は varispeed ノード経由で適用
                 audioEngine.varispeedNode.rate = _rate
             }
         }
     }
     private var _rate: Float = 1.0
 
-    // MARK: - Analysis Integration
+    // MARK: - 解析統合
 
-    /// Internal AudioAnalyzer for spectrum analysis of file playback.
+    /// ファイル再生のスペクトル解析用内部 AudioAnalyzer。
     private var _analyzer: AudioAnalyzer?
     private let sampleBuffer = SoundSampleBuffer()
 
-    /// Return the spectrum data (available when analysis is enabled).
+    /// スペクトルデータを返します（解析有効時に利用可能）。
     public var spectrum: [Float] { _analyzer?.spectrum ?? [] }
 
-    /// Return the RMS volume level (available when analysis is enabled).
+    /// RMS 音量レベルを返します（解析有効時に利用可能）。
     public var analysisVolume: Float { _analyzer?.volume ?? 0 }
 
-    /// Return the beat detection flag (available when analysis is enabled).
+    /// ビート検出フラグを返します（解析有効時に利用可能）。
     public var isBeat: Bool { _analyzer?.isBeat ?? false }
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
-    /// Load an audio file from the given path.
-    /// - Parameter path: File system path to the audio file.
-    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist.
+    /// 指定パスからオーディオファイルを読み込みます。
+    /// - Parameter path: オーディオファイルのファイルシステムパス。
+    /// - Throws: ファイルが存在しない場合に `SoundFileError.fileNotFound` をスローします。
     public init(path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
@@ -129,7 +129,7 @@ public final class SoundFile {
 
         self.audioEngine = AudioEngineHolder()
 
-        // Connect nodes: playerNode -> varispeed -> mainMixer -> output
+        // ノードを接続: playerNode -> varispeed -> mainMixer -> output
         let engine = audioEngine.engine
         let playerNode = audioEngine.playerNode
         let varispeedNode = audioEngine.varispeedNode
@@ -139,9 +139,9 @@ public final class SoundFile {
         engine.connect(varispeedNode, to: engine.mainMixerNode, format: audioFormat)
     }
 
-    // MARK: - Playback Control
+    // MARK: - 再生コントロール
 
-    /// Start playback.
+    /// 再生を開始します。
     public func play() {
         let engine = audioEngine.engine
         if !engine.isRunning {
@@ -160,25 +160,25 @@ public final class SoundFile {
         isPlaying = true
     }
 
-    /// Pause playback.
+    /// 再生を一時停止します。
     public func pause() {
         audioEngine.playerNode.pause()
         isPlaying = false
     }
 
-    /// Stop playback and reset to the beginning.
+    /// 再生を停止し、先頭に戻します。
     public func stop() {
         audioEngine.playerNode.stop()
         isPlaying = false
     }
 
-    /// Enable looping and start playback.
+    /// ループを有効にして再生を開始します。
     public func loop() {
         isLooping = true
         play()
     }
 
-    /// Access or set the current playback position in seconds.
+    /// 現在の再生位置（秒）を取得または設定します。
     public var position: Double {
         get {
             guard let nodeTime = audioEngine.playerNode.lastRenderTime,
@@ -214,10 +214,10 @@ public final class SoundFile {
         }
     }
 
-    // MARK: - Analysis
+    // MARK: - 解析
 
-    /// Enable spectrum analysis on the audio output.
-    /// - Parameter fftSize: FFT size (defaults to 1024).
+    /// オーディオ出力のスペクトル解析を有効にします。
+    /// - Parameter fftSize: FFT サイズ（デフォルトは1024）。
     public func enableAnalysis(fftSize: Int = 1024) {
         guard _analyzer == nil else { return }
         _analyzer = AudioAnalyzer(fftSize: fftSize)
@@ -225,7 +225,7 @@ public final class SoundFile {
         let capturedBuffer = sampleBuffer
         let capturedFFTSize = fftSize
 
-        // Install a tap on the main mixer output
+        // メインミキサー出力にタップをインストール
         let mixerFormat = audioEngine.engine.mainMixerNode.outputFormat(forBus: 0)
         audioEngine.engine.mainMixerNode.installTap(
             onBus: 0,
@@ -244,7 +244,7 @@ public final class SoundFile {
         }
     }
 
-    /// Update analysis data (call at the beginning of `draw()`).
+    /// 解析データを更新します（`draw()` の先頭で呼び出してください）。
     public func update() {
         guard let analyzer = _analyzer else { return }
         if let samples = sampleBuffer.take() {
@@ -253,14 +253,14 @@ public final class SoundFile {
         analyzer.update()
     }
 
-    /// Return the energy of a frequency band (via AudioAnalyzer).
-    /// - Parameter index: Band index (0 = bass, 1 = mid, 2 = treble).
-    /// - Returns: Band energy (0.0 to 1.0).
+    /// 周波数帯域のエネルギーを返します（AudioAnalyzer 経由）。
+    /// - Parameter index: 帯域インデックス（0 = 低音、1 = 中音、2 = 高音）。
+    /// - Returns: 帯域エネルギー（0.0〜1.0）。
     public func band(_ index: Int) -> Float {
         _analyzer?.band(index) ?? 0
     }
 
-    // MARK: - Private
+    // MARK: - プライベート
 
     private func scheduleFile() {
         audioEngine.playerNode.scheduleFile(
@@ -285,11 +285,11 @@ public final class SoundFile {
     }
 }
 
-// MARK: - Errors
+// MARK: - エラー
 
-/// Represent errors that occur during SoundFile operations.
+/// SoundFile 操作中に発生するエラーを表します。
 public enum SoundFileError: Error, LocalizedError {
-    /// Indicate that the audio file was not found at the given path.
+    /// 指定パスにオーディオファイルが見つからないことを示します。
     case fileNotFound(String)
 
     public var errorDescription: String? {

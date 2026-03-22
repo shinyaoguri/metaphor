@@ -1,26 +1,26 @@
 import SwiftUI
 import MetalKit
 
-/// Display Metal rendering content within a SwiftUI view hierarchy.
+/// SwiftUI ビュー階層内で Metal レンダリングコンテンツを表示します。
 ///
-/// Wraps a `MetaphorMTKView` via `NSViewRepresentable` to automatically handle
-/// mouse and keyboard events alongside Metal rendering.
+/// `NSViewRepresentable` を介して `MetaphorMTKView` をラップし、
+/// Metal レンダリングとともにマウス・キーボードイベントを自動的に処理します。
 public struct MetaphorView: NSViewRepresentable {
     private let renderer: MetaphorRenderer
     private let preferredFPS: Int
 
-    /// Create a new MetaphorView backed by the given renderer.
+    /// 指定されたレンダラーに基づく新しい MetaphorView を作成します。
     /// - Parameters:
-    ///   - renderer: The renderer that drives Metal rendering.
-    ///   - preferredFPS: The desired frame rate (default: 60).
+    ///   - renderer: Metal レンダリングを駆動するレンダラー。
+    ///   - preferredFPS: 目標フレームレート（デフォルト: 60）。
     public init(renderer: MetaphorRenderer, preferredFPS: Int = 60) {
         self.renderer = renderer
         self.preferredFPS = preferredFPS
     }
 
-    /// Create the underlying MTKView and configure it with the renderer.
-    /// - Parameter context: The SwiftUI representable context.
-    /// - Returns: A configured `MetaphorMTKView` instance.
+    /// 基盤となる MTKView を作成し、レンダラーで設定します。
+    /// - Parameter context: SwiftUI の representable コンテキスト。
+    /// - Returns: 設定済みの `MetaphorMTKView` インスタンス。
     public func makeNSView(context: Context) -> MetaphorMTKView {
         let view = MetaphorMTKView()
         view.preferredFramesPerSecond = preferredFPS
@@ -30,10 +30,10 @@ public struct MetaphorView: NSViewRepresentable {
         return view
     }
 
-    /// Update the view's frame rate when SwiftUI state changes.
+    /// SwiftUI の状態変更時にビューのフレームレートを更新します。
     /// - Parameters:
-    ///   - nsView: The existing `MetaphorMTKView` instance.
-    ///   - context: The SwiftUI representable context.
+    ///   - nsView: 既存の `MetaphorMTKView` インスタンス。
+    ///   - context: SwiftUI の representable コンテキスト。
     public func updateNSView(_ nsView: MetaphorMTKView, context: Context) {
         nsView.preferredFramesPerSecond = preferredFPS
     }

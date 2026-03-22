@@ -1,16 +1,16 @@
 import Metal
 import simd
 
-// MARK: - Shapes
+// MARK: - シェイプ
 
 extension Canvas2D {
 
-    /// Draw a rectangle with coordinate interpretation depending on the current rect mode.
+    /// 現在の rectMode に応じた座標解釈で矩形を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate (or first corner x, or center x, depending on rect mode).
-    ///   - y: The y-coordinate (or first corner y, or center y, depending on rect mode).
-    ///   - w: The width (or second corner x, or half-width, depending on rect mode).
-    ///   - h: The height (or second corner y, or half-height, depending on rect mode).
+    ///   - x: x座標（または第1コーナーx、または中心x。rectMode に依存）。
+    ///   - y: y座標（または第1コーナーy、または中心y。rectMode に依存）。
+    ///   - w: 幅（または第2コーナーx、または半幅。rectMode に依存）。
+    ///   - h: 高さ（または第2コーナーy、または半高さ。rectMode に依存）。
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         let rx: Float, ry: Float, rw: Float, rh: Float
         switch currentRectMode {
@@ -24,7 +24,7 @@ extension Canvas2D {
             rx = x - w; ry = y - h; rw = w * 2; rh = h * 2
         }
         if hasFill {
-            // GPU instancing: transform unit rect [-0.5, 0.5]² to center + size
+            // GPU インスタンシング: 単位矩形 [-0.5, 0.5]² を中心+サイズに変換
             let centerX = rx + rw * 0.5
             let centerY = ry + rh * 0.5
             addShapeInstance(.rect, cx: centerX, cy: centerY, sx: rw, sy: rh)
@@ -37,27 +37,27 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a rounded rectangle with a uniform corner radius.
+    /// 均一な角丸半径で角丸矩形を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width.
-    ///   - h: The height.
-    ///   - r: The corner radius applied to all four corners.
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
+    ///   - r: 四隅すべてに適用される角丸半径。
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
         rect(x, y, w, h, r, r, r, r)
     }
 
-    /// Draw a rounded rectangle with individual corner radii.
+    /// 個別の角丸半径で角丸矩形を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width.
-    ///   - h: The height.
-    ///   - tl: The top-left corner radius.
-    ///   - tr: The top-right corner radius.
-    ///   - br: The bottom-right corner radius.
-    ///   - bl: The bottom-left corner radius.
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
+    ///   - tl: 左上の角丸半径。
+    ///   - tr: 右上の角丸半径。
+    ///   - br: 右下の角丸半径。
+    ///   - bl: 左下の角丸半径。
     public func rect(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
@@ -120,25 +120,25 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a square as a shorthand for ``rect(_:_:_:_:)`` with equal width and height.
+    /// ``rect(_:_:_:_:)`` の簡易版。幅と高さが等しい正方形を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - size: The side length of the square.
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - size: 正方形の辺の長さ。
     public func square(_ x: Float, _ y: Float, _ size: Float) {
         rect(x, y, size, size)
     }
 
-    /// Draw a quadrilateral defined by four corner points.
+    /// 4つの頂点で定義される四角形を描画します。
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first vertex.
-    ///   - y1: The y-coordinate of the first vertex.
-    ///   - x2: The x-coordinate of the second vertex.
-    ///   - y2: The y-coordinate of the second vertex.
-    ///   - x3: The x-coordinate of the third vertex.
-    ///   - y3: The y-coordinate of the third vertex.
-    ///   - x4: The x-coordinate of the fourth vertex.
-    ///   - y4: The y-coordinate of the fourth vertex.
+    ///   - x1: 第1頂点のx座標。
+    ///   - y1: 第1頂点のy座標。
+    ///   - x2: 第2頂点のx座標。
+    ///   - y2: 第2頂点のy座標。
+    ///   - x3: 第3頂点のx座標。
+    ///   - y3: 第3頂点のy座標。
+    ///   - x4: 第4頂点のx座標。
+    ///   - y4: 第4頂点のy座標。
     public func quad(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -157,17 +157,17 @@ extension Canvas2D {
         }
     }
 
-    // MARK: - Gradient
+    // MARK: - グラデーション
 
-    /// Draw a rectangle filled with a linear gradient.
+    /// 線形グラデーションで塗りつぶされた矩形を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate of the rectangle.
-    ///   - y: The y-coordinate of the rectangle.
-    ///   - w: The width of the rectangle.
-    ///   - h: The height of the rectangle.
-    ///   - color1: The starting color of the gradient.
-    ///   - color2: The ending color of the gradient.
-    ///   - axis: The gradient direction.
+    ///   - x: 矩形のx座標。
+    ///   - y: 矩形のy座標。
+    ///   - w: 矩形の幅。
+    ///   - h: 矩形の高さ。
+    ///   - color1: グラデーションの開始色。
+    ///   - color2: グラデーションの終了色。
+    ///   - axis: グラデーションの方向。
     public func linearGradient(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ color1: Color, _ color2: Color,
@@ -196,14 +196,14 @@ extension Canvas2D {
         addVertex(x, y + h, bl)
     }
 
-    /// Draw a radial gradient centered at the given point.
+    /// 指定した中心点に放射状グラデーションを描画します。
     /// - Parameters:
-    ///   - cx: The x-coordinate of the center.
-    ///   - cy: The y-coordinate of the center.
-    ///   - radius: The outer radius of the gradient.
-    ///   - innerColor: The color at the center.
-    ///   - outerColor: The color at the outer edge.
-    ///   - segments: The number of segments used to approximate the circle.
+    ///   - cx: 中心のx座標。
+    ///   - cy: 中心のy座標。
+    ///   - radius: グラデーションの外側半径。
+    ///   - innerColor: 中心の色。
+    ///   - outerColor: 外縁の色。
+    ///   - segments: 円の近似に使用するセグメント数。
     public func radialGradient(
         _ cx: Float, _ cy: Float, _ radius: Float,
         _ innerColor: Color, _ outerColor: Color,
@@ -228,12 +228,12 @@ extension Canvas2D {
         }
     }
 
-    /// Draw an ellipse with coordinate interpretation depending on the current ellipse mode.
+    /// 現在の ellipseMode に応じた座標解釈で楕円を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate (or corner x, or center x, depending on ellipse mode).
-    ///   - y: The y-coordinate (or corner y, or center y, depending on ellipse mode).
-    ///   - w: The width (or second corner x, or x-radius, depending on ellipse mode).
-    ///   - h: The height (or second corner y, or y-radius, depending on ellipse mode).
+    ///   - x: x座標（またはコーナーx、または中心x。ellipseMode に依存）。
+    ///   - y: y座標（またはコーナーy、または中心y。ellipseMode に依存）。
+    ///   - w: 幅（または第2コーナーx、またはx半径。ellipseMode に依存）。
+    ///   - h: 高さ（または第2コーナーy、またはy半径。ellipseMode に依存）。
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         let cx: Float, cy: Float, rx: Float, ry: Float
         switch currentEllipseMode {
@@ -249,11 +249,11 @@ extension Canvas2D {
         }
 
         if hasFill {
-            // GPU instancing: scale unit circle mesh (diameter=1) to (rx*2, ry*2)
+            // GPU インスタンシング: 単位円メッシュ（直径=1）を (rx*2, ry*2) にスケーリング
             addShapeInstance(.ellipse, cx: cx, cy: cy, sx: rx * 2, sy: ry * 2)
         }
         if hasStroke {
-            // Flush instanced batch before stroke to preserve draw order
+            // 描画順序を保つため、ストローク前にインスタンスバッチをフラッシュ
             flushInstancedBatch()
             let step = Float.pi * 2.0 / Float(ellipseSegments)
             for i in 0..<ellipseSegments {
@@ -268,33 +268,33 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a circle as a shorthand for ``ellipse(_:_:_:_:)`` with equal width and height.
+    /// ``ellipse(_:_:_:_:)`` の簡易版。幅と高さが等しい円を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate of the center.
-    ///   - y: The y-coordinate of the center.
-    ///   - diameter: The diameter of the circle.
+    ///   - x: 中心のx座標。
+    ///   - y: 中心のy座標。
+    ///   - diameter: 円の直径。
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) {
         ellipse(x, y, diameter, diameter)
     }
 
-    /// Draw a line segment between two points.
+    /// 2点間の線分を描画します。
     /// - Parameters:
-    ///   - x1: The x-coordinate of the start point.
-    ///   - y1: The y-coordinate of the start point.
-    ///   - x2: The x-coordinate of the end point.
-    ///   - y2: The y-coordinate of the end point.
+    ///   - x1: 始点のx座標。
+    ///   - y1: 始点のy座標。
+    ///   - x2: 終点のx座標。
+    ///   - y2: 終点のy座標。
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
         strokeLine(x1, y1, x2, y2)
     }
 
-    /// Draw a triangle defined by three vertices.
+    /// 3つの頂点で定義される三角形を描画します。
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first vertex.
-    ///   - y1: The y-coordinate of the first vertex.
-    ///   - x2: The x-coordinate of the second vertex.
-    ///   - y2: The y-coordinate of the second vertex.
-    ///   - x3: The x-coordinate of the third vertex.
-    ///   - y3: The y-coordinate of the third vertex.
+    ///   - x1: 第1頂点のx座標。
+    ///   - y1: 第1頂点のy座標。
+    ///   - x2: 第2頂点のx座標。
+    ///   - y2: 第2頂点のy座標。
+    ///   - x3: 第3頂点のx座標。
+    ///   - y3: 第3頂点のy座標。
     public func triangle(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -310,8 +310,8 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a polygon from an array of vertex positions, with support for concave shapes.
-    /// - Parameter points: An array of `(x, y)` tuples defining the polygon vertices.
+    /// 頂点位置の配列からポリゴンを描画します。凹多角形にも対応します。
+    /// - Parameter points: ポリゴン頂点を定義する `(x, y)` タプルの配列。
     public func polygon(_ points: [(Float, Float)]) {
         guard points.count >= 3 else { return }
 
@@ -336,15 +336,15 @@ extension Canvas2D {
         }
     }
 
-    /// Draw an arc with the given start and stop angles in radians.
+    /// ラジアン単位の開始角・終了角で弧を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate of the arc center.
-    ///   - y: The y-coordinate of the arc center.
-    ///   - w: The width of the arc's bounding ellipse.
-    ///   - h: The height of the arc's bounding ellipse.
-    ///   - startAngle: The start angle in radians.
-    ///   - stopAngle: The stop angle in radians.
-    ///   - mode: The arc closing mode (open, chord, or pie).
+    ///   - x: 弧の中心のx座標。
+    ///   - y: 弧の中心のy座標。
+    ///   - w: 弧を囲む楕円の幅。
+    ///   - h: 弧を囲む楕円の高さ。
+    ///   - startAngle: 開始角（ラジアン）。
+    ///   - stopAngle: 終了角（ラジアン）。
+    ///   - mode: 弧の閉じ方モード（open、chord、または pie）。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
@@ -394,16 +394,16 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a cubic Bezier curve defined by two anchor points and two control points.
+    /// 2つのアンカーポイントと2つの制御点で定義される3次ベジェ曲線を描画します。
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first anchor point.
-    ///   - y1: The y-coordinate of the first anchor point.
-    ///   - cx1: The x-coordinate of the first control point.
-    ///   - cy1: The y-coordinate of the first control point.
-    ///   - cx2: The x-coordinate of the second control point.
-    ///   - cy2: The y-coordinate of the second control point.
-    ///   - x2: The x-coordinate of the second anchor point.
-    ///   - y2: The y-coordinate of the second anchor point.
+    ///   - x1: 第1アンカーポイントのx座標。
+    ///   - y1: 第1アンカーポイントのy座標。
+    ///   - cx1: 第1制御点のx座標。
+    ///   - cy1: 第1制御点のy座標。
+    ///   - cx2: 第2制御点のx座標。
+    ///   - cy2: 第2制御点のy座標。
+    ///   - x2: 第2アンカーポイントのx座標。
+    ///   - y2: 第2アンカーポイントのy座標。
     public func bezier(
         _ x1: Float, _ y1: Float,
         _ cx1: Float, _ cy1: Float,
@@ -431,19 +431,18 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a Catmull-Rom spline curve through four points.
+    /// 4点を通る Catmull-Rom スプライン曲線を描画します。
     ///
-    /// The curve is drawn between the second and third points, using the first
-    /// and fourth points as control handles.
+    /// 第2点から第3点の間に曲線が描画され、第1点と第4点は制御ハンドルとして使用されます。
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first control point.
-    ///   - y1: The y-coordinate of the first control point.
-    ///   - x2: The x-coordinate of the curve start point.
-    ///   - y2: The y-coordinate of the curve start point.
-    ///   - x3: The x-coordinate of the curve end point.
-    ///   - y3: The y-coordinate of the curve end point.
-    ///   - x4: The x-coordinate of the second control point.
-    ///   - y4: The y-coordinate of the second control point.
+    ///   - x1: 第1制御点のx座標。
+    ///   - y1: 第1制御点のy座標。
+    ///   - x2: 曲線開始点のx座標。
+    ///   - y2: 曲線開始点のy座標。
+    ///   - x3: 曲線終了点のx座標。
+    ///   - y3: 曲線終了点のy座標。
+    ///   - x4: 第2制御点のx座標。
+    ///   - y4: 第2制御点のy座標。
     public func curve(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -465,16 +464,16 @@ extension Canvas2D {
         }
     }
 
-    /// Draw a point as a small filled circle at the given position.
+    /// 指定位置に小さな塗りつぶし円として点を描画します。
     /// - Parameters:
-    ///   - x: The x-coordinate of the point.
-    ///   - y: The y-coordinate of the point.
+    ///   - x: 点のx座標。
+    ///   - y: 点のy座標。
     public func point(_ x: Float, _ y: Float) {
         let r = currentStrokeWeight * 0.5
         let color = strokeColor
-        // Draw as a triangle-fan circle (8 segments = 24 vertices).
-        // Visually indistinguishable from a true circle at typical point sizes,
-        // while staying much lighter than the ellipse/instancing path.
+        // 三角形ファン円として描画（8セグメント = 24頂点）。
+        // 一般的なポイントサイズでは真円と視覚的に区別がつかず、
+        // ellipse/インスタンシングパスよりはるかに軽量です。
         let segments = 8
         let angleStep = Float.pi * 2.0 / Float(segments)
         var a0 = Float(0)

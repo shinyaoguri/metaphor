@@ -1,61 +1,61 @@
 import Metal
 import simd
 
-// MARK: - Text
+// MARK: - テキスト
 
 extension Canvas2D {
 
-    /// Set the text size.
-    /// - Parameter size: Font size in points.
+    /// テキストサイズを設定します。
+    /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         currentTextSize = size
     }
 
-    /// Set the font family.
-    /// - Parameter family: Font family name.
+    /// フォントファミリーを設定します。
+    /// - Parameter family: フォントファミリー名。
     public func textFont(_ family: String) {
         currentFontFamily = family
     }
 
-    /// Set the text alignment.
+    /// テキストの揃え方を設定します。
     /// - Parameters:
-    ///   - horizontal: Horizontal alignment.
-    ///   - vertical: Vertical alignment.
+    ///   - horizontal: 水平方向の揃え。
+    ///   - vertical: 垂直方向の揃え。
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         currentTextAlignH = horizontal
         currentTextAlignV = vertical
     }
 
-    /// Set the text line spacing (1.0 = tight, 1.2 = default).
-    /// - Parameter leading: Line spacing multiplier.
+    /// テキストの行間を設定します（1.0 = 詰め、1.2 = デフォルト）。
+    /// - Parameter leading: 行間の倍率。
     public func textLeading(_ leading: Float) {
         currentTextLeading = leading
     }
 
-    /// Return the rendered width of a text string.
-    /// - Parameter string: The text to measure.
-    /// - Returns: The width in pixels.
+    /// テキスト文字列のレンダリング後の幅を返します。
+    /// - Parameter string: 計測するテキスト。
+    /// - Returns: ピクセル単位の幅。
     public func textWidth(_ string: String) -> Float {
         textRenderer.textWidth(string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
-    /// Return the ascent of the current font.
-    /// - Returns: The font ascent in pixels.
+    /// 現在のフォントのアセントを返します。
+    /// - Returns: ピクセル単位のフォントアセント。
     public func textAscent() -> Float {
         textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
-    /// Return the descent of the current font.
-    /// - Returns: The font descent in pixels.
+    /// 現在のフォントのディセントを返します。
+    /// - Returns: ピクセル単位のフォントディセント。
     public func textDescent() -> Float {
         textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
-    /// Draw a text string at the specified position.
+    /// 指定位置にテキスト文字列を描画します。
     /// - Parameters:
-    ///   - string: The text to draw.
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - string: 描画するテキスト。
+    ///   - x: x座標。
+    ///   - y: y座標。
     public func text(_ string: String, _ x: Float, _ y: Float) {
         guard !string.isEmpty else { return }
 
@@ -109,13 +109,13 @@ extension Canvas2D {
         drawTexturedQuad(texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height)
     }
 
-    /// Draw text within a bounding box with automatic word wrapping.
+    /// バウンディングボックス内に自動改行付きでテキストを描画します。
     /// - Parameters:
-    ///   - string: The text to draw.
-    ///   - x: X coordinate of the bounding box.
-    ///   - y: Y coordinate of the bounding box.
-    ///   - w: Width of the bounding box.
-    ///   - h: Height of the bounding box.
+    ///   - string: 描画するテキスト。
+    ///   - x: バウンディングボックスのx座標。
+    ///   - y: バウンディングボックスのy座標。
+    ///   - w: バウンディングボックスの幅。
+    ///   - h: バウンディングボックスの高さ。
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         guard !string.isEmpty else { return }
         guard let cached = textRenderer.textTextureMultiline(

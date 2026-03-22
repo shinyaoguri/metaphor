@@ -1,11 +1,11 @@
 import AppKit
 @preconcurrency import Metal
 
-/// Define a sketch by conforming to this protocol.
+/// このプロトコルに準拠してスケッチを定義します。
 ///
-/// Annotate your class with `@main` and implement `draw()` to receive
-/// automatic window, renderer, and Canvas2D setup. The `draw()` method
-/// is called every frame.
+/// クラスに `@main` を付与し、`draw()` を実装すると、
+/// ウィンドウ、レンダラー、Canvas2D が自動的にセットアップされます。
+/// `draw()` メソッドは毎フレーム呼ばれます。
 ///
 /// ```swift
 /// @main
@@ -19,57 +19,57 @@ import AppKit
 /// ```
 @MainActor
 public protocol Sketch: AnyObject {
-    /// Create a new instance with no arguments (required by `@main`).
+    /// 引数なしの新しいインスタンスを作成します（`@main` で必須）。
     init()
 
-    /// Return the configuration for this sketch (optional).
+    /// スケッチの設定を返します（オプション）。
     var config: SketchConfig { get }
 
-    /// Perform one-time initialization (optional).
+    /// 一度だけ実行される初期化処理（オプション）。
     func setup()
 
-    /// Draw a single frame (call drawing methods directly).
+    /// 1フレームを描画します（描画メソッドを直接呼び出します）。
     func draw()
 
-    /// Execute GPU compute work before each frame (optional).
+    /// 各フレームの前に GPU コンピュート処理を実行します（オプション）。
     func compute()
 
     // MARK: - Input Events (all optional)
 
-    /// Respond to a mouse button press.
+    /// マウスボタン押下時に呼ばれます。
     func mousePressed()
 
-    /// Respond to a mouse button release.
+    /// マウスボタン離し時に呼ばれます。
     func mouseReleased()
 
-    /// Respond to mouse movement.
+    /// マウス移動時に呼ばれます。
     func mouseMoved()
 
-    /// Respond to a mouse drag.
+    /// マウスドラッグ時に呼ばれます。
     func mouseDragged()
 
-    /// Respond to a mouse scroll event.
+    /// マウススクロール時に呼ばれます。
     func mouseScrolled()
 
-    /// Respond to a mouse click (press and release without dragging).
+    /// マウスクリック時（ドラッグなしの押下→離し）に呼ばれます。
     func mouseClicked()
 
-    /// Respond to a key press.
+    /// キー押下時に呼ばれます。
     func keyPressed()
 
-    /// Respond to a key release.
+    /// キー離し時に呼ばれます。
     func keyReleased()
 }
 
 // MARK: - Per-Instance Context (Pure Swift Storage)
 
-/// Storage for Sketch → SketchContext mapping (replaces objc_getAssociatedObject).
+/// Sketch → SketchContext マッピング用のストレージ（objc_getAssociatedObject の代替）。
 @MainActor
 private var _sketchContextStorage: [ObjectIdentifier: SketchContext] = [:]
 
 extension Sketch {
-    /// The sketch context associated with this instance.
-    /// Set by SketchRunner during setup.
+    /// このインスタンスに関連付けられたスケッチコンテキスト。
+    /// SketchRunner のセットアップ時に設定されます。
     @MainActor
     internal var _context: SketchContext? {
         get { _sketchContextStorage[ObjectIdentifier(self)] }
@@ -82,7 +82,7 @@ extension Sketch {
         }
     }
 
-    /// The active context. Crashes with a clear message if called outside setup()/draw().
+    /// アクティブなコンテキスト。setup()/draw() 外で呼ぶと明確なメッセージでクラッシュします。
     @MainActor
     public var context: SketchContext {
         guard let ctx = _context else {
@@ -112,9 +112,9 @@ extension Sketch {
 // MARK: - Deprecated
 
 extension Sketch {
-    /// Draw a single frame using an explicit context parameter.
+    /// 明示的なコンテキストパラメータを使用して1フレームを描画します。
     ///
-    /// - Parameter ctx: The sketch context.
+    /// - Parameter ctx: スケッチコンテキスト。
     @available(*, deprecated, message: "Use draw() instead. Access context via self properties or self._context.")
     public func draw(_ ctx: SketchContext) { draw() }
 }
@@ -122,7 +122,7 @@ extension Sketch {
 // MARK: - @main Entry Point
 
 extension Sketch {
-    /// Launch the sketch application (called by the `@main` attribute).
+    /// スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
     public static func main() {
         SketchRunner.run(sketchType: Self.self)
     }
@@ -130,10 +130,10 @@ extension Sketch {
 
 // MARK: - PluginFactory
 
-/// A factory that creates a plugin instance for use in ``SketchConfig``.
+/// ``SketchConfig`` で使用するプラグインインスタンスを生成するファクトリ。
 ///
-/// Because ``SketchConfig`` is `Sendable` and plugins are reference types,
-/// plugin creation is deferred via a factory closure.
+/// ``SketchConfig`` は `Sendable` であり、プラグインは参照型のため、
+/// プラグインの生成はファクトリクロージャで遅延実行されます。
 ///
 /// ```swift
 /// var config: SketchConfig {
@@ -149,13 +149,13 @@ extension Sketch {
 public struct PluginFactory: @unchecked Sendable {
     private let _create: @MainActor () -> MetaphorPlugin
 
-    /// Create a factory from a closure that produces a plugin.
-    /// - Parameter create: A closure that returns a new plugin instance.
+    /// プラグインを生成するクロージャからファクトリを作成します。
+    /// - Parameter create: 新しいプラグインインスタンスを返すクロージャ。
     public init(_ create: @MainActor @escaping () -> MetaphorPlugin) {
         self._create = create
     }
 
-    /// Instantiate the plugin.
+    /// プラグインをインスタンス化します。
     @MainActor
     public func create() -> MetaphorPlugin {
         _create()
@@ -164,40 +164,40 @@ public struct PluginFactory: @unchecked Sendable {
 
 // MARK: - SketchConfig
 
-/// Configure the sketch window, canvas, and rendering settings.
+/// スケッチのウィンドウ、キャンバス、レンダリング設定を構成します。
 public struct SketchConfig: Sendable {
-    /// The offscreen texture width in pixels.
+    /// オフスクリーンテクスチャの幅（ピクセル単位）。
     public var width: Int
 
-    /// The offscreen texture height in pixels.
+    /// オフスクリーンテクスチャの高さ（ピクセル単位）。
     public var height: Int
 
-    /// The window title.
+    /// ウィンドウタイトル。
     public var title: String
 
-    /// The target frame rate.
+    /// 目標フレームレート。
     public var fps: Int
 
-    /// The Syphon server name (`nil` to disable Syphon output).
+    /// Syphon サーバー名（`nil` で Syphon 出力を無効化）。
     public var syphonName: String?
 
-    /// The window size scale factor (window size = texture size * scale).
+    /// ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
     public var windowScale: Float
 
-    /// Launch the sketch in full-screen mode.
+    /// フルスクリーンモードで起動するかどうか。
     public var fullScreen: Bool
 
-    /// The render loop mode.
+    /// レンダーループモード。
     ///
-    /// Use `.displayLink` (default) for standard rendering driven by the display
-    /// refresh rate. Use `.timer(fps:)` for decoupled frame timing, which is
-    /// useful for Syphon output or video recording where rendering should not
-    /// stall when the window is occluded.
+    /// `.displayLink`（デフォルト）はディスプレイのリフレッシュレートに連動した
+    /// 標準レンダリングです。`.timer(fps:)` はフレームタイミングを分離し、
+    /// ウィンドウが隠れた際にレンダリングが停止しない Syphon 出力や
+    /// 動画録画に適しています。
     public var renderLoopMode: RenderLoopMode
 
-    /// Plugin factories to register during sketch setup.
+    /// スケッチセットアップ時に登録するプラグインファクトリ。
     ///
-    /// Plugins are instantiated and attached to the sketch before ``Sketch/setup()`` is called.
+    /// プラグインは ``Sketch/setup()`` が呼ばれる前にインスタンス化されスケッチに接続されます。
     /// ```swift
     /// var config: SketchConfig {
     ///     SketchConfig(plugins: [PluginFactory { MyPlugin() }])
@@ -205,18 +205,18 @@ public struct SketchConfig: Sendable {
     /// ```
     public var plugins: [PluginFactory]
 
-    /// Create a new sketch configuration.
+    /// 新しいスケッチ設定を作成します。
     ///
     /// - Parameters:
-    ///   - width: The offscreen texture width in pixels.
-    ///   - height: The offscreen texture height in pixels.
-    ///   - title: The window title.
-    ///   - fps: The target frame rate.
-    ///   - syphonName: The Syphon server name (`nil` to disable).
-    ///   - windowScale: The window size scale factor.
-    ///   - fullScreen: Whether to launch in full-screen mode.
-    ///   - renderLoopMode: The render loop mode (default: `.displayLink`).
-    ///   - plugins: An array of plugin factories to register with the sketch.
+    ///   - width: オフスクリーンテクスチャの幅（ピクセル単位）。
+    ///   - height: オフスクリーンテクスチャの高さ（ピクセル単位）。
+    ///   - title: ウィンドウタイトル。
+    ///   - fps: 目標フレームレート。
+    ///   - syphonName: Syphon サーバー名（`nil` で無効化）。
+    ///   - windowScale: ウィンドウサイズのスケール係数。
+    ///   - fullScreen: フルスクリーンモードで起動するかどうか。
+    ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
+    ///   - plugins: スケッチに登録するプラグインファクトリの配列。
     public init(
         width: Int = 1920,
         height: Int = 1080,

@@ -1,13 +1,13 @@
 import Metal
 import simd
 
-/// Hold uniforms for the shadow depth pass.
+/// シャドウデプスパスのユニフォームを保持します。
 struct ShadowUniforms {
     var modelMatrix: float4x4
     var lightSpaceMatrix: float4x4
 }
 
-/// Hold uniforms passed to the fragment shader for shadow mapping.
+/// シャドウマッピング用にフラグメントシェーダーに渡されるユニフォームを保持します。
 struct ShadowFragmentUniforms {
     var lightSpaceMatrix: float4x4
     var shadowBias: Float
@@ -15,7 +15,7 @@ struct ShadowFragmentUniforms {
     var _pad: SIMD2<Float> = .zero
 }
 
-/// Record a draw call for Canvas3D shadow rendering.
+/// Canvas3D シャドウレンダリング用の描画呼び出しを記録します。
 struct DrawCall3D {
     var mesh: Mesh
     var transform: float4x4
@@ -29,28 +29,28 @@ struct DrawCall3D {
     var strokeColor: SIMD4<Float>
 }
 
-/// Manage a directional light shadow map.
+/// ディレクショナルライトのシャドウマップを管理します。
 ///
-/// Render the scene from the light's perspective into a depth texture,
-/// then sample it during the main pass to produce soft shadows.
+/// ライトの視点からシーンをデプステクスチャにレンダリングし、
+/// メインパスでサンプリングしてソフトシャドウを生成します。
 @MainActor
 public final class ShadowMap {
 
     // MARK: - Properties
 
-    /// Shadow depth texture.
+    /// シャドウデプステクスチャ。
     public let shadowTexture: MTLTexture
 
-    /// Shadow map resolution in pixels.
+    /// シャドウマップの解像度（ピクセル単位）。
     public let resolution: Int
 
-    /// Shadow bias for acne prevention.
+    /// シャドウアクネ防止用のバイアス。
     public var shadowBias: Float = 0.005
 
-    /// PCF sampling radius.
+    /// PCF サンプリング半径。
     public var pcfRadius: Int = 2
 
-    /// Light-space transformation matrix.
+    /// ライト空間の変換行列。
     public private(set) var lightSpaceMatrix: float4x4 = .identity
 
     private let device: MTLDevice
@@ -62,15 +62,15 @@ public final class ShadowMap {
     // MARK: - Initialization
 
     /// - Parameters:
-    ///   - device: The Metal device.
-    ///   - shaderLibrary: The shader library for compiling shadow depth shaders.
-    ///   - resolution: The shadow map resolution in pixels.
-    /// - Throws: `MetaphorError` if texture creation or shader compilation fails.
+    ///   - device: Metal デバイス。
+    ///   - shaderLibrary: シャドウデプスシェーダーのコンパイル用シェーダーライブラリ。
+    ///   - resolution: シャドウマップの解像度（ピクセル単位）。
+    /// - Throws: テクスチャ作成またはシェーダーコンパイルに失敗した場合に `MetaphorError` をスロー。
     init(device: MTLDevice, shaderLibrary: ShaderLibrary, resolution: Int = 2048) throws {
         self.device = device
         self.resolution = resolution
 
-        // Create shadow depth texture
+        // シャドウデプステクスチャを作成
         let texDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .depth32Float,
             width: resolution,
@@ -86,7 +86,7 @@ public final class ShadowMap {
         tex.label = "ShadowMap Depth"
         self.shadowTexture = tex
 
-        // Render pass descriptor (depth only, no color attachment)
+        // レンダーパスデスクリプタ（デプスのみ、カラーアタッチメントなし）
         let rpd = MTLRenderPassDescriptor()
         rpd.depthAttachment.texture = shadowTexture
         rpd.depthAttachment.loadAction = .clear
@@ -94,7 +94,7 @@ public final class ShadowMap {
         rpd.depthAttachment.clearDepth = 1.0
         self.renderPassDescriptor = rpd
 
-        // Compile shadow depth shaders
+        // シャドウデプスシェーダーをコンパイル
         let shadowKey = "metaphor.shadowDepth"
         if !shaderLibrary.hasLibrary(for: shadowKey) {
             guard let shadowSource = ShaderLibrary.loadShaderSource("shadowDepth") else {
@@ -106,7 +106,7 @@ public final class ShadowMap {
             throw MetaphorError.shaderNotFound("metaphor_shadowDepthVertex")
         }
 
-        // Pipeline for untextured geometry (positionNormalColor stride=40)
+        // テクスチャなしジオメトリ用パイプライン（positionNormalColor stride=40）
         let untexDesc = MTLRenderPipelineDescriptor()
         untexDesc.vertexFunction = vertexFn
         untexDesc.fragmentFunction = nil
@@ -115,7 +115,7 @@ public final class ShadowMap {
         untexDesc.rasterSampleCount = 1
         self.depthPipelineUntextured = try device.makeRenderPipelineState(descriptor: untexDesc)
 
-        // Pipeline for textured geometry (positionNormalUV stride=48)
+        // テクスチャ付きジオメトリ用パイプライン（positionNormalUV stride=48）
         let texPipeDesc = MTLRenderPipelineDescriptor()
         texPipeDesc.vertexFunction = vertexFn
         texPipeDesc.fragmentFunction = nil
@@ -124,7 +124,7 @@ public final class ShadowMap {
         texPipeDesc.rasterSampleCount = 1
         self.depthPipelineTextured = try device.makeRenderPipelineState(descriptor: texPipeDesc)
 
-        // Depth stencil state
+        // デプスステンシルステート
         let dsDesc = MTLDepthStencilDescriptor()
         dsDesc.depthCompareFunction = .less
         dsDesc.isDepthWriteEnabled = true
@@ -133,17 +133,17 @@ public final class ShadowMap {
 
     // MARK: - Light Space Matrix
 
-    /// Compute the light-space matrix from a directional light.
+    /// ディレクショナルライトからライト空間行列を計算します。
     ///
     /// - Parameters:
-    ///   - lightDirection: The direction vector of the light.
-    ///   - sceneCenter: The center of the scene to shadow.
-    ///   - sceneRadius: The radius of the scene bounding sphere.
+    ///   - lightDirection: ライトの方向ベクトル。
+    ///   - sceneCenter: シャドウを適用するシーンの中心。
+    ///   - sceneRadius: シーンのバウンディング球の半径。
     func updateLightSpaceMatrix(lightDirection: SIMD3<Float>, sceneCenter: SIMD3<Float> = .zero, sceneRadius: Float = 500) {
         let dir = normalize(lightDirection)
         let lightPos = sceneCenter - dir * sceneRadius
 
-        // Adjust up vector to avoid being parallel to the light direction
+        // ライト方向と平行にならないよう上方向ベクトルを調整
         var up = SIMD3<Float>(0, 1, 0)
         if abs(dot(dir, up)) > 0.99 {
             up = SIMD3<Float>(1, 0, 0)
@@ -160,11 +160,11 @@ public final class ShadowMap {
 
     // MARK: - Shadow Pass Rendering
 
-    /// Render recorded draw calls from the light's perspective into the depth texture.
+    /// 記録された描画呼び出しをライトの視点からデプステクスチャにレンダリングします。
     ///
     /// - Parameters:
-    ///   - drawCalls: The array of recorded 3D draw calls.
-    ///   - commandBuffer: The command buffer to encode into.
+    ///   - drawCalls: 記録された3D描画呼び出しの配列。
+    ///   - commandBuffer: エンコード先のコマンドバッファ。
     func render(drawCalls: [DrawCall3D], commandBuffer: MTLCommandBuffer) {
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
         encoder.label = "Shadow Depth Pass"

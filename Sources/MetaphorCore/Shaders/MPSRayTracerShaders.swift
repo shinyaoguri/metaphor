@@ -1,19 +1,19 @@
-/// MPS ray tracing shader function name constants.
+/// MPS レイトレーシングシェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Includes primary ray generation, ambient occlusion shading and accumulation,
-/// and simple diffuse shading with hemisphere lighting.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// プライマリレイ生成、アンビエントオクルージョンシェーディングとアキュムレーション、
+/// および半球ライティングによるシンプルなディフューズシェーディングを含みます。
 enum MPSRayTracerShaders {
 
-    /// MPS ray tracer shader function name constants.
+    /// MPS レイトレーサーシェーダー関数名定数。
     enum FunctionName {
-        /// MSL function name for primary ray generation.
+        /// プライマリレイ生成のMSL関数名。
         static let generatePrimaryRays = "generatePrimaryRays"
-        /// MSL function name for ambient occlusion shading.
+        /// アンビエントオクルージョンシェーディングのMSL関数名。
         static let shadeAmbientOcclusion = "shadeAmbientOcclusion"
-        /// MSL function name for AO accumulation.
+        /// AOアキュムレーションのMSL関数名。
         static let accumulateAO = "accumulateAO"
-        /// MSL function name for simple diffuse shading.
+        /// シンプルディフューズシェーディングのMSL関数名。
         static let shadeDiffuse = "shadeDiffuse"
     }
 }

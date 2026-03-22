@@ -4,222 +4,222 @@ extension Sketch {
 
     // MARK: Shape Mode Settings
 
-    /// Set the rectangle drawing mode.
+    /// 矩形の描画モードを設定します。
     ///
-    /// - Parameter mode: The rectangle interpretation mode.
+    /// - Parameter mode: 矩形の解釈モード。
     public func rectMode(_ mode: RectMode) {
         context.rectMode(mode)
     }
 
-    /// Set the ellipse drawing mode.
+    /// 楕円の描画モードを設定します。
     ///
-    /// - Parameter mode: The ellipse interpretation mode.
+    /// - Parameter mode: 楕円の解釈モード。
     public func ellipseMode(_ mode: EllipseMode) {
         context.ellipseMode(mode)
     }
 
-    /// Set the image drawing mode.
+    /// 画像の描画モードを設定します。
     ///
-    /// - Parameter mode: The image interpretation mode.
+    /// - Parameter mode: 画像の解釈モード。
     public func imageMode(_ mode: ImageMode) {
         context.imageMode(mode)
     }
 
     // MARK: Color Mode
 
-    /// Set the color mode with per-channel maximums.
+    /// チャンネルごとの最大値を指定してカラーモードを設定します。
     ///
     /// - Parameters:
-    ///   - space: The color space to use.
-    ///   - max1: The maximum value for the first channel.
-    ///   - max2: The maximum value for the second channel.
-    ///   - max3: The maximum value for the third channel.
-    ///   - maxA: The maximum value for the alpha channel.
+    ///   - space: 使用する色空間。
+    ///   - max1: 第1チャンネルの最大値。
+    ///   - max2: 第2チャンネルの最大値。
+    ///   - max3: 第3チャンネルの最大値。
+    ///   - maxA: アルファチャンネルの最大値。
     public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
         context.colorMode(space, max1, max2, max3, maxA)
     }
 
-    /// Set the color mode with a single maximum for all channels.
+    /// 全チャンネル共通の最大値を指定してカラーモードを設定します。
     ///
     /// - Parameters:
-    ///   - space: The color space to use.
-    ///   - maxAll: The maximum value for all channels.
+    ///   - space: 使用する色空間。
+    ///   - maxAll: 全チャンネルの最大値。
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         context.colorMode(space, maxAll)
     }
 
     // MARK: Background
 
-    /// Clear the canvas with the specified color.
+    /// 指定した色でキャンバスをクリアします。
     ///
-    /// - Parameter color: The background color.
+    /// - Parameter color: 背景色。
     public func background(_ color: Color) {
         context.background(color)
     }
 
-    /// Clear the canvas with a grayscale value.
+    /// グレースケール値でキャンバスをクリアします。
     ///
-    /// - Parameter gray: The grayscale brightness (0 = black, 1 = white).
+    /// - Parameter gray: グレースケールの明るさ（0 = 黒、1 = 白）。
     public func background(_ gray: Float) {
         context.background(gray)
     }
 
-    /// Clear the canvas with the specified color channel values.
+    /// 指定したカラーチャンネル値でキャンバスをクリアします。
     ///
     /// - Parameters:
-    ///   - v1: The first color channel value (red or hue).
-    ///   - v2: The second color channel value (green or saturation).
-    ///   - v3: The third color channel value (blue or brightness).
-    ///   - a: The optional alpha value.
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///   - a: アルファ値（オプション）。
     public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.background(v1, v2, v3, a)
     }
 
     // MARK: Style
 
-    /// Set the fill color.
+    /// 塗りつぶし色を設定します。
     ///
-    /// - Parameter color: The fill color.
+    /// - Parameter color: 塗りつぶし色。
     public func fill(_ color: Color) {
         context.fill(color)
     }
 
-    /// Set the fill color using channel values.
+    /// チャンネル値で塗りつぶし色を設定します。
     ///
     /// - Parameters:
-    ///   - v1: The first color channel value (red or hue).
-    ///   - v2: The second color channel value (green or saturation).
-    ///   - v3: The third color channel value (blue or brightness).
-    ///   - a: The optional alpha value.
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///   - a: アルファ値（オプション）。
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.fill(v1, v2, v3, a)
     }
 
-    /// Set the fill color using a grayscale value.
+    /// グレースケール値で塗りつぶし色を設定します。
     ///
-    /// - Parameter gray: The grayscale brightness.
+    /// - Parameter gray: グレースケールの明るさ。
     public func fill(_ gray: Float) {
         context.fill(gray)
     }
 
-    /// Set the fill color using a grayscale value with alpha.
+    /// アルファ付きグレースケール値で塗りつぶし色を設定します。
     ///
     /// - Parameters:
-    ///   - gray: The grayscale brightness.
-    ///   - alpha: The alpha (opacity) value.
+    ///   - gray: グレースケールの明るさ。
+    ///   - alpha: アルファ（不透明度）値。
     public func fill(_ gray: Float, _ alpha: Float) {
         context.fill(gray, alpha)
     }
 
-    /// Disable filling shapes.
+    /// 図形の塗りつぶしを無効にします。
     public func noFill() {
         context.noFill()
     }
 
-    /// Set the stroke color.
+    /// ストローク色を設定します。
     ///
-    /// - Parameter color: The stroke color.
+    /// - Parameter color: ストローク色。
     public func stroke(_ color: Color) {
         context.stroke(color)
     }
 
-    /// Set the stroke color using channel values.
+    /// チャンネル値でストローク色を設定します。
     ///
     /// - Parameters:
-    ///   - v1: The first color channel value (red or hue).
-    ///   - v2: The second color channel value (green or saturation).
-    ///   - v3: The third color channel value (blue or brightness).
-    ///   - a: The optional alpha value.
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///   - a: アルファ値（オプション）。
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.stroke(v1, v2, v3, a)
     }
 
-    /// Set the stroke color using a grayscale value.
+    /// グレースケール値でストローク色を設定します。
     ///
-    /// - Parameter gray: The grayscale brightness.
+    /// - Parameter gray: グレースケールの明るさ。
     public func stroke(_ gray: Float) {
         context.stroke(gray)
     }
 
-    /// Set the stroke color using a grayscale value with alpha.
+    /// アルファ付きグレースケール値でストローク色を設定します。
     ///
     /// - Parameters:
-    ///   - gray: The grayscale brightness.
-    ///   - alpha: The alpha (opacity) value.
+    ///   - gray: グレースケールの明るさ。
+    ///   - alpha: アルファ（不透明度）値。
     public func stroke(_ gray: Float, _ alpha: Float) {
         context.stroke(gray, alpha)
     }
 
-    /// Disable stroking shapes.
+    /// 図形のストロークを無効にします。
     public func noStroke() {
         context.noStroke()
     }
 
-    /// Set the stroke weight (line thickness).
+    /// ストロークの太さ（線幅）を設定します。
     ///
-    /// - Parameter weight: The stroke width in pixels.
+    /// - Parameter weight: ストローク幅（ピクセル単位）。
     public func strokeWeight(_ weight: Float) {
         context.strokeWeight(weight)
     }
 
-    /// Set the stroke cap style.
+    /// ストロークの端点スタイルを設定します。
     ///
-    /// - Parameter cap: The line cap style.
+    /// - Parameter cap: 線の端点スタイル。
     public func strokeCap(_ cap: StrokeCap) {
         context.strokeCap(cap)
     }
 
-    /// Set the stroke join style.
+    /// ストロークの接続スタイルを設定します。
     ///
-    /// - Parameter join: The line join style.
+    /// - Parameter join: 線の接続スタイル。
     public func strokeJoin(_ join: StrokeJoin) {
         context.strokeJoin(join)
     }
 
-    /// Set the blend mode for subsequent drawing operations.
+    /// 以降の描画操作のブレンドモードを設定します。
     ///
-    /// - Parameter mode: The blend mode to apply.
+    /// - Parameter mode: 適用するブレンドモード。
     public func blendMode(_ mode: BlendMode) {
         context.blendMode(mode)
     }
 
     // MARK: Tint
 
-    /// Set the image tint color.
+    /// 画像のティント色を設定します。
     ///
-    /// - Parameter color: The tint color.
+    /// - Parameter color: ティント色。
     public func tint(_ color: Color) {
         context.tint(color)
     }
 
-    /// Set the image tint color using channel values.
+    /// チャンネル値で画像のティント色を設定します。
     ///
     /// - Parameters:
-    ///   - v1: The first color channel value (red or hue).
-    ///   - v2: The second color channel value (green or saturation).
-    ///   - v3: The third color channel value (blue or brightness).
-    ///   - a: The optional alpha value.
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///   - a: アルファ値（オプション）。
     public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.tint(v1, v2, v3, a)
     }
 
-    /// Set the image tint using a grayscale value.
+    /// グレースケール値で画像のティントを設定します。
     ///
-    /// - Parameter gray: The grayscale brightness.
+    /// - Parameter gray: グレースケールの明るさ。
     public func tint(_ gray: Float) {
         context.tint(gray)
     }
 
-    /// Set the image tint using a grayscale value with alpha.
+    /// アルファ付きグレースケール値で画像のティントを設定します。
     ///
     /// - Parameters:
-    ///   - gray: The grayscale brightness.
-    ///   - alpha: The alpha (opacity) value.
+    ///   - gray: グレースケールの明るさ。
+    ///   - alpha: アルファ（不透明度）値。
     public func tint(_ gray: Float, _ alpha: Float) {
         context.tint(gray, alpha)
     }
 
-    /// Remove the image tint.
+    /// 画像のティントを解除します。
     public func noTint() {
         context.noTint()
     }

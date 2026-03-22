@@ -3,10 +3,10 @@ import simd
 
 // MARK: - PostEffectContext
 
-/// Provides rendering infrastructure for post-process effects.
+/// ポストプロセスエフェクト用のレンダリングインフラを提供します。
 ///
-/// Effects use this context to render fullscreen passes, apply Kawase blur,
-/// and manage scratch textures.
+/// エフェクトはこのコンテキストを使用してフルスクリーンパスのレンダリング、
+/// Kawase ブラーの適用、スクラッチテクスチャの管理を行います。
 @MainActor
 public final class PostEffectContext {
     public let device: MTLDevice
@@ -17,17 +17,17 @@ public final class PostEffectContext {
     private var pipelineCache: [String: MTLRenderPipelineState] = [:]
     private var bloomCompositePipeline: MTLRenderPipelineState?
 
-    // Kawase blur chain
+    // Kawase ブラーチェーン
     private var kawaseChain: [MTLTexture] = []
     private var kawaseChainWidth: Int = 0
     private var kawaseChainHeight: Int = 0
 
-    // Scratch texture for multi-pass effects
+    // マルチパスエフェクト用スクラッチテクスチャ
     private var scratchTex: MTLTexture?
     private var scratchWidth: Int = 0
     private var scratchHeight: Int = 0
 
-    // MTLHeap for efficient texture allocation
+    // 効率的なテクスチャ確保用 MTLHeap
     private var textureHeap: MTLHeap?
     private var heapWidth: Int = 0
     private var heapHeight: Int = 0
@@ -39,9 +39,9 @@ public final class PostEffectContext {
         self.blitVertexFunction = blitVertexFunction
     }
 
-    // MARK: - Scratch Textures
+    // MARK: - スクラッチテクスチャ
 
-    /// Get a scratch texture matching the given dimensions (reused across frames).
+    /// 指定されたサイズに一致するスクラッチテクスチャを取得します（フレーム間で再利用）。
     func getScratchTexture(width: Int, height: Int) -> MTLTexture? {
         if scratchWidth == width && scratchHeight == height, let tex = scratchTex {
             return tex
@@ -53,9 +53,9 @@ public final class PostEffectContext {
         return scratchTex
     }
 
-    // MARK: - Render Passes
+    // MARK: - レンダーパス
 
-    /// Render a single fullscreen pass with the given fragment shader and parameters.
+    /// 指定されたフラグメントシェーダーとパラメータで単一のフルスクリーンパスをレンダリングします。
     func renderPass(
         commandBuffer: MTLCommandBuffer,
         input: MTLTexture,
@@ -90,7 +90,7 @@ public final class PostEffectContext {
         encoder.endEncoding()
     }
 
-    /// Render a composite pass blending two textures (used by bloom).
+    /// 2つのテクスチャをブレンドするコンポジットパスをレンダリングします（ブルーム用）。
     func renderCompositePass(
         commandBuffer: MTLCommandBuffer,
         original: MTLTexture,
@@ -118,9 +118,9 @@ public final class PostEffectContext {
         encoder.endEncoding()
     }
 
-    // MARK: - Kawase Blur
+    // MARK: - Kawase ブラー
 
-    /// Apply Kawase downsample/upsample blur.
+    /// Kawase ダウンサンプル/アップサンプルブラーを適用します。
     @discardableResult
     func applyKawaseBlur(
         commandBuffer: MTLCommandBuffer,
@@ -132,7 +132,7 @@ public final class PostEffectContext {
         ensureKawaseChain(width: source.width, height: source.height, iterations: iters)
         guard kawaseChain.count == iters else { return source }
 
-        // Downsample
+        // ダウンサンプル
         var input = source
         for i in 0..<iters {
             let dst = kawaseChain[i]
@@ -144,7 +144,7 @@ public final class PostEffectContext {
             input = dst
         }
 
-        // Upsample
+        // アップサンプル
         for i in stride(from: iters - 2, through: 0, by: -1) {
             let dst = kawaseChain[i]
             var texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
@@ -155,7 +155,7 @@ public final class PostEffectContext {
             input = dst
         }
 
-        // Final upsample to output
+        // 最終アップサンプルを output へ
         var texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
         renderKawasePass(
             commandBuffer: commandBuffer, input: input, output: output,
@@ -164,7 +164,7 @@ public final class PostEffectContext {
         return output
     }
 
-    // MARK: - Pipeline Management
+    // MARK: - パイプライン管理
 
     func getOrCreatePipeline(fragmentName: String, libraryKey: String? = nil) -> MTLRenderPipelineState? {
         let cacheKey = libraryKey.map { "\($0).\(fragmentName)" } ?? fragmentName
@@ -187,7 +187,7 @@ public final class PostEffectContext {
         }
     }
 
-    // MARK: - Cache Invalidation
+    // MARK: - キャッシュ無効化
 
     func invalidateTextures() {
         kawaseChain.removeAll()
@@ -230,15 +230,15 @@ public final class PostEffectContext {
         kawaseChainHeight = height
     }
 
-    /// Ensure the heap is large enough for the current render dimensions.
+    /// 現在のレンダーサイズに対してヒープが十分な大きさであることを保証します。
     private func ensureHeap(width: Int, height: Int) {
         guard width != heapWidth || height != heapHeight else { return }
 
-        // Estimate heap size: 2 ping-pong + 1 scratch + 6 kawase levels
-        // Each texture at full size = width * height * 4 bytes (BGRA8)
+        // ヒープサイズの見積もり: ピンポン2枚 + スクラッチ1枚 + Kawase 6レベル
+        // フルサイズの各テクスチャ = width * height * 4 バイト (BGRA8)
         let fullSize = width * height * 4
-        // Kawase mips: 1/4 + 1/16 + 1/64 + ... ≈ 1/3 of full
-        let estimatedSize = fullSize * 4  // ~3 full textures + kawase chain
+        // Kawase ミップ: 1/4 + 1/16 + 1/64 + ... ≈ フルの 1/3
+        let estimatedSize = fullSize * 4  // フルテクスチャ約3枚 + Kawase チェーン
         let heapDesc = MTLHeapDescriptor()
         heapDesc.size = estimatedSize
         heapDesc.storageMode = .private
@@ -249,14 +249,14 @@ public final class PostEffectContext {
         heapHeight = height
     }
 
-    /// Create a texture from the heap, falling back to device allocation.
+    /// ヒープからテクスチャを作成し、デバイス確保にフォールバックします。
     func makeHeapTexture(width: Int, height: Int) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
         )
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
-        // Try heap allocation first, fall back to device
+        // まずヒープ確保を試み、失敗時はデバイスにフォールバック
         if let heap = textureHeap, let tex = heap.makeTexture(descriptor: desc) {
             return tex
         }
@@ -313,12 +313,12 @@ public final class PostEffectContext {
 
 // MARK: - PostProcessPipeline
 
-/// Manage a chain of post-process effects and apply them using ping-pong textures.
+/// ポストプロセスエフェクトのチェーンを管理し、ピンポンテクスチャで適用します。
 @MainActor
 public final class PostProcessPipeline {
-    // MARK: - Public
+    // MARK: - パブリック
 
-    /// The current chain of post-process effects.
+    /// 現在のポストプロセスエフェクトチェーン
     public private(set) var effects: [any PostEffect] = []
 
     // MARK: - Private
@@ -327,13 +327,13 @@ public final class PostProcessPipeline {
     let commandQueue: MTLCommandQueue
     let context: PostEffectContext
 
-    /// Ping-pong textures for alternating read/write between effect passes.
+    /// エフェクトパス間で読み書きを交互に行うピンポンテクスチャ
     private var textureA: MTLTexture?
     private var textureB: MTLTexture?
     private var currentWidth: Int = 0
     private var currentHeight: Int = 0
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
     public init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary) throws {
         self.device = device
@@ -354,32 +354,32 @@ public final class PostProcessPipeline {
         )
     }
 
-    // MARK: - Effect Management
+    // MARK: - エフェクト管理
 
-    /// Append a post-process effect to the end of the chain.
+    /// ポストプロセスエフェクトをチェーンの末尾に追加します。
     public func add(_ effect: any PostEffect) {
         effects.append(effect)
     }
 
-    /// Remove the effect at the specified index.
+    /// 指定されたインデックスのエフェクトを削除します。
     public func remove(at index: Int) {
         guard effects.indices.contains(index) else { return }
         effects.remove(at: index)
     }
 
-    /// Remove all effects from the chain.
+    /// チェーンから全エフェクトを削除します。
     public func removeAll() {
         effects.removeAll()
     }
 
-    /// Replace the entire effect chain with the given array.
+    /// エフェクトチェーン全体を指定された配列で置換します。
     public func set(_ effects: [any PostEffect]) {
         self.effects = effects
     }
 
-    // MARK: - Apply
+    // MARK: - 適用
 
-    /// Apply the full effect chain to the source texture and return the final result.
+    /// ソーステクスチャにフルエフェクトチェーンを適用し、最終結果を返します。
     public func apply(source: MTLTexture, commandBuffer: MTLCommandBuffer) -> MTLTexture {
         guard !effects.isEmpty else { return source }
 
@@ -399,7 +399,7 @@ public final class PostProcessPipeline {
         return currentInput
     }
 
-    /// Invalidate the texture cache (call when the canvas is resized).
+    /// テクスチャキャッシュを無効化します（キャンバスリサイズ時に呼び出し）。
     func invalidateTextures() {
         textureA = nil
         textureB = nil
@@ -408,7 +408,7 @@ public final class PostProcessPipeline {
         context.invalidateTextures()
     }
 
-    /// Invalidate the pipeline cache (call after shader hot reload).
+    /// パイプラインキャッシュを無効化します（シェーダーホットリロード後に呼び出し）。
     func invalidatePipelines() {
         context.invalidatePipelines()
     }

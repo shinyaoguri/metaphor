@@ -1,24 +1,24 @@
 import Metal
 import MetaphorCore
 
-/// Define the interface for a node in a ``RenderGraph``.
+/// ``RenderGraph`` 内のノードのインターフェースを定義します。
 ///
-/// Each node conforming to ``RenderPassNode`` performs rendering work in its
-/// ``execute(commandBuffer:time:renderer:)`` method and exposes the result
-/// via the ``output`` texture property.
+/// ``RenderPassNode`` に準拠する各ノードは
+/// ``execute(commandBuffer:time:renderer:)`` メソッドでレンダリング処理を行い、
+/// ``output`` テクスチャプロパティ経由で結果を公開します。
 @MainActor
 public protocol RenderPassNode: AnyObject {
-    /// The debug label identifying this node.
+    /// このノードを識別するデバッグラベル。
     var label: String { get }
 
-    /// The output texture produced after execution, or `nil` if not yet executed.
+    /// 実行後に生成される出力テクスチャ。未実行の場合は `nil`。
     var output: MTLTexture? { get }
 
-    /// Execute this node's rendering work and populate the ``output`` texture.
+    /// このノードのレンダリング処理を実行し、``output`` テクスチャを生成します。
     ///
     /// - Parameters:
-    ///   - commandBuffer: The Metal command buffer to encode work into.
-    ///   - time: The elapsed time in seconds.
-    ///   - renderer: The `MetaphorRenderer` reference providing shared resources.
+    ///   - commandBuffer: 処理をエンコードする Metal コマンドバッファ。
+    ///   - time: 経過時間（秒）。
+    ///   - renderer: 共有リソースを提供する `MetaphorRenderer` 参照。
     func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)
 }

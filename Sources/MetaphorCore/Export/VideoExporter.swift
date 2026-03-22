@@ -4,7 +4,7 @@ import CoreVideo
 import Foundation
 import os
 
-/// A simple thread-safe boolean flag for cross-queue coordination.
+/// スレッドセーフな真偽値フラグ（キュー間の協調用）
 private final class AtomicFlag: Sendable {
     private let state = OSAllocatedUnfairLock(initialState: false)
 
@@ -14,7 +14,7 @@ private final class AtomicFlag: Sendable {
     }
 }
 
-/// Represent the video codec to use for encoding.
+/// ビデオエンコードに使用するコーデック
 public enum VideoCodec: Sendable {
     case h264
     case h265
@@ -27,7 +27,7 @@ public enum VideoCodec: Sendable {
     }
 }
 
-/// Represent the container format for video output.
+/// ビデオ出力のコンテナフォーマット
 public enum VideoFormat: Sendable {
     case mp4
     case mov
@@ -39,7 +39,7 @@ public enum VideoFormat: Sendable {
         }
     }
 
-    /// Return the file extension string for this format.
+    /// このフォーマットのファイル拡張子文字列
     public var fileExtension: String {
         switch self {
         case .mp4: return "mp4"
@@ -48,18 +48,18 @@ public enum VideoFormat: Sendable {
     }
 }
 
-/// Configure video export parameters.
+/// ビデオエクスポートのパラメータ設定
 public struct VideoExportConfig: Sendable {
-    /// The video codec to use.
+    /// 使用するビデオコーデック
     public var codec: VideoCodec
 
-    /// The container format for the output file.
+    /// 出力ファイルのコンテナフォーマット
     public var format: VideoFormat
 
-    /// The target frame rate in frames per second.
+    /// 目標フレームレート（fps）
     public var fps: Int
 
-    /// The target bitrate in bits per second.
+    /// 目標ビットレート（bps）
     public var bitrate: Int
 
     public init(
@@ -75,10 +75,10 @@ public struct VideoExportConfig: Sendable {
     }
 }
 
-/// Record MP4/MOV video from sketch output using AVFoundation.
+/// AVFoundation を使用してスケッチ出力から MP4/MOV ビデオを記録します。
 ///
-/// Call `beginRecord()` to start recording and `endRecord()` to stop.
-/// While recording, each frame is automatically written to the video file.
+/// `beginRecord()` で記録を開始し、`endRecord()` で停止します。
+/// 記録中は各フレームが自動的にビデオファイルに書き込まれます。
 ///
 /// ```swift
 /// // Start recording
@@ -91,39 +91,39 @@ public struct VideoExportConfig: Sendable {
 /// ```
 @MainActor
 public final class VideoExporter {
-    /// Indicate whether recording is currently in progress.
+    /// 現在記録中かどうかを示すフラグ
     public private(set) var isRecording: Bool = false
 
-    /// The current frame index.
+    /// 現在のフレームインデックス
     private var frameIndex: Int64 = 0
 
-    /// The AVAssetWriter for the current recording session.
+    /// 現在の記録セッション用の AVAssetWriter
     private var assetWriter: AVAssetWriter?
 
-    /// The video writer input.
+    /// ビデオライター入力
     private var writerInput: AVAssetWriterInput?
 
-    /// The pixel buffer adaptor for appending frames.
+    /// フレーム追加用のピクセルバッファアダプタ
     private var pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
 
-    /// The current frame rate used for CMTime calculations.
+    /// CMTime 計算に使用する現在のフレームレート
     private var currentFPS: Int = 60
 
-    /// Serial dispatch queue to serialize AVAssetWriter operations.
+    /// AVAssetWriter 操作を直列化するためのディスパッチキュー
     private let writerQueue = DispatchQueue(label: "metaphor.VideoExporter.writer")
 
-    /// Thread-safe flag to reject late frames after endRecord (accessed only from writerQueue).
+    /// endRecord 後の遅延フレームを拒否するためのスレッドセーフフラグ（writerQueue からのみアクセス）
     private let endingFlag = AtomicFlag()
 
     public init() {}
 
-    /// Start recording to a video file.
+    /// ビデオファイルへの記録を開始します。
     /// - Parameters:
-    ///   - path: The output file path.
-    ///   - width: The video width in pixels.
-    ///   - height: The video height in pixels.
-    ///   - config: The export configuration.
-    /// - Throws: An error if the writer cannot be created or started.
+    ///   - path: 出力ファイルパス。
+    ///   - width: ビデオの幅（ピクセル）。
+    ///   - height: ビデオの高さ（ピクセル）。
+    ///   - config: エクスポート設定。
+    /// - Throws: ライターの作成または開始に失敗した場合にエラーをスローします。
     public func beginRecord(
         path: String,
         width: Int,
@@ -134,11 +134,11 @@ public final class VideoExporter {
 
         let url = URL(fileURLWithPath: path)
 
-        // Create the output directory if it does not exist
+        // 出力ディレクトリが存在しない場合は作成
         let dir = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        // Remove existing file if present
+        // 既存ファイルがあれば削除
         if FileManager.default.fileExists(atPath: path) {
             try FileManager.default.removeItem(atPath: path)
         }
@@ -187,7 +187,7 @@ public final class VideoExporter {
         self.isRecording = true
     }
 
-    /// Capture the current frame (called from MetaphorRenderer.renderFrame()).
+    /// 現在のフレームをキャプチャします（MetaphorRenderer.renderFrame() から呼ばれます）。
     func captureFrame(
         sourceTexture: MTLTexture,
         stagingTexture: MTLTexture,
@@ -203,7 +203,7 @@ public final class VideoExporter {
         frameIndex += 1
         let fps = Int32(currentFPS)
 
-        // Blit source -> staging texture
+        // ソース → ステージングテクスチャへブリット
         if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
             blitEncoder.copy(
                 from: sourceTexture,
@@ -217,7 +217,7 @@ public final class VideoExporter {
             blitEncoder.endEncoding()
         }
 
-        // Capture local copies for the @Sendable closure
+        // @Sendable クロージャ用にローカルコピーをキャプチャ
         let capturedStaging = stagingTexture
         let capturedWidth = width
         let capturedHeight = height
@@ -225,15 +225,15 @@ public final class VideoExporter {
 
         let flag = endingFlag
 
-        // These captures are safe: all access is serialized on writerQueue.
+        // これらのキャプチャは安全: すべてのアクセスは writerQueue で直列化されます。
         nonisolated(unsafe) let capturedInput = input
         nonisolated(unsafe) let capturedAdaptor = adaptor
 
         commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
-                // Reject frames arriving after endRecord was called
+                // endRecord 後に到着したフレームを拒否
                 guard !flag.value else { return }
-                // Get pixel buffer from pool
+                // プールからピクセルバッファを取得
                 guard capturedInput.isReadyForMoreMediaData else { return }
 
                 var pixelBuffer: CVPixelBuffer?
@@ -248,7 +248,7 @@ public final class VideoExporter {
                 guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
-                // Read pixels from staging texture (shared, coherent via unified memory)
+                // ステージングテクスチャからピクセルを読み取り（shared、ユニファイドメモリによりコヒーレント）
                 capturedStaging.getBytes(
                     baseAddress,
                     bytesPerRow: bytesPerRow,
@@ -265,8 +265,8 @@ public final class VideoExporter {
         }
     }
 
-    /// Stop recording and finalize the video file.
-    /// - Parameter completion: An optional callback invoked on the main thread when writing completes.
+    /// 記録を停止し、ビデオファイルをファイナライズします。
+    /// - Parameter completion: 書き込み完了時にメインスレッドで呼び出されるオプションのコールバック。
     public func endRecord(completion: (@Sendable () -> Void)? = nil) {
         guard isRecording else {
             completion?()
@@ -283,18 +283,18 @@ public final class VideoExporter {
 
         let flag = endingFlag
 
-        // Set the ending flag synchronously on the writer queue.
-        // This ensures all previously enqueued frame writes complete first,
-        // then the flag prevents any late-arriving frames from being written.
+        // writerQueue 上で同期的に終了フラグを設定。
+        // これにより、先にエンキューされたすべてのフレーム書き込みが完了してから
+        // フラグが設定され、遅延到着フレームの書き込みが防止されます。
         writerQueue.sync {
             flag.value = true
         }
 
-        // These captures are safe: all access is serialized on writerQueue.
+        // これらのキャプチャは安全: すべてのアクセスは writerQueue で直列化されます。
         nonisolated(unsafe) let capturedInput = input
         nonisolated(unsafe) let capturedWriter = writer
 
-        // Finalize the video file on the writer queue
+        // writerQueue 上でビデオファイルをファイナライズ
         writerQueue.async {
             capturedInput.markAsFinished()
 
@@ -311,9 +311,9 @@ public final class VideoExporter {
         }
     }
 
-    /// Stop recording and finalize the video file asynchronously.
+    /// 記録を停止し、ビデオファイルを非同期でファイナライズします。
     ///
-    /// This is the async/await alternative to ``endRecord(completion:)``.
+    /// ``endRecord(completion:)`` の async/await 版です。
     public func endRecord() async {
         guard isRecording else { return }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in

@@ -1,15 +1,15 @@
 import Foundation
 
-/// Texture merge (compositing) shader function name constants.
+/// テクスチャマージ（コンポジット）シェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Blends two textures using a specified blend mode via a compute kernel.
-/// Supported blend_mode values: 0=add, 1=alpha, 2=multiply, 3=screen.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// コンピュートカーネルを使用して、指定されたブレンドモードで2つのテクスチャを合成します。
+/// サポートされる blend_mode 値: 0=加算, 1=アルファ, 2=乗算, 3=スクリーン。
 public enum MergeShaders {
 
-    /// Merge shader function name constants.
+    /// マージシェーダー関数名定数。
     public enum FunctionName {
-        /// MSL function name for the texture merge compute kernel.
+        /// テクスチャマージコンピュートカーネルのMSL関数名。
         public static let mergeTextures = "metaphor_mergeTextures"
     }
 }

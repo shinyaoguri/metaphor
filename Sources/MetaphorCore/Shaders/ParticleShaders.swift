@@ -1,26 +1,26 @@
 import Foundation
 
-/// GPU particle system shader function name constants.
+/// GPU パーティクルシステムシェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Includes compute kernels for particle update, indirect draw support
-/// (counter reset, compact, build arguments), and vertex/fragment shaders
-/// for billboard quad rendering with soft circle appearance.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// パーティクル更新用コンピュートカーネル、間接描画サポート
+/// （カウンターリセット、コンパクション、引数ビルド）、およびソフトサークル表現の
+/// ビルボードクワッドレンダリング用頂点/フラグメントシェーダーを含みます。
 enum ParticleShaders {
 
-    /// Particle shader function name constants.
+    /// パーティクルシェーダー関数名定数。
     enum FunctionName {
-        /// MSL function name for the particle update compute kernel.
+        /// パーティクル更新コンピュートカーネルのMSL関数名。
         static let update = "metaphor_particleUpdate"
-        /// MSL function name for the particle billboard vertex shader.
+        /// パーティクルビルボード頂点シェーダーのMSL関数名。
         static let vertex = "metaphor_particleVertex"
-        /// MSL function name for the particle soft-circle fragment shader.
+        /// パーティクルソフトサークルフラグメントシェーダーのMSL関数名。
         static let fragment = "metaphor_particleFragment"
-        /// MSL function name for the atomic counter reset compute kernel.
+        /// アトミックカウンターリセットコンピュートカーネルのMSL関数名。
         static let resetCounter = "metaphor_particleResetCounter"
-        /// MSL function name for the alive-particle compaction compute kernel.
+        /// 生存パーティクルコンパクションコンピュートカーネルのMSL関数名。
         static let compact = "metaphor_particleCompact"
-        /// MSL function name for the indirect draw arguments builder compute kernel.
+        /// 間接描画引数ビルダーコンピュートカーネルのMSL関数名。
         static let buildIndirectArgs = "metaphor_particleBuildIndirectArgs"
     }
 }

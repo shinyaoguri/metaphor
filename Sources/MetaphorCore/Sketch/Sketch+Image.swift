@@ -4,171 +4,171 @@ extension Sketch {
 
     // MARK: Image
 
-    /// Load an image from the specified file path.
+    /// 指定したファイルパスから画像を読み込みます。
     ///
-    /// - Parameter path: The file path to the image.
-    /// - Returns: The loaded image.
+    /// - Parameter path: 画像のファイルパス。
+    /// - Returns: 読み込まれた画像。
     public func loadImage(_ path: String) throws -> MImage {
         try context.loadImage(path)
     }
 
-    /// Load an image asynchronously (file I/O off the main thread).
+    /// 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
     ///
-    /// - Parameter path: The file path to the image.
-    /// - Returns: The loaded image.
+    /// - Parameter path: 画像のファイルパス。
+    /// - Returns: 読み込まれた画像。
     public func loadImageAsync(_ path: String) async throws -> MImage {
         try await context.resourceLoader.loadImageAsync(path: path)
     }
 
-    /// Load a named image resource asynchronously.
+    /// 名前付き画像リソースを非同期で読み込みます。
     ///
-    /// - Parameter name: The name of the image resource.
-    /// - Returns: The loaded image.
+    /// - Parameter name: 画像リソースの名前。
+    /// - Returns: 読み込まれた画像。
     public func loadImageAsync(named name: String) async throws -> MImage {
         try await context.resourceLoader.loadImageAsync(named: name)
     }
 
-    /// Create a blank image with the specified dimensions.
+    /// 指定したサイズの空白画像を作成します。
     ///
     /// - Parameters:
-    ///   - width: The image width in pixels.
-    ///   - height: The image height in pixels.
-    /// - Returns: A new blank image, or `nil` if creation fails.
+    ///   - width: 画像の幅（ピクセル単位）。
+    ///   - height: 画像の高さ（ピクセル単位）。
+    /// - Returns: 新しい空白画像。作成に失敗した場合は `nil`。
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         context.createImage(width, height)
     }
 
-    /// Create a 2D offscreen graphics buffer.
+    /// 2D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
-    ///   - w: The buffer width in pixels.
-    ///   - h: The buffer height in pixels.
-    /// - Returns: A new ``Graphics`` instance, or `nil` if creation fails.
+    ///   - w: バッファの幅（ピクセル単位）。
+    ///   - h: バッファの高さ（ピクセル単位）。
+    /// - Returns: 新しい ``Graphics`` インスタンス。作成に失敗した場合は `nil`。
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
         context.createGraphics(w, h)
     }
 
-    /// Create a 3D offscreen graphics buffer.
+    /// 3D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
-    ///   - w: The buffer width in pixels.
-    ///   - h: The buffer height in pixels.
-    /// - Returns: A new ``Graphics3D`` instance, or `nil` if creation fails.
+    ///   - w: バッファの幅（ピクセル単位）。
+    ///   - h: バッファの高さ（ピクセル単位）。
+    /// - Returns: 新しい ``Graphics3D`` インスタンス。作成に失敗した場合は `nil`。
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         context.createGraphics3D(w, h)
     }
 
-    /// Create a camera capture device.
+    /// カメラキャプチャデバイスを作成します。
     ///
     /// - Parameters:
-    ///   - width: The capture width in pixels.
-    ///   - height: The capture height in pixels.
-    ///   - position: The camera position (front or back).
-    /// - Returns: A new ``CaptureDevice`` instance, or `nil` if creation fails.
+    ///   - width: キャプチャ幅（ピクセル単位）。
+    ///   - height: キャプチャ高さ（ピクセル単位）。
+    ///   - position: カメラの位置（前面または背面）。
+    /// - Returns: 新しい ``CaptureDevice`` インスタンス。作成に失敗した場合は `nil`。
     public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice? {
         context.createCapture(width: width, height: height, position: position)
     }
 
-    /// Draw the latest frame from a capture device at the specified position.
+    /// キャプチャデバイスの最新フレームを指定位置に描画します。
     ///
     /// - Parameters:
-    ///   - capture: The capture device to draw from.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
+    ///   - capture: 描画元のキャプチャデバイス。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
     public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float) {
         context.image(capture, x, y)
     }
 
-    /// Draw the latest frame from a capture device at the specified position and size.
+    /// キャプチャデバイスの最新フレームを指定位置・サイズで描画します。
     ///
     /// - Parameters:
-    ///   - capture: The capture device to draw from.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
-    ///   - w: The display width.
-    ///   - h: The display height.
+    ///   - capture: 描画元のキャプチャデバイス。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
+    ///   - w: 表示幅。
+    ///   - h: 表示高さ。
     public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(capture, x, y, w, h)
     }
 
-    /// Draw a 2D offscreen graphics buffer at the specified position.
+    /// 2D オフスクリーングラフィックスバッファを指定位置に描画します。
     ///
     /// - Parameters:
-    ///   - pg: The graphics buffer to draw.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
+    ///   - pg: 描画するグラフィックスバッファ。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
     public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
         context.image(pg, x, y)
     }
 
-    /// Draw a 2D offscreen graphics buffer at the specified position and size.
+    /// 2D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
     ///
     /// - Parameters:
-    ///   - pg: The graphics buffer to draw.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
-    ///   - w: The display width.
-    ///   - h: The display height.
+    ///   - pg: 描画するグラフィックスバッファ。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
+    ///   - w: 表示幅。
+    ///   - h: 表示高さ。
     public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(pg, x, y, w, h)
     }
 
-    /// Draw a 3D offscreen graphics buffer at the specified position.
+    /// 3D オフスクリーングラフィックスバッファを指定位置に描画します。
     ///
     /// - Parameters:
-    ///   - pg: The 3D graphics buffer to draw.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
+    ///   - pg: 描画する 3D グラフィックスバッファ。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
     public func image(_ pg: Graphics3D, _ x: Float, _ y: Float) {
         context.image(pg, x, y)
     }
 
-    /// Draw a 3D offscreen graphics buffer at the specified position and size.
+    /// 3D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
     ///
     /// - Parameters:
-    ///   - pg: The 3D graphics buffer to draw.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
-    ///   - w: The display width.
-    ///   - h: The display height.
+    ///   - pg: 描画する 3D グラフィックスバッファ。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
+    ///   - w: 表示幅。
+    ///   - h: 表示高さ。
     public func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(pg, x, y, w, h)
     }
 
-    /// Draw an image at the specified position.
+    /// 画像を指定位置に描画します。
     ///
     /// - Parameters:
-    ///   - img: The image to draw.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
+    ///   - img: 描画する画像。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         context.image(img, x, y)
     }
 
-    /// Draw an image at the specified position and size.
+    /// 画像を指定位置・サイズで描画します。
     ///
     /// - Parameters:
-    ///   - img: The image to draw.
-    ///   - x: The x-coordinate of the drawing position.
-    ///   - y: The y-coordinate of the drawing position.
-    ///   - w: The display width.
-    ///   - h: The display height.
+    ///   - img: 描画する画像。
+    ///   - x: 描画位置の x 座標。
+    ///   - y: 描画位置の y 座標。
+    ///   - w: 表示幅。
+    ///   - h: 表示高さ。
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(img, x, y, w, h)
     }
 
-    /// Draw a sub-region of an image (for sprite sheets and tile maps).
+    /// 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
     ///
     /// - Parameters:
-    ///   - img: The source image.
-    ///   - dx: The destination x-coordinate.
-    ///   - dy: The destination y-coordinate.
-    ///   - dw: The destination width.
-    ///   - dh: The destination height.
-    ///   - sx: The source region x-coordinate.
-    ///   - sy: The source region y-coordinate.
-    ///   - sw: The source region width.
-    ///   - sh: The source region height.
+    ///   - img: ソース画像。
+    ///   - dx: 描画先の x 座標。
+    ///   - dy: 描画先の y 座標。
+    ///   - dw: 描画先の幅。
+    ///   - dh: 描画先の高さ。
+    ///   - sx: ソース領域の x 座標。
+    ///   - sy: ソース領域の y 座標。
+    ///   - sw: ソース領域の幅。
+    ///   - sh: ソース領域の高さ。
     public func image(
         _ img: MImage,
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
@@ -179,172 +179,172 @@ extension Sketch {
 
     // MARK: Text
 
-    /// Set the text size for subsequent text drawing.
+    /// 以降のテキスト描画のテキストサイズを設定します。
     ///
-    /// - Parameter size: The font size in points.
+    /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         context.textSize(size)
     }
 
-    /// Set the font family for subsequent text drawing.
+    /// 以降のテキスト描画のフォントファミリーを設定します。
     ///
-    /// - Parameter family: The font family name.
+    /// - Parameter family: フォントファミリー名。
     public func textFont(_ family: String) {
         context.textFont(family)
     }
 
-    /// Set the text alignment.
+    /// テキストの配置を設定します。
     ///
     /// - Parameters:
-    ///   - horizontal: The horizontal alignment.
-    ///   - vertical: The vertical alignment.
+    ///   - horizontal: 水平方向の配置。
+    ///   - vertical: 垂直方向の配置。
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         context.textAlign(horizontal, vertical)
     }
 
-    /// Set the line spacing for multiline text.
+    /// 複数行テキストの行間を設定します。
     ///
-    /// - Parameter leading: The line height in pixels.
+    /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {
         context.textLeading(leading)
     }
 
-    /// Draw a text string at the specified position.
+    /// 指定位置にテキスト文字列を描画します。
     ///
     /// - Parameters:
-    ///   - string: The text to draw.
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
+    ///   - string: 描画するテキスト。
+    ///   - x: x 座標。
+    ///   - y: y 座標。
     public func text(_ string: String, _ x: Float, _ y: Float) {
         context.text(string, x, y)
     }
 
-    /// Draw a text string within a bounding box.
+    /// バウンディングボックス内にテキスト文字列を描画します。
     ///
     /// - Parameters:
-    ///   - string: The text to draw.
-    ///   - x: The x-coordinate of the bounding box.
-    ///   - y: The y-coordinate of the bounding box.
-    ///   - w: The width of the bounding box.
-    ///   - h: The height of the bounding box.
+    ///   - string: 描画するテキスト。
+    ///   - x: バウンディングボックスの x 座標。
+    ///   - y: バウンディングボックスの y 座標。
+    ///   - w: バウンディングボックスの幅。
+    ///   - h: バウンディングボックスの高さ。
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.text(string, x, y, w, h)
     }
 
-    /// Calculate the width of a text string using the current font settings.
+    /// 現在のフォント設定でテキスト文字列の幅を計算します。
     ///
-    /// - Parameter string: The text to measure.
-    /// - Returns: The width of the text in pixels.
+    /// - Parameter string: 計測するテキスト。
+    /// - Returns: テキストの幅（ピクセル単位）。
     public func textWidth(_ string: String) -> Float {
         context.textWidth(string)
     }
 
-    /// Return the ascent of the current font.
+    /// 現在のフォントのアセント値を返します。
     ///
-    /// - Returns: The ascent value in pixels.
+    /// - Returns: アセント値（ピクセル単位）。
     public func textAscent() -> Float {
         context.textAscent()
     }
 
-    /// Return the descent of the current font.
+    /// 現在のフォントのディセント値を返します。
     ///
-    /// - Returns: The descent value in pixels.
+    /// - Returns: ディセント値（ピクセル単位）。
     public func textDescent() -> Float {
         context.textDescent()
     }
 
     // MARK: Screenshot & Recording
 
-    /// Save the current frame to the specified file path.
+    /// 現在のフレームを指定したファイルパスに保存します。
     ///
-    /// - Parameter path: The output file path.
+    /// - Parameter path: 出力ファイルパス。
     public func save(_ path: String) {
         context.save(path)
     }
 
-    /// Save the current frame to the default location.
+    /// 現在のフレームをデフォルトの場所に保存します。
     public func save() {
         context.save()
     }
 
-    /// Begin recording a sequence of frames as image files.
+    /// フレーム連番の画像ファイルとしての記録を開始します。
     ///
     /// - Parameters:
-    ///   - directory: The output directory (uses a default if `nil`).
-    ///   - pattern: The filename pattern with a frame number placeholder.
+    ///   - directory: 出力ディレクトリ（`nil` の場合はデフォルトを使用）。
+    ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
     public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
         context.beginRecord(directory: directory, pattern: pattern)
     }
 
-    /// Stop recording the frame sequence.
+    /// フレーム連番の記録を停止します。
     public func endRecord() {
         context.endRecord()
     }
 
-    /// Save a single frame to an image file.
+    /// 単一フレームを画像ファイルに保存します。
     ///
-    /// - Parameter filename: The output filename (auto-generated if `nil`).
+    /// - Parameter filename: 出力ファイル名（`nil` の場合は自動生成）。
     public func saveFrame(_ filename: String? = nil) {
         context.saveFrame(filename)
     }
 
     // MARK: Video Recording
 
-    /// Begin recording video output.
+    /// 動画出力の録画を開始します。
     ///
     /// - Parameters:
-    ///   - path: The output file path (auto-generated if `nil`).
-    ///   - config: The video export configuration.
+    ///   - path: 出力ファイルパス（`nil` の場合は自動生成）。
+    ///   - config: 動画エクスポート設定。
     public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
         context.beginVideoRecord(path, config: config)
     }
 
-    /// Stop recording video and finalize the file.
+    /// 動画の録画を停止しファイルを完成させます。
     ///
-    /// - Parameter completion: An optional callback invoked when writing finishes.
+    /// - Parameter completion: 書き込み完了時に呼ばれるオプションのコールバック。
     public func endVideoRecord(completion: (@Sendable () -> Void)? = nil) {
         context.endVideoRecord(completion: completion)
     }
 
-    /// Stop recording video and finalize the file asynchronously.
+    /// 動画の録画を非同期で停止しファイルを完成させます。
     public func endVideoRecord() async {
         await context.endVideoRecord()
     }
 
     // MARK: Offline Rendering
 
-    /// Indicate whether offline rendering mode is active.
+    /// オフラインレンダリングモードがアクティブかどうかを示します。
     public var isOfflineRendering: Bool {
         context.isOfflineRendering
     }
 
-    /// Enable offline rendering mode with deterministic timing.
+    /// 決定論的タイミングのオフラインレンダリングモードを有効にします。
     ///
-    /// - Parameter fps: The virtual frame rate used for time calculation.
+    /// - Parameter fps: 時間計算に使用する仮想フレームレート。
     public func beginOfflineRender(fps: Double = 60) {
         context.beginOfflineRender(fps: fps)
     }
 
-    /// Disable offline rendering mode and return to real-time timing.
+    /// オフラインレンダリングモードを無効にしリアルタイムタイミングに戻します。
     public func endOfflineRender() {
         context.endOfflineRender()
     }
 
     // MARK: FBO Feedback
 
-    /// Enable framebuffer feedback (previous frame access).
+    /// フレームバッファフィードバック（前フレームアクセス）を有効にします。
     public func enableFeedback() {
         context.enableFeedback()
     }
 
-    /// Disable framebuffer feedback.
+    /// フレームバッファフィードバックを無効にします。
     public func disableFeedback() {
         context.disableFeedback()
     }
 
-    /// Retrieve the previous frame's rendered image.
+    /// 前フレームのレンダリング結果を取得します。
     ///
-    /// - Returns: The previous frame as an ``MImage``, or `nil` if feedback is disabled.
+    /// - Returns: 前フレームの ``MImage``。フィードバックが無効の場合は `nil`。
     public func previousFrame() -> MImage? {
         context.previousFrame()
     }

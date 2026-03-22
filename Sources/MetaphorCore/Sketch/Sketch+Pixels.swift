@@ -2,12 +2,12 @@
 
 extension Sketch {
 
-    /// Direct access to the canvas pixel data as packed UInt32 values.
+    /// キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
     ///
-    /// Each element is a BGRA-packed color: `(A << 24) | (R << 16) | (G << 8) | B`.
-    /// Use `color()` to create packed values. Index with `pixels[y * Int(width) + x]`.
+    /// 各要素は BGRA パックカラー: `(A << 24) | (R << 16) | (G << 8) | B`。
+    /// パック値の作成には `color()` を使用します。`pixels[y * Int(width) + x]` でインデックスアクセスします。
     ///
-    /// Call ``loadPixels()`` before accessing and ``updatePixels()`` after writing.
+    /// アクセス前に ``loadPixels()``、書き込み後に ``updatePixels()`` を呼び出してください。
     public var pixels: UnsafeMutableBufferPointer<UInt32> {
         guard let pb = context.pixelBuffer else {
             return UnsafeMutableBufferPointer(start: nil, count: 0)
@@ -15,18 +15,18 @@ extension Sketch {
         return pb.pixels
     }
 
-    /// Prepare the pixel buffer for direct pixel manipulation.
+    /// ピクセルバッファを直接ピクセル操作用に準備します。
     ///
-    /// Creates the buffer on first call. Subsequent calls reuse the existing buffer.
-    /// After calling this, write to ``pixels`` and then call ``updatePixels()``.
+    /// 初回呼び出し時にバッファを作成します。以降の呼び出しでは既存のバッファを再利用します。
+    /// 呼び出し後、``pixels`` に書き込み、``updatePixels()`` を呼び出してください。
     public func loadPixels() {
         context.loadPixels()
     }
 
-    /// Upload modified pixel data and draw it to the canvas.
+    /// 変更されたピクセルデータをアップロードしキャンバスに描画します。
     ///
-    /// Transfers the pixel buffer to the GPU texture and renders it as a
-    /// full-screen quad. Call this after writing to ``pixels``.
+    /// ピクセルバッファを GPU テクスチャに転送し、フルスクリーンクワッドとして
+    /// レンダリングします。``pixels`` への書き込み後にこれを呼び出してください。
     public func updatePixels() {
         context.updatePixels()
     }

@@ -4,10 +4,10 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// Export captured frames as an animated GIF file.
+/// キャプチャしたフレームをアニメーションGIFファイルとしてエクスポートします。
 ///
-/// Capture Metal texture frames and write them out as an animated GIF.
-/// Ideal for sharing generative art output on social media.
+/// Metal テクスチャのフレームをキャプチャし、アニメーションGIFとして書き出します。
+/// ジェネラティブアート作品をSNSで共有するのに最適です。
 ///
 /// ```swift
 /// beginGIFRecord(fps: 15)
@@ -19,44 +19,44 @@ public final class GIFExporter {
 
     // MARK: - State
 
-    /// Indicate whether recording is currently in progress.
+    /// 現在記録中かどうかを示すフラグ
     public private(set) var isRecording: Bool = false
 
-    /// Return the number of frames captured so far.
+    /// これまでにキャプチャしたフレーム数
     public private(set) var frameCount: Int = 0
 
-    /// The delay between frames in seconds.
+    /// フレーム間の遅延時間（秒）
     private var frameDelay: Double = 1.0 / 15.0
 
-    /// The array of captured CGImage frames.
+    /// キャプチャした CGImage フレームの配列
     private var frames: [CGImage] = []
 
-    /// Staging texture for GPU-to-CPU pixel readback.
+    /// GPU→CPU ピクセル読み戻し用のステージングテクスチャ
     private var stagingTexture: MTLTexture?
 
-    /// The capture width in pixels.
+    /// キャプチャ幅（ピクセル）
     private var captureWidth: Int = 0
 
-    /// The capture height in pixels.
+    /// キャプチャ高さ（ピクセル）
     private var captureHeight: Int = 0
 
     // MARK: - GIF Options
 
-    /// The number of times the GIF loops (0 means infinite loop).
+    /// GIFのループ回数（0は無限ループ）
     public var loopCount: Int = 0
 
-    /// Whether dithering is enabled for color quantization.
+    /// カラー量子化時のディザリング有効フラグ
     public var dithering: Bool = true
 
     public init() {}
 
     // MARK: - Public API
 
-    /// Start GIF recording.
+    /// GIF記録を開始します。
     /// - Parameters:
-    ///   - fps: The frame rate (default is 15).
-    ///   - width: The capture width (uses source texture width if 0).
-    ///   - height: The capture height (uses source texture height if 0).
+    ///   - fps: フレームレート（デフォルトは15）。
+    ///   - width: キャプチャ幅（0の場合はソーステクスチャの幅を使用）。
+    ///   - height: キャプチャ高さ（0の場合はソーステクスチャの高さを使用）。
     public func beginRecord(fps: Int = 15, width: Int = 0, height: Int = 0) {
         self.frameDelay = 1.0 / Double(max(1, fps))
         self.captureWidth = width
@@ -66,18 +66,18 @@ public final class GIFExporter {
         self.isRecording = true
     }
 
-    /// Capture the current frame from a Metal texture.
+    /// Metal テクスチャから現在のフレームをキャプチャします。
     /// - Parameters:
-    ///   - texture: The Metal texture to capture.
-    ///   - device: The Metal device used to create the staging texture if needed.
-    ///   - commandQueue: The command queue used to blit private textures for CPU readback.
+    ///   - texture: キャプチャ対象の Metal テクスチャ。
+    ///   - device: 必要に応じてステージングテクスチャを作成する Metal デバイス。
+    ///   - commandQueue: プライベートテクスチャをCPU読み戻し用にブリットするコマンドキュー。
     public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) {
         guard isRecording else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
         let h = captureHeight > 0 ? captureHeight : texture.height
 
-        // Allocate or recreate the staging texture if the size changed
+        // サイズが変わった場合、ステージングテクスチャを確保または再作成
         if stagingTexture == nil || stagingTexture!.width != w || stagingTexture!.height != h {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: .bgra8Unorm,
@@ -90,7 +90,7 @@ public final class GIFExporter {
             stagingTexture = device.makeTexture(descriptor: desc)
         }
 
-        // Blit from private texture to staging for CPU readback
+        // プライベートテクスチャからステージングへブリット（CPU読み戻し用）
         let readTexture: MTLTexture
         if texture.storageMode == .private {
             guard let staging = stagingTexture,
@@ -105,7 +105,7 @@ public final class GIFExporter {
             readTexture = texture
         }
 
-        // Read pixel data from the (now CPU-accessible) texture
+        // （CPUアクセス可能になった）テクスチャからピクセルデータを読み取り
         let bytesPerRow = w * 4
         var pixelData = [UInt8](repeating: 0, count: bytesPerRow * h)
 
@@ -117,7 +117,7 @@ public final class GIFExporter {
             mipmapLevel: 0
         )
 
-        // Convert BGRA to RGBA
+        // BGRA → RGBA 変換
         for i in stride(from: 0, to: pixelData.count, by: 4) {
             let b = pixelData[i]
             let r = pixelData[i + 2]
@@ -125,7 +125,7 @@ public final class GIFExporter {
             pixelData[i + 2] = b
         }
 
-        // Create a CGImage from the pixel data
+        // ピクセルデータから CGImage を作成
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(
                 data: &pixelData,
@@ -144,9 +144,9 @@ public final class GIFExporter {
         frameCount += 1
     }
 
-    /// Stop recording and write the captured frames to a GIF file.
-    /// - Parameter path: The output file path.
-    /// - Throws: ``MetaphorError`` if no frames were captured or the file could not be written.
+    /// 記録を停止し、キャプチャしたフレームをGIFファイルに書き出します。
+    /// - Parameter path: 出力ファイルパス。
+    /// - Throws: フレームがキャプチャされていない場合、またはファイル書き込みに失敗した場合に ``MetaphorError`` をスローします。
     public func endRecord(to path: String) throws {
         guard isRecording else { return }
         isRecording = false
@@ -157,7 +157,7 @@ public final class GIFExporter {
 
         let url = URL(fileURLWithPath: path) as CFURL
 
-        // Create the output directory if it does not exist
+        // 出力ディレクトリが存在しない場合は作成
         let dir = URL(fileURLWithPath: path).deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
@@ -170,7 +170,7 @@ public final class GIFExporter {
             throw MetaphorError.export(.destinationCreationFailed)
         }
 
-        // Set GIF properties (loop count)
+        // GIFプロパティ（ループ回数）を設定
         let gifProperties: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [
                 kCGImagePropertyGIFLoopCount as String: loopCount
@@ -178,7 +178,7 @@ public final class GIFExporter {
         ]
         CGImageDestinationSetProperties(destination, gifProperties as CFDictionary)
 
-        // Add each frame to the destination
+        // 各フレームをデスティネーションに追加
         let frameProperties: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [
                 kCGImagePropertyGIFDelayTime as String: frameDelay
@@ -193,16 +193,16 @@ public final class GIFExporter {
             throw MetaphorError.export(.finalizationFailed)
         }
 
-        // Release memory
+        // メモリを解放
         frames.removeAll()
         stagingTexture = nil
     }
 
-    /// Stop recording and write the captured frames to a GIF file asynchronously.
+    /// 記録を停止し、キャプチャしたフレームを非同期でGIFファイルに書き出します。
     ///
-    /// Performs the file write on a background thread to avoid blocking the main thread.
-    /// - Parameter path: The output file path.
-    /// - Throws: ``MetaphorError`` if no frames were captured or the file could not be written.
+    /// メインスレッドをブロックしないよう、ファイル書き込みをバックグラウンドスレッドで実行します。
+    /// - Parameter path: 出力ファイルパス。
+    /// - Throws: フレームがキャプチャされていない場合、またはファイル書き込みに失敗した場合に ``MetaphorError`` をスローします。
     public func endRecordAsync(to path: String) async throws {
         guard isRecording else { return }
         isRecording = false
@@ -255,4 +255,3 @@ public final class GIFExporter {
         }.value
     }
 }
-

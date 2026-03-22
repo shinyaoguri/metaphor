@@ -2,39 +2,39 @@ import Foundation
 
 // MARK: - Easing Function Type
 
-/// Define a type alias for easing functions that map t in 0..1 to an output in 0..1.
+/// t を 0..1 から 0..1 にマッピングするイージング関数の型エイリアス。
 public typealias EasingFunction = (Float) -> Float
 
-/// Interpolate between two values using an easing function.
+/// イージング関数を使用して2つの値の間を補間します。
 /// - Parameters:
-///   - t: The normalized time value in the range 0 to 1.
-///   - a: The start value.
-///   - b: The end value.
-///   - f: The easing function to shape the interpolation.
-/// - Returns: The interpolated value between a and b.
+///   - t: 0 から 1 の範囲の正規化された時間値。
+///   - a: 開始値。
+///   - b: 終了値。
+///   - f: 補間のカーブを決めるイージング関数。
+/// - Returns: a と b の間の補間された値。
 public func ease(_ t: Float, from a: Float, to b: Float, using f: EasingFunction) -> Float {
     a + (b - a) * f(t)
 }
 
 // MARK: - Quad (Quadratic)
 
-/// Apply a quadratic ease-in curve that starts slow and accelerates.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value, equal to t squared.
+/// ゆっくり始まり加速する2次イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: t の二乗に等しいイージング値。
 public func easeInQuad(_ t: Float) -> Float {
     t * t
 }
 
-/// Apply a quadratic ease-out curve that starts fast and decelerates.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using an inverted quadratic.
+/// 速く始まり減速する2次イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 反転した2次関数によるイージング値。
 public func easeOutQuad(_ t: Float) -> Float {
     t * (2 - t)
 }
 
-/// Apply a quadratic ease-in-out curve that accelerates then decelerates.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using a piecewise quadratic.
+/// 加速してから減速する2次イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 区分的2次関数によるイージング値。
 public func easeInOutQuad(_ t: Float) -> Float {
     if t < 0.5 {
         return 2 * t * t
@@ -44,24 +44,24 @@ public func easeInOutQuad(_ t: Float) -> Float {
 
 // MARK: - Cubic
 
-/// Apply a cubic ease-in curve that starts slow and accelerates sharply.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value, equal to t cubed.
+/// ゆっくり始まり急激に加速する3次イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: t の三乗に等しいイージング値。
 public func easeInCubic(_ t: Float) -> Float {
     t * t * t
 }
 
-/// Apply a cubic ease-out curve that starts fast and decelerates sharply.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using an inverted cubic.
+/// 速く始まり急激に減速する3次イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 反転した3次関数によるイージング値。
 public func easeOutCubic(_ t: Float) -> Float {
     let u = t - 1
     return u * u * u + 1
 }
 
-/// Apply a cubic ease-in-out curve that accelerates then decelerates smoothly.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using a piecewise cubic.
+/// 滑らかに加速してから減速する3次イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 区分的3次関数によるイージング値。
 public func easeInOutCubic(_ t: Float) -> Float {
     if t < 0.5 {
         return 4 * t * t * t
@@ -72,24 +72,24 @@ public func easeInOutCubic(_ t: Float) -> Float {
 
 // MARK: - Quart (Quartic)
 
-/// Apply a quartic ease-in curve that starts very slow and accelerates steeply.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value, equal to t to the fourth power.
+/// 非常にゆっくり始まり急勾配で加速する4次イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: t の四乗に等しいイージング値。
 public func easeInQuart(_ t: Float) -> Float {
     t * t * t * t
 }
 
-/// Apply a quartic ease-out curve that starts fast and decelerates steeply.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using an inverted quartic.
+/// 速く始まり急勾配で減速する4次イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 反転した4次関数によるイージング値。
 public func easeOutQuart(_ t: Float) -> Float {
     let u = t - 1
     return 1 - u * u * u * u
 }
 
-/// Apply a quartic ease-in-out curve that accelerates then decelerates with a steep slope.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using a piecewise quartic.
+/// 急勾配で加速してから減速する4次イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 区分的4次関数によるイージング値。
 public func easeInOutQuart(_ t: Float) -> Float {
     if t < 0.5 {
         return 8 * t * t * t * t
@@ -100,24 +100,24 @@ public func easeInOutQuart(_ t: Float) -> Float {
 
 // MARK: - Quint (Quintic)
 
-/// Apply a quintic ease-in curve that starts extremely slow and accelerates aggressively.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value, equal to t to the fifth power.
+/// 極めてゆっくり始まり強烈に加速する5次イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: t の五乗に等しいイージング値。
 public func easeInQuint(_ t: Float) -> Float {
     t * t * t * t * t
 }
 
-/// Apply a quintic ease-out curve that starts fast and decelerates aggressively.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using an inverted quintic.
+/// 速く始まり強烈に減速する5次イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 反転した5次関数によるイージング値。
 public func easeOutQuint(_ t: Float) -> Float {
     let u = t - 1
     return u * u * u * u * u + 1
 }
 
-/// Apply a quintic ease-in-out curve that accelerates then decelerates with an aggressive slope.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using a piecewise quintic.
+/// 強烈に加速してから減速する5次イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 区分的5次関数によるイージング値。
 public func easeInOutQuint(_ t: Float) -> Float {
     if t < 0.5 {
         return 16 * t * t * t * t * t
@@ -128,46 +128,46 @@ public func easeInOutQuint(_ t: Float) -> Float {
 
 // MARK: - Sine
 
-/// Apply a sinusoidal ease-in curve that starts slow using a cosine function.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value based on one quarter of a cosine wave.
+/// コサイン関数を使用してゆっくり始まる正弦波イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: コサイン波の4分の1に基づくイージング値。
 public func easeInSine(_ t: Float) -> Float {
     1 - cos(t * Float.pi / 2)
 }
 
-/// Apply a sinusoidal ease-out curve that decelerates using a sine function.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value based on one quarter of a sine wave.
+/// サイン関数を使用して減速する正弦波イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: サイン波の4分の1に基づくイージング値。
 public func easeOutSine(_ t: Float) -> Float {
     sin(t * Float.pi / 2)
 }
 
-/// Apply a sinusoidal ease-in-out curve that accelerates and decelerates smoothly.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value based on half a cosine wave.
+/// 滑らかに加速・減速する正弦波イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: コサイン波の半分に基づくイージング値。
 public func easeInOutSine(_ t: Float) -> Float {
     0.5 * (1 - cos(Float.pi * t))
 }
 
 // MARK: - Expo (Exponential)
 
-/// Apply an exponential ease-in curve that starts near zero and accelerates exponentially.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using base-2 exponential growth.
+/// ほぼゼロから指数的に加速する指数イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 2を底とする指数関数による増加のイージング値。
 public func easeInExpo(_ t: Float) -> Float {
     t == 0 ? 0 : pow(2, 10 * (t - 1))
 }
 
-/// Apply an exponential ease-out curve that decelerates exponentially toward 1.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using base-2 exponential decay.
+/// 1に向かって指数的に減速する指数イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 2を底とする指数関数による減衰のイージング値。
 public func easeOutExpo(_ t: Float) -> Float {
     t == 1 ? 1 : 1 - pow(2, -10 * t)
 }
 
-/// Apply an exponential ease-in-out curve with exponential acceleration and deceleration.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value using piecewise base-2 exponential functions.
+/// 指数的な加速と減速を持つ指数イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 区分的な2を底とする指数関数によるイージング値。
 public func easeInOutExpo(_ t: Float) -> Float {
     if t == 0 { return 0 }
     if t == 1 { return 1 }
@@ -179,24 +179,24 @@ public func easeInOutExpo(_ t: Float) -> Float {
 
 // MARK: - Circ (Circular)
 
-/// Apply a circular ease-in curve that accelerates along a quarter-circle arc.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value based on a circular curve.
+/// 四分円弧に沿って加速する円形イーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 円形カーブに基づくイージング値。
 public func easeInCirc(_ t: Float) -> Float {
     1 - sqrt(1 - t * t)
 }
 
-/// Apply a circular ease-out curve that decelerates along a quarter-circle arc.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value based on an inverted circular curve.
+/// 四分円弧に沿って減速する円形イーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 反転した円形カーブに基づくイージング値。
 public func easeOutCirc(_ t: Float) -> Float {
     let u = t - 1
     return sqrt(1 - u * u)
 }
 
-/// Apply a circular ease-in-out curve that follows a half-circle arc.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value based on piecewise circular curves.
+/// 半円弧に沿った円形イーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 区分的な円形カーブに基づくイージング値。
 public func easeInOutCirc(_ t: Float) -> Float {
     if t < 0.5 {
         return 0.5 * (1 - sqrt(1 - 4 * t * t))
@@ -209,24 +209,24 @@ public func easeInOutCirc(_ t: Float) -> Float {
 
 private let backS: Float = 1.70158
 
-/// Apply a back ease-in curve that pulls back before accelerating forward.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value that briefly goes below 0 before reaching 1.
+/// 加速前に引き戻すバックイーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 一時的に 0 を下回ってから 1 に到達するイージング値。
 public func easeInBack(_ t: Float) -> Float {
     t * t * ((backS + 1) * t - backS)
 }
 
-/// Apply a back ease-out curve that overshoots 1 before settling back.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value that briefly exceeds 1 before settling.
+/// 1 を超えてから元に戻るバックイーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 一時的に 1 を超えてから落ち着くイージング値。
 public func easeOutBack(_ t: Float) -> Float {
     let u = t - 1
     return u * u * ((backS + 1) * u + backS) + 1
 }
 
-/// Apply a back ease-in-out curve that pulls back, accelerates, overshoots, and settles.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with overshoot on both ends.
+/// 引き戻し、加速、オーバーシュート、収束を行うバックイーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 両端でオーバーシュートするイージング値。
 public func easeInOutBack(_ t: Float) -> Float {
     let s = backS * 1.525
     if t < 0.5 {
@@ -239,27 +239,27 @@ public func easeInOutBack(_ t: Float) -> Float {
 
 // MARK: - Elastic (Spring)
 
-/// Apply an elastic ease-in curve that oscillates like a spring before accelerating.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with spring-like oscillation at the start.
+/// 加速前にバネのように振動するエラスティックイーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 開始時にバネ的な振動を持つイージング値。
 public func easeInElastic(_ t: Float) -> Float {
     if t == 0 { return 0 }
     if t == 1 { return 1 }
     return -pow(2, 10 * t - 10) * sin((t * 10 - 10.75) * (2 * Float.pi / 3))
 }
 
-/// Apply an elastic ease-out curve that overshoots and oscillates before settling.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with spring-like oscillation at the end.
+/// オーバーシュートして振動してから収束するエラスティックイーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 終了時にバネ的な振動を持つイージング値。
 public func easeOutElastic(_ t: Float) -> Float {
     if t == 0 { return 0 }
     if t == 1 { return 1 }
     return pow(2, -10 * t) * sin((t * 10 - 0.75) * (2 * Float.pi / 3)) + 1
 }
 
-/// Apply an elastic ease-in-out curve with spring oscillation on both ends.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with symmetric spring-like oscillation.
+/// 両端でバネ振動を持つエラスティックイーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 対称的なバネ振動を持つイージング値。
 public func easeInOutElastic(_ t: Float) -> Float {
     if t == 0 { return 0 }
     if t == 1 { return 1 }
@@ -272,9 +272,9 @@ public func easeInOutElastic(_ t: Float) -> Float {
 
 // MARK: - Bounce
 
-/// Apply a bounce ease-out curve that simulates a ball bouncing to rest.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with multiple diminishing bounces.
+/// ボールが弾んで止まるようなバウンスイーズアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 徐々に小さくなる複数のバウンスを持つイージング値。
 public func easeOutBounce(_ t: Float) -> Float {
     if t < 1.0 / 2.75 {
         return 7.5625 * t * t
@@ -290,16 +290,16 @@ public func easeOutBounce(_ t: Float) -> Float {
     }
 }
 
-/// Apply a bounce ease-in curve that simulates a ball dropping with bounces.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with bounces at the beginning.
+/// ボールが落下してバウンドするようなバウンスイーズインカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 開始時にバウンスを持つイージング値。
 public func easeInBounce(_ t: Float) -> Float {
     1 - easeOutBounce(1 - t)
 }
 
-/// Apply a bounce ease-in-out curve that bounces on both sides of the transition.
-/// - Parameter t: The normalized time value in the range 0 to 1.
-/// - Returns: The eased value with symmetric bounces at both ends.
+/// 遷移の両側でバウンスするバウンスイーズインアウトカーブを適用します。
+/// - Parameter t: 0 から 1 の範囲の正規化された時間値。
+/// - Returns: 両端で対称的なバウンスを持つイージング値。
 public func easeInOutBounce(_ t: Float) -> Float {
     if t < 0.5 {
         return 0.5 * easeInBounce(t * 2)

@@ -3,20 +3,20 @@ import CoreVideo
 import Metal
 import os
 
-/// Specify the camera position to use for capture.
+/// キャプチャに使用するカメラ位置の指定
 public enum CameraPosition {
-    /// The front-facing camera.
+    /// 前面カメラ
     case front
-    /// The rear-facing camera.
+    /// 背面カメラ
     case back
 }
 
-/// Capture live video frames from a camera and provide them as Metal textures.
+/// カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
 ///
-/// ``CaptureDevice`` uses an `AVCaptureSession` and a `CVMetalTextureCache`
-/// to deliver camera frames as `MTLTexture` instances with zero-copy
-/// GPU access. Call ``read()`` each frame to update the texture with the
-/// latest camera frame.
+/// ``CaptureDevice`` は `AVCaptureSession` と `CVMetalTextureCache` を使用して、
+/// カメラフレームをゼロコピーの GPU アクセスが可能な `MTLTexture` インスタンスとして
+/// 配信します。毎フレーム ``read()`` を呼び出すことで、最新のカメラフレームで
+/// テクスチャが更新されます。
 ///
 /// ```swift
 /// let cam = createCapture()
@@ -29,44 +29,44 @@ public final class CaptureDevice {
 
     // MARK: - Public Properties
 
-    /// The latest camera frame as a Metal texture, available after calling ``read()``.
+    /// ``read()`` 呼び出し後に利用可能な、最新のカメラフレームの Metal テクスチャ
     public private(set) var texture: MTLTexture?
 
-    /// Indicate whether the camera is available and the capture session was configured successfully.
+    /// カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ
     public private(set) var isAvailable: Bool = false
 
-    /// The requested capture width in pixels.
+    /// 要求されたキャプチャ幅（ピクセル）
     public let width: Int
 
-    /// The requested capture height in pixels.
+    /// 要求されたキャプチャ高さ（ピクセル）
     public let height: Int
 
     // MARK: - Private Properties
 
-    /// The Metal device used for texture cache creation.
+    /// テクスチャキャッシュ作成に使用する Metal デバイス
     private let device: MTLDevice
 
-    /// The AVFoundation capture session.
+    /// AVFoundation キャプチャセッション
     private var captureSession: AVCaptureSession?
 
-    /// The Metal texture cache for zero-copy pixel buffer conversion.
+    /// ゼロコピーピクセルバッファ変換用の Metal テクスチャキャッシュ
     private var textureCache: CVMetalTextureCache?
 
-    /// The delegate helper that receives sample buffers on a background thread.
+    /// バックグラウンドスレッドでサンプルバッファを受信するデリゲートヘルパー
     private let delegateHelper: CaptureDelegate
 
-    /// Whether the capture session is currently running.
+    /// キャプチャセッションが現在実行中かどうか
     private var isRunning: Bool = false
 
     // MARK: - Initialization
 
-    /// Create a new camera capture device.
+    /// 新しいカメラキャプチャデバイスを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device for texture cache creation.
-    ///   - width: The requested video width in pixels (defaults to 1280).
-    ///   - height: The requested video height in pixels (defaults to 720).
-    ///   - position: The camera position to use (defaults to `.front`).
+    ///   - device: テクスチャキャッシュ作成用の Metal デバイス。
+    ///   - width: 要求するビデオ幅（ピクセル、デフォルト: 1280）。
+    ///   - height: 要求するビデオ高さ（ピクセル、デフォルト: 720）。
+    ///   - position: 使用するカメラ位置（デフォルト: `.front`）。
     init(device: MTLDevice, width: Int = 1280, height: Int = 720, position: CameraPosition = .front) {
         self.device = device
         self.width = width
@@ -79,9 +79,9 @@ public final class CaptureDevice {
 
     // MARK: - Public Methods
 
-    /// Start the camera capture session.
+    /// カメラキャプチャセッションを開始します。
     ///
-    /// The session starts asynchronously on a background thread.
+    /// セッションはバックグラウンドスレッドで非同期に開始されます。
     public func start() {
         guard !isRunning, let session = captureSession else { return }
         isRunning = true
@@ -90,9 +90,9 @@ public final class CaptureDevice {
         }
     }
 
-    /// Stop the camera capture session.
+    /// カメラキャプチャセッションを停止します。
     ///
-    /// The session stops asynchronously on a background thread.
+    /// セッションはバックグラウンドスレッドで非同期に停止されます。
     public func stop() {
         guard isRunning, let session = captureSession else { return }
         isRunning = false
@@ -101,11 +101,11 @@ public final class CaptureDevice {
         }
     }
 
-    /// Update the ``texture`` property with the latest camera frame.
+    /// ``texture`` プロパティを最新のカメラフレームで更新します。
     ///
-    /// Call this once per frame before using the texture for rendering.
-    /// The texture is created from the latest pixel buffer via the
-    /// `CVMetalTextureCache` for zero-copy GPU access.
+    /// レンダリングでテクスチャを使用する前に、毎フレーム一度呼び出してください。
+    /// テクスチャはゼロコピー GPU アクセスのため、最新のピクセルバッファから
+    /// `CVMetalTextureCache` 経由で作成されます。
     public func read() {
         guard let pixelBuffer = delegateHelper.latestPixelBuffer else { return }
 
@@ -124,9 +124,9 @@ public final class CaptureDevice {
         texture = CVMetalTextureGetTexture(cvTex)
     }
 
-    /// Convert the latest camera frame to an ``MImage`` instance.
+    /// 最新のカメラフレームを ``MImage`` インスタンスに変換します。
     ///
-    /// - Returns: An ``MImage`` wrapping the current texture, or `nil` if no frame is available.
+    /// - Returns: 現在のテクスチャをラップした ``MImage``。フレームが利用できない場合は `nil`。
     public func toImage() -> MImage? {
         guard let tex = texture else { return nil }
         return MImage(texture: tex)
@@ -134,14 +134,14 @@ public final class CaptureDevice {
 
     // MARK: - Private Setup
 
-    /// Create the CVMetalTextureCache for zero-copy texture conversion.
+    /// ゼロコピーテクスチャ変換用の CVMetalTextureCache を作成
     private func setupTextureCache() {
         var cache: CVMetalTextureCache?
         CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
         self.textureCache = cache
     }
 
-    /// Configure the AVCaptureSession with the requested camera and output settings.
+    /// 要求されたカメラと出力設定で AVCaptureSession を構成
     private func setupCaptureSession(position: CameraPosition) {
         let session = AVCaptureSession()
         session.sessionPreset = .high
@@ -185,30 +185,30 @@ public final class CaptureDevice {
 
 // MARK: - Capture Delegate (Thread-safe)
 
-/// Receive video sample buffers on a background thread and store the latest pixel buffer.
+/// バックグラウンドスレッドでビデオサンプルバッファを受信し、最新のピクセルバッファを保持します。
 ///
-/// This class is intentionally not marked `@MainActor` because it operates
-/// on the capture session's background dispatch queue. Thread safety is
-/// ensured via an `NSLock` (CVPixelBuffer is not Sendable, so
-/// OSAllocatedUnfairLock cannot be used here).
+/// このクラスはキャプチャセッションのバックグラウンドディスパッチキュー上で
+/// 動作するため、意図的に `@MainActor` を付けていません。スレッドセーフティは
+/// `NSLock` で保証されています（CVPixelBuffer は Sendable ではないため、
+/// OSAllocatedUnfairLock は使用できません）。
 private final class CaptureDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-    /// The dispatch queue for receiving sample buffers.
+    /// サンプルバッファ受信用のディスパッチキュー
     let queue = DispatchQueue(label: "metaphor.capture", qos: .userInteractive)
 
-    /// The lock protecting access to the latest pixel buffer.
+    /// 最新ピクセルバッファへのアクセスを保護するロック
     private let lock = NSLock()
 
-    /// The backing storage for the latest pixel buffer.
+    /// 最新ピクセルバッファのバッキングストレージ
     private var _latestPixelBuffer: CVPixelBuffer?
 
-    /// The most recently captured pixel buffer, accessed in a thread-safe manner.
+    /// スレッドセーフにアクセスされる最新のキャプチャ済みピクセルバッファ
     var latestPixelBuffer: CVPixelBuffer? {
         lock.lock()
         defer { lock.unlock() }
         return _latestPixelBuffer
     }
 
-    /// Store the pixel buffer from the incoming sample buffer.
+    /// 受信したサンプルバッファからピクセルバッファを保存
     func captureOutput(
         _ output: AVCaptureOutput,
         didOutput sampleBuffer: CMSampleBuffer,

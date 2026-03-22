@@ -4,33 +4,33 @@ import CoreText
 
 // MARK: - Text Alignment
 
-/// Define horizontal text alignment options.
+/// 水平方向のテキスト配置オプションを定義します。
 public enum TextAlignH: Sendable {
     case left, center, right
 }
 
-/// Define vertical text alignment options.
+/// 垂直方向のテキスト配置オプションを定義します。
 public enum TextAlignV: Sendable {
     case top, center, baseline, bottom
 }
 
 // MARK: - Glyph Info
 
-/// Store information about a single glyph within the glyph atlas.
+/// グリフアトラス内の単一グリフに関する情報を格納します。
 struct GlyphInfo {
-    /// UV coordinates within the atlas (0.0 to 1.0).
+    /// アトラス内の UV 座標（0.0〜1.0）。
     let u0: Float, v0: Float, u1: Float, v1: Float
-    /// Size in pixels.
+    /// ピクセル単位のサイズ。
     let width: Float, height: Float
-    /// Horizontal offset from the baseline.
+    /// ベースラインからの水平オフセット。
     let bearingX: Float
-    /// Vertical offset from the baseline (positive is upward).
+    /// ベースラインからの垂直オフセット（正の値は上向き）。
     let bearingY: Float
-    /// Horizontal distance to the next character.
+    /// 次の文字までの水平距離。
     let advance: Float
 }
 
-/// Represent a positioned glyph ready for text drawing.
+/// テキスト描画の準備ができた配置済みグリフを表現します。
 struct PositionedGlyph {
     let x: Float, y: Float
     let width: Float, height: Float
@@ -39,11 +39,11 @@ struct PositionedGlyph {
 
 // MARK: - Glyph Atlas
 
-/// Manage a glyph atlas per font and size using shelf packing.
+/// シェルフパッキングを使用してフォントとサイズごとのグリフアトラスを管理します。
 @MainActor
 final class GlyphAtlas {
 
-    /// Serve as a cache key combining font family name and size.
+    /// フォントファミリー名とサイズを組み合わせたキャッシュキー。
     struct Key: Hashable {
         let fontFamily: String
         let fontSize: Float
@@ -54,17 +54,17 @@ final class GlyphAtlas {
     private let fontFamily: String
     private let font: CTFont
 
-    /// Atlas texture containing rendered glyphs.
+    /// レンダリング済みグリフを含むアトラステクスチャ。
     private(set) var texture: MTLTexture?
 
-    /// Current atlas dimensions.
+    /// 現在のアトラスの寸法。
     private var atlasWidth: Int
     private var atlasHeight: Int
 
-    /// Mapping from characters to their glyph information.
+    /// 文字からグリフ情報へのマッピング。
     private var glyphMap: [Character: GlyphInfo] = [:]
 
-    /// Shelf packing state.
+    /// シェルフパッキングの状態。
     private var shelves: [Shelf] = []
     private var currentShelfY: Int = 0
 
@@ -74,7 +74,7 @@ final class GlyphAtlas {
         var nextX: Int
     }
 
-    /// Maximum texture size for the atlas.
+    /// アトラスの最大テクスチャサイズ。
     private static let maxSize = 2048
 
     init(device: MTLDevice, fontFamily: String, fontSize: Float) {
@@ -87,19 +87,19 @@ final class GlyphAtlas {
         self.texture = createTexture(width: atlasWidth, height: atlasHeight)
     }
 
-    /// Retrieve glyph information for a character, adding it to the atlas if necessary.
+    /// 文字のグリフ情報を取得し、必要に応じてアトラスに追加します。
     ///
-    /// - Parameter char: The character to look up.
-    /// - Returns: The glyph information, or nil if the glyph could not be added.
+    /// - Parameter char: 検索する文字。
+    /// - Returns: グリフ情報。グリフを追加できなかった場合は nil。
     func glyph(for char: Character) -> GlyphInfo? {
         if let info = glyphMap[char] { return info }
         return addGlyph(char)
     }
 
-    /// Generate an array of positioned glyphs for the given string.
+    /// 指定された文字列の配置済みグリフ配列を生成します。
     ///
-    /// - Parameter string: The text to lay out.
-    /// - Returns: An array of positioned glyphs, or nil if any glyph could not be resolved.
+    /// - Parameter string: レイアウトするテキスト。
+    /// - Returns: 配置済みグリフの配列。いずれかのグリフを解決できなかった場合は nil。
     func layoutGlyphs(string: String) -> [PositionedGlyph]? {
         var result: [PositionedGlyph] = []
         result.reserveCapacity(string.count)
@@ -119,10 +119,10 @@ final class GlyphAtlas {
         return result
     }
 
-    /// Calculate the total width of a string in pixels.
+    /// 文字列の合計幅をピクセル単位で計算します。
     ///
-    /// - Parameter string: The text to measure.
-    /// - Returns: The total advance width.
+    /// - Parameter string: 計測するテキスト。
+    /// - Returns: 合計アドバンス幅。
     func measureWidth(string: String) -> Float {
         var w: Float = 0
         for char in string {
@@ -135,7 +135,7 @@ final class GlyphAtlas {
     // MARK: - Private
 
     private func addGlyph(_ char: Character) -> GlyphInfo? {
-        // Obtain glyph metrics via Core Text
+        // Core Text 経由でグリフメトリクスを取得
         let str = String(char)
         let attrString = NSAttributedString(
             string: str,
@@ -151,10 +151,10 @@ final class GlyphAtlas {
         let glyphH = Int(ceil(ascent + descent)) + 2
         guard glyphW > 0, glyphH > 0 else { return nil }
 
-        // Find placement position in the atlas (shelf packing)
+        // アトラス内の配置位置を検索（シェルフパッキング）
         guard let (px, py) = findSpace(width: glyphW, height: glyphH) else { return nil }
 
-        // Render the glyph into a bitmap
+        // グリフをビットマップにレンダリング
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         guard let ctx = CGContext(
             data: nil, width: glyphW, height: glyphH,
@@ -167,7 +167,7 @@ final class GlyphAtlas {
         ctx.textPosition = CGPoint(x: 1, y: CGFloat(descent) + 1)
         CTLineDraw(line, ctx)
 
-        // Write to the atlas texture
+        // アトラステクスチャに書き込み
         guard let texture, let data = ctx.data else { return nil }
         let region = MTLRegion(
             origin: MTLOrigin(x: px, y: py, z: 0),
@@ -191,7 +191,7 @@ final class GlyphAtlas {
     }
 
     private func findSpace(width: Int, height: Int) -> (Int, Int)? {
-        // Check if it fits in an existing shelf
+        // 既存のシェルフに収まるか確認
         for i in 0..<shelves.count {
             if shelves[i].height >= height && shelves[i].nextX + width <= atlasWidth {
                 let pos = (shelves[i].nextX, shelves[i].y)
@@ -200,7 +200,7 @@ final class GlyphAtlas {
             }
         }
 
-        // Create a new shelf
+        // 新しいシェルフを作成
         if currentShelfY + height <= atlasHeight {
             let shelf = Shelf(y: currentShelfY, height: height, nextX: width)
             shelves.append(shelf)
@@ -209,15 +209,15 @@ final class GlyphAtlas {
             return pos
         }
 
-        // Expand the atlas
+        // アトラスを拡張
         if atlasHeight < Self.maxSize {
             let newHeight = min(atlasHeight * 2, Self.maxSize)
             if let newTex = createTexture(width: atlasWidth, height: newHeight) {
-                // Copy existing data
+                // 既存データをコピー
                 copyTexture(from: texture!, to: newTex, width: atlasWidth, height: atlasHeight)
                 texture = newTex
 
-                // Recalculate UV coordinates (scale before updating atlasHeight)
+                // UV座標を再計算（atlasHeight更新前にスケール）
                 let scale = Float(atlasHeight) / Float(newHeight)
                 var updated: [Character: GlyphInfo] = [:]
                 for (char, old) in glyphMap {
@@ -232,12 +232,12 @@ final class GlyphAtlas {
                 glyphMap = updated
                 atlasHeight = newHeight
 
-                // Retry with the new shelf
+                // 新しいシェルフでリトライ
                 return findSpace(width: width, height: height)
             }
         }
 
-        return nil  // Atlas is full
+        return nil  // アトラスが満杯
     }
 
     private func createTexture(width: Int, height: Int) -> MTLTexture? {
@@ -252,7 +252,7 @@ final class GlyphAtlas {
     }
 
     private func copyTexture(from src: MTLTexture, to dst: MTLTexture, width: Int, height: Int) {
-        // CPU-side copy (managed storage)
+        // CPU 側コピー（マネージドストレージ）
         let bytesPerRow = width * 4
         let totalBytes = bytesPerRow * height
         var buffer = [UInt8](repeating: 0, count: totalBytes)
@@ -266,14 +266,14 @@ final class GlyphAtlas {
 
 // MARK: - TextRenderer
 
-/// Render text to MTLTexture using Core Text, with an LRU cache.
+/// Core Text を使用してテキストを MTLTexture にレンダリングし、LRU キャッシュを備えます。
 @MainActor
 final class TextRenderer {
     private let device: MTLDevice
     private var cache: [TextCacheKey: CachedText] = [:]
     var maxCacheSize: Int = 256
 
-    /// Glyph atlas cache, keyed by font and size.
+    /// フォントとサイズをキーとするグリフアトラスキャッシュ。
     private var atlases: [GlyphAtlas.Key: GlyphAtlas] = [:]
 
     struct TextCacheKey: Hashable {
@@ -284,7 +284,7 @@ final class TextRenderer {
         let maxHeight: Float
         let leading: Float
 
-        /// Initialize a cache key for single-line text.
+        /// 単一行テキスト用のキャッシュキーを初期化します。
         init(string: String, fontSize: Float, fontFamily: String) {
             self.string = string
             self.fontSize = fontSize
@@ -294,7 +294,7 @@ final class TextRenderer {
             self.leading = 0
         }
 
-        /// Initialize a cache key for multi-line text.
+        /// 複数行テキスト用のキャッシュキーを初期化します。
         init(string: String, fontSize: Float, fontFamily: String,
              maxWidth: Float, maxHeight: Float, leading: Float) {
             self.string = string
@@ -317,14 +317,14 @@ final class TextRenderer {
         self.device = device
     }
 
-    /// Retrieve a text texture from cache or render a new one.
+    /// キャッシュからテキストテクスチャを取得するか、新しいものをレンダリングします。
     ///
     /// - Parameters:
-    ///   - string: The text to render.
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    ///   - frameCount: The current frame number for LRU tracking.
-    /// - Returns: The cached text entry, or nil if rendering failed.
+    ///   - string: レンダリングするテキスト。
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    ///   - frameCount: LRU トラッキング用の現在のフレーム番号。
+    /// - Returns: キャッシュされたテキストエントリ。レンダリングに失敗した場合は nil。
     func textTexture(
         string: String,
         fontSize: Float,
@@ -352,13 +352,13 @@ final class TextRenderer {
         return result
     }
 
-    /// Calculate the width of a text string without rendering it.
+    /// テキスト文字列の幅をレンダリングせずに計算します。
     ///
     /// - Parameters:
-    ///   - string: The text to measure.
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    /// - Returns: The width of the text in pixels.
+    ///   - string: 計測するテキスト。
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    /// - Returns: ピクセル単位のテキスト幅。
     func textWidth(string: String, fontSize: Float, fontFamily: String) -> Float {
         let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
@@ -368,39 +368,39 @@ final class TextRenderer {
         return Float(ceil(bounds.width))
     }
 
-    /// Retrieve the font ascent (the height above the baseline).
+    /// フォントのアセント（ベースラインより上の高さ）を取得します。
     ///
     /// - Parameters:
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    /// - Returns: The ascent value in pixels.
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    /// - Returns: ピクセル単位のアセント値。
     func textAscent(fontSize: Float, fontFamily: String) -> Float {
         let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
         return Float(CTFontGetAscent(font))
     }
 
-    /// Retrieve the font descent (the height below the baseline, as a positive value).
+    /// フォントのディセント（ベースラインより下の高さ、正の値）を取得します。
     ///
     /// - Parameters:
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    /// - Returns: The descent value in pixels.
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    /// - Returns: ピクセル単位のディセント値。
     func textDescent(fontSize: Float, fontFamily: String) -> Float {
         let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
         return Float(CTFontGetDescent(font))
     }
 
-    /// Retrieve a multi-line text texture from cache or render a new one using CTFramesetter for word wrapping.
+    /// キャッシュから複数行テキストテクスチャを取得するか、CTFramesetter を使用してワードラップ付きで新しくレンダリングします。
     ///
     /// - Parameters:
-    ///   - string: The text to render.
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    ///   - maxWidth: The maximum width for line wrapping.
-    ///   - maxHeight: The maximum height, or 0 for unlimited.
-    ///   - leading: The line spacing multiplier.
-    ///   - frameCount: The current frame number for LRU tracking.
-    /// - Returns: The cached text entry, or nil if rendering failed.
+    ///   - string: レンダリングするテキスト。
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    ///   - maxWidth: 行折り返しの最大幅。
+    ///   - maxHeight: 最大高さ。0で無制限。
+    ///   - leading: 行間隔の倍率。
+    ///   - frameCount: LRU トラッキング用の現在のフレーム番号。
+    /// - Returns: キャッシュされたテキストエントリ。レンダリングに失敗した場合は nil。
     func textTextureMultiline(
         string: String,
         fontSize: Float,
@@ -438,12 +438,12 @@ final class TextRenderer {
 
     // MARK: - Atlas API
 
-    /// Retrieve the glyph atlas for the given font, creating one if necessary.
+    /// 指定されたフォントのグリフアトラスを取得し、必要に応じて作成します。
     ///
     /// - Parameters:
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    /// - Returns: The glyph atlas for the specified font and size.
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    /// - Returns: 指定されたフォントとサイズのグリフアトラス。
     func getAtlas(fontSize: Float, fontFamily: String) -> GlyphAtlas {
         let key = GlyphAtlas.Key(fontFamily: fontFamily, fontSize: fontSize)
         if let atlas = atlases[key] { return atlas }
@@ -452,13 +452,13 @@ final class TextRenderer {
         return atlas
     }
 
-    /// Retrieve positioned glyphs from the atlas for the given string.
+    /// 指定された文字列のアトラスから配置済みグリフを取得します。
     ///
     /// - Parameters:
-    ///   - string: The text to lay out.
-    ///   - fontSize: The font size in points.
-    ///   - fontFamily: The font family name.
-    /// - Returns: A tuple of the atlas texture and positioned glyphs, or nil if any glyph could not fit in the atlas.
+    ///   - string: レイアウトするテキスト。
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名。
+    /// - Returns: アトラステクスチャと配置済みグリフのタプル。いずれかのグリフがアトラスに収まらない場合は nil。
     func textGlyphs(
         string: String,
         fontSize: Float,
@@ -486,7 +486,7 @@ final class TextRenderer {
         let texHeight = Int(ceil(bounds.height)) + 4
         guard texWidth > 0, texHeight > 0 else { return nil }
 
-        // CGBitmapContext (RGBA premultiplied)
+        // CGBitmapContext（RGBA プリマルチプライド）
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         guard let ctx = CGContext(
             data: nil,
@@ -498,14 +498,14 @@ final class TextRenderer {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
-        // Draw white text on a transparent background
+        // 透明な背景に白いテキストを描画
         ctx.setTextDrawingMode(.fill)
         let originX = -bounds.origin.x + 2
         let originY = -bounds.origin.y + 2
         ctx.textPosition = CGPoint(x: originX, y: originY)
         CTLineDraw(line, ctx)
 
-        // Upload to MTLTexture
+        // MTLTexture にアップロード
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm,
             width: texWidth,
@@ -534,7 +534,7 @@ final class TextRenderer {
     ) -> CachedText? {
         let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
 
-        // Paragraph style (line spacing)
+        // 段落スタイル（行間隔）
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = CGFloat(fontSize) * CGFloat(leading - 1.0)
 
@@ -545,7 +545,7 @@ final class TextRenderer {
         ]
         let attrString = NSAttributedString(string: string, attributes: attributes)
 
-        // Lay out with CTFramesetter
+        // CTFramesetter でレイアウト
         let framesetter = CTFramesetterCreateWithAttributedString(attrString)
 
         let constraintSize = CGSize(
@@ -560,7 +560,7 @@ final class TextRenderer {
         let texHeight = Int(ceil(suggestedSize.height)) + 4
         guard texWidth > 0, texHeight > 0 else { return nil }
 
-        // CGBitmapContext (RGBA premultiplied)
+        // CGBitmapContext（RGBA プリマルチプライド）
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         guard let ctx = CGContext(
             data: nil,
@@ -572,12 +572,12 @@ final class TextRenderer {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
-        // CoreText uses bottom-left origin. CGBitmapContext also uses bottom-left origin.
-        // However, textures use top-left origin, so flip vertically before drawing.
+        // CoreText はボトムレフト原点を使用。CGBitmapContext もボトムレフト原点。
+        // ただしテクスチャはトップレフト原点なので、描画前に垂直反転。
         ctx.translateBy(x: 0, y: CGFloat(texHeight))
         ctx.scaleBy(x: 1.0, y: -1.0)
 
-        // Create and draw the text frame
+        // テキストフレームを作成して描画
         let framePath = CGPath(
             rect: CGRect(x: 2, y: 2, width: texWidth - 4, height: texHeight - 4),
             transform: nil
@@ -587,7 +587,7 @@ final class TextRenderer {
         )
         CTFrameDraw(frame, ctx)
 
-        // Upload to MTLTexture
+        // MTLTexture にアップロード
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm,
             width: texWidth,

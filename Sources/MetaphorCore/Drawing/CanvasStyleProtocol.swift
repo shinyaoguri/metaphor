@@ -1,9 +1,9 @@
 import simd
 
-/// Protocol for shared style management between Canvas2D and Canvas3D.
+/// Canvas2D と Canvas3D の間で共有されるスタイル管理プロトコル。
 ///
-/// Provides default implementations for fill, stroke, colorMode, and style sync
-/// methods, eliminating ~70% of the duplicated code between the two canvas types.
+/// fill、stroke、colorMode、スタイル同期メソッドのデフォルト実装を提供し、
+/// 2つのキャンバスタイプ間の重複コードを約70%削減します。
 @MainActor
 public protocol CanvasStyle: AnyObject {
     var fillColor: SIMD4<Float> { get set }

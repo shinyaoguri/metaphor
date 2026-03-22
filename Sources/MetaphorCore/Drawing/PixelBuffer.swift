@@ -1,13 +1,13 @@
 import Metal
 
-/// A high-performance pixel buffer for direct CPU pixel manipulation.
+/// CPU からの直接ピクセル操作用の高性能ピクセルバッファ。
 ///
-/// Stores pixel data as packed UInt32 in BGRA8Unorm format (Metal native).
-/// On Apple Silicon, uses a buffer-backed shared texture for true zero-copy
-/// access — CPU writes are immediately visible to the GPU via unified memory.
+/// ピクセルデータを BGRA8Unorm フォーマット（Metal ネイティブ）のパックされた UInt32 として格納します。
+/// Apple Silicon では、バッファバックドの共有テクスチャを使用して真のゼロコピー
+/// アクセスを実現 — CPU 書き込みは統合メモリを介して即座に GPU から参照可能です。
 ///
-/// The UInt32 packing `(A << 24) | (R << 16) | (G << 8) | B` matches
-/// both Metal's BGRA8Unorm layout and Processing's ARGB int format.
+/// UInt32 パッキング `(A << 24) | (R << 16) | (G << 8) | B` は
+/// Metal の BGRA8Unorm レイアウトと Processing の ARGB int フォーマットの両方に一致します。
 ///
 /// Usage:
 /// ```swift
@@ -18,39 +18,39 @@ import Metal
 @MainActor
 public final class PixelBuffer {
 
-    /// The width of the pixel buffer in pixels.
+    /// ピクセルバッファの幅（ピクセル単位）。
     public let width: Int
 
-    /// The height of the pixel buffer in pixels.
+    /// ピクセルバッファの高さ（ピクセル単位）。
     public let height: Int
 
-    /// The shared Metal texture backed by unified memory.
+    /// 統合メモリでバックされた共有 Metal テクスチャ。
     public let texture: MTLTexture
 
-    /// Direct access to pixel data as packed UInt32 values.
+    /// パックされた UInt32 値としてのピクセルデータへの直接アクセス。
     ///
-    /// Each element is a BGRA-packed color: `(A << 24) | (R << 16) | (G << 8) | B`.
-    /// Index with `pixels[y * width + x]`.
+    /// 各要素は BGRA パックされた色: `(A << 24) | (R << 16) | (G << 8) | B`。
+    /// `pixels[y * width + x]` でインデックスします。
     public let pixels: UnsafeMutableBufferPointer<UInt32>
 
-    /// The backing MTLBuffer for the zero-copy path (nil when using fallback).
+    /// ゼロコピーパス用のバッキング MTLBuffer（フォールバック使用時は nil）。
     private let backingBuffer: MTLBuffer?
 
-    /// Raw memory for the fallback path (nil when using zero-copy buffer-backed texture).
+    /// フォールバックパス用の生メモリ（ゼロコピーバッファバックドテクスチャ使用時は nil）。
     nonisolated(unsafe) private let rawMemory: UnsafeMutablePointer<UInt32>?
     private let bytesPerRow: Int
 
-    /// Create a pixel buffer for the given dimensions.
+    /// 指定された寸法でピクセルバッファを作成します。
     ///
-    /// When the width satisfies the device's linear texture alignment (width % 4 == 0
-    /// on Apple Silicon), a buffer-backed shared texture is created for true zero-copy
-    /// access. Otherwise, falls back to raw memory with a shared texture and
-    /// `texture.replace()` upload.
+    /// 幅がデバイスのリニアテクスチャアライメントを満たす場合（Apple Silicon では width % 4 == 0）、
+    /// 真のゼロコピーアクセス用にバッファバックドの共有テクスチャが作成されます。
+    /// それ以外の場合は、共有テクスチャと `texture.replace()` アップロードによる
+    /// 生メモリにフォールバックします。
     ///
     /// - Parameters:
-    ///   - width: The width in pixels.
-    ///   - height: The height in pixels.
-    ///   - device: The Metal device.
+    ///   - width: ピクセル単位の幅。
+    ///   - height: ピクセル単位の高さ。
+    ///   - device: Metal デバイス。
     init?(width: Int, height: Int, device: MTLDevice) {
         guard width > 0, height > 0 else { return nil }
 
@@ -60,8 +60,8 @@ public final class PixelBuffer {
         let isAligned = rawBytesPerRow % alignment == 0
 
         if isAligned {
-            // Zero-copy path: buffer-backed shared texture.
-            // CPU writes directly to unified memory; GPU reads the same bytes.
+            // ゼロコピーパス: バッファバックド共有テクスチャ。
+            // CPU が統合メモリに直接書き込み、GPU が同じバイトを読み取る。
             let totalBytes = rawBytesPerRow * height
             guard let buffer = device.makeBuffer(length: totalBytes, options: .storageModeShared) else {
                 return nil
@@ -96,8 +96,8 @@ public final class PixelBuffer {
                 count: count
             )
         } else {
-            // Fallback path: raw memory + shared texture + texture.replace().
-            // Used when width doesn't satisfy buffer-backed texture alignment.
+            // フォールバックパス: 生メモリ + 共有テクスチャ + texture.replace()。
+            // 幅がバッファバックドテクスチャのアライメントを満たさない場合に使用。
             let mem = UnsafeMutablePointer<UInt32>.allocate(capacity: count)
             mem.initialize(repeating: 0, count: count)
 
@@ -125,11 +125,11 @@ public final class PixelBuffer {
         }
     }
 
-    /// Upload the pixel data to the GPU texture.
+    /// ピクセルデータを GPU テクスチャにアップロードします。
     ///
-    /// When using the buffer-backed zero-copy path, this is a no-op since
-    /// CPU writes are immediately visible to the GPU via unified memory.
-    /// Only performs work in the fallback path.
+    /// バッファバックドのゼロコピーパスを使用している場合、CPU 書き込みは
+    /// 統合メモリを介して即座に GPU から参照可能なため、何もしません。
+    /// フォールバックパスでのみ処理を実行します。
     func upload() {
         guard rawMemory != nil else { return }
         let region = MTLRegion(
@@ -151,23 +151,23 @@ public final class PixelBuffer {
 
 // MARK: - Color Packing
 
-/// Pack a grayscale value into a BGRA UInt32.
+/// グレースケール値を BGRA UInt32 にパックします。
 ///
-/// - Parameter gray: Brightness value (0–255).
-/// - Returns: A packed BGRA pixel with R=G=B=gray and A=255.
+/// - Parameter gray: 輝度値（0–255）。
+/// - Returns: R=G=B=gray、A=255 のパックされた BGRA ピクセル。
 @inlinable
 public func color(_ gray: Float) -> UInt32 {
     let v = UInt32(max(0, min(255, gray)))
     return 0xFF00_0000 | (v << 16) | (v << 8) | v
 }
 
-/// Pack RGB values into a BGRA UInt32.
+/// RGB 値を BGRA UInt32 にパックします。
 ///
 /// - Parameters:
-///   - r: Red component (0–255).
-///   - g: Green component (0–255).
-///   - b: Blue component (0–255).
-/// - Returns: A packed BGRA pixel with A=255.
+///   - r: 赤成分（0–255）。
+///   - g: 緑成分（0–255）。
+///   - b: 青成分（0–255）。
+/// - Returns: A=255 のパックされた BGRA ピクセル。
 @inlinable
 public func color(_ r: Float, _ g: Float, _ b: Float) -> UInt32 {
     let ri = UInt32(max(0, min(255, r)))
@@ -176,14 +176,14 @@ public func color(_ r: Float, _ g: Float, _ b: Float) -> UInt32 {
     return 0xFF00_0000 | (ri << 16) | (gi << 8) | bi
 }
 
-/// Pack RGBA values into a BGRA UInt32.
+/// RGBA 値を BGRA UInt32 にパックします。
 ///
 /// - Parameters:
-///   - r: Red component (0–255).
-///   - g: Green component (0–255).
-///   - b: Blue component (0–255).
-///   - a: Alpha component (0–255).
-/// - Returns: A packed BGRA pixel.
+///   - r: 赤成分（0–255）。
+///   - g: 緑成分（0–255）。
+///   - b: 青成分（0–255）。
+///   - a: アルファ成分（0–255）。
+/// - Returns: パックされた BGRA ピクセル。
 @inlinable
 public func color(_ r: Float, _ g: Float, _ b: Float, _ a: Float) -> UInt32 {
     let ri = UInt32(max(0, min(255, r)))

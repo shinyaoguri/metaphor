@@ -2,9 +2,9 @@
 import CoreImage
 import MetaphorCore
 
-/// Wrap CoreImage filters for direct application to Metal textures.
+/// CoreImage フィルタを Metal テクスチャに直接適用するラッパー。
 ///
-/// Share a CIContext with the MTLCommandQueue for zero-copy Metal to CoreImage interop.
+/// CIContext を MTLCommandQueue と共有し、ゼロコピーの Metal ⇔ CoreImage 相互運用を実現します。
 @MainActor
 public final class CIFilterWrapper {
     private let device: MTLDevice
@@ -27,15 +27,15 @@ public final class CIFilterWrapper {
         )
     }
 
-    // MARK: - Apply to MTLTexture (PostProcess Pipeline Use)
+    // MARK: - MTLTexture に適用（PostProcess パイプライン用）
 
-    /// Encode a CIFilter operation from source to destination within a command buffer.
+    /// CIFilter 操作をコマンドバッファ内でソースからデスティネーションにエンコードします。
     /// - Parameters:
-    ///   - filterName: The CIFilter name string.
-    ///   - parameters: The filter parameter dictionary.
-    ///   - source: The source texture.
-    ///   - destination: The destination texture.
-    ///   - commandBuffer: The command buffer to encode into.
+    ///   - filterName: CIFilter 名文字列。
+    ///   - parameters: フィルタパラメータ辞書。
+    ///   - source: ソーステクスチャ。
+    ///   - destination: デスティネーションテクスチャ。
+    ///   - commandBuffer: エンコード先のコマンドバッファ。
     public func apply(
         filterName: String,
         parameters: [String: Any],
@@ -45,7 +45,7 @@ public final class CIFilterWrapper {
     ) {
         guard let ciInput = CIImage(mtlTexture: source, options: [.colorSpace: colorSpace]) else { return }
 
-        // CoreImage flips the Y axis
+        // CoreImage は Y 軸を反転する
         let flipped = ciInput.transformed(
             by: CGAffineTransform(scaleX: 1, y: -1)
                 .translatedBy(x: 0, y: -CGFloat(source.height))
@@ -70,13 +70,13 @@ public final class CIFilterWrapper {
         )
     }
 
-    // MARK: - Apply to MImage (Standalone Use)
+    // MARK: - MImage に適用（スタンドアロン使用）
 
-    /// Apply a CIFilter to an MImage in place.
+    /// CIFilter を MImage にインプレースで適用します。
     /// - Parameters:
-    ///   - filterName: The CIFilter name string.
-    ///   - parameters: The filter parameter dictionary.
-    ///   - image: The image to apply the filter to.
+    ///   - filterName: CIFilter 名文字列。
+    ///   - parameters: フィルタパラメータ辞書。
+    ///   - image: フィルタを適用する画像。
     public func apply(
         filterName: String,
         parameters: [String: Any],
@@ -98,15 +98,15 @@ public final class CIFilterWrapper {
         texturePool.removeValue(forKey: "\(w)_\(h)_ci_output")
     }
 
-    // MARK: - Generator (no input image)
+    // MARK: - ジェネレーター（入力画像不要）
 
-    /// Generate an MTLTexture using a generator filter (no input image required).
+    /// ジェネレーターフィルタ（入力画像不要）を使用して MTLTexture を生成します。
     /// - Parameters:
-    ///   - filterName: The CIFilter name string.
-    ///   - parameters: The filter parameter dictionary.
-    ///   - width: The output texture width.
-    ///   - height: The output texture height.
-    /// - Returns: The generated texture, or nil on failure.
+    ///   - filterName: CIFilter 名文字列。
+    ///   - parameters: フィルタパラメータ辞書。
+    ///   - width: 出力テクスチャの幅。
+    ///   - height: 出力テクスチャの高さ。
+    /// - Returns: 生成されたテクスチャ。失敗時は nil。
     public func generate(
         filterName: String,
         parameters: [String: Any],
@@ -135,9 +135,9 @@ public final class CIFilterWrapper {
         return outTex
     }
 
-    // MARK: - Texture Management
+    // MARK: - テクスチャ管理
 
-    /// Invalidate and release all cached textures.
+    /// キャッシュ済みテクスチャをすべて無効化・解放します。
     public func invalidateTextures() {
         texturePool.removeAll()
     }

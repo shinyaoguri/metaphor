@@ -1,58 +1,58 @@
 import Metal
 
-/// Manages offscreen render target textures for the two-pass rendering system.
+/// 2パスレンダリングシステム用のオフスクリーンレンダーターゲットテクスチャを管理します。
 ///
-/// `TextureManager` creates and holds the color, depth, and optional MSAA textures
-/// used for offscreen rendering. It follows an immutable design — resizing creates
-/// a new instance rather than mutating the existing one.
+/// `TextureManager` はオフスクリーンレンダリングに使用するカラー、デプス、
+/// およびオプションの MSAA テクスチャを作成・保持します。イミュータブル設計に従い、
+/// リサイズは既存インスタンスの変更ではなく新しいインスタンスの作成で行います。
 ///
 /// ```swift
 /// let textures = try TextureManager(device: device, width: 1920, height: 1080)
 /// ```
 public final class TextureManager {
-    /// The Metal device used to create textures.
+    /// テクスチャ作成に使用される Metal デバイス
     public let device: MTLDevice
 
-    /// The resolved color texture (render target when MSAA is disabled).
+    /// 解決済みカラーテクスチャ（MSAA 無効時のレンダーターゲット）
     public private(set) var colorTexture: MTLTexture
 
-    /// MSAA multisampled color texture (only present when MSAA is enabled).
+    /// MSAA マルチサンプルカラーテクスチャ（MSAA 有効時のみ存在）
     private var msaaColorTexture: MTLTexture?
 
-    /// MSAA multisampled depth texture (only present when MSAA is enabled).
+    /// MSAA マルチサンプルデプステクスチャ（MSAA 有効時のみ存在）
     private var msaaDepthTexture: MTLTexture?
 
-    /// The depth texture for depth testing.
+    /// デプステスト用デプステクスチャ
     public private(set) var depthTexture: MTLTexture
 
-    /// The render pass descriptor configured for the managed textures.
+    /// 管理テクスチャ用に構成されたレンダーパスデスクリプタ
     public private(set) var renderPassDescriptor: MTLRenderPassDescriptor
 
-    /// The width of the managed textures in pixels.
+    /// 管理テクスチャの幅（ピクセル）
     public let width: Int
 
-    /// The height of the managed textures in pixels.
+    /// 管理テクスチャの高さ（ピクセル）
     public let height: Int
 
-    /// The MSAA sample count (1 = disabled, 4 = 4x MSAA).
+    /// MSAA サンプル数 (1 = 無効, 4 = 4x MSAA)
     public let sampleCount: Int
 
-    /// The aspect ratio of the managed textures (width / height).
+    /// 管理テクスチャのアスペクト比 (幅 / 高さ)
     public var aspectRatio: Float {
         Float(width) / Float(height)
     }
 
-    /// Creates a new texture manager with the specified dimensions.
+    /// 指定されたサイズで新しいテクスチャマネージャーを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device to use for texture creation.
-    ///   - width: The texture width in pixels.
-    ///   - height: The texture height in pixels.
-    ///   - pixelFormat: The color texture pixel format.
-    ///   - depthFormat: The depth texture pixel format.
-    ///   - clearColor: The clear color for the render pass.
-    ///   - sampleCount: The MSAA sample count. Falls back to 1 if unsupported by the device.
-    /// - Throws: ``MetaphorError/textureCreationFailed(width:height:format:)`` if any texture cannot be created.
+    ///   - device: テクスチャ作成に使用する Metal デバイス
+    ///   - width: テクスチャの幅（ピクセル）
+    ///   - height: テクスチャの高さ（ピクセル）
+    ///   - pixelFormat: カラーテクスチャのピクセルフォーマット
+    ///   - depthFormat: デプステクスチャのピクセルフォーマット
+    ///   - clearColor: レンダーパスのクリアカラー
+    ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
     public init(
         device: MTLDevice,
         width: Int,
@@ -66,7 +66,7 @@ public final class TextureManager {
         self.width = width
         self.height = height
 
-        // Validate sample count: fall back to 1 if the device does not support it
+        // サンプル数の検証: デバイスがサポートしていない場合は 1 にフォールバック
         if sampleCount > 1 && !device.supportsTextureSampleCount(sampleCount) {
             metaphorWarning("sampleCount \(sampleCount) is not supported by this device. Falling back to 1.")
             self.sampleCount = 1
@@ -74,7 +74,7 @@ public final class TextureManager {
             self.sampleCount = sampleCount
         }
 
-        // Color texture (resolve target / render target when MSAA is disabled)
+        // カラーテクスチャ（リゾルブターゲット / MSAA 無効時のレンダーターゲット）
         let colorDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: pixelFormat,
             width: width,
@@ -88,7 +88,7 @@ public final class TextureManager {
         }
         self.colorTexture = colorTex
 
-        // Depth texture
+        // デプステクスチャ
         let depthDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: depthFormat,
             width: width,
@@ -102,7 +102,7 @@ public final class TextureManager {
         }
         self.depthTexture = depthTex
 
-        // MSAA textures
+        // MSAA テクスチャ
         if self.sampleCount > 1 {
             let msaaColorDesc = MTLTextureDescriptor()
             msaaColorDesc.textureType = .type2DMultisample
@@ -131,7 +131,7 @@ public final class TextureManager {
             msaaDepthTexture = msaaDepthTex
         }
 
-        // Render pass descriptor
+        // レンダーパスデスクリプタ
         let rpd = MTLRenderPassDescriptor()
         rpd.colorAttachments[0].clearColor = clearColor
         rpd.colorAttachments[0].loadAction = .clear
@@ -140,13 +140,13 @@ public final class TextureManager {
         rpd.depthAttachment.clearDepth = 1.0
 
         if self.sampleCount > 1 {
-            // MSAA: render to multisample texture, resolve to colorTexture
+            // MSAA: マルチサンプルテクスチャにレンダリングし、colorTexture にリゾルブ
             rpd.colorAttachments[0].texture = msaaColorTexture
             rpd.colorAttachments[0].resolveTexture = colorTexture
             rpd.colorAttachments[0].storeAction = .storeAndMultisampleResolve
             rpd.depthAttachment.texture = msaaDepthTexture
         } else {
-            // No MSAA: render directly to colorTexture
+            // MSAA なし: colorTexture に直接レンダリング
             rpd.colorAttachments[0].texture = colorTexture
             rpd.colorAttachments[0].storeAction = .store
             rpd.depthAttachment.texture = depthTexture
@@ -154,76 +154,75 @@ public final class TextureManager {
         self.renderPassDescriptor = rpd
     }
 
-    /// Creates a Full HD (1920x1080) texture manager.
+    /// Full HD (1920x1080) のテクスチャマネージャーを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device.
-    ///   - clearColor: The clear color.
-    ///   - sampleCount: The MSAA sample count.
-    /// - Returns: A new `TextureManager` configured for 1920x1080.
+    ///   - device: Metal デバイス
+    ///   - clearColor: クリアカラー
+    ///   - sampleCount: MSAA サンプル数
+    /// - Returns: 1920x1080 で構成された新しい `TextureManager`
     public static func fullHD(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
         try TextureManager(device: device, width: 1920, height: 1080, clearColor: clearColor, sampleCount: sampleCount)
     }
 
-    /// Creates a 4K UHD (3840x2160) texture manager.
+    /// 4K UHD (3840x2160) のテクスチャマネージャーを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device.
-    ///   - clearColor: The clear color.
-    ///   - sampleCount: The MSAA sample count.
-    /// - Returns: A new `TextureManager` configured for 3840x2160.
+    ///   - device: Metal デバイス
+    ///   - clearColor: クリアカラー
+    ///   - sampleCount: MSAA サンプル数
+    /// - Returns: 3840x2160 で構成された新しい `TextureManager`
     public static func uhd4K(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
         try TextureManager(device: device, width: 3840, height: 2160, clearColor: clearColor, sampleCount: sampleCount)
     }
 
-    /// Creates a square texture manager with the specified size.
+    /// 指定サイズの正方形テクスチャマネージャーを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device.
-    ///   - size: The width and height in pixels.
-    ///   - clearColor: The clear color.
-    ///   - sampleCount: The MSAA sample count.
-    /// - Returns: A new `TextureManager` with equal width and height.
+    ///   - device: Metal デバイス
+    ///   - size: 幅と高さ（ピクセル）
+    ///   - clearColor: クリアカラー
+    ///   - sampleCount: MSAA サンプル数
+    /// - Returns: 幅と高さが等しい新しい `TextureManager`
     public static func square(device: MTLDevice, size: Int, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
         try TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
     }
 
-    /// Updates the clear color of the render pass descriptor.
+    /// レンダーパスデスクリプタのクリアカラーを更新します。
     ///
-    /// - Parameter color: The new clear color.
+    /// - Parameter color: 新しいクリアカラー
     public func setClearColor(_ color: MTLClearColor) {
         renderPassDescriptor.colorAttachments[0].clearColor = color
     }
 
-    /// Sets whether the next render pass should clear or preserve the previous frame.
+    /// 次のレンダーパスで前フレームをクリアするか保持するかを設定します。
     ///
-    /// - Parameter shouldClear: If true, uses `.clear` load action; if false, uses `.load`.
+    /// - Parameter shouldClear: true の場合は `.clear` ロードアクション、false の場合は `.load`
     public func setShouldClear(_ shouldClear: Bool) {
         renderPassDescriptor.colorAttachments[0].loadAction = shouldClear ? .clear : .load
-        // Depth should always clear for correct z-testing each frame
+        // デプスは各フレームで正しい Z テスト用に常にクリア
 
-        // Always use .storeAndMultisampleResolve with MSAA to preserve the
-        // multisample texture content. This ensures .load on a subsequent frame
-        // reads valid data even when the transition from clearing to preserving
-        // happens unexpectedly (the store action is committed before we know
-        // whether the next frame will call background()).
-        // The extra bandwidth cost on Apple Silicon is negligible.
+        // MSAA ではマルチサンプルテクスチャの内容を保持するため常に
+        // .storeAndMultisampleResolve を使用します。これにより、クリアから保持への
+        // 遷移が予期せず発生しても、.load が有効なデータを読み取れることを保証します
+        // （ストアアクションは次のフレームが background() を呼ぶかどうか判明する前にコミットされます）。
+        // Apple Silicon での追加帯域幅コストは無視できます。
         if sampleCount > 1 {
             renderPassDescriptor.colorAttachments[0].storeAction = .storeAndMultisampleResolve
         }
     }
 
-    /// Creates a new texture manager with different dimensions, preserving the sample count.
+    /// サンプル数を保持したまま異なるサイズの新しいテクスチャマネージャーを作成します。
     ///
-    /// Since `TextureManager` is immutable, resizing returns a new instance.
+    /// `TextureManager` はイミュータブルなため、リサイズは新しいインスタンスを返します。
     ///
     /// - Parameters:
-    ///   - width: The new width in pixels.
-    ///   - height: The new height in pixels.
-    ///   - pixelFormat: The color texture pixel format.
-    ///   - depthFormat: The depth texture pixel format.
-    ///   - clearColor: The clear color.
-    /// - Returns: A new `TextureManager` with the specified dimensions.
+    ///   - width: 新しい幅（ピクセル）
+    ///   - height: 新しい高さ（ピクセル）
+    ///   - pixelFormat: カラーテクスチャのピクセルフォーマット
+    ///   - depthFormat: デプステクスチャのピクセルフォーマット
+    ///   - clearColor: クリアカラー
+    /// - Returns: 指定されたサイズの新しい `TextureManager`
     public func resize(
         width: Int,
         height: Int,
@@ -243,13 +242,13 @@ public final class TextureManager {
     }
 }
 
-// MARK: - MTLClearColor Extension
+// MARK: - MTLClearColor 拡張
 
 extension MTLClearColor {
-    /// Opaque black clear color.
+    /// 不透明黒のクリアカラー
     public static let black = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-    /// Opaque white clear color.
+    /// 不透明白のクリアカラー
     public static let white = MTLClearColor(red: 1, green: 1, blue: 1, alpha: 1)
-    /// Transparent clear color.
+    /// 透明のクリアカラー
     public static let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
 }

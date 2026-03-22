@@ -1,33 +1,32 @@
 # ``MetaphorRenderGraph``
 
-Composable render pass graph for multi-pass rendering pipelines.
+マルチパスレンダリングパイプラインのための合成可能なレンダーパスグラフ。
 
 ## Overview
 
-MetaphorRenderGraph provides a directed acyclic graph (DAG) of render passes
-for building complex multi-pass rendering pipelines. Create source passes
-that render to offscreen textures, chain post-processing effects, and merge
-multiple passes with blend operations.
+MetaphorRenderGraph は複雑なマルチパスレンダリングパイプラインを構築するための
+有向非巡回グラフ（DAG）を提供します。
+オフスクリーンテクスチャにレンダリングするソースパスを作成し、
+ポストプロセスエフェクトをチェーンし、複数のパスをブレンド操作でマージできます。
 
-Use ``SourcePass`` to create offscreen render targets with draw callbacks,
-``EffectPass`` to apply post-processing chains, and ``MergePass`` to blend
-two pass outputs together. Connect them into a ``RenderGraph`` for automatic
-execution.
+``SourcePass`` でオフスクリーンレンダーターゲットを描画コールバック付きで作成し、
+``EffectPass`` でポストプロセスチェーンを適用し、``MergePass`` で
+2つのパス出力をブレンドします。これらを ``RenderGraph`` に接続して自動実行します。
 
-This module depends on MetaphorCore.
-Import `MetaphorRenderGraph` directly or use the umbrella module (`import metaphor`).
+このモジュールは MetaphorCore に依存します。
+`MetaphorRenderGraph` を直接インポートするか、アンブレラモジュール（`import metaphor`）を使用してください。
 
-### Quick Start
+### クイックスタート
 
 ```swift
 let passA = try SourcePass(label: "scene", device: device, width: 1280, height: 720)
 passA.onDraw = { encoder, time in
-    // Draw scene A
+    // シーン A を描画
 }
 
 let passB = try SourcePass(label: "overlay", device: device, width: 1280, height: 720)
 passB.onDraw = { encoder, time in
-    // Draw scene B
+    // シーン B を描画
 }
 
 let merged = try MergePass(passA, passB, blend: .add, device: device, shaderLibrary: shaders)
@@ -36,11 +35,11 @@ let graph = RenderGraph(root: merged)
 
 ## Topics
 
-### Graph
+### グラフ
 
 - ``RenderGraph``
 
-### Pass Nodes
+### パスノード
 
 - ``RenderPassNode``
 - ``SourcePass``

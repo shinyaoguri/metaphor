@@ -3,31 +3,31 @@
 // MARK: - Plugin Management
 
 extension Sketch {
-    /// Register a plugin with this sketch.
+    /// このスケッチにプラグインを登録します。
     ///
-    /// The plugin receives lifecycle callbacks (``MetaphorPlugin/pre(commandBuffer:time:)``,
-    /// ``MetaphorPlugin/post(texture:commandBuffer:)``), input events
-    /// (``MetaphorPlugin/mouseEvent(x:y:button:type:)``), and more.
+    /// プラグインはライフサイクルコールバック（``MetaphorPlugin/pre(commandBuffer:time:)``、
+    /// ``MetaphorPlugin/post(texture:commandBuffer:)``）、入力イベント
+    /// （``MetaphorPlugin/mouseEvent(x:y:button:type:)``）などを受け取ります。
     ///
     /// ```swift
     /// func setup() {
     ///     registerPlugin(MyPlugin())
     /// }
     /// ```
-    /// - Parameter plugin: The plugin to register.
+    /// - Parameter plugin: 登録するプラグイン。
     public func registerPlugin(_ plugin: MetaphorPlugin) {
         context.renderer.addPlugin(plugin, sketch: self)
     }
 
-    /// Remove a registered plugin by its identifier.
-    /// - Parameter id: The ``MetaphorPlugin/pluginID`` of the plugin to remove.
+    /// 識別子を指定して登録済みプラグインを削除します。
+    /// - Parameter id: 削除するプラグインの ``MetaphorPlugin/pluginID``。
     public func removePlugin(id: String) {
         context.renderer.removePlugin(id: id)
     }
 
-    /// Look up a registered plugin by its identifier.
-    /// - Parameter id: The ``MetaphorPlugin/pluginID`` to search for.
-    /// - Returns: The matching plugin, or `nil` if not found.
+    /// 識別子を指定して登録済みプラグインを検索します。
+    /// - Parameter id: 検索する ``MetaphorPlugin/pluginID``。
+    /// - Returns: 一致するプラグイン。見つからない場合は `nil`。
     public func plugin(id: String) -> MetaphorPlugin? {
         context.renderer.plugin(id: id)
     }
@@ -37,40 +37,40 @@ extension Sketch {
 
 extension Sketch {
 
-    /// Create a GPU compute kernel from MSL source code.
+    /// MSL ソースコードから GPU コンピュートカーネルを作成します。
     ///
     /// - Parameters:
-    ///   - source: The Metal Shading Language source code.
-    ///   - function: The name of the compute function.
-    /// - Returns: A new ``ComputeKernel`` instance.
+    ///   - source: Metal Shading Language のソースコード。
+    ///   - function: コンピュート関数の名前。
+    /// - Returns: 新しい ``ComputeKernel`` インスタンス。
     public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
         try context.createComputeKernel(source: source, function: function)
     }
 
-    /// Create a GPU buffer with the specified element count and type.
+    /// 指定した要素数と型の GPU バッファを作成します。
     ///
     /// - Parameters:
-    ///   - count: The number of elements.
-    ///   - type: The element type.
-    /// - Returns: A new ``GPUBuffer``, or `nil` if creation fails.
+    ///   - count: 要素数。
+    ///   - type: 要素の型。
+    /// - Returns: 新しい ``GPUBuffer``。作成に失敗した場合は `nil`。
     public func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>? {
         context.createBuffer(count: count, type: type)
     }
 
-    /// Create a GPU buffer initialized with the given data.
+    /// 指定したデータで初期化された GPU バッファを作成します。
     ///
-    /// - Parameter data: The initial data array.
-    /// - Returns: A new ``GPUBuffer``, or `nil` if creation fails.
+    /// - Parameter data: 初期データ配列。
+    /// - Returns: 新しい ``GPUBuffer``。作成に失敗した場合は `nil`。
     public func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>? {
         context.createBuffer(data)
     }
 
-    /// Dispatch a 1D compute kernel.
+    /// 1D コンピュートカーネルをディスパッチします。
     ///
     /// - Parameters:
-    ///   - kernel: The compute kernel to dispatch.
-    ///   - threads: The total number of threads.
-    ///   - configure: A closure to configure the compute command encoder before dispatch.
+    ///   - kernel: ディスパッチするコンピュートカーネル。
+    ///   - threads: 総スレッド数。
+    ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -79,13 +79,13 @@ extension Sketch {
         context.dispatch(kernel, threads: threads, configure)
     }
 
-    /// Dispatch a 2D compute kernel.
+    /// 2D コンピュートカーネルをディスパッチします。
     ///
     /// - Parameters:
-    ///   - kernel: The compute kernel to dispatch.
-    ///   - width: The grid width in threads.
-    ///   - height: The grid height in threads.
-    ///   - configure: A closure to configure the compute command encoder before dispatch.
+    ///   - kernel: ディスパッチするコンピュートカーネル。
+    ///   - width: スレッド単位のグリッド幅。
+    ///   - height: スレッド単位のグリッド高さ。
+    ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -95,7 +95,7 @@ extension Sketch {
         context.dispatch(kernel, width: width, height: height, configure)
     }
 
-    /// Insert a barrier in the compute command encoder to synchronize dispatches.
+    /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
     public func computeBarrier() {
         context.computeBarrier()
     }
@@ -104,24 +104,24 @@ extension Sketch {
 // MARK: - Particle System
 
 extension Sketch {
-    /// Create a GPU particle system.
+    /// GPU パーティクルシステムを作成します。
     ///
-    /// - Parameter count: The maximum number of particles.
-    /// - Returns: A new ``ParticleSystem`` instance.
+    /// - Parameter count: パーティクルの最大数。
+    /// - Returns: 新しい ``ParticleSystem`` インスタンス。
     public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
         try context.createParticleSystem(count: count)
     }
 
-    /// Update a particle system (call inside ``compute()``).
+    /// パーティクルシステムを更新します（``compute()`` 内で呼び出してください）。
     ///
-    /// - Parameter system: The particle system to update.
+    /// - Parameter system: 更新するパーティクルシステム。
     public func updateParticles(_ system: ParticleSystem) {
         context.updateParticles(system)
     }
 
-    /// Draw a particle system (call inside ``draw()``).
+    /// パーティクルシステムを描画します（``draw()`` 内で呼び出してください）。
     ///
-    /// - Parameter system: The particle system to draw.
+    /// - Parameter system: 描画するパーティクルシステム。
     public func drawParticles(_ system: ParticleSystem) {
         context.drawParticles(system)
     }
@@ -130,14 +130,14 @@ extension Sketch {
 // MARK: - Tween
 
 extension Sketch {
-    /// Create and register a tween animation (automatically added to the tween manager).
+    /// トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
     ///
     /// - Parameters:
-    ///   - from: The start value.
-    ///   - to: The end value.
-    ///   - duration: The animation duration in seconds.
-    ///   - easing: The easing function.
-    /// - Returns: A new ``Tween`` instance, or `nil` if the context is unavailable.
+    ///   - from: 開始値。
+    ///   - to: 終了値。
+    ///   - duration: アニメーション時間（秒単位）。
+    ///   - easing: イージング関数。
+    /// - Returns: 新しい ``Tween`` インスタンス。コンテキストが利用できない場合は `nil`。
     @discardableResult
     public func tween<T: Interpolatable>(
         from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
@@ -149,31 +149,31 @@ extension Sketch {
 // MARK: - Shader Hot Reload
 
 extension Sketch {
-    /// Recompile a shader from source and clear the pipeline cache.
+    /// シェーダーをソースから再コンパイルしパイプラインキャッシュをクリアします。
     ///
     /// - Parameters:
-    ///   - key: The shader library key to reload.
-    ///   - source: The new MSL source code.
+    ///   - key: リロードするシェーダーライブラリキー。
+    ///   - source: 新しい MSL ソースコード。
     public func reloadShader(key: String, source: String) throws {
         try context.reloadShader(key: key, source: source)
     }
 
-    /// Reload a shader from an external file and clear the pipeline cache.
+    /// 外部ファイルからシェーダーをリロードしパイプラインキャッシュをクリアします。
     ///
     /// - Parameters:
-    ///   - key: The shader library key to reload.
-    ///   - path: The file path to the MSL source file.
+    ///   - key: リロードするシェーダーライブラリキー。
+    ///   - path: MSL ソースファイルのファイルパス。
     public func reloadShaderFromFile(key: String, path: String) throws {
         try context.reloadShaderFromFile(key: key, path: path)
     }
 
-    /// Create a custom material by loading MSL source from an external file.
+    /// 外部ファイルから MSL ソースを読み込んでカスタムマテリアルを作成します。
     ///
     /// - Parameters:
-    ///   - path: The file path to the MSL source file.
-    ///   - fragmentFunction: The name of the fragment function.
-    ///   - vertexFunction: The optional name of a custom vertex function.
-    /// - Returns: A new ``CustomMaterial`` instance.
+    ///   - path: MSL ソースファイルのファイルパス。
+    ///   - fragmentFunction: フラグメント関数の名前。
+    ///   - vertexFunction: カスタム頂点関数の名前（オプション）。
+    /// - Returns: 新しい ``CustomMaterial`` インスタンス。
     public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         try context.createMaterialFromFile(path: path, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
@@ -182,7 +182,7 @@ extension Sketch {
 // MARK: - GUI
 
 extension Sketch {
-    /// Access the parameter GUI for creating immediate-mode UI controls.
+    /// イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。
     public var gui: ParameterGUI? {
         context.gui
     }
@@ -191,12 +191,12 @@ extension Sketch {
 // MARK: - Performance HUD
 
 extension Sketch {
-    /// Enable the performance heads-up display overlay.
+    /// パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
     public func enablePerformanceHUD() {
         context.enablePerformanceHUD()
     }
 
-    /// Disable the performance heads-up display overlay.
+    /// パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
     public func disablePerformanceHUD() {
         context.disablePerformanceHUD()
     }
@@ -205,39 +205,39 @@ extension Sketch {
 // MARK: - Post Process
 
 extension Sketch {
-    /// Create a custom post-processing effect from MSL source code.
+    /// MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
     ///
     /// - Parameters:
-    ///   - name: The display name for the effect.
-    ///   - source: The Metal Shading Language source code.
-    ///   - fragmentFunction: The name of the fragment function.
-    /// - Returns: A new ``CustomPostEffect`` instance.
+    ///   - name: エフェクトの表示名。
+    ///   - source: Metal Shading Language のソースコード。
+    ///   - fragmentFunction: フラグメント関数の名前。
+    /// - Returns: 新しい ``CustomPostEffect`` インスタンス。
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         try context.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
     }
 
-    /// Add a post-processing effect to the pipeline.
+    /// ポストプロセスエフェクトをパイプラインに追加します。
     ///
-    /// - Parameter effect: The post-processing effect to add.
+    /// - Parameter effect: 追加するポストプロセスエフェクト。
     public func addPostEffect(_ effect: any PostEffect) {
         context.addPostEffect(effect)
     }
 
-    /// Remove a post-processing effect at the specified index.
+    /// 指定インデックスのポストプロセスエフェクトを削除します。
     ///
-    /// - Parameter index: The index of the effect to remove.
+    /// - Parameter index: 削除するエフェクトのインデックス。
     public func removePostEffect(at index: Int) {
         context.removePostEffect(at: index)
     }
 
-    /// Remove all post-processing effects from the pipeline.
+    /// パイプラインからすべてのポストプロセスエフェクトを削除します。
     public func clearPostEffects() {
         context.clearPostEffects()
     }
 
-    /// Replace all post-processing effects with the given array.
+    /// すべてのポストプロセスエフェクトを指定した配列で置き換えます。
     ///
-    /// - Parameter effects: The new array of post-processing effects.
+    /// - Parameter effects: 新しいポストプロセスエフェクトの配列。
     public func setPostEffects(_ effects: [any PostEffect]) {
         context.setPostEffects(effects)
     }
@@ -246,12 +246,12 @@ extension Sketch {
 // MARK: - Cursor Control
 
 extension Sketch {
-    /// Show the cursor.
+    /// カーソルを表示します。
     public func cursor() {
         context.cursor()
     }
 
-    /// Hide the cursor.
+    /// カーソルを非表示にします。
     public func noCursor() {
         context.noCursor()
     }
@@ -260,24 +260,24 @@ extension Sketch {
 // MARK: - GIF Export (D-19)
 
 extension Sketch {
-    /// Begin recording frames for GIF export.
+    /// GIF エクスポート用のフレーム記録を開始します。
     ///
-    /// - Parameter fps: The target frames per second for the GIF.
+    /// - Parameter fps: GIF の目標フレーム毎秒。
     public func beginGIFRecord(fps: Int = 15) {
         context.beginGIFRecord(fps: fps)
     }
 
-    /// Stop recording and write the GIF to a file.
+    /// 記録を停止し GIF ファイルに書き出します。
     ///
-    /// - Parameter path: The output file path (auto-generated if `nil`).
+    /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
     public func endGIFRecord(_ path: String? = nil) throws {
         try context.endGIFRecord(path)
     }
 
-    /// Stop recording and write the GIF to a file asynchronously.
+    /// 記録を停止し GIF ファイルを非同期で書き出します。
     ///
-    /// Performs file writing on a background thread to avoid blocking.
-    /// - Parameter path: The output file path (auto-generated if `nil`).
+    /// ブロッキングを避けるためファイル書き込みをバックグラウンドスレッドで実行します。
+    /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
     public func endGIFRecord(_ path: String? = nil) async throws {
         try await context.endGIFRecordAsync(path)
     }
@@ -286,12 +286,12 @@ extension Sketch {
 // MARK: - Orbit Camera (D-20)
 
 extension Sketch {
-    /// Enable orbit camera controls (call inside ``draw()``).
+    /// オービットカメラコントロールを有効にします（``draw()`` 内で呼び出してください）。
     public func orbitControl() {
         context.orbitControl()
     }
 
-    /// Access the orbit camera for manual configuration.
+    /// 手動設定用のオービットカメラへのアクセス。
     public var orbitCamera: OrbitCamera? {
         context.orbitCamera
     }
@@ -300,7 +300,7 @@ extension Sketch {
 // MARK: - Cache Management
 
 extension Sketch {
-    /// Clear all internal caches to reclaim GPU memory.
+    /// GPU メモリを解放するためにすべての内部キャッシュをクリアします。
     public func clearCaches() {
         context.clearCaches()
     }

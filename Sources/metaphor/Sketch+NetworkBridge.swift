@@ -1,20 +1,20 @@
 import MetaphorCore
 import MetaphorNetwork
 
-// MARK: - Network Bridge
+// MARK: - ネットワークブリッジ
 
 extension Sketch {
-    /// Create an OSC (Open Sound Control) receiver.
+    /// OSC（Open Sound Control）レシーバーを作成します。
     ///
-    /// - Parameter port: The UDP port to listen on.
-    /// - Returns: A new ``MetaphorNetwork/OSCReceiver`` instance.
+    /// - Parameter port: リスニングする UDP ポート。
+    /// - Returns: 新しい ``MetaphorNetwork/OSCReceiver`` インスタンス。
     public func createOSCReceiver(port: UInt16) -> OSCReceiver {
         OSCReceiver(port: port)
     }
 
-    /// Create a MIDI manager for input and output.
+    /// 入出力用の MIDI マネージャーを作成します。
     ///
-    /// - Returns: A new ``MetaphorNetwork/MIDIManager`` instance.
+    /// - Returns: 新しい ``MetaphorNetwork/MIDIManager`` インスタンス。
     public func createMIDI() -> MIDIManager {
         MIDIManager()
     }

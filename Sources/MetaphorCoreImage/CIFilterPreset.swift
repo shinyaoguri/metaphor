@@ -1,86 +1,86 @@
 @preconcurrency import CoreImage
 import simd
 
-/// Provide curated CoreImage filter presets for creative coding.
+/// クリエイティブコーディング向けの厳選された CoreImage フィルタプリセットを提供します。
 public enum CIFilterPreset: Sendable {
 
-    // MARK: - Distortion
+    // MARK: - ディストーション
 
-    /// Apply a twirl distortion effect.
+    /// ツイストディストーションエフェクトを適用します。
     case twirl(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = .pi)
-    /// Apply a vortex distortion effect.
+    /// ボルテックスディストーションエフェクトを適用します。
     case vortex(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = 56.55)
-    /// Apply a bump distortion effect.
+    /// バンプディストーションエフェクトを適用します。
     case bump(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)
-    /// Apply a pinch distortion effect.
+    /// ピンチディストーションエフェクトを適用します。
     case pinch(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)
-    /// Apply a circular wrap distortion effect.
+    /// サーキュラーラップディストーションエフェクトを適用します。
     case circularWrap(center: SIMD2<Float>? = nil, radius: Float = 150, angle: Float = 0)
 
-    // MARK: - Stylize
+    // MARK: - スタイライズ
 
-    /// Apply a pixelation effect (CoreImage version).
+    /// ピクセレーションエフェクトを適用します（CoreImage 版）。
     case ciPixellate(scale: Float = 8)
-    /// Apply a crystallize effect.
+    /// クリスタライズエフェクトを適用します。
     case crystallize(radius: Float = 20)
-    /// Apply a pointillism effect.
+    /// 点描エフェクトを適用します。
     case pointillize(center: SIMD2<Float>? = nil, radius: Float = 20)
-    /// Apply edge detection (CoreImage version).
+    /// エッジ検出を適用します（CoreImage 版）。
     case ciEdges(intensity: Float = 1)
-    /// Apply a comic book style effect.
+    /// コミックブックスタイルのエフェクトを適用します。
     case comic
-    /// Apply a hexagonal pixelation effect.
+    /// 六角形ピクセレーションエフェクトを適用します。
     case hexPixellate(center: SIMD2<Float>? = nil, scale: Float = 8)
 
-    // MARK: - Tile
+    // MARK: - タイル
 
-    /// Apply a kaleidoscope effect.
+    /// 万華鏡エフェクトを適用します。
     case kaleidoscope(count: Int = 6, center: SIMD2<Float>? = nil, angle: Float = 0)
-    /// Apply a triangle kaleidoscope effect.
+    /// トライアングル万華鏡エフェクトを適用します。
     case triangleKaleidoscope(point: SIMD2<Float>? = nil, size: Float = 700, rotation: Float = 5.924, decay: Float = 0.85)
 
-    // MARK: - Generator (no input image required)
+    // MARK: - ジェネレーター（入力画像不要）
 
-    /// Generate a checkerboard pattern.
+    /// チェッカーボードパターンを生成します。
     case checkerboard(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)
-    /// Generate a stripe pattern.
+    /// ストライプパターンを生成します。
     case stripes(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)
-    /// Generate a star shine effect.
+    /// スターシャインエフェクトを生成します。
     case starShine(center: SIMD2<Float>? = nil, color: CIColor = .white, radius: Float = 50, crossScale: Float = 15, crossAngle: Float = 0.6, crossOpacity: Float = -2, crossWidth: Float = 2.5, epsilon: Float = -2)
-    /// Generate a sunbeams effect.
+    /// サンビームエフェクトを生成します。
     case sunbeams(center: SIMD2<Float>? = nil, color: CIColor = .white, sunRadius: Float = 40, maxStriationRadius: Float = 2.58, striationStrength: Float = 0.5, striationContrast: Float = 1.375, time: Float = 0)
 
-    // MARK: - Color Effect
+    // MARK: - カラーエフェクト
 
-    /// Apply a false color effect (two-color gradient mapping).
+    /// フォルスカラーエフェクト（2色グラデーションマッピング）を適用します。
     case falseColor(color0: CIColor = CIColor(red: 0.3, green: 0, blue: 0), color1: CIColor = CIColor(red: 1, green: 0.9, blue: 0.8))
-    /// Apply a color posterize effect.
+    /// カラーポスタリゼーションエフェクトを適用します。
     case colorPosterize(levels: Float = 6)
-    /// Apply a monochrome photo effect.
+    /// モノクロフォトエフェクトを適用します。
     case photoEffectMono
-    /// Apply a chrome photo effect.
+    /// クロームフォトエフェクトを適用します。
     case photoEffectChrome
-    /// Apply a fade photo effect.
+    /// フェードフォトエフェクトを適用します。
     case photoEffectFade
-    /// Apply a noir photo effect.
+    /// ノワールフォトエフェクトを適用します。
     case photoEffectNoir
 
-    // MARK: - Blur
+    // MARK: - ブラー
 
-    /// Apply a Gaussian blur (CoreImage version).
+    /// ガウシアンブラーを適用します（CoreImage 版）。
     case ciGaussianBlur(radius: Float = 10)
-    /// Apply a motion blur effect.
+    /// モーションブラーエフェクトを適用します。
     case motionBlur(radius: Float = 20, angle: Float = 0)
-    /// Apply a zoom blur effect.
+    /// ズームブラーエフェクトを適用します。
     case zoomBlur(center: SIMD2<Float>? = nil, amount: Float = 20)
-    /// Apply a disc blur effect.
+    /// ディスクブラーエフェクトを適用します。
     case discBlur(radius: Float = 8)
-    /// Apply a box blur effect.
+    /// ボックスブラーエフェクトを適用します。
     case boxBlur(radius: Float = 10)
 
-    // MARK: - Internal
+    // MARK: - 内部
 
-    /// Return the CIFilter name string for this preset.
+    /// このプリセットの CIFilter 名文字列を返します。
     public var filterName: String {
         switch self {
         case .twirl: "CITwirlDistortion"
@@ -114,7 +114,7 @@ public enum CIFilterPreset: Sendable {
         }
     }
 
-    /// Return the parameter dictionary for this preset given a texture size.
+    /// テクスチャサイズに基づいてこのプリセットのパラメータ辞書を返します。
     public func parameters(textureSize: CGSize) -> [String: Any] {
         let defaultCenter = CIVector(x: textureSize.width / 2, y: textureSize.height / 2)
 
@@ -183,7 +183,7 @@ public enum CIFilterPreset: Sendable {
         }
     }
 
-    /// Indicate whether this preset is a generator filter (requires no input image).
+    /// このプリセットがジェネレーターフィルタ（入力画像不要）かどうかを示します。
     var isGenerator: Bool {
         switch self {
         case .checkerboard, .stripes, .starShine, .sunbeams:

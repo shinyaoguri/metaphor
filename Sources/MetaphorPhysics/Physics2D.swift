@@ -1,11 +1,10 @@
 import simd
 
-/// Manage a 2D physics world using Verlet integration.
+/// Verlet 積分を使用した2D物理ワールドを管理します。
 ///
-/// ``Physics2D`` provides a simple rigid-body simulation supporting circles and
-/// axis-aligned rectangles. Bodies are integrated with Verlet integration,
-/// collisions are detected via spatial hashing, and constraints are solved
-/// iteratively each step.
+/// ``Physics2D`` は円と軸整列矩形をサポートするシンプルな剛体シミュレーションを提供します。
+/// ボディは Verlet 積分で統合され、衝突は空間ハッシュで検出され、
+/// 拘束は各ステップで反復的に解決されます。
 ///
 /// ```swift
 /// let world = Physics2D(cellSize: 50)
@@ -15,42 +14,41 @@ import simd
 /// ```
 @MainActor
 public final class Physics2D {
-    /// The list of physics bodies currently in the world.
+    /// 現在ワールド内にある物理ボディのリスト。
     public private(set) var bodies: [PhysicsBody2D] = []
 
-    /// The list of constraints currently in the world.
+    /// 現在ワールド内にある拘束のリスト。
     public private(set) var constraints: [PhysicsConstraint2D] = []
 
-    /// The global gravity acceleration applied to all non-static bodies each step.
+    /// 各ステップですべての非静的ボディに適用されるグローバル重力加速度。
     private var gravity: SIMD2<Float> = SIMD2(0, 0)
 
-    /// The spatial hash used for broad-phase collision detection.
+    /// ブロードフェーズ衝突検出に使用される空間ハッシュ。
     private let spatialHash: SpatialHash2D
 
-    /// The optional bounding box that confines all bodies within its limits.
+    /// すべてのボディを制限範囲内に閉じ込めるオプションのバウンディングボックス。
     ///
-    /// When set, bodies are clamped to stay within `min` and `max` each iteration.
+    /// 設定すると、各反復でボディが `min` と `max` の範囲内にクランプされます。
     public var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?
 
-    /// Create a new 2D physics world.
+    /// 新しい2D物理ワールドを作成します。
     ///
-    /// - Parameter cellSize: The cell size for the spatial hash used in broad-phase
-    ///   collision detection. Larger values reduce hash overhead but increase the
-    ///   number of candidate pairs checked.
+    /// - Parameter cellSize: ブロードフェーズ衝突検出に使用する空間ハッシュのセルサイズ。
+    ///   値が大きいほどハッシュのオーバーヘッドは減りますが、チェックする候補ペア数が増えます。
     public init(cellSize: Float = 50) {
         self.spatialHash = SpatialHash2D(cellSize: cellSize)
     }
 
-    // MARK: - Body Creation
+    // MARK: - ボディ作成
 
-    /// Add a circle-shaped physics body to the world.
+    /// 円形の物理ボディをワールドに追加します。
     ///
     /// - Parameters:
-    ///   - x: The initial x-coordinate of the body.
-    ///   - y: The initial y-coordinate of the body.
-    ///   - radius: The radius of the circle.
-    ///   - mass: The mass of the body (defaults to 1.0).
-    /// - Returns: The newly created ``PhysicsBody2D`` instance.
+    ///   - x: ボディの初期 X 座標。
+    ///   - y: ボディの初期 Y 座標。
+    ///   - radius: 円の半径。
+    ///   - mass: ボディの質量（デフォルトは1.0）。
+    /// - Returns: 新しく作成された ``PhysicsBody2D`` インスタンス。
     @discardableResult
     public func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D {
         let body = PhysicsBody2D(x: x, y: y, shape: .circle(radius: radius), mass: mass)
@@ -58,15 +56,15 @@ public final class Physics2D {
         return body
     }
 
-    /// Add a rectangle-shaped physics body to the world.
+    /// 矩形の物理ボディをワールドに追加します。
     ///
     /// - Parameters:
-    ///   - x: The initial x-coordinate of the body center.
-    ///   - y: The initial y-coordinate of the body center.
-    ///   - width: The width of the rectangle.
-    ///   - height: The height of the rectangle.
-    ///   - mass: The mass of the body (defaults to 1.0).
-    /// - Returns: The newly created ``PhysicsBody2D`` instance.
+    ///   - x: ボディ中心の初期 X 座標。
+    ///   - y: ボディ中心の初期 Y 座標。
+    ///   - width: 矩形の幅。
+    ///   - height: 矩形の高さ。
+    ///   - mass: ボディの質量（デフォルトは1.0）。
+    /// - Returns: 新しく作成された ``PhysicsBody2D`` インスタンス。
     @discardableResult
     public func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D {
         let body = PhysicsBody2D(x: x, y: y, shape: .rect(width: width, height: height), mass: mass)
@@ -74,27 +72,27 @@ public final class Physics2D {
         return body
     }
 
-    // MARK: - Forces
+    // MARK: - 力
 
-    /// Set the global gravity acceleration applied to all bodies each step.
+    /// 各ステップですべてのボディに適用されるグローバル重力加速度を設定します。
     ///
     /// - Parameters:
-    ///   - x: The horizontal component of the gravity vector.
-    ///   - y: The vertical component of the gravity vector.
+    ///   - x: 重力ベクトルの水平成分。
+    ///   - y: 重力ベクトルの垂直成分。
     public func addGravity(_ x: Float, _ y: Float) {
         gravity = SIMD2(x, y)
     }
 
-    // MARK: - Constraints
+    // MARK: - 拘束
 
-    /// Add a distance constraint between two bodies.
+    /// 2つのボディ間に距離拘束を追加します。
     ///
     /// - Parameters:
-    ///   - a: The first body.
-    ///   - b: The second body.
-    ///   - distance: The target distance between the two bodies. If `nil`, the
-    ///     current distance at creation time is used.
-    /// - Returns: The newly created ``PhysicsConstraint2D`` instance.
+    ///   - a: 1つ目のボディ。
+    ///   - b: 2つ目のボディ。
+    ///   - distance: 2つのボディ間の目標距離。`nil` の場合、
+    ///     作成時の現在の距離が使用されます。
+    /// - Returns: 新しく作成された ``PhysicsConstraint2D`` インスタンス。
     @discardableResult
     public func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D {
         let c = PhysicsConstraint2D(a, b, distance: distance)
@@ -102,13 +100,13 @@ public final class Physics2D {
         return c
     }
 
-    /// Pin a body to a fixed world-space position.
+    /// ボディをワールド空間の固定位置にピン留めします。
     ///
     /// - Parameters:
-    ///   - body: The body to pin.
-    ///   - x: The x-coordinate of the pin position.
-    ///   - y: The y-coordinate of the pin position.
-    /// - Returns: The newly created pin ``PhysicsConstraint2D`` instance.
+    ///   - body: ピン留めするボディ。
+    ///   - x: ピン位置の X 座標。
+    ///   - y: ピン位置の Y 座標。
+    /// - Returns: 新しく作成されたピン ``PhysicsConstraint2D`` インスタンス。
     @discardableResult
     public func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D {
         let c = PhysicsConstraint2D(pin: body, x: x, y: y)
@@ -116,71 +114,71 @@ public final class Physics2D {
         return c
     }
 
-    // MARK: - Simulation
+    // MARK: - シミュレーション
 
-    /// Advance the simulation by one time step.
+    /// シミュレーションを1タイムステップ進めます。
     ///
-    /// This applies gravity, integrates positions using Verlet integration,
-    /// then iteratively solves constraints and resolves collisions.
+    /// 重力を適用し、Verlet 積分で位置を更新してから、
+    /// 拘束の解決と衝突の解消を反復的に行います。
     ///
     /// - Parameters:
-    ///   - dt: The time step in seconds.
-    ///   - iterations: The number of constraint/collision solving iterations
-    ///     (defaults to 4). More iterations yield more stable results.
+    ///   - dt: タイムステップ（秒）。
+    ///   - iterations: 拘束・衝突解決の反復回数
+    ///     （デフォルトは4）。反復回数が多いほど安定した結果が得られます。
     public func step(_ dt: Float, iterations: Int = 4) {
-        // Apply gravity
+        // 重力を適用
         for body in bodies {
             body.applyForce(gravity * body.mass)
         }
 
-        // Integrate
+        // 積分
         for body in bodies {
             body.integrate(dt: dt)
         }
 
-        // Solve constraints and collisions
+        // 拘束と衝突を解決
         for _ in 0..<iterations {
-            // Constraints
+            // 拘束
             for c in constraints {
                 c.solve()
             }
 
-            // Collision detection + resolution
+            // 衝突検出 + 解消
             resolveCollisions()
 
-            // Bounds
+            // 境界
             if let bounds = bounds {
                 applyBounds(bounds)
             }
         }
     }
 
-    // MARK: - Remove
+    // MARK: - 削除
 
-    /// Remove a body from the world along with any constraints referencing it.
+    /// ボディとそれを参照するすべての拘束をワールドから削除します。
     ///
-    /// - Parameter body: The body to remove.
+    /// - Parameter body: 削除するボディ。
     public func removeBody(_ body: PhysicsBody2D) {
         bodies.removeAll { $0 === body }
         constraints.removeAll { $0.bodyA === body || $0.bodyB === body }
     }
 
-    /// Remove a specific constraint from the world.
+    /// 特定の拘束をワールドから削除します。
     ///
-    /// - Parameter constraint: The constraint to remove.
+    /// - Parameter constraint: 削除する拘束。
     public func removeConstraint(_ constraint: PhysicsConstraint2D) {
         constraints.removeAll { $0 === constraint }
     }
 
-    /// Remove all bodies and constraints from the world.
+    /// すべてのボディと拘束をワールドから削除します。
     public func clear() {
         bodies.removeAll()
         constraints.removeAll()
     }
 
-    // MARK: - Private
+    // MARK: - プライベート
 
-    /// Detect and resolve collisions using spatial hashing for the broad phase.
+    /// ブロードフェーズに空間ハッシュを使用して衝突を検出・解消します。
     private func resolveCollisions() {
         spatialHash.clear()
 
@@ -195,7 +193,7 @@ public final class Physics2D {
         }
     }
 
-    /// Compute the bounding radius for broad-phase insertion.
+    /// ブロードフェーズ挿入用のバウンディング半径を計算します。
     private func boundingRadius(_ body: PhysicsBody2D) -> Float {
         switch body.shape {
         case .circle(let r): return r
@@ -203,7 +201,7 @@ public final class Physics2D {
         }
     }
 
-    /// Dispatch collision resolution based on the shape pair.
+    /// 形状ペアに基づいて衝突解消を振り分けます。
     private func resolveCollision(_ a: PhysicsBody2D, _ b: PhysicsBody2D) {
         if a.isStatic && b.isStatic { return }
 
@@ -219,7 +217,7 @@ public final class Physics2D {
         }
     }
 
-    /// Resolve overlap between two circles using mass-weighted position correction.
+    /// 質量重み付き位置補正を使用して2つの円の重なりを解消します。
     private func resolveCircleCircle(_ a: PhysicsBody2D, _ ra: Float, _ b: PhysicsBody2D, _ rb: Float) {
         let delta = b.position - a.position
         let dist = simd_length(delta)
@@ -237,7 +235,7 @@ public final class Physics2D {
         if !b.isStatic { b.position += normal * overlap * (a.isStatic ? 1 : a.mass / totalMass) }
     }
 
-    /// Resolve overlap between a circle and a rectangle using closest-point projection.
+    /// 最近点投影を使用して円と矩形の重なりを解消します。
     private func resolveCircleRect(_ circle: PhysicsBody2D, _ r: Float, _ rect: PhysicsBody2D, _ w: Float, _ h: Float) {
         let hw = w * 0.5
         let hh = h * 0.5
@@ -261,9 +259,9 @@ public final class Physics2D {
         if !rect.isStatic { rect.position -= normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass) }
     }
 
-    /// Resolve overlap between two axis-aligned rectangles using minimum penetration axis.
+    /// 最小貫通軸を使用して2つの軸整列矩形の重なりを解消します。
     private func resolveRectRect(_ a: PhysicsBody2D, _ wa: Float, _ ha: Float, _ b: PhysicsBody2D, _ wb: Float, _ hb: Float) {
-        // AABB collision
+        // AABB 衝突
         let hwa = wa * 0.5
         let hha = ha * 0.5
         let hwb = wb * 0.5
@@ -290,7 +288,7 @@ public final class Physics2D {
         }
     }
 
-    /// Clamp all non-static bodies within the world bounds, accounting for shape size.
+    /// すべての非静的ボディをワールド境界内にクランプし、形状サイズを考慮します。
     private func applyBounds(_ bounds: (min: SIMD2<Float>, max: SIMD2<Float>)) {
         for body in bodies where !body.isStatic {
             switch body.shape {

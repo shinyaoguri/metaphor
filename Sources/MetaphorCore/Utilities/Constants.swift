@@ -2,66 +2,66 @@ import Foundation
 
 // MARK: - Math Constants (Processing-compatible)
 
-/// The ratio of a circle's circumference to its diameter.
+/// 円の円周と直径の比率。
 public let PI: Float = .pi
 
-/// Two times pi (full circle in radians).
+/// 2パイ（ラジアンでの全円）。
 public let TWO_PI: Float = .pi * 2
 
-/// Half of pi (quarter circle in radians).
+/// パイの半分（ラジアンでの四分円）。
 public let HALF_PI: Float = .pi / 2
 
-/// One quarter of pi (eighth of a circle in radians).
+/// パイの4分の1（ラジアンでの八分円）。
 public let QUARTER_PI: Float = .pi / 4
 
-/// Tau, equal to 2 times pi (full circle in radians).
+/// タウ。2パイに等しい（ラジアンでの全円）。
 public let TAU: Float = .pi * 2
 
 // MARK: - Key Code Constants (macOS Virtual Key Codes)
 
-/// Virtual key code for the left arrow key.
+/// 左矢印キーの仮想キーコード。
 public let LEFT: UInt16 = 123
-/// Virtual key code for the right arrow key.
+/// 右矢印キーの仮想キーコード。
 public let RIGHT: UInt16 = 124
-/// Virtual key code for the down arrow key.
+/// 下矢印キーの仮想キーコード。
 public let DOWN: UInt16 = 125
-/// Virtual key code for the up arrow key.
+/// 上矢印キーの仮想キーコード。
 public let UP: UInt16 = 126
 
-/// Virtual key code for the Return key.
+/// Return キーの仮想キーコード。
 public let RETURN: UInt16 = 36
-/// Virtual key code for the numeric keypad Enter key.
+/// テンキー Enter キーの仮想キーコード。
 public let ENTER: UInt16 = 76
-/// Virtual key code for the Tab key.
+/// Tab キーの仮想キーコード。
 public let TAB: UInt16 = 48
-/// Virtual key code for the Space key.
+/// Space キーの仮想キーコード。
 public let SPACE: UInt16 = 49
-/// Virtual key code for the Backspace (Delete) key.
+/// Backspace (Delete) キーの仮想キーコード。
 public let BACKSPACE: UInt16 = 51
-/// Virtual key code for the Forward Delete key.
+/// Forward Delete キーの仮想キーコード。
 public let DELETE: UInt16 = 117
-/// Virtual key code for the Escape key.
+/// Escape キーの仮想キーコード。
 public let ESCAPE: UInt16 = 53
 
-/// Virtual key code for the Shift key.
+/// Shift キーの仮想キーコード。
 public let SHIFT: UInt16 = 56
-/// Virtual key code for the Control key.
+/// Control キーの仮想キーコード。
 public let CONTROL: UInt16 = 59
-/// Virtual key code for the Option key.
+/// Option キーの仮想キーコード。
 public let OPTION: UInt16 = 58
-/// Virtual key code for the Alt key (alias for Option).
+/// Alt キーの仮想キーコード（Option のエイリアス）。
 public let ALT: UInt16 = 58
-/// Virtual key code for the Command key.
+/// Command キーの仮想キーコード。
 public let COMMAND: UInt16 = 55
 
 // MARK: - Time
 
-/// Internal time value updated by SketchContext each frame.
+/// SketchContext が毎フレーム更新する内部時間値。
 @MainActor
 var _sketchElapsedTime: Float = 0
 
-/// Return the number of milliseconds elapsed since the sketch started.
-/// - Returns: The elapsed time in milliseconds.
+/// スケッチ開始からの経過時間をミリ秒で返します。
+/// - Returns: ミリ秒単位の経過時間。
 @MainActor
 public func millis() -> Int {
     Int(_sketchElapsedTime * 1000)
@@ -69,32 +69,32 @@ public func millis() -> Int {
 
 // MARK: - Calendar Time (Processing-compatible)
 
-/// Return the current second (0–59).
+/// 現在の秒（0〜59）を返します。
 public func second() -> Int {
     Calendar.current.component(.second, from: Date())
 }
 
-/// Return the current minute (0–59).
+/// 現在の分（0〜59）を返します。
 public func minute() -> Int {
     Calendar.current.component(.minute, from: Date())
 }
 
-/// Return the current hour (0–23).
+/// 現在の時（0〜23）を返します。
 public func hour() -> Int {
     Calendar.current.component(.hour, from: Date())
 }
 
-/// Return the current day of the month (1–31).
+/// 現在の日（1〜31）を返します。
 public func day() -> Int {
     Calendar.current.component(.day, from: Date())
 }
 
-/// Return the current month (1–12).
+/// 現在の月（1〜12）を返します。
 public func month() -> Int {
     Calendar.current.component(.month, from: Date())
 }
 
-/// Return the current year.
+/// 現在の年を返します。
 public func year() -> Int {
     Calendar.current.component(.year, from: Date())
 }

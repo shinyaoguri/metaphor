@@ -2,11 +2,11 @@ import Metal
 import Foundation
 import os
 
-/// Manages compilation and caching of Metal shaders.
+/// Metal シェーダーのコンパイルとキャッシュを管理します。
 ///
-/// `ShaderLibrary` preferentially loads pre-compiled `.metallib` bundles.
-/// When unavailable, it falls back to compiling MSL source strings at runtime.
-/// Custom shaders can be registered dynamically for hot-reload workflows.
+/// `ShaderLibrary` はプリコンパイル済み `.metallib` バンドルを優先的に読み込みます。
+/// 利用できない場合は、ランタイムで MSL ソース文字列をコンパイルするフォールバックを行います。
+/// カスタムシェーダーはホットリロードワークフロー向けに動的に登録できます。
 ///
 /// ```swift
 /// let shaders = try ShaderLibrary(device: device)
@@ -19,50 +19,50 @@ public final class ShaderLibrary {
     private var libraries: [String: MTLLibrary] = [:]
     private var functions: [String: MTLFunction] = [:]
 
-    /// Whether the library was loaded from a pre-compiled `.metallib` bundle.
+    /// プリコンパイル済み `.metallib` バンドルから読み込まれたかどうか
     public private(set) var usesPrecompiledMetalLib = false
 
-    /// When `true`, forces compilation from MSL source strings instead of using `.metallib`.
+    /// `true` の場合、`.metallib` の代わりに MSL ソース文字列からのコンパイルを強制します。
     ///
-    /// Enable this during development for shader hot-reload workflows.
+    /// シェーダーホットリロードワークフローの開発中に有効化してください。
     public var preferSourceCompilation = false
 
-    // MARK: - Built-in Library Keys
+    // MARK: - 組み込みライブラリキー
 
-    /// Identifiers for built-in shader libraries.
+    /// 組み込みシェーダーライブラリの識別子
     public enum BuiltinKey {
-        /// Blit shader for compositing offscreen texture to screen.
+        /// オフスクリーンテクスチャを画面にコンポジットするブリットシェーダー
         public static let blit = "metaphor.blit"
-        /// Flat color shader (no lighting).
+        /// フラットカラーシェーダー（ライティングなし）
         public static let flatColor = "metaphor.flatColor"
-        /// Per-vertex color shader.
+        /// 頂点カラーシェーダー
         public static let vertexColor = "metaphor.vertexColor"
-        /// Lit shader with Blinn-Phong / PBR lighting.
+        /// Blinn-Phong / PBR ライティング付きシェーダー
         public static let lit = "metaphor.lit"
-        /// 2D canvas shader.
+        /// 2D キャンバスシェーダー
         public static let canvas2D = "metaphor.canvas2D"
-        /// 3D canvas shader.
+        /// 3D キャンバスシェーダー
         public static let canvas3D = "metaphor.canvas3D"
-        /// 2D canvas textured shader.
+        /// 2D キャンバステクスチャ付きシェーダー
         public static let canvas2DTextured = "metaphor.canvas2DTextured"
-        /// 3D canvas textured shader.
+        /// 3D キャンバステクスチャ付きシェーダー
         public static let canvas3DTextured = "metaphor.canvas3DTextured"
-        /// Post-processing effect shaders.
+        /// ポストプロセスエフェクトシェーダー
         public static let postProcess = "metaphor.postProcess"
-        /// GPU image filter shaders.
+        /// GPU 画像フィルターシェーダー
         public static let imageFilter = "metaphor.imageFilter"
-        /// Kawase blur shaders.
+        /// Kawase ブラーシェーダー
         public static let kawaseBlur = "metaphor.kawaseBlur"
-        /// GPU particle system shaders.
+        /// GPU パーティクルシステムシェーダー
         public static let particle = "metaphor.particle"
-        /// Render graph merge shaders.
+        /// レンダーグラフマージシェーダー
         public static let merge = "metaphor.merge"
-        /// 3D instanced rendering shaders.
+        /// 3D インスタンスレンダリングシェーダー
         public static let canvas3DInstanced = "metaphor.canvas3DInstanced"
-        /// 2D instanced rendering shaders.
+        /// 2D インスタンスレンダリングシェーダー
         public static let canvas2DInstanced = "metaphor.canvas2DInstanced"
 
-        /// All built-in library keys.
+        /// 全組み込みライブラリキー
         static let all: [String] = [
             blit, flatColor, vertexColor, lit,
             canvas2D, canvas3D, canvas2DTextured, canvas3DTextured,
@@ -71,52 +71,52 @@ public final class ShaderLibrary {
         ]
     }
 
-    // MARK: - Initialization
+    // MARK: - 初期化
 
-    /// Creates a shader library and loads all built-in shaders.
+    /// シェーダーライブラリを作成し、全組み込みシェーダーを読み込みます。
     ///
-    /// Attempts to load from a pre-compiled `.metallib` bundle first.
-    /// Falls back to compiling MSL source strings if the bundle is unavailable.
+    /// まずプリコンパイル済み `.metallib` バンドルからの読み込みを試みます。
+    /// バンドルが利用できない場合は MSL ソース文字列のコンパイルにフォールバックします。
     ///
-    /// - Parameter device: The Metal device to use for shader compilation.
-    /// - Throws: ``MetaphorError/shaderCompilationFailed(name:underlying:)`` if compilation fails.
+    /// - Parameter device: シェーダーコンパイルに使用する Metal デバイス
+    /// - Throws: コンパイルに失敗した場合 ``MetaphorError/shaderCompilationFailed(name:underlying:)``
     public init(device: MTLDevice) throws {
         self.device = device
         try loadBuiltins()
     }
 
-    // MARK: - Registration
+    // MARK: - 登録
 
-    /// Compiles an MSL source string and registers it under the given key.
+    /// MSL ソース文字列をコンパイルし、指定されたキーで登録します。
     ///
     /// - Parameters:
-    ///   - source: The MSL source code to compile.
-    ///   - key: The identifier to register the compiled library under.
-    /// - Throws: An error if the MSL source fails to compile.
+    ///   - source: コンパイルする MSL ソースコード
+    ///   - key: コンパイル済みライブラリを登録する識別子
+    /// - Throws: MSL ソースのコンパイルに失敗した場合のエラー
     public func register(source: String, as key: String) throws {
         let library = try device.makeLibrary(source: source, options: nil)
         libraries[key] = library
     }
 
-    /// Registers a pre-compiled Metal library under the given key.
+    /// プリコンパイル済み Metal ライブラリを指定されたキーで登録します。
     ///
     /// - Parameters:
-    ///   - library: The pre-compiled `MTLLibrary`.
-    ///   - key: The identifier to register the library under.
+    ///   - library: プリコンパイル済み `MTLLibrary`
+    ///   - key: ライブラリを登録する識別子
     public func register(library: MTLLibrary, as key: String) {
         libraries[key] = library
     }
 
-    // MARK: - Function Access
+    // MARK: - 関数アクセス
 
-    /// Retrieves a compiled Metal function from the specified library.
+    /// 指定されたライブラリからコンパイル済み Metal 関数を取得します。
     ///
-    /// Results are cached for subsequent lookups.
+    /// 結果は以降のルックアップ用にキャッシュされます。
     ///
     /// - Parameters:
-    ///   - name: The function name in the Metal shader source.
-    ///   - key: The library key to look up.
-    /// - Returns: The compiled `MTLFunction`, or `nil` if not found.
+    ///   - name: Metal シェーダーソース内の関数名
+    ///   - key: ルックアップするライブラリキー
+    /// - Returns: コンパイル済み `MTLFunction`。見つからない場合は `nil`
     public func function(named name: String, from key: String) -> MTLFunction? {
         let cacheKey = "\(key).\(name)"
         if let cached = functions[cacheKey] {
@@ -132,73 +132,73 @@ public final class ShaderLibrary {
         return function
     }
 
-    /// The keys of all currently registered libraries.
+    /// 現在登録されている全ライブラリのキー
     public var registeredKeys: [String] {
         Array(libraries.keys)
     }
 
-    /// Returns whether a library is registered under the given key.
+    /// 指定されたキーにライブラリが登録されているかどうかを返します。
     ///
-    /// - Parameter key: The library key to check.
-    /// - Returns: `true` if a library exists for the key.
+    /// - Parameter key: 確認するライブラリキー
+    /// - Returns: キーにライブラリが存在する場合 `true`
     public func hasLibrary(for key: String) -> Bool {
         libraries[key] != nil
     }
 
-    // MARK: - Hot Reload
+    // MARK: - ホットリロード
 
-    /// Loads and registers an MSL source file from disk.
+    /// ディスクから MSL ソースファイルを読み込み、登録します。
     ///
     /// - Parameters:
-    ///   - path: The file path to the `.metal` source file.
-    ///   - key: The identifier to register the compiled library under.
-    /// - Throws: An error if the file cannot be read or the source fails to compile.
+    ///   - path: `.metal` ソースファイルのファイルパス
+    ///   - key: コンパイル済みライブラリを登録する識別子
+    /// - Throws: ファイルの読み込みまたはソースのコンパイルに失敗した場合のエラー
     public func registerFromFile(path: String, as key: String) throws {
         let source = try String(contentsOfFile: path, encoding: .utf8)
         try register(source: source, as: key)
     }
 
-    /// Reloads a shader by recompiling from MSL source and replacing the existing library.
+    /// MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
     ///
-    /// Clears cached functions for the specified key before recompiling.
+    /// 再コンパイル前に指定キーのキャッシュ済み関数をクリアします。
     ///
     /// - Parameters:
-    ///   - key: The library key to reload.
-    ///   - source: The MSL source code to compile.
-    /// - Throws: An error if the MSL source fails to compile.
+    ///   - key: リロードするライブラリキー
+    ///   - source: コンパイルする MSL ソースコード
+    /// - Throws: MSL ソースのコンパイルに失敗した場合のエラー
     public func reload(key: String, source: String) throws {
         functions = functions.filter { !$0.key.hasPrefix("\(key).") }
         libraries.removeValue(forKey: key)
         try register(source: source, as: key)
     }
 
-    /// Reloads a shader from a file on disk, replacing the existing library.
+    /// ディスク上のファイルからシェーダーをリロードし、既存ライブラリを置換します。
     ///
     /// - Parameters:
-    ///   - key: The library key to reload.
-    ///   - path: The file path to the `.metal` source file.
-    /// - Throws: An error if the file cannot be read or the source fails to compile.
+    ///   - key: リロードするライブラリキー
+    ///   - path: `.metal` ソースファイルのファイルパス
+    /// - Throws: ファイルの読み込みまたはソースのコンパイルに失敗した場合のエラー
     public func reloadFromFile(key: String, path: String) throws {
         let source = try String(contentsOfFile: path, encoding: .utf8)
         try reload(key: key, source: source)
     }
 
-    /// Clears cached functions for the specified library key without removing the library itself.
+    /// ライブラリ自体を削除せずに、指定ライブラリキーのキャッシュ済み関数をクリアします。
     ///
-    /// Call this when you know the library has been updated externally and want to
-    /// force function re-lookup on the next access.
+    /// ライブラリが外部で更新されたことがわかっており、次回アクセス時に
+    /// 関数の再ルックアップを強制したい場合に呼び出してください。
     ///
-    /// - Parameter key: The library key whose function cache should be cleared.
+    /// - Parameter key: 関数キャッシュをクリアするライブラリキー
     public func invalidateFunctionCache(for key: String) {
         functions = functions.filter { !$0.key.hasPrefix("\(key).") }
     }
 
-    // MARK: - Resource Loading
+    // MARK: - リソース読み込み
 
-    /// Loads an MSL source string from a bundled .txt resource file.
+    /// バンドルされた .txt リソースファイルから MSL ソース文字列を読み込みます。
     ///
-    /// - Parameter name: The shader source name (without extension).
-    /// - Returns: The MSL source string, or `nil` if the resource is not found.
+    /// - Parameter name: シェーダーソース名（拡張子なし）
+    /// - Returns: MSL ソース文字列。リソースが見つからない場合は `nil`
     public nonisolated static func loadShaderSource(_ name: String) -> String? {
         guard let url = Bundle.module.url(
             forResource: name,
@@ -213,7 +213,7 @@ public final class ShaderLibrary {
     // MARK: - Private
 
     private func loadBuiltins() throws {
-        // If preferSourceCompilation is true, always compile from source
+        // preferSourceCompilation が true の場合、常にソースからコンパイル
         if !preferSourceCompilation,
            let metallib = try? device.makeDefaultLibrary(bundle: Bundle.module) {
             for key in BuiltinKey.all {
@@ -223,11 +223,11 @@ public final class ShaderLibrary {
             return
         }
 
-        // Fallback: compile from MSL source strings
+        // フォールバック: MSL ソース文字列からコンパイル
         try registerBuiltinsFromSource()
     }
 
-    /// Mapping from resource file names to builtin keys.
+    /// リソースファイル名から組み込みキーへのマッピング
     private static let shaderResourceNames: [(resource: String, key: String)] = [
         ("blit", BuiltinKey.blit),
         ("flatColor", BuiltinKey.flatColor),
@@ -254,7 +254,7 @@ public final class ShaderLibrary {
             return (source, entry.key)
         }
 
-        // Parallel compilation (device.makeLibrary is thread-safe)
+        // 並列コンパイル（device.makeLibrary はスレッドセーフ）
         let results = UnsafeMutablePointer<(key: String, lib: MTLLibrary)?>.allocate(capacity: sources.count)
         results.initialize(repeating: nil, count: sources.count)
         defer {
@@ -262,7 +262,7 @@ public final class ShaderLibrary {
             results.deallocate()
         }
 
-        // unsafeResults: each thread writes to its own index (no lock needed).
+        // unsafeResults: 各スレッドが自身のインデックスに書き込み（ロック不要）
         nonisolated(unsafe) let unsafeResults = results
         let compilationErrors = OSAllocatedUnfairLock(initialState: [(key: String, error: Error)]())
         let dev = device
@@ -277,7 +277,7 @@ public final class ShaderLibrary {
             }
         }
 
-        // All-or-nothing: if any shader failed, register none
+        // オール・オア・ナッシング: いずれかのシェーダーが失敗した場合、全て登録しない
         let errors = compilationErrors.withLock { $0 }
         if !errors.isEmpty {
             let detail = errors.map { "  \($0.key): \($0.error)" }.joined(separator: "\n")

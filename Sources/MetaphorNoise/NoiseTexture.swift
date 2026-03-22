@@ -1,14 +1,14 @@
 import Metal
 
-/// Build Metal textures from noise value arrays.
+/// ノイズ値配列から Metal テクスチャを構築します。
 enum NoiseTextureBuilder {
-    /// Create a grayscale BGRA8 texture from a float array (0.0 to 1.0).
+    /// float 配列（0.0〜1.0）からグレースケール BGRA8 テクスチャを作成します。
     /// - Parameters:
-    ///   - device: Metal device to create the texture on.
-    ///   - values: Flat array of noise values in row-major order.
-    ///   - width: Texture width in pixels.
-    ///   - height: Texture height in pixels.
-    /// - Returns: Metal texture containing the grayscale noise, or nil on failure.
+    ///   - device: テクスチャを作成する Metal デバイス。
+    ///   - values: 行優先順序のノイズ値フラット配列。
+    ///   - width: テクスチャの幅（ピクセル単位）。
+    ///   - height: テクスチャの高さ（ピクセル単位）。
+    /// - Returns: グレースケールノイズを含む Metal テクスチャ。失敗時は nil。
     static func buildTexture(
         device: MTLDevice,
         values: [Float],
@@ -46,14 +46,14 @@ enum NoiseTextureBuilder {
         return tex
     }
 
-    /// Create a color-mapped texture from a float array using gradient stops.
+    /// float 配列からグラデーションストップを使用してカラーマップテクスチャを作成します。
     /// - Parameters:
-    ///   - device: Metal device to create the texture on.
-    ///   - values: Flat array of noise values in row-major order.
-    ///   - width: Texture width in pixels.
-    ///   - height: Texture height in pixels.
-    ///   - colorStops: Array of (position, BGRA color) pairs defining the gradient.
-    /// - Returns: Metal texture with the color-mapped noise, or nil on failure.
+    ///   - device: テクスチャを作成する Metal デバイス。
+    ///   - values: 行優先順序のノイズ値フラット配列。
+    ///   - width: テクスチャの幅（ピクセル単位）。
+    ///   - height: テクスチャの高さ（ピクセル単位）。
+    ///   - colorStops: グラデーションを定義する (位置, BGRA カラー) ペアの配列。
+    /// - Returns: カラーマップされたノイズの Metal テクスチャ。失敗時は nil。
     static func buildColorMappedTexture(
         device: MTLDevice,
         values: [Float],

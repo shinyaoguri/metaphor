@@ -1,8 +1,8 @@
-/// A Swift + Metal creative coding library inspired by Processing, p5.js, and openFrameworks.
+/// Processing、p5.js、openFrameworks にインスパイアされた Swift + Metal クリエイティブコーディングライブラリ。
 ///
-/// metaphor provides an immediate-mode creative coding environment powered by Metal.
-/// Implement the ``Sketch`` protocol to get started — the library handles window creation,
-/// Metal device setup, and the render loop automatically.
+/// metaphor は Metal を活用した即時モードのクリエイティブコーディング環境を提供します。
+/// ``Sketch`` プロトコルを実装して開始してください。ウィンドウの作成、
+/// Metal デバイスのセットアップ、レンダーループはライブラリが自動的に処理します。
 ///
 /// ```swift
 /// import metaphor

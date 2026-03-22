@@ -1,21 +1,21 @@
 import AppKit
 import MetalKit
 
-/// Capture mouse and keyboard events as an MTKView subclass.
+/// MTKView のサブクラスとしてマウス・キーボードイベントをキャプチャします。
 ///
-/// Forwards all input events to `InputManager` and converts window coordinates
-/// to the offscreen texture coordinate system via the renderer.
+/// すべての入力イベントを `InputManager` に転送し、レンダラーを介して
+/// ウィンドウ座標をオフスクリーンテクスチャ座標系に変換します。
 @MainActor
 public class MetaphorMTKView: MTKView {
-    /// Weak reference to the renderer used for coordinate conversion.
+    /// 座標変換に使用するレンダラーへの弱参照
     weak var rendererRef: MetaphorRenderer?
 
     // MARK: - First Responder
 
-    /// Accept first responder status to receive keyboard events.
+    /// キーボードイベントを受信するためにファーストレスポンダを受け入れ
     public override var acceptsFirstResponder: Bool { true }
 
-    /// Rebuild tracking areas to ensure mouse-moved events are delivered.
+    /// マウス移動イベントが配信されるようにトラッキングエリアを再構築します。
     public override func updateTrackingAreas() {
         super.updateTrackingAreas()
         for area in trackingAreas {
@@ -32,9 +32,9 @@ public class MetaphorMTKView: MTKView {
 
     // MARK: - Coordinate Conversion
 
-    /// Convert an NSEvent's window location to offscreen texture coordinates.
-    /// - Parameter event: The incoming mouse event.
-    /// - Returns: A tuple of (x, y) in texture coordinate space.
+    /// NSEvent のウィンドウ位置をオフスクリーンテクスチャ座標に変換します。
+    /// - Parameter event: 受信したマウスイベント。
+    /// - Returns: テクスチャ座標空間での (x, y) タプル。
     private func textureCoords(from event: NSEvent) -> (Float, Float) {
         guard let renderer = rendererRef else { return (0, 0) }
         let point = convert(event.locationInWindow, from: nil)
@@ -45,9 +45,9 @@ public class MetaphorMTKView: MTKView {
         )
     }
 
-    /// Determine the mouse button index from an event type.
-    /// - Parameter event: The incoming mouse event.
-    /// - Returns: 0 for left, 1 for right, 2 for other buttons.
+    /// イベントタイプからマウスボタンインデックスを判定します。
+    /// - Parameter event: 受信したマウスイベント。
+    /// - Returns: 左は0、右は1、その他は2。
     private func mouseButtonIndex(from event: NSEvent) -> Int {
         switch event.type {
         case .rightMouseDown, .rightMouseUp, .rightMouseDragged: return 1
@@ -58,61 +58,61 @@ public class MetaphorMTKView: MTKView {
 
     // MARK: - Mouse Events
 
-    /// Handle left mouse button press.
+    /// 左マウスボタン押下の処理
     public override func mouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseDown(x: x, y: y, button: 0)
     }
 
-    /// Handle left mouse button release.
+    /// 左マウスボタン解放の処理
     public override func mouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseUp(x: x, y: y, button: 0)
     }
 
-    /// Handle mouse movement without any button pressed.
+    /// ボタン非押下時のマウス移動の処理
     public override func mouseMoved(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseMoved(x: x, y: y)
     }
 
-    /// Handle mouse movement while the left button is held.
+    /// 左ボタン押下中のマウス移動の処理
     public override func mouseDragged(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseDragged(x: x, y: y)
     }
 
-    /// Handle right mouse button press.
+    /// 右マウスボタン押下の処理
     public override func rightMouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseDown(x: x, y: y, button: 1)
     }
 
-    /// Handle right mouse button release.
+    /// 右マウスボタン解放の処理
     public override func rightMouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseUp(x: x, y: y, button: 1)
     }
 
-    /// Handle mouse movement while the right button is held.
+    /// 右ボタン押下中のマウス移動の処理
     public override func rightMouseDragged(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseDragged(x: x, y: y)
     }
 
-    /// Handle middle mouse button press.
+    /// 中マウスボタン押下の処理
     public override func otherMouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseDown(x: x, y: y, button: 2)
     }
 
-    /// Handle middle mouse button release.
+    /// 中マウスボタン解放の処理
     public override func otherMouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseUp(x: x, y: y, button: 2)
     }
 
-    /// Handle mouse movement while the middle button is held.
+    /// 中ボタン押下中のマウス移動の処理
     public override func otherMouseDragged(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
         rendererRef?.input.handleMouseDragged(x: x, y: y)
@@ -120,7 +120,7 @@ public class MetaphorMTKView: MTKView {
 
     // MARK: - Scroll Events
 
-    /// Handle scroll wheel input for zooming or scrolling.
+    /// ズームまたはスクロール用のスクロールホイール入力の処理
     public override func scrollWheel(with event: NSEvent) {
         let dx = Float(event.scrollingDeltaX)
         let dy = Float(event.scrollingDeltaY)
@@ -129,7 +129,7 @@ public class MetaphorMTKView: MTKView {
 
     // MARK: - Keyboard Events
 
-    /// Handle key press events.
+    /// キー押下イベントの処理
     public override func keyDown(with event: NSEvent) {
         rendererRef?.input.handleKeyDown(
             keyCode: event.keyCode,
@@ -138,7 +138,7 @@ public class MetaphorMTKView: MTKView {
         )
     }
 
-    /// Handle key release events.
+    /// キー解放イベントの処理
     public override func keyUp(with event: NSEvent) {
         rendererRef?.input.handleKeyUp(keyCode: event.keyCode)
     }

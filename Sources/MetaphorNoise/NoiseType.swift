@@ -1,65 +1,65 @@
 import simd
 
-/// Define the available GameplayKit noise algorithms.
+/// 利用可能な GameplayKit ノイズアルゴリズムを定義します。
 public enum NoiseType: Sendable {
-    /// Perlin noise (based on GKPerlinNoiseSource).
+    /// パーリンノイズ（GKPerlinNoiseSource ベース）。
     case perlin
-    /// Voronoi / Worley noise (cell patterns, organic textures).
+    /// Voronoi / Worley ノイズ（セルパターン、有機的テクスチャ）。
     case voronoi
-    /// Billow noise (soft, cloud-like patterns).
+    /// Billow ノイズ（柔らかい雲のようなパターン）。
     case billow
-    /// Ridged multifractal noise (mountain terrain, lightning patterns).
+    /// Ridged マルチフラクタルノイズ（山岳地形、稲妻パターン）。
     case ridged
-    /// Concentric cylinder pattern.
+    /// 同心円シリンダーパターン。
     case cylinders
-    /// Concentric sphere pattern.
+    /// 同心球パターン。
     case spheres
-    /// Checkerboard pattern.
+    /// チェッカーボードパターン。
     case checkerboard
-    /// Constant value noise.
+    /// 定数値ノイズ。
     case constant(value: Double)
 }
 
-/// Configure parameters for GKNoise generation.
+/// GKNoise 生成のパラメータを設定します。
 public struct NoiseConfig: Sendable {
-    /// Number of fractal octaves (defaults to 6).
+    /// フラクタルオクターブ数（デフォルトは6）。
     public var octaves: Int
 
-    /// Base frequency (defaults to 1.0).
+    /// 基本周波数（デフォルトは1.0）。
     public var frequency: Double
 
-    /// Lacunarity (frequency multiplier between octaves, defaults to 2.0).
+    /// ラクナリティ（オクターブ間の周波数乗数、デフォルトは2.0）。
     public var lacunarity: Double
 
-    /// Seed value for the noise generator.
+    /// ノイズジェネレーターのシード値。
     public var seed: Int32
 
-    /// Amplitude decay rate per octave (persistence, defaults to 0.5).
+    /// オクターブごとの振幅減衰率（パーシステンス、デフォルトは0.5）。
     public var persistence: Double
 
-    /// Enable output normalization (remap to 0.0-1.0).
+    /// 出力正規化の有効化（0.0〜1.0 にリマップ）。
     public var normalized: Bool
 
-    /// Voronoi-specific: use distance as the noise value.
+    /// Voronoi 固有: 距離をノイズ値として使用。
     public var voronoiDistanceEnabled: Bool
 
-    /// Sampling scale (maps to noiseMap's sampleSize).
+    /// サンプリングスケール（noiseMap の sampleSize にマッピング）。
     public var sampleScale: SIMD2<Double>
 
-    /// Sampling offset.
+    /// サンプリングオフセット。
     public var origin: SIMD2<Double>
 
-    /// Create a noise configuration with the given parameters.
+    /// 指定パラメータでノイズ設定を作成します。
     /// - Parameters:
-    ///   - octaves: Number of fractal octaves (defaults to 6).
-    ///   - frequency: Base frequency (defaults to 1.0).
-    ///   - lacunarity: Frequency multiplier between octaves (defaults to 2.0).
-    ///   - seed: Seed value (defaults to 0).
-    ///   - persistence: Amplitude decay rate (defaults to 0.5).
-    ///   - normalized: Remap output to 0.0-1.0 (defaults to true).
-    ///   - voronoiDistanceEnabled: Use distance as Voronoi value (defaults to true).
-    ///   - sampleScale: Sampling scale (defaults to (1.0, 1.0)).
-    ///   - origin: Sampling offset (defaults to zero).
+    ///   - octaves: フラクタルオクターブ数（デフォルトは6）。
+    ///   - frequency: 基本周波数（デフォルトは1.0）。
+    ///   - lacunarity: オクターブ間の周波数乗数（デフォルトは2.0）。
+    ///   - seed: シード値（デフォルトは0）。
+    ///   - persistence: 振幅減衰率（デフォルトは0.5）。
+    ///   - normalized: 出力を 0.0〜1.0 にリマップ（デフォルトは true）。
+    ///   - voronoiDistanceEnabled: 距離を Voronoi 値として使用（デフォルトは true）。
+    ///   - sampleScale: サンプリングスケール（デフォルトは (1.0, 1.0)）。
+    ///   - origin: サンプリングオフセット（デフォルトはゼロ）。
     public init(
         octaves: Int = 6,
         frequency: Double = 1.0,

@@ -1,29 +1,29 @@
 import Foundation
 
-/// Represent a single MIDI message.
+/// 単一の MIDI メッセージを表します。
 public struct MIDIMessage: Sendable {
-    /// Status byte (upper 4 bits: message type, lower 4 bits: channel).
+    /// ステータスバイト（上位4ビット: メッセージタイプ、下位4ビット: チャンネル）。
     public let status: UInt8
 
-    /// MIDI channel (0-15).
+    /// MIDI チャンネル（0-15）。
     public let channel: UInt8
 
-    /// First data byte (note number or CC number).
+    /// 第1データバイト（ノート番号または CC 番号）。
     public let data1: UInt8
 
-    /// Second data byte (velocity or CC value).
+    /// 第2データバイト（ベロシティまたは CC 値）。
     public let data2: UInt8
 
-    /// Timestamp of the message.
+    /// メッセージのタイムスタンプ。
     public let timestamp: UInt64
 
-    /// Create a MIDI message.
+    /// MIDI メッセージを作成します。
     /// - Parameters:
-    ///   - status: Status byte.
-    ///   - channel: MIDI channel (0-15).
-    ///   - data1: First data byte.
-    ///   - data2: Second data byte.
-    ///   - timestamp: Timestamp (defaults to 0).
+    ///   - status: ステータスバイト。
+    ///   - channel: MIDI チャンネル（0-15）。
+    ///   - data1: 第1データバイト。
+    ///   - data2: 第2データバイト。
+    ///   - timestamp: タイムスタンプ（デフォルトは0）。
     public init(status: UInt8, channel: UInt8, data1: UInt8, data2: UInt8, timestamp: UInt64 = 0) {
         self.status = status
         self.channel = channel
@@ -32,59 +32,59 @@ public struct MIDIMessage: Sendable {
         self.timestamp = timestamp
     }
 
-    // MARK: - Message Type Detection
+    // MARK: - メッセージタイプ判定
 
-    /// Indicate whether this is a Note On message.
+    /// Note On メッセージかどうかを示します。
     public var isNoteOn: Bool {
         (status & 0xF0) == 0x90 && data2 > 0
     }
 
-    /// Indicate whether this is a Note Off message.
+    /// Note Off メッセージかどうかを示します。
     public var isNoteOff: Bool {
         (status & 0xF0) == 0x80 || ((status & 0xF0) == 0x90 && data2 == 0)
     }
 
-    /// Indicate whether this is a Control Change message.
+    /// Control Change メッセージかどうかを示します。
     public var isControlChange: Bool {
         (status & 0xF0) == 0xB0
     }
 
-    /// Indicate whether this is a Program Change message.
+    /// Program Change メッセージかどうかを示します。
     public var isProgramChange: Bool {
         (status & 0xF0) == 0xC0
     }
 
-    /// Indicate whether this is a Pitch Bend message.
+    /// Pitch Bend メッセージかどうかを示します。
     public var isPitchBend: Bool {
         (status & 0xF0) == 0xE0
     }
 
-    // MARK: - Convenience
+    // MARK: - 便利プロパティ
 
-    /// Return the note number (for Note On / Note Off messages).
+    /// ノート番号を返します（Note On / Note Off メッセージ用）。
     public var note: UInt8 { data1 }
 
-    /// Return the velocity (for Note On / Note Off messages).
+    /// ベロシティを返します（Note On / Note Off メッセージ用）。
     public var velocity: UInt8 { data2 }
 
-    /// Return the CC number (for Control Change messages).
+    /// CC 番号を返します（Control Change メッセージ用）。
     public var controlNumber: UInt8 { data1 }
 
-    /// Return the CC value (for Control Change messages, 0-127).
+    /// CC 値を返します（Control Change メッセージ用、0-127）。
     public var controlValue: UInt8 { data2 }
 
-    /// Return the CC value normalized to 0.0-1.0.
+    /// CC 値を 0.0〜1.0 に正規化して返します。
     public var normalizedControlValue: Float {
         Float(data2) / 127.0
     }
 
-    /// Return the pitch bend value (-8192 to 8191).
+    /// ピッチベンド値を返します（-8192〜8191）。
     public var pitchBendValue: Int16 {
         Int16(data1) | (Int16(data2) << 7) - 8192
     }
 }
 
-/// Define MIDI message types by their status byte.
+/// ステータスバイトによる MIDI メッセージタイプの定義。
 public enum MIDIMessageType: UInt8, Sendable {
     case noteOff = 0x80
     case noteOn = 0x90

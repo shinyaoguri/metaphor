@@ -1,15 +1,15 @@
 import Metal
 import simd
 
-// MARK: - MShape Drawing Integration
+// MARK: - MShape 描画統合
 
-/// Extension on SketchContext that provides the core rendering logic for retained-mode shapes.
-/// Routes shape drawing through existing Canvas2D/Canvas3D pipelines.
+/// SketchContext の拡張。リテインドモードシェイプのコアレンダリングロジックを提供します。
+/// 既存の Canvas2D/Canvas3D パイプラインを通してシェイプ描画をルーティングします。
 extension SketchContext {
 
-    // MARK: - Public Entry Points
+    // MARK: - パブリックエントリポイント
 
-    /// Draw a retained shape at the origin.
+    /// リテインドシェイプを原点に描画します。
     public func shape(_ s: MShape) {
         if s.is3D {
             drawShape3D(s, tx: 0, ty: 0, tz: 0)
@@ -18,7 +18,7 @@ extension SketchContext {
         }
     }
 
-    /// Draw a retained shape at the given position.
+    /// リテインドシェイプを指定位置に描画します。
     public func shape(_ s: MShape, _ x: Float, _ y: Float) {
         if s.is3D {
             drawShape3D(s, tx: x, ty: y, tz: 0)
@@ -27,10 +27,10 @@ extension SketchContext {
         }
     }
 
-    /// Draw a retained shape at the given position and size.
+    /// リテインドシェイプを指定位置・サイズで描画します。
     ///
-    /// For primitive shapes, the size overrides the shape's original dimensions.
-    /// For custom shapes, the shape is scaled to fit the given bounds.
+    /// プリミティブシェイプの場合、サイズは元の寸法を上書きします。
+    /// カスタムシェイプの場合、指定範囲に収まるようスケーリングされます。
     public func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         if s.is3D {
             drawShape3DWithSize(s, tx: x, ty: y, tz: 0, w: w, h: h)
@@ -39,10 +39,10 @@ extension SketchContext {
         }
     }
 
-    // MARK: - 2D Drawing
+    // MARK: - 2D 描画
 
     func drawShape2D(_ s: MShape, tx: Float, ty: Float) {
-        // Push transform
+        // 変換のプッシュ
         canvas.pushMatrix()
         if tx != 0 || ty != 0 {
             canvas.translate(tx, ty)
@@ -51,14 +51,14 @@ extension SketchContext {
             canvas.applyMatrix(s.localTransform2D)
         }
 
-        // Push style if shape has its own
+        // シェイプ独自のスタイルがあればプッシュ
         let applyStyle = s.styleEnabled
         if applyStyle {
             canvas.pushStyle()
             applyShapeStyle2D(s)
         }
 
-        // Draw based on kind
+        // 種類に応じて描画
         switch s.kind {
         case .rect(let x, let y, let w, let h):
             canvas.rect(x, y, w, h)
@@ -94,11 +94,11 @@ extension SketchContext {
             }
 
         default:
-            // 3D kinds drawn through 2D context — fall through to 3D path
+            // 2Dコンテキストで描画される3D種類 — 3Dパスへフォールスルー
             drawShape3D(s, tx: 0, ty: 0, tz: 0)
         }
 
-        // Restore
+        // 復元
         if applyStyle {
             canvas.popStyle()
         }
@@ -127,7 +127,7 @@ extension SketchContext {
             canvas.ellipse(0, 0, w, h)
 
         case .path2D:
-            // Scale to fit bounding box
+            // バウンディングボックスに収まるようスケーリング
             let bounds = computeBounds2D(s)
             if bounds.width > 0 && bounds.height > 0 {
                 canvas.scale(w / bounds.width, h / bounds.height)
@@ -136,7 +136,7 @@ extension SketchContext {
             drawPath2D(s)
 
         case .group:
-            // Apply uniform scale for groups
+            // グループに均一スケールを適用
             canvas.scale(w, h)
             for child in s.children {
                 if child.is3D {
@@ -157,16 +157,16 @@ extension SketchContext {
     private func drawPath2D(_ s: MShape) {
         s.ensureCacheValid()
 
-        // Draw fill triangles
+        // 塗りつぶし三角形の描画
         if canvas.hasFill, let tris = s.cachedTriangles2D, !tris.isEmpty {
             let fillColor = canvas.fillColor
             for (v0, v1, v2) in tris {
-                // Check for per-vertex colors
+                // 頂点カラーの確認
                 canvas.addTriangle(v0.x, v0.y, v1.x, v1.y, v2.x, v2.y, fillColor)
             }
         }
 
-        // Draw stroke
+        // ストロークの描画
         if canvas.hasStroke, let outline = s.cachedStrokeOutline2D, outline.count >= 2 {
             canvas.strokePolyline(outline, closed: s.closeMode2D == .close)
         }
@@ -196,7 +196,7 @@ extension SketchContext {
         return (minX, minY, maxX - minX, maxY - minY)
     }
 
-    // MARK: - 3D Drawing
+    // MARK: - 3D 描画
 
     func drawShape3D(_ s: MShape, tx: Float, ty: Float, tz: Float) {
         canvas3D.pushState()
@@ -251,7 +251,7 @@ extension SketchContext {
             }
 
         default:
-            // 2D kinds drawn through 3D context — delegate to 2D
+            // 3Dコンテキストで描画される2D種類 — 2Dに委譲
             drawShape2D(s, tx: 0, ty: 0)
         }
 
@@ -272,7 +272,7 @@ extension SketchContext {
             applyShapeStyle3D(s)
         }
 
-        // Override the primitive with the given size
+        // 指定サイズでプリミティブを上書き
         switch s.kind {
         case .box:
             ensurePrimitiveMesh3DForSize(s, width: w, height: h, depth: w)

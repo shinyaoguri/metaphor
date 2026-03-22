@@ -1,17 +1,17 @@
 import Foundation
 
-/// Kawase (dual-filter) blur shader function name constants.
+/// Kawase（デュアルフィルタ）ブラーシェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Achieves comparable quality to Gaussian blur at significantly higher speed
-/// by using hierarchical down/upsample passes instead of per-pixel kernel loops.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// ピクセル単位のカーネルループの代わりに階層的なダウン/アップサンプルパスを使用し、
+/// ガウシアンブラーと同等の品質を大幅に高速で実現します。
 enum KawaseBlurShaders {
 
-    /// Kawase blur shader function name constants.
+    /// Kawase ブラーシェーダー関数名定数。
     enum FunctionName {
-        /// MSL function name for the Kawase downsample shader.
+        /// Kawase ダウンサンプルシェーダーのMSL関数名。
         static let kawaseDownsample = "metaphor_kawaseDownsample"
-        /// MSL function name for the Kawase upsample shader.
+        /// Kawase アップサンプルシェーダーのMSL関数名。
         static let kawaseUpsample = "metaphor_kawaseUpsample"
     }
 }

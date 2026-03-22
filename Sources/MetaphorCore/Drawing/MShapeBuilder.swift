@@ -1,18 +1,18 @@
 import Metal
 import simd
 
-// MARK: - Shape Building API (beginShape / vertex / endShape)
+// MARK: - シェイプ構築 API (beginShape / vertex / endShape)
 
 extension MShape {
 
     // MARK: - beginShape
 
-    /// Begin recording vertices for a custom shape.
+    /// カスタムシェイプの頂点記録を開始します。
     ///
-    /// Call `vertex()` to add points, then `endShape()` to finalize.
-    /// Optionally call `beginContour()`/`endContour()` for holes (2D only).
+    /// `vertex()` で頂点を追加し、`endShape()` で確定します。
+    /// 必要に応じて `beginContour()`/`endContour()` で穴を定義できます（2Dのみ）。
     ///
-    /// - Parameter mode: The primitive drawing mode (default: `.polygon`).
+    /// - Parameter mode: プリミティブ描画モード（デフォルト: `.polygon`）。
     public func beginShape(_ mode: ShapeMode = .polygon) {
         isRecording = true
         vertices2D.removeAll(keepingCapacity: true)
@@ -26,9 +26,9 @@ extension MShape {
         invalidateCache()
     }
 
-    // MARK: - 2D Vertex
+    // MARK: - 2D 頂点
 
-    /// Add a 2D vertex to the shape being recorded.
+    /// 記録中のシェイプに2D頂点を追加します。
     public func vertex(_ x: Float, _ y: Float) {
         guard isRecording else { return }
         if !kind.isPath {
@@ -37,7 +37,7 @@ extension MShape {
         vertices2D.append(ShapeVertex2D(position: SIMD2(x, y)))
     }
 
-    /// Add a 2D vertex with per-vertex color.
+    /// 頂点カラー付きの2D頂点を追加します。
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
         guard isRecording else { return }
         if !kind.isPath {
@@ -46,7 +46,7 @@ extension MShape {
         vertices2D.append(ShapeVertex2D(position: SIMD2(x, y), color: color.simd))
     }
 
-    /// Add a 2D vertex with texture coordinates.
+    /// テクスチャ座標付きの2D頂点を追加します。
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         guard isRecording else { return }
         if !kind.isPath {
@@ -55,9 +55,9 @@ extension MShape {
         vertices2D.append(ShapeVertex2D(position: SIMD2(x, y), uv: SIMD2(u, v)))
     }
 
-    // MARK: - 3D Vertex
+    // MARK: - 3D 頂点
 
-    /// Add a 3D vertex to the shape being recorded.
+    /// 記録中のシェイプに3D頂点を追加します。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecording else { return }
         kind = .path3D
@@ -66,7 +66,7 @@ extension MShape {
         pendingNormal3D = nil
     }
 
-    /// Add a 3D vertex with texture coordinates.
+    /// テクスチャ座標付きの3D頂点を追加します。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float) {
         guard isRecording else { return }
         kind = .path3D
@@ -76,23 +76,23 @@ extension MShape {
         pendingNormal3D = nil
     }
 
-    /// Set the normal vector for the next 3D vertex.
+    /// 次の3D頂点に適用する法線ベクトルを設定します。
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         pendingNormal3D = SIMD3(nx, ny, nz)
     }
 
-    // MARK: - Contours (2D holes)
+    // MARK: - コンター（2D穴）
 
-    /// Begin a contour (hole) within a 2D shape.
+    /// 2Dシェイプ内のコンター（穴）の記録を開始します。
     ///
-    /// Vertices added after this call and before `endContour()` define the hole boundary.
+    /// この呼び出しから `endContour()` までに追加された頂点が穴の境界を定義します。
     public func beginContour() {
         guard isRecording else { return }
         isInContour = true
         contourStartIndex = vertices2D.count
     }
 
-    /// End a contour (hole) within a 2D shape.
+    /// 2Dシェイプ内のコンター（穴）の記録を終了します。
     public func endContour() {
         guard isRecording, isInContour else { return }
         isInContour = false
@@ -102,54 +102,54 @@ extension MShape {
         }
     }
 
-    // MARK: - Style During Definition
+    // MARK: - 定義時のスタイル設定
 
-    /// Set the fill color during shape definition.
+    /// シェイプ定義中に塗りつぶし色を設定します。
     public func fill(_ color: Color) {
         capturedStyle.fillColor = color.simd
         capturedStyle.hasFill = true
     }
 
-    /// Set the fill color from a grayscale value (0-255).
+    /// グレースケール値（0-255）で塗りつぶし色を設定します。
     public func fill(_ gray: Float) {
         let v = gray / 255.0
         capturedStyle.fillColor = SIMD4(v, v, v, 1)
         capturedStyle.hasFill = true
     }
 
-    /// Disable fill.
+    /// 塗りつぶしを無効にします。
     public func noFill() {
         capturedStyle.hasFill = false
     }
 
-    /// Set the stroke color during shape definition.
+    /// シェイプ定義中にストローク色を設定します。
     public func stroke(_ color: Color) {
         capturedStyle.strokeColor = color.simd
         capturedStyle.hasStroke = true
     }
 
-    /// Set the stroke color from a grayscale value (0-255).
+    /// グレースケール値（0-255）でストローク色を設定します。
     public func stroke(_ gray: Float) {
         let v = gray / 255.0
         capturedStyle.strokeColor = SIMD4(v, v, v, 1)
         capturedStyle.hasStroke = true
     }
 
-    /// Disable stroke.
+    /// ストロークを無効にします。
     public func noStroke() {
         capturedStyle.hasStroke = false
     }
 
-    /// Set the stroke weight during shape definition.
+    /// シェイプ定義中にストロークの太さを設定します。
     public func strokeWeight(_ weight: Float) {
         capturedStyle.strokeWeight = weight
     }
 
     // MARK: - endShape
 
-    /// Finalize the shape and build geometry from recorded vertices.
+    /// シェイプを確定し、記録された頂点からジオメトリを構築します。
     ///
-    /// - Parameter close: Whether to close the shape by connecting the last vertex to the first.
+    /// - Parameter close: 最後の頂点から最初の頂点に接続してシェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         guard isRecording else { return }
         isRecording = false
@@ -160,19 +160,19 @@ extension MShape {
             closeMode3D = close
         }
 
-        // Geometry will be built lazily on first draw
+        // ジオメトリは最初の描画時に遅延構築される
         isDirty = true
     }
 }
 
-// MARK: - Tessellation / Mesh Building
+// MARK: - テッセレーション / メッシュ構築
 
 extension MShape {
 
-    /// Tessellate the 2D custom shape and cache the result.
+    /// 2Dカスタムシェイプをテッセレーションし、結果をキャッシュします。
     ///
-    /// Uses `EarClipTriangulator` for polygon mode.
-    /// Call only when `isDirty` is true or cache is nil.
+    /// ポリゴンモードでは `EarClipTriangulator` を使用します。
+    /// `isDirty` が true またはキャッシュが nil の場合のみ呼び出してください。
     func tessellate2D() {
         guard case .path2D = kind, !vertices2D.isEmpty else {
             cachedTriangles2D = []
@@ -181,7 +181,7 @@ extension MShape {
             return
         }
 
-        // Extract outer polygon (vertices not in any contour range)
+        // 外側ポリゴンを抽出（コンター範囲に含まれない頂点）
         let outerEnd = contourRanges.first?.lowerBound ?? vertices2D.count
         let outerPoints = vertices2D[0..<outerEnd].map { ($0.position.x, $0.position.y) }
 
@@ -199,11 +199,11 @@ extension MShape {
             tessellateTriangleFan2D()
 
         case .lines, .points:
-            // No fill tessellation for lines/points modes
+            // lines/points モードでは塗りつぶしテッセレーション不要
             cachedTriangles2D = []
         }
 
-        // Build stroke outline
+        // ストロークアウトラインの構築
         cachedStrokeOutline2D = outerPoints
         isDirty = false
     }
@@ -215,11 +215,11 @@ extension MShape {
         }
 
         if contourRanges.isEmpty {
-            // Simple polygon without holes
+            // 穴なしの単純ポリゴン
             let indices = EarClipTriangulator.triangulate(outerPoints)
             cachedTriangles2D = buildTrianglesFromIndices(indices, points: outerPoints)
         } else {
-            // Polygon with holes
+            // 穴ありポリゴン
             let holes: [[(Float, Float)]] = contourRanges.map { range in
                 vertices2D[range].map { ($0.position.x, $0.position.y) }
             }
@@ -293,7 +293,7 @@ extension MShape {
         return tris
     }
 
-    /// Build a Mesh from the 3D custom shape vertices and cache the result.
+    /// 3Dカスタムシェイプの頂点から Mesh を構築し、結果をキャッシュします。
     func buildMesh3D() {
         guard case .path3D = kind, !vertices3D.isEmpty else {
             cachedMesh3D = nil
@@ -304,7 +304,7 @@ extension MShape {
         let hasUVs = vertices3D.contains { $0.uv != nil }
         let white = SIMD4<Float>(1, 1, 1, 1)
 
-        // Build Vertex3D array
+        // Vertex3D 配列の構築
         var meshVertices: [Vertex3D] = []
         meshVertices.reserveCapacity(vertices3D.count)
         var uvVertices: [Vertex3DTextured]? = hasUVs ? [] : nil
@@ -320,17 +320,17 @@ extension MShape {
             }
         }
 
-        // Build index array based on shape mode
+        // シェイプモードに基づくインデックス配列の構築
         var indices: [UInt16] = []
         switch shapeMode3D {
         case .polygon:
-            // Fan tessellation for polygon mode
+            // ポリゴンモードではファンテッセレーション
             if vertices3D.count >= 3 {
                 for i in 1..<(vertices3D.count - 1) {
                     indices.append(contentsOf: [0, UInt16(i), UInt16(i + 1)])
                 }
                 if closeMode3D == .close && vertices3D.count >= 3 {
-                    // Already closed by fan
+                    // ファンにより既に閉じている
                 }
             }
         case .triangles:
@@ -352,7 +352,7 @@ extension MShape {
                 indices.append(contentsOf: [0, UInt16(i), UInt16(i + 1)])
             }
         case .lines, .points:
-            // Handled differently during drawing, no fill mesh
+            // 描画時に別処理。塗りつぶしメッシュなし
             break
         }
 
@@ -371,7 +371,7 @@ extension MShape {
         isDirty = false
     }
 
-    /// Ensure the geometry cache is up to date. Called before drawing.
+    /// ジオメトリキャッシュが最新であることを保証します。描画前に呼び出されます。
     func ensureCacheValid() {
         guard isDirty else { return }
         switch kind {

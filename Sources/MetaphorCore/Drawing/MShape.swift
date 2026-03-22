@@ -3,53 +3,53 @@ import simd
 
 // MARK: - ShapeKind
 
-/// Define the type and creation parameters of a retained shape.
+/// リテインドシェイプのタイプと作成パラメータを定義します。
 ///
-/// Used with ``MShape`` to specify what geometry the shape represents.
-/// Primitives carry their parameters inline; custom shapes use `.path2D` / `.path3D`.
+/// ``MShape`` と共に使用し、シェイプが表すジオメトリを指定します。
+/// プリミティブはパラメータをインラインで保持し、カスタムシェイプは `.path2D` / `.path3D` を使用します。
 public enum ShapeKind: Sendable {
-    /// A group container that holds child shapes.
+    /// 子シェイプを保持するグループコンテナ。
     case group
 
     // MARK: 2D Primitives
-    /// A rectangle defined by position and size.
+    /// 位置とサイズで定義される矩形。
     case rect(x: Float, y: Float, width: Float, height: Float)
-    /// An ellipse defined by center and size.
+    /// 中心とサイズで定義される楕円。
     case ellipse(x: Float, y: Float, width: Float, height: Float)
-    /// A triangle defined by three corner points.
+    /// 3つの頂点で定義される三角形。
     case triangle(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float)
-    /// A quadrilateral defined by four corner points.
+    /// 4つの頂点で定義される四角形。
     case quad(x1: Float, y1: Float, x2: Float, y2: Float,
               x3: Float, y3: Float, x4: Float, y4: Float)
-    /// An arc defined by center, size, angle range, and closing mode.
+    /// 中心、サイズ、角度範囲、閉じモードで定義される弧。
     case arc(x: Float, y: Float, width: Float, height: Float,
              start: Float, stop: Float, mode: ArcMode)
-    /// A line segment between two points.
+    /// 2点間の線分。
     case line(x1: Float, y1: Float, x2: Float, y2: Float)
-    /// A single point.
+    /// 単一の点。
     case point(x: Float, y: Float)
 
     // MARK: 3D Primitives
-    /// A box with width, height, and depth.
+    /// 幅、高さ、奥行きを持つボックス。
     case box(width: Float, height: Float, depth: Float)
-    /// A UV sphere with radius and tessellation detail.
+    /// 半径とテッセレーション詳細度を持つ UV 球体。
     case sphere(radius: Float, detail: Int = 24)
-    /// A flat plane with width and height.
+    /// 幅と高さを持つ平面。
     case plane(width: Float, height: Float)
-    /// A cylinder with radius, height, and tessellation detail.
+    /// 半径、高さ、テッセレーション詳細度を持つシリンダー。
     case cylinder(radius: Float, height: Float, detail: Int = 24)
-    /// A cone with radius, height, and tessellation detail.
+    /// 半径、高さ、テッセレーション詳細度を持つコーン。
     case cone(radius: Float, height: Float, detail: Int = 24)
-    /// A torus with ring radius, tube radius, and tessellation detail.
+    /// リング半径、チューブ半径、テッセレーション詳細度を持つトーラス。
     case torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)
 
     // MARK: Custom Geometry
-    /// A custom 2D shape defined via `beginShape`/`vertex`/`endShape`.
+    /// `beginShape`/`vertex`/`endShape` で定義されるカスタム2Dシェイプ。
     case path2D
-    /// A custom 3D shape defined via `beginShape`/`vertex`/`endShape`.
+    /// `beginShape`/`vertex`/`endShape` で定義されるカスタム3Dシェイプ。
     case path3D
 
-    /// Whether this kind represents custom geometry (path2D or path3D).
+    /// このタイプがカスタムジオメトリ（path2D または path3D）かどうか。
     var isPath: Bool {
         switch self {
         case .path2D, .path3D: return true
@@ -57,13 +57,13 @@ public enum ShapeKind: Sendable {
         }
     }
 
-    /// Whether this shape kind represents 3D geometry.
+    /// このシェイプタイプが3Dジオメトリを表すかどうか。
     public var is3D: Bool {
         switch self {
         case .box, .sphere, .plane, .cylinder, .cone, .torus, .path3D:
             return true
         case .group:
-            return false  // group dimensionality depends on children
+            return false  // グループの次元は子に依存
         default:
             return false
         }
@@ -72,13 +72,13 @@ public enum ShapeKind: Sendable {
 
 // MARK: - ShapeVertex2D
 
-/// A vertex in a retained 2D shape, with optional per-vertex color and UV coordinates.
+/// リテインド2Dシェイプの頂点。オプションの頂点ごとの色と UV 座標を持ちます。
 public struct ShapeVertex2D: Sendable {
-    /// Position in 2D space.
+    /// 2D空間での位置。
     public var position: SIMD2<Float>
-    /// Per-vertex color override. When nil, the shape's fill color is used.
+    /// 頂点ごとの色オーバーライド。nil の場合はシェイプの塗りつぶし色を使用。
     public var color: SIMD4<Float>?
-    /// Texture coordinates. When nil, no texture mapping is applied.
+    /// テクスチャ座標。nil の場合はテクスチャマッピングなし。
     public var uv: SIMD2<Float>?
 
     public init(position: SIMD2<Float>, color: SIMD4<Float>? = nil, uv: SIMD2<Float>? = nil) {
@@ -90,15 +90,15 @@ public struct ShapeVertex2D: Sendable {
 
 // MARK: - ShapeVertex3D
 
-/// A vertex in a retained 3D shape, with normal, optional color, and UV coordinates.
+/// リテインド3Dシェイプの頂点。法線、オプションの色、UV 座標を持ちます。
 public struct ShapeVertex3D: Sendable {
-    /// Position in 3D space.
+    /// 3D空間での位置。
     public var position: SIMD3<Float>
-    /// Vertex normal for lighting calculations.
+    /// ライティング計算用の頂点法線。
     public var normal: SIMD3<Float>
-    /// Per-vertex color override. When nil, the shape's fill color is used.
+    /// 頂点ごとの色オーバーライド。nil の場合はシェイプの塗りつぶし色を使用。
     public var color: SIMD4<Float>?
-    /// Texture coordinates. When nil, no texture mapping is applied.
+    /// テクスチャ座標。nil の場合はテクスチャマッピングなし。
     public var uv: SIMD2<Float>?
 
     public init(position: SIMD3<Float>, normal: SIMD3<Float> = SIMD3(0, 1, 0),
@@ -112,39 +112,39 @@ public struct ShapeVertex3D: Sendable {
 
 // MARK: - ShapeStyle
 
-/// A snapshot of visual style properties captured when a shape is created.
+/// シェイプ作成時にキャプチャされるビジュアルスタイルプロパティのスナップショット。
 ///
-/// Used internally by ``MShape`` to store fill, stroke, and material state.
-/// When `styleEnabled` is true on the shape, this style is applied during drawing;
-/// when false, the sketch's current style is used instead.
+/// ``MShape`` 内部で塗りつぶし、ストローク、マテリアルの状態を保存するために使用されます。
+/// シェイプの `styleEnabled` が true の場合、描画時にこのスタイルが適用されます。
+/// false の場合はスケッチの現在のスタイルが代わりに使用されます。
 public struct ShapeStyle {
-    /// Fill color (RGBA, 0-1 range).
+    /// 塗りつぶし色（RGBA、0-1範囲）。
     public var fillColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
-    /// Stroke color (RGBA, 0-1 range).
+    /// ストローク色（RGBA、0-1範囲）。
     public var strokeColor: SIMD4<Float> = SIMD4(0, 0, 0, 1)
-    /// Stroke line weight in pixels.
+    /// ストロークの線幅（ピクセル単位）。
     public var strokeWeight: Float = 1.0
-    /// Whether fill is enabled.
+    /// 塗りつぶしが有効かどうか。
     public var hasFill: Bool = true
-    /// Whether stroke is enabled.
+    /// ストロークが有効かどうか。
     public var hasStroke: Bool = true
-    /// Tint color for textured shapes.
+    /// テクスチャ付きシェイプのティント色。
     public var tintColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
-    /// Whether tint is applied.
+    /// ティントが適用されるかどうか。
     public var hasTint: Bool = false
-    /// 3D material properties. Nil for 2D-only shapes.
+    /// 3Dマテリアルプロパティ。2D専用シェイプの場合は nil。
     var material: Material3D?
 
-    /// Create a default style.
+    /// デフォルトスタイルを作成します。
     public init() {}
 }
 
 // MARK: - MShape
 
-/// A retained-mode shape that stores geometry, style, and transforms for efficient reuse.
+/// ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
 ///
-/// Create shapes with ``Sketch/createShape(_:)`` or ``Sketch/createShape()``,
-/// then draw them with ``Sketch/shape(_:)``.
+/// ``Sketch/createShape(_:)`` または ``Sketch/createShape()`` でシェイプを作成し、
+/// ``Sketch/shape(_:)`` で描画します。
 ///
 /// ```swift
 /// // In setup():
@@ -168,20 +168,20 @@ public final class MShape {
 
     // MARK: - Identity
 
-    /// An optional name for identifying this shape in a hierarchy.
+    /// 階層内でこのシェイプを識別するためのオプションの名前。
     public var name: String?
 
-    /// The Metal device used for GPU resource creation.
+    /// GPU リソース作成に使用する Metal デバイス。
     let device: MTLDevice
 
     // MARK: - Kind & Dimensionality
 
-    /// The kind of shape this instance represents.
+    /// このインスタンスが表すシェイプの種類。
     public internal(set) var kind: ShapeKind
 
-    /// Whether this shape contains 3D geometry.
+    /// このシェイプが3Dジオメトリを含むかどうか。
     ///
-    /// For groups, returns true if any child is 3D.
+    /// グループの場合、いずれかの子が3Dであれば true を返します。
     public var is3D: Bool {
         switch kind {
         case .group:
@@ -193,98 +193,98 @@ public final class MShape {
 
     // MARK: - Style
 
-    /// The style snapshot captured at creation time.
+    /// 作成時にキャプチャされたスタイルスナップショット。
     public var capturedStyle: ShapeStyle
 
-    /// Whether the shape's own style is applied during drawing.
-    /// When false, the sketch's current style is used instead.
+    /// 描画時にシェイプ自体のスタイルが適用されるかどうか。
+    /// false の場合はスケッチの現在のスタイルが代わりに使用されます。
     public private(set) var styleEnabled: Bool = true
 
-    /// Texture assigned to this shape.
+    /// このシェイプに割り当てられたテクスチャ。
     public var texture: MTLTexture?
 
     // MARK: - Per-Shape Transform
 
-    /// The accumulated 2D transform matrix for this shape.
-    /// Modified by `translate`, `rotate`, `scale`, and reset by `resetMatrix`.
+    /// このシェイプの累積2D変換行列。
+    /// `translate`、`rotate`、`scale` で変更され、`resetMatrix` でリセットされます。
     public var localTransform2D: float3x3 = float3x3(1)
 
-    /// The accumulated 3D transform matrix for this shape.
-    /// Modified by `translate`, `rotate`, `rotateX/Y/Z`, `scale`, and reset by `resetMatrix`.
+    /// このシェイプの累積3D変換行列。
+    /// `translate`、`rotate`、`rotateX/Y/Z`、`scale` で変更され、`resetMatrix` でリセットされます。
     public var localTransform3D: float4x4 = .identity
 
     // MARK: - Hierarchy
 
-    /// Child shapes (for group shapes).
+    /// 子シェイプ（グループシェイプ用）。
     public private(set) var children: [MShape] = []
 
-    /// Weak reference to the parent shape.
+    /// 親シェイプへの弱参照。
     weak var parent: MShape?
 
     // MARK: - 2D Custom Geometry (path2D)
 
-    /// Vertices for a custom 2D shape.
+    /// カスタム2Dシェイプの頂点。
     var vertices2D: [ShapeVertex2D] = []
 
-    /// Ranges within `vertices2D` that define contour holes.
+    /// コンターホールを定義する `vertices2D` 内の範囲。
     var contourRanges: [Range<Int>] = []
 
-    /// The shape drawing mode for 2D custom shapes.
+    /// 2Dカスタムシェイプの描画モード。
     var shapeMode2D: ShapeMode = .polygon
 
-    /// Whether the 2D custom shape is closed.
+    /// 2Dカスタムシェイプが閉じているかどうか。
     var closeMode2D: CloseMode = .open
 
     // MARK: - 3D Custom Geometry (path3D)
 
-    /// Vertices for a custom 3D shape.
+    /// カスタム3Dシェイプの頂点。
     var vertices3D: [ShapeVertex3D] = []
 
-    /// The shape drawing mode for 3D custom shapes.
+    /// 3Dカスタムシェイプの描画モード。
     var shapeMode3D: ShapeMode = .polygon
 
-    /// Whether the 3D custom shape is closed.
+    /// 3Dカスタムシェイプが閉じているかどうか。
     var closeMode3D: CloseMode = .open
 
     // MARK: - Geometry Cache
 
-    /// Cached tessellated triangles for path2D fill (three SIMD2 per triangle).
+    /// path2D 塗りつぶし用のキャッシュされたテッセレーション三角形（三角形ごとに3つの SIMD2）。
     var cachedTriangles2D: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)]?
 
-    /// Cached stroke outline points for path2D stroke.
+    /// path2D ストローク用のキャッシュされたストロークアウトラインポイント。
     var cachedStrokeOutline2D: [(Float, Float)]?
 
-    /// Cached Mesh for 3D custom shapes (path3D).
+    /// 3Dカスタムシェイプ（path3D）用のキャッシュされたメッシュ。
     var cachedMesh3D: Mesh?
 
-    /// Cached Mesh for 3D primitives (box, sphere, etc.).
+    /// 3Dプリミティブ（box、sphere など）用のキャッシュされたメッシュ。
     var primitiveMesh3D: Mesh?
 
-    /// Whether the geometry has been modified since last cache build.
+    /// 最後のキャッシュビルド以降にジオメトリが変更されたかどうか。
     var isDirty: Bool = true
 
     // MARK: - Shape Building State
 
-    /// Whether beginShape() has been called and endShape() has not yet been called.
+    /// beginShape() が呼ばれ、endShape() がまだ呼ばれていないかどうか。
     var isRecording: Bool = false
 
-    /// The pending normal for the next 3D vertex.
+    /// 次の3D頂点に適用する保留中の法線。
     var pendingNormal3D: SIMD3<Float>?
 
-    /// Tracks whether we're inside a contour definition.
+    /// コンター定義内にいるかどうかを追跡。
     var isInContour: Bool = false
 
-    /// The start index of the current contour in vertices2D.
+    /// vertices2D 内の現在のコンターの開始インデックス。
     var contourStartIndex: Int = 0
 
     // MARK: - Initialization
 
-    /// Create a new shape with the given kind and captured style.
+    /// 指定された種類とキャプチャされたスタイルで新しいシェイプを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device for GPU resources.
-    ///   - kind: The type of shape to create.
-    ///   - style: The initial style snapshot.
+    ///   - device: GPU リソース用の Metal デバイス。
+    ///   - kind: 作成するシェイプのタイプ。
+    ///   - style: 初期スタイルスナップショット。
     init(device: MTLDevice, kind: ShapeKind, style: ShapeStyle = ShapeStyle()) {
         self.device = device
         self.kind = kind
@@ -293,57 +293,57 @@ public final class MShape {
 
     // MARK: - Style Modification
 
-    /// Set the fill color of this shape.
+    /// このシェイプの塗りつぶし色を設定します。
     public func setFill(_ color: Color) {
         capturedStyle.fillColor = color.simd
         capturedStyle.hasFill = true
     }
 
-    /// Enable or disable fill on this shape.
+    /// このシェイプの塗りつぶしを有効または無効にします。
     public func setFill(_ enabled: Bool) {
         capturedStyle.hasFill = enabled
     }
 
-    /// Set the stroke color of this shape.
+    /// このシェイプのストローク色を設定します。
     public func setStroke(_ color: Color) {
         capturedStyle.strokeColor = color.simd
         capturedStyle.hasStroke = true
     }
 
-    /// Enable or disable stroke on this shape.
+    /// このシェイプのストロークを有効または無効にします。
     public func setStroke(_ enabled: Bool) {
         capturedStyle.hasStroke = enabled
     }
 
-    /// Set the stroke weight of this shape.
+    /// このシェイプのストロークの太さを設定します。
     public func setStrokeWeight(_ weight: Float) {
         capturedStyle.strokeWeight = weight
     }
 
-    /// Set the texture of this shape.
+    /// このシェイプのテクスチャを設定します。
     public func setTexture(_ img: MImage) {
         self.texture = img.texture
     }
 
-    /// Set the tint color for textured rendering.
+    /// テクスチャレンダリング用のティント色を設定します。
     public func setTint(_ color: Color) {
         capturedStyle.tintColor = color.simd
         capturedStyle.hasTint = true
     }
 
-    /// Disable the shape's own style, using the sketch's current style when drawn.
+    /// シェイプ自体のスタイルを無効にし、描画時にスケッチの現在のスタイルを使用します。
     public func disableStyle() {
         styleEnabled = false
     }
 
-    /// Enable the shape's own style (default behavior).
+    /// シェイプ自体のスタイルを有効にします（デフォルトの動作）。
     public func enableStyle() {
         styleEnabled = true
     }
 
     // MARK: - Transform (Accumulated)
 
-    /// Translate the shape in 2D.
+    /// シェイプを2Dで平行移動します。
     public func translate(_ x: Float, _ y: Float) {
         var t = float3x3(1)
         t[2][0] = x
@@ -351,12 +351,12 @@ public final class MShape {
         localTransform2D = localTransform2D * t
     }
 
-    /// Translate the shape in 3D.
+    /// シェイプを3Dで平行移動します。
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         localTransform3D = localTransform3D * float4x4(translation: SIMD3(x, y, z))
     }
 
-    /// Rotate the shape in 2D (radians).
+    /// シェイプを2Dで回転します（ラジアン）。
     public func rotate(_ angle: Float) {
         let c = cos(angle), s = sin(angle)
         var r = float3x3(1)
@@ -365,41 +365,41 @@ public final class MShape {
         localTransform2D = localTransform2D * r
     }
 
-    /// Rotate the shape around the X axis (radians).
+    /// シェイプをX軸周りに回転します（ラジアン）。
     public func rotateX(_ angle: Float) {
         localTransform3D = localTransform3D * float4x4(rotationX: angle)
     }
 
-    /// Rotate the shape around the Y axis (radians).
+    /// シェイプをY軸周りに回転します（ラジアン）。
     public func rotateY(_ angle: Float) {
         localTransform3D = localTransform3D * float4x4(rotationY: angle)
     }
 
-    /// Rotate the shape around the Z axis (radians).
+    /// シェイプをZ軸周りに回転します（ラジアン）。
     public func rotateZ(_ angle: Float) {
         localTransform3D = localTransform3D * float4x4(rotationZ: angle)
     }
 
-    /// Scale the shape uniformly in 2D.
+    /// シェイプを2Dで均一にスケーリングします。
     public func scale(_ s: Float) {
         var m = float3x3(1)
         m[0][0] = s; m[1][1] = s
         localTransform2D = localTransform2D * m
     }
 
-    /// Scale the shape non-uniformly in 2D.
+    /// シェイプを2Dで非均一にスケーリングします。
     public func scale(_ sx: Float, _ sy: Float) {
         var m = float3x3(1)
         m[0][0] = sx; m[1][1] = sy
         localTransform2D = localTransform2D * m
     }
 
-    /// Scale the shape non-uniformly in 3D.
+    /// シェイプを3Dで非均一にスケーリングします。
     public func scale(_ sx: Float, _ sy: Float, _ sz: Float) {
         localTransform3D = localTransform3D * float4x4(scale: SIMD3(sx, sy, sz))
     }
 
-    /// Reset the shape's transform to identity.
+    /// シェイプのトランスフォームを単位行列にリセットします。
     public func resetMatrix() {
         localTransform2D = float3x3(1)
         localTransform3D = .identity
@@ -407,9 +407,9 @@ public final class MShape {
 
     // MARK: - Hierarchy
 
-    /// Add a child shape to this group.
+    /// このグループに子シェイプを追加します。
     ///
-    /// - Parameter child: The child shape to add. Removes from previous parent if any.
+    /// - Parameter child: 追加する子シェイプ。以前の親がある場合は削除されます。
     public func addChild(_ child: MShape) {
         if let oldParent = child.parent {
             oldParent.children.removeAll { $0 === child }
@@ -418,19 +418,19 @@ public final class MShape {
         children.append(child)
     }
 
-    /// Get a child shape by index.
+    /// インデックスで子シェイプを取得します。
     ///
-    /// - Parameter index: The zero-based index.
-    /// - Returns: The child shape, or nil if the index is out of range.
+    /// - Parameter index: ゼロベースのインデックス。
+    /// - Returns: 子シェイプ。インデックスが範囲外の場合は nil。
     public func getChild(_ index: Int) -> MShape? {
         guard index >= 0 && index < children.count else { return nil }
         return children[index]
     }
 
-    /// Get a child shape by name (breadth-first search).
+    /// 名前で子シェイプを取得します（幅優先探索）。
     ///
-    /// - Parameter name: The name to search for.
-    /// - Returns: The first child with the matching name, or nil.
+    /// - Parameter name: 検索する名前。
+    /// - Returns: 一致する名前を持つ最初の子。見つからない場合は nil。
     public func getChild(_ name: String) -> MShape? {
         for child in children {
             if child.name == name { return child }
@@ -441,15 +441,15 @@ public final class MShape {
         return nil
     }
 
-    /// The number of direct children.
+    /// 直接の子の数。
     public var childCount: Int { children.count }
 
     // MARK: - Vertex Access
 
-    /// The total number of vertices in this shape.
+    /// このシェイプの合計頂点数。
     ///
-    /// For custom shapes, returns the vertex count. For primitives, returns 0.
-    /// For groups, returns the sum of all children's vertex counts.
+    /// カスタムシェイプの場合は頂点数を返します。プリミティブの場合は0を返します。
+    /// グループの場合はすべての子の頂点数の合計を返します。
     public var vertexCount: Int {
         switch kind {
         case .path2D:
@@ -463,11 +463,11 @@ public final class MShape {
         }
     }
 
-    /// Get a vertex position by index.
+    /// インデックスで頂点位置を取得します。
     ///
-    /// For 2D shapes, the z component is 0.
-    /// - Parameter index: The zero-based vertex index.
-    /// - Returns: The vertex position as a 3-component vector, or nil if out of range.
+    /// 2Dシェイプの場合、z成分は0です。
+    /// - Parameter index: ゼロベースの頂点インデックス。
+    /// - Returns: 3成分ベクトルとしての頂点位置。範囲外の場合は nil。
     public func getVertex(_ index: Int) -> SIMD3<Float>? {
         switch kind {
         case .path2D:
@@ -482,27 +482,27 @@ public final class MShape {
         }
     }
 
-    /// Set a vertex position by index (2D).
+    /// インデックスで頂点位置を設定します（2D）。
     ///
-    /// Marks the shape as dirty, triggering re-tessellation on next draw.
+    /// シェイプをダーティとしてマークし、次の描画時に再テッセレーションをトリガーします。
     /// - Parameters:
-    ///   - index: The zero-based vertex index.
-    ///   - x: The new x coordinate.
-    ///   - y: The new y coordinate.
+    ///   - index: ゼロベースの頂点インデックス。
+    ///   - x: 新しいx座標。
+    ///   - y: 新しいy座標。
     public func setVertex(_ index: Int, _ x: Float, _ y: Float) {
         guard case .path2D = kind, index >= 0 && index < vertices2D.count else { return }
         vertices2D[index].position = SIMD2(x, y)
         invalidateCache()
     }
 
-    /// Set a vertex position by index (3D).
+    /// インデックスで頂点位置を設定します（3D）。
     ///
-    /// Marks the shape as dirty, triggering mesh rebuild on next draw.
+    /// シェイプをダーティとしてマークし、次の描画時にメッシュ再構築をトリガーします。
     /// - Parameters:
-    ///   - index: The zero-based vertex index.
-    ///   - x: The new x coordinate.
-    ///   - y: The new y coordinate.
-    ///   - z: The new z coordinate.
+    ///   - index: ゼロベースの頂点インデックス。
+    ///   - x: 新しいx座標。
+    ///   - y: 新しいy座標。
+    ///   - z: 新しいz座標。
     public func setVertex(_ index: Int, _ x: Float, _ y: Float, _ z: Float) {
         guard case .path3D = kind, index >= 0 && index < vertices3D.count else { return }
         vertices3D[index].position = SIMD3(x, y, z)
@@ -511,7 +511,7 @@ public final class MShape {
 
     // MARK: - Cache Invalidation
 
-    /// Mark the geometry cache as invalid, forcing rebuild on next draw.
+    /// ジオメトリキャッシュを無効としてマークし、次の描画時に再構築を強制します。
     func invalidateCache() {
         isDirty = true
         cachedTriangles2D = nil

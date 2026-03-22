@@ -1,18 +1,18 @@
 @preconcurrency import Metal
 
-/// Define the interface for a render graph that can be executed by the renderer.
+/// レンダラーが実行可能なレンダーグラフのインターフェースを定義します。
 ///
-/// This protocol breaks the circular dependency between MetaphorCore and
-/// MetaphorRenderGraph. The concrete `RenderGraph` class in MetaphorRenderGraph
-/// conforms to this protocol, while ``MetaphorRenderer`` only references the protocol.
+/// このプロトコルは MetaphorCore と MetaphorRenderGraph の間の循環依存を解消します。
+/// MetaphorRenderGraph の具象 `RenderGraph` クラスがこのプロトコルに準拠し、
+/// ``MetaphorRenderer`` はプロトコルのみを参照します。
 @MainActor
 public protocol RenderGraphExecutable: AnyObject {
-    /// Execute the render graph and return the final output texture.
+    /// レンダーグラフを実行し、最終出力テクスチャを返します。
     ///
     /// - Parameters:
-    ///   - commandBuffer: The Metal command buffer to encode work into.
-    ///   - time: The elapsed time in seconds.
-    ///   - renderer: The ``MetaphorRenderer`` reference providing shared resources.
-    /// - Returns: The final output texture, or `nil` if execution failed.
+    ///   - commandBuffer: ワークをエンコードする Metal コマンドバッファ
+    ///   - time: 経過時間（秒）
+    ///   - renderer: 共有リソースを提供する ``MetaphorRenderer`` 参照
+    /// - Returns: 最終出力テクスチャ。実行に失敗した場合は `nil`
     func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> MTLTexture?
 }

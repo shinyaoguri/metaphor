@@ -1,58 +1,57 @@
 import simd
 
-/// Represent the collision shape of a 2D physics body.
+/// 2D物理ボディの衝突形状を表します。
 public enum PhysicsShape2D {
-    /// A circle with the given radius.
+    /// 指定半径の円。
     case circle(radius: Float)
-    /// An axis-aligned rectangle with the given width and height.
+    /// 指定幅・高さの軸整列矩形。
     case rect(width: Float, height: Float)
 }
 
-/// Represent a single 2D rigid body simulated with Verlet integration.
+/// Verlet 積分でシミュレートされる単一の2D剛体を表します。
 ///
-/// ``PhysicsBody2D`` stores the current and previous positions rather than an
-/// explicit velocity. Each step, the implicit velocity is derived as the
-/// difference between the two, providing stable and simple integration.
+/// ``PhysicsBody2D`` は明示的な速度ではなく、現在と前回の位置を保持します。
+/// 各ステップで暗黙の速度が2つの位置の差分として導出され、
+/// 安定したシンプルな積分を実現します。
 ///
-/// Set ``isStatic`` to `true` to make the body immovable (e.g. for walls or
-/// ground planes). Static bodies participate in collision resolution but are
-/// never displaced.
+/// ``isStatic`` を `true` に設定すると、ボディを不動にします（壁や地面など）。
+/// 静的ボディは衝突解消に参加しますが、位置は変更されません。
 @MainActor
 public final class PhysicsBody2D {
-    /// The current position of the body in world space.
+    /// ワールド空間におけるボディの現在位置。
     public var position: SIMD2<Float>
 
-    /// The position of the body at the previous time step, used by Verlet integration.
+    /// Verlet 積分で使用される前回タイムステップのボディ位置。
     public var previousPosition: SIMD2<Float>
 
-    /// The accumulated acceleration for the current step, cleared after integration.
+    /// 現在のステップで蓄積された加速度。積分後にクリアされます。
     public var acceleration: SIMD2<Float> = .zero
 
-    /// The mass of the body, used for force application and collision weighting.
+    /// 力の適用と衝突重み付けに使用されるボディの質量。
     public var mass: Float
 
-    /// The collision shape of the body.
+    /// ボディの衝突形状。
     public let shape: PhysicsShape2D
 
-    /// Indicate whether the body is static (immovable).
+    /// ボディが静的（不動）かどうかを示します。
     ///
-    /// Static bodies are not affected by forces, integration, or collision
-    /// displacement, but they still push other bodies away.
+    /// 静的ボディは力、積分、衝突による位置変更の影響を受けませんが、
+    /// 他のボディを押し返すことはできます。
     public var isStatic: Bool = false
 
-    /// The coefficient of restitution (bounciness) in the range [0, 1].
+    /// 反発係数（弾性）。範囲は [0, 1]。
     public var restitution: Float = 0.5
 
-    /// The friction coefficient applied during contact.
+    /// 接触時に適用される摩擦係数。
     public var friction: Float = 0.1
 
-    /// Create a new physics body at the given position with the specified shape and mass.
+    /// 指定位置・形状・質量で新しい物理ボディを作成します。
     ///
     /// - Parameters:
-    ///   - x: The initial x-coordinate.
-    ///   - y: The initial y-coordinate.
-    ///   - shape: The collision shape of the body.
-    ///   - mass: The mass of the body (defaults to 1.0).
+    ///   - x: 初期 X 座標。
+    ///   - y: 初期 Y 座標。
+    ///   - shape: ボディの衝突形状。
+    ///   - mass: ボディの質量（デフォルトは1.0）。
     public init(x: Float, y: Float, shape: PhysicsShape2D, mass: Float = 1.0) {
         self.position = SIMD2(x, y)
         self.previousPosition = SIMD2(x, y)
@@ -60,11 +59,11 @@ public final class PhysicsBody2D {
         self.shape = shape
     }
 
-    /// Perform Verlet integration: newPos = pos + (pos - prevPos) + acc * dt^2.
+    /// Verlet 積分を実行: newPos = pos + (pos - prevPos) + acc * dt^2。
     ///
-    /// After integration, the accumulated acceleration is reset to zero.
+    /// 積分後、蓄積された加速度はゼロにリセットされます。
     ///
-    /// - Parameter dt: The time step in seconds.
+    /// - Parameter dt: タイムステップ（秒）。
     func integrate(dt: Float) {
         guard !isStatic else { return }
         let velocity = position - previousPosition
@@ -73,18 +72,18 @@ public final class PhysicsBody2D {
         acceleration = .zero
     }
 
-    /// Apply a force to the body, converting it to acceleration via F/m.
+    /// ボディに力を適用し、F/m で加速度に変換します。
     ///
-    /// Forces are accumulated and consumed during the next integration step.
-    /// This method has no effect on static bodies.
+    /// 力は蓄積され、次の積分ステップで消費されます。
+    /// 静的ボディには効果がありません。
     ///
-    /// - Parameter force: The force vector to apply.
+    /// - Parameter force: 適用する力ベクトル。
     public func applyForce(_ force: SIMD2<Float>) {
         guard !isStatic else { return }
         acceleration += force / mass
     }
 
-    /// The current velocity of the body, derived from the Verlet position difference.
+    /// Verlet 位置差分から導出されるボディの現在速度。
     public var velocity: SIMD2<Float> {
         position - previousPosition
     }

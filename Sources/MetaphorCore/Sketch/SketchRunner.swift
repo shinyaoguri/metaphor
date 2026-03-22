@@ -1,11 +1,11 @@
 import AppKit
 import MetalKit
 
-/// Manages the lifecycle of a sketch.
+/// スケッチのライフサイクルを管理します。
 ///
-/// Acts as an `NSApplicationDelegate` and programmatically constructs
-/// the window, `MTKView`, and renderer. Users do not interact with
-/// this class directly.
+/// `NSApplicationDelegate` として動作し、プログラム的にウィンドウ、
+/// `MTKView`、レンダラーを構築します。ユーザーがこのクラスを
+/// 直接操作することはありません。
 @MainActor
 final class SketchRunner: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
@@ -21,12 +21,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     // MARK: - Entry Point
 
-    /// Launches the application with the given sketch type.
+    /// 指定されたスケッチ型でアプリケーションを起動します。
     ///
-    /// Creates an `NSApplication`, instantiates the sketch, and starts
-    /// the run loop.
+    /// `NSApplication` を作成し、スケッチをインスタンス化して
+    /// ランループを開始します。
     ///
-    /// - Parameter sketchType: The concrete `Sketch` type to instantiate and run.
+    /// - Parameter sketchType: インスタンス化して実行する具象 `Sketch` 型。
     static func run(sketchType: any Sketch.Type) {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
@@ -34,7 +34,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let runner = SketchRunner()
         app.delegate = runner
 
-        // Create sketch instance
+        // スケッチインスタンスを作成
         let sketch = sketchType.init()
         runner.sketchRef = sketch
 
@@ -49,19 +49,19 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Only terminate when the primary window has been closed.
+        // プライマリウィンドウが閉じられた場合のみ終了
         !(window?.isVisible ?? false)
     }
 
     // MARK: - Setup
 
-    /// Configures the window, renderer, canvases, and render loop for the given sketch.
+    /// 指定されたスケッチ用にウィンドウ、レンダラー、キャンバス、レンダーループを構成します。
     ///
-    /// - Parameter sketch: The sketch instance whose configuration drives window and renderer setup.
+    /// - Parameter sketch: 設定がウィンドウとレンダラーのセットアップを駆動するスケッチインスタンス。
     private func setupWindow(sketch: any Sketch) {
         let config = sketch.config
 
-        // Initialize shared resources + renderer + canvases
+        // 共有リソース + レンダラー + キャンバスを初期化
         let shared: SharedMetalResources
         let renderer: MetaphorRenderer
         let canvas: Canvas2D
@@ -98,12 +98,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         assert(sketch._context == nil, "Sketch context already set — this may indicate duplicate setup")
         sketch._context = context
 
-        // createCanvas callback (allows resizing from within setup())
+        // createCanvas コールバック（setup() 内でのリサイズを許可）
         context.onCreateCanvas = { [weak self] width, height in
             self?.handleCreateCanvas(width: width, height: height, config: config)
         }
 
-        // Animation control callbacks
+        // アニメーション制御コールバック
         context.onLoop = { [weak self] in
             self?.handleLoop()
         }
@@ -117,7 +117,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             self?.handleFrameRate(fps)
         }
 
-        // Window size
+        // ウィンドウサイズ
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
 
@@ -142,9 +142,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window.contentView = mtkView
         self.mtkView = mtkView
 
-        // Determine render loop mode.
-        // If syphonName is set but renderLoopMode is still displayLink,
-        // automatically switch to timer mode for Syphon compatibility.
+        // レンダーループモードの決定。
+        // syphonName が設定されているが renderLoopMode が displayLink のままの場合、
+        // Syphon 互換性のため自動的にタイマーモードに切り替え。
         let loopMode: RenderLoopMode
         if config.syphonName != nil && config.renderLoopMode == .displayLink {
             loopMode = .timer(fps: config.fps)
@@ -152,36 +152,36 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             loopMode = config.renderLoopMode
         }
 
-        // Legacy Syphon support
+        // レガシー Syphon サポート
         if let syphonName = config.syphonName {
             renderer.startSyphonServer(name: syphonName)
         }
 
-        // Configure render loop.
-        // Both modes start with the display link PAUSED to avoid a race
-        // where CVDisplayLink fires before onDraw is set up.  The display
-        // link is unpaused (or one explicit frame is drawn) after all
-        // setup is complete — see the bottom of this method.
+        // レンダーループの構成。
+        // 両モードとも、onDraw のセットアップ前に CVDisplayLink が発火する
+        // 競合を避けるため、ディスプレイリンクを一時停止した状態で開始。
+        // セットアップ完了後にディスプレイリンクを再開（または明示的に
+        // 1フレームを描画）— このメソッドの末尾を参照。
         switch loopMode {
         case .displayLink:
             mtkView.preferredFramesPerSecond = config.fps
             mtkView.isPaused = true
 
         case .timer(let fps):
-            // Decouple rendering from the display link
+            // レンダリングをディスプレイリンクから分離
             renderer.useExternalRenderLoop = true
 
-            // MTKView: display link serves only as preview (throttling is acceptable)
+            // MTKView: ディスプレイリンクはプレビューとしてのみ使用（スロットリングは許容）
             mtkView.preferredFramesPerSecond = fps
             mtkView.isPaused = false
 
-            // Disable App Nap for consistent frame rate
+            // 安定したフレームレートのため App Nap を無効化
             activity = ProcessInfo.processInfo.beginActivity(
                 options: [.userInitiated, .latencyCritical],
                 reason: "Timer-based render loop requires consistent frame rate"
             )
 
-            // DispatchSourceTimer: drives renderFrame() independently of display link
+            // DispatchSourceTimer: ディスプレイリンクとは独立して renderFrame() を駆動
             let interval = 1.0 / Double(max(fps, 1))
             let timer = DispatchSource.makeTimerSource(flags: .strict, queue: .main)
             timer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
@@ -195,28 +195,28 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderTimer = timer
         }
 
-        // Connect input callbacks to sketch event methods
+        // 入力コールバックをスケッチのイベントメソッドに接続
         connectInput(sketch: sketch, input: renderer.input, renderer: renderer)
 
-        // Register plugins from config (before setup() so they are available)
+        // config からプラグインを登録（setup() の前に利用可能にするため）
         for factory in config.plugins {
             let plugin = factory.create()
             renderer.addPlugin(plugin, sketch: sketch)
         }
 
-        // Temporarily suppress noLoop handler during setup() to prevent
-        // premature pausing before onDraw is configured.
+        // setup() 中に noLoop ハンドラを一時的に抑制し、
+        // onDraw が構成される前の早期一時停止を防止。
         context.onNoLoop = nil
 
         // setup()
         sketch.setup()
 
-        // Restore noLoop handler
+        // noLoop ハンドラを復元
         context.onNoLoop = { [weak self] in
             self?.handleNoLoop()
         }
 
-        // Compute phase + draw loop
+        // コンピュートフェーズ + 描画ループ
         var prevTime: Float = 0
 
         renderer.onCompute = { [weak context, weak sketch] commandBuffer, time in
@@ -243,43 +243,42 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
 
-        // Show the window before starting the render loop so the drawable
-        // is properly sized (e.g. Retina contentsScale is resolved).
+        // レンダーループ開始前にウィンドウを表示し、drawable が
+        // 適切なサイズに設定されるようにする（例: Retina の contentsScale 解決）。
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(mtkView)
         NSApp.activate()
 
-        // Enter full screen if configured
+        // 設定されている場合はフルスクリーンに移行
         if config.fullScreen {
             window.toggleFullScreen(nil)
         }
 
-        // Now start the render loop.  The display link was kept paused
-        // during setup to guarantee that the first draw(in:) call only
-        // fires after onDraw / onCompute are fully configured.
+        // レンダーループを開始。ディスプレイリンクはセットアップ中一時停止されており、
+        // onDraw / onCompute が完全に構成された後にのみ最初の draw(in:) が
+        // 発火することを保証。
         if context.isLooping {
-            // Looping sketch: unpause the display link.
-            // (Timer mode is already running from above.)
+            // ループするスケッチ: ディスプレイリンクを再開。
+            // （タイマーモードは上で既に実行中。）
             if renderTimer == nil {
                 mtkView.isPaused = false
             }
         } else {
-            // noLoop(): render exactly one frame synchronously.
-            // Because isPaused stays true, no further frames are produced
-            // — eliminating the race where CVDisplayLink could fire a
-            // second time before isPaused took effect.
+            // noLoop(): 同期的に正確に1フレームをレンダリング。
+            // isPaused が true のままなのでそれ以上のフレームは生成されず、
+            // isPaused が有効になる前に CVDisplayLink が2回目を発火する
+            // 競合を排除。
             if let renderTimer {
                 renderTimer.suspend()
             }
-            // Render a preliminary (off-screen only) frame so that
-            // background() registers the user's clear colour in the
-            // render-pass descriptor.  On this first pass the background
-            // quad is drawn because clearColorApplied is still false;
-            // the result is never presented to the screen.
+            // 予備の（オフスクリーンのみの）フレームをレンダリングし、
+            // background() がユーザーのクリアカラーをレンダーパス
+            // ディスクリプタに登録。この最初のパスでは clearColorApplied が
+            // まだ false なので背景クワッドが描画される。結果は画面には表示されない。
             renderer.renderFrame()
-            // The 2nd frame has clearColorApplied == true, so
-            // background() lets Metal's loadAction = .clear handle the
-            // fill with the colour that was captured above.
+            // 2番目のフレームでは clearColorApplied == true なので、
+            // background() は Metal の loadAction = .clear に上でキャプチャした
+            // 色での塗りつぶしを任せる。
             let wasExternal = renderer.useExternalRenderLoop
             renderer.useExternalRenderLoop = false
             mtkView.draw()
@@ -289,7 +288,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     // MARK: - Animation Control
 
-    /// Resumes the render loop.
+    /// レンダーループを再開します。
     private func handleLoop() {
         if let renderTimer {
             renderTimer.resume()
@@ -298,7 +297,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Pauses the render loop.
+    /// レンダーループを一時停止します。
     private func handleNoLoop() {
         if let renderTimer {
             renderTimer.suspend()
@@ -307,28 +306,28 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Triggers a single-frame redraw.
+    /// 単一フレームの再描画をトリガーします。
     ///
-    /// Calls ``MTKView/draw()`` synchronously, which invokes the delegate's
-    /// ``MTKViewDelegate/draw(in:)`` exactly once. This avoids the timing
-    /// uncertainty of toggling ``MTKView/isPaused``.
+    /// ``MTKView/draw()`` を同期的に呼び出し、デリゲートの
+    /// ``MTKViewDelegate/draw(in:)`` を正確に1回実行します。
+    /// ``MTKView/isPaused`` のトグルによるタイミングの不確実性を回避します。
     private func handleRedraw() {
         if renderTimer != nil {
-            // Timer mode: render offscreen first (draw(in:) only blits)
+            // タイマーモード: まずオフスクリーンをレンダリング（draw(in:) はブリットのみ）
             renderer?.renderFrame()
         }
-        // MTKView.draw() triggers draw(in:) synchronously.
-        // Display link mode: renderFrame() + blit in one call.
-        // Timer mode: blit the just-rendered offscreen texture.
+        // MTKView.draw() は draw(in:) を同期的にトリガー。
+        // ディスプレイリンクモード: renderFrame() + ブリットを1回の呼び出しで実行。
+        // タイマーモード: 直前にレンダリングしたオフスクリーンテクスチャをブリット。
         mtkView?.draw()
     }
 
-    /// Updates the frame rate of the render loop.
+    /// レンダーループのフレームレートを更新します。
     ///
-    /// - Parameter fps: The target frames per second.
+    /// - Parameter fps: 目標フレーム毎秒。
     private func handleFrameRate(_ fps: Int) {
         if let renderTimer {
-            // Timer mode: reschedule the timer
+            // タイマーモード: タイマーをリスケジュール
             renderTimer.suspend()
             let interval = 1.0 / Double(max(fps, 1))
             renderTimer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
@@ -336,24 +335,24 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
                 renderTimer.resume()
             }
         } else {
-            // Display link mode: update MTKView's preferred frame rate
+            // ディスプレイリンクモード: MTKView の優先フレームレートを更新
             mtkView?.preferredFramesPerSecond = fps
         }
     }
 
-    /// Rebuilds textures, canvases, and the window to match a new canvas size.
+    /// テクスチャ、キャンバス、ウィンドウを新しいキャンバスサイズに合わせて再構築します。
     ///
     /// - Parameters:
-    ///   - width: The new canvas width in pixels.
-    ///   - height: The new canvas height in pixels.
-    ///   - config: The sketch configuration used for window scale calculation.
+    ///   - width: 新しいキャンバスの幅（ピクセル単位）。
+    ///   - height: 新しいキャンバスの高さ（ピクセル単位）。
+    ///   - config: ウィンドウスケール計算に使用するスケッチ設定。
     private func handleCreateCanvas(width: Int, height: Int, config: SketchConfig) {
         guard let renderer, let context else { return }
 
-        // Resize textures
+        // テクスチャをリサイズ
         renderer.resizeCanvas(width: width, height: height)
 
-        // Rebuild Canvas2D / Canvas3D
+        // Canvas2D / Canvas3D を再構築
         guard let newCanvas = try? Canvas2D(renderer: renderer),
               let newCanvas3D = try? Canvas3D(renderer: renderer) else {
             return
@@ -365,7 +364,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         self.canvas3D = newCanvas3D
         context.rebuildCanvas(canvas: newCanvas, canvas3D: newCanvas3D)
 
-        // Update window size
+        // ウィンドウサイズを更新
         let windowWidth = CGFloat(Float(width) * config.windowScale)
         let windowHeight = CGFloat(Float(height) * config.windowScale)
         window?.setContentSize(NSSize(width: windowWidth, height: windowHeight))
@@ -373,9 +372,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window?.center()
     }
 
-    /// Displays an error alert and terminates the application.
+    /// エラーアラートを表示しアプリケーションを終了します。
     ///
-    /// - Parameter error: The initialization error to present to the user.
+    /// - Parameter error: ユーザーに提示する初期化エラー。
     private func showErrorAlert(error: Error) {
         let alert = NSAlert()
         alert.messageText = "metaphor initialization failed"
@@ -386,12 +385,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    /// Connects input manager callbacks to the sketch's event methods and plugin forwarding.
+    /// 入力マネージャのコールバックをスケッチのイベントメソッドとプラグイン転送に接続します。
     ///
     /// - Parameters:
-    ///   - sketch: The sketch instance that receives input events.
-    ///   - input: The input manager providing raw input callbacks.
-    ///   - renderer: The renderer whose plugins also receive input events.
+    ///   - sketch: 入力イベントを受け取るスケッチインスタンス。
+    ///   - input: 生の入力コールバックを提供する入力マネージャ。
+    ///   - renderer: プラグインも入力イベントを受け取るレンダラー。
     private func connectInput(sketch: any Sketch, input: InputManager, renderer: MetaphorRenderer) {
         input.onMousePressed = { [weak sketch, weak renderer] x, y, button in
             sketch?.mousePressed()

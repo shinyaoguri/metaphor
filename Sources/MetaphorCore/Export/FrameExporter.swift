@@ -1,10 +1,10 @@
 @preconcurrency import Metal
 import Foundation
 
-/// Export each frame as a sequentially numbered PNG file.
+/// 各フレームを連番PNGファイルとしてエクスポートします。
 ///
-/// Call `beginSequence()` to start recording and `endSequence()` to stop.
-/// While recording, each frame is automatically written as a PNG file.
+/// `beginSequence()` で記録を開始し、`endSequence()` で停止します。
+/// 記録中は各フレームが自動的にPNGファイルとして書き出されます。
 ///
 /// ```swift
 /// // In setup()
@@ -15,24 +15,24 @@ import Foundation
 /// ```
 @MainActor
 public final class FrameExporter {
-    /// Indicate whether recording is currently in progress.
+    /// 現在記録中かどうかを示すフラグ
     public private(set) var isRecording: Bool = false
 
-    /// The current frame index.
+    /// 現在のフレームインデックス
     private var frameIndex: Int = 0
 
-    /// The output directory path.
+    /// 出力ディレクトリパス
     private var outputDirectory: String = ""
 
-    /// The filename pattern in printf format.
+    /// printf形式のファイル名パターン
     private var filenamePattern: String = "frame_%05d.png"
 
     public init() {}
 
-    /// Start exporting frames as a numbered PNG sequence.
+    /// フレームの連番PNGシーケンスのエクスポートを開始します。
     /// - Parameters:
-    ///   - directory: The output directory (created automatically if it does not exist).
-    ///   - pattern: The filename pattern where `%d` is replaced with the frame number.
+    ///   - directory: 出力ディレクトリ（存在しない場合は自動作成されます）。
+    ///   - pattern: ファイル名パターン。`%d` がフレーム番号に置換されます。
     public func beginSequence(directory: String, pattern: String = "frame_%05d.png") {
         self.outputDirectory = directory
         self.filenamePattern = pattern
@@ -45,12 +45,12 @@ public final class FrameExporter {
         )
     }
 
-    /// Stop exporting frames.
+    /// フレームのエクスポートを停止します。
     public func endSequence() {
         isRecording = false
     }
 
-    /// Capture the current frame (called from MetaphorRenderer.renderFrame()).
+    /// 現在のフレームをキャプチャします（MetaphorRenderer.renderFrame() から呼ばれます）。
     func captureFrame(
         sourceTexture: MTLTexture,
         stagingTexture: MTLTexture,

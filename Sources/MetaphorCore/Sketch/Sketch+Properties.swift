@@ -1,85 +1,85 @@
 // MARK: - Convenience Properties
 
 extension Sketch {
-    /// Return the canvas width in pixels.
+    /// キャンバスの幅（ピクセル単位）。
     public var width: Float {
         context.width    }
 
-    /// Return the canvas height in pixels.
+    /// キャンバスの高さ（ピクセル単位）。
     public var height: Float {
         context.height    }
 
-    /// Access the input manager (use inside event handlers).
+    /// 入力マネージャ（イベントハンドラ内で使用）。
     public var input: InputManager {
         context.input
     }
 
-    /// Return the current mouse x-coordinate.
+    /// 現在のマウス x 座標。
     public var mouseX: Float {
         context.input.mouseX    }
 
-    /// Return the current mouse y-coordinate.
+    /// 現在のマウス y 座標。
     public var mouseY: Float {
         context.input.mouseY    }
 
-    /// Return the mouse x-coordinate from the previous frame.
+    /// 前フレームのマウス x 座標。
     public var pmouseX: Float {
         context.input.pmouseX    }
 
-    /// Return the mouse y-coordinate from the previous frame.
+    /// 前フレームのマウス y 座標。
     public var pmouseY: Float {
         context.input.pmouseY    }
 
-    /// Indicate whether a mouse button is currently pressed.
+    /// マウスボタンが現在押されているかどうか。
     public var isMousePressed: Bool {
         context.input.isMouseDown    }
 
-    /// Return the horizontal scroll amount for the current frame.
+    /// 現在のフレームの水平スクロール量。
     public var scrollX: Float {
         context.input.scrollX    }
 
-    /// Return the vertical scroll amount for the current frame.
+    /// 現在のフレームの垂直スクロール量。
     public var scrollY: Float {
         context.input.scrollY    }
 
-    /// Return the currently pressed mouse button (0 = left, 1 = right, 2 = middle).
+    /// 現在押されているマウスボタン（0 = 左、1 = 右、2 = 中央）。
     public var mouseButton: Int {
         context.input.mouseButton    }
 
-    /// Indicate whether a key is currently pressed.
+    /// キーが現在押されているかどうか。
     public var isKeyPressed: Bool {
         context.input.isKeyPressed    }
 
-    /// Return the last key that was pressed.
+    /// 最後に押されたキー。
     public var key: Character? {
         context.input.lastKey
     }
 
-    /// Return the key code of the last key that was pressed.
+    /// 最後に押されたキーのキーコード。
     public var keyCode: UInt16? {
         context.input.lastKeyCode
     }
 
-    /// Check whether a specific key is currently held down.
+    /// 特定のキーが現在押下されているかを確認します。
     ///
-    /// - Parameter keyCode: The hardware key code to check.
-    /// - Returns: `true` if the key is currently pressed.
+    /// - Parameter keyCode: 確認するハードウェアキーコード。
+    /// - Returns: キーが現在押されている場合は `true`。
     public func isKeyDown(_ keyCode: UInt16) -> Bool {
         context.input.isKeyDown(keyCode)    }
 
-    /// Indicate whether the most recent key-down event was an auto-repeat.
+    /// 最新のキーダウンイベントがオートリピートかどうか。
     public var isKeyRepeat: Bool {
         context.input.isKeyRepeat    }
 
-    /// Return the elapsed time in seconds since the sketch started.
+    /// スケッチ開始からの経過時間（秒単位）。
     public var time: Float {
         context.time    }
 
-    /// Return the time elapsed since the previous frame in seconds.
+    /// 前フレームからの経過時間（秒単位）。
     public var deltaTime: Float {
         context.deltaTime    }
 
-    /// Return the total number of frames rendered so far.
+    /// これまでにレンダリングされた総フレーム数。
     public var frameCount: Int {
         context.frameCount    }
 }
@@ -87,11 +87,11 @@ extension Sketch {
 // MARK: - Canvas Setup
 
 extension Sketch {
-    /// Set the canvas size (call inside `setup()`, p5.js-style).
+    /// キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
     ///
     /// - Parameters:
-    ///   - width: The canvas width in pixels.
-    ///   - height: The canvas height in pixels.
+    ///   - width: キャンバスの幅（ピクセル単位）。
+    ///   - height: キャンバスの高さ（ピクセル単位）。
     public func createCanvas(width: Int, height: Int) {
         context.createCanvas(width: width, height: height)
     }
@@ -100,23 +100,23 @@ extension Sketch {
 // MARK: - Vector Factory
 
 extension Sketch {
-    /// Create a 2D vector (Processing PVector compatible).
+    /// 2D ベクトルを作成します（Processing PVector 互換）。
     ///
     /// - Parameters:
-    ///   - x: The x component.
-    ///   - y: The y component.
-    /// - Returns: A new ``Vec2`` with the given components.
+    ///   - x: x 成分。
+    ///   - y: y 成分。
+    /// - Returns: 指定した成分の新しい ``Vec2``。
     public func createVector(_ x: Float = 0, _ y: Float = 0) -> Vec2 {
         Vec2(x, y)
     }
 
-    /// Create a 3D vector (Processing PVector compatible).
+    /// 3D ベクトルを作成します（Processing PVector 互換）。
     ///
     /// - Parameters:
-    ///   - x: The x component.
-    ///   - y: The y component.
-    ///   - z: The z component.
-    /// - Returns: A new ``Vec3`` with the given components.
+    ///   - x: x 成分。
+    ///   - y: y 成分。
+    ///   - z: z 成分。
+    /// - Returns: 指定した成分の新しい ``Vec3``。
     public func createVector(_ x: Float, _ y: Float, _ z: Float) -> Vec3 {
         Vec3(x, y, z)
     }
@@ -125,28 +125,28 @@ extension Sketch {
 // MARK: - Animation Control
 
 extension Sketch {
-    /// Indicate whether the animation loop is currently running.
+    /// アニメーションループが現在実行中かどうか。
     public var isLooping: Bool {
         context.isLooping    }
 
-    /// Resume the animation loop.
+    /// アニメーションループを再開します。
     public func loop() {
         context.loop()
     }
 
-    /// Stop the animation loop.
+    /// アニメーションループを停止します。
     public func noLoop() {
         context.noLoop()
     }
 
-    /// Render a single frame (use after calling ``noLoop()``).
+    /// 単一フレームをレンダリングします（``noLoop()`` 呼び出し後に使用）。
     public func redraw() {
         context.redraw()
     }
 
-    /// Change the frame rate dynamically.
+    /// フレームレートを動的に変更します。
     ///
-    /// - Parameter fps: The target frames per second.
+    /// - Parameter fps: 目標フレーム毎秒。
     public func frameRate(_ fps: Int) {
         context.frameRate(fps)
     }

@@ -1,11 +1,11 @@
 import SwiftUI
 import MetalKit
 
-/// A SwiftUI view for creative coding with closure-based drawing.
+/// クロージャベースの描画によるクリエイティブコーディング用 SwiftUI ビュー
 ///
-/// Automatically initializes `MetaphorRenderer`, `Canvas2D`, `Canvas3D`, and
-/// `SketchContext`. The `draw` closure is called every frame with the active
-/// context, providing full access to the drawing API.
+/// `MetaphorRenderer`、`Canvas2D`、`Canvas3D`、`SketchContext` を自動的に初期化します。
+/// `draw` クロージャが毎フレーム呼び出され、アクティブなコンテキストを通じて
+/// 描画APIへのフルアクセスを提供します。
 ///
 /// ```swift
 /// struct ContentView: View {
@@ -28,12 +28,12 @@ public struct SketchView: NSViewRepresentable {
     private let setupClosure: (@MainActor (SketchContext) -> Void)?
     private let drawClosure: @MainActor (SketchContext) -> Void
 
-    /// Create a new sketch view with optional setup and required draw closures.
+    /// オプションの setup と必須の draw クロージャで新しいスケッチビューを作成します。
     ///
     /// - Parameters:
-    ///   - config: The sketch configuration (resolution, frame rate, etc.).
-    ///   - setup: An optional closure called once before the first frame.
-    ///   - draw: A closure called every frame with the active ``SketchContext``.
+    ///   - config: スケッチの設定（解像度、フレームレートなど）。
+    ///   - setup: 最初のフレームの前に一度だけ呼ばれるオプションのクロージャ。
+    ///   - draw: 毎フレーム呼ばれるクロージャ。アクティブな ``SketchContext`` が渡されます。
     public init(
         config: SketchConfig = SketchConfig(),
         setup: (@MainActor (SketchContext) -> Void)? = nil,
@@ -62,13 +62,13 @@ public struct SketchView: NSViewRepresentable {
     }
 
     public func updateNSView(_ nsView: MetaphorMTKView, context: Context) {
-        // SwiftUI state changes are automatically captured by the draw closure
-        // on the next frame, so no explicit update is needed here.
+        // SwiftUI の状態変更は次フレームで draw クロージャにより自動的にキャプチャされるため、
+        // ここでの明示的な更新は不要です。
     }
 
     // MARK: - Coordinator
 
-    /// Manages the renderer lifecycle and frame callbacks for the SwiftUI view.
+    /// SwiftUI ビューのレンダラーライフサイクルとフレームコールバックを管理します。
     @MainActor
     public class Coordinator {
         private let config: SketchConfig
@@ -106,13 +106,13 @@ public struct SketchView: NSViewRepresentable {
             self.renderer = renderer
             self.sketchContext = context
 
-            // Configure the view
+            // ビューを設定
             view.preferredFramesPerSecond = config.fps
             view.enableSetNeedsDisplay = false
             view.isPaused = false
             renderer.configure(view: view)
 
-            // Wire up frame callbacks
+            // フレームコールバックを接続
             var prevTime: Float = 0
 
             renderer.onDraw = { [weak self] encoder, time in
@@ -121,7 +121,7 @@ public struct SketchView: NSViewRepresentable {
                 let dt = t - prevTime
                 prevTime = t
 
-                // Call setup once on first frame
+                // 初回フレームで setup を呼び出し
                 if !self.hasCalledSetup {
                     self.setupClosure?(ctx)
                     self.hasCalledSetup = true

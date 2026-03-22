@@ -1,26 +1,26 @@
 import Metal
 import simd
 
-// MARK: - Image
+// MARK: - 画像
 
 extension Canvas2D {
 
-    /// Draw an image at its original size.
+    /// 画像を元のサイズで描画します。
     /// - Parameters:
-    ///   - img: The image to draw.
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
+    ///   - img: 描画する画像。
+    ///   - x: x座標。
+    ///   - y: y座標。
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         image(img, x, y, img.width, img.height)
     }
 
-    /// Draw an image at a specified size (coordinate interpretation depends on imageMode).
+    /// 指定サイズで画像を描画します（座標解釈は imageMode に依存）。
     /// - Parameters:
-    ///   - img: The image to draw.
-    ///   - x: X coordinate.
-    ///   - y: Y coordinate.
-    ///   - w: Width.
-    ///   - h: Height.
+    ///   - img: 描画する画像。
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         let dx: Float, dy: Float, dw: Float, dh: Float
         switch currentImageMode {
@@ -34,17 +34,17 @@ extension Canvas2D {
         drawTexturedQuad(texture: img.texture, x: dx, y: dy, w: dw, h: dh)
     }
 
-    /// Draw a sub-region of an image (for sprite sheets and tile maps).
+    /// 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
     /// - Parameters:
-    ///   - img: The source image.
-    ///   - dx: Destination X coordinate.
-    ///   - dy: Destination Y coordinate.
-    ///   - dw: Destination width.
-    ///   - dh: Destination height.
-    ///   - sx: Source region X coordinate.
-    ///   - sy: Source region Y coordinate.
-    ///   - sw: Source region width.
-    ///   - sh: Source region height.
+    ///   - img: ソース画像。
+    ///   - dx: 描画先のx座標。
+    ///   - dy: 描画先のy座標。
+    ///   - dw: 描画先の幅。
+    ///   - dh: 描画先の高さ。
+    ///   - sx: ソース領域のx座標。
+    ///   - sy: ソース領域のy座標。
+    ///   - sw: ソース領域の幅。
+    ///   - sh: ソース領域の高さ。
     public func image(
         _ img: MImage,
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
@@ -56,21 +56,21 @@ extension Canvas2D {
         )
     }
 
-    // MARK: - Private: Textured Quad (Batched)
+    // MARK: - プライベート: テクスチャ付きクワッド（バッチ処理）
 
-    /// Accumulate a textured quad into the vertex buffer (same-texture quads are batched).
+    /// テクスチャ付きクワッドを頂点バッファに蓄積します（同一テクスチャのクワッドはバッチ処理されます）。
     func drawTexturedQuad(
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
         srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
     ) {
         guard encoder != nil else { return }
 
-        // Flush accumulated color vertices first to preserve draw order
+        // 描画順序を保つため、蓄積済みカラー頂点を先にフラッシュ
         if vertexCount > 0 {
             flushColorVertices()
         }
 
-        // Flush if the texture changed
+        // テクスチャが変わったらフラッシュ
         if let current = currentBoundTexture, current !== texture {
             flushTexturedVertices()
         }
@@ -78,7 +78,7 @@ extension Canvas2D {
         currentBoundTexture = texture
         hasDrawnAnything = true
 
-        // Check for buffer overflow — flush then grow if needed
+        // バッファオーバーフローのチェック — フラッシュ後に拡張を試みる
         if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
             flushTexturedVertices()
             if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
@@ -116,7 +116,7 @@ extension Canvas2D {
         texturedVertexCount += 6
     }
 
-    /// Draw batched text glyphs from an atlas texture (accumulates glyphs into the textured vertex buffer).
+    /// アトラステクスチャからバッチ処理されたテキストグリフを描画します（テクスチャ頂点バッファにグリフを蓄積）。
     func drawTextFromAtlas(
         texture: MTLTexture,
         glyphs: [PositionedGlyph],
@@ -124,12 +124,12 @@ extension Canvas2D {
     ) {
         guard encoder != nil, !glyphs.isEmpty else { return }
 
-        // Flush accumulated color vertices first
+        // 蓄積済みカラー頂点を先にフラッシュ
         if vertexCount > 0 {
             flushColorVertices()
         }
 
-        // Flush if the texture changed
+        // テクスチャが変わったらフラッシュ
         if let current = currentBoundTexture, current !== texture {
             flushTexturedVertices()
         }
@@ -139,7 +139,7 @@ extension Canvas2D {
 
         let verticesNeeded = glyphs.count * 6
 
-        // Check for buffer overflow — flush then grow if needed
+        // バッファオーバーフローのチェック — フラッシュ後に拡張を試みる
         if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
             flushTexturedVertices()
             if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {

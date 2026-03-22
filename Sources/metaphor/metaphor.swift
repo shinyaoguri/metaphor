@@ -1,8 +1,8 @@
-/// A Swift + Metal creative coding library inspired by Processing, p5.js, and openFrameworks.
+/// Processing、p5.js、openFrameworks にインスパイアされた Swift + Metal クリエイティブコーディングライブラリ。
 ///
-/// Import `metaphor` to get access to the full library including audio,
-/// network, physics, and optional subsystem modules. For a minimal build,
-/// import `MetaphorCore` instead.
+/// `metaphor` をインポートすると、オーディオ、ネットワーク、物理、
+/// その他のオプションサブシステムモジュールを含むフルライブラリにアクセスできます。
+/// 最小限のビルドには、代わりに `MetaphorCore` をインポートしてください。
 
 @_exported import MetaphorCore
 @_exported import MetaphorAudio

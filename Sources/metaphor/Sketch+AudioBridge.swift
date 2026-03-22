@@ -1,21 +1,21 @@
 import MetaphorCore
 import MetaphorAudio
 
-// MARK: - Audio Bridge
+// MARK: - オーディオブリッジ
 
 extension Sketch {
-    /// Create an audio input analyzer for real-time FFT and beat detection.
+    /// リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
     ///
-    /// - Parameter fftSize: The FFT window size (must be a power of two).
-    /// - Returns: A new ``MetaphorAudio/AudioAnalyzer`` instance.
+    /// - Parameter fftSize: FFT ウィンドウサイズ（2の累乗である必要があります）。
+    /// - Returns: 新しい ``MetaphorAudio/AudioAnalyzer`` インスタンス。
     public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
         AudioAnalyzer(fftSize: fftSize)
     }
 
-    /// Load an audio file for playback and analysis.
+    /// 再生と解析用のオーディオファイルを読み込みます。
     ///
-    /// - Parameter path: The file path to the audio file.
-    /// - Returns: A new ``MetaphorAudio/SoundFile`` instance.
+    /// - Parameter path: オーディオファイルのファイルパス。
+    /// - Returns: 新しい ``MetaphorAudio/SoundFile`` インスタンス。
     public func loadSound(_ path: String) throws -> SoundFile {
         try SoundFile(path: path)
     }

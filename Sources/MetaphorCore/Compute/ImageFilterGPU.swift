@@ -1,7 +1,7 @@
 @preconcurrency import Metal
 import MetalPerformanceShaders
 
-/// Hold uniform parameters for GPU image filter compute kernels.
+/// GPU 画像フィルターコンピュートカーネル用のユニフォームパラメータ
 struct FilterParams {
     var width: UInt32
     var height: UInt32
@@ -9,31 +9,31 @@ struct FilterParams {
     var param2: Float
 }
 
-/// Apply image filters using GPU compute shaders.
+/// GPU コンピュートシェーダーを使用して画像フィルターを適用します。
 ///
-/// Serve as a GPU-accelerated alternative to the CPU-based `ImageFilter`.
-/// Process BGRA textures natively and support `.private` storage mode textures.
+/// CPU ベースの `ImageFilter` に対する GPU アクセラレーション代替として機能します。
+/// BGRA テクスチャをネイティブに処理し、`.private` ストレージモードのテクスチャをサポートします。
 @MainActor
 public final class ImageFilterGPU {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
 
-    /// Compiled shader library containing all filter kernels.
+    /// 全フィルターカーネルを含むコンパイル済みシェーダーライブラリ
     private var library: MTLLibrary?
 
-    /// Kernel pipeline cache keyed by function name.
+    /// 関数名をキーとするカーネルパイプラインキャッシュ
     private var kernelCache: [String: MTLComputePipelineState] = [:]
 
-    /// Texture pool keyed by size string.
+    /// サイズ文字列をキーとするテクスチャプール
     private var texturePool: [String: MTLTexture] = [:]
 
-    /// Gaussian weight buffer cache keyed by radius.
+    /// 半径をキーとするガウシアンウェイトバッファキャッシュ
     private var weightBufferCache: [Int: MTLBuffer] = [:]
 
-    /// Reference to a pre-compiled library via ShaderLibrary.
+    /// ShaderLibrary 経由のプリコンパイル済みライブラリ参照
     private weak var shaderLibrary: ShaderLibrary?
 
-    // MARK: - MPS Kernel Cache
+    // MARK: - MPS カーネルキャッシュ
 
     private var gaussianCache: [Float: MPSImageGaussianBlur] = [:]
     private var sobelKernel: MPSImageSobel?
@@ -49,9 +49,9 @@ public final class ImageFilterGPU {
         self.shaderLibrary = shaderLibrary
     }
 
-    // MARK: - Cache Management
+    // MARK: - キャッシュ管理
 
-    /// Clear all caches including texture pool, weight buffers, and compiled kernels.
+    /// テクスチャプール、ウェイトバッファ、コンパイル済みカーネルを含む全キャッシュをクリアします。
     public func clearCache() {
         texturePool.removeAll()
         weightBufferCache.removeAll()
@@ -65,16 +65,16 @@ public final class ImageFilterGPU {
         thresholdKernel = nil
     }
 
-    /// Remove texture pool entries that do not match the specified dimensions.
+    /// 指定されたサイズに一致しないテクスチャプールエントリを削除します。
     private func pruneTexturePool(keepWidth: Int, keepHeight: Int) {
         let keepPrefix = "\(keepWidth)_\(keepHeight)_"
         texturePool = texturePool.filter { $0.key.hasPrefix(keepPrefix) }
     }
 
-    /// Evict the oldest entries from the weight buffer cache when it exceeds the limit.
+    /// ウェイトバッファキャッシュが上限を超えた場合、古いエントリを退去させます。
     private func pruneWeightBufferCache(maxEntries: Int = 16) {
         if weightBufferCache.count > maxEntries {
-            // Remove entries with the smallest radius keys (least likely to be reused)
+            // 最小の半径キーのエントリを削除（再利用される可能性が最も低い）
             let sortedKeys = weightBufferCache.keys.sorted()
             let removeCount = weightBufferCache.count - maxEntries
             for key in sortedKeys.prefix(removeCount) {
@@ -83,26 +83,25 @@ public final class ImageFilterGPU {
         }
     }
 
-    // MARK: - Public API
+    // MARK: - パブリック API
 
-    /// Apply a filter to an image by replacing its texture in place.
+    /// テクスチャをインプレースで置換してフィルターを画像に適用します。
     ///
-    /// This synchronous variant creates an internal command buffer and waits for
-    /// GPU completion. For real-time rendering loops, prefer
-    /// `encode(_:to:commandBuffer:)` instead.
+    /// この同期バリアントは内部コマンドバッファを作成し、GPU 完了を待ちます。
+    /// リアルタイムレンダリングループでは、代わりに `encode(_:to:commandBuffer:)` を推奨します。
     /// - Parameters:
-    ///   - filter: The filter type to apply.
-    ///   - image: The target image whose texture will be replaced.
+    ///   - filter: 適用するフィルタータイプ
+    ///   - image: テクスチャが置換される対象画像
     public func apply(_ filter: FilterType, to image: MImage) {
         let srcTex = image.texture
         let w = srcTex.width
         let h = srcTex.height
 
-        // Auto-purge cache entries for different sizes
+        // 異なるサイズのキャッシュエントリを自動パージ
         pruneTexturePool(keepWidth: w, keepHeight: h)
         pruneWeightBufferCache()
 
-        // Delegate MPS filters to the dedicated MPS path
+        // MPS フィルターは専用の MPS パスに委譲
         switch filter {
         case .mpsBlur(let sigma):
             applyMPS(image) { self.getOrCreateGaussian(sigma: sigma) }; return
@@ -132,18 +131,18 @@ public final class ImageFilterGPU {
         }
 
         image.replaceTexture(outTex)
-        // Remove the output texture from the pool since ownership transferred to the image
+        // 所有権が画像に移ったため、出力テクスチャをプールから削除
         texturePool.removeValue(forKey: "\(w)_\(h)_output")
     }
 
-    /// Encode a filter operation into a command buffer without committing or waiting.
+    /// コマンドバッファにフィルター操作をエンコードします（コミットや待機なし）。
     ///
-    /// Use this non-blocking variant inside real-time rendering loops.
-    /// MPS filters are not supported through this path; use non-MPS filter types only.
+    /// リアルタイムレンダリングループ内で使用するノンブロッキングバリアントです。
+    /// MPS フィルターはこのパスではサポートされません。非 MPS フィルタータイプのみ使用してください。
     /// - Parameters:
-    ///   - filter: The filter type to encode.
-    ///   - image: The target image whose texture will be replaced.
-    ///   - commandBuffer: The command buffer to encode into.
+    ///   - filter: エンコードするフィルタータイプ
+    ///   - image: テクスチャが置換される対象画像
+    ///   - commandBuffer: エンコード先のコマンドバッファ
     public func encode(_ filter: FilterType, to image: MImage, commandBuffer: MTLCommandBuffer) {
         let srcTex = image.texture
         let w = srcTex.width
@@ -162,7 +161,7 @@ public final class ImageFilterGPU {
         texturePool.removeValue(forKey: "\(w)_\(h)_output")
     }
 
-    // MARK: - Private: MPS Filter Application
+    // MARK: - Private: MPS フィルター適用
 
     private func applyMPS(_ image: MImage, kernel: () -> MPSUnaryImageKernel) {
         let src = image.texture
@@ -225,7 +224,7 @@ public final class ImageFilterGPU {
         return k
     }
 
-    // MARK: - Private: Single Pass
+    // MARK: - Private: シングルパス
 
     private func applySinglePass(
         _ filter: FilterType, src: MTLTexture, dst: MTLTexture, width: Int, height: Int,
@@ -266,7 +265,7 @@ public final class ImageFilterGPU {
         }
     }
 
-    // MARK: - Private: Gaussian Blur (2-pass separable)
+    // MARK: - Private: ガウシアンブラー（2パス分離型）
 
     private func applyGaussianBlur(
         src: MTLTexture, dst: MTLTexture, radius: Int, width: Int, height: Int,
@@ -295,7 +294,7 @@ public final class ImageFilterGPU {
         let gridSize = MTLSize(width: width, height: height, depth: 1)
         let groupSize = MTLSize(width: tw, height: th, depth: 1)
 
-        // Horizontal pass: src -> tempTex
+        // 水平パス: src -> tempTex
         encoder.setComputePipelineState(hPipeline)
         encoder.setTexture(src, index: 0)
         encoder.setTexture(tempTex, index: 1)
@@ -305,10 +304,10 @@ public final class ImageFilterGPU {
         }
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: groupSize)
 
-        // Memory barrier
+        // メモリバリア
         encoder.memoryBarrier(scope: .textures)
 
-        // Vertical pass: tempTex -> dst
+        // 垂直パス: tempTex -> dst
         encoder.setComputePipelineState(vPipeline)
         encoder.setTexture(tempTex, index: 0)
         encoder.setTexture(dst, index: 1)
@@ -322,7 +321,7 @@ public final class ImageFilterGPU {
         }
     }
 
-    // MARK: - Private: Kernel Management
+    // MARK: - Private: カーネル管理
 
     private func ensureLibrary() -> MTLLibrary? {
         if let lib = library { return lib }
@@ -343,7 +342,7 @@ public final class ImageFilterGPU {
     private func getOrCreatePipeline(functionName: String) -> MTLComputePipelineState? {
         if let cached = kernelCache[functionName] { return cached }
 
-        // Prefer ShaderLibrary path (metallib) over runtime compilation
+        // ShaderLibrary パス (metallib) をランタイムコンパイルより優先
         let function: MTLFunction?
         if let fn = shaderLibrary?.function(named: functionName, from: ShaderLibrary.BuiltinKey.imageFilter) {
             function = fn
@@ -364,7 +363,7 @@ public final class ImageFilterGPU {
         }
     }
 
-    // MARK: - Private: Texture Pool
+    // MARK: - Private: テクスチャプール
 
     private func getOrCreateTexture(width: Int, height: Int, tag: String) -> MTLTexture? {
         let key = "\(width)_\(height)_\(tag)"
@@ -383,7 +382,7 @@ public final class ImageFilterGPU {
         return tex
     }
 
-    // MARK: - Private: Gaussian Weights
+    // MARK: - Private: ガウシアンウェイト
 
     private func getOrCreateWeightBuffer(radius: Int) -> MTLBuffer? {
         if let cached = weightBufferCache[radius] { return cached }
@@ -409,7 +408,7 @@ public final class ImageFilterGPU {
         return buffer
     }
 
-    // MARK: - Private: Filter Dispatch Helpers
+    // MARK: - Private: フィルターディスパッチヘルパー
 
     private func kernelName(for filter: FilterType) -> String {
         switch filter {
@@ -424,7 +423,7 @@ public final class ImageFilterGPU {
         case .sharpen: "filter_sharpen"
         case .sepia: "filter_sepia"
         case .pixelate: "filter_pixelate"
-        // MPS cases are handled via early return in apply()
+        // MPS ケースは apply() 内の早期リターンで処理
         case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
             "filter_gray"
         }
@@ -437,7 +436,7 @@ public final class ImageFilterGPU {
         case .blur(let radius): Float(max(1, radius))
         case .sharpen(let amount): amount
         case .pixelate(let blockSize): Float(max(1, blockSize))
-        // MPS cases are handled via early return in apply()
+        // MPS ケースは apply() 内の早期リターンで処理
         case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
             0
         default: 0

@@ -1,23 +1,23 @@
-# Getting Started with metaphor
+# metaphor をはじめよう
 
-Set up your first creative coding project with metaphor.
+metaphor で最初のクリエイティブコーディングプロジェクトをセットアップします。
 
 ## Overview
 
-metaphor is a Swift + Metal creative coding library. You create a sketch by implementing the
-``MetaphorCore/Sketch`` protocol, and the library handles window creation, Metal setup, and the render loop.
+metaphor は Swift + Metal のクリエイティブコーディングライブラリです。
+``MetaphorCore/Sketch`` プロトコルを実装するだけで、ウィンドウ生成、Metal のセットアップ、レンダーループをライブラリが処理します。
 
-## Requirements
+## 動作環境
 
-| Requirement | Version |
-|------------|---------|
+| 要件 | バージョン |
+|-----|----------|
 | macOS | 14.0+ |
 | Swift | 5.10+ |
 | Xcode | 15.0+ |
 
-## Installation
+## インストール
 
-Add metaphor to your `Package.swift`:
+`Package.swift` に metaphor を追加してください:
 
 ```swift
 dependencies: [
@@ -25,7 +25,7 @@ dependencies: [
 ]
 ```
 
-Then add it to your target's dependencies:
+次にターゲットの dependencies に追加します:
 
 ```swift
 .executableTarget(
@@ -36,9 +36,9 @@ Then add it to your target's dependencies:
 )
 ```
 
-## Creating Your First Sketch
+## 最初のスケッチを作る
 
-Create a new Swift file and implement the ``MetaphorCore/Sketch`` protocol:
+新しい Swift ファイルを作成し、``MetaphorCore/Sketch`` プロトコルを実装します:
 
 ```swift
 import metaphor
@@ -50,13 +50,13 @@ final class MySketch: Sketch {
     }
 
     func setup() {
-        
+
     }
 
     func draw() {
         background(0.1)
 
-        // Draw a white circle at the center
+        // 中央に白い円を描く
         fill(Color.white)
         noStroke()
         circle(width / 2, height / 2, 200)
@@ -64,39 +64,39 @@ final class MySketch: Sketch {
 }
 ```
 
-Mark your sketch class with `@main` to make it the entry point of your application.
+スケッチクラスに `@main` を付けて、アプリケーションのエントリポイントにしてください。
 
-## The Sketch Lifecycle
+## スケッチのライフサイクル
 
-The ``MetaphorCore/Sketch`` protocol provides callback methods that are called at specific points:
+``MetaphorCore/Sketch`` プロトコルは、特定のタイミングで呼ばれるコールバックメソッドを提供します:
 
-- `setup()` — Called once when the sketch starts. Use this to load resources and initialize state.
-- `draw()` — Called every frame. This is where you put your drawing code.
-- `compute()` — Called every frame before drawing. Use this for GPU compute dispatches.
+- `setup()` — スケッチ開始時に一度だけ呼ばれます。リソースの読み込みや状態の初期化に使います。
+- `draw()` — 毎フレーム呼ばれます。描画コードをここに書きます。
+- `compute()` — 毎フレーム、描画の前に呼ばれます。GPU コンピュートディスパッチに使います。
 
-## Configuration
+## 設定
 
-Use ``MetaphorCore/SketchConfig`` to customize the sketch behavior. Override the `config` property
-on your ``MetaphorCore/Sketch`` class:
+``MetaphorCore/SketchConfig`` でスケッチの動作をカスタマイズできます。
+``MetaphorCore/Sketch`` クラスの `config` プロパティをオーバーライドしてください:
 
 ```swift
 var config: SketchConfig {
     SketchConfig(
-        width: 1920,       // Offscreen texture width (default: 1920)
-        height: 1080,      // Offscreen texture height (default: 1080)
-        title: "My Sketch", // Window title (default: "metaphor")
-        fps: 60,           // Target frame rate (default: 60)
-        syphonName: nil,   // Syphon server name, nil to disable (default: nil)
-        windowScale: 0.5,  // Window size = texture size * scale (default: 0.5)
-        fullScreen: false,  // Launch in full-screen mode (default: false)
-        renderLoopMode: .displayLink // .displayLink or .timer(fps:) (default: .displayLink)
+        width: 1920,       // オフスクリーンテクスチャの幅（デフォルト: 1920）
+        height: 1080,      // オフスクリーンテクスチャの高さ（デフォルト: 1080）
+        title: "My Sketch", // ウィンドウタイトル（デフォルト: "metaphor"）
+        fps: 60,           // 目標フレームレート（デフォルト: 60）
+        syphonName: nil,   // Syphon サーバー名、nil で無効（デフォルト: nil）
+        windowScale: 0.5,  // ウィンドウサイズ = テクスチャサイズ × scale（デフォルト: 0.5）
+        fullScreen: false,  // フルスクリーンで起動（デフォルト: false）
+        renderLoopMode: .displayLink // .displayLink または .timer(fps:)（デフォルト: .displayLink）
     )
 }
 ```
 
-All parameters have defaults, so `SketchConfig()` alone gives you a 1920×1080 canvas at 60 fps.
+すべてのパラメータにデフォルト値があるため、`SketchConfig()` だけで 1920×1080、60fps のキャンバスが得られます。
 
-You can also resize the canvas dynamically inside `setup()` using `createCanvas(width:height:)`:
+`setup()` 内で `createCanvas(width:height:)` を使って動的にキャンバスサイズを変更することもできます:
 
 ```swift
 func setup() {
@@ -104,43 +104,43 @@ func setup() {
 }
 ```
 
-### Built-in Properties
+### 組み込みプロパティ
 
-Every ``MetaphorCore/Sketch`` implementation has access to these properties:
+すべての ``MetaphorCore/Sketch`` 実装で以下のプロパティにアクセスできます:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `width` | `Float` | Canvas width in pixels |
-| `height` | `Float` | Canvas height in pixels |
-| `frameCount` | `Int` | Number of frames rendered so far |
-| `time` | `Float` | Elapsed seconds since sketch started |
-| `deltaTime` | `Float` | Seconds since last frame |
-| `mouseX` | `Float` | Current mouse X position |
-| `mouseY` | `Float` | Current mouse Y position |
-| `pmouseX` | `Float` | Mouse X position from the previous frame |
-| `pmouseY` | `Float` | Mouse Y position from the previous frame |
-| `isMousePressed` | `Bool` | Whether a mouse button is currently pressed |
-| `mouseButton` | `Int` | Currently pressed mouse button (0=left, 1=right, 2=middle) |
-| `isKeyPressed` | `Bool` | Whether a key is currently pressed |
-| `key` | `Character?` | Last key that was pressed |
-| `keyCode` | `UInt16?` | Key code of the last key pressed |
+| プロパティ | 型 | 説明 |
+|----------|------|------|
+| `width` | `Float` | キャンバスの幅（ピクセル） |
+| `height` | `Float` | キャンバスの高さ（ピクセル） |
+| `frameCount` | `Int` | これまでにレンダリングされたフレーム数 |
+| `time` | `Float` | スケッチ開始からの経過秒数 |
+| `deltaTime` | `Float` | 前フレームからの経過秒数 |
+| `mouseX` | `Float` | 現在のマウス X 座標 |
+| `mouseY` | `Float` | 現在のマウス Y 座標 |
+| `pmouseX` | `Float` | 前フレームのマウス X 座標 |
+| `pmouseY` | `Float` | 前フレームのマウス Y 座標 |
+| `isMousePressed` | `Bool` | マウスボタンが押されているか |
+| `mouseButton` | `Int` | 現在押されているマウスボタン（0=左, 1=右, 2=中） |
+| `isKeyPressed` | `Bool` | キーが押されているか |
+| `key` | `Character?` | 最後に押されたキー |
+| `keyCode` | `UInt16?` | 最後に押されたキーのキーコード |
 
-### Input Event Callbacks
+### 入力イベントコールバック
 
-Override these methods to respond to user input:
+以下のメソッドをオーバーライドしてユーザー入力に応答できます:
 
-| Method | Description |
-|--------|-------------|
-| `mousePressed()` | Mouse button was pressed |
-| `mouseReleased()` | Mouse button was released |
-| `mouseMoved()` | Mouse was moved |
-| `mouseDragged()` | Mouse was dragged |
-| `mouseScrolled()` | Mouse scroll event |
-| `mouseClicked()` | Mouse click (press + release without drag) |
-| `keyPressed()` | Key was pressed |
-| `keyReleased()` | Key was released |
+| メソッド | 説明 |
+|--------|------|
+| `mousePressed()` | マウスボタンが押された |
+| `mouseReleased()` | マウスボタンが離された |
+| `mouseMoved()` | マウスが移動した |
+| `mouseDragged()` | マウスがドラッグされた |
+| `mouseScrolled()` | マウススクロールイベント |
+| `mouseClicked()` | マウスクリック（ドラッグなしの押下＋解放） |
+| `keyPressed()` | キーが押された |
+| `keyReleased()` | キーが離された |
 
-## Drawing
+## 描画
 
 ```swift
 @main
@@ -153,13 +153,13 @@ final class MySketch: Sketch {
 }
 ```
 
-Drawing methods like `background()`, `fill()`, `rect()`, and `circle()` are available as
-extensions on the ``MetaphorCore/Sketch`` protocol. They delegate to the underlying
-``MetaphorCore/SketchContext``, which you can also access directly via the `context` property.
+`background()`、`fill()`、`rect()`、`circle()` などの描画メソッドは ``MetaphorCore/Sketch`` プロトコルの
+エクステンションとして提供されます。内部では ``MetaphorCore/SketchContext`` に委譲されており、
+`context` プロパティから直接アクセスすることもできます。
 
-## Next Steps
+## 次のステップ
 
-- Explore 2D drawing with ``MetaphorCore/Canvas2D``
-- Learn about 3D rendering with ``MetaphorCore/Canvas3D``
-- Add post-processing effects with ``MetaphorCore/PostEffect``
-- Set up Syphon output with ``MetaphorCore/SyphonOutput``
+- ``MetaphorCore/Canvas2D`` で 2D 描画を探索する
+- ``MetaphorCore/Canvas3D`` で 3D レンダリングを学ぶ
+- ``MetaphorCore/PostEffect`` でポストプロセスエフェクトを追加する
+- ``MetaphorCore/SyphonOutput`` で Syphon 出力を設定する

@@ -1,16 +1,16 @@
-/// Describe how the render loop should be driven.
+/// レンダーループの駆動方法を記述します。
 ///
-/// The default `.displayLink` mode uses MTKView's built-in display-link
-/// for frame pacing. Use `.timer(fps:)` for scenarios that require
-/// decoupled frame timing, such as Syphon output or video recording.
+/// デフォルトの `.displayLink` モードは MTKView 内蔵のディスプレイリンクを
+/// フレームペーシングに使用します。Syphon 出力や動画録画など、
+/// 独立したフレームタイミングが必要なシナリオでは `.timer(fps:)` を使用してください。
 public enum RenderLoopMode: Sendable, Equatable {
-    /// Use MTKView's built-in display-link driven rendering (default).
+    /// MTKView 内蔵のディスプレイリンク駆動レンダリング（デフォルト）
     case displayLink
 
-    /// Use a DispatchSourceTimer for independent frame timing.
+    /// 独立したフレームタイミング用の DispatchSourceTimer を使用
     ///
-    /// This decouples rendering from window refresh and prevents
-    /// `currentDrawable` from blocking when the window is occluded.
-    /// - Parameter fps: The target frame rate.
+    /// レンダリングをウィンドウリフレッシュから分離し、
+    /// ウィンドウがオクルージョン状態の時に `currentDrawable` がブロックするのを防ぎます。
+    /// - Parameter fps: 目標フレームレート
     case timer(fps: Int)
 }

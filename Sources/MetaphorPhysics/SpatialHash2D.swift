@@ -1,39 +1,39 @@
 import simd
 
-/// Provide broad-phase collision detection using a uniform spatial hash grid.
+/// 均一な空間ハッシュグリッドを使用したブロードフェーズ衝突検出を提供します。
 ///
-/// Objects are inserted into grid cells based on their bounding extent. After
-/// insertion, `queryPairs()` returns all unique pairs of indices that share
-/// at least one cell, which are then tested in the narrow phase.
+/// オブジェクトはバウンディング範囲に基づいてグリッドセルに挿入されます。
+/// 挿入後、`queryPairs()` は少なくとも1つのセルを共有するすべてのユニークな
+/// インデックスペアを返し、それらがナローフェーズでテストされます。
 ///
-/// The cell size should be chosen to roughly match the diameter of the largest
-/// object in the simulation for optimal performance.
+/// セルサイズは最適なパフォーマンスのために、シミュレーション内の最大オブジェクトの
+/// 直径とほぼ同じに選択してください。
 @MainActor
 public final class SpatialHash2D {
-    /// The side length of each grid cell.
+    /// 各グリッドセルの辺の長さ。
     private let cellSize: Float
 
-    /// The grid mapping cell hash keys to arrays of body indices.
-    private var grid: [Int64: [Int]] = [:]  // hash -> body indices
+    /// セルハッシュキーからボディインデックス配列へのグリッドマッピング。
+    private var grid: [Int64: [Int]] = [:]  // hash -> ボディインデックス
 
-    /// Create a new spatial hash with the given cell size.
+    /// 指定セルサイズで新しい空間ハッシュを作成します。
     ///
-    /// - Parameter cellSize: The side length of each grid cell (defaults to 50).
+    /// - Parameter cellSize: 各グリッドセルの辺の長さ（デフォルトは50）。
     public init(cellSize: Float = 50) {
         self.cellSize = cellSize
     }
 
-    /// Remove all entries from the grid while preserving allocated capacity.
+    /// 確保済み容量を保持しつつ、グリッドからすべてのエントリを削除します。
     func clear() {
         grid.removeAll(keepingCapacity: true)
     }
 
-    /// Insert a body into the grid cells covered by its bounding circle.
+    /// バウンディング円がカバーするグリッドセルにボディを挿入します。
     ///
     /// - Parameters:
-    ///   - index: The index of the body in the physics world's body array.
-    ///   - position: The center position of the body.
-    ///   - radius: The bounding radius of the body.
+    ///   - index: 物理ワールドのボディ配列におけるボディのインデックス。
+    ///   - position: ボディの中心位置。
+    ///   - radius: ボディのバウンディング半径。
     func insert(index: Int, position: SIMD2<Float>, radius: Float) {
         let minX = Int(floor((position.x - radius) / cellSize))
         let maxX = Int(floor((position.x + radius) / cellSize))
@@ -48,12 +48,12 @@ public final class SpatialHash2D {
         }
     }
 
-    /// Return all unique pairs of body indices that share at least one grid cell.
+    /// 少なくとも1つのグリッドセルを共有するすべてのユニークなボディインデックスペアを返します。
     ///
-    /// Each pair `(a, b)` appears exactly once with `a < b`. These pairs are
-    /// candidates for narrow-phase collision testing.
+    /// 各ペア `(a, b)` は `a < b` で正確に1回だけ出現します。
+    /// これらのペアはナローフェーズ衝突テストの候補です。
     ///
-    /// - Returns: An array of unique `(Int, Int)` index pairs.
+    /// - Returns: ユニークな `(Int, Int)` インデックスペアの配列。
     func queryPairs() -> [(Int, Int)] {
         var pairs: Set<Int64> = []
         var result: [(Int, Int)] = []

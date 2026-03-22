@@ -1,12 +1,11 @@
 # ``metaphor``
 
-A Swift + Metal creative coding library inspired by Processing, p5.js, and openFrameworks.
+Processing、p5.js、openFrameworks にインスパイアされた Swift + Metal クリエイティブコーディングライブラリ。
 
 ## Overview
 
-metaphor provides an immediate-mode creative coding environment powered by Metal.
-Implement the `Sketch` protocol and start drawing — the library handles window creation,
-render loop, and GPU pipeline setup automatically.
+metaphor は Metal を活用したイミディエイトモードのクリエイティブコーディング環境を提供します。
+`Sketch` プロトコルを実装するだけで、ウィンドウ生成、レンダーループ、GPU パイプラインの構築をライブラリが自動的に行います。
 
 ```swift
 import metaphor
@@ -25,32 +24,31 @@ final class MySketch: Sketch {
 }
 ```
 
-### Two-Pass Rendering
+### 2パスレンダリング
 
-metaphor uses a two-pass rendering architecture:
+metaphor は2パスレンダリングアーキテクチャを採用しています:
 
-1. **Offscreen Pass** — Your `draw()` code renders to an offscreen texture at the resolution you specify.
-2. **Blit Pass** — A built-in pipeline composites the offscreen texture to the window with aspect-ratio preservation.
+1. **オフスクリーンパス** — `draw()` のコードが、指定した解像度のオフスクリーンテクスチャにレンダリングされます。
+2. **ブリットパス** — 内蔵パイプラインがオフスクリーンテクスチャをアスペクト比を維持したままウィンドウに合成します。
 
-This decouples rendering resolution from window size and enables features like Syphon output
-and video export at a fixed resolution.
+これによりレンダリング解像度がウィンドウサイズから分離され、Syphon 出力や動画エクスポートを固定解像度で行えます。
 
-### Three-Layer API
+### 3レイヤー API
 
-- **Sketch** — The top-level protocol you implement. Provides convenience methods via extensions.
-- **SketchContext** — The bridge layer that manages drawing state, transforms, and rendering context.
-- **Canvas2D / Canvas3D** — Low-level drawing backends that issue Metal draw calls.
+- **Sketch** — ユーザーが実装するトップレベルのプロトコル。エクステンションで便利なメソッドを提供します。
+- **SketchContext** — 描画状態、トランスフォーム、レンダリングコンテキストを管理するブリッジレイヤー。
+- **Canvas2D / Canvas3D** — Metal 描画コマンドを直接発行するローレベル描画バックエンド。
 
 ## Topics
 
-### Essentials
+### はじめに
 
 - <doc:GettingStarted>
 - <doc:Architecture>
 - ``MetaphorCore/Sketch``
 - ``MetaphorCore/SketchConfig``
 
-### Core
+### コア
 
 - ``MetaphorCore/MetaphorRenderer``
 - ``MetaphorCore/TextureManager``
@@ -58,7 +56,7 @@ and video export at a fixed resolution.
 - ``MetaphorCore/PipelineFactory``
 - ``MetaphorCore/MetaphorError``
 
-### 2D Drawing
+### 2D 描画
 
 - ``MetaphorCore/Canvas2D``
 - ``MetaphorCore/Graphics``
@@ -69,7 +67,7 @@ and video export at a fixed resolution.
 - ``MetaphorCore/TextAlignH``
 - ``MetaphorCore/TextAlignV``
 
-### 2D Drawing Modes
+### 2D 描画モード
 
 - ``MetaphorCore/RectMode``
 - ``MetaphorCore/EllipseMode``
@@ -81,49 +79,49 @@ and video export at a fixed resolution.
 - ``MetaphorCore/StrokeJoin``
 - ``MetaphorCore/GradientAxis``
 
-### 3D Drawing
+### 3D 描画
 
 - ``MetaphorCore/Canvas3D``
 - ``MetaphorCore/Graphics3D``
 - ``MetaphorCore/CustomMaterial``
 - ``MetaphorCore/ShadowMap``
 
-### Geometry
+### ジオメトリ
 
 - ``MetaphorCore/Mesh``
 - ``MetaphorCore/DynamicMesh``
 
-### Animation
+### アニメーション
 
 - ``MetaphorCore/Tween``
 - ``MetaphorCore/Interpolatable``
 - ``MetaphorCore/TweenManager``
 
-### Compute
+### コンピュート
 
 - ``MetaphorCore/ComputeKernel``
 - ``MetaphorCore/GPUBuffer``
 - ``MetaphorCore/ImageFilterGPU``
 
-### Post-Processing
+### ポストプロセス
 
 - ``MetaphorCore/PostEffect``
 - ``MetaphorCore/CustomPostEffect``
 - ``MetaphorCore/PostProcessPipeline``
 
-### Particle System
+### パーティクルシステム
 
 - ``MetaphorCore/ParticleSystem``
 - ``MetaphorCore/Particle``
 - ``MetaphorCore/ParticleForce``
 - ``MetaphorCore/EmitterShape``
 
-### Audio
+### オーディオ
 
 - ``MetaphorAudio/AudioAnalyzer``
 - ``MetaphorAudio/SoundFile``
 
-### Network
+### ネットワーク
 
 - ``MetaphorNetwork/OSCReceiver``
 - ``MetaphorNetwork/OSCValue``
@@ -131,7 +129,7 @@ and video export at a fixed resolution.
 - ``MetaphorNetwork/MIDIMessage``
 - ``MetaphorNetwork/MIDIMessageType``
 
-### Machine Learning
+### 機械学習
 
 - ``MetaphorML/MLTextureConverter``
 
@@ -146,13 +144,13 @@ and video export at a fixed resolution.
 - ``MetaphorCoreImage/CIFilterPreset``
 - ``MetaphorCoreImage/CIFilterWrapper``
 
-### Noise Generation
+### ノイズ生成
 
 - ``MetaphorNoise/NoiseType``
 - ``MetaphorNoise/NoiseConfig``
 - ``MetaphorNoise/GKNoiseWrapper``
 
-### Physics
+### 物理演算
 
 - ``MetaphorPhysics/Physics2D``
 - ``MetaphorPhysics/PhysicsBody2D``
@@ -160,12 +158,12 @@ and video export at a fixed resolution.
 - ``MetaphorPhysics/PhysicsConstraint2D``
 - ``MetaphorPhysics/SpatialHash2D``
 
-### Scene Graph
+### シーングラフ
 
 - ``MetaphorSceneGraph/Node``
 - ``MetaphorSceneGraph/SceneRenderer``
 
-### Render Graph
+### レンダーグラフ
 
 - ``MetaphorRenderGraph/RenderGraph``
 - ``MetaphorRenderGraph/RenderPassNode``
@@ -180,13 +178,13 @@ and video export at a fixed resolution.
 - ``MetaphorCore/OrbitCamera``
 - ``MetaphorCore/PerformanceHUD``
 
-### Input
+### 入力
 
 - ``MetaphorCore/InputManager``
 - ``MetaphorCore/CaptureDevice``
 - ``MetaphorCore/CameraPosition``
 
-### Export
+### エクスポート
 
 - ``MetaphorCore/VideoExporter``
 - ``MetaphorCore/VideoCodec``
@@ -199,23 +197,23 @@ and video export at a fixed resolution.
 
 - ``MetaphorCore/SyphonOutput``
 
-### Color
+### カラー
 
 - ``MetaphorCore/Color``
 - ``MetaphorCore/ColorSpace``
 - ``MetaphorCore/ColorModeConfig``
 
-### Math & Vectors
+### 数学・ベクトル
 
 - ``MetaphorCore/Vec2``
 - ``MetaphorCore/Vec3``
 - ``MetaphorCore/FrameTimer``
 
-### Utilities
+### ユーティリティ
 
 - ``MetaphorCore/NoiseGenerator``
 
-### Errors
+### エラー
 
 - ``MetaphorCore/MetaphorError``
 - ``MetaphorAudio/SoundFileError``

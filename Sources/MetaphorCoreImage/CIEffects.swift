@@ -4,7 +4,7 @@ import MetaphorCore
 
 // MARK: - CIFilterValue
 
-/// Wrap a CoreImage filter parameter value in a Sendable-safe container.
+/// CoreImage フィルタパラメータ値を Sendable 安全なコンテナでラップします。
 public enum CIFilterValue: Sendable {
     case float(Float)
     case double(Double)
@@ -13,7 +13,7 @@ public enum CIFilterValue: Sendable {
     case vector(SIMD4<Float>)
     case bool(Bool)
 
-    /// Convert to an `Any` value suitable for passing to a CIFilter.
+    /// CIFilter に渡すのに適した `Any` 値に変換します。
     public var anyValue: Any {
         switch self {
         case .float(let v): return v
@@ -26,9 +26,9 @@ public enum CIFilterValue: Sendable {
     }
 }
 
-// MARK: - CoreImage PostEffect Classes
+// MARK: - CoreImage ポストエフェクトクラス
 
-/// Apply a CoreImage filter from a preset.
+/// プリセットから CoreImage フィルタを適用します。
 @MainActor
 public final class CIFilterEffect: PostEffect {
     public let name = "ciFilter"
@@ -55,7 +55,7 @@ public final class CIFilterEffect: PostEffect {
     }
 }
 
-/// Apply a CoreImage filter specified directly by name and parameter dictionary.
+/// フィルタ名とパラメータ辞書を直接指定して CoreImage フィルタを適用します。
 @MainActor
 public final class CIFilterRawEffect: PostEffect {
     public let name = "ciFilterRaw"

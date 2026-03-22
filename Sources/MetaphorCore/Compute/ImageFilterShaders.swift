@@ -1,37 +1,37 @@
 import Foundation
 
-/// GPU image filter compute shader function name constants.
+/// GPU 画像フィルターコンピュートシェーダーの関数名定数
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Includes threshold, grayscale, invert, posterize, gaussian blur (H/V),
-/// erode, dilate, edge detect (Sobel), sharpen, sepia, and pixelate filters.
+/// MSL ソースコードはバンドルされた .txt リソースファイルからランタイムで読み込まれます。
+/// しきい値、グレースケール、反転、ポスタライズ、ガウシアンブラー (水平/垂直)、
+/// 収縮、膨張、エッジ検出 (Sobel)、シャープン、セピア、ピクセレートフィルターを含みます。
 enum ImageFilterShaders {
 
-    /// Image filter shader function name constants.
+    /// 画像フィルターシェーダー関数名定数
     enum FunctionName {
-        /// MSL function name for the threshold filter.
+        /// しきい値フィルターの MSL 関数名
         static let threshold = "filter_threshold"
-        /// MSL function name for the grayscale filter.
+        /// グレースケールフィルターの MSL 関数名
         static let gray = "filter_gray"
-        /// MSL function name for the invert filter.
+        /// 反転フィルターの MSL 関数名
         static let invert = "filter_invert"
-        /// MSL function name for the posterize filter.
+        /// ポスタライズフィルターの MSL 関数名
         static let posterize = "filter_posterize"
-        /// MSL function name for the horizontal gaussian blur filter.
+        /// 水平ガウシアンブラーフィルターの MSL 関数名
         static let gaussianH = "filter_gaussian_h"
-        /// MSL function name for the vertical gaussian blur filter.
+        /// 垂直ガウシアンブラーフィルターの MSL 関数名
         static let gaussianV = "filter_gaussian_v"
-        /// MSL function name for the erode filter.
+        /// 収縮フィルターの MSL 関数名
         static let erode = "filter_erode"
-        /// MSL function name for the dilate filter.
+        /// 膨張フィルターの MSL 関数名
         static let dilate = "filter_dilate"
-        /// MSL function name for the edge detect (Sobel) filter.
+        /// エッジ検出 (Sobel) フィルターの MSL 関数名
         static let edgeDetect = "filter_edgeDetect"
-        /// MSL function name for the sharpen filter.
+        /// シャープンフィルターの MSL 関数名
         static let sharpen = "filter_sharpen"
-        /// MSL function name for the sepia filter.
+        /// セピアフィルターの MSL 関数名
         static let sepia = "filter_sepia"
-        /// MSL function name for the pixelate filter.
+        /// ピクセレートフィルターの MSL 関数名
         static let pixelate = "filter_pixelate"
     }
 }

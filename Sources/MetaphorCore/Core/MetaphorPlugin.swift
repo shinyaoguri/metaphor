@@ -1,8 +1,8 @@
 import Metal
 
-// MARK: - Plugin Event Types
+// MARK: - プラグインイベント型
 
-/// The type of mouse event delivered to a plugin.
+/// プラグインに配信されるマウスイベントの種類
 public enum MouseEventType: Sendable {
     case pressed
     case released
@@ -12,119 +12,118 @@ public enum MouseEventType: Sendable {
     case clicked
 }
 
-/// The type of keyboard event delivered to a plugin.
+/// プラグインに配信されるキーボードイベントの種類
 public enum KeyEventType: Sendable {
     case pressed
     case released
 }
 
-// MARK: - MetaphorPlugin Protocol
+// MARK: - MetaphorPlugin プロトコル
 
-/// A plugin that hooks into the metaphor rendering lifecycle.
+/// metaphor レンダリングライフサイクルにフックするプラグイン
 ///
-/// Plugins receive callbacks at key points in the frame cycle,
-/// enabling features like Syphon output, NDI streaming, or custom
-/// recording without modifying the core renderer.
+/// プラグインはフレームサイクルの重要なポイントでコールバックを受け取り、
+/// Syphon 出力、NDI ストリーミング、カスタム録画などの機能を
+/// コアレンダラーを変更せずに実現できます。
 ///
-/// Register plugins via ``Sketch/registerPlugin(_:)`` or
-/// ``SketchConfig/plugins``.
+/// ``Sketch/registerPlugin(_:)`` または ``SketchConfig/plugins`` でプラグインを登録します。
 ///
 /// ```swift
 /// final class MyPlugin: MetaphorPlugin {
 ///     let pluginID = "com.example.myplugin"
 ///
 ///     func post(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {
-///         // Process the rendered frame
+///         // レンダリング済みフレームを処理
 ///     }
 /// }
 /// ```
 @MainActor
 public protocol MetaphorPlugin: AnyObject {
-    /// A unique identifier for this plugin.
+    /// このプラグインの一意な識別子
     var pluginID: String { get }
 
-    // MARK: - Lifecycle
+    // MARK: - ライフサイクル
 
-    /// Called once when the plugin is registered with a sketch.
+    /// プラグインがスケッチに登録された時に一度呼ばれます。
     ///
-    /// The sketch reference provides access to the renderer, input state,
-    /// canvas, and all sketch properties (width, height, mouseX, frameCount, etc.).
-    /// - Parameter sketch: The sketch this plugin is attached to.
+    /// sketch 参照を通じてレンダラー、入力状態、キャンバス、
+    /// および全スケッチプロパティ (width, height, mouseX, frameCount 等) にアクセスできます。
+    /// - Parameter sketch: このプラグインが接続されるスケッチ
     func onAttach(sketch: any Sketch)
 
-    /// Called once when the plugin is registered with a renderer (legacy).
+    /// プラグインがレンダラーに登録された時に一度呼ばれます (レガシー)。
     ///
-    /// Prefer ``onAttach(sketch:)`` for new plugins. This method is called
-    /// for backward compatibility when registered via ``MetaphorRenderer/addPlugin(_:)``.
-    /// - Parameter renderer: The renderer this plugin is attached to.
+    /// 新しいプラグインでは ``onAttach(sketch:)`` を推奨します。このメソッドは
+    /// ``MetaphorRenderer/addPlugin(_:)`` 経由で登録された場合の後方互換性のために呼ばれます。
+    /// - Parameter renderer: このプラグインが接続されるレンダラー
     func onAttach(renderer: MetaphorRenderer)
 
-    /// Called once when the plugin is removed from the renderer.
+    /// プラグインがレンダラーから削除された時に一度呼ばれます。
     func onDetach()
 
-    // MARK: - Frame Hooks
+    // MARK: - フレームフック
 
-    /// Called at the beginning of each frame, before rendering.
+    /// 各フレームの開始時、レンダリング前に呼ばれます。
     ///
-    /// Use this for pre-frame logic such as updating simulation state.
+    /// シミュレーション状態の更新などのプリフレームロジックに使用します。
     /// - Parameters:
-    ///   - commandBuffer: The command buffer for the current frame.
-    ///   - time: The elapsed time in seconds since the sketch started.
+    ///   - commandBuffer: 現在のフレームのコマンドバッファ
+    ///   - time: スケッチ開始からの経過時間（秒）
     func pre(commandBuffer: MTLCommandBuffer, time: Double)
 
-    /// Called after the frame has been rendered to the offscreen texture.
+    /// フレームがオフスクリーンテクスチャにレンダリングされた後に呼ばれます。
     ///
-    /// Use this for post-frame logic such as capturing or streaming the output.
+    /// キャプチャやストリーミング出力などのポストフレームロジックに使用します。
     /// - Parameters:
-    ///   - texture: The final rendered texture (after post-processing).
-    ///   - commandBuffer: The command buffer for the current frame.
+    ///   - texture: 最終レンダリングテクスチャ（ポストプロセス後）
+    ///   - commandBuffer: 現在のフレームのコマンドバッファ
     func post(texture: MTLTexture, commandBuffer: MTLCommandBuffer)
 
-    /// Called when the render loop starts.
+    /// レンダーループ開始時に呼ばれます。
     func onStart()
 
-    /// Called when the render loop stops.
+    /// レンダーループ停止時に呼ばれます。
     func onStop()
 
-    // MARK: - Input Events
+    // MARK: - 入力イベント
 
-    /// Called when a mouse event occurs.
+    /// マウスイベント発生時に呼ばれます。
     ///
     /// - Parameters:
-    ///   - x: The mouse x position in sketch coordinates.
-    ///   - y: The mouse y position in sketch coordinates.
-    ///   - button: The mouse button number (0 = left, 1 = right, 2 = other).
-    ///   - type: The type of mouse event.
+    ///   - x: スケッチ座標系でのマウス x 位置
+    ///   - y: スケッチ座標系でのマウス y 位置
+    ///   - button: マウスボタン番号 (0 = 左, 1 = 右, 2 = その他)
+    ///   - type: マウスイベントの種類
     func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)
 
-    /// Called when a keyboard event occurs.
+    /// キーボードイベント発生時に呼ばれます。
     ///
     /// - Parameters:
-    ///   - key: The character that was pressed, or `nil` for non-character keys.
-    ///   - keyCode: The virtual key code.
-    ///   - type: The type of keyboard event.
+    ///   - key: 押された文字。非文字キーの場合は `nil`
+    ///   - keyCode: 仮想キーコード
+    ///   - type: キーボードイベントの種類
     func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)
 
-    // MARK: - Canvas Events
+    // MARK: - キャンバスイベント
 
-    /// Called when the canvas is resized.
+    /// キャンバスがリサイズされた時に呼ばれます。
     /// - Parameters:
-    ///   - width: The new width in pixels.
-    ///   - height: The new height in pixels.
+    ///   - width: 新しい幅（ピクセル）
+    ///   - height: 新しい高さ（ピクセル）
     func onResize(width: Int, height: Int)
 
-    // MARK: - Legacy (Deprecated)
+    // MARK: - レガシー (非推奨)
 
-    /// Called at the beginning of each frame, before rendering.
+    /// 各フレームの開始時、レンダリング前に呼ばれます。
     @available(*, deprecated, renamed: "pre(commandBuffer:time:)")
     func onBeforeRender(commandBuffer: MTLCommandBuffer, time: Double)
 
-    /// Called after the frame has been rendered to the offscreen texture.
+    /// フレームがオフスクリーンテクスチャにレンダリングされた後に呼ばれます。
     @available(*, deprecated, renamed: "post(texture:commandBuffer:)")
     func onAfterRender(texture: MTLTexture, commandBuffer: MTLCommandBuffer)
 }
 
-// MARK: - Default Implementations
+// MARK: - デフォルト実装
 
 extension MetaphorPlugin {
     public func onAttach(sketch: any Sketch) {}

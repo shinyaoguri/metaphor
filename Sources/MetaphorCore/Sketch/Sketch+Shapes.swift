@@ -4,94 +4,94 @@ extension Sketch {
 
     // MARK: 2D Transform Stack
 
-    /// Save the current transform and style state onto the stack.
+    /// 現在の変換とスタイル状態をスタックに保存します。
     public func push() {
         context.push()
     }
 
-    /// Restore the most recently saved transform and style state from the stack.
+    /// 最後に保存された変換とスタイル状態をスタックから復元します。
     public func pop() {
         context.pop()
     }
 
-    /// Save the current style state (fill, stroke, etc.) onto the stack.
+    /// 現在のスタイル状態（fill、stroke など）をスタックに保存します。
     public func pushStyle() {
         context.pushStyle()
     }
 
-    /// Restore the most recently saved style state from the stack.
+    /// 最後に保存されたスタイル状態をスタックから復元します。
     public func popStyle() {
         context.popStyle()
     }
 
-    /// Apply a 2D translation to the current transform.
+    /// 現在の変換に 2D 平行移動を適用します。
     ///
     /// - Parameters:
-    ///   - x: The horizontal translation amount.
-    ///   - y: The vertical translation amount.
+    ///   - x: 水平方向の移動量。
+    ///   - y: 垂直方向の移動量。
     public func translate(_ x: Float, _ y: Float) {
         context.translate(x, y)
     }
 
-    /// Apply a 2D rotation to the current transform.
+    /// 現在の変換に 2D 回転を適用します。
     ///
-    /// - Parameter angle: The rotation angle in radians.
+    /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) {
         context.rotate(angle)
     }
 
-    /// Apply a non-uniform 2D scale to the current transform.
+    /// 現在の変換に非均一 2D スケールを適用します。
     ///
     /// - Parameters:
-    ///   - sx: The horizontal scale factor.
-    ///   - sy: The vertical scale factor.
+    ///   - sx: 水平方向のスケール係数。
+    ///   - sy: 垂直方向のスケール係数。
     public func scale(_ sx: Float, _ sy: Float) {
         context.scale(sx, sy)
     }
 
-    /// Apply a uniform 2D scale to the current transform.
+    /// 現在の変換に均一 2D スケールを適用します。
     ///
-    /// - Parameter s: The uniform scale factor.
+    /// - Parameter s: 均一スケール係数。
     public func scale(_ s: Float) {
         context.scale(s)
     }
 
     // MARK: 2D Shapes
 
-    /// Draw a rectangle.
+    /// 矩形を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width.
-    ///   - h: The height.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.rect(x, y, w, h)
     }
 
-    /// Draw a rounded rectangle with a uniform corner radius.
+    /// 均一な角丸半径の角丸矩形を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width.
-    ///   - h: The height.
-    ///   - r: The corner radius.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
+    ///   - r: 角丸半径。
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
         context.rect(x, y, w, h, r)
     }
 
-    /// Draw a rounded rectangle with individual corner radii.
+    /// 各角に個別の角丸半径を持つ角丸矩形を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width.
-    ///   - h: The height.
-    ///   - tl: The top-left corner radius.
-    ///   - tr: The top-right corner radius.
-    ///   - br: The bottom-right corner radius.
-    ///   - bl: The bottom-left corner radius.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
+    ///   - tl: 左上の角丸半径。
+    ///   - tr: 右上の角丸半径。
+    ///   - br: 右下の角丸半径。
+    ///   - bl: 左下の角丸半径。
     public func rect(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
@@ -99,16 +99,16 @@ extension Sketch {
         context.rect(x, y, w, h, tl, tr, br, bl)
     }
 
-    /// Draw a linear gradient rectangle.
+    /// リニアグラデーション矩形を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width.
-    ///   - h: The height.
-    ///   - c1: The start color.
-    ///   - c2: The end color.
-    ///   - axis: The gradient direction.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - w: 幅。
+    ///   - h: 高さ。
+    ///   - c1: 開始色。
+    ///   - c2: 終了色。
+    ///   - axis: グラデーションの方向。
     public func linearGradient(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
@@ -116,15 +116,15 @@ extension Sketch {
         context.linearGradient(x, y, w, h, c1, c2, axis: axis)
     }
 
-    /// Draw a radial gradient circle.
+    /// 放射状グラデーション円を描画します。
     ///
     /// - Parameters:
-    ///   - cx: The center x-coordinate.
-    ///   - cy: The center y-coordinate.
-    ///   - radius: The outer radius.
-    ///   - innerColor: The color at the center.
-    ///   - outerColor: The color at the edge.
-    ///   - segments: The number of segments for smoothness.
+    ///   - cx: 中心の x 座標。
+    ///   - cy: 中心の y 座標。
+    ///   - radius: 外側の半径。
+    ///   - innerColor: 中心の色。
+    ///   - outerColor: 外周の色。
+    ///   - segments: 滑らかさのためのセグメント数。
     public func radialGradient(
         _ cx: Float, _ cy: Float, _ radius: Float,
         _ innerColor: Color, _ outerColor: Color,
@@ -133,48 +133,48 @@ extension Sketch {
         context.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
     }
 
-    /// Draw an ellipse.
+    /// 楕円を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - w: The width (horizontal diameter).
-    ///   - h: The height (vertical diameter).
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - w: 幅（水平方向の直径）。
+    ///   - h: 高さ（垂直方向の直径）。
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.ellipse(x, y, w, h)
     }
 
-    /// Draw a circle.
+    /// 円を描画します。
     ///
     /// - Parameters:
-    ///   - x: The center x-coordinate.
-    ///   - y: The center y-coordinate.
-    ///   - diameter: The diameter of the circle.
+    ///   - x: 中心の x 座標。
+    ///   - y: 中心の y 座標。
+    ///   - diameter: 円の直径。
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) {
         context.circle(x, y, diameter)
     }
 
-    /// Draw a square.
+    /// 正方形を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - size: The side length.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - size: 辺の長さ。
     public func square(_ x: Float, _ y: Float, _ size: Float) {
         context.square(x, y, size)
     }
 
-    /// Draw a quadrilateral defined by four corner points.
+    /// 4つの頂点で定義される四角形を描画します。
     ///
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first corner.
-    ///   - y1: The y-coordinate of the first corner.
-    ///   - x2: The x-coordinate of the second corner.
-    ///   - y2: The y-coordinate of the second corner.
-    ///   - x3: The x-coordinate of the third corner.
-    ///   - y3: The y-coordinate of the third corner.
-    ///   - x4: The x-coordinate of the fourth corner.
-    ///   - y4: The y-coordinate of the fourth corner.
+    ///   - x1: 第1頂点の x 座標。
+    ///   - y1: 第1頂点の y 座標。
+    ///   - x2: 第2頂点の x 座標。
+    ///   - y2: 第2頂点の y 座標。
+    ///   - x3: 第3頂点の x 座標。
+    ///   - y3: 第3頂点の y 座標。
+    ///   - x4: 第4頂点の x 座標。
+    ///   - y4: 第4頂点の y 座標。
     public func quad(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -184,26 +184,26 @@ extension Sketch {
         context.quad(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
-    /// Draw a line between two points.
+    /// 2点間に線を描画します。
     ///
     /// - Parameters:
-    ///   - x1: The x-coordinate of the start point.
-    ///   - y1: The y-coordinate of the start point.
-    ///   - x2: The x-coordinate of the end point.
-    ///   - y2: The y-coordinate of the end point.
+    ///   - x1: 始点の x 座標。
+    ///   - y1: 始点の y 座標。
+    ///   - x2: 終点の x 座標。
+    ///   - y2: 終点の y 座標。
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
         context.line(x1, y1, x2, y2)
     }
 
-    /// Draw a triangle defined by three corner points.
+    /// 3つの頂点で定義される三角形を描画します。
     ///
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first corner.
-    ///   - y1: The y-coordinate of the first corner.
-    ///   - x2: The x-coordinate of the second corner.
-    ///   - y2: The y-coordinate of the second corner.
-    ///   - x3: The x-coordinate of the third corner.
-    ///   - y3: The y-coordinate of the third corner.
+    ///   - x1: 第1頂点の x 座標。
+    ///   - y1: 第1頂点の y 座標。
+    ///   - x2: 第2頂点の x 座標。
+    ///   - y2: 第2頂点の y 座標。
+    ///   - x3: 第3頂点の x 座標。
+    ///   - y3: 第3頂点の y 座標。
     public func triangle(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -212,30 +212,30 @@ extension Sketch {
         context.triangle(x1, y1, x2, y2, x3, y3)
     }
 
-    /// Draw a polygon from an array of coordinate tuples.
+    /// 座標タプルの配列からポリゴンを描画します。
     ///
-    /// - Parameter points: The polygon vertices as `(x, y)` tuples.
+    /// - Parameter points: `(x, y)` タプルとしてのポリゴン頂点。
     public func polygon(_ points: [(Float, Float)]) {
         context.polygon(points)
     }
 
-    /// Draw a polygon from an array of ``Vec2`` points.
+    /// ``Vec2`` 配列からポリゴンを描画します。
     ///
-    /// - Parameter points: The polygon vertices.
+    /// - Parameter points: ポリゴン頂点。
     public func polygon(_ points: [Vec2]) {
         context.polygon(points)
     }
 
-    /// Draw an arc.
+    /// 円弧を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate of the arc center.
-    ///   - y: The y-coordinate of the arc center.
-    ///   - w: The width of the arc's bounding ellipse.
-    ///   - h: The height of the arc's bounding ellipse.
-    ///   - startAngle: The start angle in radians.
-    ///   - stopAngle: The stop angle in radians.
-    ///   - mode: The arc drawing mode.
+    ///   - x: 円弧の中心の x 座標。
+    ///   - y: 円弧の中心の y 座標。
+    ///   - w: 円弧の外接楕円の幅。
+    ///   - h: 円弧の外接楕円の高さ。
+    ///   - startAngle: ラジアン単位の開始角度。
+    ///   - stopAngle: ラジアン単位の終了角度。
+    ///   - mode: 円弧の描画モード。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
@@ -245,17 +245,17 @@ extension Sketch {
         context.arc(x, y, w, h, startAngle, stopAngle, mode)
     }
 
-    /// Draw a cubic Bezier curve.
+    /// 3次ベジェ曲線を描画します。
     ///
     /// - Parameters:
-    ///   - x1: The x-coordinate of the start point.
-    ///   - y1: The y-coordinate of the start point.
-    ///   - cx1: The x-coordinate of the first control point.
-    ///   - cy1: The y-coordinate of the first control point.
-    ///   - cx2: The x-coordinate of the second control point.
-    ///   - cy2: The y-coordinate of the second control point.
-    ///   - x2: The x-coordinate of the end point.
-    ///   - y2: The y-coordinate of the end point.
+    ///   - x1: 始点の x 座標。
+    ///   - y1: 始点の y 座標。
+    ///   - cx1: 第1制御点の x 座標。
+    ///   - cy1: 第1制御点の y 座標。
+    ///   - cx2: 第2制御点の x 座標。
+    ///   - cy2: 第2制御点の y 座標。
+    ///   - x2: 終点の x 座標。
+    ///   - y2: 終点の y 座標。
     public func bezier(
         _ x1: Float, _ y1: Float,
         _ cx1: Float, _ cy1: Float,
@@ -265,63 +265,63 @@ extension Sketch {
         context.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2)
     }
 
-    /// Draw a single point.
+    /// 単一の点を描画します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
     public func point(_ x: Float, _ y: Float) {
         context.point(x, y)
     }
 
     // MARK: Custom Shapes (beginShape / endShape)
 
-    /// Begin recording vertices for a custom shape.
+    /// カスタムシェイプの頂点記録を開始します。
     ///
-    /// - Parameter mode: The shape mode (e.g., polygon, triangles, lines).
+    /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     public func beginShape(_ mode: ShapeMode = .polygon) {
         context.beginShape(mode)
     }
 
-    /// Add a 2D vertex to the current shape.
+    /// 現在のシェイプに 2D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
     public func vertex(_ x: Float, _ y: Float) {
         context.vertex(x, y)
     }
 
-    /// Add a 2D vertex with a per-vertex color to the current shape.
+    /// 現在のシェイプに頂点カラー付き 2D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - color: The vertex color.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
         context.vertex(x, y, color)
     }
 
-    /// Add a 2D vertex with texture coordinates to the current shape.
+    /// 現在のシェイプにテクスチャ座標付き 2D 頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
-    ///   - u: The horizontal texture coordinate.
-    ///   - v: The vertical texture coordinate.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - u: 水平テクスチャ座標。
+    ///   - v: 垂直テクスチャ座標。
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         context.vertex(x, y, u, v)
     }
 
-    /// Add a cubic Bezier vertex to the current shape.
+    /// 現在のシェイプに3次ベジェ頂点を追加します。
     ///
     /// - Parameters:
-    ///   - cx1: The x-coordinate of the first control point.
-    ///   - cy1: The y-coordinate of the first control point.
-    ///   - cx2: The x-coordinate of the second control point.
-    ///   - cy2: The y-coordinate of the second control point.
-    ///   - x: The x-coordinate of the anchor point.
-    ///   - y: The y-coordinate of the anchor point.
+    ///   - cx1: 第1制御点の x 座標。
+    ///   - cy1: 第1制御点の y 座標。
+    ///   - cx2: 第2制御点の x 座標。
+    ///   - cy2: 第2制御点の y 座標。
+    ///   - x: アンカーポイントの x 座標。
+    ///   - y: アンカーポイントの y 座標。
     public func bezierVertex(
         _ cx1: Float, _ cy1: Float,
         _ cx2: Float, _ cy2: Float,
@@ -330,50 +330,50 @@ extension Sketch {
         context.bezierVertex(cx1, cy1, cx2, cy2, x, y)
     }
 
-    /// Add a Catmull-Rom spline vertex to the current shape.
+    /// 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate.
-    ///   - y: The y-coordinate.
+    ///   - x: x 座標。
+    ///   - y: y 座標。
     public func curveVertex(_ x: Float, _ y: Float) {
         context.curveVertex(x, y)
     }
 
-    /// Set the number of segments used for curve interpolation.
+    /// カーブ補間のセグメント数を設定します。
     ///
-    /// - Parameter n: The curve detail level.
+    /// - Parameter n: カーブの詳細度。
     public func curveDetail(_ n: Int) {
         context.curveDetail(n)
     }
 
-    /// Set the tightness of Catmull-Rom spline curves.
+    /// Catmull-Rom スプラインカーブの張り具合を設定します。
     ///
-    /// - Parameter t: The tightness value (0 = default, 1 = straight lines).
+    /// - Parameter t: 張り値（0 = デフォルト、1 = 直線）。
     public func curveTightness(_ t: Float) {
         context.curveTightness(t)
     }
 
-    /// Begin defining a contour (hole) within the current shape.
+    /// 現在のシェイプ内にコンター（穴）の定義を開始します。
     public func beginContour() {
         context.beginContour()
     }
 
-    /// End the current contour definition.
+    /// 現在のコンター定義を終了します。
     public func endContour() {
         context.endContour()
     }
 
-    /// Draw a Catmull-Rom spline curve through four points.
+    /// 4点を通る Catmull-Rom スプラインカーブを描画します。
     ///
     /// - Parameters:
-    ///   - x1: The x-coordinate of the first control point.
-    ///   - y1: The y-coordinate of the first control point.
-    ///   - x2: The x-coordinate of the start point.
-    ///   - y2: The y-coordinate of the start point.
-    ///   - x3: The x-coordinate of the end point.
-    ///   - y3: The y-coordinate of the end point.
-    ///   - x4: The x-coordinate of the second control point.
-    ///   - y4: The y-coordinate of the second control point.
+    ///   - x1: 第1制御点の x 座標。
+    ///   - y1: 第1制御点の y 座標。
+    ///   - x2: 始点の x 座標。
+    ///   - y2: 始点の y 座標。
+    ///   - x3: 終点の x 座標。
+    ///   - y3: 終点の y 座標。
+    ///   - x4: 第2制御点の x 座標。
+    ///   - y4: 第2制御点の y 座標。
     public func curve(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -383,27 +383,27 @@ extension Sketch {
         context.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
-    /// Finish recording the current shape and draw it.
+    /// 現在のシェイプの記録を終了し描画します。
     ///
-    /// - Parameter close: Whether to close the shape by connecting the last vertex to the first.
+    /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         context.endShape(close)
     }
 
     // MARK: - Clipping
 
-    /// Begin clipping subsequent draws to the specified rectangle.
+    /// 以降の描画を指定した矩形にクリッピングします。
     ///
     /// - Parameters:
-    ///   - x: The x-coordinate of the clip region.
-    ///   - y: The y-coordinate of the clip region.
-    ///   - w: The width of the clip region.
-    ///   - h: The height of the clip region.
+    ///   - x: クリップ領域の x 座標。
+    ///   - y: クリップ領域の y 座標。
+    ///   - w: クリップ領域の幅。
+    ///   - h: クリップ領域の高さ。
     public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.beginClip(x, y, w, h)
     }
 
-    /// End the current clip region and restore the previous one.
+    /// 現在のクリップ領域を終了し、前の状態に復元します。
     public func endClip() {
         context.endClip()
     }

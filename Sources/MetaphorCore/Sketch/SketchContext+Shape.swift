@@ -5,10 +5,10 @@ import simd
 
 extension SketchContext {
 
-    /// Create a retained shape from a ``ShapeKind``.
+    /// ``ShapeKind`` からリテインドシェイプを作成します。
     ///
-    /// The shape captures the current fill, stroke, and material state.
-    /// For custom shapes, use ``createShape()`` followed by `beginShape`/`vertex`/`endShape`.
+    /// シェイプは現在の fill、stroke、マテリアル状態をキャプチャします。
+    /// カスタムシェイプの場合は ``createShape()`` に続けて `beginShape`/`vertex`/`endShape` を使用します。
     ///
     /// ```swift
     /// let box = createShape(.box(width: 1, height: 1, depth: 1))
@@ -16,17 +16,17 @@ extension SketchContext {
     /// let group = createShape(.group)
     /// ```
     ///
-    /// - Parameter kind: The type of shape to create.
-    /// - Returns: A new ``MShape`` instance.
+    /// - Parameter kind: 作成するシェイプの種類。
+    /// - Returns: 新しい ``MShape`` インスタンス。
     public func createShape(_ kind: ShapeKind) -> MShape {
         let style = captureCurrentStyle()
         return MShape(device: renderer.device, kind: kind, style: style)
     }
 
-    /// Create an empty retained shape for custom geometry definition.
+    /// カスタムジオメトリ定義用の空のリテインドシェイプを作成します。
     ///
-    /// Use `beginShape()`, `vertex()`, and `endShape()` on the returned shape
-    /// to define its geometry.
+    /// 返されたシェイプに `beginShape()`、`vertex()`、`endShape()` を使用して
+    /// ジオメトリを定義します。
     ///
     /// ```swift
     /// let star = createShape()
@@ -40,7 +40,7 @@ extension SketchContext {
     /// star.endShape(.close)
     /// ```
     ///
-    /// - Returns: A new ``MShape`` instance with kind `.path2D`.
+    /// - Returns: kind が `.path2D` の新しい ``MShape`` インスタンス。
     public func createShape() -> MShape {
         let style = captureCurrentStyle()
         return MShape(device: renderer.device, kind: .path2D, style: style)
@@ -48,7 +48,7 @@ extension SketchContext {
 
     // MARK: - Style Capture
 
-    /// Snapshot the current drawing style from Canvas2D and Canvas3D.
+    /// Canvas2D と Canvas3D から現在の描画スタイルをスナップショットします。
     private func captureCurrentStyle() -> ShapeStyle {
         var style = ShapeStyle()
         style.fillColor = canvas.fillColor

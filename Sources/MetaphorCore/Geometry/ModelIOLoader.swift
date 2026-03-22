@@ -3,19 +3,19 @@ import ModelIO
 import MetalKit
 import simd
 
-/// Load 3D model files using the Model I/O framework.
+/// Model I/O フレームワークを使用して3Dモデルファイルを読み込みます。
 ///
-/// Reads OBJ, USDZ, ABC, and other formats via MDLAsset and converts
-/// the result into the metaphor Mesh format.
+/// MDLAsset を介して OBJ、USDZ、ABC などのフォーマットを読み込み、
+/// metaphor の Mesh フォーマットに変換します。
 @MainActor
 enum ModelIOLoader {
 
-    /// Load a model file and convert it to a Mesh.
+    /// モデルファイルを読み込んで Mesh に変換します。
     /// - Parameters:
-    ///   - device: The Metal device to create GPU buffers on.
-    ///   - url: The URL of the model file.
-    ///   - normalize: If true, normalizes the bounding box to [-1, 1].
-    /// - Returns: A Mesh instance containing the loaded model data.
+    ///   - device: GPU バッファを作成する Metal デバイス。
+    ///   - url: モデルファイルのURL。
+    ///   - normalize: true の場合、バウンディングボックスを [-1, 1] に正規化します。
+    /// - Returns: 読み込まれたモデルデータを含む Mesh インスタンス。
     static func load(device: MTLDevice, url: URL, normalize: Bool) throws -> Mesh {
         let allocator = MTKMeshBufferAllocator(device: device)
         let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
@@ -24,12 +24,12 @@ enum ModelIOLoader {
             throw MetaphorError.mesh(.parseError("No mesh found in \(url.lastPathComponent)"))
         }
 
-        // Auto-generate normals if none exist
+        // 法線が存在しない場合は自動生成
         if !hasNormals(mdlMesh) {
             mdlMesh.addNormals(withAttributeNamed: MDLVertexAttributeNormal, creaseThreshold: 0.5)
         }
 
-        // Read vertex attribute data
+        // 頂点属性データを読み取り
         let positionAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition)
         let normalAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeNormal)
         let uvAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate)
@@ -59,7 +59,7 @@ enum ModelIOLoader {
             }
         }
 
-        // Read index data
+        // インデックスデータを読み取り
         var allIndices: [UInt32] = []
         for submesh in mdlMesh.submeshes as? [MDLSubmesh] ?? [] {
             let indexBuffer = submesh.indexBuffer
@@ -83,7 +83,7 @@ enum ModelIOLoader {
             throw MetaphorError.mesh(.parseError("Empty mesh"))
         }
 
-        // Normalize bounding box to [-1, 1]
+        // バウンディングボックスを [-1, 1] に正規化
         if normalize {
             if hasUVData {
                 normalizeVertices(&vertices, uvVertices: &uvVertices)
@@ -92,7 +92,7 @@ enum ModelIOLoader {
             }
         }
 
-        // Create Mesh
+        // Mesh を作成
         if vertices.count <= 65535 && allIndices.allSatisfy({ $0 <= 65535 }) {
             let indices16 = allIndices.map { UInt16($0) }
             return try Mesh(

@@ -2,107 +2,107 @@ import AppKit
 import Metal
 import simd
 
-/// Provides the drawing context used within a Sketch.
+/// Sketch 内で使用される描画コンテキストを提供します。
 ///
-/// Forwards drawing methods from Canvas2D and Canvas3D, and exposes convenience
-/// properties for time, input, and frame state. Advanced users can access
-/// `renderer`, `encoder`, `canvas`, and `canvas3D` as escape hatches.
+/// Canvas2D と Canvas3D の描画メソッドを転送し、時間、入力、フレーム状態の
+/// 便利プロパティを公開します。上級ユーザーは `renderer`、`encoder`、
+/// `canvas`、`canvas3D` をエスケープハッチとして利用できます。
 @MainActor
 public final class SketchContext {
     // MARK: - Public Properties
 
-    /// The canvas width in pixels.
+    /// キャンバスの幅（ピクセル単位）。
     public private(set) var width: Float
 
-    /// The canvas height in pixels.
+    /// キャンバスの高さ（ピクセル単位）。
     public private(set) var height: Float
 
-    /// The elapsed time in seconds since the sketch started.
+    /// スケッチ開始からの経過時間（秒単位）。
     public var time: Float = 0
 
-    /// The time elapsed in seconds since the previous frame.
+    /// 前フレームからの経過時間（秒単位）。
     public var deltaTime: Float = 0
 
-    /// The number of frames rendered so far.
+    /// これまでにレンダリングされたフレーム数。
     public var frameCount: Int = 0
 
-    /// The input manager for mouse and keyboard state.
+    /// マウスとキーボードの状態を管理する入力マネージャ。
     public let input: InputManager
 
     // MARK: - Escape Hatches
 
-    /// The underlying renderer (for advanced usage).
+    /// 基盤のレンダラー（上級者向け）。
     public let renderer: MetaphorRenderer
 
-    /// The async resource loader for background image/model loading.
+    /// バックグラウンドでの画像/モデル読み込み用の非同期リソースローダー。
     public let resourceLoader: ResourceLoader
 
-    /// The current render command encoder, valid only during a frame.
+    /// 現在のレンダーコマンドエンコーダー。フレーム中のみ有効。
     public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
 
-    /// The 2D canvas (for advanced usage).
+    /// 2D キャンバス（上級者向け）。
     public private(set) var canvas: Canvas2D
 
-    /// The 3D canvas (for advanced usage).
+    /// 3D キャンバス（上級者向け）。
     public private(set) var canvas3D: Canvas3D
 
     // MARK: - Animation Control
 
-    /// Indicates whether the draw loop is currently running.
+    /// 描画ループが現在実行中かどうか。
     public private(set) var isLooping: Bool = true
 
-    /// Callback invoked when looping resumes (set by SketchRunner).
+    /// ループ再開時に呼ばれるコールバック（SketchRunner が設定）。
     var onLoop: (() -> Void)?
 
-    /// Callback invoked when looping stops (set by SketchRunner).
+    /// ループ停止時に呼ばれるコールバック（SketchRunner が設定）。
     var onNoLoop: (() -> Void)?
 
-    /// Callback invoked on a single-frame redraw (set by SketchRunner).
+    /// 単一フレーム再描画時に呼ばれるコールバック（SketchRunner が設定）。
     var onRedraw: (() -> Void)?
 
-    /// Callback invoked when the frame rate changes (set by SketchRunner).
+    /// フレームレート変更時に呼ばれるコールバック（SketchRunner が設定）。
     var onFrameRate: ((Int) -> Void)?
 
-    /// Resumes the animation loop.
+    /// アニメーションループを再開します。
     public func loop() {
         isLooping = true
         onLoop?()
     }
 
-    /// Stops the animation loop.
+    /// アニメーションループを停止します。
     public func noLoop() {
         isLooping = false
         onNoLoop?()
     }
 
-    /// Draws a single frame (used when the loop is stopped).
+    /// 単一フレームを描画します（ループ停止時に使用）。
     public func redraw() {
         onRedraw?()
     }
 
-    /// Changes the target frame rate dynamically.
-    /// - Parameter fps: The desired frames per second.
+    /// 目標フレームレートを動的に変更します。
+    /// - Parameter fps: 目標フレーム毎秒。
     public func frameRate(_ fps: Int) {
         onFrameRate?(fps)
     }
 
     // MARK: - Cursor Control
 
-    /// Shows the mouse cursor.
+    /// マウスカーソルを表示します。
     public func cursor() {
         NSCursor.unhide()
     }
 
-    /// Hides the mouse cursor.
+    /// マウスカーソルを非表示にします。
     public func noCursor() {
         NSCursor.hide()
     }
 
     // MARK: - Cache Management
 
-    /// Clear all internal caches (mesh, pipeline, texture, and filter caches).
+    /// すべての内部キャッシュ（メッシュ、パイプライン、テクスチャ、フィルターキャッシュ）をクリアします。
     ///
-    /// Call this when switching scenes or to reclaim GPU memory.
+    /// シーン切り替え時や GPU メモリの回収時に呼び出してください。
     public func clearCaches() {
         canvas3D.clearMeshCache()
         canvas3D.clearCustomPipelineCache()
@@ -111,18 +111,18 @@ public final class SketchContext {
 
     // MARK: - Canvas Resize
 
-    /// Callback invoked when the canvas is resized (set by SketchRunner).
+    /// キャンバスリサイズ時に呼ばれるコールバック（SketchRunner が設定）。
     var onCreateCanvas: ((Int, Int) -> Void)?
 
-    /// Sets the canvas size (call during setup).
+    /// キャンバスサイズを設定します（セットアップ中に呼び出してください）。
     /// - Parameters:
-    ///   - width: The canvas width in pixels.
-    ///   - height: The canvas height in pixels.
+    ///   - width: キャンバスの幅（ピクセル単位）。
+    ///   - height: キャンバスの高さ（ピクセル単位）。
     public func createCanvas(width: Int, height: Int) {
         onCreateCanvas?(width, height)
     }
 
-    /// Rebuilds the internal canvases after a resize (internal use).
+    /// リサイズ後に内部キャンバスを再構築します（内部使用）。
     func rebuildCanvas(canvas: Canvas2D, canvas3D: Canvas3D) {
         self.canvas = canvas
         self.canvas3D = canvas3D
@@ -132,64 +132,64 @@ public final class SketchContext {
 
     // MARK: - Tween Manager
 
-    /// The tween manager that automatically updates registered tweens each frame.
+    /// 毎フレーム登録済みトゥイーンを自動更新するトゥイーンマネージャ。
     public let tweenManager = TweenManager()
 
     // MARK: - GUI
 
-    /// The parameter GUI instance for immediate-mode controls.
+    /// イミディエイトモードコントロール用のパラメータ GUI インスタンス。
     public let gui = ParameterGUI()
 
     // MARK: - Performance HUD
 
-    /// The performance HUD instance, or nil if disabled.
+    /// パフォーマンス HUD インスタンス。無効の場合は nil。
     private var performanceHUD: PerformanceHUD?
 
-    /// Enables the performance HUD overlay.
+    /// パフォーマンス HUD オーバーレイを有効にします。
     public func enablePerformanceHUD() {
         if performanceHUD == nil {
             performanceHUD = PerformanceHUD()
         }
     }
 
-    /// Disables the performance HUD overlay.
+    /// パフォーマンス HUD オーバーレイを無効にします。
     public func disablePerformanceHUD() {
         performanceHUD = nil
     }
 
     // MARK: - Compute State (internal)
 
-    /// The current command buffer, valid only during the compute phase.
+    /// 現在のコマンドバッファ。コンピュートフェーズ中のみ有効。
     var _commandBuffer: MTLCommandBuffer?
 
-    /// The lazily created compute command encoder.
+    /// 遅延生成されるコンピュートコマンドエンコーダー。
     var _computeEncoder: MTLComputeCommandEncoder?
 
     // MARK: - GIF Export (D-19)
 
-    /// The GIF exporter instance.
+    /// GIF エクスポーターインスタンス。
     public let gifExporter = GIFExporter()
 
     // MARK: - Orbit Camera (D-20)
 
-    /// The orbit camera instance.
+    /// オービットカメラインスタンス。
     public let orbitCamera = OrbitCamera()
 
     // MARK: - Multi-Window
 
-    /// The shared Metal resources, set by SketchRunner for the primary window.
+    /// 共有 Metal リソース。プライマリウィンドウ用に SketchRunner が設定。
     var _sharedResources: SharedMetalResources?
 
-    /// Whether this is the primary sketch context (controls global elapsed time).
+    /// これがプライマリスケッチコンテキストかどうか（グローバル経過時間を制御）。
     var isPrimary: Bool = false
 
-    /// The secondary windows created from this context.
+    /// このコンテキストから作成されたセカンダリウィンドウ。
     private var secondaryWindows: [SketchWindow] = []
 
-    /// Create a new secondary window.
+    /// 新しいセカンダリウィンドウを作成します。
     ///
-    /// - Parameter config: The window configuration.
-    /// - Returns: A new ``SketchWindow`` instance, or `nil` if creation fails.
+    /// - Parameter config: ウィンドウ設定。
+    /// - Returns: 新しい ``SketchWindow`` インスタンス。作成に失敗した場合は `nil`。
     public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
         guard let shared = _sharedResources else {
             metaphorWarning("Cannot create window: shared resources unavailable")
@@ -206,7 +206,7 @@ public final class SketchContext {
         }
     }
 
-    /// Close all secondary windows and release their resources.
+    /// すべてのセカンダリウィンドウを閉じリソースを解放します。
     public func closeAllWindows() {
         for window in secondaryWindows {
             window.close()
@@ -228,14 +228,14 @@ public final class SketchContext {
 
     // MARK: - Compute Frame Management (internal)
 
-    /// Begins the compute phase.
+    /// コンピュートフェーズを開始します。
     func beginCompute(commandBuffer: MTLCommandBuffer, time: Float, deltaTime: Float) {
         self._commandBuffer = commandBuffer
         self.time = time
         self.deltaTime = deltaTime
     }
 
-    /// Ends the compute phase, finalizing the encoder if one was created.
+    /// コンピュートフェーズを終了し、エンコーダーが作成されていた場合はファイナライズします。
     func endCompute() {
         _computeEncoder?.endEncoding()
         _computeEncoder = nil
@@ -257,7 +257,7 @@ public final class SketchContext {
     }
 
     func endFrame() {
-        // Performance HUD overlay (before canvas.end() so it's drawn on top)
+        // パフォーマンス HUD オーバーレイ（canvas.end() の前に描画し最前面に表示）
         if let hud = performanceHUD {
             hud.update(deltaTime: deltaTime)
             hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
@@ -266,21 +266,21 @@ public final class SketchContext {
         canvas3D.end()
         canvas.end()
 
-        // Determine loadAction for the next frame based on whether background()
-        // was called during this frame's draw(). If not called, preserve the
-        // previous frame's content (Processing behavior).
+        // このフレームの draw() で background() が呼ばれたかに基づいて
+        // 次フレームの loadAction を決定。呼ばれていなければ前フレームの
+        // 内容を保持（Processing の動作）。
         let shouldClearNext = canvas.backgroundCalledThisFrame
         renderer.textureManager.setShouldClear(shouldClearNext)
         canvas.frameWillClear = shouldClearNext
-        // After the first background() call, the clearColor in the render pass
-        // descriptor matches what the user requested. On subsequent frames the
-        // encoder will be created with this clearColor, so the optimisation in
-        // background() (skip drawing a quad when Metal clears for us) is safe.
+        // 最初の background() 呼び出し後、レンダーパスディスクリプタの clearColor は
+        // ユーザーが指定した色と一致します。以降のフレームではこの clearColor で
+        // エンコーダーが作成されるため、background() の最適化（Metal のクリアに
+        // 任せてクワッド描画をスキップ）が安全です。
         if shouldClearNext {
             canvas.clearColorApplied = true
         }
 
-        // GIF frame capture
+        // GIF フレームキャプチャ
         captureGIFFrame()
     }
 }

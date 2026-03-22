@@ -1,13 +1,13 @@
 import Foundation
 
-/// Shadow mapping shader function name constants.
+/// シャドウマッピングシェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
 public enum ShadowShaders {
 
-    /// Shadow shader function name constants.
+    /// シャドウシェーダー関数名定数。
     public enum FunctionName {
-        /// MSL function name for the shadow depth vertex shader.
+        /// シャドウデプス頂点シェーダーのMSL関数名。
         public static let shadowDepthVertex = "metaphor_shadowDepthVertex"
     }
 }

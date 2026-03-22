@@ -1,150 +1,150 @@
 import Metal
 
-/// Central error type for the metaphor library.
+/// metaphor ライブラリの中央エラー型
 ///
-/// ## Error handling conventions
-/// - **Initialization failures**: throw ``MetaphorError``
-/// - **Runtime failures** (during draw): log with `metaphorWarning()`, do not throw
-/// - **Standalone modules** (Audio, Network, Physics): use their own error types
+/// ## エラーハンドリング規約
+/// - **初期化時の失敗**: ``MetaphorError`` をスロー
+/// - **ランタイムの失敗** (描画中): `metaphorWarning()` でログ出力、スローしない
+/// - **独立モジュール** (Audio, Network, Physics): 各自のエラー型を使用
 public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
 
-    // MARK: - Core (device, queue, buffer, texture)
+    // MARK: - Core (デバイス, キュー, バッファ, テクスチャ)
 
-    /// The Metal device could not be obtained.
+    /// Metal デバイスを取得できなかった
     case deviceNotAvailable
 
-    /// A texture could not be created with the specified dimensions and format.
+    /// 指定されたサイズとフォーマットでテクスチャを作成できなかった
     case textureCreationFailed(width: Int, height: Int, format: String)
 
-    /// The Metal command queue could not be created.
+    /// Metal コマンドキューを作成できなかった
     case commandQueueCreationFailed
 
-    /// A Metal buffer could not be allocated.
+    /// Metal バッファを確保できなかった
     case bufferCreationFailed(size: Int)
 
-    /// The sketch context is not available (called outside `setup()` or `draw()`).
+    /// スケッチコンテキストが利用できない (`setup()` または `draw()` の外で呼び出された)
     case contextUnavailable(method: String)
 
-    // MARK: - Shader & Pipeline
+    // MARK: - シェーダー & パイプライン
 
-    /// A shader failed to compile.
+    /// シェーダーのコンパイルに失敗した
     case shaderCompilationFailed(name: String, underlying: Error)
 
-    /// A render pipeline state could not be created.
+    /// レンダーパイプラインステートを作成できなかった
     case pipelineCreationFailed(name: String, underlying: Error)
 
-    /// The specified shader function was not found in the shader library.
+    /// 指定されたシェーダー関数がシェーダーライブラリに見つからなかった
     case shaderNotFound(String)
 
     // MARK: - Canvas
 
-    /// A Canvas2D operation failed.
+    /// Canvas2D 操作の失敗
     case canvas(CanvasFailure)
 
-    // MARK: - Geometry & Mesh
+    // MARK: - ジオメトリ & メッシュ
 
-    /// A mesh operation failed.
+    /// メッシュ操作の失敗
     case mesh(MeshFailure)
 
-    // MARK: - Image
+    // MARK: - 画像
 
-    /// An image operation failed.
+    /// 画像操作の失敗
     case image(ImageFailure)
 
-    // MARK: - Material
+    // MARK: - マテリアル
 
-    /// A material operation failed.
+    /// マテリアル操作の失敗
     case material(MaterialFailure)
 
-    // MARK: - Particle
+    // MARK: - パーティクル
 
-    /// A particle system operation failed.
+    /// パーティクルシステム操作の失敗
     case particle(ParticleFailure)
 
     // MARK: - MPS (Metal Performance Shaders)
 
-    /// A Metal Performance Shaders operation failed.
+    /// Metal Performance Shaders 操作の失敗
     case mps(MPSFailure)
 
     // MARK: - RenderGraph
 
-    /// A render graph operation failed.
+    /// レンダーグラフ操作の失敗
     case renderGraph(RenderGraphFailure)
 
-    // MARK: - Export
+    // MARK: - エクスポート
 
-    /// An export operation failed.
+    /// エクスポート操作の失敗
     case export(ExportFailure)
 
-    // MARK: - Compute
+    // MARK: - コンピュート
 
-    /// A compute kernel operation failed.
+    /// コンピュートカーネル操作の失敗
     case compute(ComputeFailure)
 
-    // MARK: - Nested Failure Types
+    // MARK: - ネストされた失敗型
 
     public enum CanvasFailure: Sendable {
-        /// A Metal buffer for canvas vertices could not be created.
+        /// Canvas 頂点用の Metal バッファを作成できなかった
         case bufferCreationFailed
     }
 
     public enum MeshFailure: Sendable {
-        /// The mesh file was not found.
+        /// メッシュファイルが見つからなかった
         case fileNotFound
-        /// The mesh data could not be parsed.
+        /// メッシュデータのパースに失敗した
         case parseError(String)
     }
 
     public enum ImageFailure: Sendable {
-        /// The source image is invalid or could not be converted to a CGImage.
+        /// ソース画像が無効、または CGImage への変換に失敗した
         case invalidImage
     }
 
     public enum MaterialFailure: Sendable {
-        /// The specified shader function was not found.
+        /// 指定されたシェーダー関数が見つからなかった
         case shaderNotFound(String)
     }
 
     public enum ParticleFailure: Sendable {
-        /// GPU buffer allocation failed.
+        /// GPU バッファの確保に失敗した
         case bufferCreationFailed
-        /// A required shader function was not found.
+        /// 必要なシェーダー関数が見つからなかった
         case shaderNotFound(String)
     }
 
     public enum MPSFailure: Sendable {
-        /// The device does not support Metal Performance Shaders.
+        /// デバイスが Metal Performance Shaders をサポートしていない
         case deviceNotSupported
-        /// The acceleration structure failed to build.
+        /// アクセラレーション構造体のビルドに失敗した
         case accelerationStructureBuildFailed(String)
-        /// A texture operation failed.
+        /// テクスチャ操作に失敗した
         case textureOperationFailed(String)
-        /// A ray intersection test failed.
+        /// レイ交差テストに失敗した
         case intersectionFailed(String)
-        /// The scene configuration is invalid.
+        /// シーン構成が無効
         case invalidScene(String)
     }
 
     public enum RenderGraphFailure: Sendable {
-        /// A required merge shader function was not found.
+        /// 必要なマージシェーダー関数が見つからなかった
         case shaderNotFound(String)
     }
 
     public enum ExportFailure: Sendable {
-        /// No frames were captured.
+        /// キャプチャされたフレームがない
         case noFrames
-        /// The image destination could not be created.
+        /// 画像デスティネーションを作成できなかった
         case destinationCreationFailed
-        /// Finalization of the output file failed.
+        /// 出力ファイルのファイナライズに失敗した
         case finalizationFailed
-        /// The AVAssetWriter encountered an error.
+        /// AVAssetWriter がエラーを検出した
         case writerFailed(String)
-        /// Recording was not active when endRecord() was called.
+        /// endRecord() 呼び出し時に録画がアクティブでなかった
         case notRecording
     }
 
     public enum ComputeFailure: Sendable {
-        /// The specified compute function was not found.
+        /// 指定されたコンピュート関数が見つからなかった
         case functionNotFound(String)
     }
 
@@ -239,10 +239,9 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     public var errorDescription: String? { description }
 }
 
-/// A simple error carrying only a message string, used as a lightweight
-/// replacement for NSError when a description-only error is needed.
+/// メッセージ文字列のみを保持する簡易エラー。
+/// 説明のみが必要な場合に NSError の軽量な代替として使用します。
 struct SimpleError: Error, LocalizedError, Sendable {
     let message: String
     var errorDescription: String? { message }
 }
-

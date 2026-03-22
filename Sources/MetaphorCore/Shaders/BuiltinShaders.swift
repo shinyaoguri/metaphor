@@ -1,18 +1,18 @@
 import Foundation
 
-/// Built-in Metal shader function names and shared struct definitions.
+/// 組み込みMetalシェーダー関数名と共有構造体定義。
 ///
-/// metaphor uses a dual shader system:
-/// - **`.metal` files** (in `Shaders/Metal/`): Pre-compiled by Xcode/SPM, preferred for production.
-/// - **`.txt` resource files** (in `Shaders/ShaderSources/`): Runtime-compiled via `MTLDevice.makeLibrary(source:)`.
-///   Used as fallback and for shader hot-reload during development.
+/// metaphor はデュアルシェーダーシステムを使用します:
+/// - **`.metal` ファイル** (`Shaders/Metal/` 内): Xcode/SPM によりプリコンパイル済み。本番環境向け。
+/// - **`.txt` リソースファイル** (`Shaders/ShaderSources/` 内): `MTLDevice.makeLibrary(source:)` によるランタイムコンパイル。
+///   フォールバックおよび開発時のシェーダーホットリロードに使用されます。
 ///
-/// New shaders should be added as `.metal` files under `Shaders/Metal/`.
+/// 新しいシェーダーは `Shaders/Metal/` 配下に `.metal` ファイルとして追加してください。
 public enum BuiltinShaders {
 
-    // MARK: - Common Structures
+    // MARK: - 共通構造体
 
-    /// MSL struct definitions shared across all shaders.
+    /// すべてのシェーダーで共有されるMSL構造体定義。
     static let commonStructs = """
     struct MetaphorUniforms {
         float4x4 modelMatrix;
@@ -23,17 +23,17 @@ public enum BuiltinShaders {
     };
     """
 
-    // MARK: - Canvas3D Shared Structures (Common 3D Shader Definitions)
+    // MARK: - Canvas3D 共有構造体 (共通3Dシェーダー定義)
 
-    /// MSL struct definitions shared by Canvas3D untextured and textured shaders.
+    /// Canvas3D の非テクスチャおよびテクスチャシェーダーで共有されるMSL構造体定義。
     ///
-    /// Use as a prefix when writing custom material shaders.
+    /// カスタムマテリアルシェーダー記述時にプレフィックスとして使用します。
     /// ```swift
     /// let source = """
     /// #include <metal_stdlib>
     /// using namespace metal;
     /// \(BuiltinShaders.canvas3DStructs)
-    /// // Custom fragment shader ...
+    /// // カスタムフラグメントシェーダー ...
     /// """
     /// ```
     public static let canvas3DStructs = """
@@ -71,9 +71,9 @@ public enum BuiltinShaders {
     };
     """
 
-    /// MSL lighting functions (Blinn-Phong + PBR Cook-Torrance GGX).
+    /// MSLライティング関数 (Blinn-Phong + PBR Cook-Torrance GGX)。
     ///
-    /// Use when custom material shaders need built-in lighting calculations.
+    /// カスタムマテリアルシェーダーで組み込みライティング計算が必要な場合に使用します。
     public static let canvas3DLightingFn = """
     // Shadow calculation (PCF 3x3)
     float calculateShadow(
@@ -239,57 +239,57 @@ public enum BuiltinShaders {
     }
     """
 
-    // MARK: - Shader Function Names
+    // MARK: - シェーダー関数名
 
-    /// Built-in shader function name constants.
+    /// 組み込みシェーダー関数名定数。
     public enum FunctionName {
-        /// MSL function name for the blit vertex shader.
+        /// ブリット頂点シェーダーのMSL関数名。
         public static let blitVertex = "metaphor_blitVertex"
-        /// MSL function name for the blit fragment shader.
+        /// ブリットフラグメントシェーダーのMSL関数名。
         public static let blitFragment = "metaphor_blitFragment"
-        /// MSL function name for the flat-color vertex shader.
+        /// フラットカラー頂点シェーダーのMSL関数名。
         public static let flatColorVertex = "metaphor_flatColorVertex"
-        /// MSL function name for the flat-color fragment shader.
+        /// フラットカラーフラグメントシェーダーのMSL関数名。
         public static let flatColorFragment = "metaphor_flatColorFragment"
-        /// MSL function name for the vertex-color vertex shader.
+        /// 頂点カラー頂点シェーダーのMSL関数名。
         public static let vertexColorVertex = "metaphor_vertexColorVertex"
-        /// MSL function name for the vertex-color fragment shader.
+        /// 頂点カラーフラグメントシェーダーのMSL関数名。
         public static let vertexColorFragment = "metaphor_vertexColorFragment"
-        /// MSL function name for the lit vertex shader.
+        /// ライティング付き頂点シェーダーのMSL関数名。
         public static let litVertex = "metaphor_litVertex"
-        /// MSL function name for the lit fragment shader.
+        /// ライティング付きフラグメントシェーダーのMSL関数名。
         public static let litFragment = "metaphor_litFragment"
-        /// MSL function name for the Canvas2D vertex shader.
+        /// Canvas2D 頂点シェーダーのMSL関数名。
         public static let canvas2DVertex = "metaphor_canvas2DVertex"
-        /// MSL function name for the Canvas2D fragment shader.
+        /// Canvas2D フラグメントシェーダーのMSL関数名。
         public static let canvas2DFragment = "metaphor_canvas2DFragment"
-        /// MSL function name for the Canvas2D difference blend fragment shader.
+        /// Canvas2D 差分ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DDifferenceFragment = "metaphor_canvas2DDifferenceFragment"
-        /// MSL function name for the Canvas2D exclusion blend fragment shader.
+        /// Canvas2D 除外ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DExclusionFragment = "metaphor_canvas2DExclusionFragment"
-        /// MSL function name for the Canvas3D vertex shader.
+        /// Canvas3D 頂点シェーダーのMSL関数名。
         public static let canvas3DVertex = "metaphor_canvas3DVertex"
-        /// MSL function name for the Canvas3D fragment shader.
+        /// Canvas3D フラグメントシェーダーのMSL関数名。
         public static let canvas3DFragment = "metaphor_canvas3DFragment"
-        /// MSL function name for the Canvas2D textured vertex shader.
+        /// Canvas2D テクスチャ付き頂点シェーダーのMSL関数名。
         public static let canvas2DTexturedVertex = "metaphor_canvas2DTexturedVertex"
-        /// MSL function name for the Canvas2D textured fragment shader.
+        /// Canvas2D テクスチャ付きフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedFragment = "metaphor_canvas2DTexturedFragment"
-        /// MSL function name for the Canvas2D textured difference blend fragment shader.
+        /// Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedDifferenceFragment = "metaphor_canvas2DTexturedDifferenceFragment"
-        /// MSL function name for the Canvas2D textured exclusion blend fragment shader.
+        /// Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedExclusionFragment = "metaphor_canvas2DTexturedExclusionFragment"
-        /// MSL function name for the Canvas3D textured vertex shader.
+        /// Canvas3D テクスチャ付き頂点シェーダーのMSL関数名。
         public static let canvas3DTexturedVertex = "metaphor_canvas3DTexturedVertex"
-        /// MSL function name for the Canvas3D textured fragment shader.
+        /// Canvas3D テクスチャ付きフラグメントシェーダーのMSL関数名。
         public static let canvas3DTexturedFragment = "metaphor_canvas3DTexturedFragment"
-        /// MSL function name for the Canvas2D instanced vertex shader.
+        /// Canvas2D インスタンス描画頂点シェーダーのMSL関数名。
         public static let canvas2DInstancedVertex = "metaphor_canvas2DInstancedVertex"
-        /// MSL function name for the Canvas2D instanced fragment shader.
+        /// Canvas2D インスタンス描画フラグメントシェーダーのMSL関数名。
         public static let canvas2DInstancedFragment = "metaphor_canvas2DInstancedFragment"
-        /// MSL function name for the Canvas2D instanced difference blend fragment shader.
+        /// Canvas2D インスタンス描画差分ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DInstancedDifferenceFragment = "metaphor_canvas2DInstancedDifferenceFragment"
-        /// MSL function name for the Canvas2D instanced exclusion blend fragment shader.
+        /// Canvas2D インスタンス描画除外ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DInstancedExclusionFragment = "metaphor_canvas2DInstancedExclusionFragment"
     }
 }

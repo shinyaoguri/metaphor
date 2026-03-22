@@ -3,7 +3,7 @@ import simd
 
 // MARK: - PostProcessParams
 
-/// Store uniform parameters for post-process shaders.
+/// ポストプロセスシェーダー用のユニフォームパラメータを格納します。
 struct PostProcessParams {
     var texelSize: SIMD2<Float> = .zero
     var intensity: Float = 0
@@ -18,28 +18,28 @@ struct PostProcessParams {
     var _pad1: Float = 0
 }
 
-// MARK: - PostEffect Protocol
+// MARK: - PostEffect プロトコル
 
-/// A post-process effect applied to the rendered frame.
+/// レンダリング済みフレームに適用されるポストプロセスエフェクト
 ///
-/// Implement this protocol to create custom effects. Built-in effects include
-/// ``BloomEffect``, ``BlurEffect``, ``InvertEffect``, ``GrayscaleEffect``,
-/// ``VignetteEffect``, ``ChromaticAberrationEffect``, and ``ColorGradeEffect``.
+/// カスタムエフェクトを作成するにはこのプロトコルを実装してください。組み込みエフェクトには
+/// ``BloomEffect``、``BlurEffect``、``InvertEffect``、``GrayscaleEffect``、
+/// ``VignetteEffect``、``ChromaticAberrationEffect``、``ColorGradeEffect`` があります。
 @MainActor
 public protocol PostEffect: AnyObject {
-    /// The display name of this effect.
+    /// このエフェクトの表示名
     var name: String { get }
 
-    /// Apply this effect, reading from `input` and writing the result to `output`.
+    /// `input` から読み取り、結果を `output` に書き込んでこのエフェクトを適用します。
     func apply(
         input: MTLTexture, output: MTLTexture,
         commandBuffer: MTLCommandBuffer, context: PostEffectContext
     )
 }
 
-// MARK: - Built-in Effects: Bloom
+// MARK: - 組み込みエフェクト: ブルーム
 
-/// Apply bloom (glow around high-luminance areas).
+/// ブルーム（高輝度領域周辺のグロウ）を適用します。
 @MainActor
 public final class BloomEffect: PostEffect {
     public let name = "bloom"
@@ -55,15 +55,15 @@ public final class BloomEffect: PostEffect {
         let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
         let params = PostProcessParams(texelSize: texelSize, intensity: intensity, threshold: threshold)
 
-        // 1. Extract bright areas: input → output (temp)
+        // 1. 明るい領域を抽出: input → output (一時)
         context.renderPass(
             commandBuffer: commandBuffer, input: input, output: output,
             fragmentName: PostProcessShaders.FunctionName.postBloomExtract, params: params
         )
-        // 2. Kawase blur: output → scratch
+        // 2. Kawase ブラー: output → scratch
         guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else { return }
         context.applyKawaseBlur(commandBuffer: commandBuffer, source: output, output: scratch, iterations: 4)
-        // 3. Composite: original + bloom → output
+        // 3. コンポジット: 元画像 + ブルーム → output
         context.renderCompositePass(
             commandBuffer: commandBuffer, original: input, bloom: scratch,
             output: output, params: params
@@ -71,9 +71,9 @@ public final class BloomEffect: PostEffect {
     }
 }
 
-// MARK: - Built-in Effects: Blur
+// MARK: - 組み込みエフェクト: ブラー
 
-/// Apply a blur effect (Kawase for large radii, Gaussian for small).
+/// ブラーエフェクトを適用します（大きい半径では Kawase、小さい半径ではガウシアン）。
 @MainActor
 public final class BlurEffect: PostEffect {
     public let name = "blur"
@@ -103,9 +103,9 @@ public final class BlurEffect: PostEffect {
     }
 }
 
-// MARK: - Built-in Effects: Simple Single-Pass
+// MARK: - 組み込みエフェクト: シンプルなシングルパス
 
-/// Invert all colors.
+/// 全カラーを反転します。
 @MainActor
 public final class InvertEffect: PostEffect {
     public let name = "invert"
@@ -120,7 +120,7 @@ public final class InvertEffect: PostEffect {
     }
 }
 
-/// Convert to grayscale.
+/// グレースケールに変換します。
 @MainActor
 public final class GrayscaleEffect: PostEffect {
     public let name = "grayscale"
@@ -135,7 +135,7 @@ public final class GrayscaleEffect: PostEffect {
     }
 }
 
-/// Apply a vignette darkening at the edges.
+/// エッジを暗くするビネットエフェクトを適用します。
 @MainActor
 public final class VignetteEffect: PostEffect {
     public let name = "vignette"
@@ -159,7 +159,7 @@ public final class VignetteEffect: PostEffect {
     }
 }
 
-/// Apply chromatic aberration (color fringing).
+/// 色収差（カラーフリンジ）を適用します。
 @MainActor
 public final class ChromaticAberrationEffect: PostEffect {
     public let name = "chromaticAberration"
@@ -181,7 +181,7 @@ public final class ChromaticAberrationEffect: PostEffect {
     }
 }
 
-/// Apply color grading adjustments.
+/// カラーグレーディング調整を適用します。
 @MainActor
 public final class ColorGradeEffect: PostEffect {
     public let name = "colorGrade"
@@ -209,4 +209,3 @@ public final class ColorGradeEffect: PostEffect {
         )
     }
 }
-

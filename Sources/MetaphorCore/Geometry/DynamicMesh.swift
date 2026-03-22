@@ -1,11 +1,11 @@
 import Metal
 import simd
 
-/// Provide a 3D mesh whose vertices can be added and modified dynamically.
+/// 頂点を動的に追加・変更できる3Dメッシュを提供します。
 ///
-/// Offers functionality equivalent to openFrameworks' ofMesh or p5.js' p5.Geometry.
-/// Whenever vertex data changes, the isDirty flag is set and GPU buffers
-/// are automatically rebuilt at draw time.
+/// openFrameworks の ofMesh や p5.js の p5.Geometry に相当する機能を提供します。
+/// 頂点データが変更されると isDirty フラグが設定され、描画時に GPU バッファが
+/// 自動的に再構築されます。
 ///
 /// ```swift
 /// let mesh = createDynamicMesh()
@@ -24,7 +24,7 @@ public final class DynamicMesh {
     private var cachedVertexBuffer: MTLBuffer?
     private var cachedIndexBuffer: MTLBuffer?
 
-    // Pending normal and color for the next vertex to be added
+    // 次に追加される頂点に適用するペンディング法線とカラー
     private var pendingNormal: SIMD3<Float> = SIMD3(0, 1, 0)
     private var pendingColor: SIMD4<Float> = SIMD4(1, 1, 1, 1)
 
@@ -34,7 +34,7 @@ public final class DynamicMesh {
 
     // MARK: - Vertex Operations
 
-    /// Add a vertex at the given position.
+    /// 指定位置に頂点を追加します。
     public func addVertex(_ position: SIMD3<Float>) {
         vertices.append(Vertex3D(
             position: position,
@@ -44,35 +44,35 @@ public final class DynamicMesh {
         isDirty = true
     }
 
-    /// Add a vertex at the specified x, y, z coordinates.
+    /// 指定された x, y, z 座標に頂点を追加します。
     public func addVertex(_ x: Float, _ y: Float, _ z: Float) {
         addVertex(SIMD3(x, y, z))
     }
 
-    /// Set the normal to be applied to the next added vertex.
+    /// 次に追加される頂点に適用する法線を設定します。
     public func addNormal(_ normal: SIMD3<Float>) {
         pendingNormal = normal
     }
 
-    /// Set the color to be applied to the next added vertex.
+    /// 次に追加される頂点に適用するカラーを設定します。
     public func addColor(_ color: Color) {
         pendingColor = color.simd
     }
 
-    /// Set the color to be applied to the next added vertex using a SIMD4 value.
+    /// SIMD4 値を使用して、次に追加される頂点に適用するカラーを設定します。
     public func addColor(_ color: SIMD4<Float>) {
         pendingColor = color
     }
 
     // MARK: - Index Operations
 
-    /// Append a single index.
+    /// インデックスを1つ追加します。
     public func addIndex(_ i: UInt32) {
         indices.append(i)
         isDirty = true
     }
 
-    /// Append three indices forming a triangle.
+    /// 三角形を構成する3つのインデックスを追加します。
     public func addTriangle(_ i0: UInt32, _ i1: UInt32, _ i2: UInt32) {
         indices.append(contentsOf: [i0, i1, i2])
         isDirty = true
@@ -80,36 +80,36 @@ public final class DynamicMesh {
 
     // MARK: - Access & Modify
 
-    /// Return the number of vertices.
+    /// 頂点数
     public var vertexCount: Int { vertices.count }
 
-    /// Return the number of indices.
+    /// インデックス数
     public var indexCount: Int { indices.count }
 
-    /// Return the position of the vertex at the given index.
+    /// 指定インデックスの頂点位置を返します。
     public func getVertex(_ index: Int) -> SIMD3<Float> {
         vertices[index].position
     }
 
-    /// Set the position of the vertex at the given index.
+    /// 指定インデックスの頂点位置を設定します。
     public func setVertex(_ index: Int, _ position: SIMD3<Float>) {
         vertices[index].position = position
         isDirty = true
     }
 
-    /// Set the normal of the vertex at the given index.
+    /// 指定インデックスの頂点法線を設定します。
     public func setNormal(_ index: Int, _ normal: SIMD3<Float>) {
         vertices[index].normal = normal
         isDirty = true
     }
 
-    /// Set the color of the vertex at the given index.
+    /// 指定インデックスの頂点カラーを設定します。
     public func setColor(_ index: Int, _ color: SIMD4<Float>) {
         vertices[index].color = color
         isDirty = true
     }
 
-    /// Remove all vertices and indices.
+    /// すべての頂点とインデックスを削除します。
     public func clear() {
         vertices.removeAll(keepingCapacity: true)
         indices.removeAll(keepingCapacity: true)
@@ -118,7 +118,7 @@ public final class DynamicMesh {
 
     // MARK: - Internal GPU Buffer Management
 
-    /// Rebuild GPU buffers if the data has been modified.
+    /// データが変更された場合に GPU バッファを再構築します。
     internal func ensureBuffers() {
         guard isDirty else { return }
         guard !vertices.isEmpty else {
@@ -147,9 +147,9 @@ public final class DynamicMesh {
         isDirty = false
     }
 
-    /// Return the vertex buffer (valid after calling ensureBuffers).
+    /// 頂点バッファを返します（ensureBuffers 呼び出し後に有効）。
     internal var vertexBuffer: MTLBuffer? { cachedVertexBuffer }
 
-    /// Return the index buffer (valid after calling ensureBuffers).
+    /// インデックスバッファを返します（ensureBuffers 呼び出し後に有効）。
     public var indexBuffer: MTLBuffer? { cachedIndexBuffer }
 }

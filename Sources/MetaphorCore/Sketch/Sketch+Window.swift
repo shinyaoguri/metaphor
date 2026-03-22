@@ -1,8 +1,8 @@
 extension Sketch {
-    /// Create a secondary window for multi-window output.
+    /// マルチウィンドウ出力用のセカンダリウィンドウを作成します。
     ///
-    /// Each window has its own canvas, renderer, and input handling.
-    /// Draw to it using the ``SketchWindow/draw(_:)`` method with a closure.
+    /// 各ウィンドウは独自のキャンバス、レンダラー、入力処理を持ちます。
+    /// ``SketchWindow/draw(_:)`` メソッドにクロージャを渡して描画します。
     ///
     /// ```swift
     /// var preview: SketchWindow?
@@ -26,13 +26,13 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// - Parameter config: The window configuration.
-    /// - Returns: A new ``SketchWindow``, or `nil` if creation fails.
+    /// - Parameter config: ウィンドウ設定。
+    /// - Returns: 新しい ``SketchWindow``。作成に失敗した場合は `nil`。
     public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
         context.createWindow(config)
     }
 
-    /// Close all secondary windows created from this sketch.
+    /// このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
     public func closeAllWindows() {
         context.closeAllWindows()
     }

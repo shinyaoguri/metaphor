@@ -1,59 +1,59 @@
 import MetaphorCore
 import simd
 
-/// Render a scene graph tree using a `Canvas3D` instance.
+/// `Canvas3D` インスタンスを使用してシーングラフツリーをレンダリングします。
 ///
-/// ``SceneRenderer`` performs a depth-first traversal of the node hierarchy,
-/// applying each node's local transform via push/pop matrix and drawing any
-/// attached mesh or invoking custom draw callbacks.
+/// ``SceneRenderer`` はノード階層の深さ優先トラバーサルを行い、
+/// 各ノードのローカルトランスフォームを push/pop マトリクスで適用し、
+/// アタッチされたメッシュの描画やカスタム描画コールバックの呼び出しを行います。
 ///
-/// When ``frustumPlanes`` is set, nodes with a ``Node/bounds`` are culled if
-/// they fall entirely outside the frustum, avoiding unnecessary draw calls.
+/// ``frustumPlanes`` が設定されている場合、``Node/bounds`` を持つノードが
+/// フラスタムの完全に外側にある場合はカリングされ、不要な描画呼び出しを回避します。
 @MainActor
 public final class SceneRenderer {
-    /// The frustum planes for culling (6 planes: left, right, bottom, top, near, far).
+    /// カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
     ///
-    /// Each plane is `(nx, ny, nz, d)` where the positive half-space is visible.
-    /// Set to `nil` to disable frustum culling.
+    /// 各平面は `(nx, ny, nz, d)` で、正の半空間が可視です。
+    /// フラスタムカリングを無効にするには `nil` を設定してください。
     public static var frustumPlanes: [SIMD4<Float>]?
 
-    /// Traverse the node tree depth-first and render each visible node.
+    /// ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
     ///
-    /// For each node, the renderer pushes the matrix stack, applies the node's
-    /// local transform (via the quaternion-based orientation), sets the fill
-    /// color if specified, draws the mesh if present, invokes the custom draw
-    /// callback, recurses into children, and finally pops the matrix stack.
+    /// 各ノードに対して、レンダラーはマトリクススタックをプッシュし、
+    /// ノードのローカルトランスフォーム（クォータニオンベースの向き経由）を適用し、
+    /// フィルカラーが指定されていれば設定し、メッシュがあれば描画し、
+    /// カスタム描画コールバックを呼び出し、子に再帰し、最後にマトリクススタックをポップします。
     ///
     /// - Parameters:
-    ///   - node: The root node of the tree (or subtree) to render.
-    ///   - canvas: The `Canvas3D` instance used for drawing.
+    ///   - node: レンダリングするツリー（またはサブツリー）のルートノード。
+    ///   - canvas: 描画に使用する `Canvas3D` インスタンス。
     public static func render(node: Node, canvas: Canvas3D) {
         guard node.isVisible else { return }
 
-        // Frustum culling
+        // フラスタムカリング
         if let planes = frustumPlanes, let bounds = node.worldBounds {
             guard bounds.intersects(frustum: planes) else { return }
         }
 
         canvas.pushMatrix()
 
-        // Apply node's local transform via the 4x4 matrix
+        // ノードのローカルトランスフォームを 4x4 行列経由で適用
         canvas.applyMatrix(node.localTransform)
 
-        // Set fill color if specified
+        // フィルカラーが指定されていれば設定
         if let color = node.fillColor {
             canvas.fill(color)
         }
 
-        // Draw mesh if present
+        // メッシュがあれば描画
         if let mesh = node.mesh {
             canvas.mesh(mesh)
         }
 
-        // Custom draw callback
+        // カスタム描画コールバック
         node.onDraw?()
 
-        // Recurse into children
+        // 子に再帰
         for child in node.children {
             render(node: child, canvas: canvas)
         }
@@ -61,12 +61,12 @@ public final class SceneRenderer {
         canvas.popMatrix()
     }
 
-    /// Extract 6 frustum planes from a view-projection matrix.
+    /// ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
     ///
-    /// Uses the Gribb/Hartmann method. Each returned plane is normalized.
+    /// Gribb/Hartmann 法を使用します。返される各平面は正規化済みです。
     ///
-    /// - Parameter viewProjection: The combined view × projection matrix.
-    /// - Returns: An array of 6 frustum planes (left, right, bottom, top, near, far).
+    /// - Parameter viewProjection: 合成されたビュー × プロジェクション行列。
+    /// - Returns: 6つのフラスタム平面の配列（左、右、下、上、ニア、ファー）。
     public static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>] {
         let m = viewProjection
         let r0 = SIMD4<Float>(m[0][0], m[1][0], m[2][0], m[3][0])
@@ -75,15 +75,15 @@ public final class SceneRenderer {
         let r3 = SIMD4<Float>(m[0][3], m[1][3], m[2][3], m[3][3])
 
         var planes: [SIMD4<Float>] = [
-            r3 + r0,  // left
-            r3 - r0,  // right
-            r3 + r1,  // bottom
-            r3 - r1,  // top
-            r3 + r2,  // near
-            r3 - r2,  // far
+            r3 + r0,  // 左
+            r3 - r0,  // 右
+            r3 + r1,  // 下
+            r3 - r1,  // 上
+            r3 + r2,  // ニア
+            r3 - r2,  // ファー
         ]
 
-        // Normalize
+        // 正規化
         for i in 0..<planes.count {
             let n = length(SIMD3<Float>(planes[i].x, planes[i].y, planes[i].z))
             if n > 0 { planes[i] /= n }

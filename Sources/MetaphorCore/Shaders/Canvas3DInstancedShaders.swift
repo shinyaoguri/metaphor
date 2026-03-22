@@ -1,18 +1,18 @@
-/// Canvas3D instanced drawing shader function name constants.
+/// Canvas3D インスタンス描画シェーダー関数名定数。
 ///
-/// MSL source code is loaded from bundled .txt resource files at runtime.
-/// Uses `instance_id` to read per-instance data (transform, color),
-/// allowing batch rendering of identical meshes in a single draw call.
+/// MSLソースコードはバンドルされた .txt リソースファイルからランタイムに読み込まれます。
+/// `instance_id` を使用してインスタンスごとのデータ（トランスフォーム、カラー）を読み取り、
+/// 同一メッシュを単一のドローコールでバッチレンダリングします。
 enum Canvas3DInstancedShaders {
 
-    // MARK: - Function Names
+    // MARK: - 関数名
 
-    /// MSL function name for the untextured instanced vertex shader.
+    /// 非テクスチャインスタンス描画頂点シェーダーのMSL関数名。
     static let vertexFunctionName = "metaphor_canvas3DInstancedVertex"
-    /// MSL function name for the untextured instanced fragment shader.
+    /// 非テクスチャインスタンス描画フラグメントシェーダーのMSL関数名。
     static let fragmentFunctionName = "metaphor_canvas3DInstancedFragment"
-    /// MSL function name for the textured instanced vertex shader.
+    /// テクスチャ付きインスタンス描画頂点シェーダーのMSL関数名。
     static let texturedVertexFunctionName = "metaphor_canvas3DTexInstancedVertex"
-    /// MSL function name for the textured instanced fragment shader.
+    /// テクスチャ付きインスタンス描画フラグメントシェーダーのMSL関数名。
     static let texturedFragmentFunctionName = "metaphor_canvas3DTexInstancedFragment"
 }

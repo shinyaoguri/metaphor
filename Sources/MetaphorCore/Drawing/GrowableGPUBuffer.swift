@@ -1,11 +1,11 @@
 import Metal
 
-/// A dynamically-growing triple-buffered GPU buffer.
+/// 動的に拡張可能なトリプルバッファリング GPU バッファ。
 ///
-/// Starts with a small initial capacity and doubles on demand,
-/// reducing startup memory from ~57MB to ~300KB for Canvas2D.
+/// 小さな初期容量から開始し、必要に応じて倍増することで、
+/// Canvas2D の起動時メモリを約57MBから約300KBに削減します。
 ///
-/// - Parameter T: The per-element data type (e.g., `Vertex2D`, `TexturedVertex2D`).
+/// - Parameter T: 要素ごとのデータ型（例: `Vertex2D`、`TexturedVertex2D`）。
 @MainActor
 final class GrowableGPUBuffer<T> {
 
@@ -15,20 +15,20 @@ final class GrowableGPUBuffer<T> {
     private let label: String
     private let maxCapacity: Int
 
-    /// Triple-buffered storage.
+    /// トリプルバッファリングストレージ。
     private(set) var buffers: [MTLBuffer]
     private(set) var pointers: [UnsafeMutablePointer<T>]
 
-    /// Current element capacity per buffer.
+    /// バッファあたりの現在の要素容量。
     private(set) var capacity: Int
 
-    /// Creates a new growable buffer with triple-buffered storage.
+    /// トリプルバッファリングされたストレージで新しい拡張可能バッファを作成します。
     ///
     /// - Parameters:
-    ///   - device: The Metal device.
-    ///   - initialCapacity: Starting element count (default 4096).
-    ///   - maxCapacity: Upper bound for growth (default 1,000,000).
-    ///   - label: Label prefix for GPU buffers.
+    ///   - device: Metal デバイス。
+    ///   - initialCapacity: 開始要素数（デフォルト 4096）。
+    ///   - maxCapacity: 拡張の上限（デフォルト 1,000,000）。
+    ///   - label: GPU バッファのラベルプレフィックス。
     init(
         device: MTLDevice,
         initialCapacity: Int = 4096,
@@ -56,27 +56,27 @@ final class GrowableGPUBuffer<T> {
         self.pointers = ptrs
     }
 
-    /// The buffer for the given triple-buffer index.
+    /// 指定されたトリプルバッファインデックスのバッファ。
     func buffer(for index: Int) -> MTLBuffer {
         buffers[index % Self.bufferCount]
     }
 
-    /// The pointer for the given triple-buffer index.
+    /// 指定されたトリプルバッファインデックスのポインタ。
     func pointer(for index: Int) -> UnsafeMutablePointer<T> {
         pointers[index % Self.bufferCount]
     }
 
-    /// Ensures the buffer can hold at least `needed` elements.
+    /// バッファが少なくとも `needed` 個の要素を保持できることを保証します。
     ///
-    /// If current capacity is insufficient, reallocates all three buffers
-    /// at double the current capacity (capped at `maxCapacity`).
-    /// Existing data in the specified buffer index is copied to the new buffer.
+    /// 現在の容量が不足している場合、3つのバッファすべてを現在の容量の2倍で
+    /// 再割り当てします（`maxCapacity` で上限）。
+    /// 指定されたバッファインデックスの既存データは新しいバッファにコピーされます。
     ///
     /// - Parameters:
-    ///   - needed: The minimum number of elements required.
-    ///   - activeIndex: The currently active buffer index (for data copy).
-    ///   - usedCount: How many elements of existing data to preserve.
-    /// - Returns: `true` if growth succeeded or was unnecessary, `false` if at max capacity.
+    ///   - needed: 必要な最小要素数。
+    ///   - activeIndex: 現在アクティブなバッファインデックス（データコピー用）。
+    ///   - usedCount: 保存する既存データの要素数。
+    /// - Returns: 拡張が成功または不要な場合は `true`、最大容量に達した場合は `false`。
     @discardableResult
     func ensureCapacity(_ needed: Int, activeIndex: Int, usedCount: Int) -> Bool {
         guard needed > capacity else { return true }
@@ -100,7 +100,7 @@ final class GrowableGPUBuffer<T> {
             buf.label = "\(label).\(i)"
             let ptr = buf.contents().bindMemory(to: T.self, capacity: newCapacity)
 
-            // Copy existing data for the active buffer
+            // アクティブなバッファの既存データをコピー
             if i == (activeIndex % Self.bufferCount) && usedCount > 0 {
                 ptr.update(from: pointers[i], count: usedCount)
             }

@@ -1,42 +1,42 @@
 # ``MetaphorAudio``
 
-Audio input analysis and sound file playback for creative coding.
+クリエイティブコーディングのためのオーディオ入力解析とサウンドファイル再生。
 
 ## Overview
 
-MetaphorAudio provides real-time FFT spectrum analysis from microphone input
-and audio file playback with integrated analysis. Use ``AudioAnalyzer`` to
-capture live audio and extract volume, spectrum, and beat data. Use
-``SoundFile`` to play MP3, WAV, or AAC files with optional spectrum analysis.
+MetaphorAudio はマイク入力からのリアルタイム FFT スペクトラム解析と、
+解析機能統合済みのオーディオファイル再生を提供します。
+``AudioAnalyzer`` でライブオーディオをキャプチャし、音量、スペクトラム、ビート情報を取得できます。
+``SoundFile`` で MP3、WAV、AAC ファイルを再生し、オプションでスペクトラム解析も利用できます。
 
-This module has no dependency on MetaphorCore and can be used standalone.
-When using the umbrella module (`import metaphor`), audio features are
-accessible through convenience methods like `createAudioInput()`.
+このモジュールは MetaphorCore に依存せず、単独で使用できます。
+アンブレラモジュール（`import metaphor`）使用時は、`createAudioInput()` などの
+便利なメソッドからアクセスできます。
 
-### Quick Start
+### クイックスタート
 
 ```swift
-// Live microphone analysis
+// ライブマイク解析
 let audio = AudioAnalyzer(fftSize: 1024)
 try audio.start()
 
-// In your draw loop:
+// 描画ループ内:
 audio.update()
-let bass = audio.band(0)      // Bass energy
-let mid = audio.band(1)       // Mid energy
-let treble = audio.band(2)    // Treble energy
+let bass = audio.band(0)      // 低域エネルギー
+let mid = audio.band(1)       // 中域エネルギー
+let treble = audio.band(2)    // 高域エネルギー
 ```
 
 ## Topics
 
-### Audio Analysis
+### オーディオ解析
 
 - ``AudioAnalyzer``
 
-### Sound File Playback
+### サウンドファイル再生
 
 - ``SoundFile``
 
-### Errors
+### エラー
 
 - ``SoundFileError``

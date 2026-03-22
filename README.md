@@ -6,9 +6,9 @@
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/github/license/shinyaoguri/metaphor)](LICENSE)
 
-Swift + Metal creative coding library inspired by Processing / p5.js / openFrameworks.
+Processingにインスパイアされた、Swift + Metal クリエイティブコーディングライブラリ。
 
-## Requirements
+## 動作環境
 
 - macOS 14.0+
 - Xcode 15.0+
@@ -16,11 +16,11 @@ Swift + Metal creative coding library inspired by Processing / p5.js / openFrame
 
 ---
 
-## Installation
+## インストール
 
 ### Swift Package Manager
 
-Add metaphor to your `Package.swift`:
+`Package.swift` に metaphor を追加してください:
 
 ```swift
 dependencies: [
@@ -28,18 +28,18 @@ dependencies: [
 ]
 ```
 
-Or in Xcode: File -> Add Package Dependencies -> enter the repository URL.
+Xcode の場合: File → Add Package Dependencies → リポジトリ URL を入力。
 
 ---
 
-## Quick Start
+## クイックスタート
 
 ```bash
 mkdir MyMetalApp && cd MyMetalApp
 swift package init --type executable --name MyMetalApp
 ```
 
-Edit `Package.swift`:
+`Package.swift` を編集:
 
 ```swift
 // swift-tools-version: 5.10
@@ -63,7 +63,7 @@ let package = Package(
 )
 ```
 
-Build and run:
+ビルドして実行:
 
 ```bash
 swift build && swift run
@@ -75,9 +75,9 @@ swift build && swift run
 ---
 
 
-### Setup
+### セットアップ
 
-Clone with submodules and build Syphon locally:
+サブモジュールごとクローンし、Syphon をローカルビルドします:
 
 ```bash
 git clone --recursive https://github.com/shinyaoguri/metaphor.git
@@ -85,44 +85,44 @@ cd metaphor
 make setup
 ```
 
-### Development Commands
+### 開発コマンド
 
 ```bash
-make setup      # Initialize submodules + build Syphon.xcframework
-make build      # Build the library
-make test       # Run tests (~900 tests across 10 test targets)
-make clean      # Clean build artifacts
-make check      # Check setup status
-make docs       # Build DocC documentation
+make setup      # サブモジュール初期化 + Syphon.xcframework ビルド
+make build      # ライブラリをビルド
+make test       # テスト実行（10ターゲット、約900テスト）
+make clean      # ビルド成果物をクリーン
+make check      # セットアップ状態を確認
+make docs       # DocC ドキュメントをビルド
 ```
 
-### How Syphon Works
+### Syphon の仕組み
 
-- **Local development**: When `Frameworks/Syphon.xcframework` exists, Package.swift uses the local path.
-- **SPM users**: When the framework doesn't exist, Package.swift fetches the pre-built XCFramework from GitHub Releases.
+- **ローカル開発**: `Frameworks/Syphon.xcframework` が存在する場合、Package.swift はローカルパスを使用します。
+- **SPM ユーザー**: フレームワークが存在しない場合、Package.swift が GitHub Releases からビルド済み XCFramework を取得します。
 
-### Release Process
+### リリースプロセス
 
-1. Tag a new version:
+1. 新しいバージョンをタグ付け:
    ```bash
    git tag v0.X.X
    git push --tags
    ```
 
-2. GitHub Actions will automatically:
-   - Build Syphon.xcframework
-   - Create a GitHub Release with the XCFramework
-   - Update Package.swift with the new URL and checksum
-   - Commit the changes to main
+2. GitHub Actions が自動的に以下を実行:
+   - Syphon.xcframework をビルド
+   - XCFramework を含む GitHub Release を作成
+   - Package.swift の URL とチェックサムを更新
+   - 変更を main にコミット
 
 ---
 
-## Acknowledgments
+## 謝辞
 
-Many examples in the [Examples/](Examples/) directory are Swift/Metal ports of
-[Processing](https://processing.org/) example sketches, originally written by
-Casey Reas, Ben Fry, and Daniel Shiffman (public domain).
-See each file's header comment for specific attribution details.
+[Examples/](Examples/) ディレクトリの多くのサンプルは、
+Casey Reas、Ben Fry、Daniel Shiffman による
+[Processing](https://processing.org/) サンプルスケッチ（public domain）の Swift/Metal 移植です。
+個別の帰属情報は各ファイルのヘッダーコメントを参照してください。
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples

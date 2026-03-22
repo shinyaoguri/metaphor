@@ -2,62 +2,62 @@ import Metal
 
 // MARK: - Filter Type
 
-/// Define image filter types (Processing-compatible and extended).
+/// 画像フィルタタイプを定義します（Processing 互換および拡張）。
 public enum FilterType: Sendable {
-    /// Threshold filter (0.0 to 1.0).
+    /// 閾値フィルタ（0.0〜1.0）。
     case threshold(Float)
-    /// Grayscale conversion.
+    /// グレースケール変換。
     case gray
-    /// Color inversion.
+    /// 色反転。
     case invert
-    /// Posterize effect (2 to 255 levels).
+    /// ポスタライズ効果（2〜255レベル）。
     case posterize(Int)
-    /// Blur effect (radius).
+    /// ぼかし効果（半径）。
     case blur(Int)
-    /// Erosion (expand dark regions).
+    /// 収縮（暗い領域を拡大）。
     case erode
-    /// Dilation (expand bright regions).
+    /// 膨張（明るい領域を拡大）。
     case dilate
-    /// Edge detection (Sobel filter).
+    /// エッジ検出（Sobel フィルタ）。
     case edgeDetect
-    /// Sharpen effect (amount: recommended range 0.5 to 3.0).
+    /// シャープ効果（量: 推奨範囲 0.5〜3.0）。
     case sharpen(Float)
-    /// Sepia tone.
+    /// セピアトーン。
     case sepia
-    /// Pixelate effect (block size).
+    /// ピクセレート効果（ブロックサイズ）。
     case pixelate(Int)
 
     // MARK: - MPS Filters
 
-    /// MPS Gaussian blur (sigma value, hardware-optimized).
+    /// MPS ガウシアンぼかし（シグマ値、ハードウェア最適化）。
     case mpsBlur(sigma: Float)
-    /// MPS Sobel edge detection.
+    /// MPS Sobel エッジ検出。
     case mpsSobel
-    /// MPS Laplacian filter.
+    /// MPS ラプラシアンフィルタ。
     case mpsLaplacian
-    /// MPS morphological erosion.
+    /// MPS モルフォロジカル収縮。
     case mpsErode(radius: Int)
-    /// MPS morphological dilation.
+    /// MPS モルフォロジカル膨張。
     case mpsDilate(radius: Int)
-    /// MPS median filter.
+    /// MPS メディアンフィルタ。
     case mpsMedian(diameter: Int)
-    /// MPS threshold binarization.
+    /// MPS 閾値二値化。
     case mpsThreshold(Float)
 }
 
 // MARK: - Image Filter (CPU)
 
-/// Provide CPU-based filter operations on MImage pixel arrays.
+/// MImage ピクセル配列に対する CPU ベースのフィルタ操作を提供します。
 ///
-/// Call loadPixels() before and updatePixels() after processing.
+/// 処理前に loadPixels()、処理後に updatePixels() を呼び出してください。
 @MainActor
 public enum ImageFilter {
 
-    /// Apply a filter to an MImage, performing loadPixels, processing, and updatePixels in one step.
+    /// MImage にフィルタを適用し、loadPixels、処理、updatePixels を一括で実行します。
     ///
     /// - Parameters:
-    ///   - filter: The filter type to apply.
-    ///   - image: The target image.
+    ///   - filter: 適用するフィルタタイプ。
+    ///   - image: 対象の画像。
     public static func apply(_ filter: FilterType, to image: MImage) {
         image.loadPixels()
         guard !image.pixels.isEmpty else { return }
@@ -65,13 +65,13 @@ public enum ImageFilter {
         image.updatePixels()
     }
 
-    /// Apply a filter directly to a pixel array.
+    /// ピクセル配列にフィルタを直接適用します。
     ///
     /// - Parameters:
-    ///   - filter: The filter type to apply.
-    ///   - pixels: The RGBA pixel data to modify in place.
-    ///   - width: The image width in pixels.
-    ///   - height: The image height in pixels.
+    ///   - filter: 適用するフィルタタイプ。
+    ///   - pixels: インプレースで変更する RGBA ピクセルデータ。
+    ///   - width: 画像の幅（ピクセル単位）。
+    ///   - height: 画像の高さ（ピクセル単位）。
     public static func applyToPixels(_ filter: FilterType, pixels: inout [UInt8], width: Int, height: Int) {
         switch filter {
         case .threshold(let level):
@@ -96,7 +96,7 @@ public enum ImageFilter {
             applySepia(pixels: &pixels)
         case .pixelate(let blockSize):
             applyPixelate(pixels: &pixels, width: width, height: height, blockSize: max(1, blockSize))
-        // MPS filters are GPU-only; CPU fallback is no-op
+        // MPS フィルタは GPU 専用; CPU フォールバックは何もしない
         case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
             break
         }
@@ -142,10 +142,10 @@ public enum ImageFilter {
     }
 
     private static func applyBlur(pixels: inout [UInt8], width: Int, height: Int, radius: Int) {
-        // Box blur (fast approximation)
+        // ボックスぼかし（高速近似）
         var temp = pixels
 
-        // Horizontal pass
+        // 水平パス
         for y in 0..<height {
             for x in 0..<width {
                 var rSum: Int = 0, gSum: Int = 0, bSum: Int = 0, aSum: Int = 0
@@ -168,7 +168,7 @@ public enum ImageFilter {
             }
         }
 
-        // Vertical pass
+        // 垂直パス
         for y in 0..<height {
             for x in 0..<width {
                 var rSum: Int = 0, gSum: Int = 0, bSum: Int = 0, aSum: Int = 0

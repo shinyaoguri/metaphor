@@ -1,11 +1,11 @@
 import AppKit
 import MetalKit
 
-/// A secondary window for multi-window sketches.
+/// マルチウィンドウスケッチ用のセカンダリウィンドウ。
 ///
-/// Created via ``Sketch/createWindow(_:)`` inside a `Sketch`. Each window has
-/// its own renderer, canvas, and input handling. Drawing is done via a closure
-/// that receives a ``SketchContext``.
+/// `Sketch` 内で ``Sketch/createWindow(_:)`` を使って作成します。各ウィンドウは
+/// 独自のレンダラー、キャンバス、入力処理を持ちます。描画は ``SketchContext`` を
+/// 受け取るクロージャで行います。
 ///
 /// ```swift
 /// var preview: SketchWindow?
@@ -31,42 +31,42 @@ import MetalKit
 public final class SketchWindow {
     // MARK: - Public Properties
 
-    /// The window configuration.
+    /// ウィンドウ設定。
     public let config: SketchWindowConfig
 
-    /// The rendering context for this window.
+    /// このウィンドウのレンダリングコンテキスト。
     public private(set) var context: SketchContext
 
-    /// Whether this window is currently open.
+    /// このウィンドウが現在開いているかどうか。
     public private(set) var isOpen: Bool = true
 
-    /// The input manager for this window's events.
+    /// このウィンドウのイベント用入力マネージャ。
     public var input: InputManager { context.input }
 
     // MARK: - Input Event Closures
 
-    /// Called when a mouse button is pressed in this window.
+    /// このウィンドウでマウスボタンが押された時に呼ばれます。
     public var onMousePressed: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when a mouse button is released in this window.
+    /// このウィンドウでマウスボタンが離された時に呼ばれます。
     public var onMouseReleased: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when the mouse moves in this window.
+    /// このウィンドウでマウスが移動した時に呼ばれます。
     public var onMouseMoved: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when the mouse is dragged in this window.
+    /// このウィンドウでマウスがドラッグされた時に呼ばれます。
     public var onMouseDragged: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when the scroll wheel is used in this window.
+    /// このウィンドウでスクロールホイールが使用された時に呼ばれます。
     public var onMouseScrolled: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when a mouse click completes (press and release without drag).
+    /// マウスクリックが完了した時（ドラッグなしの押下→離し）に呼ばれます。
     public var onMouseClicked: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when a key is pressed in this window.
+    /// このウィンドウでキーが押された時に呼ばれます。
     public var onKeyPressed: ((@MainActor (SketchWindow) -> Void))?
 
-    /// Called when a key is released in this window.
+    /// このウィンドウでキーが離された時に呼ばれます。
     public var onKeyReleased: ((@MainActor (SketchWindow) -> Void))?
 
     // MARK: - Internal State
@@ -119,28 +119,28 @@ public final class SketchWindow {
 
     // MARK: - Drawing API
 
-    /// Draw to this window using a closure.
+    /// クロージャを使用してこのウィンドウに描画します。
     ///
-    /// Call this from the parent sketch's `draw()` method each frame.
-    /// The closure receives this window's ``SketchContext`` with the full drawing API.
+    /// 親スケッチの `draw()` メソッドから毎フレーム呼び出してください。
+    /// クロージャはこのウィンドウの ``SketchContext`` をフル描画 API で受け取ります。
     ///
-    /// - Parameter closure: A closure that performs drawing operations.
+    /// - Parameter closure: 描画操作を行うクロージャ。
     public func draw(_ closure: @escaping @MainActor (SketchContext) -> Void) {
         guard isOpen else { return }
         drawClosure = closure
     }
 
-    /// Set a persistent draw closure that runs every frame automatically.
+    /// 毎フレーム自動実行される永続的な描画クロージャを設定します。
     ///
-    /// Unlike ``draw(_:)``, this closure persists across frames without needing
-    /// to be called each frame from the parent sketch's `draw()`.
+    /// ``draw(_:)`` とは異なり、親スケッチの `draw()` から毎フレーム
+    /// 呼び出す必要なく、フレームを跨いで永続します。
     ///
-    /// - Parameter closure: A closure that performs drawing operations each frame.
+    /// - Parameter closure: 毎フレーム描画操作を行うクロージャ。
     public func onDraw(_ closure: @escaping @MainActor (SketchContext) -> Void) {
         drawClosure = closure
     }
 
-    /// Close this window and release its resources.
+    /// このウィンドウを閉じリソースを解放します。
     public func close() {
         guard isOpen else { return }
         stopRenderTimer()
@@ -169,7 +169,7 @@ public final class SketchWindow {
         win.contentAspectRatio = NSSize(width: config.width, height: config.height)
         win.center()
 
-        // Cascade windows to avoid stacking
+        // ウィンドウを重ならないようにカスケード
         let offset = CGFloat(30 * SketchWindow.windowCounter)
         win.setFrameOrigin(NSPoint(
             x: win.frame.origin.x + offset,
@@ -184,7 +184,7 @@ public final class SketchWindow {
         renderer.configure(view: mtkView)
         win.contentView = mtkView
 
-        // Window delegate for close handling
+        // クローズ処理用のウィンドウデリゲート
         let delegate = WindowDelegate { [weak self] in
             self?.handleWindowClose()
         }
@@ -198,9 +198,9 @@ public final class SketchWindow {
     }
 
     private func setupRenderLoop() {
-        // Determine render loop mode.
-        // If syphonName is set but renderLoopMode is still displayLink,
-        // automatically switch to timer mode for Syphon compatibility.
+        // レンダーループモードの決定。
+        // syphonName が設定されているが renderLoopMode が displayLink のままの場合、
+        // Syphon 互換性のため自動的にタイマーモードに切り替え。
         let loopMode: RenderLoopMode
         if config.syphonName != nil && config.renderLoopMode == .displayLink {
             loopMode = .timer(fps: config.fps)
