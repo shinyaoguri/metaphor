@@ -1,5 +1,4 @@
 @preconcurrency import Metal
-import MetalPerformanceShaders
 import MetaphorCore
 import simd
 
@@ -33,9 +32,9 @@ struct RayTraceUniforms {
 
 // MARK: - MPSRayTracer
 
-/// MPS ベースのレイトレーシングシステムを提供します。
+/// Metal ネイティブレイトレーシングシステムを提供します。
 ///
-/// MPSRayIntersector と MPSTriangleAccelerationStructure を使用して、
+/// MTLAccelerationStructure と Metal Ray Tracing API を使用して、
 /// GPU アクセラレーションによるレイトレーシングでアンビエントオクルージョン、
 /// ソフトシャドウ、ディフューズシェーディングを行います。
 ///
@@ -46,38 +45,26 @@ struct RayTraceUniforms {
 /// rt.trace(mode: .ambientOcclusion(samples: 32, radius: 2.0),
 ///          camera: (eye: SIMD3(0,2,5), center: .zero, up: SIMD3(0,1,0), fov: .pi/3))
 /// ```
-@available(macOS, deprecated: 14.0, message: "Uses deprecated MPS ray tracing APIs; migrate to Metal ray tracing APIs")
 @MainActor
 public final class MPSRayTracer {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let width: Int
     private let height: Int
-    private let rayCount: Int
 
     // シーン
     private let scene: MPSRayScene
-    private var accelerationStructure: MPSTriangleAccelerationStructure?
+    private var accelerationStructure: MTLAccelerationStructure?
     private var normalBuffer: MTLBuffer?
-
-    // MPS オブジェクト
-    private var intersector: MPSRayIntersector?
-
-    // バッファ
-    private var rayBuffer: MTLBuffer?
-    private var shadowRayBuffer: MTLBuffer?
-    private var intersectionBuffer: MTLBuffer?
-    private var shadowIntersectionBuffer: MTLBuffer?
 
     // 出力
     private var _outputTexture: MTLTexture?
 
     // パイプライン
     private var library: MTLLibrary?
-    private var generateRaysPipeline: MTLComputePipelineState?
-    private var shadeAOPipeline: MTLComputePipelineState?
-    private var accumulateAOPipeline: MTLComputePipelineState?
-    private var shadeDiffusePipeline: MTLComputePipelineState?
+    private var traceAOPipeline: MTLComputePipelineState?
+    private var traceSoftShadowPipeline: MTLComputePipelineState?
+    private var traceDiffusePipeline: MTLComputePipelineState?
 
     /// レイトレーシング結果テクスチャを返します。
     public var outputTexture: MTLTexture? { _outputTexture }
@@ -89,11 +76,9 @@ public final class MPSRayTracer {
         self.commandQueue = commandQueue
         self.width = width
         self.height = height
-        self.rayCount = width * height
         self.scene = MPSRayScene(device: device)
 
         try setupPipelines()
-        setupBuffers()
         setupOutputTexture()
     }
 
@@ -127,16 +112,9 @@ public final class MPSRayTracer {
     /// メッシュを追加した後、レイをトレースする前に呼び出してください。
     /// - Throws: シーンが空またはバッファ作成に失敗した場合に `MetaphorError` をスローします。
     public func buildAccelerationStructure() throws {
-        let result = try scene.buildAccelerationStructure()
+        let result = try scene.buildAccelerationStructure(commandQueue: commandQueue)
         self.accelerationStructure = result.accelerationStructure
         self.normalBuffer = result.normalBuffer
-
-        // インターセクターをセットアップ
-        let intersector = MPSRayIntersector(device: device)
-        intersector.rayDataType = .originMinDistanceDirectionMaxDistance
-        intersector.rayStride = MemoryLayout<Float>.stride * 8  // packed_float3 + float + packed_float3 + float
-        intersector.intersectionDataType = .distancePrimitiveIndexCoordinates
-        self.intersector = intersector
     }
 
     // MARK: - パブリック: トレーシング
@@ -150,9 +128,6 @@ public final class MPSRayTracer {
         camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float)
     ) {
         guard let accel = accelerationStructure,
-              let intersector = intersector,
-              let rayBuf = rayBuffer,
-              let intBuf = intersectionBuffer,
               let output = _outputTexture else { return }
 
         let view = float4x4(lookAt: camera.eye, center: camera.center, up: camera.up)
@@ -164,106 +139,50 @@ public final class MPSRayTracer {
 
         switch mode {
         case .ambientOcclusion(let samples, let radius):
-            traceAO(accel: accel, intersector: intersector, rayBuf: rayBuf, intBuf: intBuf,
-                     output: output, inverseView: inverseView, inverseProjection: inverseProjection,
+            traceAO(accel: accel, output: output,
+                     inverseView: inverseView, inverseProjection: inverseProjection,
                      samples: samples, radius: radius)
 
         case .softShadow(let lightDir, let softness, let samples):
-            traceSoftShadow(accel: accel, intersector: intersector, rayBuf: rayBuf, intBuf: intBuf,
-                            output: output, inverseView: inverseView, inverseProjection: inverseProjection,
+            traceSoftShadow(accel: accel, output: output,
+                            inverseView: inverseView, inverseProjection: inverseProjection,
                             lightDirection: lightDir, softness: softness, samples: samples)
 
         case .diffuse:
-            traceDiffuse(accel: accel, intersector: intersector, rayBuf: rayBuf, intBuf: intBuf,
-                         output: output, inverseView: inverseView, inverseProjection: inverseProjection)
+            traceDiffuse(accel: accel, output: output,
+                         inverseView: inverseView, inverseProjection: inverseProjection)
         }
     }
 
     // MARK: - プライベート: AO トレーシング
 
     private func traceAO(
-        accel: MPSTriangleAccelerationStructure,
-        intersector: MPSRayIntersector,
-        rayBuf: MTLBuffer,
-        intBuf: MTLBuffer,
+        accel: MTLAccelerationStructure,
         output: MTLTexture,
         inverseView: float4x4,
         inverseProjection: float4x4,
         samples: Int,
         radius: Float
     ) {
-        guard let shadowRayBuf = shadowRayBuffer,
-              let shadowIntBuf = shadowIntersectionBuffer,
-              let normalBuf = normalBuffer else { return }
+        guard let normalBuf = normalBuffer,
+              let cb = commandQueue.makeCommandBuffer(),
+              let encoder = cb.makeComputeCommandEncoder(),
+              let pipeline = traceAOPipeline else { return }
 
-        guard let cb = commandQueue.makeCommandBuffer() else { return }
+        var uniforms = RayTraceUniforms(
+            inverseView: inverseView, inverseProjection: inverseProjection,
+            width: UInt32(width), height: UInt32(height),
+            sampleIndex: 0, totalSamples: UInt32(samples),
+            aoRadius: radius, shadowSoftness: 0, maxBounces: 0, padding: 0
+        )
 
-        for sampleIdx in 0..<samples {
-            var uniforms = RayTraceUniforms(
-                inverseView: inverseView, inverseProjection: inverseProjection,
-                width: UInt32(width), height: UInt32(height),
-                sampleIndex: UInt32(sampleIdx), totalSamples: UInt32(samples),
-                aoRadius: radius, shadowSoftness: 0, maxBounces: 0, padding: 0
-            )
-
-            // 1. プライマリレイを生成（最初のサンプルのみ）
-            if sampleIdx == 0 {
-                if let encoder = cb.makeComputeCommandEncoder(),
-                   let pipeline = generateRaysPipeline {
-                    encoder.setComputePipelineState(pipeline)
-                    encoder.setBuffer(rayBuf, offset: 0, index: 0)
-                    encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 1)
-                    dispatchGrid(encoder: encoder, pipeline: pipeline)
-                    encoder.endEncoding()
-                }
-
-                // 2. プライマリレイの交差判定
-                intersector.encodeIntersection(
-                    commandBuffer: cb,
-                    intersectionType: .nearest,
-                    rayBuffer: rayBuf, rayBufferOffset: 0,
-                    intersectionBuffer: intBuf, intersectionBufferOffset: 0,
-                    rayCount: rayCount,
-                    accelerationStructure: accel
-                )
-            }
-
-            // 3. AO シェーディング（シャドウレイを生成）
-            if let encoder = cb.makeComputeCommandEncoder(),
-               let pipeline = shadeAOPipeline {
-                encoder.setComputePipelineState(pipeline)
-                encoder.setBuffer(rayBuf, offset: 0, index: 0)
-                encoder.setBuffer(intBuf, offset: 0, index: 1)
-                encoder.setBuffer(normalBuf, offset: 0, index: 2)
-                encoder.setBuffer(shadowRayBuf, offset: 0, index: 3)
-                encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 4)
-                encoder.setTexture(output, index: 0)
-                dispatchGrid(encoder: encoder, pipeline: pipeline)
-                encoder.endEncoding()
-            }
-
-            // 4. シャドウレイの交差判定
-            intersector.encodeIntersection(
-                commandBuffer: cb,
-                intersectionType: .any,
-                rayBuffer: shadowRayBuf, rayBufferOffset: 0,
-                intersectionBuffer: shadowIntBuf, intersectionBufferOffset: 0,
-                rayCount: rayCount,
-                accelerationStructure: accel
-            )
-
-            // 5. AO を累積
-            if let encoder = cb.makeComputeCommandEncoder(),
-               let pipeline = accumulateAOPipeline {
-                encoder.setComputePipelineState(pipeline)
-                encoder.setBuffer(intBuf, offset: 0, index: 0)
-                encoder.setBuffer(shadowIntBuf, offset: 0, index: 1)
-                encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 2)
-                encoder.setTexture(output, index: 0)
-                dispatchGrid(encoder: encoder, pipeline: pipeline)
-                encoder.endEncoding()
-            }
-        }
+        encoder.setComputePipelineState(pipeline)
+        encoder.setAccelerationStructure(accel, bufferIndex: 0)
+        encoder.setBuffer(normalBuf, offset: 0, index: 1)
+        encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 2)
+        encoder.setTexture(output, index: 0)
+        dispatchGrid(encoder: encoder, pipeline: pipeline)
+        encoder.endEncoding()
 
         cb.commit()
         cb.waitUntilCompleted()
@@ -272,10 +191,7 @@ public final class MPSRayTracer {
     // MARK: - プライベート: ソフトシャドウ
 
     private func traceSoftShadow(
-        accel: MPSTriangleAccelerationStructure,
-        intersector: MPSRayIntersector,
-        rayBuf: MTLBuffer,
-        intBuf: MTLBuffer,
+        accel: MTLAccelerationStructure,
         output: MTLTexture,
         inverseView: float4x4,
         inverseProjection: float4x4,
@@ -283,76 +199,27 @@ public final class MPSRayTracer {
         softness: Float,
         samples: Int
     ) {
-        // ソフトシャドウは AO と同じパイプラインを使用するが、ライト方向ベースのシャドウレイを使用
-        // 簡略化のため、ライト方向をユニフォームにエンコードして AO パイプラインを再利用
-        guard let shadowRayBuf = shadowRayBuffer,
-              let shadowIntBuf = shadowIntersectionBuffer,
-              let normalBuf = normalBuffer else { return }
+        guard let normalBuf = normalBuffer,
+              let cb = commandQueue.makeCommandBuffer(),
+              let encoder = cb.makeComputeCommandEncoder(),
+              let pipeline = traceSoftShadowPipeline else { return }
 
-        guard let cb = commandQueue.makeCommandBuffer() else { return }
+        var uniforms = RayTraceUniforms(
+            inverseView: inverseView, inverseProjection: inverseProjection,
+            width: UInt32(width), height: UInt32(height),
+            sampleIndex: 0, totalSamples: UInt32(samples),
+            aoRadius: 0, shadowSoftness: softness, maxBounces: 0, padding: 0
+        )
+        var lightDir = lightDirection
 
-        for sampleIdx in 0..<samples {
-            var uniforms = RayTraceUniforms(
-                inverseView: inverseView, inverseProjection: inverseProjection,
-                width: UInt32(width), height: UInt32(height),
-                sampleIndex: UInt32(sampleIdx), totalSamples: UInt32(samples),
-                aoRadius: 1000.0, shadowSoftness: softness, maxBounces: 0, padding: 0
-            )
-
-            if sampleIdx == 0 {
-                if let encoder = cb.makeComputeCommandEncoder(),
-                   let pipeline = generateRaysPipeline {
-                    encoder.setComputePipelineState(pipeline)
-                    encoder.setBuffer(rayBuf, offset: 0, index: 0)
-                    encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 1)
-                    dispatchGrid(encoder: encoder, pipeline: pipeline)
-                    encoder.endEncoding()
-                }
-
-                intersector.encodeIntersection(
-                    commandBuffer: cb,
-                    intersectionType: .nearest,
-                    rayBuffer: rayBuf, rayBufferOffset: 0,
-                    intersectionBuffer: intBuf, intersectionBufferOffset: 0,
-                    rayCount: rayCount,
-                    accelerationStructure: accel
-                )
-            }
-
-            // ジッター付きでライト方向へのシャドウレイを生成
-            if let encoder = cb.makeComputeCommandEncoder(),
-               let pipeline = shadeAOPipeline {
-                encoder.setComputePipelineState(pipeline)
-                encoder.setBuffer(rayBuf, offset: 0, index: 0)
-                encoder.setBuffer(intBuf, offset: 0, index: 1)
-                encoder.setBuffer(normalBuf, offset: 0, index: 2)
-                encoder.setBuffer(shadowRayBuf, offset: 0, index: 3)
-                encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 4)
-                encoder.setTexture(output, index: 0)
-                dispatchGrid(encoder: encoder, pipeline: pipeline)
-                encoder.endEncoding()
-            }
-
-            intersector.encodeIntersection(
-                commandBuffer: cb,
-                intersectionType: .any,
-                rayBuffer: shadowRayBuf, rayBufferOffset: 0,
-                intersectionBuffer: shadowIntBuf, intersectionBufferOffset: 0,
-                rayCount: rayCount,
-                accelerationStructure: accel
-            )
-
-            if let encoder = cb.makeComputeCommandEncoder(),
-               let pipeline = accumulateAOPipeline {
-                encoder.setComputePipelineState(pipeline)
-                encoder.setBuffer(intBuf, offset: 0, index: 0)
-                encoder.setBuffer(shadowIntBuf, offset: 0, index: 1)
-                encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 2)
-                encoder.setTexture(output, index: 0)
-                dispatchGrid(encoder: encoder, pipeline: pipeline)
-                encoder.endEncoding()
-            }
-        }
+        encoder.setComputePipelineState(pipeline)
+        encoder.setAccelerationStructure(accel, bufferIndex: 0)
+        encoder.setBuffer(normalBuf, offset: 0, index: 1)
+        encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 2)
+        encoder.setBytes(&lightDir, length: MemoryLayout<SIMD3<Float>>.size, index: 3)
+        encoder.setTexture(output, index: 0)
+        dispatchGrid(encoder: encoder, pipeline: pipeline)
+        encoder.endEncoding()
 
         cb.commit()
         cb.waitUntilCompleted()
@@ -361,16 +228,15 @@ public final class MPSRayTracer {
     // MARK: - プライベート: ディフューズシェーディング
 
     private func traceDiffuse(
-        accel: MPSTriangleAccelerationStructure,
-        intersector: MPSRayIntersector,
-        rayBuf: MTLBuffer,
-        intBuf: MTLBuffer,
+        accel: MTLAccelerationStructure,
         output: MTLTexture,
         inverseView: float4x4,
         inverseProjection: float4x4
     ) {
         guard let normalBuf = normalBuffer,
-              let cb = commandQueue.makeCommandBuffer() else { return }
+              let cb = commandQueue.makeCommandBuffer(),
+              let encoder = cb.makeComputeCommandEncoder(),
+              let pipeline = traceDiffusePipeline else { return }
 
         var uniforms = RayTraceUniforms(
             inverseView: inverseView, inverseProjection: inverseProjection,
@@ -379,38 +245,13 @@ public final class MPSRayTracer {
             aoRadius: 0, shadowSoftness: 0, maxBounces: 0, padding: 0
         )
 
-        // レイを生成
-        if let encoder = cb.makeComputeCommandEncoder(),
-           let pipeline = generateRaysPipeline {
-            encoder.setComputePipelineState(pipeline)
-            encoder.setBuffer(rayBuf, offset: 0, index: 0)
-            encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 1)
-            dispatchGrid(encoder: encoder, pipeline: pipeline)
-            encoder.endEncoding()
-        }
-
-        // 交差判定
-        intersector.encodeIntersection(
-            commandBuffer: cb,
-            intersectionType: .nearest,
-            rayBuffer: rayBuf, rayBufferOffset: 0,
-            intersectionBuffer: intBuf, intersectionBufferOffset: 0,
-            rayCount: rayCount,
-            accelerationStructure: accel
-        )
-
-        // シェーディング
-        if let encoder = cb.makeComputeCommandEncoder(),
-           let pipeline = shadeDiffusePipeline {
-            encoder.setComputePipelineState(pipeline)
-            encoder.setBuffer(rayBuf, offset: 0, index: 0)
-            encoder.setBuffer(intBuf, offset: 0, index: 1)
-            encoder.setBuffer(normalBuf, offset: 0, index: 2)
-            encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 3)
-            encoder.setTexture(output, index: 0)
-            dispatchGrid(encoder: encoder, pipeline: pipeline)
-            encoder.endEncoding()
-        }
+        encoder.setComputePipelineState(pipeline)
+        encoder.setAccelerationStructure(accel, bufferIndex: 0)
+        encoder.setBuffer(normalBuf, offset: 0, index: 1)
+        encoder.setBytes(&uniforms, length: MemoryLayout<RayTraceUniforms>.size, index: 2)
+        encoder.setTexture(output, index: 0)
+        dispatchGrid(encoder: encoder, pipeline: pipeline)
+        encoder.endEncoding()
 
         cb.commit()
         cb.waitUntilCompleted()
@@ -422,30 +263,23 @@ public final class MPSRayTracer {
         guard let source = ShaderLibrary.loadShaderSource("mpsRayTracer") else {
             throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to load mpsRayTracer shader source"))
         }
-        let lib = try device.makeLibrary(source: source, options: nil)
+
+        let options = MTLCompileOptions()
+        let lib = try device.makeLibrary(source: source, options: options)
         self.library = lib
 
         func makePipeline(_ name: String) throws -> MTLComputePipelineState {
             guard let fn = lib.makeFunction(name: name) else {
                 throw MetaphorError.mps(.accelerationStructureBuildFailed("Shader function '\(name)' not found"))
             }
-            return try device.makeComputePipelineState(function: fn)
+            let descriptor = MTLComputePipelineDescriptor()
+            descriptor.computeFunction = fn
+            return try device.makeComputePipelineState(descriptor: descriptor, options: [], reflection: nil)
         }
 
-        generateRaysPipeline = try makePipeline("generatePrimaryRays")
-        shadeAOPipeline = try makePipeline("shadeAmbientOcclusion")
-        accumulateAOPipeline = try makePipeline("accumulateAO")
-        shadeDiffusePipeline = try makePipeline("shadeDiffuse")
-    }
-
-    private func setupBuffers() {
-        let rayStride = MemoryLayout<Float>.stride * 8  // packed_float3 + float + packed_float3 + float
-        let intStride = MemoryLayout<Float>.stride * 4  // distance + primitiveIndex(as float) + float2
-
-        rayBuffer = device.makeBuffer(length: rayCount * rayStride, options: .storageModeShared)
-        shadowRayBuffer = device.makeBuffer(length: rayCount * rayStride, options: .storageModeShared)
-        intersectionBuffer = device.makeBuffer(length: rayCount * intStride, options: .storageModeShared)
-        shadowIntersectionBuffer = device.makeBuffer(length: rayCount * intStride, options: .storageModeShared)
+        traceAOPipeline = try makePipeline("traceAmbientOcclusion")
+        traceSoftShadowPipeline = try makePipeline("traceSoftShadow")
+        traceDiffusePipeline = try makePipeline("traceDiffuse")
     }
 
     private func setupOutputTexture() {

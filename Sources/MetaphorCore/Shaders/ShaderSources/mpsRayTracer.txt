@@ -1,21 +1,9 @@
 #include <metal_stdlib>
 #include <metal_raytracing>
 using namespace metal;
+using namespace raytracing;
 
 // MARK: - Structs
-
-struct Ray {
-    packed_float3 origin;
-    float minDistance;
-    packed_float3 direction;
-    float maxDistance;
-};
-
-struct Intersection {
-    float distance;
-    int primitiveIndex;
-    float2 coordinates;  // barycentric
-};
 
 struct RayTraceUniforms {
     float4x4 inverseView;
@@ -64,24 +52,15 @@ float3 randomInHemisphere(float3 normal, thread uint &seed) {
          + normal * cosTheta;
 }
 
-// MARK: - Ray Generation
+// MARK: - Ray Generation Helper
 
-kernel void generatePrimaryRays(
-    device Ray *rays [[buffer(0)]],
-    constant RayTraceUniforms &uniforms [[buffer(1)]],
-    uint2 tid [[thread_position_in_grid]]
-) {
-    if (tid.x >= uniforms.width || tid.y >= uniforms.height) return;
-
-    uint index = tid.y * uniforms.width + tid.x;
-
-    // NDC coordinates [-1, 1]
+/// Generate a primary ray from pixel coordinates and camera matrices.
+ray generatePrimaryRay(uint2 tid, constant RayTraceUniforms &uniforms) {
     float2 ndc = float2(
         (float(tid.x) + 0.5) / float(uniforms.width) * 2.0 - 1.0,
         1.0 - (float(tid.y) + 0.5) / float(uniforms.height) * 2.0
     );
 
-    // Unproject through inverse matrices
     float4 clipPos = float4(ndc, -1.0, 1.0);
     float4 viewPos = uniforms.inverseProjection * clipPos;
     viewPos /= viewPos.w;
@@ -90,99 +69,159 @@ kernel void generatePrimaryRays(
     float3 origin = (uniforms.inverseView * float4(0, 0, 0, 1)).xyz;
     float3 direction = normalize(worldPos.xyz - origin);
 
-    rays[index].origin = origin;
-    rays[index].direction = direction;
-    rays[index].minDistance = 0.001;
-    rays[index].maxDistance = 1000.0;
+    ray r;
+    r.origin = origin;
+    r.direction = direction;
+    r.min_distance = 0.001;
+    r.max_distance = 1000.0;
+    return r;
 }
 
-// MARK: - Ambient Occlusion Shading
+// MARK: - Ambient Occlusion (inline intersection)
 
-kernel void shadeAmbientOcclusion(
-    device Ray *rays [[buffer(0)]],
-    device Intersection *intersections [[buffer(1)]],
-    device packed_float3 *normals [[buffer(2)]],
-    device Ray *shadowRays [[buffer(3)]],
-    constant RayTraceUniforms &uniforms [[buffer(4)]],
-    texture2d<float, access::read_write> output [[texture(0)]],
-    uint2 tid [[thread_position_in_grid]]
-) {
-    if (tid.x >= uniforms.width || tid.y >= uniforms.height) return;
-
-    uint index = tid.y * uniforms.width + tid.x;
-    Intersection intersection = intersections[index];
-
-    if (intersection.distance < 0) {
-        // Miss - background
-        output.write(float4(0.1, 0.1, 0.15, 1.0), tid);
-        return;
-    }
-
-    // Compute hit point
-    Ray ray = rays[index];
-    float3 hitPoint = float3(ray.origin) + float3(ray.direction) * intersection.distance;
-    float3 normal = float3(normals[intersection.primitiveIndex]);
-
-    // Generate AO sample ray
-    uint seed = index + uniforms.sampleIndex * uniforms.width * uniforms.height;
-    float3 sampleDir = randomInHemisphere(normal, seed);
-
-    shadowRays[index].origin = hitPoint + normal * 0.001;
-    shadowRays[index].direction = sampleDir;
-    shadowRays[index].minDistance = 0.001;
-    shadowRays[index].maxDistance = uniforms.aoRadius;
-}
-
-// MARK: - AO Accumulation
-
-kernel void accumulateAO(
-    device Intersection *intersections [[buffer(0)]],
-    device Intersection *shadowIntersections [[buffer(1)]],
+kernel void traceAmbientOcclusion(
+    primitive_acceleration_structure accel [[buffer(0)]],
+    device float3 *normals [[buffer(1)]],
     constant RayTraceUniforms &uniforms [[buffer(2)]],
-    texture2d<float, access::read_write> output [[texture(0)]],
+    texture2d<float, access::write> output [[texture(0)]],
     uint2 tid [[thread_position_in_grid]]
 ) {
     if (tid.x >= uniforms.width || tid.y >= uniforms.height) return;
 
-    uint index = tid.y * uniforms.width + tid.x;
+    uint pixelIndex = tid.y * uniforms.width + tid.x;
 
-    // Primary ray missed
-    if (intersections[index].distance < 0) return;
+    // Primary ray
+    ray primaryRay = generatePrimaryRay(tid, uniforms);
 
-    // Read current accumulated value
-    float4 current = output.read(tid);
+    intersector<triangle_data> primaryIntersector;
+    primaryIntersector.accept_any_intersection(false);
+    auto primaryHit = primaryIntersector.intersect(primaryRay, accel);
 
-    // Shadow intersection: occluded = dark, unoccluded = bright
-    float ao = shadowIntersections[index].distance < 0 ? 1.0 : 0.0;
-
-    // Running average
-    float weight = 1.0 / float(uniforms.sampleIndex + 1);
-    float newValue = mix(current.r, ao, weight);
-
-    output.write(float4(newValue, newValue, newValue, 1.0), tid);
-}
-
-// MARK: - Simple Diffuse Shading (soft shadow)
-
-kernel void shadeDiffuse(
-    device Ray *rays [[buffer(0)]],
-    device Intersection *intersections [[buffer(1)]],
-    device packed_float3 *normals [[buffer(2)]],
-    constant RayTraceUniforms &uniforms [[buffer(3)]],
-    texture2d<float, access::read_write> output [[texture(0)]],
-    uint2 tid [[thread_position_in_grid]]
-) {
-    if (tid.x >= uniforms.width || tid.y >= uniforms.height) return;
-
-    uint index = tid.y * uniforms.width + tid.x;
-    Intersection intersection = intersections[index];
-
-    if (intersection.distance < 0) {
+    if (primaryHit.type == intersection_type::none) {
         output.write(float4(0.1, 0.1, 0.15, 1.0), tid);
         return;
     }
 
-    float3 normal = float3(normals[intersection.primitiveIndex]);
+    // Hit point and normal
+    float3 hitPoint = primaryRay.origin + primaryRay.direction * primaryHit.distance;
+    float3 normal = normals[primaryHit.primitive_id];
+
+    // AO sampling loop
+    intersector<triangle_data> shadowIntersector;
+    shadowIntersector.accept_any_intersection(true);
+
+    float aoAccum = 0.0;
+    uint totalSamples = uniforms.totalSamples;
+
+    for (uint s = 0; s < totalSamples; s++) {
+        uint seed = pixelIndex + s * uniforms.width * uniforms.height;
+        float3 sampleDir = randomInHemisphere(normal, seed);
+
+        ray shadowRay;
+        shadowRay.origin = hitPoint + normal * 0.001;
+        shadowRay.direction = sampleDir;
+        shadowRay.min_distance = 0.001;
+        shadowRay.max_distance = uniforms.aoRadius;
+
+        auto shadowHit = shadowIntersector.intersect(shadowRay, accel);
+        aoAccum += (shadowHit.type == intersection_type::none) ? 1.0 : 0.0;
+    }
+
+    float ao = aoAccum / float(totalSamples);
+    output.write(float4(ao, ao, ao, 1.0), tid);
+}
+
+// MARK: - Soft Shadow (inline intersection)
+
+kernel void traceSoftShadow(
+    primitive_acceleration_structure accel [[buffer(0)]],
+    device float3 *normals [[buffer(1)]],
+    constant RayTraceUniforms &uniforms [[buffer(2)]],
+    constant float3 &lightDirection [[buffer(3)]],
+    texture2d<float, access::write> output [[texture(0)]],
+    uint2 tid [[thread_position_in_grid]]
+) {
+    if (tid.x >= uniforms.width || tid.y >= uniforms.height) return;
+
+    uint pixelIndex = tid.y * uniforms.width + tid.x;
+
+    // Primary ray
+    ray primaryRay = generatePrimaryRay(tid, uniforms);
+
+    intersector<triangle_data> primaryIntersector;
+    primaryIntersector.accept_any_intersection(false);
+    auto primaryHit = primaryIntersector.intersect(primaryRay, accel);
+
+    if (primaryHit.type == intersection_type::none) {
+        output.write(float4(0.1, 0.1, 0.15, 1.0), tid);
+        return;
+    }
+
+    float3 hitPoint = primaryRay.origin + primaryRay.direction * primaryHit.distance;
+    float3 normal = normals[primaryHit.primitive_id];
+    float3 lightDir = normalize(lightDirection);
+
+    // Shadow sampling loop with jittered light direction
+    intersector<triangle_data> shadowIntersector;
+    shadowIntersector.accept_any_intersection(true);
+
+    float shadowAccum = 0.0;
+    uint totalSamples = uniforms.totalSamples;
+
+    for (uint s = 0; s < totalSamples; s++) {
+        uint seed = pixelIndex + s * uniforms.width * uniforms.height;
+
+        // Jitter the light direction for soft shadows
+        float3 jitter = float3(
+            (randomFloat(seed) - 0.5) * uniforms.shadowSoftness,
+            (randomFloat(seed) - 0.5) * uniforms.shadowSoftness,
+            (randomFloat(seed) - 0.5) * uniforms.shadowSoftness
+        );
+        float3 jitteredDir = normalize(lightDir + jitter);
+
+        ray shadowRay;
+        shadowRay.origin = hitPoint + normal * 0.001;
+        shadowRay.direction = jitteredDir;
+        shadowRay.min_distance = 0.001;
+        shadowRay.max_distance = 1000.0;
+
+        auto shadowHit = shadowIntersector.intersect(shadowRay, accel);
+        shadowAccum += (shadowHit.type == intersection_type::none) ? 1.0 : 0.0;
+    }
+
+    float shadow = shadowAccum / float(totalSamples);
+    // Apply diffuse lighting with shadow
+    float diffuse = max(dot(normal, lightDir), 0.0);
+    float ambient = 0.15;
+    float lighting = ambient + diffuse * 0.85 * shadow;
+
+    output.write(float4(lighting, lighting, lighting, 1.0), tid);
+}
+
+// MARK: - Diffuse Shading (inline intersection)
+
+kernel void traceDiffuse(
+    primitive_acceleration_structure accel [[buffer(0)]],
+    device float3 *normals [[buffer(1)]],
+    constant RayTraceUniforms &uniforms [[buffer(2)]],
+    texture2d<float, access::write> output [[texture(0)]],
+    uint2 tid [[thread_position_in_grid]]
+) {
+    if (tid.x >= uniforms.width || tid.y >= uniforms.height) return;
+
+    // Primary ray
+    ray primaryRay = generatePrimaryRay(tid, uniforms);
+
+    intersector<triangle_data> primaryIntersector;
+    primaryIntersector.accept_any_intersection(false);
+    auto primaryHit = primaryIntersector.intersect(primaryRay, accel);
+
+    if (primaryHit.type == intersection_type::none) {
+        output.write(float4(0.1, 0.1, 0.15, 1.0), tid);
+        return;
+    }
+
+    float3 normal = normals[primaryHit.primitive_id];
 
     // Simple hemisphere lighting
     float3 lightDir = normalize(float3(1, 2, 1));

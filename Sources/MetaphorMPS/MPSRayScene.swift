@@ -1,13 +1,11 @@
 @preconcurrency import Metal
-import MetalPerformanceShaders
 import MetaphorCore
 import simd
 
 /// メッシュからレイトレーシングシーンを構築します（内部ヘルパー）。
 ///
 /// Mesh および DynamicMesh インスタンスから頂点位置を抽出し、
-/// レイ交差判定用の MPSTriangleAccelerationStructure を構築します。
-@available(macOS, deprecated: 14.0, message: "MPSTriangleAccelerationStructure is deprecated; migrate to Metal ray tracing APIs")
+/// レイ交差判定用の MTLAccelerationStructure を構築します。
 @MainActor
 final class MPSRayScene {
 
@@ -93,13 +91,12 @@ final class MPSRayScene {
 
     // MARK: - アクセラレーション構造の構築
 
-    /// 追加されたすべてのメッシュエントリから MPSTriangleAccelerationStructure を構築します。
+    /// 追加されたすべてのメッシュエントリから MTLAccelerationStructure を構築します。
+    /// - Parameter commandQueue: ビルドコマンドのエンコードに使用するコマンドキュー。
     /// - Throws: シーンが空または GPU バッファ作成に失敗した場合に ``MetaphorError`` をスローします。
-    /// - Returns: アクセラレーション構造、頂点バッファ、インデックスバッファ、法線バッファ、三角形数を含むタプル。
-    func buildAccelerationStructure() throws -> (
-        accelerationStructure: MPSTriangleAccelerationStructure,
-        vertexBuffer: MTLBuffer,
-        indexBuffer: MTLBuffer,
+    /// - Returns: アクセラレーション構造、法線バッファ、三角形数を含むタプル。
+    func buildAccelerationStructure(commandQueue: MTLCommandQueue) throws -> (
+        accelerationStructure: MTLAccelerationStructure,
         normalBuffer: MTLBuffer,
         triangleCount: Int
     ) {
@@ -166,15 +163,46 @@ final class MPSRayScene {
             throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create normal buffer"))
         }
 
-        // アクセラレーション構造を構築
-        let accel = MPSTriangleAccelerationStructure(device: device)
-        accel.vertexBuffer = vertexBuffer
-        accel.vertexStride = MemoryLayout<SIMD3<Float>>.stride  // 16バイト
-        accel.indexBuffer = indexBuffer
-        accel.indexType = .uInt32
-        accel.triangleCount = triangleCount
-        accel.rebuild()
+        // Metal ネイティブアクセラレーション構造を構築
+        let geometryDesc = MTLAccelerationStructureTriangleGeometryDescriptor()
+        geometryDesc.vertexBuffer = vertexBuffer
+        geometryDesc.vertexStride = MemoryLayout<SIMD3<Float>>.stride  // 16バイト
+        geometryDesc.vertexFormat = .float3
+        geometryDesc.indexBuffer = indexBuffer
+        geometryDesc.indexType = .uint32
+        geometryDesc.triangleCount = triangleCount
 
-        return (accel, vertexBuffer, indexBuffer, normalBuffer, triangleCount)
+        let accelDesc = MTLPrimitiveAccelerationStructureDescriptor()
+        accelDesc.geometryDescriptors = [geometryDesc]
+
+        let sizes = device.accelerationStructureSizes(descriptor: accelDesc)
+
+        guard let accelerationStructure = device.makeAccelerationStructure(size: sizes.accelerationStructureSize) else {
+            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create acceleration structure"))
+        }
+
+        guard let scratchBuffer = device.makeBuffer(
+            length: sizes.buildScratchBufferSize,
+            options: .storageModePrivate
+        ) else {
+            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create scratch buffer"))
+        }
+
+        guard let cb = commandQueue.makeCommandBuffer() else {
+            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create command buffer"))
+        }
+
+        let encoder = cb.makeAccelerationStructureCommandEncoder()!
+        encoder.build(
+            accelerationStructure: accelerationStructure,
+            descriptor: accelDesc,
+            scratchBuffer: scratchBuffer,
+            scratchBufferOffset: 0
+        )
+        encoder.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+
+        return (accelerationStructure, normalBuffer, triangleCount)
     }
 }

@@ -1,6 +1,5 @@
 import Testing
 import Metal
-import MetalPerformanceShaders
 import simd
 @testable import MetaphorCore
 @testable import MetaphorMPS
