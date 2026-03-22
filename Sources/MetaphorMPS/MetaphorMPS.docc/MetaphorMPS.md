@@ -1,5 +1,13 @@
 # ``MetaphorMPS``
 
+@Metadata {
+    @PageColor(red)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 Metal Performance Shaders によるハードウェアアクセラレーション画像処理とレイトレーシング。
 
 ## Overview

@@ -1,5 +1,13 @@
 # ``MetaphorSceneGraph``
 
+@Metadata {
+    @PageColor(purple)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 3D オブジェクトを整理するための階層型シーングラフ。
 
 ## Overview

@@ -1,5 +1,13 @@
 # ``MetaphorPhysics``
 
+@Metadata {
+    @PageColor(orange)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 Verlet 積分と空間ハッシュによる 2D 物理シミュレーション。
 
 ## Overview

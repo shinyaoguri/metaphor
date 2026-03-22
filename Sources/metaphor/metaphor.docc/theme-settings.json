@@ -1,0 +1,94 @@
+{
+  "theme": {
+    "color": {
+      "standard": {
+        "documentation-intro-fill": "dark",
+        "documentation-intro-accent": "#6366F1"
+      },
+      "custom": [
+        {
+          "name": "fill",
+          "value": "#000000"
+        },
+        {
+          "name": "fill-secondary",
+          "value": "#1A1A2E"
+        },
+        {
+          "name": "fill-tertiary",
+          "value": "#16213E"
+        },
+        {
+          "name": "figure-blue",
+          "value": "#6366F1"
+        },
+        {
+          "name": "figure-gray",
+          "value": "#9CA3AF"
+        },
+        {
+          "name": "figure-gray-secondary",
+          "value": "#6B7280"
+        },
+        {
+          "name": "figure-gray-secondary-alt",
+          "value": "#4B5563"
+        },
+        {
+          "name": "figure-gray-tertiary",
+          "value": "#374151"
+        },
+        {
+          "name": "figure-green",
+          "value": "#10B981"
+        },
+        {
+          "name": "figure-light-blue",
+          "value": "#818CF8"
+        },
+        {
+          "name": "figure-orange",
+          "value": "#F59E0B"
+        },
+        {
+          "name": "figure-purple",
+          "value": "#8B5CF6"
+        },
+        {
+          "name": "figure-red",
+          "value": "#EF4444"
+        },
+        {
+          "name": "tutorials-teal",
+          "value": "#14B8A6"
+        },
+        {
+          "name": "article",
+          "value": "#818CF8"
+        },
+        {
+          "name": "tutorial",
+          "value": "#14B8A6"
+        },
+        {
+          "name": "standard-blue",
+          "value": "#6366F1"
+        }
+      ]
+    },
+    "typography": {
+      "html-font": "system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
+      "html-font-mono": "'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace"
+    }
+  },
+  "features": {
+    "docs": {
+      "quickNavigation": {
+        "enable": true
+      },
+      "i18n": {
+        "enable": true
+      }
+    }
+  }
+}

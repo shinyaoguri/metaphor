@@ -1,5 +1,13 @@
 # metaphor をはじめよう
 
+@Metadata {
+    @PageColor(green)
+    @CallToAction(
+        purpose: link,
+        url: "https://github.com/shinyaoguri/metaphor"
+    )
+}
+
 metaphor で最初のクリエイティブコーディングプロジェクトをセットアップします。
 
 ## Overview

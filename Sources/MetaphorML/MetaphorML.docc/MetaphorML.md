@@ -1,5 +1,13 @@
 # ``MetaphorML``
 
+@Metadata {
+    @PageColor(blue)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 Core ML モデルと Metal レンダリングを統合するためのテクスチャ変換ユーティリティ。
 
 ## Overview

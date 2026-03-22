@@ -1,5 +1,13 @@
 # ``MetaphorCore``
 
+@Metadata {
+    @PageColor(purple)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 metaphor の中核となるレンダリングエンジン、描画システム、Sketch プロトコル。
 
 ## Overview

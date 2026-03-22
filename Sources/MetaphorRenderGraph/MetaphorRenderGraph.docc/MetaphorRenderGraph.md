@@ -1,5 +1,13 @@
 # ``MetaphorRenderGraph``
 
+@Metadata {
+    @PageColor(purple)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 マルチパスレンダリングパイプラインのための合成可能なレンダーパスグラフ。
 
 ## Overview

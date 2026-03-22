@@ -1,5 +1,13 @@
 # ``MetaphorCoreImage``
 
+@Metadata {
+    @PageColor(red)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 Metal ベースのクリエイティブコーディングのための Core Image フィルタ統合。
 
 ## Overview

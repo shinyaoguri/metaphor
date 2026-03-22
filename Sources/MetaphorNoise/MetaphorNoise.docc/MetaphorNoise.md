@@ -1,5 +1,13 @@
 # ``MetaphorNoise``
 
+@Metadata {
+    @PageColor(teal)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 GameplayKit を使用したプロシージャルノイズ生成。
 
 ## Overview

@@ -1,5 +1,9 @@
 # アーキテクチャ
 
+@Metadata {
+    @PageColor(blue)
+}
+
 metaphor のレンダリングパイプラインと API レイヤーの仕組みを解説します。
 
 ## Overview

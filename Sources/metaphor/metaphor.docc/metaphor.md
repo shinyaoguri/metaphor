@@ -1,5 +1,24 @@
 # ``metaphor``
 
+@Metadata {
+    @DisplayName("metaphor")
+    @PageColor(purple)
+    @PageImage(
+        purpose: icon,
+        source: "metaphor-icon",
+        alt: "metaphor ライブラリのアイコン"
+    )
+    @PageImage(
+        purpose: card,
+        source: "metaphor-card",
+        alt: "metaphor ライブラリのカード画像"
+    )
+}
+
+@Options {
+    @TopicsVisualStyle(detailedGrid)
+}
+
 Processing、p5.js、openFrameworks にインスパイアされた Swift + Metal クリエイティブコーディングライブラリ。
 
 ## Overview

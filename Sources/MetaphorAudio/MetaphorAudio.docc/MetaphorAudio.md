@@ -1,5 +1,13 @@
 # ``MetaphorAudio``
 
+@Metadata {
+    @PageColor(yellow)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 クリエイティブコーディングのためのオーディオ入力解析とサウンドファイル再生。
 
 ## Overview

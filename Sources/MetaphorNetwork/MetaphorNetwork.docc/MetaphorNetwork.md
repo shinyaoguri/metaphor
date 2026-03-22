@@ -1,5 +1,13 @@
 # ``MetaphorNetwork``
 
+@Metadata {
+    @PageColor(green)
+}
+
+@Options {
+    @TopicsVisualStyle(compactGrid)
+}
+
 インタラクティブ・ライブパフォーマンス向けの OSC / MIDI 通信。
 
 ## Overview
