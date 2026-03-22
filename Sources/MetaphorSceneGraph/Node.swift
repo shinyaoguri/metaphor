@@ -91,13 +91,19 @@ public final class Node {
     public var name: String
 
     /// The local position of the node relative to its parent.
-    public var position: SIMD3<Float> = .zero
+    public var position: SIMD3<Float> = .zero {
+        didSet { invalidateTransform() }
+    }
 
     /// The local orientation of the node as a quaternion.
-    public var orientation: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))
+    public var orientation: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0)) {
+        didSet { invalidateTransform() }
+    }
 
     /// The local scale of the node along each axis.
-    public var scale: SIMD3<Float> = SIMD3(1, 1, 1)
+    public var scale: SIMD3<Float> = SIMD3(1, 1, 1) {
+        didSet { invalidateTransform() }
+    }
 
     /// Indicate whether the node and its children should be rendered.
     public var isVisible: Bool = true
@@ -119,6 +125,29 @@ public final class Node {
 
     /// The ordered list of child nodes.
     public private(set) var children: [Node] = []
+
+    // MARK: - Transform Cache
+
+    private var _localTransformDirty: Bool = true
+    private var _worldTransformDirty: Bool = true
+    private var _cachedLocalTransform: float4x4 = float4x4(1)
+    private var _cachedWorldTransform: float4x4 = float4x4(1)
+
+    /// Mark local and world transforms as dirty, and propagate to all descendants.
+    private func invalidateTransform() {
+        guard _localTransformDirty == false || _worldTransformDirty == false else { return }
+        _localTransformDirty = true
+        invalidateWorldTransform()
+    }
+
+    /// Mark only the world transform as dirty and propagate to all descendants.
+    private func invalidateWorldTransform() {
+        guard _worldTransformDirty == false else { return }
+        _worldTransformDirty = true
+        for child in children {
+            child.invalidateWorldTransform()
+        }
+    }
 
     /// Create a new node with the given name.
     ///
@@ -150,22 +179,34 @@ public final class Node {
         orientation = rotation * orientation
     }
 
-    /// Compute the local transform matrix from position, orientation, and scale.
+    /// The local transform matrix from position, orientation, and scale (cached).
     ///
-    /// The transform is composed as T * R * S.
+    /// The transform is composed as T * R * S. Recomputed only when
+    /// position, orientation, or scale changes.
     public var localTransform: float4x4 {
-        let t = float4x4(translation: position)
-        let r = float4x4(orientation)
-        let s = float4x4(scale: scale)
-        return t * r * s
+        if _localTransformDirty {
+            let t = float4x4(translation: position)
+            let r = float4x4(orientation)
+            let s = float4x4(scale: scale)
+            _cachedLocalTransform = t * r * s
+            _localTransformDirty = false
+        }
+        return _cachedLocalTransform
     }
 
-    /// Compute the world transform by recursively combining parent transforms.
+    /// The world transform, combining all ancestor transforms (cached).
+    ///
+    /// Recomputed only when this node or any ancestor's transform changes.
     public var worldTransform: float4x4 {
-        if let parent = parent {
-            return parent.worldTransform * localTransform
+        if _worldTransformDirty {
+            if let parent = parent {
+                _cachedWorldTransform = parent.worldTransform * localTransform
+            } else {
+                _cachedWorldTransform = localTransform
+            }
+            _worldTransformDirty = false
         }
-        return localTransform
+        return _cachedWorldTransform
     }
 
     /// The world-space bounding box, computed from the local bounds and world transform.
@@ -184,6 +225,7 @@ public final class Node {
         child.parent?.removeChild(child)
         child.parent = self
         children.append(child)
+        child.invalidateWorldTransform()
     }
 
     /// Remove a child node from this node.
@@ -192,12 +234,14 @@ public final class Node {
     public func removeChild(_ child: Node) {
         children.removeAll { $0 === child }
         child.parent = nil
+        child.invalidateWorldTransform()
     }
 
     /// Remove all children from this node.
     public func removeAllChildren() {
         for child in children {
             child.parent = nil
+            child.invalidateWorldTransform()
         }
         children.removeAll()
     }
