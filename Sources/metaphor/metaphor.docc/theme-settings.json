@@ -2,77 +2,77 @@
   "theme": {
     "color": {
       "standard": {
-        "documentation-intro-fill": "dark",
-        "documentation-intro-accent": "#6366F1"
+        "documentation-intro-fill": "light",
+        "documentation-intro-accent": "#4F46E5"
       },
       "custom": [
         {
           "name": "fill",
-          "value": "#000000"
+          "value": "#FFFFFF"
         },
         {
           "name": "fill-secondary",
-          "value": "#1A1A2E"
+          "value": "#F9FAFB"
         },
         {
           "name": "fill-tertiary",
-          "value": "#16213E"
+          "value": "#F3F4F6"
         },
         {
           "name": "figure-blue",
-          "value": "#6366F1"
+          "value": "#4F46E5"
         },
         {
           "name": "figure-gray",
-          "value": "#9CA3AF"
-        },
-        {
-          "name": "figure-gray-secondary",
           "value": "#6B7280"
         },
         {
+          "name": "figure-gray-secondary",
+          "value": "#9CA3AF"
+        },
+        {
           "name": "figure-gray-secondary-alt",
-          "value": "#4B5563"
+          "value": "#D1D5DB"
         },
         {
           "name": "figure-gray-tertiary",
-          "value": "#374151"
+          "value": "#E5E7EB"
         },
         {
           "name": "figure-green",
-          "value": "#10B981"
+          "value": "#059669"
         },
         {
           "name": "figure-light-blue",
-          "value": "#818CF8"
+          "value": "#6366F1"
         },
         {
           "name": "figure-orange",
-          "value": "#F59E0B"
+          "value": "#D97706"
         },
         {
           "name": "figure-purple",
-          "value": "#8B5CF6"
+          "value": "#7C3AED"
         },
         {
           "name": "figure-red",
-          "value": "#EF4444"
+          "value": "#DC2626"
         },
         {
           "name": "tutorials-teal",
-          "value": "#14B8A6"
+          "value": "#0D9488"
         },
         {
           "name": "article",
-          "value": "#818CF8"
+          "value": "#6366F1"
         },
         {
           "name": "tutorial",
-          "value": "#14B8A6"
+          "value": "#0D9488"
         },
         {
           "name": "standard-blue",
-          "value": "#6366F1"
+          "value": "#4F46E5"
         }
       ]
     },
