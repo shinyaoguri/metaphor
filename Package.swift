@@ -48,7 +48,7 @@ let package = Package(
                 "Syphon"
             ],
             resources: [
-                .process("Shaders/Metal"),
+                .copy("Shaders/Metal"),
                 .copy("Shaders/ShaderSources"),
             ]
         ),
