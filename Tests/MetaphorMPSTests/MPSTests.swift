@@ -183,6 +183,14 @@ struct MPSImageFilterWrapperTests {
 @Suite("MPSRayTracer")
 struct MPSRayTracerTests {
 
+    /// Check if the GPU supports ray tracing acceleration structures.
+    /// CI runners (e.g. GitHub Actions macos-14) use a GPU serializer that
+    /// does not implement `setAccelerationStructure:atBufferIndex:`.
+    private static var gpuSupportsRayTracing: Bool {
+        guard let device = MTLCreateSystemDefaultDevice() else { return false }
+        return device.supportsRaytracing
+    }
+
     @Test("initialization compiles shaders")
     @MainActor func initialization() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
@@ -197,6 +205,7 @@ struct MPSRayTracerTests {
 
     @Test("clearScene resets state")
     @MainActor func clearScene() throws {
+        guard Self.gpuSupportsRayTracing else { return }
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {
             return
@@ -213,6 +222,7 @@ struct MPSRayTracerTests {
 
     @Test("add mesh and build acceleration structure")
     @MainActor func addMeshAndBuild() throws {
+        guard Self.gpuSupportsRayTracing else { return }
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {
             return
@@ -225,6 +235,7 @@ struct MPSRayTracerTests {
 
     @Test("trace diffuse produces output")
     @MainActor func traceDiffuse() throws {
+        guard Self.gpuSupportsRayTracing else { return }
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {
             return
@@ -243,6 +254,7 @@ struct MPSRayTracerTests {
 
     @Test("trace AO produces output")
     @MainActor func traceAO() throws {
+        guard Self.gpuSupportsRayTracing else { return }
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {
             return
@@ -261,6 +273,7 @@ struct MPSRayTracerTests {
 
     @Test("add mesh with transform")
     @MainActor func addMeshWithTransform() throws {
+        guard Self.gpuSupportsRayTracing else { return }
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {
             return
