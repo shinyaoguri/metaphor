@@ -1,4 +1,4 @@
-.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list symbol-graphs llms-txt
 
 # Default target
 all: setup build
@@ -88,11 +88,8 @@ check:
 		echo "Syphon submodule: MISSING - run 'make submodules'"; \
 	fi
 
-# Build DocC documentation
-# Uses manual symbol graph extraction to work around SPM binary target issue
-docs:
-	@echo "Building metaphor for documentation..."
-	swift build
+# Extract symbol graphs (shared step for docs and llms-txt)
+symbol-graphs: build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
 	@for module in metaphor MetaphorCore \
@@ -110,6 +107,14 @@ docs:
 			-emit-extension-block-symbols \
 			-output-dir .build/symbol-graphs; \
 	done
+
+# Generate llms.txt (AI-readable API reference)
+llms-txt: symbol-graphs
+	@python3 scripts/generate-llms-txt.py -o llms.txt
+
+# Build DocC documentation
+# Uses manual symbol graph extraction to work around SPM binary target issue
+docs: symbol-graphs
 	@echo "Building DocC documentation..."
 	xcrun docc convert Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs \
@@ -118,26 +123,7 @@ docs:
 		--output-path .build/docs
 
 # Preview DocC documentation locally
-docs-preview:
-	@echo "Building metaphor for documentation..."
-	swift build
-	@echo "Extracting symbol graphs..."
-	@mkdir -p .build/symbol-graphs
-	@for module in metaphor MetaphorCore \
-		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML \
-		MetaphorNoise MetaphorMPS MetaphorCoreImage \
-		MetaphorRenderGraph MetaphorSceneGraph; do \
-		xcrun swift-symbolgraph-extract \
-			-module-name $$module \
-			-target arm64-apple-macosx14.0 \
-			-sdk "$$(xcrun --show-sdk-path)" \
-			-I .build/arm64-apple-macosx/debug/Modules \
-			-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
-			-minimum-access-level public \
-			-skip-inherited-docs \
-			-emit-extension-block-symbols \
-			-output-dir .build/symbol-graphs; \
-	done
+docs-preview: symbol-graphs
 	@echo "Previewing DocC documentation..."
 	xcrun docc preview Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs
@@ -172,6 +158,8 @@ help:
 	@echo "  make test-lcov     - Run tests and generate LCOV for CI"
 	@echo "  make clean          - Clean build artifacts"
 	@echo "  make check          - Check if setup is complete"
+	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
+	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
 	@echo "  make examples       - Run examples in parallel (10 workers)"

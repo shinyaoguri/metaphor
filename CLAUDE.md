@@ -8,6 +8,7 @@ make build           # Build the library (swift build)
 make test            # Run tests (swift test)
 make clean           # Clean build artifacts
 make check           # Verify setup status (Syphon.xcframework, submodules)
+make llms-txt        # Generate llms.txt (AI-readable API reference)
 ```
 
 For examples:
@@ -17,7 +18,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 ## Architecture Overview
 
-metaphor is a Swift + Metal creative coding library inspired by Processing/p5.js/openFrameworks. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, audio, and more. macOS (Apple Silicon) only.
+metaphor is a Swift + Metal creative coding library inspired by Processing. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, audio, and more. macOS (Apple Silicon) only.
 
 ### Module Structure
 
@@ -63,6 +64,33 @@ This decouples rendering resolution from window size and enables Syphon output a
 
 - **Local dev**: Package.swift uses `Frameworks/Syphon.xcframework` if present (built by `make setup`)
 - **SPM users**: Falls back to downloading pre-built XCFramework from GitHub Releases
+
+### API Quick Map
+
+For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
+
+| Category | Key Functions | Source |
+|----------|--------------|--------|
+| 2D Shapes | circle, rect, ellipse, line, triangle, arc, bezier, polygon | Sketch+Shapes.swift |
+| 3D Shapes | box, sphere, plane, cylinder, cone, torus, mesh, loadModel | Sketch+3D.swift |
+| Style | fill, stroke, strokeWeight, blendMode, background, tint | Sketch+Style.swift |
+| Transform | translate, rotate, scale, push/pop | Sketch+Shapes.swift |
+| Camera | camera, perspective, ortho, orbitControl | Sketch+3D.swift |
+| Lighting | lights, directionalLight, pointLight, spotLight | Sketch+3D.swift |
+| Material | specular, metallic, roughness, pbr, createMaterial | Sketch+3D.swift |
+| Image | loadImage, image, createGraphics, createCapture | Sketch+Image.swift |
+| Text | text, textSize, textFont, textAlign | Sketch+Image.swift |
+| Pixels | loadPixels, updatePixels, pixels | Sketch+Pixels.swift |
+| Compute | createComputeKernel, createBuffer, dispatch | Sketch+Advanced.swift |
+| Particles | createParticleSystem, updateParticles, drawParticles | Sketch+Advanced.swift |
+| PostFX | addPostEffect, createPostEffect, BloomEffect, BlurEffect | Sketch+Advanced.swift |
+| Export | save, beginVideoRecord, beginGIFRecord, beginRecord | Sketch+Image.swift |
+| Audio | createAudioInput, loadSound | Sketch+AudioBridge.swift |
+| Physics | createPhysics2D | Sketch+PhysicsBridge.swift |
+| Network | createOSCReceiver, createMIDI | Sketch+NetworkBridge.swift |
+| Noise | createNoise, noiseTexture, noise() | Sketch+NoiseBridge.swift |
+| SceneGraph | createNode, drawScene | Sketch+SceneGraphBridge.swift |
+| RenderGraph | createSourcePass, createEffectPass, createMergePass | Sketch+RenderGraphBridge.swift |
 
 ## Conventions
 

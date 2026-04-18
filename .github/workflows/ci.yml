@@ -43,6 +43,16 @@ jobs:
         run: swift build
       - name: Test with Coverage
         run: swift test --enable-code-coverage
+      - name: Verify llms.txt is up to date
+        run: |
+          make llms-txt
+          if ! git diff --quiet llms.txt; then
+            echo "::error::llms.txt is out of date. Run 'make llms-txt' and commit the result."
+            git diff llms.txt
+            exit 1
+          fi
+      - name: Validate CLAUDE.md references
+        run: ./scripts/validate-claude-md.sh
       - name: Coverage Report
         if: always()
         run: |

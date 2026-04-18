@@ -1,0 +1,1687 @@
+# metaphor
+
+> Swift + Metal creative coding library inspired by Processing / p5.js / openFrameworks.
+> macOS 14.0+ (Apple Silicon). Swift 5.10+. `import metaphor`
+
+## Quick Start
+
+```swift
+import metaphor
+
+@main
+final class MySketch: Sketch {
+    var config: SketchConfig {
+        SketchConfig(width: 800, height: 600, title: "Hello")
+    }
+    func setup() {
+        // called once
+    }
+    func draw() {
+        background(.black)
+        fill(.white)
+        circle(width / 2, height / 2, 200)
+    }
+}
+```
+
+Build & run an example:
+```
+cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
+```
+
+SPM dependency:
+```swift
+.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.1.0")
+```
+
+## Sketch Protocol
+
+Conform a class to `Sketch` with `@main`. Implement `draw()` (required).
+Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`, etc.).
+
+### Properties
+
+- `var config: SketchConfig { get }` -- スケッチの設定を返します（オプション）。
+- `var context: SketchContext { get }` -- アクティブなコンテキスト。setup()/draw() 外で呼ぶと明確なメッセージでクラッシュします。
+- `var deltaTime: Float { get }` -- 前フレームからの経過時間（秒単位）。
+- `var frameCount: Int { get }` -- これまでにレンダリングされた総フレーム数。
+- `var gui: ParameterGUI? { get }` -- イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。
+- `var height: Float { get }` -- キャンバスの高さ（ピクセル単位）。
+- `var input: InputManager { get }` -- 入力マネージャ（イベントハンドラ内で使用）。
+- `var isKeyPressed: Bool { get }` -- キーが現在押されているかどうか。
+- `var isKeyRepeat: Bool { get }` -- 最新のキーダウンイベントがオートリピートかどうか。
+- `var isLooping: Bool { get }` -- アニメーションループが現在実行中かどうか。
+- `var isMousePressed: Bool { get }` -- マウスボタンが現在押されているかどうか。
+- `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
+- `var key: Character? { get }` -- 最後に押されたキー。
+- `var keyCode: UInt16? { get }` -- 最後に押されたキーのキーコード。
+- `var mouseButton: Int { get }` -- 現在押されているマウスボタン（0 = 左、1 = 右、2 = 中央）。
+- `var mouseX: Float { get }` -- 現在のマウス x 座標。
+- `var mouseY: Float { get }` -- 現在のマウス y 座標。
+- `var orbitCamera: OrbitCamera? { get }` -- 手動設定用のオービットカメラへのアクセス。
+- `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
+- `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
+- `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
+- `var scrollX: Float { get }` -- 現在のフレームの水平スクロール量。
+- `var scrollY: Float { get }` -- 現在のフレームの垂直スクロール量。
+- `var time: Float { get }` -- スケッチ開始からの経過時間（秒単位）。
+- `var width: Float { get }` -- キャンバスの幅（ピクセル単位）。
+
+### Methods
+
+- `func addPostEffect(_ effect: any PostEffect)` -- ポストプロセスエフェクトをパイプラインに追加します。
+- `func ambientLight(_ strength: Float)` -- グレースケール値でアンビエントライトの強度を設定します。
+- `func ambientLight(_ r: Float, _ g: Float, _ b: Float)` -- RGB 値でアンビエントライトの色を設定します。
+- `func ambientOcclusion(_ value: Float)` -- PBR アンビエントオクルージョン係数を設定します。
+- `func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .open)` -- 円弧を描画します。
+- `func background(_ color: Color)` -- 指定した色でキャンバスをクリアします。
+- `func background(_ gray: Float)` -- グレースケール値でキャンバスをクリアします。
+- `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- 指定したカラーチャンネル値でキャンバスをクリアします。
+- `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 以降の描画を指定した矩形にクリッピングします。
+- `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します。
+- `func beginGIFRecord(fps: Int = 15)` -- GIF エクスポート用のフレーム記録を開始します。
+- `func beginOfflineRender(fps: Double = 60)` -- 決定論的タイミングのオフラインレンダリングモードを有効にします。
+- `func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
+- `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
+- `func beginShape3D(_ mode: ShapeMode = .polygon)` -- 3D カスタムシェイプの頂点記録を開始します。
+- `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- 動画出力の録画を開始します。
+- `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- 3次ベジェ曲線を描画します。
+- `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- 現在のシェイプに3次ベジェ頂点を追加します。
+- `func blendMode(_ mode: BlendMode)` -- 以降の描画操作のブレンドモードを設定します。
+- `func box(_ size: Float)` -- 辺の長さが等しいキューブを描画します。
+- `func box(_ width: Float, _ height: Float, _ depth: Float)` -- 指定したサイズのボックスを描画します。
+- `func camera(_ eyeX: Float, _ eyeY: Float, _ eyeZ: Float, _ centerX: Float, _ centerY: Float, _ centerZ: Float, _ upX: Float, _ upY: Float, _ upZ: Float)` -- 個別の float 成分で 3D カメラを設定します。
+- `func camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` -- eye、center、up ベクトルで 3D カメラを設定します。
+- `func ciFilter(_ image: MImage, _ preset: CIFilterPreset)` -- CoreImage フィルタプリセットを画像に適用します。
+- `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- 名前とカスタムパラメータを指定して CoreImage フィルタを画像に適用します。
+- `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- CoreImage ジェネレーターフィルタを使用して画像を生成します。
+- `func circle(_ x: Float, _ y: Float, _ diameter: Float)` -- 円を描画します。
+- `func clearCaches()` -- GPU メモリを解放するためにすべての内部キャッシュをクリアします。
+- `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
+- `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
+- `func colorMode(_ space: ColorSpace, _ maxAll: Float)` -- 全チャンネル共通の最大値を指定してカラーモードを設定します。
+- `func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
+- `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
+- `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
+- `func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24)` -- 円錐を描画します。
+- `func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer` -- リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
+- `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
+- `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
+- `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
+- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice?` -- カメラキャプチャデバイスを作成します。
+- `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
+- `func createDynamicMesh() -> DynamicMesh` -- 新しい空のダイナミックメッシュを作成します。
+- `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
+- `func createGraphics(_ w: Int, _ h: Int) -> Graphics?` -- 2D オフスクリーングラフィックスバッファを作成します。
+- `func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D?` -- 3D オフスクリーングラフィックスバッファを作成します。
+- `func createImage(_ width: Int, _ height: Int) -> MImage?` -- 指定したサイズの空白画像を作成します。
+- `func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial` -- MSL ソースコードからカスタムシェーダーマテリアルを作成します。
+- `func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial` -- 外部ファイルから MSL ソースを読み込んでカスタムマテリアルを作成します。
+- `func createMergePass(_ a: any RenderPassNode, _ b: any RenderPassNode, blend: MergePass.BlendType) -> MergePass?` -- 2つのレンダーパスを合成するマージパスを作成します。
+- `func createMIDI() -> MIDIManager` -- 入出力用の MIDI マネージャーを作成します。
+- `func createMLTextureConverter() -> MLTextureConverter` -- Metal-CoreML 相互運用のためのテクスチャコンバーターを作成します。
+- `func createMPSFilter() -> MPSImageFilterWrapper` -- MPS（Metal Performance Shaders）画像フィルタを作成します。
+- `func createNode(_ name: String = "") -> Node` -- シーングラフノードを作成します。
+- `func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper` -- GameplayKit ノイズジェネレーターを作成します。
+- `func createOSCReceiver(port: UInt16) -> OSCReceiver` -- OSC（Open Sound Control）レシーバーを作成します。
+- `func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem` -- GPU パーティクルシステムを作成します。
+- `func createPhysics2D(cellSize: Float = 50) -> Physics2D` -- 2D物理シミュレーションワールドを作成します。
+- `func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect` -- MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
+- `func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer` -- GPU アクセラレーションによるレイ交差クエリ用のレイトレーサーを作成します。
+- `func createShape() -> MShape` -- カスタムジオメトリ用の空のリテインドシェイプを作成します。
+- `func createShape(_ kind: ShapeKind) -> MShape` -- ``ShapeKind`` からリテインドシェイプを作成します。
+- `func createSourcePass(label: String, width: Int, height: Int) -> SourcePass?` -- レンダーグラフ用のソースパスを作成します。
+- `func createVector(_ x: Float = 0, _ y: Float = 0) -> Vec2` -- 2D ベクトルを作成します（Processing PVector 互換）。
+- `func createVector(_ x: Float, _ y: Float, _ z: Float) -> Vec3` -- 3D ベクトルを作成します（Processing PVector 互換）。
+- `func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow?` -- マルチウィンドウ出力用のセカンダリウィンドウを作成します。
+- `func cursor()` -- カーソルを表示します。
+- `func curve(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- 4点を通る Catmull-Rom スプラインカーブを描画します。
+- `func curveDetail(_ n: Int)` -- カーブ補間のセグメント数を設定します。
+- `func curveTightness(_ t: Float)` -- Catmull-Rom スプラインカーブの張り具合を設定します。
+- `func curveVertex(_ x: Float, _ y: Float)` -- 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
+- `func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24)` -- 円柱を描画します。
+- `func directionalLight(_ x: Float, _ y: Float, _ z: Float)` -- デフォルト色のディレクショナルライトを追加します。
+- `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` -- 色を指定してディレクショナルライトを追加します。
+- `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
+- `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
+- `func disableShadows()` -- シャドウマッピングを無効にします。
+- `func dispatch(_ kernel: ComputeKernel, threads: Int, _ configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
+- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, _ configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
+- `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
+- `func drawParticles(_ system: ParticleSystem)` -- パーティクルシステムを描画します（``draw()`` 内で呼び出してください）。
+- `func drawScene(_ root: Node)` -- 指定ルートノードからシーングラフを描画します。
+- `func dynamicMesh(_ mesh: DynamicMesh)` -- ダイナミックメッシュを描画します。
+- `func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 楕円を描画します。
+- `func ellipseMode(_ mode: EllipseMode)` -- 楕円の描画モードを設定します。
+- `func emissive(_ color: Color)` -- エミッシブ（自己発光）色を設定します。
+- `func emissive(_ gray: Float)` -- グレースケール値でエミッシブ色を設定します。
+- `func enableFeedback()` -- フレームバッファフィードバック（前フレームアクセス）を有効にします。
+- `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
+- `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
+- `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
+- `func endContour()` -- 現在のコンター定義を終了します。
+- `func endGIFRecord(_ path: String? = nil) throws` -- 記録を停止し GIF ファイルに書き出します。
+- `func endGIFRecord(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。
+- `func endOfflineRender()` -- オフラインレンダリングモードを無効にしリアルタイムタイミングに戻します。
+- `func endRecord()` -- フレーム連番の記録を停止します。
+- `func endShape(_ close: CloseMode = .open)` -- 現在のシェイプの記録を終了し描画します。
+- `func endShape3D(_ close: CloseMode = .open)` -- 現在の 3D シェイプの記録を終了し描画します。
+- `func endVideoRecord() async` -- 動画の録画を非同期で停止しファイルを完成させます。
+- `func endVideoRecord(completion: (() -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
+- `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
+- `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
+- `func fill(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で塗りつぶし色を設定します。
+- `func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で塗りつぶし色を設定します。
+- `func frameRate(_ fps: Int)` -- フレームレートを動的に変更します。
+- `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- キャプチャデバイスの最新フレームを指定位置に描画します。
+- `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置に描画します。
+- `func image(_ pg: Graphics3D, _ x: Float, _ y: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置に描画します。
+- `func image(_ img: MImage, _ x: Float, _ y: Float)` -- 画像を指定位置に描画します。
+- `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- キャプチャデバイスの最新フレームを指定位置・サイズで描画します。
+- `func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
+- `func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
+- `func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 画像を指定位置・サイズで描画します。
+- `func image(_ img: MImage, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float, _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float)` -- 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
+- `func imageMode(_ mode: ImageMode)` -- 画像の描画モードを設定します。
+- `func isKeyDown(_ keyCode: UInt16) -> Bool` -- 特定のキーが現在押下されているかを確認します。
+- `func keyPressed()` -- キー押下時に呼ばれます。
+- `func keyReleased()` -- キー離し時に呼ばれます。
+- `func lights()` -- デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
+- `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- 2点間に線を描画します。
+- `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- リニアグラデーション矩形を描画します。
+- `func loadImage(_ path: String) throws -> MImage` -- 指定したファイルパスから画像を読み込みます。
+- `func loadImageAsync(_ path: String) async throws -> MImage` -- 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
+- `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
+- `func loadModel(_ path: String) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
+- `func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
+- `func loadPixels()` -- ピクセルバッファを直接ピクセル操作用に準備します。
+- `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
+- `func loop()` -- アニメーションループを再開します。
+- `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
+- `func material(_ customMaterial: CustomMaterial)` -- カスタムマテリアルを以降の 3D 描画に適用します。
+- `func mesh(_ mesh: Mesh)` -- ビルド済みメッシュを描画します。
+- `func metallic(_ value: Float)` -- マテリアルのメタリック係数を設定します。
+- `func mouseClicked()` -- マウスクリック時（ドラッグなしの押下→離し）に呼ばれます。
+- `func mouseDragged()` -- マウスドラッグ時に呼ばれます。
+- `func mouseMoved()` -- マウス移動時に呼ばれます。
+- `func mousePressed()` -- マウスボタン押下時に呼ばれます。
+- `func mouseReleased()` -- マウスボタン離し時に呼ばれます。
+- `func mouseScrolled()` -- マウススクロール時に呼ばれます。
+- `func noCursor()` -- カーソルを非表示にします。
+- `func noFill()` -- 図形の塗りつぶしを無効にします。
+- `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- ノイズテクスチャを画像として生成します（便利メソッド）。
+- `func noLights()` -- すべてのライトを無効にします。
+- `func noLoop()` -- アニメーションループを停止します。
+- `func noMaterial()` -- アクティブなカスタムマテリアルを解除しデフォルトシェーディングに戻します。
+- `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- 以降の 3D 頂点の法線ベクトルを設定します。
+- `func noStroke()` -- 図形のストロークを無効にします。
+- `func noTexture()` -- アクティブなテクスチャを解除します。
+- `func noTint()` -- 画像のティントを解除します。
+- `func orbitControl()` -- オービットカメラコントロールを有効にします（``draw()`` 内で呼び出してください）。
+- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float = -1000, far: Float = 1000)` -- 正射影を設定します。
+- `func pbr(_ enabled: Bool)` -- PBR レンダリングモードを明示的に切り替えます。
+- `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- 透視投影を設定します。
+- `func plane(_ width: Float, _ height: Float)` -- 平面を描画します。
+- `func plugin(id: String) -> (any MetaphorPlugin)?` -- 識別子を指定して登録済みプラグインを検索します。
+- `func point(_ x: Float, _ y: Float)` -- 単一の点を描画します。
+- `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1)` -- 指定位置にポイントライトを追加します。
+- `func polygon(_ points: [(Float, Float)])` -- 座標タプルの配列からポリゴンを描画します。
+- `func polygon(_ points: [Vec2])` -- ``Vec2`` 配列からポリゴンを描画します。
+- `func pop()` -- 最後に保存された変換とスタイル状態をスタックから復元します。
+- `func popMatrix()` -- 最後に保存された 3D 変換行列をスタックから復元します。
+- `func popStyle()` -- 最後に保存されたスタイル状態をスタックから復元します。
+- `func previousFrame() -> MImage?` -- 前フレームのレンダリング結果を取得します。
+- `func push()` -- 現在の変換とスタイル状態をスタックに保存します。
+- `func pushMatrix()` -- 現在の 3D 変換行列をスタックに保存します。
+- `func pushStyle()` -- 現在のスタイル状態（fill、stroke など）をスタックに保存します。
+- `func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- 4つの頂点で定義される四角形を描画します。
+- `func radialGradient(_ cx: Float, _ cy: Float, _ radius: Float, _ innerColor: Color, _ outerColor: Color, segments: Int = 36)` -- 放射状グラデーション円を描画します。
+- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 矩形を描画します。
+- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float)` -- 均一な角丸半径の角丸矩形を描画します。
+- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float)` -- 各角に個別の角丸半径を持つ角丸矩形を描画します。
+- `func rectMode(_ mode: RectMode)` -- 矩形の描画モードを設定します。
+- `func redraw()` -- 単一フレームをレンダリングします（``noLoop()`` 呼び出し後に使用）。
+- `func registerPlugin(_ plugin: any MetaphorPlugin)` -- このスケッチにプラグインを登録します。
+- `func reloadShader(key: String, source: String) throws` -- シェーダーをソースから再コンパイルしパイプラインキャッシュをクリアします。
+- `func reloadShaderFromFile(key: String, path: String) throws` -- 外部ファイルからシェーダーをリロードしパイプラインキャッシュをクリアします。
+- `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
+- `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
+- `func rotate(_ angle: Float)` -- 現在の変換に 2D 回転を適用します。
+- `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
+- `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
+- `func rotateZ(_ angle: Float)` -- z 軸周りの回転を適用します。
+- `func roughness(_ value: Float)` -- PBR ラフネスを設定します（自動的に PBR モードに切り替わります）。
+- `func save()` -- 現在のフレームをデフォルトの場所に保存します。
+- `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
+- `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
+- `func scale(_ s: Float)` -- 現在の変換に均一 2D スケールを適用します。
+- `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一 2D スケールを適用します。
+- `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
+- `func setPostEffects(_ effects: [any PostEffect])` -- すべてのポストプロセスエフェクトを指定した配列で置き換えます。
+- `func setRenderGraph(_ graph: RenderGraph?)` -- アクティブなレンダーグラフを設定またはクリアします。
+- `func setup()` -- 一度だけ実行される初期化処理（オプション）。
+- `func shadowBias(_ value: Float)` -- シャドウアクネを軽減するためのシャドウデプスバイアスを設定します。
+- `func shape(_ s: MShape)` -- リテインドシェイプを原点に描画します。
+- `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- リテインドシェイプを指定位置に描画します。
+- `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- リテインドシェイプを指定位置・サイズで描画します。
+- `func shininess(_ value: Float)` -- スペキュラーの光沢度指数を設定します。
+- `func specular(_ color: Color)` -- スペキュラーハイライトの色を設定します。
+- `func specular(_ gray: Float)` -- グレースケール値でスペキュラーハイライトの色を設定します。
+- `func sphere(_ radius: Float, detail: Int = 24)` -- 球を描画します。
+- `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white)` -- 指定位置・方向にスポットライトを追加します。
+- `func square(_ x: Float, _ y: Float, _ size: Float)` -- 正方形を描画します。
+- `func stroke(_ color: Color)` -- ストローク色を設定します。
+- `func stroke(_ gray: Float)` -- グレースケール値でストローク色を設定します。
+- `func stroke(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値でストローク色を設定します。
+- `func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値でストローク色を設定します。
+- `func strokeCap(_ cap: StrokeCap)` -- ストロークの端点スタイルを設定します。
+- `func strokeJoin(_ join: StrokeJoin)` -- ストロークの接続スタイルを設定します。
+- `func strokeWeight(_ weight: Float)` -- ストロークの太さ（線幅）を設定します。
+- `func text(_ string: String, _ x: Float, _ y: Float)` -- 指定位置にテキスト文字列を描画します。
+- `func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- バウンディングボックス内にテキスト文字列を描画します。
+- `func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)` -- テキストの配置を設定します。
+- `func textAscent() -> Float` -- 現在のフォントのアセント値を返します。
+- `func textDescent() -> Float` -- 現在のフォントのディセント値を返します。
+- `func textFont(_ family: String)` -- 以降のテキスト描画のフォントファミリーを設定します。
+- `func textLeading(_ leading: Float)` -- 複数行テキストの行間を設定します。
+- `func textSize(_ size: Float)` -- 以降のテキスト描画のテキストサイズを設定します。
+- `func texture(_ img: MImage)` -- 以降の 3D シェイプのテクスチャを設定します。
+- `func textWidth(_ string: String) -> Float` -- 現在のフォント設定でテキスト文字列の幅を計算します。
+- `func tint(_ color: Color)` -- 画像のティント色を設定します。
+- `func tint(_ gray: Float)` -- グレースケール値で画像のティントを設定します。
+- `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
+- `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
+- `func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
+- `func translate(_ x: Float, _ y: Float)` -- 現在の変換に 2D 平行移動を適用します。
+- `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
+- `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- 3つの頂点で定義される三角形を描画します。
+- `func tween<T>(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic) -> Tween<T>? where T : Interpolatable` -- トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
+- `func updateParticles(_ system: ParticleSystem)` -- パーティクルシステムを更新します（``compute()`` 内で呼び出してください）。
+- `func updatePixels()` -- 変更されたピクセルデータをアップロードしキャンバスに描画します。
+- `func vertex(_ x: Float, _ y: Float)` -- 現在のシェイプに 2D 頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ z: Float)` -- 現在のシェイプに 3D 頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ color: Color)` -- 現在のシェイプに頂点カラー付き 2D 頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color)` -- 現在のシェイプに頂点カラー付き 3D 頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float)` -- 現在のシェイプにテクスチャ座標付き 2D 頂点を追加します。
+
+## Core Types
+
+### `protocol CanvasStyle : AnyObject` -- Canvas2D と Canvas3D の間で共有されるスタイル管理プロトコル。
+
+### `protocol Interpolatable` -- 2つの値の間で線形補間をサポートする型を定義します。
+
+- `static func interpolate(from: Self, to: Self, t: Float) -> Self` -- パラメータ t（0.0〜1.0）で2つの値を線形補間します。
+
+### `protocol MetaphorPlugin : AnyObject` -- metaphor レンダリングライフサイクルにフックするプラグイン
+
+- `var pluginID: String { get }` -- このプラグインの一意な識別子
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)` -- キーボードイベント発生時に呼ばれます。
+- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)` -- マウスイベント発生時に呼ばれます。
+- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func onAttach(renderer: MetaphorRenderer)` -- プラグインがレンダラーに登録された時に一度呼ばれます (レガシー)。
+- `func onAttach(sketch: any Sketch)` -- プラグインがスケッチに登録された時に一度呼ばれます。
+- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
+- `func onDetach()` -- プラグインがレンダラーから削除された時に一度呼ばれます。
+- `func onResize(width: Int, height: Int)` -- キャンバスがリサイズされた時に呼ばれます。
+- `func onStart()` -- レンダーループ開始時に呼ばれます。
+- `func onStop()` -- レンダーループ停止時に呼ばれます。
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- フレームがオフスクリーンテクスチャにレンダリングされた後に呼ばれます。
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)` -- 各フレームの開始時、レンダリング前に呼ばれます。
+
+### `protocol PostEffect : AnyObject` -- レンダリング済みフレームに適用されるポストプロセスエフェクト
+
+- `var name: String { get }` -- このエフェクトの表示名
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)` -- `input` から読み取り、結果を `output` に書き込んでこのエフェクトを適用します。
+
+### `protocol RenderGraphExecutable : AnyObject` -- レンダラーが実行可能なレンダーグラフのインターフェースを定義します。
+
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> (any MTLTexture)?` -- レンダーグラフを実行し、最終出力テクスチャを返します。
+
+### `protocol Sketch : AnyObject` -- このプロトコルに準拠してスケッチを定義します。
+
+### `struct DrawingStyle` -- Canvas2D と Canvas3D で共有される描画スタイルプロパティを保持します。
+
+- `var colorModeConfig: ColorModeConfig` -- カラーモード設定。
+- `var fillColor: SIMD4<Float>` -- 塗りつぶし色（RGBA）。
+- `var hasFill: Bool` -- 塗りつぶしが有効かどうか。
+- `var hasStroke: Bool` -- ストロークが有効かどうか。
+- `var strokeColor: SIMD4<Float>` -- ストローク色（RGBA）。
+
+### `struct PluginFactory` -- ``SketchConfig`` で使用するプラグインインスタンスを生成するファクトリ。
+
+- `init(_ create: @MainActor () -> any MetaphorPlugin)` -- プラグインを生成するクロージャからファクトリを作成します。
+- `func create() -> any MetaphorPlugin` -- プラグインをインスタンス化します。
+
+### `struct ShapeStyle` -- シェイプ作成時にキャプチャされるビジュアルスタイルプロパティのスナップショット。
+
+- `var fillColor: SIMD4<Float>` -- 塗りつぶし色（RGBA、0-1範囲）。
+- `var hasFill: Bool` -- 塗りつぶしが有効かどうか。
+- `var hasStroke: Bool` -- ストロークが有効かどうか。
+- `var hasTint: Bool` -- ティントが適用されるかどうか。
+- `var strokeColor: SIMD4<Float>` -- ストローク色（RGBA、0-1範囲）。
+- `var strokeWeight: Float` -- ストロークの線幅（ピクセル単位）。
+- `var tintColor: SIMD4<Float>` -- テクスチャ付きシェイプのティント色。
+- `init()` -- デフォルトスタイルを作成します。
+
+### `struct SketchConfig` -- スケッチのウィンドウ、キャンバス、レンダリング設定を構成します。
+
+- `var fps: Int` -- 目標フレームレート。
+- `var fullScreen: Bool` -- フルスクリーンモードで起動するかどうか。
+- `var height: Int` -- オフスクリーンテクスチャの高さ（ピクセル単位）。
+- `var plugins: [PluginFactory]` -- スケッチセットアップ時に登録するプラグインファクトリ。
+- `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
+- `var syphonName: String?` -- Syphon サーバー名（`nil` で Syphon 出力を無効化）。
+- `var title: String` -- ウィンドウタイトル。
+- `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
+- `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+
+### `struct SketchWindowConfig` -- セカンダリスケッチウィンドウの設定。
+
+- `var fps: Int` -- 目標フレームレート。
+- `var height: Int` -- オフスクリーンレンダーテクスチャの高さ（ピクセル単位）。
+- `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
+- `var syphonName: String?` -- Syphon サーバー名。Syphon 出力を無効にするには `nil`。
+- `var title: String` -- ウィンドウタイトル。
+- `var width: Int` -- オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
+- `var windowScale: Float` -- ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
+- `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, syphonName: String? = nil, renderLoopMode: RenderLoopMode = .displayLink)` -- 新しいセカンダリウィンドウ設定を作成します。
+
+### `struct VideoExportConfig` -- ビデオエクスポートのパラメータ設定
+
+- `var bitrate: Int` -- 目標ビットレート（bps）
+- `var codec: VideoCodec` -- 使用するビデオコーデック
+- `var format: VideoFormat` -- 出力ファイルのコンテナフォーマット
+- `var fps: Int` -- 目標フレームレート（fps）
+- `init(codec: VideoCodec = .h264, format: VideoFormat = .mp4, fps: Int = 60, bitrate: Int = 10_000_000)`
+
+### `enum ArcMode` -- `arc()` 呼び出しの描画モードを指定します。
+
+- `case chord` -- 端点を直線で接続。
+- `case open` -- 端点を接続せずに弧のみを描画。
+- `case pie` -- 端点から中心へ線を引き、パイ形状を形成。
+
+### `enum BlendMode` -- Metal カラーアタッチメント設定用の定義済みブレンドモード
+
+- `case additive` -- 加算ブレンド
+- `case alpha` -- 標準アルファブレンド
+- `case darkest` -- 暗い方の値を保持（min 演算）
+- `case difference` -- 差分ブレンド (|src - dst|)
+- `case exclusion` -- 除外ブレンド (src + dst - 2*src*dst)
+- `case lightest` -- 明るい方の値を保持（max 演算）
+- `case multiply` -- 乗算ブレンド
+- `case opaque` -- ブレンド無効（不透明レンダリング）
+- `case screen` -- スクリーンブレンド（グロウエフェクト向き）
+- `case subtract` -- 減算ブレンド
+- `var requiresFramebufferFetch: Bool { get }` -- このブレンドモードがフレームバッファフェッチを必要とするかどうか
+
+### `enum BuiltinShaders` -- 組み込みMetalシェーダー関数名と共有構造体定義。
+
+- `static let blitFragment: String` -- ブリットフラグメントシェーダーのMSL関数名。
+- `static let blitVertex: String` -- ブリット頂点シェーダーのMSL関数名。
+- `static let canvas2DDifferenceFragment: String` -- Canvas2D 差分ブレンドフラグメントシェーダーのMSL関数名。
+- `static let canvas2DExclusionFragment: String` -- Canvas2D 除外ブレンドフラグメントシェーダーのMSL関数名。
+- `static let canvas2DFragment: String` -- Canvas2D フラグメントシェーダーのMSL関数名。
+- `static let canvas2DInstancedDifferenceFragment: String` -- Canvas2D インスタンス描画差分ブレンドフラグメントシェーダーのMSL関数名。
+- `static let canvas2DInstancedExclusionFragment: String` -- Canvas2D インスタンス描画除外ブレンドフラグメントシェーダーのMSL関数名。
+- `static let canvas2DInstancedFragment: String` -- Canvas2D インスタンス描画フラグメントシェーダーのMSL関数名。
+- `static let canvas2DInstancedVertex: String` -- Canvas2D インスタンス描画頂点シェーダーのMSL関数名。
+- `static let canvas2DTexturedDifferenceFragment: String` -- Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
+- `static let canvas2DTexturedExclusionFragment: String` -- Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。
+- `static let canvas2DTexturedFragment: String` -- Canvas2D テクスチャ付きフラグメントシェーダーのMSL関数名。
+- `static let canvas2DTexturedVertex: String` -- Canvas2D テクスチャ付き頂点シェーダーのMSL関数名。
+- `static let canvas2DVertex: String` -- Canvas2D 頂点シェーダーのMSL関数名。
+- `static let canvas3DFragment: String` -- Canvas3D フラグメントシェーダーのMSL関数名。
+- `static let canvas3DLightingFn: String` -- MSLライティング関数 (Blinn-Phong + PBR Cook-Torrance GGX)。
+- `static let canvas3DStructs: String` -- Canvas3D の非テクスチャおよびテクスチャシェーダーで共有されるMSL構造体定義。
+- `static let canvas3DTexturedFragment: String` -- Canvas3D テクスチャ付きフラグメントシェーダーのMSL関数名。
+- `static let canvas3DTexturedVertex: String` -- Canvas3D テクスチャ付き頂点シェーダーのMSL関数名。
+- `static let canvas3DVertex: String` -- Canvas3D 頂点シェーダーのMSL関数名。
+- `static let flatColorFragment: String` -- フラットカラーフラグメントシェーダーのMSL関数名。
+- `static let flatColorVertex: String` -- フラットカラー頂点シェーダーのMSL関数名。
+- `static let litFragment: String` -- ライティング付きフラグメントシェーダーのMSL関数名。
+- `static let litVertex: String` -- ライティング付き頂点シェーダーのMSL関数名。
+- `static let vertexColorFragment: String` -- 頂点カラーフラグメントシェーダーのMSL関数名。
+- `static let vertexColorVertex: String` -- 頂点カラー頂点シェーダーのMSL関数名。
+
+### `enum CameraPosition` -- キャプチャに使用するカメラ位置の指定
+
+- `case back` -- 背面カメラ
+- `case front` -- 前面カメラ
+
+### `enum CloseMode` -- `endShape()` 呼び出し時にシェイプを閉じるかどうかを指定します。
+
+- `case close` -- 最後の頂点と最初の頂点を接続してシェイプを閉じる。
+- `case open` -- 最後の頂点と最初の頂点を接続せずシェイプを開いたままにする。
+
+### `enum ColorSpace` -- カラー解釈に使用されるカラースペースを定義します。
+
+- `case hsb` -- 色相、彩度、明度のカラースペース。
+- `case rgb` -- 赤、緑、青のカラースペース。
+
+### `enum DepthMode` -- Metal レンダーパイプライン用の定義済みデプスステンシル設定
+
+- `case disabled` -- デプステストを無効化（2D レンダリング向き）
+- `case readOnly` -- デプステストを有効化、書き込みは無効化
+- `case readWrite` -- デプステストと書き込みを有効化（標準 3D レンダリング）
+- `func makeState(device: any MTLDevice) -> (any MTLDepthStencilState)?` -- このモード用のデプスステンシルステートを作成します。
+
+### `enum EllipseMode` -- `ellipse()` 呼び出しにおける座標の解釈方法を定義します。
+
+- `case center` -- x, y を中心、w, h を幅と高さとして解釈（デフォルト）。
+- `case corner` -- x, y を左上隅、w, h を幅と高さとして解釈。
+- `case corners` -- x, y を左上隅、w, h を右下隅の座標として解釈。
+- `case radius` -- x, y を中心、w, h を半径として解釈。
+
+### `enum EmitterShape` -- パーティクルが放出される空間形状を定義します。
+
+- `case circle(x: Float, y: Float, z: Float, radius: Float)` -- XY 平面上の円から放出
+- `case line(x1: Float, y1: Float, z1: Float, x2: Float, y2: Float, z2: Float)` -- 2つの端点間の線分に沿って放出
+- `case point(Float, Float, Float)` -- 単一の点から放出
+- `case sphere(x: Float, y: Float, z: Float, radius: Float)` -- 球の表面から放出
+
+### `enum FilterType` -- 画像フィルタタイプを定義します（Processing 互換および拡張）。
+
+- `case blur(Int)` -- ぼかし効果（半径）。
+- `case dilate` -- 膨張（明るい領域を拡大）。
+- `case edgeDetect` -- エッジ検出（Sobel フィルタ）。
+- `case erode` -- 収縮（暗い領域を拡大）。
+- `case gray` -- グレースケール変換。
+- `case invert` -- 色反転。
+- `case mpsBlur(sigma: Float)` -- MPS ガウシアンぼかし（シグマ値、ハードウェア最適化）。
+- `case mpsDilate(radius: Int)` -- MPS モルフォロジカル膨張。
+- `case mpsErode(radius: Int)` -- MPS モルフォロジカル収縮。
+- `case mpsLaplacian` -- MPS ラプラシアンフィルタ。
+- `case mpsMedian(diameter: Int)` -- MPS メディアンフィルタ。
+- `case mpsSobel` -- MPS Sobel エッジ検出。
+- `case mpsThreshold(Float)` -- MPS 閾値二値化。
+- `case pixelate(Int)` -- ピクセレート効果（ブロックサイズ）。
+- `case posterize(Int)` -- ポスタライズ効果（2〜255レベル）。
+- `case sepia` -- セピアトーン。
+- `case sharpen(Float)` -- シャープ効果（量: 推奨範囲 0.5〜3.0）。
+- `case threshold(Float)` -- 閾値フィルタ（0.0〜1.0）。
+
+### `enum GradientAxis` -- グラデーション塗りつぶしの方向を指定します。
+
+- `case diagonal` -- 左上から右下へ斜めにグラデーションを適用。
+- `case horizontal` -- 左から右へグラデーションを適用。
+- `case vertical` -- 上から下へグラデーションを適用。
+
+### `enum ImageFilter` -- MImage ピクセル配列に対する CPU ベースのフィルタ操作を提供します。
+
+- `static func apply(_ filter: FilterType, to image: MImage)` -- MImage にフィルタを適用し、loadPixels、処理、updatePixels を一括で実行します。
+- `static func applyToPixels(_ filter: FilterType, pixels: inout [UInt8], width: Int, height: Int)` -- ピクセル配列にフィルタを直接適用します。
+
+### `enum ImageMode` -- `image()` 呼び出しにおける座標の解釈方法を定義します。
+
+- `case center` -- x, y を中心として解釈。
+- `case corner` -- x, y を左上隅として解釈（デフォルト）。
+- `case corners` -- x, y を左上隅、w, h を右下隅の座標として解釈。
+
+### `enum KeyEventType` -- プラグインに配信されるキーボードイベントの種類
+
+- `case pressed`
+- `case released`
+
+### `enum MergeShaders` -- テクスチャマージ（コンポジット）シェーダー関数名定数。
+
+- `static let mergeTextures: String` -- テクスチャマージコンピュートカーネルのMSL関数名。
+
+### `enum MetaphorError` -- metaphor ライブラリの中央エラー型
+
+- `case bufferCreationFailed(size: Int)` -- Metal バッファを確保できなかった
+- `case canvas(MetaphorError.CanvasFailure)` -- Canvas2D 操作の失敗
+- `case bufferCreationFailed` -- Canvas 頂点用の Metal バッファを作成できなかった
+- `case commandQueueCreationFailed` -- Metal コマンドキューを作成できなかった
+- `case compute(MetaphorError.ComputeFailure)` -- コンピュートカーネル操作の失敗
+- `case functionNotFound(String)` -- 指定されたコンピュート関数が見つからなかった
+- `case contextUnavailable(method: String)` -- スケッチコンテキストが利用できない (`setup()` または `draw()` の外で呼び出された)
+- `case deviceNotAvailable` -- Metal デバイスを取得できなかった
+- `case export(MetaphorError.ExportFailure)` -- エクスポート操作の失敗
+- `case destinationCreationFailed` -- 画像デスティネーションを作成できなかった
+- `case finalizationFailed` -- 出力ファイルのファイナライズに失敗した
+- `case noFrames` -- キャプチャされたフレームがない
+- `case notRecording` -- endRecord() 呼び出し時に録画がアクティブでなかった
+- `case writerFailed(String)` -- AVAssetWriter がエラーを検出した
+- `case image(MetaphorError.ImageFailure)` -- 画像操作の失敗
+- `case invalidImage` -- ソース画像が無効、または CGImage への変換に失敗した
+- `case material(MetaphorError.MaterialFailure)` -- マテリアル操作の失敗
+- `case mesh(MetaphorError.MeshFailure)` -- メッシュ操作の失敗
+- `case fileNotFound` -- メッシュファイルが見つからなかった
+- `case parseError(String)` -- メッシュデータのパースに失敗した
+- `case mps(MetaphorError.MPSFailure)` -- Metal Performance Shaders 操作の失敗
+- `case accelerationStructureBuildFailed(String)` -- アクセラレーション構造体のビルドに失敗した
+- `case deviceNotSupported` -- デバイスが Metal Performance Shaders をサポートしていない
+- `case intersectionFailed(String)` -- レイ交差テストに失敗した
+- `case invalidScene(String)` -- シーン構成が無効
+- `case textureOperationFailed(String)` -- テクスチャ操作に失敗した
+- `case particle(MetaphorError.ParticleFailure)` -- パーティクルシステム操作の失敗
+- `case pipelineCreationFailed(name: String, underlying: any Error)` -- レンダーパイプラインステートを作成できなかった
+- `case renderGraph(MetaphorError.RenderGraphFailure)` -- レンダーグラフ操作の失敗
+- `case shaderCompilationFailed(name: String, underlying: any Error)` -- シェーダーのコンパイルに失敗した
+- `case shaderNotFound(String)` -- 指定されたシェーダー関数がシェーダーライブラリに見つからなかった
+- `case textureCreationFailed(width: Int, height: Int, format: String)` -- 指定されたサイズとフォーマットでテクスチャを作成できなかった
+- `var description: String { get }`
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
+
+### `enum MouseEventType` -- プラグインに配信されるマウスイベントの種類
+
+- `case clicked`
+- `case dragged`
+- `case moved`
+- `case pressed`
+- `case released`
+- `case scrolled`
+
+### `enum ParticleForce` -- 各フレームでパーティクルに適用できるフォースの種類を定義します。
+
+- `case attraction(x: Float, y: Float, z: Float, strength: Float)` -- 指定した強度でのポイントへの引力
+- `case damping(Float)` -- 指定した係数で毎フレーム速度を減衰させるダンピング
+- `case gravity(Float, Float, Float)` -- 指定方向への定数重力加速度
+- `case noise(scale: Float, strength: Float)` -- 設定可能なスケールと強度によるノイズベースフォース
+- `case repulsion(x: Float, y: Float, z: Float, strength: Float)` -- 指定した強度でのポイントからの斥力
+- `case vortex(x: Float, y: Float, z: Float, strength: Float)` -- 指定した強度での軸周りの渦フォース
+
+### `enum PostProcessShaders` -- ポストプロセスエフェクトシェーダー関数名と共有構造体定義。
+
+- `static let commonStructs: String` -- カスタムポストプロセスシェーダー用のMSL共通構造体定義。
+- `static let postBloomComposite: String` -- ブルーム合成ポストプロセスシェーダーのMSL関数名。
+- `static let postBloomExtract: String` -- ブルーム抽出ポストプロセスシェーダーのMSL関数名。
+- `static let postBlurH: String` -- 水平ガウシアンブラーポストプロセスシェーダーのMSL関数名。
+- `static let postBlurV: String` -- 垂直ガウシアンブラーポストプロセスシェーダーのMSL関数名。
+- `static let postChromaticAberration: String` -- 色収差ポストプロセスシェーダーのMSL関数名。
+- `static let postColorGrade: String` -- カラーグレーディングポストプロセスシェーダーのMSL関数名。
+- `static let postGrayscale: String` -- グレースケールポストプロセスシェーダーのMSL関数名。
+- `static let postInvert: String` -- 反転ポストプロセスシェーダーのMSL関数名。
+- `static let postVignette: String` -- ビネットポストプロセスシェーダーのMSL関数名。
+
+### `enum RectMode` -- `rect()` 呼び出しにおける座標の解釈方法を定義します。
+
+- `case center` -- x, y を中心、w, h を幅と高さとして解釈。
+- `case corner` -- x, y を左上隅、w, h を幅と高さとして解釈（デフォルト）。
+- `case corners` -- x, y を左上隅、w, h を右下隅の座標として解釈。
+- `case radius` -- x, y を中心、w, h を半幅と半高さとして解釈。
+
+### `enum RenderLoopMode` -- レンダーループの駆動方法を記述します。
+
+- `case displayLink` -- MTKView 内蔵のディスプレイリンク駆動レンダリング（デフォルト）
+- `case timer(fps: Int)` -- 独立したフレームタイミング用の DispatchSourceTimer を使用
+
+### `enum ShadowShaders` -- シャドウマッピングシェーダー関数名定数。
+
+- `static let shadowDepthVertex: String` -- シャドウデプス頂点シェーダーのMSL関数名。
+
+### `enum ShapeKind` -- リテインドシェイプのタイプと作成パラメータを定義します。
+
+- `case arc(x: Float, y: Float, width: Float, height: Float, start: Float, stop: Float, mode: ArcMode)` -- 中心、サイズ、角度範囲、閉じモードで定義される弧。
+- `case box(width: Float, height: Float, depth: Float)` -- 幅、高さ、奥行きを持つボックス。
+- `case cone(radius: Float, height: Float, detail: Int = 24)` -- 半径、高さ、テッセレーション詳細度を持つコーン。
+- `case cylinder(radius: Float, height: Float, detail: Int = 24)` -- 半径、高さ、テッセレーション詳細度を持つシリンダー。
+- `case ellipse(x: Float, y: Float, width: Float, height: Float)` -- 中心とサイズで定義される楕円。
+- `case group` -- 子シェイプを保持するグループコンテナ。
+- `case line(x1: Float, y1: Float, x2: Float, y2: Float)` -- 2点間の線分。
+- `case path2D` -- `beginShape`/`vertex`/`endShape` で定義されるカスタム2Dシェイプ。
+- `case path3D` -- `beginShape`/`vertex`/`endShape` で定義されるカスタム3Dシェイプ。
+- `case plane(width: Float, height: Float)` -- 幅と高さを持つ平面。
+- `case point(x: Float, y: Float)` -- 単一の点。
+- `case quad(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float, x4: Float, y4: Float)` -- 4つの頂点で定義される四角形。
+- `case rect(x: Float, y: Float, width: Float, height: Float)` -- 位置とサイズで定義される矩形。
+- `case sphere(radius: Float, detail: Int = 24)` -- 半径とテッセレーション詳細度を持つ UV 球体。
+- `case torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- リング半径、チューブ半径、テッセレーション詳細度を持つトーラス。
+- `case triangle(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float)` -- 3つの頂点で定義される三角形。
+- `var is3D: Bool { get }` -- このシェイプタイプが3Dジオメトリを表すかどうか。
+
+### `enum ShapeMode` -- `beginShape()` で使用されるプリミティブタイプを指定します。
+
+- `case lines` -- 頂点ペアを個別の線分として描画。
+- `case points` -- 個別のポイントの集合を描画。
+- `case polygon` -- 任意のポリゴンを描画（デフォルト）。
+- `case triangleFan` -- 頂点をトライアングルファンとして描画。
+- `case triangles` -- 3頂点のグループを個別の三角形として描画。
+- `case triangleStrip` -- 頂点をトライアングルストリップとして描画。
+
+### `enum StrokeCap` -- ストロークの端点に適用されるスタイルを指定します。
+
+- `case butt` -- 端点を超えた延長なし。
+- `case round` -- ストロークの端点に丸いキャップを適用（デフォルト）。
+- `case square` -- 端点からストローク幅の半分だけ延長する四角いキャップを適用。
+
+### `enum StrokeJoin` -- 接続されたストロークセグメント間の結合スタイルを指定します。
+
+- `case bevel` -- 平らなベベルでセグメントを結合。
+- `case miter` -- 鋭い角でセグメントを結合（デフォルト）。
+- `case round` -- 丸い弧でセグメントを結合。
+
+### `enum TextAlignH` -- 水平方向のテキスト配置オプションを定義します。
+
+- `case center`
+- `case left`
+- `case right`
+
+### `enum TextAlignV` -- 垂直方向のテキスト配置オプションを定義します。
+
+- `case baseline`
+- `case bottom`
+- `case center`
+- `case top`
+
+### `enum VertexLayout` -- Metal レンダーパイプライン用の定義済み頂点属性レイアウト
+
+- `case position` -- float3 位置のみ格納 (ストライド: 12 バイト)
+- `case position2DColor` -- float2 位置と float4 カラーを格納 (ストライド: 24 バイト、Canvas2D 用)
+- `case position2DOnly` -- float2 位置のみ格納 (ストライド: 8 バイト、Canvas2D インスタンシングユニットメッシュ用)
+- `case position2DTexCoordColor` -- float2 位置、float2 テクスチャ座標、float4 カラーを格納 (ストライド: 32 バイト、テクスチャ付き Canvas2D 用)
+- `case positionColor` -- float3 位置と float4 カラーを格納 (ストライド: 28 バイト)
+- `case positionNormalColor` -- float3 位置、float3 法線、float4 カラーを格納 (ストライド: 40 バイト)
+- `case positionNormalUV` -- float3 位置、float3 法線、float2 UV を格納 (ストライド: 48 バイト、アライメントパディング含む)
+- `func makeDescriptor() -> MTLVertexDescriptor` -- このレイアウトに一致する Metal 頂点デスクリプタを作成します。
+
+### `enum VideoCodec` -- ビデオエンコードに使用するコーデック
+
+- `case h264`
+- `case h265`
+
+### `enum VideoFormat` -- ビデオ出力のコンテナフォーマット
+
+- `case mov`
+- `case mp4`
+- `var fileExtension: String { get }` -- このフォーマットのファイル拡張子文字列
+
+### `final class BloomEffect` -- ブルーム（高輝度領域周辺のグロウ）を適用します。
+
+- `var intensity: Float`
+- `let name: String`
+- `var threshold: Float`
+- `init(intensity: Float = 1.0, threshold: Float = 0.8)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class BlurEffect` -- ブラーエフェクトを適用します（大きい半径では Kawase、小さい半径ではガウシアン）。
+
+- `let name: String`
+- `var radius: Float`
+- `init(radius: Float = 5.0)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
+
+### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
+
+### `final class CaptureDevice` -- カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
+
+- `let height: Int` -- 要求されたキャプチャ高さ（ピクセル）
+- `var isAvailable: Bool { get }` -- カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ
+- `var texture: (any MTLTexture)? { get }` -- ``read()`` 呼び出し後に利用可能な、最新のカメラフレームの Metal テクスチャ
+- `let width: Int` -- 要求されたキャプチャ幅（ピクセル）
+- `func read()` -- ``texture`` プロパティを最新のカメラフレームで更新します。
+- `func start()` -- カメラキャプチャセッションを開始します。
+- `func stop()` -- カメラキャプチャセッションを停止します。
+- `func toImage() -> MImage?` -- 最新のカメラフレームを ``MImage`` インスタンスに変換します。
+
+### `final class ChromaticAberrationEffect` -- 色収差（カラーフリンジ）を適用します。
+
+- `var intensity: Float`
+- `let name: String`
+- `init(intensity: Float = 0.005)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class ColorGradeEffect` -- カラーグレーディング調整を適用します。
+
+- `var brightness: Float`
+- `var contrast: Float`
+- `let name: String`
+- `var saturation: Float`
+- `var temperature: Float`
+- `init(brightness: Float = 0.0, contrast: Float = 1.0, saturation: Float = 1.0, temperature: Float = 0.0)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class ComputeKernel` -- GPU コンピュートカーネルをパイプラインステートとメタデータでラップします。
+
+- `var maxTotalThreadsPerThreadgroup: Int { get }` -- スレッドグループあたりの最大スレッド数を返します。
+- `let pipelineState: any MTLComputePipelineState` -- コンパイル済みコンピュートパイプラインステート
+- `var threadExecutionWidth: Int { get }` -- 推奨される 1D スレッドグループサイズ（SIMD 幅）を返します。
+- `init(device: any MTLDevice, function: any MTLFunction) throws` -- プリコンパイル済み Metal 関数からコンピュートカーネルを作成します。
+- `init(device: any MTLDevice, source: String, functionName: String) throws` -- MSL ソースコードをランタイムでコンパイルしてコンピュートカーネルを作成します。
+
+### `final class CustomMaterial` -- カスタムフラグメントシェーダーを使用する3Dマテリアル。
+
+- `let fragmentFunctionName: String` -- フラグメントシェーダー関数名。
+- `let vertexFunctionName: String?` -- カスタム頂点シェーダー関数名。nil の場合は組み込みシェーダーを使用。
+- `func reload(shaderLibrary: ShaderLibrary) throws` -- シェーダーライブラリからシェーダー関数をリロードしてこのマテリアルを更新します。
+- `func setParameters<T>(_ value: T)` -- カスタムパラメータを生バイト列として設定します。
+
+### `final class CustomPostEffect` -- ユーザー定義の MSL フラグメントシェーダーを使用してカスタムポストプロセスエフェクトを適用します。
+
+- `let fragmentFunctionName: String` -- フラグメントシェーダー関数名
+- `var intensity: Float` -- エフェクト強度。PostProcessParams.intensity にマッピング
+- `let name: String` -- このエフェクトの名前
+- `var radius: Float` -- 半径値。PostProcessParams.radius にマッピング
+- `var smoothness: Float` -- 滑らかさ値。PostProcessParams.smoothness にマッピング
+- `var threshold: Float` -- しきい値。PostProcessParams.threshold にマッピング
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+- `func reload(shaderLibrary: ShaderLibrary) throws` -- ホットリロード後にシェーダーライブラリからシェーダー関数を再取得します。
+- `func setParameters<T>(_ value: T)` -- シェーダーに buffer(1) として渡すカスタムパラメータを設定します。
+
+### `final class DynamicMesh` -- 頂点を動的に追加・変更できる3Dメッシュを提供します。
+
+- `var indexBuffer: (any MTLBuffer)? { get }` -- インデックスバッファを返します（ensureBuffers 呼び出し後に有効）。
+- `var indexCount: Int { get }` -- インデックス数
+- `var vertexCount: Int { get }` -- 頂点数
+- `init(device: any MTLDevice)`
+- `func addColor(_ color: Color)` -- 次に追加される頂点に適用するカラーを設定します。
+- `func addColor(_ color: SIMD4<Float>)` -- SIMD4 値を使用して、次に追加される頂点に適用するカラーを設定します。
+- `func addIndex(_ i: UInt32)` -- インデックスを1つ追加します。
+- `func addNormal(_ normal: SIMD3<Float>)` -- 次に追加される頂点に適用する法線を設定します。
+- `func addTriangle(_ i0: UInt32, _ i1: UInt32, _ i2: UInt32)` -- 三角形を構成する3つのインデックスを追加します。
+- `func addVertex(_ position: SIMD3<Float>)` -- 指定位置に頂点を追加します。
+- `func addVertex(_ x: Float, _ y: Float, _ z: Float)` -- 指定された x, y, z 座標に頂点を追加します。
+- `func clear()` -- すべての頂点とインデックスを削除します。
+- `func getVertex(_ index: Int) -> SIMD3<Float>` -- 指定インデックスの頂点位置を返します。
+- `func setColor(_ index: Int, _ color: SIMD4<Float>)` -- 指定インデックスの頂点カラーを設定します。
+- `func setNormal(_ index: Int, _ normal: SIMD3<Float>)` -- 指定インデックスの頂点法線を設定します。
+- `func setVertex(_ index: Int, _ position: SIMD3<Float>)` -- 指定インデックスの頂点位置を設定します。
+
+### `final class GIFExporter` -- キャプチャしたフレームをアニメーションGIFファイルとしてエクスポートします。
+
+- `var dithering: Bool` -- カラー量子化時のディザリング有効フラグ
+- `var frameCount: Int { get }` -- これまでにキャプチャしたフレーム数
+- `var isRecording: Bool { get }` -- 現在記録中かどうかを示すフラグ
+- `var loopCount: Int` -- GIFのループ回数（0は無限ループ）
+- `init()`
+- `func beginRecord(fps: Int = 15, width: Int = 0, height: Int = 0)` -- GIF記録を開始します。
+- `func captureFrame(texture: any MTLTexture, device: any MTLDevice, commandQueue: any MTLCommandQueue)` -- Metal テクスチャから現在のフレームをキャプチャします。
+- `func endRecord(to path: String) throws` -- 記録を停止し、キャプチャしたフレームをGIFファイルに書き出します。
+- `func endRecordAsync(to path: String) async throws` -- 記録を停止し、キャプチャしたフレームを非同期でGIFファイルに書き出します。
+
+### `final class GPUBuffer<T>` -- CPU と GPU の両方からアクセス可能な型付き GPU バッファを提供します。
+
+- `let buffer: any MTLBuffer` -- 基盤となる Metal バッファ
+- `var contents: UnsafeMutableBufferPointer<T> { get }` -- バッファ内容への直接アクセスを unsafe mutable buffer pointer として提供します。
+- `let count: Int` -- バッファ内の要素数
+- `init?(device: any MTLDevice, count: Int)` -- 指定された要素数でゼロ初期化された空のバッファを作成します。
+- `init?(device: any MTLDevice, data: [T])` -- 要素の配列で初期化されたバッファを作成します。
+- `func copyFrom(_ data: [T])` -- Swift 配列の要素をバッファにコピーします。
+- `func toArray() -> [T]` -- バッファの内容を Swift 配列にコピーします。
+- `subscript(index: Int) -> T { get set }` -- 指定されたインデックスの要素にアクセスします。
+
+### `final class Graphics` -- オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
+
+### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
+
+### `final class GrayscaleEffect` -- グレースケールに変換します。
+
+- `let name: String`
+- `init()`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class InputManager` -- スケッチのマウス・キーボード入力状態を管理します。
+
+### `final class InvertEffect` -- 全カラーを反転します。
+
+- `let name: String`
+- `init()`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class Mesh` -- 頂点バッファとオプションのインデックスバッファを含む3Dメッシュデータを格納します。
+
+### `final class MetaphorRenderer` -- metaphor の Metal レンダリングとオプショナルなランタイム操作を統括します。
+
+- `let commandQueue: any MTLCommandQueue` -- GPU へのワーク送信に使用されるコマンドキュー
+- `let depthStencilCache: DepthStencilCache` -- 全レンダーパスで共有されるデプスステンシルステートキャッシュ
+- `let device: any MTLDevice` -- 全 GPU リソース作成に使用される Metal デバイス
+- `var elapsedTime: Double { get }` -- 現在の経過時間（秒）を返します。
+- `var feedbackEnabled: Bool` -- 前フレームのカラーテクスチャへのアクセスを有効にするフレームバッファオブジェクトフィードバック
+- `var frameBufferIndex: Int { get }` -- 現在のフレームのトリプルバッファリングリソース用バッファインデックス (0-2)
+- `let frameExporter: FrameExporter` -- 個別フレームを画像ファイルとしてキャプチャするフレームエクスポーター
+- `lazy var imageFilterGPU: ImageFilterGPU { get set }` -- GPU 画像フィルターエンジン。初回アクセス時に遅延作成されます。
+- `let input: InputManager` -- キーボードとマウスイベント処理用の入力マネージャー
+- `var isOfflineRendering: Bool` -- 決定論的フレームタイミングのオフラインレンダリングモードを有効化
+- `var isPostProcessAvailable: Bool { get }` -- ポストプロセスエフェクトが利用可能かどうかを示す
+- `var lastGPUEndTime: Double { get }` -- 最後に完了したフレームの GPU 終了タイムスタンプ（秒）
+- `var lastGPUStartTime: Double { get }` -- 最後に完了したフレームの GPU 開始タイムスタンプ（秒）
+- `var offlineDeltaTime: Double { get }` -- オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。
+- `var offlineFrameRate: Double` -- オフラインレンダリングモードでの時間計算に使用するフレームレート
+- `var onAfterDraw: ((any MTLCommandBuffer) -> Void)?` -- メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
+- `var onCompute: ((any MTLCommandBuffer, Double) -> Void)?` -- 描画前にコンピュートワークを実行するために呼び出されるコールバック
+- `var onDraw: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- 各フレームでユーザーレンダリングを実行するために呼び出されるコールバック
+- `var postProcessPipeline: PostProcessPipeline? { get }` -- ポストプロセスエフェクトパイプライン
+- `var previousFrameTexture: (any MTLTexture)? { get }` -- 前フレームのカラーテクスチャ。``feedbackEnabled`` が `true` の場合のみ利用可能
+- `var renderGraph: (any RenderGraphExecutable)?` -- 設定時に最終テクスチャとなるレンダーグラフ
+- `let shaderLibrary: ShaderLibrary` -- Metal シェーダー関数のコンパイルとキャッシュに使用するシェーダーライブラリ
+- `var sharedResources: SharedMetalResources? { get }` -- 共有リソースで作成された場合に利用可能な共有 Metal リソース
+- `var syphonOutput: SyphonOutput? { get }` -- アプリケーション間映像共有用のオプショナルな Syphon 出力
+- `var textureManager: TextureManager { get }` -- オフスクリーンレンダーターゲットテクスチャの管理
+- `var useExternalRenderLoop: Bool` -- 外部レンダーループがフレームレンダリングを駆動するかどうかを示します。
+- `let videoExporter: VideoExporter` -- フレームを動画ファイルに録画する動画エクスポーター
+- `init(device: (any MTLDevice)? = nil, width: Int = 1920, height: Int = 1080, clearColor: MTLClearColor = .black) throws` -- 指定されたデバイスとオフスクリーンテクスチャサイズで新しいレンダラーを作成します。
+- `init(sharedResources: SharedMetalResources, width: Int = 1920, height: Int = 1080, clearColor: MTLClearColor = .black) throws` -- 他のレンダラーと Metal リソースを共有するレンダラーを作成します。
+- `func addPlugin(_ plugin: any MetaphorPlugin)` -- プラグインをこのレンダラーに登録します (レガシー)。
+- `func addPlugin(_ plugin: any MetaphorPlugin, sketch: any Sketch)` -- プラグインをこのレンダラーとスケッチ参照に登録します。
+- `func addPostEffect(_ effect: any PostEffect)` -- パイプラインにポストプロセスエフェクトを追加します。
+- `func clearPostEffects()` -- パイプラインから全ポストプロセスエフェクトを削除します。
+- `func configure(view: MTKView)` -- このレンダラーで使用する MTKView を構成します。
+- `func draw(in view: MTKView)`
+- `func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize)`
+- `func plugin(id: String) -> (any MetaphorPlugin)?` -- 指定された識別子の登録済みプラグインがあれば返します。
+- `func removePlugin(id: String)` -- 識別子でプラグインを削除します。
+- `func removePostEffect(at index: Int)` -- 指定されたインデックスのポストプロセスエフェクトを削除します。
+- `func renderFrame()` -- 画面プレゼンテーションなしでオフスクリーンレンダリングフレームを完全に実行します。
+- `func renderOfflineFrame()` -- 決定論的タイミングでオフラインモードの単一フレームをレンダリングします。
+- `func resetOfflineRendering()` -- フレームインデックスをゼロに戻してオフラインレンダリングをリセットします。
+- `func resizeCanvas(width: Int, height: Int)` -- 全レンダーターゲットテクスチャを再作成してオフスクリーンキャンバスをリサイズします。
+- `func saveScreenshot(to path: String)` -- 次のフレーム終了時にスクリーンショットの保存をスケジュールします。
+- `func setClearColor(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1.0)` -- オフスクリーンレンダーパスのクリアカラーを変更します。
+- `func setPostEffects(_ effects: [any PostEffect])` -- 全ポストプロセスエフェクトを指定された配列で置き換えます。
+- `func startSyphonServer(name: String)` -- 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
+- `func stopSyphonServer()` -- Syphon サーバーを停止し、リソースを解放します。
+- `func viewToTextureCoordinates(viewPoint: CGPoint, viewSize: CGSize, drawableSize: CGSize) -> (Float, Float)` -- ビュー座標からオフスクリーンテクスチャ座標に変換します。
+
+### `final class MImage` -- `MTLTexture` をラップして画像を表現します。
+
+- `var height: Float { get }` -- 画像の高さ（ピクセル単位）。
+- `var pixels: [UInt8]` -- ``loadPixels()`` 呼び出し後に格納される生の RGBA ピクセルデータ。
+- `var texture: any MTLTexture { get }` -- この画像の基盤となる Metal テクスチャ。
+- `var width: Float { get }` -- 画像の幅（ピクセル単位）。
+- `init(named name: String, device: any MTLDevice) throws` -- アプリバンドルから名前付きリソースを読み込んで画像を作成します。
+- `init(nsImage: NSImage, device: any MTLDevice) throws` -- `NSImage` から画像を作成します。
+- `init(path: String, device: any MTLDevice) throws` -- ファイルパスからテクスチャを読み込んで画像を作成します。
+- `init(texture: any MTLTexture)` -- 既存の `MTLTexture` から画像を作成します。
+- `static func createImage(_ width: Int, _ height: Int, device: any MTLDevice) -> MImage?` -- ピクセル操作に適した空の画像を作成します。
+- `func filter(_ type: FilterType)` -- ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します。
+- `func get(_ x: Int, _ y: Int) -> Color` -- 指定された座標のピクセルの色を返します。
+- `func loadPixels()` -- GPU テクスチャから CPU 上の ``pixels`` 配列にピクセルデータを読み込みます。
+- `func replaceTexture(_ newTexture: any MTLTexture)` -- バッキングテクスチャを新しいものに置き換えます（通常は GPU フィルタ適用後）。
+- `func set(_ x: Int, _ y: Int, _ color: Color)` -- 指定された座標のピクセルの色を設定します。
+- `func updatePixels()` -- CPU の ``pixels`` 配列を GPU テクスチャに書き戻します。
+
+### `final class MShape` -- ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
+
+- `var capturedStyle: ShapeStyle` -- 作成時にキャプチャされたスタイルスナップショット。
+- `var childCount: Int { get }` -- 直接の子の数。
+- `var children: [MShape] { get }` -- 子シェイプ（グループシェイプ用）。
+- `var is3D: Bool { get }` -- このシェイプが3Dジオメトリを含むかどうか。
+- `var kind: ShapeKind { get }` -- このインスタンスが表すシェイプの種類。
+- `var localTransform2D: float3x3` -- このシェイプの累積2D変換行列。
+- `var localTransform3D: float4x4` -- このシェイプの累積3D変換行列。
+- `var name: String?` -- 階層内でこのシェイプを識別するためのオプションの名前。
+- `var styleEnabled: Bool { get }` -- 描画時にシェイプ自体のスタイルが適用されるかどうか。
+- `var texture: (any MTLTexture)?` -- このシェイプに割り当てられたテクスチャ。
+- `var vertexCount: Int { get }` -- このシェイプの合計頂点数。
+- `func addChild(_ child: MShape)` -- このグループに子シェイプを追加します。
+- `func beginContour()` -- 2Dシェイプ内のコンター（穴）の記録を開始します。
+- `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
+- `func disableStyle()` -- シェイプ自体のスタイルを無効にし、描画時にスケッチの現在のスタイルを使用します。
+- `func enableStyle()` -- シェイプ自体のスタイルを有効にします（デフォルトの動作）。
+- `func endContour()` -- 2Dシェイプ内のコンター（穴）の記録を終了します。
+- `func endShape(_ close: CloseMode = .open)` -- シェイプを確定し、記録された頂点からジオメトリを構築します。
+- `func fill(_ color: Color)` -- シェイプ定義中に塗りつぶし色を設定します。
+- `func fill(_ gray: Float)` -- グレースケール値（0-255）で塗りつぶし色を設定します。
+- `func getChild(_ index: Int) -> MShape?` -- インデックスで子シェイプを取得します。
+- `func getChild(_ name: String) -> MShape?` -- 名前で子シェイプを取得します（幅優先探索）。
+- `func getVertex(_ index: Int) -> SIMD3<Float>?` -- インデックスで頂点位置を取得します。
+- `func noFill()` -- 塗りつぶしを無効にします。
+- `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- 次の3D頂点に適用する法線ベクトルを設定します。
+- `func noStroke()` -- ストロークを無効にします。
+- `func resetMatrix()` -- シェイプのトランスフォームを単位行列にリセットします。
+- `func rotate(_ angle: Float)` -- シェイプを2Dで回転します（ラジアン）。
+- `func rotateX(_ angle: Float)` -- シェイプをX軸周りに回転します（ラジアン）。
+- `func rotateY(_ angle: Float)` -- シェイプをY軸周りに回転します（ラジアン）。
+- `func rotateZ(_ angle: Float)` -- シェイプをZ軸周りに回転します（ラジアン）。
+- `func scale(_ s: Float)` -- シェイプを2Dで均一にスケーリングします。
+- `func scale(_ sx: Float, _ sy: Float)` -- シェイプを2Dで非均一にスケーリングします。
+- `func scale(_ sx: Float, _ sy: Float, _ sz: Float)` -- シェイプを3Dで非均一にスケーリングします。
+- `func setFill(_ color: Color)` -- このシェイプの塗りつぶし色を設定します。
+- `func setFill(_ enabled: Bool)` -- このシェイプの塗りつぶしを有効または無効にします。
+- `func setStroke(_ color: Color)` -- このシェイプのストローク色を設定します。
+- `func setStroke(_ enabled: Bool)` -- このシェイプのストロークを有効または無効にします。
+- `func setStrokeWeight(_ weight: Float)` -- このシェイプのストロークの太さを設定します。
+- `func setTexture(_ img: MImage)` -- このシェイプのテクスチャを設定します。
+- `func setTint(_ color: Color)` -- テクスチャレンダリング用のティント色を設定します。
+- `func setVertex(_ index: Int, _ x: Float, _ y: Float)` -- インデックスで頂点位置を設定します（2D）。
+- `func setVertex(_ index: Int, _ x: Float, _ y: Float, _ z: Float)` -- インデックスで頂点位置を設定します（3D）。
+- `func stroke(_ color: Color)` -- シェイプ定義中にストローク色を設定します。
+- `func stroke(_ gray: Float)` -- グレースケール値（0-255）でストローク色を設定します。
+- `func strokeWeight(_ weight: Float)` -- シェイプ定義中にストロークの太さを設定します。
+- `func translate(_ x: Float, _ y: Float)` -- シェイプを2Dで平行移動します。
+- `func translate(_ x: Float, _ y: Float, _ z: Float)` -- シェイプを3Dで平行移動します。
+- `func vertex(_ x: Float, _ y: Float)` -- 記録中のシェイプに2D頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ color: Color)` -- 頂点カラー付きの2D頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ z: Float)` -- 記録中のシェイプに3D頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float)` -- テクスチャ座標付きの2D頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float)` -- テクスチャ座標付きの3D頂点を追加します。
+
+### `final class OrbitCamera` -- マウスドラッグとスクロールで3Dカメラオービットをインタラクティブに制御します。
+
+- `var azimuth: Float` -- 水平方向の角度（ラジアン、Y軸周りの回転）
+- `var damping: Float` -- ダンピング係数（0 = ダンピングなし、1に近いほど慣性が強い）
+- `var distance: Float` -- カメラからターゲットまでの距離
+- `var elevation: Float` -- 垂直方向の角度（ラジアン、水平面からの上下回転）
+- `var eye: SIMD3<Float> { get }` -- 球面座標をデカルト座標に変換してカメラ位置を計算します。
+- `var maxDistance: Float` -- ターゲットからの最大許容距離
+- `var maxElevation: Float` -- 最大仰角（ラジアン）
+- `var minDistance: Float` -- ターゲットからの最小許容距離
+- `var minElevation: Float` -- 最小仰角（ラジアン）
+- `var sensitivity: Float` -- マウスドラッグ回転の感度
+- `var target: SIMD3<Float>` -- カメラが注視する点
+- `var up: SIMD3<Float> { get }` -- カメラの上方向ベクトル
+- `var zoomSensitivity: Float` -- スクロールホイールズームの感度
+- `init()` -- デフォルトパラメータで新しい OrbitCamera を作成します。
+- `init(distance: Float, azimuth: Float = 0, elevation: Float = 0.3)` -- カスタム初期設定で新しい OrbitCamera を作成します。
+- `func handleMouseDrag(dx: Float, dy: Float)` -- マウスドラッグの差分を適用してカメラを回転させます。
+- `func handleScroll(delta: Float)` -- スクロール入力を適用してズーム距離を調整します。
+- `func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3)` -- カメラを指定された状態にリセットします。
+- `func update()` -- 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
+
+### `final class ParameterGUI` -- ランタイムでパラメータを調整するための軽量イミディエートモードGUIを提供します。
+
+- `var backgroundColor: Color` -- パネルの背景色
+- `var fillColor: Color` -- スライダーの塗りつぶし色
+- `var fontSize: Float` -- ラベルのフォントサイズ
+- `var isVisible: Bool` -- GUIの表示フラグ
+- `var labelColor: Color` -- ラベルテキストの色
+- `var padding: Float` -- ウィジェット間のスペーシング
+- `var sliderHeight: Float` -- スライダートラックの高さ
+- `var toggleOnColor: Color` -- トグル有効時の色
+- `var toggleSize: Float` -- トグルチェックボックスのサイズ
+- `var trackColor: Color` -- スライダートラックの色
+- `var valueColor: Color` -- 値テキストの色
+- `var widgetWidth: Float` -- 各ウィジェットの幅
+- `var x: Float` -- GUIパネルのX位置
+- `var y: Float` -- GUIパネルのY位置
+- `init()` -- 新しい ParameterGUI インスタンスを作成します。
+- `func begin()` -- GUIレイアウトの新しいフレームを開始します（`draw()` の先頭で呼び出し）。
+- `func colorPicker(_ label: String, _ value: inout Color, canvas: Canvas2D, input: InputManager)` -- R/G/B スライダーで構成されるシンプルなカラーピッカーを描画します。
+- `func drawBackground(canvas: Canvas2D)` -- パネル背景を描画します（`begin()` の後、ウィジェットの前に呼び出し）。
+- `func end() -> (Float, Float, Float, Float)` -- 現在のGUIレイアウトフレームを終了します（`draw()` の末尾で呼び出し）。
+- `func slider(_ label: String, _ value: inout Float, min minVal: Float = 0, max maxVal: Float = 1, canvas: Canvas2D, input: InputManager)` -- スライダーウィジェットを描画し、バインドされた値を更新します。
+- `func toggle(_ label: String, _ value: inout Bool, canvas: Canvas2D, input: InputManager)` -- トグルウィジェットを描画し、バインドされた値を更新します。
+- `func updateInput(input: InputManager)` -- 内部入力トラッキング状態を更新します（各フレームの末尾で呼び出し）。
+
+### `final class ParticleSystem` -- Metal コンピュートシェーダーを使用した GPU ベースパーティクルシステムを駆動します。
+
+- `let count: Int` -- このシステムの最大パーティクル数
+- `var emissionRate: Float` -- パーティクル毎秒の放出レート
+- `var emitter: EmitterShape` -- 新しいパーティクルが放出される形状
+- `var endColor: SIMD4<Float>` -- 寿命の終わりに向けてパーティクルが補間されるカラー
+- `var forces: [ParticleForce] { get }` -- 現在システムに適用されているフォースのリスト
+- `var particleLife: Float` -- 各パーティクルの寿命（秒）
+- `var particleSize: Float` -- 各パーティクルのワールド単位でのサイズ
+- `var startColor: SIMD4<Float>` -- 新しく放出されるパーティクルのカラー
+- `var useIndirectDraw: Bool` -- 生存パーティクルのみをレンダリングする Indirect Draw を有効化（後方互換性のためデフォルト `false`）
+- `func addForce(_ force: ParticleForce)` -- パーティクルシステムにフォースを追加します。
+- `func clearForces()` -- パーティクルシステムから全フォースを削除します。
+- `func setEmitter(_ shape: EmitterShape)` -- パーティクル生成用のエミッター形状を設定します。
+
+### `final class PostEffectContext` -- ポストプロセスエフェクト用のレンダリングインフラを提供します。
+
+- `let commandQueue: any MTLCommandQueue`
+- `let device: any MTLDevice`
+
+### `final class ResourceLoader` -- メインスレッドをブロックせずにリソースを非同期で読み込みます。
+
+- `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
+- `func loadImageAsync(nsImage: NSImage) async throws -> MImage` -- `NSImage` から画像を非同期で読み込みます。
+- `func loadImageAsync(path: String) async throws -> MImage` -- ファイルパスから画像を非同期で読み込みます。
+- `func loadModelAsync(path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます。
+
+### `final class ShaderLibrary` -- Metal シェーダーのコンパイルとキャッシュを管理します。
+
+- `static let blit: String` -- オフスクリーンテクスチャを画面にコンポジットするブリットシェーダー
+- `static let canvas2D: String` -- 2D キャンバスシェーダー
+- `static let canvas2DInstanced: String` -- 2D インスタンスレンダリングシェーダー
+- `static let canvas2DTextured: String` -- 2D キャンバステクスチャ付きシェーダー
+- `static let canvas3D: String` -- 3D キャンバスシェーダー
+- `static let canvas3DInstanced: String` -- 3D インスタンスレンダリングシェーダー
+- `static let canvas3DTextured: String` -- 3D キャンバステクスチャ付きシェーダー
+- `static let flatColor: String` -- フラットカラーシェーダー（ライティングなし）
+- `static let imageFilter: String` -- GPU 画像フィルターシェーダー
+- `static let kawaseBlur: String` -- Kawase ブラーシェーダー
+- `static let lit: String` -- Blinn-Phong / PBR ライティング付きシェーダー
+- `static let merge: String` -- レンダーグラフマージシェーダー
+- `static let particle: String` -- GPU パーティクルシステムシェーダー
+- `static let postProcess: String` -- ポストプロセスエフェクトシェーダー
+- `var preferSourceCompilation: Bool` -- `true` の場合、`.metallib` の代わりに MSL ソース文字列からのコンパイルを強制します。
+- `var registeredKeys: [String] { get }` -- 現在登録されている全ライブラリのキー
+- `var usesPrecompiledMetalLib: Bool { get }` -- プリコンパイル済み `.metallib` バンドルから読み込まれたかどうか
+- `static let vertexColor: String` -- 頂点カラーシェーダー
+- `init(device: any MTLDevice) throws` -- シェーダーライブラリを作成し、全組み込みシェーダーを読み込みます。
+- `func function(named name: String, from key: String) -> (any MTLFunction)?` -- 指定されたライブラリからコンパイル済み Metal 関数を取得します。
+- `func hasLibrary(for key: String) -> Bool` -- 指定されたキーにライブラリが登録されているかどうかを返します。
+- `func invalidateFunctionCache(for key: String)` -- ライブラリ自体を削除せずに、指定ライブラリキーのキャッシュ済み関数をクリアします。
+- `static func loadShaderSource(_ name: String) -> String?` -- バンドルされた .txt リソースファイルから MSL ソース文字列を読み込みます。
+- `func register(library: any MTLLibrary, as key: String)` -- プリコンパイル済み Metal ライブラリを指定されたキーで登録します。
+- `func register(source: String, as key: String) throws` -- MSL ソース文字列をコンパイルし、指定されたキーで登録します。
+- `func registerFromFile(path: String, as key: String) throws` -- ディスクから MSL ソースファイルを読み込み、登録します。
+- `func reload(key: String, source: String) throws` -- MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
+- `func reloadFromFile(key: String, path: String) throws` -- ディスク上のファイルからシェーダーをリロードし、既存ライブラリを置換します。
+
+### `final class SketchWindow` -- マルチウィンドウスケッチ用のセカンダリウィンドウ。
+
+- `let config: SketchWindowConfig` -- ウィンドウ設定。
+- `var context: SketchContext { get }` -- このウィンドウのレンダリングコンテキスト。
+- `var input: InputManager { get }` -- このウィンドウのイベント用入力マネージャ。
+- `var isOpen: Bool { get }` -- このウィンドウが現在開いているかどうか。
+- `var onKeyPressed: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでキーが押された時に呼ばれます。
+- `var onKeyReleased: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでキーが離された時に呼ばれます。
+- `var onMouseClicked: (@MainActor (SketchWindow) -> Void)?` -- マウスクリックが完了した時（ドラッグなしの押下→離し）に呼ばれます。
+- `var onMouseDragged: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでマウスがドラッグされた時に呼ばれます。
+- `var onMouseMoved: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでマウスが移動した時に呼ばれます。
+- `var onMousePressed: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでマウスボタンが押された時に呼ばれます。
+- `var onMouseReleased: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでマウスボタンが離された時に呼ばれます。
+- `var onMouseScrolled: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでスクロールホイールが使用された時に呼ばれます。
+- `func close()` -- このウィンドウを閉じリソースを解放します。
+- `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- クロージャを使用してこのウィンドウに描画します。
+- `func onDraw(_ closure: @MainActor (SketchContext) -> Void)` -- 毎フレーム自動実行される永続的な描画クロージャを設定します。
+
+### `final class Tween<T> where T : Interpolatable` -- イージング関数を使用して値を時間経過で自動的にアニメーションします。
+
+- `var isActive: Bool { get }` -- アニメーションが現在実行中かどうか
+- `var isComplete: Bool { get }` -- アニメーションが完了したかどうか
+- `var value: T { get }` -- 現在の補間値
+- `init(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic)` -- 新しいトゥイーンアニメーションを作成します。
+- `func delay(_ seconds: Float) -> Self` -- アニメーション開始前のディレイを設定します。
+- `func onComplete(_ handler: () -> Void) -> Self` -- アニメーション完了時に呼び出すコールバックを設定します。
+- `func repeatCount(_ n: Int) -> Self` -- アニメーションのリピート回数を設定します（0は無限）。
+- `func reset()` -- アニメーションを初期値のアイドル状態にリセットします。
+- `func start()` -- アニメーションを最初から開始します。
+- `func yoyo() -> Self` -- ヨーヨーモードを有効にします。各サイクルでアニメーション方向が反転します。
+
+### `final class TweenManager` -- トゥイーンのコレクションを管理し、毎フレーム自動更新します。
+
+- `var count: Int { get }` -- 現在登録されているトゥイーンの数
+- `init()`
+- `func add<T>(_ tween: Tween<T>) where T : Interpolatable` -- トゥイーンを自動更新対象として登録します。
+- `func clear()` -- 登録済みのすべてのトゥイーンを削除します。
+- `func update(_ deltaTime: Float)` -- 指定されたデルタタイムで登録済みの全トゥイーンを更新します（毎フレーム1回呼び出し）。
+
+### `final class VignetteEffect` -- エッジを暗くするビネットエフェクトを適用します。
+
+- `var intensity: Float`
+- `let name: String`
+- `var smoothness: Float`
+- `init(intensity: Float = 0.5, smoothness: Float = 0.5)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `typealias EasingFunction = (Float) -> Float` -- t を 0..1 から 0..1 にマッピングするイージング関数の型エイリアス。
+
+### `typealias Vec2 = SIMD2<Float>` -- `SIMD2<Float>` のエイリアスである2次元ベクトル。
+
+### `typealias Vec3 = SIMD3<Float>` -- `SIMD3<Float>` のエイリアスである3次元ベクトル。
+
+## Utility Functions
+
+### Math
+
+- `func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける3次ベジェ曲線上の点を評価します。
+- `func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける3次ベジェ曲線の接線を評価します。
+- `func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float` -- 値を指定された範囲に制約します。
+- `func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける Catmull-Rom スプライン上の点を評価します。
+- `func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける Catmull-Rom スプラインの接線を評価します。
+- `func degrees(_ radians: Float) -> Float` -- ラジアンを度数法に変換します。
+- `func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float` -- 2つの2D点間のユークリッド距離を計算します。
+- `func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float) -> Float` -- 2つの3D点間のユークリッド距離を計算します。
+- `func lerp<T>(_ a: T, _ b: T, _ t: T) -> T where T : FloatingPoint` -- 2つの値の間を線形補間します。
+- `func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float>` -- 2つの2Dベクトルの間を線形補間します。
+- `func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float>` -- 2つの3Dベクトルの間を線形補間します。
+- `func lerp(_ a: SIMD4<Float>, _ b: SIMD4<Float>, _ t: Float) -> SIMD4<Float>` -- 2つの4Dベクトルの間を線形補間します。
+- `func mag(_ x: Float, _ y: Float) -> Float` -- 2Dベクトルの大きさを計算します。
+- `func mag(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3Dベクトルの大きさを計算します。
+- `func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float` -- 値をある範囲から別の範囲にリマップします。
+- `func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float` -- 値を指定された範囲から [0, 1] の範囲に正規化します。
+- `func radians(_ degrees: Float) -> Float` -- 度数法をラジアンに変換します。
+- `func random(_ high: Float) -> Float` -- 0 から指定された上限（上限を含まない）までのランダムな Float 値を返します。
+- `func random(_ low: Float, _ high: Float) -> Float` -- 指定された範囲内のランダムな Float 値を返します。
+- `func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float` -- Box-Muller 変換を使用してガウス（正規）分布に従うランダムな値を返します。
+- `func randomSeed(_ seed: UInt64)` -- 乱数生成器のシードを設定します。
+- `func saturate(_ x: Float) -> Float` -- 値を [0, 1] の範囲にクランプします。
+- `func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float` -- 2つのエッジ間でエルミート補間を行います。
+- `func sq(_ value: Float) -> Float` -- 値の二乗を計算します。
+
+### Easing
+
+- `func ease(_ t: Float, from a: Float, to b: Float, using f: (Float) -> Float) -> Float` -- イージング関数を使用して2つの値の間を補間します。
+- `func easeInBack(_ t: Float) -> Float` -- 加速前に引き戻すバックイーズインカーブを適用します。
+- `func easeInBounce(_ t: Float) -> Float` -- ボールが落下してバウンドするようなバウンスイーズインカーブを適用します。
+- `func easeInCirc(_ t: Float) -> Float` -- 四分円弧に沿って加速する円形イーズインカーブを適用します。
+- `func easeInCubic(_ t: Float) -> Float` -- ゆっくり始まり急激に加速する3次イーズインカーブを適用します。
+- `func easeInElastic(_ t: Float) -> Float` -- 加速前にバネのように振動するエラスティックイーズインカーブを適用します。
+- `func easeInExpo(_ t: Float) -> Float` -- ほぼゼロから指数的に加速する指数イーズインカーブを適用します。
+- `func easeInOutBack(_ t: Float) -> Float` -- 引き戻し、加速、オーバーシュート、収束を行うバックイーズインアウトカーブを適用します。
+- `func easeInOutBounce(_ t: Float) -> Float` -- 遷移の両側でバウンスするバウンスイーズインアウトカーブを適用します。
+- `func easeInOutCirc(_ t: Float) -> Float` -- 半円弧に沿った円形イーズインアウトカーブを適用します。
+- `func easeInOutCubic(_ t: Float) -> Float` -- 滑らかに加速してから減速する3次イーズインアウトカーブを適用します。
+- `func easeInOutElastic(_ t: Float) -> Float` -- 両端でバネ振動を持つエラスティックイーズインアウトカーブを適用します。
+- `func easeInOutExpo(_ t: Float) -> Float` -- 指数的な加速と減速を持つ指数イーズインアウトカーブを適用します。
+- `func easeInOutQuad(_ t: Float) -> Float` -- 加速してから減速する2次イーズインアウトカーブを適用します。
+- `func easeInOutQuart(_ t: Float) -> Float` -- 急勾配で加速してから減速する4次イーズインアウトカーブを適用します。
+- `func easeInOutQuint(_ t: Float) -> Float` -- 強烈に加速してから減速する5次イーズインアウトカーブを適用します。
+- `func easeInOutSine(_ t: Float) -> Float` -- 滑らかに加速・減速する正弦波イーズインアウトカーブを適用します。
+- `func easeInQuad(_ t: Float) -> Float` -- ゆっくり始まり加速する2次イーズインカーブを適用します。
+- `func easeInQuart(_ t: Float) -> Float` -- 非常にゆっくり始まり急勾配で加速する4次イーズインカーブを適用します。
+- `func easeInQuint(_ t: Float) -> Float` -- 極めてゆっくり始まり強烈に加速する5次イーズインカーブを適用します。
+- `func easeInSine(_ t: Float) -> Float` -- コサイン関数を使用してゆっくり始まる正弦波イーズインカーブを適用します。
+- `func easeOutBack(_ t: Float) -> Float` -- 1 を超えてから元に戻るバックイーズアウトカーブを適用します。
+- `func easeOutBounce(_ t: Float) -> Float` -- ボールが弾んで止まるようなバウンスイーズアウトカーブを適用します。
+- `func easeOutCirc(_ t: Float) -> Float` -- 四分円弧に沿って減速する円形イーズアウトカーブを適用します。
+- `func easeOutCubic(_ t: Float) -> Float` -- 速く始まり急激に減速する3次イーズアウトカーブを適用します。
+- `func easeOutElastic(_ t: Float) -> Float` -- オーバーシュートして振動してから収束するエラスティックイーズアウトカーブを適用します。
+- `func easeOutExpo(_ t: Float) -> Float` -- 1に向かって指数的に減速する指数イーズアウトカーブを適用します。
+- `func easeOutQuad(_ t: Float) -> Float` -- 速く始まり減速する2次イーズアウトカーブを適用します。
+- `func easeOutQuart(_ t: Float) -> Float` -- 速く始まり急勾配で減速する4次イーズアウトカーブを適用します。
+- `func easeOutQuint(_ t: Float) -> Float` -- 速く始まり強烈に減速する5次イーズアウトカーブを適用します。
+- `func easeOutSine(_ t: Float) -> Float` -- サイン関数を使用して減速する正弦波イーズアウトカーブを適用します。
+
+### Noise & Waveforms
+
+- `func cosine01(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動するコサイン波を生成します。
+- `func noise(_ x: Float) -> Float` -- 指定された座標で1D Perlin ノイズをサンプリングします。
+- `func noise(_ x: Float, _ y: Float) -> Float` -- 指定された座標で2D Perlin ノイズをサンプリングします。
+- `func noise(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 指定された座標で3D Perlin ノイズをサンプリングします。
+- `func noiseDetail(octaves: Int = 4, falloff: Float = 0.5)` -- オクターブとフォールオフを設定してノイズの詳細度を調整します。
+- `func noiseSeed(_ seed: UInt64)` -- 新しいシード値でノイズ生成器を再初期化します。
+- `func sawtooth(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動するノコギリ波を生成します。
+- `func sine01(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動するサイン波を生成します。
+- `func square(_ time: Double, frequency: Double = 1.0, duty: Double = 0.5) -> Float` -- 0 または 1 を出力する矩形波を生成します。
+- `func triangle(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動する三角波を生成します。
+
+### Color
+
+- `func color(_ gray: Float) -> UInt32` -- グレースケール値を BGRA UInt32 にパックします。
+- `func color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` -- RGB 値を BGRA UInt32 にパックします。
+- `func color(_ r: Float, _ g: Float, _ b: Float, _ a: Float) -> UInt32` -- RGBA 値を BGRA UInt32 にパックします。
+- `func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color` -- 2つのカラーの間を線形補間します。
+
+### Time
+
+- `func day() -> Int` -- 現在の日（1〜31）を返します。
+- `func hour() -> Int` -- 現在の時（0〜23）を返します。
+- `func millis() -> Int` -- スケッチ開始からの経過時間をミリ秒で返します。
+- `func minute() -> Int` -- 現在の分（0〜59）を返します。
+- `func month() -> Int` -- 現在の月（1〜12）を返します。
+- `func second() -> Int` -- 現在の秒（0〜59）を返します。
+- `func year() -> Int` -- 現在の年を返します。
+
+## Constants
+
+- `let ALT: UInt16` -- Alt キーの仮想キーコード（Option のエイリアス）。
+- `let BACKSPACE: UInt16` -- Backspace (Delete) キーの仮想キーコード。
+- `let COMMAND: UInt16` -- Command キーの仮想キーコード。
+- `let CONTROL: UInt16` -- Control キーの仮想キーコード。
+- `let DELETE: UInt16` -- Forward Delete キーの仮想キーコード。
+- `let DOWN: UInt16` -- 下矢印キーの仮想キーコード。
+- `let ENTER: UInt16` -- テンキー Enter キーの仮想キーコード。
+- `let ESCAPE: UInt16` -- Escape キーの仮想キーコード。
+- `let HALF_PI: Float` -- パイの半分（ラジアンでの四分円）。
+- `let LEFT: UInt16` -- 左矢印キーの仮想キーコード。
+- `let OPTION: UInt16` -- Option キーの仮想キーコード。
+- `let PI: Float` -- 円の円周と直径の比率。
+- `let QUARTER_PI: Float` -- パイの4分の1（ラジアンでの八分円）。
+- `let RETURN: UInt16` -- Return キーの仮想キーコード。
+- `let RIGHT: UInt16` -- 右矢印キーの仮想キーコード。
+- `let SHIFT: UInt16` -- Shift キーの仮想キーコード。
+- `let SPACE: UInt16` -- Space キーの仮想キーコード。
+- `let TAB: UInt16` -- Tab キーの仮想キーコード。
+- `let TAU: Float` -- タウ。2パイに等しい（ラジアンでの全円）。
+- `let TWO_PI: Float` -- 2パイ（ラジアンでの全円）。
+- `let UP: UInt16` -- 上矢印キーの仮想キーコード。
+
+## metaphor
+
+### Node
+
+- `func syncFromPhysics(_ body: PhysicsBody2D)` -- 2D物理ボディからこのノードの XY 位置を同期します。
+- `func syncToPhysics(_ body: PhysicsBody2D)` -- このノードの XY 位置を2D物理ボディに書き戻します。
+
+## MetaphorAudio
+
+### `final class AudioAnalyzer` -- マイクまたはライン入力から FFT 解析とビート検出を行います。
+
+- `var beatThreshold: Float` -- ビート検出感度（値が大きいほど検出が鈍くなります）。
+- `var isBeat: Bool { get }` -- ビート検出フラグ（`update()` 呼び出しごとにリセット）。
+- `var smoothing: Float` -- スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
+- `var spectrum: [Float] { get }` -- 正規化された FFT スペクトル（0.0〜1.0）。
+- `var volume: Float { get }` -- RMS 音量レベル（0.0〜1.0）。
+- `var waveform: [Float] { get }` -- 生波形データ。
+- `init(fftSize: Int = 1024)` -- オーディオアナライザーを作成します。
+- `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します。
+- `func bandEnergy(lowFreq: Float, highFreq: Float) -> Float` -- 任意の周波数範囲のエネルギーを返します。
+- `func injectSamples(_ samples: [Float])` -- 外部ソースからサンプルを注入します（SoundFile で使用）。
+- `func start() throws` -- オーディオキャプチャを開始します。
+- `func stop()` -- オーディオキャプチャを停止します。
+- `func update()` -- フレームごとに解析データを更新します（`draw()` の先頭で呼び出してください）。
+
+### `final class SoundFile` -- オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
+
+- `var analysisVolume: Float { get }` -- RMS 音量レベルを返します（解析有効時に利用可能）。
+- `let duration: Double` -- ファイルの総再生時間（秒）を返します。
+- `var isBeat: Bool { get }` -- ビート検出フラグを返します（解析有効時に利用可能）。
+- `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
+- `var isPlaying: Bool { get }` -- ファイルが現在再生中かどうかを示します。
+- `var position: Double { get set }` -- 現在の再生位置（秒）を取得または設定します。
+- `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
+- `var spectrum: [Float] { get }` -- スペクトルデータを返します（解析有効時に利用可能）。
+- `var volume: Float { get set }` -- 再生音量を制御します（0.0〜1.0）。
+- `init(path: String) throws` -- 指定パスからオーディオファイルを読み込みます。
+- `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します（AudioAnalyzer 経由）。
+- `func enableAnalysis(fftSize: Int = 1024)` -- オーディオ出力のスペクトル解析を有効にします。
+- `func loop()` -- ループを有効にして再生を開始します。
+- `func pause()` -- 再生を一時停止します。
+- `func play()` -- 再生を開始します。
+- `func stop()` -- 再生を停止し、先頭に戻します。
+- `func update()` -- 解析データを更新します（`draw()` の先頭で呼び出してください）。
+
+### `enum SoundFileError` -- SoundFile 操作中に発生するエラーを表します。
+
+- `case fileNotFound(String)` -- 指定パスにオーディオファイルが見つからないことを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
+
+## MetaphorCoreImage
+
+### `final class CIFilterEffect` -- プリセットから CoreImage フィルタを適用します。
+
+- `let name: String`
+- `let preset: CIFilterPreset`
+- `init(_ preset: CIFilterPreset)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `enum CIFilterPreset` -- クリエイティブコーディング向けの厳選された CoreImage フィルタプリセットを提供します。
+
+- `case boxBlur(radius: Float = 10)` -- ボックスブラーエフェクトを適用します。
+- `case bump(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)` -- バンプディストーションエフェクトを適用します。
+- `case checkerboard(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)` -- チェッカーボードパターンを生成します。
+- `case ciEdges(intensity: Float = 1)` -- エッジ検出を適用します（CoreImage 版）。
+- `case ciGaussianBlur(radius: Float = 10)` -- ガウシアンブラーを適用します（CoreImage 版）。
+- `case ciPixellate(scale: Float = 8)` -- ピクセレーションエフェクトを適用します（CoreImage 版）。
+- `case circularWrap(center: SIMD2<Float>? = nil, radius: Float = 150, angle: Float = 0)` -- サーキュラーラップディストーションエフェクトを適用します。
+- `case colorPosterize(levels: Float = 6)` -- カラーポスタリゼーションエフェクトを適用します。
+- `case comic` -- コミックブックスタイルのエフェクトを適用します。
+- `case crystallize(radius: Float = 20)` -- クリスタライズエフェクトを適用します。
+- `case discBlur(radius: Float = 8)` -- ディスクブラーエフェクトを適用します。
+- `case falseColor(color0: CIColor = CIColor(red: 0.3, green: 0, blue: 0), color1: CIColor = CIColor(red: 1, green: 0.9, blue: 0.8))` -- フォルスカラーエフェクト（2色グラデーションマッピング）を適用します。
+- `case hexPixellate(center: SIMD2<Float>? = nil, scale: Float = 8)` -- 六角形ピクセレーションエフェクトを適用します。
+- `case kaleidoscope(count: Int = 6, center: SIMD2<Float>? = nil, angle: Float = 0)` -- 万華鏡エフェクトを適用します。
+- `case motionBlur(radius: Float = 20, angle: Float = 0)` -- モーションブラーエフェクトを適用します。
+- `case photoEffectChrome` -- クロームフォトエフェクトを適用します。
+- `case photoEffectFade` -- フェードフォトエフェクトを適用します。
+- `case photoEffectMono` -- モノクロフォトエフェクトを適用します。
+- `case photoEffectNoir` -- ノワールフォトエフェクトを適用します。
+- `case pinch(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)` -- ピンチディストーションエフェクトを適用します。
+- `case pointillize(center: SIMD2<Float>? = nil, radius: Float = 20)` -- 点描エフェクトを適用します。
+- `case starShine(center: SIMD2<Float>? = nil, color: CIColor = .white, radius: Float = 50, crossScale: Float = 15, crossAngle: Float = 0.6, crossOpacity: Float = -2, crossWidth: Float = 2.5, epsilon: Float = -2)` -- スターシャインエフェクトを生成します。
+- `case stripes(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)` -- ストライプパターンを生成します。
+- `case sunbeams(center: SIMD2<Float>? = nil, color: CIColor = .white, sunRadius: Float = 40, maxStriationRadius: Float = 2.58, striationStrength: Float = 0.5, striationContrast: Float = 1.375, time: Float = 0)` -- サンビームエフェクトを生成します。
+- `case triangleKaleidoscope(point: SIMD2<Float>? = nil, size: Float = 700, rotation: Float = 5.924, decay: Float = 0.85)` -- トライアングル万華鏡エフェクトを適用します。
+- `case twirl(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = .pi)` -- ツイストディストーションエフェクトを適用します。
+- `case vortex(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = 56.55)` -- ボルテックスディストーションエフェクトを適用します。
+- `case zoomBlur(center: SIMD2<Float>? = nil, amount: Float = 20)` -- ズームブラーエフェクトを適用します。
+- `var filterName: String { get }` -- このプリセットの CIFilter 名文字列を返します。
+- `func parameters(textureSize: CGSize) -> [String : Any]` -- テクスチャサイズに基づいてこのプリセットのパラメータ辞書を返します。
+
+### `final class CIFilterRawEffect` -- フィルタ名とパラメータ辞書を直接指定して CoreImage フィルタを適用します。
+
+- `let filterName: String`
+- `let name: String`
+- `let parameters: [String : CIFilterValue]`
+- `init(name: String, parameters: [String : CIFilterValue])`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `enum CIFilterValue` -- CoreImage フィルタパラメータ値を Sendable 安全なコンテナでラップします。
+
+- `case bool(Bool)`
+- `case double(Double)`
+- `case float(Float)`
+- `case int(Int)`
+- `case string(String)`
+- `case vector(SIMD4<Float>)`
+- `var anyValue: Any { get }` -- CIFilter に渡すのに適した `Any` 値に変換します。
+
+### `final class CIFilterWrapper` -- CoreImage フィルタを Metal テクスチャに直接適用するラッパー。
+
+- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
+- `func apply(filterName: String, parameters: [String : Any], source: any MTLTexture, destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- CIFilter 操作をコマンドバッファ内でソースからデスティネーションにエンコードします。
+- `func apply(filterName: String, parameters: [String : Any], to image: MImage)` -- CIFilter を MImage にインプレースで適用します。
+- `func generate(filterName: String, parameters: [String : Any], width: Int, height: Int) -> (any MTLTexture)?` -- ジェネレーターフィルタ（入力画像不要）を使用して MTLTexture を生成します。
+- `func invalidateTextures()` -- キャッシュ済みテクスチャをすべて無効化・解放します。
+
+## MetaphorML
+
+### `final class MLTextureConverter` -- MTLTexture、CVPixelBuffer、CGImage 間の変換ユーティリティを提供します。
+
+- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
+- `func cgImage(from texture: any MTLTexture) -> CGImage?` -- MTLTexture を CGImage に変換します。
+- `func pixelBuffer(from texture: any MTLTexture) -> CVPixelBuffer?` -- MTLTexture をコピーベースのアプローチで CVPixelBuffer に変換します。
+- `func texture(from pixelBuffer: CVPixelBuffer) -> (any MTLTexture)?` -- CVPixelBuffer をゼロコピーの Metal テクスチャキャッシュを使用して MTLTexture に変換します。
+- `func texture(from cgImage: CGImage) -> (any MTLTexture)?` -- CGImage を MTLTexture に変換します。
+- `func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> (any MTLTexture)?` -- 2D MLMultiArray（グレースケール）を MTLTexture に変換します。
+
+## MetaphorMPS
+
+### `final class MPSBlurEffect` -- MPS ハードウェア最適化ガウシアンブラーを適用します。
+
+- `let name: String`
+- `var sigma: Float`
+- `init(sigma: Float)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class MPSDilateEffect` -- MPS モルフォロジー膨張を適用します。
+
+- `let name: String`
+- `var radius: Int`
+- `init(radius: Int = 1)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class MPSErodeEffect` -- MPS モルフォロジー収縮を適用します。
+
+- `let name: String`
+- `var radius: Int`
+- `init(radius: Int = 1)`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class MPSImageFilterWrapper` -- Metal Performance Shaders を使用したハードウェア最適化画像フィルタを提供します。
+
+- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
+- `func clearCache()` -- キャッシュ済みの MPS カーネルとテクスチャをすべてクリアします。
+- `func dilate(_ image: MImage, radius: Int = 1)` -- モルフォロジー膨張（エリアマックス）を画像に適用します。
+- `func erode(_ image: MImage, radius: Int = 1)` -- モルフォロジー収縮（エリアミン）を画像に適用します。
+- `func gaussianBlur(_ image: MImage, sigma: Float)` -- ハードウェア最適化されたガウシアンブラーを画像に適用します。
+- `func laplacian(_ image: MImage)` -- ラプラシアンフィルタを画像に適用します。
+- `func median(_ image: MImage, diameter: Int = 3)` -- メディアンフィルタを画像に適用します。
+- `func sobel(_ image: MImage)` -- Sobel エッジ検出を画像に適用します。
+- `func threshold(_ image: MImage, value: Float = 0.5)` -- バイナリ閾値処理を画像に適用します。
+
+### `final class MPSRayTracer` -- Metal ネイティブレイトレーシングシステムを提供します。
+
+- `var outputTexture: (any MTLTexture)? { get }` -- レイトレーシング結果テクスチャを返します。
+- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue, width: Int, height: Int) throws`
+- `func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4)` -- レイトレーシングシーンにダイナミックメッシュを追加します。
+- `func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4)` -- レイトレーシングシーンにメッシュを追加します。
+- `func buildAccelerationStructure() throws` -- 追加されたすべてのメッシュからアクセラレーション構造を構築します。
+- `func clearScene()` -- シーンからすべてのメッシュをクリアし、アクセラレーション構造をリセットします。
+- `func trace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float))` -- 指定モードとカメラパラメータでレイトレーシングを実行します。
+
+### `final class MPSSobelEffect` -- MPS Sobel エッジ検出を適用します。
+
+- `let name: String`
+- `init()`
+- `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `enum RayTraceMode` -- レイトレーシングのレンダリングモードを表します。
+
+- `case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)` -- 設定可能なサンプル数と半径によるアンビエントオクルージョン。
+- `case diffuse` -- シンプルなディフューズシェーディング。
+- `case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)` -- 平行光源からのソフトシャドウ。
+
+## MetaphorNetwork
+
+### `final class MIDIManager`
+
+- `init()` -- MIDI マネージャーを作成します。
+- `func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8` -- 生の CC 値を返します（0〜127）。
+- `func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float` -- 正規化された CC 値を返します（0.0〜1.0）。
+- `func isNoteActive(_ note: UInt8, channel: UInt8 = 0) -> Bool` -- ノートが現在押されているかどうかを確認します。
+- `func onControlChange(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Control Change コールバックを登録します。
+- `func onNoteOff(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Note Off コールバックを登録します。
+- `func onNoteOn(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Note On コールバックを登録します。
+- `func poll() -> [MIDIMessage]` -- 受信したメッセージをポーリングし、登録済みコールバックを呼び出します。
+- `func sendControlChange(cc: UInt8, value: UInt8, channel: UInt8 = 0)` -- Control Change メッセージを送信します。
+- `func sendNoteOff(note: UInt8, velocity: UInt8 = 0, channel: UInt8 = 0)` -- Note Off メッセージを送信します。
+- `func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0)` -- Note On メッセージを送信します。
+- `func start()` -- MIDI 入出力を開始します。
+- `func stop()` -- MIDI 入出力を停止します。
+
+### `struct MIDIMessage` -- 単一の MIDI メッセージを表します。
+
+- `let channel: UInt8` -- MIDI チャンネル（0-15）。
+- `var controlNumber: UInt8 { get }` -- CC 番号を返します（Control Change メッセージ用）。
+- `var controlValue: UInt8 { get }` -- CC 値を返します（Control Change メッセージ用、0-127）。
+- `let data1: UInt8` -- 第1データバイト（ノート番号または CC 番号）。
+- `let data2: UInt8` -- 第2データバイト（ベロシティまたは CC 値）。
+- `var isControlChange: Bool { get }` -- Control Change メッセージかどうかを示します。
+- `var isNoteOff: Bool { get }` -- Note Off メッセージかどうかを示します。
+- `var isNoteOn: Bool { get }` -- Note On メッセージかどうかを示します。
+- `var isPitchBend: Bool { get }` -- Pitch Bend メッセージかどうかを示します。
+- `var isProgramChange: Bool { get }` -- Program Change メッセージかどうかを示します。
+- `var normalizedControlValue: Float { get }` -- CC 値を 0.0〜1.0 に正規化して返します。
+- `var note: UInt8 { get }` -- ノート番号を返します（Note On / Note Off メッセージ用）。
+- `var pitchBendValue: Int16 { get }` -- ピッチベンド値を返します（-8192〜8191）。
+- `let status: UInt8` -- ステータスバイト（上位4ビット: メッセージタイプ、下位4ビット: チャンネル）。
+- `let timestamp: UInt64` -- メッセージのタイムスタンプ。
+- `var velocity: UInt8 { get }` -- ベロシティを返します（Note On / Note Off メッセージ用）。
+- `init(status: UInt8, channel: UInt8, data1: UInt8, data2: UInt8, timestamp: UInt64 = 0)` -- MIDI メッセージを作成します。
+
+### `enum MIDIMessageType` -- ステータスバイトによる MIDI メッセージタイプの定義。
+
+- `case channelPressure`
+- `case controlChange`
+- `case noteOff`
+- `case noteOn`
+- `case pitchBend`
+- `case polyPressure`
+- `case programChange`
+- `var hashValue: Int { get }`
+- `init?(rawValue: UInt8)`
+- `func hash(into hasher: inout Hasher)`
+
+### `final class OSCReceiver` -- Network.framework を使用して UDP OSC メッセージを受信します。
+
+- `let port: UInt16` -- リスニングポート番号を返します。
+- `init(port: UInt16)` -- OSC レシーバーを作成します。
+- `func on(_ address: String, handler: ([OSCValue]) -> Void)` -- 特定の OSC アドレスパターンに対するハンドラーを登録します。
+- `func onAny(handler: (String, [OSCValue]) -> Void)` -- すべてのメッセージを受信するワイルドカードハンドラーを登録します。
+- `func poll()` -- キュー内のメッセージをメインスレッドでディスパッチします（`draw()` 内で呼び出してください）。
+- `func start() throws` -- 受信 OSC メッセージのリスニングを開始します。
+- `func stop()` -- OSC メッセージのリスニングを停止します。
+
+### `enum OSCReceiverError` -- OSC レシーバー操作中に発生するエラーを表します。
+
+- `case invalidPort(UInt16)` -- 指定されたポートが無効であることを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
+
+### `enum OSCValue` -- OSC メッセージ内の値を表します。
+
+- `case blob(Data)`
+- `case float(Float)`
+- `case int(Int32)`
+- `case string(String)`
+
+## MetaphorNoise
+
+### `final class GKNoiseWrapper` -- GameplayKit ノイズシステムをラップし、プロシージャルノイズ生成を提供します。
+
+- `var config: NoiseConfig { get set }` -- ノイズ設定にアクセスまたは変更します。
+- `let type: NoiseType` -- ノイズタイプを返します。
+- `init(type: NoiseType, config: NoiseConfig = NoiseConfig(), device: any MTLDevice)`
+- `func add(_ other: GKNoiseWrapper)` -- 別のノイズソースを加算して合成します。
+- `func applyAbsoluteValue()` -- 出力に絶対値を適用します。
+- `func applyTurbulence(frequency: Double, power: Double, roughness: Int, seed: Int32)` -- ノイズにタービュレンスディストーションを適用します。
+- `func clamp(min: Double, max: Double)` -- 出力値を範囲内にクランプします。
+- `func colorMappedTexture(width: Int, height: Int, colorStops: [(Float, SIMD4<UInt8>)]) -> (any MTLTexture)?` -- グラデーションストップを使用してカラーマップされたノイズテクスチャを生成します。
+- `func image(width: Int, height: Int) -> MImage?` -- ノイズ画像を生成します。
+- `func invert()` -- 出力値を反転します。
+- `func multiply(_ other: GKNoiseWrapper)` -- 別のノイズソースを乗算して合成します。
+- `func raiseToPower(_ exponent: Double)` -- 出力値を指数で累乗します。
+- `func sample(x: Float, y: Float) -> Float` -- 2Dポイントでのノイズ値をサンプリングします。
+- `func sample(x: Double, y: Double) -> Float` -- 2Dポイントでのノイズ値をサンプリングします（Double 精度入力）。
+- `func sampleGrid(width: Int, height: Int) -> [Float]` -- ノイズ値を2Dグリッドとして生成します。
+- `func texture(width: Int, height: Int) -> (any MTLTexture)?` -- グレースケール BGRA8 ノイズテクスチャを生成します。
+
+### `struct NoiseConfig` -- GKNoise 生成のパラメータを設定します。
+
+- `var frequency: Double` -- 基本周波数（デフォルトは1.0）。
+- `var lacunarity: Double` -- ラクナリティ（オクターブ間の周波数乗数、デフォルトは2.0）。
+- `var normalized: Bool` -- 出力正規化の有効化（0.0〜1.0 にリマップ）。
+- `var octaves: Int` -- フラクタルオクターブ数（デフォルトは6）。
+- `var origin: SIMD2<Double>` -- サンプリングオフセット。
+- `var persistence: Double` -- オクターブごとの振幅減衰率（パーシステンス、デフォルトは0.5）。
+- `var sampleScale: SIMD2<Double>` -- サンプリングスケール（noiseMap の sampleSize にマッピング）。
+- `var seed: Int32` -- ノイズジェネレーターのシード値。
+- `var voronoiDistanceEnabled: Bool` -- Voronoi 固有: 距離をノイズ値として使用。
+- `init(octaves: Int = 6, frequency: Double = 1.0, lacunarity: Double = 2.0, seed: Int32 = 0, persistence: Double = 0.5, normalized: Bool = true, voronoiDistanceEnabled: Bool = true, sampleScale: SIMD2<Double> = SIMD2(1.0, 1.0), origin: SIMD2<Double> = .zero)` -- 指定パラメータでノイズ設定を作成します。
+
+### `enum NoiseType` -- 利用可能な GameplayKit ノイズアルゴリズムを定義します。
+
+- `case billow` -- Billow ノイズ（柔らかい雲のようなパターン）。
+- `case checkerboard` -- チェッカーボードパターン。
+- `case constant(value: Double)` -- 定数値ノイズ。
+- `case cylinders` -- 同心円シリンダーパターン。
+- `case perlin` -- パーリンノイズ（GKPerlinNoiseSource ベース）。
+- `case ridged` -- Ridged マルチフラクタルノイズ（山岳地形、稲妻パターン）。
+- `case spheres` -- 同心球パターン。
+- `case voronoi` -- Voronoi / Worley ノイズ（セルパターン、有機的テクスチャ）。
+
+## MetaphorPhysics
+
+### `final class Physics2D` -- Verlet 積分を使用した2D物理ワールドを管理します。
+
+- `var bodies: [PhysicsBody2D] { get }` -- 現在ワールド内にある物理ボディのリスト。
+- `var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?` -- すべてのボディを制限範囲内に閉じ込めるオプションのバウンディングボックス。
+- `var constraints: [PhysicsConstraint2D] { get }` -- 現在ワールド内にある拘束のリスト。
+- `init(cellSize: Float = 50)` -- 新しい2D物理ワールドを作成します。
+- `func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D` -- 円形の物理ボディをワールドに追加します。
+- `func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D` -- 2つのボディ間に距離拘束を追加します。
+- `func addGravity(_ x: Float, _ y: Float)` -- 各ステップですべてのボディに適用されるグローバル重力加速度を設定します。
+- `func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D` -- 矩形の物理ボディをワールドに追加します。
+- `func clear()` -- すべてのボディと拘束をワールドから削除します。
+- `func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D` -- ボディをワールド空間の固定位置にピン留めします。
+- `func removeBody(_ body: PhysicsBody2D)` -- ボディとそれを参照するすべての拘束をワールドから削除します。
+- `func removeConstraint(_ constraint: PhysicsConstraint2D)` -- 特定の拘束をワールドから削除します。
+- `func step(_ dt: Float, iterations: Int = 4)` -- シミュレーションを1タイムステップ進めます。
+
+### `final class PhysicsBody2D` -- Verlet 積分でシミュレートされる単一の2D剛体を表します。
+
+- `var acceleration: SIMD2<Float>` -- 現在のステップで蓄積された加速度。積分後にクリアされます。
+- `var friction: Float` -- 接触時に適用される摩擦係数。
+- `var isStatic: Bool` -- ボディが静的（不動）かどうかを示します。
+- `var mass: Float` -- 力の適用と衝突重み付けに使用されるボディの質量。
+- `var position: SIMD2<Float>` -- ワールド空間におけるボディの現在位置。
+- `var previousPosition: SIMD2<Float>` -- Verlet 積分で使用される前回タイムステップのボディ位置。
+- `var restitution: Float` -- 反発係数（弾性）。範囲は [0, 1]。
+- `let shape: PhysicsShape2D` -- ボディの衝突形状。
+- `var velocity: SIMD2<Float> { get }` -- Verlet 位置差分から導出されるボディの現在速度。
+- `init(x: Float, y: Float, shape: PhysicsShape2D, mass: Float = 1.0)` -- 指定位置・形状・質量で新しい物理ボディを作成します。
+- `func applyForce(_ force: SIMD2<Float>)` -- ボディに力を適用し、F/m で加速度に変換します。
+
+### `final class PhysicsConstraint2D` -- 2つの物理ボディ間、またはボディとワールド固定点間の拘束を表します。
+
+- `let bodyA: PhysicsBody2D` -- この拘束に関与する1つ目（または唯一）のボディ。
+- `let bodyB: PhysicsBody2D?` -- 2つ目のボディ。ワールドへのピン拘束の場合は `nil`。
+- `let pinPosition: SIMD2<Float>?` -- ワールド空間のピン位置。距離拘束の場合は `nil`。
+- `var stiffness: Float` -- 拘束の剛性。範囲は [0, 1]。
+- `let targetDistance: Float` -- 2つのボディ間で維持する目標距離。
+- `init(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil)` -- 2つのボディ間に距離拘束を作成します。
+- `init(pin body: PhysicsBody2D, x: Float, y: Float)` -- ボディをワールド空間の固定位置にアンカーするピン拘束を作成します。
+
+### `enum PhysicsShape2D` -- 2D物理ボディの衝突形状を表します。
+
+- `case circle(radius: Float)` -- 指定半径の円。
+- `case rect(width: Float, height: Float)` -- 指定幅・高さの軸整列矩形。
+
+### `final class SpatialHash2D` -- 均一な空間ハッシュグリッドを使用したブロードフェーズ衝突検出を提供します。
+
+- `init(cellSize: Float = 50)` -- 指定セルサイズで新しい空間ハッシュを作成します。
+
+## MetaphorRenderGraph
+
+### `final class EffectPass` -- 上流レンダーパスの出力にポストプロセスエフェクトチェーンを適用します。
+
+- `var effects: [any PostEffect] { get set }` -- 適用するポストプロセスエフェクトのチェーン。
+- `let label: String` -- このエフェクトパスを識別するデバッグラベル。
+- `var output: (any MTLTexture)?` -- エフェクト適用後の出力テクスチャ。
+- `init(_ input: any RenderPassNode, effects: [any PostEffect], device: any MTLDevice, commandQueue: any MTLCommandQueue, shaderLibrary: ShaderLibrary) throws` -- 上流ノードの出力を処理する新しいエフェクトパスを作成します。
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- 入力パスを実行し、その出力にエフェクトチェーンを適用します。
+
+### `final class MergePass` -- 2つの上流レンダーパスの出力を1つのテクスチャにブレンドします。
+
+- `case add` -- 加算ブレンディング（A + B）。
+- `case alpha` -- アルファ合成（B over A）。
+- `case multiply` -- 乗算ブレンディング（A * B）。
+- `case screen` -- スクリーンブレンディング（1 - (1-A) * (1-B)）。
+- `var blendType: MergePass.BlendType` -- 合成に使用するブレンドモード。実行時に変更可能です。
+- `var hashValue: Int { get }`
+- `let label: String` -- このマージパスを識別するデバッグラベル。
+- `var output: (any MTLTexture)?` -- 両入力をマージした後の出力テクスチャ。
+- `init(_ a: any RenderPassNode, _ b: any RenderPassNode, blend: MergePass.BlendType, device: any MTLDevice, shaderLibrary: ShaderLibrary) throws` -- 2つの上流パスをブレンドする新しいマージパスを作成します。
+- `init?(rawValue: String)`
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- 両方の入力パスを実行し、ブレンドモードを使用して出力をマージします。
+- `func hash(into hasher: inout Hasher)`
+
+### `final class RenderGraph` -- マルチパスレンダリングのためのレンダーパスの有向非巡回グラフを管理します。
+
+- `let root: any RenderPassNode` -- 最終出力テクスチャを提供するグラフのルートノード。
+- `init(root: any RenderPassNode)` -- 指定ルートノードで新しいレンダーグラフを作成します。
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> (any MTLTexture)?` -- グラフ全体を実行し、最終出力テクスチャを返します。
+
+### `protocol RenderPassNode : AnyObject` -- ``RenderGraph`` 内のノードのインターフェースを定義します。
+
+- `var label: String { get }` -- このノードを識別するデバッグラベル。
+- `var output: (any MTLTexture)? { get }` -- 実行後に生成される出力テクスチャ。未実行の場合は `nil`。
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- このノードのレンダリング処理を実行し、``output`` テクスチャを生成します。
+
+### `final class SourcePass` -- ユーザーコードがコンテンツを描画するオフスクリーンレンダーターゲットを提供します。
+
+- `let label: String` -- このソースパスを識別するデバッグラベル。
+- `var onDraw: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- 実行時に呼び出される描画コールバック。
+- `var output: (any MTLTexture)? { get }` -- このパスで生成される出力カラーテクスチャ。
+- `init(label: String, device: any MTLDevice, width: Int, height: Int, sampleCount: Int = 1) throws` -- 専用オフスクリーンレンダーターゲットで新しいソースパスを作成します。
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- レンダーエンコーダーを作成し、描画コールバックを呼び出してソースパスを実行します。
+
+## MetaphorSceneGraph
+
+### `struct AABB` -- フラスタムカリング用の軸整列バウンディングボックス。
+
+- `var center: SIMD3<Float> { get }` -- バウンディングボックスの中心。
+- `var extents: SIMD3<Float> { get }` -- 各軸に沿ったハーフエクステント（半分のサイズ）。
+- `var max: SIMD3<Float>` -- バウンディングボックスの最大コーナー。
+- `var min: SIMD3<Float>` -- バウンディングボックスの最小コーナー。
+- `init(min: SIMD3<Float>, max: SIMD3<Float>)` -- 指定した最小・最大コーナーで AABB を作成します。
+- `func intersects(frustum planes: [SIMD4<Float>]) -> Bool` -- この AABB が指定フラスタム平面の外側にあるかテストします。
+- `func transformed(by matrix: float4x4) -> AABB` -- この AABB を 4x4 行列で変換し、新しい（より大きい）AABB を生成します。
+
+### `final class Node` -- 階層的なシーングラフのノードを表します。
+
+- `var bounds: AABB?` -- フラスタムカリング用のオプションのバウンディングボックス（ローカル空間）。
+- `var children: [Node] { get }` -- 順序付き子ノードのリスト。
+- `var fillColor: Color?` -- メッシュのレンダリング時に適用するオプションのフィルカラー。
+- `var forward: SIMD3<Float> { get }` -- ワールド空間での前方向ベクトル（負の Z）。
+- `var isVisible: Bool` -- ノードとその子をレンダリングするかどうかを示します。
+- `var localTransform: float4x4 { get }` -- position、orientation、scale からのローカルトランスフォーム行列（キャッシュ済み）。
+- `var mesh: Mesh?` -- このノードの位置に描画するオプションのメッシュ。
+- `var name: String` -- このノードの名前。識別と検索に使用します。
+- `var onDraw: (() -> Void)?` -- シーントラバーサル中に呼び出されるオプションのカスタム描画コールバック。
+- `var orientation: simd_quatf { get set }` -- クォータニオンとしてのノードのローカル向き。
+- `weak var parent: Node? { get }` -- 親ノード。ルートの場合は `nil`。
+- `var position: SIMD3<Float> { get set }` -- 親に対するノードのローカル位置。
+- `var right: SIMD3<Float> { get }` -- ワールド空間での右方向ベクトル（正の X）。
+- `var scale: SIMD3<Float> { get set }` -- 各軸に沿ったノードのローカルスケール。
+- `var up: SIMD3<Float> { get }` -- ワールド空間での上方向ベクトル（正の Y）。
+- `var worldBounds: AABB? { get }` -- ローカル bounds とワールドトランスフォームから計算されるワールド空間のバウンディングボックス。
+- `var worldOrientation: simd_quatf { get }` -- ワールド空間での向き（親 + ローカルクォータニオンの合成）。
+- `var worldTransform: float4x4 { get }` -- すべての祖先トランスフォームを合成したワールドトランスフォーム（キャッシュ済み）。
+- `init(name: String = "")` -- 指定名で新しいノードを作成します。
+- `func addChild(_ child: Node)` -- このノードに子ノードを追加します。
+- `func find(_ name: String) -> Node?` -- 深さ優先探索で名前から子孫ノードを検索します。
+- `func lookAt(_ target: SIMD3<Float>, worldUp: SIMD3<Float> = SIMD3(0, 1, 0))` -- このノードを指定ワールド空間ターゲットに向けます。
+- `func removeAllChildren()` -- このノードからすべての子を削除します。
+- `func removeChild(_ child: Node)` -- このノードから子ノードを削除します。
+- `func rotate(by rotation: simd_quatf)` -- 現在の向きに対してクォータニオンで相対的にノードを回転させます。
+- `func setRotation(x: Float = 0, y: Float = 0, z: Float = 0)` -- オイラー角から回転を設定します（便利メソッド）。
+
+### `final class SceneRenderer` -- `Canvas3D` インスタンスを使用してシーングラフツリーをレンダリングします。
+
+- `static var frustumPlanes: [SIMD4<Float>]?` -- カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
+- `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
+- `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+
+---
+*Auto-generated from symbol graphs. Do not edit manually.*
