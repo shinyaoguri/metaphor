@@ -73,9 +73,9 @@ public final class MIDIManager {
 
     // MARK: - コールバック
 
-    private var noteOnHandler: ((UInt8, UInt8, UInt8) -> Void)?
-    private var noteOffHandler: ((UInt8, UInt8, UInt8) -> Void)?
-    private var controlChangeHandler: ((UInt8, UInt8, UInt8) -> Void)?
+    private var noteOnHandler: ((_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void)?
+    private var noteOffHandler: ((_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void)?
+    private var controlChangeHandler: ((_ channel: UInt8, _ cc: UInt8, _ value: UInt8) -> Void)?
 
     // MARK: - 初期化
 
@@ -185,19 +185,19 @@ public final class MIDIManager {
 
     /// Note On コールバックを登録します。
     /// - Parameter handler: (channel, note, velocity) で呼び出されるクロージャ。
-    public func onNoteOn(_ handler: @escaping (UInt8, UInt8, UInt8) -> Void) {
+    public func onNoteOn(_ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void) {
         noteOnHandler = handler
     }
 
     /// Note Off コールバックを登録します。
     /// - Parameter handler: (channel, note, velocity) で呼び出されるクロージャ。
-    public func onNoteOff(_ handler: @escaping (UInt8, UInt8, UInt8) -> Void) {
+    public func onNoteOff(_ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void) {
         noteOffHandler = handler
     }
 
     /// Control Change コールバックを登録します。
     /// - Parameter handler: (channel, cc, value) で呼び出されるクロージャ。
-    public func onControlChange(_ handler: @escaping (UInt8, UInt8, UInt8) -> Void) {
+    public func onControlChange(_ handler: @escaping (_ channel: UInt8, _ cc: UInt8, _ value: UInt8) -> Void) {
         controlChangeHandler = handler
     }
 

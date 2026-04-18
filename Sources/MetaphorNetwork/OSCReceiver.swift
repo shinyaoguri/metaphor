@@ -14,9 +14,11 @@ public enum OSCValue: Sendable {
 
 // MARK: - OSC メッセージ（内部）
 
-struct OSCMessage: Sendable {
-    let address: String
-    let values: [OSCValue]
+public struct OSCMessage: Sendable {
+    /// OSC アドレスパターン（例: "/synth/freq"）。
+    public let address: String
+    /// メッセージに含まれる値のリスト。
+    public let values: [OSCValue]
 }
 
 // MARK: - スレッドセーフなメッセージキュー
@@ -186,7 +188,9 @@ public final class OSCReceiver {
     }
 
     /// キュー内のメッセージをメインスレッドでディスパッチします（`draw()` 内で呼び出してください）。
-    public func poll() {
+    /// - Returns: 受信した OSC メッセージの配列。
+    @discardableResult
+    public func poll() -> [OSCMessage] {
         let messages = messageQueue.dequeueAll()
         for msg in messages {
             wildcardHandler?(msg.address, msg.values)
@@ -194,6 +198,7 @@ public final class OSCReceiver {
                 handler(msg.values)
             }
         }
+        return messages
     }
 
     // MARK: - プライベート: ネットワーク受信

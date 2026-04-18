@@ -46,7 +46,7 @@ struct Physics2DTests {
     @Test("Gravity affects body position")
     func gravityEffect() {
         let physics = Physics2D()
-        physics.addGravity(0, 100)
+        physics.setGravity(0, 100)
         let body = physics.addCircle(x: 0, y: 0, radius: 10)
         body.isStatic = false
 
@@ -85,7 +85,7 @@ struct Physics2DTests {
     @Test("static body does not move under gravity")
     func staticBodyNoMove() {
         let physics = Physics2D()
-        physics.addGravity(0, 100)
+        physics.setGravity(0, 100)
         let body = physics.addCircle(x: 50, y: 50, radius: 10)
         body.isStatic = true
 
@@ -137,7 +137,7 @@ struct Physics2DTests {
     @Test("multiple substeps")
     func multipleSubsteps() {
         let physics = Physics2D()
-        physics.addGravity(0, 100)
+        physics.setGravity(0, 100)
         let body = physics.addCircle(x: 0, y: 0, radius: 10)
         body.isStatic = false
 

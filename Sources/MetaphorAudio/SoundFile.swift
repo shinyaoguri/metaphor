@@ -78,10 +78,17 @@ public final class SoundFile {
     /// ファイルの総再生時間（秒）を返します。
     public let duration: Double
 
-    /// 再生音量を制御します（0.0〜1.0）。
-    public var volume: Float {
+    /// 再生ゲインを制御します（0.0〜1.0）。
+    public var gain: Float {
         get { audioEngine.playerNode.volume }
         set { audioEngine.playerNode.volume = max(0, min(1, newValue)) }
+    }
+
+    /// ``gain`` の旧名。
+    @available(*, deprecated, renamed: "gain")
+    public var volume: Float {
+        get { gain }
+        set { gain = newValue }
     }
 
     /// 再生速度を制御します（0.25〜4.0）。

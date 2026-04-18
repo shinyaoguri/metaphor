@@ -77,12 +77,17 @@ extension Sketch {
     ///   - upX: 上方向ベクトルの x 成分。
     ///   - upY: 上方向ベクトルの y 成分。
     ///   - upZ: 上方向ベクトルの z 成分。
+    @available(*, deprecated, message: "Use camera(eye:center:up:) with SIMD3 instead")
     public func camera(
         _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
         _ centerX: Float, _ centerY: Float, _ centerZ: Float,
         _ upX: Float, _ upY: Float, _ upZ: Float
     ) {
-        context.camera(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ)
+        context.camera(
+            eye: SIMD3(eyeX, eyeY, eyeZ),
+            center: SIMD3(centerX, centerY, centerZ),
+            up: SIMD3(upX, upY, upZ)
+        )
     }
 
     /// 透視投影を設定します。

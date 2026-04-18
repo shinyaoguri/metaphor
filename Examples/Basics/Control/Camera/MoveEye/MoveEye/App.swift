@@ -8,7 +8,7 @@ final class MoveEye: Sketch {
         ambientLight(128, 128, 128)
         directionalLight(0, 0, -1, color: Color(gray: 128.0/255))
         background(0)
-        camera(30, mouseY, 220, 0, 0, 0, 0, 1, 0)
+        camera(eye: SIMD3(30, mouseY, 220), center: SIMD3(0, 0, 0))
         noStroke()
         box(90)
         stroke(255)

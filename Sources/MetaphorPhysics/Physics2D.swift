@@ -8,7 +8,7 @@ import simd
 ///
 /// ```swift
 /// let world = Physics2D(cellSize: 50)
-/// world.addGravity(0, 980)
+/// world.setGravity(0, 980)
 /// let ball = world.addCircle(x: 100, y: 100, radius: 20)
 /// world.step(1.0 / 60.0)
 /// ```
@@ -79,8 +79,14 @@ public final class Physics2D {
     /// - Parameters:
     ///   - x: 重力ベクトルの水平成分。
     ///   - y: 重力ベクトルの垂直成分。
-    public func addGravity(_ x: Float, _ y: Float) {
+    public func setGravity(_ x: Float, _ y: Float) {
         gravity = SIMD2(x, y)
+    }
+
+    /// ``setGravity(_:_:)`` の旧名。
+    @available(*, deprecated, renamed: "setGravity(_:_:)")
+    public func addGravity(_ x: Float, _ y: Float) {
+        setGravity(x, y)
     }
 
     // MARK: - 拘束

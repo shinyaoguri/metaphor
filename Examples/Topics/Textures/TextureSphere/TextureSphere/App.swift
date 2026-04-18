@@ -75,7 +75,7 @@ final class TextureSphere: Sketch {
         let cx = width / 2 + map(mouseX, 0, width, -2 * width, 2 * width)
         let cy = height / 2 + map(mouseY, 0, height, -height, height)
         let cz = height / 2 / tan(.pi * 30.0 / 180.0)
-        camera(cx, cy, cz, width, height / 2, 0, 0, 1, 0)
+        camera(eye: SIMD3(cx, cy, cz), center: SIMD3(width, height / 2, 0))
 
         pushMatrix()
         translate(width / 2, height / 2, 0)

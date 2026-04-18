@@ -90,6 +90,7 @@ extension SketchContext {
     ///   - upX: 上方向ベクトルの x 成分。
     ///   - upY: 上方向ベクトルの y 成分。
     ///   - upZ: 上方向ベクトルの z 成分。
+    @available(*, deprecated, message: "Use camera(eye:center:up:) with SIMD3 instead")
     public func camera(
         _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
         _ centerX: Float, _ centerY: Float, _ centerZ: Float,
