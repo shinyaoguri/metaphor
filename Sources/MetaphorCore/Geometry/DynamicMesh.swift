@@ -128,18 +128,26 @@ public final class DynamicMesh {
             return
         }
 
-        cachedVertexBuffer = device.makeBuffer(
+        guard let vb = device.makeBuffer(
             bytes: vertices,
             length: MemoryLayout<Vertex3D>.stride * vertices.count,
             options: .storageModeShared
-        )
+        ) else {
+            metaphorWarning("DynamicMesh: Failed to allocate vertex buffer (\(vertices.count) vertices)")
+            return
+        }
+        cachedVertexBuffer = vb
 
         if !indices.isEmpty {
-            cachedIndexBuffer = device.makeBuffer(
+            guard let ib = device.makeBuffer(
                 bytes: indices,
                 length: MemoryLayout<UInt32>.stride * indices.count,
                 options: .storageModeShared
-            )
+            ) else {
+                metaphorWarning("DynamicMesh: Failed to allocate index buffer (\(indices.count) indices)")
+                return
+            }
+            cachedIndexBuffer = ib
         } else {
             cachedIndexBuffer = nil
         }

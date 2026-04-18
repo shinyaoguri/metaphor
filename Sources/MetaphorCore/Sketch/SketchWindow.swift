@@ -71,6 +71,9 @@ public final class SketchWindow {
 
     // MARK: - Internal State
 
+    /// ウィンドウが閉じられた際に呼ばれるコールバック（SketchContext が設定）。
+    var onWindowClosed: ((@MainActor () -> Void))?
+
     private let renderer: MetaphorRenderer
     private var window: NSWindow?
     private var mtkView: MetaphorMTKView?
@@ -150,6 +153,7 @@ public final class SketchWindow {
         window = nil
         mtkView = nil
         windowDelegate = nil
+        context.performCleanup()
     }
 
     // MARK: - Private Setup
@@ -296,6 +300,9 @@ public final class SketchWindow {
         mtkView = nil
         window = nil
         windowDelegate = nil
+        context.performCleanup()
+        onWindowClosed?()
+        onWindowClosed = nil
     }
 
     private func stopRenderTimer() {

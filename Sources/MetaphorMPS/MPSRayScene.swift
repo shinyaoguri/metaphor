@@ -192,7 +192,9 @@ final class MPSRayScene {
             throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create command buffer"))
         }
 
-        let encoder = cb.makeAccelerationStructureCommandEncoder()!
+        guard let encoder = cb.makeAccelerationStructureCommandEncoder() else {
+            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create acceleration structure command encoder"))
+        }
         encoder.build(
             accelerationStructure: accelerationStructure,
             descriptor: accelDesc,

@@ -12,12 +12,17 @@ extension Sketch {
     ///   - height: レンダーターゲットの高さ（ピクセル単位）。
     /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。作成に失敗した場合は `nil`。
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
-        try? SourcePass(
-            label: label,
-            device: context.renderer.device,
-            width: width,
-            height: height
-        )
+        do {
+            return try SourcePass(
+                label: label,
+                device: context.renderer.device,
+                width: width,
+                height: height
+            )
+        } catch {
+            print("[metaphor] Warning: Failed to create SourcePass '\(label)': \(error)")
+            return nil
+        }
     }
 
     /// レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
@@ -27,13 +32,18 @@ extension Sketch {
     ///   - effects: 適用するポストプロセスエフェクト。
     /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。作成に失敗した場合は `nil`。
     public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass? {
-        try? EffectPass(
-            input,
-            effects: effects,
-            device: context.renderer.device,
-            commandQueue: context.renderer.commandQueue,
-            shaderLibrary: context.renderer.shaderLibrary
-        )
+        do {
+            return try EffectPass(
+                input,
+                effects: effects,
+                device: context.renderer.device,
+                commandQueue: context.renderer.commandQueue,
+                shaderLibrary: context.renderer.shaderLibrary
+            )
+        } catch {
+            print("[metaphor] Warning: Failed to create EffectPass: \(error)")
+            return nil
+        }
     }
 
     /// 2つのレンダーパスを合成するマージパスを作成します。
@@ -44,12 +54,17 @@ extension Sketch {
     ///   - blend: 合成用のブレンドタイプ。
     /// - Returns: 新しい ``MetaphorRenderGraph/MergePass`` インスタンス。作成に失敗した場合は `nil`。
     public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
-        try? MergePass(
-            a, b,
-            blend: blend,
-            device: context.renderer.device,
-            shaderLibrary: context.renderer.shaderLibrary
-        )
+        do {
+            return try MergePass(
+                a, b,
+                blend: blend,
+                device: context.renderer.device,
+                shaderLibrary: context.renderer.shaderLibrary
+            )
+        } catch {
+            print("[metaphor] Warning: Failed to create MergePass: \(error)")
+            return nil
+        }
     }
 
     /// アクティブなレンダーグラフを設定またはクリアします。

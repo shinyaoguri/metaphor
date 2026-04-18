@@ -199,6 +199,10 @@ public final class SketchContext {
         do {
             let window = try SketchWindow(config: config, sharedResources: shared)
             secondaryWindows.append(window)
+            window.onWindowClosed = { [weak self, weak window] in
+                guard let self, let window else { return }
+                self.secondaryWindows.removeAll { $0 === window }
+            }
             return window
         } catch {
             metaphorWarning("Failed to create window: \(error)")
@@ -212,6 +216,26 @@ public final class SketchContext {
             window.close()
         }
         secondaryWindows.removeAll()
+    }
+
+    // MARK: - Cleanup Hooks
+
+    /// 外部モジュールが登録するクリーンアップハンドラ。
+    /// コンテキスト破棄時に呼び出されます。
+    private var _cleanupHandlers: [() -> Void] = []
+
+    /// クリーンアップハンドラを登録します。
+    /// コンテキスト破棄時に呼び出されます。
+    public func addCleanupHandler(_ handler: @escaping () -> Void) {
+        _cleanupHandlers.append(handler)
+    }
+
+    /// 登録されたクリーンアップハンドラを実行し、リストをクリアします。
+    public func performCleanup() {
+        for handler in _cleanupHandlers {
+            handler()
+        }
+        _cleanupHandlers.removeAll()
     }
 
     // MARK: - Initialization

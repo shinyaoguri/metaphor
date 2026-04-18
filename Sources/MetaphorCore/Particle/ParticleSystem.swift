@@ -544,11 +544,15 @@ public final class ParticleSystem {
         if descriptors.isEmpty {
             forceBuffer = nil
         } else {
-            forceBuffer = device.makeBuffer(
+            guard let buffer = device.makeBuffer(
                 bytes: descriptors,
                 length: MemoryLayout<ForceDescriptor>.stride * descriptors.count,
                 options: .storageModeShared
-            )
+            ) else {
+                metaphorWarning("ParticleSystem: Failed to allocate force buffer (\(descriptors.count) descriptors)")
+                return
+            }
+            forceBuffer = buffer
         }
     }
 }

@@ -24,6 +24,9 @@ extension SketchContext {
         if let wrapper = _ciFilterWrapper { return wrapper }
         let wrapper = CIFilterWrapper(device: renderer.device, commandQueue: renderer.commandQueue)
         _ciFilterWrapper = wrapper
+        addCleanupHandler { [weak self] in
+            self?._ciFilterWrapper = nil
+        }
         return wrapper
     }
 }

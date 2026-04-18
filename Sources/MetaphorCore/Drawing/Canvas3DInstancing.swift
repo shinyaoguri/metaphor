@@ -164,5 +164,9 @@ final class InstanceBatcher3D {
         currentMesh = nil
         currentTexture = nil
         currentCustomMaterial = nil
+        currentMaterial = .default
+        currentHasFill = true
+        currentHasStroke = false
+        currentStrokeColor = .one
     }
 }

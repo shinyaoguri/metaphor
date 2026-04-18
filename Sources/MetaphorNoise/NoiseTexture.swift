@@ -97,6 +97,7 @@ enum NoiseTextureBuilder {
     private static func interpolateColor(
         t: Float, stops: [(Float, SIMD4<UInt8>)]
     ) -> SIMD4<UInt8> {
+        guard !stops.isEmpty else { return SIMD4<UInt8>(0, 0, 0, 255) }
         if t <= stops.first!.0 { return stops.first!.1 }
         if t >= stops.last!.0 { return stops.last!.1 }
         for i in 0..<(stops.count - 1) {

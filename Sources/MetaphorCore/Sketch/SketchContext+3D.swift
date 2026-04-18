@@ -565,6 +565,7 @@ extension SketchContext {
         guard let cb = _commandBuffer else { return nil }
         let encoder = cb.makeComputeCommandEncoder()
         _computeEncoder = encoder
+        renderer.didEncodeComputeWork = true
         return encoder
     }
 

@@ -66,7 +66,7 @@ public final class Canvas3D: CanvasStyle {
     private let pipelineState: MTLRenderPipelineState
     private let texturedPipelineState: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState?
-    private let dummyShadowTexture: MTLTexture?
+    private let dummyShadowTexture: MTLTexture
 
     // インスタンスレンダリングパイプライン
     private let instancedPipelineState: MTLRenderPipelineState
@@ -78,7 +78,12 @@ public final class Canvas3D: CanvasStyle {
     // MARK: - カスタムマテリアル状態
 
     private var currentCustomMaterial: CustomMaterial?
-    private var customPipelineCache: [String: MTLRenderPipelineState] = [:]
+    private var customPipelineCache: [String: CachedPipeline] = [:]
+
+    private struct CachedPipeline {
+        let pipeline: MTLRenderPipelineState
+        var lastUsedFrame: Int
+    }
 
     // MARK: - 寸法
 
@@ -295,7 +300,10 @@ public final class Canvas3D: CanvasStyle {
         )
         dummyDesc.usage = .shaderRead
         dummyDesc.storageMode = .private
-        self.dummyShadowTexture = device.makeTexture(descriptor: dummyDesc)
+        guard let dummyTex = device.makeTexture(descriptor: dummyDesc) else {
+            throw MetaphorError.textureCreationFailed(width: 1, height: 1, format: "depth32Float")
+        }
+        self.dummyShadowTexture = dummyTex
     }
 
     // MARK: - フレームライフサイクル
@@ -1375,7 +1383,7 @@ public final class Canvas3D: CanvasStyle {
         ) {
             // キー不一致またはバッファ満杯; 現在のバッチをフラッシュしてリトライ
             flushInstanceBatch()
-            let _ = instanceBatcher.tryAddInstance(
+            if !instanceBatcher.tryAddInstance(
                 key: key,
                 mesh: mesh,
                 texture: currentTexture,
@@ -1387,7 +1395,10 @@ public final class Canvas3D: CanvasStyle {
                 transform: currentTransform,
                 normalMatrix: normalMatrix,
                 color: fillColor
-            )
+            ) {
+                // リトライも失敗; 非インスタンスド描画にフォールバック
+                drawMeshImmediate(mesh)
+            }
         }
     }
 
@@ -1474,9 +1485,7 @@ public final class Canvas3D: CanvasStyle {
                     shadowEnabled: 0
                 )
                 encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-                if let dummy = dummyShadowTexture {
-                    encoder.setFragmentTexture(dummy, index: 1)
-                }
+                encoder.setFragmentTexture(dummyShadowTexture, index: 1)
             }
 
             // テクスチャ
@@ -1528,9 +1537,7 @@ public final class Canvas3D: CanvasStyle {
             // ワイヤーフレームではシャドウ無効
             var shadowOff = ShadowFragmentUniforms(lightSpaceMatrix: .identity, shadowBias: 0, shadowEnabled: 0)
             encoder.setFragmentBytes(&shadowOff, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-            if let dummyTex = dummyShadowTexture {
-                encoder.setFragmentTexture(dummyTex, index: 1)
-            }
+            encoder.setFragmentTexture(dummyShadowTexture, index: 1)
 
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
@@ -1627,9 +1634,7 @@ public final class Canvas3D: CanvasStyle {
                     shadowEnabled: 0
                 )
                 encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-                if let dummy = dummyShadowTexture {
-                    encoder.setFragmentTexture(dummy, index: 1)
-                }
+                encoder.setFragmentTexture(dummyShadowTexture, index: 1)
             }
 
             if isTextured, let tex = currentTexture {
@@ -1707,8 +1712,10 @@ public final class Canvas3D: CanvasStyle {
     private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool, customVertexFunction: MTLFunction? = nil) -> MTLRenderPipelineState? {
         let vtxName = customVertexFunction?.name ?? "default"
         let cacheKey = "\(fragmentFunction.name)_\(vtxName)_\(isTextured)_\(sampleCount)"
-        if let cached = customPipelineCache[cacheKey] {
-            return cached
+        if var cached = customPipelineCache[cacheKey] {
+            cached.lastUsedFrame = meshCacheFrameCounter
+            customPipelineCache[cacheKey] = cached
+            return cached.pipeline
         }
 
         let vertexFn: MTLFunction?
@@ -1742,10 +1749,11 @@ public final class Canvas3D: CanvasStyle {
             return nil
         }
 
-        customPipelineCache[cacheKey] = pipeline
+        customPipelineCache[cacheKey] = CachedPipeline(pipeline: pipeline, lastUsedFrame: meshCacheFrameCounter)
         if customPipelineCache.count > 32 {
-            let keysToRemove = Array(customPipelineCache.keys).prefix(customPipelineCache.count - 16)
-            for key in keysToRemove {
+            let sorted = customPipelineCache.sorted { $0.value.lastUsedFrame < $1.value.lastUsedFrame }
+            let removeCount = customPipelineCache.count - 16
+            for (key, _) in sorted.prefix(removeCount) {
                 customPipelineCache.removeValue(forKey: key)
             }
         }

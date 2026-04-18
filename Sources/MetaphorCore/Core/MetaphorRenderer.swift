@@ -98,6 +98,9 @@ public final class MetaphorRenderer: NSObject {
     /// 現在のイベントカウンター値
     private var computeEventValue: UInt64 = 0
 
+    /// 現在のフレームでコンピュートワークがエンコードされたかどうか
+    var didEncodeComputeWork: Bool = false
+
     // MARK: - ポストプロセス
 
     /// ポストプロセスエフェクトが利用可能かどうかを示す
@@ -355,12 +358,14 @@ public final class MetaphorRenderer: NSObject {
             }
         }
 
+        let currentClearColor = textureManager.renderPassDescriptor.colorAttachments[0].clearColor
         do {
             textureManager = try TextureManager(
                 device: device,
                 width: width,
                 height: height
             )
+            textureManager.setClearColor(currentClearColor)
         } catch {
             print("[metaphor] Failed to resize canvas: \(error)")
             return
@@ -742,10 +747,11 @@ public final class MetaphorRenderer: NSObject {
         }
 
         // コンピュートフェーズ
+        didEncodeComputeWork = false
         onCompute?(commandBuffer, time)
 
-        // コンピュートが使用された場合のコンピュート→レンダーバリアをシグナル
-        if let event = computeEvent {
+        // コンピュートワークが実際にエンコードされた場合のみバリアを発行
+        if didEncodeComputeWork, let event = computeEvent {
             computeEventValue += 1
             commandBuffer.encodeSignalEvent(event, value: computeEventValue)
             commandBuffer.encodeWaitForEvent(event, value: computeEventValue)
