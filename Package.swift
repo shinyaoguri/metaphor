@@ -34,6 +34,7 @@ let package = Package(
         .library(name: "MetaphorCoreImage", targets: ["MetaphorCoreImage"]),
         .library(name: "MetaphorRenderGraph", targets: ["MetaphorRenderGraph"]),
         .library(name: "MetaphorSceneGraph", targets: ["MetaphorSceneGraph"]),
+        .library(name: "MetaphorVideo", targets: ["MetaphorVideo"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
@@ -58,6 +59,7 @@ let package = Package(
         .target(name: "MetaphorNetwork"),
         .target(name: "MetaphorPhysics"),
         .target(name: "MetaphorML"),
+        .target(name: "MetaphorVideo"),
 
         // Tier 2 modules: depend on MetaphorCore
         .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"]),
@@ -75,6 +77,7 @@ let package = Package(
                 "MetaphorNetwork",
                 "MetaphorPhysics",
                 "MetaphorML",
+                "MetaphorVideo",
                 "MetaphorNoise",
                 "MetaphorMPS",
                 "MetaphorCoreImage",
@@ -91,6 +94,7 @@ let package = Package(
         .testTarget(name: "MetaphorNetworkTests", dependencies: ["MetaphorNetwork"]),
         .testTarget(name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics"]),
         .testTarget(name: "MetaphorMLTests", dependencies: ["MetaphorML"]),
+        .testTarget(name: "MetaphorVideoTests", dependencies: ["MetaphorVideo"]),
         .testTarget(name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"]),
         .testTarget(name: "MetaphorMPSTests", dependencies: ["MetaphorMPS", "MetaphorCore"]),
         .testTarget(name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"]),

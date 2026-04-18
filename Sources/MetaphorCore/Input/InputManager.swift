@@ -79,6 +79,9 @@ public final class InputManager {
     /// マウススクロールホイール使用時に呼ばれるコールバック (dx, dy)
     public var onMouseScrolled: ((Float, Float) -> Void)?
 
+    /// ファイルがウィンドウにドロップされた時に呼ばれるコールバック (ファイルパスの配列)
+    public var onFileDrop: (([String]) -> Void)?
+
     // MARK: - Private State
 
     // 前フレームのマウス位置追跡用の2フレームバッファ。
@@ -192,5 +195,10 @@ public final class InputManager {
         scrollX += dx
         scrollY += dy
         onMouseScrolled?(dx, dy)
+    }
+
+    /// ファイルドロップイベントを処理します。
+    func handleFileDrop(paths: [String]) {
+        onFileDrop?(paths)
     }
 }

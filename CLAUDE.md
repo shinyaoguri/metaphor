@@ -24,7 +24,7 @@ metaphor is a Swift + Metal creative coding library inspired by Processing. It p
 
 Multi-target SPM architecture. `import metaphor` (umbrella, re-exports all via `@_exported import`) or import individual modules:
 
-- **Tier 1 (no Core dependency)**: MetaphorAudio, MetaphorNetwork, MetaphorPhysics, MetaphorML
+- **Tier 1 (no Core dependency)**: MetaphorAudio, MetaphorNetwork, MetaphorPhysics, MetaphorML, MetaphorVideo
 - **Tier 2 (depends on MetaphorCore)**: MetaphorNoise, MetaphorMPS, MetaphorCoreImage, MetaphorRenderGraph, MetaphorSceneGraph
 
 The umbrella target provides bridge extensions (`Sketch+AudioBridge.swift`, etc.) so `import metaphor` users get convenience methods like `createAudioInput()`, `createOSCReceiver()`, `createPhysics2D()`.
@@ -86,6 +86,7 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 | PostFX | addPostEffect, createPostEffect, BloomEffect, BlurEffect | Sketch+Advanced.swift |
 | Export | save, beginVideoRecord, beginGIFRecord, beginRecord | Sketch+Image.swift |
 | Audio | createAudioInput, loadSound | Sketch+AudioBridge.swift |
+| Video | loadVideo, image(video) | Sketch+VideoBridge.swift |
 | Physics | createPhysics2D | Sketch+PhysicsBridge.swift |
 | Network | createOSCReceiver, createMIDI | Sketch+NetworkBridge.swift |
 | Noise | createNoise, noiseTexture, noise() | Sketch+NoiseBridge.swift |

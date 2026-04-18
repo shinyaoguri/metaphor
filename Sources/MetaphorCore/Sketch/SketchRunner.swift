@@ -139,6 +139,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         mtkView.enableSetNeedsDisplay = false
         mtkView.autoresizingMask = [.width, .height]
         renderer.configure(view: mtkView)
+        mtkView.enableFileDrop()
         window.contentView = mtkView
         self.mtkView = mtkView
 

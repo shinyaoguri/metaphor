@@ -127,6 +127,31 @@ public class MetaphorMTKView: MTKView {
         rendererRef?.input.handleMouseScrolled(dx: dx, dy: dy)
     }
 
+    // MARK: - File Drop
+
+    /// ファイルドロップの受け付けを有効にします。
+    func enableFileDrop() {
+        registerForDraggedTypes([.fileURL])
+    }
+
+    public override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        if sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: nil) {
+            return .copy
+        }
+        return []
+    }
+
+    public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] else { return false }
+        let paths = urls.map(\.path)
+        guard !paths.isEmpty else { return false }
+        rendererRef?.input.handleFileDrop(paths: paths)
+        return true
+    }
+
     // MARK: - Keyboard Events
 
     /// キー押下イベントの処理

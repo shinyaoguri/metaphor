@@ -9,6 +9,7 @@
 @_exported import MetaphorNetwork
 @_exported import MetaphorPhysics
 @_exported import MetaphorML
+@_exported import MetaphorVideo
 @_exported import MetaphorNoise
 @_exported import MetaphorMPS
 @_exported import MetaphorCoreImage
