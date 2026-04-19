@@ -90,7 +90,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func blendMode(_ mode: BlendMode)` -- 以降の描画操作のブレンドモードを設定します。
 - `func box(_ size: Float)` -- 辺の長さが等しいキューブを描画します。
 - `func box(_ width: Float, _ height: Float, _ depth: Float)` -- 指定したサイズのボックスを描画します。
-- `func camera(_ eyeX: Float, _ eyeY: Float, _ eyeZ: Float, _ centerX: Float, _ centerY: Float, _ centerZ: Float, _ upX: Float, _ upY: Float, _ upZ: Float)` -- 個別の float 成分で 3D カメラを設定します。
 - `func camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` -- eye、center、up ベクトルで 3D カメラを設定します。
 - `func ciFilter(_ image: MImage, _ preset: CIFilterPreset)` -- CoreImage フィルタプリセットを画像に適用します。
 - `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- 名前とカスタムパラメータを指定して CoreImage フィルタを画像に適用します。
@@ -177,10 +176,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置に描画します。
 - `func image(_ pg: Graphics3D, _ x: Float, _ y: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置に描画します。
 - `func image(_ img: MImage, _ x: Float, _ y: Float)` -- 画像を指定位置に描画します。
+- `func image(_ video: VideoPlayer, _ x: Float, _ y: Float)` -- ビデオプレーヤーの現在のフレームを指定位置に描画します。
 - `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- キャプチャデバイスの最新フレームを指定位置・サイズで描画します。
 - `func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
 - `func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
 - `func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 画像を指定位置・サイズで描画します。
+- `func image(_ video: VideoPlayer, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- ビデオプレーヤーの現在のフレームを指定位置・サイズで描画します。
 - `func image(_ img: MImage, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float, _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float)` -- 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
 - `func imageMode(_ mode: ImageMode)` -- 画像の描画モードを設定します。
 - `func isKeyDown(_ keyCode: UInt16) -> Bool` -- 特定のキーが現在押下されているかを確認します。
@@ -196,6 +197,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
 - `func loadPixels()` -- ピクセルバッファを直接ピクセル操作用に準備します。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
+- `func loadVideo(_ path: String) throws -> VideoPlayer` -- 再生用のビデオファイルを読み込みます。
 - `func loop()` -- アニメーションループを再開します。
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
 - `func material(_ customMaterial: CustomMaterial)` -- カスタムマテリアルを以降の 3D 描画に適用します。
@@ -1257,13 +1259,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var analysisVolume: Float { get }` -- RMS 音量レベルを返します（解析有効時に利用可能）。
 - `let duration: Double` -- ファイルの総再生時間（秒）を返します。
+- `var gain: Float { get set }` -- 再生ゲインを制御します（0.0〜1.0）。
 - `var isBeat: Bool { get }` -- ビート検出フラグを返します（解析有効時に利用可能）。
 - `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
 - `var isPlaying: Bool { get }` -- ファイルが現在再生中かどうかを示します。
 - `var position: Double { get set }` -- 現在の再生位置（秒）を取得または設定します。
 - `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
 - `var spectrum: [Float] { get }` -- スペクトルデータを返します（解析有効時に利用可能）。
-- `var volume: Float { get set }` -- 再生音量を制御します（0.0〜1.0）。
 - `init(path: String) throws` -- 指定パスからオーディオファイルを読み込みます。
 - `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します（AudioAnalyzer 経由）。
 - `func enableAnalysis(fftSize: Int = 1024)` -- オーディオ出力のスペクトル解析を有効にします。
@@ -1469,13 +1471,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init?(rawValue: UInt8)`
 - `func hash(into hasher: inout Hasher)`
 
+### `struct OSCMessage`
+
+- `let address: String` -- OSC アドレスパターン（例: "/synth/freq"）。
+- `let values: [OSCValue]` -- メッセージに含まれる値のリスト。
+
 ### `final class OSCReceiver` -- Network.framework を使用して UDP OSC メッセージを受信します。
 
 - `let port: UInt16` -- リスニングポート番号を返します。
 - `init(port: UInt16)` -- OSC レシーバーを作成します。
 - `func on(_ address: String, handler: ([OSCValue]) -> Void)` -- 特定の OSC アドレスパターンに対するハンドラーを登録します。
 - `func onAny(handler: (String, [OSCValue]) -> Void)` -- すべてのメッセージを受信するワイルドカードハンドラーを登録します。
-- `func poll()` -- キュー内のメッセージをメインスレッドでディスパッチします（`draw()` 内で呼び出してください）。
+- `func poll() -> [OSCMessage]` -- キュー内のメッセージをメインスレッドでディスパッチします（`draw()` 内で呼び出してください）。
 - `func start() throws` -- 受信 OSC メッセージのリスニングを開始します。
 - `func stop()` -- OSC メッセージのリスニングを停止します。
 
@@ -1550,12 +1557,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(cellSize: Float = 50)` -- 新しい2D物理ワールドを作成します。
 - `func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D` -- 円形の物理ボディをワールドに追加します。
 - `func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D` -- 2つのボディ間に距離拘束を追加します。
-- `func addGravity(_ x: Float, _ y: Float)` -- 各ステップですべてのボディに適用されるグローバル重力加速度を設定します。
 - `func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D` -- 矩形の物理ボディをワールドに追加します。
 - `func clear()` -- すべてのボディと拘束をワールドから削除します。
 - `func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D` -- ボディをワールド空間の固定位置にピン留めします。
 - `func removeBody(_ body: PhysicsBody2D)` -- ボディとそれを参照するすべての拘束をワールドから削除します。
 - `func removeConstraint(_ constraint: PhysicsConstraint2D)` -- 特定の拘束をワールドから削除します。
+- `func setGravity(_ x: Float, _ y: Float)` -- 各ステップですべてのボディに適用されるグローバル重力加速度を設定します。
 - `func step(_ dt: Float, iterations: Int = 4)` -- シミュレーションを1タイムステップ進めます。
 
 ### `final class PhysicsBody2D` -- Verlet 積分でシミュレートされる単一の2D剛体を表します。
