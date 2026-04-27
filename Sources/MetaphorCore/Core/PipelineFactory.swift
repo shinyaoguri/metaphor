@@ -143,7 +143,11 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
             attachment.isBlendingEnabled = true
             attachment.sourceRGBBlendFactor = .sourceAlpha
             attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
-            attachment.sourceAlphaBlendFactor = .sourceAlpha
+            // 標準的な straight-alpha over: final.a = src.a + dst.a * (1 - src.a)
+            // 以前は sourceAlphaBlendFactor = .sourceAlpha だったが、
+            // それだと src.a が二乗されて出力テクスチャの α が極端に減衰し、
+            // Syphon 等でアルファ合成する用途で透明と区別がつかなくなる。
+            attachment.sourceAlphaBlendFactor = .one
             attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
 
         case .additive:
