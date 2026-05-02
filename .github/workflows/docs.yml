@@ -25,13 +25,13 @@ concurrency:
 
 jobs:
   build-docs:
-    runs-on: macos-14
+    runs-on: macos-26-arm64
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Get Syphon submodule hash
         id: syphon-hash
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"

@@ -166,7 +166,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endShape(_ close: CloseMode = .open)` -- 現在のシェイプの記録を終了し描画します。
 - `func endShape3D(_ close: CloseMode = .open)` -- 現在の 3D シェイプの記録を終了し描画します。
 - `func endVideoRecord() async` -- 動画の録画を非同期で停止しファイルを完成させます。
-- `func endVideoRecord(completion: (() -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
+- `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
 - `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
 - `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
 - `func fill(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で塗りつぶし色を設定します。
