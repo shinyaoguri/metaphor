@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   build-docs:
-    runs-on: macos-26-arm64
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
         with:
