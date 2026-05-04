@@ -133,7 +133,8 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - スクリーンショット
 
     private var pendingSavePath: String?
-    private var stagingTexture: MTLTexture?
+    /// `frameBufferIndex` でインデックスするスクリーンショット用ステージングテクスチャ（トリプルバッファ）
+    private var stagingTextures: [MTLTexture?] = [nil, nil, nil]
 
     // MARK: - GPU 時間
 
@@ -147,13 +148,15 @@ public final class MetaphorRenderer: NSObject {
 
     /// 個別フレームを画像ファイルとしてキャプチャするフレームエクスポーター
     public let frameExporter: FrameExporter = FrameExporter()
-    private var exportStagingTexture: MTLTexture?
+    /// `frameBufferIndex` でインデックスするフレームエクスポート用ステージングテクスチャ（トリプルバッファ）
+    private var exportStagingTextures: [MTLTexture?] = [nil, nil, nil]
 
     // MARK: - 動画エクスポート
 
     /// フレームを動画ファイルに録画する動画エクスポーター
     public let videoExporter: VideoExporter = VideoExporter()
-    private var videoStagingTexture: MTLTexture?
+    /// `frameBufferIndex` でインデックスする動画エクスポート用ステージングテクスチャ（トリプルバッファ）
+    private var videoStagingTextures: [MTLTexture?] = [nil, nil, nil]
 
     // MARK: - プラグイン
 
@@ -370,9 +373,9 @@ public final class MetaphorRenderer: NSObject {
             print("[metaphor] Failed to resize canvas: \(error)")
             return
         }
-        stagingTexture = nil
-        exportStagingTexture = nil
-        videoStagingTexture = nil
+        stagingTextures = [nil, nil, nil]
+        exportStagingTextures = [nil, nil, nil]
+        videoStagingTextures = [nil, nil, nil]
         postProcessPipeline?.invalidateTextures()
 
         for plugin in plugins {
@@ -593,9 +596,14 @@ public final class MetaphorRenderer: NSObject {
         )
     }
 
-    /// GPU→CPU リードバック用のマネージドステージングテクスチャを返すか作成します。
-    private func createOrReuseStagingTexture(cache: inout MTLTexture?) -> MTLTexture? {
-        if let existing = cache,
+    /// GPU→CPU リードバック用のステージングテクスチャを現在の `frameBufferIndex` スロットから返すか作成します。
+    ///
+    /// `inflightSemaphore`（値3）と `frameBufferIndex` のローテーションにより、
+    /// 同じスロットを再利用する前に該当スロットを使ったフレームの完了ハンドラは確実に終わっています。
+    /// これにより、完了ハンドラの `getBytes()` 中に次フレームの blit がステージングを上書きする競合を防ぎます。
+    private func createOrReuseStagingTexture(cache: inout [MTLTexture?]) -> MTLTexture? {
+        let index = frameBufferIndex
+        if let existing = cache[index],
            existing.width == textureManager.width,
            existing.height == textureManager.height {
             return existing
@@ -612,23 +620,23 @@ public final class MetaphorRenderer: NSObject {
         guard let tex = device.makeTexture(descriptor: desc) else {
             return nil
         }
-        cache = tex
+        cache[index] = tex
         return tex
     }
 
     /// スクリーンショットキャプチャ用のステージングテクスチャを返すか作成します。
     private func getOrCreateStagingTexture() -> MTLTexture? {
-        createOrReuseStagingTexture(cache: &stagingTexture)
+        createOrReuseStagingTexture(cache: &stagingTextures)
     }
 
     /// フレームエクスポート用のステージングテクスチャを返すか作成します。
     private func getOrCreateExportStagingTexture() -> MTLTexture? {
-        createOrReuseStagingTexture(cache: &exportStagingTexture)
+        createOrReuseStagingTexture(cache: &exportStagingTextures)
     }
 
     /// 動画エクスポート用のステージングテクスチャを返すか作成します。
     private func getOrCreateVideoStagingTexture() -> MTLTexture? {
-        createOrReuseStagingTexture(cache: &videoStagingTexture)
+        createOrReuseStagingTexture(cache: &videoStagingTextures)
     }
 
     /// テクスチャの内容を指定パスの PNG ファイルに書き出します。

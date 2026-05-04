@@ -2,17 +2,6 @@
 @preconcurrency import AVFoundation
 import CoreVideo
 import Foundation
-import os
-
-/// スレッドセーフな真偽値フラグ（キュー間の協調用）
-private final class AtomicFlag: Sendable {
-    private let state = OSAllocatedUnfairLock(initialState: false)
-
-    var value: Bool {
-        get { state.withLock { $0 } }
-        set { state.withLock { $0 = newValue } }
-    }
-}
 
 /// ビデオエンコードに使用するコーデック
 public enum VideoCodec: Sendable {
@@ -112,8 +101,10 @@ public final class VideoExporter {
     /// AVAssetWriter 操作を直列化するためのディスパッチキュー
     private let writerQueue = DispatchQueue(label: "metaphor.VideoExporter.writer")
 
-    /// endRecord 後の遅延フレームを拒否するためのスレッドセーフフラグ（writerQueue からのみアクセス）
-    private let endingFlag = AtomicFlag()
+    /// インフライト中のフレーム書き込みを追跡するためのディスパッチグループ。
+    /// `captureFrame` で `enter()`、完了ハンドラの末尾で `leave()` するため、
+    /// `endRecord` は `notify` で全フレーム書き込み完了後にファイナライズできます。
+    private let pendingWrites = DispatchGroup()
 
     public init() {}
 
@@ -222,17 +213,18 @@ public final class VideoExporter {
         let capturedWidth = width
         let capturedHeight = height
         let queue = writerQueue
-
-        let flag = endingFlag
+        let group = pendingWrites
 
         // これらのキャプチャは安全: すべてのアクセスは writerQueue で直列化されます。
         nonisolated(unsafe) let capturedInput = input
         nonisolated(unsafe) let capturedAdaptor = adaptor
 
+        // インフライト書き込みとして登録。完了ハンドラ末尾で必ず `leave()` する。
+        // これにより `endRecord` は GPU 側の遅延到着フレームも待ってからファイナライズできる。
+        group.enter()
         commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
-                // endRecord 後に到着したフレームを拒否
-                guard !flag.value else { return }
+                defer { group.leave() }
                 // プールからピクセルバッファを取得
                 guard capturedInput.isReadyForMoreMediaData else { return }
 
@@ -281,21 +273,15 @@ public final class VideoExporter {
             return
         }
 
-        let flag = endingFlag
-
-        // writerQueue 上で同期的に終了フラグを設定。
-        // これにより、先にエンキューされたすべてのフレーム書き込みが完了してから
-        // フラグが設定され、遅延到着フレームの書き込みが防止されます。
-        writerQueue.sync {
-            flag.value = true
-        }
-
         // これらのキャプチャは安全: すべてのアクセスは writerQueue で直列化されます。
         nonisolated(unsafe) let capturedInput = input
         nonisolated(unsafe) let capturedWriter = writer
 
-        // writerQueue 上でビデオファイルをファイナライズ
-        writerQueue.async {
+        // インフライト中のフレーム書き込み（GPU 完了を待っている、または writerQueue
+        // 上のジョブを待っている）が全て終わってからファイナライズする。
+        // `isRecording = false` 以降に新たな `enter()` は発生しないため、
+        // `notify` は確実に発火する。
+        pendingWrites.notify(queue: writerQueue) {
             capturedInput.markAsFinished()
 
             capturedWriter.finishWriting {
@@ -304,7 +290,6 @@ public final class VideoExporter {
                     self?.writerInput = nil
                     self?.pixelBufferAdaptor = nil
                     self?.frameIndex = 0
-                    flag.value = false
                     completion?()
                 }
             }
