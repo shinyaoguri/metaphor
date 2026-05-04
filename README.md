@@ -24,7 +24,7 @@ Processingにインスパイアされた、Swift + Metal クリエイティブ�
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.1"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.3"),
 ]
 ```
 
@@ -50,7 +50,7 @@ let package = Package(
     name: "MyMetalApp",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.1"),
+        .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.3"),
     ],
     targets: [
         .executableTarget(
