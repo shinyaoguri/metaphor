@@ -109,6 +109,18 @@ struct OSCParserTests {
         }
     }
 
+    @Test("negative blob size is ignored without trapping")
+    func negativeBlobSize() {
+        var data = Data()
+        OSCBinaryHelper.appendOSCString("/data", to: &data)
+        OSCBinaryHelper.appendOSCString(",b", to: &data)
+        OSCBinaryHelper.appendInt32(-1, to: &data)
+
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.count == 1)
+        #expect(messages[0].values.isEmpty)
+    }
+
     @Test("parse multiple values")
     func parseMultipleValues() {
         var data = Data()
@@ -216,6 +228,18 @@ struct OSCParserTests {
     func emptyData() {
         let messages = OSCParser.parse(data: Data())
         #expect(messages.count == 0)
+    }
+
+    @Test("malformed bundle size is ignored without trapping")
+    func malformedBundleSize() {
+        var data = Data()
+        data.append(contentsOf: "#bundle".utf8)
+        data.append(0)
+        data.append(contentsOf: [UInt8](repeating: 0, count: 8))
+        OSCBinaryHelper.appendInt32(-1, to: &data)
+
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.isEmpty)
     }
 
     @Test("negative int value")

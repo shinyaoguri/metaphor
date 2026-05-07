@@ -247,14 +247,14 @@ enum OSCParser {
         var offset = 16  // ヘッダー + timetag をスキップ
 
         while offset + 4 <= data.count {
-            let size = readInt32(data: data, offset: offset)
+            let size = Int(readInt32(data: data, offset: offset))
             offset += 4
 
-            guard size > 0, offset + Int(size) <= data.count else { break }
+            guard size > 0, size <= data.count - offset else { break }
 
-            let elementData = data.subdata(in: offset..<(offset + Int(size)))
+            let elementData = data.subdata(in: offset..<(offset + size))
             messages.append(contentsOf: parse(data: elementData))
-            offset += Int(size)
+            offset += size
         }
 
         return messages
@@ -299,7 +299,7 @@ enum OSCParser {
                 guard pos + 4 <= data.count else { break }
                 let blobSize = Int(readInt32(data: data, offset: pos))
                 pos += 4
-                guard pos + blobSize <= data.count else { break }
+                guard blobSize >= 0, blobSize <= data.count - pos else { break }
                 let blob = data.subdata(in: pos..<(pos + blobSize))
                 values.append(.blob(blob))
                 pos += alignedSize(blobSize)
@@ -327,19 +327,24 @@ enum OSCParser {
 
     /// ビッグエンディアンの Int32 を読み取ります。
     private static func readInt32(data: Data, offset: Int) -> Int32 {
-        data.withUnsafeBytes { ptr in
-            let raw = ptr.load(fromByteOffset: offset, as: UInt32.self)
-            return Int32(bitPattern: UInt32(bigEndian: raw))
-        }
+        guard offset >= 0, offset + 4 <= data.count else { return 0 }
+        let raw =
+            (UInt32(data[offset]) << 24) |
+            (UInt32(data[offset + 1]) << 16) |
+            (UInt32(data[offset + 2]) << 8) |
+            UInt32(data[offset + 3])
+        return Int32(bitPattern: raw)
     }
 
     /// ビッグエンディアンの Float32 を読み取ります。
     private static func readFloat32(data: Data, offset: Int) -> Float {
-        data.withUnsafeBytes { ptr in
-            let raw = ptr.load(fromByteOffset: offset, as: UInt32.self)
-            let bits = UInt32(bigEndian: raw)
-            return Float(bitPattern: bits)
-        }
+        guard offset >= 0, offset + 4 <= data.count else { return 0 }
+        let bits =
+            (UInt32(data[offset]) << 24) |
+            (UInt32(data[offset + 1]) << 16) |
+            (UInt32(data[offset + 2]) << 8) |
+            UInt32(data[offset + 3])
+        return Float(bitPattern: bits)
     }
 
     /// サイズを4バイトアラインメントに切り上げます。
