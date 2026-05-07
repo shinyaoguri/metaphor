@@ -94,24 +94,27 @@ check:
 	fi
 
 # Extract symbol graphs (shared step for docs and llms-txt)
+# Each module is independent — run extraction in parallel via xargs -P.
+# Saves ~60s on CI (11 modules × ~7s sequential → bounded by core count).
 symbol-graphs: build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
-	@for module in metaphor MetaphorCore \
+	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
+	export SDK_PATH; \
+	printf '%s\n' metaphor MetaphorCore \
 		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
-		MetaphorRenderGraph MetaphorSceneGraph; do \
-		xcrun swift-symbolgraph-extract \
-			-module-name $$module \
-			-target arm64-apple-macosx14.0 \
-			-sdk "$$(xcrun --show-sdk-path)" \
-			-I .build/arm64-apple-macosx/debug/Modules \
-			-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
-			-minimum-access-level public \
-			-skip-inherited-docs \
-			-emit-extension-block-symbols \
-			-output-dir .build/symbol-graphs; \
-	done
+		MetaphorRenderGraph MetaphorSceneGraph \
+	| xargs -n1 -P8 -I{} xcrun swift-symbolgraph-extract \
+		-module-name {} \
+		-target arm64-apple-macosx14.0 \
+		-sdk "$$SDK_PATH" \
+		-I .build/arm64-apple-macosx/debug/Modules \
+		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+		-minimum-access-level public \
+		-skip-inherited-docs \
+		-emit-extension-block-symbols \
+		-output-dir .build/symbol-graphs
 
 # Generate llms.txt (AI-readable API reference)
 llms-txt: symbol-graphs
