@@ -24,7 +24,7 @@ public final class ShaderLibrary {
 
     /// `true` の場合、`.metallib` の代わりに MSL ソース文字列からのコンパイルを強制します。
     ///
-    /// シェーダーホットリロードワークフローの開発中に有効化してください。
+    /// シェーダーホットリロードワークフローの開発中に、初期化引数で有効化してください。
     public var preferSourceCompilation = false
 
     // MARK: - 組み込みライブラリキー
@@ -78,10 +78,13 @@ public final class ShaderLibrary {
     /// まずプリコンパイル済み `.metallib` バンドルからの読み込みを試みます。
     /// バンドルが利用できない場合は MSL ソース文字列のコンパイルにフォールバックします。
     ///
-    /// - Parameter device: シェーダーコンパイルに使用する Metal デバイス
+    /// - Parameters:
+    ///   - device: シェーダーコンパイルに使用する Metal デバイス
+    ///   - preferSourceCompilation: true の場合、組み込み `.metallib` ではなく MSL ソースから読み込みます。
     /// - Throws: コンパイルに失敗した場合 ``MetaphorError/shaderCompilationFailed(name:underlying:)``
-    public init(device: MTLDevice) throws {
+    public init(device: MTLDevice, preferSourceCompilation: Bool = false) throws {
         self.device = device
+        self.preferSourceCompilation = preferSourceCompilation
         try loadBuiltins()
     }
 
@@ -247,11 +250,22 @@ public final class ShaderLibrary {
     ]
 
     private func registerBuiltinsFromSource() throws {
+        var missingResources: [String] = []
         let sources: [(source: String, key: String)] = Self.shaderResourceNames.compactMap { entry in
             guard let source = Self.loadShaderSource(entry.resource) else {
+                missingResources.append(entry.resource)
                 return nil
             }
             return (source, entry.key)
+        }
+
+        if !missingResources.isEmpty {
+            throw MetaphorError.shaderCompilationFailed(
+                name: "builtins",
+                underlying: SimpleError(
+                    message: "Missing shader resource(s): \(missingResources.joined(separator: ", "))"
+                )
+            )
         }
 
         // 並列コンパイル（device.makeLibrary はスレッドセーフ）

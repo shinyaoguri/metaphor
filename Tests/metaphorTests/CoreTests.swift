@@ -211,6 +211,17 @@ struct ShaderLibraryTests {
         #expect(library.hasLibrary(for: ShaderLibrary.BuiltinKey.canvas2D))
     }
 
+    @Test("preferSourceCompilation loads builtins from source")
+    func preferSourceCompilation() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let library = try ShaderLibrary(device: device, preferSourceCompilation: true)
+
+        #expect(!library.usesPrecompiledMetalLib)
+        for key in ShaderLibrary.BuiltinKey.all {
+            #expect(library.hasLibrary(for: key))
+        }
+    }
+
     @Test("can retrieve blit vertex function")
     func blitVertexFunction() throws {
         let device = MTLCreateSystemDefaultDevice()!
