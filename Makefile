@@ -1,4 +1,4 @@
-.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list symbol-graphs llms-txt
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list symbol-graphs llms-txt hooks
 
 # Default target
 all: setup build
@@ -7,8 +7,13 @@ all: setup build
 preflight:
 	@./scripts/preflight-check.sh
 
-# Initial setup - clone submodules and build Syphon
-setup: preflight submodules syphon
+# Initial setup - clone submodules, build Syphon, install git hooks
+setup: preflight submodules syphon hooks
+
+# Install git hooks (pre-push llms.txt staleness check)
+hooks:
+	@echo "Installing git hooks (core.hooksPath=scripts/hooks)..."
+	@git config core.hooksPath scripts/hooks
 
 # Update git submodules
 submodules:
@@ -149,7 +154,8 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make preflight      - Check required tools and environment"
-	@echo "  make setup          - Initialize submodules and build Syphon.xcframework"
+	@echo "  make setup          - Initialize submodules, build Syphon, install hooks"
+	@echo "  make hooks          - Install git hooks only (core.hooksPath=scripts/hooks)"
 	@echo "  make build          - Build the Swift package"
 	@echo "  make release        - Build release version"
 	@echo "  make test           - Run tests"
