@@ -201,50 +201,75 @@ public final class MLTextureConverter {
     /// - Returns: グレースケール値を全 RGB チャンネルに複製した bgra8Unorm テクスチャ。
     public func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> MTLTexture? {
         let shape = multiArray.shape.map { $0.intValue }
+        let strides = multiArray.strides.map { $0.intValue }
         let width: Int
         let height: Int
+        let rowDimension: Int
+        let columnDimension: Int
 
         if shape.count == 3 {
             height = shape[1]
             width = shape[2]
+            rowDimension = 1
+            columnDimension = 2
         } else if shape.count == 2 {
             height = shape[0]
             width = shape[1]
+            rowDimension = 0
+            columnDimension = 1
         } else {
             return nil
         }
+        guard strides.count == shape.count else { return nil }
+        guard strides.allSatisfy({ $0 >= 0 }) else { return nil }
+        guard width > 0, height > 0 else { return nil }
 
         let count = width * height
         var floatData = [Float](repeating: 0, count: count)
 
+        func elementOffset(x: Int, y: Int) -> Int {
+            y * strides[rowDimension] + x * strides[columnDimension]
+        }
+        let elementCapacity = max(multiArray.count, elementOffset(x: width - 1, y: height - 1) + 1)
+
         switch multiArray.dataType {
         case .float32:
-            let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: count)
-            for i in 0..<count {
-                floatData[i] = ptr[i]
+            let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: elementCapacity)
+            for y in 0..<height {
+                for x in 0..<width {
+                    floatData[y * width + x] = ptr[elementOffset(x: x, y: y)]
+                }
             }
         case .double:
-            let ptr = multiArray.dataPointer.bindMemory(to: Double.self, capacity: count)
-            for i in 0..<count {
-                floatData[i] = Float(ptr[i])
+            let ptr = multiArray.dataPointer.bindMemory(to: Double.self, capacity: elementCapacity)
+            for y in 0..<height {
+                for x in 0..<width {
+                    floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
+                }
             }
         case .int32:
-            let ptr = multiArray.dataPointer.bindMemory(to: Int32.self, capacity: count)
-            for i in 0..<count {
-                floatData[i] = Float(ptr[i])
+            let ptr = multiArray.dataPointer.bindMemory(to: Int32.self, capacity: elementCapacity)
+            for y in 0..<height {
+                for x in 0..<width {
+                    floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
+                }
             }
         case .float16:
-            let ptr = multiArray.dataPointer.bindMemory(to: Float16.self, capacity: count)
-            for i in 0..<count {
-                floatData[i] = Float(ptr[i])
+            let ptr = multiArray.dataPointer.bindMemory(to: Float16.self, capacity: elementCapacity)
+            for y in 0..<height {
+                for x in 0..<width {
+                    floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
+                }
             }
         default:
             // MLMultiArrayDataType.int8 (rawValue 131080) は macOS 26.0+ SDK でのみ利用可能なため、
             // 古い SDK でのコンパイルエラーを避けるために rawValue で比較します。
             if multiArray.dataType.rawValue == 131080 {
-                let ptr = multiArray.dataPointer.bindMemory(to: Int8.self, capacity: count)
-                for i in 0..<count {
-                    floatData[i] = Float(ptr[i])
+                let ptr = multiArray.dataPointer.bindMemory(to: Int8.self, capacity: elementCapacity)
+                for y in 0..<height {
+                    for x in 0..<width {
+                        floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
+                    }
                 }
             } else {
                 print("[metaphor] Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
