@@ -16,6 +16,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var context: SketchContext?
     private var sketchRef: (any Sketch)?
     private var renderTimer: DispatchSourceTimer?
+    private var isRenderTimerSuspended = false
     private var activity: NSObjectProtocol?
     private var sharedResources: SharedMetalResources?
 
@@ -193,6 +194,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
                 }
             }
             timer.resume()
+            isRenderTimerSuspended = false
             renderTimer = timer
         }
 
@@ -270,7 +272,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             // isPaused が有効になる前に CVDisplayLink が2回目を発火する
             // 競合を排除。
             if let renderTimer {
-                renderTimer.suspend()
+                suspendRenderTimerIfNeeded(renderTimer)
             }
             // 予備の（オフスクリーンのみの）フレームをレンダリングし、
             // background() がユーザーのクリアカラーをレンダーパス
@@ -292,7 +294,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// レンダーループを再開します。
     private func handleLoop() {
         if let renderTimer {
-            renderTimer.resume()
+            resumeRenderTimerIfNeeded(renderTimer)
         } else {
             mtkView?.isPaused = false
         }
@@ -301,7 +303,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// レンダーループを一時停止します。
     private func handleNoLoop() {
         if let renderTimer {
-            renderTimer.suspend()
+            suspendRenderTimerIfNeeded(renderTimer)
         } else {
             mtkView?.isPaused = true
         }
@@ -329,16 +331,24 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private func handleFrameRate(_ fps: Int) {
         if let renderTimer {
             // タイマーモード: タイマーをリスケジュール
-            renderTimer.suspend()
             let interval = 1.0 / Double(max(fps, 1))
             renderTimer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
-            if context?.isLooping ?? true {
-                renderTimer.resume()
-            }
         } else {
             // ディスプレイリンクモード: MTKView の優先フレームレートを更新
             mtkView?.preferredFramesPerSecond = fps
         }
+    }
+
+    private func suspendRenderTimerIfNeeded(_ timer: DispatchSourceTimer) {
+        guard !isRenderTimerSuspended else { return }
+        timer.suspend()
+        isRenderTimerSuspended = true
+    }
+
+    private func resumeRenderTimerIfNeeded(_ timer: DispatchSourceTimer) {
+        guard isRenderTimerSuspended else { return }
+        timer.resume()
+        isRenderTimerSuspended = false
     }
 
     /// テクスチャ、キャンバス、ウィンドウを新しいキャンバスサイズに合わせて再構築します。

@@ -65,12 +65,14 @@ public final class SketchContext {
 
     /// アニメーションループを再開します。
     public func loop() {
+        guard !isLooping else { return }
         isLooping = true
         onLoop?()
     }
 
     /// アニメーションループを停止します。
     public func noLoop() {
+        guard isLooping else { return }
         isLooping = false
         onNoLoop?()
     }

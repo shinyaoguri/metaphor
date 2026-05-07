@@ -85,6 +85,28 @@ struct SketchContextTests {
         let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(context.encoder == nil)
     }
+
+    @Test("loop and noLoop callbacks fire only on state transitions")
+    func loopNoLoopCallbacksAreIdempotent() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+
+        var loopCount = 0
+        var noLoopCount = 0
+        context.onLoop = { loopCount += 1 }
+        context.onNoLoop = { noLoopCount += 1 }
+
+        context.noLoop()
+        context.noLoop()
+        context.loop()
+        context.loop()
+
+        #expect(noLoopCount == 1)
+        #expect(loopCount == 1)
+        #expect(context.isLooping)
+    }
 }
 
 // MARK: - SketchContext Compute Tests
