@@ -95,6 +95,9 @@ public struct SketchView: NSViewRepresentable {
                 height: config.height
             )
             let canvas = try Canvas2D(renderer: renderer)
+            canvas.onSetClearColor = { [weak renderer] r, g, b, a in
+                renderer?.setClearColor(r, g, b, a)
+            }
             let canvas3D = try Canvas3D(renderer: renderer)
             let context = SketchContext(
                 renderer: renderer,

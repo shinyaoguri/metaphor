@@ -301,7 +301,7 @@ public final class SketchContext {
         // エンコーダーが作成されるため、background() の最適化（Metal のクリアに
         // 任せてクワッド描画をスキップ）が安全です。
         if shouldClearNext {
-            canvas.clearColorApplied = true
+            canvas.markPendingClearColorApplied()
         }
 
         // GIF フレームキャプチャ

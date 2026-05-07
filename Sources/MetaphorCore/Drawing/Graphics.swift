@@ -52,6 +52,9 @@ public final class Graphics {
             height: Float(height),
             sampleCount: 1
         )
+        self.canvas.onSetClearColor = { [weak textureManager] r, g, b, a in
+            textureManager?.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
+        }
     }
 
     // MARK: - Draw Lifecycle
@@ -75,6 +78,14 @@ public final class Graphics {
         canvas.end()
         encoder?.endEncoding()
         encoder = nil
+
+        let shouldClearNext = canvas.backgroundCalledThisFrame
+        textureManager.setShouldClear(shouldClearNext)
+        canvas.frameWillClear = shouldClearNext
+        if shouldClearNext {
+            canvas.markPendingClearColorApplied()
+        }
+
         commandBuffer?.commit()
         commandBuffer?.waitUntilCompleted()
         commandBuffer = nil

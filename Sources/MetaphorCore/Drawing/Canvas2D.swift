@@ -169,6 +169,12 @@ public final class Canvas2D: CanvasStyle {
     /// 詳細は SketchRunner の noLoop() 2フレームパスを参照してください。
     var clearColorApplied: Bool = true
 
+    /// レンダーパスの clearColor として、現在のエンコーダー作成時点で有効だった色。
+    var appliedClearColor: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1)
+
+    /// このフレームで background() により次フレーム用に予約された clearColor。
+    var pendingClearColor: SIMD4<Float>?
+
     // クリアカラーを設定するクロージャ。MetaphorRenderer から注入される
     var onSetClearColor: ((Double, Double, Double, Double) -> Void)?
 
@@ -449,6 +455,7 @@ public final class Canvas2D: CanvasStyle {
         self.frameCounter += 1
         self.hasDrawnAnything = false
         self.backgroundCalledThisFrame = false
+        self.pendingClearColor = nil
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
     }
 
@@ -668,8 +675,10 @@ public final class Canvas2D: CanvasStyle {
     public func background(_ color: Color) {
         let c = color.simd
         backgroundCalledThisFrame = true
+        pendingClearColor = c
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
-        if !hasDrawnAnything && frameWillClear && clearColorApplied {
+        let canUseRenderPassClear = onSetClearColor != nil && appliedClearColor == c
+        if !hasDrawnAnything && frameWillClear && clearColorApplied && canUseRenderPassClear {
             // Metal の loadAction = .clear がクリアを処理します。
             // 最初のフレームではこの最適化をスキップ: エンコーダーは
             // background() がクリアカラーを設定する前に作成されているため、
@@ -684,7 +693,15 @@ public final class Canvas2D: CanvasStyle {
         addVertexRaw(0, 0, c)
         addVertexRaw(width, height, c)
         addVertexRaw(0, height, c)
+        hasDrawnAnything = true
         flush()
+    }
+
+    /// このフレームで指定された背景色が次回以降の render pass clear に反映されたことを記録します。
+    func markPendingClearColorApplied() {
+        guard let pendingClearColor else { return }
+        appliedClearColor = pendingClearColor
+        clearColorApplied = true
     }
 
     /// グレースケール値で背景を塗りつぶします。

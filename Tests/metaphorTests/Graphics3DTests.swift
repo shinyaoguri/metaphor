@@ -58,6 +58,29 @@ struct Graphics3DCreationTests {
         #expect(pg3d.texture.width == 400)
         #expect(pg3d.texture.height == 300)
     }
+
+    @Test("Graphics first background fills target")
+    func graphicsFirstBackgroundFillsTarget() throws {
+        let renderer = try MetaphorRenderer(width: 8, height: 8)
+        let pg = try Graphics(
+            device: renderer.device,
+            shaderLibrary: renderer.shaderLibrary,
+            depthStencilCache: renderer.depthStencilCache,
+            width: 8,
+            height: 8
+        )
+
+        pg.beginDraw()
+        pg.background(Color(r: 1, g: 0, b: 0))
+        pg.endDraw()
+
+        let image = pg.toImage()
+        image.loadPixels()
+        let color = image.get(4, 4)
+        #expect(color.r > 0.9)
+        #expect(color.g < 0.1)
+        #expect(color.b < 0.1)
+    }
 }
 
 // MARK: - Graphics3D Lifecycle
@@ -417,7 +440,7 @@ struct Graphics3DTransformTests {
             let shouldClear = canvas2D.backgroundCalledThisFrame
             renderer.textureManager.setShouldClear(shouldClear)
             canvas2D.frameWillClear = shouldClear
-            if shouldClear { canvas2D.clearColorApplied = true }
+            if shouldClear { canvas2D.markPendingClearColorApplied() }
 
             cb1.commit()
             cb1.waitUntilCompleted()
@@ -438,7 +461,7 @@ struct Graphics3DTransformTests {
             let shouldClear2 = canvas2D.backgroundCalledThisFrame
             renderer.textureManager.setShouldClear(shouldClear2)
             canvas2D.frameWillClear = shouldClear2
-            if shouldClear2 { canvas2D.clearColorApplied = true }
+            if shouldClear2 { canvas2D.markPendingClearColorApplied() }
 
             cb2.commit()
             cb2.waitUntilCompleted()
