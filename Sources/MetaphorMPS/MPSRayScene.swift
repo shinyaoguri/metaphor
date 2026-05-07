@@ -125,17 +125,28 @@ final class MPSRayScene {
         }
 
         // 三角形ごとの面法線を計算
+        // インデックス検証 + 退化三角形 (面積 ≈ 0) のフォールバック法線で
+        // 外部モデル由来の不正データから NaN を防ぐ
         let triangleCount = allIndices.count / 3
+        let vertexCount = allPositions.count
+        let fallbackNormal = SIMD3<Float>(0, 1, 0)
+        let degenerateEpsilon: Float = 1e-12  // cross product 長さの平方の閾値
         allNormals.reserveCapacity(triangleCount)
         for t in 0..<triangleCount {
             let i0 = Int(allIndices[t * 3])
             let i1 = Int(allIndices[t * 3 + 1])
             let i2 = Int(allIndices[t * 3 + 2])
+            guard i0 < vertexCount, i1 < vertexCount, i2 < vertexCount else {
+                throw MetaphorError.mps(.invalidScene(
+                    "Triangle \(t) references out-of-range vertex (max=\(vertexCount - 1))"
+                ))
+            }
             let v0 = allPositions[i0]
             let v1 = allPositions[i1]
             let v2 = allPositions[i2]
-            let n = normalize(cross(v1 - v0, v2 - v0))
-            allNormals.append(n)
+            let crossVec = cross(v1 - v0, v2 - v0)
+            let lenSq = length_squared(crossVec)
+            allNormals.append(lenSq > degenerateEpsilon ? crossVec / sqrt(lenSq) : fallbackNormal)
         }
 
         // GPU バッファを作成
