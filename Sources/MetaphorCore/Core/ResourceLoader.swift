@@ -70,8 +70,8 @@ public final class ResourceLoader {
 
     /// 3D モデルを非同期で読み込みます。
     ///
-    /// Model I/O は MainActor を必要としますが、async 関数でラップすることで
-    /// 呼び出し側が `await` を使用して構造化並行処理と統合できます。
+    /// Model I/O によるファイル解析はバックグラウンドタスクで実行し、
+    /// Metal バッファを持つ ``Mesh`` の生成だけ MainActor に戻します。
     ///
     /// - Parameters:
     ///   - path: モデルのファイルパス
@@ -79,6 +79,6 @@ public final class ResourceLoader {
     /// - Returns: 読み込まれた ``Mesh``
     public func loadModelAsync(path: String, normalize: Bool = true) async throws -> Mesh {
         let url = URL(fileURLWithPath: path)
-        return try ModelIOLoader.load(device: device, url: url, normalize: normalize)
+        return try await ModelIOLoader.loadAsync(device: device, url: url, normalize: normalize)
     }
 }

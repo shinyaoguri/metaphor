@@ -7,8 +7,13 @@ import simd
 ///
 /// MDLAsset を介して OBJ、USDZ、ABC などのフォーマットを読み込み、
 /// metaphor の Mesh フォーマットに変換します。
-@MainActor
 enum ModelIOLoader {
+    struct LoadedModelData: Sendable {
+        var vertices: [Vertex3D]
+        var indices16: [UInt16]?
+        var indices32: [UInt32]?
+        var uvVertices: [Vertex3DTextured]?
+    }
 
     /// モデルファイルを読み込んで Mesh に変換します。
     /// - Parameters:
@@ -16,7 +21,22 @@ enum ModelIOLoader {
     ///   - url: モデルファイルのURL。
     ///   - normalize: true の場合、バウンディングボックスを [-1, 1] に正規化します。
     /// - Returns: 読み込まれたモデルデータを含む Mesh インスタンス。
+    @MainActor
     static func load(device: MTLDevice, url: URL, normalize: Bool) throws -> Mesh {
+        let data = try loadModelData(device: device, url: url, normalize: normalize)
+        return try makeMesh(device: device, data: data)
+    }
+
+    static func loadAsync(device: MTLDevice, url: URL, normalize: Bool) async throws -> Mesh {
+        let data = try await Task.detached(priority: .userInitiated) {
+            try loadModelData(device: device, url: url, normalize: normalize)
+        }.value
+        return try await MainActor.run {
+            try makeMesh(device: device, data: data)
+        }
+    }
+
+    nonisolated private static func loadModelData(device: MTLDevice, url: URL, normalize: Bool) throws -> LoadedModelData {
         let allocator = MTKMeshBufferAllocator(device: device)
         let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
 
@@ -92,23 +112,40 @@ enum ModelIOLoader {
             }
         }
 
-        // Mesh を作成
         if vertices.count <= 65535 && allIndices.allSatisfy({ $0 <= 65535 }) {
             let indices16 = allIndices.map { UInt16($0) }
-            return try Mesh(
-                device: device,
+            return LoadedModelData(
                 vertices: vertices,
-                indices: indices16.isEmpty ? nil : indices16,
+                indices16: indices16.isEmpty ? nil : indices16,
+                indices32: nil,
                 uvVertices: hasUVData ? uvVertices : nil
             )
         } else {
-            return try Mesh(
-                device: device,
+            return LoadedModelData(
                 vertices: vertices,
+                indices16: nil,
                 indices32: allIndices,
                 uvVertices: hasUVData ? uvVertices : nil
             )
         }
+    }
+
+    @MainActor
+    private static func makeMesh(device: MTLDevice, data: LoadedModelData) throws -> Mesh {
+        if let indices16 = data.indices16 {
+            return try Mesh(
+                device: device,
+                vertices: data.vertices,
+                indices: indices16,
+                uvVertices: data.uvVertices
+            )
+        }
+        return try Mesh(
+            device: device,
+            vertices: data.vertices,
+            indices32: data.indices32 ?? [],
+            uvVertices: data.uvVertices
+        )
     }
 
     // MARK: - Private Helpers

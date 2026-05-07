@@ -6,7 +6,7 @@ import simd
 /// 位置、法線、カラーを持つ3D頂点（positionNormalColor レイアウト、48バイト/頂点）
 ///
 /// `VertexLayout.positionNormalColor` に一致するメモリレイアウトを持ちます。
-public struct Vertex3D {
+public struct Vertex3D: Sendable {
     public var position: SIMD3<Float>  // 16バイト（SIMD3 ストライド）
     public var normal: SIMD3<Float>    // 16バイト
     public var color: SIMD4<Float>     // 16バイト
@@ -18,7 +18,7 @@ public struct Vertex3D {
 ///
 /// `VertexLayout.positionNormalUV` に一致するメモリレイアウトを持ちます。
 /// SIMD3 アラインメント（16バイト）により、ストライドは48です（uv の後に8バイトのパディング）。
-struct Vertex3DTextured {
+struct Vertex3DTextured: Sendable {
     var position: SIMD3<Float>  // 16バイト
     var normal: SIMD3<Float>    // 16バイト
     var uv: SIMD2<Float>        // 8バイト + 8バイトのアラインメントパディング = 48ストライド
