@@ -165,6 +165,30 @@ struct Physics2DTests {
         #expect(body.restitution == 0.8)
         #expect(body.friction == 0.3)
     }
+
+    @Test("mass is sanitized to avoid NaN forces")
+    func massSanitization() {
+        let body = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 10), mass: 0)
+        #expect(body.mass > 0)
+
+        body.applyForce(SIMD2<Float>(1, 0))
+        #expect(body.acceleration.x.isFinite)
+
+        body.mass = -10
+        #expect(body.mass > 0)
+    }
+
+    @Test("circle centered inside rect is pushed out")
+    func circleInsideRectResolves() {
+        let physics = Physics2D(cellSize: 100)
+        let rect = physics.addRect(x: 0, y: 0, width: 10, height: 10)
+        rect.isStatic = true
+        let circle = physics.addCircle(x: 0, y: 0, radius: 2)
+
+        physics.step(0, iterations: 1)
+
+        #expect(abs(circle.position.x) >= 7 || abs(circle.position.y) >= 7)
+    }
 }
 
 // MARK: - SpatialHash2D Tests

@@ -229,9 +229,9 @@ public final class Physics2D {
         let dist = simd_length(delta)
         let minDist = ra + rb
 
-        guard dist < minDist, dist > 0.0001 else { return }
+        guard dist < minDist else { return }
 
-        let normal = delta / dist
+        let normal = dist > 0.0001 ? delta / dist : SIMD2<Float>(1, 0)
         let overlap = minDist - dist
 
         let totalMass = (a.isStatic ? 0 : a.mass) + (b.isStatic ? 0 : b.mass)
@@ -239,6 +239,7 @@ public final class Physics2D {
 
         if !a.isStatic { a.position -= normal * overlap * (b.isStatic ? 1 : b.mass / totalMass) }
         if !b.isStatic { b.position += normal * overlap * (a.isStatic ? 1 : a.mass / totalMass) }
+        applyCollisionResponse(a, b, normal: normal)
     }
 
     /// 最近点投影を使用して円と矩形の重なりを解消します。
@@ -253,16 +254,30 @@ public final class Physics2D {
         let diff = delta - closest
         let dist = simd_length(diff)
 
-        guard dist < r, dist > 0.0001 else { return }
-
-        let normal = diff / dist
-        let overlap = r - dist
+        let normal: SIMD2<Float>
+        let overlap: Float
+        if dist > 0.0001 {
+            guard dist < r else { return }
+            normal = diff / dist
+            overlap = r - dist
+        } else {
+            let distances = [
+                (hw - delta.x, SIMD2<Float>(1, 0)),
+                (hw + delta.x, SIMD2<Float>(-1, 0)),
+                (hh - delta.y, SIMD2<Float>(0, 1)),
+                (hh + delta.y, SIMD2<Float>(0, -1)),
+            ]
+            guard let nearest = distances.min(by: { $0.0 < $1.0 }) else { return }
+            normal = nearest.1
+            overlap = r + max(0, nearest.0)
+        }
 
         let totalMass = (circle.isStatic ? 0 : circle.mass) + (rect.isStatic ? 0 : rect.mass)
         guard totalMass > 0 else { return }
 
         if !circle.isStatic { circle.position += normal * overlap * (rect.isStatic ? 1 : rect.mass / totalMass) }
         if !rect.isStatic { rect.position -= normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass) }
+        applyCollisionResponse(rect, circle, normal: normal)
     }
 
     /// 最小貫通軸を使用して2つの軸整列矩形の重なりを解消します。
@@ -287,11 +302,56 @@ public final class Physics2D {
             let sign: Float = dx > 0 ? 1 : -1
             if !a.isStatic { a.position.x -= sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass) }
             if !b.isStatic { b.position.x += sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass) }
+            applyCollisionResponse(a, b, normal: SIMD2(sign, 0))
         } else {
             let sign: Float = dy > 0 ? 1 : -1
             if !a.isStatic { a.position.y -= sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass) }
             if !b.isStatic { b.position.y += sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass) }
+            applyCollisionResponse(a, b, normal: SIMD2(0, sign))
         }
+    }
+
+    /// Verlet の previousPosition を更新し、公開されている反発係数・摩擦係数を衝突応答に反映します。
+    private func applyCollisionResponse(_ a: PhysicsBody2D, _ b: PhysicsBody2D, normal: SIMD2<Float>) {
+        let invMassA = inverseMass(a)
+        let invMassB = inverseMass(b)
+        let invMassSum = invMassA + invMassB
+        guard invMassSum > 0 else { return }
+
+        var velocityA = a.velocity
+        var velocityB = b.velocity
+        let relativeVelocity = velocityB - velocityA
+        let normalSpeed = simd_dot(relativeVelocity, normal)
+        guard normalSpeed < 0 else { return }
+
+        let restitution = min(a.restitution, b.restitution)
+        let impulseMagnitude = -(1 + restitution) * normalSpeed / invMassSum
+        let impulse = impulseMagnitude * normal
+
+        if !a.isStatic { velocityA -= impulse * invMassA }
+        if !b.isStatic { velocityB += impulse * invMassB }
+
+        let updatedRelativeVelocity = velocityB - velocityA
+        let tangentVelocity = updatedRelativeVelocity - simd_dot(updatedRelativeVelocity, normal) * normal
+        let tangentLength = simd_length(tangentVelocity)
+        if tangentLength > 0.0001 {
+            let tangent = tangentVelocity / tangentLength
+            let friction = (a.friction + b.friction) * 0.5
+            let tangentImpulseMagnitude = -simd_dot(updatedRelativeVelocity, tangent) / invMassSum
+            let maxFrictionImpulse = impulseMagnitude * friction
+            let clampedTangentImpulse = max(-maxFrictionImpulse, min(maxFrictionImpulse, tangentImpulseMagnitude))
+            let tangentImpulse = clampedTangentImpulse * tangent
+
+            if !a.isStatic { velocityA -= tangentImpulse * invMassA }
+            if !b.isStatic { velocityB += tangentImpulse * invMassB }
+        }
+
+        if !a.isStatic { a.previousPosition = a.position - velocityA }
+        if !b.isStatic { b.previousPosition = b.position - velocityB }
+    }
+
+    private func inverseMass(_ body: PhysicsBody2D) -> Float {
+        body.isStatic ? 0 : 1 / body.mass
     }
 
     /// すべての非静的ボディをワールド境界内にクランプし、形状サイズを考慮します。

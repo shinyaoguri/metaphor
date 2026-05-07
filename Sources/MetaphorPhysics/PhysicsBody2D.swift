@@ -18,6 +18,8 @@ public enum PhysicsShape2D {
 /// 静的ボディは衝突解消に参加しますが、位置は変更されません。
 @MainActor
 public final class PhysicsBody2D {
+    private static let minimumMass: Float = 0.0001
+
     /// ワールド空間におけるボディの現在位置。
     public var position: SIMD2<Float>
 
@@ -28,7 +30,9 @@ public final class PhysicsBody2D {
     public var acceleration: SIMD2<Float> = .zero
 
     /// 力の適用と衝突重み付けに使用されるボディの質量。
-    public var mass: Float
+    public var mass: Float {
+        didSet { mass = Self.sanitizedMass(mass) }
+    }
 
     /// ボディの衝突形状。
     public let shape: PhysicsShape2D
@@ -40,10 +44,14 @@ public final class PhysicsBody2D {
     public var isStatic: Bool = false
 
     /// 反発係数（弾性）。範囲は [0, 1]。
-    public var restitution: Float = 0.5
+    public var restitution: Float = 0.5 {
+        didSet { restitution = Self.clampedUnit(restitution) }
+    }
 
     /// 接触時に適用される摩擦係数。
-    public var friction: Float = 0.1
+    public var friction: Float = 0.1 {
+        didSet { friction = Self.clampedUnit(friction) }
+    }
 
     /// 指定位置・形状・質量で新しい物理ボディを作成します。
     ///
@@ -55,8 +63,8 @@ public final class PhysicsBody2D {
     public init(x: Float, y: Float, shape: PhysicsShape2D, mass: Float = 1.0) {
         self.position = SIMD2(x, y)
         self.previousPosition = SIMD2(x, y)
-        self.mass = mass
-        self.shape = shape
+        self.mass = Self.sanitizedMass(mass)
+        self.shape = Self.sanitizedShape(shape)
     }
 
     /// Verlet 積分を実行: newPos = pos + (pos - prevPos) + acc * dt^2。
@@ -80,11 +88,31 @@ public final class PhysicsBody2D {
     /// - Parameter force: 適用する力ベクトル。
     public func applyForce(_ force: SIMD2<Float>) {
         guard !isStatic else { return }
+        guard mass.isFinite, mass > 0 else { return }
         acceleration += force / mass
     }
 
     /// Verlet 位置差分から導出されるボディの現在速度。
     public var velocity: SIMD2<Float> {
         position - previousPosition
+    }
+
+    private static func sanitizedMass(_ value: Float) -> Float {
+        guard value.isFinite, value > minimumMass else { return minimumMass }
+        return value
+    }
+
+    private static func sanitizedShape(_ shape: PhysicsShape2D) -> PhysicsShape2D {
+        switch shape {
+        case .circle(let radius):
+            return .circle(radius: max(minimumMass, abs(radius)))
+        case .rect(let width, let height):
+            return .rect(width: max(minimumMass, abs(width)), height: max(minimumMass, abs(height)))
+        }
+    }
+
+    private static func clampedUnit(_ value: Float) -> Float {
+        guard value.isFinite else { return 0 }
+        return max(0, min(1, value))
     }
 }
