@@ -184,7 +184,8 @@ public final class VideoExporter {
         stagingTexture: MTLTexture,
         commandBuffer: MTLCommandBuffer,
         width: Int,
-        height: Int
+        height: Int,
+        completionGroup: DispatchGroup? = nil
     ) {
         guard isRecording else { return }
         guard let adaptor = pixelBufferAdaptor,
@@ -222,9 +223,13 @@ public final class VideoExporter {
         // インフライト書き込みとして登録。完了ハンドラ末尾で必ず `leave()` する。
         // これにより `endRecord` は GPU 側の遅延到着フレームも待ってからファイナライズできる。
         group.enter()
+        completionGroup?.enter()
         commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
-                defer { group.leave() }
+                defer {
+                    completionGroup?.leave()
+                    group.leave()
+                }
                 // プールからピクセルバッファを取得
                 guard capturedInput.isReadyForMoreMediaData else { return }
 

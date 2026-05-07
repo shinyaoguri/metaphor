@@ -599,8 +599,8 @@ public final class MetaphorRenderer: NSObject {
     /// GPU→CPU リードバック用のステージングテクスチャを現在の `frameBufferIndex` スロットから返すか作成します。
     ///
     /// `inflightSemaphore`（値3）と `frameBufferIndex` のローテーションにより、
-    /// 同じスロットを再利用する前に該当スロットを使ったフレームの完了ハンドラは確実に終わっています。
-    /// これにより、完了ハンドラの `getBytes()` 中に次フレームの blit がステージングを上書きする競合を防ぎます。
+    /// 同じスロットを再利用する前に該当スロットを使った GPU/CPU の
+    /// リードバック処理が完了するよう制御しています。
     private func createOrReuseStagingTexture(cache: inout [MTLTexture?]) -> MTLTexture? {
         let index = frameBufferIndex
         if let existing = cache[index],
@@ -730,13 +730,16 @@ public final class MetaphorRenderer: NSObject {
         frameBufferIndex = nextBufferIndex
         nextBufferIndex = (nextBufferIndex + 1) % 3
 
+        let readbackGroup = DispatchGroup()
         commandBuffer.addCompletedHandler { [weak self] cb in
-            self?.inflightSemaphore.signal()
             let gpuStart = cb.gpuStartTime
             let gpuEnd = cb.gpuEndTime
-            DispatchQueue.main.async {
-                self?.lastGPUStartTime = gpuStart
-                self?.lastGPUEndTime = gpuEnd
+            readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
+                self?.inflightSemaphore.signal()
+                DispatchQueue.main.async {
+                    self?.lastGPUStartTime = gpuStart
+                    self?.lastGPUEndTime = gpuEnd
+                }
             }
         }
 
@@ -823,7 +826,9 @@ public final class MetaphorRenderer: NSObject {
                 let width = textureManager.width
                 let height = textureManager.height
                 let path = savePath
+                readbackGroup.enter()
                 commandBuffer.addCompletedHandler { _ in
+                    defer { readbackGroup.leave() }
                     MetaphorRenderer.writePNG(
                         texture: staging, width: width, height: height, path: path
                     )
@@ -838,7 +843,8 @@ public final class MetaphorRenderer: NSObject {
                 stagingTexture: exportStaging,
                 commandBuffer: commandBuffer,
                 width: textureManager.width,
-                height: textureManager.height
+                height: textureManager.height,
+                completionGroup: readbackGroup
             )
         }
 
@@ -849,7 +855,8 @@ public final class MetaphorRenderer: NSObject {
                 stagingTexture: videoStaging,
                 commandBuffer: commandBuffer,
                 width: textureManager.width,
-                height: textureManager.height
+                height: textureManager.height,
+                completionGroup: readbackGroup
             )
         }
 

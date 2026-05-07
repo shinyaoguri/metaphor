@@ -56,7 +56,8 @@ public final class FrameExporter {
         stagingTexture: MTLTexture,
         commandBuffer: MTLCommandBuffer,
         width: Int,
-        height: Int
+        height: Int,
+        completionGroup: DispatchGroup? = nil
     ) {
         guard isRecording else { return }
 
@@ -79,7 +80,9 @@ public final class FrameExporter {
             blitEncoder.endEncoding()
         }
 
+        completionGroup?.enter()
         commandBuffer.addCompletedHandler { _ in
+            defer { completionGroup?.leave() }
             MetaphorRenderer.writePNG(
                 texture: stagingTexture, width: width, height: height, path: path
             )
