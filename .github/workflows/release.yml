@@ -104,7 +104,16 @@ jobs:
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
             --body "Automated release commit. Bumps Package.swift binary target and README.md to ${TAG_NAME}."
-          # Wait for required status checks (build-and-test) to complete.
+          # `gh pr checks --watch` exits immediately with "no checks reported"
+          # if no check has registered yet. The pull_request CI takes a few
+          # seconds to enqueue, so poll for the first check before watching.
+          deadline=$((SECONDS + 180))
+          while [ $SECONDS -lt $deadline ]; do
+            if gh pr checks "$RELEASE_BRANCH" 2>/dev/null | grep -q .; then
+              break
+            fi
+            sleep 5
+          done
           gh pr checks "$RELEASE_BRANCH" --watch --interval 15
 
       - name: Squash-merge release PR
