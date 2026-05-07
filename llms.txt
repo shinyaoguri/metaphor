@@ -789,7 +789,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class GIFExporter` -- キャプチャしたフレームをアニメーションGIFファイルとしてエクスポートします。
 
 - `var dithering: Bool` -- カラー量子化時のディザリング有効フラグ
-- `var frameCount: Int { get }` -- これまでにキャプチャしたフレーム数
+- `var frameCount: Int { get }` -- `captureFrame` の呼び出し回数（GIF への追加完了とは無関係）
 - `var isRecording: Bool { get }` -- 現在記録中かどうかを示すフラグ
 - `var loopCount: Int` -- GIFのループ回数（0は無限ループ）
 - `init()`
