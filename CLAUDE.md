@@ -99,3 +99,10 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 - Uses Swift Testing framework (`@Suite`, `@Test`), not XCTest
 - New examples should follow existing directory structure: `Examples/{Category}/{Subcategory}/{Name}/`
 - Each example is an independent SPM package with its own `Package.swift`
+
+## Branching Workflow
+
+- **`develop`** — primary work branch. All routine commits and feature work go here.
+- **`main`** — release/stable branch. Updated only via PR from `develop`. Direct push is blocked by branch protection (PR + green CI required, admin bypass available for emergencies).
+- Routine flow: commit on `develop` → push → open PR `develop` → `main` → wait for CI → merge.
+- CI runs on push and PR for both `main` and `develop`. The Documentation workflow deploys only from `main`.
