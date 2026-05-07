@@ -124,18 +124,26 @@ final class MPSRayScene {
             }
         }
 
-        // 三角形ごとの面法線を計算
-        // インデックス検証 + 退化三角形 (面積 ≈ 0) のフォールバック法線で
-        // 外部モデル由来の不正データから NaN を防ぐ
-        let triangleCount = allIndices.count / 3
+        // 退化三角形を BVH 構築前に除外しつつ、有効な三角形だけのインデックスと
+        // 法線バッファを構築する。インデックス範囲外の三角形は明示的にスローし、
+        // 退化（面積≈0）はサイレントにスキップしてデバッグログのみ残す。
+        // これにより無駄なレイ-三角形交差テストが消え、退化面に対する
+        // 不定な交差結果も発生しなくなる。
+        let inputTriangleCount = allIndices.count / 3
         let vertexCount = allPositions.count
-        let fallbackNormal = SIMD3<Float>(0, 1, 0)
-        let degenerateEpsilon: Float = 1e-12  // cross product 長さの平方の閾値
-        allNormals.reserveCapacity(triangleCount)
-        for t in 0..<triangleCount {
-            let i0 = Int(allIndices[t * 3])
-            let i1 = Int(allIndices[t * 3 + 1])
-            let i2 = Int(allIndices[t * 3 + 2])
+        let degenerateEpsilon: Float = 1e-12  // cross product 長さ平方の閾値
+        var validIndices = [UInt32]()
+        validIndices.reserveCapacity(allIndices.count)
+        allNormals.reserveCapacity(inputTriangleCount)
+        var droppedTriangleCount = 0
+
+        for t in 0..<inputTriangleCount {
+            let raw0 = allIndices[t * 3]
+            let raw1 = allIndices[t * 3 + 1]
+            let raw2 = allIndices[t * 3 + 2]
+            let i0 = Int(raw0)
+            let i1 = Int(raw1)
+            let i2 = Int(raw2)
             guard i0 < vertexCount, i1 < vertexCount, i2 < vertexCount else {
                 throw MetaphorError.mps(.invalidScene(
                     "Triangle \(t) references out-of-range vertex (max=\(vertexCount - 1))"
@@ -146,8 +154,29 @@ final class MPSRayScene {
             let v2 = allPositions[i2]
             let crossVec = cross(v1 - v0, v2 - v0)
             let lenSq = length_squared(crossVec)
-            allNormals.append(lenSq > degenerateEpsilon ? crossVec / sqrt(lenSq) : fallbackNormal)
+            guard lenSq > degenerateEpsilon else {
+                droppedTriangleCount += 1
+                continue
+            }
+            validIndices.append(raw0)
+            validIndices.append(raw1)
+            validIndices.append(raw2)
+            allNormals.append(crossVec / sqrt(lenSq))
         }
+
+        guard !validIndices.isEmpty else {
+            throw MetaphorError.mps(.invalidScene(
+                "All \(inputTriangleCount) triangles are degenerate"
+            ))
+        }
+
+        if droppedTriangleCount > 0 {
+            print("[metaphor.MPSRayScene] Dropped \(droppedTriangleCount) degenerate triangle(s) of \(inputTriangleCount)")
+        }
+
+        // BVH 用にコンパクト化されたインデックス配列で置換
+        allIndices = validIndices
+        let triangleCount = allIndices.count / 3
 
         // GPU バッファを作成
         guard let vertexBuffer = device.makeBuffer(

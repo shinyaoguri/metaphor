@@ -284,4 +284,47 @@ struct MPSRayTracerTests {
         rt.addMesh(mesh, transform: t)
         try rt.buildAccelerationStructure()
     }
+
+    @Test("all-degenerate scene throws invalidScene")
+    @MainActor func allDegenerateThrows() throws {
+        guard Self.gpuSupportsRayTracing else { return }
+        guard let device = MTLCreateSystemDefaultDevice(),
+              let queue = device.makeCommandQueue() else {
+            return
+        }
+        let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
+        let dm = DynamicMesh(device: device)
+        // 3 coincident vertices → zero-area triangle
+        dm.addVertex(0, 0, 0)
+        dm.addVertex(0, 0, 0)
+        dm.addVertex(0, 0, 0)
+        dm.addIndex(0); dm.addIndex(1); dm.addIndex(2)
+        rt.addDynamicMesh(dm)
+        #expect(throws: MetaphorError.self) {
+            try rt.buildAccelerationStructure()
+        }
+    }
+
+    @Test("mixed scene drops only degenerate triangles")
+    @MainActor func mixedSceneDropsDegenerate() throws {
+        guard Self.gpuSupportsRayTracing else { return }
+        guard let device = MTLCreateSystemDefaultDevice(),
+              let queue = device.makeCommandQueue() else {
+            return
+        }
+        let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
+        let dm = DynamicMesh(device: device)
+        // Valid triangle (positive area)
+        dm.addVertex(0, 0, 0)
+        dm.addVertex(1, 0, 0)
+        dm.addVertex(0, 1, 0)
+        // Degenerate triangle (collinear)
+        dm.addVertex(2, 0, 0)
+        dm.addVertex(3, 0, 0)
+        dm.addVertex(4, 0, 0)
+        dm.addIndex(0); dm.addIndex(1); dm.addIndex(2)
+        dm.addIndex(3); dm.addIndex(4); dm.addIndex(5)
+        rt.addDynamicMesh(dm)
+        try rt.buildAccelerationStructure()  // Should succeed with 1 valid triangle
+    }
 }
