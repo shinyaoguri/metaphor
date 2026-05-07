@@ -86,12 +86,19 @@ public final class Graphics3D {
     }
 
     /// 描画を終了し GPU の完了を待機します。
-    public func endDraw() {
+    ///
+    /// - Parameter wait: `true` の場合は GPU 完了を `waitUntilCompleted()` で待機します（既定）。
+    ///   `false` を渡すとコミットのみで即時返ります。`Graphics3D` は専用の
+    ///   `MTLCommandQueue` を持つため、別キューからテクスチャを読む際は
+    ///   呼び出し側で同期を担保してください（例: 1 フレーム以上遅延させる、`MTLEvent` を共有する等）。
+    public func endDraw(wait: Bool = true) {
         canvas3D.end()
         encoder?.endEncoding()
         encoder = nil
         commandBuffer?.commit()
-        commandBuffer?.waitUntilCompleted()
+        if wait {
+            commandBuffer?.waitUntilCompleted()
+        }
         commandBuffer = nil
     }
 

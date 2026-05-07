@@ -74,7 +74,13 @@ public final class Graphics {
     }
 
     /// フラッシュ、コミット、GPU完了待機により描画を終了します。
-    public func endDraw() {
+    ///
+    /// - Parameter wait: `true` の場合は GPU 完了を `waitUntilCompleted()` で待機します（既定）。
+    ///   `false` を渡すとコミットのみで即時返ります。リアルタイム描画ループ内で
+    ///   フレーム落ちを避けたい場合に有効ですが、`Graphics` は専用の `MTLCommandQueue` を持つため
+    ///   別キュー（メインキャンバス）からテクスチャを読む際は呼び出し側で同期を担保してください
+    ///   （例: 1 フレーム以上遅延させる、`MTLEvent` を共有する等）。
+    public func endDraw(wait: Bool = true) {
         canvas.end()
         encoder?.endEncoding()
         encoder = nil
@@ -87,7 +93,9 @@ public final class Graphics {
         }
 
         commandBuffer?.commit()
-        commandBuffer?.waitUntilCompleted()
+        if wait {
+            commandBuffer?.waitUntilCompleted()
+        }
         commandBuffer = nil
     }
 
