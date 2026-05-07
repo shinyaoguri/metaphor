@@ -118,7 +118,7 @@ public final class MPSImageFilterWrapper {
     ///   - source: ソーステクスチャ。
     ///   - destination: デスティネーションテクスチャ。
     ///   - sigma: ブラー半径（ピクセル単位）。
-    func encodeGaussianBlur(
+    public func encodeGaussianBlur(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture,
@@ -133,7 +133,7 @@ public final class MPSImageFilterWrapper {
     ///   - commandBuffer: エンコード先のコマンドバッファ。
     ///   - source: ソーステクスチャ。
     ///   - destination: デスティネーションテクスチャ。
-    func encodeSobel(
+    public func encodeSobel(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture
@@ -147,7 +147,7 @@ public final class MPSImageFilterWrapper {
     ///   - commandBuffer: エンコード先のコマンドバッファ。
     ///   - source: ソーステクスチャ。
     ///   - destination: デスティネーションテクスチャ。
-    func encodeLaplacian(
+    public func encodeLaplacian(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture
@@ -162,7 +162,7 @@ public final class MPSImageFilterWrapper {
     ///   - source: ソーステクスチャ。
     ///   - destination: デスティネーションテクスチャ。
     ///   - radius: 収縮半径（ピクセル単位）。
-    func encodeErode(
+    public func encodeErode(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture,
@@ -179,7 +179,7 @@ public final class MPSImageFilterWrapper {
     ///   - source: ソーステクスチャ。
     ///   - destination: デスティネーションテクスチャ。
     ///   - radius: 膨張半径（ピクセル単位）。
-    func encodeDilate(
+    public func encodeDilate(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture,
@@ -187,6 +187,38 @@ public final class MPSImageFilterWrapper {
     ) {
         let size = radius * 2 + 1
         let kernel = getOrCreateAreaMax(size: size)
+        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+    }
+
+    /// メディアンフィルタ操作をコマンドバッファにエンコードします。
+    /// - Parameters:
+    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    ///   - source: ソーステクスチャ。
+    ///   - destination: デスティネーションテクスチャ。
+    ///   - diameter: フィルタカーネルの直径（奇数、最小3）。
+    public func encodeMedian(
+        commandBuffer: MTLCommandBuffer,
+        source: MTLTexture,
+        destination: MTLTexture,
+        diameter: Int = 3
+    ) {
+        let kernel = getOrCreateMedian(diameter: diameter)
+        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+    }
+
+    /// バイナリ閾値処理をコマンドバッファにエンコードします。
+    /// - Parameters:
+    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    ///   - source: ソーステクスチャ。
+    ///   - destination: デスティネーションテクスチャ。
+    ///   - value: 閾値（0.0〜1.0）。
+    public func encodeThreshold(
+        commandBuffer: MTLCommandBuffer,
+        source: MTLTexture,
+        destination: MTLTexture,
+        value: Float = 0.5
+    ) {
+        let kernel = getOrCreateThreshold(value: value)
         kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 

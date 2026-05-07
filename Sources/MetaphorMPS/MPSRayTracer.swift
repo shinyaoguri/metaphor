@@ -127,6 +127,25 @@ public final class MPSRayTracer {
         mode: RayTraceMode,
         camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float)
     ) {
+        guard let cb = commandQueue.makeCommandBuffer() else { return }
+        encodeTrace(mode: mode, camera: camera, commandBuffer: cb)
+        cb.commit()
+        cb.waitUntilCompleted()
+    }
+
+    /// 指定モードとカメラパラメータのレイトレーシングを既存のコマンドバッファへエンコードします。
+    ///
+    /// このメソッドは `commit()` や `waitUntilCompleted()` を行わないため、描画ループや
+    /// 他のGPU処理と同じコマンドバッファに統合できます。
+    /// - Parameters:
+    ///   - mode: レンダリングモード（アンビエントオクルージョン、ソフトシャドウ、またはディフューズ）。
+    ///   - camera: カメラパラメータ（視点位置、注視点、上方向ベクトル、視野角）。
+    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    public func encodeTrace(
+        mode: RayTraceMode,
+        camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float),
+        commandBuffer: MTLCommandBuffer
+    ) {
         guard let accel = accelerationStructure,
               let output = _outputTexture else { return }
 
@@ -139,34 +158,52 @@ public final class MPSRayTracer {
 
         switch mode {
         case .ambientOcclusion(let samples, let radius):
-            traceAO(accel: accel, output: output,
-                     inverseView: inverseView, inverseProjection: inverseProjection,
-                     samples: samples, radius: radius)
+            encodeTraceAO(
+                accel: accel,
+                output: output,
+                inverseView: inverseView,
+                inverseProjection: inverseProjection,
+                samples: samples,
+                radius: radius,
+                commandBuffer: commandBuffer
+            )
 
         case .softShadow(let lightDir, let softness, let samples):
-            traceSoftShadow(accel: accel, output: output,
-                            inverseView: inverseView, inverseProjection: inverseProjection,
-                            lightDirection: lightDir, softness: softness, samples: samples)
+            encodeTraceSoftShadow(
+                accel: accel,
+                output: output,
+                inverseView: inverseView,
+                inverseProjection: inverseProjection,
+                lightDirection: lightDir,
+                softness: softness,
+                samples: samples,
+                commandBuffer: commandBuffer
+            )
 
         case .diffuse:
-            traceDiffuse(accel: accel, output: output,
-                         inverseView: inverseView, inverseProjection: inverseProjection)
+            encodeTraceDiffuse(
+                accel: accel,
+                output: output,
+                inverseView: inverseView,
+                inverseProjection: inverseProjection,
+                commandBuffer: commandBuffer
+            )
         }
     }
 
     // MARK: - プライベート: AO トレーシング
 
-    private func traceAO(
+    private func encodeTraceAO(
         accel: MTLAccelerationStructure,
         output: MTLTexture,
         inverseView: float4x4,
         inverseProjection: float4x4,
         samples: Int,
-        radius: Float
+        radius: Float,
+        commandBuffer: MTLCommandBuffer
     ) {
         guard let normalBuf = normalBuffer,
-              let cb = commandQueue.makeCommandBuffer(),
-              let encoder = cb.makeComputeCommandEncoder(),
+              let encoder = commandBuffer.makeComputeCommandEncoder(),
               let pipeline = traceAOPipeline else { return }
 
         var uniforms = RayTraceUniforms(
@@ -183,25 +220,22 @@ public final class MPSRayTracer {
         encoder.setTexture(output, index: 0)
         dispatchGrid(encoder: encoder, pipeline: pipeline)
         encoder.endEncoding()
-
-        cb.commit()
-        cb.waitUntilCompleted()
     }
 
     // MARK: - プライベート: ソフトシャドウ
 
-    private func traceSoftShadow(
+    private func encodeTraceSoftShadow(
         accel: MTLAccelerationStructure,
         output: MTLTexture,
         inverseView: float4x4,
         inverseProjection: float4x4,
         lightDirection: SIMD3<Float>,
         softness: Float,
-        samples: Int
+        samples: Int,
+        commandBuffer: MTLCommandBuffer
     ) {
         guard let normalBuf = normalBuffer,
-              let cb = commandQueue.makeCommandBuffer(),
-              let encoder = cb.makeComputeCommandEncoder(),
+              let encoder = commandBuffer.makeComputeCommandEncoder(),
               let pipeline = traceSoftShadowPipeline else { return }
 
         var uniforms = RayTraceUniforms(
@@ -220,22 +254,19 @@ public final class MPSRayTracer {
         encoder.setTexture(output, index: 0)
         dispatchGrid(encoder: encoder, pipeline: pipeline)
         encoder.endEncoding()
-
-        cb.commit()
-        cb.waitUntilCompleted()
     }
 
     // MARK: - プライベート: ディフューズシェーディング
 
-    private func traceDiffuse(
+    private func encodeTraceDiffuse(
         accel: MTLAccelerationStructure,
         output: MTLTexture,
         inverseView: float4x4,
-        inverseProjection: float4x4
+        inverseProjection: float4x4,
+        commandBuffer: MTLCommandBuffer
     ) {
         guard let normalBuf = normalBuffer,
-              let cb = commandQueue.makeCommandBuffer(),
-              let encoder = cb.makeComputeCommandEncoder(),
+              let encoder = commandBuffer.makeComputeCommandEncoder(),
               let pipeline = traceDiffusePipeline else { return }
 
         var uniforms = RayTraceUniforms(
@@ -252,9 +283,6 @@ public final class MPSRayTracer {
         encoder.setTexture(output, index: 0)
         dispatchGrid(encoder: encoder, pipeline: pipeline)
         encoder.endEncoding()
-
-        cb.commit()
-        cb.waitUntilCompleted()
     }
 
     // MARK: - プライベート: セットアップ

@@ -113,26 +113,46 @@ public final class CIFilterWrapper {
         width: Int,
         height: Int
     ) -> MTLTexture? {
-        guard let filter = CIFilter(name: filterName) else { return nil }
-        filter.setDefaults()
-        for (key, value) in parameters {
-            filter.setValue(value, forKey: key)
-        }
-        guard let output = filter.outputImage else { return nil }
-
-        let extent = CGRect(x: 0, y: 0, width: width, height: height)
-        let cropped = output.cropped(to: extent)
-
         guard let outTex = getOrCreateTexture(width: width, height: height, tag: "ci_gen"),
               let cmdBuf = commandQueue.makeCommandBuffer() else { return nil }
 
-        ciContext.render(cropped, to: outTex, commandBuffer: cmdBuf,
-                         bounds: extent, colorSpace: colorSpace)
+        generate(
+            filterName: filterName,
+            parameters: parameters,
+            destination: outTex,
+            commandBuffer: cmdBuf
+        )
         cmdBuf.commit()
         cmdBuf.waitUntilCompleted()
 
         texturePool.removeValue(forKey: "\(width)_\(height)_ci_gen")
         return outTex
+    }
+
+    /// ジェネレーターフィルタを既存のコマンドバッファへエンコードします。
+    /// - Parameters:
+    ///   - filterName: CIFilter 名文字列。
+    ///   - parameters: フィルタパラメータ辞書。
+    ///   - destination: 出力先テクスチャ。
+    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    public func generate(
+        filterName: String,
+        parameters: [String: Any],
+        destination: MTLTexture,
+        commandBuffer: MTLCommandBuffer
+    ) {
+        guard let filter = CIFilter(name: filterName) else { return }
+        filter.setDefaults()
+        for (key, value) in parameters {
+            filter.setValue(value, forKey: key)
+        }
+        guard let output = filter.outputImage else { return }
+
+        let extent = CGRect(x: 0, y: 0, width: destination.width, height: destination.height)
+        let cropped = output.cropped(to: extent)
+
+        ciContext.render(cropped, to: destination, commandBuffer: commandBuffer,
+                         bounds: extent, colorSpace: colorSpace)
     }
 
     // MARK: - テクスチャ管理
