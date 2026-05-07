@@ -86,6 +86,17 @@ public final class VideoExporter {
     /// 現在のフレームインデックス
     private var frameIndex: Int64 = 0
 
+    /// ライターのバックプレッシャ等で書き込めずドロップしたフレーム数。
+    ///
+    /// `frameIndex` は常に進むため出力動画のタイムスタンプは保たれますが、
+    /// ドロップが起きると該当時刻の絵が抜けます。録画品質の判断材料として参照してください。
+    public private(set) var droppedFrameCount: Int = 0
+
+    /// 各ドロップ発生時に呼び出されるオプションコールバック。
+    ///
+    /// MainActor で呼ばれます。引数は失われたフレームの `frameIndex` です。
+    public var onFrameDropped: (@MainActor (Int64) -> Void)?
+
     /// 現在の記録セッション用の AVAssetWriter
     private var assetWriter: AVAssetWriter?
 
@@ -175,7 +186,18 @@ public final class VideoExporter {
         self.pixelBufferAdaptor = adaptor
         self.currentFPS = config.fps
         self.frameIndex = 0
+        self.droppedFrameCount = 0
         self.isRecording = true
+    }
+
+    /// writerQueue で発生したドロップを MainActor に反映するヘルパー。
+    /// `weak self` 経由で呼ぶことで、エクスポータが先に解放されてもクラッシュしません。
+    nonisolated private static func recordDrop(_ exporter: VideoExporter?, frameIndex: Int64) {
+        Task { @MainActor in
+            guard let exporter else { return }
+            exporter.droppedFrameCount += 1
+            exporter.onFrameDropped?(frameIndex)
+        }
     }
 
     /// 現在のフレームをキャプチャします（MetaphorRenderer.renderFrame() から呼ばれます）。
@@ -224,20 +246,29 @@ public final class VideoExporter {
         // これにより `endRecord` は GPU 側の遅延到着フレームも待ってからファイナライズできる。
         group.enter()
         completionGroup?.enter()
-        commandBuffer.addCompletedHandler { @Sendable _ in
+        commandBuffer.addCompletedHandler { @Sendable [weak self] _ in
             queue.async {
                 defer {
                     completionGroup?.leave()
                     group.leave()
                 }
                 // プールからピクセルバッファを取得
-                guard capturedInput.isReadyForMoreMediaData else { return }
+                guard capturedInput.isReadyForMoreMediaData else {
+                    Self.recordDrop(self, frameIndex: currentFrame)
+                    return
+                }
 
                 var pixelBuffer: CVPixelBuffer?
-                guard let pool = capturedAdaptor.pixelBufferPool else { return }
+                guard let pool = capturedAdaptor.pixelBufferPool else {
+                    Self.recordDrop(self, frameIndex: currentFrame)
+                    return
+                }
 
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
-                guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return }
+                guard status == kCVReturnSuccess, let buffer = pixelBuffer else {
+                    Self.recordDrop(self, frameIndex: currentFrame)
+                    return
+                }
 
                 CVPixelBufferLockBaseAddress(buffer, [])
                 defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
