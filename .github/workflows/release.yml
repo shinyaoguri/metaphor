@@ -17,6 +17,7 @@ env:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release:
@@ -70,28 +71,57 @@ jobs:
             patch) PATCH=$((PATCH + 1)) ;;
           esac
           TAG_NAME="v${MAJOR}.${MINOR}.${PATCH}"
+          RELEASE_BRANCH="release/${TAG_NAME}"
           echo "New version: $TAG_NAME"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "RELEASE_BRANCH=$RELEASE_BRANCH" >> $GITHUB_ENV
 
-      # --- Update Package.swift, commit, THEN tag ---
-      - name: Update Package.swift and commit
+      # --- Push release branch with version-bump commit ---
+      - name: Push release branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$RELEASE_BRANCH"
           sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
           VERSION_NUM=${TAG_NAME#v}
           sed -i '' "s|from: \"[0-9]*\.[0-9]*\.[0-9]*\"|from: \"${VERSION_NUM}\"|g" README.md
           git add Package.swift README.md
-          git diff --cached --quiet || git commit -m "Release ${TAG_NAME}"
-          git push origin main
+          if git diff --cached --quiet; then
+            echo "::error::No version-bump diff produced (Package.swift / README.md unchanged)."
+            exit 1
+          fi
+          git commit -m "Release ${TAG_NAME}"
+          git push origin "$RELEASE_BRANCH"
 
-      - name: Create tag on updated commit
+      # --- Open PR, wait for CI, squash-merge into main ---
+      - name: Open PR to main and wait for CI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh pr create \
+            --base main \
+            --head "$RELEASE_BRANCH" \
+            --title "Release ${TAG_NAME}" \
+            --body "Automated release commit. Bumps Package.swift binary target and README.md to ${TAG_NAME}."
+          # Wait for required status checks (build-and-test) to complete.
+          gh pr checks "$RELEASE_BRANCH" --watch --interval 15
+
+      - name: Squash-merge release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "$RELEASE_BRANCH" --squash --delete-branch
+
+      # --- Tag the squash commit on main ---
+      - name: Tag the merged commit
+        run: |
+          git fetch origin main
+          git checkout main
+          git pull --ff-only
           git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
           git push origin "$TAG_NAME"
 
-      # --- GitHub Release ---
+      # --- GitHub Release with binary artifacts ---
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
