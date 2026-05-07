@@ -102,7 +102,44 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 
 ## Branching Workflow
 
-- **`develop`** — primary work branch. All routine commits and feature work go here.
+- **`develop`** — integration branch. New work lands here via PR from feature branches.
 - **`main`** — release/stable branch. Updated only via PR from `develop`. Direct push is blocked by branch protection (PR + green CI required, admin bypass available for emergencies).
-- Routine flow: commit on `develop` → push → open PR `develop` → `main` → wait for CI → merge.
 - CI runs on push and PR for both `main` and `develop`. The Documentation workflow deploys only from `main`.
+- Repository merge settings: **squash merge only**, branch auto-deleted on merge.
+
+### When to create a feature branch (Claude default)
+
+Create a branch off `develop` for any **non-trivial** work — new features, bug fixes that touch more than a line or two, refactors, anything that produces multiple commits. Stay on `develop` only for trivial edits (typo fixes, single-line config tweaks, docs-only changes).
+
+### Naming
+
+Use kebab-case with a category prefix:
+- `feature/<short-name>` — new public API, new module, new example
+- `fix/<short-name>` — bug fix
+- `refactor/<short-name>` — internal restructuring with no API change
+- `chore/<short-name>` — tooling, CI, build scripts
+- `docs/<short-name>` — documentation-only
+
+### Standard flow for a non-trivial task
+
+```bash
+# 1. Branch off the latest develop
+git checkout develop && git pull
+git checkout -b feature/<name>
+
+# 2. Implement, commit small focused commits, push
+git push -u origin feature/<name>
+
+# 3. Open a PR targeting develop
+gh pr create --base develop --title "..." --body "..."
+
+# 4. Wait for CI to go green; squash-merge via gh
+gh pr merge --squash --delete-branch
+git checkout develop && git pull
+```
+
+### Notes for Claude
+
+- Default to creating a branch unless the user explicitly says "commit to develop directly" or the change is genuinely trivial.
+- Squash-merge is the only allowed style — write one good final commit message in the PR title/body; per-commit messages on the branch are throwaway.
+- After merge, switch back to `develop` and pull. Local feature branch is fine to leave — `gh pr merge --delete-branch` removes the remote, and `git fetch -p` will prune it locally on the next sync.
