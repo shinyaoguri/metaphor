@@ -41,7 +41,7 @@ public final class ImageFilterGPU {
     private var areaMinCache: [Int: MPSImageAreaMin] = [:]
     private var areaMaxCache: [Int: MPSImageAreaMax] = [:]
     private var medianCache: [Int: MPSImageMedian] = [:]
-    private var thresholdKernel: MPSImageThresholdBinary?
+    private var thresholdCache: [Float: MPSImageThresholdBinary] = [:]
 
     init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary? = nil) {
         self.device = device
@@ -62,7 +62,7 @@ public final class ImageFilterGPU {
         areaMinCache.removeAll()
         areaMaxCache.removeAll()
         medianCache.removeAll()
-        thresholdKernel = nil
+        thresholdCache.removeAll()
     }
 
     /// 指定されたサイズに一致しないテクスチャプールエントリを削除します。
@@ -218,9 +218,9 @@ public final class ImageFilterGPU {
     }
 
     private func getOrCreateThreshold(value: Float) -> MPSImageThresholdBinary {
-        if let k = thresholdKernel { return k }
+        if let cached = thresholdCache[value] { return cached }
         let k = MPSImageThresholdBinary(device: device, thresholdValue: value, maximumValue: 1.0, linearGrayColorTransform: nil)
-        thresholdKernel = k
+        thresholdCache[value] = k
         return k
     }
 
