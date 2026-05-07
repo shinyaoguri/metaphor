@@ -76,7 +76,8 @@ struct Graphics3DCreationTests {
 
         pg.beginDraw()
         pg.background(Color(r: 1, g: 0, b: 0))
-        pg.endDraw()
+        // CPU 側で直接ピクセルを読むので明示的に GPU 完了を待つ
+        pg.endDraw(wait: true)
 
         let image = pg.toImage()
         image.loadPixels()

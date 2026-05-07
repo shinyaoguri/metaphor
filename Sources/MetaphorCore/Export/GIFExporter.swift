@@ -15,9 +15,13 @@ import UniformTypeIdentifiers
 /// endGIFRecord("output.gif")
 /// ```
 ///
-/// フレームは ``beginRecord(fps:width:height:)`` で開いた一時ファイルに
-/// `CGImageDestination` 経由で逐次書き込まれます。これにより長時間・高解像度の
-/// 録画でも `CGImage` 配列としてメモリ上に保持することはありません。
+/// 内部実装:
+/// - フレームは ``beginRecord(fps:width:height:)`` で開いた一時ファイルに
+///   `CGImageDestination` 経由で逐次書き込まれます（メモリ上に CGImage 配列を保持しません）。
+/// - GPU 読み戻しは `addCompletedHandler` で非同期化され、メインスレッドの
+///   `waitUntilCompleted` をなくしています。
+/// - ステージングテクスチャはリングバッファ（既定 3 枚）で多重化、`DispatchSemaphore`
+///   で in-flight 数を上限とし、上限到達時のみ `captureFrame` がブロックします（自然な backpressure）。
 @MainActor
 public final class GIFExporter {
 
@@ -26,7 +30,7 @@ public final class GIFExporter {
     /// 現在記録中かどうかを示すフラグ
     public private(set) var isRecording: Bool = false
 
-    /// これまでにキャプチャしたフレーム数
+    /// `captureFrame` の呼び出し回数（GIF への追加完了とは無関係）
     public private(set) var frameCount: Int = 0
 
     /// フレーム間の遅延時間（秒）
@@ -38,13 +42,34 @@ public final class GIFExporter {
     /// 一時ファイルの URL（`endRecord` で最終パスへ移動）
     private var temporaryURL: URL?
 
-    /// GPU→CPU ピクセル読み戻し用のステージングテクスチャ
-    private var stagingTexture: MTLTexture?
+    // MARK: - Capture Pipeline
 
-    /// キャプチャ幅（ピクセル）
+    /// in-flight フレームの上限。Metal の triple buffering と同じ N=3。
+    private static let ringSize = 3
+
+    /// ステージングテクスチャのリング（GPU→CPU 読み戻し用、shared storage）
+    private var stagingRing: [MTLTexture] = []
+
+    /// 次に使うステージングのインデックス
+    private var ringIndex: Int = 0
+
+    /// 現在のリングの寸法（変更時は再確保）
+    private var ringWidth: Int = 0
+    private var ringHeight: Int = 0
+
+    /// in-flight フレーム数を ringSize に制限する semaphore
+    private let inFlightSemaphore = DispatchSemaphore(value: ringSize)
+
+    /// `CGImageDestinationAddImage` を直列化するキュー
+    private let writerQueue = DispatchQueue(label: "metaphor.GIFExporter.writer")
+
+    /// 未完了書き込みの追跡。`endRecord` で `wait()` してドレインしてからファイナライズする
+    private let pendingWrites = DispatchGroup()
+
+    /// キャプチャ幅（ピクセル、0 ならソーステクスチャ依存）
     private var captureWidth: Int = 0
 
-    /// キャプチャ高さ（ピクセル）
+    /// キャプチャ高さ（ピクセル、0 ならソーステクスチャ依存）
     private var captureHeight: Int = 0
 
     // MARK: - GIF Options
@@ -62,7 +87,7 @@ public final class GIFExporter {
     /// GIF記録を開始します。
     ///
     /// 一時ファイルへの逐次書き出しが始まります。`endRecord(to:)` で最終的な
-    /// 出力パスへリネームされます。途中で停止した場合は破棄してください。
+    /// 出力パスへリネームされます。
     /// - Parameters:
     ///   - fps: フレームレート（デフォルトは15）。
     ///   - width: キャプチャ幅（0の場合はソーステクスチャの幅を使用）。
@@ -74,6 +99,10 @@ public final class GIFExporter {
         self.captureWidth = width
         self.captureHeight = height
         self.frameCount = 0
+        self.ringIndex = 0
+        self.ringWidth = 0
+        self.ringHeight = 0
+        self.stagingRing.removeAll()
 
         let tempName = "metaphor_gif_\(UUID().uuidString).gif"
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(tempName)
@@ -82,7 +111,7 @@ public final class GIFExporter {
         guard let dest = CGImageDestinationCreateWithURL(
             tempURL as CFURL,
             UTType.gif.identifier as CFString,
-            0,  // フレーム数未確定（kCGImageDestinationLossyCompressionQuality 用に 0 でも可）
+            0,
             nil
         ) else {
             self.temporaryURL = nil
@@ -101,85 +130,78 @@ public final class GIFExporter {
     }
 
     /// Metal テクスチャから現在のフレームをキャプチャします。
+    ///
+    /// 内部で blit を発行して `addCompletedHandler` 経由で非同期に CPU へ
+    /// 読み戻し、書き出しキューで CGImage 化と AddImage を行います。in-flight
+    /// 数がリングサイズ (3) に達している場合のみ semaphore でブロックします。
     /// - Parameters:
     ///   - texture: キャプチャ対象の Metal テクスチャ。
-    ///   - device: 必要に応じてステージングテクスチャを作成する Metal デバイス。
-    ///   - commandQueue: プライベートテクスチャをCPU読み戻し用にブリットするコマンドキュー。
+    ///   - device: ステージングテクスチャ作成に使用する Metal デバイス。
+    ///   - commandQueue: ブリットコマンドの発行に使用するコマンドキュー。
     public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) {
         guard isRecording, let dest = destination else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
         let h = captureHeight > 0 ? captureHeight : texture.height
 
-        // サイズが変わった場合、ステージングテクスチャを確保または再作成
-        if stagingTexture == nil || stagingTexture!.width != w || stagingTexture!.height != h {
-            let desc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: .bgra8Unorm,
-                width: w,
-                height: h,
-                mipmapped: false
-            )
-            desc.storageMode = .shared
-            desc.usage = [.shaderRead, .shaderWrite]
-            stagingTexture = device.makeTexture(descriptor: desc)
+        // 寸法変更時はリングを再構築（in-flight が完了するまで wait してから入れ替え）
+        if stagingRing.isEmpty || ringWidth != w || ringHeight != h {
+            // 既存リングのドレイン: 全 in-flight が signal するまで待つ
+            for _ in 0..<Self.ringSize { inFlightSemaphore.wait() }
+            stagingRing = (0..<Self.ringSize).compactMap { _ in
+                makeStaging(device: device, width: w, height: h)
+            }
+            ringWidth = w
+            ringHeight = h
+            ringIndex = 0
+            // セマフォを ringSize 分だけ復帰
+            for _ in 0..<Self.ringSize { inFlightSemaphore.signal() }
+            guard stagingRing.count == Self.ringSize else { return }
         }
 
-        // プライベートテクスチャからステージングへブリット（CPU読み戻し用）
-        let readTexture: MTLTexture
-        if texture.storageMode == .private {
-            guard let staging = stagingTexture,
-                  let cmdBuf = commandQueue.makeCommandBuffer(),
-                  let blit = cmdBuf.makeBlitCommandEncoder() else { return }
-            blit.copy(from: texture, to: staging)
-            blit.endEncoding()
-            cmdBuf.commit()
-            cmdBuf.waitUntilCompleted()
-            readTexture = staging
-        } else {
-            readTexture = texture
-        }
+        // Backpressure: in-flight が ringSize 未満になるまで待つ（通常は即時通過）
+        inFlightSemaphore.wait()
 
-        // （CPUアクセス可能になった）テクスチャからピクセルデータを読み取り
-        let bytesPerRow = w * 4
-        var pixelData = [UInt8](repeating: 0, count: bytesPerRow * h)
+        let staging = stagingRing[ringIndex]
+        ringIndex = (ringIndex + 1) % Self.ringSize
 
-        readTexture.getBytes(
-            &pixelData,
-            bytesPerRow: bytesPerRow,
-            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                           size: MTLSize(width: w, height: h, depth: 1)),
-            mipmapLevel: 0
-        )
-
-        // BGRA → RGBA 変換
-        for i in stride(from: 0, to: pixelData.count, by: 4) {
-            let b = pixelData[i]
-            let r = pixelData[i + 2]
-            pixelData[i] = r
-            pixelData[i + 2] = b
-        }
-
-        // ピクセルデータから CGImage を作成
-        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                data: &pixelData,
-                width: w,
-                height: h,
-                bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow,
-                space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              ),
-              let image = context.makeImage() else {
+        guard let cmdBuf = commandQueue.makeCommandBuffer(),
+              let blit = cmdBuf.makeBlitCommandEncoder() else {
+            inFlightSemaphore.signal()
             return
         }
+        blit.copy(from: texture, to: staging)
+        blit.endEncoding()
 
-        let frameProperties: [String: Any] = [
-            kCGImagePropertyGIFDictionary as String: [
-                kCGImagePropertyGIFDelayTime as String: frameDelay
-            ]
-        ]
-        CGImageDestinationAddImage(dest, image, frameProperties as CFDictionary)
+        // @Sendable クロージャ用のローカルコピー
+        nonisolated(unsafe) let capturedDest = dest
+        nonisolated(unsafe) let capturedStaging = staging
+        let capturedDelay = frameDelay
+        let queue = writerQueue
+        let group = pendingWrites
+        let semaphore = inFlightSemaphore
+
+        group.enter()
+        cmdBuf.addCompletedHandler { @Sendable _ in
+            // すべての書き出し処理は writerQueue 上で直列化される
+            queue.async {
+                defer {
+                    semaphore.signal()
+                    group.leave()
+                }
+                guard let image = Self.makeCGImage(from: capturedStaging, width: w, height: h) else {
+                    return
+                }
+                let frameProperties: [String: Any] = [
+                    kCGImagePropertyGIFDictionary as String: [
+                        kCGImagePropertyGIFDelayTime as String: capturedDelay
+                    ]
+                ]
+                CGImageDestinationAddImage(capturedDest, image, frameProperties as CFDictionary)
+            }
+        }
+
+        cmdBuf.commit()
         frameCount += 1
     }
 
@@ -193,9 +215,15 @@ public final class GIFExporter {
         guard let dest = destination, let tempURL = temporaryURL else {
             throw MetaphorError.export(.destinationCreationFailed)
         }
+
+        // すべての in-flight 書き込みが完了するまで待つ
+        pendingWrites.wait()
+
         destination = nil
         temporaryURL = nil
-        stagingTexture = nil
+        stagingRing.removeAll()
+        ringWidth = 0
+        ringHeight = 0
 
         guard frameCount > 0 else {
             try? FileManager.default.removeItem(at: tempURL)
@@ -207,12 +235,12 @@ public final class GIFExporter {
             throw MetaphorError.export(.finalizationFailed)
         }
 
-        try moveTemporaryFile(from: tempURL, to: path)
+        try Self.moveTemporaryFile(from: tempURL, to: path)
     }
 
     /// 記録を停止し、キャプチャしたフレームを非同期でGIFファイルに書き出します。
     ///
-    /// メインスレッドをブロックしないよう、ファイナライズと最終リネームを
+    /// メインスレッドをブロックしないよう、ドレイン・ファイナライズ・最終リネームを
     /// バックグラウンドスレッドで実行します。
     /// - Parameter path: 出力ファイルパス。
     /// - Throws: フレームがキャプチャされていない場合、またはファイル書き込みに失敗した場合に ``MetaphorError`` をスローします。
@@ -223,34 +251,96 @@ public final class GIFExporter {
         guard let dest = destination, let tempURL = temporaryURL else {
             throw MetaphorError.export(.destinationCreationFailed)
         }
+
+        let capturedFrameCount = frameCount
+
         destination = nil
         temporaryURL = nil
-        stagingTexture = nil
-
-        guard frameCount > 0 else {
-            try? FileManager.default.removeItem(at: tempURL)
-            throw MetaphorError.export(.noFrames)
-        }
+        stagingRing.removeAll()
+        ringWidth = 0
+        ringHeight = 0
 
         nonisolated(unsafe) let capturedDest = dest
         let capturedTempURL = tempURL
+        let group = pendingWrites
+        let queue = writerQueue
+
+        // バックグラウンドで in-flight をドレインしてからファイナライズ
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            group.notify(queue: queue) { cont.resume() }
+        }
 
         try await Task.detached {
+            guard capturedFrameCount > 0 else {
+                try? FileManager.default.removeItem(at: capturedTempURL)
+                throw MetaphorError.export(.noFrames)
+            }
             guard CGImageDestinationFinalize(capturedDest) else {
                 try? FileManager.default.removeItem(at: capturedTempURL)
                 throw MetaphorError.export(.finalizationFailed)
             }
-            try Self.moveTemporaryFileNonisolated(from: capturedTempURL, to: path)
+            try Self.moveTemporaryFile(from: capturedTempURL, to: path)
         }.value
     }
 
     // MARK: - Private
 
-    private func moveTemporaryFile(from tempURL: URL, to path: String) throws {
-        try Self.moveTemporaryFileNonisolated(from: tempURL, to: path)
+    private func makeStaging(device: MTLDevice, width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        desc.storageMode = .shared
+        desc.usage = [.shaderRead, .shaderWrite]
+        return device.makeTexture(descriptor: desc)
     }
 
-    nonisolated private static func moveTemporaryFileNonisolated(from tempURL: URL, to path: String) throws {
+    /// shared storage のステージングから BGRA8 を読み出し、
+    /// 1 パスで RGBA に並び替えつつ CGImage を構築する。
+    nonisolated private static func makeCGImage(
+        from staging: MTLTexture,
+        width: Int,
+        height: Int
+    ) -> CGImage? {
+        let bytesPerRow = width * 4
+        var pixelData = [UInt8](repeating: 0, count: bytesPerRow * height)
+        staging.getBytes(
+            &pixelData,
+            bytesPerRow: bytesPerRow,
+            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
+                           size: MTLSize(width: width, height: height, depth: 1)),
+            mipmapLevel: 0
+        )
+
+        // BGRA → RGBA
+        pixelData.withUnsafeMutableBufferPointer { buf in
+            guard let p = buf.baseAddress else { return }
+            for i in stride(from: 0, to: buf.count, by: 4) {
+                let b = p[i]
+                let r = p[i + 2]
+                p[i] = r
+                p[i + 2] = b
+            }
+        }
+
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(
+                data: &pixelData,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              ) else {
+            return nil
+        }
+        return context.makeImage()
+    }
+
+    nonisolated private static func moveTemporaryFile(from tempURL: URL, to path: String) throws {
         let destURL = URL(fileURLWithPath: path)
         let dir = destURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -261,12 +351,16 @@ public final class GIFExporter {
     }
 
     private func abortStreaming() {
+        // pending writes を待ち切る（再帰排除のため最低限）
+        pendingWrites.wait()
         destination = nil
         if let tempURL = temporaryURL {
             try? FileManager.default.removeItem(at: tempURL)
         }
         temporaryURL = nil
-        stagingTexture = nil
+        stagingRing.removeAll()
+        ringWidth = 0
+        ringHeight = 0
         isRecording = false
         frameCount = 0
     }

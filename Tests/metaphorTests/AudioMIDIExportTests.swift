@@ -1,8 +1,11 @@
 import Testing
 import Foundation
 import simd
+import Metal
+import ImageIO
 @testable import metaphor
 @testable import MetaphorCore
+@testable import MetaphorTestSupport
 
 // MARK: - D-19: GIF Export
 
@@ -40,6 +43,70 @@ struct GIFExporterTests {
         #expect(MetaphorError.export(.noFrames).errorDescription?.contains("frames") == true)
         #expect(MetaphorError.export(.destinationCreationFailed).errorDescription?.contains("destination") == true)
         #expect(MetaphorError.export(.finalizationFailed).errorDescription?.contains("finalize") == true)
+    }
+
+    /// 実フレームを ringSize 超えてキャプチャし、in-flight backpressure と
+    /// 順序保証 + ファイナライズが正しく動作することを検証する。
+    @Test("end-to-end capture with backpressure", .enabled(if: MetalTestHelper.isGPUAvailable))
+    func endToEndCapture() throws {
+        guard let device = MetalTestHelper.device,
+              let queue = device.makeCommandQueue() else { return }
+
+        // 各フレームを単色で塗ったテクスチャを 8 枚（リングサイズ 3 を超える）
+        let width = 32
+        let height = 32
+        let frameColors: [(UInt8, UInt8, UInt8)] = [
+            (255, 0, 0), (0, 255, 0), (0, 0, 255),
+            (255, 255, 0), (0, 255, 255), (255, 0, 255),
+            (128, 128, 128), (255, 255, 255)
+        ]
+
+        let exporter = GIFExporter()
+        exporter.beginRecord(fps: 10, width: width, height: height)
+
+        for (b, g, r) in frameColors {  // BGRA 順
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
+            )
+            desc.storageMode = .shared
+            desc.usage = [.shaderRead, .shaderWrite]
+            guard let tex = device.makeTexture(descriptor: desc) else {
+                Issue.record("texture creation failed")
+                return
+            }
+            // BGRA で塗る
+            var pixels = [UInt8](repeating: 0, count: width * height * 4)
+            for i in stride(from: 0, to: pixels.count, by: 4) {
+                pixels[i] = b
+                pixels[i + 1] = g
+                pixels[i + 2] = r
+                pixels[i + 3] = 255
+            }
+            pixels.withUnsafeBytes { buf in
+                tex.replace(
+                    region: MTLRegionMake2D(0, 0, width, height),
+                    mipmapLevel: 0,
+                    withBytes: buf.baseAddress!,
+                    bytesPerRow: width * 4
+                )
+            }
+            exporter.captureFrame(texture: tex, device: device, commandQueue: queue)
+        }
+
+        #expect(exporter.frameCount == frameColors.count)
+
+        let outPath = NSTemporaryDirectory() + "metaphor_gif_e2e_\(UUID().uuidString).gif"
+        try exporter.endRecord(to: outPath)
+        defer { try? FileManager.default.removeItem(atPath: outPath) }
+
+        // ファイル存在 + フレーム数の確認
+        #expect(FileManager.default.fileExists(atPath: outPath))
+        let url = URL(fileURLWithPath: outPath) as CFURL
+        guard let src = CGImageSourceCreateWithURL(url, nil) else {
+            Issue.record("Failed to read back GIF")
+            return
+        }
+        #expect(CGImageSourceGetCount(src) == frameColors.count)
     }
 }
 
