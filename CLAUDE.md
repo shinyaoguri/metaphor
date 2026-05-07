@@ -100,16 +100,16 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 - New examples should follow existing directory structure: `Examples/{Category}/{Subcategory}/{Name}/`
 - Each example is an independent SPM package with its own `Package.swift`
 
-## Branching Workflow
+## Branching Workflow (GitHub Flow)
 
-- **`develop`** — integration branch. New work lands here via PR from feature branches.
-- **`main`** — release/stable branch. Updated only via PR from `develop`. Direct push is blocked by branch protection (PR + green CI required, admin bypass available for emergencies).
-- CI runs on push and PR for both `main` and `develop`. The Documentation workflow deploys only from `main`.
-- Repository merge settings: **squash merge only**, branch auto-deleted on merge.
+- **`main`** — the only long-lived branch. All work flows back here via PR. Protected by ruleset: PR required, `build-and-test` must pass, admin can bypass for emergencies.
+- Feature branches off `main` are short-lived and auto-deleted on merge.
+- Repository merge settings: **squash merge only**, auto-delete branch on merge.
+- CI fires on `push: main`, `pull_request: main`, and `workflow_dispatch` (the Release workflow uses workflow_dispatch to re-enter CI on release branches).
 
-### When to create a feature branch (Claude default)
+### When to branch (Claude default)
 
-Create a branch off `develop` for any **non-trivial** work — new features, bug fixes that touch more than a line or two, refactors, anything that produces multiple commits. Stay on `develop` only for trivial edits (typo fixes, single-line config tweaks, docs-only changes).
+Create a branch off `main` for any **non-trivial** work — new features, bug fixes that touch more than a line or two, refactors, anything that produces multiple commits. Don't push directly to main. The ruleset blocks it for non-admins anyway.
 
 ### Naming
 
@@ -119,27 +119,46 @@ Use kebab-case with a category prefix:
 - `refactor/<short-name>` — internal restructuring with no API change
 - `chore/<short-name>` — tooling, CI, build scripts
 - `docs/<short-name>` — documentation-only
+- `release/<tag>` — reserved for the Release workflow; do not reuse
 
-### Standard flow for a non-trivial task
+### Standard flow
 
 ```bash
-# 1. Branch off the latest develop
-git checkout develop && git pull
+git checkout main && git pull
 git checkout -b feature/<name>
-
-# 2. Implement, commit small focused commits, push
+# ... implement ...
 git push -u origin feature/<name>
-
-# 3. Open a PR targeting develop
-gh pr create --base develop --title "..." --body "..."
-
-# 4. Wait for CI to go green; squash-merge via gh
+gh pr create --base main --title "..." --body "..."
+# wait for CI
 gh pr merge --squash --delete-branch
-git checkout develop && git pull
+git checkout main && git pull
 ```
 
 ### Notes for Claude
 
-- Default to creating a branch unless the user explicitly says "commit to develop directly" or the change is genuinely trivial.
-- Squash-merge is the only allowed style — write one good final commit message in the PR title/body; per-commit messages on the branch are throwaway.
-- After merge, switch back to `develop` and pull. Local feature branch is fine to leave — `gh pr merge --delete-branch` removes the remote, and `git fetch -p` will prune it locally on the next sync.
+- Default to creating a branch off `main` for any non-trivial change. Trivial edits (typo, 1-line config) may go directly to `main` only via PR (the ruleset enforces this for non-admins).
+- Squash merge is the only allowed style — write one good final commit message in the PR title/body; per-commit messages on the branch are throwaway.
+- After merge, switch back to `main` and pull. Local feature branches can be pruned with `git fetch -p`.
+
+## Releases
+
+Releases go through a single `workflow_dispatch` trigger on the `Release` workflow. No PAT required — the workflow re-enters CI on its own release branch using `workflow_dispatch` (which is exempt from the GITHUB_TOKEN recursion guard).
+
+### Inputs
+
+| Input | Purpose |
+|-------|---------|
+| `bump` | `patch` / `minor` / `major` / `prerelease` |
+| `prerelease_label` | `beta`, `rc`, etc. Empty for stable. Ignored when `bump=prerelease`. |
+
+### Common operations
+
+| Goal | Inputs | Resulting tag |
+|------|--------|---------------|
+| Stable patch | `bump=patch`, label empty | `v0.2.4` |
+| Start a beta cycle | `bump=minor`, `label=beta` | `v0.3.0-beta.1` |
+| Iterate the beta | `bump=prerelease` | `v0.3.0-beta.2` |
+| Promote to RC | `bump=minor`, `label=rc` | `v0.3.0-rc.1` |
+| Graduate to stable | `bump=minor`, label empty | `v0.3.0` |
+
+Pre-release tags (anything containing `-`) are automatically marked as Pre-release on GitHub. Package.swift `from:` example in README is only updated for stable releases.
