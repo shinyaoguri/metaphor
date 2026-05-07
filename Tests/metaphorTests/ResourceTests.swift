@@ -283,6 +283,55 @@ struct MImageTests {
         #expect(img.width == 64)
         #expect(img.height == 32)
     }
+
+    @Test("loadPixels preserves RGBA texture channel order")
+    func loadPixelsRGBAOrder() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        let texture = device.makeTexture(descriptor: desc)!
+        let rgba: [UInt8] = [255, 0, 0, 255]
+        rgba.withUnsafeBytes { bytes in
+            texture.replace(
+                region: MTLRegionMake2D(0, 0, 1, 1),
+                mipmapLevel: 0,
+                withBytes: bytes.baseAddress!,
+                bytesPerRow: 4
+            )
+        }
+
+        let img = MImage(texture: texture)
+        img.loadPixels()
+
+        #expect(img.pixels == [255, 0, 0, 255])
+    }
+
+    @Test("updatePixels preserves RGBA texture channel order")
+    func updatePixelsRGBAOrder() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        let texture = device.makeTexture(descriptor: desc)!
+        let img = MImage(texture: texture)
+        img.pixels = [0, 255, 0, 255]
+        img.updatePixels()
+
+        var readback = [UInt8](repeating: 0, count: 4)
+        texture.getBytes(
+            &readback,
+            bytesPerRow: 4,
+            from: MTLRegionMake2D(0, 0, 1, 1),
+            mipmapLevel: 0
+        )
+
+        #expect(readback == [0, 255, 0, 255])
+    }
 }
 
 // MARK: - TextRenderer Tests

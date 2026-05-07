@@ -5,6 +5,11 @@ import AppKit
 /// `MTLTexture` をラップして画像を表現します。
 @MainActor
 public final class MImage {
+    private enum PixelByteOrder {
+        case rgba
+        case bgra
+    }
+
     /// この画像の基盤となる Metal テクスチャ。
     public private(set) var texture: MTLTexture
 
@@ -95,12 +100,19 @@ public final class MImage {
     ///
     /// プライベートストレージモードのテクスチャの場合、マネージドストレージの
     /// ステージングテクスチャを作成し、読み取り前にブリットコピーを実行します。
-    /// 結果データは BGRA から RGBA の順序に変換されます。
+    /// 結果データはテクスチャのピクセルフォーマットから RGBA の順序に変換されます。
     ///
     /// CPU 配列が既に設定済みで GPU テクスチャが変更されていない場合
     /// （前回呼び出し以降に ``replaceTexture(_:)`` や GPU フィルタがない場合）、
     /// このメソッドは即座に返ります — 割り当て、リードバック、変換のオーバーヘッドを回避します。
     public func loadPixels() {
+        guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
+            print("[metaphor] Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
+            pixels = []
+            needsGPUReadback = true
+            return
+        }
+
         let w = Int(width)
         let h = Int(height)
         let bytesPerRow = w * 4
@@ -148,13 +160,14 @@ public final class MImage {
             texture.getBytes(&pixels, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
         }
 
-        // BGRA から RGBA に変換
-        pixels.withUnsafeMutableBufferPointer { buf in
-            let ptr = buf.baseAddress!
-            for i in stride(from: 0, to: count, by: 4) {
-                let tmp = ptr[i]
-                ptr[i] = ptr[i + 2]
-                ptr[i + 2] = tmp
+        if byteOrder == .bgra {
+            pixels.withUnsafeMutableBufferPointer { buf in
+                let ptr = buf.baseAddress!
+                for i in stride(from: 0, to: count, by: 4) {
+                    let tmp = ptr[i]
+                    ptr[i] = ptr[i + 2]
+                    ptr[i + 2] = tmp
+                }
             }
         }
 
@@ -163,23 +176,30 @@ public final class MImage {
 
     /// CPU の ``pixels`` 配列を GPU テクスチャに書き戻します。
     ///
-    /// アップロード前にピクセルデータは RGBA から BGRA に変換されます。
+    /// アップロード前にピクセルデータはテクスチャのピクセルフォーマットに合わせて変換されます。
     /// 現在のテクスチャがプライベートストレージモードの場合、CPU から書き込めないため
     /// 新しいマネージドテクスチャが作成されて置き換えられます。
     public func updatePixels() {
+        guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
+            print("[metaphor] Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
+            return
+        }
+
         let w = Int(width)
         let h = Int(height)
         let bytesPerRow = w * 4
         let count = bytesPerRow * h
         guard pixels.count == count else { return }
 
-        // unsafe ポインタを使用して境界チェックなしで RGBA を BGRA にインプレース変換
-        pixels.withUnsafeMutableBufferPointer { buf in
-            let ptr = buf.baseAddress!
-            for i in stride(from: 0, to: count, by: 4) {
-                let tmp = ptr[i]
-                ptr[i] = ptr[i + 2]
-                ptr[i + 2] = tmp
+        var uploadPixels = pixels
+        if byteOrder == .bgra {
+            uploadPixels.withUnsafeMutableBufferPointer { buf in
+                let ptr = buf.baseAddress!
+                for i in stride(from: 0, to: count, by: 4) {
+                    let tmp = ptr[i]
+                    ptr[i] = ptr[i + 2]
+                    ptr[i + 2] = tmp
+                }
             }
         }
 
@@ -192,32 +212,15 @@ public final class MImage {
             desc.storageMode = .shared
             desc.usage = [.shaderRead]
             guard let newTexture = texture.device.makeTexture(descriptor: desc) else {
-                // 失敗時にスワップを戻す
-                pixels.withUnsafeMutableBufferPointer { buf in
-                    let ptr = buf.baseAddress!
-                    for i in stride(from: 0, to: count, by: 4) {
-                        let tmp = ptr[i]
-                        ptr[i] = ptr[i + 2]
-                        ptr[i + 2] = tmp
-                    }
-                }
                 return
             }
-            newTexture.replace(region: region, mipmapLevel: 0, withBytes: pixels, bytesPerRow: bytesPerRow)
+            newTexture.replace(region: region, mipmapLevel: 0, withBytes: uploadPixels, bytesPerRow: bytesPerRow)
             self.texture = newTexture
         } else {
-            texture.replace(region: region, mipmapLevel: 0, withBytes: pixels, bytesPerRow: bytesPerRow)
+            texture.replace(region: region, mipmapLevel: 0, withBytes: uploadPixels, bytesPerRow: bytesPerRow)
         }
 
-        // pixels 配列がユーザー向けフォーマットを維持するよう RGBA に戻す
-        pixels.withUnsafeMutableBufferPointer { buf in
-            let ptr = buf.baseAddress!
-            for i in stride(from: 0, to: count, by: 4) {
-                let tmp = ptr[i]
-                ptr[i] = ptr[i + 2]
-                ptr[i + 2] = tmp
-            }
-        }
+        needsGPUReadback = false
     }
 
     /// 指定された座標のピクセルの色を返します。
@@ -309,5 +312,15 @@ public final class MImage {
         img.pixels = [UInt8](repeating: 0, count: width * height * 4)
         return img
     }
-}
 
+    private static func pixelByteOrder(for pixelFormat: MTLPixelFormat) -> PixelByteOrder? {
+        switch pixelFormat {
+        case .rgba8Unorm, .rgba8Unorm_srgb:
+            return .rgba
+        case .bgra8Unorm, .bgra8Unorm_srgb:
+            return .bgra
+        default:
+            return nil
+        }
+    }
+}
