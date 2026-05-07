@@ -205,6 +205,20 @@ struct PluginTests {
         #expect(plugin.resizeEvents[0].height == 96)
     }
 
+    @Test("renderFrame dispatches modern hooks once")
+    func renderFrameModernHooksOnce() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let plugin = MockPlugin(id: "frame-hooks")
+        renderer.addPlugin(plugin)
+
+        renderer.renderFrame()
+
+        #expect(plugin.preCallCount == 1)
+        #expect(plugin.postCallCount == 1)
+        #expect(plugin.legacyBeforeRenderCount == 0)
+        #expect(plugin.legacyAfterRenderCount == 0)
+    }
+
     // MARK: - PluginFactory
 
     @Test("PluginFactory creates plugin instances")

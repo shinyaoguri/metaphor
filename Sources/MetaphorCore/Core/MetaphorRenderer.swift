@@ -749,7 +749,6 @@ public final class MetaphorRenderer: NSObject {
         // プラグイン: レンダー前
         for plugin in plugins {
             plugin.pre(commandBuffer: commandBuffer, time: time)
-            plugin.onBeforeRender(commandBuffer: commandBuffer, time: time)
         }
 
         // FBO フィードバック: 前フレームのカラーテクスチャをコピー
@@ -863,7 +862,6 @@ public final class MetaphorRenderer: NSObject {
         // プラグイン: レンダー後（出力プラグインに最終テクスチャを提供）
         for plugin in plugins {
             plugin.post(texture: outputTexture, commandBuffer: commandBuffer)
-            plugin.onAfterRender(texture: outputTexture, commandBuffer: commandBuffer)
         }
 
         // Syphon へ配信（レガシー、SyphonPlugin に置換予定）

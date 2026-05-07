@@ -115,10 +115,14 @@ public protocol MetaphorPlugin: AnyObject {
     // MARK: - レガシー (非推奨)
 
     /// 各フレームの開始時、レンダリング前に呼ばれます。
+    ///
+    /// レンダラーは現行 API の ``pre(commandBuffer:time:)`` を呼びます。
     @available(*, deprecated, renamed: "pre(commandBuffer:time:)")
     func onBeforeRender(commandBuffer: MTLCommandBuffer, time: Double)
 
     /// フレームがオフスクリーンテクスチャにレンダリングされた後に呼ばれます。
+    ///
+    /// レンダラーは現行 API の ``post(texture:commandBuffer:)`` を呼びます。
     @available(*, deprecated, renamed: "post(texture:commandBuffer:)")
     func onAfterRender(texture: MTLTexture, commandBuffer: MTLCommandBuffer)
 }
