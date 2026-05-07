@@ -1049,7 +1049,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var registeredKeys: [String] { get }` -- 現在登録されている全ライブラリのキー
 - `var usesPrecompiledMetalLib: Bool { get }` -- プリコンパイル済み `.metallib` バンドルから読み込まれたかどうか
 - `static let vertexColor: String` -- 頂点カラーシェーダー
-- `init(device: any MTLDevice) throws` -- シェーダーライブラリを作成し、全組み込みシェーダーを読み込みます。
+- `init(device: any MTLDevice, preferSourceCompilation: Bool = false) throws` -- シェーダーライブラリを作成し、全組み込みシェーダーを読み込みます。
 - `func function(named name: String, from key: String) -> (any MTLFunction)?` -- 指定されたライブラリからコンパイル済み Metal 関数を取得します。
 - `func hasLibrary(for key: String) -> Bool` -- 指定されたキーにライブラリが登録されているかどうかを返します。
 - `func invalidateFunctionCache(for key: String)` -- ライブラリ自体を削除せずに、指定ライブラリキーのキャッシュ済み関数をクリアします。
@@ -1349,6 +1349,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
 - `func apply(filterName: String, parameters: [String : Any], source: any MTLTexture, destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- CIFilter 操作をコマンドバッファ内でソースからデスティネーションにエンコードします。
 - `func apply(filterName: String, parameters: [String : Any], to image: MImage)` -- CIFilter を MImage にインプレースで適用します。
+- `func generate(filterName: String, parameters: [String : Any], destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- ジェネレーターフィルタを既存のコマンドバッファへエンコードします。
 - `func generate(filterName: String, parameters: [String : Any], width: Int, height: Int) -> (any MTLTexture)?` -- ジェネレーターフィルタ（入力画像不要）を使用して MTLTexture を生成します。
 - `func invalidateTextures()` -- キャッシュ済みテクスチャをすべて無効化・解放します。
 
@@ -1391,6 +1392,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
 - `func clearCache()` -- キャッシュ済みの MPS カーネルとテクスチャをすべてクリアします。
 - `func dilate(_ image: MImage, radius: Int = 1)` -- モルフォロジー膨張（エリアマックス）を画像に適用します。
+- `func encodeDilate(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, radius: Int)` -- モルフォロジー膨張操作をコマンドバッファにエンコードします。
+- `func encodeErode(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, radius: Int)` -- モルフォロジー収縮操作をコマンドバッファにエンコードします。
+- `func encodeGaussianBlur(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, sigma: Float)` -- ガウシアンブラー操作をコマンドバッファにエンコードします。
+- `func encodeLaplacian(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture)` -- ラプラシアンフィルタ操作をコマンドバッファにエンコードします。
+- `func encodeMedian(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, diameter: Int = 3)` -- メディアンフィルタ操作をコマンドバッファにエンコードします。
+- `func encodeSobel(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture)` -- Sobel エッジ検出操作をコマンドバッファにエンコードします。
+- `func encodeThreshold(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, value: Float = 0.5)` -- バイナリ閾値処理をコマンドバッファにエンコードします。
 - `func erode(_ image: MImage, radius: Int = 1)` -- モルフォロジー収縮（エリアミン）を画像に適用します。
 - `func gaussianBlur(_ image: MImage, sigma: Float)` -- ハードウェア最適化されたガウシアンブラーを画像に適用します。
 - `func laplacian(_ image: MImage)` -- ラプラシアンフィルタを画像に適用します。
@@ -1406,6 +1414,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4)` -- レイトレーシングシーンにメッシュを追加します。
 - `func buildAccelerationStructure() throws` -- 追加されたすべてのメッシュからアクセラレーション構造を構築します。
 - `func clearScene()` -- シーンからすべてのメッシュをクリアし、アクセラレーション構造をリセットします。
+- `func encodeTrace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float), commandBuffer: any MTLCommandBuffer)` -- 指定モードとカメラパラメータのレイトレーシングを既存のコマンドバッファへエンコードします。
 - `func trace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float))` -- 指定モードとカメラパラメータでレイトレーシングを実行します。
 
 ### `final class MPSSobelEffect` -- MPS Sobel エッジ検出を適用します。
@@ -1568,12 +1577,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class PhysicsBody2D` -- Verlet 積分でシミュレートされる単一の2D剛体を表します。
 
 - `var acceleration: SIMD2<Float>` -- 現在のステップで蓄積された加速度。積分後にクリアされます。
-- `var friction: Float` -- 接触時に適用される摩擦係数。
+- `var friction: Float { get set }` -- 接触時に適用される摩擦係数。
 - `var isStatic: Bool` -- ボディが静的（不動）かどうかを示します。
-- `var mass: Float` -- 力の適用と衝突重み付けに使用されるボディの質量。
+- `var mass: Float { get set }` -- 力の適用と衝突重み付けに使用されるボディの質量。
 - `var position: SIMD2<Float>` -- ワールド空間におけるボディの現在位置。
 - `var previousPosition: SIMD2<Float>` -- Verlet 積分で使用される前回タイムステップのボディ位置。
-- `var restitution: Float` -- 反発係数（弾性）。範囲は [0, 1]。
+- `var restitution: Float { get set }` -- 反発係数（弾性）。範囲は [0, 1]。
 - `let shape: PhysicsShape2D` -- ボディの衝突形状。
 - `var velocity: SIMD2<Float> { get }` -- Verlet 位置差分から導出されるボディの現在速度。
 - `init(x: Float, y: Float, shape: PhysicsShape2D, mass: Float = 1.0)` -- 指定位置・形状・質量で新しい物理ボディを作成します。
