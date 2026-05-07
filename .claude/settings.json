@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ -n \"$(git diff --name-only HEAD -- 'Sources/**/*.swift')$(git diff --name-only --cached HEAD -- 'Sources/**/*.swift')\" ]; then make llms-txt >/dev/null 2>&1 && { git diff --quiet llms.txt 2>/dev/null || git add llms.txt; }; fi",
+            "async": true,
+            "statusMessage": "Regenerating llms.txt"
+          }
+        ]
+      }
+    ]
+  }
+}
