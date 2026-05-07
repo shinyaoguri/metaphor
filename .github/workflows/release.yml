@@ -11,32 +11,40 @@ on:
           - patch
           - minor
           - major
+          - prerelease   # increment N in vX.Y.Z-LABEL.N (latest tag must be a prerelease)
+      prerelease_label:
+        description: 'Pre-release label (beta, rc, alpha). Empty = stable. Ignored when bump=prerelease.'
+        required: false
+        type: string
+        default: ''
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 permissions:
   contents: write
+  pull-requests: write
+  actions: write   # required to dispatch CI workflow on the release branch
 
 jobs:
   release:
     runs-on: macos-14
     steps:
-      # We push directly to main using RELEASE_TOKEN. The repository ruleset
-      # protecting main grants bypass to the admin RepositoryRole; the PAT is
-      # owned by an admin so the push is permitted while normal contributors
-      # are still required to go through PR + CI.
+      # GITHUB_TOKEN-only flow:
       #
-      # GITHUB_TOKEN (the bot) cannot bypass on personal repos because
-      # rulesets only accept Integration bypass actors for org-installed apps,
-      # and using GITHUB_TOKEN to open a PR also fails to trigger CI by
-      # design (recursion guard), so the PR-flow path is unworkable here.
+      # - GITHUB_TOKEN cannot bypass branch protection on personal repos.
+      # - GITHUB_TOKEN-created PRs do NOT trigger pull_request workflows
+      #   (recursion guard), but workflow_dispatch IS exempt from that guard.
+      # - So we open the release PR with GITHUB_TOKEN, kick CI explicitly via
+      #   `gh workflow run ci.yml --ref <release-branch>`, wait for green,
+      #   merge through the standard PR API, then tag.
+      #
+      # No PAT, no ruleset bypass-actor games.
       - name: Checkout
         uses: actions/checkout@v6
         with:
           submodules: recursive
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -64,43 +72,137 @@ jobs:
           shasum -a 256 Syphon.xcframework.zip > checksum.txt
           echo "CHECKSUM=$(awk '{print $1}' checksum.txt)" >> $GITHUB_ENV
 
-      # --- Version bump ---
+      # --- Compute next version ---
       - name: Compute next version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Latest tag: $LATEST_TAG"
-          VERSION=${LATEST_TAG#v}
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          PATCH=$(echo $VERSION | cut -d. -f3)
-          case "${{ github.event.inputs.bump }}" in
-            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-            patch) PATCH=$((PATCH + 1)) ;;
-          esac
-          TAG_NAME="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "New version: $TAG_NAME"
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          set -euo pipefail
+          BUMP="${{ github.event.inputs.bump }}"
+          LABEL="${{ github.event.inputs.prerelease_label }}"
 
-      # --- Update Package.swift, commit, push (admin bypass in ruleset) ---
-      - name: Update Package.swift and commit
+          if [ "$BUMP" = "prerelease" ]; then
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [[ "$LATEST_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-([a-zA-Z]+)\.([0-9]+)$ ]]; then
+              BASE="${BASH_REMATCH[1]}"
+              PRE_LABEL="${BASH_REMATCH[2]}"
+              N="${BASH_REMATCH[3]}"
+              TAG_NAME="${BASE}-${PRE_LABEL}.$((N + 1))"
+            else
+              echo "::error::bump=prerelease requires the latest tag to be a prerelease (got '$LATEST_TAG'). Use bump=patch/minor/major with prerelease_label to start a new prerelease cycle."
+              exit 1
+            fi
+          else
+            # Find latest STABLE tag (no '-' suffix). sort -V handles version ordering.
+            LATEST_STABLE=$(git tag -l 'v*' | grep -v -- '-' | sort -V | tail -1 || true)
+            LATEST_STABLE=${LATEST_STABLE:-v0.0.0}
+            VERSION=${LATEST_STABLE#v}
+            IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+            case "$BUMP" in
+              major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+              patch) PATCH=$((PATCH + 1)) ;;
+            esac
+            TARGET="v${MAJOR}.${MINOR}.${PATCH}"
+
+            if [ -n "$LABEL" ]; then
+              # Find next free vTARGET-LABEL.N
+              N=1
+              while git rev-parse "${TARGET}-${LABEL}.${N}" >/dev/null 2>&1; do
+                N=$((N + 1))
+              done
+              TAG_NAME="${TARGET}-${LABEL}.${N}"
+            else
+              TAG_NAME="$TARGET"
+            fi
+          fi
+
+          echo "Computed tag: $TAG_NAME"
+          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+          echo "RELEASE_BRANCH=release/$TAG_NAME" >> "$GITHUB_ENV"
+          if [[ "$TAG_NAME" == *-* ]]; then
+            echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "IS_PRERELEASE=false" >> "$GITHUB_ENV"
+          fi
+
+      # --- Push release branch with version-bump commit ---
+      - name: Push release branch
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$RELEASE_BRANCH"
           sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
-          VERSION_NUM=${TAG_NAME#v}
-          sed -i '' "s|from: \"[0-9]*\.[0-9]*\.[0-9]*\"|from: \"${VERSION_NUM}\"|g" README.md
+          # README only tracks stable versions in its `from:` example.
+          if [ "$IS_PRERELEASE" = "false" ]; then
+            VERSION_NUM=${TAG_NAME#v}
+            sed -i '' "s|from: \"[0-9]*\.[0-9]*\.[0-9]*\"|from: \"${VERSION_NUM}\"|g" README.md
+          fi
           git add Package.swift README.md
-          git diff --cached --quiet || git commit -m "Release ${TAG_NAME}"
-          git push origin main
+          if git diff --cached --quiet; then
+            echo "::error::No version-bump diff produced."
+            exit 1
+          fi
+          git commit -m "Release ${TAG_NAME}"
+          git push origin "$RELEASE_BRANCH"
 
-      - name: Create tag on updated commit
+      # --- Open PR, kick CI manually, wait, merge ---
+      - name: Open PR to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh pr create \
+            --base main \
+            --head "$RELEASE_BRANCH" \
+            --title "Release ${TAG_NAME}" \
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and README.md' || '' }}."
+
+      - name: Trigger CI on release branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # GITHUB_TOKEN-created PRs do not fire the pull_request CI, but
+          # workflow_dispatch IS allowed to fire even from another workflow.
+          gh workflow run ci.yml --ref "$RELEASE_BRANCH"
+
+      - name: Wait for CI to register and complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # gh takes a few seconds to register the dispatched run.
+          deadline=$((SECONDS + 120))
+          RUN_ID=""
+          while [ $SECONDS -lt $deadline ]; do
+            RUN_ID=$(gh run list --workflow=ci.yml --branch "$RELEASE_BRANCH" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+            if [ -n "$RUN_ID" ]; then
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::CI workflow_dispatch run did not register within 120s."
+            exit 1
+          fi
+          echo "Watching CI run $RUN_ID..."
+          gh run watch "$RUN_ID" --exit-status
+
+      - name: Squash-merge release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "$RELEASE_BRANCH" --squash --delete-branch
+
+      # --- Tag the merged commit on main ---
+      - name: Tag the merged commit
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout main
+          git pull --ff-only
           git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
           git push origin "$TAG_NAME"
 
-      # --- GitHub Release ---
+      # --- GitHub Release with binary artifacts ---
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
@@ -109,6 +211,7 @@ jobs:
             Frameworks/Syphon.xcframework.zip
             Frameworks/checksum.txt
           generate_release_notes: true
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body: |
             ## Syphon.xcframework
 
