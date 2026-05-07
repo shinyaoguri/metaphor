@@ -42,16 +42,16 @@ public final class Graphics3D {
 
     init(
         device: MTLDevice,
+        commandQueue: MTLCommandQueue,
         shaderLibrary: ShaderLibrary,
         depthStencilCache: DepthStencilCache,
         width: Int,
         height: Int
     ) throws {
         self.device = device
-        guard let queue = device.makeCommandQueue() else {
-            throw MetaphorError.commandQueueCreationFailed
-        }
-        self.commandQueue = queue
+        // renderer の commandQueue を共有することで、メインキャンバスから
+        // pg3d.texture を読む際に commit-order 保証で自動同期される。
+        self.commandQueue = commandQueue
         self.textureManager = try TextureManager(
             device: device, width: width, height: height, sampleCount: 1
         )
@@ -85,13 +85,15 @@ public final class Graphics3D {
         canvas3D.begin(encoder: enc, time: time)
     }
 
-    /// 描画を終了し GPU の完了を待機します。
+    /// 描画を終了します。
     ///
-    /// - Parameter wait: `true` の場合は GPU 完了を `waitUntilCompleted()` で待機します（既定）。
-    ///   `false` を渡すとコミットのみで即時返ります。`Graphics3D` は専用の
-    ///   `MTLCommandQueue` を持つため、別キューからテクスチャを読む際は
-    ///   呼び出し側で同期を担保してください（例: 1 フレーム以上遅延させる、`MTLEvent` を共有する等）。
-    public func endDraw(wait: Bool = true) {
+    /// `Graphics3D` は renderer と同じ `MTLCommandQueue` を共有するため、
+    /// commit 順序により後続のメインキャンバスからの読み出しは自動的に正しく順序付けられます。
+    /// このため既定では GPU 完了を待たずに即時返ります。
+    ///
+    /// - Parameter wait: `true` の場合は `waitUntilCompleted()` で GPU 完了を明示的に待機します。
+    ///   CPU 側でテクスチャの内容を直接読み取る場合のみ必要です。
+    public func endDraw(wait: Bool = false) {
         canvas3D.end()
         encoder?.endEncoding()
         encoder = nil

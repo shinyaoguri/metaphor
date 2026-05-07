@@ -37,12 +37,19 @@ public final class Graphics {
 
     // MARK: - Initialization
 
-    init(device: MTLDevice, shaderLibrary: ShaderLibrary, depthStencilCache: DepthStencilCache, width: Int, height: Int) throws {
+    init(
+        device: MTLDevice,
+        commandQueue: MTLCommandQueue,
+        shaderLibrary: ShaderLibrary,
+        depthStencilCache: DepthStencilCache,
+        width: Int,
+        height: Int
+    ) throws {
         self.device = device
-        guard let queue = device.makeCommandQueue() else {
-            throw MetaphorError.commandQueueCreationFailed
-        }
-        self.commandQueue = queue
+        // renderer の commandQueue を共有することで、メインキャンバスから
+        // pg.texture を読む際に Metal の同一キュー内 commit-order 保証で
+        // 自動的に順序付けされ、明示的な GPU 待機が不要になる。
+        self.commandQueue = commandQueue
         self.textureManager = try TextureManager(device: device, width: width, height: height, sampleCount: 1)
         self.canvas = try Canvas2D(
             device: device,
@@ -73,14 +80,15 @@ public final class Graphics {
         canvas.begin(encoder: enc)
     }
 
-    /// フラッシュ、コミット、GPU完了待機により描画を終了します。
+    /// 描画を終了します。
     ///
-    /// - Parameter wait: `true` の場合は GPU 完了を `waitUntilCompleted()` で待機します（既定）。
-    ///   `false` を渡すとコミットのみで即時返ります。リアルタイム描画ループ内で
-    ///   フレーム落ちを避けたい場合に有効ですが、`Graphics` は専用の `MTLCommandQueue` を持つため
-    ///   別キュー（メインキャンバス）からテクスチャを読む際は呼び出し側で同期を担保してください
-    ///   （例: 1 フレーム以上遅延させる、`MTLEvent` を共有する等）。
-    public func endDraw(wait: Bool = true) {
+    /// `Graphics` は renderer と同じ `MTLCommandQueue` を共有するため、
+    /// commit 順序により後続のメインキャンバスからの読み出しは自動的に正しく順序付けられます。
+    /// このため既定では GPU 完了を待たずに即時返ります。
+    ///
+    /// - Parameter wait: `true` の場合は `waitUntilCompleted()` で GPU 完了を明示的に待機します。
+    ///   CPU 側でテクスチャの内容を直接読み取る（`getBytes` など）場合のみ必要です。
+    public func endDraw(wait: Bool = false) {
         canvas.end()
         encoder?.endEncoding()
         encoder = nil

@@ -36,6 +36,7 @@ extension SketchContext {
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
         try? Graphics(
             device: renderer.device,
+            commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
             depthStencilCache: renderer.depthStencilCache,
             width: w,
@@ -51,6 +52,7 @@ extension SketchContext {
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         try? Graphics3D(
             device: renderer.device,
+            commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
             depthStencilCache: renderer.depthStencilCache,
             width: w,

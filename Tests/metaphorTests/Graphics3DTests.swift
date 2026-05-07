@@ -18,6 +18,7 @@ struct Graphics3DCreationTests {
         let depthCache = MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -34,6 +35,7 @@ struct Graphics3DCreationTests {
         let depthCache = MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 800,
@@ -50,6 +52,7 @@ struct Graphics3DCreationTests {
         let depthCache = MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -64,6 +67,7 @@ struct Graphics3DCreationTests {
         let renderer = try MetaphorRenderer(width: 8, height: 8)
         let pg = try Graphics(
             device: renderer.device,
+            commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
             depthStencilCache: renderer.depthStencilCache,
             width: 8,
@@ -95,6 +99,7 @@ struct Graphics3DLifecycleTests {
         let depthCache = MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: width,
@@ -160,6 +165,7 @@ struct Graphics3DTransformTests {
         let depthCache = MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -277,6 +283,7 @@ struct Graphics3DTransformTests {
         let depthCache = MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 640,
