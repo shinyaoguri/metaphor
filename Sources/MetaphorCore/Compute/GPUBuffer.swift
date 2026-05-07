@@ -81,6 +81,7 @@ public final class GPUBuffer<T> {
     /// - Parameter data: ソース配列。`min(data.count, count)` 要素のみがコピーされます
     public func copyFrom(_ data: [T]) {
         let copyCount = min(data.count, count)
+        guard copyCount > 0 else { return }
         data.withUnsafeBufferPointer { src in
             _ = memcpy(pointer, src.baseAddress!, MemoryLayout<T>.stride * copyCount)
         }

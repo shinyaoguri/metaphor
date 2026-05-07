@@ -110,6 +110,15 @@ struct GPUBufferTests {
         #expect(buf[3] == 40)
     }
 
+    @Test("copyFrom empty array is a no-op")
+    func copyFromEmptyArray() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let buf = GPUBuffer<Int32>(device: device, count: 2)!
+        buf[0] = 7
+        buf.copyFrom([])
+        #expect(buf[0] == 7)
+    }
+
     @Test("works with custom struct")
     func customStruct() {
         struct Particle {
