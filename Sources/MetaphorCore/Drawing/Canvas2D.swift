@@ -117,6 +117,11 @@ public final class Canvas2D: CanvasStyle {
     let textRenderer: TextRenderer
     var frameCounter: Int = 0
 
+    /// テキスト描画キャッシュ（テクスチャとグリフアトラス）をすべて破棄します。
+    public func clearTextCache() {
+        textRenderer.clearCache()
+    }
+
     // MARK: - 曲線状態
 
     var curveDetailCount: Int = 20

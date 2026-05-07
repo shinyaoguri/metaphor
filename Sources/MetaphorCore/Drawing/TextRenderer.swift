@@ -317,6 +317,15 @@ final class TextRenderer {
         self.device = device
     }
 
+    /// レンダリング済みテキストテクスチャとグリフアトラスを全削除します。
+    ///
+    /// メモリを回収したいシーン切替時などに呼び出してください。次回テキスト描画時に
+    /// アトラスとキャッシュは自動的に再構築されます。
+    func clearCache() {
+        cache.removeAll()
+        atlases.removeAll()
+    }
+
     /// キャッシュからテキストテクスチャを取得するか、新しいものをレンダリングします。
     ///
     /// - Parameters:

@@ -102,13 +102,19 @@ public final class SketchContext {
 
     // MARK: - Cache Management
 
-    /// すべての内部キャッシュ（メッシュ、パイプライン、テクスチャ、フィルターキャッシュ）をクリアします。
+    /// すべての内部キャッシュ（メッシュ、パイプライン、テクスチャ、フィルター、
+    /// テキストアトラス、デプスステンシルステート、ポストプロセスパイプラインなど）を一括クリアします。
     ///
-    /// シーン切り替え時や GPU メモリの回収時に呼び出してください。
+    /// シーン切り替え時や GPU メモリの回収時に呼び出してください。再描画時に
+    /// 必要なキャッシュは自動的に再構築されます。
     public func clearCaches() {
+        canvas.clearTextCache()
         canvas3D.clearMeshCache()
         canvas3D.clearCustomPipelineCache()
         renderer.imageFilterGPU.clearCache()
+        renderer.depthStencilCache.clear()
+        renderer.postProcessPipeline?.invalidatePipelines()
+        renderer.postProcessPipeline?.invalidateTextures()
     }
 
     // MARK: - Canvas Resize

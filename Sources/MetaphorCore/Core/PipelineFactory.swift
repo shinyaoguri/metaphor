@@ -429,6 +429,11 @@ public final class DepthStencilCache {
         }
         return state
     }
+
+    /// キャッシュ済みデプスステンシルステートをすべて破棄します。
+    public func clear() {
+        cache.removeAll()
+    }
 }
 
 // MARK: - DepthMode: Hashable
