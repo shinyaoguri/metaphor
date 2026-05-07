@@ -21,7 +21,7 @@ import MetaphorCore
 public struct MetalTestHelper: Sendable {
 
     /// The shared Metal device, or `nil` if no GPU is available.
-    public nonisolated(unsafe) static let device: MTLDevice? = MTLCreateSystemDefaultDevice()
+    public nonisolated static let device: MTLDevice? = MTLCreateSystemDefaultDevice()
 
     /// Whether a Metal-capable GPU is available on this machine.
     /// `nonisolated` so it can be used in `@Suite(.enabled(if:))` trait closures.

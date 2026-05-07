@@ -154,18 +154,14 @@ public final class VideoPlayer {
         )
 
         // ビデオトラックの寸法と再生時間を取得。
-        // 同期 API は macOS 13 で deprecated だが、ローカルファイル専用のため
-        // ブロッキングリスクはなく、async init にすると Sketch.setup() で
-        // await が必要になり API 設計が崩れるため意図的に使用。
-        let videoTrack: AVAssetTrack?
-        let assetDuration: CMTime
-        // swiftlint:disable:next deprecated_api
-        videoTrack = asset.tracks(withMediaType: .video).first
-        assetDuration = asset.duration
-        if let videoTrack {
-            let size = videoTrack.naturalSize
-            self.width = Float(size.width)
-            self.height = Float(size.height)
+        // `Sketch.setup()` を async 化しない方針のため init は同期のまま、
+        // macOS 13+ の async ローダーを semaphore で同期待ちする。
+        // ローカルファイル専用なのでブロッキング時間は実質ゼロ。
+        let metadata = Self.loadAssetMetadataSync(asset)
+        let assetDuration = metadata.duration
+        if let naturalSize = metadata.naturalSize {
+            self.width = Float(naturalSize.width)
+            self.height = Float(naturalSize.height)
         }
 
         let durationSeconds = CMTimeGetSeconds(assetDuration)
@@ -192,6 +188,30 @@ public final class VideoPlayer {
         if let observer = notificationObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+    }
+
+    /// `AVURLAsset` のトラック・再生時間・サイズを同期的に取り出すヘルパー。
+    /// macOS 13+ の async API を `DispatchSemaphore` で待つことで、
+    /// 同期 init の互換性を保ちつつ非推奨 API の警告を回避する。
+    nonisolated private static func loadAssetMetadataSync(
+        _ asset: AVURLAsset
+    ) -> (track: AVAssetTrack?, duration: CMTime, naturalSize: CGSize?) {
+        let semaphore = DispatchSemaphore(value: 0)
+        nonisolated(unsafe) var loadedTrack: AVAssetTrack?
+        nonisolated(unsafe) var loadedDuration: CMTime = .zero
+        nonisolated(unsafe) var loadedSize: CGSize?
+
+        Task.detached {
+            let tracks = (try? await asset.loadTracks(withMediaType: .video)) ?? []
+            loadedTrack = tracks.first
+            if let track = tracks.first {
+                loadedSize = try? await track.load(.naturalSize)
+            }
+            loadedDuration = (try? await asset.load(.duration)) ?? .zero
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return (loadedTrack, loadedDuration, loadedSize)
     }
 
     // MARK: - Playback Control
