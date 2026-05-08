@@ -24,7 +24,8 @@ env:
 permissions:
   contents: write
   pull-requests: write
-  actions: write   # required to dispatch CI workflow on the release branch
+  actions: write    # required to dispatch CI workflow on the release branch
+  statuses: write   # required to bridge check_runs → legacy Status for the ruleset
 
 jobs:
   release:
@@ -199,6 +200,22 @@ jobs:
           fi
           echo "Watching CI run $RUN_ID (dispatched at $DISPATCH_AT)..."
           gh run watch "$RUN_ID" --exit-status
+
+      - name: Bridge CI to legacy Status for ruleset gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Repository rulesets on personal repos evaluate the
+          # required_status_checks rule against the legacy Statuses API,
+          # NOT the modern Checks API. GitHub Actions reports its result
+          # only as a check_run, so the ruleset stays unsatisfied even
+          # though CI is green. Mirror our successful check_run as a
+          # status with the same context so the rule is satisfied.
+          PR_SHA=$(gh pr view "$RELEASE_BRANCH" --json headRefOid --jq '.headRefOid')
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
+            -f state=success \
+            -f context=build-and-test \
+            -f description="CI passed via workflow_dispatch run"
 
       - name: Squash-merge release PR
         env:
