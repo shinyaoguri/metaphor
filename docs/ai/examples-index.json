@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-08T08:54:29+00:00",
-  "count": 269,
+  "generated_at": "2026-05-08T11:48:19+00:00",
+  "count": 270,
   "examples": [
     {
       "title": "Array",
@@ -2454,6 +2454,19 @@
       "tags": [
         "interaction",
         "pluginmousetrail",
+        "samples"
+      ]
+    },
+    {
+      "title": "ProbeSnapshot",
+      "path": "Examples/Samples/ProbeSnapshot",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "probesnapshot",
         "samples"
       ]
     },
