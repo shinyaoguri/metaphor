@@ -94,6 +94,19 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 | Noise | createNoise, noiseTexture, noise() | Sketch+NoiseBridge.swift |
 | SceneGraph | createNode, drawScene | Sketch+SceneGraphBridge.swift |
 | RenderGraph | createSourcePass, createEffectPass, createMergePass | Sketch+RenderGraphBridge.swift |
+| Probe (AI) | probe(name, value), MetaphorProbePlugin | Sketch+Probe.swift |
+
+## AI Probe
+
+`MetaphorProbePlugin` を有効化するとスケッチが「いま見えている画像」と「内部状態」を AI エージェントに渡せる。
+
+- 有効化: 環境変数 `METAPHOR_PROBE=1` で自動登録、または `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])` で明示登録。
+- リクエスト: AI 側が `.metaphor/probe/request.json` を `{"id":"snap-1","label":"baseline"}` で書き込む。次フレームで処理される（id を変えるたびに 1 回だけ走る）。
+- 出力: `.metaphor/probe/current/frame.png` と `frame.json`。書き込みは `.tmp` 経由の atomic rename。
+- 状態の申告: スケッチの `draw()` の中で `probe("particles.count", n)` のように呼ぶ。プラグイン未登録時は no-op。
+- 警告: 32x32 サンプルで色分散を測り、blank フレームを `frame.json.warnings` に出す。
+- 通常時はリクエストファイルの mtime を見るだけなのでホットパスは触らない。
+- サンプル: `Examples/Samples/ProbeSnapshot`
 
 ## Conventions
 

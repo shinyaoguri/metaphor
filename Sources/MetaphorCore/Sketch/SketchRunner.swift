@@ -207,6 +207,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer.addPlugin(plugin, sketch: sketch)
         }
 
+        // METAPHOR_PROBE=1 が設定されていれば AI 向け観測プラグインを自動登録
+        if ProcessInfo.processInfo.environment["METAPHOR_PROBE"] == "1",
+           renderer.plugin(id: MetaphorProbePlugin.id) == nil {
+            renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
+        }
+
         // setup() 中に noLoop ハンドラを一時的に抑制し、
         // onDraw が構成される前の早期一時停止を防止。
         context.onNoLoop = nil
