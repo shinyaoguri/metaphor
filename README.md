@@ -25,7 +25,7 @@ final class Hello: Sketch {
 }
 ```
 
-## 特徴
+## Metaphorの特徴
 
 - **Processing の書き味のまま、Metal の速度。** `circle` を並べて書くだけで、Canvas2D / Canvas3D が同じ形状の連続描画を **GPU インスタンシングに自動バッチ** します。10,000 個の円でも CPU 行列計算ゼロ、draw call 1 回。100 万粒子の GPU パーティクルも、`createParticleSystem` 1 行で動きます。
 - **2D と 3D が同じ語彙で書ける。** `fill` / `stroke` / `push` / `pop` / `translate` / `rotate` が 2D でも 3D でも同じ感覚で使えます。
@@ -202,6 +202,16 @@ swift run
 - [Demos/](Examples/Demos/) — パフォーマンス系デモ
 - [Samples/](Examples/Samples/) — RayTracing / SceneGraph / Syphon / Plugins
 - [ML/](Examples/ML/) — Vision / CoreML 連携
+
+## AI による開発支援
+
+`metaphor` は Claude Code / Cursor / Copilot などの LLM ベースのコーディングアシスタントと一緒に使うことを前提に作られています。何をどう書けばいいかを AI が把握しやすいように、以下のものを同梱しています。
+
+- **[`llms.txt`](llms.txt)** — リポジトリ直下に、API 全体を 1 ファイルにまとめた LLM 向けリファレンスがあります。Quick Start、関数シグネチャ、3 層 API アーキテクチャの解説、サンプルコードを含み、**AI のコンテキストに丸ごと貼り付けるだけ** で metaphor の流儀に沿ったコードを書かせられます。`make llms-txt` でソースから再生成できます。
+- **[`CLAUDE.md`](CLAUDE.md)** — Claude Code 向けのプロジェクトインストラクション。アーキテクチャ概要、ブランチ運用、リリース手順、API クイックマップが書かれていて、リポジトリを Claude Code で開けばこのプロジェクトの作法を踏まえて作業してもらえます。`metaphor new` で生成されるスケッチにも、簡易版の `CLAUDE.md` テンプレートが入っています。
+- **使い方の目安**
+  - 自分のスケッチで AI に書かせるとき：`llms.txt` をチャットに貼る、または Cursor / Claude Code でリポジトリごと参照に入れる
+  - 「Processing でいうところの○○を metaphor でやって」と聞ける粒度の API ドキュメントが揃っているので、Processing / p5.js / openFrameworks の知識をそのまま AI 経由で持ち込めます
 
 ## Requirements
 
