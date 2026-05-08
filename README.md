@@ -217,65 +217,16 @@ swift run
 
 ## 他ツールとの比較
 
-`metaphor` の立ち位置をひとことで言うと、**macOS で完結する、現代的で高性能な creative coding スタック** です。Processing の書き味、Apple Silicon ネイティブの性能、AI フレンドリーな開発体験を 1 つに束ねていて、Web も、ゲームエンジンも、ノードベース VJ ツールも兼ねません。代わりに、その中間に空いていたスペースを埋めることを目指しています。
+`metaphor` の立ち位置はひとことで言うと **「Processing の書き味 × Apple Silicon ネイティブ × AI フレンドリー」**。macOS に振り切ることで、Web やゲームエンジン、ノードベース VJ ツールの中間に空いていた場所を埋めることを目指しています。
 
-| 項目 | metaphor | Processing | p5.js | openFrameworks | Unity | TouchDesigner |
-|---|---|---|---|---|---|---|
-| 言語 | Swift | Java | JavaScript | C++ | C# | Python + ノード |
-| プラットフォーム | macOS のみ | Win / Mac / Linux | ブラウザ | Win / Mac / Linux | 全プラットフォーム | Win / Mac |
-| GPU | Metal ネイティブ | OpenGL | WebGL | OpenGL | DX / Metal / Vulkan | DX / OpenGL |
-| GPU compute | あり（MSL） | 限定的 | WebGPU 限定 | 限定的 | あり | あり |
-| 反復速度 | 速い | 速い | 即時 | 中 | 遅い | 速い |
-| コード中心度 | 高 | 高 | 高 | 高 | 中（GUI 多） | 低（ノード） |
-| ライセンス | MIT | LGPL | LGPL | MIT | 商用（制限あり） | 商用（無料枠あり） |
-| エコシステム | 小（新しい） | 大 | 大 | 大 | 巨大 | 中 |
-| ライブ / VJ | Syphon・OSC・MIDI 標準装備 | ライブラリ次第 | 弱め | 強い | 重い | 最強 |
+- **vs Processing / p5.js** — `setup` / `draw` の書き味は同じ。代わりに Metal ネイティブの GPU compute、PBR、Core ML、100 万粒子といった重い処理に踏み込めます。クロスプラットフォーム（Win / Linux / ブラウザ）が必要なら向こうが有利。
+- **vs openFrameworks** — Swift と SPM で依存解決とビルドが速く、Metal が第一級。代わりに Win / Linux 対応や C++ addon の蓄積は openFrameworks に分があります。
+- **vs Unity** — コード中心で `App.swift` 1 ファイルから即起動、ライセンス料なし。フル機能のゲーム開発、全プラットフォーム展開、エディタ GUI が必要なら Unity。
+- **vs TouchDesigner** — git で version control できるコードベース、AI 開発フローと相性が良い。ノードベースで即興・非プログラマと協業するなら TouchDesigner。
 
-### vs Processing (Java)
+**選ぶべきとき**: macOS で動く作品を作りたい / Apple Silicon の性能（Metal・Core ML・MPS・Syphon）を引き出したい / Syphon・OSC・MIDI を使ったライブパフォーマンスを組みたい / AI アシスタントと一緒に書きたい。
 
-- **共通**: `setup` / `draw` のシンプルな書き味、creative coder 向け API、Examples 移植が豊富
-- **metaphor の利点**: Metal ネイティブ性能、GPU compute、PBR + シャドウマップ、100万粒子、Core ML / Vision 統合、Swift の型安全性
-- **Processing の利点**: クロスプラットフォーム（Win / Linux）、20 年以上の教材とコミュニティ、初学者向けリソースの厚み、Android / WebGL モード
-
-### vs p5.js
-
-- **共通**: 現代的な書き味、Examples ベースで学べる、creative coder の文化を共有
-- **metaphor の利点**: ネイティブ性能、Metal compute、Core ML、動画 / GIF エクスポート、Syphon、ヘビーな 3D / ML を扱える
-- **p5.js の利点**: ブラウザだけで動く、URL で作品を共有できる、ゼロインストール、Web エコシステム全体に乗れる
-
-### vs openFrameworks (C++)
-
-- **共通**: ネイティブ性能、フル 3D / GPU、ライブパフォーマンスやインスタレーション用途
-- **metaphor の利点**: Swift の安全性とビルド速度、SPM による依存解決、Metal 第一級、AI フレンドリーな API ドキュメント（`llms.txt`）、CLI による `metaphor new` / `run` の即時導線
-- **openFrameworks の利点**: クロスプラットフォーム、addon エコシステムの規模、長年の研究・インスタレーション実績、C++ で他の native ライブラリと直結
-
-### vs Unity
-
-- **共通**: 3D、GPU、パーティクル、物理、Audio などカバー範囲が広い
-- **metaphor の利点**: コード中心で起動 / 反復が速い、ライブラリとして組み込める、`App.swift` 1 ファイルから始められる、ライセンス料なし、巨大エディタ不要
-- **Unity の利点**: 全プラットフォーム対応、Asset Store、ゲーム / VR / AR の総合エンジン、エディタ GUI でのオーサリング、ノンコーダーとの協業
-
-### vs TouchDesigner
-
-- **共通**: ライブパフォーマンス / インスタレーション用途、Syphon、OSC、MIDI
-- **metaphor の利点**: コードとして git で version control できる、Swift で型安全、ライセンス料なし、AI / コードベース開発フローと相性が良い
-- **TouchDesigner の利点**: ノードベースで非プログラマでも使える、リアルタイムフィードバックの即時性、長年蓄積された VJ / 演出ノウハウ、GPU TOP / CHOP の即興性
-
-### metaphor を選ぶべきとき
-
-- macOS で動く creative coding 作品 / アプリを作りたい
-- Processing / p5.js の手軽さは欲しいが、GPU compute や ML や 100 万粒子にも踏み込みたい
-- Apple Silicon の性能（Metal、Core ML、MPS、Syphon）を素直に引き出したい
-- AI コーディングアシスタント（Claude Code / Cursor）と一緒に開発したい
-- Syphon 出力や OSC / MIDI を使ったライブパフォーマンス / VJ を組みたい
-
-### metaphor が向かないとき
-
-- Windows / Linux / モバイル / Web ターゲット → Processing / openFrameworks / p5.js / Unity
-- ノードベースの即興 / 非プログラマとの共同作業 → TouchDesigner
-- フル機能のゲーム開発 → Unity / Unreal
-- 既存の Processing 教材・コミュニティに密着したい → Processing
-- ブラウザ上で作品を公開・共有したい → p5.js
+**向かないとき**: Windows・Linux・モバイル・Web ターゲット / ノードベースの即興 / フル機能のゲーム開発。
 
 ## Requirements
 
