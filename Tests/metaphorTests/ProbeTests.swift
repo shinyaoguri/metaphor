@@ -181,6 +181,42 @@ struct MetaphorProbePluginTests {
         }
     }
 
+    @Test("blank frame produces a warning")
+    func blankFrameWarning() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            // 何も描画しない → クリアカラーで埋まる → blank として検出されるはず
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "blank-1", to: requestPath)
+            renderer.renderFrame()
+
+            let jsonPath = outputDir.appendingPathComponent("frame.json")
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline,
+                  !FileManager.default.fileExists(atPath: jsonPath.path) {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
+            #expect(FileManager.default.fileExists(atPath: jsonPath.path))
+            let data = try Data(contentsOf: jsonPath)
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let warnings = json?["warnings"] as? [String] ?? []
+            #expect(warnings.contains(where: { $0.hasPrefix("frame appears nearly blank") }))
+
+            drainGPUWork()
+        }
+    }
+
     @Test("probe values reset each frame")
     func probeValuesResetPerFrame() throws {
         let plugin = MetaphorProbePlugin()
