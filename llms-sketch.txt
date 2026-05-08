@@ -1,0 +1,117 @@
+# metaphor sketch authoring guide
+
+> Use this compact guide when generating or editing user sketches with
+> `import metaphor`. For full API signatures, use `llms.txt`.
+
+## Goal
+
+Generate complete, real-time-safe creative coding sketches for metaphor users.
+Prefer one self-contained `App.swift` unless the user asks for multiple files.
+
+## Minimal Shape
+
+```swift
+import metaphor
+
+@main
+final class MySketch: Sketch {
+    var config: SketchConfig {
+        SketchConfig(width: 1280, height: 720, title: "MySketch")
+    }
+
+    func setup() {
+        // Load assets and create long-lived resources here.
+    }
+
+    func draw() {
+        background(0.05)
+        fill(1.0)
+        circle(width / 2, height / 2, 120)
+    }
+}
+```
+
+## Authoring Rules
+
+- Use `setup()` for assets, audio/video input, compute kernels, physics worlds,
+  particle systems, and other long-lived resources.
+- Keep `draw()` real-time safe. Update state and render; do not repeatedly load
+  files, allocate large buffers, or rebuild expensive resources every frame.
+- Use `time`, `deltaTime`, and `frameCount` for animation.
+- Pair `push()` with `pop()` and `pushStyle()` with `popStyle()`.
+- Use `width` and `height` instead of hardcoded canvas bounds when possible.
+- Use `Color`, normalized floats (`0...1`), or Processing-like gray values
+  consistently in one sketch.
+- For export or deterministic rendering, prefer offline-render APIs rather than
+  wall-clock timing.
+
+## Common Requests
+
+### 2D Generative Motion
+
+Use arrays of positions/velocities, update with `deltaTime`, draw with `circle`,
+`line`, `rect`, gradients, and blend modes. Avoid creating thousands of Swift
+objects per frame; reuse arrays.
+
+### 3D Scene
+
+In `draw()`, call `background`, configure camera/lights, then draw primitives.
+Use `push()` / `pop()` around each object transform.
+
+```swift
+lights()
+camera(eye: SIMD3(0, 2, 6), center: SIMD3(0, 0, 0))
+push()
+rotateY(time)
+box(1.2)
+pop()
+```
+
+### Audio Reactive
+
+Create the analyzer once:
+
+```swift
+var audio: AudioAnalyzer!
+
+func setup() {
+    audio = createAudioInput()
+}
+```
+
+In `draw()`, call `audio.update()` if the API requires it for the chosen source,
+then map band energy or amplitude into visual parameters.
+
+### Video / Image
+
+Load once in `setup()`. For video, call `play()` or `loop()` once, update per
+frame, then draw with `image(video, x, y, w, h)`.
+
+### Particles
+
+Prefer the built-in GPU particle system for very large counts. Create it once,
+update it in `compute()` or `draw()` as the API expects, and draw it once per
+frame.
+
+### Shaders
+
+Use `createPostEffect` / `createMaterial` for user-supplied MSL. Keep shader
+source strings small in generated answers unless the user specifically asks for
+a full custom shader.
+
+## Debugging Hints
+
+- If a symbol is unknown, search `llms.txt` before inventing an API.
+- If a sketch is blank, check that `background`, `fill`/`stroke`, camera, and
+  object positions are sensible for the canvas.
+- If performance is poor, move resource creation out of `draw()` and reduce CPU
+  per-frame allocations.
+- If assets fail to load, prefer explicit file paths or bundle resources and
+  show where the user should put them.
+
+## Output Style For AI Assistants
+
+- Return complete Swift code when asked to create a sketch.
+- Explain only the key controls and resource requirements.
+- Do not include placeholder APIs that are not in `llms.txt`.
+- Prefer metaphor-native APIs over generic Metal code unless requested.
