@@ -246,6 +246,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func popMatrix()` -- 最後に保存された 3D 変換行列をスタックから復元します。
 - `func popStyle()` -- 最後に保存されたスタイル状態をスタックから復元します。
 - `func previousFrame() -> MImage?` -- 前フレームのレンダリング結果を取得します。
+- `func probe(_ name: String, _ value: Double)` -- 数値（Double）として記録します。
+- `func probe(_ name: String, _ value: Int)` -- 数値（Int）として記録します。
+- `func probe(_ name: String, _ value: Float)` -- 数値（Float）として記録します。Double に昇格して保存されます。
+- `func probe(_ name: String, _ value: String)` -- 文字列として記録します。フェーズ名や状態の説明に。
+- `func probe(_ name: String, _ value: Bool)` -- 真偽値として記録します。
+- `func probe(_ name: String, _ value: SIMD2<Float>)` -- 2 成分ベクトルとして記録します。`[x, y]` の JSON 配列になります。
+- `func probe(_ name: String, _ value: SIMD3<Float>)` -- 3 成分ベクトルとして記録します。
+- `func probe(_ name: String, _ value: SIMD4<Float>)` -- 4 成分ベクトルとして記録します。
 - `func push()` -- 現在の変換とスタイル状態をスタックに保存します。
 - `func pushMatrix()` -- 現在の 3D 変換行列をスタックに保存します。
 - `func pushStyle()` -- 現在のスタイル状態（fill、stroke など）をスタックに保存します。
@@ -614,6 +622,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let postInvert: String` -- 反転ポストプロセスシェーダーのMSL関数名。
 - `static let postVignette: String` -- ビネットポストプロセスシェーダーのMSL関数名。
 
+### `enum ProbeValue` -- AI エージェントが観測したい任意の値。`frame.json` の `custom` セクションに
+
+- `case bool(Bool)`
+- `case double(Double)`
+- `case int(Int)`
+- `case string(String)`
+- `case vec2(Float, Float)`
+- `case vec3(Float, Float, Float)`
+- `case vec4(Float, Float, Float, Float)`
+- `func encode(to encoder: any Encoder) throws`
+
 ### `enum RectMode` -- `rect()` 呼び出しにおける座標の解釈方法を定義します。
 
 - `case center` -- x, y を中心、w, h を幅と高さとして解釈。
@@ -841,6 +860,25 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
 ### `final class Mesh` -- 頂点バッファとオプションのインデックスバッファを含む3Dメッシュデータを格納します。
+
+### `final class MetaphorProbePlugin` -- AI エージェント向けの観測プラグイン。
+
+- `let config: MetaphorProbeConfig` -- プラグイン設定。
+- `static let id: String`
+- `let pluginID: String`
+- `init(config: MetaphorProbeConfig = MetaphorProbeConfig())`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
 
 ### `final class MetaphorRenderer` -- metaphor の Metal レンダリングとオプショナルなランタイム操作を統括します。
 

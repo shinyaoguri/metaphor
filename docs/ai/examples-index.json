@@ -1,5 +1,5 @@
 {
-  "count": 270,
+  "count": 271,
   "examples": [
     {
       "title": "Array",
@@ -2453,6 +2453,19 @@
       "tags": [
         "interaction",
         "pluginmousetrail",
+        "samples"
+      ]
+    },
+    {
+      "title": "ProbeSnapshot",
+      "path": "Examples/Samples/ProbeSnapshot",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "probesnapshot",
         "samples"
       ]
     },
