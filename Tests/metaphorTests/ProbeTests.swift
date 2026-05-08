@@ -126,6 +126,75 @@ struct MetaphorProbePluginTests {
         }
     }
 
+    @Test("frame.json is written alongside frame.png")
+    func metadataIsWritten() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 128, height: 96)
+            renderer.addPlugin(plugin)
+
+            // 実運用では Sketch.draw() の中で probe(...) が呼ばれる。
+            // テストでは onDraw に同等の処理を仕込む（pre と post の間で実行される）。
+            renderer.onDraw = { _, _ in
+                MainActor.assumeIsolated {
+                    plugin.recordValue(name: "test.count", value: .int(42))
+                    plugin.recordValue(name: "test.label", value: .string("hello"))
+                }
+            }
+
+            try writeRequest(id: "meta-1", label: "metadata-test", to: requestPath)
+            renderer.renderFrame()
+
+            _ = waitForFrame(in: outputDir)
+            let jsonPath = outputDir.appendingPathComponent("frame.json")
+
+            // frame.json が出るのを少し待つ
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline,
+                  !FileManager.default.fileExists(atPath: jsonPath.path) {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
+            #expect(FileManager.default.fileExists(atPath: jsonPath.path))
+
+            let data = try Data(contentsOf: jsonPath)
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            #expect(json?["id"] as? String == "meta-1")
+            #expect(json?["label"] as? String == "metadata-test")
+            #expect(json?["schemaVersion"] as? Int == 1)
+            let size = json?["size"] as? [String: Int]
+            #expect(size?["width"] == 128)
+            #expect(size?["height"] == 96)
+            let custom = json?["custom"] as? [String: Any]
+            #expect(custom?["test.count"] as? Int == 42)
+            #expect(custom?["test.label"] as? String == "hello")
+
+            drainGPUWork()
+        }
+    }
+
+    @Test("probe values reset each frame")
+    func probeValuesResetPerFrame() throws {
+        let plugin = MetaphorProbePlugin()
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        renderer.addPlugin(plugin)
+
+        plugin.recordValue(name: "stale", value: .int(99))
+        renderer.renderFrame()
+        // pre() がリセットしたあとは値が消えている
+        #expect(plugin.stateBuffer.snapshot().isEmpty)
+
+        drainGPUWork()
+    }
+
     @Test("same request id is processed only once")
     func duplicateRequestIgnored() throws {
         try TempFileHelper.withTemporaryDirectory { dir in

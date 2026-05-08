@@ -39,9 +39,22 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     /// 直前に観察したリクエストファイルの mtime。変更検出に利用します。
     private var lastRequestMTime: Date?
 
+    /// `Sketch.probe(_:_:)` で蓄積されたユーザー定義値のバッファ。
+    let stateBuffer = ProbeStateBuffer()
+
+    /// 直近の `pre()` で受け取った時間。`post()` で frame.json に書き出すのに使います。
+    private var lastFrameTime: Double = 0
+
     public init(config: MetaphorProbeConfig = MetaphorProbeConfig()) {
         self.pluginID = MetaphorProbePlugin.id
         self.config = config
+    }
+
+    // MARK: - User-facing API
+
+    /// `Sketch.probe(_:_:)` から呼ばれ、ユーザー定義値を現フレームのバッファに記録します。
+    func recordValue(name: String, value: ProbeValue) {
+        stateBuffer.set(name, value)
     }
 
     // MARK: - Lifecycle
@@ -71,6 +84,10 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     // MARK: - Frame hooks
 
     public func pre(commandBuffer: MTLCommandBuffer, time: Double) {
+        // 各フレーム頭でユーザー probe バッファをリセット。
+        // draw() の中で probe(...) が呼ばれたものだけがそのフレームの値となる。
+        stateBuffer.reset()
+        lastFrameTime = time
         pollRequestFile()
     }
 
@@ -105,13 +122,25 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             blit.endEncoding()
         }
 
+        let metadata = ProbeFrameMetadata(
+            schemaVersion: 1,
+            id: request.id,
+            label: request.label,
+            frame: sketch?._context?.frameCount ?? 0,
+            time: lastFrameTime,
+            size: ProbeFrameMetadata.Size(width: width, height: height),
+            custom: stateBuffer.snapshot(),
+            warnings: []
+        )
+
         let outputDirectory = config.outputDirectory
         commandBuffer.addCompletedHandler { _ in
             ProbeWriter.writeSnapshot(
                 staging: staging,
                 width: width,
                 height: height,
-                directory: outputDirectory
+                directory: outputDirectory,
+                metadata: metadata
             )
         }
 

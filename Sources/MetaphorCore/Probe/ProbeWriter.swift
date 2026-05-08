@@ -14,25 +14,45 @@ enum ProbeWriter {
         staging: MTLTexture,
         width: Int,
         height: Int,
-        directory: String
+        directory: String,
+        metadata: ProbeFrameMetadata?
     ) {
         let dirURL = URL(fileURLWithPath: directory)
         try? FileManager.default.createDirectory(
             at: dirURL, withIntermediateDirectories: true
         )
 
-        let finalURL = dirURL.appendingPathComponent("frame.png")
-        let tmpURL = dirURL.appendingPathComponent("frame.png.tmp")
+        let finalPNG = dirURL.appendingPathComponent("frame.png")
+        let tmpPNG = dirURL.appendingPathComponent("frame.png.tmp")
 
         MetaphorRenderer.writePNG(
-            texture: staging, width: width, height: height, path: tmpURL.path
+            texture: staging, width: width, height: height, path: tmpPNG.path
         )
+        atomicReplace(tmp: tmpPNG, final: finalPNG)
 
-        try? FileManager.default.removeItem(at: finalURL)
+        guard let metadata else { return }
+
+        let finalJSON = dirURL.appendingPathComponent("frame.json")
+        let tmpJSON = dirURL.appendingPathComponent("frame.json.tmp")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {
-            try FileManager.default.moveItem(at: tmpURL, to: finalURL)
+            let data = try encoder.encode(metadata)
+            try data.write(to: tmpJSON)
+            atomicReplace(tmp: tmpJSON, final: finalJSON)
         } catch {
-            print("[metaphor] Probe: failed to rename frame.png.tmp -> frame.png: \(error)")
+            print("[metaphor] Probe: failed to write frame.json: \(error)")
+        }
+    }
+
+    /// 一時ファイルから本番パスへの原子的なリネーム。
+    private static func atomicReplace(tmp: URL, final: URL) {
+        try? FileManager.default.removeItem(at: final)
+        do {
+            try FileManager.default.moveItem(at: tmp, to: final)
+        } catch {
+            print("[metaphor] Probe: failed to rename \(tmp.lastPathComponent) -> \(final.lastPathComponent): \(error)")
         }
     }
 }
