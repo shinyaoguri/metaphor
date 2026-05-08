@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-08T11:48:19+00:00",
-  "count": 270,
+  "generated_at": "2026-05-08T12:00:20+00:00",
+  "count": 271,
   "examples": [
     {
       "title": "Array",
@@ -2481,6 +2481,19 @@
       "tags": [
         "3d",
         "raytracing",
+        "samples"
+      ]
+    },
+    {
+      "title": "RenderGraphCompose",
+      "path": "Examples/Samples/RenderGraphCompose",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "rendergraphcompose",
         "samples"
       ]
     },
