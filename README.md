@@ -207,8 +207,10 @@ swift run
 
 `metaphor` は Claude Code / Cursor / Copilot などの LLM ベースのコーディングアシスタントと一緒に使うことを前提に作られています。何をどう書けばいいかを AI が把握しやすいように、以下のものを同梱しています。
 
+- **[`llms-sketch.txt`](llms-sketch.txt)** — スケッチ作者向けの短い AI コンテキスト。`setup()` / `draw()` の書き方、よく使う API、避けるべき重い処理を素早く共有できます。
 - **[`llms.txt`](llms.txt)** — リポジトリ直下に、API 全体を 1 ファイルにまとめた LLM 向けリファレンスがあります。Quick Start、関数シグネチャ、3 層 API アーキテクチャの解説、サンプルコードを含み、**AI のコンテキストに丸ごと貼り付けるだけ** で metaphor の流儀に沿ったコードを書かせられます。`make llms-txt` でソースから再生成できます。
-- **[`CLAUDE.md`](CLAUDE.md)** — Claude Code 向けのプロジェクトインストラクション。アーキテクチャ概要、ブランチ運用、リリース手順、API クイックマップが書かれていて、リポジトリを Claude Code で開けばこのプロジェクトの作法を踏まえて作業してもらえます。`metaphor new` で生成されるスケッチにも、簡易版の `CLAUDE.md` テンプレートが入っています。
+- **[`docs/ai/`](docs/ai/)** — Examples 索引、スケッチ作者向けガイド、用途別プロンプト、インストール形態ごとの効き方をまとめています。
+- **[`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md)** — このライブラリ自体を AI と保守・拡張するためのプロジェクトインストラクションです。`metaphor new` で生成されるスケッチには、制作意図を共有するための `AGENTS.md` と `PROJECT_BRIEF.md` が入ります。
 - **使い方の目安**
   - 自分のスケッチで AI に書かせるとき：`llms.txt` をチャットに貼る、または Cursor / Claude Code でリポジトリごと参照に入れる
   - 「Processing でいうところの○○を metaphor でやって」と聞ける粒度の API ドキュメントが揃っているので、Processing / p5.js / openFrameworks の知識をそのまま AI 経由で持ち込めます

@@ -8,6 +8,9 @@ For content creators using metaphor with an AI assistant, start with
 Use `docs/ai/examples-index.md` to find nearby working examples before asking
 the assistant to invent a sketch from scratch.
 Prompt templates live in `docs/ai/prompts/`.
+See `docs/ai/install-scenarios.md` for how this works across direct SwiftPM
+dependencies, local library checkouts, Homebrew CLI installs, release
+installers, and source checkouts.
 
 ## Orientation
 
