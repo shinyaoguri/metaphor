@@ -4,7 +4,7 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 269
+Example count: 270
 
 ## How To Use
 
@@ -177,6 +177,7 @@ Example count: 269
 - [PluginFPSLogger](../../Examples/Samples/PluginFPSLogger) Tags: pluginfpslogger, samples.
 - [PluginMouseTrail](../../Examples/Samples/PluginMouseTrail) Tags: interaction, pluginmousetrail, samples.
 - [RayTracing](../../Examples/Samples/RayTracing) Tags: 3d, raytracing, samples.
+- [RenderGraphCompose](../../Examples/Samples/RenderGraphCompose) Tags: rendergraphcompose, samples.
 - [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: samples, scenegraphbasics.
 - [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: samples, scenegraphhybrid.
 - [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: live, samples, syphon, syphonmultiwindow.
