@@ -159,6 +159,17 @@ else
 fi
 
 # --------------------------------------------------------------------------
+# 7. Generated examples index
+# --------------------------------------------------------------------------
+echo "Checking generated examples index..."
+
+if python3 scripts/generate-examples-index.py --check; then
+    pass "examples index is up to date"
+else
+    fail "examples index is out of date"
+fi
+
+# --------------------------------------------------------------------------
 # Summary
 # --------------------------------------------------------------------------
 echo ""

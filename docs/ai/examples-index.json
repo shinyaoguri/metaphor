@@ -1,0 +1,4518 @@
+{
+  "generated_at": "2026-05-08T08:54:29+00:00",
+  "count": 269,
+  "examples": [
+    {
+      "title": "Array",
+      "path": "Examples/Basics/Arrays/Array",
+      "group": "Basics",
+      "subcategory": "Arrays",
+      "level": "Beginner",
+      "description": "An array is a list of data. Each piece of data in an array is identified by an index number representing its position in the array. Arrays are zero based, which means that the first element in the array is [0], the seco...",
+      "featured": [
+        "Array",
+        "cos_"
+      ],
+      "tags": [
+        "array",
+        "arrays",
+        "basics"
+      ]
+    },
+    {
+      "title": "Array 2D",
+      "path": "Examples/Basics/Arrays/Array2D",
+      "group": "Basics",
+      "subcategory": "Arrays",
+      "level": "Intermediate",
+      "description": "Demonstrates the syntax for creating a two-dimensional (2D) array. Values in a 2D array are accessed through two index values. 2D arrays are useful for storing images. In this example, each dot is colored in relation to...",
+      "featured": [
+        "Array",
+        "dist_"
+      ],
+      "tags": [
+        "array2d",
+        "arrays",
+        "basics",
+        "image"
+      ]
+    },
+    {
+      "title": "Array Objects",
+      "path": "Examples/Basics/Arrays/ArrayObjects",
+      "group": "Basics",
+      "subcategory": "Arrays",
+      "level": "Advanced",
+      "description": "Demonstrates the syntax for creating an array of custom objects.",
+      "featured": [
+        "Array",
+        "Object"
+      ],
+      "tags": [
+        "arrayobjects",
+        "arrays",
+        "basics"
+      ]
+    },
+    {
+      "title": "Brightness",
+      "path": "Examples/Basics/Color/Brightness",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Intermediate",
+      "description": "Brightness is the relative lightness or darkness of a color. Move the cursor vertically over each bar to alter its brightness.",
+      "featured": [
+        "colorMode_",
+        "fill_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "brightness",
+        "color"
+      ]
+    },
+    {
+      "title": "Color Variables (Homage to Albers)",
+      "path": "Examples/Basics/Color/ColorVariables",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Beginner",
+      "description": "This example creates variables for colors that may be referred to in the program by a name, rather than a number.",
+      "featured": [
+        "color_datatype",
+        "fill_"
+      ],
+      "tags": [
+        "basics",
+        "color",
+        "colorvariables"
+      ]
+    },
+    {
+      "title": "Hue",
+      "path": "Examples/Basics/Color/Hue",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Beginner",
+      "description": "Hue is the color reflected from or transmitted through an object and is typically referred to as the name of the color such as red, blue, or yellow. In this example, move the cursor vertically over each bar to alter its...",
+      "featured": [
+        "colorMode_",
+        "fill_"
+      ],
+      "tags": [
+        "basics",
+        "color",
+        "hue"
+      ]
+    },
+    {
+      "title": "Simple Linear Gradient",
+      "path": "Examples/Basics/Color/LinearGradient",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Intermediate",
+      "description": "The lerpColor() function is useful for interpolating between two colors.",
+      "featured": [
+        "lerpColor_",
+        "color_datatype"
+      ],
+      "tags": [
+        "basics",
+        "color",
+        "lineargradient"
+      ]
+    },
+    {
+      "title": "Radial Gradient",
+      "path": "Examples/Basics/Color/RadialGradient",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Intermediate",
+      "description": "Draws a series of concentric circles to create a gradient from one color to another.",
+      "featured": [
+        "colorMode_",
+        "fill_"
+      ],
+      "tags": [
+        "basics",
+        "color",
+        "radialgradient"
+      ]
+    },
+    {
+      "title": "Relativity",
+      "path": "Examples/Basics/Color/Relativity",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Intermediate",
+      "description": "Each color is perceived in relation to other colors. The top and bottom bars each contain the same component colors, but a different display order causes individual colors to appear differently.",
+      "featured": [
+        "color_datatype",
+        "fill_"
+      ],
+      "tags": [
+        "basics",
+        "color",
+        "relativity"
+      ]
+    },
+    {
+      "title": "Saturation",
+      "path": "Examples/Basics/Color/Saturation",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "Beginner",
+      "description": "Saturation is the strength or purity of the color and represents the amount of gray in proportion to the hue. A \"saturated\" color is pure and an \"unsaturated\" color has a large percentage of gray. Move the cursor vertic...",
+      "featured": [
+        "colorMode_",
+        "fill_"
+      ],
+      "tags": [
+        "basics",
+        "color",
+        "saturation"
+      ]
+    },
+    {
+      "title": "WaveGradient",
+      "path": "Examples/Basics/Color/WaveGradient",
+      "group": "Basics",
+      "subcategory": "Color",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "basics",
+        "color",
+        "wavegradient"
+      ]
+    },
+    {
+      "title": "Move Eye",
+      "path": "Examples/Basics/Control/Camera/MoveEye",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Intermediate",
+      "description": "The camera lifts up (controlled by mouseY) while looking at the same point.",
+      "featured": [
+        "camera_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "camera",
+        "control",
+        "interaction",
+        "moveeye"
+      ]
+    },
+    {
+      "title": "Perspective vs Ortho",
+      "path": "Examples/Basics/Control/Camera/Orthographic",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Intermediate",
+      "description": "Move the mouse left to right to change the \"far\" parameter for the perspective() and ortho() functions. This parameter sets the maximum distance from the origin away from the viewer and will clip the geometry. Click a m...",
+      "featured": [
+        "ortho_",
+        "perspective_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "camera",
+        "control",
+        "interaction",
+        "orthographic"
+      ]
+    },
+    {
+      "title": "Perspective",
+      "path": "Examples/Basics/Control/Camera/Perspective",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Intermediate",
+      "description": "Move the mouse left and right to change the field of view (fov). Click to modify the aspect ratio. The perspective() function sets a perspective projection applying foreshortening, making distant objects appear smaller...",
+      "featured": [
+        "perspective_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "camera",
+        "control",
+        "interaction",
+        "perspective"
+      ]
+    },
+    {
+      "title": "Conditionals 1",
+      "path": "Examples/Basics/Control/Conditionals1",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Beginner",
+      "description": "Conditions are like questions. They allow a program to decide to take one action if the answer to a question is \"true\" or to do another action if the answer to the question is \"false.\"<br /> The questions asked within a...",
+      "featured": [
+        "if"
+      ],
+      "tags": [
+        "basics",
+        "conditionals1",
+        "control"
+      ]
+    },
+    {
+      "title": "Conditionals 2",
+      "path": "Examples/Basics/Control/Conditionals2",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Beginner",
+      "description": "We extend the language of conditionals from the previous example by adding the keyword \"else\". This allows conditionals to ask two or more sequential questions, each with a different action.",
+      "featured": [
+        "if",
+        "else"
+      ],
+      "tags": [
+        "basics",
+        "conditionals2",
+        "control",
+        "typography"
+      ]
+    },
+    {
+      "title": "Embedding Iteration",
+      "path": "Examples/Basics/Control/EmbeddedIteration",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Beginner",
+      "description": "Embedding \"for\" structures allows repetition in two dimensions.",
+      "featured": [
+        "for"
+      ],
+      "tags": [
+        "basics",
+        "control",
+        "embeddediteration"
+      ]
+    },
+    {
+      "title": "Iteration",
+      "path": "Examples/Basics/Control/Iteration",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Beginner",
+      "description": "Iteration with a \"for\" structure to construct repetitive forms.",
+      "featured": [
+        "for"
+      ],
+      "tags": [
+        "basics",
+        "control",
+        "iteration"
+      ]
+    },
+    {
+      "title": "Logical Operators",
+      "path": "Examples/Basics/Control/LogicalOperators",
+      "group": "Basics",
+      "subcategory": "Control",
+      "level": "Beginner",
+      "description": "The logical operators for AND (&&) and OR (||) are used to combine simple relational statements into more complex expressions. The NOT (!) operator is used to negate a boolean statement.",
+      "featured": [
+        "logicalAND",
+        "logicalOR",
+        "logicalNOT"
+      ],
+      "tags": [
+        "basics",
+        "control",
+        "interaction",
+        "logicaloperators"
+      ]
+    },
+    {
+      "title": "Characters Strings",
+      "path": "Examples/Basics/Data/CharactersStrings",
+      "group": "Basics",
+      "subcategory": "Data",
+      "level": "Beginner",
+      "description": "The character datatype, abbreviated as char, stores letters and symbols in the Unicode format, a coding system developed to support a variety of world languages. Characters are distinguished from other symbols by puttin...",
+      "featured": [
+        "String"
+      ],
+      "tags": [
+        "basics",
+        "charactersstrings",
+        "data",
+        "image",
+        "interaction",
+        "typography"
+      ]
+    },
+    {
+      "title": "Datatype Conversion",
+      "path": "Examples/Basics/Data/DatatypeConversion",
+      "group": "Basics",
+      "subcategory": "Data",
+      "level": "Intermediate",
+      "description": "It is sometimes beneficial to convert a value from one type of data to another. Each of the conversion functions converts its parameter to an equivalent representation within its datatype. The conversion functions inclu...",
+      "featured": [
+        "floatconvert",
+        "intconvert",
+        "byteconvert",
+        "charconvert"
+      ],
+      "tags": [
+        "basics",
+        "data",
+        "datatypeconversion"
+      ]
+    },
+    {
+      "title": "Integers Floats",
+      "path": "Examples/Basics/Data/IntegersFloats",
+      "group": "Basics",
+      "subcategory": "Data",
+      "level": "Beginner",
+      "description": "Integers and floats are two different kinds of numerical data. An integer (more commonly called an int) is a number without a decimal point. A float is a floating-point number, which means it is a number that has a deci...",
+      "featured": [
+        "int",
+        "float"
+      ],
+      "tags": [
+        "basics",
+        "data",
+        "integersfloats"
+      ]
+    },
+    {
+      "title": "True/False",
+      "path": "Examples/Basics/Data/TrueFalse",
+      "group": "Basics",
+      "subcategory": "Data",
+      "level": "Beginner",
+      "description": "A Boolean variable has only two possible values: true or false. It is common to use Booleans with control statements to determine the flow of a program. In this example, when the boolean value \"x\" is true, vertical blac...",
+      "featured": [
+        "boolean",
+        "true",
+        "false"
+      ],
+      "tags": [
+        "basics",
+        "data",
+        "truefalse"
+      ]
+    },
+    {
+      "title": "Variable Scope",
+      "path": "Examples/Basics/Data/VariableScope",
+      "group": "Basics",
+      "subcategory": "Data",
+      "level": "Intermediate",
+      "description": "Variables have a global or local \"scope\". For example, variables declared within either the setup() or draw() functions may be only used in these functions. Global variables, variables declared outside of setup() and dr...",
+      "featured": [],
+      "tags": [
+        "basics",
+        "data",
+        "variablescope"
+      ]
+    },
+    {
+      "title": "Variables",
+      "path": "Examples/Basics/Data/Variables",
+      "group": "Basics",
+      "subcategory": "Data",
+      "level": "Beginner",
+      "description": "Variables are used for storing values. In this example, change the values of variables to affect the composition.",
+      "featured": [
+        "int"
+      ],
+      "tags": [
+        "basics",
+        "data",
+        "variables"
+      ]
+    },
+    {
+      "title": "Bezier",
+      "path": "Examples/Basics/Form/Bezier",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Intermediate",
+      "description": "The first two parameters for the bezier() function specify the first point in the curve and the last two parameters specify the last point. The middle parameters set the control points that define the shape of the curve.",
+      "featured": [
+        "bezier_"
+      ],
+      "tags": [
+        "basics",
+        "bezier",
+        "form"
+      ]
+    },
+    {
+      "title": "Pie Chart",
+      "path": "Examples/Basics/Form/PieChart",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Beginner",
+      "description": "Uses the arc() function to generate a pie chart from the data stored in an array.",
+      "featured": [
+        "arc_"
+      ],
+      "tags": [
+        "basics",
+        "form",
+        "piechart"
+      ]
+    },
+    {
+      "title": "Points and Lines",
+      "path": "Examples/Basics/Form/PointsLines",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Beginner",
+      "description": "Points and lines can be used to draw basic geometry. Change the value of the variable 'd' to scale the form. The four variables set the positions based on the value of 'd'.",
+      "featured": [
+        "line_",
+        "point_"
+      ],
+      "tags": [
+        "basics",
+        "form",
+        "pointslines"
+      ]
+    },
+    {
+      "title": "Primitives 3D",
+      "path": "Examples/Basics/Form/Primitives3D",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "",
+      "description": "Placing mathematically 3D objects in synthetic space. The lights() method reveals their imagined dimension. The box() and sphere() functions each have one parameter which is used to specify their size. These shapes are...",
+      "featured": [
+        "translate_",
+        "rotateX_",
+        "rotateY_",
+        "popMatrix_",
+        "pushMatrix_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "form",
+        "primitives3d"
+      ]
+    },
+    {
+      "title": "Regular Polygon",
+      "path": "Examples/Basics/Form/RegularPolygon",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Beginner",
+      "description": "What is your favorite? Pentagon? Hexagon? Heptagon? No? What about the icosagon? The polygon() function created for this example is capable of drawing any regular polygon. Try placing different numbers into the polygon(...",
+      "featured": [
+        "beginShape_",
+        "endShape_",
+        "vertex_"
+      ],
+      "tags": [
+        "basics",
+        "form",
+        "regularpolygon"
+      ]
+    },
+    {
+      "title": "Shape Primitives",
+      "path": "Examples/Basics/Form/ShapePrimitives",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Beginner",
+      "description": "The basic shape primitive functions are triangle(), rect(), quad(), ellipse(), and arc(). Squares are made with rect() and circles are made with ellipse(). Each of these functions requires a number of parameters to dete...",
+      "featured": [
+        "triangle_",
+        "rect_",
+        "quad_",
+        "ellipse_",
+        "arc_"
+      ],
+      "tags": [
+        "basics",
+        "form",
+        "shapeprimitives"
+      ]
+    },
+    {
+      "title": "Star",
+      "path": "Examples/Basics/Form/Star",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Intermediate",
+      "description": "The star() function created for this example is capable of drawing a wide range of different forms. Try placing different numbers into the star() function calls within draw() to explore.",
+      "featured": [
+        "beginShape_",
+        "endShape_",
+        "vertex_"
+      ],
+      "tags": [
+        "basics",
+        "form",
+        "star"
+      ]
+    },
+    {
+      "title": "Triangle Strip",
+      "path": "Examples/Basics/Form/TriangleStrip",
+      "group": "Basics",
+      "subcategory": "Form",
+      "level": "Intermediate",
+      "description": "Generate a closed ring using the vertex() function and beginShape(TRIANGLE_STRIP) mode. The outsideRadius and insideRadius variables control ring's radii respectively.",
+      "featured": [
+        "beginShape_",
+        "endShape_",
+        "vertex_"
+      ],
+      "tags": [
+        "basics",
+        "form",
+        "trianglestrip"
+      ]
+    },
+    {
+      "title": "Alpha Mask",
+      "path": "Examples/Basics/Image/Alphamask",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Intermediate",
+      "description": "Loads a \"mask\" for an image to specify the transparency in different parts of the image. The two images are blended together using the mask() method of PImage.",
+      "featured": [
+        "PImage",
+        "PImage_mask_"
+      ],
+      "tags": [
+        "alphamask",
+        "basics",
+        "image"
+      ]
+    },
+    {
+      "title": "Background Image",
+      "path": "Examples/Basics/Image/BackgroundImage",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Beginner",
+      "description": "This example presents the fastest way to load a background image into Processing. To load an image as the background, it must be the same width and height as the program.",
+      "featured": [
+        "background_",
+        "PImage",
+        "loadImage_"
+      ],
+      "tags": [
+        "backgroundimage",
+        "basics",
+        "image"
+      ]
+    },
+    {
+      "title": "Create Image",
+      "path": "Examples/Basics/Image/CreateImage",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Intermediate",
+      "description": "The createImage() function provides a fresh buffer of pixels to play with. This example creates an image gradient.",
+      "featured": [
+        "createImage_",
+        "PImage"
+      ],
+      "tags": [
+        "basics",
+        "createimage",
+        "image"
+      ]
+    },
+    {
+      "title": "Load and Display Image",
+      "path": "Examples/Basics/Image/LoadDisplayImage",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Beginner",
+      "description": "Images can be loaded and displayed to the screen at their actual size or any other size.",
+      "featured": [
+        "loadImage_",
+        "image_",
+        "PImage"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "loaddisplayimage"
+      ]
+    },
+    {
+      "title": "Pointillism",
+      "path": "Examples/Basics/Image/Pointillism",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Intermediate",
+      "description": "Mouse horizontal location controls size of dots. Creates a simple pointillist effect using ellipses colored according to pixels in an image.",
+      "featured": [
+        "PImage",
+        "PImage_get_",
+        "color_datatype"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "interaction",
+        "pointillism"
+      ]
+    },
+    {
+      "title": "Request Image",
+      "path": "Examples/Basics/Image/RequestImage",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Intermediate",
+      "description": "Shows how to use the requestImage() function with preloader animation. The requestImage() function loads images on a separate thread so that the sketch does not freeze while they load. It's very useful when you are load...",
+      "featured": [
+        "requestImage_",
+        "PImage"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "requestimage"
+      ]
+    },
+    {
+      "title": "Transparency",
+      "path": "Examples/Basics/Image/Transparency",
+      "group": "Basics",
+      "subcategory": "Image",
+      "level": "Intermediate",
+      "description": "Move the pointer left and right across the image to change its position. This program overlays one image over another by modifying the alpha value of the image with the tint() function.",
+      "featured": [
+        "tint_",
+        "PImage"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "transparency"
+      ]
+    },
+    {
+      "title": "Clock",
+      "path": "Examples/Basics/Input/Clock",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Intermediate",
+      "description": "The current time can be read with the second(), minute(), and hour() functions. In this example, sin() and cos() values are used to set the position of the hands.",
+      "featured": [
+        "second_",
+        "minute_",
+        "hour_"
+      ],
+      "tags": [
+        "basics",
+        "clock",
+        "input",
+        "interaction"
+      ]
+    },
+    {
+      "title": "Constrain",
+      "path": "Examples/Basics/Input/Constrain",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Move the mouse across the screen to move the circle. The program constrains the circle to its box.",
+      "featured": [
+        "constrain_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "constrain",
+        "input",
+        "interaction"
+      ]
+    },
+    {
+      "title": "Easing",
+      "path": "Examples/Basics/Input/Easing",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Move the mouse across the screen and the symbol will follow. Between drawing each frame of the animation, the program calculates the difference between the position of the symbol and the cursor. If the distance is large...",
+      "featured": [],
+      "tags": [
+        "basics",
+        "easing",
+        "image",
+        "input",
+        "interaction"
+      ]
+    },
+    {
+      "title": "Keyboard",
+      "path": "Examples/Basics/Input/Keyboard",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Click on the image to give it focus and press the letter keys to create forms in time and space. Each key has a unique identifying number. These numbers can be used to position shapes in space.",
+      "featured": [
+        "keyPressed_"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "input",
+        "interaction",
+        "keyboard",
+        "typography"
+      ]
+    },
+    {
+      "title": "Keyboard Functions",
+      "path": "Examples/Basics/Input/KeyboardFunctions",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Intermediate",
+      "description": "Click on the window to give it focus and press the letter keys to type colors. The keyboard function keyPressed() is called whenever a key is pressed. keyReleased() is another keyboard function that is called when a key...",
+      "featured": [
+        "keyPressed_"
+      ],
+      "tags": [
+        "basics",
+        "input",
+        "interaction",
+        "keyboardfunctions",
+        "typography"
+      ]
+    },
+    {
+      "title": "Milliseconds",
+      "path": "Examples/Basics/Input/Milliseconds",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "A millisecond is 1/1000 of a second. Processing keeps track of the number of milliseconds a program has run. By modifying this number with the modulo(%) operator, different patterns in time are created.",
+      "featured": [
+        "millis_"
+      ],
+      "tags": [
+        "basics",
+        "input",
+        "interaction",
+        "milliseconds"
+      ]
+    },
+    {
+      "title": "Mouse 1D",
+      "path": "Examples/Basics/Input/Mouse1D",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Move the mouse left and right to shift the balance. The \"mouseX\" variable is used to control both the size and color of the rectangles.",
+      "featured": [
+        "mouseX"
+      ],
+      "tags": [
+        "basics",
+        "input",
+        "interaction",
+        "mouse1d"
+      ]
+    },
+    {
+      "title": "Mouse 2D",
+      "path": "Examples/Basics/Input/Mouse2D",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Moving the mouse changes the position and size of each box.",
+      "featured": [
+        "mouseX",
+        "mouseY"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "input",
+        "interaction",
+        "mouse2d"
+      ]
+    },
+    {
+      "title": "Mouse Functions",
+      "path": "Examples/Basics/Input/MouseFunctions",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Intermediate",
+      "description": "Click on the box and drag it across the screen.",
+      "featured": [
+        "mousePressed_",
+        "mouseReleased_",
+        "mouseDragged_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "input",
+        "interaction",
+        "mousefunctions"
+      ]
+    },
+    {
+      "title": "Mouse Press",
+      "path": "Examples/Basics/Input/MousePress",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Move the mouse to position the shape. Press the mouse button to invert the color.",
+      "featured": [
+        "mousePressed",
+        "mouseX",
+        "mouseY"
+      ],
+      "tags": [
+        "basics",
+        "input",
+        "interaction",
+        "mousepress"
+      ]
+    },
+    {
+      "title": "Mouse Signals",
+      "path": "Examples/Basics/Input/MouseSignals",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Move and click the mouse to generate signals. The top row is the signal from \"mouseX\", the middle row is the signal from \"mouseY\", and the bottom row is the signal from \"mousePressed\".",
+      "featured": [
+        "mousePressed"
+      ],
+      "tags": [
+        "basics",
+        "input",
+        "interaction",
+        "mousesignals"
+      ]
+    },
+    {
+      "title": "Storing Input",
+      "path": "Examples/Basics/Input/StoringInput",
+      "group": "Basics",
+      "subcategory": "Input",
+      "level": "Beginner",
+      "description": "Move the mouse across the screen to change the position of the circles. The positions of the mouse are recorded into an array and played back every frame. Between each frame, the newest value are added to the end of eac...",
+      "featured": [
+        "Array",
+        "mouseX",
+        "mouseY"
+      ],
+      "tags": [
+        "basics",
+        "export",
+        "input",
+        "interaction",
+        "storinginput"
+      ]
+    },
+    {
+      "title": "Directional",
+      "path": "Examples/Basics/Lights/Directional",
+      "group": "Basics",
+      "subcategory": "Lights",
+      "level": "Intermediate",
+      "description": "Move the mouse the change the direction of the light. Directional light comes from one direction and is stronger when hitting a surface squarely and weaker if it hits at a a gentle angle. After hitting a surface, a dire...",
+      "featured": [
+        "directionalLight_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "directional",
+        "interaction",
+        "lights"
+      ]
+    },
+    {
+      "title": "Mixtureby Simon Greenwold",
+      "path": "Examples/Basics/Lights/Mixture",
+      "group": "Basics",
+      "subcategory": "Lights",
+      "level": "Intermediate",
+      "description": "Display a box with three different kinds of lights.",
+      "featured": [
+        "pointLight_",
+        "directionalLight_",
+        "spotLight_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "lights",
+        "mixture"
+      ]
+    },
+    {
+      "title": "Mixture Grid modified from an example",
+      "path": "Examples/Basics/Lights/MixtureGrid",
+      "group": "Basics",
+      "subcategory": "Lights",
+      "level": "Intermediate",
+      "description": "Display a 2D grid of boxes with three different kinds of lights.",
+      "featured": [
+        "pointLight_",
+        "directionalLight_",
+        "spotLight_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "lights",
+        "mixturegrid"
+      ]
+    },
+    {
+      "title": "On/Off",
+      "path": "Examples/Basics/Lights/OnOff",
+      "group": "Basics",
+      "subcategory": "Lights",
+      "level": "Intermediate",
+      "description": "Uses the default lights to show a simple box. The lights() function is used to turn on the default lighting. Click the mouse to turn the lights off.",
+      "featured": [
+        "lights_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "interaction",
+        "lights",
+        "onoff"
+      ]
+    },
+    {
+      "title": "Reflection",
+      "path": "Examples/Basics/Lights/Reflection",
+      "group": "Basics",
+      "subcategory": "Lights",
+      "level": "Intermediate",
+      "description": "Vary the specular reflection component of a material with the horizontal position of the mouse.",
+      "featured": [
+        "lightSpecular_",
+        "specular_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "interaction",
+        "lights",
+        "reflection"
+      ]
+    },
+    {
+      "title": "Spot",
+      "path": "Examples/Basics/Lights/Spot",
+      "group": "Basics",
+      "subcategory": "Lights",
+      "level": "Intermediate",
+      "description": "Move the mouse to change the position of a blue spot light.",
+      "featured": [
+        "spotLight_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "interaction",
+        "lights",
+        "spot"
+      ]
+    },
+    {
+      "title": "Additive Wave",
+      "path": "Examples/Basics/Math/AdditiveWave",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Intermediate",
+      "description": "Create a more complex wave by adding two waves together.",
+      "featured": [
+        "sin_",
+        "cos_"
+      ],
+      "tags": [
+        "additivewave",
+        "basics",
+        "math"
+      ]
+    },
+    {
+      "title": "Arctangent",
+      "path": "Examples/Basics/Math/Arctangent",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Intermediate",
+      "description": "Move the mouse to change the direction of the eyes. The atan2() function computes the angle from each eye to the cursor.",
+      "featured": [
+        "atan2_"
+      ],
+      "tags": [
+        "arctangent",
+        "basics",
+        "interaction",
+        "math"
+      ]
+    },
+    {
+      "title": "Distance 1D",
+      "path": "Examples/Basics/Math/Distance1D",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Move the mouse left and right to control the speed and direction of the moving shapes.",
+      "featured": [],
+      "tags": [
+        "basics",
+        "distance1d",
+        "interaction",
+        "math"
+      ]
+    },
+    {
+      "title": "Distance 2D",
+      "path": "Examples/Basics/Math/Distance2D",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Move the mouse across the image to obscure and reveal the matrix. Measures the distance from the mouse to each square and sets the size proportionally.",
+      "featured": [
+        "dist_"
+      ],
+      "tags": [
+        "basics",
+        "distance2d",
+        "image",
+        "interaction",
+        "math"
+      ]
+    },
+    {
+      "title": "Double Random",
+      "path": "Examples/Basics/Math/DoubleRandom",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Using two random() calls and the point() function to create an irregular sawtooth line.",
+      "featured": [
+        "random_"
+      ],
+      "tags": [
+        "basics",
+        "doublerandom",
+        "math"
+      ]
+    },
+    {
+      "title": "Graphing 2D Equations",
+      "path": "Examples/Basics/Math/Graphing2DEquation",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Intermediate",
+      "description": "Graphics the following equation: sin(ncos(r) + 5theta) where n is a function of horizontal mouse location.",
+      "featured": [
+        "atan2_",
+        "sin_",
+        "cos_",
+        "loadPixels_",
+        "updatePixels_"
+      ],
+      "tags": [
+        "basics",
+        "graphing2dequation",
+        "image",
+        "interaction",
+        "math"
+      ]
+    },
+    {
+      "title": "Increment Decrement",
+      "path": "Examples/Basics/Math/IncrementDecrement",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Writing \"a++\" is equivalent to \"a = a + 1\". Writing \"a--\" is equivalent to \"a = a - 1\".",
+      "featured": [
+        "increment",
+        "decrement"
+      ],
+      "tags": [
+        "basics",
+        "incrementdecrement",
+        "math"
+      ]
+    },
+    {
+      "title": "Linear Interpolation",
+      "path": "Examples/Basics/Math/Interpolate",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Move the mouse across the screen and the symbol will follow. Between drawing each frame of the animation, the ellipse moves part of the distance (0.05) from its current position toward the cursor using the lerp() functi...",
+      "featured": [
+        "lerp_"
+      ],
+      "tags": [
+        "basics",
+        "interaction",
+        "interpolate",
+        "math"
+      ]
+    },
+    {
+      "title": "Map",
+      "path": "Examples/Basics/Math/Map",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Use the map() function to take any number and scale it to a new number that is more useful for the project that you are working on. For example, use the numbers from the mouse position to control the size or color of a...",
+      "featured": [
+        "map_"
+      ],
+      "tags": [
+        "basics",
+        "interaction",
+        "map",
+        "math"
+      ]
+    },
+    {
+      "title": "Noise 1D",
+      "path": "Examples/Basics/Math/Noise1D",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Using 1D Perlin Noise to assign location.",
+      "featured": [
+        "noise_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "noise1d"
+      ]
+    },
+    {
+      "title": "Noise2D",
+      "path": "Examples/Basics/Math/Noise2D",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Using 2D noise to create simple texture.",
+      "featured": [
+        "noise_",
+        "noiseDetail_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "noise2d",
+        "typography"
+      ]
+    },
+    {
+      "title": "Noise 3D",
+      "path": "Examples/Basics/Math/Noise3D",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Intermediate",
+      "description": "Using 3D noise to create simple animated texture. Here, the third dimension ('z') is treated as time.",
+      "featured": [
+        "noise_"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "math",
+        "noise3d",
+        "typography"
+      ]
+    },
+    {
+      "title": "Noise Wave",
+      "path": "Examples/Basics/Math/NoiseWave",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Intermediate",
+      "description": "Using Perlin Noise to generate a wave-like pattern.",
+      "featured": [
+        "noise_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "noisewave"
+      ]
+    },
+    {
+      "title": "Operator Precedence",
+      "path": "Examples/Basics/Math/OperatorPrecedence",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "If you don't direction state the order in which an expression is evaluated, it is decided by the operator precedence. For example, in the expression 4+2*8, the 2 will first be multiplied by 8 and then the result will be...",
+      "featured": [],
+      "tags": [
+        "basics",
+        "interaction",
+        "math",
+        "operatorprecedence"
+      ]
+    },
+    {
+      "title": "PolarToCartesian",
+      "path": "Examples/Basics/Math/PolarToCartesian",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Intermediate",
+      "description": "Convert a polar coordinate (r,theta) to cartesian (x,y). The calculations are x=r*cos(theta) and y=r*sin(theta).",
+      "featured": [
+        "cos_",
+        "sin_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "polartocartesian"
+      ]
+    },
+    {
+      "title": "Random",
+      "path": "Examples/Basics/Math/Random",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Random numbers create the basis of this image. Each time the program is loaded the result is different.",
+      "featured": [
+        "random_"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "math",
+        "random"
+      ]
+    },
+    {
+      "title": "Random Gaussian",
+      "path": "Examples/Basics/Math/RandomGaussian",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "This sketch draws ellipses with x and y locations tied to a gaussian distribution of random numbers.",
+      "featured": [
+        "randomGaussian_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "randomgaussian"
+      ]
+    },
+    {
+      "title": "Sine",
+      "path": "Examples/Basics/Math/Sine",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Smoothly scaling size with the sin() function.",
+      "featured": [
+        "sin_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "sine"
+      ]
+    },
+    {
+      "title": "Sine Cosine",
+      "path": "Examples/Basics/Math/SineCosine",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Linear movement with sin() and cos(). Numbers between 0 and PI2 (TWO_PI which angles roughly 6.28) are put into these functions and numbers between -1 and 1 are returned. These values are then scaled to produce larger m...",
+      "featured": [
+        "sin_",
+        "cos_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "sinecosine"
+      ]
+    },
+    {
+      "title": "Sine Wave",
+      "path": "Examples/Basics/Math/SineWave",
+      "group": "Basics",
+      "subcategory": "Math",
+      "level": "Beginner",
+      "description": "Render a simple sine wave.",
+      "featured": [
+        "sin_"
+      ],
+      "tags": [
+        "basics",
+        "math",
+        "sinewave"
+      ]
+    },
+    {
+      "title": "Composite Objects",
+      "path": "Examples/Basics/Objects/CompositeObjects",
+      "group": "Basics",
+      "subcategory": "Objects",
+      "level": "Advanced",
+      "description": "An object can include several other objects. Creating such composite objects is a good way to use the principles of modularity and build higher levels of abstraction within a program.",
+      "featured": [
+        "Object"
+      ],
+      "tags": [
+        "basics",
+        "compositeobjects",
+        "objects"
+      ]
+    },
+    {
+      "title": "Inheritance",
+      "path": "Examples/Basics/Objects/Inheritance",
+      "group": "Basics",
+      "subcategory": "Objects",
+      "level": "Advanced",
+      "description": "A class can be defined using another class as a foundation. In object-oriented programming terminology, one class can inherit fi elds and methods from another. An object that inherits from another is called a subclass,...",
+      "featured": [
+        "Object",
+        "extends"
+      ],
+      "tags": [
+        "basics",
+        "inheritance",
+        "objects"
+      ]
+    },
+    {
+      "title": "Multiple constructors",
+      "path": "Examples/Basics/Objects/MultipleConstructors",
+      "group": "Basics",
+      "subcategory": "Objects",
+      "level": "Intermediate",
+      "description": "A class can have multiple constructors that assign the fields in different ways. Sometimes it's beneficial to specify every aspect of an object's data by assigning parameters to the fields, but other times it might be a...",
+      "featured": [
+        "Object"
+      ],
+      "tags": [
+        "basics",
+        "multipleconstructors",
+        "objects"
+      ]
+    },
+    {
+      "title": "Objects",
+      "path": "Examples/Basics/Objects/Objects",
+      "group": "Basics",
+      "subcategory": "Objects",
+      "level": "Intermediate",
+      "description": "Move the cursor across the image to change the speed and positions of the geometry. The class MRect defines a group of lines.",
+      "featured": [
+        "Object"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "objects"
+      ]
+    },
+    {
+      "title": "Disable Style",
+      "path": "Examples/Basics/Shape/DisableStyle",
+      "group": "Basics",
+      "subcategory": "Shape",
+      "level": "Intermediate",
+      "description": "Shapes are loaded with style information that tells them how to draw (e.g. color, stroke weight). The disableStyle() method of PShape turns off this information so functions like stroke() and fill() change the SVGs colo...",
+      "featured": [
+        "PShape_enableStyle_",
+        "PShape_disableStyle_",
+        "shape_",
+        "loadShape_"
+      ],
+      "tags": [
+        "basics",
+        "disablestyle",
+        "shape"
+      ]
+    },
+    {
+      "title": "Get Child",
+      "path": "Examples/Basics/Shape/GetChild",
+      "group": "Basics",
+      "subcategory": "Shape",
+      "level": "Intermediate",
+      "description": "SVG files can be made of many individual shapes. Each of these shapes (called a \"child\") has its own name that can be used to extract it from the \"parent\" file. This example loads a map of the United States and creates...",
+      "featured": [
+        "PShape_getChild_",
+        "shape_",
+        "loadShape_"
+      ],
+      "tags": [
+        "basics",
+        "getchild",
+        "shape"
+      ]
+    },
+    {
+      "title": "Load and Display an OBJ Shape",
+      "path": "Examples/Basics/Shape/LoadDisplayOBJ",
+      "group": "Basics",
+      "subcategory": "Shape",
+      "level": "Intermediate",
+      "description": "The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an OBJ file of a rocket and displays it to the screen.",
+      "featured": [
+        "PShape",
+        "loadShape_",
+        "shape_"
+      ],
+      "tags": [
+        "basics",
+        "loaddisplayobj",
+        "shape"
+      ]
+    },
+    {
+      "title": "Load and Display a Shape Illustration",
+      "path": "Examples/Basics/Shape/LoadDisplaySVG",
+      "group": "Basics",
+      "subcategory": "Shape",
+      "level": "Beginner",
+      "description": "The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an SVG file of a monster robot face and displays it to the screen.",
+      "featured": [
+        "PShape",
+        "loadShape_",
+        "shape_"
+      ],
+      "tags": [
+        "basics",
+        "loaddisplaysvg",
+        "shape"
+      ]
+    },
+    {
+      "title": "Scale Shape Illustration",
+      "path": "Examples/Basics/Shape/ScaleShape",
+      "group": "Basics",
+      "subcategory": "Shape",
+      "level": "Beginner",
+      "description": "Move the mouse left and right to zoom the SVG file. This shows how, unlike an imported image, the lines remain smooth at any size.",
+      "featured": [
+        "PShape",
+        "scale_",
+        "shape_"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "interaction",
+        "scaleshape",
+        "shape"
+      ]
+    },
+    {
+      "title": "Shape Vertices",
+      "path": "Examples/Basics/Shape/ShapeVertices",
+      "group": "Basics",
+      "subcategory": "Shape",
+      "level": "Intermediate",
+      "description": "How to iterate over the vertices of a shape. When loading an obj or SVG, getVertexCount() will typically return 0 since all the vertices are in the child shapes. You should iterate through the children and then iterate...",
+      "featured": [
+        "PShape",
+        "PShape_getVertexCount_",
+        "PShape_getChild_"
+      ],
+      "tags": [
+        "basics",
+        "shape",
+        "shapevertices"
+      ]
+    },
+    {
+      "title": "Coordinates",
+      "path": "Examples/Basics/Structure/Coordinates",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "All shapes drawn to the screen have a position that is specified as a coordinate. All coordinates are measured as the distance from the origin in units of pixels. The origin (0, 0) is the coordinate is in the upper left...",
+      "featured": [],
+      "tags": [
+        "basics",
+        "coordinates",
+        "image",
+        "structure"
+      ]
+    },
+    {
+      "title": "Create Graphics",
+      "path": "Examples/Basics/Structure/CreateGraphics",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Intermediate",
+      "description": "The createGraphics() function creates an object from the PGraphics class. PGraphics is the main graphics and rendering context for Processing. The beginDraw() method is necessary to prepare for drawing and endDraw() is...",
+      "featured": [
+        "PGraphics",
+        "createGraphics_",
+        "PGraphics_beginDraw_",
+        "PGraphics_endDraw_"
+      ],
+      "tags": [
+        "basics",
+        "creategraphics",
+        "structure",
+        "typography"
+      ]
+    },
+    {
+      "title": "Functions",
+      "path": "Examples/Basics/Structure/Functions",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "The drawTarget() function makes it easy to draw many distinct targets. Each call to drawTarget() specifies the position, size, and number of rings for each target.",
+      "featured": [],
+      "tags": [
+        "basics",
+        "functions",
+        "structure"
+      ]
+    },
+    {
+      "title": "Loop",
+      "path": "Examples/Basics/Structure/Loop",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "If noLoop() is run in setup(), the code in draw() is only run once. In this example, click the mouse to run the loop() function to cause the draw() the run continuously.",
+      "featured": [
+        "noLoop_",
+        "loop_"
+      ],
+      "tags": [
+        "basics",
+        "interaction",
+        "loop",
+        "structure"
+      ]
+    },
+    {
+      "title": "No Loop",
+      "path": "Examples/Basics/Structure/NoLoop",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "The noLoop() function causes draw() to only run once. Without calling noLoop(), the code inside draw() is run continually.",
+      "featured": [
+        "noLoop_"
+      ],
+      "tags": [
+        "basics",
+        "noloop",
+        "structure"
+      ]
+    },
+    {
+      "title": "Recursion",
+      "path": "Examples/Basics/Structure/Recursion",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Intermediate",
+      "description": "A demonstration of recursion, which means functions call themselves. Notice how the drawCircle() function calls itself at the end of its block. It continues to do this until the variable \"level\" is equal to 1.",
+      "featured": [],
+      "tags": [
+        "basics",
+        "recursion",
+        "structure"
+      ]
+    },
+    {
+      "title": "Redraw",
+      "path": "Examples/Basics/Structure/Redraw",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "The redraw() function makes draw() execute once. In this example, draw() is executed once every time the mouse is clicked.",
+      "featured": [
+        "redraw_",
+        "noLoop_"
+      ],
+      "tags": [
+        "basics",
+        "interaction",
+        "redraw",
+        "structure"
+      ]
+    },
+    {
+      "title": "Setup and Draw",
+      "path": "Examples/Basics/Structure/SetupDraw",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "The code inside the draw() function runs continuously from top to bottom until the program is stopped. The code in setup() is run once when the program starts.",
+      "featured": [
+        "setup_",
+        "draw_"
+      ],
+      "tags": [
+        "basics",
+        "setupdraw",
+        "structure"
+      ]
+    },
+    {
+      "title": "Statements and Comments",
+      "path": "Examples/Basics/Structure/StatementsComments",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "Statements are the elements that make up programs. The \";\" (semi-colon) symbol is used to end statements. It is called the \"statement terminator.\" Comments are used for making notes to help people better understand prog...",
+      "featured": [
+        "comment"
+      ],
+      "tags": [
+        "basics",
+        "statementscomments",
+        "structure"
+      ]
+    },
+    {
+      "title": "Width and Height",
+      "path": "Examples/Basics/Structure/WidthHeight",
+      "group": "Basics",
+      "subcategory": "Structure",
+      "level": "Beginner",
+      "description": "The 'width' and 'height' variables contain the width and height of the display window as defined in the size() function.",
+      "featured": [
+        "size_",
+        "width",
+        "height"
+      ],
+      "tags": [
+        "basics",
+        "structure",
+        "widthheight"
+      ]
+    },
+    {
+      "title": "Arm",
+      "path": "Examples/Basics/Transform/Arm",
+      "group": "Basics",
+      "subcategory": "Transform",
+      "level": "Beginner",
+      "description": "The angle of each segment is controlled with the mouseX and mouseY position. The transformations applied to the first segment are also applied to the second segment because they are inside the same pushMatrix() and popM...",
+      "featured": [
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "arm",
+        "basics",
+        "interaction",
+        "transform"
+      ]
+    },
+    {
+      "title": "Rotate",
+      "path": "Examples/Basics/Transform/Rotate",
+      "group": "Basics",
+      "subcategory": "Transform",
+      "level": "Beginner",
+      "description": "Rotating a square around the Z axis. To get the results you expect, send the rotate function angle parameters that are values between 0 and PI2 (TWO_PI which is roughly 6.28). If you prefer to think about angles as degr...",
+      "featured": [
+        "rotate_"
+      ],
+      "tags": [
+        "basics",
+        "rotate",
+        "transform"
+      ]
+    },
+    {
+      "title": "Rotate Push Pop",
+      "path": "Examples/Basics/Transform/RotatePushPop",
+      "group": "Basics",
+      "subcategory": "Transform",
+      "level": "Intermediate",
+      "description": "The push() and pop() functions allow for more control over transformations. The push function saves the current coordinate system to the stack and pop() restores the prior coordinate system.",
+      "featured": [
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "basics",
+        "rotatepushpop",
+        "transform"
+      ]
+    },
+    {
+      "title": "Rotate 1",
+      "path": "Examples/Basics/Transform/RotateXY",
+      "group": "Basics",
+      "subcategory": "Transform",
+      "level": "Intermediate",
+      "description": "Rotating simultaneously in the X and Y axis. Transformation functions such as rotate() are additive. Successively calling rotate(1.0) and rotate(2.0) is equivalent to calling rotate(3.0).",
+      "featured": [
+        "rotateX_",
+        "rotateY_"
+      ],
+      "tags": [
+        "basics",
+        "rotatexy",
+        "transform"
+      ]
+    },
+    {
+      "title": "Scale",
+      "path": "Examples/Basics/Transform/Scale",
+      "group": "Basics",
+      "subcategory": "Transform",
+      "level": "Beginner",
+      "description": "Paramenters for the scale() function are values specified as decimal percentages. For example, the method call scale(2.0) will increase the dimension of the shape by 200 percent. Objects always scale from the origin.",
+      "featured": [
+        "scale_"
+      ],
+      "tags": [
+        "basics",
+        "scale",
+        "transform"
+      ]
+    },
+    {
+      "title": "Translate",
+      "path": "Examples/Basics/Transform/Translate",
+      "group": "Basics",
+      "subcategory": "Transform",
+      "level": "Beginner",
+      "description": "The translate() function allows objects to be moved to any location within the window. The first parameter sets the x-axis offset and the second parameter sets the y-axis offset.",
+      "featured": [
+        "translate_"
+      ],
+      "tags": [
+        "basics",
+        "transform",
+        "translate"
+      ]
+    },
+    {
+      "title": "Letters",
+      "path": "Examples/Basics/Typography/Letters",
+      "group": "Basics",
+      "subcategory": "Typography",
+      "level": "Beginner",
+      "description": "Draws letters to the screen. This requires loading a font, setting the font, and then drawing the letters.",
+      "featured": [
+        "createFont_",
+        "textFont_",
+        "text_"
+      ],
+      "tags": [
+        "basics",
+        "letters",
+        "typography"
+      ]
+    },
+    {
+      "title": "Text Rotation",
+      "path": "Examples/Basics/Typography/TextRotation",
+      "group": "Basics",
+      "subcategory": "Typography",
+      "level": "Intermediate",
+      "description": "Draws letters to the screen and rotates them at different angles.",
+      "featured": [
+        "rotate_",
+        "text_"
+      ],
+      "tags": [
+        "basics",
+        "textrotation",
+        "typography"
+      ]
+    },
+    {
+      "title": "Words",
+      "path": "Examples/Basics/Typography/Words",
+      "group": "Basics",
+      "subcategory": "Typography",
+      "level": "Beginner",
+      "description": "The text() function is used for writing words to the screen. The letters can be aligned left, center, or right with the textAlign() function.",
+      "featured": [
+        "text_",
+        "textAlign_"
+      ],
+      "tags": [
+        "basics",
+        "typography",
+        "words"
+      ]
+    },
+    {
+      "title": "VideoPlayback",
+      "path": "Examples/Basics/Video/VideoPlayback",
+      "group": "Basics",
+      "subcategory": "Video",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "basics",
+        "export",
+        "video",
+        "videoplayback"
+      ]
+    },
+    {
+      "title": "Loading URLs",
+      "path": "Examples/Basics/Web/EmbeddedLinks",
+      "group": "Basics",
+      "subcategory": "Web",
+      "level": "Intermediate",
+      "description": "Click on the button to open a URL in a browser.",
+      "featured": [],
+      "tags": [
+        "basics",
+        "embeddedlinks",
+        "web"
+      ]
+    },
+    {
+      "title": "Loading Images",
+      "path": "Examples/Basics/Web/LoadingImages",
+      "group": "Basics",
+      "subcategory": "Web",
+      "level": "Intermediate",
+      "description": "Processing applications can load images from the network.",
+      "featured": [
+        "loadImage_",
+        "image_"
+      ],
+      "tags": [
+        "basics",
+        "image",
+        "loadingimages",
+        "web"
+      ]
+    },
+    {
+      "title": "DepthSort",
+      "path": "Examples/Demos/Graphics/DepthSort",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "depthsort",
+        "graphics"
+      ]
+    },
+    {
+      "title": "GetTessGroups",
+      "path": "Examples/Demos/Graphics/GetTessGroups",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "gettessgroups",
+        "graphics"
+      ]
+    },
+    {
+      "title": "LowLevelGLVboInterleaved",
+      "path": "Examples/Demos/Graphics/LowLevelGLVboInterleaved",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "lowlevelglvbointerleaved"
+      ]
+    },
+    {
+      "title": "LowLevelGLVboSeparate",
+      "path": "Examples/Demos/Graphics/LowLevelGLVboSeparate",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "lowlevelglvboseparate"
+      ]
+    },
+    {
+      "title": "MeshTweening",
+      "path": "Examples/Demos/Graphics/MeshTweening",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "demos",
+        "graphics",
+        "meshtweening"
+      ]
+    },
+    {
+      "title": "MultipleWindows",
+      "path": "Examples/Demos/Graphics/MultipleWindows",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "multiplewindows"
+      ]
+    },
+    {
+      "title": "Particles",
+      "path": "Examples/Demos/Graphics/Particles",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "particles"
+      ]
+    },
+    {
+      "title": "Patch",
+      "path": "Examples/Demos/Graphics/Patch",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "patch"
+      ]
+    },
+    {
+      "title": "Planets",
+      "path": "Examples/Demos/Graphics/Planets",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "planets"
+      ]
+    },
+    {
+      "title": "Ribbons",
+      "path": "Examples/Demos/Graphics/Ribbons",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "ribbons"
+      ]
+    },
+    {
+      "title": "RotatingArcs",
+      "path": "Examples/Demos/Graphics/RotatingArcs",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "rotatingarcs"
+      ]
+    },
+    {
+      "title": "TessUpdate",
+      "path": "Examples/Demos/Graphics/TessUpdate",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "tessupdate"
+      ]
+    },
+    {
+      "title": "Trefoil",
+      "path": "Examples/Demos/Graphics/Trefoil",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "trefoil"
+      ]
+    },
+    {
+      "title": "Wiggling",
+      "path": "Examples/Demos/Graphics/Wiggling",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "wiggling"
+      ]
+    },
+    {
+      "title": "Yellowtail",
+      "path": "Examples/Demos/Graphics/Yellowtail",
+      "group": "Demos",
+      "subcategory": "Graphics",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "graphics",
+        "yellowtail"
+      ]
+    },
+    {
+      "title": "CubicGridImmediate",
+      "path": "Examples/Demos/Performance/CubicGridImmediate",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "cubicgridimmediate",
+        "demos",
+        "performance"
+      ]
+    },
+    {
+      "title": "CubicGridRetained",
+      "path": "Examples/Demos/Performance/CubicGridRetained",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "cubicgridretained",
+        "demos",
+        "performance"
+      ]
+    },
+    {
+      "title": "DynamicParticlesImmediate",
+      "path": "Examples/Demos/Performance/DynamicParticlesImmediate",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "dynamicparticlesimmediate",
+        "particles",
+        "performance"
+      ]
+    },
+    {
+      "title": "DynamicParticlesRetained",
+      "path": "Examples/Demos/Performance/DynamicParticlesRetained",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "dynamicparticlesretained",
+        "particles",
+        "performance"
+      ]
+    },
+    {
+      "title": "Esfera",
+      "path": "Examples/Demos/Performance/Esfera",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "esfera",
+        "performance"
+      ]
+    },
+    {
+      "title": "LineRendering",
+      "path": "Examples/Demos/Performance/LineRendering",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "linerendering",
+        "performance"
+      ]
+    },
+    {
+      "title": "QuadRendering",
+      "path": "Examples/Demos/Performance/QuadRendering",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "performance",
+        "quadrendering"
+      ]
+    },
+    {
+      "title": "StaticParticlesImmediate",
+      "path": "Examples/Demos/Performance/StaticParticlesImmediate",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "particles",
+        "performance",
+        "staticparticlesimmediate"
+      ]
+    },
+    {
+      "title": "StaticParticlesRetained",
+      "path": "Examples/Demos/Performance/StaticParticlesRetained",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "particles",
+        "performance",
+        "staticparticlesretained"
+      ]
+    },
+    {
+      "title": "TextRendering",
+      "path": "Examples/Demos/Performance/TextRendering",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "performance",
+        "textrendering",
+        "typography"
+      ]
+    },
+    {
+      "title": "MultipleWindows",
+      "path": "Examples/Demos/Tests/MultipleWindows",
+      "group": "Demos",
+      "subcategory": "Tests",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "multiplewindows",
+        "tests"
+      ]
+    },
+    {
+      "title": "NoBackgroundTest",
+      "path": "Examples/Demos/Tests/NoBackgroundTest",
+      "group": "Demos",
+      "subcategory": "Tests",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "nobackgroundtest",
+        "tests"
+      ]
+    },
+    {
+      "title": "OffscreenTest",
+      "path": "Examples/Demos/Tests/OffscreenTest",
+      "group": "Demos",
+      "subcategory": "Tests",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "offscreentest",
+        "tests"
+      ]
+    },
+    {
+      "title": "RedrawTest",
+      "path": "Examples/Demos/Tests/RedrawTest",
+      "group": "Demos",
+      "subcategory": "Tests",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "redrawtest",
+        "tests"
+      ]
+    },
+    {
+      "title": "ResizeTest",
+      "path": "Examples/Demos/Tests/ResizeTest",
+      "group": "Demos",
+      "subcategory": "Tests",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "resizetest",
+        "tests"
+      ]
+    },
+    {
+      "title": "SpecsTest",
+      "path": "Examples/Demos/Tests/SpecsTest",
+      "group": "Demos",
+      "subcategory": "Tests",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "demos",
+        "specstest",
+        "tests"
+      ]
+    },
+    {
+      "title": "FaceDetection",
+      "path": "Examples/ML/FaceDetection",
+      "group": "ML",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "facedetection",
+        "ml"
+      ]
+    },
+    {
+      "title": "ImageClassification",
+      "path": "Examples/ML/ImageClassification",
+      "group": "ML",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "image",
+        "imageclassification",
+        "ml"
+      ]
+    },
+    {
+      "title": "PersonSegmentation",
+      "path": "Examples/ML/PersonSegmentation",
+      "group": "ML",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "ml",
+        "personsegmentation"
+      ]
+    },
+    {
+      "title": "StyleTransfer",
+      "path": "Examples/ML/StyleTransfer",
+      "group": "ML",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "ml",
+        "styletransfer"
+      ]
+    },
+    {
+      "title": "MetaphorFPSLogger",
+      "path": "Examples/Plugins/MetaphorFPSLogger",
+      "group": "Plugins",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "metaphorfpslogger",
+        "plugins"
+      ]
+    },
+    {
+      "title": "MetaphorMouseTrail",
+      "path": "Examples/Plugins/MetaphorMouseTrail",
+      "group": "Plugins",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "interaction",
+        "metaphormousetrail",
+        "plugins"
+      ]
+    },
+    {
+      "title": "PluginFPSLogger",
+      "path": "Examples/Samples/PluginFPSLogger",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "pluginfpslogger",
+        "samples"
+      ]
+    },
+    {
+      "title": "PluginMouseTrail",
+      "path": "Examples/Samples/PluginMouseTrail",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "interaction",
+        "pluginmousetrail",
+        "samples"
+      ]
+    },
+    {
+      "title": "RayTracing",
+      "path": "Examples/Samples/RayTracing",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "raytracing",
+        "samples"
+      ]
+    },
+    {
+      "title": "SceneGraphBasics",
+      "path": "Examples/Samples/SceneGraphBasics",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "samples",
+        "scenegraphbasics"
+      ]
+    },
+    {
+      "title": "SceneGraphHybrid",
+      "path": "Examples/Samples/SceneGraphHybrid",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "samples",
+        "scenegraphhybrid"
+      ]
+    },
+    {
+      "title": "SyphonMultiWindow",
+      "path": "Examples/Samples/Syphon/SyphonMultiWindow",
+      "group": "Samples",
+      "subcategory": "Syphon",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "live",
+        "samples",
+        "syphon",
+        "syphonmultiwindow"
+      ]
+    },
+    {
+      "title": "SyphonOutput",
+      "path": "Examples/Samples/Syphon/SyphonOutput",
+      "group": "Samples",
+      "subcategory": "Syphon",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "live",
+        "samples",
+        "syphon",
+        "syphonoutput"
+      ]
+    },
+    {
+      "title": "SyphonTripleWindow",
+      "path": "Examples/Samples/Syphon/SyphonTripleWindow",
+      "group": "Samples",
+      "subcategory": "Syphon",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "live",
+        "samples",
+        "syphon",
+        "syphontriplewindow"
+      ]
+    },
+    {
+      "title": "ArrayList of objects",
+      "path": "Examples/Topics/Advanced Data/ArrayListClass",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "Advanced",
+      "description": "This example demonstrates how to use a Java ArrayList to store a variable number of objects. Items can be added and removed from the ArrayList. Click the mouse to add bouncing balls.",
+      "featured": [
+        "class",
+        "ArrayList"
+      ],
+      "tags": [
+        "advanced-data",
+        "arraylistclass",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "CountingStrings",
+      "path": "Examples/Topics/Advanced Data/CountingStrings",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "advanced-data",
+        "countingstrings",
+        "topics"
+      ]
+    },
+    {
+      "title": "HashMapClass",
+      "path": "Examples/Topics/Advanced Data/HashMapClass",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "advanced-data",
+        "hashmapclass",
+        "topics"
+      ]
+    },
+    {
+      "title": "IntList Lottery example",
+      "path": "Examples/Topics/Advanced Data/IntListLottery",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "Advanced",
+      "description": "This example demonstrates an IntList can be used to store a list of numbers. While an array of integers serves a similar purpose it is of fixed size. The An IntList can easily have values added or deleted and it can als...",
+      "featured": [
+        "IntList_append_",
+        "IntList_size_",
+        "IntList_get_",
+        "IntList_remove_",
+        "IntList_clear_"
+      ],
+      "tags": [
+        "advanced-data",
+        "intlistlottery",
+        "topics"
+      ]
+    },
+    {
+      "title": "Loading JSON Data",
+      "path": "Examples/Topics/Advanced Data/LoadSaveJSON",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "Advanced",
+      "description": "This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { \"bubbles\": [ { \"position\": { \"x\": 160, \"y\": 103 }, \"diamet...",
+      "featured": [
+        "JSONObject",
+        "loadJSONObject_",
+        "JSONArray",
+        "JSONObject_getJSONArray_",
+        "JSONArray_getJSONObject_",
+        "JSONObject_setJSONObject_"
+      ],
+      "tags": [
+        "advanced-data",
+        "loadsavejson",
+        "topics"
+      ]
+    },
+    {
+      "title": "Loading Tabular Data",
+      "path": "Examples/Topics/Advanced Data/LoadSaveTable",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "Advanced",
+      "description": "This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6...",
+      "featured": [
+        "Table",
+        "loadTable_",
+        "TableRow",
+        "Table_rows_",
+        "Table_addRow_",
+        "Table_removeRow_"
+      ],
+      "tags": [
+        "advanced-data",
+        "loadsavetable",
+        "topics"
+      ]
+    },
+    {
+      "title": "LoadSaveXML",
+      "path": "Examples/Topics/Advanced Data/LoadSaveXML",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "advanced-data",
+        "loadsavexml",
+        "topics"
+      ]
+    },
+    {
+      "title": "Regex",
+      "path": "Examples/Topics/Advanced Data/Regex",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "advanced-data",
+        "regex",
+        "topics"
+      ]
+    },
+    {
+      "title": "Threads",
+      "path": "Examples/Topics/Advanced Data/Threads",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "advanced-data",
+        "threads",
+        "topics"
+      ]
+    },
+    {
+      "title": "XMLYahooWeather",
+      "path": "Examples/Topics/Advanced Data/XMLYahooWeather",
+      "group": "Topics",
+      "subcategory": "Advanced Data",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "advanced-data",
+        "topics",
+        "xmlyahooweather"
+      ]
+    },
+    {
+      "title": "Animated Sprite (Shifty + Teddy)",
+      "path": "Examples/Topics/Animation/AnimatedSprite",
+      "group": "Topics",
+      "subcategory": "Animation",
+      "level": "Intermediate",
+      "description": "Press the mouse button to change animations. Demonstrates loading, displaying, and animating GIF images. It would be easy to write a program to display animated GIFs, but would not allow as much control over the display...",
+      "featured": [
+        "PImage",
+        "Array",
+        "loadImage_"
+      ],
+      "tags": [
+        "animatedsprite",
+        "animation",
+        "export",
+        "image",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Sequential",
+      "path": "Examples/Topics/Animation/Sequential",
+      "group": "Topics",
+      "subcategory": "Animation",
+      "level": "Intermediate",
+      "description": "Displaying a sequence of images creates the illusion of motion. Twelve images are loaded and each is displayed individually in a loop.",
+      "featured": [
+        "PImage",
+        "Array",
+        "loadImage_",
+        "image_"
+      ],
+      "tags": [
+        "animation",
+        "image",
+        "sequential",
+        "topics"
+      ]
+    },
+    {
+      "title": "A Processing implementation of Game of Life",
+      "path": "Examples/Topics/Cellular Automata/GameOfLife",
+      "group": "Topics",
+      "subcategory": "Cellular Automata",
+      "level": "Advanced",
+      "description": "Press SPACE BAR to pause and change the cell's values with the mouse. On pause, click to activate/deactivate cells. Press 'R' to randomly reset the cells' grid. Press 'C' to clear the cells' grid. The original Game of L...",
+      "featured": [
+        "Array",
+        "random_",
+        "map_",
+        "constrain_",
+        "keyPressed_"
+      ],
+      "tags": [
+        "cellular-automata",
+        "gameoflife",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Spore1",
+      "path": "Examples/Topics/Cellular Automata/Spore1",
+      "group": "Topics",
+      "subcategory": "Cellular Automata",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "cellular-automata",
+        "spore1",
+        "topics"
+      ]
+    },
+    {
+      "title": "Spore2",
+      "path": "Examples/Topics/Cellular Automata/Spore2",
+      "group": "Topics",
+      "subcategory": "Cellular Automata",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "cellular-automata",
+        "spore2",
+        "topics"
+      ]
+    },
+    {
+      "title": "Wolfram Cellular Automata",
+      "path": "Examples/Topics/Cellular Automata/Wolfram",
+      "group": "Topics",
+      "subcategory": "Cellular Automata",
+      "level": "Advanced",
+      "description": "Simple demonstration of a Wolfram's 1-dimensional cellular automata. When the system reaches bottom of the window, it restarts with a new ruleset. Mouse click restarts as well.",
+      "featured": [
+        "Array"
+      ],
+      "tags": [
+        "cellular-automata",
+        "interaction",
+        "topics",
+        "wolfram"
+      ]
+    },
+    {
+      "title": "BeginEndContour",
+      "path": "Examples/Topics/Create Shapes/BeginEndContour",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "beginendcontour",
+        "create-shapes",
+        "topics"
+      ]
+    },
+    {
+      "title": "GroupPShape",
+      "path": "Examples/Topics/Create Shapes/GroupPShape",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "grouppshape",
+        "topics"
+      ]
+    },
+    {
+      "title": "ParticleSystemPShape",
+      "path": "Examples/Topics/Create Shapes/ParticleSystemPShape",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "particles",
+        "particlesystempshape",
+        "topics"
+      ]
+    },
+    {
+      "title": "PathPShape",
+      "path": "Examples/Topics/Create Shapes/PathPShape",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "pathpshape",
+        "topics"
+      ]
+    },
+    {
+      "title": "PolygonPShape",
+      "path": "Examples/Topics/Create Shapes/PolygonPShape",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "polygonpshape",
+        "topics"
+      ]
+    },
+    {
+      "title": "PolygonPShapeOOP",
+      "path": "Examples/Topics/Create Shapes/PolygonPShapeOOP",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "polygonpshapeoop",
+        "topics"
+      ]
+    },
+    {
+      "title": "PolygonPShapeOOP2",
+      "path": "Examples/Topics/Create Shapes/PolygonPShapeOOP2",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "polygonpshapeoop2",
+        "topics"
+      ]
+    },
+    {
+      "title": "PolygonPShapeOOP3",
+      "path": "Examples/Topics/Create Shapes/PolygonPShapeOOP3",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "polygonpshapeoop3",
+        "topics"
+      ]
+    },
+    {
+      "title": "PrimitivePShape",
+      "path": "Examples/Topics/Create Shapes/PrimitivePShape",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "primitivepshape",
+        "topics"
+      ]
+    },
+    {
+      "title": "WigglePShape",
+      "path": "Examples/Topics/Create Shapes/WigglePShape",
+      "group": "Topics",
+      "subcategory": "Create Shapes",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "create-shapes",
+        "topics",
+        "wigglepshape"
+      ]
+    },
+    {
+      "title": "ArcLengthParametrization",
+      "path": "Examples/Topics/Curves/ArcLengthParametrization",
+      "group": "Topics",
+      "subcategory": "Curves",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "arclengthparametrization",
+        "curves",
+        "topics"
+      ]
+    },
+    {
+      "title": "Continuous Lines",
+      "path": "Examples/Topics/Drawing/ContinuousLines",
+      "group": "Topics",
+      "subcategory": "Drawing",
+      "level": "Beginner",
+      "description": "Click and drag the mouse to draw a line.",
+      "featured": [
+        "mouseX",
+        "mouseY",
+        "pmouseX",
+        "pmouseY",
+        "mousePressed",
+        "line_"
+      ],
+      "tags": [
+        "continuouslines",
+        "drawing",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Patterns",
+      "path": "Examples/Topics/Drawing/Pattern",
+      "group": "Topics",
+      "subcategory": "Drawing",
+      "level": "Intermediate",
+      "description": "Move the cursor over the image to draw with a software tool which responds to the speed of the mouse.",
+      "featured": [
+        "abs_",
+        "stroke_",
+        "ellipse_"
+      ],
+      "tags": [
+        "drawing",
+        "image",
+        "interaction",
+        "pattern",
+        "topics"
+      ]
+    },
+    {
+      "title": "Pulses",
+      "path": "Examples/Topics/Drawing/Pulses",
+      "group": "Topics",
+      "subcategory": "Drawing",
+      "level": "",
+      "description": "Software drawing instruments can follow a rhythm or abide by rules independent of drawn gestures. This is a form of collaborative drawing in which the draftsperson controls some aspects of the image and the software con...",
+      "featured": [
+        "mousePressed",
+        "cos_",
+        "sin_",
+        "radians_",
+        "ellipse_"
+      ],
+      "tags": [
+        "drawing",
+        "image",
+        "interaction",
+        "pulses",
+        "topics"
+      ]
+    },
+    {
+      "title": "DirectoryList",
+      "path": "Examples/Topics/File IO/DirectoryList",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "directorylist",
+        "file-io",
+        "topics"
+      ]
+    },
+    {
+      "title": "LoadFile 1",
+      "path": "Examples/Topics/File IO/LoadFile1",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "Intermediate",
+      "description": "Loads a text file that contains two numbers separated by a tab ('\\t'). A new pair of numbers is loaded each frame and used to draw a point on the screen.",
+      "featured": [
+        "loadStrings_",
+        "split_"
+      ],
+      "tags": [
+        "file-io",
+        "loadfile1",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "LoadFile 2",
+      "path": "Examples/Topics/File IO/LoadFile2",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "Intermediate",
+      "description": "This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d...",
+      "featured": [
+        "loadFont_",
+        "textFont_",
+        "loadStrings_",
+        "split_",
+        "subset_",
+        "redraw_"
+      ],
+      "tags": [
+        "file-io",
+        "interaction",
+        "loadfile2",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "SaveFile1",
+      "path": "Examples/Topics/File IO/SaveFile1",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "file-io",
+        "savefile1",
+        "topics"
+      ]
+    },
+    {
+      "title": "SaveFile2",
+      "path": "Examples/Topics/File IO/SaveFile2",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "file-io",
+        "savefile2",
+        "topics"
+      ]
+    },
+    {
+      "title": "SaveFrames",
+      "path": "Examples/Topics/File IO/SaveFrames",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "file-io",
+        "saveframes",
+        "topics"
+      ]
+    },
+    {
+      "title": "SaveOneImage",
+      "path": "Examples/Topics/File IO/SaveOneImage",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "Intermediate",
+      "description": "The save() function allows you to save an image from the display window. In this example, the save() function is run when a mouse button is pressed. The image line.tif is saved to the same folder as the sketch's program...",
+      "featured": [],
+      "tags": [
+        "file-io",
+        "image",
+        "interaction",
+        "saveoneimage",
+        "topics"
+      ]
+    },
+    {
+      "title": "TileImages",
+      "path": "Examples/Topics/File IO/TileImages",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "file-io",
+        "image",
+        "tileimages",
+        "topics"
+      ]
+    },
+    {
+      "title": "Koch Curve",
+      "path": "Examples/Topics/Fractals and L-Systems/Koch",
+      "group": "Topics",
+      "subcategory": "Fractals and L-Systems",
+      "level": "Advanced",
+      "description": "Renders a simple fractal, the Koch snowflake. Each recursive level is drawn in sequence.",
+      "featured": [
+        "PVector",
+        "PVector_copy_",
+        "PVector_sub_",
+        "PVector_div_",
+        "PVector_add_",
+        "PVector_rotate_"
+      ],
+      "tags": [
+        "fractals-and-l-systems",
+        "koch",
+        "topics"
+      ]
+    },
+    {
+      "title": "The Mandelbrot Set",
+      "path": "Examples/Topics/Fractals and L-Systems/Mandelbrot",
+      "group": "Topics",
+      "subcategory": "Fractals and L-Systems",
+      "level": "Intermediate",
+      "description": "Simple rendering of the Mandelbrot set.",
+      "featured": [
+        "loadPixels_",
+        "updatePixels_",
+        "pixels[]"
+      ],
+      "tags": [
+        "fractals-and-l-systems",
+        "image",
+        "mandelbrot",
+        "topics"
+      ]
+    },
+    {
+      "title": "Penrose Snowflake",
+      "path": "Examples/Topics/Fractals and L-Systems/PenroseSnowflake",
+      "group": "Topics",
+      "subcategory": "Fractals and L-Systems",
+      "level": "Advanced",
+      "description": "This code was based on Patrick Dwyer's L-System class.",
+      "featured": [
+        "pushMatrix_",
+        "popMatrix_",
+        "translate_",
+        "rotate_"
+      ],
+      "tags": [
+        "fractals-and-l-systems",
+        "penrosesnowflake",
+        "topics"
+      ]
+    },
+    {
+      "title": "Penrose Tile L-System",
+      "path": "Examples/Topics/Fractals and L-Systems/PenroseTile",
+      "group": "Topics",
+      "subcategory": "Fractals and L-Systems",
+      "level": "Advanced",
+      "description": "This code was based on Patrick Dwyer's L-System class.",
+      "featured": [
+        "pushMatrix_",
+        "popMatrix_",
+        "translate_",
+        "rotate_"
+      ],
+      "tags": [
+        "fractals-and-l-systems",
+        "penrosetile",
+        "topics"
+      ]
+    },
+    {
+      "title": "Pentigree L-System",
+      "path": "Examples/Topics/Fractals and L-Systems/Pentigree",
+      "group": "Topics",
+      "subcategory": "Fractals and L-Systems",
+      "level": "Advanced",
+      "description": "This code was based on Patrick Dwyer's L-System class.",
+      "featured": [
+        "pushMatrix_",
+        "popMatrix_",
+        "translate_",
+        "rotate_"
+      ],
+      "tags": [
+        "fractals-and-l-systems",
+        "pentigree",
+        "topics"
+      ]
+    },
+    {
+      "title": "Recursive Tree",
+      "path": "Examples/Topics/Fractals and L-Systems/Tree",
+      "group": "Topics",
+      "subcategory": "Fractals and L-Systems",
+      "level": "Intermediate",
+      "description": "Renders a simple tree-like structure via recursion. The branching angle is calculated as a function of the horizontal mouse location. Move the mouse left and right to change the angle.",
+      "featured": [
+        "pushMatrix_",
+        "popMatrix_",
+        "translate_",
+        "rotate_"
+      ],
+      "tags": [
+        "fractals-and-l-systems",
+        "interaction",
+        "topics",
+        "tree"
+      ]
+    },
+    {
+      "title": "Button",
+      "path": "Examples/Topics/GUI/Button",
+      "group": "Topics",
+      "subcategory": "GUI",
+      "level": "Intermediate",
+      "description": "Click on one of the colored shapes in the center of the image to change the color of the background.",
+      "featured": [
+        "ellipse_",
+        "ellipseMode_",
+        "mousePressed_",
+        "sqrt_"
+      ],
+      "tags": [
+        "button",
+        "gui",
+        "image",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Handles",
+      "path": "Examples/Topics/GUI/Handles",
+      "group": "Topics",
+      "subcategory": "GUI",
+      "level": "Intermediate",
+      "description": "Click and drag the white boxes to change their position.",
+      "featured": [
+        "class",
+        "Array"
+      ],
+      "tags": [
+        "3d",
+        "gui",
+        "handles",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Rollover",
+      "path": "Examples/Topics/GUI/Rollover",
+      "group": "Topics",
+      "subcategory": "GUI",
+      "level": "Intermediate",
+      "description": "Roll over the colored squares in the center of the image to change the color of the outside rectangle.",
+      "featured": [
+        "ellipseMode_",
+        "ellipse_",
+        "sqrt_",
+        "sq_",
+        "color_"
+      ],
+      "tags": [
+        "gui",
+        "image",
+        "rollover",
+        "topics"
+      ]
+    },
+    {
+      "title": "Scrollbar",
+      "path": "Examples/Topics/GUI/Scrollbar",
+      "group": "Topics",
+      "subcategory": "GUI",
+      "level": "Advanced",
+      "description": "Move the scrollbars left and right to change the positions of the images.",
+      "featured": [
+        "class",
+        "image_",
+        "PImage"
+      ],
+      "tags": [
+        "gui",
+        "image",
+        "scrollbar",
+        "topics"
+      ]
+    },
+    {
+      "title": "Icosahedra",
+      "path": "Examples/Topics/Geometry/Icosahedra",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "geometry",
+        "icosahedra",
+        "topics"
+      ]
+    },
+    {
+      "title": "NoiseSphere",
+      "path": "Examples/Topics/Geometry/NoiseSphere",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "geometry",
+        "noisesphere",
+        "topics"
+      ]
+    },
+    {
+      "title": "RGBCube",
+      "path": "Examples/Topics/Geometry/RGBCube",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "geometry",
+        "rgbcube",
+        "topics"
+      ]
+    },
+    {
+      "title": "ShapeTransform",
+      "path": "Examples/Topics/Geometry/ShapeTransform",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "geometry",
+        "shapetransform",
+        "topics"
+      ]
+    },
+    {
+      "title": "SpaceJunk",
+      "path": "Examples/Topics/Geometry/SpaceJunk",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "geometry",
+        "spacejunk",
+        "topics"
+      ]
+    },
+    {
+      "title": "Toroid",
+      "path": "Examples/Topics/Geometry/Toroid",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "geometry",
+        "topics",
+        "toroid"
+      ]
+    },
+    {
+      "title": "Vertices",
+      "path": "Examples/Topics/Geometry/Vertices",
+      "group": "Topics",
+      "subcategory": "Geometry",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "geometry",
+        "topics",
+        "vertices"
+      ]
+    },
+    {
+      "title": "Blending",
+      "path": "Examples/Topics/Image Processing/Blending",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "blending",
+        "image",
+        "image-processing",
+        "topics"
+      ]
+    },
+    {
+      "title": "Blur",
+      "path": "Examples/Topics/Image Processing/Blur",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "Intermediate",
+      "description": "A low-pass filter blurs an image. This program analyzes every pixel in an image and blends it with the neighboring pixels to blur the image.",
+      "featured": [
+        "PImage",
+        "image_",
+        "PImage_loadPixels_",
+        "createImage_",
+        "PImage_pixels[]",
+        "PImage_updatePixels_"
+      ],
+      "tags": [
+        "blur",
+        "image",
+        "image-processing",
+        "topics"
+      ]
+    },
+    {
+      "title": "Brightness pixels",
+      "path": "Examples/Topics/Image Processing/BrightnessPixels",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "Intermediate",
+      "description": "This program adjusts the brightness of a part of the image by calculating the distance of each pixel to the mouse.",
+      "featured": [
+        "PImage",
+        "PImage_loadPixels_",
+        "loadPixels_",
+        "updatePixels_",
+        "red_",
+        "dist_"
+      ],
+      "tags": [
+        "brightnesspixels",
+        "image",
+        "image-processing",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Convolution",
+      "path": "Examples/Topics/Image Processing/Convolution",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "Advanced",
+      "description": "Applies a convolution matrix to a portion of an image. Move mouse to apply filter to different parts of the image.",
+      "featured": [
+        "PImage_",
+        "Array",
+        "loadImage_",
+        "constrain_",
+        "loadPixels_",
+        "updatePixels_"
+      ],
+      "tags": [
+        "convolution",
+        "image",
+        "image-processing",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Edge Detection",
+      "path": "Examples/Topics/Image Processing/EdgeDetection",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "Advanced",
+      "description": "A high-pass filter sharpens an image. This program analyzes every pixel in an image in relation to the neighboring pixels to sharpen the image.",
+      "featured": [
+        "image_",
+        "loadPixels_",
+        "PImage",
+        "PImage_loadPixels_",
+        "PImage_updatePixels_",
+        "noLoop_"
+      ],
+      "tags": [
+        "edgedetection",
+        "image",
+        "image-processing",
+        "topics"
+      ]
+    },
+    {
+      "title": "Explode",
+      "path": "Examples/Topics/Image Processing/Explode",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "explode",
+        "image",
+        "image-processing",
+        "topics"
+      ]
+    },
+    {
+      "title": "Extrusion",
+      "path": "Examples/Topics/Image Processing/Extrusion",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "extrusion",
+        "image",
+        "image-processing",
+        "topics"
+      ]
+    },
+    {
+      "title": "Histogram",
+      "path": "Examples/Topics/Image Processing/Histogram",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "Intermediate",
+      "description": "Calculates the histogram of an image. A histogram is the frequency distribution of the gray levels with the number of pure black values displayed on the left and number of pure white values on the right. Note that this...",
+      "featured": [
+        "PImage",
+        "loadImage_",
+        "image_",
+        "brightness_",
+        "get_",
+        "map_"
+      ],
+      "tags": [
+        "histogram",
+        "image",
+        "image-processing",
+        "topics"
+      ]
+    },
+    {
+      "title": "LinearImage",
+      "path": "Examples/Topics/Image Processing/LinearImage",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "image",
+        "image-processing",
+        "linearimage",
+        "topics"
+      ]
+    },
+    {
+      "title": "Pixel Array",
+      "path": "Examples/Topics/Image Processing/PixelArray",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "Intermediate",
+      "description": "Click and drag the mouse up and down to control the signal and press and hold any key to see the current pixel being read. This program sequentially reads the color of every pixel of an image and displays this color to...",
+      "featured": [
+        "PImage_",
+        "loadImage_",
+        "constrain_",
+        "set_"
+      ],
+      "tags": [
+        "image",
+        "image-processing",
+        "interaction",
+        "pixelarray",
+        "topics"
+      ]
+    },
+    {
+      "title": "Sharpen",
+      "path": "Examples/Topics/Image Processing/Sharpen",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "image",
+        "image-processing",
+        "sharpen",
+        "topics"
+      ]
+    },
+    {
+      "title": "Zoom",
+      "path": "Examples/Topics/Image Processing/Zoom",
+      "group": "Topics",
+      "subcategory": "Image Processing",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "image",
+        "image-processing",
+        "topics",
+        "zoom"
+      ]
+    },
+    {
+      "title": "Follow 1",
+      "path": "Examples/Topics/Interaction/Follow1",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "A line segment is pushed and pulled by the cursor.",
+      "featured": [
+        "atan2_",
+        "cos_",
+        "sin_",
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "follow1",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Follow 2",
+      "path": "Examples/Topics/Interaction/Follow2",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "A two-segmented arm follows the cursor position. The relative angle between the segments is calculated with atan2() and the position calculated with sin() and cos().",
+      "featured": [
+        "Array",
+        "atan2_",
+        "cos_",
+        "sin_",
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "follow2",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Follow 3",
+      "path": "Examples/Topics/Interaction/Follow3",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "A segmented line follows the mouse. The relative angle from each segment to the next is calculated with atan2() and the position of the next is calculated with sin() and cos().",
+      "featured": [
+        "Array",
+        "atan2_",
+        "cos_",
+        "sin_",
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "follow3",
+        "interaction",
+        "topics"
+      ]
+    },
+    {
+      "title": "Reach 1",
+      "path": "Examples/Topics/Interaction/Reach1",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "The arm follows the position of the mouse by calculating the angles with atan2().",
+      "featured": [
+        "atan2_",
+        "cos_",
+        "sin_",
+        "pushMatrix_",
+        "popMatrix_",
+        "translate_"
+      ],
+      "tags": [
+        "interaction",
+        "reach1",
+        "topics"
+      ]
+    },
+    {
+      "title": "Reach 2",
+      "path": "Examples/Topics/Interaction/Reach2",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "The arm follows the position of the mouse by calculating the angles with atan2().",
+      "featured": [
+        "Array",
+        "cos_",
+        "sin_",
+        "atan2_",
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "interaction",
+        "reach2",
+        "topics"
+      ]
+    },
+    {
+      "title": "Reach 3",
+      "path": "Examples/Topics/Interaction/Reach3",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "The arm follows the position of the ball by calculating the angles with atan2().",
+      "featured": [
+        "Array",
+        "atan2_",
+        "cos_",
+        "sin_",
+        "pushMatrix_",
+        "popMatrix_"
+      ],
+      "tags": [
+        "interaction",
+        "reach3",
+        "topics"
+      ]
+    },
+    {
+      "title": "Tickle",
+      "path": "Examples/Topics/Interaction/Tickle",
+      "group": "Topics",
+      "subcategory": "Interaction",
+      "level": "Intermediate",
+      "description": "The word \"tickle\" jitters when the cursor hovers over. Sometimes, it can be tickled off the screen.",
+      "featured": [
+        "textFont_",
+        "createFont_",
+        "textAlign_",
+        "textWidth_",
+        "textAscent_",
+        "textDescent_"
+      ],
+      "tags": [
+        "interaction",
+        "tickle",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "Bounce",
+      "path": "Examples/Topics/Motion/Bounce",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Intermediate",
+      "description": "When the shape hits the edge of the window, it reverses its direction.",
+      "featured": [
+        "ellipseMode_",
+        "ellipse_"
+      ],
+      "tags": [
+        "bounce",
+        "motion",
+        "physics",
+        "topics"
+      ]
+    },
+    {
+      "title": "Bouncy Bubbles",
+      "path": "Examples/Topics/Motion/BouncyBubbles",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Intermediate",
+      "description": "Multiple-object collision.",
+      "featured": [
+        "class",
+        "random_",
+        "Array",
+        "atan2_"
+      ],
+      "tags": [
+        "bouncybubbles",
+        "motion",
+        "physics",
+        "topics"
+      ]
+    },
+    {
+      "title": "Brownian motion",
+      "path": "Examples/Topics/Motion/Brownian",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Intermediate",
+      "description": "Recording random movement as a continuous line.",
+      "featured": [
+        "Array",
+        "random_",
+        "constrain_",
+        "stroke_",
+        "line_"
+      ],
+      "tags": [
+        "brownian",
+        "export",
+        "motion",
+        "topics"
+      ]
+    },
+    {
+      "title": "Circle Collision with Swapping Velocities",
+      "path": "Examples/Topics/Motion/CircleCollision",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Advanced",
+      "description": "Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move!",
+      "featured": [
+        "PVector",
+        "PVector_random2D_",
+        "PVector_normalize_",
+        "PVector_heading_",
+        "PVector_mag_"
+      ],
+      "tags": [
+        "circlecollision",
+        "motion",
+        "physics",
+        "topics"
+      ]
+    },
+    {
+      "title": "CubesWithinCube",
+      "path": "Examples/Topics/Motion/CubesWithinCube",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "cubeswithincube",
+        "motion",
+        "topics"
+      ]
+    },
+    {
+      "title": "Linear Motion",
+      "path": "Examples/Topics/Motion/Linear",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Beginner",
+      "description": "Changing a variable to create a moving line. When the line moves off the edge of the window, the variable is set to 0, which places the line back at the bottom of the screen.",
+      "featured": [
+        "line_",
+        "stroke_"
+      ],
+      "tags": [
+        "linear",
+        "motion",
+        "topics"
+      ]
+    },
+    {
+      "title": "Morph",
+      "path": "Examples/Topics/Motion/Morph",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Advanced",
+      "description": "Changing one shape into another by interpolating vertices from one to another",
+      "featured": [
+        "ArrayList",
+        "PVector",
+        "PVector_dist_"
+      ],
+      "tags": [
+        "morph",
+        "motion",
+        "topics"
+      ]
+    },
+    {
+      "title": "Moving On Curves",
+      "path": "Examples/Topics/Motion/MovingOnCurves",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Intermediate",
+      "description": "In this example, the circles moves along the curve y = x^4. Click the mouse to have it move to a new position.",
+      "featured": [
+        "pow_",
+        "ellipse_",
+        "rect_"
+      ],
+      "tags": [
+        "interaction",
+        "motion",
+        "movingoncurves",
+        "topics"
+      ]
+    },
+    {
+      "title": "Non-orthogonal Reflection",
+      "path": "Examples/Topics/Motion/Reflection1",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Advanced",
+      "description": "Based on the equation (R = 2N(NL)-L) where R is the reflection vector, N is the normal, and L is the incident vector.",
+      "featured": [
+        "PVector",
+        "PVector_random2D_",
+        "PVector_dist_",
+        "PVector_set_",
+        "quad_",
+        "ceil_"
+      ],
+      "tags": [
+        "motion",
+        "reflection1",
+        "topics"
+      ]
+    },
+    {
+      "title": "Non-orthogonal Collision with Multiple Ground Segments",
+      "path": "Examples/Topics/Motion/Reflection2",
+      "group": "Topics",
+      "subcategory": "Motion",
+      "level": "Advanced",
+      "description": "Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move!",
+      "featured": [
+        "PVector",
+        "Array",
+        "beginShape_",
+        "endShape_",
+        "vertex_"
+      ],
+      "tags": [
+        "motion",
+        "physics",
+        "reflection2",
+        "topics"
+      ]
+    },
+    {
+      "title": "BlurFilter",
+      "path": "Examples/Topics/Shaders/BlurFilter",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "blurfilter",
+        "image",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "Conway",
+      "path": "Examples/Topics/Shaders/Conway",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "conway",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "CustomBlend",
+      "path": "Examples/Topics/Shaders/CustomBlend",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "customblend",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "Deform",
+      "path": "Examples/Topics/Shaders/Deform",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "deform",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "DomeProjection",
+      "path": "Examples/Topics/Shaders/DomeProjection",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "domeprojection",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "EdgeDetect",
+      "path": "Examples/Topics/Shaders/EdgeDetect",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "edgedetect",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "EdgeFilter",
+      "path": "Examples/Topics/Shaders/EdgeFilter",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "edgefilter",
+        "image",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "GlossyFishEye",
+      "path": "Examples/Topics/Shaders/GlossyFishEye",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "glossyfisheye",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "ImageMask",
+      "path": "Examples/Topics/Shaders/ImageMask",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "image",
+        "imagemask",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "InfiniteTiles",
+      "path": "Examples/Topics/Shaders/InfiniteTiles",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "infinitetiles",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "Landscape",
+      "path": "Examples/Topics/Shaders/Landscape",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "landscape",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "Monjori",
+      "path": "Examples/Topics/Shaders/Monjori",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "monjori",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "Nebula",
+      "path": "Examples/Topics/Shaders/Nebula",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "nebula",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "SepBlur",
+      "path": "Examples/Topics/Shaders/SepBlur",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "sepblur",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "ToonShading",
+      "path": "Examples/Topics/Shaders/ToonShading",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "shader",
+        "shaders",
+        "toonshading",
+        "topics"
+      ]
+    },
+    {
+      "title": "Flocking",
+      "path": "Examples/Topics/Simulate/Flocking",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "Advanced",
+      "description": "An implementation of Craig Reynold's Boids program to simulate the flocking behavior of birds. Each boid steers itself based on rules of avoidance, alignment, and coherence. Click the mouse to add a new boid.",
+      "featured": [
+        "PVector",
+        "ArrayList",
+        "PVector_normalize_",
+        "PVector_limit_",
+        "PVector_heading_",
+        "PVector_dist_"
+      ],
+      "tags": [
+        "flocking",
+        "interaction",
+        "simulate",
+        "topics"
+      ]
+    },
+    {
+      "title": "Forces (Gravity and Fluid Resistence) with Vectors",
+      "path": "Examples/Topics/Simulate/ForcesWithVectors",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "Advanced",
+      "description": "Demonstration of multiple forces acting on bodies. Bodies experience gravity continuously and fluid resistance when in simulated water.",
+      "featured": [
+        "class",
+        "PVector",
+        "Array",
+        "PVector_add_",
+        "PVector_mult_",
+        "PVector_div_"
+      ],
+      "tags": [
+        "forceswithvectors",
+        "physics",
+        "simulate",
+        "topics"
+      ]
+    },
+    {
+      "title": "GravitationalAttraction3D",
+      "path": "Examples/Topics/Simulate/GravitationalAttraction3D",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "gravitationalattraction3d",
+        "simulate",
+        "topics"
+      ]
+    },
+    {
+      "title": "Multiple Particle Systems",
+      "path": "Examples/Topics/Simulate/MultipleParticleSystems",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "Advanced",
+      "description": "Click the mouse to generate a burst of particles at the mouse position. Each burst is one instance of a particle system with Particles and CrazyParticles (a subclass of Particle). Note use of Inheritance and Polymorphis...",
+      "featured": [
+        "ArrayList",
+        "class",
+        "PVector"
+      ],
+      "tags": [
+        "interaction",
+        "multipleparticlesystems",
+        "particles",
+        "simulate",
+        "topics"
+      ]
+    },
+    {
+      "title": "Simple Particle System",
+      "path": "Examples/Topics/Simulate/SimpleParticleSystem",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "Intermediate",
+      "description": "Particles are generated each cycle through draw(), fall with gravity and fade out over time. A ParticleSystem object manages a variable size (ArrayList) list of particles.",
+      "featured": [
+        "ArrayList",
+        "class",
+        "PVector",
+        "PVector_add_",
+        "ellipse_"
+      ],
+      "tags": [
+        "particles",
+        "physics",
+        "simpleparticlesystem",
+        "simulate",
+        "topics"
+      ]
+    },
+    {
+      "title": "Smoke Particle System",
+      "path": "Examples/Topics/Simulate/SmokeParticleSystem",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "Advanced",
+      "description": "A basic smoke effect using a particle system. Each particle is rendered as an alpha masked image.",
+      "featured": [
+        "ArrayList",
+        "class",
+        "PVector",
+        "PImage",
+        "tint_",
+        "image_"
+      ],
+      "tags": [
+        "image",
+        "particles",
+        "simulate",
+        "smokeparticlesystem",
+        "topics"
+      ]
+    },
+    {
+      "title": "SoftBody",
+      "path": "Examples/Topics/Simulate/SoftBody",
+      "group": "Topics",
+      "subcategory": "Simulate",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "simulate",
+        "softbody",
+        "topics"
+      ]
+    },
+    {
+      "title": "TextureCube",
+      "path": "Examples/Topics/Textures/TextureCube",
+      "group": "Topics",
+      "subcategory": "Textures",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "texturecube",
+        "textures",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "TextureCylinder",
+      "path": "Examples/Topics/Textures/TextureCylinder",
+      "group": "Topics",
+      "subcategory": "Textures",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "texturecylinder",
+        "textures",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "TextureQuad",
+      "path": "Examples/Topics/Textures/TextureQuad",
+      "group": "Topics",
+      "subcategory": "Textures",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "texturequad",
+        "textures",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "TextureSphere",
+      "path": "Examples/Topics/Textures/TextureSphere",
+      "group": "Topics",
+      "subcategory": "Textures",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "textures",
+        "texturesphere",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "TextureTriangle",
+      "path": "Examples/Topics/Textures/TextureTriangle",
+      "group": "Topics",
+      "subcategory": "Textures",
+      "level": "",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "textures",
+        "texturetriangle",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "Acceleration with Vectors",
+      "path": "Examples/Topics/Vectors/AccelerationWithVectors",
+      "group": "Topics",
+      "subcategory": "Vectors",
+      "level": "Advanced",
+      "description": "Demonstration of the basics of motion with vector. A 'Mover' object stores location, velocity, and acceleration as vectors. The motion is controlled by affecting the acceleration (in this case towards the mouse).",
+      "featured": [
+        "PVector",
+        "PVector_add_",
+        "PVector_limit_",
+        "PVector_setMag_"
+      ],
+      "tags": [
+        "accelerationwithvectors",
+        "interaction",
+        "topics",
+        "vectors"
+      ]
+    },
+    {
+      "title": "Bouncing Ball with Vectors",
+      "path": "Examples/Topics/Vectors/BouncingBall",
+      "group": "Topics",
+      "subcategory": "Vectors",
+      "level": "Intermediate",
+      "description": "Demonstration of using vectors to control motion of a body. This example is not object-oriented See AccelerationWithVectors for an example of how to simulate motion using vectors in an object.",
+      "featured": [
+        "PVector",
+        "PVector_add_"
+      ],
+      "tags": [
+        "bouncingball",
+        "topics",
+        "vectors"
+      ]
+    },
+    {
+      "title": "Vector",
+      "path": "Examples/Topics/Vectors/VectorMath",
+      "group": "Topics",
+      "subcategory": "Vectors",
+      "level": "Intermediate",
+      "description": "Demonstration of some basic vector math: subtraction, normalization, scaling. Normalizing a vector sets its length to 1.",
+      "featured": [
+        "PVector",
+        "PVector_sub",
+        "PVector_normalize_",
+        "PVector_mult_"
+      ],
+      "tags": [
+        "topics",
+        "vectormath",
+        "vectors"
+      ]
+    }
+  ]
+}

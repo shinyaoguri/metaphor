@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Generate AI-friendly indexes for metaphor examples."""
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+KEYWORD_TAGS = {
+    "audio": ("audio", "fft", "sound", "beat", "microphone"),
+    "video": ("video", "capture", "movie"),
+    "shader": ("shader", "metal", "glsl", "fragment"),
+    "3d": ("3d", "box", "sphere", "camera", "light", "mesh", "raytracing", "ray tracing"),
+    "particles": ("particle", "particles", "emitter"),
+    "physics": ("physics", "collision", "gravity", "bounce"),
+    "image": ("image", "pixel", "filter", "photo"),
+    "typography": ("text", "font", "typography", "letter", "word"),
+    "interaction": ("mouse", "keyboard", "input", "drag", "press"),
+    "live": ("osc", "midi", "syphon", "vj", "live"),
+    "export": ("record", "export", "gif", "video"),
+}
+
+
+def clean_text(value: object, limit: int = 180) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "..."
+
+
+def load_metadata(example_dir: Path) -> dict:
+    json_files = sorted(example_dir.glob("*.json"))
+    if not json_files:
+        return {}
+
+    preferred = [p for p in json_files if p.stem == example_dir.name]
+    for path in preferred + json_files:
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+    return {}
+
+
+def tags_for(rel_path: Path, metadata: dict) -> list[str]:
+    haystack = " ".join([
+        str(rel_path),
+        str(metadata.get("title", "")),
+        str(metadata.get("name", "")),
+        str(metadata.get("description", "")),
+        " ".join(str(x) for x in metadata.get("featured", []) or []),
+    ]).lower()
+
+    tags: set[str] = set()
+    for part in rel_path.parts:
+        normalized = part.lower().replace(" ", "-")
+        if normalized:
+            tags.add(normalized)
+
+    for tag, needles in KEYWORD_TAGS.items():
+        if any(needle in haystack for needle in needles):
+            tags.add(tag)
+
+    return sorted(tags)
+
+
+def discover_examples(examples_dir: Path) -> list[dict]:
+    examples = []
+    package_files: list[Path] = []
+    for root, dirnames, filenames in os.walk(examples_dir):
+        dirnames[:] = [name for name in dirnames if name not in {".build", ".swiftpm"}]
+        if "Package.swift" in filenames:
+            package_files.append(Path(root) / "Package.swift")
+
+    for package in sorted(package_files):
+        example_dir = package.parent
+        rel_path = example_dir.relative_to(examples_dir)
+        metadata = load_metadata(example_dir)
+        title = clean_text(
+            metadata.get("title") or metadata.get("name") or example_dir.name,
+            limit=80,
+        )
+        description = clean_text(metadata.get("description", ""), limit=220)
+        parts = rel_path.parts
+        group = parts[0] if len(parts) >= 1 else "Other"
+        subcategory = parts[1] if len(parts) >= 3 else ""
+
+        examples.append({
+            "title": title,
+            "path": f"Examples/{rel_path.as_posix()}",
+            "group": group,
+            "subcategory": subcategory,
+            "level": clean_text(metadata.get("level", ""), limit=40),
+            "description": description,
+            "featured": metadata.get("featured", []) or [],
+            "tags": tags_for(rel_path, metadata),
+        })
+    return examples
+
+
+def render_markdown(examples: list[dict]) -> str:
+    lines = [
+        "# metaphor Examples Index For AI",
+        "",
+        "This file is generated from `Examples/**/Package.swift` and adjacent",
+        "`*.json` metadata. Use it to find a nearby working sketch before",
+        "generating new metaphor content.",
+        "",
+        f"Example count: {len(examples)}",
+        "",
+        "## How To Use",
+        "",
+        "- Pick one or two examples whose tags match the user's request.",
+        "- Read the example's `App.swift` before inventing a new structure.",
+        "- Prefer adapting existing metaphor idioms over translating p5.js code",
+        "  literally.",
+        "",
+    ]
+
+    grouped: dict[str, list[dict]] = {}
+    for example in examples:
+        grouped.setdefault(example["group"], []).append(example)
+
+    for group in sorted(grouped):
+        lines.append(f"## {group}")
+        lines.append("")
+        for example in grouped[group]:
+            link = "../../" + example["path"].replace(" ", "%20")
+            title = example["title"]
+            level = f" [{example['level']}]" if example["level"] else ""
+            subcategory = f" ({example['subcategory']})" if example["subcategory"] else ""
+            description = f" -- {example['description']}" if example["description"] else ""
+            tags = ", ".join(example["tags"][:8])
+            tag_text = f" Tags: {tags}." if tags else ""
+            lines.append(f"- [{title}]({link}){level}{subcategory}{description}{tag_text}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def render_json(examples: list[dict]) -> str:
+    payload = {
+        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "count": len(examples),
+        "examples": examples,
+    }
+    return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--examples-dir", default="Examples")
+    parser.add_argument("--output-md", default="docs/ai/examples-index.md")
+    parser.add_argument("--output-json", default="docs/ai/examples-index.json")
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+
+    examples_dir = Path(args.examples_dir)
+    if not examples_dir.is_dir():
+        print(f"examples directory not found: {examples_dir}", file=sys.stderr)
+        return 1
+
+    examples = discover_examples(examples_dir)
+    markdown = render_markdown(examples)
+    json_text = render_json(examples)
+
+    outputs = [
+        (Path(args.output_md), markdown),
+        (Path(args.output_json), json_text),
+    ]
+
+    if args.check:
+        ok = True
+        for path, expected in outputs:
+            try:
+                current = path.read_text(encoding="utf-8")
+            except OSError:
+                print(f"{path} is missing; run scripts/generate-examples-index.py", file=sys.stderr)
+                ok = False
+                continue
+            if path.suffix == ".json":
+                try:
+                    current_payload = json.loads(current)
+                    expected_payload = json.loads(expected)
+                    current_payload.pop("generated_at", None)
+                    expected_payload.pop("generated_at", None)
+                    matches = current_payload == expected_payload
+                except json.JSONDecodeError:
+                    matches = False
+            else:
+                matches = current == expected
+            if not matches:
+                print(f"{path} is out of date; run scripts/generate-examples-index.py", file=sys.stderr)
+                ok = False
+        return 0 if ok else 1
+
+    for path, content in outputs:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        print(f"Generated {path}", file=sys.stderr)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

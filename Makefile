@@ -1,4 +1,4 @@
-.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list symbol-graphs llms-txt ai-docs-check hooks
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks
 
 # Default target
 all: setup build
@@ -156,6 +156,10 @@ examples-seq:
 examples-list:
 	@./scripts/run-examples.sh --list
 
+# Generate AI-friendly examples index from example metadata
+examples-index:
+	@python3 scripts/generate-examples-index.py
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -180,4 +184,5 @@ help:
 	@echo "  make examples-seq   - Run examples sequentially (interactive)"
 	@echo "  make examples-check - Build-only verification (parallel)"
 	@echo "  make examples-list  - List all available examples"
+	@echo "  make examples-index - Generate AI-friendly examples index"
 	@echo "  make help           - Show this help"
