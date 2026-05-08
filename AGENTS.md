@@ -9,6 +9,7 @@ make test            # Run tests (swift test)
 make clean           # Clean build artifacts
 make check           # Verify setup status (Syphon.xcframework, submodules)
 make llms-txt        # Generate llms.txt (AI-readable API reference)
+make examples-index  # Generate docs/ai/examples-index.{md,json}
 ```
 
 For examples:
@@ -17,6 +18,25 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 ```
 
 For deeper AI-oriented debugging and extension notes, see `docs/ai/README.md`.
+
+### Generated AI-facing files
+
+`llms.txt` and `docs/ai/examples-index.{md,json}` are checked in but
+**auto-generated** — never hand-edit them. Their inputs are:
+
+| Output | Inputs |
+|---|---|
+| `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` |
+| `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` |
+
+If you change any input, regenerate before pushing (`make llms-txt` or
+`make examples-index`). The pre-push hook installed by `make setup`
+checks this and aborts otherwise. CI also auto-regenerates the examples
+index for PRs from this repo as a safety net.
+
+Generators MUST be deterministic (no wall-clock timestamps, sort all
+collections) — non-determinism causes the auto-fix bot to push every
+run forever.
 
 ## Architecture Overview
 
