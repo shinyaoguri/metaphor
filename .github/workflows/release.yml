@@ -163,6 +163,11 @@ jobs:
         run: |
           # GITHUB_TOKEN-created PRs do not fire the pull_request CI, but
           # workflow_dispatch IS allowed to fire even from another workflow.
+          # Capture an ISO timestamp BEFORE the dispatch so we can later
+          # filter for the run we just kicked instead of accidentally
+          # picking up a prior completed run on a recycled branch name.
+          DISPATCH_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "DISPATCH_AT=$DISPATCH_AT" >> "$GITHUB_ENV"
           gh workflow run ci.yml --ref "$RELEASE_BRANCH"
 
       - name: Wait for CI to register and complete
@@ -170,21 +175,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # gh takes a few seconds to register the dispatched run.
-          deadline=$((SECONDS + 120))
+          # Filter by created>=DISPATCH_AT so we never lock onto a stale
+          # historical run (release/<tag> branch names can be recycled).
+          deadline=$((SECONDS + 180))
           RUN_ID=""
           while [ $SECONDS -lt $deadline ]; do
-            RUN_ID=$(gh run list --workflow=ci.yml --branch "$RELEASE_BRANCH" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+            RUN_ID=$(gh run list \
+              --workflow=ci.yml \
+              --branch "$RELEASE_BRANCH" \
+              --event workflow_dispatch \
+              --created ">=$DISPATCH_AT" \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty' 2>/dev/null || true)
             if [ -n "$RUN_ID" ]; then
               break
             fi
             sleep 5
           done
           if [ -z "$RUN_ID" ]; then
-            echo "::error::CI workflow_dispatch run did not register within 120s."
+            echo "::error::CI workflow_dispatch run did not register within 180s."
             exit 1
           fi
-          echo "Watching CI run $RUN_ID..."
+          echo "Watching CI run $RUN_ID (dispatched at $DISPATCH_AT)..."
           gh run watch "$RUN_ID" --exit-status
 
       - name: Squash-merge release PR
