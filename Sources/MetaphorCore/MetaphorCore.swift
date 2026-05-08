@@ -9,8 +9,8 @@
 ///
 /// @main
 /// final class MySketch: Sketch {
-///     func setup() {
-///         size(1280, 720)
+///     var config: SketchConfig {
+///         SketchConfig(width: 1280, height: 720)
 ///     }
 ///
 ///     func draw() {

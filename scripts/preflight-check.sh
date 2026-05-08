@@ -65,8 +65,10 @@ if ! command -v swift &>/dev/null; then
 else
     SWIFT_VERSION=$(swift --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
     SWIFT_MAJOR=$(echo "$SWIFT_VERSION" | cut -d. -f1)
-    if [ -n "$SWIFT_MAJOR" ] && [ "$SWIFT_MAJOR" -lt 6 ] 2>/dev/null; then
-        ERRORS+=("Swift 6.0+ is required. Current version: $SWIFT_VERSION
+    SWIFT_MINOR=$(echo "$SWIFT_VERSION" | cut -d. -f2)
+    if [ -n "$SWIFT_MAJOR" ] && [ -n "$SWIFT_MINOR" ] && \
+       { [ "$SWIFT_MAJOR" -lt 5 ] || { [ "$SWIFT_MAJOR" -eq 5 ] && [ "$SWIFT_MINOR" -lt 10 ]; }; } 2>/dev/null; then
+        ERRORS+=("Swift 5.10+ is required. Current version: $SWIFT_VERSION
   -> Update Xcode to get a newer Swift version")
     fi
 fi

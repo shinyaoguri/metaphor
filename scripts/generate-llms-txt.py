@@ -58,10 +58,39 @@ _SKETCH_TYPE = "Sketch"
 _CONDENSED_OVERLAP_THRESHOLD = 0.60
 
 # ---------------------------------------------------------------------------
-# Static header (the only deliberately static section)
+# Header
 # ---------------------------------------------------------------------------
 
-HEADER = """\
+def discover_package_version(readme_file: Path, package_file: Path) -> str:
+    """Infer the SPM snippet version from repository metadata.
+
+    Stable release automation updates README.md's `from:` example. Pre-release
+    automation may update Package.swift's Syphon URL without changing the stable
+    install snippet, so prefer README.md and fall back to Package.swift.
+    """
+    try:
+        text = readme_file.read_text(encoding="utf-8")
+        match = re.search(
+            r'github\.com/shinyaoguri/metaphor\.git", from: "([^"]+)"', text)
+        if match:
+            return match.group(1)
+    except OSError:
+        pass
+
+    try:
+        text = package_file.read_text(encoding="utf-8")
+    except OSError:
+        return "0.2.4"
+
+    match = re.search(r"releases/download/v([^/]+)/Syphon\.xcframework\.zip", text)
+    if match:
+        return match.group(1)
+    return "0.2.4"
+
+
+def build_header(package_version: str) -> str:
+    """Build the static introductory section for llms.txt."""
+    return """\
 # metaphor
 
 > Swift + Metal creative coding library inspired by Processing / p5.js / openFrameworks.
@@ -95,9 +124,22 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 SPM dependency:
 ```swift
-.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.1.0")
+.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "__PACKAGE_VERSION__")
 ```
-"""
+
+## Architecture Notes
+
+- Multi-target SwiftPM package. Use `import metaphor` for the umbrella module,
+  or import individual modules for narrower dependencies.
+- User-facing calls flow through `Sketch` protocol extensions to `SketchContext`,
+  then into `Canvas2D` / `Canvas3D` Metal backends.
+- Each frame renders offscreen first, then blits to the window while preserving
+  aspect ratio. Post-processing, RenderGraph, export, and Syphon operate on the
+  offscreen texture.
+- `MetaphorCore` owns rendering, drawing, shaders, sketch lifecycle, resources,
+  compute, export, and test support. Tier 1 modules avoid a Core dependency;
+  Tier 2 modules build on Core and are bridged by the umbrella target.
+""".replace("__PACKAGE_VERSION__", package_version)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -536,13 +578,13 @@ def categorize_functions(funcs: list) -> list[tuple[str, list]]:
     return result
 
 
-def generate_llms_txt(modules: dict) -> str:
+def generate_llms_txt(modules: dict, package_version: str = "0.2.4") -> str:
     """Generate the full llms.txt content."""
     module_order = discover_module_order(modules)
     model = build_api_model(modules, module_order)
     lines: list[str] = []
 
-    lines.append(HEADER)
+    lines.append(build_header(package_version))
 
     # --- Sketch Protocol ---
     lines.append("## Sketch Protocol")
@@ -625,6 +667,12 @@ def main():
     parser.add_argument(
         "-o", "--output", default="llms.txt",
         help="Output file path (default: llms.txt)")
+    parser.add_argument(
+        "--package-file", default="Package.swift",
+        help="Package.swift path used to infer the SPM version snippet")
+    parser.add_argument(
+        "--readme-file", default="README.md",
+        help="README.md path used to infer the stable SPM version snippet")
     args = parser.parse_args()
 
     sg_dir = Path(args.symbol_graph_dir)
@@ -638,7 +686,9 @@ def main():
         print("Error: no symbol graphs found.", file=sys.stderr)
         sys.exit(1)
 
-    output = generate_llms_txt(modules)
+    package_version = discover_package_version(
+        Path(args.readme_file), Path(args.package_file))
+    output = generate_llms_txt(modules, package_version=package_version)
 
     out_path = Path(args.output)
     out_path.write_text(output, encoding="utf-8")

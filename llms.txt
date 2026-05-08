@@ -31,8 +31,21 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 SPM dependency:
 ```swift
-.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.1.0")
+.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.4")
 ```
+
+## Architecture Notes
+
+- Multi-target SwiftPM package. Use `import metaphor` for the umbrella module,
+  or import individual modules for narrower dependencies.
+- User-facing calls flow through `Sketch` protocol extensions to `SketchContext`,
+  then into `Canvas2D` / `Canvas3D` Metal backends.
+- Each frame renders offscreen first, then blits to the window while preserving
+  aspect ratio. Post-processing, RenderGraph, export, and Syphon operate on the
+  offscreen texture.
+- `MetaphorCore` owns rendering, drawing, shaders, sketch lifecycle, resources,
+  compute, export, and test support. Tier 1 modules avoid a Core dependency;
+  Tier 2 modules build on Core and are bridged by the umbrella target.
 
 ## Sketch Protocol
 
@@ -1698,6 +1711,36 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static var frustumPlanes: [SIMD4<Float>]?` -- カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
 - `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
 - `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+
+## MetaphorVideo
+
+### `final class VideoPlayer` -- ビデオファイルの再生とフレーム取得を管理します。
+
+- `let duration: Double` -- ビデオの総再生時間（秒）。
+- `var gain: Float { get set }` -- オーディオのゲインを制御します（0.0〜1.0）。
+- `var height: Float { get }` -- ビデオフレームの高さ（ポイント単位）。
+- `var isAvailable: Bool { get }` -- 少なくとも1フレームがデコードされたかどうか。
+- `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
+- `var isPlaying: Bool { get }` -- ビデオが現在再生中かどうか。
+- `var position: Double { get set }` -- 現在の再生位置（秒）。setter でフレーム精度のシークを行います。
+- `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
+- `var texture: (any MTLTexture)? { get }` -- 現在のビデオフレームの Metal テクスチャ。
+- `var width: Float { get }` -- ビデオフレームの幅（ポイント単位）。
+- `init(path: String, device: any MTLDevice) throws` -- 指定パスからビデオファイルを読み込みます。
+- `func loop()` -- ループ再生を有効にして再生を開始します。
+- `func pause()` -- ビデオ再生を一時停止します。現在の位置は維持されます。
+- `func play()` -- ビデオ再生を開始します。
+- `func stop()` -- ビデオ再生を停止し、先頭に巻き戻します。
+- `func update()` -- 現在の再生位置に基づいてビデオフレームを更新します。
+
+### `enum VideoPlayerError` -- ビデオプレーヤーの操作中に発生するエラー。
+
+- `case fileNotFound(String)` -- 指定されたパスにビデオファイルが見つからなかった。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
 
 ---
 *Auto-generated from symbol graphs. Do not edit manually.*

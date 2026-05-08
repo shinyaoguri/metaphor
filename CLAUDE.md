@@ -16,6 +16,8 @@ For examples:
 cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 ```
 
+For deeper AI-oriented debugging and extension notes, see `docs/ai/README.md`.
+
 ## Architecture Overview
 
 metaphor is a Swift + Metal creative coding library inspired by Processing. It provides a `Sketch` protocol for declarative frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, audio, and more. macOS (Apple Silicon) only.

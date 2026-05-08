@@ -1,4 +1,4 @@
-.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list symbol-graphs llms-txt hooks
+.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list symbol-graphs llms-txt ai-docs-check hooks
 
 # Default target
 all: setup build
@@ -95,14 +95,14 @@ check:
 
 # Extract symbol graphs (shared step for docs and llms-txt)
 # Each module is independent — run extraction in parallel via xargs -P.
-# Saves ~60s on CI (11 modules × ~7s sequential → bounded by core count).
+# Saves ~60s on CI (12 modules × ~7s sequential → bounded by core count).
 symbol-graphs: build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
 	export SDK_PATH; \
 	printf '%s\n' metaphor MetaphorCore \
-		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML \
+		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML MetaphorVideo \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
 		MetaphorRenderGraph MetaphorSceneGraph \
 	| xargs -n1 -P8 -I{} xcrun swift-symbolgraph-extract \
@@ -119,6 +119,10 @@ symbol-graphs: build
 # Generate llms.txt (AI-readable API reference)
 llms-txt: symbol-graphs
 	@python3 scripts/generate-llms-txt.py -o llms.txt
+
+# Validate AI-facing docs and generated-reference assumptions
+ai-docs-check:
+	@./scripts/validate-ai-docs.sh
 
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
@@ -169,6 +173,7 @@ help:
 	@echo "  make check          - Check if setup is complete"
 	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
+	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
 	@echo "  make examples       - Run examples in parallel (10 workers)"

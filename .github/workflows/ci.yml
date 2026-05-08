@@ -80,8 +80,8 @@ jobs:
             git diff llms.txt
             exit 1
           fi
-      - name: Validate CLAUDE.md references
-        run: ./scripts/validate-claude-md.sh
+      - name: Validate AI-facing docs
+        run: ./scripts/validate-ai-docs.sh
       - name: Coverage Report
         if: always()
         run: |
