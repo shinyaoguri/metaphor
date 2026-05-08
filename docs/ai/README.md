@@ -7,6 +7,7 @@ For content creators using metaphor with an AI assistant, start with
 `llms-sketch.txt` and `docs/ai/for-sketch-authors.md`.
 Use `docs/ai/examples-index.md` to find nearby working examples before asking
 the assistant to invent a sketch from scratch.
+Prompt templates live in `docs/ai/prompts/`.
 
 ## Orientation
 
