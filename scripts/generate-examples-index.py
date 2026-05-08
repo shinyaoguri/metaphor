@@ -5,7 +5,6 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -142,8 +141,10 @@ def render_markdown(examples: list[dict]) -> str:
 
 
 def render_json(examples: list[dict]) -> str:
+    # Output must be deterministic — the index is checked-in, so any
+    # non-deterministic field (e.g. wall-clock time) would cause spurious
+    # drift detection in CI / git hooks.
     payload = {
-        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "count": len(examples),
         "examples": examples,
     }
@@ -181,17 +182,7 @@ def main() -> int:
                 print(f"{path} is missing; run scripts/generate-examples-index.py", file=sys.stderr)
                 ok = False
                 continue
-            if path.suffix == ".json":
-                try:
-                    current_payload = json.loads(current)
-                    expected_payload = json.loads(expected)
-                    current_payload.pop("generated_at", None)
-                    expected_payload.pop("generated_at", None)
-                    matches = current_payload == expected_payload
-                except json.JSONDecodeError:
-                    matches = False
-            else:
-                matches = current == expected
+            matches = current == expected
             if not matches:
                 print(f"{path} is out of date; run scripts/generate-examples-index.py", file=sys.stderr)
                 ok = False
