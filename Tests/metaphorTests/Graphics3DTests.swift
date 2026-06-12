@@ -518,3 +518,113 @@ struct Graphics3DTransformTests {
                 "noLoop 2-frame: nonBlack=\(nonBlackCount), maxVal=\(maxVal)")
     }
 }
+
+// MARK: - Canvas3D Batch Flush Regression
+
+@Suite("Canvas3D Batch Flush Regression", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Canvas3DBatchFlushTests {
+
+    /// renderer.textureManager.colorTexture を読み戻して非黒ピクセル数を返します。
+    private func countNonBlackPixels(renderer: MetaphorRenderer) -> Int {
+        let w = renderer.textureManager.width
+        let h = renderer.textureManager.height
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        desc.storageMode = .shared
+        guard let staging = renderer.device.makeTexture(descriptor: desc),
+              let blitCB = renderer.commandQueue.makeCommandBuffer(),
+              let blit = blitCB.makeBlitCommandEncoder() else { return -1 }
+        blit.copy(from: renderer.textureManager.colorTexture,
+                  sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: w, height: h, depth: 1),
+                  to: staging, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        blitCB.commit()
+        blitCB.waitUntilCompleted()
+        var pixels = [UInt8](repeating: 0, count: w * h * 4)
+        staging.getBytes(&pixels, bytesPerRow: w * 4,
+                         from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        var nonBlack = 0
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            if pixels[i] > 2 || pixels[i + 1] > 2 || pixels[i + 2] > 2 { nonBlack += 1 }
+        }
+        return nonBlack
+    }
+
+    @Test("camera() change does not retroactively apply to already-submitted shapes")
+    func cameraChangeDoesNotAffectSubmittedShapes() throws {
+        let device = MetalTestHelper.device!
+        let shaderLib = try MetalTestHelper.shaderLibrary()
+        let depthCache = MetalTestHelper.depthStencilCache()
+        let pg3d = try Graphics3D(
+            device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
+            shaderLibrary: shaderLib,
+            depthStencilCache: depthCache,
+            width: 400, height: 300
+        )
+        pg3d.beginDraw()
+        pg3d.lights()
+        pg3d.fill(.red)
+        pg3d.translate(200, 150, 0)
+        pg3d.box(120)
+        // 送信済みの box は送信時点のカメラで描画されなければならない。
+        // カメラ変更がペンディングのインスタンスバッチをフラッシュしない場合、
+        // box はこの「シーン外を向いた」カメラで描かれて消える。
+        pg3d.camera(eye: SIMD3(0, 0, -10000), center: SIMD3(0, 0, -20000))
+        pg3d.endDraw(wait: true)
+
+        let img = pg3d.toImage()
+        img.loadPixels()
+        var nonBlack = 0
+        for y in 0..<Int(img.height) {
+            for x in 0..<Int(img.width) {
+                let c = img.get(x, y)
+                if c.r > 0.01 || c.g > 0.01 || c.b > 0.01 { nonBlack += 1 }
+            }
+        }
+        #expect(nonBlack > 100,
+                "Box must be rendered with the camera that was active when it was submitted (nonBlack=\(nonBlack))")
+    }
+
+    @Test("beginShape polygon with more than 85 vertices renders (exceeds setVertexBytes 4KB limit)")
+    func largeBeginShapePolygon() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        guard let commandBuffer = renderer.commandQueue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return
+        }
+        let rpd = renderer.textureManager.renderPassDescriptor
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            Issue.record("Failed to create encoder")
+            return
+        }
+
+        canvas3D.begin(encoder: encoder, time: 0)
+        canvas3D.fill(.white)
+        canvas3D.noStroke()
+        canvas3D.translate(Float(renderer.textureManager.width) / 2,
+                           Float(renderer.textureManager.height) / 2, 0)
+        // 120 頂点の多角形 → 三角形化で 354 頂点 ≒ 17KB（4KB 制限を大きく超える）
+        canvas3D.beginShape()
+        let n = 120
+        for i in 0..<n {
+            let a = Float(i) / Float(n) * 2 * Float.pi
+            canvas3D.vertex(cos(a) * 150, sin(a) * 150, 0)
+        }
+        canvas3D.endShape(.close)
+        canvas3D.end()
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        let nonBlack = countNonBlackPixels(renderer: renderer)
+        #expect(nonBlack > 1000,
+                "120-vertex polygon should render via the transient-buffer path (nonBlack=\(nonBlack))")
+    }
+}
