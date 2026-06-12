@@ -389,8 +389,8 @@ public final class Graphics3D {
     ///   - max3: 第3チャンネルの最大値。
     ///   - maxA: アルファチャンネルの最大値。
     public func colorMode(
-        _ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0,
-        _ max3: Float = 1.0, _ maxA: Float = 1.0
+        _ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil,
+        _ max3: Float? = nil, _ maxA: Float? = nil
     ) { canvas3D.colorMode(space, max1, max2, max3, maxA) }
 
     /// 全チャンネルに均一な最大値でカラーモードを設定します。

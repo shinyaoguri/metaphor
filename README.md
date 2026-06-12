@@ -18,8 +18,8 @@ final class Hello: Sketch {
     var config: SketchConfig { SketchConfig(width: 800, height: 600) }
 
     func draw() {
-        background(0.05)
-        fill(1.0, 0.4, 0.2)
+        background(13)
+        fill(255, 102, 51)
         circle(mouseX, mouseY, 120)
     }
 }
@@ -89,8 +89,8 @@ final class MySketch: Sketch {
 
     // 毎フレーム呼ばれる
     func draw() {
-        background(0.05)
-        fill(1.0, 0.4, 0.2)
+        background(13)
+        fill(255, 102, 51)
         circle(mouseX, mouseY, 96)
     }
 }
@@ -127,12 +127,12 @@ plane(w, h)
 cylinder(radius: 0.5, height: 1)
 torus(ringRadius: 0.5, tubeRadius: 0.2)
 
-// --- スタイル
+// --- スタイル（色は既定で 0〜255。Processing と同じ。colorMode で変更可）
 background(r, g, b)
 fill(r, g, b);  fill(gray)
 stroke(r, g, b); strokeWeight(2)
 noFill();  noStroke()
-blendMode(.add)
+blendMode(.additive)
 
 // --- 変換（push/pop でスタック）
 push()

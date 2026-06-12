@@ -62,7 +62,7 @@ final class MySketch: Sketch {
     }
 
     func draw() {
-        background(0.1)
+        background(25)
 
         // 中央に白い円を描く
         fill(Color.white)
@@ -155,7 +155,7 @@ func setup() {
 final class MySketch: Sketch {
     func draw() {
         background(0)
-        fill(1, 0, 0)
+        fill(255, 0, 0)
         rect(100, 100, 200, 150)
     }
 }

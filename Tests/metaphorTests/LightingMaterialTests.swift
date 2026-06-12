@@ -361,6 +361,24 @@ struct Phase3Canvas3DFillStrokeTests {
         canvas3D.box(1)
     }
 
+    @Test("colorMode keeps unspecified channel maxima (Processing parity)")
+    func colorModeKeepsUnspecifiedMaxima() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        // Default is Processing-style 0–255.
+        #expect(canvas3D.colorModeConfig.max1 == 255)
+        #expect(canvas3D.colorModeConfig.maxAlpha == 255)
+        // Switching only the color space must not reset the ranges.
+        canvas3D.colorMode(.hsb)
+        #expect(canvas3D.colorModeConfig.space == .hsb)
+        #expect(canvas3D.colorModeConfig.max1 == 255)
+        // Partially specified maxima keep the remaining channels.
+        canvas3D.colorMode(.hsb, 360, 100, 100)
+        #expect(canvas3D.colorModeConfig.max1 == 360)
+        #expect(canvas3D.colorModeConfig.max3 == 100)
+        #expect(canvas3D.colorModeConfig.maxAlpha == 255)
+    }
+
     @Test("Canvas3D fill(gray, alpha) can be called")
     func fillGrayAlpha() throws {
         let renderer = try MetaphorRenderer()
