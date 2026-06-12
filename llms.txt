@@ -112,7 +112,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
 - `func colorMode(_ space: ColorSpace, _ maxAll: Float)` -- 全チャンネル共通の最大値を指定してカラーモードを設定します。
-- `func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
+- `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
 - `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
 - `func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24)` -- 円錐を描画します。
@@ -826,6 +826,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var loopCount: Int` -- GIFのループ回数（0は無限ループ）
 - `init()`
 - `func beginRecord(fps: Int = 15, width: Int = 0, height: Int = 0)` -- GIF記録を開始します。
+- `func captureFrame(texture: any MTLTexture, device: any MTLDevice, commandBuffer: any MTLCommandBuffer)` -- 既存のコマンドバッファに blit を同乗させて現在のフレームをキャプチャします。
 - `func captureFrame(texture: any MTLTexture, device: any MTLDevice, commandQueue: any MTLCommandQueue)` -- Metal テクスチャから現在のフレームをキャプチャします。
 - `func endRecord(to path: String) throws` -- 記録を停止し、キャプチャしたフレームをGIFファイルに書き出します。
 - `func endRecordAsync(to path: String) async throws` -- 記録を停止し、キャプチャしたフレームを非同期でGIFファイルに書き出します。
@@ -898,6 +899,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var offlineDeltaTime: Double { get }` -- オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。
 - `var offlineFrameRate: Double` -- オフラインレンダリングモードでの時間計算に使用するフレームレート
 - `var onAfterDraw: ((any MTLCommandBuffer) -> Void)?` -- メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
+- `var onCaptureOutput: ((any MTLTexture, any MTLCommandBuffer) -> Void)?` -- フレームの最終出力（ポストエフェクト適用後）を、コミット前のメイン
 - `var onCompute: ((any MTLCommandBuffer, Double) -> Void)?` -- 描画前にコンピュートワークを実行するために呼び出されるコールバック
 - `var onDraw: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- 各フレームでユーザーレンダリングを実行するために呼び出されるコールバック
 - `var postProcessPipeline: PostProcessPipeline? { get }` -- ポストプロセスエフェクトパイプライン

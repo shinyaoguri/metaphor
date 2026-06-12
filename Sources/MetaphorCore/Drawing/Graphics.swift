@@ -26,6 +26,17 @@ public final class Graphics {
     private var commandBuffer: MTLCommandBuffer?
     private var encoder: MTLRenderCommandEncoder?
 
+    // メインレンダラーと同じトリプルバッファリング。
+    // Canvas2D の頂点バッファは 3 スロット持つが、以前は常にスロット 0 を
+    // 使っていたため、毎フレーム描画すると GPU がまだ前フレームを読んでいる
+    // 共有バッファを CPU が上書きし、ちらつき・破損の原因になっていた。
+    private static let inflightCount = 3
+    private let inflightSemaphore = DispatchSemaphore(value: inflightCount)
+    private var bufferIndex = 0
+
+    /// テスト用: 次の beginDraw で使われるバッファスロット。
+    var nextBufferIndexForTesting: Int { bufferIndex }
+
     /// 幅をピクセル単位で返します。
     public var width: Float { canvas.width }
 
@@ -68,16 +79,29 @@ public final class Graphics {
 
     /// コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
     public func beginDraw() {
-        guard let cb = commandQueue.makeCommandBuffer() else { return }
+        // endDraw 漏れの不均衡呼び出しでもセマフォが詰まらないよう先に閉じる
+        if commandBuffer != nil { endDraw() }
+
+        // GPU が inflightCount フレーム以上遅れている場合はここでブロックし、
+        // GPU がまだ読んでいる頂点バッファスロットへの上書きを防ぐ
+        inflightSemaphore.wait()
+        guard let cb = commandQueue.makeCommandBuffer() else {
+            inflightSemaphore.signal()
+            return
+        }
+        let semaphore = inflightSemaphore
+        cb.addCompletedHandler { @Sendable _ in semaphore.signal() }
         self.commandBuffer = cb
 
         guard let enc = cb.makeRenderCommandEncoder(descriptor: textureManager.renderPassDescriptor) else {
+            // commit して completed handler を発火させ、セマフォを返す
             cb.commit()
             self.commandBuffer = nil
             return
         }
         self.encoder = enc
-        canvas.begin(encoder: enc)
+        canvas.begin(encoder: enc, bufferIndex: bufferIndex)
+        bufferIndex = (bufferIndex + 1) % Self.inflightCount
     }
 
     /// 描画を終了します。
@@ -206,7 +230,7 @@ public final class Graphics {
     ///   - max2: 第2チャンネルの最大値。
     ///   - max3: 第3チャンネルの最大値。
     ///   - maxA: アルファチャンネルの最大値。
-    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) { canvas.colorMode(space, max1, max2, max3, maxA) }
+    public func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil) { canvas.colorMode(space, max1, max2, max3, maxA) }
 
     /// 全チャンネルに均一な最大値を持つカラーモードを設定します。
     /// - Parameters:

@@ -21,6 +21,8 @@ jobs:
     runs-on: macos-26
     permissions:
       contents: write  # Required to auto-push regenerated examples index back to PR branches.
+      actions: write   # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
+      statuses: write  # Required to bridge workflow_dispatch runs to a legacy Status for the ruleset gate.
     steps:
       - uses: actions/checkout@v6
         with:
@@ -28,6 +30,9 @@ jobs:
           # Need history for diffing against the push base / PR base to decide
           # whether to run the llms.txt staleness check.
           fetch-depth: 0
+          # Don't leave the token in .git/config for every later step; the
+          # auto-push step authenticates explicitly with its own token.
+          persist-credentials: false
       - name: Detect Source changes
         id: source-changed
         run: |
@@ -44,11 +49,16 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # After a force push the old tip can be unreachable; fall back to
+          # assuming Sources changed rather than failing the whole job.
+          if ! changed_files=$(git diff --name-only "$base" "$head" \
+              -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' 2>/dev/null); then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Trigger the llms.txt staleness check when either the inputs
           # (Sources/) or the generator script change.
-          if git diff --name-only "$base" "$head" \
-              -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' \
-              | grep -q .; then
+          if echo "$changed_files" | grep -q .; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -92,13 +102,17 @@ jobs:
         if: |
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          # Passed via env (not inline interpolation) so branch names containing
+          # shell metacharacters can't inject into this script.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          head_ref="${{ github.event.pull_request.head.ref }}"
           # Default checkout is the merge commit. Switch to the PR head branch
           # so we can commit + push back without rebasing.
-          git fetch origin "$head_ref"
-          git checkout -B "$head_ref" "origin/$head_ref"
+          git fetch origin "$HEAD_REF"
+          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
 
           python3 scripts/generate-examples-index.py
 
@@ -107,17 +121,36 @@ jobs:
             exit 0
           fi
 
-          echo "Examples index out of date — regenerating and pushing back to $head_ref."
+          echo "Examples index out of date — regenerating and pushing back to $HEAD_REF."
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/ai/examples-index.md docs/ai/examples-index.json
           git commit -m "ci: regenerate examples index"
-          git push origin "HEAD:$head_ref"
-          # The push fires a fresh CI run; concurrency:cancel-in-progress will
-          # retire this run. Continue so the immediate validate step also passes
-          # locally on this runner.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:$HEAD_REF"
+          # GITHUB_TOKEN pushes do NOT fire push/pull_request workflows (GitHub
+          # recursion guard), so the new head SHA would never receive the
+          # required build-and-test check and the PR would become unmergeable.
+          # workflow_dispatch is exempt from the guard — re-enter CI explicitly,
+          # same trick the Release workflow uses.
+          gh workflow run ci.yml --ref "$HEAD_REF"
+          # Continue so the immediate validate step also passes locally on this
+          # runner; the dispatched run validates (and statuses) the new SHA.
       - name: Validate AI-facing docs
         run: ./scripts/validate-ai-docs.sh
+      - name: Bridge to legacy status (workflow_dispatch only)
+        # Repository rulesets on personal repos evaluate required_status_checks
+        # against the legacy Statuses API. pull_request runs satisfy it through
+        # the normal path, but workflow_dispatch runs (release branches, the
+        # examples-index auto-push re-dispatch above) only produce a check_run,
+        # so mirror the green result as a status on the commit we just tested.
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=build-and-test \
+            -f description="CI passed via workflow_dispatch run"
       - name: Coverage Report
         if: always()
         run: |
