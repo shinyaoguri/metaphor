@@ -108,6 +108,67 @@ struct GIFExporterTests {
         }
         #expect(CGImageSourceGetCount(src) == frameColors.count)
     }
+
+    /// onCaptureOutput フック経由のキャプチャが「今描いたフレーム」を記録すること。
+    /// 旧実装（endFrame で独自コマンドバッファを即コミット）は同一キュー上で
+    /// メインコマンドバッファより先に実行され、1 フレーム前を記録していた。
+    @Test("renderer hook captures the current frame, not the previous one",
+          .enabled(if: MetalTestHelper.isGPUAvailable))
+    func rendererHookCapturesCurrentFrame() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let exporter = GIFExporter()
+        exporter.beginRecord(fps: 10, width: 32, height: 32)
+
+        renderer.onCaptureOutput = { texture, commandBuffer in
+            exporter.captureFrame(
+                texture: texture, device: renderer.device, commandBuffer: commandBuffer)
+        }
+
+        // フレームごとに異なるクリアカラーで描画（R, G, B）
+        let colors: [(Double, Double, Double)] = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+        for (r, g, b) in colors {
+            renderer.setClearColor(r, g, b)
+            renderer.renderFrame()
+        }
+        renderer.onCaptureOutput = nil
+
+        let outPath = NSTemporaryDirectory() + "metaphor_gif_hook_\(UUID().uuidString).gif"
+        try exporter.endRecord(to: outPath)
+        defer { try? FileManager.default.removeItem(atPath: outPath) }
+
+        let url = URL(fileURLWithPath: outPath) as CFURL
+        guard let src = CGImageSourceCreateWithURL(url, nil) else {
+            Issue.record("Failed to read back GIF")
+            return
+        }
+        #expect(CGImageSourceGetCount(src) == colors.count)
+
+        // 各フレームの中心ピクセルが「そのフレームの」色であること
+        for (i, (r, g, b)) in colors.enumerated() {
+            guard let image = CGImageSourceCreateImageAtIndex(src, i, nil) else {
+                Issue.record("Failed to decode GIF frame \(i)")
+                continue
+            }
+            var pixel = [UInt8](repeating: 0, count: 4)
+            guard let ctx = CGContext(
+                data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                Issue.record("Failed to create context")
+                continue
+            }
+            // 中心 1px に縮小描画してサンプリング
+            ctx.interpolationQuality = .none
+            ctx.draw(image, in: CGRect(x: -16, y: -16, width: 32, height: 32))
+            let expected: [UInt8] = [UInt8(r * 255), UInt8(g * 255), UInt8(b * 255)]
+            for c in 0..<3 {
+                let diff = abs(Int(pixel[c]) - Int(expected[c]))
+                #expect(diff < 64,
+                        "Frame \(i) channel \(c): got \(pixel[c]), expected ~\(expected[c]) — off-by-one-frame capture?")
+            }
+        }
+    }
 }
 
 // MARK: - D-20: Orbit Camera

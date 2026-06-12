@@ -46,6 +46,17 @@ public final class MetaphorRenderer: NSObject {
     ///   - time: レンダラー開始からの経過時間（秒）
     public var onCompute: ((MTLCommandBuffer, Double) -> Void)?
 
+    /// フレームの最終出力（ポストエフェクト適用後）を、コミット前のメイン
+    /// コマンドバッファとともに受け取るフック。
+    ///
+    /// 動画 / 静止画エクスポートと同じタイミングで追加キャプチャ（GIF 録画など）を
+    /// 同じコマンドバッファに同乗させるために使われます。独自のコマンドバッファを
+    /// 作って即コミットすると、同じキュー上で先に実行されて「1 フレーム前」を
+    /// 読んでしまうことに注意してください。
+    ///
+    /// 現在は SketchContext の GIF 録画が使用します（単一スロット）。
+    public var onCaptureOutput: ((MTLTexture, MTLCommandBuffer) -> Void)?
+
     /// メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
     ///
     /// - Parameter commandBuffer: 追加パスのエンコード用コマンドバッファ
@@ -858,6 +869,10 @@ public final class MetaphorRenderer: NSObject {
                 completionGroup: readbackGroup
             )
         }
+
+        // 追加キャプチャフック（GIF 録画など）— 動画エクスポートと同じく
+        // ポストエフェクト適用済みの最終出力を、コミット前のバッファで渡す
+        onCaptureOutput?(outputTexture, commandBuffer)
 
         // プラグイン: レンダー後（出力プラグインに最終テクスチャを提供）
         for plugin in plugins {
