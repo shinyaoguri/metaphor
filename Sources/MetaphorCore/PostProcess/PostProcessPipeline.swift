@@ -254,7 +254,11 @@ public final class PostEffectContext {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
         )
-        desc.usage = [.renderTarget, .shaderRead]
+        // .shaderWrite: MPS カーネル（MPSBlurEffect 等）やコンピュートベースの
+        // エフェクトはこのテクスチャを destination として直接書き込む。
+        // .renderTarget/.shaderRead だけだと Metal validation でアサートし、
+        // validation 無効時も書き込みは未定義動作になる。
+        desc.usage = [.renderTarget, .shaderRead, .shaderWrite]
         desc.storageMode = .private
         // まずヒープ確保を試み、失敗時はデバイスにフォールバック
         if let heap = textureHeap, let tex = heap.makeTexture(descriptor: desc) {

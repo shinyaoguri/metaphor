@@ -139,6 +139,23 @@ public final class GIFExporter {
     ///   - device: ステージングテクスチャ作成に使用する Metal デバイス。
     ///   - commandQueue: ブリットコマンドの発行に使用するコマンドキュー。
     public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) {
+        guard isRecording else { return }
+        guard let cmdBuf = commandQueue.makeCommandBuffer() else { return }
+        captureFrame(texture: texture, device: device, commandBuffer: cmdBuf)
+        cmdBuf.commit()
+    }
+
+    /// 既存のコマンドバッファに blit を同乗させて現在のフレームをキャプチャします。
+    ///
+    /// フレームのメインコマンドバッファ（コミット前）を渡すことで、
+    /// 「今まさに描画されたフレーム」がキャプチャされます。自前のコマンドバッファを
+    /// 即時コミットする ``captureFrame(texture:device:commandQueue:)`` は、同じ
+    /// キュー上で先に実行されるため 1 フレーム前の内容を読みます。
+    /// - Parameters:
+    ///   - texture: キャプチャ対象の Metal テクスチャ。
+    ///   - device: ステージングテクスチャ作成に使用する Metal デバイス。
+    ///   - commandBuffer: blit を追加するコマンドバッファ（呼び出し側がコミットする）。
+    public func captureFrame(texture: MTLTexture, device: MTLDevice, commandBuffer: MTLCommandBuffer) {
         guard isRecording, let dest = destination else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
@@ -165,12 +182,25 @@ public final class GIFExporter {
         let staging = stagingRing[ringIndex]
         ringIndex = (ringIndex + 1) % Self.ringSize
 
-        guard let cmdBuf = commandQueue.makeCommandBuffer(),
-              let blit = cmdBuf.makeBlitCommandEncoder() else {
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else {
             inFlightSemaphore.signal()
             return
         }
-        blit.copy(from: texture, to: staging)
+        if texture.width == staging.width && texture.height == staging.height {
+            blit.copy(from: texture, to: staging)
+        } else {
+            // カスタムキャプチャサイズ: 全テクスチャ copy は寸法一致が必須なので、
+            // 共通領域だけを領域指定でコピーする
+            let copyW = min(texture.width, staging.width)
+            let copyH = min(texture.height, staging.height)
+            blit.copy(
+                from: texture, sourceSlice: 0, sourceLevel: 0,
+                sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                sourceSize: MTLSize(width: copyW, height: copyH, depth: 1),
+                to: staging, destinationSlice: 0, destinationLevel: 0,
+                destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+            )
+        }
         blit.endEncoding()
 
         // @Sendable クロージャ用のローカルコピー
@@ -182,7 +212,7 @@ public final class GIFExporter {
         let semaphore = inFlightSemaphore
 
         group.enter()
-        cmdBuf.addCompletedHandler { @Sendable _ in
+        commandBuffer.addCompletedHandler { @Sendable _ in
             // すべての書き出し処理は writerQueue 上で直列化される
             queue.async {
                 defer {
@@ -194,14 +224,16 @@ public final class GIFExporter {
                 }
                 let frameProperties: [String: Any] = [
                     kCGImagePropertyGIFDictionary as String: [
-                        kCGImagePropertyGIFDelayTime as String: capturedDelay
+                        kCGImagePropertyGIFDelayTime as String: capturedDelay,
+                        // 多くのデコーダは DelayTime < 0.02s を 0.1s に丸めるため、
+                        // 高 fps 用に Unclamped も併記する
+                        kCGImagePropertyGIFUnclampedDelayTime as String: capturedDelay
                     ]
                 ]
                 CGImageDestinationAddImage(capturedDest, image, frameProperties as CFDictionary)
             }
         }
 
-        cmdBuf.commit()
         frameCount += 1
     }
 
