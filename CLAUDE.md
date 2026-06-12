@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+> NOTE: `AGENTS.md` はこのファイルのコピー（タイトル行のみ異なる）です。
+> こちらを変更したら `AGENTS.md` も同じ内容に更新してください。
+
 ## Build Commands
 
 ```bash
@@ -97,7 +100,7 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 | 3D Shapes | box, sphere, plane, cylinder, cone, torus, mesh, loadModel | Sketch+3D.swift |
 | Style | fill, stroke, strokeWeight, blendMode, background, tint | Sketch+Style.swift |
 | Transform | translate, rotate, scale, push/pop | Sketch+Shapes.swift |
-| Camera | camera, perspective, ortho, orbitControl | Sketch+3D.swift |
+| Camera | camera, perspective, ortho, orbitControl | Sketch+3D.swift, Sketch+Advanced.swift (orbitControl) |
 | Lighting | lights, directionalLight, pointLight, spotLight | Sketch+3D.swift |
 | Material | specular, metallic, roughness, pbr, createMaterial | Sketch+3D.swift |
 | Image | loadImage, image, createGraphics, createCapture | Sketch+Image.swift |
@@ -106,12 +109,12 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 | Compute | createComputeKernel, createBuffer, dispatch | Sketch+Advanced.swift |
 | Particles | createParticleSystem, updateParticles, drawParticles | Sketch+Advanced.swift |
 | PostFX | addPostEffect, createPostEffect, BloomEffect, BlurEffect | Sketch+Advanced.swift |
-| Export | save, beginVideoRecord, beginGIFRecord, beginRecord | Sketch+Image.swift |
+| Export | save, beginVideoRecord, beginGIFRecord, beginRecord | Sketch+Image.swift, Sketch+Advanced.swift (GIF) |
 | Audio | createAudioInput, loadSound | Sketch+AudioBridge.swift |
 | Video | loadVideo, image(video) | Sketch+VideoBridge.swift |
 | Physics | createPhysics2D | Sketch+PhysicsBridge.swift |
 | Network | createOSCReceiver, createMIDI | Sketch+NetworkBridge.swift |
-| Noise | createNoise, noiseTexture, noise() | Sketch+NoiseBridge.swift |
+| Noise | createNoise, noiseTexture, noise() | Sketch+NoiseBridge.swift, Noise.swift (noise()) |
 | SceneGraph | createNode, drawScene | Sketch+SceneGraphBridge.swift |
 | RenderGraph | createSourcePass, createEffectPass, createMergePass | Sketch+RenderGraphBridge.swift |
 | Probe (AI) | probe(name, value), MetaphorProbePlugin | Sketch+Probe.swift |
