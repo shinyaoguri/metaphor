@@ -104,6 +104,16 @@ public final class SoundFile {
     }
     private var _rate: Float = 1.0
 
+    /// playerNode のキューに未消化のスケジュール（ファイル全体またはセグメント）が
+    /// あるかどうか。pause() → play() の再開時に同じファイルを二重スケジュール
+    /// しないために追跡する。
+    private var hasPendingSchedule: Bool = false
+
+    /// 直近のスケジュールが始まったファイル内位置（秒）。
+    /// playerNode の sampleTime はスケジュールし直すたびに 0 から数え直されるため、
+    /// シーク後も ``position`` が正しいファイル内位置を返すための基準値。
+    private var scheduledBaseTime: Double = 0
+
     // MARK: - 解析統合
 
     /// ファイル再生のスペクトル解析用内部 AudioAnalyzer。
@@ -161,7 +171,12 @@ public final class SoundFile {
             }
         }
 
-        scheduleFile()
+        // pause() からの再開やシーク直後はキューに残っているスケジュールを
+        // そのまま再生する。無条件に scheduleFile() すると同じファイルが
+        // 二重にキューイングされ、現在の再生終了後にもう一度頭から流れる。
+        if !hasPendingSchedule {
+            scheduleFile()
+        }
         audioEngine.varispeedNode.rate = _rate
         audioEngine.playerNode.play()
         isPlaying = true
@@ -177,6 +192,9 @@ public final class SoundFile {
     public func stop() {
         audioEngine.playerNode.stop()
         isPlaying = false
+        // stop() は playerNode のキューを破棄する
+        hasPendingSchedule = false
+        scheduledBaseTime = 0
     }
 
     /// ループを有効にして再生を開始します。
@@ -186,26 +204,34 @@ public final class SoundFile {
     }
 
     /// 現在の再生位置（秒）を取得または設定します。
+    ///
+    /// 設定値は `0...duration` にクランプされます。末尾以降へのシークは停止扱いです。
     public var position: Double {
         get {
             guard let nodeTime = audioEngine.playerNode.lastRenderTime,
                   let playerTime = audioEngine.playerNode.playerTime(forNodeTime: nodeTime) else {
-                return 0
+                return scheduledBaseTime
             }
-            return Double(playerTime.sampleTime) / playerTime.sampleRate
+            // sampleTime はスケジュール開始からの経過。シーク位置を加算して
+            // ファイル内の絶対位置を返す。
+            return scheduledBaseTime + Double(playerTime.sampleTime) / playerTime.sampleRate
         }
         set {
             let wasPlaying = isPlaying
-            audioEngine.playerNode.stop()
+            // stop() はキューを破棄する（hasPendingSchedule / 基準値もリセット）
+            stop()
 
-            let samplePosition = AVAudioFramePosition(newValue * audioFormat.sampleRate)
-            let remainingFrames = AVAudioFrameCount(file.length - samplePosition)
-            guard remainingFrames > 0 else { return }
+            // 範囲外の値で AVAudioFrameCount（UInt32）の初期化がトラップしない
+            // よう、ファイル範囲にクランプする
+            let clamped = max(0, min(newValue, duration))
+            let samplePosition = AVAudioFramePosition(clamped * audioFormat.sampleRate)
+            let remainingFrames64 = file.length - samplePosition
+            guard remainingFrames64 > 0 else { return }
 
             audioEngine.playerNode.scheduleSegment(
                 file,
                 startingFrame: samplePosition,
-                frameCount: remainingFrames,
+                frameCount: AVAudioFrameCount(remainingFrames64),
                 at: nil,
                 completionCallbackType: .dataPlayedBack
             ) { [weak self] _ in
@@ -213,6 +239,8 @@ public final class SoundFile {
                     self?.handlePlaybackCompletion()
                 }
             }
+            hasPendingSchedule = true
+            scheduledBaseTime = clamped
 
             if wasPlaying {
                 audioEngine.playerNode.play()
@@ -279,9 +307,12 @@ public final class SoundFile {
                 self?.handlePlaybackCompletion()
             }
         }
+        hasPendingSchedule = true
+        scheduledBaseTime = 0
     }
 
     private func handlePlaybackCompletion() {
+        hasPendingSchedule = false
         if isLooping {
             audioEngine.playerNode.stop()
             scheduleFile()
