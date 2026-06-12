@@ -312,7 +312,9 @@ public final class SketchContext {
             canvas.markPendingClearColorApplied()
         }
 
-        // GIF フレームキャプチャ
-        captureGIFFrame()
+        // GIF キャプチャは renderer.onCaptureOutput（beginGIFRecord で配線）に
+        // 移動した。endFrame 時点ではメインコマンドバッファが未コミットのため、
+        // ここで独自バッファをコミットすると 1 フレーム前の内容
+        // （しかもポストエフェクト適用前の colorTexture）を読んでしまう。
     }
 }
