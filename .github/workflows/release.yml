@@ -81,14 +81,21 @@ jobs:
           LABEL="${{ github.event.inputs.prerelease_label }}"
 
           if [ "$BUMP" = "prerelease" ]; then
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-            if [[ "$LATEST_TAG" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-([a-zA-Z]+)\.([0-9]+)$ ]]; then
+            # Pick the highest prerelease tag by version order. `git describe`
+            # returns the topologically nearest tag, which can be a stable tag
+            # (or the wrong cycle) once stable and prerelease tags interleave.
+            LATEST_PRE=$(git tag -l 'v*-*' | sort -V | tail -1 || true)
+            if [[ "$LATEST_PRE" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-([a-zA-Z]+)\.([0-9]+)$ ]]; then
               BASE="${BASH_REMATCH[1]}"
               PRE_LABEL="${BASH_REMATCH[2]}"
               N="${BASH_REMATCH[3]}"
+              if git rev-parse "$BASE" >/dev/null 2>&1; then
+                echo "::error::Prerelease cycle ${BASE}-${PRE_LABEL} already graduated to stable ${BASE}. Use bump=patch/minor/major with prerelease_label to start a new cycle."
+                exit 1
+              fi
               TAG_NAME="${BASE}-${PRE_LABEL}.$((N + 1))"
             else
-              echo "::error::bump=prerelease requires the latest tag to be a prerelease (got '$LATEST_TAG'). Use bump=patch/minor/major with prerelease_label to start a new prerelease cycle."
+              echo "::error::bump=prerelease requires an existing prerelease tag (got '${LATEST_PRE:-none}'). Use bump=patch/minor/major with prerelease_label to start a new prerelease cycle."
               exit 1
             fi
           else
@@ -134,12 +141,22 @@ jobs:
           git checkout -b "$RELEASE_BRANCH"
           sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
-          # README only tracks stable versions in its `from:` example.
+          # Only stable versions appear in `from:` install snippets. Keep every
+          # file that carries the snippet in sync — CI on this release branch
+          # enforces agreement (validate-ai-docs.sh check #6 compares
+          # GettingStarted.md and llms.txt against README.md, and the llms.txt
+          # staleness check regenerates with the README version embedded), so
+          # updating README.md alone deadlocks the release.
           if [ "$IS_PRERELEASE" = "false" ]; then
             VERSION_NUM=${TAG_NAME#v}
-            sed -i '' "s|from: \"[0-9]*\.[0-9]*\.[0-9]*\"|from: \"${VERSION_NUM}\"|g" README.md
+            # Anchor on the dependency URL so unrelated `from:` parameter
+            # labels (e.g. tween(from:to:)) in llms.txt are left alone.
+            sed -i '' "s|metaphor\.git\", from: \"[0-9][^\"]*\"|metaphor.git\", from: \"${VERSION_NUM}\"|g" \
+              README.md \
+              Sources/metaphor/metaphor.docc/GettingStarted.md \
+              llms.txt
           fi
-          git add Package.swift README.md
+          git add Package.swift README.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt
           if git diff --cached --quiet; then
             echo "::error::No version-bump diff produced."
             exit 1
@@ -152,11 +169,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create \
+          PR_URL=$(gh pr create \
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
-            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and README.md' || '' }}."
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, GettingStarted.md, llms.txt)' || '' }}.")
+          echo "PR_NUMBER=${PR_URL##*/}" >> "$GITHUB_ENV"
 
       - name: Trigger CI on release branch
         env:
@@ -211,7 +229,7 @@ jobs:
           # only as a check_run, so the ruleset stays unsatisfied even
           # though CI is green. Mirror our successful check_run as a
           # status with the same context so the rule is satisfied.
-          PR_SHA=$(gh pr view "$RELEASE_BRANCH" --json headRefOid --jq '.headRefOid')
+          PR_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
             -f state=success \
             -f context=build-and-test \
@@ -220,16 +238,24 @@ jobs:
       - name: Squash-merge release PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "$RELEASE_BRANCH" --squash --delete-branch
+        run: gh pr merge "$PR_NUMBER" --squash --delete-branch
 
       # --- Tag the merged commit on main ---
       - name: Tag the merged commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # Tag the squash commit this PR actually produced. Tagging the tip of
+          # main after a pull races with anything merged in the meantime — an
+          # unrelated commit could end up tagged as the release.
+          MERGE_SHA=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid')
+          if [ -z "$MERGE_SHA" ] || [ "$MERGE_SHA" = "null" ]; then
+            echo "::error::Could not resolve the merge commit for PR #${PR_NUMBER}."
+            exit 1
+          fi
           git fetch origin main
-          git checkout main
-          git pull --ff-only
-          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME" "$MERGE_SHA"
           git push origin "$TAG_NAME"
 
       # --- GitHub Release with binary artifacts ---
