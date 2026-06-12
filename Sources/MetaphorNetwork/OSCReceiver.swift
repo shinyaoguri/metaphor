@@ -57,6 +57,9 @@ private final class OSCListenerState: Sendable {
     private struct State: @unchecked Sendable {
         var listener: NWListener?
         var isRunning: Bool = false
+        // 受け付けた UDP フロー。stop() でリスナーだけ cancel しても
+        // 確立済みコネクションは受信し続けるため、追跡して一緒に閉じる。
+        var connections: [NWConnection] = []
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
@@ -70,10 +73,24 @@ private final class OSCListenerState: Sendable {
         set { state.withLock { $0.isRunning = newValue } }
     }
 
+    func track(_ connection: NWConnection) {
+        state.withLock { s in
+            // 終了済みコネクションを掃除してから追加（無限成長の防止）
+            s.connections.removeAll { conn in
+                if case .cancelled = conn.state { return true }
+                if case .failed = conn.state { return true }
+                return false
+            }
+            s.connections.append(connection)
+        }
+    }
+
     func cancel() {
         state.withLock { s in
             s.listener?.cancel()
             s.listener = nil
+            s.connections.forEach { $0.cancel() }
+            s.connections.removeAll()
             s.isRunning = false
         }
     }
@@ -157,8 +174,10 @@ public final class OSCReceiver {
         let listener = try NWListener(using: params, on: nwPort)
 
         let queue = messageQueue
+        let state = listenerState
 
         listener.newConnectionHandler = { connection in
+            state.track(connection)
             connection.start(queue: oscNetworkQueue)
             Self.receiveLoop(connection: connection, queue: queue)
         }
@@ -214,6 +233,10 @@ public final class OSCReceiver {
 
             if error == nil {
                 receiveLoop(connection: connection, queue: queue)
+            } else {
+                // エラーで受信を打ち切る場合はコネクションを明示的に閉じる
+                // （放置するとフローがリークする）
+                connection.cancel()
             }
         }
     }
@@ -276,36 +299,48 @@ enum OSCParser {
         guard let typeTags = readString(data: data, offset: pos) else { return nil }
         pos += alignedSize(typeTags.utf8.count + 1)
 
-        // 値をパース（先頭の ',' をスキップ）
+        // 値をパース（先頭の ',' をスキップ）。
+        // 注意: switch 内の `break` は switch を抜けるだけでループは継続する。
+        // 切り詰められたデータで残りのタイプタグを読み続けるとオフセットが
+        // ずれて「静かに間違った値」を量産するため、異常を見つけたら
+        // ラベル付き break でループ全体を打ち切る。
         var values: [OSCValue] = []
-        for ch in typeTags.dropFirst() {  // ',' をスキップ
+        parseLoop: for ch in typeTags.dropFirst() {  // ',' をスキップ
             switch ch {
             case "i":
-                guard pos + 4 <= data.count else { break }
+                guard pos + 4 <= data.count else { break parseLoop }
                 values.append(.int(readInt32(data: data, offset: pos)))
                 pos += 4
 
             case "f":
-                guard pos + 4 <= data.count else { break }
+                guard pos + 4 <= data.count else { break parseLoop }
                 values.append(.float(readFloat32(data: data, offset: pos)))
                 pos += 4
 
             case "s":
-                guard let str = readString(data: data, offset: pos) else { break }
+                guard let str = readString(data: data, offset: pos) else { break parseLoop }
                 values.append(.string(str))
                 pos += alignedSize(str.utf8.count + 1)
 
             case "b":
-                guard pos + 4 <= data.count else { break }
+                // サイズフィールドとペイロードの両方が揃っているのを確認して
+                // から pos を進める（途中で諦めると以降の読み出しがずれる）
+                guard pos + 4 <= data.count else { break parseLoop }
                 let blobSize = Int(readInt32(data: data, offset: pos))
+                guard blobSize >= 0, blobSize <= data.count - pos - 4 else { break parseLoop }
                 pos += 4
-                guard blobSize >= 0, blobSize <= data.count - pos else { break }
                 let blob = data.subdata(in: pos..<(pos + blobSize))
                 values.append(.blob(blob))
                 pos += alignedSize(blobSize)
 
+            // ゼロ長の標準タグは読み飛ばせる（値は持たない）
+            case "T", "F", "N", "I":
+                continue
+
             default:
-                break
+                // 未知のタイプタグはペイロード長が分からないため、
+                // 以降のオフセットを信頼できない。ここで打ち切る。
+                break parseLoop
             }
         }
 
