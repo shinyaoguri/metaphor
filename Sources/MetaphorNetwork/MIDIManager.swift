@@ -265,42 +265,58 @@ public final class MIDIManager {
         }
     }
 
-    private nonisolated static func parseEventList(_ eventList: UnsafePointer<MIDIEventList>) -> [MIDIMessage] {
+    /// UMP メッセージタイプごとのワード数（MIDI 2.0 UMP 仕様）。
+    /// マルチワードメッセージのペイロードを 1 ワードずつ走査すると、
+    /// ペイロード内の偶然のビットパターンをメッセージとして誤認するため、
+    /// メッセージ単位でスキップするのに使う。
+    private nonisolated static func umpWordCount(forMessageType mt: UInt32) -> Int {
+        switch mt {
+        case 0x0, 0x1, 0x2, 0x6, 0x7: return 1
+        case 0x3, 0x4, 0x8, 0x9, 0xA: return 2
+        case 0xB, 0xC: return 3
+        default: return 4  // 0x5, 0xD, 0xE, 0xF
+        }
+    }
+
+    // internal: テストから直接イベントリストを与えて検証できるようにする
+    nonisolated static func parseEventList(_ eventList: UnsafePointer<MIDIEventList>) -> [MIDIMessage] {
         var messages: [MIDIMessage] = []
-        let list = eventList.pointee
 
-        withUnsafePointer(to: list.packet) { firstPacket in
-            var packet = firstPacket
-            for _ in 0..<list.numPackets {
-                let p = packet.pointee
-                let timestamp = p.timeStamp
+        // MIDIEventList は可変長構造体。`pointee` でローカルにコピーすると
+        // ヘッダ + 先頭パケットの固定領域しか複製されず、2 パケット目以降を
+        // MIDIEventPacketNext で歩くとコピーの外（スタック外）を読む。
+        // 必ず元のポインタ上を unsafeSequence() で反復する。
+        for packetPtr in eventList.unsafeSequence() {
+            let timestamp = packetPtr.pointee.timeStamp
+            let wordCount = Int(packetPtr.pointee.wordCount)
 
-                // UMP 1.0: 各ワードをパース
-                withUnsafePointer(to: p.words) { wordsPtr in
-                    wordsPtr.withMemoryRebound(to: UInt32.self, capacity: Int(p.wordCount)) { words in
-                        for i in 0..<Int(p.wordCount) {
-                            let word = words[i]
-                            let messageType = (word >> 28) & 0x0F
+            // パケットは詰めて配置されるため、words はコピーせず元バッファ上で
+            // wordCount 分だけ読む
+            let wordsBase = (UnsafeRawPointer(packetPtr) + MemoryLayout<MIDIEventPacket>.offset(of: \.words)!)
+                .assumingMemoryBound(to: UInt32.self)
 
-                            // Type 2: MIDI 1.0 チャンネルボイスメッセージ
-                            if messageType == 2 {
-                                let statusByte = UInt8((word >> 16) & 0xFF)
-                                let channel = statusByte & 0x0F
-                                let d1 = UInt8((word >> 8) & 0x7F)
-                                let d2 = UInt8(word & 0x7F)
-                                messages.append(MIDIMessage(
-                                    status: statusByte,
-                                    channel: channel,
-                                    data1: d1,
-                                    data2: d2,
-                                    timestamp: timestamp
-                                ))
-                            }
-                        }
-                    }
+            var i = 0
+            while i < wordCount {
+                let word = wordsBase[i]
+                let messageType = (word >> 28) & 0x0F
+
+                // Type 2: MIDI 1.0 チャンネルボイスメッセージ
+                if messageType == 2 {
+                    let statusByte = UInt8((word >> 16) & 0xFF)
+                    let channel = statusByte & 0x0F
+                    let d1 = UInt8((word >> 8) & 0x7F)
+                    let d2 = UInt8(word & 0x7F)
+                    messages.append(MIDIMessage(
+                        status: statusByte,
+                        channel: channel,
+                        data1: d1,
+                        data2: d2,
+                        timestamp: timestamp
+                    ))
                 }
 
-                packet = UnsafePointer(MIDIEventPacketNext(UnsafeMutablePointer(mutating: packet)))
+                // マルチワードメッセージはペイロードごとスキップ
+                i += Self.umpWordCount(forMessageType: messageType)
             }
         }
 
