@@ -42,13 +42,15 @@ extension SketchContext {
     // MARK: - Color Mode
 
     /// 2D・3D 両方のキャンバスに色空間とチャンネル最大値を設定します。
+    ///
+    /// 未指定のチャンネルは現在の最大値を維持します（既定は 0〜255）。
     /// - Parameters:
     ///   - space: 使用する色空間。
-    ///   - max1: 第1チャンネルの最大値。
-    ///   - max2: 第2チャンネルの最大値。
-    ///   - max3: 第3チャンネルの最大値。
-    ///   - maxA: アルファチャンネルの最大値。
-    public func colorMode(_ space: ColorSpace, _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxA: Float = 1.0) {
+    ///   - max1: 第1チャンネルの最大値。省略時は現在値を維持。
+    ///   - max2: 第2チャンネルの最大値。省略時は現在値を維持。
+    ///   - max3: 第3チャンネルの最大値。省略時は現在値を維持。
+    ///   - maxA: アルファチャンネルの最大値。省略時は現在値を維持。
+    public func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil) {
         canvas.colorMode(space, max1, max2, max3, maxA)
         canvas3D.colorMode(space, max1, max2, max3, maxA)
     }

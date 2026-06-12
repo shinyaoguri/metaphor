@@ -36,7 +36,7 @@ final class MySketch: Sketch {
     }
 
     func draw() {
-        background(0.1)
+        background(25)
         fill(Color.white)
         circle(width / 2, height / 2, 200)
     }

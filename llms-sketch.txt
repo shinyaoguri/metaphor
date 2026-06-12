@@ -24,8 +24,8 @@ final class MySketch: Sketch {
     }
 
     func draw() {
-        background(0.05)
-        fill(1.0)
+        background(13)
+        fill(255)
         circle(width / 2, height / 2, 120)
     }
 }
@@ -40,8 +40,10 @@ final class MySketch: Sketch {
 - Use `time`, `deltaTime`, and `frameCount` for animation.
 - Pair `push()` with `pop()` and `pushStyle()` with `popStyle()`.
 - Use `width` and `height` instead of hardcoded canvas bounds when possible.
-- Use `Color`, normalized floats (`0...1`), or Processing-like gray values
-  consistently in one sketch.
+- Colors default to Processing-style `0...255` ranges for RGB/gray/alpha
+  (`fill(255, 102, 51)`, `background(13)`). Use `colorMode(.rgb, 1, 1, 1, 1)`
+  first if you want normalized `0...1` values. Use `Color` constants or one
+  range consistently in one sketch.
 - For export or deterministic rendering, prefer offline-render APIs rather than
   wall-clock timing.
 

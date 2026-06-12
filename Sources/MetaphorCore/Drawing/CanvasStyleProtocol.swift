@@ -77,9 +77,18 @@ extension CanvasStyle {
 
     public func colorMode(
         _ space: ColorSpace,
-        _ max1: Float = 1.0, _ max2: Float = 1.0, _ max3: Float = 1.0, _ maxAlpha: Float = 1.0
+        _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxAlpha: Float? = nil
     ) {
-        colorModeConfig = ColorModeConfig(space: space, max1: max1, max2: max2, max3: max3, maxAlpha: maxAlpha)
+        // Processing 互換: 未指定のチャンネルは現在の最大値を維持する。
+        // （以前は未指定チャンネルが 1.0 に黙ってリセットされ、colorMode(.hsb)
+        // のような呼び出しが全チャンネルのレンジを変えてしまっていた。）
+        let current = colorModeConfig
+        colorModeConfig = ColorModeConfig(
+            space: space,
+            max1: max1 ?? current.max1,
+            max2: max2 ?? current.max2,
+            max3: max3 ?? current.max3,
+            maxAlpha: maxAlpha ?? current.maxAlpha)
     }
 
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
