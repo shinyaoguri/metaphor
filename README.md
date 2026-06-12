@@ -132,7 +132,7 @@ background(r, g, b)
 fill(r, g, b);  fill(gray)
 stroke(r, g, b); strokeWeight(2)
 noFill();  noStroke()
-blendMode(.add)
+blendMode(.additive)
 
 // --- 変換（push/pop でスタック）
 push()
