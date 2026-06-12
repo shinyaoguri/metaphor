@@ -322,3 +322,80 @@ struct OSCReceiverFunctionalTests {
         osc.stop()
     }
 }
+
+// MARK: - OSC Parser truncation/robustness
+
+@Suite("OSC Parser truncated data")
+struct OSCParserTruncationTests {
+
+    /// タイプタグが3つあるのにペイロードが1つ分しかない —
+    /// 最初の値だけパースして打ち切ること（以前は switch 内の break が
+    /// ループを抜けず、ずれたオフセットから残りを読み続けた）。
+    @Test("truncated payload stops at the first missing value")
+    func truncatedPayloadStops() {
+        var data = Data()
+        OSCBinaryHelper.appendOSCString("/t", to: &data)
+        OSCBinaryHelper.appendOSCString(",iii", to: &data)
+        OSCBinaryHelper.appendInt32(7, to: &data)
+        // 2 つ目・3 つ目の int は欠落
+
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.count == 1)
+        #expect(messages[0].values.count == 1)
+        if case .int(let v) = messages[0].values.first {
+            #expect(v == 7)
+        } else {
+            Issue.record("Expected .int value")
+        }
+    }
+
+    /// blob のサイズフィールドだけあってペイロードが欠けている場合、
+    /// 以前は pos がサイズフィールド分進んだ後に打ち切られ、後続の値が
+    /// 4 バイトずれた位置から「静かに間違った値」として読まれていた。
+    @Test("truncated blob does not shift subsequent reads")
+    func truncatedBlobStops() {
+        var data = Data()
+        OSCBinaryHelper.appendOSCString("/b", to: &data)
+        OSCBinaryHelper.appendOSCString(",bi", to: &data)
+        OSCBinaryHelper.appendInt32(1024, to: &data)  // ペイロードのない blob サイズ
+        OSCBinaryHelper.appendInt32(99, to: &data)    // 後続の int（blob 欠落により到達不能）
+
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.count == 1)
+        // blob が壊れている時点で打ち切り。ずれた位置から int を拾わないこと。
+        #expect(messages[0].values.isEmpty,
+                "Parsing must stop at the malformed blob (got \(messages[0].values))")
+    }
+
+    /// 未知のタイプタグはペイロード長が不明なため、それ以降は打ち切ること。
+    @Test("unknown type tag stops value parsing")
+    func unknownTagStops() {
+        var data = Data()
+        OSCBinaryHelper.appendOSCString("/u", to: &data)
+        OSCBinaryHelper.appendOSCString(",ixi", to: &data)  // 'x' は未知
+        OSCBinaryHelper.appendInt32(1, to: &data)
+        OSCBinaryHelper.appendInt32(2, to: &data)
+
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.count == 1)
+        #expect(messages[0].values.count == 1, "Only the value before the unknown tag should parse")
+    }
+
+    /// ゼロ長の標準タグ（T/F/N/I）は値の読み出し位置をずらさず読み飛ばすこと。
+    @Test("zero-size standard tags are skipped without consuming payload")
+    func zeroSizeTagsSkipped() {
+        var data = Data()
+        OSCBinaryHelper.appendOSCString("/z", to: &data)
+        OSCBinaryHelper.appendOSCString(",TiF", to: &data)
+        OSCBinaryHelper.appendInt32(5, to: &data)
+
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.count == 1)
+        #expect(messages[0].values.count == 1)
+        if case .int(let v) = messages[0].values.first {
+            #expect(v == 5)
+        } else {
+            Issue.record("Expected .int value")
+        }
+    }
+}

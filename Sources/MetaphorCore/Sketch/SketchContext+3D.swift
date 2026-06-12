@@ -683,16 +683,18 @@ extension SketchContext {
             width: renderer.textureManager.width,
             height: renderer.textureManager.height
         )
-    }
-
-    /// GIF フレームをキャプチャします（各フレームで内部的に呼ばれます）。
-    func captureGIFFrame() {
-        guard gifExporter.isRecording else { return }
-        gifExporter.captureFrame(
-            texture: renderer.textureManager.colorTexture,
-            device: renderer.device,
-            commandQueue: renderer.commandQueue
-        )
+        // 動画 / 静止画エクスポートと同じタイミング（ポストエフェクト適用後、
+        // メインコマンドバッファのコミット前）でキャプチャを同乗させる。
+        // 旧実装は endFrame() で独自コマンドバッファを即コミットしていたため、
+        // 1 フレーム前の、ポストエフェクト未適用の colorTexture を記録していた。
+        renderer.onCaptureOutput = { [weak self] texture, commandBuffer in
+            guard let self, self.gifExporter.isRecording else { return }
+            self.gifExporter.captureFrame(
+                texture: texture,
+                device: self.renderer.device,
+                commandBuffer: commandBuffer
+            )
+        }
     }
 
     /// GIF 記録を終了しファイルに書き出します。
@@ -706,6 +708,7 @@ extension SketchContext {
             formatter.dateFormat = "yyyyMMdd_HHmmss"
             actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
         }
+        renderer.onCaptureOutput = nil
         try gifExporter.endRecord(to: actualPath)
     }
 
@@ -720,6 +723,7 @@ extension SketchContext {
             formatter.dateFormat = "yyyyMMdd_HHmmss"
             actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
         }
+        renderer.onCaptureOutput = nil
         try await gifExporter.endRecordAsync(to: actualPath)
     }
 

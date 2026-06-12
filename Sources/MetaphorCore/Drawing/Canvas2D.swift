@@ -455,6 +455,11 @@ public final class Canvas2D: CanvasStyle {
         self.currentBoundTexture = nil
         self.currentTransform = float3x3(1)
         self.stateStack.removeAll(keepingCapacity: true)
+        // 不均衡な pushMatrix()/pushStyle() が draw() 内に残っていても、
+        // フレームをまたいでスタックが無限成長したり変換がリークしたり
+        // しないよう、stateStack と同様に毎フレーム破棄する。
+        self.matrixStack.removeAll(keepingCapacity: true)
+        self.styleOnlyStack.removeAll(keepingCapacity: true)
         // スタイル状態（fill、stroke、colorMode など）はフレーム間で保持される。
         // Processing の動作に合わせ、setup() のスタイルが draw() に引き継がれます。
         self.frameCounter += 1
@@ -491,11 +496,15 @@ public final class Canvas2D: CanvasStyle {
     public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         flush()
         clipStack.append(clipRect)
-        let sx = max(0, Int(x))
-        let sy = max(0, Int(y))
-        let sw = max(0, min(Int(w), Int(width) - sx))
-        let sh = max(0, min(Int(h), Int(height) - sy))
-        clipRect = MTLScissorRect(x: sx, y: sy, width: sw, height: sh)
+        // 要求矩形とキャンバス矩形の交差を取る。
+        // 負の原点では幅・高さも削る必要があり、キャンバス外の矩形は
+        // 空のシザーに潰す（範囲外のシザー矩形は Metal validation で
+        // クラッシュするため、原点もキャンバス内にクランプする）。
+        let x0 = min(max(0, Int(x)), Int(width))
+        let y0 = min(max(0, Int(y)), Int(height))
+        let x1 = min(max(x0, Int(x) + Int(w)), Int(width))
+        let y1 = min(max(y0, Int(y) + Int(h)), Int(height))
+        clipRect = MTLScissorRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
         encoder?.setScissorRect(clipRect!)
     }
 
@@ -869,7 +878,12 @@ public final class Canvas2D: CanvasStyle {
     /// ブレンドモードが変更された場合、現在のバッチをフラッシュします。Processing API と互換です。
     public func pop() {
         guard let saved = stateStack.popLast() else { return }
-        let prevBlendMode = currentBlendMode
+        // 保留中のジオメトリは現在のブレンドモードのパイプラインで描画する必要が
+        // あるため、ブレンドモードを復元する「前」にフラッシュする
+        // （flush は currentBlendMode のパイプラインを選択する）。
+        if saved.blendMode != currentBlendMode {
+            flush()
+        }
         currentTransform = saved.transform
         fillColor = saved.fillColor
         strokeColor = saved.strokeColor
@@ -892,9 +906,6 @@ public final class Canvas2D: CanvasStyle {
         curveTightnessValue = saved.curveTightness
         currentStrokeCap = saved.strokeCap
         currentStrokeJoin = saved.strokeJoin
-        if prevBlendMode != currentBlendMode {
-            flush()
-        }
     }
 
     /// 変換を除くスタイル状態のみをスタイル専用スタックに保存します。
@@ -928,7 +939,10 @@ public final class Canvas2D: CanvasStyle {
     /// スタイル専用スタックからスタイル状態のみを復元します。変換は変更しません。
     public func popStyle() {
         guard let saved = styleOnlyStack.popLast() else { return }
-        let prevBlendMode = currentBlendMode
+        // pop() と同様、ブレンドモード復元前に現在のモードでフラッシュする。
+        if saved.blendMode != currentBlendMode {
+            flush()
+        }
         fillColor = saved.fillColor
         strokeColor = saved.strokeColor
         currentStrokeWeight = saved.strokeWeight
@@ -950,9 +964,6 @@ public final class Canvas2D: CanvasStyle {
         curveTightnessValue = saved.curveTightness
         currentStrokeCap = saved.strokeCap
         currentStrokeJoin = saved.strokeJoin
-        if prevBlendMode != currentBlendMode {
-            flush()
-        }
     }
 
     /// 現在の変換行列のみをマトリクススタックに保存します。

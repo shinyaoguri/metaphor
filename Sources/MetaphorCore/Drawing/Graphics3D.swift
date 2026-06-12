@@ -29,6 +29,13 @@ public final class Graphics3D {
     private var encoder: MTLRenderCommandEncoder?
     private var drawTime: Float = 0
 
+    // メインレンダラーと同じトリプルバッファリング（Graphics と同様）。
+    // 以前は常にスロット 0 を使っていたため、毎フレーム描画すると GPU が
+    // まだ読んでいるインスタンスバッファを CPU が上書きし得た。
+    private static let inflightCount = 3
+    private let inflightSemaphore = DispatchSemaphore(value: inflightCount)
+    private var bufferIndex = 0
+
     /// 幅をピクセル単位で返します。
     public var width: Float { canvas3D.width }
 
@@ -70,19 +77,32 @@ public final class Graphics3D {
     /// オプションの時間値でアニメーション用の描画を開始します。
     /// - Parameter time: Canvas3D に渡される経過時間。
     public func beginDraw(time: Float = 0) {
-        guard let cb = commandQueue.makeCommandBuffer() else { return }
+        // endDraw 漏れの不均衡呼び出しでもセマフォが詰まらないよう先に閉じる
+        if commandBuffer != nil { endDraw() }
+
+        // GPU が inflightCount フレーム以上遅れている場合はここでブロックし、
+        // GPU がまだ読んでいるバッファスロットへの上書きを防ぐ
+        inflightSemaphore.wait()
+        guard let cb = commandQueue.makeCommandBuffer() else {
+            inflightSemaphore.signal()
+            return
+        }
+        let semaphore = inflightSemaphore
+        cb.addCompletedHandler { @Sendable _ in semaphore.signal() }
         self.commandBuffer = cb
         self.drawTime = time
 
         guard let enc = cb.makeRenderCommandEncoder(
             descriptor: textureManager.renderPassDescriptor
         ) else {
+            // commit して completed handler を発火させ、セマフォを返す
             cb.commit()
             self.commandBuffer = nil
             return
         }
         self.encoder = enc
-        canvas3D.begin(encoder: enc, time: time)
+        canvas3D.begin(encoder: enc, time: time, bufferIndex: bufferIndex)
+        bufferIndex = (bufferIndex + 1) % Self.inflightCount
     }
 
     /// 描画を終了します。

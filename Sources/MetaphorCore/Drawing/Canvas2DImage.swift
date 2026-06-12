@@ -65,9 +65,14 @@ extension Canvas2D {
     ) {
         guard encoder != nil else { return }
 
-        // 描画順序を保つため、蓄積済みカラー頂点を先にフラッシュ
+        // 描画順序を保つため、蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ
+        // （addVertex と同じ順序保証。これがないと circle(); image(); rect() で
+        // 画像が先にエンコードされ、インスタンス化された円の下に潜ってしまう）
         if vertexCount > 0 {
             flushColorVertices()
+        }
+        if instanceBatcher2D.instanceCount > 0 {
+            flushInstancedBatch()
         }
 
         // テクスチャが変わったらフラッシュ
@@ -124,9 +129,12 @@ extension Canvas2D {
     ) {
         guard encoder != nil, !glyphs.isEmpty else { return }
 
-        // 蓄積済みカラー頂点を先にフラッシュ
+        // 蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ（描画順序の保持）
         if vertexCount > 0 {
             flushColorVertices()
+        }
+        if instanceBatcher2D.instanceCount > 0 {
+            flushInstancedBatch()
         }
 
         // テクスチャが変わったらフラッシュ

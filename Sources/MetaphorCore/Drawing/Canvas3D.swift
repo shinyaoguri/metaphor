@@ -315,6 +315,10 @@ public final class Canvas3D: CanvasStyle {
         // フレームごとの状態をリセット（変換、カメラ、ライト、ドローコール）
         self.currentTransform = .identity
         self.stateStack.removeAll(keepingCapacity: true)
+        // 不均衡な pushMatrix() が draw() 内に残っていても、フレームを
+        // またいでスタックが無限成長したり変換がリークしたりしないよう、
+        // stateStack と同様に毎フレーム破棄する。
+        self.matrixStack.removeAll(keepingCapacity: true)
         self.lightArray.removeAll(keepingCapacity: true)
         self.ambientColor = SIMD3(0.2, 0.2, 0.2)
         self.userSetAmbient = false
@@ -393,6 +397,10 @@ public final class Canvas3D: CanvasStyle {
         center: SIMD3<Float>,
         up: SIMD3<Float> = SIMD3(0, 1, 0)
     ) {
+        // ビュー投影とライトはフラッシュ時にバッチへ適用されるため、
+        // すでに送信済みのシェイプは「送信時点の」カメラ／ライトで描画
+        // されなければならない。状態を変更する前に保留分を確定する。
+        flushInstanceBatch()
         self.cameraEye = eye
         self.cameraCenter = center
         self.cameraUp = up
@@ -410,6 +418,7 @@ public final class Canvas3D: CanvasStyle {
         near: Float = 0.1,
         far: Float = 10000
     ) {
+        flushInstanceBatch()  // 送信済みシェイプを変更前の投影で確定
         self.fov = fov
         self.nearPlane = near
         self.farPlane = far
@@ -431,6 +440,7 @@ public final class Canvas3D: CanvasStyle {
         bottom: Float? = nil, top: Float? = nil,
         near: Float = -1000, far: Float = 1000
     ) {
+        flushInstanceBatch()  // 送信済みシェイプを変更前の投影で確定
         self.useOrthographic = true
         self.orthoLeft = left ?? 0
         self.orthoRight = right ?? width
@@ -445,6 +455,7 @@ public final class Canvas3D: CanvasStyle {
 
     /// 後方互換性のため、単一のディレクショナルライトでデフォルトライティングを有効にします。
     public func lights() {
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         lightArray.removeAll(keepingCapacity: true)
         ambientColor = SIMD3(0.3, 0.3, 0.3)
         currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)
@@ -459,6 +470,7 @@ public final class Canvas3D: CanvasStyle {
 
     /// シーンからすべてのライトを除去します。
     public func noLights() {
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         lightArray.removeAll(keepingCapacity: true)
     }
 
@@ -481,6 +493,7 @@ public final class Canvas3D: CanvasStyle {
     ///   - color: ライトの色。
     public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
         guard lightArray.count < Canvas3D.maxLights else { return }
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         ensureAmbientIfFirstLight()
         // ローカル空間の方向をワールド空間に変換（w=0 で平行移動を除外）
         let td = currentTransform * SIMD4(x, y, z, 0)
@@ -506,6 +519,7 @@ public final class Canvas3D: CanvasStyle {
         falloff: Float = 0.1
     ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         ensureAmbientIfFirstLight()
         // ローカル空間の位置をワールド空間に変換
         let tp = currentTransform * SIMD4(x, y, z, 1)
@@ -536,6 +550,7 @@ public final class Canvas3D: CanvasStyle {
         color: Color = .white
     ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         ensureAmbientIfFirstLight()
         let innerAngle = angle * 0.8
         // ローカル空間の位置と方向をワールド空間に変換
@@ -553,6 +568,7 @@ public final class Canvas3D: CanvasStyle {
     ///
     /// - Parameter strength: R、G、B に適用されるアンビエントライト強度値。
     public func ambientLight(_ strength: Float) {
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         let c = colorModeConfig.toGray(strength)
         ambientColor = SIMD3(c.r, c.g, c.b)
         currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
@@ -566,6 +582,7 @@ public final class Canvas3D: CanvasStyle {
     ///   - g: 緑成分。
     ///   - b: 青成分。
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
+        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         let c = colorModeConfig.toColor(r, g, b, nil)
         ambientColor = SIMD3(c.r, c.g, c.b)
         currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
@@ -1082,6 +1099,27 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
+    // ユーザー頂点列を index 0 にバインドします。
+    // Metal の setVertexBytes は 4096 バイト（Vertex3D 48B × 85 頂点）までしか
+    // 受け付けないため、超過分は一時 MTLBuffer 経由でバインドします
+    // （beginShape のポリゴンは 30 点程度で既に超過する）。
+    // バインドできなかった場合は false を返すので、呼び出し側は描画を中止すること。
+    private func bindShapeVertices(_ vertices: [Vertex3D], on encoder: MTLRenderCommandEncoder) -> Bool {
+        let length = MemoryLayout<Vertex3D>.stride * vertices.count
+        if length <= 4096 {
+            vertices.withUnsafeBytes { buf in
+                encoder.setVertexBytes(buf.baseAddress!, length: length, index: 0)
+            }
+            return true
+        }
+        guard let buffer = device.makeBuffer(bytes: vertices, length: length, options: .storageModeShared) else {
+            return false
+        }
+        // コマンドバッファが完了まで buffer を保持するため、ここで参照を手放してよい
+        encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+        return true
+    }
+
     // テッセレーション済み 3D 頂点配列を塗りつぶし・ワイヤーフレームパスで描画
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
         guard let encoder = encoder, !vertices.isEmpty else { return }
@@ -1089,6 +1127,10 @@ public final class Canvas3D: CanvasStyle {
 
         // beginShape/endShape は個別頂点描画を使用するため、インスタンスバッチをフラッシュ
         flushInstanceBatch()
+
+        // 頂点バインディングはパイプライン切替をまたいで保持されるため、
+        // fill / stroke パスの前に一度だけバインドする
+        guard bindShapeVertices(vertices, on: encoder) else { return }
 
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let viewProj = computeViewProjection()
@@ -1112,7 +1154,6 @@ public final class Canvas3D: CanvasStyle {
                 hasTexture: 0
             )
 
-            encoder.setVertexBytes(vertices, length: MemoryLayout<Vertex3D>.stride * vertices.count, index: 0)
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
@@ -1151,7 +1192,6 @@ public final class Canvas3D: CanvasStyle {
                 hasTexture: 0
             )
 
-            encoder.setVertexBytes(vertices, length: MemoryLayout<Vertex3D>.stride * vertices.count, index: 0)
             encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
@@ -1244,6 +1284,11 @@ public final class Canvas3D: CanvasStyle {
         guard let encoder = encoder else { return }
         guard !shapeVertices3D.isEmpty else { return }
 
+        // 他の endShape パスと同様、先に保留中のインスタンスバッチを確定して
+        // 描画順序を保つ（これがないとポイントがバッチ済みシェイプより先に
+        // エンコードされる）
+        flushInstanceBatch()
+
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let viewProj = computeViewProjection()
 
@@ -1275,7 +1320,7 @@ public final class Canvas3D: CanvasStyle {
             hasTexture: 0
         )
 
-        encoder.setVertexBytes(allVerts, length: MemoryLayout<Vertex3D>.stride * allVerts.count, index: 0)
+        guard bindShapeVertices(allVerts, on: encoder) else { return }
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
