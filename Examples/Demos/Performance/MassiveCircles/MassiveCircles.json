@@ -1,0 +1,12 @@
+{
+  "name": "MassiveCircles",
+  "title": "Massive Circles",
+  "level": "Intermediate",
+  "description": "Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls.",
+  "featured": [
+    "circles",
+    "CircleInstance",
+    "massive drawing",
+    "instancing"
+  ]
+}

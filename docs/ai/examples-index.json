@@ -1,5 +1,5 @@
 {
-  "count": 271,
+  "count": 272,
   "examples": [
     {
       "title": "Array",
@@ -2203,6 +2203,25 @@
       "tags": [
         "demos",
         "linerendering",
+        "performance"
+      ]
+    },
+    {
+      "title": "Massive Circles",
+      "path": "Examples/Demos/Performance/MassiveCircles",
+      "group": "Demos",
+      "subcategory": "Performance",
+      "level": "Intermediate",
+      "description": "Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls.",
+      "featured": [
+        "circles",
+        "CircleInstance",
+        "massive drawing",
+        "instancing"
+      ],
+      "tags": [
+        "demos",
+        "massivecircles",
         "performance"
       ]
     },
