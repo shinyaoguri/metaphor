@@ -91,6 +91,20 @@ extension SketchContext {
         canvas.circle(x, y, diameter)
     }
 
+    /// 複数の円を一括描画します。
+    /// - Parameter instances: 描画する円インスタンス。
+    public func circles(_ instances: [CircleInstance]) {
+        canvas.circles(instances)
+    }
+
+    /// GPU バッファ上の円インスタンスを一括描画します。
+    /// - Parameters:
+    ///   - instances: `CircleInstance` を保持する GPU バッファ。
+    ///   - count: 描画するインスタンス数。省略時はバッファ全体。
+    public func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil) {
+        canvas.circles(instances, count: count)
+    }
+
     /// 正方形を描画します。
     /// - Parameters:
     ///   - x: x 座標。

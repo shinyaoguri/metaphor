@@ -35,6 +35,8 @@ public final class Canvas2D: CanvasStyle {
     let unitCircleVertexCount: Int
     let unitRectBuffer: MTLBuffer
     let unitRectVertexCount: Int
+    let massiveCirclePipelineStates: [BlendMode: MTLRenderPipelineState]
+    let massiveCircleBuffer: GrowableGPUBuffer<CircleInstance>
 
     // CPU/GPU 同期競合を回避するトリプルバッファ
     private static let bufferCount = 3
@@ -44,6 +46,7 @@ public final class Canvas2D: CanvasStyle {
 
     var texturedVertexCount: Int = 0
     var texturedBufferOffset: Int = 0
+    var massiveCircleBufferOffset: Int = 0
     var currentBoundTexture: MTLTexture?
 
     // 現在のバッファの頂点ポインタ
@@ -295,6 +298,10 @@ public final class Canvas2D: CanvasStyle {
             device: device, initialCapacity: 4096, maxCapacity: 1_000_000,
             label: "metaphor.canvas2D.textured"
         )
+        self.massiveCircleBuffer = try GrowableGPUBuffer<CircleInstance>(
+            device: device, initialCapacity: 4096, maxCapacity: 1_000_000,
+            label: "metaphor.canvas2D.massiveCircles"
+        )
 
         // カラーパイプライン（BlendMode ごとに1つ）
         let vertexFn = shaderLibrary.function(
@@ -432,6 +439,32 @@ public final class Canvas2D: CanvasStyle {
                 .build()
         }
         self.instancedPipelineStates = instPipelines
+
+        let massiveCircleVertexFn = shaderLibrary.function(
+            named: Canvas2DMassiveShaders.circleVertexFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas2DMassive
+        )
+        var massiveCirclePipelines: [BlendMode: MTLRenderPipelineState] = [:]
+        for mode in BlendMode.allCases {
+            let fragName: String
+            switch mode {
+            case .difference: fragName = Canvas2DMassiveShaders.differenceFragmentFunctionName
+            case .exclusion: fragName = Canvas2DMassiveShaders.exclusionFragmentFunctionName
+            default: fragName = Canvas2DMassiveShaders.fragmentFunctionName
+            }
+            let fragFn = shaderLibrary.function(
+                named: fragName,
+                from: ShaderLibrary.BuiltinKey.canvas2DMassive
+            )
+            massiveCirclePipelines[mode] = try PipelineFactory(device: device)
+                .vertex(massiveCircleVertexFn)
+                .fragment(fragFn)
+                .vertexLayout(.position2DOnly)
+                .blending(mode)
+                .sampleCount(sampleCount)
+                .build()
+        }
+        self.massiveCirclePipelineStates = massiveCirclePipelines
     }
 
     // MARK: - フレーム制御
@@ -452,6 +485,7 @@ public final class Canvas2D: CanvasStyle {
         self.bufferOffset = 0
         self.texturedVertexCount = 0
         self.texturedBufferOffset = 0
+        self.massiveCircleBufferOffset = 0
         self.currentBoundTexture = nil
         self.currentTransform = float3x3(1)
         self.stateStack.removeAll(keepingCapacity: true)
