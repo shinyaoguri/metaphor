@@ -20,6 +20,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var activity: NSObjectProtocol?
     private var sharedResources: SharedMetalResources?
 
+    /// ヘッドレス（ウィンドウ無し・Syphon 出力のみ）で起動しているかどうか。
+    /// 環境変数 `METAPHOR_VIEWER=1` で有効化され、metaphor-cli のライブビューアが
+    /// 子プロセスとしてスケッチを実行する際に利用します。
+    private var isHeadless = false
+
     // MARK: - Entry Point
 
     /// 指定されたスケッチ型でアプリケーションを起動します。
@@ -46,22 +51,93 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard let sketch = sketchRef else { return }
-        setupWindow(sketch: sketch)
+        setup(sketch: sketch)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // ヘッドレスモードではウィンドウが無いため、ウィンドウ起因の終了はしない。
+        if isHeadless { return false }
         // プライマリウィンドウが閉じられた場合のみ終了
-        !(window?.isVisible ?? false)
+        return !(window?.isVisible ?? false)
     }
 
     // MARK: - Setup
 
-    /// 指定されたスケッチ用にウィンドウ、レンダラー、キャンバス、レンダーループを構成します。
+    /// スケッチを構成して実行します。
     ///
-    /// - Parameter sketch: 設定がウィンドウとレンダラーのセットアップを駆動するスケッチインスタンス。
-    private func setupWindow(sketch: any Sketch) {
+    /// 通常はウィンドウ + `MTKView` を構築しますが、環境変数 `METAPHOR_VIEWER=1`
+    /// が設定されている場合はヘッドレス（ウィンドウ無し・Syphon 出力のみ）で起動します。
+    /// ヘッドレスモードは metaphor-cli のライブビューアが子プロセスとして利用します。
+    ///
+    /// レンダラー・キャンバス・描画コールバックの構成は両モードで共通で、
+    /// フレーム出力先（ウィンドウへのブリット or Syphon publish）とレンダーループ駆動
+    /// （ディスプレイリンク/タイマー）のみがモードごとに異なります。
+    ///
+    /// - Parameter sketch: 設定がセットアップを駆動するスケッチインスタンス。
+    private func setup(sketch: any Sketch) {
         let config = sketch.config
+        isHeadless = ProcessInfo.processInfo.environment["METAPHOR_VIEWER"] == "1"
 
+        // レンダラー・キャンバス・コンテキストを初期化（ウィンドウ非依存）。
+        guard setupCore(sketch: sketch, config: config),
+              let renderer = self.renderer,
+              let context = self.context else {
+            return
+        }
+
+        // レンダーループとフレーム出力先を構成（モード別）。
+        if isHeadless {
+            configureHeadlessLoop(config: config)
+        } else {
+            configureWindowedLoop(config: config)
+        }
+
+        // 入力コールバックをスケッチのイベントメソッドに接続。
+        // ヘッドレスでは InputInjectionPlugin 経由でイベントが届く（Phase 1b で追加）。
+        connectInput(sketch: sketch, input: renderer.input, renderer: renderer)
+
+        // config からプラグインを登録（setup() の前に利用可能にするため）
+        for factory in config.plugins {
+            let plugin = factory.create()
+            renderer.addPlugin(plugin, sketch: sketch)
+        }
+
+        // METAPHOR_PROBE=1 が設定されていれば AI 向け観測プラグインを自動登録
+        if ProcessInfo.processInfo.environment["METAPHOR_PROBE"] == "1",
+           renderer.plugin(id: MetaphorProbePlugin.id) == nil {
+            renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
+        }
+
+        // setup() 中に noLoop ハンドラを一時的に抑制し、
+        // onDraw が構成される前の早期一時停止を防止。
+        context.onNoLoop = nil
+
+        // setup()
+        sketch.setup()
+
+        // noLoop ハンドラを復元
+        context.onNoLoop = { [weak self] in
+            self?.handleNoLoop()
+        }
+
+        // コンピュートフェーズ + 描画ループのコールバックを構成
+        configureRenderCallbacks(sketch: sketch, context: context, renderer: renderer)
+
+        // レンダーループを開始（モード別）
+        if isHeadless {
+            startHeadlessLoop(context: context, renderer: renderer)
+        } else {
+            startWindowedLoop(config: config, context: context, renderer: renderer)
+        }
+    }
+
+    /// レンダラー・キャンバス・コンテキストとその制御コールバックを初期化します。
+    ///
+    /// ウィンドウや `MTKView` には依存せず、ウィンドウモードとヘッドレスモードで共通です。
+    /// 成功時に `self.renderer` / `self.canvas` / `self.canvas3D` / `self.context` を設定します。
+    ///
+    /// - Returns: 初期化に成功したら `true`、失敗（エラーアラート表示）なら `false`。
+    private func setupCore(sketch: any Sketch, config: SketchConfig) -> Bool {
         // 共有リソース + レンダラー + キャンバスを初期化
         let shared: SharedMetalResources
         let renderer: MetaphorRenderer
@@ -78,7 +154,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             canvas3D = try Canvas3D(renderer: renderer)
         } catch {
             showErrorAlert(error: error)
-            return
+            return false
         }
         self.sharedResources = shared
         self.renderer = renderer
@@ -117,6 +193,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         context.onFrameRate = { [weak self] fps in
             self?.handleFrameRate(fps)
         }
+
+        return true
+    }
+
+    /// ウィンドウ + `MTKView` を構築し、レンダーループモードを構成します。
+    private func configureWindowedLoop(config: SketchConfig) {
+        guard let renderer else { return }
 
         // ウィンドウサイズ
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
@@ -163,69 +246,82 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // 両モードとも、onDraw のセットアップ前に CVDisplayLink が発火する
         // 競合を避けるため、ディスプレイリンクを一時停止した状態で開始。
         // セットアップ完了後にディスプレイリンクを再開（または明示的に
-        // 1フレームを描画）— このメソッドの末尾を参照。
+        // 1フレームを描画）— startWindowedLoop を参照。
         switch loopMode {
         case .displayLink:
             mtkView.preferredFramesPerSecond = config.fps
             mtkView.isPaused = true
 
         case .timer(let fps):
-            // レンダリングをディスプレイリンクから分離
-            renderer.useExternalRenderLoop = true
+            // タイマー駆動のレンダーループを開始（ディスプレイリンクから分離）
+            startTimerLoop(fps: fps)
 
             // MTKView: ディスプレイリンクはプレビューとしてのみ使用（スロットリングは許容）
             mtkView.preferredFramesPerSecond = fps
             mtkView.isPaused = false
+        }
+    }
 
-            // 安定したフレームレートのため App Nap を無効化
-            activity = ProcessInfo.processInfo.beginActivity(
-                options: [.userInitiated, .latencyCritical],
-                reason: "Timer-based render loop requires consistent frame rate"
-            )
+    /// ヘッドレス（ウィンドウ無し）モードのレンダーループと Syphon 出力を構成します。
+    ///
+    /// ウィンドウ/`MTKView`/ブリットパスを生成せず、常にタイマー駆動で `renderFrame()` を
+    /// 回し、結果を Syphon 経由で publish します。Syphon サーバー名と FPS は環境変数で
+    /// 上書きできます（`METAPHOR_SYPHON_NAME` / `METAPHOR_FPS`）。
+    private func configureHeadlessLoop(config: SketchConfig) {
+        guard let renderer else { return }
 
-            // DispatchSourceTimer: ディスプレイリンクとは独立して renderFrame() を駆動
-            let interval = 1.0 / Double(max(fps, 1))
-            let timer = DispatchSource.makeTimerSource(flags: .strict, queue: .main)
-            timer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
-            timer.setEventHandler { [weak renderer] in
-                dispatchPrecondition(condition: .onQueue(.main))
-                MainActor.assumeIsolated {
-                    renderer?.renderFrame()
-                }
+        // Dock / メニューバーに出さない（バックグラウンドのレンダリングプロセス）。
+        NSApp.setActivationPolicy(.accessory)
+
+        let env = ProcessInfo.processInfo.environment
+
+        // Syphon サーバー名: 環境変数 > config.syphonName > タイトル の優先順。
+        let syphonName = env["METAPHOR_SYPHON_NAME"] ?? config.syphonName ?? config.title
+        renderer.startSyphonServer(name: syphonName)
+
+        // FPS: 環境変数で上書き可能。
+        let fps = env["METAPHOR_FPS"].flatMap { Int($0) } ?? config.fps
+
+        // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。
+        startTimerLoop(fps: fps)
+    }
+
+    /// `DispatchSourceTimer` ベースのレンダーループを開始します。
+    ///
+    /// ディスプレイリンクから独立して `renderFrame()` を駆動します。ウィンドウモードの
+    /// タイマー指定時とヘッドレスモードの両方で使用します。
+    private func startTimerLoop(fps: Int) {
+        guard let renderer else { return }
+
+        // レンダリングをディスプレイリンクから分離
+        renderer.useExternalRenderLoop = true
+
+        // 安定したフレームレートのため App Nap を無効化
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .latencyCritical],
+            reason: "Timer-based render loop requires consistent frame rate"
+        )
+
+        // DispatchSourceTimer: ディスプレイリンクとは独立して renderFrame() を駆動
+        let interval = 1.0 / Double(max(fps, 1))
+        let timer = DispatchSource.makeTimerSource(flags: .strict, queue: .main)
+        timer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
+        timer.setEventHandler { [weak renderer] in
+            dispatchPrecondition(condition: .onQueue(.main))
+            MainActor.assumeIsolated {
+                renderer?.renderFrame()
             }
-            timer.resume()
-            isRenderTimerSuspended = false
-            renderTimer = timer
         }
+        timer.resume()
+        isRenderTimerSuspended = false
+        renderTimer = timer
+    }
 
-        // 入力コールバックをスケッチのイベントメソッドに接続
-        connectInput(sketch: sketch, input: renderer.input, renderer: renderer)
-
-        // config からプラグインを登録（setup() の前に利用可能にするため）
-        for factory in config.plugins {
-            let plugin = factory.create()
-            renderer.addPlugin(plugin, sketch: sketch)
-        }
-
-        // METAPHOR_PROBE=1 が設定されていれば AI 向け観測プラグインを自動登録
-        if ProcessInfo.processInfo.environment["METAPHOR_PROBE"] == "1",
-           renderer.plugin(id: MetaphorProbePlugin.id) == nil {
-            renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
-        }
-
-        // setup() 中に noLoop ハンドラを一時的に抑制し、
-        // onDraw が構成される前の早期一時停止を防止。
-        context.onNoLoop = nil
-
-        // setup()
-        sketch.setup()
-
-        // noLoop ハンドラを復元
-        context.onNoLoop = { [weak self] in
-            self?.handleNoLoop()
-        }
-
-        // コンピュートフェーズ + 描画ループ
+    /// コンピュートフェーズと描画ループのレンダラーコールバックを構成します（両モード共通）。
+    private func configureRenderCallbacks(
+        sketch: any Sketch, context: SketchContext, renderer: MetaphorRenderer
+    ) {
+        // onCompute と onDraw で共有する直前フレーム時刻（onDraw が更新）。
         var prevTime: Float = 0
 
         renderer.onCompute = { [weak context, weak sketch] commandBuffer, time in
@@ -251,6 +347,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             guard let context else { return }
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
+    }
+
+    /// ウィンドウを表示し、ウィンドウモードのレンダーループを開始します。
+    private func startWindowedLoop(
+        config: SketchConfig, context: SketchContext, renderer: MetaphorRenderer
+    ) {
+        guard let window, let mtkView else { return }
 
         // レンダーループ開始前にウィンドウを表示し、drawable が
         // 適切なサイズに設定されるようにする（例: Retina の contentsScale 解決）。
@@ -293,6 +396,24 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             mtkView.draw()
             renderer.useExternalRenderLoop = wasExternal
         }
+    }
+
+    /// ヘッドレスモードのレンダーループを開始します。
+    ///
+    /// タイマーは ``configureHeadlessLoop(config:)`` で既に起動済みです。`noLoop()` の
+    /// スケッチではタイマーを止め、背景クリアカラーを確定させるため2フレームだけ
+    /// レンダリングして Syphon に publish します（ウィンドウモードの2パスと同じ意図）。
+    private func startHeadlessLoop(context: SketchContext, renderer: MetaphorRenderer) {
+        guard !context.isLooping else { return }
+
+        // noLoop(): タイマーを止めて静止フレームをレンダリング。
+        if let renderTimer {
+            suspendRenderTimerIfNeeded(renderTimer)
+        }
+        // 1パス目で background() がクリアカラーを登録し、2パス目で
+        // loadAction = .clear による塗りつぶしが反映される。
+        renderer.renderFrame()
+        renderer.renderFrame()
     }
 
     // MARK: - Animation Control

@@ -103,4 +103,78 @@ struct MetaphorRendererTests {
         let renderer = try MetaphorRenderer()
         #expect(renderer.previousFrameTexture == nil)
     }
+
+    // MARK: - Headless rendering (live-viewer Phase 1a contract)
+
+    /// ヘッドレスモードの中核となる不変条件: `configure(view:)` を呼ばずに
+    /// 外部ループから `renderFrame()` を駆動しても、`onDraw` が呼ばれ、
+    /// オフスクリーンテクスチャにクリアカラーが反映される。
+    /// 将来 `renderFrame()` に view/drawable 依存が入り込んだら、このテストが落ちる。
+    @Test("renderFrame produces output without a configured view")
+    func headlessRenderFrameWithoutView() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        // ヘッドレスモードと同条件: configure(view:) を呼ばず外部ループで駆動。
+        renderer.useExternalRenderLoop = true
+        renderer.setClearColor(0, 0, 1, 1)  // 青
+
+        var drawInvoked = false
+        renderer.onDraw = { _, _ in drawInvoked = true }
+
+        // view / drawable 無しで1フレームをレンダリング。
+        renderer.renderFrame()
+
+        #expect(drawInvoked, "onDraw should be invoked by renderFrame without a view")
+
+        let p = try readbackCenterPixel(renderer: renderer)
+        #expect(p.b > 250, "Headless clear should be blue: B=\(p.b)")
+        #expect(p.r < 8, "Headless clear R=\(p.r)")
+        #expect(p.g < 8, "Headless clear G=\(p.g)")
+    }
+
+    /// ヘッドレスモードのフレーム出力先 Syphon サーバーが起動できる。
+    @Test("startSyphonServer activates the headless frame sink")
+    func headlessSyphonServerActivates() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        #expect(renderer.syphonOutput == nil)
+        renderer.startSyphonServer(name: "metaphor-headless-test")
+        #expect(renderer.syphonOutput?.isActive == true)
+    }
+
+    /// オフスクリーンカラーテクスチャの中心ピクセルを読み戻すヘルパー（BGRA→RGB）。
+    private func readbackCenterPixel(
+        renderer: MetaphorRenderer
+    ) throws -> (r: UInt8, g: UInt8, b: UInt8) {
+        let w = renderer.textureManager.width
+        let h = renderer.textureManager.height
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        let staging = try #require(renderer.device.makeTexture(descriptor: desc))
+
+        let cb = try #require(renderer.commandQueue.makeCommandBuffer())
+        let blit = try #require(cb.makeBlitCommandEncoder())
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging,
+            destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        staging.getBytes(
+            &px, bytesPerRow: w * 4,
+            from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0
+        )
+        let off = ((h / 2) * w + (w / 2)) * 4
+        return (r: px[off + 2], g: px[off + 1], b: px[off + 0])  // BGRA → RGB
+    }
 }
