@@ -93,7 +93,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
 
         // 入力コールバックをスケッチのイベントメソッドに接続。
-        // ヘッドレスでは InputInjectionPlugin 経由でイベントが届く（Phase 1b で追加）。
+        // ヘッドレスでは下の InputInjectionPlugin が stdin からイベントを注入する。
         connectInput(sketch: sketch, input: renderer.input, renderer: renderer)
 
         // config からプラグインを登録（setup() の前に利用可能にするため）
@@ -106,6 +106,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         if ProcessInfo.processInfo.environment["METAPHOR_PROBE"] == "1",
            renderer.plugin(id: MetaphorProbePlugin.id) == nil {
             renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
+        }
+
+        // ヘッドレス（ライブビューア）モードでは stdin 入力注入プラグインを自動登録。
+        // 親プロセス（metaphor-cli）が JSON Lines でイベントを送る。
+        if isHeadless,
+           renderer.plugin(id: InputInjectionPlugin.id) == nil {
+            renderer.addPlugin(InputInjectionPlugin(), sketch: sketch)
         }
 
         // setup() 中に noLoop ハンドラを一時的に抑制し、
