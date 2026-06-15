@@ -321,6 +321,18 @@ public final class Graphics {
     ///   - diameter: 円の直径。
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) { canvas.circle(x, y, diameter) }
 
+    /// 複数の円を一括描画します。
+    /// - Parameter instances: 描画する円インスタンス。
+    public func circles(_ instances: [CircleInstance]) { canvas.circles(instances) }
+
+    /// GPU バッファ上の円インスタンスを一括描画します。
+    /// - Parameters:
+    ///   - instances: `CircleInstance` を保持する GPU バッファ。
+    ///   - count: 描画するインスタンス数。省略時はバッファ全体。
+    public func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil) {
+        canvas.circles(instances, count: count)
+    }
+
     /// 2点間に線を描画します。
     /// - Parameters:
     ///   - x1: 始点X。

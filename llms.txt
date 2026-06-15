@@ -108,6 +108,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- 名前とカスタムパラメータを指定して CoreImage フィルタを画像に適用します。
 - `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- CoreImage ジェネレーターフィルタを使用して画像を生成します。
 - `func circle(_ x: Float, _ y: Float, _ diameter: Float)` -- 円を描画します。
+- `func circles(_ instances: [CircleInstance])` -- 複数の円を一括描画します。
+- `func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil)` -- GPU バッファ上の円インスタンスを一括描画します。
 - `func clearCaches()` -- GPU メモリを解放するためにすべての内部キャッシュをクリアします。
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
@@ -361,6 +363,16 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> (any MTLTexture)?` -- レンダーグラフを実行し、最終出力テクスチャを返します。
 
 ### `protocol Sketch : AnyObject` -- このプロトコルに準拠してスケッチを定義します。
+
+### `struct CircleInstance` -- A compact per-circle record for explicit bulk 2D drawing.
+
+- `var color: SIMD4<Float>` -- Per-circle RGBA color, normalized to 0...1.
+- `var diameter: Float` -- Circle diameter in local units.
+- `var position: SIMD2<Float>` -- Circle center in local 2D coordinates.
+- `init(position: SIMD2<Float>, diameter: Float, color: SIMD4<Float> = SIMD4(1, 1, 1, 1))` -- Creates a circle instance from a center vector, diameter, and SIMD color.
+- `init(position: SIMD2<Float>, diameter: Float, color: Color)` -- Creates a circle instance from a center vector, diameter, and ``Color``.
+- `init(x: Float, y: Float, diameter: Float, color: Color = .white)` -- Creates a circle instance from scalar coordinates, diameter, and ``Color``.
+- `init(x: Float, y: Float, diameter: Float, color: SIMD4<Float>)` -- Creates a circle instance from scalar coordinates, diameter, and SIMD color.
 
 ### `struct DrawingStyle` -- Canvas2D と Canvas3D で共有される描画スタイルプロパティを保持します。
 
@@ -1087,6 +1099,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let blit: String` -- オフスクリーンテクスチャを画面にコンポジットするブリットシェーダー
 - `static let canvas2D: String` -- 2D キャンバスシェーダー
 - `static let canvas2DInstanced: String` -- 2D インスタンスレンダリングシェーダー
+- `static let canvas2DMassive: String` -- 2D massive drawing シェーダー
 - `static let canvas2DTextured: String` -- 2D キャンバステクスチャ付きシェーダー
 - `static let canvas3D: String` -- 3D キャンバスシェーダー
 - `static let canvas3DInstanced: String` -- 3D インスタンスレンダリングシェーダー

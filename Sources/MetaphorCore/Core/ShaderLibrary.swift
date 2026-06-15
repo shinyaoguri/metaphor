@@ -61,13 +61,15 @@ public final class ShaderLibrary {
         public static let canvas3DInstanced = "metaphor.canvas3DInstanced"
         /// 2D インスタンスレンダリングシェーダー
         public static let canvas2DInstanced = "metaphor.canvas2DInstanced"
+        /// 2D massive drawing シェーダー
+        public static let canvas2DMassive = "metaphor.canvas2DMassive"
 
         /// 全組み込みライブラリキー
         static let all: [String] = [
             blit, flatColor, vertexColor, lit,
             canvas2D, canvas3D, canvas2DTextured, canvas3DTextured,
             postProcess, imageFilter, kawaseBlur, particle, merge,
-            canvas3DInstanced, canvas2DInstanced,
+            canvas3DInstanced, canvas2DInstanced, canvas2DMassive,
         ]
     }
 
@@ -247,6 +249,7 @@ public final class ShaderLibrary {
         ("merge", BuiltinKey.merge),
         ("canvas3DInstanced", BuiltinKey.canvas3DInstanced),
         ("canvas2DInstanced", BuiltinKey.canvas2DInstanced),
+        ("canvas2DMassive", BuiltinKey.canvas2DMassive),
     ]
 
     private func registerBuiltinsFromSource() throws {

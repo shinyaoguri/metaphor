@@ -4,7 +4,7 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 271
+Example count: 272
 
 ## How To Use
 
@@ -149,6 +149,7 @@ Example count: 271
 - [DynamicParticlesRetained](../../Examples/Demos/Performance/DynamicParticlesRetained) (Performance) Tags: demos, dynamicparticlesretained, particles, performance.
 - [Esfera](../../Examples/Demos/Performance/Esfera) (Performance) Tags: demos, esfera, performance.
 - [LineRendering](../../Examples/Demos/Performance/LineRendering) (Performance) Tags: demos, linerendering, performance.
+- [Massive Circles](../../Examples/Demos/Performance/MassiveCircles) [Intermediate] (Performance) -- Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls. Tags: demos, massivecircles, performance.
 - [QuadRendering](../../Examples/Demos/Performance/QuadRendering) (Performance) Tags: demos, performance, quadrendering.
 - [StaticParticlesImmediate](../../Examples/Demos/Performance/StaticParticlesImmediate) (Performance) Tags: demos, particles, performance, staticparticlesimmediate.
 - [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) (Performance) Tags: demos, particles, performance, staticparticlesretained.
