@@ -864,6 +864,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init()`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
+### `final class InputInjectionPlugin` -- 標準入力（stdin）から JSON Lines 形式の入力イベントを読み取り、
+
+- `static let id: String` -- 安定したプラグイン識別子。
+- `let pluginID: String`
+- `init(lineSource: ( () -> String?)? = nil)` -- 標準入力から読み取ります。テストでのみ指定します。
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
+
 ### `final class InputManager` -- スケッチのマウス・キーボード入力状態を管理します。
 
 ### `final class InvertEffect` -- 全カラーを反転します。
