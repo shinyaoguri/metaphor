@@ -135,6 +135,31 @@ struct TweenTests {
         #expect(tw.isComplete == true)
     }
 
+    @Test("Large delta consumes multiple repeat cycles at once")
+    @MainActor
+    func largeDeltaConsumesMultipleCycles() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+        tw.repeatCount(3)
+        tw.start()
+
+        // 3サイクル分（1.5s）を一度の update で渡すと、その場で完了する。
+        tw.update(1.5)
+        #expect(tw.isComplete == true)
+    }
+
+    @Test("Large delta with infinite repeat does not complete or stall")
+    @MainActor
+    func largeDeltaInfiniteRepeat() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+        tw.repeatCount(0)  // 無限リピート
+        tw.start()
+
+        // 10サイクル分を一度に渡しても無限ループせず、実行中のまま残差で進む。
+        tw.update(5.0)
+        #expect(tw.isComplete == false)
+        #expect(tw.isActive == true)
+    }
+
     @Test("Tween onComplete callback")
     @MainActor
     func onCompleteCallback() {

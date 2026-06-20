@@ -288,12 +288,17 @@ extension SketchContext {
             formatter.dateFormat = "yyyyMMdd_HHmmss"
             actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).\(config.format.fileExtension)"
         }
-        try? renderer.videoExporter.beginRecord(
-            path: actualPath,
-            width: renderer.textureManager.width,
-            height: renderer.textureManager.height,
-            config: config
-        )
+        do {
+            try renderer.videoExporter.beginRecord(
+                path: actualPath,
+                width: renderer.textureManager.width,
+                height: renderer.textureManager.height,
+                config: config
+            )
+        } catch {
+            // 無効なパスやエンコーダー開始失敗を黙って握り潰さず通知する。
+            metaphorWarning("beginVideoRecord failed for \(actualPath): \(error)")
+        }
     }
 
     /// 動画録画を終了します。
