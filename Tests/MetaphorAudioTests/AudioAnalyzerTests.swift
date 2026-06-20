@@ -36,6 +36,28 @@ struct AudioAnalyzerTests {
         #expect(analyzer.isBeat == false)
     }
 
+    @Test("Injecting fewer samples than fftSize does not read out of bounds")
+    @MainActor
+    func injectShortSamples() {
+        let analyzer = AudioAnalyzer()  // fftSize = 1024
+        // fftSize より短い配列を注入しても配列外読み取りでクラッシュしない。
+        analyzer.injectSamples([0.1, -0.2, 0.3, -0.4, 0.5])
+        analyzer.update()
+        // 正規化後も内部バッファ長は不変。
+        #expect(analyzer.spectrum.count == 512)
+        #expect(analyzer.waveform.count == 1024)
+    }
+
+    @Test("Injecting more samples than fftSize is truncated safely")
+    @MainActor
+    func injectLongSamples() {
+        let analyzer = AudioAnalyzer()  // fftSize = 1024
+        analyzer.injectSamples([Float](repeating: 0.25, count: 4096))
+        analyzer.update()
+        #expect(analyzer.spectrum.count == 512)
+        #expect(analyzer.waveform.count == 1024)
+    }
+
     @Test("Band returns 0 for empty spectrum")
     @MainActor
     func bandEmpty() {

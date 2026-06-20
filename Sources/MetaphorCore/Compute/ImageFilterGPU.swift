@@ -144,6 +144,16 @@ public final class ImageFilterGPU {
     ///   - image: テクスチャが置換される対象画像
     ///   - commandBuffer: エンコード先のコマンドバッファ
     public func encode(_ filter: FilterType, to image: MImage, commandBuffer: MTLCommandBuffer) {
+        // MPS フィルターはこのノンブロッキング経路では未対応。黙ってグレースケールに
+        // 化けさせず、明示的に拒否する（MPS は同期版の apply() を使うこと）。
+        switch filter {
+        case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
+            metaphorWarning("ImageFilterGPU.encode does not support MPS filters (\(filter)); skipping. Use apply() for MPS filters.")
+            return
+        default:
+            break
+        }
+
         let srcTex = image.texture
         let w = srcTex.width
         let h = srcTex.height

@@ -192,7 +192,21 @@ public final class AudioAnalyzer {
 
     private var injectedSamples: [Float]?
 
-    private func processSamples(_ samples: [Float]) {
+    private func processSamples(_ rawSamples: [Float]) {
+        // FFT 経路（performFFT 内の vDSP_vmul）は常に fftSize 要素を読むため、
+        // 入力長を fftSize に正規化する。tap 経路は常に fftSize 長だが、
+        // injectSamples（SoundFile など外部ソース）は任意長を渡しうるため、
+        // ここで不足は0埋め・超過は切り詰めし、配列外メモリ読み取りを防ぐ。
+        let samples: [Float]
+        if rawSamples.count == fftSize {
+            samples = rawSamples
+        } else {
+            var normalized = [Float](repeating: 0, count: fftSize)
+            let n = min(rawSamples.count, fftSize)
+            for i in 0..<n { normalized[i] = rawSamples[i] }
+            samples = normalized
+        }
+
         // 波形を保存（配列バッファの再確保を避けるためインプレースコピー）
         let copyCount = min(samples.count, waveform.count)
         for i in 0..<copyCount {
