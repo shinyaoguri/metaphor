@@ -134,7 +134,7 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         )
 
         let outputDirectory = config.outputDirectory
-        commandBuffer.addCompletedHandler { _ in
+        let writeWork: @Sendable () -> Void = {
             ProbeWriter.writeSnapshot(
                 staging: staging,
                 width: width,
@@ -142,6 +142,15 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
                 directory: outputDirectory,
                 metadata: metadata
             )
+        }
+        // 読み戻し（staging からの getBytes + PNG 書き出し）が完了するまで
+        // インフライトスロットを解放させないことで、書き出し中に GPU が同じ
+        // staging テクスチャを上書きするのを防ぐ。renderer 経由でなければ
+        // 従来どおり完了ハンドラに直接登録（gate なし）。
+        if let renderer {
+            renderer.deferReadback(commandBuffer: commandBuffer, writeWork)
+        } else {
+            commandBuffer.addCompletedHandler { _ in writeWork() }
         }
 
         pendingRequest = nil

@@ -11,6 +11,8 @@ final class MockPlugin: MetaphorPlugin {
     var attachedSketch: (any Sketch)?
     var attachedRenderer: MetaphorRenderer?
     var detached = false
+    var startCallCount = 0
+    var stopCallCount = 0
     var preCallCount = 0
     var postCallCount = 0
     var lastPreTime: Double = 0
@@ -36,6 +38,14 @@ final class MockPlugin: MetaphorPlugin {
 
     func onDetach() {
         detached = true
+    }
+
+    func onStart() {
+        startCallCount += 1
+    }
+
+    func onStop() {
+        stopCallCount += 1
     }
 
     func pre(commandBuffer: MTLCommandBuffer, time: Double) {
@@ -217,6 +227,40 @@ struct PluginTests {
         #expect(plugin.postCallCount == 1)
         #expect(plugin.legacyBeforeRenderCount == 0)
         #expect(plugin.legacyAfterRenderCount == 0)
+    }
+
+    // MARK: - Lifecycle (onStart / onStop)
+
+    @Test("notifyPluginsStart/Stop forward to all plugins and are idempotent")
+    func lifecycleStartStop() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let plugin = MockPlugin(id: "lifecycle")
+        renderer.addPlugin(plugin)
+
+        // 開始は1回だけ発火（重複呼び出しは無視）。
+        renderer.notifyPluginsStart()
+        renderer.notifyPluginsStart()
+        #expect(plugin.startCallCount == 1)
+        #expect(plugin.stopCallCount == 0)
+
+        // 停止も1回だけ発火。
+        renderer.notifyPluginsStop()
+        renderer.notifyPluginsStop()
+        #expect(plugin.stopCallCount == 1)
+
+        // 再開できる（start→stop→start）。
+        renderer.notifyPluginsStart()
+        #expect(plugin.startCallCount == 2)
+    }
+
+    @Test("notifyPluginsStop without prior start is a no-op")
+    func lifecycleStopWithoutStart() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let plugin = MockPlugin(id: "lifecycle-nostart")
+        renderer.addPlugin(plugin)
+
+        renderer.notifyPluginsStop()
+        #expect(plugin.stopCallCount == 0)
     }
 
     // MARK: - PluginFactory

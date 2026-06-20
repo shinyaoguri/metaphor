@@ -98,6 +98,14 @@ public final class MetaphorRenderer: NSObject {
     /// 現在のフレームのトリプルバッファリングリソース用バッファインデックス (0-2)
     public private(set) var frameBufferIndex: Int = 0
 
+    /// 毎フレーム単調増加するフレームトークン（``renderFrame()`` 先頭で +1）。
+    ///
+    /// `frameBufferIndex`（0-2 を循環）と異なり巻き戻らないため、ノードが
+    /// 「このフレームで既に実行済みか」を判定するのに使える。RenderGraph の
+    /// 共有ノードがフレーム内で複数回実行されるのを防ぐメモ化に利用する。
+    /// 0 は「まだどのフレームも実行していない」ことを表すセンチネル。
+    public private(set) var frameToken: UInt64 = 0
+
     /// 次に使用するバッファインデックス
     private var nextBufferIndex: Int = 0
 
@@ -344,6 +352,70 @@ public final class MetaphorRenderer: NSObject {
     internal func notifyPluginsKeyEvent(key: Character?, keyCode: UInt16, type: KeyEventType) {
         for plugin in plugins {
             plugin.keyEvent(key: key, keyCode: keyCode, type: type)
+        }
+    }
+
+    // MARK: - プラグインライフサイクル
+
+    /// レンダーループが稼働中かどうか（``onStart``/``onStop`` の重複発火を防ぐガード）。
+    private var pluginsRunning = false
+
+    /// レンダーループ開始を全プラグインに通知します（冪等）。
+    ///
+    /// 既に開始通知済みの場合は何もしません。``SketchRunner`` がループ開始時
+    /// および `loop()` による再開時に呼びます。
+    public func notifyPluginsStart() {
+        guard !pluginsRunning else { return }
+        pluginsRunning = true
+        for plugin in plugins {
+            plugin.onStart()
+        }
+    }
+
+    /// レンダーループ停止を全プラグインに通知します（冪等）。
+    ///
+    /// 開始通知が出ていない場合は何もしません。``SketchRunner`` が `noLoop()` や
+    /// アプリ終了時に呼びます。
+    public func notifyPluginsStop() {
+        guard pluginsRunning else { return }
+        pluginsRunning = false
+        for plugin in plugins {
+            plugin.onStop()
+        }
+    }
+
+    // MARK: - プラグイン CPU 読み戻し
+
+    /// 現在のフレームの読み戻し待ちグループ。``renderFrame()`` 中のみ非 nil。
+    ///
+    /// このグループに参加した作業が完了するまでインフライトセマフォは signal されず、
+    /// 次フレームが同じステージングスロットを上書きするのを防ぐ。
+    private var currentReadbackGroup: DispatchGroup?
+
+    /// GPU 完了後に実行する CPU 読み戻し作業を登録します。
+    ///
+    /// 作業はコマンドバッファ完了ハンドラ内で実行され、その完了まで現在フレームの
+    /// インフライトスロットは解放されません。これによりステージングテクスチャからの
+    /// 読み戻し中に GPU が同じテクスチャを上書きするのを防ぎます（エクスポータ群と
+    /// 同じ gate 機構をプラグインにも提供）。
+    ///
+    /// ``renderFrame()`` の外（読み戻しグループが無い）で呼ばれた場合は、gate 無しで
+    /// 単に完了ハンドラに登録します。
+    ///
+    /// - Parameters:
+    ///   - commandBuffer: 読み戻し対象の処理をエンコードしたコマンドバッファ。
+    ///   - work: GPU 完了後に実行する読み戻し作業。
+    public func deferReadback(
+        commandBuffer: MTLCommandBuffer, _ work: @escaping @Sendable () -> Void
+    ) {
+        guard let group = currentReadbackGroup else {
+            commandBuffer.addCompletedHandler { _ in work() }
+            return
+        }
+        group.enter()
+        commandBuffer.addCompletedHandler { _ in
+            defer { group.leave() }
+            work()
         }
     }
 
@@ -741,7 +813,12 @@ public final class MetaphorRenderer: NSObject {
         frameBufferIndex = nextBufferIndex
         nextBufferIndex = (nextBufferIndex + 1) % 3
 
+        // 単調増加するフレームトークンを進める（RenderGraph のノード実行メモ化に使用）
+        frameToken &+= 1
+
         let readbackGroup = DispatchGroup()
+        // プラグインが deferReadback で参加できるよう、このフレームのグループを公開。
+        currentReadbackGroup = readbackGroup
         commandBuffer.addCompletedHandler { [weak self] cb in
             let gpuStart = cb.gpuStartTime
             let gpuEnd = cb.gpuEndTime
@@ -887,6 +964,9 @@ public final class MetaphorRenderer: NSObject {
         )
 
         commandBuffer.commit()
+
+        // 読み戻しグループはこのフレーム限定。次フレームまで残さない。
+        currentReadbackGroup = nil
 
         if isOfflineRendering {
             offlineFrameIndex += 1

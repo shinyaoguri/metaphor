@@ -137,12 +137,22 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // コンピュートフェーズ + 描画ループのコールバックを構成
         configureRenderCallbacks(sketch: sketch, context: context, renderer: renderer)
 
+        // レンダラーがフレーム生成を開始したことをプラグインに通知。
+        // noLoop スケッチは start*Loop 内で最初のフレームを同期描画するため、
+        // 描画前に onStart を発火させ、リソース確保の機会を保証する。
+        renderer.notifyPluginsStart()
+
         // レンダーループを開始（モード別）
         if isHeadless {
             startHeadlessLoop(context: context, renderer: renderer)
         } else {
             startWindowedLoop(config: config, context: context, renderer: renderer)
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // レンダーループ停止をプラグインに通知し、リソース解放の機会を与える。
+        renderer?.notifyPluginsStop()
     }
 
     /// レンダラー・キャンバス・コンテキストとその制御コールバックを初期化します。
@@ -439,6 +449,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         } else {
             mtkView?.isPaused = false
         }
+        renderer?.notifyPluginsStart()
     }
 
     /// レンダーループを一時停止します。
@@ -448,6 +459,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         } else {
             mtkView?.isPaused = true
         }
+        renderer?.notifyPluginsStop()
     }
 
     /// 単一フレームの再描画をトリガーします。

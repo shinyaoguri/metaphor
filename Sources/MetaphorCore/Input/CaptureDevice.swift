@@ -52,11 +52,25 @@ public final class CaptureDevice {
     /// ゼロコピーピクセルバッファ変換用の Metal テクスチャキャッシュ
     private var textureCache: CVMetalTextureCache?
 
+    /// 現在の ``texture`` を支える CVMetalTexture ラッパー。
+    ///
+    /// CoreVideo の契約上、`CVMetalTextureGetTexture` が返す `MTLTexture` は
+    /// ラッパーが生存している間のみ有効。ラッパーを解放するとバッファが再利用され、
+    /// 別フレーム参照や画像破損が起こり得るため、次フレームの更新まで保持する。
+    private var currentCVTexture: CVMetalTexture?
+
     /// バックグラウンドスレッドでサンプルバッファを受信するデリゲートヘルパー
     private let delegateHelper: CaptureDelegate
 
     /// キャプチャセッションが現在実行中かどうか
     private var isRunning: Bool = false
+
+    /// `startRunning`/`stopRunning` を直列化するための専用キュー。
+    ///
+    /// concurrent なグローバルキューに投入すると、素早い start→stop で
+    /// stop が先に完了し、その後 start が走ってセッションが止まらない競合が
+    /// 起こり得る。専用シリアルキューで投入順＝実行順を保証する。
+    private let sessionQueue = DispatchQueue(label: "metaphor.capture.session", qos: .userInitiated)
 
     // MARK: - Initialization
 
@@ -85,7 +99,7 @@ public final class CaptureDevice {
     public func start() {
         guard !isRunning, let session = captureSession else { return }
         isRunning = true
-        DispatchQueue.global(qos: .userInitiated).async {
+        sessionQueue.async {
             session.startRunning()
         }
     }
@@ -96,7 +110,7 @@ public final class CaptureDevice {
     public func stop() {
         guard isRunning, let session = captureSession else { return }
         isRunning = false
-        DispatchQueue.global(qos: .userInitiated).async {
+        sessionQueue.async {
             session.stopRunning()
         }
     }
@@ -121,6 +135,10 @@ public final class CaptureDevice {
         )
 
         guard status == kCVReturnSuccess, let cvTex = cvTexture else { return }
+        // ラッパーを保持してから MTLTexture を公開する。CoreVideo の契約上、
+        // ラッパーが解放されるとテクスチャの裏付けバッファが再利用されるため、
+        // 次の read() で差し替わるまで currentCVTexture で生かし続ける。
+        currentCVTexture = cvTex
         texture = CVMetalTextureGetTexture(cvTex)
     }
 

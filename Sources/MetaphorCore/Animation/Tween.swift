@@ -209,7 +209,10 @@ public final class Tween<T: Interpolatable> {
         case .running:
             elapsed += dt
 
-            if elapsed >= duration {
+            // 大きな delta time（フレーム停止など）で複数サイクル分が一度に経過しても
+            // 正しく消化できるよう while で回す。duration は init で max(0.001, …) に
+            // クランプされているため無限ループにはならない。
+            while elapsed >= duration {
                 // サイクル完了
                 repeatCount += 1
 
