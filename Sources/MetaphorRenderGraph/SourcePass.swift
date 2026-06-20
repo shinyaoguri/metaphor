@@ -35,6 +35,13 @@ public final class SourcePass: RenderPassNode {
     /// レンダーターゲットを提供するオフスクリーンテクスチャマネージャー。
     let textureManager: TextureManager
 
+    /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
+    ///
+    /// 初期値は「未実行」を表す `.max`。`frameToken` は 0 から始まるため、
+    /// まだ一度も `renderFrame()` を回していないレンダラー（`frameToken == 0`）に
+    /// 対して直接 `execute` を呼んでも初回は必ず実行される。
+    private var lastExecutedToken: UInt64 = .max
+
     // MARK: - 初期化
 
     /// 専用オフスクリーンレンダーターゲットで新しいソースパスを作成します。
@@ -71,6 +78,12 @@ public final class SourcePass: RenderPassNode {
     ///   - time: 経過時間（秒）。
     ///   - renderer: `MetaphorRenderer` 参照（ソースパスでは未使用）。
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
+        // 同一フレーム内で既に実行済みなら再実行しない。
+        // 共有ノードが diamond 構造（例: MergePass(scene, EffectPass(scene))）で
+        // 複数回到達されても onDraw は1フレーム1回に保たれる。
+        guard lastExecutedToken != renderer.frameToken else { return }
+        lastExecutedToken = renderer.frameToken
+
         guard let encoder = commandBuffer.makeRenderCommandEncoder(
             descriptor: textureManager.renderPassDescriptor
         ) else { return }

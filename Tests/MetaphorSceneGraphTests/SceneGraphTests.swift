@@ -158,6 +158,32 @@ struct NodeTests {
         #expect(parent.children.isEmpty)
     }
 
+    @Test("addChild rejects self-add (cycle prevention)")
+    func addChildRejectsSelf() {
+        let node = Node(name: "node")
+        node.addChild(node)
+
+        #expect(node.children.isEmpty)
+        #expect(node.parent == nil)
+    }
+
+    @Test("addChild rejects ancestor-add (cycle prevention)")
+    func addChildRejectsAncestor() {
+        let root = Node(name: "root")
+        let child = Node(name: "child")
+        let grandchild = Node(name: "grandchild")
+        root.addChild(child)
+        child.addChild(grandchild)
+
+        // grandchild を root の親にしようとすると循環になるため無視される。
+        grandchild.addChild(root)
+
+        #expect(grandchild.children.isEmpty)
+        #expect(root.parent == nil)
+        // 既存の階層は保たれる。
+        #expect(root.find("grandchild") === grandchild)
+    }
+
     @Test("find locates descendant by name")
     func findByName() {
         let root = Node(name: "root")
