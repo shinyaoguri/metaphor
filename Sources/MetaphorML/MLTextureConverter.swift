@@ -1,6 +1,7 @@
 import CoreML
 import CoreVideo
 import Metal
+import ObjectiveC.runtime
 
 /// MTLTexture、CVPixelBuffer、CGImage 間の変換ユーティリティを提供します。
 ///
@@ -116,9 +117,26 @@ public final class MLTextureConverter {
             nil, cache, pixelBuffer, nil,
             .bgra8Unorm, width, height, 0, &cvTexture
         )
-        guard status == kCVReturnSuccess, let cvTex = cvTexture else { return nil }
-        return CVMetalTextureGetTexture(cvTex)
+        guard status == kCVReturnSuccess,
+              let cvTex = cvTexture,
+              let mtlTexture = CVMetalTextureGetTexture(cvTex) else { return nil }
+
+        // CoreVideo の契約上、`CVMetalTextureGetTexture` が返す MTLTexture は
+        // ラッパー（cvTex）が生存している間のみ有効。返り値の MTLTexture に
+        // ラッパーを関連付け、テクスチャと同じ寿命でラッパーを生かし続ける。
+        // これがないと cvTex がスコープ終端で解放され、バッファ再利用による
+        // 別フレーム参照や画像破損が起こり得る。
+        objc_setAssociatedObject(
+            mtlTexture, Self.cvTextureAssociationKey, cvTex, .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        return mtlTexture
     }
+
+    /// ``texture(from:)`` がゼロコピーテクスチャに CVMetalTexture ラッパーを
+    /// 関連付ける際に使用する安定した一意キー。
+    private static let cvTextureAssociationKey = UnsafeRawPointer(
+        UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+    )
 
     // MARK: - CGImage -> MTLTexture
 

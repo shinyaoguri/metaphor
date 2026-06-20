@@ -52,6 +52,13 @@ public final class CaptureDevice {
     /// ゼロコピーピクセルバッファ変換用の Metal テクスチャキャッシュ
     private var textureCache: CVMetalTextureCache?
 
+    /// 現在の ``texture`` を支える CVMetalTexture ラッパー。
+    ///
+    /// CoreVideo の契約上、`CVMetalTextureGetTexture` が返す `MTLTexture` は
+    /// ラッパーが生存している間のみ有効。ラッパーを解放するとバッファが再利用され、
+    /// 別フレーム参照や画像破損が起こり得るため、次フレームの更新まで保持する。
+    private var currentCVTexture: CVMetalTexture?
+
     /// バックグラウンドスレッドでサンプルバッファを受信するデリゲートヘルパー
     private let delegateHelper: CaptureDelegate
 
@@ -121,6 +128,10 @@ public final class CaptureDevice {
         )
 
         guard status == kCVReturnSuccess, let cvTex = cvTexture else { return }
+        // ラッパーを保持してから MTLTexture を公開する。CoreVideo の契約上、
+        // ラッパーが解放されるとテクスチャの裏付けバッファが再利用されるため、
+        // 次の read() で差し替わるまで currentCVTexture で生かし続ける。
+        currentCVTexture = cvTex
         texture = CVMetalTextureGetTexture(cvTex)
     }
 
