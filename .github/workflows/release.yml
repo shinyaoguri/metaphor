@@ -141,6 +141,11 @@ jobs:
           git checkout -b "$RELEASE_BRANCH"
           sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
+          # Bump the runtime version constant for EVERY release (stable and
+          # prerelease) so a running sketch reports its exact metaphor version.
+          VERSION_NUM=${TAG_NAME#v}
+          sed -i '' "s|public static let version = \"[^\"]*\"|public static let version = \"${VERSION_NUM}\"|" \
+            Sources/MetaphorCore/Core/MetaphorVersion.swift
           # Only stable versions appear in `from:` install snippets. Keep every
           # file that carries the snippet in sync — CI on this release branch
           # enforces agreement (validate-ai-docs.sh check #6 compares
@@ -156,7 +161,7 @@ jobs:
               Sources/metaphor/metaphor.docc/GettingStarted.md \
               llms.txt
           fi
-          git add Package.swift README.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt
+          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt
           if git diff --cached --quiet; then
             echo "::error::No version-bump diff produced."
             exit 1
