@@ -37,7 +37,8 @@ public final class EffectPass: RenderPassNode {
     private let pipeline: PostProcessPipeline
 
     /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
-    private var lastExecutedToken: UInt64 = 0
+    /// 初期値 `.max` は「未実行」のセンチネル（`frameToken` は 0 始まりで衝突しない）。
+    private var lastExecutedToken: UInt64 = .max
 
     // MARK: - 初期化
 

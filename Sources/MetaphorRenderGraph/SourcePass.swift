@@ -36,7 +36,11 @@ public final class SourcePass: RenderPassNode {
     let textureManager: TextureManager
 
     /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
-    private var lastExecutedToken: UInt64 = 0
+    ///
+    /// 初期値は「未実行」を表す `.max`。`frameToken` は 0 から始まるため、
+    /// まだ一度も `renderFrame()` を回していないレンダラー（`frameToken == 0`）に
+    /// 対して直接 `execute` を呼んでも初回は必ず実行される。
+    private var lastExecutedToken: UInt64 = .max
 
     // MARK: - 初期化
 

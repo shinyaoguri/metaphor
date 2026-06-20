@@ -102,6 +102,33 @@ struct RenderGraphTests {
         #expect(output?.width == 64)
     }
 
+    @Test("shared node in a diamond executes once per frame")
+    func diamondSharedNodeExecutesOnce() throws {
+        // MergePass(scene, EffectPass(scene)) の diamond。scene は2経路から
+        // 到達されるが、フレームトークンによるメモ化で onDraw は1回だけ走る。
+        let scene = try SourcePass(label: "scene", device: device, width: 64, height: 64)
+        var drawCount = 0
+        scene.onDraw = { _, _ in drawCount += 1 }
+
+        let shaderLib = try ShaderLibrary(device: device)
+        let queue = device.makeCommandQueue()!
+        let effect = try EffectPass(
+            scene, effects: [], device: device, commandQueue: queue, shaderLibrary: shaderLib
+        )
+        let merge = try MergePass(
+            scene, effect, blend: .add, device: device, shaderLibrary: shaderLib
+        )
+        let graph = RenderGraph(root: merge)
+
+        let renderer = try MetaphorRenderer(device: device, width: 64, height: 64)
+        guard let cmdBuf = queue.makeCommandBuffer() else { return }
+        graph.execute(commandBuffer: cmdBuf, time: 0, renderer: renderer)
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+
+        #expect(drawCount == 1)
+    }
+
     // MARK: - MergePass.BlendType Tests
 
     @Test("BlendType cases have correct raw indices")
