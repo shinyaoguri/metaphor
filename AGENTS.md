@@ -131,6 +131,25 @@ For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
 - 通常時はリクエストファイルの mtime を見るだけなのでホットパスは触らない。
 - サンプル: `Examples/Samples/ProbeSnapshot`
 
+## Cross-Repo Contract (metaphor ⇄ metaphor-cli)
+
+`metaphor-cli`（別リポジトリ `shinyaoguri/metaphor-cli`）はこのリポジトリを
+Swift ライブラリとしては依存していないが、**ランタイム/バイナリの暗黙の契約**
+で結合している（環境変数・stdin JSON Lines 入力・Probe ファイル・Syphon の
+Release pin）。完全な一覧と変更ルールは **[CONTRACT.md](CONTRACT.md)** を参照。
+
+**重要（エージェント向け）**: 以下に触れる変更は `metaphor` 単体では完結しない。
+必ず `metaphor-cli` 側も同時に更新し、両リポジトリの `CONTRACT.md` を揃え、
+`./scripts/check-contract.sh` が緑であることを確認すること。片方だけ作業中なら
+もう片方に対応 PR/Issue を必ず立てる。
+
+- 環境変数 `METAPHOR_VIEWER` / `METAPHOR_SYPHON_NAME` / `METAPHOR_FPS` / `METAPHOR_PROBE`（`SketchRunner.swift`）
+- stdin 入力イベントのキー/値（`InputInjectionPlugin.swift`：`mouseDown` 等）
+- Probe のパス/スキーマ（`MetaphorProbeConfig.swift` / `ProbeFrameMetadata.swift`）
+- Syphon.xcframework の Release 発行（`release.yml`、cli の `Package.swift` が pin）
+
+CI は `scripts/check-contract.sh` で契約トークンの消失を検知する。
+
 ## Conventions
 
 - macOS 14.0+ (Apple Silicon), Swift 5.10+
