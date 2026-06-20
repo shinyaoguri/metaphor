@@ -78,6 +78,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let config = sketch.config
         isHeadless = ProcessInfo.processInfo.environment["METAPHOR_VIEWER"] == "1"
 
+        // どの metaphor 版で動いているかを起動時に1行表示（後からログを見たときの
+        // バージョン取り違え防止）。ヘッドレス時はモードも添える。
+        let mode = isHeadless ? " (headless)" : ""
+        FileHandle.standardError.write(
+            "[metaphor] \(Metaphor.version)\(mode)\n".data(using: .utf8)!
+        )
+
         // レンダラー・キャンバス・コンテキストを初期化（ウィンドウ非依存）。
         guard setupCore(sketch: sketch, config: config),
               let renderer = self.renderer,

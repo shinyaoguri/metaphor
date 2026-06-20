@@ -562,6 +562,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `static let mergeTextures: String` -- テクスチャマージコンピュートカーネルのMSL関数名。
 
+### `enum Metaphor` -- metaphor ライブラリのランタイム情報。
+
+- `static var identifier: String { get }` -- バージョンを1行で表す表記（例: `metaphor 0.2.4`）。
+- `static let version: String` -- metaphor ライブラリのバージョン文字列（例: `0.2.4`、プレリリースは `0.3.0-beta.1`）。
+
 ### `enum MetaphorError` -- metaphor ライブラリの中央エラー型
 
 - `case bufferCreationFailed(size: Int)` -- Metal バッファを確保できなかった
