@@ -954,8 +954,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func addPostEffect(_ effect: any PostEffect)` -- パイプラインにポストプロセスエフェクトを追加します。
 - `func clearPostEffects()` -- パイプラインから全ポストプロセスエフェクトを削除します。
 - `func configure(view: MTKView)` -- このレンダラーで使用する MTKView を構成します。
+- `func deferReadback(commandBuffer: any MTLCommandBuffer, _ work:  () -> Void)` -- GPU 完了後に実行する CPU 読み戻し作業を登録します。
 - `func draw(in view: MTKView)`
 - `func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize)`
+- `func notifyPluginsStart()` -- レンダーループ開始を全プラグインに通知します（冪等）。
+- `func notifyPluginsStop()` -- レンダーループ停止を全プラグインに通知します（冪等）。
 - `func plugin(id: String) -> (any MetaphorPlugin)?` -- 指定された識別子の登録済みプラグインがあれば返します。
 - `func removePlugin(id: String)` -- 識別子でプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定されたインデックスのポストプロセスエフェクトを削除します。

@@ -65,6 +65,13 @@ public final class CaptureDevice {
     /// キャプチャセッションが現在実行中かどうか
     private var isRunning: Bool = false
 
+    /// `startRunning`/`stopRunning` を直列化するための専用キュー。
+    ///
+    /// concurrent なグローバルキューに投入すると、素早い start→stop で
+    /// stop が先に完了し、その後 start が走ってセッションが止まらない競合が
+    /// 起こり得る。専用シリアルキューで投入順＝実行順を保証する。
+    private let sessionQueue = DispatchQueue(label: "metaphor.capture.session", qos: .userInitiated)
+
     // MARK: - Initialization
 
     /// 新しいカメラキャプチャデバイスを作成します。
@@ -92,7 +99,7 @@ public final class CaptureDevice {
     public func start() {
         guard !isRunning, let session = captureSession else { return }
         isRunning = true
-        DispatchQueue.global(qos: .userInitiated).async {
+        sessionQueue.async {
             session.startRunning()
         }
     }
@@ -103,7 +110,7 @@ public final class CaptureDevice {
     public func stop() {
         guard isRunning, let session = captureSession else { return }
         isRunning = false
-        DispatchQueue.global(qos: .userInitiated).async {
+        sessionQueue.async {
             session.stopRunning()
         }
     }
