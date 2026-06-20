@@ -36,6 +36,9 @@ public final class EffectPass: RenderPassNode {
     /// エフェクトを適用するポストプロセスパイプライン。
     private let pipeline: PostProcessPipeline
 
+    /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
+    private var lastExecutedToken: UInt64 = 0
+
     // MARK: - 初期化
 
     /// 上流ノードの出力を処理する新しいエフェクトパスを作成します。
@@ -69,6 +72,10 @@ public final class EffectPass: RenderPassNode {
     ///   - time: 経過時間（秒）。
     ///   - renderer: 共有リソースを提供する `MetaphorRenderer` 参照。
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
+        // 同一フレーム内で既に実行済みなら、計算済みの output をそのまま使う。
+        guard lastExecutedToken != renderer.frameToken else { return }
+        lastExecutedToken = renderer.frameToken
+
         // まず入力パスを実行
         inputPass.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)
 

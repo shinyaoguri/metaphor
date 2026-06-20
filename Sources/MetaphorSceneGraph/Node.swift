@@ -219,12 +219,34 @@ public final class Node {
     ///
     /// 子が既に親を持っている場合、まずその親から削除されます。
     ///
+    /// 循環を作る追加（自分自身、または自分の祖先を子にする操作）は無視されます。
+    /// 循環が生じると `find`、`worldTransform`、描画トラバーサルが無限再帰し
+    /// スタックオーバーフローするため、追加時点で拒否します。
+    ///
     /// - Parameter child: 子として追加するノード。
     public func addChild(_ child: Node) {
+        // 自己追加・祖先追加（循環）を拒否する。
+        guard child !== self, !isDescendant(of: child) else { return }
+
         child.parent?.removeChild(child)
         child.parent = self
         children.append(child)
         child.invalidateWorldTransform()
+    }
+
+    /// このノードが指定ノードの子孫（直接または間接の子）かどうかを返します。
+    ///
+    /// `node` を子に追加すると循環になるかどうかの判定に使用します。
+    ///
+    /// - Parameter node: 祖先候補のノード。
+    /// - Returns: このノードが `node` の子孫であれば `true`。
+    private func isDescendant(of node: Node) -> Bool {
+        var ancestor = parent
+        while let current = ancestor {
+            if current === node { return true }
+            ancestor = current.parent
+        }
+        return false
     }
 
     /// このノードから子ノードを削除します。

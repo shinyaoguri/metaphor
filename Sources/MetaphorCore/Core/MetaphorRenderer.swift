@@ -98,6 +98,14 @@ public final class MetaphorRenderer: NSObject {
     /// 現在のフレームのトリプルバッファリングリソース用バッファインデックス (0-2)
     public private(set) var frameBufferIndex: Int = 0
 
+    /// 毎フレーム単調増加するフレームトークン（``renderFrame()`` 先頭で +1）。
+    ///
+    /// `frameBufferIndex`（0-2 を循環）と異なり巻き戻らないため、ノードが
+    /// 「このフレームで既に実行済みか」を判定するのに使える。RenderGraph の
+    /// 共有ノードがフレーム内で複数回実行されるのを防ぐメモ化に利用する。
+    /// 0 は「まだどのフレームも実行していない」ことを表すセンチネル。
+    public private(set) var frameToken: UInt64 = 0
+
     /// 次に使用するバッファインデックス
     private var nextBufferIndex: Int = 0
 
@@ -740,6 +748,9 @@ public final class MetaphorRenderer: NSObject {
         // 現在のバッファインデックスを設定し、次へ進める
         frameBufferIndex = nextBufferIndex
         nextBufferIndex = (nextBufferIndex + 1) % 3
+
+        // 単調増加するフレームトークンを進める（RenderGraph のノード実行メモ化に使用）
+        frameToken &+= 1
 
         let readbackGroup = DispatchGroup()
         commandBuffer.addCompletedHandler { [weak self] cb in

@@ -76,6 +76,9 @@ public final class MergePass: RenderPassNode {
     /// 出力テクスチャの現在の高さ。
     private var outputHeight: Int = 0
 
+    /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
+    private var lastExecutedToken: UInt64 = 0
+
     // MARK: - 初期化
 
     /// 2つの上流パスをブレンドする新しいマージパスを作成します。
@@ -119,6 +122,10 @@ public final class MergePass: RenderPassNode {
     ///   - time: 経過時間（秒）。
     ///   - renderer: 共有リソースを提供する `MetaphorRenderer` 参照。
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
+        // 同一フレーム内で既に実行済みなら、計算済みの output をそのまま使う。
+        guard lastExecutedToken != renderer.frameToken else { return }
+        lastExecutedToken = renderer.frameToken
+
         // 入力パスを実行
         passA.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)
         passB.execute(commandBuffer: commandBuffer, time: time, renderer: renderer)

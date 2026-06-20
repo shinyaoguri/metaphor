@@ -925,6 +925,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var feedbackEnabled: Bool` -- 前フレームのカラーテクスチャへのアクセスを有効にするフレームバッファオブジェクトフィードバック
 - `var frameBufferIndex: Int { get }` -- 現在のフレームのトリプルバッファリングリソース用バッファインデックス (0-2)
 - `let frameExporter: FrameExporter` -- 個別フレームを画像ファイルとしてキャプチャするフレームエクスポーター
+- `var frameToken: UInt64 { get }` -- 毎フレーム単調増加するフレームトークン（``renderFrame()`` 先頭で +1）。
 - `lazy var imageFilterGPU: ImageFilterGPU { get set }` -- GPU 画像フィルターエンジン。初回アクセス時に遅延作成されます。
 - `let input: InputManager` -- キーボードとマウスイベント処理用の入力マネージャー
 - `var isOfflineRendering: Bool` -- 決定論的フレームタイミングのオフラインレンダリングモードを有効化
