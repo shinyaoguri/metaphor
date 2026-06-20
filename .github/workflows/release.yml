@@ -279,3 +279,27 @@ jobs:
             Checksum (SHA256): `${{ env.CHECKSUM }}`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- Notify metaphor-cli to bump its Syphon.xcframework pin (stable only) ---
+      # metaphor-cli pins this repo's Syphon Release URL + checksum in its
+      # Package.swift. On every stable release that rebuilds Syphon, fire a
+      # repository_dispatch so metaphor-cli can open a pin-bump PR automatically
+      # (see CONTRACT.md, L2a). Requires a PAT with `repo` scope on
+      # shinyaoguri/metaphor-cli stored as the CLI_DISPATCH_TOKEN secret; the
+      # step is skipped (with a notice) when the secret is absent.
+      - name: Dispatch Syphon pin bump to metaphor-cli
+        if: env.IS_PRERELEASE == 'false'
+        env:
+          CLI_DISPATCH_TOKEN: ${{ secrets.CLI_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLI_DISPATCH_TOKEN:-}" ]; then
+            echo "::notice::CLI_DISPATCH_TOKEN not set — skipping metaphor-cli Syphon pin dispatch."
+            exit 0
+          fi
+          gh api -X POST repos/shinyaoguri/metaphor-cli/dispatches \
+            -H "Authorization: token ${CLI_DISPATCH_TOKEN}" \
+            -f event_type=syphon-release \
+            -f "client_payload[tag]=${TAG_NAME}" \
+            -f "client_payload[checksum]=${CHECKSUM}"
+          echo "Dispatched syphon-release (tag=${TAG_NAME}) to metaphor-cli."
