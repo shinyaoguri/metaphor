@@ -322,10 +322,17 @@ public final class VideoExporter {
 
             capturedWriter.finishWriting {
                 Task { @MainActor [weak self] in
-                    self?.assetWriter = nil
-                    self?.writerInput = nil
-                    self?.pixelBufferAdaptor = nil
-                    self?.frameIndex = 0
+                    // 旧セッションのファイナライズ完了は、自分が起こしたセッションの
+                    // 状態にしか触れてはならない。end→begin を素早く呼ぶと、ここに
+                    // 到達した時点で既に新しい録画セッションが共有プロパティを差し替え
+                    // ている場合があり、無条件に nil 化すると新セッションを壊してしまう。
+                    // writer の同一性を確認し、まだ現行セッションのときだけクリアする。
+                    if let self, self.assetWriter === capturedWriter {
+                        self.assetWriter = nil
+                        self.writerInput = nil
+                        self.pixelBufferAdaptor = nil
+                        self.frameIndex = 0
+                    }
                     completion?()
                 }
             }
