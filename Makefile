@@ -1,4 +1,4 @@
-.PHONY: setup build clean test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks
 
 # Default target
 all: setup build
@@ -68,12 +68,20 @@ test-lcov:
 		-format=lcov > .build/coverage.lcov 2>/dev/null || true
 	@echo "LCOV written to .build/coverage.lcov"
 
-# Clean build artifacts
-clean:
+# Clean build artifacts (including every per-example .build)
+clean: clean-examples
 	@echo "Cleaning..."
 	swift package clean
 	rm -rf .build
 	rm -rf Frameworks/Syphon.xcframework
+
+# Remove per-example SPM build artifacts.
+# Each example under Examples/ is an independent SwiftPM package, so each grows
+# its own .build/ — hundreds of duplicated dirs totalling tens of GB. These are
+# git-ignored, so deleting them is always safe (they rebuild on demand).
+clean-examples:
+	@echo "Cleaning Examples/**/.build ..."
+	@find Examples -type d -name .build -prune -exec rm -rf {} + 2>/dev/null || true
 
 # Full clean including submodules
 clean-all: clean
@@ -173,7 +181,8 @@ help:
 	@echo "  make test-verbose   - Run tests with verbose output"
 	@echo "  make test-coverage  - Run tests and show coverage report"
 	@echo "  make test-lcov     - Run tests and generate LCOV for CI"
-	@echo "  make clean          - Clean build artifacts"
+	@echo "  make clean          - Clean build artifacts (incl. Examples/**/.build)"
+	@echo "  make clean-examples - Remove per-example .build dirs only"
 	@echo "  make check          - Check if setup is complete"
 	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
