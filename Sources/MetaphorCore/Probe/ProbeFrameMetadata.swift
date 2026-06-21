@@ -25,6 +25,11 @@ struct ProbeFrameMetadata: Encodable {
     /// `Sketch.probe(_:_:)` で記録されたユーザー定義値。
     let custom: [String: ProbeValue]
 
+    /// `custom` の各キーの型タグ（例: `"double"` / `"vec2"`）。
+    /// ベクトルが裸の配列としてシリアライズされるため、値だけでは
+    /// `vec2` と「2 要素の配列」を区別できない問題を解消します。
+    let customTypes: [String: String]
+
     /// プラグインが検出した警告（例: blank frame）。
     let warnings: [String]
 
