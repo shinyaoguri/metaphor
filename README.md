@@ -49,6 +49,22 @@ final class Hello: Sketch {
 | ML | Core ML、Vision（分類 / 検出 / ポーズ / セグメント / OCR / 顔 など） |
 | 高度な機能 | RenderGraph、SceneGraph、2D 物理、Syphon 出力、MPS レイトレーシング |
 
+## 開発スタイル
+
+metaphor は **人力だけでも、AI と一緒でも** 使えます。スタイルは「誰が書くか（人力 / AI / 協調）」×「ツール（`metaphor` CLI を使う / SwiftPM だけ）」で決まります。
+
+| | CLI を使う（`metaphor` コマンド） | CLI を使わない（SwiftPM だけ） |
+|---|---|---|
+| **人力で書く** | `metaphor new` → `metaphor run` / `metaphor watch`（ライブリロード）。最短で始められる。 | `.package(url:)` で依存に追加して `swift run`。Xcode や既存プロジェクトに組み込みたいとき。 |
+| **AI に書かせる** | 上記に加え、AI が `llms.txt` を参照してコード生成。`metaphor run` で確認。 | `llms.txt` を AI に渡してコード生成し、`swift run` / Xcode で確認。 |
+| **AI と協調する**<br>（AI が動作中のスケッチを観測） | `metaphor mcp` を登録すると AI が `snapshot` で**結果を見ながら**反復。`metaphor watch` を足せば人間も同じ実体を共有。 | **✗ 観測ループは不可。** `snapshot` は CLI（`metaphor mcp`）が提供するため、AI はコード生成までに留まる。 |
+
+要点:
+
+- **最短で始める** → CLI（`metaphor new` / `run`）。[Quick Start](#quick-start)
+- **AI に「いま見えている絵」を観測させる**にはCLIが要る。`metaphor mcp` が Probe を MCP 化する。[AI と協調する](#ai-と協調する観測--操作--反復)
+- **CLI なしでもライブラリは完全に使える。** AI には `llms.txt` を渡せばよい。[SwiftPM パッケージとして組み込む](#swiftpm-パッケージとして組み込む) / [AI による開発支援](#ai-による開発支援)
+
 ## AI と協調する（観測 → 操作 → 反復）
 
 metaphor は、AI エージェントが実行中のスケッチを観測しながら開発できるよう設計されています。一般的な LLM はソースコードしか参照できませんが、metaphor では `metaphor mcp` を AI クライアント（Claude Code / Cursor など）に MCP サーバとして登録すると、エージェントが **レンダリング結果の画像と内部状態** を取得し、再ビルドの結果まで確認しながら「観測 → 編集 → 再観測 → 検証」を自律的に反復できます。
