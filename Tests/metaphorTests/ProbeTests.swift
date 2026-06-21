@@ -169,13 +169,22 @@ struct MetaphorProbePluginTests {
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             #expect(json?["id"] as? String == "meta-1")
             #expect(json?["label"] as? String == "metadata-test")
-            #expect(json?["schemaVersion"] as? Int == 1)
+            #expect(json?["schemaVersion"] as? Int == 2)
             let size = json?["size"] as? [String: Int]
             #expect(size?["width"] == 128)
             #expect(size?["height"] == 96)
             let custom = json?["custom"] as? [String: Any]
             #expect(custom?["test.count"] as? Int == 42)
             #expect(custom?["test.label"] as? String == "hello")
+
+            // schemaVersion 2: stats ブロックが書き出される。
+            let stats = json?["stats"] as? [String: Any]
+            #expect(stats != nil)
+            #expect(stats?["sampleGrid"] as? Int == 32)
+            let meanColor = stats?["meanColor"] as? [Double]
+            #expect(meanColor?.count == 3)
+            #expect(stats?["meanLuminance"] != nil)
+            #expect(stats?["contentFraction"] != nil)
 
             drainGPUWork()
         }
@@ -212,6 +221,11 @@ struct MetaphorProbePluginTests {
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             let warnings = json?["warnings"] as? [String] ?? []
             #expect(warnings.contains(where: { $0.hasPrefix("frame appears nearly blank") }))
+
+            // 単色フレームはコンテンツ無し: contentFraction 0、contentBounds は省略（nil）。
+            let stats = json?["stats"] as? [String: Any]
+            #expect((stats?["contentFraction"] as? Double) == 0)
+            #expect(stats?["contentBounds"] == nil)
 
             drainGPUWork()
         }

@@ -122,15 +122,18 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             blit.endEncoding()
         }
 
+        // schemaVersion 2: additive に `stats`（画像統計）を追加。
+        // `stats` / `warnings` は ProbeWriter がピクセル読み出し後に enrich する。
         let metadata = ProbeFrameMetadata(
-            schemaVersion: 1,
+            schemaVersion: 2,
             id: request.id,
             label: request.label,
             frame: sketch?._context?.frameCount ?? 0,
             time: lastFrameTime,
             size: ProbeFrameMetadata.Size(width: width, height: height),
             custom: stateBuffer.snapshot(),
-            warnings: []
+            warnings: [],
+            stats: nil
         )
 
         let outputDirectory = config.outputDirectory
