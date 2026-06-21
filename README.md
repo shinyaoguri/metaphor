@@ -263,7 +263,7 @@ rm -f ~/.local/bin/metaphor
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.2.4"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.3.0"),
 ]
 ```
 
