@@ -1,10 +1,11 @@
 name: Release on merge
 
-# When a develop -> main PR is merged with a release:* label, dispatch the
-# existing Release workflow with the bump derived from the label. This keeps
-# the battle-tested release.yml (Syphon build, Package.swift/version bump, tag,
+# When a PR is merged to main with a release:* label, dispatch the existing
+# Release workflow with the bump derived from the label. This keeps the
+# battle-tested release.yml (Syphon build, Package.swift/version bump, tag,
 # GitHub Release, cli Syphon-pin dispatch) as the single source of release
-# logic — we only change *who* triggers it.
+# logic — we only change *who* triggers it. PRs without a release:* label
+# merge normally and do not release.
 #
 # The Release workflow opens its own "Release vX.Y.Z" PR to main, which merges
 # WITHOUT a release:* label, so this workflow does not re-fire on it (no loop).

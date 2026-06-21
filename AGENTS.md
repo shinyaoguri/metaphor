@@ -157,34 +157,37 @@ CI は `scripts/check-contract.sh` で契約トークンの消失を検知する
 - New examples should follow existing directory structure: `Examples/{Category}/{Subcategory}/{Name}/`
 - Each example is an independent SPM package with its own `Package.swift`
 
-## Branching Workflow (develop integration + main release train)
+## Branching Workflow (GitHub Flow)
 
-- **`develop`** — the **default branch** and integration line. All feature/fix/chore PRs target `develop`. Protected: PR required, `build-and-test` must pass.
-- **`main`** — **release-only**. It changes *only* via a `develop → main` PR. **Direct push is forbidden** on both branches (ruleset). Merging a `develop → main` PR that carries a `release:patch|minor|major` label triggers an automatic release.
-- Feature branches off `develop` are short-lived and auto-deleted on merge.
-- Merge style: **squash only**, auto-delete branch on merge.
-- CI fires on `push`/`pull_request` to `main` **and** `develop`, plus `workflow_dispatch`.
+- **`main`** — the only long-lived branch and the default branch. All work flows
+  back here via PR. Protected by ruleset: PR required, `build-and-test` must pass,
+  direct push forbidden (deletion / non-fast-forward blocked), **squash-only**.
+- Feature branches off `main` are short-lived and auto-deleted on merge.
+- CI fires on `push: main`, `pull_request: main`, and `workflow_dispatch` (the
+  Release workflow re-enters CI on `release/<tag>` branches via workflow_dispatch).
 
-### Release flow (develop → main)
+### Releasing (label-driven)
 
-1. Land feature/fix PRs into `develop` (standard flow below).
-2. To release, open a **`develop → main`** PR and add one label:
-   `release:patch` / `release:minor` / `release:major`.
-3. Merge it (squash). `release-on-merge.yml` reads the label and dispatches the
-   existing **Release** workflow with that bump, which builds, bumps versions,
-   tags, and publishes:
+Releases are cut by **labeling a PR**, not by a separate branch:
+
+1. On the PR you want to ship, add one label: `release:patch` / `release:minor`
+   / `release:major`.
+2. Merge it (squash). `release-on-merge.yml` reads the label and dispatches the
+   **Release** workflow with that bump, which builds, bumps versions, tags, and
+   publishes:
    - **metaphor** → git tag + GitHub Release (SPM) + Syphon-pin dispatch to metaphor-cli.
    - **metaphor-cli** → tarballs + Homebrew formula pushed to `shinyaoguri/homebrew-tap`.
-4. A `develop → main` PR **without** a `release:*` label merges normally and does
-   **not** release. (The Release workflow's own "Release vX.Y.Z" PR is unlabeled,
-   so it never re-triggers a release — no loop.)
-- Pre-releases (beta/rc) are still cut manually via the Release workflow's
+3. A PR **without** a `release:*` label merges normally and does **not** release.
+   (The Release workflow's own "Release vX.Y.Z" PR is unlabeled, so it never
+   re-triggers a release — no loop.)
+- Pre-releases (beta/rc) are cut manually via the Release workflow's
   `workflow_dispatch` (`bump=prerelease` etc.).
 
 ### When to branch (Claude default)
 
-Create a branch off **`develop`** for any **non-trivial** work. Don't push
-directly to `develop` or `main` — the ruleset blocks it.
+Create a branch off `main` for any **non-trivial** work — new features, bug fixes
+beyond a line or two, refactors, anything multi-commit. Don't push directly to
+`main`; the ruleset blocks it.
 
 ### Naming
 
@@ -199,32 +202,22 @@ Use kebab-case with a category prefix:
 ### Standard flow
 
 ```bash
-git checkout develop && git pull
+git checkout main && git pull
 git checkout -b feature/<name>
 # ... implement ...
 git push -u origin feature/<name>
-gh pr create --base develop --title "..." --body "..."
+gh pr create --base main --title "..." --body "..."   # add --label release:minor to ship a release
 # wait for CI
 gh pr merge --squash --delete-branch
-git checkout develop && git pull
-```
-
-### Cutting a release
-
-```bash
-gh pr create --base main --head develop --title "Release: <summary>" --label release:minor
-# wait for CI, then merge — the release fires automatically:
-gh pr merge --squash
+git checkout main && git pull
 ```
 
 ### Notes for Claude
 
-- Default base for PRs is **`develop`**. Only release PRs target `main`.
-- `main` changes only via a `develop → main` PR; the release is driven by the
-  `release:*` label on that PR.
+- All PRs target `main`. A release is driven by a `release:*` label on the PR.
 - Squash merge is the only allowed style — write one good final commit message in
   the PR title/body; per-commit messages on the branch are throwaway.
-- After merge, switch back to `develop` and pull. Prune local branches with `git fetch -p`.
+- After merge, switch back to `main` and pull. Prune local branches with `git fetch -p`.
 
 ## Releases
 
