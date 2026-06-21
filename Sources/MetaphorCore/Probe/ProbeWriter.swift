@@ -26,7 +26,7 @@ enum ProbeWriter {
         )
 
         let pixels = readBGRA(from: staging, width: width, height: height)
-        let warnings = analyze(pixels: pixels, width: width, height: height)
+        let analysis = analyze(pixels: pixels, width: width, height: height)
 
         let finalPNG = dirURL.appendingPathComponent("frame.png")
         let tmpPNG = dirURL.appendingPathComponent("frame.png.tmp")
@@ -43,7 +43,8 @@ enum ProbeWriter {
             time: metadata.time,
             size: metadata.size,
             custom: metadata.custom,
-            warnings: metadata.warnings + warnings
+            warnings: metadata.warnings + analysis.warnings,
+            stats: analysis.stats
         )
 
         let finalJSON = dirURL.appendingPathComponent("frame.json")
@@ -107,10 +108,22 @@ enum ProbeWriter {
         CGImageDestinationFinalize(dest)
     }
 
-    /// 32x32 グリッドサンプルで分散を計算し、低分散なら blank 警告を返します。
+    /// `analyze` の結果。blank 等の警告と、AI 向けの軽量画像統計をまとめて返します。
+    struct Analysis {
+        let warnings: [String]
+        let stats: ProbeFrameMetadata.Stats
+    }
+
+    /// 32x32 グリッドサンプルを 1 パスで走査し、blank 警告と画像統計
+    /// （平均色・輝度・コンテンツ被覆率・バウンディングボックス）を計算します。
+    ///
+    /// 統計は「PNG をデコードせずに済む数値シグナル」を狙ったもので、
+    /// AI エージェントがスナップショット間の差分を引き算で得るためにも使えます。
+    /// 背景色は四隅サンプルの平均で近似し、そこから十分離れたサンプルを
+    /// 「コンテンツ」とみなします（フルブリードな背景では目安程度の精度）。
     private static func analyze(
         pixels: [UInt8], width: Int, height: Int
-    ) -> [String] {
+    ) -> Analysis {
         let bytesPerRow = width * 4
         let samplesPerSide = 32
         let n = samplesPerSide * samplesPerSide
@@ -141,6 +154,7 @@ enum ProbeWriter {
         let meanR = sumR * invN
         let meanG = sumG * invN
         let meanB = sumB * invN
+        let meanLuminance = 0.2126 * meanR + 0.7152 * meanG + 0.0722 * meanB
 
         var variance: Float = 0
         for k in 0..<n {
@@ -151,12 +165,63 @@ enum ProbeWriter {
         }
         variance *= invN
 
+        // 背景色 = 四隅サンプルの平均。idx = sy * samplesPerSide + sx。
+        let last = samplesPerSide - 1
+        let corners = [0, last, last * samplesPerSide, last * samplesPerSide + last]
+        var bgR: Float = 0, bgG: Float = 0, bgB: Float = 0
+        for c in corners {
+            bgR += samplesR[c]; bgG += samplesG[c]; bgB += samplesB[c]
+        }
+        bgR /= 4; bgG /= 4; bgB /= 4
+
+        // 背景から十分離れたサンプルを「コンテンツ」とみなす。
+        // 閾値 0.10（RGB ユークリッド距離、約 ±15/255）= 目に見える差。
+        let contentThresholdSq: Float = 0.10 * 0.10
+        var contentCount = 0
+        var minSx = samplesPerSide, maxSx = -1
+        var minSy = samplesPerSide, maxSy = -1
+        for sy in 0..<samplesPerSide {
+            for sx in 0..<samplesPerSide {
+                let k = sy * samplesPerSide + sx
+                let dr = samplesR[k] - bgR
+                let dg = samplesG[k] - bgG
+                let db = samplesB[k] - bgB
+                if dr * dr + dg * dg + db * db > contentThresholdSq {
+                    contentCount += 1
+                    if sx < minSx { minSx = sx }
+                    if sx > maxSx { maxSx = sx }
+                    if sy < minSy { minSy = sy }
+                    if sy > maxSy { maxSy = sy }
+                }
+            }
+        }
+
+        let side = Float(samplesPerSide)
+        let contentBounds: ProbeFrameMetadata.Bounds? = contentCount > 0
+            ? ProbeFrameMetadata.Bounds(
+                x: Float(minSx) / side,
+                y: Float(minSy) / side,
+                width: Float(maxSx - minSx + 1) / side,
+                height: Float(maxSy - minSy + 1) / side
+            )
+            : nil
+
+        let stats = ProbeFrameMetadata.Stats(
+            meanColor: [meanR, meanG, meanB],
+            meanLuminance: meanLuminance,
+            contentFraction: Float(contentCount) * invN,
+            contentBounds: contentBounds,
+            sampleGrid: samplesPerSide
+        )
+
+        var warnings: [String] = []
         // 全画素がほぼ同色なら blank。閾値 0.0001 はおおよそ
         // 1 channel あたり ±0.005 (約 ±1/255) 程度の揺らぎまで「flat」と判定。
         if variance < 0.0001 {
-            return ["frame appears nearly blank (variance=\(String(format: "%.6f", variance)))"]
+            warnings.append("frame appears nearly blank (variance=\(String(format: "%.6f", variance)))")
         }
-        return []
+
+        return Analysis(warnings: warnings, stats: stats)
     }
 
     /// 一時ファイルから本番パスへの原子的なリネーム。
