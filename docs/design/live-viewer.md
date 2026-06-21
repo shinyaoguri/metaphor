@@ -1,6 +1,9 @@
 # 設計ドキュメント: ライブビューア（子プロセス + IOSurface）
 
-> ステータス: 提案（実装前）
+> ステータス: 実装済み（方式C / Phase 1a–1c-β3 完了・実機確認済み）。`metaphor watch --viewer`
+> が既定で、ライブビューア窓を維持したまま子スケッチのみ差し替え、マウス/キー入力にも反応する。
+> 残りは Phase 2（`saveState`/`restoreState`、任意）のみ。本書は当初の設計提案であり、確定仕様は
+> 実装と各 PR を正とする。
 > 対象: metaphor 本体（ライブラリ側の小〜中規模変更）+ metaphor-cli（ビューア本体）
 > 関連: Syphon 統合、Probe プラグイン、`RenderLoopMode`、`SketchRunner`
 
