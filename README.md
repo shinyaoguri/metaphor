@@ -33,6 +33,7 @@ final class Hello: Sketch {
 - **シェーダーホットリロード。** カスタム MSL を実行中に差し替え可能。`CustomMaterial` / `CustomPostEffect` を `.metal` ファイルから読み込めば、保存するたびに即座に反映されます。
 - **ライブ / VJ をそのまま想定。** Syphon 出力、OSC / MIDI 入出力、即時 GUI、Performance HUD、シーン全体の RenderGraph、オービットカメラが標準装備。`live` テンプレートで全部入りスケッチが 1 コマンドで生まれます。
 - **作品の書き出しまで完結。** 動画 / GIF / 静止画エクスポートに加えて、オフライン決定論レンダリング（フレームインデックスベースの時間）に対応。リアルタイムで書いたスケッチを、そのまま fixed-FPS の高解像度動画に焼き出せます。
+- **AI が「いま見えている絵」を見ながら作れる。** Probe がフレーム画像と内部状態をファイルに書き出し、`metaphor mcp` がそれを MCP ツール（`snapshot` / `input` / `build_status`）として AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せます（[AI と協調する](#ai-と協調する観測--操作--反復)）。
 
 ## できること
 
@@ -47,6 +48,45 @@ final class Hello: Sketch {
 | 入力 | OSC、MIDI 入出力、マウス、キー、オービットカメラ |
 | ML | Core ML、Vision（分類 / 検出 / ポーズ / セグメント / OCR / 顔 など） |
 | 高度な機能 | RenderGraph、SceneGraph、2D 物理、Syphon 出力、MPS レイトレーシング |
+
+## AI と協調する（観測 → 操作 → 反復）
+
+`metaphor` の一番の特徴は、**AI エージェントが「いま動いているスケッチ」を観測しながら一緒に作れる**ことです。ふつう LLM はコードの文字列しか見られませんが、metaphor では AI が **レンダリング結果の画像と内部状態**を直接受け取り、入力を注入し、再ビルドの成否まで確認できます。
+
+```
+   ┌──────────────────────────────────────────────┐
+   │  AI エージェント（Claude Code / Cursor / …）     │
+   └──────────────────────────────────────────────┘
+        │  MCP (JSON-RPC 2.0 / stdio)
+        ▼
+   ┌──────────────────────────────────────────────┐
+   │  metaphor mcp <sketch>                        │
+   │  ・snapshot      フレーム画像 + 内部状態を返す    │
+   │  ・input         マウス/キー入力を注入する        │
+   │  ・build_status  再ビルドの成否とエラーを返す      │
+   └──────────────────────────────────────────────┘
+        │  build → spawn（ヘッドレス + Probe）
+        ▼
+   観測 ──→ 編集 ──→ 再観測 ──→ 検証 ──┐
+     ▲                              │
+     └──────────────────────────────┘
+```
+
+エージェントから見ると、ループはこうなります。
+
+1. **観測** — `snapshot` ツールを呼ぶと、Probe が書き出した**フレーム画像（PNG）**と `frameCount` / `time` / `probe()` で申告した内部状態、blank フレーム警告が返ります。AI が「実際に何が描かれているか」を目で見られます。
+2. **編集** — AI がスケッチの Swift を書き換えます。`metaphor mcp` の裏で動く監視セッションが再ビルドして子プロセスを差し替えます。
+3. **再観測 / 検証** — もう一度 `snapshot`。`input` でマウス/キー入力を注入してインタラクションも確かめられます。ビルドが壊れたら `build_status` でエラーを取得して直せます。
+
+最小の起動はこれだけです（MCP クライアント＝AI エージェント側から起動）。
+
+```bash
+metaphor mcp path/to/MySketch
+```
+
+> `metaphor mcp` は metaphor-cli が提供します。観測の仕組みそのものは [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot) で単体で試せます（環境変数 `METAPHOR_PROBE=1` で Probe を有効化し、`.metaphor/probe/` にフレームと状態が書き出されます）。設計の全体像は [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md) を参照してください。
+
+人間が横で見たいときは [`metaphor watch --viewer`](#cli)（既定）でライブビューア窓を開いたまま、AI がコードを差し替えるたびに即座に反映される様子を眺められます。**AI がコードを書く**ための静的コンテキスト（`llms.txt` など）は [AI による開発支援](#ai-による開発支援) にまとめています。
 
 ## Quick Start
 
@@ -173,6 +213,8 @@ metaphor new ShaderLab --template shader
 ```bash
 metaphor new <name>      # 新しいスケッチを作成
 metaphor run             # 現在のスケッチを実行
+metaphor watch --viewer  # 編集を監視し、ライブビューア窓を保ったまま再ビルド差し替え
+metaphor mcp <sketch>    # AI エージェント向け MCP サーバ（snapshot / input / build_status）
 metaphor doctor          # 環境チェック
 metaphor update          # CLI / ライブラリの更新
 metaphor examples        # サンプル / テンプレート一覧
@@ -205,7 +247,7 @@ swift run
 
 ## AI による開発支援
 
-`metaphor` は Claude Code / Cursor / Copilot などの LLM ベースのコーディングアシスタントと一緒に使うことを前提に作られています。何をどう書けばいいかを AI が把握しやすいように、以下のものを同梱しています。
+[AI と協調する](#ai-と協調する観測--操作--反復) が **動いているスケッチを観測して回すループ**だとすれば、こちらは **AI に metaphor 流のコードを書かせる**ための静的コンテキストです。`metaphor` は Claude Code / Cursor / Copilot などの LLM ベースのコーディングアシスタントと一緒に使うことを前提に作られています。何をどう書けばいいかを AI が把握しやすいように、以下のものを同梱しています。
 
 - **[`llms-sketch.txt`](llms-sketch.txt)** — スケッチ作者向けの短い AI コンテキスト。`setup()` / `draw()` の書き方、よく使う API、避けるべき重い処理を素早く共有できます。
 - **[`llms.txt`](llms.txt)** — リポジトリ直下に、API 全体を 1 ファイルにまとめた LLM 向けリファレンスがあります。Quick Start、関数シグネチャ、3 層 API アーキテクチャの解説、サンプルコードを含み、**AI のコンテキストに丸ごと貼り付けるだけ** で metaphor の流儀に沿ったコードを書かせられます。`make llms-txt` でソースから再生成できます。
