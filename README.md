@@ -51,107 +51,21 @@ final class Hello: Sketch {
 
 ## AI と協調する（観測 → 操作 → 反復）
 
-metaphor は、AI エージェントが実行中のスケッチを観測・操作しながら開発できるよう設計されています。一般的な LLM はソースコードのみを参照しますが、metaphor では `metaphor mcp` を AI クライアント（Claude Code / Cursor など）に MCP サーバとして登録することで、エージェントがレンダリング結果の画像と内部状態を取得し、入力を注入し、再ビルドの結果を確認できます。
+metaphor は、AI エージェントが実行中のスケッチを観測しながら開発できるよう設計されています。一般的な LLM はソースコードしか参照できませんが、metaphor では `metaphor mcp` を AI クライアント（Claude Code / Cursor など）に MCP サーバとして登録すると、エージェントが **レンダリング結果の画像と内部状態** を取得し、再ビルドの結果まで確認しながら「観測 → 編集 → 再観測 → 検証」を自律的に反復できます。
 
-### 仕組み
+| ツール | 役割 |
+|---|---|
+| `snapshot` | 現在フレームの画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域統計 / 警告）を返す |
+| `input` | 実行中のスケッチへマウス・キー入力を送る |
+| `build_status` | 直近の `swift build` の成否とエラーを返す |
 
-`metaphor mcp` は Model Context Protocol（MCP）に準拠したローカルサーバです。AI クライアントが標準入出力（stdio）経由でサブプロセスとして起動・管理します。サーバは対象スケッチをヘッドレス（ウィンドウなし）で実行し、次の 3 つのツールを AI クライアントへ公開します。
+さらに、人間が VSCode で `metaphor watch` を起動しておくと、AI の `metaphor mcp` は **同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。
 
-| ツール | 役割 | 返却内容 |
-|---|---|---|
-| `snapshot` | 現在フレームの観測 | フレーム画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域統計 / 警告） |
-| `input` | 入力の注入 | 実行中のスケッチへマウス・キー入力を送信 |
-| `build_status` | ビルド結果の確認 | 直近の `swift build` の成否とエラー出力 |
+この観測の仕組み自体は metaphor 本体の機能（**Probe** プラグイン）です。内部状態を AI に渡すには `draw()` 内で `probe("count", n)` のように申告します（[`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)）。
 
-エージェントはこれらを用いて、次のループを自律的に反復します。
-
-```
-   ┌──────────────────────────────────────────────┐
-   │  AI エージェント（Claude Code / Cursor / …）     │
-   └──────────────────────────────────────────────┘
-        │  MCP (JSON-RPC 2.0 / stdio) ※クライアントが自動起動
-        ▼
-   ┌──────────────────────────────────────────────┐
-   │  metaphor mcp .   （ヘッドレスでスケッチを実行）   │
-   │  ・snapshot      フレーム画像 + 内部状態を返す    │
-   │  ・input         マウス/キー入力を注入する        │
-   │  ・build_status  再ビルドの成否とエラーを返す      │
-   └──────────────────────────────────────────────┘
-        │
-        ▼
-   観測 ──→ 編集 ──→ 再観測 ──→ 検証 ──┐
-     ▲                              │
-     └──────────────────────────────┘
-```
-
-1. **観測** — `snapshot` で現在のフレーム画像と内部状態を取得する。前回のスナップショットとの差分は数値で比較できる。
-2. **編集** — エージェントがスケッチの Swift を編集する。`metaphor mcp` が自動的に再ビルドし、実行中のスケッチを差し替える。
-3. **再観測・検証** — 再度 `snapshot` で結果を確認する。`input` でインタラクションを検証し、ビルドが失敗した場合は `build_status` でエラーを取得する。
-
-### 前提
-
-- `metaphor` CLI がインストール済みであること（[Quick Start](#quick-start) 参照）。
-- MCP に対応した AI クライアント（Claude Code / Cursor / VS Code など）。
-
-### 手順
-
-1. スケッチを作成する。
-
-   ```bash
-   metaphor new MySketch
-   cd MySketch
-   ```
-
-2. MCP サーバを登録する。Claude Code では、スケッチのディレクトリで次を一度実行する。
-
-   ```bash
-   claude mcp add metaphor -- metaphor mcp .
-   ```
-
-   設定をリポジトリで共有する場合は、スケッチ直下に `.mcp.json` を作成する（Claude Code / Cursor / VS Code が同一形式を読み込む）。
-
-   ```json
-   {
-     "mcpServers": {
-       "metaphor": { "type": "stdio", "command": "metaphor", "args": ["mcp", "."] }
-     }
-   }
-   ```
-
-   `metaphor mcp` は AI クライアントが必要時に自動起動するため、ユーザーが手動でターミナルから実行する必要はない。
-
-3. エージェントに依頼する。同じディレクトリで AI クライアントを開き、目的を伝える。エージェントは `snapshot` で結果を確認しながらコードを修正する。
-
-   > 例: 「円を画面中央でゆっくり回転させて。`snapshot` で確認しながら調整して。」
-
-### プロセス構成
-
-| 用途 | 必要なターミナル | 表示 | 起動方法 |
-|---|---|---|---|
-| AI 主導（MCP のみ） | 不要 | ヘッドレス（AI が `snapshot` で観測） | AI クライアントがサーバを自動起動 |
-| 人間によるライブ編集 | 1 | ライブビューア窓 | `metaphor watch` を手動実行 |
-| **人間 ＋ AI の協調**（共有セッション） | 1 | ライブビューア窓 | `metaphor watch`（人間）＋ MCP（AI が自動起動） |
-
-### 人間と AI で同じスケッチを共有する
-
-VSCode でコードを編集しながら、同じ実行中スケッチを AI にも観測させたい場合は、ターミナルで `metaphor watch` を起動しておきます。
-
-```bash
-metaphor watch        # ライブビューア窓を開き、共有セッションを公開する
-```
-
-この状態で AI クライアント（前述の MCP 登録済み）から依頼すると、`metaphor mcp` は **新しくスケッチを起動せず、動作中の `watch` セッションにアタッチ**して観測します。編集は人間（VSCode）も AI（ファイルを直接編集）もディスクに書くだけで、`watch` が再ビルドして両者に反映されます。
-
-- ビルドの所有者は `watch` 1 つだけなので、ビルドの競合は起きません。
-- AI は `snapshot` でライブビューアと同じ実体を観測し、`build_status` でビルドの成否を確認します。
-- 操作は人間・AI ともにコード編集で行います（共有セッションに AI からの入力注入はありません）。
-- 共有を無効にするには `metaphor watch --no-probe` で起動します。
-
-### 補足
-
-- 内部状態を AI に渡すには、`draw()` 内で `probe("count", n)` のように値を申告します（[`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot) 参照）。
-- 設計の詳細は [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md) を参照してください。
-- AI にコードを記述させるための静的コンテキスト（`llms.txt` など）は [AI による開発支援](#ai-による開発支援) を参照してください。
+- **セットアップ手順**（`claude mcp add` / `.mcp.json`）・共有セッション・プロセス構成 → **[metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する)**
+- **設計** → [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md) / [docs/design/shared-session.md](docs/design/shared-session.md)
+- **AI に metaphor 流のコードを書かせる**静的コンテキスト（`llms.txt` 等） → [AI による開発支援](#ai-による開発支援)
 
 ## Quick Start
 
@@ -171,7 +85,7 @@ metaphor run
 
 `metaphor run` がパッケージ解決とビルド、ウィンドウ表示までまとめてやってくれます。これだけで始められます。
 
-> Homebrew が使えない環境や手動セットアップは [別のインストール方法](#別のインストール方法) を参照してください。
+> `metaphor` コマンド（インストールの他の方法・全コマンド・テンプレート）は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli)** が提供します。CLI を使わずライブラリだけを使う場合は [SwiftPM パッケージとして組み込む](#swiftpm-パッケージとして組み込む) を参照してください。
 
 ## はじめてのスケッチ
 
@@ -253,45 +167,20 @@ random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 
 API 全体は [`llms.txt`](llms.txt) で確認できます（`make llms-txt` で再生成）。
 
-## Templates
-
-`metaphor new` には用途別のテンプレートがあります。
-
-```bash
-metaphor new MyScene  --template 3d
-metaphor new LiveSet  --template live
-metaphor new ShaderLab --template shader
-```
-
-| テンプレート | 内容 |
-|---|---|
-| `2d`（既定） | 最小の 2D スケッチ |
-| `3d` | カメラ、ライト、3D プリミティブ |
-| `shader` | カスタム Metal ポストエフェクト |
-| `live` | GUI、OSC、MIDI、Performance HUD 入り |
-| `audio-reactive` | マイク入力と FFT 解析 |
-| `raytracing` | Metal レイトレーシングのスターター |
-| `syphon` | Syphon 出力向けの固定解像度スケッチ |
-
 ## CLI
 
-```bash
-metaphor new <name>      # 新しいスケッチを作成
-metaphor run             # 現在のスケッチを実行
-metaphor watch --viewer  # 編集を監視し、ライブビューア窓を保ったまま再ビルド差し替え
-metaphor mcp <sketch>    # AI エージェント向け MCP サーバ（snapshot / input / build_status）
-metaphor doctor          # 環境チェック
-metaphor update          # CLI / ライブラリの更新
-metaphor examples        # サンプル / テンプレート一覧
-metaphor version
-```
-
-CLI 本体の更新は Homebrew 経由で行います。
+`metaphor` コマンドは新規作成・実行・ライブリロード・AI 連携をまとめて提供します。
 
 ```bash
-brew upgrade metaphor          # CLI 本体の更新
-metaphor update library        # 現在のスケッチの metaphor 依存を更新
+metaphor new <name>   # テンプレートから新しいスケッチを作成（2d / 3d / shader / live / audio-reactive / raytracing / syphon）
+metaphor run          # 現在のスケッチを実行（解決・ビルド・表示）
+metaphor watch        # 編集を監視し、ライブビューア窓を保ったまま再ビルド差し替え
+metaphor mcp          # AI エージェント向け MCP サーバ（snapshot / input / build_status）
+metaphor doctor       # 環境チェック
+metaphor update       # CLI / ライブラリの更新
 ```
+
+全コマンド・テンプレート・インストール方法の詳細は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli)** を参照してください。
 
 ## Examples
 
@@ -341,32 +230,11 @@ swift run
 - macOS 14.0+
 - Xcode 15.0+ / Swift 5.10+
 
-## 別のインストール方法
+## SwiftPM パッケージとして組み込む
 
-### ダイレクトインストーラ
+CLI（Homebrew / ダイレクトインストーラ / ソースビルド）の各インストール方法は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli#install)** にまとめています。
 
-Homebrew を使わない場合、シェルスクリプトで CLI を入れられます。
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/shinyaoguri/metaphor-cli/main/scripts/install.sh | bash
-```
-
-このとき `~/.local/bin` を `PATH` に通してください。
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-以前にダイレクトインストーラで入れた `~/.local/bin/metaphor` が残っていると、Homebrew 版より先に実行されることがあります。Homebrew に切り替える場合は削除してください。
-
-```bash
-rm -f ~/.local/bin/metaphor
-```
-
-### CLI を使わずに SwiftPM パッケージとして組み込む
-
-通常の Swift Package として依存に追加することもできます。
+CLI を使わず、`metaphor` を通常の Swift Package として依存に追加することもできます。
 
 ```swift
 dependencies: [
