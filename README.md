@@ -51,42 +51,79 @@ final class Hello: Sketch {
 
 ## AI と協調する（観測 → 操作 → 反復）
 
-`metaphor` の一番の特徴は、**AI エージェントが「いま動いているスケッチ」を観測しながら一緒に作れる**ことです。ふつう LLM はコードの文字列しか見られませんが、metaphor では AI が **レンダリング結果の画像と内部状態**を直接受け取り、入力を注入し、再ビルドの成否まで確認できます。
+`metaphor` の一番の特徴は、**AI エージェントが「いま動いているスケッチ」を観測しながら一緒に作れる**ことです。ふつう LLM はコードの文字列しか見られませんが、metaphor では `metaphor mcp` を AI クライアント（Claude Code / Cursor など）に **MCP サーバとして登録**するだけで、AI が **レンダリング結果の画像と内部状態**を受け取り、入力を注入し、再ビルドの成否まで確認できるようになります。
+
+### セットアップ（3 ステップ）
+
+**1. スケッチを作る**
+
+```bash
+metaphor new MySketch
+cd MySketch
+```
+
+**2. `metaphor mcp` を AI クライアントに登録する**
+
+ここが肝心です。`metaphor mcp` は **あなたがターミナルで起動するものではありません**。AI クライアントが必要なときに **裏側で自動起動する**（標準入出力でつながる）サーバで、一度登録すればあとは AI に話しかけるだけです。
+
+Claude Code なら、スケッチのディレクトリで一度だけ実行します。
+
+```bash
+claude mcp add metaphor -- metaphor mcp .
+```
+
+チームで共有・コミットしたい場合は、スケッチ直下に `.mcp.json` を置きます（Claude Code / Cursor / VS Code が同じ形式を読みます）。
+
+```json
+{
+  "mcpServers": {
+    "metaphor": { "type": "stdio", "command": "metaphor", "args": ["mcp", "."] }
+  }
+}
+```
+
+**3. AI に話しかける**
+
+同じディレクトリで AI クライアントを開き、ふつうに依頼します。たとえば:
+
+> 「円を画面中央でゆっくり回して。`snapshot` で見た目を確認しながら直して」
+
+これで AI が下のループを **自分で** 回します。
+
+### ループの中身
 
 ```
    ┌──────────────────────────────────────────────┐
    │  AI エージェント（Claude Code / Cursor / …）     │
    └──────────────────────────────────────────────┘
-        │  MCP (JSON-RPC 2.0 / stdio)
+        │  MCP (JSON-RPC 2.0 / stdio) ※クライアントが自動起動
         ▼
    ┌──────────────────────────────────────────────┐
-   │  metaphor mcp <sketch>                        │
+   │  metaphor mcp .   （ヘッドレスで MySketch を実行）  │
    │  ・snapshot      フレーム画像 + 内部状態を返す    │
    │  ・input         マウス/キー入力を注入する        │
    │  ・build_status  再ビルドの成否とエラーを返す      │
    └──────────────────────────────────────────────┘
-        │  build → spawn（ヘッドレス + Probe）
+        │
         ▼
    観測 ──→ 編集 ──→ 再観測 ──→ 検証 ──┐
      ▲                              │
      └──────────────────────────────┘
 ```
 
-エージェントから見ると、ループはこうなります。
+- **観測（`snapshot`）** — いま描かれているフレーム画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域の統計 / blank 警告）を返します。AI が「実際に何が描かれているか」を目で見て、前回スナップショットとの差分も数値で比べられます。
+- **編集** — AI がスケッチの Swift を書き換えると、`metaphor mcp` が裏で再ビルドして実行中のスケッチを差し替えます。
+- **再観測 / 検証** — もう一度 `snapshot`。`input` でマウス/キー入力を注入してインタラクションも確かめられます。ビルドが壊れたら `build_status` でエラーを受け取って直せます。
 
-1. **観測** — `snapshot` ツールを呼ぶと、Probe が書き出した**フレーム画像（PNG）**と `frameCount` / `time` / `probe()` で申告した内部状態、blank フレーム警告が返ります。AI が「実際に何が描かれているか」を目で見られます。
-2. **編集** — AI がスケッチの Swift を書き換えます。`metaphor mcp` の裏で動く監視セッションが再ビルドして子プロセスを差し替えます。
-3. **再観測 / 検証** — もう一度 `snapshot`。`input` でマウス/キー入力を注入してインタラクションも確かめられます。ビルドが壊れたら `build_status` でエラーを取得して直せます。
+> 内部状態を AI に渡したいときは、`draw()` の中で `probe("count", n)` のように申告します（[`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot) 参照）。設計の全体像は [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md)。
 
-最小の起動はこれだけです（MCP クライアント＝AI エージェント側から起動）。
+### ターミナルはいくつ要る？
 
-```bash
-metaphor mcp path/to/MySketch
-```
+- **AI に任せるだけなら、専用ターミナルは不要です。** MCP サーバは AI クライアントが裏で起動・終了まで面倒を見ます。あなたは AI クライアントに話しかけるだけです。
+- MCP 経由のスケッチは **ウィンドウなし（ヘッドレス）** で動き、AI は `snapshot` でそれを見ます。
+- **自分の目でもライブで見ながら編集したい**ときは、別ワークフローとして 1 つターミナルを開き [`metaphor watch --viewer`](#cli) を実行します。ライブビューア窓が開いたまま、コードを保存するたびに即座に反映されます（こちらは人間主導の編集ループで、MCP とは独立に使えます）。
 
-> `metaphor mcp` は metaphor-cli が提供します。観測の仕組みそのものは [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot) で単体で試せます（環境変数 `METAPHOR_PROBE=1` で Probe を有効化し、`.metaphor/probe/` にフレームと状態が書き出されます）。設計の全体像は [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md) を参照してください。
-
-人間が横で見たいときは [`metaphor watch --viewer`](#cli)（既定）でライブビューア窓を開いたまま、AI がコードを差し替えるたびに即座に反映される様子を眺められます。**AI がコードを書く**ための静的コンテキスト（`llms.txt` など）は [AI による開発支援](#ai-による開発支援) にまとめています。
+**AI がコードを書く**ための静的コンテキスト（`llms.txt` など）は [AI による開発支援](#ai-による開発支援) にまとめています。
 
 ## Quick Start
 
