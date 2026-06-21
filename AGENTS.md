@@ -214,14 +214,33 @@ git checkout develop && git pull
 ```bash
 gh pr create --base main --head develop --title "Release: <summary>" --label release:minor
 # wait for CI, then merge — the release fires automatically:
-gh pr merge --squash
+gh pr merge --squash   # do NOT pass --delete-branch here (head is develop, the default branch)
 ```
+
+After the release, `main` carries a "Release vX.Y.Z" commit that `develop` lacks
+(the version bump). Sync `develop` so the next `develop → main` PR stays clean —
+**via a throwaway branch, never with `main` as the PR head** (see warning):
+
+```bash
+git fetch origin
+git push origin origin/main:refs/heads/chore/sync-develop
+gh pr create --base develop --head chore/sync-develop \
+  --title "chore: sync develop with main (release commit)"
+gh pr merge --squash --delete-branch
+```
+
+> ⚠️ **Never open a PR with `main` as the head branch.** `delete_branch_on_merge`
+> is on, and `main` is not the default branch, so merging such a PR **deletes
+> `main`**. The release PR above is safe because its head is `develop` (the
+> default branch, which GitHub never auto-deletes). For back-merges into
+> `develop`, always use a throwaway branch as the head, as shown.
 
 ### Notes for Claude
 
 - Default base for PRs is **`develop`**. Only release PRs target `main`.
 - `main` changes only via a `develop → main` PR; the release is driven by the
   `release:*` label on that PR.
+- Never make `main` a PR head branch (it would be auto-deleted on merge).
 - Squash merge is the only allowed style — write one good final commit message in
   the PR title/body; per-commit messages on the branch are throwaway.
 - After merge, switch back to `develop` and pull. Prune local branches with `git fetch -p`.
