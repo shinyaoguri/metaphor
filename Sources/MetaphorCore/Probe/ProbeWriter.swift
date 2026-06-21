@@ -43,6 +43,7 @@ enum ProbeWriter {
             time: metadata.time,
             size: metadata.size,
             custom: metadata.custom,
+            customTypes: metadata.customTypes,
             warnings: metadata.warnings + analysis.warnings,
             stats: analysis.stats
         )

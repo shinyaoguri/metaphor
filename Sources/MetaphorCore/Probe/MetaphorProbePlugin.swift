@@ -122,16 +122,20 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             blit.endEncoding()
         }
 
-        // schemaVersion 2: additive に `stats`（画像統計）を追加。
+        // schemaVersion 3: additive に `customTypes`（probe 値の型タグ）を追加。
+        // v2 で `stats`（画像統計）を追加済み。
         // `stats` / `warnings` は ProbeWriter がピクセル読み出し後に enrich する。
+        let custom = stateBuffer.snapshot()
+        let customTypes = custom.mapValues { $0.typeTag }
         let metadata = ProbeFrameMetadata(
-            schemaVersion: 2,
+            schemaVersion: 3,
             id: request.id,
             label: request.label,
             frame: sketch?._context?.frameCount ?? 0,
             time: lastFrameTime,
             size: ProbeFrameMetadata.Size(width: width, height: height),
-            custom: stateBuffer.snapshot(),
+            custom: custom,
+            customTypes: customTypes,
             warnings: [],
             stats: nil
         )

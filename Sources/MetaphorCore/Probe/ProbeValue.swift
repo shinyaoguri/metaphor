@@ -14,6 +14,23 @@ public enum ProbeValue: Sendable {
     case vec2(Float, Float)
     case vec3(Float, Float, Float)
     case vec4(Float, Float, Float, Float)
+
+    /// `frame.json` の `customTypes` に書き出す型タグ。
+    ///
+    /// `custom` の値はベクトルが裸の配列としてシリアライズされるため、
+    /// AI エージェントは値だけでは `vec2` と「2 要素の配列」を区別できません。
+    /// この型タグを併記することで、各 `probe()` 値の意図した型を明示します。
+    var typeTag: String {
+        switch self {
+        case .double: return "double"
+        case .int: return "int"
+        case .string: return "string"
+        case .bool: return "bool"
+        case .vec2: return "vec2"
+        case .vec3: return "vec3"
+        case .vec4: return "vec4"
+        }
+    }
 }
 
 extension ProbeValue: Encodable {

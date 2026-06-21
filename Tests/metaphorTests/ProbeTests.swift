@@ -147,6 +147,7 @@ struct MetaphorProbePluginTests {
                 MainActor.assumeIsolated {
                     plugin.recordValue(name: "test.count", value: .int(42))
                     plugin.recordValue(name: "test.label", value: .string("hello"))
+                    plugin.recordValue(name: "test.pos", value: .vec2(1, 2))
                 }
             }
 
@@ -169,13 +170,21 @@ struct MetaphorProbePluginTests {
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             #expect(json?["id"] as? String == "meta-1")
             #expect(json?["label"] as? String == "metadata-test")
-            #expect(json?["schemaVersion"] as? Int == 2)
+            #expect(json?["schemaVersion"] as? Int == 3)
             let size = json?["size"] as? [String: Int]
             #expect(size?["width"] == 128)
             #expect(size?["height"] == 96)
             let custom = json?["custom"] as? [String: Any]
             #expect(custom?["test.count"] as? Int == 42)
             #expect(custom?["test.label"] as? String == "hello")
+
+            // schemaVersion 3: custom の各キーに型タグが併記される。
+            // vec2 は値だけだと 2 要素配列と区別できないため型タグで判別する。
+            #expect((custom?["test.pos"] as? [Double])?.count == 2)
+            let customTypes = json?["customTypes"] as? [String: String]
+            #expect(customTypes?["test.count"] == "int")
+            #expect(customTypes?["test.label"] == "string")
+            #expect(customTypes?["test.pos"] == "vec2")
 
             // schemaVersion 2: stats ブロックが書き出される。
             let stats = json?["stats"] as? [String: Any]
