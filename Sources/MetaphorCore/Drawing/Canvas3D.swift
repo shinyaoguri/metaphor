@@ -73,11 +73,11 @@ public final class Canvas3D: CanvasStyle {
     private let instancedTexturedPipelineState: MTLRenderPipelineState
     private let instanceBatcher: InstanceBatcher3D
 
-    private static let maxLights = 8
+    static let maxLights = 8
 
     // MARK: - カスタムマテリアル状態
 
-    private var currentCustomMaterial: CustomMaterial?
+    var currentCustomMaterial: CustomMaterial?
     private var customPipelineCache: [String: CachedPipeline] = [:]
 
     private struct CachedPipeline {
@@ -100,26 +100,26 @@ public final class Canvas3D: CanvasStyle {
 
     // MARK: - カメラ状態
 
-    private var cameraEye: SIMD3<Float> = SIMD3(0, 0, 5)
-    private var cameraCenter: SIMD3<Float> = .zero
-    private var cameraUp: SIMD3<Float> = SIMD3(0, 1, 0)
-    private static let defaultFov: Float = Float.pi / 3
-    private var fov: Float = Canvas3D.defaultFov
-    private var nearPlane: Float = 0.1
-    private var farPlane: Float = 10000
-    private var viewProjectionDirty: Bool = true
-    private var cachedViewProjection: float4x4 = .identity
-    private var useOrthographic: Bool = false
-    private var orthoLeft: Float = 0
-    private var orthoRight: Float = 0
-    private var orthoBottom: Float = 0
-    private var orthoTop: Float = 0
+    var cameraEye: SIMD3<Float> = SIMD3(0, 0, 5)
+    var cameraCenter: SIMD3<Float> = .zero
+    var cameraUp: SIMD3<Float> = SIMD3(0, 1, 0)
+    static let defaultFov: Float = Float.pi / 3
+    var fov: Float = Canvas3D.defaultFov
+    var nearPlane: Float = 0.1
+    var farPlane: Float = 10000
+    var viewProjectionDirty: Bool = true
+    var cachedViewProjection: float4x4 = .identity
+    var useOrthographic: Bool = false
+    var orthoLeft: Float = 0
+    var orthoRight: Float = 0
+    var orthoBottom: Float = 0
+    var orthoTop: Float = 0
 
     // MARK: - ライティング状態
 
-    private var lightArray: [Light3D] = []
-    private var ambientColor: SIMD3<Float> = SIMD3(0.2, 0.2, 0.2)
-    private var userSetAmbient: Bool = false
+    var lightArray: [Light3D] = []
+    var ambientColor: SIMD3<Float> = SIMD3(0.2, 0.2, 0.2)
+    var userSetAmbient: Bool = false
 
     // MARK: - マテリアル状態
 
@@ -131,7 +131,7 @@ public final class Canvas3D: CanvasStyle {
 
     // MARK: - 変換スタック
 
-    private struct StyleState3D {
+    struct StyleState3D {
         var transform: float4x4
         var fillColor: SIMD4<Float>
         var hasFill: Bool
@@ -143,8 +143,8 @@ public final class Canvas3D: CanvasStyle {
         var colorModeConfig: ColorModeConfig
     }
 
-    private var stateStack: [StyleState3D] = []
-    private var matrixStack: [float4x4] = []
+    var stateStack: [StyleState3D] = []
+    var matrixStack: [float4x4] = []
     var currentTransform: float4x4 = .identity
 
     // MARK: - スタイル
@@ -362,426 +362,6 @@ public final class Canvas3D: CanvasStyle {
         }
 
         shadow.render(drawCalls: recordedDrawCalls, commandBuffer: commandBuffer)
-    }
-
-    // MARK: - パブリックカメラアクセサ
-
-    /// 現在のビュー投影行列を返します。
-    public var currentViewProjection: float4x4 {
-        computeViewProjection()
-    }
-
-    /// カメラの右方向ベクトルを返します。ビルボーディングに便利です。
-    public var currentCameraRight: SIMD3<Float> {
-        let z = normalize(cameraEye - cameraCenter)
-        return normalize(cross(cameraUp, z))
-    }
-
-    /// カメラの上方向ベクトルを返します。ビルボーディングに便利です。
-    public var currentCameraUp: SIMD3<Float> {
-        let z = normalize(cameraEye - cameraCenter)
-        let x = normalize(cross(cameraUp, z))
-        return cross(z, x)
-    }
-
-    // MARK: - カメラ
-
-    /// カメラの位置と向きを設定します。
-    ///
-    /// - Parameters:
-    ///   - eye: ワールド空間でのカメラ位置。
-    ///   - center: カメラの注視点。
-    ///   - up: 上方向ベクトル。
-    public func camera(
-        eye: SIMD3<Float>,
-        center: SIMD3<Float>,
-        up: SIMD3<Float> = SIMD3(0, 1, 0)
-    ) {
-        // ビュー投影とライトはフラッシュ時にバッチへ適用されるため、
-        // すでに送信済みのシェイプは「送信時点の」カメラ／ライトで描画
-        // されなければならない。状態を変更する前に保留分を確定する。
-        flushInstanceBatch()
-        self.cameraEye = eye
-        self.cameraCenter = center
-        self.cameraUp = up
-        self.viewProjectionDirty = true
-    }
-
-    /// 透視投影パラメータを設定します。
-    ///
-    /// - Parameters:
-    ///   - fov: 垂直視野角（ラジアン）。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
-    public func perspective(
-        fov: Float = Float.pi / 3,
-        near: Float = 0.1,
-        far: Float = 10000
-    ) {
-        flushInstanceBatch()  // 送信済みシェイプを変更前の投影で確定
-        self.fov = fov
-        self.nearPlane = near
-        self.farPlane = far
-        self.useOrthographic = false
-        self.viewProjectionDirty = true
-    }
-
-    /// 正射影に切り替えます。
-    ///
-    /// - Parameters:
-    ///   - left: ビューボリュームの左端（`nil` の場合デフォルト 0）。
-    ///   - right: ビューボリュームの右端（`nil` の場合デフォルトはキャンバス幅）。
-    ///   - bottom: ビューボリュームの下端（`nil` の場合デフォルトはキャンバス高さ）。
-    ///   - top: ビューボリュームの上端（`nil` の場合デフォルト 0）。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
-    public func ortho(
-        left: Float? = nil, right: Float? = nil,
-        bottom: Float? = nil, top: Float? = nil,
-        near: Float = -1000, far: Float = 1000
-    ) {
-        flushInstanceBatch()  // 送信済みシェイプを変更前の投影で確定
-        self.useOrthographic = true
-        self.orthoLeft = left ?? 0
-        self.orthoRight = right ?? width
-        self.orthoBottom = bottom ?? height
-        self.orthoTop = top ?? 0
-        self.nearPlane = near
-        self.farPlane = far
-        self.viewProjectionDirty = true
-    }
-
-    // MARK: - ライティング
-
-    /// 後方互換性のため、単一のディレクショナルライトでデフォルトライティングを有効にします。
-    public func lights() {
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        lightArray.removeAll(keepingCapacity: true)
-        ambientColor = SIMD3(0.3, 0.3, 0.3)
-        currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)
-
-        var light = Light3D.zero
-        light.positionAndType = SIMD4(0, 0, 0, 0)
-        light.directionAndCutoff = SIMD4(-0.5, -1.0, -0.8, 0)
-        light.colorAndIntensity = SIMD4(1, 1, 1, 0.7)
-        light.attenuationAndOuterCutoff = SIMD4(1, 0, 0, 0)
-        lightArray.append(light)
-    }
-
-    /// シーンからすべてのライトを除去します。
-    public func noLights() {
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        lightArray.removeAll(keepingCapacity: true)
-    }
-
-    /// 指定方向の白色ディレクショナルライトを追加します。
-    ///
-    /// - Parameters:
-    ///   - x: ライト方向のx成分。
-    ///   - y: ライト方向のy成分。
-    ///   - z: ライト方向のz成分。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
-        directionalLight(x, y, z, color: Color.white)
-    }
-
-    /// 指定方向・色のディレクショナルライトを追加します。
-    ///
-    /// - Parameters:
-    ///   - x: ライト方向のx成分。
-    ///   - y: ライト方向のy成分。
-    ///   - z: ライト方向のz成分。
-    ///   - color: ライトの色。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
-        guard lightArray.count < Canvas3D.maxLights else { return }
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        ensureAmbientIfFirstLight()
-        // ローカル空間の方向をワールド空間に変換（w=0 で平行移動を除外）
-        let td = currentTransform * SIMD4(x, y, z, 0)
-        var light = Light3D.zero
-        light.positionAndType = SIMD4(0, 0, 0, 0)
-        light.directionAndCutoff = SIMD4(td.x, td.y, td.z, 0)
-        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, 1.0)
-        light.attenuationAndOuterCutoff = SIMD4(1, 0, 0, 0)
-        lightArray.append(light)
-    }
-
-    /// 指定位置にポイントライトを追加します。
-    ///
-    /// - Parameters:
-    ///   - x: ライト位置のx座標。
-    ///   - y: ライト位置のy座標。
-    ///   - z: ライト位置のz座標。
-    ///   - color: ライトの色。
-    ///   - falloff: 減衰フォールオフ係数。
-    public func pointLight(
-        _ x: Float, _ y: Float, _ z: Float,
-        color: Color = .white,
-        falloff: Float = 0.1
-    ) {
-        guard lightArray.count < Canvas3D.maxLights else { return }
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        ensureAmbientIfFirstLight()
-        // ローカル空間の位置をワールド空間に変換
-        let tp = currentTransform * SIMD4(x, y, z, 1)
-        var light = Light3D.zero
-        light.positionAndType = SIMD4(tp.x, tp.y, tp.z, 1)
-        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, 1.0)
-        light.attenuationAndOuterCutoff = SIMD4(1.0, falloff, falloff * 0.1, 0)
-        lightArray.append(light)
-    }
-
-    /// 指定位置・方向にスポットライトを追加します。
-    ///
-    /// - Parameters:
-    ///   - x: ライト位置のx座標。
-    ///   - y: ライト位置のy座標。
-    ///   - z: ライト位置のz座標。
-    ///   - dirX: スポットライト方向のx成分。
-    ///   - dirY: スポットライト方向のy成分。
-    ///   - dirZ: スポットライト方向のz成分。
-    ///   - angle: 外側コーン角度（ラジアン）。
-    ///   - falloff: 減衰フォールオフ係数。
-    ///   - color: ライトの色。
-    public func spotLight(
-        _ x: Float, _ y: Float, _ z: Float,
-        _ dirX: Float, _ dirY: Float, _ dirZ: Float,
-        angle: Float = Float.pi / 6,
-        falloff: Float = 0.01,
-        color: Color = .white
-    ) {
-        guard lightArray.count < Canvas3D.maxLights else { return }
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        ensureAmbientIfFirstLight()
-        let innerAngle = angle * 0.8
-        // ローカル空間の位置と方向をワールド空間に変換
-        let tp = currentTransform * SIMD4(x, y, z, 1)
-        let td = currentTransform * SIMD4(dirX, dirY, dirZ, 0)
-        var light = Light3D.zero
-        light.positionAndType = SIMD4(tp.x, tp.y, tp.z, 2)
-        light.directionAndCutoff = SIMD4(td.x, td.y, td.z, cos(innerAngle))
-        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, 1.0)
-        light.attenuationAndOuterCutoff = SIMD4(1.0, falloff, falloff * 0.1, cos(angle))
-        lightArray.append(light)
-    }
-
-    /// 全チャンネル均一にアンビエントライトの強度を設定します。
-    ///
-    /// - Parameter strength: R、G、B に適用されるアンビエントライト強度値。
-    public func ambientLight(_ strength: Float) {
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        let c = colorModeConfig.toGray(strength)
-        ambientColor = SIMD3(c.r, c.g, c.b)
-        currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
-        userSetAmbient = true
-    }
-
-    /// 個別の RGB 成分でアンビエントライトの色を設定します。
-    ///
-    /// - Parameters:
-    ///   - r: 赤成分。
-    ///   - g: 緑成分。
-    ///   - b: 青成分。
-    public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
-        let c = colorModeConfig.toColor(r, g, b, nil)
-        ambientColor = SIMD3(c.r, c.g, c.b)
-        currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
-        userSetAmbient = true
-    }
-
-    // MARK: - マテリアル
-
-    /// 現在のマテリアルのスペキュラハイライト色を設定します。
-    ///
-    /// - Parameter color: スペキュラ色。
-    public func specular(_ color: Color) {
-        currentMaterial.specularAndShininess = SIMD4(
-            color.r, color.g, color.b,
-            currentMaterial.specularAndShininess.w
-        )
-    }
-
-    /// グレースケール値でスペキュラハイライト色を設定します。
-    ///
-    /// - Parameter gray: 全チャンネルに適用されるグレースケール強度。
-    public func specular(_ gray: Float) {
-        currentMaterial.specularAndShininess = SIMD4(
-            gray, gray, gray,
-            currentMaterial.specularAndShininess.w
-        )
-    }
-
-    /// 現在のマテリアルの光沢度指数を設定します。
-    ///
-    /// - Parameter value: 光沢度指数（値が大きいほどハイライトが鋭くなります）。
-    public func shininess(_ value: Float) {
-        currentMaterial.specularAndShininess.w = value
-    }
-
-    /// 現在のマテリアルのエミッシブ色を設定します。
-    ///
-    /// - Parameter color: エミッシブ色。
-    public func emissive(_ color: Color) {
-        currentMaterial.emissiveAndMetallic = SIMD4(
-            color.r, color.g, color.b,
-            currentMaterial.emissiveAndMetallic.w
-        )
-    }
-
-    /// グレースケール値でエミッシブ色を設定します。
-    ///
-    /// - Parameter gray: 全チャンネルに適用されるグレースケール強度。
-    public func emissive(_ gray: Float) {
-        currentMaterial.emissiveAndMetallic = SIMD4(
-            gray, gray, gray,
-            currentMaterial.emissiveAndMetallic.w
-        )
-    }
-
-    /// 現在のマテリアルのメタリック係数を設定します。
-    ///
-    /// - Parameter value: メタリック係数。0.0（誘電体）から 1.0（完全金属）まで。
-    public func metallic(_ value: Float) {
-        currentMaterial.emissiveAndMetallic.w = value
-    }
-
-    /// PBR ラフネスを設定し、自動的に PBR シェーディングモードを有効にします。
-    ///
-    /// - Parameter value: ラフネス。0.0（鏡面）から 1.0（完全拡散）まで。
-    public func roughness(_ value: Float) {
-        currentMaterial.pbrParams.x = value
-        currentMaterial.pbrParams.y = 1  // 自動的に PBR モードを有効化
-    }
-
-    /// PBR アンビエントオクルージョン係数を設定します。
-    ///
-    /// - Parameter value: オクルージョン。0.0（完全遮蔽）から 1.0（遮蔽なし）まで。
-    public func ambientOcclusion(_ value: Float) {
-        currentMaterial.pbrParams.z = value
-    }
-
-    /// PBR シェーディングモードを明示的に切り替えます。
-    ///
-    /// - Parameter enabled: `true` で Cook-Torrance GGX シェーディング、`false` で Blinn-Phong。
-    public func pbr(_ enabled: Bool) {
-        currentMaterial.pbrParams.y = enabled ? 1 : 0
-    }
-
-    // MARK: - カスタムマテリアル
-
-    /// 以降の描画コマンドにカスタムフラグメントシェーダーマテリアルを適用します。
-    ///
-    /// - Parameter custom: 適用するカスタムマテリアル。
-    public func material(_ custom: CustomMaterial) {
-        currentCustomMaterial = custom
-    }
-
-    /// カスタムマテリアルを除去し、組み込みシェーダーに戻します。
-    public func noMaterial() {
-        currentCustomMaterial = nil
-    }
-
-    // MARK: - テクスチャ
-
-    /// 以降のテクスチャ付き描画コマンドにテクスチャを設定します。
-    ///
-    /// - Parameter img: テクスチャがバインドされる画像。
-    public func texture(_ img: MImage) {
-        currentTexture = img.texture
-    }
-
-    /// 現在バインドされているテクスチャを除去します。
-    public func noTexture() {
-        currentTexture = nil
-    }
-
-    // MARK: - 変換スタック
-
-    /// 変換、スタイル、マテリアルを含む全状態を保存します。
-    public func pushState() {
-        stateStack.append(StyleState3D(
-            transform: currentTransform,
-            fillColor: fillColor,
-            hasFill: hasFill,
-            hasStroke: hasStroke,
-            strokeColor: strokeColor,
-            material: currentMaterial,
-            customMaterial: currentCustomMaterial,
-            texture: currentTexture,
-            colorModeConfig: colorModeConfig
-        ))
-    }
-
-    /// 直前に保存した状態を復元します。
-    public func popState() {
-        guard let saved = stateStack.popLast() else { return }
-        currentTransform = saved.transform
-        fillColor = saved.fillColor
-        hasFill = saved.hasFill
-        hasStroke = saved.hasStroke
-        strokeColor = saved.strokeColor
-        currentMaterial = saved.material
-        currentCustomMaterial = saved.customMaterial
-        currentTexture = saved.texture
-        colorModeConfig = saved.colorModeConfig
-    }
-
-    /// 現在の変換行列のみを保存します。
-    public func pushMatrix() {
-        matrixStack.append(currentTransform)
-    }
-
-    /// 直前に保存した変換行列のみを復元します。
-    public func popMatrix() {
-        guard let saved = matrixStack.popLast() else { return }
-        currentTransform = saved
-    }
-
-    /// 現在の変換に指定オフセットの平行移動を適用します。
-    ///
-    /// - Parameters:
-    ///   - x: x軸方向の移動量。
-    ///   - y: y軸方向の移動量。
-    ///   - z: z軸方向の移動量。
-    public func translate(_ x: Float, _ y: Float, _ z: Float) {
-        currentTransform = currentTransform * float4x4(translation: SIMD3(x, y, z))
-    }
-
-    /// 現在の変換をx軸周りに回転させます。
-    ///
-    /// - Parameter angle: 回転角度（ラジアン）。
-    public func rotateX(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationX: angle) }
-
-    /// 現在の変換をy軸周りに回転させます。
-    ///
-    /// - Parameter angle: 回転角度（ラジアン）。
-    public func rotateY(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationY: angle) }
-
-    /// 現在の変換をz軸周りに回転させます。
-    ///
-    /// - Parameter angle: 回転角度（ラジアン）。
-    public func rotateZ(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationZ: angle) }
-
-    /// 各軸に沿った非均一スケールを現在の変換に適用します。
-    ///
-    /// - Parameters:
-    ///   - x: x軸方向のスケール係数。
-    ///   - y: y軸方向のスケール係数。
-    ///   - z: z軸方向のスケール係数。
-    public func scale(_ x: Float, _ y: Float, _ z: Float) {
-        currentTransform = currentTransform * float4x4(scale: SIMD3(x, y, z))
-    }
-
-    /// 全軸に均一スケールを現在の変換に適用します。
-    ///
-    /// - Parameter s: 均一スケール係数。
-    public func scale(_ s: Float) { currentTransform = currentTransform * float4x4(scale: s) }
-
-    /// 現在の変換に指定した行列を乗算します。
-    ///
-    /// - Parameter matrix: 連結する 4x4 行列。
-    public func applyMatrix(_ matrix: float4x4) {
-        currentTransform = currentTransform * matrix
     }
 
     // MARK: - 3D シェイプ
@@ -1450,7 +1030,7 @@ public final class Canvas3D: CanvasStyle {
     // MARK: - インスタンスバッチフラッシュ
 
     /// 蓄積されたインスタンスを単一のインスタンス描画コールとしてフラッシュします。
-    private func flushInstanceBatch() {
+    func flushInstanceBatch() {
         guard let encoder = encoder,
               instanceBatcher.instanceCount > 0,
               let mesh = instanceBatcher.currentMesh else { return }
@@ -1808,7 +1388,7 @@ public final class Canvas3D: CanvasStyle {
     // MARK: - プライベートヘルパー
 
     // ビュー投影行列を計算してキャッシュ
-    private func computeViewProjection() -> float4x4 {
+    func computeViewProjection() -> float4x4 {
         if viewProjectionDirty {
             let view = float4x4(lookAt: cameraEye, center: cameraCenter, up: cameraUp)
             let proj: float4x4
@@ -1848,7 +1428,7 @@ public final class Canvas3D: CanvasStyle {
     }
 
     // 最初のライト追加時にデフォルトのアンビエント値を設定
-    private func ensureAmbientIfFirstLight() {
+    func ensureAmbientIfFirstLight() {
         if lightArray.isEmpty && !userSetAmbient {
             ambientColor = SIMD3(0.3, 0.3, 0.3)
             currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)

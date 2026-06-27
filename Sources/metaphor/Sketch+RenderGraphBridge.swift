@@ -25,6 +25,28 @@ extension Sketch {
         }
     }
 
+    /// ``createSourcePass(label:width:height:)`` の検証付きバリアント。
+    ///
+    /// 寸法が不正な場合は ``MetaphorCore/MetaphorError/invalidParameter(_:)`` を、
+    /// 生成に失敗した場合はその下層エラーをスローします（nil を返さず原因が分かる）。
+    ///
+    /// - Parameters:
+    ///   - label: パスのデバッグラベル。
+    ///   - width: レンダーターゲットの幅（ピクセル、正の値）。
+    ///   - height: レンダーターゲットの高さ（ピクセル、正の値）。
+    /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。
+    public func makeSourcePass(label: String, width: Int, height: Int) throws -> SourcePass {
+        guard width > 0, height > 0 else {
+            throw MetaphorError.invalidParameter("SourcePass の寸法は正である必要があります (指定: \(width)x\(height))")
+        }
+        return try SourcePass(
+            label: label,
+            device: context.renderer.device,
+            width: width,
+            height: height
+        )
+    }
+
     /// レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
     ///
     /// - Parameters:
@@ -44,6 +66,28 @@ extension Sketch {
             print("[metaphor] Warning: Failed to create EffectPass: \(error)")
             return nil
         }
+    }
+
+    /// ``createEffectPass(_:effects:)`` の検証付きバリアント。
+    ///
+    /// `effects` が空の場合は ``MetaphorCore/MetaphorError/invalidParameter(_:)`` を、
+    /// 生成に失敗した場合はその下層エラーをスローします（nil を返さず原因が分かる）。
+    ///
+    /// - Parameters:
+    ///   - input: 入力レンダーパスノード。
+    ///   - effects: 適用するポストプロセスエフェクト（1 つ以上）。
+    /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。
+    public func makeEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) throws -> EffectPass {
+        guard !effects.isEmpty else {
+            throw MetaphorError.invalidParameter("EffectPass には 1 つ以上のエフェクトが必要です")
+        }
+        return try EffectPass(
+            input,
+            effects: effects,
+            device: context.renderer.device,
+            commandQueue: context.renderer.commandQueue,
+            shaderLibrary: context.renderer.shaderLibrary
+        )
     }
 
     /// 2つのレンダーパスを合成するマージパスを作成します。

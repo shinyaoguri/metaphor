@@ -4,7 +4,7 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 272
+Example count: 273
 
 ## How To Use
 
@@ -294,6 +294,7 @@ Example count: 272
 - [Simple Particle System](../../Examples/Topics/Simulate/SimpleParticleSystem) [Intermediate] (Simulate) -- Particles are generated each cycle through draw(), fall with gravity and fade out over time. A ParticleSystem object manages a variable size (ArrayList) list of particles. Tags: particles, physics, simpleparticlesystem, simulate, topics.
 - [Smoke Particle System](../../Examples/Topics/Simulate/SmokeParticleSystem) [Advanced] (Simulate) -- A basic smoke effect using a particle system. Each particle is rendered as an alpha masked image. Tags: image, particles, simulate, smokeparticlesystem, topics.
 - [SoftBody](../../Examples/Topics/Simulate/SoftBody) (Simulate) Tags: simulate, softbody, topics.
+- [Auto Subsystems (lifecycle)](../../Examples/Topics/Subsystems/AutoSubsystems) [Intermediate] (Subsystems) -- Registers a Physics2D world as a SketchSubsystem with AutoSubsystemManager so its per-frame step() is driven automatically — draw() only renders. Demonstrates the opt-in subsystem lifecycle (audio/video/physics also con... Tags: audio, autosubsystems, export, physics, subsystems, topics, video.
 - [TextureCube](../../Examples/Topics/Textures/TextureCube) (Textures) Tags: texturecube, textures, topics, typography.
 - [TextureCylinder](../../Examples/Topics/Textures/TextureCylinder) (Textures) Tags: texturecylinder, textures, topics, typography.
 - [TextureQuad](../../Examples/Topics/Textures/TextureQuad) (Textures) Tags: texturequad, textures, topics, typography.

@@ -1,5 +1,5 @@
 {
-  "count": 272,
+  "count": 273,
   "examples": [
     {
       "title": "Array",
@@ -4424,6 +4424,29 @@
         "simulate",
         "softbody",
         "topics"
+      ]
+    },
+    {
+      "title": "Auto Subsystems (lifecycle)",
+      "path": "Examples/Topics/Subsystems/AutoSubsystems",
+      "group": "Topics",
+      "subcategory": "Subsystems",
+      "level": "Intermediate",
+      "description": "Registers a Physics2D world as a SketchSubsystem with AutoSubsystemManager so its per-frame step() is driven automatically — draw() only renders. Demonstrates the opt-in subsystem lifecycle (audio/video/physics also con...",
+      "featured": [
+        "AutoSubsystemManager",
+        "SketchSubsystem",
+        "Physics2D",
+        "PluginFactory"
+      ],
+      "tags": [
+        "audio",
+        "autosubsystems",
+        "export",
+        "physics",
+        "subsystems",
+        "topics",
+        "video"
       ]
     },
     {
