@@ -215,6 +215,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadVideo(_ path: String) throws -> VideoPlayer` -- 再生用のビデオファイルを読み込みます。
 - `func loop()` -- アニメーションループを再開します。
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
+- `func makeAudioInput(fftSize: Int = 1024) throws -> AudioAnalyzer` -- ``createAudioInput(fftSize:)`` の検証付きバリアント。
+- `func makeEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) throws -> EffectPass` -- ``createEffectPass(_:effects:)`` の検証付きバリアント。
+- `func makePhysics2D(cellSize: Float = 50) throws -> Physics2D` -- ``createPhysics2D(cellSize:)`` の検証付きバリアント。
+- `func makeSourcePass(label: String, width: Int, height: Int) throws -> SourcePass` -- ``createSourcePass(label:width:height:)`` の検証付きバリアント。
 - `func material(_ customMaterial: CustomMaterial)` -- カスタムマテリアルを以降の 3D 描画に適用します。
 - `func mesh(_ mesh: Mesh)` -- ビルド済みメッシュを描画します。
 - `func metallic(_ value: Float)` -- マテリアルのメタリック係数を設定します。
@@ -363,6 +367,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> (any MTLTexture)?` -- レンダーグラフを実行し、最終出力テクスチャを返します。
 
 ### `protocol Sketch : AnyObject` -- このプロトコルに準拠してスケッチを定義します。
+
+### `protocol SketchSubsystem : AnyObject` -- 毎フレーム更新と開始/停止のライフサイクルを持つサブシステム（オーディオ、物理、
+
+- `func onStart()` -- レンダーループ開始時に一度呼ばれます。
+- `func onStop()` -- レンダーループ停止時に一度呼ばれます。
+- `func update(deltaTime: Float)` -- 毎フレーム、レンダリング前に呼ばれます。
 
 ### `struct CircleInstance` -- A compact per-circle record for explicit bulk 2D drawing.
 
@@ -585,6 +595,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case writerFailed(String)` -- AVAssetWriter がエラーを検出した
 - `case image(MetaphorError.ImageFailure)` -- 画像操作の失敗
 - `case invalidImage` -- ソース画像が無効、または CGImage への変換に失敗した
+- `case invalidParameter(String)` -- API に渡されたパラメータが不正 (範囲外・前提条件違反など)
 - `case material(MetaphorError.MaterialFailure)` -- マテリアル操作の失敗
 - `case mesh(MetaphorError.MeshFailure)` -- メッシュ操作の失敗
 - `case fileNotFound` -- メッシュファイルが見つからなかった
@@ -742,6 +753,23 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case mp4`
 - `var fileExtension: String { get }` -- このフォーマットのファイル拡張子文字列
 
+### `final class AutoSubsystemManager` -- 登録された ``SketchSubsystem`` 群のライフサイクルと毎フレーム更新を自動で駆動する
+
+- `let pluginID: String`
+- `init(_ subsystems: [any SketchSubsystem], pluginID: String = "org.metaphor.auto-subsystems")` -- - subsystems: 自動駆動するサブシステム群（登録順に更新されます）。
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
+
 ### `final class BloomEffect` -- ブルーム（高輝度領域周辺のグロウ）を適用します。
 
 - `var intensity: Float`
@@ -756,10 +784,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var radius: Float`
 - `init(radius: Float = 5.0)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
-
-### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
-
-### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
 
 ### `final class CaptureDevice` -- カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
 
@@ -1325,10 +1349,28 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## metaphor
 
+### AudioAnalyzer
+
+- `func onStart()`
+- `func onStop()`
+- `func update(deltaTime: Float)` -- 毎フレームの FFT/ビート解析更新。`deltaTime` は使わない（内部で前回時刻を持つ）。
+
 ### Node
 
 - `func syncFromPhysics(_ body: PhysicsBody2D)` -- 2D物理ボディからこのノードの XY 位置を同期します。
 - `func syncToPhysics(_ body: PhysicsBody2D)` -- このノードの XY 位置を2D物理ボディに書き戻します。
+
+### Physics2D
+
+- `func onStart()`
+- `func onStop()`
+- `func update(deltaTime: Float)` -- 物理ステップを進める。`deltaTime` をそのままタイムステップに使う。
+
+### VideoPlayer
+
+- `func onStart()`
+- `func onStop()`
+- `func update(deltaTime: Float)` -- 毎フレームの再生位置/テクスチャ更新。
 
 ## MetaphorAudio
 

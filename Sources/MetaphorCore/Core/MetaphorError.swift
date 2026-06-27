@@ -25,6 +25,9 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     /// スケッチコンテキストが利用できない (`setup()` または `draw()` の外で呼び出された)
     case contextUnavailable(method: String)
 
+    /// API に渡されたパラメータが不正 (範囲外・前提条件違反など)
+    case invalidParameter(String)
+
     // MARK: - シェーダー & パイプライン
 
     /// シェーダーのコンパイルに失敗した
@@ -162,6 +165,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
             "[metaphor] Failed to create buffer (size: \(size))"
         case .contextUnavailable(let method):
             "[metaphor] Sketch context is not available in \(method). Ensure this is called inside setup() or draw()."
+        case .invalidParameter(let message):
+            "[metaphor] Invalid parameter: \(message)"
         case .shaderCompilationFailed(let name, let err):
             "[metaphor] Failed to compile shader '\(name)': \(err)"
         case .pipelineCreationFailed(let name, let err):
