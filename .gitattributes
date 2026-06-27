@@ -1,0 +1,11 @@
+# Generated AI-facing reference files. These are produced by `make llms-txt`
+# and `make examples-index` from the public API and Examples/, and are committed
+# so AI tooling can read a versioned snapshot. Mark them as generated so GitHub
+# collapses them in diffs/reviews and excludes them from language stats.
+llms.txt                       linguist-generated=true -diff
+llms-sketch.txt                linguist-generated=true -diff
+docs/ai/examples-index.md      linguist-generated=true -diff
+docs/ai/examples-index.json    linguist-generated=true -diff
+
+# AGENTS.md is generated from CLAUDE.md via `make docs-sync` (title line differs).
+AGENTS.md                      linguist-generated=true -diff

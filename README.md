@@ -222,6 +222,9 @@ swift run
 - **[`llms-sketch.txt`](llms-sketch.txt)** — スケッチ作者向けの短い AI コンテキスト。`setup()` / `draw()` の書き方、よく使う API、避けるべき重い処理を素早く共有できます。
 - **[`llms.txt`](llms.txt)** — リポジトリ直下に、API 全体を 1 ファイルにまとめた LLM 向けリファレンスがあります。Quick Start、関数シグネチャ、3 層 API アーキテクチャの解説、サンプルコードを含み、**AI のコンテキストに丸ごと貼り付けるだけ** で metaphor の流儀に沿ったコードを書かせられます。`make llms-txt` でソースから再生成できます。
 - **[`docs/ai/`](docs/ai/)** — Examples 索引、スケッチ作者向けガイド、用途別プロンプト、インストール形態ごとの効き方をまとめています。
+  - [`docs/ai/for-sketch-authors.md`](docs/ai/for-sketch-authors.md) — AI と一緒にスケッチを書くためのガイド
+  - [`docs/ai/install-scenarios.md`](docs/ai/install-scenarios.md) — SwiftPM / CLI / ローカル checkout 別の効き方
+  - [`docs/ai/prompts/`](docs/ai/prompts/) — 用途別（audio-reactive、shader など）プロンプトテンプレート
 - **[`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md)** — このライブラリ自体を AI と保守・拡張するためのプロジェクトインストラクションです。`metaphor new` で生成されるスケッチには、制作意図を共有するための `AGENTS.md` と `PROJECT_BRIEF.md` が入ります。
 - **使い方の目安**
   - 自分のスケッチで AI に書かせるとき：`llms.txt` をチャットに貼る、または Cursor / Claude Code でリポジトリごと参照に入れる
@@ -245,6 +248,21 @@ swift run
 - Apple Silicon Mac
 - macOS 14.0+
 - Xcode 15.0+ / Swift 5.10+
+
+## Troubleshooting
+
+- **`make build` が失敗する / Syphon.xcframework が無い** — 初回は `make setup` を実行して
+  サブモジュール初期化と Syphon.xcframework のビルドを済ませてください。状態は `make check`
+  で確認できます。
+- **ライブビューア（`metaphor watch`）が真っ黒** — CLI 側の事象です。
+  [metaphor-cli の Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting)
+  を参照してください。
+- **AI から「いま見えている絵」を観測できない** — `metaphor watch`（共有セッション）が動いて
+  いるか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
+- **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を
+  実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
+- **`CLAUDE.md` を編集したのに `AGENTS.md` と差分が出る** — `make docs-sync` で AGENTS.md を
+  再生成してください（AGENTS.md は CLAUDE.md からの生成物です）。
 
 ## SwiftPM パッケージとして組み込む
 
