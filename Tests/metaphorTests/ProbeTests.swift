@@ -28,6 +28,20 @@ struct ProbeRequestTests {
         #expect(request.id == "abc")
         #expect(request.label == "baseline")
         #expect(request.scale == 0.5)
+        // frames/every が無いリクエストは単一フレーム扱い（nil）。
+        #expect(request.frames == nil)
+        #expect(request.every == nil)
+    }
+
+    @Test("decode sequence request fields")
+    func decodeSequenceFields() throws {
+        let json = #"{"id":"abc","frames":8,"every":2}"#
+        let request = try JSONDecoder().decode(
+            ProbeRequest.self, from: Data(json.utf8)
+        )
+        #expect(request.id == "abc")
+        #expect(request.frames == 8)
+        #expect(request.every == 2)
     }
 }
 
@@ -288,6 +302,157 @@ struct MetaphorProbePluginTests {
             let secondMtime = secondAttrs[.modificationDate] as? Date
 
             #expect(firstMtime == secondMtime)
+
+            drainGPUWork()
+        }
+    }
+}
+
+// MARK: - Sequence capture (GPU-gated)
+
+@Suite("MetaphorProbe sequence capture", .serialized, .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct MetaphorProbeSequenceTests {
+
+    private func drainGPUWork() {
+        Thread.sleep(forTimeInterval: 0.2)
+    }
+
+    private func waitForFile(_ url: URL, timeout: TimeInterval = 5.0) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if FileManager.default.fileExists(atPath: url.path) { return true }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return false
+    }
+
+    private func writeSequenceRequest(
+        id: String, frames: Int, every: Int? = nil, label: String? = nil, to path: URL
+    ) throws {
+        var dict: [String: Any] = ["id": id, "frames": frames]
+        if let every { dict["every"] = every }
+        if let label { dict["label"] = label }
+        let data = try JSONSerialization.data(withJSONObject: dict)
+        try data.write(to: path)
+    }
+
+    @Test("sequence request produces frames, contact sheet, and manifest")
+    func sequenceProducesOutputs() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 48)
+            renderer.addPlugin(plugin)
+
+            try writeSequenceRequest(id: "seq-1", frames: 4, label: "motion", to: requestPath)
+            // frames=4, every=1 → 4 renderFrame で 4 枚採取。
+            for _ in 0..<4 { renderer.renderFrame() }
+
+            let seqDir = outputDir.appendingPathComponent("sequence")
+            let manifestURL = seqDir.appendingPathComponent("sequence.json")
+            // manifest は最後に書かれる完了シグナル。出れば全 PNG が出揃っている。
+            #expect(waitForFile(manifestURL))
+
+            for i in 0..<4 {
+                let name = String(format: "frame.%04d.png", i)
+                #expect(FileManager.default.fileExists(
+                    atPath: seqDir.appendingPathComponent(name).path
+                ))
+            }
+            #expect(FileManager.default.fileExists(
+                atPath: seqDir.appendingPathComponent("contact_sheet.png").path
+            ))
+
+            let data = try Data(contentsOf: manifestURL)
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            #expect(json?["id"] as? String == "seq-1")
+            #expect(json?["label"] as? String == "motion")
+            #expect(json?["frameCount"] as? Int == 4)
+            #expect(json?["schemaVersion"] as? Int == 1)
+            #expect(json?["contactSheet"] as? String == "contact_sheet.png")
+            let frames = json?["frames"] as? [[String: Any]]
+            #expect(frames?.count == 4)
+            #expect(frames?.first?["file"] as? String == "frame.0000.png")
+            let size = json?["size"] as? [String: Int]
+            #expect(size?["width"] == 64)
+            #expect(size?["height"] == 48)
+
+            drainGPUWork()
+        }
+    }
+
+    @Test("every stride captures fewer frames")
+    func strideCapturesFewer() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.addPlugin(plugin)
+
+            // frames=2, every=2 → tick0 採取 / tick1 skip / tick2 採取 → 3 renderFrame で 2 枚。
+            try writeSequenceRequest(id: "seq-stride", frames: 2, every: 2, to: requestPath)
+            for _ in 0..<3 { renderer.renderFrame() }
+
+            let seqDir = outputDir.appendingPathComponent("sequence")
+            let manifestURL = seqDir.appendingPathComponent("sequence.json")
+            #expect(waitForFile(manifestURL))
+
+            let data = try Data(contentsOf: manifestURL)
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            #expect(json?["frameCount"] as? Int == 2)
+            #expect(json?["every"] as? Int == 2)
+            // 採取されたのは index 0,1 の 2 枚だけ（スキップされた tick はファイルにならない）。
+            #expect(FileManager.default.fileExists(
+                atPath: seqDir.appendingPathComponent("frame.0001.png").path
+            ))
+            #expect(!FileManager.default.fileExists(
+                atPath: seqDir.appendingPathComponent("frame.0002.png").path
+            ))
+
+            drainGPUWork()
+        }
+    }
+
+    @Test("single-frame request does not create a sequence directory")
+    func singleFrameNoSequenceDir() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.addPlugin(plugin)
+
+            // frames 無し（単一フレーム）。
+            let data = try JSONSerialization.data(withJSONObject: ["id": "single-1"])
+            try data.write(to: requestPath)
+            renderer.renderFrame()
+
+            #expect(waitForFile(outputDir.appendingPathComponent("frame.png")))
+            // sequence/ は作られない。
+            #expect(!FileManager.default.fileExists(
+                atPath: outputDir.appendingPathComponent("sequence").path
+            ))
 
             drainGPUWork()
         }

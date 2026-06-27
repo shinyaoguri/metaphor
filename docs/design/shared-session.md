@@ -55,7 +55,7 @@ Claude Code ──MCP(stdio)──→ [ metaphor mcp ]（ATTACH：spawnしない
 
 | ファイル | 書き手 | 読み手 | 内容 |
 |---|---|---|---|
-| `probe/request.json` ↔ `probe/current/frame.{png,json}` | 子（Probe）/ mcp | mcp / 子 | 既存の観測往復（[ai-mcp-server.md](./ai-mcp-server.md)） |
+| `probe/request.json` ↔ `probe/current/frame.{png,json}` / `probe/current/sequence/` | 子（Probe）/ mcp | mcp / 子 | 既存の観測往復。`frames>=2` で連続フレーム列（contact sheet + manifest）も同じ往復で得られる（[ai-mcp-server.md](./ai-mcp-server.md) §5.1） |
 | `session.json` | watch | mcp | `{schemaVersion, pid, sketchPath, syphonName, probeEnabled, startedAt}` |
 | `build-status.json` | watch | mcp | `BuildOutcome {succeeded, exitCode, output, initial}` |
 

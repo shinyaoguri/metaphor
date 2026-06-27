@@ -69,6 +69,27 @@ AIエージェント ──MCP(JSON-RPC 2.0 / stdio)──→ metaphor mcp <sket
 
 将来候補（v1 には入れない）: `reload`（強制再ビルド）、`get_state`（新snapshotなしで直近frame.json）。
 
+### 5.1 追加ツール: `capture_sequence`（時間軸の観測）
+
+`snapshot` は 1 枚の静止フレームしか返さないため、動き・リズム・遷移・音との同期・
+操作感を評価できない。VJ／アニメ用途では「時間を観測する仕組み」が単発スナップショットの
+ROI 統計より先に要る。そこで Probe に **連続フレーム列**のキャプチャ能力を足し、MCP の
+`capture_sequence` ツールで露出する。
+
+| ツール | 実体 | 返すもの |
+|---|---|---|
+| `capture_sequence` | `request.json` に `frames`（採取枚数）/ `every`（ストライド）を加えて書く → `current/sequence/sequence.json` の完了を id 一致でポーリング | **contact sheet を inline image** + manifest（各フレームの frame/time/サイズ）+ フレーム別 PNG/JSON へのパス |
+
+- **能力は metaphor 側（Probe）**: `current/sequence/frame.NNNN.{png,json}` + `contact_sheet.png` +
+  `sequence.json`（manifest）を原子的に書き出す。`sequence.json` を最後に書くのが完了シグナル。
+  既存の単一フレーム経路（`current/frame.{png,json}`）は不変。実装は
+  `MetaphorProbePlugin` / `ProbeWriter` / `ProbeSequenceManifest` / `ProbeRequest`。
+- **露出は metaphor-cli 側（MCP）**: `snapshot` の request-write + mtime-poll パターンの拡張。
+- **スコープ（Phase A）**: ライブの連続フレームを採取する（レンダループ無改造）。time/frame は
+  実測値を manifest に記録する。**決定論的な再現**（固定 seed・入力 record/replay・offline stepping）
+  は Phase B（別設計）。本ツールは「動きを見る」を最小コストで満たすことに徹する。
+- **契約**: 新規出力パスの追加（additive）。CONTRACT.md 契約点 4 を参照し、両リポジトリを揃える。
+
 ## 6. 既知の実装上の注意
 
 - 現在 launcher（`FoundationProcessLauncher`）は子の stdout/stderr を**親へ素通し**している。
