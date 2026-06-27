@@ -1,7 +1,7 @@
 # AGENTS.md
 
-> NOTE: このファイルは `CLAUDE.md` のコピー（タイトル行のみ異なる）です。
-> `CLAUDE.md` を変更したらこちらも同じ内容に更新してください。
+> NOTE: `AGENTS.md` は `CLAUDE.md` から生成されるコピーです（タイトル行のみ異なる）。
+> `CLAUDE.md` を編集し、`make docs-sync` を実行して同期してください（CI で同期を検証します）。
 
 ## Build Commands
 

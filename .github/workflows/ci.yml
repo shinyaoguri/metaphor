@@ -65,6 +65,10 @@ jobs:
           fi
       - name: Check cross-repo contract
         run: ./scripts/check-contract.sh
+      - name: Check CONTRACT.md identity across repos
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/check-contract-identity.sh
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Get Syphon submodule hash

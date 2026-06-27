@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks docs-sync
 
 # Default target
 all: setup build
@@ -128,6 +128,12 @@ symbol-graphs: build
 llms-txt: symbol-graphs
 	@python3 scripts/generate-llms-txt.py -o llms.txt
 
+# Regenerate AGENTS.md from CLAUDE.md (canonical source).
+# Only the title line differs; everything else is copied verbatim.
+docs-sync:
+	@sed '1s/^# CLAUDE\.md/# AGENTS.md/' CLAUDE.md > AGENTS.md
+	@echo "AGENTS.md regenerated from CLAUDE.md."
+
 # Validate AI-facing docs and generated-reference assumptions
 ai-docs-check:
 	@./scripts/validate-ai-docs.sh
@@ -186,6 +192,7 @@ help:
 	@echo "  make check          - Check if setup is complete"
 	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
+	@echo "  make docs-sync      - Regenerate AGENTS.md from CLAUDE.md"
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
