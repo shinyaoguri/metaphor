@@ -181,6 +181,14 @@ public struct SketchConfig: Sendable {
     /// Syphon サーバー名（`nil` で Syphon 出力を無効化）。
     public var syphonName: String?
 
+    /// Syphon 出力を有効化するか（既定 `false`）。
+    ///
+    /// `true` かつ ``syphonName`` が `nil` のとき、``title`` をサーバー名として Syphon を
+    /// publish します（MadMapper 等のプロジェクションツールから安定した名前で参照可能）。
+    /// 任意名にしたい場合は ``syphonName`` を指定してください（指定があれば Syphon は自動で
+    /// 有効になります）。環境変数 `METAPHOR_SYPHON_NAME` があればそれが最優先されます。
+    public var syphon: Bool
+
     /// ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
     public var windowScale: Float
 
@@ -213,6 +221,7 @@ public struct SketchConfig: Sendable {
     ///   - title: ウィンドウタイトル。
     ///   - fps: 目標フレームレート。
     ///   - syphonName: Syphon サーバー名（`nil` で無効化）。
+    ///   - syphon: Syphon 出力を有効化するか（既定 `false`。`true` で ``title`` 名で publish）。
     ///   - windowScale: ウィンドウサイズのスケール係数。
     ///   - fullScreen: フルスクリーンモードで起動するかどうか。
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
@@ -223,6 +232,7 @@ public struct SketchConfig: Sendable {
         title: String = "metaphor",
         fps: Int = 60,
         syphonName: String? = nil,
+        syphon: Bool = false,
         windowScale: Float = 0.5,
         fullScreen: Bool = false,
         renderLoopMode: RenderLoopMode = .displayLink,
@@ -233,6 +243,7 @@ public struct SketchConfig: Sendable {
         self.title = title
         self.fps = fps
         self.syphonName = syphonName
+        self.syphon = syphon
         self.windowScale = windowScale
         self.fullScreen = fullScreen
         self.renderLoopMode = renderLoopMode

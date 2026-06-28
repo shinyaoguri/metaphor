@@ -151,8 +151,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // レンダーループ停止をプラグインに通知し、リソース解放の機会を与える。
-        renderer?.notifyPluginsStop()
+        // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
+        // SyphonPlugin はここで Syphon サーバーを停止する。
+        renderer?.shutdown()
     }
 
     /// レンダラー・キャンバス・コンテキストとその制御コールバックを初期化します。
@@ -251,19 +252,23 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window.contentView = mtkView
         self.mtkView = mtkView
 
+        // Syphon 実効名の解決（環境変数 > config.syphonName > (config.syphon ? title : nil)）。
+        // ウィンドウ表示でも MadMapper 等へ publish できるよう、env / syphon フラグを尊重する。
+        let effectiveSyphonName = resolveSyphonName(config: config)
+
         // レンダーループモードの決定。
-        // syphonName が設定されているが renderLoopMode が displayLink のままの場合、
+        // Syphon を publish するが renderLoopMode が displayLink のままの場合、
         // Syphon 互換性のため自動的にタイマーモードに切り替え。
         let loopMode: RenderLoopMode
-        if config.syphonName != nil && config.renderLoopMode == .displayLink {
+        if effectiveSyphonName != nil && config.renderLoopMode == .displayLink {
             loopMode = .timer(fps: config.fps)
         } else {
             loopMode = config.renderLoopMode
         }
 
-        // レガシー Syphon サポート
-        if let syphonName = config.syphonName {
-            renderer.startSyphonServer(name: syphonName)
+        // Syphon 出力（オプトイン: config.syphon / config.syphonName / 環境変数のいずれか）
+        if let effectiveSyphonName {
+            renderer.startSyphonServer(name: effectiveSyphonName)
         }
 
         // レンダーループの構成。
@@ -284,6 +289,19 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             mtkView.preferredFramesPerSecond = fps
             mtkView.isPaused = false
         }
+    }
+
+    /// Syphon サーバーの実効名を解決します（ウィンドウ表示モード用）。
+    ///
+    /// 優先順位: 環境変数 `METAPHOR_SYPHON_NAME` > ``SketchConfig/syphonName`` >
+    /// （``SketchConfig/syphon`` が `true` なら ``SketchConfig/title``）。いずれも無ければ
+    /// `nil`（= Syphon 無効）。空文字の環境変数は未設定として扱います。
+    private func resolveSyphonName(config: SketchConfig) -> String? {
+        let env = ProcessInfo.processInfo.environment
+        if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return name }
+        if let name = config.syphonName { return name }
+        if config.syphon { return config.title }
+        return nil
     }
 
     /// ヘッドレス（ウィンドウ無し）モードのレンダーループと Syphon 出力を構成します。
