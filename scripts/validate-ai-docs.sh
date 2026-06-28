@@ -2,20 +2,19 @@
 # Validate that AI-facing project instructions match the current codebase.
 #
 # Checks:
-#   1. Makefile targets referenced in CLAUDE.md / AGENTS.md exist
+#   1. Makefile targets referenced in CLAUDE.md exist
 #   2. Module names referenced match Package.swift library products
 #   3. Swift source files referenced exist under Sources/
 #   4. Example directories referenced exist
 #   5. Makefile symbol-graphs extracts every library product
 #   6. SPM dependency snippets use the stable version from README.md
 #   7. Generated examples index is up to date
-#   8. AGENTS.md is in sync with CLAUDE.md (make docs-sync)
 #
 # Exit code: 0 if all checks pass, 1 if any fail.
 
 set -euo pipefail
 
-DOC_FILES=(CLAUDE.md AGENTS.md)
+DOC_FILES=(CLAUDE.md)
 ERRORS=0
 
 red()   { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -169,21 +168,6 @@ if python3 scripts/generate-examples-index.py --check; then
     pass "examples index is up to date"
 else
     fail "examples index is out of date"
-fi
-
-# --------------------------------------------------------------------------
-# 8. AGENTS.md is in sync with CLAUDE.md (generated via `make docs-sync`)
-# --------------------------------------------------------------------------
-echo "Checking AGENTS.md / CLAUDE.md sync..."
-
-if [ -f CLAUDE.md ] && [ -f AGENTS.md ]; then
-    if diff -q <(sed '1s/^# AGENTS\.md/# CLAUDE.md/' AGENTS.md) CLAUDE.md >/dev/null; then
-        pass "AGENTS.md matches CLAUDE.md (only the title line differs)"
-    else
-        fail "AGENTS.md is out of sync with CLAUDE.md — run 'make docs-sync' and commit"
-    fi
-else
-    fail "CLAUDE.md and/or AGENTS.md missing — cannot verify sync"
 fi
 
 # --------------------------------------------------------------------------

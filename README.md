@@ -228,7 +228,7 @@ swift run
   - [`docs/ai/for-sketch-authors.md`](docs/ai/for-sketch-authors.md) — AI と一緒にスケッチを書くためのガイド
   - [`docs/ai/install-scenarios.md`](docs/ai/install-scenarios.md) — SwiftPM / CLI / ローカル checkout 別の効き方
   - [`docs/ai/prompts/`](docs/ai/prompts/) — 用途別（audio-reactive、shader など）プロンプトテンプレート
-- **[`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md)** — このライブラリ自体を AI と保守・拡張するためのプロジェクトインストラクションです。`metaphor new` で生成されるスケッチには、制作意図を共有するための `AGENTS.md` と `PROJECT_BRIEF.md` が入ります。
+- **[`CLAUDE.md`](CLAUDE.md)** — このライブラリ自体を AI と保守・拡張するためのプロジェクトインストラクションです。`metaphor new` で生成されるスケッチには、制作意図を共有するための `AGENTS.md` と `PROJECT_BRIEF.md` が入ります。
 - **使い方の目安**
   - 自分のスケッチで AI に書かせるとき：`llms.txt` をチャットに貼る、または Cursor / Claude Code でリポジトリごと参照に入れる
   - 「Processing でいうところの○○を metaphor でやって」と聞ける粒度の API ドキュメントが揃っているので、Processing / p5.js / openFrameworks の知識をそのまま AI 経由で持ち込めます
@@ -264,8 +264,6 @@ swift run
   いるか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
 - **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を
   実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
-- **`CLAUDE.md` を編集したのに `AGENTS.md` と差分が出る** — `make docs-sync` で AGENTS.md を
-  再生成してください（AGENTS.md は CLAUDE.md からの生成物です）。
 
 ## SwiftPM パッケージとして組み込む
 
