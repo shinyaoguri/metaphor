@@ -128,13 +128,13 @@ struct Phase3ShaderLibraryTests {
             named: BuiltinShaders.FunctionName.canvas3DTexturedFragment,
             from: ShaderLibrary.BuiltinKey.canvas3DTextured
         )
-        let pipeline = try PipelineFactory(device: device)
+        // build() が throw せず非オプショナルを返せること自体が成功条件。
+        _ = try PipelineFactory(device: device)
             .vertex(vfn)
             .fragment(ffn)
             .vertexLayout(.positionNormalUV)
             .blending(.alpha)
             .build()
-        #expect(pipeline != nil)
     }
 }
 
