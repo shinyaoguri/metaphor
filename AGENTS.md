@@ -92,32 +92,19 @@ This decouples rendering resolution from window size and enables Syphon output a
 
 ### API Quick Map
 
-For full API details, see `llms.txt` (auto-generated via `make llms-txt`).
+For API signatures, see `llms.txt` (auto-generated via `make llms-txt`). It
+lists every function but **not** which file implements it — this maps a feature
+area to its source so you know where to edit:
 
-| Category | Key Functions | Source |
-|----------|--------------|--------|
-| 2D Shapes | circle, rect, ellipse, line, triangle, arc, bezier, polygon | Sketch+Shapes.swift |
-| 3D Shapes | box, sphere, plane, cylinder, cone, torus, mesh, loadModel | Sketch+3D.swift |
-| Style | fill, stroke, strokeWeight, blendMode, background, tint | Sketch+Style.swift |
-| Transform | translate, rotate, scale, push/pop | Sketch+Shapes.swift |
-| Camera | camera, perspective, ortho, orbitControl | Sketch+3D.swift, Sketch+Advanced.swift (orbitControl) |
-| Lighting | lights, directionalLight, pointLight, spotLight | Sketch+3D.swift |
-| Material | specular, metallic, roughness, pbr, createMaterial | Sketch+3D.swift |
-| Image | loadImage, image, createGraphics, createCapture | Sketch+Image.swift |
-| Text | text, textSize, textFont, textAlign | Sketch+Image.swift |
-| Pixels | loadPixels, updatePixels, pixels | Sketch+Pixels.swift |
-| Compute | createComputeKernel, createBuffer, dispatch | Sketch+Advanced.swift |
-| Particles | createParticleSystem, updateParticles, drawParticles | Sketch+Advanced.swift |
-| PostFX | addPostEffect, createPostEffect, BloomEffect, BlurEffect | Sketch+Advanced.swift |
-| Export | save, beginVideoRecord, beginGIFRecord, beginRecord | Sketch+Image.swift, Sketch+Advanced.swift (GIF) |
-| Audio | createAudioInput, loadSound | Sketch+AudioBridge.swift |
-| Video | loadVideo, image(video) | Sketch+VideoBridge.swift |
-| Physics | createPhysics2D | Sketch+PhysicsBridge.swift |
-| Network | createOSCReceiver, createMIDI | Sketch+NetworkBridge.swift |
-| Noise | createNoise, noiseTexture, noise() | Sketch+NoiseBridge.swift, Noise.swift (noise()) |
-| SceneGraph | createNode, drawScene | Sketch+SceneGraphBridge.swift |
-| RenderGraph | createSourcePass, createEffectPass, createMergePass | Sketch+RenderGraphBridge.swift |
-| Probe (AI) | probe(name, value), MetaphorProbePlugin | Sketch+Probe.swift |
+- **2D shapes, transform** (circle, rect, line, arc, bezier, push/pop): `Sketch+Shapes.swift`
+- **3D** (box, sphere, camera, perspective, lights, material, pbr): `Sketch+3D.swift`
+- **Style** (fill, stroke, strokeWeight, blendMode, tint): `Sketch+Style.swift`
+- **Image, text, export** (loadImage, text, save, beginVideoRecord): `Sketch+Image.swift`
+- **Pixels** (loadPixels, updatePixels): `Sketch+Pixels.swift`
+- **Compute, particles, postFX, GIF, orbitControl**: `Sketch+Advanced.swift`
+- **Bridges** — audio/video/physics/network/noise/scene/render graph: `Sketch+*Bridge.swift` (e.g. `createAudioInput` → `Sketch+AudioBridge.swift`)
+- **Probe (AI)** (probe, MetaphorProbePlugin): `Sketch+Probe.swift`
+- **noise()** standalone: `Noise.swift`
 
 ## AI Probe
 
@@ -166,22 +153,14 @@ CI は `scripts/check-contract.sh` で契約トークンの消失を検知する
 - CI fires on `push: main`, `pull_request: main`, and `workflow_dispatch` (the
   Release workflow re-enters CI on `release/<tag>` branches via workflow_dispatch).
 
-### Releasing (label-driven)
+### Releasing
 
-Releases are cut by **labeling a PR**, not by a separate branch:
-
-1. On the PR you want to ship, add one label: `release:patch` / `release:minor`
-   / `release:major`.
-2. Merge it (squash). `release-on-merge.yml` reads the label and dispatches the
-   **Release** workflow with that bump, which builds, bumps versions, tags, and
-   publishes:
-   - **metaphor** → git tag + GitHub Release (SPM) + Syphon-pin dispatch to metaphor-cli.
-   - **metaphor-cli** → tarballs + Homebrew formula pushed to `shinyaoguri/homebrew-tap`.
-3. A PR **without** a `release:*` label merges normally and does **not** release.
-   (The Release workflow's own "Release vX.Y.Z" PR is unlabeled, so it never
-   re-triggers a release — no loop.)
-- Pre-releases (beta/rc) are cut manually via the Release workflow's
-  `workflow_dispatch` (`bump=prerelease` etc.).
+Releases are driven by a `release:*` label on a PR (`release:patch` /
+`release:minor` / `release:major`), not by a separate branch — merge the
+labeled PR (squash) and the **Release** workflow tags and publishes both
+metaphor and metaphor-cli. An unlabeled PR does **not** release. Full procedure,
+manual `workflow_dispatch` inputs, and version-bump operations:
+**[docs/releasing.md](docs/releasing.md)**.
 
 ### When to branch (Claude default)
 
@@ -202,15 +181,13 @@ Use kebab-case with a category prefix:
 ### Standard flow
 
 ```bash
-git checkout main && git pull
-git checkout -b feature/<name>
-# ... implement ...
-git push -u origin feature/<name>
-gh pr create --base main --title "..." --body "..."   # add --label release:minor to ship a release
-# wait for CI
-gh pr merge --squash --delete-branch
-git checkout main && git pull
+git checkout -b feature/<name>          # off main; see Naming above
+gh pr create --base main                # add --label release:minor to ship a release
+gh pr merge --squash --delete-branch    # squash-only, auto-delete branch
 ```
+
+General git hygiene (Conventional Commits, one concern per commit, push only
+when asked) lives in the global CLAUDE.md — not repeated here.
 
 ### Notes for Claude
 
@@ -218,26 +195,3 @@ git checkout main && git pull
 - Squash merge is the only allowed style — write one good final commit message in
   the PR title/body; per-commit messages on the branch are throwaway.
 - After merge, switch back to `main` and pull. Prune local branches with `git fetch -p`.
-
-## Releases
-
-Releases go through a single `workflow_dispatch` trigger on the `Release` workflow. No PAT required — the workflow re-enters CI on its own release branch using `workflow_dispatch` (which is exempt from the GITHUB_TOKEN recursion guard).
-
-### Inputs
-
-| Input | Purpose |
-|-------|---------|
-| `bump` | `patch` / `minor` / `major` / `prerelease` |
-| `prerelease_label` | `beta`, `rc`, etc. Empty for stable. Ignored when `bump=prerelease`. |
-
-### Common operations
-
-| Goal | Inputs | Resulting tag |
-|------|--------|---------------|
-| Stable patch | `bump=patch`, label empty | `v0.2.4` |
-| Start a beta cycle | `bump=minor`, `label=beta` | `v0.3.0-beta.1` |
-| Iterate the beta | `bump=prerelease` | `v0.3.0-beta.2` |
-| Promote to RC | `bump=minor`, `label=rc` | `v0.3.0-rc.1` |
-| Graduate to stable | `bump=minor`, label empty | `v0.3.0` |
-
-Pre-release tags (anything containing `-`) are automatically marked as Pre-release on GitHub. Package.swift `from:` example in README is only updated for stable releases.
