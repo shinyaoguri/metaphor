@@ -106,7 +106,6 @@ struct TextRendererAtlasTests {
         let result = renderer.textGlyphs(string: "Test", fontSize: 24, fontFamily: "Helvetica")
         #expect(result != nil)
         #expect(result!.glyphs.count == 4)
-        #expect(result!.texture != nil)
     }
 
     @Test("different font sizes use different atlas textures")

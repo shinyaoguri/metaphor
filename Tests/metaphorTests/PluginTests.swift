@@ -266,7 +266,7 @@ struct PluginTests {
         let plugin = MockPlugin(id: "resize-test")
         renderer.addPlugin(plugin)
 
-        try renderer.resizeCanvas(width: 128, height: 96)
+        renderer.resizeCanvas(width: 128, height: 96)
 
         #expect(plugin.resizeEvents.count == 1)
         #expect(plugin.resizeEvents[0].width == 128)
