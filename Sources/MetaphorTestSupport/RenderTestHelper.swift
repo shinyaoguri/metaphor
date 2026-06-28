@@ -94,10 +94,14 @@ public struct RenderTestHelper {
     /// set up by MetaphorRenderer. In test mode, use `setClearColor()` before `render()`
     /// to control the clear color, and use drawing commands inside the closure.
     public mutating func render(_ draw: (Canvas2D) -> Void) throws {
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            throw RenderTestHelperError.commandBufferCreationFailed
+        }
 
         let rpd = textureManager.renderPassDescriptor
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return }
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            throw RenderTestHelperError.renderEncoderCreationFailed
+        }
 
         canvas.begin(encoder: encoder)
         draw(canvas)
@@ -105,22 +109,24 @@ public struct RenderTestHelper {
         canvas.end()
         encoder.endEncoding()
 
-        // Blit from private color texture to managed staging texture
-        if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
-            blitEncoder.copy(
-                from: textureManager.colorTexture,
-                sourceSlice: 0, sourceLevel: 0,
-                sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                sourceSize: MTLSize(width: width, height: height, depth: 1),
-                to: stagingTexture,
-                destinationSlice: 0, destinationLevel: 0,
-                destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
-            )
-            blitEncoder.endEncoding()
+        // Blit from private color texture to managed staging texture.
+        // Failure here would leave pixelData stale (all-black), so surface it.
+        guard let blitEncoder = commandBuffer.makeBlitCommandEncoder() else {
+            throw RenderTestHelperError.blitEncoderCreationFailed
         }
+        blitEncoder.copy(
+            from: textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: width, height: height, depth: 1),
+            to: stagingTexture,
+            destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blitEncoder.endEncoding()
 
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        // Commit and verify the GPU work actually completed (no silent failure).
+        try MetalTestHelper.commit(commandBuffer)
 
         // Read pixels from staging texture
         stagingTexture.getBytes(
@@ -174,5 +180,20 @@ public struct RenderTestHelper {
         }
 
         return (totalR / count, totalG / count, totalB / count, totalA / count)
+    }
+}
+
+/// Errors thrown by ``RenderTestHelper`` when GPU resources cannot be created.
+public enum RenderTestHelperError: Error, CustomStringConvertible {
+    case commandBufferCreationFailed
+    case renderEncoderCreationFailed
+    case blitEncoderCreationFailed
+
+    public var description: String {
+        switch self {
+        case .commandBufferCreationFailed: "Failed to create command buffer"
+        case .renderEncoderCreationFailed: "Failed to create render command encoder"
+        case .blitEncoderCreationFailed: "Failed to create blit command encoder"
+        }
     }
 }
