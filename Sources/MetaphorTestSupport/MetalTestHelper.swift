@@ -112,15 +112,37 @@ public struct MetalTestHelper: Sendable {
     public static func commandQueue() -> MTLCommandQueue? {
         device?.makeCommandQueue()
     }
+
+    // MARK: - Command Buffer
+
+    /// Commit a command buffer, wait for completion, and verify it succeeded.
+    ///
+    /// Throws if the command buffer reports an error or fails to reach
+    /// `.completed` — surfacing GPU failures that tests calling only
+    /// `waitUntilCompleted()` would otherwise ignore.
+    public static func commit(_ commandBuffer: MTLCommandBuffer) throws {
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        if let error = commandBuffer.error {
+            throw TestHelperError.commandBufferFailed(error)
+        }
+        guard commandBuffer.status == .completed else {
+            throw TestHelperError.commandBufferIncomplete(commandBuffer.status)
+        }
+    }
 }
 
 /// Errors specific to test helper setup.
 public enum TestHelperError: Error, CustomStringConvertible {
     case noDevice
+    case commandBufferFailed(any Error)
+    case commandBufferIncomplete(MTLCommandBufferStatus)
 
     public var description: String {
         switch self {
         case .noDevice: "No Metal device available"
+        case .commandBufferFailed(let error): "Command buffer failed: \(error)"
+        case .commandBufferIncomplete(let status): "Command buffer did not complete (status: \(status.rawValue))"
         }
     }
 }
