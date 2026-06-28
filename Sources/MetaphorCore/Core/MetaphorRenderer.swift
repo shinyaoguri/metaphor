@@ -17,8 +17,13 @@ public final class MetaphorRenderer: NSObject {
     /// オフスクリーンレンダーターゲットテクスチャの管理
     public private(set) var textureManager: TextureManager
 
-    /// アプリケーション間映像共有用のオプショナルな Syphon 出力
-    public private(set) var syphonOutput: SyphonOutput?
+    /// アプリケーション間映像共有用のオプショナルな Syphon 出力。
+    ///
+    /// 後方互換 facade: Syphon 出力は内部的に ``SyphonPlugin`` として実装されており、
+    /// このプロパティは登録済みの ``SyphonPlugin`` が持つ ``SyphonOutput`` を返します。
+    public var syphonOutput: SyphonOutput? {
+        (plugin(id: SyphonPlugin.id) as? SyphonPlugin)?.output
+    }
 
     /// Metal シェーダー関数のコンパイルとキャッシュに使用するシェーダーライブラリ
     public let shaderLibrary: ShaderLibrary
@@ -285,15 +290,19 @@ public final class MetaphorRenderer: NSObject {
 
     /// 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
     ///
+    /// 内部的には出力フェーズで動作する ``SyphonPlugin`` を登録します。既に Syphon が
+    /// 動作中なら差し替えます（二重 publish 防止）。
     /// - Parameter name: Syphon サーバーとして公開する名前
     public func startSyphonServer(name: String) {
-        syphonOutput = SyphonOutput(device: device, name: name)
+        if plugin(id: SyphonPlugin.id) != nil {
+            removePlugin(id: SyphonPlugin.id)   // onDetach → 旧サーバー停止
+        }
+        addPlugin(SyphonPlugin(name: name))     // onAttach(renderer:) → 新サーバー生成
     }
 
     /// Syphon サーバーを停止し、リソースを解放します。
     public func stopSyphonServer() {
-        syphonOutput?.stop()
-        syphonOutput = nil
+        removePlugin(id: SyphonPlugin.id)       // onDetach → stop + 配列から除去
     }
 
     // MARK: - プラグイン管理
@@ -382,6 +391,19 @@ public final class MetaphorRenderer: NSObject {
         for plugin in plugins {
             plugin.onStop()
         }
+    }
+
+    /// レンダラーを明示的にシャットダウンし、全プラグインを解放します。
+    ///
+    /// `onStop`（ループ停止通知）→ 各プラグインの `onDetach`（リソース解放。``SyphonPlugin``
+    /// はここで Syphon サーバーを停止）→ プラグイン配列のクリア、の順で行います。冪等。
+    /// ウィンドウクローズ（``SketchWindow/close()``）やアプリ終了時に呼びます。
+    public func shutdown() {
+        notifyPluginsStop()
+        for plugin in plugins {
+            plugin.onDetach()
+        }
+        plugins.removeAll()
     }
 
     // MARK: - プラグイン CPU 読み戻し
@@ -951,17 +973,15 @@ public final class MetaphorRenderer: NSObject {
         // ポストエフェクト適用済みの最終出力を、コミット前のバッファで渡す
         onCaptureOutput?(outputTexture, commandBuffer)
 
-        // プラグイン: レンダー後（出力プラグインに最終テクスチャを提供）
-        for plugin in plugins {
+        // プラグイン: レンダー後（通常フェーズ）— 出力プラグイン以外を先に。
+        for plugin in plugins where !(plugin is MetaphorOutputPlugin) {
             plugin.post(texture: outputTexture, commandBuffer: commandBuffer)
         }
 
-        // Syphon へ配信（レガシー、SyphonPlugin に置換予定）
-        syphonOutput?.publish(
-            texture: outputTexture,
-            commandBuffer: commandBuffer,
-            flipped: true
-        )
+        // 出力フェーズ — 出力プラグイン（Syphon/NDI 等）を最後に。常に最終テクスチャを渡す。
+        for plugin in plugins where plugin is MetaphorOutputPlugin {
+            plugin.post(texture: outputTexture, commandBuffer: commandBuffer)
+        }
 
         commandBuffer.commit()
 
