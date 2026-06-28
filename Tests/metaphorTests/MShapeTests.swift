@@ -556,7 +556,7 @@ struct MShapeTessellationTests {
     }
 
     @Test("re-tessellation after setVertex")
-    func reTessellationAfterSetVertex() {
+    func reTessellationAfterSetVertex() throws {
         let s = MShape(device: device, kind: .path2D)
         s.beginShape()
         s.vertex(0, 0)
@@ -565,14 +565,18 @@ struct MShapeTessellationTests {
         s.endShape(.close)
 
         s.ensureCacheValid()
-        let original = s.cachedTriangles2D
+        let original = try #require(s.cachedTriangles2D)
 
         s.setVertex(2, 50, 150)
         s.ensureCacheValid()
 
-        #expect(s.cachedTriangles2D != nil)
-        // The triangle changed position
-        let newV2 = s.cachedTriangles2D![0].2
-        #expect(newV2.x == 50 || newV2.y == 150 || original != nil) // cache was rebuilt
+        let updated = try #require(s.cachedTriangles2D)
+        // setVertex 後の再tessellation で、変更した頂点 (50,150) が反映されている。
+        let updatedVerts = updated.flatMap { [$0.0, $0.1, $0.2] }
+        #expect(updatedVerts.contains { abs($0.x - 50) < 0.001 && abs($0.y - 150) < 0.001 })
+        // 変更前は (100,100) を含み、変更後は含まない（古いキャッシュを返していない）。
+        let originalVerts = original.flatMap { [$0.0, $0.1, $0.2] }
+        #expect(originalVerts.contains { abs($0.x - 100) < 0.001 && abs($0.y - 100) < 0.001 })
+        #expect(!updatedVerts.contains { abs($0.x - 100) < 0.001 && abs($0.y - 100) < 0.001 })
     }
 }

@@ -101,7 +101,8 @@ struct EarClipEdgeCaseTests {
     func collinearPoints() {
         let polygon: [(Float, Float)] = [(0, 0), (1, 0), (2, 0)]
         let indices = EarClipTriangulator.triangulate(polygon)
-        #expect(indices.count >= 0)
+        // 3頂点は退化三角形として1つの三角形（3インデックス）を返す（クラッシュしない）。
+        #expect(indices.count == 3)
     }
 }
 
