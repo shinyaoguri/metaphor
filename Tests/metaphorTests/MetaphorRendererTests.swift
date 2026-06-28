@@ -131,13 +131,33 @@ struct MetaphorRendererTests {
         #expect(p.g < 8, "Headless clear G=\(p.g)")
     }
 
-    /// ヘッドレスモードのフレーム出力先 Syphon サーバーが起動できる。
+    /// ヘッドレスモードのフレーム出力先 Syphon サーバーが起動でき、`syphonOutput` facade
+    /// （= 登録済み ``SyphonPlugin`` の ``SyphonOutput``）から参照できる。
     @Test("startSyphonServer activates the headless frame sink")
     func headlessSyphonServerActivates() throws {
         let renderer = try MetaphorRenderer(width: 32, height: 32)
         #expect(renderer.syphonOutput == nil)
+        #expect(renderer.plugin(id: SyphonPlugin.id) == nil)
         renderer.startSyphonServer(name: "metaphor-headless-test")
         #expect(renderer.syphonOutput?.isActive == true)
+        #expect(renderer.plugin(id: SyphonPlugin.id) != nil)
+    }
+
+    /// `shutdown()` は全プラグインを onStop → onDetach し、プラグイン配列をクリアする。
+    /// （Syphon サーバーの停止は ``SyphonPlugin/onDetach()`` が担うため、ここでは実サーバーを
+    /// 立てずに ``MockPlugin`` で teardown の挙動のみ検証する。）
+    @Test("shutdown detaches all plugins (onStop then onDetach)")
+    func shutdownDetachesPlugins() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let plugin = MockPlugin(id: "shutdown-mock")
+        renderer.addPlugin(plugin)
+        renderer.notifyPluginsStart()
+
+        renderer.shutdown()
+
+        #expect(plugin.stopCallCount == 1)       // onStop 経由
+        #expect(plugin.detached == true)         // onDetach 経由
+        #expect(renderer.plugin(id: "shutdown-mock") == nil)
     }
 
     /// オフスクリーンカラーテクスチャの中心ピクセルを読み戻すヘルパー（BGRA→RGB）。

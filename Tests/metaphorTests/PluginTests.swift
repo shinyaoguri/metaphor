@@ -79,11 +79,69 @@ final class MockPlugin: MetaphorPlugin {
     }
 }
 
+// MARK: - Ordering helpers (output phase)
+
+/// `post()` の呼び出し順を記録する共有レコーダ。
+@MainActor
+final class PostOrderRecorder {
+    var order: [String] = []
+}
+
+/// 通常プラグイン（出力フェーズ前）。
+@MainActor
+final class OrderingPlugin: MetaphorPlugin {
+    let pluginID: String
+    let recorder: PostOrderRecorder
+    init(id: String, recorder: PostOrderRecorder) {
+        self.pluginID = id
+        self.recorder = recorder
+    }
+    func post(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {
+        recorder.order.append(pluginID)
+    }
+}
+
+/// 出力プラグイン（出力フェーズ＝必ず最後）。
+@MainActor
+final class OrderingOutputPlugin: MetaphorOutputPlugin {
+    let pluginID: String
+    let recorder: PostOrderRecorder
+    init(id: String, recorder: PostOrderRecorder) {
+        self.pluginID = id
+        self.recorder = recorder
+    }
+    func post(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {
+        recorder.order.append(pluginID)
+    }
+}
+
 // MARK: - Tests
 
 @Suite("MetaphorPlugin Enhanced", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
 struct PluginTests {
+
+    /// 出力プラグイン（`MetaphorOutputPlugin`）の post() は、登録順に関わらず通常
+    /// プラグインすべての post() の後に呼ばれる。
+    @Test("output-phase plugins post() after all normal plugins, regardless of registration order")
+    func outputPhaseOrdering() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let rec = PostOrderRecorder()
+
+        // 出力プラグインをあえて最初に登録し、順序が型で決まることを示す。
+        renderer.addPlugin(OrderingOutputPlugin(id: "out", recorder: rec))
+        renderer.addPlugin(OrderingPlugin(id: "norm1", recorder: rec))
+        renderer.addPlugin(OrderingPlugin(id: "norm2", recorder: rec))
+
+        renderer.renderFrame()
+
+        #expect(rec.order == ["norm1", "norm2", "out"])
+
+        // renderFrame の inflightSemaphore が GPU completion（非同期 signal）前に
+        // renderer dealloc で dispose されるクラッシュを避けるため、少し待つ
+        // （ProbeTests と同じ既知の回避策）。
+        Thread.sleep(forTimeInterval: 0.2)
+    }
 
     // MARK: - Registration
 
