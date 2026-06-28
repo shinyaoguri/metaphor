@@ -6,7 +6,7 @@ import simd
 
 // MARK: - C-11: Shader Hot Reload
 
-@Suite("C-11 Shader Hot Reload")
+@Suite("C-11 Shader Hot Reload", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct ShaderHotReloadTests {
 
@@ -122,7 +122,7 @@ struct ShaderHotReloadTests {
 
 // MARK: - C-12: GUI Parameter Control
 
-@Suite("C-12 ParameterGUI")
+@Suite("C-12 ParameterGUI", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct ParameterGUITests {
 
@@ -167,7 +167,7 @@ struct ParameterGUITests {
 
 // MARK: - C-13: Offline Deterministic Rendering
 
-@Suite("C-13 Offline Rendering")
+@Suite("C-13 Offline Rendering", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct OfflineRenderingTests {
 
@@ -234,7 +234,7 @@ struct OfflineRenderingTests {
 
 // MARK: - C-14: FBO Feedback
 
-@Suite("C-14 FBO Feedback")
+@Suite("C-14 FBO Feedback", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct FBOFeedbackTests {
 
@@ -280,7 +280,7 @@ struct FBOFeedbackTests {
 
 // MARK: - C-15: Indirect Draw Particle
 
-@Suite("C-15 Indirect Draw Particle")
+@Suite("C-15 Indirect Draw Particle", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct IndirectDrawParticleTests {
 

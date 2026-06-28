@@ -6,7 +6,7 @@ import simd
 
 // MARK: - CustomMaterial Property Tests
 
-@Suite("CustomMaterial Properties")
+@Suite("CustomMaterial Properties", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct CustomMaterialPropertyTests {
 

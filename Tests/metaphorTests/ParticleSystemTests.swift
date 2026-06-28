@@ -187,7 +187,7 @@ struct EmitterShapeTests {
 
 // MARK: - ParticleSystem Creation
 
-@Suite("ParticleSystem Creation")
+@Suite("ParticleSystem Creation", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 struct ParticleSystemCreationTests {
 
     @Test("Can create particle system")
