@@ -102,7 +102,7 @@ area to its source so you know where to edit:
 - **Image, text, export** (loadImage, text, save, beginVideoRecord): `Sketch+Image.swift`
 - **Pixels** (loadPixels, updatePixels): `Sketch+Pixels.swift`
 - **Compute, particles, postFX, GIF, orbitControl**: `Sketch+Advanced.swift`
-- **Bridges** — audio/video/physics/network/noise/scene/render graph: `Sketch+*Bridge.swift` (e.g. `createAudioInput` → `Sketch+AudioBridge.swift`)
+- **Bridges** (audio/video/physics/network/noise/scene/render graph): `Sketch+AudioBridge.swift`, `Sketch+VideoBridge.swift`, `Sketch+PhysicsBridge.swift`, `Sketch+NetworkBridge.swift`, `Sketch+NoiseBridge.swift`, `Sketch+SceneGraphBridge.swift`, `Sketch+RenderGraphBridge.swift`
 - **Probe (AI)** (probe, MetaphorProbePlugin): `Sketch+Probe.swift`
 - **noise()** standalone: `Noise.swift`
 
