@@ -1,171 +1,132 @@
 # CLAUDE.md
 
-## Build commands
+このファイルは Claude Code (claude.ai/code) と Claude Agent SDK が本リポジトリで作業するときの起点です。
+詳細は `docs/` と各専用ドキュメントに委譲し、ここはコンセプト・地図・規約に徹します。
+
+## プロジェクト概要
+
+metaphor は Processing 由来の発想を持つクリエイティブコーディングライブラリです。Swift + Metal の上に、宣言的・フレームベースで描画する `Sketch` プロトコルを提供します。2D/3D 描画、GPU compute、ポストプロセス、物理、音声を備えます。
+
+- **対象**: macOS 14.0+ / Apple Silicon 専用
+- **言語**: Swift 5.10+
+- **形態**: マルチターゲット SwiftPM ライブラリ（`shinyaoguri/metaphor`）
+
+## モジュール構成
+
+`import metaphor`（アンブレラ。全モジュールを `@_exported import` で再エクスポート）か、個別モジュールを import します。
+
+- **Tier 1（Core 非依存）**: MetaphorAudio / MetaphorNetwork / MetaphorPhysics / MetaphorML / MetaphorVideo
+- **Tier 2（MetaphorCore 依存）**: MetaphorNoise / MetaphorMPS / MetaphorCoreImage / MetaphorRenderGraph / MetaphorSceneGraph
+
+アンブレラターゲット `Sources/metaphor/` はブリッジ拡張（`Sketch+AudioBridge.swift` 等）を持ち、`import metaphor` 利用者に `createAudioInput()` / `createOSCReceiver()` / `createPhysics2D()` などの便利メソッドを提供します。
+
+## ビルド・開発コマンド
 
 ```bash
-make setup           # First-time setup: init submodules + build Syphon.xcframework
-make build           # Build the library (swift build)
-make test            # Run tests (swift test)
-make clean           # Clean build artifacts
-make check           # Verify setup state (Syphon.xcframework, submodules)
-make llms-txt        # Generate llms.txt (AI-readable API reference)
-make examples-index  # Generate docs/ai/examples-index.{md,json}
+make setup    # 初回: サブモジュール初期化 + Syphon.xcframework ビルド
+make build    # swift build
+make test     # swift test
+make check    # セットアップ状態を確認（Syphon.xcframework / submodules）
+make llms-txt # llms.txt（AI 向け API リファレンス）を生成
 ```
 
-Run an example:
+example の実行（各 example は独立した SwiftPM パッケージ）:
+
 ```bash
 cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 ```
 
-For detailed AI-oriented debugging and extension notes, see `docs/ai/README.md`.
+セットアップ・全コマンド・トラブルシュートの詳細は [DEVELOPMENT.md](DEVELOPMENT.md) を参照。
 
-### Auto-generated AI-facing files
+### 自動生成される AI 向けファイル
 
-`llms.txt` and `docs/ai/examples-index.{md,json}` are checked in, but they are **generated artifacts** — never edit them by hand. Their inputs are:
+`llms.txt` と `docs/ai/examples-index.{md,json}` はチェックインされていますが **生成物** です。手で編集しないこと。入力を変えたら push 前に再生成します。
 
-| Output | Inputs |
+| 出力 | 入力 |
 |---|---|
 | `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` |
 | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` |
 
-Whenever you change any of these inputs, regenerate before pushing (`make llms-txt` or `make examples-index`). The pre-push hook installed by `make setup` checks this and aborts if the output is stale. CI also regenerates the examples index for PRs from this repo as a safety net.
+`make setup` が入れる pre-push フックが陳腐化を検出して push を中断します（CI も safety net として再生成）。生成器は決定的であること（全コレクションをソート）——非決定的出力は auto-fix bot が毎回 push する原因になります。
 
-The generators must be deterministic (sort every collection) — nondeterministic output would cause the auto-fix bot to push on every run.
+## アーキテクチャ
 
-## Architecture overview
-
-metaphor is a Processing-inspired creative-coding library built on Swift + Metal. It provides a `Sketch` protocol for declarative, frame-based rendering, with 2D/3D drawing, GPU compute, post-processing, physics, and audio. macOS (Apple Silicon) only.
-
-### Module layout
-
-A multi-target SPM architecture. Either `import metaphor` (the umbrella; re-exports every module via `@_exported import`) or import individual modules:
-
-- **Tier 1 (no Core dependency)**: MetaphorAudio, MetaphorNetwork, MetaphorPhysics, MetaphorML, MetaphorVideo
-- **Tier 2 (depends on MetaphorCore)**: MetaphorNoise, MetaphorMPS, MetaphorCoreImage, MetaphorRenderGraph, MetaphorSceneGraph
-
-The umbrella target provides bridge extensions (`Sketch+AudioBridge.swift`, etc.) so that `import metaphor` users get convenience methods like `createAudioInput()`, `createOSCReceiver()`, and `createPhysics2D()`.
-
-### Three-layer API architecture
+3 層の API 構造:
 
 ```
-Sketch protocol extensions  ← user-facing (Processing-style globals via _activeSketchContext)
+Sketch protocol extensions  ← ユーザー向け（_activeSketchContext 経由の Processing 風グローバル）
         ↓
-   SketchContext             ← bridges Sketch to Canvas2D/Canvas3D
+   SketchContext             ← Sketch を Canvas2D/Canvas3D へ橋渡し
         ↓
-  Canvas2D / Canvas3D        ← low-level Metal rendering
+  Canvas2D / Canvas3D        ← 低レベル Metal レンダリング
 ```
 
-### Rendering pipeline
+レンダリングは 2 パス。**オフスクリーンパス**（compute → MTLEvent バリア → draw → shadow → RenderGraph → PostProcess → Export/Syphon）の後、**ブリットパス**でアスペクト比を保ってオフスクリーンテクスチャを画面へ転送（レターボックス/ピラーボックス）。これによりレンダリング解像度とウィンドウサイズを分離し、固定解像度 Syphon 出力を可能にします。
 
-Two passes:
+主要な設計パターン（GPU インスタンシング、トリプルバッファリング、PBR/Blinn-Phong 切替、シャドウマッピング、シェーダーホットリロード、compute→render の MTLEvent 同期、`MetaphorPlugin` ライフサイクルフック等）と、実装の詳細・デバッグ・拡張ノートは [docs/ai/README.md](docs/ai/README.md) を参照。
 
-1. **Offscreen pass**: compute phase → MTLEvent barrier → draw phase → shadow pass → RenderGraph → PostProcess → Export/Syphon
-2. **Blit pass**: blit the offscreen texture to the screen while preserving aspect ratio (letterbox/pillarbox)
+### API クイックマップ（機能 → 実装ファイル）
 
-This decouples render resolution from window size, enabling fixed-resolution Syphon output.
+API シグネチャは `llms.txt` にありますが、**どのファイルが実装するか**は載っていません。編集箇所を引くための地図:
 
-### Key design patterns
+- **2D 図形・変換**（circle, rect, line, arc, bezier, push/pop）: `Sketch+Shapes.swift`
+- **3D**（box, sphere, camera, perspective, lights, material, pbr）: `Sketch+3D.swift`
+- **スタイル**（fill, stroke, strokeWeight, blendMode, tint）: `Sketch+Style.swift`
+- **画像・テキスト・書き出し**（loadImage, text, save, beginVideoRecord）: `Sketch+Image.swift`
+- **ピクセル**（loadPixels, updatePixels）: `Sketch+Pixels.swift`
+- **compute・particles・postFX・GIF・orbitControl**: `Sketch+Advanced.swift`
+- **ブリッジ**（audio/video/physics/network/noise/scene/render graph）: `Sketch+*Bridge.swift`
+- **Probe（AI）**（probe, MetaphorProbePlugin）: `Sketch+Probe.swift`
+- **スタンドアロン noise()**: `Noise.swift`
 
-- **GPU instancing**: Canvas2D/Canvas3D automatically batch consecutive identical-shape draws via `InstanceBatcher<T>`
-- **Triple-buffered GPU buffers**: vertex, instance, and `GrowableGPUBuffer` use a semaphore value of 3
-- **Dual pipeline**: untextured (positionNormalColor) + textured (positionNormalUV), each with an instanced variant
-- **PBR + Blinn-Phong**: Material3D switches automatically on the `usePBR` flag (single shader, branched)
-- **Shadow mapping**: record DrawCalls → depth-only shadow pass → PCF 3x3 filtering
-- **Shader hot reload**: ShaderLibrary supports runtime MSL reloading for CustomMaterial/CustomPostEffect
-- **Compute→Render sync**: an explicit `MTLEvent` barrier between the compute and render passes
-- **RenderLoopMode**: DisplayLink (default) or a DispatchSourceTimer for Syphon/export
-- **Plugin protocol**: `MetaphorPlugin` provides lifecycle hooks (onBeforeRender, onAfterRender, onResize, etc.)
+## ドキュメント階層（真実の在処）
 
-### Syphon framework handling
+- **CLAUDE.md（本ファイル）**: 玄関口 / コンセプト / 地図 / 規約
+- **[DEVELOPMENT.md](DEVELOPMENT.md)**: ライブラリ本体開発者向けのセットアップ・コマンド
+- **`llms.txt`**: 公開 API シグネチャ（生成物）
+- **[docs/ai/README.md](docs/ai/README.md)**: 実装デバッグ・拡張ノート。スケッチ作者向けは `docs/ai/for-sketch-authors.md` と `docs/ai/examples-index.md`
+- **[CONTRACT.md](CONTRACT.md)**: metaphor ⇄ metaphor-cli のクロスリポジトリ契約
+- **[docs/adr/](docs/adr/)**: 設計判断の蓄積（Architecture Decision Records）
+- **[docs/design/](docs/design/)**: 進行中プロジェクトの設計ドキュメント
+- **[docs/releasing.md](docs/releasing.md)**: リリース手順
 
-- **Local development**: Package.swift uses `Frameworks/Syphon.xcframework` if present (`make setup` builds it)
-- **SPM users**: falls back to downloading a prebuilt XCFramework from GitHub Releases
-
-### API quick map
-
-For API signatures, see `llms.txt` (generated by `make llms-txt`). llms.txt lists every function but not **which file implements it** — this map ties feature areas to their source so you know where to edit:
-
-- **2D shapes & transforms** (circle, rect, line, arc, bezier, push/pop): `Sketch+Shapes.swift`
-- **3D** (box, sphere, camera, perspective, lights, material, pbr): `Sketch+3D.swift`
-- **Style** (fill, stroke, strokeWeight, blendMode, tint): `Sketch+Style.swift`
-- **Image, text, export** (loadImage, text, save, beginVideoRecord): `Sketch+Image.swift`
-- **Pixels** (loadPixels, updatePixels): `Sketch+Pixels.swift`
-- **Compute, particles, postFX, GIF, orbitControl**: `Sketch+Advanced.swift`
-- **Bridges** (audio/video/physics/network/noise/scene/render graph): `Sketch+AudioBridge.swift`, `Sketch+VideoBridge.swift`, `Sketch+PhysicsBridge.swift`, `Sketch+NetworkBridge.swift`, `Sketch+NoiseBridge.swift`, `Sketch+SceneGraphBridge.swift`, `Sketch+RenderGraphBridge.swift`
-- **Probe (AI)** (probe, MetaphorProbePlugin): `Sketch+Probe.swift`
-- **Standalone noise()**: `Noise.swift`
+仕様の根拠は `docs/adr/`、コードの触り方は本ファイルと `docs/ai/`、API は `llms.txt` が真実の在処です。
 
 ## AI Probe
 
-Enabling `MetaphorProbePlugin` lets a sketch hand its "currently visible image" and "internal state" to an AI agent.
+`MetaphorProbePlugin` を有効化すると、スケッチが「いま見えている画像」と「内部状態」を AI エージェントへ渡せます。
 
-- Enable: set the environment variable `METAPHOR_PROBE=1` to auto-register, or register explicitly with `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])`.
-- Request: the AI writes `.metaphor/probe/request.json` with `{"id":"snap-1","label":"baseline"}`. It is processed on the next frame (running once per distinct id).
-- Output: `.metaphor/probe/current/frame.png` and `frame.json`. Writes are atomic renames via a `.tmp` file.
-- Schema: `frame.json` is `schemaVersion: 3` (`stats` = average color/luminance/content ratio/region, `customTypes` = type tags for `probe()` values). Full schema in [CONTRACT.md](CONTRACT.md).
-- Multi-frame capture: set `frames` (count) and `every` (stride) in `request.json` to write a frame sequence into `.metaphor/probe/current/sequence/` (`frame.NNNN.{png,json}` + `contact_sheet.png` + a `sequence.json` manifest) instead of a single frame (PR #90, `ProbeSequenceManifest.swift` / `ProbeRequest.swift`). Exposing this as the MCP `capture_sequence` tool is still pending on the metaphor-cli side.
-- Reporting state: call `probe("particles.count", n)` inside the sketch's `draw()`. It is a no-op when the plugin is not registered.
-- Warnings: measures color variance over a 32x32 sample and flags blank frames in `frame.json.warnings`.
-- Normally only checks the request file's mtime, so the hot path is untouched.
-- Example: `Examples/Samples/ProbeSnapshot`
+- **有効化**: 環境変数 `METAPHOR_PROBE=1` で自動登録、または `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])`。
+- **やり取り**: AI が `.metaphor/probe/request.json` を書き、次フレームで処理。出力は `.metaphor/probe/current/frame.{png,json}`（`.tmp` 経由のアトミックリネーム）。
+- **状態報告**: スケッチの `draw()` 内で `probe("particles.count", n)`（未登録時は no-op）。
+- 複数フレーム取得（`frames`/`every`）やスキーマ（`frame.json` は `schemaVersion: 3`）の詳細は [CONTRACT.md](CONTRACT.md) を参照。例: `Examples/Samples/ProbeSnapshot`。
 
-## Cross-repo contract (metaphor ⇄ metaphor-cli)
+## クロスリポジトリ契約（metaphor ⇄ metaphor-cli）
 
-`metaphor-cli` (separate repo `shinyaoguri/metaphor-cli`) does not depend on this repo as a Swift library, but the two are coupled by an **implicit runtime/binary contract** (environment variables, stdin JSON Lines input, Probe files, and the Syphon Release pin). For the full list and the rules for changing it, see **[CONTRACT.md](CONTRACT.md)**.
+`metaphor-cli`（別リポジトリ `shinyaoguri/metaphor-cli`）は本リポジトリを Swift ライブラリとして依存しませんが、**実行時/バイナリ契約**（環境変数、stdin JSON Lines 入力、Probe ファイル、Syphon Release pin）で結合しています。
 
-**Important (for agents)**: changes touching the items below cannot be completed in `metaphor` alone. Always update `metaphor-cli` at the same time, keep both repos' `CONTRACT.md` aligned, and confirm `./scripts/check-contract.sh` is green. If you are working in only one repo, open a matching PR/Issue in the other.
+**重要（エージェント向け）**: 以下に触れる変更は metaphor 単独で完了できません。常に metaphor-cli を同時更新し、両リポの `CONTRACT.md` を揃え、`./scripts/check-contract.sh` が green であることを確認してください。片方のみで作業する場合は、もう片方に対応する PR/Issue を立てること。対象・変更ルールの全体は **[CONTRACT.md](CONTRACT.md)** を参照。
 
-- Environment variables `METAPHOR_VIEWER` / `METAPHOR_SYPHON_NAME` / `METAPHOR_FPS` / `METAPHOR_PROBE` (`SketchRunner.swift`)
-- stdin input event keys/values (`InputInjectionPlugin.swift`: `mouseDown`, etc.)
-- Probe paths/schema (`MetaphorProbeConfig.swift` / `ProbeFrameMetadata.swift`)
-- Syphon.xcframework Release publishing (`release.yml`; the cli's `Package.swift` pins it)
+## 規約
 
-CI detects dropped contract tokens via `scripts/check-contract.sh`.
+- Swift Testing フレームワーク（`@Suite`, `@Test`）を使う。XCTest は使わない。
+- 新しい example は既存のレイアウト `Examples/{Category}/{Subcategory}/{Name}/` に従い、各々が自己完結した SwiftPM パッケージ。
 
-## Conventions
+## ブランチ運用（GitHub Flow）
 
-- macOS 14.0+ (Apple Silicon), Swift 5.10+
-- Use the Swift Testing framework (`@Suite`, `@Test`), not XCTest
-- New examples follow the existing directory layout: `Examples/{Category}/{Subcategory}/{Name}/`
-- Each example is a self-contained SPM package with its own `Package.swift`
-
-## Branching (GitHub Flow)
-
-- **`main`** — the only long-lived branch and the default. All work returns here through a PR. Protected by a ruleset: PR required, `build-and-test` must pass, direct pushes blocked (deletes / non-fast-forwards blocked too), **squash only**.
-- Feature branches cut from `main` are short-lived and auto-deleted on merge.
-- CI fires on `push: main`, `pull_request: main`, and `workflow_dispatch` (the Release workflow re-enters CI via workflow_dispatch on a `release/<tag>` branch).
-
-### Releases
-
-Releases are driven by a PR's `release:*` label (`release:patch` / `release:minor` / `release:major`), not by a separate branch — merging a labeled PR (via squash) runs the **Release** workflow, which tags and publishes both metaphor and metaphor-cli. PRs without a label do **not** release. For the full procedure, manual `workflow_dispatch` inputs, and version-bump steps, see **[docs/releasing.md](docs/releasing.md)**.
-
-### When to branch (Claude default)
-
-Cut a branch from `main` for any **non-trivial** work (new feature, a bug fix beyond 1–2 lines, refactor, anything spanning multiple commits). Do not push directly to `main` — the ruleset blocks it.
-
-### Naming
-
-Use kebab-case with a category prefix:
-- `feature/<short-name>` — new public API, new module, new example
-- `fix/<short-name>` — bug fix
-- `refactor/<short-name>` — internal refactor with no API change
-- `chore/<short-name>` — tooling, CI, build scripts
-- `docs/<short-name>` — docs only
-- `release/<tag>` — reserved for the Release workflow; do not reuse
-
-### Standard flow
+- **`main`** が唯一の長命ブランチかつデフォルト。すべての作業は PR 経由で main へ戻る。ルールセットで保護（PR 必須、`build-and-test` 必須、直接 push 不可、**squash のみ**）。
+- 非自明な作業（新機能、1〜2 行を超える修正、リファクタ、複数コミットに跨る変更）は main からブランチを切る。命名は kebab-case + カテゴリ接頭辞（`feature/` `fix/` `refactor/` `chore/` `docs/`）。`release/<tag>` は Release ワークフロー予約。
 
 ```bash
-git checkout -b feature/<name>          # from main; see naming above
-gh pr create --base main                # add --label release:minor to release
-gh pr merge --squash --delete-branch    # squash only, branch auto-deleted
+git checkout -b feature/<name>          # main から
+gh pr create --base main                # リリースは --label release:minor 等を付与
+gh pr merge --squash --delete-branch    # squash のみ、ブランチ自動削除
 ```
 
-General git conventions (Conventional Commits, one concern per commit, push only when asked) live in the global CLAUDE.md and are not repeated here.
+リリースは PR の `release:*` ラベル駆動（手順は [docs/releasing.md](docs/releasing.md)）。一般的な git 規約（Conventional Commits、1 コミット 1 関心、push は依頼時のみ）はグローバル CLAUDE.md にあり、ここでは繰り返しません。
 
-### Notes for Claude
+### Claude への注記
 
-- **Do not merge or push until the user explicitly says so.** After opening a PR, wait for CI and review; run `gh pr merge` only on instruction. Confirm `git push` with the user each time too (per the git safety rules in the global CLAUDE.md).
-- Every PR targets `main`. Releases are driven by the PR's `release:*` label.
-- Squash merge only — write exactly one clean final commit message in the PR title/body. The individual commit messages on the branch are throwaway.
-- After merging, switch back to `main` and pull. Clean up local branches with `git fetch -p`.
+- **ユーザーが明示するまで merge / push しない。** PR を開いたら CI とレビューを待ち、指示があってはじめて `gh pr merge`。`git push` も毎回確認する。
+- squash merge のみ。PR タイトル/本文に最終コミットメッセージを 1 本きれいに書く（ブランチ上の各コミットは使い捨て）。
+- merge 後は main に戻って pull し、`git fetch -p` でローカルブランチを掃除する。
