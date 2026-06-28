@@ -6,9 +6,11 @@
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/github/license/shinyaoguri/metaphor)](LICENSE)
 
-`metaphor` は Processing にインスパイアされた、Swift + Metal のクリエイティブコーディングライブラリです。
+`metaphor` は、**AI と人間が同じ実行中の作品を観測・操作・反復できる、Apple ネイティブのクリエイティブコーディング・ランタイム**です。
 
-`setup()` と `draw()` を書くだけのシンプルな書き味のまま、Metal による高速な 2D / 3D 描画、GPU compute、ポストエフェクト、音声・映像、OSC / MIDI、Core ML、レイトレーシング、Syphon 出力までをひと続きで扱えます。
+Processing 譲りの `setup()` / `draw()` を入口に、Metal で作品を成立させ、**Probe + ライブビューア + ローカル MCP** の三点で「AI が"いま見えている絵"と内部状態を見ながら直す」観測ループを回せます。差別化は Swift/Metal そのものではなく、この観測ループにあります。
+
+書き味はそのまま、高速な 2D / 3D 描画、GPU compute、ポストエフェクト、音声・映像、OSC / MIDI、Core ML、レイトレーシング、Syphon 出力までを、ひと続きの API で扱えます。
 
 ```swift
 import metaphor
@@ -27,13 +29,13 @@ final class Hello: Sketch {
 
 ## Metaphorの特徴
 
+- **中心はこれ ― AI が「いま見えている絵」を見ながら作れる。** Probe がフレーム画像と内部状態をファイルに書き出し、`metaphor mcp` がそれを MCP ツール（`snapshot` / `input` / `build_status` / `api_reference`）として AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せる。差別化は Swift/Metal そのものではなく、この **Probe + ライブビューア + ローカル MCP** の三点セットにあります（[AI と協調する](#ai-と協調する観測--操作--反復)）。
 - **Processing の書き味のまま、Metal の速度。** `circle` を並べて書くだけで、Canvas2D / Canvas3D が同じ形状の連続描画を **GPU インスタンシングに自動バッチ** します。10,000 個の円でも CPU 行列計算ゼロ、draw call 1 回。100 万粒子の GPU パーティクルも、`createParticleSystem` 1 行で動きます。
 - **2D と 3D が同じ語彙で書ける。** `fill` / `stroke` / `push` / `pop` / `translate` / `rotate` が 2D でも 3D でも同じ感覚で使えます。
 - **Apple のグラフィックスフレームワーク全部入り。** Metal / MetalPerformanceShaders（レイトレーシング含む）/ Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Syphon / Core MIDI が、1 枚の `Sketch` から呼べる統一 API でラップされています。
 - **シェーダーホットリロード。** カスタム MSL を実行中に差し替え可能。`CustomMaterial` / `CustomPostEffect` を `.metal` ファイルから読み込めば、保存するたびに即座に反映されます。
 - **ライブ / VJ をそのまま想定。** Syphon 出力、OSC / MIDI 入出力、即時 GUI、Performance HUD、シーン全体の RenderGraph、オービットカメラが標準装備。`live` テンプレートで全部入りスケッチが 1 コマンドで生まれます。
 - **作品の書き出しまで完結。** 動画 / GIF / 静止画エクスポートに加えて、オフライン決定論レンダリング（フレームインデックスベースの時間）に対応。リアルタイムで書いたスケッチを、そのまま fixed-FPS の高解像度動画に焼き出せます。
-- **AI が「いま見えている絵」を見ながら作れる。** Probe がフレーム画像と内部状態をファイルに書き出し、`metaphor mcp` がそれを MCP ツール（`snapshot` / `input` / `build_status`）として AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せます（[AI と協調する](#ai-と協調する観測--操作--反復)）。
 
 ## できること
 
@@ -51,7 +53,7 @@ final class Hello: Sketch {
 
 ## 開発スタイル
 
-metaphor は **人力だけでも、AI と一緒でも** 使えます。スタイルは「誰が書くか（人力 / AI / 協調）」×「ツール（`metaphor` CLI を使う / SwiftPM だけ）」で決まります。
+metaphor は **人力だけでも、AI と一緒でも** 使えます。スタイルは「誰が書くか（人力 / AI / 協調）」×「ツール（`metaphor` CLI を使う / SwiftPM だけ）」で決まります。中でも **「AI と協調する」行 ― AI が動作中のスケッチを観測しながら直すモード ― が metaphor 固有の使い方**です。
 
 | | CLI を使う（`metaphor` コマンド） | CLI を使わない（SwiftPM だけ） |
 |---|---|---|
@@ -232,14 +234,14 @@ swift run
 
 ## 他ツールとの比較
 
-`metaphor` の立ち位置はひとことで言うと **「Processing の書き味 × Apple Silicon ネイティブ × AI フレンドリー」**。macOS に振り切ることで、Web やゲームエンジン、ノードベース VJ ツールの中間に空いていた場所を埋めることを目指しています。
+`metaphor` の立ち位置はひとことで言うと **「Processing の書き味 × Apple Silicon ネイティブ × AI が観測・操作・反復できる」**。macOS に振り切ることで、Web やゲームエンジン、ノードベース VJ ツールの中間に空いていた場所を、**AI と協調できるコードファーストのランタイム**として埋めることを目指しています。
 
 - **vs Processing / p5.js** — `setup` / `draw` の書き味は同じ。代わりに Metal ネイティブの GPU compute、PBR、Core ML、100 万粒子といった重い処理に踏み込めます。クロスプラットフォーム（Win / Linux / ブラウザ）が必要なら向こうが有利。
 - **vs openFrameworks** — Swift と SPM で依存解決とビルドが速く、Metal が第一級。代わりに Win / Linux 対応や C++ addon の蓄積は openFrameworks に分があります。
 - **vs Unity** — コード中心で `App.swift` 1 ファイルから即起動、ライセンス料なし。フル機能のゲーム開発、全プラットフォーム展開、エディタ GUI が必要なら Unity。
 - **vs TouchDesigner** — git で version control できるコードベース、AI 開発フローと相性が良い。ノードベースで即興・非プログラマと協業するなら TouchDesigner。
 
-**選ぶべきとき**: macOS で動く作品を作りたい / Apple Silicon の性能（Metal・Core ML・MPS・Syphon）を引き出したい / Syphon・OSC・MIDI を使ったライブパフォーマンスを組みたい / AI アシスタントと一緒に書きたい。
+**選ぶべきとき**: **AI と協調して作品を作りたい（AI が動作中の絵を観測しながら反復）** / macOS で動く作品を作りたい / Apple Silicon の性能（Metal・Core ML・MPS・Syphon）を引き出したい / Syphon・OSC・MIDI を使ったライブパフォーマンスを組みたい。
 
 **向かないとき**: Windows・Linux・モバイル・Web ターゲット / ノードベースの即興 / フル機能のゲーム開発。
 
