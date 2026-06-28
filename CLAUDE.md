@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-> NOTE: Do not edit `AGENTS.md` directly. It is generated from `CLAUDE.md` via `make docs-sync`, and CI verifies that the two stay in sync.
-
 ## Build commands
 
 ```bash
@@ -32,7 +30,7 @@ For detailed AI-oriented debugging and extension notes, see `docs/ai/README.md`.
 
 Whenever you change any of these inputs, regenerate before pushing (`make llms-txt` or `make examples-index`). The pre-push hook installed by `make setup` checks this and aborts if the output is stale. CI also regenerates the examples index for PRs from this repo as a safety net.
 
-The generators must be deterministic (sort every collection) — nondeterministic output would make the auto-fix bot push on every run.
+The generators must be deterministic (sort every collection) — nondeterministic output would cause the auto-fix bot to push on every run.
 
 ## Architecture overview
 

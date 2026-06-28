@@ -6,6 +6,3 @@ llms.txt                       linguist-generated=true -diff
 llms-sketch.txt                linguist-generated=true -diff
 docs/ai/examples-index.md      linguist-generated=true -diff
 docs/ai/examples-index.json    linguist-generated=true -diff
-
-# AGENTS.md is generated from CLAUDE.md via `make docs-sync` (title line differs).
-AGENTS.md                      linguist-generated=true -diff
