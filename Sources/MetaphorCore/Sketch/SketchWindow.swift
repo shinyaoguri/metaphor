@@ -147,6 +147,9 @@ public final class SketchWindow {
     public func close() {
         guard isOpen else { return }
         stopRenderTimer()
+        // プラグイン解放（onStop → onDetach）。SyphonPlugin はここで Syphon サーバーを停止し、
+        // 閉じたウィンドウのサーバー名が Syphon 上に残るのを防ぐ。
+        renderer.shutdown()
         isOpen = false
         drawClosure = nil
         window?.close()
