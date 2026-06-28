@@ -228,13 +228,12 @@ struct CustomPostEffectPipelineTests {
         )
         let fragmentFn = shaderLib.function(named: "testBuildPipeline", from: key)
 
-        let pipeline = try PipelineFactory(device: device)
+        // build() が throw せず非オプショナルの pipeline を返せること自体が成功条件。
+        _ = try PipelineFactory(device: device)
             .vertex(vertexFn)
             .fragment(fragmentFn)
             .noDepth()
             .build()
-
-        #expect(pipeline.label == nil || true)
     }
 
     @Test("PostProcessPipeline handles custom effect in chain")
