@@ -1,5 +1,7 @@
 import Foundation
 import Metal
+import CoreGraphics
+import ImageIO
 
 /// PNG / JSON のディスク書き出しを担当するヘルパー。
 ///
@@ -20,6 +22,45 @@ enum ProbeWriter {
         directory: String,
         metadata: ProbeFrameMetadata?
     ) {
+        writeNamed(
+            staging: staging, width: width, height: height,
+            directory: directory, baseName: "frame", metadata: metadata
+        )
+    }
+
+    /// 連続キャプチャの 1 フレームを `<directory>/frame.NNNN.{png,json}` に書き出します。
+    ///
+    /// 単一フレームの ``writeSnapshot(staging:width:height:directory:metadata:)`` と
+    /// 同一の経路（同じ読み出し・解析・原子書き出し）を、索引付きファイル名で使います。
+    static func writeSequenceFrame(
+        staging: MTLTexture,
+        width: Int,
+        height: Int,
+        directory: String,
+        index: Int,
+        metadata: ProbeFrameMetadata?
+    ) {
+        writeNamed(
+            staging: staging, width: width, height: height,
+            directory: directory, baseName: sequenceBaseName(index),
+            metadata: metadata
+        )
+    }
+
+    /// シーケンスフレームのベース名（拡張子なし）。`writeSequenceFrame` と manifest で共有。
+    static func sequenceBaseName(_ index: Int) -> String {
+        String(format: "frame.%04d", index)
+    }
+
+    /// ステージング内容を `<directory>/<baseName>.{png,json}` に原子的に書き出す共通本体。
+    private static func writeNamed(
+        staging: MTLTexture,
+        width: Int,
+        height: Int,
+        directory: String,
+        baseName: String,
+        metadata: ProbeFrameMetadata?
+    ) {
         let dirURL = URL(fileURLWithPath: directory)
         try? FileManager.default.createDirectory(
             at: dirURL, withIntermediateDirectories: true
@@ -28,8 +69,8 @@ enum ProbeWriter {
         let pixels = readBGRA(from: staging, width: width, height: height)
         let analysis = analyze(pixels: pixels, width: width, height: height)
 
-        let finalPNG = dirURL.appendingPathComponent("frame.png")
-        let tmpPNG = dirURL.appendingPathComponent("frame.png.tmp")
+        let finalPNG = dirURL.appendingPathComponent("\(baseName).png")
+        let tmpPNG = dirURL.appendingPathComponent("\(baseName).png.tmp")
         encodePNG(pixels: pixels, width: width, height: height, to: tmpPNG)
         atomicReplace(tmp: tmpPNG, final: finalPNG)
 
@@ -48,8 +89,8 @@ enum ProbeWriter {
             stats: analysis.stats
         )
 
-        let finalJSON = dirURL.appendingPathComponent("frame.json")
-        let tmpJSON = dirURL.appendingPathComponent("frame.json.tmp")
+        let finalJSON = dirURL.appendingPathComponent("\(baseName).json")
+        let tmpJSON = dirURL.appendingPathComponent("\(baseName).json.tmp")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {
@@ -57,11 +98,121 @@ enum ProbeWriter {
             try data.write(to: tmpJSON)
             atomicReplace(tmp: tmpJSON, final: finalJSON)
         } catch {
-            print("[metaphor] Probe: failed to write frame.json: \(error)")
+            print("[metaphor] Probe: failed to write \(baseName).json: \(error)")
+        }
+    }
+
+    /// 既に書き出した連続フレーム PNG 群から contact sheet（一覧モンタージュ）を合成し、
+    /// `<directory>/contact_sheet.png` に原子的に書き出します。
+    ///
+    /// フレームはディスクから読み直して合成します（フレームごとの readback 完了ハンドラが
+    /// コミット順に直列実行されるため、最後のフレームのハンドラから呼べば全 PNG が出揃って
+    /// いることが保証されます）。各セルにはアスペクト比を保ってレターボックス配置します
+    /// （途中リサイズでサイズが混在しても崩れない）。
+    ///
+    /// - Returns: 書き出した contact sheet の相対ファイル名。失敗時は nil。
+    static func writeContactSheet(
+        directory: String,
+        frameFiles: [String],
+        refWidth: Int,
+        refHeight: Int
+    ) -> String? {
+        let count = frameFiles.count
+        guard count > 0, refWidth > 0, refHeight > 0 else { return nil }
+
+        // セルサイズ: 参照アスペクトを保ったまま長辺を上限に収める。
+        let maxCellLongSide = 320
+        let longSide = max(refWidth, refHeight)
+        let cellScale = min(1.0, Double(maxCellLongSide) / Double(longSide))
+        let cellW = max(1, Int((Double(refWidth) * cellScale).rounded()))
+        let cellH = max(1, Int((Double(refHeight) * cellScale).rounded()))
+
+        let cols = Int(Double(count).squareRoot().rounded(.up))
+        let rows = Int((Double(count) / Double(cols)).rounded(.up))
+        let sheetW = cols * cellW
+        let sheetH = rows * cellH
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: sheetW,
+            height: sheetH,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        // 背景（暗いグレー）。
+        ctx.setFillColor(CGColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: sheetW, height: sheetH))
+
+        // CG の原点は左下。上→下・左→右に並べ、画像が上下反転しないよう CTM を反転。
+        ctx.translateBy(x: 0, y: CGFloat(sheetH))
+        ctx.scaleBy(x: 1, y: -1)
+
+        let dirURL = URL(fileURLWithPath: directory)
+        for (i, name) in frameFiles.enumerated() {
+            let url = dirURL.appendingPathComponent(name)
+            guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+                  let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else { continue }
+            let col = i % cols
+            let row = i / cols
+            let cell = CGRect(
+                x: col * cellW, y: row * cellH, width: cellW, height: cellH
+            )
+            ctx.draw(img, in: aspectFit(imageW: img.width, imageH: img.height, into: cell))
+        }
+
+        guard let sheet = ctx.makeImage() else { return nil }
+
+        let name = "contact_sheet.png"
+        let finalURL = dirURL.appendingPathComponent(name)
+        let tmpURL = dirURL.appendingPathComponent(name + ".tmp")
+        guard let dest = CGImageDestinationCreateWithURL(
+            tmpURL as CFURL, "public.png" as CFString, 1, nil
+        ) else { return nil }
+        CGImageDestinationAddImage(dest, sheet, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        atomicReplace(tmp: tmpURL, final: finalURL)
+        return name
+    }
+
+    /// シーケンス manifest を `<directory>/sequence.json` に原子的に書き出します。
+    ///
+    /// 完了規約により、シーケンス出力のうち **最後に** 呼ぶこと。
+    static func writeManifest(directory: String, manifest: ProbeSequenceManifest) {
+        let dirURL = URL(fileURLWithPath: directory)
+        try? FileManager.default.createDirectory(
+            at: dirURL, withIntermediateDirectories: true
+        )
+        let finalURL = dirURL.appendingPathComponent("sequence.json")
+        let tmpURL = dirURL.appendingPathComponent("sequence.json.tmp")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        do {
+            let data = try encoder.encode(manifest)
+            try data.write(to: tmpURL)
+            atomicReplace(tmp: tmpURL, final: finalURL)
+        } catch {
+            print("[metaphor] Probe: failed to write sequence.json: \(error)")
         }
     }
 
     // MARK: - Helpers
+
+    /// 矩形 `rect` の中にアスペクト比を保って収めた矩形を返します（レターボックス）。
+    private static func aspectFit(imageW: Int, imageH: Int, into rect: CGRect) -> CGRect {
+        guard imageW > 0, imageH > 0 else { return rect }
+        let scale = min(rect.width / CGFloat(imageW), rect.height / CGFloat(imageH))
+        let w = CGFloat(imageW) * scale
+        let h = CGFloat(imageH) * scale
+        return CGRect(
+            x: rect.minX + (rect.width - w) / 2,
+            y: rect.minY + (rect.height - h) / 2,
+            width: w, height: h
+        )
+    }
 
     /// ステージングテクスチャから BGRA8 のバイト列を読み出します。
     private static func readBGRA(from texture: MTLTexture, width: Int, height: Int) -> [UInt8] {

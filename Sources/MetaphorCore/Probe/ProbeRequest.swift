@@ -8,13 +8,20 @@ import Foundation
 /// {
 ///   "id": "01HXYZ...",
 ///   "label": "baseline",
-///   "scale": 1.0
+///   "scale": 1.0,
+///   "frames": 8,
+///   "every": 2
 /// }
 /// ```
 ///
 /// - `id` は 1 リクエストごとに変更してください。同じ `id` のリクエストは
 ///   重複扱いとなり再処理されません。
-/// - `label` と `scale` は任意項目です。
+/// - `label` / `scale` / `frames` / `every` は任意項目です。
+/// - `frames` が省略または `<= 1` のときは従来どおり単一フレームを
+///   `current/frame.{png,json}` に書き出します。`frames >= 2` のときは
+///   `current/sequence/` 以下に連続フレーム列・contact sheet・manifest を
+///   書き出します（時間軸の観測用）。
+/// - `every` は何フレームおきに 1 枚採るか（ストライド、既定 1）。
 struct ProbeRequest: Codable, Sendable {
     /// リクエストの一意な識別子。同じ id は 1 度しか処理されません。
     let id: String
@@ -24,4 +31,10 @@ struct ProbeRequest: Codable, Sendable {
 
     /// 出力画像のスケール。`nil` のときはプラグイン設定の `defaultScale` を使用。
     let scale: Float?
+
+    /// 連続キャプチャするフレーム数。`nil` / `<= 1` なら単一フレーム（従来動作）。
+    let frames: Int?
+
+    /// 採取間隔（ストライド）。`nil` なら 1（毎フレーム）。
+    let every: Int?
 }
