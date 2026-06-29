@@ -118,7 +118,8 @@ pin 形式・AI ドキュメントのパス/ファイル名）を変更・追加
 ## 関連ファイル
 
 ### metaphor
-- `Sources/MetaphorCore/Sketch/SketchRunner.swift` — 環境変数読み取り・headless
+- `Sources/MetaphorCore/Sketch/SketchRunner.swift` — 環境変数読み取り・headless・出力レジストリ経由の Syphon 自動起動
+- `Sources/MetaphorSyphon/` — Syphon 出力実装（`SyphonOutput` / `SyphonPlugin`）。MetaphorCore から分離（Issue #73）。`import metaphor` 経由でロード時に自動登録され headless 自動起動は不変
 - `Sources/MetaphorCore/Input/InputInjectionPlugin.swift` — stdin JSON Lines 解析
 - `Sources/MetaphorCore/Probe/MetaphorProbeConfig.swift` / `ProbeFrameMetadata.swift` / `ProbeRequest.swift` / `ProbeSequenceManifest.swift` — Probe 契約（単一フレーム + 連続フレーム）
 - `llms.txt` / `llms-sketch.txt` / `docs/ai/examples-index.{md,json}` — AI ドキュメント生成物（契約点 6）

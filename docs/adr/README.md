@@ -39,7 +39,7 @@
 
 | # | Status | Title |
 |---|---|---|
-| _まだありません_ | | |
+| [0001](0001-separate-syphon-into-its-own-target.md) | Accepted | Syphon を MetaphorCore から別ターゲットへ分離する |
 
 ## 参考
 

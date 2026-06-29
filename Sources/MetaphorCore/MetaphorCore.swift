@@ -24,4 +24,3 @@
 @_exported import Metal
 @_exported import MetalKit
 @_exported import simd
-@_exported import Syphon

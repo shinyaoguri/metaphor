@@ -266,9 +266,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             loopMode = config.renderLoopMode
         }
 
-        // Syphon 出力（オプトイン: config.syphon / config.syphonName / 環境変数のいずれか）
+        // 出力（オプトイン: config.syphon / config.syphonName / 環境変数のいずれか）。
+        // 具体的な出力実装（Syphon 等）は MetaphorOutputRegistry 経由で間接的に起動する
+        // （Core は Syphon を名指ししない）。
         if let effectiveSyphonName {
-            renderer.startSyphonServer(name: effectiveSyphonName)
+            startOutput(renderer: renderer, name: effectiveSyphonName)
         }
 
         // レンダーループの構成。
@@ -304,6 +306,18 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         return nil
     }
 
+    /// 解決済みの出力名で、登録済みファクトリ（例: `MetaphorSyphon`）から出力プラグインを
+    /// 起動します。
+    ///
+    /// 出力 target が未リンク（＝ ``MetaphorOutputRegistry/factory`` 未登録）の場合は
+    /// 何もしません。これにより `MetaphorCore` 単体（Syphon 抜き）でも安全に動作します。
+    /// `import metaphor`（アンブレラ）経由では `MetaphorSyphon` がリンクされ、ファクトリが
+    /// ロード時に自動登録されるため、従来どおり透過的に Syphon が起動します。
+    private func startOutput(renderer: MetaphorRenderer, name: String) {
+        guard let plugin = MetaphorOutputRegistry.makeOutput(name: name) else { return }
+        renderer.addPlugin(plugin)
+    }
+
     /// ヘッドレス（ウィンドウ無し）モードのレンダーループと Syphon 出力を構成します。
     ///
     /// ウィンドウ/`MTKView`/ブリットパスを生成せず、常にタイマー駆動で `renderFrame()` を
@@ -317,9 +331,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
 
-        // Syphon サーバー名: 環境変数 > config.syphonName > タイトル の優先順。
+        // 出力サーバー名: 環境変数 > config.syphonName > タイトル の優先順。
         let syphonName = env["METAPHOR_SYPHON_NAME"] ?? config.syphonName ?? config.title
-        renderer.startSyphonServer(name: syphonName)
+        startOutput(renderer: renderer, name: syphonName)
 
         // FPS: 環境変数で上書き可能。
         let fps = env["METAPHOR_FPS"].flatMap { Int($0) } ?? config.fps

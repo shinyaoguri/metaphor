@@ -22,11 +22,17 @@ installers, and source checkouts.
 - `Canvas2D` / `Canvas3D` are the Metal backends. They should keep public API
   behavior Processing-like while preserving GPU batching and resource reuse.
 - `MetaphorRenderer` owns the frame lifecycle: compute, render, shadow,
-  RenderGraph, post-process, export/Syphon, then blit.
+  RenderGraph, post-process, then plugin `post()` (output phase), then blit.
+- Frame output (Syphon etc.) is a plugin via `MetaphorOutputPlugin.post()`, not
+  hardcoded in the renderer. `MetaphorCore` does NOT depend on Syphon; the
+  `MetaphorSyphon` target owns the `Syphon` binaryTarget and registers its output
+  factory into `MetaphorOutputRegistry` at load (C constructor). `SketchRunner`
+  auto-wires output transparently via the registry. See ADR 0001.
 - Tier 1 modules (`MetaphorAudio`, `MetaphorNetwork`, `MetaphorPhysics`,
   `MetaphorML`, `MetaphorVideo`) must not depend on `MetaphorCore`.
-- Tier 2 modules may depend on `MetaphorCore` and are surfaced through
-  umbrella bridge files under `Sources/metaphor/`.
+- Tier 2 modules (`MetaphorNoise`, `MetaphorMPS`, `MetaphorCoreImage`,
+  `MetaphorRenderGraph`, `MetaphorSceneGraph`, `MetaphorSyphon`) may depend on
+  `MetaphorCore` and are surfaced through the umbrella under `Sources/metaphor/`.
 
 ## Debugging Map
 

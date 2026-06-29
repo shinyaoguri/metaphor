@@ -113,9 +113,10 @@ MetaphorCore は Metal レンダリングパイプライン、2D/3D 描画バッ
 - ``GIFExporter``
 - ``FrameExporter``
 
-### Syphon
+### 出力（拡張ポイント）
 
-- ``SyphonOutput``
+- ``MetaphorOutputPlugin``
+- ``MetaphorOutputRegistry``
 
 ### カラー
 

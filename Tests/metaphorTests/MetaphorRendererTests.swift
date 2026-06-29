@@ -1,6 +1,7 @@
 import Testing
 import Metal
 @testable import MetaphorCore
+import MetaphorSyphon  // startSyphonServer / syphonOutput / SyphonPlugin facade（Core から分離）
 import MetaphorTestSupport
 
 @Suite("MetaphorRenderer", .enabled(if: MetalTestHelper.isGPUAvailable))
@@ -141,6 +142,17 @@ struct MetaphorRendererTests {
         renderer.startSyphonServer(name: "metaphor-headless-test")
         #expect(renderer.syphonOutput?.isActive == true)
         #expect(renderer.plugin(id: SyphonPlugin.id) != nil)
+    }
+
+    /// MetaphorSyphon がリンクされていれば、ロード時の C コンストラクタ経由で
+    /// `MetaphorOutputRegistry.factory` が自動登録され、SketchRunner の自動配線
+    /// （`config.syphon` / `METAPHOR_SYPHON_NAME` / ヘッドレス）が透過的に機能する。
+    /// このテスト target は umbrella `metaphor` 経由で MetaphorSyphon をリンクしている。
+    @Test("MetaphorSyphon auto-registers an output factory at load")
+    func outputRegistryAutoRegistered() throws {
+        #expect(MetaphorOutputRegistry.factory != nil)
+        let output = MetaphorOutputRegistry.makeOutput(name: "metaphor-registry-test")
+        #expect(output is SyphonPlugin)
     }
 
     /// `shutdown()` は全プラグインを onStop → onDetach し、プラグイン配列をクリアする。

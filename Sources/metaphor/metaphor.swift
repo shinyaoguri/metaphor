@@ -15,3 +15,4 @@
 @_exported import MetaphorCoreImage
 @_exported import MetaphorRenderGraph
 @_exported import MetaphorSceneGraph
+@_exported import MetaphorSyphon

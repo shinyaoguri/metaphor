@@ -17,14 +17,6 @@ public final class MetaphorRenderer: NSObject {
     /// オフスクリーンレンダーターゲットテクスチャの管理
     public private(set) var textureManager: TextureManager
 
-    /// アプリケーション間映像共有用のオプショナルな Syphon 出力。
-    ///
-    /// 後方互換 facade: Syphon 出力は内部的に ``SyphonPlugin`` として実装されており、
-    /// このプロパティは登録済みの ``SyphonPlugin`` が持つ ``SyphonOutput`` を返します。
-    public var syphonOutput: SyphonOutput? {
-        (plugin(id: SyphonPlugin.id) as? SyphonPlugin)?.output
-    }
-
     /// Metal シェーダー関数のコンパイルとキャッシュに使用するシェーダーライブラリ
     public let shaderLibrary: ShaderLibrary
 
@@ -284,25 +276,6 @@ public final class MetaphorRenderer: NSObject {
         } catch {
             metaphorWarning("PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
         }
-    }
-
-    // MARK: - Syphon
-
-    /// 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
-    ///
-    /// 内部的には出力フェーズで動作する ``SyphonPlugin`` を登録します。既に Syphon が
-    /// 動作中なら差し替えます（二重 publish 防止）。
-    /// - Parameter name: Syphon サーバーとして公開する名前
-    public func startSyphonServer(name: String) {
-        if plugin(id: SyphonPlugin.id) != nil {
-            removePlugin(id: SyphonPlugin.id)   // onDetach → 旧サーバー停止
-        }
-        addPlugin(SyphonPlugin(name: name))     // onAttach(renderer:) → 新サーバー生成
-    }
-
-    /// Syphon サーバーを停止し、リソースを解放します。
-    public func stopSyphonServer() {
-        removePlugin(id: SyphonPlugin.id)       // onDetach → stop + 配列から除去
     }
 
     // MARK: - プラグイン管理
