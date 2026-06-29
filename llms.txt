@@ -622,6 +622,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
+### `enum MetaphorOutputRegistry` -- 出力プラグイン（Syphon / NDI 等）のファクトリ登録ポイント。
+
+- `(unsafe) static var factory: (@MainActor (String) -> any MetaphorOutputPlugin)?` -- 名前から出力プラグインを生成するファクトリ。
+- `static func makeOutput(name: String) -> (any MetaphorOutputPlugin)?` -- 登録済みファクトリで出力プラグインを生成します。未登録なら `nil`。
+
 ### `enum MouseEventType` -- プラグインに配信されるマウスイベントの種類
 
 - `case clicked`
@@ -970,7 +975,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var renderGraph: (any RenderGraphExecutable)?` -- 設定時に最終テクスチャとなるレンダーグラフ
 - `let shaderLibrary: ShaderLibrary` -- Metal シェーダー関数のコンパイルとキャッシュに使用するシェーダーライブラリ
 - `var sharedResources: SharedMetalResources? { get }` -- 共有リソースで作成された場合に利用可能な共有 Metal リソース
-- `var syphonOutput: SyphonOutput? { get }` -- アプリケーション間映像共有用のオプショナルな Syphon 出力。
 - `var textureManager: TextureManager { get }` -- オフスクリーンレンダーターゲットテクスチャの管理
 - `var useExternalRenderLoop: Bool` -- 外部レンダーループがフレームレンダリングを駆動するかどうかを示します。
 - `let videoExporter: VideoExporter` -- フレームを動画ファイルに録画する動画エクスポーター
@@ -997,8 +1001,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func setClearColor(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1.0)` -- オフスクリーンレンダーパスのクリアカラーを変更します。
 - `func setPostEffects(_ effects: [any PostEffect])` -- 全ポストプロセスエフェクトを指定された配列で置き換えます。
 - `func shutdown()` -- レンダラーを明示的にシャットダウンし、全プラグインを解放します。
-- `func startSyphonServer(name: String)` -- 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
-- `func stopSyphonServer()` -- Syphon サーバーを停止し、リソースを解放します。
 - `func viewToTextureCoordinates(viewPoint: CGPoint, viewSize: CGSize, drawableSize: CGSize) -> (Float, Float)` -- ビュー座標からオフスクリーンテクスチャ座標に変換します。
 
 ### `final class MImage` -- `MTLTexture` をラップして画像を表現します。
@@ -1198,25 +1200,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func close()` -- このウィンドウを閉じリソースを解放します。
 - `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- クロージャを使用してこのウィンドウに描画します。
 - `func onDraw(_ closure: @MainActor (SketchContext) -> Void)` -- 毎フレーム自動実行される永続的な描画クロージャを設定します。
-
-### `final class SyphonPlugin` -- 最終フレームを Syphon サーバー経由で publish する内部出力プラグイン。
-
-- `static let id: String` -- 安定したプラグイン識別子。facade（`startSyphonServer`/`stopSyphonServer`/
-- `var output: SyphonOutput? { get }` -- 実体の ``SyphonOutput``。`onAttach(renderer:)` で生成、`onDetach()` で破棄。
-- `let pluginID: String`
-- `init(name: String)`
-- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
-- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
-- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
-- `func onAttach(renderer: MetaphorRenderer)`
-- `func onAttach(sketch: any Sketch)`
-- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
-- `func onDetach()`
-- `func onResize(width: Int, height: Int)`
-- `func onStart()`
-- `func onStop()`
-- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
-- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
 
 ### `final class Tween<T> where T : Interpolatable` -- イージング関数を使用して値を時間経過で自動的にアニメーションします。
 
@@ -1856,6 +1839,46 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static var frustumPlanes: [SIMD4<Float>]?` -- カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
 - `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
 - `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+
+## MetaphorSyphon
+
+### MetaphorRenderer
+
+- `var syphonOutput: SyphonOutput? { get }` -- アプリケーション間映像共有用のオプショナルな Syphon 出力。
+- `func startSyphonServer(name: String)` -- 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
+- `func stopSyphonServer()` -- Syphon サーバーを停止し、リソースを解放します。
+
+### `enum MetaphorSyphon` -- Syphon 出力モジュール。
+
+- `static func enable()` -- Syphon 出力ファクトリを明示的に登録します。
+
+### `final class SyphonOutput` -- Publish Metal textures to other applications via a Syphon server.
+
+- `var isActive: Bool { get }` -- Indicate whether the Syphon server is currently active.
+- `var serverName: String? { get }` -- The name of the Syphon server as seen by client applications.
+- `init(device: any MTLDevice, name: String)` -- Create a new Syphon output server.
+- `func publish(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer, region: NSRect? = nil, flipped: Bool = false)` -- Publish a texture frame to all connected Syphon clients.
+- `func rename(_ name: String)` -- Rename the Syphon server by stopping the current one and creating a new one.
+- `func stop()` -- Stop and release the Syphon server.
+
+### `final class SyphonPlugin` -- 最終フレームを Syphon サーバー経由で publish する内部出力プラグイン。
+
+- `static let id: String` -- 安定したプラグイン識別子。facade（`startSyphonServer`/`stopSyphonServer`/
+- `var output: SyphonOutput? { get }` -- 実体の ``SyphonOutput``。`onAttach(renderer:)` で生成、`onDetach()` で破棄。
+- `let pluginID: String`
+- `init(name: String)`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
 
 ## MetaphorVideo
 

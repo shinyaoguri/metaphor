@@ -112,7 +112,7 @@ symbol-graphs: build
 	printf '%s\n' metaphor MetaphorCore \
 		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML MetaphorVideo \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
-		MetaphorRenderGraph MetaphorSceneGraph \
+		MetaphorRenderGraph MetaphorSceneGraph MetaphorSyphon \
 	| xargs -n1 -P8 -I{} xcrun swift-symbolgraph-extract \
 		-module-name {} \
 		-target arm64-apple-macosx14.0 \

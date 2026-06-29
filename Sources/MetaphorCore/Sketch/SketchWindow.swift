@@ -115,8 +115,11 @@ public final class SketchWindow {
         setupRenderLoop()
         connectInput()
 
-        if let syphonName = config.syphonName {
-            renderer.startSyphonServer(name: syphonName)
+        // 出力（Syphon 等）は MetaphorOutputRegistry 経由で間接的に起動する（Core は Syphon を
+        // 名指ししない）。出力 target 未リンク時は no-op。
+        if let syphonName = config.syphonName,
+           let output = MetaphorOutputRegistry.makeOutput(name: syphonName) {
+            renderer.addPlugin(output)
         }
     }
 

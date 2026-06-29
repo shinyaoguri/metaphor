@@ -35,6 +35,7 @@ let package = Package(
         .library(name: "MetaphorRenderGraph", targets: ["MetaphorRenderGraph"]),
         .library(name: "MetaphorSceneGraph", targets: ["MetaphorSceneGraph"]),
         .library(name: "MetaphorVideo", targets: ["MetaphorVideo"]),
+        .library(name: "MetaphorSyphon", targets: ["MetaphorSyphon"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
@@ -42,15 +43,27 @@ let package = Package(
     targets: [
         syphonTarget,
 
-        // Core: rendering engine, drawing, sketch protocol, shaders, and all tightly-coupled subsystems
+        // Core: rendering engine, drawing, sketch protocol, shaders, and all tightly-coupled subsystems.
+        // NOTE: Core does NOT depend on Syphon. Frame output (Syphon etc.) lives in separate targets
+        // (e.g. MetaphorSyphon) and registers itself via MetaphorOutputRegistry at load time. See ADR.
         .target(
             name: "MetaphorCore",
-            dependencies: [
-                "Syphon"
-            ],
             resources: [
                 .copy("Shaders/Metal"),
                 .copy("Shaders/ShaderSources"),
+            ]
+        ),
+
+        // Syphon frame output, split out of MetaphorCore (Issue #73 / ADR). Owns the Syphon binaryTarget.
+        // The C bootstrap target runs an __attribute__((constructor)) at load that registers the output
+        // factory, so `import metaphor` users get transparent Syphon output without referencing this module.
+        .target(name: "CMetaphorSyphonBootstrap"),
+        .target(
+            name: "MetaphorSyphon",
+            dependencies: [
+                "MetaphorCore",
+                "Syphon",
+                "CMetaphorSyphonBootstrap",
             ]
         ),
 
@@ -83,6 +96,7 @@ let package = Package(
                 "MetaphorCoreImage",
                 "MetaphorRenderGraph",
                 "MetaphorSceneGraph",
+                "MetaphorSyphon",
             ]
         ),
 

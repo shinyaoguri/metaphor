@@ -170,4 +170,4 @@ final class MySketch: Sketch {
 - ``MetaphorCore/Canvas2D`` で 2D 描画を探索する
 - ``MetaphorCore/Canvas3D`` で 3D レンダリングを学ぶ
 - ``MetaphorCore/PostEffect`` でポストプロセスエフェクトを追加する
-- ``MetaphorCore/SyphonOutput`` で Syphon 出力を設定する
+- ``MetaphorSyphon/SyphonOutput`` で Syphon 出力を設定する

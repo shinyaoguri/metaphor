@@ -1,5 +1,5 @@
 import Metal
-import Syphon
+import MetaphorCore
 
 /// 最終フレームを Syphon サーバー経由で publish する内部出力プラグイン。
 ///
