@@ -1840,6 +1840,46 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
 - `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
 
+## MetaphorSyphon
+
+### MetaphorRenderer
+
+- `var syphonOutput: SyphonOutput? { get }` -- アプリケーション間映像共有用のオプショナルな Syphon 出力。
+- `func startSyphonServer(name: String)` -- 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
+- `func stopSyphonServer()` -- Syphon サーバーを停止し、リソースを解放します。
+
+### `enum MetaphorSyphon` -- Syphon 出力モジュール。
+
+- `static func enable()` -- Syphon 出力ファクトリを明示的に登録します。
+
+### `final class SyphonOutput` -- Publish Metal textures to other applications via a Syphon server.
+
+- `var isActive: Bool { get }` -- Indicate whether the Syphon server is currently active.
+- `var serverName: String? { get }` -- The name of the Syphon server as seen by client applications.
+- `init(device: any MTLDevice, name: String)` -- Create a new Syphon output server.
+- `func publish(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer, region: NSRect? = nil, flipped: Bool = false)` -- Publish a texture frame to all connected Syphon clients.
+- `func rename(_ name: String)` -- Rename the Syphon server by stopping the current one and creating a new one.
+- `func stop()` -- Stop and release the Syphon server.
+
+### `final class SyphonPlugin` -- 最終フレームを Syphon サーバー経由で publish する内部出力プラグイン。
+
+- `static let id: String` -- 安定したプラグイン識別子。facade（`startSyphonServer`/`stopSyphonServer`/
+- `var output: SyphonOutput? { get }` -- 実体の ``SyphonOutput``。`onAttach(renderer:)` で生成、`onDetach()` で破棄。
+- `let pluginID: String`
+- `init(name: String)`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func onAfterRender(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onBeforeRender(commandBuffer: any MTLCommandBuffer, time: Double)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
+
 ## MetaphorVideo
 
 ### `final class VideoPlayer` -- ビデオファイルの再生とフレーム取得を管理します。
