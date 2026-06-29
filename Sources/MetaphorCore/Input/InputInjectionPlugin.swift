@@ -98,10 +98,13 @@ public final class InputInjectionPlugin: MetaphorPlugin {
         let thread = Thread {
             let nextLine: () -> String? = source ?? { readLine(strippingNewline: true) }
             while let line = nextLine() {
-                guard !line.isEmpty,
-                      let data = line.data(using: .utf8),
+                if line.isEmpty { continue }
+                guard let data = line.data(using: .utf8),
                       let event = try? JSONDecoder().decode(RawInputEvent.self, from: data)
                 else {
+                    // 不正な入力イベントは無視するが、なぜ反映されないのかを切り分け
+                    // できるよう METAPHOR_DEBUG=1 のときだけ診断を残す。
+                    metaphorDiagnostic("input: 不正な JSON Lines イベントを無視: \(line)")
                     continue
                 }
                 pending.withLock { queue in

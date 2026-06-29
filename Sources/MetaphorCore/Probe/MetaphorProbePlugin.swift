@@ -382,9 +382,13 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         lastRequestMTime = mtime
 
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            // mtime は進んだが読めない（部分書き込み等）。次フレームで再試行する。
+            metaphorDiagnostic("probe: request.json を読めませんでした（次フレームで再試行）: \(path)")
             return
         }
         guard let request = try? JSONDecoder().decode(ProbeRequest.self, from: data) else {
+            // 不正な request.json。consumer は .tmp→rename でアトミックに書く規約（CONTRACT.md 契約点 4）。
+            metaphorDiagnostic("probe: request.json をデコードできませんでした（無視）")
             return
         }
 
