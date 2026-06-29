@@ -256,12 +256,15 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // ウィンドウ表示でも MadMapper 等へ publish できるよう、env / syphon フラグを尊重する。
         let effectiveSyphonName = resolveSyphonName(config: config)
 
+        // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードでも尊重）。
+        let fps = resolveFPS(config: config)
+
         // レンダーループモードの決定。
         // Syphon を publish するが renderLoopMode が displayLink のままの場合、
         // Syphon 互換性のため自動的にタイマーモードに切り替え。
         let loopMode: RenderLoopMode
         if effectiveSyphonName != nil && config.renderLoopMode == .displayLink {
-            loopMode = .timer(fps: config.fps)
+            loopMode = .timer(fps: fps)
         } else {
             loopMode = config.renderLoopMode
         }
@@ -280,15 +283,15 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // 1フレームを描画）— startWindowedLoop を参照。
         switch loopMode {
         case .displayLink:
-            mtkView.preferredFramesPerSecond = config.fps
+            mtkView.preferredFramesPerSecond = fps
             mtkView.isPaused = true
 
-        case .timer(let fps):
+        case .timer(let timerFPS):
             // タイマー駆動のレンダーループを開始（ディスプレイリンクから分離）
-            startTimerLoop(fps: fps)
+            startTimerLoop(fps: timerFPS)
 
             // MTKView: ディスプレイリンクはプレビューとしてのみ使用（スロットリングは許容）
-            mtkView.preferredFramesPerSecond = fps
+            mtkView.preferredFramesPerSecond = timerFPS
             mtkView.isPaused = false
         }
     }
@@ -304,6 +307,20 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         if let name = config.syphonName { return name }
         if config.syphon { return config.title }
         return nil
+    }
+
+    /// レンダーループの実効 FPS を解決します（ウィンドウ/ヘッドレス共通）。
+    ///
+    /// 優先順位: 環境変数 `METAPHOR_FPS` > ``SketchConfig/fps``。これにより
+    /// metaphor-cli の `--fps` がヘッドレス（ライブビューア）だけでなく、ウィンドウ
+    /// モード（`metaphor run` / `watch --no-viewer`）でも一様に効きます。
+    /// 解析できない値（非数値・0 以下）は無視して `config.fps` にフォールバックします。
+    private func resolveFPS(config: SketchConfig) -> Int {
+        guard let raw = ProcessInfo.processInfo.environment["METAPHOR_FPS"],
+              let fps = Int(raw), fps > 0 else {
+            return config.fps
+        }
+        return fps
     }
 
     /// 解決済みの出力名で、登録済みファクトリ（例: `MetaphorSyphon`）から出力プラグインを
@@ -335,8 +352,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let syphonName = env["METAPHOR_SYPHON_NAME"] ?? config.syphonName ?? config.title
         startOutput(renderer: renderer, name: syphonName)
 
-        // FPS: 環境変数で上書き可能。
-        let fps = env["METAPHOR_FPS"].flatMap { Int($0) } ?? config.fps
+        // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
+        let fps = resolveFPS(config: config)
 
         // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。
         startTimerLoop(fps: fps)
