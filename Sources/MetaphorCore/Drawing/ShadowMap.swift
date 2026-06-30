@@ -27,6 +27,10 @@ struct DrawCall3D {
     var hasFill: Bool
     var hasStroke: Bool
     var strokeColor: SIMD4<Float>
+    /// このドローコールが draw() 内で呼ばれた順序を表す単調シーケンス番号（#71）。
+    /// シャドウ生成では無視され、再生時の 2D/3D 呼び出し順マージにのみ使われる。
+    /// 既定 0（記録経路が seq を払い出さない場合の後方互換）。
+    var seq: UInt32 = 0
 }
 
 /// ディレクショナルライトのシャドウマップを管理します。

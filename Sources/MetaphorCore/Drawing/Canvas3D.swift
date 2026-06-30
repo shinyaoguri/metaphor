@@ -189,6 +189,11 @@ public final class Canvas3D: CanvasStyle {
     /// `MetaphorRenderer.renderFrame()` がフレーム冒頭の分岐に使う（#70）。
     var defersMainPassForShadow: Bool { shadowMap != nil }
 
+    /// draw() 内の呼び出し順を表す単調シーケンス番号の払い出し元（#71）。
+    /// `SketchContext` がフレーム頭でリセットするカウンタを注入する。未注入時は 0。
+    /// Canvas は Context を直接参照せず、このクロージャ経由でのみ seq を得る。
+    var seqProvider: (() -> UInt32)?
+
     // MARK: - 初期化
 
     /// レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
@@ -1025,7 +1030,8 @@ public final class Canvas3D: CanvasStyle {
                 isTextured: isTextured,
                 hasFill: hasFill,
                 hasStroke: hasStroke,
-                strokeColor: strokeColor
+                strokeColor: strokeColor,
+                seq: seqProvider?() ?? 0
             ))
             return
         }

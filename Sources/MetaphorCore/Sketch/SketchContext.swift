@@ -136,6 +136,7 @@ public final class SketchContext {
         self.canvas3D = canvas3D
         self.width = canvas.width
         self.height = canvas.height
+        wireDrawSeqProviders()
     }
 
     // MARK: - Tween Manager
@@ -256,6 +257,28 @@ public final class SketchContext {
         self.input = input
         self.width = canvas.width
         self.height = canvas.height
+        wireDrawSeqProviders()
+    }
+
+    // MARK: - Draw Sequence (#71)
+
+    /// draw() 内の 2D/3D 呼び出し順を表す単調シーケンス番号。
+    /// `beginFrame` でフレーム頭にリセットされる。
+    private var drawSeqCounter: UInt32 = 0
+
+    /// 次の呼び出し順番号を払い出す（呼ぶたびに +1）。
+    /// 記録経路で各 2D/3D コマンドに付与し、再生時の seq 昇順マージに使う。
+    func nextDrawSeq() -> UInt32 {
+        defer { drawSeqCounter &+= 1 }
+        return drawSeqCounter
+    }
+
+    /// 両 Canvas に seq 払い出しクロージャを注入する。
+    /// Canvas は Context を直接参照せず、このクロージャ経由でのみ seq を得る（依存方向の維持）。
+    /// `rebuildCanvas` での再構築時にも呼ぶ。
+    private func wireDrawSeqProviders() {
+        canvas.seqProvider = { [weak self] in self?.nextDrawSeq() ?? 0 }
+        canvas3D.seqProvider = { [weak self] in self?.nextDrawSeq() ?? 0 }
     }
 
     // MARK: - Compute Frame Management (internal)
@@ -283,6 +306,7 @@ public final class SketchContext {
         }
         self.deltaTime = deltaTime
         self.frameCount += 1
+        drawSeqCounter = 0  // 呼び出し順番号をフレーム頭でリセット（#71）
         tweenManager.update(deltaTime)
         canvas3D.begin(encoder: encoder, time: time, bufferIndex: renderer.frameBufferIndex)
         canvas.begin(encoder: encoder, bufferIndex: renderer.frameBufferIndex)
