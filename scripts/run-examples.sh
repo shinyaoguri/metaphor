@@ -31,6 +31,7 @@ NOTE_VALUES=()
 # Options
 INCLUDE_LEGACY=0
 LEGACY_ONLY=0
+SKIP_OBSOLETE=0
 BUILD_ONLY=0
 LIST_ONLY=0
 USE_COLOR=1
@@ -65,6 +66,8 @@ Options:
   -j, --parallel N     Run up to N examples concurrently (default: 1)
   -a, --all            Include _Legacy/ examples (excluded by default)
   --legacy-only        Run only _Legacy/ examples
+  --skip-obsolete      Skip examples marked status=obsolete in the examples index
+                       (Processing/OpenGL-specific placeholders; used by CI)
   --no-prompt          Skip the note prompt after each example (sequential only)
   --report FILE        Save review report to FILE (default: examples-report.md)
   --no-color           Disable colored output
@@ -105,6 +108,7 @@ while [[ $# -gt 0 ]]; do
         -j|--parallel)  PARALLEL="$2"; shift 2 ;;
         -a|--all)       INCLUDE_LEGACY=1; shift ;;
         --legacy-only)  LEGACY_ONLY=1; INCLUDE_LEGACY=1; shift ;;
+        --skip-obsolete) SKIP_OBSOLETE=1; shift ;;
         --no-prompt)    NO_PROMPT=1; shift ;;
         --report)       REPORT_FILE="$2"; shift 2 ;;
         --no-color)     USE_COLOR=0; shift ;;
@@ -230,7 +234,26 @@ trap handle_sigquit QUIT
 
 # ─── Example discovery ────────────────────────────────────────
 
+# Newline-separated set of example paths (relative to Examples/) whose status is
+# obsolete in the generated index. Populated lazily when --skip-obsolete is set.
+OBSOLETE_REL_PATHS=""
+
+load_obsolete_paths() {
+    local index="$ROOT_DIR/docs/ai/examples-index.json"
+    [[ -f "$index" ]] || { warn "examples index not found; --skip-obsolete is a no-op"; return; }
+    OBSOLETE_REL_PATHS="$(python3 - "$index" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+for ex in data.get("examples", []):
+    if ex.get("status") == "obsolete":
+        # Index paths are "Examples/<rel>"; discovery compares against <rel>.
+        print(ex["path"].removeprefix("Examples/"))
+PY
+)"
+}
+
 discover_examples() {
+    [[ "$SKIP_OBSOLETE" -eq 1 && -z "$OBSOLETE_REL_PATHS" ]] && load_obsolete_paths
     while IFS= read -r -d '' pkg; do
         local dir
         dir="$(dirname "$pkg")"
@@ -242,6 +265,12 @@ discover_examples() {
             [[ "$rel_path" == _Legacy/* ]] || continue
         elif [[ "$INCLUDE_LEGACY" -eq 0 ]]; then
             [[ "$rel_path" == _Legacy/* ]] && continue
+        fi
+
+        # Skip obsolete examples (deliberate non-goals) when requested.
+        if [[ "$SKIP_OBSOLETE" -eq 1 ]] && \
+           grep -qxF "$rel_path" <<<"$OBSOLETE_REL_PATHS"; then
+            continue
         fi
 
         # Filter matching (prefix match)
@@ -921,6 +950,10 @@ main() {
         echo -e "  Report saved to: ${BOLD}$REPORT_FILE${RESET}"
         echo ""
     fi
+
+    # Exit non-zero when any example failed to build so CI can gate on it.
+    [[ $BUILD_FAILED -gt 0 ]] && exit 1
+    exit 0
 }
 
 main

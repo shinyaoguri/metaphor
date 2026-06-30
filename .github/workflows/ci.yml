@@ -166,3 +166,32 @@ jobs:
               -instr-profile=.build/debug/codecov/default.profdata \
               -ignore-filename-regex='Tests/|\.build/'
           fi
+
+  # Build every example (except status=obsolete) so API drift that breaks a
+  # sketch is caught. This is a separate, non-required job: it surfaces breakage
+  # without gating merges on the (long) full-examples build. Stubs are included
+  # because they must still compile; obsolete placeholders (Processing/OpenGL
+  # non-goals) are skipped via the examples index.
+  examples-build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      - name: Get Syphon submodule hash
+        id: syphon-hash
+        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Syphon.xcframework
+        id: cache-syphon
+        uses: actions/cache@v5
+        with:
+          path: Frameworks/Syphon.xcframework
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+      - name: Build Syphon
+        if: steps.cache-syphon.outputs.cache-hit != 'true'
+        run: make setup
+      - name: Build all examples (excluding obsolete)
+        run: ./scripts/run-examples.sh --build-only --parallel 4 --skip-obsolete --no-color

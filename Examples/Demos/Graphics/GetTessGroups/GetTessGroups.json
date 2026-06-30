@@ -1,0 +1,6 @@
+{
+  "name": "GetTessGroups",
+  "title": "GetTessGroups",
+  "status": "obsolete",
+  "description": "Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal."
+}
