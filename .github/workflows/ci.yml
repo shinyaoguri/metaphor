@@ -8,6 +8,10 @@ on:
   # GITHUB_TOKEN-created PRs do not trigger pull_request, but workflow_dispatch
   # is exempt from that restriction so we can re-enter CI explicitly.
   workflow_dispatch:
+  # Nightly full-examples sweep (see examples-full). Per-PR only builds a smoke
+  # subset, so this catches drift in the long tail within a day.
+  schedule:
+    - cron: '0 17 * * *'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -167,12 +171,73 @@ jobs:
               -ignore-filename-regex='Tests/|\.build/'
           fi
 
-  # Build every example (except status=obsolete) so API drift that breaks a
-  # sketch is caught. This is a separate, non-required job: it surfaces breakage
-  # without gating merges on the (long) full-examples build. Stubs are included
-  # because they must still compile; obsolete placeholders (Processing/OpenGL
-  # non-goals) are skipped via the examples index.
-  examples-build:
+  # Each example is a standalone SwiftPM package, so building one recompiles all
+  # of metaphor from scratch — building all 263 per PR is prohibitively slow.
+  # Instead: per-PR builds a curated smoke subset (only when Sources/ change),
+  # and the full sweep runs nightly (examples-full). Both are separate,
+  # non-required jobs that surface drift without gating merges.
+
+  # Cheap gate: did this PR touch anything that could break an example build?
+  detect-examples-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          # If the diff can't be computed, err on the side of running the smoke build.
+          if ! changed=$(git diff --name-only "$BASE" "$HEAD" -- \
+              'Sources/**' 'Package.swift' 'Package.resolved' \
+              'scripts/run-examples.sh' 'scripts/ci-smoke-examples.txt' 2>/dev/null); then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$changed" | grep -q .; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Per-PR smoke build: ~19 representative examples, only when Sources changed.
+  examples-smoke:
+    needs: detect-examples-changes
+    if: needs.detect-examples-changes.outputs.relevant == 'true'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      - name: Get Syphon submodule hash
+        id: syphon-hash
+        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Syphon.xcframework
+        id: cache-syphon
+        uses: actions/cache@v5
+        with:
+          path: Frameworks/Syphon.xcframework
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+      - name: Build Syphon
+        if: steps.cache-syphon.outputs.cache-hit != 'true'
+        run: make setup
+      - name: Build smoke subset of examples
+        run: ./scripts/run-examples.sh --build-only --parallel 4 --smoke --no-color
+
+  # Nightly full sweep: every example except status=obsolete (Processing/OpenGL
+  # non-goals). Catches drift in the long tail the smoke subset doesn't cover.
+  examples-full:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v6

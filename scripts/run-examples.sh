@@ -32,6 +32,7 @@ NOTE_VALUES=()
 INCLUDE_LEGACY=0
 LEGACY_ONLY=0
 SKIP_OBSOLETE=0
+SMOKE=0
 BUILD_ONLY=0
 LIST_ONLY=0
 USE_COLOR=1
@@ -68,6 +69,8 @@ Options:
   --legacy-only        Run only _Legacy/ examples
   --skip-obsolete      Skip examples marked status=obsolete in the examples index
                        (Processing/OpenGL-specific placeholders; used by CI)
+  --smoke              Build only the curated smoke subset
+                       (scripts/ci-smoke-examples.txt; used by the per-PR CI gate)
   --no-prompt          Skip the note prompt after each example (sequential only)
   --report FILE        Save review report to FILE (default: examples-report.md)
   --no-color           Disable colored output
@@ -109,6 +112,7 @@ while [[ $# -gt 0 ]]; do
         -a|--all)       INCLUDE_LEGACY=1; shift ;;
         --legacy-only)  LEGACY_ONLY=1; INCLUDE_LEGACY=1; shift ;;
         --skip-obsolete) SKIP_OBSOLETE=1; shift ;;
+        --smoke)        SMOKE=1; shift ;;
         --no-prompt)    NO_PROMPT=1; shift ;;
         --report)       REPORT_FILE="$2"; shift 2 ;;
         --no-color)     USE_COLOR=0; shift ;;
@@ -117,6 +121,20 @@ while [[ $# -gt 0 ]]; do
         *)              FILTERS+=("$1"); shift ;;
     esac
 done
+
+# --smoke: load the curated subset (one path per line) into FILTERS. Read
+# line-by-line so paths containing spaces stay intact.
+if [[ "$SMOKE" -eq 1 ]]; then
+    smoke_file="$ROOT_DIR/scripts/ci-smoke-examples.txt"
+    if [[ ! -f "$smoke_file" ]]; then
+        echo "Smoke list not found: $smoke_file" >&2
+        exit 1
+    fi
+    while IFS= read -r line; do
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        FILTERS+=("$line")
+    done < "$smoke_file"
+fi
 
 # ─── Colors ───────────────────────────────────────────────────
 
