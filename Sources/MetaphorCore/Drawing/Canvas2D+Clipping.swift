@@ -27,20 +27,17 @@ extension Canvas2D {
         let x1 = min(max(x0, Int(x) + Int(w)), Int(width))
         let y1 = min(max(y0, Int(y) + Int(h)), Int(height))
         clipRect = MTLScissorRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
-        encoder?.setScissorRect(clipRect!)
+        // 遅延モードでは scissor 変更も呼び出し順を保ってコマンド化する（#71・宿題③）。
+        // 影オフ即時モードでは encode 経由で従来どおり即座に setScissorRect する。
+        emit(.setScissor(clipRect))
     }
 
     /// 現在のクリップ領域を終了し、前のクリップ領域を復元します。
     public func endClip() {
         flush()
         clipRect = clipStack.popLast() ?? nil
-        if let rect = clipRect {
-            encoder?.setScissorRect(rect)
-        } else {
-            // フルビューポートを復元
-            let fullRect = MTLScissorRect(x: 0, y: 0, width: Int(width), height: Int(height))
-            encoder?.setScissorRect(fullRect)
-        }
+        // clipRect が nil のときは encode 側でフルビューポートへ復元する。
+        emit(.setScissor(clipRect))
     }
 
     /// カラー、テクスチャ、インスタンスを含むすべての保留中の描画バッチをフラッシュします。
@@ -50,67 +47,33 @@ extension Canvas2D {
         flushTexturedVertices()
     }
 
-    // カラー頂点バッチのみをフラッシュ（遅延モードでは前景キューへ積む。#70）
+    // カラー頂点バッチのみをフラッシュ（遅延モードでは明示コマンドとして積む。#70 / #71）
     func flushColorVertices() {
         guard vertexCount > 0 else { return }
-        guard let pipeline = pipelineStates[currentBlendMode] else { return }
+        guard pipelineStates[currentBlendMode] != nil else { return }
         guard isDeferring || encoder != nil else { return }
 
         let vStart = bufferOffset
         let vCount = vertexCount
-        let proj = projectionMatrix
         bufferOffset += vertexCount
         vertexCount = 0
 
-        let draw: (MTLRenderCommandEncoder) -> Void = { [weak self] encoder in
-            guard let self else { return }
-            encoder.setRenderPipelineState(pipeline)
-            if let depthState = self.depthStencilState {
-                encoder.setDepthStencilState(depthState)
-            }
-            encoder.setCullMode(.none)
-            encoder.setVertexBuffer(self.vertexBuffer, offset: 0, index: 0)
-            var p = proj
-            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
-            encoder.drawPrimitives(type: .triangle, vertexStart: vStart, vertexCount: vCount)
-        }
-        if isDeferring {
-            deferredDraws.append(draw)
-        } else if let encoder = encoder {
-            draw(encoder)
-        }
+        emit(.colorBatch(blend: currentBlendMode, vertexStart: vStart, vertexCount: vCount))
     }
 
-    // テクスチャ頂点バッチのみをフラッシュ（遅延モードでは前景キューへ積む。#70）
+    // テクスチャ頂点バッチのみをフラッシュ（遅延モードでは明示コマンドとして積む。#70 / #71）
     func flushTexturedVertices() {
         guard texturedVertexCount > 0 else { return }
-        guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
+        guard texturedPipelineStates[currentBlendMode] != nil else { return }
         guard let texture = currentBoundTexture else { return }
         guard isDeferring || encoder != nil else { return }
 
         let vStart = texturedBufferOffset
         let vCount = texturedVertexCount
-        let proj = projectionMatrix
         texturedBufferOffset += texturedVertexCount
         texturedVertexCount = 0
 
-        let draw: (MTLRenderCommandEncoder) -> Void = { [weak self] encoder in
-            guard let self else { return }
-            encoder.setRenderPipelineState(texPipeline)
-            if let depthState = self.depthStencilState {
-                encoder.setDepthStencilState(depthState)
-            }
-            encoder.setCullMode(.none)
-            encoder.setVertexBuffer(self.texturedVertexBuffer, offset: 0, index: 0)
-            var p = proj
-            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
-            encoder.setFragmentTexture(texture, index: 0)
-            encoder.drawPrimitives(type: .triangle, vertexStart: vStart, vertexCount: vCount)
-        }
-        if isDeferring {
-            deferredDraws.append(draw)
-        } else if let encoder = encoder {
-            draw(encoder)
-        }
+        emit(.texturedBatch(
+            blend: currentBlendMode, vertexStart: vStart, vertexCount: vCount, texture: texture))
     }
 }

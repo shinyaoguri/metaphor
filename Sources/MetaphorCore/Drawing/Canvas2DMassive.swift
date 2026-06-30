@@ -49,7 +49,7 @@ extension Canvas2D {
     ///
     /// - Parameter instances: Circle instances to draw in order.
     public func circles(_ instances: [CircleInstance]) {
-        guard encoder != nil, hasFill, !instances.isEmpty else { return }
+        guard hasFill, !instances.isEmpty, encoder != nil || isDeferring else { return }
         let count = instances.count
         let needed = massiveCircleBufferOffset + count
         guard massiveCircleBuffer.ensureCapacity(
@@ -87,36 +87,22 @@ extension Canvas2D {
     ///   - count: Number of instances to draw. Defaults to the full buffer.
     public func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil) {
         let drawCount = min(max(count ?? instances.count, 0), instances.count)
-        guard encoder != nil, hasFill, drawCount > 0 else { return }
+        guard hasFill, drawCount > 0, encoder != nil || isDeferring else { return }
         drawCircleInstances(buffer: instances.buffer, byteOffset: 0, count: drawCount)
     }
 
     private func drawCircleInstances(buffer: MTLBuffer, byteOffset: Int, count: Int) {
-        guard let encoder = encoder,
-              let pipeline = massiveCirclePipelineStates[currentBlendMode],
-              count > 0 else { return }
+        guard massiveCirclePipelineStates[currentBlendMode] != nil, count > 0 else { return }
+        guard isDeferring || encoder != nil else { return }
 
+        // 保留中の通常バッチを先に確定し、massive を呼び出し順どおりに続ける。
         flush()
         hasDrawnAnything = true
 
-        encoder.setRenderPipelineState(pipeline)
-        if let depthState = depthStencilState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-        encoder.setVertexBuffer(unitCircleBuffer, offset: 0, index: 0)
-        encoder.setVertexBuffer(buffer, offset: byteOffset, index: 6)
-
-        var proj = projectionMatrix
-        var transform = Canvas2D.embed2DTransform(currentTransform)
-        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
-        encoder.setVertexBytes(&transform, length: MemoryLayout<float4x4>.size, index: 2)
-
-        encoder.drawPrimitives(
-            type: .triangle,
-            vertexStart: 0,
-            vertexCount: unitCircleVertexCount,
-            instanceCount: count
-        )
+        // 遅延モードでは記録（影オン時の宿題②を根治）。即時モードでは即座にエンコード。
+        // massive は変換を描画時に適用するため、記録時の変換を埋め込んで保持する。
+        emit(.massiveCircles(
+            blend: currentBlendMode, dataBuffer: buffer, byteOffset: byteOffset, count: count,
+            transform: Canvas2D.embed2DTransform(currentTransform)))
     }
 }

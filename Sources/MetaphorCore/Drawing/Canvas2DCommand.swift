@@ -7,9 +7,10 @@ import simd
 // のクロージャ捕捉で表現していた。これは型情報を持たず、検査・順序マージ・テストができない
 // （ADR-0003 の宿題④）。#71 はこれを明示コマンド型へ昇格する。
 //
-// 本ファイルは PR-1 時点では「型の置き場」であり、まだ flush 群とは配線されていない
-// （`deferredDraws` クロージャ経路が現役）。PR-2 で flush 群がこの enum を積むように
-// 載せ替え、PR-3 で 3D（`DrawCall3D`）と seq 昇順マージして単一メインパスへ再生する。
+// PR-2 で 2D の遅延 flush 群（color/textured/instanced/massive/clip）はこの enum を
+// 積むように載せ替え済み（`Canvas2D.deferred2DCommands`）。ただし再生は当面 3D 全部 → 2D
+// 前景の固定順（#70 と挙動同値）。PR-3 で `DrawCall3D` と seq 昇順マージして単一メイン
+// パスへ呼び出し順どおりに再生する（`DrawStreamMerge.mergeOrder` を使用）。
 
 /// 遅延記録された 2D 描画コマンド1件。クロージャ捕捉（#70）を置き換える明示表現。
 ///
@@ -17,17 +18,22 @@ import simd
 /// デプスステンシルステートといったフレーム定数や Canvas2D の内部状態は、再生時に
 /// Canvas2D 側が補う（PR-2 で実装）。
 enum Deferred2DCommand {
-    /// 色付き頂点バッチ（`flushColorVertices` 相当）。
+    /// 色付き頂点バッチ（`flushColorVertices` 相当）。変換は頂点書き込み時に焼き込み済み。
     case colorBatch(blend: BlendMode, vertexStart: Int, vertexCount: Int)
 
     /// テクスチャ付き頂点バッチ（`flushTexturedVertices` 相当）。
     case texturedBatch(blend: BlendMode, vertexStart: Int, vertexCount: Int, texture: MTLTexture)
 
-    /// インスタンス描画バッチ（`flushInstancedBatch` 相当）。
-    case instancedBatch(blend: BlendMode, instanceStart: Int, instanceCount: Int)
+    /// インスタンス描画バッチ（`flushInstancedBatch` 相当）。インスタンスバッファは
+    /// トリプルバッファ管理で記録/再生が同一フレーム内のため参照を保持する。
+    case instancedBatch(
+        blend: BlendMode, shape: Shape2DType,
+        instanceBuffer: MTLBuffer, instanceOffset: Int, instanceCount: Int)
 
     /// massive 円インスタンス（`Canvas2DMassive.drawCircleInstances` 相当・宿題②）。
-    case massiveCircles(blend: BlendMode, buffer: MTLBuffer, byteOffset: Int, count: Int)
+    /// massive は変換を描画時に適用するため、記録時の `currentTransform`（埋め込み済み）を保持する。
+    case massiveCircles(
+        blend: BlendMode, dataBuffer: MTLBuffer, byteOffset: Int, count: Int, transform: float4x4)
 
     /// クリップ（scissor）の設定・解除（`beginClip`/`endClip` 相当・宿題③）。
     /// `nil` はクリップ解除（フルビューポート）。
