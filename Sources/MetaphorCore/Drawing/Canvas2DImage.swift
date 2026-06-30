@@ -83,12 +83,17 @@ extension Canvas2D {
         currentBoundTexture = texture
         hasDrawnAnything = true
 
-        // バッファオーバーフローのチェック — フラッシュ後に拡張を試みる
+        // バッファオーバーフロー: フレーム途中の再割り当てによる表示破壊を避けるため
+        // 「フラッシュせず先に」拡張し、未フラッシュ分も新バッファへ移送する（#70、
+        // ensureColorCapacity と同じ理由）。拡張不能時のみフラッシュへ退避。
         if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
-            flushTexturedVertices()
-            if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
-                let needed = texturedBufferOffset + texturedVertexCount + 6
-                if !texturedBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: texturedBufferOffset) {
+            let needed = texturedBufferOffset + texturedVertexCount + 6
+            if !texturedBuffer.ensureCapacity(
+                needed, activeIndex: currentBufferIndex,
+                usedCount: texturedBufferOffset + texturedVertexCount
+            ) {
+                flushTexturedVertices()
+                if texturedBufferOffset + texturedVertexCount + 6 > maxTexturedVertices {
                     return
                 }
             }
@@ -147,12 +152,17 @@ extension Canvas2D {
 
         let verticesNeeded = glyphs.count * 6
 
-        // バッファオーバーフローのチェック — フラッシュ後に拡張を試みる
+        // バッファオーバーフロー: フレーム途中の再割り当てによる表示破壊を避けるため
+        // 「フラッシュせず先に」拡張し、未フラッシュ分も新バッファへ移送する（#70、
+        // ensureColorCapacity と同じ理由）。拡張不能時のみフラッシュへ退避。
         if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
-            flushTexturedVertices()
-            if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
-                let needed = texturedBufferOffset + texturedVertexCount + verticesNeeded
-                if !texturedBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: texturedBufferOffset) {
+            let needed = texturedBufferOffset + texturedVertexCount + verticesNeeded
+            if !texturedBuffer.ensureCapacity(
+                needed, activeIndex: currentBufferIndex,
+                usedCount: texturedBufferOffset + texturedVertexCount
+            ) {
+                flushTexturedVertices()
+                if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
                     return
                 }
             }

@@ -213,4 +213,58 @@ struct RenderRegressionTests {
         #expect(p.r > 220,
                 "Two additive 0.5-gray rects should accumulate to ~white (got R=\(p.r)); pop() restoring the blend mode before flushing renders them with .alpha instead")
     }
+
+    /// 回帰: 1フレーム内で頂点バッファ成長が起きても表示が壊れないこと（#70）。
+    ///
+    /// `GrowableGPUBuffer` がフレーム途中で再割り当てされると、フラッシュ済みの
+    /// `drawPrimitives` が古いバッファを参照したまま後続フラッシュが別バッファを
+    /// 指し、表示が壊れていた。noLoop を単一フレーム化（#107）して「成長フレーム
+    /// 自体が表示対象」になり Array / Conditionals2 等で顕在化した。
+    ///
+    /// バグそのもの（成長フレーム=破損 / 非成長フレーム=正常）を突くため、初期容量
+    /// (4096頂点)を超える同一シーンを **2回** 描画して画素一致を検証する。1回目で
+    /// バッファが最終容量まで成長し、2回目は成長しない。修正前は1回目が破損して両者
+    /// が食い違い（旧コードで表示2回目が常にクリーンだった理由でもある）、修正後は一致する。
+    @Test("mid-frame vertex buffer growth does not corrupt output")
+    func midFrameBufferGrowthIntact() throws {
+        let size = 128
+        var helper = try RenderTestHelper(width: size, height: size)
+        helper.setClearColor(r: 0, g: 0, b: 0)
+
+        // Conditionals2 を模した、間隔と明度が異なる縦線（破損時にズレが見える構造）。
+        // 細かい刻みで初期容量(4096頂点)を超え、フレーム途中で成長を強制する。
+        let scene: (Canvas2D) -> Void = { canvas in
+            canvas.strokeWeight(1)
+            var x: Float = 2
+            while x < Float(size) - 2 {
+                if Int(x) % 20 == 0 { canvas.stroke(.white) }
+                else if Int(x) % 10 == 0 { canvas.stroke(Color(r: 0.6, g: 0.6, b: 0.6)) }
+                else { canvas.stroke(Color(r: 0.4, g: 0.4, b: 0.4)) }
+                canvas.line(x, 16, x, Float(size) - 16)
+                x += 0.05  // 約2520本×6=約15120頂点 → 4096→8192→16384 と成長
+            }
+        }
+
+        // 1回目: フレーム途中で成長が起きるフレーム（修正前は破損）。
+        try helper.render(scene)
+        #expect(helper.canvas.colorBuffer.capacity > 4096,
+                "Test must exercise buffer growth; capacity=\(helper.canvas.colorBuffer.capacity)")
+        var first = [RenderTestHelper.Pixel]()
+        first.reserveCapacity(size * size)
+        for y in 0..<size { for x in 0..<size { first.append(helper.readPixel(x: x, y: y)) } }
+
+        // 2回目: バッファは既に最終容量。成長は起きないので確実に正しい基準像。
+        try helper.render(scene)
+
+        var mismatches = 0
+        for y in 0..<size {
+            for x in 0..<size {
+                let b = helper.readPixel(x: x, y: y)
+                let a = first[y * size + x]
+                if a.r != b.r || a.g != b.g || a.b != b.b { mismatches += 1 }
+            }
+        }
+        #expect(mismatches == 0,
+                "Growing frame must match the stable (no-growth) frame pixel-for-pixel; \(mismatches)/\(size * size) pixels differ → mid-frame buffer growth corruption")
+    }
 }
