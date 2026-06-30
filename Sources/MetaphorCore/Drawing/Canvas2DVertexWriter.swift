@@ -6,14 +6,25 @@ import simd
 extension Canvas2D {
 
     /// カラーバッファに少なくとも1頂点分の空きがあることを保証します。
-    /// 必要に応じてフラッシュし、その後バッファを拡張します。
+    /// 必要なら「フラッシュせず先に」バッファを拡張します。
+    ///
+    /// フラッシュ済みの `drawPrimitives` はエンコード時点のバッファを参照するため、
+    /// フレーム途中で `ensureCapacity` がバッファを再割り当てすると、同一フレームの
+    /// 複数フラッシュがバラバラに再割り当てされたバッファを参照し表示が壊れる。
+    /// これは noLoop を単一フレーム化（#70）して「成長するフレーム自体が表示対象」に
+    /// なったことで顕在化した（従来は1回目の非表示フレームで最終容量まで成長し、
+    /// 表示される2回目は成長しなかったため隠れていた）。
+    /// 対策として未フラッシュ分も含めて新バッファへ移送し、1フレーム1バッファを保つ。
+    /// 拡張不能（`maxCapacity` 到達）時のみ従来どおりフラッシュへ退避する。
     private func ensureColorCapacity() -> Bool {
         if bufferOffset + vertexCount >= maxVertices {
-            flushColorVertices()
-            if bufferOffset + vertexCount >= maxVertices {
-                // フラッシュ後もバッファが満杯 — 拡張を試みる
-                let needed = bufferOffset + vertexCount + 1
-                if !colorBuffer.ensureCapacity(needed, activeIndex: currentBufferIndex, usedCount: bufferOffset) {
+            let needed = bufferOffset + vertexCount + 1
+            if !colorBuffer.ensureCapacity(
+                needed, activeIndex: currentBufferIndex, usedCount: bufferOffset + vertexCount
+            ) {
+                // 拡張できない（上限到達）— フラッシュして空きを作る
+                flushColorVertices()
+                if bufferOffset + vertexCount >= maxVertices {
                     return false
                 }
             }
