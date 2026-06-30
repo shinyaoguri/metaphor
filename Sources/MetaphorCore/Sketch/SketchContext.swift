@@ -276,7 +276,7 @@ public final class SketchContext {
 
     // MARK: - Frame Management (internal)
 
-    func beginFrame(encoder: MTLRenderCommandEncoder, time: Float, deltaTime: Float) {
+    func beginFrame(encoder: MTLRenderCommandEncoder?, time: Float, deltaTime: Float) {
         self.time = time
         if isPrimary {
             _sketchElapsedTime = time
@@ -286,6 +286,27 @@ public final class SketchContext {
         tweenManager.update(deltaTime)
         canvas3D.begin(encoder: encoder, time: time, bufferIndex: renderer.frameBufferIndex)
         canvas.begin(encoder: encoder, bufferIndex: renderer.frameBufferIndex)
+    }
+
+    // MARK: - シャドウ同一フレーム化（#70）の記録/再生フレーム
+
+    /// シャドウ遅延経路でこのフレームを「記録モード」で開始します。
+    /// メインエンコーダはまだ無く、3D は記録、2D は前景キューへ遅延されます。
+    func beginRecordingFrame(time: Float, deltaTime: Float) {
+        canvas.isDeferring = true
+        beginFrame(encoder: nil, time: time, deltaTime: deltaTime)
+    }
+
+    /// 記録モードのフレームを終了します（2D は前景キューへ flush 済みになる）。
+    func endRecordingFrame() {
+        endFrame()
+        canvas.isDeferring = false
+    }
+
+    /// 記録済みの 3D（影Nをサンプル）→ 2D前景 を単一メインパスへ再生します。
+    func replayDeferredMain(encoder: MTLRenderCommandEncoder, time: Float) {
+        canvas3D.replayMainPass(encoder: encoder)
+        canvas.replayForeground(encoder: encoder)
     }
 
     func endFrame() {

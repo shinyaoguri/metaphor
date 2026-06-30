@@ -420,6 +420,24 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             guard let context else { return }
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
+
+        // シャドウ同一フレーム化（#70）: 影オン時は記録→shadow→再生の経路を使う。
+        renderer.shadowDeferActive = { [weak context] in
+            context?.canvas3D.defersMainPassForShadow ?? false
+        }
+        renderer.onRecordFrame = { [weak context, weak sketch] time in
+            guard let context, let sketch else { return }
+            let t = Float(time)
+            let dt = t - prevTime
+            prevTime = t
+            context.beginRecordingFrame(time: t, deltaTime: dt)
+            sketch.draw()
+            context.endRecordingFrame()
+        }
+        renderer.onReplayMain = { [weak context] encoder, time in
+            guard let context else { return }
+            context.replayDeferredMain(encoder: encoder, time: Float(time))
+        }
     }
 
     /// ウィンドウを表示し、ウィンドウモードのレンダーループを開始します。

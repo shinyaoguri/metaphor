@@ -261,6 +261,23 @@ public final class SketchWindow {
             guard let self else { return }
             self.context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
+
+        // シャドウ同一フレーム化（#70）: 影オン時は記録→shadow→再生の経路を使う。
+        renderer.shadowDeferActive = { [weak self] in
+            self?.context.canvas3D.defersMainPassForShadow ?? false
+        }
+        renderer.onRecordFrame = { [weak self] time in
+            guard let self, let closure = self.drawClosure else { return }
+            let t = Float(time)
+            let dt = t - self.prevTime
+            self.prevTime = t
+            self.context.beginRecordingFrame(time: t, deltaTime: dt)
+            closure(self.context)
+            self.context.endRecordingFrame()
+        }
+        renderer.onReplayMain = { [weak self] encoder, time in
+            self?.context.replayDeferredMain(encoder: encoder, time: Float(time))
+        }
     }
 
     private func connectInput() {

@@ -40,6 +40,7 @@
 | # | Status | Title |
 |---|---|---|
 | [0001](0001-separate-syphon-into-its-own-target.md) | Accepted | Syphon を MetaphorCore から別ターゲットへ分離する |
+| [0002](0002-deterministic-render-pipeline.md) | Proposed | 決定論レンダリングを段階導入する（noLoop 単一フレーム化 + シャドウ同一フレーム化） |
 
 ## 参考
 

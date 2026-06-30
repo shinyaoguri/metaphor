@@ -970,10 +970,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var onCaptureOutput: ((any MTLTexture, any MTLCommandBuffer) -> Void)?` -- フレームの最終出力（ポストエフェクト適用後）を、コミット前のメイン
 - `var onCompute: ((any MTLCommandBuffer, Double) -> Void)?` -- 描画前にコンピュートワークを実行するために呼び出されるコールバック
 - `var onDraw: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- 各フレームでユーザーレンダリングを実行するために呼び出されるコールバック
+- `var onRecordFrame: ((Double) -> Void)?` -- シャドウ遅延経路で、メインエンコーダ無しに draw() を記録実行するフック
+- `var onReplayMain: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- シャドウ遅延経路で、記録済みの 3D→2D を単一メインパスへ再生するフック。
 - `var postProcessPipeline: PostProcessPipeline? { get }` -- ポストプロセスエフェクトパイプライン
 - `var previousFrameTexture: (any MTLTexture)? { get }` -- 前フレームのカラーテクスチャ。``feedbackEnabled`` が `true` の場合のみ利用可能
 - `var renderGraph: (any RenderGraphExecutable)?` -- 設定時に最終テクスチャとなるレンダーグラフ
 - `let shaderLibrary: ShaderLibrary` -- Metal シェーダー関数のコンパイルとキャッシュに使用するシェーダーライブラリ
+- `var shadowDeferActive: (() -> Bool)?` -- このフレームでシャドウ遅延経路（記録→shadow→再生）を使うべきかを返す。
 - `var sharedResources: SharedMetalResources? { get }` -- 共有リソースで作成された場合に利用可能な共有 Metal リソース
 - `var textureManager: TextureManager { get }` -- オフスクリーンレンダーターゲットテクスチャの管理
 - `var useExternalRenderLoop: Bool` -- 外部レンダーループがフレームレンダリングを駆動するかどうかを示します。

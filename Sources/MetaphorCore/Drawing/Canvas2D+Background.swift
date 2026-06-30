@@ -15,6 +15,10 @@ extension Canvas2D {
         backgroundCalledThisFrame = true
         pendingClearColor = c
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
+        // シャドウ同一フレーム化の遅延モードでは、メインパスの loadAction = .clear が
+        // クリアを担う（endFrame の setShouldClear が同フレームで反映される）。
+        // ここでクワッドを描くと前景キューに乗って 3D を覆うため、描かずに戻る（#70）。
+        if isDeferring { return }
         let canUseRenderPassClear = onSetClearColor != nil && appliedClearColor == c
         if !hasDrawnAnything && frameWillClear && clearColorApplied && canUseRenderPassClear {
             // Metal の loadAction = .clear がクリアを処理します。
