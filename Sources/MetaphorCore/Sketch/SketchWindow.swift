@@ -262,9 +262,9 @@ public final class SketchWindow {
             self.context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
 
-        // シャドウ同一フレーム化（#70）: 影オン時は記録→shadow→再生の経路を使う。
+        // 記録→shadow→再生の経路: 影オン（#70）またはコマンド記録 opt-in（#71）で使う。
         renderer.shadowDeferActive = { [weak self] in
-            self?.context.canvas3D.defersMainPassForShadow ?? false
+            self?.context.canvas3D.shouldRecordMainPass ?? false
         }
         renderer.onRecordFrame = { [weak self] time in
             guard let self, let closure = self.drawClosure else { return }

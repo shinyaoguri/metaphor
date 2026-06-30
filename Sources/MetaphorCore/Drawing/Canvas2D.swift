@@ -525,9 +525,22 @@ public final class Canvas2D: CanvasStyle {
     /// 保持されているため、記録済みコマンドをそのまま再投入すれば正しい描画になる。
     /// 当面は記録順（= 2D 内の seq 昇順）で再生する（3D との呼び出し順マージは PR-3）。
     func replayForeground(encoder: MTLRenderCommandEncoder) {
-        for slot in deferred2DCommands {
+        replayForegroundRange(0..<deferred2DCommands.count, encoder: encoder)
+        clearDeferredCommands()
+    }
+
+    /// 記録済み 2D コマンドの指定レンジを再投入します（#71・宿題①）。
+    /// run（呼び出し順の連続する 2D 区間）単位で呼び、3D の再生と交互に合成する。
+    /// レンジ消費後のクリアは呼び出し側（`SketchContext.replayDeferredMain`）が行う。
+    func replayForegroundRange(_ range: Range<Int>, encoder: MTLRenderCommandEncoder) {
+        let clamped = range.clamped(to: 0..<deferred2DCommands.count)
+        for slot in deferred2DCommands[clamped] {
             encode(slot.command, into: encoder)
         }
+    }
+
+    /// 記録済み 2D コマンドを破棄します（再生完了後に呼ぶ）。
+    func clearDeferredCommands() {
         deferred2DCommands.removeAll(keepingCapacity: true)
     }
 
