@@ -158,7 +158,7 @@ struct DeterminismTests {
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
         // 影オン時の記録→再生経路（SketchRunner と同じ）。
-        renderer.shadowDeferActive = { context.canvas3D.defersMainPassForShadow }
+        renderer.shadowDeferActive = { context.canvas3D.shouldRecordMainPass }
         renderer.onRecordFrame = { time in
             let t = Float(time); let dt = t - prevTime; prevTime = t
             context.beginRecordingFrame(time: t, deltaTime: dt)

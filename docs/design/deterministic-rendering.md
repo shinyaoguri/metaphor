@@ -134,6 +134,10 @@ onCompute → [main pass] onDraw → [shadow] onAfterDraw → RenderGraph → Po
 
 PR 分割（各 PR 独立緑・850 維持）: 基盤型導入（配線据え置き）→ 2D 載せ替え（②③根治・挙動同値）→ seq interleave で順序統合（①根治）+ フラグ → クリーンアップ（④完了）。テストは順序ユニット（GPU 不要）+ 複数サンプル点ピクセル回帰（clip/massive/重ね順）+ 決定論 + 実機目視（`SceneGraphHybrid`/`CubesWithinCube`）。
 
+### 実装完了（2026-06-30）
+
+スコープ (a) を4 PR（#111→#112→#113→#114）で段階導入し完了。宿題①〜④をすべて根治、全テスト緑（850→860）。詳細・設計上の発見（2D 遅延フラッシュと seq タイミングの逆転を `flushPending2D` フックで解決）・活性化方針（1.0 前は影オン常時／影オフ opt-in 据え置き）は [ADR-0003 の実装結果](../adr/0003-unified-command-stream.md)を参照。スコープ (b)（RenderGraph/PostProcess を含む完全決定論）は follow-up Epic。
+
 ## 参考
 
 - ADR: [docs/adr/0002-deterministic-render-pipeline.md](../adr/0002-deterministic-render-pipeline.md)、[docs/adr/0003-unified-command-stream.md](../adr/0003-unified-command-stream.md)
