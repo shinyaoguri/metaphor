@@ -456,16 +456,15 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             if let renderTimer {
                 suspendRenderTimerIfNeeded(renderTimer)
             }
-            // 予備の（オフスクリーンのみの）フレームをレンダリングし、
-            // background() がユーザーのクリアカラーをレンダーパス
-            // ディスクリプタに登録。この最初のパスでは clearColorApplied が
-            // まだ false なので背景クワッドが描画される。結果は画面には表示されない。
+            // オフスクリーンを1回だけレンダリング。clearColorApplied が false の
+            // ため background() は全画面クワッドで背景を塗り、この時点でオフスクリーン
+            // テクスチャは正しい背景色を持つ。
             renderer.renderFrame()
-            // 2番目のフレームでは clearColorApplied == true なので、
-            // background() は Metal の loadAction = .clear に上でキャプチャした
-            // 色での塗りつぶしを任せる。
+            // useExternalRenderLoop = true にして draw(in:) を「再レンダリングせず
+            // ブリットのみ」へ切り替え、上記オフスクリーンを画面へ転送する。これにより
+            // 2 回目の draw() による frameCount=2 を回避し、初回 snapshot を決定論化（#70）。
             let wasExternal = renderer.useExternalRenderLoop
-            renderer.useExternalRenderLoop = false
+            renderer.useExternalRenderLoop = true
             mtkView.draw()
             renderer.useExternalRenderLoop = wasExternal
         }
@@ -474,8 +473,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// ヘッドレスモードのレンダーループを開始します。
     ///
     /// タイマーは ``configureHeadlessLoop(config:)`` で既に起動済みです。`noLoop()` の
-    /// スケッチではタイマーを止め、背景クリアカラーを確定させるため2フレームだけ
-    /// レンダリングして Syphon に publish します（ウィンドウモードの2パスと同じ意図）。
+    /// スケッチではタイマーを止め、1フレームだけレンダリングして Syphon に publish します。
+    /// `frameCount` を 1 に保ち初回 snapshot を決定論化します（#70、ウィンドウモードと同じ意図）。
     private func startHeadlessLoop(context: SketchContext, renderer: MetaphorRenderer) {
         guard !context.isLooping else { return }
 
@@ -483,9 +482,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         if let renderTimer {
             suspendRenderTimerIfNeeded(renderTimer)
         }
-        // 1パス目で background() がクリアカラーを登録し、2パス目で
-        // loadAction = .clear による塗りつぶしが反映される。
-        renderer.renderFrame()
+        // 1フレームだけレンダリングして frameCount を 1 に保つ（#70）。
+        // clearColorApplied が false のため background() は全画面クワッドで背景を
+        // 塗るので、この単一パスでオフスクリーン/Syphon 出力は正しい背景色を持つ。
         renderer.renderFrame()
     }
 
