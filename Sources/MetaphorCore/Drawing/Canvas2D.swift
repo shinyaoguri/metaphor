@@ -98,6 +98,11 @@ public final class Canvas2D: CanvasStyle {
     /// 遅延モードで積まれた前景2D描画。`replayForeground(encoder:)` で順に再生する。
     /// 各ファイルの flush 拡張から積むため internal。
     var deferredDraws: [(MTLRenderCommandEncoder) -> Void] = []
+
+    /// draw() 内の呼び出し順を表す単調シーケンス番号の払い出し元（#71）。
+    /// `SketchContext` がフレーム頭でリセットするカウンタを注入する。未注入時は 0。
+    /// PR-1 では基盤のみ（2D flush はまだ seq を消費しない）。
+    var seqProvider: (() -> UInt32)?
     var vertexCount: Int = 0
     var bufferOffset: Int = 0
     let projectionMatrix: float4x4
