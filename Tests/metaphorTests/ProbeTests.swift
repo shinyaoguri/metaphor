@@ -184,7 +184,9 @@ struct MetaphorProbePluginTests {
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             #expect(json?["id"] as? String == "meta-1")
             #expect(json?["label"] as? String == "metadata-test")
-            #expect(json?["schemaVersion"] as? Int == 3)
+            #expect(json?["schemaVersion"] as? Int == 4)
+            // sourceStamp 未設定（config も env も無し）なら additive キーは省略される。
+            #expect(json?["sourceStamp"] == nil)
             let size = json?["size"] as? [String: Int]
             #expect(size?["width"] == 128)
             #expect(size?["height"] == 96)
@@ -208,6 +210,42 @@ struct MetaphorProbePluginTests {
             #expect(meanColor?.count == 3)
             #expect(stats?["meanLuminance"] != nil)
             #expect(stats?["contentFraction"] != nil)
+
+            drainGPUWork()
+        }
+    }
+
+    @Test("sourceStamp from config appears in frame.json (schemaVersion 4)")
+    func sourceStampIsWritten() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path,
+                    sourceStamp: "build-abc123"
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "stamp-1", to: requestPath)
+            renderer.renderFrame()
+
+            _ = waitForFrame(in: outputDir)
+            let jsonPath = outputDir.appendingPathComponent("frame.json")
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline,
+                  !FileManager.default.fileExists(atPath: jsonPath.path) {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
+            let data = try Data(contentsOf: jsonPath)
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            #expect(json?["schemaVersion"] as? Int == 4)
+            #expect(json?["sourceStamp"] as? String == "build-abc123")
 
             drainGPUWork()
         }
