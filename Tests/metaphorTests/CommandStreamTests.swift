@@ -270,7 +270,7 @@ struct CommandStreamSeqTests {
             context.endRecordingFrame()
         }
         renderer.onAfterDraw = { cb in context.canvas3D.performShadowPass(commandBuffer: cb) }
-        renderer.shadowDeferActive = { context.canvas3D.defersMainPassForShadow }
+        renderer.shadowDeferActive = { context.canvas3D.shouldRecordMainPass }
         renderer.onReplayMain = { encoder, time in
             context.replayDeferredMain(encoder: encoder, time: Float(time))
         }

@@ -1,9 +1,9 @@
 # ADR-0003: 即時描画を順序保持コマンド記録へ統一する（main パス 2D/3D の単一ストリーム化）
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-06-30
-- **Deciders**: (PR レビューで確定)
-- **PR / Commit**: (TBD)
+- **Deciders**: PR #110 レビューで確定
+- **PR / Commit**: ADR #110。実装 #111（seq 基盤）→ #112（2D コマンド化・宿題②③④）→ #113（seq interleave・宿題①）
 
 ## Context
 
@@ -88,6 +88,23 @@ run グルーピング（隣接同種コマンドを区間化し、`setDepthSten
 - スコープ (b): RenderGraph/PostProcess/outputs を含む完全決定論パイプライン（別 Epic）。
 - `METAPHOR_COMMAND_RECORD` 既定 ON 化の判断（安定後）。
 - 3D 半透明の深度ソート（別 Issue 推奨）。
+
+## 実装結果（2026-06-30）
+
+スコープ (a) を4 PR で段階導入し完了。宿題①〜④をすべて根治。各 PR は独立して全テスト緑を維持（850 → 860）。
+
+- **#111（PR-1・基盤）**: `SketchContext` の単調 seq 払い出し（`nextDrawSeq`・フレーム頭リセット・両 Canvas へ `seqProvider` 注入）、`DrawCall3D.seq`、`Deferred2DCommand` enum と純粋な `DrawStreamMerge.mergeOrder`。配線据え置きで挙動不変。
+- **#112（PR-2・2D コマンド化）**: 2D 遅延を `deferredDraws` クロージャ → `deferred2DCommands: [Deferred2DSlot]` へ昇格（**④**）。`emit`/`encode` で遅延/即時を振り分け。massive を `isDeferring` 対応（**②**）、clip を `setScissor` コマンド化（**③**）。再生順は 3D→2D のまま（挙動同値）。
+- **#113（PR-3・順序統合）**: `replayDeferredMain` を `DrawStreamMerge.mergeOrder` による seq 昇順マージ + run グルーピングで交互再投入（**①**）。`replayMainPass` を `beginReplay`/`replayRecordedRange`/`endReplay` に分解。`shouldRecordMainPass`（= `shadowMap != nil || commandRecordEnabled`）へ一般化し `METAPHOR_COMMAND_RECORD` で opt-in。
+- **#114（PR-4・仕上げ）**: 冗長になった `defersMainPassForShadow` を撤去し `shouldRecordMainPass` に一本化。本 ADR / 設計ドキュメントを実装完了として確定。
+
+### 設計上の発見
+
+2D はバッチをフレーム末尾まで遅延フラッシュするため、素朴に flush 時点で seq を採ると呼び出し順と逆転する（先に書いた 2D が後の 3D より大きい seq を得る）。**3D 記録の直前に 2D 保留バッチを flush（`Canvas3D.flushPending2D` フック）して seq を「この 3D より前」に確定**することで、flush が正しいインターリーブ点で起き呼び出し順が保たれる。
+
+### 活性化方針（確定）
+
+1.0 前は **影オン = 常時記録／影オフ = `METAPHOR_COMMAND_RECORD` opt-in** で据え置く（影オフ既定は即時経路＝回帰ゼロ）。既定 ON 化は安定後に判断（follow-up）。`renderFrame` の `shadowDeferActive` 単一分岐点で旧経路へロールバック可能。
 
 ## References
 

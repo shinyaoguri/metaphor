@@ -185,9 +185,6 @@ public final class Canvas3D: CanvasStyle {
     /// 記録をスキップして実際のメインパスエンコードを行う（記録済みコールの再生）。
     private var isReplaying = false
 
-    /// シャドウ有効時にメインパス描画を遅延記録/再生する経路がアクティブか（#70）。
-    var defersMainPassForShadow: Bool { shadowMap != nil }
-
     /// 影に依存せずコマンド記録経路を有効化する opt-in フラグ（#71）。
     /// `METAPHOR_COMMAND_RECORD=1` で `SketchRunner` が立てる。既定は false（影オフは即時経路）。
     var commandRecordEnabled = false
