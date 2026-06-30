@@ -92,12 +92,12 @@ public final class Canvas2D: CanvasStyle {
 
     /// 遅延（前景）記録モード。シャドウ同一フレーム化（#70）で、2D 描画を
     /// 3D 再生の後にエンコードするため、各 flush を即時描画する代わりに
-    /// `deferredDraws` にクロージャとして積む。影オフ時は常に `false`（無変更）。
+    /// `deferred2DCommands` に明示コマンドとして積む。影オフ時は常に `false`（無変更）。
     var isDeferring = false
 
-    /// 遅延モードで積まれた前景2D描画。`replayForeground(encoder:)` で順に再生する。
-    /// 各ファイルの flush 拡張から積むため internal。
-    var deferredDraws: [(MTLRenderCommandEncoder) -> Void] = []
+    /// 遅延モードで積まれた前景2D描画コマンド（#71・宿題④でクロージャから昇格）。
+    /// `replayForeground(encoder:)` で順に再生する。各 flush 拡張から積むため internal。
+    var deferred2DCommands: [Deferred2DSlot] = []
 
     /// draw() 内の呼び出し順を表す単調シーケンス番号の払い出し元（#71）。
     /// `SketchContext` がフレーム頭でリセットするカウンタを注入する。未注入時は 0。
@@ -514,20 +514,95 @@ public final class Canvas2D: CanvasStyle {
         self.hasDrawnAnything = false
         self.backgroundCalledThisFrame = false
         self.pendingClearColor = nil
-        self.deferredDraws.removeAll(keepingCapacity: true)
+        self.deferred2DCommands.removeAll(keepingCapacity: true)
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
     }
 
-    /// 遅延モードで積まれた前景2D描画を、指定エンコーダへ順に再生します（#70）。
+    /// 遅延モードで積まれた前景2D描画を、指定エンコーダへ順に再生します（#70 / #71）。
     ///
     /// シャドウ同一フレーム化の経路で、`MetaphorRenderer.renderFrame()` が 3D 再生
     /// （`Canvas3D.replayMainPass`）の後に呼ぶ。記録時の頂点バッファ・状態はフレーム内で
-    /// 保持されているため、捕捉済みクロージャがそのまま正しい描画を発行する。
+    /// 保持されているため、記録済みコマンドをそのまま再投入すれば正しい描画になる。
+    /// 当面は記録順（= 2D 内の seq 昇順）で再生する（3D との呼び出し順マージは PR-3）。
     func replayForeground(encoder: MTLRenderCommandEncoder) {
-        for draw in deferredDraws {
-            draw(encoder)
+        for slot in deferred2DCommands {
+            encode(slot.command, into: encoder)
         }
-        deferredDraws.removeAll(keepingCapacity: true)
+        deferred2DCommands.removeAll(keepingCapacity: true)
+    }
+
+    /// 遅延コマンドを「記録（積む）」または「即時エンコード」へ振り分ける（#71）。
+    /// 遅延モードでは呼び出し順 seq を付けて積み、そうでなければ即座にエンコードする。
+    func emit(_ command: Deferred2DCommand) {
+        if isDeferring {
+            deferred2DCommands.append(Deferred2DSlot(seq: seqProvider?() ?? 0, command: command))
+        } else if let encoder = encoder {
+            encode(command, into: encoder)
+        }
+    }
+
+    /// 遅延コマンド1件を指定エンコーダへ実エンコードする（#71）。
+    /// 頂点バッファ・投影行列・デプスステンシルステートはフレーム内で安定な Canvas2D の状態を使う。
+    func encode(_ command: Deferred2DCommand, into encoder: MTLRenderCommandEncoder) {
+        switch command {
+        case .colorBatch(let blend, let vertexStart, let vertexCount):
+            guard let pipeline = pipelineStates[blend] else { return }
+            encoder.setRenderPipelineState(pipeline)
+            if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+            var p = projectionMatrix
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.drawPrimitives(type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
+
+        case .texturedBatch(let blend, let vertexStart, let vertexCount, let texture):
+            guard let texPipeline = texturedPipelineStates[blend] else { return }
+            encoder.setRenderPipelineState(texPipeline)
+            if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(texturedVertexBuffer, offset: 0, index: 0)
+            var p = projectionMatrix
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.setFragmentTexture(texture, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
+
+        case .instancedBatch(let blend, let shape, let instanceBuffer, let instanceOffset, let instanceCount):
+            guard let pipeline = instancedPipelineStates[blend] else { return }
+            let (meshBuffer, meshVertexCount) = unitMeshFor(shape)
+            encoder.setRenderPipelineState(pipeline)
+            if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
+            encoder.setVertexBuffer(instanceBuffer, offset: instanceOffset, index: 6)
+            var p = projectionMatrix
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: 0,
+                vertexCount: meshVertexCount, instanceCount: instanceCount)
+
+        case .massiveCircles(let blend, let dataBuffer, let byteOffset, let count, let transform):
+            guard let pipeline = massiveCirclePipelineStates[blend] else { return }
+            encoder.setRenderPipelineState(pipeline)
+            if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(unitCircleBuffer, offset: 0, index: 0)
+            encoder.setVertexBuffer(dataBuffer, offset: byteOffset, index: 6)
+            var p = projectionMatrix
+            var t = transform
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.setVertexBytes(&t, length: MemoryLayout<float4x4>.size, index: 2)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: 0,
+                vertexCount: unitCircleVertexCount, instanceCount: count)
+
+        case .setScissor(let rect):
+            if let rect = rect {
+                encoder.setScissorRect(rect)
+            } else {
+                encoder.setScissorRect(
+                    MTLScissorRect(x: 0, y: 0, width: Int(width), height: Int(height)))
+            }
+        }
     }
 
     /// 蓄積されたすべての頂点をフラッシュし、エンコーダーを解放してフレームを終了します。
@@ -655,39 +730,19 @@ public final class Canvas2D: CanvasStyle {
     func flushInstancedBatch() {
         guard instanceBatcher2D.instanceCount > 0,
               let batchKey = instanceBatcher2D.currentBatchKey else { return }
-        guard let pipeline = instancedPipelineStates[batchKey.blendMode] else { return }
+        guard instancedPipelineStates[batchKey.blendMode] != nil else { return }
         guard isDeferring || encoder != nil else { return }
 
-        let (meshBuffer, meshVertexCount) = unitMeshFor(batchKey.shapeType)
         let instanceBuffer = instanceBatcher2D.currentBuffer
         let instanceOffset = instanceBatcher2D.currentBufferOffset
         let instanceCount = instanceBatcher2D.instanceCount
-        let proj = projectionMatrix
+        let shape = batchKey.shapeType
         instanceBatcher2D.reset()
 
-        let draw: (MTLRenderCommandEncoder) -> Void = { [weak self] encoder in
-            guard let self else { return }
-            encoder.setRenderPipelineState(pipeline)
-            if let depthState = self.depthStencilState {
-                encoder.setDepthStencilState(depthState)
-            }
-            encoder.setCullMode(.none)
-            encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
-            encoder.setVertexBuffer(instanceBuffer, offset: instanceOffset, index: 6)
-            var p = proj
-            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
-            encoder.drawPrimitives(
-                type: .triangle,
-                vertexStart: 0,
-                vertexCount: meshVertexCount,
-                instanceCount: instanceCount
-            )
-        }
-        if isDeferring {
-            deferredDraws.append(draw)
-        } else if let encoder = encoder {
-            draw(encoder)
-        }
+        emit(.instancedBatch(
+            blend: batchKey.blendMode, shape: shape,
+            instanceBuffer: instanceBuffer, instanceOffset: instanceOffset,
+            instanceCount: instanceCount))
     }
 
     // シェイプをインスタンスバッチに追加。
