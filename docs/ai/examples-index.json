@@ -1,7 +1,7 @@
 {
-  "count": 273,
+  "count": 274,
   "statusCounts": {
-    "supported": 250,
+    "supported": 251,
     "partial": 0,
     "stub": 13,
     "obsolete": 10
@@ -2631,6 +2631,20 @@
       "tags": [
         "interaction",
         "pluginmousetrail",
+        "samples"
+      ]
+    },
+    {
+      "title": "ProbeBenchmark",
+      "path": "Examples/Samples/ProbeBenchmark",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "probebenchmark",
         "samples"
       ]
     },
