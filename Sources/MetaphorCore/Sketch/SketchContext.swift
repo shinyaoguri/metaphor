@@ -279,6 +279,11 @@ public final class SketchContext {
     private func wireDrawSeqProviders() {
         canvas.seqProvider = { [weak self] in self?.nextDrawSeq() ?? 0 }
         canvas3D.seqProvider = { [weak self] in self?.nextDrawSeq() ?? 0 }
+        // 3D 記録の直前に 2D 保留バッチを確定し、呼び出し順 seq を保つ（#71・宿題①）。
+        canvas3D.flushPending2D = { [weak self] in
+            guard let self, self.canvas.isDeferring else { return }
+            self.canvas.flush()
+        }
     }
 
     // MARK: - Compute Frame Management (internal)
@@ -327,10 +332,44 @@ public final class SketchContext {
         canvas.isDeferring = false
     }
 
-    /// 記録済みの 3D（影Nをサンプル）→ 2D前景 を単一メインパスへ再生します。
+    /// 記録済みの 2D/3D を **呼び出し順（seq 昇順）** で単一メインパスへ再生します（#71・宿題①）。
+    ///
+    /// 3D の `DrawCall3D` と 2D の `Deferred2DSlot` を seq でマージし、隣接同種を run に
+    /// まとめて Canvas へ範囲再投入する。3D は深度 readWrite、2D は深度 disabled で、
+    /// 呼び出し順に投入することで「3D 背後の 2D は先に描かれ後続 3D が上に重なる／前面 2D は
+    /// 最後に上書き」が自然に成立する（共有深度1枚・追加レンダーパスなし）。
     func replayDeferredMain(encoder: MTLRenderCommandEncoder, time: Float) {
-        canvas3D.replayMainPass(encoder: encoder)
-        canvas.replayForeground(encoder: encoder)
+        let threeDSeqs = canvas3D.recordedDrawCalls.map(\.seq)
+        let twoDSeqs = canvas.deferred2DCommands.map(\.seq)
+        let order = DrawStreamMerge.mergeOrder(threeDSeqs: threeDSeqs, twoDSeqs: twoDSeqs)
+
+        canvas3D.beginReplay(encoder: encoder)
+        var i = 0
+        while i < order.count {
+            switch order[i] {
+            case .threeD(let start):
+                // 連続する 3D run の終端を探す（マージ結果はストリーム内で連番）。
+                var end = start
+                var j = i + 1
+                while j < order.count, case .threeD(let idx) = order[j] {
+                    end = idx
+                    j += 1
+                }
+                canvas3D.replayRecordedRange(start..<(end + 1))
+                i = j
+            case .twoD(let start):
+                var end = start
+                var j = i + 1
+                while j < order.count, case .twoD(let idx) = order[j] {
+                    end = idx
+                    j += 1
+                }
+                canvas.replayForegroundRange(start..<(end + 1), encoder: encoder)
+                i = j
+            }
+        }
+        canvas3D.endReplay()
+        canvas.clearDeferredCommands()
     }
 
     func endFrame() {

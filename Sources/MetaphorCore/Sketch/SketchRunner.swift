@@ -394,6 +394,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private func configureRenderCallbacks(
         sketch: any Sketch, context: SketchContext, renderer: MetaphorRenderer
     ) {
+        // コマンド記録 opt-in（#71）: 影オフスケッチでも記録→再生経路で呼び出し順を保持する。
+        // 既定は無効（影オフは従来の即時経路＝回帰ゼロ）。
+        if ProcessInfo.processInfo.environment["METAPHOR_COMMAND_RECORD"] == "1" {
+            context.canvas3D.commandRecordEnabled = true
+        }
+
         // onCompute と onDraw で共有する直前フレーム時刻（onDraw が更新）。
         var prevTime: Float = 0
 
@@ -421,9 +427,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
         }
 
-        // シャドウ同一フレーム化（#70）: 影オン時は記録→shadow→再生の経路を使う。
+        // 記録→shadow→再生の経路: 影オン（#70）またはコマンド記録 opt-in（#71）で使う。
         renderer.shadowDeferActive = { [weak context] in
-            context?.canvas3D.defersMainPassForShadow ?? false
+            context?.canvas3D.shouldRecordMainPass ?? false
         }
         renderer.onRecordFrame = { [weak context, weak sketch] time in
             guard let context, let sketch else { return }

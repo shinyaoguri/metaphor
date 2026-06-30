@@ -113,7 +113,7 @@ struct CommandStreamSeqTests {
             context.endFrame()
         }
         renderer.onAfterDraw = { cb in context.canvas3D.performShadowPass(commandBuffer: cb) }
-        renderer.shadowDeferActive = { context.canvas3D.defersMainPassForShadow }
+        renderer.shadowDeferActive = { context.canvas3D.shouldRecordMainPass }
         renderer.onRecordFrame = { time in
             context.beginRecordingFrame(time: Float(time), deltaTime: 0)
             draw(context)
@@ -201,6 +201,58 @@ struct CommandStreamSeqTests {
         #expect(inside.r > 200 && inside.g < 60, "クリップ内は赤であるべき: \(inside)")
         #expect(outside.r < 60 && outside.g < 60 && outside.b < 60,
                 "クリップ外は黒のままであるべき（clip が効いている）: \(outside)")
+    }
+
+    /// 宿題①: 呼び出し順が保持され、**後から描いた 3D が先に描いた 2D の前面**に来る。
+    /// #70 の固定順（3D 全部 → 2D 前景）では 2D が常に 3D の上に出てしまっていた。
+    @Test("呼び出し順保持: 先に描いた2Dの上に後の3Dが重なる")
+    func callOrder3DOverEarlier2D() throws {
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.fill(Color(r: 1, g: 0, b: 0))      // 赤
+            c.noStroke()
+            c.rect(0, 0, 64, 64)                  // 先に全面赤（背後になるべき）
+            c.lights()
+            c.fill(Color(r: 1, g: 1, b: 1))
+            c.pushMatrix()
+            c.translate(32, 32, 0)
+            c.box(64)                             // 後から中央に箱（前面になるべき）
+            c.popMatrix()
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let (_, _, sample) = try readbackPixels(renderer)
+        let center = sample(32, 32)   // 箱の中央
+        // 後から描いた箱が前面に来れば、純赤（g≈0）ではなく箱の明度（g が高い）になる。
+        // #70 の固定順（3D→2D）では 2D 赤矩形が常に上に出て中央は純赤だった。
+        #expect(center.g > 100,
+                "中央は後から描いた箱が前面に来るはず（呼び出し順保持・純赤でない）: \(center)")
+    }
+
+    /// コマンド記録 opt-in（`commandRecordEnabled`）で、**影なしでも**呼び出し順が保持される
+    /// （#71 の一般化。影に依存せず記録→再生経路に入れることを確認）。
+    @Test("opt-in 記録経路は影なしでも呼び出し順を保持する")
+    func commandRecordOptInWithoutShadows() throws {
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.fill(Color(r: 1, g: 0, b: 0))
+            c.noStroke()
+            c.rect(0, 0, 64, 64)                  // 先に全面赤
+            c.lights()
+            c.fill(Color(r: 1, g: 1, b: 1))
+            c.pushMatrix()
+            c.translate(32, 32, 0)
+            c.box(64)                             // 後から箱
+            c.popMatrix()
+        }
+        context.canvas3D.commandRecordEnabled = true   // 影なしで記録経路を有効化
+        #expect(context.canvas3D.shadowMap == nil, "この経路は影オフで動くべき")
+        renderer.renderFrame()
+
+        let (_, _, sample) = try readbackPixels(renderer)
+        let center = sample(32, 32)
+        #expect(center.g > 100, "影なし opt-in でも中央は箱が前面に来るはず（純赤でない）: \(center)")
     }
 
     @Test("影オン記録経路で 3D ドローコールが呼び出し順の seq を持つ")

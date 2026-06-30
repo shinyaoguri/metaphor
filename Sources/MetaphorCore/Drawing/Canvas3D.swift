@@ -185,14 +185,28 @@ public final class Canvas3D: CanvasStyle {
     /// 記録をスキップして実際のメインパスエンコードを行う（記録済みコールの再生）。
     private var isReplaying = false
 
-    /// シャドウ有効時にメインパス描画を遅延記録/再生する経路がアクティブか。
-    /// `MetaphorRenderer.renderFrame()` がフレーム冒頭の分岐に使う（#70）。
+    /// シャドウ有効時にメインパス描画を遅延記録/再生する経路がアクティブか（#70）。
     var defersMainPassForShadow: Bool { shadowMap != nil }
+
+    /// 影に依存せずコマンド記録経路を有効化する opt-in フラグ（#71）。
+    /// `METAPHOR_COMMAND_RECORD=1` で `SketchRunner` が立てる。既定は false（影オフは即時経路）。
+    var commandRecordEnabled = false
+
+    /// メインパスを「記録 → 再生」経路で処理すべきか（#71）。
+    /// 影オン（同一フレームシャドウ）か、コマンド記録 opt-in のいずれかで true。
+    /// `MetaphorRenderer.renderFrame()` の分岐と `drawMesh` の記録条件に使う。
+    var shouldRecordMainPass: Bool { shadowMap != nil || commandRecordEnabled }
 
     /// draw() 内の呼び出し順を表す単調シーケンス番号の払い出し元（#71）。
     /// `SketchContext` がフレーム頭でリセットするカウンタを注入する。未注入時は 0。
     /// Canvas は Context を直接参照せず、このクロージャ経由でのみ seq を得る。
     var seqProvider: (() -> UInt32)?
+
+    /// 3D を記録する直前に 2D の保留バッチを確定させるためのフック（#71・宿題①）。
+    /// 2D はバッチを蓄積しフレーム末尾でフラッシュするため、3D 記録の直前に flush して
+    /// 2D バッチの seq を「この 3D より前」に確定する。これにより呼び出し順が正しく保たれる。
+    /// `SketchContext` が `canvas.flush()` を注入する。
+    var flushPending2D: (() -> Void)?
 
     // MARK: - 初期化
 
@@ -377,28 +391,41 @@ public final class Canvas3D: CanvasStyle {
         shadow.render(drawCalls: recordedDrawCalls, commandBuffer: commandBuffer)
     }
 
-    /// シャドウ生成後に、記録済みドローコールをメインパスへ再生します（#70）。
+    /// 再生中に退避した描画状態（`beginReplay`/`endReplay` で保存・復元）。
+    private struct ReplaySavedState {
+        var transform: float4x4
+        var fillColor: SIMD4<Float>
+        var material: Material3D
+        var customMaterial: CustomMaterial?
+        var texture: MTLTexture?
+        var hasFill: Bool
+        var hasStroke: Bool
+        var strokeColor: SIMD4<Float>
+    }
+    private var replaySaved: ReplaySavedState?
+
+    /// 記録済みドローコールの再生を開始します（#70 / #71）。
     ///
     /// `performShadowPass` で `shadow.shadowTexture` が当該フレームの内容（影N）に
-    /// 更新された後に呼ぶこと。各ドローコールの状態を復元して `drawMesh` を再投入し、
-    /// 既存のインスタンシング/イミディエイトのエンコード経路をそのまま再利用する。
-    /// ライト・カメラ・時刻などのフレーム状態は直前の `draw()` の値が保持されている。
-    func replayMainPass(encoder: MTLRenderCommandEncoder) {
-        guard shadowMap != nil, !recordedDrawCalls.isEmpty else { return }
-
-        // 再生で上書きする描画状態を退避。
-        let savedTransform = currentTransform
-        let savedFill = fillColor
-        let savedMaterial = currentMaterial
-        let savedCustom = currentCustomMaterial
-        let savedTexture = currentTexture
-        let savedHasFill = hasFill
-        let savedHasStroke = hasStroke
-        let savedStroke = strokeColor
-
+    /// 更新された後に呼ぶこと。`replayRecordedRange` で範囲ごとに再投入し、`endReplay`
+    /// で締める。2D と呼び出し順でインターリーブするため、再生は範囲分割される（#71・宿題①）。
+    func beginReplay(encoder: MTLRenderCommandEncoder) {
+        replaySaved = ReplaySavedState(
+            transform: currentTransform, fillColor: fillColor,
+            material: currentMaterial, customMaterial: currentCustomMaterial,
+            texture: currentTexture, hasFill: hasFill,
+            hasStroke: hasStroke, strokeColor: strokeColor)
         self.encoder = encoder
         isReplaying = true
-        for call in recordedDrawCalls {
+    }
+
+    /// 記録済みドローコールの指定レンジをメインパスへ再投入し、末尾でインスタンスバッチを
+    /// 確定します。run（呼び出し順の連続する 3D 区間）単位で呼ぶ。末尾フラッシュにより、
+    /// 続く 2D 描画が必ずこの 3D run の後に来る（呼び出し順の保証）。
+    func replayRecordedRange(_ range: Range<Int>) {
+        guard isReplaying, !recordedDrawCalls.isEmpty else { return }
+        let clamped = range.clamped(to: 0..<recordedDrawCalls.count)
+        for call in recordedDrawCalls[clamped] {
             currentTransform = call.transform
             fillColor = call.fillColor
             currentMaterial = call.material
@@ -410,18 +437,24 @@ public final class Canvas3D: CanvasStyle {
             drawMesh(call.mesh)
         }
         flushInstanceBatch()
+    }
+
+    /// 再生を終了し、描画状態を復元します（#70 / #71）。
+    func endReplay() {
+        flushInstanceBatch()
         isReplaying = false
         self.encoder = nil
-
-        // 描画状態を復元。
-        currentTransform = savedTransform
-        fillColor = savedFill
-        currentMaterial = savedMaterial
-        currentCustomMaterial = savedCustom
-        currentTexture = savedTexture
-        hasFill = savedHasFill
-        hasStroke = savedHasStroke
-        strokeColor = savedStroke
+        if let s = replaySaved {
+            currentTransform = s.transform
+            fillColor = s.fillColor
+            currentMaterial = s.material
+            currentCustomMaterial = s.customMaterial
+            currentTexture = s.texture
+            hasFill = s.hasFill
+            hasStroke = s.hasStroke
+            strokeColor = s.strokeColor
+        }
+        replaySaved = nil
     }
 
     // MARK: - 3D シェイプ
@@ -1015,11 +1048,13 @@ public final class Canvas3D: CanvasStyle {
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
-        // シャドウ有効時、ライブ描画では「記録のみ」を行い、メインパスへの実エンコードは
-        // シャドウ生成後の replayMainPass(encoder:) まで遅延する。これにより 3D 描画が
-        // 同一フレームのシャドウ（影N）をサンプルでき、動く影の1フレーム遅延が解消する（#70）。
-        // 影オフ時、および replay 中（isReplaying）は従来どおり即時エンコードする。
-        if shadowMap != nil && !isReplaying {
+        // 記録経路（影オン、またはコマンド記録 opt-in）では、ライブ描画で「記録のみ」を行い、
+        // メインパスへの実エンコードは再生（replayRecordedRange）まで遅延する。影オンでは
+        // 同一フレームのシャドウ（影N）をサンプルでき動く影の遅延が解消（#70）、コマンド記録では
+        // 2D と呼び出し順でインターリーブできる（#71）。即時経路と replay 中は即時エンコード。
+        if shouldRecordMainPass && !isReplaying {
+            // 2D の保留バッチを先に確定し、その seq を「この 3D 記録より前」に固定する（宿題①）。
+            flushPending2D?()
             recordedDrawCalls.append(DrawCall3D(
                 mesh: mesh,
                 transform: currentTransform,
