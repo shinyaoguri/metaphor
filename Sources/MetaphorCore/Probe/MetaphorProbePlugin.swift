@@ -21,6 +21,12 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     /// プラグイン設定。
     public let config: MetaphorProbeConfig
 
+    /// 解決済みのソース世代刻印（provenance）。`config.sourceStamp` を優先し、
+    /// なければ環境変数 `METAPHOR_SOURCE_STAMP`（空文字は無視）をフォールバックに使う。
+    /// 明示登録（`PluginFactory`）と env 自動登録の両経路で機能させるため、
+    /// SketchRunner ではなくプラグイン側で解決する。
+    let sourceStamp: String?
+
     /// 接続中のスケッチへの弱参照。
     weak var sketch: (any Sketch)?
 
@@ -83,6 +89,17 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     public init(config: MetaphorProbeConfig = MetaphorProbeConfig()) {
         self.pluginID = MetaphorProbePlugin.id
         self.config = config
+        self.sourceStamp = MetaphorProbePlugin.resolveSourceStamp(config: config)
+    }
+
+    /// `config.sourceStamp` → 環境変数 `METAPHOR_SOURCE_STAMP`（空文字は無視）の順で解決。
+    private static func resolveSourceStamp(config: MetaphorProbeConfig) -> String? {
+        if let stamp = config.sourceStamp, !stamp.isEmpty { return stamp }
+        if let env = ProcessInfo.processInfo.environment["METAPHOR_SOURCE_STAMP"],
+           !env.isEmpty {
+            return env
+        }
+        return nil
     }
 
     // MARK: - User-facing API
@@ -163,15 +180,16 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             blit.endEncoding()
         }
 
-        // schemaVersion 3: additive に `customTypes`（probe 値の型タグ）を追加。
-        // v2 で `stats`（画像統計）を追加済み。
+        // schemaVersion 4: additive に `sourceStamp`（provenance）を追加。
+        // v3 で `customTypes`（probe 値の型タグ）、v2 で `stats`（画像統計）を追加済み。
         // `stats` / `warnings` は ProbeWriter がピクセル読み出し後に enrich する。
         let custom = stateBuffer.snapshot()
         let customTypes = custom.mapValues { $0.typeTag }
         let metadata = ProbeFrameMetadata(
-            schemaVersion: 3,
+            schemaVersion: 4,
             id: request.id,
             label: request.label,
+            sourceStamp: sourceStamp,
             frame: sketch?._context?.frameCount ?? 0,
             time: lastFrameTime,
             size: ProbeFrameMetadata.Size(width: width, height: height),
@@ -261,9 +279,10 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let custom = stateBuffer.snapshot()
         let customTypes = custom.mapValues { $0.typeTag }
         let metadata = ProbeFrameMetadata(
-            schemaVersion: 3,
+            schemaVersion: 4,
             id: seq.id,
             label: seq.label,
+            sourceStamp: sourceStamp,
             frame: frameNo,
             time: lastFrameTime,
             size: ProbeFrameMetadata.Size(width: width, height: height),
