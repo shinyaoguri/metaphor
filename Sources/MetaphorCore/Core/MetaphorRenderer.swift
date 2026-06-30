@@ -59,6 +59,24 @@ public final class MetaphorRenderer: NSObject {
     /// - Parameter commandBuffer: 追加パスのエンコード用コマンドバッファ
     public var onAfterDraw: ((MTLCommandBuffer) -> Void)?
 
+    // MARK: - シャドウ同一フレーム化（#70）の遅延描画フック
+
+    /// このフレームでシャドウ遅延経路（記録→shadow→再生）を使うべきかを返す。
+    /// `true` のとき `renderFrame()` はメインエンコーダ作成前に `onRecordFrame` で
+    /// draw() を記録実行し、シャドウ生成後に `onReplayMain` で再生する。
+    public var shadowDeferActive: (() -> Bool)?
+
+    /// シャドウ遅延経路で、メインエンコーダ無しに draw() を記録実行するフック
+    /// （3Dは recordedDrawCalls に記録、2Dは前景キューへ遅延）。
+    /// - Parameter time: 経過時間（秒）
+    public var onRecordFrame: ((Double) -> Void)?
+
+    /// シャドウ遅延経路で、記録済みの 3D→2D を単一メインパスへ再生するフック。
+    /// - Parameters:
+    ///   - encoder: メインパスのレンダーコマンドエンコーダー
+    ///   - time: 経過時間（秒）
+    public var onReplayMain: ((MTLRenderCommandEncoder, Double) -> Void)?
+
     /// 初期化時に記録されるモノトニック開始時刻
     private let startTime: Double
 
@@ -850,16 +868,29 @@ public final class MetaphorRenderer: NSObject {
             commandBuffer.encodeWaitForEvent(event, value: computeEventValue)
         }
 
-        // オフスクリーンテクスチャに描画
-        if let encoder = commandBuffer.makeRenderCommandEncoder(
-            descriptor: textureManager.renderPassDescriptor
-        ) {
-            onDraw?(encoder, time)
-            encoder.endEncoding()
+        if shadowDeferActive?() == true {
+            // シャドウ同一フレーム化経路（#70）:
+            // 1) メインエンコーダ無しで draw() を記録実行（3D記録 / 2D前景遅延 / 背景はクリア設定）。
+            onRecordFrame?(time)
+            // 2) 記録済み3Dからシャドウ（影N）を生成。
+            onAfterDraw?(commandBuffer)
+            // 3) 単一メインパスで 3D（影Nをサンプル）→ 2D前景の順に再生。
+            if let encoder = commandBuffer.makeRenderCommandEncoder(
+                descriptor: textureManager.renderPassDescriptor
+            ) {
+                onReplayMain?(encoder, time)
+                encoder.endEncoding()
+            }
+        } else {
+            // 通常経路（影オフ）: 単一エンコーダで即時描画 → シャドウは次フレーム用に更新。
+            if let encoder = commandBuffer.makeRenderCommandEncoder(
+                descriptor: textureManager.renderPassDescriptor
+            ) {
+                onDraw?(encoder, time)
+                encoder.endEncoding()
+            }
+            onAfterDraw?(commandBuffer)
         }
-
-        // シャドウパス（メイン描画後にシャドウマップを更新、次フレームで使用）
-        onAfterDraw?(commandBuffer)
 
         // レンダーグラフを実行（構成時はグラフ出力をベーステクスチャとして使用）
         let baseTexture: MTLTexture

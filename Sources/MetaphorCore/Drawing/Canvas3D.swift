@@ -181,6 +181,14 @@ public final class Canvas3D: CanvasStyle {
     /// 現在のフレームでシャドウ深度パス用に記録されたドローコール。
     private(set) var recordedDrawCalls: [DrawCall3D] = []
 
+    /// `replayMainPass(encoder:)` 実行中かどうか。`true` の間、`drawMesh` は
+    /// 記録をスキップして実際のメインパスエンコードを行う（記録済みコールの再生）。
+    private var isReplaying = false
+
+    /// シャドウ有効時にメインパス描画を遅延記録/再生する経路がアクティブか。
+    /// `MetaphorRenderer.renderFrame()` がフレーム冒頭の分岐に使う（#70）。
+    var defersMainPassForShadow: Bool { shadowMap != nil }
+
     // MARK: - 初期化
 
     /// レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
@@ -309,7 +317,7 @@ public final class Canvas3D: CanvasStyle {
     // MARK: - フレームライフサイクル
 
     /// フレームごとの状態をリセットし、レンダーエンコーダーを設定して新しいフレームを開始します。
-    func begin(encoder: MTLRenderCommandEncoder, time: Float, bufferIndex: Int = 0) {
+    func begin(encoder: MTLRenderCommandEncoder?, time: Float, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentTime = time
         // フレームごとの状態をリセット（変換、カメラ、ライト、ドローコール）
@@ -362,6 +370,53 @@ public final class Canvas3D: CanvasStyle {
         }
 
         shadow.render(drawCalls: recordedDrawCalls, commandBuffer: commandBuffer)
+    }
+
+    /// シャドウ生成後に、記録済みドローコールをメインパスへ再生します（#70）。
+    ///
+    /// `performShadowPass` で `shadow.shadowTexture` が当該フレームの内容（影N）に
+    /// 更新された後に呼ぶこと。各ドローコールの状態を復元して `drawMesh` を再投入し、
+    /// 既存のインスタンシング/イミディエイトのエンコード経路をそのまま再利用する。
+    /// ライト・カメラ・時刻などのフレーム状態は直前の `draw()` の値が保持されている。
+    func replayMainPass(encoder: MTLRenderCommandEncoder) {
+        guard shadowMap != nil, !recordedDrawCalls.isEmpty else { return }
+
+        // 再生で上書きする描画状態を退避。
+        let savedTransform = currentTransform
+        let savedFill = fillColor
+        let savedMaterial = currentMaterial
+        let savedCustom = currentCustomMaterial
+        let savedTexture = currentTexture
+        let savedHasFill = hasFill
+        let savedHasStroke = hasStroke
+        let savedStroke = strokeColor
+
+        self.encoder = encoder
+        isReplaying = true
+        for call in recordedDrawCalls {
+            currentTransform = call.transform
+            fillColor = call.fillColor
+            currentMaterial = call.material
+            currentCustomMaterial = call.customMaterial
+            currentTexture = call.texture
+            hasFill = call.hasFill
+            hasStroke = call.hasStroke
+            strokeColor = call.strokeColor
+            drawMesh(call.mesh)
+        }
+        flushInstanceBatch()
+        isReplaying = false
+        self.encoder = nil
+
+        // 描画状態を復元。
+        currentTransform = savedTransform
+        fillColor = savedFill
+        currentMaterial = savedMaterial
+        currentCustomMaterial = savedCustom
+        currentTexture = savedTexture
+        hasFill = savedHasFill
+        hasStroke = savedHasStroke
+        strokeColor = savedStroke
     }
 
     // MARK: - 3D シェイプ
@@ -951,13 +1006,15 @@ public final class Canvas3D: CanvasStyle {
 
     // インスタンシングパスまたはイミディエイトフォールバックを通してメッシュ描画をルーティング
     private func drawMesh(_ mesh: Mesh) {
-        guard encoder != nil else { return }
         guard hasFill || hasStroke else { return }
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
-        // シャドウ有効時、シャドウパス用にドローコールを記録
-        if shadowMap != nil {
+        // シャドウ有効時、ライブ描画では「記録のみ」を行い、メインパスへの実エンコードは
+        // シャドウ生成後の replayMainPass(encoder:) まで遅延する。これにより 3D 描画が
+        // 同一フレームのシャドウ（影N）をサンプルでき、動く影の1フレーム遅延が解消する（#70）。
+        // 影オフ時、および replay 中（isReplaying）は従来どおり即時エンコードする。
+        if shadowMap != nil && !isReplaying {
             recordedDrawCalls.append(DrawCall3D(
                 mesh: mesh,
                 transform: currentTransform,
@@ -970,7 +1027,11 @@ public final class Canvas3D: CanvasStyle {
                 hasStroke: hasStroke,
                 strokeColor: strokeColor
             ))
+            return
         }
+
+        // メインパスへの実エンコード（影オフのライブ描画、または影オンの replay）。
+        guard encoder != nil else { return }
 
         // カスタム頂点シェーダーはインスタンシング不可; イミディエイトパスにフォールバック
         if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {

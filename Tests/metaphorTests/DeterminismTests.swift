@@ -128,4 +128,124 @@ struct DeterminismTests {
 
         #expect(a == b, "同一スケッチの単一フレーム snapshot は一致すべき: \(a) vs \(b)")
     }
+
+    // MARK: - シャドウ同一フレーム化（フェーズ3）
+
+    /// 実スケッチのシャドウ経路（`SketchRunner` の配線）と同じく、記録→shadow→再生の
+    /// フックを構成する。`enableShadows` を呼んでから `renderFrame()` すると、影オン経路を通る。
+    private func makeShadowHarness(
+        width: Int = 64, height: Int = 64,
+        draw: @escaping (SketchContext) -> Void
+    ) throws -> (renderer: MetaphorRenderer, context: SketchContext) {
+        let renderer = try MetaphorRenderer(width: width, height: height)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+        canvas.onSetClearColor = { [weak renderer] r, g, b, a in
+            renderer?.setClearColor(r, g, b, a)
+        }
+        var prevTime: Float = 0
+        // 影オフ時のフォールバック経路。
+        renderer.onDraw = { encoder, time in
+            let t = Float(time); let dt = t - prevTime; prevTime = t
+            context.beginFrame(encoder: encoder, time: t, deltaTime: dt)
+            draw(context)
+            context.endFrame()
+        }
+        renderer.onAfterDraw = { commandBuffer in
+            context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
+        }
+        // 影オン時の記録→再生経路（SketchRunner と同じ）。
+        renderer.shadowDeferActive = { context.canvas3D.defersMainPassForShadow }
+        renderer.onRecordFrame = { time in
+            let t = Float(time); let dt = t - prevTime; prevTime = t
+            context.beginRecordingFrame(time: t, deltaTime: dt)
+            draw(context)
+            context.endRecordingFrame()
+        }
+        renderer.onReplayMain = { encoder, time in
+            context.replayDeferredMain(encoder: encoder, time: Float(time))
+        }
+        renderer.useExternalRenderLoop = true
+        return (renderer, context)
+    }
+
+    /// 影オン経路で、2D 前景（フルスクリーン矩形）が 3D の上に正しく合成される。
+    /// これは記録→shadow→再生の経路全体（renderFrame 分岐 / 2D 遅延 / 前景再生）を通す。
+    @Test("シャドウ経路: 2D前景が3Dの上に合成される")
+    func shadowPath2DForegroundOnTop() throws {
+        let w: Float = 64
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 1))      // 青背景（クリア）
+            c.lights()
+            c.fill(Color(r: 1, g: 1, b: 1))
+            c.pushMatrix()
+            c.translate(w / 2, w / 2, 0)
+            c.box(w)                                    // 中央に大きな箱
+            c.popMatrix()
+            c.fill(Color(r: 1, g: 0, b: 0))             // 赤
+            c.noStroke()
+            c.rect(0, 0, w, w)                          // フルスクリーン前景
+        }
+        context.enableShadows()                          // setup 相当: 初回フレーム前に有効化
+        renderer.renderFrame()
+
+        let p = try readbackCenterPixel(renderer)
+        #expect(p.r > 250 && p.g < 8 && p.b < 8,
+                "2D前景(赤)が3Dの上に合成されるべき: \(p)")
+        #expect(context.frameCount == 1, "影経路でも frameCount は 1")
+    }
+
+    /// 影オン経路で 3D 自体が背景の上に描画される（replayMainPass が実エンコードする）。
+    /// 箱あり/なしで中心ピクセルが変わることを確認（厳密な色予測を避ける）。
+    @Test("シャドウ経路: 3Dが背景の上に再生される")
+    func shadowPath3DRendersOverBackground() throws {
+        let w: Float = 64
+        let withBox = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 1))
+            c.lights()
+            c.directionalLight(0, -1, -1)
+            c.fill(Color(r: 1, g: 1, b: 1))
+            c.translate(w / 2, w / 2, 0)
+            c.box(w)
+        }
+        withBox.context.enableShadows()
+        withBox.renderer.renderFrame()
+        let boxed = try readbackCenterPixel(withBox.renderer)
+
+        let noBox = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 1))
+        }
+        noBox.context.enableShadows()
+        noBox.renderer.renderFrame()
+        let empty = try readbackCenterPixel(noBox.renderer)
+
+        #expect(empty.b > 250 && empty.r < 8,
+                "箱なしは青背景のまま: \(empty)")
+        #expect(boxed != empty,
+                "箱ありは中心ピクセルが背景と異なるべき（3Dが再生された）: box=\(boxed) bg=\(empty)")
+    }
+
+    /// 影オン経路も決定論的（同一入力 → 同一 snapshot）。
+    @Test("シャドウ経路は決定論的")
+    func shadowPathDeterministic() throws {
+        let w: Float = 64
+        func render() throws -> (r: UInt8, g: UInt8, b: UInt8) {
+            let h = try makeShadowHarness { c in
+                c.background(Color(r: 0, g: 0, b: 1))
+                c.lights()
+                c.fill(Color(r: 1, g: 1, b: 1))
+                c.translate(w / 2, w / 2, 0)
+                c.box(w)
+            }
+            h.context.enableShadows()
+            h.renderer.renderFrame()
+            return try readbackCenterPixel(h.renderer)
+        }
+        let a = try render()
+        let b = try render()
+        #expect(a == b, "影経路の単一フレーム snapshot は一致すべき: \(a) vs \(b)")
+    }
 }

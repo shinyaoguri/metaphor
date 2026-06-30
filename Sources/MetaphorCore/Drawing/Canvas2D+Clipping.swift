@@ -50,45 +50,67 @@ extension Canvas2D {
         flushTexturedVertices()
     }
 
-    // カラー頂点バッチのみをフラッシュ
+    // カラー頂点バッチのみをフラッシュ（遅延モードでは前景キューへ積む。#70）
     func flushColorVertices() {
-        guard let encoder = encoder, vertexCount > 0 else { return }
-
+        guard vertexCount > 0 else { return }
         guard let pipeline = pipelineStates[currentBlendMode] else { return }
-        encoder.setRenderPipelineState(pipeline)
-        if let depthState = depthStencilState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-        encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+        guard isDeferring || encoder != nil else { return }
 
-        var proj = projectionMatrix
-        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
-
-        encoder.drawPrimitives(type: .triangle, vertexStart: bufferOffset, vertexCount: vertexCount)
+        let vStart = bufferOffset
+        let vCount = vertexCount
+        let proj = projectionMatrix
         bufferOffset += vertexCount
         vertexCount = 0
+
+        let draw: (MTLRenderCommandEncoder) -> Void = { [weak self] encoder in
+            guard let self else { return }
+            encoder.setRenderPipelineState(pipeline)
+            if let depthState = self.depthStencilState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(self.vertexBuffer, offset: 0, index: 0)
+            var p = proj
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.drawPrimitives(type: .triangle, vertexStart: vStart, vertexCount: vCount)
+        }
+        if isDeferring {
+            deferredDraws.append(draw)
+        } else if let encoder = encoder {
+            draw(encoder)
+        }
     }
 
-    // テクスチャ頂点バッチのみをフラッシュ
+    // テクスチャ頂点バッチのみをフラッシュ（遅延モードでは前景キューへ積む。#70）
     func flushTexturedVertices() {
-        guard let encoder = encoder, texturedVertexCount > 0 else { return }
+        guard texturedVertexCount > 0 else { return }
         guard let texPipeline = texturedPipelineStates[currentBlendMode] else { return }
         guard let texture = currentBoundTexture else { return }
+        guard isDeferring || encoder != nil else { return }
 
-        encoder.setRenderPipelineState(texPipeline)
-        if let depthState = depthStencilState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-        encoder.setVertexBuffer(texturedVertexBuffer, offset: 0, index: 0)
-
-        var proj = projectionMatrix
-        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
-        encoder.setFragmentTexture(texture, index: 0)
-
-        encoder.drawPrimitives(type: .triangle, vertexStart: texturedBufferOffset, vertexCount: texturedVertexCount)
+        let vStart = texturedBufferOffset
+        let vCount = texturedVertexCount
+        let proj = projectionMatrix
         texturedBufferOffset += texturedVertexCount
         texturedVertexCount = 0
+
+        let draw: (MTLRenderCommandEncoder) -> Void = { [weak self] encoder in
+            guard let self else { return }
+            encoder.setRenderPipelineState(texPipeline)
+            if let depthState = self.depthStencilState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(self.texturedVertexBuffer, offset: 0, index: 0)
+            var p = proj
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.setFragmentTexture(texture, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: vStart, vertexCount: vCount)
+        }
+        if isDeferring {
+            deferredDraws.append(draw)
+        } else if let encoder = encoder {
+            draw(encoder)
+        }
     }
 }

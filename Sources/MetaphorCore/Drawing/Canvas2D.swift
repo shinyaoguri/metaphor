@@ -89,6 +89,15 @@ public final class Canvas2D: CanvasStyle {
 
     /// 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
     public var currentEncoder: MTLRenderCommandEncoder? { encoder }
+
+    /// 遅延（前景）記録モード。シャドウ同一フレーム化（#70）で、2D 描画を
+    /// 3D 再生の後にエンコードするため、各 flush を即時描画する代わりに
+    /// `deferredDraws` にクロージャとして積む。影オフ時は常に `false`（無変更）。
+    var isDeferring = false
+
+    /// 遅延モードで積まれた前景2D描画。`replayForeground(encoder:)` で順に再生する。
+    /// 各ファイルの flush 拡張から積むため internal。
+    var deferredDraws: [(MTLRenderCommandEncoder) -> Void] = []
     var vertexCount: Int = 0
     var bufferOffset: Int = 0
     let projectionMatrix: float4x4
@@ -477,7 +486,7 @@ public final class Canvas2D: CanvasStyle {
     /// - Parameters:
     ///   - encoder: 現在のフレームのレンダーコマンドエンコーダー。
     ///   - bufferIndex: このフレームのトリプルバッファインデックス。
-    public func begin(encoder: MTLRenderCommandEncoder, bufferIndex: Int = 0) {
+    public func begin(encoder: MTLRenderCommandEncoder?, bufferIndex: Int = 0) {
         self.encoder = encoder
         self.currentBufferIndex = bufferIndex % Self.bufferCount
         // フレームごとのレンダリング状態をリセット
@@ -500,7 +509,20 @@ public final class Canvas2D: CanvasStyle {
         self.hasDrawnAnything = false
         self.backgroundCalledThisFrame = false
         self.pendingClearColor = nil
+        self.deferredDraws.removeAll(keepingCapacity: true)
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
+    }
+
+    /// 遅延モードで積まれた前景2D描画を、指定エンコーダへ順に再生します（#70）。
+    ///
+    /// シャドウ同一フレーム化の経路で、`MetaphorRenderer.renderFrame()` が 3D 再生
+    /// （`Canvas3D.replayMainPass`）の後に呼ぶ。記録時の頂点バッファ・状態はフレーム内で
+    /// 保持されているため、捕捉済みクロージャがそのまま正しい描画を発行する。
+    func replayForeground(encoder: MTLRenderCommandEncoder) {
+        for draw in deferredDraws {
+            draw(encoder)
+        }
+        deferredDraws.removeAll(keepingCapacity: true)
     }
 
     /// 蓄積されたすべての頂点をフラッシュし、エンコーダーを解放してフレームを終了します。
@@ -626,32 +648,41 @@ public final class Canvas2D: CanvasStyle {
 
     // 現在のインスタンスバッチを GPU に送信
     func flushInstancedBatch() {
-        guard let encoder = encoder,
-              instanceBatcher2D.instanceCount > 0,
+        guard instanceBatcher2D.instanceCount > 0,
               let batchKey = instanceBatcher2D.currentBatchKey else { return }
-
         guard let pipeline = instancedPipelineStates[batchKey.blendMode] else { return }
-        encoder.setRenderPipelineState(pipeline)
-        if let depthState = depthStencilState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
+        guard isDeferring || encoder != nil else { return }
 
         let (meshBuffer, meshVertexCount) = unitMeshFor(batchKey.shapeType)
-        encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
-        encoder.setVertexBuffer(instanceBatcher2D.currentBuffer, offset: instanceBatcher2D.currentBufferOffset, index: 6)
-
-        var proj = projectionMatrix
-        encoder.setVertexBytes(&proj, length: MemoryLayout<float4x4>.size, index: 1)
-
-        encoder.drawPrimitives(
-            type: .triangle,
-            vertexStart: 0,
-            vertexCount: meshVertexCount,
-            instanceCount: instanceBatcher2D.instanceCount
-        )
-
+        let instanceBuffer = instanceBatcher2D.currentBuffer
+        let instanceOffset = instanceBatcher2D.currentBufferOffset
+        let instanceCount = instanceBatcher2D.instanceCount
+        let proj = projectionMatrix
         instanceBatcher2D.reset()
+
+        let draw: (MTLRenderCommandEncoder) -> Void = { [weak self] encoder in
+            guard let self else { return }
+            encoder.setRenderPipelineState(pipeline)
+            if let depthState = self.depthStencilState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setCullMode(.none)
+            encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
+            encoder.setVertexBuffer(instanceBuffer, offset: instanceOffset, index: 6)
+            var p = proj
+            encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            encoder.drawPrimitives(
+                type: .triangle,
+                vertexStart: 0,
+                vertexCount: meshVertexCount,
+                instanceCount: instanceCount
+            )
+        }
+        if isDeferring {
+            deferredDraws.append(draw)
+        } else if let encoder = encoder {
+            draw(encoder)
+        }
     }
 
     // シェイプをインスタンスバッチに追加。
