@@ -13,6 +13,13 @@ struct ProbeFrameMetadata: Encodable {
     /// オプションのリクエストラベル。
     let label: String?
 
+    /// ソース世代の刻印（provenance）。`METAPHOR_SOURCE_STAMP` 環境変数または
+    /// `MetaphorProbeConfig.sourceStamp` で注入される、編集ごとに変わる識別子。
+    /// AI エージェント／測定ハーネスが「観測したフレームがどのソース版を反映するか」を
+    /// 判定し、保存→反映（リビルド→再起動）の完了を機械検出するために使う。
+    /// 未設定時は nil（schemaVersion 4 で additive 追加）。
+    let sourceStamp: String?
+
     /// レンダリングされたフレーム番号。
     let frame: Int
 

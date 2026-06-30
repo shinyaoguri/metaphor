@@ -80,6 +80,7 @@ enum ProbeWriter {
             schemaVersion: metadata.schemaVersion,
             id: metadata.id,
             label: metadata.label,
+            sourceStamp: metadata.sourceStamp,
             frame: metadata.frame,
             time: metadata.time,
             size: metadata.size,
