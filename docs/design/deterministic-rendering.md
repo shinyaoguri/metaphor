@@ -121,8 +121,21 @@ onCompute → [main pass] onDraw → [shadow] onAfterDraw → RenderGraph → Po
 - **影オン時の massive 2D インスタンス描画（`circles(instances)` 等のオンザフライ即時パス）は記録経路で描画されない**（`Canvas2DMassive` は encoder 必須ガードで安全にスキップ）。massive 2D と影付き3Dの混在は稀。必要なら #71 で対応。
 - 影オン時の 2D クリッピング（scissor）の途中変更は前景再生で失われうる（clipping + 影 + 2Dオーバーレイは稀）。
 
+## #71 追補: 順序保持コマンドストリームへの統一（2026-06-30）
+
+#70 が残した上記4つの制限（順序前面化・massive 非描画・clip 損失・クロージャ型）の根因は、**2D（`Canvas2D.deferredDraws`：クロージャ）と 3D（`Canvas3D.recordedDrawCalls`：型付き）が別ストアで、再生が `replayMainPass`（3D全部）→`replayForeground`（2D前景）の固定2段順** だったこと（[SketchContext.swift:307](../../Sources/MetaphorCore/Sketch/SketchContext.swift#L307)）。呼び出し順の情報がソースコード上にしか残らない。
+
+#71 はこれを **呼び出し順を保持する単一コマンドストリーム** へ統一して根治する。設計判断の正典は [ADR-0003](../adr/0003-unified-command-stream.md)。要点:
+
+- **2ストリーム + 単調 seq**: `SketchContext` がフレーム頭でリセットする単調 `seq` を払い出し（`nextDrawSeq()`、両 Canvas に `seqProvider` をクロージャ注入）、`DrawCall3D` に `seq` を追加、2D 遅延を明示コマンド型 `Deferred2DCommand` enum（`colorBatch`/`texturedBatch`/`instancedBatch`/`massiveCircles`/`setScissor`）へ昇格。再生時に 2D/3D を seq 昇順でマージし、隣接同種を run にグルーピングして単一メインパスへ交互再投入する。
+- **深度セマンティクス**: 2D=`.always`（深度書かない）・3D=`.readWrite`・共有深度1枚。seq 昇順なら「背後 2D → 先に描画、後続 3D が深度付きで上に重なる／前面 2D は最後に上書き」が自然成立。追加レンダーパスは作らない（TBDR）。run グルーピングで状態切替コストと `instanceBatcher` バッチ効率を維持。**2D は深度を持たない挿入レイヤー**として扱う。
+- **スコープ (a)**: main パス統一のみ。後段（RenderGraph/PostProcess/outputs）は既に線形決定論なので #71 対象外（完全決定論パイプライン=スコープ b は follow-up Epic）。
+- **活性化は opt-in 段階拡大**: `defersMainPassForShadow` を `shouldRecordMainPass`（既定=影オン時のみ）へ一般化し、`METAPHOR_COMMAND_RECORD` 環境変数で影オフスケッチにも拡大可能。影オフ既定は即時経路をフォールバックに維持（回帰ゼロ）。単一分岐点（[renderFrame:871](../../Sources/MetaphorCore/Core/MetaphorRenderer.swift#L871)）でロールバック可。
+
+PR 分割（各 PR 独立緑・850 維持）: 基盤型導入（配線据え置き）→ 2D 載せ替え（②③根治・挙動同値）→ seq interleave で順序統合（①根治）+ フラグ → クリーンアップ（④完了）。テストは順序ユニット（GPU 不要）+ 複数サンプル点ピクセル回帰（clip/massive/重ね順）+ 決定論 + 実機目視（`SceneGraphHybrid`/`CubesWithinCube`）。
+
 ## 参考
 
-- ADR: [docs/adr/0002-deterministic-render-pipeline.md](../adr/0002-deterministic-render-pipeline.md)
+- ADR: [docs/adr/0002-deterministic-render-pipeline.md](../adr/0002-deterministic-render-pipeline.md)、[docs/adr/0003-unified-command-stream.md](../adr/0003-unified-command-stream.md)
 - Issue #70（決定論化）、#71（コマンド記録）、Epic #75
 - [CLAUDE.md](../../CLAUDE.md) レンダリング2パス構造の節
