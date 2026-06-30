@@ -1,0 +1,22 @@
+# Representative supported examples built per-PR (when Sources/ change) as a
+# fast API-drift smoke test. One per major API surface; the full 263-example
+# sweep runs nightly. Paths are relative to Examples/ (prefix match).
+Basics/Form/Bezier
+Basics/Transform/Arm
+Basics/Lights/Directional
+Basics/Image/Alphamask
+Basics/Typography/Letters
+Basics/Video/VideoPlayback
+Topics/Shaders/BlurFilter
+Topics/Image Processing/Blending
+Topics/Simulate/Flocking
+Topics/Geometry/Icosahedra
+Topics/Textures/TextureCube
+Topics/Subsystems/AutoSubsystems
+Demos/Performance/DynamicParticlesImmediate
+Samples/SceneGraphBasics
+Samples/RenderGraphCompose
+Samples/RayTracing
+Samples/ProbeSnapshot
+ML/FaceDetection
+Plugins/MetaphorFPSLogger

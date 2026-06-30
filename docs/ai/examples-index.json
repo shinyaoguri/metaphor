@@ -1,5 +1,11 @@
 {
   "count": 273,
+  "statusCounts": {
+    "supported": 250,
+    "partial": 0,
+    "stub": 13,
+    "obsolete": 10
+  },
   "examples": [
     {
       "title": "Array",
@@ -7,6 +13,7 @@
       "group": "Basics",
       "subcategory": "Arrays",
       "level": "Beginner",
+      "status": "supported",
       "description": "An array is a list of data. Each piece of data in an array is identified by an index number representing its position in the array. Arrays are zero based, which means that the first element in the array is [0], the seco...",
       "featured": [
         "Array",
@@ -24,6 +31,7 @@
       "group": "Basics",
       "subcategory": "Arrays",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Demonstrates the syntax for creating a two-dimensional (2D) array. Values in a 2D array are accessed through two index values. 2D arrays are useful for storing images. In this example, each dot is colored in relation to...",
       "featured": [
         "Array",
@@ -42,6 +50,7 @@
       "group": "Basics",
       "subcategory": "Arrays",
       "level": "Advanced",
+      "status": "supported",
       "description": "Demonstrates the syntax for creating an array of custom objects.",
       "featured": [
         "Array",
@@ -59,6 +68,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Brightness is the relative lightness or darkness of a color. Move the cursor vertically over each bar to alter its brightness.",
       "featured": [
         "colorMode_",
@@ -77,6 +87,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Beginner",
+      "status": "supported",
       "description": "This example creates variables for colors that may be referred to in the program by a name, rather than a number.",
       "featured": [
         "color_datatype",
@@ -94,6 +105,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Beginner",
+      "status": "supported",
       "description": "Hue is the color reflected from or transmitted through an object and is typically referred to as the name of the color such as red, blue, or yellow. In this example, move the cursor vertically over each bar to alter its...",
       "featured": [
         "colorMode_",
@@ -111,6 +123,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The lerpColor() function is useful for interpolating between two colors.",
       "featured": [
         "lerpColor_",
@@ -128,6 +141,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Draws a series of concentric circles to create a gradient from one color to another.",
       "featured": [
         "colorMode_",
@@ -145,6 +159,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Each color is perceived in relation to other colors. The top and bottom bars each contain the same component colors, but a different display order causes individual colors to appear differently.",
       "featured": [
         "color_datatype",
@@ -162,6 +177,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "Beginner",
+      "status": "supported",
       "description": "Saturation is the strength or purity of the color and represents the amount of gray in proportion to the hue. A \"saturated\" color is pure and an \"unsaturated\" color has a large percentage of gray. Move the cursor vertic...",
       "featured": [
         "colorMode_",
@@ -179,6 +195,7 @@
       "group": "Basics",
       "subcategory": "Color",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -193,6 +210,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The camera lifts up (controlled by mouseY) while looking at the same point.",
       "featured": [
         "camera_"
@@ -212,6 +230,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the mouse left to right to change the \"far\" parameter for the perspective() and ortho() functions. This parameter sets the maximum distance from the origin away from the viewer and will clip the geometry. Click a m...",
       "featured": [
         "ortho_",
@@ -232,6 +251,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the mouse left and right to change the field of view (fov). Click to modify the aspect ratio. The perspective() function sets a perspective projection applying foreshortening, making distant objects appear smaller...",
       "featured": [
         "perspective_"
@@ -251,6 +271,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Beginner",
+      "status": "supported",
       "description": "Conditions are like questions. They allow a program to decide to take one action if the answer to a question is \"true\" or to do another action if the answer to the question is \"false.\"<br /> The questions asked within a...",
       "featured": [
         "if"
@@ -267,6 +288,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Beginner",
+      "status": "supported",
       "description": "We extend the language of conditionals from the previous example by adding the keyword \"else\". This allows conditionals to ask two or more sequential questions, each with a different action.",
       "featured": [
         "if",
@@ -285,6 +307,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Beginner",
+      "status": "supported",
       "description": "Embedding \"for\" structures allows repetition in two dimensions.",
       "featured": [
         "for"
@@ -301,6 +324,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Beginner",
+      "status": "supported",
       "description": "Iteration with a \"for\" structure to construct repetitive forms.",
       "featured": [
         "for"
@@ -317,6 +341,7 @@
       "group": "Basics",
       "subcategory": "Control",
       "level": "Beginner",
+      "status": "supported",
       "description": "The logical operators for AND (&&) and OR (||) are used to combine simple relational statements into more complex expressions. The NOT (!) operator is used to negate a boolean statement.",
       "featured": [
         "logicalAND",
@@ -336,6 +361,7 @@
       "group": "Basics",
       "subcategory": "Data",
       "level": "Beginner",
+      "status": "supported",
       "description": "The character datatype, abbreviated as char, stores letters and symbols in the Unicode format, a coding system developed to support a variety of world languages. Characters are distinguished from other symbols by puttin...",
       "featured": [
         "String"
@@ -355,6 +381,7 @@
       "group": "Basics",
       "subcategory": "Data",
       "level": "Intermediate",
+      "status": "supported",
       "description": "It is sometimes beneficial to convert a value from one type of data to another. Each of the conversion functions converts its parameter to an equivalent representation within its datatype. The conversion functions inclu...",
       "featured": [
         "floatconvert",
@@ -374,6 +401,7 @@
       "group": "Basics",
       "subcategory": "Data",
       "level": "Beginner",
+      "status": "supported",
       "description": "Integers and floats are two different kinds of numerical data. An integer (more commonly called an int) is a number without a decimal point. A float is a floating-point number, which means it is a number that has a deci...",
       "featured": [
         "int",
@@ -391,6 +419,7 @@
       "group": "Basics",
       "subcategory": "Data",
       "level": "Beginner",
+      "status": "supported",
       "description": "A Boolean variable has only two possible values: true or false. It is common to use Booleans with control statements to determine the flow of a program. In this example, when the boolean value \"x\" is true, vertical blac...",
       "featured": [
         "boolean",
@@ -409,6 +438,7 @@
       "group": "Basics",
       "subcategory": "Data",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Variables have a global or local \"scope\". For example, variables declared within either the setup() or draw() functions may be only used in these functions. Global variables, variables declared outside of setup() and dr...",
       "featured": [],
       "tags": [
@@ -423,6 +453,7 @@
       "group": "Basics",
       "subcategory": "Data",
       "level": "Beginner",
+      "status": "supported",
       "description": "Variables are used for storing values. In this example, change the values of variables to affect the composition.",
       "featured": [
         "int"
@@ -439,6 +470,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The first two parameters for the bezier() function specify the first point in the curve and the last two parameters specify the last point. The middle parameters set the control points that define the shape of the curve.",
       "featured": [
         "bezier_"
@@ -455,6 +487,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Beginner",
+      "status": "supported",
       "description": "Uses the arc() function to generate a pie chart from the data stored in an array.",
       "featured": [
         "arc_"
@@ -471,6 +504,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Beginner",
+      "status": "supported",
       "description": "Points and lines can be used to draw basic geometry. Change the value of the variable 'd' to scale the form. The four variables set the positions based on the value of 'd'.",
       "featured": [
         "line_",
@@ -488,6 +522,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "",
+      "status": "supported",
       "description": "Placing mathematically 3D objects in synthetic space. The lights() method reveals their imagined dimension. The box() and sphere() functions each have one parameter which is used to specify their size. These shapes are...",
       "featured": [
         "translate_",
@@ -509,6 +544,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Beginner",
+      "status": "supported",
       "description": "What is your favorite? Pentagon? Hexagon? Heptagon? No? What about the icosagon? The polygon() function created for this example is capable of drawing any regular polygon. Try placing different numbers into the polygon(...",
       "featured": [
         "beginShape_",
@@ -527,6 +563,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Beginner",
+      "status": "supported",
       "description": "The basic shape primitive functions are triangle(), rect(), quad(), ellipse(), and arc(). Squares are made with rect() and circles are made with ellipse(). Each of these functions requires a number of parameters to dete...",
       "featured": [
         "triangle_",
@@ -547,6 +584,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The star() function created for this example is capable of drawing a wide range of different forms. Try placing different numbers into the star() function calls within draw() to explore.",
       "featured": [
         "beginShape_",
@@ -565,6 +603,7 @@
       "group": "Basics",
       "subcategory": "Form",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Generate a closed ring using the vertex() function and beginShape(TRIANGLE_STRIP) mode. The outsideRadius and insideRadius variables control ring's radii respectively.",
       "featured": [
         "beginShape_",
@@ -583,6 +622,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Loads a \"mask\" for an image to specify the transparency in different parts of the image. The two images are blended together using the mask() method of PImage.",
       "featured": [
         "PImage",
@@ -600,6 +640,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Beginner",
+      "status": "supported",
       "description": "This example presents the fastest way to load a background image into Processing. To load an image as the background, it must be the same width and height as the program.",
       "featured": [
         "background_",
@@ -618,6 +659,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The createImage() function provides a fresh buffer of pixels to play with. This example creates an image gradient.",
       "featured": [
         "createImage_",
@@ -635,6 +677,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Beginner",
+      "status": "supported",
       "description": "Images can be loaded and displayed to the screen at their actual size or any other size.",
       "featured": [
         "loadImage_",
@@ -653,6 +696,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Mouse horizontal location controls size of dots. Creates a simple pointillist effect using ellipses colored according to pixels in an image.",
       "featured": [
         "PImage",
@@ -672,6 +716,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Shows how to use the requestImage() function with preloader animation. The requestImage() function loads images on a separate thread so that the sketch does not freeze while they load. It's very useful when you are load...",
       "featured": [
         "requestImage_",
@@ -689,6 +734,7 @@
       "group": "Basics",
       "subcategory": "Image",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the pointer left and right across the image to change its position. This program overlays one image over another by modifying the alpha value of the image with the tint() function.",
       "featured": [
         "tint_",
@@ -706,6 +752,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The current time can be read with the second(), minute(), and hour() functions. In this example, sin() and cos() values are used to set the position of the hands.",
       "featured": [
         "second_",
@@ -725,6 +772,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse across the screen to move the circle. The program constrains the circle to its box.",
       "featured": [
         "constrain_"
@@ -743,6 +791,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse across the screen and the symbol will follow. Between drawing each frame of the animation, the program calculates the difference between the position of the symbol and the cursor. If the distance is large...",
       "featured": [],
       "tags": [
@@ -759,6 +808,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Click on the image to give it focus and press the letter keys to create forms in time and space. Each key has a unique identifying number. These numbers can be used to position shapes in space.",
       "featured": [
         "keyPressed_"
@@ -778,6 +828,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Click on the window to give it focus and press the letter keys to type colors. The keyboard function keyPressed() is called whenever a key is pressed. keyReleased() is another keyboard function that is called when a key...",
       "featured": [
         "keyPressed_"
@@ -796,6 +847,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "A millisecond is 1/1000 of a second. Processing keeps track of the number of milliseconds a program has run. By modifying this number with the modulo(%) operator, different patterns in time are created.",
       "featured": [
         "millis_"
@@ -813,6 +865,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse left and right to shift the balance. The \"mouseX\" variable is used to control both the size and color of the rectangles.",
       "featured": [
         "mouseX"
@@ -830,6 +883,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Moving the mouse changes the position and size of each box.",
       "featured": [
         "mouseX",
@@ -849,6 +903,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Click on the box and drag it across the screen.",
       "featured": [
         "mousePressed_",
@@ -869,6 +924,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse to position the shape. Press the mouse button to invert the color.",
       "featured": [
         "mousePressed",
@@ -888,6 +944,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move and click the mouse to generate signals. The top row is the signal from \"mouseX\", the middle row is the signal from \"mouseY\", and the bottom row is the signal from \"mousePressed\".",
       "featured": [
         "mousePressed"
@@ -905,6 +962,7 @@
       "group": "Basics",
       "subcategory": "Input",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse across the screen to change the position of the circles. The positions of the mouse are recorded into an array and played back every frame. Between each frame, the newest value are added to the end of eac...",
       "featured": [
         "Array",
@@ -925,6 +983,7 @@
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the mouse the change the direction of the light. Directional light comes from one direction and is stronger when hitting a surface squarely and weaker if it hits at a a gentle angle. After hitting a surface, a dire...",
       "featured": [
         "directionalLight_"
@@ -943,6 +1002,7 @@
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Display a box with three different kinds of lights.",
       "featured": [
         "pointLight_",
@@ -962,6 +1022,7 @@
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Display a 2D grid of boxes with three different kinds of lights.",
       "featured": [
         "pointLight_",
@@ -981,6 +1042,7 @@
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Uses the default lights to show a simple box. The lights() function is used to turn on the default lighting. Click the mouse to turn the lights off.",
       "featured": [
         "lights_"
@@ -999,6 +1061,7 @@
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Vary the specular reflection component of a material with the horizontal position of the mouse.",
       "featured": [
         "lightSpecular_",
@@ -1018,6 +1081,7 @@
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the mouse to change the position of a blue spot light.",
       "featured": [
         "spotLight_"
@@ -1036,6 +1100,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Create a more complex wave by adding two waves together.",
       "featured": [
         "sin_",
@@ -1053,6 +1118,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the mouse to change the direction of the eyes. The atan2() function computes the angle from each eye to the cursor.",
       "featured": [
         "atan2_"
@@ -1070,6 +1136,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse left and right to control the speed and direction of the moving shapes.",
       "featured": [],
       "tags": [
@@ -1085,6 +1152,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse across the image to obscure and reveal the matrix. Measures the distance from the mouse to each square and sets the size proportionally.",
       "featured": [
         "dist_"
@@ -1103,6 +1171,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Using two random() calls and the point() function to create an irregular sawtooth line.",
       "featured": [
         "random_"
@@ -1119,6 +1188,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Graphics the following equation: sin(ncos(r) + 5theta) where n is a function of horizontal mouse location.",
       "featured": [
         "atan2_",
@@ -1141,6 +1211,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Writing \"a++\" is equivalent to \"a = a + 1\". Writing \"a--\" is equivalent to \"a = a - 1\".",
       "featured": [
         "increment",
@@ -1158,6 +1229,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse across the screen and the symbol will follow. Between drawing each frame of the animation, the ellipse moves part of the distance (0.05) from its current position toward the cursor using the lerp() functi...",
       "featured": [
         "lerp_"
@@ -1175,6 +1247,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Use the map() function to take any number and scale it to a new number that is more useful for the project that you are working on. For example, use the numbers from the mouse position to control the size or color of a...",
       "featured": [
         "map_"
@@ -1192,6 +1265,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Using 1D Perlin Noise to assign location.",
       "featured": [
         "noise_"
@@ -1208,6 +1282,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Using 2D noise to create simple texture.",
       "featured": [
         "noise_",
@@ -1226,6 +1301,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Using 3D noise to create simple animated texture. Here, the third dimension ('z') is treated as time.",
       "featured": [
         "noise_"
@@ -1244,6 +1320,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Using Perlin Noise to generate a wave-like pattern.",
       "featured": [
         "noise_"
@@ -1260,6 +1337,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "If you don't direction state the order in which an expression is evaluated, it is decided by the operator precedence. For example, in the expression 4+2*8, the 2 will first be multiplied by 8 and then the result will be...",
       "featured": [],
       "tags": [
@@ -1275,6 +1353,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Convert a polar coordinate (r,theta) to cartesian (x,y). The calculations are x=r*cos(theta) and y=r*sin(theta).",
       "featured": [
         "cos_",
@@ -1292,6 +1371,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Random numbers create the basis of this image. Each time the program is loaded the result is different.",
       "featured": [
         "random_"
@@ -1309,6 +1389,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "This sketch draws ellipses with x and y locations tied to a gaussian distribution of random numbers.",
       "featured": [
         "randomGaussian_"
@@ -1325,6 +1406,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Smoothly scaling size with the sin() function.",
       "featured": [
         "sin_"
@@ -1341,6 +1423,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Linear movement with sin() and cos(). Numbers between 0 and PI2 (TWO_PI which angles roughly 6.28) are put into these functions and numbers between -1 and 1 are returned. These values are then scaled to produce larger m...",
       "featured": [
         "sin_",
@@ -1358,6 +1441,7 @@
       "group": "Basics",
       "subcategory": "Math",
       "level": "Beginner",
+      "status": "supported",
       "description": "Render a simple sine wave.",
       "featured": [
         "sin_"
@@ -1374,6 +1458,7 @@
       "group": "Basics",
       "subcategory": "Objects",
       "level": "Advanced",
+      "status": "supported",
       "description": "An object can include several other objects. Creating such composite objects is a good way to use the principles of modularity and build higher levels of abstraction within a program.",
       "featured": [
         "Object"
@@ -1390,6 +1475,7 @@
       "group": "Basics",
       "subcategory": "Objects",
       "level": "Advanced",
+      "status": "supported",
       "description": "A class can be defined using another class as a foundation. In object-oriented programming terminology, one class can inherit fi elds and methods from another. An object that inherits from another is called a subclass,...",
       "featured": [
         "Object",
@@ -1407,6 +1493,7 @@
       "group": "Basics",
       "subcategory": "Objects",
       "level": "Intermediate",
+      "status": "supported",
       "description": "A class can have multiple constructors that assign the fields in different ways. Sometimes it's beneficial to specify every aspect of an object's data by assigning parameters to the fields, but other times it might be a...",
       "featured": [
         "Object"
@@ -1423,6 +1510,7 @@
       "group": "Basics",
       "subcategory": "Objects",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the cursor across the image to change the speed and positions of the geometry. The class MRect defines a group of lines.",
       "featured": [
         "Object"
@@ -1439,6 +1527,7 @@
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Shapes are loaded with style information that tells them how to draw (e.g. color, stroke weight). The disableStyle() method of PShape turns off this information so functions like stroke() and fill() change the SVGs colo...",
       "featured": [
         "PShape_enableStyle_",
@@ -1458,6 +1547,7 @@
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Intermediate",
+      "status": "supported",
       "description": "SVG files can be made of many individual shapes. Each of these shapes (called a \"child\") has its own name that can be used to extract it from the \"parent\" file. This example loads a map of the United States and creates...",
       "featured": [
         "PShape_getChild_",
@@ -1476,6 +1566,7 @@
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an OBJ file of a rocket and displays it to the screen.",
       "featured": [
         "PShape",
@@ -1494,6 +1585,7 @@
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Beginner",
+      "status": "stub",
       "description": "The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an SVG file of a monster robot face and displays it to the screen.",
       "featured": [
         "PShape",
@@ -1512,6 +1604,7 @@
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Beginner",
+      "status": "supported",
       "description": "Move the mouse left and right to zoom the SVG file. This shows how, unlike an imported image, the lines remain smooth at any size.",
       "featured": [
         "PShape",
@@ -1532,6 +1625,7 @@
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Intermediate",
+      "status": "supported",
       "description": "How to iterate over the vertices of a shape. When loading an obj or SVG, getVertexCount() will typically return 0 since all the vertices are in the child shapes. You should iterate through the children and then iterate...",
       "featured": [
         "PShape",
@@ -1550,6 +1644,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "All shapes drawn to the screen have a position that is specified as a coordinate. All coordinates are measured as the distance from the origin in units of pixels. The origin (0, 0) is the coordinate is in the upper left...",
       "featured": [],
       "tags": [
@@ -1565,6 +1660,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The createGraphics() function creates an object from the PGraphics class. PGraphics is the main graphics and rendering context for Processing. The beginDraw() method is necessary to prepare for drawing and endDraw() is...",
       "featured": [
         "PGraphics",
@@ -1585,6 +1681,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "The drawTarget() function makes it easy to draw many distinct targets. Each call to drawTarget() specifies the position, size, and number of rings for each target.",
       "featured": [],
       "tags": [
@@ -1599,6 +1696,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "If noLoop() is run in setup(), the code in draw() is only run once. In this example, click the mouse to run the loop() function to cause the draw() the run continuously.",
       "featured": [
         "noLoop_",
@@ -1617,6 +1715,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "The noLoop() function causes draw() to only run once. Without calling noLoop(), the code inside draw() is run continually.",
       "featured": [
         "noLoop_"
@@ -1633,6 +1732,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Intermediate",
+      "status": "supported",
       "description": "A demonstration of recursion, which means functions call themselves. Notice how the drawCircle() function calls itself at the end of its block. It continues to do this until the variable \"level\" is equal to 1.",
       "featured": [],
       "tags": [
@@ -1647,6 +1747,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "The redraw() function makes draw() execute once. In this example, draw() is executed once every time the mouse is clicked.",
       "featured": [
         "redraw_",
@@ -1665,6 +1766,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "The code inside the draw() function runs continuously from top to bottom until the program is stopped. The code in setup() is run once when the program starts.",
       "featured": [
         "setup_",
@@ -1682,6 +1784,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "Statements are the elements that make up programs. The \";\" (semi-colon) symbol is used to end statements. It is called the \"statement terminator.\" Comments are used for making notes to help people better understand prog...",
       "featured": [
         "comment"
@@ -1698,6 +1801,7 @@
       "group": "Basics",
       "subcategory": "Structure",
       "level": "Beginner",
+      "status": "supported",
       "description": "The 'width' and 'height' variables contain the width and height of the display window as defined in the size() function.",
       "featured": [
         "size_",
@@ -1716,6 +1820,7 @@
       "group": "Basics",
       "subcategory": "Transform",
       "level": "Beginner",
+      "status": "supported",
       "description": "The angle of each segment is controlled with the mouseX and mouseY position. The transformations applied to the first segment are also applied to the second segment because they are inside the same pushMatrix() and popM...",
       "featured": [
         "pushMatrix_",
@@ -1734,6 +1839,7 @@
       "group": "Basics",
       "subcategory": "Transform",
       "level": "Beginner",
+      "status": "supported",
       "description": "Rotating a square around the Z axis. To get the results you expect, send the rotate function angle parameters that are values between 0 and PI2 (TWO_PI which is roughly 6.28). If you prefer to think about angles as degr...",
       "featured": [
         "rotate_"
@@ -1750,6 +1856,7 @@
       "group": "Basics",
       "subcategory": "Transform",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The push() and pop() functions allow for more control over transformations. The push function saves the current coordinate system to the stack and pop() restores the prior coordinate system.",
       "featured": [
         "pushMatrix_",
@@ -1767,6 +1874,7 @@
       "group": "Basics",
       "subcategory": "Transform",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Rotating simultaneously in the X and Y axis. Transformation functions such as rotate() are additive. Successively calling rotate(1.0) and rotate(2.0) is equivalent to calling rotate(3.0).",
       "featured": [
         "rotateX_",
@@ -1784,6 +1892,7 @@
       "group": "Basics",
       "subcategory": "Transform",
       "level": "Beginner",
+      "status": "supported",
       "description": "Paramenters for the scale() function are values specified as decimal percentages. For example, the method call scale(2.0) will increase the dimension of the shape by 200 percent. Objects always scale from the origin.",
       "featured": [
         "scale_"
@@ -1800,6 +1909,7 @@
       "group": "Basics",
       "subcategory": "Transform",
       "level": "Beginner",
+      "status": "supported",
       "description": "The translate() function allows objects to be moved to any location within the window. The first parameter sets the x-axis offset and the second parameter sets the y-axis offset.",
       "featured": [
         "translate_"
@@ -1816,6 +1926,7 @@
       "group": "Basics",
       "subcategory": "Typography",
       "level": "Beginner",
+      "status": "supported",
       "description": "Draws letters to the screen. This requires loading a font, setting the font, and then drawing the letters.",
       "featured": [
         "createFont_",
@@ -1834,6 +1945,7 @@
       "group": "Basics",
       "subcategory": "Typography",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Draws letters to the screen and rotates them at different angles.",
       "featured": [
         "rotate_",
@@ -1851,6 +1963,7 @@
       "group": "Basics",
       "subcategory": "Typography",
       "level": "Beginner",
+      "status": "supported",
       "description": "The text() function is used for writing words to the screen. The letters can be aligned left, center, or right with the textAlign() function.",
       "featured": [
         "text_",
@@ -1868,6 +1981,7 @@
       "group": "Basics",
       "subcategory": "Video",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -1883,6 +1997,7 @@
       "group": "Basics",
       "subcategory": "Web",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Click on the button to open a URL in a browser.",
       "featured": [],
       "tags": [
@@ -1897,6 +2012,7 @@
       "group": "Basics",
       "subcategory": "Web",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Processing applications can load images from the network.",
       "featured": [
         "loadImage_",
@@ -1915,6 +2031,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -1929,7 +2046,8 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal.",
       "featured": [],
       "tags": [
         "demos",
@@ -1943,12 +2061,14 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal.",
       "featured": [],
       "tags": [
         "demos",
         "graphics",
-        "lowlevelglvbointerleaved"
+        "lowlevelglvbointerleaved",
+        "shader"
       ]
     },
     {
@@ -1957,12 +2077,14 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal.",
       "featured": [],
       "tags": [
         "demos",
         "graphics",
-        "lowlevelglvboseparate"
+        "lowlevelglvboseparate",
+        "shader"
       ]
     },
     {
@@ -1971,6 +2093,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -1986,7 +2109,8 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal.",
       "featured": [],
       "tags": [
         "demos",
@@ -2000,6 +2124,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2014,6 +2139,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2028,6 +2154,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2042,7 +2169,8 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal.",
       "featured": [],
       "tags": [
         "demos",
@@ -2056,6 +2184,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2070,7 +2199,8 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires Processing's PShape tessellation API (setVertex on tessellated shapes). metaphor does not expose tessellated-geometry introspection; non-goal.",
       "featured": [],
       "tags": [
         "demos",
@@ -2084,6 +2214,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2098,6 +2229,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2112,6 +2244,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2126,6 +2259,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2140,6 +2274,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2154,6 +2289,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2169,6 +2305,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2184,6 +2321,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2198,6 +2336,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2212,6 +2351,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls.",
       "featured": [
         "circles",
@@ -2231,6 +2371,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2245,6 +2386,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2260,6 +2402,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2275,6 +2418,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2290,6 +2434,7 @@
       "group": "Demos",
       "subcategory": "Tests",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2304,6 +2449,7 @@
       "group": "Demos",
       "subcategory": "Tests",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2318,6 +2464,7 @@
       "group": "Demos",
       "subcategory": "Tests",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2332,6 +2479,7 @@
       "group": "Demos",
       "subcategory": "Tests",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2346,6 +2494,7 @@
       "group": "Demos",
       "subcategory": "Tests",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2360,10 +2509,12 @@
       "group": "Demos",
       "subcategory": "Tests",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires the OpenGL specification-query API. metaphor is Metal-only and exposes no OpenGL introspection; non-goal.",
       "featured": [],
       "tags": [
         "demos",
+        "shader",
         "specstest",
         "tests"
       ]
@@ -2374,6 +2525,7 @@
       "group": "ML",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2387,6 +2539,7 @@
       "group": "ML",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2401,6 +2554,7 @@
       "group": "ML",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2414,6 +2568,7 @@
       "group": "ML",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2427,6 +2582,7 @@
       "group": "Plugins",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2440,6 +2596,7 @@
       "group": "Plugins",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2454,6 +2611,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2467,6 +2625,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2481,6 +2640,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2494,6 +2654,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2508,6 +2669,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2521,6 +2683,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2534,6 +2697,7 @@
       "group": "Samples",
       "subcategory": "",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2547,6 +2711,7 @@
       "group": "Samples",
       "subcategory": "Syphon",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2562,6 +2727,7 @@
       "group": "Samples",
       "subcategory": "Syphon",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2577,6 +2743,7 @@
       "group": "Samples",
       "subcategory": "Syphon",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2592,6 +2759,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
+      "status": "supported",
       "description": "This example demonstrates how to use a Java ArrayList to store a variable number of objects. Items can be added and removed from the ArrayList. Click the mouse to add bouncing balls.",
       "featured": [
         "class",
@@ -2610,6 +2778,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2624,6 +2793,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2638,6 +2808,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
+      "status": "supported",
       "description": "This example demonstrates an IntList can be used to store a list of numbers. While an array of integers serves a similar purpose it is of fixed size. The An IntList can easily have values added or deleted and it can als...",
       "featured": [
         "IntList_append_",
@@ -2658,6 +2829,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
+      "status": "stub",
       "description": "This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { \"bubbles\": [ { \"position\": { \"x\": 160, \"y\": 103 }, \"diamet...",
       "featured": [
         "JSONObject",
@@ -2679,6 +2851,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
+      "status": "stub",
       "description": "This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6...",
       "featured": [
         "Table",
@@ -2700,7 +2873,8 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires Processing's loadXML/saveXML. metaphor does not clone Processing's XML types; the planned data path is Codable JSON / CSV (see LoadSaveJSON). XML is non-goal.",
       "featured": [],
       "tags": [
         "advanced-data",
@@ -2714,6 +2888,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2728,6 +2903,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2742,7 +2918,8 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires Processing's loadXML plus a long-dead Yahoo Weather feed. metaphor does not clone Processing's XML types; non-goal.",
       "featured": [],
       "tags": [
         "advanced-data",
@@ -2756,6 +2933,7 @@
       "group": "Topics",
       "subcategory": "Animation",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Press the mouse button to change animations. Demonstrates loading, displaying, and animating GIF images. It would be easy to write a program to display animated GIFs, but would not allow as much control over the display...",
       "featured": [
         "PImage",
@@ -2777,6 +2955,7 @@
       "group": "Topics",
       "subcategory": "Animation",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Displaying a sequence of images creates the illusion of motion. Twelve images are loaded and each is displayed individually in a loop.",
       "featured": [
         "PImage",
@@ -2797,6 +2976,7 @@
       "group": "Topics",
       "subcategory": "Cellular Automata",
       "level": "Advanced",
+      "status": "supported",
       "description": "Press SPACE BAR to pause and change the cell's values with the mouse. On pause, click to activate/deactivate cells. Press 'R' to randomly reset the cells' grid. Press 'C' to clear the cells' grid. The original Game of L...",
       "featured": [
         "Array",
@@ -2818,6 +2998,7 @@
       "group": "Topics",
       "subcategory": "Cellular Automata",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2832,6 +3013,7 @@
       "group": "Topics",
       "subcategory": "Cellular Automata",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2846,6 +3028,7 @@
       "group": "Topics",
       "subcategory": "Cellular Automata",
       "level": "Advanced",
+      "status": "supported",
       "description": "Simple demonstration of a Wolfram's 1-dimensional cellular automata. When the system reaches bottom of the window, it restarts with a new ruleset. Mouse click restarts as well.",
       "featured": [
         "Array"
@@ -2863,6 +3046,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2877,6 +3061,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2891,6 +3076,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "stub",
       "description": "",
       "featured": [],
       "tags": [
@@ -2906,6 +3092,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2920,6 +3107,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2934,6 +3122,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2948,6 +3137,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2962,6 +3152,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2976,6 +3167,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2990,6 +3182,7 @@
       "group": "Topics",
       "subcategory": "Create Shapes",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3004,6 +3197,7 @@
       "group": "Topics",
       "subcategory": "Curves",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3018,6 +3212,7 @@
       "group": "Topics",
       "subcategory": "Drawing",
       "level": "Beginner",
+      "status": "supported",
       "description": "Click and drag the mouse to draw a line.",
       "featured": [
         "mouseX",
@@ -3040,6 +3235,7 @@
       "group": "Topics",
       "subcategory": "Drawing",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Move the cursor over the image to draw with a software tool which responds to the speed of the mouse.",
       "featured": [
         "abs_",
@@ -3060,6 +3256,7 @@
       "group": "Topics",
       "subcategory": "Drawing",
       "level": "",
+      "status": "supported",
       "description": "Software drawing instruments can follow a rhythm or abide by rules independent of drawn gestures. This is a form of collaborative drawing in which the draftsperson controls some aspects of the image and the software con...",
       "featured": [
         "mousePressed",
@@ -3082,6 +3279,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3096,6 +3294,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Loads a text file that contains two numbers separated by a tab ('\\t'). A new pair of numbers is loaded each frame and used to draw a point on the screen.",
       "featured": [
         "loadStrings_",
@@ -3114,6 +3313,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "Intermediate",
+      "status": "stub",
       "description": "This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d...",
       "featured": [
         "loadFont_",
@@ -3137,6 +3337,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3151,6 +3352,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3165,6 +3367,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3179,6 +3382,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The save() function allows you to save an image from the display window. In this example, the save() function is run when a mouse button is pressed. The image line.tif is saved to the same folder as the sketch's program...",
       "featured": [],
       "tags": [
@@ -3195,6 +3399,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3210,6 +3415,7 @@
       "group": "Topics",
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
+      "status": "supported",
       "description": "Renders a simple fractal, the Koch snowflake. Each recursive level is drawn in sequence.",
       "featured": [
         "PVector",
@@ -3231,6 +3437,7 @@
       "group": "Topics",
       "subcategory": "Fractals and L-Systems",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Simple rendering of the Mandelbrot set.",
       "featured": [
         "loadPixels_",
@@ -3250,6 +3457,7 @@
       "group": "Topics",
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
+      "status": "supported",
       "description": "This code was based on Patrick Dwyer's L-System class.",
       "featured": [
         "pushMatrix_",
@@ -3269,6 +3477,7 @@
       "group": "Topics",
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
+      "status": "supported",
       "description": "This code was based on Patrick Dwyer's L-System class.",
       "featured": [
         "pushMatrix_",
@@ -3288,6 +3497,7 @@
       "group": "Topics",
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
+      "status": "supported",
       "description": "This code was based on Patrick Dwyer's L-System class.",
       "featured": [
         "pushMatrix_",
@@ -3307,6 +3517,7 @@
       "group": "Topics",
       "subcategory": "Fractals and L-Systems",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Renders a simple tree-like structure via recursion. The branching angle is calculated as a function of the horizontal mouse location. Move the mouse left and right to change the angle.",
       "featured": [
         "pushMatrix_",
@@ -3327,6 +3538,7 @@
       "group": "Topics",
       "subcategory": "GUI",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Click on one of the colored shapes in the center of the image to change the color of the background.",
       "featured": [
         "ellipse_",
@@ -3348,6 +3560,7 @@
       "group": "Topics",
       "subcategory": "GUI",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Click and drag the white boxes to change their position.",
       "featured": [
         "class",
@@ -3367,6 +3580,7 @@
       "group": "Topics",
       "subcategory": "GUI",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Roll over the colored squares in the center of the image to change the color of the outside rectangle.",
       "featured": [
         "ellipseMode_",
@@ -3388,6 +3602,7 @@
       "group": "Topics",
       "subcategory": "GUI",
       "level": "Advanced",
+      "status": "supported",
       "description": "Move the scrollbars left and right to change the positions of the images.",
       "featured": [
         "class",
@@ -3407,6 +3622,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3421,6 +3637,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3436,6 +3653,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3450,6 +3668,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3464,6 +3683,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3478,6 +3698,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3492,6 +3713,7 @@
       "group": "Topics",
       "subcategory": "Geometry",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3506,6 +3728,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3521,6 +3744,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "Intermediate",
+      "status": "supported",
       "description": "A low-pass filter blurs an image. This program analyzes every pixel in an image and blends it with the neighboring pixels to blur the image.",
       "featured": [
         "PImage",
@@ -3543,6 +3767,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "Intermediate",
+      "status": "supported",
       "description": "This program adjusts the brightness of a part of the image by calculating the distance of each pixel to the mouse.",
       "featured": [
         "PImage",
@@ -3566,6 +3791,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "Advanced",
+      "status": "supported",
       "description": "Applies a convolution matrix to a portion of an image. Move mouse to apply filter to different parts of the image.",
       "featured": [
         "PImage_",
@@ -3589,6 +3815,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "Advanced",
+      "status": "supported",
       "description": "A high-pass filter sharpens an image. This program analyzes every pixel in an image in relation to the neighboring pixels to sharpen the image.",
       "featured": [
         "image_",
@@ -3611,6 +3838,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3626,6 +3854,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3641,6 +3870,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Calculates the histogram of an image. A histogram is the frequency distribution of the gray levels with the number of pure black values displayed on the left and number of pure white values on the right. Note that this...",
       "featured": [
         "PImage",
@@ -3663,6 +3893,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3678,6 +3909,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Click and drag the mouse up and down to control the signal and press and hold any key to see the current pixel being read. This program sequentially reads the color of every pixel of an image and displays this color to...",
       "featured": [
         "PImage_",
@@ -3699,6 +3931,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3714,6 +3947,7 @@
       "group": "Topics",
       "subcategory": "Image Processing",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3729,6 +3963,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "A line segment is pushed and pulled by the cursor.",
       "featured": [
         "atan2_",
@@ -3749,6 +3984,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "A two-segmented arm follows the cursor position. The relative angle between the segments is calculated with atan2() and the position calculated with sin() and cos().",
       "featured": [
         "Array",
@@ -3770,6 +4006,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "A segmented line follows the mouse. The relative angle from each segment to the next is calculated with atan2() and the position of the next is calculated with sin() and cos().",
       "featured": [
         "Array",
@@ -3791,6 +4028,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The arm follows the position of the mouse by calculating the angles with atan2().",
       "featured": [
         "atan2_",
@@ -3812,6 +4050,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The arm follows the position of the mouse by calculating the angles with atan2().",
       "featured": [
         "Array",
@@ -3833,6 +4072,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The arm follows the position of the ball by calculating the angles with atan2().",
       "featured": [
         "Array",
@@ -3854,6 +4094,7 @@
       "group": "Topics",
       "subcategory": "Interaction",
       "level": "Intermediate",
+      "status": "supported",
       "description": "The word \"tickle\" jitters when the cursor hovers over. Sometimes, it can be tickled off the screen.",
       "featured": [
         "textFont_",
@@ -3876,6 +4117,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Intermediate",
+      "status": "supported",
       "description": "When the shape hits the edge of the window, it reverses its direction.",
       "featured": [
         "ellipseMode_",
@@ -3894,6 +4136,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Multiple-object collision.",
       "featured": [
         "class",
@@ -3914,6 +4157,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Recording random movement as a continuous line.",
       "featured": [
         "Array",
@@ -3935,6 +4179,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Advanced",
+      "status": "supported",
       "description": "Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move!",
       "featured": [
         "PVector",
@@ -3956,6 +4201,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -3970,6 +4216,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Beginner",
+      "status": "supported",
       "description": "Changing a variable to create a moving line. When the line moves off the edge of the window, the variable is set to 0, which places the line back at the bottom of the screen.",
       "featured": [
         "line_",
@@ -3987,6 +4234,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Advanced",
+      "status": "supported",
       "description": "Changing one shape into another by interpolating vertices from one to another",
       "featured": [
         "ArrayList",
@@ -4005,6 +4253,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Intermediate",
+      "status": "supported",
       "description": "In this example, the circles moves along the curve y = x^4. Click the mouse to have it move to a new position.",
       "featured": [
         "pow_",
@@ -4024,6 +4273,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Advanced",
+      "status": "supported",
       "description": "Based on the equation (R = 2N(NL)-L) where R is the reflection vector, N is the normal, and L is the incident vector.",
       "featured": [
         "PVector",
@@ -4045,6 +4295,7 @@
       "group": "Topics",
       "subcategory": "Motion",
       "level": "Advanced",
+      "status": "supported",
       "description": "Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move!",
       "featured": [
         "PVector",
@@ -4066,6 +4317,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4082,6 +4334,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4097,6 +4350,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4112,6 +4366,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4127,7 +4382,8 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
-      "description": "",
+      "status": "obsolete",
+      "description": "Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now.",
       "featured": [],
       "tags": [
         "domeprojection",
@@ -4142,6 +4398,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4157,6 +4414,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4173,6 +4431,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4188,6 +4447,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4204,6 +4464,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4219,6 +4480,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4234,6 +4496,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4249,6 +4512,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4264,6 +4528,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4279,6 +4544,7 @@
       "group": "Topics",
       "subcategory": "Shaders",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4294,6 +4560,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "Advanced",
+      "status": "supported",
       "description": "An implementation of Craig Reynold's Boids program to simulate the flocking behavior of birds. Each boid steers itself based on rules of avoidance, alignment, and coherence. Click the mouse to add a new boid.",
       "featured": [
         "PVector",
@@ -4316,6 +4583,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "Advanced",
+      "status": "supported",
       "description": "Demonstration of multiple forces acting on bodies. Bodies experience gravity continuously and fluid resistance when in simulated water.",
       "featured": [
         "class",
@@ -4338,6 +4606,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4353,6 +4622,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "Advanced",
+      "status": "supported",
       "description": "Click the mouse to generate a burst of particles at the mouse position. Each burst is one instance of a particle system with Particles and CrazyParticles (a subclass of Particle). Note use of Inheritance and Polymorphis...",
       "featured": [
         "ArrayList",
@@ -4373,6 +4643,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Particles are generated each cycle through draw(), fall with gravity and fade out over time. A ParticleSystem object manages a variable size (ArrayList) list of particles.",
       "featured": [
         "ArrayList",
@@ -4395,6 +4666,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "Advanced",
+      "status": "supported",
       "description": "A basic smoke effect using a particle system. Each particle is rendered as an alpha masked image.",
       "featured": [
         "ArrayList",
@@ -4418,6 +4690,7 @@
       "group": "Topics",
       "subcategory": "Simulate",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4432,6 +4705,7 @@
       "group": "Topics",
       "subcategory": "Subsystems",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Registers a Physics2D world as a SketchSubsystem with AutoSubsystemManager so its per-frame step() is driven automatically — draw() only renders. Demonstrates the opt-in subsystem lifecycle (audio/video/physics also con...",
       "featured": [
         "AutoSubsystemManager",
@@ -4455,6 +4729,7 @@
       "group": "Topics",
       "subcategory": "Textures",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4470,6 +4745,7 @@
       "group": "Topics",
       "subcategory": "Textures",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4485,6 +4761,7 @@
       "group": "Topics",
       "subcategory": "Textures",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4500,6 +4777,7 @@
       "group": "Topics",
       "subcategory": "Textures",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4516,6 +4794,7 @@
       "group": "Topics",
       "subcategory": "Textures",
       "level": "",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -4531,6 +4810,7 @@
       "group": "Topics",
       "subcategory": "Vectors",
       "level": "Advanced",
+      "status": "supported",
       "description": "Demonstration of the basics of motion with vector. A 'Mover' object stores location, velocity, and acceleration as vectors. The motion is controlled by affecting the acceleration (in this case towards the mouse).",
       "featured": [
         "PVector",
@@ -4551,6 +4831,7 @@
       "group": "Topics",
       "subcategory": "Vectors",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Demonstration of using vectors to control motion of a body. This example is not object-oriented See AccelerationWithVectors for an example of how to simulate motion using vectors in an object.",
       "featured": [
         "PVector",
@@ -4568,6 +4849,7 @@
       "group": "Topics",
       "subcategory": "Vectors",
       "level": "Intermediate",
+      "status": "supported",
       "description": "Demonstration of some basic vector math: subtraction, normalization, scaling. Normalizing a vector sets its length to 1.",
       "featured": [
         "PVector",

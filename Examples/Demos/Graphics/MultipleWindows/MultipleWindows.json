@@ -1,0 +1,6 @@
+{
+  "name": "MultipleWindows",
+  "title": "MultipleWindows",
+  "status": "obsolete",
+  "description": "Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal."
+}

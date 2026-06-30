@@ -71,14 +71,15 @@ AIエージェント ──MCP(JSON-RPC 2.0 / stdio)──→ metaphor mcp <sket
 これで「観測 → 編集 → 再観測 → 検証」が 1 インターフェイスで閉じる。
 
 > 実装追記: 上記 v1 の 3 ツールに加え、実装では `api_reference`（同梱 `llms.txt` / 作法ガイド /
-> サンプル索引を返す）を加えた 4 ツールを露出している。
+> サンプル索引を返す）と `capture_sequence`（§5.1）を加えた 5 ツールを露出している。
 
 将来候補（v1 には入れない）: `reload`（強制再ビルド）、`get_state`（新snapshotなしで直近frame.json）。
 
 ### 5.1 追加ツール: `capture_sequence`（時間軸の観測）
 
-> 実装状況: Probe 側の**連続フレーム能力**（`current/sequence/` 出力）は metaphor 本体に実装済み
-> （PR #90）。MCP の `capture_sequence` ツールとしての**露出は未実装**（metaphor-cli 側は今後）。
+> 実装状況: **実装済み**。Probe 側の**連続フレーム能力**（`current/sequence/` 出力）は metaphor 本体
+> （PR #90 → 現行）に、MCP の `capture_sequence` ツールとしての**露出は metaphor-cli #43** に
+> 入っている（契約同期は cli #38）。残作業はリリース（両リポを `release:*` で揃える）のみ。
 
 `snapshot` は 1 枚の静止フレームしか返さないため、動き・リズム・遷移・音との同期・
 操作感を評価できない。VJ／アニメ用途では「時間を観測する仕組み」が単発スナップショットの

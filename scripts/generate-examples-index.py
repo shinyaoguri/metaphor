@@ -8,6 +8,17 @@ import sys
 from pathlib import Path
 
 
+# Lifecycle status for an example. Drives AI/agent trust (which sketches are
+# real, working references) and the Examples CI build gate.
+#   supported — fully implemented, expected to build and run
+#   partial   — implemented but incomplete / degraded vs the original
+#   stub       — placeholder; blocked on a planned metaphor API (will be filled)
+#   obsolete   — placeholder for a Processing/OpenGL-specific capability metaphor
+#                deliberately will not add (non-goal); excluded from the CI gate
+STATUS_VALUES = ("supported", "partial", "stub", "obsolete")
+DEFAULT_STATUS = "supported"
+
+
 KEYWORD_TAGS = {
     "audio": ("audio", "fft", "sound", "beat", "microphone"),
     "video": ("video", "capture", "movie"),
@@ -42,6 +53,30 @@ def load_metadata(example_dir: Path) -> dict:
         except (OSError, json.JSONDecodeError):
             continue
     return {}
+
+
+def status_for(example_dir: Path, metadata: dict) -> str:
+    """Resolve an example's lifecycle status.
+
+    Precedence: explicit ``status`` in the example metadata JSON wins; otherwise
+    fall back to scanning the sketch source for the ``(Stub)`` marker that
+    placeholder examples carry in their SketchConfig title. This keeps stub
+    detection automatic (un-stubbing a sketch clears the marker) while letting a
+    curator override to ``obsolete``/``partial`` via metadata.
+    """
+    explicit = str(metadata.get("status", "")).strip().lower()
+    if explicit in STATUS_VALUES:
+        return explicit
+
+    app = example_dir / example_dir.name / "App.swift"
+    sources = [app] if app.exists() else sorted(example_dir.rglob("App.swift"))
+    for path in sources:
+        try:
+            if "(Stub)" in path.read_text(encoding="utf-8"):
+                return "stub"
+        except OSError:
+            continue
+    return DEFAULT_STATUS
 
 
 def tags_for(rel_path: Path, metadata: dict) -> list[str]:
@@ -93,11 +128,19 @@ def discover_examples(examples_dir: Path) -> list[dict]:
             "group": group,
             "subcategory": subcategory,
             "level": clean_text(metadata.get("level", ""), limit=40),
+            "status": status_for(example_dir, metadata),
             "description": description,
             "featured": metadata.get("featured", []) or [],
             "tags": tags_for(rel_path, metadata),
         })
     return examples
+
+
+def status_counts(examples: list[dict]) -> dict:
+    counts = {status: 0 for status in STATUS_VALUES}
+    for example in examples:
+        counts[example["status"]] = counts.get(example["status"], 0) + 1
+    return counts
 
 
 def render_markdown(examples: list[dict]) -> str:
@@ -110,12 +153,18 @@ def render_markdown(examples: list[dict]) -> str:
         "",
         f"Example count: {len(examples)}",
         "",
+        "Status: " + ", ".join(
+            f"{status} {count}" for status, count in status_counts(examples).items()
+        ),
+        "",
         "## How To Use",
         "",
         "- Pick one or two examples whose tags match the user's request.",
         "- Read the example's `App.swift` before inventing a new structure.",
         "- Prefer adapting existing metaphor idioms over translating p5.js code",
         "  literally.",
+        "- Avoid `[stub]` (placeholder, blocked on a planned API) and `[obsolete]`",
+        "  (Processing/OpenGL-specific, won't be added) examples as references.",
         "",
     ]
 
@@ -130,11 +179,12 @@ def render_markdown(examples: list[dict]) -> str:
             link = "../../" + example["path"].replace(" ", "%20")
             title = example["title"]
             level = f" [{example['level']}]" if example["level"] else ""
+            status = f" [{example['status']}]" if example["status"] != DEFAULT_STATUS else ""
             subcategory = f" ({example['subcategory']})" if example["subcategory"] else ""
             description = f" -- {example['description']}" if example["description"] else ""
             tags = ", ".join(example["tags"][:8])
             tag_text = f" Tags: {tags}." if tags else ""
-            lines.append(f"- [{title}]({link}){level}{subcategory}{description}{tag_text}")
+            lines.append(f"- [{title}]({link}){level}{status}{subcategory}{description}{tag_text}")
         lines.append("")
 
     return "\n".join(lines)
@@ -146,6 +196,7 @@ def render_json(examples: list[dict]) -> str:
     # drift detection in CI / git hooks.
     payload = {
         "count": len(examples),
+        "statusCounts": status_counts(examples),
         "examples": examples,
     }
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"

@@ -6,12 +6,16 @@ generating new metaphor content.
 
 Example count: 273
 
+Status: supported 250, partial 0, stub 13, obsolete 10
+
 ## How To Use
 
 - Pick one or two examples whose tags match the user's request.
 - Read the example's `App.swift` before inventing a new structure.
 - Prefer adapting existing metaphor idioms over translating p5.js code
   literally.
+- Avoid `[stub]` (placeholder, blocked on a planned API) and `[obsolete]`
+  (Processing/OpenGL-specific, won't be added) examples as references.
 
 ## Basics
 
@@ -100,7 +104,7 @@ Example count: 273
 - [Disable Style](../../Examples/Basics/Shape/DisableStyle) [Intermediate] (Shape) -- Shapes are loaded with style information that tells them how to draw (e.g. color, stroke weight). The disableStyle() method of PShape turns off this information so functions like stroke() and fill() change the SVGs colo... Tags: basics, disablestyle, shape.
 - [Get Child](../../Examples/Basics/Shape/GetChild) [Intermediate] (Shape) -- SVG files can be made of many individual shapes. Each of these shapes (called a "child") has its own name that can be used to extract it from the "parent" file. This example loads a map of the United States and creates... Tags: basics, getchild, shape.
 - [Load and Display an OBJ Shape](../../Examples/Basics/Shape/LoadDisplayOBJ) [Intermediate] (Shape) -- The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an OBJ file of a rocket and displays it to the screen. Tags: basics, loaddisplayobj, shape.
-- [Load and Display a Shape Illustration](../../Examples/Basics/Shape/LoadDisplaySVG) [Beginner] (Shape) -- The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an SVG file of a monster robot face and displays it to the screen. Tags: basics, loaddisplaysvg, shape.
+- [Load and Display a Shape Illustration](../../Examples/Basics/Shape/LoadDisplaySVG) [Beginner] [stub] (Shape) -- The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an SVG file of a monster robot face and displays it to the screen. Tags: basics, loaddisplaysvg, shape.
 - [Scale Shape Illustration](../../Examples/Basics/Shape/ScaleShape) [Beginner] (Shape) -- Move the mouse left and right to zoom the SVG file. This shows how, unlike an imported image, the lines remain smooth at any size. Tags: basics, image, interaction, scaleshape, shape.
 - [Shape Vertices](../../Examples/Basics/Shape/ShapeVertices) [Intermediate] (Shape) -- How to iterate over the vertices of a shape. When loading an obj or SVG, getVertexCount() will typically return 0 since all the vertices are in the child shapes. You should iterate through the children and then iterate... Tags: basics, shape, shapevertices.
 - [Coordinates](../../Examples/Basics/Structure/Coordinates) [Beginner] (Structure) -- All shapes drawn to the screen have a position that is specified as a coordinate. All coordinates are measured as the distance from the origin in units of pixels. The origin (0, 0) is the coordinate is in the upper left... Tags: basics, coordinates, image, structure.
@@ -129,37 +133,37 @@ Example count: 273
 ## Demos
 
 - [DepthSort](../../Examples/Demos/Graphics/DepthSort) (Graphics) Tags: demos, depthsort, graphics.
-- [GetTessGroups](../../Examples/Demos/Graphics/GetTessGroups) (Graphics) Tags: demos, gettessgroups, graphics.
-- [LowLevelGLVboInterleaved](../../Examples/Demos/Graphics/LowLevelGLVboInterleaved) (Graphics) Tags: demos, graphics, lowlevelglvbointerleaved.
-- [LowLevelGLVboSeparate](../../Examples/Demos/Graphics/LowLevelGLVboSeparate) (Graphics) Tags: demos, graphics, lowlevelglvboseparate.
-- [MeshTweening](../../Examples/Demos/Graphics/MeshTweening) (Graphics) Tags: 3d, demos, graphics, meshtweening.
-- [MultipleWindows](../../Examples/Demos/Graphics/MultipleWindows) (Graphics) Tags: demos, graphics, multiplewindows.
-- [Particles](../../Examples/Demos/Graphics/Particles) (Graphics) Tags: demos, graphics, particles.
+- [GetTessGroups](../../Examples/Demos/Graphics/GetTessGroups) [obsolete] (Graphics) -- Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal. Tags: demos, gettessgroups, graphics.
+- [LowLevelGLVboInterleaved](../../Examples/Demos/Graphics/LowLevelGLVboInterleaved) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvbointerleaved, shader.
+- [LowLevelGLVboSeparate](../../Examples/Demos/Graphics/LowLevelGLVboSeparate) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvboseparate, shader.
+- [MeshTweening](../../Examples/Demos/Graphics/MeshTweening) [stub] (Graphics) Tags: 3d, demos, graphics, meshtweening.
+- [MultipleWindows](../../Examples/Demos/Graphics/MultipleWindows) [obsolete] (Graphics) -- Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal. Tags: demos, graphics, multiplewindows.
+- [Particles](../../Examples/Demos/Graphics/Particles) [stub] (Graphics) Tags: demos, graphics, particles.
 - [Patch](../../Examples/Demos/Graphics/Patch) (Graphics) Tags: demos, graphics, patch.
-- [Planets](../../Examples/Demos/Graphics/Planets) (Graphics) Tags: demos, graphics, planets.
-- [Ribbons](../../Examples/Demos/Graphics/Ribbons) (Graphics) Tags: demos, graphics, ribbons.
+- [Planets](../../Examples/Demos/Graphics/Planets) [stub] (Graphics) Tags: demos, graphics, planets.
+- [Ribbons](../../Examples/Demos/Graphics/Ribbons) [obsolete] (Graphics) -- Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal. Tags: demos, graphics, ribbons.
 - [RotatingArcs](../../Examples/Demos/Graphics/RotatingArcs) (Graphics) Tags: demos, graphics, rotatingarcs.
-- [TessUpdate](../../Examples/Demos/Graphics/TessUpdate) (Graphics) Tags: demos, graphics, tessupdate.
-- [Trefoil](../../Examples/Demos/Graphics/Trefoil) (Graphics) Tags: demos, graphics, trefoil.
-- [Wiggling](../../Examples/Demos/Graphics/Wiggling) (Graphics) Tags: demos, graphics, wiggling.
+- [TessUpdate](../../Examples/Demos/Graphics/TessUpdate) [obsolete] (Graphics) -- Requires Processing's PShape tessellation API (setVertex on tessellated shapes). metaphor does not expose tessellated-geometry introspection; non-goal. Tags: demos, graphics, tessupdate.
+- [Trefoil](../../Examples/Demos/Graphics/Trefoil) [stub] (Graphics) Tags: demos, graphics, trefoil.
+- [Wiggling](../../Examples/Demos/Graphics/Wiggling) [stub] (Graphics) Tags: demos, graphics, wiggling.
 - [Yellowtail](../../Examples/Demos/Graphics/Yellowtail) (Graphics) Tags: demos, graphics, yellowtail.
 - [CubicGridImmediate](../../Examples/Demos/Performance/CubicGridImmediate) (Performance) Tags: cubicgridimmediate, demos, performance.
-- [CubicGridRetained](../../Examples/Demos/Performance/CubicGridRetained) (Performance) Tags: cubicgridretained, demos, performance.
+- [CubicGridRetained](../../Examples/Demos/Performance/CubicGridRetained) [stub] (Performance) Tags: cubicgridretained, demos, performance.
 - [DynamicParticlesImmediate](../../Examples/Demos/Performance/DynamicParticlesImmediate) (Performance) Tags: demos, dynamicparticlesimmediate, particles, performance.
-- [DynamicParticlesRetained](../../Examples/Demos/Performance/DynamicParticlesRetained) (Performance) Tags: demos, dynamicparticlesretained, particles, performance.
+- [DynamicParticlesRetained](../../Examples/Demos/Performance/DynamicParticlesRetained) [stub] (Performance) Tags: demos, dynamicparticlesretained, particles, performance.
 - [Esfera](../../Examples/Demos/Performance/Esfera) (Performance) Tags: demos, esfera, performance.
 - [LineRendering](../../Examples/Demos/Performance/LineRendering) (Performance) Tags: demos, linerendering, performance.
 - [Massive Circles](../../Examples/Demos/Performance/MassiveCircles) [Intermediate] (Performance) -- Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls. Tags: demos, massivecircles, performance.
 - [QuadRendering](../../Examples/Demos/Performance/QuadRendering) (Performance) Tags: demos, performance, quadrendering.
 - [StaticParticlesImmediate](../../Examples/Demos/Performance/StaticParticlesImmediate) (Performance) Tags: demos, particles, performance, staticparticlesimmediate.
-- [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) (Performance) Tags: demos, particles, performance, staticparticlesretained.
+- [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) [stub] (Performance) Tags: demos, particles, performance, staticparticlesretained.
 - [TextRendering](../../Examples/Demos/Performance/TextRendering) (Performance) Tags: demos, performance, textrendering, typography.
 - [MultipleWindows](../../Examples/Demos/Tests/MultipleWindows) (Tests) Tags: demos, multiplewindows, tests.
 - [NoBackgroundTest](../../Examples/Demos/Tests/NoBackgroundTest) (Tests) Tags: demos, nobackgroundtest, tests.
 - [OffscreenTest](../../Examples/Demos/Tests/OffscreenTest) (Tests) Tags: demos, offscreentest, tests.
 - [RedrawTest](../../Examples/Demos/Tests/RedrawTest) (Tests) Tags: demos, redrawtest, tests.
 - [ResizeTest](../../Examples/Demos/Tests/ResizeTest) (Tests) Tags: demos, resizetest, tests.
-- [SpecsTest](../../Examples/Demos/Tests/SpecsTest) (Tests) Tags: demos, specstest, tests.
+- [SpecsTest](../../Examples/Demos/Tests/SpecsTest) [obsolete] (Tests) -- Requires the OpenGL specification-query API. metaphor is Metal-only and exposes no OpenGL introspection; non-goal. Tags: demos, shader, specstest, tests.
 
 ## ML
 
@@ -192,12 +196,12 @@ Example count: 273
 - [CountingStrings](../../Examples/Topics/Advanced%20Data/CountingStrings) (Advanced Data) Tags: advanced-data, countingstrings, topics.
 - [HashMapClass](../../Examples/Topics/Advanced%20Data/HashMapClass) (Advanced Data) Tags: advanced-data, hashmapclass, topics.
 - [IntList Lottery example](../../Examples/Topics/Advanced%20Data/IntListLottery) [Advanced] (Advanced Data) -- This example demonstrates an IntList can be used to store a list of numbers. While an array of integers serves a similar purpose it is of fixed size. The An IntList can easily have values added or deleted and it can als... Tags: advanced-data, intlistlottery, topics.
-- [Loading JSON Data](../../Examples/Topics/Advanced%20Data/LoadSaveJSON) [Advanced] (Advanced Data) -- This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { "bubbles": [ { "position": { "x": 160, "y": 103 }, "diamet... Tags: advanced-data, loadsavejson, topics.
-- [Loading Tabular Data](../../Examples/Topics/Advanced%20Data/LoadSaveTable) [Advanced] (Advanced Data) -- This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6... Tags: advanced-data, loadsavetable, topics.
-- [LoadSaveXML](../../Examples/Topics/Advanced%20Data/LoadSaveXML) (Advanced Data) Tags: advanced-data, loadsavexml, topics.
+- [Loading JSON Data](../../Examples/Topics/Advanced%20Data/LoadSaveJSON) [Advanced] [stub] (Advanced Data) -- This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { "bubbles": [ { "position": { "x": 160, "y": 103 }, "diamet... Tags: advanced-data, loadsavejson, topics.
+- [Loading Tabular Data](../../Examples/Topics/Advanced%20Data/LoadSaveTable) [Advanced] [stub] (Advanced Data) -- This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6... Tags: advanced-data, loadsavetable, topics.
+- [LoadSaveXML](../../Examples/Topics/Advanced%20Data/LoadSaveXML) [obsolete] (Advanced Data) -- Requires Processing's loadXML/saveXML. metaphor does not clone Processing's XML types; the planned data path is Codable JSON / CSV (see LoadSaveJSON). XML is non-goal. Tags: advanced-data, loadsavexml, topics.
 - [Regex](../../Examples/Topics/Advanced%20Data/Regex) (Advanced Data) Tags: advanced-data, regex, topics.
 - [Threads](../../Examples/Topics/Advanced%20Data/Threads) (Advanced Data) Tags: advanced-data, threads, topics.
-- [XMLYahooWeather](../../Examples/Topics/Advanced%20Data/XMLYahooWeather) (Advanced Data) Tags: advanced-data, topics, xmlyahooweather.
+- [XMLYahooWeather](../../Examples/Topics/Advanced%20Data/XMLYahooWeather) [obsolete] (Advanced Data) -- Requires Processing's loadXML plus a long-dead Yahoo Weather feed. metaphor does not clone Processing's XML types; non-goal. Tags: advanced-data, topics, xmlyahooweather.
 - [Animated Sprite (Shifty + Teddy)](../../Examples/Topics/Animation/AnimatedSprite) [Intermediate] (Animation) -- Press the mouse button to change animations. Demonstrates loading, displaying, and animating GIF images. It would be easy to write a program to display animated GIFs, but would not allow as much control over the display... Tags: animatedsprite, animation, export, image, interaction, topics.
 - [Sequential](../../Examples/Topics/Animation/Sequential) [Intermediate] (Animation) -- Displaying a sequence of images creates the illusion of motion. Twelve images are loaded and each is displayed individually in a loop. Tags: animation, image, sequential, topics.
 - [A Processing implementation of Game of Life](../../Examples/Topics/Cellular%20Automata/GameOfLife) [Advanced] (Cellular Automata) -- Press SPACE BAR to pause and change the cell's values with the mouse. On pause, click to activate/deactivate cells. Press 'R' to randomly reset the cells' grid. Press 'C' to clear the cells' grid. The original Game of L... Tags: cellular-automata, gameoflife, interaction, topics.
@@ -206,7 +210,7 @@ Example count: 273
 - [Wolfram Cellular Automata](../../Examples/Topics/Cellular%20Automata/Wolfram) [Advanced] (Cellular Automata) -- Simple demonstration of a Wolfram's 1-dimensional cellular automata. When the system reaches bottom of the window, it restarts with a new ruleset. Mouse click restarts as well. Tags: cellular-automata, interaction, topics, wolfram.
 - [BeginEndContour](../../Examples/Topics/Create%20Shapes/BeginEndContour) (Create Shapes) Tags: beginendcontour, create-shapes, topics.
 - [GroupPShape](../../Examples/Topics/Create%20Shapes/GroupPShape) (Create Shapes) Tags: create-shapes, grouppshape, topics.
-- [ParticleSystemPShape](../../Examples/Topics/Create%20Shapes/ParticleSystemPShape) (Create Shapes) Tags: create-shapes, particles, particlesystempshape, topics.
+- [ParticleSystemPShape](../../Examples/Topics/Create%20Shapes/ParticleSystemPShape) [stub] (Create Shapes) Tags: create-shapes, particles, particlesystempshape, topics.
 - [PathPShape](../../Examples/Topics/Create%20Shapes/PathPShape) (Create Shapes) Tags: create-shapes, pathpshape, topics.
 - [PolygonPShape](../../Examples/Topics/Create%20Shapes/PolygonPShape) (Create Shapes) Tags: create-shapes, polygonpshape, topics.
 - [PolygonPShapeOOP](../../Examples/Topics/Create%20Shapes/PolygonPShapeOOP) (Create Shapes) Tags: create-shapes, polygonpshapeoop, topics.
@@ -220,7 +224,7 @@ Example count: 273
 - [Pulses](../../Examples/Topics/Drawing/Pulses) (Drawing) -- Software drawing instruments can follow a rhythm or abide by rules independent of drawn gestures. This is a form of collaborative drawing in which the draftsperson controls some aspects of the image and the software con... Tags: drawing, image, interaction, pulses, topics.
 - [DirectoryList](../../Examples/Topics/File%20IO/DirectoryList) (File IO) Tags: directorylist, file-io, topics.
 - [LoadFile 1](../../Examples/Topics/File%20IO/LoadFile1) [Intermediate] (File IO) -- Loads a text file that contains two numbers separated by a tab ('\t'). A new pair of numbers is loaded each frame and used to draw a point on the screen. Tags: file-io, loadfile1, topics, typography.
-- [LoadFile 2](../../Examples/Topics/File%20IO/LoadFile2) [Intermediate] (File IO) -- This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d... Tags: file-io, interaction, loadfile2, topics, typography.
+- [LoadFile 2](../../Examples/Topics/File%20IO/LoadFile2) [Intermediate] [stub] (File IO) -- This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d... Tags: file-io, interaction, loadfile2, topics, typography.
 - [SaveFile1](../../Examples/Topics/File%20IO/SaveFile1) (File IO) Tags: file-io, savefile1, topics.
 - [SaveFile2](../../Examples/Topics/File%20IO/SaveFile2) (File IO) Tags: file-io, savefile2, topics.
 - [SaveFrames](../../Examples/Topics/File%20IO/SaveFrames) (File IO) Tags: file-io, saveframes, topics.
@@ -276,7 +280,7 @@ Example count: 273
 - [Conway](../../Examples/Topics/Shaders/Conway) (Shaders) Tags: conway, shader, shaders, topics.
 - [CustomBlend](../../Examples/Topics/Shaders/CustomBlend) (Shaders) Tags: customblend, shader, shaders, topics.
 - [Deform](../../Examples/Topics/Shaders/Deform) (Shaders) Tags: deform, shader, shaders, topics.
-- [DomeProjection](../../Examples/Topics/Shaders/DomeProjection) (Shaders) Tags: domeprojection, shader, shaders, topics.
+- [DomeProjection](../../Examples/Topics/Shaders/DomeProjection) [obsolete] (Shaders) -- Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now. Tags: domeprojection, shader, shaders, topics.
 - [EdgeDetect](../../Examples/Topics/Shaders/EdgeDetect) (Shaders) Tags: edgedetect, shader, shaders, topics.
 - [EdgeFilter](../../Examples/Topics/Shaders/EdgeFilter) (Shaders) Tags: edgefilter, image, shader, shaders, topics.
 - [GlossyFishEye](../../Examples/Topics/Shaders/GlossyFishEye) (Shaders) Tags: glossyfisheye, shader, shaders, topics.

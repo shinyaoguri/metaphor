@@ -1,0 +1,6 @@
+{
+  "name": "XMLYahooWeather",
+  "title": "XMLYahooWeather",
+  "status": "obsolete",
+  "description": "Requires Processing's loadXML plus a long-dead Yahoo Weather feed. metaphor does not clone Processing's XML types; non-goal."
+}

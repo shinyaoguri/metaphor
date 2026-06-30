@@ -1,0 +1,6 @@
+{
+  "name": "LowLevelGLVboInterleaved",
+  "title": "LowLevelGLVboInterleaved",
+  "status": "obsolete",
+  "description": "Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal."
+}

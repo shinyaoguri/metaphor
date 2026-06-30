@@ -1,0 +1,6 @@
+{
+  "name": "DomeProjection",
+  "title": "DomeProjection",
+  "status": "obsolete",
+  "description": "Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now."
+}

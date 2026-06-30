@@ -1,0 +1,6 @@
+{
+  "name": "SpecsTest",
+  "title": "SpecsTest",
+  "status": "obsolete",
+  "description": "Requires the OpenGL specification-query API. metaphor is Metal-only and exposes no OpenGL introspection; non-goal."
+}

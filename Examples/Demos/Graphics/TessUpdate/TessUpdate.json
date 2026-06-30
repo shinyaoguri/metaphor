@@ -1,0 +1,6 @@
+{
+  "name": "TessUpdate",
+  "title": "TessUpdate",
+  "status": "obsolete",
+  "description": "Requires Processing's PShape tessellation API (setVertex on tessellated shapes). metaphor does not expose tessellated-geometry introspection; non-goal."
+}

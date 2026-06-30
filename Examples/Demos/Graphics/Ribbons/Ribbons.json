@@ -1,0 +1,6 @@
+{
+  "name": "Ribbons",
+  "title": "Ribbons",
+  "status": "obsolete",
+  "description": "Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal."
+}
