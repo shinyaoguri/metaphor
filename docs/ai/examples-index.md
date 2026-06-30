@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 273
+Example count: 274
 
-Status: supported 250, partial 0, stub 13, obsolete 10
+Status: supported 251, partial 0, stub 13, obsolete 10
 
 ## How To Use
 
@@ -181,6 +181,7 @@ Status: supported 250, partial 0, stub 13, obsolete 10
 
 - [PluginFPSLogger](../../Examples/Samples/PluginFPSLogger) Tags: pluginfpslogger, samples.
 - [PluginMouseTrail](../../Examples/Samples/PluginMouseTrail) Tags: interaction, pluginmousetrail, samples.
+- [ProbeBenchmark](../../Examples/Samples/ProbeBenchmark) Tags: probebenchmark, samples.
 - [ProbeSnapshot](../../Examples/Samples/ProbeSnapshot) Tags: probesnapshot, samples.
 - [RayTracing](../../Examples/Samples/RayTracing) Tags: 3d, raytracing, samples.
 - [RenderGraphCompose](../../Examples/Samples/RenderGraphCompose) Tags: rendergraphcompose, samples.
