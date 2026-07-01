@@ -1,47 +1,30 @@
 ---
-const categories = [
-  {
-    title: '基礎',
-    description: 'シェイプ、カラー、テキスト、トランスフォーム',
-    items: ['ShapePrimitives', 'Hue', 'Words', 'Rotate'],
-  },
-  {
-    title: '数学とモーション',
-    description: 'サイン波、ノイズ、カーブ、時計',
-    items: ['SineCosine', 'Noise2D', 'MovingOnCurves', 'Clock'],
-  },
-  {
-    title: 'シミュレーション',
-    description: 'パーティクル、フロッキング、ソフトボディ、ライフゲーム',
-    items: ['SimpleParticleSystem', 'Flocking', 'SoftBody', 'GameOfLife'],
-  },
-  {
-    title: '3D',
-    description: 'メッシュ、ライティング、テクスチャ、ジオメトリ',
-    items: ['Primitives3D', 'Toroid', 'Directional', 'TextureSphere'],
-  },
-];
+import { getContent, examplesUrl, type Lang } from '../i18n/ui';
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = getContent(lang);
 ---
 
 <section class="relative px-6 py-32">
   <div class="mx-auto max-w-6xl">
     <div class="mb-16 text-center">
-      <h2 class="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-        サンプルで学ぶ
+      <h2 class="font-display mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+        {t.examples.title}
       </h2>
       <p class="mx-auto max-w-2xl text-lg text-text-muted">
-        基礎から高度な GPU テクニックまで、270以上の実行可能なサンプルを用意しています。
+        {t.examples.subtitle}
       </p>
     </div>
 
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      {categories.map((category) => (
-        <div class="rounded-2xl border border-border bg-bg-card p-6 transition-all hover:border-accent/30 hover:bg-bg-card-hover">
-          <h3 class="mb-1 text-base font-semibold text-text">{category.title}</h3>
-          <p class="mb-4 text-sm text-text-muted">{category.description}</p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {t.examples.categories.map((category) => (
+        <div class="rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:border-accent/40 hover:shadow-md">
+          <h3 class="font-display mb-1 text-base font-semibold text-text">{category.title}</h3>
+          <p class="mb-4 text-sm text-text-muted">{category.desc}</p>
           <ul class="space-y-1.5">
             {category.items.map((item) => (
-              <li class="flex items-center gap-2 text-sm text-text-muted">
+              <li class="flex items-center gap-2 font-mono text-sm text-text-muted">
                 <span class="h-1 w-1 rounded-full bg-accent/60"></span>
                 {item}
               </li>
@@ -53,12 +36,12 @@ const categories = [
 
     <div class="mt-10 text-center">
       <a
-        href="https://github.com/shinyaoguri/metaphor/tree/main/Examples"
+        href={examplesUrl}
         target="_blank"
         rel="noopener noreferrer"
         class="inline-flex items-center gap-2 text-sm font-medium text-accent transition-colors hover:text-accent-light"
       >
-        GitHub で全サンプルを見る
+        {t.examples.cta}
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
         </svg>

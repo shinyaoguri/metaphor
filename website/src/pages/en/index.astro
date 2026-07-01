@@ -1,0 +1,28 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Navigation from '../../components/Navigation.astro';
+import Hero from '../../components/Hero.astro';
+import AICollab from '../../components/AICollab.astro';
+import Features from '../../components/Features.astro';
+import CLI from '../../components/CLI.astro';
+import CodeExample from '../../components/CodeExample.astro';
+import Examples from '../../components/Examples.astro';
+import Footer from '../../components/Footer.astro';
+import { getContent } from '../../i18n/ui';
+
+const lang = 'en' as const;
+const t = getContent(lang);
+---
+
+<Layout title={t.meta.title} description={t.meta.description} lang={lang}>
+  <Navigation lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <Features lang={lang} />
+    <AICollab lang={lang} />
+    <CodeExample lang={lang} />
+    <CLI lang={lang} />
+    <Examples lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

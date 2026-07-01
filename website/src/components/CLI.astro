@@ -1,0 +1,42 @@
+---
+import { getContent, type Lang } from '../i18n/ui';
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = getContent(lang);
+---
+
+<section class="relative px-6 py-32">
+  <div class="mx-auto max-w-6xl">
+    <div class="grid items-center gap-12 lg:grid-cols-2">
+      <div>
+        <h2 class="font-display mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+          {t.cli.title}
+        </h2>
+        <p class="text-lg leading-relaxed text-text-muted">
+          {t.cli.lead}
+        </p>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+        <div class="flex items-center gap-2 border-b border-border px-4 py-3">
+          <div class="h-3 w-3 rounded-full bg-[#e8688f]"></div>
+          <div class="h-3 w-3 rounded-full bg-[#d3a24a]"></div>
+          <div class="h-3 w-3 rounded-full bg-[#7c8a6b]"></div>
+          <span class="ml-2 font-mono text-xs text-text-muted">zsh</span>
+        </div>
+        <div class="space-y-3 p-5 font-mono text-sm">
+          {t.cli.steps.map((s) => (
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-accent-2">$</span>
+                <span class="text-text">{s.cmd}</span>
+              </div>
+              <div class="pl-4 text-xs text-text-muted"># {s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
