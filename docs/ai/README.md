@@ -50,6 +50,9 @@ installers, and source checkouts.
   and shader function constants in sync.
 - Export/readback bugs: `FrameExporter.swift`, `VideoExporter.swift`,
   `GIFExporter.swift`, `RenderTestHelper.swift`.
+- Observability (Probe / input injection) runtime cost: `MetaphorProbePlugin.swift`,
+  `InputInjectionPlugin.swift`, plugin dispatch in `MetaphorRenderer.swift`,
+  `MetaphorRenderer.probePlugin` cache used by `Sketch+Probe.swift`.
 
 ## Invariants
 
@@ -65,6 +68,16 @@ installers, and source checkouts.
   compute-to-render synchronization.
 - Runtime drawing failures generally warn and skip work; initialization and
   resource creation failures should throw typed errors where possible.
+- Observability must not tax the render loop (Issue #118). When Probe / input
+  injection are OFF (no plugin registered — the normal `swift run` and the
+  human live viewer), the frame loop's plugin dispatch is zero-cost and
+  `Sketch.probe(_:_:)` is a complete no-op. When ON (MCP / headless), `pre()`
+  stays light (state reset + one `stat()`), `post()` returns immediately unless
+  a request is pending, and heavy readback/PNG/JSON work runs on demand and off
+  the render thread via `deferReadback`. `Sketch.probe` resolves the plugin
+  through the cached `MetaphorRenderer.probePlugin` (no per-call scan). Regression
+  guards live in `Tests/metaphorTests/ObservabilityOverheadTests.swift`; keep
+  them green when touching plugin dispatch, `probe(...)`, or the probe hot path.
 
 ## Verification
 

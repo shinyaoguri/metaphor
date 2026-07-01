@@ -197,6 +197,14 @@ public final class MetaphorRenderer: NSObject {
     /// ライフサイクルコールバックを受け取る登録済みプラグイン
     private var plugins: [MetaphorPlugin] = []
 
+    /// `Sketch/probe(_:_:)` のホットパス用にキャッシュした Probe プラグイン。
+    ///
+    /// プラグインの登録・解除は稀なので、その都度 ``refreshCachedPlugins()`` で更新します。
+    /// これにより `probe(...)` が呼び出しごとに `plugins` を線形走査（＋文字列比較＋`as?`）
+    /// するコストを、毎フレーム多数の `probe(...)` を呼ぶスケッチでも O(1) に抑えます。
+    /// プラグイン未登録時は `nil`（`probe(...)` は完全 no-op）。
+    public private(set) var probePlugin: MetaphorProbePlugin?
+
     // MARK: - 初期化
 
     /// 指定されたデバイスとオフスクリーンテクスチャサイズで新しいレンダラーを作成します。
@@ -309,6 +317,7 @@ public final class MetaphorRenderer: NSObject {
         plugins.append(plugin)
         plugin.onAttach(sketch: sketch)
         plugin.onAttach(renderer: self)
+        refreshCachedPlugins()
     }
 
     /// プラグインをこのレンダラーに登録します (レガシー)。
@@ -319,6 +328,7 @@ public final class MetaphorRenderer: NSObject {
     public func addPlugin(_ plugin: MetaphorPlugin) {
         plugins.append(plugin)
         plugin.onAttach(renderer: self)
+        refreshCachedPlugins()
     }
 
     /// 識別子でプラグインを削除します。
@@ -329,6 +339,7 @@ public final class MetaphorRenderer: NSObject {
         if let idx = plugins.firstIndex(where: { $0.pluginID == id }) {
             plugins[idx].onDetach()
             plugins.remove(at: idx)
+            refreshCachedPlugins()
         }
     }
 
@@ -337,6 +348,12 @@ public final class MetaphorRenderer: NSObject {
     /// - Returns: 一致するプラグイン。見つからない場合は `nil`
     public func plugin(id: String) -> MetaphorPlugin? {
         plugins.first(where: { $0.pluginID == id })
+    }
+
+    /// ホットパス用のプラグインキャッシュ（``probePlugin`` 等）を `plugins` から再構築します。
+    /// プラグインの登録・解除時にのみ呼びます（毎フレームではない）。
+    private func refreshCachedPlugins() {
+        probePlugin = plugins.first { $0 is MetaphorProbePlugin } as? MetaphorProbePlugin
     }
 
     // MARK: - プラグイン入力転送
@@ -395,6 +412,7 @@ public final class MetaphorRenderer: NSObject {
             plugin.onDetach()
         }
         plugins.removeAll()
+        refreshCachedPlugins()
     }
 
     // MARK: - プラグイン CPU 読み戻し

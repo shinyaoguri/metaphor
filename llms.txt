@@ -974,6 +974,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var onReplayMain: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- シャドウ遅延経路で、記録済みの 3D→2D を単一メインパスへ再生するフック。
 - `var postProcessPipeline: PostProcessPipeline? { get }` -- ポストプロセスエフェクトパイプライン
 - `var previousFrameTexture: (any MTLTexture)? { get }` -- 前フレームのカラーテクスチャ。``feedbackEnabled`` が `true` の場合のみ利用可能
+- `var probePlugin: MetaphorProbePlugin? { get }` -- `Sketch/probe(_:_:)` のホットパス用にキャッシュした Probe プラグイン。
 - `var renderGraph: (any RenderGraphExecutable)?` -- 設定時に最終テクスチャとなるレンダーグラフ
 - `let shaderLibrary: ShaderLibrary` -- Metal シェーダー関数のコンパイルとキャッシュに使用するシェーダーライブラリ
 - `var shadowDeferActive: (() -> Bool)?` -- このフレームでシャドウ遅延経路（記録→shadow→再生）を使うべきかを返す。
