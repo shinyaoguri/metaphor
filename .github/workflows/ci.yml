@@ -72,6 +72,10 @@ jobs:
           fi
       - name: Check cross-repo contract
         run: ./scripts/check-contract.sh
+      - name: Check wire-schema contract
+        run: |
+          pip3 install --quiet --break-system-packages check-jsonschema
+          ./scripts/check-contract-schema.sh
       - name: Check CONTRACT.md identity across repos
         env:
           GH_TOKEN: ${{ github.token }}

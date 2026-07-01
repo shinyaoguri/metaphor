@@ -41,6 +41,8 @@
 |---|---|---|
 | [0001](0001-separate-syphon-into-its-own-target.md) | Accepted | Syphon を MetaphorCore から別ターゲットへ分離する |
 | [0002](0002-deterministic-render-pipeline.md) | Proposed | 決定論レンダリングを段階導入する（noLoop 単一フレーム化 + シャドウ同一フレーム化） |
+| [0003](0003-unified-command-stream.md) | Accepted | 即時描画を順序保持コマンド記録へ統一する（main パス 2D/3D の単一ストリーム化） |
+| [0004](0004-wire-schema-canon-vs-shared-types.md) | Accepted | 契約ドリフトを共有型ではなく wire スキーマ正典で防ぐ（Issue #119 案C+） |
 
 ## 参考
 
