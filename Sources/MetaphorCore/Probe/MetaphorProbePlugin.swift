@@ -12,6 +12,19 @@ import Metal
 /// 有効化は次の 2 通り。
 /// - 環境変数 `METAPHOR_PROBE=1` を設定（自動登録）
 /// - `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])` で明示登録
+///
+/// ## 性能契約（ランタイム非侵害・Issue #118）
+///
+/// - **OFF（未登録＝通常実行 / 人間のライブビューア単体）**: プラグインが `plugins` に
+///   居ないため、フレームループのプラグイン呼び出しはゼロ回。`Sketch/probe(_:_:)` も
+///   `MetaphorRenderer/probePlugin` が `nil` に解決され**完全 no-op**。ホットパスに
+///   `probe(...)` を残して安全。
+/// - **ON（登録済み）**: `pre()` は毎フレーム `stateBuffer` リセット＋リクエストファイルの
+///   `stat()` 1 回のみ（µs オーダー）。`post()` は保留リクエストが無い間は即 `return`。
+///   重い処理（GPU readback → PNG/JSON 書き出し）は**リクエスト時のみ**、かつ
+///   `deferReadback`/completion handler 経由で**GPU 完了後・描画スレッド外**に実行する。
+///
+/// この契約は `Tests/metaphorTests/ObservabilityOverheadTests.swift` の回帰ガードで守る。
 @MainActor
 public final class MetaphorProbePlugin: MetaphorPlugin {
     public static let id = "org.metaphor.probe"

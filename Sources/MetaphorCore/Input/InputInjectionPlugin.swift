@@ -28,6 +28,14 @@ import os
 /// 各フレーム冒頭の ``pre(commandBuffer:time:)`` でメインアクター上から
 /// ``InputManager`` に流し込みます。``InputManager/updateFrame()`` が同フレームの
 /// `pre()` より前に呼ばれるため、`pmouseX`/`pmouseY` の更新も正しく機能します。
+///
+/// ## 性能契約（ランタイム非侵害・Issue #118）
+///
+/// stdin の読み取りは**専用スレッド**で行うため描画スレッドを塞ぎません。`pre()` は
+/// キューが空なら（＝イベント未着なら）ロック取得後すぐ `return` し、`InputManager` にも
+/// 触れません。dispatch は溜まったイベントがある時だけ発生します。未登録（通常実行）時は
+/// フレームループから一切呼ばれずゼロコスト。回帰ガードは
+/// `Tests/metaphorTests/ObservabilityOverheadTests.swift`。
 @MainActor
 public final class InputInjectionPlugin: MetaphorPlugin {
     /// 安定したプラグイン識別子。

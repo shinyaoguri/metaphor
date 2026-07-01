@@ -60,7 +60,10 @@ public extension Sketch {
     }
 
     /// 登録済みの probe プラグインを返します。未登録なら `nil`（呼び出しは no-op）。
+    ///
+    /// レンダラー側でキャッシュ済みの参照（``MetaphorRenderer/probePlugin``）を返すため、
+    /// `probe(...)` 呼び出しごとの `plugins` 線形走査・文字列比較・`as?` を避けます。
     private var probePlugin: MetaphorProbePlugin? {
-        _context?.renderer.plugin(id: MetaphorProbePlugin.id) as? MetaphorProbePlugin
+        _context?.renderer.probePlugin
     }
 }
