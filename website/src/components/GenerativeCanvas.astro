@@ -1,0 +1,307 @@
+---
+// Live viscous-fluid background for the Hero. Ink is advected through a
+// curl-noise flow field in a ping-pong buffer, so it swirls and lingers like
+// a thick sci-fi fluid. The pointer stirs it — moving injects velocity + ink,
+// clicking bursts a splat. Honors prefers-reduced-motion, pauses when
+// offscreen or the tab is hidden, and falls back gracefully.
+---
+
+<canvas
+  id="fluid-canvas"
+  class="pointer-events-none absolute inset-0 h-full w-full"
+  aria-hidden="true"
+></canvas>
+
+<script>
+  const canvas = document.getElementById('fluid-canvas') as HTMLCanvasElement | null;
+
+  const VERT = `
+    attribute vec2 a_pos;
+    varying vec2 v_uv;
+    void main() { v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }
+  `;
+
+  // --- Simulation pass: advect ink along curl-noise flow + pointer forcing. ---
+  const SIM = `
+    precision highp float;
+    varying vec2 v_uv;
+    uniform sampler2D u_prev;
+    uniform vec2 u_res;       // simulation resolution
+    uniform float u_time;
+    uniform float u_dt;
+    uniform vec2 u_mouse;     // 0..1, y up
+    uniform vec2 u_mouseVel;  // movement delta (uv/frame)
+    uniform float u_mouseOn;
+    uniform vec2 u_click;
+    uniform float u_clickPulse;
+
+    float hash(vec2 p) {
+      p = fract(p * vec2(123.34, 345.45));
+      p += dot(p, p + 34.345);
+      return fract(p.x * p.y);
+    }
+    float noise(vec2 p) {
+      vec2 i = floor(p); vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+      float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+    }
+    float fbm(vec2 p) {
+      float v = 0.0, amp = 0.5;
+      for (int i = 0; i < 4; i++) { v += amp * noise(p); p = p * 2.02 + vec2(9.1, 5.3); amp *= 0.5; }
+      return v;
+    }
+    // Divergence-free (curl) flow — the signature of an incompressible fluid.
+    vec2 curl(vec2 p) {
+      float e = 0.35;
+      float n1 = fbm(p + vec2(0.0, e));
+      float n2 = fbm(p - vec2(0.0, e));
+      float n3 = fbm(p + vec2(e, 0.0));
+      float n4 = fbm(p - vec2(e, 0.0));
+      return vec2(n1 - n2, n4 - n3) / (2.0 * e);
+    }
+
+    void main() {
+      float aspect = u_res.x / u_res.y;
+      vec2 uv = v_uv;
+      vec2 asp = vec2(aspect, 1.0);
+
+      // Slow, viscous flow field — a heavy, "もったり" drift.
+      float t = u_time * 0.028;
+      vec2 vel = curl(uv * asp * 2.2 + vec2(t, -t)) * 0.155;
+
+      // Pointer nudges the fluid along its motion (gentle, so it stirs
+      // rather than sweeping the ink away and leaving a bare streak).
+      float md = distance(uv * asp, u_mouse * asp);
+      float mInf = u_mouseOn * smoothstep(0.28, 0.0, md);
+      vel += u_mouseVel * mInf * 9.0;
+
+      // A click bursts the fluid outward from the point of impact.
+      vec2 cdir = uv * asp - u_click * asp;
+      float cdist = length(cdir);
+      float cFall = smoothstep(0.48, 0.0, cdist);
+      vel += normalize(cdir + vec2(1e-4)) * u_clickPulse * cFall * 2.6;
+
+      // Semi-Lagrangian advection: trace back along velocity. High retention
+      // (low dissipation) makes the ink thick and viscous — it lingers.
+      vec2 back = uv - vel * u_dt;
+      vec3 ink = texture2D(u_prev, back).rgb * 0.9935;
+
+      vec3 asagi  = vec3(0.122, 0.561, 0.639);
+      vec3 slate  = vec3(0.208, 0.380, 0.478);
+      vec3 violet = vec3(0.416, 0.455, 0.867);
+
+      // Full-field flowing source: ink is seeded along drifting noise bands so
+      // the whole space carries fluid that the flow stretches into filaments.
+      float band = fbm(uv * asp * 2.3 + vec2(t * 0.9, -t * 0.6));
+      float src = smoothstep(0.42, 0.88, band);
+      vec3 baseHue = mix(asagi, violet, fbm(uv * asp * 1.2 - t * 0.4));
+      ink += baseHue * src * 0.08;
+
+      // A few slow drifting emitters add brighter accents.
+      vec2 e1 = vec2(0.5, 0.5) + 0.36 * vec2(cos(u_time * 0.11), sin(u_time * 0.09));
+      vec2 e2 = vec2(0.5, 0.5) + 0.42 * vec2(cos(u_time * 0.07 + 2.1), sin(u_time * 0.13 + 1.0));
+      ink += asagi  * 0.05 * smoothstep(0.13, 0.0, distance(uv * asp, e1 * asp));
+      ink += violet * 0.04 * smoothstep(0.12, 0.0, distance(uv * asp, e2 * asp));
+
+      // Pointer trails a modest, capped amount of ink (never saturates to white).
+      float hueMix = 0.5 + 0.5 * sin(u_time * 0.5);
+      vec3 mouseInk = mix(asagi, violet, hueMix);
+      ink += mouseInk * mInf * min(0.10 + length(u_mouseVel) * 12.0, 0.42);
+      // Click splat: a strong burst of ink that the outward push flings into a ring.
+      vec3 clickInk = mix(asagi, violet, 0.35);
+      ink += clickInk * u_clickPulse * smoothstep(0.30, 0.0, cdist) * 1.6;
+
+      gl_FragColor = vec4(clamp(ink, 0.0, 1.0), 1.0);
+    }
+  `;
+
+  // --- Display pass: paint the ink over a cool paper ground. ---
+  const DISPLAY = `
+    precision highp float;
+    varying vec2 v_uv;
+    uniform sampler2D u_ink;
+    void main() {
+      vec3 ink = texture2D(u_ink, v_uv).rgb;
+      float den = max(ink.r, max(ink.g, ink.b));
+      vec3 hue = ink / max(den, 0.001);
+      vec3 ground = vec3(0.933, 0.953, 0.949);
+      // Deepen the hue as ink thickens, so dense fluid reads as rich teal —
+      // it never washes out to white.
+      vec3 deep = hue * mix(1.0, 0.72, smoothstep(0.4, 1.0, den));
+      float a = smoothstep(0.015, 0.55, den);
+      vec3 col = mix(ground, deep, a * 0.9);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  if (canvas) {
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'low-power' });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    if (!gl) {
+      canvas.style.background = '#eef3f2';
+    } else {
+      const build = (fs: string) => {
+        const p = gl.createProgram()!;
+        const v = gl.createShader(gl.VERTEX_SHADER)!; gl.shaderSource(v, VERT); gl.compileShader(v);
+        const f = gl.createShader(gl.FRAGMENT_SHADER)!; gl.shaderSource(f, fs); gl.compileShader(f);
+        gl.attachShader(p, v); gl.attachShader(p, f); gl.linkProgram(p);
+        return p;
+      };
+      const simProg = build(SIM);
+      const dispProg = build(DISPLAY);
+
+      const quad = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const bindQuad = (prog: WebGLProgram) => {
+        const loc = gl.getAttribLocation(prog, 'a_pos');
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      };
+
+      const SIM_SCALE = 0.5;
+      let simW = 1, simH = 1;
+      let fbos: { tex: WebGLTexture; fb: WebGLFramebuffer }[] = [];
+      let readIdx = 0;
+
+      function makeTarget(w: number, h: number) {
+        const tex = gl!.createTexture()!;
+        gl!.bindTexture(gl!.TEXTURE_2D, tex);
+        gl!.texImage2D(gl!.TEXTURE_2D, 0, gl!.RGBA, w, h, 0, gl!.RGBA, gl!.UNSIGNED_BYTE, null);
+        gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MIN_FILTER, gl!.LINEAR);
+        gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR);
+        gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE);
+        gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE);
+        const fb = gl!.createFramebuffer()!;
+        gl!.bindFramebuffer(gl!.FRAMEBUFFER, fb);
+        gl!.framebufferTexture2D(gl!.FRAMEBUFFER, gl!.COLOR_ATTACHMENT0, gl!.TEXTURE_2D, tex, 0);
+        return { tex, fb };
+      }
+
+      function allocTargets() {
+        fbos.forEach((t) => { gl!.deleteTexture(t.tex); gl!.deleteFramebuffer(t.fb); });
+        fbos = [makeTarget(simW, simH), makeTarget(simW, simH)];
+        // Clear both to the empty (no-ink) state.
+        for (const t of fbos) {
+          gl!.bindFramebuffer(gl!.FRAMEBUFFER, t.fb);
+          gl!.clearColor(0, 0, 0, 1); gl!.clear(gl!.COLOR_BUFFER_BIT);
+        }
+      }
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        const cw = Math.max(1, Math.floor(canvas!.clientWidth * dpr));
+        const ch = Math.max(1, Math.floor(canvas!.clientHeight * dpr));
+        if (canvas!.width !== cw || canvas!.height !== ch || !fbos.length) {
+          canvas!.width = cw; canvas!.height = ch;
+          simW = Math.max(2, Math.floor(cw * SIM_SCALE));
+          simH = Math.max(2, Math.floor(ch * SIM_SCALE));
+          allocTargets();
+        }
+      }
+
+      // Pointer state (normalized 0..1, y up).
+      let mx = 0.5, my = 0.5, pmx = 0.5, pmy = 0.5;
+      let tmx = 0.5, tmy = 0.5, mouseOn = 0, tMouseOn = 0;
+      let clickX = 0.5, clickY = 0.5, clickPulse = 0;
+
+      function toNorm(clientX: number, clientY: number) {
+        const rect = canvas!.getBoundingClientRect();
+        return { x: (clientX - rect.left) / rect.width, y: 1 - (clientY - rect.top) / rect.height };
+      }
+      window.addEventListener('pointermove', (e) => {
+        const n = toNorm(e.clientX, e.clientY); tmx = n.x; tmy = n.y; tMouseOn = 1;
+        if (!running && !reduceMotion.matches) start();
+      }, { passive: true });
+      window.addEventListener('pointerdown', (e) => {
+        const n = toNorm(e.clientX, e.clientY); clickX = n.x; clickY = n.y; clickPulse = 1.5;
+        if (!running && !reduceMotion.matches) start();
+      }, { passive: true });
+      document.addEventListener('pointerleave', () => { tMouseOn = 0; });
+
+      const uSim = {
+        prev: gl.getUniformLocation(simProg, 'u_prev'),
+        res: gl.getUniformLocation(simProg, 'u_res'),
+        time: gl.getUniformLocation(simProg, 'u_time'),
+        dt: gl.getUniformLocation(simProg, 'u_dt'),
+        mouse: gl.getUniformLocation(simProg, 'u_mouse'),
+        mouseVel: gl.getUniformLocation(simProg, 'u_mouseVel'),
+        mouseOn: gl.getUniformLocation(simProg, 'u_mouseOn'),
+        click: gl.getUniformLocation(simProg, 'u_click'),
+        clickPulse: gl.getUniformLocation(simProg, 'u_clickPulse'),
+      };
+      const uDispInk = gl.getUniformLocation(dispProg, 'u_ink');
+
+      let t0 = 0, tPrev = 0, running = false, rafId = 0;
+
+      function frame(nowMs: number) {
+        if (!t0) { t0 = nowMs; tPrev = nowMs; }
+        const time = (nowMs - t0) * 0.001;
+        const dt = Math.min((nowMs - tPrev) * 0.001, 0.033); tPrev = nowMs;
+
+        mx += (tmx - mx) * 0.20; my += (tmy - my) * 0.20;
+        mouseOn += (tMouseOn - mouseOn) * 0.06;
+        const mvx = mx - pmx, mvy = my - pmy; pmx = mx; pmy = my;
+        clickPulse *= 0.965;
+
+        // Simulation step → write to the off (write) target.
+        const read = fbos[readIdx], write = fbos[1 - readIdx];
+        gl!.bindFramebuffer(gl!.FRAMEBUFFER, write.fb);
+        gl!.viewport(0, 0, simW, simH);
+        gl!.useProgram(simProg);
+        bindQuad(simProg);
+        gl!.activeTexture(gl!.TEXTURE0);
+        gl!.bindTexture(gl!.TEXTURE_2D, read.tex);
+        gl!.uniform1i(uSim.prev, 0);
+        gl!.uniform2f(uSim.res, simW, simH);
+        gl!.uniform1f(uSim.time, time);
+        gl!.uniform1f(uSim.dt, dt);
+        gl!.uniform2f(uSim.mouse, mx, my);
+        gl!.uniform2f(uSim.mouseVel, mvx, mvy);
+        gl!.uniform1f(uSim.mouseOn, mouseOn);
+        gl!.uniform2f(uSim.click, clickX, clickY);
+        gl!.uniform1f(uSim.clickPulse, clickPulse);
+        gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+        readIdx = 1 - readIdx;
+
+        // Display step → to screen.
+        gl!.bindFramebuffer(gl!.FRAMEBUFFER, null);
+        gl!.viewport(0, 0, canvas!.width, canvas!.height);
+        gl!.useProgram(dispProg);
+        bindQuad(dispProg);
+        gl!.activeTexture(gl!.TEXTURE0);
+        gl!.bindTexture(gl!.TEXTURE_2D, fbos[readIdx].tex);
+        gl!.uniform1i(uDispInk, 0);
+        gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+      }
+
+      function loop(now: number) { if (!running) return; frame(now); rafId = requestAnimationFrame(loop); }
+      function start() { if (running || reduceMotion.matches) return; running = true; rafId = requestAnimationFrame(loop); }
+      function stop() { running = false; cancelAnimationFrame(rafId); }
+
+      resize();
+      let resizeTimer = 0;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(resize, 150);
+      });
+
+      if (reduceMotion.matches) {
+        // Settle a still frame without animating.
+        for (let i = 0; i < 160; i++) frame(i * 16);
+      } else {
+        const io = new IntersectionObserver(
+          (entries) => { entries[0].isIntersecting ? start() : stop(); },
+          { threshold: 0 }
+        );
+        io.observe(canvas);
+        document.addEventListener('visibilitychange', () => { document.hidden ? stop() : start(); });
+        reduceMotion.addEventListener?.('change', (e) => { if (e.matches) stop(); else start(); });
+      }
+    }
+  }
+</script>

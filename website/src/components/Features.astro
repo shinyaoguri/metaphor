@@ -1,67 +1,30 @@
 ---
-const features = [
-  {
-    icon: '◆',
-    title: '2D 描画',
-    description: 'シェイプ、テキスト、画像、グラデーション、ブレンドモードによるイミディエイトモードのベクター描画。GPU インスタンスバッチで高パフォーマンス。',
-  },
-  {
-    icon: '◇',
-    title: '3D レンダリング',
-    description: 'PBR / Blinn-Phong マテリアル、シャドウマッピング、メッシュプリミティブ、OBJ/USDZ 読み込み、オービットカメラ。',
-  },
-  {
-    icon: '⚡',
-    title: 'GPU コンピュート',
-    description: '型付き GPUBuffer<T> による Metal コンピュートシェーダー、画像処理カーネル、GPU パーティクルシステム。',
-  },
-  {
-    icon: '✦',
-    title: 'ポストプロセス',
-    description: 'ブルーム、ブラー、色収差、グリッチ、PostProcessPipeline によるカスタムシェーダーエフェクト。',
-  },
-  {
-    icon: '♪',
-    title: 'オーディオ',
-    description: 'リアルタイム FFT 解析、ビート検出、AVAudioEngine によるサウンドファイル再生。',
-  },
-  {
-    icon: '⬡',
-    title: '物理演算',
-    description: '剛体、コンストレイント、衝突検出、空間ハッシュを備えた 2D 物理ワールド。',
-  },
-  {
-    icon: '◎',
-    title: '機械学習',
-    description: 'CoreML 統合、22種以上の Vision リクエスト、スタイル転送、GPU テクスチャ変換。',
-  },
-  {
-    icon: '↗',
-    title: 'Syphon 出力',
-    description: 'VJ ソフトウェア、プロジェクションマッピングツール、録画アプリケーションへのリアルタイム映像共有。',
-  },
-];
+import { getContent, type Lang } from '../i18n/ui';
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = getContent(lang);
 ---
 
 <section id="features" class="relative px-6 py-32">
   <div class="mx-auto max-w-6xl">
     <div class="mb-16 text-center">
-      <h2 class="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-        必要なものがすべてここに
+      <h2 class="font-display mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+        {t.features.title}
       </h2>
       <p class="mx-auto max-w-2xl text-lg text-text-muted">
-        2D スケッチから GPU コンピュートパイプラインまで — Metal で構築された包括的なクリエイティブコーディングツールキット。
+        {t.features.subtitle}
       </p>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {features.map((feature) => (
-        <div class="group rounded-2xl border border-border bg-bg-card p-6 transition-all hover:border-accent/30 hover:bg-bg-card-hover">
-          <div class="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent">
+      {t.features.items.map((feature) => (
+        <div class="group rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md">
+          <div class="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-lg text-accent transition-colors group-hover:bg-accent/15">
             {feature.icon}
           </div>
           <h3 class="mb-2 text-base font-semibold text-text">{feature.title}</h3>
-          <p class="text-sm leading-relaxed text-text-muted">{feature.description}</p>
+          <p class="text-sm leading-relaxed text-text-muted">{feature.desc}</p>
         </div>
       ))}
     </div>

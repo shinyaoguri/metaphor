@@ -1,0 +1,52 @@
+---
+import { getContent, type Lang } from '../i18n/ui';
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = getContent(lang);
+---
+
+<section id="ai" class="relative overflow-hidden px-6 py-32">
+  <!-- Subtle organic wash to set this section apart -->
+  <div class="pointer-events-none absolute inset-0 -z-10">
+    <div class="absolute left-1/4 top-0 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-accent-3/8 blur-[130px]"></div>
+    <div class="absolute right-1/4 bottom-0 h-[360px] w-[360px] translate-x-1/2 rounded-full bg-accent-2/10 blur-[120px]"></div>
+  </div>
+
+  <div class="mx-auto max-w-6xl">
+    <div class="mb-16 max-w-3xl">
+      <span class="mb-3 inline-block font-mono text-xs uppercase tracking-[0.2em] text-accent">{t.ai.eyebrow}</span>
+      <h2 class="font-display mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+        {t.ai.title}
+      </h2>
+      <p class="text-lg leading-relaxed text-text-muted">
+        {t.ai.lead}
+      </p>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3">
+      {t.ai.cards.map((card) => (
+        <div class="rounded-2xl border border-border bg-surface p-7 shadow-sm">
+          <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-3/10 text-xl text-accent-3">
+            {card.icon}
+          </div>
+          <h3 class="font-display mb-2 text-lg font-semibold text-text">{card.title}</h3>
+          <p class="text-sm leading-relaxed text-text-muted">{card.desc}</p>
+        </div>
+      ))}
+    </div>
+
+    <!-- MCP tools -->
+    <div class="mt-6 rounded-2xl border border-border bg-surface-2/60 p-7">
+      <div class="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-text-muted">{t.ai.toolsLabel}</div>
+      <div class="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        {t.ai.tools.map((tool) => (
+          <div class="flex items-baseline gap-3">
+            <code class="shrink-0 rounded bg-accent/10 px-2 py-0.5 font-mono text-sm text-accent">{tool.name}</code>
+            <span class="text-sm text-text-muted">{tool.desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
