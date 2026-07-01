@@ -1,16 +1,29 @@
 @import "tailwindcss";
 
+/* Self-hosted fonts (no external CDN) */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
 @theme {
-  --color-bg: #0a0a0f;
-  --color-bg-card: #12121a;
-  --color-bg-card-hover: #1a1a26;
-  --color-border: #2a2a3a;
-  --color-text: #e4e4ef;
-  --color-text-muted: #8888a0;
-  --color-accent: #6366f1;
-  --color-accent-light: #818cf8;
-  --color-accent-glow: rgba(99, 102, 241, 0.3);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Light organic palette — cool paper ground with asagi (浅葱色) accents */
+  --color-bg: #eef3f2;
+  --color-surface: #fbfdfc;
+  --color-surface-2: #e2ebe9;
+  --color-border: #d2e0dd;
+  --color-text: #14282a;
+  --color-text-muted: #566a6b;
+
+  /* Accents: asagi teal-blue (primary), deep slate-blue (secondary), blue-violet (AI) */
+  --color-accent: #1f8fa3;
+  --color-accent-light: #57b6c6;
+  --color-accent-2: #35617a;
+  --color-accent-3: #6a74dd;
+  --color-accent-glow: rgba(31, 143, 163, 0.24);
+
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -24,7 +37,15 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Fraunces looks best with a touch of optical softening for headings */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 40, "WONK" 1;
+  letter-spacing: -0.01em;
+}
+
 ::selection {
   background-color: var(--color-accent);
-  color: white;
+  color: #fbfdfc;
 }
