@@ -151,7 +151,7 @@ export const content: Record<Lang, Content> = {
         { cmd: 'brew install shinyaoguri/tap/metaphor', desc: 'CLI をインストール' },
         { cmd: 'metaphor new MySketch', desc: '雛形からプロジェクト生成' },
         { cmd: 'metaphor watch', desc: '保存のたびライブリロード表示' },
-        { cmd: 'metaphor mcp', desc: 'AI 連携の MCP サーバを起動' },
+        { cmd: 'claude mcp add metaphor -- metaphor mcp', desc: 'AI クライアントに MCP を登録' },
       ],
     },
     examples: {
@@ -249,7 +249,7 @@ export const content: Record<Lang, Content> = {
         { cmd: 'brew install shinyaoguri/tap/metaphor', desc: 'Install the CLI' },
         { cmd: 'metaphor new MySketch', desc: 'Scaffold a project' },
         { cmd: 'metaphor watch', desc: 'Live-reload on every save' },
-        { cmd: 'metaphor mcp', desc: 'Start the MCP server for AI' },
+        { cmd: 'claude mcp add metaphor -- metaphor mcp', desc: 'Register the MCP server with your AI client' },
       ],
     },
     examples: {
