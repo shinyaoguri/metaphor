@@ -15,10 +15,10 @@ documents from the library, while CLI users also get project-local guidance.
 | A sketch depends on `https://github.com/shinyaoguri/metaphor.git` | `llms-sketch.txt`, `llms.txt`, `docs/ai/`, and examples inside the SwiftPM checkout | After `swift package resolve` or `swift build`, assistants can inspect `.build/checkouts/metaphor` or the GitHub repo. |
 | A sketch uses `.package(path: "../metaphor")` | Same library context files, directly from the local checkout | Best setup for library debugging or extending metaphor itself. |
 | A user copies only a minimal `Package.swift` snippet | `llms-sketch.txt` / `llms.txt` can still be pasted or linked manually | No project-local AI files are generated unless the CLI is used. |
-| `metaphor new` via Homebrew CLI | Generated sketch includes `AGENTS.md` and `PROJECT_BRIEF.md`; templates come from Homebrew `pkgshare` | Homebrew installs `Templates/` to `share/metaphor/templates`. |
-| `metaphor new` via direct installer or `metaphor update self` | Generated sketch includes `AGENTS.md` and `PROJECT_BRIEF.md`; templates come from the release archive | Release archives include both the binary and `templates/`. |
-| `metaphor new` via `make install` from a git clone | Generated sketch includes `AGENTS.md` and `PROJECT_BRIEF.md`; templates are copied to `~/.local/share/metaphor/templates` by default | Good for using a locally built CLI. |
-| `swift run metaphor new` from a git clone | Generated sketch includes `AGENTS.md` and `PROJECT_BRIEF.md`; checkout `Templates/` are preferred | Template edits are immediately testable without reinstalling the CLI. |
+| `metaphor new` via Homebrew CLI | Generated sketch includes `AGENTS.md`, `CLAUDE.md`, and `PROJECT_BRIEF.md`; templates come from Homebrew `pkgshare` | Homebrew installs `Templates/` to `share/metaphor/templates`. |
+| `metaphor new` via direct installer or `metaphor update self` | Generated sketch includes `AGENTS.md`, `CLAUDE.md`, and `PROJECT_BRIEF.md`; templates come from the release archive | Release archives include both the binary and `templates/`. |
+| `metaphor new` via `make install` from a git clone | Generated sketch includes `AGENTS.md`, `CLAUDE.md`, and `PROJECT_BRIEF.md`; templates are copied to `~/.local/share/metaphor/templates` by default | Good for using a locally built CLI. |
+| `swift run metaphor new` from a git clone | Generated sketch includes `AGENTS.md`, `CLAUDE.md`, and `PROJECT_BRIEF.md`; checkout `Templates/` are preferred | Template edits are immediately testable without reinstalling the CLI. |
 | `METAPHOR_TEMPLATES_PATH=/custom/templates metaphor new` | Generated sketch uses the custom template set | Explicit override wins over checkout and installed templates. |
 
 ## Resolution Rules
@@ -43,5 +43,9 @@ exist, the loader naturally falls through to installed templates.
   modifying the library or CLI.
 - The generated `AGENTS.md` points assistants back to `llms-sketch.txt`,
   `llms.txt`, and the examples index instead of duplicating API reference.
+- `AGENTS.md` is the single source of project AI guidance. Because Claude Code
+  auto-loads `CLAUDE.md`, not `AGENTS.md`, the generator also emits a thin
+  `CLAUDE.md` that just `@AGENTS.md`-imports it — so every client (Claude Code,
+  Cursor, …) reads the same guidance without duplicating content.
 - Validation stays centralized in `make ai-docs-check`; examples index and
   `llms.txt` are generated artifacts with stale checks.
