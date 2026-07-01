@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks contract-schema
 
 # Default target
 all: setup build
@@ -132,6 +132,11 @@ llms-txt: symbol-graphs
 ai-docs-check:
 	@./scripts/validate-ai-docs.sh
 
+# Validate wire-schema contract (contract/examples/ against contract/*.schema.json).
+# Requires check-jsonschema (pip install check-jsonschema).
+contract-schema:
+	@./scripts/check-contract-schema.sh
+
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
 docs: symbol-graphs
@@ -187,6 +192,7 @@ help:
 	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
+	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
 	@echo "  make examples       - Run examples in parallel (10 workers)"
