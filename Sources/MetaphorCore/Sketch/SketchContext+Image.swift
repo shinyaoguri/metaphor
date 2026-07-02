@@ -17,7 +17,11 @@ extension SketchContext {
     ///   - height: 画像の高さ（ピクセル単位）。
     /// - Returns: 新しい空白画像。失敗時は nil。
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
-        MImage.createImage(width, height, device: renderer.device)
+        guard width > 0, height > 0 else {
+            metaphorWarning("createImage: dimensions must be positive (got \(width)x\(height))")
+            return nil
+        }
+        return MImage.createImage(width, height, device: renderer.device)
     }
 
     /// 画像に GPU 画像フィルターを適用します。

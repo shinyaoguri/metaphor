@@ -57,8 +57,9 @@ public let COMMAND: UInt16 = 55
 // MARK: - Time
 
 /// SketchContext が毎フレーム更新する内部時間値。
+/// Double 精度で保持する（Float だと約 4.6 時間で ms 分解能が失われる）。
 @MainActor
-var _sketchElapsedTime: Float = 0
+var _sketchElapsedTime: Double = 0
 
 /// スケッチ開始からの経過時間をミリ秒で返します。
 /// - Returns: ミリ秒単位の経過時間。
