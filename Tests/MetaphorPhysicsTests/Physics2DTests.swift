@@ -1,4 +1,5 @@
 import Testing
+import simd
 @testable import MetaphorPhysics
 
 // MARK: - Physics2D Basic Tests
@@ -307,5 +308,92 @@ struct PhysicsNonFiniteTests {
         #expect(c.stiffness == 1.0)
         c.stiffness = 0.5
         #expect(c.stiffness == 0.5)
+    }
+}
+
+// MARK: - PhysicsConstraint2D solve()（#149: 純ロジックのカバレッジ）
+
+@Suite("PhysicsConstraint2D Solve")
+@MainActor
+struct PhysicsConstraint2DSolveTests {
+
+    @Test("distance constraint pulls both bodies symmetrically")
+    func distanceConstraintSymmetric() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let b = PhysicsBody2D(x: 10, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b, distance: 4)
+
+        c.solve()
+
+        // 距離 10 → 目標 4: 差 6 を両側で半分ずつ補正（stiffness 1.0）
+        #expect(abs(a.position.x - 3) < 0.001, "a は +3 へ移動: \(a.position)")
+        #expect(abs(b.position.x - 7) < 0.001, "b は -3 へ移動: \(b.position)")
+        #expect(abs(simd_length(b.position - a.position) - 4) < 0.001)
+    }
+
+    @Test("default distance is the current separation")
+    func defaultDistanceIsCurrent() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let b = PhysicsBody2D(x: 3, y: 4, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b)
+        #expect(abs(c.targetDistance - 5) < 0.001)
+
+        // 既に目標距離なので solve() しても動かない
+        c.solve()
+        #expect(a.position == SIMD2<Float>(0, 0))
+        #expect(b.position == SIMD2<Float>(3, 4))
+    }
+
+    @Test("static body does not move; the other body absorbs the correction")
+    func staticBodyDoesNotMove() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        a.isStatic = true
+        let b = PhysicsBody2D(x: 10, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b, distance: 4)
+
+        c.solve()
+
+        #expect(a.position == SIMD2<Float>(0, 0), "static ボディは動かない")
+        // b のみが補正される（対称補正の半分 = 3 だけ動く実装仕様）
+        #expect(abs(b.position.x - 7) < 0.001)
+    }
+
+    @Test("pin constraint moves the body toward the anchor by stiffness")
+    func pinConstraint() {
+        let body = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(pin: body, x: 10, y: 0)
+
+        c.solve()
+        #expect(abs(body.position.x - 10) < 0.001, "stiffness 1.0 で即座にピン位置へ")
+
+        // ソフトピン（stiffness 0.5）は中間まで
+        let body2 = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let c2 = PhysicsConstraint2D(pin: body2, x: 10, y: 0)
+        c2.stiffness = 0.5
+        c2.solve()
+        #expect(abs(body2.position.x - 5) < 0.001)
+    }
+
+    @Test("coincident bodies do not produce NaN")
+    func coincidentBodies() {
+        let a = PhysicsBody2D(x: 5, y: 5, shape: .circle(radius: 1))
+        let b = PhysicsBody2D(x: 5, y: 5, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b, distance: 4)
+
+        c.solve()
+        #expect(a.position.x.isFinite && a.position.y.isFinite)
+        #expect(b.position.x.isFinite && b.position.y.isFinite)
+    }
+
+    @Test("non-finite stiffness resets to 1.0")
+    func nonFiniteStiffness() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(pin: a, x: 1, y: 1)
+        c.stiffness = .nan
+        #expect(c.stiffness == 1.0)
+        c.stiffness = 2.0
+        #expect(c.stiffness == 1.0)
+        c.stiffness = -1.0
+        #expect(c.stiffness == 0.0)
     }
 }

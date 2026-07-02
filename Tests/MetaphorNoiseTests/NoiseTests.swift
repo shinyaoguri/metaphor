@@ -77,68 +77,68 @@ struct NoiseConfigTests {
 
 // MARK: - GKNoiseWrapper Tests
 
-@Suite("GKNoiseWrapper")
+@Suite("GKNoiseWrapper", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 struct GKNoiseWrapperTests {
 
     @Test("perlin noise creation")
     @MainActor func perlinCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("voronoi noise creation")
     @MainActor func voronoiCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .voronoi, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("billow noise creation")
     @MainActor func billowCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .billow, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("ridged noise creation")
     @MainActor func ridgedCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .ridged, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("cylinders noise creation")
     @MainActor func cylindersCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .cylinders, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("spheres noise creation")
     @MainActor func spheresCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .spheres, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("checkerboard noise creation")
     @MainActor func checkerboardCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .checkerboard, config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("constant noise creation")
     @MainActor func constantCreation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .constant(value: 0.5), config: NoiseConfig(), device: device)
         _ = wrapper
     }
 
     @Test("sample returns float value")
     @MainActor func sampleValue() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
         let value = wrapper.sample(x: 0.5, y: 0.3)
         // Perlin noise output is bounded
@@ -147,7 +147,7 @@ struct GKNoiseWrapperTests {
 
     @Test("sampleGrid returns correct count")
     @MainActor func sampleGrid() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
         let grid = wrapper.sampleGrid(width: 16, height: 16)
         #expect(grid.count == 256)
@@ -155,7 +155,7 @@ struct GKNoiseWrapperTests {
 
     @Test("sampleGrid values are finite")
     @MainActor func sampleGridFinite() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .voronoi, config: NoiseConfig(), device: device)
         let grid = wrapper.sampleGrid(width: 8, height: 8)
         for value in grid {
@@ -165,7 +165,7 @@ struct GKNoiseWrapperTests {
 
     @Test("normalized config clamps to 0-1")
     @MainActor func normalizedOutput() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         var config = NoiseConfig()
         config.normalized = true
         let wrapper = GKNoiseWrapper(type: .perlin, config: config, device: device)
@@ -178,7 +178,7 @@ struct GKNoiseWrapperTests {
 
     @Test("texture generation")
     @MainActor func textureGeneration() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
         let texture = wrapper.texture(width: 32, height: 32)
         #expect(texture != nil)
@@ -189,7 +189,7 @@ struct GKNoiseWrapperTests {
 
     @Test("image generation")
     @MainActor func imageGeneration() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .billow, config: NoiseConfig(), device: device)
         let image = wrapper.image(width: 16, height: 16)
         #expect(image != nil)
@@ -197,7 +197,7 @@ struct GKNoiseWrapperTests {
 
     @Test("invert operation")
     @MainActor func invertOperation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
         let beforeGrid = wrapper.sampleGrid(width: 8, height: 8)
         wrapper.invert()
@@ -215,7 +215,7 @@ struct GKNoiseWrapperTests {
 
     @Test("applyAbsoluteValue operation")
     @MainActor func absOperation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         var config = NoiseConfig()
         config.normalized = false
         let wrapper = GKNoiseWrapper(type: .perlin, config: config, device: device)
@@ -228,7 +228,7 @@ struct GKNoiseWrapperTests {
 
     @Test("clamp operation")
     @MainActor func clampOperation() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         var config = NoiseConfig()
         config.normalized = false
         let wrapper = GKNoiseWrapper(type: .perlin, config: config, device: device)
@@ -242,7 +242,7 @@ struct GKNoiseWrapperTests {
 
     @Test("different seeds produce different noise")
     @MainActor func differentSeeds() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         var config1 = NoiseConfig()
         config1.seed = 1
         var config2 = NoiseConfig()
@@ -272,7 +272,7 @@ struct NoiseTextureBuilderTests {
 
     @Test("build grayscale texture")
     @MainActor func buildGrayscaleTexture() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let values: [Float] = Array(repeating: 0.5, count: 16)
         let texture = NoiseTextureBuilder.buildTexture(
             device: device, values: values, width: 4, height: 4
@@ -284,7 +284,7 @@ struct NoiseTextureBuilderTests {
 
     @Test("build color mapped texture")
     @MainActor func buildColorMappedTexture() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let values: [Float] = (0..<64).map { Float($0) / 63.0 }
         let stops: [(Float, SIMD4<UInt8>)] = [
             (0.0, SIMD4(0, 0, 0, 255)),
@@ -308,7 +308,7 @@ struct NoiseConfigRebuildTests {
 
     @Test("changing seed changes sample output")
     func seedChangeReflects() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
 
         // 複数点で比較する（単一点では偶然一致し得るため）
@@ -326,7 +326,7 @@ struct NoiseConfigRebuildTests {
 
     @Test("changing frequency changes sample output")
     func frequencyChangeReflects() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
 
         let points: [(Float, Float)] = [(0.13, 0.29), (1.7, 2.3), (5.5, 8.1), (0.01, 9.9)]
@@ -342,7 +342,7 @@ struct NoiseConfigRebuildTests {
 
     @Test("sampleGrid cache is invalidated by config change")
     func gridCacheInvalidated() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
 
         let before = wrapper.sampleGrid(width: 16, height: 16)

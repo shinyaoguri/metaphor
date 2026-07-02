@@ -43,4 +43,16 @@ struct BridgeValidationTests {
         let sketch = MinimalSketch()
         _ = try sketch.makePhysics2D(cellSize: 50)
     }
+
+    @Test("makeSourcePass rejects non-positive dimensions")
+    func sourcePassRejectsNonPositive() {
+        // 検証は context アクセスの前に走るため GPU なしでテストできる
+        let sketch = MinimalSketch()
+        #expect(throws: MetaphorError.self) {
+            _ = try sketch.makeSourcePass(label: "t", width: 0, height: 64)
+        }
+        #expect(throws: MetaphorError.self) {
+            _ = try sketch.makeSourcePass(label: "t", width: 64, height: -1)
+        }
+    }
 }
