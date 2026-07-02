@@ -19,8 +19,20 @@ public final class GKNoiseWrapper {
     public let type: NoiseType
 
     /// ノイズ設定にアクセスまたは変更します。
+    ///
+    /// frequency / octaves / seed 等のソースパラメータは GKNoise の構築時に
+    /// 焼き込まれるため、変更するとノイズソースが再構築されます。
+    ///
+    /// - Note: ``add(_:)`` / ``multiply(_:)`` / ``invert()`` 等の合成・変換は
+    ///   ソース再構築で失われます。config 変更後も必要な場合は再適用してください。
     public var config: NoiseConfig {
-        didSet { invalidateCache() }
+        didSet {
+            // ソースを再構築しないと frequency/octaves/seed 等の変更が
+            // sample()/sampleGrid() に反映されない（origin/sampleScale/
+            // normalized だけが効く silent failure になっていた）
+            gkNoise = Self.makeGKNoise(type: type, config: config)
+            invalidateCache()
+        }
     }
 
     private var gkNoise: GKNoise

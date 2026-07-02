@@ -299,3 +299,59 @@ struct NoiseTextureBuilderTests {
         #expect(texture?.height == 8)
     }
 }
+
+// MARK: - config 変更のソース再構築（#143）
+
+@Suite("GKNoiseWrapper config rebuild")
+@MainActor
+struct NoiseConfigRebuildTests {
+
+    @Test("changing seed changes sample output")
+    func seedChangeReflects() {
+        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
+
+        // 複数点で比較する（単一点では偶然一致し得るため）
+        let points: [(Float, Float)] = [(0.13, 0.29), (1.7, 2.3), (5.5, 8.1), (0.01, 9.9)]
+        let before = points.map { wrapper.sample(x: $0.0, y: $0.1) }
+
+        var config = wrapper.config
+        config.seed = 424_242
+        wrapper.config = config
+
+        // 修正前は init 時の GKNoise が再構築されず、seed 変更が反映されなかった
+        let after = points.map { wrapper.sample(x: $0.0, y: $0.1) }
+        #expect(before != after)
+    }
+
+    @Test("changing frequency changes sample output")
+    func frequencyChangeReflects() {
+        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
+
+        let points: [(Float, Float)] = [(0.13, 0.29), (1.7, 2.3), (5.5, 8.1), (0.01, 9.9)]
+        let before = points.map { wrapper.sample(x: $0.0, y: $0.1) }
+
+        var config = wrapper.config
+        config.frequency = 8.0
+        wrapper.config = config
+
+        let after = points.map { wrapper.sample(x: $0.0, y: $0.1) }
+        #expect(before != after)
+    }
+
+    @Test("sampleGrid cache is invalidated by config change")
+    func gridCacheInvalidated() {
+        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let wrapper = GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: device)
+
+        let before = wrapper.sampleGrid(width: 16, height: 16)
+
+        var config = wrapper.config
+        config.seed = 777
+        wrapper.config = config
+
+        let after = wrapper.sampleGrid(width: 16, height: 16)
+        #expect(before != after)
+    }
+}
