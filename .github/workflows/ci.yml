@@ -171,9 +171,11 @@ jobs:
               -ignore-filename-regex='Tests/|\.build/'
           fi
 
-  # Examples are NOT built in CI. Each is a standalone SwiftPM package, so
-  # building one recompiles all of metaphor from scratch — building all 263
+  # Examples are NOT built per-PR. Each is a standalone SwiftPM package, so
+  # building one recompiles all of metaphor from scratch — building all 271
   # would be prohibitively slow and costly (macOS minutes bill at 10x), for a
   # low-stakes check (examples have no assertions; build-and-test already proves
-  # the public API compiles). Verify locally instead: `make examples-check`
-  # (all), or `./scripts/run-examples.sh --build-only --smoke` (~19 reps).
+  # the public API compiles). Instead the smoke subset (~19 reps) is built by
+  # the weekly examples-sweep workflow and by release.yml before tagging
+  # (Issue #147). Verify locally: `make examples-check` (all), or
+  # `./scripts/run-examples.sh --build-only --smoke`.

@@ -1,6 +1,9 @@
-# Representative supported examples built per-PR (when Sources/ change) as a
-# fast API-drift smoke test. One per major API surface; the full 263-example
-# sweep runs nightly. Paths are relative to Examples/ (prefix match).
+# Curated representative examples (one per major API surface) used as the
+# API-drift smoke set by `./scripts/run-examples.sh --build-only --smoke`.
+# Verified automatically by the weekly examples-sweep workflow and by the
+# Release workflow before tagging; per-PR CI does NOT build examples (cost —
+# see the note at the bottom of .github/workflows/ci.yml). Run locally with
+# `make examples-check` (all). Paths are relative to Examples/ (prefix match).
 Basics/Form/Bezier
 Basics/Transform/Arm
 Basics/Lights/Directional
