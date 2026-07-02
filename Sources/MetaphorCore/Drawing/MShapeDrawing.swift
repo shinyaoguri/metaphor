@@ -159,9 +159,14 @@ extension SketchContext {
 
         // 塗りつぶし三角形の描画
         if canvas.hasFill, let tris = s.cachedTriangles2D, !tris.isEmpty {
+            // 頂点カラー / UV は 2D 描画経路では未対応。黙って捨てず一度だけ警告する
+            if !s.warned2DVertexAttributes,
+               s.vertices2D.contains(where: { $0.color != nil || $0.uv != nil }) {
+                s.warned2DVertexAttributes = true
+                metaphorWarning("MShape: per-vertex color/UV are not yet supported in the 2D draw path and are ignored")
+            }
             let fillColor = canvas.fillColor
             for (v0, v1, v2) in tris {
-                // 頂点カラーの確認
                 canvas.addTriangle(v0.x, v0.y, v1.x, v1.y, v2.x, v2.y, fillColor)
             }
         }
@@ -272,15 +277,14 @@ extension SketchContext {
             applyShapeStyle3D(s)
         }
 
-        // 指定サイズでプリミティブを上書き
+        // 指定サイズのプリミティブは専用スロット（sizedMesh3D）にキャッシュする。
+        // primitiveMesh3D を上書きすると、その後のサイズなし shape() が
+        // リサイズ済みメッシュを誤再利用する（状態汚染）。
         switch s.kind {
-        case .box:
-            ensurePrimitiveMesh3DForSize(s, width: w, height: h, depth: w)
-            if let mesh = s.primitiveMesh3D { canvas3D.mesh(mesh) }
-
-        case .sphere:
-            ensurePrimitiveMesh3DForSize(s, width: w, height: h, depth: w)
-            if let mesh = s.primitiveMesh3D { canvas3D.mesh(mesh) }
+        case .box, .sphere:
+            if let mesh = sizedPrimitiveMesh3D(s, width: w, height: h, depth: w) {
+                canvas3D.mesh(mesh)
+            }
 
         case .path3D:
             canvas3D.scale(w, h, w)
@@ -344,21 +348,34 @@ extension SketchContext {
         }
     }
 
-    private func ensurePrimitiveMesh3DForSize(_ s: MShape, width: Float, height: Float, depth: Float) {
+    /// サイズ指定 shape() 用のメッシュを返します（同一寸法なら再利用、
+    /// ``MShape/primitiveMesh3D`` には触れない）。
+    private func sizedPrimitiveMesh3D(
+        _ s: MShape, width: Float, height: Float, depth: Float
+    ) -> Mesh? {
+        let size = SIMD3(width, height, depth)
+        if let mesh = s.sizedMesh3D, s.sizedMesh3DSize == size {
+            return mesh
+        }
         let device = renderer.device
         do {
+            let mesh: Mesh?
             switch s.kind {
             case .box:
-                s.primitiveMesh3D = try Mesh.box(device: device, width: width, height: height, depth: depth)
+                mesh = try Mesh.box(device: device, width: width, height: height, depth: depth)
             case .sphere(_, let detail):
                 let r = min(width, height) / 2
                 let rings = max(detail / 2, 4)
-                s.primitiveMesh3D = try Mesh.sphere(device: device, radius: r, segments: detail, rings: rings)
+                mesh = try Mesh.sphere(device: device, radius: r, segments: detail, rings: rings)
             default:
-                break
+                mesh = nil
             }
+            s.sizedMesh3D = mesh
+            s.sizedMesh3DSize = mesh != nil ? size : nil
+            return mesh
         } catch {
             metaphorWarning("Failed to create sized primitive mesh for MShape: \(error)")
+            return nil
         }
     }
 }

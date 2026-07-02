@@ -321,13 +321,14 @@ extension MShape {
         }
 
         // シェイプモードに基づくインデックス配列の構築
-        var indices: [UInt16] = []
+        // （UInt32 で構築し、65,536 頂点超の大規模ジェネラティブでもトラップしない）
+        var indices: [UInt32] = []
         switch shapeMode3D {
         case .polygon:
             // ポリゴンモードではファンテッセレーション
             if vertices3D.count >= 3 {
                 for i in 1..<(vertices3D.count - 1) {
-                    indices.append(contentsOf: [0, UInt16(i), UInt16(i + 1)])
+                    indices.append(contentsOf: [0, UInt32(i), UInt32(i + 1)])
                 }
                 if closeMode3D == .close && vertices3D.count >= 3 {
                     // ファンにより既に閉じている
@@ -336,20 +337,20 @@ extension MShape {
         case .triangles:
             var i = 0
             while i + 2 < vertices3D.count {
-                indices.append(contentsOf: [UInt16(i), UInt16(i + 1), UInt16(i + 2)])
+                indices.append(contentsOf: [UInt32(i), UInt32(i + 1), UInt32(i + 2)])
                 i += 3
             }
         case .triangleStrip:
             for i in 0..<(vertices3D.count - 2) {
                 if i % 2 == 0 {
-                    indices.append(contentsOf: [UInt16(i), UInt16(i + 1), UInt16(i + 2)])
+                    indices.append(contentsOf: [UInt32(i), UInt32(i + 1), UInt32(i + 2)])
                 } else {
-                    indices.append(contentsOf: [UInt16(i + 1), UInt16(i), UInt16(i + 2)])
+                    indices.append(contentsOf: [UInt32(i + 1), UInt32(i), UInt32(i + 2)])
                 }
             }
         case .triangleFan:
             for i in 1..<(vertices3D.count - 1) {
-                indices.append(contentsOf: [0, UInt16(i), UInt16(i + 1)])
+                indices.append(contentsOf: [0, UInt32(i), UInt32(i + 1)])
             }
         case .lines, .points:
             // 描画時に別処理。塗りつぶしメッシュなし
@@ -362,12 +363,21 @@ extension MShape {
             return
         }
 
-        cachedMesh3D = try? Mesh(
-            device: device,
-            vertices: meshVertices,
-            indices: indices,
-            uvVertices: uvVertices
-        )
+        if meshVertices.count <= 65535 {
+            cachedMesh3D = try? Mesh(
+                device: device,
+                vertices: meshVertices,
+                indices: indices.map { UInt16($0) },
+                uvVertices: uvVertices
+            )
+        } else {
+            cachedMesh3D = try? Mesh(
+                device: device,
+                vertices: meshVertices,
+                indices32: indices,
+                uvVertices: uvVertices
+            )
+        }
         isDirty = false
     }
 
