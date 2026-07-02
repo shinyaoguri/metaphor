@@ -93,9 +93,12 @@ final class InstanceBatcher2D {
 /// 初期化時に一度だけ作成される共有ユニットメッシュのファクトリ。
 enum UnitMesh2D {
 
-    /// ユニット円メッシュを作成: 32セグメントのトライアングルファン、半径0.5、原点中心。
+    /// ユニット円メッシュを作成: 64セグメントのトライアングルファン、半径0.5、原点中心。
+    ///
+    /// 全サイズの円で共有されるためサイズ適応はできない。64 セグメントの
+    /// サジッタ誤差は直径 600px でも約 0.19px で実用上滑らか。
     /// - Returns: (MTLBuffer, 頂点数) のタプル。バッファ作成に失敗した場合は nil。
-    static func createCircle(device: MTLDevice, segments: Int = 32) -> (MTLBuffer, Int)? {
+    static func createCircle(device: MTLDevice, segments: Int = 64) -> (MTLBuffer, Int)? {
         var verts: [SIMD2<Float>] = []
         verts.reserveCapacity(segments * 3)
         let step = Float.pi * 2.0 / Float(segments)

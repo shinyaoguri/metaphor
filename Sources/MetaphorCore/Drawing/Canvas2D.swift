@@ -81,7 +81,17 @@ public final class Canvas2D: CanvasStyle {
 
     var maxVertices: Int { colorBuffer.capacity }
     var maxTexturedVertices: Int { texturedBuffer.capacity }
-    let ellipseSegments: Int = 32
+
+    /// 半径から楕円・弧の分割数を算出します（全円換算）。
+    ///
+    /// n 角形と真円の最大サジッタ誤差が約 0.25px 以下になるよう
+    /// `n = π / acos(1 − ε/r)` で選び、32〜128 にクランプします。
+    /// `scale()` による拡大は考慮しません（Processing の固定 detail と同じ割り切り）。
+    func ellipseSegments(forRadius r: Float) -> Int {
+        guard r.isFinite, r > 4 else { return 32 }
+        let n = Float.pi / acos(max(-1.0, 1.0 - 0.25 / r))
+        return min(128, max(32, Int(n.rounded(.up))))
+    }
 
     // MARK: - フレームごとの状態
 
@@ -420,7 +430,7 @@ public final class Canvas2D: CanvasStyle {
 
         // 2D インスタンシングリソース
         guard let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device) else {
-            throw MetaphorError.bufferCreationFailed(size: 32 * 3 * MemoryLayout<SIMD2<Float>>.stride)
+            throw MetaphorError.bufferCreationFailed(size: 64 * 3 * MemoryLayout<SIMD2<Float>>.stride)
         }
         self.unitCircleBuffer = circleBuf
         self.unitCircleVertexCount = circleCount

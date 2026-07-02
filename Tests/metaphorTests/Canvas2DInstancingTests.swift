@@ -146,12 +146,12 @@ struct InstanceBatcher2DTests {
 @MainActor
 struct UnitMesh2DTests {
 
-    @Test("Unit circle has 96 vertices (32 segments × 3)")
+    @Test("Unit circle has 192 vertices (64 segments × 3)")
     func circleVertexCount() {
         let device = MTLCreateSystemDefaultDevice()!
         let (buffer, count) = UnitMesh2D.createCircle(device: device)!
-        #expect(count == 96)
-        #expect(buffer.length == 96 * MemoryLayout<SIMD2<Float>>.stride)
+        #expect(count == 192)
+        #expect(buffer.length == 192 * MemoryLayout<SIMD2<Float>>.stride)
     }
 
     @Test("Unit rect has 6 vertices (2 triangles)")
@@ -265,7 +265,7 @@ struct Canvas2DInstancingIntegrationTests {
             height: 1080
         )
 
-        #expect(canvas.unitCircleVertexCount == 96)
+        #expect(canvas.unitCircleVertexCount == 192)
         #expect(canvas.unitRectVertexCount == 6)
         #expect(!canvas.instancedPipelineStates.isEmpty)
     }

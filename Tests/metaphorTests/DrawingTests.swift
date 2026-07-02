@@ -112,6 +112,30 @@ struct Canvas2DTests {
         #expect(canvas.width == 1920)
         #expect(canvas.height == 1080)
     }
+
+    @Test("ellipseSegments adapts to radius within [32, 128]")
+    func ellipseSegmentsAdaptsToRadius() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+
+        // 小半径・不正値は下限 32
+        #expect(canvas.ellipseSegments(forRadius: 0) == 32)
+        #expect(canvas.ellipseSegments(forRadius: -10) == 32)
+        #expect(canvas.ellipseSegments(forRadius: Float.nan) == 32)
+        #expect(canvas.ellipseSegments(forRadius: 24) == 32)
+        // 中間域は 32 超〜128 未満に増える（d=300 の円グラフ相当）
+        let mid = canvas.ellipseSegments(forRadius: 150)
+        #expect(mid > 32 && mid < 128, "r=150 は中間の分割数になる: \(mid)")
+        // 巨大半径は上限 128
+        #expect(canvas.ellipseSegments(forRadius: 100_000) == 128)
+        // 半径に対して単調非減少
+        var prev = 0
+        for r in stride(from: Float(1), through: 3000, by: 50) {
+            let n = canvas.ellipseSegments(forRadius: r)
+            #expect(n >= prev, "r=\(r) で分割数が減少した: \(prev) -> \(n)")
+            prev = n
+        }
+    }
 }
 
 // MARK: - Canvas2D currentEncoder Tests
