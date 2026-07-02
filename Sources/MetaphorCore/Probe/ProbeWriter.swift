@@ -76,11 +76,18 @@ enum ProbeWriter {
     /// consumer がタイムアウトではなく「id が一致する frame.json の warnings」で
     /// 失敗を検知できるようにするための応答チャネル。シーケンス経路の
     /// 「warning 付き manifest」と対称の規約。
+    ///
+    /// 前回応答の `frame.png` が残っていると consumer が新しい id の frame.json と
+    /// 古い画像を組にしてしまうため、失敗応答では frame.png を削除してから
+    /// frame.json を書く（CONTRACT.md 契約点 4「失敗応答」）。
     static func writeFailureResponse(directory: String, metadata: ProbeFrameMetadata) {
         writeQueue.async {
             let dirURL = URL(fileURLWithPath: directory)
             try? FileManager.default.createDirectory(
                 at: dirURL, withIntermediateDirectories: true
+            )
+            try? FileManager.default.removeItem(
+                at: dirURL.appendingPathComponent("frame.png")
             )
             writeJSON(metadata, to: dirURL, baseName: "frame")
         }
