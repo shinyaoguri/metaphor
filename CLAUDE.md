@@ -48,6 +48,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 |---|---|
 | `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` |
 | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` |
+| `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` |
 
 `make setup` が入れる pre-push フックが陳腐化を検出して push を中断します（CI も safety net として再生成）。生成器は決定的であること（全コレクションをソート）——非決定的出力は auto-fix bot が毎回 push する原因になります。
 

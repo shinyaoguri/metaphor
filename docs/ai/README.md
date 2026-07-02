@@ -64,6 +64,14 @@ installers, and source checkouts.
   bridge conveniences for optional subsystems.
 - Triple-buffered resources use a 3-buffer rotation. Keep CPU writes and GPU
   reads separated by `frameBufferIndex` / `bufferIndex` conventions.
+- Zero-copy shared-storage paths (`Compute/GPUBuffer`, `Drawing/PixelBuffer`,
+  the glyph atlas `replace()` in `TextRenderer`) trade safety for latency by
+  design: an immediate CPU write can race an in-flight GPU read of a previous
+  frame. The contract is **write before the frame's draw calls that read the
+  resource** (setup or the top of `draw()`), not mid-frame after submitting
+  work that samples it. Do not "fix" these paths by adding blocking waits;
+  if a use case genuinely needs mid-frame mutation, triple-buffer that
+  resource instead (see #164).
 - Compute work that feeds rendering must preserve the renderer's explicit
   compute-to-render synchronization.
 - Runtime drawing failures generally warn and skip work; initialization and

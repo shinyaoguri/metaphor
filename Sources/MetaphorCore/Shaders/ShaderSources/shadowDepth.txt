@@ -10,6 +10,7 @@ struct ShadowVertexIn {
     float3 position [[attribute(0)]];
 };
 
+// Depth-only vertex shader for shadow map generation
 vertex float4 metaphor_shadowDepthVertex(
     ShadowVertexIn in [[stage_in]],
     constant ShadowUniforms &uniforms [[buffer(1)]]
