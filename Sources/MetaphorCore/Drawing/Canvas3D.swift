@@ -33,6 +33,9 @@ struct Light3D {
     )
 }
 
+// スナップショットの変更検出（#201）に使用
+extension Light3D: Equatable {}
+
 // MARK: - Material3D
 
 /// GPU 互換のマテリアルデータ（64バイト）。
@@ -109,6 +112,35 @@ public final class Canvas3D: CanvasStyle {
     var farPlane: Float = 10000
     var viewProjectionDirty: Bool = true
     var cachedViewProjection: float4x4 = .identity
+
+    /// 記録経路で共有するカメラ/ライトのスナップショット（#201）。
+    /// 状態が変わっていない間は同一インスタンスを DrawCall3D 間で共有する。
+    private var currentStateSnapshot: RenderStateSnapshot3D?
+
+    /// 現在のカメラ/投影/ライト状態のスナップショットを返します（変化がなければ
+    /// 直前のインスタンスを再利用。参照同一性が「状態が同じ」を意味する）。
+    private func snapshotForRecording() -> RenderStateSnapshot3D {
+        let vp = computeViewProjection()
+        if let snap = currentStateSnapshot,
+           snap.viewProjection == vp,
+           snap.cameraEye == cameraEye,
+           snap.lights == lightArray {
+            return snap
+        }
+        let snap = RenderStateSnapshot3D(viewProjection: vp, cameraEye: cameraEye, lights: lightArray)
+        currentStateSnapshot = snap
+        return snap
+    }
+
+    /// 再生時にスナップショットの状態を復元します（#201）。
+    /// cachedViewProjection を直接差し替えるため、以降の computeViewProjection() は
+    /// スナップショットの行列を返す。
+    private func applySnapshot(_ snap: RenderStateSnapshot3D) {
+        cameraEye = snap.cameraEye
+        lightArray = snap.lights
+        cachedViewProjection = snap.viewProjection
+        viewProjectionDirty = false
+    }
     var useOrthographic: Bool = false
     var orthoLeft: Float = 0
     var orthoRight: Float = 0
@@ -404,6 +436,11 @@ public final class Canvas3D: CanvasStyle {
         var hasFill: Bool
         var hasStroke: Bool
         var strokeColor: SIMD4<Float>
+        // カメラ/ライト（#201: スナップショット適用で書き換えるため保存・復元する）
+        var cameraEye: SIMD3<Float>
+        var lights: [Light3D]
+        var cachedViewProjection: float4x4
+        var viewProjectionDirty: Bool
     }
     private var replaySaved: ReplaySavedState?
 
@@ -417,7 +454,10 @@ public final class Canvas3D: CanvasStyle {
             transform: currentTransform, fillColor: fillColor,
             material: currentMaterial, customMaterial: currentCustomMaterial,
             texture: currentTexture, hasFill: hasFill,
-            hasStroke: hasStroke, strokeColor: strokeColor)
+            hasStroke: hasStroke, strokeColor: strokeColor,
+            cameraEye: cameraEye, lights: lightArray,
+            cachedViewProjection: cachedViewProjection,
+            viewProjectionDirty: viewProjectionDirty)
         self.encoder = encoder
         isReplaying = true
     }
@@ -429,6 +469,17 @@ public final class Canvas3D: CanvasStyle {
         guard isReplaying, !recordedDrawCalls.isEmpty else { return }
         let clamped = range.clamped(to: 0..<recordedDrawCalls.count)
         for call in recordedDrawCalls[clamped] {
+            // 呼び出し時点のカメラ/ライトを復元（#201）。インスタンスバッチの
+            // ユニフォームは flush 時の状態で確定するため、スナップショットが
+            // 変わる境界では先にバッチを確定する（同一スナップショットは
+            // インスタンス間で参照共有されるので、切替時のみ flush が走る）。
+            if let snap = call.stateSnapshot {
+                if snap !== lastReplaySnapshot {
+                    flushInstanceBatch()
+                    applySnapshot(snap)
+                    lastReplaySnapshot = snap
+                }
+            }
             currentTransform = call.transform
             fillColor = call.fillColor
             currentMaterial = call.material
@@ -442,11 +493,15 @@ public final class Canvas3D: CanvasStyle {
         flushInstanceBatch()
     }
 
+    /// 再生中に最後に適用したスナップショット（切替検出用、#201）。
+    private var lastReplaySnapshot: RenderStateSnapshot3D?
+
     /// 再生を終了し、描画状態を復元します（#70 / #71）。
     func endReplay() {
         flushInstanceBatch()
         isReplaying = false
         self.encoder = nil
+        lastReplaySnapshot = nil
         if let s = replaySaved {
             currentTransform = s.transform
             fillColor = s.fillColor
@@ -456,6 +511,10 @@ public final class Canvas3D: CanvasStyle {
             hasFill = s.hasFill
             hasStroke = s.hasStroke
             strokeColor = s.strokeColor
+            cameraEye = s.cameraEye
+            lightArray = s.lights
+            cachedViewProjection = s.cachedViewProjection
+            viewProjectionDirty = s.viewProjectionDirty
         }
         replaySaved = nil
     }
@@ -1130,7 +1189,8 @@ public final class Canvas3D: CanvasStyle {
                 hasFill: hasFill,
                 hasStroke: hasStroke,
                 strokeColor: strokeColor,
-                seq: seqProvider?() ?? 0
+                seq: seqProvider?() ?? 0,
+                stateSnapshot: snapshotForRecording()
             ))
             return
         }
