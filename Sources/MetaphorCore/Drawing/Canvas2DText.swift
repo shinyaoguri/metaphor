@@ -74,11 +74,15 @@ extension Canvas2D {
             case .center: drawX -= totalWidth / 2
             case .right: drawX -= totalWidth
             }
+            // drawTextFromAtlas の y は「ベースライン」位置（PositionedGlyph の座標が
+            // ベースライン基準のため）。各揃えモードからベースラインへ変換する。
+            // 従来は y をテキスト上端とみなして .baseline で ascent を引いており、
+            // フォールバック経路より約 1 ascent 上にずれていた。
             switch currentTextAlignV {
-            case .top: break
-            case .center: drawY -= totalHeight / 2
-            case .baseline: drawY -= ascent
-            case .bottom: drawY -= totalHeight
+            case .top: drawY += ascent
+            case .center: drawY += ascent - totalHeight / 2
+            case .baseline: break
+            case .bottom: drawY -= descent
             }
 
             drawTextFromAtlas(texture: atlasTex, glyphs: glyphs, x: drawX, y: drawY)

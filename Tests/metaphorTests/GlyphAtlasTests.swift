@@ -91,6 +91,32 @@ struct GlyphAtlasTests {
             #expect(g != nil, "Failed for character: \(char)")
         }
     }
+
+    @Test("layout UVs remain valid across atlas expansion")
+    func layoutAcrossExpansion() {
+        let device = MetalTestHelper.device!
+        // 大きなフォントで多数のユニーク文字を 1 回の layoutGlyphs に含め、
+        // レイアウト中にアトラスの縦拡張（512 → 1024 → 2048）を跨がせる
+        let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 120)
+        let string = String((33...126).compactMap { UnicodeScalar($0).map(Character.init) })
+
+        guard let first = atlas.layoutGlyphs(string: string) else {
+            Issue.record("layoutGlyphs failed")
+            return
+        }
+        // 2 回目のレイアウトは全グリフ解決済み（拡張なし）なので UV は最終アトラス基準。
+        // 拡張を跨いだ 1 回目と一致しなければ、1 回目の前半の UV が旧高さ基準で無効。
+        guard let second = atlas.layoutGlyphs(string: string) else {
+            Issue.record("second layoutGlyphs failed")
+            return
+        }
+        #expect(first.count == second.count)
+        for (a, b) in zip(first, second) {
+            #expect(a.v0 == b.v0 && a.v1 == b.v1,
+                    "UV mismatch across expansion: \(a.v0)..\(a.v1) vs \(b.v0)..\(b.v1)")
+            #expect(a.u0 == b.u0 && a.u1 == b.u1)
+        }
+    }
 }
 
 // MARK: - TextRenderer Atlas Integration
@@ -125,5 +151,21 @@ struct TextRendererAtlasTests {
         let renderer = TextRenderer(device: device)
         renderer.maxCacheSize = 128
         #expect(renderer.maxCacheSize == 128)
+    }
+
+    @Test("atlas count is bounded when font size animates")
+    func atlasCountBounded() {
+        let device = MetalTestHelper.device!
+        let renderer = TextRenderer(device: device)
+        // textSize() アニメーション相当: 32 種類のサイズでアトラスを要求
+        for size in 0..<32 {
+            _ = renderer.textGlyphs(string: "A", fontSize: Float(10 + size), fontFamily: "Helvetica")
+        }
+        #expect(renderer.atlasCount <= renderer.maxAtlases,
+                "atlases: \(renderer.atlasCount) > cap \(renderer.maxAtlases)")
+
+        // 直近に使ったサイズは生き残っている（LRU）
+        let result = renderer.textGlyphs(string: "A", fontSize: 41, fontFamily: "Helvetica")
+        #expect(result != nil)
     }
 }
