@@ -136,7 +136,11 @@ public final class Graphics {
     /// オフスクリーンテクスチャを MImage として返します。
     /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
-        MImage(texture: textureManager.colorTexture)
+        let image = MImage(texture: textureManager.colorTexture)
+        // リードバックを描画と同じキューに載せ、endDraw(wait: false) 直後の
+        // loadPixels でも commit 順序で最新内容が読めるようにする
+        image.preferredReadbackQueue = commandQueue
+        return image
     }
 
     // MARK: - Drawing Methods (forwarded to Canvas2D)
