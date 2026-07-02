@@ -58,14 +58,19 @@ extension SketchContext {
         canvas3D.popState()
     }
 
-    /// 2D スタイル状態のみをスタックに保存します。
+    /// 2D・3D 両方のスタイル状態（変換を除く）をスタックに保存します。
+    ///
+    /// fill()/stroke() 等は 2D・3D 両方へ書き込むため、片方だけ保存すると
+    /// push/pop をまたいで 2D と 3D のスタイルが黙って乖離する。
     public func pushStyle() {
         canvas.pushStyle()
+        canvas3D.pushStyle()
     }
 
-    /// 2D スタイル状態のみをスタックから復元します。
+    /// 2D・3D 両方のスタイル状態（変換を除く）をスタックから復元します。
     public func popStyle() {
         canvas.popStyle()
+        canvas3D.popStyle()
     }
 
     /// 2D 平行移動を適用します。

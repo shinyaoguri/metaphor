@@ -430,4 +430,60 @@ struct Phase3Canvas3DFillStrokeTests {
         context.colorMode(.hsb, 360, 100, 100)
         context.fill(180, 50, 50)
     }
+
+    @Test("pushStyle/popStyle restores 3D fill as well as 2D")
+    func pushStyleRestores3DFill() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+
+        // fill() は 2D・3D 両方へ書き込まれる
+        context.fill(255.0, 0.0, 0.0)  // 赤（デフォルト colorMode は 0-255）
+        context.pushStyle()
+        context.fill(0.0, 0.0, 255.0)  // 青
+        context.noFill()
+        context.popStyle()
+
+        // 以前は 2D だけ赤に戻り、3D は noFill の青のままだった
+        #expect(canvas3D.fillColor.x == 1 && canvas3D.fillColor.z == 0)
+        #expect(canvas3D.hasFill == true)
+        #expect(canvas.fillColor.x == 1 && canvas.fillColor.z == 0)
+        #expect(canvas.hasFill == true)
+    }
+
+    @Test("pushStyle/popStyle restores 3D stroke and material")
+    func pushStyleRestores3DStrokeMaterial() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+
+        context.stroke(255.0, 0.0, 0.0)
+        let savedShininess = canvas3D.currentMaterial.specularAndShininess.w
+        context.pushStyle()
+        context.noStroke()
+        canvas3D.currentMaterial.specularAndShininess.w = savedShininess + 42
+        context.popStyle()
+
+        #expect(canvas3D.hasStroke == true)
+        #expect(canvas3D.strokeColor.x == 1 && canvas3D.strokeColor.z == 0)
+        #expect(canvas3D.currentMaterial.specularAndShininess.w == savedShininess)
+    }
+
+    @Test("popStyle does not touch the 3D transform")
+    func popStyleKeeps3DTransform() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+
+        context.pushStyle()
+        canvas3D.translate(1, 2, 3)
+        context.popStyle()
+
+        // popStyle はスタイルのみ復元し、変換は維持する
+        let t = canvas3D.currentTransform.columns.3
+        #expect(t.x == 1 && t.y == 2 && t.z == 3)
+    }
 }
