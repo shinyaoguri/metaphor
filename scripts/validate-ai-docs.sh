@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-DOC_FILES=(CLAUDE.md)
+DOC_FILES=(CLAUDE.md docs/ai/README.md docs/ai/for-sketch-authors.md)
 ERRORS=0
 
 red()   { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -91,10 +91,12 @@ echo "Checking source file references..."
 for doc in "${existing_docs[@]}"; do
     swift_files=$(grep -oE '[A-Za-z0-9_+]+\.swift' "$doc" | grep -v '^Package\.swift$' | sort -u || true)
     for file in $swift_files; do
-        if find Sources -name "$file" -print -quit 2>/dev/null | grep -q .; then
+        # docs/ai/ はテストや example のファイル（App.swift 等）にも言及するため
+        # Sources/ に加えて Tests/ と Examples/ も探索する
+        if find Sources Tests Examples -name "$file" -print -quit 2>/dev/null | grep -q .; then
             pass "$doc: $file"
         else
-            fail "$doc: $file — not found under Sources/"
+            fail "$doc: $file — not found under Sources/, Tests/, or Examples/"
         fi
     done
 done

@@ -24,7 +24,7 @@ jobs:
       actions: write   # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
       statuses: write  # Required to bridge workflow_dispatch runs to a legacy Status for the ruleset gate.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           # Need history for diffing against the push base / PR base to decide
@@ -67,7 +67,9 @@ jobs:
         run: ./scripts/check-contract.sh
       - name: Check wire-schema contract
         run: |
-          pip3 install --quiet --break-system-packages check-jsonschema
+          # バージョンを固定（更新は dependabot ではなく手動。挙動変化でスキーマ検証が
+          # 突然壊れないように）
+          pip3 install --quiet --break-system-packages check-jsonschema==0.37.4
           ./scripts/check-contract-schema.sh
       - name: Check CONTRACT.md identity across repos
         env:
@@ -78,25 +80,28 @@ jobs:
       - name: Get Syphon submodule hash
         id: syphon-hash
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      # ビルド環境（Xcode 版）をキーに含める。ランナー/Xcode が異なる workflow 間で
+      # 同一キーのキャッシュを共有すると ABI/SDK 差異を拾い得るため
+      - name: Get Xcode version
+        id: xcode-version
+        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
       - name: Cache Syphon.xcframework
         id: cache-syphon
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
       - name: Build Syphon
         if: steps.cache-syphon.outputs.cache-hit != 'true'
         run: make setup
-      - name: Cache SPM dependencies
-        uses: actions/cache@v5
-        with:
-          path: .build/artifacts
-          key: spm-deps-${{ hashFiles('Package.resolved') }}
-          restore-keys: spm-deps-
+      # NOTE: SPM 依存キャッシュは撤去した。remote 依存が存在しないため
+      # （swift-docc-plugin は未使用につき削除済み）、キャッシュ対象が空だった。
       - name: Build
         run: swift build -Xswiftc -warnings-as-errors
       - name: Test with Coverage
         run: swift test --enable-code-coverage -Xswiftc -warnings-as-errors
+      - name: Verify shader sources are up to date
+        run: python3 scripts/generate-shader-sources.py --check
       - name: Verify llms.txt is up to date
         if: steps.source-changed.outputs.changed == 'true'
         run: |
@@ -171,9 +176,11 @@ jobs:
               -ignore-filename-regex='Tests/|\.build/'
           fi
 
-  # Examples are NOT built in CI. Each is a standalone SwiftPM package, so
-  # building one recompiles all of metaphor from scratch — building all 263
+  # Examples are NOT built per-PR. Each is a standalone SwiftPM package, so
+  # building one recompiles all of metaphor from scratch — building all 271
   # would be prohibitively slow and costly (macOS minutes bill at 10x), for a
   # low-stakes check (examples have no assertions; build-and-test already proves
-  # the public API compiles). Verify locally instead: `make examples-check`
-  # (all), or `./scripts/run-examples.sh --build-only --smoke` (~19 reps).
+  # the public API compiles). Instead the smoke subset (~19 reps) is built by
+  # the weekly examples-sweep workflow and by release.yml before tagging
+  # (Issue #147). Verify locally: `make examples-check` (all), or
+  # `./scripts/run-examples.sh --build-only --smoke`.

@@ -17,18 +17,33 @@ extension SketchContext {
         }
     }
 
-    /// ピクセルバッファが存在しキャンバスサイズと一致することを保証します。
+    /// キャンバスの内容を CPU の ``pixels`` 配列へ読み戻します（Processing 互換、#202）。
     ///
-    /// 初回呼び出し時またはキャンバスサイズが変更された際に新しいピクセルバッファを作成します。
+    /// 初回呼び出し時またはキャンバスサイズ変更時にピクセルバッファを作成し、
+    /// キャンバスのカラーテクスチャの内容を読み戻します。
+    ///
+    /// - Important: 読み戻せるのは**前フレーム末尾までに確定した内容**です。
+    ///   現在のフレームで既に発行した描画コマンド（この draw() 内の先行呼び出し）は
+    ///   まだ GPU にコミットされていないため含まれません。Processing の典型パターン
+    ///   （draw() の先頭で `loadPixels()` → 加工 → `updatePixels()`）では、
+    ///   前フレームの最終内容 = 現在のキャンバス内容なので期待どおりに動作します。
+    ///
+    /// - Note: GPU の完了を待つためメインスレッドをブロックします（Processing と同等）。
     public func loadPixels() {
         let w = Int(width)
         let h = Int(height)
 
-        if let existing = pixelBuffer, existing.width == w, existing.height == h {
-            return
+        if pixelBuffer == nil || pixelBuffer!.width != w || pixelBuffer!.height != h {
+            pixelBuffer = PixelBuffer(width: w, height: h, device: renderer.device)
         }
+        guard let pb = pixelBuffer else { return }
 
-        pixelBuffer = PixelBuffer(width: w, height: h, device: renderer.device)
+        // レンダラーと同じキューで blit することで、コミット済みフレームとの
+        // 順序が保証される（描画中フレームは未コミットのため含まれない）
+        pb.download(
+            from: renderer.textureManager.colorTexture,
+            commandQueue: renderer.commandQueue
+        )
     }
 
     /// ピクセルバッファを GPU にアップロードしフルスクリーンクワッドとして描画します。

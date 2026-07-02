@@ -1,7 +1,7 @@
 # 設計ドキュメント: AI協調ローカルMCPサーバ（`metaphor mcp`）
 
 > ステータス: 実装済み（M1/M2 = metaphor-cli の `metaphor mcp`、M3 = README 反映 #91 完了）。
-> MCP ツールは `snapshot` / `input` / `build_status` / `api_reference` の 4 つ。
+> MCP ツールは `snapshot` / `capture_sequence` / `input` / `build_status` / `api_reference` の 5 つ。
 > 本書は当初の設計提案であり、確定仕様は実装・CONTRACT.md を正とする。
 > 対象: metaphor-cli（MCPサーバ本体）+ metaphor 本体（変更なし、契約の消費のみ）
 > 関連: Probe プラグイン、`InputInjectionPlugin`、ライブビューア（[live-viewer.md](./live-viewer.md)）、CONTRACT.md

@@ -1,4 +1,5 @@
 import Testing
+import simd
 @testable import MetaphorPhysics
 
 // MARK: - Physics2D Basic Tests
@@ -229,5 +230,170 @@ struct SpatialHash2DTests {
         hash.clear()
         let pairs = hash.queryPairs()
         #expect(pairs.isEmpty)
+    }
+}
+
+// MARK: - 非有限値の堅牢性（#142）
+
+@Suite("Physics2D non-finite robustness")
+@MainActor
+struct PhysicsNonFiniteTests {
+
+    @Test("NaN dt does not corrupt or crash the world")
+    func nanDt() {
+        let world = Physics2D(cellSize: 50)
+        world.setGravity(0, 980)
+        let ball = world.addCircle(x: 100, y: 100, radius: 20)
+
+        // 修正前は Verlet 積分で位置が NaN になり、空間ハッシュの
+        // Int(floor(NaN)) でトラップしていた
+        world.step(Float.nan)
+        world.step(Float.infinity)
+        world.step(-1)
+        world.step(0)
+
+        #expect(ball.position.x.isFinite && ball.position.y.isFinite)
+
+        // その後の正常な step は機能する
+        world.step(1.0 / 60.0)
+        #expect(ball.position.y > 100)
+    }
+
+    @Test("NaN body position is sanitized instead of crashing")
+    func nanPosition() {
+        let world = Physics2D(cellSize: 50)
+        let a = world.addCircle(x: 100, y: 100, radius: 20)
+        let b = world.addCircle(x: 110, y: 100, radius: 20)
+        world.step(1.0 / 60.0)
+
+        a.position = SIMD2(Float.nan, Float.nan)
+        world.step(1.0 / 60.0)
+
+        #expect(a.position.x.isFinite && a.position.y.isFinite)
+        #expect(b.position.x.isFinite && b.position.y.isFinite)
+    }
+
+    @Test("huge radius insert does not hang")
+    func hugeRadiusInsert() {
+        let hash = SpatialHash2D(cellSize: 50)
+        // 修正前は (2 * 3e8 / 50)^2 セルの二重ループでハング/メモリ枯渇
+        hash.insert(index: 0, position: SIMD2(0, 0), radius: 3e8)
+        hash.insert(index: 1, position: SIMD2(0, 0), radius: 5)
+        #expect(hash.queryPairs().count >= 1)
+    }
+
+    @Test("non-finite insert values are ignored without trapping")
+    func nonFiniteInsert() {
+        let hash = SpatialHash2D(cellSize: 50)
+        hash.insert(index: 0, position: SIMD2(Float.nan, 0), radius: 5)
+        hash.insert(index: 1, position: SIMD2(0, Float.infinity), radius: 5)
+        hash.insert(index: 2, position: SIMD2(0, 0), radius: Float.nan)
+        // 有限巨大値（> Int.max）も Int 変換でトラップしない
+        hash.insert(index: 3, position: SIMD2(3e38, -3e38), radius: 5)
+        #expect(hash.queryPairs().isEmpty)
+    }
+
+    @Test("constraint stiffness is clamped to [0, 1]")
+    func stiffnessClamped() {
+        let world = Physics2D()
+        let a = world.addCircle(x: 0, y: 0, radius: 5)
+        let b = world.addCircle(x: 50, y: 0, radius: 5)
+        let c = world.addConstraint(a, b, distance: 50)
+
+        c.stiffness = 2.5
+        #expect(c.stiffness == 1.0)
+        c.stiffness = -1.0
+        #expect(c.stiffness == 0.0)
+        c.stiffness = Float.nan
+        #expect(c.stiffness == 1.0)
+        c.stiffness = 0.5
+        #expect(c.stiffness == 0.5)
+    }
+}
+
+// MARK: - PhysicsConstraint2D solve()（#149: 純ロジックのカバレッジ）
+
+@Suite("PhysicsConstraint2D Solve")
+@MainActor
+struct PhysicsConstraint2DSolveTests {
+
+    @Test("distance constraint pulls both bodies symmetrically")
+    func distanceConstraintSymmetric() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let b = PhysicsBody2D(x: 10, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b, distance: 4)
+
+        c.solve()
+
+        // 距離 10 → 目標 4: 差 6 を両側で半分ずつ補正（stiffness 1.0）
+        #expect(abs(a.position.x - 3) < 0.001, "a は +3 へ移動: \(a.position)")
+        #expect(abs(b.position.x - 7) < 0.001, "b は -3 へ移動: \(b.position)")
+        #expect(abs(simd_length(b.position - a.position) - 4) < 0.001)
+    }
+
+    @Test("default distance is the current separation")
+    func defaultDistanceIsCurrent() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let b = PhysicsBody2D(x: 3, y: 4, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b)
+        #expect(abs(c.targetDistance - 5) < 0.001)
+
+        // 既に目標距離なので solve() しても動かない
+        c.solve()
+        #expect(a.position == SIMD2<Float>(0, 0))
+        #expect(b.position == SIMD2<Float>(3, 4))
+    }
+
+    @Test("static body does not move; the other body absorbs the correction")
+    func staticBodyDoesNotMove() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        a.isStatic = true
+        let b = PhysicsBody2D(x: 10, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b, distance: 4)
+
+        c.solve()
+
+        #expect(a.position == SIMD2<Float>(0, 0), "static ボディは動かない")
+        // b のみが補正される（対称補正の半分 = 3 だけ動く実装仕様）
+        #expect(abs(b.position.x - 7) < 0.001)
+    }
+
+    @Test("pin constraint moves the body toward the anchor by stiffness")
+    func pinConstraint() {
+        let body = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(pin: body, x: 10, y: 0)
+
+        c.solve()
+        #expect(abs(body.position.x - 10) < 0.001, "stiffness 1.0 で即座にピン位置へ")
+
+        // ソフトピン（stiffness 0.5）は中間まで
+        let body2 = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let c2 = PhysicsConstraint2D(pin: body2, x: 10, y: 0)
+        c2.stiffness = 0.5
+        c2.solve()
+        #expect(abs(body2.position.x - 5) < 0.001)
+    }
+
+    @Test("coincident bodies do not produce NaN")
+    func coincidentBodies() {
+        let a = PhysicsBody2D(x: 5, y: 5, shape: .circle(radius: 1))
+        let b = PhysicsBody2D(x: 5, y: 5, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(a, b, distance: 4)
+
+        c.solve()
+        #expect(a.position.x.isFinite && a.position.y.isFinite)
+        #expect(b.position.x.isFinite && b.position.y.isFinite)
+    }
+
+    @Test("non-finite stiffness resets to 1.0")
+    func nonFiniteStiffness() {
+        let a = PhysicsBody2D(x: 0, y: 0, shape: .circle(radius: 1))
+        let c = PhysicsConstraint2D(pin: a, x: 1, y: 1)
+        c.stiffness = .nan
+        #expect(c.stiffness == 1.0)
+        c.stiffness = 2.0
+        #expect(c.stiffness == 1.0)
+        c.stiffness = -1.0
+        #expect(c.stiffness == 0.0)
     }
 }

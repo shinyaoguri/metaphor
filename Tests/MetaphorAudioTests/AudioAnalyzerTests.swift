@@ -92,6 +92,25 @@ struct AudioAnalyzerTests {
         #expect(analyzer.smoothing == 0.95)
     }
 
+    @Test("Smoothing is clamped to [0, 0.99]")
+    @MainActor
+    func smoothingClamped() {
+        let analyzer = AudioAnalyzer()
+        // 1 以上は spectrum が更新されなくなる（EMA が新値を無視する）
+        analyzer.smoothing = 1.5
+        #expect(analyzer.smoothing == 0.99)
+        // 負値は発散・振動の原因になる
+        analyzer.smoothing = -0.5
+        #expect(analyzer.smoothing == 0)
+    }
+
+    @Test("AudioAnalyzerError has descriptions")
+    @MainActor
+    func errorDescriptions() {
+        #expect(AudioAnalyzerError.noInputDevice.errorDescription?.isEmpty == false)
+        #expect(AudioAnalyzerError.microphonePermissionDenied.errorDescription?.isEmpty == false)
+    }
+
     @Test("Beat threshold is settable")
     @MainActor
     func beatThresholdSetting() {
@@ -160,5 +179,81 @@ struct AudioAnalyzerInjectTests {
         analyzer.injectSamples(samples)
         // Don't call update
         #expect(analyzer.volume == 0)
+    }
+
+    @Test("bandEnergy works with injected samples when sampleRate is provided")
+    func bandEnergyWithInjectedSampleRate() {
+        let sampleRate = 44100.0
+        let analyzer = AudioAnalyzer(fftSize: 1024, sampleRate: sampleRate)
+
+        // 440 Hz のサイン波を注入
+        var samples = [Float](repeating: 0, count: 1024)
+        for i in 0..<1024 {
+            samples[i] = sin(Float(i) * 2 * Float.pi * 440.0 / Float(sampleRate)) * 0.5
+        }
+        analyzer.injectSamples(samples)
+        analyzer.update()
+
+        // 修正前は engine 前提のため injectSamples 経由では常に 0 だった
+        #expect(analyzer.bandEnergy(lowFreq: 300, highFreq: 600) > 0)
+    }
+
+    @Test("bandEnergy returns 0 with injected samples when sampleRate is unknown")
+    func bandEnergyWithoutSampleRate() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        var samples = [Float](repeating: 0, count: 1024)
+        for i in 0..<1024 {
+            samples[i] = sin(Float(i) * 2 * Float.pi / 64.0) * 0.5
+        }
+        analyzer.injectSamples(samples)
+        analyzer.update()
+        #expect(analyzer.bandEnergy(lowFreq: 300, highFreq: 600) == 0)
+    }
+}
+
+// MARK: - AudioSampleTransferBuffer
+
+@Suite("AudioSampleTransferBuffer")
+struct AudioSampleTransferBufferTests {
+
+    @Test("write and take round-trip")
+    func roundTrip() {
+        let buffer = AudioSampleTransferBuffer(capacity: 4)
+        var out = [Float](repeating: -1, count: 4)
+
+        let input: [Float] = [0.1, 0.2, 0.3, 0.4]
+        input.withUnsafeBufferPointer { buf in
+            buffer.write(buf.baseAddress!, count: buf.count)
+        }
+        #expect(buffer.take(into: &out))
+        #expect(out == input)
+        // 2 回目は未読データなし
+        #expect(!buffer.take(into: &out))
+    }
+
+    @Test("short write zero-fills the remainder")
+    func shortWriteZeroFills() {
+        let buffer = AudioSampleTransferBuffer(capacity: 4)
+        var out = [Float](repeating: -1, count: 4)
+
+        let input: [Float] = [0.5, 0.6]
+        input.withUnsafeBufferPointer { buf in
+            buffer.write(buf.baseAddress!, count: buf.count)
+        }
+        #expect(buffer.take(into: &out))
+        #expect(out == [0.5, 0.6, 0, 0])
+    }
+
+    @Test("oversized write is truncated to capacity")
+    func oversizedWriteTruncated() {
+        let buffer = AudioSampleTransferBuffer(capacity: 2)
+        var out = [Float](repeating: -1, count: 2)
+
+        let input: [Float] = [1, 2, 3, 4]
+        input.withUnsafeBufferPointer { buf in
+            buffer.write(buf.baseAddress!, count: buf.count)
+        }
+        #expect(buffer.take(into: &out))
+        #expect(out == [1, 2])
     }
 }

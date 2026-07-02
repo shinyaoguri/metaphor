@@ -8,6 +8,7 @@ extension SketchContext {
     /// 3D 頂点ベースのカスタムシェイプの記録を開始します。
     /// - Parameter mode: シェイプの描画モード（デフォルト `.polygon`）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
+        activeShapeRecording = .threeD
         canvas3D.beginShape(mode)
     }
 
@@ -17,7 +18,13 @@ extension SketchContext {
     ///   - y: y 座標。
     ///   - z: z 座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
-        canvas3D.vertex(x, y, z)
+        // 2D 記録中（beginShape()）の 3 引数 vertex は z を無視して 2D へ
+        // ルーティング（Processing 互換。従来は 3D へ誤送出され何も描かれなかった）
+        if activeShapeRecording == .twoD {
+            canvas.vertex(x, y)
+        } else {
+            canvas3D.vertex(x, y, z)
+        }
     }
 
     /// 頂点カラー付き 3D 頂点を追加します。
@@ -27,7 +34,11 @@ extension SketchContext {
     ///   - z: z 座標。
     ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
-        canvas3D.vertex(x, y, z, color)
+        if activeShapeRecording == .twoD {
+            canvas.vertex(x, y, color)
+        } else {
+            canvas3D.vertex(x, y, z, color)
+        }
     }
 
     /// 次の 3D 頂点の法線ベクトルを設定します。
@@ -42,26 +53,12 @@ extension SketchContext {
     /// 3D シェイプの記録を終了し描画します。
     /// - Parameter close: シェイプを閉じるかどうか（デフォルト `.open`）。
     public func endShape3D(_ close: CloseMode = .open) {
-        canvas3D.endShape(close)
-    }
-
-    /// 4点を通る Catmull-Rom スプラインカーブを描画します。
-    /// - Parameters:
-    ///   - x1: 第1ガイドポイントの x 座標。
-    ///   - y1: 第1ガイドポイントの y 座標。
-    ///   - x2: 可視カーブ始点の x 座標。
-    ///   - y2: 可視カーブ始点の y 座標。
-    ///   - x3: 可視カーブ終点の x 座標。
-    ///   - y3: 可視カーブ終点の y 座標。
-    ///   - x4: 第2ガイドポイントの x 座標。
-    ///   - y4: 第2ガイドポイントの y 座標。
-    public func curve(
-        _ x1: Float, _ y1: Float,
-        _ x2: Float, _ y2: Float,
-        _ x3: Float, _ y3: Float,
-        _ x4: Float, _ y4: Float
-    ) {
-        canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4)
+        if activeShapeRecording == .twoD {
+            canvas.endShape(close)
+        } else {
+            canvas3D.endShape(close)
+        }
+        activeShapeRecording = .none
     }
 
     // MARK: - 3D Camera
@@ -215,12 +212,24 @@ extension SketchContext {
     /// シャドウマッピングを有効にします。
     /// - Parameter resolution: シャドウマップの解像度（ピクセル単位、デフォルト 2048）。
     public func enableShadows(resolution: Int = 2048) {
-        if canvas3D.shadowMap == nil {
-            canvas3D.shadowMap = try? ShadowMap(
+        guard resolution > 0 else {
+            metaphorWarning("enableShadows: resolution must be positive (got \(resolution)); ignored")
+            return
+        }
+        // 既存 shadowMap と同じ解像度なら再利用。解像度が変わったら再生成する
+        // （従来は既存があると新しい resolution を黙って無視していた）
+        if let existing = canvas3D.shadowMap, existing.resolution == resolution {
+            return
+        }
+        do {
+            canvas3D.shadowMap = try ShadowMap(
                 device: renderer.device,
                 shaderLibrary: renderer.shaderLibrary,
                 resolution: resolution
             )
+        } catch {
+            // 失敗を黙殺しない（影が出ない原因を追えるように）
+            metaphorWarning("enableShadows: failed to create shadow map (resolution \(resolution)): \(error)")
         }
     }
 
@@ -522,6 +531,10 @@ extension SketchContext {
         threads: Int,
         _ configure: (MTLComputeCommandEncoder) -> Void
     ) {
+        guard threads > 0 else {
+            metaphorWarning("dispatch: threads must be positive (got \(threads)); skipped")
+            return
+        }
         guard let encoder = ensureComputeEncoder() else { return }
         encoder.setComputePipelineState(kernel.pipelineState)
         configure(encoder)
@@ -544,6 +557,10 @@ extension SketchContext {
         height: Int,
         _ configure: (MTLComputeCommandEncoder) -> Void
     ) {
+        guard width > 0, height > 0 else {
+            metaphorWarning("dispatch: width/height must be positive (got \(width)x\(height)); skipped")
+            return
+        }
         guard let encoder = ensureComputeEncoder() else { return }
         encoder.setComputePipelineState(kernel.pipelineState)
         configure(encoder)
@@ -576,7 +593,11 @@ extension SketchContext {
     /// - Parameter count: パーティクル数（デフォルト 100,000）。
     /// - Returns: `ParticleSystem` インスタンス。
     public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
-        try ParticleSystem(
+        guard count > 0 else {
+            metaphorWarning("createParticleSystem: count must be positive (got \(count))")
+            throw MetaphorError.particle(.bufferCreationFailed)
+        }
+        return try ParticleSystem(
             device: renderer.device,
             shaderLibrary: renderer.shaderLibrary,
             sampleCount: renderer.textureManager.sampleCount,
@@ -687,6 +708,11 @@ extension SketchContext {
         // メインコマンドバッファのコミット前）でキャプチャを同乗させる。
         // 旧実装は endFrame() で独自コマンドバッファを即コミットしていたため、
         // 1 フレーム前の、ポストエフェクト未適用の colorTexture を記録していた。
+        // onCaptureOutput は単一スロット。他の利用者（カスタムキャプチャ等）が
+        // 設定済みの場合は黙って奪わず警告する
+        if renderer.onCaptureOutput != nil {
+            metaphorWarning("beginGIFRecord: renderer.onCaptureOutput was already set and will be replaced (single slot)")
+        }
         renderer.onCaptureOutput = { [weak self] texture, commandBuffer in
             guard let self, self.gifExporter.isRecording else { return }
             self.gifExporter.captureFrame(

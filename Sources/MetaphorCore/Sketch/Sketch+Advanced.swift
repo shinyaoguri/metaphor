@@ -137,11 +137,11 @@ extension Sketch {
     ///   - to: 終了値。
     ///   - duration: アニメーション時間（秒単位）。
     ///   - easing: イージング関数。
-    /// - Returns: 新しい ``Tween`` インスタンス。コンテキストが利用できない場合は `nil`。
+    /// - Returns: 新しい ``Tween`` インスタンス。
     @discardableResult
     public func tween<T: Interpolatable>(
         from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
-    ) -> Tween<T>? {
+    ) -> Tween<T> {
         context.tween(from: from, to: to, duration: duration, easing: easing)
     }
 }
@@ -183,7 +183,7 @@ extension Sketch {
 
 extension Sketch {
     /// イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。
-    public var gui: ParameterGUI? {
+    public var gui: ParameterGUI {
         context.gui
     }
 }
@@ -292,7 +292,7 @@ extension Sketch {
     }
 
     /// 手動設定用のオービットカメラへのアクセス。
-    public var orbitCamera: OrbitCamera? {
+    public var orbitCamera: OrbitCamera {
         context.orbitCamera
     }
 }

@@ -314,6 +314,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - plugin: 登録するプラグイン
     ///   - sketch: このプラグインが接続されるスケッチ
     public func addPlugin(_ plugin: MetaphorPlugin, sketch: any Sketch) {
+        warnIfDuplicatePluginID(plugin)
         plugins.append(plugin)
         plugin.onAttach(sketch: sketch)
         plugin.onAttach(renderer: self)
@@ -326,9 +327,18 @@ public final class MetaphorRenderer: NSObject {
     /// ``MetaphorPlugin/onAttach(renderer:)`` のみを呼びます。
     /// - Parameter plugin: 登録するプラグイン
     public func addPlugin(_ plugin: MetaphorPlugin) {
+        warnIfDuplicatePluginID(plugin)
         plugins.append(plugin)
         plugin.onAttach(renderer: self)
         refreshCachedPlugins()
+    }
+
+    /// 同一 pluginID の二重登録を検出して警告します
+    /// （`plugin(id:)` / `removePlugin(id:)` は最初の 1 つにしか届かないため）。
+    private func warnIfDuplicatePluginID(_ plugin: MetaphorPlugin) {
+        if plugins.contains(where: { $0.pluginID == plugin.pluginID }) {
+            metaphorWarning("addPlugin: a plugin with id '\(plugin.pluginID)' is already registered; plugin(id:)/removePlugin(id:) will only reach the first one")
+        }
     }
 
     /// 識別子でプラグインを削除します。
@@ -408,11 +418,36 @@ public final class MetaphorRenderer: NSObject {
     /// ウィンドウクローズ（``SketchWindow/close()``）やアプリ終了時に呼びます。
     public func shutdown() {
         notifyPluginsStop()
+        // プラグインは GPU リソース（Syphon サーバーのテクスチャ等）を保持するため、
+        // in-flight フレームの完了を待ってから解放する。
+        drainInflightFrames(context: "shutdown")
         for plugin in plugins {
             plugin.onDetach()
         }
         plugins.removeAll()
         refreshCachedPlugins()
+    }
+
+    /// 全 in-flight フレームの GPU 完了を待ち、スロットを即座に返却します。
+    ///
+    /// トリプルバッファリングの全スロット（3）を取得できた時点で GPU が
+    /// このレンダラーの作業を完了していることが保証されます。teardown 経路
+    /// （``shutdown()``）で使用します。
+    ///
+    /// - Parameter context: タイムアウト警告に含める呼び出し元の説明。
+    private func drainInflightFrames(context: String) {
+        var acquired = 0
+        let deadline = DispatchTime.now() + .seconds(5)
+        for _ in 0..<3 {
+            if inflightSemaphore.wait(timeout: deadline) == .timedOut {
+                metaphorWarning("Timed out waiting for in-flight frames during \(context)")
+                break
+            }
+            acquired += 1
+        }
+        for _ in 0..<acquired {
+            inflightSemaphore.signal()
+        }
     }
 
     // MARK: - プラグイン CPU 読み戻し
@@ -490,6 +525,8 @@ public final class MetaphorRenderer: NSObject {
         stagingTextures = [nil, nil, nil]
         exportStagingTextures = [nil, nil, nil]
         videoStagingTextures = [nil, nil, nil]
+        // 旧サイズの最終出力テクスチャを次フレームまでブリットし続けないようリセット
+        lastOutputTexture = nil
         postProcessPipeline?.invalidateTextures()
 
         for plugin in plugins {
@@ -667,10 +704,15 @@ public final class MetaphorRenderer: NSObject {
             throw MetaphorError.shaderNotFound("blitFragment")
         }
 
+        // ブリット先は view.currentRenderPassDescriptor（configure(view:) で
+        // depthStencilPixelFormat = .depth32Float 付き）。パイプラインの
+        // depthAttachmentPixelFormat をパスと一致させる（.invalid のままだと
+        // Metal API validation（Xcode デバッグ実行）でアサートする）。
+        // デプスステンシルステートは設定しないため深度テスト/書き込みは行われない。
         blitPipelineState = try PipelineFactory(device: device)
             .vertex(vertexFn)
             .fragment(fragmentFn)
-            .noDepth()
+            .depthFormat(.depth32Float)
             .sampleCount(1)
             .build()
     }
@@ -773,6 +815,19 @@ public final class MetaphorRenderer: NSObject {
             from: MTLRegionMake2D(0, 0, width, height),
             mipmapLevel: 0
         )
+        writePNG(bgraPixels: pixels, width: width, height: height, path: path)
+    }
+
+    /// BGRA バイト列を PNG として書き出します（テクスチャ読み出し済みのデータ用）。
+    ///
+    /// テクスチャからの読み出し（軽い memcpy）とエンコード + ディスク I/O（重い）を
+    /// 分離できるため、完了ハンドラ内でスロットを保持したまま重い処理を行いたくない
+    /// 呼び出し元（``FrameExporter`` 等）はこちらを使います。
+    nonisolated static func writePNG(
+        bgraPixels: [UInt8], width: Int, height: Int, path: String
+    ) {
+        let bytesPerRow = width * 4
+        var pixels = bgraPixels
 
         // BGRA -> RGBA
         for i in stride(from: 0, to: pixels.count, by: 4) {
@@ -781,17 +836,22 @@ public final class MetaphorRenderer: NSObject {
             pixels[i + 2] = b
         }
 
+        // CGContext(data:) に渡すポインタは呼び出し中のみ有効という規約のため、
+        // makeImage() まで withUnsafeMutableBytes のスコープ内で完結させる
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: &pixels,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ),
-        let cgImage = ctx.makeImage() else {
+        let cgImageOrNil: CGImage? = pixels.withUnsafeMutableBytes { buf in
+            guard let ctx = CGContext(
+                data: buf.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return nil }
+            return ctx.makeImage()
+        }
+        guard let cgImage = cgImageOrNil else {
             print("[metaphor] Failed to create CGImage for screenshot")
             return
         }
@@ -850,11 +910,16 @@ public final class MetaphorRenderer: NSObject {
         let readbackGroup = DispatchGroup()
         // プラグインが deferReadback で参加できるよう、このフレームのグループを公開。
         currentReadbackGroup = readbackGroup
+        // セマフォは self 経由ではなく直接キャプチャする。self 経由（weak）だと
+        // GPU 完了前に renderer が解放された場合に signal されず、取得済み
+        // カウントを残したままセマフォが dispose されてクラッシュする
+        // （libdispatch は初期値より小さい値での破棄を許さない）。
+        let semaphore = inflightSemaphore
         commandBuffer.addCompletedHandler { [weak self] cb in
             let gpuStart = cb.gpuStartTime
             let gpuEnd = cb.gpuEndTime
             readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
-                self?.inflightSemaphore.signal()
+                semaphore.signal()
                 DispatchQueue.main.async {
                     self?.lastGPUStartTime = gpuStart
                     self?.lastGPUEndTime = gpuEnd

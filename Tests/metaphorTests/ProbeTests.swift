@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Testing
 @testable import MetaphorCore
 import MetaphorTestSupport
@@ -51,12 +52,6 @@ struct ProbeRequestTests {
 @MainActor
 struct MetaphorProbePluginTests {
 
-    /// `MetaphorRenderer` の `inflightSemaphore` が GPU completion 前に dispose される
-    /// クラッシュを避けるため、各テスト末尾で in-flight ワークの完了を少し待ちます。
-    private func drainGPUWork() {
-        Thread.sleep(forTimeInterval: 0.2)
-    }
-
     /// 完了ハンドラ駆動の書き出しが終わるまで `frame.png` の出現をポーリングします。
     private func waitForFrame(in directory: URL, timeout: TimeInterval = 3.0) -> URL? {
         let deadline = Date().addingTimeInterval(timeout)
@@ -70,12 +65,36 @@ struct MetaphorProbePluginTests {
         return nil
     }
 
-    /// 指定 id・label のリクエストファイルを書き込みます。
-    private func writeRequest(id: String, label: String? = nil, to path: URL) throws {
+    /// 指定 id・label・scale のリクエストファイルを書き込みます。
+    private func writeRequest(
+        id: String, label: String? = nil, scale: Double? = nil, to path: URL
+    ) throws {
         var dict: [String: Any] = ["id": id]
         if let label { dict["label"] = label }
+        if let scale { dict["scale"] = scale }
         let data = try JSONSerialization.data(withJSONObject: dict)
         try data.write(to: path)
+    }
+
+    /// 任意ファイルの出現をポーリングします。
+    private func waitForFile(_ url: URL, timeout: TimeInterval = 3.0) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if FileManager.default.fileExists(atPath: url.path) { return true }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return false
+    }
+
+    /// PNG ファイルのピクセルサイズを返します。
+    private func pngSize(of url: URL) -> (width: Int, height: Int)? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int,
+              let h = props[kCGImagePropertyPixelHeight] as? Int else {
+            return nil
+        }
+        return (w, h)
     }
 
     @Test("idle plugin does not produce output")
@@ -101,7 +120,6 @@ struct MetaphorProbePluginTests {
                 atPath: outputDir.appendingPathComponent("frame.png").path
             ))
 
-            drainGPUWork()
         }
     }
 
@@ -136,7 +154,6 @@ struct MetaphorProbePluginTests {
                 #expect(data[3] == 0x47)
             }
 
-            drainGPUWork()
         }
     }
 
@@ -211,7 +228,6 @@ struct MetaphorProbePluginTests {
             #expect(stats?["meanLuminance"] != nil)
             #expect(stats?["contentFraction"] != nil)
 
-            drainGPUWork()
         }
     }
 
@@ -247,7 +263,6 @@ struct MetaphorProbePluginTests {
             #expect(json?["schemaVersion"] as? Int == 4)
             #expect(json?["sourceStamp"] as? String == "build-abc123")
 
-            drainGPUWork()
         }
     }
 
@@ -288,7 +303,6 @@ struct MetaphorProbePluginTests {
             #expect((stats?["contentFraction"] as? Double) == 0)
             #expect(stats?["contentBounds"] == nil)
 
-            drainGPUWork()
         }
     }
 
@@ -303,7 +317,6 @@ struct MetaphorProbePluginTests {
         // pre() がリセットしたあとは値が消えている
         #expect(plugin.stateBuffer.snapshot().isEmpty)
 
-        drainGPUWork()
     }
 
     @Test("same request id is processed only once")
@@ -341,7 +354,262 @@ struct MetaphorProbePluginTests {
 
             #expect(firstMtime == secondMtime)
 
-            drainGPUWork()
+        }
+    }
+
+    @Test("an unreadable request.json is retried on the next frame")
+    func unreadableRequestRetried() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "retry-1", to: requestPath)
+            // 読み取り不可にして 1 フレーム回す（mtime は変わらない）
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o000], ofItemAtPath: requestPath.path
+            )
+            renderer.renderFrame()
+
+            // 読めるようにして再度回すと、同じ mtime のまま再試行されて処理される。
+            // 修正前は読み取り失敗の時点で mtime を消費し、永久に無視されていた
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o644], ofItemAtPath: requestPath.path
+            )
+            renderer.renderFrame()
+
+            #expect(waitForFrame(in: outputDir) != nil)
+        }
+    }
+
+    @Test("a request arriving during a sequence is processed afterwards")
+    func requestDuringSequenceNotLost() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.addPlugin(plugin)
+
+            // frames=2 のシーケンスを開始
+            let seqRequest = try JSONSerialization.data(
+                withJSONObject: ["id": "seq-A", "frames": 2]
+            )
+            try seqRequest.write(to: requestPath)
+            renderer.renderFrame()  // シーケンス受理 + frame 0 採取
+
+            // シーケンス進行中に新しい単一リクエストが届く
+            try writeRequest(id: "single-B", to: requestPath)
+            renderer.renderFrame()  // frame 1 採取 → シーケンス完了
+            renderer.renderFrame()  // 完了後の pre() で single-B が処理される
+            renderer.renderFrame()
+
+            // 修正前はシーケンス中に mtime が消費され、single-B は永久に無視された
+            #expect(waitForFrame(in: outputDir) != nil)
+            let jsonURL = outputDir.appendingPathComponent("frame.json")
+            #expect(waitForFile(jsonURL))
+            let json = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: jsonURL)
+            ) as? [String: Any]
+            #expect(json?["id"] as? String == "single-B")
+
+        }
+    }
+
+    @Test("request scale 0.5 halves the PNG and frame.json size (contract point 4)")
+    func scaleHalvesOutput() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "scale-1", scale: 0.5, to: requestPath)
+            renderer.renderFrame()
+
+            let png = waitForFrame(in: outputDir)
+            #expect(png != nil)
+            if let png {
+                let size = pngSize(of: png)
+                #expect(size?.width == 32)
+                #expect(size?.height == 32)
+            }
+
+            // frame.json の size もスケール後の値になる
+            let jsonURL = outputDir.appendingPathComponent("frame.json")
+            #expect(waitForFile(jsonURL))
+            let json = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: jsonURL)
+            ) as? [String: Any]
+            let size = json?["size"] as? [String: Any]
+            #expect(size?["width"] as? Int == 32)
+            #expect(size?["height"] as? Int == 32)
+
+        }
+    }
+
+    @Test("defaultScale applies when the request omits scale")
+    func defaultScaleApplies() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path,
+                    defaultScale: 0.25
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "scale-default", to: requestPath)
+            renderer.renderFrame()
+
+            let png = waitForFrame(in: outputDir)
+            #expect(png != nil)
+            if let png {
+                let size = pngSize(of: png)
+                #expect(size?.width == 16)
+                #expect(size?.height == 16)
+            }
+
+        }
+    }
+
+    @Test("invalid scale values fall back to full size")
+    func invalidScaleFallsBack() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            // 0 以下は無効 → フルサイズ
+            try writeRequest(id: "scale-invalid", scale: -1.0, to: requestPath)
+            renderer.renderFrame()
+
+            let png = waitForFrame(in: outputDir)
+            #expect(png != nil)
+            if let png {
+                let size = pngSize(of: png)
+                #expect(size?.width == 64)
+                #expect(size?.height == 64)
+            }
+
+        }
+    }
+}
+
+// MARK: - ProbeWriter scale helpers
+
+@Suite("ProbeWriter scale")
+struct ProbeWriterScaleTests {
+
+    @Test("normalizeScale clamps invalid values to 1.0")
+    func normalizeScale() {
+        #expect(ProbeWriter.normalizeScale(0.5) == 0.5)
+        #expect(ProbeWriter.normalizeScale(1.0) == 1.0)
+        #expect(ProbeWriter.normalizeScale(0) == 1.0)
+        #expect(ProbeWriter.normalizeScale(-0.5) == 1.0)
+        #expect(ProbeWriter.normalizeScale(2.0) == 1.0)
+        #expect(ProbeWriter.normalizeScale(.nan) == 1.0)
+        #expect(ProbeWriter.normalizeScale(.infinity) == 1.0)
+    }
+
+    @Test("scaledSize rounds and clamps to at least 1px")
+    func scaledSize() {
+        let half = ProbeWriter.scaledSize(width: 64, height: 64, scale: 0.5)
+        #expect(half.width == 32 && half.height == 32)
+
+        let tiny = ProbeWriter.scaledSize(width: 10, height: 10, scale: 0.01)
+        #expect(tiny.width == 1 && tiny.height == 1)
+
+        let full = ProbeWriter.scaledSize(width: 64, height: 48, scale: 1.0)
+        #expect(full.width == 64 && full.height == 48)
+
+        let odd = ProbeWriter.scaledSize(width: 65, height: 65, scale: 0.5)
+        #expect(odd.width == 33 && odd.height == 33)
+    }
+}
+
+// MARK: - ProbeWriter failure response
+
+@Suite("ProbeWriter failure response")
+struct ProbeWriterFailureResponseTests {
+
+    @Test("writeFailureResponse writes frame.json with warnings and no PNG")
+    func failureResponseWritesJSONOnly() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            // 前回応答の frame.png が残っているケース: 失敗応答はこれを削除する
+            // （consumer が新しい id の frame.json と古い画像を組にしないため）。
+            try Data([0x89, 0x50, 0x4E, 0x47]).write(
+                to: dir.appendingPathComponent("frame.png")
+            )
+            let metadata = ProbeFrameMetadata(
+                schemaVersion: 4,
+                id: "fail-1",
+                label: nil,
+                sourceStamp: nil,
+                frame: 3,
+                time: 0.5,
+                size: ProbeFrameMetadata.Size(width: 64, height: 64),
+                custom: [:],
+                customTypes: [:],
+                warnings: ["failed to allocate staging texture; frame.png was not written"],
+                stats: nil
+            )
+            ProbeWriter.writeFailureResponse(directory: dir.path, metadata: metadata)
+
+            // 書き出しは専用キューで非同期に行われるためポーリングで待つ
+            let jsonURL = dir.appendingPathComponent("frame.json")
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline,
+                  !FileManager.default.fileExists(atPath: jsonURL.path) {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
+            #expect(FileManager.default.fileExists(atPath: jsonURL.path))
+            #expect(!FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("frame.png").path
+            ))
+
+            let json = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: jsonURL)
+            ) as? [String: Any]
+            #expect(json?["id"] as? String == "fail-1")
+            let warnings = json?["warnings"] as? [String]
+            #expect(warnings?.count == 1)
+            #expect(warnings?.first?.contains("staging") == true)
         }
     }
 }
@@ -351,10 +619,6 @@ struct MetaphorProbePluginTests {
 @Suite("MetaphorProbe sequence capture", .serialized, .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
 struct MetaphorProbeSequenceTests {
-
-    private func drainGPUWork() {
-        Thread.sleep(forTimeInterval: 0.2)
-    }
 
     private func waitForFile(_ url: URL, timeout: TimeInterval = 5.0) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
@@ -423,7 +687,6 @@ struct MetaphorProbeSequenceTests {
             #expect(size?["width"] == 64)
             #expect(size?["height"] == 48)
 
-            drainGPUWork()
         }
     }
 
@@ -462,7 +725,6 @@ struct MetaphorProbeSequenceTests {
                 atPath: seqDir.appendingPathComponent("frame.0002.png").path
             ))
 
-            drainGPUWork()
         }
     }
 
@@ -492,7 +754,6 @@ struct MetaphorProbeSequenceTests {
                 atPath: outputDir.appendingPathComponent("sequence").path
             ))
 
-            drainGPUWork()
         }
     }
 }

@@ -358,14 +358,28 @@ extension Canvas2D {
         let step = arcLength / Float(segments)
 
         if hasFill {
-            for i in 0..<segments {
-                let a0 = startAngle + step * Float(i)
-                let a1 = startAngle + step * Float(i + 1)
-                let px0 = x + rx * cos(a0)
-                let py0 = y + ry * sin(a0)
-                let px1 = x + rx * cos(a1)
-                let py1 = y + ry * sin(a1)
-                addTriangle(x, y, px0, py0, px1, py1, fillColor)
+            switch mode {
+            case .pie:
+                // 扇形: 中心から各セグメントへファン
+                for i in 0..<segments {
+                    let a0 = startAngle + step * Float(i)
+                    let a1 = startAngle + step * Float(i + 1)
+                    addTriangle(x, y,
+                                x + rx * cos(a0), y + ry * sin(a0),
+                                x + rx * cos(a1), y + ry * sin(a1), fillColor)
+                }
+            case .open, .chord:
+                // Processing 互換: open/chord の fill は弦で閉じた弓形
+                // （従来は mode に関わらず常に pie 形状で塗られていた）
+                let fx = x + rx * cos(startAngle)
+                let fy = y + ry * sin(startAngle)
+                for i in 1..<segments {
+                    let a0 = startAngle + step * Float(i)
+                    let a1 = startAngle + step * Float(i + 1)
+                    addTriangle(fx, fy,
+                                x + rx * cos(a0), y + ry * sin(a0),
+                                x + rx * cos(a1), y + ry * sin(a1), fillColor)
+                }
             }
         }
         if hasStroke {
@@ -469,6 +483,9 @@ extension Canvas2D {
     ///   - x: 点のx座標。
     ///   - y: 点のy座標。
     public func point(_ x: Float, _ y: Float) {
+        // Processing 互換: point はストロークで描かれるため noStroke() 中は描かない
+        // （直前の curve() と同じガード。従来は無視されていた）
+        guard hasStroke else { return }
         let r = currentStrokeWeight * 0.5
         let color = strokeColor
         // 三角形ファン円として描画（8セグメント = 24頂点）。

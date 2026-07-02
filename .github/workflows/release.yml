@@ -21,6 +21,13 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
+# release:* ラベル付き PR を短時間に複数マージすると release.yml が並走し、
+# 同じ latest tag から同じ TAG_NAME / release/<tag> ブランチを計算して衝突する。
+# 直列化する（後着はキャンセルせずキュー）。
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -42,7 +49,7 @@ jobs:
       #
       # No PAT, no ruleset bypass-actor games.
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
@@ -55,12 +62,18 @@ jobs:
         id: syphon-hash
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
 
+      # release は macos-14 + デフォルト Xcode、CI/docs は macos-26 + Xcode 26.4。
+      # キーに Xcode 版を含め、環境違いのキャッシュ共有を防ぐ
+      - name: Get Xcode version
+        id: xcode-version
+        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
       - name: Cache Syphon.xcframework
         id: cache-syphon
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
 
       - name: Build Syphon.xcframework
         if: steps.cache-syphon.outputs.cache-hit != 'true'
@@ -72,6 +85,13 @@ jobs:
           zip -r Syphon.xcframework.zip Syphon.xcframework
           shasum -a 256 Syphon.xcframework.zip > checksum.txt
           echo "CHECKSUM=$(awk '{print $1}' checksum.txt)" >> $GITHUB_ENV
+
+      # --- Examples smoke build（API ドリフトゲート） ---
+      # Examples は per-PR CI では検証されない（コスト。ci.yml 参照）ため、
+      # 少なくともリリース前には代表セットのビルドで壊れた example を検出する
+      # （Issue #147）。失敗するとタグ・Release の発行前に止まる。
+      - name: Smoke-build representative examples
+        run: ./scripts/run-examples.sh --build-only --smoke
 
       # --- Compute next version ---
       - name: Compute next version

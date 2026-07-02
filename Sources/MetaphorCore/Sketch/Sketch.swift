@@ -64,29 +64,45 @@ public protocol Sketch: AnyObject {
 // MARK: - Per-Instance Context (Pure Swift Storage)
 
 /// Sketch → SketchContext マッピング用のストレージ（objc_getAssociatedObject の代替）。
+///
+/// キーは Sketch インスタンスへの weak 参照（ポインタ同一性）。Sketch が解放されると
+/// エントリは自動的に purge されるため、SketchContext（renderer 一式）をプロセス終了
+/// まで強参照し続けたり、解放後のアドレス再利用で新しいインスタンスが他人の stale
+/// context を拾ったりしない（ObjectIdentifier キーの辞書はその両方が起きる）。
 @MainActor
-private var _sketchContextStorage: [ObjectIdentifier: SketchContext] = [:]
+private let _sketchContextStorage = NSMapTable<AnyObject, SketchContext>(
+    keyOptions: [.weakMemory, .objectPointerPersonality],
+    valueOptions: .strongMemory
+)
 
 extension Sketch {
     /// このインスタンスに関連付けられたスケッチコンテキスト。
     /// SketchRunner のセットアップ時に設定されます。
+    /// nil を代入するとストレージからエントリが削除されます（teardown 経路）。
     @MainActor
     internal var _context: SketchContext? {
-        get { _sketchContextStorage[ObjectIdentifier(self)] }
+        get { _sketchContextStorage.object(forKey: self) }
         set {
             if let newValue {
-                _sketchContextStorage[ObjectIdentifier(self)] = newValue
+                _sketchContextStorage.setObject(newValue, forKey: self)
             } else {
-                _sketchContextStorage.removeValue(forKey: ObjectIdentifier(self))
+                _sketchContextStorage.removeObject(forKey: self)
             }
         }
     }
 
-    /// アクティブなコンテキスト。setup()/draw() 外で呼ぶと明確なメッセージでクラッシュします。
+    /// アクティブなコンテキスト。Runner の初期化前（または teardown 後）に
+    /// 描画 API を呼ぶと明確なメッセージでクラッシュします。
+    ///
+    /// 失敗モードの方針: 描画系はここで fatalError（初期化前の呼び出しはプログラミング
+    /// エラー）、`probe()` は無言 no-op（観測は本体挙動を変えない）、`pixels` は
+    /// 空バッファを返す（読み取り系はクラッシュより空が安全）。
     @MainActor
     public var context: SketchContext {
         guard let ctx = _context else {
-            fatalError("[metaphor] Drawing methods cannot be called outside setup()/draw(). Ensure SketchRunner has initialized the context.")
+            // 注: この検出は「Runner が context を初期化する前 / 破棄した後」のみ。
+            // setup()/draw() の外（init やプロパティ初期化子など）での呼び出しが典型例。
+            fatalError("[metaphor] Drawing APIs require an active SketchContext. This usually means the call happened before SketchRunner initialized the sketch (e.g. in init or a property initializer) or after teardown. Move the call into setup()/draw().")
         }
         return ctx
     }

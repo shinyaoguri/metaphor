@@ -15,6 +15,24 @@ struct ShadowFragmentUniforms {
     var _pad: SIMD2<Float> = .zero
 }
 
+/// 呼び出し時点のカメラ・投影・ライトのスナップショット（#201）。
+///
+/// 記録経路で ``DrawCall3D`` に添付され、再生時に「呼び出し時点の状態」を復元する
+/// （従来はフレーム末尾の状態が全コールに適用され、draw() 途中の camera()/ライト
+/// 変更が影オン時のみ再現されなかった）。状態が変わらない連続コール間では同一
+/// インスタンスが共有される（参照同一性で変更検出できる）。
+final class RenderStateSnapshot3D {
+    let viewProjection: float4x4
+    let cameraEye: SIMD3<Float>
+    let lights: [Light3D]
+
+    init(viewProjection: float4x4, cameraEye: SIMD3<Float>, lights: [Light3D]) {
+        self.viewProjection = viewProjection
+        self.cameraEye = cameraEye
+        self.lights = lights
+    }
+}
+
 /// Canvas3D シャドウレンダリング用の描画呼び出しを記録します。
 struct DrawCall3D {
     var mesh: Mesh
@@ -31,6 +49,8 @@ struct DrawCall3D {
     /// シャドウ生成では無視され、再生時の 2D/3D 呼び出し順マージにのみ使われる。
     /// 既定 0（記録経路が seq を払い出さない場合の後方互換）。
     var seq: UInt32 = 0
+    /// 呼び出し時点のカメラ/投影/ライト（#201）。nil の場合は再生時の現在状態を使う。
+    var stateSnapshot: RenderStateSnapshot3D?
 }
 
 /// ディレクショナルライトのシャドウマップを管理します。

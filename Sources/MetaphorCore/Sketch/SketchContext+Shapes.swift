@@ -221,6 +221,7 @@ extension SketchContext {
     /// 頂点ベースのカスタムシェイプの記録を開始します。
     /// - Parameter mode: シェイプの描画モード（デフォルト `.polygon`）。
     public func beginShape(_ mode: ShapeMode = .polygon) {
+        activeShapeRecording = .twoD
         canvas.beginShape(mode)
     }
 
@@ -229,7 +230,12 @@ extension SketchContext {
     ///   - x: x 座標。
     ///   - y: y 座標。
     public func vertex(_ x: Float, _ y: Float) {
-        canvas.vertex(x, y)
+        // 3D 記録中の 2 引数 vertex は z = 0 として 3D へルーティング（Processing 互換）
+        if activeShapeRecording == .threeD {
+            canvas3D.vertex(x, y, 0)
+        } else {
+            canvas.vertex(x, y)
+        }
     }
 
     /// 制御点と端点を持つ3次ベジェ頂点を追加します。
@@ -246,6 +252,25 @@ extension SketchContext {
         _ x: Float, _ y: Float
     ) {
         canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y)
+    }
+
+    /// 4点を通る Catmull-Rom スプラインカーブを描画します。
+    /// - Parameters:
+    ///   - x1: 第1ガイドポイントの x 座標。
+    ///   - y1: 第1ガイドポイントの y 座標。
+    ///   - x2: 可視カーブ始点の x 座標。
+    ///   - y2: 可視カーブ始点の y 座標。
+    ///   - x3: 可視カーブ終点の x 座標。
+    ///   - y3: 可視カーブ終点の y 座標。
+    ///   - x4: 第2ガイドポイントの x 座標。
+    ///   - y4: 第2ガイドポイントの y 座標。
+    public func curve(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
     /// Catmull-Rom スプライン頂点を追加します。
@@ -284,7 +309,11 @@ extension SketchContext {
     ///   - y: y 座標。
     ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
-        canvas.vertex(x, y, color)
+        if activeShapeRecording == .threeD {
+            canvas3D.vertex(x, y, 0, color)
+        } else {
+            canvas.vertex(x, y, color)
+        }
     }
 
     /// UV テクスチャ座標付き頂点を追加します（2D）。
@@ -294,13 +323,24 @@ extension SketchContext {
     ///   - u: U テクスチャ座標。
     ///   - v: V テクスチャ座標。
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
-        canvas.vertex(x, y, u, v)
+        if activeShapeRecording == .threeD {
+            metaphorWarning("vertex(x:y:u:v:) inside beginShape3D() is not supported; UV is dropped")
+            canvas3D.vertex(x, y, 0)
+        } else {
+            canvas.vertex(x, y, u, v)
+        }
     }
 
     /// 現在のシェイプの記録を終了し描画します。
     /// - Parameter close: シェイプを閉じるかどうか（デフォルト `.open`）。
     public func endShape(_ close: CloseMode = .open) {
-        canvas.endShape(close)
+        // 記録先に合わせて終了させる（beginShape3D() ... endShape() の組み合わせも許容）
+        if activeShapeRecording == .threeD {
+            canvas3D.endShape(close)
+        } else {
+            canvas.endShape(close)
+        }
+        activeShapeRecording = .none
     }
 
     // MARK: - Clipping

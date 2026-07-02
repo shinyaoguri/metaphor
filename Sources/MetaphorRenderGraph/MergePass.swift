@@ -134,9 +134,10 @@ public final class MergePass: RenderPassNode {
         guard let texA = passA.output, let texB = passB.output else { return }
 
         // 出力テクスチャを2つの入力の大きい方に合わせる
+        // （フォーマットは texA に追従し、HDR 入力の暗黙量子化を避ける）
         let w = max(texA.width, texB.width)
         let h = max(texA.height, texB.height)
-        ensureOutputTexture(width: w, height: h)
+        ensureOutputTexture(width: w, height: h, pixelFormat: texA.pixelFormat)
 
         guard let outTex = outputTexture,
               let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
@@ -168,12 +169,13 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - プライベート
 
-    /// 必要なサイズの出力テクスチャが存在することを保証し、必要に応じて再作成します。
-    private func ensureOutputTexture(width: Int, height: Int) {
-        guard width != outputWidth || height != outputHeight else { return }
+    /// 必要なサイズ・フォーマットの出力テクスチャが存在することを保証し、必要に応じて再作成します。
+    private func ensureOutputTexture(width: Int, height: Int, pixelFormat: MTLPixelFormat) {
+        guard width != outputWidth || height != outputHeight
+                || outputTexture?.pixelFormat != pixelFormat else { return }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
+            pixelFormat: pixelFormat,
             width: width,
             height: height,
             mipmapped: false

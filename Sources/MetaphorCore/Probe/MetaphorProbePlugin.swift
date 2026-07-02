@@ -81,6 +81,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let requested: Int
         /// 採取間隔（ストライド）。
         let every: Int
+        /// 出力画像のスケール（正規化済み。契約点 4）。
+        let scale: Float
         /// シーケンス全体の警告（クランプ・degrade 等）。
         let warnings: [String]
         /// 採取済み枚数。
@@ -175,6 +177,17 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             height: height,
             bufferIndex: bufferIndex
         ) else {
+            // 失敗を無応答にしない: warnings 付きの frame.json（PNG なし）で応答し、
+            // consumer がタイムアウトではなく id 一致で失敗を検知できるようにする
+            //（シーケンス経路の warning 付き manifest と対称）。
+            ProbeWriter.writeFailureResponse(
+                directory: config.outputDirectory,
+                metadata: failureMetadata(
+                    id: request.id, label: request.label,
+                    width: width, height: height,
+                    warning: "failed to allocate staging texture; frame.png was not written"
+                )
+            )
             pendingRequest = nil
             lastHandledRequestId = request.id
             return
@@ -213,11 +226,14 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         )
 
         let outputDirectory = config.outputDirectory
+        // 出力画像のスケール（契約点 4）。リクエスト優先、なければ defaultScale。
+        let scale = ProbeWriter.normalizeScale(request.scale ?? config.defaultScale)
         let writeWork: @Sendable () -> Void = {
             ProbeWriter.writeSnapshot(
                 staging: staging,
                 width: width,
                 height: height,
+                scale: scale,
                 directory: outputDirectory,
                 metadata: metadata
             )
@@ -284,8 +300,11 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         }
 
         if index == 0 {
-            seq.refWidth = width
-            seq.refHeight = height
+            // contact sheet / manifest の参照サイズは実際に書き出す PNG のサイズ
+            //（scale 適用後）に合わせる
+            let scaled = ProbeWriter.scaledSize(width: width, height: height, scale: seq.scale)
+            seq.refWidth = scaled.width
+            seq.refHeight = scaled.height
         }
 
         let frameNo = sketch?._context?.frameCount ?? 0
@@ -336,30 +355,18 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let refW = seq.refWidth
         let refH = seq.refHeight
 
+        let scale = seq.scale
         let writeWork: @Sendable () -> Void = {
             ProbeWriter.writeSequenceFrame(
-                staging: staging, width: width, height: height,
+                staging: staging, width: width, height: height, scale: scale,
                 directory: dir, index: index, metadata: metadata
             )
             guard let manifestBase else { return }
-            let sheet = ProbeWriter.writeContactSheet(
-                directory: dir, frameFiles: frameFiles, refWidth: refW, refHeight: refH
-            )
-            // contact sheet の有無を反映し、sequence.json を最後に原子書き出し（完了シグナル）。
-            ProbeWriter.writeManifest(
-                directory: dir,
-                manifest: ProbeSequenceManifest(
-                    schemaVersion: manifestBase.schemaVersion,
-                    id: manifestBase.id,
-                    label: manifestBase.label,
-                    frameCount: manifestBase.frameCount,
-                    requestedFrames: manifestBase.requestedFrames,
-                    every: manifestBase.every,
-                    size: manifestBase.size,
-                    contactSheet: sheet,
-                    warnings: manifestBase.warnings,
-                    frames: manifestBase.frames
-                )
+            // contact sheet 合成と sequence.json（完了シグナル）の書き出しは
+            // ProbeWriter の直列キューに積まれ、全フレームの書き出し後に実行される。
+            ProbeWriter.finalizeSequence(
+                directory: dir, manifest: manifestBase,
+                frameFiles: frameFiles, refWidth: refW, refHeight: refH
             )
         }
 
@@ -401,6 +408,10 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     }
 
     /// リクエストファイルの mtime を確認し、変化があれば JSON を読んで `pendingRequest` をセット。
+    ///
+    /// `lastRequestMTime` はリクエストを**消費できた経路でのみ**確定する。
+    /// 読み取り失敗（部分書き込み等）やシーケンス進行中に mtime を先に確定すると、
+    /// そのリクエストが永久に無視されるため。
     private func pollRequestFile() {
         let path = config.requestFilePath
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
@@ -411,33 +422,56 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         if let last = lastRequestMTime, last == mtime {
             return
         }
-        lastRequestMTime = mtime
 
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
-            // mtime は進んだが読めない（部分書き込み等）。次フレームで再試行する。
+            // 読めない（部分書き込み等）。mtime を確定せず次フレームで再試行する。
             metaphorDiagnostic("probe: request.json を読めませんでした（次フレームで再試行）: \(path)")
             return
         }
         guard let request = try? JSONDecoder().decode(ProbeRequest.self, from: data) else {
-            // 不正な request.json。consumer は .tmp→rename でアトミックに書く規約（CONTRACT.md 契約点 4）。
+            // 不正な request.json は再読しても直らないので mtime を確定して無視。
+            // consumer は .tmp→rename でアトミックに書く規約（CONTRACT.md 契約点 4）。
+            lastRequestMTime = mtime
             metaphorDiagnostic("probe: request.json をデコードできませんでした（無視）")
             return
         }
 
         if request.id == lastHandledRequestId {
+            lastRequestMTime = mtime
             return
         }
 
-        // シーケンス進行中は新規リクエストを無視（現行シーケンスを優先）。
+        // シーケンス進行中は mtime を確定せず保留する。シーケンス完了後の pre() で
+        // 同じファイルが再読され、届いていた新規リクエストが失われない。
         if activeSequence != nil {
             return
         }
 
+        lastRequestMTime = mtime
         if (request.frames ?? 1) >= 2 {
             beginSequence(request)
         } else {
             pendingRequest = request
         }
+    }
+
+    /// 失敗応答用の frame.json メタデータを組み立てます。
+    private func failureMetadata(
+        id: String, label: String?, width: Int, height: Int, warning: String
+    ) -> ProbeFrameMetadata {
+        ProbeFrameMetadata(
+            schemaVersion: 4,
+            id: id,
+            label: label,
+            sourceStamp: sourceStamp,
+            frame: sketch?._context?.frameCount ?? 0,
+            time: lastFrameTime,
+            size: ProbeFrameMetadata.Size(width: width, height: height),
+            custom: [:],
+            customTypes: [:],
+            warnings: [warning],
+            stats: nil
+        )
     }
 
     /// 連続キャプチャを開始します。フレーム数のクランプ、noLoop 時の degrade、
@@ -471,6 +505,7 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             total: total,
             requested: requested,
             every: every,
+            scale: ProbeWriter.normalizeScale(request.scale ?? config.defaultScale),
             warnings: warnings
         )
         // 受理時に dedup を確定（mtime 不変でも二重起動しないよう）。

@@ -31,7 +31,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 SPM dependency:
 ```swift
-.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.4.0")
+.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.5.0")
 ```
 
 ## Architecture Notes
@@ -55,10 +55,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### Properties
 
 - `var config: SketchConfig { get }` -- スケッチの設定を返します（オプション）。
-- `var context: SketchContext { get }` -- アクティブなコンテキスト。setup()/draw() 外で呼ぶと明確なメッセージでクラッシュします。
+- `var context: SketchContext { get }` -- アクティブなコンテキスト。Runner の初期化前（または teardown 後）に
 - `var deltaTime: Float { get }` -- 前フレームからの経過時間（秒単位）。
 - `var frameCount: Int { get }` -- これまでにレンダリングされた総フレーム数。
-- `var gui: ParameterGUI? { get }` -- イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。
+- `var gui: ParameterGUI { get }` -- イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。
 - `var height: Float { get }` -- キャンバスの高さ（ピクセル単位）。
 - `var input: InputManager { get }` -- 入力マネージャ（イベントハンドラ内で使用）。
 - `var isKeyPressed: Bool { get }` -- キーが現在押されているかどうか。
@@ -71,7 +71,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var mouseButton: Int { get }` -- 現在押されているマウスボタン（0 = 左、1 = 右、2 = 中央）。
 - `var mouseX: Float { get }` -- 現在のマウス x 座標。
 - `var mouseY: Float { get }` -- 現在のマウス y 座標。
-- `var orbitCamera: OrbitCamera? { get }` -- 手動設定用のオービットカメラへのアクセス。
+- `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。
 - `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
 - `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
 - `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
@@ -122,7 +122,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
 - `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
 - `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
-- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice?` -- カメラキャプチャデバイスを作成します。
+- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice` -- カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
 - `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
 - `func createDynamicMesh() -> DynamicMesh` -- 新しい空のダイナミックメッシュを作成します。
 - `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
@@ -208,17 +208,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadImage(_ path: String) throws -> MImage` -- 指定したファイルパスから画像を読み込みます。
 - `func loadImageAsync(_ path: String) async throws -> MImage` -- 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
 - `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
-- `func loadModel(_ path: String) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
+- `func loadModel(_ path: String, normalize: Bool = true) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
 - `func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
-- `func loadPixels()` -- ピクセルバッファを直接ピクセル操作用に準備します。
+- `func loadPixels()` -- キャンバスの内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
 - `func loadVideo(_ path: String) throws -> VideoPlayer` -- 再生用のビデオファイルを読み込みます。
 - `func loop()` -- アニメーションループを再開します。
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
-- `func makeAudioInput(fftSize: Int = 1024) throws -> AudioAnalyzer` -- ``createAudioInput(fftSize:)`` の検証付きバリアント。
-- `func makeEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) throws -> EffectPass` -- ``createEffectPass(_:effects:)`` の検証付きバリアント。
-- `func makePhysics2D(cellSize: Float = 50) throws -> Physics2D` -- ``createPhysics2D(cellSize:)`` の検証付きバリアント。
-- `func makeSourcePass(label: String, width: Int, height: Int) throws -> SourcePass` -- ``createSourcePass(label:width:height:)`` の検証付きバリアント。
 - `func material(_ customMaterial: CustomMaterial)` -- カスタムマテリアルを以降の 3D 描画に適用します。
 - `func mesh(_ mesh: Mesh)` -- ビルド済みメッシュを描画します。
 - `func metallic(_ value: Float)` -- マテリアルのメタリック係数を設定します。
@@ -249,7 +245,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func polygon(_ points: [(Float, Float)])` -- 座標タプルの配列からポリゴンを描画します。
 - `func polygon(_ points: [Vec2])` -- ``Vec2`` 配列からポリゴンを描画します。
 - `func pop()` -- 最後に保存された変換とスタイル状態をスタックから復元します。
-- `func popMatrix()` -- 最後に保存された 3D 変換行列をスタックから復元します。
+- `func popMatrix()` -- 最後に保存された変換行列（2D と 3D の両方）をスタックから復元します。
 - `func popStyle()` -- 最後に保存されたスタイル状態をスタックから復元します。
 - `func previousFrame() -> MImage?` -- 前フレームのレンダリング結果を取得します。
 - `func probe(_ name: String, _ value: Double)` -- 数値（Double）として記録します。
@@ -261,7 +257,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func probe(_ name: String, _ value: SIMD3<Float>)` -- 3 成分ベクトルとして記録します。
 - `func probe(_ name: String, _ value: SIMD4<Float>)` -- 4 成分ベクトルとして記録します。
 - `func push()` -- 現在の変換とスタイル状態をスタックに保存します。
-- `func pushMatrix()` -- 現在の 3D 変換行列をスタックに保存します。
+- `func pushMatrix()` -- 現在の変換行列（2D と 3D の両方）をスタックに保存します。
 - `func pushStyle()` -- 現在のスタイル状態（fill、stroke など）をスタックに保存します。
 - `func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- 4つの頂点で定義される四角形を描画します。
 - `func radialGradient(_ cx: Float, _ cy: Float, _ radius: Float, _ innerColor: Color, _ outerColor: Color, segments: Int = 36)` -- 放射状グラデーション円を描画します。
@@ -283,7 +279,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func save()` -- 現在のフレームをデフォルトの場所に保存します。
 - `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
 - `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
-- `func scale(_ s: Float)` -- 現在の変換に均一 2D スケールを適用します。
+- `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
 - `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一 2D スケールを適用します。
 - `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
 - `func setPostEffects(_ effects: [any PostEffect])` -- すべてのポストプロセスエフェクトを指定した配列で置き換えます。
@@ -324,7 +320,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func translate(_ x: Float, _ y: Float)` -- 現在の変換に 2D 平行移動を適用します。
 - `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
 - `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- 3つの頂点で定義される三角形を描画します。
-- `func tween<T>(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic) -> Tween<T>? where T : Interpolatable` -- トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
+- `func tween<T>(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic) -> Tween<T> where T : Interpolatable` -- トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
 - `func updateParticles(_ system: ParticleSystem)` -- パーティクルシステムを更新します（``compute()`` 内で呼び出してください）。
 - `func updatePixels()` -- 変更されたピクセルデータをアップロードしキャンバスに描画します。
 - `func vertex(_ x: Float, _ y: Float)` -- 現在のシェイプに 2D 頂点を追加します。
@@ -1202,7 +1198,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var onMouseReleased: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでマウスボタンが離された時に呼ばれます。
 - `var onMouseScrolled: (@MainActor (SketchWindow) -> Void)?` -- このウィンドウでスクロールホイールが使用された時に呼ばれます。
 - `func close()` -- このウィンドウを閉じリソースを解放します。
-- `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- クロージャを使用してこのウィンドウに描画します。
+- `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- このウィンドウの描画クロージャを設定します。
 - `func onDraw(_ closure: @MainActor (SketchContext) -> Void)` -- 毎フレーム自動実行される永続的な描画クロージャを設定します。
 
 ### `final class Tween<T> where T : Interpolatable` -- イージング関数を使用して値を時間経過で自動的にアニメーションします。
@@ -1211,6 +1207,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isComplete: Bool { get }` -- アニメーションが完了したかどうか
 - `var value: T { get }` -- 現在の補間値
 - `init(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic)` -- 新しいトゥイーンアニメーションを作成します。
+- `func cancel()` -- アニメーションを完了状態にして停止します。
 - `func delay(_ seconds: Float) -> Self` -- アニメーション開始前のディレイを設定します。
 - `func onComplete(_ handler: () -> Void) -> Self` -- アニメーション完了時に呼び出すコールバックを設定します。
 - `func repeatCount(_ n: Int) -> Self` -- アニメーションのリピート回数を設定します（0は無限）。
@@ -1388,17 +1385,29 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var beatThreshold: Float` -- ビート検出感度（値が大きいほど検出が鈍くなります）。
 - `var isBeat: Bool { get }` -- ビート検出フラグ（`update()` 呼び出しごとにリセット）。
-- `var smoothing: Float` -- スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
+- `var onConfigurationChange: (() -> Void)?` -- 入力デバイスの切断やサンプルレート変更などでオーディオエンジンの構成が
+- `var sampleRate: Double?` -- 解析対象のサンプルレート（Hz）。
+- `var smoothing: Float { get set }` -- スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
 - `var spectrum: [Float] { get }` -- 正規化された FFT スペクトル（0.0〜1.0）。
 - `var volume: Float { get }` -- RMS 音量レベル（0.0〜1.0）。
 - `var waveform: [Float] { get }` -- 生波形データ。
-- `init(fftSize: Int = 1024)` -- オーディオアナライザーを作成します。
+- `init(fftSize: Int = 1024, sampleRate: Double? = nil)` -- オーディオアナライザーを作成します。
 - `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します。
 - `func bandEnergy(lowFreq: Float, highFreq: Float) -> Float` -- 任意の周波数範囲のエネルギーを返します。
 - `func injectSamples(_ samples: [Float])` -- 外部ソースからサンプルを注入します（SoundFile で使用）。
 - `func start() throws` -- オーディオキャプチャを開始します。
 - `func stop()` -- オーディオキャプチャを停止します。
 - `func update()` -- フレームごとに解析データを更新します（`draw()` の先頭で呼び出してください）。
+
+### `enum AudioAnalyzerError` -- AudioAnalyzer 操作中に発生するエラーを表します。
+
+- `case microphonePermissionDenied` -- マイクの使用権限が拒否されていることを示します。
+- `case noInputDevice` -- 利用可能なオーディオ入力デバイスがないことを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
 
 ### `final class SoundFile` -- オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
 
@@ -1408,6 +1417,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isBeat: Bool { get }` -- ビート検出フラグを返します（解析有効時に利用可能）。
 - `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
 - `var isPlaying: Bool { get }` -- ファイルが現在再生中かどうかを示します。
+- `var lastError: (any Error)? { get }` -- 直近の再生操作で発生したエラー（現在は `play()` のエンジン起動失敗）。
 - `var position: Double { get set }` -- 現在の再生位置（秒）を取得または設定します。
 - `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
 - `var spectrum: [Float] { get }` -- スペクトルデータを返します（解析有効時に利用可能）。
@@ -1578,6 +1588,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MIDIManager`
 
+- `var isRunning: Bool { get }` -- MIDI 入出力が稼働中かどうか。``start()`` が失敗した場合は false のままで、
+- `var lastError: MIDIManagerError? { get }` -- 直近の ``start()`` で発生したエラー。成功時は nil に戻ります。
 - `init()` -- MIDI マネージャーを作成します。
 - `func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8` -- 生の CC 値を返します（0〜127）。
 - `func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float` -- 正規化された CC 値を返します（0.0〜1.0）。
@@ -1591,6 +1603,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0)` -- Note On メッセージを送信します。
 - `func start()` -- MIDI 入出力を開始します。
 - `func stop()` -- MIDI 入出力を停止します。
+
+### `enum MIDIManagerError` -- MIDIManager 操作中に発生するエラーを表します。
+
+- `case clientCreationFailed(OSStatus)` -- MIDI クライアントの作成に失敗したことを示します。
+- `case inputPortCreationFailed(OSStatus)` -- 入力ポートの作成に失敗したことを示します。
+- `case outputPortCreationFailed(OSStatus)` -- 出力ポートの作成に失敗したことを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
 
 ### `struct MIDIMessage` -- 単一の MIDI メッセージを表します。
 
@@ -1632,6 +1655,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class OSCReceiver` -- Network.framework を使用して UDP OSC メッセージを受信します。
 
+- `var isRunning: Bool { get }` -- レシーバーが現在リッスン中かどうか。
+- `var lastError: (any Error)? { get }` -- 直近のリスナーエラー（ポート競合等）。
 - `let port: UInt16` -- リスニングポート番号を返します。
 - `init(port: UInt16)` -- OSC レシーバーを作成します。
 - `func on(_ address: String, handler: ([OSCValue]) -> Void)` -- 特定の OSC アドレスパターンに対するハンドラーを登録します。
@@ -1738,7 +1763,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let bodyA: PhysicsBody2D` -- この拘束に関与する1つ目（または唯一）のボディ。
 - `let bodyB: PhysicsBody2D?` -- 2つ目のボディ。ワールドへのピン拘束の場合は `nil`。
 - `let pinPosition: SIMD2<Float>?` -- ワールド空間のピン位置。距離拘束の場合は `nil`。
-- `var stiffness: Float` -- 拘束の剛性。範囲は [0, 1]。
+- `var stiffness: Float { get set }` -- 拘束の剛性。範囲は [0, 1]。
 - `let targetDistance: Float` -- 2つのボディ間で維持する目標距離。
 - `init(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil)` -- 2つのボディ間に距離拘束を作成します。
 - `init(pin body: PhysicsBody2D, x: Float, y: Float)` -- ボディをワールド空間の固定位置にアンカーするピン拘束を作成します。
@@ -1827,7 +1852,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var scale: SIMD3<Float> { get set }` -- 各軸に沿ったノードのローカルスケール。
 - `var up: SIMD3<Float> { get }` -- ワールド空間での上方向ベクトル（正の Y）。
 - `var worldBounds: AABB? { get }` -- ローカル bounds とワールドトランスフォームから計算されるワールド空間のバウンディングボックス。
-- `var worldOrientation: simd_quatf { get }` -- ワールド空間での向き（親 + ローカルクォータニオンの合成）。
+- `var worldOrientation: simd_quatf { get }` -- ワールド空間での向き（親 + ローカルクォータニオンの合成、キャッシュ済み）。
 - `var worldTransform: float4x4 { get }` -- すべての祖先トランスフォームを合成したワールドトランスフォーム（キャッシュ済み）。
 - `init(name: String = "")` -- 指定名で新しいノードを作成します。
 - `func addChild(_ child: Node)` -- このノードに子ノードを追加します。
@@ -1843,6 +1868,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static var frustumPlanes: [SIMD4<Float>]?` -- カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
 - `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
 - `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+- `static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
 
 ## MetaphorSyphon
 
@@ -1894,6 +1920,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isAvailable: Bool { get }` -- 少なくとも1フレームがデコードされたかどうか。
 - `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
 - `var isPlaying: Bool { get }` -- ビデオが現在再生中かどうか。
+- `var lastError: (any Error)? { get }` -- アイテムの読み込み・再生エラー（破損ファイル・非対応コーデック等）。
 - `var position: Double { get set }` -- 現在の再生位置（秒）。setter でフレーム精度のシークを行います。
 - `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
 - `var texture: (any MTLTexture)? { get }` -- 現在のビデオフレームの Metal テクスチャ。
@@ -1908,6 +1935,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum VideoPlayerError` -- ビデオプレーヤーの操作中に発生するエラー。
 
 - `case fileNotFound(String)` -- 指定されたパスにビデオファイルが見つからなかった。
+- `case playbackFailed(String)` -- アイテムの読み込み・再生に失敗した（破損ファイル・非対応コーデック等）。
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`

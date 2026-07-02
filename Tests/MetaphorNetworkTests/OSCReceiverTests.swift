@@ -399,3 +399,63 @@ struct OSCParserTruncationTests {
         }
     }
 }
+
+// MARK: - OSC UTF-8 Tests
+
+@Suite("OSC UTF-8 strings")
+struct OSCUTF8Tests {
+
+    @Test("non-ASCII (Japanese) address and string value are parsed")
+    func japaneseStrings() {
+        var data = Data()
+        OSCBinaryHelper.appendOSCString("/シンセ/周波数", to: &data)
+        OSCBinaryHelper.appendOSCString(",s", to: &data)
+        OSCBinaryHelper.appendOSCString("こんにちは", to: &data)
+
+        // 修正前は .ascii デコードでアドレスが nil → メッセージごと破棄されていた
+        let messages = OSCParser.parse(data: data)
+        #expect(messages.count == 1)
+        #expect(messages.first?.address == "/シンセ/周波数")
+        if case .string(let s) = messages.first?.values.first {
+            #expect(s == "こんにちは")
+        } else {
+            Issue.record("Expected .string value")
+        }
+    }
+}
+
+// MARK: - OSC Listener failure
+
+@Suite("OSC listener failure", .serialized)
+@MainActor
+struct OSCListenerFailureTests {
+
+    @Test("port conflict surfaces via lastError and resets isRunning")
+    func portConflictObservable() throws {
+        let port: UInt16 = 53987
+        let first = OSCReceiver(port: port)
+        do {
+            try first.start()
+        } catch {
+            // この環境でポートが使えない場合はスキップ相当（何も検証しない）
+            return
+        }
+        defer { first.stop() }
+
+        // 少し待って first のバインドを確定させる
+        Thread.sleep(forTimeInterval: 0.2)
+
+        let second = OSCReceiver(port: port)
+        try second.start()
+
+        // NWListener の失敗は非同期に届く。lastError が入るまでポーリングする
+        let deadline = Date().addingTimeInterval(3.0)
+        while Date() < deadline, second.lastError == nil {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+
+        // 修正前は print のみで isRunning は true のまま・エラーも観測不能だった
+        #expect(second.lastError != nil)
+        #expect(second.isRunning == false)
+    }
+}

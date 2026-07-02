@@ -25,6 +25,7 @@ set -e
 # merge-base with origin/main.
 needs_llms=0
 needs_index=0
+needs_shaders=0
 zero=0000000000000000000000000000000000000000
 
 while read -r _ local_sha _ remote_sha; do
@@ -35,9 +36,10 @@ while read -r _ local_sha _ remote_sha; do
         # New branch: compare against origin/main if available
         base="$(git merge-base "$local_sha" origin/main 2>/dev/null || true)"
         if [ -z "$base" ]; then
-            # No baseline — assume both checks are needed
+            # No baseline — assume all checks are needed
             needs_llms=1
             needs_index=1
+            needs_shaders=1
             break
         fi
         range="${base}..${local_sha}"
@@ -57,15 +59,26 @@ while read -r _ local_sha _ remote_sha; do
         | grep -q .; then
         needs_index=1
     fi
+    # shader sources (.txt) depend on Metal/*.metal AND on the generator script.
+    if git diff --name-only "$range" \
+        -- 'Sources/MetaphorCore/Shaders/' 'scripts/generate-shader-sources.py' \
+        | grep -q .; then
+        needs_shaders=1
+    fi
 done
 
 # --- llms.txt staleness check -------------------------------------------------
 if [ "$needs_llms" -eq 1 ]; then
     echo "[pre-push] Sources/ or generator changed — verifying llms.txt is up to date..."
-    if ! make llms-txt >/dev/null 2>&1; then
+    llms_log="$(mktemp)"
+    if ! make llms-txt >"$llms_log" 2>&1; then
         echo "[pre-push] ❌ make llms-txt failed. Fix the build and re-push." >&2
+        echo "[pre-push] --- make llms-txt output (tail) ---" >&2
+        tail -40 "$llms_log" >&2
+        rm -f "$llms_log"
         exit 1
     fi
+    rm -f "$llms_log"
     if ! git diff --quiet llms.txt 2>/dev/null; then
         echo "[pre-push] ❌ llms.txt is stale. Regenerated for you — review and commit:" >&2
         echo "" >&2
@@ -94,6 +107,22 @@ if [ "$needs_index" -eq 1 ]; then
         exit 1
     fi
     echo "[pre-push] ✅ examples index is up to date."
+fi
+
+# --- shader sources staleness check -------------------------------------------
+if [ "$needs_shaders" -eq 1 ]; then
+    echo "[pre-push] Shaders changed — verifying ShaderSources/*.txt are up to date..."
+    if ! python3 scripts/generate-shader-sources.py --check; then
+        echo "[pre-push] ❌ ShaderSources/*.txt are stale (canonical is Metal/*.metal)." >&2
+        echo "[pre-push] Regenerate and commit:" >&2
+        echo "" >&2
+        echo "    python3 scripts/generate-shader-sources.py" >&2
+        echo "    git add Sources/MetaphorCore/Shaders/ShaderSources" >&2
+        echo "    git commit --amend --no-edit  # or a new commit" >&2
+        echo "" >&2
+        exit 1
+    fi
+    echo "[pre-push] ✅ shader sources are up to date."
 fi
 
 exit 0

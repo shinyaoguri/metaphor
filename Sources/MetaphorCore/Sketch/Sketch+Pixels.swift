@@ -15,10 +15,13 @@ extension Sketch {
         return pb.pixels
     }
 
-    /// ピクセルバッファを直接ピクセル操作用に準備します。
+    /// キャンバスの内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
     ///
-    /// 初回呼び出し時にバッファを作成します。以降の呼び出しでは既存のバッファを再利用します。
-    /// 呼び出し後、``pixels`` に書き込み、``updatePixels()`` を呼び出してください。
+    /// 呼び出し後、``pixels`` を読み書きし、``updatePixels()`` で反映してください。
+    ///
+    /// - Important: 読み戻せるのは**前フレーム末尾までに確定した内容**です
+    ///   （この draw() 内の先行描画はまだ含まれません）。draw() の先頭で呼ぶ
+    ///   典型パターンでは現在のキャンバス内容と一致します。
     public func loadPixels() {
         context.loadPixels()
     }

@@ -11,6 +11,12 @@ import MetaphorCore
 /// let mps = createMPSFilter()
 /// mps.gaussianBlur(image, sigma: 5.0)
 /// ```
+///
+/// - Important: `MImage` を受け取るスタンドアロン API は 1 呼び出しごとに
+///   GPU 完了を**同期的に待ちます**（`waitUntilCompleted`）。`draw()` 内で
+///   毎フレーム複数フィルタを直列に適用する場合は、既存のコマンドバッファへ
+///   エンコードする `encode` 系 API（`commandBuffer:` を取るバリアント）を
+///   使ってください。
 @MainActor
 public final class MPSImageFilterWrapper {
     private let device: MTLDevice
@@ -23,7 +29,6 @@ public final class MPSImageFilterWrapper {
     private var areaMinCache: [Int: MPSImageAreaMin] = [:]
     private var areaMaxCache: [Int: MPSImageAreaMax] = [:]
     private var medianCache: [Int: MPSImageMedian] = [:]
-    private var thresholdKernel: MPSImageThresholdBinary?
 
     // テクスチャプール
     private var texturePool: [String: MTLTexture] = [:]
@@ -239,16 +244,20 @@ public final class MPSImageFilterWrapper {
     // MARK: - プライベート: カーネルキャッシュ
 
     private func getOrCreateGaussian(sigma: Float) -> MPSImageGaussianBlur {
-        if let cached = gaussianCache[sigma] { return cached }
+        // sigma をアニメーションさせると毎フレーム別キーになり、カーネル生成と
+        // 無差別 eviction が繰り返されるため、視覚的に区別できない粒度
+        // （0.01）へ量子化してキャッシュヒット率を上げる
+        let quantized = (sigma * 100).rounded() / 100
+        if let cached = gaussianCache[quantized] { return cached }
         if gaussianCache.count >= Self.maxGaussianCacheSize {
             let keysToRemove = Array(gaussianCache.keys).prefix(gaussianCache.count / 2)
             for key in keysToRemove {
                 gaussianCache.removeValue(forKey: key)
             }
         }
-        let kernel = MPSImageGaussianBlur(device: device, sigma: sigma)
+        let kernel = MPSImageGaussianBlur(device: device, sigma: quantized)
         kernel.edgeMode = .clamp
-        gaussianCache[sigma] = kernel
+        gaussianCache[quantized] = kernel
         return kernel
     }
 
@@ -303,15 +312,13 @@ public final class MPSImageFilterWrapper {
     }
 
     private func getOrCreateThreshold(value: Float) -> MPSImageThresholdBinary {
-        // 閾値カーネルは軽量なため、異なる値で再作成
-        let kernel = MPSImageThresholdBinary(
+        // 閾値カーネルは軽量なため、異なる値で毎回作成する（キャッシュしない）
+        MPSImageThresholdBinary(
             device: device,
             thresholdValue: value,
             maximumValue: 1.0,
             linearGrayColorTransform: nil
         )
-        thresholdKernel = kernel
-        return kernel
     }
 
     // MARK: - プライベート: ヘルパー
@@ -319,7 +326,10 @@ public final class MPSImageFilterWrapper {
     private func prepareInPlace(_ image: MImage) -> (MTLTexture, MTLTexture, MTLCommandBuffer)? {
         let src = image.texture
         let w = src.width, h = src.height
-        guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output"),
+        // 出力は入力と同じ pixelFormat で作る（bgra8Unorm 固定だと rgba16Float 等の
+        // MImage へのフィルタ適用でフォーマットが暗黙に変わり精度が落ちる）
+        guard let dst = getOrCreateTexture(
+                  width: w, height: h, pixelFormat: src.pixelFormat, tag: "mps_output"),
               let cb = commandQueue.makeCommandBuffer() else { return nil }
         return (src, dst, cb)
     }
@@ -329,15 +339,17 @@ public final class MPSImageFilterWrapper {
         commandBuffer.waitUntilCompleted()
         let w = dst.width, h = dst.height
         image.replaceTexture(dst)
-        texturePool.removeValue(forKey: "\(w)_\(h)_mps_output")
+        texturePool.removeValue(forKey: "\(w)_\(h)_\(dst.pixelFormat.rawValue)_mps_output")
     }
 
-    private func getOrCreateTexture(width: Int, height: Int, tag: String) -> MTLTexture? {
-        let key = "\(width)_\(height)_\(tag)"
+    private func getOrCreateTexture(
+        width: Int, height: Int, pixelFormat: MTLPixelFormat = .bgra8Unorm, tag: String
+    ) -> MTLTexture? {
+        let key = "\(width)_\(height)_\(pixelFormat.rawValue)_\(tag)"
         if let cached = texturePool[key] { return cached }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
+            pixelFormat: pixelFormat,
             width: width, height: height,
             mipmapped: false
         )

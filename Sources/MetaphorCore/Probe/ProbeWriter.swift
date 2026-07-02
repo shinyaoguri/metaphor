@@ -7,43 +7,109 @@ import ImageIO
 ///
 /// `commandBuffer.addCompletedHandler` の中（Metal 内部キュー）から呼ばれるため、
 /// メインアクター隔離されない `enum` の `static` メソッドとして実装しています。
+///
+/// 完了ハンドラ内で行うのはステージングテクスチャからのバイト列コピーだけで、
+/// PNG エンコード・解析・ディスク書き出しは専用の直列キュー ``writeQueue`` へ
+/// 移します（完了ハンドラを塞いでフレームペーシングを乱さないため）。
+/// キューが直列であることにより、シーケンスの「最後のフレームの書き出し後に
+/// contact sheet / manifest を書く」順序保証も維持されます。
 enum ProbeWriter {
+    /// エンコード・書き出し専用の直列キュー。完了ハンドラ（コミット順に直列実行）
+    /// からの enqueue 順がそのまま実行順になる。
+    private static let writeQueue = DispatchQueue(
+        label: "org.metaphor.probe.writer", qos: .utility
+    )
+
     /// ステージングテクスチャの内容を `<directory>/frame.png` に原子的に書き出します。
     ///
     /// 書き込みは `frame.png.tmp` 経由で行い、最後に `rename` で確定するため、
     /// AI エージェント側が中途半端な PNG を読む可能性はありません。
     /// `metadata` が渡された場合は `frame.json` も同様に書き出します。
-    /// この関数の中でステージングのバイト列を 1 度だけ読み、PNG 化と
-    /// blank フレーム解析に使い回します。
+    /// この関数はステージングのバイト列を同期的に 1 度だけコピーし、
+    /// エンコード・書き出しは ``writeQueue`` 上で非同期に行います。
+    ///
+    /// `scale`（CONTRACT.md 契約点 4）が 1 未満のときは PNG を縮小して書き出し、
+    /// `frame.json` の `size` もスケール後の値になります。
     static func writeSnapshot(
         staging: MTLTexture,
         width: Int,
         height: Int,
+        scale: Float = 1.0,
         directory: String,
         metadata: ProbeFrameMetadata?
     ) {
-        writeNamed(
-            staging: staging, width: width, height: height,
-            directory: directory, baseName: "frame", metadata: metadata
-        )
+        let pixels = readBGRA(from: staging, width: width, height: height)
+        writeQueue.async {
+            writeNamed(
+                bgraPixels: pixels, width: width, height: height, scale: scale,
+                directory: directory, baseName: "frame", metadata: metadata
+            )
+        }
     }
 
     /// 連続キャプチャの 1 フレームを `<directory>/frame.NNNN.{png,json}` に書き出します。
     ///
-    /// 単一フレームの ``writeSnapshot(staging:width:height:directory:metadata:)`` と
+    /// 単一フレームの ``writeSnapshot(staging:width:height:scale:directory:metadata:)`` と
     /// 同一の経路（同じ読み出し・解析・原子書き出し）を、索引付きファイル名で使います。
     static func writeSequenceFrame(
         staging: MTLTexture,
         width: Int,
         height: Int,
+        scale: Float = 1.0,
         directory: String,
         index: Int,
         metadata: ProbeFrameMetadata?
     ) {
-        writeNamed(
-            staging: staging, width: width, height: height,
-            directory: directory, baseName: sequenceBaseName(index),
-            metadata: metadata
+        let pixels = readBGRA(from: staging, width: width, height: height)
+        writeQueue.async {
+            writeNamed(
+                bgraPixels: pixels, width: width, height: height, scale: scale,
+                directory: directory, baseName: sequenceBaseName(index),
+                metadata: metadata
+            )
+        }
+    }
+
+    /// フレームを採取できなかったときに、`warnings` 付きの `frame.json` **だけ** を
+    /// 書きます（PNG は書かない）。
+    ///
+    /// consumer がタイムアウトではなく「id が一致する frame.json の warnings」で
+    /// 失敗を検知できるようにするための応答チャネル。シーケンス経路の
+    /// 「warning 付き manifest」と対称の規約。
+    ///
+    /// 前回応答の `frame.png` が残っていると consumer が新しい id の frame.json と
+    /// 古い画像を組にしてしまうため、失敗応答では frame.png を削除してから
+    /// frame.json を書く（CONTRACT.md 契約点 4「失敗応答」）。
+    static func writeFailureResponse(directory: String, metadata: ProbeFrameMetadata) {
+        writeQueue.async {
+            let dirURL = URL(fileURLWithPath: directory)
+            try? FileManager.default.createDirectory(
+                at: dirURL, withIntermediateDirectories: true
+            )
+            try? FileManager.default.removeItem(
+                at: dirURL.appendingPathComponent("frame.png")
+            )
+            writeJSON(metadata, to: dirURL, baseName: "frame")
+        }
+    }
+
+    /// `scale` を出力に適用できる範囲へ正規化します。
+    ///
+    /// 非有限・0 以下・1 超はフルサイズ（1.0）扱い。契約上 scale は縮小のための
+    /// パラメータであり、拡大やゼロ除算相当の値は意味を持たないため。
+    static func normalizeScale(_ scale: Float) -> Float {
+        guard scale.isFinite, scale > 0, scale < 1 else { return 1.0 }
+        return scale
+    }
+
+    /// `scale` 適用後の出力サイズ（最小 1px）。プラグイン側（manifest の参照サイズ）と
+    /// 書き出し側で同じ丸めを共有するための単一の計算点。
+    static func scaledSize(width: Int, height: Int, scale: Float) -> (width: Int, height: Int) {
+        let s = normalizeScale(scale)
+        guard s < 1 else { return (width, height) }
+        return (
+            max(1, Int((Float(width) * s).rounded())),
+            max(1, Int((Float(height) * s).rounded()))
         )
     }
 
@@ -52,11 +118,13 @@ enum ProbeWriter {
         String(format: "frame.%04d", index)
     }
 
-    /// ステージング内容を `<directory>/<baseName>.{png,json}` に原子的に書き出す共通本体。
+    /// ピクセル列を `<directory>/<baseName>.{png,json}` に原子的に書き出す共通本体。
+    /// ``writeQueue`` 上で実行されます。
     private static func writeNamed(
-        staging: MTLTexture,
+        bgraPixels: [UInt8],
         width: Int,
         height: Int,
+        scale: Float,
         directory: String,
         baseName: String,
         metadata: ProbeFrameMetadata?
@@ -66,12 +134,28 @@ enum ProbeWriter {
             at: dirURL, withIntermediateDirectories: true
         )
 
-        let pixels = readBGRA(from: staging, width: width, height: height)
-        let analysis = analyze(pixels: pixels, width: width, height: height)
+        // BGRA を RGBA に並べ替える（CG スケーリングと PNG エンコードは
+        // RGBA 前提。以降の解析もこの並びで行う）。
+        var pixels = bgraPixels
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            let b = pixels[i]
+            pixels[i] = pixels[i + 2]
+            pixels[i + 2] = b
+        }
+
+        // scale < 1 なら縮小（契約点 4: 出力画像のスケール）。
+        var outWidth = width
+        var outHeight = height
+        if normalizeScale(scale) < 1,
+           let scaled = scaleRGBA(pixels: pixels, width: width, height: height, scale: scale) {
+            (pixels, outWidth, outHeight) = scaled
+        }
+
+        let analysis = analyze(pixels: pixels, width: outWidth, height: outHeight)
 
         let finalPNG = dirURL.appendingPathComponent("\(baseName).png")
         let tmpPNG = dirURL.appendingPathComponent("\(baseName).png.tmp")
-        encodePNG(pixels: pixels, width: width, height: height, to: tmpPNG)
+        encodePNG(rgba: &pixels, width: outWidth, height: outHeight, to: tmpPNG)
         atomicReplace(tmp: tmpPNG, final: finalPNG)
 
         guard let metadata else { return }
@@ -83,19 +167,27 @@ enum ProbeWriter {
             sourceStamp: metadata.sourceStamp,
             frame: metadata.frame,
             time: metadata.time,
-            size: metadata.size,
+            // 実際に書き出した PNG のサイズ（scale 適用後）を書く
+            size: ProbeFrameMetadata.Size(width: outWidth, height: outHeight),
             custom: metadata.custom,
             customTypes: metadata.customTypes,
             warnings: metadata.warnings + analysis.warnings,
             stats: analysis.stats
         )
 
+        writeJSON(enriched, to: dirURL, baseName: baseName)
+    }
+
+    /// メタデータ JSON を `<dir>/<baseName>.json` に原子的に書き出します。
+    private static func writeJSON(
+        _ metadata: ProbeFrameMetadata, to dirURL: URL, baseName: String
+    ) {
         let finalJSON = dirURL.appendingPathComponent("\(baseName).json")
         let tmpJSON = dirURL.appendingPathComponent("\(baseName).json.tmp")
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         do {
-            let data = try encoder.encode(enriched)
+            let data = try encoder.encode(metadata)
             try data.write(to: tmpJSON)
             atomicReplace(tmp: tmpJSON, final: finalJSON)
         } catch {
@@ -103,16 +195,50 @@ enum ProbeWriter {
         }
     }
 
+    /// シーケンスの後始末（contact sheet 合成 → manifest 書き出し）を ``writeQueue`` に
+    /// 積みます。直列キューのため、先に enqueue された全フレームの PNG が書き終わって
+    /// から実行されます（完了規約: `sequence.json` が最後）。
+    static func finalizeSequence(
+        directory: String,
+        manifest: ProbeSequenceManifest,
+        frameFiles: [String],
+        refWidth: Int,
+        refHeight: Int
+    ) {
+        writeQueue.async {
+            let sheet = composeContactSheet(
+                directory: directory, frameFiles: frameFiles,
+                refWidth: refWidth, refHeight: refHeight
+            )
+            writeManifestSync(
+                directory: directory,
+                manifest: ProbeSequenceManifest(
+                    schemaVersion: manifest.schemaVersion,
+                    id: manifest.id,
+                    label: manifest.label,
+                    frameCount: manifest.frameCount,
+                    requestedFrames: manifest.requestedFrames,
+                    every: manifest.every,
+                    size: manifest.size,
+                    contactSheet: sheet,
+                    warnings: manifest.warnings,
+                    frames: manifest.frames
+                )
+            )
+        }
+    }
+
     /// 既に書き出した連続フレーム PNG 群から contact sheet（一覧モンタージュ）を合成し、
     /// `<directory>/contact_sheet.png` に原子的に書き出します。
     ///
-    /// フレームはディスクから読み直して合成します（フレームごとの readback 完了ハンドラが
-    /// コミット順に直列実行されるため、最後のフレームのハンドラから呼べば全 PNG が出揃って
-    /// いることが保証されます）。各セルにはアスペクト比を保ってレターボックス配置します
+    /// フレームはディスクから読み直して合成します（``writeQueue`` が直列のため、
+    /// ``finalizeSequence(directory:manifest:frameFiles:refWidth:refHeight:)`` から
+    /// 呼ばれる時点で全 PNG が出揃っていることが保証されます）。各セルには
+    /// アスペクト比を保ってレターボックス配置します
     /// （途中リサイズでサイズが混在しても崩れない）。
     ///
     /// - Returns: 書き出した contact sheet の相対ファイル名。失敗時は nil。
-    static func writeContactSheet(
+    private static func composeContactSheet(
         directory: String,
         frameFiles: [String],
         refWidth: Int,
@@ -179,10 +305,19 @@ enum ProbeWriter {
         return name
     }
 
-    /// シーケンス manifest を `<directory>/sequence.json` に原子的に書き出します。
+    /// シーケンス manifest の書き出しを ``writeQueue`` に積みます。
     ///
-    /// 完了規約により、シーケンス出力のうち **最後に** 呼ぶこと。
+    /// 完了規約により、シーケンス出力のうち **最後に** 呼ぶこと（直列キューが
+    /// 先行フレームの書き出し完了後に実行することを保証する）。
     static func writeManifest(directory: String, manifest: ProbeSequenceManifest) {
+        writeQueue.async {
+            writeManifestSync(directory: directory, manifest: manifest)
+        }
+    }
+
+    /// シーケンス manifest を `<directory>/sequence.json` に原子的に書き出します
+    /// （``writeQueue`` 上で実行）。
+    private static func writeManifestSync(directory: String, manifest: ProbeSequenceManifest) {
         let dirURL = URL(fileURLWithPath: directory)
         try? FileManager.default.createDirectory(
             at: dirURL, withIntermediateDirectories: true
@@ -228,17 +363,57 @@ enum ProbeWriter {
         return pixels
     }
 
-    /// BGRA8 ピクセルから PNG をエンコードして指定パスに書きます。
-    private static func encodePNG(
-        pixels: [UInt8], width: Int, height: Int, to url: URL
-    ) {
-        var rgba = pixels
-        for i in stride(from: 0, to: rgba.count, by: 4) {
-            let b = rgba[i]
-            rgba[i] = rgba[i + 2]
-            rgba[i + 2] = b
+    /// RGBA8 ピクセル列を CGContext 経由で縮小します。
+    ///
+    /// - Returns: (縮小後ピクセル, 幅, 高さ)。失敗時は nil（呼び出し側はフルサイズで続行）。
+    private static func scaleRGBA(
+        pixels: [UInt8], width: Int, height: Int, scale: Float
+    ) -> ([UInt8], Int, Int)? {
+        let (outW, outH) = scaledSize(width: width, height: height, scale: scale)
+        guard outW < width || outH < height else { return nil }
+
+        var src = pixels
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let srcCtx = CGContext(
+            data: &src,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ),
+        let image = srcCtx.makeImage() else {
+            print("[metaphor] Probe: failed to build image for scaling — writing full size")
+            return nil
         }
 
+        var dst = [UInt8](repeating: 0, count: outW * outH * 4)
+        let ok = dst.withUnsafeMutableBytes { buf -> Bool in
+            guard let dstCtx = CGContext(
+                data: buf.baseAddress,
+                width: outW,
+                height: outH,
+                bitsPerComponent: 8,
+                bytesPerRow: outW * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            dstCtx.interpolationQuality = .high
+            dstCtx.draw(image, in: CGRect(x: 0, y: 0, width: outW, height: outH))
+            return true
+        }
+        guard ok else {
+            print("[metaphor] Probe: failed to scale frame — writing full size")
+            return nil
+        }
+        return (dst, outW, outH)
+    }
+
+    /// RGBA8 ピクセルから PNG をエンコードして指定パスに書きます。
+    private static func encodePNG(
+        rgba: inout [UInt8], width: Int, height: Int, to url: URL
+    ) {
         let bytesPerRow = width * 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         guard let ctx = CGContext(
@@ -292,9 +467,10 @@ enum ProbeWriter {
                 let x = min(width - 1, (sx * width) / samplesPerSide)
                 let y = min(height - 1, (sy * height) / samplesPerSide)
                 let i = y * bytesPerRow + x * 4
-                let b = Float(pixels[i]) / 255.0
+                // ピクセルは writeNamed で RGBA に並べ替え済み
+                let r = Float(pixels[i]) / 255.0
                 let g = Float(pixels[i + 1]) / 255.0
-                let r = Float(pixels[i + 2]) / 255.0
+                let b = Float(pixels[i + 2]) / 255.0
                 samplesR[idx] = r
                 samplesG[idx] = g
                 samplesB[idx] = b
@@ -378,12 +554,20 @@ enum ProbeWriter {
     }
 
     /// 一時ファイルから本番パスへの原子的なリネーム。
+    ///
+    /// `rename(2)` は同一ボリューム内で既存の宛先を **原子的に** 置き換える
+    /// （`removeItem` → `moveItem` の 2 段階だと、間に出力ファイルが存在しない
+    /// 瞬間窓ができて「原子的リネーム」の契約が破れる）。
     private static func atomicReplace(tmp: URL, final: URL) {
-        try? FileManager.default.removeItem(at: final)
-        do {
-            try FileManager.default.moveItem(at: tmp, to: final)
-        } catch {
-            print("[metaphor] Probe: failed to rename \(tmp.lastPathComponent) -> \(final.lastPathComponent): \(error)")
+        let result = tmp.withUnsafeFileSystemRepresentation { tmpPath -> Int32 in
+            final.withUnsafeFileSystemRepresentation { finalPath -> Int32 in
+                guard let tmpPath, let finalPath else { return -1 }
+                return rename(tmpPath, finalPath)
+            }
+        }
+        if result != 0 {
+            print("[metaphor] Probe: failed to rename \(tmp.lastPathComponent) -> "
+                + "\(final.lastPathComponent) (errno \(errno))")
         }
     }
 }

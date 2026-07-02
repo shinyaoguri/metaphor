@@ -13,8 +13,8 @@ let syphonTarget: Target = useLocalSyphon
     ? .binaryTarget(name: "Syphon", path: localFrameworkPath)
     : .binaryTarget(
         name: "Syphon",
-        url: "https://github.com/shinyaoguri/metaphor/releases/download/v0.4.0/Syphon.xcframework.zip",
-        checksum: "a1609b8b5f7ff16bf94c452e92cc211bcb05b28cdf33d4c54e946d5524cf5753"
+        url: "https://github.com/shinyaoguri/metaphor/releases/download/v0.5.0/Syphon.xcframework.zip",
+        checksum: "9efe1b740815c712f7d61fcd46bfbc8ee7442e3a71dcfe0082b0ecb16f90191b"
     )
 
 let package = Package(
@@ -37,9 +37,9 @@ let package = Package(
         .library(name: "MetaphorVideo", targets: ["MetaphorVideo"]),
         .library(name: "MetaphorSyphon", targets: ["MetaphorSyphon"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
-    ],
+    // 外部依存なし。ドキュメント生成は `xcrun docc` を直接呼ぶ（Makefile / docs.yml）ため
+    // swift-docc-plugin は不要（ライブラリ利用者の resolve 時 fetch を増やさない）。
+    dependencies: [],
     targets: [
         syphonTarget,
 

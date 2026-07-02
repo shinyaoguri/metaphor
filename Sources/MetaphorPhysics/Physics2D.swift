@@ -132,15 +132,26 @@ public final class Physics2D {
     ///   - iterations: 拘束・衝突解決の反復回数
     ///     （デフォルトは4）。反復回数が多いほど安定した結果が得られます。
     public func step(_ dt: Float, iterations: Int = 4) {
+        // 非有限・負の dt は Verlet 積分を通じて全ボディの位置を NaN に
+        // 汚染する（その後の空間ハッシュでクラッシュ/ハング）ため弾く。
+        // dt == 0 は「積分せず拘束・衝突だけ解決する」用途として許可する
+        guard dt.isFinite, dt >= 0 else { return }
+
         // 重力を適用
         for body in bodies {
             body.applyForce(gravity * body.mass)
         }
 
-        // 積分
+        // 積分（非有限になった位置はサニタイズ）
         for body in bodies {
             body.integrate(dt: dt)
+            sanitizePosition(body)
         }
+
+        // ブロードフェーズは 1 ステップ 1 回だけ構築し、反復間で候補ペアを
+        // 再利用する（反復ごとのハッシュ再構築と Set/配列確保を削減。反復中の
+        // 位置補正は重なりの解消分だけで、候補集合を変えるほど大きくない）
+        let pairs = broadphasePairs()
 
         // 拘束と衝突を解決
         for _ in 0..<iterations {
@@ -149,14 +160,32 @@ public final class Physics2D {
                 c.solve()
             }
 
-            // 衝突検出 + 解消
-            resolveCollisions()
+            // 衝突解消
+            for (i, j) in pairs {
+                resolveCollision(bodies[i], bodies[j])
+            }
 
             // 境界
             if let bounds = bounds {
                 applyBounds(bounds)
             }
         }
+    }
+
+    /// 位置が非有限（NaN/∞）になったボディを最後の有限位置へ戻します。
+    ///
+    /// ユーザーコードが position へ直接 NaN を書き込んだ場合や、極端な力の
+    /// 適用で発散した場合に、汚染がワールド全体（空間ハッシュ・衝突解消）へ
+    /// 広がるのを防ぎます。速度はゼロにリセットされます。
+    private func sanitizePosition(_ body: PhysicsBody2D) {
+        guard !body.position.x.isFinite || !body.position.y.isFinite else { return }
+        let fallback = body.previousPosition
+        if fallback.x.isFinite && fallback.y.isFinite {
+            body.position = fallback
+        } else {
+            body.position = .zero
+        }
+        body.previousPosition = body.position
     }
 
     // MARK: - 削除
@@ -184,8 +213,8 @@ public final class Physics2D {
 
     // MARK: - プライベート
 
-    /// ブロードフェーズに空間ハッシュを使用して衝突を検出・解消します。
-    private func resolveCollisions() {
+    /// 空間ハッシュを構築してブロードフェーズの候補ペアを返します（1 ステップ 1 回）。
+    private func broadphasePairs() -> [(Int, Int)] {
         spatialHash.clear()
 
         for (i, body) in bodies.enumerated() {
@@ -193,10 +222,7 @@ public final class Physics2D {
             spatialHash.insert(index: i, position: body.position, radius: radius)
         }
 
-        let pairs = spatialHash.queryPairs()
-        for (i, j) in pairs {
-            resolveCollision(bodies[i], bodies[j])
-        }
+        return spatialHash.queryPairs()
     }
 
     /// ブロードフェーズ挿入用のバウンディング半径を計算します。

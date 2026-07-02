@@ -91,7 +91,13 @@ clean-all: clean
 # Check if setup is complete
 check:
 	@if [ -d "Frameworks/Syphon.xcframework" ]; then \
-		echo "Syphon.xcframework: OK"; \
+		current=$$(git submodule status Vendor/Syphon-Framework 2>/dev/null | awk '{print $$1}'); \
+		built=$$(cat Frameworks/.syphon-build-stamp 2>/dev/null || true); \
+		if [ -n "$$built" ] && [ "$$built" != "$$current" ]; then \
+			echo "Syphon.xcframework: STALE (built from $$built, submodule at $$current) - run 'make syphon'"; \
+		else \
+			echo "Syphon.xcframework: OK"; \
+		fi; \
 	else \
 		echo "Syphon.xcframework: MISSING - run 'make setup'"; \
 	fi
@@ -118,6 +124,7 @@ symbol-graphs: build
 		-target arm64-apple-macosx14.0 \
 		-sdk "$$SDK_PATH" \
 		-I .build/arm64-apple-macosx/debug/Modules \
+		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorSyphonBootstrap.build/module.modulemap \
 		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
 		-minimum-access-level public \
 		-skip-inherited-docs \

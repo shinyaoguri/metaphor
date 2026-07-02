@@ -154,6 +154,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
         // SyphonPlugin はここで Syphon サーバーを停止する。
         renderer?.shutdown()
+        // Sketch → SketchContext ストレージからエントリを削除し、
+        // context（renderer 一式）への強参照を解放する（teardown 経路）
+        sketchRef?._context = nil
     }
 
     /// レンダラー・キャンバス・コンテキストとその制御コールバックを初期化します。
@@ -327,11 +330,25 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// 起動します。
     ///
     /// 出力 target が未リンク（＝ ``MetaphorOutputRegistry/factory`` 未登録）の場合は
-    /// 何もしません。これにより `MetaphorCore` 単体（Syphon 抜き）でも安全に動作します。
-    /// `import metaphor`（アンブレラ）経由では `MetaphorSyphon` がリンクされ、ファクトリが
-    /// ロード時に自動登録されるため、従来どおり透過的に Syphon が起動します。
+    /// 警告を出して何もしません。これにより `MetaphorCore` 単体（Syphon 抜き）でも安全に
+    /// 動作します。`import metaphor`（アンブレラ）経由では `MetaphorSyphon` がリンクされ、
+    /// ファクトリがロード時に自動登録されるため、従来どおり透過的に Syphon が起動します。
     private func startOutput(renderer: MetaphorRenderer, name: String) {
-        guard let plugin = MetaphorOutputRegistry.makeOutput(name: name) else { return }
+        guard let plugin = MetaphorOutputRegistry.makeOutput(name: name) else {
+            // 出力先が無いままレンダーループだけ回り続けると原因の手掛かりが
+            // 一切出ないため明示する。ヘッドレスモードは「ウィンドウ無し・
+            // 出力のみ」なので error 級（Release でも stderr に出す）
+            let message = "output '\(name)' was requested but no output module is linked. "
+                + "Import the umbrella 'metaphor' (or 'MetaphorSyphon'), or call MetaphorSyphon.enable()."
+            if isHeadless {
+                FileHandle.standardError.write(
+                    "[metaphor] ERROR: \(message)\n".data(using: .utf8)!
+                )
+            } else {
+                metaphorWarning(message)
+            }
+            return
+        }
         renderer.addPlugin(plugin)
     }
 
@@ -417,7 +434,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             let t = Float(time)
             let dt = t - prevTime
             prevTime = t
-            context.beginFrame(encoder: encoder, time: t, deltaTime: dt)
+            context.beginFrame(encoder: encoder, time: t, deltaTime: dt, preciseTime: time)
             sketch.draw()
             context.endFrame()
         }

@@ -3,11 +3,16 @@ import Foundation
 /// 組み込みMetalシェーダー関数名と共有構造体定義。
 ///
 /// metaphor はデュアルシェーダーシステムを使用します:
-/// - **`.metal` ファイル** (`Shaders/Metal/` 内): Xcode/SPM によりプリコンパイル済み。本番環境向け。
-/// - **`.txt` リソースファイル** (`Shaders/ShaderSources/` 内): `MTLDevice.makeLibrary(source:)` によるランタイムコンパイル。
-///   フォールバックおよび開発時のシェーダーホットリロードに使用されます。
+/// - **`.metal` ファイル** (`Shaders/Metal/` 内): **正典**。Xcode ビルドではプリコンパイル
+///   （default.metallib）として使われる。
+/// - **`.txt` リソースファイル** (`Shaders/ShaderSources/` 内): `.metal` からの**生成物**
+///   （`scripts/generate-shader-sources.py` がローカル include をインライン展開して生成）。
+///   `MTLDevice.makeLibrary(source:)` によるランタイムコンパイル（SwiftPM ビルドの既定経路）
+///   と開発時のシェーダーホットリロードに使用される。**手で編集しないこと。**
 ///
-/// 新しいシェーダーは `Shaders/Metal/` 配下に `.metal` ファイルとして追加してください。
+/// 新しいシェーダーは `Shaders/Metal/` 配下に `.metal` ファイルとして追加し、
+/// `python3 scripts/generate-shader-sources.py` で `.txt` を再生成してください
+/// （陳腐化は pre-push フックと CI が検出します）。
 public enum BuiltinShaders {
 
     // MARK: - 共通構造体

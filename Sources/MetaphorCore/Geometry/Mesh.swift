@@ -573,28 +573,37 @@ extension Mesh {
 
         let white = SIMD4<Float>(1, 1, 1, 1)
 
+        /// OBJ の 1 始まりインデックスを 0 始まりに解決します。
+        /// 負値は OBJ 仕様上有効な「末尾からの相対参照」（-1 = 最後に定義された要素）。
+        /// 範囲外は nil を返します（呼び出し側で面をスキップ）。
+        func resolveOBJIndex(_ raw: Int, count: Int) -> Int? {
+            guard raw != 0 else { return nil }
+            let idx = raw > 0 ? raw - 1 : count + raw
+            return (0..<count).contains(idx) ? idx : nil
+        }
+
         /// 面頂点トークンをパースし、頂点インデックスとUV/法線の有無フラグを返します。
-        func resolveIndex(_ token: String) -> (index: Int, hasUV: Bool, hasNormal: Bool) {
+        /// 頂点インデックスが不正（0・範囲外・非数値）の場合は nil を返します。
+        func resolveIndex(_ token: String) -> (index: Int, hasUV: Bool, hasNormal: Bool)? {
             let parts = token.split(separator: "/", omittingEmptySubsequences: false)
-            guard let viRaw = Int(parts[0]) else { return (0, false, false) }
-            let vi = viRaw - 1
-            let vti: Int
-            let vni: Int
+            guard let viRaw = Int(parts[0]),
+                  let vi = resolveOBJIndex(viRaw, count: positions.count) else { return nil }
+            var vti = -1
+            var vni = -1
             var foundUV = false
             var foundNormal = false
 
-            if parts.count > 1 && !parts[1].isEmpty, let vtiRaw = Int(parts[1]) {
-                vti = vtiRaw - 1
+            // UV / 法線は範囲外でも面ごと落とさず「無し」として続行する
+            if parts.count > 1 && !parts[1].isEmpty, let vtiRaw = Int(parts[1]),
+               let resolved = resolveOBJIndex(vtiRaw, count: texCoords.count) {
+                vti = resolved
                 foundUV = true
-            } else {
-                vti = -1
             }
 
-            if parts.count > 2 && !parts[2].isEmpty, let vniRaw = Int(parts[2]) {
-                vni = vniRaw - 1
+            if parts.count > 2 && !parts[2].isEmpty, let vniRaw = Int(parts[2]),
+               let resolved = resolveOBJIndex(vniRaw, count: normals.count) {
+                vni = resolved
                 foundNormal = true
-            } else {
-                vni = -1
             }
 
             let faceIdx = FaceIndex(v: vi, vt: vti, vn: vni)
@@ -646,11 +655,21 @@ extension Mesh {
                 guard faceCount >= 3 else { continue }
 
                 var faceVertexIndices: [Int] = []
+                var faceIsValid = true
                 for i in 1..<parts.count {
-                    let result = resolveIndex(String(parts[i]))
+                    guard let result = resolveIndex(String(parts[i])) else {
+                        faceIsValid = false
+                        break
+                    }
                     faceVertexIndices.append(result.index)
                     if result.hasUV { hasUVs = true }
                     if result.hasNormal { hasNormals = true }
+                }
+                // 範囲外参照などの壊れた面はスキップしてロード全体は継続する
+                // （外部ファイルは信頼できない入力。従来は配列アクセスで即クラッシュ）
+                guard faceIsValid else {
+                    metaphorWarning("OBJ: skipping face with invalid vertex reference: '\(trimmed)'")
+                    continue
                 }
 
                 // ファンテッセレーション

@@ -239,16 +239,119 @@ struct PostEffectCITests {
 
 // MARK: - CIFilterWrapper Tests (GPU-dependent)
 
-@Suite("CIFilterWrapper")
+@Suite("CIFilterWrapper", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
 struct CIFilterWrapperTests {
 
-    @Test("initialization")
-    @MainActor func initialization() {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
+    /// CPU から読み書きできるテスト用テクスチャを作成します。
+    private static func makeTexture(device: MTLDevice, width: Int = 64, height: Int = 64) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
+        )
+        desc.usage = [.shaderRead, .shaderWrite, .renderTarget]
+        desc.storageMode = .shared
+        return device.makeTexture(descriptor: desc)
+    }
+
+    private static func fill(_ texture: MTLTexture, byte: UInt8) {
+        let count = texture.width * texture.height * 4
+        let bytes = [UInt8](repeating: byte, count: count)
+        texture.replace(
+            region: MTLRegionMake2D(0, 0, texture.width, texture.height),
+            mipmapLevel: 0, withBytes: bytes, bytesPerRow: texture.width * 4
+        )
+    }
+
+    private static func readBytes(_ texture: MTLTexture) -> [UInt8] {
+        var bytes = [UInt8](repeating: 0, count: texture.width * texture.height * 4)
+        bytes.withUnsafeMutableBytes { buf in
+            texture.getBytes(
+                buf.baseAddress!, bytesPerRow: texture.width * 4,
+                from: MTLRegionMake2D(0, 0, texture.width, texture.height), mipmapLevel: 0
+            )
         }
+        return bytes
+    }
+
+    @Test("initialization")
+    func initialization() {
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper
+    }
+
+    @Test("generator presets applied via image path do not crash",
+          arguments: [
+            CIFilterPreset.checkerboard(),
+            .stripes(),
+            .starShine(),
+            .sunbeams()
+          ])
+    func generatorPresetsDoNotCrash(preset: CIFilterPreset) {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let source = Self.makeTexture(device: device)!
+        let destination = Self.makeTexture(device: device)!
+        let cmdBuf = queue.makeCommandBuffer()!
+        let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
+        // 修正前はジェネレーターへ kCIInputImageKey を setValue して
+        // NSException でプロセスごとクラッシュしていた経路。
+        let params = preset.parameters(textureSize: CGSize(width: source.width, height: source.height))
+        wrapper.apply(
+            filterName: preset.filterName, parameters: params,
+            source: source, destination: destination, commandBuffer: cmdBuf
+        )
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+        #expect(cmdBuf.error == nil)
+    }
+
+    @Test("unknown filter name falls back to passthrough copy")
+    func unknownFilterPassesThrough() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let source = Self.makeTexture(device: device)!
+        let destination = Self.makeTexture(device: device)!
+        let cmdBuf = queue.makeCommandBuffer()!
+        Self.fill(source, byte: 0x7F)
+        Self.fill(destination, byte: 0x00)
+
+        let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
+        wrapper.apply(
+            filterName: "CINotARealFilter", parameters: [:],
+            source: source, destination: destination, commandBuffer: cmdBuf
+        )
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+
+        #expect(Self.readBytes(destination) == Self.readBytes(source))
+    }
+
+    @Test("unknown parameter key is ignored without crashing")
+    func unknownParameterKeyIgnored() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let source = Self.makeTexture(device: device)!
+        let destination = Self.makeTexture(device: device)!
+        let cmdBuf = queue.makeCommandBuffer()!
+        let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
+        // 修正前は KVC の NSException でクラッシュしていた（キー名 typo 想定）。
+        wrapper.apply(
+            filterName: "CISepiaTone",
+            parameters: ["inputIntenstiy": Float(0.8)],
+            source: source, destination: destination, commandBuffer: cmdBuf
+        )
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+        #expect(cmdBuf.error == nil)
+    }
+
+    @Test("generate with unknown filter name does not crash")
+    func generateUnknownFilter() {
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
+        let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
+        _ = wrapper.generate(filterName: "CINotARealFilter", parameters: [:], width: 32, height: 32)
     }
 }

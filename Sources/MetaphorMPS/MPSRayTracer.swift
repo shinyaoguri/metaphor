@@ -317,7 +317,9 @@ public final class MPSRayTracer {
             mipmapped: false
         )
         desc.usage = [.shaderRead, .shaderWrite]
-        desc.storageMode = .managed
+        // Apple Silicon 専用のため UMA の .shared を使う（.managed は
+        // CPU 読み出し時の synchronizeResource 漏れの温床になる）
+        desc.storageMode = .shared
         _outputTexture = device.makeTexture(descriptor: desc)
     }
 

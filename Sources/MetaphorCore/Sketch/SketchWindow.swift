@@ -125,12 +125,15 @@ public final class SketchWindow {
 
     // MARK: - Drawing API
 
-    /// クロージャを使用してこのウィンドウに描画します。
+    /// このウィンドウの描画クロージャを設定します。
     ///
-    /// 親スケッチの `draw()` メソッドから毎フレーム呼び出してください。
-    /// クロージャはこのウィンドウの ``SketchContext`` をフル描画 API で受け取ります。
+    /// クロージャは保存され、このウィンドウのレンダーループが毎フレーム実行します
+    /// （呼び出しごとに即時描画されるわけではありません）。``onDraw(_:)`` と同じ
+    /// 保存セマンティクスで、こちらはウィンドウが閉じている場合に無視される点だけが
+    /// 異なります。毎フレーム同じクロージャを再設定しても害はありませんが、
+    /// 1 回の設定で十分です。
     ///
-    /// - Parameter closure: 描画操作を行うクロージャ。
+    /// - Parameter closure: 毎フレーム描画操作を行うクロージャ。
     public func draw(_ closure: @escaping @MainActor (SketchContext) -> Void) {
         guard isOpen else { return }
         drawClosure = closure
@@ -138,8 +141,8 @@ public final class SketchWindow {
 
     /// 毎フレーム自動実行される永続的な描画クロージャを設定します。
     ///
-    /// ``draw(_:)`` とは異なり、親スケッチの `draw()` から毎フレーム
-    /// 呼び出す必要なく、フレームを跨いで永続します。
+    /// ``draw(_:)`` と同じ保存セマンティクスです（どちらも同じスロットに保存され、
+    /// フレームを跨いで永続します）。こちらはウィンドウの開閉状態に関わらず設定します。
     ///
     /// - Parameter closure: 毎フレーム描画操作を行うクロージャ。
     public func onDraw(_ closure: @escaping @MainActor (SketchContext) -> Void) {
@@ -149,17 +152,14 @@ public final class SketchWindow {
     /// このウィンドウを閉じリソースを解放します。
     public func close() {
         guard isOpen else { return }
-        stopRenderTimer()
-        // プラグイン解放（onStop → onDetach）。SyphonPlugin はここで Syphon サーバーを停止し、
-        // 閉じたウィンドウのサーバー名が Syphon 上に残るのを防ぐ。
-        renderer.shutdown()
-        isOpen = false
-        drawClosure = nil
-        window?.close()
-        window = nil
-        mtkView = nil
-        windowDelegate = nil
-        context.performCleanup()
+        if let window {
+            // NSWindow.close() が WindowDelegate（windowWillClose）経由で
+            // handleWindowClose() を呼び、共通の後始末を行う。UI の閉じるボタンと
+            // 同じ単一の teardown 経路に集約する
+            window.close()
+        } else {
+            handleWindowClose()
+        }
     }
 
     // MARK: - Private Setup
@@ -316,9 +316,16 @@ public final class SketchWindow {
         }
     }
 
+    /// ウィンドウクローズ時の共通 teardown。UI の閉じるボタン（WindowDelegate 経由）と
+    /// プログラム的な ``close()`` の両方がここへ集約される。
     private func handleWindowClose() {
-        stopRenderTimer()
+        guard isOpen else { return }
         isOpen = false
+        stopRenderTimer()
+        // プラグイン解放（onStop → onDetach）。SyphonPlugin はここで Syphon サーバーを停止し、
+        // 閉じたウィンドウのサーバー名が Syphon 上に残るのを防ぐ。
+        // 以前は UI の閉じるボタン経由でこの shutdown が呼ばれていなかった。
+        renderer.shutdown()
         drawClosure = nil
         mtkView = nil
         window = nil

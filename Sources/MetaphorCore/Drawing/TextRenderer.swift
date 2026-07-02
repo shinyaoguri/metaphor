@@ -101,12 +101,21 @@ final class GlyphAtlas {
     /// - Parameter string: レイアウトするテキスト。
     /// - Returns: 配置済みグリフの配列。いずれかのグリフを解決できなかった場合は nil。
     func layoutGlyphs(string: String) -> [PositionedGlyph]? {
+        // 先に全文字のグリフを解決してアトラス寸法を確定させる。配置しながら
+        // 解決すると、途中の addGlyph がアトラスを縦拡張したときに積み終えた
+        // PositionedGlyph の v0/v1 が旧高さ基準のまま残り、文字列の前半が潰れる。
+        // （拡張時は glyphMap 側の UV が再スケールされるため、解決を終えてから
+        // glyphMap を読めば常に最新のアトラス基準になる。）
+        for char in string {
+            guard glyph(for: char) != nil else { return nil }
+        }
+
         var result: [PositionedGlyph] = []
         result.reserveCapacity(string.count)
         var cursorX: Float = 0
 
         for char in string {
-            guard let g = glyph(for: char) else { return nil }
+            guard let g = glyphMap[char] else { return nil }
             result.append(PositionedGlyph(
                 x: cursorX + g.bearingX,
                 y: -g.bearingY,
@@ -276,6 +285,35 @@ final class TextRenderer {
     /// フォントとサイズをキーとするグリフアトラスキャッシュ。
     private var atlases: [GlyphAtlas.Key: GlyphAtlas] = [:]
 
+    /// アトラス数の上限。`textSize()` を連続変化させるスケッチで 512×512〜512×2048 の
+    /// テクスチャが無制限に蓄積しないよう、超過時は最も使われていないものを追い出す。
+    var maxAtlases: Int = 8
+
+    /// アトラスの LRU 追跡（アクセスごとに単調増加するカウンターを記録）。
+    private var atlasUseCounter: Int = 0
+    private var atlasLastUse: [GlyphAtlas.Key: Int] = [:]
+
+    /// `CTFontCreateWithName` の結果キャッシュ。
+    /// textWidth/textAscent/textDescent が呼び出しごと（text() 1 回につき 2 回）に
+    /// フォントを生成していたコストを回収する。
+    private var fontCache: [GlyphAtlas.Key: CTFont] = [:]
+
+    /// テスト用: 現在保持しているアトラス数。
+    var atlasCount: Int { atlases.count }
+
+    /// キャッシュ経由で CTFont を取得します。
+    private func cachedFont(fontSize: Float, fontFamily: String) -> CTFont {
+        let key = GlyphAtlas.Key(fontFamily: fontFamily, fontSize: fontSize)
+        if let font = fontCache[key] { return font }
+        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        // フォントサイズアニメーション等でのキー増殖を防ぐ（CTFont は軽量なので単純リセット）
+        if fontCache.count >= 64 {
+            fontCache.removeAll()
+        }
+        fontCache[key] = font
+        return font
+    }
+
     struct TextCacheKey: Hashable {
         let string: String
         let fontSize: Float
@@ -324,6 +362,8 @@ final class TextRenderer {
     func clearCache() {
         cache.removeAll()
         atlases.removeAll()
+        atlasLastUse.removeAll()
+        fontCache.removeAll()
     }
 
     /// キャッシュからテキストテクスチャを取得するか、新しいものをレンダリングします。
@@ -369,7 +409,7 @@ final class TextRenderer {
     ///   - fontFamily: フォントファミリー名。
     /// - Returns: ピクセル単位のテキスト幅。
     func textWidth(string: String, fontSize: Float, fontFamily: String) -> Float {
-        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let attrString = NSAttributedString(string: string, attributes: attributes)
         let line = CTLineCreateWithAttributedString(attrString)
@@ -384,7 +424,7 @@ final class TextRenderer {
     ///   - fontFamily: フォントファミリー名。
     /// - Returns: ピクセル単位のアセント値。
     func textAscent(fontSize: Float, fontFamily: String) -> Float {
-        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
         return Float(CTFontGetAscent(font))
     }
 
@@ -395,7 +435,7 @@ final class TextRenderer {
     ///   - fontFamily: フォントファミリー名。
     /// - Returns: ピクセル単位のディセント値。
     func textDescent(fontSize: Float, fontFamily: String) -> Float {
-        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
         return Float(CTFontGetDescent(font))
     }
 
@@ -455,9 +495,21 @@ final class TextRenderer {
     /// - Returns: 指定されたフォントとサイズのグリフアトラス。
     func getAtlas(fontSize: Float, fontFamily: String) -> GlyphAtlas {
         let key = GlyphAtlas.Key(fontFamily: fontFamily, fontSize: fontSize)
-        if let atlas = atlases[key] { return atlas }
+        atlasUseCounter += 1
+        if let atlas = atlases[key] {
+            atlasLastUse[key] = atlasUseCounter
+            return atlas
+        }
+        // 上限到達時は最も使われていないアトラスを追い出す
+        // （テクスチャは in-flight コマンドバッファが参照中でも Metal 側で保持される）
+        if atlases.count >= maxAtlases,
+           let evictKey = atlasLastUse.min(by: { $0.value < $1.value })?.key {
+            atlases.removeValue(forKey: evictKey)
+            atlasLastUse.removeValue(forKey: evictKey)
+        }
         let atlas = GlyphAtlas(device: device, fontFamily: fontFamily, fontSize: fontSize)
         atlases[key] = atlas
+        atlasLastUse[key] = atlasUseCounter
         return atlas
     }
 
@@ -482,7 +534,7 @@ final class TextRenderer {
     // MARK: - Private
 
     private func renderText(string: String, fontSize: Float, fontFamily: String) -> CachedText? {
-        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: PlatformColor.white
@@ -541,7 +593,7 @@ final class TextRenderer {
         string: String, fontSize: Float, fontFamily: String,
         maxWidth: Float, maxHeight: Float, leading: Float
     ) -> CachedText? {
-        let font = CTFontCreateWithName(fontFamily as CFString, CGFloat(fontSize), nil)
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
 
         // 段落スタイル（行間隔）
         let paragraphStyle = NSMutableParagraphStyle()

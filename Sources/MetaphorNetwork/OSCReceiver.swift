@@ -26,26 +26,55 @@ public struct OSCMessage: Sendable {
 private final class OSCMessageQueue: Sendable {
     private struct State {
         var messages: [OSCMessage] = []
+        /// 直近の dequeueAll 以降にキュー満杯で捨てたメッセージ数。
+        var dropped: Int = 0
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
     private let maxQueueSize = 10_000
 
     func enqueue(_ message: OSCMessage) {
+        // ロック保持中はログを出さない（受信スレッドとメインの poll() を
+        // 長くブロックしないよう、ドロップ数だけ記録する）
         state.withLock { s in
             if s.messages.count < maxQueueSize {
                 s.messages.append(message)
             } else {
-                debugWarning("OSC message queue full, dropping message")
+                s.dropped += 1
             }
         }
     }
 
     func dequeueAll() -> [OSCMessage] {
-        state.withLock { s in
+        let (msgs, dropped) = state.withLock { s -> ([OSCMessage], Int) in
             let msgs = s.messages
+            let dropped = s.dropped
             s.messages.removeAll()
-            return msgs
+            s.dropped = 0
+            return (msgs, dropped)
         }
+        if dropped > 0 {
+            debugWarning("OSC message queue overflowed: dropped \(dropped) message(s) since last poll()")
+        }
+        return msgs
+    }
+}
+
+// MARK: - スレッドセーフなエラーボックス
+
+/// ネットワークスレッドで発生したエラーをメインスレッドの poll 系 API へ渡します。
+private final class OSCErrorBox: @unchecked Sendable {
+    private let state = OSAllocatedUnfairLock(initialState: (any Error)?.none)
+
+    func store(_ error: any Error) {
+        state.withLock { $0 = error }
+    }
+
+    var value: (any Error)? {
+        state.withLock { $0 }
+    }
+
+    func clear() {
+        state.withLock { $0 = nil }
     }
 }
 
@@ -125,9 +154,22 @@ public final class OSCReceiver {
     /// リスニングポート番号を返します。
     public let port: UInt16
 
+    /// レシーバーが現在リッスン中かどうか。
+    ///
+    /// リスナーが非同期に失敗した場合（ポート競合等）は自動的に false へ戻り、
+    /// ``lastError`` にエラーが入ります。再度 ``start()`` を呼べます。
+    public var isRunning: Bool { listenerState.isRunning }
+
+    /// 直近のリスナーエラー（ポート競合等）。
+    ///
+    /// リスナーの失敗は非同期に起きるため、`draw()` 内の ``poll()`` と同じ要領で
+    /// このプロパティを確認してください。``start()`` を呼ぶとクリアされます。
+    public var lastError: (any Error)? { errorBox.value }
+
     // MARK: - プライベート
 
     private let listenerState = OSCListenerState()
+    private let errorBox = OSCErrorBox()
 
     /// アドレスからハンドラーへのマッピング。
     private var handlers: [String: ([OSCValue]) -> Void] = [:]
@@ -175,6 +217,8 @@ public final class OSCReceiver {
 
         let queue = messageQueue
         let state = listenerState
+        let errors = errorBox
+        errors.clear()
 
         listener.newConnectionHandler = { connection in
             state.track(connection)
@@ -182,10 +226,15 @@ public final class OSCReceiver {
             Self.receiveLoop(connection: connection, queue: queue)
         }
 
-        listener.stateUpdateHandler = { state in
-            switch state {
+        listener.stateUpdateHandler = { listenerUpdate in
+            switch listenerUpdate {
             case .failed(let error):
                 print("[metaphor] OSC listener failed: \(error)")
+                // 失敗したリスナーを片付けて isRunning を false に戻す
+                // （明示的な stop() なしで再 start() できる）。エラーは
+                // lastError 経由でメインスレッドから観測できる
+                errors.store(error)
+                state.cancel()
             default:
                 break
             }
@@ -350,6 +399,10 @@ enum OSCParser {
     // MARK: - バイナリヘルパー
 
     /// ヌル終端文字列を読み取ります。
+    ///
+    /// OSC 1.0 の文字列は仕様上 ASCII だが、実装間では UTF-8 が広く使われる。
+    /// .ascii でデコードすると非 ASCII 文字を含むメッセージがアドレス／文字列値
+    /// ごと破棄されるため、上位互換の UTF-8 でデコードする。
     private static func readString(data: Data, offset: Int) -> String? {
         guard offset < data.count else { return nil }
         var end = offset
@@ -357,7 +410,7 @@ enum OSCParser {
             end += 1
         }
         guard end > offset else { return "" }
-        return String(data: data[offset..<end], encoding: .ascii)
+        return String(data: data[offset..<end], encoding: .utf8)
     }
 
     /// ビッグエンディアンの Int32 を読み取ります。

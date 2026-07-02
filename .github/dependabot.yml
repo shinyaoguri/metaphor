@@ -1,0 +1,10 @@
+# GitHub Actions の更新追従（Issue #148）。
+# Swift パッケージは remote 依存を持たないため actions のみ対象。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies

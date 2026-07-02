@@ -128,16 +128,21 @@ public final class DynamicMesh {
             return
         }
 
+        // 頂点・インデックスの両方を確保してからアトミックに差し替える。
+        // 片方だけ成功した状態でキャッシュを更新すると「新頂点 × 旧インデックス」の
+        // 不整合が生じ、インデックスが新頂点数を超えて GPU が範囲外を読み得る。
         guard let vb = device.makeBuffer(
             bytes: vertices,
             length: MemoryLayout<Vertex3D>.stride * vertices.count,
             options: .storageModeShared
         ) else {
             metaphorWarning("DynamicMesh: Failed to allocate vertex buffer (\(vertices.count) vertices)")
+            cachedVertexBuffer = nil
+            cachedIndexBuffer = nil
             return
         }
-        cachedVertexBuffer = vb
 
+        var newIndexBuffer: MTLBuffer?
         if !indices.isEmpty {
             guard let ib = device.makeBuffer(
                 bytes: indices,
@@ -145,14 +150,26 @@ public final class DynamicMesh {
                 options: .storageModeShared
             ) else {
                 metaphorWarning("DynamicMesh: Failed to allocate index buffer (\(indices.count) indices)")
+                cachedVertexBuffer = nil
+                cachedIndexBuffer = nil
                 return
             }
-            cachedIndexBuffer = ib
-        } else {
-            cachedIndexBuffer = nil
+            newIndexBuffer = ib
         }
 
+        cachedVertexBuffer = vb
+        cachedIndexBuffer = newIndexBuffer
         isDirty = false
+    }
+
+    /// 記録経路（影オン / コマンド記録）用: 現在の内容を不変の ``Mesh`` として複製します。
+    /// - Returns: 頂点が空の場合は nil。
+    func makeSnapshotMesh() -> Mesh? {
+        guard !vertices.isEmpty else { return nil }
+        if indices.isEmpty {
+            return try? Mesh(device: device, vertices: vertices, indices: nil)
+        }
+        return try? Mesh(device: device, vertices: vertices, indices32: indices)
     }
 
     /// 頂点バッファを返します（ensureBuffers 呼び出し後に有効）。
