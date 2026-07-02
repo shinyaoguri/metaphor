@@ -143,6 +143,10 @@ public final class Tween<T: Interpolatable> {
 
     /// アニメーションのリピート回数を設定します（0は無限）。
     ///
+    /// 無限リピートのトゥイーンは自動では完了しないため、`TweenManager` に
+    /// 登録した場合は不要になった時点で ``cancel()`` を呼んでください
+    /// （呼ばない限りマネージャに保持され続けます）。
+    ///
     /// - Parameter n: リピート回数。
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
@@ -183,6 +187,15 @@ public final class Tween<T: Interpolatable> {
         repeatCount = 0
         forward = true
         value = fromValue
+    }
+
+    /// アニメーションを完了状態にして停止します。
+    ///
+    /// 完了コールバック（``onComplete(_:)``）は呼ばれません。
+    /// `TweenManager` に登録されている場合は次の更新サイクルで自動的に除去されます。
+    /// 無限リピート（`repeatCount(0)`）のトゥイーンを終了させる唯一の方法です。
+    public func cancel() {
+        state = .complete
     }
 
     // MARK: - Update (called by TweenManager)

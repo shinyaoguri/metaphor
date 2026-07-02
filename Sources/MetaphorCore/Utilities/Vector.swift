@@ -86,9 +86,13 @@ extension SIMD2 where Scalar == Float {
 
     /// 均一に分布した方向を持つランダムな単位ベクトルを作成します。
     ///
+    /// ``randomSeed(_:)`` で設定した共有シード RNG を使用するため、
+    /// シード設定後は決定論的に再現できます。
+    ///
     /// - Returns: ランダムな2D単位ベクトル。
+    @MainActor
     public static func random2D() -> SIMD2<Float> {
-        let angle = Float.random(in: 0..<(Float.pi * 2))
+        let angle = MetaphorCore.random(0, Float.pi * 2)
         return fromAngle(angle)
     }
 
@@ -189,16 +193,19 @@ extension SIMD3 where Scalar == Float {
     /// 単位球の表面上に均一に分布するランダムな単位ベクトルを作成します。
     ///
     /// 均一な分布を生成するために Marsaglia 棄却法を使用します。
+    /// ``randomSeed(_:)`` で設定した共有シード RNG を使用するため、
+    /// シード設定後は決定論的に再現できます。
     ///
     /// - Returns: ランダムな3D単位ベクトル。
+    @MainActor
     public static func random3D() -> SIMD3<Float> {
         // Marsaglia 法
         var v: SIMD3<Float>
         repeat {
             v = SIMD3(
-                Float.random(in: -1...1),
-                Float.random(in: -1...1),
-                Float.random(in: -1...1)
+                MetaphorCore.random(-1, 1),
+                MetaphorCore.random(-1, 1),
+                MetaphorCore.random(-1, 1)
             )
         } while simd_length_squared(v) > 1 || simd_length_squared(v) < 0.0001
         return simd_normalize(v)

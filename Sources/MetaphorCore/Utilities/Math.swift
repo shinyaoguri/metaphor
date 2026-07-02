@@ -82,8 +82,17 @@ extension float4x4 {
     ///   - center: カメラが注視する点。
     ///   - up: 上方向ベクトル。
     public init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) {
-        let z = normalize(eye - center)
-        let x = normalize(cross(up, z))
+        // eye == center では視線方向が定義できないため +Z を採用（NaN 行列を防止）
+        let forward = eye - center
+        let z = simd_length_squared(forward) > 0 ? normalize(forward) : SIMD3<Float>(0, 0, 1)
+        // up と視線が平行だと外積がゼロベクトルになり normalize が NaN を返すため
+        // 代替の up 軸を選ぶ
+        var xRaw = cross(up, z)
+        if simd_length_squared(xRaw) < 1e-12 {
+            let altUp: SIMD3<Float> = abs(z.y) < 0.99 ? SIMD3(0, 1, 0) : SIMD3(1, 0, 0)
+            xRaw = cross(altUp, z)
+        }
+        let x = normalize(xRaw)
         let y = cross(z, x)
 
         self.init(columns: (
@@ -237,9 +246,12 @@ public func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float {
 ///   - stop1: 元の範囲の上限。
 ///   - start2: 変換先の範囲の下限。
 ///   - stop2: 変換先の範囲の上限。
-/// - Returns: リマップされた値。
+/// - Returns: リマップされた値。元の範囲がゼロ幅（`start1 == stop1`）の場合は
+///   NaN/∞ の伝播を避けるため `start2` を返します。
 public func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float {
-    start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1))
+    let range = stop1 - start1
+    guard range != 0 else { return start2 }
+    return start2 + (stop2 - start2) * ((value - start1) / range)
 }
 
 /// 値を指定された範囲に制約します。
@@ -259,9 +271,12 @@ public func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float {
 ///   - value: 正規化する値。
 ///   - start: 元の範囲の下限。
 ///   - stop: 元の範囲の上限。
-/// - Returns: 正規化された値。
+/// - Returns: 正規化された値。範囲がゼロ幅（`start == stop`）の場合は
+///   NaN/∞ の伝播を避けるため 0 を返します。
 public func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float {
-    (value - start) / (stop - start)
+    let range = stop - start
+    guard range != 0 else { return 0 }
+    return (value - start) / range
 }
 
 // MARK: - Distance & Magnitude

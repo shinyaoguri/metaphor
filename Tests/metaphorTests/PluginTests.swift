@@ -136,11 +136,6 @@ struct PluginTests {
         renderer.renderFrame()
 
         #expect(rec.order == ["norm1", "norm2", "out"])
-
-        // renderFrame の inflightSemaphore が GPU completion（非同期 signal）前に
-        // renderer dealloc で dispose されるクラッシュを避けるため、少し待つ
-        // （ProbeTests と同じ既知の回避策）。
-        Thread.sleep(forTimeInterval: 0.2)
     }
 
     // MARK: - Registration

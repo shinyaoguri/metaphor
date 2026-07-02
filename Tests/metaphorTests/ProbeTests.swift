@@ -52,12 +52,6 @@ struct ProbeRequestTests {
 @MainActor
 struct MetaphorProbePluginTests {
 
-    /// `MetaphorRenderer` の `inflightSemaphore` が GPU completion 前に dispose される
-    /// クラッシュを避けるため、各テスト末尾で in-flight ワークの完了を少し待ちます。
-    private func drainGPUWork() {
-        Thread.sleep(forTimeInterval: 0.2)
-    }
-
     /// 完了ハンドラ駆動の書き出しが終わるまで `frame.png` の出現をポーリングします。
     private func waitForFrame(in directory: URL, timeout: TimeInterval = 3.0) -> URL? {
         let deadline = Date().addingTimeInterval(timeout)
@@ -126,7 +120,6 @@ struct MetaphorProbePluginTests {
                 atPath: outputDir.appendingPathComponent("frame.png").path
             ))
 
-            drainGPUWork()
         }
     }
 
@@ -161,7 +154,6 @@ struct MetaphorProbePluginTests {
                 #expect(data[3] == 0x47)
             }
 
-            drainGPUWork()
         }
     }
 
@@ -236,7 +228,6 @@ struct MetaphorProbePluginTests {
             #expect(stats?["meanLuminance"] != nil)
             #expect(stats?["contentFraction"] != nil)
 
-            drainGPUWork()
         }
     }
 
@@ -272,7 +263,6 @@ struct MetaphorProbePluginTests {
             #expect(json?["schemaVersion"] as? Int == 4)
             #expect(json?["sourceStamp"] as? String == "build-abc123")
 
-            drainGPUWork()
         }
     }
 
@@ -313,7 +303,6 @@ struct MetaphorProbePluginTests {
             #expect((stats?["contentFraction"] as? Double) == 0)
             #expect(stats?["contentBounds"] == nil)
 
-            drainGPUWork()
         }
     }
 
@@ -328,7 +317,6 @@ struct MetaphorProbePluginTests {
         // pre() がリセットしたあとは値が消えている
         #expect(plugin.stateBuffer.snapshot().isEmpty)
 
-        drainGPUWork()
     }
 
     @Test("same request id is processed only once")
@@ -366,7 +354,6 @@ struct MetaphorProbePluginTests {
 
             #expect(firstMtime == secondMtime)
 
-            drainGPUWork()
         }
     }
 
@@ -400,7 +387,6 @@ struct MetaphorProbePluginTests {
             renderer.renderFrame()
 
             #expect(waitForFrame(in: outputDir) != nil)
-            drainGPUWork()
         }
     }
 
@@ -441,7 +427,6 @@ struct MetaphorProbePluginTests {
             ) as? [String: Any]
             #expect(json?["id"] as? String == "single-B")
 
-            drainGPUWork()
         }
     }
 
@@ -481,7 +466,6 @@ struct MetaphorProbePluginTests {
             #expect(size?["width"] as? Int == 32)
             #expect(size?["height"] as? Int == 32)
 
-            drainGPUWork()
         }
     }
 
@@ -512,7 +496,6 @@ struct MetaphorProbePluginTests {
                 #expect(size?.height == 16)
             }
 
-            drainGPUWork()
         }
     }
 
@@ -543,7 +526,6 @@ struct MetaphorProbePluginTests {
                 #expect(size?.height == 64)
             }
 
-            drainGPUWork()
         }
     }
 }
@@ -633,10 +615,6 @@ struct ProbeWriterFailureResponseTests {
 @MainActor
 struct MetaphorProbeSequenceTests {
 
-    private func drainGPUWork() {
-        Thread.sleep(forTimeInterval: 0.2)
-    }
-
     private func waitForFile(_ url: URL, timeout: TimeInterval = 5.0) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -704,7 +682,6 @@ struct MetaphorProbeSequenceTests {
             #expect(size?["width"] == 64)
             #expect(size?["height"] == 48)
 
-            drainGPUWork()
         }
     }
 
@@ -743,7 +720,6 @@ struct MetaphorProbeSequenceTests {
                 atPath: seqDir.appendingPathComponent("frame.0002.png").path
             ))
 
-            drainGPUWork()
         }
     }
 
@@ -773,7 +749,6 @@ struct MetaphorProbeSequenceTests {
                 atPath: outputDir.appendingPathComponent("sequence").path
             ))
 
-            drainGPUWork()
         }
     }
 }
