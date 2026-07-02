@@ -161,3 +161,28 @@ struct MIDIEventListParsingTests {
         #expect(messages.first?.data2 == 0x40)
     }
 }
+
+// MARK: - MIDIMessageBuffer
+
+@Suite("MIDI message buffer")
+struct MIDIMessageBufferTests {
+
+    @Test("buffer is capped and drains report drops")
+    func bufferCap() {
+        let buffer = MIDIMessageBuffer()
+        let batch = [MIDIMessage](
+            repeating: MIDIMessage(status: 0x90, channel: 0, data1: 60, data2: 100),
+            count: 6_000
+        )
+        // 上限 10,000 を超えて追加しても無制限には成長しない
+        buffer.append(batch)
+        buffer.append(batch)
+        buffer.append(batch)
+
+        let drained = buffer.drain()
+        #expect(drained.count == MIDIMessageBuffer.maxBufferSize)
+        // drain 後は再び追加できる
+        buffer.append(batch)
+        #expect(buffer.drain().count == 6_000)
+    }
+}
