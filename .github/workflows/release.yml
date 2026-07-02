@@ -73,6 +73,13 @@ jobs:
           shasum -a 256 Syphon.xcframework.zip > checksum.txt
           echo "CHECKSUM=$(awk '{print $1}' checksum.txt)" >> $GITHUB_ENV
 
+      # --- Examples smoke build（API ドリフトゲート） ---
+      # Examples は per-PR CI では検証されない（コスト。ci.yml 参照）ため、
+      # 少なくともリリース前には代表セットのビルドで壊れた example を検出する
+      # （Issue #147）。失敗するとタグ・Release の発行前に止まる。
+      - name: Smoke-build representative examples
+        run: ./scripts/run-examples.sh --build-only --smoke
+
       # --- Compute next version ---
       - name: Compute next version
         run: |
