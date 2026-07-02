@@ -327,6 +327,148 @@ struct SceneRendererTests {
         #expect(node.isVisible == false)
         #expect(callbackCalled == false)
     }
+
+    @Test("near culling works with Metal [0,1] depth convention")
+    func nearCullingMetalConvention() {
+        // カメラは原点から -Z を注視（near = 0.1）
+        let proj = float4x4(perspectiveFov: Float.pi / 3, aspect: 1.0, near: 0.1, far: 100)
+        let view = float4x4(lookAt: SIMD3(0, 0, 0), center: SIMD3(0, 0, -1), up: SIMD3(0, 1, 0))
+        let planes = SceneRenderer.extractFrustumPlanes(from: proj * view)
+
+        // ニア平面より手前（カメラから 0.07）のボックスはカリングされる。
+        // 旧実装（OpenGL 規約の r3 + r2）ではニア平面が 0.05 に置かれ、
+        // このボックスが誤って可視判定になっていた
+        let insideNear = AABB(min: SIMD3(-0.01, -0.01, -0.075), max: SIMD3(0.01, 0.01, -0.065))
+        #expect(insideNear.intersects(frustum: planes) == false)
+
+        // カメラ背後のボックスはカリングされる
+        let behind = AABB(min: SIMD3(-0.5, -0.5, 0.5), max: SIMD3(0.5, 0.5, 1.5))
+        #expect(behind.intersects(frustum: planes) == false)
+
+        // ニア平面より奥の正面のボックスは可視
+        let visible = AABB(min: SIMD3(-0.5, -0.5, -5.5), max: SIMD3(0.5, 0.5, -4.5))
+        #expect(visible.intersects(frustum: planes) == true)
+    }
+}
+
+// MARK: - Node hierarchy / lookAt regression tests
+
+@Suite("SceneGraph Node regressions")
+@MainActor
+struct NodeRegressionTests {
+
+    @Test("removeChild on a non-child does not corrupt the tree")
+    func removeChildNonChild() {
+        let a = Node(name: "a")
+        let b = Node(name: "b")
+        let child = Node(name: "child")
+        b.addChild(child)
+
+        // 以前は b の子のまま parent だけ nil 化され、worldTransform が
+        // 親の変換を無視する不整合ツリーになっていた
+        a.removeChild(child)
+        #expect(child.parent === b)
+        #expect(b.children.contains { $0 === child })
+
+        b.position = SIMD3(1, 2, 3)
+        let w = child.worldTransform.columns.3
+        #expect(w.x == 1 && w.y == 2 && w.z == 3)
+    }
+
+    @Test("lookAt aligned with forward under a rotated parent")
+    func lookAtSingularUnderRotatedParent() {
+        let parent = Node(name: "parent")
+        parent.orientation = simd_quatf(angle: .pi / 2, axis: SIMD3(0, 1, 0))
+        let child = Node(name: "child")
+        parent.addChild(child)
+
+        // ターゲット方向がデフォルト forward（-Z）と一致する特異ケース。
+        // 以前はこの分岐だけ親回転を除去せず、回転した親の下で誤った向きになった
+        child.lookAt(SIMD3(0, 0, -5))
+        let f = child.forward
+        #expect(abs(f.x) < 1e-4)
+        #expect(abs(f.y) < 1e-4)
+        #expect(abs(f.z + 1) < 1e-4)
+    }
+
+    @Test("lookAt anti-parallel to forward under a rotated parent")
+    func lookAtAntiParallelUnderRotatedParent() {
+        let parent = Node(name: "parent")
+        parent.orientation = simd_quatf(angle: .pi / 3, axis: SIMD3(0, 1, 0))
+        let child = Node(name: "child")
+        parent.addChild(child)
+
+        child.lookAt(SIMD3(0, 0, 5))
+        let f = child.forward
+        #expect(abs(f.x) < 1e-4)
+        #expect(abs(f.y) < 1e-4)
+        #expect(abs(f.z - 1) < 1e-4)
+    }
+
+    @Test("lookAt respects worldUp")
+    func lookAtRespectsWorldUp() {
+        let node = Node(name: "n")
+        node.lookAt(SIMD3(1, 0, 0), worldUp: SIMD3(0, 0, 1))
+        let f = node.forward
+        let u = node.up
+        #expect(abs(f.x - 1) < 1e-4)
+        #expect(abs(f.y) < 1e-4 && abs(f.z) < 1e-4)
+        #expect(abs(u.z - 1) < 1e-4)
+    }
+
+    @Test("lookAt at own position is a no-op")
+    func lookAtOwnPosition() {
+        let node = Node(name: "n")
+        let before = node.orientation
+        node.lookAt(.zero)
+        #expect(node.orientation.vector == before.vector)
+    }
+
+    @Test("worldOrientation cache invalidates on ancestor change")
+    func worldOrientationCacheInvalidation() {
+        let parent = Node(name: "parent")
+        let child = Node(name: "child")
+        parent.addChild(child)
+
+        // キャッシュを温める
+        _ = child.worldOrientation
+
+        let q = simd_quatf(angle: .pi / 2, axis: SIMD3(0, 1, 0))
+        parent.orientation = q
+        let w = child.worldOrientation
+        #expect(abs(dot(w.vector, q.vector)) > 0.9999)
+    }
+
+    @Test("worldOrientation cache invalidates when only orientation cache is fresh")
+    func worldOrientationCacheMixedReads() {
+        let parent = Node(name: "parent")
+        let child = Node(name: "child")
+        parent.addChild(child)
+
+        // worldTransform 側は dirty のまま worldOrientation だけ読む
+        parent.position = SIMD3(1, 0, 0)
+        _ = child.worldOrientation
+
+        // orientation キャッシュだけが有効な状態で再度 invalidate されるケース
+        let q = simd_quatf(angle: .pi / 4, axis: SIMD3(1, 0, 0))
+        parent.orientation = q
+        let w = child.worldOrientation
+        #expect(abs(dot(w.vector, q.vector)) > 0.9999)
+    }
+
+    @Test("worldOrientation cache invalidates on reparenting")
+    func worldOrientationCacheReparent() {
+        let a = Node(name: "a")
+        a.orientation = simd_quatf(angle: .pi / 2, axis: SIMD3(0, 1, 0))
+        let b = Node(name: "b")
+        let child = Node(name: "child")
+        b.addChild(child)
+        _ = child.worldOrientation
+
+        a.addChild(child)
+        let w = child.worldOrientation
+        #expect(abs(dot(w.vector, a.orientation.vector)) > 0.9999)
+    }
 }
 
 // MARK: - Node + float4x4 extension helpers

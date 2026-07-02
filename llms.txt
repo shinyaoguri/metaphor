@@ -1840,7 +1840,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var scale: SIMD3<Float> { get set }` -- 各軸に沿ったノードのローカルスケール。
 - `var up: SIMD3<Float> { get }` -- ワールド空間での上方向ベクトル（正の Y）。
 - `var worldBounds: AABB? { get }` -- ローカル bounds とワールドトランスフォームから計算されるワールド空間のバウンディングボックス。
-- `var worldOrientation: simd_quatf { get }` -- ワールド空間での向き（親 + ローカルクォータニオンの合成）。
+- `var worldOrientation: simd_quatf { get }` -- ワールド空間での向き（親 + ローカルクォータニオンの合成、キャッシュ済み）。
 - `var worldTransform: float4x4 { get }` -- すべての祖先トランスフォームを合成したワールドトランスフォーム（キャッシュ済み）。
 - `init(name: String = "")` -- 指定名で新しいノードを作成します。
 - `func addChild(_ child: Node)` -- このノードに子ノードを追加します。
@@ -1856,6 +1856,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static var frustumPlanes: [SIMD4<Float>]?` -- カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
 - `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
 - `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+- `static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
 
 ## MetaphorSyphon
 
