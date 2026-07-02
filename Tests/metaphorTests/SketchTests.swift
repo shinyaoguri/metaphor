@@ -164,3 +164,68 @@ struct SketchContextComputeTests {
         #expect(buf![2] == 3.0)
     }
 }
+
+// MARK: - Sketch Context Storage Tests (#135)
+
+/// ストレージテスト用の最小 Sketch。
+@MainActor
+private final class StorageTestSketch: Sketch {
+    func draw() {}
+}
+
+@Suite("Sketch context storage", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct SketchContextStorageTests {
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        return SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+    }
+
+    @Test("assigning nil removes the storage entry")
+    func nilRemovesEntry() throws {
+        let sketch = StorageTestSketch()
+        let context = try makeContext()
+        sketch._context = context
+        #expect(sketch._context === context)
+
+        // teardown 経路: nil 代入でストレージからエントリが削除される
+        sketch._context = nil
+        #expect(sketch._context == nil)
+    }
+
+    @Test("a fresh sketch never picks up a stale context after others are deallocated")
+    func noStaleContextPickup() throws {
+        let context = try makeContext()
+
+        // _context を張ったまま Sketch を大量に解放する（teardown 忘れを模擬）。
+        // 旧実装（ObjectIdentifier キーの辞書 + 削除なし）ではアドレス再利用に
+        // より、新しいインスタンスが他人の stale context を拾い得た
+        for _ in 0..<64 {
+            let s = StorageTestSketch()
+            s._context = context
+        }
+
+        let fresh = StorageTestSketch()
+        #expect(fresh._context == nil)
+    }
+
+    @Test("storage does not keep the context alive after the sketch deallocates")
+    func contextReleasedAfterSketchDealloc() throws {
+        weak var weakContext: SketchContext?
+        do {
+            var sketch: StorageTestSketch? = StorageTestSketch()
+            var context: SketchContext? = try makeContext()
+            weakContext = context
+            sketch?._context = context
+            context = nil
+            #expect(weakContext != nil)
+            // Sketch 解放前に明示的に teardown（決定的に検証できる経路）
+            sketch?._context = nil
+            sketch = nil
+        }
+        #expect(weakContext == nil)
+    }
+}

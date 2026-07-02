@@ -64,20 +64,29 @@ public protocol Sketch: AnyObject {
 // MARK: - Per-Instance Context (Pure Swift Storage)
 
 /// Sketch → SketchContext マッピング用のストレージ（objc_getAssociatedObject の代替）。
+///
+/// キーは Sketch インスタンスへの weak 参照（ポインタ同一性）。Sketch が解放されると
+/// エントリは自動的に purge されるため、SketchContext（renderer 一式）をプロセス終了
+/// まで強参照し続けたり、解放後のアドレス再利用で新しいインスタンスが他人の stale
+/// context を拾ったりしない（ObjectIdentifier キーの辞書はその両方が起きる）。
 @MainActor
-private var _sketchContextStorage: [ObjectIdentifier: SketchContext] = [:]
+private let _sketchContextStorage = NSMapTable<AnyObject, SketchContext>(
+    keyOptions: [.weakMemory, .objectPointerPersonality],
+    valueOptions: .strongMemory
+)
 
 extension Sketch {
     /// このインスタンスに関連付けられたスケッチコンテキスト。
     /// SketchRunner のセットアップ時に設定されます。
+    /// nil を代入するとストレージからエントリが削除されます（teardown 経路）。
     @MainActor
     internal var _context: SketchContext? {
-        get { _sketchContextStorage[ObjectIdentifier(self)] }
+        get { _sketchContextStorage.object(forKey: self) }
         set {
             if let newValue {
-                _sketchContextStorage[ObjectIdentifier(self)] = newValue
+                _sketchContextStorage.setObject(newValue, forKey: self)
             } else {
-                _sketchContextStorage.removeValue(forKey: ObjectIdentifier(self))
+                _sketchContextStorage.removeObject(forKey: self)
             }
         }
     }
