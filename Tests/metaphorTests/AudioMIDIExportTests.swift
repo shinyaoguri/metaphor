@@ -109,6 +109,84 @@ struct GIFExporterTests {
         #expect(CGImageSourceGetCount(src) == frameColors.count)
     }
 
+    /// 記録中の寸法変更（リサイズ）でステージングリング再構築を跨いでも
+    /// クラッシュせず全フレームが書き出されること。
+    @Test("resize during recording rebuilds staging ring without crashing",
+          .enabled(if: MetalTestHelper.isGPUAvailable))
+    func resizeDuringRecording() throws {
+        guard let device = MetalTestHelper.device,
+              let queue = device.makeCommandQueue() else { return }
+
+        func makeTexture(_ size: Int) -> MTLTexture? {
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm, width: size, height: size, mipmapped: false
+            )
+            desc.storageMode = .shared
+            desc.usage = [.shaderRead, .shaderWrite]
+            return device.makeTexture(descriptor: desc)
+        }
+
+        let exporter = GIFExporter()
+        // width/height 未指定 = ソーステクスチャ寸法依存（リサイズで再構築が走る）
+        exporter.beginRecord(fps: 10)
+
+        for size in [32, 32, 64, 64, 32] {
+            guard let tex = makeTexture(size) else {
+                Issue.record("texture creation failed")
+                return
+            }
+            exporter.captureFrame(texture: tex, device: device, commandQueue: queue)
+        }
+
+        let outPath = NSTemporaryDirectory() + "metaphor_gif_resize_\(UUID().uuidString).gif"
+        try exporter.endRecord(to: outPath)
+        defer { try? FileManager.default.removeItem(atPath: outPath) }
+
+        #expect(FileManager.default.fileExists(atPath: outPath))
+        let url = URL(fileURLWithPath: outPath) as CFURL
+        guard let src = CGImageSourceCreateWithURL(url, nil) else {
+            Issue.record("Failed to read back GIF")
+            return
+        }
+        #expect(CGImageSourceGetCount(src) == 5)
+    }
+
+    /// 連続録画: セッション 1 の endRecord 後に即セッション 2 を開始しても、
+    /// 両ファイルが独立にファイナライズされること（DispatchGroup のセッション分離）。
+    @Test("back-to-back recording sessions finalize independently",
+          .enabled(if: MetalTestHelper.isGPUAvailable))
+    func backToBackSessions() throws {
+        guard let device = MetalTestHelper.device,
+              let queue = device.makeCommandQueue() else { return }
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 16, height: 16, mipmapped: false
+        )
+        desc.storageMode = .shared
+        desc.usage = [.shaderRead, .shaderWrite]
+        guard let tex = device.makeTexture(descriptor: desc) else { return }
+
+        let exporter = GIFExporter()
+        var paths: [String] = []
+        defer { for p in paths { try? FileManager.default.removeItem(atPath: p) } }
+
+        for session in 0..<2 {
+            exporter.beginRecord(fps: 10, width: 16, height: 16)
+            for _ in 0...session {
+                exporter.captureFrame(texture: tex, device: device, commandQueue: queue)
+            }
+            let path = NSTemporaryDirectory() + "metaphor_gif_s\(session)_\(UUID().uuidString).gif"
+            try exporter.endRecord(to: path)
+            paths.append(path)
+        }
+
+        for (session, path) in paths.enumerated() {
+            #expect(FileManager.default.fileExists(atPath: path))
+            let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil)
+            #expect(src.map { CGImageSourceGetCount($0) } == session + 1)
+        }
+    }
+
     /// onCaptureOutput フック経由のキャプチャが「今描いたフレーム」を記録すること。
     /// 旧実装（endFrame で独自コマンドバッファを即コミット）は同一キュー上で
     /// メインコマンドバッファより先に実行され、1 フレーム前を記録していた。
