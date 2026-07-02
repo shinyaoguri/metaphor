@@ -66,6 +66,31 @@ struct MathUtilityTests {
         #expect(s.columns.2.z == 2)
         #expect(s.columns.3.w == 1)
     }
+
+    @Test("lookAt with up parallel to view direction is finite")
+    func lookAtParallelUp() {
+        // 真上を見る + up が +Y: 外積がゼロベクトルになる縮退ケース
+        let m = float4x4(
+            lookAt: SIMD3<Float>(0, 0, 0),
+            center: SIMD3<Float>(0, 1, 0),
+            up: SIMD3<Float>(0, 1, 0)
+        )
+        for col in [m.columns.0, m.columns.1, m.columns.2, m.columns.3] {
+            #expect(col.x.isFinite && col.y.isFinite && col.z.isFinite && col.w.isFinite)
+        }
+    }
+
+    @Test("lookAt with eye equal to center is finite")
+    func lookAtDegenerateEye() {
+        let m = float4x4(
+            lookAt: SIMD3<Float>(1, 2, 3),
+            center: SIMD3<Float>(1, 2, 3),
+            up: SIMD3<Float>(0, 1, 0)
+        )
+        for col in [m.columns.0, m.columns.1, m.columns.2, m.columns.3] {
+            #expect(col.x.isFinite && col.y.isFinite && col.z.isFinite && col.w.isFinite)
+        }
+    }
 }
 
 // MARK: - Time Utility Tests
@@ -171,6 +196,14 @@ struct ColorTests {
         #expect(abs(c.b - 0.7) < 0.001)
     }
 
+    @Test("HSB non-finite hue does not crash", arguments: [Float.nan, .infinity, -.infinity])
+    func hsbNonFiniteHue(hue: Float) {
+        let c = Color(hue: hue, saturation: 1, brightness: 1)
+        #expect(c.r.isFinite && c.g.isFinite && c.b.isFinite)
+        // hue 0（赤）へフォールバックする
+        #expect(abs(c.r - 1.0) < 0.001)
+    }
+
     @Test("hex 0xRRGGBB")
     func hexRGB() {
         let c = Color(hex: 0xFF8000)
@@ -252,6 +285,40 @@ struct ColorTests {
 
 @Suite("NoiseGenerator")
 struct NoiseTests {
+
+    @Test("octaves below 1 is clamped and noise stays finite")
+    func octavesClamped() {
+        var gen = NoiseGenerator()
+        gen.octaves = 0
+        #expect(gen.octaves == 1)
+        gen.octaves = -3
+        #expect(gen.octaves == 1)
+        let v = gen.noise(1.5)
+        #expect(v.isFinite)
+        #expect(v >= 0 && v <= 1)
+    }
+
+    @Test("negative or non-finite falloff is clamped")
+    func falloffClamped() {
+        var gen = NoiseGenerator()
+        gen.falloff = -1
+        #expect(gen.falloff == 0)
+        gen.falloff = .nan
+        #expect(gen.falloff == 0)
+        gen.octaves = 4
+        let v = gen.noise(0.7, 0.3)
+        #expect(v.isFinite)
+    }
+
+    @Test("noiseDetail with zero octaves keeps global noise finite")
+    @MainActor
+    func noiseDetailZeroOctaves() {
+        noiseDetail(octaves: 0)
+        let v = noise(2.5)
+        #expect(v.isFinite)
+        #expect(v >= 0 && v <= 1)
+        noiseDetail()  // デフォルトに復元
+    }
 
     @Test("1D noise output in 0..1 range")
     func noise1DRange() {
@@ -367,6 +434,20 @@ struct MathUtilsTests {
         #expect(norm(10, 0, 10) == 1)
     }
 
+    @Test("map with zero-width source range returns start2")
+    func mapZeroRange() {
+        let result = map(5, 3, 3, 0, 100)
+        #expect(result == 0)
+        #expect(result.isFinite)
+    }
+
+    @Test("norm with zero-width range returns 0")
+    func normZeroRange() {
+        let result = norm(5, 3, 3)
+        #expect(result == 0)
+        #expect(result.isFinite)
+    }
+
     @Test("dist 2D")
     func dist2D() {
         #expect(dist(0, 0, 3, 4) == 5)
@@ -423,6 +504,27 @@ struct RandomTests {
         let b2 = random(Float(100))
         #expect(a1 == b1)
         #expect(a2 == b2)
+    }
+
+    @Test("randomSeed makes Vec2.random2D deterministic")
+    func randomSeedVec2Determinism() {
+        randomSeed(123)
+        let a1 = Vec2.random2D()
+        let a2 = Vec2.random2D()
+        randomSeed(123)
+        let b1 = Vec2.random2D()
+        let b2 = Vec2.random2D()
+        #expect(a1 == b1)
+        #expect(a2 == b2)
+    }
+
+    @Test("randomSeed makes Vec3.random3D deterministic")
+    func randomSeedVec3Determinism() {
+        randomSeed(456)
+        let a = Vec3.random3D()
+        randomSeed(456)
+        let b = Vec3.random3D()
+        #expect(a == b)
     }
 }
 
@@ -495,6 +597,7 @@ struct Vec2Tests {
     }
 
     @Test("random2D has unit magnitude")
+    @MainActor
     func random2DTest() {
         for _ in 0..<20 {
             let v = Vec2.random2D()
@@ -552,6 +655,7 @@ struct Vec3Tests {
     }
 
     @Test("random3D has unit magnitude")
+    @MainActor
     func random3DTest() {
         for _ in 0..<20 {
             let v = Vec3.random3D()

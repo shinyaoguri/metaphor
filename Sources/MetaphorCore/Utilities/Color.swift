@@ -55,7 +55,16 @@ public struct Color: Sendable, Equatable {
     ///   - brightness: 明度値。0.0 から 1.0 の範囲。
     ///   - alpha: アルファ成分。デフォルトは 1.0（完全に不透明）。
     public init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0) {
-        let h = ((hue.truncatingRemainder(dividingBy: 1.0)) + 1.0)
+        // NaN/∞ の hue は後段の Int(h) 変換でトラップするため 0 にフォールバック
+        // （saturation/brightness は下のクランプで防御済み）。
+        let safeHue: Float
+        if hue.isFinite {
+            safeHue = hue
+        } else {
+            metaphorWarning("Color(hue:saturation:brightness:) received non-finite hue (\(hue)); using 0")
+            safeHue = 0
+        }
+        let h = ((safeHue.truncatingRemainder(dividingBy: 1.0)) + 1.0)
             .truncatingRemainder(dividingBy: 1.0) * 6.0
         let s = max(0, min(1, saturation))
         let v = max(0, min(1, brightness))
