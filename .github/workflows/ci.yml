@@ -24,7 +24,7 @@ jobs:
       actions: write   # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
       statuses: write  # Required to bridge workflow_dispatch runs to a legacy Status for the ruleset gate.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           # Need history for diffing against the push base / PR base to decide
