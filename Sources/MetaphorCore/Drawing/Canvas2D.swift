@@ -103,6 +103,10 @@ public final class Canvas2D: CanvasStyle {
     /// `SketchContext` がフレーム頭でリセットするカウンタを注入する。未注入時は 0。
     /// PR-1 では基盤のみ（2D flush はまだ seq を消費しない）。
     var seqProvider: (() -> UInt32)?
+
+    /// このフレームで 3D 側に記録済みのドローコールがあるかを返すフック
+    /// （SketchContext が配線）。遅延モードのフレーム途中 background() 判定に使う。
+    var hasRecorded3D: (() -> Bool)?
     var vertexCount: Int = 0
     var bufferOffset: Int = 0
     let projectionMatrix: float4x4

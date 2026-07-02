@@ -574,10 +574,21 @@ public final class Canvas3D: CanvasStyle {
     ///
     /// - Parameter mesh: 描画するダイナミックメッシュ。
     public func dynamicMesh(_ mesh: DynamicMesh) {
+        guard hasFill || hasStroke else { return }
+
+        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: 現在の内容を不変の
+        // Mesh として複製し、drawMesh の記録経路（DrawCall3D）に載せる。従来は
+        // encoder 必須の即時経路しかなく、記録フレームでは本体が消失していた（#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let snapshot = mesh.makeSnapshotMesh() {
+                drawMesh(snapshot)
+            }
+            return
+        }
+
         mesh.ensureBuffers()
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
-        guard hasFill || hasStroke else { return }
 
         // DynamicMesh はインスタンシング対象外
         flushInstanceBatch()
@@ -795,8 +806,21 @@ public final class Canvas3D: CanvasStyle {
 
     // テッセレーション済み 3D 頂点配列を塗りつぶし・ワイヤーフレームパスで描画
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
-        guard let encoder = encoder, !vertices.isEmpty else { return }
+        guard !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
+
+        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: テッセレーション済み頂点を
+        // 一時 Mesh 化して drawMesh の記録経路（DrawCall3D）に載せる。従来は
+        // encoder 必須の即時経路しかなく、記録フレームでは本体が描画されず
+        // シャドウにも落ちなかった（#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil) {
+                drawMesh(mesh)
+            }
+            return
+        }
+
+        guard let encoder = encoder else { return }
 
         // beginShape/endShape は個別頂点描画を使用するため、インスタンスバッチをフラッシュ
         flushInstanceBatch()
@@ -954,8 +978,28 @@ public final class Canvas3D: CanvasStyle {
 
     // 各頂点を小さな三角形として描画し、ポイントをシミュレート
     private func drawShape3DPoints() {
-        guard let encoder = encoder else { return }
         guard !shapeVertices3D.isEmpty else { return }
+
+        // すべての頂点の三角形を単一バッチで構築
+        var allVerts: [Vertex3D] = []
+        allVerts.reserveCapacity(shapeVertices3D.count * 3)
+
+        let s: Float = 0.5
+        for v in shapeVertices3D {
+            allVerts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
+        }
+
+        // 記録経路: 一時 Mesh 化して DrawCall3D として記録（#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let mesh = try? Mesh(device: device, vertices: allVerts, indices: nil) {
+                drawMesh(mesh)
+            }
+            return
+        }
+
+        guard let encoder = encoder else { return }
 
         // 他の endShape パスと同様、先に保留中のインスタンスバッチを確定して
         // 描画順序を保つ（これがないとポイントがバッチ済みシェイプより先に
@@ -970,17 +1014,6 @@ public final class Canvas3D: CanvasStyle {
             encoder.setDepthStencilState(depthState)
         }
         encoder.setCullMode(.none)
-
-        // すべての頂点の三角形を単一バッチで構築
-        var allVerts: [Vertex3D] = []
-        allVerts.reserveCapacity(shapeVertices3D.count * 3)
-
-        let s: Float = 0.5
-        for v in shapeVertices3D {
-            allVerts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
-            allVerts.append(Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color))
-            allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
-        }
 
         var uniforms = Canvas3DUniforms(
             modelMatrix: currentTransform,

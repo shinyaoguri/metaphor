@@ -284,6 +284,12 @@ public final class SketchContext {
             guard let self, self.canvas.isDeferring else { return }
             self.canvas.flush()
         }
+        // 遅延モードのフレーム途中 background() 判定用（#152）:
+        // 2D 側の hasDrawnAnything に加えて 3D 記録済みかも参照する
+        canvas.hasRecorded3D = { [weak self] in
+            guard let self else { return false }
+            return !self.canvas3D.recordedDrawCalls.isEmpty
+        }
     }
 
     // MARK: - Compute Frame Management (internal)
