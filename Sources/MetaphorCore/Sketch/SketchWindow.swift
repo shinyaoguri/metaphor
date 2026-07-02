@@ -149,17 +149,14 @@ public final class SketchWindow {
     /// このウィンドウを閉じリソースを解放します。
     public func close() {
         guard isOpen else { return }
-        stopRenderTimer()
-        // プラグイン解放（onStop → onDetach）。SyphonPlugin はここで Syphon サーバーを停止し、
-        // 閉じたウィンドウのサーバー名が Syphon 上に残るのを防ぐ。
-        renderer.shutdown()
-        isOpen = false
-        drawClosure = nil
-        window?.close()
-        window = nil
-        mtkView = nil
-        windowDelegate = nil
-        context.performCleanup()
+        if let window {
+            // NSWindow.close() が WindowDelegate（windowWillClose）経由で
+            // handleWindowClose() を呼び、共通の後始末を行う。UI の閉じるボタンと
+            // 同じ単一の teardown 経路に集約する
+            window.close()
+        } else {
+            handleWindowClose()
+        }
     }
 
     // MARK: - Private Setup
@@ -316,9 +313,16 @@ public final class SketchWindow {
         }
     }
 
+    /// ウィンドウクローズ時の共通 teardown。UI の閉じるボタン（WindowDelegate 経由）と
+    /// プログラム的な ``close()`` の両方がここへ集約される。
     private func handleWindowClose() {
-        stopRenderTimer()
+        guard isOpen else { return }
         isOpen = false
+        stopRenderTimer()
+        // プラグイン解放（onStop → onDetach）。SyphonPlugin はここで Syphon サーバーを停止し、
+        // 閉じたウィンドウのサーバー名が Syphon 上に残るのを防ぐ。
+        // 以前は UI の閉じるボタン経由でこの shutdown が呼ばれていなかった。
+        renderer.shutdown()
         drawClosure = nil
         mtkView = nil
         window = nil

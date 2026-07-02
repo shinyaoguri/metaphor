@@ -154,6 +154,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
         // SyphonPlugin はここで Syphon サーバーを停止する。
         renderer?.shutdown()
+        // Sketch → SketchContext ストレージからエントリを削除し、
+        // context（renderer 一式）への強参照を解放する（teardown 経路）
+        sketchRef?._context = nil
     }
 
     /// レンダラー・キャンバス・コンテキストとその制御コールバックを初期化します。
