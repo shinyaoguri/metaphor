@@ -154,3 +154,127 @@ struct RenderGraphTests {
         #expect(node.output != nil)
     }
 }
+
+// MARK: - MergePass 異サイズ・フォーマット（#145）
+
+/// テスト用: 固定テクスチャを出力するだけのノード。
+@MainActor
+private final class StubTexturePass: RenderPassNode {
+    let label: String
+    var output: MTLTexture?
+
+    init(label: String, texture: MTLTexture) {
+        self.label = label
+        self.output = texture
+    }
+
+    func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {}
+}
+
+@Suite("MergePass size/format", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MergePassSizeFormatTests {
+    let device = MTLCreateSystemDefaultDevice()!
+
+    private func makeFilledTexture(
+        width: Int, height: Int, byte: UInt8, pixelFormat: MTLPixelFormat = .bgra8Unorm
+    ) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: pixelFormat, width: width, height: height, mipmapped: false
+        )
+        desc.usage = [.shaderRead]
+        desc.storageMode = .shared
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        if pixelFormat == .bgra8Unorm {
+            let bytes = [UInt8](repeating: byte, count: width * height * 4)
+            tex.replace(
+                region: MTLRegionMake2D(0, 0, width, height),
+                mipmapLevel: 0, withBytes: bytes, bytesPerRow: width * 4
+            )
+        }
+        return tex
+    }
+
+    private func readback(_ texture: MTLTexture, queue: MTLCommandQueue) -> [UInt8]? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: texture.pixelFormat,
+            width: texture.width, height: texture.height, mipmapped: false
+        )
+        desc.storageMode = .shared
+        guard let staging = device.makeTexture(descriptor: desc),
+              let cmdBuf = queue.makeCommandBuffer(),
+              let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: texture, to: staging)
+        blit.endEncoding()
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+        var bytes = [UInt8](repeating: 0, count: texture.width * texture.height * 4)
+        staging.getBytes(
+            &bytes, bytesPerRow: texture.width * 4,
+            from: MTLRegionMake2D(0, 0, texture.width, texture.height), mipmapLevel: 0
+        )
+        return bytes
+    }
+
+    @Test("mismatched input sizes read as transparent black, not undefined")
+    func mismatchedSizes() throws {
+        let queue = device.makeCommandQueue()!
+        let shaderLib = try ShaderLibrary(device: device)
+
+        // A: 64x64 全面 0x40、B: 32x32 全面 0x20
+        guard let texA = makeFilledTexture(width: 64, height: 64, byte: 0x40),
+              let texB = makeFilledTexture(width: 32, height: 32, byte: 0x20) else {
+            Issue.record("Failed to create test textures")
+            return
+        }
+        let passA = StubTexturePass(label: "a", texture: texA)
+        let passB = StubTexturePass(label: "b", texture: texB)
+        let merge = try MergePass(passA, passB, blend: .add, device: device, shaderLibrary: shaderLib)
+
+        let renderer = try MetaphorRenderer(device: device, width: 64, height: 64)
+        guard let cmdBuf = queue.makeCommandBuffer() else { return }
+        merge.execute(commandBuffer: cmdBuf, time: 0, renderer: renderer)
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+
+        guard let output = merge.output, let bytes = readback(output, queue: queue) else {
+            Issue.record("No merge output")
+            return
+        }
+
+        // B の範囲内（16,16）: A + B = 0x60
+        let inside = (16 * 64 + 16) * 4
+        #expect(bytes[inside] == 0x60)
+        // B の範囲外（48,48）: 修正前は未定義値、修正後は A + 0 = 0x40
+        let outside = (48 * 64 + 48) * 4
+        #expect(bytes[outside] == 0x40)
+        #expect(bytes[outside + 1] == 0x40)
+        #expect(bytes[outside + 2] == 0x40)
+    }
+
+    @Test("output pixel format follows input A (rgba16Float preserved)")
+    func formatPreserved() throws {
+        let queue = device.makeCommandQueue()!
+        let shaderLib = try ShaderLibrary(device: device)
+
+        guard let texA = makeFilledTexture(width: 32, height: 32, byte: 0, pixelFormat: .rgba16Float),
+              let texB = makeFilledTexture(width: 32, height: 32, byte: 0x20) else {
+            Issue.record("Failed to create test textures")
+            return
+        }
+        let merge = try MergePass(
+            StubTexturePass(label: "a", texture: texA),
+            StubTexturePass(label: "b", texture: texB),
+            blend: .add, device: device, shaderLibrary: shaderLib
+        )
+
+        let renderer = try MetaphorRenderer(device: device, width: 32, height: 32)
+        guard let cmdBuf = queue.makeCommandBuffer() else { return }
+        merge.execute(commandBuffer: cmdBuf, time: 0, renderer: renderer)
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+
+        // 修正前は .bgra8Unorm 固定で HDR 入力が暗黙に量子化されていた
+        #expect(merge.output?.pixelFormat == .rgba16Float)
+    }
+}

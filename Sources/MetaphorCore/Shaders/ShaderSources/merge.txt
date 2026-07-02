@@ -22,8 +22,12 @@ kernel void metaphor_mergeTextures(
 ) {
     if (gid.x >= output.get_width() || gid.y >= output.get_height()) return;
 
-    float4 a = texA.read(gid);
-    float4 b = texB.read(gid);
+    // 出力は max(texA, texB) サイズのため、小さい方の入力では gid が範囲外に
+    // なり得る。範囲外 read は MSL では未定義値なので、transparent black を使う。
+    float4 a = (gid.x < texA.get_width() && gid.y < texA.get_height())
+        ? texA.read(gid) : float4(0.0);
+    float4 b = (gid.x < texB.get_width() && gid.y < texB.get_height())
+        ? texB.read(gid) : float4(0.0);
     float4 result;
 
     switch (params.blend_mode) {
