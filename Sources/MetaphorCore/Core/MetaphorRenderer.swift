@@ -525,6 +525,8 @@ public final class MetaphorRenderer: NSObject {
         stagingTextures = [nil, nil, nil]
         exportStagingTextures = [nil, nil, nil]
         videoStagingTextures = [nil, nil, nil]
+        // 旧サイズの最終出力テクスチャを次フレームまでブリットし続けないようリセット
+        lastOutputTexture = nil
         postProcessPipeline?.invalidateTextures()
 
         for plugin in plugins {
@@ -702,10 +704,15 @@ public final class MetaphorRenderer: NSObject {
             throw MetaphorError.shaderNotFound("blitFragment")
         }
 
+        // ブリット先は view.currentRenderPassDescriptor（configure(view:) で
+        // depthStencilPixelFormat = .depth32Float 付き）。パイプラインの
+        // depthAttachmentPixelFormat をパスと一致させる（.invalid のままだと
+        // Metal API validation（Xcode デバッグ実行）でアサートする）。
+        // デプスステンシルステートは設定しないため深度テスト/書き込みは行われない。
         blitPipelineState = try PipelineFactory(device: device)
             .vertex(vertexFn)
             .fragment(fragmentFn)
-            .noDepth()
+            .depthFormat(.depth32Float)
             .sampleCount(1)
             .build()
     }
@@ -829,17 +836,22 @@ public final class MetaphorRenderer: NSObject {
             pixels[i + 2] = b
         }
 
+        // CGContext(data:) に渡すポインタは呼び出し中のみ有効という規約のため、
+        // makeImage() まで withUnsafeMutableBytes のスコープ内で完結させる
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: &pixels,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ),
-        let cgImage = ctx.makeImage() else {
+        let cgImageOrNil: CGImage? = pixels.withUnsafeMutableBytes { buf in
+            guard let ctx = CGContext(
+                data: buf.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return nil }
+            return ctx.makeImage()
+        }
+        guard let cgImage = cgImageOrNil else {
             print("[metaphor] Failed to create CGImage for screenshot")
             return
         }

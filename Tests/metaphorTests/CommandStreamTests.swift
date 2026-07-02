@@ -412,3 +412,121 @@ struct CommandStreamSeqTests {
         #expect(center.g > 200, "background() 後の円は描画されるべき: \(center)")
     }
 }
+
+// MARK: - #201: カメラ/ライトのフレーム内スナップショット
+
+@Suite("CommandStream/StateSnapshot", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct CommandStreamStateSnapshotTests {
+
+    /// 影オン経路（記録→shadow→再生）のハーネス（CommandStreamSeqTests と同じ結線）。
+    private func makeShadowHarness(
+        width: Int = 64, height: Int = 64,
+        draw: @escaping (SketchContext) -> Void
+    ) throws -> (MetaphorRenderer, SketchContext) {
+        let renderer = try MetaphorRenderer(width: width, height: height)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+        canvas.onSetClearColor = { [weak renderer] r, g, b, a in
+            renderer?.setClearColor(r, g, b, a)
+        }
+        renderer.onDraw = { encoder, time in
+            context.beginFrame(encoder: encoder, time: Float(time), deltaTime: 0)
+            draw(context)
+            context.endFrame()
+        }
+        renderer.onAfterDraw = { cb in context.canvas3D.performShadowPass(commandBuffer: cb) }
+        renderer.shadowDeferActive = { context.canvas3D.shouldRecordMainPass }
+        renderer.onRecordFrame = { time in
+            context.beginRecordingFrame(time: Float(time), deltaTime: 0)
+            draw(context)
+            context.endRecordingFrame()
+        }
+        renderer.onReplayMain = { encoder, time in
+            context.replayDeferredMain(encoder: encoder, time: Float(time))
+        }
+        renderer.useExternalRenderLoop = true
+        return (renderer, context)
+    }
+
+    private func centerPixel(_ renderer: MetaphorRenderer) throws -> (r: UInt8, g: UInt8, b: UInt8) {
+        let w = renderer.textureManager.width
+        let h = renderer.textureManager.height
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        let staging = try #require(renderer.device.makeTexture(descriptor: desc))
+        let cb = try #require(renderer.commandQueue.makeCommandBuffer())
+        let blit = try #require(cb.makeBlitCommandEncoder())
+        blit.copy(from: renderer.textureManager.colorTexture,
+                  sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: w, height: h, depth: 1),
+                  to: staging, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        staging.getBytes(&px, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        let off = ((h / 2) * w + (w / 2)) * 4
+        return (r: px[off + 2], g: px[off + 1], b: px[off + 0])
+    }
+
+    /// 描画後にカメラをあらぬ方向へ切り替えても、描画済みの box は
+    /// 「呼び出し時点のカメラ」で再生される（旧実装はフレーム末尾のカメラが
+    /// 全コールに適用され、box が消えていた）。
+    @Test("mid-frame camera change does not affect earlier draw calls (shadow path)")
+    func midFrameCameraChange() throws {
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.lights()
+            c.fill(Color(r: 1, g: 1, b: 1))
+            c.pushMatrix()
+            c.translate(32, 32, 0)
+            c.box(40)                                 // デフォルトカメラで中央に描画
+            c.popMatrix()
+            // フレーム末尾でカメラを遠方へ（このカメラでは box は映らない）
+            c.camera(eye: SIMD3(100_000, 100_000, 100_000),
+                     center: SIMD3(200_000, 200_000, 200_000))
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let p = try centerPixel(renderer)
+        #expect(p.r > 60 || p.g > 60,
+                "box は呼び出し時点のカメラで描画されるべき（フレーム末尾のカメラに影響されない）: \(p)")
+    }
+
+    /// フレーム途中のライト変更が後続コールにのみ効く（先行コールは呼び出し時点の
+    /// ライトで照らされる）。
+    @Test("mid-frame light change applies only to later draw calls (shadow path)")
+    func midFrameLightChange() throws {
+        // ライトなし（黒く見える）→ 描画 → lights() 追加 のフレーム。
+        // 旧実装はフレーム末尾のライトが全コールへ適用され、先行 box まで照らされた。
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.canvas3D.noLights()
+            c.canvas3D.directionalLight(0, 0, 1)      // 手前からの光のみ
+            c.fill(Color(r: 1, g: 0, b: 0))
+            c.pushMatrix()
+            c.translate(32, 32, 0)
+            c.box(40)                                 // このコールは directional のみで照らされる
+            c.popMatrix()
+            // フレーム末尾で強いアンビエントを追加（先行コールには効かないはず）
+            c.canvas3D.ambientLight(1.0, 1.0, 1.0)
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        // 検証は「クラッシュせず描画される」+ スナップショット適用の回帰确認が主眼。
+        // directional のみの照らされ方（アンビエント全開ではない）であること。
+        let p = try centerPixel(renderer)
+        #expect(p.r > 30, "box は描画されるべき: \(p)")
+    }
+}

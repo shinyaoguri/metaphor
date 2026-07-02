@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import Metal
 @testable import metaphor
@@ -6,7 +7,17 @@ import MetaphorTestSupport
 
 // MARK: - Performance Benchmarks
 
-@Suite("Performance Benchmarks", .enabled(if: MetalTestHelper.isGPUAvailable))
+/// 壁時計しきい値のベンチマーク（opt-in 実行）。
+///
+/// 共有 macOS ランナーの負荷次第で失敗する典型的フレーク源のため、必須チェック
+/// から分離されている（#149）。ローカルで実行するには:
+///
+///     METAPHOR_PERF_TESTS=1 swift test --filter "Performance Benchmarks"
+@Suite(
+    "Performance Benchmarks",
+    .enabled(if: MetalTestHelper.isGPUAvailable
+        && ProcessInfo.processInfo.environment["METAPHOR_PERF_TESTS"] == "1")
+)
 @MainActor
 struct PerformanceBenchmarks {
 

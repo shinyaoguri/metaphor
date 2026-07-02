@@ -570,6 +570,11 @@ struct ProbeWriterFailureResponseTests {
     @Test("writeFailureResponse writes frame.json with warnings and no PNG")
     func failureResponseWritesJSONOnly() throws {
         try TempFileHelper.withTemporaryDirectory { dir in
+            // 前回応答の frame.png が残っているケース: 失敗応答はこれを削除する
+            // （consumer が新しい id の frame.json と古い画像を組にしないため）。
+            try Data([0x89, 0x50, 0x4E, 0x47]).write(
+                to: dir.appendingPathComponent("frame.png")
+            )
             let metadata = ProbeFrameMetadata(
                 schemaVersion: 4,
                 id: "fail-1",

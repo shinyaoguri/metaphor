@@ -254,6 +254,25 @@ extension SketchContext {
         canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y)
     }
 
+    /// 4点を通る Catmull-Rom スプラインカーブを描画します。
+    /// - Parameters:
+    ///   - x1: 第1ガイドポイントの x 座標。
+    ///   - y1: 第1ガイドポイントの y 座標。
+    ///   - x2: 可視カーブ始点の x 座標。
+    ///   - y2: 可視カーブ始点の y 座標。
+    ///   - x3: 可視カーブ終点の x 座標。
+    ///   - y3: 可視カーブ終点の y 座標。
+    ///   - x4: 第2ガイドポイントの x 座標。
+    ///   - y4: 第2ガイドポイントの y 座標。
+    public func curve(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) {
+        canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4)
+    }
+
     /// Catmull-Rom スプライン頂点を追加します。
     /// - Parameters:
     ///   - x: x 座標。

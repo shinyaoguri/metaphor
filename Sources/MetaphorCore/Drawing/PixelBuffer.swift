@@ -125,6 +125,47 @@ public final class PixelBuffer {
         }
     }
 
+    /// 指定テクスチャの内容を CPU ピクセル配列へ読み戻します（Processing 互換の
+    /// `loadPixels()` 用、#202）。
+    ///
+    /// blit を `commandQueue` へコミットして完了を待つ（メインスレッドをブロック）。
+    /// キャンバスへ描画したキューと同じキューを渡すことで、commit 順序により
+    /// 先行フレームの描画完了後の内容が読める。
+    ///
+    /// - Parameters:
+    ///   - source: 読み戻し元テクスチャ（同一寸法・bgra8Unorm）。
+    ///   - commandQueue: blit の発行先キュー（描画と同じキューを推奨）。
+    func download(from source: MTLTexture, commandQueue: MTLCommandQueue) {
+        guard source.width == width, source.height == height,
+              source.pixelFormat == texture.pixelFormat else {
+            metaphorWarning("PixelBuffer.download: source mismatch (\(source.width)x\(source.height) \(source.pixelFormat.rawValue) vs \(width)x\(height))")
+            return
+        }
+        guard let cb = commandQueue.makeCommandBuffer(),
+              let blit = cb.makeBlitCommandEncoder() else { return }
+        blit.copy(
+            from: source, sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: width, height: height, depth: 1),
+            to: texture, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+
+        // ゼロコピーパスは backingBuffer に直接反映される。
+        // フォールバックパスのみテクスチャから吸い上げる。
+        if let mem = rawMemory {
+            texture.getBytes(
+                mem, bytesPerRow: bytesPerRow,
+                from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
+                                size: MTLSize(width: width, height: height, depth: 1)),
+                mipmapLevel: 0
+            )
+        }
+    }
+
     /// ピクセルデータを GPU テクスチャにアップロードします。
     ///
     /// バッファバックドのゼロコピーパスを使用している場合、CPU 書き込みは

@@ -12,6 +12,10 @@ extension Sketch {
     ///   - height: レンダーターゲットの高さ（ピクセル単位）。
     /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。作成に失敗した場合は `nil`。
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
+        guard width > 0, height > 0 else {
+            print("[metaphor] Warning: createSourcePass: dimensions must be positive (got \(width)x\(height))")
+            return nil
+        }
         do {
             return try SourcePass(
                 label: label,
@@ -27,14 +31,12 @@ extension Sketch {
 
     /// ``createSourcePass(label:width:height:)`` の検証付きバリアント。
     ///
-    /// 寸法が不正な場合は ``MetaphorCore/MetaphorError/invalidParameter(_:)`` を、
-    /// 生成に失敗した場合はその下層エラーをスローします（nil を返さず原因が分かる）。
-    ///
     /// - Parameters:
     ///   - label: パスのデバッグラベル。
     ///   - width: レンダーターゲットの幅（ピクセル、正の値）。
     ///   - height: レンダーターゲットの高さ（ピクセル、正の値）。
     /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。
+    @available(*, deprecated, message: "検証は createSourcePass(label:width:height:) に統合されました（ADR-0005。次の minor で削除予定）")
     public func makeSourcePass(label: String, width: Int, height: Int) throws -> SourcePass {
         guard width > 0, height > 0 else {
             throw MetaphorError.invalidParameter("SourcePass の寸法は正である必要があります (指定: \(width)x\(height))")
@@ -54,6 +56,10 @@ extension Sketch {
     ///   - effects: 適用するポストプロセスエフェクト。
     /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。作成に失敗した場合は `nil`。
     public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass? {
+        guard !effects.isEmpty else {
+            print("[metaphor] Warning: createEffectPass: effects must not be empty")
+            return nil
+        }
         do {
             return try EffectPass(
                 input,
@@ -70,13 +76,11 @@ extension Sketch {
 
     /// ``createEffectPass(_:effects:)`` の検証付きバリアント。
     ///
-    /// `effects` が空の場合は ``MetaphorCore/MetaphorError/invalidParameter(_:)`` を、
-    /// 生成に失敗した場合はその下層エラーをスローします（nil を返さず原因が分かる）。
-    ///
     /// - Parameters:
     ///   - input: 入力レンダーパスノード。
     ///   - effects: 適用するポストプロセスエフェクト（1 つ以上）。
     /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。
+    @available(*, deprecated, message: "検証は createEffectPass(_:effects:) に統合されました（ADR-0005。次の minor で削除予定）")
     public func makeEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) throws -> EffectPass {
         guard !effects.isEmpty else {
             throw MetaphorError.invalidParameter("EffectPass には 1 つ以上のエフェクトが必要です")

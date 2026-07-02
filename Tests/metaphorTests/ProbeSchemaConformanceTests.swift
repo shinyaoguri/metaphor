@@ -101,6 +101,26 @@ struct ProbeSchemaConformanceTests {
         try assertStructurallyEqual(encode(metadata), loadExample("frame-minimal.json"), path: "frame-minimal")
     }
 
+    @Test("frame.json (failure) は失敗応答（PNG なし・warnings のみ）の構造と一致する")
+    func frameFailureMatchesExample() throws {
+        // MetaphorProbePlugin.failureMetadata と同じ構成: custom/customTypes は空、
+        // stats は nil（画像が無いので解析されない）、warnings に失敗理由。
+        let metadata = ProbeFrameMetadata(
+            schemaVersion: 4,
+            id: "01HXYZABCDEF0123456789",
+            label: nil,
+            sourceStamp: nil,
+            frame: 42,
+            time: 1.234,
+            size: .init(width: 1280, height: 720),
+            custom: [:],
+            customTypes: [:],
+            warnings: ["failed to allocate staging texture; frame.png was not written"],
+            stats: nil
+        )
+        try assertStructurallyEqual(encode(metadata), loadExample("frame-failure.json"), path: "frame-failure")
+    }
+
     // MARK: request.json
 
     @Test("request.json (full) は実 ProbeRequest と構造一致する")

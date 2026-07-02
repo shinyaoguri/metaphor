@@ -58,13 +58,18 @@ extension Sketch {
         context.createGraphics3D(w, h)
     }
 
-    /// カメラキャプチャデバイスを作成します。
+    /// カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
+    /// （`start()` を呼ぶ必要はありません。停止するには `stop()`）。
+    ///
+    /// - Note: 現在の実装では常に非 nil を返します（戻り値の Optional は
+    ///   将来の互換性のためのもの。ADR-0005 参照）。カメラ権限が無い場合は
+    ///   フレームが流れないデバイスが返ります。
     ///
     /// - Parameters:
-    ///   - width: キャプチャ幅（ピクセル単位）。
-    ///   - height: キャプチャ高さ（ピクセル単位）。
-    ///   - position: カメラの位置（前面または背面）。
-    /// - Returns: 新しい ``CaptureDevice`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - width: キャプチャ幅（デフォルト 1280）。
+    ///   - height: キャプチャ高さ（デフォルト 720）。
+    ///   - position: 使用するカメラ位置（デフォルト .front）。
+    /// - Returns: 開始済みのキャプチャデバイス。
     public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice? {
         context.createCapture(width: width, height: height, position: position)
     }

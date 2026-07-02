@@ -332,12 +332,15 @@ extension Sketch {
 
     // MARK: 3D Transform Stack
 
-    /// 現在の 3D 変換行列をスタックに保存します。
+    /// 現在の変換行列（2D と 3D の両方）をスタックに保存します。
+    ///
+    /// - Note: 2D 専用の ``push()`` と異なり、このメソッドは 2D/3D 両方の
+    ///   変換スタックへ同時に作用します。
     public func pushMatrix() {
         context.pushMatrix()
     }
 
-    /// 最後に保存された 3D 変換行列をスタックから復元します。
+    /// 最後に保存された変換行列（2D と 3D の両方）をスタックから復元します。
     public func popMatrix() {
         context.popMatrix()
     }
@@ -475,8 +478,8 @@ extension Sketch {
     ///
     /// - Parameter path: モデルのファイルパス。
     /// - Returns: 読み込まれたメッシュ。読み込みに失敗した場合は `nil`。
-    public func loadModel(_ path: String) -> Mesh? {
-        context.loadModel(path)
+    public func loadModel(_ path: String, normalize: Bool = true) -> Mesh? {
+        context.loadModel(path, normalize: normalize)
     }
 
     /// 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。

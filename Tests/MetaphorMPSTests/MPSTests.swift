@@ -164,15 +164,13 @@ struct RayTraceUniformsTests {
 
 // MARK: - MPSImageFilterWrapper Tests (GPU-dependent)
 
-@Suite("MPSImageFilterWrapper")
+@Suite("MPSImageFilterWrapper", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 struct MPSImageFilterWrapperTests {
 
     @Test("initialization")
     @MainActor func initialization() {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return // No GPU available
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let wrapper = MPSImageFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper  // Verify construction succeeds
     }
@@ -180,7 +178,7 @@ struct MPSImageFilterWrapperTests {
 
 // MARK: - MPSRayTracer Tests (GPU-dependent)
 
-@Suite("MPSRayTracer")
+@Suite("MPSRayTracer", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 struct MPSRayTracerTests {
 
     /// Check if the GPU supports ray tracing acceleration structures.
@@ -193,10 +191,8 @@ struct MPSRayTracerTests {
 
     @Test("initialization compiles shaders")
     @MainActor func initialization() throws {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 64, height: 64)
         #expect(rt.outputTexture != nil)
         #expect(rt.outputTexture?.width == 64)
@@ -206,10 +202,8 @@ struct MPSRayTracerTests {
     @Test("clearScene resets state")
     @MainActor func clearScene() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -223,10 +217,8 @@ struct MPSRayTracerTests {
     @Test("add mesh and build acceleration structure")
     @MainActor func addMeshAndBuild() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -236,10 +228,8 @@ struct MPSRayTracerTests {
     @Test("trace diffuse produces output")
     @MainActor func traceDiffuse() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -255,10 +245,8 @@ struct MPSRayTracerTests {
     @Test("trace AO produces output")
     @MainActor func traceAO() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -274,10 +262,8 @@ struct MPSRayTracerTests {
     @Test("add mesh with transform")
     @MainActor func addMeshWithTransform() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let mesh = try Mesh.box(device: device)
         let t = float4x4(translation: SIMD3<Float>(0, 1, 0))
@@ -288,10 +274,8 @@ struct MPSRayTracerTests {
     @Test("all-degenerate scene throws invalidScene")
     @MainActor func allDegenerateThrows() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let dm = DynamicMesh(device: device)
         // 3 coincident vertices → zero-area triangle
@@ -308,10 +292,8 @@ struct MPSRayTracerTests {
     @Test("mixed scene drops only degenerate triangles")
     @MainActor func mixedSceneDropsDegenerate() throws {
         guard Self.gpuSupportsRayTracing else { return }
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let dm = DynamicMesh(device: device)
         // Valid triangle (positive area)
