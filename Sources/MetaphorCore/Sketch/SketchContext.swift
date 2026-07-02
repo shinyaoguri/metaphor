@@ -373,6 +373,10 @@ public final class SketchContext {
     }
 
     func endFrame() {
+        // ParameterGUI の入力エッジ検出状態を更新（ユーザーが updateInput を
+        // 呼ばなくても toggle のクリック判定が正しく動くよう自動配線）
+        gui.updateInput(input: input)
+
         // パフォーマンス HUD オーバーレイ（canvas.end() の前に描画し最前面に表示）
         if let hud = performanceHUD {
             hud.update(deltaTime: deltaTime)
