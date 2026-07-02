@@ -40,7 +40,7 @@ jobs:
         run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
       - name: Cache Syphon.xcframework
         id: cache-syphon
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: Frameworks/Syphon.xcframework
           key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
