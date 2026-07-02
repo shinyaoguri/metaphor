@@ -100,6 +100,8 @@ jobs:
         run: swift build -Xswiftc -warnings-as-errors
       - name: Test with Coverage
         run: swift test --enable-code-coverage -Xswiftc -warnings-as-errors
+      - name: Verify shader sources are up to date
+        run: python3 scripts/generate-shader-sources.py --check
       - name: Verify llms.txt is up to date
         if: steps.source-changed.outputs.changed == 'true'
         run: |
