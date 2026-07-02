@@ -6,15 +6,60 @@ import os
 // MARK: - スレッドセーフなサンプルバッファ
 
 /// オーディオスレッドからメインスレッドへサンプルを転送します。
-private final class AudioSampleBuffer: Sendable {
-    private let state = OSAllocatedUnfairLock(initialState: [Float]?.none)
+///
+/// オーディオ経路（tap コールバック）でのアロケーションと、ロック下での
+/// 旧配列解放を避けるため、init 時に確保した固定長バッファへコピーします。
+final class AudioSampleTransferBuffer: Sendable {
+    private struct State {
+        var samples: [Float]
+        var hasData: Bool = false
+    }
+    private let state: OSAllocatedUnfairLock<State>
 
-    func store(_ samples: [Float]) {
-        state.withLock { $0 = samples }
+    init(capacity: Int) {
+        state = OSAllocatedUnfairLock(
+            initialState: State(samples: [Float](repeating: 0, count: capacity))
+        )
     }
 
-    func take() -> [Float]? {
-        state.withLock { s in let v = s; s = nil; return v }
+    /// オーディオスレッドから呼びます。`data` の先頭 `count` 要素を固定長
+    /// バッファへコピーします（不足分は 0 埋め）。アロケーションしません。
+    ///
+    /// - Note: `withLockUnchecked` はポインタ・inout の捕捉のため（Sendable 検査を
+    ///   通らない）。閉包はロック内で同期実行され値をエスケープしないので安全。
+    func write(_ data: UnsafePointer<Float>, count: Int) {
+        state.withLockUnchecked { s in
+            let capacity = s.samples.count
+            let n = min(count, capacity)
+            s.samples.withUnsafeMutableBufferPointer { buf in
+                guard let base = buf.baseAddress else { return }
+                base.update(from: data, count: n)
+                if n < capacity {
+                    base.advanced(by: n).update(repeating: 0, count: capacity - n)
+                }
+            }
+            s.hasData = true
+        }
+    }
+
+    /// メインスレッドから呼びます。未読データがあれば `out` へコピーして
+    /// true を返します。
+    func take(into out: inout [Float]) -> Bool {
+        state.withLockUnchecked { s in
+            guard s.hasData else { return false }
+            let n = min(s.samples.count, out.count)
+            out.withUnsafeMutableBufferPointer { ob in
+                s.samples.withUnsafeBufferPointer { ib in
+                    guard let outBase = ob.baseAddress, let inBase = ib.baseAddress else { return }
+                    outBase.update(from: inBase, count: n)
+                    if n < ob.count {
+                        outBase.advanced(by: n).update(repeating: 0, count: ob.count - n)
+                    }
+                }
+            }
+            s.hasData = false
+            return true
+        }
     }
 }
 
@@ -67,10 +112,27 @@ public final class AudioAnalyzer {
     public private(set) var isBeat: Bool = false
 
     /// スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
-    public var smoothing: Float = 0.8
+    ///
+    /// 範囲外の値は [0, 0.99] にクランプされます（1 以上は spectrum が更新されず、
+    /// 負値は発散・振動するため）。
+    public var smoothing: Float = 0.8 {
+        didSet { smoothing = min(max(smoothing, 0), 0.99) }
+    }
 
     /// ビート検出感度（値が大きいほど検出が鈍くなります）。
     public var beatThreshold: Float = 1.5
+
+    /// 解析対象のサンプルレート（Hz）。
+    ///
+    /// ``start()`` 使用時は入力デバイスから自動取得されるため設定不要です。
+    /// ``injectSamples(_:)`` 経由で外部サンプルを解析する場合、
+    /// ``bandEnergy(lowFreq:highFreq:)`` の周波数→ビン変換に使われます。
+    public var sampleRate: Double?
+
+    /// 入力デバイスの切断やサンプルレート変更などでオーディオエンジンの構成が
+    /// 変化したときに（メインスレッドで）呼ばれます。切断後は解析が静かに
+    /// 止まるため、検知して `stop()` → `start()` で再構成する用途に使えます。
+    public var onConfigurationChange: (() -> Void)?
 
     // MARK: - オーディオエンジン
 
@@ -78,6 +140,7 @@ public final class AudioAnalyzer {
     private let fftSize: Int
     private let halfFFTSize: Int
     private var isRunning = false
+    private var configurationObserver: NSObjectProtocol?
 
     // MARK: - vDSP FFT
 
@@ -90,7 +153,8 @@ public final class AudioAnalyzer {
 
     // MARK: - スレッドセーフ転送
 
-    private let sampleBuffer = AudioSampleBuffer()
+    private let sampleBuffer: AudioSampleTransferBuffer
+    private var tapSamples: [Float]
 
     // MARK: - 内部状態
 
@@ -103,10 +167,16 @@ public final class AudioAnalyzer {
     // MARK: - 初期化
 
     /// オーディオアナライザーを作成します。
-    /// - Parameter fftSize: FFT サイズ（2の累乗である必要があり、デフォルトは1024）。
-    public init(fftSize: Int = 1024) {
+    /// - Parameters:
+    ///   - fftSize: FFT サイズ（2の累乗である必要があり、デフォルトは1024）。
+    ///   - sampleRate: ``injectSamples(_:)`` 経由で解析する場合のサンプルレート（Hz）。
+    ///     ``start()`` 使用時は不要（入力デバイスから自動取得）。
+    public init(fftSize: Int = 1024, sampleRate: Double? = nil) {
         self.fftSize = fftSize
         self.halfFFTSize = fftSize / 2
+        self.sampleRate = sampleRate
+        self.sampleBuffer = AudioSampleTransferBuffer(capacity: fftSize)
+        self.tapSamples = [Float](repeating: 0, count: fftSize)
 
         self.window = [Float](repeating: 0, count: fftSize)
         self.realIn = [Float](repeating: 0, count: fftSize)
@@ -129,34 +199,56 @@ public final class AudioAnalyzer {
     // MARK: - パブリック API
 
     /// オーディオキャプチャを開始します。
-    /// - Throws: オーディオエンジンの起動に失敗した場合にエラーをスローします。
+    /// - Throws: マイク権限が拒否されている場合は
+    ///   ``AudioAnalyzerError/microphonePermissionDenied``、利用可能な入力デバイスが
+    ///   ない場合は ``AudioAnalyzerError/noInputDevice``、そのほかオーディオエンジンの
+    ///   起動に失敗した場合にエラーをスローします。
     public func start() throws {
         guard !isRunning else { return }
+
+        // マイク権限が明示的に拒否されていると無音が流れ続けるだけで原因が
+        // 分からないため、専用エラーで報告する（.notDetermined の場合は
+        // エンジン起動時にシステムが権限ダイアログを出すのでそのまま進む）
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .denied, .restricted:
+            throw AudioAnalyzerError.microphonePermissionDenied
+        default:
+            break
+        }
 
         let engine = AVAudioEngine()
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
 
-        let capturedFFTSize = fftSize
-        let buffer = sampleBuffer
+        // 入力デバイス不在時は sampleRate 0 のフォーマットが返り、そのまま
+        // installTap すると ObjC 例外（Swift の catch では捕捉不可）で
+        // プロセスごとクラッシュするため、事前に検証する
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw AudioAnalyzerError.noInputDevice
+        }
 
+        let buffer = sampleBuffer
         inputNode.installTap(onBus: 0, bufferSize: AVAudioFrameCount(fftSize), format: format) {
             audioBuffer, _ in
             guard let channelData = audioBuffer.floatChannelData else { return }
-
-            let frameCount = Int(audioBuffer.frameLength)
-            let count = min(frameCount, capturedFFTSize)
-
-            var samples = [Float](repeating: 0, count: capturedFFTSize)
-            for i in 0..<count {
-                samples[i] = channelData[0][i]
-            }
-
-            buffer.store(samples)
+            // オーディオ経路ではアロケーションしない（固定長バッファへコピー）
+            buffer.write(channelData[0], count: Int(audioBuffer.frameLength))
         }
 
         engine.prepare()
         try engine.start()
+
+        // デバイス切断・サンプルレート変更などの構成変化を監視する
+        // （切断後は解析が静かに止まるため、少なくとも観測可能にする）
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.handleConfigurationChange()
+            }
+        }
 
         self.engine = engine
         self.isRunning = true
@@ -165,10 +257,20 @@ public final class AudioAnalyzer {
     /// オーディオキャプチャを停止します。
     public func stop() {
         guard isRunning else { return }
+        if let observer = configurationObserver {
+            NotificationCenter.default.removeObserver(observer)
+            configurationObserver = nil
+        }
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
         isRunning = false
+    }
+
+    deinit {
+        if let observer = configurationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     /// フレームごとに解析データを更新します（`draw()` の先頭で呼び出してください）。
@@ -176,12 +278,15 @@ public final class AudioAnalyzer {
     /// オーディオスレッドから受信したサンプルを FFT で処理し、
     /// `volume`、`spectrum`、`waveform`、`isBeat` を更新します。
     public func update() {
-        guard let samples = sampleBuffer.take() ?? injectedSamples else {
+        if sampleBuffer.take(into: &tapSamples) {
+            injectedSamples = nil
+            processSamples(tapSamples)
+        } else if let samples = injectedSamples {
+            injectedSamples = nil
+            processSamples(samples)
+        } else {
             isBeat = false
-            return
         }
-        injectedSamples = nil
-        processSamples(samples)
     }
 
     /// 外部ソースからサンプルを注入します（SoundFile で使用）。
@@ -268,10 +373,13 @@ public final class AudioAnalyzer {
     ///   - highFreq: 上限周波数（Hz）。
     /// - Returns: エネルギーレベル（0.0〜1.0）。
     public func bandEnergy(lowFreq: Float, highFreq: Float) -> Float {
-        guard !spectrum.isEmpty, let engine else { return 0 }
+        guard !spectrum.isEmpty else { return 0 }
 
-        let sampleRate = Float(engine.inputNode.outputFormat(forBus: 0).sampleRate)
-        let binWidth = sampleRate / Float(fftSize)
+        // engine 稼働中は入力デバイスの実サンプルレートを優先し、
+        // injectSamples 経由の解析では ``sampleRate`` プロパティを使う
+        let engineRate = engine.map { $0.inputNode.outputFormat(forBus: 0).sampleRate }
+        guard let rate = engineRate ?? sampleRate, rate > 0 else { return 0 }
+        let binWidth = Float(rate) / Float(fftSize)
 
         let lowBin = max(0, Int(lowFreq / binWidth))
         let highBin = min(halfFFTSize - 1, Int(highFreq / binWidth))
@@ -349,5 +457,32 @@ public final class AudioAnalyzer {
 
         let avgFlux = fluxHistory.reduce(0, +) / Float(max(1, fluxHistory.count))
         isBeat = flux > avgFlux * beatThreshold && volume > 0.05
+    }
+
+    // MARK: - プライベート: 構成変化
+
+    private func handleConfigurationChange() {
+        debugWarning("Audio engine configuration changed (device disconnected or sample rate changed?)")
+        onConfigurationChange?()
+    }
+}
+
+// MARK: - エラー
+
+/// AudioAnalyzer 操作中に発生するエラーを表します。
+public enum AudioAnalyzerError: Error, LocalizedError {
+    /// 利用可能なオーディオ入力デバイスがないことを示します。
+    case noInputDevice
+    /// マイクの使用権限が拒否されていることを示します。
+    case microphonePermissionDenied
+
+    public var errorDescription: String? {
+        switch self {
+        case .noInputDevice:
+            return "No audio input device is available"
+        case .microphonePermissionDenied:
+            return "Microphone permission has been denied. "
+                + "Enable it in System Settings > Privacy & Security > Microphone"
+        }
     }
 }

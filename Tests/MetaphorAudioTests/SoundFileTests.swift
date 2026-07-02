@@ -71,4 +71,62 @@ struct SoundFilePlaybackTests {
         sound.stop()
         #expect(sound.position == 0)
     }
+
+    @Test("stale completion after stop does not restart looping playback")
+    func staleCompletionAfterStop() throws {
+        let url = try makeTestWAV(seconds: 0.5)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let sound = try SoundFile(path: url.path)
+        sound.isLooping = true
+        // シークでセグメントをスケジュールし、その completion が
+        // stop() の後に遅れて届くケースを模擬する
+        sound.position = 0.25
+        let staleGeneration = sound.scheduleGeneration
+        sound.stop()
+        // 修正前はここでループ再スケジュール + play() が走り、
+        // isPlaying == false のまま音が鳴り続けていた
+        sound.handlePlaybackCompletion(generation: staleGeneration)
+        #expect(sound.isPlaying == false)
+        #expect(sound.position == 0)
+    }
+
+    @Test("stale completion does not rewind a seek during looping")
+    func staleCompletionDoesNotRewindSeek() throws {
+        let url = try makeTestWAV(seconds: 0.5)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let sound = try SoundFile(path: url.path)
+        sound.isLooping = true
+        let generationBeforeSeek = sound.scheduleGeneration
+        sound.position = 0.25
+        // シーク前のスケジュールの completion が遅れて届いても、
+        // シーク位置が先頭へ巻き戻されない
+        sound.handlePlaybackCompletion(generation: generationBeforeSeek)
+        #expect(abs(sound.position - 0.25) < 0.01)
+    }
+
+    @Test("current completion still ends non-looping playback")
+    func currentCompletionEndsPlayback() throws {
+        let url = try makeTestWAV(seconds: 0.5)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let sound = try SoundFile(path: url.path)
+        sound.isLooping = false
+        sound.position = 0.25
+        // 現世代の completion（正常再生完了）は従来どおり処理される
+        sound.handlePlaybackCompletion(generation: sound.scheduleGeneration)
+        #expect(sound.isPlaying == false)
+    }
+
+    @Test("position is cached while paused")
+    func positionCachedWhilePaused() throws {
+        let url = try makeTestWAV(seconds: 0.5)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let sound = try SoundFile(path: url.path)
+        sound.position = 0.25
+        sound.pause()
+        // 修正前は pause 中に playerTime(forNodeTime:) が nil になり
+        // 巻き戻って見えることがあった
+        #expect(abs(sound.position - 0.25) < 0.01)
+        sound.stop()
+        #expect(sound.position == 0)
+    }
 }

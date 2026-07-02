@@ -1388,17 +1388,29 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var beatThreshold: Float` -- ビート検出感度（値が大きいほど検出が鈍くなります）。
 - `var isBeat: Bool { get }` -- ビート検出フラグ（`update()` 呼び出しごとにリセット）。
-- `var smoothing: Float` -- スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
+- `var onConfigurationChange: (() -> Void)?` -- 入力デバイスの切断やサンプルレート変更などでオーディオエンジンの構成が
+- `var sampleRate: Double?` -- 解析対象のサンプルレート（Hz）。
+- `var smoothing: Float { get set }` -- スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
 - `var spectrum: [Float] { get }` -- 正規化された FFT スペクトル（0.0〜1.0）。
 - `var volume: Float { get }` -- RMS 音量レベル（0.0〜1.0）。
 - `var waveform: [Float] { get }` -- 生波形データ。
-- `init(fftSize: Int = 1024)` -- オーディオアナライザーを作成します。
+- `init(fftSize: Int = 1024, sampleRate: Double? = nil)` -- オーディオアナライザーを作成します。
 - `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します。
 - `func bandEnergy(lowFreq: Float, highFreq: Float) -> Float` -- 任意の周波数範囲のエネルギーを返します。
 - `func injectSamples(_ samples: [Float])` -- 外部ソースからサンプルを注入します（SoundFile で使用）。
 - `func start() throws` -- オーディオキャプチャを開始します。
 - `func stop()` -- オーディオキャプチャを停止します。
 - `func update()` -- フレームごとに解析データを更新します（`draw()` の先頭で呼び出してください）。
+
+### `enum AudioAnalyzerError` -- AudioAnalyzer 操作中に発生するエラーを表します。
+
+- `case microphonePermissionDenied` -- マイクの使用権限が拒否されていることを示します。
+- `case noInputDevice` -- 利用可能なオーディオ入力デバイスがないことを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
 
 ### `final class SoundFile` -- オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
 
@@ -1408,6 +1420,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isBeat: Bool { get }` -- ビート検出フラグを返します（解析有効時に利用可能）。
 - `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
 - `var isPlaying: Bool { get }` -- ファイルが現在再生中かどうかを示します。
+- `var lastError: (any Error)? { get }` -- 直近の再生操作で発生したエラー（現在は `play()` のエンジン起動失敗）。
 - `var position: Double { get set }` -- 現在の再生位置（秒）を取得または設定します。
 - `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
 - `var spectrum: [Float] { get }` -- スペクトルデータを返します（解析有効時に利用可能）。
