@@ -408,11 +408,36 @@ public final class MetaphorRenderer: NSObject {
     /// ウィンドウクローズ（``SketchWindow/close()``）やアプリ終了時に呼びます。
     public func shutdown() {
         notifyPluginsStop()
+        // プラグインは GPU リソース（Syphon サーバーのテクスチャ等）を保持するため、
+        // in-flight フレームの完了を待ってから解放する。
+        drainInflightFrames(context: "shutdown")
         for plugin in plugins {
             plugin.onDetach()
         }
         plugins.removeAll()
         refreshCachedPlugins()
+    }
+
+    /// 全 in-flight フレームの GPU 完了を待ち、スロットを即座に返却します。
+    ///
+    /// トリプルバッファリングの全スロット（3）を取得できた時点で GPU が
+    /// このレンダラーの作業を完了していることが保証されます。teardown 経路
+    /// （``shutdown()``）で使用します。
+    ///
+    /// - Parameter context: タイムアウト警告に含める呼び出し元の説明。
+    private func drainInflightFrames(context: String) {
+        var acquired = 0
+        let deadline = DispatchTime.now() + .seconds(5)
+        for _ in 0..<3 {
+            if inflightSemaphore.wait(timeout: deadline) == .timedOut {
+                metaphorWarning("Timed out waiting for in-flight frames during \(context)")
+                break
+            }
+            acquired += 1
+        }
+        for _ in 0..<acquired {
+            inflightSemaphore.signal()
+        }
     }
 
     // MARK: - プラグイン CPU 読み戻し
@@ -850,11 +875,16 @@ public final class MetaphorRenderer: NSObject {
         let readbackGroup = DispatchGroup()
         // プラグインが deferReadback で参加できるよう、このフレームのグループを公開。
         currentReadbackGroup = readbackGroup
+        // セマフォは self 経由ではなく直接キャプチャする。self 経由（weak）だと
+        // GPU 完了前に renderer が解放された場合に signal されず、取得済み
+        // カウントを残したままセマフォが dispose されてクラッシュする
+        // （libdispatch は初期値より小さい値での破棄を許さない）。
+        let semaphore = inflightSemaphore
         commandBuffer.addCompletedHandler { [weak self] cb in
             let gpuStart = cb.gpuStartTime
             let gpuEnd = cb.gpuEndTime
             readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
-                self?.inflightSemaphore.signal()
+                semaphore.signal()
                 DispatchQueue.main.async {
                     self?.lastGPUStartTime = gpuStart
                     self?.lastGPUEndTime = gpuEnd
