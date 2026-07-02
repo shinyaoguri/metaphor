@@ -84,6 +84,12 @@ public final class SyphonOutput {
     }
 
     deinit {
-        stop()
+        // deinit は最後の参照を手放したスレッド（任意スレッド）で走り得る。
+        // 正しい停止経路は所有者（SyphonPlugin.onDetach 等）による stop() で、
+        // ここは呼び忘れに対する安全網（ログを出して best-effort で停止する）。
+        if server != nil {
+            print("[metaphor] SyphonOutput deallocated without stop() — stopping server as a fallback")
+            server?.stop()
+        }
     }
 }

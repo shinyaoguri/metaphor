@@ -1,3 +1,4 @@
+import CMetaphorSyphonBootstrap
 import Metal
 import MetaphorCore
 
@@ -29,6 +30,12 @@ public enum MetaphorSyphon {
 /// 非分離コンテキストから格納できます。クロージャ自体は `@MainActor` 型で、実際の生成は
 /// 後で `MainActor` 上（`SketchRunner`）から行われます。
 private func installSyphonOutputFactory() {
+    // bootstrap.o（ロード時コンストラクタを含む）への実参照。静的アーカイブ経由の
+    // リンクでは、シンボル参照のないオブジェクトファイルが selective loading で
+    // 落とされ、__attribute__((constructor)) ごと消える。この no-op 呼び出しが
+    // MetaphorSyphon → CMetaphorSyphonBootstrap の依存辺を作り、どのリンク構成でも
+    // コンストラクタを確実にバイナリへ残す（アンカー）。
+    cmetaphor_syphon_bootstrap_touch()
     MetaphorOutputRegistry.factory = { name in SyphonPlugin(name: name) }
 }
 
