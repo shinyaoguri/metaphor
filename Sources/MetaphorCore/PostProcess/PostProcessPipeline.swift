@@ -130,7 +130,7 @@ public final class PostEffectContext {
     ) -> MTLTexture {
         let iters = max(1, min(iterations, 6))
         ensureKawaseChain(width: source.width, height: source.height, iterations: iters)
-        guard kawaseChain.count == iters else { return source }
+        guard kawaseChain.count >= iters else { return source }
 
         // ダウンサンプル
         var input = source
@@ -187,6 +187,11 @@ public final class PostEffectContext {
         }
     }
 
+    // MARK: - テストフック
+
+    /// テスト用: 現在の Kawase チェーンのテクスチャ配列。
+    var _kawaseChainForTesting: [MTLTexture] { kawaseChain }
+
     // MARK: - キャッシュ無効化
 
     func invalidateTextures() {
@@ -209,18 +214,25 @@ public final class PostEffectContext {
     // MARK: - Private
 
     private func ensureKawaseChain(width: Int, height: Int, iterations: Int) {
-        guard width != kawaseChainWidth || height != kawaseChainHeight
-              || kawaseChain.count != iterations else { return }
+        // 寸法一致かつ必要段数以上を保持していれば再利用（applyKawaseBlur は先頭
+        // n 枚を使う）。段数不足時も既存レベルを保って不足分だけ追加する。
+        // チェーンは縮めない: iterations の異なるエフェクト併用（Bloom=4 と
+        // Blur=6 等）で毎フレーム全テクスチャを破棄・再確保するのを防ぐ。
+        if width == kawaseChainWidth && height == kawaseChainHeight
+            && kawaseChain.count >= iterations { return }
 
-        kawaseChain.removeAll()
+        if width != kawaseChainWidth || height != kawaseChainHeight {
+            kawaseChain.removeAll()
+        }
         ensureHeap(width: width, height: height)
 
         var w = width / 2
         var h = height / 2
-        for _ in 0..<iterations {
+        for level in 0..<iterations {
             w = max(1, w)
             h = max(1, h)
-            if let tex = makeHeapTexture(width: w, height: h) {
+            if level >= kawaseChain.count {
+                guard let tex = makeHeapTexture(width: w, height: h) else { break }
                 kawaseChain.append(tex)
             }
             w /= 2
@@ -228,6 +240,13 @@ public final class PostEffectContext {
         }
         kawaseChainWidth = width
         kawaseChainHeight = height
+    }
+
+    /// 現在のレンダーサイズに対してヒープを準備します（ピンポンテクスチャ確保前に
+    /// PostProcessPipeline から呼ばれる。ヒープ未確保のまま makeHeapTexture すると
+    /// device 直確保にフォールバックしてヒープ最適化が効かない）。
+    func prepareHeap(width: Int, height: Int) {
+        ensureHeap(width: width, height: height)
     }
 
     /// 現在のレンダーサイズに対してヒープが十分な大きさであることを保証します。
@@ -243,6 +262,10 @@ public final class PostEffectContext {
         heapDesc.size = estimatedSize
         heapDesc.storageMode = .private
         heapDesc.type = .automatic
+        // ヒープのサブアロケーションはデフォルトで untracked（自動ハザード
+        // トラッキングなし）。MPS の書き込み → 後続パスの読み取りが同期されず
+        // 未定義結果になるため、device 直確保と同じ .tracked を明示する。
+        heapDesc.hazardTrackingMode = .tracked
         textureHeap = device.makeHeap(descriptor: heapDesc)
         textureHeap?.label = "metaphor.postprocess.heap"
         heapWidth = width
@@ -422,6 +445,8 @@ public final class PostProcessPipeline {
     private func ensureTextures(width: Int, height: Int) {
         guard width != currentWidth || height != currentHeight else { return }
 
+        // 先にヒープを確保してから割り当てる（device 直確保フォールバックの回避）
+        context.prepareHeap(width: width, height: height)
         textureA = context.makeHeapTexture(width: width, height: height)
         textureB = context.makeHeapTexture(width: width, height: height)
         currentWidth = width

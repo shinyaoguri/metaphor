@@ -307,3 +307,82 @@ struct CustomPostEffectPipelineTests {
         #expect(fn == nil)
     }
 }
+
+// MARK: - PostFX リソース再利用（#159）
+
+@Suite("PostFX Resource Reuse", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct PostFXResourceReuseTests {
+
+    @Test("filter output textures are recycled through the pool")
+    func texturePoolRecycling() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let image = try #require(MImage.createImage(64, 64, device: renderer.device))
+        let gpu = renderer.imageFilterGPU
+
+        // 1 回目: プールから新規確保（旧テクスチャは shared のため返却対象外）
+        gpu.apply(.invert, to: image)
+        let t1 = image.texture
+        // 2 回目: 新規確保、t1（private・プール由来）が返却される
+        gpu.apply(.invert, to: image)
+        let t2 = image.texture
+        // 3 回目: 返却済みの t1 が再利用される（旧実装は毎回新規確保）
+        gpu.apply(.invert, to: image)
+        let t3 = image.texture
+
+        #expect(t2 !== t1)
+        #expect(t3 === t1, "3 回目の出力はプールへ返却された 1 回目の出力テクスチャを再利用する")
+    }
+
+    @Test("MPS gaussian kernel cache stays bounded under sigma animation")
+    func mpsKernelCacheBounded() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let image = try #require(MImage.createImage(32, 32, device: renderer.device))
+        let gpu = renderer.imageFilterGPU
+
+        for i in 0..<40 {
+            gpu.apply(.mpsBlur(sigma: 1.0 + Float(i) * 0.1), to: image)
+        }
+        // 上限 16 超過で全クリアされるため、17 を超えて増殖しない
+        #expect(gpu._gaussianCacheCountForTesting <= 17)
+    }
+
+    @Test("kawase chain is reused across different iteration counts")
+    func kawaseChainReuse() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let pipeline = try PostProcessPipeline(
+            device: renderer.device,
+            commandQueue: renderer.commandQueue,
+            shaderLibrary: renderer.shaderLibrary
+        )
+        let ctx = pipeline.context
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 64, height: 64, mipmapped: false
+        )
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        let src = try #require(renderer.device.makeTexture(descriptor: desc))
+        let dst = try #require(renderer.device.makeTexture(descriptor: desc))
+        let cb = try #require(renderer.commandQueue.makeCommandBuffer())
+
+        // Blur(6) → Bloom(4) の併用パターン: チェーンは縮まず同一テクスチャを再利用
+        ctx.applyKawaseBlur(commandBuffer: cb, source: src, output: dst, iterations: 6)
+        let chain6 = ctx._kawaseChainForTesting
+        #expect(chain6.count == 6)
+
+        ctx.applyKawaseBlur(commandBuffer: cb, source: src, output: dst, iterations: 4)
+        let chainAfter = ctx._kawaseChainForTesting
+        #expect(chainAfter.count == 6, "少ない iterations の要求でチェーンを破棄しない")
+        for (a, b) in zip(chain6, chainAfter) {
+            #expect(a === b, "既存レベルのテクスチャが再利用される")
+        }
+
+        // 再び 6 を要求しても再確保されない
+        ctx.applyKawaseBlur(commandBuffer: cb, source: src, output: dst, iterations: 6)
+        for (a, b) in zip(chain6, ctx._kawaseChainForTesting) {
+            #expect(a === b)
+        }
+        cb.commit()
+    }
+}

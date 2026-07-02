@@ -86,7 +86,10 @@ enum ModelIOLoader {
             let indexCount = submesh.indexCount
             let bytesPerIndex = submesh.indexType == .uint16 ? 2 : 4
 
-            let ptr = indexBuffer.map().bytes
+            // MDLMeshBufferMap をローカル変数に保持してポインタの生存期間を明示する
+            // （`indexBuffer.map().bytes` は文末で map が解放され、以降のポインタ使用が契約外）
+            let map = indexBuffer.map()
+            let ptr = map.bytes
             for j in 0..<indexCount {
                 let offset = j * bytesPerIndex
                 if submesh.indexType == .uint16 {
@@ -97,6 +100,7 @@ enum ModelIOLoader {
                     allIndices.append(val)
                 }
             }
+            withExtendedLifetime(map) {}
         }
 
         guard !vertices.isEmpty else {
@@ -169,10 +173,13 @@ enum ModelIOLoader {
 
         switch data.format {
         case .float3:
-            return ptr.assumingMemoryBound(to: SIMD3<Float>.self).pointee
+            // packed float3（12 バイト stride）を SIMD3<Float>（16 バイト）でロードすると
+            // 末尾頂点で 4 バイトのオーバーリードになるため、Float を個別に読む
+            let floats = ptr.assumingMemoryBound(to: Float.self)
+            return SIMD3(floats[0], floats[1], floats[2])
         case .float4:
-            let v4 = ptr.assumingMemoryBound(to: SIMD4<Float>.self).pointee
-            return SIMD3(v4.x, v4.y, v4.z)
+            let floats = ptr.assumingMemoryBound(to: Float.self)
+            return SIMD3(floats[0], floats[1], floats[2])
         case .half3:
             let halfs = ptr.assumingMemoryBound(to: UInt16.self)
             return SIMD3(halfToFloat(halfs[0]), halfToFloat(halfs[1]), halfToFloat(halfs[2]))
