@@ -19,18 +19,6 @@ extension Sketch {
         return AudioAnalyzer(fftSize: fftSize)
     }
 
-    /// ``createAudioInput(fftSize:)`` の検証付きバリアント。
-    ///
-    /// - Parameter fftSize: FFT ウィンドウサイズ（2 の累乗）。
-    /// - Returns: 新しい ``MetaphorAudio/AudioAnalyzer`` インスタンス。
-    @available(*, deprecated, message: "検証は createAudioInput(fftSize:) に統合されました（ADR-0005。次の minor で削除予定）")
-    public func makeAudioInput(fftSize: Int = 1024) throws -> AudioAnalyzer {
-        guard fftSize >= 2, (fftSize & (fftSize - 1)) == 0 else {
-            throw MetaphorError.invalidParameter("fftSize は 2 の累乗である必要があります (指定: \(fftSize))")
-        }
-        return AudioAnalyzer(fftSize: fftSize)
-    }
-
     /// 再生と解析用のオーディオファイルを読み込みます。
     ///
     /// - Parameter path: オーディオファイルのファイルパス。
