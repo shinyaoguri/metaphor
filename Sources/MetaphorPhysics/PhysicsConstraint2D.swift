@@ -26,7 +26,17 @@ public final class PhysicsConstraint2D {
     ///
     /// `1.0` は各反復で拘束を完全に補正し、
     /// 低い値はより柔らかい、バネのような挙動を生成します。
-    public var stiffness: Float = 1.0
+    /// 範囲外の値はクランプされます（1 超・負値はシミュレーションを発散させるため。
+    /// PhysicsBody2D の restitution/friction と同じ流儀）。
+    public var stiffness: Float = 1.0 {
+        didSet {
+            if !stiffness.isFinite {
+                stiffness = 1.0
+            } else {
+                stiffness = min(max(stiffness, 0), 1)
+            }
+        }
+    }
 
     /// 2つのボディ間に距離拘束を作成します。
     ///

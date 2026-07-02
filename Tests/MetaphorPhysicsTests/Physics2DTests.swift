@@ -231,3 +231,81 @@ struct SpatialHash2DTests {
         #expect(pairs.isEmpty)
     }
 }
+
+// MARK: - 非有限値の堅牢性（#142）
+
+@Suite("Physics2D non-finite robustness")
+@MainActor
+struct PhysicsNonFiniteTests {
+
+    @Test("NaN dt does not corrupt or crash the world")
+    func nanDt() {
+        let world = Physics2D(cellSize: 50)
+        world.setGravity(0, 980)
+        let ball = world.addCircle(x: 100, y: 100, radius: 20)
+
+        // 修正前は Verlet 積分で位置が NaN になり、空間ハッシュの
+        // Int(floor(NaN)) でトラップしていた
+        world.step(Float.nan)
+        world.step(Float.infinity)
+        world.step(-1)
+        world.step(0)
+
+        #expect(ball.position.x.isFinite && ball.position.y.isFinite)
+
+        // その後の正常な step は機能する
+        world.step(1.0 / 60.0)
+        #expect(ball.position.y > 100)
+    }
+
+    @Test("NaN body position is sanitized instead of crashing")
+    func nanPosition() {
+        let world = Physics2D(cellSize: 50)
+        let a = world.addCircle(x: 100, y: 100, radius: 20)
+        let b = world.addCircle(x: 110, y: 100, radius: 20)
+        world.step(1.0 / 60.0)
+
+        a.position = SIMD2(Float.nan, Float.nan)
+        world.step(1.0 / 60.0)
+
+        #expect(a.position.x.isFinite && a.position.y.isFinite)
+        #expect(b.position.x.isFinite && b.position.y.isFinite)
+    }
+
+    @Test("huge radius insert does not hang")
+    func hugeRadiusInsert() {
+        let hash = SpatialHash2D(cellSize: 50)
+        // 修正前は (2 * 3e8 / 50)^2 セルの二重ループでハング/メモリ枯渇
+        hash.insert(index: 0, position: SIMD2(0, 0), radius: 3e8)
+        hash.insert(index: 1, position: SIMD2(0, 0), radius: 5)
+        #expect(hash.queryPairs().count >= 1)
+    }
+
+    @Test("non-finite insert values are ignored without trapping")
+    func nonFiniteInsert() {
+        let hash = SpatialHash2D(cellSize: 50)
+        hash.insert(index: 0, position: SIMD2(Float.nan, 0), radius: 5)
+        hash.insert(index: 1, position: SIMD2(0, Float.infinity), radius: 5)
+        hash.insert(index: 2, position: SIMD2(0, 0), radius: Float.nan)
+        // 有限巨大値（> Int.max）も Int 変換でトラップしない
+        hash.insert(index: 3, position: SIMD2(3e38, -3e38), radius: 5)
+        #expect(hash.queryPairs().isEmpty)
+    }
+
+    @Test("constraint stiffness is clamped to [0, 1]")
+    func stiffnessClamped() {
+        let world = Physics2D()
+        let a = world.addCircle(x: 0, y: 0, radius: 5)
+        let b = world.addCircle(x: 50, y: 0, radius: 5)
+        let c = world.addConstraint(a, b, distance: 50)
+
+        c.stiffness = 2.5
+        #expect(c.stiffness == 1.0)
+        c.stiffness = -1.0
+        #expect(c.stiffness == 0.0)
+        c.stiffness = Float.nan
+        #expect(c.stiffness == 1.0)
+        c.stiffness = 0.5
+        #expect(c.stiffness == 0.5)
+    }
+}
