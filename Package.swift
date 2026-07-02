@@ -37,9 +37,9 @@ let package = Package(
         .library(name: "MetaphorVideo", targets: ["MetaphorVideo"]),
         .library(name: "MetaphorSyphon", targets: ["MetaphorSyphon"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
-    ],
+    // 外部依存なし。ドキュメント生成は `xcrun docc` を直接呼ぶ（Makefile / docs.yml）ため
+    // swift-docc-plugin は不要（ライブラリ利用者の resolve 時 fetch を増やさない）。
+    dependencies: [],
     targets: [
         syphonTarget,
 

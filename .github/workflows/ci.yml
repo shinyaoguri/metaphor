@@ -67,7 +67,9 @@ jobs:
         run: ./scripts/check-contract.sh
       - name: Check wire-schema contract
         run: |
-          pip3 install --quiet --break-system-packages check-jsonschema
+          # バージョンを固定（更新は dependabot ではなく手動。挙動変化でスキーマ検証が
+          # 突然壊れないように）
+          pip3 install --quiet --break-system-packages check-jsonschema==0.37.4
           ./scripts/check-contract-schema.sh
       - name: Check CONTRACT.md identity across repos
         env:
@@ -78,21 +80,22 @@ jobs:
       - name: Get Syphon submodule hash
         id: syphon-hash
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      # ビルド環境（Xcode 版）をキーに含める。ランナー/Xcode が異なる workflow 間で
+      # 同一キーのキャッシュを共有すると ABI/SDK 差異を拾い得るため
+      - name: Get Xcode version
+        id: xcode-version
+        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
       - name: Cache Syphon.xcframework
         id: cache-syphon
         uses: actions/cache@v5
         with:
           path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
       - name: Build Syphon
         if: steps.cache-syphon.outputs.cache-hit != 'true'
         run: make setup
-      - name: Cache SPM dependencies
-        uses: actions/cache@v5
-        with:
-          path: .build/artifacts
-          key: spm-deps-${{ hashFiles('Package.resolved') }}
-          restore-keys: spm-deps-
+      # NOTE: SPM 依存キャッシュは撤去した。remote 依存が存在しないため
+      # （swift-docc-plugin は未使用につき削除済み）、キャッシュ対象が空だった。
       - name: Build
         run: swift build -Xswiftc -warnings-as-errors
       - name: Test with Coverage

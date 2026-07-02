@@ -91,5 +91,10 @@ fi
 # Cleanup
 rm -rf "$BUILD_DIR"
 
+# ビルド時点の submodule hash を記録（`make check` の鮮度表示に使う。
+# Frameworks/ は gitignore 済み）
+git submodule status Vendor/Syphon-Framework 2>/dev/null | awk '{print $1}' \
+    > "$OUTPUT_DIR/.syphon-build-stamp" || true
+
 echo ""
 echo "Done!"

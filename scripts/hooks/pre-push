@@ -62,10 +62,15 @@ done
 # --- llms.txt staleness check -------------------------------------------------
 if [ "$needs_llms" -eq 1 ]; then
     echo "[pre-push] Sources/ or generator changed — verifying llms.txt is up to date..."
-    if ! make llms-txt >/dev/null 2>&1; then
+    llms_log="$(mktemp)"
+    if ! make llms-txt >"$llms_log" 2>&1; then
         echo "[pre-push] ❌ make llms-txt failed. Fix the build and re-push." >&2
+        echo "[pre-push] --- make llms-txt output (tail) ---" >&2
+        tail -40 "$llms_log" >&2
+        rm -f "$llms_log"
         exit 1
     fi
+    rm -f "$llms_log"
     if ! git diff --quiet llms.txt 2>/dev/null; then
         echo "[pre-push] ❌ llms.txt is stale. Regenerated for you — review and commit:" >&2
         echo "" >&2
