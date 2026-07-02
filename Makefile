@@ -118,6 +118,7 @@ symbol-graphs: build
 		-target arm64-apple-macosx14.0 \
 		-sdk "$$SDK_PATH" \
 		-I .build/arm64-apple-macosx/debug/Modules \
+		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorSyphonBootstrap.build/module.modulemap \
 		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
 		-minimum-access-level public \
 		-skip-inherited-docs \
