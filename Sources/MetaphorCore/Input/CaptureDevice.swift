@@ -1,6 +1,7 @@
 @preconcurrency import AVFoundation
 import CoreVideo
 import Metal
+import ObjectiveC.runtime
 import os
 
 /// キャプチャに使用するカメラ位置の指定
@@ -52,12 +53,11 @@ public final class CaptureDevice {
     /// ゼロコピーピクセルバッファ変換用の Metal テクスチャキャッシュ
     private var textureCache: CVMetalTextureCache?
 
-    /// 現在の ``texture`` を支える CVMetalTexture ラッパー。
-    ///
-    /// CoreVideo の契約上、`CVMetalTextureGetTexture` が返す `MTLTexture` は
-    /// ラッパーが生存している間のみ有効。ラッパーを解放するとバッファが再利用され、
-    /// 別フレーム参照や画像破損が起こり得るため、次フレームの更新まで保持する。
-    private var currentCVTexture: CVMetalTexture?
+    /// ``texture`` を支える CVMetalTexture ラッパーの寿命を MTLTexture 自体に
+    /// 関連付けるためのキー（MLTextureConverter と同じパターン）。
+    private static let cvTextureAssociationKey = UnsafeRawPointer(
+        UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+    )
 
     /// バックグラウンドスレッドでサンプルバッファを受信するデリゲートヘルパー
     private let delegateHelper: CaptureDelegate
@@ -89,6 +89,16 @@ public final class CaptureDevice {
 
         setupTextureCache()
         setupCaptureSession(position: position)
+    }
+
+    deinit {
+        // stop() を呼ばずに破棄されてもキャプチャセッションを止める
+        // （動いたまま dealloc されるとカメラが掴まれ続ける）
+        if let session = captureSession {
+            sessionQueue.async {
+                if session.isRunning { session.stopRunning() }
+            }
+        }
     }
 
     // MARK: - Public Methods
@@ -134,12 +144,17 @@ public final class CaptureDevice {
             .bgra8Unorm, bufferWidth, bufferHeight, 0, &cvTexture
         )
 
-        guard status == kCVReturnSuccess, let cvTex = cvTexture else { return }
-        // ラッパーを保持してから MTLTexture を公開する。CoreVideo の契約上、
-        // ラッパーが解放されるとテクスチャの裏付けバッファが再利用されるため、
-        // 次の read() で差し替わるまで currentCVTexture で生かし続ける。
-        currentCVTexture = cvTex
-        texture = CVMetalTextureGetTexture(cvTex)
+        guard status == kCVReturnSuccess, let cvTex = cvTexture,
+              let mtlTexture = CVMetalTextureGetTexture(cvTex) else { return }
+        // CoreVideo の契約上、MTLTexture はラッパー（cvTex）が生存している間のみ
+        // 有効。トリプルバッファリングでは前々フレームのコマンドがまだ GPU 実行中
+        // であり得るため、「次の read() まで 1 世代保持」では足りない。ラッパーを
+        // テクスチャ自体に関連付け、テクスチャと同じ寿命で生かし続ける
+        // （MLTextureConverter と同じパターン）。
+        objc_setAssociatedObject(
+            mtlTexture, Self.cvTextureAssociationKey, cvTex, .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        texture = mtlTexture
     }
 
     /// 最新のカメラフレームを ``MImage`` インスタンスに変換します。
