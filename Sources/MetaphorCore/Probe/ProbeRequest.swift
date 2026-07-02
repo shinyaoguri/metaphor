@@ -30,6 +30,7 @@ struct ProbeRequest: Codable, Sendable {
     let label: String?
 
     /// 出力画像のスケール。`nil` のときはプラグイン設定の `defaultScale` を使用。
+    /// 有効範囲は 0 < scale <= 1（縮小専用）。範囲外・非有限はフルサイズ扱い。
     let scale: Float?
 
     /// 連続キャプチャするフレーム数。`nil` / `<= 1` なら単一フレーム（従来動作）。

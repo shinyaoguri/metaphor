@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Testing
 @testable import MetaphorCore
 import MetaphorTestSupport
@@ -70,12 +71,36 @@ struct MetaphorProbePluginTests {
         return nil
     }
 
-    /// 指定 id・label のリクエストファイルを書き込みます。
-    private func writeRequest(id: String, label: String? = nil, to path: URL) throws {
+    /// 指定 id・label・scale のリクエストファイルを書き込みます。
+    private func writeRequest(
+        id: String, label: String? = nil, scale: Double? = nil, to path: URL
+    ) throws {
         var dict: [String: Any] = ["id": id]
         if let label { dict["label"] = label }
+        if let scale { dict["scale"] = scale }
         let data = try JSONSerialization.data(withJSONObject: dict)
         try data.write(to: path)
+    }
+
+    /// 任意ファイルの出現をポーリングします。
+    private func waitForFile(_ url: URL, timeout: TimeInterval = 3.0) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if FileManager.default.fileExists(atPath: url.path) { return true }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return false
+    }
+
+    /// PNG ファイルのピクセルサイズを返します。
+    private func pngSize(of url: URL) -> (width: Int, height: Int)? {
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int,
+              let h = props[kCGImagePropertyPixelHeight] as? Int else {
+            return nil
+        }
+        return (w, h)
     }
 
     @Test("idle plugin does not produce output")
@@ -343,6 +368,140 @@ struct MetaphorProbePluginTests {
 
             drainGPUWork()
         }
+    }
+
+    @Test("request scale 0.5 halves the PNG and frame.json size (contract point 4)")
+    func scaleHalvesOutput() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "scale-1", scale: 0.5, to: requestPath)
+            renderer.renderFrame()
+
+            let png = waitForFrame(in: outputDir)
+            #expect(png != nil)
+            if let png {
+                let size = pngSize(of: png)
+                #expect(size?.width == 32)
+                #expect(size?.height == 32)
+            }
+
+            // frame.json の size もスケール後の値になる
+            let jsonURL = outputDir.appendingPathComponent("frame.json")
+            #expect(waitForFile(jsonURL))
+            let json = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: jsonURL)
+            ) as? [String: Any]
+            let size = json?["size"] as? [String: Any]
+            #expect(size?["width"] as? Int == 32)
+            #expect(size?["height"] as? Int == 32)
+
+            drainGPUWork()
+        }
+    }
+
+    @Test("defaultScale applies when the request omits scale")
+    func defaultScaleApplies() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path,
+                    defaultScale: 0.25
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "scale-default", to: requestPath)
+            renderer.renderFrame()
+
+            let png = waitForFrame(in: outputDir)
+            #expect(png != nil)
+            if let png {
+                let size = pngSize(of: png)
+                #expect(size?.width == 16)
+                #expect(size?.height == 16)
+            }
+
+            drainGPUWork()
+        }
+    }
+
+    @Test("invalid scale values fall back to full size")
+    func invalidScaleFallsBack() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 64, height: 64)
+            renderer.addPlugin(plugin)
+
+            // 0 以下は無効 → フルサイズ
+            try writeRequest(id: "scale-invalid", scale: -1.0, to: requestPath)
+            renderer.renderFrame()
+
+            let png = waitForFrame(in: outputDir)
+            #expect(png != nil)
+            if let png {
+                let size = pngSize(of: png)
+                #expect(size?.width == 64)
+                #expect(size?.height == 64)
+            }
+
+            drainGPUWork()
+        }
+    }
+}
+
+// MARK: - ProbeWriter scale helpers
+
+@Suite("ProbeWriter scale")
+struct ProbeWriterScaleTests {
+
+    @Test("normalizeScale clamps invalid values to 1.0")
+    func normalizeScale() {
+        #expect(ProbeWriter.normalizeScale(0.5) == 0.5)
+        #expect(ProbeWriter.normalizeScale(1.0) == 1.0)
+        #expect(ProbeWriter.normalizeScale(0) == 1.0)
+        #expect(ProbeWriter.normalizeScale(-0.5) == 1.0)
+        #expect(ProbeWriter.normalizeScale(2.0) == 1.0)
+        #expect(ProbeWriter.normalizeScale(.nan) == 1.0)
+        #expect(ProbeWriter.normalizeScale(.infinity) == 1.0)
+    }
+
+    @Test("scaledSize rounds and clamps to at least 1px")
+    func scaledSize() {
+        let half = ProbeWriter.scaledSize(width: 64, height: 64, scale: 0.5)
+        #expect(half.width == 32 && half.height == 32)
+
+        let tiny = ProbeWriter.scaledSize(width: 10, height: 10, scale: 0.01)
+        #expect(tiny.width == 1 && tiny.height == 1)
+
+        let full = ProbeWriter.scaledSize(width: 64, height: 48, scale: 1.0)
+        #expect(full.width == 64 && full.height == 48)
+
+        let odd = ProbeWriter.scaledSize(width: 65, height: 65, scale: 0.5)
+        #expect(odd.width == 33 && odd.height == 33)
     }
 }
 

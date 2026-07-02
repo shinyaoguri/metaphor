@@ -15,35 +15,60 @@ enum ProbeWriter {
     /// `metadata` が渡された場合は `frame.json` も同様に書き出します。
     /// この関数の中でステージングのバイト列を 1 度だけ読み、PNG 化と
     /// blank フレーム解析に使い回します。
+    ///
+    /// `scale`（CONTRACT.md 契約点 4）が 1 未満のときは PNG を縮小して書き出し、
+    /// `frame.json` の `size` もスケール後の値になります。
     static func writeSnapshot(
         staging: MTLTexture,
         width: Int,
         height: Int,
+        scale: Float = 1.0,
         directory: String,
         metadata: ProbeFrameMetadata?
     ) {
         writeNamed(
-            staging: staging, width: width, height: height,
+            staging: staging, width: width, height: height, scale: scale,
             directory: directory, baseName: "frame", metadata: metadata
         )
     }
 
     /// 連続キャプチャの 1 フレームを `<directory>/frame.NNNN.{png,json}` に書き出します。
     ///
-    /// 単一フレームの ``writeSnapshot(staging:width:height:directory:metadata:)`` と
+    /// 単一フレームの ``writeSnapshot(staging:width:height:scale:directory:metadata:)`` と
     /// 同一の経路（同じ読み出し・解析・原子書き出し）を、索引付きファイル名で使います。
     static func writeSequenceFrame(
         staging: MTLTexture,
         width: Int,
         height: Int,
+        scale: Float = 1.0,
         directory: String,
         index: Int,
         metadata: ProbeFrameMetadata?
     ) {
         writeNamed(
-            staging: staging, width: width, height: height,
+            staging: staging, width: width, height: height, scale: scale,
             directory: directory, baseName: sequenceBaseName(index),
             metadata: metadata
+        )
+    }
+
+    /// `scale` を出力に適用できる範囲へ正規化します。
+    ///
+    /// 非有限・0 以下・1 超はフルサイズ（1.0）扱い。契約上 scale は縮小のための
+    /// パラメータであり、拡大やゼロ除算相当の値は意味を持たないため。
+    static func normalizeScale(_ scale: Float) -> Float {
+        guard scale.isFinite, scale > 0, scale < 1 else { return 1.0 }
+        return scale
+    }
+
+    /// `scale` 適用後の出力サイズ（最小 1px）。プラグイン側（manifest の参照サイズ）と
+    /// 書き出し側で同じ丸めを共有するための単一の計算点。
+    static func scaledSize(width: Int, height: Int, scale: Float) -> (width: Int, height: Int) {
+        let s = normalizeScale(scale)
+        guard s < 1 else { return (width, height) }
+        return (
+            max(1, Int((Float(width) * s).rounded())),
+            max(1, Int((Float(height) * s).rounded()))
         )
     }
 
@@ -57,6 +82,7 @@ enum ProbeWriter {
         staging: MTLTexture,
         width: Int,
         height: Int,
+        scale: Float,
         directory: String,
         baseName: String,
         metadata: ProbeFrameMetadata?
@@ -66,12 +92,28 @@ enum ProbeWriter {
             at: dirURL, withIntermediateDirectories: true
         )
 
-        let pixels = readBGRA(from: staging, width: width, height: height)
-        let analysis = analyze(pixels: pixels, width: width, height: height)
+        // BGRA で読み出して RGBA に並べ替える（CG スケーリングと PNG エンコードは
+        // RGBA 前提。以降の解析もこの並びで行う）。
+        var pixels = readBGRA(from: staging, width: width, height: height)
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            let b = pixels[i]
+            pixels[i] = pixels[i + 2]
+            pixels[i + 2] = b
+        }
+
+        // scale < 1 なら縮小（契約点 4: 出力画像のスケール）。
+        var outWidth = width
+        var outHeight = height
+        if normalizeScale(scale) < 1,
+           let scaled = scaleRGBA(pixels: pixels, width: width, height: height, scale: scale) {
+            (pixels, outWidth, outHeight) = scaled
+        }
+
+        let analysis = analyze(pixels: pixels, width: outWidth, height: outHeight)
 
         let finalPNG = dirURL.appendingPathComponent("\(baseName).png")
         let tmpPNG = dirURL.appendingPathComponent("\(baseName).png.tmp")
-        encodePNG(pixels: pixels, width: width, height: height, to: tmpPNG)
+        encodePNG(rgba: &pixels, width: outWidth, height: outHeight, to: tmpPNG)
         atomicReplace(tmp: tmpPNG, final: finalPNG)
 
         guard let metadata else { return }
@@ -83,7 +125,8 @@ enum ProbeWriter {
             sourceStamp: metadata.sourceStamp,
             frame: metadata.frame,
             time: metadata.time,
-            size: metadata.size,
+            // 実際に書き出した PNG のサイズ（scale 適用後）を書く
+            size: ProbeFrameMetadata.Size(width: outWidth, height: outHeight),
             custom: metadata.custom,
             customTypes: metadata.customTypes,
             warnings: metadata.warnings + analysis.warnings,
@@ -228,17 +271,57 @@ enum ProbeWriter {
         return pixels
     }
 
-    /// BGRA8 ピクセルから PNG をエンコードして指定パスに書きます。
-    private static func encodePNG(
-        pixels: [UInt8], width: Int, height: Int, to url: URL
-    ) {
-        var rgba = pixels
-        for i in stride(from: 0, to: rgba.count, by: 4) {
-            let b = rgba[i]
-            rgba[i] = rgba[i + 2]
-            rgba[i + 2] = b
+    /// RGBA8 ピクセル列を CGContext 経由で縮小します。
+    ///
+    /// - Returns: (縮小後ピクセル, 幅, 高さ)。失敗時は nil（呼び出し側はフルサイズで続行）。
+    private static func scaleRGBA(
+        pixels: [UInt8], width: Int, height: Int, scale: Float
+    ) -> ([UInt8], Int, Int)? {
+        let (outW, outH) = scaledSize(width: width, height: height, scale: scale)
+        guard outW < width || outH < height else { return nil }
+
+        var src = pixels
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let srcCtx = CGContext(
+            data: &src,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ),
+        let image = srcCtx.makeImage() else {
+            print("[metaphor] Probe: failed to build image for scaling — writing full size")
+            return nil
         }
 
+        var dst = [UInt8](repeating: 0, count: outW * outH * 4)
+        let ok = dst.withUnsafeMutableBytes { buf -> Bool in
+            guard let dstCtx = CGContext(
+                data: buf.baseAddress,
+                width: outW,
+                height: outH,
+                bitsPerComponent: 8,
+                bytesPerRow: outW * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            dstCtx.interpolationQuality = .high
+            dstCtx.draw(image, in: CGRect(x: 0, y: 0, width: outW, height: outH))
+            return true
+        }
+        guard ok else {
+            print("[metaphor] Probe: failed to scale frame — writing full size")
+            return nil
+        }
+        return (dst, outW, outH)
+    }
+
+    /// RGBA8 ピクセルから PNG をエンコードして指定パスに書きます。
+    private static func encodePNG(
+        rgba: inout [UInt8], width: Int, height: Int, to url: URL
+    ) {
         let bytesPerRow = width * 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         guard let ctx = CGContext(
@@ -292,9 +375,10 @@ enum ProbeWriter {
                 let x = min(width - 1, (sx * width) / samplesPerSide)
                 let y = min(height - 1, (sy * height) / samplesPerSide)
                 let i = y * bytesPerRow + x * 4
-                let b = Float(pixels[i]) / 255.0
+                // ピクセルは writeNamed で RGBA に並べ替え済み
+                let r = Float(pixels[i]) / 255.0
                 let g = Float(pixels[i + 1]) / 255.0
-                let r = Float(pixels[i + 2]) / 255.0
+                let b = Float(pixels[i + 2]) / 255.0
                 samplesR[idx] = r
                 samplesG[idx] = g
                 samplesB[idx] = b

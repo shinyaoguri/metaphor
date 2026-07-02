@@ -81,6 +81,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let requested: Int
         /// 採取間隔（ストライド）。
         let every: Int
+        /// 出力画像のスケール（正規化済み。契約点 4）。
+        let scale: Float
         /// シーケンス全体の警告（クランプ・degrade 等）。
         let warnings: [String]
         /// 採取済み枚数。
@@ -213,11 +215,14 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         )
 
         let outputDirectory = config.outputDirectory
+        // 出力画像のスケール（契約点 4）。リクエスト優先、なければ defaultScale。
+        let scale = ProbeWriter.normalizeScale(request.scale ?? config.defaultScale)
         let writeWork: @Sendable () -> Void = {
             ProbeWriter.writeSnapshot(
                 staging: staging,
                 width: width,
                 height: height,
+                scale: scale,
                 directory: outputDirectory,
                 metadata: metadata
             )
@@ -284,8 +289,11 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         }
 
         if index == 0 {
-            seq.refWidth = width
-            seq.refHeight = height
+            // contact sheet / manifest の参照サイズは実際に書き出す PNG のサイズ
+            //（scale 適用後）に合わせる
+            let scaled = ProbeWriter.scaledSize(width: width, height: height, scale: seq.scale)
+            seq.refWidth = scaled.width
+            seq.refHeight = scaled.height
         }
 
         let frameNo = sketch?._context?.frameCount ?? 0
@@ -336,9 +344,10 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let refW = seq.refWidth
         let refH = seq.refHeight
 
+        let scale = seq.scale
         let writeWork: @Sendable () -> Void = {
             ProbeWriter.writeSequenceFrame(
-                staging: staging, width: width, height: height,
+                staging: staging, width: width, height: height, scale: scale,
                 directory: dir, index: index, metadata: metadata
             )
             guard let manifestBase else { return }
@@ -471,6 +480,7 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             total: total,
             requested: requested,
             every: every,
+            scale: ProbeWriter.normalizeScale(request.scale ?? config.defaultScale),
             warnings: warnings
         )
         // 受理時に dedup を確定（mtime 不変でも二重起動しないよう）。
