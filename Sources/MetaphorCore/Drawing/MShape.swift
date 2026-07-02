@@ -260,6 +260,17 @@ public final class MShape {
     /// 3Dプリミティブ（box、sphere など）用のキャッシュされたメッシュ。
     var primitiveMesh3D: Mesh?
 
+    /// サイズ指定 shape() 用のキャッシュメッシュ（``primitiveMesh3D`` とは別スロット）。
+    /// サイズ指定描画が元寸法のメッシュを恒久上書きすると、その後のサイズなし
+    /// shape() がリサイズ済みメッシュを誤再利用する（状態汚染）ため分離する。
+    var sizedMesh3D: Mesh?
+
+    /// ``sizedMesh3D`` を生成したときの寸法（同一寸法の再描画で再利用する）。
+    var sizedMesh3DSize: SIMD3<Float>?
+
+    /// 2D 描画経路での頂点カラー/UV 未対応警告を出したかどうか（一度だけ警告）。
+    var warned2DVertexAttributes: Bool = false
+
     /// 最後のキャッシュビルド以降にジオメトリが変更されたかどうか。
     var isDirty: Bool = true
 

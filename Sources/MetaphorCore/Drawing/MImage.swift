@@ -84,6 +84,9 @@ public final class MImage {
         self.texture = texture
         self.width = Float(texture.width)
         self.height = Float(texture.height)
+        // 外部由来のテクスチャは GPU がいつ書き込むか追跡できない
+        // （Graphics のカラーテクスチャ等）ため、ピクセルキャッシュを信頼しない
+        self.alwaysReadback = true
     }
 
     // MARK: - Pixel Access
@@ -95,6 +98,29 @@ public final class MImage {
     /// true の場合、次の ``loadPixels()`` は GPU から読み取ります。それ以外の場合は
     /// 既存の CPU 配列を再利用します（割り当て、リードバック、変換を回避）。
     private var needsGPUReadback: Bool = true
+
+    /// 外部由来のラップテクスチャかどうか。true の場合、``replaceTexture(_:)`` 以外の
+    /// GPU 書き込み（Graphics の再描画等）を検出できないため、``loadPixels()`` は
+    /// キャッシュを使わず常に GPU から読み取ります。
+    private var alwaysReadback: Bool = false
+
+    /// リードバックに使用するコマンドキュー。テクスチャへ書き込むキューと同じものを
+    /// 設定すると、commit 順序により「直前の描画 → loadPixels」が正しく順序付けられる
+    /// （``Graphics/toImage()`` が設定する）。未設定時はデバイス共有のリードバック
+    /// キューを使用する。
+    var preferredReadbackQueue: MTLCommandQueue?
+
+    /// デバイスごとの共有リードバックキュー（呼び出しごとの makeCommandQueue 生成を回避）
+    private static var sharedReadbackQueues: [ObjectIdentifier: MTLCommandQueue] = [:]
+
+    private static func sharedReadbackQueue(for device: MTLDevice) -> MTLCommandQueue? {
+        let key = ObjectIdentifier(device)
+        if let queue = sharedReadbackQueues[key] { return queue }
+        guard let queue = device.makeCommandQueue() else { return nil }
+        queue.label = "metaphor.MImage.readback"
+        sharedReadbackQueues[key] = queue
+        return queue
+    }
 
     /// GPU テクスチャから CPU 上の ``pixels`` 配列にピクセルデータを読み込みます。
     ///
@@ -119,7 +145,8 @@ public final class MImage {
         let count = bytesPerRow * h
 
         // テクスチャが変更されていない場合、既存の CPU データを再利用。
-        if !needsGPUReadback && pixels.count == count {
+        // ラップテクスチャ（alwaysReadback）は GPU 書き込みを追跡できないため常に読む。
+        if !alwaysReadback && !needsGPUReadback && pixels.count == count {
             return
         }
 
@@ -131,9 +158,12 @@ public final class MImage {
                                size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
-            // プライベートテクスチャ: 共有ステージングテクスチャにブリットしてリードバック
+            // プライベートテクスチャ: 共有ステージングテクスチャにブリットしてリードバック。
+            // キューは「テクスチャへ書き込んだキュー」（preferredReadbackQueue）を優先する。
+            // 別のキューだと commit 順序が保証されず、直前の描画完了前に古い内容を
+            // 読み得る（毎回の makeCommandQueue 生成コストも回避）。
             let device = texture.device
-            guard let commandQueue = device.makeCommandQueue(),
+            guard let commandQueue = preferredReadbackQueue ?? Self.sharedReadbackQueue(for: device),
                   let commandBuffer = commandQueue.makeCommandBuffer() else {
                 pixels = [UInt8](repeating: 0, count: count)
                 return
@@ -210,7 +240,9 @@ public final class MImage {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
             desc.storageMode = .shared
-            desc.usage = [.shaderRead]
+            // 元テクスチャの usage を引き継ぐ（.renderTarget 等を落とすと、
+            // 以降そのテクスチャを描画先に使えなくなる）
+            desc.usage = texture.usage
             guard let newTexture = texture.device.makeTexture(descriptor: desc) else {
                 return
             }

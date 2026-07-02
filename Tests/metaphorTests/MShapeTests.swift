@@ -580,3 +580,67 @@ struct MShapeTessellationTests {
         #expect(!updatedVerts.contains { abs($0.x - 100) < 0.001 && abs($0.y - 100) < 0.001 })
     }
 }
+
+// MARK: - サイズ指定 shape() の状態汚染防止（#158）
+
+@Suite("MShape Sized Draw", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeSizedDrawTests {
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        return SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+    }
+
+    @Test("sized shape() does not overwrite the unsized primitive mesh")
+    func sizedShapeNoPollution() throws {
+        let ctx = try makeContext()
+        let box = ctx.createShape(.box(width: 2, height: 2, depth: 2))
+
+        // サイズなし描画で元寸法のメッシュが確定
+        ctx.shape(box, 0, 0)
+        let originalMesh = box.primitiveMesh3D
+        #expect(originalMesh != nil)
+
+        // サイズ指定描画は別スロット（sizedMesh3D）に入り、元メッシュは不変
+        ctx.shape(box, 0, 0, 10, 20)
+        #expect(box.primitiveMesh3D === originalMesh,
+                "サイズ指定 shape() が primitiveMesh3D を上書きしない")
+        #expect(box.sizedMesh3D != nil)
+
+        // 同一寸法の再描画では sizedMesh3D を再利用（毎フレーム生成しない）
+        let sizedMesh = box.sizedMesh3D
+        ctx.shape(box, 0, 0, 10, 20)
+        #expect(box.sizedMesh3D === sizedMesh)
+
+        // その後のサイズなし描画も元メッシュのまま
+        ctx.shape(box, 0, 0)
+        #expect(box.primitiveMesh3D === originalMesh)
+    }
+}
+
+// MARK: - Canvas3D プリミティブの単位メッシュキャッシュ（#158）
+
+@Suite("Canvas3D Unit Mesh Cache", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct Canvas3DUnitMeshCacheTests {
+
+    @Test("animated box dimensions do not create new meshes per frame")
+    func boxDimensionAnimation() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        // box(sin(t)*100) 相当: 毎回異なる寸法でもキャッシュエントリは 1 つ
+        for i in 0..<50 {
+            canvas3D.box(Float(i) * 1.7 + 1, Float(i) * 0.9 + 1, Float(i) * 2.3 + 1)
+            canvas3D.sphere(Float(i) * 0.5 + 1)
+        }
+        // 単位メッシュ 2 種（box_unit / sphere_unit_24_12）だけがキャッシュされる
+        #expect(canvas3D.meshCacheCountForTesting <= 2,
+                "寸法アニメーションでメッシュキャッシュが増殖しない (count: \(canvas3D.meshCacheCountForTesting))")
+    }
+}

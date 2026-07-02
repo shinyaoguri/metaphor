@@ -74,3 +74,50 @@ struct GraphicsTests {
         pg.endDraw()
     }
 }
+
+// MARK: - loadPixels の鮮度と順序保証（#158）
+
+@Suite("Graphics loadPixels Freshness", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct GraphicsLoadPixelsFreshnessTests {
+
+    private func makeGraphics(width: Int = 16, height: Int = 16) throws -> Graphics {
+        let device = MetalTestHelper.device!
+        let shaderLib = try MetalTestHelper.shaderLibrary()
+        let depthCache = MetalTestHelper.depthStencilCache()
+        return try Graphics(
+            device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
+            shaderLibrary: shaderLib,
+            depthStencilCache: depthCache,
+            width: width,
+            height: height
+        )
+    }
+
+    @Test("draw then loadPixels immediately reads the latest content")
+    func loadPixelsAfterEndDraw() throws {
+        let pg = try makeGraphics()
+
+        // 赤で塗って wait なしで終了 → 直後の loadPixels でも最新が読める
+        // （リードバックが描画と同じキューに載るため commit 順序で保証される）
+        pg.beginDraw()
+        pg.background(Color(r: 1, g: 0, b: 0))
+        pg.endDraw(wait: false)
+
+        let img = pg.toImage()
+        img.loadPixels()
+        let red = img.get(8, 8)
+        #expect(red.r > 0.9 && red.g < 0.1, "1 回目の描画結果が読める (got \(red))")
+
+        // 再描画後も最新が読める（ラップテクスチャはピクセルキャッシュを信頼しない）
+        pg.beginDraw()
+        pg.background(Color(r: 0, g: 1, b: 0))
+        pg.endDraw(wait: false)
+
+        img.loadPixels()
+        let green = img.get(8, 8)
+        #expect(green.g > 0.9 && green.r < 0.1,
+                "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
+    }
+}
