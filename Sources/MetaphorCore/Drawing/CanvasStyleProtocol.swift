@@ -75,6 +75,17 @@ extension CanvasStyle {
 
 extension CanvasStyle {
 
+    /// 最大値を検証します。0 以下・非有限は toColor/toGray のゼロ除算で以降の
+    /// 全色が NaN になり描画が黙って消えるため、warning を出して現在値を維持する。
+    private func validatedMax(_ value: Float?, current: Float, label: String) -> Float {
+        guard let value else { return current }
+        guard value.isFinite, value > 0 else {
+            metaphorWarning("colorMode: \(label) must be a positive finite value (got \(value)); keeping \(current)")
+            return current
+        }
+        return value
+    }
+
     public func colorMode(
         _ space: ColorSpace,
         _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxAlpha: Float? = nil
@@ -85,14 +96,16 @@ extension CanvasStyle {
         let current = colorModeConfig
         colorModeConfig = ColorModeConfig(
             space: space,
-            max1: max1 ?? current.max1,
-            max2: max2 ?? current.max2,
-            max3: max3 ?? current.max3,
-            maxAlpha: maxAlpha ?? current.maxAlpha)
+            max1: validatedMax(max1, current: current.max1, label: "max1"),
+            max2: validatedMax(max2, current: current.max2, label: "max2"),
+            max3: validatedMax(max3, current: current.max3, label: "max3"),
+            maxAlpha: validatedMax(maxAlpha, current: current.maxAlpha, label: "maxAlpha"))
     }
 
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
-        colorModeConfig = ColorModeConfig(space: space, max1: maxAll, max2: maxAll, max3: maxAll, maxAlpha: maxAll)
+        let current = colorModeConfig
+        let safe = validatedMax(maxAll, current: current.max1, label: "max")
+        colorModeConfig = ColorModeConfig(space: space, max1: safe, max2: safe, max3: safe, maxAlpha: safe)
     }
 }
 

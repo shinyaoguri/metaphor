@@ -91,11 +91,18 @@ extension Sketch {
         }
     }
 
-    /// アクティブなコンテキスト。setup()/draw() 外で呼ぶと明確なメッセージでクラッシュします。
+    /// アクティブなコンテキスト。Runner の初期化前（または teardown 後）に
+    /// 描画 API を呼ぶと明確なメッセージでクラッシュします。
+    ///
+    /// 失敗モードの方針: 描画系はここで fatalError（初期化前の呼び出しはプログラミング
+    /// エラー）、`probe()` は無言 no-op（観測は本体挙動を変えない）、`pixels` は
+    /// 空バッファを返す（読み取り系はクラッシュより空が安全）。
     @MainActor
     public var context: SketchContext {
         guard let ctx = _context else {
-            fatalError("[metaphor] Drawing methods cannot be called outside setup()/draw(). Ensure SketchRunner has initialized the context.")
+            // 注: この検出は「Runner が context を初期化する前 / 破棄した後」のみ。
+            // setup()/draw() の外（init やプロパティ初期化子など）での呼び出しが典型例。
+            fatalError("[metaphor] Drawing APIs require an active SketchContext. This usually means the call happened before SketchRunner initialized the sketch (e.g. in init or a property initializer) or after teardown. Move the call into setup()/draw().")
         }
         return ctx
     }
