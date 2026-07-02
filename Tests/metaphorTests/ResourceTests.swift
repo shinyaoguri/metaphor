@@ -136,6 +136,38 @@ struct InputManagerTests {
         #expect(input.isKeyRepeat == false)
     }
 
+    @Test("isKeyRepeat resets on keyUp")
+    func keyRepeatResetsOnKeyUp() {
+        let input = InputManager()
+        input.handleKeyDown(keyCode: 0, characters: "a", isRepeat: true)
+        #expect(input.isKeyRepeat == true)
+
+        input.handleKeyUp(keyCode: 0)
+        #expect(input.isKeyRepeat == false)
+    }
+
+    @Test("flagsChanged syncs modifier keys into pressedKeys")
+    func modifierKeys() {
+        let input = InputManager()
+        #expect(input.isKeyDown(SHIFT) == false)
+
+        input.handleFlagsChanged(shift: true, control: false, option: false, command: false)
+        #expect(input.isKeyDown(SHIFT) == true)
+        #expect(input.isKeyDown(CONTROL) == false)
+        #expect(input.isKeyPressed == true)
+
+        input.handleFlagsChanged(shift: true, control: false, option: true, command: true)
+        #expect(input.isKeyDown(SHIFT) == true)
+        #expect(input.isKeyDown(OPTION) == true)
+        #expect(input.isKeyDown(COMMAND) == true)
+
+        input.handleFlagsChanged(shift: false, control: false, option: false, command: false)
+        #expect(input.isKeyDown(SHIFT) == false)
+        #expect(input.isKeyDown(OPTION) == false)
+        #expect(input.isKeyDown(COMMAND) == false)
+        #expect(input.isKeyPressed == false)
+    }
+
     @Test("mouseClicked fires on press-release without drag")
     func mouseClicked() {
         let input = InputManager()
@@ -194,6 +226,92 @@ struct RendererInputTests {
         let renderer = try MetaphorRenderer()
         #expect(renderer.input.mouseX == 0)
         #expect(renderer.input.isMouseDown == false)
+    }
+}
+
+// MARK: - ParameterGUI Interaction Tests
+
+@Suite("ParameterGUI Interaction", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct ParameterGUIInteractionTests {
+
+    private func makeCanvas() throws -> (Canvas2D, InputManager) {
+        let renderer = try MetaphorRenderer(width: 256, height: 256)
+        let canvas = try Canvas2D(renderer: renderer)
+        return (canvas, renderer.input)
+    }
+
+    @Test("toggle flips exactly once while mouse is held down")
+    func toggleSingleFlip() throws {
+        let (canvas, input) = try makeCanvas()
+        let gui = ParameterGUI()
+        var flag = false
+
+        // デフォルトレイアウト: toggleX=14, toggleY=16..32 → (20, 20) はヒット
+        input.handleMouseDown(x: 20, y: 20, button: 0)
+        for _ in 0..<5 {
+            gui.begin()
+            gui.toggle("flag", &flag, canvas: canvas, input: input)
+            gui.end()
+            gui.updateInput(input: input)
+        }
+        // 押下中に何フレーム回っても 1 回だけ反転する
+        #expect(flag == true)
+
+        input.handleMouseUp(x: 20, y: 20, button: 0)
+        gui.begin()
+        gui.toggle("flag", &flag, canvas: canvas, input: input)
+        gui.end()
+        gui.updateInput(input: input)
+        #expect(flag == true)
+    }
+
+    @Test("two sliders with the same label drag independently")
+    func sliderIDUniqueness() throws {
+        let (canvas, input) = try makeCanvas()
+        let gui = ParameterGUI()
+        var v1: Float = 0.5
+        var v2: Float = 0.5
+
+        func frame() {
+            gui.begin()
+            gui.slider("same", &v1, min: 0, max: 1, canvas: canvas, input: input)
+            gui.slider("same", &v2, min: 0, max: 1, canvas: canvas, input: input)
+            gui.end()
+            gui.updateInput(input: input)
+        }
+
+        // レイアウト: slider1 トラック y=28..44、slider2 トラック y=62..78
+        // 2 本目のトラック上で押下 → 2 本目だけが動く
+        input.handleMouseDown(x: 100, y: 70, button: 0)
+        frame()
+        input.handleMouseDragged(x: 150, y: 70)
+        frame()
+
+        #expect(v1 == 0.5, "1 本目のスライダーは動かない（旧: ラベル由来 ID の衝突で同時ドラッグ）")
+        #expect(abs(v2 - (150.0 - 14.0) / 200.0) < 0.01)
+    }
+
+    @Test("slider is not grabbed when dragging across it with button already down")
+    func sliderNoMidDragGrab() throws {
+        let (canvas, input) = try makeCanvas()
+        let gui = ParameterGUI()
+        var v: Float = 0.5
+
+        func frame() {
+            gui.begin()
+            gui.slider("v", &v, min: 0, max: 1, canvas: canvas, input: input)
+            gui.end()
+            gui.updateInput(input: input)
+        }
+
+        // トラック外（下方）で押下してから、押したままトラック上を通過
+        input.handleMouseDown(x: 100, y: 200, button: 0)
+        frame()
+        input.handleMouseDragged(x: 100, y: 36)  // トラック内 (y=28..44)
+        frame()
+
+        #expect(v == 0.5, "押下済みのままトラックへ入ってもスライダーを掴まない")
     }
 }
 

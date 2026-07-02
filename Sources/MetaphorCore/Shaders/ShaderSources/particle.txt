@@ -27,7 +27,7 @@ struct ParticleUniforms {
     float4 startColor;
     float4 endColor;
     uint  emitterType;   // 0=point, 1=line, 2=circle, 3=sphere
-    uint  _pad2;
+    uint  desiredEmit;   // number of particles to emit this frame (CPU accumulates emissionRate*dt)
     uint  _pad3;
     uint  _pad4;
     float4 emitterParam1;
@@ -77,6 +77,7 @@ kernel void metaphor_particleUpdate(
     device Particle *particlesOut [[buffer(1)]],
     constant ParticleUniforms &uniforms [[buffer(2)]],
     constant ForceDescriptor *forces [[buffer(3)]],
+    device atomic_uint *emitCounter [[buffer(4)]],
     uint gid [[thread_position_in_grid]]
 ) {
     if (gid >= uniforms.particleCount) return;
@@ -86,11 +87,14 @@ kernel void metaphor_particleUpdate(
 
     // ---- Dead particle: check if should respawn ----
     if (p.sizeAndFlags.w < 0.5) {
-        float emitChance = uniforms.emissionRate * dt / float(uniforms.particleCount);
+        // Assign each dead slot an ordinal via atomic counter and spawn exactly
+        // desiredEmit particles this frame. The old probabilistic formula
+        // (emissionRate * dt / particleCount) was applied to dead slots only,
+        // so the effective emission rate decayed as the pool filled up.
+        uint slot = atomic_fetch_add_explicit(emitCounter, 1u, memory_order_relaxed);
         uint timeSeed = uint(uniforms.time * 1000.0);
-        float r = metaphor_rand(gid, timeSeed);
 
-        if (r < emitChance) {
+        if (slot < uniforms.desiredEmit) {
             float r1 = metaphor_rand(gid, timeSeed + 1u);
             float r2 = metaphor_rand(gid, timeSeed + 2u);
             float r3 = metaphor_rand(gid, timeSeed + 3u);
