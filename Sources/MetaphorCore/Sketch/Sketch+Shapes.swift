@@ -267,12 +267,14 @@ extension Sketch {
     ///   - h: 円弧の外接楕円の高さ。
     ///   - startAngle: ラジアン単位の開始角度。
     ///   - stopAngle: ラジアン単位の終了角度。
-    ///   - mode: 円弧の描画モード。
+    ///   - mode: 円弧の描画モード。省略時は Processing のデフォルトと同じく
+    ///     「扇形の fill + 弧のみの stroke」（``ArcMode/default``）。明示 ``ArcMode/open`` の
+    ///     fill は弦で閉じた弓形になる点が省略時と異なる。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
         _ startAngle: Float, _ stopAngle: Float,
-        _ mode: ArcMode = .open
+        _ mode: ArcMode = .default
     ) {
         context.arc(x, y, w, h, startAngle, stopAngle, mode)
     }

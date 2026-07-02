@@ -151,6 +151,41 @@ struct ArcPointParityTests {
         #expect(nearCenter.r > 200, "pie モードの fill は中心を含む扇形: \(nearCenter)")
     }
 
+    @Test("arc default mode fills a pie shape")
+    func arcDefaultFillIsPie() throws {
+        let sample = try renderAndSample { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.noStroke()
+            c.fill(Color(r: 1, g: 0, b: 0))
+            // mode 省略 = Processing のデフォルト（扇形 fill）
+            c.arc(32, 32, 48, 48, 0, .pi / 2)
+        }
+        let nearCenter = sample(35, 35)
+        #expect(nearCenter.r > 200, "mode 省略時の fill は中心を含む扇形: \(nearCenter)")
+        let bow = sample(47, 47)
+        #expect(bow.r > 200, "弓形領域も塗られる: \(bow)")
+    }
+
+    @Test("arc default mode strokes only the arc (no chord, no center lines)")
+    func arcDefaultStrokeIsOpen() throws {
+        let sample = try renderAndSample { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.noFill()
+            c.stroke(Color(r: 1, g: 0, b: 0))
+            c.strokeWeight(3)
+            c.arc(32, 32, 48, 48, 0, .pi / 2)
+        }
+        // 弧上の点（45° 地点 ≈ (32 + 24cos45°, 32 + 24sin45°) ≈ (49, 49)）
+        let onArc = sample(49, 49)
+        #expect(onArc.r > 200, "弧本体はストロークされる: \(onArc)")
+        // 中心→始点の半径線は描かれない（pie なら (44, 32) を通る）
+        let onRadius = sample(44, 32)
+        #expect(onRadius.r < 60, "mode 省略時の stroke は半径線を描かない: \(onRadius)")
+        // 弦は描かれない（chord なら弦 (56,32)-(32,56) の中点 (44, 44) を通る）
+        let onChord = sample(44, 44)
+        #expect(onChord.r < 60, "mode 省略時の stroke は弦を描かない: \(onChord)")
+    }
+
     @Test("point respects noStroke")
     func pointRespectsNoStroke() throws {
         let sample = try renderAndSample { c in

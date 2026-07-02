@@ -344,12 +344,12 @@ extension Canvas2D {
     ///   - h: 弧を囲む楕円の高さ。
     ///   - startAngle: 開始角（ラジアン）。
     ///   - stopAngle: 終了角（ラジアン）。
-    ///   - mode: 弧の閉じ方モード（open、chord、または pie）。
+    ///   - mode: 弧の閉じ方モード。省略時は扇形の fill + 弧のみの stroke（Processing のデフォルトと同じ）。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
         _ startAngle: Float, _ stopAngle: Float,
-        _ mode: ArcMode = .open
+        _ mode: ArcMode = .default
     ) {
         let rx = w * 0.5
         let ry = h * 0.5
@@ -359,7 +359,7 @@ extension Canvas2D {
 
         if hasFill {
             switch mode {
-            case .pie:
+            case .pie, .default:
                 // 扇形: 中心から各セグメントへファン
                 for i in 0..<segments {
                     let a0 = startAngle + step * Float(i)
@@ -397,7 +397,7 @@ extension Canvas2D {
             let lastX = x + rx * cos(stopAngle)
             let lastY = y + ry * sin(stopAngle)
             switch mode {
-            case .open:
+            case .open, .default:
                 break
             case .chord:
                 strokeLine(lastX, lastY, firstX, firstY)
