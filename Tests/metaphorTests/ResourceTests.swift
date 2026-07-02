@@ -315,6 +315,84 @@ struct ParameterGUIInteractionTests {
     }
 }
 
+// MARK: - OBJ Parser Robustness Tests
+
+@Suite("OBJ Parser", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct OBJParserTests {
+
+    private var device: MTLDevice { MTLCreateSystemDefaultDevice()! }
+
+    @Test("negative indices resolve as relative references")
+    func negativeIndices() {
+        // OBJ 仕様: -1 は最後に定義された頂点。三角形 1 枚を相対参照で定義
+        let source = """
+        v 0 0 0
+        v 1 0 0
+        v 0.5 1 0
+        f -3 -2 -1
+        """
+        let mesh = Mesh.loadOBJ(device: device, source: source)
+        #expect(mesh != nil)
+        #expect(mesh?.vertexCount == 3)
+        #expect(mesh?.indexCount == 3)
+    }
+
+    @Test("out-of-range face is skipped and loading continues")
+    func outOfRangeFaceSkipped() {
+        // 2 枚目の面が存在しない頂点 99 を参照。従来は配列アクセスで即クラッシュ
+        let source = """
+        v 0 0 0
+        v 1 0 0
+        v 0.5 1 0
+        f 1 2 3
+        f 1 2 99
+        """
+        let mesh = Mesh.loadOBJ(device: device, source: source)
+        #expect(mesh != nil)
+        #expect(mesh?.indexCount == 3)  // 有効な面 1 枚だけ
+    }
+
+    @Test("zero index face is skipped (OBJ indices are 1-based)")
+    func zeroIndexFaceSkipped() {
+        let source = """
+        v 0 0 0
+        v 1 0 0
+        v 0.5 1 0
+        f 0 1 2
+        f 1 2 3
+        """
+        let mesh = Mesh.loadOBJ(device: device, source: source)
+        #expect(mesh != nil)
+        #expect(mesh?.indexCount == 3)
+    }
+
+    @Test("out-of-range vt/vn fall back to defaults without dropping the face")
+    func outOfRangeAttributesTolerated() {
+        let source = """
+        v 0 0 0
+        v 1 0 0
+        v 0.5 1 0
+        vt 0 0
+        f 1/9/9 2/9/9 3/9/9
+        """
+        let mesh = Mesh.loadOBJ(device: device, source: source)
+        #expect(mesh != nil)
+        #expect(mesh?.indexCount == 3)
+    }
+
+    @Test("fully broken OBJ returns nil instead of crashing")
+    func fullyBrokenOBJ() {
+        let source = """
+        v 0 0 0
+        f 5 6 7
+        f -99 -98 -97
+        """
+        let mesh = Mesh.loadOBJ(device: device, source: source)
+        #expect(mesh == nil)  // 有効な面ゼロ
+    }
+}
+
 // MARK: - Mesh Tests
 
 @Suite("Mesh", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
