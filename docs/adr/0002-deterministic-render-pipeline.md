@@ -1,9 +1,9 @@
 # ADR-0002: 決定論レンダリングを段階導入する（noLoop 単一フレーム化 + シャドウ同一フレーム化）
 
-- **Status**: Proposed
+- **Status**: Accepted（実装済み）
 - **Date**: 2026-06-30
 - **Deciders**: (PR レビューで確定)
-- **PR / Commit**: (TBD)
+- **PR / Commit**: PR #107（noLoop 単一フレーム化）/ PR #108（シャドウ同一フレーム化）
 
 ## Context
 
