@@ -373,19 +373,21 @@ public final class GIFExporter {
             }
         }
 
-        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                data: &pixelData,
+        // CGContext(data:) のポインタ規約（呼び出し中のみ有効）に従い、
+        // makeImage() まで withUnsafeMutableBytes のスコープ内で完結させる
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        return pixelData.withUnsafeMutableBytes { buf -> CGImage? in
+            guard let context = CGContext(
+                data: buf.baseAddress,
                 width: width,
                 height: height,
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-              ) else {
-            return nil
+            ) else { return nil }
+            return context.makeImage()
         }
-        return context.makeImage()
     }
 
     nonisolated private static func moveTemporaryFile(from tempURL: URL, to path: String) throws {
