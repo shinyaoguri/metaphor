@@ -5,11 +5,19 @@ import Foundation
 /// 0.0 から 1.0 の範囲のノイズ値を生成します。
 /// オクターブとフォールオフでフラクタルノイズの詳細度を制御できます。
 public struct NoiseGenerator: Sendable {
-    /// オクターブ数（合成するレイヤー数）。
-    public var octaves: Int = 4
+    /// オクターブ数（合成するレイヤー数）。1 未満は 1 にクランプされます
+    /// （0 以下は 0/0 = NaN が全ノイズ値へ伝播するため）。
+    public var octaves: Int = 4 {
+        didSet { octaves = max(1, octaves) }
+    }
 
-    /// オクターブごとの振幅減衰率。
-    public var falloff: Float = 0.5
+    /// オクターブごとの振幅減衰率。非有限値・負値は 0 にクランプされます
+    /// （負値は振幅の合計が 0 になり得て NaN が伝播するため）。
+    public var falloff: Float = 0.5 {
+        didSet {
+            if !falloff.isFinite || falloff < 0 { falloff = 0 }
+        }
+    }
 
     /// キャッシュ効率のため Int32 で格納された順列テーブル（2KB vs 4KB）。
     @usableFromInline
@@ -291,10 +299,13 @@ public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
 
 /// オクターブとフォールオフを設定してノイズの詳細度を調整します。
 /// - Parameters:
-///   - octaves: 合成するノイズレイヤーの数。
-///   - falloff: オクターブごとの振幅減衰率。
+///   - octaves: 合成するノイズレイヤーの数。1 未満は 1 にクランプされます。
+///   - falloff: オクターブごとの振幅減衰率。負値・非有限値は 0 にクランプされます。
 @MainActor
 public func noiseDetail(octaves: Int = 4, falloff: Float = 0.5) {
+    if octaves < 1 {
+        metaphorWarning("noiseDetail(octaves: \(octaves)) is invalid; clamping to 1")
+    }
     _noiseGenerator.octaves = octaves
     _noiseGenerator.falloff = falloff
 }

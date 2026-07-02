@@ -184,6 +184,20 @@ struct TweenTests {
         #expect(tw.isComplete == false)
         #expect(tw.isActive == false)
     }
+
+    @Test("Cancel completes without firing onComplete")
+    @MainActor
+    func cancel() {
+        var fired = false
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+            .onComplete { fired = true }
+        tw.start()
+        tw.update(0.5)
+
+        tw.cancel()
+        #expect(tw.isComplete == true)
+        #expect(fired == false)
+    }
 }
 
 // MARK: - TweenManager
@@ -214,6 +228,23 @@ struct TweenManagerTests {
 
         manager.update(0.5)
         #expect(tw.isComplete == true)
+        #expect(manager.count == 0)
+    }
+
+    @Test("Cancelled infinite-repeat tween is auto-removed")
+    @MainActor
+    func cancelledInfiniteTweenRemoval() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 1.0, duration: 0.5, easing: { $0 })
+            .repeatCount(0)  // 無限リピート: cancel() しない限り完了しない
+        tw.start()
+        manager.add(tw)
+
+        manager.update(5.0)
+        #expect(manager.count == 1)
+
+        tw.cancel()
+        manager.update(0.01)
         #expect(manager.count == 0)
     }
 
