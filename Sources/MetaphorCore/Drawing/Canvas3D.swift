@@ -144,6 +144,8 @@ public final class Canvas3D: CanvasStyle {
     }
 
     var stateStack: [StyleState3D] = []
+    /// pushStyle()/popStyle() 用のスタイル専用スタック（transform は復元しない）。
+    var styleOnlyStack: [StyleState3D] = []
     var matrixStack: [float4x4] = []
     var currentTransform: float4x4 = .identity
 
@@ -339,6 +341,7 @@ public final class Canvas3D: CanvasStyle {
         // フレームごとの状態をリセット（変換、カメラ、ライト、ドローコール）
         self.currentTransform = .identity
         self.stateStack.removeAll(keepingCapacity: true)
+        self.styleOnlyStack.removeAll(keepingCapacity: true)
         // 不均衡な pushMatrix() が draw() 内に残っていても、フレームを
         // またいでスタックが無限成長したり変換がリークしたりしないよう、
         // stateStack と同様に毎フレーム破棄する。

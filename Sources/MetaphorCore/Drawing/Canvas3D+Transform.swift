@@ -33,6 +33,35 @@ extension Canvas3D {
         colorModeConfig = saved.colorModeConfig
     }
 
+    /// 変換を除くスタイル状態（fill/stroke/material/texture/colorMode）のみを
+    /// スタイル専用スタックに保存します。
+    public func pushStyle() {
+        styleOnlyStack.append(StyleState3D(
+            transform: currentTransform,
+            fillColor: fillColor,
+            hasFill: hasFill,
+            hasStroke: hasStroke,
+            strokeColor: strokeColor,
+            material: currentMaterial,
+            customMaterial: currentCustomMaterial,
+            texture: currentTexture,
+            colorModeConfig: colorModeConfig
+        ))
+    }
+
+    /// スタイル専用スタックからスタイル状態のみを復元します。変換は変更しません。
+    public func popStyle() {
+        guard let saved = styleOnlyStack.popLast() else { return }
+        fillColor = saved.fillColor
+        hasFill = saved.hasFill
+        hasStroke = saved.hasStroke
+        strokeColor = saved.strokeColor
+        currentMaterial = saved.material
+        currentCustomMaterial = saved.customMaterial
+        currentTexture = saved.texture
+        colorModeConfig = saved.colorModeConfig
+    }
+
     /// 現在の変換行列のみを保存します。
     public func pushMatrix() {
         matrixStack.append(currentTransform)
