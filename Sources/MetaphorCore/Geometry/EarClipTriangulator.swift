@@ -8,20 +8,24 @@ enum EarClipTriangulator {
     // MARK: - Public API
 
     /// 単純なポリゴンを三角形にテッセレーションします。
-    /// - Parameter polygon: 頂点の配列（最低3つ）。
+    /// - Parameter polygon: 頂点の配列（最低3つ）。CW/CCW どちらの巻き方向も受け付けます。
     /// - Returns: 元の頂点配列を参照する三角形インデックスの配列（3つずつのグループ）。
     static func triangulate(_ polygon: [(Float, Float)]) -> [Int] {
         guard polygon.count >= 3 else { return [] }
 
+        // CW 入力はローカルコピーを CCW 化して処理し、最後にインデックスを
+        // 元の並びへ写像して返す（呼び出し元は元の配列にインデックスを適用するため）。
         var verts = polygon
-        ensureCCW(&verts)
+        let wasReversed = signedArea(verts) < 0
+        if wasReversed {
+            verts.reverse()
+        }
 
         // 連結リストのように管理するインデックスリストを構築
         var indices = Array(0..<verts.count)
         var result: [Int] = []
         result.reserveCapacity((verts.count - 2) * 3)
 
-        var failCount = 0
         var n = indices.count
 
         while n > 3 {
@@ -38,22 +42,20 @@ enum EarClipTriangulator {
                     indices.remove(at: i)
                     n -= 1
                     earFound = true
-                    failCount = 0
                     break
                 }
             }
 
             if !earFound {
-                failCount += 1
-                if failCount > n {
-                    // 自己交差により耳が見つからない場合、ファンテッセレーションにフォールバック
-                    for i in 1..<(n - 1) {
-                        result.append(indices[0])
-                        result.append(indices[i])
-                        result.append(indices[i + 1])
-                    }
-                    break
+                // 全頂点を走査して耳が無ければ再走査しても結果は変わらない。
+                // 自己交差などの不正形状なので即ファンテッセレーションにフォールバック。
+                for i in 1..<(n - 1) {
+                    result.append(indices[0])
+                    result.append(indices[i])
+                    result.append(indices[i + 1])
                 }
+                n = 0
+                break
             }
         }
 
@@ -62,6 +64,13 @@ enum EarClipTriangulator {
             result.append(indices[0])
             result.append(indices[1])
             result.append(indices[2])
+        }
+
+        if wasReversed {
+            let last = polygon.count - 1
+            for i in 0..<result.count {
+                result[i] = last - result[i]
+            }
         }
 
         return result
@@ -218,34 +227,8 @@ enum EarClipTriangulator {
         for holeInfo in holeInfos {
             let holePoint = holeInfo.vertices[holeInfo.rightmostIndex]
 
-            // 外周境界上の最も近い可視エッジ端点を検索
-            var bestIdx = 0
-            var bestDist: Float = .infinity
-
-            for i in 0..<result.count {
-                let a = result[i]
-
-                // holePoint から右方向に水平レイをキャストし、最も近い可視頂点を検索
-                if a.0 >= holePoint.0 {
-                    let dist = (a.0 - holePoint.0) * (a.0 - holePoint.0) + (a.1 - holePoint.1) * (a.1 - holePoint.1)
-                    if dist < bestDist {
-                        bestDist = dist
-                        bestIdx = i
-                    }
-                }
-            }
-
-            // 可視点が見つからない場合（穴が外周の右側にあるまれなケース）、最近傍点を使用
-            if bestDist == .infinity {
-                for i in 0..<result.count {
-                    let a = result[i]
-                    let dist = (a.0 - holePoint.0) * (a.0 - holePoint.0) + (a.1 - holePoint.1) * (a.1 - holePoint.1)
-                    if dist < bestDist {
-                        bestDist = dist
-                        bestIdx = i
-                    }
-                }
-            }
+            // 外周境界上の相互可視な頂点を検索（David Eberly 方式）
+            let bestIdx = findVisibleBridgeVertex(in: result, from: holePoint)
 
             // ブリッジを挿入: 外周境界の bestIdx の後に穴の頂点を追加
             // rightmostIndex から始まるように穴の頂点を並べ替え
@@ -276,5 +259,114 @@ enum EarClipTriangulator {
         }
 
         return result
+    }
+
+    /// 穴の最右頂点から可視な外周頂点を検索します（David Eberly 方式）。
+    ///
+    /// 最右頂点から +x 方向へ水平レイをキャストして最近交差エッジを求め、
+    /// そのエッジの右側端点を候補にします。候補三角形の内部に凹（reflex）頂点が
+    /// ある場合は、レイとの角度が最小の凹頂点をブリッジ先に選ぶことで、
+    /// 外周と交差しないブリッジを保証します。
+    /// - Returns: `polygon` 内のブリッジ先頂点インデックス。
+    private static func findVisibleBridgeVertex(
+        in polygon: [(Float, Float)],
+        from holePoint: (Float, Float)
+    ) -> Int {
+        let n = polygon.count
+        let hx = holePoint.0
+        let hy = holePoint.1
+
+        // 1. +x 方向の水平レイと外周エッジの最近交差を検索
+        var closestX = Float.infinity
+        var closestEdgeStart = -1
+        var exactVertexHit = -1
+
+        for i in 0..<n {
+            let a = polygon[i]
+            let b = polygon[(i + 1) % n]
+
+            // エッジがレイの水平線を跨ぐか確認
+            if (a.1 <= hy && b.1 > hy) || (b.1 <= hy && a.1 > hy) {
+                let t = (hy - a.1) / (b.1 - a.1)
+                let x = a.0 + t * (b.0 - a.0)
+                if x >= hx && x < closestX {
+                    closestX = x
+                    closestEdgeStart = i
+                    // 交差点が頂点と一致する場合はその頂点が直接可視
+                    if t == 0 {
+                        exactVertexHit = i
+                    } else if t == 1 {
+                        exactVertexHit = (i + 1) % n
+                    } else {
+                        exactVertexHit = -1
+                    }
+                }
+            }
+        }
+
+        // 交差なし（穴が外周の外にあるなど不正入力）: 最近傍頂点にフォールバック
+        guard closestEdgeStart >= 0 else {
+            return nearestVertexIndex(in: polygon, to: holePoint)
+        }
+
+        if exactVertexHit >= 0 {
+            return exactVertexHit
+        }
+
+        // 2. 交差エッジの端点のうち x が大きい方を候補 P にする
+        let ia = closestEdgeStart
+        let ib = (closestEdgeStart + 1) % n
+        let candidate = polygon[ia].0 > polygon[ib].0 ? ia : ib
+
+        // 3. 三角形 (M, I, P) 内に凹頂点があれば、レイとの角度最小の凹頂点を選ぶ
+        let m = holePoint
+        let intersection = (closestX, hy)
+        let p = polygon[candidate]
+
+        var bestIdx = candidate
+        var bestCos = -Float.infinity
+        var bestDist = Float.infinity
+
+        for i in 0..<n {
+            if i == candidate { continue }
+            let v = polygon[i]
+            // 凹頂点のみ対象（CCW ポリゴンで右折）
+            let prev = polygon[(i + n - 1) % n]
+            let next = polygon[(i + 1) % n]
+            guard cross2D(prev, v, next) < 0 else { continue }
+            guard pointInTriangle(v, m, intersection, p) else { continue }
+
+            let dx = v.0 - hx
+            let dy = v.1 - hy
+            let dist = dx * dx + dy * dy
+            guard dist > 0 else { continue }
+            let cosAngle = dx / dist.squareRoot()
+            if cosAngle > bestCos || (cosAngle == bestCos && dist < bestDist) {
+                bestCos = cosAngle
+                bestDist = dist
+                bestIdx = i
+            }
+        }
+
+        return bestIdx
+    }
+
+    /// 最近傍頂点のインデックスを返します（可視頂点が見つからない場合のフォールバック）。
+    private static func nearestVertexIndex(
+        in polygon: [(Float, Float)],
+        to point: (Float, Float)
+    ) -> Int {
+        var bestIdx = 0
+        var bestDist = Float.infinity
+        for i in 0..<polygon.count {
+            let dx = polygon[i].0 - point.0
+            let dy = polygon[i].1 - point.1
+            let dist = dx * dx + dy * dy
+            if dist < bestDist {
+                bestDist = dist
+                bestIdx = i
+            }
+        }
+        return bestIdx
     }
 }
