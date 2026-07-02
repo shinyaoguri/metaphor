@@ -3,13 +3,13 @@ import Foundation
 import Metal
 @testable import MetaphorVideo
 
-@Suite("VideoPlayer")
+@Suite("VideoPlayer", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct VideoPlayerTests {
 
     @Test("Non-existent file throws fileNotFound")
     func fileNotFound() {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
         #expect(throws: VideoPlayerError.self) {
             _ = try VideoPlayer(path: "/nonexistent/video.mp4", device: device)
         }
@@ -35,7 +35,7 @@ struct VideoPlayerTests {
 
     @Test("corrupt file surfaces an error via lastError")
     func corruptFileSurfacesError() throws {
-        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let device = MTLCreateSystemDefaultDevice()!
 
         // 中身がゴミの .mp4（存在チェックは通るが AVPlayerItem が失敗する）
         let url = FileManager.default.temporaryDirectory

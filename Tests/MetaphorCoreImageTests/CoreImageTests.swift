@@ -239,7 +239,7 @@ struct PostEffectCITests {
 
 // MARK: - CIFilterWrapper Tests (GPU-dependent)
 
-@Suite("CIFilterWrapper")
+@Suite("CIFilterWrapper", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
 @MainActor
 struct CIFilterWrapperTests {
 
@@ -275,10 +275,8 @@ struct CIFilterWrapperTests {
 
     @Test("initialization")
     func initialization() {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper
     }
@@ -291,13 +289,11 @@ struct CIFilterWrapperTests {
             .sunbeams()
           ])
     func generatorPresetsDoNotCrash(preset: CIFilterPreset) {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue(),
-              let source = Self.makeTexture(device: device),
-              let destination = Self.makeTexture(device: device),
-              let cmdBuf = queue.makeCommandBuffer() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let source = Self.makeTexture(device: device)!
+        let destination = Self.makeTexture(device: device)!
+        let cmdBuf = queue.makeCommandBuffer()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         // 修正前はジェネレーターへ kCIInputImageKey を setValue して
         // NSException でプロセスごとクラッシュしていた経路。
@@ -313,13 +309,11 @@ struct CIFilterWrapperTests {
 
     @Test("unknown filter name falls back to passthrough copy")
     func unknownFilterPassesThrough() {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue(),
-              let source = Self.makeTexture(device: device),
-              let destination = Self.makeTexture(device: device),
-              let cmdBuf = queue.makeCommandBuffer() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let source = Self.makeTexture(device: device)!
+        let destination = Self.makeTexture(device: device)!
+        let cmdBuf = queue.makeCommandBuffer()!
         Self.fill(source, byte: 0x7F)
         Self.fill(destination, byte: 0x00)
 
@@ -336,13 +330,11 @@ struct CIFilterWrapperTests {
 
     @Test("unknown parameter key is ignored without crashing")
     func unknownParameterKeyIgnored() {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue(),
-              let source = Self.makeTexture(device: device),
-              let destination = Self.makeTexture(device: device),
-              let cmdBuf = queue.makeCommandBuffer() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let source = Self.makeTexture(device: device)!
+        let destination = Self.makeTexture(device: device)!
+        let cmdBuf = queue.makeCommandBuffer()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         // 修正前は KVC の NSException でクラッシュしていた（キー名 typo 想定）。
         wrapper.apply(
@@ -357,10 +349,8 @@ struct CIFilterWrapperTests {
 
     @Test("generate with unknown filter name does not crash")
     func generateUnknownFilter() {
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let queue = device.makeCommandQueue() else {
-            return
-        }
+        let device = MTLCreateSystemDefaultDevice()!
+              let queue = device.makeCommandQueue()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper.generate(filterName: "CINotARealFilter", parameters: [:], width: 32, height: 32)
     }
