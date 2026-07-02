@@ -15,10 +15,23 @@ extension Canvas2D {
         backgroundCalledThisFrame = true
         pendingClearColor = c
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
-        // シャドウ同一フレーム化の遅延モードでは、メインパスの loadAction = .clear が
-        // クリアを担う（endFrame の setShouldClear が同フレームで反映される）。
-        // ここでクワッドを描くと前景キューに乗って 3D を覆うため、描かずに戻る（#70）。
-        if isDeferring { return }
+        // シャドウ同一フレーム化の遅延モードでは、フレーム先頭の background() は
+        // メインパスの loadAction = .clear が担う（endFrame の setShouldClear が
+        // 同フレームで反映される。#70）。ただしフレーム途中（既に 2D/3D を描画済み）の
+        // background() をクリアに任せると「rect(); background(); circle()」で先に
+        // 描いた図形が残るため、背景クワッドを呼び出し順（seq 付き）で emit する（#152）。
+        if isDeferring {
+            let drewSomething = hasDrawnAnything || (hasRecorded3D?() ?? false)
+            guard drewSomething else { return }
+            addVertexRaw(0, 0, c)
+            addVertexRaw(width, 0, c)
+            addVertexRaw(width, height, c)
+            addVertexRaw(0, 0, c)
+            addVertexRaw(width, height, c)
+            addVertexRaw(0, height, c)
+            flush()
+            return
+        }
         let canUseRenderPassClear = onSetClearColor != nil && appliedClearColor == c
         if !hasDrawnAnything && frameWillClear && clearColorApplied && canUseRenderPassClear {
             // Metal の loadAction = .clear がクリアを処理します。

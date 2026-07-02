@@ -162,6 +162,16 @@ public final class DynamicMesh {
         isDirty = false
     }
 
+    /// 記録経路（影オン / コマンド記録）用: 現在の内容を不変の ``Mesh`` として複製します。
+    /// - Returns: 頂点が空の場合は nil。
+    func makeSnapshotMesh() -> Mesh? {
+        guard !vertices.isEmpty else { return nil }
+        if indices.isEmpty {
+            return try? Mesh(device: device, vertices: vertices, indices: nil)
+        }
+        return try? Mesh(device: device, vertices: vertices, indices32: indices)
+    }
+
     /// 頂点バッファを返します（ensureBuffers 呼び出し後に有効）。
     internal var vertexBuffer: MTLBuffer? { cachedVertexBuffer }
 

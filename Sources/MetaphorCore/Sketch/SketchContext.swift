@@ -260,6 +260,17 @@ public final class SketchContext {
         wireDrawSeqProviders()
     }
 
+    // MARK: - Shape Recording Target (#150)
+
+    /// beginShape / beginShape3D のアクティブな記録先。
+    /// vertex 系のオーバーロードは引数の数（2D/3D）ではなくこの記録先へ
+    /// ルーティングされる（2D 記録中の vertex(x,y,z) が 3D へ誤送出されて
+    /// 何も描かれない Processing 経験者の罠を防ぐ）。
+    enum ShapeRecordingTarget { case none, twoD, threeD }
+
+    /// 現在アクティブなシェイプ記録先。
+    var activeShapeRecording: ShapeRecordingTarget = .none
+
     // MARK: - Draw Sequence (#71)
 
     /// draw() 内の 2D/3D 呼び出し順を表す単調シーケンス番号。
@@ -284,6 +295,12 @@ public final class SketchContext {
             guard let self, self.canvas.isDeferring else { return }
             self.canvas.flush()
         }
+        // 遅延モードのフレーム途中 background() 判定用（#152）:
+        // 2D 側の hasDrawnAnything に加えて 3D 記録済みかも参照する
+        canvas.hasRecorded3D = { [weak self] in
+            guard let self else { return false }
+            return !self.canvas3D.recordedDrawCalls.isEmpty
+        }
     }
 
     // MARK: - Compute Frame Management (internal)
@@ -304,10 +321,14 @@ public final class SketchContext {
 
     // MARK: - Frame Management (internal)
 
-    func beginFrame(encoder: MTLRenderCommandEncoder?, time: Float, deltaTime: Float) {
+    func beginFrame(
+        encoder: MTLRenderCommandEncoder?, time: Float, deltaTime: Float,
+        preciseTime: Double? = nil
+    ) {
         self.time = time
         if isPrimary {
-            _sketchElapsedTime = time
+            // millis() 用は Double 精度で保持（Float 経由だと長時間実行で ms 分解能が落ちる）
+            _sketchElapsedTime = preciseTime ?? Double(time)
         }
         self.deltaTime = deltaTime
         self.frameCount += 1

@@ -50,8 +50,19 @@ extension Canvas2D {
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
         _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float
     ) {
+        // Processing 互換: 描画先座標は imageMode に従って解釈する
+        // （従来は 9 引数版だけ imageMode を無視して corner 固定だった）
+        let x: Float, y: Float, w: Float, h: Float
+        switch currentImageMode {
+        case .corner:
+            x = dx; y = dy; w = dw; h = dh
+        case .center:
+            x = dx - dw / 2; y = dy - dh / 2; w = dw; h = dh
+        case .corners:
+            x = min(dx, dw); y = min(dy, dh); w = abs(dw - dx); h = abs(dh - dy)
+        }
         drawTexturedQuad(
-            texture: img.texture, x: dx, y: dy, w: dw, h: dh,
+            texture: img.texture, x: x, y: y, w: w, h: h,
             srcX: sx, srcY: sy, srcW: sw, srcH: sh
         )
     }
@@ -63,7 +74,9 @@ extension Canvas2D {
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
         srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
     ) {
-        guard encoder != nil else { return }
+        // 記録フレーム（isDeferring）でも蓄積する。encoder のみのガードだと
+        // 影オン / METAPHOR_COMMAND_RECORD のフレームで image() が消失する（#152）
+        guard isDeferring || encoder != nil else { return }
 
         // 描画順序を保つため、蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ
         // （addVertex と同じ順序保証。これがないと circle(); image(); rect() で
@@ -132,7 +145,8 @@ extension Canvas2D {
         glyphs: [PositionedGlyph],
         x: Float, y: Float
     ) {
-        guard encoder != nil, !glyphs.isEmpty else { return }
+        // 記録フレーム（isDeferring）でも蓄積する（drawTexturedQuad と同様、#152）
+        guard isDeferring || encoder != nil, !glyphs.isEmpty else { return }
 
         // 蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ（描画順序の保持）
         if vertexCount > 0 {

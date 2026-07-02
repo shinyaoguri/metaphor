@@ -434,7 +434,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             let t = Float(time)
             let dt = t - prevTime
             prevTime = t
-            context.beginFrame(encoder: encoder, time: t, deltaTime: dt)
+            context.beginFrame(encoder: encoder, time: t, deltaTime: dt, preciseTime: time)
             sketch.draw()
             context.endFrame()
         }
