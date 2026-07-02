@@ -55,7 +55,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### Properties
 
 - `var config: SketchConfig { get }` -- スケッチの設定を返します（オプション）。
-- `var context: SketchContext { get }` -- アクティブなコンテキスト。setup()/draw() 外で呼ぶと明確なメッセージでクラッシュします。
+- `var context: SketchContext { get }` -- アクティブなコンテキスト。Runner の初期化前（または teardown 後）に
 - `var deltaTime: Float { get }` -- 前フレームからの経過時間（秒単位）。
 - `var frameCount: Int { get }` -- これまでにレンダリングされた総フレーム数。
 - `var gui: ParameterGUI? { get }` -- イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。

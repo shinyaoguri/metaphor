@@ -50,8 +50,19 @@ extension Canvas2D {
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
         _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float
     ) {
+        // Processing 互換: 描画先座標は imageMode に従って解釈する
+        // （従来は 9 引数版だけ imageMode を無視して corner 固定だった）
+        let x: Float, y: Float, w: Float, h: Float
+        switch currentImageMode {
+        case .corner:
+            x = dx; y = dy; w = dw; h = dh
+        case .center:
+            x = dx - dw / 2; y = dy - dh / 2; w = dw; h = dh
+        case .corners:
+            x = min(dx, dw); y = min(dy, dh); w = abs(dw - dx); h = abs(dh - dy)
+        }
         drawTexturedQuad(
-            texture: img.texture, x: dx, y: dy, w: dw, h: dh,
+            texture: img.texture, x: x, y: y, w: w, h: h,
             srcX: sx, srcY: sy, srcW: sw, srcH: sh
         )
     }

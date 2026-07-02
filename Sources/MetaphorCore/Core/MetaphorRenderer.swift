@@ -314,6 +314,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - plugin: 登録するプラグイン
     ///   - sketch: このプラグインが接続されるスケッチ
     public func addPlugin(_ plugin: MetaphorPlugin, sketch: any Sketch) {
+        warnIfDuplicatePluginID(plugin)
         plugins.append(plugin)
         plugin.onAttach(sketch: sketch)
         plugin.onAttach(renderer: self)
@@ -326,9 +327,18 @@ public final class MetaphorRenderer: NSObject {
     /// ``MetaphorPlugin/onAttach(renderer:)`` のみを呼びます。
     /// - Parameter plugin: 登録するプラグイン
     public func addPlugin(_ plugin: MetaphorPlugin) {
+        warnIfDuplicatePluginID(plugin)
         plugins.append(plugin)
         plugin.onAttach(renderer: self)
         refreshCachedPlugins()
+    }
+
+    /// 同一 pluginID の二重登録を検出して警告します
+    /// （`plugin(id:)` / `removePlugin(id:)` は最初の 1 つにしか届かないため）。
+    private func warnIfDuplicatePluginID(_ plugin: MetaphorPlugin) {
+        if plugins.contains(where: { $0.pluginID == plugin.pluginID }) {
+            metaphorWarning("addPlugin: a plugin with id '\(plugin.pluginID)' is already registered; plugin(id:)/removePlugin(id:) will only reach the first one")
+        }
     }
 
     /// 識別子でプラグインを削除します。
