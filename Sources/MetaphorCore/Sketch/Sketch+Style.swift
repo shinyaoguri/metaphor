@@ -160,6 +160,8 @@ extension Sketch {
 
     /// ストロークの太さ（線幅）を設定します。
     ///
+    /// - Note: **2D のみ**に作用します（3D のワイヤーフレームには効きません。ADR-0005）。
+    ///
     /// - Parameter weight: ストローク幅（ピクセル単位）。
     public func strokeWeight(_ weight: Float) {
         context.strokeWeight(weight)
@@ -180,6 +182,9 @@ extension Sketch {
     }
 
     /// 以降の描画操作のブレンドモードを設定します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D は不透明/加算のマテリアル設定に従います。
+    ///   ADR-0005）。
     ///
     /// - Parameter mode: 適用するブレンドモード。
     public func blendMode(_ mode: BlendMode) {

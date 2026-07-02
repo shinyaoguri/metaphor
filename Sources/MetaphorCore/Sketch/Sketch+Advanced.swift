@@ -137,7 +137,9 @@ extension Sketch {
     ///   - to: 終了値。
     ///   - duration: アニメーション時間（秒単位）。
     ///   - easing: イージング関数。
-    /// - Returns: 新しい ``Tween`` インスタンス。コンテキストが利用できない場合は `nil`。
+    /// - Returns: 新しい ``Tween`` インスタンス。
+    /// - Note: 現在の実装では常に非 nil を返します（コンテキスト未初期化時は
+    ///   nil ではなく fatalError。Optional は将来の互換性のためのもの。ADR-0005 参照）。
     @discardableResult
     public func tween<T: Interpolatable>(
         from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic
@@ -183,6 +185,9 @@ extension Sketch {
 
 extension Sketch {
     /// イミディエイトモード UI コントロール作成用のパラメータ GUI へのアクセス。
+    ///
+    /// - Note: 現在の実装では常に非 nil を返します（Optional は将来の互換性の
+    ///   ためのもの。ADR-0005 参照）。
     public var gui: ParameterGUI? {
         context.gui
     }
@@ -292,6 +297,9 @@ extension Sketch {
     }
 
     /// 手動設定用のオービットカメラへのアクセス。
+    ///
+    /// - Note: 現在の実装では常に非 nil を返します（Optional は将来の互換性の
+    ///   ためのもの。ADR-0005 参照）。
     public var orbitCamera: OrbitCamera? {
         context.orbitCamera
     }

@@ -61,25 +61,6 @@ extension SketchContext {
         activeShapeRecording = .none
     }
 
-    /// 4点を通る Catmull-Rom スプラインカーブを描画します。
-    /// - Parameters:
-    ///   - x1: 第1ガイドポイントの x 座標。
-    ///   - y1: 第1ガイドポイントの y 座標。
-    ///   - x2: 可視カーブ始点の x 座標。
-    ///   - y2: 可視カーブ始点の y 座標。
-    ///   - x3: 可視カーブ終点の x 座標。
-    ///   - y3: 可視カーブ終点の y 座標。
-    ///   - x4: 第2ガイドポイントの x 座標。
-    ///   - y4: 第2ガイドポイントの y 座標。
-    public func curve(
-        _ x1: Float, _ y1: Float,
-        _ x2: Float, _ y2: Float,
-        _ x3: Float, _ y3: Float,
-        _ x4: Float, _ y4: Float
-    ) {
-        canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4)
-    }
-
     // MARK: - 3D Camera
 
     /// カメラの位置と方向を設定します。
@@ -727,6 +708,11 @@ extension SketchContext {
         // メインコマンドバッファのコミット前）でキャプチャを同乗させる。
         // 旧実装は endFrame() で独自コマンドバッファを即コミットしていたため、
         // 1 フレーム前の、ポストエフェクト未適用の colorTexture を記録していた。
+        // onCaptureOutput は単一スロット。他の利用者（カスタムキャプチャ等）が
+        // 設定済みの場合は黙って奪わず警告する
+        if renderer.onCaptureOutput != nil {
+            metaphorWarning("beginGIFRecord: renderer.onCaptureOutput was already set and will be replaced (single slot)")
+        }
         renderer.onCaptureOutput = { [weak self] texture, commandBuffer in
             guard let self, self.gifExporter.isRecording else { return }
             self.gifExporter.captureFrame(

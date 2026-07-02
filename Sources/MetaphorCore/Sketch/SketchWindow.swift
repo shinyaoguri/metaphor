@@ -125,12 +125,15 @@ public final class SketchWindow {
 
     // MARK: - Drawing API
 
-    /// クロージャを使用してこのウィンドウに描画します。
+    /// このウィンドウの描画クロージャを設定します。
     ///
-    /// 親スケッチの `draw()` メソッドから毎フレーム呼び出してください。
-    /// クロージャはこのウィンドウの ``SketchContext`` をフル描画 API で受け取ります。
+    /// クロージャは保存され、このウィンドウのレンダーループが毎フレーム実行します
+    /// （呼び出しごとに即時描画されるわけではありません）。``onDraw(_:)`` と同じ
+    /// 保存セマンティクスで、こちらはウィンドウが閉じている場合に無視される点だけが
+    /// 異なります。毎フレーム同じクロージャを再設定しても害はありませんが、
+    /// 1 回の設定で十分です。
     ///
-    /// - Parameter closure: 描画操作を行うクロージャ。
+    /// - Parameter closure: 毎フレーム描画操作を行うクロージャ。
     public func draw(_ closure: @escaping @MainActor (SketchContext) -> Void) {
         guard isOpen else { return }
         drawClosure = closure
@@ -138,8 +141,8 @@ public final class SketchWindow {
 
     /// 毎フレーム自動実行される永続的な描画クロージャを設定します。
     ///
-    /// ``draw(_:)`` とは異なり、親スケッチの `draw()` から毎フレーム
-    /// 呼び出す必要なく、フレームを跨いで永続します。
+    /// ``draw(_:)`` と同じ保存セマンティクスです（どちらも同じスロットに保存され、
+    /// フレームを跨いで永続します）。こちらはウィンドウの開閉状態に関わらず設定します。
     ///
     /// - Parameter closure: 毎フレーム描画操作を行うクロージャ。
     public func onDraw(_ closure: @escaping @MainActor (SketchContext) -> Void) {

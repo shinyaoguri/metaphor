@@ -5,6 +5,9 @@ extension Sketch {
     // MARK: 2D Transform Stack
 
     /// 現在の変換とスタイル状態をスタックに保存します。
+    ///
+    /// - Note: **2D のみ**に作用します。3D も含めて保存するには ``pushMatrix()`` を
+    ///   使用してください（ADR-0005）。
     public func push() {
         context.push()
     }
@@ -26,6 +29,9 @@ extension Sketch {
 
     /// 現在の変換に 2D 平行移動を適用します。
     ///
+    /// - Note: **2D のみ**に作用します。3D は ``translate(_:_:_:)``（3 引数）を
+    ///   使用してください（ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: 水平方向の移動量。
     ///   - y: 垂直方向の移動量。
@@ -35,12 +41,17 @@ extension Sketch {
 
     /// 現在の変換に 2D 回転を適用します。
     ///
+    /// - Note: **2D のみ**に作用します。3D は ``rotateX(_:)`` / ``rotateY(_:)`` /
+    ///   ``rotateZ(_:)`` を使用してください（ADR-0005）。
+    ///
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) {
         context.rotate(angle)
     }
 
     /// 現在の変換に非均一 2D スケールを適用します。
+    ///
+    /// - Note: **2D のみ**に作用します（均一版 ``scale(_:)`` は 2D/3D 両方）。
     ///
     /// - Parameters:
     ///   - sx: 水平方向のスケール係数。
@@ -49,7 +60,9 @@ extension Sketch {
         context.scale(sx, sy)
     }
 
-    /// 現在の変換に均一 2D スケールを適用します。
+    /// 現在の変換に均一スケールを適用します。
+    ///
+    /// - Note: **2D と 3D の両方**に作用します（非均一版 ``scale(_:_:)`` は 2D のみ）。
     ///
     /// - Parameter s: 均一スケール係数。
     public func scale(_ s: Float) {
