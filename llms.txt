@@ -1766,7 +1766,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let bodyA: PhysicsBody2D` -- この拘束に関与する1つ目（または唯一）のボディ。
 - `let bodyB: PhysicsBody2D?` -- 2つ目のボディ。ワールドへのピン拘束の場合は `nil`。
 - `let pinPosition: SIMD2<Float>?` -- ワールド空間のピン位置。距離拘束の場合は `nil`。
-- `var stiffness: Float` -- 拘束の剛性。範囲は [0, 1]。
+- `var stiffness: Float { get set }` -- 拘束の剛性。範囲は [0, 1]。
 - `let targetDistance: Float` -- 2つのボディ間で維持する目標距離。
 - `init(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil)` -- 2つのボディ間に距離拘束を作成します。
 - `init(pin body: PhysicsBody2D, x: Float, y: Float)` -- ボディをワールド空間の固定位置にアンカーするピン拘束を作成します。
