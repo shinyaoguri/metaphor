@@ -15,11 +15,17 @@ public class MetaphorMTKView: MTKView {
     /// キーボードイベントを受信するためにファーストレスポンダを受け入れ
     public override var acceptsFirstResponder: Bool { true }
 
+    /// 自前で追加したトラッキングエリア（updateTrackingAreas での選択的削除用）
+    private var metaphorTrackingArea: NSTrackingArea?
+
     /// マウス移動イベントが配信されるようにトラッキングエリアを再構築します。
+    ///
+    /// 自前で追加したエリアだけを差し替え、他のコード（プラグインや AppKit 内部）が
+    /// 追加したトラッキングエリアには触れません。
     public override func updateTrackingAreas() {
         super.updateTrackingAreas()
-        for area in trackingAreas {
-            removeTrackingArea(area)
+        if let existing = metaphorTrackingArea {
+            removeTrackingArea(existing)
         }
         let area = NSTrackingArea(
             rect: bounds,
@@ -28,6 +34,7 @@ public class MetaphorMTKView: MTKView {
             userInfo: nil
         )
         addTrackingArea(area)
+        metaphorTrackingArea = area
     }
 
     // MARK: - Coordinate Conversion
@@ -166,5 +173,19 @@ public class MetaphorMTKView: MTKView {
     /// キー解放イベントの処理
     public override func keyUp(with event: NSEvent) {
         rendererRef?.input.handleKeyUp(keyCode: event.keyCode)
+    }
+
+    /// 修飾キー（Shift/Control/Option/Command）状態変化の処理。
+    ///
+    /// 修飾キーは `keyDown`/`keyUp` を発生させないため、ここで押下状態を
+    /// InputManager に同期します（`isKeyDown(SHIFT)` 等を機能させる）。
+    public override func flagsChanged(with event: NSEvent) {
+        let flags = event.modifierFlags
+        rendererRef?.input.handleFlagsChanged(
+            shift: flags.contains(.shift),
+            control: flags.contains(.control),
+            option: flags.contains(.option),
+            command: flags.contains(.command)
+        )
     }
 }
