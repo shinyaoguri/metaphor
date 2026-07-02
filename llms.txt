@@ -1923,6 +1923,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isAvailable: Bool { get }` -- 少なくとも1フレームがデコードされたかどうか。
 - `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
 - `var isPlaying: Bool { get }` -- ビデオが現在再生中かどうか。
+- `var lastError: (any Error)? { get }` -- アイテムの読み込み・再生エラー（破損ファイル・非対応コーデック等）。
 - `var position: Double { get set }` -- 現在の再生位置（秒）。setter でフレーム精度のシークを行います。
 - `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
 - `var texture: (any MTLTexture)? { get }` -- 現在のビデオフレームの Metal テクスチャ。
@@ -1937,6 +1938,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum VideoPlayerError` -- ビデオプレーヤーの操作中に発生するエラー。
 
 - `case fileNotFound(String)` -- 指定されたパスにビデオファイルが見つからなかった。
+- `case playbackFailed(String)` -- アイテムの読み込み・再生に失敗した（破損ファイル・非対応コーデック等）。
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
