@@ -1591,6 +1591,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MIDIManager`
 
+- `var isRunning: Bool { get }` -- MIDI 入出力が稼働中かどうか。``start()`` が失敗した場合は false のままで、
+- `var lastError: MIDIManagerError? { get }` -- 直近の ``start()`` で発生したエラー。成功時は nil に戻ります。
 - `init()` -- MIDI マネージャーを作成します。
 - `func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8` -- 生の CC 値を返します（0〜127）。
 - `func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float` -- 正規化された CC 値を返します（0.0〜1.0）。
@@ -1604,6 +1606,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0)` -- Note On メッセージを送信します。
 - `func start()` -- MIDI 入出力を開始します。
 - `func stop()` -- MIDI 入出力を停止します。
+
+### `enum MIDIManagerError` -- MIDIManager 操作中に発生するエラーを表します。
+
+- `case clientCreationFailed(OSStatus)` -- MIDI クライアントの作成に失敗したことを示します。
+- `case inputPortCreationFailed(OSStatus)` -- 入力ポートの作成に失敗したことを示します。
+- `case outputPortCreationFailed(OSStatus)` -- 出力ポートの作成に失敗したことを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
 
 ### `struct MIDIMessage` -- 単一の MIDI メッセージを表します。
 
@@ -1645,6 +1658,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class OSCReceiver` -- Network.framework を使用して UDP OSC メッセージを受信します。
 
+- `var isRunning: Bool { get }` -- レシーバーが現在リッスン中かどうか。
+- `var lastError: (any Error)? { get }` -- 直近のリスナーエラー（ポート競合等）。
 - `let port: UInt16` -- リスニングポート番号を返します。
 - `init(port: UInt16)` -- OSC レシーバーを作成します。
 - `func on(_ address: String, handler: ([OSCValue]) -> Void)` -- 特定の OSC アドレスパターンに対するハンドラーを登録します。

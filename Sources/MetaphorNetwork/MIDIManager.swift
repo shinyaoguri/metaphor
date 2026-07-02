@@ -26,6 +26,8 @@ private final class MIDIPortState: Sendable {
         var client: MIDIClientRef = 0
         var inputPort: MIDIPortRef = 0
         var outputPort: MIDIPortRef = 0
+        /// 現在 inputPort に接続済みのソース（ホットプラグ時の張り直しに使用）。
+        var connectedSources: [MIDIEndpointRef] = []
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
@@ -37,8 +39,21 @@ private final class MIDIPortState: Sendable {
         }
     }
 
+    var inputPort: MIDIPortRef {
+        state.withLock { $0.inputPort }
+    }
+
     var outputPort: MIDIPortRef {
         state.withLock { $0.outputPort }
+    }
+
+    /// 接続済みソースの一覧を差し替え、以前の一覧を返します。
+    func replaceConnectedSources(_ sources: [MIDIEndpointRef]) -> [MIDIEndpointRef] {
+        state.withLock { s in
+            let previous = s.connectedSources
+            s.connectedSources = sources
+            return previous
+        }
     }
 
     func dispose() {
@@ -46,6 +61,7 @@ private final class MIDIPortState: Sendable {
             if s.inputPort != 0 { MIDIPortDispose(s.inputPort); s.inputPort = 0 }
             if s.outputPort != 0 { MIDIPortDispose(s.outputPort); s.outputPort = 0 }
             if s.client != 0 { MIDIClientDispose(s.client); s.client = 0 }
+            s.connectedSources.removeAll()
         }
     }
 }
@@ -59,7 +75,15 @@ public final class MIDIManager {
 
     // MARK: - 状態
 
-    private var isRunning = false
+    /// MIDI 入出力が稼働中かどうか。``start()`` が失敗した場合は false のままで、
+    /// 失敗内容は ``lastError`` で確認できます。
+    public private(set) var isRunning = false
+
+    /// 直近の ``start()`` で発生したエラー。成功時は nil に戻ります。
+    ///
+    /// `start()` は Processing 風の使い勝手を保つため throws にしない代わりに、
+    /// CoreMIDI の失敗（OSStatus）をこのプロパティで報告します。
+    public private(set) var lastError: MIDIManagerError?
 
     /// [channel][cc] でインデックスされたキャッシュ済み CC 値。
     private var ccValues: [[UInt8]] = Array(repeating: Array(repeating: 0, count: 128), count: 16)
@@ -85,20 +109,38 @@ public final class MIDIManager {
     // MARK: - ライフサイクル
 
     /// MIDI 入出力を開始します。
+    ///
+    /// 失敗した場合は ``isRunning`` が false のままとなり、``lastError`` に
+    /// 失敗内容（CoreMIDI の OSStatus）が入ります。
+    /// 起動後に接続された MIDI デバイスもホットプラグ通知で自動的に接続されます。
     public func start() {
         guard !isRunning else { return }
+        lastError = nil
 
         let buffer = messageBuffer
+        let ports = portState
 
-        // MIDI クライアントを作成
+        // MIDI クライアントを作成。notify ブロックはデバイスの接続・切断・
+        // 設定変更で呼ばれる（ホットプラグ対応。CoreMIDI が任意スレッドで
+        // 呼び得るため、Sendable な portState 経由の nonisolated 実装で張り直す）
         var clientRef: MIDIClientRef = 0
-        MIDIClientCreateWithBlock("metaphor.midi" as CFString, &clientRef) { _ in
-            // デバイス接続・切断通知（将来使用）
+        var status = MIDIClientCreateWithBlock("metaphor.midi" as CFString, &clientRef) { notification in
+            switch notification.pointee.messageID {
+            case .msgObjectAdded, .msgObjectRemoved, .msgSetupChanged:
+                MIDIManager.reconnectSources(portState: ports)
+            default:
+                break
+            }
+        }
+        guard status == noErr else {
+            lastError = .clientCreationFailed(status)
+            debugWarning("MIDIClientCreateWithBlock failed: \(status)")
+            return
         }
 
         // 入力ポートを作成
         var inPort: MIDIPortRef = 0
-        MIDIInputPortCreateWithProtocol(
+        status = MIDIInputPortCreateWithProtocol(
             clientRef,
             "metaphor.midi.in" as CFString,
             ._1_0,
@@ -108,21 +150,58 @@ public final class MIDIManager {
             let messages = MIDIManager.parseEventList(eventList)
             buffer.append(messages)
         }
+        guard status == noErr else {
+            MIDIClientDispose(clientRef)
+            lastError = .inputPortCreationFailed(status)
+            debugWarning("MIDIInputPortCreateWithProtocol failed: \(status)")
+            return
+        }
 
         // 出力ポートを作成
         var outPort: MIDIPortRef = 0
-        MIDIOutputPortCreate(clientRef, "metaphor.midi.out" as CFString, &outPort)
+        status = MIDIOutputPortCreate(clientRef, "metaphor.midi.out" as CFString, &outPort)
+        guard status == noErr else {
+            MIDIPortDispose(inPort)
+            MIDIClientDispose(clientRef)
+            lastError = .outputPortCreationFailed(status)
+            debugWarning("MIDIOutputPortCreate failed: \(status)")
+            return
+        }
 
         portState.set(client: clientRef, inputPort: inPort, outputPort: outPort)
 
         // 利用可能なすべてのソースに接続
+        Self.reconnectSources(portState: portState)
+
+        isRunning = true
+    }
+
+    /// 現在のソース一覧に合わせて入力ポートの接続を張り直します。
+    ///
+    /// `start()` 時とホットプラグ通知（追加・削除・設定変更）の両方から呼ばれます。
+    /// 通知は CoreMIDI の任意スレッドで届き得るため nonisolated で実装し、
+    /// 共有状態は Sendable な `MIDIPortState` に限定します（CoreMIDI API 自体は
+    /// スレッドセーフ）。
+    private nonisolated static func reconnectSources(portState: MIDIPortState) {
+        let inPort = portState.inputPort
+        guard inPort != 0 else { return }
+
+        var connected: [MIDIEndpointRef] = []
         let sourceCount = MIDIGetNumberOfSources()
         for i in 0..<sourceCount {
             let source = MIDIGetSource(i)
-            MIDIPortConnectSource(inPort, source, nil)
+            guard source != 0 else { continue }
+            if MIDIPortConnectSource(inPort, source, nil) == noErr {
+                connected.append(source)
+            }
         }
 
-        isRunning = true
+        // 消えたソースへの接続を解除（二重接続は上の ConnectSource が同一ソースに
+        // 対して冪等なため問題にならないが、切断済みの参照は明示的に外す）
+        let previous = portState.replaceConnectedSources(connected)
+        for old in previous where !connected.contains(old) {
+            MIDIPortDisconnectSource(inPort, old)
+        }
     }
 
     deinit {
@@ -326,18 +405,68 @@ public final class MIDIManager {
 
 // MARK: - スレッドセーフなメッセージバッファ
 
-private final class MIDIMessageBuffer: Sendable {
-    private let state = OSAllocatedUnfairLock(initialState: [MIDIMessage]())
+// internal: テストから上限動作を検証できるようにする
+final class MIDIMessageBuffer: Sendable {
+    private struct State {
+        var messages: [MIDIMessage] = []
+        var dropped: Int = 0
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    /// バッファ上限（OSC 側のキューと同じ値）。`poll()` を呼ばないスケッチで
+    /// メモリが無制限に成長するのを防ぐ。
+    static let maxBufferSize = 10_000
 
     func append(_ messages: [MIDIMessage]) {
-        state.withLock { $0.append(contentsOf: messages) }
+        state.withLock { s in
+            let available = Self.maxBufferSize - s.messages.count
+            guard available > 0 else {
+                s.dropped += messages.count
+                return
+            }
+            if messages.count <= available {
+                s.messages.append(contentsOf: messages)
+            } else {
+                s.messages.append(contentsOf: messages.prefix(available))
+                s.dropped += messages.count - available
+            }
+        }
     }
 
     func drain() -> [MIDIMessage] {
-        state.withLock { s in
-            let msgs = s
-            s.removeAll(keepingCapacity: true)
-            return msgs
+        let (msgs, dropped) = state.withLock { s -> ([MIDIMessage], Int) in
+            let msgs = s.messages
+            let dropped = s.dropped
+            s.messages.removeAll(keepingCapacity: true)
+            s.dropped = 0
+            return (msgs, dropped)
+        }
+        if dropped > 0 {
+            debugWarning("MIDI message buffer overflowed: dropped \(dropped) message(s) since last poll()")
+        }
+        return msgs
+    }
+}
+
+// MARK: - エラー
+
+/// MIDIManager 操作中に発生するエラーを表します。
+public enum MIDIManagerError: Error, LocalizedError, Equatable {
+    /// MIDI クライアントの作成に失敗したことを示します。
+    case clientCreationFailed(OSStatus)
+    /// 入力ポートの作成に失敗したことを示します。
+    case inputPortCreationFailed(OSStatus)
+    /// 出力ポートの作成に失敗したことを示します。
+    case outputPortCreationFailed(OSStatus)
+
+    public var errorDescription: String? {
+        switch self {
+        case .clientCreationFailed(let status):
+            return "Failed to create MIDI client (OSStatus \(status))"
+        case .inputPortCreationFailed(let status):
+            return "Failed to create MIDI input port (OSStatus \(status))"
+        case .outputPortCreationFailed(let status):
+            return "Failed to create MIDI output port (OSStatus \(status))"
         }
     }
 }
