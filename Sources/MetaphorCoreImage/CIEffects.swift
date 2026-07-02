@@ -46,12 +46,23 @@ public final class CIFilterEffect: PostEffect {
             return f
         }()
         let texSize = CGSize(width: input.width, height: input.height)
-        w.apply(
-            filterName: preset.filterName,
-            parameters: preset.parameters(textureSize: texSize),
-            source: input, destination: output,
-            commandBuffer: commandBuffer
-        )
+        if preset.isGenerator {
+            // ジェネレーターは入力画像を取らない。kCIInputImageKey を setValue すると
+            // NSException でクラッシュするため、生成経路へ振り分ける。
+            w.generate(
+                filterName: preset.filterName,
+                parameters: preset.parameters(textureSize: texSize),
+                destination: output,
+                commandBuffer: commandBuffer
+            )
+        } else {
+            w.apply(
+                filterName: preset.filterName,
+                parameters: preset.parameters(textureSize: texSize),
+                source: input, destination: output,
+                commandBuffer: commandBuffer
+            )
+        }
     }
 }
 

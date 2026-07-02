@@ -12,15 +12,22 @@ public final class CIFilterWrapper {
     private let ciContext: CIContext
     private let colorSpace: CGColorSpace
     private var texturePool: [String: MTLTexture] = [:]
+    private var warnedMessages: Set<String> = []
 
     public init(device: MTLDevice, commandQueue: MTLCommandQueue) {
         self.device = device
         self.commandQueue = commandQueue
-        self.colorSpace = CGColorSpaceCreateDeviceRGB()
+        // 入出力テクスチャの値は sRGB（ガンマ空間）として解釈し、フィルタ演算は
+        // リニア空間で行う。deviceRGB を使うと CI がガンマ空間のまま演算し、
+        // ブラー系で暗部が沈む等の色ズレが出るため使わない。extended にするのは
+        // 中間値のクランプによる階調落ちを避けるため。
+        self.colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        let workingSpace = CGColorSpace(name: CGColorSpace.extendedLinearSRGB) ?? CGColorSpaceCreateDeviceRGB()
         self.ciContext = CIContext(
             mtlCommandQueue: commandQueue,
             options: [
-                .workingColorSpace: CGColorSpaceCreateDeviceRGB(),
+                .workingColorSpace: workingSpace,
+                .outputColorSpace: colorSpace,
                 .outputPremultiplied: true,
                 .cacheIntermediates: false
             ]
@@ -30,6 +37,10 @@ public final class CIFilterWrapper {
     // MARK: - MTLTexture に適用（PostProcess パイプライン用）
 
     /// CIFilter 操作をコマンドバッファ内でソースからデスティネーションにエンコードします。
+    ///
+    /// フィルタ名不正・出力生成失敗などの場合はクラッシュせず、ソースをそのまま
+    /// デスティネーションへコピーして描画を継続します（警告ログを 1 回出力）。
+    /// 入力画像を取らないジェネレーター系フィルタは自動的に生成経路へ振り分けます。
     /// - Parameters:
     ///   - filterName: CIFilter 名文字列。
     ///   - parameters: フィルタパラメータ辞書。
@@ -43,22 +54,40 @@ public final class CIFilterWrapper {
         destination: MTLTexture,
         commandBuffer: MTLCommandBuffer
     ) {
-        guard let ciInput = CIImage(mtlTexture: source, options: [.colorSpace: colorSpace]) else { return }
+        guard let filter = CIFilter(name: filterName) else {
+            warnOnce("unknown CIFilter '\(filterName)' — passing source through")
+            blitCopy(from: source, to: destination, commandBuffer: commandBuffer)
+            return
+        }
+        filter.setDefaults()
+
+        // 入力画像を取らないフィルタ（ジェネレーター）へ kCIInputImageKey を
+        // setValue すると NSException でプロセスごと落ちるため、inputKeys で振り分ける。
+        guard filter.inputKeys.contains(kCIInputImageKey) else {
+            generate(filterName: filterName, parameters: parameters,
+                     destination: destination, commandBuffer: commandBuffer)
+            return
+        }
+
+        guard let ciInput = CIImage(mtlTexture: source, options: [.colorSpace: colorSpace]) else {
+            warnOnce("CIImage(mtlTexture:) failed for '\(filterName)' — passing source through")
+            blitCopy(from: source, to: destination, commandBuffer: commandBuffer)
+            return
+        }
 
         // CoreImage は Y 軸を反転する
         let flipped = ciInput.transformed(
             by: CGAffineTransform(scaleX: 1, y: -1)
                 .translatedBy(x: 0, y: -CGFloat(source.height))
         )
-
-        guard let filter = CIFilter(name: filterName) else { return }
-        filter.setDefaults()
         filter.setValue(flipped, forKey: kCIInputImageKey)
-        for (key, value) in parameters {
-            filter.setValue(value, forKey: key)
-        }
+        setParameters(parameters, on: filter, filterName: filterName)
 
-        guard let output = filter.outputImage else { return }
+        guard let output = filter.outputImage else {
+            warnOnce("CIFilter '\(filterName)' produced no output — passing source through")
+            blitCopy(from: source, to: destination, commandBuffer: commandBuffer)
+            return
+        }
         let extent = CGRect(x: 0, y: 0, width: source.width, height: source.height)
         let cropped = output.cropped(to: extent)
 
@@ -73,6 +102,12 @@ public final class CIFilterWrapper {
     // MARK: - MImage に適用（スタンドアロン使用）
 
     /// CIFilter を MImage にインプレースで適用します。
+    ///
+    /// - Important: この API は GPU 完了を **同期的に待ちます**（`waitUntilCompleted`）。
+    ///   `draw()` 内で毎フレーム呼ぶとフレーム落ちの直接原因になります。フレーム内で
+    ///   使う場合は非ブロッキングの
+    ///   ``apply(filterName:parameters:source:destination:commandBuffer:)`` を使って
+    ///   既存のコマンドバッファへエンコードしてください。
     /// - Parameters:
     ///   - filterName: CIFilter 名文字列。
     ///   - parameters: フィルタパラメータ辞書。
@@ -101,6 +136,12 @@ public final class CIFilterWrapper {
     // MARK: - ジェネレーター（入力画像不要）
 
     /// ジェネレーターフィルタ（入力画像不要）を使用して MTLTexture を生成します。
+    ///
+    /// - Important: この API は GPU 完了を **同期的に待ちます**（`waitUntilCompleted`）。
+    ///   `draw()` 内で毎フレーム呼ぶとフレーム落ちの直接原因になります。フレーム内で
+    ///   使う場合は非ブロッキングの
+    ///   ``generate(filterName:parameters:destination:commandBuffer:)`` を使って
+    ///   既存のコマンドバッファへエンコードしてください。
     /// - Parameters:
     ///   - filterName: CIFilter 名文字列。
     ///   - parameters: フィルタパラメータ辞書。
@@ -130,6 +171,9 @@ public final class CIFilterWrapper {
     }
 
     /// ジェネレーターフィルタを既存のコマンドバッファへエンコードします。
+    ///
+    /// フィルタ名不正・出力生成失敗の場合はクラッシュせず何もエンコードしません
+    /// （警告ログを 1 回出力）。
     /// - Parameters:
     ///   - filterName: CIFilter 名文字列。
     ///   - parameters: フィルタパラメータ辞書。
@@ -141,12 +185,16 @@ public final class CIFilterWrapper {
         destination: MTLTexture,
         commandBuffer: MTLCommandBuffer
     ) {
-        guard let filter = CIFilter(name: filterName) else { return }
-        filter.setDefaults()
-        for (key, value) in parameters {
-            filter.setValue(value, forKey: key)
+        guard let filter = CIFilter(name: filterName) else {
+            warnOnce("unknown CIFilter '\(filterName)' — generate skipped")
+            return
         }
-        guard let output = filter.outputImage else { return }
+        filter.setDefaults()
+        setParameters(parameters, on: filter, filterName: filterName)
+        guard let output = filter.outputImage else {
+            warnOnce("CIFilter '\(filterName)' produced no output — generate skipped")
+            return
+        }
 
         let extent = CGRect(x: 0, y: 0, width: destination.width, height: destination.height)
         let cropped = output.cropped(to: extent)
@@ -177,5 +225,51 @@ public final class CIFilterWrapper {
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         texturePool[key] = tex
         return tex
+    }
+
+    // MARK: - 内部ヘルパー
+
+    /// パラメータを KVC で設定します。フィルタが持たないキーはクラッシュさせず
+    /// 警告を出して無視します（キー名 typo で NSException になるのを防ぐ）。
+    private func setParameters(_ parameters: [String: Any], on filter: CIFilter, filterName: String) {
+        let inputKeys = filter.inputKeys
+        for (key, value) in parameters {
+            guard inputKeys.contains(key) else {
+                warnOnce("CIFilter '\(filterName)' has no input key '\(key)' — ignored "
+                    + "(available: \(inputKeys.joined(separator: ", ")))")
+                continue
+            }
+            filter.setValue(value, forKey: key)
+        }
+    }
+
+    /// フィルタ適用に失敗したときのフォールバック: ソースをそのままコピーし、
+    /// ポストプロセスチェーンの次段へ前フレームの内容やゴミが流れるのを防ぐ。
+    private func blitCopy(from source: MTLTexture, to destination: MTLTexture, commandBuffer: MTLCommandBuffer) {
+        guard source !== destination else { return }
+        guard source.pixelFormat == destination.pixelFormat,
+              source.sampleCount == destination.sampleCount else {
+            warnOnce("passthrough blit skipped: pixel format mismatch "
+                + "(\(source.pixelFormat.rawValue) → \(destination.pixelFormat.rawValue))")
+            return
+        }
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else { return }
+        let w = min(source.width, destination.width)
+        let h = min(source.height, destination.height)
+        blit.copy(
+            from: source, sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: destination, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blit.endEncoding()
+    }
+
+    /// 同一メッセージの警告はプロセス内で 1 回だけ出力します
+    /// （ポストプロセスは毎フレーム呼ばれるためログ洪水を防ぐ）。
+    private func warnOnce(_ message: String) {
+        guard warnedMessages.insert(message).inserted else { return }
+        print("[metaphor.CoreImage] Warning: \(message)")
     }
 }
