@@ -80,12 +80,22 @@ def discover_package_version(readme_file: Path, package_file: Path) -> str:
     try:
         text = package_file.read_text(encoding="utf-8")
     except OSError:
-        return "0.2.4"
+        print(
+            "warning: could not read README.md/Package.swift to infer the package "
+            "version — falling back to 0.0.0 (the generated SPM snippet will be wrong)",
+            file=sys.stderr,
+        )
+        return "0.0.0"
 
     match = re.search(r"releases/download/v([^/]+)/Syphon\.xcframework\.zip", text)
     if match:
         return match.group(1)
-    return "0.2.4"
+    print(
+        "warning: no version pattern found in README.md/Package.swift — falling "
+        "back to 0.0.0 (the generated SPM snippet will be wrong)",
+        file=sys.stderr,
+    )
+    return "0.0.0"
 
 
 def build_header(package_version: str) -> str:
@@ -578,7 +588,7 @@ def categorize_functions(funcs: list) -> list[tuple[str, list]]:
     return result
 
 
-def generate_llms_txt(modules: dict, package_version: str = "0.2.4") -> str:
+def generate_llms_txt(modules: dict, package_version: str = "0.0.0") -> str:
     """Generate the full llms.txt content."""
     module_order = discover_module_order(modules)
     model = build_api_model(modules, module_order)

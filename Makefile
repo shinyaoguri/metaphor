@@ -91,7 +91,13 @@ clean-all: clean
 # Check if setup is complete
 check:
 	@if [ -d "Frameworks/Syphon.xcframework" ]; then \
-		echo "Syphon.xcframework: OK"; \
+		current=$$(git submodule status Vendor/Syphon-Framework 2>/dev/null | awk '{print $$1}'); \
+		built=$$(cat Frameworks/.syphon-build-stamp 2>/dev/null || true); \
+		if [ -n "$$built" ] && [ "$$built" != "$$current" ]; then \
+			echo "Syphon.xcframework: STALE (built from $$built, submodule at $$current) - run 'make syphon'"; \
+		else \
+			echo "Syphon.xcframework: OK"; \
+		fi; \
 	else \
 		echo "Syphon.xcframework: MISSING - run 'make setup'"; \
 	fi

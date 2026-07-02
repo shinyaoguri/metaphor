@@ -50,7 +50,8 @@ def load_metadata(example_dir: Path) -> dict:
     for path in preferred + json_files:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"warning: skipping unreadable metadata {path}: {exc}", file=sys.stderr)
             continue
     return {}
 
@@ -67,6 +68,12 @@ def status_for(example_dir: Path, metadata: dict) -> str:
     explicit = str(metadata.get("status", "")).strip().lower()
     if explicit in STATUS_VALUES:
         return explicit
+    if explicit:
+        print(
+            f"warning: unknown status '{explicit}' in {example_dir} metadata — "
+            f"ignoring (expected one of {', '.join(STATUS_VALUES)})",
+            file=sys.stderr,
+        )
 
     app = example_dir / example_dir.name / "App.swift"
     sources = [app] if app.exists() else sorted(example_dir.rglob("App.swift"))
