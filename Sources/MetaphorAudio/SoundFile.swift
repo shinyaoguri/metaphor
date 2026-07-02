@@ -25,20 +25,6 @@ private final class AudioEngineHolder: @unchecked Sendable {
     }
 }
 
-// MARK: - SoundFile 用スレッドセーフサンプルバッファ
-
-private final class SoundSampleBuffer: Sendable {
-    private let state = OSAllocatedUnfairLock(initialState: [Float]?.none)
-
-    func store(_ samples: [Float]) {
-        state.withLock { $0 = samples }
-    }
-
-    func take() -> [Float]? {
-        state.withLock { s in let v = s; s = nil; return v }
-    }
-}
-
 // MARK: - SoundFile
 
 /// オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
@@ -109,6 +95,22 @@ public final class SoundFile {
     /// しないために追跡する。
     private var hasPendingSchedule: Bool = false
 
+    /// スケジュール世代カウンタ。`AVAudioPlayerNode.stop()` は保留中の completion
+    /// handler を「再生完了」と区別できない形で発火させるため、stop()/シークの
+    /// たびに世代を進め、completion handler 側で世代一致を確認して stale な
+    /// completion（停止直後のループ再開・シークの巻き戻し）を無害化する。
+    /// （internal なのはテストから stale completion を模擬するため）
+    private(set) var scheduleGeneration: UInt64 = 0
+
+    /// pause() 時点の再生位置キャッシュ。一時停止中は `playerTime(forNodeTime:)`
+    /// が nil を返し位置が巻き戻って見えるため、ここで保持した値を返す。
+    private var pausedPosition: Double?
+
+    /// 直近の再生操作で発生したエラー（現在は `play()` のエンジン起動失敗）。
+    /// `play()` は Processing 風の使い勝手を保つため throws にしない代わりに、
+    /// 失敗をこのプロパティで報告する（成功時は nil に戻る）。
+    public private(set) var lastError: Error?
+
     /// 直近のスケジュールが始まったファイル内位置（秒）。
     /// playerNode の sampleTime はスケジュールし直すたびに 0 から数え直されるため、
     /// シーク後も ``position`` が正しいファイル内位置を返すための基準値。
@@ -118,7 +120,8 @@ public final class SoundFile {
 
     /// ファイル再生のスペクトル解析用内部 AudioAnalyzer。
     private var _analyzer: AudioAnalyzer?
-    private let sampleBuffer = SoundSampleBuffer()
+    private var sampleBuffer: AudioSampleTransferBuffer?
+    private var tapScratch: [Float] = []
 
     /// スペクトルデータを返します（解析有効時に利用可能）。
     public var spectrum: [Float] { _analyzer?.spectrum ?? [] }
@@ -159,6 +162,9 @@ public final class SoundFile {
     // MARK: - 再生コントロール
 
     /// 再生を開始します。
+    ///
+    /// エンジンの起動に失敗した場合はクラッシュせず再生を開始しません。
+    /// 失敗の内容は ``lastError`` で確認できます。
     public func play() {
         let engine = audioEngine.engine
         if !engine.isRunning {
@@ -166,10 +172,12 @@ public final class SoundFile {
                 engine.prepare()
                 try engine.start()
             } catch {
+                lastError = error
                 debugWarning("Audio engine start failed: \(error)")
                 return
             }
         }
+        lastError = nil
 
         // pause() からの再開やシーク直後はキューに残っているスケジュールを
         // そのまま再生する。無条件に scheduleFile() すると同じファイルが
@@ -179,22 +187,30 @@ public final class SoundFile {
         }
         audioEngine.varispeedNode.rate = _rate
         audioEngine.playerNode.play()
+        pausedPosition = nil
         isPlaying = true
     }
 
     /// 再生を一時停止します。
     public func pause() {
+        // pause 中は playerTime(forNodeTime:) が nil になり位置が巻き戻って
+        // 見えるため、pause 直前の位置をキャッシュしておく
+        pausedPosition = position
         audioEngine.playerNode.pause()
         isPlaying = false
     }
 
     /// 再生を停止し、先頭に戻します。
     public func stop() {
+        // stop() は保留中の completion handler を発火させる。世代を進めて
+        // stale completion（ループ再開など）を無害化する
+        scheduleGeneration &+= 1
         audioEngine.playerNode.stop()
         isPlaying = false
         // stop() は playerNode のキューを破棄する
         hasPendingSchedule = false
         scheduledBaseTime = 0
+        pausedPosition = nil
     }
 
     /// ループを有効にして再生を開始します。
@@ -208,6 +224,9 @@ public final class SoundFile {
     /// 設定値は `0...duration` にクランプされます。末尾以降へのシークは停止扱いです。
     public var position: Double {
         get {
+            // 一時停止中は playerTime(forNodeTime:) が nil になるため、
+            // pause() 時点でキャッシュした位置を返す
+            if let pausedPosition { return pausedPosition }
             guard let nodeTime = audioEngine.playerNode.lastRenderTime,
                   let playerTime = audioEngine.playerNode.playerTime(forNodeTime: nodeTime) else {
                 return scheduledBaseTime
@@ -228,6 +247,8 @@ public final class SoundFile {
             let remainingFrames64 = file.length - samplePosition
             guard remainingFrames64 > 0 else { return }
 
+            scheduleGeneration &+= 1
+            let generation = scheduleGeneration
             audioEngine.playerNode.scheduleSegment(
                 file,
                 startingFrame: samplePosition,
@@ -236,7 +257,7 @@ public final class SoundFile {
                 completionCallbackType: .dataPlayedBack
             ) { [weak self] _ in
                 DispatchQueue.main.async {
-                    self?.handlePlaybackCompletion()
+                    self?.handlePlaybackCompletion(generation: generation)
                 }
             }
             hasPendingSchedule = true
@@ -255,35 +276,31 @@ public final class SoundFile {
     /// - Parameter fftSize: FFT サイズ（デフォルトは1024）。
     public func enableAnalysis(fftSize: Int = 1024) {
         guard _analyzer == nil else { return }
-        _analyzer = AudioAnalyzer(fftSize: fftSize)
+        let mixerFormat = audioEngine.engine.mainMixerNode.outputFormat(forBus: 0)
+        // sampleRate を渡すことで injectSamples 経由でも bandEnergy() が機能する
+        _analyzer = AudioAnalyzer(fftSize: fftSize, sampleRate: mixerFormat.sampleRate)
 
-        let capturedBuffer = sampleBuffer
-        let capturedFFTSize = fftSize
+        let buffer = AudioSampleTransferBuffer(capacity: fftSize)
+        sampleBuffer = buffer
+        tapScratch = [Float](repeating: 0, count: fftSize)
 
         // メインミキサー出力にタップをインストール
-        let mixerFormat = audioEngine.engine.mainMixerNode.outputFormat(forBus: 0)
         audioEngine.engine.mainMixerNode.installTap(
             onBus: 0,
             bufferSize: AVAudioFrameCount(fftSize),
             format: mixerFormat
         ) { audioBuffer, _ in
             guard let channelData = audioBuffer.floatChannelData else { return }
-            let frameCount = Int(audioBuffer.frameLength)
-            let count = min(frameCount, capturedFFTSize)
-
-            var samples = [Float](repeating: 0, count: capturedFFTSize)
-            for i in 0..<count {
-                samples[i] = channelData[0][i]
-            }
-            capturedBuffer.store(samples)
+            // オーディオ経路ではアロケーションしない（固定長バッファへコピー）
+            buffer.write(channelData[0], count: Int(audioBuffer.frameLength))
         }
     }
 
     /// 解析データを更新します（`draw()` の先頭で呼び出してください）。
     public func update() {
         guard let analyzer = _analyzer else { return }
-        if let samples = sampleBuffer.take() {
-            analyzer.injectSamples(samples)
+        if let sampleBuffer, sampleBuffer.take(into: &tapScratch) {
+            analyzer.injectSamples(tapScratch)
         }
         analyzer.update()
     }
@@ -298,20 +315,27 @@ public final class SoundFile {
     // MARK: - プライベート
 
     private func scheduleFile() {
+        scheduleGeneration &+= 1
+        let generation = scheduleGeneration
         audioEngine.playerNode.scheduleFile(
             file,
             at: nil,
             completionCallbackType: .dataPlayedBack
         ) { [weak self] _ in
             DispatchQueue.main.async {
-                self?.handlePlaybackCompletion()
+                self?.handlePlaybackCompletion(generation: generation)
             }
         }
         hasPendingSchedule = true
         scheduledBaseTime = 0
     }
 
-    private func handlePlaybackCompletion() {
+    /// （internal なのはテストから stale completion の配送を模擬するため）
+    func handlePlaybackCompletion(generation: UInt64) {
+        // stop()/シークは世代を進めるため、それ以前にスケジュールされた
+        // completion はここで棄却される（stop 後のループ再開・シークの
+        // 巻き戻しを防ぐ）
+        guard generation == scheduleGeneration else { return }
         hasPendingSchedule = false
         if isLooping {
             audioEngine.playerNode.stop()
