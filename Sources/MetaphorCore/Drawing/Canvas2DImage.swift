@@ -63,7 +63,9 @@ extension Canvas2D {
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
         srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
     ) {
-        guard encoder != nil else { return }
+        // 記録フレーム（isDeferring）でも蓄積する。encoder のみのガードだと
+        // 影オン / METAPHOR_COMMAND_RECORD のフレームで image() が消失する（#152）
+        guard isDeferring || encoder != nil else { return }
 
         // 描画順序を保つため、蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ
         // （addVertex と同じ順序保証。これがないと circle(); image(); rect() で
@@ -132,7 +134,8 @@ extension Canvas2D {
         glyphs: [PositionedGlyph],
         x: Float, y: Float
     ) {
-        guard encoder != nil, !glyphs.isEmpty else { return }
+        // 記録フレーム（isDeferring）でも蓄積する（drawTexturedQuad と同様、#152）
+        guard isDeferring || encoder != nil, !glyphs.isEmpty else { return }
 
         // 蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ（描画順序の保持）
         if vertexCount > 0 {

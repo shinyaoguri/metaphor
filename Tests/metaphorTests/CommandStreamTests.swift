@@ -282,4 +282,133 @@ struct CommandStreamSeqTests {
         let seqs = context.canvas3D.recordedDrawCalls.map(\.seq)
         #expect(seqs == [0, 1, 2], "3 つの box は呼び出し順に seq 0,1,2 を持つべき: \(seqs)")
     }
+
+    // MARK: - #152: 記録経路での image()/text()/3D beginShape/dynamicMesh/background
+
+    /// 影オン記録経路でも image() が描画される
+    /// （旧: drawTexturedQuad の encoder 必須ガードで無音スキップ）。
+    @Test("影オン記録経路で image() が描画される")
+    func imageDrawnInShadowPath() throws {
+        var img: MImage?
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            if img == nil {
+                img = c.createImage(16, 16)
+                img?.loadPixels()
+                if let image = img {
+                    for i in stride(from: 0, to: image.pixels.count, by: 4) {
+                        image.pixels[i] = 255      // R
+                        image.pixels[i + 3] = 255  // A
+                    }
+                    image.updatePixels()
+                }
+            }
+            if let image = img {
+                c.canvas.image(image, 24, 24)   // 中央付近に 16x16 の赤画像
+            }
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let (_, _, sample) = try readbackPixels(renderer)
+        let p = sample(32, 32)
+        #expect(p.r > 200 && p.g < 60, "影オンでも image() が描画されるべき: \(p)")
+    }
+
+    /// 影オン記録経路でも text() が描画される（グリフ領域に非背景ピクセルが出る）。
+    @Test("影オン記録経路で text() が描画される")
+    func textDrawnInShadowPath() throws {
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.fill(Color(r: 1, g: 1, b: 1))
+            c.canvas.textSize(48)
+            c.canvas.textAlign(.center, .center)
+            c.canvas.text("M", 32, 32)
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let (w, h, sample) = try readbackPixels(renderer)
+        var lit = 0
+        for y in 8..<(h - 8) {
+            for x in 8..<(w - 8) where sample(x, y).r > 100 {
+                lit += 1
+            }
+        }
+        #expect(lit > 20, "影オンでも text() のグリフが描画されるべき（点灯ピクセル: \(lit)）")
+    }
+
+    /// 影オン記録経路でも 3D beginShape/endShape の本体が描画される
+    /// （旧: drawShape3DVertices が encoder 必須で記録もされなかった）。
+    @Test("影オン記録経路で 3D beginShape が描画される")
+    func beginShape3DDrawnInShadowPath() throws {
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.lights()
+            c.fill(Color(r: 0, g: 1, b: 0))
+            c.canvas3D.beginShape()
+            c.canvas3D.vertex(-100, -100, 0)
+            c.canvas3D.vertex(100, -100, 0)
+            c.canvas3D.vertex(0, 120, 0)
+            c.canvas3D.endShape()
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let (_, _, sample) = try readbackPixels(renderer)
+        let p = sample(32, 36)
+        #expect(p.g > 60, "影オンでも 3D beginShape の三角形が描画されるべき: \(p)")
+    }
+
+    /// 影オン記録経路でも dynamicMesh() が描画される。
+    @Test("影オン記録経路で dynamicMesh が描画される")
+    func dynamicMeshDrawnInShadowPath() throws {
+        var dyn: DynamicMesh?
+        let (renderer, context) = try makeShadowHarness { c in
+            c.background(Color(r: 0, g: 0, b: 0))
+            c.lights()
+            c.fill(Color(r: 0, g: 0, b: 1))
+            if dyn == nil {
+                let mesh = DynamicMesh(device: c.renderer.device)
+                mesh.addVertex(-100, -100, 0)
+                mesh.addVertex(100, -100, 0)
+                mesh.addVertex(0, 120, 0)
+                mesh.addTriangle(0, 1, 2)
+                dyn = mesh
+            }
+            if let mesh = dyn {
+                c.canvas3D.dynamicMesh(mesh)
+            }
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let (_, _, sample) = try readbackPixels(renderer)
+        let p = sample(32, 36)
+        #expect(p.b > 60, "影オンでも dynamicMesh が描画されるべき: \(p)")
+    }
+
+    /// フレーム途中の background() が呼び出し順を保持する
+    /// （旧: 遅延モードでは早期 return してパス先頭のクリアに任せるため、
+    /// 「描画後の background()」で先に描いた図形が残った）。
+    @Test("影オン記録経路でフレーム途中の background() が先行描画を覆う")
+    func midFrameBackgroundCoversEarlierDraws() throws {
+        let (renderer, context) = try makeShadowHarness { c in
+            c.fill(Color(r: 1, g: 0, b: 0))
+            c.noStroke()
+            c.rect(0, 0, 64, 64)                     // 先に全面赤
+            c.background(Color(r: 0, g: 0, b: 1))    // フレーム途中で青背景
+            c.fill(Color(r: 0, g: 1, b: 0))
+            c.circle(32, 32, 16)                     // 上に小さい緑円
+        }
+        context.enableShadows()
+        renderer.renderFrame()
+
+        let (_, _, sample) = try readbackPixels(renderer)
+        let corner = sample(4, 4)     // 円の外・矩形の内
+        let center = sample(32, 32)   // 円の中心
+        #expect(corner.b > 200 && corner.r < 60,
+                "background() 以降は先行の赤矩形が覆われて青になるべき: \(corner)")
+        #expect(center.g > 200, "background() 後の円は描画されるべき: \(center)")
+    }
 }
