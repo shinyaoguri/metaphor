@@ -97,6 +97,15 @@ public final class VideoExporter {
     /// MainActor で呼ばれます。引数は失われたフレームの `frameIndex` です。
     public var onFrameDropped: (@MainActor (Int64) -> Void)?
 
+    /// 直近の記録セッションで発生した書き込みエラー。成功時は `nil`。
+    ///
+    /// `endRecord` の completion が呼ばれた時点で確定しています。壊れたファイルが
+    /// 成功扱いにならないよう、録画完了後にこの値を確認してください。
+    public private(set) var lastError: Error?
+
+    /// ファイナライズ失敗時に呼び出されるオプションコールバック（MainActor）。
+    public var onError: (@MainActor (Error) -> Void)?
+
     /// 現在の記録セッション用の AVAssetWriter
     private var assetWriter: AVAssetWriter?
 
@@ -115,7 +124,11 @@ public final class VideoExporter {
     /// インフライト中のフレーム書き込みを追跡するためのディスパッチグループ。
     /// `captureFrame` で `enter()`、完了ハンドラの末尾で `leave()` するため、
     /// `endRecord` は `notify` で全フレーム書き込み完了後にファイナライズできます。
-    private let pendingWrites = DispatchGroup()
+    ///
+    /// セッションごとに `beginRecord` で新規作成します。共有のままだと、旧セッションの
+    /// `notify` 待機中に次の録画の `enter()` が発火を先送りし、連続録画で旧ファイルの
+    /// ファイナライズが実質保留になるためです。
+    private var pendingWrites = DispatchGroup()
 
     public init() {}
 
@@ -184,9 +197,14 @@ public final class VideoExporter {
         self.assetWriter = writer
         self.writerInput = input
         self.pixelBufferAdaptor = adaptor
-        self.currentFPS = config.fps
+        if config.fps <= 0 {
+            metaphorWarning("VideoExporter: fps must be positive (got \(config.fps)); clamping to 1")
+        }
+        self.currentFPS = max(1, config.fps)
         self.frameIndex = 0
         self.droppedFrameCount = 0
+        self.lastError = nil
+        self.pendingWrites = DispatchGroup()
         self.isRecording = true
     }
 
@@ -252,7 +270,14 @@ public final class VideoExporter {
                     completionGroup?.leave()
                     group.leave()
                 }
-                // プールからピクセルバッファを取得
+                // 非リアルタイム録画（expectsMediaDataInRealTime = false）なので、
+                // ready でなければ待つ。即ドロップするとオフライン録画でも絵が抜ける。
+                // ハング回避のため上限（約 2 秒）つき。
+                var waitBudget = 1000
+                while !capturedInput.isReadyForMoreMediaData && waitBudget > 0 {
+                    usleep(2000)  // 2ms
+                    waitBudget -= 1
+                }
                 guard capturedInput.isReadyForMoreMediaData else {
                     Self.recordDrop(self, frameIndex: currentFrame)
                     return
@@ -273,7 +298,10 @@ public final class VideoExporter {
                 CVPixelBufferLockBaseAddress(buffer, [])
                 defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
 
-                guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
+                guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
+                    Self.recordDrop(self, frameIndex: currentFrame)
+                    return
+                }
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
 
                 // ステージングテクスチャからピクセルを読み取り（shared、ユニファイドメモリによりコヒーレント）
@@ -288,7 +316,10 @@ public final class VideoExporter {
                     value: currentFrame,
                     timescale: fps
                 )
-                capturedAdaptor.append(buffer, withPresentationTime: presentationTime)
+                if !capturedAdaptor.append(buffer, withPresentationTime: presentationTime) {
+                    // 書き込み失敗もドロップとして計上する（従来は黙殺されていた）
+                    Self.recordDrop(self, frameIndex: currentFrame)
+                }
             }
         }
     }
@@ -321,6 +352,19 @@ public final class VideoExporter {
             capturedInput.markAsFinished()
 
             capturedWriter.finishWriting {
+                // 書き込み失敗（.failed / .cancelled）でも従来は成功と同じ completion が
+                // 呼ばれ、壊れたファイルが成功扱いになっていた。status を検証して
+                // lastError / onError で観測可能にする。
+                let finishError: Error?
+                if capturedWriter.status == .completed {
+                    finishError = nil
+                } else {
+                    finishError = capturedWriter.error
+                        ?? MetaphorError.export(.writerFailed(
+                            "finishWriting ended with status \(capturedWriter.status.rawValue)"
+                        ))
+                }
+
                 Task { @MainActor [weak self] in
                     // 旧セッションのファイナライズ完了は、自分が起こしたセッションの
                     // 状態にしか触れてはならない。end→begin を素早く呼ぶと、ここに
@@ -332,6 +376,13 @@ public final class VideoExporter {
                         self.writerInput = nil
                         self.pixelBufferAdaptor = nil
                         self.frameIndex = 0
+                    }
+                    if let finishError {
+                        metaphorWarning("VideoExporter: finishWriting failed: \(finishError)")
+                        if let self {
+                            self.lastError = finishError
+                            self.onError?(finishError)
+                        }
                     }
                     completion?()
                 }
