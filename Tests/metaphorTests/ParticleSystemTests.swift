@@ -153,6 +153,78 @@ struct ParticleForceTests {
     }
 }
 
+// MARK: - Emission Rate (GPU 実行)
+
+@Suite("Particle Emission Rate", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+struct ParticleEmissionRateTests {
+
+    /// 指定フレーム数ぶん update カーネルを実行し、GPU 完了後の生存数を返します。
+    @MainActor
+    private func runFrames(
+        _ system: ParticleSystem, device: MTLDevice, frames: Int, dt: Float
+    ) throws -> Int {
+        let queue = try #require(device.makeCommandQueue())
+        var lastCB: MTLCommandBuffer?
+        for i in 0..<frames {
+            let cb = try #require(queue.makeCommandBuffer())
+            let encoder = try #require(cb.makeComputeCommandEncoder())
+            system.update(encoder: encoder, deltaTime: dt, time: Float(i) * dt)
+            encoder.endEncoding()
+            cb.commit()
+            lastCB = cb
+        }
+        lastCB?.waitUntilCompleted()
+        return system._currentParticlesForTesting.filter { $0.sizeAndFlags.w > 0.5 }.count
+    }
+
+    @Test("emission count matches emissionRate x dt exactly")
+    @MainActor
+    func exactEmissionPerFrame() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let lib = try ShaderLibrary(device: device)
+        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
+        system.emissionRate = 600
+        system.particleLife = 100  // テスト中は死なない
+
+        // 1 フレーム（dt = 1/60）: 600 * 1/60 = ちょうど 10 個
+        let alive = try runFrames(system, device: device, frames: 1, dt: 1.0 / 60.0)
+        #expect(alive == 10)
+    }
+
+    @Test("emission rate does not decay as the pool fills (90% full)")
+    @MainActor
+    func noDecayAtHighFill() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let lib = try ShaderLibrary(device: device)
+        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
+        system.emissionRate = 600
+        system.particleLife = 100
+
+        // 90 フレームでプールを 90% まで充填（10 個/フレーム）
+        let at90 = try runFrames(system, device: device, frames: 90, dt: 1.0 / 60.0)
+        #expect(at90 == 900)
+
+        // 充填率 90% でも次のフレームでちょうど 10 個放出される
+        // （旧実装は死候補にのみ確率適用するため約 1 個まで減衰していた）
+        let afterOneMore = try runFrames(system, device: device, frames: 1, dt: 1.0 / 60.0)
+        #expect(afterOneMore == 910)
+    }
+
+    @Test("fractional emission carries over between frames")
+    @MainActor
+    func fractionalAccumulation() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let lib = try ShaderLibrary(device: device)
+        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
+        system.emissionRate = 30  // 0.5 個/フレーム @ 60fps
+        system.particleLife = 100
+
+        // 2 フレームでちょうど 1 個（旧実装は低レートで放出が起きないことがある）
+        let alive = try runFrames(system, device: device, frames: 2, dt: 1.0 / 60.0)
+        #expect(alive == 1)
+    }
+}
+
 // MARK: - EmitterShape (setEmitter ロジック)
 
 @Suite("EmitterShape", .enabled(if: MTLCreateSystemDefaultDevice() != nil))

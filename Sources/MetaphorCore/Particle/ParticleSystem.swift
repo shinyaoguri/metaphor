@@ -93,7 +93,8 @@ struct ParticleUniforms {
     var startColor: SIMD4<Float>
     var endColor: SIMD4<Float>
     var emitterType: UInt32
-    var _pad2: UInt32 = 0
+    /// 今フレームの目標放出数（CPU 側で emissionRate × dt を端数繰り越しで蓄積）
+    var desiredEmit: UInt32 = 0
     var _pad3: UInt32 = 0
     var _pad4: UInt32 = 0
     var emitterParam1: SIMD4<Float>
@@ -178,6 +179,15 @@ public final class ParticleSystem {
     /// デプスステンシルステート（デプステスト有効、書き込み無効）
     private let depthState: MTLDepthStencilState?
 
+    /// 放出数の端数繰り越し（emissionRate × dt の小数部を次フレームへ持ち越す）
+    private var emissionAccumulator: Float = 0
+
+    /// 死候補スロットへ順番を割り当てるアトミックカウンター（4 バイト、毎フレームリセット）
+    private let emitCounterBuffer: MTLBuffer
+
+    /// カウンターリセット用コンピュートパイプライン（放出制御と Indirect Draw で共用）
+    private let counterResetPipeline: MTLComputePipelineState
+
     // MARK: - Indirect Draw リソース
 
     /// 生存パーティクルのみをレンダリングする Indirect Draw を有効化（後方互換性のためデフォルト `false`）
@@ -191,9 +201,6 @@ public final class ParticleSystem {
 
     /// `drawPrimitives(indirectBuffer:)` 用の Indirect 引数バッファ (16 バイト)
     private var indirectArgsBuffer: MTLBuffer?
-
-    /// アトミックカウンターリセット用コンピュートパイプライン
-    private let resetCounterPipeline: MTLComputePipelineState?
 
     /// 生存パーティクルコンパクション用コンピュートパイプライン
     private let compactPipeline: MTLComputePipelineState?
@@ -243,6 +250,24 @@ public final class ParticleSystem {
         }
         self.updatePipeline = try device.makeComputePipelineState(function: updateFn)
 
+        // 放出制御用アトミックカウンター（更新カーネルが毎フレーム参照する必須リソース）
+        guard let emitCounter = device.makeBuffer(
+            length: MemoryLayout<UInt32>.size, options: .storageModeShared
+        ) else {
+            throw MetaphorError.particle(.bufferCreationFailed)
+        }
+        self.emitCounterBuffer = emitCounter
+        emitCounter.label = "metaphor.particle.emitCounter"
+        memset(emitCounter.contents(), 0, MemoryLayout<UInt32>.size)
+
+        guard let resetFn = shaderLibrary.function(
+            named: ParticleShaders.FunctionName.resetCounter,
+            from: ShaderLibrary.BuiltinKey.particle
+        ) else {
+            throw MetaphorError.particle(.shaderNotFound(ParticleShaders.FunctionName.resetCounter))
+        }
+        self.counterResetPipeline = try device.makeComputePipelineState(function: resetFn)
+
         // レンダーパイプライン（頂点デスクリプタなし: バッファから直接読み取り）
         guard let vertexFn = shaderLibrary.function(
             named: ParticleShaders.FunctionName.vertex,
@@ -269,11 +294,7 @@ public final class ParticleSystem {
         self.depthState = device.makeDepthStencilState(descriptor: depthDesc)
 
         // Indirect Draw パイプライン（オプション: 失敗時は通常モードにフォールバック）
-        if let resetFn = shaderLibrary.function(
-            named: ParticleShaders.FunctionName.resetCounter,
-            from: ShaderLibrary.BuiltinKey.particle
-        ),
-           let compactFn = shaderLibrary.function(
+        if let compactFn = shaderLibrary.function(
             named: ParticleShaders.FunctionName.compact,
             from: ShaderLibrary.BuiltinKey.particle
         ),
@@ -281,10 +302,6 @@ public final class ParticleSystem {
             named: ParticleShaders.FunctionName.buildIndirectArgs,
             from: ShaderLibrary.BuiltinKey.particle
         ) {
-            self.resetCounterPipeline = {
-                do { return try device.makeComputePipelineState(function: resetFn) }
-                catch { metaphorWarning("Indirect draw pipeline unavailable (resetCounter): \(error)"); return nil }
-            }()
             self.compactPipeline = {
                 do { return try device.makeComputePipelineState(function: compactFn) }
                 catch { metaphorWarning("Indirect draw pipeline unavailable (compact): \(error)"); return nil }
@@ -306,8 +323,16 @@ public final class ParticleSystem {
                 options: .storageModeShared
             )
             self.indirectArgsBuffer?.label = "metaphor.particle.indirectArgs"
+
+            // コンパクトが一度も走らないうちに indirect draw されても
+            // ゴミ値の vertexCount/instanceCount で描画しないようゼロ初期化
+            if let counter = self.counterBuffer {
+                memset(counter.contents(), 0, MemoryLayout<UInt32>.size)
+            }
+            if let args = self.indirectArgsBuffer {
+                memset(args.contents(), 0, MemoryLayout<MTLDrawPrimitivesIndirectArguments>.size)
+            }
         } else {
-            self.resetCounterPipeline = nil
             self.compactPipeline = nil
             self.buildArgsPipeline = nil
         }
@@ -326,7 +351,8 @@ public final class ParticleSystem {
     /// パーティクルシステムから全フォースを削除します。
     public func clearForces() {
         forces.removeAll()
-        forceBuffer = nil
+        // forceBuffer は再利用のため保持する（forceCount = 0 のとき GPU は参照しない）。
+        // 毎フレーム clearForces() → addForce() するパターンでの再確保を避ける。
     }
 
     /// パーティクル生成用のエミッター形状を設定します。
@@ -352,12 +378,25 @@ public final class ParticleSystem {
         let src = useBufferA ? bufferA : bufferB
         let dst = useBufferA ? bufferB : bufferA
 
-        var uniforms = makeUniforms(deltaTime: deltaTime, time: time)
+        // 今フレームの目標放出数（小数部は次フレームへ繰り越し、低レートでも放出が消えない）
+        emissionAccumulator += max(0, emissionRate) * max(0, deltaTime)
+        let desired = min(emissionAccumulator, Float(count)).rounded(.down)
+        emissionAccumulator -= desired
+
+        var uniforms = makeUniforms(deltaTime: deltaTime, time: time, desiredEmit: UInt32(desired))
+
+        // 放出カウンターをリセットしてから更新カーネルを走らせる
+        encoder.setComputePipelineState(counterResetPipeline)
+        encoder.setBuffer(emitCounterBuffer, offset: 0, index: 0)
+        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        encoder.memoryBarrier(scope: .buffers)
 
         encoder.setComputePipelineState(updatePipeline)
         encoder.setBuffer(src, offset: 0, index: 0)
         encoder.setBuffer(dst, offset: 0, index: 1)
         encoder.setBytes(&uniforms, length: MemoryLayout<ParticleUniforms>.size, index: 2)
+        encoder.setBuffer(emitCounterBuffer, offset: 0, index: 4)
 
         if let fb = forceBuffer {
             encoder.setBuffer(fb, offset: 0, index: 3)
@@ -376,19 +415,34 @@ public final class ParticleSystem {
         }
     }
 
+    /// Indirect Draw の必須リソースがすべて揃っているか。
+    /// 揃っていない場合、`draw` は標準描画へフォールバックします。
+    private var isIndirectDrawReady: Bool {
+        compactPipeline != nil && buildArgsPipeline != nil
+            && compactBuffer != nil && counterBuffer != nil && indirectArgsBuffer != nil
+    }
+
+    /// Indirect Draw 不可の警告を一度だけ出すためのフラグ
+    private var warnedIndirectUnavailable = false
+
     /// 生存パーティクルを連続バッファにコンパクトし、Indirect Draw 引数をビルドします。
     private func compactAliveParticles(encoder: MTLComputeCommandEncoder) {
-        guard let resetPipeline = resetCounterPipeline,
-              let compactPipe = compactPipeline,
+        guard let compactPipe = compactPipeline,
               let buildPipe = buildArgsPipeline,
               let compactBuf = compactBuffer,
               let counterBuf = counterBuffer,
-              let argsBuf = indirectArgsBuffer else { return }
+              let argsBuf = indirectArgsBuffer else {
+            if !warnedIndirectUnavailable {
+                warnedIndirectUnavailable = true
+                metaphorWarning("ParticleSystem: indirect draw resources unavailable; falling back to standard draw")
+            }
+            return
+        }
 
         let currentBuffer = useBufferA ? bufferA : bufferB
 
         // 1) アトミックカウンターをリセット
-        encoder.setComputePipelineState(resetPipeline)
+        encoder.setComputePipelineState(counterResetPipeline)
         encoder.setBuffer(counterBuf, offset: 0, index: 0)
         encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
                                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -445,6 +499,7 @@ public final class ParticleSystem {
         encoder.setVertexBytes(&renderUniforms, length: MemoryLayout<ParticleRenderUniforms>.size, index: 1)
 
         if useIndirectDraw,
+           isIndirectDrawReady,
            let compactBuf = compactBuffer,
            let argsBuf = indirectArgsBuffer {
             // Indirect Draw: コンパクト済み生存パーティクルのみレンダリング
@@ -467,10 +522,20 @@ public final class ParticleSystem {
         }
     }
 
+    // MARK: - テストフック
+
+    /// テスト用: 現在のソースバッファ（最新の更新結果）のスナップショット。
+    /// 読み取り前に GPU の完了（`waitUntilCompleted` 等）を保証すること。
+    var _currentParticlesForTesting: [Particle] {
+        let buf = useBufferA ? bufferA : bufferB
+        let ptr = buf.contents().bindMemory(to: Particle.self, capacity: count)
+        return Array(UnsafeBufferPointer(start: ptr, count: count))
+    }
+
     // MARK: - プライベートヘルパー
 
     /// パーティクル更新コンピュートカーネル用のユニフォーム構造体をビルドします。
-    private func makeUniforms(deltaTime: Float, time: Float) -> ParticleUniforms {
+    private func makeUniforms(deltaTime: Float, time: Float, desiredEmit: UInt32) -> ParticleUniforms {
         let (emitterType, param1, param2) = emitterParams()
 
         return ParticleUniforms(
@@ -484,6 +549,7 @@ public final class ParticleSystem {
             startColor: startColor,
             endColor: endColor,
             emitterType: emitterType,
+            desiredEmit: desiredEmit,
             emitterParam1: param1,
             emitterParam2: param2
         )
@@ -541,18 +607,29 @@ public final class ParticleSystem {
             }
         }
 
-        if descriptors.isEmpty {
-            forceBuffer = nil
-        } else {
-            guard let buffer = device.makeBuffer(
-                bytes: descriptors,
-                length: MemoryLayout<ForceDescriptor>.stride * descriptors.count,
-                options: .storageModeShared
-            ) else {
-                metaphorWarning("ParticleSystem: Failed to allocate force buffer (\(descriptors.count) descriptors)")
-                return
+        guard !descriptors.isEmpty else { return }
+
+        let needed = MemoryLayout<ForceDescriptor>.stride * descriptors.count
+
+        // 既存バッファの容量が足りればコピーで再利用（毎フレームの clear+add で
+        // 新規 MTLBuffer 確保が積み上がるのを防ぐ）
+        if let existing = forceBuffer, existing.length >= needed {
+            descriptors.withUnsafeBytes { src in
+                existing.contents().copyMemory(from: src.baseAddress!, byteCount: needed)
             }
-            forceBuffer = buffer
+            return
         }
+
+        // 追加のたびの再確保を避けるため余裕を持って確保（最低 8 個分）
+        let capacityBytes = max(needed, MemoryLayout<ForceDescriptor>.stride * max(descriptors.count * 2, 8))
+        guard let buffer = device.makeBuffer(length: capacityBytes, options: .storageModeShared) else {
+            metaphorWarning("ParticleSystem: Failed to allocate force buffer (\(descriptors.count) descriptors)")
+            return
+        }
+        buffer.label = "metaphor.particle.forces"
+        descriptors.withUnsafeBytes { src in
+            buffer.contents().copyMemory(from: src.baseAddress!, byteCount: needed)
+        }
+        forceBuffer = buffer
     }
 }
