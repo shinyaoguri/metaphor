@@ -179,12 +179,12 @@ extension SketchContext {
     ///   - h: 外接楕円の高さ。
     ///   - startAngle: ラジアン単位の開始角度。
     ///   - stopAngle: ラジアン単位の終了角度。
-    ///   - mode: 円弧の描画モード（デフォルト `.open`）。
+    ///   - mode: 円弧の描画モード（デフォルト `.default` = 扇形の fill + 弧のみの stroke）。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
         _ startAngle: Float, _ stopAngle: Float,
-        _ mode: ArcMode = .open
+        _ mode: ArcMode = .default
     ) {
         canvas.arc(x, y, w, h, startAngle, stopAngle, mode)
     }

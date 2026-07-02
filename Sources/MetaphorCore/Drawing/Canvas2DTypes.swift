@@ -38,12 +38,17 @@ public enum ImageMode: Sendable {
 }
 
 /// `arc()` 呼び出しの描画モードを指定します。
+///
+/// Processing 互換の 4 状態。fill と stroke で閉じ方が異なる点に注意
+/// （mode 省略時は fill が扇形、stroke は弧のみ、という非対称な組み合わせ）。
 public enum ArcMode: Sendable {
-    /// 端点を接続せずに弧のみを描画。
+    /// mode 省略時のデフォルト。fill は中心を含む扇形、stroke は端点を接続せず弧のみを描画。
+    case `default`
+    /// fill は弦で閉じた弓形、stroke は端点を接続せず弧のみを描画。
     case open
-    /// 端点を直線で接続。
+    /// fill は弦で閉じた弓形、stroke は端点を弦（直線）で接続して閉じる。
     case chord
-    /// 端点から中心へ線を引き、パイ形状を形成。
+    /// fill は中心を含む扇形、stroke は端点から中心へ線を引いてパイ形状に閉じる。
     case pie
 }
 

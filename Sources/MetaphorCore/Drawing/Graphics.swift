@@ -381,8 +381,8 @@ public final class Graphics {
     ///   - h: 高さ。
     ///   - startAngle: ラジアン単位の開始角度。
     ///   - stopAngle: ラジアン単位の終了角度。
-    ///   - mode: 弧の描画モード。
-    public func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .open) { canvas.arc(x, y, w, h, startAngle, stopAngle, mode) }
+    ///   - mode: 弧の描画モード。省略時は扇形の fill + 弧のみの stroke。
+    public func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .default) { canvas.arc(x, y, w, h, startAngle, stopAngle, mode) }
 
     /// ポイント配列からポリゴンを描画します。
     /// - Parameter points: ポリゴン頂点を定義する (x, y) タプルの配列。
