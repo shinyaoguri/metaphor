@@ -1211,6 +1211,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isComplete: Bool { get }` -- アニメーションが完了したかどうか
 - `var value: T { get }` -- 現在の補間値
 - `init(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic)` -- 新しいトゥイーンアニメーションを作成します。
+- `func cancel()` -- アニメーションを完了状態にして停止します。
 - `func delay(_ seconds: Float) -> Self` -- アニメーション開始前のディレイを設定します。
 - `func onComplete(_ handler: () -> Void) -> Self` -- アニメーション完了時に呼び出すコールバックを設定します。
 - `func repeatCount(_ n: Int) -> Self` -- アニメーションのリピート回数を設定します（0は無限）。
