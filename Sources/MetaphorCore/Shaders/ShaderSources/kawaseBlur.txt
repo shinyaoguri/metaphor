@@ -6,7 +6,7 @@ struct PPVertexOut {
     float2 texCoord;
 };
 
-// Kawase downsample: 5-tap (center + 4 diagonal) to half resolution
+// Kawase downsample: 5タップ（中心 + 4対角）→ 半解像度に縮小
 fragment float4 metaphor_kawaseDownsample(
     PPVertexOut in [[stage_in]],
     texture2d<float> tex [[texture(0)]],
@@ -25,7 +25,7 @@ fragment float4 metaphor_kawaseDownsample(
     return sum / 8.0;
 }
 
-// Kawase upsample: 8-tap (3x3 tent, weighted) to double resolution
+// Kawase upsample: 8タップ（3x3テント、重み付き）→ 倍解像度に拡大
 fragment float4 metaphor_kawaseUpsample(
     PPVertexOut in [[stage_in]],
     texture2d<float> tex [[texture(0)]],
