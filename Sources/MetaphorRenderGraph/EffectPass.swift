@@ -8,7 +8,10 @@ import MetaphorCore
 /// 入力テクスチャはそのまま通過します。
 ///
 /// ```swift
-/// let effect = try EffectPass(scenePass, effects: [.bloom(), .vignette()], device: device, shaderLibrary: shaderLibrary)
+/// let effect = try EffectPass(
+///     scenePass, effects: [BloomEffect(), VignetteEffect()],
+///     device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary
+/// )
 /// ```
 @MainActor
 public final class EffectPass: RenderPassNode {

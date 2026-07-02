@@ -29,7 +29,7 @@ final class Hello: Sketch {
 
 ## Metaphorの特徴
 
-- **中心はこれ ― AI が「いま見えている絵」を見ながら作れる。** Probe がフレーム画像と内部状態をファイルに書き出し、`metaphor mcp` がそれを MCP ツール（`snapshot` / `input` / `build_status` / `api_reference`）として AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せる。差別化は Swift/Metal そのものではなく、この **Probe + ライブビューア + ローカル MCP** の三点セットにあります（[AI と協調する](#ai-と協調する観測--操作--反復)）。
+- **中心はこれ ― AI が「いま見えている絵」を見ながら作れる。** Probe がフレーム画像と内部状態をファイルに書き出し、`metaphor mcp` がそれを MCP ツール（`snapshot` / `capture_sequence` / `input` / `build_status` / `api_reference`）として AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せる。差別化は Swift/Metal そのものではなく、この **Probe + ライブビューア + ローカル MCP** の三点セットにあります（[AI と協調する](#ai-と協調する観測--操作--反復)）。
 - **Processing の書き味のまま、Metal の速度。** `circle` を並べて書くだけで、Canvas2D / Canvas3D が同じ形状の連続描画を **GPU インスタンシングに自動バッチ** します。10,000 個の円でも CPU 行列計算ゼロ、draw call 1 回。100 万粒子の GPU パーティクルも、`createParticleSystem` 1 行で動きます。
 - **2D と 3D が同じ語彙で書ける。** `fill` / `stroke` / `push` / `pop` / `translate` / `rotate` が 2D でも 3D でも同じ感覚で使えます。
 - **Apple のグラフィックスフレームワーク全部入り。** Metal / MetalPerformanceShaders（レイトレーシング含む）/ Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Syphon / Core MIDI が、1 枚の `Sketch` から呼べる統一 API でラップされています。
@@ -195,7 +195,7 @@ API 全体は [`llms.txt`](llms.txt) で確認できます（`make llms-txt` で
 metaphor new <name>   # テンプレートから新しいスケッチを作成（2d / 3d / shader / live / audio-reactive / raytracing / syphon）
 metaphor run          # 現在のスケッチを実行（解決・ビルド・表示）
 metaphor watch        # 編集を監視し、ライブビューア窓を保ったまま再ビルド差し替え
-metaphor mcp          # AI エージェント向け MCP サーバ（snapshot / input / build_status / api_reference）
+metaphor mcp          # AI エージェント向け MCP サーバ（snapshot / capture_sequence / input / build_status / api_reference）
 metaphor doctor       # 環境チェック
 metaphor update       # CLI / ライブラリの更新
 ```

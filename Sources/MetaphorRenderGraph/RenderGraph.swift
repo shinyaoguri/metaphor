@@ -11,7 +11,10 @@ import MetaphorCore
 /// // 2つのシーンを描画し、一方にブルームを適用してから合成
 /// let scene1 = try SourcePass(label: "bg", device: device, width: 1920, height: 1080)
 /// let scene2 = try SourcePass(label: "fg", device: device, width: 1920, height: 1080)
-/// let bloomed = try EffectPass(scene2, effects: [.bloom()], device: device, shaderLibrary: shaderLibrary)
+/// let bloomed = try EffectPass(
+///     scene2, effects: [BloomEffect()],
+///     device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary
+/// )
 /// let merged = try MergePass(scene1, bloomed, blend: .add, device: device, shaderLibrary: shaderLibrary)
 /// let graph = RenderGraph(root: merged)
 ///
