@@ -7,15 +7,34 @@ import simd
 /// 各ノードのローカルトランスフォームを push/pop マトリクスで適用し、
 /// アタッチされたメッシュの描画やカスタム描画コールバックの呼び出しを行います。
 ///
-/// ``frustumPlanes`` が設定されている場合、``Node/bounds`` を持つノードが
-/// フラスタムの完全に外側にある場合はカリングされ、不要な描画呼び出しを回避します。
+/// フラスタム平面が与えられている場合、``Node/bounds`` を持つノードが
+/// フラスタムの完全に外側にあれば自身の描画をスキップします。``Node/bounds`` は
+/// ノード単体のローカル AABB でありサブツリーを内包する保証がないため、
+/// 子はカリングせず個別に判定します（セミヒエラルキカルカリング）。
 @MainActor
 public final class SceneRenderer {
     /// カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
     ///
     /// 各平面は `(nx, ny, nz, d)` で、正の半空間が可視です。
     /// フラスタムカリングを無効にするには `nil` を設定してください。
+    ///
+    /// - Important: static なグローバル状態のため、1 フレームで複数のシーン/カメラを
+    ///   描く場合は共有されます。その場合は
+    ///   ``render(node:canvas:frustumPlanes:)`` で呼び出しごとに平面を渡してください。
     public static var frustumPlanes: [SIMD4<Float>]?
+
+    /// ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+    ///
+    /// フラスタムカリングには ``frustumPlanes``（グローバル）を使用します。
+    /// 複数シーン/カメラを描く場合は ``render(node:canvas:frustumPlanes:)`` を
+    /// 使ってください。
+    ///
+    /// - Parameters:
+    ///   - node: レンダリングするツリー（またはサブツリー）のルートノード。
+    ///   - canvas: 描画に使用する `Canvas3D` インスタンス。
+    public static func render(node: Node, canvas: Canvas3D) {
+        render(node: node, canvas: canvas, frustumPlanes: frustumPlanes)
+    }
 
     /// ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
     ///
@@ -24,15 +43,25 @@ public final class SceneRenderer {
     /// フィルカラーが指定されていれば設定し、メッシュがあれば描画し、
     /// カスタム描画コールバックを呼び出し、子に再帰し、最後にマトリクススタックをポップします。
     ///
+    /// - Important: カリング判定は ``Node/worldTransform``（ツリー基準）で行い、
+    ///   描画は呼び出し時点の canvas 行列スタック基準で行います。両者が一致するよう、
+    ///   カリングを使う場合はルートノードを canvas の変換が identity の状態で
+    ///   渡してください（既存の変換の下で呼ぶと判定と描画がズレます）。
+    ///
     /// - Parameters:
     ///   - node: レンダリングするツリー（またはサブツリー）のルートノード。
     ///   - canvas: 描画に使用する `Canvas3D` インスタンス。
-    public static func render(node: Node, canvas: Canvas3D) {
+    ///   - frustumPlanes: カリング用のフラスタム平面（6平面）。`nil` でカリング無効。
+    public static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?) {
         guard node.isVisible else { return }
 
-        // フラスタムカリング
+        // フラスタムカリング: bounds はノード単体のローカル AABB であり
+        // サブツリーを内包する保証がないため、外れたノードは自身の描画のみ
+        // スキップし、子は個別に判定する（親の外に伸びた子を誤って消さない）
+        var selfCulled = false
         if let planes = frustumPlanes, let bounds = node.worldBounds {
-            guard bounds.intersects(frustum: planes) else { return }
+            selfCulled = !bounds.intersects(frustum: planes)
+            if selfCulled && node.children.isEmpty { return }
         }
 
         canvas.pushMatrix()
@@ -40,22 +69,24 @@ public final class SceneRenderer {
         // ノードのローカルトランスフォームを 4x4 行列経由で適用
         canvas.applyMatrix(node.localTransform)
 
-        // フィルカラーが指定されていれば設定
-        if let color = node.fillColor {
-            canvas.fill(color)
-        }
+        if !selfCulled {
+            // フィルカラーが指定されていれば設定
+            if let color = node.fillColor {
+                canvas.fill(color)
+            }
 
-        // メッシュがあれば描画
-        if let mesh = node.mesh {
-            canvas.mesh(mesh)
-        }
+            // メッシュがあれば描画
+            if let mesh = node.mesh {
+                canvas.mesh(mesh)
+            }
 
-        // カスタム描画コールバック
-        node.onDraw?()
+            // カスタム描画コールバック
+            node.onDraw?()
+        }
 
         // 子に再帰
         for child in node.children {
-            render(node: child, canvas: canvas)
+            render(node: child, canvas: canvas, frustumPlanes: frustumPlanes)
         }
 
         canvas.popMatrix()
@@ -66,6 +97,8 @@ public final class SceneRenderer {
     /// Gribb/Hartmann 法を使用します。返される各平面は正規化済みです。
     ///
     /// - Parameter viewProjection: 合成されたビュー × プロジェクション行列。
+    ///   Metal 深度規約（クリップ空間 z ∈ [0, 1]。Core の `perspectiveFov` /
+    ///   `orthographic` が生成する形式）を前提とします。
     /// - Returns: 6つのフラスタム平面の配列（左、右、下、上、ニア、ファー）。
     public static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>] {
         let m = viewProjection
@@ -79,7 +112,9 @@ public final class SceneRenderer {
             r3 - r0,  // 右
             r3 + r1,  // 下
             r3 - r1,  // 上
-            r3 + r2,  // ニア
+            r2,       // ニア（Metal 規約 z ∈ [0, 1]: クリップ条件は 0 ≤ z なので r2 単独。
+                      //       OpenGL 規約 z ∈ [-1, 1] の r3 + r2 ではニア平面が手前に
+                      //       ずれ、カメラ背後のオブジェクトがカリングされない）
             r3 - r2,  // ファー
         ]
 

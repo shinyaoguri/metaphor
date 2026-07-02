@@ -129,20 +129,25 @@ public final class Node {
 
     private var _localTransformDirty: Bool = true
     private var _worldTransformDirty: Bool = true
+    private var _worldOrientationDirty: Bool = true
     private var _cachedLocalTransform: float4x4 = float4x4(1)
     private var _cachedWorldTransform: float4x4 = float4x4(1)
+    private var _cachedWorldOrientation: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))
 
     /// ローカルとワールドのトランスフォームをダーティとしてマークし、すべての子孫に伝播します。
     private func invalidateTransform() {
-        guard _localTransformDirty == false || _worldTransformDirty == false else { return }
+        guard !_localTransformDirty || !_worldTransformDirty || !_worldOrientationDirty else { return }
         _localTransformDirty = true
         invalidateWorldTransform()
     }
 
-    /// ワールドトランスフォームのみをダーティとしてマークし、すべての子孫に伝播します。
+    /// ワールドトランスフォーム・ワールド向きをダーティとしてマークし、すべての子孫に伝播します。
     private func invalidateWorldTransform() {
-        guard _worldTransformDirty == false else { return }
+        // どちらかのキャッシュが有効なら無効化して伝播する（両方ダーティなら
+        // 子孫も既に両方ダーティなので打ち切ってよい）
+        guard !_worldTransformDirty || !_worldOrientationDirty else { return }
         _worldTransformDirty = true
+        _worldOrientationDirty = true
         for child in children {
             child.invalidateWorldTransform()
         }
@@ -251,9 +256,15 @@ public final class Node {
 
     /// このノードから子ノードを削除します。
     ///
+    /// `child` がこのノードの子でない場合は何もしません（他ノードの子の parent を
+    /// 誤って nil 化してツリーを不整合にしないため）。
+    ///
     /// - Parameter child: 削除する子ノード。
     public func removeChild(_ child: Node) {
+        let countBefore = children.count
         children.removeAll { $0 === child }
+        // 実際に削除できた場合のみ parent クリアと invalidate を行う
+        guard children.count < countBefore else { return }
         child.parent = nil
         child.invalidateWorldTransform()
     }
@@ -299,15 +310,28 @@ public final class Node {
         return q.act(SIMD3(0, 1, 0))
     }
 
-    /// ワールド空間での向き（親 + ローカルクォータニオンの合成）。
+    /// ワールド空間での向き（親 + ローカルクォータニオンの合成、キャッシュ済み）。
+    ///
+    /// このノードまたは祖先の向きが変更された場合のみ再計算されます
+    /// （``worldTransform`` と同じ dirty フラグ機構）。
     public var worldOrientation: simd_quatf {
-        if let parent = parent {
-            return parent.worldOrientation * orientation
+        if _worldOrientationDirty {
+            if let parent = parent {
+                _cachedWorldOrientation = parent.worldOrientation * orientation
+            } else {
+                _cachedWorldOrientation = orientation
+            }
+            _worldOrientationDirty = false
         }
-        return orientation
+        return _cachedWorldOrientation
     }
 
     /// このノードを指定ワールド空間ターゲットに向けます。
+    ///
+    /// forward（-Z）がターゲット方向を向き、up（+Y）が可能なかぎり `worldUp` に
+    /// 揃うよう直交基底から向きを構築します。ターゲット方向が `worldUp` とほぼ
+    /// 平行な場合は代替アップベクトルを使ってロールの不定を回避します。
+    /// ターゲットが自身のワールド位置と一致する場合は何もしません。
     ///
     /// - Parameters:
     ///   - target: 注視するポイント。
@@ -316,27 +340,29 @@ public final class Node {
         let worldPos = SIMD3<Float>(worldTransform.columns.3.x,
                                      worldTransform.columns.3.y,
                                      worldTransform.columns.3.z)
-        let dir = normalize(target - worldPos)
-        let forward = SIMD3<Float>(0, 0, -1)
+        let delta = target - worldPos
+        guard simd_length(delta) > 1e-6 else { return }
+        let dir = normalize(delta)
 
-        let dotVal = dot(forward, dir)
-        if dotVal > 0.9999 {
-            orientation = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))
-            return
+        // worldUp が縮退している場合は既定の +Y を使う
+        var upRef = simd_length(worldUp) > 1e-6 ? normalize(worldUp) : SIMD3<Float>(0, 1, 0)
+        // dir と worldUp がほぼ平行だと right が定まらない（ロール不定）ため、
+        // 代替アップベクトルへ切り替える
+        if abs(dot(dir, upRef)) > 0.9999 {
+            upRef = abs(dir.z) < 0.9 ? SIMD3(0, 0, 1) : SIMD3(1, 0, 0)
         }
-        if dotVal < -0.9999 {
-            orientation = simd_quatf(angle: .pi, axis: worldUp)
-            return
-        }
 
-        let axis = normalize(cross(forward, dir))
-        let angle = acos(dotVal)
-        var q = simd_quatf(angle: angle, axis: axis)
+        // forward(-Z)/right/up の直交基底からワールド空間の向きを構築
+        // （worldUp を反映し、特異ケースも同じ経路で扱う）
+        let zAxis = -dir
+        let xAxis = normalize(cross(upRef, zAxis))
+        let yAxis = cross(zAxis, xAxis)
+        var q = simd_quatf(float3x3(columns: (xAxis, yAxis, zAxis)))
 
-        // 親の回転の寄与を除去
+        // 親の回転の寄与を除去してローカル向きへ変換
         if let parent = parent {
             q = parent.worldOrientation.inverse * q
         }
-        orientation = q
+        orientation = simd_normalize(q)
     }
 }
