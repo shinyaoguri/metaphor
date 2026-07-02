@@ -172,6 +172,28 @@ struct MetaphorRendererTests {
         #expect(renderer.plugin(id: "shutdown-mock") == nil)
     }
 
+    /// レンダリング直後に renderer を破棄しても inflightSemaphore の dispose で
+    /// クラッシュしない（旧: テスト側の Thread.sleep(0.2) 回避策の根治）。
+    /// セマフォは完了ハンドラが直接キャプチャするため、renderer の解放が
+    /// GPU 完了に先行しても signal が失われない。
+    @Test("renderer can be destroyed immediately after rendering")
+    func immediateTeardownAfterRender() throws {
+        // shutdown() 経由（in-flight drain を通る）
+        for _ in 0..<5 {
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.useExternalRenderLoop = true
+            renderer.renderFrame()
+            renderer.shutdown()
+        }
+        // shutdown() を介さない即時 dealloc（スコープ離脱）
+        for _ in 0..<5 {
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.useExternalRenderLoop = true
+            renderer.renderFrame()
+            renderer.renderFrame()
+        }
+    }
+
     /// オフスクリーンカラーテクスチャの中心ピクセルを読み戻すヘルパー（BGRA→RGB）。
     private func readbackCenterPixel(
         renderer: MetaphorRenderer
