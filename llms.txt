@@ -210,7 +210,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
 - `func loadModel(_ path: String, normalize: Bool = true) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
 - `func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
-- `func loadPixels()` -- ピクセルバッファを直接ピクセル操作用に準備します。
+- `func loadPixels()` -- キャンバスの内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
 - `func loadVideo(_ path: String) throws -> VideoPlayer` -- 再生用のビデオファイルを読み込みます。
 - `func loop()` -- アニメーションループを再開します。
