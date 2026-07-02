@@ -15,18 +15,6 @@ extension Sketch {
         }
         return Physics2D(cellSize: cellSize)
     }
-
-    /// ``createPhysics2D(cellSize:)`` の検証付きバリアント。
-    ///
-    /// - Parameter cellSize: ブロードフェーズ衝突検出用の空間ハッシュセルサイズ（正の値）。
-    /// - Returns: 新しい ``MetaphorPhysics/Physics2D`` インスタンス。
-    @available(*, deprecated, message: "検証は createPhysics2D(cellSize:) に統合されました（ADR-0005。次の minor で削除予定）")
-    public func makePhysics2D(cellSize: Float = 50) throws -> Physics2D {
-        guard cellSize > 0 else {
-            throw MetaphorError.invalidParameter("cellSize は正の値である必要があります (指定: \(cellSize))")
-        }
-        return Physics2D(cellSize: cellSize)
-    }
 }
 
 // MARK: - Node ↔ Physics2D ブリッジ
