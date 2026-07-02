@@ -67,9 +67,19 @@ public final class MLTextureConverter {
     // MARK: - MTLTexture -> CVPixelBuffer
 
     /// MTLTexture をコピーベースのアプローチで CVPixelBuffer に変換します。
-    /// - Parameter texture: 入力テクスチャ（bgra8Unorm）。
+    ///
+    /// - Important: `.private` ストレージのテクスチャでは GPU コピーの完了を
+    ///   **同期的に待ちます**（`waitUntilCompleted`）。`draw()` 内で毎フレーム
+    ///   呼ぶとフレーム落ちの原因になります。
+    /// - Parameter texture: 入力テクスチャ（bgra8Unorm のみ対応）。
     /// - Returns: kCVPixelFormatType_32BGRA 形式の CVPixelBuffer。失敗時は nil。
     public func pixelBuffer(from texture: MTLTexture) -> CVPixelBuffer? {
+        // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
+        // チャンネル化けになる前に弾く
+        guard texture.pixelFormat == .bgra8Unorm else {
+            print("[metaphor] MLTextureConverter.pixelBuffer(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
+            return nil
+        }
         let width = texture.width
         let height = texture.height
 
@@ -176,9 +186,19 @@ public final class MLTextureConverter {
     // MARK: - MTLTexture -> CGImage
 
     /// MTLTexture を CGImage に変換します。
-    /// - Parameter texture: 入力 Metal テクスチャ。
+    ///
+    /// - Important: `.private` ストレージのテクスチャでは GPU コピーの完了を
+    ///   **同期的に待ちます**（`waitUntilCompleted`）。`draw()` 内で毎フレーム
+    ///   呼ぶとフレーム落ちの原因になります。
+    /// - Parameter texture: 入力 Metal テクスチャ（bgra8Unorm のみ対応）。
     /// - Returns: CGImage。失敗時は nil。
     public func cgImage(from texture: MTLTexture) -> CGImage? {
+        // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
+        // チャンネル化けになる前に弾く
+        guard texture.pixelFormat == .bgra8Unorm else {
+            print("[metaphor] MLTextureConverter.cgImage(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
+            return nil
+        }
         let width = texture.width
         let height = texture.height
         let bytesPerRow = width * 4
@@ -248,47 +268,35 @@ public final class MLTextureConverter {
         func elementOffset(x: Int, y: Int) -> Int {
             y * strides[rowDimension] + x * strides[columnDimension]
         }
-        let elementCapacity = max(multiArray.count, elementOffset(x: width - 1, y: height - 1) + 1)
+        // deprecated な dataPointer の代わりに withUnsafeBytes を使う
+        // （型は dataType と一致させる必要があるため switch 側で分岐する。
+        // withUnsafeBufferPointer(ofType:) は Float16/Int8 の scalar conformance が
+        // macOS 15/26 以降のため、macOS 14 でも使える raw バイト API を採用）
+        func copyElements<T>(_ type: T.Type, _ convert: (T) -> Float) {
+            multiArray.withUnsafeBytes { raw in
+                let buf = raw.bindMemory(to: T.self)
+                for y in 0..<height {
+                    for x in 0..<width {
+                        floatData[y * width + x] = convert(buf[elementOffset(x: x, y: y)])
+                    }
+                }
+            }
+        }
 
         switch multiArray.dataType {
         case .float32:
-            let ptr = multiArray.dataPointer.bindMemory(to: Float.self, capacity: elementCapacity)
-            for y in 0..<height {
-                for x in 0..<width {
-                    floatData[y * width + x] = ptr[elementOffset(x: x, y: y)]
-                }
-            }
+            copyElements(Float.self) { $0 }
         case .double:
-            let ptr = multiArray.dataPointer.bindMemory(to: Double.self, capacity: elementCapacity)
-            for y in 0..<height {
-                for x in 0..<width {
-                    floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
-                }
-            }
+            copyElements(Double.self) { Float($0) }
         case .int32:
-            let ptr = multiArray.dataPointer.bindMemory(to: Int32.self, capacity: elementCapacity)
-            for y in 0..<height {
-                for x in 0..<width {
-                    floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
-                }
-            }
+            copyElements(Int32.self) { Float($0) }
         case .float16:
-            let ptr = multiArray.dataPointer.bindMemory(to: Float16.self, capacity: elementCapacity)
-            for y in 0..<height {
-                for x in 0..<width {
-                    floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
-                }
-            }
+            copyElements(Float16.self) { Float($0) }
         default:
             // MLMultiArrayDataType.int8 (rawValue 131080) は macOS 26.0+ SDK でのみ利用可能なため、
             // 古い SDK でのコンパイルエラーを避けるために rawValue で比較します。
             if multiArray.dataType.rawValue == 131080 {
-                let ptr = multiArray.dataPointer.bindMemory(to: Int8.self, capacity: elementCapacity)
-                for y in 0..<height {
-                    for x in 0..<width {
-                        floatData[y * width + x] = Float(ptr[elementOffset(x: x, y: y)])
-                    }
-                }
+                copyElements(Int8.self) { Float($0) }
             } else {
                 print("[metaphor] Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
                 return nil

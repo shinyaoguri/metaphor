@@ -19,7 +19,9 @@ enum NoiseTextureBuilder {
 
         var pixels = [UInt8](repeating: 255, count: width * height * 4)
         for i in 0..<values.count {
-            let v = UInt8(max(0, min(255, values[i] * 255)))
+            // NaN/∞ を明示的に弾く（UInt8 変換に非有限値を渡さない）
+            let scaled = values[i] * 255
+            let v = scaled.isFinite ? UInt8(max(0, min(255, scaled))) : 0
             let j = i * 4
             pixels[j]     = v   // B
             pixels[j + 1] = v   // G
@@ -34,7 +36,8 @@ enum NoiseTextureBuilder {
             mipmapped: false
         )
         desc.usage = [.shaderRead]
-        desc.storageMode = .managed
+        // Apple Silicon 専用のため UMA の .shared を使う
+        desc.storageMode = .shared
 
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         tex.replace(
@@ -82,7 +85,8 @@ enum NoiseTextureBuilder {
             mipmapped: false
         )
         desc.usage = [.shaderRead]
-        desc.storageMode = .managed
+        // Apple Silicon 専用のため UMA の .shared を使う
+        desc.storageMode = .shared
 
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         tex.replace(
