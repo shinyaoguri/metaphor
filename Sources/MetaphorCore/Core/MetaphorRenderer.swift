@@ -798,6 +798,19 @@ public final class MetaphorRenderer: NSObject {
             from: MTLRegionMake2D(0, 0, width, height),
             mipmapLevel: 0
         )
+        writePNG(bgraPixels: pixels, width: width, height: height, path: path)
+    }
+
+    /// BGRA バイト列を PNG として書き出します（テクスチャ読み出し済みのデータ用）。
+    ///
+    /// テクスチャからの読み出し（軽い memcpy）とエンコード + ディスク I/O（重い）を
+    /// 分離できるため、完了ハンドラ内でスロットを保持したまま重い処理を行いたくない
+    /// 呼び出し元（``FrameExporter`` 等）はこちらを使います。
+    nonisolated static func writePNG(
+        bgraPixels: [UInt8], width: Int, height: Int, path: String
+    ) {
+        let bytesPerRow = width * 4
+        var pixels = bgraPixels
 
         // BGRA -> RGBA
         for i in stride(from: 0, to: pixels.count, by: 4) {

@@ -63,8 +63,12 @@ public final class GIFExporter {
     /// `CGImageDestinationAddImage` を直列化するキュー
     private let writerQueue = DispatchQueue(label: "metaphor.GIFExporter.writer")
 
-    /// 未完了書き込みの追跡。`endRecord` で `wait()` してドレインしてからファイナライズする
-    private let pendingWrites = DispatchGroup()
+    /// 未完了書き込みの追跡。`endRecord` で `wait()` してドレインしてからファイナライズする。
+    ///
+    /// セッションごとに `beginRecord` で新規作成します。共有のままだと、旧セッションの
+    /// `notify` 待機中に次の録画の `enter()` が発火を先送りし、連続録画で旧ファイルの
+    /// ファイナライズが実質保留になるためです。
+    private var pendingWrites = DispatchGroup()
 
     /// キャプチャ幅（ピクセル、0 ならソーステクスチャ依存）
     private var captureWidth: Int = 0
@@ -103,6 +107,7 @@ public final class GIFExporter {
         self.ringWidth = 0
         self.ringHeight = 0
         self.stagingRing.removeAll()
+        self.pendingWrites = DispatchGroup()
 
         let tempName = "metaphor_gif_\(UUID().uuidString).gif"
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(tempName)
@@ -165,15 +170,26 @@ public final class GIFExporter {
         if stagingRing.isEmpty || ringWidth != w || ringHeight != h {
             // 既存リングのドレイン: 全 in-flight が signal するまで待つ
             for _ in 0..<Self.ringSize { inFlightSemaphore.wait() }
-            stagingRing = (0..<Self.ringSize).compactMap { _ in
+            let newRing = (0..<Self.ringSize).compactMap { _ in
                 makeStaging(device: device, width: w, height: h)
             }
+            // セマフォを ringSize 分だけ復帰
+            for _ in 0..<Self.ringSize { inFlightSemaphore.signal() }
+
+            guard newRing.count == Self.ringSize else {
+                // 部分失敗: 寸法を確定させると次回の再構築がスキップされ、
+                // stagingRing[ringIndex] が範囲外になる。状態を空へ戻して
+                // 次フレームで全数を再試行する（このフレームはスキップ）。
+                stagingRing.removeAll()
+                ringWidth = 0
+                ringHeight = 0
+                metaphorWarning("GIFExporter: staging ring allocation failed (\(newRing.count)/\(Self.ringSize)); frame skipped")
+                return
+            }
+            stagingRing = newRing
             ringWidth = w
             ringHeight = h
             ringIndex = 0
-            // セマフォを ringSize 分だけ復帰
-            for _ in 0..<Self.ringSize { inFlightSemaphore.signal() }
-            guard stagingRing.count == Self.ringSize else { return }
         }
 
         // Backpressure: in-flight が ringSize 未満になるまで待つ（通常は即時通過）
