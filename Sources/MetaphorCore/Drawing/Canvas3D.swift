@@ -172,6 +172,9 @@ public final class Canvas3D: CanvasStyle {
     }
 
     private var meshCache: [String: CachedMesh] = [:]
+
+    /// テスト用: 現在のメッシュキャッシュのエントリ数。
+    var meshCacheCountForTesting: Int { meshCache.count }
     private var meshCacheFrameCounter: Int = 0
     private static let maxMeshCacheSize = 64
 
@@ -466,9 +469,14 @@ public final class Canvas3D: CanvasStyle {
     ///   - height: ボックスの高さ。
     ///   - depth: ボックスの奥行き。
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
-        let key = "box_\(width)_\(height)_\(depth)"
-        guard let mesh = cachedMesh(key: key, create: { try Mesh.box(device: device, width: width, height: height, depth: depth) }) else { return }
-        drawMesh(mesh)
+        // 単位メッシュをキャッシュし、寸法はモデル変換へ畳み込む。
+        // 寸法入りキー（"box_w_h_d"）だと box(sin(t)*100) のような寸法アニメーションで
+        // 毎フレーム新規メッシュ生成 + キャッシュ追い出しが起きる。法線は
+        // normalMatrix（逆転置）で補正されるため非一様スケールでも正しい。
+        guard let mesh = cachedMesh(key: "box_unit", create: {
+            try Mesh.box(device: device, width: 1, height: 1, depth: 1)
+        }) else { return }
+        drawMeshScaled(mesh, scale: SIMD3(width, height, depth))
     }
 
     /// 同じ寸法の立方体を描画します。
@@ -483,9 +491,12 @@ public final class Canvas3D: CanvasStyle {
     ///   - detail: 経度方向のセグメント数（リングはここから導出されます）。
     public func sphere(_ radius: Float, detail: Int = 24) {
         let rings = max(detail / 2, 4)
-        let key = "sphere_\(radius)_\(detail)_\(rings)"
-        guard let mesh = cachedMesh(key: key, create: { try Mesh.sphere(device: device, radius: radius, segments: detail, rings: rings) }) else { return }
-        drawMesh(mesh)
+        // 半径はモデル変換へ畳み込み、キーはテッセレーション詳細度のみにする
+        let key = "sphere_unit_\(detail)_\(rings)"
+        guard let mesh = cachedMesh(key: key, create: {
+            try Mesh.sphere(device: device, radius: 1, segments: detail, rings: rings)
+        }) else { return }
+        drawMeshScaled(mesh, scale: SIMD3(repeating: radius))
     }
 
     /// 指定した寸法で平面を描画します。
@@ -494,9 +505,10 @@ public final class Canvas3D: CanvasStyle {
     ///   - width: 平面の幅。
     ///   - height: 平面の高さ。
     public func plane(_ width: Float, _ height: Float) {
-        let key = "plane_\(width)_\(height)"
-        guard let mesh = cachedMesh(key: key, create: { try Mesh.plane(device: device, width: width, height: height) }) else { return }
-        drawMesh(mesh)
+        guard let mesh = cachedMesh(key: "plane_unit", create: {
+            try Mesh.plane(device: device, width: 1, height: 1)
+        }) else { return }
+        drawMeshScaled(mesh, scale: SIMD3(width, height, 1))
     }
 
     /// 指定した半径、高さ、テッセレーション詳細度で円柱を描画します。
@@ -506,9 +518,11 @@ public final class Canvas3D: CanvasStyle {
     ///   - height: 円柱の高さ。
     ///   - detail: 放射方向のセグメント数。
     public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
-        let key = "cylinder_\(radius)_\(height)_\(detail)"
-        guard let mesh = cachedMesh(key: key, create: { try Mesh.cylinder(device: device, radius: radius, height: height, segments: detail) }) else { return }
-        drawMesh(mesh)
+        let key = "cylinder_unit_\(detail)"
+        guard let mesh = cachedMesh(key: key, create: {
+            try Mesh.cylinder(device: device, radius: 1, height: 1, segments: detail)
+        }) else { return }
+        drawMeshScaled(mesh, scale: SIMD3(radius, height, radius))
     }
 
     /// 指定した半径、高さ、テッセレーション詳細度で円錐を描画します。
@@ -518,9 +532,11 @@ public final class Canvas3D: CanvasStyle {
     ///   - height: 円錐の高さ。
     ///   - detail: 放射方向のセグメント数。
     public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
-        let key = "cone_\(radius)_\(height)_\(detail)"
-        guard let mesh = cachedMesh(key: key, create: { try Mesh.cone(device: device, radius: radius, height: height, segments: detail) }) else { return }
-        drawMesh(mesh)
+        let key = "cone_unit_\(detail)"
+        guard let mesh = cachedMesh(key: key, create: {
+            try Mesh.cone(device: device, radius: 1, height: 1, segments: detail)
+        }) else { return }
+        drawMeshScaled(mesh, scale: SIMD3(radius, height, radius))
     }
 
     /// 指定したリング半径とチューブ半径でトーラスを描画します。
@@ -565,6 +581,21 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
+    /// スケールをモデル変換へ一時的に畳み込んでメッシュを描画します。
+    ///
+    /// 単位メッシュ + スケールでプリミティブの寸法アニメーションによる
+    /// メッシュキャッシュ churn を防ぐ。スケール成分 0 は normalMatrix
+    /// （逆転置）が特異になるため微小値へ退避する。
+    private func drawMeshScaled(_ mesh: Mesh, scale: SIMD3<Float>) {
+        func safe(_ v: Float) -> Float { v == 0 ? 1e-6 : v }
+        let saved = currentTransform
+        currentTransform = currentTransform * float4x4(
+            scale: SIMD3(safe(scale.x), safe(scale.y), safe(scale.z))
+        )
+        drawMesh(mesh)
+        currentTransform = saved
+    }
+
     /// ビルド済みメッシュを描画します。
     ///
     /// - Parameter mesh: 描画するメッシュ。
@@ -574,10 +605,21 @@ public final class Canvas3D: CanvasStyle {
     ///
     /// - Parameter mesh: 描画するダイナミックメッシュ。
     public func dynamicMesh(_ mesh: DynamicMesh) {
+        guard hasFill || hasStroke else { return }
+
+        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: 現在の内容を不変の
+        // Mesh として複製し、drawMesh の記録経路（DrawCall3D）に載せる。従来は
+        // encoder 必須の即時経路しかなく、記録フレームでは本体が消失していた（#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let snapshot = mesh.makeSnapshotMesh() {
+                drawMesh(snapshot)
+            }
+            return
+        }
+
         mesh.ensureBuffers()
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
-        guard hasFill || hasStroke else { return }
 
         // DynamicMesh はインスタンシング対象外
         flushInstanceBatch()
@@ -795,8 +837,21 @@ public final class Canvas3D: CanvasStyle {
 
     // テッセレーション済み 3D 頂点配列を塗りつぶし・ワイヤーフレームパスで描画
     private func drawShape3DVertices(_ vertices: [Vertex3D]) {
-        guard let encoder = encoder, !vertices.isEmpty else { return }
+        guard !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
+
+        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: テッセレーション済み頂点を
+        // 一時 Mesh 化して drawMesh の記録経路（DrawCall3D）に載せる。従来は
+        // encoder 必須の即時経路しかなく、記録フレームでは本体が描画されず
+        // シャドウにも落ちなかった（#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil) {
+                drawMesh(mesh)
+            }
+            return
+        }
+
+        guard let encoder = encoder else { return }
 
         // beginShape/endShape は個別頂点描画を使用するため、インスタンスバッチをフラッシュ
         flushInstanceBatch()
@@ -954,8 +1009,28 @@ public final class Canvas3D: CanvasStyle {
 
     // 各頂点を小さな三角形として描画し、ポイントをシミュレート
     private func drawShape3DPoints() {
-        guard let encoder = encoder else { return }
         guard !shapeVertices3D.isEmpty else { return }
+
+        // すべての頂点の三角形を単一バッチで構築
+        var allVerts: [Vertex3D] = []
+        allVerts.reserveCapacity(shapeVertices3D.count * 3)
+
+        let s: Float = 0.5
+        for v in shapeVertices3D {
+            allVerts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
+        }
+
+        // 記録経路: 一時 Mesh 化して DrawCall3D として記録（#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let mesh = try? Mesh(device: device, vertices: allVerts, indices: nil) {
+                drawMesh(mesh)
+            }
+            return
+        }
+
+        guard let encoder = encoder else { return }
 
         // 他の endShape パスと同様、先に保留中のインスタンスバッチを確定して
         // 描画順序を保つ（これがないとポイントがバッチ済みシェイプより先に
@@ -970,17 +1045,6 @@ public final class Canvas3D: CanvasStyle {
             encoder.setDepthStencilState(depthState)
         }
         encoder.setCullMode(.none)
-
-        // すべての頂点の三角形を単一バッチで構築
-        var allVerts: [Vertex3D] = []
-        allVerts.reserveCapacity(shapeVertices3D.count * 3)
-
-        let s: Float = 0.5
-        for v in shapeVertices3D {
-            allVerts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
-            allVerts.append(Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color))
-            allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
-        }
 
         var uniforms = Canvas3DUniforms(
             modelMatrix: currentTransform,
