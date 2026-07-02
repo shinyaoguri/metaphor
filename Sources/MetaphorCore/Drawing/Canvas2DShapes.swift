@@ -255,8 +255,9 @@ extension Canvas2D {
         if hasStroke {
             // 描画順序を保つため、ストローク前にインスタンスバッチをフラッシュ
             flushInstancedBatch()
-            let step = Float.pi * 2.0 / Float(ellipseSegments)
-            for i in 0..<ellipseSegments {
+            let segments = ellipseSegments(forRadius: max(rx, ry))
+            let step = Float.pi * 2.0 / Float(segments)
+            for i in 0..<segments {
                 let a0 = step * Float(i)
                 let a1 = step * Float(i + 1)
                 let px0 = cx + rx * cos(a0)
@@ -354,7 +355,8 @@ extension Canvas2D {
         let rx = w * 0.5
         let ry = h * 0.5
         let arcLength = stopAngle - startAngle
-        let segments = max(4, Int(Float(ellipseSegments) * abs(arcLength) / (Float.pi * 2)))
+        let full = ellipseSegments(forRadius: max(rx, ry))
+        let segments = max(4, Int(Float(full) * abs(arcLength) / (Float.pi * 2)))
         let step = arcLength / Float(segments)
 
         if hasFill {
