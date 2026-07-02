@@ -49,6 +49,9 @@ public final class ImageFilterGPU {
         self.shaderLibrary = shaderLibrary
     }
 
+    /// テスト用: MPS ガウシアンカーネルキャッシュの現在のエントリ数。
+    var _gaussianCacheCountForTesting: Int { gaussianCache.count }
+
     // MARK: - キャッシュ管理
 
     /// テクスチャプール、ウェイトバッファ、コンパイル済みカーネルを含む全キャッシュをクリアします。
@@ -83,6 +86,31 @@ public final class ImageFilterGPU {
         }
     }
 
+    /// MPS カーネルキャッシュの上限。sigma 等の Float 値がキーのため、パラメータを
+    /// アニメーションさせるとカーネルが際限なく増える。超過時は全クリアする
+    /// （カーネル生成は軽量で、アニメーション中はどのみちヒットしない）。
+    private func pruneMPSKernelCaches(maxEntries: Int = 16) {
+        if gaussianCache.count > maxEntries { gaussianCache.removeAll() }
+        if areaMinCache.count > maxEntries { areaMinCache.removeAll() }
+        if areaMaxCache.count > maxEntries { areaMaxCache.removeAll() }
+        if medianCache.count > maxEntries { medianCache.removeAll() }
+        if thresholdCache.count > maxEntries { thresholdCache.removeAll() }
+    }
+
+    /// フィルター適用で不要になった旧テクスチャをプールへ返却します。
+    ///
+    /// 出力テクスチャは `replaceTexture` で画像に所有権が移るため、返却経路が
+    /// ないと毎フレーム フルサイズ private テクスチャを新規確保することになる。
+    /// プール由来の特性（private / bgra8 / shaderWrite）を満たすものだけ受け入れる
+    /// （ユーザー由来のテクスチャを誤って共有しない）。
+    private func recycleIntoPool(_ texture: MTLTexture, tag: String) {
+        guard texture.storageMode == .private,
+              texture.pixelFormat == .bgra8Unorm,
+              texture.usage.contains(.shaderWrite),
+              texture.usage.contains(.shaderRead) else { return }
+        texturePool["\(texture.width)_\(texture.height)_\(tag)"] = texture
+    }
+
     // MARK: - パブリック API
 
     /// テクスチャをインプレースで置換してフィルターを画像に適用します。
@@ -100,6 +128,7 @@ public final class ImageFilterGPU {
         // 異なるサイズのキャッシュエントリを自動パージ
         pruneTexturePool(keepWidth: w, keepHeight: h)
         pruneWeightBufferCache()
+        pruneMPSKernelCaches()
 
         // MPS フィルターは専用の MPS パスに委譲
         switch filter {
@@ -131,32 +160,34 @@ public final class ImageFilterGPU {
         }
 
         image.replaceTexture(outTex)
-        // 所有権が画像に移ったため、出力テクスチャをプールから削除
+        // 所有権が画像に移ったため、出力テクスチャをプールから削除し、
+        // 不要になった旧テクスチャを次回の出力用に返却する（毎フレームの新規確保を防止）
         texturePool.removeValue(forKey: "\(w)_\(h)_output")
+        recycleIntoPool(srcTex, tag: "output")
     }
 
     /// コマンドバッファにフィルター操作をエンコードします（コミットや待機なし）。
     ///
     /// リアルタイムレンダリングループ内で使用するノンブロッキングバリアントです。
-    /// MPS フィルターはこのパスではサポートされません。非 MPS フィルタータイプのみ使用してください。
+    /// MPS フィルターも外部コマンドバッファへエンコードされます（待機なし）。
     /// - Parameters:
     ///   - filter: エンコードするフィルタータイプ
     ///   - image: テクスチャが置換される対象画像
     ///   - commandBuffer: エンコード先のコマンドバッファ
     public func encode(_ filter: FilterType, to image: MImage, commandBuffer: MTLCommandBuffer) {
-        // MPS フィルターはこのノンブロッキング経路では未対応。黙ってグレースケールに
-        // 化けさせず、明示的に拒否する（MPS は同期版の apply() を使うこと）。
-        switch filter {
-        case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
-            metaphorWarning("ImageFilterGPU.encode does not support MPS filters (\(filter)); skipping. Use apply() for MPS filters.")
-            return
-        default:
-            break
-        }
-
         let srcTex = image.texture
         let w = srcTex.width
         let h = srcTex.height
+
+        // MPS フィルターは MPS カーネルを外部コマンドバッファへ直接エンコード
+        if let mpsKernel = mpsKernel(for: filter) {
+            guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output") else { return }
+            mpsKernel.encode(commandBuffer: commandBuffer, sourceTexture: srcTex, destinationTexture: dst)
+            image.replaceTexture(dst)
+            texturePool.removeValue(forKey: "\(w)_\(h)_mps_output")
+            recycleIntoPool(srcTex, tag: "mps_output")
+            return
+        }
 
         guard let outTex = getOrCreateTexture(width: w, height: h, tag: "output") else { return }
 
@@ -169,10 +200,29 @@ public final class ImageFilterGPU {
 
         image.replaceTexture(outTex)
         texturePool.removeValue(forKey: "\(w)_\(h)_output")
+        recycleIntoPool(srcTex, tag: "output")
+    }
+
+    /// MPS フィルターに対応するカーネルを返します（非 MPS フィルターは nil）。
+    private func mpsKernel(for filter: FilterType) -> MPSUnaryImageKernel? {
+        switch filter {
+        case .mpsBlur(let sigma): return getOrCreateGaussian(sigma: sigma)
+        case .mpsSobel: return getOrCreateSobel()
+        case .mpsLaplacian: return getOrCreateLaplacian()
+        case .mpsErode(let radius): return getOrCreateAreaMin(size: radius * 2 + 1)
+        case .mpsDilate(let radius): return getOrCreateAreaMax(size: radius * 2 + 1)
+        case .mpsMedian(let diameter): return getOrCreateMedian(diameter: diameter)
+        case .mpsThreshold(let value): return getOrCreateThreshold(value: value)
+        default: return nil
+        }
     }
 
     // MARK: - Private: MPS フィルター適用
 
+    /// MPS フィルターを同期適用します（コミット + GPU 完了待ち）。
+    ///
+    /// メインスレッドをストールさせるため毎フレームの使用は非推奨。
+    /// レンダリングループ内では ``encode(_:to:commandBuffer:)`` を使うこと。
     private func applyMPS(_ image: MImage, kernel: () -> MPSUnaryImageKernel) {
         let src = image.texture
         let w = src.width, h = src.height
@@ -183,6 +233,7 @@ public final class ImageFilterGPU {
         cb.waitUntilCompleted()
         image.replaceTexture(dst)
         texturePool.removeValue(forKey: "\(w)_\(h)_mps_output")
+        recycleIntoPool(src, tag: "mps_output")
     }
 
     private func getOrCreateGaussian(sigma: Float) -> MPSImageGaussianBlur {

@@ -61,7 +61,15 @@ public final class BloomEffect: PostEffect {
             fragmentName: PostProcessShaders.FunctionName.postBloomExtract, params: params
         )
         // 2. Kawase ブラー: output → scratch
-        guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else { return }
+        guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else {
+            // スクラッチ確保失敗時は「輝度抽出のみ」の画像を出力せず、ソースを
+            // そのままパススルーする（output には手順 1 の抽出結果が残っているため）
+            if let blit = commandBuffer.makeBlitCommandEncoder() {
+                blit.copy(from: input, to: output)
+                blit.endEncoding()
+            }
+            return
+        }
         context.applyKawaseBlur(commandBuffer: commandBuffer, source: output, output: scratch, iterations: 4)
         // 3. コンポジット: 元画像 + ブルーム → output
         context.renderCompositePass(
@@ -90,7 +98,14 @@ public final class BlurEffect: PostEffect {
         } else {
             let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
             let params = PostProcessParams(texelSize: texelSize, radius: radius)
-            guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else { return }
+            guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else {
+                // スクラッチ確保失敗時は未初期化の output を出さずソースをパススルー
+                if let blit = commandBuffer.makeBlitCommandEncoder() {
+                    blit.copy(from: input, to: output)
+                    blit.endEncoding()
+                }
+                return
+            }
             context.renderPass(
                 commandBuffer: commandBuffer, input: input, output: scratch,
                 fragmentName: PostProcessShaders.FunctionName.postBlurH, params: params
