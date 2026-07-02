@@ -55,6 +55,8 @@ public final class ParameterGUI {
 
     /// 現在ドラッグ中のスライダーID
     private var activeSliderID: String?
+    /// フレーム内のウィジェット通し番号（同一ラベルの ID 衝突を防ぐ）
+    private var widgetCounter: Int = 0
     /// 次のウィジェットの累積Y位置
     private var currentY: Float = 0
     /// レイアウト後の計算済みパネル幅
@@ -72,6 +74,7 @@ public final class ParameterGUI {
         currentY = y + padding
         panelWidth = widgetWidth + padding * 2
         panelHeight = 0
+        widgetCounter = 0
     }
 
     /// 現在のGUIレイアウトフレームを終了します（`draw()` の末尾で呼び出し）。
@@ -126,16 +129,22 @@ public final class ParameterGUI {
         canvas.pop()
 
         // マウスインタラクション
+        // ID にレイアウト通し番号を混ぜて一意化（同一ラベルのスライダーや
+        // colorPicker 複数配置での R/G/B 同時ドラッグを防ぐ）
+        widgetCounter += 1
         let mx = input.mouseX
         let my = input.mouseY
-        let id = "slider.\(label)"
+        let id = "slider.\(widgetCounter).\(label)"
 
         if input.isMouseDown {
-            if activeSliderID == id ||
-               (activeSliderID == nil &&
-                mx >= sliderX && mx <= sliderX + widgetWidth &&
-                my >= trackY && my <= trackY + sliderHeight) {
+            // 押下エッジ + トラック上のときだけ掴む（押したままトラックを
+            // 通過しても途中から掴まない）
+            if activeSliderID == nil, !wasMouseDown,
+               mx >= sliderX, mx <= sliderX + widgetWidth,
+               my >= trackY, my <= trackY + sliderHeight {
                 activeSliderID = id
+            }
+            if activeSliderID == id {
                 let t = (mx - sliderX) / widgetWidth
                 value = minVal + (maxVal - minVal) * max(0, min(1, t))
             }

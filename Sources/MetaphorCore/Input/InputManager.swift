@@ -183,7 +183,34 @@ public final class InputManager {
     /// キー解放イベントの処理
     func handleKeyUp(keyCode: UInt16) {
         pressedKeys.remove(keyCode)
+        // 最後に押されたキーの解放（または全キー解放）でリピートフラグを戻す
+        if keyCode == lastKeyCode || pressedKeys.isEmpty {
+            isKeyRepeat = false
+        }
         onKeyUp?(keyCode)
+    }
+
+    /// 修飾キー状態変化イベントの処理。
+    ///
+    /// 修飾キーは `keyDown`/`keyUp` を発生させないため、`flagsChanged` から
+    /// 各修飾キーの押下状態を `pressedKeys` に同期します（`isKeyDown(SHIFT)` 等を
+    /// 機能させる）。左右どちらのキーでも `SHIFT`/`CONTROL`/`OPTION`/`COMMAND` の
+    /// 正規キーコードで報告されます。コールバック（onKeyDown/onKeyUp）は
+    /// 文字キー用のため発火しません。
+    func handleFlagsChanged(shift: Bool, control: Bool, option: Bool, command: Bool) {
+        syncModifier(keyCode: SHIFT, isDown: shift)
+        syncModifier(keyCode: CONTROL, isDown: control)
+        syncModifier(keyCode: OPTION, isDown: option)
+        syncModifier(keyCode: COMMAND, isDown: command)
+    }
+
+    /// 修飾キー 1 つの押下状態を `pressedKeys` に反映します。
+    private func syncModifier(keyCode: UInt16, isDown: Bool) {
+        if isDown {
+            pressedKeys.insert(keyCode)
+        } else {
+            pressedKeys.remove(keyCode)
+        }
     }
 
     /// マウススクロールイベントの処理
