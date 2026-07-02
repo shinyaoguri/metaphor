@@ -370,6 +370,81 @@ struct MetaphorProbePluginTests {
         }
     }
 
+    @Test("an unreadable request.json is retried on the next frame")
+    func unreadableRequestRetried() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.addPlugin(plugin)
+
+            try writeRequest(id: "retry-1", to: requestPath)
+            // 読み取り不可にして 1 フレーム回す（mtime は変わらない）
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o000], ofItemAtPath: requestPath.path
+            )
+            renderer.renderFrame()
+
+            // 読めるようにして再度回すと、同じ mtime のまま再試行されて処理される。
+            // 修正前は読み取り失敗の時点で mtime を消費し、永久に無視されていた
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o644], ofItemAtPath: requestPath.path
+            )
+            renderer.renderFrame()
+
+            #expect(waitForFrame(in: outputDir) != nil)
+            drainGPUWork()
+        }
+    }
+
+    @Test("a request arriving during a sequence is processed afterwards")
+    func requestDuringSequenceNotLost() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let outputDir = dir.appendingPathComponent("current")
+            let requestPath = dir.appendingPathComponent("request.json")
+            let plugin = MetaphorProbePlugin(
+                config: MetaphorProbeConfig(
+                    outputDirectory: outputDir.path,
+                    requestFilePath: requestPath.path
+                )
+            )
+
+            let renderer = try MetaphorRenderer(width: 32, height: 32)
+            renderer.addPlugin(plugin)
+
+            // frames=2 のシーケンスを開始
+            let seqRequest = try JSONSerialization.data(
+                withJSONObject: ["id": "seq-A", "frames": 2]
+            )
+            try seqRequest.write(to: requestPath)
+            renderer.renderFrame()  // シーケンス受理 + frame 0 採取
+
+            // シーケンス進行中に新しい単一リクエストが届く
+            try writeRequest(id: "single-B", to: requestPath)
+            renderer.renderFrame()  // frame 1 採取 → シーケンス完了
+            renderer.renderFrame()  // 完了後の pre() で single-B が処理される
+            renderer.renderFrame()
+
+            // 修正前はシーケンス中に mtime が消費され、single-B は永久に無視された
+            #expect(waitForFrame(in: outputDir) != nil)
+            let jsonURL = outputDir.appendingPathComponent("frame.json")
+            #expect(waitForFile(jsonURL))
+            let json = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: jsonURL)
+            ) as? [String: Any]
+            #expect(json?["id"] as? String == "single-B")
+
+            drainGPUWork()
+        }
+    }
+
     @Test("request scale 0.5 halves the PNG and frame.json size (contract point 4)")
     func scaleHalvesOutput() throws {
         try TempFileHelper.withTemporaryDirectory { dir in
@@ -502,6 +577,53 @@ struct ProbeWriterScaleTests {
 
         let odd = ProbeWriter.scaledSize(width: 65, height: 65, scale: 0.5)
         #expect(odd.width == 33 && odd.height == 33)
+    }
+}
+
+// MARK: - ProbeWriter failure response
+
+@Suite("ProbeWriter failure response")
+struct ProbeWriterFailureResponseTests {
+
+    @Test("writeFailureResponse writes frame.json with warnings and no PNG")
+    func failureResponseWritesJSONOnly() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let metadata = ProbeFrameMetadata(
+                schemaVersion: 4,
+                id: "fail-1",
+                label: nil,
+                sourceStamp: nil,
+                frame: 3,
+                time: 0.5,
+                size: ProbeFrameMetadata.Size(width: 64, height: 64),
+                custom: [:],
+                customTypes: [:],
+                warnings: ["failed to allocate staging texture; frame.png was not written"],
+                stats: nil
+            )
+            ProbeWriter.writeFailureResponse(directory: dir.path, metadata: metadata)
+
+            // 書き出しは専用キューで非同期に行われるためポーリングで待つ
+            let jsonURL = dir.appendingPathComponent("frame.json")
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline,
+                  !FileManager.default.fileExists(atPath: jsonURL.path) {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+
+            #expect(FileManager.default.fileExists(atPath: jsonURL.path))
+            #expect(!FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("frame.png").path
+            ))
+
+            let json = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: jsonURL)
+            ) as? [String: Any]
+            #expect(json?["id"] as? String == "fail-1")
+            let warnings = json?["warnings"] as? [String]
+            #expect(warnings?.count == 1)
+            #expect(warnings?.first?.contains("staging") == true)
+        }
     }
 }
 
