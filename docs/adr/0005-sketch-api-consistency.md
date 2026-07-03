@@ -67,7 +67,33 @@ API/Sketch 層レビュー（Issue #151）で、個別のバグではなく**設
 - 破壊的変更（make* 廃止・optional 除去・変換系の P3D 意味論）は 1.0 前の deprecation ウィンドウで別 Issue として実施。
 - 新 API 追加時は本 ADR の規約（適用先の doc 明記・エラー規約・Sketch 層正本）に従う。
 
+## Amendment（2026-07-03, Issue #221）
+
+事後レビューで判明した、本 ADR の記述と実装・運用のずれを是正する。
+
+### 1. Decision 4 の deprecation ウィンドウは守られなかった（記録）
+
+Decision 4 は「minor リリースで deprecation → 次の minor で削除」と定めたが、実際には
+deprecation（#203, フェーズ 2）と削除（#210, フェーズ 3）が同日に main へ入り、
+**どちらも v0.5.0 が初出リリース**になった。deprecation を含む状態のリリースは一度も
+公開されておらず、v0.4.0 利用者から見ると `make*` は警告期間なしで消えている。
+
+v0.5.0 は撤回しない（0.x の破壊的変更として許容し、移行ガイドは #210 に記載済み）。
+今後の deprecation は「**deprecation を含む minor を公開してから**、次の minor で削除する」
+——つまりウィンドウの単位は PR やフェーズではなく **公開されたリリース** であることを
+ここで再確認する。
+
+### 2. Decision 2「生成系 = typed throws」の適用範囲の明確化
+
+Decision 2 の「リソース生成・初期化 = typed throws」は **モジュール層のイニシャライザ**
+（`SourcePass.init` / `AudioAnalyzer.init` 等）に適用する。**Sketch 層ブリッジの `create*`**
+は Processing 風の手軽さを優先し、「受け口検証 + `metaphorWarning` + 安全なフォールバック
+（生成不能なら nil）」とする——これは #203 が実装し #210 の移行ガイド
+（「throws が必要な利用者は各モジュールのイニシャライザを直接呼ぶ」）が案内した規約の明文化であり、
+`Sketch+RenderGraphBridge.swift` が生成エラーを warning + nil に変換するのは本規約どおりの挙動である。
+
 ## References
 
 - Issue #151（論点の全リスト）、#150（受け口検証の統一）、#158（loadPixels の順序保証）
+- Issue #221（Amendment の経緯）、#200 / #203 / #210（create*/make* 統合の実施）
 - docs/ai/README.md「Invariants」（エラー報告・トリプルバッファ規約）
