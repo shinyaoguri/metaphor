@@ -149,15 +149,21 @@ public final class Physics2D {
         }
 
         // ブロードフェーズは 1 ステップ 1 回だけ構築し、反復間で候補ペアを
-        // 再利用する（反復ごとのハッシュ再構築と Set/配列確保を削減。反復中の
-        // 位置補正は重なりの解消分だけで、候補集合を変えるほど大きくない）
-        let pairs = broadphasePairs()
+        // 再利用する（反復ごとのハッシュ再構築と Set/配列確保を削減）。ただし
+        // 拘束（特にピン）はボディを任意距離テレポートさせ得るため、構築は
+        // **最初の拘束ソルブの後** に行う。2 反復目以降の位置補正は重なりの
+        // 解消分・収束方向の微修正だけで、候補集合を変えるほど大きくない
+        var pairs: [(Int, Int)] = []
 
         // 拘束と衝突を解決
-        for _ in 0..<iterations {
+        for iteration in 0..<iterations {
             // 拘束
             for c in constraints {
                 c.solve()
+            }
+
+            if iteration == 0 {
+                pairs = broadphasePairs()
             }
 
             // 衝突解消
