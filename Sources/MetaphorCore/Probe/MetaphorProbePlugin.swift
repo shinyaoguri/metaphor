@@ -359,7 +359,9 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let writeWork: @Sendable () -> Void = {
             ProbeWriter.writeSequenceFrame(
                 staging: staging, width: width, height: height, scale: scale,
-                directory: dir, index: index, metadata: metadata
+                directory: dir, index: index, metadata: metadata,
+                // 最初のフレームで前シーケンスの出力を（書き出しキュー上で）掃除する
+                cleanDirectoryFirst: index == 0
             )
             guard let manifestBase else { return }
             // contact sheet 合成と sequence.json（完了シグナル）の書き出しは
@@ -397,8 +399,13 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             warnings: seq.warnings + [extraWarning],
             frames: seq.entries
         )
+        // 1 フレームも書けずに終わる場合、前シーケンスの掃除がまだなので manifest
+        // 書き出し時に行う（フレームを書いた後なら掃除はフレーム 0 で実施済み）。
+        let cleanFirst = seq.captured == 0
         let work: @Sendable () -> Void = {
-            ProbeWriter.writeManifest(directory: dir, manifest: manifest)
+            ProbeWriter.writeManifest(
+                directory: dir, manifest: manifest, cleanDirectoryFirst: cleanFirst
+            )
         }
         if let renderer {
             renderer.deferReadback(commandBuffer: commandBuffer, work)
@@ -496,8 +503,11 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             )
         }
 
-        // 旧シーケンス出力を掃除（前回の余分なフレームが残らないように）。
-        try? FileManager.default.removeItem(atPath: sequenceDirectory)
+        // 旧シーケンス出力の掃除はここでは行わない。前シーケンスの書き出しは
+        // ProbeWriter の直列キューに非同期で積まれる（GPU 完了待ちでまだ積まれて
+        // すらいないこともある）ため、ここで同期削除すると削除後に旧ファイルが
+        // 復活し得る。掃除は最初のフレーム書き出し時に同じキュー上で行う
+        // （writeSequenceFrame / writeManifest の cleanDirectoryFirst）。
 
         activeSequence = ActiveCapture(
             id: request.id,

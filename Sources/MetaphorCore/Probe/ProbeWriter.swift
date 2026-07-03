@@ -51,6 +51,12 @@ enum ProbeWriter {
     ///
     /// 単一フレームの ``writeSnapshot(staging:width:height:scale:directory:metadata:)`` と
     /// 同一の経路（同じ読み出し・解析・原子書き出し）を、索引付きファイル名で使います。
+    ///
+    /// `cleanDirectoryFirst` は新シーケンスの最初のフレームで指定します。前シーケンスの
+    /// 出力掃除を ``writeQueue`` 上（書き込み直前）で行うことで、まだキューに残っている
+    /// 旧シーケンスの書き出しが「掃除後」に走って古いファイルを復活させる競合を防ぎます
+    /// （完了ハンドラはコミット順に発火するため、旧シーケンスの書き出しは必ずこの
+    /// フレームより先にキューへ積まれている）。
     static func writeSequenceFrame(
         staging: MTLTexture,
         width: Int,
@@ -58,10 +64,14 @@ enum ProbeWriter {
         scale: Float = 1.0,
         directory: String,
         index: Int,
-        metadata: ProbeFrameMetadata?
+        metadata: ProbeFrameMetadata?,
+        cleanDirectoryFirst: Bool = false
     ) {
         let pixels = readBGRA(from: staging, width: width, height: height)
         writeQueue.async {
+            if cleanDirectoryFirst {
+                try? FileManager.default.removeItem(atPath: directory)
+            }
             writeNamed(
                 bgraPixels: pixels, width: width, height: height, scale: scale,
                 directory: directory, baseName: sequenceBaseName(index),
@@ -309,8 +319,19 @@ enum ProbeWriter {
     ///
     /// 完了規約により、シーケンス出力のうち **最後に** 呼ぶこと（直列キューが
     /// 先行フレームの書き出し完了後に実行することを保証する）。
-    static func writeManifest(directory: String, manifest: ProbeSequenceManifest) {
+    ///
+    /// `cleanDirectoryFirst` は 1 フレームも書かずに manifest だけで応答する場合
+    /// （新シーケンスがフレーム 0 で失敗した場合）に指定します。役割は
+    /// ``writeSequenceFrame`` の同名パラメータと同じです。
+    static func writeManifest(
+        directory: String,
+        manifest: ProbeSequenceManifest,
+        cleanDirectoryFirst: Bool = false
+    ) {
         writeQueue.async {
+            if cleanDirectoryFirst {
+                try? FileManager.default.removeItem(atPath: directory)
+            }
             writeManifestSync(directory: directory, manifest: manifest)
         }
     }

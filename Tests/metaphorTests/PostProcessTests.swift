@@ -347,6 +347,22 @@ struct PostFXResourceReuseTests {
         #expect(gpu._gaussianCacheCountForTesting <= 17)
     }
 
+    @Test("MPS gaussian kernel cache stays bounded on the encode() path too")
+    func mpsKernelCacheBoundedEncodePath() throws {
+        // 回帰テスト（#223）: prune が同期 apply() でしか呼ばれず、
+        // リアルタイム推奨経路の encode() でキャッシュが際限なく増えていた
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let image = try #require(MImage.createImage(32, 32, device: renderer.device))
+        let gpu = renderer.imageFilterGPU
+
+        for i in 0..<40 {
+            let cb = try #require(renderer.commandQueue.makeCommandBuffer())
+            gpu.encode(.mpsBlur(sigma: 1.0 + Float(i) * 0.1), to: image, commandBuffer: cb)
+            cb.commit()
+        }
+        #expect(gpu._gaussianCacheCountForTesting <= 17)
+    }
+
     @Test("kawase chain is reused across different iteration counts")
     func kawaseChainReuse() throws {
         let renderer = try MetaphorRenderer(width: 64, height: 64)

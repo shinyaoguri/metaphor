@@ -179,6 +179,14 @@ public final class ImageFilterGPU {
         let w = srcTex.width
         let h = srcTex.height
 
+        // apply() と同じキャッシュ整理。パラメータ（sigma 等）をアニメーション
+        // させる主経路はこちらなので、ここで呼ばないと上限が事実上効かない。
+        // エンコード済みカーネル/テクスチャは Metal が参照を保持するため、
+        // コミット前に Swift 側の参照を落としても安全（apply() と同条件）
+        pruneTexturePool(keepWidth: w, keepHeight: h)
+        pruneWeightBufferCache()
+        pruneMPSKernelCaches()
+
         // MPS フィルターは MPS カーネルを外部コマンドバッファへ直接エンコード
         if let mpsKernel = mpsKernel(for: filter) {
             guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output") else { return }

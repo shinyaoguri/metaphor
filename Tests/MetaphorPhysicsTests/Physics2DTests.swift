@@ -114,6 +114,21 @@ struct Physics2DTests {
         #expect(pin.pinPosition != nil)
     }
 
+    @Test("pin-teleported body collides within the same step")
+    func pinTeleportCollidesSameStep() {
+        // 回帰テスト（#219）: ブロードフェーズ候補を拘束ソルブの前に構築すると、
+        // ピン拘束で遠くから移動してきたボディの衝突がそのステップで見逃される。
+        let physics = Physics2D()
+        let a = physics.addCircle(x: 0, y: 0, radius: 10)
+        let b = physics.addCircle(x: 100, y: 100, radius: 10)
+        physics.pin(a, x: 100, y: 100)
+
+        physics.step(1.0 / 60.0)
+
+        let dist = simd_length(b.position - a.position)
+        #expect(dist > 1.0, "ピンで重ねられた 2 円が同一ステップ内で分離すること: dist=\(dist)")
+    }
+
     @Test("removeConstraint")
     func removeConstraint() {
         let physics = Physics2D()
