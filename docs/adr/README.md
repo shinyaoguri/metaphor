@@ -43,6 +43,8 @@
 | [0002](0002-deterministic-render-pipeline.md) | Accepted | 決定論レンダリングを段階導入する（noLoop 単一フレーム化 + シャドウ同一フレーム化） |
 | [0003](0003-unified-command-stream.md) | Accepted | 即時描画を順序保持コマンド記録へ統一する（main パス 2D/3D の単一ストリーム化） |
 | [0004](0004-wire-schema-canon-vs-shared-types.md) | Accepted | 契約ドリフトを共有型ではなく wire スキーマ正典で防ぐ（Issue #119 案C+） |
+| [0005](0005-sketch-api-consistency.md) | Accepted | Sketch 層 API の一貫性規則を定める（2D/3D 適用規則・エラー報告規約・doc 正本） |
+| [0006](0006-static-shields-badges-for-github-metadata.md) | Accepted | GitHub メタデータ参照バッジを静的化する（shields.io 動的バッジの不安定性回避） |
 
 ## 参考
 
