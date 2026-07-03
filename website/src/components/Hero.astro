@@ -26,7 +26,9 @@ const t = getContent(lang);
 
     <h1 class="font-display mb-6 text-5xl font-semibold leading-tight tracking-tight sm:text-7xl">
       {t.hero.titleLead}<br />
-      <span class="inline-block whitespace-nowrap bg-gradient-to-r from-accent via-accent-light to-accent-2 bg-clip-text text-transparent">
+      <!-- nowrap は lg 以上のみ: 日本語アクセント（13 文字）は 72px で約 936px 必要で、
+           それ未満の幅では親の overflow-hidden にクリップされるため折り返しを許可する -->
+      <span class="inline-block bg-gradient-to-r from-accent via-accent-light to-accent-2 bg-clip-text text-transparent lg:whitespace-nowrap">
         {t.hero.titleAccent}
       </span>
     </h1>
