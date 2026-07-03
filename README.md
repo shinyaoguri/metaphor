@@ -266,6 +266,25 @@ swift run
 - **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を
   実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
 
+## フィードバック / Issue 報告
+
+metaphor はまだ発展途上です。問題や改善のアイデアを見つけたら、
+小さなことでも **気軽に [Issues](https://github.com/shinyaoguri/metaphor/issues) へ報告・提案してください**。
+「ドキュメントのこの説明が分かりにくい」「エラーメッセージが不親切」といった指摘も歓迎です。
+
+バグ報告には次があると助かります:
+
+- 環境（macOS / Xcode / Swift のバージョン、`metaphor doctor` があればその出力）
+- 再現手順か最小限のスケッチコード（[Examples/](Examples/) のどれかで再現するとベスト）
+- 期待した動作と実際の動作
+
+CLI（`metaphor new` / `metaphor watch` / MCP など）に関する問題は
+[metaphor-cli の Issues](https://github.com/shinyaoguri/metaphor-cli/issues) へ。
+どちらか迷ったら、こちら（metaphor）に立ててもらえれば適切に振り分けます。
+
+AI エージェント経由で使っている場合も同様です — エージェントに
+「この問題を GitHub Issue として報告して」と頼めば、再現手順つきで起票できます。
+
 ## SwiftPM パッケージとして組み込む
 
 CLI（Homebrew / ダイレクトインストーラ / ソースビルド）の各インストール方法は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli#install)** にまとめています。
