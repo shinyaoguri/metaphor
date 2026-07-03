@@ -4,7 +4,7 @@
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
 [![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
-[![License MIT](https://img.shields.io/github/license/shinyaoguri/metaphor)](LICENSE)
+[![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 `metaphor` は、**AI と人間が同じ実行中の作品を観測・操作・反復できる、Apple ネイティブのクリエイティブコーディング・ランタイム**です。
 
