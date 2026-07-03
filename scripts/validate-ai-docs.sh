@@ -109,10 +109,12 @@ echo "Checking example paths..."
 for doc in "${existing_docs[@]}"; do
     example_paths=$(grep -oE 'Examples/[A-Za-z0-9/_-]+' "$doc" | sort -u || true)
     for epath in $example_paths; do
-        if [ -d "$epath" ]; then
+        # ディレクトリ参照のほか、Examples/README.md のようなファイル参照
+        # （正規表現が拡張子手前まで切り出す）も許容する
+        if [ -d "$epath" ] || [ -e "$epath" ] || [ -e "$epath.md" ]; then
             pass "$doc: $epath"
         else
-            fail "$doc: $epath — directory not found"
+            fail "$doc: $epath — directory or file not found"
         fi
     done
 done

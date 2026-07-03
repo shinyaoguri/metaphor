@@ -6,11 +6,22 @@
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-`metaphor` は、**AI と人間が同じ実行中の作品を観測・操作・反復できる、Apple ネイティブのクリエイティブコーディング・ランタイム**です。
+**Processing の書き味 × Apple Silicon ネイティブ × AI が「いま見えている絵」を観測しながら作れる。**
 
-Processing 譲りの `setup()` / `draw()` を入口に、Metal で作品を成立させ、**Probe + ライブビューア + ローカル MCP** の三点で「AI が"いま見えている絵"と内部状態を見ながら直す」観測ループを回せます。差別化は Swift/Metal そのものではなく、この観測ループにあります。
+`metaphor` は Swift + Metal のクリエイティブコーディング・ランタイムです。`setup()` / `draw()` を書けばウィンドウが開き、2D / 3D 描画、GPU compute、ポストエフェクト、音声・映像、OSC / MIDI、Core ML、レイトレーシング、Syphon 出力までを、ひと続きの API で扱えます。そして **Probe + ライブビューア + ローカル MCP** により、AI エージェントがレンダリング結果と内部状態を観測しながら、人間と同じ作品を一緒に作れます。
 
-書き味はそのまま、高速な 2D / 3D 描画、GPU compute、ポストエフェクト、音声・映像、OSC / MIDI、Core ML、レイトレーシング、Syphon 出力までを、ひと続きの API で扱えます。
+<table>
+  <tr>
+    <td align="center"><a href="Examples/Topics/Fractals%20and%20L-Systems/Tree"><img src="Examples/Topics/Fractals%20and%20L-Systems/Tree/Tree.png" alt="Tree" width="270"></a><br><sub>Fractal Tree</sub></td>
+    <td align="center"><a href="Examples/Topics/Cellular%20Automata/GameOfLife"><img src="Examples/Topics/Cellular%20Automata/GameOfLife/GameOfLife.png" alt="Game of Life" width="270"></a><br><sub>Game of Life</sub></td>
+    <td align="center"><a href="Examples/Basics/Lights/Mixture"><img src="Examples/Basics/Lights/Mixture/Mixture.png" alt="3D Lights" width="270"></a><br><sub>3D Lights (Blinn-Phong)</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="Examples/Topics/Fractals%20and%20L-Systems/Mandelbrot"><img src="Examples/Topics/Fractals%20and%20L-Systems/Mandelbrot/Mandelbrot.png" alt="Mandelbrot" width="270"></a><br><sub>Mandelbrot</sub></td>
+    <td align="center"><a href="Examples/Topics/Drawing/Pattern"><img src="Examples/Topics/Drawing/Pattern/Pattern.png" alt="Pattern" width="270"></a><br><sub>Generative Pattern</sub></td>
+    <td align="center"><a href="Examples/Topics/Simulate/Flocking"><img src="Examples/Topics/Simulate/Flocking/Flocking.png" alt="Flocking" width="270"></a><br><sub>Flocking</sub></td>
+  </tr>
+</table>
 
 ```swift
 import metaphor
@@ -27,15 +38,22 @@ final class Hello: Sketch {
 }
 ```
 
-## Metaphorの特徴
+## 60 秒ではじめる
 
-- **中心はこれ ― AI が「いま見えている絵」を見ながら作れる。** Probe がフレーム画像と内部状態をファイルに書き出し、`metaphor mcp` がそれを MCP ツール（`snapshot` / `capture_sequence` / `input` / `build_status` / `api_reference`）として AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せる。差別化は Swift/Metal そのものではなく、この **Probe + ライブビューア + ローカル MCP** の三点セットにあります（[AI と協調する](#ai-と協調する観測--操作--反復)）。
-- **Processing の書き味のまま、Metal の速度。** `circle` を並べて書くだけで、Canvas2D / Canvas3D が同じ形状の連続描画を **GPU インスタンシングに自動バッチ** します。10,000 個の円でも CPU 行列計算ゼロ、draw call 1 回。100 万粒子の GPU パーティクルも、`createParticleSystem` 1 行で動きます。
-- **2D と 3D が同じ語彙で書ける。** `fill` / `stroke` / `push` / `pop` / `translate` / `rotate` が 2D でも 3D でも同じ感覚で使えます。
-- **Apple のグラフィックスフレームワーク全部入り。** Metal / MetalPerformanceShaders（レイトレーシング含む）/ Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Syphon / Core MIDI が、1 枚の `Sketch` から呼べる統一 API でラップされています。
-- **シェーダーホットリロード。** カスタム MSL を実行中に差し替え可能。`CustomMaterial` / `CustomPostEffect` を `.metal` ファイルから読み込めば、保存するたびに即座に反映されます。
-- **ライブ / VJ をそのまま想定。** Syphon 出力、OSC / MIDI 入出力、即時 GUI、Performance HUD、シーン全体の RenderGraph、オービットカメラが標準装備。`live` テンプレートで全部入りスケッチが 1 コマンドで生まれます。
-- **作品の書き出しまで完結。** 動画 / GIF / 静止画エクスポートに加えて、オフライン決定論レンダリング（フレームインデックスベースの時間）に対応。リアルタイムで書いたスケッチを、そのまま fixed-FPS の高解像度動画に焼き出せます。
+```bash
+brew install shinyaoguri/tap/metaphor   # CLI をインストール
+metaphor new MySketch                   # テンプレートからスケッチを作成
+cd MySketch
+metaphor run                            # 解決・ビルド・ウィンドウ表示までまとめて実行
+```
+
+`metaphor watch` に替えると、ファイル保存のたびにライブビューア窓を保ったまま再ビルドされます。CLI（インストールの他の方法・全コマンド・テンプレート）は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli)** が提供します。CLI を使わずライブラリだけ使う場合は [SwiftPM パッケージとして組み込む](#swiftpm-パッケージとして組み込む) へ。
+
+## なぜ metaphor か
+
+1. **AI が「いま見えている絵」を見ながら直せる。** 一般的な LLM はソースコードしか読めませんが、metaphor では Probe プラグインがフレーム画像と内部状態を書き出し、`metaphor mcp` がそれを MCP ツールとして AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せる — 差別化は Swift/Metal そのものではなく、この観測ループにあります。→ [AI と協調する](#ai-と協調する観測--操作--反復)
+2. **Processing の書き味のまま、Metal の速度。** `circle` を並べて書くだけで同じ形状の連続描画が **GPU インスタンシングに自動バッチ** されます（10,000 個の円でも draw call 1 回）。100 万粒子の GPU パーティクルも `createParticleSystem` 1 行。`fill` / `push` / `translate` などの語彙は 2D でも 3D でも同じ感覚で使えます。
+3. **Apple のグラフィックス関連フレームワーク全部入り、書き出しまで完結。** Metal / MPS（レイトレーシング含む）/ Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Core MIDI / Syphon を 1 枚の `Sketch` から統一 API で。シェーダーホットリロード、OSC / MIDI、Performance HUD などライブ / VJ 装備も標準。動画 / GIF / 静止画エクスポートと決定論レンダリング（fixed-FPS の高解像度焼き出し）まで揃います。
 
 ## できること
 
@@ -51,65 +69,9 @@ final class Hello: Sketch {
 | ML | Core ML、Vision（分類 / 検出 / ポーズ / セグメント / OCR / 顔 など） |
 | 高度な機能 | RenderGraph、SceneGraph、2D 物理、Syphon 出力、MPS レイトレーシング |
 
-## 開発スタイル
-
-metaphor は **人力だけでも、AI と一緒でも** 使えます。スタイルは「誰が書くか（人力 / AI / 協調）」×「ツール（`metaphor` CLI を使う / SwiftPM だけ）」で決まります。中でも **「AI と協調する」行 ― AI が動作中のスケッチを観測しながら直すモード ― が metaphor 固有の使い方**です。
-
-| | CLI を使う（`metaphor` コマンド） | CLI を使わない（SwiftPM だけ） |
-|---|---|---|
-| **人力で書く** | `metaphor new` → `metaphor run` / `metaphor watch`（ライブリロード）。最短で始められる。 | `.package(url:)` で依存に追加して `swift run`。Xcode や既存プロジェクトに組み込みたいとき。 |
-| **AI に書かせる** | 上記に加え、AI が `llms.txt` を参照してコード生成。`metaphor run` で確認。 | `llms.txt` を AI に渡してコード生成し、`swift run` / Xcode で確認。 |
-| **AI と協調する**<br>（AI が動作中のスケッチを観測） | `metaphor mcp` を登録すると AI が `snapshot` で**結果を見ながら**反復。`metaphor watch` を足せば人間も同じ実体を共有。 | **✗ 観測ループは不可。** `snapshot` は CLI（`metaphor mcp`）が提供するため、AI はコード生成までに留まる。 |
-
-要点:
-
-- **最短で始める** → CLI（`metaphor new` / `run`）。[Quick Start](#quick-start)
-- **AI に「いま見えている絵」を観測させる**にはCLIが要る。`metaphor mcp` が Probe を MCP 化する。[AI と協調する](#ai-と協調する観測--操作--反復)
-- **CLI なしでもライブラリは完全に使える。** AI には `llms.txt` を渡せばよい。[SwiftPM パッケージとして組み込む](#swiftpm-パッケージとして組み込む) / [AI による開発支援](#ai-による開発支援)
-
-## AI と協調する（観測 → 操作 → 反復）
-
-metaphor は、AI エージェントが実行中のスケッチを観測しながら開発できるよう設計されています。一般的な LLM はソースコードしか参照できませんが、metaphor では `metaphor mcp` を AI クライアント（Claude Code / Cursor など）に MCP サーバとして登録すると、エージェントが **レンダリング結果の画像と内部状態** を取得し、再ビルドの結果まで確認しながら「観測 → 編集 → 再観測 → 検証」を自律的に反復できます。
-
-| ツール | 役割 |
-|---|---|
-| `snapshot` | 現在フレームの画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域統計 / 警告）を返す |
-| `capture_sequence` | 連続フレーム列を採取し、コンタクトシート画像とフレーム別 manifest を返す（動き・リズム・遷移を観測する） |
-| `input` | 実行中のスケッチへマウス・キー入力を送る |
-| `build_status` | 直近の `swift build` の成否とエラーを返す |
-| `api_reference` | 依存先 metaphor の API ドキュメント（作法ガイド / 全 API / サンプル索引）を返す。新しい API を使う前に参照する |
-
-さらに、人間が VSCode で `metaphor watch` を起動しておくと、AI の `metaphor mcp` は **同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。
-
-この観測の仕組み自体は metaphor 本体の機能（**Probe** プラグイン）です。内部状態を AI に渡すには `draw()` 内で `probe("count", n)` のように申告します（[`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)）。
-
-- **セットアップ手順**（`claude mcp add` / `.mcp.json`）・共有セッション・プロセス構成 → **[metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する)**
-- **設計** → [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md) / [docs/design/shared-session.md](docs/design/shared-session.md)
-- **AI に metaphor 流のコードを書かせる**静的コンテキスト（`llms.txt` 等） → [AI による開発支援](#ai-による開発支援)
-
-## Quick Start
-
-`metaphor` CLI を Homebrew でインストールします。
-
-```bash
-brew install shinyaoguri/tap/metaphor
-```
-
-新しいスケッチを作って実行します。
-
-```bash
-metaphor new MySketch
-cd MySketch
-metaphor run
-```
-
-`metaphor run` がパッケージ解決とビルド、ウィンドウ表示までまとめてやってくれます。これだけで始められます。
-
-> `metaphor` コマンド（インストールの他の方法・全コマンド・テンプレート）は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli)** が提供します。CLI を使わずライブラリだけを使う場合は [SwiftPM パッケージとして組み込む](#swiftpm-パッケージとして組み込む) を参照してください。
-
 ## はじめてのスケッチ
 
-`metaphor new` が生成する `App.swift` は、Processing と同じ「`setup` で初期化、`draw` を毎フレーム呼ぶ」モデルになっています。
+`metaphor new` が生成する `App.swift` は、Processing と同じ「`setup` で初期化、`draw` を毎フレーム呼ぶ」モデルです。
 
 ```swift
 import metaphor
@@ -123,7 +85,7 @@ final class MySketch: Sketch {
 
     // 起動時に1回だけ呼ばれる
     func setup() {
-        // 初期化
+        // 初期化・リソース読み込み
     }
 
     // 毎フレーム呼ばれる
@@ -135,9 +97,7 @@ final class MySketch: Sketch {
 }
 ```
 
-### ライフサイクル
-
-| メソッド | 呼ばれるタイミング |
+| ライフサイクル | 呼ばれるタイミング |
 |---|---|
 | `setup()` | 起動時に1回 |
 | `compute()` | 毎フレーム、`draw` の前（GPU compute 用） |
@@ -153,7 +113,6 @@ final class MySketch: Sketch {
 // --- 2D shapes
 circle(x, y, diameter)
 rect(x, y, w, h)
-ellipse(x, y, w, h)
 line(x1, y1, x2, y2)
 triangle(x1, y1, x2, y2, x3, y3)
 arc(x, y, w, h, start, stop)
@@ -185,111 +144,65 @@ mouseX, mouseY, frameCount, deltaTime, width, height
 random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 ```
 
-API 全体は [`llms.txt`](llms.txt) で確認できます（`make llms-txt` で再生成）。
+API 全体は [`llms.txt`](llms.txt) にまとまっています。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
 
-## CLI
+## AI と協調する（観測 → 操作 → 反復）
 
-`metaphor` コマンドは新規作成・実行・ライブリロード・AI 連携をまとめて提供します。
+metaphor は、AI エージェントが**実行中のスケッチを観測しながら**開発できるよう設計されています。`metaphor mcp` を AI クライアント（Claude Code / Cursor など）に MCP サーバとして登録すると、エージェントがレンダリング結果の画像と内部状態を取得し、再ビルドの結果まで確認しながら「観測 → 編集 → 再観測 → 検証」を自律的に反復できます。
 
-```bash
-metaphor new <name>   # テンプレートから新しいスケッチを作成（2d / 3d / shader / live / audio-reactive / raytracing / syphon）
-metaphor run          # 現在のスケッチを実行（解決・ビルド・表示）
-metaphor watch        # 編集を監視し、ライブビューア窓を保ったまま再ビルド差し替え
-metaphor mcp          # AI エージェント向け MCP サーバ（snapshot / capture_sequence / input / build_status / api_reference）
-metaphor doctor       # 環境チェック
-metaphor update       # CLI / ライブラリの更新
-```
+| ツール | 役割 |
+|---|---|
+| `snapshot` | 現在フレームの画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域統計 / 警告）を返す |
+| `capture_sequence` | 連続フレーム列を採取し、コンタクトシート画像とフレーム別 manifest を返す（動き・リズム・遷移を観測する） |
+| `input` | 実行中のスケッチへマウス・キー入力を送る |
+| `build_status` | 直近の `swift build` の成否とエラーを返す |
+| `api_reference` | metaphor の API ドキュメント（作法ガイド / 全 API / サンプル索引）を返す。新しい API を使う前に参照する |
 
-全コマンド・テンプレート・インストール方法の詳細は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli)** を参照してください。
+さらに、人間が `metaphor watch` を起動しておくと、AI の `metaphor mcp` は**同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。
+
+この観測の仕組み自体は metaphor 本体の機能（**Probe** プラグイン）です。内部状態を AI に渡すには `draw()` 内で `probe("count", n)` のように申告します（例: [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)）。
+
+**AI に metaphor 流のコードを書かせる**ための静的コンテキストも同梱しています。
+
+- [`llms-sketch.txt`](llms-sketch.txt) — スケッチ作者向けの短い AI コンテキスト。`setup()` / `draw()` の書き方、よく使う API、避けるべき重い処理。
+- [`llms.txt`](llms.txt) — 全 API を 1 ファイルにまとめた LLM 向けリファレンス。**AI のコンテキストに丸ごと貼るだけ**で metaphor の流儀に沿ったコードを書かせられます。
+- [`docs/ai/`](docs/ai/) — [スケッチ作者向けガイド](docs/ai/for-sketch-authors.md)、[サンプル索引](docs/ai/examples-index.md)、[用途別プロンプト](docs/ai/prompts/)、[インストール形態ごとの効き方](docs/ai/install-scenarios.md)。
+
+セットアップ手順（`claude mcp add` / `.mcp.json`）・共有セッションの運用は **[metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する)**、設計の背景は [docs/design/ai-mcp-server.md](docs/design/ai-mcp-server.md) / [docs/design/shared-session.md](docs/design/shared-session.md) を参照してください。
 
 ## Examples
 
-[Examples/](Examples/) には、Processing 公式サンプルの Swift / Metal 移植と、metaphor 独自機能のサンプルが揃っています。
+[Examples/](Examples/) には、Processing 公式サンプルの Swift / Metal 移植と、metaphor 独自機能のサンプルが 270 本以上揃っています。各サンプルは独立した SwiftPM パッケージです。
 
 ```bash
 cd Examples/Basics/Form/ShapePrimitives
 swift run
 ```
 
-カテゴリ:
-
 - [Basics/](Examples/Basics/) — Processing 標準サンプルの移植（Form / Color / Image / Lights / Math / Transform …）
-- [Topics/](Examples/Topics/) — Curves / Shaders / Simulate / GUI などトピック別
+- [Topics/](Examples/Topics/) — Curves / Shaders / Simulate / Fractals / GUI などトピック別
 - [Demos/](Examples/Demos/) — パフォーマンス系デモ
-- [Samples/](Examples/Samples/) — RayTracing / SceneGraph / Syphon / Plugins
+- [Samples/](Examples/Samples/) — RayTracing / SceneGraph / Syphon / Plugins / Probe など metaphor 独自機能
 - [ML/](Examples/ML/) — Vision / CoreML 連携
 
-## AI による開発支援
-
-[AI と協調する](#ai-と協調する観測--操作--反復) が **動いているスケッチを観測して回すループ**だとすれば、こちらは **AI に metaphor 流のコードを書かせる**ための静的コンテキストです。`metaphor` は Claude Code / Cursor / Copilot などの LLM ベースのコーディングアシスタントと一緒に使うことを前提に作られています。何をどう書けばいいかを AI が把握しやすいように、以下のものを同梱しています。
-
-- **[`llms-sketch.txt`](llms-sketch.txt)** — スケッチ作者向けの短い AI コンテキスト。`setup()` / `draw()` の書き方、よく使う API、避けるべき重い処理を素早く共有できます。
-- **[`llms.txt`](llms.txt)** — リポジトリ直下に、API 全体を 1 ファイルにまとめた LLM 向けリファレンスがあります。Quick Start、関数シグネチャ、3 層 API アーキテクチャの解説、サンプルコードを含み、**AI のコンテキストに丸ごと貼り付けるだけ** で metaphor の流儀に沿ったコードを書かせられます。`make llms-txt` でソースから再生成できます。
-- **[`docs/ai/`](docs/ai/)** — Examples 索引、スケッチ作者向けガイド、用途別プロンプト、インストール形態ごとの効き方をまとめています。
-  - [`docs/ai/for-sketch-authors.md`](docs/ai/for-sketch-authors.md) — AI と一緒にスケッチを書くためのガイド
-  - [`docs/ai/install-scenarios.md`](docs/ai/install-scenarios.md) — SwiftPM / CLI / ローカル checkout 別の効き方
-  - [`docs/ai/prompts/`](docs/ai/prompts/) — 用途別（audio-reactive、shader など）プロンプトテンプレート
-- **[`CLAUDE.md`](CLAUDE.md)** — このライブラリ自体を AI と保守・拡張するためのプロジェクトインストラクションです。`metaphor new` で生成されるスケッチには、制作意図を共有するための `AGENTS.md` と `PROJECT_BRIEF.md` が入ります。
-- **使い方の目安**
-  - 自分のスケッチで AI に書かせるとき：`llms.txt` をチャットに貼る、または Cursor / Claude Code でリポジトリごと参照に入れる
-  - 「Processing でいうところの○○を metaphor でやって」と聞ける粒度の API ドキュメントが揃っているので、Processing / p5.js / openFrameworks の知識をそのまま AI 経由で持ち込めます
+「やりたいこと」から探すには [docs/ai/examples-index.md](docs/ai/examples-index.md)（タグ・難度つきの全サンプル索引）が便利です。
 
 ## 他ツールとの比較
 
-`metaphor` の立ち位置はひとことで言うと **「Processing の書き味 × Apple Silicon ネイティブ × AI が観測・操作・反復できる」**。macOS に振り切ることで、Web やゲームエンジン、ノードベース VJ ツールの中間に空いていた場所を、**AI と協調できるコードファーストのランタイム**として埋めることを目指しています。
+`metaphor` の立ち位置はひとことで言うと **「Processing の書き味 × Apple Silicon ネイティブ × AI が観測・操作・反復できる」**。macOS に振り切ることで、Web やゲームエンジン、ノードベース VJ ツールの中間に空いていた場所を、AI と協調できるコードファーストのランタイムとして埋めることを目指しています。
 
-- **vs Processing / p5.js** — `setup` / `draw` の書き味は同じ。代わりに Metal ネイティブの GPU compute、PBR、Core ML、100 万粒子といった重い処理に踏み込めます。クロスプラットフォーム（Win / Linux / ブラウザ）が必要なら向こうが有利。
-- **vs openFrameworks** — Swift と SPM で依存解決とビルドが速く、Metal が第一級。代わりに Win / Linux 対応や C++ addon の蓄積は openFrameworks に分があります。
-- **vs Unity** — コード中心で `App.swift` 1 ファイルから即起動、ライセンス料なし。フル機能のゲーム開発、全プラットフォーム展開、エディタ GUI が必要なら Unity。
-- **vs TouchDesigner** — git で version control できるコードベース、AI 開発フローと相性が良い。ノードベースで即興・非プログラマと協業するなら TouchDesigner。
+- **vs Processing / p5.js** — `setup` / `draw` の書き味は同じ。代わりに Metal ネイティブの GPU compute、PBR、Core ML、100 万粒子といった重い処理に踏み込めます。クロスプラットフォームが必要なら向こうが有利。
+- **vs openFrameworks** — Swift と SPM で依存解決とビルドが速く、Metal が第一級。Win / Linux 対応や C++ addon の蓄積は openFrameworks に分があります。
+- **vs Unity** — コード中心で `App.swift` 1 ファイルから即起動、ライセンス料なし。フル機能のゲーム開発やエディタ GUI が必要なら Unity。
+- **vs TouchDesigner** — git で version control できるコードベースで、AI 開発フローと相性が良い。ノードベースで即興・非プログラマと協業するなら TouchDesigner。
 
-**選ぶべきとき**: **AI と協調して作品を作りたい（AI が動作中の絵を観測しながら反復）** / macOS で動く作品を作りたい / Apple Silicon の性能（Metal・Core ML・MPS・Syphon）を引き出したい / Syphon・OSC・MIDI を使ったライブパフォーマンスを組みたい。
+**選ぶべきとき**: AI と協調して作品を作りたい / macOS で動く作品を作りたい / Apple Silicon の性能（Metal・Core ML・MPS・Syphon）を引き出したい / Syphon・OSC・MIDI を使ったライブパフォーマンスを組みたい。
 
 **向かないとき**: Windows・Linux・モバイル・Web ターゲット / ノードベースの即興 / フル機能のゲーム開発。
 
-## Requirements
-
-- Apple Silicon Mac
-- macOS 14.0+
-- Xcode 15.0+ / Swift 5.10+
-
-## Troubleshooting
-
-- **`make build` が失敗する / Syphon.xcframework が無い** — 初回は `make setup` を実行して
-  サブモジュール初期化と Syphon.xcframework のビルドを済ませてください。状態は `make check`
-  で確認できます。
-- **ライブビューア（`metaphor watch`）が真っ黒** — CLI 側の事象です。
-  [metaphor-cli の Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting)
-  を参照してください。
-- **AI から「いま見えている絵」を観測できない** — `metaphor watch`（共有セッション）が動いて
-  いるか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
-- **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を
-  実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
-
-## フィードバック / Issue 報告
-
-metaphor はまだ発展途上です。問題や改善のアイデアを見つけたら、
-小さなことでも **気軽に [Issues](https://github.com/shinyaoguri/metaphor/issues) へ報告・提案してください**。
-「ドキュメントのこの説明が分かりにくい」「エラーメッセージが不親切」といった指摘も歓迎です。
-
-バグ報告には次があると助かります:
-
-- 環境（macOS / Xcode / Swift のバージョン、`metaphor doctor` があればその出力）
-- 再現手順か最小限のスケッチコード（[Examples/](Examples/) のどれかで再現するとベスト）
-- 期待した動作と実際の動作
-
-CLI（`metaphor new` / `metaphor watch` / MCP など）に関する問題は
-[metaphor-cli の Issues](https://github.com/shinyaoguri/metaphor-cli/issues) へ。
-どちらか迷ったら、こちら（metaphor）に立ててもらえれば適切に振り分けます。
-
-AI エージェント経由で使っている場合も同様です — エージェントに
-「この問題を GitHub Issue として報告して」と頼めば、再現手順つきで起票できます。
-
 ## SwiftPM パッケージとして組み込む
 
-CLI（Homebrew / ダイレクトインストーラ / ソースビルド）の各インストール方法は **[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli#install)** にまとめています。
-
-CLI を使わず、`metaphor` を通常の Swift Package として依存に追加することもできます。
+CLI を使わず、`metaphor` を通常の Swift Package として依存に追加することもできます（Xcode や既存プロジェクトに組み込む場合など）。
 
 ```swift
 dependencies: [
@@ -306,18 +219,42 @@ dependencies: [
 )
 ```
 
-ただし、はじめて使う場合は `metaphor new` を推奨します。`Package.swift`、テンプレート、リソースディレクトリ、更新導線が最初から揃います。
+この形でもライブラリは完全に使えます（AI には `llms.txt` を渡せばコード生成も可能）。ただし AI に「いま見えている絵」を観測させる MCP ループには CLI（`metaphor mcp`）が必要です。はじめて使う場合は `metaphor new` を推奨します — `Package.swift`、テンプレート、リソースディレクトリ、AI 向けガイド、更新導線が最初から揃います。
+
+## Requirements
+
+- Apple Silicon Mac
+- macOS 14.0+
+- Xcode 15.0+ / Swift 5.10+
+
+## Troubleshooting
+
+- **`make build` が失敗する / Syphon.xcframework が無い** — 初回は `make setup` を実行してサブモジュール初期化と Syphon.xcframework のビルドを済ませてください。状態は `make check` で確認できます。
+- **ライブビューア（`metaphor watch`）が真っ黒** — CLI 側の事象です。[metaphor-cli の Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting) を参照してください。
+- **AI から「いま見えている絵」を観測できない** — `metaphor watch`（共有セッション）が動いているか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
+- **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
+
+## フィードバック / Issue 報告
+
+metaphor はまだ発展途上です。問題や改善のアイデアを見つけたら、小さなことでも**気軽に [Issues](https://github.com/shinyaoguri/metaphor/issues) へ報告・提案してください**。「ドキュメントのこの説明が分かりにくい」「エラーメッセージが不親切」といった指摘も歓迎です。
+
+バグ報告には次があると助かります:
+
+- 環境（macOS / Xcode / Swift のバージョン、`metaphor doctor` があればその出力）
+- 再現手順か最小限のスケッチコード（[Examples/](Examples/) のどれかで再現するとベスト）
+- 期待した動作と実際の動作
+
+CLI（`metaphor new` / `metaphor watch` / MCP など）に関する問題は [metaphor-cli の Issues](https://github.com/shinyaoguri/metaphor-cli/issues) へ。どちらか迷ったら、こちら（metaphor）に立ててもらえれば適切に振り分けます。
+
+AI エージェント経由で使っている場合も同様です — エージェントに「この問題を GitHub Issue として報告して」と頼めば、再現手順つきで起票できます。
 
 ## ライブラリ本体の開発
 
-`metaphor` 本体の開発、Syphon.xcframework の取り扱い、テスト、リリース手順は [DEVELOPMENT.md](DEVELOPMENT.md) にまとめています。
+`metaphor` 本体の開発（セットアップ、テスト、Syphon.xcframework の取り扱い、生成物の管理、リリース手順）は [DEVELOPMENT.md](DEVELOPMENT.md) に、ドキュメント全体の地図は [docs/README.md](docs/README.md) にまとめています。AI エージェントと保守する場合の起点は [CLAUDE.md](CLAUDE.md) です。
 
 ## Acknowledgements
 
-[Examples/](Examples/) ディレクトリの多くのサンプルは、
-Casey Reas、Ben Fry、Daniel Shiffman による
-[Processing](https://processing.org/) サンプルスケッチ（public domain）の Swift / Metal 移植です。
-個別の帰属情報は各ファイルのヘッダーコメントを参照してください。
+[Examples/](Examples/) ディレクトリの多くのサンプルは、Casey Reas、Ben Fry、Daniel Shiffman による [Processing](https://processing.org/) サンプルスケッチ（public domain）の Swift / Metal 移植です。個別の帰属情報は各ファイルのヘッダーコメントを参照してください。
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
