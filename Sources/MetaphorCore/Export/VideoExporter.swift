@@ -101,6 +101,9 @@ public final class VideoExporter {
     ///
     /// `endRecord` の completion が呼ばれた時点で確定しています。壊れたファイルが
     /// 成功扱いにならないよう、録画完了後にこの値を確認してください。
+    ///
+    /// **現行セッションのみ**に反映されます。`endRecord` 直後に `beginRecord` した場合、
+    /// 旧セッションのファイナライズ失敗はこの値を汚染せず、``onError`` でのみ観測できます。
     public private(set) var lastError: Error?
 
     /// ファイナライズ失敗時に呼び出されるオプションコールバック（MainActor）。
@@ -210,9 +213,18 @@ public final class VideoExporter {
 
     /// writerQueue で発生したドロップを MainActor に反映するヘルパー。
     /// `weak self` 経由で呼ぶことで、エクスポータが先に解放されてもクラッシュしません。
-    nonisolated private static func recordDrop(_ exporter: VideoExporter?, frameIndex: Int64) {
+    ///
+    /// `sessionID`（そのフレームが属するセッションの writer の同一性）が現行セッションと
+    /// 一致するときだけ反映します。end→begin を素早く呼ぶと、旧セッションの遅延到着
+    /// ドロップが新セッションの `droppedFrameCount` / `onFrameDropped` を汚染するためです
+    /// （旧セッションは既にファイナライズ済みで、報告しても意味を持たない）。
+    nonisolated private static func recordDrop(
+        _ exporter: VideoExporter?, sessionID: ObjectIdentifier, frameIndex: Int64
+    ) {
         Task { @MainActor in
-            guard let exporter else { return }
+            guard let exporter,
+                  let writer = exporter.assetWriter,
+                  ObjectIdentifier(writer) == sessionID else { return }
             exporter.droppedFrameCount += 1
             exporter.onFrameDropped?(frameIndex)
         }
@@ -229,7 +241,12 @@ public final class VideoExporter {
     ) {
         guard isRecording else { return }
         guard let adaptor = pixelBufferAdaptor,
-              let input = writerInput else { return }
+              let input = writerInput,
+              let writer = assetWriter else { return }
+
+        // このフレームが属するセッションの識別子。遅延到着するドロップ報告を
+        // 現行セッションと突き合わせるために完了ハンドラへ渡す。
+        let sessionID = ObjectIdentifier(writer)
 
         let currentFrame = frameIndex
         frameIndex += 1
@@ -279,19 +296,19 @@ public final class VideoExporter {
                     waitBudget -= 1
                 }
                 guard capturedInput.isReadyForMoreMediaData else {
-                    Self.recordDrop(self, frameIndex: currentFrame)
+                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
                     return
                 }
 
                 var pixelBuffer: CVPixelBuffer?
                 guard let pool = capturedAdaptor.pixelBufferPool else {
-                    Self.recordDrop(self, frameIndex: currentFrame)
+                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
                     return
                 }
 
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
                 guard status == kCVReturnSuccess, let buffer = pixelBuffer else {
-                    Self.recordDrop(self, frameIndex: currentFrame)
+                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
                     return
                 }
 
@@ -299,7 +316,7 @@ public final class VideoExporter {
                 defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
 
                 guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
-                    Self.recordDrop(self, frameIndex: currentFrame)
+                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
                     return
                 }
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
@@ -318,7 +335,7 @@ public final class VideoExporter {
                 )
                 if !capturedAdaptor.append(buffer, withPresentationTime: presentationTime) {
                     // 書き込み失敗もドロップとして計上する（従来は黙殺されていた）
-                    Self.recordDrop(self, frameIndex: currentFrame)
+                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
                 }
             }
         }
@@ -369,9 +386,11 @@ public final class VideoExporter {
                     // 旧セッションのファイナライズ完了は、自分が起こしたセッションの
                     // 状態にしか触れてはならない。end→begin を素早く呼ぶと、ここに
                     // 到達した時点で既に新しい録画セッションが共有プロパティを差し替え
-                    // ている場合があり、無条件に nil 化すると新セッションを壊してしまう。
-                    // writer の同一性を確認し、まだ現行セッションのときだけクリアする。
-                    if let self, self.assetWriter === capturedWriter {
+                    // ている場合があり、無条件に書くと新セッションを壊してしまう。
+                    // writer の同一性を確認し、まだ現行セッションのときだけ
+                    // 参照のクリアと lastError の反映を行う。
+                    let isCurrentSession = self?.assetWriter === capturedWriter
+                    if let self, isCurrentSession {
                         self.assetWriter = nil
                         self.writerInput = nil
                         self.pixelBufferAdaptor = nil
@@ -380,7 +399,11 @@ public final class VideoExporter {
                     if let finishError {
                         metaphorWarning("VideoExporter: finishWriting failed: \(finishError)")
                         if let self {
-                            self.lastError = finishError
+                            if isCurrentSession {
+                                self.lastError = finishError
+                            }
+                            // どのセッションの失敗かに関わらずイベントとしては通知する
+                            //（旧セッションの失敗も観測可能に保つ）
                             self.onError?(finishError)
                         }
                     }
