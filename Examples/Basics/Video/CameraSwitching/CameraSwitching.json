@@ -1,0 +1,8 @@
+{
+  "name": "Camera Switching",
+  "title": "Camera Switching",
+  "author": "",
+  "level": "Beginner",
+  "description": "Lists the connected cameras with listCaptureDevices() and switches\n  between them with the number keys. Shows explicit device selection via\n  createCapture(device:), the actual capture resolution chosen for the\n  request (actualWidth / actualHeight), and disconnect detection with\n  onDisconnect.",
+  "featured": ["listCaptureDevices_", "createCapture_", "CaptureDevice"]
+}
