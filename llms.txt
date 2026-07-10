@@ -814,11 +814,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class CaptureDevice` -- カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
 
+- `var actualHeight: Int? { get }` -- 実際のキャプチャ高さ（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
+- `var actualWidth: Int? { get }` -- 実際のキャプチャ幅（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
 - `var deviceInfo: CaptureDeviceInfo? { get }` -- 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
-- `let height: Int` -- 要求されたキャプチャ高さ（ピクセル）
+- `let height: Int` -- 要求されたキャプチャ高さ（ピクセル）。
 - `var isAvailable: Bool { get }` -- カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ
 - `var texture: (any MTLTexture)? { get }` -- ``read()`` 呼び出し後に利用可能な、最新のカメラフレームの Metal テクスチャ
-- `let width: Int` -- 要求されたキャプチャ幅（ピクセル）
+- `let width: Int` -- 要求されたキャプチャ幅（ピクセル）。
 - `static func list() -> [CaptureDeviceInfo]` -- 接続中のカメラを列挙します。
 - `func read()` -- ``texture`` プロパティを最新のカメラフレームで更新します。
 - `func start()` -- カメラキャプチャセッションを開始します。

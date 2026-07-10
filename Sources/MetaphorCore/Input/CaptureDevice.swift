@@ -74,6 +74,10 @@ extension CaptureDeviceInfo {
 /// 配信します。毎フレーム ``read()`` を呼び出すことで、最新のカメラフレームで
 /// テクスチャが更新されます。
 ///
+/// 解像度は、要求した ``width`` × ``height`` に最も近いカメラ対応フォーマットが
+/// 選択されます。要求値と一致するとは限らないため、実際の解像度は
+/// ``actualWidth`` / ``actualHeight`` で確認できます。
+///
 /// ```swift
 /// let cam = createCapture()
 /// // In draw():
@@ -94,11 +98,27 @@ public final class CaptureDevice {
     /// 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
     public private(set) var deviceInfo: CaptureDeviceInfo?
 
-    /// 要求されたキャプチャ幅（ピクセル）
+    /// 要求されたキャプチャ幅（ピクセル）。
+    ///
+    /// カメラが対応するフォーマットから最も近いものが選択されるため、
+    /// 実際の解像度とは一致しない場合があります。``actualWidth`` を参照してください。
     public let width: Int
 
-    /// 要求されたキャプチャ高さ（ピクセル）
+    /// 要求されたキャプチャ高さ（ピクセル）。
+    ///
+    /// カメラが対応するフォーマットから最も近いものが選択されるため、
+    /// 実際の解像度とは一致しない場合があります。``actualHeight`` を参照してください。
     public let height: Int
+
+    /// 実際のキャプチャ幅（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
+    ///
+    /// 要求した ``width`` × ``height`` に最も近いカメラ対応フォーマットの幅です。
+    public private(set) var actualWidth: Int?
+
+    /// 実際のキャプチャ高さ（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
+    ///
+    /// 要求した ``width`` × ``height`` に最も近いカメラ対応フォーマットの高さです。
+    public private(set) var actualHeight: Int?
 
     // MARK: - Private Properties
 
@@ -351,6 +371,8 @@ public final class CaptureDevice {
             return
         }
 
+        applyClosestFormat(to: camera)
+
         let output = AVCaptureVideoDataOutput()
         output.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
@@ -364,7 +386,58 @@ public final class CaptureDevice {
 
         self.captureSession = session
         self.deviceInfo = CaptureDeviceInfo(avDevice: camera)
+        let dims = CMVideoFormatDescriptionGetDimensions(camera.activeFormat.formatDescription)
+        self.actualWidth = Int(dims.width)
+        self.actualHeight = Int(dims.height)
         self.isAvailable = true
+    }
+
+    /// 要求解像度（``width`` × ``height``）に最も近いネイティブフォーマットを
+    /// カメラの `activeFormat` に設定します。
+    ///
+    /// デバイスがセッションに接続された状態で `activeFormat` を設定すると
+    /// `sessionPreset` は自動的に `.inputPriority` へ変わり、以降プリセットが
+    /// フォーマットを上書きすることはありません（そのため `addInput` の後に
+    /// 呼ぶ必要があります）。設定に失敗した場合はプリセット由来の
+    /// フォーマットのまま続行します。
+    private func applyClosestFormat(to camera: AVCaptureDevice) {
+        let formats = camera.formats
+        let dimensions = formats.map { format -> (width: Int, height: Int) in
+            let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+            return (Int(dims.width), Int(dims.height))
+        }
+        guard let index = Self.closestFormatIndex(
+            toWidth: width, height: height, in: dimensions
+        ) else { return }
+        do {
+            try camera.lockForConfiguration()
+            camera.activeFormat = formats[index]
+            camera.unlockForConfiguration()
+        } catch {
+            // ロックを取得できない場合はデフォルトフォーマットのまま使用する
+        }
+    }
+
+    /// 候補解像度の一覧から、要求解像度に最も近いもののインデックスを返します。
+    ///
+    /// 幅・高さの差の合計が最小のものを選びます。同距離の場合は解像度が
+    /// 大きい方（ダウンスケールの方が画質を保てる）、それも同じ場合は
+    /// 先に現れたものを優先します。
+    ///
+    /// - Returns: 最も近い候補のインデックス。候補が空の場合は `nil`。
+    nonisolated static func closestFormatIndex(
+        toWidth width: Int, height: Int, in dimensions: [(width: Int, height: Int)]
+    ) -> Int? {
+        func distance(_ i: Int) -> Int {
+            abs(dimensions[i].width - width) + abs(dimensions[i].height - height)
+        }
+        func area(_ i: Int) -> Int {
+            dimensions[i].width * dimensions[i].height
+        }
+        return dimensions.indices.min { a, b in
+            if distance(a) != distance(b) { return distance(a) < distance(b) }
+            return area(a) > area(b)
+        }
     }
 }
 
