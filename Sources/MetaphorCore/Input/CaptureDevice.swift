@@ -5,11 +5,66 @@ import ObjectiveC.runtime
 import os
 
 /// キャプチャに使用するカメラ位置の指定
+///
+/// - Note: macOS では内蔵・外付けを問わずほとんどのカメラが位置情報を持たない
+///   （`.unspecified` を返す）ため、位置によるマッチングは通常失敗し、
+///   システムデフォルトのカメラへフォールバックします。特定のカメラを
+///   確実に選択するには ``CaptureDevice/list()`` と
+///   `createCapture(width:height:device:)` を使用してください。
 public enum CameraPosition {
     /// 前面カメラ
     case front
     /// 背面カメラ
     case back
+}
+
+/// 接続中のカメラの種類
+public enum CaptureDeviceKind: String, Sendable, Codable {
+    /// Mac 内蔵カメラ
+    case builtIn
+    /// 外付けカメラ（USB 接続の Web カメラ・キャプチャデバイスなど）
+    case external
+    /// Continuity Camera（連係カメラとしての iPhone / iPad）
+    case continuityCamera
+    /// デスクビューカメラ
+    case deskView
+    /// 上記以外
+    case unknown
+}
+
+/// 接続中のカメラ 1 台を表す情報。
+///
+/// ``CaptureDevice/list()`` で取得し、`createCapture(width:height:device:)` へ
+/// 渡すことで、複数カメラ環境で使用するカメラを明示的に選択できます。
+///
+/// ```swift
+/// for cam in listCaptureDevices() {
+///     print(cam.name, cam.kind)
+/// }
+/// let capture = createCapture(device: listCaptureDevices()[1])
+/// ```
+public struct CaptureDeviceInfo: Sendable, Identifiable, Hashable {
+    /// デバイスの一意な識別子（`AVCaptureDevice.uniqueID`）
+    public let id: String
+    /// ユーザーに表示できるデバイス名（例: "FaceTime HD カメラ"）
+    public let name: String
+    /// デバイスの種類
+    public let kind: CaptureDeviceKind
+}
+
+extension CaptureDeviceInfo {
+    /// AVCaptureDevice から情報を抽出
+    fileprivate init(avDevice: AVCaptureDevice) {
+        self.id = avDevice.uniqueID
+        self.name = avDevice.localizedName
+        switch avDevice.deviceType {
+        case .builtInWideAngleCamera: self.kind = .builtIn
+        case .external: self.kind = .external
+        case .continuityCamera: self.kind = .continuityCamera
+        case .deskViewCamera: self.kind = .deskView
+        default: self.kind = .unknown
+        }
+    }
 }
 
 /// カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
@@ -35,6 +90,9 @@ public final class CaptureDevice {
 
     /// カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ
     public private(set) var isAvailable: Bool = false
+
+    /// 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
+    public private(set) var deviceInfo: CaptureDeviceInfo?
 
     /// 要求されたキャプチャ幅（ピクセル）
     public let width: Int
@@ -80,15 +138,61 @@ public final class CaptureDevice {
     ///   - device: テクスチャキャッシュ作成用の Metal デバイス。
     ///   - width: 要求するビデオ幅（ピクセル、デフォルト: 1280）。
     ///   - height: 要求するビデオ高さ（ピクセル、デフォルト: 720）。
-    ///   - position: 使用するカメラ位置（デフォルト: `.front`）。
-    init(device: MTLDevice, width: Int = 1280, height: Int = 720, position: CameraPosition = .front) {
+    ///   - position: 使用するカメラ位置。`nil`（デフォルト）の場合は
+    ///     ユーザー/システムの優先カメラを使用します。
+    convenience init(
+        device: MTLDevice, width: Int = 1280, height: Int = 720, position: CameraPosition? = nil
+    ) {
+        self.init(device: device, width: width, height: height,
+                  camera: Self.resolveCamera(position: position))
+    }
+
+    /// 列挙したデバイス情報を指定してカメラキャプチャデバイスを作成します。
+    ///
+    /// - Parameters:
+    ///   - device: テクスチャキャッシュ作成用の Metal デバイス。
+    ///   - width: 要求するビデオ幅（ピクセル、デフォルト: 1280）。
+    ///   - height: 要求するビデオ高さ（ピクセル、デフォルト: 720）。
+    ///   - captureDevice: ``CaptureDevice/list()`` で取得したデバイス情報。
+    ///     既に切断されている場合、``isAvailable`` は `false` になります。
+    convenience init(
+        device: MTLDevice, width: Int = 1280, height: Int = 720, captureDevice info: CaptureDeviceInfo
+    ) {
+        self.init(device: device, width: width, height: height,
+                  camera: AVCaptureDevice(uniqueID: info.id))
+    }
+
+    /// デバイス名を指定してカメラキャプチャデバイスを作成します。
+    ///
+    /// 大文字小文字を無視した完全一致を優先し、なければ部分一致で選択します。
+    ///
+    /// - Parameters:
+    ///   - device: テクスチャキャッシュ作成用の Metal デバイス。
+    ///   - width: 要求するビデオ幅（ピクセル、デフォルト: 1280）。
+    ///   - height: 要求するビデオ高さ（ピクセル、デフォルト: 720）。
+    ///   - deviceName: 選択するカメラの名前（例: `"FaceTime"`）。
+    ///     一致するカメラがない場合、``isAvailable`` は `false` になります。
+    convenience init(
+        device: MTLDevice, width: Int = 1280, height: Int = 720, deviceName: String
+    ) {
+        let info = Self.match(deviceName: deviceName, in: Self.list())
+        self.init(device: device, width: width, height: height,
+                  camera: info.flatMap { AVCaptureDevice(uniqueID: $0.id) })
+    }
+
+    /// 解決済みの AVCaptureDevice からセットアップする指定イニシャライザ
+    private init(device: MTLDevice, width: Int, height: Int, camera: AVCaptureDevice?) {
         self.device = device
         self.width = width
         self.height = height
         self.delegateHelper = CaptureDelegate()
 
         setupTextureCache()
-        setupCaptureSession(position: position)
+        if let camera {
+            setupCaptureSession(camera: camera)
+        } else {
+            isAvailable = false
+        }
     }
 
     deinit {
@@ -165,6 +269,64 @@ public final class CaptureDevice {
         return MImage(texture: tex)
     }
 
+    // MARK: - Device Enumeration
+
+    /// 接続中のカメラを列挙します。
+    ///
+    /// 内蔵カメラ・外付け（USB）カメラ・Continuity Camera・デスクビューカメラが
+    /// 対象です。取得した ``CaptureDeviceInfo`` を `createCapture(width:height:device:)`
+    /// へ渡すことで、使用するカメラを明示的に選択できます。
+    ///
+    /// - Note: Continuity Camera をアプリで使用するには、Info.plist に
+    ///   `NSCameraUseContinuityCameraDeviceType` キーが必要です。
+    ///
+    /// - Returns: 接続中のカメラの一覧（接続がなければ空配列）。
+    public static func list() -> [CaptureDeviceInfo] {
+        discoverySession().devices.map(CaptureDeviceInfo.init(avDevice:))
+    }
+
+    /// 対応する全デバイスタイプを対象にした DiscoverySession を作成
+    private static func discoverySession() -> AVCaptureDevice.DiscoverySession {
+        AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .external, .continuityCamera, .deskViewCamera],
+            mediaType: .video,
+            position: .unspecified
+        )
+    }
+
+    /// 位置指定（または未指定）から使用する AVCaptureDevice を解決します。
+    ///
+    /// 未指定の場合は、ユーザーが OS レベルで選択したカメラ
+    /// （`userPreferredCamera`、なければ `systemPreferredCamera`）を尊重します。
+    private static func resolveCamera(position: CameraPosition?) -> AVCaptureDevice? {
+        if let position {
+            let avPosition: AVCaptureDevice.Position = position == .front ? .front : .back
+            if let matched = AVCaptureDevice.default(
+                .builtInWideAngleCamera, for: .video, position: avPosition
+            ) {
+                return matched
+            }
+        }
+        return AVCaptureDevice.userPreferredCamera
+            ?? AVCaptureDevice.systemPreferredCamera
+            ?? AVCaptureDevice.default(for: .video)
+    }
+
+    /// 名前でデバイス情報を選択します。
+    ///
+    /// 大文字小文字を無視した完全一致を優先し、なければ部分一致（前方から
+    /// 最初に見つかったもの）を返します。
+    nonisolated static func match(
+        deviceName: String, in devices: [CaptureDeviceInfo]
+    ) -> CaptureDeviceInfo? {
+        let query = deviceName.lowercased()
+        guard !query.isEmpty else { return nil }
+        if let exact = devices.first(where: { $0.name.lowercased() == query }) {
+            return exact
+        }
+        return devices.first { $0.name.lowercased().contains(query) }
+    }
+
     // MARK: - Private Setup
 
     /// ゼロコピーテクスチャ変換用の CVMetalTextureCache を作成
@@ -174,21 +336,10 @@ public final class CaptureDevice {
         self.textureCache = cache
     }
 
-    /// 要求されたカメラと出力設定で AVCaptureSession を構成
-    private func setupCaptureSession(position: CameraPosition) {
+    /// 指定されたカメラと出力設定で AVCaptureSession を構成
+    private func setupCaptureSession(camera: AVCaptureDevice) {
         let session = AVCaptureSession()
         session.sessionPreset = .high
-
-        let avPosition: AVCaptureDevice.Position = position == .front ? .front : .back
-
-        guard let camera = AVCaptureDevice.default(
-            .builtInWideAngleCamera,
-            for: .video,
-            position: avPosition
-        ) ?? AVCaptureDevice.default(for: .video) else {
-            isAvailable = false
-            return
-        }
 
         do {
             let input = try AVCaptureDeviceInput(device: camera)
@@ -212,6 +363,7 @@ public final class CaptureDevice {
         }
 
         self.captureSession = session
+        self.deviceInfo = CaptureDeviceInfo(avDevice: camera)
         self.isAvailable = true
     }
 }

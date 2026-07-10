@@ -122,7 +122,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
 - `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
 - `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
-- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice` -- カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
+- `func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice` -- 指定したカメラでキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
+- `func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice` -- 名前でカメラを選択してキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
+- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice` -- カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
 - `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
 - `func createDynamicMesh() -> DynamicMesh` -- 新しい空のダイナミックメッシュを作成します。
 - `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
@@ -205,6 +207,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func lights()` -- デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
 - `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- 2点間に線を描画します。
 - `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- リニアグラデーション矩形を描画します。
+- `func listCaptureDevices() -> [CaptureDeviceInfo]` -- 接続中のカメラを列挙します。
 - `func loadImage(_ path: String) throws -> MImage` -- 指定したファイルパスから画像を読み込みます。
 - `func loadImageAsync(_ path: String) async throws -> MImage` -- 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
 - `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
@@ -372,6 +375,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func onStop()` -- レンダーループ停止時に一度呼ばれます。
 - `func update(deltaTime: Float)` -- 毎フレーム、レンダリング前に呼ばれます。
 
+### `struct CaptureDeviceInfo` -- 接続中のカメラ 1 台を表す情報。
+
+- `let id: String` -- デバイスの一意な識別子（`AVCaptureDevice.uniqueID`）
+- `let kind: CaptureDeviceKind` -- デバイスの種類
+- `let name: String` -- ユーザーに表示できるデバイス名（例: "FaceTime HD カメラ"）
+
 ### `struct CircleInstance` -- A compact per-circle record for explicit bulk 2D drawing.
 
 - `var color: SIMD4<Float>` -- Per-circle RGBA color, normalized to 0...1.
@@ -493,6 +502,19 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `case back` -- 背面カメラ
 - `case front` -- 前面カメラ
+
+### `enum CaptureDeviceKind` -- 接続中のカメラの種類
+
+- `case builtIn` -- Mac 内蔵カメラ
+- `case continuityCamera` -- Continuity Camera（連係カメラとしての iPhone / iPad）
+- `case deskView` -- デスクビューカメラ
+- `case external` -- 外付けカメラ（USB 接続の Web カメラ・キャプチャデバイスなど）
+- `case unknown` -- 上記以外
+- `var hashValue: Int { get }`
+- `init(from decoder: any Decoder) throws` -- Creates a new instance by decoding from the given decoder, when the
+- `init?(rawValue: String)`
+- `func encode(to encoder: any Encoder) throws` -- Encodes this value into the given encoder, when the type's `RawValue`
+- `func hash(into hasher: inout Hasher)`
 
 ### `enum CloseMode` -- `endShape()` 呼び出し時にシェイプを閉じるかどうかを指定します。
 
@@ -792,10 +814,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class CaptureDevice` -- カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
 
+- `var deviceInfo: CaptureDeviceInfo? { get }` -- 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
 - `let height: Int` -- 要求されたキャプチャ高さ（ピクセル）
 - `var isAvailable: Bool { get }` -- カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ
 - `var texture: (any MTLTexture)? { get }` -- ``read()`` 呼び出し後に利用可能な、最新のカメラフレームの Metal テクスチャ
 - `let width: Int` -- 要求されたキャプチャ幅（ピクセル）
+- `static func list() -> [CaptureDeviceInfo]` -- 接続中のカメラを列挙します。
 - `func read()` -- ``texture`` プロパティを最新のカメラフレームで更新します。
 - `func start()` -- カメラキャプチャセッションを開始します。
 - `func stop()` -- カメラキャプチャセッションを停止します。
