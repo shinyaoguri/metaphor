@@ -92,7 +92,11 @@ public final class CaptureDevice {
     /// ``read()`` 呼び出し後に利用可能な、最新のカメラフレームの Metal テクスチャ
     public private(set) var texture: MTLTexture?
 
-    /// カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ
+    /// カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ。
+    ///
+    /// カメラ権限が拒否されている場合は `false` になります。また使用中の
+    /// カメラが切断された・セッションがエラーで停止した場合も `false` へ
+    /// 変わります（``onDisconnect`` で検知できます）。
     public private(set) var isAvailable: Bool = false
 
     /// 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
@@ -119,6 +123,15 @@ public final class CaptureDevice {
     ///
     /// 要求した ``width`` × ``height`` に最も近いカメラ対応フォーマットの高さです。
     public private(set) var actualHeight: Int?
+
+    /// 使用中のカメラが切断される等で利用不能になったときに呼ばれるコールバック。
+    ///
+    /// 物理的な切断（USB カメラの取り外し・Continuity Camera の離脱）と
+    /// セッションのランタイムエラーの両方で呼ばれます。呼ばれた時点で
+    /// ``isAvailable`` は `false` になっています。復帰するには
+    /// ``CaptureDevice/list()`` で再列挙し、新しいキャプチャデバイスを
+    /// 作成してください。
+    public var onDisconnect: (() -> Void)?
 
     // MARK: - Private Properties
 
@@ -149,6 +162,9 @@ public final class CaptureDevice {
     /// stop が先に完了し、その後 start が走ってセッションが止まらない競合が
     /// 起こり得る。専用シリアルキューで投入順＝実行順を保証する。
     private let sessionQueue = DispatchQueue(label: "metaphor.capture.session", qos: .userInitiated)
+
+    /// デバイス切断・セッションエラー監視の通知トークン（deinit で解除）
+    private var observers: [NSObjectProtocol] = []
 
     // MARK: - Initialization
 
@@ -216,6 +232,9 @@ public final class CaptureDevice {
     }
 
     deinit {
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
         // stop() を呼ばずに破棄されてもキャプチャセッションを止める
         // （動いたまま dealloc されるとカメラが掴まれ続ける）
         if let session = captureSession {
@@ -358,6 +377,21 @@ public final class CaptureDevice {
 
     /// 指定されたカメラと出力設定で AVCaptureSession を構成
     private func setupCaptureSession(camera: AVCaptureDevice) {
+        // カメラ権限が明示的に拒否されているとフレームが流れないだけで原因が
+        // 分からないため、セットアップ前に確認して観測可能にする
+        // （.notDetermined の場合はセッション開始時にシステムが権限ダイアログを
+        // 出すのでそのまま進む — AudioAnalyzer.start() と同じ方針）
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied, .restricted:
+            metaphorWarning(
+                "Camera permission has been denied. Enable it in "
+                    + "System Settings > Privacy & Security > Camera")
+            isAvailable = false
+            return
+        default:
+            break
+        }
+
         let session = AVCaptureSession()
         session.sessionPreset = .high
 
@@ -390,6 +424,46 @@ public final class CaptureDevice {
         self.actualWidth = Int(dims.width)
         self.actualHeight = Int(dims.height)
         self.isAvailable = true
+        observeInterruptions(camera: camera, session: session)
+    }
+
+    /// デバイス切断とセッションのランタイムエラーを監視します。
+    ///
+    /// 外付けカメラが抜かれてもセッションは黙って止まるだけで
+    /// ``isAvailable`` は `true` のままだったため、切断・エラーを観測して
+    /// 状態へ反映します。通知はメインキューで受け、`CaptureDevice` は
+    /// `@MainActor` なので `assumeIsolated` で安全にアクセスできます。
+    private func observeInterruptions(camera: AVCaptureDevice, session: AVCaptureSession) {
+        let center = NotificationCenter.default
+        observers.append(
+            center.addObserver(
+                forName: AVCaptureDevice.wasDisconnectedNotification,
+                object: camera, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.markUnavailable(reason: "device disconnected")
+                }
+            })
+        observers.append(
+            center.addObserver(
+                forName: AVCaptureSession.runtimeErrorNotification,
+                object: session, queue: .main
+            ) { [weak self] note in
+                let message = (note.userInfo?[AVCaptureSessionErrorKey] as? NSError)?
+                    .localizedDescription ?? "unknown error"
+                MainActor.assumeIsolated {
+                    self?.markUnavailable(reason: "session runtime error: \(message)")
+                }
+            })
+    }
+
+    /// デバイスを利用不能としてマークし、``onDisconnect`` を一度だけ呼びます。
+    func markUnavailable(reason: String) {
+        guard isAvailable else { return }
+        isAvailable = false
+        metaphorWarning("Capture device \"\(deviceInfo?.name ?? "unknown")\" is "
+            + "no longer available (\(reason))")
+        onDisconnect?()
     }
 
     /// 要求解像度（``width`` × ``height``）に最も近いネイティブフォーマットを

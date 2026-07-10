@@ -1,3 +1,4 @@
+import Metal
 import Testing
 @testable import MetaphorCore
 
@@ -106,5 +107,55 @@ struct CaptureDeviceTests {
     func formatEmptyList() {
         let index = CaptureDevice.closestFormatIndex(toWidth: 1280, height: 720, in: [])
         #expect(index == nil)
+    }
+}
+
+// MARK: - Unavailability
+
+@Suite("CaptureDevice 利用不能パス", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct CaptureDeviceUnavailabilityTests {
+
+    @Test("存在しないデバイス名では isAvailable=false・実解像度は nil")
+    func unavailableWhenDeviceNotFound() {
+        let cam = CaptureDevice(
+            device: MTLCreateSystemDefaultDevice()!,
+            deviceName: "存在しないカメラ XYZ"
+        )
+        #expect(cam.isAvailable == false)
+        #expect(cam.actualWidth == nil)
+        #expect(cam.actualHeight == nil)
+        #expect(cam.deviceInfo == nil)
+    }
+
+    @Test("セッションが無いデバイスでも start/stop/read がクラッシュしない")
+    func startStopWithoutSession() {
+        let cam = CaptureDevice(
+            device: MTLCreateSystemDefaultDevice()!,
+            deviceName: "存在しないカメラ XYZ"
+        )
+        cam.start()
+        cam.read()
+        cam.stop()
+        #expect(cam.isAvailable == false)
+        #expect(cam.texture == nil)
+    }
+
+    @Test("切断処理で isAvailable が false になり onDisconnect は一度だけ呼ばれる")
+    func markUnavailableTransition() {
+        let cam = CaptureDevice(device: MTLCreateSystemDefaultDevice()!)
+        // カメラ非接続・権限拒否環境（CI 含む）ではセットアップに至らないため、
+        // 遷移の前提となる isAvailable == true が作れた場合のみ検証する。
+        guard cam.isAvailable else { return }
+        var callCount = 0
+        cam.onDisconnect = { callCount += 1 }
+
+        cam.markUnavailable(reason: "test")
+        #expect(cam.isAvailable == false)
+        #expect(callCount == 1)
+
+        // 切断とランタイムエラーが連続しても二重発火しない
+        cam.markUnavailable(reason: "test again")
+        #expect(callCount == 1)
     }
 }
