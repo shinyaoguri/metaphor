@@ -74,8 +74,9 @@ extension SketchContext {
 
     /// カメラキャプチャデバイスを作成し自動的にキャプチャを開始します。
     /// - Parameters:
-    ///   - width: キャプチャ幅（ピクセル単位、デフォルト 1280）。
-    ///   - height: キャプチャ高さ（ピクセル単位、デフォルト 720）。
+    ///   - width: 要求するキャプチャ幅（ピクセル単位、デフォルト 1280）。最も近い
+    ///     対応解像度が選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
+    ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
     ///   - position: カメラの位置。`nil`（デフォルト）の場合は
     ///     ユーザー/システムの優先カメラを使用します。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
@@ -87,8 +88,9 @@ extension SketchContext {
 
     /// 指定したカメラでキャプチャデバイスを作成し自動的にキャプチャを開始します。
     /// - Parameters:
-    ///   - width: キャプチャ幅（ピクセル単位、デフォルト 1280）。
-    ///   - height: キャプチャ高さ（ピクセル単位、デフォルト 720）。
+    ///   - width: 要求するキャプチャ幅（ピクセル単位、デフォルト 1280）。最も近い
+    ///     対応解像度が選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
+    ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
     ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
     public func createCapture(width: Int = 1280, height: Int = 720, device info: CaptureDeviceInfo) -> CaptureDevice {
@@ -99,8 +101,9 @@ extension SketchContext {
 
     /// 名前でカメラを選択してキャプチャデバイスを作成し自動的にキャプチャを開始します。
     /// - Parameters:
-    ///   - width: キャプチャ幅（ピクセル単位、デフォルト 1280）。
-    ///   - height: キャプチャ高さ（ピクセル単位、デフォルト 720）。
+    ///   - width: 要求するキャプチャ幅（ピクセル単位、デフォルト 1280）。最も近い
+    ///     対応解像度が選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
+    ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
     ///   - deviceName: 選択するカメラの名前（大文字小文字を無視した完全一致優先、次に部分一致）。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
     public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice {
