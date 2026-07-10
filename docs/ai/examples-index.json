@@ -1,7 +1,7 @@
 {
-  "count": 274,
+  "count": 275,
   "statusCounts": {
-    "supported": 251,
+    "supported": 252,
     "partial": 0,
     "stub": 13,
     "obsolete": 10
@@ -1973,6 +1973,27 @@
         "basics",
         "typography",
         "words"
+      ]
+    },
+    {
+      "title": "Camera Switching",
+      "path": "Examples/Basics/Video/CameraSwitching",
+      "group": "Basics",
+      "subcategory": "Video",
+      "level": "Beginner",
+      "status": "supported",
+      "description": "Lists the connected cameras with listCaptureDevices() and switches between them with the number keys. Shows explicit device selection via createCapture(device:), the actual capture resolution chosen for the request (act...",
+      "featured": [
+        "listCaptureDevices_",
+        "createCapture_",
+        "CaptureDevice"
+      ],
+      "tags": [
+        "3d",
+        "basics",
+        "cameraswitching",
+        "export",
+        "video"
       ]
     },
     {

@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 274
+Example count: 275
 
-Status: supported 251, partial 0, stub 13, obsolete 10
+Status: supported 252, partial 0, stub 13, obsolete 10
 
 ## How To Use
 
@@ -126,6 +126,7 @@ Status: supported 251, partial 0, stub 13, obsolete 10
 - [Letters](../../Examples/Basics/Typography/Letters) [Beginner] (Typography) -- Draws letters to the screen. This requires loading a font, setting the font, and then drawing the letters. Tags: basics, letters, typography.
 - [Text Rotation](../../Examples/Basics/Typography/TextRotation) [Intermediate] (Typography) -- Draws letters to the screen and rotates them at different angles. Tags: basics, textrotation, typography.
 - [Words](../../Examples/Basics/Typography/Words) [Beginner] (Typography) -- The text() function is used for writing words to the screen. The letters can be aligned left, center, or right with the textAlign() function. Tags: basics, typography, words.
+- [Camera Switching](../../Examples/Basics/Video/CameraSwitching) [Beginner] (Video) -- Lists the connected cameras with listCaptureDevices() and switches between them with the number keys. Shows explicit device selection via createCapture(device:), the actual capture resolution chosen for the request (act... Tags: 3d, basics, cameraswitching, export, video.
 - [VideoPlayback](../../Examples/Basics/Video/VideoPlayback) (Video) Tags: basics, export, video, videoplayback.
 - [Loading URLs](../../Examples/Basics/Web/EmbeddedLinks) [Intermediate] (Web) -- Click on the button to open a URL in a browser. Tags: basics, embeddedlinks, web.
 - [Loading Images](../../Examples/Basics/Web/LoadingImages) [Intermediate] (Web) -- Processing applications can load images from the network. Tags: basics, image, loadingimages, web.
