@@ -58,6 +58,23 @@ extension Sketch {
         context.createGraphics3D(w, h)
     }
 
+    /// 接続中のカメラを列挙します。
+    ///
+    /// 内蔵カメラ・外付け（USB）カメラ・Continuity Camera・デスクビューカメラが
+    /// 対象です。取得した ``CaptureDeviceInfo`` を ``createCapture(width:height:device:)``
+    /// へ渡すことで、複数カメラ環境で使用するカメラを明示的に選択できます。
+    ///
+    /// ```swift
+    /// for cam in listCaptureDevices() {
+    ///     print(cam.name, cam.kind)
+    /// }
+    /// ```
+    ///
+    /// - Returns: 接続中のカメラの一覧（接続がなければ空配列）。
+    public func listCaptureDevices() -> [CaptureDeviceInfo] {
+        context.listCaptureDevices()
+    }
+
     /// カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
     /// （`start()` を呼ぶ必要はありません。停止するには `stop()`）。
     ///
@@ -66,10 +83,49 @@ extension Sketch {
     /// - Parameters:
     ///   - width: キャプチャ幅（デフォルト 1280）。
     ///   - height: キャプチャ高さ（デフォルト 720）。
-    ///   - position: 使用するカメラ位置（デフォルト .front）。
+    ///   - position: 使用するカメラ位置。`nil`（デフォルト）の場合は
+    ///     ユーザー/システムの優先カメラを使用します。macOS ではほとんどの
+    ///     カメラが位置情報を持たないため、特定のカメラを選ぶには
+    ///     ``createCapture(width:height:device:)`` を使用してください。
     /// - Returns: 開始済みのキャプチャデバイス。
-    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice {
+    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice {
         context.createCapture(width: width, height: height, position: position)
+    }
+
+    /// 指定したカメラでキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
+    ///
+    /// ```swift
+    /// if let external = listCaptureDevices().first(where: { $0.kind == .external }) {
+    ///     capture = createCapture(device: external)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - width: キャプチャ幅（デフォルト 1280）。
+    ///   - height: キャプチャ高さ（デフォルト 720）。
+    ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
+    ///     既に切断されている場合は `isAvailable == false` のデバイスが返ります。
+    /// - Returns: 開始済みのキャプチャデバイス。
+    public func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice {
+        context.createCapture(width: width, height: height, device: device)
+    }
+
+    /// 名前でカメラを選択してキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
+    ///
+    /// 大文字小文字を無視した完全一致を優先し、なければ部分一致で選択します。
+    ///
+    /// ```swift
+    /// capture = createCapture(deviceName: "FaceTime")
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - width: キャプチャ幅（デフォルト 1280）。
+    ///   - height: キャプチャ高さ（デフォルト 720）。
+    ///   - deviceName: 選択するカメラの名前。一致するカメラがない場合は
+    ///     `isAvailable == false` のデバイスが返ります。
+    /// - Returns: 開始済みのキャプチャデバイス。
+    public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice {
+        context.createCapture(width: width, height: height, deviceName: deviceName)
     }
 
     /// キャプチャデバイスの最新フレームを指定位置に描画します。

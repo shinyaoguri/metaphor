@@ -66,14 +66,45 @@ extension SketchContext {
 
     // MARK: - Camera Capture
 
+    /// 接続中のカメラを列挙します。
+    /// - Returns: 接続中のカメラの一覧（接続がなければ空配列）。
+    public func listCaptureDevices() -> [CaptureDeviceInfo] {
+        CaptureDevice.list()
+    }
+
     /// カメラキャプチャデバイスを作成し自動的にキャプチャを開始します。
     /// - Parameters:
     ///   - width: キャプチャ幅（ピクセル単位、デフォルト 1280）。
     ///   - height: キャプチャ高さ（ピクセル単位、デフォルト 720）。
-    ///   - position: カメラの位置（デフォルト `.front`）。
+    ///   - position: カメラの位置。`nil`（デフォルト）の場合は
+    ///     ユーザー/システムの優先カメラを使用します。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
-    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition = .front) -> CaptureDevice {
+    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice {
         let capture = CaptureDevice(device: renderer.device, width: width, height: height, position: position)
+        capture.start()
+        return capture
+    }
+
+    /// 指定したカメラでキャプチャデバイスを作成し自動的にキャプチャを開始します。
+    /// - Parameters:
+    ///   - width: キャプチャ幅（ピクセル単位、デフォルト 1280）。
+    ///   - height: キャプチャ高さ（ピクセル単位、デフォルト 720）。
+    ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
+    /// - Returns: 開始済みの `CaptureDevice` インスタンス。
+    public func createCapture(width: Int = 1280, height: Int = 720, device info: CaptureDeviceInfo) -> CaptureDevice {
+        let capture = CaptureDevice(device: renderer.device, width: width, height: height, captureDevice: info)
+        capture.start()
+        return capture
+    }
+
+    /// 名前でカメラを選択してキャプチャデバイスを作成し自動的にキャプチャを開始します。
+    /// - Parameters:
+    ///   - width: キャプチャ幅（ピクセル単位、デフォルト 1280）。
+    ///   - height: キャプチャ高さ（ピクセル単位、デフォルト 720）。
+    ///   - deviceName: 選択するカメラの名前（大文字小文字を無視した完全一致優先、次に部分一致）。
+    /// - Returns: 開始済みの `CaptureDevice` インスタンス。
+    public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice {
+        let capture = CaptureDevice(device: renderer.device, width: width, height: height, deviceName: deviceName)
         capture.start()
         return capture
     }
