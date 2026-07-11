@@ -215,7 +215,12 @@ jobs:
         if: steps.cache-syphon.outputs.cache-hit != 'true'
         run: ./scripts/build-syphon.sh
       - name: Build (Swift 5.10)
-        run: swift build
+        # アンブレラターゲットのみ（依存として全ライブラリモジュールがビルドされる）。
+        # 全ターゲットの swift build は MetaphorTestSupport が import する
+        # Swift Testing（Xcode 16+ 同梱、5.10 に無い）で失敗する。検証対象は
+        # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
+        # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
+        run: swift build --target metaphor
 
   # Examples are NOT built per-PR. Each is a standalone SwiftPM package, so
   # building one recompiles all of metaphor from scratch — building all 271
