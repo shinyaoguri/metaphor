@@ -101,6 +101,16 @@ public final class Canvas3D: CanvasStyle {
     private var encoder: MTLRenderCommandEncoder?
     private var currentTime: Float = 0
 
+    /// beginShape/endShape の大型頂点列（setVertexBytes の 4096B 上限超過分）用の
+    /// 永続トリプルバッファ。フレーム内はバンプ確保で詰め、フレーム境界でリング
+    /// 回転する。以前はシェイプごとに使い捨て MTLBuffer を確保しており、毎フレーム
+    /// 多数の大型シェイプを描くスケッチでアロケーションチャーンになっていた（#250）。
+    private let shapeVertexBuffer: GrowableGPUBuffer<Vertex3D>
+    /// 現在のフレームのトリプルバッファインデックス（`begin()` で更新）。
+    private var shapeVertexBufferIndex = 0
+    /// 現在のフレームで `shapeVertexBuffer` に書き込み済みの頂点数（バンプカーソル）。
+    private var shapeVertexBufferUsed = 0
+
     // MARK: - カメラ状態
 
     var cameraEye: SIMD3<Float> = SIMD3(0, 0, 5)
@@ -283,6 +293,14 @@ public final class Canvas3D: CanvasStyle {
         self.width = width
         self.height = height
 
+        // 大型シェイプ頂点用の拡張可能トリプルバッファ（Canvas2D の頂点バッファと
+        // 同じ方式）。大型シェイプを使わないスケッチの常駐コストを抑えるため
+        // 初期容量は小さく、必要に応じて倍増する
+        self.shapeVertexBuffer = try GrowableGPUBuffer<Vertex3D>(
+            device: device, initialCapacity: 256, maxCapacity: 1_000_000,
+            label: "metaphor.canvas3D.shapeVertices"
+        )
+
         // 非テクスチャパイプライン
         let vertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas3DVertex,
@@ -401,6 +419,11 @@ public final class Canvas3D: CanvasStyle {
         self.cameraUp = SIMD3(0, 1, 0)
         self.viewProjectionDirty = true
         self.useOrthographic = false
+
+        // シェイプ頂点リングを回転（in-flight フレームと書き込み先を分離）し、
+        // バンプカーソルをリセット
+        self.shapeVertexBufferIndex = bufferIndex
+        self.shapeVertexBufferUsed = 0
 
         // スタイル状態（fill、stroke）はフレーム間で保持される。
         // Processing の動作に合わせます。
@@ -875,8 +898,8 @@ public final class Canvas3D: CanvasStyle {
 
     // ユーザー頂点列を index 0 にバインドします。
     // Metal の setVertexBytes は 4096 バイト（Vertex3D 48B × 85 頂点）までしか
-    // 受け付けないため、超過分は一時 MTLBuffer 経由でバインドします
-    // （beginShape のポリゴンは 30 点程度で既に超過する）。
+    // 受け付けないため、超過分は永続トリプルバッファ（shapeVertexBuffer）への
+    // バンプ確保でバインドします（beginShape のポリゴンは 30 点程度で既に超過する）。
     // バインドできなかった場合は false を返すので、呼び出し側は描画を中止すること。
     private func bindShapeVertices(_ vertices: [Vertex3D], on encoder: MTLRenderCommandEncoder) -> Bool {
         let length = MemoryLayout<Vertex3D>.stride * vertices.count
@@ -886,6 +909,29 @@ public final class Canvas3D: CanvasStyle {
             }
             return true
         }
+        // 書き込み開始位置を 16 頂点（= 768B）境界へ切り上げ、macOS の
+        // setVertexBuffer offset 制約（256B アライン）を満たす。
+        // Vertex3D は 48B stride のため 16 頂点が 256 の最小公倍境界。
+        let alignedUsed = (shapeVertexBufferUsed + 15) & ~15
+        if shapeVertexBuffer.ensureCapacity(
+            alignedUsed + vertices.count,
+            activeIndex: shapeVertexBufferIndex,
+            usedCount: shapeVertexBufferUsed
+        ) {
+            let dst = shapeVertexBuffer.pointer(for: shapeVertexBufferIndex) + alignedUsed
+            vertices.withUnsafeBufferPointer { src in
+                dst.update(from: src.baseAddress!, count: src.count)
+            }
+            encoder.setVertexBuffer(
+                shapeVertexBuffer.buffer(for: shapeVertexBufferIndex),
+                offset: alignedUsed * MemoryLayout<Vertex3D>.stride,
+                index: 0
+            )
+            shapeVertexBufferUsed = alignedUsed + vertices.count
+            return true
+        }
+        // リングの maxCapacity を超えるフレームのみ、従来の使い捨てバッファへ
+        // フォールバック（機能は保つ）
         guard let buffer = device.makeBuffer(bytes: vertices, length: length, options: .storageModeShared) else {
             return false
         }
