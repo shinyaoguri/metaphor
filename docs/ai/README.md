@@ -1,16 +1,20 @@
 # AI Development Guide
 
-This guide complements `llms.txt`. Use `llms.txt` for public API signatures; use
-this file when debugging or extending the implementation.
+**Pick your entry point first** — this file is for implementers only:
 
-For content creators using metaphor with an AI assistant, start with
-`llms-sketch.txt` and `docs/ai/for-sketch-authors.md`.
-Use `docs/ai/examples-index.md` to find nearby working examples before asking
-the assistant to invent a sketch from scratch.
-Prompt templates live in `docs/ai/prompts/`.
-See `docs/ai/install-scenarios.md` for how this works across direct SwiftPM
-dependencies, local library checkouts, Homebrew CLI installs, release
-installers, and source checkouts.
+| You want to… | Read |
+|---|---|
+| Write or fix a sketch (most users and AI agents) | `llms-sketch.txt`, then [for-sketch-authors.md](for-sketch-authors.md) |
+| Look up public API signatures | `llms.txt` (generated, complete) |
+| Find a working example to adapt | [examples-index.md](examples-index.md) — machine-readable queries via `examples-index.json` |
+| Prompt templates for common tasks | [prompts/](prompts/) |
+| Debug or extend the metaphor implementation itself | **this file** (everything below) |
+| See which AI files are available per install method | [install-scenarios.md](install-scenarios.md) |
+
+Everything below this line is for **implementers** — people (or agents)
+changing metaphor's own source. It complements `llms.txt`: signatures live
+there; implementation structure, debugging recipes, and extension notes live
+here.
 
 ## Orientation
 
