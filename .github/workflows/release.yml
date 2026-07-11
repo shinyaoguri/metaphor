@@ -93,6 +93,12 @@ jobs:
       - name: Smoke-build representative examples
         run: ./scripts/run-examples.sh --build-only --smoke
 
+      # run-examples.sh はビルドエラーの詳細をログファイルにしか書かないため、
+      # 失敗時はステップ出力へ吐き出す（これがないとランナー内で消えて診断不能）
+      - name: Show example build errors
+        if: failure()
+        run: cat /tmp/metaphor-examples.log || true
+
       # --- Compute next version ---
       - name: Compute next version
         run: |
