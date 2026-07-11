@@ -1,20 +1,32 @@
+import Foundation
 import MetaphorCore
 import MetaphorCoreImage
 
 // MARK: - CoreImage フィルタブリッジ
 
+/// SketchContext → CIFilterWrapper マッピング用のストレージ。
+///
+/// キーは SketchContext への weak 参照（ポインタ同一性）。context がクリーンアップ
+/// ハンドラを経ずに解放されても（SketchRunner 主経路は `performCleanup()` を呼ばない）
+/// エントリは自動 purge され、CIContext とテクスチャプールを持つ wrapper をプロセス
+/// 終了まで抱え込んだり、アドレス再利用で新しい context が他人の stale wrapper を
+/// 拾ったりしない（ObjectIdentifier キーの辞書はその両方が起きる）。
+/// `Sketch.swift` の `_sketchContextStorage` と同じ理由・同じパターン。
 @MainActor
-private var _ciWrapperStorage: [ObjectIdentifier: CIFilterWrapper] = [:]
+private let _ciWrapperStorage = NSMapTable<AnyObject, CIFilterWrapper>(
+    keyOptions: [.weakMemory, .objectPointerPersonality],
+    valueOptions: .strongMemory
+)
 
 extension SketchContext {
     /// 遅延初期化される CoreImage フィルタラッパー（外部ストレージ）。
     var _ciFilterWrapper: CIFilterWrapper? {
-        get { _ciWrapperStorage[ObjectIdentifier(self)] }
+        get { _ciWrapperStorage.object(forKey: self) }
         set {
             if let newValue {
-                _ciWrapperStorage[ObjectIdentifier(self)] = newValue
+                _ciWrapperStorage.setObject(newValue, forKey: self)
             } else {
-                _ciWrapperStorage.removeValue(forKey: ObjectIdentifier(self))
+                _ciWrapperStorage.removeObject(forKey: self)
             }
         }
     }
