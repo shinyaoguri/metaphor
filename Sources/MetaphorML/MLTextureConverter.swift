@@ -119,6 +119,10 @@ public final class MLTextureConverter {
     /// - Returns: bgra8Unorm 形式の MTLTexture。失敗時は nil。
     public func texture(from pixelBuffer: CVPixelBuffer) -> MTLTexture? {
         guard let cache = textureCache else { return nil }
+        // 使い終わったキャッシュエントリの内部リソースを回収する。CoreVideo の
+        // ドキュメント上、テクスチャキャッシュは定期的な flush を必要とする。
+        // 参照が残っている使用中のテクスチャには影響しない。
+        CVMetalTextureCacheFlush(cache, 0)
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
 
@@ -129,13 +133,17 @@ public final class MLTextureConverter {
         )
         guard status == kCVReturnSuccess,
               let cvTex = cvTexture,
-              let mtlTexture = CVMetalTextureGetTexture(cvTex) else { return nil }
+              let baseTexture = CVMetalTextureGetTexture(cvTex),
+              let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
+        else { return nil }
 
         // CoreVideo の契約上、`CVMetalTextureGetTexture` が返す MTLTexture は
-        // ラッパー（cvTex）が生存している間のみ有効。返り値の MTLTexture に
-        // ラッパーを関連付け、テクスチャと同じ寿命でラッパーを生かし続ける。
-        // これがないと cvTex がスコープ終端で解放され、バッファ再利用による
-        // 別フレーム参照や画像破損が起こり得る。
+        // ラッパー（cvTex）が生存している間のみ有効。そこでラッパーを返り値の
+        // テクスチャに関連付けて同じ寿命で生かし続ける。ただしラッパーは内部で
+        // baseTexture を retain しているため、baseTexture へ直接関連付けると
+        // 循環参照（baseTexture ⇄ cvTex）になり両者とも永遠に解放されない。
+        // 同じストレージを指す texture view を作って返し、view 側へ関連付ける
+        // ことで参照を一方向（view → cvTex → baseTexture）に保つ。
         objc_setAssociatedObject(
             mtlTexture, Self.cvTextureAssociationKey, cvTex, .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
