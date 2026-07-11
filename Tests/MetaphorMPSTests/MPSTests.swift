@@ -379,3 +379,63 @@ struct MPSPostEffectExecutionTests {
         #expect(out[farIdx] < 10, "Far corner should stay dark (got \(out[farIdx]))")
     }
 }
+
+// MARK: - In-place ping-pong recycling (#251)
+
+@Suite("MPS in-place ping-pong", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MPSInPlacePingPongTests {
+
+    @Test("repeated in-place filters ping-pong two textures instead of allocating (#251)")
+    func inPlaceFilterPingPongsTextures() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = try #require(device.makeCommandQueue())
+        let wrapper = MPSImageFilterWrapper(device: device, commandQueue: queue)
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 32, height: 32, mipmapped: false)
+        desc.usage = [.shaderRead, .shaderWrite]
+        desc.storageMode = .shared
+        let source = try #require(device.makeTexture(descriptor: desc))
+        let image = MImage(texture: source)
+
+        wrapper.gaussianBlur(image, sigma: 2)
+        let t1 = image.texture  // 1 回目: 新規確保 A（元テクスチャは他所由来なので回収しない）
+        wrapper.gaussianBlur(image, sigma: 2)
+        let t2 = image.texture  // 2 回目: 新規確保 B、A がプールへ戻る
+        wrapper.gaussianBlur(image, sigma: 2)
+        let t3 = image.texture  // 3 回目: A の再利用
+        wrapper.gaussianBlur(image, sigma: 2)
+        let t4 = image.texture  // 4 回目: B の再利用
+
+        #expect(t1 !== source)
+        #expect(t2 !== t1)
+        #expect(t3 === t1, "3rd apply must reuse the 1st apply's texture (ping-pong)")
+        #expect(t4 === t2, "4th apply must reuse the 2nd apply's texture (ping-pong)")
+    }
+
+    @Test("in-place filter with changed size drops the stale ping-pong partner")
+    func inPlaceFilterSizeChangeCleansPool() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = try #require(device.makeCommandQueue())
+        let wrapper = MPSImageFilterWrapper(device: device, commandQueue: queue)
+
+        func makeImage(size: Int) throws -> MImage {
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm, width: size, height: size, mipmapped: false)
+            desc.usage = [.shaderRead, .shaderWrite]
+            desc.storageMode = .shared
+            return MImage(texture: try #require(device.makeTexture(descriptor: desc)))
+        }
+
+        // 32px で ping-pong を確立してから 64px の画像へ切り替えても
+        // クラッシュ・誤サイズ出力にならないこと（旧サイズのプール掃除経路）
+        let small = try makeImage(size: 32)
+        wrapper.gaussianBlur(small, sigma: 2)
+        wrapper.gaussianBlur(small, sigma: 2)
+        let large = try makeImage(size: 64)
+        wrapper.gaussianBlur(large, sigma: 2)
+        #expect(large.texture.width == 64)
+        #expect(large.texture.height == 64)
+    }
+}

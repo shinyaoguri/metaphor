@@ -13,6 +13,10 @@ public final class CIFilterWrapper {
     private let colorSpace: CGColorSpace
     private var texturePool: [String: MTLTexture] = [:]
     private var warnedMessages: Set<String> = []
+    /// 直近の in-place `apply(filterName:parameters:to:)` が MImage へ渡した
+    /// 出力テクスチャの識別子。次回呼び出しで置き換えられた旧テクスチャが
+    /// 「この wrapper 自身の前回出力」だと確認して回収するために持つ（#251）。
+    private var lastInPlaceOutputID: ObjectIdentifier?
 
     public init(device: MTLDevice, commandQueue: MTLCommandQueue) {
         self.device = device
@@ -130,7 +134,30 @@ public final class CIFilterWrapper {
         cmdBuf.waitUntilCompleted()
 
         image.replaceTexture(outTex)
-        texturePool.removeValue(forKey: "\(w)_\(h)_ci_output")
+        recycleInPlaceTextures(replacedSource: src, newOutput: outTex, poolKey: "\(w)_\(h)_ci_output")
+    }
+
+    /// in-place 適用後のテクスチャ回収（ping-pong、#251）。
+    ///
+    /// MImage へ渡した出力はプールから外し、置き換えられた旧テクスチャが
+    /// 「前回この wrapper が出力したもの」であれば次回の出力先としてプールへ戻す。
+    /// これで毎フレームの in-place 適用が 2 枚のスワップに収まり、呼び出しごとの
+    /// フルサイズ private テクスチャ新規確保を避ける。他所から来たテクスチャ
+    /// （loadImage 等）は別 MImage・呼び出し側と共有されている可能性があるため
+    /// 取り込まない（前回出力との同一性チェックが descriptor 一致の保証も兼ねる）。
+    private func recycleInPlaceTextures(
+        replacedSource: MTLTexture, newOutput: MTLTexture, poolKey: String
+    ) {
+        if let last = lastInPlaceOutputID, ObjectIdentifier(replacedSource) == last {
+            texturePool[poolKey] = replacedSource
+        } else {
+            texturePool.removeValue(forKey: poolKey)
+        }
+        // サイズ変更時に旧サイズの ping-pong 相手が残留しないよう掃除
+        for staleKey in texturePool.keys where staleKey.hasSuffix("_ci_output") && staleKey != poolKey {
+            texturePool.removeValue(forKey: staleKey)
+        }
+        lastInPlaceOutputID = ObjectIdentifier(newOutput)
     }
 
     // MARK: - ジェネレーター（入力画像不要）

@@ -1,6 +1,7 @@
 import Testing
 import Metal
 import CoreImage
+import MetaphorCore
 @testable import MetaphorCoreImage
 
 // MARK: - CIFilterPreset Tests
@@ -353,5 +354,29 @@ struct CIFilterWrapperTests {
               let queue = device.makeCommandQueue()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper.generate(filterName: "CINotARealFilter", parameters: [:], width: 32, height: 32)
+    }
+
+    @Test("repeated in-place apply ping-pongs two textures instead of allocating (#251)")
+    func inPlaceApplyPingPongsTextures() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
+        let source = Self.makeTexture(device: device, width: 32, height: 32)!
+        let image = MImage(texture: source)
+        let params: [String: Any] = [kCIInputRadiusKey: 2.0]
+
+        wrapper.apply(filterName: "CIGaussianBlur", parameters: params, to: image)
+        let t1 = image.texture  // 1 回目: 新規確保 A（元テクスチャは他所由来なので回収しない）
+        wrapper.apply(filterName: "CIGaussianBlur", parameters: params, to: image)
+        let t2 = image.texture  // 2 回目: 新規確保 B、A がプールへ戻る
+        wrapper.apply(filterName: "CIGaussianBlur", parameters: params, to: image)
+        let t3 = image.texture  // 3 回目: A の再利用
+        wrapper.apply(filterName: "CIGaussianBlur", parameters: params, to: image)
+        let t4 = image.texture  // 4 回目: B の再利用
+
+        #expect(t1 !== source)
+        #expect(t2 !== t1)
+        #expect(t3 === t1, "3rd apply must reuse the 1st apply's texture (ping-pong)")
+        #expect(t4 === t2, "4th apply must reuse the 2nd apply's texture (ping-pong)")
     }
 }
