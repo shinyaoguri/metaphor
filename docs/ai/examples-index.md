@@ -17,6 +17,32 @@ Status: supported 252, partial 0, stub 13, obsolete 10
 - Avoid `[stub]` (placeholder, blocked on a planned API) and `[obsolete]`
   (Processing/OpenGL-specific, won't be added) examples as references.
 
+## Machine-Readable Access
+
+This index ships in two formats: this `.md` (human-oriented browsing)
+and `examples-index.json` in the same directory (machine-oriented —
+prefer it when filtering by tag, level, or status programmatically).
+
+JSON top-level keys: `count`, `statusCounts`, `examples`. Each entry in
+`examples` has: `title`, `path` (repo-relative), `group`, `subcategory`,
+`level` (`Beginner` / `Intermediate` / `Advanced` / empty), `status`
+(`supported` / `partial` / `stub` / `obsolete`), `description`,
+`featured` (APIs/concepts the original Processing sample features —
+Processing vocabulary such as `PVector` or `pushMatrix_`; empty for
+metaphor-original samples), `tags`.
+
+Query examples (jq):
+
+```sh
+# Paths of all supported 3D examples
+jq -r '.examples[] | select(.status == "supported")
+       | select(.tags | index("3d")) | .path' docs/ai/examples-index.json
+
+# Examples whose original Processing sample features PVector
+jq -r '.examples[] | select(.featured | index("PVector"))
+       | .path' docs/ai/examples-index.json
+```
+
 ## Basics
 
 - [Array](../../Examples/Basics/Arrays/Array) [Beginner] (Arrays) -- An array is a list of data. Each piece of data in an array is identified by an index number representing its position in the array. Arrays are zero based, which means that the first element in the array is [0], the seco... Tags: array, arrays, basics.
