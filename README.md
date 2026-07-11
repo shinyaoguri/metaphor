@@ -225,7 +225,7 @@ dependencies: [
 
 - Apple Silicon Mac
 - macOS 14.0+
-- Xcode 15.0+ / Swift 5.10+
+- Xcode 15.4+ / Swift 5.10+（最小サポート。CI が Xcode 15.4 でのビルドを毎 PR 検証します。GitHub Actions の macos-14 ランナーが廃止され CI で検証できなくなった時点で、最小バージョンの引き上げを検討します）
 
 ## Troubleshooting
 
