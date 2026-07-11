@@ -32,6 +32,10 @@ public final class MPSImageFilterWrapper {
 
     // テクスチャプール
     private var texturePool: [String: MTLTexture] = [:]
+    /// 直近の in-place 適用が MImage へ渡した出力テクスチャの識別子。
+    /// 次回呼び出しで置き換えられた旧テクスチャが「この filter 自身の前回出力」だと
+    /// 確認して回収するために持つ（#251）。
+    private var lastInPlaceOutputID: ObjectIdentifier?
 
     public init(device: MTLDevice, commandQueue: MTLCommandQueue) {
         self.device = device
@@ -48,7 +52,7 @@ public final class MPSImageFilterWrapper {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateGaussian(sigma: sigma)
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// Sobel エッジ検出を画像に適用します。
@@ -57,7 +61,7 @@ public final class MPSImageFilterWrapper {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateSobel()
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// ラプラシアンフィルタを画像に適用します。
@@ -66,7 +70,7 @@ public final class MPSImageFilterWrapper {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateLaplacian()
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// モルフォロジー収縮（エリアミン）を画像に適用します。
@@ -78,7 +82,7 @@ public final class MPSImageFilterWrapper {
         let size = radius * 2 + 1
         let kernel = getOrCreateAreaMin(size: size)
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// モルフォロジー膨張（エリアマックス）を画像に適用します。
@@ -90,7 +94,7 @@ public final class MPSImageFilterWrapper {
         let size = radius * 2 + 1
         let kernel = getOrCreateAreaMax(size: size)
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// メディアンフィルタを画像に適用します。
@@ -101,7 +105,7 @@ public final class MPSImageFilterWrapper {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateMedian(diameter: diameter)
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// バイナリ閾値処理を画像に適用します。
@@ -112,7 +116,7 @@ public final class MPSImageFilterWrapper {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateThreshold(value: value)
         kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
-        finalize(image: image, dst: dst, commandBuffer: cb)
+        finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     // MARK: - エンコード API（PostProcessPipeline 統合）
@@ -334,12 +338,29 @@ public final class MPSImageFilterWrapper {
         return (src, dst, cb)
     }
 
-    private func finalize(image: MImage, dst: MTLTexture, commandBuffer: MTLCommandBuffer) {
+    private func finalize(image: MImage, src: MTLTexture, dst: MTLTexture, commandBuffer: MTLCommandBuffer) {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         let w = dst.width, h = dst.height
         image.replaceTexture(dst)
-        texturePool.removeValue(forKey: "\(w)_\(h)_\(dst.pixelFormat.rawValue)_mps_output")
+        // in-place 適用後のテクスチャ回収（ping-pong、#251）。MImage へ渡した出力は
+        // プールから外し、置き換えられた旧テクスチャが「前回この filter が出力した
+        // もの」であれば次回の出力先としてプールへ戻す。これで毎フレームの適用が
+        // 2 枚のスワップに収まり、呼び出しごとのフルサイズ private テクスチャ
+        // 新規確保を避ける。他所から来たテクスチャ（loadImage 等）は別 MImage・
+        // 呼び出し側と共有されている可能性があるため取り込まない（前回出力との
+        // 同一性チェックが descriptor 一致の保証も兼ねる）
+        let key = "\(w)_\(h)_\(dst.pixelFormat.rawValue)_mps_output"
+        if let last = lastInPlaceOutputID, ObjectIdentifier(src) == last {
+            texturePool[key] = src
+        } else {
+            texturePool.removeValue(forKey: key)
+        }
+        // サイズ・フォーマット変更時に旧 ping-pong 相手が残留しないよう掃除
+        for staleKey in texturePool.keys where staleKey.hasSuffix("_mps_output") && staleKey != key {
+            texturePool.removeValue(forKey: staleKey)
+        }
+        lastInPlaceOutputID = ObjectIdentifier(dst)
     }
 
     private func getOrCreateTexture(
