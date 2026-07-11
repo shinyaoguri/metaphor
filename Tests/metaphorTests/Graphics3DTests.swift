@@ -627,4 +627,87 @@ struct Canvas3DBatchFlushTests {
         #expect(nonBlack > 1000,
                 "120-vertex polygon should render via the transient-buffer path (nonBlack=\(nonBlack))")
     }
+
+    @Test("multiple large beginShape polygons in one frame render independently (#250 bump-allocated ring)")
+    func multipleLargeBeginShapePolygons() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        guard let commandBuffer = renderer.commandQueue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return
+        }
+        let rpd = renderer.textureManager.renderPassDescriptor
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            Issue.record("Failed to create encoder")
+            return
+        }
+
+        let w = Float(renderer.textureManager.width)
+        let h = Float(renderer.textureManager.height)
+        let radius = min(w, h) * 0.2
+
+        canvas3D.begin(encoder: encoder, time: 0)
+        canvas3D.fill(.white)
+        canvas3D.noStroke()
+        // 左右に 1 個ずつ、4KB 制限を超える 120 頂点ポリゴンを同一フレームで描く。
+        // 2 個目のシェイプのバンプ確保（永続リングの offset 進行）が 1 個目の
+        // 頂点データを上書き・破壊しないことの回帰テスト
+        for cx in [w * 0.25, w * 0.75] {
+            canvas3D.pushMatrix()
+            canvas3D.translate(cx, h / 2, 0)
+            canvas3D.beginShape()
+            let n = 120
+            for i in 0..<n {
+                let a = Float(i) / Float(n) * 2 * Float.pi
+                canvas3D.vertex(cos(a) * radius, sin(a) * radius, 0)
+            }
+            canvas3D.endShape(.close)
+            canvas3D.popMatrix()
+        }
+        canvas3D.end()
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        // 左半分・右半分それぞれに描かれていることを個別に確認する
+        // （全域カウントでは片方が消えても他方で合格し得るため）
+        let texW = renderer.textureManager.width
+        let texH = renderer.textureManager.height
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: texW, height: texH, mipmapped: false)
+        desc.storageMode = .shared
+        guard let staging = renderer.device.makeTexture(descriptor: desc),
+              let blitCB = renderer.commandQueue.makeCommandBuffer(),
+              let blit = blitCB.makeBlitCommandEncoder() else {
+            Issue.record("Failed to create readback resources")
+            return
+        }
+        blit.copy(from: renderer.textureManager.colorTexture,
+                  sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: texW, height: texH, depth: 1),
+                  to: staging, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        blitCB.commit()
+        blitCB.waitUntilCompleted()
+        var pixels = [UInt8](repeating: 0, count: texW * texH * 4)
+        staging.getBytes(&pixels, bytesPerRow: texW * 4,
+                         from: MTLRegionMake2D(0, 0, texW, texH), mipmapLevel: 0)
+        var nonBlackLeft = 0
+        var nonBlackRight = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4
+                if pixels[i] > 2 || pixels[i + 1] > 2 || pixels[i + 2] > 2 {
+                    if x < texW / 2 { nonBlackLeft += 1 } else { nonBlackRight += 1 }
+                }
+            }
+        }
+        #expect(nonBlackLeft > 500,
+                "First large polygon (left) must survive the second bump allocation (nonBlackLeft=\(nonBlackLeft))")
+        #expect(nonBlackRight > 500,
+                "Second large polygon (right) must render at its own ring offset (nonBlackRight=\(nonBlackRight))")
+    }
 }

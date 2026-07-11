@@ -151,6 +151,19 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // レンダータイマー停止 + App Nap 抑制解除（SketchWindow.stopRenderTimer と対称）。
+        // cancel 後に resume するのは、suspend されたまま（noLoop 中など）の
+        // DispatchSource は解放時にクラッシュするため — cancel 済みなので resume で
+        // イベントハンドラが再発火することはなく、suspend カウントだけが 0 に戻る。
+        if let renderTimer {
+            renderTimer.cancel()
+            resumeRenderTimerIfNeeded(renderTimer)
+            self.renderTimer = nil
+        }
+        if let activity {
+            ProcessInfo.processInfo.endActivity(activity)
+            self.activity = nil
+        }
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
         // SyphonPlugin はここで Syphon サーバーを停止する。
         renderer?.shutdown()

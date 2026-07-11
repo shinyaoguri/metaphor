@@ -176,6 +176,52 @@ jobs:
               -ignore-filename-regex='Tests/|\.build/'
           fi
 
+  # 最小サポートの Swift 5.10（Xcode 15.4 / macos-14）でライブラリ本体が
+  # ビルドできることを検証する（Issue #256）。build-and-test は Xcode 26.4 で
+  # 走るため、新しい SDK にしかないシンボルの混入は per-PR では捕まらず、
+  # リリース時の example smoke-build（macos-14）で初めて発覚していた
+  # （実例: #246 の通知購読 API → v0.5.3 リリース失敗 → #254 で修正）。
+  # ビルドのみでテストは走らせない: 目的は API/SDK 互換の検証であることに
+  # 加え、テストが使う Swift Testing は Xcode 16+ 同梱で 5.10 には存在しない。
+  # -warnings-as-errors も付けない（警告セットがツールチェーン毎に異なり、
+  # 旧環境の偽陽性で落とさないため）。
+  # macos-14 ランナー廃止 = Xcode 15.4 が使えなくなったときが最小サポートを
+  # 引き上げる判断タイミング（README の Requirements も併せて更新する）。
+  build-swift-5-10:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Select Xcode
+        # macos-14 のデフォルト Xcode（15.4）。release.yml の smoke-build と同じ環境
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Get Syphon submodule hash
+        id: syphon-hash
+        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      # キーの規則は build-and-test / release.yml と共通。同じ Xcode 版の
+      # release.yml smoke-build とはキャッシュを共有できる
+      - name: Get Xcode version
+        id: xcode-version
+        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      - name: Cache Syphon.xcframework
+        id: cache-syphon
+        uses: actions/cache@v6
+        with:
+          path: Frameworks/Syphon.xcframework
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
+      - name: Build Syphon
+        if: steps.cache-syphon.outputs.cache-hit != 'true'
+        run: ./scripts/build-syphon.sh
+      - name: Build (Swift 5.10)
+        # アンブレラターゲットのみ（依存として全ライブラリモジュールがビルドされる）。
+        # 全ターゲットの swift build は MetaphorTestSupport が import する
+        # Swift Testing（Xcode 16+ 同梱、5.10 に無い）で失敗する。検証対象は
+        # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
+        # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
+        run: swift build --target metaphor
+
   # Examples are NOT built per-PR. Each is a standalone SwiftPM package, so
   # building one recompiles all of metaphor from scratch — building all 271
   # would be prohibitively slow and costly (macOS minutes bill at 10x), for a
