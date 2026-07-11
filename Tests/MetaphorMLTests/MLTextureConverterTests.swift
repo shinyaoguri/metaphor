@@ -108,6 +108,101 @@ struct MLTextureConverterTests {
         }
     }
 
+    @Test("texture(from:) がバッファプールを枯渇させない（Issue #248）")
+    func textureFromPixelBufferDoesNotStarveBufferPool() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let converter = MLTextureConverter(device: device, commandQueue: queue)
+
+        // カメラ入力と同等の条件（IOSurface 裏付き・Metal 互換）のプール
+        let poolAttrs: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: 64,
+            kCVPixelBufferHeightKey as String: 64,
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ]
+        var poolOut: CVPixelBufferPool?
+        CVPixelBufferPoolCreate(nil, nil, poolAttrs as CFDictionary, &poolOut)
+        let pool = try #require(poolOut)
+
+        // threshold はプール外へ retain され得るバッファ数の上限。解放済みの
+        // はずのバッファがテクスチャキャッシュ経由で retain され続けると
+        // kCVReturnWouldExceedAllocationThreshold で取得に失敗する
+        let threshold = 4
+        let aux = [kCVPixelBufferPoolAllocationThresholdKey as String: threshold]
+
+        for i in 0..<(threshold * 4) {
+            let status = autoreleasepool { () -> CVReturn in
+                var bufferOut: CVPixelBuffer?
+                let status = CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(
+                    nil, pool, aux as CFDictionary, &bufferOut)
+                guard status == kCVReturnSuccess, let buffer = bufferOut else { return status }
+                _ = converter.texture(from: buffer)
+                // MTLTexture と CVMetalTexture ラッパーはこのスコープ終端で解放
+                // され、バッファはプールへ戻って次のイテレーションで再利用できる。
+                // テクスチャ⇄ラッパーの循環参照があると両者が不死化してバッファを
+                // retain し続け、プールが枯渇する（Issue #248 の実態）
+                return status
+            }
+            #expect(
+                status == kCVReturnSuccess,
+                "iteration \(i): pool exhausted — texture cache is retaining released buffers")
+            if status != kCVReturnSuccess { break }
+        }
+    }
+
+    @Test("キャッシュ flush 後も保持中のテクスチャは元のフレーム内容を保つ")
+    func liveTextureSurvivesCacheFlush() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let converter = MLTextureConverter(device: device, commandQueue: queue)
+
+        let poolAttrs: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: 4,
+            kCVPixelBufferHeightKey as String: 4,
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ]
+        var poolOut: CVPixelBufferPool?
+        CVPixelBufferPoolCreate(nil, nil, poolAttrs as CFDictionary, &poolOut)
+        let pool = try #require(poolOut)
+
+        func makeBuffer(filledWith value: UInt8) throws -> CVPixelBuffer {
+            var bufferOut: CVPixelBuffer?
+            CVPixelBufferPoolCreatePixelBuffer(nil, pool, &bufferOut)
+            let buffer = try #require(bufferOut)
+            CVPixelBufferLockBaseAddress(buffer, [])
+            if let base = CVPixelBufferGetBaseAddress(buffer) {
+                memset(base, Int32(value), CVPixelBufferGetBytesPerRow(buffer) * 4)
+            }
+            CVPixelBufferUnlockBaseAddress(buffer, [])
+            return buffer
+        }
+
+        // 0xAB で塗ったフレームのゼロコピーテクスチャを保持し続ける
+        let heldTexture = try #require(converter.texture(from: makeBuffer(filledWith: 0xAB)))
+
+        // 別フレームの変換を繰り返す（この中で flush が走り、プールが
+        // 元のバッファを再利用しようとする機会を与える）
+        for _ in 0..<8 {
+            autoreleasepool {
+                guard let other = try? makeBuffer(filledWith: 0x00) else { return }
+                _ = converter.texture(from: other)
+            }
+        }
+
+        // 保持中のテクスチャが flush・バッファ再利用で破壊されていないこと
+        var pixels = [UInt8](repeating: 0, count: heldTexture.width * heldTexture.height * 4)
+        heldTexture.getBytes(
+            &pixels,
+            bytesPerRow: heldTexture.width * 4,
+            from: MTLRegionMake2D(0, 0, heldTexture.width, heldTexture.height),
+            mipmapLevel: 0)
+        #expect(pixels.allSatisfy { $0 == 0xAB })
+    }
+
     @Test("texture from strided MLMultiArray respects strides")
     func textureFromStridedMultiArray() throws {
         let device = MTLCreateSystemDefaultDevice()!

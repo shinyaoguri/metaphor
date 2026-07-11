@@ -348,6 +348,11 @@ public final class VideoPlayer {
         let bufferWidth = CVPixelBufferGetWidth(pixelBuffer)
         let bufferHeight = CVPixelBufferGetHeight(pixelBuffer)
 
+        // 使い終わったキャッシュエントリの内部リソースを回収する。CoreVideo の
+        // ドキュメント上、テクスチャキャッシュは定期的な flush を必要とする。
+        // 参照が残っている使用中のテクスチャには影響しない。
+        CVMetalTextureCacheFlush(cache, 0)
+
         var cvTexture: CVMetalTexture?
         let status = CVMetalTextureCacheCreateTextureFromImage(
             nil, cache, pixelBuffer, nil,
@@ -355,14 +360,20 @@ public final class VideoPlayer {
         )
 
         guard status == kCVReturnSuccess, let cvTex = cvTexture,
-              let mtlTexture = CVMetalTextureGetTexture(cvTex) else { return }
+              let baseTexture = CVMetalTextureGetTexture(cvTex),
+              let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
+        else { return }
 
         // CoreVideo の契約上、MTLTexture はラッパー（cvTex）が生存している間のみ
         // 有効。旧フレームの MTLTexture は in-flight コマンドバッファやユーザ
-        // コードから生存し得るため、ラッパーをテクスチャ自体に関連付けて同じ
-        // 寿命で生かす（MLTextureConverter と同じパターン。プロパティで 1 世代
-        // だけ保持する方式では、描画中のテクスチャの裏でバッファが再利用され
-        // 別フレームに上書きされ得る）
+        // コードから生存し得るため、ラッパーをテクスチャに関連付けて同じ寿命で
+        // 生かす（プロパティで 1 世代だけ保持する方式では、描画中のテクスチャの
+        // 裏でバッファが再利用され別フレームに上書きされ得る）。ただしラッパーは
+        // 内部で baseTexture を retain しているため、baseTexture へ直接関連付けると
+        // 循環参照（baseTexture ⇄ cvTex）になり両者とも永遠に解放されない。
+        // 同じストレージを指す texture view を作り、view 側へ関連付けることで
+        // 参照を一方向（view → cvTex → baseTexture）に保つ
+        // （MLTextureConverter と同じパターン）。
         objc_setAssociatedObject(
             mtlTexture, Self.cvTextureAssociationKey, cvTex, .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
