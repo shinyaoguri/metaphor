@@ -8,7 +8,7 @@
 metaphor は Processing 由来の発想を持つクリエイティブコーディングライブラリです。Swift + Metal の上に、宣言的・フレームベースで描画する `Sketch` プロトコルを提供します。2D/3D 描画、GPU compute、ポストプロセス、物理、音声を備えます。
 
 - **対象**: macOS 14.0+ / Apple Silicon 専用
-- **言語**: Swift 5.10+
+- **言語**: Swift 5.10+（最小サポート = Xcode 15.4。per-PR CI の `build-swift-5-10` ジョブが旧ツールチェーンでのビルドを検証 — 新 SDK 限定シンボルの混入はここで捕まる）
 - **形態**: マルチターゲット SwiftPM ライブラリ（`shinyaoguri/metaphor`）
 
 ## モジュール構成
