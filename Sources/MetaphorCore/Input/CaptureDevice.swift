@@ -445,10 +445,13 @@ public final class CaptureDevice {
     /// 状態へ反映します。通知はメインキューで受け、`CaptureDevice` は
     /// `@MainActor` なので `assumeIsolated` で安全にアクセスできます。
     private func observeInterruptions(camera: AVCaptureDevice, session: AVCaptureSession) {
+        // `AVCaptureDevice.wasDisconnectedNotification` 等の型プロパティ形式は
+        // 新しい SDK にしかなく、Swift 5.10（Xcode 15.x、リリースの smoke-build
+        // ゲート）でビルドできない。両 SDK で有効な旧グローバル通知名を使う。
         let center = NotificationCenter.default
         observers.append(
             center.addObserver(
-                forName: AVCaptureDevice.wasDisconnectedNotification,
+                forName: .AVCaptureDeviceWasDisconnected,
                 object: camera, queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
@@ -457,7 +460,7 @@ public final class CaptureDevice {
             })
         observers.append(
             center.addObserver(
-                forName: AVCaptureSession.runtimeErrorNotification,
+                forName: .AVCaptureSessionRuntimeError,
                 object: session, queue: .main
             ) { [weak self] note in
                 let message = (note.userInfo?[AVCaptureSessionErrorKey] as? NSError)?
