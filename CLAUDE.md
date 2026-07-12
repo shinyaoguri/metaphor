@@ -127,11 +127,11 @@ gh pr create --base main                # リリースは --label release:minor 
 gh pr merge --squash --delete-branch    # squash のみ、ブランチ自動削除
 ```
 
-リリースは PR の `release:*` ラベル駆動（手順は [docs/releasing.md](docs/releasing.md)）。一般的な git 規約（Conventional Commits、1 コミット 1 関心、push は依頼時のみ）はグローバル CLAUDE.md にあり、ここでは繰り返しません。
+リリースは PR の `release:*` ラベル駆動（手順は [docs/releasing.md](docs/releasing.md)）。一般的な git 規約（Conventional Commits、1 コミット 1 関心など）はグローバル CLAUDE.md にあり、ここでは繰り返しません。
 
 ### Claude への注記
 
-- **ユーザーが明示するまで merge / push しない。** PR を開いたら CI とレビューを待ち、指示があってはじめて `gh pr merge`。`git push` も毎回確認する。
+- **push / merge はグローバル CLAUDE.md の基準で進める**: コミットログと PR 本文（目的・変更点・確認方法）を丁寧に書き、必須チェック `build-and-test` が green なら、指示を待たず `gh pr merge` まで進めてよい。force push・履歴の書き換えなど不可逆な操作のみ事前にユーザーへ確認。
 - squash merge のみ。PR タイトル/本文に最終コミットメッセージを 1 本きれいに書く（ブランチ上の各コミットは使い捨て）。
 - merge 後は main に戻って pull し、`git fetch -p` でローカルブランチを掃除する。
 
