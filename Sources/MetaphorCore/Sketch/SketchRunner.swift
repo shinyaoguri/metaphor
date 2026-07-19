@@ -290,6 +290,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードでも尊重）。
         let fps = resolveFPS(config: config)
+        renderer.targetFPS = fps
 
         // レンダーループモードの決定。
         // Syphon を publish するが renderLoopMode が displayLink のままの場合、
@@ -417,6 +418,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
         let fps = resolveFPS(config: config)
+        renderer.targetFPS = fps
 
         // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。
         startTimerLoop(fps: fps)
@@ -611,6 +613,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     ///
     /// - Parameter fps: 目標フレーム毎秒。
     private func handleFrameRate(_ fps: Int) {
+        renderer?.targetFPS = fps
         if let renderTimer {
             // タイマーモード: タイマーをリスケジュール
             let interval = 1.0 / Double(max(fps, 1))

@@ -46,9 +46,46 @@ struct ProbeFrameMetadata: Encodable {
     /// 解析できない場合（テクスチャ読み出し失敗など）は nil。
     let stats: Stats?
 
+    /// 実測パフォーマンス統計（schemaVersion 4 のまま additive 追加、Issue #271）。
+    /// スケッチの「重さ」を AI が画像からの推測でなく数値で判断するためのシグナル。
+    /// 単一フレーム経路（`current/frame.json`）のみで搭載し、連続キャプチャ
+    /// （`sequence/frame.NNNN.json`）と失敗応答では省略する（nil）。
+    let performance: Performance?
+
     struct Size: Encodable {
         let width: Int
         let height: Int
+    }
+
+    /// リクエスト処理時に採取する実測パフォーマンス統計。
+    struct Performance: Encodable {
+        /// 直近約 1 秒の実測フレームレート。ウィンドウ内のフレームが
+        /// 2 個未満（noLoop 停止中・起動直後）で算出できない場合は nil。
+        let fps: Double?
+
+        /// 実効ターゲット FPS（`frameRate()` / `METAPHOR_FPS` 解決後の設定値）。
+        let targetFPS: Int
+
+        /// 直近約 1 秒のフレーム時間（ミリ秒）。`fps` と同じ条件で nil。
+        let frameTimeMs: FrameTime?
+
+        /// 自プロセスの phys_footprint（MB）。Activity Monitor の「メモリ」に
+        /// 相当する実効フットプリント。取得失敗時は nil。
+        let memoryMB: Double?
+
+        /// 前回 Probe リクエストから今回まで（初回はスケッチ起動から）の
+        /// 平均 CPU 使用率（%）。1 コア = 100%（`top` 互換。マルチコア使用で
+        /// 100 超あり）。取得失敗時は nil。
+        let cpuPercent: Double?
+
+        /// thermal state（`nominal` / `fair` / `serious` / `critical` / `unknown`）。
+        let thermalState: String
+
+        /// フレーム時間の統計（ミリ秒）。`max` はスパイク検出用。
+        struct FrameTime: Encodable {
+            let mean: Double
+            let max: Double
+        }
     }
 
     /// 32x32 グリッドサンプルから 1 パスで計算する画像統計。

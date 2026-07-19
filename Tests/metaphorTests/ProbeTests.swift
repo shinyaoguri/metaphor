@@ -586,7 +586,8 @@ struct ProbeWriterFailureResponseTests {
                 custom: [:],
                 customTypes: [:],
                 warnings: ["failed to allocate staging texture; frame.png was not written"],
-                stats: nil
+                stats: nil,
+                performance: nil
             )
             ProbeWriter.writeFailureResponse(directory: dir.path, metadata: metadata)
 
