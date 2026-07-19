@@ -10,7 +10,7 @@ public enum Metaphor {
     /// この値は Release ワークフローがリリースのたびに書き換える（`release.yml` の
     /// version-bump コミット）。手で編集しないこと。リリース間の `main` では直近の
     /// リリース版を指す。
-    public static let version = "0.5.3"
+    public static let version = "0.6.0"
 
     /// バージョンを1行で表す表記（例: `metaphor 0.2.4`）。
     public static var identifier: String {
