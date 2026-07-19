@@ -421,13 +421,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var fullScreen: Bool` -- フルスクリーンモードで起動するかどうか。
 - `var height: Int` -- オフスクリーンテクスチャの高さ（ピクセル単位）。
 - `var plugins: [PluginFactory]` -- スケッチセットアップ時に登録するプラグインファクトリ。
+- `var preventAppNap: Bool` -- スケッチ実行中に macOS の App Nap を抑止するか（既定 `true`）。
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
 - `var syphon: Bool` -- Syphon 出力を有効化するか（既定 `false`）。
 - `var syphonName: String?` -- Syphon サーバー名（`nil` で Syphon 出力を無効化）。
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
 ### `struct SketchWindowConfig` -- セカンダリスケッチウィンドウの設定。
 
