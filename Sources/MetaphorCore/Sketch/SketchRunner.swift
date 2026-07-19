@@ -92,6 +92,22 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             return
         }
 
+        // スケッチ実行中は App Nap を抑止（既定）。ウィンドウが背面・オクルージョン状態に
+        // なるとタイマー間引き + QoS 降格で描画内容と無関係に fps が低下するため（#266、
+        // 実測で最大 1/6）、レンダーループモードによらずプロセススコープの assertion を
+        // 張る。解放は applicationWillTerminate（SketchWindow の timer モードは Syphon
+        // 出力用途のため、このオプトアウトと独立に自前の assertion を維持する）。
+        if Self.resolvePreventAppNap(config: config, env: ProcessInfo.processInfo.environment) {
+            activity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .latencyCritical],
+                reason: "metaphor sketch is running"
+            )
+        } else {
+            metaphorDiagnostic(
+                "App Nap prevention disabled (preventAppNap=false or METAPHOR_ALLOW_APP_NAP=1)"
+            )
+        }
+
         // レンダーループとフレーム出力先を構成（モード別）。
         if isHeadless {
             configureHeadlessLoop(config: config)
@@ -325,6 +341,23 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         return nil
     }
 
+    /// App Nap 抑止の assertion を張るべきかを解決します。
+    ///
+    /// 優先順位: 環境変数 `METAPHOR_ALLOW_APP_NAP=1`（= App Nap を許可、抑止しない）>
+    /// ``SketchConfig/preventAppNap``。ビルド済みスケッチを再コンパイルせず省電力側に
+    /// 倒すためのスイッチです。
+    ///
+    /// - Parameters:
+    ///   - config: スケッチ設定。
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    /// - Returns: assertion を張るべきなら `true`。
+    nonisolated static func resolvePreventAppNap(
+        config: SketchConfig, env: [String: String]
+    ) -> Bool {
+        if env["METAPHOR_ALLOW_APP_NAP"] == "1" { return false }
+        return config.preventAppNap
+    }
+
     /// レンダーループの実効 FPS を解決します（ウィンドウ/ヘッドレス共通）。
     ///
     /// 優先順位: 環境変数 `METAPHOR_FPS` > ``SketchConfig/fps``。これにより
@@ -398,12 +431,6 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // レンダリングをディスプレイリンクから分離
         renderer.useExternalRenderLoop = true
-
-        // 安定したフレームレートのため App Nap を無効化
-        activity = ProcessInfo.processInfo.beginActivity(
-            options: [.userInitiated, .latencyCritical],
-            reason: "Timer-based render loop requires consistent frame rate"
-        )
 
         // DispatchSourceTimer: ディスプレイリンクとは独立して renderFrame() を駆動
         let interval = 1.0 / Double(max(fps, 1))

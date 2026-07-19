@@ -219,6 +219,17 @@ public struct SketchConfig: Sendable {
     /// 動画録画に適しています。
     public var renderLoopMode: RenderLoopMode
 
+    /// スケッチ実行中に macOS の App Nap を抑止するか（既定 `true`）。
+    ///
+    /// App Nap はウィンドウが背面・オクルージョン状態のときタイマーを間引き QoS を
+    /// 降格させるため、描画内容と無関係にフレームレートが大きく低下します
+    /// （実測で最大 1/6）。既定ではスケッチ実行中に activity assertion を張り、
+    /// バックグラウンドでも安定したフレームレートを維持します（システムの
+    /// アイドルスリープも抑止されます）。バッテリー駆動などで省電力を優先したい
+    /// 場合は `false` に設定してください。環境変数 `METAPHOR_ALLOW_APP_NAP=1` で
+    /// 再コンパイルせずに App Nap を許可することもできます（環境変数が優先）。
+    public var preventAppNap: Bool
+
     /// スケッチセットアップ時に登録するプラグインファクトリ。
     ///
     /// プラグインは ``Sketch/setup()`` が呼ばれる前にインスタンス化されスケッチに接続されます。
@@ -241,6 +252,7 @@ public struct SketchConfig: Sendable {
     ///   - windowScale: ウィンドウサイズのスケール係数。
     ///   - fullScreen: フルスクリーンモードで起動するかどうか。
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
+    ///   - preventAppNap: スケッチ実行中に App Nap を抑止するか（デフォルト: `true`）。
     ///   - plugins: スケッチに登録するプラグインファクトリの配列。
     public init(
         width: Int = 1920,
@@ -252,6 +264,7 @@ public struct SketchConfig: Sendable {
         windowScale: Float = 0.5,
         fullScreen: Bool = false,
         renderLoopMode: RenderLoopMode = .displayLink,
+        preventAppNap: Bool = true,
         plugins: [PluginFactory] = []
     ) {
         self.width = width
@@ -263,6 +276,7 @@ public struct SketchConfig: Sendable {
         self.windowScale = windowScale
         self.fullScreen = fullScreen
         self.renderLoopMode = renderLoopMode
+        self.preventAppNap = preventAppNap
         self.plugins = plugins
     }
 }

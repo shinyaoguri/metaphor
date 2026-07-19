@@ -18,6 +18,7 @@ struct SketchConfigTests {
         #expect(config.fps == 60)
         #expect(config.syphonName == nil)
         #expect(config.windowScale == 0.5)
+        #expect(config.preventAppNap == true)
     }
 
     @Test("custom config values")
@@ -28,7 +29,8 @@ struct SketchConfigTests {
             title: "Test",
             fps: 30,
             syphonName: "TestSyphon",
-            windowScale: 1.0
+            windowScale: 1.0,
+            preventAppNap: false
         )
         #expect(config.width == 1280)
         #expect(config.height == 720)
@@ -36,6 +38,41 @@ struct SketchConfigTests {
         #expect(config.fps == 30)
         #expect(config.syphonName == "TestSyphon")
         #expect(config.windowScale == 1.0)
+        #expect(config.preventAppNap == false)
+    }
+}
+
+// MARK: - App Nap Prevention Tests
+
+@Suite("App Nap prevention resolution")
+struct AppNapPreventionTests {
+
+    @Test("default config prevents App Nap")
+    func defaultPrevents() {
+        #expect(SketchRunner.resolvePreventAppNap(config: SketchConfig(), env: [:]))
+    }
+
+    @Test("preventAppNap: false opts out")
+    func configOptOut() {
+        let config = SketchConfig(preventAppNap: false)
+        #expect(!SketchRunner.resolvePreventAppNap(config: config, env: [:]))
+    }
+
+    @Test("METAPHOR_ALLOW_APP_NAP=1 overrides config")
+    func envOverridesConfig() {
+        #expect(!SketchRunner.resolvePreventAppNap(
+            config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": "1"]
+        ))
+    }
+
+    @Test("METAPHOR_ALLOW_APP_NAP with non-1 value is ignored")
+    func envNonOneIgnored() {
+        #expect(SketchRunner.resolvePreventAppNap(
+            config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": "0"]
+        ))
+        #expect(SketchRunner.resolvePreventAppNap(
+            config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": ""]
+        ))
     }
 }
 
