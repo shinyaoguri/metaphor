@@ -124,6 +124,16 @@ public final class MetaphorRenderer: NSObject {
     /// 次に使用するバッファインデックス
     private var nextBufferIndex: Int = 0
 
+    // MARK: - 実測パフォーマンス（Probe #271）
+
+    /// 実測フレームレートのトラッカー。``renderFrame()`` が毎フレーム記録し、
+    /// Probe が `frame.json` の `performance` セクションとして読み出します。
+    let frameRateTracker = FrameRateTracker()
+
+    /// 実効ターゲット FPS（`METAPHOR_FPS` / `SketchConfig.fps` / `frameRate()` 解決後）。
+    /// SketchRunner がレンダーループ構成時と `frameRate()` 変更時に更新します。
+    var targetFPS: Int = 60
+
     // MARK: - コンピュート/レンダー同期
 
     /// コンピュート→レンダー明示的同期用の MTLEvent
@@ -929,6 +939,7 @@ public final class MetaphorRenderer: NSObject {
 
         input.updateFrame()
         let time = elapsedTime
+        frameRateTracker.record(at: CACurrentMediaTime())
 
         // プラグイン: レンダー前
         for plugin in plugins {

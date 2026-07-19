@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import QuartzCore
 
 /// AI エージェント向けの観測プラグイン。
 ///
@@ -23,6 +24,9 @@ import Metal
 ///   `stat()` 1 回のみ（µs オーダー）。`post()` は保留リクエストが無い間は即 `return`。
 ///   重い処理（GPU readback → PNG/JSON 書き出し）は**リクエスト時のみ**、かつ
 ///   `deferReadback`/completion handler 経由で**GPU 完了後・描画スレッド外**に実行する。
+///   `performance`（#271）の syscall（メモリ・CPU・thermal）も**リクエスト時のみ**。
+///   実測 fps の元データは ``FrameRateTracker``（レンダラー側・プラグイン ON/OFF に
+///   よらずリングバッファ書き込み 1 回/フレーム、ns オーダー）が常時蓄積する。
 ///
 /// この契約は `Tests/metaphorTests/ObservabilityOverheadTests.swift` の回帰ガードで守る。
 @MainActor
@@ -60,6 +64,10 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
 
     /// `Sketch.probe(_:_:)` で蓄積されたユーザー定義値のバッファ。
     let stateBuffer = ProbeStateBuffer()
+
+    /// メモリ・CPU の syscall サンプラー（Issue #271）。CPU 差分の起点を保持するため
+    /// プラグイン生成時（≒スケッチ起動時）に作る。呼び出しはリクエスト処理時のみ。
+    private let statsSampler: ProcessStatsSampler
 
     /// 直近の `pre()` で受け取った時間。`post()` で frame.json に書き出すのに使います。
     private var lastFrameTime: Double = 0
@@ -105,6 +113,7 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         self.pluginID = MetaphorProbePlugin.id
         self.config = config
         self.sourceStamp = MetaphorProbePlugin.resolveSourceStamp(config: config)
+        self.statsSampler = ProcessStatsSampler(now: CACurrentMediaTime())
     }
 
     /// `config.sourceStamp` → 環境変数 `METAPHOR_SOURCE_STAMP`（空文字は無視）の順で解決。
@@ -206,8 +215,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             blit.endEncoding()
         }
 
-        // schemaVersion 4: additive に `sourceStamp`（provenance）を追加。
-        // v3 で `customTypes`（probe 値の型タグ）、v2 で `stats`（画像統計）を追加済み。
+        // schemaVersion 4: additive に `sourceStamp`（provenance）と `performance`
+        //（実測パフォーマンス #271）を追加。v3 で `customTypes`、v2 で `stats` を追加済み。
         // `stats` / `warnings` は ProbeWriter がピクセル読み出し後に enrich する。
         let custom = stateBuffer.snapshot()
         let customTypes = custom.mapValues { $0.typeTag }
@@ -222,7 +231,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             custom: custom,
             customTypes: customTypes,
             warnings: [],
-            stats: nil
+            stats: nil,
+            performance: samplePerformance()
         )
 
         let outputDirectory = config.outputDirectory
@@ -310,6 +320,9 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let frameNo = sketch?._context?.frameCount ?? 0
         let custom = stateBuffer.snapshot()
         let customTypes = custom.mapValues { $0.typeTag }
+        // `performance` は単一フレーム経路のみ（#271）。per-frame で全フィールドは
+        // 冗長で、フレームループ内の syscall も避ける。時系列の性能観測に需要が
+        // 出たら「per-frame は fps のみ + manifest にサマリ」等を別途検討する。
         let metadata = ProbeFrameMetadata(
             schemaVersion: 4,
             id: seq.id,
@@ -321,7 +334,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             custom: custom,
             customTypes: customTypes,
             warnings: [],
-            stats: nil
+            stats: nil,
+            performance: nil
         )
 
         let base = ProbeWriter.sequenceBaseName(index)
@@ -477,8 +491,38 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             custom: [:],
             customTypes: [:],
             warnings: [warning],
-            stats: nil
+            stats: nil,
+            performance: nil
         )
+    }
+
+    /// `frame.json` の `performance` セクションを組み立てます（Issue #271）。
+    ///
+    /// syscall（メモリ・CPU）はこのリクエスト処理時のみ発行され、リクエストが
+    /// 無いフレームのコストは fps トラッカーの常時更新だけです（性能契約 #118）。
+    /// レンダラー未接続（テスト等）では全体を省略します。
+    private func samplePerformance() -> ProbeFrameMetadata.Performance? {
+        guard let renderer else { return nil }
+        let now = CACurrentMediaTime()
+        let window = renderer.frameRateTracker.windowStats(now: now)
+        return ProbeFrameMetadata.Performance(
+            fps: window.map { Self.round1($0.fps) },
+            targetFPS: renderer.targetFPS,
+            frameTimeMs: window.map {
+                ProbeFrameMetadata.Performance.FrameTime(
+                    mean: Self.round1($0.frameTimeMeanMs),
+                    max: Self.round1($0.frameTimeMaxMs)
+                )
+            },
+            memoryMB: ProcessStatsSampler.memoryFootprintMB().map(Self.round1),
+            cpuPercent: statsSampler.cpuPercent(now: now).map(Self.round1),
+            thermalState: ProcessStatsSampler.thermalStateName()
+        )
+    }
+
+    /// JSON の可読性（と AI へのトークン効率）のため 0.1 単位へ丸めます。
+    private static func round1(_ value: Double) -> Double {
+        (value * 10).rounded() / 10
     }
 
     /// 連続キャプチャを開始します。フレーム数のクランプ、noLoop 時の degrade、
