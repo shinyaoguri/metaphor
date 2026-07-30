@@ -49,6 +49,7 @@ extension Canvas2D {
     ///
     /// - Parameter instances: Circle instances to draw in order.
     public func circles(_ instances: [CircleInstance]) {
+        svgRecorder?.recordUnsupported("circles() (massive instancing)")
         guard hasFill, !instances.isEmpty, encoder != nil || isDeferring else { return }
         let count = instances.count
         let needed = massiveCircleBufferOffset + count

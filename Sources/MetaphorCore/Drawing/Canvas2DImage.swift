@@ -11,6 +11,7 @@ extension Canvas2D {
     ///   - x: x座標。
     ///   - y: y座標。
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
+        svgRecorder?.recordUnsupported("image()")
         image(img, x, y, img.width, img.height)
     }
 

@@ -5,6 +5,22 @@ import simd
 
 extension Canvas2D {
 
+    /// `rectMode` を解釈して corner 形式 (x, y, w, h) に正規化します。
+    func resolvedRect(_ x: Float, _ y: Float, _ w: Float, _ h: Float)
+        -> (x: Float, y: Float, w: Float, h: Float)
+    {
+        switch currentRectMode {
+        case .corner:
+            return (x, y, w, h)
+        case .corners:
+            return (min(x, w), min(y, h), abs(w - x), abs(h - y))
+        case .center:
+            return (x - w / 2, y - h / 2, w, h)
+        case .radius:
+            return (x - w, y - h, w * 2, h * 2)
+        }
+    }
+
     /// 現在の rectMode に応じた座標解釈で矩形を描画します。
     /// - Parameters:
     ///   - x: x座標（または第1コーナーx、または中心x。rectMode に依存）。
@@ -12,17 +28,8 @@ extension Canvas2D {
     ///   - w: 幅（または第2コーナーx、または半幅。rectMode に依存）。
     ///   - h: 高さ（または第2コーナーy、または半高さ。rectMode に依存）。
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        let rx: Float, ry: Float, rw: Float, rh: Float
-        switch currentRectMode {
-        case .corner:
-            rx = x; ry = y; rw = w; rh = h
-        case .corners:
-            rx = min(x, w); ry = min(y, h); rw = abs(w - x); rh = abs(h - y)
-        case .center:
-            rx = x - w / 2; ry = y - h / 2; rw = w; rh = h
-        case .radius:
-            rx = x - w; ry = y - h; rw = w * 2; rh = h * 2
-        }
+        let (rx, ry, rw, rh) = resolvedRect(x, y, w, h)
+        svgRecorder?.recordRect(x: rx, y: ry, w: rw, h: rh, style: svgStyle())
         if hasFill {
             // GPU インスタンシング: 単位矩形 [-0.5, 0.5]² を中心+サイズに変換
             let centerX = rx + rw * 0.5
@@ -67,17 +74,9 @@ extension Canvas2D {
             return
         }
 
-        let rx: Float, ry: Float, rw: Float, rh: Float
-        switch currentRectMode {
-        case .corner:
-            rx = x; ry = y; rw = w; rh = h
-        case .corners:
-            rx = min(x, w); ry = min(y, h); rw = abs(w - x); rh = abs(h - y)
-        case .center:
-            rx = x - w / 2; ry = y - h / 2; rw = w; rh = h
-        case .radius:
-            rx = x - w; ry = y - h; rw = w * 2; rh = h * 2
-        }
+        let (rx, ry, rw, rh) = resolvedRect(x, y, w, h)
+        svgRecorder?.recordRect(
+            x: rx, y: ry, w: rw, h: rh, corners: (tl, tr, br, bl), style: svgStyle())
 
         let maxR = min(rw, rh) * 0.5
         let rtl = min(max(tl, 0), maxR)
@@ -145,6 +144,8 @@ extension Canvas2D {
         _ x3: Float, _ y3: Float,
         _ x4: Float, _ y4: Float
     ) {
+        svgRecorder?.recordPolygon(
+            [(x1, y1), (x2, y2), (x3, y3), (x4, y4)], closed: true, style: svgStyle())
         if hasFill {
             addTriangle(x1, y1, x2, y2, x3, y3, fillColor)
             addTriangle(x1, y1, x3, y3, x4, y4, fillColor)
@@ -173,6 +174,7 @@ extension Canvas2D {
         _ color1: Color, _ color2: Color,
         axis: GradientAxis = .vertical
     ) {
+        svgRecorder?.recordUnsupported("linearGradient()")
         let sc1 = color1.simd
         let sc2 = color2.simd
 
@@ -209,6 +211,7 @@ extension Canvas2D {
         _ innerColor: Color, _ outerColor: Color,
         segments: Int = 36
     ) {
+        svgRecorder?.recordUnsupported("radialGradient()")
         let sc1 = innerColor.simd
         let sc2 = outerColor.simd
         let segs = max(segments, 6)
@@ -234,19 +237,27 @@ extension Canvas2D {
     ///   - y: y座標（またはコーナーy、または中心y。ellipseMode に依存）。
     ///   - w: 幅（または第2コーナーx、またはx半径。ellipseMode に依存）。
     ///   - h: 高さ（または第2コーナーy、またはy半径。ellipseMode に依存）。
-    public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        let cx: Float, cy: Float, rx: Float, ry: Float
+    /// `ellipseMode` を解釈して中心 + 半径形式 (cx, cy, rx, ry) に正規化します。
+    func resolvedEllipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float)
+        -> (cx: Float, cy: Float, rx: Float, ry: Float)
+    {
         switch currentEllipseMode {
         case .center:
-            cx = x; cy = y; rx = w * 0.5; ry = h * 0.5
+            return (x, y, w * 0.5, h * 0.5)
         case .radius:
-            cx = x; cy = y; rx = w; ry = h
+            return (x, y, w, h)
         case .corner:
-            rx = w * 0.5; ry = h * 0.5; cx = x + rx; cy = y + ry
+            return (x + w * 0.5, y + h * 0.5, w * 0.5, h * 0.5)
         case .corners:
-            rx = abs(w - x) * 0.5; ry = abs(h - y) * 0.5
-            cx = min(x, w) + rx; cy = min(y, h) + ry
+            let rx = abs(w - x) * 0.5
+            let ry = abs(h - y) * 0.5
+            return (min(x, w) + rx, min(y, h) + ry, rx, ry)
         }
+    }
+
+    public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        let (cx, cy, rx, ry) = resolvedEllipse(x, y, w, h)
+        svgRecorder?.recordEllipse(cx: cx, cy: cy, rx: rx, ry: ry, style: svgStyle())
 
         if hasFill {
             // GPU インスタンシング: 単位円メッシュ（直径=1）を (rx*2, ry*2) にスケーリング
@@ -285,6 +296,7 @@ extension Canvas2D {
     ///   - x2: 終点のx座標。
     ///   - y2: 終点のy座標。
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
+        svgRecorder?.recordLine(x1: x1, y1: y1, x2: x2, y2: y2, style: svgStyle())
         strokeLine(x1, y1, x2, y2)
     }
 
@@ -301,6 +313,7 @@ extension Canvas2D {
         _ x2: Float, _ y2: Float,
         _ x3: Float, _ y3: Float
     ) {
+        svgRecorder?.recordPolygon([(x1, y1), (x2, y2), (x3, y3)], closed: true, style: svgStyle())
         if hasFill {
             addTriangle(x1, y1, x2, y2, x3, y3, fillColor)
         }
@@ -315,6 +328,7 @@ extension Canvas2D {
     /// - Parameter points: ポリゴン頂点を定義する `(x, y)` タプルの配列。
     public func polygon(_ points: [(Float, Float)]) {
         guard points.count >= 3 else { return }
+        svgRecorder?.recordPolygon(points, closed: true, style: svgStyle())
 
         if hasFill {
             let indices = EarClipTriangulator.triangulate(points)
@@ -354,6 +368,9 @@ extension Canvas2D {
     ) {
         let rx = w * 0.5
         let ry = h * 0.5
+        svgRecorder?.recordArc(
+            cx: x, cy: y, rx: rx, ry: ry,
+            start: startAngle, stop: stopAngle, mode: mode, style: svgStyle())
         let arcLength = stopAngle - startAngle
         let full = ellipseSegments(forRadius: max(rx, ry))
         let segments = max(4, Int(Float(full) * abs(arcLength) / (Float.pi * 2)))
@@ -426,6 +443,9 @@ extension Canvas2D {
         _ cx2: Float, _ cy2: Float,
         _ x2: Float, _ y2: Float
     ) {
+        svgRecorder?.recordBezier(
+            x1: x1, y1: y1, cx1: cx1, cy1: cy1, cx2: cx2, cy2: cy2, x2: x2, y2: y2,
+            style: svgStyle())
         let segments = 24
         let step = 1.0 / Float(segments)
 
@@ -466,6 +486,9 @@ extension Canvas2D {
         _ x4: Float, _ y4: Float
     ) {
         guard hasStroke else { return }
+        svgRecorder?.recordCurve(
+            p0: (x1, y1), p1: (x2, y2), p2: (x3, y3), p3: (x4, y4),
+            tightness: curveTightnessValue, style: svgStyle())
         let segments = curveDetailCount
         var prevX = x2
         var prevY = y2
@@ -488,6 +511,7 @@ extension Canvas2D {
         // Processing 互換: point はストロークで描かれるため noStroke() 中は描かない
         // （直前の curve() と同じガード。従来は無視されていた）
         guard hasStroke else { return }
+        svgRecorder?.recordPoint(x: x, y: y, style: svgStyle())
         let r = currentStrokeWeight * 0.5
         let color = strokeColor
         // 三角形ファン円として描画（8セグメント = 24頂点）。

@@ -12,6 +12,7 @@ extension Canvas2D {
     /// - Parameter color: 背景色。
     public func background(_ color: Color) {
         let c = color.simd
+        svgRecorder?.recordBackground(c)
         backgroundCalledThisFrame = true
         pendingClearColor = c
         onSetClearColor?(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
