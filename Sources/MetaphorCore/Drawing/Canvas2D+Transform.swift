@@ -193,4 +193,62 @@ extension Canvas2D {
     public func applyMatrix(_ matrix: float3x3) {
         currentTransform = currentTransform * matrix
     }
+
+    /// 現在の 2D 変換に Processing 形式の 6 成分アフィン行列を乗算します。
+    ///
+    /// 成分は行優先で、変換は `x' = n00*x + n01*y + n02`、`y' = n10*x + n11*y + n12`。
+    public func applyMatrix(
+        _ n00: Float, _ n01: Float, _ n02: Float,
+        _ n10: Float, _ n11: Float, _ n12: Float
+    ) {
+        applyMatrix(float3x3(columns: (
+            SIMD3<Float>(n00, n10, 0),
+            SIMD3<Float>(n01, n11, 0),
+            SIMD3<Float>(n02, n12, 1)
+        )))
+    }
+
+    /// 現在の 2D 変換行列を単位行列にリセットします。
+    public func resetMatrix() {
+        currentTransform = float3x3(1)
+    }
+
+    /// 現在の変換に x 軸方向のせん断（シアー）を適用します。
+    ///
+    /// `x' = x + tan(angle) * y`（Processing の `shearX()` と互換）。
+    ///
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearX(_ angle: Float) {
+        let m = float3x3(columns: (
+            SIMD3<Float>(1, 0, 0),
+            SIMD3<Float>(tan(angle), 1, 0),
+            SIMD3<Float>(0, 0, 1)
+        ))
+        currentTransform = currentTransform * m
+    }
+
+    /// 現在の変換に y 軸方向のせん断（シアー）を適用します。
+    ///
+    /// `y' = y + tan(angle) * x`（Processing の `shearY()` と互換）。
+    ///
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearY(_ angle: Float) {
+        let m = float3x3(columns: (
+            SIMD3<Float>(1, tan(angle), 0),
+            SIMD3<Float>(0, 1, 0),
+            SIMD3<Float>(0, 0, 1)
+        ))
+        currentTransform = currentTransform * m
+    }
+
+    /// モデル座標を現在の 2D 変換でスクリーン座標へ変換します。
+    ///
+    /// - Parameters:
+    ///   - x: モデル座標の x。
+    ///   - y: モデル座標の y。
+    /// - Returns: スクリーン座標（ピクセル単位）。
+    public func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float> {
+        let p = currentTransform * SIMD3<Float>(x, y, 1)
+        return SIMD2(p.x, p.y)
+    }
 }

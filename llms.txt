@@ -86,6 +86,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func ambientLight(_ strength: Float)` -- グレースケール値でアンビエントライトの強度を設定します。
 - `func ambientLight(_ r: Float, _ g: Float, _ b: Float)` -- RGB 値でアンビエントライトの色を設定します。
 - `func ambientOcclusion(_ value: Float)` -- PBR アンビエントオクルージョン係数を設定します。
+- `func applyMatrix(_ matrix: float3x3)` -- 現在の 2D 変換に 3x3 行列を乗算します。
+- `func applyMatrix(_ matrix: float4x4)` -- 現在の 3D 変換に 4x4 行列を乗算します。
+- `func applyMatrix(_ n00: Float, _ n01: Float, _ n02: Float, _ n10: Float, _ n11: Float, _ n12: Float)` -- 現在の 2D 変換に Processing 形式の 6 成分アフィン行列を乗算します。
 - `func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .default)` -- 円弧を描画します。
 - `func background(_ color: Color)` -- 指定した色でキャンバスをクリアします。
 - `func background(_ gray: Float)` -- グレースケール値でキャンバスをクリアします。
@@ -118,6 +121,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
 - `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
 - `func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24)` -- 円錐を描画します。
+- `func copy(_ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float)` -- キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
 - `func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer` -- リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
 - `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
 - `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
@@ -204,6 +208,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func isKeyDown(_ keyCode: UInt16) -> Bool` -- 特定のキーが現在押下されているかを確認します。
 - `func keyPressed()` -- キー押下時に呼ばれます。
 - `func keyReleased()` -- キー離し時に呼ばれます。
+- `func keyTyped()` -- 文字入力を生成するキー押下時に呼ばれます（Processing の `keyTyped()` 互換）。
 - `func lights()` -- デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
 - `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- 2点間に線を描画します。
 - `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- リニアグラデーション矩形を描画します。
@@ -282,6 +287,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func reloadShaderFromFile(key: String, path: String) throws` -- 外部ファイルからシェーダーをリロードしパイプラインキャッシュをクリアします。
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
+- `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
 - `func rotate(_ angle: Float)` -- 現在の変換に 2D 回転を適用します。
 - `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
 - `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
@@ -296,6 +302,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
 - `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一 2D スケールを適用します。
 - `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
+- `func screenX(_ x: Float, _ y: Float) -> Float` -- 2D モデル座標が描画されるスクリーン x 座標を返します。
+- `func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標が描画されるスクリーン x 座標を返します。
+- `func screenY(_ x: Float, _ y: Float) -> Float` -- 2D モデル座標が描画されるスクリーン y 座標を返します。
+- `func screenY(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標が描画されるスクリーン y 座標を返します。
+- `func screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標の正規化デバイス深度（0...1）を返します。
 - `func setPostEffects(_ effects: [any PostEffect])` -- すべてのポストプロセスエフェクトを指定した配列で置き換えます。
 - `func setRenderGraph(_ graph: RenderGraph?)` -- アクティブなレンダーグラフを設定またはクリアします。
 - `func setup()` -- 一度だけ実行される初期化処理（オプション）。
@@ -303,6 +314,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func shape(_ s: MShape)` -- リテインドシェイプを原点に描画します。
 - `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- リテインドシェイプを指定位置に描画します。
 - `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- リテインドシェイプを指定位置・サイズで描画します。
+- `func shearX(_ angle: Float)` -- 現在の変換に x 軸方向のせん断（シアー）を適用します。
+- `func shearY(_ angle: Float)` -- 現在の変換に y 軸方向のせん断（シアー）を適用します。
 - `func shininess(_ value: Float)` -- スペキュラーの光沢度指数を設定します。
 - `func specular(_ color: Color)` -- スペキュラーハイライトの色を設定します。
 - `func specular(_ gray: Float)` -- グレースケール値でスペキュラーハイライトの色を設定します。
@@ -346,6 +359,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ## Core Types
 
 ### `protocol CanvasStyle : AnyObject` -- Canvas2D と Canvas3D の間で共有されるスタイル管理プロトコル。
+
+- （ほか 12 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var colorModeConfig: ColorModeConfig { get set }`
+- `var fillColor: SIMD4<Float> { get set }`
+- `var hasFill: Bool { get set }`
+- `var hasStroke: Bool { get set }`
+- `var strokeColor: SIMD4<Float> { get set }`
+- `func syncStyle(_ style: DrawingStyle)`
 
 ### `protocol Interpolatable` -- 2つの値の間で線形補間をサポートする型を定義します。
 
@@ -539,6 +560,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case rgb` -- 赤、緑、青のカラースペース。
 
 ### `enum DataIO` -- データ IO（JSON / Table / Strings）のコア実装。
+
+- （ほか 11 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `static func readData(_ source: String) throws -> Data` -- ソース（ファイルパスまたは http(s) URL）からバイト列を同期で読み込みます。
+- `static func readDataAsync(_ source: String) async throws -> Data` -- ソースからバイト列を非同期で読み込みます（ファイル I/O・通信をメインスレッド外で実行）。
+- `static func writeData(_ data: Data, toPath path: String) throws` -- バイト列をファイルへ書き込みます。親ディレクトリがなければ作成します。
 
 ### `enum DepthMode` -- Metal レンダーパイプライン用の定義済みデプスステンシル設定
 
@@ -992,7 +1018,21 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
 
+- （ほか 60 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var height: Float { get }` -- 高さをピクセル単位で返します。
+- `var width: Float { get }` -- 幅をピクセル単位で返します。
+- `func beginDraw()` -- コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
+- `func endDraw(wait: Bool = false)` -- 描画を終了します。
+- `func toImage() -> MImage` -- オフスクリーンテクスチャを MImage として返します。
+
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
+
+- （ほか 53 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var height: Float { get }` -- 高さをピクセル単位で返します。
+- `var width: Float { get }` -- 幅をピクセル単位で返します。
+- `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
+- `func endDraw(wait: Bool = false)` -- 描画を終了します。
+- `func toImage() -> MImage` -- オフスクリーンテクスチャを MImage として返します。
 
 ### `final class GrayscaleEffect` -- グレースケールに変換します。
 
@@ -1020,6 +1060,30 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class InputManager` -- スケッチのマウス・キーボード入力状態を管理します。
 
+- （ほか 1 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var isKeyPressed: Bool { get }` -- いずれかのキーが現在押されているかどうか
+- `var isKeyRepeat: Bool { get }` -- 最新のキーダウンイベントがオートリピートかどうか
+- `var isMouseDown: Bool { get }` -- いずれかのマウスボタンが現在押されているかどうか
+- `var lastKey: Character? { get }` -- 最後に押されたキーの文字
+- `var lastKeyCode: UInt16? { get }` -- 最後に押されたキーのキーコード
+- `var mouseButton: Int { get }` -- 現在押されているマウスボタンのインデックス（0 = 左、1 = 右、2 = 中）
+- `var mouseX: Float { get }` -- テクスチャ座標空間での現在のマウスX座標
+- `var mouseY: Float { get }` -- テクスチャ座標空間での現在のマウスY座標
+- `var onFileDrop: (([String]) -> Void)?` -- ファイルがウィンドウにドロップされた時に呼ばれるコールバック (ファイルパスの配列)
+- `var onKeyDown: ((UInt16, String?) -> Void)?` -- キー押下時に呼ばれるコールバック (keyCode, characters)
+- `var onKeyUp: ((UInt16) -> Void)?` -- キー解放時に呼ばれるコールバック (keyCode)
+- `var onMouseClicked: ((Float, Float, Int) -> Void)?` -- 完全なクリック（ドラッグなしの押下＋解放）発生時に呼ばれるコールバック (x, y, button)
+- `var onMouseDragged: ((Float, Float) -> Void)?` -- ボタン押下中のマウス移動で呼ばれるコールバック (x, y)
+- `var onMouseMoved: ((Float, Float) -> Void)?` -- ボタン非押下時のマウス移動で呼ばれるコールバック (x, y)
+- `var onMousePressed: ((Float, Float, Int) -> Void)?` -- マウスボタン押下時に呼ばれるコールバック (x, y, button)
+- `var onMouseReleased: ((Float, Float, Int) -> Void)?` -- マウスボタン解放時に呼ばれるコールバック (x, y, button)
+- `var onMouseScrolled: ((Float, Float) -> Void)?` -- マウススクロールホイール使用時に呼ばれるコールバック (dx, dy)
+- `var pmouseX: Float { get }` -- 前フレームのマウスX座標
+- `var pmouseY: Float { get }` -- 前フレームのマウスY座標
+- `var scrollX: Float { get }` -- 現在のフレームの水平スクロールデルタ
+- `var scrollY: Float { get }` -- 現在のフレームの垂直スクロールデルタ
+- `init()` -- デフォルト状態で新しい入力マネージャを作成します。
+
 ### `final class InvertEffect` -- 全カラーを反転します。
 
 - `let name: String`
@@ -1027,6 +1091,19 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
 ### `final class Mesh` -- 頂点バッファとオプションのインデックスバッファを含む3Dメッシュデータを格納します。
+
+- （ほか 6 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `let hasUVs: Bool` -- このメッシュがUV座標を持つかどうか
+- `let indexBuffer: (any MTLBuffer)?` -- インデックスバッファ（インデックスなし描画の場合は nil）
+- `let indexCount: Int` -- インデックス数
+- `let indexType: MTLIndexType` -- インデックス要素型
+- `let uvVertexBuffer: (any MTLBuffer)?` -- テクスチャマッピング用の Vertex3DTextured データを含むUV頂点バッファ
+- `let uvVertexCount: Int` -- UV頂点数
+- `let vertexBuffer: any MTLBuffer` -- Vertex3D データを含む頂点バッファ
+- `let vertexCount: Int` -- 頂点数
+- `static func load(device: any MTLDevice, url: URL, normalize: Bool = true) throws -> Mesh` -- Model I/O を使用してモデルファイルを読み込みます（OBJ、USDZ、ABC フォーマット対応）。
+- `static func loadOBJ(device: any MTLDevice, source: String) -> Mesh?` -- OBJフォーマット文字列をパースしてメッシュを生成します。
+- `static func loadOBJ(device: any MTLDevice, url: URL) throws -> Mesh` -- 指定されたURLのOBJファイルからメッシュを読み込みます。
 
 ### `final class MetaphorProbePlugin` -- AI エージェント向けの観測プラグイン。
 
@@ -1120,12 +1197,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func filter(_ type: FilterType)` -- ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します。
 - `func get(_ x: Int, _ y: Int) -> Color` -- 指定された座標のピクセルの色を返します。
 - `func loadPixels()` -- GPU テクスチャから CPU 上の ``pixels`` 配列にピクセルデータを読み込みます。
+- `func mask(_ maskImage: MImage)` -- マスク画像をこの画像のアルファチャンネルへ適用します。
 - `func replaceTexture(_ newTexture: any MTLTexture)` -- バッキングテクスチャを新しいものに置き換えます（通常は GPU フィルタ適用後）。
+- `func resize(_ width: Int, _ height: Int)` -- 画像を指定サイズへリサイズします（GPU バイリニア補間）。
 - `func set(_ x: Int, _ y: Int, _ color: Color)` -- 指定された座標のピクセルの色を設定します。
 - `func updatePixels()` -- CPU の ``pixels`` 配列を GPU テクスチャに書き戻します。
 
 ### `final class MShape` -- ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
 
+- （ほか 28 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var capturedStyle: ShapeStyle` -- 作成時にキャプチャされたスタイルスナップショット。
 - `var childCount: Int { get }` -- 直接の子の数。
 - `var children: [MShape] { get }` -- 子シェイプ（グループシェイプ用）。
@@ -1135,31 +1215,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var localTransform3D: float4x4` -- このシェイプの累積3D変換行列。
 - `var name: String?` -- 階層内でこのシェイプを識別するためのオプションの名前。
 - `var styleEnabled: Bool { get }` -- 描画時にシェイプ自体のスタイルが適用されるかどうか。
-- `var texture: (any MTLTexture)?` -- このシェイプに割り当てられたテクスチャ。
 - `var vertexCount: Int { get }` -- このシェイプの合計頂点数。
 - `func addChild(_ child: MShape)` -- このグループに子シェイプを追加します。
-- `func beginContour()` -- 2Dシェイプ内のコンター（穴）の記録を開始します。
-- `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
 - `func disableStyle()` -- シェイプ自体のスタイルを無効にし、描画時にスケッチの現在のスタイルを使用します。
 - `func enableStyle()` -- シェイプ自体のスタイルを有効にします（デフォルトの動作）。
-- `func endContour()` -- 2Dシェイプ内のコンター（穴）の記録を終了します。
-- `func endShape(_ close: CloseMode = .open)` -- シェイプを確定し、記録された頂点からジオメトリを構築します。
-- `func fill(_ color: Color)` -- シェイプ定義中に塗りつぶし色を設定します。
-- `func fill(_ gray: Float)` -- グレースケール値（0-255）で塗りつぶし色を設定します。
 - `func getChild(_ index: Int) -> MShape?` -- インデックスで子シェイプを取得します。
 - `func getChild(_ name: String) -> MShape?` -- 名前で子シェイプを取得します（幅優先探索）。
 - `func getVertex(_ index: Int) -> SIMD3<Float>?` -- インデックスで頂点位置を取得します。
-- `func noFill()` -- 塗りつぶしを無効にします。
-- `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- 次の3D頂点に適用する法線ベクトルを設定します。
-- `func noStroke()` -- ストロークを無効にします。
-- `func resetMatrix()` -- シェイプのトランスフォームを単位行列にリセットします。
-- `func rotate(_ angle: Float)` -- シェイプを2Dで回転します（ラジアン）。
-- `func rotateX(_ angle: Float)` -- シェイプをX軸周りに回転します（ラジアン）。
-- `func rotateY(_ angle: Float)` -- シェイプをY軸周りに回転します（ラジアン）。
-- `func rotateZ(_ angle: Float)` -- シェイプをZ軸周りに回転します（ラジアン）。
-- `func scale(_ s: Float)` -- シェイプを2Dで均一にスケーリングします。
-- `func scale(_ sx: Float, _ sy: Float)` -- シェイプを2Dで非均一にスケーリングします。
-- `func scale(_ sx: Float, _ sy: Float, _ sz: Float)` -- シェイプを3Dで非均一にスケーリングします。
 - `func setFill(_ color: Color)` -- このシェイプの塗りつぶし色を設定します。
 - `func setFill(_ enabled: Bool)` -- このシェイプの塗りつぶしを有効または無効にします。
 - `func setStroke(_ color: Color)` -- このシェイプのストローク色を設定します。
@@ -1169,16 +1231,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func setTint(_ color: Color)` -- テクスチャレンダリング用のティント色を設定します。
 - `func setVertex(_ index: Int, _ x: Float, _ y: Float)` -- インデックスで頂点位置を設定します（2D）。
 - `func setVertex(_ index: Int, _ x: Float, _ y: Float, _ z: Float)` -- インデックスで頂点位置を設定します（3D）。
-- `func stroke(_ color: Color)` -- シェイプ定義中にストローク色を設定します。
-- `func stroke(_ gray: Float)` -- グレースケール値（0-255）でストローク色を設定します。
-- `func strokeWeight(_ weight: Float)` -- シェイプ定義中にストロークの太さを設定します。
-- `func translate(_ x: Float, _ y: Float)` -- シェイプを2Dで平行移動します。
-- `func translate(_ x: Float, _ y: Float, _ z: Float)` -- シェイプを3Dで平行移動します。
-- `func vertex(_ x: Float, _ y: Float)` -- 記録中のシェイプに2D頂点を追加します。
-- `func vertex(_ x: Float, _ y: Float, _ color: Color)` -- 頂点カラー付きの2D頂点を追加します。
-- `func vertex(_ x: Float, _ y: Float, _ z: Float)` -- 記録中のシェイプに3D頂点を追加します。
-- `func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float)` -- テクスチャ座標付きの2D頂点を追加します。
-- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float)` -- テクスチャ座標付きの3D頂点を追加します。
 
 ### `final class OrbitCamera` -- マウスドラッグとスクロールで3Dカメラオービットをインタラクティブに制御します。
 

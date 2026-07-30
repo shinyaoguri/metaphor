@@ -716,11 +716,23 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
         input.onKeyDown = { [weak sketch, weak renderer] keyCode, characters in
             sketch?.keyPressed()
+            if Self.producesCharacter(characters) {
+                sketch?.keyTyped()
+            }
             renderer?.notifyPluginsKeyEvent(key: characters?.first, keyCode: keyCode, type: .pressed)
         }
         input.onKeyUp = { [weak sketch, weak renderer] keyCode in
             sketch?.keyReleased()
             renderer?.notifyPluginsKeyEvent(key: nil, keyCode: keyCode, type: .released)
         }
+    }
+
+    /// キー入力が文字を生成するか（`keyTyped()` の発火判定）。
+    ///
+    /// 矢印・ファンクション等の機能キーは Unicode Private Use Area
+    /// U+F700–U+F8FF の文字として届くため除外する（Processing 互換）。
+    nonisolated static func producesCharacter(_ characters: String?) -> Bool {
+        guard let scalar = characters?.unicodeScalars.first else { return false }
+        return !(0xF700...0xF8FF).contains(scalar.value)
     }
 }

@@ -101,4 +101,52 @@ extension SketchContext {
         canvas.scale(s)
         canvas3D.scale(s, s, s)
     }
+
+    /// 2D 変換に 3x3 行列を乗算します。
+    /// - Parameter matrix: 連結する行列。
+    public func applyMatrix(_ matrix: float3x3) {
+        canvas.applyMatrix(matrix)
+    }
+
+    /// 2D 変換に Processing 形式の 6 成分アフィン行列を乗算します。
+    public func applyMatrix(
+        _ n00: Float, _ n01: Float, _ n02: Float,
+        _ n10: Float, _ n11: Float, _ n12: Float
+    ) {
+        canvas.applyMatrix(n00, n01, n02, n10, n11, n12)
+    }
+
+    /// 3D 変換に 4x4 行列を乗算します。
+    /// - Parameter matrix: 連結する行列。
+    public func applyMatrix(_ matrix: float4x4) {
+        canvas3D.applyMatrix(matrix)
+    }
+
+    /// 2D・3D 両方の変換行列を単位行列にリセットします。
+    public func resetMatrix() {
+        canvas.resetMatrix()
+        canvas3D.resetMatrix()
+    }
+
+    /// 2D 変換に x 軸方向のせん断を適用します。
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearX(_ angle: Float) {
+        canvas.shearX(angle)
+    }
+
+    /// 2D 変換に y 軸方向のせん断を適用します。
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearY(_ angle: Float) {
+        canvas.shearY(angle)
+    }
+
+    /// 2D モデル座標のスクリーン座標を返します。
+    public func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float> {
+        canvas.screenPosition(x, y)
+    }
+
+    /// 3D モデル座標のスクリーン座標を返します。
+    public func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
+        canvas3D.screenPosition(x, y, z)
+    }
 }

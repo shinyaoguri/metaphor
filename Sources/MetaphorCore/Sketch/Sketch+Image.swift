@@ -38,6 +38,28 @@ extension Sketch {
         context.createImage(width, height)
     }
 
+    /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
+    ///
+    /// コピー元はオフスクリーンレンダーターゲットの現在の内容（前フレームまでの
+    /// 描画結果）。サイズが異なる場合は拡縮されます。`imageMode`/`tint` の影響を
+    /// 受けない絶対座標で描かれます。
+    ///
+    /// - Parameters:
+    ///   - sx: コピー元矩形の x（ピクセル）。
+    ///   - sy: コピー元矩形の y（ピクセル）。
+    ///   - sw: コピー元矩形の幅（ピクセル）。
+    ///   - sh: コピー元矩形の高さ（ピクセル）。
+    ///   - dx: コピー先矩形の x（ピクセル）。
+    ///   - dy: コピー先矩形の y（ピクセル）。
+    ///   - dw: コピー先矩形の幅（ピクセル）。
+    ///   - dh: コピー先矩形の高さ（ピクセル）。
+    public func copy(
+        _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float,
+        _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float
+    ) {
+        context.copy(sx, sy, sw, sh, dx, dy, dw, dh)
+    }
+
     /// 2D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
