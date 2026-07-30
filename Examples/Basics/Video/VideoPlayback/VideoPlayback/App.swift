@@ -1,13 +1,13 @@
 import metaphor
 
-/// ウィンドウにビデオファイルをドラッグ & ドロップして再生するサンプル。
+/// Drop a video file onto the window to play it.
 ///
-/// 操作方法:
-/// - ドラッグ & ドロップ: ビデオファイルを読み込み
-/// - クリック: 再生 / 一時停止
-/// - R キー: 先頭に巻き戻し
-/// - L キー: ループ切り替え
-/// - +/- キー: 再生速度変更
+/// Controls:
+/// - Drag & drop: Load a video file
+/// - Click: Play / pause
+/// - R key: Rewind to the beginning
+/// - L key: Toggle looping
+/// - +/- keys: Change playback speed
 @main
 final class VideoPlayback: Sketch {
     var config: SketchConfig {
@@ -33,7 +33,7 @@ final class VideoPlayback: Sketch {
         if let video {
             video.update()
             if video.isAvailable {
-                // アスペクト比を維持してフィット
+                // Fit while maintaining aspect ratio
                 let scale = min(width / video.width, height / video.height)
                 let w = video.width * scale
                 let h = video.height * scale
@@ -41,7 +41,7 @@ final class VideoPlayback: Sketch {
                 let y = (height - h) / 2
                 image(video, x, y, w, h)
 
-                // 再生情報をオーバーレイ
+                // Overlay playback information
                 fill(Color(gray: 1, alpha: 0.7))
                 textAlign(.left, .bottom)
                 textSize(14)

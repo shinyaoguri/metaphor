@@ -1,7 +1,7 @@
 import metaphor
 
 // Vector Math
-// 中心からマウスへ向かうベクトルを Vec2 の setMag() で長さ 150 にそろえて描く例。
+// Draw a vector from center to mouse, scaled to length 150 using Vec2's setMag().
 
 @main
 final class VectorMath: Sketch {

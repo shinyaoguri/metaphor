@@ -1,7 +1,7 @@
 import metaphor
 
 // Bouncing Ball
-// 位置・速度・重力を Vec2 で表現したバウンドの例。
+// Bounce simulation using Vec2 to represent position, velocity, and gravity.
 
 @main
 final class BouncingBall: Sketch {

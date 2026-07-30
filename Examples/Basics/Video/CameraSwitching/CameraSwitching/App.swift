@@ -1,14 +1,14 @@
 import metaphor
 
-/// 接続中のカメラを列挙し、数字キーで切り替えるサンプル。
+/// Lists connected cameras and demonstrates switching between them using number keys.
 ///
-/// `listCaptureDevices()` / `createCapture(device:)` による明示的なデバイス選択、
-/// 要求解像度に対して実際に選ばれた解像度（`actualWidth` / `actualHeight`）、
-/// `onDisconnect` による切断検知の使い方を示す。
+/// Shows how to use explicit device selection via `listCaptureDevices()` / `createCapture(device:)`,
+/// check actual resolution negotiated (`actualWidth` / `actualHeight`) against requested values,
+/// and detect disconnection via `onDisconnect` callback.
 ///
-/// 操作方法:
-/// - 1〜9 キー: 対応する番号のカメラへ切り替え
-/// - R キー: カメラ一覧を再取得（接続・切断後の更新）
+/// Controls:
+/// - 1–9 keys: Switch to the corresponding camera
+/// - R key: Rescan camera list (use after connecting/disconnecting devices)
 @main
 final class CameraSwitching: Sketch {
     var config: SketchConfig {
@@ -21,7 +21,7 @@ final class CameraSwitching: Sketch {
 
     func setup() {
         devices = listCaptureDevices()
-        // 引数なしの createCapture() は OS のユーザー/システム優先カメラを開く
+        // createCapture() with no arguments opens the OS's user/system preferred camera
         open { createCapture() }
     }
 
@@ -44,7 +44,7 @@ final class CameraSwitching: Sketch {
         }
     }
 
-    /// 現在のキャプチャを止めて新しいキャプチャに切り替える
+    /// Stops the current capture and switches to a new one
     private func open(_ make: () -> CaptureDevice) {
         capture?.stop()
         let cam = make()
@@ -56,7 +56,7 @@ final class CameraSwitching: Sketch {
         statusMessage = ""
     }
 
-    /// カメラ映像をアスペクト比を保って中央に描画
+    /// Draws camera video maintaining aspect ratio centered on canvas
     private func drawCamera() {
         guard let cam = capture, cam.isAvailable else {
             fill(Color(gray: 0.5))
@@ -73,7 +73,7 @@ final class CameraSwitching: Sketch {
         image(cam, (width - w) / 2, (height - h) / 2, w, h)
     }
 
-    /// デバイス一覧と現在の状態をオーバーレイ表示
+    /// Displays device list and current status as an overlay
     private func drawOverlay() {
         noStroke()
         textAlign(.left, .top)

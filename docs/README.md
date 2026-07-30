@@ -27,6 +27,14 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [design/live-tooling-params.md](design/live-tooling-params.md) — Parameter Store / 状態保持リロード / インスペクタの設計叩き台
 - **[releasing.md](releasing.md)** — リリース手順（PR の `release:*` ラベル駆動）
 
+## 英語化の対象境界（第 1 弾・Issue #286）
+
+Processing / Unity ユーザー獲得の並行トラック（ロードマップ Epic I）として、英語ドキュメントは以下の境界で維持します:
+
+- **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）
+- **日本語のまま**（翻訳しない）: [adr/](adr/) 全体（設計判断の記録。ADR 全訳は非目標）、[design/](design/)、[CLAUDE.md](../CLAUDE.md)・[ai/README.md](ai/README.md) などの開発者・エージェント向け内部ドキュメント
+- **今後の弾**: 第 2 弾 = 公開 API doc コメントの英語化（cli #86 と相乗）、第 3 弾 = website（#74）。着手時に起票
+
 ## 真実の在処（どれが正か）
 
 | 知りたいこと | 正典 |

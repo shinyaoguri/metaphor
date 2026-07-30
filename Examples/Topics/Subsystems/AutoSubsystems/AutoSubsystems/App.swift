@@ -1,13 +1,12 @@
 import metaphor
 
-/// `AutoSubsystemManager` でサブシステムの毎フレーム更新を自動化するサンプル。
+/// Demonstrates automated per-frame subsystem updates using `AutoSubsystemManager`.
 ///
-/// 通常は `draw()` の中で `physics.step(deltaTime)` を手動で呼びますが、physics を
-/// `SketchSubsystem` として `AutoSubsystemManager` に登録すると、フレーム前フックで
-/// 自動的に `step()` が駆動されます。`draw()` は描画だけに集中できます。
+/// Normally you call `physics.step(deltaTime)` manually inside `draw()`. When you register
+/// physics as a `SketchSubsystem` with `AutoSubsystemManager`, the pre-frame hook automatically
+/// drives `step()`, freeing `draw()` to focus on rendering only.
 ///
-/// （従来どおり手動で `physics.step()` を呼ぶ書き方もそのまま使えます。これは追加の
-/// オプトイン機能です。）
+/// (The traditional manual `physics.step()` approach still works. This is an opt-in feature.)
 @main
 final class AutoSubsystemsApp: Sketch {
     let physics = Physics2D(cellSize: 50)
@@ -16,7 +15,7 @@ final class AutoSubsystemsApp: Sketch {
         SketchConfig(
             width: 640, height: 360,
             title: "Auto Subsystems Demo",
-            // physics を登録するだけで、毎フレームの step() が自動化される。
+            // Register physics to automate per-frame step() calls.
             plugins: [PluginFactory { [physics] in AutoSubsystemManager([physics]) }]
         )
     }
@@ -32,7 +31,7 @@ final class AutoSubsystemsApp: Sketch {
     }
 
     func draw() {
-        // physics.step() はここでは呼ばない — AutoSubsystemManager が自動で進める。
+        // Do not call physics.step() here — AutoSubsystemManager advances it automatically.
         background(18)
         noStroke()
         fill(120, 200, 255)

@@ -1,8 +1,8 @@
 import metaphor
 
 // Acceleration With Vectors
-// マウスへ向かう加速度を Vec2 の setMag()/limit() で計算する例。
-// Processing の PVector コード（sub → setMag → add → limit）がほぼ 1:1 で移植できる。
+// Calculate acceleration toward the mouse using Vec2's setMag()/limit() methods.
+// Processing's PVector code (sub → setMag → add → limit) translates nearly 1:1.
 
 @main
 final class AccelerationWithVectors: Sketch {
