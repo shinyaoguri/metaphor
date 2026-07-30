@@ -129,6 +129,39 @@ extension SIMD2 where Scalar == Float {
     public func angleBetween(_ other: SIMD2<Float>) -> Float {
         atan2(cross(other), dot(other))
     }
+
+    // MARK: Mutating (Processing PVector スタイル)
+
+    /// このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+    ///
+    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    public mutating func normalize() {
+        self = normalized()
+    }
+
+    /// このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+    ///
+    /// - Parameter max: 許容される最大の大きさ。
+    public mutating func limit(_ max: Float) {
+        self = limited(max)
+    }
+
+    /// このベクトルをその場で回転します（``rotated(_:)`` の mutating 版）。
+    ///
+    /// - Parameter angle: ラジアン単位の回転角度。
+    public mutating func rotate(_ angle: Float) {
+        self = rotated(angle)
+    }
+
+    /// 方向を維持したまま、このベクトルの大きさをその場で設定します
+    /// （``withMagnitude(_:)`` の mutating 版。Processing の `setMag()` に相当）。
+    ///
+    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    ///
+    /// - Parameter len: 目標の大きさ。
+    public mutating func setMag(_ len: Float) {
+        self = withMagnitude(len)
+    }
 }
 
 // MARK: - SIMD3<Float> Processing-Style Extensions
@@ -238,5 +271,31 @@ extension SIMD3 where Scalar == Float {
         let m = magnitude * other.magnitude
         guard m > 0 else { return 0 }
         return acos(Swift.min(Swift.max(d / m, -1), 1))
+    }
+
+    // MARK: Mutating (Processing PVector スタイル)
+
+    /// このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+    ///
+    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    public mutating func normalize() {
+        self = normalized()
+    }
+
+    /// このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+    ///
+    /// - Parameter max: 許容される最大の大きさ。
+    public mutating func limit(_ max: Float) {
+        self = limited(max)
+    }
+
+    /// 方向を維持したまま、このベクトルの大きさをその場で設定します
+    /// （``withMagnitude(_:)`` の mutating 版。Processing の `setMag()` に相当）。
+    ///
+    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    ///
+    /// - Parameter len: 目標の大きさ。
+    public mutating func setMag(_ len: Float) {
+        self = withMagnitude(len)
     }
 }
