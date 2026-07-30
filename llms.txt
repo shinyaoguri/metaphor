@@ -455,6 +455,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var fps: Int` -- 目標フレームレート。
 - `var fullScreen: Bool` -- フルスクリーンモードで起動するかどうか。
 - `var height: Int` -- オフスクリーンテクスチャの高さ（ピクセル単位）。
+- `var msaa: Int` -- MSAA（マルチサンプルアンチエイリアス）のサンプル数（既定 `4`）。
 - `var plugins: [PluginFactory]` -- スケッチセットアップ時に登録するプラグインファクトリ。
 - `var preventAppNap: Bool` -- スケッチ実行中に macOS の App Nap を抑止するか（既定 `true`）。
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
@@ -463,7 +464,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
 ### `struct SketchWindowConfig` -- セカンダリスケッチウィンドウの設定。
 
@@ -1161,8 +1162,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var textureManager: TextureManager { get }` -- オフスクリーンレンダーターゲットテクスチャの管理
 - `var useExternalRenderLoop: Bool` -- 外部レンダーループがフレームレンダリングを駆動するかどうかを示します。
 - `let videoExporter: VideoExporter` -- フレームを動画ファイルに録画する動画エクスポーター
-- `init(device: (any MTLDevice)? = nil, width: Int = 1920, height: Int = 1080, clearColor: MTLClearColor = .black) throws` -- 指定されたデバイスとオフスクリーンテクスチャサイズで新しいレンダラーを作成します。
-- `init(sharedResources: SharedMetalResources, width: Int = 1920, height: Int = 1080, clearColor: MTLClearColor = .black) throws` -- 他のレンダラーと Metal リソースを共有するレンダラーを作成します。
+- `init(device: (any MTLDevice)? = nil, width: Int = 1920, height: Int = 1080, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws` -- 指定されたデバイスとオフスクリーンテクスチャサイズで新しいレンダラーを作成します。
+- `init(sharedResources: SharedMetalResources, width: Int = 1920, height: Int = 1080, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws` -- 他のレンダラーと Metal リソースを共有するレンダラーを作成します。
 - `func addPlugin(_ plugin: any MetaphorPlugin)` -- プラグインをこのレンダラーに登録します (レガシー)。
 - `func addPlugin(_ plugin: any MetaphorPlugin, sketch: any Sketch)` -- プラグインをこのレンダラーとスケッチ参照に登録します。
 - `func addPostEffect(_ effect: any PostEffect)` -- パイプラインにポストプロセスエフェクトを追加します。
