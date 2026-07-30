@@ -144,6 +144,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createNode(_ name: String = "") -> Node` -- シーングラフノードを作成します。
 - `func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper` -- GameplayKit ノイズジェネレーターを作成します。
 - `func createOSCReceiver(port: UInt16) -> OSCReceiver` -- OSC（Open Sound Control）レシーバーを作成します。
+- `func createOSCSender(host: String, port: UInt16) -> OSCSender?` -- OSC メッセージ送信用のセンダーを作成します。
 - `func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem` -- GPU パーティクルシステムを作成します。
 - `func createPhysics2D(cellSize: Float = 50) -> Physics2D` -- 2D物理シミュレーションワールドを作成します。
 - `func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect` -- MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
@@ -1848,6 +1849,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `let address: String` -- OSC アドレスパターン（例: "/synth/freq"）。
 - `let values: [OSCValue]` -- メッセージに含まれる値のリスト。
+- `init(address: String, values: [OSCValue])` -- OSC メッセージを作成します（``OSCSender/sendBundle(_:)`` 用）。
 
 ### `final class OSCReceiver` -- Network.framework を使用して UDP OSC メッセージを受信します。
 
@@ -1870,12 +1872,37 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
+### `final class OSCSender` -- Network.framework を使用して UDP OSC メッセージを送信します。
+
+- `let host: String` -- 送信先ホスト（IP アドレスまたはホスト名）。
+- `var lastError: (any Error)? { get }` -- 直近の送信・接続エラー。
+- `let port: UInt16` -- 送信先の UDP ポート番号。
+- `init(host: String, port: UInt16) throws` -- OSC センダーを作成し、送信先への UDP フローを開きます。
+- `func send(_ address: String, _ values: [OSCValue])` -- OSC メッセージを送信します。
+- `func send(_ address: String, _ values: OSCValue...)` -- OSC メッセージを送信します（可変長引数版）。
+- `func sendBundle(_ messages: [OSCMessage])` -- 複数のメッセージを 1 つの OSC バンドルとして送信します。
+- `func stop()` -- 送信先への UDP フローを閉じます。以降の送信は無視されます。
+
+### `enum OSCSenderError` -- OSC センダー操作中に発生するエラーを表します。
+
+- `case invalidPort(UInt16)` -- 指定されたポートが無効であることを示します。
+- `var errorDescription: String? { get }`
+- `var failureReason: String? { get }`
+- `var helpAnchor: String? { get }`
+- `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
+- `var recoverySuggestion: String? { get }`
+
 ### `enum OSCValue` -- OSC メッセージ内の値を表します。
 
 - `case blob(Data)`
 - `case float(Float)`
 - `case int(Int32)`
 - `case string(String)`
+- `init(extendedGraphemeClusterLiteral value: Self.StringLiteralType)`
+- `init(floatLiteral value: Float)` -- 小数リテラルから `.float` を構築します。
+- `init(integerLiteral value: Int32)` -- 整数リテラルから `.int` を構築します。
+- `init(stringLiteral value: String)` -- 文字列リテラルから `.string` を構築します。
+- `init(unicodeScalarLiteral value: Self.ExtendedGraphemeClusterLiteralType)`
 
 ## MetaphorNoise
 
