@@ -1,0 +1,14 @@
+{
+  "name": "Drop Image",
+  "title": "Drop Image",
+  "author": "",
+  "level": "Intermediate",
+  "order": "3",
+  "description": "Drag and drop an image file onto the window to display it, or click to open it with a selectInput() file dialog. Demonstrates the fileDropped() callback and the selectInput() dialog.",
+  "featured": [
+    "fileDropped_",
+    "selectInput_",
+    "loadImage_",
+    "image_"
+  ]
+}

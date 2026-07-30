@@ -82,6 +82,10 @@ public final class InputManager {
     /// ファイルがウィンドウにドロップされた時に呼ばれるコールバック (ファイルパスの配列)
     public var onFileDrop: (([String]) -> Void)?
 
+    /// `Sketch.fileDropped(_:)` へ転送するランナー用の内部コールバック。
+    /// ユーザーが ``onFileDrop`` を直接設定しても衝突しないよう独立させている。
+    var onFileDropInternal: (([String]) -> Void)?
+
     // MARK: - Private State
 
     // 前フレームのマウス位置追跡用の2フレームバッファ。
@@ -227,5 +231,6 @@ public final class InputManager {
     /// ファイルドロップイベントを処理します。
     func handleFileDrop(paths: [String]) {
         onFileDrop?(paths)
+        onFileDropInternal?(paths)
     }
 }

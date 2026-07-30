@@ -725,6 +725,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             sketch?.keyReleased()
             renderer?.notifyPluginsKeyEvent(key: nil, keyCode: keyCode, type: .released)
         }
+        input.onFileDropInternal = { [weak sketch] paths in
+            sketch?.fileDropped(paths)
+        }
     }
 
     /// キー入力が文字を生成するか（`keyTyped()` の発火判定）。

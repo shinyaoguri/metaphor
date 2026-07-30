@@ -1,7 +1,7 @@
 {
-  "count": 275,
+  "count": 276,
   "statusCounts": {
-    "supported": 255,
+    "supported": 256,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -3320,6 +3320,28 @@
       "tags": [
         "directorylist",
         "file-io",
+        "topics"
+      ]
+    },
+    {
+      "title": "Drop Image",
+      "path": "Examples/Topics/File IO/DropImage",
+      "group": "Topics",
+      "subcategory": "File IO",
+      "level": "Intermediate",
+      "status": "supported",
+      "description": "Drag and drop an image file onto the window to display it, or click to open it with a selectInput() file dialog. Demonstrates the fileDropped() callback and the selectInput() dialog.",
+      "featured": [
+        "fileDropped_",
+        "selectInput_",
+        "loadImage_",
+        "image_"
+      ],
+      "tags": [
+        "dropimage",
+        "file-io",
+        "image",
+        "interaction",
         "topics"
       ]
     },
