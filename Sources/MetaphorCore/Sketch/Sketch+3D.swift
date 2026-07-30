@@ -476,10 +476,16 @@ extension Sketch {
 
     /// ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
     ///
-    /// - Parameter path: モデルのファイルパス。
+    /// 既定でパスキーのキャッシュが効き、同じパス・同じ `normalize` の再読込は
+    /// 同一の ``Mesh`` インスタンスを返します。
+    ///
+    /// - Parameters:
+    ///   - path: モデルのファイルパス。
+    ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
+    ///   - cache: キャッシュを使うか（既定 true。`false` で独立したコピーを読み込み）。
     /// - Returns: 読み込まれたメッシュ。読み込みに失敗した場合は `nil`。
-    public func loadModel(_ path: String, normalize: Bool = true) -> Mesh? {
-        context.loadModel(path, normalize: normalize)
+    public func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh? {
+        context.loadModel(path, normalize: normalize, cache: cache)
     }
 
     /// 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
@@ -487,8 +493,11 @@ extension Sketch {
     /// - Parameters:
     ///   - path: モデルのファイルパス。
     ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
+    ///   - cache: キャッシュを使うか（既定 true。同一インスタンスが返ります）。
     /// - Returns: 読み込まれたメッシュ。
-    public func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh {
-        try await context.resourceLoader.loadModelAsync(path: path, normalize: normalize)
+    public func loadModelAsync(
+        _ path: String, normalize: Bool = true, cache: Bool = true
+    ) async throws -> Mesh {
+        try await context.loadModelAsync(path, normalize: normalize, cache: cache)
     }
 }

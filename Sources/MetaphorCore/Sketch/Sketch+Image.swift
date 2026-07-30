@@ -6,18 +6,26 @@ extension Sketch {
 
     /// 指定したファイルパスから画像を読み込みます。
     ///
-    /// - Parameter path: 画像のファイルパス。
+    /// 既定でパスキーのキャッシュが効き、同じパスの再読込は同一の ``MImage``
+    /// インスタンスを返します（`draw()` 内で呼んでも毎フレームの再デコードは
+    /// 起きません）。独立したコピーが必要な場合は `cache: false` を指定します。
+    ///
+    /// - Parameters:
+    ///   - path: 画像のファイルパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
     /// - Returns: 読み込まれた画像。
-    public func loadImage(_ path: String) throws -> MImage {
-        try context.loadImage(path)
+    public func loadImage(_ path: String, cache: Bool = true) throws -> MImage {
+        try context.loadImage(path, cache: cache)
     }
 
     /// 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
     ///
-    /// - Parameter path: 画像のファイルパス。
+    /// - Parameters:
+    ///   - path: 画像のファイルパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
     /// - Returns: 読み込まれた画像。
-    public func loadImageAsync(_ path: String) async throws -> MImage {
-        try await context.resourceLoader.loadImageAsync(path: path)
+    public func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage {
+        try await context.loadImageAsync(path, cache: cache)
     }
 
     /// 名前付き画像リソースを非同期で読み込みます。
