@@ -66,8 +66,11 @@ public final class TextureManager {
         self.width = width
         self.height = height
 
-        // サンプル数の検証: デバイスがサポートしていない場合は 1 にフォールバック
-        if sampleCount > 1 && !device.supportsTextureSampleCount(sampleCount) {
+        // サンプル数の検証: 1 未満・デバイス非対応は 1 にフォールバック
+        if sampleCount < 1 {
+            metaphorWarning("sampleCount must be at least 1 (got \(sampleCount)). Falling back to 1.")
+            self.sampleCount = 1
+        } else if sampleCount > 1 && !device.supportsTextureSampleCount(sampleCount) {
             metaphorWarning("sampleCount \(sampleCount) is not supported by this device. Falling back to 1.")
             self.sampleCount = 1
         } else {

@@ -229,7 +229,8 @@ public final class MetaphorRenderer: NSObject {
         device: MTLDevice? = nil,
         width: Int = 1920,
         height: Int = 1080,
-        clearColor: MTLClearColor = .black
+        clearColor: MTLClearColor = .black,
+        sampleCount: Int = 4
     ) throws {
         guard let device = device ?? MTLCreateSystemDefaultDevice() else {
             throw MetaphorError.deviceNotAvailable
@@ -244,7 +245,8 @@ public final class MetaphorRenderer: NSObject {
             device: device,
             width: width,
             height: height,
-            clearColor: clearColor
+            clearColor: clearColor,
+            sampleCount: sampleCount
         )
         self.startTime = CACurrentMediaTime()
         self.shaderLibrary = try ShaderLibrary(device: device)
@@ -282,7 +284,8 @@ public final class MetaphorRenderer: NSObject {
         sharedResources: SharedMetalResources,
         width: Int = 1920,
         height: Int = 1080,
-        clearColor: MTLClearColor = .black
+        clearColor: MTLClearColor = .black,
+        sampleCount: Int = 4
     ) throws {
         self.device = sharedResources.device
         self.commandQueue = sharedResources.commandQueue
@@ -293,7 +296,8 @@ public final class MetaphorRenderer: NSObject {
             device: sharedResources.device,
             width: width,
             height: height,
-            clearColor: clearColor
+            clearColor: clearColor,
+            sampleCount: sampleCount
         )
         self.startTime = CACurrentMediaTime()
         self.input = InputManager()
@@ -525,7 +529,8 @@ public final class MetaphorRenderer: NSObject {
             textureManager = try TextureManager(
                 device: device,
                 width: width,
-                height: height
+                height: height,
+                sampleCount: textureManager.sampleCount
             )
             textureManager.setClearColor(currentClearColor)
         } catch {

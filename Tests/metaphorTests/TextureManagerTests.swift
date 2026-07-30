@@ -25,6 +25,36 @@ struct TextureManagerTests {
         #expect(tm.colorTexture.height == 600)
     }
 
+    @Test("unsupported or invalid sample counts fall back to 1")
+    func sampleCountFallback() throws {
+        let device = MetalTestHelper.device!
+        // 3x はどの Metal デバイスも非対応
+        let unsupported = try TextureManager(device: device, width: 64, height: 64, sampleCount: 3)
+        #expect(unsupported.sampleCount == 1)
+        // 0 以下は不正値
+        let zero = try TextureManager(device: device, width: 64, height: 64, sampleCount: 0)
+        #expect(zero.sampleCount == 1)
+        let negative = try TextureManager(device: device, width: 64, height: 64, sampleCount: -2)
+        #expect(negative.sampleCount == 1)
+    }
+
+    @Test("SketchConfig msaa propagates to the renderer's TextureManager")
+    func msaaPropagation() throws {
+        #expect(SketchConfig().msaa == 4)
+        #expect(SketchConfig(msaa: 2).msaa == 2)
+
+        let renderer = try MetaphorRenderer(width: 64, height: 64, sampleCount: 1)
+        #expect(renderer.textureManager.sampleCount == 1)
+    }
+
+    @Test("resizeCanvas preserves the configured sample count")
+    func resizePreservesSampleCount() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64, sampleCount: 1)
+        renderer.resizeCanvas(width: 128, height: 96)
+        #expect(renderer.textureManager.sampleCount == 1)
+        #expect(renderer.textureManager.width == 128)
+    }
+
     @Test("colorTexture dimensions match init")
     func colorTextureDimensions() throws {
         let device = MetalTestHelper.device!

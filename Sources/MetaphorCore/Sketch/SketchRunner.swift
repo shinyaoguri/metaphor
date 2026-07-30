@@ -205,7 +205,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer = try MetaphorRenderer(
                 sharedResources: shared,
                 width: config.width,
-                height: config.height
+                height: config.height,
+                sampleCount: config.msaa
             )
             canvas = try Canvas2D(renderer: renderer)
             canvas3D = try Canvas3D(renderer: renderer)

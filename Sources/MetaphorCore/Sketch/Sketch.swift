@@ -243,6 +243,13 @@ public struct SketchConfig: Sendable {
     /// 再コンパイルせずに App Nap を許可することもできます（環境変数が優先）。
     public var preventAppNap: Bool
 
+    /// MSAA（マルチサンプルアンチエイリアス）のサンプル数（既定 `4`）。
+    ///
+    /// `1`（無効）/ `2` / `4` / `8` を指定します。デバイスが対応しないサンプル数は
+    /// 警告を出力して `1` にフォールバックします。値を下げると描画品質と引き換えに
+    /// GPU 負荷が下がります。
+    public var msaa: Int
+
     /// スケッチセットアップ時に登録するプラグインファクトリ。
     ///
     /// プラグインは ``Sketch/setup()`` が呼ばれる前にインスタンス化されスケッチに接続されます。
@@ -266,6 +273,7 @@ public struct SketchConfig: Sendable {
     ///   - fullScreen: フルスクリーンモードで起動するかどうか。
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
     ///   - preventAppNap: スケッチ実行中に App Nap を抑止するか（デフォルト: `true`）。
+    ///   - msaa: MSAA サンプル数（デフォルト: `4`。`1` で無効、非対応値は `1` にフォールバック）。
     ///   - plugins: スケッチに登録するプラグインファクトリの配列。
     public init(
         width: Int = 1920,
@@ -278,6 +286,7 @@ public struct SketchConfig: Sendable {
         fullScreen: Bool = false,
         renderLoopMode: RenderLoopMode = .displayLink,
         preventAppNap: Bool = true,
+        msaa: Int = 4,
         plugins: [PluginFactory] = []
     ) {
         self.width = width
@@ -290,6 +299,7 @@ public struct SketchConfig: Sendable {
         self.fullScreen = fullScreen
         self.renderLoopMode = renderLoopMode
         self.preventAppNap = preventAppNap
+        self.msaa = msaa
         self.plugins = plugins
     }
 }
