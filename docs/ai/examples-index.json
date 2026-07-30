@@ -1,9 +1,9 @@
 {
   "count": 275,
   "statusCounts": {
-    "supported": 252,
+    "supported": 255,
     "partial": 0,
-    "stub": 13,
+    "stub": 10,
     "obsolete": 10
   },
   "examples": [
@@ -2864,7 +2864,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
-      "status": "stub",
+      "status": "supported",
       "description": "This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { \"bubbles\": [ { \"position\": { \"x\": 160, \"y\": 103 }, \"diamet...",
       "featured": [
         "JSONObject",
@@ -2886,7 +2886,7 @@
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
-      "status": "stub",
+      "status": "supported",
       "description": "This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6...",
       "featured": [
         "Table",
@@ -3348,7 +3348,7 @@
       "group": "Topics",
       "subcategory": "File IO",
       "level": "Intermediate",
-      "status": "stub",
+      "status": "supported",
       "description": "This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d...",
       "featured": [
         "loadFont_",
