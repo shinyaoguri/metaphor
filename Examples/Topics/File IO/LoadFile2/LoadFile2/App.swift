@@ -1,10 +1,11 @@
 import metaphor
 
 // LoadFile 2
-// loadStrings() でタブ区切りの車データ（400 台超）を読み込み、1 行ずつ
-// Record に変換して表示する例。クリックで次のエントリ群へ進む。
-// 原典は VLW フォント（loadFont）を使うが、ここではシステムフォントで代替。
-// 実行はこの example のディレクトリで `swift run`（data/ は CWD 相対で解決）。
+// Load tab-separated car data (400+ vehicles) with loadStrings(),
+// convert each line to a Record struct, and display them.
+// Click to advance to the next set of entries.
+// Original used VLW font (loadFont); here we use the system font.
+// Run from the example directory with `swift run` (data/ is resolved relative to CWD).
 
 @main
 final class LoadFile2: Sketch {

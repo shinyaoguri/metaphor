@@ -1,16 +1,16 @@
 import metaphor
 
-/// MetaphorProbe を使って AI エージェントに「いま何が見えているか」と
-/// 「内部状態」の両方を渡すサンプル。
+/// Pass both "what the AI sees now" and "internal state" to an AI agent using MetaphorProbe.
 ///
-/// 実行後、別ターミナルから次のようにリクエストファイルを書くと
-/// `.metaphor/probe/current/frame.png` と `frame.json` が出力される。
+/// After running, write a request file from another terminal like this:
+/// `.metaphor/probe/current/frame.png` and `frame.json` are then written.
 ///
 /// ```sh
 /// echo '{"id":"snap-1","label":"baseline"}' > .metaphor/probe/request.json
 /// ```
 ///
-/// id を変えて書き直すたびに、その瞬間のフレームと状態が AI に届く形で書き出される。
+/// Each time you rewrite with a different id, that frame and state are exported in a format
+/// ready for the AI to consume.
 @main
 final class ProbeSnapshotApp: Sketch {
     var config: SketchConfig {
@@ -33,8 +33,8 @@ final class ProbeSnapshotApp: Sketch {
         fill(220, 100, 140)
         circle(cx, cy, radius * 2)
 
-        // AI が後で frame.json で読める値を申告。
-        // プラグイン未登録時は完全な no-op。
+        // Declare values the AI can later read from frame.json.
+        // This is a complete no-op when the plugin is not registered.
         probe("circle.x", cx)
         probe("circle.y", cy)
         probe("circle.radius", radius)

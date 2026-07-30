@@ -1,9 +1,9 @@
 import metaphor
 
 // Loading Tabular Data (by Daniel Shiffman)
-// loadTable() で CSV ファイルからデータを読み込み、オブジェクトを生成する例。
-// クリックでバブルを追加し、saveTable() で data/data.csv へ書き戻して再読込する。
-// 実行はこの example のディレクトリで `swift run`（data/ は CWD 相対で解決）。
+// Load data from a CSV file using loadTable() and generate objects.
+// Click to add bubbles, then save back to data/data.csv with saveTable() and reload.
+// Run from the example directory with `swift run` (data/ is resolved relative to CWD).
 
 @main
 final class LoadSaveTable: Sketch {

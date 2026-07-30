@@ -1,8 +1,8 @@
 import metaphor
 
 // Drop Image
-// ウィンドウへ画像ファイルをドラッグ＆ドロップして表示する例。
-// クリックすると selectInput() のファイルダイアログからも開ける。
+// Display an image by dragging and dropping it onto the window.
+// Click to open a file dialog via selectInput().
 
 @main
 final class DropImage: Sketch {
@@ -15,7 +15,7 @@ final class DropImage: Sketch {
     func draw() {
         background(51)
         if let img {
-            // アスペクト比を保って中央に表示
+            // Display in center while maintaining aspect ratio
             let scale = min(width / img.width, height / img.height, 1)
             let w = img.width * scale
             let h = img.height * scale
