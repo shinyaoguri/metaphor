@@ -1,0 +1,148 @@
+# ロードマップ: Processing / Unity ユーザー獲得（v0.8〜v0.10 相当）
+
+- **ステータス**: 運用中（living document）。各フェーズ完了時に見直し、Issue 番号・設計変更を本ドキュメントへ追記する
+- **作成**: 2026-07-30（リポジトリ全体レビューに基づく）
+- **正典**: 本ドキュメント + 各 Epic Issue。詳細設計は個別の design doc（例: [live-tooling-params.md](live-tooling-params.md)）へ委譲
+
+## ポジショニング宣言（全優先判断のアンカー）
+
+**metaphor は「人間と AI が同じ実行中スケッチを一緒に操作できる」クリエイティブコーディング環境である。**
+
+- Processing ユーザーは「週末でスケッチが移植できる + キャンバスを見て操縦できる AI ペア」で乗り換える
+- Unity ユーザーは「エディタ税なしの Metal ネイティブなモダン 3D + 同じ AI ループ」で乗り換える
+- API パリティは摩擦の除去、AI 協調ループが乗り換えのトリガー。パリティ単体では誰も乗り換えない
+
+## レビュー所見の要約（2026-07-30 時点）
+
+全体レビュー（API 面・DX/ツールチェーン・アーキテクチャ拡張性の 3 観点）の結論:
+
+### 強み
+
+- 2D 描画・beginShape/contour・MShape（PShape 相当）・3 層バッチング/インスタンシングは完成度が高い
+- 3D はプリミティブ + OBJ/USDZ/ABC・シャドウ・スカラー PBR・CustomMaterial・自動インスタンシングまで到達
+- 差別化の核が既に存在する: Probe（決定論観測・performance 節）+ ライブビューア + MCP。warm snapshot p50 35.6ms
+- 工学品質（テスト 1,041 本・ADR・契約管理・生成物の陳腐化検出）は機能面の見た目以上に高く、大きな機能成長を吸収できる
+
+### 主要ギャップ
+
+| 対象 | ギャップ |
+|---|---|
+| Processing 移行者 | データ IO（loadJSON/loadTable 等）・SVG 入出力・PDF・フォントファイル読込・textToPoints・PVector 風メソッド・2D カスタムシェーダ・OSC 送信・音声合成 |
+| Unity 移行者 | コンポーネントモデル・ピッキング・PBR テクスチャマップ・キューブマップ/IBL・glTF・明示的インスタンシング API・3D 物理・インスペクタ |
+| 両者共通 (DX) | 編集→反映 p50 約 2.8 秒（律速はビルド+子プロセス再起動）・リロード時の状態非保持・英語ドキュメント不足 |
+
+### 拡張時のアーキテクチャ制約
+
+- 全面 `@MainActor`（ジョブシステム化は隔離モデルの再設計が必要 → 非目標）
+- `TextureManager` は `colorAttachments[0]` 固定（MRT 不可 → deferred rendering は非目標）
+- `Canvas3D.swift`（約 1,700 行）はパイプライン系機能を足す前に分割が必要（Epic G の門番タスク）
+- 3 層 API 転送（Sketch → SketchContext → Canvas）のため、新プリミティブ 1 つに 3 箇所編集。小粒 API は束ねて実装する
+
+## 戦略的判断（決定事項）
+
+1. **各フェーズ = フラッグシップ 1 つ + S/M パリティ束**。比率は Phase 1 ≈ 80% Processing / Phase 2 ≈ 50:50 / Phase 3 ≈ 80% Unity。S 項目は 3 層転送コストの償却のため同一 PR トレインに束ねる
+2. **AI 協調を統一柱にする**。Parameter Store（Epic D）が要石: ParameterGUI の土台・リロード生存・Probe/MCP からの読み書き・将来のインスペクタのデータモデルを 1 機能で兼ねる
+3. **往復レイテンシはクロスリポ Epic として本ロードマップが持つ**（metaphor 側 = 状態保持、cli 側 = ビルド高速化。2 リポの間に落とさない）
+4. **英語ドキュメントは並行トラックで in scope**（README/Getting Started → 公開 API doc コメント → website #74）。ADR 全訳は非目標
+5. **glTF は採用（Phase 3・import のみ・skins/animations なし）。3D 物理は Jolt 等のラップを Phase 4 需要ゲートに置く**。2D Verlet ソルバの剛体拡張はしない（角度状態を持たない土台のため不適）
+
+## フェーズ計画
+
+リリースは PR ラベル駆動の自動版数のため、フェーズと版数は厳密には対応しない（v0.8 等は目安）。フェーズ管理はマイルストーンではなく Epic チェックリストで行う（Epic #75 と同じパターン）。
+
+### Phase 1「週末でスケッチ移植」
+
+目標: p5.js 上位例 50 本が diff 10 行未満で移植できる。スタブ example 3 本（LoadSaveJSON / LoadSaveTable / LoadDisplaySVG）が動く。
+
+| 機能 | 対象 | 規模 | 備考 |
+|---|---|---|---|
+| データ IO（loadJSON/saveJSON/loadTable/saveTable/loadStrings/saveStrings、URL 対応） | Processing | S | Foundation のみ・レンダラ非接触 |
+| Vec2/Vec3 の PVector 風拡張（normalize/limit/heading/rotate/lerp/setMag/dist） | Processing | S | SIMD typealias への extension |
+| パスキーのアセットキャッシュ（loadImage/loadModel） | 両方 | S | 「draw() 内 loadImage」footgun の解消 |
+| キャンバス操作束（applyMatrix/resetMatrix/shearX/Y/screenX/Y/Z/keyTyped/copy/mask/MImage.resize） | Processing | S×7 | 1 Issue・1 PR トレインに束ねる |
+| selectInput/selectOutput + 既存 file-drop の公開 | Processing | S | NSOpenPanel/NSSavePanel |
+| SketchConfig に MSAA 設定 | 両方 | S | 内部は 4x 実装済み |
+| OSC 送信 | 両方 | S | 受信は実装済み。TouchOSC/VJ ループが完成 |
+| **SVG 書き出し（フラッグシップ）** | Processing | M | 決定論コマンドストリーム（`Canvas2DCommand`）の replay で実装。プロッタ/印刷層への真のトリガー |
+| 英語 docs 第 1 弾（README/Getting Started/主要 example 10 本） | 両方 | M | 並行トラック |
+| ビルド高速化 pass 1（cli 側・目標 p50 ≤1.5s） | 両方 | M | metaphor-cli 側 Issue |
+
+### Phase 2「生きているスケッチ」
+
+目標: 体感の編集→反映 ≈ 0（状態がリロードを生存する）。人間のスライダーと AI の MCP が同一パラメータを共同操作するデモが撮れる。
+
+| 機能 | 対象 | 規模 | 備考 |
+|---|---|---|---|
+| **Parameter Store（フラッグシップ）** | 両方 | L | 詳細は [live-tooling-params.md](live-tooling-params.md)。#87 を吸収、#273/#275 は同じ schema 変更に同乗 |
+| 状態保持リロード（saveState/restoreState） | 両方 | M | [live-viewer.md](live-viewer.md) Phase 2 をファイルベースに改訂して実装 |
+| loadShader()/shader() の 2D 対応 + シェーダファイル監視ホットリロード | Processing | L | 前提: Canvas2D パイプライン状態リファクタ（独立 PR） |
+| フォントファイル読込（CTFontManager）+ textToPoints | Processing | M | 生成タイポグラフィの解放 |
+| SVG 読み込み（loadShape → MShape） | Processing | M | Phase 1 の SVG 書き出しと対になる |
+| canvas 全体 filter()/blend() | Processing | S–M | 既存 postFX の配線替えが主 |
+| drawInstanced(mesh, transforms) 公開 API | Unity | M | InstanceData3D は内部実装済み |
+| ゲームパッド（GCController） | 両方 | S | |
+| Canvas3D.swift 分割（リファクタ） | — | M | Phase 3 の門番。独立 Issue・blocking リンク |
+| 英語 docs 第 2 弾（公開 API doc コメント） | 両方 | M | cli #86（api_reference 強化）と相乗 |
+
+### Phase 3「エディタ税なしのモダン 3D」
+
+目標: glTF サンプル（DamagedHelmet 等）が参照ビューア相当で描画される。「Unity 級」に見えるスクリーンショットが出せる。
+
+| 機能 | 対象 | 規模 | 備考 |
+|---|---|---|---|
+| UV 全域対応（beginShape3D 頂点 UV + DynamicMesh UV） | 両方 | M | テクスチャ系すべての前提 |
+| PBR テクスチャマップ（normal/roughness/metallic/AO） | Unity | L | 信頼性の分水嶺。UV + Canvas3D 分割に依存 |
+| キューブマップ/スカイボックス + IBL + HDR/トーンマッピング | Unity | L | 単一レンダーターゲットで実現可（MRT 不要） |
+| **glTF/GLB import（フラッグシップ）** | Unity | M–L | ジオメトリ + PBR マテリアル + ノード階層 → SceneGraph。skins/animations は対象外 |
+| SceneGraph 軽量コンポーネント + GetComponent 風 lookup | Unity | M | Node に加算的 |
+| ピッキング/レイキャスト（マウス → Node） | Unity+AI | M | AI も Probe 経由で「(x,y) に何があるか」を特定可能に |
+| ライブビューアのノードインスペクタ（Parameter Store × ピッキング） | Unity | M | 編集機構は Parameter Store をそのまま使う |
+| website（#74）英語ファースト | 両方 | — | 既存 Issue |
+
+### Phase 4（需要ゲート — コミットしない）
+
+需要シグナル（ユーザー要望・作品制作での具体的必要）が出たときのみ着手する。
+
+- 3D 物理: Jolt 等のラップによる optional モジュール（**自作はしない**）
+- 音声合成 minimal（AVAudioSourceNode ベースの p5.sound-lite）
+- PDF 書き出し（SVG バックエンドの再利用）
+- WebSocket/HTTP モジュール
+
+## 非目標
+
+- クロスプラットフォーム（Windows/Linux/iOS/web）— macOS 14+/Apple Silicon の契約は維持
+- スケルタルアニメーション/スキニング（glTF import も skins を読まない）
+- フルゲームエンジン・エディタアプリ化（シーンシリアライズ形式・prefab・Play/Edit 分離は作らない。インスペクタはビューアの付帯機能）
+- 物理エンジンの自作
+- MRT / deferred rendering（forward 維持）
+- ジョブシステム / マルチスレッド化（`@MainActor` 隔離は維持）
+- シェーダグラフ / ビジュアルノードエディタ
+- ADR の全訳・アセットストア的 GUI
+
+## Epic 構成
+
+Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レイヤ束で 1 Issue + チェックリスト、M/L は各 1 Issue、リファクタ前提は blocking リンク付き独立 Issue」。**起票は着手フェーズ分のみ**（現時点: Epic 全 9 本 + Phase 1 の子のみ。後続フェーズの子は着手時に起票して本表へ追記する）。
+
+| Epic | 内容 | 子（Phase 1 起票分は Issue 番号を記載） |
+|---|---|---|
+| [#287](https://github.com/shinyaoguri/metaphor/issues/287) A: Processing API パリティ第 1 弾 | Phase 1 の S 束 | A1 データ IO #278 / A2 Vec 拡張 #279 / A3 キャンバス操作束 #280 / A4 ダイアログ+drop #281 / A5 MSAA #282 / A6 OSC 送信 #283 / A7 アセットキャッシュ #284 |
+| [#288](https://github.com/shinyaoguri/metaphor/issues/288) B: ベクタ往復 | SVG/PDF | B1 SVG 書き出し #285（Phase 1）/ B2 loadShape（Phase 2）/ B3 PDF（Phase 4） |
+| [#289](https://github.com/shinyaoguri/metaphor/issues/289) C: 往復レイテンシ（クロスリポ） | ビルド高速化 + 状態運搬 | C1 ビルド高速化 pass 1（[cli#88](https://github.com/shinyaoguri/metaphor-cli/issues/88)）/ C2 saveState/restoreState / C3 watch 側状態運搬（cli）/ C4 計測分解 |
+| [#290](https://github.com/shinyaoguri/metaphor/issues/290) D: Parameter Store & AI 共同操作 | Phase 2 フラッグシップ | D1 store コア / D2 ParameterGUI 再基盤 / D3 probe schema 拡張 / D4 MCP 書込チャネル（cli）/ D5 リロード永続 / D6 ノードインスペクタ（Phase 3） |
+| [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ（blocking）/ E2 loadShader API / E3 ファイル監視リロード |
+| [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 / F2 textToPoints / F3 text-on-path（stretch） |
+| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割（blocking）/ G1 UV / G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
+| [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
+| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286 / I2 API doc コメント / I3 website（#74） |
+
+既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#273/#275 は Epic D の schema 変更に同乗。cli #86 は Epic I の I2 と相乗。
+
+## 実装の進め方（将来セッションへの指示）
+
+1. **一気に実装しない。** 実装は起票された Issue を単位に、小さく作って早めに PR（1 PR = 1 関心事）。使いながら直す前提で、フェーズ完了ごとに本ドキュメントを見直して更新する（優先度変更・追加ギャップ・Issue 番号の追記）
+2. **サブエージェント委譲方針**（パフォーマンス最大化 × トークンコスト最適化）:
+   - 設計判断・API 設計・レンダリング/契約（CONTRACT.md）に触れる実装・レビュー = 最高性能モデル（本体または高性能サブエージェント）
+   - 定型・機械的作業（3 層転送のボイラープレート展開・example 移植・docs 翻訳・テスト雛形・生成物再生成）= 安価なモデルのサブエージェントへ委譲
+   - 独立した子 Issue は worktree 分離の並列サブエージェントで同時進行してよい。迷ったら高性能側に倒す
+3. **契約に触れる項目**（Epic C/D の一部）は metaphor-cli と同時更新・両リポ `CONTRACT.md` 整合・`./scripts/check-contract.sh` green が必須（[CONTRACT.md](../../CONTRACT.md) 参照）
+4. 各フェーズの目標指標（Phase 1: p5 例 50 本移植性 / Phase 2: 状態生存 + 共同操作デモ / Phase 3: glTF 描画品質）を完了判定に使う
