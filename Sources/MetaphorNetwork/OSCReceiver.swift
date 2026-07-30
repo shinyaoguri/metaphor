@@ -19,6 +19,16 @@ public struct OSCMessage: Sendable {
     public let address: String
     /// メッセージに含まれる値のリスト。
     public let values: [OSCValue]
+
+    /// OSC メッセージを作成します（``OSCSender/sendBundle(_:)`` 用）。
+    ///
+    /// - Parameters:
+    ///   - address: OSC アドレスパターン。
+    ///   - values: メッセージに含める値のリスト。
+    public init(address: String, values: [OSCValue]) {
+        self.address = address
+        self.values = values
+    }
 }
 
 // MARK: - スレッドセーフなメッセージキュー
