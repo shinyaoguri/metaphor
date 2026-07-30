@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 275
+Example count: 276
 
-Status: supported 255, partial 0, stub 10, obsolete 10
+Status: supported 256, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -251,6 +251,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Patterns](../../Examples/Topics/Drawing/Pattern) [Intermediate] (Drawing) -- Move the cursor over the image to draw with a software tool which responds to the speed of the mouse. Tags: drawing, image, interaction, pattern, topics.
 - [Pulses](../../Examples/Topics/Drawing/Pulses) (Drawing) -- Software drawing instruments can follow a rhythm or abide by rules independent of drawn gestures. This is a form of collaborative drawing in which the draftsperson controls some aspects of the image and the software con... Tags: drawing, image, interaction, pulses, topics.
 - [DirectoryList](../../Examples/Topics/File%20IO/DirectoryList) (File IO) Tags: directorylist, file-io, topics.
+- [Drop Image](../../Examples/Topics/File%20IO/DropImage) [Intermediate] (File IO) -- Drag and drop an image file onto the window to display it, or click to open it with a selectInput() file dialog. Demonstrates the fileDropped() callback and the selectInput() dialog. Tags: dropimage, file-io, image, interaction, topics.
 - [LoadFile 1](../../Examples/Topics/File%20IO/LoadFile1) [Intermediate] (File IO) -- Loads a text file that contains two numbers separated by a tab ('\t'). A new pair of numbers is loaded each frame and used to draw a point on the screen. Tags: file-io, loadfile1, topics, typography.
 - [LoadFile 2](../../Examples/Topics/File%20IO/LoadFile2) [Intermediate] (File IO) -- This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d... Tags: file-io, interaction, loadfile2, topics, typography.
 - [SaveFile1](../../Examples/Topics/File%20IO/SaveFile1) (File IO) Tags: file-io, savefile1, topics.

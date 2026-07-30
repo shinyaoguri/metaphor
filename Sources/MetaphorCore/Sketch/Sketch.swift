@@ -65,6 +65,11 @@ public protocol Sketch: AnyObject {
     /// 矢印・修飾キーなど文字を生成しないキーでは呼ばれません。
     /// キーリピートでも呼ばれます。
     func keyTyped()
+
+    /// ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
+    ///
+    /// - Parameter paths: ドロップされたファイルの絶対パスの配列。
+    func fileDropped(_ paths: [String])
 }
 
 // MARK: - Per-Instance Context (Pure Swift Storage)
@@ -130,6 +135,7 @@ extension Sketch {
     public func keyPressed() {}
     public func keyReleased() {}
     public func keyTyped() {}
+    public func fileDropped(_ paths: [String]) {}
 }
 
 // MARK: - Deprecated
