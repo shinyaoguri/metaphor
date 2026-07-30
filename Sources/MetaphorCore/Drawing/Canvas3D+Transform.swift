@@ -134,7 +134,9 @@ extension Canvas3D {
     /// - Returns: x/y はスクリーン座標（ピクセル単位）、z は NDC 深度（0...1）。
     ///   点がカメラ平面上（w = 0）の場合はゼロベクトル。
     public func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
-        let clip = computeViewProjection() * currentTransform * SIMD4<Float>(x, y, z, 1)
+        // Swift 5.10 は行列×行列×ベクトルの連鎖式を型解決できないため分割する
+        let modelViewProjection = computeViewProjection() * currentTransform
+        let clip = modelViewProjection * SIMD4<Float>(x, y, z, 1)
         guard clip.w != 0 else { return .zero }
         let ndc = SIMD3<Float>(clip.x, clip.y, clip.z) / clip.w
         // computeViewProjection は Y 反転（Processing の下向き規則）込みのため、
