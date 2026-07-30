@@ -84,6 +84,11 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     /// コンピュートカーネル操作の失敗
     case compute(ComputeFailure)
 
+    // MARK: - データ IO
+
+    /// データ IO（JSON/Table/Strings）操作の失敗
+    case data(DataFailure)
+
     // MARK: - ネストされた失敗型
 
     public enum CanvasFailure: Sendable {
@@ -149,6 +154,19 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     public enum ComputeFailure: Sendable {
         /// 指定されたコンピュート関数が見つからなかった
         case functionNotFound(String)
+    }
+
+    public enum DataFailure: Sendable {
+        /// ソース（ファイル・URL）の読み込みに失敗した
+        case loadFailed(source: String, detail: String)
+        /// JSON/CSV/TSV のパースに失敗した
+        case parseFailed(detail: String)
+        /// Decodable への変換に失敗した
+        case decodeFailed(type: String, detail: String)
+        /// Encodable からのシリアライズに失敗した
+        case encodeFailed(detail: String)
+        /// ファイルへの書き込みに失敗した
+        case writeFailed(path: String, detail: String)
     }
 
     // MARK: - Description
@@ -237,6 +255,19 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
             switch f {
             case .functionNotFound(let name):
                 "[metaphor] Compute function '\(name)' not found"
+            }
+        case .data(let f):
+            switch f {
+            case .loadFailed(let source, let detail):
+                "[metaphor] Failed to load data from '\(source)': \(detail)"
+            case .parseFailed(let detail):
+                "[metaphor] Data parse error: \(detail)"
+            case .decodeFailed(let type, let detail):
+                "[metaphor] Failed to decode JSON as \(type): \(detail)"
+            case .encodeFailed(let detail):
+                "[metaphor] Failed to encode value as JSON: \(detail)"
+            case .writeFailed(let path, let detail):
+                "[metaphor] Failed to write data to '\(path)': \(detail)"
             }
         }
     }

@@ -211,10 +211,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadImage(_ path: String) throws -> MImage` -- 指定したファイルパスから画像を読み込みます。
 - `func loadImageAsync(_ path: String) async throws -> MImage` -- 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
 - `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
+- `func loadJSON(_ source: String) throws -> JSONValue` -- JSON ファイル/URL を動的な ``JSONValue`` として読み込みます。
+- `func loadJSON<T>(_ source: String, as type: T.Type) throws -> T where T : Decodable` -- JSON ファイル/URL を `Decodable` な型として読み込みます。
+- `func loadJSONAsync(_ source: String) async throws -> JSONValue` -- JSON ファイル/URL を動的な ``JSONValue`` として非同期で読み込みます。
+- `func loadJSONAsync<T>(_ source: String, as type: T.Type) async throws -> T where T : Decodable` -- JSON ファイル/URL を `Decodable` な型として非同期で読み込みます。
 - `func loadModel(_ path: String, normalize: Bool = true) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
 - `func loadModelAsync(_ path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
 - `func loadPixels()` -- キャンバスの内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
+- `func loadStrings(_ source: String) throws -> [String]` -- テキストファイル/URL を行の配列として読み込みます。
+- `func loadStringsAsync(_ source: String) async throws -> [String]` -- テキストファイル/URL を行の配列として非同期で読み込みます。
+- `func loadTable(_ source: String, format: TableFormat? = nil, header: Bool = true) throws -> Table` -- CSV/TSV ファイル/URL を ``Table`` として読み込みます。
+- `func loadTableAsync(_ source: String, format: TableFormat? = nil, header: Bool = true) async throws -> Table` -- CSV/TSV ファイル/URL を ``Table`` として非同期で読み込みます。
 - `func loadVideo(_ path: String) throws -> VideoPlayer` -- 再生用のビデオファイルを読み込みます。
 - `func loop()` -- アニメーションループを再開します。
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
@@ -282,6 +290,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func save()` -- 現在のフレームをデフォルトの場所に保存します。
 - `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
 - `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
+- `func saveJSON(_ value: some Encodable, _ path: String, pretty: Bool = true) throws` -- `Encodable` な値（``JSONValue`` を含む）を JSON ファイルへ書き込みます。
+- `func saveStrings(_ lines: [String], _ path: String) throws` -- 行の配列をテキストファイルへ書き込みます（UTF-8・各行に改行を付与）。
+- `func saveTable(_ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true) throws` -- ``Table`` を CSV/TSV ファイルへ書き込みます。
 - `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
 - `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一 2D スケールを適用します。
 - `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
@@ -527,6 +538,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case hsb` -- 色相、彩度、明度のカラースペース。
 - `case rgb` -- 赤、緑、青のカラースペース。
 
+### `enum DataIO` -- データ IO（JSON / Table / Strings）のコア実装。
+
 ### `enum DepthMode` -- Metal レンダーパイプライン用の定義済みデプスステンシル設定
 
 - `case disabled` -- デプステストを無効化（2D レンダリング向き）
@@ -586,6 +599,53 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case corner` -- x, y を左上隅として解釈（デフォルト）。
 - `case corners` -- x, y を左上隅、w, h を右下隅の座標として解釈。
 
+### `enum JSONValue` -- JSON データを動的に表現する値型。
+
+- `case array([JSONValue])`
+- `case bool(Bool)`
+- `case null`
+- `case number(Double)`
+- `case object([String : JSONValue])`
+- `case string(String)`
+- `var array: [JSONValue]? { get }` -- 配列なら要素、それ以外は nil
+- `var arrayValue: [JSONValue] { get }` -- 配列要素（それ以外は空配列）
+- `var bool: Bool? { get }` -- 真偽値なら値、それ以外は nil
+- `var boolValue: Bool { get }` -- 真偽値（それ以外は false）
+- `var count: Int { get }` -- 配列・オブジェクトの要素数（それ以外は 0）
+- `var double: Double? { get }` -- 数値なら Double 値、それ以外は nil
+- `var doubleValue: Double { get }` -- Double 値（それ以外は 0）
+- `var float: Float? { get }` -- 数値なら Float 値、それ以外は nil
+- `var floatValue: Float { get }` -- Float 値（それ以外は 0）
+- `var int: Int? { get }` -- 数値なら整数へ切り捨てた値、それ以外は nil
+- `var intValue: Int { get }` -- 整数値（それ以外は 0）
+- `var isNull: Bool { get }` -- `.null` かどうか
+- `var object: [String : JSONValue]? { get }` -- オブジェクトなら辞書、それ以外は nil
+- `var objectValue: [String : JSONValue] { get }` -- オブジェクト辞書（それ以外は空辞書）
+- `var string: String? { get }` -- 文字列なら値、それ以外は nil
+- `var stringValue: String { get }` -- 文字列値（それ以外は空文字列）
+- `init(_ value: some BinaryFloatingPoint)` -- 浮動小数点値から `.number` を構築します。
+- `init(_ value: some BinaryInteger)` -- 整数値から `.number` を構築します。
+- `init(_ value: String)` -- 文字列から `.string` を構築します。
+- `init(_ value: Bool)` -- 真偽値から `.bool` を構築します。
+- `init(arrayLiteral elements: JSONValue...)`
+- `init(booleanLiteral value: Bool)`
+- `init(data: Data) throws` -- JSON テキスト（UTF-8 データ）をパースします。
+- `init(dictionaryLiteral elements: (String, JSONValue)...)`
+- `init(extendedGraphemeClusterLiteral value: Self.StringLiteralType)`
+- `init(floatLiteral value: Double)`
+- `init(from decoder: any Decoder) throws`
+- `init(integerLiteral value: Int)`
+- `init(nilLiteral: ())`
+- `init(string: String) throws` -- JSON テキスト（文字列）をパースします。
+- `init(stringLiteral value: String)`
+- `init(unicodeScalarLiteral value: Self.ExtendedGraphemeClusterLiteralType)`
+- `mutating func append(_ value: JSONValue)` -- 配列の末尾に値を追加します。自身が `.null` の場合は単一要素の配列になります。
+- `func encode(to encoder: any Encoder) throws`
+- `mutating func remove(at index: Int)` -- 配列から指定インデックスの要素を削除します。
+- `func serialized(pretty: Bool = true) -> Data` -- JSON テキストとしてシリアライズします。
+- `subscript(key: String) -> JSONValue { get set }` -- オブジェクトのキーで値を取得・設定します。オブジェクトでない場合の取得は `.null`。
+- `subscript(index: Int) -> JSONValue { get set }` -- 配列のインデックスで値を取得・設定します。配列でない・範囲外の取得は `.null`。
+
 ### `enum KeyEventType` -- プラグインに配信されるキーボードイベントの種類
 
 - `case pressed`
@@ -609,6 +669,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case compute(MetaphorError.ComputeFailure)` -- コンピュートカーネル操作の失敗
 - `case functionNotFound(String)` -- 指定されたコンピュート関数が見つからなかった
 - `case contextUnavailable(method: String)` -- スケッチコンテキストが利用できない (`setup()` または `draw()` の外で呼び出された)
+- `case data(MetaphorError.DataFailure)` -- データ IO（JSON/Table/Strings）操作の失敗
+- `case decodeFailed(type: String, detail: String)` -- Decodable への変換に失敗した
+- `case encodeFailed(detail: String)` -- Encodable からのシリアライズに失敗した
+- `case loadFailed(source: String, detail: String)` -- ソース（ファイル・URL）の読み込みに失敗した
+- `case parseFailed(detail: String)` -- JSON/CSV/TSV のパースに失敗した
+- `case writeFailed(path: String, detail: String)` -- ファイルへの書き込みに失敗した
 - `case deviceNotAvailable` -- Metal デバイスを取得できなかった
 - `case export(MetaphorError.ExportFailure)` -- エクスポート操作の失敗
 - `case destinationCreationFailed` -- 画像デスティネーションを作成できなかった
@@ -745,6 +811,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case bevel` -- 平らなベベルでセグメントを結合。
 - `case miter` -- 鋭い角でセグメントを結合（デフォルト）。
 - `case round` -- 丸い弧でセグメントを結合。
+
+### `enum TableFormat` -- テーブルのシリアライズ形式。
+
+- `case csv` -- カンマ区切り（RFC 4180 準拠のクォート処理）
+- `case tsv` -- タブ区切り
+- `var hashValue: Int { get }`
+- `init?(rawValue: String)`
+- `func hash(into hasher: inout Hasher)`
 
 ### `enum TextAlignH` -- 水平方向のテキスト配置オプションを定義します。
 
@@ -1229,6 +1303,43 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func close()` -- このウィンドウを閉じリソースを解放します。
 - `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- このウィンドウの描画クロージャを設定します。
 - `func onDraw(_ closure: @MainActor (SketchContext) -> Void)` -- 毎フレーム自動実行される永続的な描画クロージャを設定します。
+
+### `final class Table` -- CSV/TSV の表データ。Processing の `Table` に相当します。
+
+- `var columnCount: Int { get }` -- 列数
+- `var columnTitles: [String] { get }` -- 列タイトル。ヘッダなしで読み込んだ場合は `"0", "1", ...` の連番
+- `var rowCount: Int { get }` -- 行数
+- `var rows: [TableRow] { get }` -- 全行。この配列の ``TableRow`` はテーブル本体への参照を保持します
+- `init(columnTitles: [String] = [])` -- 空のテーブルを作成します。
+- `convenience init(data: Data, format: TableFormat = .csv, header: Bool = true) throws` -- CSV/TSV テキスト（UTF-8 データ）をパースします。
+- `convenience init(string: String, format: TableFormat = .csv, header: Bool = true) throws` -- CSV/TSV テキストをパースします。
+- `func addColumn(_ title: String)` -- 列を末尾に追加します。既存行には空文字列のセルが足されます。
+- `func addRow() -> TableRow` -- 空の行を末尾に追加します。
+- `func addRow(_ values: [String]) -> TableRow` -- 値を指定して行を末尾に追加します。
+- `func columnIndex(of title: String) -> Int?` -- 列タイトルから列インデックスを返します。存在しなければ nil。
+- `func getRow(_ index: Int) -> TableRow?` -- 指定インデックスの行を返します。範囲外は nil。
+- `func removeRow(_ index: Int)` -- 指定インデックスの行を削除します。範囲外は警告のみ。
+- `func serialized(format: TableFormat = .csv, header: Bool = true) -> String` -- CSV/TSV テキストとしてシリアライズします。
+
+### `final class TableRow` -- ``Table`` の 1 行。Processing の `TableRow` に相当します。
+
+- `var values: [String] { get }` -- この行のセル値の配列（列順）
+- `func getDouble(_ column: String) -> Double` -- 列名でセル値を Double として取得します。数値でなければ 0。
+- `func getDouble(_ index: Int) -> Double` -- 列インデックスでセル値を Double として取得します。数値でなければ 0。
+- `func getFloat(_ column: String) -> Float` -- 列名でセル値を Float として取得します。数値でなければ 0。
+- `func getFloat(_ index: Int) -> Float` -- 列インデックスでセル値を Float として取得します。数値でなければ 0。
+- `func getInt(_ column: String) -> Int` -- 列名でセル値を Int として取得します。数値でなければ 0。
+- `func getInt(_ index: Int) -> Int` -- 列インデックスでセル値を Int として取得します。数値でなければ 0。
+- `func getString(_ column: String) -> String` -- 列名でセル値を取得します。列が存在しなければ空文字列（警告つき）。
+- `func getString(_ index: Int) -> String` -- 列インデックスでセル値を取得します。範囲外は空文字列。
+- `func setDouble(_ column: String, _ value: Double)` -- 列名でセル値を Double として設定します。
+- `func setDouble(_ index: Int, _ value: Double)` -- 列インデックスでセル値を Double として設定します。
+- `func setFloat(_ column: String, _ value: Float)` -- 列名でセル値を Float として設定します。
+- `func setFloat(_ index: Int, _ value: Float)` -- 列インデックスでセル値を Float として設定します。
+- `func setInt(_ column: String, _ value: Int)` -- 列名でセル値を Int として設定します。
+- `func setInt(_ index: Int, _ value: Int)` -- 列インデックスでセル値を Int として設定します。
+- `func setString(_ column: String, _ value: String)` -- 列名でセル値を設定します。列が存在しなければ警告のみ。
+- `func setString(_ index: Int, _ value: String)` -- 列インデックスでセル値を設定します。範囲外は警告のみ。
 
 ### `final class Tween<T> where T : Interpolatable` -- イージング関数を使用して値を時間経過で自動的にアニメーションします。
 

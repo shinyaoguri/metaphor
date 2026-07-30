@@ -6,7 +6,7 @@ generating new metaphor content.
 
 Example count: 275
 
-Status: supported 252, partial 0, stub 13, obsolete 10
+Status: supported 255, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -224,8 +224,8 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [CountingStrings](../../Examples/Topics/Advanced%20Data/CountingStrings) (Advanced Data) Tags: advanced-data, countingstrings, topics.
 - [HashMapClass](../../Examples/Topics/Advanced%20Data/HashMapClass) (Advanced Data) Tags: advanced-data, hashmapclass, topics.
 - [IntList Lottery example](../../Examples/Topics/Advanced%20Data/IntListLottery) [Advanced] (Advanced Data) -- This example demonstrates an IntList can be used to store a list of numbers. While an array of integers serves a similar purpose it is of fixed size. The An IntList can easily have values added or deleted and it can als... Tags: advanced-data, intlistlottery, topics.
-- [Loading JSON Data](../../Examples/Topics/Advanced%20Data/LoadSaveJSON) [Advanced] [stub] (Advanced Data) -- This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { "bubbles": [ { "position": { "x": 160, "y": 103 }, "diamet... Tags: advanced-data, loadsavejson, topics.
-- [Loading Tabular Data](../../Examples/Topics/Advanced%20Data/LoadSaveTable) [Advanced] [stub] (Advanced Data) -- This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6... Tags: advanced-data, loadsavetable, topics.
+- [Loading JSON Data](../../Examples/Topics/Advanced%20Data/LoadSaveJSON) [Advanced] (Advanced Data) -- This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { "bubbles": [ { "position": { "x": 160, "y": 103 }, "diamet... Tags: advanced-data, loadsavejson, topics.
+- [Loading Tabular Data](../../Examples/Topics/Advanced%20Data/LoadSaveTable) [Advanced] (Advanced Data) -- This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6... Tags: advanced-data, loadsavetable, topics.
 - [LoadSaveXML](../../Examples/Topics/Advanced%20Data/LoadSaveXML) [obsolete] (Advanced Data) -- Requires Processing's loadXML/saveXML. metaphor does not clone Processing's XML types; the planned data path is Codable JSON / CSV (see LoadSaveJSON). XML is non-goal. Tags: advanced-data, loadsavexml, topics.
 - [Regex](../../Examples/Topics/Advanced%20Data/Regex) (Advanced Data) Tags: advanced-data, regex, topics.
 - [Threads](../../Examples/Topics/Advanced%20Data/Threads) (Advanced Data) Tags: advanced-data, threads, topics.
@@ -252,7 +252,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Pulses](../../Examples/Topics/Drawing/Pulses) (Drawing) -- Software drawing instruments can follow a rhythm or abide by rules independent of drawn gestures. This is a form of collaborative drawing in which the draftsperson controls some aspects of the image and the software con... Tags: drawing, image, interaction, pulses, topics.
 - [DirectoryList](../../Examples/Topics/File%20IO/DirectoryList) (File IO) Tags: directorylist, file-io, topics.
 - [LoadFile 1](../../Examples/Topics/File%20IO/LoadFile1) [Intermediate] (File IO) -- Loads a text file that contains two numbers separated by a tab ('\t'). A new pair of numbers is loaded each frame and used to draw a point on the screen. Tags: file-io, loadfile1, topics, typography.
-- [LoadFile 2](../../Examples/Topics/File%20IO/LoadFile2) [Intermediate] [stub] (File IO) -- This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d... Tags: file-io, interaction, loadfile2, topics, typography.
+- [LoadFile 2](../../Examples/Topics/File%20IO/LoadFile2) [Intermediate] (File IO) -- This example loads a data file about cars. Each element is separated with a tab and corresponds to a different aspect of each car. The file stores the miles per gallon, cylinders, displacement, etc., for more than 400 d... Tags: file-io, interaction, loadfile2, topics, typography.
 - [SaveFile1](../../Examples/Topics/File%20IO/SaveFile1) (File IO) Tags: file-io, savefile1, topics.
 - [SaveFile2](../../Examples/Topics/File%20IO/SaveFile2) (File IO) Tags: file-io, savefile2, topics.
 - [SaveFrames](../../Examples/Topics/File%20IO/SaveFrames) (File IO) Tags: file-io, saveframes, topics.
