@@ -50,9 +50,18 @@
 
 リリースは PR ラベル駆動の自動版数のため、フェーズと版数は厳密には対応しない（v0.8 等は目安）。フェーズ管理はマイルストーンではなく Epic チェックリストで行う（Epic #75 と同じパターン）。
 
-### Phase 1「週末でスケッチ移植」
+### Phase 1「週末でスケッチ移植」— metaphor 側 完了（2026-07-31）
 
 目標: p5.js 上位例 50 本が diff 10 行未満で移植できる。スタブ example 3 本（LoadSaveJSON / LoadSaveTable / LoadDisplaySVG）が動く。
+
+**完了記録**: metaphor 側の全 Issue（#278〜#286）を PR #297〜#306 の 10 本で実装・マージ（2026-07-30〜31）。テスト 1,041 → 1,128 本。スタブ example 3 本解消 + 新規 example 3 本（DropImage / OSCLoopback / SVGExport）。残タスクと引き継ぎ:
+
+- **未リリース**: 全 PR をリリースラベルなしでマージしたため、v0.7.0 以降の変更が main に蓄積中。**次アクション = Phase 1 リリース（minor 相当）の判断・実施**（[releasing.md](../releasing.md)。ラベルなしマージ済みのため、リリース PR にラベルを付けて出す形になる）
+- **cli#88（ビルド高速化 pass 1・p50 ≤1.5s）が Phase 1 の唯一の残件**（metaphor-cli 側）
+- **設計変更（重要）**: #285 SVG 書き出しは Issue 当初案の「`Deferred2DCommand` replay」が**頂点バッチレベルで不成立**と判明し、図形 API フック方式（PGraphicsSVG 型）へ変更（ユーザー確認済み・Issue 本文改訂済み）。**#71（コマンド記録の一般化）を意味レベルで設計する際は、SVGRecorder のフック点（`Canvas2D` 図形メソッド入口）との統合を検討すること**
+- **アーキテクチャ上の判断**: #284 アセットキャッシュは同一インスタンス返し（Unity の `Resources.Load` 意味論）。テクスチャ共有は `ImageFilterGPU` のプール回収と衝突するため不採用
+- 副産物 Issue: [#298](https://github.com/shinyaoguri/metaphor/issues/298)（llms.txt が SIMD extension を拾わない — Vec2/Vec3 の PVector メソッド群が AI から見えない。Phase 1 の移植支援に効くため優先度high寄り）
+- 目標指標（p5 上位例 50 本の移植性）の実測はまだ。実運用（metaphor-sketches での作品制作）で検証し、穴を Issue 化する方針
 
 | 機能 | 対象 | 規模 | 備考 |
 |---|---|---|---|
@@ -125,15 +134,15 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 
 | Epic | 内容 | 子（Phase 1 起票分は Issue 番号を記載） |
 |---|---|---|
-| [#287](https://github.com/shinyaoguri/metaphor/issues/287) A: Processing API パリティ第 1 弾 | Phase 1 の S 束 | A1 データ IO #278 / A2 Vec 拡張 #279 / A3 キャンバス操作束 #280 / A4 ダイアログ+drop #281 / A5 MSAA #282 / A6 OSC 送信 #283 / A7 アセットキャッシュ #284 |
-| [#288](https://github.com/shinyaoguri/metaphor/issues/288) B: ベクタ往復 | SVG/PDF | B1 SVG 書き出し #285（Phase 1）/ B2 loadShape（Phase 2）/ B3 PDF（Phase 4） |
+| [#287](https://github.com/shinyaoguri/metaphor/issues/287) A: Processing API パリティ第 1 弾 | Phase 1 の S 束 | **全完了・クローズ済み**: A1 データ IO #278 / A2 Vec 拡張 #279 / A3 キャンバス操作束 #280 / A4 ダイアログ+drop #281 / A5 MSAA #282 / A6 OSC 送信 #283 / A7 アセットキャッシュ #284 |
+| [#288](https://github.com/shinyaoguri/metaphor/issues/288) B: ベクタ往復 | SVG/PDF | B1 SVG 書き出し #285（**完了**・方式は API フックに改訂）/ B2 loadShape（Phase 2）/ B3 PDF（Phase 4） |
 | [#289](https://github.com/shinyaoguri/metaphor/issues/289) C: 往復レイテンシ（クロスリポ） | ビルド高速化 + 状態運搬 | C1 ビルド高速化 pass 1（[cli#88](https://github.com/shinyaoguri/metaphor-cli/issues/88)）/ C2 saveState/restoreState / C3 watch 側状態運搬（cli）/ C4 計測分解 |
 | [#290](https://github.com/shinyaoguri/metaphor/issues/290) D: Parameter Store & AI 共同操作 | Phase 2 フラッグシップ | D1 store コア / D2 ParameterGUI 再基盤 / D3 probe schema 拡張 / D4 MCP 書込チャネル（cli）/ D5 リロード永続 / D6 ノードインスペクタ（Phase 3） |
 | [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ（blocking）/ E2 loadShader API / E3 ファイル監視リロード |
 | [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 / F2 textToPoints / F3 text-on-path（stretch） |
 | [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割（blocking）/ G1 UV / G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
-| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286 / I2 API doc コメント / I3 website（#74） |
+| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント / I3 website（#74） |
 
 既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#273/#275 は Epic D の schema 変更に同乗。cli #86 は Epic I の I2 と相乗。
 
