@@ -37,6 +37,9 @@ public final class SketchContext {
     /// バックグラウンドでの画像/モデル読み込み用の非同期リソースローダー。
     public let resourceLoader: ResourceLoader
 
+    /// `loadImage` / `loadModel` のパスキーアセットキャッシュ。
+    public let assetCache = AssetCache()
+
     /// 現在のレンダーコマンドエンコーダー。フレーム中のみ有効。
     public var encoder: MTLRenderCommandEncoder? { canvas.currentEncoder }
 
@@ -108,6 +111,7 @@ public final class SketchContext {
     /// シーン切り替え時や GPU メモリの回収時に呼び出してください。再描画時に
     /// 必要なキャッシュは自動的に再構築されます。
     public func clearCaches() {
+        assetCache.clear()
         canvas.clearTextCache()
         canvas3D.clearMeshCache()
         canvas3D.clearCustomPipelineCache()

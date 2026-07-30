@@ -485,13 +485,47 @@ extension SketchContext {
     }
 
     /// 3D モデルファイル（OBJ、USDZ、ABC 形式）を読み込みます。
+    ///
+    /// 既定でパスキーのキャッシュが効き、同じパス・同じ `normalize` の再読込は
+    /// 同一の ``Mesh`` インスタンスを返します。
+    ///
     /// - Parameters:
     ///   - path: モデルのファイルパス。
     ///   - normalize: バウンディングボックスを [-1, 1] に正規化するかどうか（デフォルト true）。
+    ///   - cache: キャッシュを使うか（既定 true。false で独立したコピーを読み込み）。
     /// - Returns: 読み込まれたメッシュ。失敗時は nil。
-    public func loadModel(_ path: String, normalize: Bool = true) -> Mesh? {
+    public func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh? {
+        if cache, let cached = assetCache.mesh(forPath: path, normalize: normalize) {
+            return cached
+        }
         let url = URL(fileURLWithPath: path)
-        return try? Mesh.load(device: renderer.device, url: url, normalize: normalize)
+        guard let mesh = try? Mesh.load(device: renderer.device, url: url, normalize: normalize) else {
+            return nil
+        }
+        if cache {
+            assetCache.store(mesh, forPath: path, normalize: normalize)
+        }
+        return mesh
+    }
+
+    /// 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
+    ///
+    /// - Parameters:
+    ///   - path: モデルのファイルパス。
+    ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルト true）。
+    ///   - cache: キャッシュを使うか（既定 true）。
+    /// - Returns: 読み込まれたメッシュ。
+    public func loadModelAsync(
+        _ path: String, normalize: Bool = true, cache: Bool = true
+    ) async throws -> Mesh {
+        if cache, let cached = assetCache.mesh(forPath: path, normalize: normalize) {
+            return cached
+        }
+        let mesh = try await resourceLoader.loadModelAsync(path: path, normalize: normalize)
+        if cache {
+            assetCache.store(mesh, forPath: path, normalize: normalize)
+        }
+        return mesh
     }
 
     // MARK: - Compute

@@ -6,10 +6,40 @@ extension SketchContext {
     // MARK: - Image
 
     /// 指定したファイルパスから画像を読み込みます。
-    /// - Parameter path: 画像のファイルパス。
+    ///
+    /// 既定でパスキーのキャッシュが効き、同じパスの再読込は同一の ``MImage``
+    /// インスタンスを返します（`draw()` 内で呼んでも再デコードされません）。
+    ///
+    /// - Parameters:
+    ///   - path: 画像のファイルパス。
+    ///   - cache: キャッシュを使うか（既定 true。false で独立したコピーを読み込み）。
     /// - Returns: 読み込まれた画像。
-    public func loadImage(_ path: String) throws -> MImage {
-        try MImage(path: path, device: renderer.device)
+    public func loadImage(_ path: String, cache: Bool = true) throws -> MImage {
+        if cache, let cached = assetCache.image(forPath: path) {
+            return cached
+        }
+        let image = try MImage(path: path, device: renderer.device)
+        if cache {
+            assetCache.store(image, forPath: path)
+        }
+        return image
+    }
+
+    /// 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
+    ///
+    /// - Parameters:
+    ///   - path: 画像のファイルパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
+    /// - Returns: 読み込まれた画像。
+    public func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage {
+        if cache, let cached = assetCache.image(forPath: path) {
+            return cached
+        }
+        let image = try await resourceLoader.loadImageAsync(path: path)
+        if cache {
+            assetCache.store(image, forPath: path)
+        }
+        return image
     }
 
     /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
