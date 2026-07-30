@@ -627,6 +627,45 @@ struct Vec2Tests {
         #expect(abs(mid.x - 5) < 0.0001)
         #expect(abs(mid.y - 5) < 0.0001)
     }
+
+    @Test("mutating normalize/limit/rotate/setMag update in place")
+    func mutatingOperations() {
+        var v = Vec2(3, 4)
+        v.normalize()
+        #expect(abs(v.magnitude - 1) < 0.0001)
+        #expect(abs(v.x - 0.6) < 0.0001)
+
+        v = Vec2(10, 0)
+        v.limit(5)
+        #expect(abs(v.magnitude - 5) < 0.0001)
+        v.limit(8)  // 既に 5 なので変化しない
+        #expect(abs(v.magnitude - 5) < 0.0001)
+
+        v = Vec2(1, 0)
+        v.rotate(Float.pi / 2)
+        #expect(abs(v.x) < 0.0001)
+        #expect(abs(v.y - 1) < 0.0001)
+
+        v = Vec2(3, 4)
+        v.setMag(10)
+        #expect(abs(v.magnitude - 10) < 0.0001)
+        #expect(abs(v.x - 6) < 0.0001)
+        #expect(abs(v.y - 8) < 0.0001)
+    }
+
+    @Test("zero vector edge cases: normalize/setMag stay zero, heading is 0, limit(0) zeroes")
+    func zeroVectorEdgeCases() {
+        var v = Vec2.zero
+        v.normalize()
+        #expect(v == .zero)
+        v.setMag(10)
+        #expect(v == .zero)
+        #expect(Vec2.zero.heading() == 0)
+
+        var w = Vec2(3, 4)
+        w.limit(0)
+        #expect(w.magnitude < 0.0001)
+    }
 }
 
 // MARK: - Vec3 Tests
@@ -688,6 +727,31 @@ struct Vec3Tests {
         #expect(abs(mid.x - 5) < 0.0001)
         #expect(abs(mid.y - 10) < 0.0001)
         #expect(abs(mid.z - 15) < 0.0001)
+    }
+
+    @Test("mutating normalize/limit/setMag update in place")
+    func mutatingOperations() {
+        var v = Vec3(1, 2, 2)
+        v.normalize()
+        #expect(abs(v.magnitude - 1) < 0.0001)
+
+        v = Vec3(10, 0, 0)
+        v.limit(5)
+        #expect(abs(v.magnitude - 5) < 0.0001)
+
+        v = Vec3(1, 2, 2)
+        v.setMag(6)
+        #expect(abs(v.magnitude - 6) < 0.0001)
+        #expect(abs(v.x - 2) < 0.0001)
+    }
+
+    @Test("zero vector edge cases: normalize/setMag stay zero")
+    func zeroVectorEdgeCases() {
+        var v = Vec3.zero
+        v.normalize()
+        #expect(v == .zero)
+        v.setMag(10)
+        #expect(v == .zero)
     }
 }
 
