@@ -8,6 +8,7 @@ extension Canvas2D {
     /// カスタムシェイプの頂点記録を開始します。
     /// - Parameter mode: シェイプモード（polygon、triangles など）。
     public func beginShape(_ mode: ShapeMode = .polygon) {
+        svgRecorder?.beginShape(mode, style: svgStyle(), tightness: curveTightnessValue)
         isRecordingShape = true
         shapeMode = mode
         shapeVertexList.removeAll(keepingCapacity: true)
@@ -21,6 +22,7 @@ extension Canvas2D {
     ///   - y: y座標。
     public func vertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
+        svgRecorder?.vertex(x, y)
         if isRecordingContour {
             currentContour.append((x, y))
         } else {
@@ -35,6 +37,7 @@ extension Canvas2D {
     ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
         guard isRecordingShape else { return }
+        svgRecorder?.vertex(x, y)
         shapeVertexList.append(.colored(x, y, color.simd))
     }
 
@@ -46,6 +49,7 @@ extension Canvas2D {
     ///   - v: 垂直テクスチャ座標。
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         guard isRecordingShape else { return }
+        svgRecorder?.vertex(x, y)
         shapeVertexList.append(.textured(x, y, u, v))
     }
 
@@ -63,6 +67,7 @@ extension Canvas2D {
         _ x: Float, _ y: Float
     ) {
         guard isRecordingShape else { return }
+        svgRecorder?.bezierVertex(cx1, cy1, cx2, cy2, x, y)
         shapeVertexList.append(.bezier(cx1: cx1, cy1: cy1, cx2: cx2, cy2: cy2, x: x, y: y))
     }
 
@@ -72,12 +77,14 @@ extension Canvas2D {
     ///   - y: y座標。
     public func curveVertex(_ x: Float, _ y: Float) {
         guard isRecordingShape else { return }
+        svgRecorder?.curveVertex(x, y)
         shapeVertexList.append(.curve(x, y))
     }
 
     /// 現在のシェイプ内のコンター（穴）の記録を開始します（beginShape と endShape の間で使用）。
     public func beginContour() {
         guard isRecordingShape else { return }
+        svgRecorder?.beginContour()
         isRecordingContour = true
         currentContour.removeAll(keepingCapacity: true)
     }
@@ -85,6 +92,7 @@ extension Canvas2D {
     /// 現在のコンター（穴）の記録を終了します。
     public func endContour() {
         guard isRecordingContour else { return }
+        svgRecorder?.endContour()
         isRecordingContour = false
         if currentContour.count >= 3 {
             contourVertices.append(currentContour)
@@ -107,6 +115,7 @@ extension Canvas2D {
     /// - Parameter close: シェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         guard isRecordingShape else { return }
+        svgRecorder?.endShape(close: close == .close)
         isRecordingShape = false
 
         guard !shapeVertexList.isEmpty else { return }

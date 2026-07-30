@@ -57,6 +57,7 @@ extension Canvas2D {
     ///   - x: x座標。
     ///   - y: y座標。
     public func text(_ string: String, _ x: Float, _ y: Float) {
+        svgRecorder?.recordUnsupported("text() (planned: textToPoints in Epic F)")
         guard !string.isEmpty else { return }
 
         if let (atlasTex, glyphs) = textRenderer.textGlyphs(
@@ -121,6 +122,7 @@ extension Canvas2D {
     ///   - w: バウンディングボックスの幅。
     ///   - h: バウンディングボックスの高さ。
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        svgRecorder?.recordUnsupported("text() (planned: textToPoints in Epic F)")
         guard !string.isEmpty else { return }
         guard let cached = textRenderer.textTextureMultiline(
             string: string,

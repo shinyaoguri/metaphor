@@ -1,7 +1,7 @@
 {
-  "count": 277,
+  "count": 278,
   "statusCounts": {
-    "supported": 257,
+    "supported": 258,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -2731,6 +2731,27 @@
       "tags": [
         "rendergraphcompose",
         "samples"
+      ]
+    },
+    {
+      "title": "SVG Export",
+      "path": "Examples/Samples/SVGExport",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "Intermediate",
+      "status": "supported",
+      "description": "Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVG()/endSVG() — the file is generated from the same draw calls as the raster output, so what you see is wh...",
+      "featured": [
+        "beginSVG_",
+        "endSVG_",
+        "curveVertex_",
+        "randomSeed_"
+      ],
+      "tags": [
+        "export",
+        "interaction",
+        "samples",
+        "svgexport"
       ]
     },
     {

@@ -16,6 +16,7 @@ extension Canvas2D {
     ///   - w: クリップ領域の幅。
     ///   - h: クリップ領域の高さ。
     public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        svgRecorder?.beginClip(x: x, y: y, w: w, h: h)
         flush()
         clipStack.append(clipRect)
         // 要求矩形とキャンバス矩形の交差を取る。
@@ -34,6 +35,7 @@ extension Canvas2D {
 
     /// 現在のクリップ領域を終了し、前のクリップ領域を復元します。
     public func endClip() {
+        svgRecorder?.endClip()
         flush()
         clipRect = clipStack.popLast() ?? nil
         // clipRect が nil のときは encode 側でフルビューポートへ復元する。

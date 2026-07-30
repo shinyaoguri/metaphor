@@ -42,6 +42,41 @@ extension SketchContext {
         return image
     }
 
+    // MARK: - SVG Export
+
+    /// SVG 記録を開始します。
+    ///
+    /// 以降の 2D 描画呼び出しは画面へのラスタライズと並行して SVG にも記録され、
+    /// ``endSVG()`` でファイルへ書き出されます。対応外の機能（`image()`/`text()`/
+    /// グラデーション等）は警告を出力してスキップされます（機能ごとに 1 回）。
+    ///
+    /// - Parameter path: 出力する SVG ファイルパス。
+    public func beginSVG(_ path: String) {
+        guard canvas.svgRecorder == nil else {
+            metaphorWarning("beginSVG: SVG recording is already active")
+            return
+        }
+        canvas.svgRecorder = SVGRecorder(
+            width: canvas.width, height: canvas.height, outputPath: path)
+    }
+
+    /// SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
+    ///
+    /// 親ディレクトリがなければ作成します。出力は決定論的（同じ描画呼び出し列
+    /// からは常に同じバイト列）で、ゴールデンファイル比較でテストできます。
+    public func endSVG() {
+        guard let recorder = canvas.svgRecorder else {
+            metaphorWarning("endSVG: no active SVG recording (call beginSVG first)")
+            return
+        }
+        canvas.svgRecorder = nil
+        do {
+            try DataIO.writeData(Data(recorder.svgString().utf8), toPath: recorder.outputPath)
+        } catch {
+            metaphorWarning("endSVG: failed to write SVG: \(error.localizedDescription)")
+        }
+    }
+
     /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
     ///
     /// コピー元はオフスクリーンレンダーターゲットの現在の内容（前フレームまでの

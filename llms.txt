@@ -100,6 +100,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
 - `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
 - `func beginShape3D(_ mode: ShapeMode = .polygon)` -- 3D カスタムシェイプの頂点記録を開始します。
+- `func beginSVG(_ path: String)` -- SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
 - `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- 動画出力の録画を開始します。
 - `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- 3次ベジェ曲線を描画します。
 - `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- 現在のシェイプに3次ベジェ頂点を追加します。
@@ -187,6 +188,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endRecord()` -- フレーム連番の記録を停止します。
 - `func endShape(_ close: CloseMode = .open)` -- 現在のシェイプの記録を終了し描画します。
 - `func endShape3D(_ close: CloseMode = .open)` -- 現在の 3D シェイプの記録を終了し描画します。
+- `func endSVG()` -- SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
 - `func endVideoRecord() async` -- 動画の録画を非同期で停止しファイルを完成させます。
 - `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。

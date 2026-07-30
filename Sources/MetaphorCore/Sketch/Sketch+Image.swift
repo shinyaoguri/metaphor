@@ -361,6 +361,34 @@ extension Sketch {
         context.save()
     }
 
+    // MARK: SVG Export
+
+    /// SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
+    ///
+    /// ``endSVG()`` までの 2D 描画呼び出しが、画面へのラスタライズと並行して
+    /// 真のベクタ（`<circle>`/`<path>` 等）として記録されます。プロッタ
+    /// （AxiDraw 等）や印刷向けの出力に使えます。対応外の機能
+    /// （`image()`/`text()` 等）は警告を出力してスキップされます。
+    ///
+    /// ```swift
+    /// func draw() {
+    ///     if wantExport { beginSVG("output/sketch.svg") }
+    ///     background(255)
+    ///     circle(width / 2, height / 2, 200)
+    ///     if wantExport { endSVG(); wantExport = false }
+    /// }
+    /// ```
+    ///
+    /// - Parameter path: 出力する SVG ファイルパス。
+    public func beginSVG(_ path: String) {
+        context.beginSVG(path)
+    }
+
+    /// SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
+    public func endSVG() {
+        context.endSVG()
+    }
+
     /// フレーム連番の画像ファイルとしての記録を開始します。
     ///
     /// - Parameters:

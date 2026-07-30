@@ -253,6 +253,24 @@ public final class Canvas2D: CanvasStyle {
     var matrixStack: [float3x3] = []
     var currentTransform: float3x3 = float3x3(1)
 
+    // MARK: - SVG 記録
+
+    /// アクティブな SVG レコーダー。設定中は図形呼び出しが SVG にも記録される
+    /// （``SketchContext/beginSVG(_:)`` / ``SketchContext/endSVG()`` が管理）。
+    var svgRecorder: SVGRecorder?
+
+    /// SVG 記録用の現在スタイル・変換のスナップショットを返します。
+    func svgStyle() -> SVGRecorder.Style {
+        SVGRecorder.Style(
+            fill: hasFill ? fillColor : nil,
+            stroke: hasStroke ? strokeColor : nil,
+            strokeWeight: currentStrokeWeight,
+            strokeCap: currentStrokeCap,
+            strokeJoin: currentStrokeJoin,
+            transform: currentTransform
+        )
+    }
+
     // MARK: - 頂点レイアウト（パック済み、24バイト）
 
     struct Vertex2D {
