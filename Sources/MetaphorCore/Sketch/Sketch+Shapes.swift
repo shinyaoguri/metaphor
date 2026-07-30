@@ -69,6 +69,100 @@ extension Sketch {
         context.scale(s)
     }
 
+    /// 現在の 2D 変換に 3x3 行列を乗算します。
+    ///
+    /// - Note: **2D のみ**に作用します。3D は ``applyMatrix(_:)``（`float4x4` 版）を
+    ///   使用してください（ADR-0005）。
+    ///
+    /// - Parameter matrix: 連結する 3x3 行列。
+    public func applyMatrix(_ matrix: float3x3) {
+        context.applyMatrix(matrix)
+    }
+
+    /// 現在の 2D 変換に Processing 形式の 6 成分アフィン行列を乗算します。
+    ///
+    /// 成分は行優先で、変換は `x' = n00*x + n01*y + n02`、`y' = n10*x + n11*y + n12`
+    /// （Processing の `applyMatrix(n00, n01, n02, n10, n11, n12)` と互換）。
+    ///
+    /// - Note: **2D のみ**に作用します（ADR-0005）。
+    public func applyMatrix(
+        _ n00: Float, _ n01: Float, _ n02: Float,
+        _ n10: Float, _ n11: Float, _ n12: Float
+    ) {
+        context.applyMatrix(n00, n01, n02, n10, n11, n12)
+    }
+
+    /// 現在の 3D 変換に 4x4 行列を乗算します。
+    ///
+    /// - Note: **3D のみ**に作用します。2D は ``applyMatrix(_:)``（`float3x3` 版）を
+    ///   使用してください（ADR-0005）。
+    ///
+    /// - Parameter matrix: 連結する 4x4 行列。
+    public func applyMatrix(_ matrix: float4x4) {
+        context.applyMatrix(matrix)
+    }
+
+    /// 現在の変換行列を単位行列にリセットします。
+    ///
+    /// - Note: **2D と 3D の両方**に作用します（``pushMatrix()``/``popMatrix()`` と
+    ///   同カテゴリ。ADR-0005）。
+    public func resetMatrix() {
+        context.resetMatrix()
+    }
+
+    /// 現在の変換に x 軸方向のせん断（シアー）を適用します。
+    ///
+    /// `x' = x + tan(angle) * y`（Processing の `shearX()` と互換)。
+    ///
+    /// - Note: **2D のみ**に作用します（ADR-0005）。
+    ///
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearX(_ angle: Float) {
+        context.shearX(angle)
+    }
+
+    /// 現在の変換に y 軸方向のせん断（シアー）を適用します。
+    ///
+    /// `y' = y + tan(angle) * x`（Processing の `shearY()` と互換)。
+    ///
+    /// - Note: **2D のみ**に作用します（ADR-0005）。
+    ///
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearY(_ angle: Float) {
+        context.shearY(angle)
+    }
+
+    /// 2D モデル座標が描画されるスクリーン x 座標を返します。
+    ///
+    /// - Note: **2D のみ**。3D は ``screenX(_:_:_:)``（3 引数）を使用してください。
+    public func screenX(_ x: Float, _ y: Float) -> Float {
+        context.screenPosition(x, y).x
+    }
+
+    /// 2D モデル座標が描画されるスクリーン y 座標を返します。
+    ///
+    /// - Note: **2D のみ**。3D は ``screenY(_:_:_:)``（3 引数）を使用してください。
+    public func screenY(_ x: Float, _ y: Float) -> Float {
+        context.screenPosition(x, y).y
+    }
+
+    /// 3D モデル座標が描画されるスクリーン x 座標を返します。
+    public func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        context.screenPosition(x, y, z).x
+    }
+
+    /// 3D モデル座標が描画されるスクリーン y 座標を返します。
+    public func screenY(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        context.screenPosition(x, y, z).y
+    }
+
+    /// 3D モデル座標の正規化デバイス深度（0...1）を返します。
+    ///
+    /// 手前ほど小さい値になります（Processing の `screenZ()` 相当）。
+    public func screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        context.screenPosition(x, y, z).z
+    }
+
     // MARK: 2D Shapes
 
     /// 矩形を描画します。

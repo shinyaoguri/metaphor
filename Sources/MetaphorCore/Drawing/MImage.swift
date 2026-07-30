@@ -1,5 +1,6 @@
 import Metal
 import MetalKit
+import MetalPerformanceShaders
 import AppKit
 
 /// `MTLTexture` をラップして画像を表現します。
@@ -318,6 +319,87 @@ public final class MImage {
     /// - Parameter type: 適用するフィルタを指定する ``FilterType``。
     public func filter(_ type: FilterType) {
         ImageFilter.apply(type, to: self)
+    }
+
+    // MARK: - Resize / Mask
+
+    /// 画像を指定サイズへリサイズします（GPU バイリニア補間）。
+    ///
+    /// Processing の `PImage.resize()` と互換: 幅か高さの一方に 0 を渡すと、
+    /// アスペクト比を維持してもう一方から算出します。両方 0 以下は警告して何もしません。
+    ///
+    /// - Parameters:
+    ///   - width: 目標の幅（ピクセル単位）。0 で高さから比例算出。
+    ///   - height: 目標の高さ（ピクセル単位）。0 で幅から比例算出。
+    public func resize(_ width: Int, _ height: Int) {
+        let srcW = Int(self.width)
+        let srcH = Int(self.height)
+        var w = width
+        var h = height
+        guard w > 0 || h > 0 else {
+            metaphorWarning("MImage.resize: width and height must not both be zero or negative")
+            return
+        }
+        if w <= 0 { w = max(1, srcW * h / srcH) }
+        if h <= 0 { h = max(1, srcH * w / srcW) }
+        guard w != srcW || h != srcH else { return }
+
+        let device = texture.device
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: texture.pixelFormat, width: w, height: h, mipmapped: false)
+        desc.usage = [.shaderRead, .shaderWrite]
+        desc.storageMode = .private
+        guard let destination = device.makeTexture(descriptor: desc),
+              let queue = preferredReadbackQueue ?? Self.sharedReadbackQueue(for: device),
+              let commandBuffer = queue.makeCommandBuffer() else {
+            metaphorWarning("MImage.resize: failed to allocate GPU resources")
+            return
+        }
+        let scaleKernel = MPSImageBilinearScale(device: device)
+        var transform = MPSScaleTransform(
+            scaleX: Double(w) / Double(srcW), scaleY: Double(h) / Double(srcH),
+            translateX: 0, translateY: 0)
+        withUnsafePointer(to: &transform) { ptr in
+            scaleKernel.scaleTransform = ptr
+            scaleKernel.encode(
+                commandBuffer: commandBuffer, sourceTexture: texture,
+                destinationTexture: destination)
+        }
+        commandBuffer.commit()
+        // 描画は別キューで実行され順序保証がないため、ここで完了を待つ
+        commandBuffer.waitUntilCompleted()
+        replaceTexture(destination)
+    }
+
+    /// マスク画像をこの画像のアルファチャンネルへ適用します。
+    ///
+    /// Processing の `PImage.mask()` と互換: マスクはグレースケール想定で、
+    /// 各ピクセルのブルーチャンネル値がこの画像のアルファ値になります。
+    /// サイズが一致しない場合は警告して何もしません。
+    ///
+    /// - Parameter maskImage: この画像と同サイズのマスク画像。
+    public func mask(_ maskImage: MImage) {
+        guard Int(maskImage.width) == Int(width), Int(maskImage.height) == Int(height) else {
+            metaphorWarning(
+                "MImage.mask: mask size \(Int(maskImage.width))x\(Int(maskImage.height)) "
+                + "does not match image size \(Int(width))x\(Int(height))")
+            return
+        }
+        loadPixels()
+        maskImage.loadPixels()
+        guard !pixels.isEmpty, pixels.count == maskImage.pixels.count else {
+            metaphorWarning("MImage.mask: pixel readback failed")
+            return
+        }
+        // loadPixels 後の pixels は RGBA 順。マスクの B（+2）を自身の A（+3）へ
+        maskImage.pixels.withUnsafeBufferPointer { maskBuf in
+            pixels.withUnsafeMutableBufferPointer { buf in
+                for i in stride(from: 0, to: buf.count, by: 4) {
+                    buf[i + 3] = maskBuf[i + 2]
+                }
+            }
+        }
+        updatePixels()
     }
 
     /// ピクセル操作に適した空の画像を作成します。

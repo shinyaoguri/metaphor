@@ -119,4 +119,32 @@ extension Canvas3D {
     public func applyMatrix(_ matrix: float4x4) {
         currentTransform = currentTransform * matrix
     }
+
+    /// 現在の 3D 変換行列を単位行列にリセットします。
+    public func resetMatrix() {
+        currentTransform = .identity
+    }
+
+    /// モデル座標を現在のモデル変換・カメラ・投影でスクリーン座標へ変換します。
+    ///
+    /// - Parameters:
+    ///   - x: モデル座標の x。
+    ///   - y: モデル座標の y。
+    ///   - z: モデル座標の z。
+    /// - Returns: x/y はスクリーン座標（ピクセル単位）、z は NDC 深度（0...1）。
+    ///   点がカメラ平面上（w = 0）の場合はゼロベクトル。
+    public func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
+        // Swift 5.10 は行列×行列×ベクトルの連鎖式を型解決できないため分割する
+        let modelViewProjection = computeViewProjection() * currentTransform
+        let clip = modelViewProjection * SIMD4<Float>(x, y, z, 1)
+        guard clip.w != 0 else { return .zero }
+        let ndc = SIMD3<Float>(clip.x, clip.y, clip.z) / clip.w
+        // computeViewProjection は Y 反転（Processing の下向き規則）込みのため、
+        // x/y とも (ndc + 1) / 2 でスクリーンへ写像する
+        return SIMD3(
+            (ndc.x + 1) / 2 * width,
+            (ndc.y + 1) / 2 * height,
+            ndc.z
+        )
+    }
 }

@@ -59,6 +59,12 @@ public protocol Sketch: AnyObject {
 
     /// キー離し時に呼ばれます。
     func keyReleased()
+
+    /// 文字入力を生成するキー押下時に呼ばれます（Processing の `keyTyped()` 互換）。
+    ///
+    /// 矢印・修飾キーなど文字を生成しないキーでは呼ばれません。
+    /// キーリピートでも呼ばれます。
+    func keyTyped()
 }
 
 // MARK: - Per-Instance Context (Pure Swift Storage)
@@ -123,6 +129,7 @@ extension Sketch {
     public func mouseClicked() {}
     public func keyPressed() {}
     public func keyReleased() {}
+    public func keyTyped() {}
 }
 
 // MARK: - Deprecated

@@ -486,6 +486,7 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
         "types": filtered_types,
         "submodule_types": dict(submodule_types),
         "condensed_types": condensed,
+        "sketch_method_names": sketch_method_names,
     }
 
 
@@ -504,7 +505,8 @@ def fmt_symbol(sym: dict) -> str:
 
 
 def emit_type_section(name: str, info: dict, lines: list,
-                      condensed: dict[str, str], heading: str = "###"):
+                      condensed: dict[str, str], heading: str = "###",
+                      sketch_method_names: set | None = None):
     """Emit a type and its members."""
     sym = info["symbol"]
     members = info["members"]
@@ -516,6 +518,18 @@ def emit_type_section(name: str, info: dict, lines: list,
             lines.append(f"{heading} `{decl}` -- {summary}")
         else:
             lines.append(f"{heading} {name} -- {summary}")
+        lines.append("")
+        # Sketch API を鏡写しにするメンバーは 1 行に要約し、型固有のメンバー
+        # （addChild 等）だけを列挙する — 固有 API まで畳むと AI から見えなくなる
+        mirror_names = sketch_method_names or set()
+        unique = [m for m in members
+                  if method_base_name(m["names"]["title"]) not in mirror_names]
+        mirrored_count = len(members) - len(unique)
+        if mirrored_count:
+            lines.append(f"- （ほか {mirrored_count} 件の描画・変換メンバーは"
+                         " Sketch API と同名・同挙動）")
+        for m in sorted(unique, key=symbol_sort_key):
+            lines.append(fmt_symbol(m))
         lines.append("")
         return
 
@@ -625,7 +639,8 @@ def generate_llms_txt(modules: dict, package_version: str = "0.0.0") -> str:
         lines.append("## Core Types")
         lines.append("")
         for name, info in sorted(model["types"].items(), key=type_sort_key):
-            emit_type_section(name, info, lines, model["condensed_types"])
+            emit_type_section(name, info, lines, model["condensed_types"],
+                              sketch_method_names=model["sketch_method_names"])
 
     # --- Top-level Functions ---
     if model["top_level_funcs"]:
@@ -654,7 +669,8 @@ def generate_llms_txt(modules: dict, package_version: str = "0.0.0") -> str:
         lines.append("")
         for name, info in sorted(
                 model["submodule_types"][mod_name].items()):
-            emit_type_section(name, info, lines, model["condensed_types"])
+            emit_type_section(name, info, lines, model["condensed_types"],
+                              sketch_method_names=model["sketch_method_names"])
 
     lines.append("---")
     lines.append("*Auto-generated from symbol graphs. Do not edit manually.*")

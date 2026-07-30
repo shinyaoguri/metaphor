@@ -1,4 +1,5 @@
 import AppKit
+import Metal
 
 extension SketchContext {
 
@@ -9,6 +10,70 @@ extension SketchContext {
     /// - Returns: 読み込まれた画像。
     public func loadImage(_ path: String) throws -> MImage {
         try MImage(path: path, device: renderer.device)
+    }
+
+    /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
+    ///
+    /// コピー元はオフスクリーンレンダーターゲットの現在の内容（前フレームまでの
+    /// 描画結果）。コピー先への描画は現在のフレームの描画コマンドとして実行され、
+    /// `imageMode` / `tint` の影響を受けない絶対座標で描かれます。
+    ///
+    /// - Parameters:
+    ///   - sx: コピー元矩形の x（ピクセル）。
+    ///   - sy: コピー元矩形の y（ピクセル）。
+    ///   - sw: コピー元矩形の幅（ピクセル）。
+    ///   - sh: コピー元矩形の高さ（ピクセル）。
+    ///   - dx: コピー先矩形の x（ピクセル）。
+    ///   - dy: コピー先矩形の y（ピクセル）。
+    ///   - dw: コピー先矩形の幅（ピクセル）。
+    ///   - dh: コピー先矩形の高さ（ピクセル）。
+    public func copy(
+        _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float,
+        _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float
+    ) {
+        guard sw > 0, sh > 0, dw > 0, dh > 0 else {
+            metaphorWarning("copy: source/destination size must be positive")
+            return
+        }
+        let src = renderer.textureManager.colorTexture
+        // ソース矩形を整数化してテクスチャ範囲へクランプ
+        let x0 = max(0, Int(sx))
+        let y0 = max(0, Int(sy))
+        let x1 = min(src.width, Int(sx + sw))
+        let y1 = min(src.height, Int(sy + sh))
+        guard x1 > x0, y1 > y0 else {
+            metaphorWarning("copy: source region (\(sx),\(sy),\(sw),\(sh)) is outside the canvas")
+            return
+        }
+
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: src.pixelFormat, width: x1 - x0, height: y1 - y0, mipmapped: false)
+        desc.storageMode = .private
+        desc.usage = [.shaderRead]
+        guard let regionTexture = renderer.device.makeTexture(descriptor: desc),
+              let commandBuffer = renderer.commandQueue.makeCommandBuffer(),
+              let blit = commandBuffer.makeBlitCommandEncoder() else {
+            metaphorWarning("copy: failed to allocate copy resources")
+            return
+        }
+        blit.copy(
+            from: src, sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: x0, y: y0, z: 0),
+            sourceSize: MTLSize(width: x1 - x0, height: y1 - y0, depth: 1),
+            to: regionTexture, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        // 同一キューのため、フレーム末の描画コマンド実行前に blit の完了が保証される
+        commandBuffer.commit()
+
+        let img = MImage(texture: regionTexture)
+        let savedMode = canvas.currentImageMode
+        let savedTint = canvas.hasTint
+        canvas.imageMode(.corner)
+        canvas.hasTint = false
+        canvas.image(img, dx, dy, dw, dh)
+        canvas.imageMode(savedMode)
+        canvas.hasTint = savedTint
     }
 
     /// ピクセル操作用の空の画像を作成します。
