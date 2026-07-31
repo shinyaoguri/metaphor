@@ -1,36 +1,76 @@
 {
-  "bubbles": [
-      {
-        "position": {
-          "x": 160,
-          "y": 103
-        },
-        "diameter": 43.19838,
-        "label": "Happy"
-      },
-      {
-        "position": {
-          "x": 372,
-          "y": 137
-        },
-        "diameter": 52.42526,
-        "label": "Sad"
-      },
-      {
-        "position": {
-          "x": 273,
-          "y": 235
-        },
-        "diameter": 61.14072,
-        "label": "Joyous"
-      },
-      {
-        "position": {
-          "x": 121,
-          "y": 179
-        },
-        "diameter": 44.758068,
-        "label": "Melancholy"
+  "bubbles" : [
+    {
+      "diameter" : 43.19838,
+      "label" : "Happy",
+      "position" : {
+        "x" : 160,
+        "y" : 103
       }
-    ]
+    },
+    {
+      "diameter" : 52.42526,
+      "label" : "Sad",
+      "position" : {
+        "x" : 372,
+        "y" : 137
+      }
+    },
+    {
+      "diameter" : 61.14072,
+      "label" : "Joyous",
+      "position" : {
+        "x" : 273,
+        "y" : 235
+      }
+    },
+    {
+      "diameter" : 44.758068,
+      "label" : "Melancholy",
+      "position" : {
+        "x" : 121,
+        "y" : 179
+      }
+    },
+    {
+      "diameter" : 56.424560546875,
+      "label" : "New label",
+      "position" : {
+        "x" : 287.9296875,
+        "y" : 234.78904724121094
+      }
+    },
+    {
+      "diameter" : 47.20361328125,
+      "label" : "New label",
+      "position" : {
+        "x" : 403.6171875,
+        "y" : 221.9921875
+      }
+    },
+    {
+      "diameter" : 58.752235412597656,
+      "label" : "New label",
+      "position" : {
+        "x" : 474.5625,
+        "y" : 132.8046875
+      }
+    },
+    {
+      "diameter" : 58.83881378173828,
+      "label" : "New label",
+      "position" : {
+        "x" : 496.890625,
+        "y" : 285.6484375
+      }
+    },
+    {
+      "diameter" : 69.37995147705078,
+      "label" : "New label",
+      "position" : {
+        "x" : 542.1328125,
+        "y" : 215.28123474121094
+      }
+    }
+  ]
 }

@@ -237,4 +237,81 @@ struct CanvasCopyTests {
         #expect(canvas.currentImageMode == .center)
         #expect(canvas.hasTint == true)
     }
+
+    /// #308 再現: copy() はキャンバスの内容を写す(未初期化テクスチャではなく)
+    @Test("copy draws the previous frame's canvas content, not uninitialized memory")
+    func copyDrawsCanvasContent() throws {
+        var frameIndex = 0
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+        renderer.useExternalRenderLoop = true
+        renderer.onDraw = { encoder, time in
+            context.beginFrame(encoder: encoder, time: Float(time), deltaTime: 0)
+            if frameIndex == 0 {
+                // フレーム 1: 左上 32x32 に赤い矩形
+                context.background(Color(r: 0, g: 0, b: 0))
+                context.fill(Color(r: 1, g: 0, b: 0))
+                context.noStroke()
+                context.rect(0, 0, 32, 32)
+            } else {
+                // フレーム 2: 前フレームの左上を右下 32x32 へコピー
+                context.background(Color(r: 0, g: 0, b: 0))
+                context.copy(0, 0, 32, 32, 32, 32, 32, 32)
+            }
+            frameIndex += 1
+            context.endFrame()
+        }
+        renderer.renderFrame()  // フレーム 1: 赤い矩形
+        renderer.renderFrame()  // フレーム 2: copy
+
+        context.loadPixels()
+        let pb = try #require(context.pixelBuffer)
+        // コピー先の中心 (48, 48): フレーム 1 の赤が写っているべき
+        let dst = pb.pixels[48 * 64 + 48]
+        let dstR = (dst >> 16) & 0xFF
+        let dstG = (dst >> 8) & 0xFF
+        let dstB = dst & 0xFF
+        #expect(dstR > 200, "copy destination should be red (R=\(dstR), pixel=\(String(dst, radix: 16)))")
+        #expect(dstG < 50 && dstB < 50,
+                "copy destination should be pure red, not garbage (G=\(dstG), B=\(dstB))")
+        // コピーされていない左下 (8, 48) は黒のまま
+        let untouched = pb.pixels[48 * 64 + 8]
+        #expect((untouched >> 16) & 0xFF < 50, "area outside copy destination stays black")
+    }
+
+    /// #308 再現: フレーム 1 の copy() はクリア済みキャンバス(クリア色)を写す。
+    /// 前フレームが存在しない初回でも、未初期化 VRAM の内容を描いてはならない。
+    @Test("copy on the very first frame reads the cleared canvas, not uninitialized memory")
+    func copyFirstFrameReadsClearedCanvas() throws {
+        // クリア色を赤に: 初回 copy が「クリア済みテクスチャ」を読めばコピー先も赤になる
+        // (未初期化 VRAM なら赤にはならないため決定的に検証できる)
+        let renderer = try MetaphorRenderer(
+            width: 64, height: 64,
+            clearColor: MTLClearColor(red: 1, green: 0, blue: 0, alpha: 1))
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+        renderer.useExternalRenderLoop = true
+        renderer.onDraw = { encoder, time in
+            context.beginFrame(encoder: encoder, time: Float(time), deltaTime: 0)
+            context.copy(0, 0, 32, 32, 32, 32, 32, 32)
+            context.endFrame()
+        }
+        renderer.renderFrame()  // 最初のフレームで即 copy
+
+        context.loadPixels()
+        let pb = try #require(context.pixelBuffer)
+        let dst = pb.pixels[48 * 64 + 48]
+        let dstR = (dst >> 16) & 0xFF
+        let dstG = (dst >> 8) & 0xFF
+        let dstB = dst & 0xFF
+        #expect(dstR > 200 && dstG < 50 && dstB < 50,
+                "first-frame copy should show the clear color (red), got \(String(dst, radix: 16))")
+    }
 }
