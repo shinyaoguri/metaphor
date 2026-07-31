@@ -258,6 +258,7 @@ public final class MetaphorRenderer: NSObject {
         self.computeEvent = device.makeEvent()
 
         try buildBlitPipeline()
+        clearOffscreenTexture()
 
         do {
             self.postProcessPipeline = try PostProcessPipeline(
@@ -307,6 +308,7 @@ public final class MetaphorRenderer: NSObject {
         self.computeEvent = device.makeEvent()
 
         try buildBlitPipeline()
+        clearOffscreenTexture()
 
         do {
             self.postProcessPipeline = try PostProcessPipeline(
@@ -506,6 +508,22 @@ public final class MetaphorRenderer: NSObject {
     /// - Parameters:
     ///   - width: 新しい幅（ピクセル）
     ///   - height: 新しい高さ（ピクセル）
+    /// オフスクリーンカラーテクスチャをクリア色で初期化します。
+    ///
+    /// 最初のフレームがレンダリングされる前に `copy()` や出力プラグインが
+    /// テクスチャを読むと未初期化 VRAM の内容が漏れるため（#308）、テクスチャ
+    /// 作成直後に一度クリアパス（loadAction .clear のエンコーダを開閉するだけ）
+    /// を実行する。MSAA 有効時はリゾルブ込みでクリアされる。
+    private func clearOffscreenTexture() {
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(
+                  descriptor: textureManager.renderPassDescriptor
+              ) else { return }
+        encoder.endEncoding()
+        commandBuffer.commit()
+    }
+
+    /// 全レンダーターゲットテクスチャを再作成してオフスクリーンキャンバスをリサイズします。
     public func resizeCanvas(width: Int, height: Int) {
         // GPU が古いテクスチャを使用していないことを保証するため、全インフライトフレームをドレイン。
         // セマフォは値3（トリプルバッファリング）を持ち、全スロットを取得します。
@@ -533,6 +551,7 @@ public final class MetaphorRenderer: NSObject {
                 sampleCount: textureManager.sampleCount
             )
             textureManager.setClearColor(currentClearColor)
+            clearOffscreenTexture()
         } catch {
             print("[metaphor] Failed to resize canvas: \(error)")
             return
