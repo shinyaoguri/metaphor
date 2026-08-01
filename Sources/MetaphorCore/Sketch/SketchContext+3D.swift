@@ -76,30 +76,6 @@ extension SketchContext {
         canvas3D.camera(eye: eye, center: center, up: up)
     }
 
-    /// 位置引数でカメラの位置と方向を設定します（p5.js スタイル）。
-    /// - Parameters:
-    ///   - eyeX: カメラの x 位置。
-    ///   - eyeY: カメラの y 位置。
-    ///   - eyeZ: カメラの z 位置。
-    ///   - centerX: 注視点の x 座標。
-    ///   - centerY: 注視点の y 座標。
-    ///   - centerZ: 注視点の z 座標。
-    ///   - upX: 上方向ベクトルの x 成分。
-    ///   - upY: 上方向ベクトルの y 成分。
-    ///   - upZ: 上方向ベクトルの z 成分。
-    @available(*, deprecated, message: "Use camera(eye:center:up:) with SIMD3 instead")
-    public func camera(
-        _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
-        _ centerX: Float, _ centerY: Float, _ centerZ: Float,
-        _ upX: Float, _ upY: Float, _ upZ: Float
-    ) {
-        canvas3D.camera(
-            eye: SIMD3(eyeX, eyeY, eyeZ),
-            center: SIMD3(centerX, centerY, centerZ),
-            up: SIMD3(upX, upY, upZ)
-        )
-    }
-
     /// 透視投影を設定します。
     /// - Parameters:
     ///   - fov: ラジアン単位の視野角（デフォルト pi/3）。
