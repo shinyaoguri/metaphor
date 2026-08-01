@@ -9,6 +9,10 @@ import metaphor
 /// Controls:
 /// - 1–9 keys: Switch to the corresponding camera
 /// - R key: Rescan camera list (use after connecting/disconnecting devices)
+///
+/// On first run, macOS asks for camera permission — see `docs/permissions.md`
+/// at the repository root for how that dialog works with a `swift run`
+/// binary and how to recover if you denied it.
 @main
 final class CameraSwitching: Sketch {
     var config: SketchConfig {

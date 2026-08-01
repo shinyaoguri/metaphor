@@ -232,9 +232,14 @@ The library fully works this way (you can even generate code via AI with `llms.t
 
 ## Troubleshooting
 
+If you have [metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) installed, run `metaphor doctor` first — it checks your Swift/Xcode versions, template availability, and whether `Syphon.framework` loaded, which covers the most common setup problems in one shot.
+
+- **It won't build or run on my Intel Mac** — metaphor targets **Apple Silicon only** (see [Requirements](#requirements)); there's no Intel code path and none is planned. `swift build` isn't gated against Intel at the package-manifest level, so it may appear to build, but running is untested and unsupported — expect Metal feature or performance failures at runtime rather than a clean build error.
+- **`swift build` / `swift run` fails while resolving dependencies** (a checksum mismatch, "unable to download", or a 404 fetching `Syphon.xcframework.zip`) — The `Syphon` binary target is fetched from a pinned GitHub Release asset URL in `Package.swift`. Try clearing SwiftPM's cache and re-resolving: `swift package purge-cache && swift build` (or delete `.build` in your sketch's directory). If that doesn't help, check whether something between you and `github.com` (a corporate proxy or firewall) is blocking the release asset download — published tags and their assets are protected and health-checked weekly, so a 404 on a current release would be a bug worth [reporting](#feedback--issue-reports).
 - **`make build` fails / Syphon.xcframework is missing** — On first run, execute `make setup` to initialize submodules and build Syphon.xcframework. Check status with `make check`.
 - **Live viewer (`metaphor watch`) is black** — That's a CLI issue. See [metaphor-cli Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting).
 - **Can't observe "what's on screen" from AI** — Verify `metaphor watch` is running and `metaphor mcp` is executing in the same directory.
+- **Microphone or camera doesn't work, or the permission dialog never appeared** — See [docs/permissions.md](docs/permissions.md) for how TCC permissions work for a `swift run` binary (the dialog is attributed to your terminal app, not your sketch) and how to recover from a denied prompt.
 - **`llms.txt` is stale / CI says stale** — After changing public APIs, run `make llms-txt` and commit. Pre-push hooks and CI verify freshness.
 
 ## Feedback / Issue reports
@@ -253,7 +258,7 @@ If using through an AI agent, same process—ask the agent to "report this as a 
 
 ## Library development
 
-Library development (setup, testing, Syphon.xcframework handling, generated-file management, release procedure) is in [DEVELOPMENT.md](DEVELOPMENT.md). For the full documentation map, see [docs/README.md](docs/README.md). When maintaining with an AI agent, start at [CLAUDE.md](CLAUDE.md).
+Library development (setup, testing, Syphon.xcframework handling, generated-file management, release procedure) is in [DEVELOPMENT.md](DEVELOPMENT.md). For the full documentation map, see [docs/README.en.md](docs/README.en.md). When maintaining with an AI agent, start at [CLAUDE.md](CLAUDE.md).
 
 ## Acknowledgements
 
