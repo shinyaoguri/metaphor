@@ -100,3 +100,50 @@ here.
   iterating, then `make test` before handing off broader changes.
 - For rendering behavior, prefer pixel/readback tests via `MetaphorTestSupport`
   over visual-only examples.
+
+## ゴールデンイメージ回帰 (Issue #330)
+
+代表シーンのフレームバッファ全体を PNG で固定し、意図しない見た目の変化を検出する。
+
+- **テスト**: `Tests/metaphorTests/GoldenImageTests.swift`
+- **ゴールデン**: `Tests/metaphorTests/Golden/*.png`（リポジトリにコミット。ソースツリーを
+  直接読み書きするので、更新差分がそのまま `git diff` に出る）
+- **ヘルパー**: `Sources/MetaphorTestSupport/GoldenImage.swift`
+  （SHA256・閾値つき比較・PNG 入出力・GPU 読み戻し・差分画像）
+- **シーン**: 2D 図形 / ブレンドモード / 3D ライティング (Blinn-Phong・PBR) /
+  シャドウ / ポストプロセス。各シーンは 2 回レンダリングしてハッシュ一致
+  （同一環境での決定論）も同時に検証する。
+
+### 判定方式
+
+合否は **閾値つきピクセル比較**（`GoldenTolerance`）で決める。SHA256 は同一環境での
+再現性の測定とログ出力にのみ使い、合否には使わない — CI ランナーの仮想 GPU と
+手元の Apple Silicon ではハッシュが一致しないため（実測。ハッシュ完全一致を条件に
+すると環境ごとのゴールデンが必要になり保守が破綻する）。
+
+- `.default`（2D 系）: チャンネル差 <= 2 を許容、超過ピクセルは 0 個まで
+- `.shaded`（ライティング / シャドウ / ポストプロセス）: チャンネル差 <= 6 を許容、
+  超過ピクセルは全体の 0.5% まで
+
+### 意図した見た目変更時の更新手順
+
+1. `METAPHOR_UPDATE_GOLDEN=1 swift test --filter GoldenImageTests` でゴールデンを再生成
+2. `git diff` に出た PNG を**目視で確認**する（差分が意図どおりか）
+3. 変更理由を PR 本文に書いてコミットする
+
+新しいシーンを足す場合はゴールデンが存在しないので、初回実行で自動生成されつつ
+テストは**失敗する**（レビュー無しに緑にしないため）。生成された PNG を確認して
+コミットし、もう一度実行して緑を確認する。
+
+### 落ちたときの調べ方
+
+失敗すると `.build/golden-failures/<name>.{actual,expected,diff}.png` が書き出される
+（`METAPHOR_GOLDEN_ARTIFACT_DIR` で出力先を変更可）。CI では `golden-image-failures`
+アーティファクトとしてアップロードされるので、ダウンロードして diff 画像を見れば
+どの領域が変わったかがすぐ分かる。
+
+### テキストを対象にしない理由
+
+グリフのラスタライズは OS のフォントスタックに依存し、macOS のマイナー更新でも
+画素が変わり得る。ゴールデンに入れると「ライブラリの退行」と「OS 更新」を区別
+できなくなるため、テキストは `GlyphAtlasTests` / `DrawingTests` の構造的な検証に委ねる。
