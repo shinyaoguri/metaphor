@@ -152,6 +152,14 @@ struct SketchProbeRoutingTests {
 @MainActor
 struct IdleHotPathTests {
 
+    /// 壁時計しきい値の検証を行うか（既定 OFF）。
+    ///
+    /// 共有 macOS ランナーの負荷次第で揺れるため、`PerformanceBenchmarks`（#149）と
+    /// 同じ `METAPHOR_PERF_TESTS=1` ゲートで必須チェックから分離している。
+    /// このテストの本体（idle が出力を一切作らないこと）は常に検証される。
+    private static let checksWallClock =
+        ProcessInfo.processInfo.environment["METAPHOR_PERF_TESTS"] == "1"
+
     private func measure(_ body: () throws -> Void) rethrows -> Duration {
         try ContinuousClock().measure(body)
     }
@@ -202,7 +210,10 @@ struct IdleHotPathTests {
 
             // 桁変化の劣化ガード（同期 readback 混入等）。CI 変動を見込んだ緩い上限:
             // 5000 反復で 2 秒未満（= 1 反復あたり 400µs 未満）。実測はこれより桁違いに小さい。
-            #expect(elapsed < .seconds(2), "idle pre()/post() ×\(iterations) took \(elapsed)")
+            // 壁時計依存なので opt-in（METAPHOR_PERF_TESTS=1）でのみ検証する（#149 / #329）。
+            if Self.checksWallClock {
+                #expect(elapsed < .seconds(2), "idle pre()/post() ×\(iterations) took \(elapsed)")
+            }
         }
     }
 }
