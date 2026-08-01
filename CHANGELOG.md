@@ -35,19 +35,14 @@ Maintaining this file
 
 ### Breaking Changes
 
-- Seven APIs deprecated in earlier releases were removed, now that each has shipped in at least one minor release as deprecated (the ADR-0005 removal condition). Migrations ([#354](https://github.com/shinyaoguri/metaphor/pull/354)):
-
-  | Removed | Use instead |
-  |---|---|
-  | `MetaphorPlugin.onBeforeRender(commandBuffer:time:)` | `pre(commandBuffer:time:)` |
-  | `MetaphorPlugin.onAfterRender(texture:commandBuffer:)` | `post(texture:commandBuffer:)` |
-  | `Sketch.draw(_ ctx: SketchContext)` | `draw()` — reach the context through `self` (e.g. `self._context`) |
-  | `Sketch.camera(_:_:_:_:_:_:_:_:_:)` (nine `Float`s) | `camera(eye:center:up:)` with `SIMD3` |
-  | `SketchContext.camera(_:_:_:_:_:_:_:_:_:)` (nine `Float`s) | `camera(eye:center:up:)` with `SIMD3` |
-  | `Physics2D.addGravity(_:_:)` | `setGravity(_:_:)` |
-  | `SoundFile.volume` | `gain` |
-
-  The two `MetaphorPlugin` entries were protocol requirements: custom plugins that only implemented `onBeforeRender` / `onAfterRender` silently stop being called, so rename those methods rather than relying on the removed defaults.
+- Removed seven APIs that had been deprecated long enough to meet the ADR-0005 removal condition — each shipped as deprecated in at least one earlier minor release ([#354](https://github.com/shinyaoguri/metaphor/pull/354)). Migrate as follows:
+  - `MetaphorPlugin.onBeforeRender(commandBuffer:time:)` → `pre(commandBuffer:time:)`
+  - `MetaphorPlugin.onAfterRender(texture:commandBuffer:)` → `post(texture:commandBuffer:)`
+  - `Sketch.draw(_ ctx: SketchContext)` → `draw()`, reaching the context through `self` (for example `self._context`)
+  - `Sketch.camera` and `SketchContext.camera` taking nine `Float` arguments → `camera(eye:center:up:)` taking `SIMD3`
+  - `Physics2D.addGravity(_:_:)` → `setGravity(_:_:)`
+  - `SoundFile.volume` → `gain`
+- The two removed `MetaphorPlugin` methods were protocol requirements, so a custom plugin that only implements `onBeforeRender` / `onAfterRender` now compiles but is never called. Rename those methods to `pre` / `post` ([#354](https://github.com/shinyaoguri/metaphor/pull/354)).
 
 ### Added
 
