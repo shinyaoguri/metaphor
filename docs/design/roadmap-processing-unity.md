@@ -50,14 +50,14 @@
 
 リリースは PR ラベル駆動の自動版数のため、フェーズと版数は厳密には対応しない（v0.8 等は目安）。フェーズ管理はマイルストーンではなく Epic チェックリストで行う（Epic #75 と同じパターン）。
 
-### Phase 1「週末でスケッチ移植」— metaphor 側 完了（2026-07-31）
+### Phase 1「週末でスケッチ移植」— 完了（2026-08-01）
 
 目標: p5.js 上位例 50 本が diff 10 行未満で移植できる。スタブ example 3 本（LoadSaveJSON / LoadSaveTable / LoadDisplaySVG）が動く。
 
 **完了記録**: metaphor 側の全 Issue（#278〜#286）を PR #297〜#306 の 10 本で実装・マージ（2026-07-30〜31）。テスト 1,041 → 1,128 本。スタブ example 3 本解消 + 新規 example 3 本（DropImage / OSCLoopback / SVGExport）。残タスクと引き継ぎ:
 
 - **未リリース**: 全 PR をリリースラベルなしでマージしたため、v0.7.0 以降の変更が main に蓄積中。**次アクション = Phase 1 リリース（minor 相当）の判断・実施**（[releasing.md](../releasing.md)。ラベルなしマージ済みのため、リリース PR にラベルを付けて出す形になる）
-- **cli#88（ビルド高速化 pass 1・p50 ≤1.5s）が Phase 1 の唯一の残件**（metaphor-cli 側）
+- **cli#88（ビルド高速化 pass 1）完了（2026-08-01・cli PR #89/#90/#91）**: 分解計測で真の律速が「バイナリ解決のサイレント失敗 → 毎リロード ~490ms 浪費 + `swift run --skip-build` 経由の子起動 ~1.4s」と判明（当初想定の increment build ではなかった）。resolver の executable target フォールバック + FSEvents 検知で **roundtrip p50 2,768→986ms（-64%）・cold start 2,134→170ms**。目標 ≤1.5s を超過達成し Processing の起動体感（~1s）に到達。経緯・実測の正典は [cli#88](https://github.com/shinyaoguri/metaphor-cli/issues/88) のコメント。残る主要区間は build ~730ms（SwiftPM 増分の下限近く・追加短縮は将来の別 Issue）
 - **設計変更（重要）**: #285 SVG 書き出しは Issue 当初案の「`Deferred2DCommand` replay」が**頂点バッチレベルで不成立**と判明し、図形 API フック方式（PGraphicsSVG 型）へ変更（ユーザー確認済み・Issue 本文改訂済み）。**#71（コマンド記録の一般化）を意味レベルで設計する際は、SVGRecorder のフック点（`Canvas2D` 図形メソッド入口）との統合を検討すること**
 - **アーキテクチャ上の判断**: #284 アセットキャッシュは同一インスタンス返し（Unity の `Resources.Load` 意味論）。テクスチャ共有は `ImageFilterGPU` のプール回収と衝突するため不採用
 - 副産物 Issue: [#298](https://github.com/shinyaoguri/metaphor/issues/298)（llms.txt が SIMD extension を拾わない — Vec2/Vec3 の PVector メソッド群が AI から見えない。Phase 1 の移植支援に効くため優先度high寄り）
