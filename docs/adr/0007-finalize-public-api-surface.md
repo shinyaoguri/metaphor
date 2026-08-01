@@ -1,8 +1,8 @@
 # ADR-0007: 1.0 凍結に向けて公開 API 表面を最終整理する(命名規範・記録 API・二層 API・`@_exported`)
 
-- **Status**: Proposed(ユーザーレビュー待ち)
-- **Date**: 2026-08-01
-- **Deciders**: (PR レビューで確定)
+- **Status**: Accepted(2026-08-02 ユーザーレビューで確定)
+- **Date**: 2026-08-01(起案)/ 2026-08-02(確定)
+- **Deciders**: shinyaoguri(論点 2・3・5 は推奨案を採用、論点 7 は二層原則を明確化して修正)
 - **PR / Commit**: (本 PR)
 - **Issue**: #320(W1-1)。網羅調査の全文は [#320 のコメント](https://github.com/shinyaoguri/metaphor/issues/320#issuecomment-5150794440)
 
@@ -47,6 +47,12 @@ throws / deprecation は「deprecation を含む minor を公開してから次�
   (裁量を挟まない)。
 - この原則により `noFill()` と `loadJSON(_:as:)` が同居する現状は「不統一」ではなく「二層の設計」として
   正当化され、以降の新 API 追加時の判定も自動化される。
+
+**確定(2026-08-02 ユーザー決定)**: 上記原則を次の言葉で確認した — 「利用者から一番見える層
+(Sketch 層)は Processing との互換性を最大化する。利用者が通常触らない内部層(SketchContext 以下)は
+可能な限り Swift API Design Guidelines に準拠する」。ただし SketchContext の**転送メソッド**は
+Sketch 層のミラーとして同形(同名・同ラベル)を許容する — 転送の対称性検証(#331 のテスト網)を
+単純に保つためであり、内部層の**新規・非転送 API** は Guidelines 完全準拠を規範とする。
 
 ## 論点と選択肢
 
@@ -158,34 +164,37 @@ TestSupport からの参照を機械的に確認してから。契約面は `./s
 
 ### 論点 7: 引数ラベル混在(107 件)の扱い
 
-- **Option A: パターン規範化 + 逸脱 2 パターンのみ是正(推奨)**
+- **Option A(確定形): パターン規範化 + metaphor 独自 API の逸脱のみ是正**
   - **規範化(維持)**: Processing 語彙 API の必須座標・寸法・色は省略ラベル、オプション修飾はラベル付き
     (`directionalLight(_:_:_:color:)` 型 = P1)。「主対象 1 個 + オプションラベル」(`loadImage(_:cache:)`
     型 = P2)は Swift 慣行そのものとして維持。
-  - **是正 1(P3)**: 非座標の複数位置引数 — `saveStrings(_:_:)` / `saveJSON(_:_:pretty:)` /
-    `saveTable(_:_:...)` を **`save*(_, to:)`** へ(下層 `DataIO.saveJSON(_:toPath:)` と整合。
-    層間でラベル規約が食い違う唯一の実例の解消)。`createMergePass(_:_:blend:)` は 2 引数が対称
-    (a と b)なので P1 扱いで維持。
-  - **是正 2(P4)**: `dispatch(_ kernel:, threads:, _ configure:)` の末尾クロージャ `_` に
-    `configure:` ラベルを付与(trailing closure 呼び出しは不変のため実質非破壊)。
-  - Pros: breaking を 4 シグネチャに絞りつつ、「なぜ残りは直さないのか」に規範で答えられる。
-  - Cons: Sources 全体 107 件のうち大半は「規範に適合」として残る — Guidelines 純粋主義からは不満が残る。
-- **Option B: 全 107 件を Swift API Design Guidelines へ準拠させる**
+  - **save 系 3 件(`saveStrings(_:_:)` / `saveJSON(_:_:pretty:)` / `saveTable(_:_:...)`)は維持**:
+    p5.js に同名・同順の API(`saveStrings(list, filename)` / `saveJSON(json, filename)` /
+    `saveTable(table, filename)`)が存在するため原則により **Processing 語彙と判定**され、位置引数を
+    維持する。下層 `DataIO.saveJSON(_:toPath:)` とのラベル差は「Sketch 層 = Processing 互換 /
+    内部層 = Swift 慣行」という二層の設計の正当な帰結であり、食い違いではない(起案時は是正候補と
+    したが、2026-08-02 の原則確定により除外)。`createMergePass(_:_:blend:)` も 2 引数が対称なので維持。
+  - **是正(P4 のみ)**: `dispatch(_ kernel:, threads:, _ configure:)` / `dispatch(_ kernel:, width:,
+    height:, _ configure:)` の末尾クロージャ `_` に `configure:` ラベルを付与。metaphor 独自 API
+    (Processing に対応物なし)のため Guidelines 準拠へ。trailing closure 呼び出しは不変のため実質非破壊。
+  - **内部層の規範**: SketchContext 以下の新規・非転送 API は Guidelines 完全準拠(転送メソッドのみ
+    Sketch 層のミラーを許容)。
+- **Option B: 全 107 件を Swift API Design Guidelines へ準拠させる(却下)**
   - Cons: Processing 互換の中核(座標の位置引数)まで壊れる。工数・breaking とも過大で、原則に反する。
-- **Option C: 現状維持** — Cons: 層間でラベル規約が食い違う実例(save 系)が凍結される。
+- **Option C: 現状維持(却下)** — Cons: 独自 API の冗長な `_`(dispatch)まで凍結される。
 
-## Decision(推奨案の要約 — レビューで確定)
+## Decision(2026-08-02 確定)
 
 | # | 論点 | 推奨 | breaking |
 |---|---|---|---|
-| 0 | 原則 | Processing 語彙 = Processing 名・引数順 / 独自 = Swift Guidelines / 下位層 = 常に Swift 慣行 | — |
+| 0 | 原則 | 見える層(Sketch)= Processing 互換最大化 / 内部層 = 可能な限り Swift Guidelines(転送メソッドはミラー許容) | — |
 | 1 | ON/OFF 4 系統 | 出自で規範化(rename なし)+ 対欠損の additive 補完 | なし |
 | 2 | 記録 API | `begin<Media>Record` 統一: `beginSVG`→`beginSVGRecord`、無印→`beginFrameRecord`。OfflineRender は維持 | 4 件 |
 | 3 | async 露出 | `*Async` サフィックス統一(オーバーロード 2 件を改名) | 2 件 |
 | 4 | 二層 API | Sketch 層 = 正典・下位層名は自由。GPU `filter` を Sketch 層へ引き上げ | なし(追加のみ) |
 | 5 | `@_exported` | 3 つとも維持・凍結宣言(doc + 安定性ポリシーに明記) | なし |
 | 6 | Syphon 登録・内部 public | `internal`+`@_cdecl` 化(spike 再検証後)。「doc では内部」表面は internal/@_spi へ(個別表で確定) | なし(契約検証前提) |
-| 7 | 引数ラベル | P1/P2 規範化維持。P3(save 系 3 件 → `to:`)と P4(dispatch 2 件)のみ是正 | 4 件 |
+| 7 | 引数ラベル | P1/P2 規範化維持。save 系は p5.js 語彙として維持。是正は dispatch 2 件のみ | 2 件(実質非破壊) |
 
 rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated エイリアスを含む minor を公開して
 から、次の minor で削除**(0.8.x 内に 2 リリースを確保。v1-release-plan「順序を決める依存関係 4」)。
@@ -195,8 +204,9 @@ rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated
 ### Positive
 - 新 API 追加時の命名判定が機械化され、凍結後のドリフトを規範で防げる。
 - Processing の `beginRecord` との意味衝突という「凍結後に直せない混乱源」が解消する。
-- breaking の総量が確定する: **rename 10 シグネチャ**(記録 4 + async 2 + ラベル 4)+ 隠蔽系
-  (利用者影響ゼロ見込み)。W1-3(#322)の作業範囲がこの表で固定される。
+- breaking の総量が確定する: **rename 8 シグネチャ**(記録 4 + async 2 + dispatch ラベル 2。
+  dispatch は trailing closure 呼び出しでは非破壊)+ 隠蔽系(利用者影響ゼロ見込み)。
+  W1-3(#322)の作業範囲がこの表で固定される。
 
 ### Negative / Trade-offs
 - `noLights` と `disableShadows` の見た目の不揃いは「出自の違い」として残る(doc で規則を示す)。
@@ -213,11 +223,10 @@ rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated
 
 ### 実装 Issue へのマッピング
 
-- **#321(deprecated 7 件削除)**: 本 ADR の変更を待たず実施可。追加 2 点 — SketchContext 側
-  9 引数 `camera`(デッドコード)の削除、`Sketch.draw(_:)` deprecation message の `_context`
-  (internal)案内の文言修正。
+- **#321(deprecated 7 件削除)**: **実施済み(PR #354、2026-08-01)**。起案時に挙げた追加 2 点
+  (SketchContext 側 9 引数 `camera` / deprecation message の文言)は削除により消滅。
 - **#322(命名統一実装)**: Decision 表 #1(対欠損補完)#2(記録 rename)#3(async rename)
-  #4(filter 引き上げ)#7(ラベル是正)。deprecated エイリアス → 次 minor で削除の 2 段階。
+  #4(filter 引き上げ)#7(dispatch ラベル是正)。deprecated エイリアス → 次 minor で削除の 2 段階。
 - **#323(typed throws)**: 本 ADR の原則(下位層 = Swift 慣行)を前提にエラー型を設計。
 - **新規起票(ADR 確定後)**: 論点 6 の内部 public 隠蔽(個別判定表つき)、Follow-ups の各項。
 
