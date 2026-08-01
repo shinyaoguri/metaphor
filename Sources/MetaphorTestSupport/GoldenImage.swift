@@ -426,6 +426,9 @@ public enum GoldenImageStore {
 
         let expected = try GoldenImage.load(pngAt: goldenURL)
         let result = actual.matches(expected, tolerance: tolerance)
+        // 環境差（CI の GPU と手元の GPU）がどれだけあるかを常時可視化する。
+        // 許容差を将来詰める/緩める判断は、この実測ログを根拠にする。
+        print("[golden] \(name) vs golden: \(result.summary)")
         // 「許容チャンネル差を超えたピクセルの割合」だけで判定する。
         // maxChannelDiff <= 許容値なら超過ピクセルは 0 になるので、この 1 条件で足りる。
         if result.sizeMatches && result.exceedingRatio <= tolerance.maxExceedingRatio { return }
