@@ -31,6 +31,9 @@ playground.xcworkspace
 
 .build/
 
+# Coverage reports (CI artifact; reproducible locally — see .github/workflows/ci.yml)
+coverage/
+
 # Syphon XCFramework (built locally via make setup)
 Frameworks/
 
