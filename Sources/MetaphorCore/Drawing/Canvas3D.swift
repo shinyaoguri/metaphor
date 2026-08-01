@@ -436,6 +436,18 @@ public final class Canvas3D: CanvasStyle {
         self.encoder = nil
     }
 
+    /// メインパス分割後（`loadPixels()` の同一フレーム読み戻し、#326）に、
+    /// 描画先を新しいレンダーコマンドエンコーダへ差し替えます。
+    ///
+    /// 呼び出し側は分割前に ``flushInstanceBatch()`` 済みであること。カメラ・ライト・
+    /// 変換などフレーム状態は維持する（`draw()` の途中のため）。
+    ///
+    /// - Note: 継続パスはデプスがクリアされる。分割をまたいだ 3D 同士は深度比較されない。
+    /// - Parameter newEncoder: 継続パスのレンダーコマンドエンコーダー。
+    func rebindEncoder(_ newEncoder: MTLRenderCommandEncoder) {
+        self.encoder = newEncoder
+    }
+
     /// メインレンダリングパス完了後にシャドウ深度パスを実行します。
     func performShadowPass(commandBuffer: MTLCommandBuffer) {
         guard let shadow = shadowMap, !recordedDrawCalls.isEmpty else { return }

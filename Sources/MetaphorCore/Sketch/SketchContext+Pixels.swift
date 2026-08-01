@@ -17,18 +17,26 @@ extension SketchContext {
         }
     }
 
-    /// キャンバスの内容を CPU の ``pixels`` 配列へ読み戻します（Processing 互換、#202）。
+    /// キャンバスの内容を CPU の ``pixels`` 配列へ読み戻します（Processing 互換、#202 / #326）。
     ///
-    /// 初回呼び出し時またはキャンバスサイズ変更時にピクセルバッファを作成し、
-    /// キャンバスのカラーテクスチャの内容を読み戻します。
+    /// `draw()` の途中で呼ばれた場合は、**その時点までの描画を GPU に確定させてから**
+    /// 読み戻します（Processing の `loadPixels()` と同じ）。実装としてはメインの
+    /// レンダーパスを一度閉じてコマンドバッファをコミットし、完了を待ってから
+    /// `loadAction = .load` の継続パスで描画を再開します。カラーは保持されるため、
+    /// 読み戻しを挟んでもフレームの見た目は変わりません。
     ///
-    /// - Important: 読み戻せるのは**前フレーム末尾までに確定した内容**です。
-    ///   現在のフレームで既に発行した描画コマンド（この draw() 内の先行呼び出し）は
-    ///   まだ GPU にコミットされていないため含まれません。Processing の典型パターン
-    ///   （draw() の先頭で `loadPixels()` → 加工 → `updatePixels()`）では、
-    ///   前フレームの最終内容 = 現在のキャンバス内容なので期待どおりに動作します。
+    /// - Important: 同一フレーム読み戻しが効くのは**影オフの通常経路**です。
+    ///   シャドウ同一フレーム化（#70）では `draw()` が「記録パス」として実行され、
+    ///   その時点ではまだ何もエンコードされていないため分割できません。この場合と
+    ///   `draw()` の外（`setup()` やフレーム間）で呼ばれた場合は、**直近にコミット済みの
+    ///   フレーム内容**を読み戻します。
     ///
     /// - Note: GPU の完了を待つためメインスレッドをブロックします（Processing と同等）。
+    ///   同一フレーム経路では、そのフレームのトリプルバッファリングによる並列化が
+    ///   分割点で一度途切れます。呼ばないスケッチには一切コストがかかりません。
+    ///
+    /// - Note: 継続パスではデプスがクリアされます。`loadPixels()` をまたいだ 3D 同士は
+    ///   深度比較されません（2D は深度テストを使わないため影響なし）。
     public func loadPixels() {
         let w = Int(width)
         let h = Int(height)
@@ -38,12 +46,39 @@ extension SketchContext {
         }
         guard let pb = pixelBuffer else { return }
 
-        // レンダラーと同じキューで blit することで、コミット済みフレームとの
-        // 順序が保証される（描画中フレームは未コミットのため含まれない）
-        pb.download(
-            from: renderer.textureManager.colorTexture,
-            commandQueue: renderer.commandQueue
-        )
+        let source = renderer.textureManager.colorTexture
+
+        // 同一フレーム経路（Processing 互換）: draw() 実行中でメインパスが分割可能なら、
+        // ここまでの描画を確定させてから読み戻す。
+        if canvas.currentEncoder != nil, !canvas.isDeferring, renderer.canSplitMainPass {
+            // 保留中のバッチを分割前のパスへ出し切る（出し忘れると「ここまでの描画」に
+            // 含まれない）。2D の頂点バッチと 3D のインスタンスバッチの両方。
+            canvas.flush()
+            canvas3D.flushInstanceBatch()
+
+            guard let continuation = renderer.splitMainPassForReadback({ commandBuffer in
+                pb.encodeDownload(from: source, into: commandBuffer)
+            }) else {
+                // 継続パスを作れなかった。renderer 側がフレームを畳むので何もしない。
+                return
+            }
+            pb.finishDownload()
+            canvas.rebindEncoder(continuation)
+            canvas3D.rebindEncoder(continuation)
+            return
+        }
+
+        if canvas.isDeferring, !didWarnDeferredPixelReadback {
+            didWarnDeferredPixelReadback = true
+            metaphorWarning(
+                "loadPixels(): same-frame readback is unavailable while shadows are enabled "
+                + "(the draw pass is recorded first). Reading the last committed frame instead."
+            )
+        }
+
+        // フォールバック: 直近にコミット済みのフレーム内容。レンダラーと同じキューで
+        // blit することで commit 順序により最新のコミット済み内容が読める。
+        pb.download(from: source, commandQueue: renderer.commandQueue)
     }
 
     /// ピクセルバッファを GPU にアップロードしフルスクリーンクワッドとして描画します。
