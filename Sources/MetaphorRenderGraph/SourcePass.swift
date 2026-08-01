@@ -1,58 +1,58 @@
 @preconcurrency import Metal
 import MetaphorCore
 
-/// ユーザーコードがコンテンツを描画するオフスクリーンレンダーターゲットを提供します。
+/// Provides an offscreen render target that user code draws content into.
 ///
-/// ``SourcePass`` は専用の `TextureManager` を保持し、
-/// ユーザーのレンダリングコードが実行される ``onDraw`` コールバックを公開します。
-/// 結果のカラーテクスチャがノードの出力になります。
+/// ``SourcePass`` holds a dedicated `TextureManager` and exposes the ``onDraw``
+/// callback in which user rendering code runs.
+/// The resulting color texture becomes the node's output.
 ///
 /// ```swift
 /// let pass = try SourcePass(label: "scene", device: device, width: 1920, height: 1080)
 /// pass.onDraw = { encoder, time in
-///     // Metal レンダリングコード
+///     // Metal rendering code
 /// }
 /// ```
 @MainActor
 public final class SourcePass: RenderPassNode {
     // MARK: - パブリックプロパティ
 
-    /// このソースパスを識別するデバッグラベル。
+    /// A debug label that identifies this source pass.
     public let label: String
 
-    /// このパスで生成される出力カラーテクスチャ。
+    /// The output color texture produced by this pass.
     public var output: MTLTexture? { textureManager.colorTexture }
 
-    /// 実行時に呼び出される描画コールバック。
+    /// The draw callback invoked on execution.
     ///
     /// - Parameters:
-    ///   - encoder: オフスクリーンレンダーターゲット用のレンダーコマンドエンコーダー。
-    ///   - time: 経過時間（秒）。
+    ///   - encoder: The render command encoder for the offscreen render target.
+    ///   - time: The elapsed time, in seconds.
     public var onDraw: ((MTLRenderCommandEncoder, Double) -> Void)?
 
     // MARK: - プライベートプロパティ
 
-    /// レンダーターゲットを提供するオフスクリーンテクスチャマネージャー。
+    /// The offscreen texture manager that provides the render target.
     let textureManager: TextureManager
 
-    /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
+    /// The frame token from the last time this node was executed (used to memoize against duplicate execution within a frame).
     ///
-    /// 初期値は「未実行」を表す `.max`。`frameToken` は 0 から始まるため、
-    /// まだ一度も `renderFrame()` を回していないレンダラー（`frameToken == 0`）に
-    /// 対して直接 `execute` を呼んでも初回は必ず実行される。
+    /// The initial value is `.max`, representing "not yet executed". Since `frameToken`
+    /// starts at 0, calling `execute` directly on a renderer that has never run
+    /// `renderFrame()` (`frameToken == 0`) still always executes on the first call.
     private var lastExecutedToken: UInt64 = .max
 
     // MARK: - 初期化
 
-    /// 専用オフスクリーンレンダーターゲットで新しいソースパスを作成します。
+    /// Creates a new source pass with a dedicated offscreen render target.
     ///
     /// - Parameters:
-    ///   - label: このパスのデバッグラベル。
-    ///   - device: テクスチャ作成に使用する Metal デバイス。
-    ///   - width: オフスクリーンテクスチャの幅（ピクセル単位）。
-    ///   - height: オフスクリーンテクスチャの高さ（ピクセル単位）。
-    ///   - sampleCount: MSAA サンプル数（ポストプロセス互換のためデフォルトは1）。
-    /// - Throws: テクスチャ作成に失敗した場合にエラーをスローします。
+    ///   - label: A debug label for this pass.
+    ///   - device: The Metal device used to create the texture.
+    ///   - width: The offscreen texture width, in pixels.
+    ///   - height: The offscreen texture height, in pixels.
+    ///   - sampleCount: The MSAA sample count (defaults to 1 for post-processing compatibility).
+    /// - Throws: An error if texture creation fails.
     public init(
         label: String,
         device: MTLDevice,
@@ -71,12 +71,12 @@ public final class SourcePass: RenderPassNode {
 
     // MARK: - RenderPassNode
 
-    /// レンダーエンコーダーを作成し、描画コールバックを呼び出してソースパスを実行します。
+    /// Creates a render encoder and invokes the draw callback to execute the source pass.
     ///
     /// - Parameters:
-    ///   - commandBuffer: 処理をエンコードする Metal コマンドバッファ。
-    ///   - time: 経過時間（秒）。
-    ///   - renderer: `MetaphorRenderer` 参照（ソースパスでは未使用）。
+    ///   - commandBuffer: The Metal command buffer to encode the work into.
+    ///   - time: The elapsed time, in seconds.
+    ///   - renderer: A reference to `MetaphorRenderer` (unused by source passes).
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         // 同一フレーム内で既に実行済みなら再実行しない。
         // 共有ノードが diamond 構造（例: MergePass(scene, EffectPass(scene))）で

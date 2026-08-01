@@ -1638,47 +1638,47 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorCoreImage
 
-### `final class CIFilterEffect` -- プリセットから CoreImage フィルタを適用します。
+### `final class CIFilterEffect` -- Applies a CoreImage filter from a preset.
 
 - `let name: String`
 - `let preset: CIFilterPreset`
 - `init(_ preset: CIFilterPreset)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `enum CIFilterPreset` -- クリエイティブコーディング向けの厳選された CoreImage フィルタプリセットを提供します。
+### `enum CIFilterPreset` -- Provides a curated set of CoreImage filter presets for creative coding.
 
-- `case boxBlur(radius: Float = 10)` -- ボックスブラーエフェクトを適用します。
-- `case bump(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)` -- バンプディストーションエフェクトを適用します。
-- `case checkerboard(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)` -- チェッカーボードパターンを生成します。
-- `case ciEdges(intensity: Float = 1)` -- エッジ検出を適用します（CoreImage 版）。
-- `case ciGaussianBlur(radius: Float = 10)` -- ガウシアンブラーを適用します（CoreImage 版）。
-- `case ciPixellate(scale: Float = 8)` -- ピクセレーションエフェクトを適用します（CoreImage 版）。
-- `case circularWrap(center: SIMD2<Float>? = nil, radius: Float = 150, angle: Float = 0)` -- サーキュラーラップディストーションエフェクトを適用します。
-- `case colorPosterize(levels: Float = 6)` -- カラーポスタリゼーションエフェクトを適用します。
-- `case comic` -- コミックブックスタイルのエフェクトを適用します。
-- `case crystallize(radius: Float = 20)` -- クリスタライズエフェクトを適用します。
-- `case discBlur(radius: Float = 8)` -- ディスクブラーエフェクトを適用します。
-- `case falseColor(color0: CIColor = CIColor(red: 0.3, green: 0, blue: 0), color1: CIColor = CIColor(red: 1, green: 0.9, blue: 0.8))` -- フォルスカラーエフェクト（2色グラデーションマッピング）を適用します。
-- `case hexPixellate(center: SIMD2<Float>? = nil, scale: Float = 8)` -- 六角形ピクセレーションエフェクトを適用します。
-- `case kaleidoscope(count: Int = 6, center: SIMD2<Float>? = nil, angle: Float = 0)` -- 万華鏡エフェクトを適用します。
-- `case motionBlur(radius: Float = 20, angle: Float = 0)` -- モーションブラーエフェクトを適用します。
-- `case photoEffectChrome` -- クロームフォトエフェクトを適用します。
-- `case photoEffectFade` -- フェードフォトエフェクトを適用します。
-- `case photoEffectMono` -- モノクロフォトエフェクトを適用します。
-- `case photoEffectNoir` -- ノワールフォトエフェクトを適用します。
-- `case pinch(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)` -- ピンチディストーションエフェクトを適用します。
-- `case pointillize(center: SIMD2<Float>? = nil, radius: Float = 20)` -- 点描エフェクトを適用します。
-- `case starShine(center: SIMD2<Float>? = nil, color: CIColor = .white, radius: Float = 50, crossScale: Float = 15, crossAngle: Float = 0.6, crossOpacity: Float = -2, crossWidth: Float = 2.5, epsilon: Float = -2)` -- スターシャインエフェクトを生成します。
-- `case stripes(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)` -- ストライプパターンを生成します。
-- `case sunbeams(center: SIMD2<Float>? = nil, color: CIColor = .white, sunRadius: Float = 40, maxStriationRadius: Float = 2.58, striationStrength: Float = 0.5, striationContrast: Float = 1.375, time: Float = 0)` -- サンビームエフェクトを生成します。
-- `case triangleKaleidoscope(point: SIMD2<Float>? = nil, size: Float = 700, rotation: Float = 5.924, decay: Float = 0.85)` -- トライアングル万華鏡エフェクトを適用します。
-- `case twirl(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = .pi)` -- ツイストディストーションエフェクトを適用します。
-- `case vortex(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = 56.55)` -- ボルテックスディストーションエフェクトを適用します。
-- `case zoomBlur(center: SIMD2<Float>? = nil, amount: Float = 20)` -- ズームブラーエフェクトを適用します。
-- `var filterName: String { get }` -- このプリセットの CIFilter 名文字列を返します。
-- `func parameters(textureSize: CGSize) -> [String : Any]` -- テクスチャサイズに基づいてこのプリセットのパラメータ辞書を返します。
+- `case boxBlur(radius: Float = 10)` -- Applies a box blur effect.
+- `case bump(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)` -- Applies a bump distortion effect.
+- `case checkerboard(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)` -- Generates a checkerboard pattern.
+- `case ciEdges(intensity: Float = 1)` -- Applies edge detection (CoreImage version).
+- `case ciGaussianBlur(radius: Float = 10)` -- Applies a Gaussian blur (CoreImage version).
+- `case ciPixellate(scale: Float = 8)` -- Applies a pixellation effect (CoreImage version).
+- `case circularWrap(center: SIMD2<Float>? = nil, radius: Float = 150, angle: Float = 0)` -- Applies a circular wrap distortion effect.
+- `case colorPosterize(levels: Float = 6)` -- Applies a color posterization effect.
+- `case comic` -- Applies a comic-book-style effect.
+- `case crystallize(radius: Float = 20)` -- Applies a crystallize effect.
+- `case discBlur(radius: Float = 8)` -- Applies a disc blur effect.
+- `case falseColor(color0: CIColor = CIColor(red: 0.3, green: 0, blue: 0), color1: CIColor = CIColor(red: 1, green: 0.9, blue: 0.8))` -- Applies a false-color effect (two-color gradient mapping).
+- `case hexPixellate(center: SIMD2<Float>? = nil, scale: Float = 8)` -- Applies a hexagonal pixellation effect.
+- `case kaleidoscope(count: Int = 6, center: SIMD2<Float>? = nil, angle: Float = 0)` -- Applies a kaleidoscope effect.
+- `case motionBlur(radius: Float = 20, angle: Float = 0)` -- Applies a motion blur effect.
+- `case photoEffectChrome` -- Applies a chrome photo effect.
+- `case photoEffectFade` -- Applies a fade photo effect.
+- `case photoEffectMono` -- Applies a monochrome photo effect.
+- `case photoEffectNoir` -- Applies a noir photo effect.
+- `case pinch(center: SIMD2<Float>? = nil, radius: Float = 300, scale: Float = 0.5)` -- Applies a pinch distortion effect.
+- `case pointillize(center: SIMD2<Float>? = nil, radius: Float = 20)` -- Applies a pointillize effect.
+- `case starShine(center: SIMD2<Float>? = nil, color: CIColor = .white, radius: Float = 50, crossScale: Float = 15, crossAngle: Float = 0.6, crossOpacity: Float = -2, crossWidth: Float = 2.5, epsilon: Float = -2)` -- Generates a star-shine effect.
+- `case stripes(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)` -- Generates a stripe pattern.
+- `case sunbeams(center: SIMD2<Float>? = nil, color: CIColor = .white, sunRadius: Float = 40, maxStriationRadius: Float = 2.58, striationStrength: Float = 0.5, striationContrast: Float = 1.375, time: Float = 0)` -- Generates a sunbeams effect.
+- `case triangleKaleidoscope(point: SIMD2<Float>? = nil, size: Float = 700, rotation: Float = 5.924, decay: Float = 0.85)` -- Applies a triangle kaleidoscope effect.
+- `case twirl(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = .pi)` -- Applies a twist distortion effect.
+- `case vortex(center: SIMD2<Float>? = nil, radius: Float = 300, angle: Float = 56.55)` -- Applies a vortex distortion effect.
+- `case zoomBlur(center: SIMD2<Float>? = nil, amount: Float = 20)` -- Applies a zoom blur effect.
+- `var filterName: String { get }` -- Returns the CIFilter name string for this preset.
+- `func parameters(textureSize: CGSize) -> [String : Any]` -- Returns the parameter dictionary for this preset, based on the texture size.
 
-### `final class CIFilterRawEffect` -- フィルタ名とパラメータ辞書を直接指定して CoreImage フィルタを適用します。
+### `final class CIFilterRawEffect` -- Applies a CoreImage filter by directly specifying the filter name and parameter dictionary.
 
 - `let filterName: String`
 - `let name: String`
@@ -1686,7 +1686,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(name: String, parameters: [String : CIFilterValue])`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `enum CIFilterValue` -- CoreImage フィルタパラメータ値を Sendable 安全なコンテナでラップします。
+### `enum CIFilterValue` -- Wraps a CoreImage filter parameter value in a Sendable-safe container.
 
 - `case bool(Bool)`
 - `case double(Double)`
@@ -1694,16 +1694,16 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case int(Int)`
 - `case string(String)`
 - `case vector(SIMD4<Float>)`
-- `var anyValue: Any { get }` -- CIFilter に渡すのに適した `Any` 値に変換します。
+- `var anyValue: Any { get }` -- Converts to an `Any` value suitable for passing to CIFilter.
 
-### `final class CIFilterWrapper` -- CoreImage フィルタを Metal テクスチャに直接適用するラッパー。
+### `final class CIFilterWrapper` -- A wrapper that applies CoreImage filters directly to Metal textures.
 
 - `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
-- `func apply(filterName: String, parameters: [String : Any], source: any MTLTexture, destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- CIFilter 操作をコマンドバッファ内でソースからデスティネーションにエンコードします。
-- `func apply(filterName: String, parameters: [String : Any], to image: MImage)` -- CIFilter を MImage にインプレースで適用します。
-- `func generate(filterName: String, parameters: [String : Any], destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- ジェネレーターフィルタを既存のコマンドバッファへエンコードします。
-- `func generate(filterName: String, parameters: [String : Any], width: Int, height: Int) -> (any MTLTexture)?` -- ジェネレーターフィルタ（入力画像不要）を使用して MTLTexture を生成します。
-- `func invalidateTextures()` -- キャッシュ済みテクスチャをすべて無効化・解放します。
+- `func apply(filterName: String, parameters: [String : Any], source: any MTLTexture, destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- Encodes a CIFilter operation from source to destination within a command buffer.
+- `func apply(filterName: String, parameters: [String : Any], to image: MImage)` -- Applies a CIFilter to an MImage in place.
+- `func generate(filterName: String, parameters: [String : Any], destination: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- Encodes a generator filter into an existing command buffer.
+- `func generate(filterName: String, parameters: [String : Any], width: Int, height: Int) -> (any MTLTexture)?` -- Generates an MTLTexture using a generator filter (no input image required).
+- `func invalidateTextures()` -- Invalidates and releases all cached textures.
 
 ## MetaphorML
 
@@ -1718,68 +1718,68 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorMPS
 
-### `final class MPSBlurEffect` -- MPS ハードウェア最適化ガウシアンブラーを適用します。
+### `final class MPSBlurEffect` -- Applies MPS hardware-optimized Gaussian blur.
 
 - `let name: String`
 - `var sigma: Float`
 - `init(sigma: Float)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `final class MPSDilateEffect` -- MPS モルフォロジー膨張を適用します。
+### `final class MPSDilateEffect` -- Applies MPS morphological dilation.
 
 - `let name: String`
 - `var radius: Int`
 - `init(radius: Int = 1)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `final class MPSErodeEffect` -- MPS モルフォロジー収縮を適用します。
+### `final class MPSErodeEffect` -- Applies MPS morphological erosion.
 
 - `let name: String`
 - `var radius: Int`
 - `init(radius: Int = 1)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `final class MPSImageFilterWrapper` -- Metal Performance Shaders を使用したハードウェア最適化画像フィルタを提供します。
+### `final class MPSImageFilterWrapper` -- Provides hardware-optimized image filters using Metal Performance Shaders.
 
 - `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
-- `func clearCache()` -- キャッシュ済みの MPS カーネルとテクスチャをすべてクリアします。
-- `func dilate(_ image: MImage, radius: Int = 1)` -- モルフォロジー膨張（エリアマックス）を画像に適用します。
-- `func encodeDilate(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, radius: Int)` -- モルフォロジー膨張操作をコマンドバッファにエンコードします。
-- `func encodeErode(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, radius: Int)` -- モルフォロジー収縮操作をコマンドバッファにエンコードします。
-- `func encodeGaussianBlur(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, sigma: Float)` -- ガウシアンブラー操作をコマンドバッファにエンコードします。
-- `func encodeLaplacian(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture)` -- ラプラシアンフィルタ操作をコマンドバッファにエンコードします。
-- `func encodeMedian(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, diameter: Int = 3)` -- メディアンフィルタ操作をコマンドバッファにエンコードします。
-- `func encodeSobel(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture)` -- Sobel エッジ検出操作をコマンドバッファにエンコードします。
-- `func encodeThreshold(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, value: Float = 0.5)` -- バイナリ閾値処理をコマンドバッファにエンコードします。
-- `func erode(_ image: MImage, radius: Int = 1)` -- モルフォロジー収縮（エリアミン）を画像に適用します。
-- `func gaussianBlur(_ image: MImage, sigma: Float)` -- ハードウェア最適化されたガウシアンブラーを画像に適用します。
-- `func laplacian(_ image: MImage)` -- ラプラシアンフィルタを画像に適用します。
-- `func median(_ image: MImage, diameter: Int = 3)` -- メディアンフィルタを画像に適用します。
-- `func sobel(_ image: MImage)` -- Sobel エッジ検出を画像に適用します。
-- `func threshold(_ image: MImage, value: Float = 0.5)` -- バイナリ閾値処理を画像に適用します。
+- `func clearCache()` -- Clears all cached MPS kernels and textures.
+- `func dilate(_ image: MImage, radius: Int = 1)` -- Applies morphological dilation (area max) to an image.
+- `func encodeDilate(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, radius: Int)` -- Encodes a morphological dilation operation into a command buffer.
+- `func encodeErode(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, radius: Int)` -- Encodes a morphological erosion operation into a command buffer.
+- `func encodeGaussianBlur(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, sigma: Float)` -- Encodes a Gaussian blur operation into a command buffer.
+- `func encodeLaplacian(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture)` -- Encodes a Laplacian filter operation into a command buffer.
+- `func encodeMedian(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, diameter: Int = 3)` -- Encodes a median filter operation into a command buffer.
+- `func encodeSobel(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture)` -- Encodes a Sobel edge detection operation into a command buffer.
+- `func encodeThreshold(commandBuffer: any MTLCommandBuffer, source: any MTLTexture, destination: any MTLTexture, value: Float = 0.5)` -- Encodes binary threshold processing into a command buffer.
+- `func erode(_ image: MImage, radius: Int = 1)` -- Applies morphological erosion (area min) to an image.
+- `func gaussianBlur(_ image: MImage, sigma: Float)` -- Applies a hardware-optimized Gaussian blur to an image.
+- `func laplacian(_ image: MImage)` -- Applies a Laplacian filter to an image.
+- `func median(_ image: MImage, diameter: Int = 3)` -- Applies a median filter to an image.
+- `func sobel(_ image: MImage)` -- Applies Sobel edge detection to an image.
+- `func threshold(_ image: MImage, value: Float = 0.5)` -- Applies binary threshold processing to an image.
 
-### `final class MPSRayTracer` -- Metal ネイティブレイトレーシングシステムを提供します。
+### `final class MPSRayTracer` -- Provides a Metal-native ray-tracing system.
 
-- `var outputTexture: (any MTLTexture)? { get }` -- レイトレーシング結果テクスチャを返します。
+- `var outputTexture: (any MTLTexture)? { get }` -- Returns the ray-tracing result texture.
 - `init(device: any MTLDevice, commandQueue: any MTLCommandQueue, width: Int, height: Int) throws`
-- `func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4)` -- レイトレーシングシーンにダイナミックメッシュを追加します。
-- `func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4)` -- レイトレーシングシーンにメッシュを追加します。
-- `func buildAccelerationStructure() throws` -- 追加されたすべてのメッシュからアクセラレーション構造を構築します。
-- `func clearScene()` -- シーンからすべてのメッシュをクリアし、アクセラレーション構造をリセットします。
-- `func encodeTrace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float), commandBuffer: any MTLCommandBuffer)` -- 指定モードとカメラパラメータのレイトレーシングを既存のコマンドバッファへエンコードします。
-- `func trace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float))` -- 指定モードとカメラパラメータでレイトレーシングを実行します。
+- `func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4)` -- Adds a dynamic mesh to the ray-tracing scene.
+- `func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4)` -- Adds a mesh to the ray-tracing scene.
+- `func buildAccelerationStructure() throws` -- Builds an acceleration structure from all added meshes.
+- `func clearScene()` -- Clears all meshes from the scene and resets the acceleration structure.
+- `func encodeTrace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float), commandBuffer: any MTLCommandBuffer)` -- Encodes ray tracing for the given mode and camera parameters into an existing command buffer.
+- `func trace(mode: RayTraceMode, camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float))` -- Performs ray tracing with the given mode and camera parameters.
 
-### `final class MPSSobelEffect` -- MPS Sobel エッジ検出を適用します。
+### `final class MPSSobelEffect` -- Applies MPS Sobel edge detection.
 
 - `let name: String`
 - `init()`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `enum RayTraceMode` -- レイトレーシングのレンダリングモードを表します。
+### `enum RayTraceMode` -- Represents a ray-tracing render mode.
 
-- `case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)` -- 設定可能なサンプル数と半径によるアンビエントオクルージョン。
-- `case diffuse` -- シンプルなディフューズシェーディング。
-- `case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)` -- 平行光源からのソフトシャドウ。
+- `case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)` -- Ambient occlusion with configurable sample count and radius.
+- `case diffuse` -- Simple diffuse shading.
+- `case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)` -- Soft shadow from a directional light source.
 
 ## MetaphorNetwork
 
@@ -1906,48 +1906,48 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorNoise
 
-### `final class GKNoiseWrapper` -- GameplayKit ノイズシステムをラップし、プロシージャルノイズ生成を提供します。
+### `final class GKNoiseWrapper` -- Wraps the GameplayKit noise system to provide procedural noise generation.
 
-- `var config: NoiseConfig { get set }` -- ノイズ設定にアクセスまたは変更します。
-- `let type: NoiseType` -- ノイズタイプを返します。
+- `var config: NoiseConfig { get set }` -- Accesses or modifies the noise configuration.
+- `let type: NoiseType` -- Returns the noise type.
 - `init(type: NoiseType, config: NoiseConfig = NoiseConfig(), device: any MTLDevice)`
-- `func add(_ other: GKNoiseWrapper)` -- 別のノイズソースを加算して合成します。
-- `func applyAbsoluteValue()` -- 出力に絶対値を適用します。
-- `func applyTurbulence(frequency: Double, power: Double, roughness: Int, seed: Int32)` -- ノイズにタービュレンスディストーションを適用します。
-- `func clamp(min: Double, max: Double)` -- 出力値を範囲内にクランプします。
-- `func colorMappedTexture(width: Int, height: Int, colorStops: [(Float, SIMD4<UInt8>)]) -> (any MTLTexture)?` -- グラデーションストップを使用してカラーマップされたノイズテクスチャを生成します。
-- `func image(width: Int, height: Int) -> MImage?` -- ノイズ画像を生成します。
-- `func invert()` -- 出力値を反転します。
-- `func multiply(_ other: GKNoiseWrapper)` -- 別のノイズソースを乗算して合成します。
-- `func raiseToPower(_ exponent: Double)` -- 出力値を指数で累乗します。
-- `func sample(x: Float, y: Float) -> Float` -- 2Dポイントでのノイズ値をサンプリングします。
-- `func sample(x: Double, y: Double) -> Float` -- 2Dポイントでのノイズ値をサンプリングします（Double 精度入力）。
-- `func sampleGrid(width: Int, height: Int) -> [Float]` -- ノイズ値を2Dグリッドとして生成します。
-- `func texture(width: Int, height: Int) -> (any MTLTexture)?` -- グレースケール BGRA8 ノイズテクスチャを生成します。
+- `func add(_ other: GKNoiseWrapper)` -- Composites another noise source by addition.
+- `func applyAbsoluteValue()` -- Applies an absolute value to the output.
+- `func applyTurbulence(frequency: Double, power: Double, roughness: Int, seed: Int32)` -- Applies turbulence distortion to the noise.
+- `func clamp(min: Double, max: Double)` -- Clamps the output value to a range.
+- `func colorMappedTexture(width: Int, height: Int, colorStops: [(Float, SIMD4<UInt8>)]) -> (any MTLTexture)?` -- Generates a color-mapped noise texture using gradient stops.
+- `func image(width: Int, height: Int) -> MImage?` -- Generates a noise image.
+- `func invert()` -- Inverts the output value.
+- `func multiply(_ other: GKNoiseWrapper)` -- Composites another noise source by multiplication.
+- `func raiseToPower(_ exponent: Double)` -- Raises the output value to a power.
+- `func sample(x: Float, y: Float) -> Float` -- Samples the noise value at a 2D point.
+- `func sample(x: Double, y: Double) -> Float` -- Samples the noise value at a 2D point (Double-precision input).
+- `func sampleGrid(width: Int, height: Int) -> [Float]` -- Generates noise values as a 2D grid.
+- `func texture(width: Int, height: Int) -> (any MTLTexture)?` -- Generates a grayscale BGRA8 noise texture.
 
-### `struct NoiseConfig` -- GKNoise 生成のパラメータを設定します。
+### `struct NoiseConfig` -- Configures the parameters for GKNoise generation.
 
-- `var frequency: Double` -- 基本周波数（デフォルトは1.0）。
-- `var lacunarity: Double` -- ラクナリティ（オクターブ間の周波数乗数、デフォルトは2.0）。
-- `var normalized: Bool` -- 出力正規化の有効化（0.0〜1.0 にリマップ）。
-- `var octaves: Int` -- フラクタルオクターブ数（デフォルトは6）。
-- `var origin: SIMD2<Double>` -- サンプリングオフセット。
-- `var persistence: Double` -- オクターブごとの振幅減衰率（パーシステンス、デフォルトは0.5）。
-- `var sampleScale: SIMD2<Double>` -- サンプリングスケール（noiseMap の sampleSize にマッピング）。
-- `var seed: Int32` -- ノイズジェネレーターのシード値。
-- `var voronoiDistanceEnabled: Bool` -- Voronoi 固有: 距離をノイズ値として使用。
-- `init(octaves: Int = 6, frequency: Double = 1.0, lacunarity: Double = 2.0, seed: Int32 = 0, persistence: Double = 0.5, normalized: Bool = true, voronoiDistanceEnabled: Bool = true, sampleScale: SIMD2<Double> = SIMD2(1.0, 1.0), origin: SIMD2<Double> = .zero)` -- 指定パラメータでノイズ設定を作成します。
+- `var frequency: Double` -- Base frequency (default is 1.0).
+- `var lacunarity: Double` -- Lacunarity (frequency multiplier between octaves, default is 2.0).
+- `var normalized: Bool` -- Whether output normalization is enabled (remaps to 0.0-1.0).
+- `var octaves: Int` -- Number of fractal octaves (default is 6).
+- `var origin: SIMD2<Double>` -- Sampling offset.
+- `var persistence: Double` -- Amplitude decay rate per octave (persistence, default is 0.5).
+- `var sampleScale: SIMD2<Double>` -- Sampling scale (maps to noiseMap's sampleSize).
+- `var seed: Int32` -- Seed value for the noise generator.
+- `var voronoiDistanceEnabled: Bool` -- Voronoi-specific: use distance as the noise value.
+- `init(octaves: Int = 6, frequency: Double = 1.0, lacunarity: Double = 2.0, seed: Int32 = 0, persistence: Double = 0.5, normalized: Bool = true, voronoiDistanceEnabled: Bool = true, sampleScale: SIMD2<Double> = SIMD2(1.0, 1.0), origin: SIMD2<Double> = .zero)` -- Creates a noise configuration with the given parameters.
 
-### `enum NoiseType` -- 利用可能な GameplayKit ノイズアルゴリズムを定義します。
+### `enum NoiseType` -- Defines the available GameplayKit noise algorithms.
 
-- `case billow` -- Billow ノイズ（柔らかい雲のようなパターン）。
-- `case checkerboard` -- チェッカーボードパターン。
-- `case constant(value: Double)` -- 定数値ノイズ。
-- `case cylinders` -- 同心円シリンダーパターン。
-- `case perlin` -- パーリンノイズ（GKPerlinNoiseSource ベース）。
-- `case ridged` -- Ridged マルチフラクタルノイズ（山岳地形、稲妻パターン）。
-- `case spheres` -- 同心球パターン。
-- `case voronoi` -- Voronoi / Worley ノイズ（セルパターン、有機的テクスチャ）。
+- `case billow` -- Billow noise (soft, cloud-like pattern).
+- `case checkerboard` -- Checkerboard pattern.
+- `case constant(value: Double)` -- Constant-value noise.
+- `case cylinders` -- Concentric cylinder pattern.
+- `case perlin` -- Perlin noise (based on GKPerlinNoiseSource).
+- `case ridged` -- Ridged multifractal noise (mountainous terrain, lightning pattern).
+- `case spheres` -- Concentric sphere pattern.
+- `case voronoi` -- Voronoi / Worley noise (cellular pattern, organic texture).
 
 ## MetaphorPhysics
 
@@ -2002,108 +2002,108 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorRenderGraph
 
-### `final class EffectPass` -- 上流レンダーパスの出力にポストプロセスエフェクトチェーンを適用します。
+### `final class EffectPass` -- Applies a chain of post-process effects to the output of an upstream render pass.
 
-- `var effects: [any PostEffect] { get set }` -- 適用するポストプロセスエフェクトのチェーン。
-- `let label: String` -- このエフェクトパスを識別するデバッグラベル。
-- `var output: (any MTLTexture)?` -- エフェクト適用後の出力テクスチャ。
-- `init(_ input: any RenderPassNode, effects: [any PostEffect], device: any MTLDevice, commandQueue: any MTLCommandQueue, shaderLibrary: ShaderLibrary) throws` -- 上流ノードの出力を処理する新しいエフェクトパスを作成します。
-- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- 入力パスを実行し、その出力にエフェクトチェーンを適用します。
+- `var effects: [any PostEffect] { get set }` -- The chain of post-process effects to apply.
+- `let label: String` -- A debug label that identifies this effect pass.
+- `var output: (any MTLTexture)?` -- The output texture after effects have been applied.
+- `init(_ input: any RenderPassNode, effects: [any PostEffect], device: any MTLDevice, commandQueue: any MTLCommandQueue, shaderLibrary: ShaderLibrary) throws` -- Creates a new effect pass that processes an upstream node's output.
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- Executes the input pass and applies the effect chain to its output.
 
-### `final class MergePass` -- 2つの上流レンダーパスの出力を1つのテクスチャにブレンドします。
+### `final class MergePass` -- Blends the outputs of two upstream render passes into a single texture.
 
-- `case add` -- 加算ブレンディング（A + B）。
-- `case alpha` -- アルファ合成（B over A）。
-- `case multiply` -- 乗算ブレンディング（A * B）。
-- `case screen` -- スクリーンブレンディング（1 - (1-A) * (1-B)）。
-- `var blendType: MergePass.BlendType` -- 合成に使用するブレンドモード。実行時に変更可能です。
+- `case add` -- Additive blending (A + B).
+- `case alpha` -- Alpha compositing (B over A).
+- `case multiply` -- Multiply blending (A * B).
+- `case screen` -- Screen blending (1 - (1-A) * (1-B)).
+- `var blendType: MergePass.BlendType` -- The blend mode used for compositing. Can be changed at runtime.
 - `var hashValue: Int { get }`
-- `let label: String` -- このマージパスを識別するデバッグラベル。
-- `var output: (any MTLTexture)?` -- 両入力をマージした後の出力テクスチャ。
-- `init(_ a: any RenderPassNode, _ b: any RenderPassNode, blend: MergePass.BlendType, device: any MTLDevice, shaderLibrary: ShaderLibrary) throws` -- 2つの上流パスをブレンドする新しいマージパスを作成します。
+- `let label: String` -- A debug label that identifies this merge pass.
+- `var output: (any MTLTexture)?` -- The output texture after merging both inputs.
+- `init(_ a: any RenderPassNode, _ b: any RenderPassNode, blend: MergePass.BlendType, device: any MTLDevice, shaderLibrary: ShaderLibrary) throws` -- Creates a new merge pass that blends two upstream passes.
 - `init?(rawValue: String)`
-- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- 両方の入力パスを実行し、ブレンドモードを使用して出力をマージします。
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- Executes both input passes and merges their output using the blend mode.
 - `func hash(into hasher: inout Hasher)`
 
-### `final class RenderGraph` -- マルチパスレンダリングのためのレンダーパスの有向非巡回グラフを管理します。
+### `final class RenderGraph` -- Manages a directed acyclic graph of render passes for multi-pass rendering.
 
-- `let root: any RenderPassNode` -- 最終出力テクスチャを提供するグラフのルートノード。
-- `init(root: any RenderPassNode)` -- 指定ルートノードで新しいレンダーグラフを作成します。
-- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> (any MTLTexture)?` -- グラフ全体を実行し、最終出力テクスチャを返します。
+- `let root: any RenderPassNode` -- The graph's root node, which provides the final output texture.
+- `init(root: any RenderPassNode)` -- Creates a new render graph with the given root node.
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> (any MTLTexture)?` -- Executes the entire graph and returns the final output texture.
 
-### `protocol RenderPassNode : AnyObject` -- ``RenderGraph`` 内のノードのインターフェースを定義します。
+### `protocol RenderPassNode : AnyObject` -- Defines the interface for nodes within a ``RenderGraph``.
 
-- `var label: String { get }` -- このノードを識別するデバッグラベル。
-- `var output: (any MTLTexture)? { get }` -- 実行後に生成される出力テクスチャ。未実行の場合は `nil`。
-- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- このノードのレンダリング処理を実行し、``output`` テクスチャを生成します。
+- `var label: String { get }` -- A debug label that identifies this node.
+- `var output: (any MTLTexture)? { get }` -- The output texture produced after execution. `nil` if not yet executed.
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- Executes this node's rendering work and produces the ``output`` texture.
 
-### `final class SourcePass` -- ユーザーコードがコンテンツを描画するオフスクリーンレンダーターゲットを提供します。
+### `final class SourcePass` -- Provides an offscreen render target that user code draws content into.
 
-- `let label: String` -- このソースパスを識別するデバッグラベル。
-- `var onDraw: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- 実行時に呼び出される描画コールバック。
-- `var output: (any MTLTexture)? { get }` -- このパスで生成される出力カラーテクスチャ。
-- `init(label: String, device: any MTLDevice, width: Int, height: Int, sampleCount: Int = 1) throws` -- 専用オフスクリーンレンダーターゲットで新しいソースパスを作成します。
-- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- レンダーエンコーダーを作成し、描画コールバックを呼び出してソースパスを実行します。
+- `let label: String` -- A debug label that identifies this source pass.
+- `var onDraw: ((any MTLRenderCommandEncoder, Double) -> Void)?` -- The draw callback invoked on execution.
+- `var output: (any MTLTexture)? { get }` -- The output color texture produced by this pass.
+- `init(label: String, device: any MTLDevice, width: Int, height: Int, sampleCount: Int = 1) throws` -- Creates a new source pass with a dedicated offscreen render target.
+- `func execute(commandBuffer: any MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)` -- Creates a render encoder and invokes the draw callback to execute the source pass.
 
 ## MetaphorSceneGraph
 
-### `struct AABB` -- フラスタムカリング用の軸整列バウンディングボックス。
+### `struct AABB` -- An axis-aligned bounding box for frustum culling.
 
-- `var center: SIMD3<Float> { get }` -- バウンディングボックスの中心。
-- `var extents: SIMD3<Float> { get }` -- 各軸に沿ったハーフエクステント（半分のサイズ）。
-- `var max: SIMD3<Float>` -- バウンディングボックスの最大コーナー。
-- `var min: SIMD3<Float>` -- バウンディングボックスの最小コーナー。
-- `init(min: SIMD3<Float>, max: SIMD3<Float>)` -- 指定した最小・最大コーナーで AABB を作成します。
-- `func intersects(frustum planes: [SIMD4<Float>]) -> Bool` -- この AABB が指定フラスタム平面の外側にあるかテストします。
-- `func transformed(by matrix: float4x4) -> AABB` -- この AABB を 4x4 行列で変換し、新しい（より大きい）AABB を生成します。
+- `var center: SIMD3<Float> { get }` -- The center of the bounding box.
+- `var extents: SIMD3<Float> { get }` -- The half-extent (half the size) along each axis.
+- `var max: SIMD3<Float>` -- The maximum corner of the bounding box.
+- `var min: SIMD3<Float>` -- The minimum corner of the bounding box.
+- `init(min: SIMD3<Float>, max: SIMD3<Float>)` -- Creates an AABB with the given minimum and maximum corners.
+- `func intersects(frustum planes: [SIMD4<Float>]) -> Bool` -- Tests whether this AABB lies outside the given frustum planes.
+- `func transformed(by matrix: float4x4) -> AABB` -- Transforms this AABB by a 4x4 matrix, producing a new (larger) AABB.
 
-### `final class Node` -- 階層的なシーングラフのノードを表します。
+### `final class Node` -- Represents a node in a hierarchical scene graph.
 
-- `var bounds: AABB?` -- フラスタムカリング用のオプションのバウンディングボックス（ローカル空間）。
-- `var children: [Node] { get }` -- 順序付き子ノードのリスト。
-- `var fillColor: Color?` -- メッシュのレンダリング時に適用するオプションのフィルカラー。
-- `var forward: SIMD3<Float> { get }` -- ワールド空間での前方向ベクトル（負の Z）。
-- `var isVisible: Bool` -- ノードとその子をレンダリングするかどうかを示します。
-- `var localTransform: float4x4 { get }` -- position、orientation、scale からのローカルトランスフォーム行列（キャッシュ済み）。
-- `var mesh: Mesh?` -- このノードの位置に描画するオプションのメッシュ。
-- `var name: String` -- このノードの名前。識別と検索に使用します。
-- `var onDraw: (() -> Void)?` -- シーントラバーサル中に呼び出されるオプションのカスタム描画コールバック。
-- `var orientation: simd_quatf { get set }` -- クォータニオンとしてのノードのローカル向き。
-- `weak var parent: Node? { get }` -- 親ノード。ルートの場合は `nil`。
-- `var position: SIMD3<Float> { get set }` -- 親に対するノードのローカル位置。
-- `var right: SIMD3<Float> { get }` -- ワールド空間での右方向ベクトル（正の X）。
-- `var scale: SIMD3<Float> { get set }` -- 各軸に沿ったノードのローカルスケール。
-- `var up: SIMD3<Float> { get }` -- ワールド空間での上方向ベクトル（正の Y）。
-- `var worldBounds: AABB? { get }` -- ローカル bounds とワールドトランスフォームから計算されるワールド空間のバウンディングボックス。
-- `var worldOrientation: simd_quatf { get }` -- ワールド空間での向き（親 + ローカルクォータニオンの合成、キャッシュ済み）。
-- `var worldTransform: float4x4 { get }` -- すべての祖先トランスフォームを合成したワールドトランスフォーム（キャッシュ済み）。
-- `init(name: String = "")` -- 指定名で新しいノードを作成します。
-- `func addChild(_ child: Node)` -- このノードに子ノードを追加します。
-- `func find(_ name: String) -> Node?` -- 深さ優先探索で名前から子孫ノードを検索します。
-- `func lookAt(_ target: SIMD3<Float>, worldUp: SIMD3<Float> = SIMD3(0, 1, 0))` -- このノードを指定ワールド空間ターゲットに向けます。
-- `func removeAllChildren()` -- このノードからすべての子を削除します。
-- `func removeChild(_ child: Node)` -- このノードから子ノードを削除します。
-- `func rotate(by rotation: simd_quatf)` -- 現在の向きに対してクォータニオンで相対的にノードを回転させます。
-- `func setRotation(x: Float = 0, y: Float = 0, z: Float = 0)` -- オイラー角から回転を設定します（便利メソッド）。
+- `var bounds: AABB?` -- An optional bounding box (in local space) used for frustum culling.
+- `var children: [Node] { get }` -- The ordered list of child nodes.
+- `var fillColor: Color?` -- An optional fill color applied when rendering the mesh.
+- `var forward: SIMD3<Float> { get }` -- The forward vector in world space (negative Z).
+- `var isVisible: Bool` -- Whether to render this node and its children.
+- `var localTransform: float4x4 { get }` -- The local transform matrix derived from position, orientation, and scale (cached).
+- `var mesh: Mesh?` -- An optional mesh drawn at this node's position.
+- `var name: String` -- This node's name, used for identification and lookup.
+- `var onDraw: (() -> Void)?` -- An optional custom draw callback invoked during scene traversal.
+- `var orientation: simd_quatf { get set }` -- The node's local orientation, as a quaternion.
+- `weak var parent: Node? { get }` -- The parent node. `nil` for a root node.
+- `var position: SIMD3<Float> { get set }` -- The node's local position relative to its parent.
+- `var right: SIMD3<Float> { get }` -- The right vector in world space (positive X).
+- `var scale: SIMD3<Float> { get set }` -- The node's local scale along each axis.
+- `var up: SIMD3<Float> { get }` -- The up vector in world space (positive Y).
+- `var worldBounds: AABB? { get }` -- The world-space bounding box, computed from the local bounds and the world transform.
+- `var worldOrientation: simd_quatf { get }` -- The orientation in world space (the composition of the parent's and local quaternions, cached).
+- `var worldTransform: float4x4 { get }` -- The world transform composed from all ancestor transforms (cached).
+- `init(name: String = "")` -- Creates a new node with the given name.
+- `func addChild(_ child: Node)` -- Adds a child node to this node.
+- `func find(_ name: String) -> Node?` -- Searches for a descendant node by name using depth-first search.
+- `func lookAt(_ target: SIMD3<Float>, worldUp: SIMD3<Float> = SIMD3(0, 1, 0))` -- Orients this node to face a target point in world space.
+- `func removeAllChildren()` -- Removes all children from this node.
+- `func removeChild(_ child: Node)` -- Removes a child node from this node.
+- `func rotate(by rotation: simd_quatf)` -- Rotates the node by a quaternion, relative to its current orientation.
+- `func setRotation(x: Float = 0, y: Float = 0, z: Float = 0)` -- Sets the rotation from Euler angles (a convenience method).
 
-### `final class SceneRenderer` -- `Canvas3D` インスタンスを使用してシーングラフツリーをレンダリングします。
+### `final class SceneRenderer` -- Renders a scene graph tree using a `Canvas3D` instance.
 
-- `static var frustumPlanes: [SIMD4<Float>]?` -- カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
-- `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
-- `static func render(node: Node, canvas: Canvas3D)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
-- `static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?)` -- ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+- `static var frustumPlanes: [SIMD4<Float>]?` -- The frustum planes used for culling (6 planes: left, right, bottom, top, near, far).
+- `static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>]` -- Extracts six frustum planes from a view-projection matrix.
+- `static func render(node: Node, canvas: Canvas3D)` -- Traverses the node tree depth-first, rendering each visible node.
+- `static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?)` -- Traverses the node tree depth-first, rendering each visible node.
 
 ## MetaphorSyphon
 
 ### MetaphorRenderer
 
-- `var syphonOutput: SyphonOutput? { get }` -- アプリケーション間映像共有用のオプショナルな Syphon 出力。
-- `func startSyphonServer(name: String)` -- 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
-- `func stopSyphonServer()` -- Syphon サーバーを停止し、リソースを解放します。
+- `var syphonOutput: SyphonOutput? { get }` -- An optional Syphon output for sharing video between applications.
+- `func startSyphonServer(name: String)` -- Starts a Syphon server under the given name for sharing textures between applications.
+- `func stopSyphonServer()` -- Stops the Syphon server and releases its resources.
 
-### `enum MetaphorSyphon` -- Syphon 出力モジュール。
+### `enum MetaphorSyphon` -- The Syphon output module.
 
-- `static func enable()` -- Syphon 出力ファクトリを明示的に登録します。
+- `static func enable()` -- Explicitly registers the Syphon output factory.
 
 ### `final class SyphonOutput` -- Publish Metal textures to other applications via a Syphon server.
 
@@ -2114,10 +2114,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func rename(_ name: String)` -- Rename the Syphon server by stopping the current one and creating a new one.
 - `func stop()` -- Stop and release the Syphon server.
 
-### `final class SyphonPlugin` -- 最終フレームを Syphon サーバー経由で publish する内部出力プラグイン。
+### `final class SyphonPlugin` -- An internal output plugin that publishes the final frame via a Syphon server.
 
-- `static let id: String` -- 安定したプラグイン識別子。facade（`startSyphonServer`/`stopSyphonServer`/
-- `var output: SyphonOutput? { get }` -- 実体の ``SyphonOutput``。`onAttach(renderer:)` で生成、`onDetach()` で破棄。
+- `static let id: String` -- A stable plugin identifier. The facade (`startSyphonServer`/`stopSyphonServer`/
+- `var output: SyphonOutput? { get }` -- The underlying ``SyphonOutput``. Created in `onAttach(renderer:)`, destroyed in `onDetach()`.
 - `let pluginID: String`
 - `init(name: String)`
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
