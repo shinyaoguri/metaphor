@@ -4,6 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)
 [![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -146,7 +147,7 @@ mouseX, mouseY, frameCount, deltaTime, width, height
 random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 ```
 
-The full API is in [`llms.txt`](llms.txt). When hunting for "the Processing equivalent of X," [Examples](#examples) has quick answers.
+The full API is in [`llms.txt`](llms.txt). To browse types and methods, see the **[API reference (DocC)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)** ([project site](https://shinyaoguri.github.io/metaphor/)). When hunting for "the Processing equivalent of X," [Examples](#examples) has quick answers.
 
 ## Collaborating with AI (observation → manipulation → iteration)
 
@@ -208,7 +209,7 @@ You can also add `metaphor` as a normal Swift Package dependency without the CLI
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.7.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.0"),
 ]
 ```
 
@@ -260,3 +261,7 @@ Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](h
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
+
+For the copyright notice and full license text of `Syphon.xcframework`
+(Simplified BSD License), redistributed as a GitHub Release asset, see
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

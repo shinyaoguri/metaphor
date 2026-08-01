@@ -175,19 +175,25 @@ jobs:
           # Only stable versions appear in `from:` install snippets. Keep every
           # file that carries the snippet in sync — CI on this release branch
           # enforces agreement (validate-ai-docs.sh check #6 compares
-          # GettingStarted.md and llms.txt against README.md, and the llms.txt
-          # staleness check regenerates with the README version embedded), so
-          # updating README.md alone deadlocks the release.
+          # README.en.md, GettingStarted.md and llms.txt against README.md, and
+          # the llms.txt staleness check regenerates with the README version
+          # embedded), so updating README.md alone deadlocks the release.
+          # NOTE: this list and validate-ai-docs.sh's `version_docs` are two
+          # halves of one contract — always change them together. Adding a file
+          # to only one side deadlocks releases in either direction (validate
+          # only → the file is never bumped but is checked; sed only → the file
+          # is bumped but nothing guards it from drifting back).
           if [ "$IS_PRERELEASE" = "false" ]; then
             VERSION_NUM=${TAG_NAME#v}
             # Anchor on the dependency URL so unrelated `from:` parameter
             # labels (e.g. tween(from:to:)) in llms.txt are left alone.
             sed -i '' "s|metaphor\.git\", from: \"[0-9][^\"]*\"|metaphor.git\", from: \"${VERSION_NUM}\"|g" \
               README.md \
+              README.en.md \
               Sources/metaphor/metaphor.docc/GettingStarted.md \
               llms.txt
           fi
-          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt
+          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt
           if git diff --cached --quiet; then
             echo "::error::No version-bump diff produced."
             exit 1
@@ -204,7 +210,7 @@ jobs:
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
-            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, GettingStarted.md, llms.txt)' || '' }}.")
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt)' || '' }}.")
           echo "PR_NUMBER=${PR_URL##*/}" >> "$GITHUB_ENV"
 
       - name: Trigger CI on release branch

@@ -47,8 +47,16 @@ Pre-releases (beta/rc) are cut manually via the Release workflow's
 | Graduate to stable | `bump=minor`, label empty | `v0.3.0` |
 
 Pre-release tags (anything containing `-`) are automatically marked as
-Pre-release on GitHub. The `Package.swift` `from:` example in the README is only
-updated for stable releases.
+Pre-release on GitHub. The `from:` install snippet is bumped only for stable
+releases, across every file that carries it: `README.md`, `README.en.md`,
+`Sources/metaphor/metaphor.docc/GettingStarted.md`, `llms.txt`.
+
+That file set lives in two places that must always change together — the sed in
+`release.yml`'s *Push release branch* step, and `version_docs` in
+`scripts/validate-ai-docs.sh` (check #6, which compares every entry against
+`README.md`). Adding a file to only one side deadlocks releases: listed in the
+validator alone, it is checked but never bumped; listed in the sed alone, it is
+bumped but free to drift back.
 
 ## 配布防御(タグと Release asset)
 
