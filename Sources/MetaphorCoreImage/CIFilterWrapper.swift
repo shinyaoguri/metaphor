@@ -2,9 +2,9 @@
 import CoreImage
 import MetaphorCore
 
-/// CoreImage フィルタを Metal テクスチャに直接適用するラッパー。
+/// A wrapper that applies CoreImage filters directly to Metal textures.
 ///
-/// CIContext を MTLCommandQueue と共有し、ゼロコピーの Metal ⇔ CoreImage 相互運用を実現します。
+/// Shares a CIContext with an MTLCommandQueue to achieve zero-copy Metal <-> CoreImage interoperability.
 @MainActor
 public final class CIFilterWrapper {
     private let device: MTLDevice
@@ -13,9 +13,9 @@ public final class CIFilterWrapper {
     private let colorSpace: CGColorSpace
     private var texturePool: [String: MTLTexture] = [:]
     private var warnedMessages: Set<String> = []
-    /// 直近の in-place `apply(filterName:parameters:to:)` が MImage へ渡した
-    /// 出力テクスチャの識別子。次回呼び出しで置き換えられた旧テクスチャが
-    /// 「この wrapper 自身の前回出力」だと確認して回収するために持つ（#251）。
+    /// The identifier of the output texture that the most recent in-place
+    /// `apply(filterName:parameters:to:)` handed to MImage. Kept so that on the
+    /// next call, if the texture being replaced is confirmed to be this wrapper's own previous output, it can be reclaimed (#251).
     private var lastInPlaceOutputID: ObjectIdentifier?
 
     public init(device: MTLDevice, commandQueue: MTLCommandQueue) {
@@ -40,17 +40,17 @@ public final class CIFilterWrapper {
 
     // MARK: - MTLTexture に適用（PostProcess パイプライン用）
 
-    /// CIFilter 操作をコマンドバッファ内でソースからデスティネーションにエンコードします。
+    /// Encodes a CIFilter operation from source to destination within a command buffer.
     ///
-    /// フィルタ名不正・出力生成失敗などの場合はクラッシュせず、ソースをそのまま
-    /// デスティネーションへコピーして描画を継続します（警告ログを 1 回出力）。
-    /// 入力画像を取らないジェネレーター系フィルタは自動的に生成経路へ振り分けます。
+    /// On an invalid filter name, output generation failure, or similar, this does not
+    /// crash — it copies the source straight to the destination and continues drawing (logging a warning once).
+    /// Generator-style filters that take no input image are automatically routed to the generation path.
     /// - Parameters:
-    ///   - filterName: CIFilter 名文字列。
-    ///   - parameters: フィルタパラメータ辞書。
-    ///   - source: ソーステクスチャ。
-    ///   - destination: デスティネーションテクスチャ。
-    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    ///   - filterName: The CIFilter name string.
+    ///   - parameters: The filter parameter dictionary.
+    ///   - source: The source texture.
+    ///   - destination: The destination texture.
+    ///   - commandBuffer: The command buffer to encode into.
     public func apply(
         filterName: String,
         parameters: [String: Any],
@@ -105,17 +105,17 @@ public final class CIFilterWrapper {
 
     // MARK: - MImage に適用（スタンドアロン使用）
 
-    /// CIFilter を MImage にインプレースで適用します。
+    /// Applies a CIFilter to an MImage in place.
     ///
-    /// - Important: この API は GPU 完了を **同期的に待ちます**（`waitUntilCompleted`）。
-    ///   `draw()` 内で毎フレーム呼ぶとフレーム落ちの直接原因になります。フレーム内で
-    ///   使う場合は非ブロッキングの
-    ///   ``apply(filterName:parameters:source:destination:commandBuffer:)`` を使って
-    ///   既存のコマンドバッファへエンコードしてください。
+    /// - Important: This API **synchronously waits** for GPU completion (`waitUntilCompleted`).
+    ///   Calling it every frame inside `draw()` will directly cause dropped frames. If you
+    ///   need to use it within a frame, use the non-blocking
+    ///   ``apply(filterName:parameters:source:destination:commandBuffer:)`` to encode
+    ///   into an existing command buffer instead.
     /// - Parameters:
-    ///   - filterName: CIFilter 名文字列。
-    ///   - parameters: フィルタパラメータ辞書。
-    ///   - image: フィルタを適用する画像。
+    ///   - filterName: The CIFilter name string.
+    ///   - parameters: The filter parameter dictionary.
+    ///   - image: The image to apply the filter to.
     public func apply(
         filterName: String,
         parameters: [String: Any],
@@ -137,14 +137,14 @@ public final class CIFilterWrapper {
         recycleInPlaceTextures(replacedSource: src, newOutput: outTex, poolKey: "\(w)_\(h)_ci_output")
     }
 
-    /// in-place 適用後のテクスチャ回収（ping-pong、#251）。
+    /// Reclaims textures after in-place application (ping-pong, #251).
     ///
-    /// MImage へ渡した出力はプールから外し、置き換えられた旧テクスチャが
-    /// 「前回この wrapper が出力したもの」であれば次回の出力先としてプールへ戻す。
-    /// これで毎フレームの in-place 適用が 2 枚のスワップに収まり、呼び出しごとの
-    /// フルサイズ private テクスチャ新規確保を避ける。他所から来たテクスチャ
-    /// （loadImage 等）は別 MImage・呼び出し側と共有されている可能性があるため
-    /// 取り込まない（前回出力との同一性チェックが descriptor 一致の保証も兼ねる）。
+    /// Removes the output handed to MImage from the pool, and if the texture
+    /// being replaced was this wrapper's previous output, returns it to the pool as the next output target.
+    /// This keeps every frame's in-place application to a swap of two textures,
+    /// avoiding a fresh full-size private texture allocation on every call. Textures
+    /// from elsewhere (e.g. loadImage) may be shared with a different MImage or caller,
+    /// so they are not taken in (the identity check against the previous output also guarantees a matching descriptor).
     private func recycleInPlaceTextures(
         replacedSource: MTLTexture, newOutput: MTLTexture, poolKey: String
     ) {
@@ -162,19 +162,19 @@ public final class CIFilterWrapper {
 
     // MARK: - ジェネレーター（入力画像不要）
 
-    /// ジェネレーターフィルタ（入力画像不要）を使用して MTLTexture を生成します。
+    /// Generates an MTLTexture using a generator filter (no input image required).
     ///
-    /// - Important: この API は GPU 完了を **同期的に待ちます**（`waitUntilCompleted`）。
-    ///   `draw()` 内で毎フレーム呼ぶとフレーム落ちの直接原因になります。フレーム内で
-    ///   使う場合は非ブロッキングの
-    ///   ``generate(filterName:parameters:destination:commandBuffer:)`` を使って
-    ///   既存のコマンドバッファへエンコードしてください。
+    /// - Important: This API **synchronously waits** for GPU completion (`waitUntilCompleted`).
+    ///   Calling it every frame inside `draw()` will directly cause dropped frames. If you
+    ///   need to use it within a frame, use the non-blocking
+    ///   ``generate(filterName:parameters:destination:commandBuffer:)`` to encode
+    ///   into an existing command buffer instead.
     /// - Parameters:
-    ///   - filterName: CIFilter 名文字列。
-    ///   - parameters: フィルタパラメータ辞書。
-    ///   - width: 出力テクスチャの幅。
-    ///   - height: 出力テクスチャの高さ。
-    /// - Returns: 生成されたテクスチャ。失敗時は nil。
+    ///   - filterName: The CIFilter name string.
+    ///   - parameters: The filter parameter dictionary.
+    ///   - width: The output texture width.
+    ///   - height: The output texture height.
+    /// - Returns: The generated texture, or nil on failure.
     public func generate(
         filterName: String,
         parameters: [String: Any],
@@ -197,15 +197,15 @@ public final class CIFilterWrapper {
         return outTex
     }
 
-    /// ジェネレーターフィルタを既存のコマンドバッファへエンコードします。
+    /// Encodes a generator filter into an existing command buffer.
     ///
-    /// フィルタ名不正・出力生成失敗の場合はクラッシュせず何もエンコードしません
-    /// （警告ログを 1 回出力）。
+    /// On an invalid filter name or output generation failure, this does not crash —
+    /// it simply encodes nothing (logging a warning once).
     /// - Parameters:
-    ///   - filterName: CIFilter 名文字列。
-    ///   - parameters: フィルタパラメータ辞書。
-    ///   - destination: 出力先テクスチャ。
-    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    ///   - filterName: The CIFilter name string.
+    ///   - parameters: The filter parameter dictionary.
+    ///   - destination: The destination texture.
+    ///   - commandBuffer: The command buffer to encode into.
     public func generate(
         filterName: String,
         parameters: [String: Any],
@@ -232,7 +232,7 @@ public final class CIFilterWrapper {
 
     // MARK: - テクスチャ管理
 
-    /// キャッシュ済みテクスチャをすべて無効化・解放します。
+    /// Invalidates and releases all cached textures.
     public func invalidateTextures() {
         texturePool.removeAll()
     }
@@ -256,8 +256,8 @@ public final class CIFilterWrapper {
 
     // MARK: - 内部ヘルパー
 
-    /// パラメータを KVC で設定します。フィルタが持たないキーはクラッシュさせず
-    /// 警告を出して無視します（キー名 typo で NSException になるのを防ぐ）。
+    /// Sets parameters via KVC. Keys the filter does not have do not cause a crash —
+    /// they are logged and ignored (this prevents an NSException from a typo in a key name).
     private func setParameters(_ parameters: [String: Any], on filter: CIFilter, filterName: String) {
         let inputKeys = filter.inputKeys
         for (key, value) in parameters {
@@ -270,8 +270,8 @@ public final class CIFilterWrapper {
         }
     }
 
-    /// フィルタ適用に失敗したときのフォールバック: ソースをそのままコピーし、
-    /// ポストプロセスチェーンの次段へ前フレームの内容やゴミが流れるのを防ぐ。
+    /// Fallback for when filter application fails: copies the source straight through,
+    /// preventing the previous frame's content or garbage from flowing to the next stage of the post-process chain.
     private func blitCopy(from source: MTLTexture, to destination: MTLTexture, commandBuffer: MTLCommandBuffer) {
         guard source !== destination else { return }
         guard source.pixelFormat == destination.pixelFormat,
@@ -293,8 +293,8 @@ public final class CIFilterWrapper {
         blit.endEncoding()
     }
 
-    /// 同一メッセージの警告はプロセス内で 1 回だけ出力します
-    /// （ポストプロセスは毎フレーム呼ばれるためログ洪水を防ぐ）。
+    /// Logs a warning for the same message only once per process
+    /// (post-processing runs every frame, so this prevents a log flood).
     private func warnOnce(_ message: String) {
         guard warnedMessages.insert(message).inserted else { return }
         print("[metaphor.CoreImage] Warning: \(message)")

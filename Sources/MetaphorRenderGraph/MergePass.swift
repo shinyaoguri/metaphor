@@ -1,10 +1,10 @@
 @preconcurrency import Metal
 import MetaphorCore
 
-/// 2つの上流レンダーパスの出力を1つのテクスチャにブレンドします。
+/// Blends the outputs of two upstream render passes into a single texture.
 ///
-/// ``MergePass`` はコンピュートシェーダーを使用して2つの入力テクスチャを
-/// 設定可能なブレンドモード（add、alpha、multiply、screen）で合成します。
+/// ``MergePass`` uses a compute shader to composite two input textures with a
+/// configurable blend mode (add, alpha, multiply, screen).
 ///
 /// ```swift
 /// let merged = try MergePass(scenePass, fxPass, blend: .add, device: device, shaderLibrary: shaderLibrary)
@@ -13,18 +13,18 @@ import MetaphorCore
 public final class MergePass: RenderPassNode {
     // MARK: - ブレンドタイプ
 
-    /// 2つのテクスチャをマージする際に使用するブレンドモードを定義します。
+    /// Defines the blend mode used when merging two textures.
     public enum BlendType: String, CaseIterable, Sendable {
-        /// 加算ブレンディング（A + B）。
+        /// Additive blending (A + B).
         case add
-        /// アルファ合成（B over A）。
+        /// Alpha compositing (B over A).
         case alpha
-        /// 乗算ブレンディング（A * B）。
+        /// Multiply blending (A * B).
         case multiply
-        /// スクリーンブレンディング（1 - (1-A) * (1-B)）。
+        /// Screen blending (1 - (1-A) * (1-B)).
         case screen
 
-        /// マージコンピュートシェーダーに渡される生のインデックス値。
+        /// The raw index value passed to the merge compute shader.
         var rawIndex: UInt32 {
             switch self {
             case .add:      return 0
@@ -37,60 +37,60 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - MergeParams（GPU 構造体）
 
-    /// マージコンピュートシェーダーに渡されるパラメータ。
+    /// The parameters passed to the merge compute shader.
     private struct MergeParams {
         var blend_mode: UInt32
     }
 
     // MARK: - パブリックプロパティ
 
-    /// このマージパスを識別するデバッグラベル。
+    /// A debug label that identifies this merge pass.
     public let label: String
 
-    /// 両入力をマージした後の出力テクスチャ。
+    /// The output texture after merging both inputs.
     public var output: MTLTexture?
 
-    /// 合成に使用するブレンドモード。実行時に変更可能です。
+    /// The blend mode used for compositing. Can be changed at runtime.
     public var blendType: BlendType
 
     // MARK: - プライベートプロパティ
 
-    /// ベース（背景）レンダーパス。
+    /// The base (background) render pass.
     private let passA: RenderPassNode
 
-    /// オーバーレイ（前景）レンダーパス。
+    /// The overlay (foreground) render pass.
     private let passB: RenderPassNode
 
-    /// テクスチャ作成に使用する Metal デバイス。
+    /// The Metal device used to create textures.
     private let device: MTLDevice
 
-    /// マージシェーダーのコンピュートパイプラインステート。
+    /// The compute pipeline state for the merge shader.
     private let mergePipeline: MTLComputePipelineState
 
-    /// キャッシュ済み出力テクスチャ。サイズ変更時に再作成されます。
+    /// The cached output texture. Recreated when the size changes.
     private var outputTexture: MTLTexture?
 
-    /// 出力テクスチャの現在の幅。
+    /// The current width of the output texture.
     private var outputWidth: Int = 0
 
-    /// 出力テクスチャの現在の高さ。
+    /// The current height of the output texture.
     private var outputHeight: Int = 0
 
-    /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
-    /// 初期値 `.max` は「未実行」のセンチネル（`frameToken` は 0 始まりで衝突しない）。
+    /// The frame token from the last time this node was executed (used to memoize against duplicate execution within a frame).
+    /// The initial value `.max` is a "not yet executed" sentinel (`frameToken` starts at 0, so there is no collision).
     private var lastExecutedToken: UInt64 = .max
 
     // MARK: - 初期化
 
-    /// 2つの上流パスをブレンドする新しいマージパスを作成します。
+    /// Creates a new merge pass that blends two upstream passes.
     ///
     /// - Parameters:
-    ///   - a: ベース（背景レイヤー）レンダーパス。
-    ///   - b: オーバーレイ（前景レイヤー）レンダーパス。
-    ///   - blend: 合成用のブレンドモード。
-    ///   - device: パイプラインステートとテクスチャの作成に使用する Metal デバイス。
-    ///   - shaderLibrary: マージコンピュート関数を提供するシェーダーライブラリ。
-    /// - Throws: マージシェーダーが見つからないまたはパイプライン作成に失敗した場合にエラーをスローします。
+    ///   - a: The base (background layer) render pass.
+    ///   - b: The overlay (foreground layer) render pass.
+    ///   - blend: The blend mode used for compositing.
+    ///   - device: The Metal device used to create the pipeline state and textures.
+    ///   - shaderLibrary: The shader library that provides the merge compute function.
+    /// - Throws: An error if the merge shader cannot be found or pipeline creation fails.
     public init(
         _ a: RenderPassNode,
         _ b: RenderPassNode,
@@ -116,12 +116,12 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - RenderPassNode
 
-    /// 両方の入力パスを実行し、ブレンドモードを使用して出力をマージします。
+    /// Executes both input passes and merges their output using the blend mode.
     ///
     /// - Parameters:
-    ///   - commandBuffer: 処理をエンコードする Metal コマンドバッファ。
-    ///   - time: 経過時間（秒）。
-    ///   - renderer: 共有リソースを提供する `MetaphorRenderer` 参照。
+    ///   - commandBuffer: The Metal command buffer to encode the work into.
+    ///   - time: The elapsed time, in seconds.
+    ///   - renderer: A reference to the `MetaphorRenderer` that provides shared resources.
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         // 同一フレーム内で既に実行済みなら、計算済みの output をそのまま使う。
         guard lastExecutedToken != renderer.frameToken else { return }
@@ -169,7 +169,7 @@ public final class MergePass: RenderPassNode {
 
     // MARK: - プライベート
 
-    /// 必要なサイズ・フォーマットの出力テクスチャが存在することを保証し、必要に応じて再作成します。
+    /// Ensures an output texture of the required size and format exists, recreating it if necessary.
     private func ensureOutputTexture(width: Int, height: Int, pixelFormat: MTLPixelFormat) {
         guard width != outputWidth || height != outputHeight
                 || outputTexture?.pixelFormat != pixelFormat else { return }
