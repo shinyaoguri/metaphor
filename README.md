@@ -261,3 +261,5 @@ AI エージェント経由で使っている場合も同様です — エージ
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
+
+GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。
