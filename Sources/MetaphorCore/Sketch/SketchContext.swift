@@ -170,6 +170,12 @@ public final class SketchContext {
         performanceHUD = nil
     }
 
+    // MARK: - Pixel Readback (internal)
+
+    /// 影オン経路で `loadPixels()` の同一フレーム読み戻しが使えないことを
+    /// 一度だけ警告するためのフラグ（毎フレーム警告するとログが埋まる）。
+    var didWarnDeferredPixelReadback = false
+
     // MARK: - Compute State (internal)
 
     /// 現在のコマンドバッファ。コンピュートフェーズ中のみ有効。
