@@ -293,6 +293,20 @@ public final class SoundFile {
         }
     }
 
+    /// Disables spectrum analysis and releases the analyzer.
+    ///
+    /// Removes the tap installed on the main mixer by ``enableAnalysis(fftSize:)``.
+    /// After this call ``spectrum``, ``analysisVolume``, ``isBeat`` and ``band(_:)``
+    /// report their neutral values again, and ``update()`` becomes a no-op.
+    /// Calling it while analysis is not enabled does nothing.
+    public func disableAnalysis() {
+        guard _analyzer != nil else { return }
+        audioEngine.engine.mainMixerNode.removeTap(onBus: 0)
+        _analyzer = nil
+        sampleBuffer = nil
+        tapScratch = []
+    }
+
     /// Updates analysis data (call this at the top of `draw()`).
     public func update() {
         guard let analyzer = _analyzer else { return }

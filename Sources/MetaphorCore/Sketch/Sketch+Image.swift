@@ -46,6 +46,24 @@ extension Sketch {
         context.createImage(width, height)
     }
 
+    /// 画像に GPU 画像フィルタを適用します（in-place）。
+    ///
+    /// レンダラのコンピュートパイプライン上で処理するため、CPU 版の
+    /// ``MImage/filter(_:)`` よりも高速です。使い分け:
+    ///
+    /// - **GPU 版（本メソッド）**: スケッチ実行中（レンダラが生きている文脈）で使う。
+    ///   毎フレーム適用するような用途はこちら。
+    /// - **CPU 版 ``MImage/filter(_:)``**: レンダラを必要としないため、スケッチ外や
+    ///   単体画像の一括処理に使える。`loadPixels()` → 処理 → `updatePixels()` を
+    ///   まとめて実行する。
+    ///
+    /// - Parameters:
+    ///   - image: 対象の画像（内容が書き換わります）。
+    ///   - type: 適用するフィルタタイプ。
+    public func filter(_ image: MImage, _ type: FilterType) {
+        context.filter(image, type)
+    }
+
     /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
     ///
     /// コピー元はオフスクリーンレンダーターゲットの現在の内容（前フレームまでの
@@ -365,42 +383,69 @@ extension Sketch {
 
     /// SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
     ///
-    /// ``endSVG()`` までの 2D 描画呼び出しが、画面へのラスタライズと並行して
+    /// ``endSVGRecord()`` までの 2D 描画呼び出しが、画面へのラスタライズと並行して
     /// 真のベクタ（`<circle>`/`<path>` 等）として記録されます。プロッタ
     /// （AxiDraw 等）や印刷向けの出力に使えます。対応外の機能
     /// （`image()`/`text()` 等）は警告を出力してスキップされます。
     ///
     /// ```swift
     /// func draw() {
-    ///     if wantExport { beginSVG("output/sketch.svg") }
+    ///     if wantExport { beginSVGRecord("output/sketch.svg") }
     ///     background(255)
     ///     circle(width / 2, height / 2, 200)
-    ///     if wantExport { endSVG(); wantExport = false }
+    ///     if wantExport { endSVGRecord(); wantExport = false }
     /// }
     /// ```
     ///
     /// - Parameter path: 出力する SVG ファイルパス。
-    public func beginSVG(_ path: String) {
-        context.beginSVG(path)
+    public func beginSVGRecord(_ path: String) {
+        context.beginSVGRecord(path)
     }
 
-    /// SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
+    /// SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
+    public func endSVGRecord() {
+        context.endSVGRecord()
+    }
+
+    /// ``beginSVGRecord(_:)`` の旧名です。
+    @available(*, deprecated, renamed: "beginSVGRecord(_:)")
+    public func beginSVG(_ path: String) {
+        beginSVGRecord(path)
+    }
+
+    /// ``endSVGRecord()`` の旧名です。
+    @available(*, deprecated, renamed: "endSVGRecord()")
     public func endSVG() {
-        context.endSVG()
+        endSVGRecord()
     }
 
     /// フレーム連番の画像ファイルとしての記録を開始します。
     ///
+    /// ``endFrameRecord()`` を呼ぶまで、毎フレームが `pattern` に従った
+    /// 連番ファイル名で `directory` へ書き出されます。
+    ///
     /// - Parameters:
     ///   - directory: 出力ディレクトリ（`nil` の場合はデフォルトを使用）。
     ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
-    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
-        context.beginRecord(directory: directory, pattern: pattern)
+    public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
+        context.beginFrameRecord(directory: directory, pattern: pattern)
     }
 
     /// フレーム連番の記録を停止します。
+    public func endFrameRecord() {
+        context.endFrameRecord()
+    }
+
+    /// ``beginFrameRecord(directory:pattern:)`` の旧名です。
+    @available(*, deprecated, renamed: "beginFrameRecord(directory:pattern:)")
+    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
+        beginFrameRecord(directory: directory, pattern: pattern)
+    }
+
+    /// ``endFrameRecord()`` の旧名です。
+    @available(*, deprecated, renamed: "endFrameRecord()")
     public func endRecord() {
-        context.endRecord()
+        endFrameRecord()
     }
 
     /// 単一フレームを画像ファイルに保存します。
@@ -429,8 +474,16 @@ extension Sketch {
     }
 
     /// 動画の録画を非同期で停止しファイルを完成させます。
+    ///
+    /// ``endVideoRecord(completion:)`` の async/await 版です。
+    public func endVideoRecordAsync() async {
+        await context.endVideoRecordAsync()
+    }
+
+    /// ``endVideoRecordAsync()`` の旧名です。
+    @available(*, deprecated, renamed: "endVideoRecordAsync()")
     public func endVideoRecord() async {
-        await context.endVideoRecord()
+        await endVideoRecordAsync()
     }
 
     // MARK: Offline Rendering

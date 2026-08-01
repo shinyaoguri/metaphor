@@ -539,7 +539,7 @@ extension SketchContext {
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
+        configure: (MTLComputeCommandEncoder) -> Void
     ) {
         guard threads > 0 else {
             metaphorWarning("dispatch: threads must be positive (got \(threads)); skipped")
@@ -565,7 +565,7 @@ extension SketchContext {
         _ kernel: ComputeKernel,
         width: Int,
         height: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
+        configure: (MTLComputeCommandEncoder) -> Void
     ) {
         guard width > 0, height > 0 else {
             metaphorWarning("dispatch: width/height must be positive (got \(width)x\(height)); skipped")
@@ -580,6 +580,31 @@ extension SketchContext {
         let threadsPerGroup = MTLSize(width: w, height: h, depth: 1)
         let gridSize = MTLSize(width: width, height: height, depth: 1)
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
+    }
+
+    /// ``dispatch(_:threads:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:threads:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        threads: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        dispatch(kernel, threads: threads, configure: configure)
+    }
+
+    /// ``dispatch(_:width:height:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:width:height:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        width: Int,
+        height: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        dispatch(kernel, width: width, height: height, configure: configure)
     }
 
     /// データ依存関係を解決するためにコンピュートディスパッチ間にメモリバリアを挿入します。

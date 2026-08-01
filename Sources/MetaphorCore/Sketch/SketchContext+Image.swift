@@ -47,34 +47,46 @@ extension SketchContext {
     /// SVG 記録を開始します。
     ///
     /// 以降の 2D 描画呼び出しは画面へのラスタライズと並行して SVG にも記録され、
-    /// ``endSVG()`` でファイルへ書き出されます。対応外の機能（`image()`/`text()`/
+    /// ``endSVGRecord()`` でファイルへ書き出されます。対応外の機能（`image()`/`text()`/
     /// グラデーション等）は警告を出力してスキップされます（機能ごとに 1 回）。
     ///
     /// - Parameter path: 出力する SVG ファイルパス。
-    public func beginSVG(_ path: String) {
+    public func beginSVGRecord(_ path: String) {
         guard canvas.svgRecorder == nil else {
-            metaphorWarning("beginSVG: SVG recording is already active")
+            metaphorWarning("beginSVGRecord: SVG recording is already active")
             return
         }
         canvas.svgRecorder = SVGRecorder(
             width: canvas.width, height: canvas.height, outputPath: path)
     }
 
-    /// SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
+    /// SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
     ///
     /// 親ディレクトリがなければ作成します。出力は決定論的（同じ描画呼び出し列
     /// からは常に同じバイト列）で、ゴールデンファイル比較でテストできます。
-    public func endSVG() {
+    public func endSVGRecord() {
         guard let recorder = canvas.svgRecorder else {
-            metaphorWarning("endSVG: no active SVG recording (call beginSVG first)")
+            metaphorWarning("endSVGRecord: no active SVG recording (call beginSVGRecord first)")
             return
         }
         canvas.svgRecorder = nil
         do {
             try DataIO.writeData(Data(recorder.svgString().utf8), toPath: recorder.outputPath)
         } catch {
-            metaphorWarning("endSVG: failed to write SVG: \(error.localizedDescription)")
+            metaphorWarning("endSVGRecord: failed to write SVG: \(error.localizedDescription)")
         }
+    }
+
+    /// ``beginSVGRecord(_:)`` の旧名です。
+    @available(*, deprecated, renamed: "beginSVGRecord(_:)")
+    public func beginSVG(_ path: String) {
+        beginSVGRecord(path)
+    }
+
+    /// ``endSVGRecord()`` の旧名です。
+    @available(*, deprecated, renamed: "endSVGRecord()")
+    public func endSVG() {
+        endSVGRecord()
     }
 
     /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
@@ -155,6 +167,10 @@ extension SketchContext {
     }
 
     /// 画像に GPU 画像フィルターを適用します。
+    ///
+    /// レンダラ経由のため CPU 版 ``MImage/filter(_:)`` より高速です。レンダラを
+    /// 必要としない単体画像の処理には CPU 版を使ってください。
+    ///
     /// - Parameters:
     ///   - image: 対象の画像。
     ///   - type: 適用するフィルタータイプ。
@@ -426,7 +442,7 @@ extension SketchContext {
     /// - Parameters:
     ///   - directory: 出力ディレクトリ（nil の場合はデスクトップに自動生成）。
     ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
-    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
+    public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
         let dir: String
         if let directory {
             dir = directory
@@ -439,8 +455,20 @@ extension SketchContext {
     }
 
     /// フレーム連番エクスポートを停止します。
-    public func endRecord() {
+    public func endFrameRecord() {
         renderer.frameExporter.endSequence()
+    }
+
+    /// ``beginFrameRecord(directory:pattern:)`` の旧名です。
+    @available(*, deprecated, renamed: "beginFrameRecord(directory:pattern:)")
+    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
+        beginFrameRecord(directory: directory, pattern: pattern)
+    }
+
+    /// ``endFrameRecord()`` の旧名です。
+    @available(*, deprecated, renamed: "endFrameRecord()")
+    public func endRecord() {
+        endFrameRecord()
     }
 
     /// 動画録画を開始します。
@@ -476,8 +504,16 @@ extension SketchContext {
     }
 
     /// 動画録画を非同期で終了します。
+    ///
+    /// ``endVideoRecord(completion:)`` の async/await 版です。
+    public func endVideoRecordAsync() async {
+        await renderer.videoExporter.endRecordAsync()
+    }
+
+    /// ``endVideoRecordAsync()`` の旧名です。
+    @available(*, deprecated, renamed: "endVideoRecordAsync()")
     public func endVideoRecord() async {
-        await renderer.videoExporter.endRecord()
+        await endVideoRecordAsync()
     }
 
     /// 現在のフレームを単一画像ファイルとして保存します（Processing 互換）。

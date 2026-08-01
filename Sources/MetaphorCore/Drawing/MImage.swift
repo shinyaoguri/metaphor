@@ -314,7 +314,11 @@ public final class MImage {
         self.needsGPUReadback = true
     }
 
-    /// ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します。
+    /// ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します（CPU 版）。
+    ///
+    /// レンダラを必要としないため、スケッチ外や単体画像の一括処理に使えます。
+    /// スケッチ実行中に毎フレーム適用するような用途では、レンダラ経由で高速な
+    /// GPU 版 `Sketch.filter(_:_:)` を使ってください。
     ///
     /// - Parameter type: 適用するフィルタを指定する ``FilterType``。
     public func filter(_ type: FilterType) {

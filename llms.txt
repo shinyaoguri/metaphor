@@ -95,12 +95,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- 指定したカラーチャンネル値でキャンバスをクリアします。
 - `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 以降の描画を指定した矩形にクリッピングします。
 - `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します。
+- `func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
 - `func beginGIFRecord(fps: Int = 15)` -- GIF エクスポート用のフレーム記録を開始します。
 - `func beginOfflineRender(fps: Double = 60)` -- 決定論的タイミングのオフラインレンダリングモードを有効にします。
-- `func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
 - `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
 - `func beginShape3D(_ mode: ShapeMode = .polygon)` -- 3D カスタムシェイプの頂点記録を開始します。
-- `func beginSVG(_ path: String)` -- SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
+- `func beginSVGRecord(_ path: String)` -- SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
 - `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- 動画出力の録画を開始します。
 - `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- 3次ベジェ曲線を描画します。
 - `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- 現在のシェイプに3次ベジェ頂点を追加します。
@@ -167,8 +167,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- シャドウマッピングを無効にします。
-- `func dispatch(_ kernel: ComputeKernel, threads: Int, _ configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
-- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, _ configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
+- `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
+- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
 - `func drawParticles(_ system: ParticleSystem)` -- パーティクルシステムを描画します（``draw()`` 内で呼び出してください）。
 - `func drawScene(_ root: Node)` -- 指定ルートノードからシーングラフを描画します。
@@ -182,20 +182,21 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
 - `func endContour()` -- 現在のコンター定義を終了します。
+- `func endFrameRecord()` -- フレーム連番の記録を停止します。
 - `func endGIFRecord(_ path: String? = nil) throws` -- 記録を停止し GIF ファイルに書き出します。
-- `func endGIFRecord(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。
+- `func endGIFRecordAsync(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。
 - `func endOfflineRender()` -- オフラインレンダリングモードを無効にしリアルタイムタイミングに戻します。
-- `func endRecord()` -- フレーム連番の記録を停止します。
 - `func endShape(_ close: CloseMode = .open)` -- 現在のシェイプの記録を終了し描画します。
 - `func endShape3D(_ close: CloseMode = .open)` -- 現在の 3D シェイプの記録を終了し描画します。
-- `func endSVG()` -- SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
-- `func endVideoRecord() async` -- 動画の録画を非同期で停止しファイルを完成させます。
+- `func endSVGRecord()` -- SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
 - `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
+- `func endVideoRecordAsync() async` -- 動画の録画を非同期で停止しファイルを完成させます。
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
 - `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
 - `func fill(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で塗りつぶし色を設定します。
 - `func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で塗りつぶし色を設定します。
+- `func filter(_ image: MImage, _ type: FilterType)` -- 画像に GPU 画像フィルタを適用します（in-place）。
 - `func frameRate(_ fps: Int)` -- フレームレートを動的に変更します。
 - `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- キャプチャデバイスの最新フレームを指定位置に描画します。
 - `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置に描画します。
@@ -1199,7 +1200,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(path: String, device: any MTLDevice) throws` -- ファイルパスからテクスチャを読み込んで画像を作成します。
 - `init(texture: any MTLTexture)` -- 既存の `MTLTexture` から画像を作成します。
 - `static func createImage(_ width: Int, _ height: Int, device: any MTLDevice) -> MImage?` -- ピクセル操作に適した空の画像を作成します。
-- `func filter(_ type: FilterType)` -- ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します。
+- `func filter(_ type: FilterType)` -- ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します（CPU 版）。
 - `func get(_ x: Int, _ y: Int) -> Color` -- 指定された座標のピクセルの色を返します。
 - `func loadPixels()` -- GPU テクスチャから CPU 上の ``pixels`` 配列にピクセルデータを読み込みます。
 - `func mask(_ maskImage: MImage)` -- マスク画像をこの画像のアルファチャンネルへ適用します。
@@ -1620,6 +1621,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var spectrum: [Float] { get }` -- Returns spectrum data (available once analysis is enabled).
 - `init(path: String) throws` -- Loads an audio file from the given path.
 - `func band(_ index: Int) -> Float` -- Returns the energy of a frequency band (via `AudioAnalyzer`).
+- `func disableAnalysis()` -- Disables spectrum analysis and releases the analyzer.
 - `func enableAnalysis(fftSize: Int = 1024)` -- Enables spectrum analysis of the audio output.
 - `func loop()` -- Enables looping and starts playback.
 - `func pause()` -- Pauses playback.
