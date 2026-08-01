@@ -27,9 +27,12 @@ private let goldenImageSize = 128
 ///
 /// ゴールデン照合は**閾値つきピクセル比較**（``GoldenTolerance``）で行う。SHA256 は
 /// 「同一環境での再現性」を測るためだけに使い、ゴールデンの合否判定には使わない。
-/// 理由は、CI ランナー（仮想 GPU）と手元の Apple Silicon で同じシーンのハッシュが
-/// 一致しないため（実測結果は Issue #330 に記録）。ハッシュ完全一致を合否条件にすると
-/// 環境ごとにゴールデンを持つ必要が生じ、保守が破綻する。
+///
+/// 実測（Issue #330）では CI の macOS ランナーと手元の Apple Silicon で 6 シーン中
+/// 5 シーンがバイト単位で一致し、PBR シーンだけが 16384 画素中 1 画素・1/255 ずれた。
+/// つまり環境差はごく小さいが、**1 画素でもズレたらハッシュは不一致**になる。
+/// ハッシュ完全一致を合否条件にすると環境ごとにゴールデンを持つしかなくなり、
+/// 意図した見た目変更のたびに全環境ぶんの更新が必要になって保守が破綻する。
 @Suite("Golden Image Regression", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
 struct GoldenImageTests {

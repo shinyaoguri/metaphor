@@ -344,11 +344,18 @@ public struct GoldenTolerance: Sendable {
 
     /// 既定。GPU 世代差の量子化揺れ（±2/255）だけを吸収し、
     /// それを超える画素は 1 つも許さない。
+    ///
+    /// 実測（Issue #330）: 2D 図形・ブレンドモード・シャドウ・ポストプロセスの各シーンは
+    /// GitHub Actions の macOS ランナーと手元の Apple Silicon で**バイト単位で一致**した
+    /// （maxChannelDiff=0）。この許容差は現時点では使われていない安全余裕。
     public static let `default` = GoldenTolerance(maxChannelDiff: 2, maxExceedingRatio: 0)
 
-    /// ライティング/ポストプロセスなど浮動小数の累積があるシーン向け。
-    /// エッジ 1〜2 列ぶんの揺れ（〜0.5%）まで許容する。
-    public static let shaded = GoldenTolerance(maxChannelDiff: 6, maxExceedingRatio: 0.005)
+    /// ライティング/ポストプロセスなど浮動小数の累積（pow/exp）があるシーン向け。
+    ///
+    /// 実測（Issue #330）: 環境差が出たのは PBR シーンのみで、**16384 画素中 1 画素が
+    /// 1/255 ずれる**だけだった。ここはその実測値に対して振幅 4 倍・画素数 32 倍の
+    /// 余裕を取った値。GPU 世代が増えて足りなくなったらログの実測値を根拠に見直す。
+    public static let shaded = GoldenTolerance(maxChannelDiff: 4, maxExceedingRatio: 0.002)
 }
 
 // MARK: - ゴールデンの保存・照合
