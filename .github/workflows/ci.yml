@@ -242,6 +242,11 @@ jobs:
     runs-on: macos-14
     # ビルドのみ（テストなし）で通常数分。build-and-test と同じ理由で上限を明示。
     timeout-minutes: 45
+    # 必須ステータスチェック昇格（Issue #332）に伴い追加。build-and-test と同じ理由で
+    # statuses: write が要る（下の bridge ステップ参照）。
+    permissions:
+      contents: read
+      statuses: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -274,6 +279,19 @@ jobs:
         # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
         # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
         run: swift build --target metaphor
+      - name: Bridge to legacy status (workflow_dispatch only)
+        # build-and-test の同名ステップと同じ理由（#37）。このジョブも Issue #332 で
+        # 必須ステータスチェックに昇格したため、workflow_dispatch 経由の実行
+        # （examples-index 自動 push 後の再ディスパッチ等）でも legacy Status を
+        # 補完しないと、その SHA がこのチェックを永久に満たせず PR が merge 不能になる。
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=build-swift-5-10 \
+            -f description="CI passed via workflow_dispatch run"
 
   # Examples の *全数*（278 本）は per-PR では建てない。各 example は独立した
   # SwiftPM パッケージで metaphor をフルビルドし直すため、全数は時間もコストも
