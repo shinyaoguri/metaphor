@@ -232,9 +232,14 @@ dependencies: [
 
 ## Troubleshooting
 
+[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) を導入済みなら、まず `metaphor doctor` を実行してください。Swift / Xcode のバージョン、テンプレートの有無、`Syphon.framework` のロード状況をまとめて確認でき、よくあるセットアップの詰まりの大半をこれ一つでカバーできます。
+
+- **Intel Mac でビルド・実行できない** — metaphor は **Apple Silicon 専用**です（[Requirements](#requirements) 参照）。Intel 向けのコードパスは無く、対応予定もありません。`swift build` 自体は Package マニフェスト上で Intel を弾いていないため一見ビルドが通ることもありますが、実行は未検証・非サポートです。ビルドエラーではなく実行時に Metal の機能不足や性能問題として現れる可能性があります。
+- **`swift build` / `swift run` が依存解決で失敗する**（checksum 不一致、"unable to download"、`Syphon.xcframework.zip` の 404 など）— `Syphon` バイナリターゲットは `Package.swift` に固定された GitHub Release asset の URL から取得されます。まず SwiftPM のキャッシュをクリアして再解決してください: `swift package purge-cache && swift build`（またはスケッチのディレクトリで `.build` を削除）。改善しない場合は `github.com` との間に（社内プロキシ・ファイアウォールなど）通信を妨げるものが無いか確認してください。公開済みタグと asset は保護され週次で死活監視されているため、現行リリースで 404 が出る場合はバグの可能性が高く、[報告](#フィードバック--issue-報告)してもらえると助かります。
 - **`make build` が失敗する / Syphon.xcframework が無い** — 初回は `make setup` を実行してサブモジュール初期化と Syphon.xcframework のビルドを済ませてください。状態は `make check` で確認できます。
 - **ライブビューア（`metaphor watch`）が真っ黒** — CLI 側の事象です。[metaphor-cli の Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting) を参照してください。
 - **AI から「いま見えている絵」を観測できない** — `metaphor watch`（共有セッション）が動いているか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
+- **マイクやカメラが動かない、権限ダイアログが出ない** — [docs/permissions.md](docs/permissions.md)（英語）に、`swift run` バイナリでの TCC 権限の仕組み（ダイアログはスケッチではなくターミナルアプリに紐づく）と、拒否後の復旧手順をまとめています。
 - **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
 
 ## フィードバック / Issue 報告

@@ -3,6 +3,10 @@
 // カメラ映像に対して VNDetectFaceRectanglesRequest を実行し、
 // 検出された顔に矩形を描画するサンプル。
 // CaptureDevice → MLTextureConverter → Vision の連携を示す。
+//
+// 初回実行時は macOS がカメラ権限を要求する。swift run バイナリでの
+// ダイアログの仕組み・拒否後の復旧手順はリポジトリ直下の
+// docs/permissions.md を参照。
 
 import metaphor
 import Vision
