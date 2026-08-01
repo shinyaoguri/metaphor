@@ -51,6 +51,7 @@ Maintaining this file
 - `SECURITY.md` with a private path for reporting vulnerabilities ([#340](https://github.com/shinyaoguri/metaphor/pull/340))
 - `CONTRIBUTING.md` and GitHub Issue / pull request templates, including routing between this repository and [`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli) ([#341](https://github.com/shinyaoguri/metaphor/pull/341))
 - Both READMEs now link to the published DocC API reference ([#342](https://github.com/shinyaoguri/metaphor/pull/342))
+- `docs/permissions.md` explaining microphone/camera TCC permissions for `swift run` binaries, an English `docs/README.en.md`, expanded README Troubleshooting (Intel Mac, SwiftPM dependency-resolution failures), and `Examples/LEARNING_PATH.md`, a curated "learn in order" route through the example catalog ([#337](https://github.com/shinyaoguri/metaphor/issues/337))
 
 ### Changed
 
