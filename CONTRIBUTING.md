@@ -50,6 +50,14 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   sections from [`.github/pull_request_template.md`](.github/pull_request_template.md).
 - The required CI check is `build-and-test` (it also builds against the
   Swift 5.10 / Xcode 15.4 minimum toolchain). It must be green before merge.
+- **If your change is user-facing, add a line to `## [Unreleased]` in
+  [CHANGELOG.md](CHANGELOG.md)** — new or changed API, behavior differences,
+  bug fixes people would notice, anything that needs a migration step. Put
+  breaking changes under `### Breaking Changes` (they become the 1.0 migration
+  guide). Internal-only work — design docs, CI plumbing, refactors with no
+  observable effect — doesn't need an entry. The release workflow refuses to
+  cut a release while that section is empty, so nothing ships undocumented;
+  see [docs/releasing.md](docs/releasing.md) for the mechanics.
 - `release:patch` / `release:minor` / `release:major` labels drive automatic
   releases on merge — they're **maintainer-only**; please don't add them to
   your PR.
