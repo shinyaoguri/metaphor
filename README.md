@@ -4,6 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)
 [![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -146,7 +147,7 @@ mouseX, mouseY, frameCount, deltaTime, width, height
 random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 ```
 
-API 全体は [`llms.txt`](llms.txt) にまとまっています。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
+API 全体は [`llms.txt`](llms.txt) にまとまっています。ブラウザで型やメソッドを引くなら **[API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)**（[プロジェクトサイト](https://shinyaoguri.github.io/metaphor/)）が便利です。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
 
 ## AI と協調する（観測 → 操作 → 反復）
 
@@ -260,3 +261,5 @@ AI エージェント経由で使っている場合も同様です — エージ
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
+
+GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。

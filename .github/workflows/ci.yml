@@ -19,6 +19,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: macos-26
+    # 通常 3〜6 分（Syphon キャッシュミス時でも 15 分以内）。ハングした場合の
+    # 既定値は 6 時間で、macOS ランナーは 10 倍課金なので上限を明示する。
+    timeout-minutes: 45
     permissions:
       contents: write  # Required to auto-push regenerated examples index back to PR branches.
       actions: write   # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
@@ -189,6 +192,8 @@ jobs:
   # 引き上げる判断タイミング（README の Requirements も併せて更新する）。
   build-swift-5-10:
     runs-on: macos-14
+    # ビルドのみ（テストなし）で通常数分。build-and-test と同じ理由で上限を明示。
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
