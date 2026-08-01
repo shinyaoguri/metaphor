@@ -80,6 +80,8 @@ swift run
 
 release workflow は Syphon.xcframework をビルドして GitHub Release asset として公開し、`Package.swift` の binary target URL/checksum を更新します。
 
+ユーザー影響のある変更は [CHANGELOG.md](CHANGELOG.md) の `## [Unreleased]` に 1 行足してください。リリース時に `scripts/changelog.py` がその節を `## [X.Y.Z] - YYYY-MM-DD` へ昇格し、GitHub Release 本文の先頭へ転記します。**Unreleased が空だとリリースは冒頭で中断します**（`python3 scripts/changelog.py check` で手元でも確認可）。
+
 ## Notes
 
 - macOS 14.0+ / Apple Silicon / Swift 5.10+ を対象にしています。

@@ -58,6 +58,46 @@ That file set lives in two places that must always change together — the sed i
 validator alone, it is checked but never bumped; listed in the sed alone, it is
 bumped but free to drift back.
 
+## CHANGELOG とリリースノート(Issue #335)
+
+[CHANGELOG.md](../CHANGELOG.md) は [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+形式で、**ユーザー影響のある PR が `## [Unreleased]` に 1 行足す**運用。リリース時の
+昇格と Release 本文への転記は `scripts/changelog.py` が行い、`release.yml` から
+3 か所で呼ばれる。
+
+| いつ | 何を | 失敗したら |
+|------|------|-----------|
+| ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `## [Unreleased]` が存在し、中身が空でないこと | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
+| *Push release branch*(stable のみ) | `changelog.py release <version>` — `## [Unreleased]` を `## [X.Y.Z] - YYYY-MM-DD` へ昇格し、空の Unreleased を上に開き、末尾のリンク定義を更新。バージョンバンプと同じコミットに含める | 同上(タグ前) |
+| *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書き、Syphon checksum を足す。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |
+
+設計上の約束:
+
+- **ゲートは中断であって警告ではない。** 「何が変わったか」を書けないリリースは出さない。
+  ただし止まるのは冒頭ステップなので、直して再 dispatch するだけでよい。
+- **本当にユーザー影響が無いリリース**(asset の焼き直し等)は、その旨を明示的に書けば通る:
+
+  ```markdown
+  ### Changed
+
+  - _No user-facing changes._
+  ```
+
+- **昇格は stable のみ。** prerelease(`-beta.N` 等)は `## [Unreleased]` を消費せず、
+  Release 本文にはその時点の Unreleased をプレビュー表示する。サイクル中の変更は
+  stable へ昇格したときに一括で 1 節になる。
+- リリース済みの節は手で編集しない(Unreleased だけを触る)。
+
+手元で挙動を確かめる(実ファイルは触らない):
+
+```bash
+python3 scripts/changelog.py check                       # ゲートと同じ判定
+cp CHANGELOG.md /tmp/sim.md
+python3 scripts/changelog.py --path /tmp/sim.md release 0.9.0 --date 2026-09-01
+diff -u CHANGELOG.md /tmp/sim.md                         # 昇格結果の確認
+python3 scripts/changelog.py --path /tmp/sim.md notes 0.9.0   # Release 本文の Highlights
+```
+
 ## 配布防御(タグと Release asset)
 
 公開済みのタグと Release asset は **不変** として扱う。理由は SwiftPM の

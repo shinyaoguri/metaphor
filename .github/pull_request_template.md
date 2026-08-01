@@ -17,6 +17,12 @@ See CONTRIBUTING.md for the full guidelines.
 
 <!-- Commands you ran (e.g. `make test`), manual steps, or screenshots. -->
 
+<!--
+User-facing change? Add a line to `## [Unreleased]` in CHANGELOG.md
+(breaking changes go under `### Breaking Changes`). Internal-only changes
+don't need one. See CONTRIBUTING.md.
+-->
+
 ---
 
 Fixes #<!-- issue number, if applicable -->
