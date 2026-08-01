@@ -306,6 +306,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # --- Post-check: the published asset must actually resolve (Issue #316) ---
+      # SwiftPM re-fetches binaryTarget(url:) on EVERY resolve, so a Release whose
+      # asset failed to upload is a tag that can never be consumed — and the tag
+      # is immutable (tag protection ruleset), so it cannot be quietly redone.
+      # v0.2.2 shipped exactly this way and had to borrow the v0.2.1 asset.
+      # Download what we just published and compare it against the checksum that
+      # was written into Package.swift, BEFORE telling metaphor-cli to pin it.
+      - name: Verify published Syphon asset
+        run: |
+          set -euo pipefail
+          ASSET_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/Syphon.xcframework.zip"
+          DEST="$RUNNER_TEMP/published-Syphon.xcframework.zip"
+          # Asset availability right after publish is not instantaneous; retry.
+          # Track success explicitly — never infer it from the file on disk, or a
+          # leftover download would be checksummed as if it were the new asset.
+          DOWNLOADED=0
+          for attempt in 1 2 3 4 5; do
+            rm -f "$DEST"
+            if curl -sSL --fail -o "$DEST" "$ASSET_URL"; then
+              DOWNLOADED=1
+              break
+            fi
+            echo "Attempt ${attempt}: ${ASSET_URL} not downloadable yet — retrying in 10s."
+            sleep 10
+          done
+          if [ "$DOWNLOADED" -ne 1 ] || [ ! -s "$DEST" ]; then
+            echo "::error::Published asset is missing or empty: ${ASSET_URL}"
+            echo "          Re-upload it with: gh release upload ${TAG_NAME} Frameworks/Syphon.xcframework.zip --clobber"
+            exit 1
+          fi
+          PUBLISHED=$(shasum -a 256 "$DEST" | awk '{print $1}')
+          if [ "$PUBLISHED" != "$CHECKSUM" ]; then
+            echo "::error::Checksum mismatch for ${ASSET_URL} — Package.swift declares ${CHECKSUM}, published asset hashes to ${PUBLISHED}."
+            exit 1
+          fi
+          echo "Published asset verified: ${ASSET_URL} (sha256 ${PUBLISHED})"
+
       # --- Notify metaphor-cli to bump its Syphon.xcframework pin (stable only) ---
       # metaphor-cli pins this repo's Syphon Release URL + checksum in its
       # Package.swift. On every stable release that rebuilds Syphon, fire a
