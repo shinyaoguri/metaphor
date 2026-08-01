@@ -38,7 +38,7 @@ Epic #75 は成功を **「機能数でなく」** 往復時間・観測の決�
 ## 既知の制限 / 今後
 
 - **debug ビルド・単一機種・小規模スケッチ（ProbeSnapshot）**の初回値。release ビルドや重いスケッチ（#116 `ProbeBenchmark`：影オン3D）での再測定で傾向の頑健性を確認する。
-- roundtrip を `T_detect / T_build / T_relaunch` に**分解する細粒度計測**は未実装（現状は合算）。律速がビルドであることは明白だが、再起動コストの切り分けには `build-status.json` のタイムスタンプ等を使う追補が要る。
+- roundtrip を `T_detect / T_build / T_relaunch` に**分解する細粒度計測**は cli#89（2026-08-01）で実装済み（`build_status` の timings 行と `measure-roundtrip.py` の `roundtrip_breakdown`）。分解の結果、当初「律速はビルド」とした本ドキュメントの推定は**誤りと判明**: 実際の律速はバイナリ解決のサイレント失敗による `swift run --skip-build` 経由の子起動（~1.4s）で、cli 側の修正（cli#88 pass 1）により roundtrip p50 2.8s → 約 1.2s。経緯と実測は [cli#88](https://github.com/shinyaoguri/metaphor-cli/issues/88) のコメントが正典。
 - 上記の律速（ビルド支配）は Epic #75 のバックログとして子 Issue 化する。
 
 ## 参考
