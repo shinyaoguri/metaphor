@@ -52,12 +52,31 @@ Maintaining this file
 - `CONTRIBUTING.md` and GitHub Issue / pull request templates, including routing between this repository and [`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli) ([#341](https://github.com/shinyaoguri/metaphor/pull/341))
 - Both READMEs now link to the published DocC API reference ([#342](https://github.com/shinyaoguri/metaphor/pull/342))
 - `docs/permissions.md` explaining microphone/camera TCC permissions for `swift run` binaries, an English `docs/README.en.md`, expanded README Troubleshooting (Intel Mac, SwiftPM dependency-resolution failures), and `Examples/LEARNING_PATH.md`, a curated "learn in order" route through the example catalog ([#337](https://github.com/shinyaoguri/metaphor/issues/337))
+- `filter(_ image: MImage, _ type: FilterType)` on the `Sketch` layer. The GPU filter previously existed only on `SketchContext`, so the documented user-facing surface had no entry for it. Use the GPU version while a sketch is running; the CPU version `MImage.filter(_:)` stays available for standalone images that have no renderer ([#322](https://github.com/shinyaoguri/metaphor/issues/322))
+- `SoundFile.disableAnalysis()`, the missing counterpart to `enableAnalysis(fftSize:)`. It removes the main-mixer tap and releases the analyzer, after which `spectrum` / `analysisVolume` / `isBeat` / `band(_:)` report their neutral values again ([#322](https://github.com/shinyaoguri/metaphor/issues/322))
 
 ### Changed
 
 - `loadPixels()` on the main canvas now reads back **the canvas as of the call**, matching Processing. Previously it could only return the content committed up to the end of the previous frame, so shapes drawn earlier in the same `draw()` were missing. Calling it mid-`draw()` closes the current render pass, commits it, waits for the GPU, and resumes drawing in a `loadAction = .load` continuation pass — the rendered frame is unchanged, and sketches that never call `loadPixels()` pay nothing. Two consequences to know about: the pass split clears depth, so 3D drawn before and after a `loadPixels()` call is no longer depth-tested against each other; and with shadows enabled the same-frame readback is unavailable (`draw()` runs as a record pass first), in which case the last committed frame is read and a warning is logged once ([#326](https://github.com/shinyaoguri/metaphor/issues/326))
 
 - Published tags and Release assets are now treated as immutable and are enforced as such: `refs/tags/v*` cannot be deleted or moved, every tag's `binaryTarget` URL is health-checked weekly, and a release verifies its own uploaded `Syphon.xcframework.zip` against the checksum in `Package.swift` before telling `metaphor-cli` to pin it. SwiftPM re-fetches that asset on every dependency resolution, so a deleted asset would permanently break the tag for existing users ([#352](https://github.com/shinyaoguri/metaphor/pull/352))
+- `setRenderGraph(_:)` and `setClearColor(_:_:_:_:)` document their naming explicitly: passing `nil` to the former is how you clear the active render graph (there is no separate `clearRenderGraph()`), and the `clear` in the latter is the Metal noun "clear color", not the deleting `clear*` verb used by `clearPostEffects()` ([#322](https://github.com/shinyaoguri/metaphor/issues/322))
+
+### Deprecated
+
+- The recording APIs are renamed so that every family reads `begin<Media>Record` / `end<Media>Record`, and the two `async` overloads that shared a name with their synchronous counterparts gain an `Async` suffix (ADR-0007, [#322](https://github.com/shinyaoguri/metaphor/issues/322)). The old names still work but now warn; they will be **removed in the next minor release**, so migrate now:
+
+  | Deprecated | Use instead |
+  |---|---|
+  | `beginSVG(_:)` / `endSVG()` | `beginSVGRecord(_:)` / `endSVGRecord()` |
+  | `beginRecord(directory:pattern:)` / `endRecord()` | `beginFrameRecord(directory:pattern:)` / `endFrameRecord()` |
+  | `endGIFRecord(_:) async throws` | `endGIFRecordAsync(_:)` |
+  | `endVideoRecord() async` (and `VideoExporter.endRecord() async`) | `endVideoRecordAsync()` (and `VideoExporter.endRecordAsync()`) |
+  | `dispatch(_:threads:_:)` / `dispatch(_:width:height:_:)` | `dispatch(_:threads:configure:)` / `dispatch(_:width:height:configure:)` |
+
+  The old plain `beginRecord()` was the one that clashed with Processing's `beginRecord()` (which starts *vector* recording, not a PNG sequence) — `beginFrameRecord` / `beginSVGRecord` remove that trap. `beginOfflineRender()` / `endOfflineRender()` keep their names: they switch rendering *mode* rather than start a recording.
+
+  The two `dispatch` changes only add a `configure:` label to the trailing closure, so the usual trailing-closure call site (`dispatch(kernel, threads: n) { ... }`) is unchanged and keeps compiling without a warning. Only calls that pass the closure as an explicit final argument need updating.
 
 ## [0.8.0] - 2026-08-01
 

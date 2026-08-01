@@ -129,4 +129,32 @@ struct SoundFilePlaybackTests {
         sound.stop()
         #expect(sound.position == 0)
     }
+
+    @Test("disableAnalysis releases the analyzer created by enableAnalysis")
+    func disableAnalysisReleasesAnalyzer() throws {
+        let url = try makeTestWAV(seconds: 0.1)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let sound = try SoundFile(path: url.path)
+
+        // 解析前は中立値
+        #expect(sound.spectrum.isEmpty)
+
+        sound.enableAnalysis(fftSize: 64)
+        #expect(sound.spectrum.count == 32)  // fftSize / 2
+
+        sound.disableAnalysis()
+        #expect(sound.spectrum.isEmpty)
+        #expect(sound.analysisVolume == 0)
+        #expect(sound.isBeat == false)
+        #expect(sound.band(0) == 0)
+
+        // 未有効時の呼び出しは no-op（二重呼び出しでも落ちない）
+        sound.disableAnalysis()
+        #expect(sound.spectrum.isEmpty)
+
+        // 無効化後に再度有効化できる（タップが正しく外れている）
+        sound.enableAnalysis(fftSize: 64)
+        #expect(sound.spectrum.count == 32)
+        sound.disableAnalysis()
+    }
 }

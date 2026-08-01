@@ -256,7 +256,7 @@ public final class Canvas2D: CanvasStyle {
     // MARK: - SVG 記録
 
     /// アクティブな SVG レコーダー。設定中は図形呼び出しが SVG にも記録される
-    /// （``SketchContext/beginSVG(_:)`` / ``SketchContext/endSVG()`` が管理）。
+    /// （``SketchContext/beginSVGRecord(_:)`` / ``SketchContext/endSVGRecord()`` が管理）。
     var svgRecorder: SVGRecorder?
 
     /// SVG 記録用の現在スタイル・変換のスナップショットを返します。

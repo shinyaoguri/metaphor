@@ -416,12 +416,18 @@ public final class VideoExporter {
     /// 記録を停止し、ビデオファイルを非同期でファイナライズします。
     ///
     /// ``endRecord(completion:)`` の async/await 版です。
-    public func endRecord() async {
+    public func endRecordAsync() async {
         guard isRecording else { return }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             endRecord {
                 continuation.resume()
             }
         }
+    }
+
+    /// ``endRecordAsync()`` の旧名です。
+    @available(*, deprecated, renamed: "endRecordAsync()")
+    public func endRecord() async {
+        await endRecordAsync()
     }
 }

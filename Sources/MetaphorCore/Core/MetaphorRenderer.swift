@@ -692,6 +692,10 @@ public final class MetaphorRenderer: NSObject {
 
     /// オフスクリーンレンダーパスのクリアカラーを変更します。
     ///
+    /// 名前の `clear` は Metal の「clear color」（レンダーパス開始時に塗る色）に
+    /// 由来する複合名詞であり、`clearPostEffects()` のような**削除動詞の `clear*` 系
+    /// ではありません**。設定を消す API ではなく、色を設定する API です。
+    ///
     /// - Parameters:
     ///   - r: 赤コンポーネント (0.0〜1.0)
     ///   - g: 緑コンポーネント (0.0〜1.0)

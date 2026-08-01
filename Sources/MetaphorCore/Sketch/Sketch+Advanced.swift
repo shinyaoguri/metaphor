@@ -74,9 +74,9 @@ extension Sketch {
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
+        configure: (MTLComputeCommandEncoder) -> Void
     ) {
-        context.dispatch(kernel, threads: threads, configure)
+        context.dispatch(kernel, threads: threads, configure: configure)
     }
 
     /// 2D コンピュートカーネルをディスパッチします。
@@ -90,9 +90,34 @@ extension Sketch {
         _ kernel: ComputeKernel,
         width: Int,
         height: Int,
+        configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        context.dispatch(kernel, width: width, height: height, configure: configure)
+    }
+
+    /// ``dispatch(_:threads:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました。trailing closure 記法での呼び出しは不変です）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:threads:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        threads: Int,
         _ configure: (MTLComputeCommandEncoder) -> Void
     ) {
-        context.dispatch(kernel, width: width, height: height, configure)
+        dispatch(kernel, threads: threads, configure: configure)
+    }
+
+    /// ``dispatch(_:width:height:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました。trailing closure 記法での呼び出しは不変です）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:width:height:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        width: Int,
+        height: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        dispatch(kernel, width: width, height: height, configure: configure)
     }
 
     /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
@@ -278,8 +303,14 @@ extension Sketch {
     ///
     /// ブロッキングを避けるためファイル書き込みをバックグラウンドスレッドで実行します。
     /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
-    public func endGIFRecord(_ path: String? = nil) async throws {
+    public func endGIFRecordAsync(_ path: String? = nil) async throws {
         try await context.endGIFRecordAsync(path)
+    }
+
+    /// ``endGIFRecordAsync(_:)`` の旧名です。
+    @available(*, deprecated, renamed: "endGIFRecordAsync(_:)")
+    public func endGIFRecord(_ path: String? = nil) async throws {
+        try await endGIFRecordAsync(path)
     }
 }
 
