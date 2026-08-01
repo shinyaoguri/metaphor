@@ -114,6 +114,14 @@ let package = Package(
         .testTarget(name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"]),
         .testTarget(name: "MetaphorRenderGraphTests", dependencies: ["MetaphorRenderGraph", "MetaphorCore"]),
         .testTarget(name: "MetaphorSceneGraphTests", dependencies: ["MetaphorSceneGraph", "MetaphorCore"]),
-        .testTarget(name: "metaphorTests", dependencies: ["metaphor", "MetaphorTestSupport"]),
+        // Golden/ はテストバンドルへコピーせず除外する。ゴールデン PNG は
+        // `#filePath` からソースツリーを直接読み書きする（Issue #330）ため、
+        // リソースとして同梱する必要がない（宣言しないと SwiftPM が
+        // "unhandled files" 警告を出す）。
+        .testTarget(
+            name: "metaphorTests",
+            dependencies: ["metaphor", "MetaphorTestSupport"],
+            exclude: ["Golden"]
+        ),
     ]
 )

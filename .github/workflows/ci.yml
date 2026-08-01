@@ -110,6 +110,17 @@ jobs:
           # （Issue #329 / G5）。ローカルの GPU なし環境では未設定 = 従来どおり skip。
           METAPHOR_REQUIRE_GPU: '1'
         run: swift test --enable-code-coverage -Xswiftc -warnings-as-errors
+      # ゴールデンイメージ回帰（Issue #330）が落ちたときだけ、実画像・期待画像・
+      # 差分画像をアーティファクトとして残す。ログのハッシュだけでは「どこが
+      # どう変わったか」が分からず、ローカル再現が必須になってしまうため。
+      - name: Upload golden image diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-image-failures
+          path: .build/golden-failures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Verify shader sources are up to date
         run: python3 scripts/generate-shader-sources.py --check
       - name: Verify llms.txt is up to date
