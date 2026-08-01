@@ -71,9 +71,12 @@ for tag in "$@"; do
   # The remote branch of the `useLocalSyphon ? .binaryTarget(path:) : ...`
   # ternary. Anchored on `url: "https://…"` so the local-path branch and any
   # other quoted string are ignored.
-  url=$(printf '%s\n' "$package" \
-    | sed -n 's|.*url: "\(https://[^"]*\)".*|\1|p' \
-    | head -1)
+  #
+  # The first match is taken with parameter expansion rather than `| head -1`:
+  # under `pipefail`, head closing the pipe would SIGPIPE sed (exit 141) and
+  # `set -e` would abort the whole run the day a second url: line appears.
+  urls=$(printf '%s\n' "$package" | sed -n 's|.*url: "\(https://[^"]*\)".*|\1|p')
+  url=${urls%%$'\n'*}
 
   if [ -z "$url" ]; then
     echo "::error::$tag — no binaryTarget url found in Package.swift."
