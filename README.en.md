@@ -260,3 +260,7 @@ Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](h
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
+
+For the copyright notice and full license text of `Syphon.xcframework`
+(Simplified BSD License), redistributed as a GitHub Release asset, see
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
