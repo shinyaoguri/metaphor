@@ -1,9 +1,22 @@
 # v1.0.0 リリース準備計画(readiness review)
 
-- **ステータス**: 叩き台(レビュー所見は確定・準備トラックの優先順位と未決事項はユーザー判断待ち)
+- **ステータス**: 運用中(living document)。レビュー所見は確定、実装計画は 2026-08-01 にユーザーと戦略合意済み(v0.9.x 育成方式・既知課題は v0.8.x で完遂)
 - **作成**: 2026-08-01(v0.8.0 リリース直後の 4 観点並列レビューに基づく)
 - **正典**: 本ドキュメント + 起票される各 Issue。ロードマップ本体は [roadmap-processing-unity.md](roadmap-processing-unity.md)(機能面)、本ドキュメントは安定性・品質・体制面を扱う
 - **レビュー方法**: ①公開 API 表面と安定性 ②テスト・CI・品質保証 ③ドキュメント・オンボーディング ④配布・依存・OSS 開発体制、の 4 観点を独立に調査し統合
+
+## バージョンマイルストーン(決定事項)
+
+**戦略: v1.0.0 を目指しつつ、リリース直前のものを v0.9.x で育てる。** prerelease タグ(`1.0.0-rc`)は使わず、通常のラベル駆動リリースのまま 0.9 系を実質 RC 系列として運用する。
+
+| 期間 | 位置づけ | 内容 |
+|---|---|---|
+| **v0.8.x(現在)** | 壊してよい最後の期間 | 本ドキュメントの既知課題(G1〜G21・A 節)を**すべてここで片付ける**。breaking change はこの期間に完遂。Phase 2 機能開発(Parameter Store 等)と並行 |
+| **v0.9.0** | API 凍結宣言 | 入口条件 = A 節全項目が「実施 or 見送り ADR 化」済み + Phase 2 完了。以降 v1.0 と同じ規律で運用開始 |
+| **v0.9.x** | 育成・実証期間 | 原則 additive と fix のみ。英語化の継続、実運用(metaphor-sketches)フィードバック。breaking が必要になったら「凍結にまだ早かった」シグナルとして扱う |
+| **v1.0.0** | 昇格 | 昇格条件(後述)を満たした最後の 0.9.x を実質そのまま 1.0.0 に |
+
+**凍結範囲(論点 2)の決着**: 0.9 系では全 13 モジュールを凍結扱いで運用してみて、0.9.x 中に「壊したくなった」モジュールが出た場合のみ v1.0 で preview 宣言(breaking は minor で可)に落とす。机上ではなく 0.9 の実績で線を引く。
 
 ## v1.0.0 が約束すること(前提の確認)
 
@@ -100,36 +113,101 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 7. dependabot に npm(`/website`)と gitsubmodule を追加 / `release:*` ラベル説明の修正 / Syphon zip の再利用(submodule pin 不変なら checksum 固定)検討
 8. **bus factor = 1 のリスク開示** — 技術では解けない。README への現状明記(単独メンテ・ベストエフォート)か、バックアップメンテナ確保かの判断
 
-## 準備トラック計画(案)
+## v0.8.x 実装計画(既知課題の完遂)
 
-機能ロードマップ(Phase 2〜)と**直交する readiness トラック**として進める。R0〜R2 は Phase 2 と並行可能。
+既知課題は 4 つの Wave に分けて v0.8.x 期間中に片付ける。W0 は全並行可、W1 が背骨(順序依存あり)、W2/W3 は W1 と並行しつつ一部が W1 の順序に従属する。Issue の切り方はロードマップと同じ流儀(S は同一レイヤ束で 1 Issue + チェックリスト、M/L は各 1 Issue、設計判断を伴うものは ADR 先行)。
 
-| トラック | 内容 | 規模感 |
-|---|---|---|
-| **R0: クイックウィン** | G4 ライセンス表記 / SECURITY.md / タグ保護 / README.en 自動バンプ修正 / DocC リンク / dependabot 追加 / timeout-minutes / ラベル説明修正 / CONTRIBUTING + テンプレート | 各 S、合計数日 |
-| **R1: 破壊的変更ウィンドウ完遂** | A 節の全項目。命名統一 → deprecated 削除 → typed throws → P3D 意味論 → Swift 6 strict concurrency の順(依存が薄い順) | L(Swift 6 が支配的) |
-| **R2: 品質ゲート** | GPU skip 可視化 → ゴールデンイメージ回帰 → Sketch/ テスト増強 → カバレッジ可視化 → 最小環境テスト | M〜L |
-| **R3: ドキュメント・英語化** | API doc コメント英語化(Epic #295 I2)→ 移行ガイド → TCC → CHANGELOG 開始 → Troubleshooting | L(英語化が支配的) |
-| **R4: ポリシー成文化** | API 安定性ポリシー / 契約フリーズ点 / asset 保持ポリシー / リリースノート様式 | S〜M |
-| **RC: リリース候補** | Examples 全数スイープ green → `1.0.0-rc.1`(prerelease dispatch は実装済み)→ 実運用検証(metaphor-sketches)→ v1.0.0 | M |
+### 順序を決める 4 つの依存関係(計画の背骨)
 
-## 未決事項(ユーザー判断)
+1. **命名統一(W1-3)が英語化(W3-1 Core)より先** — rename で doc コメントごと動くため、先に英語化すると二度手間
+2. **ゴールデンイメージ回帰(W2-2)が P3D 意味論統一(W1-6)より先** — 描画結果が変わる breaking の影響範囲を、ゴールデンの差分として可視化してから実施する
+3. **swift-format 一括適用(W2-8)は W1 の rename 群の後** — 全ファイルを触る変更なので、進行中の breaking PR との conflict を避ける
+4. **命名 deprecation → 削除に 0.8.x 内で最低 2 リリース必要** — ADR-0005 Amendment の「deprecation を含む minor を公開してから次で削除」を守るため、命名統一は 0.8.x の早い段階で着手する
 
-1. **v1.0 のタイミング**: Phase 2(Parameter Store)完了後を推奨。Parameter Store は公開 API と wire 契約(schemaVersion)の両方に大きく触れる予定であり、その前に凍結すると直後に major 相当の圧力がかかる。ただし「Phase 3(glTF/PBR)まで待つ」は additive なので不要
-2. **凍結範囲**: 13 プロダクト全部を一括で 1.0 と宣言するか、モジュール別の成熟度(例: Core/umbrella = stable、MPS/RenderGraph = 成熟度表示つき)を README に明示するか。public 宣言 2,288・4 層重複面の一括凍結は面が広い
-3. **Swift 6 対応の位置づけ**: v1.0 ブロッカーとするか(推奨: strict concurrency 警告ゼロを最低ライン)
-4. **英語化の水準**: API doc コメント英語化(最大工数)を v1.0 ブロッカーにするか、v1.x で継続するか
-5. **`@_exported import Metal/MetalKit/simd` の扱い**: 維持(公開シグネチャに MTLTexture/SIMD3 が頻出するため実質不可避)か、v1.0 前に剥がすか
-6. **二層 API(Sketch グローバル / SketchContext)の名前不一致**(`screenX` vs `screenPosition` 等): どちらに寄せるか
-7. **bus factor 開示の方法**: README への明記か、他の手段か
+### W0: クイックウィン(依存なし・全並行・即着手可)
 
-## 完了判定(v1.0 リリース条件のチェックリスト案)
+| ID | 内容 | 対応ギャップ | 規模 |
+|---|---|---|---|
+| W0-1 | 法務・安全束: `THIRD_PARTY_LICENSES.md`(Syphon = Simplified BSD の著作権表示+全文)+ `SECURITY.md` + GitHub Private vulnerability reporting 有効化 | G4, G12 | S |
+| W0-2 | 配布防御束: `refs/tags/v*` の deletion/update 禁止 ruleset + releasing.md に「Release asset は削除しない」明文化 + 全タグの binaryTarget URL 死活チェック(週次 CI) | G8 | S |
+| W0-3 | リリース自動化修正束: `README.en.md` を release.yml の sed と validate-ai-docs.sh の**両方**に追加 / README 日英に DocC サイトリンク / `release:*` ラベル説明修正 / ci.yml に timeout-minutes | G10 | S |
+| W0-4 | コミュニティ受け入れ束: `CONTRIBUTING.md`(DEVELOPMENT.md へ委譲する薄い入口)+ Issue テンプレート(バグ/機能/質問、cli との振り分け導線)+ PR テンプレート | G12 | S |
+| W0-5 | dependabot 拡張(npm `/website` + gitsubmodule)+ 既存 alert 9 件の棚卸し(Windows 限定 dismiss 方針の適用) | G20 | S |
 
-- [ ] A 節の全項目が「実施済み」または「明示的に見送り判断済み(ADR 追記)」
-- [ ] Swift 6 strict concurrency 警告ゼロ(または見送りの ADR)
-- [ ] GPU skip 可視化 + ゴールデンイメージ回帰が CI で稼働
-- [ ] Examples 278 本の全数スイープ green
-- [ ] THIRD_PARTY_LICENSES / SECURITY / CONTRIBUTING / テンプレート / タグ保護が整備済み
-- [ ] API 安定性ポリシー・契約フリーズ点・CHANGELOG が公開済み
-- [ ] `1.0.0-rc.1` で metaphor-sketches の実運用検証を通過
-- [ ] リリースノートに 0.x → 1.0 の人間向けハイライトと移行ガイド
+### W1: 破壊的変更ウィンドウの完遂(0.8.x の背骨・この順で)
+
+| ID | 内容 | 対応 | 規模 | 依存 |
+|---|---|---|---|---|
+| W1-1 | **ADR: API 表面の最終整理**(命名 3 系統の統一方針 / `begin*Record` 揺れ / 二層 API 名 `screenX` vs `screenPosition` の寄せ先 / `@_exported import Metal・MetalKit・simd` の維持可否 / `_metaphorSyphonRegister` の隠蔽)。**設計判断のためユーザーレビュー必須** | G3, G16 | M | なし(最優先) |
+| W1-2 | deprecated 7 件の削除(protocol requirement 2 件は準拠型への影響を確認) | G15 | S | なし |
+| W1-3 | 命名統一の実装(W1-1 の ADR に従い、旧名は deprecated エイリアスで 1 リリース維持 → 次リリースで削除) | G3 | M | W1-1 |
+| W1-4 | 生成系 API の typed throws 化(`throws(MetaphorError)`、untyped 52 件) | G14 | M | W1-1(エラー型設計を含むため) |
+| W1-5 | failure mode 統一: `GPUBuffer` subscript(trap → 方針確定)/ `NoiseTexture` stops 空配列 / `SoundFile` doc の `try!` 例の是正 | G14 | S | W1-4 |
+| W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up) | G1 | M | **W2-2(ゴールデン回帰)導入後** |
+| W1-7 | `loadPixels()` メインキャンバス readback(ADR-0005 follow-up) | G1 | M | W2-2 導入後が望ましい |
+| W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up。実施 or 見送りを ADR 追記) | G1 | S〜M | なし |
+| W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) strict concurrency 警告の有効化方法を検証(swift-tools-version 5.10 との両立を含む) → (2) Tier 1 独立モジュール(Audio/Network/Physics/ML/Video)から警告除去 → (3) Core・Tier 2 → (4) CI ゲート化。`@preconcurrency import` 29 件・`@unchecked Sendable` の妥当性見直しを含む | G2 | **L** | 他の W1 と並行可(モジュール単位で独立) |
+
+### W2: 品質ゲート(W1 と並行、W2-2 は W1-6 より先)
+
+| ID | 内容 | 対応 | 規模 |
+|---|---|---|---|
+| W2-1 | GPU skip 可視化: CI に `isGPUAvailable` 明示アサート or skip 件数レポート | G5 | S |
+| W2-2 | **ゴールデンイメージ回帰基盤**: 決定論レンダリング(#70)+ `RenderTestHelper` 読み戻しを全フレームハッシュ比較へ拡張。代表シーン(2D 図形/ブレンド/3D ライティング/シャドウ/ポストFX)のゴールデン整備 | G6 | M |
+| W2-3 | `Sources/MetaphorCore/Sketch/` テスト増強(公開 API 面のライフサイクル・SketchConfig・イベント系。breaking 前に書けば W1 の挙動変化検出網を兼ねる) | G7 | M |
+| W2-4 | カバレッジのモジュール別可視化(レポートのアーティファクト保存 or PR コメント) | G18 | S |
+| W2-5 | `build-swift-5-10` の必須チェック昇格 + macos-14 でのテスト実行の実現可否検証 | G17 | S〜M |
+| W2-6 | `ObservabilityOverheadTests` の壁時計アサーションを #149 基準で env ゲートに隔離 | — | S |
+| W2-7 | Examples 差分ビルド(PR が `Examples/` を触ったときのみ該当 example をビルド) | G18 | S |
+| W2-8 | swift-format 導入と一括適用(**W1 の rename 完了後**) | G18 | M |
+
+### W3: ドキュメント・英語化(並行トラック、W3-1 Core は W1-3 後)
+
+| ID | 内容 | 対応 | 規模 |
+|---|---|---|---|
+| W3-1 | **API doc コメント英語化**(Epic #295 I2 として起票)。モジュール単位に分割し、周辺モジュール(Audio/Network/Physics 等)から先行、**Core は W1-3 命名統一の後**。`llms.txt` は生成物なので自動追随。機械的作業のためサブエージェント委譲向き | G9 | **L** |
+| W3-2 | `CHANGELOG.md` 新設 + リリースノート様式(人間向けハイライト枠)。**早期に開始し、0.8.x の breaking をすべて記録していく**(v1.0 移行ガイドの原稿になる) | G11 | S |
+| W3-3 | Processing 移行ガイド(API 対応表 + 落とし穴集。`.pde` 同梱資産の成果物化) | G13 | M |
+| W3-4 | TCC 権限ドキュメント(マイク/カメラ、失敗時の復旧手順、該当 example への注記) | G13 | S |
+| W3-5 | docs 整備束: `docs/README.md` 英語化 / 利用者向け Troubleshooting 拡充(Intel Mac・SwiftPM 解決失敗)/ Examples「順に学ぶ」推奨順路 1 ページ | G13 | S×3 束 |
+
+### W4: ポリシー成文化(v0.9.0 の直前・入口条件の一部)
+
+| ID | 内容 | 対応 | 規模 | 依存 |
+|---|---|---|---|---|
+| W4-1 | API 安定性ポリシー文書(何が public API か / deprecation 窓 / ABI 非保証(ソース互換のみ)/ 0.9 系の運用規律) | G11 | S〜M | W1-1 |
+| W4-2 | 契約フリーズ点の明記(`frame.json` の全キー凍結 / stdin プロトコルの互換規約とバージョニング)。**クロスリポ同時 PR**。Parameter Store の schema 変更(Epic D の D3/D4)が入った後に実施 | G19 | M | Phase 2 D3/D4 |
+| W4-3 | bus factor 開示(README への単独メンテ・ベストエフォート明記) | G21 | S | なし |
+
+### 実装の進め方
+
+1. **Epic Issue「v1.0 readiness」を 1 本立て、W0〜W4 の各 Issue を子としてチェックリスト管理**(Epic #75 と同じパターン)。W0 の 5 束と W1-1 から着手
+2. **W1-1(ADR)が全体のクリティカルパスの先頭。** 命名の寄せ先・`@_exported` の扱いはここで確定し、ユーザーレビューを経てから W1-3 以降を流す
+3. サブエージェント委譲方針はロードマップと同一: 設計判断・契約・レンダリングに触れるもの = 高性能モデル、機械的作業(英語化・テスト雛形・ボイラープレート)= 安価なモデルへ委譲、独立 Issue は worktree 分離で並列
+4. Phase 2(Parameter Store)はロードマップ側の管轄でそのまま並行。合流点は W4-2(契約フリーズ)のみ
+5. 0.8.x のリリースは通常どおりラベル駆動で刻む(命名 deprecation → 削除の 2 リリース確保を意識)
+
+## 残る設計判断(各 Issue/ADR の中で決める)
+
+1. **命名 3 系統の寄せ先・二層 API 名・`@_exported import` の扱い** → W1-1 の ADR でユーザーレビューを経て確定
+2. **英語化の 0.9.0 ブロッカー性**: W3-1 は additive なので 0.9.x に食い込んでも凍結は妨げない。ただし v1.0.0 昇格条件には含める(下記)
+3. **preview 宣言の要否**: 0.9.x の実績で判断(マイルストーン節参照)
+
+## 完了判定
+
+### v0.9.0 の入口条件(API 凍結宣言)
+
+- [ ] W1 全項目が「実施済み」または「見送りの ADR 追記済み」(特に W1-9 Swift 6 は警告ゼロ or 見送り ADR)
+- [ ] W2-1〜W2-3(GPU skip 可視化・ゴールデン回帰・Sketch/ テスト)が CI で稼働
+- [ ] W4-1(API 安定性ポリシー)公開済み
+- [ ] Phase 2(Parameter Store)完了・実運用 1〜2 サイクル経過
+- [ ] W4-2(契約フリーズ点)が両リポで合意済み
+- [ ] CHANGELOG に 0.8.x の全 breaking が記録済み
+
+### v1.0.0 への昇格条件
+
+- [ ] 0.9 系で breaking なしの実績(全モジュール。壊したくなったものは preview 宣言で決着済み)
+- [ ] Examples 278 本の全数スイープ green(`examples-sweep.yml` full=true)
+- [ ] API doc コメント英語化(W3-1)完了
+- [ ] metaphor-sketches での実運用検証を通過
+- [ ] リリースノートに 0.x → 1.0 の人間向けハイライトと移行ガイド(CHANGELOG から生成)
