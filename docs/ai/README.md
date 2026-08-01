@@ -76,6 +76,18 @@ here.
   work that samples it. Do not "fix" these paths by adding blocking waits;
   if a use case genuinely needs mid-frame mutation, triple-buffer that
   resource instead (see #164).
+- `SketchContext.loadPixels()` is the one deliberate mid-frame CPU/GPU sync
+  point (ADR-0005 Decision 6, #326). Called inside `draw()`, it splits the main
+  render pass: flush the pending 2D/3D batches, end the encoder, ride the
+  readback blit on the frame's own command buffer, commit, `waitUntilCompleted`,
+  then continue in a `loadAction = .load` pass and rebind both canvases to the
+  new encoder (`MetaphorRenderer.splitMainPassForReadback`). Two properties must
+  hold when touching this: the split is **invisible in the output** (the
+  continuation must load, not clear, the color attachment — guarded by
+  `CanvasPixelsTests`), and it costs **nothing** for sketches that never call
+  `loadPixels()`. Depth is not preserved across the split (the main pass stores
+  `.dontCare`), and the shadow record/replay path (#70) cannot split at all and
+  falls back to the last committed frame.
 - Compute work that feeds rendering must preserve the renderer's explicit
   compute-to-render synchronization.
 - Runtime drawing failures generally warn and skip work; initialization and

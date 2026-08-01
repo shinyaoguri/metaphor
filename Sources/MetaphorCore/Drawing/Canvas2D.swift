@@ -550,6 +550,26 @@ public final class Canvas2D: CanvasStyle {
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
     }
 
+    /// メインパス分割後（`loadPixels()` の同一フレーム読み戻し、#326）に、
+    /// 描画先を新しいレンダーコマンドエンコーダへ差し替えます。
+    ///
+    /// 呼び出し側は分割前に ``flush()`` 済みであること（保留頂点は分割前のパスへ出す）。
+    /// フレームごとの状態（変換・スタイル・バッファオフセット）は**維持する** —
+    /// `draw()` の途中なので、Processing から見れば同じ 1 フレームの続きだから。
+    ///
+    /// - Parameter newEncoder: 継続パスのレンダーコマンドエンコーダー。
+    func rebindEncoder(_ newEncoder: MTLRenderCommandEncoder) {
+        self.encoder = newEncoder
+        // 継続パスは loadAction = .load。以降の background() を「Metal のクリア任せ」に
+        // 最適化するとクリアが起きずに無視されるため、必ずクワッドを描かせる。
+        self.frameWillClear = false
+        // シザーはエンコーダごとの状態。新しいエンコーダでは既定（フルビューポート）に
+        // 戻るので、クリップ中なら復元する。
+        if let rect = clipRect {
+            newEncoder.setScissorRect(rect)
+        }
+    }
+
     /// 遅延モードで積まれた前景2D描画を、指定エンコーダへ順に再生します（#70 / #71）。
     ///
     /// シャドウ同一フレーム化の経路で、`MetaphorRenderer.renderFrame()` が 3D 再生

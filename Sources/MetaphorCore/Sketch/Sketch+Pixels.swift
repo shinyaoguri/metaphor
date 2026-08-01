@@ -15,13 +15,33 @@ extension Sketch {
         return pb.pixels
     }
 
-    /// キャンバスの内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
+    /// **呼び出し時点の**キャンバス内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
     ///
     /// 呼び出し後、``pixels`` を読み書きし、``updatePixels()`` で反映してください。
+    /// `draw()` の途中で呼べば、それまでに発行した描画（`background()` や図形、
+    /// `image()`）が反映された状態が読めます。
     ///
-    /// - Important: 読み戻せるのは**前フレーム末尾までに確定した内容**です
-    ///   （この draw() 内の先行描画はまだ含まれません）。draw() の先頭で呼ぶ
-    ///   典型パターンでは現在のキャンバス内容と一致します。
+    /// ```swift
+    /// func draw() {
+    ///     background(0)
+    ///     fill(255, 0, 0)
+    ///     circle(width / 2, height / 2, 100)
+    ///     loadPixels()                 // ここまでの描画（円まで）が読める
+    ///     for i in 0..<pixels.count { pixels[i] ^= 0x00FF_FFFF }  // 色を反転
+    ///     updatePixels()
+    /// }
+    /// ```
+    ///
+    /// - Important: 同一フレームの読み戻しは**影オフの通常経路**で有効です。影を有効に
+    ///   している場合（`enableShadows()`）は `draw()` が記録パスとして先に実行される
+    ///   ため分割できず、**直近にコミット済みのフレーム内容**が読めます（初回のみ警告）。
+    ///   `draw()` の外（`setup()` やフレーム間）で呼んだ場合も同じです。
+    ///
+    /// - Note: GPU の完了を待つためメインスレッドをブロックします（Processing と同等）。
+    ///   `loadPixels()` を呼ばないスケッチには一切コストがかかりません。
+    ///
+    /// - Note: 読み戻しのために内部でレンダーパスを分割するため、`loadPixels()` を
+    ///   またいだ 3D 同士は深度比較されません（2D は深度テストを使わないため影響なし）。
     public func loadPixels() {
         context.loadPixels()
     }
@@ -30,6 +50,8 @@ extension Sketch {
     ///
     /// ピクセルバッファを GPU テクスチャに転送し、フルスクリーンクワッドとして
     /// レンダリングします。``pixels`` への書き込み後にこれを呼び出してください。
+    ///
+    /// - Note: ``loadPixels()`` を一度も呼んでいない場合は何もしません。
     public func updatePixels() {
         context.updatePixels()
     }
