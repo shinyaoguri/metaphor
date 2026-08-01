@@ -4,7 +4,7 @@ import os
 
 // MARK: - OSC 値
 
-/// OSC メッセージ内の値を表します。
+/// Represents a value inside an OSC message.
 public enum OSCValue: Sendable {
     case int(Int32)
     case float(Float)
@@ -15,16 +15,16 @@ public enum OSCValue: Sendable {
 // MARK: - OSC メッセージ（内部）
 
 public struct OSCMessage: Sendable {
-    /// OSC アドレスパターン（例: "/synth/freq"）。
+    /// The OSC address pattern (e.g. "/synth/freq").
     public let address: String
-    /// メッセージに含まれる値のリスト。
+    /// The list of values included in the message.
     public let values: [OSCValue]
 
-    /// OSC メッセージを作成します（``OSCSender/sendBundle(_:)`` 用）。
+    /// Creates an OSC message (for use with ``OSCSender/sendBundle(_:)``).
     ///
     /// - Parameters:
-    ///   - address: OSC アドレスパターン。
-    ///   - values: メッセージに含める値のリスト。
+    ///   - address: The OSC address pattern.
+    ///   - values: The list of values to include in the message.
     public init(address: String, values: [OSCValue]) {
         self.address = address
         self.values = values
@@ -36,7 +36,7 @@ public struct OSCMessage: Sendable {
 private final class OSCMessageQueue: Sendable {
     private struct State {
         var messages: [OSCMessage] = []
-        /// 直近の dequeueAll 以降にキュー満杯で捨てたメッセージ数。
+        /// The number of messages dropped due to a full queue since the last dequeueAll.
         var dropped: Int = 0
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
@@ -71,7 +71,7 @@ private final class OSCMessageQueue: Sendable {
 
 // MARK: - スレッドセーフなエラーボックス
 
-/// ネットワークスレッドで発生したエラーをメインスレッドの poll 系 API へ渡します。
+/// Carries errors that occur on the network thread to the main thread's poll-style API.
 private final class OSCErrorBox: @unchecked Sendable {
     private let state = OSAllocatedUnfairLock(initialState: (any Error)?.none)
 
@@ -135,25 +135,25 @@ private final class OSCListenerState: Sendable {
     }
 }
 
-/// OSC ネットワーク I/O 用の専用シリアルキュー（@MainActor 分離を避けるためファイルスコープ）。
+/// A dedicated serial queue for OSC network I/O (file-scoped to avoid @MainActor isolation).
 private let oscNetworkQueue = DispatchQueue(label: "metaphor.osc.network", qos: .userInitiated)
 
 // MARK: - OSCReceiver
 
-/// Network.framework を使用して UDP OSC メッセージを受信します。
+/// Receives UDP OSC messages using Network.framework.
 ///
-/// NWListener を使って OSC 1.0 メッセージを受信し、
-/// VJ やインスタレーションシナリオでの外部コントロールを実現します。
+/// Uses `NWListener` to receive OSC 1.0 messages, enabling external control
+/// for VJ and installation scenarios.
 ///
 /// ```swift
 /// let osc = createOSCReceiver(port: 9000)
 /// osc.on("/note") { values in
 ///     if case .float(let vel) = values.first {
-///         // ノートベロシティを処理
+///         // handle note velocity
 ///     }
 /// }
 /// try osc.start()
-/// // draw() 内で呼び出して自動ディスパッチ
+/// // call in draw() for automatic dispatch
 /// osc.poll()
 /// ```
 @MainActor
@@ -161,19 +161,21 @@ public final class OSCReceiver {
 
     // MARK: - パブリックプロパティ
 
-    /// リスニングポート番号を返します。
+    /// Returns the listening port number.
     public let port: UInt16
 
-    /// レシーバーが現在リッスン中かどうか。
+    /// Whether the receiver is currently listening.
     ///
-    /// リスナーが非同期に失敗した場合（ポート競合等）は自動的に false へ戻り、
-    /// ``lastError`` にエラーが入ります。再度 ``start()`` を呼べます。
+    /// If the listener fails asynchronously (e.g. a port conflict), this
+    /// automatically reverts to false and ``lastError`` is set. You can call
+    /// ``start()`` again.
     public var isRunning: Bool { listenerState.isRunning }
 
-    /// 直近のリスナーエラー（ポート競合等）。
+    /// The most recent listener error (e.g. a port conflict).
     ///
-    /// リスナーの失敗は非同期に起きるため、`draw()` 内の ``poll()`` と同じ要領で
-    /// このプロパティを確認してください。``start()`` を呼ぶとクリアされます。
+    /// Listener failures happen asynchronously, so check this property the
+    /// same way you check ``poll()`` inside `draw()`. It is cleared when
+    /// ``start()`` is called.
     public var lastError: (any Error)? { errorBox.value }
 
     // MARK: - プライベート
@@ -181,41 +183,41 @@ public final class OSCReceiver {
     private let listenerState = OSCListenerState()
     private let errorBox = OSCErrorBox()
 
-    /// アドレスからハンドラーへのマッピング。
+    /// A mapping from address to handler.
     private var handlers: [String: ([OSCValue]) -> Void] = [:]
 
-    /// すべてのメッセージを受信するワイルドカードハンドラー。
+    /// A wildcard handler that receives all messages.
     private var wildcardHandler: ((String, [OSCValue]) -> Void)?
 
-    /// スレッドセーフなメッセージキュー。
+    /// A thread-safe message queue.
     private let messageQueue = OSCMessageQueue()
 
     // MARK: - 初期化
 
-    /// OSC レシーバーを作成します。
-    /// - Parameter port: リスニングする UDP ポート番号。
+    /// Creates an OSC receiver.
+    /// - Parameter port: The UDP port number to listen on.
     public init(port: UInt16) {
         self.port = port
     }
 
     // MARK: - パブリック API
 
-    /// 特定の OSC アドレスパターンに対するハンドラーを登録します。
+    /// Registers a handler for a specific OSC address pattern.
     /// - Parameters:
-    ///   - address: マッチする OSC アドレスパターン。
-    ///   - handler: メッセージ値で呼び出されるクロージャ。
+    ///   - address: The OSC address pattern to match.
+    ///   - handler: A closure called with the message values.
     public func on(_ address: String, handler: @escaping ([OSCValue]) -> Void) {
         handlers[address] = handler
     }
 
-    /// すべてのメッセージを受信するワイルドカードハンドラーを登録します。
-    /// - Parameter handler: アドレスと値で呼び出されるクロージャ。
+    /// Registers a wildcard handler that receives all messages.
+    /// - Parameter handler: A closure called with the address and values.
     public func onAny(handler: @escaping (String, [OSCValue]) -> Void) {
         wildcardHandler = handler
     }
 
-    /// 受信 OSC メッセージのリスニングを開始します。
-    /// - Throws: ポートが無効な場合に `OSCReceiverError.invalidPort` をスローします。
+    /// Starts listening for incoming OSC messages.
+    /// - Throws: `OSCReceiverError.invalidPort` if the port is invalid.
     public func start() throws {
         guard !listenerState.isRunning else { return }
 
@@ -259,14 +261,14 @@ public final class OSCReceiver {
         listenerState.cancel()
     }
 
-    /// OSC メッセージのリスニングを停止します。
+    /// Stops listening for OSC messages.
     public func stop() {
         guard listenerState.isRunning else { return }
         listenerState.cancel()
     }
 
-    /// キュー内のメッセージをメインスレッドでディスパッチします（`draw()` 内で呼び出してください）。
-    /// - Returns: 受信した OSC メッセージの配列。
+    /// Dispatches queued messages on the main thread (call this inside `draw()`).
+    /// - Returns: The array of received OSC messages.
     @discardableResult
     public func poll() -> [OSCMessage] {
         let messages = messageQueue.dequeueAll()
@@ -303,12 +305,12 @@ public final class OSCReceiver {
 
 // MARK: - OSC パーサー
 
-/// OSC 1.0 バイナリメッセージをパースします。
+/// Parses OSC 1.0 binary messages.
 enum OSCParser {
 
-    /// バイナリデータをパースして OSC メッセージの配列を返します。
-    /// - Parameter data: 生の OSC バイナリデータ。
-    /// - Returns: パースされた OSC メッセージ。
+    /// Parses binary data and returns an array of OSC messages.
+    /// - Parameter data: The raw OSC binary data.
+    /// - Returns: The parsed OSC messages.
     static func parse(data: Data) -> [OSCMessage] {
         if data.count >= 8, String(data: data.prefix(8), encoding: .ascii)?.hasPrefix("#bundle") == true {
             return parseBundle(data: data)
@@ -320,7 +322,7 @@ enum OSCParser {
         }
     }
 
-    /// OSC バンドルをパースします。
+    /// Parses an OSC bundle.
     private static func parseBundle(data: Data) -> [OSCMessage] {
         var messages: [OSCMessage] = []
         // #bundle\0 (8バイト) + timetag (8バイト) = 16バイトヘッダー
@@ -342,7 +344,7 @@ enum OSCParser {
         return messages
     }
 
-    /// 単一の OSC メッセージをパースします。
+    /// Parses a single OSC message.
     private static func parseMessage(data: Data, offset: Int) -> (message: OSCMessage, bytesRead: Int)? {
         var pos = offset
 
@@ -408,11 +410,12 @@ enum OSCParser {
 
     // MARK: - バイナリヘルパー
 
-    /// ヌル終端文字列を読み取ります。
+    /// Reads a null-terminated string.
     ///
-    /// OSC 1.0 の文字列は仕様上 ASCII だが、実装間では UTF-8 が広く使われる。
-    /// .ascii でデコードすると非 ASCII 文字を含むメッセージがアドレス／文字列値
-    /// ごと破棄されるため、上位互換の UTF-8 でデコードする。
+    /// OSC 1.0 strings are ASCII per spec, but UTF-8 is widely used across
+    /// implementations in practice. Decoding as `.ascii` would discard the
+    /// entire address or string value for any message containing non-ASCII
+    /// characters, so this decodes as the backward-compatible UTF-8 instead.
     private static func readString(data: Data, offset: Int) -> String? {
         guard offset < data.count else { return nil }
         var end = offset
@@ -423,7 +426,7 @@ enum OSCParser {
         return String(data: data[offset..<end], encoding: .utf8)
     }
 
-    /// ビッグエンディアンの Int32 を読み取ります。
+    /// Reads a big-endian `Int32`.
     private static func readInt32(data: Data, offset: Int) -> Int32 {
         guard offset >= 0, offset + 4 <= data.count else { return 0 }
         let raw =
@@ -434,7 +437,7 @@ enum OSCParser {
         return Int32(bitPattern: raw)
     }
 
-    /// ビッグエンディアンの Float32 を読み取ります。
+    /// Reads a big-endian `Float32`.
     private static func readFloat32(data: Data, offset: Int) -> Float {
         guard offset >= 0, offset + 4 <= data.count else { return 0 }
         let bits =
@@ -445,7 +448,7 @@ enum OSCParser {
         return Float(bitPattern: bits)
     }
 
-    /// サイズを4バイトアラインメントに切り上げます。
+    /// Rounds a size up to 4-byte alignment.
     private static func alignedSize(_ size: Int) -> Int {
         (size + 3) & ~3
     }
@@ -453,9 +456,9 @@ enum OSCParser {
 
 // MARK: - エラー
 
-/// OSC レシーバー操作中に発生するエラーを表します。
+/// Represents errors that can occur during `OSCReceiver` operations.
 public enum OSCReceiverError: Error, LocalizedError {
-    /// 指定されたポートが無効であることを示します。
+    /// Indicates that the specified port is invalid.
     case invalidPort(UInt16)
 
     public var errorDescription: String? {

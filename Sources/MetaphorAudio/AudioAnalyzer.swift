@@ -5,10 +5,11 @@ import os
 
 // MARK: - スレッドセーフなサンプルバッファ
 
-/// オーディオスレッドからメインスレッドへサンプルを転送します。
+/// Transfers samples from the audio thread to the main thread.
 ///
-/// オーディオ経路（tap コールバック）でのアロケーションと、ロック下での
-/// 旧配列解放を避けるため、init 時に確保した固定長バッファへコピーします。
+/// Copies into a fixed-length buffer allocated at init time, to avoid
+/// allocations on the audio path (tap callback) and freeing the old
+/// array while holding the lock.
 final class AudioSampleTransferBuffer: Sendable {
     private struct State {
         var samples: [Float]
@@ -22,11 +23,13 @@ final class AudioSampleTransferBuffer: Sendable {
         )
     }
 
-    /// オーディオスレッドから呼びます。`data` の先頭 `count` 要素を固定長
-    /// バッファへコピーします（不足分は 0 埋め）。アロケーションしません。
+    /// Call from the audio thread. Copies the first `count` elements of
+    /// `data` into the fixed-length buffer (zero-fills any shortfall).
+    /// Allocates nothing.
     ///
-    /// - Note: `withLockUnchecked` はポインタ・inout の捕捉のため（Sendable 検査を
-    ///   通らない）。閉包はロック内で同期実行され値をエスケープしないので安全。
+    /// - Note: `withLockUnchecked` is used because capturing a pointer and
+    ///   inout fails the Sendable check. The closure runs synchronously
+    ///   inside the lock and never lets the value escape, so this is safe.
     func write(_ data: UnsafePointer<Float>, count: Int) {
         state.withLockUnchecked { s in
             let capacity = s.samples.count
@@ -42,8 +45,8 @@ final class AudioSampleTransferBuffer: Sendable {
         }
     }
 
-    /// メインスレッドから呼びます。未読データがあれば `out` へコピーして
-    /// true を返します。
+    /// Call from the main thread. If unread data is available, copies it
+    /// into `out` and returns true.
     func take(into out: inout [Float]) -> Bool {
         state.withLockUnchecked { s in
             guard s.hasData else { return false }
@@ -65,7 +68,7 @@ final class AudioSampleTransferBuffer: Sendable {
 
 // MARK: - FFT セットアップホルダー
 
-/// vDSP_DFT_Setup のライフサイクルをアクター境界を越えて安全に管理するラッパー。
+/// Wrapper that safely manages the lifecycle of `vDSP_DFT_Setup` across actor boundaries.
 private final class FFTSetupHolder: @unchecked Sendable {
     let setup: vDSP_DFT_Setup?
     init(size: Int) {
@@ -78,10 +81,10 @@ private final class FFTSetupHolder: @unchecked Sendable {
 
 // MARK: - AudioAnalyzer
 
-/// マイクまたはライン入力から FFT 解析とビート検出を行います。
+/// Performs FFT analysis and beat detection on microphone or line input.
 ///
-/// オーディオスレッドでサンプルをキャプチャし、FFT 解析を実行して、
-/// スペクトル、波形、ビート情報をメインスレッドに公開します。
+/// Captures samples on the audio thread, runs FFT analysis, and exposes
+/// spectrum, waveform, and beat information on the main thread.
 ///
 /// ```swift
 /// let audio = createAudioInput()
@@ -99,39 +102,41 @@ public final class AudioAnalyzer {
 
     // MARK: - パブリックプロパティ
 
-    /// RMS 音量レベル（0.0〜1.0）。
+    /// RMS volume level (0.0-1.0).
     public private(set) var volume: Float = 0
 
-    /// 正規化された FFT スペクトル（0.0〜1.0）。
+    /// Normalized FFT spectrum (0.0-1.0).
     public private(set) var spectrum: [Float] = []
 
-    /// 生波形データ。
+    /// Raw waveform data.
     public private(set) var waveform: [Float] = []
 
-    /// ビート検出フラグ（`update()` 呼び出しごとにリセット）。
+    /// Beat detection flag (reset on every `update()` call).
     public private(set) var isBeat: Bool = false
 
-    /// スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
+    /// EMA smoothing factor for the spectrum (0.0 = no smoothing, 0.99 = very smooth).
     ///
-    /// 範囲外の値は [0, 0.99] にクランプされます（1 以上は spectrum が更新されず、
-    /// 負値は発散・振動するため）。
+    /// Out-of-range values are clamped to [0, 0.99] (values of 1 or greater
+    /// stop `spectrum` from updating, and negative values diverge and oscillate).
     public var smoothing: Float = 0.8 {
         didSet { smoothing = min(max(smoothing, 0), 0.99) }
     }
 
-    /// ビート検出感度（値が大きいほど検出が鈍くなります）。
+    /// Beat detection sensitivity (higher values make detection less sensitive).
     public var beatThreshold: Float = 1.5
 
-    /// 解析対象のサンプルレート（Hz）。
+    /// The sample rate of the audio being analyzed (Hz).
     ///
-    /// ``start()`` 使用時は入力デバイスから自動取得されるため設定不要です。
-    /// ``injectSamples(_:)`` 経由で外部サンプルを解析する場合、
-    /// ``bandEnergy(lowFreq:highFreq:)`` の周波数→ビン変換に使われます。
+    /// No need to set this when using ``start()`` — it is obtained
+    /// automatically from the input device. When analyzing external samples
+    /// via ``injectSamples(_:)``, it is used for the frequency-to-bin
+    /// conversion in ``bandEnergy(lowFreq:highFreq:)``.
     public var sampleRate: Double?
 
-    /// 入力デバイスの切断やサンプルレート変更などでオーディオエンジンの構成が
-    /// 変化したときに（メインスレッドで）呼ばれます。切断後は解析が静かに
-    /// 止まるため、検知して `stop()` → `start()` で再構成する用途に使えます。
+    /// Called (on the main thread) when the audio engine's configuration
+    /// changes, e.g. an input device disconnects or the sample rate changes.
+    /// Analysis silently stops after a disconnect, so this callback lets you
+    /// detect that and reconfigure by calling `stop()` then `start()`.
     public var onConfigurationChange: (() -> Void)?
 
     // MARK: - オーディオエンジン
@@ -166,11 +171,11 @@ public final class AudioAnalyzer {
 
     // MARK: - 初期化
 
-    /// オーディオアナライザーを作成します。
+    /// Creates an audio analyzer.
     /// - Parameters:
-    ///   - fftSize: FFT サイズ（2の累乗である必要があり、デフォルトは1024）。
-    ///   - sampleRate: ``injectSamples(_:)`` 経由で解析する場合のサンプルレート（Hz）。
-    ///     ``start()`` 使用時は不要（入力デバイスから自動取得）。
+    ///   - fftSize: The FFT size (must be a power of 2; defaults to 1024).
+    ///   - sampleRate: The sample rate (Hz) when analyzing via ``injectSamples(_:)``.
+    ///     Not needed when using ``start()`` (obtained automatically from the input device).
     public init(fftSize: Int = 1024, sampleRate: Double? = nil) {
         self.fftSize = fftSize
         self.halfFFTSize = fftSize / 2
@@ -198,11 +203,11 @@ public final class AudioAnalyzer {
 
     // MARK: - パブリック API
 
-    /// オーディオキャプチャを開始します。
-    /// - Throws: マイク権限が拒否されている場合は
-    ///   ``AudioAnalyzerError/microphonePermissionDenied``、利用可能な入力デバイスが
-    ///   ない場合は ``AudioAnalyzerError/noInputDevice``、そのほかオーディオエンジンの
-    ///   起動に失敗した場合にエラーをスローします。
+    /// Starts audio capture.
+    /// - Throws: ``AudioAnalyzerError/microphonePermissionDenied`` if microphone
+    ///   permission has been denied, ``AudioAnalyzerError/noInputDevice`` if no
+    ///   input device is available, or another error if the audio engine
+    ///   otherwise fails to start.
     public func start() throws {
         guard !isRunning else { return }
 
@@ -254,7 +259,7 @@ public final class AudioAnalyzer {
         self.isRunning = true
     }
 
-    /// オーディオキャプチャを停止します。
+    /// Stops audio capture.
     public func stop() {
         guard isRunning else { return }
         if let observer = configurationObserver {
@@ -273,10 +278,10 @@ public final class AudioAnalyzer {
         }
     }
 
-    /// フレームごとに解析データを更新します（`draw()` の先頭で呼び出してください）。
+    /// Updates analysis data once per frame (call this at the top of `draw()`).
     ///
-    /// オーディオスレッドから受信したサンプルを FFT で処理し、
-    /// `volume`、`spectrum`、`waveform`、`isBeat` を更新します。
+    /// Processes samples received from the audio thread through the FFT and
+    /// updates `volume`, `spectrum`, `waveform`, and `isBeat`.
     public func update() {
         if sampleBuffer.take(into: &tapSamples) {
             injectedSamples = nil
@@ -289,8 +294,8 @@ public final class AudioAnalyzer {
         }
     }
 
-    /// 外部ソースからサンプルを注入します（SoundFile で使用）。
-    /// - Parameter samples: 注入するオーディオサンプル配列。
+    /// Injects samples from an external source (used by SoundFile).
+    /// - Parameter samples: The array of audio samples to inject.
     public func injectSamples(_ samples: [Float]) {
         injectedSamples = samples
     }
@@ -333,9 +338,9 @@ public final class AudioAnalyzer {
         detectBeat()
     }
 
-    /// 周波数帯域のエネルギーを返します。
-    /// - Parameter index: 帯域インデックス（0 = 低音、1 = 中音、2 = 高音）。
-    /// - Returns: 帯域エネルギー（0.0〜1.0）。
+    /// Returns the energy of a frequency band.
+    /// - Parameter index: The band index (0 = low, 1 = mid, 2 = high).
+    /// - Returns: The band energy (0.0-1.0).
     public func band(_ index: Int) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
@@ -367,11 +372,11 @@ public final class AudioAnalyzer {
         return sum / Float(end - start)
     }
 
-    /// 任意の周波数範囲のエネルギーを返します。
+    /// Returns the energy of an arbitrary frequency range.
     /// - Parameters:
-    ///   - lowFreq: 下限周波数（Hz）。
-    ///   - highFreq: 上限周波数（Hz）。
-    /// - Returns: エネルギーレベル（0.0〜1.0）。
+    ///   - lowFreq: The lower bound frequency (Hz).
+    ///   - highFreq: The upper bound frequency (Hz).
+    /// - Returns: The energy level (0.0-1.0).
     public func bandEnergy(lowFreq: Float, highFreq: Float) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
@@ -469,11 +474,11 @@ public final class AudioAnalyzer {
 
 // MARK: - エラー
 
-/// AudioAnalyzer 操作中に発生するエラーを表します。
+/// Represents errors that can occur during `AudioAnalyzer` operations.
 public enum AudioAnalyzerError: Error, LocalizedError {
-    /// 利用可能なオーディオ入力デバイスがないことを示します。
+    /// Indicates that no audio input device is available.
     case noInputDevice
-    /// マイクの使用権限が拒否されていることを示します。
+    /// Indicates that microphone permission has been denied.
     case microphonePermissionDenied
 
     public var errorDescription: String? {

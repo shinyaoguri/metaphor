@@ -6,9 +6,9 @@ import ObjectiveC.runtime
 
 // MARK: - PlaybackHolder
 
-/// アクター境界を越えて安全にクリーンアップするために AVPlayer のライフサイクルを管理します。
+/// Manages the lifecycle of `AVPlayer` for safe cleanup across actor boundaries.
 ///
-/// AVPlayer の pause 操作はスレッドセーフです。
+/// The pause operation on `AVPlayer` is thread-safe.
 private final class PlaybackHolder: @unchecked Sendable {
     let player: AVPlayer
     let playerItem: AVPlayerItem
@@ -27,11 +27,11 @@ private final class PlaybackHolder: @unchecked Sendable {
 
 // MARK: - VideoPlayerError
 
-/// ビデオプレーヤーの操作中に発生するエラー。
+/// Errors that can occur during video player operations.
 public enum VideoPlayerError: Error, LocalizedError, Sendable {
-    /// 指定されたパスにビデオファイルが見つからなかった。
+    /// No video file was found at the specified path.
     case fileNotFound(String)
-    /// アイテムの読み込み・再生に失敗した（破損ファイル・非対応コーデック等）。
+    /// Loading or playing the item failed (e.g. a corrupt file or unsupported codec).
     case playbackFailed(String)
 
     public var errorDescription: String? {
@@ -46,7 +46,7 @@ public enum VideoPlayerError: Error, LocalizedError, Sendable {
 
 // MARK: - スレッドセーフなエラーボックス
 
-/// KVO（任意スレッド）で観測したエラーをメインスレッドの poll 系 API へ渡します。
+/// Carries errors observed via KVO (on any thread) to the main thread's poll-style API.
 private final class VideoErrorBox: @unchecked Sendable {
     private let lock = NSLock()
     private var error: (any Error)?
@@ -66,16 +66,16 @@ private final class VideoErrorBox: @unchecked Sendable {
 
 // MARK: - VideoPlayer
 
-/// ビデオファイルの再生とフレーム取得を管理します。
+/// Manages playback and frame retrieval for a video file.
 ///
-/// AVPlayer を使用してビデオを再生し、CVMetalTextureCache 経由で
-/// ゼロコピーの Metal テクスチャとしてフレームを提供します。
+/// Plays a video using `AVPlayer` and provides frames as zero-copy Metal
+/// textures via `CVMetalTextureCache`.
 ///
 /// ```swift
 /// let video = try loadVideo("/path/to/video.mp4")
 /// video.loop()
 ///
-/// // draw() 内:
+/// // inside draw():
 /// video.update()
 /// image(video, 0, 0, width, height)
 /// ```
@@ -84,30 +84,31 @@ public final class VideoPlayer {
 
     // MARK: - Public Properties
 
-    /// 現在のビデオフレームの Metal テクスチャ。
-    /// `update()` 呼び出し後に利用可能になります。
+    /// The Metal texture for the current video frame.
+    /// Available after calling `update()`.
     public private(set) var texture: MTLTexture?
 
-    /// ビデオが現在再生中かどうか。
+    /// Whether the video is currently playing.
     public private(set) var isPlaying: Bool = false
 
-    /// ループ再生の有効・無効を制御します。
+    /// Controls whether looping playback is enabled.
     public var isLooping: Bool = false
 
-    /// 少なくとも1フレームがデコードされたかどうか。
+    /// Whether at least one frame has been decoded.
     public private(set) var isAvailable: Bool = false
 
-    /// アイテムの読み込み・再生エラー（破損ファイル・非対応コーデック等）。
+    /// The item's loading/playback error (e.g. a corrupt file or unsupported codec).
     ///
-    /// AVPlayerItem の失敗は非同期に確定するため、`draw()` 内の ``update()`` と
-    /// 同じ要領でこのプロパティを確認してください（失敗時は ``isAvailable`` が
-    /// false のまま・フレームが届かない silent failure になっていた）。
+    /// `AVPlayerItem` failures resolve asynchronously, so check this
+    /// property the same way you check ``update()`` inside `draw()`
+    /// (previously, a failure was a silent failure — ``isAvailable``
+    /// stayed false and no frames ever arrived).
     public var lastError: (any Error)? { errorBox.value }
 
-    /// ビデオの総再生時間（秒）。
+    /// The video's total duration (seconds).
     public let duration: Double
 
-    /// 現在の再生位置（秒）。setter でフレーム精度のシークを行います。
+    /// The current playback position (seconds). The setter performs a frame-accurate seek.
     public var position: Double {
         get {
             CMTimeGetSeconds(playback.player.currentTime())
@@ -118,7 +119,7 @@ public final class VideoPlayer {
         }
     }
 
-    /// 再生速度を制御します（0.25〜4.0）。
+    /// Controls the playback rate (0.25-4.0).
     public var rate: Float {
         get { _rate }
         set {
@@ -129,16 +130,16 @@ public final class VideoPlayer {
         }
     }
 
-    /// オーディオのゲインを制御します（0.0〜1.0）。
+    /// Controls the audio gain (0.0-1.0).
     public var gain: Float {
         get { playback.player.volume }
         set { playback.player.volume = max(0, min(1, newValue)) }
     }
 
-    /// ビデオフレームの幅（ポイント単位）。
+    /// The video frame width (in points).
     public private(set) var width: Float = 0
 
-    /// ビデオフレームの高さ（ポイント単位）。
+    /// The video frame height (in points).
     public private(set) var height: Float = 0
 
     // MARK: - Private State
@@ -150,20 +151,20 @@ public final class VideoPlayer {
     private var statusObservation: NSKeyValueObservation?
     private let errorBox = VideoErrorBox()
 
-    /// ``texture`` を支える CVMetalTexture ラッパーの寿命を MTLTexture 自体に
-    /// 関連付けるためのキー（MLTextureConverter と同じパターン）。
+    /// The key used to associate the `CVMetalTexture` wrapper's lifetime
+    /// with the `MTLTexture` itself backing ``texture`` (same pattern as `MLTextureConverter`).
     private static let cvTextureAssociationKey = UnsafeRawPointer(
         UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
     )
 
     // MARK: - Initialization
 
-    /// 指定パスからビデオファイルを読み込みます。
+    /// Loads a video file from the given path.
     ///
     /// - Parameters:
-    ///   - path: ビデオファイルのファイルシステムパス。
-    ///   - device: テクスチャキャッシュ作成に使用する Metal デバイス。
-    /// - Throws: ファイルが存在しない場合に ``VideoPlayerError/fileNotFound(_:)`` をスローします。
+    ///   - path: The file system path to the video file.
+    ///   - device: The Metal device used to create the texture cache.
+    /// - Throws: ``VideoPlayerError/fileNotFound(_:)`` if the file does not exist.
     public init(path: String, device: MTLDevice) throws {
         guard FileManager.default.fileExists(atPath: path) else {
             throw VideoPlayerError.fileNotFound(path)
@@ -248,14 +249,15 @@ public final class VideoPlayer {
         statusObservation?.invalidate()
     }
 
-    /// `AVURLAsset` のトラック・再生時間・サイズを同期的に取り出すヘルパー。
-    /// macOS 13+ の async API を `DispatchSemaphore` で待つことで、
-    /// 同期 init の互換性を保ちつつ非推奨 API の警告を回避する。
+    /// A helper that synchronously extracts the track, duration, and size
+    /// from an `AVURLAsset`. Waits on the macOS 13+ async API via a
+    /// `DispatchSemaphore`, preserving the synchronous init's compatibility
+    /// while avoiding deprecated-API warnings.
     nonisolated private static func loadAssetMetadataSync(
         _ asset: AVURLAsset
     ) -> (track: AVAssetTrack?, duration: CMTime, naturalSize: CGSize?) {
-        /// ロード結果の受け渡し用ボックス（タイムアウト後にタスクが書き込んでも
-        /// データ競合にならないようロックで保護する）。
+        /// A box for passing load results across, protected by a lock so a
+        /// task writing after the timeout does not cause a data race.
         final class MetadataBox: @unchecked Sendable {
             private let lock = NSLock()
             private var track: AVAssetTrack?
@@ -302,26 +304,26 @@ public final class VideoPlayer {
 
     // MARK: - Playback Control
 
-    /// ビデオ再生を開始します。
+    /// Starts video playback.
     public func play() {
         playback.player.rate = _rate
         isPlaying = true
     }
 
-    /// ビデオ再生を一時停止します。現在の位置は維持されます。
+    /// Pauses video playback. The current position is preserved.
     public func pause() {
         playback.player.pause()
         isPlaying = false
     }
 
-    /// ビデオ再生を停止し、先頭に巻き戻します。
+    /// Stops video playback and rewinds to the beginning.
     public func stop() {
         playback.player.pause()
         isPlaying = false
         position = 0
     }
 
-    /// ループ再生を有効にして再生を開始します。
+    /// Enables looping playback and starts playback.
     public func loop() {
         isLooping = true
         play()
@@ -329,10 +331,10 @@ public final class VideoPlayer {
 
     // MARK: - Frame Update
 
-    /// 現在の再生位置に基づいてビデオフレームを更新します。
+    /// Updates the video frame based on the current playback position.
     ///
-    /// `draw()` メソッドの先頭で毎フレーム呼び出してください。
-    /// 新しいフレームが利用可能な場合、`texture` プロパティが更新されます。
+    /// Call this every frame at the top of your `draw()` method. When a new
+    /// frame is available, the `texture` property is updated.
     public func update() {
         // isPlaying では判定しない: 一時停止中のシークでも新フレームが届き、
         // 表示テクスチャへ反映されるべきため（hasNewPixelBuffer だけで足りる）

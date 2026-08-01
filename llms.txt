@@ -1578,58 +1578,58 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorAudio
 
-### `final class AudioAnalyzer` -- マイクまたはライン入力から FFT 解析とビート検出を行います。
+### `final class AudioAnalyzer` -- Performs FFT analysis and beat detection on microphone or line input.
 
-- `var beatThreshold: Float` -- ビート検出感度（値が大きいほど検出が鈍くなります）。
-- `var isBeat: Bool { get }` -- ビート検出フラグ（`update()` 呼び出しごとにリセット）。
-- `var onConfigurationChange: (() -> Void)?` -- 入力デバイスの切断やサンプルレート変更などでオーディオエンジンの構成が
-- `var sampleRate: Double?` -- 解析対象のサンプルレート（Hz）。
-- `var smoothing: Float { get set }` -- スペクトルの EMA スムージング係数（0.0 = スムージングなし、0.99 = 非常に滑らか）。
-- `var spectrum: [Float] { get }` -- 正規化された FFT スペクトル（0.0〜1.0）。
-- `var volume: Float { get }` -- RMS 音量レベル（0.0〜1.0）。
-- `var waveform: [Float] { get }` -- 生波形データ。
-- `init(fftSize: Int = 1024, sampleRate: Double? = nil)` -- オーディオアナライザーを作成します。
-- `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します。
-- `func bandEnergy(lowFreq: Float, highFreq: Float) -> Float` -- 任意の周波数範囲のエネルギーを返します。
-- `func injectSamples(_ samples: [Float])` -- 外部ソースからサンプルを注入します（SoundFile で使用）。
-- `func start() throws` -- オーディオキャプチャを開始します。
-- `func stop()` -- オーディオキャプチャを停止します。
-- `func update()` -- フレームごとに解析データを更新します（`draw()` の先頭で呼び出してください）。
+- `var beatThreshold: Float` -- Beat detection sensitivity (higher values make detection less sensitive).
+- `var isBeat: Bool { get }` -- Beat detection flag (reset on every `update()` call).
+- `var onConfigurationChange: (() -> Void)?` -- Called (on the main thread) when the audio engine's configuration
+- `var sampleRate: Double?` -- The sample rate of the audio being analyzed (Hz).
+- `var smoothing: Float { get set }` -- EMA smoothing factor for the spectrum (0.0 = no smoothing, 0.99 = very smooth).
+- `var spectrum: [Float] { get }` -- Normalized FFT spectrum (0.0-1.0).
+- `var volume: Float { get }` -- RMS volume level (0.0-1.0).
+- `var waveform: [Float] { get }` -- Raw waveform data.
+- `init(fftSize: Int = 1024, sampleRate: Double? = nil)` -- Creates an audio analyzer.
+- `func band(_ index: Int) -> Float` -- Returns the energy of a frequency band.
+- `func bandEnergy(lowFreq: Float, highFreq: Float) -> Float` -- Returns the energy of an arbitrary frequency range.
+- `func injectSamples(_ samples: [Float])` -- Injects samples from an external source (used by SoundFile).
+- `func start() throws` -- Starts audio capture.
+- `func stop()` -- Stops audio capture.
+- `func update()` -- Updates analysis data once per frame (call this at the top of `draw()`).
 
-### `enum AudioAnalyzerError` -- AudioAnalyzer 操作中に発生するエラーを表します。
+### `enum AudioAnalyzerError` -- Represents errors that can occur during `AudioAnalyzer` operations.
 
-- `case microphonePermissionDenied` -- マイクの使用権限が拒否されていることを示します。
-- `case noInputDevice` -- 利用可能なオーディオ入力デバイスがないことを示します。
+- `case microphonePermissionDenied` -- Indicates that microphone permission has been denied.
+- `case noInputDevice` -- Indicates that no audio input device is available.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `final class SoundFile` -- オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
+### `final class SoundFile` -- Plays an audio file (MP3, WAV, AAC, etc.) and integrates spectrum analysis.
 
-- `var analysisVolume: Float { get }` -- RMS 音量レベルを返します（解析有効時に利用可能）。
-- `let duration: Double` -- ファイルの総再生時間（秒）を返します。
-- `var gain: Float { get set }` -- 再生ゲインを制御します（0.0〜1.0）。
-- `var isBeat: Bool { get }` -- ビート検出フラグを返します（解析有効時に利用可能）。
-- `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
-- `var isPlaying: Bool { get }` -- ファイルが現在再生中かどうかを示します。
-- `var lastError: (any Error)? { get }` -- 直近の再生操作で発生したエラー（現在は `play()` のエンジン起動失敗）。
-- `var position: Double { get set }` -- 現在の再生位置（秒）を取得または設定します。
-- `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
-- `var spectrum: [Float] { get }` -- スペクトルデータを返します（解析有効時に利用可能）。
-- `init(path: String) throws` -- 指定パスからオーディオファイルを読み込みます。
-- `func band(_ index: Int) -> Float` -- 周波数帯域のエネルギーを返します（AudioAnalyzer 経由）。
-- `func enableAnalysis(fftSize: Int = 1024)` -- オーディオ出力のスペクトル解析を有効にします。
-- `func loop()` -- ループを有効にして再生を開始します。
-- `func pause()` -- 再生を一時停止します。
-- `func play()` -- 再生を開始します。
-- `func stop()` -- 再生を停止し、先頭に戻します。
-- `func update()` -- 解析データを更新します（`draw()` の先頭で呼び出してください）。
+- `var analysisVolume: Float { get }` -- Returns the RMS volume level (available once analysis is enabled).
+- `let duration: Double` -- Returns the file's total duration (seconds).
+- `var gain: Float { get set }` -- Controls the playback gain (0.0-1.0).
+- `var isBeat: Bool { get }` -- Returns the beat detection flag (available once analysis is enabled).
+- `var isLooping: Bool` -- Controls whether looping playback is enabled.
+- `var isPlaying: Bool { get }` -- Indicates whether the file is currently playing.
+- `var lastError: (any Error)? { get }` -- The error from the most recent playback operation (currently only an
+- `var position: Double { get set }` -- Gets or sets the current playback position (seconds).
+- `var rate: Float { get set }` -- Controls the playback rate (0.25-4.0).
+- `var spectrum: [Float] { get }` -- Returns spectrum data (available once analysis is enabled).
+- `init(path: String) throws` -- Loads an audio file from the given path.
+- `func band(_ index: Int) -> Float` -- Returns the energy of a frequency band (via `AudioAnalyzer`).
+- `func enableAnalysis(fftSize: Int = 1024)` -- Enables spectrum analysis of the audio output.
+- `func loop()` -- Enables looping and starts playback.
+- `func pause()` -- Pauses playback.
+- `func play()` -- Starts playback.
+- `func stop()` -- Stops playback and returns to the beginning.
+- `func update()` -- Updates analysis data (call this at the top of `draw()`).
 
-### `enum SoundFileError` -- SoundFile 操作中に発生するエラーを表します。
+### `enum SoundFileError` -- Represents errors that can occur during `SoundFile` operations.
 
-- `case fileNotFound(String)` -- 指定パスにオーディオファイルが見つからないことを示します。
+- `case fileNotFound(String)` -- Indicates that no audio file was found at the given path.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
@@ -1707,14 +1707,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorML
 
-### `final class MLTextureConverter` -- MTLTexture、CVPixelBuffer、CGImage 間の変換ユーティリティを提供します。
+### `final class MLTextureConverter` -- Provides conversion utilities between `MTLTexture`, `CVPixelBuffer`, and `CGImage`.
 
 - `init(device: any MTLDevice, commandQueue: any MTLCommandQueue)`
-- `func cgImage(from texture: any MTLTexture) -> CGImage?` -- MTLTexture を CGImage に変換します。
-- `func pixelBuffer(from texture: any MTLTexture) -> CVPixelBuffer?` -- MTLTexture をコピーベースのアプローチで CVPixelBuffer に変換します。
-- `func texture(from pixelBuffer: CVPixelBuffer) -> (any MTLTexture)?` -- CVPixelBuffer をゼロコピーの Metal テクスチャキャッシュを使用して MTLTexture に変換します。
-- `func texture(from cgImage: CGImage) -> (any MTLTexture)?` -- CGImage を MTLTexture に変換します。
-- `func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> (any MTLTexture)?` -- 2D MLMultiArray（グレースケール）を MTLTexture に変換します。
+- `func cgImage(from texture: any MTLTexture) -> CGImage?` -- Converts an `MTLTexture` to a `CGImage`.
+- `func pixelBuffer(from texture: any MTLTexture) -> CVPixelBuffer?` -- Converts an `MTLTexture` to a `CVPixelBuffer` using a copy-based approach.
+- `func texture(from pixelBuffer: CVPixelBuffer) -> (any MTLTexture)?` -- Converts a `CVPixelBuffer` to an `MTLTexture` using a zero-copy Metal texture cache.
+- `func texture(from cgImage: CGImage) -> (any MTLTexture)?` -- Converts a `CGImage` to an `MTLTexture`.
+- `func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> (any MTLTexture)?` -- Converts a 2D `MLMultiArray` (grayscale) to an `MTLTexture`.
 
 ## MetaphorMPS
 
@@ -1785,54 +1785,54 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MIDIManager`
 
-- `var isRunning: Bool { get }` -- MIDI 入出力が稼働中かどうか。``start()`` が失敗した場合は false のままで、
-- `var lastError: MIDIManagerError? { get }` -- 直近の ``start()`` で発生したエラー。成功時は nil に戻ります。
-- `init()` -- MIDI マネージャーを作成します。
-- `func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8` -- 生の CC 値を返します（0〜127）。
-- `func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float` -- 正規化された CC 値を返します（0.0〜1.0）。
-- `func isNoteActive(_ note: UInt8, channel: UInt8 = 0) -> Bool` -- ノートが現在押されているかどうかを確認します。
-- `func onControlChange(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Control Change コールバックを登録します。
-- `func onNoteOff(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Note Off コールバックを登録します。
-- `func onNoteOn(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Note On コールバックを登録します。
-- `func poll() -> [MIDIMessage]` -- 受信したメッセージをポーリングし、登録済みコールバックを呼び出します。
-- `func sendControlChange(cc: UInt8, value: UInt8, channel: UInt8 = 0)` -- Control Change メッセージを送信します。
-- `func sendNoteOff(note: UInt8, velocity: UInt8 = 0, channel: UInt8 = 0)` -- Note Off メッセージを送信します。
-- `func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0)` -- Note On メッセージを送信します。
-- `func start()` -- MIDI 入出力を開始します。
-- `func stop()` -- MIDI 入出力を停止します。
+- `var isRunning: Bool { get }` -- Whether MIDI input/output is currently running. Stays false if
+- `var lastError: MIDIManagerError? { get }` -- The error from the most recent ``start()`` call. Resets to nil on success.
+- `init()` -- Creates a MIDI manager.
+- `func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8` -- Returns the raw CC value (0-127).
+- `func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float` -- Returns the normalized CC value (0.0-1.0).
+- `func isNoteActive(_ note: UInt8, channel: UInt8 = 0) -> Bool` -- Checks whether a note is currently held down.
+- `func onControlChange(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Registers a Control Change callback.
+- `func onNoteOff(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Registers a Note Off callback.
+- `func onNoteOn(_ handler: (UInt8, UInt8, UInt8) -> Void)` -- Registers a Note On callback.
+- `func poll() -> [MIDIMessage]` -- Polls received messages and invokes the registered callbacks.
+- `func sendControlChange(cc: UInt8, value: UInt8, channel: UInt8 = 0)` -- Sends a Control Change message.
+- `func sendNoteOff(note: UInt8, velocity: UInt8 = 0, channel: UInt8 = 0)` -- Sends a Note Off message.
+- `func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0)` -- Sends a Note On message.
+- `func start()` -- Starts MIDI input/output.
+- `func stop()` -- Stops MIDI input/output.
 
-### `enum MIDIManagerError` -- MIDIManager 操作中に発生するエラーを表します。
+### `enum MIDIManagerError` -- Represents errors that can occur during `MIDIManager` operations.
 
-- `case clientCreationFailed(OSStatus)` -- MIDI クライアントの作成に失敗したことを示します。
-- `case inputPortCreationFailed(OSStatus)` -- 入力ポートの作成に失敗したことを示します。
-- `case outputPortCreationFailed(OSStatus)` -- 出力ポートの作成に失敗したことを示します。
+- `case clientCreationFailed(OSStatus)` -- Indicates that creating the MIDI client failed.
+- `case inputPortCreationFailed(OSStatus)` -- Indicates that creating the input port failed.
+- `case outputPortCreationFailed(OSStatus)` -- Indicates that creating the output port failed.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `struct MIDIMessage` -- 単一の MIDI メッセージを表します。
+### `struct MIDIMessage` -- Represents a single MIDI message.
 
-- `let channel: UInt8` -- MIDI チャンネル（0-15）。
-- `var controlNumber: UInt8 { get }` -- CC 番号を返します（Control Change メッセージ用）。
-- `var controlValue: UInt8 { get }` -- CC 値を返します（Control Change メッセージ用、0-127）。
-- `let data1: UInt8` -- 第1データバイト（ノート番号または CC 番号）。
-- `let data2: UInt8` -- 第2データバイト（ベロシティまたは CC 値）。
-- `var isControlChange: Bool { get }` -- Control Change メッセージかどうかを示します。
-- `var isNoteOff: Bool { get }` -- Note Off メッセージかどうかを示します。
-- `var isNoteOn: Bool { get }` -- Note On メッセージかどうかを示します。
-- `var isPitchBend: Bool { get }` -- Pitch Bend メッセージかどうかを示します。
-- `var isProgramChange: Bool { get }` -- Program Change メッセージかどうかを示します。
-- `var normalizedControlValue: Float { get }` -- CC 値を 0.0〜1.0 に正規化して返します。
-- `var note: UInt8 { get }` -- ノート番号を返します（Note On / Note Off メッセージ用）。
-- `var pitchBendValue: Int16 { get }` -- ピッチベンド値を返します（-8192〜8191）。
-- `let status: UInt8` -- ステータスバイト（上位4ビット: メッセージタイプ、下位4ビット: チャンネル）。
-- `let timestamp: UInt64` -- メッセージのタイムスタンプ。
-- `var velocity: UInt8 { get }` -- ベロシティを返します（Note On / Note Off メッセージ用）。
-- `init(status: UInt8, channel: UInt8, data1: UInt8, data2: UInt8, timestamp: UInt64 = 0)` -- MIDI メッセージを作成します。
+- `let channel: UInt8` -- The MIDI channel (0-15).
+- `var controlNumber: UInt8 { get }` -- Returns the CC number (for Control Change messages).
+- `var controlValue: UInt8 { get }` -- Returns the CC value (for Control Change messages, 0-127).
+- `let data1: UInt8` -- The first data byte (note number or CC number).
+- `let data2: UInt8` -- The second data byte (velocity or CC value).
+- `var isControlChange: Bool { get }` -- Indicates whether this is a Control Change message.
+- `var isNoteOff: Bool { get }` -- Indicates whether this is a Note Off message.
+- `var isNoteOn: Bool { get }` -- Indicates whether this is a Note On message.
+- `var isPitchBend: Bool { get }` -- Indicates whether this is a Pitch Bend message.
+- `var isProgramChange: Bool { get }` -- Indicates whether this is a Program Change message.
+- `var normalizedControlValue: Float { get }` -- Returns the CC value normalized to 0.0-1.0.
+- `var note: UInt8 { get }` -- Returns the note number (for Note On / Note Off messages).
+- `var pitchBendValue: Int16 { get }` -- Returns the pitch bend value (-8192 to 8191).
+- `let status: UInt8` -- The status byte (upper 4 bits: message type, lower 4 bits: channel).
+- `let timestamp: UInt64` -- The message's timestamp.
+- `var velocity: UInt8 { get }` -- Returns the velocity (for Note On / Note Off messages).
+- `init(status: UInt8, channel: UInt8, data1: UInt8, data2: UInt8, timestamp: UInt64 = 0)` -- Creates a MIDI message.
 
-### `enum MIDIMessageType` -- ステータスバイトによる MIDI メッセージタイプの定義。
+### `enum MIDIMessageType` -- Defines MIDI message types by status byte.
 
 - `case channelPressure`
 - `case controlChange`
@@ -1847,61 +1847,61 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `struct OSCMessage`
 
-- `let address: String` -- OSC アドレスパターン（例: "/synth/freq"）。
-- `let values: [OSCValue]` -- メッセージに含まれる値のリスト。
-- `init(address: String, values: [OSCValue])` -- OSC メッセージを作成します（``OSCSender/sendBundle(_:)`` 用）。
+- `let address: String` -- The OSC address pattern (e.g. "/synth/freq").
+- `let values: [OSCValue]` -- The list of values included in the message.
+- `init(address: String, values: [OSCValue])` -- Creates an OSC message (for use with ``OSCSender/sendBundle(_:)``).
 
-### `final class OSCReceiver` -- Network.framework を使用して UDP OSC メッセージを受信します。
+### `final class OSCReceiver` -- Receives UDP OSC messages using Network.framework.
 
-- `var isRunning: Bool { get }` -- レシーバーが現在リッスン中かどうか。
-- `var lastError: (any Error)? { get }` -- 直近のリスナーエラー（ポート競合等）。
-- `let port: UInt16` -- リスニングポート番号を返します。
-- `init(port: UInt16)` -- OSC レシーバーを作成します。
-- `func on(_ address: String, handler: ([OSCValue]) -> Void)` -- 特定の OSC アドレスパターンに対するハンドラーを登録します。
-- `func onAny(handler: (String, [OSCValue]) -> Void)` -- すべてのメッセージを受信するワイルドカードハンドラーを登録します。
-- `func poll() -> [OSCMessage]` -- キュー内のメッセージをメインスレッドでディスパッチします（`draw()` 内で呼び出してください）。
-- `func start() throws` -- 受信 OSC メッセージのリスニングを開始します。
-- `func stop()` -- OSC メッセージのリスニングを停止します。
+- `var isRunning: Bool { get }` -- Whether the receiver is currently listening.
+- `var lastError: (any Error)? { get }` -- The most recent listener error (e.g. a port conflict).
+- `let port: UInt16` -- Returns the listening port number.
+- `init(port: UInt16)` -- Creates an OSC receiver.
+- `func on(_ address: String, handler: ([OSCValue]) -> Void)` -- Registers a handler for a specific OSC address pattern.
+- `func onAny(handler: (String, [OSCValue]) -> Void)` -- Registers a wildcard handler that receives all messages.
+- `func poll() -> [OSCMessage]` -- Dispatches queued messages on the main thread (call this inside `draw()`).
+- `func start() throws` -- Starts listening for incoming OSC messages.
+- `func stop()` -- Stops listening for OSC messages.
 
-### `enum OSCReceiverError` -- OSC レシーバー操作中に発生するエラーを表します。
+### `enum OSCReceiverError` -- Represents errors that can occur during `OSCReceiver` operations.
 
-- `case invalidPort(UInt16)` -- 指定されたポートが無効であることを示します。
+- `case invalidPort(UInt16)` -- Indicates that the specified port is invalid.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `final class OSCSender` -- Network.framework を使用して UDP OSC メッセージを送信します。
+### `final class OSCSender` -- Sends UDP OSC messages using Network.framework.
 
-- `let host: String` -- 送信先ホスト（IP アドレスまたはホスト名）。
-- `var lastError: (any Error)? { get }` -- 直近の送信・接続エラー。
-- `let port: UInt16` -- 送信先の UDP ポート番号。
-- `init(host: String, port: UInt16) throws` -- OSC センダーを作成し、送信先への UDP フローを開きます。
-- `func send(_ address: String, _ values: [OSCValue])` -- OSC メッセージを送信します。
-- `func send(_ address: String, _ values: OSCValue...)` -- OSC メッセージを送信します（可変長引数版）。
-- `func sendBundle(_ messages: [OSCMessage])` -- 複数のメッセージを 1 つの OSC バンドルとして送信します。
-- `func stop()` -- 送信先への UDP フローを閉じます。以降の送信は無視されます。
+- `let host: String` -- The destination host (IP address or hostname).
+- `var lastError: (any Error)? { get }` -- The most recent send/connection error.
+- `let port: UInt16` -- The destination UDP port number.
+- `init(host: String, port: UInt16) throws` -- Creates an OSC sender and opens a UDP flow to the destination.
+- `func send(_ address: String, _ values: [OSCValue])` -- Sends an OSC message.
+- `func send(_ address: String, _ values: OSCValue...)` -- Sends an OSC message (variadic version).
+- `func sendBundle(_ messages: [OSCMessage])` -- Sends multiple messages as a single OSC bundle.
+- `func stop()` -- Closes the UDP flow to the destination. Subsequent sends are ignored.
 
-### `enum OSCSenderError` -- OSC センダー操作中に発生するエラーを表します。
+### `enum OSCSenderError` -- Represents errors that can occur during `OSCSender` operations.
 
-- `case invalidPort(UInt16)` -- 指定されたポートが無効であることを示します。
+- `case invalidPort(UInt16)` -- Indicates that the specified port is invalid.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `enum OSCValue` -- OSC メッセージ内の値を表します。
+### `enum OSCValue` -- Represents a value inside an OSC message.
 
 - `case blob(Data)`
 - `case float(Float)`
 - `case int(Int32)`
 - `case string(String)`
 - `init(extendedGraphemeClusterLiteral value: Self.StringLiteralType)`
-- `init(floatLiteral value: Float)` -- 小数リテラルから `.float` を構築します。
-- `init(integerLiteral value: Int32)` -- 整数リテラルから `.int` を構築します。
-- `init(stringLiteral value: String)` -- 文字列リテラルから `.string` を構築します。
+- `init(floatLiteral value: Float)` -- Constructs `.float` from a floating-point literal.
+- `init(integerLiteral value: Int32)` -- Constructs `.int` from an integer literal.
+- `init(stringLiteral value: String)` -- Constructs `.string` from a string literal.
 - `init(unicodeScalarLiteral value: Self.ExtendedGraphemeClusterLiteralType)`
 
 ## MetaphorNoise
@@ -1951,54 +1951,54 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorPhysics
 
-### `final class Physics2D` -- Verlet 積分を使用した2D物理ワールドを管理します。
+### `final class Physics2D` -- Manages a 2D physics world using Verlet integration.
 
-- `var bodies: [PhysicsBody2D] { get }` -- 現在ワールド内にある物理ボディのリスト。
-- `var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?` -- すべてのボディを制限範囲内に閉じ込めるオプションのバウンディングボックス。
-- `var constraints: [PhysicsConstraint2D] { get }` -- 現在ワールド内にある拘束のリスト。
-- `init(cellSize: Float = 50)` -- 新しい2D物理ワールドを作成します。
-- `func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D` -- 円形の物理ボディをワールドに追加します。
-- `func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D` -- 2つのボディ間に距離拘束を追加します。
-- `func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D` -- 矩形の物理ボディをワールドに追加します。
-- `func clear()` -- すべてのボディと拘束をワールドから削除します。
-- `func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D` -- ボディをワールド空間の固定位置にピン留めします。
-- `func removeBody(_ body: PhysicsBody2D)` -- ボディとそれを参照するすべての拘束をワールドから削除します。
-- `func removeConstraint(_ constraint: PhysicsConstraint2D)` -- 特定の拘束をワールドから削除します。
-- `func setGravity(_ x: Float, _ y: Float)` -- 各ステップですべてのボディに適用されるグローバル重力加速度を設定します。
-- `func step(_ dt: Float, iterations: Int = 4)` -- シミュレーションを1タイムステップ進めます。
+- `var bodies: [PhysicsBody2D] { get }` -- The list of physics bodies currently in the world.
+- `var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?` -- An optional bounding box that confines all bodies within its limits.
+- `var constraints: [PhysicsConstraint2D] { get }` -- The list of constraints currently in the world.
+- `init(cellSize: Float = 50)` -- Creates a new 2D physics world.
+- `func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D` -- Adds a circular physics body to the world.
+- `func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D` -- Adds a distance constraint between two bodies.
+- `func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D` -- Adds a rectangular physics body to the world.
+- `func clear()` -- Removes all bodies and constraints from the world.
+- `func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D` -- Pins a body to a fixed position in world space.
+- `func removeBody(_ body: PhysicsBody2D)` -- Removes a body and all constraints referencing it from the world.
+- `func removeConstraint(_ constraint: PhysicsConstraint2D)` -- Removes a specific constraint from the world.
+- `func setGravity(_ x: Float, _ y: Float)` -- Sets the global gravitational acceleration applied to all bodies each step.
+- `func step(_ dt: Float, iterations: Int = 4)` -- Advances the simulation by one time step.
 
-### `final class PhysicsBody2D` -- Verlet 積分でシミュレートされる単一の2D剛体を表します。
+### `final class PhysicsBody2D` -- Represents a single 2D rigid body simulated with Verlet integration.
 
-- `var acceleration: SIMD2<Float>` -- 現在のステップで蓄積された加速度。積分後にクリアされます。
-- `var friction: Float { get set }` -- 接触時に適用される摩擦係数。
-- `var isStatic: Bool` -- ボディが静的（不動）かどうかを示します。
-- `var mass: Float { get set }` -- 力の適用と衝突重み付けに使用されるボディの質量。
-- `var position: SIMD2<Float>` -- ワールド空間におけるボディの現在位置。
-- `var previousPosition: SIMD2<Float>` -- Verlet 積分で使用される前回タイムステップのボディ位置。
-- `var restitution: Float { get set }` -- 反発係数（弾性）。範囲は [0, 1]。
-- `let shape: PhysicsShape2D` -- ボディの衝突形状。
-- `var velocity: SIMD2<Float> { get }` -- Verlet 位置差分から導出されるボディの現在速度。
-- `init(x: Float, y: Float, shape: PhysicsShape2D, mass: Float = 1.0)` -- 指定位置・形状・質量で新しい物理ボディを作成します。
-- `func applyForce(_ force: SIMD2<Float>)` -- ボディに力を適用し、F/m で加速度に変換します。
+- `var acceleration: SIMD2<Float>` -- The acceleration accumulated for the current step. Cleared after integration.
+- `var friction: Float { get set }` -- The friction coefficient applied on contact.
+- `var isStatic: Bool` -- Indicates whether the body is static (immovable).
+- `var mass: Float { get set }` -- The body's mass, used for force application and collision weighting.
+- `var position: SIMD2<Float>` -- The body's current position in world space.
+- `var previousPosition: SIMD2<Float>` -- The body's position at the previous time step, used by Verlet integration.
+- `var restitution: Float { get set }` -- The coefficient of restitution (bounciness). Range is [0, 1].
+- `let shape: PhysicsShape2D` -- The body's collision shape.
+- `var velocity: SIMD2<Float> { get }` -- The body's current velocity, derived from the Verlet position difference.
+- `init(x: Float, y: Float, shape: PhysicsShape2D, mass: Float = 1.0)` -- Creates a new physics body with the given position, shape, and mass.
+- `func applyForce(_ force: SIMD2<Float>)` -- Applies a force to the body, converting it to acceleration via F/m.
 
-### `final class PhysicsConstraint2D` -- 2つの物理ボディ間、またはボディとワールド固定点間の拘束を表します。
+### `final class PhysicsConstraint2D` -- Represents a constraint between two physics bodies, or between a body
 
-- `let bodyA: PhysicsBody2D` -- この拘束に関与する1つ目（または唯一）のボディ。
-- `let bodyB: PhysicsBody2D?` -- 2つ目のボディ。ワールドへのピン拘束の場合は `nil`。
-- `let pinPosition: SIMD2<Float>?` -- ワールド空間のピン位置。距離拘束の場合は `nil`。
-- `var stiffness: Float { get set }` -- 拘束の剛性。範囲は [0, 1]。
-- `let targetDistance: Float` -- 2つのボディ間で維持する目標距離。
-- `init(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil)` -- 2つのボディ間に距離拘束を作成します。
-- `init(pin body: PhysicsBody2D, x: Float, y: Float)` -- ボディをワールド空間の固定位置にアンカーするピン拘束を作成します。
+- `let bodyA: PhysicsBody2D` -- The first (or only) body involved in this constraint.
+- `let bodyB: PhysicsBody2D?` -- The second body. `nil` for a pin constraint to the world.
+- `let pinPosition: SIMD2<Float>?` -- The pin position in world space. `nil` for a distance constraint.
+- `var stiffness: Float { get set }` -- The constraint's stiffness. Range is [0, 1].
+- `let targetDistance: Float` -- The target distance to maintain between the two bodies.
+- `init(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil)` -- Creates a distance constraint between two bodies.
+- `init(pin body: PhysicsBody2D, x: Float, y: Float)` -- Creates a pin constraint that anchors a body to a fixed position in world space.
 
-### `enum PhysicsShape2D` -- 2D物理ボディの衝突形状を表します。
+### `enum PhysicsShape2D` -- Represents the collision shape of a 2D physics body.
 
-- `case circle(radius: Float)` -- 指定半径の円。
-- `case rect(width: Float, height: Float)` -- 指定幅・高さの軸整列矩形。
+- `case circle(radius: Float)` -- A circle with the given radius.
+- `case rect(width: Float, height: Float)` -- An axis-aligned rectangle with the given width and height.
 
-### `final class SpatialHash2D` -- 均一な空間ハッシュグリッドを使用したブロードフェーズ衝突検出を提供します。
+### `final class SpatialHash2D` -- Provides broad-phase collision detection using a uniform spatial hash grid.
 
-- `init(cellSize: Float = 50)` -- 指定セルサイズで新しい空間ハッシュを作成します。
+- `init(cellSize: Float = 50)` -- Creates a new spatial hash with the given cell size.
 
 ## MetaphorRenderGraph
 
@@ -2133,30 +2133,30 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorVideo
 
-### `final class VideoPlayer` -- ビデオファイルの再生とフレーム取得を管理します。
+### `final class VideoPlayer` -- Manages playback and frame retrieval for a video file.
 
-- `let duration: Double` -- ビデオの総再生時間（秒）。
-- `var gain: Float { get set }` -- オーディオのゲインを制御します（0.0〜1.0）。
-- `var height: Float { get }` -- ビデオフレームの高さ（ポイント単位）。
-- `var isAvailable: Bool { get }` -- 少なくとも1フレームがデコードされたかどうか。
-- `var isLooping: Bool` -- ループ再生の有効・無効を制御します。
-- `var isPlaying: Bool { get }` -- ビデオが現在再生中かどうか。
-- `var lastError: (any Error)? { get }` -- アイテムの読み込み・再生エラー（破損ファイル・非対応コーデック等）。
-- `var position: Double { get set }` -- 現在の再生位置（秒）。setter でフレーム精度のシークを行います。
-- `var rate: Float { get set }` -- 再生速度を制御します（0.25〜4.0）。
-- `var texture: (any MTLTexture)? { get }` -- 現在のビデオフレームの Metal テクスチャ。
-- `var width: Float { get }` -- ビデオフレームの幅（ポイント単位）。
-- `init(path: String, device: any MTLDevice) throws` -- 指定パスからビデオファイルを読み込みます。
-- `func loop()` -- ループ再生を有効にして再生を開始します。
-- `func pause()` -- ビデオ再生を一時停止します。現在の位置は維持されます。
-- `func play()` -- ビデオ再生を開始します。
-- `func stop()` -- ビデオ再生を停止し、先頭に巻き戻します。
-- `func update()` -- 現在の再生位置に基づいてビデオフレームを更新します。
+- `let duration: Double` -- The video's total duration (seconds).
+- `var gain: Float { get set }` -- Controls the audio gain (0.0-1.0).
+- `var height: Float { get }` -- The video frame height (in points).
+- `var isAvailable: Bool { get }` -- Whether at least one frame has been decoded.
+- `var isLooping: Bool` -- Controls whether looping playback is enabled.
+- `var isPlaying: Bool { get }` -- Whether the video is currently playing.
+- `var lastError: (any Error)? { get }` -- The item's loading/playback error (e.g. a corrupt file or unsupported codec).
+- `var position: Double { get set }` -- The current playback position (seconds). The setter performs a frame-accurate seek.
+- `var rate: Float { get set }` -- Controls the playback rate (0.25-4.0).
+- `var texture: (any MTLTexture)? { get }` -- The Metal texture for the current video frame.
+- `var width: Float { get }` -- The video frame width (in points).
+- `init(path: String, device: any MTLDevice) throws` -- Loads a video file from the given path.
+- `func loop()` -- Enables looping playback and starts playback.
+- `func pause()` -- Pauses video playback. The current position is preserved.
+- `func play()` -- Starts video playback.
+- `func stop()` -- Stops video playback and rewinds to the beginning.
+- `func update()` -- Updates the video frame based on the current playback position.
 
-### `enum VideoPlayerError` -- ビデオプレーヤーの操作中に発生するエラー。
+### `enum VideoPlayerError` -- Errors that can occur during video player operations.
 
-- `case fileNotFound(String)` -- 指定されたパスにビデオファイルが見つからなかった。
-- `case playbackFailed(String)` -- アイテムの読み込み・再生に失敗した（破損ファイル・非対応コーデック等）。
+- `case fileNotFound(String)` -- No video file was found at the specified path.
+- `case playbackFailed(String)` -- Loading or playing the item failed (e.g. a corrupt file or unsupported codec).
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
