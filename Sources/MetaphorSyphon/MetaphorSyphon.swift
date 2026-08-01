@@ -2,33 +2,33 @@ import CMetaphorSyphonBootstrap
 import Metal
 import MetaphorCore
 
-/// Syphon 出力モジュール。
+/// The Syphon output module.
 ///
-/// `MetaphorCore` から分離された Syphon 出力実装を提供します。`import metaphor`
-/// （アンブレラ）経由ではこのモジュールが自動的にリンクされ、ロード時に出力ファクトリが
-/// ``MetaphorOutputRegistry`` へ登録されます。これにより利用者は従来どおり
-/// `SketchConfig(syphon: true)` / `syphonName:` / 環境変数 `METAPHOR_SYPHON_NAME` で
-/// 手軽に Syphon 出力を有効化できます（`MetaphorSyphon` を明示 import する必要はありません）。
+/// Provides the Syphon output implementation, split out from `MetaphorCore`. When
+/// imported through the `import metaphor` umbrella, this module is linked automatically,
+/// and the output factory is registered with ``MetaphorOutputRegistry`` at load time.
+/// This lets users continue to easily enable Syphon output via `SketchConfig(syphon: true)`,
+/// `syphonName:`, or the `METAPHOR_SYPHON_NAME` environment variable (there is no need to explicitly import `MetaphorSyphon`).
 ///
-/// `MetaphorCore` を単体で import した場合はこのモジュールがリンクされないため、
-/// Syphon 依存のない純粋な描画コアとして利用できます。その場合に明示的に Syphon を
-/// 有効化したいときは ``enable()`` を呼びます。
+/// When `MetaphorCore` is imported on its own, this module is not linked, so it can be
+/// used as a pure rendering core with no Syphon dependency. In that case, call
+/// ``enable()`` to enable Syphon explicitly.
 public enum MetaphorSyphon {
-    /// Syphon 出力ファクトリを明示的に登録します。
+    /// Explicitly registers the Syphon output factory.
     ///
-    /// 通常はロード時に C コンストラクタ経由で自動登録されるため呼ぶ必要はありません。
-    /// 自動登録が走らない特殊な構成（例: 出力 target を参照しない静的リンク）への
-    /// フォールバックとして公開しています。
+    /// This normally does not need to be called, since registration happens automatically
+    /// at load time via a C constructor. It is exposed as a fallback for unusual
+    /// configurations where automatic registration does not run (e.g. static linking that never references the output target).
     public static func enable() {
         installSyphonOutputFactory()
     }
 }
 
-/// ``MetaphorOutputRegistry`` に Syphon ファクトリを設定します。
+/// Sets the Syphon factory on ``MetaphorOutputRegistry``.
 ///
-/// `factory` は `nonisolated(unsafe)` ストレージのため、ロード時（コンストラクタ）の
-/// 非分離コンテキストから格納できます。クロージャ自体は `@MainActor` 型で、実際の生成は
-/// 後で `MainActor` 上（`SketchRunner`）から行われます。
+/// `factory` is `nonisolated(unsafe)` storage, so it can be assigned from the
+/// non-isolated context at load time (the constructor). The closure itself is
+/// `@MainActor`-typed; the actual creation happens later on `MainActor` (`SketchRunner`).
 private func installSyphonOutputFactory() {
     // bootstrap.o（ロード時コンストラクタを含む）への実参照。静的アーカイブ経由の
     // リンクでは、シンボル参照のないオブジェクトファイルが selective loading で
@@ -39,11 +39,11 @@ private func installSyphonOutputFactory() {
     MetaphorOutputRegistry.factory = { name in SyphonPlugin(name: name) }
 }
 
-/// C の `__attribute__((constructor))`（`CMetaphorSyphonBootstrap`）から呼ばれる登録関数。
+/// The registration function called from C's `__attribute__((constructor))` (`CMetaphorSyphonBootstrap`).
 ///
-/// アンブレラ `metaphor`（→ `MetaphorSyphon` → `CMetaphorSyphonBootstrap`）がリンクされると、
-/// プロセス起動時にこの関数が呼ばれ、利用者コードが `MetaphorSyphon` を明示参照しなくても
-/// 出力ファクトリが登録されます。
+/// When the `metaphor` umbrella (-> `MetaphorSyphon` -> `CMetaphorSyphonBootstrap`) is linked,
+/// this function is called at process startup, registering the output factory even if
+/// user code never explicitly references `MetaphorSyphon`.
 @_cdecl("metaphor_syphon_register")
 public func _metaphorSyphonRegister() {
     installSyphonOutputFactory()
@@ -52,19 +52,19 @@ public func _metaphorSyphonRegister() {
 // MARK: - 後方互換 facade
 
 extension MetaphorRenderer {
-    /// アプリケーション間映像共有用のオプショナルな Syphon 出力。
+    /// An optional Syphon output for sharing video between applications.
     ///
-    /// 後方互換 facade: Syphon 出力は内部的に ``SyphonPlugin`` として実装されており、
-    /// このプロパティは登録済みの ``SyphonPlugin`` が持つ ``SyphonOutput`` を返します。
+    /// Backward-compatibility facade: Syphon output is implemented internally as
+    /// ``SyphonPlugin``; this property returns the ``SyphonOutput`` held by the registered ``SyphonPlugin``.
     public var syphonOutput: SyphonOutput? {
         (plugin(id: SyphonPlugin.id) as? SyphonPlugin)?.output
     }
 
-    /// 指定した名前でアプリケーション間テクスチャ共有用の Syphon サーバーを開始します。
+    /// Starts a Syphon server under the given name for sharing textures between applications.
     ///
-    /// 内部的には出力フェーズで動作する ``SyphonPlugin`` を登録します。既に Syphon が
-    /// 動作中なら差し替えます（二重 publish 防止）。
-    /// - Parameter name: Syphon サーバーとして公開する名前
+    /// Internally, this registers a ``SyphonPlugin`` that runs in the output phase. If Syphon
+    /// is already running, it is replaced (preventing double publishing).
+    /// - Parameter name: The name to publish as the Syphon server
     public func startSyphonServer(name: String) {
         if plugin(id: SyphonPlugin.id) != nil {
             removePlugin(id: SyphonPlugin.id)   // onDetach → 旧サーバー停止
@@ -72,7 +72,7 @@ extension MetaphorRenderer {
         addPlugin(SyphonPlugin(name: name))     // onAttach(renderer:) → 新サーバー生成
     }
 
-    /// Syphon サーバーを停止し、リソースを解放します。
+    /// Stops the Syphon server and releases its resources.
     public func stopSyphonServer() {
         removePlugin(id: SyphonPlugin.id)       // onDetach → stop + 配列から除去
     }
