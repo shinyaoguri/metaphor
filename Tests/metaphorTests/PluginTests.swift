@@ -20,9 +20,6 @@ final class MockPlugin: MetaphorPlugin {
     var mouseEvents: [(x: Float, y: Float, button: Int, type: MouseEventType)] = []
     var keyEvents: [(key: Character?, keyCode: UInt16, type: KeyEventType)] = []
     var resizeEvents: [(width: Int, height: Int)] = []
-    // Legacy hooks
-    var legacyBeforeRenderCount = 0
-    var legacyAfterRenderCount = 0
 
     init(id: String = "mock") {
         self.pluginID = id
@@ -68,14 +65,6 @@ final class MockPlugin: MetaphorPlugin {
 
     func onResize(width: Int, height: Int) {
         resizeEvents.append((width: width, height: height))
-    }
-
-    func onBeforeRender(commandBuffer: MTLCommandBuffer, time: Double) {
-        legacyBeforeRenderCount += 1
-    }
-
-    func onAfterRender(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {
-        legacyAfterRenderCount += 1
     }
 }
 
@@ -268,8 +257,8 @@ struct PluginTests {
         #expect(plugin.resizeEvents[0].height == 96)
     }
 
-    @Test("renderFrame dispatches modern hooks once")
-    func renderFrameModernHooksOnce() throws {
+    @Test("renderFrame dispatches frame hooks once")
+    func renderFrameHooksOnce() throws {
         let renderer = try MetaphorRenderer(width: 64, height: 64)
         let plugin = MockPlugin(id: "frame-hooks")
         renderer.addPlugin(plugin)
@@ -278,8 +267,6 @@ struct PluginTests {
 
         #expect(plugin.preCallCount == 1)
         #expect(plugin.postCallCount == 1)
-        #expect(plugin.legacyBeforeRenderCount == 0)
-        #expect(plugin.legacyAfterRenderCount == 0)
     }
 
     // MARK: - Lifecycle (onStart / onStop)

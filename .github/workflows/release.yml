@@ -54,6 +54,17 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      # --- CHANGELOG gate (Issue #335) ---
+      # A release has to be able to say what changed. This runs first — before
+      # the ~10 min Syphon build and long before anything irreversible (branch
+      # push, merge, tag, Release) — so a forgotten entry costs seconds, not a
+      # wasted release attempt. `changelog.py check` fails when the
+      # `## [Unreleased]` section is missing, duplicated, or empty; its error
+      # message spells out the fix, including how to declare "no user-facing
+      # changes" explicitly for a release that genuinely has none.
+      - name: Require CHANGELOG entries
+        run: python3 scripts/changelog.py check
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
@@ -175,25 +186,65 @@ jobs:
           # Only stable versions appear in `from:` install snippets. Keep every
           # file that carries the snippet in sync — CI on this release branch
           # enforces agreement (validate-ai-docs.sh check #6 compares
-          # GettingStarted.md and llms.txt against README.md, and the llms.txt
-          # staleness check regenerates with the README version embedded), so
-          # updating README.md alone deadlocks the release.
+          # README.en.md, GettingStarted.md and llms.txt against README.md, and
+          # the llms.txt staleness check regenerates with the README version
+          # embedded), so updating README.md alone deadlocks the release.
+          # NOTE: this list and validate-ai-docs.sh's `version_docs` are two
+          # halves of one contract — always change them together. Adding a file
+          # to only one side deadlocks releases in either direction (validate
+          # only → the file is never bumped but is checked; sed only → the file
+          # is bumped but nothing guards it from drifting back).
           if [ "$IS_PRERELEASE" = "false" ]; then
             VERSION_NUM=${TAG_NAME#v}
             # Anchor on the dependency URL so unrelated `from:` parameter
             # labels (e.g. tween(from:to:)) in llms.txt are left alone.
             sed -i '' "s|metaphor\.git\", from: \"[0-9][^\"]*\"|metaphor.git\", from: \"${VERSION_NUM}\"|g" \
               README.md \
+              README.en.md \
               Sources/metaphor/metaphor.docc/GettingStarted.md \
               llms.txt
+            # Promote `## [Unreleased]` into this version's section (Issue #335).
+            # Stable-only, matching the `from:` snippets above: a prerelease
+            # cycle keeps accumulating entries under Unreleased until it
+            # graduates, so vX.Y.Z ships the notes for the whole cycle.
+            # Already gated by the "Require CHANGELOG entries" step; this call
+            # re-checks and fails rather than writing an empty section.
+            python3 scripts/changelog.py release "${VERSION_NUM}" --date "$(date -u +%Y-%m-%d)"
           fi
-          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt
+          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt CHANGELOG.md
           if git diff --cached --quiet; then
             echo "::error::No version-bump diff produced."
             exit 1
           fi
           git commit -m "Release ${TAG_NAME}"
           git push origin "$RELEASE_BRANCH"
+
+      # --- Human-readable release notes (Issue #335) ---
+      # Compose the Release body here, while the job can still fail harmlessly
+      # (no tag yet). GitHub's auto-generated "What's Changed" list is a wall of
+      # PR titles; this puts the CHANGELOG section for the version above it, so
+      # the notes lead with what changed and what breaks. `changelog.py notes`
+      # is deliberately failure-free — worst case the highlights are omitted and
+      # the body still carries the checksum plus the generated list.
+      - name: Compose release notes
+        run: |
+          set -euo pipefail
+          VERSION_NUM=${TAG_NAME#v}
+          if [ "$IS_PRERELEASE" = "false" ]; then
+            SECTION="$VERSION_NUM"     # just promoted by the previous step
+          else
+            SECTION="unreleased"       # prereleases preview the pending section
+          fi
+          BODY="$RUNNER_TEMP/release-body.md"
+          python3 scripts/changelog.py notes "$SECTION" > "$BODY"
+          {
+            echo "## Syphon.xcframework"
+            echo
+            echo "Checksum (SHA256): \`${CHECKSUM}\`"
+          } >> "$BODY"
+          echo "RELEASE_BODY_PATH=$BODY" >> "$GITHUB_ENV"
+          echo "--- release body ---"
+          cat "$BODY"
 
       # --- Open PR, kick CI manually, wait, merge ---
       - name: Open PR to main
@@ -204,7 +255,7 @@ jobs:
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
-            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, GettingStarted.md, llms.txt)' || '' }}.")
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt)' || '' }}.")
           echo "PR_NUMBER=${PR_URL##*/}" >> "$GITHUB_ENV"
 
       - name: Trigger CI on release branch
@@ -299,12 +350,49 @@ jobs:
             Frameworks/checksum.txt
           generate_release_notes: true
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
-          body: |
-            ## Syphon.xcframework
-
-            Checksum (SHA256): `${{ env.CHECKSUM }}`
+          # Written by "Compose release notes" above: CHANGELOG highlights +
+          # Syphon checksum. action-gh-release prepends it to the generated
+          # "What's Changed" list.
+          body_path: ${{ env.RELEASE_BODY_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- Post-check: the published asset must actually resolve (Issue #316) ---
+      # SwiftPM re-fetches binaryTarget(url:) on EVERY resolve, so a Release whose
+      # asset failed to upload is a tag that can never be consumed — and the tag
+      # is immutable (tag protection ruleset), so it cannot be quietly redone.
+      # v0.2.2 shipped exactly this way and had to borrow the v0.2.1 asset.
+      # Download what we just published and compare it against the checksum that
+      # was written into Package.swift, BEFORE telling metaphor-cli to pin it.
+      - name: Verify published Syphon asset
+        run: |
+          set -euo pipefail
+          ASSET_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/Syphon.xcframework.zip"
+          DEST="$RUNNER_TEMP/published-Syphon.xcframework.zip"
+          # Asset availability right after publish is not instantaneous; retry.
+          # Track success explicitly — never infer it from the file on disk, or a
+          # leftover download would be checksummed as if it were the new asset.
+          DOWNLOADED=0
+          for attempt in 1 2 3 4 5; do
+            rm -f "$DEST"
+            if curl -sSL --fail -o "$DEST" "$ASSET_URL"; then
+              DOWNLOADED=1
+              break
+            fi
+            echo "Attempt ${attempt}: ${ASSET_URL} not downloadable yet — retrying in 10s."
+            sleep 10
+          done
+          if [ "$DOWNLOADED" -ne 1 ] || [ ! -s "$DEST" ]; then
+            echo "::error::Published asset is missing or empty: ${ASSET_URL}"
+            echo "          Re-upload it with: gh release upload ${TAG_NAME} Frameworks/Syphon.xcframework.zip --clobber"
+            exit 1
+          fi
+          PUBLISHED=$(shasum -a 256 "$DEST" | awk '{print $1}')
+          if [ "$PUBLISHED" != "$CHECKSUM" ]; then
+            echo "::error::Checksum mismatch for ${ASSET_URL} — Package.swift declares ${CHECKSUM}, published asset hashes to ${PUBLISHED}."
+            exit 1
+          fi
+          echo "Published asset verified: ${ASSET_URL} (sha256 ${PUBLISHED})"
 
       # --- Notify metaphor-cli to bump its Syphon.xcframework pin (stable only) ---
       # metaphor-cli pins this repo's Syphon Release URL + checksum in its

@@ -1,5 +1,7 @@
 # docs/ — ドキュメントの地図
 
+[English](README.en.md) | **日本語**
+
 metaphor のドキュメントは「誰が・何のために読むか」で分かれています。まずこの表から入ってください。
 
 ## 読者別の入口
@@ -7,6 +9,8 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 | 読者 | 目的 | 読むもの |
 |---|---|---|
 | スケッチを書く人 | metaphor で作品を作る | [README](../README.md) → [ai/for-sketch-authors.md](ai/for-sketch-authors.md) → [ai/examples-index.md](ai/examples-index.md) |
+| Examples を順に学びたい人 | 278 本の索引ではなく、まず何から動かすか知りたい | [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグ付きの推奨順路） |
+| マイク・カメラを使うスケッチを書く人 | 権限ダイアログや拒否後の詰まりを解消する | [permissions.md](permissions.md)（英語。TCC の仕組みと復旧手順） |
 | AI と一緒に作る人 | AI に観測させながら反復する | [README「AI と協調する」](../README.md#ai-と協調する観測--操作--反復) → [metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する) → [ai/prompts/](ai/prompts/) |
 | ライブラリ本体の開発者 | metaphor 自体を変更する | [DEVELOPMENT.md](../DEVELOPMENT.md) → [ai/README.md](ai/README.md)（実装デバッグ・不変条件） → [adr/](adr/) |
 | AI エージェント | 本リポジトリで作業する | [CLAUDE.md](../CLAUDE.md)（起点） → 各ファイルへ委譲 |
@@ -21,18 +25,21 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [ai/install-scenarios.md](ai/install-scenarios.md) — インストール形態ごとの AI 支援の効き方
   - [ai/examples-index.md](ai/examples-index.md) / `.json` — 全サンプル索引（**生成物**。手で編集しない）
   - [ai/prompts/](ai/prompts/) — 用途別プロンプトテンプレート（audio-reactive / shader など）
+- **[permissions.md](permissions.md)** — マイク・カメラの TCC 権限（英語）。`swift run` バイナリでの権限要求の仕組み、拒否後の復旧手順、Info.plist の扱い
 - **[adr/](adr/)** — Architecture Decision Records。設計判断の蓄積（append-only）。書き方は [adr/README.md](adr/README.md)
 - **[design/](design/)** — 進行中 / 過去プロジェクトの設計ドキュメント。確定仕様は実装と [CONTRACT.md](../CONTRACT.md) が正
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
   - [design/live-tooling-params.md](design/live-tooling-params.md) — Parameter Store / 状態保持リロード / インスペクタの設計叩き台
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 リリース準備計画（readiness review・準備トラック・リリース条件）
-- **[releasing.md](releasing.md)** — リリース手順（PR の `release:*` ラベル駆動）
+- **[releasing.md](releasing.md)** — リリース手順（PR の `release:*` ラベル駆動）+ CHANGELOG の昇格・リリースノート生成
+
+リポジトリルートには [CHANGELOG.md](../CHANGELOG.md)（利用者向けの変更履歴。Keep a Changelog 形式・英語。ユーザー影響のある PR は `## [Unreleased]` を更新する）もあります。Examples 側には [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグを使った「順に学ぶ」推奨順路）もあります。
 
 ## 英語化の対象境界（第 1 弾・Issue #286）
 
 Processing / Unity ユーザー獲得の並行トラック（ロードマップ Epic I）として、英語ドキュメントは以下の境界で維持します:
 
-- **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）
+- **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）、[docs/README.en.md](README.en.md)（本ページの英語版。Issue #337）、[permissions.md](permissions.md)・[Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（新設・英語のみ）
 - **日本語のまま**（翻訳しない）: [adr/](adr/) 全体（設計判断の記録。ADR 全訳は非目標）、[design/](design/)、[CLAUDE.md](../CLAUDE.md)・[ai/README.md](ai/README.md) などの開発者・エージェント向け内部ドキュメント
 - **今後の弾**: 第 2 弾 = 公開 API doc コメントの英語化（cli #86 と相乗）、第 3 弾 = website（#74）。着手時に起票
 

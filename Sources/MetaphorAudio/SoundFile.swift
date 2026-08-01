@@ -4,10 +4,10 @@ import os
 
 // MARK: - オーディオエンジンホルダー
 
-/// アクター境界を越えて安全にクリーンアップするために AVAudioEngine のライフサイクルを管理します。
+/// Manages the lifecycle of `AVAudioEngine` for safe cleanup across actor boundaries.
 ///
-/// AVAudioEngine と AVAudioPlayerNode の stop 操作はスレッドセーフです。
-/// このホルダーが nonisolated(unsafe) を必要とせずに deinit でクリーンアップを処理します。
+/// The stop operations on `AVAudioEngine` and `AVAudioPlayerNode` are thread-safe.
+/// This holder handles cleanup in `deinit` without needing `nonisolated(unsafe)`.
 private final class AudioEngineHolder: @unchecked Sendable {
     let engine: AVAudioEngine
     let playerNode: AVAudioPlayerNode
@@ -27,10 +27,10 @@ private final class AudioEngineHolder: @unchecked Sendable {
 
 // MARK: - SoundFile
 
-/// オーディオファイル（MP3、WAV、AAC など）を再生し、スペクトル解析と統合します。
+/// Plays an audio file (MP3, WAV, AAC, etc.) and integrates spectrum analysis.
 ///
-/// AVAudioEngine と AVAudioPlayerNode を使用してオーディオファイルを再生し、
-/// AudioAnalyzer に接続してリアルタイムスペクトル解析を行います。
+/// Plays an audio file using `AVAudioEngine` and `AVAudioPlayerNode`, and
+/// connects to an `AudioAnalyzer` for real-time spectrum analysis.
 ///
 /// ```swift
 /// var sound: SoundFile!
@@ -40,7 +40,7 @@ private final class AudioEngineHolder: @unchecked Sendable {
 /// }
 /// func draw() {
 ///     sound.update()
-///     let vol = sound.volume
+///     let vol = sound.gain
 ///     let spectrum = sound.spectrum
 /// }
 /// ```
@@ -55,29 +55,22 @@ public final class SoundFile {
 
     // MARK: - 再生状態
 
-    /// ファイルが現在再生中かどうかを示します。
+    /// Indicates whether the file is currently playing.
     public private(set) var isPlaying: Bool = false
 
-    /// ループ再生の有効・無効を制御します。
+    /// Controls whether looping playback is enabled.
     public var isLooping: Bool = false
 
-    /// ファイルの総再生時間（秒）を返します。
+    /// Returns the file's total duration (seconds).
     public let duration: Double
 
-    /// 再生ゲインを制御します（0.0〜1.0）。
+    /// Controls the playback gain (0.0-1.0).
     public var gain: Float {
         get { audioEngine.playerNode.volume }
         set { audioEngine.playerNode.volume = max(0, min(1, newValue)) }
     }
 
-    /// ``gain`` の旧名。
-    @available(*, deprecated, renamed: "gain")
-    public var volume: Float {
-        get { gain }
-        set { gain = newValue }
-    }
-
-    /// 再生速度を制御します（0.25〜4.0）。
+    /// Controls the playback rate (0.25-4.0).
     public var rate: Float {
         get { _rate }
         set {
@@ -90,53 +83,57 @@ public final class SoundFile {
     }
     private var _rate: Float = 1.0
 
-    /// playerNode のキューに未消化のスケジュール（ファイル全体またはセグメント）が
-    /// あるかどうか。pause() → play() の再開時に同じファイルを二重スケジュール
-    /// しないために追跡する。
+    /// Whether the playerNode's queue has an outstanding schedule (the whole
+    /// file or a segment). Tracked so that resuming via pause() → play() does
+    /// not double-schedule the same file.
     private var hasPendingSchedule: Bool = false
 
-    /// スケジュール世代カウンタ。`AVAudioPlayerNode.stop()` は保留中の completion
-    /// handler を「再生完了」と区別できない形で発火させるため、stop()/シークの
-    /// たびに世代を進め、completion handler 側で世代一致を確認して stale な
-    /// completion（停止直後のループ再開・シークの巻き戻し）を無害化する。
-    /// （internal なのはテストから stale completion を模擬するため）
+    /// Schedule generation counter. `AVAudioPlayerNode.stop()` fires any
+    /// pending completion handler in a way indistinguishable from "playback
+    /// finished", so the generation is advanced on every stop()/seek, and the
+    /// completion handler checks it matches before acting — neutralizing
+    /// stale completions (e.g. a loop restart or seek rewind right after a
+    /// stop). (Internal so tests can simulate a stale completion.)
     private(set) var scheduleGeneration: UInt64 = 0
 
-    /// pause() 時点の再生位置キャッシュ。一時停止中は `playerTime(forNodeTime:)`
-    /// が nil を返し位置が巻き戻って見えるため、ここで保持した値を返す。
+    /// Cached playback position at the moment of pause(). While paused,
+    /// `playerTime(forNodeTime:)` returns nil and the position would appear
+    /// to rewind, so this cached value is returned instead.
     private var pausedPosition: Double?
 
-    /// 直近の再生操作で発生したエラー（現在は `play()` のエンジン起動失敗）。
-    /// `play()` は Processing 風の使い勝手を保つため throws にしない代わりに、
-    /// 失敗をこのプロパティで報告する（成功時は nil に戻る）。
+    /// The error from the most recent playback operation (currently only an
+    /// engine start failure in `play()`). `play()` is not `throws` — to keep
+    /// Processing-style ergonomics — and instead reports failures through
+    /// this property (reset to nil on success).
     public private(set) var lastError: Error?
 
-    /// 直近のスケジュールが始まったファイル内位置（秒）。
-    /// playerNode の sampleTime はスケジュールし直すたびに 0 から数え直されるため、
-    /// シーク後も ``position`` が正しいファイル内位置を返すための基準値。
+    /// The in-file position (seconds) where the most recent schedule began.
+    /// The playerNode's `sampleTime` restarts from 0 every time playback is
+    /// rescheduled, so this serves as the baseline that lets ``position``
+    /// return the correct in-file position even after seeking.
     private var scheduledBaseTime: Double = 0
 
     // MARK: - 解析統合
 
-    /// ファイル再生のスペクトル解析用内部 AudioAnalyzer。
+    /// The internal `AudioAnalyzer` used for spectrum analysis of file playback.
     private var _analyzer: AudioAnalyzer?
     private var sampleBuffer: AudioSampleTransferBuffer?
     private var tapScratch: [Float] = []
 
-    /// スペクトルデータを返します（解析有効時に利用可能）。
+    /// Returns spectrum data (available once analysis is enabled).
     public var spectrum: [Float] { _analyzer?.spectrum ?? [] }
 
-    /// RMS 音量レベルを返します（解析有効時に利用可能）。
+    /// Returns the RMS volume level (available once analysis is enabled).
     public var analysisVolume: Float { _analyzer?.volume ?? 0 }
 
-    /// ビート検出フラグを返します（解析有効時に利用可能）。
+    /// Returns the beat detection flag (available once analysis is enabled).
     public var isBeat: Bool { _analyzer?.isBeat ?? false }
 
     // MARK: - 初期化
 
-    /// 指定パスからオーディオファイルを読み込みます。
-    /// - Parameter path: オーディオファイルのファイルシステムパス。
-    /// - Throws: ファイルが存在しない場合に `SoundFileError.fileNotFound` をスローします。
+    /// Loads an audio file from the given path.
+    /// - Parameter path: The file system path to the audio file.
+    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist.
     public init(path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
@@ -161,10 +158,10 @@ public final class SoundFile {
 
     // MARK: - 再生コントロール
 
-    /// 再生を開始します。
+    /// Starts playback.
     ///
-    /// エンジンの起動に失敗した場合はクラッシュせず再生を開始しません。
-    /// 失敗の内容は ``lastError`` で確認できます。
+    /// If the engine fails to start, playback does not begin and the app
+    /// does not crash. The failure can be inspected via ``lastError``.
     public func play() {
         let engine = audioEngine.engine
         if !engine.isRunning {
@@ -191,7 +188,7 @@ public final class SoundFile {
         isPlaying = true
     }
 
-    /// 再生を一時停止します。
+    /// Pauses playback.
     public func pause() {
         // pause 中は playerTime(forNodeTime:) が nil になり位置が巻き戻って
         // 見えるため、pause 直前の位置をキャッシュしておく
@@ -200,7 +197,7 @@ public final class SoundFile {
         isPlaying = false
     }
 
-    /// 再生を停止し、先頭に戻します。
+    /// Stops playback and returns to the beginning.
     public func stop() {
         // stop() は保留中の completion handler を発火させる。世代を進めて
         // stale completion（ループ再開など）を無害化する
@@ -213,15 +210,15 @@ public final class SoundFile {
         pausedPosition = nil
     }
 
-    /// ループを有効にして再生を開始します。
+    /// Enables looping and starts playback.
     public func loop() {
         isLooping = true
         play()
     }
 
-    /// 現在の再生位置（秒）を取得または設定します。
+    /// Gets or sets the current playback position (seconds).
     ///
-    /// 設定値は `0...duration` にクランプされます。末尾以降へのシークは停止扱いです。
+    /// Values set are clamped to `0...duration`. Seeking at or past the end is treated as a stop.
     public var position: Double {
         get {
             // 一時停止中は playerTime(forNodeTime:) が nil になるため、
@@ -272,8 +269,8 @@ public final class SoundFile {
 
     // MARK: - 解析
 
-    /// オーディオ出力のスペクトル解析を有効にします。
-    /// - Parameter fftSize: FFT サイズ（デフォルトは1024）。
+    /// Enables spectrum analysis of the audio output.
+    /// - Parameter fftSize: The FFT size (defaults to 1024).
     public func enableAnalysis(fftSize: Int = 1024) {
         guard _analyzer == nil else { return }
         let mixerFormat = audioEngine.engine.mainMixerNode.outputFormat(forBus: 0)
@@ -296,7 +293,7 @@ public final class SoundFile {
         }
     }
 
-    /// 解析データを更新します（`draw()` の先頭で呼び出してください）。
+    /// Updates analysis data (call this at the top of `draw()`).
     public func update() {
         guard let analyzer = _analyzer else { return }
         if let sampleBuffer, sampleBuffer.take(into: &tapScratch) {
@@ -305,9 +302,9 @@ public final class SoundFile {
         analyzer.update()
     }
 
-    /// 周波数帯域のエネルギーを返します（AudioAnalyzer 経由）。
-    /// - Parameter index: 帯域インデックス（0 = 低音、1 = 中音、2 = 高音）。
-    /// - Returns: 帯域エネルギー（0.0〜1.0）。
+    /// Returns the energy of a frequency band (via `AudioAnalyzer`).
+    /// - Parameter index: The band index (0 = low, 1 = mid, 2 = high).
+    /// - Returns: The band energy (0.0-1.0).
     public func band(_ index: Int) -> Float {
         _analyzer?.band(index) ?? 0
     }
@@ -330,7 +327,7 @@ public final class SoundFile {
         scheduledBaseTime = 0
     }
 
-    /// （internal なのはテストから stale completion の配送を模擬するため）
+    /// (Internal so tests can simulate delivery of a stale completion.)
     func handlePlaybackCompletion(generation: UInt64) {
         // stop()/シークは世代を進めるため、それ以前にスケジュールされた
         // completion はここで棄却される（stop 後のループ再開・シークの
@@ -349,9 +346,9 @@ public final class SoundFile {
 
 // MARK: - エラー
 
-/// SoundFile 操作中に発生するエラーを表します。
+/// Represents errors that can occur during `SoundFile` operations.
 public enum SoundFileError: Error, LocalizedError {
-    /// 指定パスにオーディオファイルが見つからないことを示します。
+    /// Indicates that no audio file was found at the given path.
     case fileNotFound(String)
 
     public var errorDescription: String? {

@@ -65,31 +65,6 @@ extension Sketch {
         context.camera(eye: eye, center: center, up: up)
     }
 
-    /// 個別の float 成分で 3D カメラを設定します。
-    ///
-    /// - Parameters:
-    ///   - eyeX: カメラ位置の x 座標。
-    ///   - eyeY: カメラ位置の y 座標。
-    ///   - eyeZ: カメラ位置の z 座標。
-    ///   - centerX: 注視点の x 座標。
-    ///   - centerY: 注視点の y 座標。
-    ///   - centerZ: 注視点の z 座標。
-    ///   - upX: 上方向ベクトルの x 成分。
-    ///   - upY: 上方向ベクトルの y 成分。
-    ///   - upZ: 上方向ベクトルの z 成分。
-    @available(*, deprecated, message: "Use camera(eye:center:up:) with SIMD3 instead")
-    public func camera(
-        _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
-        _ centerX: Float, _ centerY: Float, _ centerZ: Float,
-        _ upX: Float, _ upY: Float, _ upZ: Float
-    ) {
-        context.camera(
-            eye: SIMD3(eyeX, eyeY, eyeZ),
-            center: SIMD3(centerX, centerY, centerZ),
-            up: SIMD3(upX, upY, upZ)
-        )
-    }
-
     /// 透視投影を設定します。
     ///
     /// - Parameters:

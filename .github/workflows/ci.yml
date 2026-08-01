@@ -19,6 +19,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: macos-26
+    # 通常 3〜6 分（Syphon キャッシュミス時でも 15 分以内）。ハングした場合の
+    # 既定値は 6 時間で、macOS ランナーは 10 倍課金なので上限を明示する。
+    timeout-minutes: 45
     permissions:
       contents: write  # Required to auto-push regenerated examples index back to PR branches.
       actions: write   # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
@@ -99,7 +102,25 @@ jobs:
       - name: Build
         run: swift build -Xswiftc -warnings-as-errors
       - name: Test with Coverage
+        env:
+          # 「このランナーには GPU がある」の宣言。GPU 依存テストは
+          # `.enabled(if: MetalTestHelper.isGPUAvailable)` でゲートされており、
+          # Metal が消えると数百件が skip に変わるだけで swift test は green を返す。
+          # この env が立っていると CIEnvironmentGuard がデバイス不在で fail する
+          # （Issue #329 / G5）。ローカルの GPU なし環境では未設定 = 従来どおり skip。
+          METAPHOR_REQUIRE_GPU: '1'
         run: swift test --enable-code-coverage -Xswiftc -warnings-as-errors
+      # ゴールデンイメージ回帰（Issue #330）が落ちたときだけ、実画像・期待画像・
+      # 差分画像をアーティファクトとして残す。ログのハッシュだけでは「どこが
+      # どう変わったか」が分からず、ローカル再現が必須になってしまうため。
+      - name: Upload golden image diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-image-failures
+          path: .build/golden-failures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Verify shader sources are up to date
         run: python3 scripts/generate-shader-sources.py --check
       - name: Verify llms.txt is up to date
@@ -166,15 +187,45 @@ jobs:
             -f state=success \
             -f context=build-and-test \
             -f description="CI passed via workflow_dispatch run"
+      # カバレッジは以前ログに印字するだけで、run が流れると消えていた（G18）。
+      # ファイル別レポート・lcov・モジュール別サマリを artifact として残し、
+      # サマリはジョブ要約にも出す（PR コメントは権限と保守コストの割に得るものが
+      # 少ないので採らない — artifact + Summary で十分に追える）。
       - name: Coverage Report
         if: always()
         run: |
-          BIN=$(find .build/debug -name 'metaphorPackageTests' -type f | head -1)
-          if [ -n "$BIN" ] && [ -f .build/debug/codecov/default.profdata ]; then
-            xcrun llvm-cov report "$BIN" \
-              -instr-profile=.build/debug/codecov/default.profdata \
-              -ignore-filename-regex='Tests/|\.build/'
+          # pipefail: 下の `llvm-cov report | tee` で llvm-cov の失敗を tee に
+          # 握り潰させない。
+          set -euo pipefail
+          # -L 必須: .build/debug は .build/arm64-apple-macosx/debug へのシンボリック
+          # リンクで、追跡しない find は何も返さない（＝これまでレポートは静かに
+          # 空振りしていた。下の warning がその再発を可視化する）。
+          BIN=$(find -L .build/debug -name 'metaphorPackageTests' -type f | head -1)
+          if [ -z "$BIN" ] || [ ! -f .build/debug/codecov/default.profdata ]; then
+            echo "::warning::coverage data not found (tests may have failed before profiling) — skipping report"
+            exit 0
           fi
+          mkdir -p coverage
+          PROF=.build/debug/codecov/default.profdata
+          IGNORE='Tests/|\.build/'
+          xcrun llvm-cov report "$BIN" -instr-profile="$PROF" \
+            -ignore-filename-regex="$IGNORE" | tee coverage/coverage-files.txt
+          xcrun llvm-cov export "$BIN" -instr-profile="$PROF" \
+            -ignore-filename-regex="$IGNORE" -format=lcov > coverage/coverage.lcov
+          xcrun llvm-cov export "$BIN" -instr-profile="$PROF" \
+            -ignore-filename-regex="$IGNORE" -format=text > coverage/coverage.json
+          python3 scripts/coverage-summary.py coverage/coverage.json \
+            > coverage/coverage-modules.md
+          cat coverage/coverage-modules.md
+          cat coverage/coverage-modules.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # 最小サポートの Swift 5.10（Xcode 15.4 / macos-14）でライブラリ本体が
   # ビルドできることを検証する（Issue #256）。build-and-test は Xcode 26.4 で
@@ -189,6 +240,8 @@ jobs:
   # 引き上げる判断タイミング（README の Requirements も併せて更新する）。
   build-swift-5-10:
     runs-on: macos-14
+    # ビルドのみ（テストなし）で通常数分。build-and-test と同じ理由で上限を明示。
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -222,11 +275,99 @@ jobs:
         # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
         run: swift build --target metaphor
 
-  # Examples are NOT built per-PR. Each is a standalone SwiftPM package, so
-  # building one recompiles all of metaphor from scratch — building all 271
-  # would be prohibitively slow and costly (macOS minutes bill at 10x), for a
-  # low-stakes check (examples have no assertions; build-and-test already proves
-  # the public API compiles). Instead the smoke subset (~19 reps) is built by
-  # the weekly examples-sweep workflow and by release.yml before tagging
-  # (Issue #147). Verify locally: `make examples-check` (all), or
-  # `./scripts/run-examples.sh --build-only --smoke`.
+  # Examples の *全数*（278 本）は per-PR では建てない。各 example は独立した
+  # SwiftPM パッケージで metaphor をフルビルドし直すため、全数は時間もコストも
+  # 見合わない（macOS ランナーは 10 倍課金）。分担は次のとおり:
+  #   - PR が Examples/ を触ったとき → 触った example だけを下の 2 ジョブが建てる
+  #     （Issue #329 / W2-7。壊れた example が最も入りやすい瞬間を押さえる）
+  #   - 週次 + リリース前 → 代表セット（~19 本）を examples-sweep.yml と
+  #     release.yml が建てて公開 API ドリフトを検出する（Issue #147）
+  #   - 全数スイープ → examples-sweep.yml の workflow_dispatch（full=true）
+  # 手元での確認: `make examples-check`（全数）/
+  # `./scripts/run-examples.sh --build-only --smoke`（代表セット）。
+  #
+  # 検出は Linux ランナー（1 倍課金）で行い、変更が無ければ macOS ジョブ自体を
+  # 起動しない。
+  examples-detect:
+    # PR 以外（push / workflow_dispatch）には比較すべき base が無い。必須チェックは
+    # build-and-test だけなので、このジョブが skip されても merge は妨げられない。
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      count: ${{ steps.detect.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # merge-base を解決するため全履歴が要る（差分は BASE...HEAD の 3 点表記）。
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Detect changed example packages
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          ./scripts/changed-examples.sh "$BASE_SHA" "$HEAD_SHA" > changed-examples.txt
+          count=$(grep -c . changed-examples.txt || true)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "変更された example パッケージ: ${count} 件"
+          cat changed-examples.txt
+
+  examples-diff-build:
+    needs: examples-detect
+    if: needs.examples-detect.outputs.count != '0'
+    runs-on: macos-26
+    # 1 本あたり metaphor のフルビルドを含むので、上限（下の MAX）× 数分を見込む。
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      - name: Get Syphon submodule hash
+        id: syphon-hash
+        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Get Xcode version
+        id: xcode-version
+        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      # build-and-test / release.yml と同じキー規則（同一環境ならキャッシュを共有）。
+      - name: Cache Syphon.xcframework
+        id: cache-syphon
+        uses: actions/cache@v6
+        with:
+          path: Frameworks/Syphon.xcframework
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
+      - name: Build Syphon
+        if: steps.cache-syphon.outputs.cache-hit != 'true'
+        run: make setup
+      - name: Build changed examples
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # API 全面改修などで一度に大量の example が変わることがある。全部建てると
+          # 数時間コースなので上限を設ける（超過分は週次スイープとリリース前の
+          # 代表セットビルドで拾う）。
+          MAX: '6'
+        run: |
+          set -eu
+          ./scripts/changed-examples.sh "$BASE_SHA" "$HEAD_SHA" > changed-examples.txt
+          total=$(grep -c . changed-examples.txt || true)
+          if [ "$total" -gt "$MAX" ]; then
+            echo "::notice::変更された example は ${total} 件。先頭 ${MAX} 件のみビルドします（残りは週次の examples-sweep が担当）。"
+          fi
+          i=0
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            i=$((i + 1))
+            [ "$i" -le "$MAX" ] || break
+            echo "::group::swift build ${dir}"
+            # debug ビルド: 目的は「公開 API に対して example がコンパイルできる」
+            # ことの確認で、最適化の検証ではない（release より大幅に速い）。
+            (cd "$dir" && swift build)
+            echo "::endgroup::"
+          done < changed-examples.txt
