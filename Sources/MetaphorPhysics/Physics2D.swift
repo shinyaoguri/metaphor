@@ -83,12 +83,6 @@ public final class Physics2D {
         gravity = SIMD2(x, y)
     }
 
-    /// ``setGravity(_:_:)`` の旧名。
-    @available(*, deprecated, renamed: "setGravity(_:_:)")
-    public func addGravity(_ x: Float, _ y: Float) {
-        setGravity(x, y)
-    }
-
     // MARK: - 拘束
 
     /// 2つのボディ間に距離拘束を追加します。

@@ -40,7 +40,7 @@ private final class AudioEngineHolder: @unchecked Sendable {
 /// }
 /// func draw() {
 ///     sound.update()
-///     let vol = sound.volume
+///     let vol = sound.gain
 ///     let spectrum = sound.spectrum
 /// }
 /// ```
@@ -68,13 +68,6 @@ public final class SoundFile {
     public var gain: Float {
         get { audioEngine.playerNode.volume }
         set { audioEngine.playerNode.volume = max(0, min(1, newValue)) }
-    }
-
-    /// ``gain`` の旧名。
-    @available(*, deprecated, renamed: "gain")
-    public var volume: Float {
-        get { gain }
-        set { gain = newValue }
     }
 
     /// 再生速度を制御します（0.25〜4.0）。

@@ -154,8 +154,6 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     public func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {}
     public func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType) {}
     public func onResize(width: Int, height: Int) {}
-    public func onBeforeRender(commandBuffer: MTLCommandBuffer, time: Double) {}
-    public func onAfterRender(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {}
 
     // MARK: - Frame hooks
 
