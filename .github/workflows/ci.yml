@@ -236,6 +236,15 @@ jobs:
   # 加え、テストが使う Swift Testing は Xcode 16+ 同梱で 5.10 には存在しない。
   # -warnings-as-errors も付けない（警告セットがツールチェーン毎に異なり、
   # 旧環境の偽陽性で落とさないため）。
+  #
+  # macos-14 でのテスト実行は Issue #332 で検証済み・見送り。
+  # swift-testing を明示パッケージ依存として追加すれば 5.10 でもビルド・実行
+  # 自体は可能と実測で確認したが、この macos-14 GitHub-hosted ランナーは
+  # MTLCreateSystemDefaultDevice() が nil を返す（GPU 無し）ため、
+  # MetalTestHelper.isGPUAvailable でゲートされた大半の suite（描画・Golden
+  # Image・Probe 等）が軒並み skip され、統合コスト（Package.swift のツール
+  # チェーン条件分岐・リモート依存ゼロ方針からの逸脱）に見合う検証価値が無い。
+  # 詳細・再評価条件は Issue #332 のコメント参照。
   # macos-14 ランナー廃止 = Xcode 15.4 が使えなくなったときが最小サポートを
   # 引き上げる判断タイミング（README の Requirements も併せて更新する）。
   build-swift-5-10:
