@@ -1,0 +1,40 @@
+name: Release Asset Health
+
+# SwiftPM の binaryTarget(url:) は resolve のたびに Release asset を取りに行くため、
+# asset が消えると「そのタグは恒久的に resolve 不能」になる（既存利用者も含めて壊れる）。
+# 実際 v0.2.2 は asset 欠損済みで、v0.2.1 の asset に間借りして生き延びている。
+#
+# そこで全 v* タグについて「そのタグの Package.swift が実際に参照している URL」が
+# 200 を返すかを週次で確認する（Issue #316 / docs/design/v1-release-plan.md W0-2）。
+# タグ名と同名の Release に asset があるか、では v0.2.2 を誤検知するので見ない。
+#
+# 失敗は examples-sweep.yml と同じくこの workflow の失敗として可視化する
+# （Issue は起票しない — 週次 cron の失敗通知で気付ける）。
+on:
+  schedule:
+    - cron: '0 20 * * 0'   # 毎週月曜 05:00 JST（日曜 20:00 UTC）
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: asset-health
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # ビルドは不要（git + curl のみ）。macOS ランナーは 10 倍課金なので使わない。
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # 全タグの Package.swift を git show するのでタグを含む全履歴が要る。
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check every tag's binaryTarget asset is alive
+        run: ./scripts/check-release-assets.sh
