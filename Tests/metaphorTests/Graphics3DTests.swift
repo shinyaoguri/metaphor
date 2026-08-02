@@ -203,7 +203,8 @@ struct Graphics3DTransformTests {
         pg3d.lights()
         pg3d.directionalLight(0, -1, 0)
         pg3d.pointLight(0, 3, 0)
-        pg3d.ambientLight(0.3)
+        // ambientLight は colorMode 基準（既定 0〜255）。77 ≒ 既定アンビエント（レンジの 30%）。
+        pg3d.ambientLight(77)
         pg3d.fill(.white)
         pg3d.box(100)
         pg3d.endDraw()
