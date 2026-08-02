@@ -266,8 +266,14 @@ public final class SoundFile {
                 at: nil,
                 completionCallbackType: .dataPlayedBack
             ) { [weak self] _ in
+                // `self` を一度 let に束ねてから内側の @Sendable クロージャへ渡す
+                // （`[weak self]` が導入する暗黙の var を直接キャプチャすると
+                // strict concurrency が「並行実行されるコードで捕捉された var を
+                // 参照している」と警告する）。SoundFile は @MainActor なので
+                // 暗黙に Sendable であり、Optional ごと安全に渡せる。
+                let sound = self
                 DispatchQueue.main.async {
-                    self?.handlePlaybackCompletion(generation: generation)
+                    sound?.handlePlaybackCompletion(generation: generation)
                 }
             }
             hasPendingSchedule = true
@@ -346,8 +352,10 @@ public final class SoundFile {
             at: nil,
             completionCallbackType: .dataPlayedBack
         ) { [weak self] _ in
+            // scheduleSegment 側と同じ理由で let に束ねてから渡す。
+            let sound = self
             DispatchQueue.main.async {
-                self?.handlePlaybackCompletion(generation: generation)
+                sound?.handlePlaybackCompletion(generation: generation)
             }
         }
         hasPendingSchedule = true

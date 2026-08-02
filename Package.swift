@@ -9,6 +9,27 @@ let localFrameworkPath = "Frameworks/Syphon.xcframework"
 let absoluteFrameworkPath = packageDir + "/" + localFrameworkPath
 let useLocalSyphon = FileManager.default.fileExists(atPath: absoluteFrameworkPath)
 
+// Swift 6 strict concurrency の段階導入（Issue #328）。適用済みのターゲットにだけ
+// `swiftSettings: strictConcurrency` を付ける。未適用のターゲットは従来どおり。
+//
+// swift-tools-version は 5.10 のままなので言語モードは Swift 5 = 診断は **警告**
+// であり、ビルドは落ちない（`-warnings-as-errors` を付けている build-and-test でも
+// 落ちないよう、適用は警告ゼロを確認したターゲットに限る）。
+//
+// 綴りをツールチェーンで振り分ける理由（実測は Issue #328 のコメント参照）:
+//   - Swift 6.0+ では StrictConcurrency は *upcoming* feature。`.enableUpcomingFeature`
+//     が正規の綴り。
+//   - 最小サポートの Swift 5.10（Xcode 15.4 / 必須チェック build-swift-5-10）では
+//     まだ *experimental* feature。5.10 に upcoming 名で渡しても黙って無視され、
+//     チェックが効かない。
+// `.unsafeFlags(["-strict-concurrency=complete"])` は挙動こそ同じだが、版指定で
+// 依存された瞬間に SwiftPM が解決を拒否する（ライブラリでは採用不可）。
+#if compiler(>=6.0)
+let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurrency")]
+#else
+let strictConcurrency: [SwiftSetting] = [.enableExperimentalFeature("StrictConcurrency")]
+#endif
+
 let syphonTarget: Target = useLocalSyphon
     ? .binaryTarget(name: "Syphon", path: localFrameworkPath)
     : .binaryTarget(
@@ -67,12 +88,13 @@ let package = Package(
             ]
         ),
 
-        // Tier 1 modules: zero dependency on MetaphorCore
-        .target(name: "MetaphorAudio"),
-        .target(name: "MetaphorNetwork"),
-        .target(name: "MetaphorPhysics"),
-        .target(name: "MetaphorML"),
-        .target(name: "MetaphorVideo"),
+        // Tier 1 modules: zero dependency on MetaphorCore.
+        // strict concurrency 適用済み（Issue #328 段階 2）。Core / Tier 2 は段階 3。
+        .target(name: "MetaphorAudio", swiftSettings: strictConcurrency),
+        .target(name: "MetaphorNetwork", swiftSettings: strictConcurrency),
+        .target(name: "MetaphorPhysics", swiftSettings: strictConcurrency),
+        .target(name: "MetaphorML", swiftSettings: strictConcurrency),
+        .target(name: "MetaphorVideo", swiftSettings: strictConcurrency),
 
         // Tier 2 modules: depend on MetaphorCore
         .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"]),
@@ -104,11 +126,23 @@ let package = Package(
         .target(name: "MetaphorTestSupport", dependencies: ["MetaphorCore"]),
 
         // Tests
-        .testTarget(name: "MetaphorAudioTests", dependencies: ["MetaphorAudio"]),
-        .testTarget(name: "MetaphorNetworkTests", dependencies: ["MetaphorNetwork"]),
-        .testTarget(name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics"]),
-        .testTarget(name: "MetaphorMLTests", dependencies: ["MetaphorML"]),
-        .testTarget(name: "MetaphorVideoTests", dependencies: ["MetaphorVideo"]),
+        // Tier 1 のテストも本体と同じ設定で建てる（テスト側から非 Sendable な
+        // 使い方が再流入するのを防ぐ）。
+        .testTarget(
+            name: "MetaphorAudioTests", dependencies: ["MetaphorAudio"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorNetworkTests", dependencies: ["MetaphorNetwork"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorMLTests", dependencies: ["MetaphorML"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorVideoTests", dependencies: ["MetaphorVideo"],
+            swiftSettings: strictConcurrency),
         .testTarget(name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"]),
         .testTarget(name: "MetaphorMPSTests", dependencies: ["MetaphorMPS", "MetaphorCore"]),
         .testTarget(name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"]),
