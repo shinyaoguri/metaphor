@@ -393,12 +393,45 @@ struct SketchLifecycleTests {
         sketch.frameRate(24)
         sketch.frameRate(120)
         // 境界: 転送段では値を加工しない（クランプ・検証はランナー側の責務）。
-        // 現状 handleFrameRate のクランプはタイマー経路にしか掛かっていない → Issue #358。
+        // クランプは SketchRunner.handleFrameRate の入口で行う(#358)。
         sketch.frameRate(0)
         sketch.frameRate(-5)
 
         #expect(harness.frameRateCalls == [24, 120, 0, -5],
                 "値も順序も加工されずに届く: \(harness.frameRateCalls)")
+    }
+
+    // 回帰テスト(#358): handleFrameRate のクランプ(max(fps, 1))が以前はタイマー経路の
+    // interval 計算にしか掛かっておらず、renderer.targetFPS(→ Probe の frame.json)と
+    // MTKView.preferredFramesPerSecond には 0 / 負値がそのまま渡っていた。
+    // SketchRunnerHarness は onFrameRate を記録専用スタブに差し替えるため
+    // handleFrameRate 自体は経由しない。実装を直接検証するため SketchRunner を
+    // 単体構築し(NSApplication のランループには依存しないため可能)、
+    // handleFrameRate(_:) を直接呼び出す。
+    @Test("handleFrameRate はクランプ後の値を targetFPS と MTKView.preferredFramesPerSecond の両方へ渡す")
+    func handleFrameRateClampsAllPaths() throws {
+        let runner = SketchRunner()
+        runner.renderer = try MetaphorRenderer(width: 64, height: 64)
+        runner.mtkView = MetaphorMTKView()
+
+        runner.handleFrameRate(0)
+        #expect(runner.renderer?.targetFPS == 1, "targetFPS は 1 にクランプされるべき")
+        #expect(runner.mtkView?.preferredFramesPerSecond == 1,
+                "MTKView.preferredFramesPerSecond も 1 にクランプされるべき")
+
+        runner.handleFrameRate(-5)
+        #expect(runner.renderer?.targetFPS == 1)
+        #expect(runner.mtkView?.preferredFramesPerSecond == 1)
+
+        // 極端に大きい正の値は妥当な範囲(= 正の値)のまま素通しでよい。
+        runner.handleFrameRate(1_000_000)
+        #expect(runner.renderer?.targetFPS == 1_000_000)
+        #expect(runner.mtkView?.preferredFramesPerSecond == 1_000_000)
+
+        // 通常の正値は従来どおり素通し。
+        runner.handleFrameRate(30)
+        #expect(runner.renderer?.targetFPS == 30)
+        #expect(runner.mtkView?.preferredFramesPerSecond == 30)
     }
 
     @Test("制御コールバック未配線でも loop/noLoop/redraw/frameRate は no-op")
