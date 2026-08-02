@@ -106,6 +106,10 @@ extension Sketch {
 
     /// デフォルト色のディレクショナルライトを追加します。
     ///
+    /// 指定するのは「光が**進む**向き」で、y 軸は Processing と同じく画面下向きです。
+    /// つまり `directionalLight(0, 1, 0)` が「真上から差す光」、`(0, -1, 0)` は
+    /// 「真下から差す光」になります（`enableShadows()` 時の影の向きもこれに従う）。
+    ///
     /// - Parameters:
     ///   - x: ライト方向の x 成分。
     ///   - y: ライト方向の y 成分。
@@ -165,12 +169,21 @@ extension Sketch {
 
     /// グレースケール値でアンビエントライトの強度を設定します。
     ///
-    /// - Parameter strength: アンビエントライトの強度。
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// `ambientLight(0.35)` のような 0〜1 のつもりの値はほぼ真っ暗になります
+    /// （既定レンジなら `ambientLight(90)` 相当を指定する）。
+    ///
+    /// アンビエントは `enableShadows()` の影の中でも減衰しません（影が掛かるのは
+    /// 直接光の diffuse / specular のみ）。影の中のディテールはこの値で決まります。
+    ///
+    /// - Parameter strength: アンビエントライトの強度（`colorMode` のレンジ基準）。
     public func ambientLight(_ strength: Float) {
         context.ambientLight(strength)
     }
 
     /// RGB 値でアンビエントライトの色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     ///
     /// - Parameters:
     ///   - r: 赤成分。
