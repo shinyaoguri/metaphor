@@ -74,7 +74,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 |---|---|---|
 | 変換ファミリ(`translate`/`rotate`/`scale`)の P3D 意味論統一 | ADR-0005 | 未着手(2D/3D 非対称のまま) |
 | `loadPixels()` のメインキャンバス Processing 互換 readback | ADR-0005 | follow-up のまま |
-| コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | 「安定後に判断」のまま |
+| コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | 判断ドラフト作成済み(#327)。ADR-0003 Amendment(2026-08-02)で **見送り = 現行方針を 1.0 の確定仕様として凍結** を推奨。ユーザーレビュー待ち |
 | 生成系 API の typed throws 化 | ADR-0005 Decision 2 | 実装 0 件(untyped `throws` 52 件) |
 | deprecated 7 件の削除 | ADR-0005 Amendment | 削除可能条件を満たして残存 |
 | 命名統一(G3)・二層 API 名の整合 | (新規、本レビューで顕在化) | 未整理 |
