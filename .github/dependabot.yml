@@ -4,6 +4,12 @@
 # GitHub Pages デプロイする本番経路）・Syphon submodule（Vendor/Syphon-Framework）。
 version: 2
 updates:
+  # GitHub Actions は **束ねない**。1 PR = 1 アクションのまま。
+  # 束ねる利点（PR 数と CI 実行回数の削減）より、壊れた 1 本を切り離せることを取る:
+  # ci.yml / release.yml はリリース経路の心臓部で、grouped PR が赤くなると
+  # 巻き込まれた無関係な bump まで止まる（切り離すには手で PR を割る必要がある）。
+  # 各 bump は別々の `uses:` 行を触るので、npm の lock ファイルのような
+  # conflict も起きない。頻度も低い。
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -11,13 +17,26 @@ updates:
     labels:
       - dependencies
 
+  # npm は **束ねる**。同一の package-lock.json を触る PR が別々に来ると、
+  # 1 本 merge するたびに残りが lock で conflict する（@fontsource 2 本で実際に発生）。
+  # minor / patch を 1 本の grouped PR にまとめれば lock の解決は 1 回で済む。
+  # major は group に含めない（update-types で除外）ので従来どおり単独 PR になる
+  # — 破壊的変更は個別に判断したい（astro 6 → 7 の前例）。
   - package-ecosystem: npm
     directory: /website
     schedule:
       interval: weekly
     labels:
       - dependencies
+    groups:
+      website-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
+  # submodule は Vendor/Syphon-Framework の 1 本だけなので束ねる意味がない。
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:
