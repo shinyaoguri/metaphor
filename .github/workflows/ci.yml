@@ -4,6 +4,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Merge queue (ruleset "main protection") builds each queued PR merged onto
+  # the latest main on a gh-readonly-queue/* branch and fires this event.
+  # Without it the queue entry would never receive the required checks and
+  # time out. Required checks below must always report on merge_group runs.
+  merge_group:
   # Required for the Release workflow to fire CI on release/<tag> branches.
   # GITHUB_TOKEN-created PRs do not trigger pull_request, but workflow_dispatch
   # is exempt from that restriction so we can re-enter CI explicitly.
@@ -43,6 +48,9 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
             head="${{ github.event.pull_request.head.sha }}"
+          elif [ "${{ github.event_name }}" = "merge_group" ]; then
+            base="${{ github.event.merge_group.base_sha }}"
+            head="${{ github.event.merge_group.head_sha }}"
           else
             base="${{ github.event.before }}"
             head="${{ github.sha }}"
@@ -180,20 +188,21 @@ jobs:
           # runner; the dispatched run validates (and statuses) the new SHA.
       - name: Validate AI-facing docs
         run: ./scripts/validate-ai-docs.sh
-      - name: Bridge to legacy status (workflow_dispatch only)
+      - name: Bridge to legacy status (workflow_dispatch / merge_group)
         # Repository rulesets on personal repos evaluate required_status_checks
         # against the legacy Statuses API. pull_request runs satisfy it through
         # the normal path, but workflow_dispatch runs (release branches, the
-        # examples-index auto-push re-dispatch above) only produce a check_run,
-        # so mirror the green result as a status on the commit we just tested.
-        if: github.event_name == 'workflow_dispatch'
+        # examples-index auto-push re-dispatch above) and merge_group runs
+        # (merge queue temporary branches) only produce a check_run, so mirror
+        # the green result as a status on the commit we just tested.
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context=build-and-test \
-            -f description="CI passed via workflow_dispatch run"
+            -f description="CI passed via ${{ github.event_name }} run"
       # カバレッジは以前ログに印字するだけで、run が流れると消えていた（G18）。
       # ファイル別レポート・lcov・モジュール別サマリを artifact として残し、
       # サマリはジョブ要約にも出す（PR コメントは権限と保守コストの割に得るものが
@@ -303,19 +312,20 @@ jobs:
         # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
         # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
         run: swift build --target metaphor -Xswiftc -warnings-as-errors
-      - name: Bridge to legacy status (workflow_dispatch only)
+      - name: Bridge to legacy status (workflow_dispatch / merge_group)
         # build-and-test の同名ステップと同じ理由（#37）。このジョブも Issue #332 で
         # 必須ステータスチェックに昇格したため、workflow_dispatch 経由の実行
-        # （examples-index 自動 push 後の再ディスパッチ等）でも legacy Status を
-        # 補完しないと、その SHA がこのチェックを永久に満たせず PR が merge 不能になる。
-        if: github.event_name == 'workflow_dispatch'
+        # （examples-index 自動 push 後の再ディスパッチ等）や merge queue の
+        # merge_group 実行でも legacy Status を補完しないと、その SHA がこの
+        # チェックを永久に満たせず PR / queue エントリが merge 不能になる。
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context=build-swift-5-10 \
-            -f description="CI passed via workflow_dispatch run"
+            -f description="CI passed via ${{ github.event_name }} run"
 
   # Examples の *全数*（278 本）は per-PR では建てない。各 example は独立した
   # SwiftPM パッケージで metaphor をフルビルドし直すため、全数は時間もコストも

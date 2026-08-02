@@ -34,6 +34,30 @@ Releases are cut by **labeling a PR**, not by a separate branch:
 Pre-releases (beta/rc) are cut manually via the Release workflow's
 `workflow_dispatch` (`bump=prerelease` etc.).
 
+## Merging PRs (merge queue)
+
+`main` uses a **merge queue** (ruleset "main protection"). Instead of waiting
+for CI and clicking merge manually:
+
+```
+gh pr merge <number> --squash --auto
+```
+
+This queues the PR; GitHub builds it merged onto the latest `main` on a
+temporary `gh-readonly-queue/*` branch (the `merge_group` event in `ci.yml`),
+and merges automatically when the required checks pass. Consequences:
+
+- **No need to keep branches up to date.** The queue tests the merged result,
+  so `strict_required_status_checks_policy` is off — a `BEHIND` PR can be
+  queued as-is. Concurrent PRs no longer serialize on update → CI → merge.
+- Release labeling is unaffected: the queue performs a normal squash merge, so
+  `release-on-merge.yml` (`pull_request: closed`) fires as before.
+- Both required checks (`build-and-test`, `build-swift-5-10`) bridge a legacy
+  Status on `merge_group` runs — personal-repo rulesets evaluate the legacy
+  Statuses API, same as the `workflow_dispatch` bridge (#37 / #367).
+- If a queue entry fails its checks it is removed from the queue and the PR
+  is left open — fix, push, and re-queue with the same command.
+
 ## Manual dispatch inputs
 
 | Input | Purpose |
