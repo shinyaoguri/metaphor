@@ -316,7 +316,7 @@ metaphor は 2D と 3D で**別のパイプライン**を持つ:
 
 ### 4. 実測: 実装コストと回帰
 
-試作ブランチ [`spike/p3d-transform-semantics`](https://github.com/shinyaoguri/metaphor/tree/spike/p3d-transform-semantics)（コミット `88fc2ee`）で実装して測った。
+試作ブランチ [`spike/p3d-transform-semantics`](https://github.com/shinyaoguri/metaphor/tree/spike/p3d-transform-semantics)（コミット `ed22fd0`）で実装して測った。
 **判断材料であり、そのまま merge する成果物ではない**（採用する場合の実装 PR の土台にはできる）。
 
 差分は `SketchContext` の 3 メソッドに 1 行ずつ:
@@ -459,4 +459,4 @@ Epic 級。1.0 のスコープ外。**A を採っても D への道は塞がら�
   Issue #336 / PR #377（Processing 移行ガイド — 既定カメラが P3D 既定と一致することの独立確認）、
   Issue #379（ADR-0005 の 2D/3D 適用表と実装の食い違い — どの Option でも前提）、
   Issue #378（`screenY(x,y,z)` の y 反転）、Issue #330 / PR #366（ゴールデン基盤 = §4 の計測手段）
-- 試作ブランチ: `spike/p3d-transform-semantics`（コミット `88fc2ee`。判断材料であり merge 対象ではない）
+- 試作ブランチ: `spike/p3d-transform-semantics`（コミット `ed22fd0`。判断材料であり merge 対象ではない）
