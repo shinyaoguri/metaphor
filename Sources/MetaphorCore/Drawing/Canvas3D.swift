@@ -621,7 +621,7 @@ public final class Canvas3D: CanvasStyle {
     ///   - radius: 円柱の半径。
     ///   - height: 円柱の高さ。
     ///   - detail: 放射方向のセグメント数。
-    public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+    public func cylinder(radius: Float, height: Float, detail: Int = 24) {
         let key = "cylinder_unit_\(detail)"
         guard let mesh = cachedMesh(key: key, create: {
             try Mesh.cylinder(device: device, radius: 1, height: 1, segments: detail)
@@ -635,7 +635,7 @@ public final class Canvas3D: CanvasStyle {
     ///   - radius: 底面の半径。
     ///   - height: 円錐の高さ。
     ///   - detail: 放射方向のセグメント数。
-    public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+    public func cone(radius: Float, height: Float, detail: Int = 24) {
         let key = "cone_unit_\(detail)"
         guard let mesh = cachedMesh(key: key, create: {
             try Mesh.cone(device: device, radius: 1, height: 1, segments: detail)
@@ -649,7 +649,7 @@ public final class Canvas3D: CanvasStyle {
     ///   - ringRadius: トーラスの中心からチューブ中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: リング周囲の放射方向セグメント数。
-    public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
+    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) {
         let tubeDetail = max(detail / 2, 8)
         let key = "torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)"
         guard let mesh = cachedMesh(key: key, create: { try Mesh.torus(device: device, ringRadius: ringRadius, tubeRadius: tubeRadius, segments: detail, tubeSegments: tubeDetail) }) else { return }
