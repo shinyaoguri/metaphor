@@ -263,7 +263,10 @@ extension OSCValue: ExpressibleByIntegerLiteral, ExpressibleByFloatLiteral,
 // MARK: - エラー
 
 /// Represents errors that can occur during `OSCSender` operations.
-public enum OSCSenderError: Error, LocalizedError {
+///
+/// Throwing `OSCSender` APIs only ever throw this type; connection failures are
+/// surfaced asynchronously through ``OSCSender/lastError`` instead.
+public enum OSCSenderError: Error, LocalizedError, Sendable {
     /// Indicates that the specified port is invalid.
     case invalidPort(UInt16)
 

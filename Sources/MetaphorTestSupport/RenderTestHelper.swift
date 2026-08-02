@@ -36,6 +36,12 @@ public struct RenderTestHelper {
         public let a: UInt8
     }
 
+    /// Create an offscreen render environment of the given size.
+    ///
+    /// - Throws: ``MetaphorCore/MetaphorError`` — `deviceNotAvailable` when no GPU or
+    ///   command queue is available, `shaderCompilationFailed` when the built-in shaders
+    ///   fail to compile, `textureCreationFailed` for the offscreen and staging textures,
+    ///   and `bufferCreationFailed` / `pipelineCreationFailed` from ``Canvas2D``.
     public init(width: Int = 64, height: Int = 64) throws {
         guard let dev = MTLCreateSystemDefaultDevice() else {
             throw MetaphorError.deviceNotAvailable
@@ -93,6 +99,10 @@ public struct RenderTestHelper {
     /// Note: Canvas2D `background()` relies on `onSetClearColor` callback which is
     /// set up by MetaphorRenderer. In test mode, use `setClearColor()` before `render()`
     /// to control the clear color, and use drawing commands inside the closure.
+    ///
+    /// - Throws: ``RenderTestHelperError`` when a command buffer or encoder cannot be
+    ///   created, or ``TestHelperError`` (`commandBufferFailed` /
+    ///   `commandBufferIncomplete`) when the GPU work does not complete successfully.
     public mutating func render(_ draw: (Canvas2D) -> Void) throws {
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             throw RenderTestHelperError.commandBufferCreationFailed

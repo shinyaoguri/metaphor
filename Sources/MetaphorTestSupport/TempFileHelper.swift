@@ -13,6 +13,9 @@ import Foundation
 public struct TempFileHelper: Sendable {
 
     /// Execute a closure with a temporary directory that is automatically removed afterward.
+    ///
+    /// - Throws: Rethrows whatever `body` throws; this helper adds no errors of its own
+    ///   (directory creation and cleanup failures are ignored).
     public static func withTemporaryDirectory<T>(
         prefix: String = "metaphor_test_",
         body: (URL) throws -> T
@@ -25,6 +28,9 @@ public struct TempFileHelper: Sendable {
     }
 
     /// Execute a closure with a temporary file path that is automatically removed afterward.
+    ///
+    /// - Throws: Rethrows whatever `body` throws; this helper adds no errors of its own
+    ///   (cleanup failures are ignored).
     public static func withTemporaryFile<T>(
         extension ext: String,
         body: (URL) throws -> T
@@ -36,6 +42,9 @@ public struct TempFileHelper: Sendable {
     }
 
     /// Execute an async closure with a temporary file path that is automatically removed afterward.
+    ///
+    /// - Throws: Rethrows whatever `body` throws; this helper adds no errors of its own
+    ///   (cleanup failures are ignored).
     public static func withTemporaryFile<T>(
         extension ext: String,
         body: (URL) async throws -> T

@@ -224,7 +224,16 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
-    /// - Throws: デバイスまたはコマンドキューの作成に失敗した場合 ``MetaphorError``
+    /// - Throws: ``MetaphorError``。Metal デバイスを取得できない場合は
+    ///   ``MetaphorError/deviceNotAvailable``、コマンドキューを作成できない場合は
+    ///   ``MetaphorError/commandQueueCreationFailed``、オフスクリーンテクスチャを
+    ///   作成できない場合は ``MetaphorError/textureCreationFailed(width:height:format:)``、
+    ///   組み込みシェーダーのコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、ブリット用の
+    ///   シェーダー関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``、
+    ///   ブリットパイプラインを作成できない場合は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
+    ///   ポストプロセスパイプラインの構築失敗はスローせず、警告のうえ機能を無効化します。
     public init(
         device: MTLDevice? = nil,
         width: Int = 1920,
@@ -280,7 +289,12 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
-    /// - Throws: テクスチャまたはパイプライン作成に失敗した場合 ``MetaphorError``
+    /// - Throws: ``MetaphorError``。オフスクリーンテクスチャを作成できない場合は
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``、ブリット用の
+    ///   シェーダー関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``、
+    ///   ブリットパイプラインを作成できない場合は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
+    ///   ポストプロセスパイプラインの構築失敗はスローせず、警告のうえ機能を無効化します。
     public init(
         sharedResources: SharedMetalResources,
         width: Int = 1920,

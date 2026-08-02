@@ -46,6 +46,9 @@ public struct GoldenImage: Sendable, Equatable {
     }
 
     /// Metal の読み戻し結果（BGRA8）を RGBA8 に並べ替えて生成します。
+    ///
+    /// - Throws: バイト数が `width * height * 4` と一致しない場合
+    ///   ``GoldenImageError/byteCountMismatch(expected:actual:)``
     public static func fromBGRA(_ bgra: [UInt8], width: Int, height: Int) throws -> GoldenImage {
         let expected = width * height * 4
         guard bgra.count == expected else {
@@ -161,6 +164,9 @@ public struct GoldenImage: Sendable, Equatable {
     /// 色管理による値のズレを避けるため、書き込み・読み込みとも
     /// `CGColorSpaceCreateDeviceRGB()` で統一する（往復一致は
     /// `GoldenImageTests` の PNG ラウンドトリップテストで固定）。
+    ///
+    /// - Throws: `CGImage` 化・PNG エンコードに失敗した場合
+    ///   ``GoldenImageError/pngEncodingFailed``
     public func pngData() throws -> Data {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
@@ -195,8 +201,17 @@ public struct GoldenImage: Sendable, Equatable {
     }
 
     /// PNG ファイルを読み込みます。
+    ///
+    /// - Throws: ``GoldenImageError``。読み込みに失敗した場合は
+    ///   ``GoldenImageError/fileReadFailed(url:detail:)``、PNG として解釈できない
+    ///   場合は ``GoldenImageError/pngDecodingFailed(_:)``。
     public static func load(pngAt url: URL) throws -> GoldenImage {
-        let data = try Data(contentsOf: url)
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            throw GoldenImageError.fileReadFailed(url: url, detail: error.localizedDescription)
+        }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
@@ -225,11 +240,20 @@ public struct GoldenImage: Sendable, Equatable {
     }
 
     /// PNG ファイルとして書き出します（親ディレクトリは自動作成）。
+    ///
+    /// - Throws: ``GoldenImageError``。PNG 化に失敗した場合は
+    ///   ``GoldenImageError/pngEncodingFailed``、書き出しに失敗した場合は
+    ///   ``GoldenImageError/fileWriteFailed(url:detail:)``。
     public func write(pngTo url: URL) throws {
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
-        )
-        try pngData().write(to: url, options: .atomic)
+        let data = try pngData()
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            try data.write(to: url, options: .atomic)
+        } catch {
+            throw GoldenImageError.fileWriteFailed(url: url, detail: error.localizedDescription)
+        }
     }
 
     // MARK: - GPU 読み戻し
@@ -238,6 +262,12 @@ public struct GoldenImage: Sendable, Equatable {
     ///
     /// プライベートストレージのオフスクリーンテクスチャをそのまま
     /// `getBytes` できないため、shared ステージングテクスチャへブリットしてから読む。
+    ///
+    /// - Throws: ``GoldenImageError``。BGRA8/RGBA8 以外のフォーマットなら
+    ///   ``GoldenImageError/unsupportedPixelFormat(_:)``、ステージングテクスチャ・
+    ///   コマンドバッファ・ブリットエンコーダを作れない場合は
+    ///   ``GoldenImageError/stagingTextureCreationFailed``。
+    ///   GPU 実行が完了しない場合は ``TestHelperError``。
     @MainActor
     public static func readback(
         texture: MTLTexture,
@@ -393,6 +423,12 @@ public enum GoldenImageStore {
     ///   - name: ゴールデン名（`<name>.png` として保存）
     ///   - directory: ゴールデン PNG を置くディレクトリ
     ///   - tolerance: 許容差
+    /// - Throws: ``GoldenImageError``。ゴールデン PNG の書き出しに失敗した場合は
+    ///   ``GoldenImageError/pngEncodingFailed`` / ``GoldenImageError/fileWriteFailed(url:detail:)``、
+    ///   既存ゴールデンの読み込みに失敗した場合は
+    ///   ``GoldenImageError/fileReadFailed(url:detail:)`` /
+    ///   ``GoldenImageError/pngDecodingFailed(_:)``。
+    ///   不一致そのものはスローせず `Issue.record` で報告します。
     public static func verify(
         _ actual: GoldenImage,
         name: String,
@@ -477,12 +513,19 @@ public enum GoldenImageStore {
 // MARK: - エラー
 
 /// ``GoldenImage`` の入出力・変換エラー。
+///
+/// `GoldenImage` の throwing API はこの型だけを投げます（Foundation の生 `NSError` は
+/// ``fileReadFailed(url:detail:)`` / ``fileWriteFailed(url:detail:)`` へ包みます）。
 public enum GoldenImageError: Error, CustomStringConvertible {
     case byteCountMismatch(expected: Int, actual: Int)
     case pngEncodingFailed
     case pngDecodingFailed(URL)
     case unsupportedPixelFormat(MTLPixelFormat)
     case stagingTextureCreationFailed
+    /// ファイルの読み込みに失敗した（不在・権限・I/O エラー）。
+    case fileReadFailed(url: URL, detail: String)
+    /// ファイルの書き出しに失敗した（権限・ディスク空き容量など）。
+    case fileWriteFailed(url: URL, detail: String)
 
     public var description: String {
         switch self {
@@ -492,6 +535,10 @@ public enum GoldenImageError: Error, CustomStringConvertible {
             "PNG エンコードに失敗"
         case .pngDecodingFailed(let url):
             "PNG デコードに失敗: \(url.path)"
+        case .fileReadFailed(let url, let detail):
+            "ファイルの読み込みに失敗: \(url.path): \(detail)"
+        case .fileWriteFailed(let url, let detail):
+            "ファイルの書き出しに失敗: \(url.path): \(detail)"
         case .unsupportedPixelFormat(let format):
             "未対応のピクセルフォーマット: \(format.rawValue)（bgra8Unorm / rgba8Unorm のみ）"
         case .stagingTextureCreationFailed:

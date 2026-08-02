@@ -118,9 +118,74 @@ Decision 6「readback 実装で Processing 互換に寄せる」の follow-up（
      その時点では何もエンコードされていないため分割不能 → 直近のコミット済みフレームへ
      フォールバックし、初回のみ警告する。
 
+## Amendment（2026-08-02, Issue #323）— typed throws は延期し「エラー型の統一」で代替する
+
+### 背景: Decision 2 の「typed throws」は現在の最小サポートでは書けない
+
+Decision 2（および 2026-07-03 Amendment の 2）は「リソース生成・初期化 = typed throws」と
+定めているが、**typed throws（`throws(E)`、SE-0413）は Swift 6.0 の言語機能**であり、
+本リポジトリの最小サポートである **Swift 5.10（Xcode 15.4）ではパースできない**。
+最小サポートは per-PR CI の必須チェック `build-swift-5-10`（Issue #332 で必須へ昇格）が
+`swift build --target metaphor` で守っている。つまり `throws(MetaphorError)` を書いた時点で
+必須チェックが落ち、main へ入れられない。
+
+検証（手元の Swift 6.3.3 で実測）:
+
+- `#if hasFeature(TypedThrows)` は `true`、`#if compiler(>=6.0)` も `true`、一方
+  `-swift-version 5` を付けた状態で `#if swift(>=6.0)` は `false`。
+  → typed throws を塞いでいるのは**言語モードではなくコンパイラのバージョン**であり、
+  `swift-tools-version: 5.10` のままでも Swift 6 コンパイラでなら書ける。裏を返すと
+  Swift 5.10 コンパイラでは書けない。そもそも `hasFeature(TypedThrows)` という検出手段が
+  存在すること自体が、この機能が全バージョンで使えるわけではないことを意味する。
+- 非活性な `#if` ブロックはパースされない（`#if compiler(>=99.0)` の中に壊れたトークン列を
+  置いてもコンパイルが通ることを確認）。つまり `#if` による分岐は**構文上は成立する**。
+
+その上で、**公開 API のシグネチャをツールチェーンで分岐させる案は却下**する。
+
+- 同じライブラリのバージョンが、5.10 利用者には `throws`、6.0 利用者には
+  `throws(MetaphorError)` として見える。typed throws を前提に `catch` を網羅的に書いた
+  利用者コードが 5.10 ではコンパイルできず、**サポート範囲内でソース互換が割れる**。
+- 対象は生成系だけで 50 件超。`#if` は宣言の途中（`throws` 節だけ）には置けないため、
+  分岐のたびに**宣言と本体がまるごと二重化**する。
+- `llms.txt` は `swift-symbolgraph-extract` の出力から作る（`scripts/generate-llms-txt.py`）。
+  シンボルグラフは**生成したツールチェーンが選んだ枝しか含まない**ため、公開 API の正本が
+  「生成に使った Swift のバージョン」に依存してしまう。手元・CI は Swift 6 系なので
+  `throws(MetaphorError)` と書かれた llms.txt が出るが、5.10 利用者が実際にコンパイルする
+  シグネチャは `throws` で、**ドキュメントと実物が食い違う**。
+
+### 決定
+
+1. **typed throws の適用は Swift 5.10 サポート終了まで延期**する。Decision 2 の「typed throws」
+   は、それまでは**規約（何を投げるか）** として運用し、構文としては強制しない。
+2. 代替として **「エラー型の統一」** を先に完遂する。`throws` と宣言した public API は
+   **そのモジュールのエラー型だけ**を投げ、Metal / Foundation / MetalKit / AVFoundation /
+   Network の生 `NSError` を素通りさせない。下層の原因はケースの `detail` / `underlying` に保存する。
+3. すべての public throwing API の doc に **`- Throws:` で具体的なケース**を明記する。
+   typed throws の実利（呼び出し側がどう `catch` すればよいか予見できる）の大半はここで得られる。
+4. Swift 最小サポートを 6.0 以上へ上げる際、`throws` → `throws(E)` を**機械的に**適用する。
+   エラー型が既に単一化されているため、その変更は**シグネチャ以外の挙動を変えない**
+   （2 は typed throws 化の前提条件であり、遠回りではない）。
+
+### 帰結
+
+- `MetaphorError` に、素通りを塞ぐためのケースを追加した:
+  `shaderSourceLoadFailed(path:detail:)` / `ImageFailure.loadFailed(source:detail:)` /
+  `MeshFailure.loadFailed(path:detail:)` / `ExportFailure.fileWriteFailed(path:detail:)`。
+  既に定義されていたが未使用だった `pipelineCreationFailed(name:underlying:)` を
+  `PipelineFactory` で使うようにした。
+- 独立モジュール側も同様に補った: `SoundFileError.loadFailed(path:detail:)` /
+  `AudioAnalyzerError.engineStartFailed(detail:)` /
+  `OSCReceiverError.listenerCreationFailed(port:detail:)`。
+- **breaking**: 従来これらの経路で `NSError`（`NSCocoaErrorDomain` / `MTLLibraryErrorDomain` 等）を
+  具体型で `catch` していた利用者コードは、`MetaphorError` を見るように変える必要がある。
+  0.x の破壊的変更として許容する。
+- エラー契約は `Sources/MetaphorCore/Core/MetaphorError.swift` の「エラー契約」節が正本。
+  回帰は `Tests/metaphorTests/ErrorTests.swift` の `ErrorContractTests` などが凍結する。
+
 ## References
 
 - Issue #151（論点の全リスト）、#150（受け口検証の統一）、#158（loadPixels の順序保証）
 - Issue #221（Amendment の経緯）、#200 / #203 / #210（create*/make* 統合の実施）
+- Issue #323（typed throws の延期とエラー型統一）、#332（`build-swift-5-10` の必須化）
 - Issue #202 / #326（Decision 6 の実施）、#330（ゴールデン回帰基盤 — 分割の無害性の検証に使用）
 - docs/ai/README.md「Invariants」（エラー報告・トリプルバッファ規約・loadPixels のパス分割）
