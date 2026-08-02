@@ -64,15 +64,14 @@ fragment float4 metaphor_canvas3DInstancedFragment(
         return in.color;
     }
 
-    float3 lit = calculateLighting(
-        in.worldPosition, in.normal, scene.cameraPosition.xyz,
-        in.color.rgb, lights, scene.lightCount, material
-    );
-
+    // 影は直接光にのみ掛ける（ambient / emissive / AO は影の中でも保つ, #364）。
     constexpr sampler shadowSampler(filter::linear, address::clamp_to_edge, compare_func::never);
     float shadow = calculateShadow(in.worldPosition, shadowUniforms, shadowMap, shadowSampler);
-    float3 ambient = material.ambientColor.xyz * in.color.rgb;
-    lit = ambient + (lit - ambient) * shadow;
+
+    float3 lit = calculateLighting(
+        in.worldPosition, in.normal, scene.cameraPosition.xyz,
+        in.color.rgb, lights, scene.lightCount, material, shadow
+    );
 
     return float4(lit, in.color.a);
 }
@@ -129,15 +128,14 @@ fragment float4 metaphor_canvas3DTexInstancedFragment(
         return tintedColor;
     }
 
-    float3 lit = calculateLighting(
-        in.worldPosition, in.normal, scene.cameraPosition.xyz,
-        tintedColor.rgb, lights, scene.lightCount, material
-    );
-
+    // 影は直接光にのみ掛ける（ambient / emissive / AO は影の中でも保つ, #364）。
     constexpr sampler shadowSampler(filter::linear, address::clamp_to_edge, compare_func::never);
     float shadow = calculateShadow(in.worldPosition, shadowUniforms, shadowMap, shadowSampler);
-    float3 ambient = material.ambientColor.xyz * tintedColor.rgb;
-    lit = ambient + (lit - ambient) * shadow;
+
+    float3 lit = calculateLighting(
+        in.worldPosition, in.normal, scene.cameraPosition.xyz,
+        tintedColor.rgb, lights, scene.lightCount, material, shadow
+    );
 
     return float4(lit, tintedColor.a);
 }
