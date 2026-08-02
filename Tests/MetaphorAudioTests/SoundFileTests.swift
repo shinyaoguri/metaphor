@@ -158,3 +158,64 @@ struct SoundFilePlaybackTests {
         sound.disableAnalysis()
     }
 }
+
+// MARK: - エラー契約（Issue #323）
+
+/// `SoundFile` / `AudioAnalyzer` の throwing API が AVFoundation の生 `NSError` を
+/// 素通りさせず、モジュールのエラー型へ包んでいることを凍結する。
+@Suite("MetaphorAudio error contract")
+@MainActor
+struct AudioErrorContractTests {
+
+    @Test("missing file throws fileNotFound")
+    func missingFile() {
+        let missing = "/nonexistent/metaphor-test/never.wav"
+        do {
+            _ = try SoundFile(path: missing)
+            Issue.record("expected a throw but the call succeeded")
+        } catch let error as SoundFileError {
+            guard case .fileNotFound(let path) = error else {
+                Issue.record("expected .fileNotFound but got \(error)")
+                return
+            }
+            #expect(path == missing)
+        } catch {
+            Issue.record("expected SoundFileError but got \(type(of: error)): \(error)")
+        }
+    }
+
+    @Test("undecodable file throws loadFailed, not a raw AVFoundation NSError")
+    func undecodableFile() throws {
+        // 拡張子は .wav だが中身はただのテキスト。AVAudioFile が NSError を投げるので、
+        // wrap されていなければここで SoundFileError 以外が飛ぶ。
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("metaphor-broken-\(UUID().uuidString).wav")
+        try Data("this is definitely not a wav file".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        do {
+            _ = try SoundFile(path: url.path)
+            Issue.record("expected a throw but the call succeeded")
+        } catch let error as SoundFileError {
+            guard case .loadFailed(let path, let detail) = error else {
+                Issue.record("expected .loadFailed but got \(error)")
+                return
+            }
+            #expect(path == url.path)
+            #expect(!detail.isEmpty)
+        } catch {
+            // ここに来るのが「AVFoundation の NSError 素通り」= 契約違反
+            Issue.record("expected SoundFileError but got \(type(of: error)): \(error)")
+        }
+    }
+
+    @Test("error descriptions are non-empty and mention the cause")
+    func errorDescriptions() {
+        #expect(
+            SoundFileError.loadFailed(path: "/a.wav", detail: "boom")
+                .errorDescription?.contains("/a.wav") == true)
+        #expect(
+            AudioAnalyzerError.engineStartFailed(detail: "boom")
+                .errorDescription?.contains("boom") == true)
+    }
+}

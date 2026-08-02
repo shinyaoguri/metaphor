@@ -217,7 +217,9 @@ public final class OSCReceiver {
     }
 
     /// Starts listening for incoming OSC messages.
-    /// - Throws: `OSCReceiverError.invalidPort` if the port is invalid.
+    /// - Throws: ``OSCReceiverError/invalidPort(_:)`` if the port is invalid, or
+    ///   ``OSCReceiverError/listenerCreationFailed(port:detail:)`` if the UDP
+    ///   listener cannot be created (for example when the port is already in use).
     public func start() throws {
         guard !listenerState.isRunning else { return }
 
@@ -225,7 +227,15 @@ public final class OSCReceiver {
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             throw OSCReceiverError.invalidPort(port)
         }
-        let listener = try NWListener(using: params, on: nwPort)
+        let listener: NWListener
+        do {
+            listener = try NWListener(using: params, on: nwPort)
+        } catch {
+            // Do not let the raw NWError escape: this module's error contract is
+            // OSCReceiverError only.
+            throw OSCReceiverError.listenerCreationFailed(
+                port: port, detail: error.localizedDescription)
+        }
 
         let queue = messageQueue
         let state = listenerState
@@ -457,14 +467,23 @@ enum OSCParser {
 // MARK: - エラー
 
 /// Represents errors that can occur during `OSCReceiver` operations.
-public enum OSCReceiverError: Error, LocalizedError {
+///
+/// Throwing `OSCReceiver` APIs only ever throw this type: failures coming from the
+/// Network framework are wrapped into ``listenerCreationFailed(port:detail:)``
+/// rather than being re-thrown as raw `NWError`.
+public enum OSCReceiverError: Error, LocalizedError, Sendable {
     /// Indicates that the specified port is invalid.
     case invalidPort(UInt16)
+    /// Indicates that the UDP listener could not be created (for example, the port
+    /// is already bound by another process).
+    case listenerCreationFailed(port: UInt16, detail: String)
 
     public var errorDescription: String? {
         switch self {
         case .invalidPort(let p):
             return "[metaphor] Invalid OSC port: \(p)"
+        case .listenerCreationFailed(let p, let detail):
+            return "[metaphor] Failed to listen on OSC port \(p): \(detail)"
         }
     }
 }

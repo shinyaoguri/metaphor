@@ -206,8 +206,8 @@ public final class AudioAnalyzer {
     /// Starts audio capture.
     /// - Throws: ``AudioAnalyzerError/microphonePermissionDenied`` if microphone
     ///   permission has been denied, ``AudioAnalyzerError/noInputDevice`` if no
-    ///   input device is available, or another error if the audio engine
-    ///   otherwise fails to start.
+    ///   input device is available, or ``AudioAnalyzerError/engineStartFailed(detail:)``
+    ///   if the audio engine otherwise fails to start.
     public func start() throws {
         guard !isRunning else { return }
 
@@ -241,7 +241,13 @@ public final class AudioAnalyzer {
         }
 
         engine.prepare()
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            // Do not let the raw AVFoundation NSError escape: this module's error
+            // contract is AudioAnalyzerError only.
+            throw AudioAnalyzerError.engineStartFailed(detail: error.localizedDescription)
+        }
 
         // デバイス切断・サンプルレート変更などの構成変化を監視する
         // （切断後は解析が静かに止まるため、少なくとも観測可能にする）
@@ -475,11 +481,17 @@ public final class AudioAnalyzer {
 // MARK: - エラー
 
 /// Represents errors that can occur during `AudioAnalyzer` operations.
-public enum AudioAnalyzerError: Error, LocalizedError {
+///
+/// Throwing `AudioAnalyzer` APIs only ever throw this type: failures coming from
+/// AVFoundation are wrapped into ``engineStartFailed(detail:)`` rather than being
+/// re-thrown as raw `NSError`.
+public enum AudioAnalyzerError: Error, LocalizedError, Sendable {
     /// Indicates that no audio input device is available.
     case noInputDevice
     /// Indicates that microphone permission has been denied.
     case microphonePermissionDenied
+    /// Indicates that the audio engine failed to start for another reason.
+    case engineStartFailed(detail: String)
 
     public var errorDescription: String? {
         switch self {
@@ -488,6 +500,8 @@ public enum AudioAnalyzerError: Error, LocalizedError {
         case .microphonePermissionDenied:
             return "Microphone permission has been denied. "
                 + "Enable it in System Settings > Privacy & Security > Microphone"
+        case .engineStartFailed(let detail):
+            return "Failed to start the audio engine: \(detail)"
         }
     }
 }

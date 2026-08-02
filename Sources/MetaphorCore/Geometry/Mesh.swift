@@ -160,6 +160,8 @@ public final class Mesh {
 
 extension Mesh {
     /// 24頂点、36インデックス、フラット法線、UV座標を持つボックスメッシュを作成します。
+    ///
+    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func box(
         device: MTLDevice,
         width: Float = 1,
@@ -231,6 +233,8 @@ extension Mesh {
 
 extension Mesh {
     /// スムーズ法線とUV座標を持つUVスフィアメッシュを作成します。
+    ///
+    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func sphere(
         device: MTLDevice,
         radius: Float = 0.5,
@@ -286,6 +290,8 @@ extension Mesh {
 
 extension Mesh {
     /// +Z法線とUV座標を持つXY平面メッシュを作成します。
+    ///
+    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func plane(
         device: MTLDevice,
         width: Float = 1,
@@ -317,6 +323,8 @@ extension Mesh {
 
 extension Mesh {
     /// 側面、上面キャップ、底面キャップ、UV座標を持つシリンダーメッシュを作成します。
+    ///
+    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func cylinder(
         device: MTLDevice,
         radius: Float = 0.5,
@@ -408,6 +416,8 @@ extension Mesh {
 
 extension Mesh {
     /// 側面、底面キャップ、UV座標を持つコーンメッシュを作成します。
+    ///
+    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func cone(
         device: MTLDevice,
         radius: Float = 0.5,
@@ -477,6 +487,8 @@ extension Mesh {
 
 extension Mesh {
     /// パラメトリックサーフェスとUV座標を使用してトーラスメッシュを作成します。
+    ///
+    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func torus(
         device: MTLDevice,
         ringRadius: Float = 0.5,
@@ -534,8 +546,23 @@ extension Mesh {
 
 extension Mesh {
     /// 指定されたURLのOBJファイルからメッシュを読み込みます。
+    ///
+    /// - Parameters:
+    ///   - device: GPU バッファを作成する Metal デバイス。
+    ///   - url: OBJ ファイルの URL。
+    /// - Returns: 読み込まれたメッシュ。
+    /// - Throws: ``MetaphorError/mesh(_:)``。ファイルを読み込めない場合は
+    ///   ``MetaphorError/MeshFailure/loadFailed(path:detail:)``、OBJ のパースに
+    ///   失敗した場合は ``MetaphorError/MeshFailure/parseError(_:)``。
+    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``。
     public static func loadOBJ(device: MTLDevice, url: URL) throws -> Mesh {
-        let source = try String(contentsOf: url, encoding: .utf8)
+        let source: String
+        do {
+            source = try String(contentsOf: url, encoding: .utf8)
+        } catch {
+            throw MetaphorError.mesh(
+                .loadFailed(path: url.path, detail: error.localizedDescription))
+        }
         guard let mesh = loadOBJ(device: device, source: source) else {
             throw MetaphorError.mesh(.parseError("Failed to parse OBJ data"))
         }
@@ -548,6 +575,9 @@ extension Mesh {
     ///   - url: モデルファイルのURL。
     ///   - normalize: true の場合、バウンディングボックスを [-1, 1] に正規化します。
     /// - Returns: 読み込まれたモデルデータを含む Mesh インスタンス。
+    /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
+    ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
+    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``。
     public static func load(device: MTLDevice, url: URL, normalize: Bool = true) throws -> Mesh {
         return try ModelIOLoader.load(device: device, url: url, normalize: normalize)
     }
