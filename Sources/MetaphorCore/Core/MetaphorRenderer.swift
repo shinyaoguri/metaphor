@@ -52,7 +52,10 @@ public final class MetaphorRenderer: NSObject {
     /// 読んでしまうことに注意してください。
     ///
     /// 現在は SketchContext の GIF 録画が使用します（単一スロット）。
-    public var onCaptureOutput: ((MTLTexture, MTLCommandBuffer) -> Void)?
+    ///
+    /// 内部フック（ADR-0007 論点 6 / #388）。公開 API ではなく、MetaphorCore 内部
+    /// （`SketchContext.beginGIFRecord`）とテスト（`@testable`）からのみ配線されます。
+    var onCaptureOutput: ((MTLTexture, MTLCommandBuffer) -> Void)?
 
     /// メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
     ///
@@ -60,22 +63,26 @@ public final class MetaphorRenderer: NSObject {
     public var onAfterDraw: ((MTLCommandBuffer) -> Void)?
 
     // MARK: - シャドウ同一フレーム化（#70）の遅延描画フック
+    //
+    // 以下 3 本は ADR-0003 の内部フック。公開 API ではなく（ADR-0007 論点 6 / #388）、
+    // MetaphorCore 内部（`SketchRunner` / `SketchWindow`）とテスト（`@testable`）からのみ
+    // 配線されます。
 
     /// このフレームでシャドウ遅延経路（記録→shadow→再生）を使うべきかを返す。
     /// `true` のとき `renderFrame()` はメインエンコーダ作成前に `onRecordFrame` で
     /// draw() を記録実行し、シャドウ生成後に `onReplayMain` で再生する。
-    public var shadowDeferActive: (() -> Bool)?
+    var shadowDeferActive: (() -> Bool)?
 
     /// シャドウ遅延経路で、メインエンコーダ無しに draw() を記録実行するフック
     /// （3Dは recordedDrawCalls に記録、2Dは前景キューへ遅延）。
     /// - Parameter time: 経過時間（秒）
-    public var onRecordFrame: ((Double) -> Void)?
+    var onRecordFrame: ((Double) -> Void)?
 
     /// シャドウ遅延経路で、記録済みの 3D→2D を単一メインパスへ再生するフック。
     /// - Parameters:
     ///   - encoder: メインパスのレンダーコマンドエンコーダー
     ///   - time: 経過時間（秒）
-    public var onReplayMain: ((MTLRenderCommandEncoder, Double) -> Void)?
+    var onReplayMain: ((MTLRenderCommandEncoder, Double) -> Void)?
 
     /// 初期化時に記録されるモノトニック開始時刻
     private let startTime: Double
@@ -443,7 +450,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// レンダラーを明示的にシャットダウンし、全プラグインを解放します。
     ///
-    /// `onStop`（ループ停止通知）→ 各プラグインの `onDetach`（リソース解放。``SyphonPlugin``
+    /// `onStop`（ループ停止通知）→ 各プラグインの `onDetach`（リソース解放。`SyphonPlugin`
     /// はここで Syphon サーバーを停止）→ プラグイン配列のクリア、の順で行います。冪等。
     /// ウィンドウクローズ（``SketchWindow/close()``）やアプリ終了時に呼びます。
     public func shutdown() {

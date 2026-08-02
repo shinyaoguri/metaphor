@@ -64,6 +64,15 @@ Maintaining this file
   Everything reached through those — `loadImage`, `loadSound`, `createComputeKernel`, `createMaterial`, `reloadShader`, `endGIFRecord`, `Canvas2D` / `Canvas3D` / `MetaphorRenderer` initializers, `MergePass.init`, and so on — is covered by the same guarantee. Code that already catches `MetaphorError` (or catches everything) needs no change.
 
   Carrying those causes required new cases on public error enums (`MetaphorError.shaderSourceLoadFailed`, `MetaphorError.ImageFailure.loadFailed`, `MetaphorError.MeshFailure.loadFailed`, `MetaphorError.ExportFailure.fileWriteFailed`, `SoundFileError.loadFailed`, `AudioAnalyzerError.engineStartFailed`, `OSCReceiverError.listenerCreationFailed`, `GoldenImageError.fileReadFailed` / `.fileWriteFailed`), so an exhaustive `switch` over one of them now needs the extra case or a `default` ([#323](https://github.com/shinyaoguri/metaphor/issues/323)).
+- **Five symbols that documented themselves as internal are now `internal`** and no longer appear in the compiled API surface or in `llms.txt` (ADR-0007 Decision 6, [#388](https://github.com/shinyaoguri/metaphor/issues/388)). They were never public API — `docs/api-stability-policy.md` §1 excluded them explicitly — but the access modifier said otherwise, and after the `v0.9.0` freeze removing `public` would require a major release. None of them is referenced by `Examples/`, by [`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli), or by anything in `CONTRACT.md`:
+
+  | Removed from the public surface | What to use instead |
+  |---|---|
+  | `MetaphorRenderer.onCaptureOutput` | `MetaphorPlugin.post(texture:commandBuffer:)` — a plugin's output hook, and unlike this single-slot property it composes with other plugins |
+  | `MetaphorRenderer.shadowDeferActive` / `.onRecordFrame` / `.onReplayMain` | No replacement. These three wire up the same-frame shadow path (ADR-0003) between `SketchRunner` and the renderer; driving them by hand was never supported |
+  | `MetaphorSyphon.SyphonPlugin` | `MetaphorRenderer.startSyphonServer(name:)` / `.stopSyphonServer()` / `.syphonOutput`, or `SketchConfig(syphon:)` — all still public and unchanged |
+
+  `_metaphorSyphonRegister()`, the last underscore-prefixed `public` symbol in the library, is now `internal` as well. It is the `@_cdecl("metaphor_syphon_register")` entry point that a C load-time constructor calls to register the Syphon output factory (ADR-0001); `@_cdecl` emits the C symbol independently of the Swift access level, so automatic Syphon registration is unaffected — re-verified across debug/release × same-package/cross-package.
 
 ### Added
 

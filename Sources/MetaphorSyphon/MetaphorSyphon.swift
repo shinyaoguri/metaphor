@@ -44,8 +44,13 @@ private func installSyphonOutputFactory() {
 /// When the `metaphor` umbrella (-> `MetaphorSyphon` -> `CMetaphorSyphonBootstrap`) is linked,
 /// this function is called at process startup, registering the output factory even if
 /// user code never explicitly references `MetaphorSyphon`.
+///
+/// `internal` で十分（ADR-0007 論点 6）。`@_cdecl` はアクセス修飾子と独立に C リンケージの
+/// シンボル `metaphor_syphon_register` を生成するため、`public` にしなくても bootstrap.c から
+/// 解決できる。ADR-0001 と同じ 4 組合せ（debug/release × 同一パッケージ/クロスパッケージ）で
+/// 自動登録が生きることを再検証済み（#388）。
 @_cdecl("metaphor_syphon_register")
-public func _metaphorSyphonRegister() {
+func metaphorSyphonRegister() {
     installSyphonOutputFactory()
 }
 
@@ -55,14 +60,14 @@ extension MetaphorRenderer {
     /// An optional Syphon output for sharing video between applications.
     ///
     /// Backward-compatibility facade: Syphon output is implemented internally as
-    /// ``SyphonPlugin``; this property returns the ``SyphonOutput`` held by the registered ``SyphonPlugin``.
+    /// `SyphonPlugin`; this property returns the ``SyphonOutput`` held by the registered `SyphonPlugin`.
     public var syphonOutput: SyphonOutput? {
         (plugin(id: SyphonPlugin.id) as? SyphonPlugin)?.output
     }
 
     /// Starts a Syphon server under the given name for sharing textures between applications.
     ///
-    /// Internally, this registers a ``SyphonPlugin`` that runs in the output phase. If Syphon
+    /// Internally, this registers a `SyphonPlugin` that runs in the output phase. If Syphon
     /// is already running, it is replaced (preventing double publishing).
     /// - Parameter name: The name to publish as the Syphon server
     public func startSyphonServer(name: String) {

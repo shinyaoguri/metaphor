@@ -215,7 +215,6 @@ metaphor は2パスレンダリングアーキテクチャを採用していま�
 ### Syphon
 
 - ``MetaphorSyphon/SyphonOutput``
-- ``MetaphorSyphon/SyphonPlugin``
 
 ### カラー
 
