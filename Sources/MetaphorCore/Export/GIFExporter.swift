@@ -1,7 +1,10 @@
 @preconcurrency import Metal
 import CoreGraphics
 import Foundation
-import ImageIO
+// @preconcurrency: `CGImageDestination` を書き出しキュー／detached task へ渡す。
+// ImageIO は Sendable 注釈を持たないが、書き出し先は専用シリアルキューで直列化
+// されており、同時に触るコードは無い（Swift 5.10 SDK で警告になるのを抑止）。
+@preconcurrency import ImageIO
 import UniformTypeIdentifiers
 
 /// キャプチャしたフレームをアニメーションGIFファイルとしてエクスポートします。

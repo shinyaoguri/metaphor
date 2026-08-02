@@ -170,7 +170,13 @@ extension Sketch {
     public func loadTableAsync(
         _ source: String, format: TableFormat? = nil, header: Bool = true
     ) async throws -> Table {
-        try await DataIO.loadTableAsync(source, format: format, header: header)
+        // `Table` は非 Sendable な class なので、nonisolated な
+        // `DataIO.loadTableAsync` の戻り値を @MainActor へ跨がせると警告になる
+        //（Swift 5.10）。読み込みだけ await し、`Table` の生成は呼び出し側の
+        // 隔離ドメインで行う（loadJSONAsync と同じ方針。公開 API は不変）。
+        let data = try await DataIO.readDataAsync(source)
+        return try Table(
+            data: data, format: format ?? .inferred(fromPath: source), header: header)
     }
 
     /// ``Table`` を CSV/TSV ファイルへ書き込みます。

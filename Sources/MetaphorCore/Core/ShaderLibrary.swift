@@ -1,4 +1,7 @@
-import Metal
+// @preconcurrency: `MTLDevice` を `DispatchQueue.concurrentPerform` の
+// `@Sendable` クロージャへ渡す（`makeLibrary` はスレッドセーフ）。Metal の
+// プロトコルは Sendable 注釈を持たないため、Core の他ファイルと同じ方針で抑止する。
+@preconcurrency import Metal
 import Foundation
 import os
 
@@ -299,8 +302,13 @@ public final class ShaderLibrary {
             results.deallocate()
         }
 
-        // unsafeResults: 各スレッドが自身のインデックスに書き込み（ロック不要）
-        nonisolated(unsafe) let unsafeResults = results
+        // unsafeResults: 各スレッドが自身のインデックスに書き込み（ロック不要）。
+        //
+        // ローカルの `nonisolated(unsafe)` は Swift 5.10 のキャプチャ診断では効かない
+        // （実測: Issue #328）ため、型レベルで Sendable な箱に入れて渡す。
+        // 根拠: `concurrentPerform` の各反復は `index` 番目の要素にしか書かず、
+        // 領域が重ならない。ポインタの寿命はこの関数内（下の defer で解放）。
+        let unsafeResults = UncheckedSendableBox(results)
         let compilationErrors = OSAllocatedUnfairLock(initialState: [(key: String, error: Error)]())
         let dev = device
 
@@ -308,7 +316,7 @@ public final class ShaderLibrary {
             let (source, key) = sources[index]
             do {
                 let lib = try dev.makeLibrary(source: source, options: nil)
-                unsafeResults[index] = (key, lib)
+                unsafeResults.value[index] = (key, lib)
             } catch {
                 compilationErrors.withLock { $0.append((key: key, error: error)) }
             }

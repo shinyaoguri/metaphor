@@ -1274,10 +1274,21 @@ public final class MetaphorRenderer: NSObject {
 
 // MARK: - MTKViewDelegate
 
+// `MTKViewDelegate` の要件は macOS 26 SDK では @MainActor だが、最小サポートの
+// Swift 5.10（Xcode 15.4）SDK では nonisolated。@MainActor のまま準拠すると
+// 「main actor 隔離のメソッドで nonisolated 要件は満たせない」と警告になるため、
+// 実装側を `nonisolated` にして `MainActor.assumeIsolated` で隔離を主張する。
+// MetalKit はどちらの要件もメインスレッドから呼ぶ（Issue #328）。
 extension MetaphorRenderer: MTKViewDelegate {
-    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+    public nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
-    public func draw(in view: MTKView) {
+    public nonisolated func draw(in view: MTKView) {
+        MainActor.assumeIsolated {
+            drawOnMainActor(in: view)
+        }
+    }
+
+    private func drawOnMainActor(in view: MTKView) {
         // 外部レンダーループを使用していない場合、ここでフレームをレンダリング
         if !useExternalRenderLoop {
             renderFrame()

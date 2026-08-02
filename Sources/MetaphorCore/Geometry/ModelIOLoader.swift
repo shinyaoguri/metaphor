@@ -1,4 +1,7 @@
-import Metal
+// @preconcurrency: `MTLDevice` を detached task / MainActor.run の `@Sendable`
+// クロージャへ渡す。Metal のプロトコルは Sendable 注釈を持たないが、デバイスは
+// スレッドセーフ（Core の他ファイルと同じ方針）。
+@preconcurrency import Metal
 import ModelIO
 import MetalKit
 import simd
