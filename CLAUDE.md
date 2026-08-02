@@ -135,6 +135,7 @@ gh pr merge --squash --delete-branch    # squash のみ、ブランチ自動削�
 - **push / merge はグローバル CLAUDE.md の基準で進める**: コミットログと PR 本文（目的・変更点・確認方法）を丁寧に書き、必須チェックが green なら、指示を待たず merge まで進めてよい。force push・履歴の書き換えなど不可逆な操作のみ事前にユーザーへ確認。
 - squash merge のみ。PR タイトル/本文に最終コミットメッセージを 1 本きれいに書く（ブランチ上の各コミットは使い捨て）。
 - **merge は `gh pr merge --squash --auto` で手離れさせる**（auto-merge。CI green で自動 merge され、BEHIND でも追随不要 — 経緯とトレードオフは [docs/releasing.md](docs/releasing.md) の "Merging PRs"）。CI を watch して手動 merge する運用はしない。
+- **描画結果が変わる PR には before/after 画像を PR 本文に載せる**（ゴールデン更新なら raw URL 埋め込みで完結。手順は [DEVELOPMENT.md](DEVELOPMENT.md) の「PR に見た目の証跡を載せる」）。
 - **並行してエージェント/PR を走らせるときの合流点ルール**（2026-08-02 の並行運用の反省から）: 同時 in-flight PR は 3 本程度まで（merge 帯域 = CI 時間が律速）/ 同じファイル群（特に Sources 全域・生成物）を触るタスク同士は直列に / Sources 系と docs 系を混ぜてバッチを組む / 生成物（`llms.txt` 等）が conflict したら `git merge origin/main` 後に再生成すれば常に正 / CHANGELOG は `changelog.d/` に 1 ファイル置く（直接編集しない）。
 - merge 後は main に戻って pull し、`git fetch -p` でローカルブランチを掃除する。
 
