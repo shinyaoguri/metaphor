@@ -54,6 +54,7 @@ name within a category.
 Preview the result without touching the repository:
 
 ```bash
+rm -rf /tmp/sim && mkdir /tmp/sim
 cp -R CHANGELOG.md changelog.d /tmp/sim/
 python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changelog.d collect
 ```
