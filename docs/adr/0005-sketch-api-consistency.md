@@ -409,8 +409,9 @@ Epic 級。1.0 のスコープ外。**A を採っても D への道は塞がら�
 1. ゴールデンに「2D 変換 + 3D 描画」シーンを追加し、**現状の（壊れた）出力を先にゴールデンとして固定**する
    → 実装 PR で差分が可視化される（W2-2 の追補。§4）。
 2. 実装（試作の 3 行）+ 試作テストを `SketchAPISurfaceTests` へ移植 + ADR-0005 Decision 1 の表を更新。
-3. 影響を受ける 11 examples を確認（`examples-sweep` full 推奨）。多くは「直る」ので変更不要だが、
-   結果として二重に中央寄せになるもの（`Vertices` は 2 引数と 3 引数の `translate` が混在）は個別に見る。
+3. 影響を受ける 11 examples を目視確認（`examples-sweep` full 推奨）。いずれも「直る」ので
+   ソース変更は不要な見込みだが、2 引数と 3 引数の `translate` が混在するもの
+   （`Vertices` は中央寄せ後に `translate(0, -40, 0)`）は、合成後の位置を実際に描いて確かめる。
 4. CHANGELOG に **breaking** として記録し、[processing-migration-guide.md](../processing-migration-guide.md)
    の「2D and 3D are two canvases, and most transforms pick one」節（対応表 + "the arity picks the
    canvas" の rule of thumb）と「Transforms」表（`translate(x, y)` = "2D only"）を書き換える。
