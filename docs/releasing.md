@@ -13,6 +13,11 @@ guard).
 
 ## Label-driven releases (the normal path)
 
+**どのラベルを貼るか**は [api-stability-policy.md](api-stability-policy.md) の
+「Where each kind of change lands」表が正典（公開 API の削除・改名 = major、追加と
+deprecation = minor、描画結果や実行時契約の破壊的変更 = minor 以上で `Breaking
+Changes` 記載、最小サポート引き上げ = minor）。
+
 Releases are cut by **labeling a PR**, not by a separate branch:
 
 1. On the PR you want to ship, add one label: `release:patch` / `release:minor`

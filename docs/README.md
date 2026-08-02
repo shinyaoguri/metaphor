@@ -15,6 +15,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 | AI と一緒に作る人 | AI に観測させながら反復する | [README「AI と協調する」](../README.md#ai-と協調する観測--操作--反復) → [metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する) → [ai/prompts/](ai/prompts/) |
 | ライブラリ本体の開発者 | metaphor 自体を変更する | [DEVELOPMENT.md](../DEVELOPMENT.md) → [ai/README.md](ai/README.md)（実装デバッグ・不変条件） → [adr/](adr/) |
 | AI エージェント | 本リポジトリで作業する | [CLAUDE.md](../CLAUDE.md)（起点） → 各ファイルへ委譲 |
+| metaphor に依存する人 | バージョン指定の判断材料・何が壊れうるかを知る | [api-stability-policy.md](api-stability-policy.md)（英語）→ [CHANGELOG.md](../CHANGELOG.md) |
 | クロスリポ変更を扱う人 | metaphor ⇄ metaphor-cli の契約に触れる | [CONTRACT.md](../CONTRACT.md) |
 | リリース担当 | リリースを出す | [releasing.md](releasing.md) |
 
@@ -28,6 +29,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [ai/prompts/](ai/prompts/) — 用途別プロンプトテンプレート（audio-reactive / shader など）
 - **[processing-migration-guide.md](processing-migration-guide.md)** — Processing / p5.js 移行ガイド（英語）。カテゴリ別 API 対応表、落とし穴集、未対応 API とロードマップへの導線
 - **[permissions.md](permissions.md)** — マイク・カメラの TCC 権限（英語）。`swift run` バイナリでの権限要求の仕組み、拒否後の復旧手順、Info.plist の扱い
+- **[api-stability-policy.md](api-stability-policy.md)** — API 安定性ポリシー（英語）。4 層のどこまでが公開 API か、ソース互換のみ（ABI 非保証）、deprecation 窓、描画結果 / Probe wire schema / stdin / 環境変数が SemVer のどこに載るか、0.9.x の凍結規律
 - **[adr/](adr/)** — Architecture Decision Records。設計判断の蓄積（append-only）。書き方は [adr/README.md](adr/README.md)
 - **[design/](design/)** — 進行中 / 過去プロジェクトの設計ドキュメント。確定仕様は実装と [CONTRACT.md](../CONTRACT.md) が正
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
@@ -51,6 +53,7 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 |---|---|
 | 公開 API シグネチャ | [`llms.txt`](../llms.txt)（生成物） |
 | 設計判断の根拠 | [adr/](adr/) |
+| 何が公開 API か・何が壊れうるか | [api-stability-policy.md](api-stability-policy.md) |
 | metaphor ⇄ metaphor-cli の契約 | [CONTRACT.md](../CONTRACT.md) と `contract/*.schema.json` |
 | コードの触り方・規約 | [CLAUDE.md](../CLAUDE.md) と [ai/README.md](ai/README.md) |
 | セットアップ・ビルド | [DEVELOPMENT.md](../DEVELOPMENT.md) |
