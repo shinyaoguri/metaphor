@@ -58,10 +58,12 @@ jobs:
       # A release has to be able to say what changed. This runs first — before
       # the ~10 min Syphon build and long before anything irreversible (branch
       # push, merge, tag, Release) — so a forgotten entry costs seconds, not a
-      # wasted release attempt. `changelog.py check` fails when the
-      # `## [Unreleased]` section is missing, duplicated, or empty; its error
-      # message spells out the fix, including how to declare "no user-facing
-      # changes" explicitly for a release that genuinely has none.
+      # wasted release attempt. `changelog.py check` fails when `changelog.d/`
+      # holds no entry files AND the `## [Unreleased]` section is missing,
+      # duplicated or empty; it also rejects a malformed entry filename here,
+      # rather than mid-release in the collect step. Its error message spells
+      # out the fix, including how to declare "no user-facing changes"
+      # explicitly for a release that genuinely has none.
       - name: Require CHANGELOG entries
         run: python3 scripts/changelog.py check
 
@@ -203,15 +205,20 @@ jobs:
               README.en.md \
               Sources/metaphor/metaphor.docc/GettingStarted.md \
               llms.txt
-            # Promote `## [Unreleased]` into this version's section (Issue #335).
-            # Stable-only, matching the `from:` snippets above: a prerelease
-            # cycle keeps accumulating entries under Unreleased until it
+            # Fold `changelog.d/*.md` into `## [Unreleased]`, then promote it
+            # into this version's section (Issue #335). Stable-only, matching
+            # the `from:` snippets above: a prerelease cycle keeps accumulating
+            # entries — in changelog.d/ and under Unreleased — until it
             # graduates, so vX.Y.Z ships the notes for the whole cycle.
             # Already gated by the "Require CHANGELOG entries" step; this call
             # re-checks and fails rather than writing an empty section.
             python3 scripts/changelog.py release "${VERSION_NUM}" --date "$(date -u +%Y-%m-%d)"
           fi
-          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt CHANGELOG.md
+          # `changelog.d` carries the DELETION of every collected entry file
+          # (`git add <dir>` stages removals). Without it the release commit
+          # would promote the entries and leave the files behind, so the next
+          # release would collect them a second time.
+          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt CHANGELOG.md changelog.d
           if git diff --cached --quiet; then
             echo "::error::No version-bump diff produced."
             exit 1
@@ -231,9 +238,11 @@ jobs:
           set -euo pipefail
           VERSION_NUM=${TAG_NAME#v}
           if [ "$IS_PRERELEASE" = "false" ]; then
-            SECTION="$VERSION_NUM"     # just promoted by the previous step
+            SECTION="$VERSION_NUM"     # just collected + promoted by the previous step
           else
-            SECTION="unreleased"       # prereleases preview the pending section
+            # Prereleases preview the pending section: `notes unreleased` folds
+            # the still-uncollected changelog.d/ entries in for display only.
+            SECTION="unreleased"
           fi
           BODY="$RUNNER_TEMP/release-body.md"
           python3 scripts/changelog.py notes "$SECTION" > "$BODY"

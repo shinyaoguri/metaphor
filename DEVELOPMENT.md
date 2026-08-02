@@ -103,7 +103,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 
 release workflow は Syphon.xcframework をビルドして GitHub Release asset として公開し、`Package.swift` の binary target URL/checksum を更新します。
 
-ユーザー影響のある変更は [CHANGELOG.md](CHANGELOG.md) の `## [Unreleased]` に 1 行足してください。リリース時に `scripts/changelog.py` がその節を `## [X.Y.Z] - YYYY-MM-DD` へ昇格し、GitHub Release 本文の先頭へ転記します。**Unreleased が空だとリリースは冒頭で中断します**（`python3 scripts/changelog.py check` で手元でも確認可）。
+ユーザー影響のある変更は [CHANGELOG.md](CHANGELOG.md) を直接編集せず、[`changelog.d/`](changelog.d/README.md) に 1 変更 = 1 ファイル（`<slug>.<category>.md`）を置いてください（並行 PR が同じ行で conflict しないため）。リリース時に `scripts/changelog.py` がそれらを `## [Unreleased]` へ集約し、`## [X.Y.Z] - YYYY-MM-DD` へ昇格して GitHub Release 本文の先頭へ転記します。**`changelog.d/` と Unreleased がどちらも空だとリリースは冒頭で中断します**（`python3 scripts/changelog.py check` で手元でも確認可）。
 
 ## Notes
 

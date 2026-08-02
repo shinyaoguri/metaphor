@@ -93,7 +93,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 - **[docs/adr/](docs/adr/)**: 設計判断の蓄積（Architecture Decision Records）
 - **[docs/design/](docs/design/)**: 進行中プロジェクトの設計ドキュメント
 - **[docs/releasing.md](docs/releasing.md)**: リリース手順
-- **[CHANGELOG.md](CHANGELOG.md)**: 利用者向けの変更履歴（Keep a Changelog・英語）。**ユーザー影響のある変更を入れたら `## [Unreleased]` に 1 行足す**（破壊的変更は `### Breaking Changes`）。空のままだとリリースが中断する
+- **[CHANGELOG.md](CHANGELOG.md)**: 利用者向けの変更履歴（Keep a Changelog・英語）。**ユーザー影響のある変更を入れたら CHANGELOG.md ではなく [`changelog.d/`](changelog.d/README.md) に 1 ファイル置く**（`<slug>.<category>.md`。破壊的変更は `.breaking.md`）。リリース時に `scripts/changelog.py` が集約・昇格する。どちらも空のままだとリリースが中断する
 
 仕様の根拠は `docs/adr/`、コードの触り方は本ファイルと `docs/ai/`、API は `llms.txt` が真実の在処です。
 

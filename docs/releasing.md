@@ -66,41 +66,50 @@ bumped but free to drift back.
 ## CHANGELOG とリリースノート(Issue #335)
 
 [CHANGELOG.md](../CHANGELOG.md) は [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
-形式で、**ユーザー影響のある PR が `## [Unreleased]` に 1 行足す**運用。リリース時の
-昇格と Release 本文への転記は `scripts/changelog.py` が行い、`release.yml` から
-3 か所で呼ばれる。
+形式。**ユーザー影響のある PR は CHANGELOG.md を直接編集せず、[`changelog.d/`](../changelog.d/README.md)
+に 1 変更 = 1 ファイル(`<slug>.<category>.md`)を置く**運用(towncrier 方式)。理由は
+conflict — 全 PR が `## [Unreleased]` の同じ行を触ると、並行 PR がほぼ毎回衝突していた。
+新しいファイルは誰とも衝突しない。集約(collect)・昇格・Release 本文への転記は
+`scripts/changelog.py` が行い、`release.yml` から 3 か所で呼ばれる。
 
 | いつ | 何を | 失敗したら |
 |------|------|-----------|
-| ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `## [Unreleased]` が存在し、中身が空でないこと | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
-| *Push release branch*(stable のみ) | `changelog.py release <version>` — `## [Unreleased]` を `## [X.Y.Z] - YYYY-MM-DD` へ昇格し、空の Unreleased を上に開き、末尾のリンク定義を更新。バージョンバンプと同じコミットに含める | 同上(タグ前) |
-| *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書き、Syphon checksum を足す。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |
+| ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `changelog.d/` にエントリがあるか、`## [Unreleased]` の中身が空でないこと(両対応)。ファイル名の不備(カテゴリ不明・区切りなし・`.md` 以外・空ファイル)もここで弾く | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
+| *Push release branch*(stable のみ) | `changelog.py release <version>` — まず `changelog.d/*.md` を `## [Unreleased]` へ集約してファイルを削除し、続けて `## [X.Y.Z] - YYYY-MM-DD` へ昇格、空の Unreleased を上に開き、末尾のリンク定義を更新。**削除も含めて**バージョンバンプと同じコミットに入る(`git add ... changelog.d`) | 同上(タグ前) |
+| *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書き、Syphon checksum を足す。`unreleased` 指定時は未集約の `changelog.d/` も表示用に畳み込む。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |
 
 設計上の約束:
 
+- **集約はリリース時。** マージ時ではない。`main` の `CHANGELOG.md` は前回リリース時点の姿で、
+  次に何が出るかは `changelog.d/` を見る(`changelog.py collect` を手元で回せば結果を確認できる)。
+- **出力は決定的。** カテゴリは `breaking` → `added` → `changed` → `deprecated` → `removed` →
+  `fixed` → `security` の固定順、同一カテゴリ内はファイル名順。既存の `## [Unreleased]` の
+  中身は保存し、同名の見出しがあれば末尾に追記する。
 - **ゲートは中断であって警告ではない。** 「何が変わったか」を書けないリリースは出さない。
   ただし止まるのは冒頭ステップなので、直して再 dispatch するだけでよい。
-- **本当にユーザー影響が無いリリース**(asset の焼き直し等)は、その旨を明示的に書けば通る:
+- **本当にユーザー影響が無いリリース**(asset の焼き直し等)は、その旨を明示的に書けば通る。
+  `changelog.d/no-user-facing-changes.changed.md` に:
 
   ```markdown
-  ### Changed
-
   - _No user-facing changes._
   ```
 
-- **昇格は stable のみ。** prerelease(`-beta.N` 等)は `## [Unreleased]` を消費せず、
-  Release 本文にはその時点の Unreleased をプレビュー表示する。サイクル中の変更は
+- **昇格は stable のみ。** prerelease(`-beta.N` 等)は `changelog.d/` も `## [Unreleased]` も
+  消費せず、Release 本文にはその時点の pending をプレビュー表示する。サイクル中の変更は
   stable へ昇格したときに一括で 1 節になる。
-- リリース済みの節は手で編集しない(Unreleased だけを触る)。
+- リリース済みの節は手で編集しない。`## [Unreleased]` への直接記入は残してあるが(移行期と
+  hotfix 用の逃げ道。`check` / `collect` / `notes` は両対応)、通常は `changelog.d/` を使う。
 
 手元で挙動を確かめる(実ファイルは触らない):
 
 ```bash
 python3 scripts/changelog.py check                       # ゲートと同じ判定
-cp CHANGELOG.md /tmp/sim.md
-python3 scripts/changelog.py --path /tmp/sim.md release 0.9.0 --date 2026-09-01
-diff -u CHANGELOG.md /tmp/sim.md                         # 昇格結果の確認
-python3 scripts/changelog.py --path /tmp/sim.md notes 0.9.0   # Release 本文の Highlights
+rm -rf /tmp/sim && mkdir /tmp/sim
+cp -R CHANGELOG.md changelog.d /tmp/sim/
+python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changelog.d collect
+diff -u CHANGELOG.md /tmp/sim/CHANGELOG.md               # 集約結果の確認
+python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changelog.d release 0.9.0 --date 2026-09-01
+python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changelog.d notes 0.9.0   # Release 本文の Highlights
 ```
 
 ## 配布防御(タグと Release asset)

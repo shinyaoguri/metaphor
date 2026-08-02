@@ -39,8 +39,9 @@ this table.
 - **[releasing.md](releasing.md)** — Release procedure (driven by a PR's `release:*` label), plus CHANGELOG promotion and release-note generation
 
 The repository root also has [CHANGELOG.md](../CHANGELOG.md) (user-facing change
-history, Keep a Changelog format, English; a user-impacting pull request
-updates `## [Unreleased]`), and Examples has
+history, Keep a Changelog format, English; a user-impacting pull request drops
+one file into [changelog.d/](../changelog.d/README.md) rather than editing it,
+and the release collects them), and Examples has
 [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md) (a curated "learn in
 order" route built from the existing difficulty tags).
 

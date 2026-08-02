@@ -14,9 +14,17 @@ each one for the full list of merged pull requests.
 
 <!--
 Maintaining this file
-  - Every user-facing pull request adds its entry under `## [Unreleased]`
-    (see CONTRIBUTING.md). Internal-only changes — design docs, CI plumbing,
-    dependency bumps of the website — do not need one.
+  - Do NOT add entries here by hand. A user-facing pull request adds one file
+    per change to changelog.d/ (`<slug>.<category>.md` — see
+    changelog.d/README.md and CONTRIBUTING.md); the release workflow folds them
+    into `## [Unreleased]` and promotes that to the released version. One file
+    per change means concurrent pull requests never conflict over these lines,
+    which is what the old "append to Unreleased" rule caused. Internal-only
+    changes — design docs, CI plumbing, dependency bumps of the website — do
+    not need an entry at all.
+  - Writing directly under `## [Unreleased]` still works and is still
+    collected; it is the escape hatch for a hotfix on a branch where
+    changelog.d/ has already been drained, not the everyday path.
   - Subsections, in this order, keeping only the ones you need:
     `### Breaking Changes` (a deliberate extension of Keep a Changelog, so
     upgraders see it first), `### Added`, `### Changed`, `### Deprecated`,
@@ -26,9 +34,9 @@ Maintaining this file
   - English, to match the other community-facing documents. Internal design
     docs under docs/design/ stay Japanese.
   - Releases are automated: .github/workflows/release.yml refuses to release
-    while `## [Unreleased]` is empty, then promotes it to
-    `## [X.Y.Z] - YYYY-MM-DD` and copies it into the GitHub Release notes
-    (scripts/changelog.py). Do not hand-edit released sections.
+    while changelog.d/ and `## [Unreleased]` are both empty, then collects,
+    promotes to `## [X.Y.Z] - YYYY-MM-DD` and copies it into the GitHub Release
+    notes (scripts/changelog.py). Do not hand-edit released sections.
 -->
 
 ## [Unreleased]
