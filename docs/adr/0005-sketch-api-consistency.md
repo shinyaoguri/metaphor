@@ -182,18 +182,22 @@ Decision 2（および 2026-07-03 Amendment の 2）は「リソース生成・�
 - エラー契約は `Sources/MetaphorCore/Core/MetaphorError.swift` の「エラー契約」節が正本。
   回帰は `Tests/metaphorTests/ErrorTests.swift` の `ErrorContractTests` などが凍結する。
 
-## Amendment（ドラフト・2026-08-02, Issue #325）— 変換ファミリの P3D 意味論統一の判断
+## Amendment（2026-08-02, Issue #325）— 変換ファミリを P3D 意味論へ統一する
 
-> **状態: ドラフト（ユーザーレビュー待ち）。** Decision 1 が「1.0 前の破壊的変更ウィンドウで
-> 再評価する」と宣言した follow-up の結論案であり、確定していない。
+**決定: Option A を採用**（2026-08-02 のユーザーレビューで確定）。`translate(x, y)` /
+`rotate(a)` / `scale(sx, sy)` を 2D・3D 双方の変換行列へ適用する。Decision 1 が
+「1.0 前の破壊的変更ウィンドウで再評価する」と宣言した follow-up はここで決着する。
 
-### ユーザーが判断すべき点（3 行）
+決め手は「**統一は既存スケッチを壊す変更ではなく、壊れているものを直す変更だった**」という
+実測結果である（§1・§2）。3D の既定カメラが既に Processing P3D と同型のピクセル空間で
+あるため、2D 変換を 3D へ流すことは座標系をまたぐ操作ですらない。実装は 3 行で、
+既存テストの赤 0・既存ゴールデン 6 枚とも差分ピクセル 0（§4）。
 
-1. **Option A（`translate(x,y)` / `rotate(a)` / `scale(sx,sy)` を 3D にも効かせる）を実施してよいか** — 実測では実装 3 行・既存テストの赤 0・ゴールデン 6/6 差分 0 で、いま壊れている 11 examples が直る。
-2. A を採るとき、**`shearX/Y` と `applyMatrix(float3x3)` も同時に 3D へ流すか**、`translate`/`rotate`/`scale` の 3 本に限るか（§6）。
-3. **逆方向（3D 変換 API が 2D 描画に効く）は A では直らない**（`RotateXY` / `Explode` の 2 例）。1.0 では「直らないもの」として doc に明記して残すか、別 Epic を立てるか（§3）。
+**適用範囲は `translate`/`rotate`/`scale` の 3 本に限る**（`shearX`/`shearY` /
+`applyMatrix(float3x3)` は 2D 専用のまま。§6）。また **A は P3D の「半分」**であり、
+逆方向（3D 変換 API が 2D 描画に効く）は構造的に到達不能なまま残る（§3）。
 
-**推奨: Option A を実施する。** 以下はその根拠の実測記録。
+以下は決定の根拠となった実測記録。
 
 ### 1. 前提の訂正: 2D と 3D の座標系は既に一致している
 
@@ -266,21 +270,31 @@ x/y とも 3px 以内で一致する。**2D と 3D は同じピクセル空間�
 | 現状（2D のみ） | **(7.0, 7.0)** | 左上に張り付き、ボックスの大半が画面外 |
 | 統一後 | **(63.5, 29.9)** | 作者が書いたとおりの位置 |
 
-Examples 278 本の全数調査（`grep` + 目視）:
+実例での実測（`Topics/Shaders/ToonShading`、640×360、Probe で 1 フレーム取得し
+フレームバッファ全体の bbox を測定）:
+
+| | 描画内容の bbox | 重心 | 被覆率 |
+|---|---|---|---|
+| 統一前 | **(0,0)–(138,121)**（左上で画面外へ切れている） | (62.1, 54.7) | 6.4% |
+| 統一後 | (191,51)–(448,308) | **(319.6, 179.4)** ≒ 画面中心 | 22.7% |
+
+Examples 278 本の全数調査。**判定基準は「3D プリミティブ（`box` / `sphere` /
+`cylinder` / `cone` / `torus` / `plane` / `beginShape3D`）を描いていること」**である
+——`beginShape()`（2 引数版）で始めた形状の中の 3 引数 `vertex(x, y, z)` は
+**z を落として 2D キャンバスへルーティングされる**ため（`SketchContext+3D.swift:20-28`。
+Processing 互換として意図的にそうしてある）、`vertex(x,y,z)` を使っているだけでは
+3D 描画にならない。
 
 | 区分 | 本数 | 統一後に起きること |
 |---|---:|---|
-| 3D 描画 + 2 引数 `translate(x, y)` | **11** | 3D の位置決めが**意図どおりに直る**（現在は左上に張り付き） |
-| 3D 描画 + 1 引数 `rotate(a)` | **0** | — |
-| 3D 描画 + 2 引数 `scale(sx, sy)` | **0**（`scale(sx,sy)` は Examples 全体で使用ゼロ） | — |
-| 3D 変換の下で 2D 描画（逆方向） | 2 | **直らない**（§3） |
-| 3D + 2D HUD（HUD 側は無変換） | 5 | 変化なし |
+| **3D プリミティブ描画 + 2 引数 `translate(x, y)`** | **4** | 3D の位置決めが**意図どおりに直る**（統一前は左上に張り付き） |
+| 3D プリミティブ描画 + 1 引数 `rotate(a)` | **0** | — |
+| 3D プリミティブ描画 + 2 引数 `scale(sx, sy)` | **0**（`scale(sx,sy)` は Examples 全体で使用ゼロ） | — |
+| 3D 変換の下で 2D 描画（逆方向） | 9 | **直らない**（§3） |
 
-該当 11 本: `Topics/Geometry/{Icosahedra, NoiseSphere, ShapeTransform, Vertices}` /
-`Topics/Textures/{TextureCylinder, TextureQuad}` / `Topics/Shaders/{EdgeFilter, ToonShading}` /
-`Demos/Graphics/Patch` / `Demos/Performance/{Esfera, StaticParticlesImmediate}`。
-
-いずれも Processing からの移植で、`translate(width/2, height/2)` が効く前提で書かれている。
+該当 4 本: `Demos/Performance/Esfera` / `Topics/Geometry/NoiseSphere` /
+`Topics/Shaders/EdgeFilter` / `Topics/Shaders/ToonShading`。いずれも Processing からの
+移植で、`translate(width/2, height/2)` が効く前提で書かれている。
 **これらは「統一で壊れる」のではなく「統一しないと壊れたまま」である**——この点が
 ADR-0005 執筆時の想定（= 動いているスケッチが壊れる）と逆であり、判断の軸が変わる。
 
@@ -289,9 +303,10 @@ ADR-0005 執筆時の想定（= 動いているスケッチが壊れる）と逆
 write `translate(x, y, 0)`」という**回避策の案内**になっている。座標系まで P3D 互換なのに
 変換 API だけ書き換えを強いる、という状態を 1.0 の仕様として選ぶかどうかが本判断である。
 
-`Demos/Graphics/Patch` は現状の非対称が最も分かりやすく出ている例で、
-`translate(width/2, height/2)`（効かない）と `scale(0.9)`（**均一スケールなので既に 3D へ効く**）が
-隣り合っている。同じ変換ファミリの中で作用先が割れていることが、コード上で目視できる。
+`Topics/Shaders/EdgeFilter` は非対称が最も分かりやすく出ている例で、
+`translate(width/2, height/2)`（2 引数 = 効かなかった）→ `rotateX`/`rotateY`（3 引数系 = 効く）
+→ `translate(150, 0)`（2 引数 = 効かなかった）と 3 つの変換が交互に並ぶ。統一前は
+**回転だけが効いて配置が一切効かない**ため、箱と球が両方ワールド原点に重なっていた。
 
 ### 3. 限界: A は P3D の「半分」であり、残り半分は構造的に到達不能
 
@@ -303,21 +318,25 @@ metaphor は 2D と 3D で**別のパイプライン**を持つ:
 - `rotateX` / `rotateY` は `float3x3` では**表現できない**。したがって「3D 変換 API を 2D 描画にも効かせる」
   逆方向は、2D プリミティブを 3D パイプラインで描く（= P3D レンダラを新設する）以外に手段がない。
 
-結果、以下の 2 例は Option A では直らない:
+Option A では直らない例は Examples 内に **9 本**ある。2 つのパターンに分かれる:
 
-- `Examples/Basics/Transform/RotateXY` — `translate(w/2,h/2,0)` + `rotateX/rotateY` で `rect()` を回す
-  Processing 本家の移植。現状は 3D 変換が `rect` に効かず、静止した矩形が左上に描かれるだけ。
-- `Examples/Topics/Image Processing/Explode` — 画素セルを `translate(x, y, z)` で押し出して `rect()` を描く。
+1. **3D 変換の下で 2D プリミティブを描く** — `Basics/Transform/RotateXY`（`rotateX`/`rotateY` で
+   `rect()` を回す Processing 本家の移植）、`Topics/Image Processing/Explode`
+   （画素セルを `translate(x, y, z)` で押し出して `rect()` を描く）。
+2. **`beginShape()` + 3 引数 `vertex(x, y, z)` で 3D 形状を組み立てている** —
+   `Topics/Geometry/{Icosahedra, ShapeTransform, Vertices}` / `Topics/Textures/{TextureCylinder,
+   TextureQuad}` / `Demos/Graphics/Patch` / `Demos/Performance/StaticParticlesImmediate`。
+   これらは `beginShape3D()` ではなく 2D の `beginShape()` で始めているため、
+   **z が落ちて 2D キャンバスへ流れる**（`SketchContext+3D.swift:20-28`）。結果として
+   2 引数 `translate` による配置は効くが `rotateX`/`rotateY` が効かず、立体が平面に潰れて見える。
+   Option A はこの経路に一切触れない（2D へ流れている以上、3D 変換の統一とは無関係）。
 
-**A を採る場合、この非対称（2D 変換 API は両方に効く / 3D 変換 API は 3D だけ）が 1.0 に残る。**
-現状の非対称（引数の数で作用先が決まる）より説明しやすいかは判断が要る。上の 2 例は
-「P3D レンダラがないとできないこと」として doc に明記し、examples 側を 3D API で書き直すのが
-現実的な着地になる。
+この非対称（2D 変換 API は両方に効く / 3D 変換 API は 3D だけ）は **1.0 に残る**。
+上記 9 本は「P3D レンダラ（Option D）がないとできないこと」として doc に明記し、
+examples 側は `beginShape3D()` へ書き換える（パターン 2）か 3D API で描き直す（パターン 1）のが
+現実的な着地になる。**本 Amendment のスコープ外で、Issue #387 として起票した。**
 
 ### 4. 実測: 実装コストと回帰
-
-試作ブランチ [`spike/p3d-transform-semantics`](https://github.com/shinyaoguri/metaphor/tree/spike/p3d-transform-semantics)（コミット `ed22fd0`）で実装して測った。
-**判断材料であり、そのまま merge する成果物ではない**（採用する場合の実装 PR の土台にはできる）。
 
 差分は `SketchContext` の 3 メソッドに 1 行ずつ:
 
@@ -328,30 +347,32 @@ public func scale(_ sx: Float, _ sy: Float)  { canvas.scale(sx, sy);     canvas3
 ```
 
 `rotate(a)` → `rotateZ(a)` は符号規約まで一致する（`Canvas2D.rotate` の 3x3 と
-`float4x4(rotationZ:)` の左上 2x2 が同一）。試作テストで行列同値を確認済み。
+`float4x4(rotationZ:)` の左上 2x2 が同一）。`TransformSemanticsTests` が行列同値で凍結する。
 
 | 測定項目 | 結果 |
 |---|---|
-| `swift test` | **1221 / 1221 緑**（既存 1214 + 試作 7）。**既存テストの赤は 0** |
-| ゴールデン 6 シーン | **6/6 が差分ピクセル 0**（`maxChannelDiff=0`, `differingPixels=0/16384`） |
-| 試作テストの有効性 | 変更を戻すと 7 本中 **5 本が赤**（新しい意味論を実際に固定している） |
-| 実装規模 | 実装 3 行 + doc コメント 4 箇所 + `llms.txt` 再生成 |
+| `swift test` | 全緑（1214 → 1227。新規 `TransformSemanticsTests` 9 本 + ゴールデン 1 枚） |
+| **既存**テストの赤 | **0** |
+| 既存ゴールデン 6 枚 | **6/6 が差分ピクセル 0**（`maxChannelDiff=0`, `differingPixels=0/16384`） |
+| 新規テストの有効性 | 実装を戻すと `TransformSemanticsTests` 9 本中 **5 本が赤** |
+| 新規ゴールデンの検出力 | 実装を戻すと `transform-2d-on-3d` が `maxChannelDiff=190` / 差分 **24.2%** で赤 |
 
-ゴールデンが 1 画素も動かないのは、6 シーンのうち 3D を含む 3 つが**すべて 3 引数 `translate` を
-使っており、2 引数 `translate` を使うシーンが存在しない**ため。裏を返すと**ゴールデンは
-この変更に対する検出力を持っていない**——採用する場合は「2D 変換 + 3D 描画」のシーンを
-ゴールデンに追加してから実装するのが筋（W2-2 の追補）。
+**既存ゴールデンが 1 画素も動かない**のは、既存 6 シーンのうち 3D を含む 3 つが
+**すべて 3 引数 `translate` を使っており、2 引数 `translate` を使うシーンが存在しない**ため。
+つまり既存ゴールデンはこの変更に検出力を持たない。そこで
+**`transform-2d-on-3d`（2D 変換 3 種 + 3D 描画）を新設**し、この軸を画素で凍結した。
 
-**既存テストの赤が 0 であることは「安全」ではなく「未固定」の証拠**でもある。ADR-0005
-Decision 1 の規範表は、どのテストにも凍結されていない。
+同様に、**既存テストの赤が 0 であることは「安全」ではなく「未固定」の証拠**だった——
+ADR-0005 Decision 1 の規範表はどのテストにも凍結されていなかった（Issue #385）。
+`TransformSemanticsTests` が表そのもの（2D/3D 両方・2D のみ・3D のみの 3 区分）を凍結する。
 
 ### 5. Considered Options
 
-#### Option A（推奨）: 変換ファミリのみ P3D 意味論へ統一
+#### Option A（採用）: 変換ファミリのみ P3D 意味論へ統一
 
 `translate(x,y)` / `rotate(a)` / `scale(sx,sy)` を 2D・3D 双方へ適用する。
 
-- **Pros**: 座標系が既に一致しているので実装 3 行（§1, §4）。壊れている 11 examples が直る（§2）。
+- **Pros**: 座標系が既に一致しているので実装 3 行（§1, §4）。壊れている 4 examples が直る（§2）。
   ADR-0007 の原則（Sketch 層 = Processing 互換最大化）に素直に従う——`translate`/`rotate`/`scale` は
   Processing 語彙そのもので、P3D では 2D 変換 API が 3D にも効く。`pushMatrix`/`popMatrix`/`push`/`pop` は
   **既に**両方を保存・復元するため、囲まれた変換は 3D へ漏れない（試作テストで確認）。
@@ -359,7 +380,7 @@ Decision 1 の規範表は、どのテストにも凍結されていない。
 - **Cons**: 破壊的変更（0.x として許容範囲だが CHANGELOG 必須）。逆方向は直らず新しい非対称が残る（§3）。
   `translate(x,y)` を「2D だけ動かす」意図で**バランスさせずに**使っていたスケッチは 3D の位置がずれる
   （Examples には該当なし。回避は `pushMatrix()`/`popMatrix()` で囲む＝ Processing と同じ作法）。
-  ゴールデンに検出力がないまま入れると回帰に気付けない（§4 の追補が前提）。
+  既存ゴールデンに検出力がない（→ `transform-2d-on-3d` を新設して対処済み。§4）。
 
 #### Option B: 全面統一（`blendMode` / `strokeWeight` も 2D/3D 両方へ）
 
@@ -377,7 +398,7 @@ Decision 1 の規範表は、どのテストにも凍結されていない。
   移行ガイドの落とし穴集で誤誘導は一応防げている。
 - **Cons**: **ゼロコストではない**——#379（ADR-0005 の表の是正）が前提になり、「`push`/`pop` は
   2D/3D 両方に効くが、その中の `translate(x,y)` は 2D にしか効かない」という規則を 1.0 の
-  確定仕様として明文化することになる（§1-b）。**11 examples が壊れたまま 1.0 になる**（§2）。
+  確定仕様として明文化することになる（§1-b）。**4 examples が壊れたまま 1.0 になる**（§2）。
   Processing 移植の最頻出イディオムが警告もエラーもなく黙って別の絵を出す——ADR-0007 の原則
   （Sketch 層 = Processing 互換最大化）と正面から衝突する。座標系は既に P3D 互換なのに
   変換 API だけが非互換、という一番説明しにくい形（§1）が残る。`scale(s)` だけが両方に効き
@@ -386,65 +407,67 @@ Decision 1 の規範表は、どのテストにも凍結されていない。
 
 #### Option D（記録のみ・今回は採らない）: P3D モードのオプトイン
 
+
 Processing 本家と同じく `size(w, h, P3D)` 相当のモードを設け、2D プリミティブを 3D パイプラインで
 描く。§3 の逆方向まで含めて真の P3D 互換になる唯一の道だが、2D の全機能（バッチング・クリッピング・
 テキストアトラス・massive・SVG 書き出し・コマンド記録）を 3D 経路へ移植する必要があり、
-Epic 級。1.0 のスコープ外。**A を採っても D への道は塞がらない**（A は D の部分集合として矛盾しない）。
+Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞がらない**（A は D の部分集合として矛盾しない）。
 
-### 6. Option A を採る場合の付随論点（要判断）
+### 6. 適用範囲: `translate` / `rotate` / `scale` の 3 本に限る
 
-| API | 統一できるか | 案 |
+統一するのは **`translate(x,y)` / `rotate(a)` / `scale(sx,sy)` の 3 本だけ**とする。
+
+| API | 統一できるか | 決定 |
 |---|---|---|
-| `shearX` / `shearY` | 可能（せん断は 4x4 で表現可・単位なし） | 3D に対応する API が存在しないため、**同時に統一する**か **2D 専用のまま残す**か要判断 |
-| `applyMatrix(float3x3)` | 可能（3x3 アフィンを 4x4 へ持ち上げる） | 同上。`applyMatrix(float4x4)` が 3D 専用として既にあるため、3x3 版を両方へ流すと「3x3 は両方 / 4x4 は 3D だけ」になる |
-| `resetMatrix()` | — | **既に両方**に効く（変更不要） |
-| `pushMatrix` / `popMatrix` / `push` / `pop` / `pushStyle` / `popStyle` | — | **既に両方**（ADR-0005 の表が実装と食い違っている件は #379 で是正） |
+| `shearX` / `shearY` | 可能（せん断は 4x4 で表現可・単位なし） | **2D 専用のまま**。3D に対応する API がなく、Examples でも 3D との併用はゼロ。doc に「統一の対象外」と明記した |
+| `applyMatrix(float3x3)` | 可能（3x3 アフィンを 4x4 へ持ち上げる） | **2D 専用のまま**。`applyMatrix(float4x4)` が 3D 専用として既にあり、3x3 版を両方へ流すと「3x3 は両方 / 4x4 は 3D だけ」という別の非対称を作る |
+| `resetMatrix()` | — | **既に両方**に効く（変更なし） |
+| `pushMatrix` / `popMatrix` / `push` / `pop` / `pushStyle` / `popStyle` | — | **既に両方**（ADR-0005 の表が実装と食い違っている件の残りは #379） |
 
-推奨は「まず `translate`/`rotate`/`scale` の 3 本だけを統一し、`shear`/`applyMatrix` は
-利用実績がない（Examples で 3D と併用ゼロ）ため現状維持のまま doc で明示」だが、
-「変換ファミリ = 変換 API 全部」と読むなら同時に統一する方が一貫する。**ユーザー判断**。
+「変換ファミリ = 変換 API 全部」と読めば `shear`/`applyMatrix` も対象になるが、
+**Processing 互換の実利がある 3 本に絞る**方を採った。`shearX`/`shearY` は Processing にも
+3D 版がなく、`applyMatrix` は行列を自前で組む利用者向けで「どちらに効くか」を明示的に
+選べた方が扱いやすい。
 
-### 7. Option A を採る場合の実施手順（案）
+### 7. 実施の記録
 
-1. ゴールデンに「2D 変換 + 3D 描画」シーンを追加し、**現状の（壊れた）出力を先にゴールデンとして固定**する
-   → 実装 PR で差分が可視化される（W2-2 の追補。§4）。
-2. 実装（試作の 3 行）+ 試作テストを `SketchAPISurfaceTests` へ移植 + ADR-0005 Decision 1 の表を更新。
-3. 影響を受ける 11 examples を目視確認（`examples-sweep` full 推奨）。いずれも「直る」ので
-   ソース変更は不要な見込みだが、2 引数と 3 引数の `translate` が混在するもの
-   （`Vertices` は中央寄せ後に `translate(0, -40, 0)`）は、合成後の位置を実際に描いて確かめる。
+1. ゴールデン `transform-2d-on-3d`（2D 変換 3 種 + 3D 描画）を新設し、この軸に検出力を持たせた（§4）。
+2. 実装（3 行）+ `TransformSemanticsTests`（適用規則の表そのものを凍結する 9 本）を追加。
+3. 影響を受ける 4 examples のうち `ToonShading` を Probe で before/after 実測し、
+   画面外 → 画面中央に戻ることを確認（§2）。4 本ともソース変更は不要（意図どおりに直る）。
 4. CHANGELOG に **breaking** として記録し、[processing-migration-guide.md](../processing-migration-guide.md)
    の「2D and 3D are two canvases, and most transforms pick one」節（対応表 + "the arity picks the
-   canvas" の rule of thumb）と「Transforms」表（`translate(x, y)` = "2D only"）を書き換える。
-   **この 2 箇所は Option A で意味が反転するため、実施する場合は同一 PR で更新すること**。
+   canvas" の rule of thumb）と「Transforms」表を書き換えた。
    移行手段は「2D だけ動かしたい箇所を `pushMatrix()`/`popMatrix()` で囲む」。
 
-### 8. Consequences（Option A を採る場合）
+### 8. Consequences
 
 - Decision 1 の表は次のように変わる（`blendMode` / `strokeWeight` の 2D 専用は据え置き = Option B は却下）:
 
   | 適用先 | API |
   |---|---|
   | 2D/3D 両方 | `fill` / `stroke` / `noFill` / `noStroke` / `push`・`pop` / `pushMatrix`・`popMatrix` / `pushStyle`・`popStyle` / `resetMatrix` / `scale(s)` / **`translate(x,y)`** / **`rotate(a)`** / **`scale(sx,sy)`** |
-  | 2D のみ | `blendMode` / `strokeWeight` / `shearX`・`shearY` / `applyMatrix(float3x3)`（§6 の判断次第） |
+  | 2D のみ | `blendMode` / `strokeWeight` / `shearX`・`shearY` / `applyMatrix(float3x3)` |
   | 3D のみ | `translate(x,y,z)` / `rotateX/Y/Z` / `scale(x,y,z)` / `applyMatrix(float4x4)` / `camera` / `lights` / `material` 系 |
 
-- Decision 1 の「1.0 前の破壊的変更ウィンドウで再評価する」は本 Amendment で**決着**する。
-- 本 Amendment は**変換ファミリの適用先だけ**を決める。ADR-0005 の表そのものの誤り
-  （`push`/`pop` の分類・`pushStyle`/`popStyle` の欠落・「3D のみ」注記の欠落・`ortho()` の既定値）は
-  #379 の担当。**どの Option を採っても #379 は必要**で、両者は同じ表を触るためマージ順に注意する
-  （先に入った方に合わせて他方を調整）。
-- `docs/processing-migration-guide.md` の「変換」表と該当する落とし穴も同時に更新する（§7-4）。
-- 副産物として `screenPosition(x,y,z)` の y 反転（#378）は本判断と独立に修正が必要。
-  Option A を採ると `translate(x,y)` 経由でも 3D の `screenY` を踏む経路が増えるため、
-  #378 を先に片付けておく方が混乱が少ない。
+- Decision 1 の「1.0 前の破壊的変更ウィンドウで再評価する」は本 Amendment で**決着**した。
+- **breaking**: 3D 描画を含むスケッチで 2 引数 `translate` / 1 引数 `rotate` / 2 引数 `scale` を
+  使っていた場合、これまで 3D に効かなかったものが効くようになる。「2D だけを動かす」意図で
+  使っていた箇所は `pushMatrix()` / `popMatrix()` で囲む（Processing と同じ作法）。
+  `public` API のシグネチャは変わらないため**ソース互換は壊れない**——変わるのは描画結果だけ。
+- 本 Amendment は**変換ファミリの適用先だけ**を決めた。ADR-0005 の表そのものの誤りのうち
+  `push`/`pop` の分類は本 PR で是正したが、残り（`pushStyle`/`popStyle` の欠落・「3D のみ」注記の
+  欠落・`ortho()` の既定値）は **#379 が引き続き担当**する。
+- `screenPosition(x,y,z)` の y 反転（#378）は本判断と独立に修正が必要。統一により
+  `translate(x,y)` 経由でも 3D の `screenY` を踏む経路が増えるため、優先度は上がった。
+- 逆方向が直らない 9 examples（§3）は **#387** で扱う。
+- 適用規則を凍結するテストが皆無だった件（#385）は、本 PR の `TransformSemanticsTests` と
+  ゴールデン `transform-2d-on-3d` で解消した。
 
-### 9. 再評価の条件（Option C を採る場合に、この窓を再び開いてよい状況）
+### 9. 再評価の条件（この窓を再び開いてよい状況）
 
-- (a) Option D（P3D モード）に着手するとき。逆方向を含めて一度に片付けられるため、
-  A を飛ばして D へ進む判断はあり得る。
-- (b) 1.0 後でも、`translate(x,y)` の適用先変更は **public API のシグネチャを変えない**ため
-  ソース互換は壊れない（描画結果だけが変わる）。CHANGELOG での明示と minor bump があれば
-  1.0 後にも実施できる——ただし「壊れた 11 examples を 1.0 に載せる」ことの是非は別問題。
+- Option D（P3D モード）に着手するとき。§3 の逆方向を含めて一度に片付けられるため、
+  本 Amendment の到達点をその部分集合として取り込むことになる。
 
 ## References
 
@@ -453,10 +476,13 @@ Epic 級。1.0 のスコープ外。**A を採っても D への道は塞がら�
 - Issue #323（typed throws の延期とエラー型統一）、#332（`build-swift-5-10` の必須化）
 - Issue #202 / #326（Decision 6 の実施）、#330（ゴールデン回帰基盤 — 分割の無害性の検証に使用）
 - docs/ai/README.md「Invariants」（エラー報告・トリプルバッファ規約・loadPixels のパス分割）
-- Amendment（ドラフト・2026-08-02）関連: Issue #325（本判断）、Epic #314 /
+- Amendment（2026-08-02）関連: Issue #325 / PR #384（本判断と実装）、Epic #314 /
   [v1-release-plan.md](../design/v1-release-plan.md) W1-6、
   [ADR-0007](0007-finalize-public-api-surface.md)「原則: Processing 互換と Swift 慣行の優先順位」、
   Issue #336 / PR #377（Processing 移行ガイド — 既定カメラが P3D 既定と一致することの独立確認）、
-  Issue #379（ADR-0005 の 2D/3D 適用表と実装の食い違い — どの Option でも前提）、
-  Issue #378（`screenY(x,y,z)` の y 反転）、Issue #330 / PR #366（ゴールデン基盤 = §4 の計測手段）
-- 試作ブランチ: `spike/p3d-transform-semantics`（コミット `ed22fd0`。判断材料であり merge 対象ではない）
+  Issue #379（ADR-0005 の 2D/3D 適用表の残りの是正）、Issue #378（`screenY(x,y,z)` の y 反転）、
+  Issue #385（適用規則を凍結するテスト）、Issue #387（逆方向が直らない 9 examples）、
+  Issue #330 / PR #366（ゴールデン基盤 = §4 の計測手段）
+- 回帰の凍結先: `Tests/metaphorTests/TransformSemanticsTests.swift`、
+  `Tests/metaphorTests/Golden/transform-2d-on-3d.png`
+- 判断材料に使った試作ブランチ: `spike/p3d-transform-semantics`（コミット `ed22fd0`。実装は本 PR に取り込み済み）
