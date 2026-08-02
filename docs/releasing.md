@@ -62,10 +62,11 @@ pass. Consequences and rationale:
   so `release-on-merge.yml` (`pull_request: closed`) fires as before. Label
   **before** arming (see the note above).
 - **Only required checks gate the merge.** Required = `build-and-test` and
-  `build-swift-5-10`. Everything else (`examples-detect` /
-  `examples-diff-build`, `docs.yml`, `asset-health.yml`) finishes *after* the
-  merge has already happened and is therefore a **fix-forward signal, not a
-  gate**. Two consequences worth knowing:
+  `build-swift-5-10`. The only other jobs that run on a PR at all are
+  `examples-detect` / `examples-diff-build`, and neither is required, so both
+  are a **fix-forward signal, not a gate**. (`docs.yml` and `asset-health.yml`
+  never run on PRs — `push: main` and a weekly cron respectively.) Two
+  consequences worth knowing:
   - Checks that must actually block are written as **steps inside
     `build-and-test`**, not as new required jobs — the PR-title
     Conventional-Commits lint and the `changelog.d` lint both live there. A new
