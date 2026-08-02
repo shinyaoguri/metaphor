@@ -192,7 +192,9 @@ struct TransformSemanticsTests {
             c.background(Color(r: 0, g: 0, b: 0))
             c.noStroke()
             c.fill(Color(r: 1, g: 1, b: 1))
-            c.ambientLight(1.0)
+            // colorMode 基準（既定 0〜255）で全開。他にライトを足さないので実際には
+            // 無照明パス（fill 色をそのまま使う）だが、単位を取り違えた値は残さない。
+            c.ambientLight(255)
             c.pushMatrix()
             c.translate(32, 24, 0)
             c.box(16)
@@ -221,7 +223,7 @@ struct TransformSemanticsTests {
             context.background(Color(r: 0, g: 0, b: 0))
             context.noStroke()
             context.fill(Color(r: 1, g: 1, b: 1))
-            context.ambientLight(1.0)
+            context.ambientLight(255)  // colorMode 基準（既定 0〜255）
             context.translate(64, 32)
             context.box(20)
             context.endFrame()
