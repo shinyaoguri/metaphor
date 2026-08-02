@@ -43,6 +43,26 @@ Maintaining this file
   - `Physics2D.addGravity(_:_:)` → `setGravity(_:_:)`
   - `SoundFile.volume` → `gain`
 - The two removed `MetaphorPlugin` methods were protocol requirements, so a custom plugin that only implements `onBeforeRender` / `onAfterRender` now compiles but is never called. Rename those methods to `pre` / `post` ([#354](https://github.com/shinyaoguri/metaphor/pull/354)).
+- **Throwing APIs now throw only their own module's error type.** Previously a number of resource-creation APIs let the underlying framework error escape unchanged — a Metal `NSError` from `makeRenderPipelineState` / `makeLibrary`, a Foundation `NSError` from `String(contentsOfFile:)` / `FileManager`, a MetalKit `NSError` from `MTKTextureLoader`, an AVFoundation `NSError` from `AVAudioFile` / `AVAssetWriter`, or an `NWError` from `NWListener`. Those are now wrapped in `MetaphorError` (or the module's own error type), with the original cause preserved as a string in the case payload. If you were catching a concrete `NSError` / `NWError` from any of the following, catch the metaphor error instead ([#323](https://github.com/shinyaoguri/metaphor/issues/323)):
+
+  | API | Now throws |
+  |---|---|
+  | `PipelineFactory.build()` / `.buildCompute(device:function:)` | `MetaphorError.pipelineCreationFailed(name:underlying:)` |
+  | `ShaderLibrary.register(source:as:)` / `.reload(key:source:)` | `MetaphorError.shaderCompilationFailed(name:underlying:)` |
+  | `ShaderLibrary.registerFromFile(path:as:)` / `.reloadFromFile(key:path:)` | `MetaphorError.shaderSourceLoadFailed(path:detail:)`, then the above |
+  | `ComputeKernel.init(device:source:functionName:)` / `.init(device:function:)` | `MetaphorError.shaderCompilationFailed` / `.compute(.functionNotFound)` / `.pipelineCreationFailed` |
+  | `MImage.init(path:device:)` / `.init(named:device:)` / `.init(nsImage:device:)`, `ResourceLoader.loadImageAsync(...)` | `MetaphorError.image(.loadFailed(source:detail:))` |
+  | `Mesh.loadOBJ(device:url:)` | `MetaphorError.mesh(.loadFailed(path:detail:))` |
+  | `GIFExporter.endRecord(to:)` / `.endRecordAsync(to:)`, `VideoExporter.beginRecord(...)` | `MetaphorError.export(.fileWriteFailed(path:detail:))` / `.export(.writerFailed(_:))` |
+  | `MPSRayTracer.init(device:commandQueue:width:height:)` | `MetaphorError.shaderCompilationFailed` / `.pipelineCreationFailed` |
+  | `SoundFile.init(path:)` | `SoundFileError.loadFailed(path:detail:)` |
+  | `AudioAnalyzer.start()` | `AudioAnalyzerError.engineStartFailed(detail:)` |
+  | `OSCReceiver.start()` | `OSCReceiverError.listenerCreationFailed(port:detail:)` |
+  | `GoldenImage.load(pngAt:)` / `.write(pngTo:)` (MetaphorTestSupport) | `GoldenImageError.fileReadFailed(url:detail:)` / `.fileWriteFailed(url:detail:)` |
+
+  Everything reached through those — `loadImage`, `loadSound`, `createComputeKernel`, `createMaterial`, `reloadShader`, `endGIFRecord`, `Canvas2D` / `Canvas3D` / `MetaphorRenderer` initializers, `MergePass.init`, and so on — is covered by the same guarantee. Code that already catches `MetaphorError` (or catches everything) needs no change.
+
+  Carrying those causes required new cases on public error enums (`MetaphorError.shaderSourceLoadFailed`, `MetaphorError.ImageFailure.loadFailed`, `MetaphorError.MeshFailure.loadFailed`, `MetaphorError.ExportFailure.fileWriteFailed`, `SoundFileError.loadFailed`, `AudioAnalyzerError.engineStartFailed`, `OSCReceiverError.listenerCreationFailed`, `GoldenImageError.fileReadFailed` / `.fileWriteFailed`), so an exhaustive `switch` over one of them now needs the extra case or a `default` ([#323](https://github.com/shinyaoguri/metaphor/issues/323)).
 
 ### Added
 
@@ -60,8 +80,9 @@ Maintaining this file
 - `loadPixels()` on the main canvas now reads back **the canvas as of the call**, matching Processing. Previously it could only return the content committed up to the end of the previous frame, so shapes drawn earlier in the same `draw()` were missing. Calling it mid-`draw()` closes the current render pass, commits it, waits for the GPU, and resumes drawing in a `loadAction = .load` continuation pass — the rendered frame is unchanged, and sketches that never call `loadPixels()` pay nothing. Two consequences to know about: the pass split clears depth, so 3D drawn before and after a `loadPixels()` call is no longer depth-tested against each other; and with shadows enabled the same-frame readback is unavailable (`draw()` runs as a record pass first), in which case the last committed frame is read and a warning is logged once ([#326](https://github.com/shinyaoguri/metaphor/issues/326))
 
 - Published tags and Release assets are now treated as immutable and are enforced as such: `refs/tags/v*` cannot be deleted or moved, every tag's `binaryTarget` URL is health-checked weekly, and a release verifies its own uploaded `Syphon.xcframework.zip` against the checksum in `Package.swift` before telling `metaphor-cli` to pin it. SwiftPM re-fetches that asset on every dependency resolution, so a deleted asset would permanently break the tag for existing users ([#352](https://github.com/shinyaoguri/metaphor/pull/352))
+- Every public throwing API now documents the concrete error cases it throws in its `- Throws:` line, and `MetaphorError` documents the contract itself. ADR-0005's "resource creation uses typed throws" is now realised as a documented single-error-type contract rather than the `throws(E)` syntax: typed throws (SE-0413) is a Swift 6.0 feature and the library still supports Swift 5.10, so applying the syntax is deferred until that minimum is raised — at which point it becomes a mechanical change with no behavioural difference ([#323](https://github.com/shinyaoguri/metaphor/issues/323))
 - `setRenderGraph(_:)` and `setClearColor(_:_:_:_:)` document their naming explicitly: passing `nil` to the former is how you clear the active render graph (there is no separate `clearRenderGraph()`), and the `clear` in the latter is the Metal noun "clear color", not the deleting `clear*` verb used by `clearPostEffects()` ([#322](https://github.com/shinyaoguri/metaphor/issues/322))
-- Failure modes are now documented explicitly in three places, with no behavior change: the `SoundFile` usage example shows `do`/`catch` instead of `try!` (which would crash the sketch on a missing or corrupt file, since `init(path:)` also rethrows `AVAudioFile` errors); `GPUBuffer`'s subscript states that out-of-range access traps, matching `Swift.Array`; and the gradient-stop noise texture APIs state that fewer than 2 color stops return nil, now locked by tests ([#374](https://github.com/shinyaoguri/metaphor/pull/374))
+- Failure modes are now documented explicitly in three places, with no behavior change: the `SoundFile` usage example shows `do`/`catch` instead of `try!`, which would crash the sketch on a missing or undecodable file; `GPUBuffer`'s subscript states that out-of-range access traps, matching `Swift.Array`; and the gradient-stop noise texture APIs state that fewer than 2 color stops return nil, now locked by tests ([#374](https://github.com/shinyaoguri/metaphor/pull/374))
 
 ### Deprecated
 

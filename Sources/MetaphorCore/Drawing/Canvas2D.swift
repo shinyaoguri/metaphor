@@ -300,7 +300,10 @@ public final class Canvas2D: CanvasStyle {
     /// ``MetaphorRenderer`` インスタンスからキャンバスを生成します。
     ///
     /// - Parameter renderer: Metal デバイス、シェーダーライブラリ、テクスチャサイズを提供するレンダラー。
-    /// - Throws: バッファまたはパイプラインの生成に失敗した場合 ``MetaphorError``。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 2D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -321,7 +324,10 @@ public final class Canvas2D: CanvasStyle {
     ///   - width: キャンバスの幅（ピクセル単位）。
     ///   - height: キャンバスの高さ（ピクセル単位）。
     ///   - sampleCount: パイプライン生成時の MSAA サンプル数。
-    /// - Throws: バッファまたはパイプラインの生成に失敗した場合 ``MetaphorError``。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 2D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
