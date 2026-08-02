@@ -1,8 +1,7 @@
 import Foundation
-// @preconcurrency: `staging` などの Metal オブジェクトを GPU 完了ハンドラ
-//（`@Sendable` クロージャ）へ渡す。Metal のプロトコルは Sendable 注釈を持たないが、
-// これらのオブジェクト自体はスレッドセーフで、読み戻しは deferReadback の
-// インフライトゲートで GPU の書き込みと排他されている（Core の他ファイルと同じ方針）。
+// @preconcurrency: `staging` テクスチャを GPU 完了ハンドラ（`@Sendable`）へ渡す。読み戻しは
+// deferReadback のインフライトゲートで GPU の書き込みと排他済み。
+// Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
 @preconcurrency import Metal
 import QuartzCore
 

@@ -1,5 +1,8 @@
+// @preconcurrency: ステージングテクスチャを writerQueue（`@Sendable` クロージャ）へ渡す。
+// Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import Metal
-@preconcurrency import AVFoundation
+import AVFoundation
 import CoreVideo
 import Foundation
 

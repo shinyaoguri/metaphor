@@ -1,4 +1,7 @@
-@preconcurrency import Metal
+import Metal
+// @preconcurrency: `MTKTextureLoader` を nonisolated な async ラッパーへ渡す（ローダはスレッドセーフ）。
+// MetalKit の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import MetalKit
 import AppKit
 

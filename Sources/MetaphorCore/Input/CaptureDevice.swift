@@ -1,3 +1,6 @@
+// @preconcurrency: `AVCaptureSession` を start/stop 用のシリアルキューへ渡す（投入順＝実行順を保証済み）。
+// AVFoundation の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import AVFoundation
 import CoreVideo
 import Metal

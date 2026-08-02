@@ -1,3 +1,6 @@
+// @preconcurrency: オフスクリーンのステージングテクスチャを GPU 完了ハンドラ（`@Sendable`）へ渡す。
+// Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import Metal
 import MetalKit
 import QuartzCore

@@ -1,4 +1,4 @@
-@preconcurrency import CoreImage
+import CoreImage
 import simd
 
 /// Provides a curated set of CoreImage filter presets for creative coding.

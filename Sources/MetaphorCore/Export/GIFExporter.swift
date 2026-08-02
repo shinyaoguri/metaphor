@@ -1,9 +1,9 @@
-@preconcurrency import Metal
+import Metal
 import CoreGraphics
 import Foundation
-// @preconcurrency: `CGImageDestination` を書き出しキュー／detached task へ渡す。
-// ImageIO は Sendable 注釈を持たないが、書き出し先は専用シリアルキューで直列化
-// されており、同時に触るコードは無い（Swift 5.10 SDK で警告になるのを抑止）。
+// @preconcurrency: `CGImageDestination` を書き出しキュー／detached task へ渡す。書き出しは専用シリアル
+// キューで直列化済み。Swift 5.10 でのみ出る警告。
+// ImageIO の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
 @preconcurrency import ImageIO
 import UniformTypeIdentifiers
 
