@@ -1,0 +1,9 @@
+blank_issues_enabled: true
+contact_links:
+  - name: metaphor-cli issue (CLI, installation, AI collaboration workflow)
+    url: https://github.com/shinyaoguri/metaphor-cli/issues/new/choose
+    about: >-
+      Problems with the `metaphor` command (new / run / watch / mcp),
+      installation (Homebrew), or the AI-collaboration workflow belong in
+      the metaphor-cli repository. If you're unsure which repo, it's fine
+      to file here instead and we'll route it.

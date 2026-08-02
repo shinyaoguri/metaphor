@@ -60,6 +60,11 @@ public final class GPUBuffer<T> {
     // MARK: - 要素アクセス
 
     /// 指定されたインデックスの要素にアクセスします。
+    ///
+    /// 範囲外のインデックスはプログラミングエラーとして `precondition` で
+    /// 即時停止します（`Swift.Array` と同じ意味論。ADR-0005 のエラー報告規約
+    /// 「プログラミングエラー = trap」の適用）。範囲を動的に扱う場合は
+    /// ``count`` で事前に検証してください。
     public subscript(index: Int) -> T {
         get {
             precondition(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")

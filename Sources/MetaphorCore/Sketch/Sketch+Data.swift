@@ -12,6 +12,8 @@ extension Sketch {
     ///
     /// - Parameter source: ファイルパスまたは URL 文字列。
     /// - Returns: 各行の配列（改行は含まない）。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合・内容が UTF-8 でない場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``。
     public func loadStrings(_ source: String) throws -> [String] {
         try DataIO.loadStrings(source)
     }
@@ -20,6 +22,8 @@ extension Sketch {
     ///
     /// - Parameter source: ファイルパスまたは URL 文字列。
     /// - Returns: 各行の配列（改行は含まない）。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合・内容が UTF-8 でない場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``。
     public func loadStringsAsync(_ source: String) async throws -> [String] {
         try await DataIO.loadStringsAsync(source)
     }
@@ -31,6 +35,8 @@ extension Sketch {
     /// - Parameters:
     ///   - lines: 書き込む行。
     ///   - path: 出力ファイルパス。
+    /// - Throws: ``MetaphorError/data(_:)`` の ``MetaphorError/DataFailure/writeFailed(path:detail:)``
+    ///   書き込みに失敗した場合。
     public func saveStrings(_ lines: [String], _ path: String) throws {
         try DataIO.saveStrings(lines, toPath: path)
     }
@@ -51,6 +57,9 @@ extension Sketch {
     ///
     /// - Parameter source: ファイルパスまたは URL 文字列。
     /// - Returns: パースされた JSON 値。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、JSON のパースに
+    ///   失敗した場合は ``MetaphorError/DataFailure/parseFailed(detail:)``。
     public func loadJSON(_ source: String) throws -> JSONValue {
         try DataIO.loadJSON(source)
     }
@@ -59,6 +68,9 @@ extension Sketch {
     ///
     /// - Parameter source: ファイルパスまたは URL 文字列。
     /// - Returns: パースされた JSON 値。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、JSON のパースに
+    ///   失敗した場合は ``MetaphorError/DataFailure/parseFailed(detail:)``。
     public func loadJSONAsync(_ source: String) async throws -> JSONValue {
         try await DataIO.loadJSONAsync(source)
     }
@@ -74,6 +86,9 @@ extension Sketch {
     ///   - source: ファイルパスまたは URL 文字列。
     ///   - type: デコード先の型。
     /// - Returns: デコードされた値。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、デコードに
+    ///   失敗した場合は ``MetaphorError/DataFailure/decodeFailed(type:detail:)``。
     public func loadJSON<T: Decodable>(_ source: String, as type: T.Type) throws -> T {
         try DataIO.loadJSON(source, as: type)
     }
@@ -84,6 +99,9 @@ extension Sketch {
     ///   - source: ファイルパスまたは URL 文字列。
     ///   - type: デコード先の型。
     /// - Returns: デコードされた値。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、デコードに
+    ///   失敗した場合は ``MetaphorError/DataFailure/decodeFailed(type:detail:)``。
     public func loadJSONAsync<T: Decodable>(_ source: String, as type: T.Type) async throws -> T {
         try await DataIO.loadJSONAsync(source, as: type)
     }
@@ -97,6 +115,9 @@ extension Sketch {
     ///   - value: 書き込む値。
     ///   - path: 出力ファイルパス。
     ///   - pretty: インデント付きで整形するか（既定 true）。
+    /// - Throws: ``MetaphorError/data(_:)``。エンコードに失敗した場合は
+    ///   ``MetaphorError/DataFailure/encodeFailed(detail:)``、書き込みに
+    ///   失敗した場合は ``MetaphorError/DataFailure/writeFailed(path:detail:)``。
     public func saveJSON(_ value: some Encodable, _ path: String, pretty: Bool = true) throws {
         try DataIO.saveJSON(value, toPath: path, pretty: pretty)
     }
@@ -121,6 +142,9 @@ extension Sketch {
     ///   - format: 区切り形式。省略時は拡張子から推定（`.tsv` 以外は CSV）。
     ///   - header: 先頭行を列タイトルとして扱うか（既定 true）。
     /// - Returns: パースされたテーブル。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、CSV/TSV のパースに
+    ///   失敗した場合は ``MetaphorError/DataFailure/parseFailed(detail:)``。
     public func loadTable(
         _ source: String, format: TableFormat? = nil, header: Bool = true
     ) throws -> Table {
@@ -134,6 +158,9 @@ extension Sketch {
     ///   - format: 区切り形式。省略時は拡張子から推定（`.tsv` 以外は CSV）。
     ///   - header: 先頭行を列タイトルとして扱うか（既定 true）。
     /// - Returns: パースされたテーブル。
+    /// - Throws: ``MetaphorError/data(_:)``。読み込みに失敗した場合は
+    ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、CSV/TSV のパースに
+    ///   失敗した場合は ``MetaphorError/DataFailure/parseFailed(detail:)``。
     public func loadTableAsync(
         _ source: String, format: TableFormat? = nil, header: Bool = true
     ) async throws -> Table {
@@ -149,6 +176,8 @@ extension Sketch {
     ///   - path: 出力ファイルパス。
     ///   - format: 区切り形式。省略時は拡張子から推定（`.tsv` 以外は CSV）。
     ///   - header: 列タイトル行を出力するか（既定 true）。
+    /// - Throws: ``MetaphorError/data(_:)`` の ``MetaphorError/DataFailure/writeFailed(path:detail:)``
+    ///   書き込みに失敗した場合。
     public func saveTable(
         _ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true
     ) throws {

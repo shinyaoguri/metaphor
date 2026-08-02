@@ -1,33 +1,34 @@
 import simd
 
-/// 2つの物理ボディ間、またはボディとワールド固定点間の拘束を表します。
+/// Represents a constraint between two physics bodies, or between a body
+/// and a fixed point in the world.
 ///
-/// ``PhysicsConstraint2D`` は2つのモードをサポートします:
-/// - **距離拘束**: 2つのボディ間の目標距離を維持します。
-/// - **ピン拘束**: 単一のボディをワールド空間の固定位置にアンカーします。
+/// ``PhysicsConstraint2D`` supports two modes:
+/// - **Distance constraint**: Maintains a target distance between two bodies.
+/// - **Pin constraint**: Anchors a single body to a fixed position in world space.
 ///
-/// ``stiffness`` プロパティは各反復で拘束がどの程度強制されるかを制御し、
-/// `1.0` は完全な補正を意味します。
+/// The ``stiffness`` property controls how strongly the constraint is
+/// enforced each iteration, with `1.0` meaning full correction.
 @MainActor
 public final class PhysicsConstraint2D {
-    /// この拘束に関与する1つ目（または唯一）のボディ。
+    /// The first (or only) body involved in this constraint.
     public let bodyA: PhysicsBody2D
 
-    /// 2つ目のボディ。ワールドへのピン拘束の場合は `nil`。
+    /// The second body. `nil` for a pin constraint to the world.
     public let bodyB: PhysicsBody2D?  // nil = ワールドにピン
 
-    /// 2つのボディ間で維持する目標距離。
+    /// The target distance to maintain between the two bodies.
     public let targetDistance: Float
 
-    /// ワールド空間のピン位置。距離拘束の場合は `nil`。
+    /// The pin position in world space. `nil` for a distance constraint.
     public let pinPosition: SIMD2<Float>?
 
-    /// 拘束の剛性。範囲は [0, 1]。
+    /// The constraint's stiffness. Range is [0, 1].
     ///
-    /// `1.0` は各反復で拘束を完全に補正し、
-    /// 低い値はより柔らかい、バネのような挙動を生成します。
-    /// 範囲外の値はクランプされます（1 超・負値はシミュレーションを発散させるため。
-    /// PhysicsBody2D の restitution/friction と同じ流儀）。
+    /// `1.0` fully corrects the constraint each iteration; lower values
+    /// produce softer, spring-like behavior. Out-of-range values are
+    /// clamped (values above 1 or negative would diverge the simulation —
+    /// the same convention as `PhysicsBody2D`'s restitution/friction).
     public var stiffness: Float = 1.0 {
         didSet {
             if !stiffness.isFinite {
@@ -38,13 +39,13 @@ public final class PhysicsConstraint2D {
         }
     }
 
-    /// 2つのボディ間に距離拘束を作成します。
+    /// Creates a distance constraint between two bodies.
     ///
     /// - Parameters:
-    ///   - a: 1つ目のボディ。
-    ///   - b: 2つ目のボディ。
-    ///   - distance: 目標距離。`nil` の場合、作成時の
-    ///     2つのボディ間の現在距離が使用されます。
+    ///   - a: The first body.
+    ///   - b: The second body.
+    ///   - distance: The target distance. If `nil`, the current distance
+    ///     between the two bodies at creation time is used.
     public init(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) {
         self.bodyA = a
         self.bodyB = b
@@ -52,12 +53,12 @@ public final class PhysicsConstraint2D {
         self.pinPosition = nil
     }
 
-    /// ボディをワールド空間の固定位置にアンカーするピン拘束を作成します。
+    /// Creates a pin constraint that anchors a body to a fixed position in world space.
     ///
     /// - Parameters:
-    ///   - body: ピン留めするボディ。
-    ///   - x: ピン位置の X 座標。
-    ///   - y: ピン位置の Y 座標。
+    ///   - body: The body to pin.
+    ///   - x: The X coordinate of the pin position.
+    ///   - y: The Y coordinate of the pin position.
     public init(pin body: PhysicsBody2D, x: Float, y: Float) {
         self.bodyA = body
         self.bodyB = nil
@@ -65,10 +66,11 @@ public final class PhysicsConstraint2D {
         self.pinPosition = SIMD2(x, y)
     }
 
-    /// ボディ位置を目標に向かって調整することでこの拘束を解決します。
+    /// Solves this constraint by adjusting body positions toward the target.
     ///
-    /// ピン拘束の場合、ボディは剛性係数に従ってピン位置に向かって移動されます。
-    /// 距離拘束の場合、両方のボディが接続軸に沿って対称的に調整されます。
+    /// For a pin constraint, the body is moved toward the pin position
+    /// according to the stiffness factor. For a distance constraint, both
+    /// bodies are adjusted symmetrically along the connecting axis.
     func solve() {
         if let pin = pinPosition {
             // ピン拘束

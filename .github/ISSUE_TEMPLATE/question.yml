@@ -1,0 +1,32 @@
+name: Question
+description: Ask a question about using or understanding metaphor.
+title: "[question] "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before asking, a quick check of [`llms.txt`](https://github.com/shinyaoguri/metaphor/blob/main/llms.txt)
+        (full API reference) or the
+        [Examples index](https://github.com/shinyaoguri/metaphor/blob/main/docs/ai/examples-index.md)
+        may already have your answer.
+
+        Questions about the `metaphor` command-line tool (`new` / `run` /
+        `watch` / `mcp`, installation, Homebrew) belong in
+        [metaphor-cli's issue tracker](https://github.com/shinyaoguri/metaphor-cli/issues/new/choose)
+        instead — if you're not sure which repo, it's fine to ask here and
+        we'll route it.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context (optional)
+      description: What are you trying to build or do? What have you already tried?
+    validations:
+      required: false

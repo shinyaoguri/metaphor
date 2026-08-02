@@ -120,6 +120,9 @@ public enum DataIO {
     }
 
     /// ``loadStrings(_:)`` の非同期版。
+    ///
+    /// - Parameter source: ファイルパスまたは URL 文字列
+    /// - Throws: ``MetaphorError/data(_:)`` 読み込み失敗・UTF-8 でない場合
     public static func loadStringsAsync(_ source: String) async throws -> [String] {
         try splitLines(await readDataAsync(source), source: source)
     }
@@ -156,6 +159,9 @@ public enum DataIO {
     }
 
     /// ``loadJSON(_:)`` の非同期版。
+    ///
+    /// - Parameter source: ファイルパスまたは URL 文字列
+    /// - Throws: ``MetaphorError/data(_:)`` 読み込み・パースに失敗した場合
     public static func loadJSONAsync(_ source: String) async throws -> JSONValue {
         try JSONValue(data: await readDataAsync(source))
     }
@@ -171,6 +177,11 @@ public enum DataIO {
     }
 
     /// ``loadJSON(_:as:)`` の非同期版。
+    ///
+    /// - Parameters:
+    ///   - source: ファイルパスまたは URL 文字列
+    ///   - type: デコード先の型
+    /// - Throws: ``MetaphorError/data(_:)`` 読み込み・デコードに失敗した場合
     public static func loadJSONAsync<T: Decodable>(_ source: String, as type: T.Type) async throws -> T {
         try decodeJSON(await readDataAsync(source), as: type)
     }
@@ -221,6 +232,12 @@ public enum DataIO {
     }
 
     /// ``loadTable(_:format:header:)`` の非同期版。
+    ///
+    /// - Parameters:
+    ///   - source: ファイルパスまたは URL 文字列
+    ///   - format: 区切り形式。nil の場合は拡張子から推定（`.tsv` 以外は CSV）
+    ///   - header: 先頭行を列タイトルとして扱うか
+    /// - Throws: ``MetaphorError/data(_:)`` 読み込み・パースに失敗した場合
     public static func loadTableAsync(
         _ source: String, format: TableFormat? = nil, header: Bool = true
     ) async throws -> Table {

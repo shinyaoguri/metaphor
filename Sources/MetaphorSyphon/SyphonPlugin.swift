@@ -1,33 +1,33 @@
 import Metal
 import MetaphorCore
 
-/// 最終フレームを Syphon サーバー経由で publish する内部出力プラグイン。
+/// An internal output plugin that publishes the final frame via a Syphon server.
 ///
-/// `MetaphorOutputPlugin` に準拠するため、`post()` は他の全プラグインの `post()` の後
-/// （出力フェーズ）に実行され、常に最終テクスチャを publish できます。
+/// Because this conforms to `MetaphorOutputPlugin`, its `post()` runs after every
+/// other plugin's `post()` (the output phase), so it can always publish the final texture.
 ///
-/// `SyphonMetalServer` は `onAttach(renderer:)` のタイミングで生成します（`onStart` では
-/// ありません）。これは `noLoop()` でループが止まってもサーバーを生かし続ける従来挙動と
-/// 一致させるためです（停止後も最後のフレームが MadMapper 等に残る）。サーバーの破棄は
-/// `onDetach()`（= `removePlugin` / `renderer.shutdown()`）で行います。
+/// `SyphonMetalServer` is created at `onAttach(renderer:)` time (not `onStart`). This
+/// matches the traditional behavior of keeping the server alive even after `noLoop()`
+/// stops the loop (the last frame remains visible in MadMapper and similar clients
+/// after stopping). The server is destroyed in `onDetach()` (= `removePlugin` / `renderer.shutdown()`).
 ///
-/// 通常はライブラリ利用者が直接生成せず、``MetaphorRenderer/startSyphonServer(name:)``
-/// の互換 facade 経由で登録されます。
+/// Not intended for direct use — library users normally do not instantiate this
+/// directly; it is registered through the ``MetaphorRenderer/startSyphonServer(name:)`` compatibility facade.
 @MainActor
 public final class SyphonPlugin: MetaphorOutputPlugin {
-    /// 安定したプラグイン識別子。facade（`startSyphonServer`/`stopSyphonServer`/
-    /// `syphonOutput`）がこの ID でプラグインを検索します。
+    /// A stable plugin identifier. The facade (`startSyphonServer`/`stopSyphonServer`/
+    /// `syphonOutput`) looks up the plugin by this ID.
     public static let id = "org.metaphor.syphon-output"
 
     public let pluginID: String
 
-    /// 公開する Syphon サーバー名（呼び出し側が env > config.syphonName > title 等で解決済み）。
+    /// The Syphon server name to publish (already resolved by the caller from env > config.syphonName > title, etc.).
     private let name: String
 
-    /// 実体の ``SyphonOutput``。`onAttach(renderer:)` で生成、`onDetach()` で破棄。
+    /// The underlying ``SyphonOutput``. Created in `onAttach(renderer:)`, destroyed in `onDetach()`.
     public private(set) var output: SyphonOutput?
 
-    /// - Parameter name: Syphon サーバー名（解決済みの文字列）。
+    /// - Parameter name: The Syphon server name (an already-resolved string).
     public init(name: String) {
         self.pluginID = Self.id
         self.name = name

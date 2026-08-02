@@ -2,10 +2,10 @@
 import MetaphorCore
 import simd
 
-/// メッシュからレイトレーシングシーンを構築します（内部ヘルパー）。
+/// Builds a ray-tracing scene from meshes (internal helper).
 ///
-/// Mesh および DynamicMesh インスタンスから頂点位置を抽出し、
-/// レイ交差判定用の MTLAccelerationStructure を構築します。
+/// Extracts vertex positions from Mesh and DynamicMesh instances and builds
+/// an MTLAccelerationStructure for ray-intersection tests.
 @MainActor
 final class MPSRayScene {
 
@@ -24,7 +24,7 @@ final class MPSRayScene {
 
     // MARK: - メッシュ追加
 
-    /// 頂点バッファから位置を抽出して Mesh を追加します。
+    /// Extracts positions from the vertex buffer and adds a Mesh.
     public func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
         let stride = MemoryLayout<Vertex3D>.stride  // 48バイト
         let ptr = mesh.vertexBuffer.contents()
@@ -58,7 +58,7 @@ final class MPSRayScene {
         entries.append(MeshEntry(positions: positions, indices: indices, transform: transform))
     }
 
-    /// DynamicMesh をシーンに追加します。
+    /// Adds a DynamicMesh to the scene.
     public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         var positions = [SIMD3<Float>]()
         let vCount = mesh.vertexCount
@@ -82,7 +82,7 @@ final class MPSRayScene {
         entries.append(MeshEntry(positions: positions, indices: indices, transform: transform))
     }
 
-    /// シーンからすべてのメッシュエントリをクリアします。
+    /// Clears all mesh entries from the scene.
     func clear() {
         entries.removeAll()
     }
@@ -91,10 +91,10 @@ final class MPSRayScene {
 
     // MARK: - アクセラレーション構造の構築
 
-    /// 追加されたすべてのメッシュエントリから MTLAccelerationStructure を構築します。
-    /// - Parameter commandQueue: ビルドコマンドのエンコードに使用するコマンドキュー。
-    /// - Throws: シーンが空または GPU バッファ作成に失敗した場合に ``MetaphorError`` をスローします。
-    /// - Returns: アクセラレーション構造、法線バッファ、三角形数を含むタプル。
+    /// Builds an MTLAccelerationStructure from all added mesh entries.
+    /// - Parameter commandQueue: The command queue used to encode the build commands.
+    /// - Throws: ``MetaphorError`` if the scene is empty or GPU buffer creation fails.
+    /// - Returns: A tuple containing the acceleration structure, normal buffer, and triangle count.
     func buildAccelerationStructure(commandQueue: MTLCommandQueue) throws -> (
         accelerationStructure: MTLAccelerationStructure,
         normalBuffer: MTLBuffer,

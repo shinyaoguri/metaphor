@@ -2,36 +2,36 @@ import Metal
 import MetaphorCore
 import simd
 
-/// フラスタムカリング用の軸整列バウンディングボックス。
+/// An axis-aligned bounding box for frustum culling.
 public struct AABB: Sendable {
-    /// バウンディングボックスの最小コーナー。
+    /// The minimum corner of the bounding box.
     public var min: SIMD3<Float>
 
-    /// バウンディングボックスの最大コーナー。
+    /// The maximum corner of the bounding box.
     public var max: SIMD3<Float>
 
-    /// 指定した最小・最大コーナーで AABB を作成します。
+    /// Creates an AABB with the given minimum and maximum corners.
     public init(min: SIMD3<Float>, max: SIMD3<Float>) {
         self.min = min
         self.max = max
     }
 
-    /// バウンディングボックスの中心。
+    /// The center of the bounding box.
     public var center: SIMD3<Float> {
         (min + max) * 0.5
     }
 
-    /// 各軸に沿ったハーフエクステント（半分のサイズ）。
+    /// The half-extent (half the size) along each axis.
     public var extents: SIMD3<Float> {
         (max - min) * 0.5
     }
 
-    /// この AABB が指定フラスタム平面の外側にあるかテストします。
+    /// Tests whether this AABB lies outside the given frustum planes.
     ///
-    /// 各平面は (nx, ny, nz, d) で表され、正の半空間が可視側です。
+    /// Each plane is represented as (nx, ny, nz, d), and the positive half-space is the visible side.
     ///
-    /// - Parameter planes: フラスタム平面の配列（通常6枚）。
-    /// - Returns: AABB がフラスタム内に少なくとも部分的にある場合は `true`。
+    /// - Parameter planes: An array of frustum planes (typically 6).
+    /// - Returns: `true` if the AABB is at least partially inside the frustum.
     public func intersects(frustum planes: [SIMD4<Float>]) -> Bool {
         let c = center
         let e = extents
@@ -45,7 +45,7 @@ public struct AABB: Sendable {
         return true
     }
 
-    /// この AABB を 4x4 行列で変換し、新しい（より大きい）AABB を生成します。
+    /// Transforms this AABB by a 4x4 matrix, producing a new (larger) AABB.
     public func transformed(by matrix: float4x4) -> AABB {
         let corners: [SIMD3<Float>] = [
             SIMD3(min.x, min.y, min.z), SIMD3(max.x, min.y, min.z),
@@ -65,16 +65,16 @@ public struct AABB: Sendable {
     }
 }
 
-/// 階層的なシーングラフのノードを表します。
+/// Represents a node in a hierarchical scene graph.
 ///
-/// 各 ``Node`` は ``position``、``orientation``（クォータニオン）、``scale`` で
-/// 定義されるローカルトランスフォームを持ちます。トランスフォームは階層的に合成され、
-/// 子の ``worldTransform`` は親のワールドトランスフォームに自身の ``localTransform`` を
-/// 掛けたものになります。
+/// Each ``Node`` has a local transform defined by ``position``, ``orientation``
+/// (a quaternion), and ``scale``. Transforms compose hierarchically, so a child's
+/// ``worldTransform`` is its parent's world transform multiplied by its own
+/// ``localTransform``.
 ///
-/// ノードはオプションでレンダリング用の ``mesh`` や、カスタム描画ロジック用の
-/// ``onDraw`` コールバックを保持できます。``SceneRenderer`` を使用してツリーを
-/// トラバースし、`Canvas3D` でレンダリングします。
+/// A node can optionally hold a ``mesh`` for rendering and an ``onDraw`` callback
+/// for custom draw logic. Use ``SceneRenderer`` to traverse the tree and render
+/// it with `Canvas3D`.
 ///
 /// ```swift
 /// let root = Node(name: "root")
@@ -86,43 +86,43 @@ public struct AABB: Sendable {
 /// ```
 @MainActor
 public final class Node {
-    /// このノードの名前。識別と検索に使用します。
+    /// This node's name, used for identification and lookup.
     public var name: String
 
-    /// 親に対するノードのローカル位置。
+    /// The node's local position relative to its parent.
     public var position: SIMD3<Float> = .zero {
         didSet { invalidateTransform() }
     }
 
-    /// クォータニオンとしてのノードのローカル向き。
+    /// The node's local orientation, as a quaternion.
     public var orientation: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0)) {
         didSet { invalidateTransform() }
     }
 
-    /// 各軸に沿ったノードのローカルスケール。
+    /// The node's local scale along each axis.
     public var scale: SIMD3<Float> = SIMD3(1, 1, 1) {
         didSet { invalidateTransform() }
     }
 
-    /// ノードとその子をレンダリングするかどうかを示します。
+    /// Whether to render this node and its children.
     public var isVisible: Bool = true
 
-    /// このノードの位置に描画するオプションのメッシュ。
+    /// An optional mesh drawn at this node's position.
     public var mesh: Mesh?
 
-    /// メッシュのレンダリング時に適用するオプションのフィルカラー。
+    /// An optional fill color applied when rendering the mesh.
     public var fillColor: Color?
 
-    /// シーントラバーサル中に呼び出されるオプションのカスタム描画コールバック。
+    /// An optional custom draw callback invoked during scene traversal.
     public var onDraw: (() -> Void)?
 
-    /// フラスタムカリング用のオプションのバウンディングボックス（ローカル空間）。
+    /// An optional bounding box (in local space) used for frustum culling.
     public var bounds: AABB?
 
-    /// 親ノード。ルートの場合は `nil`。
+    /// The parent node. `nil` for a root node.
     public private(set) weak var parent: Node?
 
-    /// 順序付き子ノードのリスト。
+    /// The ordered list of child nodes.
     public private(set) var children: [Node] = []
 
     // MARK: - トランスフォームキャッシュ
@@ -134,14 +134,14 @@ public final class Node {
     private var _cachedWorldTransform: float4x4 = float4x4(1)
     private var _cachedWorldOrientation: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))
 
-    /// ローカルとワールドのトランスフォームをダーティとしてマークし、すべての子孫に伝播します。
+    /// Marks the local and world transforms as dirty and propagates this to all descendants.
     private func invalidateTransform() {
         guard !_localTransformDirty || !_worldTransformDirty || !_worldOrientationDirty else { return }
         _localTransformDirty = true
         invalidateWorldTransform()
     }
 
-    /// ワールドトランスフォーム・ワールド向きをダーティとしてマークし、すべての子孫に伝播します。
+    /// Marks the world transform and world orientation as dirty and propagates this to all descendants.
     private func invalidateWorldTransform() {
         // どちらかのキャッシュが有効なら無効化して伝播する（両方ダーティなら
         // 子孫も既に両方ダーティなので打ち切ってよい）
@@ -153,40 +153,40 @@ public final class Node {
         }
     }
 
-    /// 指定名で新しいノードを作成します。
+    /// Creates a new node with the given name.
     ///
-    /// - Parameter name: 識別用の名前（デフォルトは空文字列）。
+    /// - Parameter name: A name for identification (defaults to an empty string).
     public init(name: String = "") {
         self.name = name
     }
 
     // MARK: - トランスフォーム
 
-    /// オイラー角から回転を設定します（便利メソッド）。
+    /// Sets the rotation from Euler angles (a convenience method).
     ///
-    /// Rz * Ry * Rx として合成されます（旧オイラーベース API と同じ順序）。
+    /// Composed as Rz * Ry * Rx (the same order as the old Euler-based API).
     ///
     /// - Parameters:
-    ///   - x: X 軸周りの回転（ラジアン）。
-    ///   - y: Y 軸周りの回転（ラジアン）。
-    ///   - z: Z 軸周りの回転（ラジアン）。
+    ///   - x: The rotation around the x axis, in radians.
+    ///   - y: The rotation around the y axis, in radians.
+    ///   - z: The rotation around the z axis, in radians.
     public func setRotation(x: Float = 0, y: Float = 0, z: Float = 0) {
         orientation = simd_quatf(angle: z, axis: SIMD3(0, 0, 1))
                     * simd_quatf(angle: y, axis: SIMD3(0, 1, 0))
                     * simd_quatf(angle: x, axis: SIMD3(1, 0, 0))
     }
 
-    /// 現在の向きに対してクォータニオンで相対的にノードを回転させます。
+    /// Rotates the node by a quaternion, relative to its current orientation.
     ///
-    /// - Parameter rotation: 適用する回転。
+    /// - Parameter rotation: The rotation to apply.
     public func rotate(by rotation: simd_quatf) {
         orientation = rotation * orientation
     }
 
-    /// position、orientation、scale からのローカルトランスフォーム行列（キャッシュ済み）。
+    /// The local transform matrix derived from position, orientation, and scale (cached).
     ///
-    /// T * R * S として合成されます。position、orientation、
-    /// または scale が変更された場合のみ再計算されます。
+    /// Composed as T * R * S. Recomputed only when position, orientation,
+    /// or scale changes.
     public var localTransform: float4x4 {
         if _localTransformDirty {
             let t = float4x4(translation: position)
@@ -198,9 +198,9 @@ public final class Node {
         return _cachedLocalTransform
     }
 
-    /// すべての祖先トランスフォームを合成したワールドトランスフォーム（キャッシュ済み）。
+    /// The world transform composed from all ancestor transforms (cached).
     ///
-    /// このノードまたは祖先のトランスフォームが変更された場合のみ再計算されます。
+    /// Recomputed only when this node's or an ancestor's transform changes.
     public var worldTransform: float4x4 {
         if _worldTransformDirty {
             if let parent = parent {
@@ -213,22 +213,22 @@ public final class Node {
         return _cachedWorldTransform
     }
 
-    /// ローカル bounds とワールドトランスフォームから計算されるワールド空間のバウンディングボックス。
+    /// The world-space bounding box, computed from the local bounds and the world transform.
     public var worldBounds: AABB? {
         bounds?.transformed(by: worldTransform)
     }
 
     // MARK: - 階層
 
-    /// このノードに子ノードを追加します。
+    /// Adds a child node to this node.
     ///
-    /// 子が既に親を持っている場合、まずその親から削除されます。
+    /// If the child already has a parent, it is first removed from that parent.
     ///
-    /// 循環を作る追加（自分自身、または自分の祖先を子にする操作）は無視されます。
-    /// 循環が生じると `find`、`worldTransform`、描画トラバーサルが無限再帰し
-    /// スタックオーバーフローするため、追加時点で拒否します。
+    /// An addition that would create a cycle (adding the node itself, or one of its own ancestors, as a child) is ignored.
+    /// A cycle would cause `find`, `worldTransform`, and draw traversal to recurse
+    /// infinitely and overflow the stack, so it is rejected at the point of addition.
     ///
-    /// - Parameter child: 子として追加するノード。
+    /// - Parameter child: The node to add as a child.
     public func addChild(_ child: Node) {
         // 自己追加・祖先追加（循環）を拒否する。
         guard child !== self, !isDescendant(of: child) else { return }
@@ -239,12 +239,12 @@ public final class Node {
         child.invalidateWorldTransform()
     }
 
-    /// このノードが指定ノードの子孫（直接または間接の子）かどうかを返します。
+    /// Returns whether this node is a descendant (direct or indirect child) of the given node.
     ///
-    /// `node` を子に追加すると循環になるかどうかの判定に使用します。
+    /// Used to determine whether adding `node` as a child would create a cycle.
     ///
-    /// - Parameter node: 祖先候補のノード。
-    /// - Returns: このノードが `node` の子孫であれば `true`。
+    /// - Parameter node: The candidate ancestor node.
+    /// - Returns: `true` if this node is a descendant of `node`.
     private func isDescendant(of node: Node) -> Bool {
         var ancestor = parent
         while let current = ancestor {
@@ -254,12 +254,12 @@ public final class Node {
         return false
     }
 
-    /// このノードから子ノードを削除します。
+    /// Removes a child node from this node.
     ///
-    /// `child` がこのノードの子でない場合は何もしません（他ノードの子の parent を
-    /// 誤って nil 化してツリーを不整合にしないため）。
+    /// Does nothing if `child` is not a child of this node (this avoids incorrectly
+    /// clearing another node's child's parent and leaving the tree inconsistent).
     ///
-    /// - Parameter child: 削除する子ノード。
+    /// - Parameter child: The child node to remove.
     public func removeChild(_ child: Node) {
         let countBefore = children.count
         children.removeAll { $0 === child }
@@ -269,7 +269,7 @@ public final class Node {
         child.invalidateWorldTransform()
     }
 
-    /// このノードからすべての子を削除します。
+    /// Removes all children from this node.
     public func removeAllChildren() {
         for child in children {
             child.parent = nil
@@ -278,10 +278,10 @@ public final class Node {
         children.removeAll()
     }
 
-    /// 深さ優先探索で名前から子孫ノードを検索します。
+    /// Searches for a descendant node by name using depth-first search.
     ///
-    /// - Parameter name: 検索する名前。
-    /// - Returns: 名前が一致する最初のノード。見つからない場合は `nil`。
+    /// - Parameter name: The name to search for.
+    /// - Returns: The first node whose name matches, or `nil` if none is found.
     public func find(_ name: String) -> Node? {
         if self.name == name { return self }
         for child in children {
@@ -292,28 +292,28 @@ public final class Node {
 
     // MARK: - 方向ヘルパー
 
-    /// ワールド空間での前方向ベクトル（負の Z）。
+    /// The forward vector in world space (negative Z).
     public var forward: SIMD3<Float> {
         let q = worldOrientation
         return q.act(SIMD3(0, 0, -1))
     }
 
-    /// ワールド空間での右方向ベクトル（正の X）。
+    /// The right vector in world space (positive X).
     public var right: SIMD3<Float> {
         let q = worldOrientation
         return q.act(SIMD3(1, 0, 0))
     }
 
-    /// ワールド空間での上方向ベクトル（正の Y）。
+    /// The up vector in world space (positive Y).
     public var up: SIMD3<Float> {
         let q = worldOrientation
         return q.act(SIMD3(0, 1, 0))
     }
 
-    /// ワールド空間での向き（親 + ローカルクォータニオンの合成、キャッシュ済み）。
+    /// The orientation in world space (the composition of the parent's and local quaternions, cached).
     ///
-    /// このノードまたは祖先の向きが変更された場合のみ再計算されます
-    /// （``worldTransform`` と同じ dirty フラグ機構）。
+    /// Recomputed only when this node's or an ancestor's orientation changes
+    /// (the same dirty-flag mechanism as ``worldTransform``).
     public var worldOrientation: simd_quatf {
         if _worldOrientationDirty {
             if let parent = parent {
@@ -326,16 +326,16 @@ public final class Node {
         return _cachedWorldOrientation
     }
 
-    /// このノードを指定ワールド空間ターゲットに向けます。
+    /// Orients this node to face a target point in world space.
     ///
-    /// forward（-Z）がターゲット方向を向き、up（+Y）が可能なかぎり `worldUp` に
-    /// 揃うよう直交基底から向きを構築します。ターゲット方向が `worldUp` とほぼ
-    /// 平行な場合は代替アップベクトルを使ってロールの不定を回避します。
-    /// ターゲットが自身のワールド位置と一致する場合は何もしません。
+    /// Builds the orientation from an orthonormal basis so that forward (-Z) faces
+    /// the target direction and up (+Y) aligns with `worldUp` as closely as possible.
+    /// If the target direction is nearly parallel to `worldUp`, an alternate up vector is used to avoid indeterminate roll.
+    /// Does nothing if the target coincides with this node's own world position.
     ///
     /// - Parameters:
-    ///   - target: 注視するポイント。
-    ///   - worldUp: ワールド上方向（デフォルトは +Y）。
+    ///   - target: The point to look at.
+    ///   - worldUp: The world up direction (defaults to +Y).
     public func lookAt(_ target: SIMD3<Float>, worldUp: SIMD3<Float> = SIMD3(0, 1, 0)) {
         let worldPos = SIMD3<Float>(worldTransform.columns.3.x,
                                      worldTransform.columns.3.y,
