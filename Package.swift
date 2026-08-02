@@ -72,7 +72,8 @@ let package = Package(
             resources: [
                 .copy("Shaders/Metal"),
                 .copy("Shaders/ShaderSources"),
-            ]
+            ],
+            swiftSettings: strictConcurrency
         ),
 
         // Syphon frame output, split out of MetaphorCore (Issue #73 / ADR). Owns the Syphon binaryTarget.
@@ -85,7 +86,8 @@ let package = Package(
                 "MetaphorCore",
                 "Syphon",
                 "CMetaphorSyphonBootstrap",
-            ]
+            ],
+            swiftSettings: strictConcurrency
         ),
 
         // Tier 1 modules: zero dependency on MetaphorCore.
@@ -97,11 +99,11 @@ let package = Package(
         .target(name: "MetaphorVideo", swiftSettings: strictConcurrency),
 
         // Tier 2 modules: depend on MetaphorCore
-        .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"]),
-        .target(name: "MetaphorMPS", dependencies: ["MetaphorCore"]),
-        .target(name: "MetaphorCoreImage", dependencies: ["MetaphorCore"]),
-        .target(name: "MetaphorRenderGraph", dependencies: ["MetaphorCore"]),
-        .target(name: "MetaphorSceneGraph", dependencies: ["MetaphorCore"]),
+        .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorMPS", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorCoreImage", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorRenderGraph", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorSceneGraph", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
 
         // Umbrella: re-exports everything for backward compatibility
         .target(
@@ -119,11 +121,12 @@ let package = Package(
                 "MetaphorRenderGraph",
                 "MetaphorSceneGraph",
                 "MetaphorSyphon",
-            ]
+            ],
+            swiftSettings: strictConcurrency
         ),
 
         // Test support (internal only, not a published product)
-        .target(name: "MetaphorTestSupport", dependencies: ["MetaphorCore"]),
+        .target(name: "MetaphorTestSupport", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
 
         // Tests
         // Tier 1 のテストも本体と同じ設定で建てる（テスト側から非 Sendable な
@@ -143,11 +146,19 @@ let package = Package(
         .testTarget(
             name: "MetaphorVideoTests", dependencies: ["MetaphorVideo"],
             swiftSettings: strictConcurrency),
-        .testTarget(name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"]),
-        .testTarget(name: "MetaphorMPSTests", dependencies: ["MetaphorMPS", "MetaphorCore"]),
-        .testTarget(name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"]),
-        .testTarget(name: "MetaphorRenderGraphTests", dependencies: ["MetaphorRenderGraph", "MetaphorCore"]),
-        .testTarget(name: "MetaphorSceneGraphTests", dependencies: ["MetaphorSceneGraph", "MetaphorCore"]),
+        .testTarget(name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"], swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorMPSTests", dependencies: ["MetaphorMPS", "MetaphorCore"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorRenderGraphTests", dependencies: ["MetaphorRenderGraph", "MetaphorCore"],
+            swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorSceneGraphTests", dependencies: ["MetaphorSceneGraph", "MetaphorCore"],
+            swiftSettings: strictConcurrency),
         // Golden/ はテストバンドルへコピーせず除外する。ゴールデン PNG は
         // `#filePath` からソースツリーを直接読み書きする（Issue #330）ため、
         // リソースとして同梱する必要がない（宣言しないと SwiftPM が
@@ -155,7 +166,8 @@ let package = Package(
         .testTarget(
             name: "metaphorTests",
             dependencies: ["metaphor", "MetaphorTestSupport"],
-            exclude: ["Golden"]
+            exclude: ["Golden"],
+            swiftSettings: strictConcurrency
         ),
     ]
 )

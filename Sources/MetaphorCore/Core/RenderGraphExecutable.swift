@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 
 /// レンダラーが実行可能なレンダーグラフのインターフェースを定義します。
 ///

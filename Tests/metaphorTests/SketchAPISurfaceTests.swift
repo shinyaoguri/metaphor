@@ -135,18 +135,18 @@ private final class SketchRunnerHarness {
         }
         input.onMouseMoved = { [weak self] x, y in
             self?.sketch.mouseMoved()
-            self?.renderer.notifyPluginsMouseEvent(x: x, y: y, button: 0, type: .moved)
+            self?.renderer.notifyPluginsMouseEvent(x: x, y: y, button: nil, type: .moved)
         }
         input.onMouseDragged = { [weak self] x, y in
             self?.sketch.mouseDragged()
-            self?.renderer.notifyPluginsMouseEvent(x: x, y: y, button: 0, type: .dragged)
+            self?.renderer.notifyPluginsMouseEvent(x: x, y: y, button: nil, type: .dragged)
         }
         input.onMouseScrolled = { [weak self] _, _ in
             guard let self else { return }
             self.sketch.mouseScrolled()
             let mx = self.renderer.input.mouseX
             let my = self.renderer.input.mouseY
-            self.renderer.notifyPluginsMouseEvent(x: mx, y: my, button: 0, type: .scrolled)
+            self.renderer.notifyPluginsMouseEvent(x: mx, y: my, button: nil, type: .scrolled)
         }
         input.onMouseClicked = { [weak self] x, y, button in
             self?.sketch.mouseClicked()
@@ -697,7 +697,7 @@ struct SketchInputDispatchTests {
 
         #expect(sketch.mouseX == 0, "省略された x は 0")
         #expect(sketch.mouseY == 0, "省略された y は 0")
-        #expect(sketch.mouseButton == 0)
+        #expect(sketch.mouseButton == .left, "省略された button は 0 = 左")
         #expect(sketch.isMousePressed)
     }
 
