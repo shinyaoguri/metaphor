@@ -143,7 +143,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 | W1-3 | 命名統一の実装(W1-1 の ADR に従い、旧名は deprecated エイリアスで 1 リリース維持 → 次リリースで削除) | G3 | M | W1-1 |
 | W1-4 | 生成系 API の**エラー型統一**(`throws` は各モジュールのエラー型だけを投げる・生 `NSError` の素通りを塞ぐ・全 public throwing API に `- Throws:` を明記)。**typed throws 構文の適用は Swift 5.10 サポート終了まで延期**(SE-0413 は Swift 6.0 の機能で、最小サポート 5.10 ではパース不可 — ADR-0005 Amendment 2026-08-02) | G14 | M | W1-1(エラー型設計を含むため) |
 | W1-5 | failure mode 統一: `GPUBuffer` subscript(trap → 方針確定)/ `NoiseTexture` stops 空配列 / `SoundFile` doc の `try!` 例の是正 | G14 | S | W1-4 |
-| W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up) | G1 | M | **W2-2(ゴールデン回帰)導入後** |
+| W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up)。**判断ドラフト作成済み・ユーザーレビュー待ち**(#325 / ADR-0005 Amendment ドラフト 2026-08-02)— 実測で前提が覆り、3D の既定カメラは既に Processing P3D と同型のピクセル空間なので統一は実装 3 行・既存テストの赤 0・ゴールデン差分 0。一方で「統一しないと壊れたまま」の Examples が 11 本ある(`translate(w/2,h/2)` → 3D が左上に張り付く)。**推奨 = Option A(`translate(x,y)`/`rotate(a)`/`scale(sx,sy)` のみ統一)**。逆方向(3D 変換 → 2D 描画)は 2D が `float3x3` アフィンのため構造的に到達不能で、2 例が残る | G1 | **S**(実装のみ。ゴールデン追補と examples 確認を含めて M) | **W2-2(ゴールデン回帰)導入後** — 導入済み。ただし現行 6 シーンはこの変更に検出力がなく、実施時に「2D 変換 + 3D 描画」シーンの追加が前提 |
 | W1-7 | `loadPixels()` メインキャンバス readback(ADR-0005 follow-up) | G1 | M | W2-2 導入後が望ましい |
 | W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up)。**見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)— 既定 ON は `loadPixels()` の Processing 互換(W1-7)を全スケッチで失わせるため、現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結。定常フレームの描画結果が経路非依存であることを ADR の保証として宣言(常設テストは #375、環境変数の文書化は #376) | G1 | S〜M | なし |
 | W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) strict concurrency 警告の有効化方法を検証(swift-tools-version 5.10 との両立を含む) → (2) Tier 1 独立モジュール(Audio/Network/Physics/ML/Video)から警告除去 → (3) Core・Tier 2 → (4) CI ゲート化。`@preconcurrency import` 29 件・`@unchecked Sendable` の妥当性見直しを含む | G2 | **L** | 他の W1 と並行可(モジュール単位で独立) |
@@ -192,6 +192,9 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 1. **命名 3 系統の寄せ先・二層 API 名・`@_exported import` の扱い** → W1-1 の ADR でユーザーレビューを経て確定
 2. **英語化の 0.9.0 ブロッカー性**: W3-1 は additive なので 0.9.x に食い込んでも凍結は妨げない。ただし v1.0.0 昇格条件には含める(下記)
 3. **preview 宣言の要否**: 0.9.x の実績で判断(マイルストーン節参照)
+4. **変換ファミリの P3D 意味論統一(W1-6)を実施するか見送るか** → #325 / ADR-0005 Amendment ドラフト
+   (2026-08-02)でユーザーレビュー待ち。実施する場合は `shearX/Y` と `applyMatrix(float3x3)` を
+   同時に統一するかも同時に決める
 
 ## 完了判定
 
