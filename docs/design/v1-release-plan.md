@@ -72,7 +72,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 
 | 項目 | 出典 | 状態 |
 |---|---|---|
-| 変換ファミリ(`translate`/`rotate`/`scale`)の P3D 意味論統一 | ADR-0005 | 未着手(2D/3D 非対称のまま) |
+| 変換ファミリ(`translate`/`rotate`/`scale`)の P3D 意味論統一 | ADR-0005 | **実施済み**(#325 / PR #384 / ADR-0005 Amendment 2026-08-02)。2D 変換 API が 3D にも効くようになった。逆方向は構造的に到達不能で残る(→ #387) |
 | `loadPixels()` のメインキャンバス Processing 互換 readback | ADR-0005 | follow-up のまま |
 | コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | **見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)。現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結 |
 | 生成系 API の typed throws 化 | ADR-0005 Decision 2 | **エラー型統一で代替済み**(#323)。typed throws 構文は Swift 5.10 サポート終了まで延期(見送り理由は ADR-0005 Amendment 2026-08-02) |
