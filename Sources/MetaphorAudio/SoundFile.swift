@@ -33,12 +33,17 @@ private final class AudioEngineHolder: @unchecked Sendable {
 /// connects to an `AudioAnalyzer` for real-time spectrum analysis.
 ///
 /// ```swift
-/// var sound: SoundFile!
+/// var sound: SoundFile?
 /// func setup() {
-///     sound = try! loadSound("music.mp3")
-///     sound.play()
+///     do {
+///         sound = try loadSound("music.mp3")
+///         sound?.play()
+///     } catch {
+///         print("Failed to load sound: \(error)")
+///     }
 /// }
 /// func draw() {
+///     guard let sound else { return }
 ///     sound.update()
 ///     let vol = sound.gain
 ///     let spectrum = sound.spectrum
@@ -133,7 +138,9 @@ public final class SoundFile {
 
     /// Loads an audio file from the given path.
     /// - Parameter path: The file system path to the audio file.
-    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist.
+    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist, or
+    ///   the underlying `AVAudioFile` error if the file cannot be opened for
+    ///   reading (e.g. corrupt data or an unsupported format).
     public init(path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
