@@ -10,6 +10,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 |---|---|---|
 | スケッチを書く人 | metaphor で作品を作る | [README](../README.md) → [ai/for-sketch-authors.md](ai/for-sketch-authors.md) → [ai/examples-index.md](ai/examples-index.md) |
 | Examples を順に学びたい人 | 278 本の索引ではなく、まず何から動かすか知りたい | [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグ付きの推奨順路） |
+| Processing / p5.js から移る人 | 「Processing の X は metaphor では Y」を引く | [processing-migration-guide.md](processing-migration-guide.md)（英語。API 対応表・落とし穴集・未対応 API） |
 | マイク・カメラを使うスケッチを書く人 | 権限ダイアログや拒否後の詰まりを解消する | [permissions.md](permissions.md)（英語。TCC の仕組みと復旧手順） |
 | AI と一緒に作る人 | AI に観測させながら反復する | [README「AI と協調する」](../README.md#ai-と協調する観測--操作--反復) → [metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する) → [ai/prompts/](ai/prompts/) |
 | ライブラリ本体の開発者 | metaphor 自体を変更する | [DEVELOPMENT.md](../DEVELOPMENT.md) → [ai/README.md](ai/README.md)（実装デバッグ・不変条件） → [adr/](adr/) |
@@ -25,6 +26,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [ai/install-scenarios.md](ai/install-scenarios.md) — インストール形態ごとの AI 支援の効き方
   - [ai/examples-index.md](ai/examples-index.md) / `.json` — 全サンプル索引（**生成物**。手で編集しない）
   - [ai/prompts/](ai/prompts/) — 用途別プロンプトテンプレート（audio-reactive / shader など）
+- **[processing-migration-guide.md](processing-migration-guide.md)** — Processing / p5.js 移行ガイド（英語）。カテゴリ別 API 対応表、落とし穴集、未対応 API とロードマップへの導線
 - **[permissions.md](permissions.md)** — マイク・カメラの TCC 権限（英語）。`swift run` バイナリでの権限要求の仕組み、拒否後の復旧手順、Info.plist の扱い
 - **[adr/](adr/)** — Architecture Decision Records。設計判断の蓄積（append-only）。書き方は [adr/README.md](adr/README.md)
 - **[design/](design/)** — 進行中 / 過去プロジェクトの設計ドキュメント。確定仕様は実装と [CONTRACT.md](../CONTRACT.md) が正
@@ -39,7 +41,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 
 Processing / Unity ユーザー獲得の並行トラック（ロードマップ Epic I）として、英語ドキュメントは以下の境界で維持します:
 
-- **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）、[docs/README.en.md](README.en.md)（本ページの英語版。Issue #337）、[permissions.md](permissions.md)・[Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（新設・英語のみ）
+- **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）、[docs/README.en.md](README.en.md)（本ページの英語版。Issue #337）、[permissions.md](permissions.md)・[Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)・[processing-migration-guide.md](processing-migration-guide.md)（新設・英語のみ）
 - **日本語のまま**（翻訳しない）: [adr/](adr/) 全体（設計判断の記録。ADR 全訳は非目標）、[design/](design/)、[CLAUDE.md](../CLAUDE.md)・[ai/README.md](ai/README.md) などの開発者・エージェント向け内部ドキュメント
 - **今後の弾**: 第 2 弾 = 公開 API doc コメントの英語化（cli #86 と相乗）、第 3 弾 = website（#74）。着手時に起票
 

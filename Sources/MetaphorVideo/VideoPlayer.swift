@@ -4,6 +4,35 @@ import Foundation
 import Metal
 import ObjectiveC.runtime
 
+// MARK: - NotificationObserverToken
+
+/// Owns a block-based `NotificationCenter` observer token and unregisters it on
+/// deallocation.
+///
+/// Block-based observers are not auto-removed, so the token has to outlive the
+/// registration and be handed back to `NotificationCenter`. Holding it here (rather
+/// than in a `@MainActor` property that `deinit` reads) keeps teardown correct under
+/// strict concurrency: `deinit` is `nonisolated`, so it cannot touch actor-isolated
+/// storage of a non-`Sendable` type.
+///
+/// `@unchecked Sendable` rationale: the token is stored once, never handed out, and
+/// its only use is `NotificationCenter.removeObserver(_:)` — and `NotificationCenter`
+/// is documented as thread-safe. There is no mutable state to race on.
+/// (Internal rather than private so the teardown contract can be unit-tested.)
+final class NotificationObserverToken: @unchecked Sendable {
+    private let token: any NSObjectProtocol
+    private let center: NotificationCenter
+
+    init(_ token: any NSObjectProtocol, center: NotificationCenter = .default) {
+        self.token = token
+        self.center = center
+    }
+
+    deinit {
+        center.removeObserver(token)
+    }
+}
+
 // MARK: - PlaybackHolder
 
 /// Manages the lifecycle of `AVPlayer` for safe cleanup across actor boundaries.
@@ -147,7 +176,8 @@ public final class VideoPlayer {
     private let playback: PlaybackHolder
     private var textureCache: CVMetalTextureCache?
     private var _rate: Float = 1.0
-    private var notificationObserver: NSObjectProtocol?
+    /// Released together with the player; the holder's `deinit` unregisters the observer.
+    private var notificationObserver: NotificationObserverToken?
     private var statusObservation: NSKeyValueObservation?
     private let errorBox = VideoErrorBox()
 
@@ -175,7 +205,10 @@ public final class VideoPlayer {
         let playerItem = AVPlayerItem(asset: asset)
 
         // ビデオ出力を BGRA フォーマットで構成
-        let outputSettings: [String: Any] = [
+        // （`[String: Any]` ではなく `[String: any Sendable]`: AVFoundation の
+        // pixelBufferAttributes は Sendable 制約付きで、`Any` のままだと strict
+        // concurrency 下で「'Any' は Sendable に適合しない」と警告される）
+        let outputSettings: [String: any Sendable] = [
             String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32BGRA,
             String(kCVPixelBufferMetalCompatibilityKey): true,
         ]
@@ -195,7 +228,7 @@ public final class VideoPlayer {
         // `Sketch.setup()` を async 化しない方針のため init は同期のまま、
         // macOS 13+ の async ローダーを semaphore で同期待ちする。
         // ローカルファイル専用なのでブロッキング時間は実質ゼロ。
-        let metadata = Self.loadAssetMetadataSync(asset)
+        let metadata = Self.loadAssetMetadataSync(url: url)
         let assetDuration = metadata.duration
         if let naturalSize = metadata.naturalSize {
             self.width = Float(naturalSize.width)
@@ -208,7 +241,7 @@ public final class VideoPlayer {
         // 破損ファイル・非対応コーデックはビデオトラックが取れない。
         // この時点で lastError に立てておく（AVPlayerItem.status の .failed は
         // 再生を試みるまで確定しないことがあるため、ここが最初の検出点）
-        if metadata.track == nil {
+        if !metadata.hasVideoTrack {
             errorBox.store(VideoPlayerError.playbackFailed(
                 "no playable video track (corrupt file or unsupported codec?): \(path)"
             ))
@@ -220,15 +253,17 @@ public final class VideoPlayer {
         self.textureCache = cache
 
         // ループ用の再生終了通知を登録
-        self.notificationObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: playerItem,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.handlePlaybackEnd()
+        self.notificationObserver = NotificationObserverToken(
+            NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: playerItem,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.handlePlaybackEnd()
+                }
             }
-        }
+        )
 
         // 破損ファイル・非対応コーデック等の失敗を観測する（従来は duration 0・
         // フレーム無しの silent failure だった）。KVO は任意スレッドで届き得る
@@ -243,39 +278,46 @@ public final class VideoPlayer {
     }
 
     deinit {
-        if let observer = notificationObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
+        // 通知オブザーバの解除は ``NotificationObserverToken`` の deinit が行う
+        // （`deinit` は nonisolated なので、@MainActor 隔離された非 Sendable な
+        // プロパティをここから触ることはできない）。
         statusObservation?.invalidate()
     }
 
-    /// A helper that synchronously extracts the track, duration, and size
-    /// from an `AVURLAsset`. Waits on the macOS 13+ async API via a
-    /// `DispatchSemaphore`, preserving the synchronous init's compatibility
-    /// while avoiding deprecated-API warnings.
+    /// A helper that synchronously extracts whether a video track exists, plus the
+    /// duration and natural size, for the asset at `url`. Waits on the macOS 13+
+    /// async API via a `DispatchSemaphore`, preserving the synchronous init's
+    /// compatibility while avoiding deprecated-API warnings.
+    ///
+    /// Takes a `URL` rather than the caller's `AVURLAsset` on purpose: `AVURLAsset`'s
+    /// `Sendable` conformance differs between SDK generations (the Xcode 15.4 SDK, our
+    /// minimum, still treats it as non-`Sendable`), so capturing the caller's instance
+    /// in the detached task would warn there. Loading is read-only and the asset built
+    /// here never escapes the task, so re-opening the same local file is equivalent —
+    /// and it also keeps the non-`Sendable` `AVAssetTrack` out of the result.
     nonisolated private static func loadAssetMetadataSync(
-        _ asset: AVURLAsset
-    ) -> (track: AVAssetTrack?, duration: CMTime, naturalSize: CGSize?) {
+        url: URL
+    ) -> (hasVideoTrack: Bool, duration: CMTime, naturalSize: CGSize?) {
         /// A box for passing load results across, protected by a lock so a
         /// task writing after the timeout does not cause a data race.
         final class MetadataBox: @unchecked Sendable {
             private let lock = NSLock()
-            private var track: AVAssetTrack?
+            private var hasVideoTrack = false
             private var duration: CMTime = .zero
             private var size: CGSize?
 
-            func set(track: AVAssetTrack?, duration: CMTime, size: CGSize?) {
+            func set(hasVideoTrack: Bool, duration: CMTime, size: CGSize?) {
                 lock.lock()
-                self.track = track
+                self.hasVideoTrack = hasVideoTrack
                 self.duration = duration
                 self.size = size
                 lock.unlock()
             }
 
-            func get() -> (AVAssetTrack?, CMTime, CGSize?) {
+            func get() -> (Bool, CMTime, CGSize?) {
                 lock.lock()
                 defer { lock.unlock() }
-                return (track, duration, size)
+                return (hasVideoTrack, duration, size)
             }
         }
 
@@ -283,13 +325,14 @@ public final class VideoPlayer {
         let semaphore = DispatchSemaphore(value: 0)
 
         Task.detached {
+            let asset = AVURLAsset(url: url)
             let tracks = (try? await asset.loadTracks(withMediaType: .video)) ?? []
             var size: CGSize?
             if let track = tracks.first {
                 size = try? await track.load(.naturalSize)
             }
             let duration = (try? await asset.load(.duration)) ?? .zero
-            box.set(track: tracks.first, duration: duration, size: size)
+            box.set(hasVideoTrack: tracks.first != nil, duration: duration, size: size)
             semaphore.signal()
         }
 
@@ -298,8 +341,8 @@ public final class VideoPlayer {
         if semaphore.wait(timeout: .now() + 10) == .timedOut {
             print("[metaphor] VideoPlayer: asset metadata load timed out (>10s) — continuing with defaults")
         }
-        let (track, duration, size) = box.get()
-        return (track, duration, size)
+        let (hasVideoTrack, duration, size) = box.get()
+        return (hasVideoTrack, duration, size)
     }
 
     // MARK: - Playback Control

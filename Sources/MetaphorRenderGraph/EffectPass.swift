@@ -53,7 +53,8 @@ public final class EffectPass: RenderPassNode {
     ///   - device: The Metal device used to create the pipeline state.
     ///   - commandQueue: The Metal command queue used for internal operations.
     ///   - shaderLibrary: The shader library that provides the effect shader functions.
-    /// - Throws: An error if pipeline creation fails.
+    /// - Throws: ``MetaphorCore/MetaphorError/shaderNotFound(_:)`` when the built-in
+    ///   full-screen blit vertex function is missing from the shader library.
     public init(
         _ input: RenderPassNode,
         effects: [any PostEffect],

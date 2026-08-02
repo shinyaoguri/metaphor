@@ -136,13 +136,32 @@ public final class PixelBuffer {
     ///   - source: 読み戻し元テクスチャ（同一寸法・bgra8Unorm）。
     ///   - commandQueue: blit の発行先キュー（描画と同じキューを推奨）。
     func download(from source: MTLTexture, commandQueue: MTLCommandQueue) {
+        guard let cb = commandQueue.makeCommandBuffer() else { return }
+        guard encodeDownload(from: source, into: cb) else { return }
+        cb.commit()
+        cb.waitUntilCompleted()
+        finishDownload()
+    }
+
+    /// 読み戻しの blit を**既存のコマンドバッファへエンコードするだけ**行います（#326）。
+    ///
+    /// 描画途中のメインパスを分割して同一フレームの内容を読み戻す経路で使う。
+    /// コミットと完了待ちは呼び出し側が行い、完了後に ``finishDownload()`` を呼ぶこと。
+    /// フレームのコマンドバッファに相乗りするため、専用のコマンドバッファを増やさない。
+    ///
+    /// - Parameters:
+    ///   - source: 読み戻し元テクスチャ（同一寸法・同一フォーマット）。
+    ///   - commandBuffer: blit のエンコード先。
+    /// - Returns: エンコードできた場合は `true`、寸法・フォーマット不一致などで
+    ///   何もエンコードしなかった場合は `false`。
+    @discardableResult
+    func encodeDownload(from source: MTLTexture, into commandBuffer: MTLCommandBuffer) -> Bool {
         guard source.width == width, source.height == height,
               source.pixelFormat == texture.pixelFormat else {
             metaphorWarning("PixelBuffer.download: source mismatch (\(source.width)x\(source.height) \(source.pixelFormat.rawValue) vs \(width)x\(height))")
-            return
+            return false
         }
-        guard let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return }
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else { return false }
         blit.copy(
             from: source, sourceSlice: 0, sourceLevel: 0,
             sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
@@ -151,19 +170,21 @@ public final class PixelBuffer {
             destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
         )
         blit.endEncoding()
-        cb.commit()
-        cb.waitUntilCompleted()
+        return true
+    }
 
-        // ゼロコピーパスは backingBuffer に直接反映される。
-        // フォールバックパスのみテクスチャから吸い上げる。
-        if let mem = rawMemory {
-            texture.getBytes(
-                mem, bytesPerRow: bytesPerRow,
-                from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                                size: MTLSize(width: width, height: height, depth: 1)),
-                mipmapLevel: 0
-            )
-        }
+    /// ``encodeDownload(from:into:)`` の GPU 完了後に CPU 配列を確定させます。
+    ///
+    /// ゼロコピーパスは blit が backingBuffer へ直接書くため何もしない。
+    /// アライメント非対応のフォールバックパスだけがテクスチャから吸い上げる。
+    func finishDownload() {
+        guard let mem = rawMemory else { return }
+        texture.getBytes(
+            mem, bytesPerRow: bytesPerRow,
+            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
+                            size: MTLSize(width: width, height: height, depth: 1)),
+            mipmapLevel: 0
+        )
     }
 
     /// ピクセルデータを GPU テクスチャにアップロードします。

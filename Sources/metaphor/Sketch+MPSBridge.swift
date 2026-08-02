@@ -18,6 +18,13 @@ extension Sketch {
     ///   - width: 出力画像の幅（ピクセル単位）。
     ///   - height: 出力画像の高さ（ピクセル単位）。
     /// - Returns: 新しい ``MetaphorMPS/MPSRayTracer`` インスタンス。
+    /// - Throws: ``MetaphorCore/MetaphorError``。同梱シェーダーソースまたはカーネル関数が
+    ///   見つからない場合は ``MetaphorCore/MetaphorError/mps(_:)`` の
+    ///   ``MetaphorCore/MetaphorError/MPSFailure/accelerationStructureBuildFailed(_:)``、
+    ///   MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorCore/MetaphorError/shaderCompilationFailed(name:underlying:)``、
+    ///   コンピュートパイプラインを作成できない場合は
+    ///   ``MetaphorCore/MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
         try MPSRayTracer(device: context.renderer.device, commandQueue: context.renderer.commandQueue, width: width, height: height)
     }

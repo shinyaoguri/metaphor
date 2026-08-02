@@ -6,8 +6,8 @@ extension Sketch {
 
     /// 現在の変換とスタイル状態をスタックに保存します。
     ///
-    /// - Note: **2D のみ**に作用します。3D も含めて保存するには ``pushMatrix()`` を
-    ///   使用してください（ADR-0005）。
+    /// - Note: **2D と 3D の両方**に作用します。``pushMatrix()`` との違いは作用先ではなく
+    ///   「スタイルを含むかどうか」で、こちらは変換 + スタイル、``pushMatrix()`` は変換のみです。
     public func push() {
         context.push()
     }
@@ -27,10 +27,10 @@ extension Sketch {
         context.popStyle()
     }
 
-    /// 現在の変換に 2D 平行移動を適用します。
+    /// 現在の変換に平行移動を適用します。
     ///
-    /// - Note: **2D のみ**に作用します。3D は ``translate(_:_:_:)``（3 引数）を
-    ///   使用してください（ADR-0005）。
+    /// - Note: **2D と 3D の両方**に作用します（3D は z = 0 の平行移動。
+    ///   Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameters:
     ///   - x: 水平方向の移動量。
@@ -39,19 +39,20 @@ extension Sketch {
         context.translate(x, y)
     }
 
-    /// 現在の変換に 2D 回転を適用します。
+    /// 現在の変換に回転を適用します。
     ///
-    /// - Note: **2D のみ**に作用します。3D は ``rotateX(_:)`` / ``rotateY(_:)`` /
-    ///   ``rotateZ(_:)`` を使用してください（ADR-0005）。
+    /// - Note: **2D と 3D の両方**に作用します（3D は z 軸まわりの回転 =
+    ///   ``rotateZ(_:)`` と同じ。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) {
         context.rotate(angle)
     }
 
-    /// 現在の変換に非均一 2D スケールを適用します。
+    /// 現在の変換に非均一スケールを適用します。
     ///
-    /// - Note: **2D のみ**に作用します（均一版 ``scale(_:)`` は 2D/3D 両方）。
+    /// - Note: **2D と 3D の両方**に作用します（3D は z 軸を等倍とする
+    ///   スケール。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameters:
     ///   - sx: 水平方向のスケール係数。
@@ -62,7 +63,7 @@ extension Sketch {
 
     /// 現在の変換に均一スケールを適用します。
     ///
-    /// - Note: **2D と 3D の両方**に作用します（非均一版 ``scale(_:_:)`` は 2D のみ）。
+    /// - Note: **2D と 3D の両方**に作用します。
     ///
     /// - Parameter s: 均一スケール係数。
     public func scale(_ s: Float) {
@@ -72,7 +73,9 @@ extension Sketch {
     /// 現在の 2D 変換に 3x3 行列を乗算します。
     ///
     /// - Note: **2D のみ**に作用します。3D は ``applyMatrix(_:)``（`float4x4` 版）を
-    ///   使用してください（ADR-0005）。
+    ///   使用してください。P3D 意味論への統一は ``translate(_:_:)`` / ``rotate(_:)`` /
+    ///   ``scale(_:_:)`` の 3 本に限っており、行列の直接適用は対象外です
+    ///   （ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter matrix: 連結する 3x3 行列。
     public func applyMatrix(_ matrix: float3x3) {
@@ -84,7 +87,7 @@ extension Sketch {
     /// 成分は行優先で、変換は `x' = n00*x + n01*y + n02`、`y' = n10*x + n11*y + n12`
     /// （Processing の `applyMatrix(n00, n01, n02, n10, n11, n12)` と互換）。
     ///
-    /// - Note: **2D のみ**に作用します（ADR-0005）。
+    /// - Note: **2D のみ**に作用します（ADR-0005 Amendment 2026-08-02。P3D 統一の対象外）。
     public func applyMatrix(
         _ n00: Float, _ n01: Float, _ n02: Float,
         _ n10: Float, _ n11: Float, _ n12: Float
@@ -114,7 +117,9 @@ extension Sketch {
     ///
     /// `x' = x + tan(angle) * y`（Processing の `shearX()` と互換)。
     ///
-    /// - Note: **2D のみ**に作用します（ADR-0005）。
+    /// - Note: **2D のみ**に作用します。P3D 意味論への統一は
+    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)`` の 3 本に限っており、
+    ///   せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位のせん断角度。
     public func shearX(_ angle: Float) {
@@ -125,7 +130,9 @@ extension Sketch {
     ///
     /// `y' = y + tan(angle) * x`（Processing の `shearY()` と互換)。
     ///
-    /// - Note: **2D のみ**に作用します（ADR-0005）。
+    /// - Note: **2D のみ**に作用します。P3D 意味論への統一は
+    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)`` の 3 本に限っており、
+    ///   せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位のせん断角度。
     public func shearY(_ angle: Float) {

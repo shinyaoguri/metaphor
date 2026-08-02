@@ -256,7 +256,7 @@ public final class Canvas2D: CanvasStyle {
     // MARK: - SVG 記録
 
     /// アクティブな SVG レコーダー。設定中は図形呼び出しが SVG にも記録される
-    /// （``SketchContext/beginSVG(_:)`` / ``SketchContext/endSVG()`` が管理）。
+    /// （``SketchContext/beginSVGRecord(_:)`` / ``SketchContext/endSVGRecord()`` が管理）。
     var svgRecorder: SVGRecorder?
 
     /// SVG 記録用の現在スタイル・変換のスナップショットを返します。
@@ -300,7 +300,10 @@ public final class Canvas2D: CanvasStyle {
     /// ``MetaphorRenderer`` インスタンスからキャンバスを生成します。
     ///
     /// - Parameter renderer: Metal デバイス、シェーダーライブラリ、テクスチャサイズを提供するレンダラー。
-    /// - Throws: バッファまたはパイプラインの生成に失敗した場合 ``MetaphorError``。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 2D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -321,7 +324,10 @@ public final class Canvas2D: CanvasStyle {
     ///   - width: キャンバスの幅（ピクセル単位）。
     ///   - height: キャンバスの高さ（ピクセル単位）。
     ///   - sampleCount: パイプライン生成時の MSAA サンプル数。
-    /// - Throws: バッファまたはパイプラインの生成に失敗した場合 ``MetaphorError``。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 2D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -548,6 +554,26 @@ public final class Canvas2D: CanvasStyle {
         self.pendingClearColor = nil
         self.deferred2DCommands.removeAll(keepingCapacity: true)
         self.instanceBatcher2D.beginFrame(bufferIndex: currentBufferIndex)
+    }
+
+    /// メインパス分割後（`loadPixels()` の同一フレーム読み戻し、#326）に、
+    /// 描画先を新しいレンダーコマンドエンコーダへ差し替えます。
+    ///
+    /// 呼び出し側は分割前に ``flush()`` 済みであること（保留頂点は分割前のパスへ出す）。
+    /// フレームごとの状態（変換・スタイル・バッファオフセット）は**維持する** —
+    /// `draw()` の途中なので、Processing から見れば同じ 1 フレームの続きだから。
+    ///
+    /// - Parameter newEncoder: 継続パスのレンダーコマンドエンコーダー。
+    func rebindEncoder(_ newEncoder: MTLRenderCommandEncoder) {
+        self.encoder = newEncoder
+        // 継続パスは loadAction = .load。以降の background() を「Metal のクリア任せ」に
+        // 最適化するとクリアが起きずに無視されるため、必ずクワッドを描かせる。
+        self.frameWillClear = false
+        // シザーはエンコーダごとの状態。新しいエンコーダでは既定（フルビューポート）に
+        // 戻るので、クリップ中なら復元する。
+        if let rect = clipRect {
+            newEncoder.setScissorRect(rect)
+        }
     }
 
     /// 遅延モードで積まれた前景2D描画を、指定エンコーダへ順に再生します（#70 / #71）。

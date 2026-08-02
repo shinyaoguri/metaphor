@@ -149,6 +149,8 @@ random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 
 API 全体は [`llms.txt`](llms.txt) にまとまっています。ブラウザで型やメソッドを引くなら **[API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)**（[プロジェクトサイト](https://shinyaoguri.github.io/metaphor/)）が便利です。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
 
+Processing / p5.js から移ってくる場合は **[docs/processing-migration-guide.md](docs/processing-migration-guide.md)**（英語）が近道です。カテゴリ別の API 対応表（`size()` → `SketchConfig`、`PVector` → `Vec2`、`rectMode(CENTER)` → `rectMode(.center)` など）と、値型と参照型・`@MainActor`・色の 2 系統・2D/3D の適用規則といった落とし穴、未対応 API の一覧をまとめています。
+
 ## AI と協調する（観測 → 操作 → 反復）
 
 metaphor は、AI エージェントが**実行中のスケッチを観測しながら**開発できるよう設計されています。`metaphor mcp` を AI クライアント（Claude Code / Cursor など）に MCP サーバとして登録すると、エージェントがレンダリング結果の画像と内部状態を取得し、再ビルドの結果まで確認しながら「観測 → 編集 → 再観測 → 検証」を自律的に反復できます。

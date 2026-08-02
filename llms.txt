@@ -95,12 +95,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- 指定したカラーチャンネル値でキャンバスをクリアします。
 - `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 以降の描画を指定した矩形にクリッピングします。
 - `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します。
+- `func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
 - `func beginGIFRecord(fps: Int = 15)` -- GIF エクスポート用のフレーム記録を開始します。
 - `func beginOfflineRender(fps: Double = 60)` -- 決定論的タイミングのオフラインレンダリングモードを有効にします。
-- `func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
 - `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
 - `func beginShape3D(_ mode: ShapeMode = .polygon)` -- 3D カスタムシェイプの頂点記録を開始します。
-- `func beginSVG(_ path: String)` -- SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
+- `func beginSVGRecord(_ path: String)` -- SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
 - `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- 動画出力の録画を開始します。
 - `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- 3次ベジェ曲線を描画します。
 - `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- 現在のシェイプに3次ベジェ頂点を追加します。
@@ -167,8 +167,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- シャドウマッピングを無効にします。
-- `func dispatch(_ kernel: ComputeKernel, threads: Int, _ configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
-- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, _ configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
+- `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
+- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
 - `func drawParticles(_ system: ParticleSystem)` -- パーティクルシステムを描画します（``draw()`` 内で呼び出してください）。
 - `func drawScene(_ root: Node)` -- 指定ルートノードからシーングラフを描画します。
@@ -182,20 +182,21 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
 - `func endContour()` -- 現在のコンター定義を終了します。
+- `func endFrameRecord()` -- フレーム連番の記録を停止します。
 - `func endGIFRecord(_ path: String? = nil) throws` -- 記録を停止し GIF ファイルに書き出します。
-- `func endGIFRecord(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。
+- `func endGIFRecordAsync(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。
 - `func endOfflineRender()` -- オフラインレンダリングモードを無効にしリアルタイムタイミングに戻します。
-- `func endRecord()` -- フレーム連番の記録を停止します。
 - `func endShape(_ close: CloseMode = .open)` -- 現在のシェイプの記録を終了し描画します。
 - `func endShape3D(_ close: CloseMode = .open)` -- 現在の 3D シェイプの記録を終了し描画します。
-- `func endSVG()` -- SVG 記録を終了し、``beginSVG(_:)`` で指定したパスへ書き出します。
-- `func endVideoRecord() async` -- 動画の録画を非同期で停止しファイルを完成させます。
+- `func endSVGRecord()` -- SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
 - `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
+- `func endVideoRecordAsync() async` -- 動画の録画を非同期で停止しファイルを完成させます。
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
 - `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
 - `func fill(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で塗りつぶし色を設定します。
 - `func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で塗りつぶし色を設定します。
+- `func filter(_ image: MImage, _ type: FilterType)` -- 画像に GPU 画像フィルタを適用します（in-place）。
 - `func frameRate(_ fps: Int)` -- フレームレートを動的に変更します。
 - `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- キャプチャデバイスの最新フレームを指定位置に描画します。
 - `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置に描画します。
@@ -226,7 +227,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadJSONAsync<T>(_ source: String, as type: T.Type) async throws -> T where T : Decodable` -- JSON ファイル/URL を `Decodable` な型として非同期で読み込みます。
 - `func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
 - `func loadModelAsync(_ path: String, normalize: Bool = true, cache: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
-- `func loadPixels()` -- キャンバスの内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
+- `func loadPixels()` -- **呼び出し時点の**キャンバス内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
 - `func loadStrings(_ source: String) throws -> [String]` -- テキストファイル/URL を行の配列として読み込みます。
 - `func loadStringsAsync(_ source: String) async throws -> [String]` -- テキストファイル/URL を行の配列として非同期で読み込みます。
@@ -292,7 +293,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
 - `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
-- `func rotate(_ angle: Float)` -- 現在の変換に 2D 回転を適用します。
+- `func rotate(_ angle: Float)` -- 現在の変換に回転を適用します。
 - `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
 - `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
 - `func rotateZ(_ angle: Float)` -- z 軸周りの回転を適用します。
@@ -304,7 +305,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func saveStrings(_ lines: [String], _ path: String) throws` -- 行の配列をテキストファイルへ書き込みます（UTF-8・各行に改行を付与）。
 - `func saveTable(_ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true) throws` -- ``Table`` を CSV/TSV ファイルへ書き込みます。
 - `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
-- `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一 2D スケールを適用します。
+- `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一スケールを適用します。
 - `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
 - `func screenX(_ x: Float, _ y: Float) -> Float` -- 2D モデル座標が描画されるスクリーン x 座標を返します。
 - `func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標が描画されるスクリーン x 座標を返します。
@@ -350,7 +351,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
 - `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
 - `func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
-- `func translate(_ x: Float, _ y: Float)` -- 現在の変換に 2D 平行移動を適用します。
+- `func translate(_ x: Float, _ y: Float)` -- 現在の変換に平行移動を適用します。
 - `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
 - `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- 3つの頂点で定義される三角形を描画します。
 - `func tween<T>(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic) -> Tween<T> where T : Interpolatable` -- トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
@@ -703,22 +704,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case data(MetaphorError.DataFailure)` -- データ IO（JSON/Table/Strings）操作の失敗
 - `case decodeFailed(type: String, detail: String)` -- Decodable への変換に失敗した
 - `case encodeFailed(detail: String)` -- Encodable からのシリアライズに失敗した
-- `case loadFailed(source: String, detail: String)` -- ソース（ファイル・URL）の読み込みに失敗した
 - `case parseFailed(detail: String)` -- JSON/CSV/TSV のパースに失敗した
 - `case writeFailed(path: String, detail: String)` -- ファイルへの書き込みに失敗した
 - `case deviceNotAvailable` -- Metal デバイスを取得できなかった
 - `case export(MetaphorError.ExportFailure)` -- エクスポート操作の失敗
 - `case destinationCreationFailed` -- 画像デスティネーションを作成できなかった
+- `case fileWriteFailed(path: String, detail: String)` -- 出力ファイルの作成・移動・削除に失敗した
 - `case finalizationFailed` -- 出力ファイルのファイナライズに失敗した
 - `case noFrames` -- キャプチャされたフレームがない
 - `case notRecording` -- endRecord() 呼び出し時に録画がアクティブでなかった
 - `case writerFailed(String)` -- AVAssetWriter がエラーを検出した
 - `case image(MetaphorError.ImageFailure)` -- 画像操作の失敗
 - `case invalidImage` -- ソース画像が無効、または CGImage への変換に失敗した
+- `case loadFailed(source: String, detail: String)` -- 画像をテクスチャとして読み込めなかった (不在・非対応フォーマット・I/O エラー)
 - `case invalidParameter(String)` -- API に渡されたパラメータが不正 (範囲外・前提条件違反など)
 - `case material(MetaphorError.MaterialFailure)` -- マテリアル操作の失敗
 - `case mesh(MetaphorError.MeshFailure)` -- メッシュ操作の失敗
 - `case fileNotFound` -- メッシュファイルが見つからなかった
+- `case loadFailed(path: String, detail: String)` -- メッシュファイルを読み込めなかった (不在・権限・I/O エラー)
 - `case parseError(String)` -- メッシュデータのパースに失敗した
 - `case mps(MetaphorError.MPSFailure)` -- Metal Performance Shaders 操作の失敗
 - `case accelerationStructureBuildFailed(String)` -- アクセラレーション構造体のビルドに失敗した
@@ -731,6 +734,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case renderGraph(MetaphorError.RenderGraphFailure)` -- レンダーグラフ操作の失敗
 - `case shaderCompilationFailed(name: String, underlying: any Error)` -- シェーダーのコンパイルに失敗した
 - `case shaderNotFound(String)` -- 指定されたシェーダー関数がシェーダーライブラリに見つからなかった
+- `case shaderSourceLoadFailed(path: String, detail: String)` -- シェーダーソースファイルを読み込めなかった (コンパイル前段の I/O 失敗)
 - `case textureCreationFailed(width: Int, height: Int, format: String)` -- 指定されたサイズとフォーマットでテクスチャを作成できなかった
 - `var description: String { get }`
 - `var errorDescription: String? { get }`
@@ -1199,7 +1203,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(path: String, device: any MTLDevice) throws` -- ファイルパスからテクスチャを読み込んで画像を作成します。
 - `init(texture: any MTLTexture)` -- 既存の `MTLTexture` から画像を作成します。
 - `static func createImage(_ width: Int, _ height: Int, device: any MTLDevice) -> MImage?` -- ピクセル操作に適した空の画像を作成します。
-- `func filter(_ type: FilterType)` -- ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します。
+- `func filter(_ type: FilterType)` -- ``loadPixels()``、処理、``updatePixels()`` を一括で実行して画像フィルタを適用します（CPU 版）。
 - `func get(_ x: Int, _ y: Int) -> Color` -- 指定された座標のピクセルの色を返します。
 - `func loadPixels()` -- GPU テクスチャから CPU 上の ``pixels`` 配列にピクセルデータを読み込みます。
 - `func mask(_ maskImage: MImage)` -- マスク画像をこの画像のアルファチャンネルへ適用します。
@@ -1598,6 +1602,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `enum AudioAnalyzerError` -- Represents errors that can occur during `AudioAnalyzer` operations.
 
+- `case engineStartFailed(detail: String)` -- Indicates that the audio engine failed to start for another reason.
 - `case microphonePermissionDenied` -- Indicates that microphone permission has been denied.
 - `case noInputDevice` -- Indicates that no audio input device is available.
 - `var errorDescription: String? { get }`
@@ -1620,6 +1625,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var spectrum: [Float] { get }` -- Returns spectrum data (available once analysis is enabled).
 - `init(path: String) throws` -- Loads an audio file from the given path.
 - `func band(_ index: Int) -> Float` -- Returns the energy of a frequency band (via `AudioAnalyzer`).
+- `func disableAnalysis()` -- Disables spectrum analysis and releases the analyzer.
 - `func enableAnalysis(fftSize: Int = 1024)` -- Enables spectrum analysis of the audio output.
 - `func loop()` -- Enables looping and starts playback.
 - `func pause()` -- Pauses playback.
@@ -1630,6 +1636,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum SoundFileError` -- Represents errors that can occur during `SoundFile` operations.
 
 - `case fileNotFound(String)` -- Indicates that no audio file was found at the given path.
+- `case loadFailed(path: String, detail: String)` -- Indicates that the audio file exists but could not be opened or decoded.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
@@ -1761,7 +1768,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class MPSRayTracer` -- Provides a Metal-native ray-tracing system.
 
 - `var outputTexture: (any MTLTexture)? { get }` -- Returns the ray-tracing result texture.
-- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue, width: Int, height: Int) throws`
+- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue, width: Int, height: Int) throws` -- Creates a ray tracer bound to the given device and output size.
 - `func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4)` -- Adds a dynamic mesh to the ray-tracing scene.
 - `func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4)` -- Adds a mesh to the ray-tracing scene.
 - `func buildAccelerationStructure() throws` -- Builds an acceleration structure from all added meshes.
@@ -1866,6 +1873,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum OSCReceiverError` -- Represents errors that can occur during `OSCReceiver` operations.
 
 - `case invalidPort(UInt16)` -- Indicates that the specified port is invalid.
+- `case listenerCreationFailed(port: UInt16, detail: String)` -- Indicates that the UDP listener could not be created (for example, the port
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`

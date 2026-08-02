@@ -33,12 +33,17 @@ private final class AudioEngineHolder: @unchecked Sendable {
 /// connects to an `AudioAnalyzer` for real-time spectrum analysis.
 ///
 /// ```swift
-/// var sound: SoundFile!
+/// var sound: SoundFile?
 /// func setup() {
-///     sound = try! loadSound("music.mp3")
-///     sound.play()
+///     do {
+///         sound = try loadSound("music.mp3")
+///         sound?.play()
+///     } catch {
+///         print("Failed to load sound: \(error)")
+///     }
 /// }
 /// func draw() {
+///     guard let sound else { return }
 ///     sound.update()
 ///     let vol = sound.gain
 ///     let spectrum = sound.spectrum
@@ -133,14 +138,22 @@ public final class SoundFile {
 
     /// Loads an audio file from the given path.
     /// - Parameter path: The file system path to the audio file.
-    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist.
+    /// - Throws: ``SoundFileError/fileNotFound(_:)`` if the file does not exist, or
+    ///   ``SoundFileError/loadFailed(path:detail:)`` if the file cannot be decoded
+    ///   (unsupported codec, corrupted data, insufficient permissions).
     public init(path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
             throw SoundFileError.fileNotFound(path)
         }
 
-        self.file = try AVAudioFile(forReading: url)
+        do {
+            self.file = try AVAudioFile(forReading: url)
+        } catch {
+            // Do not let the raw AVFoundation NSError escape: this module's error
+            // contract is SoundFileError only.
+            throw SoundFileError.loadFailed(path: path, detail: error.localizedDescription)
+        }
         self.audioFormat = file.processingFormat
         self.duration = Double(file.length) / audioFormat.sampleRate
 
@@ -253,8 +266,14 @@ public final class SoundFile {
                 at: nil,
                 completionCallbackType: .dataPlayedBack
             ) { [weak self] _ in
+                // `self` を一度 let に束ねてから内側の @Sendable クロージャへ渡す
+                // （`[weak self]` が導入する暗黙の var を直接キャプチャすると
+                // strict concurrency が「並行実行されるコードで捕捉された var を
+                // 参照している」と警告する）。SoundFile は @MainActor なので
+                // 暗黙に Sendable であり、Optional ごと安全に渡せる。
+                let sound = self
                 DispatchQueue.main.async {
-                    self?.handlePlaybackCompletion(generation: generation)
+                    sound?.handlePlaybackCompletion(generation: generation)
                 }
             }
             hasPendingSchedule = true
@@ -293,6 +312,20 @@ public final class SoundFile {
         }
     }
 
+    /// Disables spectrum analysis and releases the analyzer.
+    ///
+    /// Removes the tap installed on the main mixer by ``enableAnalysis(fftSize:)``.
+    /// After this call ``spectrum``, ``analysisVolume``, ``isBeat`` and ``band(_:)``
+    /// report their neutral values again, and ``update()`` becomes a no-op.
+    /// Calling it while analysis is not enabled does nothing.
+    public func disableAnalysis() {
+        guard _analyzer != nil else { return }
+        audioEngine.engine.mainMixerNode.removeTap(onBus: 0)
+        _analyzer = nil
+        sampleBuffer = nil
+        tapScratch = []
+    }
+
     /// Updates analysis data (call this at the top of `draw()`).
     public func update() {
         guard let analyzer = _analyzer else { return }
@@ -319,8 +352,10 @@ public final class SoundFile {
             at: nil,
             completionCallbackType: .dataPlayedBack
         ) { [weak self] _ in
+            // scheduleSegment 側と同じ理由で let に束ねてから渡す。
+            let sound = self
             DispatchQueue.main.async {
-                self?.handlePlaybackCompletion(generation: generation)
+                sound?.handlePlaybackCompletion(generation: generation)
             }
         }
         hasPendingSchedule = true
@@ -347,14 +382,22 @@ public final class SoundFile {
 // MARK: - エラー
 
 /// Represents errors that can occur during `SoundFile` operations.
-public enum SoundFileError: Error, LocalizedError {
+///
+/// Throwing `SoundFile` APIs only ever throw this type: failures coming from
+/// AVFoundation are wrapped into ``loadFailed(path:detail:)`` rather than being
+/// re-thrown as raw `NSError`.
+public enum SoundFileError: Error, LocalizedError, Sendable {
     /// Indicates that no audio file was found at the given path.
     case fileNotFound(String)
+    /// Indicates that the audio file exists but could not be opened or decoded.
+    case loadFailed(path: String, detail: String)
 
     public var errorDescription: String? {
         switch self {
         case .fileNotFound(let path):
             return "Audio file not found: \(path)"
+        case .loadFailed(let path, let detail):
+            return "Failed to load audio file '\(path)': \(detail)"
         }
     }
 }

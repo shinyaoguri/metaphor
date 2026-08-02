@@ -90,7 +90,10 @@ public final class MergePass: RenderPassNode {
     ///   - blend: The blend mode used for compositing.
     ///   - device: The Metal device used to create the pipeline state and textures.
     ///   - shaderLibrary: The shader library that provides the merge compute function.
-    /// - Throws: An error if the merge shader cannot be found or pipeline creation fails.
+    /// - Throws: ``MetaphorCore/MetaphorError``. `MetaphorError.renderGraph(.shaderNotFound)`
+    ///   when the merge compute function is missing from the shader library, and
+    ///   ``MetaphorCore/MetaphorError/pipelineCreationFailed(name:underlying:)`` when the
+    ///   compute pipeline state cannot be built.
     public init(
         _ a: RenderPassNode,
         _ b: RenderPassNode,
