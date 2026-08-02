@@ -33,12 +33,17 @@ private final class AudioEngineHolder: @unchecked Sendable {
 /// connects to an `AudioAnalyzer` for real-time spectrum analysis.
 ///
 /// ```swift
-/// var sound: SoundFile!
+/// var sound: SoundFile?
 /// func setup() {
-///     sound = try! loadSound("music.mp3")
-///     sound.play()
+///     do {
+///         sound = try loadSound("music.mp3")
+///         sound?.play()
+///     } catch {
+///         print("Failed to load sound: \(error)")
+///     }
 /// }
 /// func draw() {
+///     guard let sound else { return }
 ///     sound.update()
 ///     let vol = sound.gain
 ///     let spectrum = sound.spectrum

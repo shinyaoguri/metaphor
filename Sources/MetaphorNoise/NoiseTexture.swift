@@ -55,8 +55,11 @@ enum NoiseTextureBuilder {
     ///   - values: A flat, row-major array of noise values.
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
-    ///   - colorStops: An array of (position, BGRA color) pairs defining the gradient.
-    /// - Returns: A Metal texture containing the color-mapped noise, or nil on failure.
+    ///   - colorStops: An array of (position, BGRA color) pairs defining the
+    ///     gradient. At least 2 stops are required.
+    /// - Returns: A Metal texture containing the color-mapped noise, or nil
+    ///   if `values.count != width * height`, fewer than 2 color stops are
+    ///   given, or texture allocation fails.
     static func buildColorMappedTexture(
         device: MTLDevice,
         values: [Float],

@@ -298,6 +298,44 @@ struct NoiseTextureBuilderTests {
         #expect(texture?.width == 8)
         #expect(texture?.height == 8)
     }
+
+    // 失敗系: colorStops は 2 個以上が必須(doc に明記した nil 条件の凍結)
+
+    @Test("color mapped texture returns nil for empty stops")
+    @MainActor func colorMappedTextureEmptyStops() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let values: [Float] = Array(repeating: 0.5, count: 16)
+        let texture = NoiseTextureBuilder.buildColorMappedTexture(
+            device: device, values: values, width: 4, height: 4,
+            colorStops: []
+        )
+        #expect(texture == nil)
+    }
+
+    @Test("color mapped texture returns nil for a single stop")
+    @MainActor func colorMappedTextureSingleStop() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let values: [Float] = Array(repeating: 0.5, count: 16)
+        let texture = NoiseTextureBuilder.buildColorMappedTexture(
+            device: device, values: values, width: 4, height: 4,
+            colorStops: [(0.0, SIMD4(0, 0, 0, 255))]
+        )
+        #expect(texture == nil)
+    }
+
+    @Test("color mapped texture returns nil for values/size mismatch")
+    @MainActor func colorMappedTextureSizeMismatch() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let values: [Float] = Array(repeating: 0.5, count: 15)  // 4x4 に 1 個足りない
+        let texture = NoiseTextureBuilder.buildColorMappedTexture(
+            device: device, values: values, width: 4, height: 4,
+            colorStops: [
+                (0.0, SIMD4(0, 0, 0, 255)),
+                (1.0, SIMD4(255, 255, 255, 255)),
+            ]
+        )
+        #expect(texture == nil)
+    }
 }
 
 // MARK: - config 変更のソース再構築（#143）

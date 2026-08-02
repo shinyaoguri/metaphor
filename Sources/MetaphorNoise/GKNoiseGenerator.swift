@@ -121,8 +121,11 @@ public final class GKNoiseWrapper {
     /// - Parameters:
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
-    ///   - colorStops: An array of (position, BGRA color) pairs defining the gradient.
-    /// - Returns: A Metal texture containing the color-mapped noise, or nil on failure.
+    ///   - colorStops: An array of (position, BGRA color) pairs defining the
+    ///     gradient. At least 2 stops are required; passing an empty array or
+    ///     a single stop returns nil.
+    /// - Returns: A Metal texture containing the color-mapped noise, or nil
+    ///   if fewer than 2 color stops are given or texture allocation fails.
     public func colorMappedTexture(
         width: Int, height: Int,
         colorStops: [(Float, SIMD4<UInt8>)]
