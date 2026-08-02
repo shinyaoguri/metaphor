@@ -275,6 +275,10 @@ extension Sketch {
     ///   - fragmentFunction: フラグメント関数の名前。
     ///   - vertexFunction: カスタム頂点関数の名前（オプション）。
     /// - Returns: 新しい ``CustomMaterial`` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
+    ///   関数が見つからない場合は ``MetaphorError/material(_:)`` の
+    ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         try context.createMaterial(source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
@@ -470,6 +474,9 @@ extension Sketch {
     ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
     ///   - cache: キャッシュを使うか（既定 true。同一インスタンスが返ります）。
     /// - Returns: 読み込まれたメッシュ。
+    /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
+    ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
+    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``。
     public func loadModelAsync(
         _ path: String, normalize: Bool = true, cache: Bool = true
     ) async throws -> Mesh {

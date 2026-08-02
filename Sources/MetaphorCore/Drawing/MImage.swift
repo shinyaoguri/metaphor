@@ -25,7 +25,8 @@ public final class MImage {
     /// - Parameters:
     ///   - path: 画像への絶対ファイルパス。
     ///   - device: テクスチャ作成に使用する Metal デバイス。
-    /// - Throws: 指定されたパスからテクスチャを読み込めない場合にエラーをスロー。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   指定されたパスからテクスチャを読み込めない場合 (不在・非対応フォーマット・I/O エラー)。
     public init(path: String, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         let url = URL(fileURLWithPath: path)
@@ -34,7 +35,12 @@ public final class MImage {
             .textureStorageMode: MTLStorageMode.private.rawValue,
             .SRGB: false
         ]
-        self.texture = try loader.newTexture(URL: url, options: options)
+        do {
+            self.texture = try loader.newTexture(URL: url, options: options)
+        } catch {
+            throw MetaphorError.image(
+                .loadFailed(source: path, detail: error.localizedDescription))
+        }
         self.width = Float(texture.width)
         self.height = Float(texture.height)
     }
@@ -44,7 +50,8 @@ public final class MImage {
     /// - Parameters:
     ///   - name: バンドル内の画像リソース名。
     ///   - device: テクスチャ作成に使用する Metal デバイス。
-    /// - Throws: 名前付きリソースが見つからないか読み込めない場合にエラーをスロー。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   名前付きリソースが見つからないか読み込めない場合。
     public init(named name: String, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         let options: [MTKTextureLoader.Option: Any] = [
@@ -52,7 +59,13 @@ public final class MImage {
             .textureStorageMode: MTLStorageMode.private.rawValue,
             .SRGB: false
         ]
-        self.texture = try loader.newTexture(name: name, scaleFactor: 1.0, bundle: nil, options: options)
+        do {
+            self.texture = try loader.newTexture(
+                name: name, scaleFactor: 1.0, bundle: nil, options: options)
+        } catch {
+            throw MetaphorError.image(
+                .loadFailed(source: name, detail: error.localizedDescription))
+        }
         self.width = Float(texture.width)
         self.height = Float(texture.height)
     }
@@ -62,7 +75,9 @@ public final class MImage {
     /// - Parameters:
     ///   - nsImage: Metal テクスチャに変換する `NSImage`。
     ///   - device: テクスチャ作成に使用する Metal デバイス。
-    /// - Throws: `NSImage` を `CGImage` に変換できない場合に ``MetaphorError/image(_:)`` をスロー。
+    /// - Throws: ``MetaphorError/image(_:)``。`NSImage` を `CGImage` に変換できない場合は
+    ///   ``MetaphorError/ImageFailure/invalidImage``、テクスチャ化に失敗した場合は
+    ///   ``MetaphorError/ImageFailure/loadFailed(source:detail:)``。
     public init(nsImage: NSImage, device: MTLDevice) throws {
         let loader = MTKTextureLoader(device: device)
         guard let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -73,7 +88,12 @@ public final class MImage {
             .textureStorageMode: MTLStorageMode.private.rawValue,
             .SRGB: false
         ]
-        self.texture = try loader.newTexture(cgImage: cgImage, options: options)
+        do {
+            self.texture = try loader.newTexture(cgImage: cgImage, options: options)
+        } catch {
+            throw MetaphorError.image(
+                .loadFailed(source: "NSImage", detail: error.localizedDescription))
+        }
         self.width = Float(texture.width)
         self.height = Float(texture.height)
     }

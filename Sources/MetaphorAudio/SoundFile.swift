@@ -133,14 +133,22 @@ public final class SoundFile {
 
     /// Loads an audio file from the given path.
     /// - Parameter path: The file system path to the audio file.
-    /// - Throws: `SoundFileError.fileNotFound` if the file does not exist.
+    /// - Throws: ``SoundFileError/fileNotFound(_:)`` if the file does not exist, or
+    ///   ``SoundFileError/loadFailed(path:detail:)`` if the file cannot be decoded
+    ///   (unsupported codec, corrupted data, insufficient permissions).
     public init(path: String) throws {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
             throw SoundFileError.fileNotFound(path)
         }
 
-        self.file = try AVAudioFile(forReading: url)
+        do {
+            self.file = try AVAudioFile(forReading: url)
+        } catch {
+            // Do not let the raw AVFoundation NSError escape: this module's error
+            // contract is SoundFileError only.
+            throw SoundFileError.loadFailed(path: path, detail: error.localizedDescription)
+        }
         self.audioFormat = file.processingFormat
         self.duration = Double(file.length) / audioFormat.sampleRate
 
@@ -361,14 +369,22 @@ public final class SoundFile {
 // MARK: - エラー
 
 /// Represents errors that can occur during `SoundFile` operations.
-public enum SoundFileError: Error, LocalizedError {
+///
+/// Throwing `SoundFile` APIs only ever throw this type: failures coming from
+/// AVFoundation are wrapped into ``loadFailed(path:detail:)`` rather than being
+/// re-thrown as raw `NSError`.
+public enum SoundFileError: Error, LocalizedError, Sendable {
     /// Indicates that no audio file was found at the given path.
     case fileNotFound(String)
+    /// Indicates that the audio file exists but could not be opened or decoded.
+    case loadFailed(path: String, detail: String)
 
     public var errorDescription: String? {
         switch self {
         case .fileNotFound(let path):
             return "Audio file not found: \(path)"
+        case .loadFailed(let path, let detail):
+            return "Failed to load audio file '\(path)': \(detail)"
         }
     }
 }

@@ -137,7 +137,13 @@ public final class ShadowMap {
         untexDesc.depthAttachmentPixelFormat = .depth32Float
         untexDesc.vertexDescriptor = Self.makeShadowVertexDescriptor(stride: MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride)
         untexDesc.rasterSampleCount = 1
-        self.depthPipelineUntextured = try device.makeRenderPipelineState(descriptor: untexDesc)
+        // 生 NSError を漏らさない（エラー契約: MetaphorError.swift の「エラー契約」節）
+        do {
+            self.depthPipelineUntextured = try device.makeRenderPipelineState(descriptor: untexDesc)
+        } catch {
+            throw MetaphorError.pipelineCreationFailed(
+                name: "metaphor.shadowDepth.untextured", underlying: error)
+        }
 
         // テクスチャ付きジオメトリ用パイプライン（positionNormalUV stride=48）
         let texPipeDesc = MTLRenderPipelineDescriptor()
@@ -146,7 +152,12 @@ public final class ShadowMap {
         texPipeDesc.depthAttachmentPixelFormat = .depth32Float
         texPipeDesc.vertexDescriptor = Self.makeShadowVertexDescriptor(stride: MemoryLayout<SIMD3<Float>>.stride * 3)
         texPipeDesc.rasterSampleCount = 1
-        self.depthPipelineTextured = try device.makeRenderPipelineState(descriptor: texPipeDesc)
+        do {
+            self.depthPipelineTextured = try device.makeRenderPipelineState(descriptor: texPipeDesc)
+        } catch {
+            throw MetaphorError.pipelineCreationFailed(
+                name: "metaphor.shadowDepth.textured", underlying: error)
+        }
 
         // デプスステンシルステート
         let dsDesc = MTLDepthStencilDescriptor()

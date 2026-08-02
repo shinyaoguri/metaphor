@@ -97,9 +97,16 @@ public final class ShaderLibrary {
     /// - Parameters:
     ///   - source: コンパイルする MSL ソースコード
     ///   - key: コンパイル済みライブラリを登録する識別子
-    /// - Throws: MSL ソースのコンパイルに失敗した場合のエラー
+    /// - Throws: ``MetaphorError/shaderCompilationFailed(name:underlying:)``
+    ///   MSL ソースのコンパイルに失敗した場合
     public func register(source: String, as key: String) throws {
-        let library = try device.makeLibrary(source: source, options: nil)
+        let library: MTLLibrary
+        do {
+            library = try device.makeLibrary(source: source, options: nil)
+        } catch {
+            // 組み込みシェーダー側 (registerBuiltinsFromSource) と同じ包み方に揃える
+            throw MetaphorError.shaderCompilationFailed(name: key, underlying: error)
+        }
         libraries[key] = library
     }
 
@@ -157,10 +164,21 @@ public final class ShaderLibrary {
     /// - Parameters:
     ///   - path: `.metal` ソースファイルのファイルパス
     ///   - key: コンパイル済みライブラリを登録する識別子
-    /// - Throws: ファイルの読み込みまたはソースのコンパイルに失敗した場合のエラー
+    /// - Throws: ``MetaphorError/shaderSourceLoadFailed(path:detail:)`` ファイルを
+    ///   読み込めなかった場合、``MetaphorError/shaderCompilationFailed(name:underlying:)``
+    ///   ソースのコンパイルに失敗した場合
     public func registerFromFile(path: String, as key: String) throws {
-        let source = try String(contentsOfFile: path, encoding: .utf8)
-        try register(source: source, as: key)
+        try register(source: readSource(at: path), as: key)
+    }
+
+    /// シェーダーソースファイルを読み込みます (I/O 失敗を ``MetaphorError`` へ包む)。
+    private func readSource(at path: String) throws -> String {
+        do {
+            return try String(contentsOfFile: path, encoding: .utf8)
+        } catch {
+            throw MetaphorError.shaderSourceLoadFailed(
+                path: path, detail: error.localizedDescription)
+        }
     }
 
     /// MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
@@ -170,7 +188,8 @@ public final class ShaderLibrary {
     /// - Parameters:
     ///   - key: リロードするライブラリキー
     ///   - source: コンパイルする MSL ソースコード
-    /// - Throws: MSL ソースのコンパイルに失敗した場合のエラー
+    /// - Throws: ``MetaphorError/shaderCompilationFailed(name:underlying:)``
+    ///   MSL ソースのコンパイルに失敗した場合
     public func reload(key: String, source: String) throws {
         functions = functions.filter { !$0.key.hasPrefix("\(key).") }
         libraries.removeValue(forKey: key)
@@ -182,10 +201,11 @@ public final class ShaderLibrary {
     /// - Parameters:
     ///   - key: リロードするライブラリキー
     ///   - path: `.metal` ソースファイルのファイルパス
-    /// - Throws: ファイルの読み込みまたはソースのコンパイルに失敗した場合のエラー
+    /// - Throws: ``MetaphorError/shaderSourceLoadFailed(path:detail:)`` ファイルを
+    ///   読み込めなかった場合、``MetaphorError/shaderCompilationFailed(name:underlying:)``
+    ///   ソースのコンパイルに失敗した場合
     public func reloadFromFile(key: String, path: String) throws {
-        let source = try String(contentsOfFile: path, encoding: .utf8)
-        try reload(key: key, source: source)
+        try reload(key: key, source: readSource(at: path))
     }
 
     /// ライブラリ自体を削除せずに、指定ライブラリキーのキャッシュ済み関数をクリアします。

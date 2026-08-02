@@ -248,7 +248,8 @@ public final class ParticleSystem {
         ) else {
             throw MetaphorError.particle(.shaderNotFound(ParticleShaders.FunctionName.update))
         }
-        self.updatePipeline = try device.makeComputePipelineState(function: updateFn)
+        // 生 NSError を漏らさないよう PipelineFactory 経由で作る（エラー契約）
+        self.updatePipeline = try PipelineFactory.buildCompute(device: device, function: updateFn)
 
         // 放出制御用アトミックカウンター（更新カーネルが毎フレーム参照する必須リソース）
         guard let emitCounter = device.makeBuffer(
@@ -266,7 +267,8 @@ public final class ParticleSystem {
         ) else {
             throw MetaphorError.particle(.shaderNotFound(ParticleShaders.FunctionName.resetCounter))
         }
-        self.counterResetPipeline = try device.makeComputePipelineState(function: resetFn)
+        self.counterResetPipeline = try PipelineFactory.buildCompute(
+            device: device, function: resetFn)
 
         // レンダーパイプライン（頂点デスクリプタなし: バッファから直接読み取り）
         guard let vertexFn = shaderLibrary.function(

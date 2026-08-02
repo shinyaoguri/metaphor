@@ -704,22 +704,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case data(MetaphorError.DataFailure)` -- データ IO（JSON/Table/Strings）操作の失敗
 - `case decodeFailed(type: String, detail: String)` -- Decodable への変換に失敗した
 - `case encodeFailed(detail: String)` -- Encodable からのシリアライズに失敗した
-- `case loadFailed(source: String, detail: String)` -- ソース（ファイル・URL）の読み込みに失敗した
 - `case parseFailed(detail: String)` -- JSON/CSV/TSV のパースに失敗した
 - `case writeFailed(path: String, detail: String)` -- ファイルへの書き込みに失敗した
 - `case deviceNotAvailable` -- Metal デバイスを取得できなかった
 - `case export(MetaphorError.ExportFailure)` -- エクスポート操作の失敗
 - `case destinationCreationFailed` -- 画像デスティネーションを作成できなかった
+- `case fileWriteFailed(path: String, detail: String)` -- 出力ファイルの作成・移動・削除に失敗した
 - `case finalizationFailed` -- 出力ファイルのファイナライズに失敗した
 - `case noFrames` -- キャプチャされたフレームがない
 - `case notRecording` -- endRecord() 呼び出し時に録画がアクティブでなかった
 - `case writerFailed(String)` -- AVAssetWriter がエラーを検出した
 - `case image(MetaphorError.ImageFailure)` -- 画像操作の失敗
 - `case invalidImage` -- ソース画像が無効、または CGImage への変換に失敗した
+- `case loadFailed(source: String, detail: String)` -- 画像をテクスチャとして読み込めなかった (不在・非対応フォーマット・I/O エラー)
 - `case invalidParameter(String)` -- API に渡されたパラメータが不正 (範囲外・前提条件違反など)
 - `case material(MetaphorError.MaterialFailure)` -- マテリアル操作の失敗
 - `case mesh(MetaphorError.MeshFailure)` -- メッシュ操作の失敗
 - `case fileNotFound` -- メッシュファイルが見つからなかった
+- `case loadFailed(path: String, detail: String)` -- メッシュファイルを読み込めなかった (不在・権限・I/O エラー)
 - `case parseError(String)` -- メッシュデータのパースに失敗した
 - `case mps(MetaphorError.MPSFailure)` -- Metal Performance Shaders 操作の失敗
 - `case accelerationStructureBuildFailed(String)` -- アクセラレーション構造体のビルドに失敗した
@@ -732,6 +734,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case renderGraph(MetaphorError.RenderGraphFailure)` -- レンダーグラフ操作の失敗
 - `case shaderCompilationFailed(name: String, underlying: any Error)` -- シェーダーのコンパイルに失敗した
 - `case shaderNotFound(String)` -- 指定されたシェーダー関数がシェーダーライブラリに見つからなかった
+- `case shaderSourceLoadFailed(path: String, detail: String)` -- シェーダーソースファイルを読み込めなかった (コンパイル前段の I/O 失敗)
 - `case textureCreationFailed(width: Int, height: Int, format: String)` -- 指定されたサイズとフォーマットでテクスチャを作成できなかった
 - `var description: String { get }`
 - `var errorDescription: String? { get }`
@@ -1599,6 +1602,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `enum AudioAnalyzerError` -- Represents errors that can occur during `AudioAnalyzer` operations.
 
+- `case engineStartFailed(detail: String)` -- Indicates that the audio engine failed to start for another reason.
 - `case microphonePermissionDenied` -- Indicates that microphone permission has been denied.
 - `case noInputDevice` -- Indicates that no audio input device is available.
 - `var errorDescription: String? { get }`
@@ -1632,6 +1636,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum SoundFileError` -- Represents errors that can occur during `SoundFile` operations.
 
 - `case fileNotFound(String)` -- Indicates that no audio file was found at the given path.
+- `case loadFailed(path: String, detail: String)` -- Indicates that the audio file exists but could not be opened or decoded.
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`
@@ -1763,7 +1768,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class MPSRayTracer` -- Provides a Metal-native ray-tracing system.
 
 - `var outputTexture: (any MTLTexture)? { get }` -- Returns the ray-tracing result texture.
-- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue, width: Int, height: Int) throws`
+- `init(device: any MTLDevice, commandQueue: any MTLCommandQueue, width: Int, height: Int) throws` -- Creates a ray tracer bound to the given device and output size.
 - `func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4)` -- Adds a dynamic mesh to the ray-tracing scene.
 - `func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4)` -- Adds a mesh to the ray-tracing scene.
 - `func buildAccelerationStructure() throws` -- Builds an acceleration structure from all added meshes.
@@ -1868,6 +1873,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum OSCReceiverError` -- Represents errors that can occur during `OSCReceiver` operations.
 
 - `case invalidPort(UInt16)` -- Indicates that the specified port is invalid.
+- `case listenerCreationFailed(port: UInt16, detail: String)` -- Indicates that the UDP listener could not be created (for example, the port
 - `var errorDescription: String? { get }`
 - `var failureReason: String? { get }`
 - `var helpAnchor: String? { get }`

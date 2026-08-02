@@ -71,6 +71,16 @@ public final class MPSRayTracer {
 
     // MARK: - 初期化
 
+    /// Creates a ray tracer bound to the given device and output size.
+    /// - Parameters:
+    ///   - device: The Metal device used to compile shaders and build pipelines.
+    ///   - commandQueue: The command queue used to encode ray-tracing work.
+    ///   - width: The output texture width in pixels.
+    ///   - height: The output texture height in pixels.
+    /// - Throws: ``MetaphorError``. `MetaphorError.mps(.accelerationStructureBuildFailed)`
+    ///   when the bundled shader source or a kernel function is missing,
+    ///   `MetaphorError.shaderCompilationFailed` when the MSL source fails to compile,
+    ///   and `MetaphorError.pipelineCreationFailed` when a compute pipeline cannot be built.
     public init(device: MTLDevice, commandQueue: MTLCommandQueue, width: Int, height: Int) throws {
         self.device = device
         self.commandQueue = commandQueue
@@ -293,7 +303,13 @@ public final class MPSRayTracer {
         }
 
         let options = MTLCompileOptions()
-        let lib = try device.makeLibrary(source: source, options: options)
+        let lib: MTLLibrary
+        do {
+            lib = try device.makeLibrary(source: source, options: options)
+        } catch {
+            // Metal の生 NSError を素通りさせず MetaphorError へ包む
+            throw MetaphorError.shaderCompilationFailed(name: "mpsRayTracer", underlying: error)
+        }
         self.library = lib
 
         func makePipeline(_ name: String) throws -> MTLComputePipelineState {
@@ -302,7 +318,12 @@ public final class MPSRayTracer {
             }
             let descriptor = MTLComputePipelineDescriptor()
             descriptor.computeFunction = fn
-            return try device.makeComputePipelineState(descriptor: descriptor, options: [], reflection: nil)
+            do {
+                return try device.makeComputePipelineState(
+                    descriptor: descriptor, options: [], reflection: nil)
+            } catch {
+                throw MetaphorError.pipelineCreationFailed(name: name, underlying: error)
+            }
         }
 
         traceAOPipeline = try makePipeline("traceAmbientOcclusion")

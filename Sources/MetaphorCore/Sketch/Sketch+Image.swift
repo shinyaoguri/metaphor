@@ -14,6 +14,8 @@ extension Sketch {
     ///   - path: 画像のファイルパス。
     ///   - cache: キャッシュを使うか（既定 true）。
     /// - Returns: 読み込まれた画像。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   指定されたパスからテクスチャを読み込めない場合（不在・非対応フォーマット・I/O エラー）。
     public func loadImage(_ path: String, cache: Bool = true) throws -> MImage {
         try context.loadImage(path, cache: cache)
     }
@@ -24,6 +26,8 @@ extension Sketch {
     ///   - path: 画像のファイルパス。
     ///   - cache: キャッシュを使うか（既定 true）。
     /// - Returns: 読み込まれた画像。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   指定されたパスからテクスチャを読み込めない場合（不在・非対応フォーマット・I/O エラー）。
     public func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage {
         try await context.loadImageAsync(path, cache: cache)
     }
@@ -32,6 +36,8 @@ extension Sketch {
     ///
     /// - Parameter name: 画像リソースの名前。
     /// - Returns: 読み込まれた画像。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   名前付きリソースが見つからないか読み込めない場合。
     public func loadImageAsync(named name: String) async throws -> MImage {
         try await context.resourceLoader.loadImageAsync(named: name)
     }

@@ -14,6 +14,8 @@ extension SketchContext {
     ///   - path: 画像のファイルパス。
     ///   - cache: キャッシュを使うか（既定 true。false で独立したコピーを読み込み）。
     /// - Returns: 読み込まれた画像。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   指定されたパスからテクスチャを読み込めない場合（不在・非対応フォーマット・I/O エラー）。
     public func loadImage(_ path: String, cache: Bool = true) throws -> MImage {
         if cache, let cached = assetCache.image(forPath: path) {
             return cached
@@ -31,6 +33,8 @@ extension SketchContext {
     ///   - path: 画像のファイルパス。
     ///   - cache: キャッシュを使うか（既定 true）。
     /// - Returns: 読み込まれた画像。
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   指定されたパスからテクスチャを読み込めない場合（不在・非対応フォーマット・I/O エラー）。
     public func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage {
         if cache, let cached = assetCache.image(forPath: path) {
             return cached
