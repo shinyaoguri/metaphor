@@ -52,29 +52,18 @@ public class MetaphorMTKView: MTKView {
         )
     }
 
-    /// イベントタイプからマウスボタンインデックスを判定します。
-    /// - Parameter event: 受信したマウスイベント。
-    /// - Returns: 左は0、右は1、その他は2。
-    private func mouseButtonIndex(from event: NSEvent) -> Int {
-        switch event.type {
-        case .rightMouseDown, .rightMouseUp, .rightMouseDragged: return 1
-        case .otherMouseDown, .otherMouseUp, .otherMouseDragged: return 2
-        default: return 0
-        }
-    }
-
     // MARK: - Mouse Events
 
     /// 左マウスボタン押下の処理
     public override func mouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        rendererRef?.input.handleMouseDown(x: x, y: y, button: 0)
+        rendererRef?.input.handleMouseDown(x: x, y: y, button: .left)
     }
 
     /// 左マウスボタン解放の処理
     public override func mouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        rendererRef?.input.handleMouseUp(x: x, y: y, button: 0)
+        rendererRef?.input.handleMouseUp(x: x, y: y, button: .left)
     }
 
     /// ボタン非押下時のマウス移動の処理
@@ -92,13 +81,13 @@ public class MetaphorMTKView: MTKView {
     /// 右マウスボタン押下の処理
     public override func rightMouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        rendererRef?.input.handleMouseDown(x: x, y: y, button: 1)
+        rendererRef?.input.handleMouseDown(x: x, y: y, button: .right)
     }
 
     /// 右マウスボタン解放の処理
     public override func rightMouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        rendererRef?.input.handleMouseUp(x: x, y: y, button: 1)
+        rendererRef?.input.handleMouseUp(x: x, y: y, button: .right)
     }
 
     /// 右ボタン押下中のマウス移動の処理
@@ -110,13 +99,13 @@ public class MetaphorMTKView: MTKView {
     /// 中マウスボタン押下の処理
     public override func otherMouseDown(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        rendererRef?.input.handleMouseDown(x: x, y: y, button: 2)
+        rendererRef?.input.handleMouseDown(x: x, y: y, button: .middle)
     }
 
     /// 中マウスボタン解放の処理
     public override func otherMouseUp(with event: NSEvent) {
         let (x, y) = textureCoords(from: event)
-        rendererRef?.input.handleMouseUp(x: x, y: y, button: 2)
+        rendererRef?.input.handleMouseUp(x: x, y: y, button: .middle)
     }
 
     /// 中ボタン押下中のマウス移動の処理
