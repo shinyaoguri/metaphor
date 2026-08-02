@@ -93,6 +93,30 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - `Frameworks/Syphon.xcframework` は `make setup` で生成されます。
 - Syphon に依存するのは `MetaphorSyphon` ターゲットだけです（[ADR-0001](docs/adr/0001-separate-syphon-into-its-own-target.md)）。
 
+## PR に見た目の証跡を載せる
+
+**描画結果が変わる PR(シェーダ・ライティング・変換・レイアウト・ゴールデン更新・example の見た目)には、before/after の画像を PR 本文に載せる**。レビューで diff から見た目を想像させない。
+
+- **ゴールデン PNG を更新した PR**: 画像は既にコミットに入っているので、raw URL で埋め込むのが最速。
+
+  ```markdown
+  | before (main) | after (this PR) |
+  |---|---|
+  | ![before](https://raw.githubusercontent.com/shinyaoguri/metaphor/<base-sha>/Tests/metaphorTests/Golden/<scene>.png) | ![after](https://raw.githubusercontent.com/shinyaoguri/metaphor/<head-sha>/Tests/metaphorTests/Golden/<scene>.png) |
+  ```
+
+  `<base-sha>` は分岐元の main、`<head-sha>` は PR の先頭コミット。GitHub の
+  Files changed でも画像 diff(2-up / swipe / onion skin)が見られるが、
+  PR 本文に並べておくとレビューの入口で意図が伝わる。
+- **ゴールデンにないシーンの見た目変更**: まず「そのシーンをゴールデン化できないか」を
+  検討する(証跡と回帰検出網を同時に得られる)。ゴールデン化が不適切な場合は
+  Probe でヘッドレスにスクリーンショットを撮る — `METAPHOR_PROBE=1` で起動し
+  `.metaphor/probe/current/frame.png` を取得(request.json は起動前に置く。
+  詳細は [CONTRACT.md](CONTRACT.md))。撮った PNG はコミットに含めない場合
+  raw URL にできないので、PR 作成後に GitHub 上で添付する。
+- 差分が微妙な場合は、ゴールデンテストの失敗アーティファクト(実画像・期待画像・
+  差分画像)をローカルで生成して差分画像も添える(`.build/golden-failures/`)。
+
 ## Cross-Repo Contract
 
 環境変数・stdin JSON Lines・Probe ファイル・Syphon pin など、[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) との実行時契約に触れる変更は、**両リポジトリの同時更新**が必要です。対象と変更ルールは [CONTRACT.md](CONTRACT.md) を参照し、`./scripts/check-contract.sh` が green であることを確認してください。
