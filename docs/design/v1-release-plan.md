@@ -64,7 +64,7 @@ v1.0.0 は機能の節目ではなく **SemVer 上の契約宣言**である。�
 | G18 | CI | Examples 278 本中、定常検証は 19 本(6.8%)。全数スイープは手動のみ / カバレッジは印字のみでゲート・可視化なし / lint・format 未導入 | 中 |
 | G19 | 契約 | stdin JSON Lines プロトコルにバージョン番号なし / `performance` 節を schemaVersion 据え置きで追加した先例(フリーズ点が曖昧) | 中 |
 | G20 | 配布 | dependabot が github-actions のみ(website/ の npm、Syphon gitsubmodule が未監視)/ Syphon checksum が毎リリース変わる(非再現ビルド) | 中 |
-| G21 | 体制 | bus factor = 1(コミッター1名・リリースが個人 PAT と admin bypass に依存)/ `release:*` ラベル説明が現行運用と不一致 | 中〜低 |
+| G21 | 体制 | bus factor = 1(コミッター1名)/ ~~リリースが個人 PAT と admin bypass に依存~~ **← 事実誤り**。`release.yml` / `release-on-merge.yml` は `GITHUB_TOKEN` のみで、ruleset も bypass しない(唯一の PAT `CLI_DISPATCH_TOKEN` は metaphor-cli への dispatch 専用・未設定なら skip)。個人アカウントに紐づくのは cli への dispatch と Homebrew tap への push 権限 / `release:*` ラベル説明が現行運用と不一致(W0-3 で解消済み) | 中〜低 |
 
 ## A. 破壊的変更ウィンドウの完遂(v1.0 最大の論点)
 
@@ -175,9 +175,9 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 
 | ID | 内容 | 対応 | 規模 | 依存 |
 |---|---|---|---|---|
-| W4-1 | API 安定性ポリシー文書(何が public API か / deprecation 窓 / ABI 非保証(ソース互換のみ)/ 0.9 系の運用規律) | G11 | S〜M | W1-1 |
+| W4-1 | API 安定性ポリシー文書(何が public API か / deprecation 窓 / ABI 非保証(ソース互換のみ)/ 0.9 系の運用規律)。**実施済み**(#338 / 2026-08-02)— `docs/api-stability-policy.md`(英語)。4 層の線引き・`@_spi`/アンダースコア/`MetaphorTestSupport`/Examples の除外・ソース互換の落とし穴(enum case 追加・protocol requirement 追加)・deprecation 窓(公開リリース単位、1.0 後の削除は major)・変更種別 → bump の表・描画結果は「major を強制しないが `Breaking Changes` に載せる」(ADR-0003 Amendment の既定 ON 化余地と整合)・CONTRACT.md に載る契約と載らないもの(`METAPHOR_COMMAND_RECORD` を実例に)・`@_exported` 凍結宣言・最小サポート引き上げ = minor・preview 宣言の枠組み(現時点で preview モジュールはゼロ)。**残った未確定**: doc で「内部」と明記された public 表面の退避先(→ #388)、stdin プロトコルのバージョニング(→ #339) | G11 | S〜M | W1-1 |
 | W4-2 | 契約フリーズ点の明記(`frame.json` の全キー凍結 / stdin プロトコルの互換規約とバージョニング)。**クロスリポ同時 PR**。Parameter Store の schema 変更(Epic D の D3/D4)が入った後に実施 | G19 | M | Phase 2 D3/D4 |
-| W4-3 | bus factor 開示(README への単独メンテ・ベストエフォート明記) | G21 | S | なし |
+| W4-3 | bus factor 開示(README への単独メンテ・ベストエフォート明記)。**実施済み**(#338 と同 PR / 2026-08-02)— README 日英に「メンテナンス体制 / Maintenance」節。G21 の「リリースが個人 PAT と admin bypass に依存」は**事実誤り**で、`release.yml` は GITHUB_TOKEN のみ・ruleset を bypass しない(唯一の PAT `CLI_DISPATCH_TOKEN` は metaphor-cli への Syphon pin dispatch 専用で未設定なら skip)。開示はこの事実に基づき「応答時間は保証しないが、リリース経路とタグ/asset 保護は個人の手作業に依存しない」と書いた | G21 | S | なし |
 
 ### 実装の進め方
 
@@ -199,7 +199,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 
 - [ ] W1 全項目が「実施済み」または「見送りの ADR 追記済み」(特に W1-9 Swift 6 は警告ゼロ or 見送り ADR)
 - [ ] W2-1〜W2-3(GPU skip 可視化・ゴールデン回帰・Sketch/ テスト)が CI で稼働
-- [ ] W4-1(API 安定性ポリシー)公開済み
+- [x] W4-1(API 安定性ポリシー)公開済み — `docs/api-stability-policy.md`(#338 / 2026-08-02)。あわせて W4-3(bus factor 開示)も完了
 - [ ] Phase 2(Parameter Store)完了・実運用 1〜2 サイクル経過
 - [ ] W4-2(契約フリーズ点)が両リポで合意済み
 - [ ] CHANGELOG に 0.8.x の全 breaking が記録済み

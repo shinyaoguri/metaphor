@@ -226,6 +226,8 @@ dependencies: [
 
 この形でもライブラリは完全に使えます（AI には `llms.txt` を渡せばコード生成も可能）。ただし AI に「いま見えている絵」を観測させる MCP ループには CLI（`metaphor mcp`）が必要です。はじめて使う場合は `metaphor new` を推奨します — `Package.swift`、テンプレート、リソースディレクトリ、AI 向けガイド、更新導線が最初から揃います。
 
+バージョンの上げ方を判断する材料として、**何が公開 API で、何が壊れうるか**は [docs/api-stability-policy.md](docs/api-stability-policy.md)（英語）にまとめています。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあり、破壊的変更は `Breaking Changes` 見出しに集約されています。現在は `0.x` なので **minor で API が壊れることがあります**（`v0.9.0` で API 凍結、以降は上記ポリシーの規律で運用します）。
+
 ## Requirements
 
 - Apple Silicon Mac
@@ -257,6 +259,10 @@ metaphor はまだ発展途上です。問題や改善のアイデアを見つ�
 CLI（`metaphor new` / `metaphor watch` / MCP など）に関する問題は [metaphor-cli の Issues](https://github.com/shinyaoguri/metaphor-cli/issues) へ。どちらか迷ったら、こちら（metaphor）に立ててもらえれば適切に振り分けます。
 
 AI エージェント経由で使っている場合も同様です — エージェントに「この問題を GitHub Issue として報告して」と頼めば、再現手順つきで起票できます。
+
+### メンテナンス体制
+
+metaphor は**個人が単独でメンテナンスしているプロジェクト**で、サポートは**ベストエフォート**です。Issue や PR への反応は数日単位を目安としていますが、応答時間の保証はありません（脆弱性報告の窓口は [SECURITY.md](SECURITY.md)）。一方で、リリースは完全自動化されていて特権的な手作業を必要とせず、公開済みのタグと Release asset は不変として保護・週次で死活監視されています。何を壊さないと約束しているかは [docs/api-stability-policy.md](docs/api-stability-policy.md) を参照してください。
 
 ## ライブラリ本体の開発
 
