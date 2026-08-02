@@ -50,14 +50,21 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   sections from [`.github/pull_request_template.md`](.github/pull_request_template.md).
 - The required CI check is `build-and-test` (it also builds against the
   Swift 5.10 / Xcode 15.4 minimum toolchain). It must be green before merge.
-- **If your change is user-facing, add a line to `## [Unreleased]` in
-  [CHANGELOG.md](CHANGELOG.md)** — new or changed API, behavior differences,
-  bug fixes people would notice, anything that needs a migration step. Put
-  breaking changes under `### Breaking Changes` (they become the 1.0 migration
-  guide). Internal-only work — design docs, CI plumbing, refactors with no
-  observable effect — doesn't need an entry. The release workflow refuses to
-  cut a release while that section is empty, so nothing ships undocumented;
-  see [docs/releasing.md](docs/releasing.md) for the mechanics.
+- **If your change is user-facing, add a file to
+  [`changelog.d/`](changelog.d/README.md)** — not to `CHANGELOG.md` itself,
+  which every pull request would otherwise edit on the same lines. Name it
+  `<slug>.<category>.md` (`382.fixed.md`, `frame-rate-clamp.fixed.md`;
+  categories `breaking` / `added` / `changed` / `deprecated` / `removed` /
+  `fixed` / `security`) and write the entry as a Markdown list item in English.
+  Entries are wanted for new or changed API, behavior differences, bug fixes
+  people would notice, anything that needs a migration step; breaking ones go
+  in a `.breaking.md` file, since they become the 1.0 migration guide.
+  Internal-only work — design docs, CI plumbing, refactors with no observable
+  effect — doesn't need an entry. The release workflow collects these files
+  into `## [Unreleased]` and refuses to cut a release while there is nothing
+  to collect, so nothing ships undocumented; see
+  [changelog.d/README.md](changelog.d/README.md) and
+  [docs/releasing.md](docs/releasing.md) for the mechanics.
 - **If your change touches public API, read
   [docs/api-stability-policy.md](docs/api-stability-policy.md) first** — which
   layers are covered, what counts as source-breaking (removing a symbol, but
