@@ -421,28 +421,28 @@ extension SketchContext {
 
     /// 円柱を描画します。
     /// - Parameters:
-    ///   - radius: 円柱の半径（デフォルト 0.5）。
-    ///   - height: 円柱の高さ（デフォルト 1）。
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
     ///   - detail: テッセレーションレベル（デフォルト 24）。
-    public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+    public func cylinder(radius: Float, height: Float, detail: Int = 24) {
         canvas3D.cylinder(radius: radius, height: height, detail: detail)
     }
 
     /// 円錐を描画します。
     /// - Parameters:
-    ///   - radius: 底面の半径（デフォルト 0.5）。
-    ///   - height: 円錐の高さ（デフォルト 1）。
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
     ///   - detail: テッセレーションレベル（デフォルト 24）。
-    public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+    public func cone(radius: Float, height: Float, detail: Int = 24) {
         canvas3D.cone(radius: radius, height: height, detail: detail)
     }
 
     /// トーラスを描画します。
     /// - Parameters:
-    ///   - ringRadius: リング（メジャー）半径（デフォルト 0.5）。
-    ///   - tubeRadius: チューブ（マイナー）半径（デフォルト 0.2）。
+    ///   - ringRadius: リング（メジャー）半径。
+    ///   - tubeRadius: チューブ（マイナー）半径。
     ///   - detail: テッセレーションレベル（デフォルト 24）。
-    public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
+    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) {
         canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 
