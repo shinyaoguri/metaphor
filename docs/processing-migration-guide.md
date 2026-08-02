@@ -689,12 +689,17 @@ func setup() {
 }
 ```
 
-`loadImage`, `loadSound`, `loadVideo`, and every data API throw
-`MetaphorError`. By contrast, *drawing* calls never throw — bad
-arguments produce a warning and a safe no-op, so `draw()` stays free of `try`
-(ADR-0005). A third group returns an optional rather than throwing:
-`createGraphics`, `createImage`, `createBuffer`, and — inconsistently with
-`loadImage` — `loadModel`, which returns `Mesh?`.
+`loadImage` and every data API throw `MetaphorError`; Tier 1 modules throw their
+own type (`loadSound` throws `SoundFileError`). Whichever it is, a throwing API
+only ever throws **its own module's error type** — raw `NSError`s from Metal,
+Foundation or AVFoundation are wrapped, with the original cause kept in the case
+payload, and each API's `- Throws:` doc names the cases it can produce
+([ADR-0005](adr/0005-sketch-api-consistency.md) Amendment).
+
+By contrast, *drawing* calls never throw — bad arguments produce a warning and a
+safe no-op, so `draw()` stays free of `try` (ADR-0005). A third group returns an
+optional rather than throwing: `createGraphics`, `createImage`, `createBuffer`,
+and — inconsistently with `loadImage` — `loadModel`, which returns `Mesh?`.
 
 ### `loadPixels()` splits the render pass
 
