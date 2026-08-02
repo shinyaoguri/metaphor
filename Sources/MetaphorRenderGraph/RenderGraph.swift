@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetaphorCore
 
 /// Manages a directed acyclic graph of render passes for multi-pass rendering.

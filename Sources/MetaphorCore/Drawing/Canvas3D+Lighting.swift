@@ -5,11 +5,13 @@ extension Canvas3D {
     // MARK: - ライティング
 
     /// 後方互換性のため、単一のディレクショナルライトでデフォルトライティングを有効にします。
+    ///
+    /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
+    /// `ambientLight(76.5)` 相当）に設定されます。
     public func lights() {
         flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         lightArray.removeAll(keepingCapacity: true)
-        ambientColor = SIMD3(0.3, 0.3, 0.3)
-        currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)
+        applyDefaultAmbient()
 
         var light = Light3D.zero
         light.positionAndType = SIMD4(0, 0, 0, 0)
@@ -117,7 +119,13 @@ extension Canvas3D {
 
     /// 全チャンネル均一にアンビエントライトの強度を設定します。
     ///
-    /// - Parameter strength: R、G、B に適用されるアンビエントライト強度値。
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// 0〜1 のつもりの値（`ambientLight(0.35)` など）はほぼ真っ暗になります。
+    /// `lights()` や最初のライト追加で入る既定アンビエントはレンジの 30%
+    /// （`Canvas3D.defaultAmbientRatio`。既定レンジなら `ambientLight(76.5)`）です。
+    ///
+    /// - Parameter strength: R、G、B に適用されるアンビエントライト強度値
+    ///   （`colorMode` のレンジ基準）。
     public func ambientLight(_ strength: Float) {
         flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         let c = colorModeConfig.toGray(strength)
@@ -127,6 +135,8 @@ extension Canvas3D {
     }
 
     /// 個別の RGB 成分でアンビエントライトの色を設定します。
+    ///
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     ///
     /// - Parameters:
     ///   - r: 赤成分。

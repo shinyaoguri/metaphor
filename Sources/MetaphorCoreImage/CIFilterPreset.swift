@@ -1,3 +1,6 @@
+// @preconcurrency: `CIFilterPreset` は値としてのみ扱う Sendable な enum だが、`CIColor` を associated value
+// に持つ。Swift 5.10 でのみ出る警告。
+// CoreImage の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
 @preconcurrency import CoreImage
 import simd
 

@@ -103,7 +103,13 @@ extension Sketch {
     ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、デコードに
     ///   失敗した場合は ``MetaphorError/DataFailure/decodeFailed(type:detail:)``。
     public func loadJSONAsync<T: Decodable>(_ source: String, as type: T.Type) async throws -> T {
-        try await DataIO.loadJSONAsync(source, as: type)
+        // メタタイプ `T.Type` は `T: Sendable` のときしか Sendable にならない。
+        // `DataIO.loadJSONAsync(_:as:)` へそのまま渡すと @MainActor から
+        // nonisolated へ `type` を送ることになり警告になる（`T: Sendable` を足すのは
+        // 公開 API の制約強化なので採らない）。読み込みだけを await し、デコードは
+        // 呼び出し側の隔離ドメインに留めることで送信そのものを無くす。
+        let data = try await DataIO.readDataAsync(source)
+        return try DataIO.decodeJSON(data, as: type)
     }
 
     /// `Encodable` な値（``JSONValue`` を含む）を JSON ファイルへ書き込みます。
@@ -164,7 +170,13 @@ extension Sketch {
     public func loadTableAsync(
         _ source: String, format: TableFormat? = nil, header: Bool = true
     ) async throws -> Table {
-        try await DataIO.loadTableAsync(source, format: format, header: header)
+        // `Table` は非 Sendable な class なので、nonisolated な
+        // `DataIO.loadTableAsync` の戻り値を @MainActor へ跨がせると警告になる
+        //（Swift 5.10）。読み込みだけ await し、`Table` の生成は呼び出し側の
+        // 隔離ドメインで行う（loadJSONAsync と同じ方針。公開 API は不変）。
+        let data = try await DataIO.readDataAsync(source)
+        return try Table(
+            data: data, format: format ?? .inferred(fromPath: source), header: header)
     }
 
     /// ``Table`` を CSV/TSV ファイルへ書き込みます。

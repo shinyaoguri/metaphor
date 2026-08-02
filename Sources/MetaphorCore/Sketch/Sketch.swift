@@ -1,5 +1,5 @@
 import AppKit
-@preconcurrency import Metal
+import Metal
 
 /// このプロトコルに準拠してスケッチを定義します。
 ///
