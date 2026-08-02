@@ -9,8 +9,9 @@ import MetalKit
 @MainActor
 final class SketchRunner: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
-    private var mtkView: MetaphorMTKView?
-    private var renderer: MetaphorRenderer?
+    // internal: テストから直接 handleFrameRate(_:) を検証できるようにする(#358)
+    var mtkView: MetaphorMTKView?
+    var renderer: MetaphorRenderer?
     private var canvas: Canvas2D?
     private var canvas3D: Canvas3D?
     private var context: SketchContext?
@@ -612,16 +613,25 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     /// レンダーループのフレームレートを更新します。
     ///
-    /// - Parameter fps: 目標フレーム毎秒。
-    private func handleFrameRate(_ fps: Int) {
-        renderer?.targetFPS = fps
+    /// - Parameter fps: 目標フレーム毎秒。0 以下は 1 にクランプします(#358)。
+    ///   以前はこのクランプがタイマー経路の interval 計算にしか掛かっておらず、
+    ///   `renderer.targetFPS`（→ Probe の `frame.json`）と
+    ///   `MTKView.preferredFramesPerSecond` には無効値がそのまま渡っていた。
+    ///   入口で 1 回だけクランプし、全経路へ同じ値を渡すことで揃える。
+    // internal: テストから直接呼べるようにする(#358)
+    func handleFrameRate(_ fps: Int) {
+        let clampedFPS = max(fps, 1)
+        if clampedFPS != fps {
+            metaphorWarning("frameRate(\(fps)) is invalid (must be positive); clamping to \(clampedFPS).")
+        }
+        renderer?.targetFPS = clampedFPS
         if let renderTimer {
             // タイマーモード: タイマーをリスケジュール
-            let interval = 1.0 / Double(max(fps, 1))
+            let interval = 1.0 / Double(clampedFPS)
             renderTimer.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(1))
         } else {
             // ディスプレイリンクモード: MTKView の優先フレームレートを更新
-            mtkView?.preferredFramesPerSecond = fps
+            mtkView?.preferredFramesPerSecond = clampedFPS
         }
     }
 
