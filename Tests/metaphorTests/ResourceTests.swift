@@ -22,19 +22,52 @@ struct InputManagerTests {
     @Test("mouse down updates state")
     func mouseDown() {
         let input = InputManager()
-        input.handleMouseDown(x: 100, y: 200, button: 0)
+        input.handleMouseDown(x: 100, y: 200, button: .left)
         #expect(input.mouseX == 100)
         #expect(input.mouseY == 200)
         #expect(input.isMouseDown == true)
-        #expect(input.mouseButton == 0)
+        #expect(input.mouseButton == .left)
     }
 
     @Test("mouse up clears isMouseDown")
     func mouseUp() {
         let input = InputManager()
-        input.handleMouseDown(x: 100, y: 200, button: 0)
-        input.handleMouseUp(x: 100, y: 200, button: 0)
+        input.handleMouseDown(x: 100, y: 200, button: .left)
+        input.handleMouseUp(x: 100, y: 200, button: .left)
         #expect(input.isMouseDown == false)
+    }
+
+    /// Issue #382: 旧 `Int` 表現では初期値 `0` が「左ボタン」と同値で、
+    /// 「まだ一度も押されていない」と区別できなかった。
+    @Test("mouseButton は未押下なら nil、押下後は離しても保持される")
+    func mouseButtonTracksLastPressed() {
+        let input = InputManager()
+        #expect(input.mouseButton == nil, "まだ一度も押していなければ nil")
+
+        input.handleMouseDown(x: 10, y: 20, button: .right)
+        #expect(input.mouseButton == .right)
+
+        // 離しても値は保持する（Processing 同様、mouseReleased() で判定できるように）。
+        input.handleMouseUp(x: 10, y: 20, button: .right)
+        #expect(input.mouseButton == .right, "解放後も最後に押されたボタンを保持")
+        #expect(input.isMouseDown == false, "押下中かどうかは isMouseDown が持つ")
+
+        // 別のボタンを押したら最後に押されたものへ更新される。
+        input.handleMouseDown(x: 10, y: 20, button: .middle)
+        #expect(input.mouseButton == .middle)
+    }
+
+    @Test("MouseButton とボタンインデックスの相互変換")
+    func mouseButtonIndexRoundTrip() {
+        #expect(MouseButton(index: 0) == .left)
+        #expect(MouseButton(index: 1) == .right)
+        #expect(MouseButton(index: 2) == .middle)
+        // 境界: 未知のインデックスは nil（呼び出し側がフォールバックを決める）。
+        #expect(MouseButton(index: 3) == nil)
+        #expect(MouseButton(index: -1) == nil)
+        for button in MouseButton.allCases {
+            #expect(MouseButton(index: button.index) == button)
+        }
     }
 
     @Test("mouse moved updates position")
@@ -90,20 +123,20 @@ struct InputManagerTests {
         let input = InputManager()
         var called = false
         input.onMousePressed = { _, _, _ in called = true }
-        input.handleMouseDown(x: 0, y: 0, button: 0)
+        input.handleMouseDown(x: 0, y: 0, button: .left)
         #expect(called == true)
     }
 
     @Test("middle mouse button updates state")
     func middleMouseButton() {
         let input = InputManager()
-        input.handleMouseDown(x: 50, y: 60, button: 2)
+        input.handleMouseDown(x: 50, y: 60, button: .middle)
         #expect(input.isMouseDown == true)
-        #expect(input.mouseButton == 2)
+        #expect(input.mouseButton == .middle)
         #expect(input.mouseX == 50)
         #expect(input.mouseY == 60)
 
-        input.handleMouseUp(x: 50, y: 60, button: 2)
+        input.handleMouseUp(x: 50, y: 60, button: .middle)
         #expect(input.isMouseDown == false)
     }
 
@@ -172,16 +205,16 @@ struct InputManagerTests {
     func mouseClicked() {
         let input = InputManager()
         var clickCount = 0
-        var lastButton = -1
+        var lastButton: MouseButton?
         input.onMouseClicked = { _, _, button in
             clickCount += 1
             lastButton = button
         }
 
-        input.handleMouseDown(x: 10, y: 20, button: 0)
-        input.handleMouseUp(x: 10, y: 20, button: 0)
+        input.handleMouseDown(x: 10, y: 20, button: .left)
+        input.handleMouseUp(x: 10, y: 20, button: .left)
         #expect(clickCount == 1)
-        #expect(lastButton == 0)
+        #expect(lastButton == .left)
     }
 
     @Test("mouseClicked suppressed when dragged")
@@ -190,9 +223,9 @@ struct InputManagerTests {
         var clickCount = 0
         input.onMouseClicked = { _, _, _ in clickCount += 1 }
 
-        input.handleMouseDown(x: 10, y: 20, button: 0)
+        input.handleMouseDown(x: 10, y: 20, button: .left)
         input.handleMouseDragged(x: 50, y: 60)
-        input.handleMouseUp(x: 50, y: 60, button: 0)
+        input.handleMouseUp(x: 50, y: 60, button: .left)
         #expect(clickCount == 0)
     }
 
@@ -203,14 +236,14 @@ struct InputManagerTests {
         input.onMouseClicked = { _, _, _ in clickCount += 1 }
 
         // First: drag (no click)
-        input.handleMouseDown(x: 0, y: 0, button: 0)
+        input.handleMouseDown(x: 0, y: 0, button: .left)
         input.handleMouseDragged(x: 100, y: 100)
-        input.handleMouseUp(x: 100, y: 100, button: 0)
+        input.handleMouseUp(x: 100, y: 100, button: .left)
         #expect(clickCount == 0)
 
         // Second: clean click
-        input.handleMouseDown(x: 50, y: 50, button: 0)
-        input.handleMouseUp(x: 50, y: 50, button: 0)
+        input.handleMouseDown(x: 50, y: 50, button: .left)
+        input.handleMouseUp(x: 50, y: 50, button: .left)
         #expect(clickCount == 1)
     }
 }
@@ -248,7 +281,7 @@ struct ParameterGUIInteractionTests {
         var flag = false
 
         // デフォルトレイアウト: toggleX=14, toggleY=16..32 → (20, 20) はヒット
-        input.handleMouseDown(x: 20, y: 20, button: 0)
+        input.handleMouseDown(x: 20, y: 20, button: .left)
         for _ in 0..<5 {
             gui.begin()
             gui.toggle("flag", &flag, canvas: canvas, input: input)
@@ -258,7 +291,7 @@ struct ParameterGUIInteractionTests {
         // 押下中に何フレーム回っても 1 回だけ反転する
         #expect(flag == true)
 
-        input.handleMouseUp(x: 20, y: 20, button: 0)
+        input.handleMouseUp(x: 20, y: 20, button: .left)
         gui.begin()
         gui.toggle("flag", &flag, canvas: canvas, input: input)
         gui.end()
@@ -283,7 +316,7 @@ struct ParameterGUIInteractionTests {
 
         // レイアウト: slider1 トラック y=28..44、slider2 トラック y=62..78
         // 2 本目のトラック上で押下 → 2 本目だけが動く
-        input.handleMouseDown(x: 100, y: 70, button: 0)
+        input.handleMouseDown(x: 100, y: 70, button: .left)
         frame()
         input.handleMouseDragged(x: 150, y: 70)
         frame()
@@ -306,7 +339,7 @@ struct ParameterGUIInteractionTests {
         }
 
         // トラック外（下方）で押下してから、押したままトラック上を通過
-        input.handleMouseDown(x: 100, y: 200, button: 0)
+        input.handleMouseDown(x: 100, y: 200, button: .left)
         frame()
         input.handleMouseDragged(x: 100, y: 36)  // トラック内 (y=28..44)
         frame()

@@ -154,7 +154,7 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
 
     public func onStart() {}
     public func onStop() {}
-    public func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {}
+    public func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {}
     public func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType) {}
     public func onResize(width: Int, height: Int) {}
 

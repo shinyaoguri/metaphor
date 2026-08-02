@@ -402,7 +402,7 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - プラグイン入力転送
 
     /// 全登録済みプラグインにマウスイベントを転送します。
-    internal func notifyPluginsMouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {
+    internal func notifyPluginsMouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {
         for plugin in plugins {
             plugin.mouseEvent(x: x, y: y, button: button, type: type)
         }

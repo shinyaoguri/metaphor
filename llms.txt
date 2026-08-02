@@ -68,7 +68,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
 - `var key: Character? { get }` -- 最後に押されたキー。
 - `var keyCode: UInt16? { get }` -- 最後に押されたキーのキーコード。
-- `var mouseButton: Int { get }` -- 現在押されているマウスボタン（0 = 左、1 = 右、2 = 中央）。
+- `var mouseButton: MouseButton? { get }` -- 最後に押されたマウスボタン。まだ一度も押されていなければ `nil`。
 - `var mouseX: Float { get }` -- 現在のマウス x 座標。
 - `var mouseY: Float { get }` -- 現在のマウス y 座標。
 - `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。
@@ -385,7 +385,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var pluginID: String { get }` -- このプラグインの一意な識別子
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)` -- キーボードイベント発生時に呼ばれます。
-- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)` -- マウスイベント発生時に呼ばれます。
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)` -- マウスイベント発生時に呼ばれます。
 - `func onAttach(renderer: MetaphorRenderer)` -- プラグインがレンダラーに登録された時に一度呼ばれます (レガシー)。
 - `func onAttach(sketch: any Sketch)` -- プラグインがスケッチに登録された時に一度呼ばれます。
 - `func onDetach()` -- プラグインがレンダラーから削除された時に一度呼ばれます。
@@ -748,6 +748,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `(unsafe) static var factory: (@MainActor (String) -> any MetaphorOutputPlugin)?` -- 名前から出力プラグインを生成するファクトリ。
 - `static func makeOutput(name: String) -> (any MetaphorOutputPlugin)?` -- 登録済みファクトリで出力プラグインを生成します。未登録なら `nil`。
 
+### `enum MouseButton` -- マウスのボタン種別。
+
+- `case left` -- 左ボタン。
+- `case middle` -- 中ボタン（ホイールクリック等）。
+- `case right` -- 右ボタン。
+- `var index: Int { get }` -- `0 = 左` / `1 = 右` / `2 = 中` のインデックス表現。
+- `init?(index: Int)` -- `0 = 左` / `1 = 右` / `2 = 中` のインデックス表現から生成します。
+
 ### `enum MouseEventType` -- プラグインに配信されるマウスイベントの種類
 
 - `case clicked`
@@ -901,7 +909,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let pluginID: String`
 - `init(_ subsystems: [any SketchSubsystem], pluginID: String = "org.metaphor.auto-subsystems")` -- - subsystems: 自動駆動するサブシステム群（登録順に更新されます）。
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
-- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
 - `func onAttach(renderer: MetaphorRenderer)`
 - `func onAttach(sketch: any Sketch)`
 - `func onDetach()`
@@ -1059,7 +1067,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let pluginID: String`
 - `init(lineSource: ( () -> String?)? = nil)` -- 標準入力から読み取ります。テストでのみ指定します。
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
-- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
 - `func onAttach(renderer: MetaphorRenderer)`
 - `func onAttach(sketch: any Sketch)`
 - `func onDetach()`
@@ -1077,17 +1085,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isMouseDown: Bool { get }` -- いずれかのマウスボタンが現在押されているかどうか
 - `var lastKey: Character? { get }` -- 最後に押されたキーの文字
 - `var lastKeyCode: UInt16? { get }` -- 最後に押されたキーのキーコード
-- `var mouseButton: Int { get }` -- 現在押されているマウスボタンのインデックス（0 = 左、1 = 右、2 = 中）
+- `var mouseButton: MouseButton? { get }` -- 最後に押されたマウスボタン。まだ一度も押されていなければ `nil`
 - `var mouseX: Float { get }` -- テクスチャ座標空間での現在のマウスX座標
 - `var mouseY: Float { get }` -- テクスチャ座標空間での現在のマウスY座標
 - `var onFileDrop: (([String]) -> Void)?` -- ファイルがウィンドウにドロップされた時に呼ばれるコールバック (ファイルパスの配列)
 - `var onKeyDown: ((UInt16, String?) -> Void)?` -- キー押下時に呼ばれるコールバック (keyCode, characters)
 - `var onKeyUp: ((UInt16) -> Void)?` -- キー解放時に呼ばれるコールバック (keyCode)
-- `var onMouseClicked: ((Float, Float, Int) -> Void)?` -- 完全なクリック（ドラッグなしの押下＋解放）発生時に呼ばれるコールバック (x, y, button)
+- `var onMouseClicked: ((Float, Float, MouseButton) -> Void)?` -- 完全なクリック（ドラッグなしの押下＋解放）発生時に呼ばれるコールバック (x, y, button)
 - `var onMouseDragged: ((Float, Float) -> Void)?` -- ボタン押下中のマウス移動で呼ばれるコールバック (x, y)
 - `var onMouseMoved: ((Float, Float) -> Void)?` -- ボタン非押下時のマウス移動で呼ばれるコールバック (x, y)
-- `var onMousePressed: ((Float, Float, Int) -> Void)?` -- マウスボタン押下時に呼ばれるコールバック (x, y, button)
-- `var onMouseReleased: ((Float, Float, Int) -> Void)?` -- マウスボタン解放時に呼ばれるコールバック (x, y, button)
+- `var onMousePressed: ((Float, Float, MouseButton) -> Void)?` -- マウスボタン押下時に呼ばれるコールバック (x, y, button)
+- `var onMouseReleased: ((Float, Float, MouseButton) -> Void)?` -- マウスボタン解放時に呼ばれるコールバック (x, y, button)
 - `var onMouseScrolled: ((Float, Float) -> Void)?` -- マウススクロールホイール使用時に呼ばれるコールバック (dx, dy)
 - `var pmouseX: Float { get }` -- 前フレームのマウスX座標
 - `var pmouseY: Float { get }` -- 前フレームのマウスY座標
@@ -1123,7 +1131,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let pluginID: String`
 - `init(config: MetaphorProbeConfig = MetaphorProbeConfig())`
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
-- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
 - `func onAttach(renderer: MetaphorRenderer)`
 - `func onAttach(sketch: any Sketch)`
 - `func onDetach()`
@@ -2129,7 +2137,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let pluginID: String`
 - `init(name: String)`
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
-- `func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
 - `func onAttach(renderer: MetaphorRenderer)`
 - `func onAttach(sketch: any Sketch)`
 - `func onDetach()`
