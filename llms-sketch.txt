@@ -57,15 +57,21 @@ objects per frame; reuse arrays.
 
 ### 3D Scene
 
-In `draw()`, call `background`, configure camera/lights, then draw primitives.
+In `draw()`, call `background`, configure lights, then draw primitives.
 Use `push()` / `pop()` around each object transform.
+
+The default camera is pixel space, like Processing's `P3D`: one world unit is
+one pixel, the origin is the top-left corner, and `+y` points down. So size 3D
+primitives in pixels (`box(120)`, not `box(1.2)`) and translate to
+`(width / 2, height / 2)` to work around the center. Call `camera(...)` only
+when you want a different viewpoint — it replaces the pixel-space default.
 
 ```swift
 lights()
-camera(eye: SIMD3(0, 2, 6), center: SIMD3(0, 0, 0))
 push()
+translate(width / 2, height / 2, 0)
 rotateY(time)
-box(1.2)
+box(120)
 pop()
 ```
 

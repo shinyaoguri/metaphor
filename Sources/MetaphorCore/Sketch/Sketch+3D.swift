@@ -426,31 +426,40 @@ extension Sketch {
 
     /// 円柱を描画します。
     ///
+    /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`radius` /
+    /// `height` はピクセル相当の大きさで指定します。
+    ///
     /// - Parameters:
     ///   - radius: 円柱の半径。
     ///   - height: 円柱の高さ。
     ///   - detail: 円周方向の分割数。
-    public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+    public func cylinder(radius: Float, height: Float, detail: Int = 24) {
         context.cylinder(radius: radius, height: height, detail: detail)
     }
 
     /// 円錐を描画します。
     ///
+    /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`radius` /
+    /// `height` はピクセル相当の大きさで指定します。
+    ///
     /// - Parameters:
     ///   - radius: 底面の半径。
     ///   - height: 円錐の高さ。
     ///   - detail: 円周方向の分割数。
-    public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) {
+    public func cone(radius: Float, height: Float, detail: Int = 24) {
         context.cone(radius: radius, height: height, detail: detail)
     }
 
     /// トーラス（ドーナツ形状）を描画します。
     ///
+    /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`ringRadius` /
+    /// `tubeRadius` はピクセル相当の大きさで指定します。
+    ///
     /// - Parameters:
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: 分割数。
-    public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) {
+    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) {
         context.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 

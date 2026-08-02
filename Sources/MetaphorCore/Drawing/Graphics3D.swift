@@ -441,21 +441,21 @@ public final class Graphics3D {
     ///   - radius: シリンダーの半径。
     ///   - height: シリンダーの高さ。
     ///   - detail: テッセレーションの詳細レベル。
-    public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) { canvas3D.cylinder(radius: radius, height: height, detail: detail) }
+    public func cylinder(radius: Float, height: Float, detail: Int = 24) { canvas3D.cylinder(radius: radius, height: height, detail: detail) }
 
     /// コーンを描画します。
     /// - Parameters:
     ///   - radius: 底面の半径。
     ///   - height: コーンの高さ。
     ///   - detail: テッセレーションの詳細レベル。
-    public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) { canvas3D.cone(radius: radius, height: height, detail: detail) }
+    public func cone(radius: Float, height: Float, detail: Int = 24) { canvas3D.cone(radius: radius, height: height, detail: detail) }
 
     /// トーラスを描画します。
     /// - Parameters:
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: テッセレーションの詳細レベル。
-    public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) { canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail) }
+    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) { canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail) }
 
     /// カスタムメッシュを描画します。
     /// - Parameter mesh: レンダリングするメッシュ。

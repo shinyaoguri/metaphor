@@ -283,7 +283,7 @@ the Processing original with every number left alone.
 | `box(s)` / `box(w, h, d)` | `box(_ size: Float)` / `box(_ width: Float, _ height: Float, _ depth: Float)` |
 | `sphere(r)` | `sphere(_ radius: Float, detail: Int = 24)` |
 | `sphereDetail(n)` | — use the `detail:` argument of `sphere(_:detail:)` |
-| — | `plane(_ width: Float, _ height: Float)`, `cone(radius:height:detail:)`, `cylinder(radius:height:detail:)`, `torus(ringRadius:tubeRadius:detail:)` — note these three have world-unit defaults (`radius: 0.5`, `height: 1`), so always pass pixel sizes explicitly |
+| — | `plane(_ width: Float, _ height: Float)`, `cone(radius:height:detail:)`, `cylinder(radius:height:detail:)`, `torus(ringRadius:tubeRadius:detail:)` — sizes are required arguments (no defaults), and like `box` / `sphere` they are pixel sizes under the default camera |
 | `camera(ex, ey, ez, cx, cy, cz, ux, uy, uz)` | `camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` |
 | `perspective(fov, aspect, near, far)` | `perspective(fov: Float = .pi / 3, near: Float = 0.1, far: Float = 10000)` — aspect comes from the canvas |
 | `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to the canvas box |

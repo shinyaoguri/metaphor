@@ -121,7 +121,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
 - `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
-- `func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24)` -- 円錐を描画します。
+- `func cone(radius: Float, height: Float, detail: Int = 24)` -- 円錐を描画します。
 - `func copy(_ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float)` -- キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
 - `func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer` -- リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
 - `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
@@ -161,7 +161,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func curveDetail(_ n: Int)` -- カーブ補間のセグメント数を設定します。
 - `func curveTightness(_ t: Float)` -- Catmull-Rom スプラインカーブの張り具合を設定します。
 - `func curveVertex(_ x: Float, _ y: Float)` -- 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
-- `func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24)` -- 円柱を描画します。
+- `func cylinder(radius: Float, height: Float, detail: Int = 24)` -- 円柱を描画します。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float)` -- デフォルト色のディレクショナルライトを追加します。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` -- 色を指定してディレクショナルライトを追加します。
 - `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
@@ -350,7 +350,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func tint(_ gray: Float)` -- グレースケール値で画像のティントを設定します。
 - `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
 - `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
-- `func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
+- `func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
 - `func translate(_ x: Float, _ y: Float)` -- 現在の変換に平行移動を適用します。
 - `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
 - `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- 3つの頂点で定義される三角形を描画します。
