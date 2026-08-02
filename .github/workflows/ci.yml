@@ -30,9 +30,13 @@ jobs:
     # 既定値は 6 時間で、macOS ランナーは 10 倍課金なので上限を明示する。
     timeout-minutes: 45
     permissions:
-      contents: write  # Required to auto-push regenerated examples index back to PR branches.
-      actions: write   # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
-      statuses: write  # Required to bridge workflow_dispatch runs to a legacy Status for the ruleset gate.
+      contents: write       # Required to auto-push regenerated examples index back to PR branches.
+      actions: write        # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
+      statuses: write       # Required to bridge workflow_dispatch runs to a legacy Status for the ruleset gate.
+      # NOTE: declaring a `permissions:` block sets every scope NOT listed here to
+      # `none`, so this line is load-bearing — without it `gh pr view --json title`
+      # in the PR-title lint below 403s.
+      pull-requests: read   # Required to read the PR title for the Conventional Commits lint.
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,6 +47,57 @@ jobs:
           # Don't leave the token in .git/config for every later step; the
           # auto-push step authenticates explicitly with its own token.
           persist-credentials: false
+      # --- auto-merge 時代の軽量ゲート ---------------------------------------
+      # auto-merge は required check が green になった瞬間にマージするので、
+      # 非必須ジョブの赤は誰にも見られずに素通りする。だからこの 2 つは
+      # 「既に required なジョブの中のステップ」として置く。新しい required
+      # context を増やさずに強制でき、workflow_dispatch / merge_group 向けの
+      # legacy status ブリッジ（下）も既存のものをそのまま流用できる。
+      # 独立ジョブとして required に昇格させる案は採らなかった: release.yml と
+      # examples-index 自動 push の再ディスパッチの両方に dispatch 行を足す
+      # 必要があり、片方でも書き忘れるとその PR は required check が永久に
+      # 報告されずデッドロックする（詳細は PR 本文）。
+      # 実行順は checkout 直後 — 数秒で落ちるものを Xcode / Syphon ビルドの
+      # 手前に置く。
+      - name: Lint PR title (Conventional Commits)
+        # squash マージのコミット件名は PR タイトルそのもの（リポ設定で
+        # PR_TITLE + PR_BODY に固定済み）なので、ここが履歴の品質を決める。
+        #
+        # タイトルはイベントペイロードではなく実行時に API から引く。こうして
+        # おくとタイトルを直したあと `gh run rerun --failed <run-id>` するだけで
+        # 通る（再実行はペイロードを古いまま再生するため、payload 参照だと
+        # 直したはずのタイトルで落ち続ける）。
+        #
+        # pull_request 以外（push / workflow_dispatch / merge_group）には検証
+        # すべきタイトルが無いので skip。release.yml が開く "Release vX.Y.Z" PR は
+        # workflow_dispatch 経由で CI に入るため、ここで落ちることはない。
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+          echo "PR title: ${TITLE}"
+          # 寛容に見る: type と区切りだけを強制し、要約の中身（日本語・記号）は
+          # 一切問わない。scope は任意、`!` は破壊的変更の接尾辞。
+          # dependabot の `chore(deps): bump ...` はこれを満たす。
+          if printf '%s' "$TITLE" \
+              | grep -Eq '^(feat|fix|docs|refactor|test|chore|ci|perf)(\([^)]+\))?!?: .+'; then
+            echo "OK: Conventional Commits 形式です。"
+            exit 0
+          fi
+          echo "::error::PR title must be Conventional Commits — '<type>(<scope>)?: <summary>' with type in feat|fix|docs|refactor|test|chore|ci|perf (optional '!' for a breaking change). Got: ${TITLE}"
+          echo "Fix the PR title, then re-run this job with 'gh run rerun --failed ${GITHUB_RUN_ID}'."
+          echo "The title is read live from the API, so no push is needed."
+          exit 1
+      - name: Lint changelog.d entries
+        # ファイル名（カテゴリ typo・区切り無し・.md 以外）と空ファイルだけを見る。
+        # **エントリの有無は強制しない** — ユーザー影響の有無は機械判定できず、
+        # 内部作業は正当にエントリ無しで出る（Issue #335 / #404 の設計判断）。
+        # リリース時の `changelog.py check` は従来どおり「有無」も見るゲートの
+        # まま。ここはその前半分を per-PR に前倒しするだけ（Issue #405）。
+        run: python3 scripts/changelog.py lint
       - name: Detect Source changes
         id: source-changed
         run: |
@@ -369,12 +424,32 @@ jobs:
           echo "変更された example パッケージ: ${count} 件"
           cat changed-examples.txt
 
+  # このジョブは **必須チェックではない**。auto-merge 移行（2026-08-02）に際して
+  # 昇格を検討したが採らなかった。理由:
+  #   - examples-detect / examples-diff-build はどちらも条件付き（PR 以外、あるいは
+  #     Examples/ 無変更なら skip）。この個人リポの ruleset は required_status_checks を
+  #     **legacy Statuses API** で評価している（だから build-and-test /
+  #     build-swift-5-10 は workflow_dispatch / merge_group 用のブリッジを持つ）。
+  #     legacy status 評価では skip されたジョブは *何も報告しない* ため、
+  #     「実行されない PR」で required check が永久 pending になり、auto-merge が
+  #     永久待ちになる恐れがある（Checks API 経由なら skipped = 成功扱いだが、
+  #     この経路がどちらで評価されるかは実測できておらず、外すと main 保護が
+  #     全 PR で詰まる）。本番の main 保護で試す価値のある賭けではない。
+  #   - 失敗を build-and-test へ波及させる案（needs: examples-diff-build）は、
+  #     必須ジョブが最大 60 分のこのジョブの完走を待つことになり、PR 1 本あたりの
+  #     所要時間が数倍になる。auto-merge の利点を丸ごと打ち消す。
+  # 代わりに「落ちたら PR に必ず声が残る」ことだけを保証する（下の failure ステップ）。
+  # 恒久策は集約ゲート（全ジョブを needs する ci-gate 1 本だけを required にする）で、
+  # これは ruleset 差し替えを伴うので別 PR / Issue #411。
   examples-diff-build:
     needs: examples-detect
     if: needs.examples-detect.outputs.count != '0'
     runs-on: macos-26
     # 1 本あたり metaphor のフルビルドを含むので、上限（下の MAX）× 数分を見込む。
     timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: write  # 失敗時に PR へ警告コメントを残すため
     steps:
       - uses: actions/checkout@v7
         with:
@@ -425,3 +500,33 @@ jobs:
             (cd "$dir" && swift build)
             echo "::endgroup::"
           done < changed-examples.txt
+      # 非必須なので、auto-merge はこのジョブの完走を待たずにマージし得る
+      # （build-and-test は ~6 分、こちらは最大 60 分）。赤が誰にも届かないまま
+      # 消えるのを防ぐため、失敗を PR コメントとして残す。マージ済みでも
+      # コメントは残るので、fix-forward の起点として機能する。
+      - name: Comment on the PR when a changed example fails to build
+        # fork PR では GITHUB_TOKEN が read-only に落ちてコメントできないので撃たない
+        # （fork PR は auto-merge 対象外＝人間が見てマージするため実害も無い）。
+        if: |
+          failure() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -eu
+          # --body ではなく --body-file: YAML ブロックスカラー内でインライン文字列を
+          # 折り返すと継続行に 10 スペースが残り、Markdown がコードブロックとして
+          # 解釈してしまう。ヒアドキュメントなら YAML のインデント除去で列 0 に揃う。
+          cat > "$RUNNER_TEMP/examples-failure.md" <<EOF
+          **examples-diff-build が失敗しました** — この PR で変更された example がビルドできません。
+
+          [失敗したジョブのログ](${RUN_URL})
+
+          このジョブは必須チェックではないため、auto-merge はこの結果を待たずにマージすることがあります。すでにマージ済みなら fix-forward の PR で直してください（手元の再現は \`cd <example のディレクトリ> && swift build\`）。
+
+          必須にしていない理由は \`.github/workflows/ci.yml\` の \`examples-diff-build\` 直前のコメントと Issue #411 を参照。
+          EOF
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/examples-failure.md"
