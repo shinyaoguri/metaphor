@@ -23,16 +23,24 @@ The library is layered. Everything a release advertises as a
 | **Canvas / module layer** — `Canvas2D`, `Canvas3D`, `MetaphorRenderer`, and the 12 module libraries (`MetaphorAudio`, `MetaphorPhysics`, `MetaphorRenderGraph`, …) | `Canvas3D.draw(_:)`, `AudioAnalyzer.init`, `MetaphorError` | **Yes** |
 | **Internal implementation** | encoders, batchers, shader plumbing | No |
 
-Explicitly **not** public API, even where the Swift access level says `public`:
+**The access modifier is the promise.** If a symbol is reachable from a library
+product, it is covered; if it is `internal`, it is not. That was not true when
+this document was first written — a handful of symbols documented themselves as
+internal while being declared `public` — so
+[#388](https://github.com/shinyaoguri/metaphor/issues/388) moved every one of
+them to `internal` before the freeze (ADR-0007 Decision 6). There is no longer a
+category of "public but not really", and no `@_spi` is in use: the five affected
+symbols (`MetaphorRenderer.onCaptureOutput` / `.shadowDeferActive` /
+`.onRecordFrame` / `.onReplayMain`, and `MetaphorSyphon.SyphonPlugin`) turned
+out to be needed only inside their own module and from `@testable` tests, so
+plain `internal` was enough. Underscore-prefixed `public` symbols are gone too —
+`_metaphorSyphonRegister()` was the last one.
 
-- Symbols whose doc comment says they are internal. These are being moved to
-  `internal` or `@_spi(MetaphorInternal)` before the freeze (ADR-0007 Decision 6,
-  [#388](https://github.com/shinyaoguri/metaphor/issues/388)); until then, treat
-  the doc comment — not the access modifier — as the promise.
-- Underscore-prefixed symbols (`_metaphorSyphonRegister()` is the only one left,
-  and it is on the same list).
-- Anything imported through `@_spi(...)`. SPI is unversioned and may change in
-  any release, including a patch.
+Still explicitly **not** public API:
+
+- Anything imported through `@_spi(...)`, should the library ever introduce it.
+  SPI is unversioned and may change in any release, including a patch. **Nothing
+  uses `@_spi` today**, and adding it means recording the reason here.
 - `MetaphorTestSupport` — a target, not a library product, so no package can
   depend on it.
 - `Examples/` (278 standalone packages), the DocC catalog, and the generated

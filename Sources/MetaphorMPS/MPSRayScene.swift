@@ -18,14 +18,14 @@ final class MPSRayScene {
     private let device: MTLDevice
     private var entries: [MeshEntry] = []
 
-    public init(device: MTLDevice) {
+    init(device: MTLDevice) {
         self.device = device
     }
 
     // MARK: - メッシュ追加
 
     /// Extracts positions from the vertex buffer and adds a Mesh.
-    public func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
+    func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
         let stride = MemoryLayout<Vertex3D>.stride  // 48バイト
         let ptr = mesh.vertexBuffer.contents()
         var positions = [SIMD3<Float>]()
@@ -59,7 +59,7 @@ final class MPSRayScene {
     }
 
     /// Adds a DynamicMesh to the scene.
-    public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
+    func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         var positions = [SIMD3<Float>]()
         let vCount = mesh.vertexCount
         positions.reserveCapacity(vCount)

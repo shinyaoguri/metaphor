@@ -1,7 +1,9 @@
 import Testing
 import Metal
 @testable import MetaphorCore
-import MetaphorSyphon  // startSyphonServer / syphonOutput / SyphonPlugin facade（Core から分離）
+// startSyphonServer / syphonOutput は public facade だが、`SyphonPlugin` 自体は internal
+// （ADR-0007 論点 6 / #388）。プラグイン ID 照合のため @testable で取り込む。
+@testable import MetaphorSyphon
 import MetaphorTestSupport
 
 @Suite("MetaphorRenderer", .enabled(if: MetalTestHelper.isGPUAvailable))
