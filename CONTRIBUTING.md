@@ -58,6 +58,12 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   observable effect — doesn't need an entry. The release workflow refuses to
   cut a release while that section is empty, so nothing ships undocumented;
   see [docs/releasing.md](docs/releasing.md) for the mechanics.
+- **If your change touches public API, read
+  [docs/api-stability-policy.md](docs/api-stability-policy.md) first** — which
+  layers are covered, what counts as source-breaking (removing a symbol, but
+  also adding an `enum` case or a protocol requirement), and the deprecation
+  window: a symbol is marked deprecated in a *published* release before it can
+  be removed, never both in one.
 - `release:patch` / `release:minor` / `release:major` labels drive automatic
   releases on merge — they're **maintainer-only**; please don't add them to
   your PR.
