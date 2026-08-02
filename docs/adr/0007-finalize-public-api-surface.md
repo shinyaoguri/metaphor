@@ -228,7 +228,20 @@ rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated
 - **#322(命名統一実装)**: Decision 表 #1(対欠損補完)#2(記録 rename)#3(async rename)
   #4(filter 引き上げ)#7(dispatch ラベル是正)。deprecated エイリアス → 次 minor で削除の 2 段階。
 - **#323(typed throws)**: 本 ADR の原則(下位層 = Swift 慣行)を前提にエラー型を設計。
-- **新規起票(ADR 確定後)**: 論点 6 の内部 public 隠蔽(個別判定表つき)、Follow-ups の各項。
+- **#388(論点 6 の内部 public 隠蔽)**: **実施済み(2026-08-02)**。個別判定表の全文は
+  [#388 のコメント](https://github.com/shinyaoguri/metaphor/issues/388)。結論だけ記すと:
+  - `_metaphorSyphonRegister()` → `internal func metaphorSyphonRegister()`(`@_cdecl` は据え置き)。
+    ADR-0001 と同じ 4 組合せ(debug/release × 同一パッケージ/クロスパッケージ)で自動登録と
+    Syphon サーバー起動を再実測し、全て green。`nm` で見ると internal 化により C シンボルは
+    release で private external になるが、bootstrap.c は同一リンク単位にあるため解決される。
+  - `SyphonPlugin` / `MetaphorRenderer.onCaptureOutput` / `shadowDeferActive` / `onRecordFrame` /
+    `onReplayMain` → `internal`(参照元はいずれも同一モジュール内 + `@testable` テストのみ)。
+  - **`@_spi(MetaphorInternal)` は不採用**: 候補すべてが「同一モジュール + `@testable`」で足り、
+    モジュール横断で必要なものが 1 件も無かった。Sources の `@_spi` 使用は引き続き 0 件。
+  - `SketchContext.renderer` / `encoder` / `resourceLoader` / `assetCache` / `gifExporter` /
+    `orbitCamera` は **public のまま維持**。doc が「エスケープハッチ(上級者向け)」と明記しており
+    「doc では内部」に該当しない。`Examples/Samples/RayTracing` が `context.renderer` を実使用。
+- **新規起票(ADR 確定後)**: Follow-ups の各項。
 
 ## References
 
