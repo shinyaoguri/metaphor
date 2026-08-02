@@ -102,6 +102,31 @@ struct Canvas3DTransformOpsTests {
         let restored = canvas3D.screenPosition(0, 0, 0)
         #expect(abs(restored.x - canvas3D.width / 2) < 0.5)
     }
+
+    // 回帰テスト(#378): screenY(x, y, z) が 2D の screenY(x, y) と同じ座標系
+    // (左上原点・下方向が +Y)を返すことを固定する。中心点だけでは符号の
+    // 誤りが打ち消し合って検出できないため、中心から外れた y で検証する。
+    @Test("screenPosition maps off-center y consistently with 2D screen space (regression #378)")
+    func offCenterYMatchesScreenSpaceConvention() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        // begin() は Processing 風の既定カメラ(cameraEye = (w/2, h/2, defaultZ),
+        // center = (w/2, h/2, 0))をフレームごとに設定する。実際のスケッチはこの
+        // カメラで screenX/screenY を評価するため、それを再現する
+        // (Canvas3D 単体初期化直後は無関係な eye = (0,0,5) のまま)。
+        canvas3D.begin(encoder: nil, time: 0)
+        let centerX = canvas3D.width / 2
+        let centerY = canvas3D.height / 2
+
+        // 既定カメラは z=0 平面でワールド 1 単位 = 画面 1px に較正されているため、
+        // 中心より 100 だけ上のワールド y は screenY でも中心より 100 だけ上(小さい値)になるはず。
+        let above = canvas3D.screenPosition(centerX, centerY - 100, 0)
+        #expect(abs(above.y - (centerY - 100)) < 1.0)
+
+        // 中心より 100 だけ下も同様に screenY が中心より大きい値になるはず。
+        let below = canvas3D.screenPosition(centerX, centerY + 100, 0)
+        #expect(abs(below.y - (centerY + 100)) < 1.0)
+    }
 }
 
 // MARK: - MImage resize / mask (#280)

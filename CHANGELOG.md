@@ -102,6 +102,10 @@ Maintaining this file
 
   The two `dispatch` changes only add a `configure:` label to the trailing closure, so the usual trailing-closure call site (`dispatch(kernel, threads: n) { ... }`) is unchanged and keeps compiling without a warning. Only calls that pass the closure as an explicit final argument need updating.
 
+### Fixed
+
+- `screenY(x, y, z)` (3D) returned a y coordinate mirrored relative to the 2D `screenY(x, y)`, because `Canvas3D.screenPosition(_:_:_:)` mapped NDC y to pixel space with the same `(ndc + 1) / 2` formula used for x, without accounting for the Y-flip already baked into the view-projection matrix ([#378](https://github.com/shinyaoguri/metaphor/issues/378)). A point above the canvas center now correctly reports a smaller `screenY`, matching the 2D API's left-top-origin, Y-down convention. `screenX(x, y, z)` and `screenZ(x, y, z)` were unaffected.
+
 ## [0.8.0] - 2026-08-01
 
 Processing parity bundle: data IO (`loadJSON` / `saveJSON` / `loadTable` / `saveTable` / `loadStrings` / `saveStrings`), canvas operations (`applyMatrix` / `resetMatrix` / `shearX` / `shearY` / `screenX` / `screenY` / `screenZ` / `keyTyped` / `copy` / `mask` / `resize`), `selectInput` / `selectOutput` / `fileDropped`, PVector-style mutating methods on `Vec2` / `Vec3`, MSAA sample count in `SketchConfig`, OSC sending (`OSCSender`), path-keyed asset caching for `loadImage` / `loadModel`, SVG export (`beginSVG` / `endSVG`), and `README.en.md`. Fixes a first-frame `copy()` reading uninitialized VRAM. [Release notes](https://github.com/shinyaoguri/metaphor/releases/tag/v0.8.0)
