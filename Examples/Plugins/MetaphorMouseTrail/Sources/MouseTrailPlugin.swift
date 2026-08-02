@@ -42,7 +42,7 @@ public final class MouseTrailPlugin: MetaphorPlugin {
         self.sketch = sketch
     }
 
-    public func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {
+    public func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {
         guard type == .moved || type == .dragged else { return }
 
         points.append((x: x, y: y))

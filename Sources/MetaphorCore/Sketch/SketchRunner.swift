@@ -699,17 +699,17 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
         input.onMouseMoved = { [weak sketch, weak renderer] x, y in
             sketch?.mouseMoved()
-            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: 0, type: .moved)
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: nil, type: .moved)
         }
         input.onMouseDragged = { [weak sketch, weak renderer] x, y in
             sketch?.mouseDragged()
-            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: 0, type: .dragged)
+            renderer?.notifyPluginsMouseEvent(x: x, y: y, button: nil, type: .dragged)
         }
         input.onMouseScrolled = { [weak sketch, weak renderer] dx, dy in
             sketch?.mouseScrolled()
             let mx = renderer?.input.mouseX ?? 0
             let my = renderer?.input.mouseY ?? 0
-            renderer?.notifyPluginsMouseEvent(x: mx, y: my, button: 0, type: .scrolled)
+            renderer?.notifyPluginsMouseEvent(x: mx, y: my, button: nil, type: .scrolled)
         }
         input.onMouseClicked = { [weak sketch, weak renderer] x, y, button in
             sketch?.mouseClicked()

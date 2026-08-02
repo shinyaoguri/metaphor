@@ -74,7 +74,7 @@ struct InputInjectionPluginTests {
         pump(renderer, plugin, until: { renderer.input.isMouseDown })
 
         #expect(renderer.input.isMouseDown)
-        #expect(renderer.input.mouseButton == 1)
+        #expect(renderer.input.mouseButton == .right)
         #expect(renderer.input.mouseX == 10)
         #expect(renderer.input.mouseY == 20)
     }

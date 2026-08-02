@@ -42,8 +42,16 @@ extension Sketch {
     public var scrollY: Float {
         context.input.scrollY    }
 
-    /// 現在押されているマウスボタン（0 = 左、1 = 右、2 = 中央）。
-    public var mouseButton: Int {
+    /// 最後に押されたマウスボタン。まだ一度も押されていなければ `nil`。
+    ///
+    /// Processing と同じく、ボタンを離しても値は保持されるため
+    /// ``mouseReleased()`` の中でどのボタンが離されたかを判定できる。
+    /// 「いま押されているか」は ``mousePressed`` と併用する。
+    ///
+    /// ```swift
+    /// if mousePressed && mouseButton == .right { … }
+    /// ```
+    public var mouseButton: MouseButton? {
         context.input.mouseButton    }
 
     /// キーが現在押されているかどうか。

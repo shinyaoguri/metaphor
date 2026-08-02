@@ -128,7 +128,7 @@ func setup() {
 | `pmouseX` | `Float` | 前フレームのマウス X 座標 |
 | `pmouseY` | `Float` | 前フレームのマウス Y 座標 |
 | `isMousePressed` | `Bool` | マウスボタンが押されているか |
-| `mouseButton` | `Int` | 現在押されているマウスボタン（0=左, 1=右, 2=中） |
+| `mouseButton` | `MouseButton?` | 最後に押されたマウスボタン（`.left` / `.right` / `.middle`）。未押下なら `nil` |
 | `isKeyPressed` | `Bool` | キーが押されているか |
 | `key` | `Character?` | 最後に押されたキー |
 | `keyCode` | `UInt16?` | 最後に押されたキーのキーコード |
