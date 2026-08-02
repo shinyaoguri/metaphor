@@ -5,7 +5,7 @@ Entries are written one-per-file into `changelog.d/` (see changelog.d/README.md)
 so that concurrent pull requests never touch the same lines of CHANGELOG.md.
 They are folded into `## [Unreleased]` at release time, not at merge time.
 
-Four subcommands, all but `collect` driven by .github/workflows/release.yml:
+Five subcommands, all but `collect` driven by CI:
 
     changelog.py check
         Fail when there is nothing to release: no entry files in `changelog.d/`
@@ -13,6 +13,15 @@ Four subcommands, all but `collect` driven by .github/workflows/release.yml:
         rejects malformed entry filenames, so a typo is caught here rather than
         at collect time. Runs at the very start of the release job, before
         anything irreversible (branch push, tag, GitHub Release) has happened.
+
+    changelog.py lint
+        The filename/emptiness half of `check`, without the "something must be
+        pending" half. Runs per-PR in .github/workflows/ci.yml so a misnamed or
+        empty entry file is caught by its own author instead of by whoever cuts
+        the next release (Issue #405). Deliberately does NOT require an entry to
+        exist: whether a change is user-facing is a judgement call CI cannot
+        make, and internal-only work legitimately ships without one
+        (Issues #335 / #404).
 
     changelog.py collect
         Fold `changelog.d/*.md` into `## [Unreleased]`, grouped under the usual
@@ -303,10 +312,21 @@ def merge_body(body: list[str], entries: list[Fragment]) -> list[str]:
 # --------------------------------------------------------------------------
 # check
 # --------------------------------------------------------------------------
-def cmd_check(args: argparse.Namespace) -> int:
-    pending = fragments(args.dir)
+def validate(directory: Path) -> list[Fragment]:
+    """Every entry file, with its name and contents already vetted.
+
+    `fragments()` rejects a bad *name*; reading each one here additionally
+    rejects an empty file. Both are raised now rather than at collect time,
+    where the release is already half-written.
+    """
+    pending = fragments(directory)
     for fragment in pending:
-        fragment.lines()  # rejects an empty entry file here, not at collect time
+        fragment.lines()
+    return pending
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    pending = validate(args.dir)
     lines = read(args.path)
     unreleased = find(parse(lines), UNRELEASED)
     if not pending and not has_entries(body_lines(lines, unreleased)):
@@ -326,6 +346,26 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"OK: {len(pending)} entr{'y' if len(pending) == 1 else 'ies'} in {args.dir}/.")
     else:
         print(f"OK: {args.path} has entries under `## [{UNRELEASED}]`.")
+    return 0
+
+
+# --------------------------------------------------------------------------
+# lint
+# --------------------------------------------------------------------------
+def cmd_lint(args: argparse.Namespace) -> int:
+    """Validate the entry files that are there, without demanding any.
+
+    `check` is the release gate; this is the per-PR gate. Splitting them is the
+    whole point: a pull request must not be forced to invent a changelog entry
+    for internal-only work, but the entry it *does* add has to be well-formed.
+    """
+    pending = validate(args.dir)
+    if not pending:
+        print(f"OK: no entry files in {args.dir}/ (nothing to lint).")
+        return 0
+    print(f"OK: {len(pending)} entr{'y' if len(pending) == 1 else 'ies'} in {args.dir}/:")
+    for fragment in pending:
+        print(f"  {fragment.path.name} -> ### {fragment.heading}")
     return 0
 
 
@@ -478,6 +518,8 @@ def main(argv: list[str]) -> int:
 
     sub.add_parser("check", help="fail when there is nothing to release")
 
+    sub.add_parser("lint", help="validate changelog.d/ filenames and contents (entries optional)")
+
     sub.add_parser("collect", help="fold changelog.d/ entries into [Unreleased]")
 
     release = sub.add_parser("release", help="collect, then promote [Unreleased] to a version")
@@ -490,6 +532,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     handlers = {
         "check": cmd_check,
+        "lint": cmd_lint,
         "collect": cmd_collect,
         "release": cmd_release,
         "notes": cmd_notes,

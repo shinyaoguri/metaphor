@@ -46,10 +46,16 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   final commit message, so write it as a
   [Conventional Commit](https://www.conventionalcommits.org/):
   `<type>(<scope>): <summary>` (`feat` / `fix` / `docs` / `refactor` / `test`
-  / `chore` / `ci`). Fill in the PR body's Purpose / Changes / How to verify
-  sections from [`.github/pull_request_template.md`](.github/pull_request_template.md).
-- The required CI check is `build-and-test` (it also builds against the
-  Swift 5.10 / Xcode 15.4 minimum toolchain). It must be green before merge.
+  / `chore` / `ci` / `perf`; append `!` for a breaking change). **This is
+  enforced** — the *Lint PR title* step of `build-and-test` rejects anything
+  else, so a merge is blocked until the title is fixed. Fill in the PR body's
+  Purpose / Changes / How to verify sections from
+  [`.github/pull_request_template.md`](.github/pull_request_template.md).
+- The required CI checks are `build-and-test` and `build-swift-5-10` (the
+  Swift 5.10 / Xcode 15.4 minimum toolchain). Both must be green before merge.
+  Other jobs — notably `examples-diff-build` — are advisory: PRs are merged
+  with `gh pr merge --squash --auto`, which does not wait for them, so treat a
+  late red as a fix-forward signal (see [docs/releasing.md](docs/releasing.md)).
 - **If your change is user-facing, add a file to
   [`changelog.d/`](changelog.d/README.md)** — not to `CHANGELOG.md` itself,
   which every pull request would otherwise edit on the same lines. Name it
