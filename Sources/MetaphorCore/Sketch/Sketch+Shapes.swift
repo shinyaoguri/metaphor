@@ -27,10 +27,10 @@ extension Sketch {
         context.popStyle()
     }
 
-    /// 現在の変換に 2D 平行移動を適用します。
+    /// 現在の変換に平行移動を適用します。
     ///
-    /// - Note: **2D のみ**に作用します。3D は ``translate(_:_:_:)``（3 引数）を
-    ///   使用してください（ADR-0005）。
+    /// - Note: **2D と 3D の両方**に作用します（3D は z = 0 の平行移動。
+    ///   Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameters:
     ///   - x: 水平方向の移動量。
@@ -39,19 +39,20 @@ extension Sketch {
         context.translate(x, y)
     }
 
-    /// 現在の変換に 2D 回転を適用します。
+    /// 現在の変換に回転を適用します。
     ///
-    /// - Note: **2D のみ**に作用します。3D は ``rotateX(_:)`` / ``rotateY(_:)`` /
-    ///   ``rotateZ(_:)`` を使用してください（ADR-0005）。
+    /// - Note: **2D と 3D の両方**に作用します（3D は z 軸まわりの回転 =
+    ///   ``rotateZ(_:)`` と同じ。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) {
         context.rotate(angle)
     }
 
-    /// 現在の変換に非均一 2D スケールを適用します。
+    /// 現在の変換に非均一スケールを適用します。
     ///
-    /// - Note: **2D のみ**に作用します（均一版 ``scale(_:)`` は 2D/3D 両方）。
+    /// - Note: **2D と 3D の両方**に作用します（3D は z 軸を等倍とする
+    ///   スケール。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameters:
     ///   - sx: 水平方向のスケール係数。
@@ -62,7 +63,7 @@ extension Sketch {
 
     /// 現在の変換に均一スケールを適用します。
     ///
-    /// - Note: **2D と 3D の両方**に作用します（非均一版 ``scale(_:_:)`` は 2D のみ）。
+    /// - Note: **2D と 3D の両方**に作用します。
     ///
     /// - Parameter s: 均一スケール係数。
     public func scale(_ s: Float) {

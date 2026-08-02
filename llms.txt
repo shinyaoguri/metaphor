@@ -293,7 +293,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
 - `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
-- `func rotate(_ angle: Float)` -- 現在の変換に 2D 回転を適用します。
+- `func rotate(_ angle: Float)` -- 現在の変換に回転を適用します。
 - `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
 - `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
 - `func rotateZ(_ angle: Float)` -- z 軸周りの回転を適用します。
@@ -305,7 +305,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func saveStrings(_ lines: [String], _ path: String) throws` -- 行の配列をテキストファイルへ書き込みます（UTF-8・各行に改行を付与）。
 - `func saveTable(_ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true) throws` -- ``Table`` を CSV/TSV ファイルへ書き込みます。
 - `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
-- `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一 2D スケールを適用します。
+- `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一スケールを適用します。
 - `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
 - `func screenX(_ x: Float, _ y: Float) -> Float` -- 2D モデル座標が描画されるスクリーン x 座標を返します。
 - `func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標が描画されるスクリーン x 座標を返します。
@@ -351,7 +351,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
 - `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
 - `func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
-- `func translate(_ x: Float, _ y: Float)` -- 現在の変換に 2D 平行移動を適用します。
+- `func translate(_ x: Float, _ y: Float)` -- 現在の変換に平行移動を適用します。
 - `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
 - `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- 3つの頂点で定義される三角形を描画します。
 - `func tween<T>(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic) -> Tween<T> where T : Interpolatable` -- トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
