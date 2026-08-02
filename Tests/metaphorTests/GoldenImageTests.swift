@@ -237,25 +237,30 @@ struct GoldenImageTests {
         }
     }
 
+    /// 「床 + 上から差す光 + 影を落とす箱」という、影のもっとも自然な構図。
+    ///
+    /// `ambientLight` は 2D の `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）
+    /// なので、`0.35` のような 0〜1 のつもりの値を渡すと実質 0 になる。ここで
+    /// 意味のある値（60）を使うのは、影の中の明るさ = ambient が保たれること
+    /// （Issue #364 で修正した合成則）をゴールデンに写し込むため。
+    ///
+    /// ライト方向は「光が進む向き」で、y は画面下向き。したがって
+    /// `directionalLight(_, +y, _)` が「上から差す光」になる。
     @Test("ゴールデン: シャドウマッピング（記録→shadow→再生 経路）")
     func shadowCast() throws {
         try verifyScene("shadow-cast", shadows: true, tolerance: .shaded) { c in
             c.background(Color(r: 0.08, g: 0.08, b: 0.12))
-            // 既定カメラは -z 方向を向くので、影の受け手は「床」ではなく
-            // 背面の壁にする（床だと厚みの側面しか映らず影が見えない）。
-            // 光もカメラ寄りから当てる: 真上からの平行光は影オン経路で
-            // シーン全体が自己遮蔽して真っ黒になる（Issue #364 に記録）。
-            c.ambientLight(0.35)
-            c.directionalLight(-0.4, -0.5, -1)
+            c.ambientLight(60)
+            c.directionalLight(-0.35, 0.9, -0.5)
             c.noStroke()
             c.fill(Color(r: 0.85, g: 0.85, b: 0.88))
             c.pushMatrix()
-            c.translate(64, 64, -60)
-            c.box(124, 124, 6)                 // 影を受ける背面の壁
+            c.translate(64, 96, 0)
+            c.box(120, 6, 120)                 // 影を受ける床
             c.popMatrix()
             c.fill(Color(r: 0.90, g: 0.40, b: 0.30))
             c.pushMatrix()
-            c.translate(58, 58, 20)
+            c.translate(58, 56, 10)
             c.rotateY(0.5)
             c.box(34)                          // 影を落とす箱
             c.popMatrix()

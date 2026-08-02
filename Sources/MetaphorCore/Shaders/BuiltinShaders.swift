@@ -135,9 +135,12 @@ public enum BuiltinShaders {
     }
 
     // PBR (Cook-Torrance GGX) lighting
+    //
+    // `shadow` はシャドウマップの可視率（1 = 完全に照らされる / 0 = 完全な影）。
+    // 影は直接光（diffuse + specular）にのみ掛かる（Issue #364）。
     float3 calculatePBRLighting(
         float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material
+        constant Light3D *lights, uint lightCount, Material3D material, float shadow
     ) {
         float3 N = normalize(normal);
         float3 V = normalize(cameraPos - worldPos);
@@ -180,18 +183,18 @@ public enum BuiltinShaders {
             Lo += (kD * baseColor / M_PI_F + specular) * lightColor * NdotL * attenuation;
         }
 
-        return material.ambientColor.xyz * baseColor * ao + material.emissiveAndMetallic.xyz + Lo;
+        return material.ambientColor.xyz * baseColor * ao + material.emissiveAndMetallic.xyz + Lo * shadow;
     }
 
     // Blinn-Phong lighting
     float3 calculateBlinnPhongLighting(
         float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material
+        constant Light3D *lights, uint lightCount, Material3D material, float shadow
     ) {
         float3 N = normalize(normal);
         float3 V = normalize(cameraPos - worldPos);
         float3 ambient = material.ambientColor.xyz * baseColor;
-        float3 result = ambient + material.emissiveAndMetallic.xyz;
+        float3 direct = float3(0.0);
         float metallic = material.emissiveAndMetallic.w;
         float shininess = max(material.specularAndShininess.w, 1.0);
         float3 specColor = mix(material.specularAndShininess.xyz, baseColor, metallic);
@@ -226,21 +229,43 @@ public enum BuiltinShaders {
             float NdotH = max(dot(N, H), 0.0);
             float spec = (NdotL > 0.0) ? pow(NdotH, shininess) : 0.0;
             float3 specular = specColor * spec;
-            result += (diffuse + specular) * lightColor * attenuation;
+            direct += (diffuse + specular) * lightColor * attenuation;
         }
 
-        return result;
+        return ambient + material.emissiveAndMetallic.xyz + direct * shadow;
     }
 
     // Unified entry point: auto-switch based on pbrParams.y
     float3 calculateLighting(
         float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material
+        constant Light3D *lights, uint lightCount, Material3D material, float shadow
     ) {
         if (material.pbrParams.y > 0.5) {
-            return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material);
+            return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
         }
-        return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material);
+        return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    }
+
+    // 影なし版（後方互換）。従来のシグネチャで呼ぶカスタムシェーダー向け。
+    float3 calculateLighting(
+        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
+        constant Light3D *lights, uint lightCount, Material3D material
+    ) {
+        return calculateLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
+    }
+
+    float3 calculatePBRLighting(
+        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
+        constant Light3D *lights, uint lightCount, Material3D material
+    ) {
+        return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
+    }
+
+    float3 calculateBlinnPhongLighting(
+        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
+        constant Light3D *lights, uint lightCount, Material3D material
+    ) {
+        return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
     }
     """
 
