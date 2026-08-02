@@ -213,7 +213,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [ProbeSnapshot](../../Examples/Samples/ProbeSnapshot) Tags: probesnapshot, samples.
 - [RayTracing](../../Examples/Samples/RayTracing) Tags: 3d, raytracing, samples.
 - [RenderGraphCompose](../../Examples/Samples/RenderGraphCompose) Tags: rendergraphcompose, samples.
-- [SVG Export](../../Examples/Samples/SVGExport) [Intermediate] -- Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVG()/endSVG() — the file is generated from the same draw calls as the raster output, so what you see is wh... Tags: export, interaction, samples, svgexport.
+- [SVG Export](../../Examples/Samples/SVGExport) [Intermediate] -- Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVGRecord()/endSVGRecord() — the file is generated from the same draw calls as the raster output, so what y... Tags: export, interaction, samples, svgexport.
 - [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: samples, scenegraphbasics.
 - [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: samples, scenegraphhybrid.
 - [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: live, samples, syphon, syphonmultiwindow.

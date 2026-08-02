@@ -1,42 +1,42 @@
 import Metal
 import MetaphorCore
 
-/// ``RenderGraph`` 内のノードのインターフェースを定義します。
+/// Defines the interface for nodes within a ``RenderGraph``.
 ///
-/// ``RenderPassNode`` に準拠する各ノードは
-/// ``execute(commandBuffer:time:renderer:)`` メソッドでレンダリング処理を行い、
-/// ``output`` テクスチャプロパティ経由で結果を公開します。
+/// Each node conforming to ``RenderPassNode`` performs its rendering work in the
+/// ``execute(commandBuffer:time:renderer:)`` method and exposes the result through
+/// the ``output`` texture property.
 ///
-/// ## カスタムノードの実装要件
+/// ## Requirements for implementing a custom node
 ///
-/// `execute` の冒頭で **frameToken によるメモ化** を必ず実装してください。
-/// 組み込みノード（``SourcePass`` / ``EffectPass`` / ``MergePass``）はこの
-/// パターンにより、diamond 状に共有されたノードもフレーム内で 1 回だけ実行
-/// されます。メモ化がないと共有ノードが重複実行され、グラフに循環がある場合は
-/// 無限再帰でスタックオーバーフローします。
+/// You must implement **frameToken-based memoization** at the top of `execute`.
+/// The built-in nodes (``SourcePass`` / ``EffectPass`` / ``MergePass``) use this
+/// pattern so that a node shared in a diamond shape is still executed only once
+/// per frame. Without memoization, a shared node would be executed redundantly, and
+/// if the graph contains a cycle, infinite recursion would cause a stack overflow.
 ///
 /// ```swift
-/// private var lastExecutedToken: UInt64 = .max  // .max = 未実行センチネル
+/// private var lastExecutedToken: UInt64 = .max  // .max = not-yet-executed sentinel
 ///
 /// func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
 ///     guard lastExecutedToken != renderer.frameToken else { return }
-///     lastExecutedToken = renderer.frameToken  // 入力の execute より先にセットする
-///     // ... 入力パスの execute → 自身の処理 ...
+///     lastExecutedToken = renderer.frameToken  // set this before calling execute on inputs
+///     // ... execute input passes -> perform this node's own work ...
 /// }
 /// ```
 @MainActor
 public protocol RenderPassNode: AnyObject {
-    /// このノードを識別するデバッグラベル。
+    /// A debug label that identifies this node.
     var label: String { get }
 
-    /// 実行後に生成される出力テクスチャ。未実行の場合は `nil`。
+    /// The output texture produced after execution. `nil` if not yet executed.
     var output: MTLTexture? { get }
 
-    /// このノードのレンダリング処理を実行し、``output`` テクスチャを生成します。
+    /// Executes this node's rendering work and produces the ``output`` texture.
     ///
     /// - Parameters:
-    ///   - commandBuffer: 処理をエンコードする Metal コマンドバッファ。
-    ///   - time: 経過時間（秒）。
-    ///   - renderer: 共有リソースを提供する `MetaphorRenderer` 参照。
+    ///   - commandBuffer: The Metal command buffer to encode the work into.
+    ///   - time: The elapsed time, in seconds.
+    ///   - renderer: A reference to the `MetaphorRenderer` that provides shared resources.
     func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)
 }

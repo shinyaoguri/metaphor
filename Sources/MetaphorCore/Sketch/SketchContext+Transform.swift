@@ -12,6 +12,9 @@ extension SketchContext {
     ///   - source: MSL シェーダーソースコード。
     ///   - fragmentFunction: フラグメントシェーダー関数名。
     /// - Returns: `CustomPostEffect` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
+    ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         let key = "user.posteffect.\(name)"
         try renderer.shaderLibrary.register(source: source, as: key)
@@ -73,26 +76,35 @@ extension SketchContext {
         canvas3D.popStyle()
     }
 
-    /// 2D 平行移動を適用します。
+    /// 平行移動を適用します（2D・3D 両方）。
+    ///
+    /// 3D 側は z = 0 の平行移動として適用されます（Processing P3D 互換）。
     /// - Parameters:
     ///   - x: 水平方向の移動量。
     ///   - y: 垂直方向の移動量。
     public func translate(_ x: Float, _ y: Float) {
         canvas.translate(x, y)
+        canvas3D.translate(x, y, 0)
     }
 
-    /// 2D 回転を適用します。
+    /// 回転を適用します（2D・3D 両方）。
+    ///
+    /// 3D 側は z 軸まわりの回転として適用されます（Processing P3D 互換）。
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotate(_ angle: Float) {
         canvas.rotate(angle)
+        canvas3D.rotateZ(angle)
     }
 
-    /// 2D スケールを適用します。
+    /// 非均一スケールを適用します（2D・3D 両方）。
+    ///
+    /// 3D 側は z 軸を等倍（1）としたスケールになります（Processing P3D 互換）。
     /// - Parameters:
     ///   - sx: 水平方向のスケール係数。
     ///   - sy: 垂直方向のスケール係数。
     public func scale(_ sx: Float, _ sy: Float) {
         canvas.scale(sx, sy)
+        canvas3D.scale(sx, sy, 1)
     }
 
     /// 2D・3D 両方のキャンバスに均一スケールを適用します。

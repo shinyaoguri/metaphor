@@ -146,7 +146,12 @@ if [ -z "$stable_version" ]; then
     fail "README.md — could not find stable SPM dependency version"
 else
     pass "README.md stable SPM version is $stable_version"
-    version_docs=(Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt)
+    # NOTE: this list and the version-bump sed in .github/workflows/release.yml
+    # ("Push release branch" step) are two halves of one contract — always
+    # change them together. A file listed only here is never bumped by a
+    # release yet is checked, which deadlocks the release; a file listed only
+    # there is bumped but nothing stops it drifting back out of sync.
+    version_docs=(README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt)
     for doc in "${version_docs[@]}"; do
         if [ ! -f "$doc" ]; then
             fail "$doc — file not found"

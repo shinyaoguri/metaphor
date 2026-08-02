@@ -1,14 +1,14 @@
 import Metal
 
-/// ノイズ値配列から Metal テクスチャを構築します。
+/// Builds a Metal texture from an array of noise values.
 enum NoiseTextureBuilder {
-    /// float 配列（0.0〜1.0）からグレースケール BGRA8 テクスチャを作成します。
+    /// Creates a grayscale BGRA8 texture from a float array (0.0-1.0).
     /// - Parameters:
-    ///   - device: テクスチャを作成する Metal デバイス。
-    ///   - values: 行優先順序のノイズ値フラット配列。
-    ///   - width: テクスチャの幅（ピクセル単位）。
-    ///   - height: テクスチャの高さ（ピクセル単位）。
-    /// - Returns: グレースケールノイズを含む Metal テクスチャ。失敗時は nil。
+    ///   - device: The Metal device to create the texture on.
+    ///   - values: A flat, row-major array of noise values.
+    ///   - width: The texture width, in pixels.
+    ///   - height: The texture height, in pixels.
+    /// - Returns: A Metal texture containing the grayscale noise, or nil on failure.
     static func buildTexture(
         device: MTLDevice,
         values: [Float],
@@ -49,14 +49,17 @@ enum NoiseTextureBuilder {
         return tex
     }
 
-    /// float 配列からグラデーションストップを使用してカラーマップテクスチャを作成します。
+    /// Creates a color-mapped texture from a float array using gradient stops.
     /// - Parameters:
-    ///   - device: テクスチャを作成する Metal デバイス。
-    ///   - values: 行優先順序のノイズ値フラット配列。
-    ///   - width: テクスチャの幅（ピクセル単位）。
-    ///   - height: テクスチャの高さ（ピクセル単位）。
-    ///   - colorStops: グラデーションを定義する (位置, BGRA カラー) ペアの配列。
-    /// - Returns: カラーマップされたノイズの Metal テクスチャ。失敗時は nil。
+    ///   - device: The Metal device to create the texture on.
+    ///   - values: A flat, row-major array of noise values.
+    ///   - width: The texture width, in pixels.
+    ///   - height: The texture height, in pixels.
+    ///   - colorStops: An array of (position, BGRA color) pairs defining the
+    ///     gradient. At least 2 stops are required.
+    /// - Returns: A Metal texture containing the color-mapped noise, or nil
+    ///   if `values.count != width * height`, fewer than 2 color stops are
+    ///   given, or texture allocation fails.
     static func buildColorMappedTexture(
         device: MTLDevice,
         values: [Float],
