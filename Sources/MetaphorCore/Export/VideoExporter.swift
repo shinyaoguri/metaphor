@@ -2,7 +2,10 @@
 // Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
 // で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import Metal
-import AVFoundation
+// @preconcurrency: `AVAssetWriterInput` / `AVAssetWriterInputPixelBufferAdaptor` を writerQueue へ渡す
+// （すべてのアクセスがそのシリアルキューで直列化されている）。Swift 5.10 でのみ出る警告。
+// AVFoundation の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
+@preconcurrency import AVFoundation
 import CoreVideo
 import Foundation
 

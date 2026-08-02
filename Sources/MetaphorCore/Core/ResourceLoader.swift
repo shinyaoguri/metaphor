@@ -1,4 +1,7 @@
-import Metal
+// @preconcurrency: `MTLTexture` / `MTLDevice` を nonisolated な async ヘルパーとの間で受け渡す。
+// Swift 5.10 でのみ出る警告（新しい SDK では診断されない）。
+// Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
+@preconcurrency import Metal
 // @preconcurrency: `MTKTextureLoader` を nonisolated な async ラッパーへ渡す（ローダはスレッドセーフ）。
 // MetalKit の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
 // で、metaphor 側でも直列化・排他済み（Issue #328）。

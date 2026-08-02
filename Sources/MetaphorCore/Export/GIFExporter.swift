@@ -1,4 +1,7 @@
-import Metal
+// @preconcurrency: ステージングテクスチャを書き出しキュー（`@Sendable` クロージャ）へ渡す。
+// Swift 5.10 でのみ出る警告。
+// Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
+@preconcurrency import Metal
 import CoreGraphics
 import Foundation
 // @preconcurrency: `CGImageDestination` を書き出しキュー／detached task へ渡す。書き出しは専用シリアル
