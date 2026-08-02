@@ -34,29 +34,32 @@ Releases are cut by **labeling a PR**, not by a separate branch:
 Pre-releases (beta/rc) are cut manually via the Release workflow's
 `workflow_dispatch` (`bump=prerelease` etc.).
 
-## Merging PRs (merge queue)
+## Merging PRs (auto-merge)
 
-`main` uses a **merge queue** (ruleset "main protection"). Instead of waiting
-for CI and clicking merge manually:
+Instead of waiting for CI and merging manually:
 
 ```
 gh pr merge <number> --squash --auto
 ```
 
-This queues the PR; GitHub builds it merged onto the latest `main` on a
-temporary `gh-readonly-queue/*` branch (the `merge_group` event in `ci.yml`),
-and merges automatically when the required checks pass. Consequences:
+GitHub merges automatically once the required checks on the PR's own head
+pass. Consequences and rationale:
 
-- **No need to keep branches up to date.** The queue tests the merged result,
-  so `strict_required_status_checks_policy` is off — a `BEHIND` PR can be
-  queued as-is. Concurrent PRs no longer serialize on update → CI → merge.
-- Release labeling is unaffected: the queue performs a normal squash merge, so
-  `release-on-merge.yml` (`pull_request: closed`) fires as before.
-- Both required checks (`build-and-test`, `build-swift-5-10`) bridge a legacy
-  Status on `merge_group` runs — personal-repo rulesets evaluate the legacy
-  Statuses API, same as the `workflow_dispatch` bridge (#37 / #367).
-- If a queue entry fails its checks it is removed from the queue and the PR
-  is left open — fix, push, and re-queue with the same command.
+- **No need to keep branches up to date.** The ruleset's
+  `strict_required_status_checks_policy` is **off** (2026-08-02): a `BEHIND`
+  PR merges as-is, so concurrent PRs no longer serialize on
+  update-branch → CI re-run → merge. Textual conflicts still block the merge
+  (GitHub's `DIRTY` state), and semantic conflicts between independently green
+  PRs are caught by the `push: main` CI run right after the merge — if main
+  goes red, fix forward with a follow-up PR.
+- Release labeling is unaffected: auto-merge performs a normal squash merge,
+  so `release-on-merge.yml` (`pull_request: closed`) fires as before.
+- A true **merge queue** would be strictly better (it tests each PR merged
+  onto latest main before merging), but the `merge_queue` ruleset rule is
+  rejected on user-owned repositories (422 "Invalid rule", verified
+  2026-08-02) — it is an organization-plan feature. `ci.yml` already carries
+  the `merge_group` trigger and legacy-status bridges, so if this repo ever
+  moves to an organization, enabling the queue is a ruleset-only change.
 
 ## Manual dispatch inputs
 

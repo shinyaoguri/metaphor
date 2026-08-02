@@ -4,10 +4,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # Merge queue (ruleset "main protection") builds each queued PR merged onto
-  # the latest main on a gh-readonly-queue/* branch and fires this event.
-  # Without it the queue entry would never receive the required checks and
-  # time out. Required checks below must always report on merge_group runs.
+  # A merge queue would build each queued PR merged onto the latest main on a
+  # gh-readonly-queue/* branch and fire this event. NOTE: the merge_queue
+  # ruleset rule is rejected on user-owned repos (verified 2026-08-02), so
+  # this trigger is currently dormant — kept so that enabling the queue after
+  # a possible org migration is a ruleset-only change. Until then PRs merge
+  # via auto-merge with strict up-to-date checking off (docs/releasing.md).
   merge_group:
   # Required for the Release workflow to fire CI on release/<tag> branches.
   # GITHUB_TOKEN-created PRs do not trigger pull_request, but workflow_dispatch
