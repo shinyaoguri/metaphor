@@ -257,7 +257,12 @@ public final class Canvas3D: CanvasStyle {
     /// レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
     ///
     /// - Parameter renderer: 設定の派生元となるレンダラー。
-    /// - Throws: パイプラインステートの生成に失敗した場合にエラー。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 3D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``、ダミーシャドウ
+    ///   テクスチャを作成できない場合は
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``。
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -278,7 +283,12 @@ public final class Canvas3D: CanvasStyle {
     ///   - width: キャンバスの幅（ポイント単位）。
     ///   - height: キャンバスの高さ（ポイント単位）。
     ///   - sampleCount: MSAA サンプル数（デフォルト: 1）。
-    /// - Throws: パイプラインステートの生成に失敗した場合にエラー。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 3D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``、ダミーシャドウ
+    ///   テクスチャを作成できない場合は
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``。
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
@@ -434,6 +444,18 @@ public final class Canvas3D: CanvasStyle {
     func end() {
         flushInstanceBatch()
         self.encoder = nil
+    }
+
+    /// メインパス分割後（`loadPixels()` の同一フレーム読み戻し、#326）に、
+    /// 描画先を新しいレンダーコマンドエンコーダへ差し替えます。
+    ///
+    /// 呼び出し側は分割前に ``flushInstanceBatch()`` 済みであること。カメラ・ライト・
+    /// 変換などフレーム状態は維持する（`draw()` の途中のため）。
+    ///
+    /// - Note: 継続パスはデプスがクリアされる。分割をまたいだ 3D 同士は深度比較されない。
+    /// - Parameter newEncoder: 継続パスのレンダーコマンドエンコーダー。
+    func rebindEncoder(_ newEncoder: MTLRenderCommandEncoder) {
+        self.encoder = newEncoder
     }
 
     /// メインレンダリングパス完了後にシャドウ深度パスを実行します。

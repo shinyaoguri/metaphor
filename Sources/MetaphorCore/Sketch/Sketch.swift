@@ -138,16 +138,6 @@ extension Sketch {
     public func fileDropped(_ paths: [String]) {}
 }
 
-// MARK: - Deprecated
-
-extension Sketch {
-    /// 明示的なコンテキストパラメータを使用して1フレームを描画します。
-    ///
-    /// - Parameter ctx: スケッチコンテキスト。
-    @available(*, deprecated, message: "Use draw() instead. Access context via self properties or self._context.")
-    public func draw(_ ctx: SketchContext) { draw() }
-}
-
 // MARK: - @main Entry Point
 
 extension Sketch {

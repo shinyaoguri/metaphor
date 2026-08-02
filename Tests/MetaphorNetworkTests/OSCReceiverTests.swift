@@ -459,3 +459,41 @@ struct OSCListenerFailureTests {
         #expect(second.isRunning == false)
     }
 }
+
+// MARK: - エラー契約（Issue #323）
+
+/// `OSCReceiver.start()` が Network フレームワークの生 `NWError` を素通りさせず、
+/// `OSCReceiverError` へ包むことを凍結する。
+///
+/// - Note: ポート衝突（EADDRINUSE）は `NWListener` の**非同期**な状態遷移で届くため
+///   `lastError` 側の責務（上の `OSCListenerFailureTests`）。ここが担保するのは
+///   `NWListener(using:on:)` が**同期的に**失敗した場合の包み方。
+@Suite("OSC error contract")
+@MainActor
+struct OSCErrorContractTests {
+
+    @Test("invalid port throws invalidPort")
+    func invalidPort() {
+        let receiver = OSCReceiver(port: 0)
+        do {
+            try receiver.start()
+            receiver.stop()
+        } catch let error as OSCReceiverError {
+            guard case .invalidPort(let p) = error else {
+                Issue.record("expected .invalidPort but got \(error)")
+                return
+            }
+            #expect(p == 0)
+        } catch {
+            Issue.record("expected OSCReceiverError but got \(type(of: error)): \(error)")
+        }
+    }
+
+    @Test("error descriptions are non-empty and mention the cause")
+    func errorDescriptions() {
+        #expect(OSCReceiverError.invalidPort(70).errorDescription?.contains("70") == true)
+        let listenerFailed = OSCReceiverError.listenerCreationFailed(port: 9000, detail: "in use")
+        #expect(listenerFailed.errorDescription?.contains("9000") == true)
+        #expect(listenerFailed.errorDescription?.contains("in use") == true)
+    }
+}

@@ -4,10 +4,10 @@
   "author": "",
   "level": "Intermediate",
   "order": "2",
-  "description": "Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVG()/endSVG() — the file is generated from the same draw calls as the raster output, so what you see is what plots.",
+  "description": "Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVGRecord()/endSVGRecord() — the file is generated from the same draw calls as the raster output, so what you see is what plots.",
   "featured": [
-    "beginSVG_",
-    "endSVG_",
+    "beginSVGRecord_",
+    "endSVGRecord_",
     "curveVertex_",
     "randomSeed_"
   ]

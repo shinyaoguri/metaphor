@@ -1,57 +1,57 @@
 import MetaphorCore
 import simd
 
-/// `Canvas3D` インスタンスを使用してシーングラフツリーをレンダリングします。
+/// Renders a scene graph tree using a `Canvas3D` instance.
 ///
-/// ``SceneRenderer`` はノード階層の深さ優先トラバーサルを行い、
-/// 各ノードのローカルトランスフォームを push/pop マトリクスで適用し、
-/// アタッチされたメッシュの描画やカスタム描画コールバックの呼び出しを行います。
+/// ``SceneRenderer`` performs a depth-first traversal of the node hierarchy,
+/// applying each node's local transform via push/pop matrix operations, and
+/// drawing any attached mesh and invoking any custom draw callback.
 ///
-/// フラスタム平面が与えられている場合、``Node/bounds`` を持つノードが
-/// フラスタムの完全に外側にあれば自身の描画をスキップします。``Node/bounds`` は
-/// ノード単体のローカル AABB でありサブツリーを内包する保証がないため、
-/// 子はカリングせず個別に判定します（セミヒエラルキカルカリング）。
+/// When frustum planes are provided, a node with ``Node/bounds`` skips its own
+/// drawing if it lies entirely outside the frustum. Because ``Node/bounds`` is
+/// each node's own local AABB and is not guaranteed to enclose its subtree,
+/// children are not culled with it and are evaluated individually (semi-hierarchical culling).
 @MainActor
 public final class SceneRenderer {
-    /// カリング用のフラスタム平面（6平面: 左、右、下、上、ニア、ファー）。
+    /// The frustum planes used for culling (6 planes: left, right, bottom, top, near, far).
     ///
-    /// 各平面は `(nx, ny, nz, d)` で、正の半空間が可視です。
-    /// フラスタムカリングを無効にするには `nil` を設定してください。
+    /// Each plane is `(nx, ny, nz, d)`, and the positive half-space is visible.
+    /// Set to `nil` to disable frustum culling.
     ///
-    /// - Important: static なグローバル状態のため、1 フレームで複数のシーン/カメラを
-    ///   描く場合は共有されます。その場合は
-    ///   ``render(node:canvas:frustumPlanes:)`` で呼び出しごとに平面を渡してください。
+    /// - Important: Because this is static global state, it is shared when drawing
+    ///   multiple scenes/cameras in a single frame. In that case, pass the planes
+    ///   per call using ``render(node:canvas:frustumPlanes:)`` instead.
     public static var frustumPlanes: [SIMD4<Float>]?
 
-    /// ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+    /// Traverses the node tree depth-first, rendering each visible node.
     ///
-    /// フラスタムカリングには ``frustumPlanes``（グローバル）を使用します。
-    /// 複数シーン/カメラを描く場合は ``render(node:canvas:frustumPlanes:)`` を
-    /// 使ってください。
+    /// Uses ``frustumPlanes`` (global) for frustum culling.
+    /// When drawing multiple scenes/cameras, use
+    /// ``render(node:canvas:frustumPlanes:)`` instead.
     ///
     /// - Parameters:
-    ///   - node: レンダリングするツリー（またはサブツリー）のルートノード。
-    ///   - canvas: 描画に使用する `Canvas3D` インスタンス。
+    ///   - node: The root node of the tree (or subtree) to render.
+    ///   - canvas: The `Canvas3D` instance to draw with.
     public static func render(node: Node, canvas: Canvas3D) {
         render(node: node, canvas: canvas, frustumPlanes: frustumPlanes)
     }
 
-    /// ノードツリーを深さ優先でトラバースし、各可視ノードをレンダリングします。
+    /// Traverses the node tree depth-first, rendering each visible node.
     ///
-    /// 各ノードに対して、レンダラーはマトリクススタックをプッシュし、
-    /// ノードのローカルトランスフォーム（クォータニオンベースの向き経由）を適用し、
-    /// フィルカラーが指定されていれば設定し、メッシュがあれば描画し、
-    /// カスタム描画コールバックを呼び出し、子に再帰し、最後にマトリクススタックをポップします。
+    /// For each node, the renderer pushes the matrix stack, applies the node's
+    /// local transform (via its quaternion-based orientation), sets the fill
+    /// color if one is specified, draws its mesh if it has one, invokes any
+    /// custom draw callback, recurses into its children, and finally pops the matrix stack.
     ///
-    /// - Important: カリング判定は ``Node/worldTransform``（ツリー基準）で行い、
-    ///   描画は呼び出し時点の canvas 行列スタック基準で行います。両者が一致するよう、
-    ///   カリングを使う場合はルートノードを canvas の変換が identity の状態で
-    ///   渡してください（既存の変換の下で呼ぶと判定と描画がズレます）。
+    /// - Important: Culling decisions are made using ``Node/worldTransform`` (relative
+    ///   to the tree), while drawing uses the canvas's matrix stack at call time. To keep
+    ///   the two consistent, when culling is enabled, call this with the root node while
+    ///   the canvas transform is identity (calling it under an existing transform will make culling and drawing disagree).
     ///
     /// - Parameters:
-    ///   - node: レンダリングするツリー（またはサブツリー）のルートノード。
-    ///   - canvas: 描画に使用する `Canvas3D` インスタンス。
-    ///   - frustumPlanes: カリング用のフラスタム平面（6平面）。`nil` でカリング無効。
+    ///   - node: The root node of the tree (or subtree) to render.
+    ///   - canvas: The `Canvas3D` instance to draw with.
+    ///   - frustumPlanes: The frustum planes used for culling (6 planes). `nil` disables culling.
     public static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?) {
         guard node.isVisible else { return }
 
@@ -92,14 +92,14 @@ public final class SceneRenderer {
         canvas.popMatrix()
     }
 
-    /// ビュー・プロジェクション行列から6つのフラスタム平面を抽出します。
+    /// Extracts six frustum planes from a view-projection matrix.
     ///
-    /// Gribb/Hartmann 法を使用します。返される各平面は正規化済みです。
+    /// Uses the Gribb/Hartmann method. Each returned plane is normalized.
     ///
-    /// - Parameter viewProjection: 合成されたビュー × プロジェクション行列。
-    ///   Metal 深度規約（クリップ空間 z ∈ [0, 1]。Core の `perspectiveFov` /
-    ///   `orthographic` が生成する形式）を前提とします。
-    /// - Returns: 6つのフラスタム平面の配列（左、右、下、上、ニア、ファー）。
+    /// - Parameter viewProjection: The combined view x projection matrix.
+    ///   Assumes the Metal depth convention (clip-space z in [0, 1], the form
+    ///   produced by Core's `perspectiveFov` / `orthographic`).
+    /// - Returns: An array of six frustum planes (left, right, bottom, top, near, far).
     public static func extractFrustumPlanes(from viewProjection: float4x4) -> [SIMD4<Float>] {
         let m = viewProjection
         let r0 = SIMD4<Float>(m[0][0], m[1][0], m[2][0], m[3][0])

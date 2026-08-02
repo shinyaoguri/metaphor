@@ -6,6 +6,30 @@ import Metal
 /// - **初期化時の失敗**: ``MetaphorError`` をスロー
 /// - **ランタイムの失敗** (描画中): `metaphorWarning()` でログ出力、スローしない
 /// - **独立モジュール** (Audio, Network, Physics): 各自のエラー型を使用
+///
+/// ## エラー契約 (ADR-0005 Decision 2 / Amendment 3)
+///
+/// `throws` と宣言された public API は、**そのモジュールのエラー型だけ**を投げます。
+/// Metal・Foundation・MetalKit・AVFoundation など下層フレームワークの `NSError` を
+/// そのまま素通りさせてはいけません。必ずこの型 (`MetaphorCore` と、それに依存する
+/// `MetaphorMPS` / `MetaphorRenderGraph`) か、各独立モジュールのエラー型へ包みます。
+/// 下層の原因はケースの `underlying` / `detail` に文字列として保存します。
+///
+/// この規約により `catch` 側は次のように書けます。
+///
+/// ```swift
+/// do {
+///     let image = try loadImage("missing.png")
+/// } catch let error as MetaphorError {
+///     // metaphor 由来の失敗はすべてここに来る
+///     print(error.description)
+/// }
+/// ```
+///
+/// - Note: 将来 Swift の最小サポートが 6.0 以上になった時点で、この規約は
+///   typed throws (`throws(MetaphorError)`) としてコンパイラに強制させる予定です
+///   (SE-0413 は Swift 6.0 の機能で、最小サポートの Swift 5.10 ではパースできません)。
+///   それまでは「投げるエラー型を統一し doc に明記する」ことで同じ予見可能性を担保します。
 public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
 
     // MARK: - Core (デバイス, キュー, バッファ, テクスチャ)
@@ -38,6 +62,9 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
 
     /// 指定されたシェーダー関数がシェーダーライブラリに見つからなかった
     case shaderNotFound(String)
+
+    /// シェーダーソースファイルを読み込めなかった (コンパイル前段の I/O 失敗)
+    case shaderSourceLoadFailed(path: String, detail: String)
 
     // MARK: - Canvas
 
@@ -99,6 +126,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     public enum MeshFailure: Sendable {
         /// メッシュファイルが見つからなかった
         case fileNotFound
+        /// メッシュファイルを読み込めなかった (不在・権限・I/O エラー)
+        case loadFailed(path: String, detail: String)
         /// メッシュデータのパースに失敗した
         case parseError(String)
     }
@@ -106,6 +135,10 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     public enum ImageFailure: Sendable {
         /// ソース画像が無効、または CGImage への変換に失敗した
         case invalidImage
+        /// 画像をテクスチャとして読み込めなかった (不在・非対応フォーマット・I/O エラー)
+        ///
+        /// `source` はファイルパス・アセット名など読み込み元の識別子です。
+        case loadFailed(source: String, detail: String)
     }
 
     public enum MaterialFailure: Sendable {
@@ -149,6 +182,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
         case writerFailed(String)
         /// endRecord() 呼び出し時に録画がアクティブでなかった
         case notRecording
+        /// 出力ファイルの作成・移動・削除に失敗した
+        case fileWriteFailed(path: String, detail: String)
     }
 
     public enum ComputeFailure: Sendable {
@@ -191,6 +226,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
             "[metaphor] Failed to create pipeline '\(name)': \(err)"
         case .shaderNotFound(let name):
             "[metaphor] Shader function not found: '\(name)'"
+        case .shaderSourceLoadFailed(let path, let detail):
+            "[metaphor] Failed to read shader source '\(path)': \(detail)"
         case .canvas(let f):
             switch f {
             case .bufferCreationFailed:
@@ -200,6 +237,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
             switch f {
             case .fileNotFound:
                 "[metaphor] Mesh file not found"
+            case .loadFailed(let path, let detail):
+                "[metaphor] Failed to load mesh '\(path)': \(detail)"
             case .parseError(let detail):
                 "[metaphor] Mesh parse error: \(detail)"
             }
@@ -207,6 +246,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
             switch f {
             case .invalidImage:
                 "[metaphor] Invalid image or CGImage conversion failed"
+            case .loadFailed(let source, let detail):
+                "[metaphor] Failed to load image '\(source)': \(detail)"
             }
         case .material(let f):
             switch f {
@@ -250,6 +291,8 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
                 "[metaphor] Video export failed: \(detail)"
             case .notRecording:
                 "[metaphor] Export ended but was not recording"
+            case .fileWriteFailed(let path, let detail):
+                "[metaphor] Failed to write export file '\(path)': \(detail)"
             }
         case .compute(let f):
             switch f {
