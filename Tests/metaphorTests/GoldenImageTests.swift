@@ -278,6 +278,47 @@ struct GoldenImageTests {
         }
     }
 
+    /// 2D 変換（`translate`/`rotate`/`scale` の 2D 側オーバーロード）が 3D 描画にも
+    /// 効くこと（ADR-0005 Amendment 2026-08-02 の P3D 意味論統一）を画素で凍結する。
+    ///
+    /// 既存の 3D シーンはすべて 3 引数 `translate` を使っているため、統一前後で
+    /// 1 画素も動かなかった。**このシーンだけが変換ファミリの適用先に検出力を持つ**
+    /// （Issue #325 / #385）。統一を戻すと 3 つのボックスがすべてワールド原点
+    /// （= 左上）へ集まり、画像が壊れる。
+    @Test("ゴールデン: 2D 変換 + 3D 描画（P3D 意味論統一の検出用）")
+    func transform2DAppliedTo3D() throws {
+        try verifyScene("transform-2d-on-3d", tolerance: .shaded) { c in
+            c.background(Color(r: 0.06, g: 0.07, b: 0.10))
+            c.pbr(false)
+            c.ambientLight(0.45)
+            c.directionalLight(-0.4, -0.5, -1)
+            c.noStroke()
+
+            // 1) translate(x, y): 中央寄せしてから箱を置く（P3D 移植の最頻出イディオム）。
+            c.pushMatrix()
+            c.fill(Color(r: 0.90, g: 0.40, b: 0.30))
+            c.translate(40, 44)
+            c.box(30)
+            c.popMatrix()
+
+            // 2) translate + rotate(a): 2D の rotate が 3D では z 軸回転になる。
+            c.pushMatrix()
+            c.fill(Color(r: 0.30, g: 0.75, b: 0.90))
+            c.translate(92, 40)
+            c.rotate(0.6)
+            c.box(34, 16, 16)
+            c.popMatrix()
+
+            // 3) translate + scale(sx, sy): 非均一スケールが z 等倍で効く。
+            c.pushMatrix()
+            c.fill(Color(r: 0.95, g: 0.82, b: 0.25))
+            c.translate(64, 98)
+            c.scale(1.6, 0.6)
+            c.box(28)
+            c.popMatrix()
+        }
+    }
+
     // NOTE: テキストレンダリングのゴールデンは意図的に持たない。
     // グリフのラスタライズは OS のフォントスタック（Core Text のヒンティング・
     // フォント差し替え）に依存し、macOS のマイナー更新でも画素が変わり得るため、

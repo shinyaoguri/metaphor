@@ -35,6 +35,7 @@ Maintaining this file
 
 ### Breaking Changes
 
+- `translate(x, y)`, `rotate(a)` and `scale(sx, sy)` now apply to the **3D** transform as well as the 2D one, matching Processing's `P3D` semantics ([#325](https://github.com/shinyaoguri/metaphor/issues/325), [#384](https://github.com/shinyaoguri/metaphor/pull/384), ADR-0005 Amendment 2026-08-02). On the 3D matrix they mean a `z = 0` translation, a rotation about z, and a scale that leaves z unchanged. This works because the 3D world is already pixel space — the default camera matches Processing's `P3D` default — so `translate(width/2, height/2)` followed by `box()` now centers the box instead of leaving it at the top-left corner. If a sketch relied on a two-argument transform moving *only* 2D content, wrap that region in `pushMatrix()` / `popMatrix()` (both already save and restore 2D and 3D). Public signatures are unchanged, so this breaks rendering output, not compilation. `shearX`/`shearY` and `applyMatrix(float3x3)` stay 2D-only.
 - Removed seven APIs that had been deprecated long enough to meet the ADR-0005 removal condition — each shipped as deprecated in at least one earlier minor release ([#354](https://github.com/shinyaoguri/metaphor/pull/354)). Migrate as follows:
   - `MetaphorPlugin.onBeforeRender(commandBuffer:time:)` → `pre(commandBuffer:time:)`
   - `MetaphorPlugin.onAfterRender(texture:commandBuffer:)` → `post(texture:commandBuffer:)`

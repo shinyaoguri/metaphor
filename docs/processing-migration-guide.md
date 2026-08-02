@@ -197,12 +197,12 @@ Note the two distinct color entry points — see
 | `pushMatrix()` / `popMatrix()` | `pushMatrix()` / `popMatrix()` | transform only, 2D **and** 3D |
 | `push()` / `pop()` | `push()` / `pop()` | transform **and** style, 2D and 3D |
 | `pushStyle()` / `popStyle()` | `pushStyle()` / `popStyle()` | style only, 2D and 3D |
-| `translate(x, y)` | `translate(_ x: Float, _ y: Float)` | 2D only |
+| `translate(x, y)` | `translate(_ x: Float, _ y: Float)` | 2D and 3D |
 | `translate(x, y, z)` | `translate(_ x: Float, _ y: Float, _ z: Float)` | 3D only |
-| `rotate(a)` | `rotate(_ angle: Float)` | 2D only |
+| `rotate(a)` | `rotate(_ angle: Float)` | 2D and 3D (z-axis on 3D) |
 | `rotateX/Y/Z(a)` | `rotateX(_:)` / `rotateY(_:)` / `rotateZ(_:)` | 3D only |
 | `scale(s)` | `scale(_ s: Float)` | 2D and 3D |
-| `scale(sx, sy)` | `scale(_ sx: Float, _ sy: Float)` | 2D only |
+| `scale(sx, sy)` | `scale(_ sx: Float, _ sy: Float)` | 2D and 3D (z unscaled) |
 | `scale(sx, sy, sz)` | `scale(_ x: Float, _ y: Float, _ z: Float)` | 3D only |
 | `shearX(a)` / `shearY(a)` | `shearX(_ angle: Float)` / `shearY(_ angle: Float)` | 2D only |
 | `applyMatrix(n00…n12)` | `applyMatrix(_ n00: Float, …, _ n12: Float)` (6 components, row-major, Processing-compatible) | 2D only |
@@ -578,21 +578,22 @@ cannot distinguish "never pressed" from "left".
 Also note `key` and `keyCode` are **optionals** (`Character?`, `UInt16?`), so
 `if key == "a"` works but `key!.isLetter` needs unwrapping.
 
-### 2D and 3D are two canvases, and most transforms pick one
+### 2D and 3D are two canvases, but the transform family drives both
 
 `P3D` in Processing is a renderer swap: the same `translate` / `rotate` / `scale`
 drive whichever mode you are in. metaphor draws 2D and 3D on two canvases that
-live side by side in the same frame, and **each transform call targets exactly
-one of them** ([ADR-0005](adr/0005-sketch-api-consistency.md)):
+live side by side in the same frame — but the **transform family applies to both**,
+so the `P3D` centering idiom ports unchanged
+([ADR-0005](adr/0005-sketch-api-consistency.md), Amendment 2026-08-02):
 
 | | 2D canvas | 3D canvas |
 |---|---|---|
-| `translate(x, y)` | ✅ | — |
+| `translate(x, y)` | ✅ | ✅ (as `z = 0`) |
 | `translate(x, y, z)` | — | ✅ |
-| `rotate(a)` | ✅ | — |
+| `rotate(a)` | ✅ | ✅ (about z) |
 | `rotateX/Y/Z(a)` | — | ✅ |
 | `scale(s)` | ✅ | ✅ |
-| `scale(sx, sy)` | ✅ | — |
+| `scale(sx, sy)` | ✅ | ✅ (z unscaled) |
 | `scale(x, y, z)` | — | ✅ |
 | `shearX/Y(a)`, `applyMatrix(float3x3)` | ✅ | — |
 | `applyMatrix(float4x4)` | — | ✅ |
@@ -601,15 +602,26 @@ one of them** ([ADR-0005](adr/0005-sketch-api-consistency.md)):
 | `pushMatrix()` / `popMatrix()`, `resetMatrix()` | ✅ | ✅ |
 | `push()` / `pop()`, `pushStyle()` / `popStyle()` | ✅ | ✅ |
 
-The rule of thumb: **the arity picks the canvas.** Two-argument `translate` is 2D,
-three-argument `translate` is 3D; `rotate` is 2D, `rotateX/Y/Z` are 3D. So a
-ported `P3D` sketch that wraps a 3D object in `translate(x, y)` will not move it —
-write `translate(x, y, 0)`.
+This works because the 3D world **is** pixel space: the default camera is reset
+every frame to Processing's own `P3D` default, so `translate(width/2, height/2)`
+means the same thing on both canvases. `translate(x, y)` on the 3D matrix is a
+`z = 0` translation, `rotate(a)` is a rotation about z, and `scale(sx, sy)` leaves
+z unscaled.
 
-The save/restore family is the exception: `pushMatrix()` / `popMatrix()` save the
-transform on **both** canvases, and `push()` / `pop()` save the transform *and* the
-style on both. Either is a correct stand-in for Processing's
-`pushMatrix()` / `popMatrix()` in 2D or 3D.
+**What still does not carry over is the other direction:** 3D-only transforms do
+not affect 2D drawing. `Canvas2D`'s matrix is a `float3x3` affine, which cannot
+represent `rotateX` / `rotateY`, so a `P3D` sketch that rotates a `rect()` in 3D
+will render it flat. Draw with 3D primitives (`box`, `sphere`, `beginShape3D`)
+when you need that.
+
+Related: starting a shape with the 2D `beginShape()` routes three-argument
+`vertex(x, y, z)` calls to the **2D** canvas with `z` dropped. Use `beginShape3D()`
+/ `endShape3D()` to build actual 3D geometry.
+
+The save/restore family covers both canvases: `pushMatrix()` / `popMatrix()` save the
+transform on **both**, and `push()` / `pop()` save the transform *and* the style on
+both. Wrap a region in `pushMatrix()` / `popMatrix()` when you want a 2D-only
+transform not to leak into subsequent 3D drawing.
 
 ### The 3D camera resets every frame
 
