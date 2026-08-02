@@ -52,7 +52,8 @@ public final class SourcePass: RenderPassNode {
     ///   - width: The offscreen texture width, in pixels.
     ///   - height: The offscreen texture height, in pixels.
     ///   - sampleCount: The MSAA sample count (defaults to 1 for post-processing compatibility).
-    /// - Throws: An error if texture creation fails.
+    /// - Throws: ``MetaphorCore/MetaphorError/textureCreationFailed(width:height:format:)``
+    ///   when the offscreen render target cannot be created.
     public init(
         label: String,
         device: MTLDevice,

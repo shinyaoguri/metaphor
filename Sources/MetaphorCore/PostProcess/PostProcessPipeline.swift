@@ -362,6 +362,14 @@ public final class PostProcessPipeline {
 
     // MARK: - 初期化
 
+    /// ポストプロセスパイプラインを生成します。
+    ///
+    /// - Parameters:
+    ///   - device: リソース割り当てに使用する Metal デバイス
+    ///   - commandQueue: エフェクトパスの実行に使用するコマンドキュー
+    ///   - shaderLibrary: 組み込みブリットシェーダーを含むシェーダーライブラリ
+    /// - Throws: 全画面ブリット用の頂点関数が見つからない場合
+    ///   ``MetaphorError/shaderNotFound(_:)``
     public init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary) throws {
         self.device = device
         self.commandQueue = commandQueue

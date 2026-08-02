@@ -30,6 +30,10 @@ public struct MetalTestHelper: Sendable {
     // MARK: - Core Factories
 
     /// Create a ``ShaderLibrary`` using the shared device.
+    ///
+    /// - Throws: ``TestHelperError/noDevice`` when no GPU is available, or
+    ///   ``MetaphorCore/MetaphorError/shaderCompilationFailed(name:underlying:)``
+    ///   when the built-in shaders fail to compile.
     public static func shaderLibrary() throws -> ShaderLibrary {
         guard let device else { throw TestHelperError.noDevice }
         return try ShaderLibrary(device: device)
@@ -41,6 +45,12 @@ public struct MetalTestHelper: Sendable {
     }
 
     /// Create a ``Canvas2D`` with sensible defaults.
+    ///
+    /// - Throws: ``TestHelperError/noDevice`` when no GPU is available, or
+    ///   ``MetaphorCore/MetaphorError`` — `shaderCompilationFailed` when the built-in
+    ///   shaders fail to compile, `bufferCreationFailed` when a vertex or instance
+    ///   buffer cannot be allocated, and `pipelineCreationFailed` when a render
+    ///   pipeline state cannot be built.
     public static func canvas2D(
         width: Float = 1920,
         height: Float = 1080,
@@ -60,6 +70,13 @@ public struct MetalTestHelper: Sendable {
     }
 
     /// Create a ``Canvas3D`` with sensible defaults.
+    ///
+    /// - Throws: ``TestHelperError/noDevice`` when no GPU is available, or
+    ///   ``MetaphorCore/MetaphorError`` — `shaderCompilationFailed` when the built-in
+    ///   shaders fail to compile, `bufferCreationFailed` when a vertex or instance
+    ///   buffer cannot be allocated, `pipelineCreationFailed` when a render pipeline
+    ///   state cannot be built, and `textureCreationFailed` when the dummy shadow
+    ///   texture cannot be created.
     public static func canvas3D(
         width: Float = 1920,
         height: Float = 1080,
@@ -79,6 +96,11 @@ public struct MetalTestHelper: Sendable {
     }
 
     /// Create a ``MetaphorRenderer`` with sensible defaults.
+    ///
+    /// - Throws: ``MetaphorCore/MetaphorError`` — `deviceNotAvailable` when no GPU is
+    ///   available, `commandQueueCreationFailed`, `textureCreationFailed` for the
+    ///   offscreen render target, `shaderCompilationFailed` for the built-in shaders,
+    ///   and `shaderNotFound` / `pipelineCreationFailed` for the blit pipeline.
     public static func renderer(
         width: Int = 1920,
         height: Int = 1080
@@ -120,6 +142,10 @@ public struct MetalTestHelper: Sendable {
     /// Throws if the command buffer reports an error or fails to reach
     /// `.completed` — surfacing GPU failures that tests calling only
     /// `waitUntilCompleted()` would otherwise ignore.
+    ///
+    /// - Throws: ``TestHelperError/commandBufferFailed(_:)`` when the command buffer
+    ///   reports an error, or ``TestHelperError/commandBufferIncomplete(_:)`` when it
+    ///   does not reach `.completed`.
     public static func commit(_ commandBuffer: MTLCommandBuffer) throws {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()

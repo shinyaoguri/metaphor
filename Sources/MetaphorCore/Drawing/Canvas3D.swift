@@ -257,7 +257,12 @@ public final class Canvas3D: CanvasStyle {
     /// レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
     ///
     /// - Parameter renderer: 設定の派生元となるレンダラー。
-    /// - Throws: パイプラインステートの生成に失敗した場合にエラー。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 3D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``、ダミーシャドウ
+    ///   テクスチャを作成できない場合は
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``。
     public convenience init(renderer: MetaphorRenderer) throws {
         try self.init(
             device: renderer.device,
@@ -278,7 +283,12 @@ public final class Canvas3D: CanvasStyle {
     ///   - width: キャンバスの幅（ポイント単位）。
     ///   - height: キャンバスの高さ（ポイント単位）。
     ///   - sampleCount: MSAA サンプル数（デフォルト: 1）。
-    /// - Throws: パイプラインステートの生成に失敗した場合にエラー。
+    /// - Throws: ``MetaphorError``。頂点・インスタンスバッファを確保できない場合は
+    ///   ``MetaphorError/bufferCreationFailed(size:)``、描画パイプラインを作成できない
+    ///   場合（組み込み 3D シェーダー関数が見つからない場合を含む）は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``、ダミーシャドウ
+    ///   テクスチャを作成できない場合は
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``。
     public init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
