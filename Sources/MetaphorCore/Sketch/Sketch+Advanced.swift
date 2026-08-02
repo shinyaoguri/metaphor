@@ -43,6 +43,11 @@ extension Sketch {
     ///   - source: Metal Shading Language のソースコード。
     ///   - function: コンピュート関数の名前。
     /// - Returns: 新しい ``ComputeKernel`` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、関数名が
+    ///   見つからない場合は ``MetaphorError/compute(_:)`` の
+    ///   ``MetaphorError/ComputeFailure/functionNotFound(_:)``、パイプライン作成に
+    ///   失敗した場合は ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
         try context.createComputeKernel(source: source, function: function)
     }
@@ -74,9 +79,9 @@ extension Sketch {
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
+        configure: (MTLComputeCommandEncoder) -> Void
     ) {
-        context.dispatch(kernel, threads: threads, configure)
+        context.dispatch(kernel, threads: threads, configure: configure)
     }
 
     /// 2D コンピュートカーネルをディスパッチします。
@@ -90,9 +95,34 @@ extension Sketch {
         _ kernel: ComputeKernel,
         width: Int,
         height: Int,
+        configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        context.dispatch(kernel, width: width, height: height, configure: configure)
+    }
+
+    /// ``dispatch(_:threads:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました。trailing closure 記法での呼び出しは不変です）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:threads:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        threads: Int,
         _ configure: (MTLComputeCommandEncoder) -> Void
     ) {
-        context.dispatch(kernel, width: width, height: height, configure)
+        dispatch(kernel, threads: threads, configure: configure)
+    }
+
+    /// ``dispatch(_:width:height:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました。trailing closure 記法での呼び出しは不変です）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:width:height:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        width: Int,
+        height: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        dispatch(kernel, width: width, height: height, configure: configure)
     }
 
     /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
@@ -108,6 +138,12 @@ extension Sketch {
     ///
     /// - Parameter count: パーティクルの最大数。
     /// - Returns: 新しい ``ParticleSystem`` インスタンス。
+    /// - Throws: ``MetaphorError/particle(_:)``。`count` が 0 以下、または GPU バッファを
+    ///   確保できない場合は ``MetaphorError/ParticleFailure/bufferCreationFailed``、
+    ///   組み込みパーティクルシェーダー関数が見つからない場合は
+    ///   ``MetaphorError/ParticleFailure/shaderNotFound(_:)``。
+    ///   描画パイプラインの作成に失敗した場合は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
         try context.createParticleSystem(count: count)
     }
@@ -154,6 +190,8 @@ extension Sketch {
     /// - Parameters:
     ///   - key: リロードするシェーダーライブラリキー。
     ///   - source: 新しい MSL ソースコード。
+    /// - Throws: MSL ソースのコンパイルに失敗した場合
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``。
     public func reloadShader(key: String, source: String) throws {
         try context.reloadShader(key: key, source: source)
     }
@@ -163,6 +201,9 @@ extension Sketch {
     /// - Parameters:
     ///   - key: リロードするシェーダーライブラリキー。
     ///   - path: MSL ソースファイルのファイルパス。
+    /// - Throws: ソースファイルを読み込めなかった場合
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、コンパイルに
+    ///   失敗した場合 ``MetaphorError/shaderCompilationFailed(name:underlying:)``。
     public func reloadShaderFromFile(key: String, path: String) throws {
         try context.reloadShaderFromFile(key: key, path: path)
     }
@@ -174,6 +215,11 @@ extension Sketch {
     ///   - fragmentFunction: フラグメント関数の名前。
     ///   - vertexFunction: カスタム頂点関数の名前（オプション）。
     /// - Returns: 新しい ``CustomMaterial`` インスタンス。
+    /// - Throws: ``MetaphorError``。ソースファイルを読み込めなかった場合は
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、コンパイルに
+    ///   失敗した場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、
+    ///   指定した関数が見つからない場合は ``MetaphorError/material(_:)`` の
+    ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         try context.createMaterialFromFile(path: path, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
@@ -212,6 +258,9 @@ extension Sketch {
     ///   - source: Metal Shading Language のソースコード。
     ///   - fragmentFunction: フラグメント関数の名前。
     /// - Returns: 新しい ``CustomPostEffect`` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
+    ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         try context.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
     }
@@ -270,6 +319,10 @@ extension Sketch {
     /// 記録を停止し GIF ファイルに書き出します。
     ///
     /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
+    /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
+    ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
+    ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
+    ///   書き出しに失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``。
     public func endGIFRecord(_ path: String? = nil) throws {
         try context.endGIFRecord(path)
     }
@@ -278,8 +331,20 @@ extension Sketch {
     ///
     /// ブロッキングを避けるためファイル書き込みをバックグラウンドスレッドで実行します。
     /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
-    public func endGIFRecord(_ path: String? = nil) async throws {
+    /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
+    ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
+    ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
+    ///   書き出しに失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``。
+    public func endGIFRecordAsync(_ path: String? = nil) async throws {
         try await context.endGIFRecordAsync(path)
+    }
+
+    /// ``endGIFRecordAsync(_:)`` の旧名です。
+    ///
+    /// - Throws: ``MetaphorError/export(_:)``。ケースは ``endGIFRecordAsync(_:)`` と同じです。
+    @available(*, deprecated, renamed: "endGIFRecordAsync(_:)")
+    public func endGIFRecord(_ path: String? = nil) async throws {
+        try await endGIFRecordAsync(path)
     }
 }
 

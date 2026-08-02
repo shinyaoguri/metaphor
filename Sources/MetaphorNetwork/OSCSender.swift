@@ -27,10 +27,10 @@ private final class OSCConnectionState: Sendable {
 
 // MARK: - OSCSender
 
-/// Network.framework を使用して UDP OSC メッセージを送信します。
+/// Sends UDP OSC messages using Network.framework.
 ///
-/// ``OSCReceiver`` と対になる送信側です。TouchDesigner / Max / VJ ツールとの
-/// 双方向ループを実現します（Processing の oscP5 相当）。
+/// The sending counterpart to ``OSCReceiver``. Enables bidirectional loops
+/// with TouchDesigner / Max / VJ tools (equivalent to Processing's oscP5).
 ///
 /// ```swift
 /// let osc = createOSCSender(host: "127.0.0.1", port: 9000)
@@ -38,22 +38,23 @@ private final class OSCConnectionState: Sendable {
 /// osc?.send("/note", 60, 127, "on")   // int, int, string
 /// ```
 ///
-/// `OSCValue` はリテラルから構築できます（整数 → `.int`、小数 → `.float`、
-/// 文字列 → `.string`）。送信は非同期で、失敗は ``lastError`` から観測できます。
+/// `OSCValue` can be constructed from literals (integer → `.int`, decimal →
+/// `.float`, string → `.string`). Sending is asynchronous; failures can be
+/// observed via ``lastError``.
 @MainActor
 public final class OSCSender {
 
     // MARK: - パブリックプロパティ
 
-    /// 送信先ホスト（IP アドレスまたはホスト名）。
+    /// The destination host (IP address or hostname).
     public let host: String
 
-    /// 送信先の UDP ポート番号。
+    /// The destination UDP port number.
     public let port: UInt16
 
-    /// 直近の送信・接続エラー。
+    /// The most recent send/connection error.
     ///
-    /// UDP 送信は非同期のため、エラーはこのプロパティで観測してください。
+    /// UDP sends are asynchronous, so observe errors through this property.
     public var lastError: (any Error)? { errorBox.value }
 
     // MARK: - プライベート
@@ -63,12 +64,12 @@ public final class OSCSender {
 
     // MARK: - 初期化
 
-    /// OSC センダーを作成し、送信先への UDP フローを開きます。
+    /// Creates an OSC sender and opens a UDP flow to the destination.
     ///
     /// - Parameters:
-    ///   - host: 送信先ホスト（例: `"127.0.0.1"`）。
-    ///   - port: 送信先の UDP ポート番号。
-    /// - Throws: ポートが 0 の場合に ``OSCSenderError/invalidPort(_:)`` をスローします。
+    ///   - host: The destination host (e.g. `"127.0.0.1"`).
+    ///   - port: The destination UDP port number.
+    /// - Throws: ``OSCSenderError/invalidPort(_:)`` if the port is 0.
     public init(host: String, port: UInt16) throws {
         guard port > 0, let nwPort = NWEndpoint.Port(rawValue: port) else {
             throw OSCSenderError.invalidPort(port)
@@ -95,37 +96,37 @@ public final class OSCSender {
 
     // MARK: - パブリック API
 
-    /// OSC メッセージを送信します。
+    /// Sends an OSC message.
     ///
     /// - Parameters:
-    ///   - address: OSC アドレスパターン（例: `"/synth/freq"`）。
-    ///   - values: メッセージに含める値のリスト。
+    ///   - address: The OSC address pattern (e.g. `"/synth/freq"`).
+    ///   - values: The list of values to include in the message.
     public func send(_ address: String, _ values: [OSCValue]) {
         transmit(OSCEncoder.encodeMessage(address: address, values: values))
     }
 
-    /// OSC メッセージを送信します（可変長引数版）。
+    /// Sends an OSC message (variadic version).
     ///
-    /// リテラルをそのまま渡せます: `send("/note", 60, 0.5, "on")`。
+    /// Literals can be passed directly: `send("/note", 60, 0.5, "on")`.
     ///
     /// - Parameters:
-    ///   - address: OSC アドレスパターン。
-    ///   - values: メッセージに含める値。
+    ///   - address: The OSC address pattern.
+    ///   - values: The values to include in the message.
     public func send(_ address: String, _ values: OSCValue...) {
         send(address, values)
     }
 
-    /// 複数のメッセージを 1 つの OSC バンドルとして送信します。
+    /// Sends multiple messages as a single OSC bundle.
     ///
-    /// timetag は immediate（即時実行）固定です。
+    /// The timetag is fixed to immediate.
     ///
-    /// - Parameter messages: バンドルに含めるメッセージの配列。
+    /// - Parameter messages: The array of messages to include in the bundle.
     public func sendBundle(_ messages: [OSCMessage]) {
         guard !messages.isEmpty else { return }
         transmit(OSCEncoder.encodeBundle(messages: messages))
     }
 
-    /// 送信先への UDP フローを閉じます。以降の送信は無視されます。
+    /// Closes the UDP flow to the destination. Subsequent sends are ignored.
     public func stop() {
         connectionState.cancel()
     }
@@ -146,12 +147,12 @@ public final class OSCSender {
     }
 }
 
-/// OSC 送信 I/O 用の専用シリアルキュー。
+/// A dedicated serial queue for OSC send I/O.
 private let oscSenderQueue = DispatchQueue(label: "metaphor.osc.sender", qos: .userInitiated)
 
 // MARK: - スレッドセーフなエラーボックス（送信側）
 
-/// ネットワークスレッドで発生したエラーをメインスレッドへ渡します。
+/// Carries errors that occur on the network thread to the main thread.
 private final class OSCErrorBox2: @unchecked Sendable {
     private let state = OSAllocatedUnfairLock(initialState: (any Error)?.none)
 
@@ -166,10 +167,10 @@ private final class OSCErrorBox2: @unchecked Sendable {
 
 // MARK: - OSC エンコーダー
 
-/// OSC 1.0 バイナリメッセージをエンコードします（``OSCParser`` の逆）。
+/// Encodes OSC 1.0 binary messages (the inverse of ``OSCParser``).
 enum OSCEncoder {
 
-    /// 単一の OSC メッセージをエンコードします。
+    /// Encodes a single OSC message.
     static func encodeMessage(address: String, values: [OSCValue]) -> Data {
         var data = Data()
         appendString(address, to: &data)
@@ -202,7 +203,7 @@ enum OSCEncoder {
         return data
     }
 
-    /// 複数メッセージを OSC バンドルとしてエンコードします（timetag = immediate）。
+    /// Encodes multiple messages as an OSC bundle (timetag = immediate).
     static func encodeBundle(messages: [OSCMessage]) -> Data {
         var data = Data()
         appendString("#bundle", to: &data)  // "#bundle\0" = 8 バイト（アライン済み）
@@ -218,14 +219,14 @@ enum OSCEncoder {
 
     // MARK: - バイナリヘルパー
 
-    /// ヌル終端 + 4 バイトアラインで文字列を追加します（UTF-8）。
+    /// Appends a string with a null terminator and 4-byte alignment (UTF-8).
     private static func appendString(_ string: String, to data: inout Data) {
         data.append(contentsOf: Array(string.utf8))
         data.append(0)
         padToAlignment(&data)
     }
 
-    /// ビッグエンディアンの Int32 を追加します。
+    /// Appends a big-endian `Int32`.
     private static func appendInt32(_ value: Int32, to data: inout Data) {
         let raw = UInt32(bitPattern: value)
         data.append(contentsOf: [
@@ -236,7 +237,7 @@ enum OSCEncoder {
         ])
     }
 
-    /// データ長を 4 バイト境界までゼロパディングします。
+    /// Zero-pads the data length to a 4-byte boundary.
     private static func padToAlignment(_ data: inout Data) {
         while data.count % 4 != 0 {
             data.append(0)
@@ -249,21 +250,24 @@ enum OSCEncoder {
 extension OSCValue: ExpressibleByIntegerLiteral, ExpressibleByFloatLiteral,
     ExpressibleByStringLiteral
 {
-    /// 整数リテラルから `.int` を構築します。
+    /// Constructs `.int` from an integer literal.
     public init(integerLiteral value: Int32) { self = .int(value) }
 
-    /// 小数リテラルから `.float` を構築します。
+    /// Constructs `.float` from a floating-point literal.
     public init(floatLiteral value: Float) { self = .float(value) }
 
-    /// 文字列リテラルから `.string` を構築します。
+    /// Constructs `.string` from a string literal.
     public init(stringLiteral value: String) { self = .string(value) }
 }
 
 // MARK: - エラー
 
-/// OSC センダー操作中に発生するエラーを表します。
-public enum OSCSenderError: Error, LocalizedError {
-    /// 指定されたポートが無効であることを示します。
+/// Represents errors that can occur during `OSCSender` operations.
+///
+/// Throwing `OSCSender` APIs only ever throw this type; connection failures are
+/// surfaced asynchronously through ``OSCSender/lastError`` instead.
+public enum OSCSenderError: Error, LocalizedError, Sendable {
+    /// Indicates that the specified port is invalid.
     case invalidPort(UInt16)
 
     public var errorDescription: String? {

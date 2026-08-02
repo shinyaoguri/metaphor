@@ -4,7 +4,7 @@ import MetaphorCore
 
 // MARK: - MPS ポストエフェクトクラス
 
-/// MPS ハードウェア最適化ガウシアンブラーを適用します。
+/// Applies MPS hardware-optimized Gaussian blur.
 @MainActor
 public final class MPSBlurEffect: PostEffect {
     public let name = "mpsBlur"
@@ -27,7 +27,7 @@ public final class MPSBlurEffect: PostEffect {
     }
 }
 
-/// MPS Sobel エッジ検出を適用します。
+/// Applies MPS Sobel edge detection.
 @MainActor
 public final class MPSSobelEffect: PostEffect {
     public let name = "mpsSobel"
@@ -47,7 +47,7 @@ public final class MPSSobelEffect: PostEffect {
     }
 }
 
-/// MPS モルフォロジー収縮を適用します。
+/// Applies MPS morphological erosion.
 @MainActor
 public final class MPSErodeEffect: PostEffect {
     public let name = "mpsErode"
@@ -70,7 +70,7 @@ public final class MPSErodeEffect: PostEffect {
     }
 }
 
-/// MPS モルフォロジー膨張を適用します。
+/// Applies MPS morphological dilation.
 @MainActor
 public final class MPSDilateEffect: PostEffect {
     public let name = "mpsDilate"

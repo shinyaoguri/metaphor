@@ -31,22 +31,31 @@ public final class ComputeKernel {
     ///   - device: コンパイルに使用する Metal デバイス
     ///   - source: MSL ソースコード文字列
     ///   - functionName: ルックアップするカーネル関数名
-    /// - Throws: 関数名が見つからない場合 `MetaphorError.compute(.functionNotFound)`、
-    ///   または Metal コンパイルエラー
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、関数名が
+    ///   見つからない場合は ``MetaphorError/compute(_:)`` の
+    ///   ``MetaphorError/ComputeFailure/functionNotFound(_:)``、パイプライン作成に
+    ///   失敗した場合は ``MetaphorError/pipelineCreationFailed(name:underlying:)``
     public init(device: MTLDevice, source: String, functionName: String) throws {
-        let library = try device.makeLibrary(source: source, options: nil)
+        let library: MTLLibrary
+        do {
+            library = try device.makeLibrary(source: source, options: nil)
+        } catch {
+            throw MetaphorError.shaderCompilationFailed(name: functionName, underlying: error)
+        }
         guard let function = library.makeFunction(name: functionName) else {
             throw MetaphorError.compute(.functionNotFound(functionName))
         }
-        self.pipelineState = try device.makeComputePipelineState(function: function)
+        self.pipelineState = try PipelineFactory.buildCompute(device: device, function: function)
     }
 
     /// プリコンパイル済み Metal 関数からコンピュートカーネルを作成します。
     /// - Parameters:
     ///   - device: パイプラインステート作成に使用する Metal デバイス
     ///   - function: プリコンパイル済み `MTLFunction`
-    /// - Throws: Metal パイプライン作成エラー
+    /// - Throws: ``MetaphorError/pipelineCreationFailed(name:underlying:)``
+    ///   パイプライン作成に失敗した場合
     public init(device: MTLDevice, function: MTLFunction) throws {
-        self.pipelineState = try device.makeComputePipelineState(function: function)
+        self.pipelineState = try PipelineFactory.buildCompute(device: device, function: function)
     }
 }

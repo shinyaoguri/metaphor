@@ -3,11 +3,11 @@ import CoreVideo
 import Metal
 import ObjectiveC.runtime
 
-/// MTLTexture、CVPixelBuffer、CGImage 間の変換ユーティリティを提供します。
+/// Provides conversion utilities between `MTLTexture`, `CVPixelBuffer`, and `CGImage`.
 ///
-/// CoreML/Vision の入出力テクスチャ変換に使用します。
-/// 出力パス（CVPixelBuffer → MTLTexture）は CaptureDevice と同じ
-/// ゼロコピーの CVMetalTextureCache アプローチを使用します。
+/// Used for converting CoreML/Vision input and output textures. The output
+/// path (`CVPixelBuffer` → `MTLTexture`) uses the same zero-copy
+/// `CVMetalTextureCache` approach as `CaptureDevice`.
 @MainActor
 public final class MLTextureConverter {
 
@@ -66,13 +66,13 @@ public final class MLTextureConverter {
 
     // MARK: - MTLTexture -> CVPixelBuffer
 
-    /// MTLTexture をコピーベースのアプローチで CVPixelBuffer に変換します。
+    /// Converts an `MTLTexture` to a `CVPixelBuffer` using a copy-based approach.
     ///
-    /// - Important: `.private` ストレージのテクスチャでは GPU コピーの完了を
-    ///   **同期的に待ちます**（`waitUntilCompleted`）。`draw()` 内で毎フレーム
-    ///   呼ぶとフレーム落ちの原因になります。
-    /// - Parameter texture: 入力テクスチャ（bgra8Unorm のみ対応）。
-    /// - Returns: kCVPixelFormatType_32BGRA 形式の CVPixelBuffer。失敗時は nil。
+    /// - Important: For textures with `.private` storage, this **synchronously
+    ///   waits** for the GPU copy to complete (`waitUntilCompleted`). Calling
+    ///   this every frame inside `draw()` will cause dropped frames.
+    /// - Parameter texture: The input texture (only `bgra8Unorm` is supported).
+    /// - Returns: A `CVPixelBuffer` in `kCVPixelFormatType_32BGRA` format, or nil on failure.
     public func pixelBuffer(from texture: MTLTexture) -> CVPixelBuffer? {
         // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
         // チャンネル化けになる前に弾く
@@ -114,9 +114,9 @@ public final class MLTextureConverter {
 
     // MARK: - CVPixelBuffer -> MTLTexture（ゼロコピー）
 
-    /// CVPixelBuffer をゼロコピーの Metal テクスチャキャッシュを使用して MTLTexture に変換します。
-    /// - Parameter pixelBuffer: 入力ピクセルバッファ。
-    /// - Returns: bgra8Unorm 形式の MTLTexture。失敗時は nil。
+    /// Converts a `CVPixelBuffer` to an `MTLTexture` using a zero-copy Metal texture cache.
+    /// - Parameter pixelBuffer: The input pixel buffer.
+    /// - Returns: An `MTLTexture` in `bgra8Unorm` format, or nil on failure.
     public func texture(from pixelBuffer: CVPixelBuffer) -> MTLTexture? {
         guard let cache = textureCache else { return nil }
         // 使い終わったキャッシュエントリの内部リソースを回収する。CoreVideo の
@@ -150,17 +150,17 @@ public final class MLTextureConverter {
         return mtlTexture
     }
 
-    /// ``texture(from:)`` がゼロコピーテクスチャに CVMetalTexture ラッパーを
-    /// 関連付ける際に使用する安定した一意キー。
+    /// A stable, unique key used by ``texture(from:)`` to associate the
+    /// `CVMetalTexture` wrapper with the zero-copy texture.
     private static let cvTextureAssociationKey = UnsafeRawPointer(
         UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
     )
 
     // MARK: - CGImage -> MTLTexture
 
-    /// CGImage を MTLTexture に変換します。
-    /// - Parameter cgImage: 入力 Core Graphics 画像。
-    /// - Returns: bgra8Unorm 形式の MTLTexture。失敗時は nil。
+    /// Converts a `CGImage` to an `MTLTexture`.
+    /// - Parameter cgImage: The input Core Graphics image.
+    /// - Returns: An `MTLTexture` in `bgra8Unorm` format, or nil on failure.
     public func texture(from cgImage: CGImage) -> MTLTexture? {
         let width = cgImage.width
         let height = cgImage.height
@@ -193,13 +193,13 @@ public final class MLTextureConverter {
 
     // MARK: - MTLTexture -> CGImage
 
-    /// MTLTexture を CGImage に変換します。
+    /// Converts an `MTLTexture` to a `CGImage`.
     ///
-    /// - Important: `.private` ストレージのテクスチャでは GPU コピーの完了を
-    ///   **同期的に待ちます**（`waitUntilCompleted`）。`draw()` 内で毎フレーム
-    ///   呼ぶとフレーム落ちの原因になります。
-    /// - Parameter texture: 入力 Metal テクスチャ（bgra8Unorm のみ対応）。
-    /// - Returns: CGImage。失敗時は nil。
+    /// - Important: For textures with `.private` storage, this **synchronously
+    ///   waits** for the GPU copy to complete (`waitUntilCompleted`). Calling
+    ///   this every frame inside `draw()` will cause dropped frames.
+    /// - Parameter texture: The input Metal texture (only `bgra8Unorm` is supported).
+    /// - Returns: A `CGImage`, or nil on failure.
     public func cgImage(from texture: MTLTexture) -> CGImage? {
         // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
         // チャンネル化けになる前に弾く
@@ -240,11 +240,11 @@ public final class MLTextureConverter {
 
     // MARK: - MLMultiArray -> MTLTexture
 
-    /// 2D MLMultiArray（グレースケール）を MTLTexture に変換します。
+    /// Converts a 2D `MLMultiArray` (grayscale) to an `MTLTexture`.
     /// - Parameters:
-    ///   - multiArray: 入力配列（形状: [1, height, width] または [height, width]）。
-    ///   - normalize: true の場合、データに最小-最大正規化を適用します。
-    /// - Returns: グレースケール値を全 RGB チャンネルに複製した bgra8Unorm テクスチャ。
+    ///   - multiArray: The input array (shape: `[1, height, width]` or `[height, width]`).
+    ///   - normalize: If true, applies min-max normalization to the data.
+    /// - Returns: A `bgra8Unorm` texture with the grayscale value replicated across all RGB channels.
     public func texture(from multiArray: MLMultiArray, normalize: Bool = true) -> MTLTexture? {
         let shape = multiArray.shape.map { $0.intValue }
         let strides = multiArray.strides.map { $0.intValue }

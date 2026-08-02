@@ -4,19 +4,19 @@ import simd
 
 // MARK: - レイトレースモード
 
-/// レイトレーシングのレンダリングモードを表します。
+/// Represents a ray-tracing render mode.
 public enum RayTraceMode: Sendable {
-    /// 設定可能なサンプル数と半径によるアンビエントオクルージョン。
+    /// Ambient occlusion with configurable sample count and radius.
     case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)
-    /// 平行光源からのソフトシャドウ。
+    /// Soft shadow from a directional light source.
     case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)
-    /// シンプルなディフューズシェーディング。
+    /// Simple diffuse shading.
     case diffuse
 }
 
 // MARK: - RayTraceUniforms
 
-/// レイトレーシング GPU シェーダーに渡されるユニフォームデータを格納します。
+/// Holds the uniform data passed to the ray-tracing GPU shaders.
 struct RayTraceUniforms {
     var inverseView: float4x4
     var inverseProjection: float4x4
@@ -32,11 +32,11 @@ struct RayTraceUniforms {
 
 // MARK: - MPSRayTracer
 
-/// Metal ネイティブレイトレーシングシステムを提供します。
+/// Provides a Metal-native ray-tracing system.
 ///
-/// MTLAccelerationStructure と Metal Ray Tracing API を使用して、
-/// GPU アクセラレーションによるレイトレーシングでアンビエントオクルージョン、
-/// ソフトシャドウ、ディフューズシェーディングを行います。
+/// Uses MTLAccelerationStructure and the Metal Ray Tracing API to perform
+/// GPU-accelerated ray tracing for ambient occlusion, soft shadows, and
+/// diffuse shading.
 ///
 /// ```swift
 /// let rt = try createRayTracer(width: 512, height: 512)
@@ -66,11 +66,21 @@ public final class MPSRayTracer {
     private var traceSoftShadowPipeline: MTLComputePipelineState?
     private var traceDiffusePipeline: MTLComputePipelineState?
 
-    /// レイトレーシング結果テクスチャを返します。
+    /// Returns the ray-tracing result texture.
     public var outputTexture: MTLTexture? { _outputTexture }
 
     // MARK: - 初期化
 
+    /// Creates a ray tracer bound to the given device and output size.
+    /// - Parameters:
+    ///   - device: The Metal device used to compile shaders and build pipelines.
+    ///   - commandQueue: The command queue used to encode ray-tracing work.
+    ///   - width: The output texture width in pixels.
+    ///   - height: The output texture height in pixels.
+    /// - Throws: ``MetaphorError``. `MetaphorError.mps(.accelerationStructureBuildFailed)`
+    ///   when the bundled shader source or a kernel function is missing,
+    ///   `MetaphorError.shaderCompilationFailed` when the MSL source fails to compile,
+    ///   and `MetaphorError.pipelineCreationFailed` when a compute pipeline cannot be built.
     public init(device: MTLDevice, commandQueue: MTLCommandQueue, width: Int, height: Int) throws {
         self.device = device
         self.commandQueue = commandQueue
@@ -84,33 +94,33 @@ public final class MPSRayTracer {
 
     // MARK: - パブリック: シーン構築
 
-    /// レイトレーシングシーンにメッシュを追加します。
+    /// Adds a mesh to the ray-tracing scene.
     /// - Parameters:
-    ///   - mesh: 追加するメッシュ。
-    ///   - transform: 適用するワールド空間の変換行列。
+    ///   - mesh: The mesh to add.
+    ///   - transform: The world-space transform matrix to apply.
     public func addMesh(_ mesh: Mesh, transform: float4x4 = matrix_identity_float4x4) {
         scene.addMesh(mesh, transform: transform)
     }
 
-    /// レイトレーシングシーンにダイナミックメッシュを追加します。
+    /// Adds a dynamic mesh to the ray-tracing scene.
     /// - Parameters:
-    ///   - mesh: 追加するダイナミックメッシュ。
-    ///   - transform: 適用するワールド空間の変換行列。
+    ///   - mesh: The dynamic mesh to add.
+    ///   - transform: The world-space transform matrix to apply.
     public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
         scene.addDynamicMesh(mesh, transform: transform)
     }
 
-    /// シーンからすべてのメッシュをクリアし、アクセラレーション構造をリセットします。
+    /// Clears all meshes from the scene and resets the acceleration structure.
     public func clearScene() {
         scene.clear()
         accelerationStructure = nil
         normalBuffer = nil
     }
 
-    /// 追加されたすべてのメッシュからアクセラレーション構造を構築します。
+    /// Builds an acceleration structure from all added meshes.
     ///
-    /// メッシュを追加した後、レイをトレースする前に呼び出してください。
-    /// - Throws: シーンが空またはバッファ作成に失敗した場合に `MetaphorError` をスローします。
+    /// Call this after adding meshes and before tracing rays.
+    /// - Throws: `MetaphorError` if the scene is empty or buffer creation fails.
     public func buildAccelerationStructure() throws {
         let result = try scene.buildAccelerationStructure(commandQueue: commandQueue)
         self.accelerationStructure = result.accelerationStructure
@@ -119,10 +129,10 @@ public final class MPSRayTracer {
 
     // MARK: - パブリック: トレーシング
 
-    /// 指定モードとカメラパラメータでレイトレーシングを実行します。
+    /// Performs ray tracing with the given mode and camera parameters.
     /// - Parameters:
-    ///   - mode: レンダリングモード（アンビエントオクルージョン、ソフトシャドウ、またはディフューズ）。
-    ///   - camera: カメラパラメータ（視点位置、注視点、上方向ベクトル、視野角）。
+    ///   - mode: The render mode (ambient occlusion, soft shadow, or diffuse).
+    ///   - camera: The camera parameters (eye position, look-at center, up vector, field of view).
     public func trace(
         mode: RayTraceMode,
         camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float)
@@ -133,14 +143,14 @@ public final class MPSRayTracer {
         cb.waitUntilCompleted()
     }
 
-    /// 指定モードとカメラパラメータのレイトレーシングを既存のコマンドバッファへエンコードします。
+    /// Encodes ray tracing for the given mode and camera parameters into an existing command buffer.
     ///
-    /// このメソッドは `commit()` や `waitUntilCompleted()` を行わないため、描画ループや
-    /// 他のGPU処理と同じコマンドバッファに統合できます。
+    /// This method does not call `commit()` or `waitUntilCompleted()`, so it can be
+    /// combined into the same command buffer as the draw loop or other GPU work.
     /// - Parameters:
-    ///   - mode: レンダリングモード（アンビエントオクルージョン、ソフトシャドウ、またはディフューズ）。
-    ///   - camera: カメラパラメータ（視点位置、注視点、上方向ベクトル、視野角）。
-    ///   - commandBuffer: エンコード先のコマンドバッファ。
+    ///   - mode: The render mode (ambient occlusion, soft shadow, or diffuse).
+    ///   - camera: The camera parameters (eye position, look-at center, up vector, field of view).
+    ///   - commandBuffer: The command buffer to encode into.
     public func encodeTrace(
         mode: RayTraceMode,
         camera: (eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>, fov: Float),
@@ -293,7 +303,13 @@ public final class MPSRayTracer {
         }
 
         let options = MTLCompileOptions()
-        let lib = try device.makeLibrary(source: source, options: options)
+        let lib: MTLLibrary
+        do {
+            lib = try device.makeLibrary(source: source, options: options)
+        } catch {
+            // Metal の生 NSError を素通りさせず MetaphorError へ包む
+            throw MetaphorError.shaderCompilationFailed(name: "mpsRayTracer", underlying: error)
+        }
         self.library = lib
 
         func makePipeline(_ name: String) throws -> MTLComputePipelineState {
@@ -302,7 +318,12 @@ public final class MPSRayTracer {
             }
             let descriptor = MTLComputePipelineDescriptor()
             descriptor.computeFunction = fn
-            return try device.makeComputePipelineState(descriptor: descriptor, options: [], reflection: nil)
+            do {
+                return try device.makeComputePipelineState(
+                    descriptor: descriptor, options: [], reflection: nil)
+            } catch {
+                throw MetaphorError.pipelineCreationFailed(name: name, underlying: error)
+            }
         }
 
         traceAOPipeline = try makePipeline("traceAmbientOcclusion")

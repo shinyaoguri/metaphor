@@ -69,7 +69,7 @@ final class SVGRecorder {
     let width: Float
     let height: Float
 
-    /// `endSVG()` が書き出す先のファイルパス
+    /// `endSVGRecord()` が書き出す先のファイルパス
     let outputPath: String
 
     init(width: Float, height: Float, outputPath: String) {

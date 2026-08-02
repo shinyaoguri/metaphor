@@ -2,9 +2,9 @@ import CoreMIDI
 import Foundation
 import os
 
-/// MIDI 入出力接続を管理します。
+/// Manages MIDI input/output connections.
 ///
-/// CoreMIDI を使用して MIDI デバイスに接続し、メッセージの送受信を行います。
+/// Connects to MIDI devices and sends/receives messages using CoreMIDI.
 ///
 /// ```swift
 /// var midi: MIDIManager!
@@ -26,7 +26,7 @@ private final class MIDIPortState: Sendable {
         var client: MIDIClientRef = 0
         var inputPort: MIDIPortRef = 0
         var outputPort: MIDIPortRef = 0
-        /// 現在 inputPort に接続済みのソース（ホットプラグ時の張り直しに使用）。
+        /// Sources currently connected to inputPort (used to reconnect on hot-plug).
         var connectedSources: [MIDIEndpointRef] = []
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
@@ -47,7 +47,7 @@ private final class MIDIPortState: Sendable {
         state.withLock { $0.outputPort }
     }
 
-    /// 接続済みソースの一覧を差し替え、以前の一覧を返します。
+    /// Replaces the list of connected sources and returns the previous list.
     func replaceConnectedSources(_ sources: [MIDIEndpointRef]) -> [MIDIEndpointRef] {
         state.withLock { s in
             let previous = s.connectedSources
@@ -75,20 +75,20 @@ public final class MIDIManager {
 
     // MARK: - 状態
 
-    /// MIDI 入出力が稼働中かどうか。``start()`` が失敗した場合は false のままで、
-    /// 失敗内容は ``lastError`` で確認できます。
+    /// Whether MIDI input/output is currently running. Stays false if
+    /// ``start()`` fails; inspect the failure via ``lastError``.
     public private(set) var isRunning = false
 
-    /// 直近の ``start()`` で発生したエラー。成功時は nil に戻ります。
+    /// The error from the most recent ``start()`` call. Resets to nil on success.
     ///
-    /// `start()` は Processing 風の使い勝手を保つため throws にしない代わりに、
-    /// CoreMIDI の失敗（OSStatus）をこのプロパティで報告します。
+    /// `start()` is not `throws` — to keep Processing-style ergonomics — and
+    /// instead reports CoreMIDI failures (OSStatus) through this property.
     public private(set) var lastError: MIDIManagerError?
 
-    /// [channel][cc] でインデックスされたキャッシュ済み CC 値。
+    /// Cached CC values, indexed by [channel][cc].
     private var ccValues: [[UInt8]] = Array(repeating: Array(repeating: 0, count: 128), count: 16)
 
-    /// 現在押されているノート。
+    /// Notes currently held down.
     private var activeNotes: Set<UInt16> = []  // channel << 8 | note
 
     // MARK: - スレッドセーフなメッセージキュー
@@ -103,16 +103,16 @@ public final class MIDIManager {
 
     // MARK: - 初期化
 
-    /// MIDI マネージャーを作成します。
+    /// Creates a MIDI manager.
     public init() {}
 
     // MARK: - ライフサイクル
 
-    /// MIDI 入出力を開始します。
+    /// Starts MIDI input/output.
     ///
-    /// 失敗した場合は ``isRunning`` が false のままとなり、``lastError`` に
-    /// 失敗内容（CoreMIDI の OSStatus）が入ります。
-    /// 起動後に接続された MIDI デバイスもホットプラグ通知で自動的に接続されます。
+    /// On failure, ``isRunning`` stays false and ``lastError`` is set with
+    /// the failure detail (the CoreMIDI OSStatus). MIDI devices connected
+    /// after startup are also connected automatically via hot-plug notifications.
     public func start() {
         guard !isRunning else { return }
         lastError = nil
@@ -176,12 +176,13 @@ public final class MIDIManager {
         isRunning = true
     }
 
-    /// 現在のソース一覧に合わせて入力ポートの接続を張り直します。
+    /// Reconnects the input port to match the current list of sources.
     ///
-    /// `start()` 時とホットプラグ通知（追加・削除・設定変更）の両方から呼ばれます。
-    /// 通知は CoreMIDI の任意スレッドで届き得るため nonisolated で実装し、
-    /// 共有状態は Sendable な `MIDIPortState` に限定します（CoreMIDI API 自体は
-    /// スレッドセーフ）。
+    /// Called both from `start()` and from hot-plug notifications (added,
+    /// removed, setup changed). Notifications can arrive on any CoreMIDI
+    /// thread, so this is implemented `nonisolated` and confines shared
+    /// state to the Sendable `MIDIPortState` (the CoreMIDI API itself is
+    /// thread-safe).
     private nonisolated static func reconnectSources(portState: MIDIPortState) {
         let inPort = portState.inputPort
         guard inPort != 0 else { return }
@@ -208,7 +209,7 @@ public final class MIDIManager {
         portState.dispose()
     }
 
-    /// MIDI 入出力を停止します。
+    /// Stops MIDI input/output.
     public func stop() {
         guard isRunning else { return }
         portState.dispose()
@@ -217,10 +218,10 @@ public final class MIDIManager {
 
     // MARK: - 入力: ポーリング
 
-    /// 受信したメッセージをポーリングし、登録済みコールバックを呼び出します。
+    /// Polls received messages and invokes the registered callbacks.
     ///
-    /// `draw()` の先頭で呼び出してください。
-    /// - Returns: 受信した MIDI メッセージの配列。
+    /// Call this at the top of `draw()`.
+    /// - Returns: The array of received MIDI messages.
     public func poll() -> [MIDIMessage] {
         let messages = messageBuffer.drain()
         for msg in messages {
@@ -231,80 +232,80 @@ public final class MIDIManager {
 
     // MARK: - 入力: CC 値アクセス
 
-    /// 正規化された CC 値を返します（0.0〜1.0）。
+    /// Returns the normalized CC value (0.0-1.0).
     /// - Parameters:
-    ///   - cc: CC 番号（0-127）。
-    ///   - channel: MIDI チャンネル（0-15、デフォルトは0）。
-    /// - Returns: 正規化された CC 値。
+    ///   - cc: The CC number (0-127).
+    ///   - channel: The MIDI channel (0-15, defaults to 0).
+    /// - Returns: The normalized CC value.
     public func controllerValue(_ cc: UInt8, channel: UInt8 = 0) -> Float {
         guard channel < 16, cc < 128 else { return 0 }
         return Float(ccValues[Int(channel)][Int(cc)]) / 127.0
     }
 
-    /// 生の CC 値を返します（0〜127）。
+    /// Returns the raw CC value (0-127).
     /// - Parameters:
-    ///   - cc: CC 番号（0-127）。
-    ///   - channel: MIDI チャンネル（0-15、デフォルトは0）。
-    /// - Returns: 生の CC 値。
+    ///   - cc: The CC number (0-127).
+    ///   - channel: The MIDI channel (0-15, defaults to 0).
+    /// - Returns: The raw CC value.
     public func controllerRawValue(_ cc: UInt8, channel: UInt8 = 0) -> UInt8 {
         guard channel < 16, cc < 128 else { return 0 }
         return ccValues[Int(channel)][Int(cc)]
     }
 
-    /// ノートが現在押されているかどうかを確認します。
+    /// Checks whether a note is currently held down.
     /// - Parameters:
-    ///   - note: MIDI ノート番号（0-127）。
-    ///   - channel: MIDI チャンネル（0-15、デフォルトは0）。
-    /// - Returns: ノートがアクティブであれば `true`。
+    ///   - note: The MIDI note number (0-127).
+    ///   - channel: The MIDI channel (0-15, defaults to 0).
+    /// - Returns: `true` if the note is active.
     public func isNoteActive(_ note: UInt8, channel: UInt8 = 0) -> Bool {
         activeNotes.contains(UInt16(channel) << 8 | UInt16(note))
     }
 
     // MARK: - 入力: コールバック
 
-    /// Note On コールバックを登録します。
-    /// - Parameter handler: (channel, note, velocity) で呼び出されるクロージャ。
+    /// Registers a Note On callback.
+    /// - Parameter handler: A closure called with (channel, note, velocity).
     public func onNoteOn(_ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void) {
         noteOnHandler = handler
     }
 
-    /// Note Off コールバックを登録します。
-    /// - Parameter handler: (channel, note, velocity) で呼び出されるクロージャ。
+    /// Registers a Note Off callback.
+    /// - Parameter handler: A closure called with (channel, note, velocity).
     public func onNoteOff(_ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void) {
         noteOffHandler = handler
     }
 
-    /// Control Change コールバックを登録します。
-    /// - Parameter handler: (channel, cc, value) で呼び出されるクロージャ。
+    /// Registers a Control Change callback.
+    /// - Parameter handler: A closure called with (channel, cc, value).
     public func onControlChange(_ handler: @escaping (_ channel: UInt8, _ cc: UInt8, _ value: UInt8) -> Void) {
         controlChangeHandler = handler
     }
 
     // MARK: - 出力
 
-    /// Note On メッセージを送信します。
+    /// Sends a Note On message.
     /// - Parameters:
-    ///   - note: MIDI ノート番号（0-127）。
-    ///   - velocity: ノートベロシティ（0-127、デフォルトは100）。
-    ///   - channel: MIDI チャンネル（0-15、デフォルトは0）。
+    ///   - note: The MIDI note number (0-127).
+    ///   - velocity: The note velocity (0-127, defaults to 100).
+    ///   - channel: The MIDI channel (0-15, defaults to 0).
     public func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0) {
         sendMessage(status: 0x90 | (channel & 0x0F), data1: note, data2: velocity)
     }
 
-    /// Note Off メッセージを送信します。
+    /// Sends a Note Off message.
     /// - Parameters:
-    ///   - note: MIDI ノート番号（0-127）。
-    ///   - velocity: リリースベロシティ（0-127、デフォルトは0）。
-    ///   - channel: MIDI チャンネル（0-15、デフォルトは0）。
+    ///   - note: The MIDI note number (0-127).
+    ///   - velocity: The release velocity (0-127, defaults to 0).
+    ///   - channel: The MIDI channel (0-15, defaults to 0).
     public func sendNoteOff(note: UInt8, velocity: UInt8 = 0, channel: UInt8 = 0) {
         sendMessage(status: 0x80 | (channel & 0x0F), data1: note, data2: velocity)
     }
 
-    /// Control Change メッセージを送信します。
+    /// Sends a Control Change message.
     /// - Parameters:
-    ///   - cc: CC 番号（0-127）。
-    ///   - value: CC 値（0-127）。
-    ///   - channel: MIDI チャンネル（0-15、デフォルトは0）。
+    ///   - cc: The CC number (0-127).
+    ///   - value: The CC value (0-127).
+    ///   - channel: The MIDI channel (0-15, defaults to 0).
     public func sendControlChange(cc: UInt8, value: UInt8, channel: UInt8 = 0) {
         sendMessage(status: 0xB0 | (channel & 0x0F), data1: cc, data2: value)
     }
@@ -344,10 +345,10 @@ public final class MIDIManager {
         }
     }
 
-    /// UMP メッセージタイプごとのワード数（MIDI 2.0 UMP 仕様）。
-    /// マルチワードメッセージのペイロードを 1 ワードずつ走査すると、
-    /// ペイロード内の偶然のビットパターンをメッセージとして誤認するため、
-    /// メッセージ単位でスキップするのに使う。
+    /// The word count per UMP message type (MIDI 2.0 UMP spec). Used to skip
+    /// whole messages at once — walking a multi-word message's payload one
+    /// word at a time would risk misreading an incidental bit pattern in the
+    /// payload as a message.
     private nonisolated static func umpWordCount(forMessageType mt: UInt32) -> Int {
         switch mt {
         case 0x0, 0x1, 0x2, 0x6, 0x7: return 1
@@ -413,8 +414,8 @@ final class MIDIMessageBuffer: Sendable {
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
-    /// バッファ上限（OSC 側のキューと同じ値）。`poll()` を呼ばないスケッチで
-    /// メモリが無制限に成長するのを防ぐ。
+    /// The buffer limit (same value as the OSC-side queue). Prevents
+    /// unbounded memory growth for sketches that never call `poll()`.
     static let maxBufferSize = 10_000
 
     func append(_ messages: [MIDIMessage]) {
@@ -450,13 +451,13 @@ final class MIDIMessageBuffer: Sendable {
 
 // MARK: - エラー
 
-/// MIDIManager 操作中に発生するエラーを表します。
+/// Represents errors that can occur during `MIDIManager` operations.
 public enum MIDIManagerError: Error, LocalizedError, Equatable {
-    /// MIDI クライアントの作成に失敗したことを示します。
+    /// Indicates that creating the MIDI client failed.
     case clientCreationFailed(OSStatus)
-    /// 入力ポートの作成に失敗したことを示します。
+    /// Indicates that creating the input port failed.
     case inputPortCreationFailed(OSStatus)
-    /// 出力ポートの作成に失敗したことを示します。
+    /// Indicates that creating the output port failed.
     case outputPortCreationFailed(OSStatus)
 
     public var errorDescription: String? {

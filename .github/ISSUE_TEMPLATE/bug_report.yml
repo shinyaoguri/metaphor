@@ -1,0 +1,91 @@
+name: Bug report
+description: Something in the metaphor library isn't working as expected.
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! Issues about the
+        `metaphor` command-line tool (`new` / `run` / `watch` / `mcp`,
+        installation, Homebrew) belong in
+        [metaphor-cli's issue tracker](https://github.com/shinyaoguri/metaphor-cli/issues/new/choose)
+        instead — if you're not sure which repo, it's fine to file here and
+        we'll route it.
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: "e.g. macOS 14.6 (Sonoma)"
+      placeholder: macOS 14.x
+    validations:
+      required: true
+  - type: input
+    id: chip
+    attributes:
+      label: Chip
+      description: Apple Silicon model (metaphor is Apple Silicon only)
+      placeholder: "e.g. M2 Pro"
+    validations:
+      required: true
+  - type: input
+    id: xcode-swift-version
+    attributes:
+      label: Xcode / Swift version
+      placeholder: "e.g. Xcode 15.4 / Swift 5.10"
+    validations:
+      required: true
+  - type: input
+    id: metaphor-version
+    attributes:
+      label: metaphor version
+      description: |
+        The library version (from `Package.resolved`, `git describe`, or a
+        release tag). If installed via the CLI, also note the `metaphor-cli`
+        version (`metaphor --version`).
+      placeholder: "e.g. 0.8.0"
+    validations:
+      required: true
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: Reproduction steps
+      description: |
+        How can we reproduce this? A minimal `Sketch` (see
+        [Examples/](https://github.com/shinyaoguri/metaphor/tree/main/Examples))
+        is ideal — paste the code below if the sketch is small.
+      placeholder: |
+        1. Create a sketch with `setup()` doing ...
+        2. Call `draw()` with ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-sketch
+    attributes:
+      label: Minimal reproduction sketch (optional)
+      description: Paste a minimal `Sketch` that reproduces the issue, if applicable.
+      render: swift
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include error messages, stack traces, or screenshots if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context (optional)
+      description: Anything else that might help — logs, `metaphor doctor` output, related Issues, etc.
+    validations:
+      required: false

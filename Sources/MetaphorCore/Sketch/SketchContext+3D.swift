@@ -76,30 +76,6 @@ extension SketchContext {
         canvas3D.camera(eye: eye, center: center, up: up)
     }
 
-    /// 位置引数でカメラの位置と方向を設定します（p5.js スタイル）。
-    /// - Parameters:
-    ///   - eyeX: カメラの x 位置。
-    ///   - eyeY: カメラの y 位置。
-    ///   - eyeZ: カメラの z 位置。
-    ///   - centerX: 注視点の x 座標。
-    ///   - centerY: 注視点の y 座標。
-    ///   - centerZ: 注視点の z 座標。
-    ///   - upX: 上方向ベクトルの x 成分。
-    ///   - upY: 上方向ベクトルの y 成分。
-    ///   - upZ: 上方向ベクトルの z 成分。
-    @available(*, deprecated, message: "Use camera(eye:center:up:) with SIMD3 instead")
-    public func camera(
-        _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
-        _ centerX: Float, _ centerY: Float, _ centerZ: Float,
-        _ upX: Float, _ upY: Float, _ upZ: Float
-    ) {
-        canvas3D.camera(
-            eye: SIMD3(eyeX, eyeY, eyeZ),
-            center: SIMD3(centerX, centerY, centerZ),
-            up: SIMD3(upX, upY, upZ)
-        )
-    }
-
     /// 透視投影を設定します。
     /// - Parameters:
     ///   - fov: ラジアン単位の視野角（デフォルト pi/3）。
@@ -311,6 +287,10 @@ extension SketchContext {
     ///   - fragmentFunction: フラグメントシェーダー関数名。
     ///   - vertexFunction: カスタム頂点シェーダー関数名（オプション）。
     /// - Returns: `CustomMaterial` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
+    ///   関数が見つからない場合は ``MetaphorError/material(_:)`` の
+    ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.register(source: source, as: key)
@@ -515,6 +495,9 @@ extension SketchContext {
     ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルト true）。
     ///   - cache: キャッシュを使うか（既定 true）。
     /// - Returns: 読み込まれたメッシュ。
+    /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
+    ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
+    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``。
     public func loadModelAsync(
         _ path: String, normalize: Bool = true, cache: Bool = true
     ) async throws -> Mesh {
@@ -535,6 +518,11 @@ extension SketchContext {
     ///   - source: MSL ソースコード。
     ///   - function: カーネル関数名。
     /// - Returns: `ComputeKernel` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、関数名が
+    ///   見つからない場合は ``MetaphorError/compute(_:)`` の
+    ///   ``MetaphorError/ComputeFailure/functionNotFound(_:)``、パイプライン作成に
+    ///   失敗した場合は ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
         try ComputeKernel(device: renderer.device, source: source, functionName: function)
     }
@@ -563,7 +551,7 @@ extension SketchContext {
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
+        configure: (MTLComputeCommandEncoder) -> Void
     ) {
         guard threads > 0 else {
             metaphorWarning("dispatch: threads must be positive (got \(threads)); skipped")
@@ -589,7 +577,7 @@ extension SketchContext {
         _ kernel: ComputeKernel,
         width: Int,
         height: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
+        configure: (MTLComputeCommandEncoder) -> Void
     ) {
         guard width > 0, height > 0 else {
             metaphorWarning("dispatch: width/height must be positive (got \(width)x\(height)); skipped")
@@ -604,6 +592,31 @@ extension SketchContext {
         let threadsPerGroup = MTLSize(width: w, height: h, depth: 1)
         let gridSize = MTLSize(width: width, height: height, depth: 1)
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
+    }
+
+    /// ``dispatch(_:threads:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:threads:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        threads: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        dispatch(kernel, threads: threads, configure: configure)
+    }
+
+    /// ``dispatch(_:width:height:configure:)`` の旧シグネチャです（末尾クロージャに
+    /// `configure:` ラベルが付きました）。
+    @_disfavoredOverload
+    @available(*, deprecated, renamed: "dispatch(_:width:height:configure:)")
+    public func dispatch(
+        _ kernel: ComputeKernel,
+        width: Int,
+        height: Int,
+        _ configure: (MTLComputeCommandEncoder) -> Void
+    ) {
+        dispatch(kernel, width: width, height: height, configure: configure)
     }
 
     /// データ依存関係を解決するためにコンピュートディスパッチ間にメモリバリアを挿入します。
@@ -626,6 +639,12 @@ extension SketchContext {
     /// GPU パーティクルシステムを作成します。
     /// - Parameter count: パーティクル数（デフォルト 100,000）。
     /// - Returns: `ParticleSystem` インスタンス。
+    /// - Throws: ``MetaphorError/particle(_:)``。`count` が 0 以下、または GPU バッファを
+    ///   確保できない場合は ``MetaphorError/ParticleFailure/bufferCreationFailed``、
+    ///   組み込みパーティクルシェーダー関数が見つからない場合は
+    ///   ``MetaphorError/ParticleFailure/shaderNotFound(_:)``。
+    ///   描画パイプラインの作成に失敗した場合は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem {
         guard count > 0 else {
             metaphorWarning("createParticleSystem: count must be positive (got \(count))")
@@ -667,6 +686,8 @@ extension SketchContext {
     /// - Parameters:
     ///   - key: シェーダーライブラリの登録キー。
     ///   - source: 新しい MSL ソースコード。
+    /// - Throws: MSL ソースのコンパイルに失敗した場合
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``。
     public func reloadShader(key: String, source: String) throws {
         try renderer.shaderLibrary.reload(key: key, source: source)
         canvas3D.clearCustomPipelineCache()
@@ -677,6 +698,9 @@ extension SketchContext {
     /// - Parameters:
     ///   - key: シェーダーライブラリの登録キー。
     ///   - path: MSL ソースのファイルパス。
+    /// - Throws: ソースファイルを読み込めなかった場合
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、コンパイルに
+    ///   失敗した場合 ``MetaphorError/shaderCompilationFailed(name:underlying:)``。
     public func reloadShaderFromFile(key: String, path: String) throws {
         try renderer.shaderLibrary.reloadFromFile(key: key, path: path)
         canvas3D.clearCustomPipelineCache()
@@ -689,6 +713,11 @@ extension SketchContext {
     ///   - fragmentFunction: フラグメントシェーダー関数名。
     ///   - vertexFunction: カスタム頂点シェーダー関数名（オプション）。
     /// - Returns: `CustomMaterial` インスタンス。
+    /// - Throws: ``MetaphorError``。ソースファイルを読み込めなかった場合は
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、コンパイルに
+    ///   失敗した場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、
+    ///   指定した関数が見つからない場合は ``MetaphorError/material(_:)`` の
+    ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.registerFromFile(path: path, as: key)
@@ -759,6 +788,10 @@ extension SketchContext {
 
     /// GIF 記録を終了しファイルに書き出します。
     /// - Parameter path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
+    ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
+    ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
+    ///   書き出しに失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``。
     public func endGIFRecord(_ path: String? = nil) throws {
         let actualPath: String
         if let path {
@@ -774,6 +807,7 @@ extension SketchContext {
 
     /// GIF 記録を終了しバックグラウンドスレッドで非同期にファイルを書き出します。
     /// - Parameter path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    /// - Throws: ``MetaphorError/export(_:)``。ケースは ``endGIFRecord(_:)`` と同じです。
     public func endGIFRecordAsync(_ path: String? = nil) async throws {
         let actualPath: String
         if let path {

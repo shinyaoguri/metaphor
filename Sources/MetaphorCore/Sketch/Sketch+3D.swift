@@ -65,31 +65,6 @@ extension Sketch {
         context.camera(eye: eye, center: center, up: up)
     }
 
-    /// 個別の float 成分で 3D カメラを設定します。
-    ///
-    /// - Parameters:
-    ///   - eyeX: カメラ位置の x 座標。
-    ///   - eyeY: カメラ位置の y 座標。
-    ///   - eyeZ: カメラ位置の z 座標。
-    ///   - centerX: 注視点の x 座標。
-    ///   - centerY: 注視点の y 座標。
-    ///   - centerZ: 注視点の z 座標。
-    ///   - upX: 上方向ベクトルの x 成分。
-    ///   - upY: 上方向ベクトルの y 成分。
-    ///   - upZ: 上方向ベクトルの z 成分。
-    @available(*, deprecated, message: "Use camera(eye:center:up:) with SIMD3 instead")
-    public func camera(
-        _ eyeX: Float, _ eyeY: Float, _ eyeZ: Float,
-        _ centerX: Float, _ centerY: Float, _ centerZ: Float,
-        _ upX: Float, _ upY: Float, _ upZ: Float
-    ) {
-        context.camera(
-            eye: SIMD3(eyeX, eyeY, eyeZ),
-            center: SIMD3(centerX, centerY, centerZ),
-            up: SIMD3(upX, upY, upZ)
-        )
-    }
-
     /// 透視投影を設定します。
     ///
     /// - Parameters:
@@ -300,6 +275,10 @@ extension Sketch {
     ///   - fragmentFunction: フラグメント関数の名前。
     ///   - vertexFunction: カスタム頂点関数の名前（オプション）。
     /// - Returns: 新しい ``CustomMaterial`` インスタンス。
+    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
+    ///   関数が見つからない場合は ``MetaphorError/material(_:)`` の
+    ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         try context.createMaterial(source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
@@ -334,8 +313,8 @@ extension Sketch {
 
     /// 現在の変換行列（2D と 3D の両方）をスタックに保存します。
     ///
-    /// - Note: 2D 専用の ``push()`` と異なり、このメソッドは 2D/3D 両方の
-    ///   変換スタックへ同時に作用します。
+    /// - Note: **2D と 3D の両方**に作用します。``push()`` との違いは作用先ではなく
+    ///   「スタイルを含むかどうか」で、こちらは変換のみを保存します。
     public func pushMatrix() {
         context.pushMatrix()
     }
@@ -495,6 +474,9 @@ extension Sketch {
     ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
     ///   - cache: キャッシュを使うか（既定 true。同一インスタンスが返ります）。
     /// - Returns: 読み込まれたメッシュ。
+    /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
+    ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
+    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``。
     public func loadModelAsync(
         _ path: String, normalize: Bool = true, cache: Bool = true
     ) async throws -> Mesh {
