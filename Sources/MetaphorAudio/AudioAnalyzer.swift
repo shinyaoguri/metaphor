@@ -79,6 +79,35 @@ private final class FFTSetupHolder: @unchecked Sendable {
     }
 }
 
+// MARK: - 通知オブザーバホルダー
+
+/// Owns a block-based `NotificationCenter` observer token and unregisters it on
+/// deallocation.
+///
+/// Block-based observers are not auto-removed, so the token has to outlive the
+/// registration and be handed back to `NotificationCenter`. Holding it here (rather
+/// than in a `@MainActor` property that `deinit` reads) keeps teardown correct under
+/// strict concurrency: `deinit` is `nonisolated`, so it cannot touch actor-isolated
+/// storage of a non-`Sendable` type.
+///
+/// `@unchecked Sendable` rationale: the token is stored once, never handed out, and
+/// its only use is `NotificationCenter.removeObserver(_:)` — and `NotificationCenter`
+/// is documented as thread-safe. There is no mutable state to race on.
+/// (Internal rather than private so the teardown contract can be unit-tested.)
+final class NotificationObserverToken: @unchecked Sendable {
+    private let token: any NSObjectProtocol
+    private let center: NotificationCenter
+
+    init(_ token: any NSObjectProtocol, center: NotificationCenter = .default) {
+        self.token = token
+        self.center = center
+    }
+
+    deinit {
+        center.removeObserver(token)
+    }
+}
+
 // MARK: - AudioAnalyzer
 
 /// Performs FFT analysis and beat detection on microphone or line input.
@@ -145,7 +174,9 @@ public final class AudioAnalyzer {
     private let fftSize: Int
     private let halfFFTSize: Int
     private var isRunning = false
-    private var configurationObserver: NSObjectProtocol?
+    /// `nil` にする（= 解放する）だけで通知の解除が済む。``NotificationObserverToken``
+    /// の deinit が `removeObserver` を呼ぶ。
+    private var configurationObserver: NotificationObserverToken?
 
     // MARK: - vDSP FFT
 
@@ -251,15 +282,17 @@ public final class AudioAnalyzer {
 
         // デバイス切断・サンプルレート変更などの構成変化を監視する
         // （切断後は解析が静かに止まるため、少なくとも観測可能にする）
-        configurationObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.handleConfigurationChange()
+        configurationObserver = NotificationObserverToken(
+            NotificationCenter.default.addObserver(
+                forName: .AVAudioEngineConfigurationChange,
+                object: engine,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.handleConfigurationChange()
+                }
             }
-        }
+        )
 
         self.engine = engine
         self.isRunning = true
@@ -268,21 +301,17 @@ public final class AudioAnalyzer {
     /// Stops audio capture.
     public func stop() {
         guard isRunning else { return }
-        if let observer = configurationObserver {
-            NotificationCenter.default.removeObserver(observer)
-            configurationObserver = nil
-        }
+        // 解放 = 解除（NotificationObserverToken の deinit が removeObserver する）
+        configurationObserver = nil
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
         isRunning = false
     }
 
-    deinit {
-        if let observer = configurationObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-    }
+    // deinit は不要: configurationObserver が解放された時点で
+    // NotificationObserverToken.deinit が通知を解除する。`deinit` は nonisolated
+    // なので、@MainActor 隔離された非 Sendable なプロパティは触れない。
 
     /// Updates analysis data once per frame (call this at the top of `draw()`).
     ///
