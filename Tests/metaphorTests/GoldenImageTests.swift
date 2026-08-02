@@ -196,6 +196,10 @@ struct GoldenImageTests {
         }
     }
 
+    /// `ambientLight` は 2D の `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）。
+    /// もとは `0.35`（= 0.35/255 ≒ 実質 0）で、環境光の退行をまったく検出できなかった
+    /// （Issue #392）。レンジの 35% = `90` に直したことで、光が当たらない面の明るさが
+    /// ゴールデンに写り、ambient が消える／変わる退行を捉えられる。
     @Test("ゴールデン: 3D ライティング（Blinn-Phong）")
     func lightingBlinnPhong() throws {
         try verifyScene("lighting-blinn-phong", tolerance: .shaded) { c in
@@ -203,7 +207,7 @@ struct GoldenImageTests {
             c.pbr(false)
             // カメラ（-z 方向を向く）側から当てて前面を照らす。真下からの光だと
             // 可視面がほぼ環境光だけになり、ゴールデンの識別力が落ちる。
-            c.ambientLight(0.35)
+            c.ambientLight(90)  // colorMode 基準（既定 0〜255）= レンジの約 35%
             c.directionalLight(-0.4, -0.5, -1)
             c.specular(0.9)
             c.shininess(48)
@@ -217,6 +221,11 @@ struct GoldenImageTests {
         }
     }
 
+    /// ambient は `colorMode` のレンジ基準（既定 0〜255）。もとは `0.75`（実質 0）だった
+    /// ため、環境光の寄与がまったく写っていなかった（Issue #392）。`120` は
+    /// 「鏡面ハイライトが 255 に張り付かない上限」で選んだ値で、拡散・鏡面・環境光の
+    /// 3 つが同時に識別できる（レンジをこれ以上上げるとハイライトが飽和して
+    /// 鏡面側の検出力が落ちる）。
     @Test("ゴールデン: 3D ライティング（PBR）")
     func lightingPBR() throws {
         try verifyScene("lighting-pbr", tolerance: .shaded) { c in
@@ -226,7 +235,7 @@ struct GoldenImageTests {
             // 拡散と鏡面が両方見える範囲に収める（ゴールデンの識別力を確保）。
             c.metallic(0.25)
             c.roughness(0.45)
-            c.ambientLight(0.75)
+            c.ambientLight(120)  // colorMode 基準（既定 0〜255）
             c.directionalLight(-0.4, -0.5, -1)
             c.pointLight(30, 20, 140, color: Color(r: 1.0, g: 0.8, b: 0.6))
             c.fill(Color(r: 0.75, g: 0.75, b: 0.80))
@@ -290,12 +299,16 @@ struct GoldenImageTests {
     /// 1 画素も動かなかった。**このシーンだけが変換ファミリの適用先に検出力を持つ**
     /// （Issue #325 / #385）。統一を戻すと 3 つのボックスがすべてワールド原点
     /// （= 左上）へ集まり、画像が壊れる。
+    ///
+    /// ambient はもとは `0.45`（`colorMode` レンジ基準なので実質 0）だった（Issue #392）。
+    /// `40` は「明るい面の R チャンネルが 255 に張り付かない上限」で選んだ値。
+    /// これで光の当たらない面にも階調が残り、環境光の退行も検出できる。
     @Test("ゴールデン: 2D 変換 + 3D 描画（P3D 意味論統一の検出用）")
     func transform2DAppliedTo3D() throws {
         try verifyScene("transform-2d-on-3d", tolerance: .shaded) { c in
             c.background(Color(r: 0.06, g: 0.07, b: 0.10))
             c.pbr(false)
-            c.ambientLight(0.45)
+            c.ambientLight(40)  // colorMode 基準（既定 0〜255）
             c.directionalLight(-0.4, -0.5, -1)
             c.noStroke()
 

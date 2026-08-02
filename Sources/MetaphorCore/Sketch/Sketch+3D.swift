@@ -95,6 +95,10 @@ extension Sketch {
     // MARK: 3D Lighting
 
     /// デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
+    ///
+    /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
+    /// `ambientLight(76.5)` 相当）に設定されます。ライトを個別に足す場合も、
+    /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
     public func lights() {
         context.lights()
     }
@@ -172,6 +176,11 @@ extension Sketch {
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     /// `ambientLight(0.35)` のような 0〜1 のつもりの値はほぼ真っ暗になります
     /// （既定レンジなら `ambientLight(90)` 相当を指定する）。
+    ///
+    /// `lights()` や最初のライト追加で自動的に入る既定アンビエントは
+    /// **レンジの 30%**（既定レンジなら `ambientLight(76.5)`）です。
+    /// 既定と同じ明るさを明示したいときは `ambientLight(0.3)` ではなく
+    /// `ambientLight(76.5)` と書きます。
     ///
     /// アンビエントは `enableShadows()` の影の中でも減衰しません（影が掛かるのは
     /// 直接光の diffuse / specular のみ）。影の中のディテールはこの値で決まります。

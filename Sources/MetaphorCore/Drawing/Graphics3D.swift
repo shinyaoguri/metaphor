@@ -169,6 +169,9 @@ public final class Graphics3D {
     // MARK: - Lighting
 
     /// デフォルトライティングを有効にします。
+    ///
+    /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
+    /// `ambientLight(76.5)` 相当）に設定されます。
     public func lights() { canvas3D.lights() }
 
     /// すべてのライティングを無効にします。
@@ -227,10 +230,19 @@ public final class Graphics3D {
     }
 
     /// アンビエントライトの強度を設定します。
-    /// - Parameter strength: アンビエントライトの強度。
+    ///
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// 0〜1 のつもりの値（`ambientLight(0.35)` など）はほぼ真っ暗になります。
+    /// `lights()` や最初のライト追加で入る既定アンビエントはレンジの 30%
+    /// （既定レンジなら `ambientLight(76.5)`）です。
+    ///
+    /// - Parameter strength: アンビエントライトの強度（`colorMode` のレンジ基準）。
     public func ambientLight(_ strength: Float) { canvas3D.ambientLight(strength) }
 
     /// RGB値でアンビエントライトの色を設定します。
+    ///
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
     /// - Parameters:
     ///   - r: 赤成分。
     ///   - g: 緑成分。

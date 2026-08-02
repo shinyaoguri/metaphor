@@ -160,8 +160,17 @@ public final class Canvas3D: CanvasStyle {
     // MARK: - ライティング状態
 
     var lightArray: [Light3D] = []
+    /// ライトが 1 つも無い間のアンビエント（無照明パスなので描画には出ない）。
     var ambientColor: SIMD3<Float> = SIMD3(0.2, 0.2, 0.2)
     var userSetAmbient: Bool = false
+
+    /// `lights()` と「最初のライト追加時」に入る既定アンビエントの、
+    /// `colorMode` のレンジに対する割合。
+    ///
+    /// 単位を `ambientLight()` と揃えるためにレンジ比で持つ。既定の
+    /// `colorMode(.rgb, 255)` なら `ambientLight(0.3 * 255)` = `ambientLight(76.5)`
+    /// と書いたのと同じ明るさになる（`ambientLight(0.3)` ではない点に注意）。
+    static let defaultAmbientRatio: Float = 0.3
 
     // MARK: - マテリアル状態
 
@@ -1724,8 +1733,19 @@ public final class Canvas3D: CanvasStyle {
     // 最初のライト追加時にデフォルトのアンビエント値を設定
     func ensureAmbientIfFirstLight() {
         if lightArray.isEmpty && !userSetAmbient {
-            ambientColor = SIMD3(0.3, 0.3, 0.3)
-            currentMaterial.ambientColor = SIMD4(0.3, 0.3, 0.3, 0)
+            applyDefaultAmbient()
         }
+    }
+
+    /// 既定アンビエントを適用する。
+    ///
+    /// `ambientLight()` とまったく同じ経路（`colorMode` のレンジ基準 → 正規化）を通すので、
+    /// 「既定と同じ明るさにしたい」ときにユーザーが書くべき値が
+    /// `ambientLight(Canvas3D.defaultAmbientRatio * <colorMode の最大値>)` だと読み取れる。
+    /// 正規化後の値は `colorMode` 設定によらず `defaultAmbientRatio`（= 0.3）で不変。
+    func applyDefaultAmbient() {
+        let c = colorModeConfig.toGray(Canvas3D.defaultAmbientRatio * colorModeConfig.max1)
+        ambientColor = SIMD3(c.r, c.g, c.b)
+        currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)
     }
 }

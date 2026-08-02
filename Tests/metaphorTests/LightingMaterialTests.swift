@@ -487,3 +487,68 @@ struct Phase3Canvas3DFillStrokeTests {
         #expect(t.x == 1 && t.y == 2 && t.z == 3)
     }
 }
+
+// MARK: - アンビエントライトの単位（Issue #392）
+
+/// `ambientLight()` の単位と、`lights()` / 最初のライト追加で入る既定アンビエントの
+/// 関係を凍結する。
+///
+/// `ambientLight` は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）。
+/// 既定アンビエントは「レンジの 30%」（`Canvas3D.defaultAmbientRatio`）であり、
+/// 既定レンジなら `ambientLight(76.5)` と書いたのと同じ明るさになる。
+/// `ambientLight(0.3)` は 0.3/255 ≒ 実質真っ暗で、既定とは別物。
+@Suite("Ambient light units", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct AmbientLightUnitTests {
+
+    /// 既定アンビエントは `colorMode` の取り方に依らず、正規化後は常に 0.3。
+    /// （`colorMode` 基準で書き下しても既定の**見た目は変わらない**ことの担保）
+    @Test("既定アンビエントは colorMode に依らず正規化 0.3")
+    func defaultAmbientIsColorModeIndependent() throws {
+        for (space, maxAll) in [(ColorSpace.rgb, Float(255)), (.rgb, 1), (.hsb, 360)] {
+            // lights() 経路
+            let byLights = try Canvas3D(renderer: MetaphorRenderer())
+            byLights.colorMode(space, maxAll)
+            byLights.lights()
+            #expect(
+                abs(byLights.ambientColor.x - Canvas3D.defaultAmbientRatio) < 1e-5,
+                "lights() の既定 ambient が \(space)/\(maxAll) で \(byLights.ambientColor.x)")
+
+            // 最初のライト追加（ensureAmbientIfFirstLight）経路
+            let byFirstLight = try Canvas3D(renderer: MetaphorRenderer())
+            byFirstLight.colorMode(space, maxAll)
+            byFirstLight.directionalLight(0, -1, 0)
+            #expect(
+                abs(byFirstLight.ambientColor.x - Canvas3D.defaultAmbientRatio) < 1e-5,
+                "最初のライトの既定 ambient が \(space)/\(maxAll) で \(byFirstLight.ambientColor.x)")
+        }
+    }
+
+    /// 既定と同じ明るさを明示したいときの書き方は
+    /// `ambientLight(0.3 * <colorMode の最大値>)`。0〜1 のつもりで `0.3` を渡すと実質 0。
+    @Test("ambientLight は colorMode レンジ基準（0〜1 のつもりの値は実質 0）")
+    func ambientLightUsesColorModeRange() throws {
+        let canvas3D = try Canvas3D(renderer: MetaphorRenderer())
+
+        canvas3D.ambientLight(Canvas3D.defaultAmbientRatio * canvas3D.colorModeConfig.max1)
+        #expect(abs(canvas3D.ambientColor.x - Canvas3D.defaultAmbientRatio) < 1e-5)
+
+        // 0〜1 スケールのつもりで書くと 0.3/255 ≒ 0.0012 = ほぼ真っ暗になる（#392 の罠）
+        canvas3D.ambientLight(Canvas3D.defaultAmbientRatio)
+        #expect(canvas3D.ambientColor.x < 0.002)
+
+        // colorMode を 0〜1 にすれば 0.3 がそのまま 30% になる
+        canvas3D.colorMode(.rgb, 1)
+        canvas3D.ambientLight(Canvas3D.defaultAmbientRatio)
+        #expect(abs(canvas3D.ambientColor.x - Canvas3D.defaultAmbientRatio) < 1e-5)
+    }
+
+    /// `ambientLight()` を先に呼んでいたら、あとからライトを足しても既定で上書きしない。
+    @Test("ユーザー指定の ambient は後続のライト追加で上書きされない")
+    func userAmbientWinsOverDefault() throws {
+        let canvas3D = try Canvas3D(renderer: MetaphorRenderer())
+        canvas3D.ambientLight(60)
+        canvas3D.directionalLight(0, -1, 0)
+        #expect(abs(canvas3D.ambientColor.x - 60.0 / 255.0) < 1e-5)
+    }
+}
