@@ -292,11 +292,20 @@ public final class VideoExporter {
         nonisolated(unsafe) let capturedInput = input
         nonisolated(unsafe) let capturedAdaptor = adaptor
 
+        // ドロップ報告を @Sendable クロージャ 1 つに畳み、`[weak self]` を
+        // この段だけに閉じ込める。`[weak self]` が導入するのは暗黙の **var** で、
+        // 入れ子の `@Sendable` クロージャからそれを参照すると strict concurrency の
+        // `SendableClosureCaptures` 警告になるため（弱参照のままにしたいので
+        // `let` へ束ね直して強参照を延ばすことはしない）。
+        let reportDrop: @Sendable () -> Void = { [weak self] in
+            Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
+        }
+
         // インフライト書き込みとして登録。完了ハンドラ末尾で必ず `leave()` する。
         // これにより `endRecord` は GPU 側の遅延到着フレームも待ってからファイナライズできる。
         group.enter()
         completionGroup?.enter()
-        commandBuffer.addCompletedHandler { @Sendable [weak self] _ in
+        commandBuffer.addCompletedHandler { @Sendable _ in
             queue.async {
                 defer {
                     completionGroup?.leave()
@@ -311,19 +320,19 @@ public final class VideoExporter {
                     waitBudget -= 1
                 }
                 guard capturedInput.isReadyForMoreMediaData else {
-                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
+                    reportDrop()
                     return
                 }
 
                 var pixelBuffer: CVPixelBuffer?
                 guard let pool = capturedAdaptor.pixelBufferPool else {
-                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
+                    reportDrop()
                     return
                 }
 
                 let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
                 guard status == kCVReturnSuccess, let buffer = pixelBuffer else {
-                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
+                    reportDrop()
                     return
                 }
 
@@ -331,7 +340,7 @@ public final class VideoExporter {
                 defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
 
                 guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
-                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
+                    reportDrop()
                     return
                 }
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
@@ -350,7 +359,7 @@ public final class VideoExporter {
                 )
                 if !capturedAdaptor.append(buffer, withPresentationTime: presentationTime) {
                     // 書き込み失敗もドロップとして計上する（従来は黙殺されていた）
-                    Self.recordDrop(self, sessionID: sessionID, frameIndex: currentFrame)
+                    reportDrop()
                 }
             }
         }

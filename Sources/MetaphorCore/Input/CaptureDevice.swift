@@ -4,6 +4,39 @@ import Metal
 import ObjectiveC.runtime
 import os
 
+/// `AVCaptureSession` を保持し、**解放時に必ず停止する**ホルダー。
+///
+/// `stop()` を呼ばずに ``CaptureDevice`` が破棄されても、動いたままの
+/// セッションがカメラを掴み続けないようにするための後始末。以前は
+/// `CaptureDevice.deinit` が直接行っていたが、`deinit` は nonisolated なため
+/// @MainActor 隔離された非 Sendable プロパティ（Swift 5.10 SDK の
+/// `AVCaptureSession` は `Sendable` ではない）を読めず、strict concurrency の
+/// 警告になっていた。「ホルダーの解放 ＝ 停止」に変えることで、
+/// `CaptureDevice` 側に `deinit` を持たせずに同じ後始末を保証できる（Issue #328）。
+///
+/// `@unchecked Sendable` の根拠: 保持したセッションは外部へ渡さず、
+/// 内部での操作は `CaptureDevice` が使うものと同一のシリアルキュー
+/// （`sessionQueue`）上でのみ行う。可変状態を持たないため競合する対象がない。
+final class CaptureSessionHolder: @unchecked Sendable {
+    /// 保持しているキャプチャセッション（@MainActor 側から参照する）
+    let session: AVCaptureSession
+
+    /// `startRunning`/`stopRunning` を直列化する `CaptureDevice` 共通のキュー
+    private let queue: DispatchQueue
+
+    init(session: AVCaptureSession, queue: DispatchQueue) {
+        self.session = session
+        self.queue = queue
+    }
+
+    deinit {
+        let session = self.session
+        queue.async {
+            if session.isRunning { session.stopRunning() }
+        }
+    }
+}
+
 /// キャプチャに使用するカメラ位置の指定
 ///
 /// - Note: macOS では内蔵・外付けを問わずほとんどのカメラが位置情報を持たない
@@ -138,8 +171,14 @@ public final class CaptureDevice {
     /// テクスチャキャッシュ作成に使用する Metal デバイス
     private let device: MTLDevice
 
-    /// AVFoundation キャプチャセッション
-    private var captureSession: AVCaptureSession?
+    /// AVFoundation キャプチャセッションの保持者。
+    ///
+    /// `CaptureDevice` の解放時にセッションを止める責務も持つ（下記
+    /// ``CaptureSessionHolder`` 参照）。
+    private var sessionHolder: CaptureSessionHolder?
+
+    /// AVFoundation キャプチャセッション（保持者経由）
+    private var captureSession: AVCaptureSession? { sessionHolder?.session }
 
     /// ゼロコピーピクセルバッファ変換用の Metal テクスチャキャッシュ
     private var textureCache: CVMetalTextureCache?
@@ -163,8 +202,13 @@ public final class CaptureDevice {
     /// 起こり得る。専用シリアルキューで投入順＝実行順を保証する。
     private let sessionQueue = DispatchQueue(label: "metaphor.capture.session", qos: .userInitiated)
 
-    /// デバイス切断・セッションエラー監視の通知トークン（deinit で解除）
-    private var observers: [NSObjectProtocol] = []
+    /// デバイス切断・セッションエラー監視の通知トークン。
+    ///
+    /// 解除は ``NotificationObserverToken`` の deinit が行う（＝この配列を捨てれば
+    /// 解除される）。`deinit` は nonisolated なので、@MainActor 隔離された
+    /// 非 Sendable プロパティを読めない — トークン側に解除責務を持たせることで
+    /// その制約に触れずに済む（Issue #328）。
+    private var observers: [NotificationObserverToken] = []
 
     // MARK: - Initialization
 
@@ -231,18 +275,11 @@ public final class CaptureDevice {
         }
     }
 
-    deinit {
-        for observer in observers {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        // stop() を呼ばずに破棄されてもキャプチャセッションを止める
-        // （動いたまま dealloc されるとカメラが掴まれ続ける）
-        if let session = captureSession {
-            sessionQueue.async {
-                if session.isRunning { session.stopRunning() }
-            }
-        }
-    }
+    // NOTE: deinit は持たない。通知の解除は ``NotificationObserverToken`` が、
+    // 「stop() を呼ばずに破棄されてもキャプチャセッションを止める」は
+    // ``CaptureSessionHolder`` が、それぞれ自身の deinit で受け持つ
+    // （nonisolated な deinit から @MainActor 隔離の非 Sendable プロパティを
+    // 読まないための構造。Issue #328）。
 
     // MARK: - Public Methods
 
@@ -429,7 +466,7 @@ public final class CaptureDevice {
             session.addOutput(output)
         }
 
-        self.captureSession = session
+        self.sessionHolder = CaptureSessionHolder(session: session, queue: sessionQueue)
         self.deviceInfo = CaptureDeviceInfo(avDevice: camera)
         let dims = CMVideoFormatDescriptionGetDimensions(camera.activeFormat.formatDescription)
         self.actualWidth = Int(dims.width)
@@ -450,16 +487,16 @@ public final class CaptureDevice {
         // ゲート）でビルドできない。両 SDK で有効な旧グローバル通知名を使う。
         let center = NotificationCenter.default
         observers.append(
-            center.addObserver(
+            NotificationObserverToken(center.addObserver(
                 forName: .AVCaptureDeviceWasDisconnected,
                 object: camera, queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.markUnavailable(reason: "device disconnected")
                 }
-            })
+            }, center: center))
         observers.append(
-            center.addObserver(
+            NotificationObserverToken(center.addObserver(
                 forName: .AVCaptureSessionRuntimeError,
                 object: session, queue: .main
             ) { [weak self] note in
@@ -468,7 +505,7 @@ public final class CaptureDevice {
                 MainActor.assumeIsolated {
                     self?.markUnavailable(reason: "session runtime error: \(message)")
                 }
-            })
+            }, center: center))
     }
 
     /// デバイスを利用不能としてマークし、``onDisconnect`` を一度だけ呼びます。

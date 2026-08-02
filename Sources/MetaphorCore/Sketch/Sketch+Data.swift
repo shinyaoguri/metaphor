@@ -103,7 +103,13 @@ extension Sketch {
     ///   ``MetaphorError/DataFailure/loadFailed(source:detail:)``、デコードに
     ///   失敗した場合は ``MetaphorError/DataFailure/decodeFailed(type:detail:)``。
     public func loadJSONAsync<T: Decodable>(_ source: String, as type: T.Type) async throws -> T {
-        try await DataIO.loadJSONAsync(source, as: type)
+        // メタタイプ `T.Type` は `T: Sendable` のときしか Sendable にならない。
+        // `DataIO.loadJSONAsync(_:as:)` へそのまま渡すと @MainActor から
+        // nonisolated へ `type` を送ることになり警告になる（`T: Sendable` を足すのは
+        // 公開 API の制約強化なので採らない）。読み込みだけを await し、デコードは
+        // 呼び出し側の隔離ドメインに留めることで送信そのものを無くす。
+        let data = try await DataIO.readDataAsync(source)
+        return try DataIO.decodeJSON(data, as: type)
     }
 
     /// `Encodable` な値（``JSONValue`` を含む）を JSON ファイルへ書き込みます。
