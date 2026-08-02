@@ -17,7 +17,7 @@ final class MockPlugin: MetaphorPlugin {
     var postCallCount = 0
     var lastPreTime: Double = 0
     var lastPostTexture: MTLTexture?
-    var mouseEvents: [(x: Float, y: Float, button: Int, type: MouseEventType)] = []
+    var mouseEvents: [(x: Float, y: Float, button: MouseButton?, type: MouseEventType)] = []
     var keyEvents: [(key: Character?, keyCode: UInt16, type: KeyEventType)] = []
     var resizeEvents: [(width: Int, height: Int)] = []
 
@@ -55,7 +55,7 @@ final class MockPlugin: MetaphorPlugin {
         lastPostTexture = texture
     }
 
-    func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {
+    func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {
         mouseEvents.append((x: x, y: y, button: button, type: type))
     }
 
@@ -195,11 +195,12 @@ struct PluginTests {
         renderer.addPlugin(plugin1)
         renderer.addPlugin(plugin2)
 
-        renderer.notifyPluginsMouseEvent(x: 100, y: 200, button: 0, type: .pressed)
+        renderer.notifyPluginsMouseEvent(x: 100, y: 200, button: .right, type: .pressed)
 
         #expect(plugin1.mouseEvents.count == 1)
         #expect(plugin1.mouseEvents[0].x == 100)
         #expect(plugin1.mouseEvents[0].y == 200)
+        #expect(plugin1.mouseEvents[0].button == .right)
         #expect(plugin1.mouseEvents[0].type == .pressed)
 
         #expect(plugin2.mouseEvents.count == 1)
@@ -230,7 +231,7 @@ struct PluginTests {
 
         let types: [MouseEventType] = [.pressed, .released, .moved, .dragged, .scrolled, .clicked]
         for eventType in types {
-            renderer.notifyPluginsMouseEvent(x: 0, y: 0, button: 0, type: eventType)
+            renderer.notifyPluginsMouseEvent(x: 0, y: 0, button: .left, type: eventType)
         }
 
         #expect(plugin.mouseEvents.count == 6)

@@ -226,6 +226,8 @@ On the target side:
 
 The library fully works this way (you can even generate code via AI with `llms.txt`). But the MCP loop that lets AI observe "what's on screen right now" needs the CLI (`metaphor mcp`). We recommend `metaphor new` for first-time use—`Package.swift`, templates, resource directories, AI guides, and update paths come built-in.
 
+To decide how to bound that version requirement, see [docs/api-stability-policy.md](docs/api-stability-policy.md) — what counts as public API, and what may break. [CHANGELOG.md](CHANGELOG.md) records every user-visible change, with breaking ones collected under `Breaking Changes`. While the version is `0.x`, **a minor release may break API**; `v0.9.0` freezes the API and runs under that policy from then on.
+
 ## Requirements
 
 - Apple Silicon Mac
@@ -257,6 +259,10 @@ Bug reports are most helpful with:
 Problems with the CLI (`metaphor new` / `metaphor watch` / MCP, etc.) belong in [metaphor-cli Issues](https://github.com/shinyaoguri/metaphor-cli/issues). When in doubt, file here and we'll route it appropriately.
 
 If using through an AI agent, same process—ask the agent to "report this as a GitHub Issue with repro steps," and it can file with full details.
+
+### Maintenance
+
+metaphor is maintained by **one person**, on a **best-effort** basis. Issues and pull requests are usually acknowledged within a few days, but no response time is guaranteed (for vulnerabilities, see [SECURITY.md](SECURITY.md)). On the other hand, releases are fully automated and need no privileged manual step, and published tags and Release assets are protected as immutable and health-checked weekly. For what the project promises not to break, see [docs/api-stability-policy.md](docs/api-stability-policy.md).
 
 ## Library development
 

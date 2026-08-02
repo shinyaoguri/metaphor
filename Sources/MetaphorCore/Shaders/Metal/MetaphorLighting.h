@@ -49,6 +49,10 @@ static inline float calculateShadow(
 }
 
 // PBR (Cook-Torrance GGX) ライティング
+//
+// `shadow` はシャドウマップの可視率（1 = 完全に照らされる / 0 = 完全な影）。
+// 影は**直接光（diffuse + specular）にのみ**掛かる。環境光（ambient）と自発光
+// （emissive）は遮蔽物の裏にも残るため減衰させない（Issue #364）。
 static inline float3 calculatePBRLighting(
     float3 worldPos,
     float3 normal,
@@ -56,7 +60,8 @@ static inline float3 calculatePBRLighting(
     float3 baseColor,
     constant Light3D *lights,
     uint lightCount,
-    Material3D material
+    Material3D material,
+    float shadow
 ) {
     float3 N = normalize(normal);
     float3 V = normalize(cameraPos - worldPos);
@@ -123,10 +128,12 @@ static inline float3 calculatePBRLighting(
     float3 ambient = material.ambientColor.xyz * baseColor * ao;
     float3 emissive = material.emissiveAndMetallic.xyz;
 
-    return ambient + emissive + Lo;
+    return ambient + emissive + Lo * shadow;
 }
 
 // Blinn-Phong ライティング（既存互換）
+//
+// `shadow` の意味は ``calculatePBRLighting`` と同じ（直接光にのみ掛かる）。
 static inline float3 calculateBlinnPhongLighting(
     float3 worldPos,
     float3 normal,
@@ -134,13 +141,15 @@ static inline float3 calculateBlinnPhongLighting(
     float3 baseColor,
     constant Light3D *lights,
     uint lightCount,
-    Material3D material
+    Material3D material,
+    float shadow
 ) {
     float3 N = normalize(normal);
     float3 V = normalize(cameraPos - worldPos);
 
     float3 ambient = material.ambientColor.xyz * baseColor;
-    float3 result = ambient + material.emissiveAndMetallic.xyz;
+    // 影で減衰しない項（ambient + emissive）と、減衰する直接光を分けて積む。
+    float3 direct = float3(0.0);
 
     float metallic = material.emissiveAndMetallic.w;
     float shininess = max(material.specularAndShininess.w, 1.0);
@@ -183,10 +192,10 @@ static inline float3 calculateBlinnPhongLighting(
         float spec = (NdotL > 0.0) ? pow(NdotH, shininess) : 0.0;
         float3 specular = specColor * spec;
 
-        result += (diffuse + specular) * lightColor * attenuation;
+        direct += (diffuse + specular) * lightColor * attenuation;
     }
 
-    return result;
+    return ambient + material.emissiveAndMetallic.xyz + direct * shadow;
 }
 
 // 統合エントリポイント: pbrParams.y で Blinn-Phong / PBR を自動切替
@@ -197,12 +206,51 @@ static inline float3 calculateLighting(
     float3 baseColor,
     constant Light3D *lights,
     uint lightCount,
-    Material3D material
+    Material3D material,
+    float shadow
 ) {
     if (material.pbrParams.y > 0.5) {
-        return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material);
+        return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
     }
-    return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material);
+    return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+}
+
+// 影なし版（後方互換）。カスタムマテリアルシェーダーが従来のシグネチャで
+// 呼んでいるため残す。
+static inline float3 calculateLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material
+) {
+    return calculateLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
+}
+
+static inline float3 calculatePBRLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material
+) {
+    return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
+}
+
+static inline float3 calculateBlinnPhongLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material
+) {
+    return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
 }
 
 #endif

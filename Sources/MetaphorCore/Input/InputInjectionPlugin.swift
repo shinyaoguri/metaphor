@@ -133,9 +133,9 @@ public final class InputInjectionPlugin: MetaphorPlugin {
     private func dispatch(_ event: RawInputEvent, to input: InputManager) {
         switch event.t {
         case "mouseDown":
-            input.handleMouseDown(x: event.x ?? 0, y: event.y ?? 0, button: event.button ?? 0)
+            input.handleMouseDown(x: event.x ?? 0, y: event.y ?? 0, button: event.mouseButton)
         case "mouseUp":
-            input.handleMouseUp(x: event.x ?? 0, y: event.y ?? 0, button: event.button ?? 0)
+            input.handleMouseUp(x: event.x ?? 0, y: event.y ?? 0, button: event.mouseButton)
         case "mouseMove":
             input.handleMouseMoved(x: event.x ?? 0, y: event.y ?? 0)
         case "mouseDrag":
@@ -168,4 +168,12 @@ struct RawInputEvent: Decodable, Sendable {
     let code: UInt16?
     let chars: String?
     let `repeat`: Bool?
+
+    /// ワイヤ上の整数 `button`（CONTRACT.md 契約点 3 — 0 = 左 / 1 = 右 / 2 = 中）を
+    /// ``MouseButton`` へ変換します。欠落値・未知の値は左ボタン扱い。
+    ///
+    /// JSON のフィールド型は契約なので `Int?` のまま据え置き、変換はこの境界で行う。
+    var mouseButton: MouseButton {
+        MouseButton(index: button ?? 0) ?? .left
+    }
 }

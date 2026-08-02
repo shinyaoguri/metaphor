@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetaphorCore
 
 /// Provides an offscreen render target that user code draws content into.

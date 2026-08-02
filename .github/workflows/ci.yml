@@ -78,6 +78,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/check-contract-identity.sh
+      # 下の Build / Test は `-warnings-as-errors` 付きなので、strict concurrency の
+      # 警告が入り込めばそこで落ちる（＝ゲートは実質そこ）。ただしそれは
+      # 「設定が付いているターゲット」の話で、新しいターゲットで
+      # `swiftSettings: strictConcurrency` を書き忘れると警告が出ないまま
+      # 静かに穴になる。マニフェスト側の取りこぼしを機械的に潰す（Issue #328 段階 4）。
+      - name: Check strict concurrency coverage
+        run: python3 scripts/check-strict-concurrency.py
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Get Syphon submodule hash
@@ -234,8 +241,16 @@ jobs:
   # （実例: #246 の通知購読 API → v0.5.3 リリース失敗 → #254 で修正）。
   # ビルドのみでテストは走らせない: 目的は API/SDK 互換の検証であることに
   # 加え、テストが使う Swift Testing は Xcode 16+ 同梱で 5.10 には存在しない。
-  # -warnings-as-errors も付けない（警告セットがツールチェーン毎に異なり、
-  # 旧環境の偽陽性で落とさないため）。
+  #
+  # -warnings-as-errors は付ける（Issue #328 段階 4）。strict concurrency の警告集合は
+  # ツールチェーン/SDK 世代で異なり、**5.10 でしか出ない警告が実在する**
+  # （`MTKViewDelegate` の nonisolated 要件、`[MTKTextureLoader.Option: Any]` の受け渡し、
+  # `mach_task_self_` など。実測は Issue #328 のコメント）。ここを緩めたままだと、
+  # 開発者の手元（新しい Xcode のみ）にも build-and-test にも現れない警告が
+  # 際限なく溜まる — 最小サポート側の警告ゼロを守れる場所はここしかない。
+  # 導入時点で 5.10 の警告は 0 件（run 30729134167 で実測）。
+  # もし将来 macos-14 ランナーの既定 Xcode/SDK が変わって *コードと無関係な* 警告で
+  # 落ちるようになったら、このフラグを外して Issue #328 に理由を記録すること。
   #
   # macos-14 でのテスト実行は Issue #332 で検証済み・見送り。
   # swift-testing を明示パッケージ依存として追加すれば 5.10 でもビルド・実行
@@ -287,7 +302,7 @@ jobs:
         # Swift Testing（Xcode 16+ 同梱、5.10 に無い）で失敗する。検証対象は
         # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
         # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
-        run: swift build --target metaphor
+        run: swift build --target metaphor -Xswiftc -warnings-as-errors
       - name: Bridge to legacy status (workflow_dispatch only)
         # build-and-test の同名ステップと同じ理由（#37）。このジョブも Issue #332 で
         # 必須ステータスチェックに昇格したため、workflow_dispatch 経由の実行

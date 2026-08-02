@@ -1,3 +1,6 @@
+// @preconcurrency: オフスクリーンのステージングテクスチャを GPU 完了ハンドラ（`@Sendable`）へ渡す。
+// Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import Metal
 import MetalKit
 import QuartzCore
@@ -52,7 +55,10 @@ public final class MetaphorRenderer: NSObject {
     /// 読んでしまうことに注意してください。
     ///
     /// 現在は SketchContext の GIF 録画が使用します（単一スロット）。
-    public var onCaptureOutput: ((MTLTexture, MTLCommandBuffer) -> Void)?
+    ///
+    /// 内部フック（ADR-0007 論点 6 / #388）。公開 API ではなく、MetaphorCore 内部
+    /// （`SketchContext.beginGIFRecord`）とテスト（`@testable`）からのみ配線されます。
+    var onCaptureOutput: ((MTLTexture, MTLCommandBuffer) -> Void)?
 
     /// メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
     ///
@@ -60,22 +66,26 @@ public final class MetaphorRenderer: NSObject {
     public var onAfterDraw: ((MTLCommandBuffer) -> Void)?
 
     // MARK: - シャドウ同一フレーム化（#70）の遅延描画フック
+    //
+    // 以下 3 本は ADR-0003 の内部フック。公開 API ではなく（ADR-0007 論点 6 / #388）、
+    // MetaphorCore 内部（`SketchRunner` / `SketchWindow`）とテスト（`@testable`）からのみ
+    // 配線されます。
 
     /// このフレームでシャドウ遅延経路（記録→shadow→再生）を使うべきかを返す。
     /// `true` のとき `renderFrame()` はメインエンコーダ作成前に `onRecordFrame` で
     /// draw() を記録実行し、シャドウ生成後に `onReplayMain` で再生する。
-    public var shadowDeferActive: (() -> Bool)?
+    var shadowDeferActive: (() -> Bool)?
 
     /// シャドウ遅延経路で、メインエンコーダ無しに draw() を記録実行するフック
     /// （3Dは recordedDrawCalls に記録、2Dは前景キューへ遅延）。
     /// - Parameter time: 経過時間（秒）
-    public var onRecordFrame: ((Double) -> Void)?
+    var onRecordFrame: ((Double) -> Void)?
 
     /// シャドウ遅延経路で、記録済みの 3D→2D を単一メインパスへ再生するフック。
     /// - Parameters:
     ///   - encoder: メインパスのレンダーコマンドエンコーダー
     ///   - time: 経過時間（秒）
-    public var onReplayMain: ((MTLRenderCommandEncoder, Double) -> Void)?
+    var onReplayMain: ((MTLRenderCommandEncoder, Double) -> Void)?
 
     /// 初期化時に記録されるモノトニック開始時刻
     private let startTime: Double
@@ -399,7 +409,7 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - プラグイン入力転送
 
     /// 全登録済みプラグインにマウスイベントを転送します。
-    internal func notifyPluginsMouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {
+    internal func notifyPluginsMouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {
         for plugin in plugins {
             plugin.mouseEvent(x: x, y: y, button: button, type: type)
         }
@@ -443,7 +453,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// レンダラーを明示的にシャットダウンし、全プラグインを解放します。
     ///
-    /// `onStop`（ループ停止通知）→ 各プラグインの `onDetach`（リソース解放。``SyphonPlugin``
+    /// `onStop`（ループ停止通知）→ 各プラグインの `onDetach`（リソース解放。`SyphonPlugin`
     /// はここで Syphon サーバーを停止）→ プラグイン配列のクリア、の順で行います。冪等。
     /// ウィンドウクローズ（``SketchWindow/close()``）やアプリ終了時に呼びます。
     public func shutdown() {
@@ -1066,16 +1076,28 @@ public final class MetaphorRenderer: NSObject {
         // 完了ハンドラは「最後にコミットするバッファ」に付ける。メインパスが分割された
         // 場合、最終バッファはここで作ったものとは別になるため（#326）、コミット直前に
         // 付けられるようクロージャにしておく。
-        let attachFrameCompletion: (MTLCommandBuffer) -> Void = { [weak self] buffer in
+        // GPU 実測時刻の反映は @Sendable クロージャ 1 つに畳んでおく。`[weak self]` が
+        // 導入するのは暗黙の **var** で、入れ子の `@Sendable` クロージャ
+        //（addCompletedHandler → notify → main.async）からそれを参照すると
+        // strict concurrency の `SendableClosureCaptures` 警告になる。ここで弱参照を
+        // 一段に閉じ込めれば、レンダラを強参照で延命することなく警告を消せる。
+        let recordGPUTimes: @Sendable (CFTimeInterval, CFTimeInterval) -> Void = {
+            [weak self] start, end in
+            // 自分のキャプチャリストが導入した var は、自分の本体では読んでよい。
+            // main.async へ渡す前に let へ束ね直す（延命は dispatch の間だけ）。
+            let renderer = self
+            DispatchQueue.main.async {
+                renderer?.lastGPUStartTime = start
+                renderer?.lastGPUEndTime = end
+            }
+        }
+        let attachFrameCompletion: (MTLCommandBuffer) -> Void = { buffer in
             buffer.addCompletedHandler { cb in
                 let gpuStart = cb.gpuStartTime
                 let gpuEnd = cb.gpuEndTime
-                readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
+                readbackGroup.notify(queue: .global(qos: .userInitiated)) {
                     semaphore.signal()
-                    DispatchQueue.main.async {
-                        self?.lastGPUStartTime = gpuStart
-                        self?.lastGPUEndTime = gpuEnd
-                    }
+                    recordGPUTimes(gpuStart, gpuEnd)
                 }
             }
         }
@@ -1262,10 +1284,21 @@ public final class MetaphorRenderer: NSObject {
 
 // MARK: - MTKViewDelegate
 
+// `MTKViewDelegate` の要件は macOS 26 SDK では @MainActor だが、最小サポートの
+// Swift 5.10（Xcode 15.4）SDK では nonisolated。@MainActor のまま準拠すると
+// 「main actor 隔離のメソッドで nonisolated 要件は満たせない」と警告になるため、
+// 実装側を `nonisolated` にして `MainActor.assumeIsolated` で隔離を主張する。
+// MetalKit はどちらの要件もメインスレッドから呼ぶ（Issue #328）。
 extension MetaphorRenderer: MTKViewDelegate {
-    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+    public nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
-    public func draw(in view: MTKView) {
+    public nonisolated func draw(in view: MTKView) {
+        MainActor.assumeIsolated {
+            drawOnMainActor(in: view)
+        }
+    }
+
+    private func drawOnMainActor(in view: MTKView) {
         // 外部レンダーループを使用していない場合、ここでフレームをレンダリング
         if !useExternalRenderLoop {
             renderFrame()

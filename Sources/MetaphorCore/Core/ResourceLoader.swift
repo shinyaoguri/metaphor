@@ -1,4 +1,10 @@
+// @preconcurrency: `MTLTexture` / `MTLDevice` を nonisolated な async ヘルパーとの間で受け渡す。
+// Swift 5.10 でのみ出る警告（新しい SDK では診断されない）。
+// Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
 @preconcurrency import Metal
+// @preconcurrency: `MTKTextureLoader` を nonisolated な async ラッパーへ渡す（ローダはスレッドセーフ）。
+// MetalKit の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import MetalKit
 import AppKit
 
@@ -24,6 +30,33 @@ public final class ResourceLoader {
         ]
     }
 
+    // MARK: - MTKTextureLoader 呼び出し（nonisolated ラッパー）
+    //
+    // `[MTKTextureLoader.Option: Any]` は非 Sendable（値が `Any`）。@MainActor から
+    // `newTexture` を直接 await すると、この辞書を隔離ドメインの外へ渡すことになり
+    // 警告になる（Swift 5.10。新しい SDK では出ない）。ローダを引数で受ける
+    // nonisolated な入口をはさみ、辞書の生成と受け渡しを丸ごと nonisolated 側へ
+    // 閉じ込めることで、境界を跨ぐ値を無くす（Issue #328）。
+
+    private nonisolated static func newTexture(
+        loader: MTKTextureLoader, url: URL
+    ) async throws -> MTLTexture {
+        try await loader.newTexture(URL: url, options: textureOptions)
+    }
+
+    private nonisolated static func newTexture(
+        loader: MTKTextureLoader, name: String
+    ) async throws -> MTLTexture {
+        try await loader.newTexture(
+            name: name, scaleFactor: 1.0, bundle: nil, options: textureOptions)
+    }
+
+    private nonisolated static func newTexture(
+        loader: MTKTextureLoader, cgImage: CGImage
+    ) async throws -> MTLTexture {
+        try await loader.newTexture(cgImage: cgImage, options: textureOptions)
+    }
+
     // MARK: - 非同期画像読み込み
 
     /// ファイルパスから画像を非同期で読み込みます。
@@ -39,7 +72,7 @@ public final class ResourceLoader {
         let url = URL(fileURLWithPath: path)
         let texture: MTLTexture
         do {
-            texture = try await textureLoader.newTexture(URL: url, options: Self.textureOptions)
+            texture = try await Self.newTexture(loader: textureLoader, url: url)
         } catch {
             throw MetaphorError.image(
                 .loadFailed(source: path, detail: error.localizedDescription))
@@ -56,8 +89,7 @@ public final class ResourceLoader {
     public func loadImageAsync(named name: String) async throws -> MImage {
         let texture: MTLTexture
         do {
-            texture = try await textureLoader.newTexture(
-                name: name, scaleFactor: 1.0, bundle: nil, options: Self.textureOptions)
+            texture = try await Self.newTexture(loader: textureLoader, name: name)
         } catch {
             throw MetaphorError.image(
                 .loadFailed(source: name, detail: error.localizedDescription))
@@ -78,8 +110,7 @@ public final class ResourceLoader {
         }
         let texture: MTLTexture
         do {
-            texture = try await textureLoader.newTexture(
-                cgImage: cgImage, options: Self.textureOptions)
+            texture = try await Self.newTexture(loader: textureLoader, cgImage: cgImage)
         } catch {
             throw MetaphorError.image(
                 .loadFailed(source: "NSImage", detail: error.localizedDescription))

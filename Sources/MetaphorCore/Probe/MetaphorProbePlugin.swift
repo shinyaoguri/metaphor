@@ -1,5 +1,8 @@
 import Foundation
-import Metal
+// @preconcurrency: `staging` テクスチャを GPU 完了ハンドラ（`@Sendable`）へ渡す。読み戻しは
+// deferReadback のインフライトゲートで GPU の書き込みと排他済み。
+// Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
+@preconcurrency import Metal
 import QuartzCore
 
 /// AI エージェント向けの観測プラグイン。
@@ -151,7 +154,7 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
 
     public func onStart() {}
     public func onStop() {}
-    public func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {}
+    public func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {}
     public func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType) {}
     public func onResize(width: Int, height: Int) {}
 
