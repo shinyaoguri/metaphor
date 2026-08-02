@@ -74,7 +74,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 |---|---|---|
 | 変換ファミリ(`translate`/`rotate`/`scale`)の P3D 意味論統一 | ADR-0005 | 未着手(2D/3D 非対称のまま) |
 | `loadPixels()` のメインキャンバス Processing 互換 readback | ADR-0005 | follow-up のまま |
-| コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | 「安定後に判断」のまま |
+| コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | **見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)。現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結 |
 | 生成系 API の typed throws 化 | ADR-0005 Decision 2 | **エラー型統一で代替済み**(#323)。typed throws 構文は Swift 5.10 サポート終了まで延期(見送り理由は ADR-0005 Amendment 2026-08-02) |
 | deprecated 7 件の削除 | ADR-0005 Amendment | 削除可能条件を満たして残存 |
 | 命名統一(G3)・二層 API 名の整合 | (新規、本レビューで顕在化) | 未整理 |
@@ -145,7 +145,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 | W1-5 | failure mode 統一: `GPUBuffer` subscript(trap → 方針確定)/ `NoiseTexture` stops 空配列 / `SoundFile` doc の `try!` 例の是正 | G14 | S | W1-4 |
 | W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up) | G1 | M | **W2-2(ゴールデン回帰)導入後** |
 | W1-7 | `loadPixels()` メインキャンバス readback(ADR-0005 follow-up) | G1 | M | W2-2 導入後が望ましい |
-| W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up。実施 or 見送りを ADR 追記) | G1 | S〜M | なし |
+| W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up)。**見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)— 既定 ON は `loadPixels()` の Processing 互換(W1-7)を全スケッチで失わせるため、現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結。定常フレームの描画結果が経路非依存であることを ADR の保証として宣言(常設テストは #375、環境変数の文書化は #376) | G1 | S〜M | なし |
 | W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) strict concurrency 警告の有効化方法を検証(swift-tools-version 5.10 との両立を含む) → (2) Tier 1 独立モジュール(Audio/Network/Physics/ML/Video)から警告除去 → (3) Core・Tier 2 → (4) CI ゲート化。`@preconcurrency import` 29 件・`@unchecked Sendable` の妥当性見直しを含む | G2 | **L** | 他の W1 と並行可(モジュール単位で独立) |
 
 ### W2: 品質ゲート(W1 と並行、W2-2 は W1-6 より先)
