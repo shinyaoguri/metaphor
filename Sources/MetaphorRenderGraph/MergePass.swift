@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetaphorCore
 
 /// Blends the outputs of two upstream render passes into a single texture.
