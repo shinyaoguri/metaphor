@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import simd
 
 // MARK: - PostProcessParams
