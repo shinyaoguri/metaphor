@@ -33,11 +33,17 @@ public final class ResourceLoader {
     ///
     /// - Parameter path: 画像の絶対ファイルパス
     /// - Returns: 読み込まれたテクスチャに基づく新しい ``MImage``
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   読み込みに失敗した場合
     public func loadImageAsync(path: String) async throws -> MImage {
         let url = URL(fileURLWithPath: path)
-        let texture = try await textureLoader.newTexture(
-            URL: url, options: Self.textureOptions
-        )
+        let texture: MTLTexture
+        do {
+            texture = try await textureLoader.newTexture(URL: url, options: Self.textureOptions)
+        } catch {
+            throw MetaphorError.image(
+                .loadFailed(source: path, detail: error.localizedDescription))
+        }
         return MImage(texture: texture)
     }
 
@@ -45,10 +51,17 @@ public final class ResourceLoader {
     ///
     /// - Parameter name: バンドル内の画像リソース名
     /// - Returns: 読み込まれたテクスチャに基づく新しい ``MImage``
+    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   読み込みに失敗した場合
     public func loadImageAsync(named name: String) async throws -> MImage {
-        let texture = try await textureLoader.newTexture(
-            name: name, scaleFactor: 1.0, bundle: nil, options: Self.textureOptions
-        )
+        let texture: MTLTexture
+        do {
+            texture = try await textureLoader.newTexture(
+                name: name, scaleFactor: 1.0, bundle: nil, options: Self.textureOptions)
+        } catch {
+            throw MetaphorError.image(
+                .loadFailed(source: name, detail: error.localizedDescription))
+        }
         return MImage(texture: texture)
     }
 
@@ -56,13 +69,21 @@ public final class ResourceLoader {
     ///
     /// - Parameter nsImage: 変換する `NSImage`
     /// - Returns: 読み込まれたテクスチャに基づく新しい ``MImage``
+    /// - Throws: ``MetaphorError/image(_:)``。`CGImage` へ変換できない場合は
+    ///   ``MetaphorError/ImageFailure/invalidImage``、テクスチャ化に失敗した場合は
+    ///   ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
     public func loadImageAsync(nsImage: NSImage) async throws -> MImage {
         guard let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             throw MetaphorError.image(.invalidImage)
         }
-        let texture = try await textureLoader.newTexture(
-            cgImage: cgImage, options: Self.textureOptions
-        )
+        let texture: MTLTexture
+        do {
+            texture = try await textureLoader.newTexture(
+                cgImage: cgImage, options: Self.textureOptions)
+        } catch {
+            throw MetaphorError.image(
+                .loadFailed(source: "NSImage", detail: error.localizedDescription))
+        }
         return MImage(texture: texture)
     }
 
@@ -77,6 +98,9 @@ public final class ResourceLoader {
     ///   - path: モデルのファイルパス
     ///   - normalize: バウンディングボックスを正規化するかどうか
     /// - Returns: 読み込まれた ``Mesh``
+    /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
+    ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
+    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``
     public func loadModelAsync(path: String, normalize: Bool = true) async throws -> Mesh {
         let url = URL(fileURLWithPath: path)
         return try await ModelIOLoader.loadAsync(device: device, url: url, normalize: normalize)

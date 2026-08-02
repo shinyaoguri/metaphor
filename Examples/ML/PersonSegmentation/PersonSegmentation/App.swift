@@ -4,6 +4,10 @@
 // 人物マスクをテクスチャとしてオーバーレイ表示するサンプル。
 // Vision のマスク出力は単チャネル (OneComponent8) なので、
 // CIImage 経由で CGImage に変換してから MLTextureConverter に渡す。
+//
+// 初回実行時は macOS がカメラ権限を要求する。swift run バイナリでの
+// ダイアログの仕組み・拒否後の復旧手順はリポジトリ直下の
+// docs/permissions.md を参照。
 
 import metaphor
 import Vision

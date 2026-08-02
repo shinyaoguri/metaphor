@@ -255,7 +255,10 @@ public final class GIFExporter {
 
     /// 記録を停止し、キャプチャしたフレームをGIFファイルに書き出します。
     /// - Parameter path: 出力ファイルパス。
-    /// - Throws: フレームがキャプチャされていない場合、またはファイル書き込みに失敗した場合に ``MetaphorError`` をスローします。
+    /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
+    ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
+    ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
+    ///   書き出しに失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``。
     public func endRecord(to path: String) throws {
         guard isRecording else { return }
         isRecording = false
@@ -291,7 +294,7 @@ public final class GIFExporter {
     /// メインスレッドをブロックしないよう、ドレイン・ファイナライズ・最終リネームを
     /// バックグラウンドスレッドで実行します。
     /// - Parameter path: 出力ファイルパス。
-    /// - Throws: フレームがキャプチャされていない場合、またはファイル書き込みに失敗した場合に ``MetaphorError`` をスローします。
+    /// - Throws: ``MetaphorError/export(_:)``。ケースは ``endRecord(to:)`` と同じです。
     public func endRecordAsync(to path: String) async throws {
         guard isRecording else { return }
         isRecording = false
@@ -393,11 +396,17 @@ public final class GIFExporter {
     nonisolated private static func moveTemporaryFile(from tempURL: URL, to path: String) throws {
         let destURL = URL(fileURLWithPath: path)
         let dir = destURL.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        if FileManager.default.fileExists(atPath: destURL.path) {
-            try FileManager.default.removeItem(at: destURL)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            if FileManager.default.fileExists(atPath: destURL.path) {
+                try FileManager.default.removeItem(at: destURL)
+            }
+            try FileManager.default.moveItem(at: tempURL, to: destURL)
+        } catch {
+            // Foundation の生 NSError を素通りさせず MetaphorError へ包む
+            throw MetaphorError.export(
+                .fileWriteFailed(path: path, detail: error.localizedDescription))
         }
-        try FileManager.default.moveItem(at: tempURL, to: destURL)
     }
 
     private func abortStreaming() {

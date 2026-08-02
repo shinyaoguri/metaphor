@@ -20,7 +20,7 @@ final class SVGExport: Sketch {
 
     func draw() {
         if exportRequested {
-            beginSVG("output/plot.svg")
+            beginSVGRecord("output/plot.svg")
         }
 
         background(255)
@@ -55,7 +55,7 @@ final class SVGExport: Sketch {
         }
 
         if exportRequested {
-            endSVG()
+            endSVGRecord()
             exportRequested = false
             print("Saved output/plot.svg")
         }

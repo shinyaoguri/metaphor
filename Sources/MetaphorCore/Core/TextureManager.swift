@@ -164,6 +164,7 @@ public final class TextureManager {
     ///   - clearColor: クリアカラー
     ///   - sampleCount: MSAA サンプル数
     /// - Returns: 1920x1080 で構成された新しい `TextureManager`
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
     public static func fullHD(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
         try TextureManager(device: device, width: 1920, height: 1080, clearColor: clearColor, sampleCount: sampleCount)
     }
@@ -175,6 +176,7 @@ public final class TextureManager {
     ///   - clearColor: クリアカラー
     ///   - sampleCount: MSAA サンプル数
     /// - Returns: 3840x2160 で構成された新しい `TextureManager`
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
     public static func uhd4K(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
         try TextureManager(device: device, width: 3840, height: 2160, clearColor: clearColor, sampleCount: sampleCount)
     }
@@ -187,6 +189,7 @@ public final class TextureManager {
     ///   - clearColor: クリアカラー
     ///   - sampleCount: MSAA サンプル数
     /// - Returns: 幅と高さが等しい新しい `TextureManager`
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
     public static func square(device: MTLDevice, size: Int, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
         try TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
     }
@@ -226,6 +229,7 @@ public final class TextureManager {
     ///   - depthFormat: デプステクスチャのピクセルフォーマット
     ///   - clearColor: クリアカラー
     /// - Returns: 指定されたサイズの新しい `TextureManager`
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
     public func resize(
         width: Int,
         height: Int,

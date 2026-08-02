@@ -77,7 +77,11 @@ extension Sketch {
 
     /// アクティブなレンダーグラフを設定またはクリアします。
     ///
-    /// - Parameter graph: 使用するレンダーグラフ。無効にするには `nil`。
+    /// `nil` を渡すと現在のレンダーグラフが**クリア**され、以降のフレームは
+    /// レンダーグラフを経由しない通常の描画パスに戻ります（別途 `clearRenderGraph()`
+    /// のような削除用 API は用意していません）。
+    ///
+    /// - Parameter graph: 使用するレンダーグラフ。無効化（クリア）するには `nil`。
     public func setRenderGraph(_ graph: RenderGraph?) {
         context.renderer.renderGraph = graph
     }

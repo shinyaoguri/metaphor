@@ -1,11 +1,11 @@
 @preconcurrency import Metal
 import MetaphorCore
 
-/// 上流レンダーパスの出力にポストプロセスエフェクトチェーンを適用します。
+/// Applies a chain of post-process effects to the output of an upstream render pass.
 ///
-/// ``EffectPass`` は `PostProcessPipeline` をラップし、入力ノードの
-/// 出力テクスチャに適用します。エフェクトリストが空の場合、
-/// 入力テクスチャはそのまま通過します。
+/// ``EffectPass`` wraps a `PostProcessPipeline` and applies it to the input
+/// node's output texture. If the effect list is empty, the input texture
+/// passes through unchanged.
 ///
 /// ```swift
 /// let effect = try EffectPass(
@@ -17,15 +17,15 @@ import MetaphorCore
 public final class EffectPass: RenderPassNode {
     // MARK: - パブリックプロパティ
 
-    /// このエフェクトパスを識別するデバッグラベル。
+    /// A debug label that identifies this effect pass.
     public let label: String
 
-    /// エフェクト適用後の出力テクスチャ。
+    /// The output texture after effects have been applied.
     public var output: MTLTexture?
 
-    /// 適用するポストプロセスエフェクトのチェーン。
+    /// The chain of post-process effects to apply.
     ///
-    /// このプロパティは実行時に変更してエフェクトチェーンを切り替えることができます。
+    /// This property can be changed at runtime to swap the effect chain.
     public var effects: [any PostEffect] {
         get { pipeline.effects }
         set { pipeline.set(newValue) }
@@ -33,27 +33,28 @@ public final class EffectPass: RenderPassNode {
 
     // MARK: - プライベートプロパティ
 
-    /// 入力テクスチャを提供する上流レンダーパス。
+    /// The upstream render pass that provides the input texture.
     private let inputPass: RenderPassNode
 
-    /// エフェクトを適用するポストプロセスパイプライン。
+    /// The post-process pipeline that applies the effects.
     private let pipeline: PostProcessPipeline
 
-    /// このノードを最後に実行したフレームトークン（フレーム内重複実行のメモ化用）。
-    /// 初期値 `.max` は「未実行」のセンチネル（`frameToken` は 0 始まりで衝突しない）。
+    /// The frame token from the last time this node was executed (used to memoize against duplicate execution within a frame).
+    /// The initial value `.max` is a "not yet executed" sentinel (`frameToken` starts at 0, so there is no collision).
     private var lastExecutedToken: UInt64 = .max
 
     // MARK: - 初期化
 
-    /// 上流ノードの出力を処理する新しいエフェクトパスを作成します。
+    /// Creates a new effect pass that processes an upstream node's output.
     ///
     /// - Parameters:
-    ///   - input: 出力が処理される上流レンダーパスノード。
-    ///   - effects: 順番に適用するポストプロセスエフェクトの配列。
-    ///   - device: パイプラインステート作成に使用する Metal デバイス。
-    ///   - commandQueue: 内部操作用の Metal コマンドキュー。
-    ///   - shaderLibrary: エフェクトシェーダー関数を提供するシェーダーライブラリ。
-    /// - Throws: パイプライン作成に失敗した場合にエラーをスローします。
+    ///   - input: The upstream render pass node whose output is processed.
+    ///   - effects: An array of post-process effects to apply in order.
+    ///   - device: The Metal device used to create the pipeline state.
+    ///   - commandQueue: The Metal command queue used for internal operations.
+    ///   - shaderLibrary: The shader library that provides the effect shader functions.
+    /// - Throws: ``MetaphorCore/MetaphorError/shaderNotFound(_:)`` when the built-in
+    ///   full-screen blit vertex function is missing from the shader library.
     public init(
         _ input: RenderPassNode,
         effects: [any PostEffect],
@@ -69,12 +70,12 @@ public final class EffectPass: RenderPassNode {
 
     // MARK: - RenderPassNode
 
-    /// 入力パスを実行し、その出力にエフェクトチェーンを適用します。
+    /// Executes the input pass and applies the effect chain to its output.
     ///
     /// - Parameters:
-    ///   - commandBuffer: 処理をエンコードする Metal コマンドバッファ。
-    ///   - time: 経過時間（秒）。
-    ///   - renderer: 共有リソースを提供する `MetaphorRenderer` 参照。
+    ///   - commandBuffer: The Metal command buffer to encode the work into.
+    ///   - time: The elapsed time, in seconds.
+    ///   - renderer: A reference to the `MetaphorRenderer` that provides shared resources.
     public func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) {
         // 同一フレーム内で既に実行済みなら、計算済みの output をそのまま使う。
         guard lastExecutedToken != renderer.frameToken else { return }

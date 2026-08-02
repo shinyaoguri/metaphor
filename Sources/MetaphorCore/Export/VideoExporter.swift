@@ -141,7 +141,10 @@ public final class VideoExporter {
     ///   - width: ビデオの幅（ピクセル）。
     ///   - height: ビデオの高さ（ピクセル）。
     ///   - config: エクスポート設定。
-    /// - Throws: ライターの作成または開始に失敗した場合にエラーをスローします。
+    /// - Throws: ``MetaphorError/export(_:)``。出力ディレクトリの準備や既存ファイルの
+    ///   削除に失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``、
+    ///   `AVAssetWriter` の作成・開始に失敗した場合は
+    ///   ``MetaphorError/ExportFailure/writerFailed(_:)``。
     public func beginRecord(
         path: String,
         width: Int,
@@ -152,16 +155,26 @@ public final class VideoExporter {
 
         let url = URL(fileURLWithPath: path)
 
-        // 出力ディレクトリが存在しない場合は作成
-        let dir = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            // 出力ディレクトリが存在しない場合は作成
+            let dir = url.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        // 既存ファイルがあれば削除
-        if FileManager.default.fileExists(atPath: path) {
-            try FileManager.default.removeItem(atPath: path)
+            // 既存ファイルがあれば削除
+            if FileManager.default.fileExists(atPath: path) {
+                try FileManager.default.removeItem(atPath: path)
+            }
+        } catch {
+            throw MetaphorError.export(
+                .fileWriteFailed(path: path, detail: error.localizedDescription))
         }
 
-        let writer = try AVAssetWriter(outputURL: url, fileType: config.format.fileType)
+        let writer: AVAssetWriter
+        do {
+            writer = try AVAssetWriter(outputURL: url, fileType: config.format.fileType)
+        } catch {
+            throw MetaphorError.export(.writerFailed(error.localizedDescription))
+        }
 
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: config.codec.avCodec,
@@ -192,7 +205,9 @@ public final class VideoExporter {
         writer.add(input)
 
         guard writer.startWriting() else {
-            throw writer.error ?? MetaphorError.export(.writerFailed("Failed to start writing"))
+            // AVFoundation の生 NSError を素通りさせず、原因を文字列として保持する
+            let detail = writer.error?.localizedDescription ?? "Failed to start writing"
+            throw MetaphorError.export(.writerFailed(detail))
         }
 
         writer.startSession(atSourceTime: .zero)
@@ -416,12 +431,18 @@ public final class VideoExporter {
     /// 記録を停止し、ビデオファイルを非同期でファイナライズします。
     ///
     /// ``endRecord(completion:)`` の async/await 版です。
-    public func endRecord() async {
+    public func endRecordAsync() async {
         guard isRecording else { return }
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             endRecord {
                 continuation.resume()
             }
         }
+    }
+
+    /// ``endRecordAsync()`` の旧名です。
+    @available(*, deprecated, renamed: "endRecordAsync()")
+    public func endRecord() async {
+        await endRecordAsync()
     }
 }

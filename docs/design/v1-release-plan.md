@@ -57,7 +57,7 @@ v1.0.0 は機能の節目ではなく **SemVer 上の契約宣言**である。�
 | G11 | docs | CHANGELOG.md 不在(リリースノートは PR タイトル自動羅列のみ)/ SemVer・API 安定性ポリシーの文書ゼロ | **高** |
 | G12 | 体制 | CONTRIBUTING / SECURITY.md / Issue・PR テンプレート不在 | **高** |
 | G13 | docs | TCC(マイク・カメラ)権限の説明が皆無(該当 example 3 本以上)/ Processing 移行ガイド未成果物化 | **高** |
-| G14 | API | typed throws 0 件(ADR-0005 Decision 2「生成系 = typed throws」と実装が乖離)/ `GPUBuffer` subscript・`NoiseTexture` stops がユーザー入力でトラップ | 中 |
+| G14 | API | typed throws 0 件(ADR-0005 Decision 2「生成系 = typed throws」と実装が乖離。→ #323 でエラー型統一により代替、構文適用は 5.10 サポート終了まで延期)/ `GPUBuffer` subscript・`NoiseTexture` stops がユーザー入力でトラップ | 中 |
 | G15 | API | deprecated 7 件が削除条件(deprecation を含む minor 公開済み)を満たしたまま残存。うち 2 件は protocol requirement | 中 |
 | G16 | API | `@_exported import Metal/MetalKit/simd` が利用者名前空間に注入(凍結すると剥がせない)/ `_metaphorSyphonRegister()` が public 表面に露出 | 中 |
 | G17 | CI | テスト実行が macOS 26 の 1 環境のみ(最小サポート macOS 14/Swift 5.10 はビルドのみ・非必須チェック) | 中 |
@@ -72,10 +72,10 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 
 | 項目 | 出典 | 状態 |
 |---|---|---|
-| 変換ファミリ(`translate`/`rotate`/`scale`)の P3D 意味論統一 | ADR-0005 | 未着手(2D/3D 非対称のまま) |
+| 変換ファミリ(`translate`/`rotate`/`scale`)の P3D 意味論統一 | ADR-0005 | **実施済み**(#325 / PR #384 / ADR-0005 Amendment 2026-08-02)。2D 変換 API が 3D にも効くようになった。逆方向は構造的に到達不能で残る(→ #387) |
 | `loadPixels()` のメインキャンバス Processing 互換 readback | ADR-0005 | follow-up のまま |
-| コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | 「安定後に判断」のまま |
-| 生成系 API の typed throws 化 | ADR-0005 Decision 2 | 実装 0 件(untyped `throws` 52 件) |
+| コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | **見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)。現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結 |
+| 生成系 API の typed throws 化 | ADR-0005 Decision 2 | **エラー型統一で代替済み**(#323)。typed throws 構文は Swift 5.10 サポート終了まで延期(見送り理由は ADR-0005 Amendment 2026-08-02) |
 | deprecated 7 件の削除 | ADR-0005 Amendment | 削除可能条件を満たして残存 |
 | 命名統一(G3)・二層 API 名の整合 | (新規、本レビューで顕在化) | 未整理 |
 | Swift 6 strict concurrency 対応(G2) | (新規) | 未着手 |
@@ -141,12 +141,12 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 | W1-1 | **ADR: API 表面の最終整理**(命名 3 系統の統一方針 / `begin*Record` 揺れ / 二層 API 名 `screenX` vs `screenPosition` の寄せ先 / `@_exported import Metal・MetalKit・simd` の維持可否 / `_metaphorSyphonRegister` の隠蔽)。**設計判断のためユーザーレビュー必須** | G3, G16 | M | なし(最優先) |
 | W1-2 | deprecated 7 件の削除(protocol requirement 2 件は準拠型への影響を確認) | G15 | S | なし |
 | W1-3 | 命名統一の実装(W1-1 の ADR に従い、旧名は deprecated エイリアスで 1 リリース維持 → 次リリースで削除) | G3 | M | W1-1 |
-| W1-4 | 生成系 API の typed throws 化(`throws(MetaphorError)`、untyped 52 件) | G14 | M | W1-1(エラー型設計を含むため) |
+| W1-4 | 生成系 API の**エラー型統一**(`throws` は各モジュールのエラー型だけを投げる・生 `NSError` の素通りを塞ぐ・全 public throwing API に `- Throws:` を明記)。**typed throws 構文の適用は Swift 5.10 サポート終了まで延期**(SE-0413 は Swift 6.0 の機能で、最小サポート 5.10 ではパース不可 — ADR-0005 Amendment 2026-08-02) | G14 | M | W1-1(エラー型設計を含むため) |
 | W1-5 | failure mode 統一: `GPUBuffer` subscript(trap → 方針確定)/ `NoiseTexture` stops 空配列 / `SoundFile` doc の `try!` 例の是正 | G14 | S | W1-4 |
-| W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up) | G1 | M | **W2-2(ゴールデン回帰)導入後** |
+| W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up)。**実施済み**(#325 / PR #384 / ADR-0005 Amendment 2026-08-02)— Option A を採用し `translate(x,y)`/`rotate(a)`/`scale(sx,sy)` を 3D にも適用。実測で前提が覆り、3D の既定カメラは既に Processing P3D と同型のピクセル空間なので実装は 3 行・既存テストの赤 0・既存ゴールデン 6 枚とも差分 0。「統一しないと壊れたまま」だった Examples 4 本が直る(ToonShading を Probe で before/after 実測: 重心 (62,55) → (320,179))。検出用ゴールデン `transform-2d-on-3d` と `TransformSemanticsTests` を新設。逆方向(3D 変換 → 2D 描画)は 2D が `float3x3` アフィンのため構造的に到達不能で 9 例が残る(→ #387) | G1 | S | W2-2(ゴールデン回帰)導入後 — 充足 |
 | W1-7 | `loadPixels()` メインキャンバス readback(ADR-0005 follow-up) | G1 | M | W2-2 導入後が望ましい |
-| W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up。実施 or 見送りを ADR 追記) | G1 | S〜M | なし |
-| W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) strict concurrency 警告の有効化方法を検証(swift-tools-version 5.10 との両立を含む) → (2) Tier 1 独立モジュール(Audio/Network/Physics/ML/Video)から警告除去 → (3) Core・Tier 2 → (4) CI ゲート化。`@preconcurrency import` 29 件・`@unchecked Sendable` の妥当性見直しを含む | G2 | **L** | 他の W1 と並行可(モジュール単位で独立) |
+| W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up)。**見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)— 既定 ON は `loadPixels()` の Processing 互換(W1-7)を全スケッチで失わせるため、現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結。定常フレームの描画結果が経路非依存であることを ADR の保証として宣言(常設テストは #375、環境変数の文書化は #376) | G1 | S〜M | なし |
+| W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) strict concurrency 警告の有効化方法を検証(swift-tools-version 5.10 との両立を含む) → (2) Tier 1 独立モジュール(Audio/Network/Physics/ML/Video)から警告除去 → (3) Core・Tier 2 → (4) CI ゲート化。`@preconcurrency import` 29 件・`@unchecked Sendable` の妥当性見直しを含む。**段階 1・2 完了**(#386 / 2026-08-02)— 方式は `#if compiler(>=6.0)` で `.enableUpcomingFeature` / `.enableExperimentalFeature` を振り分け(5.10 では upcoming 名が黙って無視されるため。`unsafeFlags` は版指定の依存を壊すので不可)。Tier 1 は両ツールチェーンで警告ゼロ。**残 = 段階 3(実質 MetaphorCore のみ・両ツールチェーンの和集合で 30 件弱)・段階 4**。実測記録は Issue #328 のコメントが正典 | G2 | **L** | 他の W1 と並行可(モジュール単位で独立) |
 
 ### W2: 品質ゲート(W1 と並行、W2-2 は W1-6 より先)
 

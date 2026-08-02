@@ -23,6 +23,9 @@ extension Sketch {
     ///
     /// - Parameter path: オーディオファイルのファイルパス。
     /// - Returns: 新しい ``MetaphorAudio/SoundFile`` インスタンス。
+    /// - Throws: ファイルが存在しない場合は ``MetaphorAudio/SoundFileError/fileNotFound(_:)``、
+    ///   デコード・読み込みに失敗した場合は
+    ///   ``MetaphorAudio/SoundFileError/loadFailed(path:detail:)``。
     public func loadSound(_ path: String) throws -> SoundFile {
         try SoundFile(path: path)
     }

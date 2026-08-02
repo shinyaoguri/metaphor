@@ -4,6 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)
 [![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -146,7 +147,9 @@ mouseX, mouseY, frameCount, deltaTime, width, height
 random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 ```
 
-API 全体は [`llms.txt`](llms.txt) にまとまっています。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
+API 全体は [`llms.txt`](llms.txt) にまとまっています。ブラウザで型やメソッドを引くなら **[API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)**（[プロジェクトサイト](https://shinyaoguri.github.io/metaphor/)）が便利です。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
+
+Processing / p5.js から移ってくる場合は **[docs/processing-migration-guide.md](docs/processing-migration-guide.md)**（英語）が近道です。カテゴリ別の API 対応表（`size()` → `SketchConfig`、`PVector` → `Vec2`、`rectMode(CENTER)` → `rectMode(.center)` など）と、値型と参照型・`@MainActor`・色の 2 系統・2D/3D の適用規則といった落とし穴、未対応 API の一覧をまとめています。
 
 ## AI と協調する（観測 → 操作 → 反復）
 
@@ -231,9 +234,14 @@ dependencies: [
 
 ## Troubleshooting
 
+[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) を導入済みなら、まず `metaphor doctor` を実行してください。Swift / Xcode のバージョン、テンプレートの有無、`Syphon.framework` のロード状況をまとめて確認でき、よくあるセットアップの詰まりの大半をこれ一つでカバーできます。
+
+- **Intel Mac でビルド・実行できない** — metaphor は **Apple Silicon 専用**です（[Requirements](#requirements) 参照）。Intel 向けのコードパスは無く、対応予定もありません。`swift build` 自体は Package マニフェスト上で Intel を弾いていないため一見ビルドが通ることもありますが、実行は未検証・非サポートです。ビルドエラーではなく実行時に Metal の機能不足や性能問題として現れる可能性があります。
+- **`swift build` / `swift run` が依存解決で失敗する**（checksum 不一致、"unable to download"、`Syphon.xcframework.zip` の 404 など）— `Syphon` バイナリターゲットは `Package.swift` に固定された GitHub Release asset の URL から取得されます。まず SwiftPM のキャッシュをクリアして再解決してください: `swift package purge-cache && swift build`（またはスケッチのディレクトリで `.build` を削除）。改善しない場合は `github.com` との間に（社内プロキシ・ファイアウォールなど）通信を妨げるものが無いか確認してください。公開済みタグと asset は保護され週次で死活監視されているため、現行リリースで 404 が出る場合はバグの可能性が高く、[報告](#フィードバック--issue-報告)してもらえると助かります。
 - **`make build` が失敗する / Syphon.xcframework が無い** — 初回は `make setup` を実行してサブモジュール初期化と Syphon.xcframework のビルドを済ませてください。状態は `make check` で確認できます。
 - **ライブビューア（`metaphor watch`）が真っ黒** — CLI 側の事象です。[metaphor-cli の Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting) を参照してください。
 - **AI から「いま見えている絵」を観測できない** — `metaphor watch`（共有セッション）が動いているか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
+- **マイクやカメラが動かない、権限ダイアログが出ない** — [docs/permissions.md](docs/permissions.md)（英語）に、`swift run` バイナリでの TCC 権限の仕組み（ダイアログはスケッチではなくターミナルアプリに紐づく）と、拒否後の復旧手順をまとめています。
 - **`llms.txt` が古い / CI で stale と言われる** — public API を変更したら `make llms-txt` を実行してコミットしてください（pre-push フックと CI が鮮度を検証します）。
 
 ## フィードバック / Issue 報告

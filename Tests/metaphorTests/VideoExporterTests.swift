@@ -173,7 +173,7 @@ struct VideoExporterEndToEndTests {
             renderer.setClearColor(Double(i) * 0.2, 0.5, 1.0)
             renderer.renderFrame()
         }
-        await renderer.videoExporter.endRecord()
+        await renderer.videoExporter.endRecordAsync()
 
         #expect(FileManager.default.fileExists(atPath: path))
         #expect(renderer.videoExporter.lastError == nil,

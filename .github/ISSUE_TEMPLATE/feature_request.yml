@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a new feature or enhancement for the metaphor library.
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests about the `metaphor` command-line tool (`new` /
+        `run` / `watch` / `mcp`, installation, Homebrew) belong in
+        [metaphor-cli's issue tracker](https://github.com/shinyaoguri/metaphor-cli/issues/new/choose)
+        instead — if you're not sure which repo, it's fine to file here and
+        we'll route it.
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What problem are you trying to solve? What's missing or awkward today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        What would you like to happen? A sketch of the API you'd want to
+        write (Processing-style pseudo-code is fine) helps a lot.
+      render: swift
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)
+      description: Other approaches you thought about, and why you'd prefer the proposal above.
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context (optional)
+      description: Links to related Issues, prior art in Processing/openFrameworks/etc., screenshots, etc.
+    validations:
+      required: false

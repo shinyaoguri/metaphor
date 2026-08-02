@@ -224,7 +224,16 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
-    /// - Throws: デバイスまたはコマンドキューの作成に失敗した場合 ``MetaphorError``
+    /// - Throws: ``MetaphorError``。Metal デバイスを取得できない場合は
+    ///   ``MetaphorError/deviceNotAvailable``、コマンドキューを作成できない場合は
+    ///   ``MetaphorError/commandQueueCreationFailed``、オフスクリーンテクスチャを
+    ///   作成できない場合は ``MetaphorError/textureCreationFailed(width:height:format:)``、
+    ///   組み込みシェーダーのコンパイルに失敗した場合は
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、ブリット用の
+    ///   シェーダー関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``、
+    ///   ブリットパイプラインを作成できない場合は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
+    ///   ポストプロセスパイプラインの構築失敗はスローせず、警告のうえ機能を無効化します。
     public init(
         device: MTLDevice? = nil,
         width: Int = 1920,
@@ -280,7 +289,12 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
-    /// - Throws: テクスチャまたはパイプライン作成に失敗した場合 ``MetaphorError``
+    /// - Throws: ``MetaphorError``。オフスクリーンテクスチャを作成できない場合は
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``、ブリット用の
+    ///   シェーダー関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``、
+    ///   ブリットパイプラインを作成できない場合は
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
+    ///   ポストプロセスパイプラインの構築失敗はスローせず、警告のうえ機能を無効化します。
     public init(
         sharedResources: SharedMetalResources,
         width: Int = 1920,
@@ -466,6 +480,98 @@ public final class MetaphorRenderer: NSObject {
         }
     }
 
+    // MARK: - メインパスの分割（loadPixels 同一フレーム読み戻し, #326）
+
+    /// エンコード中のメインパス。``renderFrame()`` の通常経路で draw() を実行している間のみ非 nil。
+    private struct MainPass {
+        var commandBuffer: MTLCommandBuffer
+        var encoder: MTLRenderCommandEncoder
+    }
+    private var mainPass: MainPass?
+
+    /// いま `draw()` の途中で、メインパスを分割できる状態か。
+    ///
+    /// 分割できるのは「通常経路（影オフ）でメインエンコーダが生きている間」だけ。
+    /// シャドウ同一フレーム化の記録パス（#70）はまだ何もエンコードしていないため対象外。
+    var canSplitMainPass: Bool { mainPass != nil }
+
+    /// メインパスの記録を開始します（``renderFrame()`` 内部用）。
+    private func beginMainPass(commandBuffer: MTLCommandBuffer, encoder: MTLRenderCommandEncoder) {
+        mainPass = MainPass(commandBuffer: commandBuffer, encoder: encoder)
+    }
+
+    /// メインパスを締めて、以降のフェーズが使うコマンドバッファを返します。
+    ///
+    /// 分割が起きていた場合は「最後に開いたコマンドバッファ」を返す。分割の継続に
+    /// 失敗していた場合は `nil`（呼び出し側はフレームを中断する）。
+    private func finishMainPass() -> MTLCommandBuffer? {
+        guard let pass = mainPass else { return nil }
+        mainPass = nil
+        pass.encoder.endEncoding()
+        return pass.commandBuffer
+    }
+
+    /// `draw()` の途中で「ここまでの描画」を GPU に確定させ、CPU 読み戻しを挟んでから
+    /// 描画を継続できるようメインパスを分割します（ADR-0005 Decision 6 / #326）。
+    ///
+    /// オフスクリーンのカラーテクスチャは**レンダーパスが終わるまで確定しない**
+    /// （MSAA ではリゾルブがエンコーダ終了時）ため、同一フレームの内容を読むには
+    /// パスを閉じてコマンドバッファをコミットするしかない。ここでは
+    ///
+    /// 1. 現在のエンコーダを閉じる（MSAA なら colorTexture へリゾルブされる）
+    /// 2. `encodeReadback` に同じコマンドバッファを渡して読み戻し blit を相乗りさせる
+    /// 3. コミットして**完了を待つ**（メインスレッドをブロック。Processing と同じ性質）
+    /// 4. 新しいコマンドバッファと `loadAction = .load` の継続パスを開いて返す
+    ///
+    /// を行う。継続パスはカラーを保持するので**見た目は分割前と変わらない**。ただし
+    /// デプスは保持できない（元パスの depth storeAction が `.dontCare` のため）ので
+    /// クリアされる — 分割をまたいだ 3D 同士の深度比較は成立しない。
+    ///
+    /// - Parameter encodeReadback: コミット直前のコマンドバッファへ読み戻しを
+    ///   エンコードするクロージャ。
+    /// - Returns: 描画継続用の新しいエンコーダ。分割できなかった場合は `nil`。
+    func splitMainPassForReadback(
+        _ encodeReadback: (MTLCommandBuffer) -> Void
+    ) -> MTLRenderCommandEncoder? {
+        guard let pass = mainPass else { return nil }
+        mainPass = nil
+
+        pass.encoder.endEncoding()
+        encodeReadback(pass.commandBuffer)
+        pass.commandBuffer.commit()
+        pass.commandBuffer.waitUntilCompleted()
+
+        guard let nextBuffer = commandQueue.makeCommandBuffer(),
+              let nextEncoder = nextBuffer.makeRenderCommandEncoder(
+                  descriptor: continuationRenderPassDescriptor()
+              ) else {
+            metaphorWarning("loadPixels: failed to continue the main pass after readback. Frame aborted.")
+            return nil
+        }
+        mainPass = MainPass(commandBuffer: nextBuffer, encoder: nextEncoder)
+        return nextEncoder
+    }
+
+    /// 分割後に描画を継続するためのレンダーパスデスクリプタ。
+    ///
+    /// カラーは `.load` で保持（MSAA ではマルチサンプルテクスチャの内容が
+    /// `.storeAndMultisampleResolve` で保存されているため `.load` が有効）。
+    /// デプスは元パスが保存していないため `.clear` にする。
+    private func continuationRenderPassDescriptor() -> MTLRenderPassDescriptor {
+        let base = textureManager.renderPassDescriptor
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = base.colorAttachments[0].texture
+        rpd.colorAttachments[0].resolveTexture = base.colorAttachments[0].resolveTexture
+        rpd.colorAttachments[0].clearColor = base.colorAttachments[0].clearColor
+        rpd.colorAttachments[0].loadAction = .load
+        rpd.colorAttachments[0].storeAction = base.colorAttachments[0].storeAction
+        rpd.depthAttachment.texture = base.depthAttachment.texture
+        rpd.depthAttachment.clearDepth = base.depthAttachment.clearDepth
+        rpd.depthAttachment.loadAction = .clear
+        rpd.depthAttachment.storeAction = .dontCare
+        return rpd
+    }
+
     // MARK: - プラグイン CPU 読み戻し
 
     /// 現在のフレームの読み戻し待ちグループ。``renderFrame()`` 中のみ非 nil。
@@ -599,6 +705,10 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - クリアカラー
 
     /// オフスクリーンレンダーパスのクリアカラーを変更します。
+    ///
+    /// 名前の `clear` は Metal の「clear color」（レンダーパス開始時に塗る色）に
+    /// 由来する複合名詞であり、`clearPostEffects()` のような**削除動詞の `clear*` 系
+    /// ではありません**。設定を消す API ではなく、色を設定する API です。
     ///
     /// - Parameters:
     ///   - r: 赤コンポーネント (0.0〜1.0)
@@ -929,10 +1039,14 @@ public final class MetaphorRenderer: NSObject {
             return
         }
 
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+        guard let firstCommandBuffer = commandQueue.makeCommandBuffer() else {
             inflightSemaphore.signal()
             return
         }
+        // draw() 中の loadPixels（#326）はメインパスを分割し、ここで作ったバッファを
+        // 途中でコミットして新しいバッファへ引き継ぐ。以降のフェーズは常に
+        // 「いま開いているバッファ」を使うため var で持つ。
+        var commandBuffer = firstCommandBuffer
 
         // 現在のバッファインデックスを設定し、次へ進める
         frameBufferIndex = nextBufferIndex
@@ -949,14 +1063,19 @@ public final class MetaphorRenderer: NSObject {
         // カウントを残したままセマフォが dispose されてクラッシュする
         // （libdispatch は初期値より小さい値での破棄を許さない）。
         let semaphore = inflightSemaphore
-        commandBuffer.addCompletedHandler { [weak self] cb in
-            let gpuStart = cb.gpuStartTime
-            let gpuEnd = cb.gpuEndTime
-            readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
-                semaphore.signal()
-                DispatchQueue.main.async {
-                    self?.lastGPUStartTime = gpuStart
-                    self?.lastGPUEndTime = gpuEnd
+        // 完了ハンドラは「最後にコミットするバッファ」に付ける。メインパスが分割された
+        // 場合、最終バッファはここで作ったものとは別になるため（#326）、コミット直前に
+        // 付けられるようクロージャにしておく。
+        let attachFrameCompletion: (MTLCommandBuffer) -> Void = { [weak self] buffer in
+            buffer.addCompletedHandler { cb in
+                let gpuStart = cb.gpuStartTime
+                let gpuEnd = cb.gpuEndTime
+                readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
+                    semaphore.signal()
+                    DispatchQueue.main.async {
+                        self?.lastGPUStartTime = gpuStart
+                        self?.lastGPUEndTime = gpuEnd
+                    }
                 }
             }
         }
@@ -1001,11 +1120,21 @@ public final class MetaphorRenderer: NSObject {
             }
         } else {
             // 通常経路（影オフ）: 単一エンコーダで即時描画 → シャドウは次フレーム用に更新。
+            // draw() 中に loadPixels() が呼ばれるとここでパスが分割され、
+            // commandBuffer が新しいものに差し替わる（#326）。
             if let encoder = commandBuffer.makeRenderCommandEncoder(
                 descriptor: textureManager.renderPassDescriptor
             ) {
+                beginMainPass(commandBuffer: commandBuffer, encoder: encoder)
                 onDraw?(encoder, time)
-                encoder.endEncoding()
+                guard let continued = finishMainPass() else {
+                    // 分割の継続に失敗した（コマンドバッファを作れない）。
+                    // 既に描画分はコミット済みなので、後続フェーズは行わずフレームを畳む。
+                    currentReadbackGroup = nil
+                    inflightSemaphore.signal()
+                    return
+                }
+                commandBuffer = continued
             }
             onAfterDraw?(commandBuffer)
         }
@@ -1105,6 +1234,7 @@ public final class MetaphorRenderer: NSObject {
             plugin.post(texture: outputTexture, commandBuffer: commandBuffer)
         }
 
+        attachFrameCompletion(commandBuffer)
         commandBuffer.commit()
 
         // 読み戻しグループはこのフレーム限定。次フレームまで残さない。

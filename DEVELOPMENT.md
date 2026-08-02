@@ -39,6 +39,23 @@ make llms-txt   # AI-readable API reference を生成
 
 テストは Swift Testing フレームワーク（`@Suite` / `@Test`）を使います。反復中は `swift test --filter <SuiteOrTestName>` で絞り、仕上げに `make test` を通してください。
 
+テスト実行を切り替える環境変数（いずれも既定 OFF。ローカルでは通常不要）:
+
+| 変数 | 効果 |
+|---|---|
+| `METAPHOR_PERF_TESTS=1` | 壁時計しきい値のアサーションを有効化（`PerformanceBenchmarks` と `ObservabilityOverhead: idle hot path`）。共有ランナーの負荷で揺れるため必須チェックからは分離している（#149 / #329） |
+| `METAPHOR_REQUIRE_GPU=1` | 「この環境には GPU がある」と宣言する。Metal デバイスが無ければ `CI Environment Guard` が fail する。CI（`ci.yml`）が設定しており、GPU 依存テストの大量 skip が green のまま見過ごされるのを防ぐ |
+
+カバレッジのモジュール別サマリは CI の artifact（`coverage-report`）とジョブ要約で確認できます。手元で見るには:
+
+```bash
+swift test --enable-code-coverage
+BIN=$(find -L .build/debug -name metaphorPackageTests -type f | head -1)
+xcrun llvm-cov export "$BIN" -instr-profile=.build/debug/codecov/default.profdata \
+    -ignore-filename-regex='Tests/|\.build/' -format=text \
+    | python3 scripts/coverage-summary.py
+```
+
 ## Running Examples
 
 各 example は独立した Swift Package です。
@@ -49,6 +66,12 @@ swift run
 ```
 
 カテゴリ構成と追加方法は [Examples/README.md](Examples/README.md) を参照してください。
+
+CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てるのはコストが見合わないため）:
+
+- **PR が `Examples/` を触ったとき** — 触った example だけを `ci.yml` の `examples-diff-build` がビルド（対象の列挙は `./scripts/changed-examples.sh`）
+- **週次 + リリース前** — 代表セット（~19 本）を `examples-sweep.yml` と `release.yml` がビルド
+- **全数** — `examples-sweep.yml` の workflow_dispatch（`full=true`）、または手元で `make examples-check`
 
 ## 生成物の管理（重要）
 
@@ -79,6 +102,8 @@ swift run
 リリースは PR の `release:patch|minor|major` ラベル駆動です。手順の全体は [docs/releasing.md](docs/releasing.md) を参照してください。
 
 release workflow は Syphon.xcframework をビルドして GitHub Release asset として公開し、`Package.swift` の binary target URL/checksum を更新します。
+
+ユーザー影響のある変更は [CHANGELOG.md](CHANGELOG.md) の `## [Unreleased]` に 1 行足してください。リリース時に `scripts/changelog.py` がその節を `## [X.Y.Z] - YYYY-MM-DD` へ昇格し、GitHub Release 本文の先頭へ転記します。**Unreleased が空だとリリースは冒頭で中断します**（`python3 scripts/changelog.py check` で手元でも確認可）。
 
 ## Notes
 

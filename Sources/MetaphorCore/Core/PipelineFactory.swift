@@ -366,7 +366,9 @@ public struct PipelineFactory {
     /// 設定済みのレンダーパイプラインステートをビルドして返します。
     ///
     /// - Returns: 使用可能なコンパイル済み `MTLRenderPipelineState`
-    /// - Throws: パイプライン作成に失敗した場合のエラー
+    /// - Throws: ``MetaphorError/pipelineCreationFailed(name:underlying:)``
+    ///   パイプラインステートの作成に失敗した場合。`name` は設定済みの
+    ///   頂点関数名・フラグメント関数名から組み立てられます。
     public func build() throws -> MTLRenderPipelineState {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
@@ -380,7 +382,19 @@ public struct PipelineFactory {
             descriptor.depthAttachmentPixelFormat = depthFormat
         }
 
-        return try device.makeRenderPipelineState(descriptor: descriptor)
+        do {
+            return try device.makeRenderPipelineState(descriptor: descriptor)
+        } catch {
+            // Metal の生 NSError を素通りさせず MetaphorError へ包む
+            // (エラー契約: MetaphorError.swift の「エラー契約」節を参照)
+            throw MetaphorError.pipelineCreationFailed(name: pipelineName, underlying: error)
+        }
+    }
+
+    /// 診断用のパイプライン名。設定済みの頂点・フラグメント関数名から組み立てます。
+    private var pipelineName: String {
+        let parts = [vertexFunction?.name, fragmentFunction?.name].compactMap { $0 }
+        return parts.isEmpty ? "unnamed" : parts.joined(separator: "+")
     }
 
     // MARK: - コンピュートパイプライン
@@ -391,12 +405,17 @@ public struct PipelineFactory {
     ///   - device: パイプラインステート作成に使用する Metal デバイス
     ///   - function: コンピュートシェーダー関数
     /// - Returns: 使用可能なコンパイル済み `MTLComputePipelineState`
-    /// - Throws: パイプライン作成に失敗した場合のエラー
+    /// - Throws: ``MetaphorError/pipelineCreationFailed(name:underlying:)``
+    ///   パイプラインステートの作成に失敗した場合
     public static func buildCompute(
         device: MTLDevice,
         function: MTLFunction
     ) throws -> MTLComputePipelineState {
-        try device.makeComputePipelineState(function: function)
+        do {
+            return try device.makeComputePipelineState(function: function)
+        } catch {
+            throw MetaphorError.pipelineCreationFailed(name: function.name, underlying: error)
+        }
     }
 }
 

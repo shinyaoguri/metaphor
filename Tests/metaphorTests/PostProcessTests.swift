@@ -402,3 +402,36 @@ struct PostFXResourceReuseTests {
         cb.commit()
     }
 }
+
+// MARK: - Sketch 層への GPU filter 引き上げ（ADR-0007 論点 4 / #322）
+
+@Suite("Sketch GPU filter", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct SketchGPUFilterTests {
+
+    private final class FilterSketch: Sketch {
+        var config: SketchConfig { SketchConfig(width: 64, height: 64) }
+        func setup() {}
+        func draw() {}
+    }
+
+    @Test("Sketch.filter forwards to the SketchContext GPU filter")
+    func sketchFilterForwards() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        let sketch = FilterSketch()
+        sketch._context = SketchContext(
+            renderer: renderer,
+            canvas: try Canvas2D(renderer: renderer),
+            canvas3D: try Canvas3D(renderer: renderer),
+            input: renderer.input
+        )
+        let image = try #require(MImage.createImage(64, 64, device: renderer.device))
+        let before = image.texture
+
+        sketch.filter(image, .invert)
+
+        // GPU 版はレンダラのプールから確保したテクスチャへ差し替える
+        // （CPU 版 MImage.filter はテクスチャ同一性を変えない）
+        #expect(image.texture !== before)
+    }
+}
