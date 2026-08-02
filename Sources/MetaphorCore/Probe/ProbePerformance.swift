@@ -106,6 +106,15 @@ final class ProcessStatsSampler {
         lastSampleTime = now
     }
 
+    /// 自タスクの Mach ポート。
+    ///
+    /// C の `mach_task_self()` はマクロで Swift からは呼べず、その実体である
+    /// `mach_task_self_` は Swift からは**可変グローバル**に見えるため、strict
+    /// concurrency が「共有可変状態」として警告する（新しい SDK では注釈が付いて
+    /// いるが、最小サポートの Swift 5.10 SDK には無い）。値はカーネルが設定して以後
+    /// 変化しないので、同じポートを返す `task_self_trap()` を一度だけ呼んで保持する。
+    private static let selfTaskPort: mach_port_t = task_self_trap()
+
     /// 自プロセスの phys_footprint（MB）。Activity Monitor の「メモリ」に相当し、
     /// Malloc 断片・圧縮メモリを含む実効フットプリント。取得失敗時は `nil`。
     static func memoryFootprintMB() -> Double? {
@@ -115,7 +124,7 @@ final class ProcessStatsSampler {
         )
         let result = withUnsafeMutablePointer(to: &info) { pointer in
             pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                task_info(selfTaskPort, task_flavor_t(TASK_VM_INFO), $0, &count)
             }
         }
         guard result == KERN_SUCCESS else { return nil }

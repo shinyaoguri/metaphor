@@ -169,6 +169,9 @@ public final class Graphics3D {
     // MARK: - Lighting
 
     /// デフォルトライティングを有効にします。
+    ///
+    /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
+    /// `ambientLight(76.5)` 相当）に設定されます。
     public func lights() { canvas3D.lights() }
 
     /// すべてのライティングを無効にします。
@@ -227,10 +230,19 @@ public final class Graphics3D {
     }
 
     /// アンビエントライトの強度を設定します。
-    /// - Parameter strength: アンビエントライトの強度。
+    ///
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// 0〜1 のつもりの値（`ambientLight(0.35)` など）はほぼ真っ暗になります。
+    /// `lights()` や最初のライト追加で入る既定アンビエントはレンジの 30%
+    /// （既定レンジなら `ambientLight(76.5)`）です。
+    ///
+    /// - Parameter strength: アンビエントライトの強度（`colorMode` のレンジ基準）。
     public func ambientLight(_ strength: Float) { canvas3D.ambientLight(strength) }
 
     /// RGB値でアンビエントライトの色を設定します。
+    ///
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
     /// - Parameters:
     ///   - r: 赤成分。
     ///   - g: 緑成分。
@@ -429,21 +441,21 @@ public final class Graphics3D {
     ///   - radius: シリンダーの半径。
     ///   - height: シリンダーの高さ。
     ///   - detail: テッセレーションの詳細レベル。
-    public func cylinder(radius: Float = 0.5, height: Float = 1, detail: Int = 24) { canvas3D.cylinder(radius: radius, height: height, detail: detail) }
+    public func cylinder(radius: Float, height: Float, detail: Int = 24) { canvas3D.cylinder(radius: radius, height: height, detail: detail) }
 
     /// コーンを描画します。
     /// - Parameters:
     ///   - radius: 底面の半径。
     ///   - height: コーンの高さ。
     ///   - detail: テッセレーションの詳細レベル。
-    public func cone(radius: Float = 0.5, height: Float = 1, detail: Int = 24) { canvas3D.cone(radius: radius, height: height, detail: detail) }
+    public func cone(radius: Float, height: Float, detail: Int = 24) { canvas3D.cone(radius: radius, height: height, detail: detail) }
 
     /// トーラスを描画します。
     /// - Parameters:
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: テッセレーションの詳細レベル。
-    public func torus(ringRadius: Float = 0.5, tubeRadius: Float = 0.2, detail: Int = 24) { canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail) }
+    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) { canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail) }
 
     /// カスタムメッシュを描画します。
     /// - Parameter mesh: レンダリングするメッシュ。

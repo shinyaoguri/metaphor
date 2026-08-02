@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 
 /// CPU と GPU の両方からアクセス可能な型付き GPU バッファを提供します。
 ///

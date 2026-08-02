@@ -42,7 +42,7 @@ final class ProbeBenchmark: Sketch {
         // カメラ方向（-z）寄りに当てて前面を照らし、強めの環境光で
         // benchColor が確実に画面に現れるようにする（編集が stats に効く）。
         directionalLight(-0.3, -0.5, -1, color: Color(gray: 1.0))
-        ambientLight(0.6)
+        ambientLight(153)  // colorMode 基準（既定 0〜255）= レンジの 60%
 
         // 床（影の落ち先）
         pushMatrix()

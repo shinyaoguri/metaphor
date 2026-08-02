@@ -27,8 +27,12 @@ public final class InputManager {
     /// いずれかのマウスボタンが現在押されているかどうか
     public private(set) var isMouseDown: Bool = false
 
-    /// 現在押されているマウスボタンのインデックス（0 = 左、1 = 右、2 = 中）
-    public private(set) var mouseButton: Int = 0
+    /// 最後に押されたマウスボタン。まだ一度も押されていなければ `nil`
+    ///
+    /// Processing と同じく、ボタンを離しても値は保持される（`mouseReleased()`
+    /// の中でどのボタンが離されたかを判定できるようにするため）。「いま押されて
+    /// いるか」は ``isMouseDown`` で判定する。
+    public private(set) var mouseButton: MouseButton?
 
     /// 現在のフレームの水平スクロールデルタ
     public private(set) var scrollX: Float = 0
@@ -56,10 +60,10 @@ public final class InputManager {
     // MARK: - Callbacks
 
     /// マウスボタン押下時に呼ばれるコールバック (x, y, button)
-    public var onMousePressed: ((Float, Float, Int) -> Void)?
+    public var onMousePressed: ((Float, Float, MouseButton) -> Void)?
 
     /// マウスボタン解放時に呼ばれるコールバック (x, y, button)
-    public var onMouseReleased: ((Float, Float, Int) -> Void)?
+    public var onMouseReleased: ((Float, Float, MouseButton) -> Void)?
 
     /// ボタン非押下時のマウス移動で呼ばれるコールバック (x, y)
     public var onMouseMoved: ((Float, Float) -> Void)?
@@ -74,7 +78,7 @@ public final class InputManager {
     public var onKeyUp: ((UInt16) -> Void)?
 
     /// 完全なクリック（ドラッグなしの押下＋解放）発生時に呼ばれるコールバック (x, y, button)
-    public var onMouseClicked: ((Float, Float, Int) -> Void)?
+    public var onMouseClicked: ((Float, Float, MouseButton) -> Void)?
 
     /// マウススクロールホイール使用時に呼ばれるコールバック (dx, dy)
     public var onMouseScrolled: ((Float, Float) -> Void)?
@@ -140,7 +144,7 @@ public final class InputManager {
     // MARK: - Event Handlers (called from MetaphorMTKView)
 
     /// マウスボタン押下イベントの処理
-    func handleMouseDown(x: Float, y: Float, button: Int) {
+    func handleMouseDown(x: Float, y: Float, button: MouseButton) {
         mouseX = x
         mouseY = y
         isMouseDown = true
@@ -150,7 +154,7 @@ public final class InputManager {
     }
 
     /// マウスボタン解放イベントの処理
-    func handleMouseUp(x: Float, y: Float, button: Int) {
+    func handleMouseUp(x: Float, y: Float, button: MouseButton) {
         mouseX = x
         mouseY = y
         isMouseDown = false

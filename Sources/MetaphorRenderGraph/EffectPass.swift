@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetaphorCore
 
 /// Applies a chain of post-process effects to the output of an upstream render pass.

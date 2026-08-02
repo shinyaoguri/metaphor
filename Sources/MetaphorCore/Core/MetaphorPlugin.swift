@@ -92,9 +92,10 @@ public protocol MetaphorPlugin: AnyObject {
     /// - Parameters:
     ///   - x: スケッチ座標系でのマウス x 位置
     ///   - y: スケッチ座標系でのマウス y 位置
-    ///   - button: マウスボタン番号 (0 = 左, 1 = 右, 2 = その他)
+    ///   - button: 対象のマウスボタン。ボタンを伴わないイベント
+    ///     (`.moved` / `.dragged` / `.scrolled`) では `nil`
     ///   - type: マウスイベントの種類
-    func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType)
+    func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)
 
     /// キーボードイベント発生時に呼ばれます。
     ///
@@ -123,7 +124,7 @@ extension MetaphorPlugin {
     public func post(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {}
     public func onStart() {}
     public func onStop() {}
-    public func mouseEvent(x: Float, y: Float, button: Int, type: MouseEventType) {}
+    public func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {}
     public func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType) {}
     public func onResize(width: Int, height: Int) {}
 }

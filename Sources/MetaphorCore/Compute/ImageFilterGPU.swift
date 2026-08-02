@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import MetalPerformanceShaders
 
 /// GPU 画像フィルターコンピュートカーネル用のユニフォームパラメータ

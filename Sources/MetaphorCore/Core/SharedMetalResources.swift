@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 
 /// 複数のウィンドウやレンダラー間で共有可能な Metal リソースを保持します。
 ///

@@ -518,8 +518,9 @@ struct CommandStreamStateSnapshotTests {
             c.translate(32, 32, 0)
             c.box(40)                                 // このコールは directional のみで照らされる
             c.popMatrix()
-            // フレーム末尾で強いアンビエントを追加（先行コールには効かないはず）
-            c.canvas3D.ambientLight(1.0, 1.0, 1.0)
+            // フレーム末尾で強いアンビエントを追加（先行コールには効かないはず）。
+            // ambientLight は colorMode 基準（既定 0〜255）なので全開は 255（Issue #392）。
+            c.canvas3D.ambientLight(255, 255, 255)
         }
         context.enableShadows()
         renderer.renderFrame()
@@ -528,5 +529,7 @@ struct CommandStreamStateSnapshotTests {
         // directional のみの照らされ方（アンビエント全開ではない）であること。
         let p = try centerPixel(renderer)
         #expect(p.r > 30, "box は描画されるべき: \(p)")
+        // 末尾の ambient が先行コールへ漏れると R は 255 に張り付く。
+        #expect(p.r < 250, "フレーム末尾のアンビエントが先行コールに漏れている: \(p)")
     }
 }

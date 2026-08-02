@@ -1,4 +1,4 @@
-@preconcurrency import Metal
+import Metal
 import simd
 
 // MARK: - Particle (GPU 互換、64 バイト)

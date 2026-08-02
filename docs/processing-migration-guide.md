@@ -283,7 +283,7 @@ the Processing original with every number left alone.
 | `box(s)` / `box(w, h, d)` | `box(_ size: Float)` / `box(_ width: Float, _ height: Float, _ depth: Float)` |
 | `sphere(r)` | `sphere(_ radius: Float, detail: Int = 24)` |
 | `sphereDetail(n)` | — use the `detail:` argument of `sphere(_:detail:)` |
-| — | `plane(_ width: Float, _ height: Float)`, `cone(radius:height:detail:)`, `cylinder(radius:height:detail:)`, `torus(ringRadius:tubeRadius:detail:)` — note these three have world-unit defaults (`radius: 0.5`, `height: 1`), so always pass pixel sizes explicitly |
+| — | `plane(_ width: Float, _ height: Float)`, `cone(radius:height:detail:)`, `cylinder(radius:height:detail:)`, `torus(ringRadius:tubeRadius:detail:)` — sizes are required arguments (no defaults), and like `box` / `sphere` they are pixel sizes under the default camera |
 | `camera(ex, ey, ez, cx, cy, cz, ux, uy, uz)` | `camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` |
 | `perspective(fov, aspect, near, far)` | `perspective(fov: Float = .pi / 3, near: Float = 0.1, far: Float = 10000)` — aspect comes from the canvas |
 | `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to the canvas box |
@@ -318,7 +318,7 @@ At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 | `mousePressed()` (the callback) | `func mousePressed()` |
 | `mouseReleased()` / `mouseMoved()` / `mouseDragged()` / `mouseClicked()` | same names, all `func …()` with no parameters |
 | `mouseWheel(event)` | `func mouseScrolled()` + `scrollX: Float` / `scrollY: Float` |
-| `mouseButton == LEFT` | `mouseButton == 0` (`0` left, `1` right, `2` middle) — see [Pitfalls](#pitfalls) |
+| `mouseButton == LEFT` | `mouseButton == .left` (`MouseButton?` — `.left` / `.right` / `.middle`, `nil` until the first press) — see [Pitfalls](#pitfalls) |
 | `keyPressed` (the boolean) | `isKeyPressed: Bool` |
 | `keyPressed()` / `keyReleased()` / `keyTyped()` | same names |
 | `key` | `key: Character?` — **optional** |
@@ -551,29 +551,35 @@ updates the element, because the array element is a value. There is no `copy()`
 and no aliasing surprise — but also no way to hand a vector to a helper and have
 the helper mutate your copy unless you use `inout`.
 
-### `mouseButton == LEFT` compiles, and is always false
+### `LEFT` is a key code, not a mouse button
 
 In Processing, `LEFT` is overloaded: a mouse button, a text alignment, and an
 arrow key. In metaphor, `LEFT` is **only** the left-arrow virtual key code
 (`UInt16` 123). Migrate as follows:
 
 ```swift
-if mouseButton == 0 { … }        // was: mouseButton == LEFT
+if mouseButton == .left { … }    // was: mouseButton == LEFT
 textAlign(.left)                 // was: textAlign(LEFT)
 rectMode(.center)                // was: rectMode(CENTER)
 if keyCode == LEFT { … }         // unchanged — this one really is a key code
 ```
 
-The compiler catches two of those three. `textAlign(LEFT)` fails on the type and
-`rectMode(CENTER)` fails because there is no `CENTER` — but **`mouseButton == LEFT`
-compiles**, because Swift allows heterogeneous integer comparison, and it silently
-evaluates to `false` forever (`mouseButton` is `0`/`1`/`2`; `LEFT` is `123`). It is
-the one migration bug in this guide that no diagnostic will point at, so grep a
-ported sketch for it.
+The compiler catches all three mistakes: `textAlign(LEFT)` fails on the type,
+`rectMode(CENTER)` fails because there is no `CENTER`, and `mouseButton == LEFT`
+fails because `mouseButton` is a `MouseButton?`, not an integer.
 
-`mouseButton` is an `Int` (`0` left, `1` right, `2` middle) and is set on
-mouse-down only — it keeps its last value after release, and starts at `0`, so it
-cannot distinguish "never pressed" from "left".
+> Before v0.9.0, `mouseButton` was an `Int` and `mouseButton == LEFT` **compiled**
+> — Swift allows heterogeneous integer comparison, so it silently evaluated to
+> `false` forever (`mouseButton` was `0`/`1`/`2`; `LEFT` is `123`). It was the one
+> migration bug in this guide that no diagnostic pointed at. If you are porting a
+> sketch that was already migrated against an older metaphor, that comparison is
+> now a compile error rather than a silent `false` ([#382](https://github.com/shinyaoguri/metaphor/issues/382)).
+
+`mouseButton` is a `MouseButton?` (`.left` / `.right` / `.middle`) and is set on
+mouse-down only. It is `nil` until the first press, and afterwards keeps the last
+pressed button even after release — exactly like Processing, so `mouseReleased()`
+can still tell which button was let go. Use `isMousePressed` to ask whether a
+button is down *right now*.
 
 Also note `key` and `keyCode` are **optionals** (`Character?`, `UInt16?`), so
 `if key == "a"` works but `key!.isLetter` needs unwrapping.
