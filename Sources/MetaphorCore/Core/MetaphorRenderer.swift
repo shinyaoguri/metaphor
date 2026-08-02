@@ -1,3 +1,6 @@
+// @preconcurrency: オフスクリーンのステージングテクスチャを GPU 完了ハンドラ（`@Sendable`）へ渡す。
+// Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
 @preconcurrency import Metal
 import MetalKit
 import QuartzCore
@@ -1066,16 +1069,28 @@ public final class MetaphorRenderer: NSObject {
         // 完了ハンドラは「最後にコミットするバッファ」に付ける。メインパスが分割された
         // 場合、最終バッファはここで作ったものとは別になるため（#326）、コミット直前に
         // 付けられるようクロージャにしておく。
-        let attachFrameCompletion: (MTLCommandBuffer) -> Void = { [weak self] buffer in
+        // GPU 実測時刻の反映は @Sendable クロージャ 1 つに畳んでおく。`[weak self]` が
+        // 導入するのは暗黙の **var** で、入れ子の `@Sendable` クロージャ
+        //（addCompletedHandler → notify → main.async）からそれを参照すると
+        // strict concurrency の `SendableClosureCaptures` 警告になる。ここで弱参照を
+        // 一段に閉じ込めれば、レンダラを強参照で延命することなく警告を消せる。
+        let recordGPUTimes: @Sendable (CFTimeInterval, CFTimeInterval) -> Void = {
+            [weak self] start, end in
+            // 自分のキャプチャリストが導入した var は、自分の本体では読んでよい。
+            // main.async へ渡す前に let へ束ね直す（延命は dispatch の間だけ）。
+            let renderer = self
+            DispatchQueue.main.async {
+                renderer?.lastGPUStartTime = start
+                renderer?.lastGPUEndTime = end
+            }
+        }
+        let attachFrameCompletion: (MTLCommandBuffer) -> Void = { buffer in
             buffer.addCompletedHandler { cb in
                 let gpuStart = cb.gpuStartTime
                 let gpuEnd = cb.gpuEndTime
-                readbackGroup.notify(queue: .global(qos: .userInitiated)) { [weak self] in
+                readbackGroup.notify(queue: .global(qos: .userInitiated)) {
                     semaphore.signal()
-                    DispatchQueue.main.async {
-                        self?.lastGPUStartTime = gpuStart
-                        self?.lastGPUEndTime = gpuEnd
-                    }
+                    recordGPUTimes(gpuStart, gpuEnd)
                 }
             }
         }
@@ -1262,10 +1277,21 @@ public final class MetaphorRenderer: NSObject {
 
 // MARK: - MTKViewDelegate
 
+// `MTKViewDelegate` の要件は macOS 26 SDK では @MainActor だが、最小サポートの
+// Swift 5.10（Xcode 15.4）SDK では nonisolated。@MainActor のまま準拠すると
+// 「main actor 隔離のメソッドで nonisolated 要件は満たせない」と警告になるため、
+// 実装側を `nonisolated` にして `MainActor.assumeIsolated` で隔離を主張する。
+// MetalKit はどちらの要件もメインスレッドから呼ぶ（Issue #328）。
 extension MetaphorRenderer: MTKViewDelegate {
-    public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+    public nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
-    public func draw(in view: MTKView) {
+    public nonisolated func draw(in view: MTKView) {
+        MainActor.assumeIsolated {
+            drawOnMainActor(in: view)
+        }
+    }
+
+    private func drawOnMainActor(in view: MTKView) {
         // 外部レンダーループを使用していない場合、ここでフレームをレンダリング
         if !useExternalRenderLoop {
             renderFrame()

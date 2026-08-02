@@ -1,5 +1,8 @@
 import Foundation
-import Metal
+// @preconcurrency: `staging` テクスチャを GPU 完了ハンドラ（`@Sendable`）へ渡す。読み戻しは
+// deferReadback のインフライトゲートで GPU の書き込みと排他済み。
+// Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
+@preconcurrency import Metal
 import QuartzCore
 
 /// AI エージェント向けの観測プラグイン。

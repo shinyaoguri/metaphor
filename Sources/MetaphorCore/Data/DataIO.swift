@@ -205,7 +205,9 @@ public enum DataIO {
         try writeData(data, toPath: path)
     }
 
-    private static func decodeJSON<T: Decodable>(_ data: Data, as type: T.Type) throws -> T {
+    /// (Internal: `Sketch.loadJSONAsync(_:as:)` が「読み込みは await、デコードは
+    /// 呼び出し側の隔離ドメイン」に分けるために直接使う。Issue #328)
+    static func decodeJSON<T: Decodable>(_ data: Data, as type: T.Type) throws -> T {
         do {
             return try JSONDecoder().decode(type, from: data)
         } catch {
