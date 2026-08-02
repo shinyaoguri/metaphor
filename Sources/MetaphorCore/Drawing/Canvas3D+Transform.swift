@@ -139,11 +139,12 @@ extension Canvas3D {
         let clip = modelViewProjection * SIMD4<Float>(x, y, z, 1)
         guard clip.w != 0 else { return .zero }
         let ndc = SIMD3<Float>(clip.x, clip.y, clip.z) / clip.w
-        // computeViewProjection は Y 反転（Processing の下向き規則）込みのため、
-        // x/y とも (ndc + 1) / 2 でスクリーンへ写像する
+        // computeViewProjection は Y 反転（Processing の下向き規則）込みのため、NDC 空間では
+        // 画面上側が +Y になる。ピクセル座標は上側が y=0 なので、x とは逆に
+        // (1 - ndc.y) / 2 で写像し、2D の screenY(_:_:) と同じ座標系（左上原点・下方向が +Y）にする。
         return SIMD3(
             (ndc.x + 1) / 2 * width,
-            (ndc.y + 1) / 2 * height,
+            (1 - ndc.y) / 2 * height,
             ndc.z
         )
     }
