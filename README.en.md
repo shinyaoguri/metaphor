@@ -149,6 +149,8 @@ random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
 
 The full API is in [`llms.txt`](llms.txt). To browse types and methods, see the **[API reference (DocC)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)** ([project site](https://shinyaoguri.github.io/metaphor/)). When hunting for "the Processing equivalent of X," [Examples](#examples) has quick answers.
 
+Coming from Processing or p5.js? Start with **[docs/processing-migration-guide.md](docs/processing-migration-guide.md)** — API mapping tables by category (`size()` → `SketchConfig`, `PVector` → `Vec2`, `rectMode(CENTER)` → `rectMode(.center)`, …), the pitfalls that bite (value vs. reference types, `@MainActor`, the two color ranges, the 2D/3D transform split), and what is not implemented yet.
+
 ## Collaborating with AI (observation → manipulation → iteration)
 
 metaphor is designed so AI agents can develop while **observing a running sketch**. Register `metaphor mcp` as an MCP server with your AI client (Claude Code / Cursor, etc.), and the agent can fetch rendering results and internal state, verify rebuild outcomes, and autonomously iterate through "observe → edit → re-observe → verify" cycles.
