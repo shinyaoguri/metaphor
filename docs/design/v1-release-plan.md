@@ -78,7 +78,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 | 生成系 API の typed throws 化 | ADR-0005 Decision 2 | **エラー型統一で代替済み**(#323)。typed throws 構文は Swift 5.10 サポート終了まで延期(見送り理由は ADR-0005 Amendment 2026-08-02) |
 | deprecated 7 件の削除 | ADR-0005 Amendment | 削除可能条件を満たして残存 |
 | 命名統一(G3)・二層 API 名の整合 | (新規、本レビューで顕在化) | 未整理 |
-| Swift 6 strict concurrency 対応(G2) | (新規) | **実施済み**(#328 / PR #386・#388 / 2026-08-02)。全 Swift ターゲットに適用し新旧両ツールチェーンで警告ゼロ・CI ゲート化まで完了。公開 API のシグネチャ変更は発生せず |
+| Swift 6 strict concurrency 対応(G2) | (新規) | **実施済み**(#328 / PR #386・#394 / 2026-08-02)。全 Swift ターゲットに適用し新旧両ツールチェーンで警告ゼロ・CI ゲート化まで完了。公開 API のシグネチャ変更は発生せず |
 | `@_exported import Metal/MetalKit/simd` の扱い決定(G16) | (新規) | 未判断 |
 | `GPUBuffer` subscript / `NoiseTexture` stops の failure mode 統一(G14) | (新規) | 不統一のまま |
 
@@ -146,7 +146,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 | W1-6 | 変換ファミリの P3D 意味論統一(ADR-0005 follow-up)。**実施済み**(#325 / PR #384 / ADR-0005 Amendment 2026-08-02)— Option A を採用し `translate(x,y)`/`rotate(a)`/`scale(sx,sy)` を 3D にも適用。実測で前提が覆り、3D の既定カメラは既に Processing P3D と同型のピクセル空間なので実装は 3 行・既存テストの赤 0・既存ゴールデン 6 枚とも差分 0。「統一しないと壊れたまま」だった Examples 4 本が直る(ToonShading を Probe で before/after 実測: 重心 (62,55) → (320,179))。検出用ゴールデン `transform-2d-on-3d` と `TransformSemanticsTests` を新設。逆方向(3D 変換 → 2D 描画)は 2D が `float3x3` アフィンのため構造的に到達不能で 9 例が残る(→ #387) | G1 | S | W2-2(ゴールデン回帰)導入後 — 充足 |
 | W1-7 | `loadPixels()` メインキャンバス readback(ADR-0005 follow-up) | G1 | M | W2-2 導入後が望ましい |
 | W1-8 | コマンド記録の既定 ON 化の判断(ADR-0003 follow-up)。**見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)— 既定 ON は `loadPixels()` の Processing 互換(W1-7)を全スケッチで失わせるため、現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結。定常フレームの描画結果が経路非依存であることを ADR の保証として宣言(常設テストは #375、環境変数の文書化は #376) | G1 | S〜M | なし |
-| W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) 有効化方法の検証 → (2) Tier 1 独立モジュール → (3) Core・Tier 2 → (4) CI ゲート化。**全段階完了**(#328 / PR #386・#388 / 2026-08-02)— 方式は `#if compiler(>=6.0)` で `.enableUpcomingFeature` / `.enableExperimentalFeature` を振り分け(5.10 では upcoming 名が黙って無視されるため。`unsafeFlags` は版指定の依存を壊すので不可)。**Swift ソースを持つ 25 ターゲット全部に適用し、Swift 6.3.3 / 5.10 の両ツールチェーンで警告ゼロ**(6.3.3: 21 → 0 / 5.10: 26 → 0)。ゲートは `build-and-test` の `-warnings-as-errors`(既存)に加え、`build-swift-5-10` にも同フラグを追加(5.10 でしか出ない警告が実在するため)、さらに新ターゲットの設定書き忘れを `scripts/check-strict-concurrency.py` が検出。`@preconcurrency import` は全数を一度剥がして再測定し **29 → 13**(両ツールチェーンの和集合で実際に必要な 13 箇所だけを根拠コメント付きで残した)、`@unchecked Sendable` は +3(通知トークン・キャプチャセッション保持者・非 Sendable 値の箱、いずれも根拠コメント付き)。実測記録は Issue #328 のコメントが正典 | G2 | **L** | 完了 |
+| W1-9 | **Swift 6 strict concurrency**(最重量)。段階導入: (1) 有効化方法の検証 → (2) Tier 1 独立モジュール → (3) Core・Tier 2 → (4) CI ゲート化。**全段階完了**(#328 / PR #386・#394 / 2026-08-02)— 方式は `#if compiler(>=6.0)` で `.enableUpcomingFeature` / `.enableExperimentalFeature` を振り分け(5.10 では upcoming 名が黙って無視されるため。`unsafeFlags` は版指定の依存を壊すので不可)。**Swift ソースを持つ 25 ターゲット全部に適用し、Swift 6.3.3 / 5.10 の両ツールチェーンで警告ゼロ**(6.3.3: 21 → 0 / 5.10: 26 → 0)。ゲートは `build-and-test` の `-warnings-as-errors`(既存)に加え、`build-swift-5-10` にも同フラグを追加(5.10 でしか出ない警告が実在するため)、さらに新ターゲットの設定書き忘れを `scripts/check-strict-concurrency.py` が検出。`@preconcurrency import` は全数を一度剥がして再測定し **29 → 13**(両ツールチェーンの和集合で実際に必要な 13 箇所だけを根拠コメント付きで残した)、`@unchecked Sendable` は +3(通知トークン・キャプチャセッション保持者・非 Sendable 値の箱、いずれも根拠コメント付き)。実測記録は Issue #328 のコメントが正典 | G2 | **L** | 完了 |
 
 ### W2: 品質ゲート(W1 と並行、W2-2 は W1-6 より先)
 
