@@ -61,6 +61,7 @@ Maintaining this file
 
 - Published tags and Release assets are now treated as immutable and are enforced as such: `refs/tags/v*` cannot be deleted or moved, every tag's `binaryTarget` URL is health-checked weekly, and a release verifies its own uploaded `Syphon.xcframework.zip` against the checksum in `Package.swift` before telling `metaphor-cli` to pin it. SwiftPM re-fetches that asset on every dependency resolution, so a deleted asset would permanently break the tag for existing users ([#352](https://github.com/shinyaoguri/metaphor/pull/352))
 - `setRenderGraph(_:)` and `setClearColor(_:_:_:_:)` document their naming explicitly: passing `nil` to the former is how you clear the active render graph (there is no separate `clearRenderGraph()`), and the `clear` in the latter is the Metal noun "clear color", not the deleting `clear*` verb used by `clearPostEffects()` ([#322](https://github.com/shinyaoguri/metaphor/issues/322))
+- Failure modes are now documented explicitly in three places, with no behavior change: the `SoundFile` usage example shows `do`/`catch` instead of `try!` (which would crash the sketch on a missing or corrupt file, since `init(path:)` also rethrows `AVAudioFile` errors); `GPUBuffer`'s subscript states that out-of-range access traps, matching `Swift.Array`; and the gradient-stop noise texture APIs state that fewer than 2 color stops return nil, now locked by tests ([#374](https://github.com/shinyaoguri/metaphor/pull/374))
 
 ### Deprecated
 
