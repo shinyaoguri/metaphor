@@ -117,3 +117,8 @@ examples-report.md
 
 # MetaphorProbe runtime artifacts (snapshot output + request file)
 .metaphor/
+
+# Secrets — 秘密情報の置き場はここに限る（コード・fixtures・ログ・コミットに入れない）
+.env
+.env.*
+!.env.example
