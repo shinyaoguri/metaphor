@@ -42,15 +42,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 ### 自動生成される AI 向けファイル
 
-`llms.txt` と `docs/ai/examples-index.{md,json}` はチェックインされていますが **生成物** です。手で編集しないこと。入力を変えたら push 前に再生成します。
-
-| 出力 | 入力 |
-|---|---|
-| `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` |
-| `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` |
-| `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` |
-
-`make setup` が入れる pre-push フックが陳腐化を検出して push を中断します（CI も safety net として再生成）。生成器は決定的であること（全コレクションをソート）——非決定的出力は auto-fix bot が毎回 push する原因になります。
+`llms.txt` / `docs/ai/examples-index.{md,json}` / `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` はチェックインされていますが **生成物** です。手で編集せず、入力を変えたら push 前に再生成します（pre-push フックと CI が陳腐化を検出）。入力と再生成コマンドの対応表、および「生成器は決定的であること」の理由は [DEVELOPMENT.md](DEVELOPMENT.md) の「生成物の管理」を参照。
 
 ## アーキテクチャ
 
@@ -84,27 +76,20 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 
 ## ドキュメント階層（真実の在処）
 
-- **CLAUDE.md（本ファイル）**: 玄関口 / コンセプト / 地図 / 規約
-- **[docs/README.md](docs/README.md)**: docs/ 全体の地図（読者別の入口・真実の在処の一覧）
-- **[DEVELOPMENT.md](DEVELOPMENT.md)**: ライブラリ本体開発者向けのセットアップ・コマンド・生成物の管理
-- **`llms.txt`**: 公開 API シグネチャ（生成物）
-- **[docs/ai/README.md](docs/ai/README.md)**: 実装デバッグ・拡張ノート。スケッチ作者向けは `docs/ai/for-sketch-authors.md` と `docs/ai/examples-index.md`
-- **[CONTRACT.md](CONTRACT.md)**: metaphor ⇄ metaphor-cli のクロスリポジトリ契約
-- **[docs/adr/](docs/adr/)**: 設計判断の蓄積（Architecture Decision Records）
-- **[docs/design/](docs/design/)**: 進行中プロジェクトの設計ドキュメント
-- **[docs/releasing.md](docs/releasing.md)**: リリース手順
-- **[CHANGELOG.md](CHANGELOG.md)**: 利用者向けの変更履歴（Keep a Changelog・英語）。**ユーザー影響のある変更を入れたら CHANGELOG.md ではなく [`changelog.d/`](changelog.d/README.md) に 1 ファイル置く**（`<slug>.<category>.md`。破壊的変更は `.breaking.md`）。リリース時に `scripts/changelog.py` が集約・昇格する。どちらも空のままだとリリースが中断する
+**読者別の入口・ディレクトリ構成・「どれが正か」の一覧は [docs/README.md](docs/README.md) が正本です。** 本ファイルは玄関口 / コンセプト / 地図 / 規約に徹します。エージェントが最頻で参照するのは次の 4 つ:
 
-仕様の根拠は `docs/adr/`、コードの触り方は本ファイルと `docs/ai/`、API は `llms.txt` が真実の在処です。
+- **`llms.txt`**: 公開 API シグネチャ（生成物）
+- **[docs/ai/README.md](docs/ai/README.md)**: 実装デバッグ・拡張ノート
+- **[docs/adr/](docs/adr/)**: 設計判断の根拠
+- **[CONTRACT.md](CONTRACT.md)**: metaphor ⇄ metaphor-cli の契約
+
+**ユーザー影響のある変更を入れたら [CHANGELOG.md](CHANGELOG.md) ではなく [`changelog.d/`](changelog.d/README.md) に 1 ファイル置く**（`<slug>.<category>.md`。破壊的変更は `.breaking.md`）。リリース時に集約・昇格され、どちらも空のままだとリリースが中断します。
 
 ## AI Probe
 
-`MetaphorProbePlugin` を有効化すると、スケッチが「いま見えている画像」と「内部状態」を AI エージェントへ渡せます。
+`MetaphorProbePlugin` を有効化すると、スケッチが「いま見えている画像」と「内部状態」を AI エージェントへ渡せます。環境変数 `METAPHOR_PROBE=1` で自動登録（または `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])`）。AI が `.metaphor/probe/request.json` を書くと次フレームで処理され、`.metaphor/probe/current/frame.{png,json}` が出ます（`.tmp` 経由のアトミックリネーム）。スケッチ側は `draw()` 内で `probe("particles.count", n)`（未登録時は no-op）。
 
-- **有効化**: 環境変数 `METAPHOR_PROBE=1` で自動登録、または `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])`。
-- **やり取り**: AI が `.metaphor/probe/request.json` を書き、次フレームで処理。出力は `.metaphor/probe/current/frame.{png,json}`（`.tmp` 経由のアトミックリネーム）。
-- **状態報告**: スケッチの `draw()` 内で `probe("particles.count", n)`（未登録時は no-op）。
-- 複数フレーム取得（`frames`/`every`）やスキーマ（`frame.json` の `schemaVersion` 現行値を含む）の詳細は [CONTRACT.md](CONTRACT.md) を参照。例: `Examples/Samples/ProbeSnapshot`。
+複数フレーム取得（`frames`/`every`）とスキーマ（`frame.json` の `schemaVersion`）の詳細は [CONTRACT.md](CONTRACT.md)、例は `Examples/Samples/ProbeSnapshot`。
 
 ## クロスリポジトリ契約（metaphor ⇄ metaphor-cli）
 
@@ -132,7 +117,7 @@ gh pr merge --squash --delete-branch    # squash のみ、ブランチ自動削�
 
 ### Claude への注記
 
-- **push / merge はグローバル CLAUDE.md の基準で進める**: コミットログと PR 本文（目的・変更点・確認方法）を丁寧に書き、必須チェックが green なら、指示を待たず merge まで進めてよい。force push・履歴の書き換えなど不可逆な操作のみ事前にユーザーへ確認。
+- push / merge の判断基準（丁寧なコミットログと PR 本文・green なら指示を待たず merge・不可逆操作のみ事前確認）はグローバル CLAUDE.md に従う。
 - squash merge のみ。PR タイトル/本文に最終コミットメッセージを 1 本きれいに書く（ブランチ上の各コミットは使い捨て）。
 - **merge は `gh pr merge --squash --auto` で手離れさせる**（auto-merge。CI green で自動 merge され、BEHIND でも追随不要 — 経緯とトレードオフは [docs/releasing.md](docs/releasing.md) の "Merging PRs"）。CI を watch して手動 merge する運用はしない。
 - **描画結果が変わる PR には before/after 画像を PR 本文に載せる**（ゴールデン更新なら raw URL 埋め込みで完結。手順は [DEVELOPMENT.md](DEVELOPMENT.md) の「PR に見た目の証跡を載せる」）。
