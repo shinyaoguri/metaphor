@@ -51,11 +51,13 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   else, so a merge is blocked until the title is fixed. Fill in the PR body's
   Purpose / Changes / How to verify sections from
   [`.github/pull_request_template.md`](.github/pull_request_template.md).
-- The required CI checks are `build-and-test` and `build-swift-5-10` (the
-  Swift 5.10 / Xcode 15.4 minimum toolchain). Both must be green before merge.
-  Other jobs — notably `examples-diff-build` — are advisory: PRs are merged
-  with `gh pr merge --squash --auto`, which does not wait for them, so treat a
-  late red as a fix-forward signal (see [docs/releasing.md](docs/releasing.md)).
+- The only required CI check is the aggregate gate `ci-gate`, which fails if
+  any upstream job — `build-and-test`, `build-swift-5-10` (the Swift 5.10 /
+  Xcode 15.4 minimum toolchain), or `examples-diff-build` — failed (skipped
+  jobs count as success). PRs are merged with `gh pr merge --squash --auto`;
+  a PR touching `Examples/` waits for the changed examples to build (up to
+  60 min), other PRs merge as soon as the fast jobs are green (see
+  [docs/releasing.md](docs/releasing.md)).
 - **If your change is user-facing, add a file to
   [`changelog.d/`](changelog.d/README.md)** — not to `CHANGELOG.md` itself,
   which every pull request would otherwise edit on the same lines. Name it

@@ -61,21 +61,29 @@ pass. Consequences and rationale:
 - Release labeling is unaffected: auto-merge performs a normal squash merge,
   so `release-on-merge.yml` (`pull_request: closed`) fires as before. Label
   **before** arming (see the note above).
-- **Only required checks gate the merge.** Required = `build-and-test` and
-  `build-swift-5-10`. The only other jobs that run on a PR at all are
-  `examples-detect` / `examples-diff-build`, and neither is required, so both
-  are a **fix-forward signal, not a gate**. (`docs.yml` and `asset-health.yml`
-  never run on PRs — `push: main` and a weekly cron respectively.) Two
-  consequences worth knowing:
-  - Checks that must actually block are written as **steps inside
-    `build-and-test`**, not as new required jobs — the PR-title
-    Conventional-Commits lint and the `changelog.d` lint both live there. A new
-    conditional required job risks never being reported on the release PR or
-    after the examples-index auto-push, which deadlocks the PR permanently.
-  - `examples-diff-build` (up to 60 min) always loses the race against
-    `build-and-test` (~6 min), so a PR that breaks an example *will* merge. It
-    posts a comment on the PR when it fails so the breakage is not silent; fix
-    it forward. The proper fix is a single aggregate `ci-gate` job — Issue #411.
+- **Only required checks gate the merge.** Required = the single aggregate
+  gate **`ci-gate`** (Issue #411). It `needs:` every job in `ci.yml`
+  (`build-and-test`, `build-swift-5-10`, `examples-detect`,
+  `examples-diff-build`), always runs, and fails if any of them failed —
+  skipped jobs count as success. (`docs.yml` and `asset-health.yml` never run
+  on PRs — `push: main` and a weekly cron respectively.) Consequences worth
+  knowing:
+  - A PR that does not touch `Examples/` merges as soon as the fast jobs are
+    green (`build-and-test` ~6 min); `examples-diff-build` is skipped and the
+    gate folds the skip into success. A PR that *does* touch `Examples/`
+    waits for the changed examples to build (up to 60 min) — a PR that breaks
+    an example no longer merges.
+  - Individual jobs must **not** be made required directly. Conditional jobs
+    report nothing to the legacy Statuses API when skipped, and this
+    personal-repo ruleset appears to evaluate `required_status_checks` against
+    legacy statuses — a skipped required job would leave the PR pending
+    forever. `ci-gate` sidesteps this by always running and always reporting;
+    adding a new job only requires appending it to `ci-gate`'s `needs:`, not
+    touching the ruleset.
+  - Checks that must block *fast* are still written as **steps inside
+    `build-and-test`** — the PR-title Conventional-Commits lint and the
+    `changelog.d` lint both live there, failing within seconds instead of
+    after a full build.
 - A true **merge queue** would be strictly better (it tests each PR merged
   onto latest main before merging), but the `merge_queue` ruleset rule is
   rejected on user-owned repositories (422 "Invalid rule", verified
@@ -123,7 +131,7 @@ conflict — 全 PR が `## [Unreleased]` の同じ行を触ると、並行 PR �
 
 | いつ | 何を | 失敗したら |
 |------|------|-----------|
-| **PR ごと**(`ci.yml` の *Lint changelog.d entries*) | `changelog.py lint` — 置かれたファイルの**名前と中身だけ**を検証(カテゴリ typo・区切りなし・`.md` 以外・空ファイル)。**エントリの有無は問わない**(内部作業は正当にエントリ無し)。必須ジョブ `build-and-test` のステップなのでマージをブロックする | **PR がマージ不能**。typo を書いた本人がその場で直す(Issue #405 — 以前はリリース時まで発覚しなかった) |
+| **PR ごと**(`ci.yml` の *Lint changelog.d entries*) | `changelog.py lint` — 置かれたファイルの**名前と中身だけ**を検証(カテゴリ typo・区切りなし・`.md` 以外・空ファイル)。**エントリの有無は問わない**(内部作業は正当にエントリ無し)。`build-and-test` のステップとして走り、その失敗は required check `ci-gate` が fail に畳むのでマージをブロックする | **PR がマージ不能**。typo を書いた本人がその場で直す(Issue #405 — 以前はリリース時まで発覚しなかった) |
 | ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `changelog.d/` にエントリがあるか、`## [Unreleased]` の中身が空でないこと(両対応)。ファイル名の不備(カテゴリ不明・区切りなし・`.md` 以外・空ファイル)もここで弾く | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
 | *Push release branch*(stable のみ) | `changelog.py release <version>` — まず `changelog.d/*.md` を `## [Unreleased]` へ集約してファイルを削除し、続けて `## [X.Y.Z] - YYYY-MM-DD` へ昇格、空の Unreleased を上に開き、末尾のリンク定義を更新。**削除も含めて**バージョンバンプと同じコミットに入る(`git add ... changelog.d`) | 同上(タグ前) |
 | *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書き、Syphon checksum を足す。`unreleased` 指定時は未集約の `changelog.d/` も表示用に畳み込む。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |
