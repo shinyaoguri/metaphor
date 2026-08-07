@@ -32,7 +32,6 @@ jobs:
     permissions:
       contents: write       # Required to auto-push regenerated examples index back to PR branches.
       actions: write        # Required to re-dispatch CI after the auto-push (GITHUB_TOKEN pushes don't trigger workflows).
-      statuses: write       # Required to bridge workflow_dispatch runs to a legacy Status for the ruleset gate.
       # NOTE: declaring a `permissions:` block sets every scope NOT listed here to
       # `none`, so this line is load-bearing — without it `gh pr view --json title`
       # in the PR-title lint below 403s.
@@ -245,21 +244,8 @@ jobs:
           # runner; the dispatched run validates (and statuses) the new SHA.
       - name: Validate AI-facing docs
         run: ./scripts/validate-ai-docs.sh
-      - name: Bridge to legacy status (workflow_dispatch / merge_group)
-        # Repository rulesets on personal repos evaluate required_status_checks
-        # against the legacy Statuses API. pull_request runs satisfy it through
-        # the normal path, but workflow_dispatch runs (release branches, the
-        # examples-index auto-push re-dispatch above) and merge_group runs
-        # (merge queue temporary branches) only produce a check_run, so mirror
-        # the green result as a status on the commit we just tested.
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state=success \
-            -f context=build-and-test \
-            -f description="CI passed via ${{ github.event_name }} run"
+      # NOTE: legacy status ブリッジはここには無い。required check は集約ゲート
+      # `ci-gate` 1 本（Issue #411）で、ブリッジも ci-gate ジョブ側に一本化した。
       # カバレッジは以前ログに印字するだけで、run が流れると消えていた（G18）。
       # ファイル別レポート・lcov・モジュール別サマリを artifact として残し、
       # サマリはジョブ要約にも出す（PR コメントは権限と保守コストの割に得るものが
@@ -332,11 +318,8 @@ jobs:
     runs-on: macos-14
     # ビルドのみ（テストなし）で通常数分。build-and-test と同じ理由で上限を明示。
     timeout-minutes: 45
-    # 必須ステータスチェック昇格（Issue #332）に伴い追加。build-and-test と同じ理由で
-    # statuses: write が要る（下の bridge ステップ参照）。
     permissions:
       contents: read
-      statuses: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -369,20 +352,6 @@ jobs:
         # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
         # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
         run: swift build --target metaphor -Xswiftc -warnings-as-errors
-      - name: Bridge to legacy status (workflow_dispatch / merge_group)
-        # build-and-test の同名ステップと同じ理由（#37）。このジョブも Issue #332 で
-        # 必須ステータスチェックに昇格したため、workflow_dispatch 経由の実行
-        # （examples-index 自動 push 後の再ディスパッチ等）や merge queue の
-        # merge_group 実行でも legacy Status を補完しないと、その SHA がこの
-        # チェックを永久に満たせず PR / queue エントリが merge 不能になる。
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
-            -f state=success \
-            -f context=build-swift-5-10 \
-            -f description="CI passed via ${{ github.event_name }} run"
 
   # Examples の *全数*（278 本）は per-PR では建てない。各 example は独立した
   # SwiftPM パッケージで metaphor をフルビルドし直すため、全数は時間もコストも
@@ -424,23 +393,16 @@ jobs:
           echo "変更された example パッケージ: ${count} 件"
           cat changed-examples.txt
 
-  # このジョブは **必須チェックではない**。auto-merge 移行（2026-08-02）に際して
-  # 昇格を検討したが採らなかった。理由:
-  #   - examples-detect / examples-diff-build はどちらも条件付き（PR 以外、あるいは
-  #     Examples/ 無変更なら skip）。この個人リポの ruleset は required_status_checks を
-  #     **legacy Statuses API** で評価している（だから build-and-test /
-  #     build-swift-5-10 は workflow_dispatch / merge_group 用のブリッジを持つ）。
-  #     legacy status 評価では skip されたジョブは *何も報告しない* ため、
-  #     「実行されない PR」で required check が永久 pending になり、auto-merge が
-  #     永久待ちになる恐れがある（Checks API 経由なら skipped = 成功扱いだが、
-  #     この経路がどちらで評価されるかは実測できておらず、外すと main 保護が
-  #     全 PR で詰まる）。本番の main 保護で試す価値のある賭けではない。
-  #   - 失敗を build-and-test へ波及させる案（needs: examples-diff-build）は、
-  #     必須ジョブが最大 60 分のこのジョブの完走を待つことになり、PR 1 本あたりの
-  #     所要時間が数倍になる。auto-merge の利点を丸ごと打ち消す。
-  # 代わりに「落ちたら PR に必ず声が残る」ことだけを保証する（下の failure ステップ）。
-  # 恒久策は集約ゲート（全ジョブを needs する ci-gate 1 本だけを required にする）で、
-  # これは ruleset 差し替えを伴うので別 PR / Issue #411。
+  # このジョブ自体は直接 required ではないが、集約ゲート `ci-gate`（下）が
+  # needs に含めて failure を fail に畳むため、**実質 required**（Issue #411）。
+  # Examples/ を触らない PR ではジョブごと skip され、ci-gate は skipped を
+  # success 扱いに畳むので、通常 PR の merge 所要時間（build-and-test ~6 分）は
+  # 変わらない。Examples を触る PR だけがこのジョブの完走（最大 60 分）を待つ。
+  # ジョブ単体を required にしない理由: 条件付きジョブは skip されると legacy
+  # Statuses API に何も報告せず、この個人リポの ruleset は required_status_checks
+  # を legacy status で評価している疑いが強い（だから ci-gate がブリッジを持つ）。
+  # skip があり得るジョブを直接 required にすると「実行されない PR」で永久
+  # pending になり auto-merge が詰まる恐れがある。
   examples-diff-build:
     needs: examples-detect
     if: needs.examples-detect.outputs.count != '0'
@@ -449,7 +411,6 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
-      pull-requests: write  # 失敗時に PR へ警告コメントを残すため
     steps:
       - uses: actions/checkout@v7
         with:
@@ -500,33 +461,57 @@ jobs:
             (cd "$dir" && swift build)
             echo "::endgroup::"
           done < changed-examples.txt
-      # 非必須なので、auto-merge はこのジョブの完走を待たずにマージし得る
-      # （build-and-test は ~6 分、こちらは最大 60 分）。赤が誰にも届かないまま
-      # 消えるのを防ぐため、失敗を PR コメントとして残す。マージ済みでも
-      # コメントは残るので、fix-forward の起点として機能する。
-      - name: Comment on the PR when a changed example fails to build
-        # fork PR では GITHUB_TOKEN が read-only に落ちてコメントできないので撃たない
-        # （fork PR は auto-merge 対象外＝人間が見てマージするため実害も無い）。
-        if: |
-          failure() &&
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
+      # NOTE: 以前ここにあった「失敗時に PR へ警告コメントを残す」ステップは撤去した
+      # （Issue #411）。ci-gate 経由で required になったため赤が merge をブロックし、
+      # 「赤が誰にも届かないまま消える」という前提そのものが消えたため。
+
+  # 集約ゲート（Issue #411）。ruleset の required check は **このジョブ 1 本だけ**。
+  # 条件付きジョブ（examples-detect / examples-diff-build）の skip をここで
+  # success 扱いに畳むことで、legacy status 評価の「skip されたジョブは何も
+  # 報告しない → required が永久 pending」問題を回避する（ci-gate 自身は常に
+  # 走り、常に報告する）。将来ジョブを足すときは needs に追加するだけでよく、
+  # ruleset を触る必要はない。
+  ci-gate:
+    needs: [build-and-test, build-swift-5-10, examples-detect, examples-diff-build]
+    # 既定では upstream の失敗時にこのジョブごと skip されてしまい、legacy status
+    # 評価では「報告なし = 永久 pending」になる。always() で必ず走らせ、結果は
+    # 下のステップで needs.*.result から自前で判定する。
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write   # legacy status ブリッジ（下）のため
+    steps:
+      - name: Require every upstream job to be success or skipped
         env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
           set -eu
-          # --body ではなく --body-file: YAML ブロックスカラー内でインライン文字列を
-          # 折り返すと継続行に 10 スペースが残り、Markdown がコードブロックとして
-          # 解釈してしまう。ヒアドキュメントなら YAML のインデント除去で列 0 に揃う。
-          cat > "$RUNNER_TEMP/examples-failure.md" <<EOF
-          **examples-diff-build が失敗しました** — この PR で変更された example がビルドできません。
-
-          [失敗したジョブのログ](${RUN_URL})
-
-          このジョブは必須チェックではないため、auto-merge はこの結果を待たずにマージすることがあります。すでにマージ済みなら fix-forward の PR で直してください（手元の再現は \`cd <example のディレクトリ> && swift build\`）。
-
-          必須にしていない理由は \`.github/workflows/ci.yml\` の \`examples-diff-build\` 直前のコメントと Issue #411 を参照。
-          EOF
-          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/examples-failure.md"
+          echo "$NEEDS_JSON"
+          bad=$(printf '%s' "$NEEDS_JSON" \
+            | jq -r 'to_entries[]
+                     | select(.value.result != "success" and .value.result != "skipped")
+                     | .key' \
+            | tr '\n' ' ')
+          if [ -n "${bad% }" ]; then
+            echo "::error::Upstream job(s) failed or were cancelled: ${bad}"
+            exit 1
+          fi
+          echo "OK: every upstream job succeeded or was skipped."
+      - name: Bridge to legacy status (workflow_dispatch / merge_group)
+        # Repository rulesets on personal repos evaluate required_status_checks
+        # against the legacy Statuses API. pull_request runs satisfy it through
+        # the normal path, but workflow_dispatch runs (release branches, the
+        # examples-index auto-push re-dispatch) and merge_group runs (merge
+        # queue temporary branches) only produce a check_run, so mirror the
+        # green result as a status on the commit we just tested.
+        # 前ステップが fail したらこのステップは走らない（暗黙の success()）ので、
+        # 失敗が success として報告されることはない。
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=ci-gate \
+            -f description="CI passed via ${{ github.event_name }} run"

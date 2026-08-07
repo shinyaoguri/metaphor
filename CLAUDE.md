@@ -104,7 +104,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 
 ## ブランチ運用（GitHub Flow）
 
-- **`main`** が唯一の長命ブランチかつデフォルト。すべての作業は PR 経由で main へ戻る。ルールセットで保護（PR 必須、`build-and-test` 必須、直接 push 不可、**squash のみ**）。
+- **`main`** が唯一の長命ブランチかつデフォルト。すべての作業は PR 経由で main へ戻る。ルールセットで保護（PR 必須、集約ゲート `ci-gate` 必須、直接 push 不可、**squash のみ**）。
 - 非自明な作業（新機能、1〜2 行を超える修正、リファクタ、複数コミットに跨る変更）は main からブランチを切る。命名は kebab-case + カテゴリ接頭辞（`feature/` `fix/` `refactor/` `chore/` `docs/`）。`release/<tag>` は Release ワークフロー予約。
 
 ```bash

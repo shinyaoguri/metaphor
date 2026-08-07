@@ -320,10 +320,13 @@ jobs:
           # only as a check_run, so the ruleset stays unsatisfied even
           # though CI is green. Mirror our successful check_run as a
           # status with the same context so the rule is satisfied.
+          # The required context is the aggregate gate `ci-gate` (Issue #411).
+          # ci.yml's own bridge step posts this too, but belt-and-suspenders:
+          # this workflow must not depend on the dispatched run's bridging.
           PR_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
             -f state=success \
-            -f context=build-and-test \
+            -f context=ci-gate \
             -f description="CI passed via workflow_dispatch run"
 
       - name: Squash-merge release PR
