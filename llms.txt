@@ -72,6 +72,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var mouseX: Float { get }` -- 現在のマウス x 座標。
 - `var mouseY: Float { get }` -- 現在のマウス y 座標。
 - `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。
+- `var params: ParameterStore { get }` -- `@Param` で宣言されたパラメータのストア。
 - `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
 - `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
 - `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
@@ -395,6 +396,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- フレームがオフスクリーンテクスチャにレンダリングされた後に呼ばれます。
 - `func pre(commandBuffer: any MTLCommandBuffer, time: Double)` -- 各フレームの開始時、レンダリング前に呼ばれます。
 
+### `protocol ParamRepresentable` -- `@Param` で宣言できる Swift 型。
+
+- `static var paramTypeTag: String { get }` -- この型が写る型タグ（`params.json` の `type`）。
+- `var paramValue: ParamValue { get }` -- ストアが保持する値表現へ変換します。
+- `init?(paramValue: ParamValue)` -- ストアの値表現から復元します。型が合わないときは `nil`。
+
 ### `protocol PostEffect : AnyObject` -- レンダリング済みフレームに適用されるポストプロセスエフェクト
 
 - `var name: String { get }` -- このエフェクトの表示名
@@ -435,6 +442,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var hasFill: Bool` -- 塗りつぶしが有効かどうか。
 - `var hasStroke: Bool` -- ストロークが有効かどうか。
 - `var strokeColor: SIMD4<Float>` -- ストローク色（RGBA）。
+
+### `struct ParamDescriptor` -- パラメータの宣言情報（名前・型タグ・レンジ・選択肢）。
+
+- `let choices: [String]?` -- `string` 型の合法値。指定時、範囲外の値は拒否される。
+- `let max: Double?` -- 上限（同上）。
+- `let min: Double?` -- 下限（数値型のみ。外部からの書き込みはこの範囲にクランプされる）。
+- `let name: String` -- ストア内の一意な名前。既定はプロパティ名（`@Param var radius` → `radius`）。
+- `let type: String` -- 型タグ（`float` / `int` / `bool` / `string` / `color` / `vec2` / `vec3`）。
 
 ### `struct PluginFactory` -- ``SketchConfig`` で使用するプラグインインスタンスを生成するファクトリ。
 
@@ -764,6 +779,25 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case pressed`
 - `case released`
 - `case scrolled`
+
+### `enum ParamSetOutcome` -- 外部（AI エージェント / GUI）からの書き込み結果。
+
+- `case applied` -- 適用された（クランプされた場合は `clampedTo` に実際の値の説明が入る）。
+- `case rejectedChoice` -- `choices` に無い文字列。
+- `case typeMismatch` -- 宣言された型と違う JSON 値。
+- `case unknownName` -- 宣言されていない名前。
+
+### `enum ParamValue` -- Parameter Store が保持できる値の型セット（v1）。
+
+- `case bool(Bool)`
+- `case color(Float, Float, Float, Float)`
+- `case float(Double)`
+- `case int(Int)`
+- `case string(String)`
+- `case vec2(Float, Float)`
+- `case vec3(Float, Float, Float)`
+- `var typeTag: String { get }` -- `params.json` の `type` フィールドに書き出す型タグ。
+- `func encode(to encoder: any Encoder) throws`
 
 ### `enum ParticleForce` -- 各フレームでパーティクルに適用できるフォースの種類を定義します。
 
@@ -1291,6 +1325,33 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func slider(_ label: String, _ value: inout Float, min minVal: Float = 0, max maxVal: Float = 1, canvas: Canvas2D, input: InputManager)` -- スライダーウィジェットを描画し、バインドされた値を更新します。
 - `func toggle(_ label: String, _ value: inout Bool, canvas: Canvas2D, input: InputManager)` -- トグルウィジェットを描画し、バインドされた値を更新します。
 - `func updateInput(input: InputManager)` -- 内部入力トラッキング状態を更新します（各フレームの末尾で呼び出し）。
+
+### `final class ParameterPlugin` -- `@Param` で宣言されたパラメータをファイル契約（`.metaphor/params/`）へ橋渡しする
+
+- `let config: ParameterStoreConfig` -- プラグイン設定。
+- `static let id: String`
+- `let pluginID: String`
+- `init(config: ParameterStoreConfig = ParameterStoreConfig())`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
+
+### `final class ParameterStore` -- `@Param` で宣言されたパラメータの実体を束ねるストア。
+
+- `var isEmpty: Bool { get }` -- パラメータが 1 つも宣言されていないか。
+- `var names: [String] { get }` -- 宣言順のパラメータ名（`params.json` の並び順 = 宣言順で決定的）。
+- `var revision: Int { get }` -- 値が変わるたびに増える単調カウンタ。`params.json` にエコーされます。
+- `init()`
+- `func descriptor(_ name: String) -> ParamDescriptor?` -- 宣言情報（型・レンジ・選択肢）を返します。
+- `func setValue(_ value: ParamValue, for name: String) -> ParamSetOutcome` -- 外部クライアント（GUI / AI）からの書き込み。
+- `func value(_ name: String) -> ParamValue?` -- 現在値を返します。未宣言の名前は `nil`。
 
 ### `final class ParticleSystem` -- Metal コンピュートシェーダーを使用した GPU ベースパーティクルシステムを駆動します。
 

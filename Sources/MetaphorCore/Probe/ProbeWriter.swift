@@ -575,21 +575,10 @@ enum ProbeWriter {
         return Analysis(warnings: warnings, stats: stats)
     }
 
-    /// 一時ファイルから本番パスへの原子的なリネーム。
-    ///
-    /// `rename(2)` は同一ボリューム内で既存の宛先を **原子的に** 置き換える
-    /// （`removeItem` → `moveItem` の 2 段階だと、間に出力ファイルが存在しない
-    /// 瞬間窓ができて「原子的リネーム」の契約が破れる）。
+    /// 一時ファイルから本番パスへの原子的なリネーム
+    /// （実体は共通ヘルパー ``metaphorAtomicReplace(tmp:final:label:)``。
+    /// Parameter Store の書き出しと同じ規約を共有する）。
     private static func atomicReplace(tmp: URL, final: URL) {
-        let result = tmp.withUnsafeFileSystemRepresentation { tmpPath -> Int32 in
-            final.withUnsafeFileSystemRepresentation { finalPath -> Int32 in
-                guard let tmpPath, let finalPath else { return -1 }
-                return rename(tmpPath, finalPath)
-            }
-        }
-        if result != 0 {
-            print("[metaphor] Probe: failed to rename \(tmp.lastPathComponent) -> "
-                + "\(final.lastPathComponent) (errno \(errno))")
-        }
+        metaphorAtomicReplace(tmp: tmp, final: final, label: "Probe")
     }
 }

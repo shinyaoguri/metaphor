@@ -47,6 +47,35 @@ final class MySketch: Sketch {
 - For export or deterministic rendering, prefer offline-render APIs rather than
   wall-clock timing.
 
+## Tunable Values (`@Param`)
+
+Declare values you expect to tune — radii, counts, speeds, colors, modes — with
+`@Param`. They persist across restarts in `.metaphor/params/params.json` and can
+be changed **without rebuilding**.
+
+```swift
+@main final class MySketch: Sketch {
+    @Param(min: 10, max: 200) var radius: Float = 50
+    @Param var showGrid: Bool = true
+    @Param(choices: ["add", "multiply"]) var mode: String = "add"
+
+    func draw() {
+        circle(width / 2, height / 2, radius)   // read it like a normal property
+    }
+}
+```
+
+Supported types: `Float` / `Double` / `Int` / `Bool` / `String` (with optional
+`choices`) / `Color` / `Vec2` / `Vec3`. Names default to the property name; pass
+`@Param("myName")` to override. Opt out with `METAPHOR_PARAMS=0`.
+
+For AI assistants: to retune a running sketch, write
+`.metaphor/params/set-request.json` atomically (`.tmp` → rename) with a **new**
+`id` each time — `{"id": "<unique>", "values": {"radius": 120}}` — then read back
+`.metaphor/params/params.json` and check `appliedRequestId` (rejected values are
+explained in `warnings`). That round trip takes one frame; **edit code only for
+structural changes**, not for tuning numbers.
+
 ## Common Requests
 
 ### 2D Generative Motion
