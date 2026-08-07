@@ -215,7 +215,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 - [ ] 0.9 系で breaking なしの実績(全モジュール。壊したくなったものは preview 宣言で決着済み)
 - [ ] Examples 278 本の全数スイープ green(`examples-sweep.yml` full=true)
 - [ ] API doc コメント英語化(W3-1)完了
-- [ ] metaphor-sketches での実運用検証を通過
+- [ ] metaphor-sketches での実運用検証を通過（具体化 = リファレンス作品 Epic [#414](https://github.com/shinyaoguri/metaphor/issues/414)。要件は [roadmap-processing-unity.md](roadmap-processing-unity.md) の「作品トラック」— 複数シーン + 複数入力 + 30 分無人稼働。2026-08-07 追記）
 - [ ] リリースノートに 0.x → 1.0 の人間向けハイライトと移行ガイド(CHANGELOG から生成)
 
 **コミュニティ条件**(採用の実績):
