@@ -1,6 +1,6 @@
 # 設計: ライブツーリング基盤（Parameter Store / 状態保持リロード / インスペクタ / 往復レイテンシ）
 
-- **ステータス**: 設計叩き台（実装未着手）。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md) が正典
+- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/` は実装済み**（2026-08-07）。B / C / D と A の残り（D2 GUI 自動パネル / D3 `frame.json` の `params` 節 / D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
 - **親**: [roadmap-processing-unity.md](roadmap-processing-unity.md) の Epic C / D / H
 - **作成**: 2026-07-30
 
@@ -128,12 +128,19 @@ A (store+wrapper+files+GUI → cli MCP ツール)      ← 基盤
 
 **最強の初回マイルストーン = A 一式 + D 計測**。他のすべてが A に依存し、素の `swift run` / watch / MCP のどのモードでも単独価値があり、製品の看板数値を「2,811ms」から「最頻イテレーションは <100ms」に変える。
 
-## 未決事項（実装着手時にユーザーと確定する）
+## 未決事項（2026-08-07 に 1 / 2 / 4 / 5 / 7 を確定、3 / 6 は B 着手時）
 
-1. `@Param` の命名: Mirror によるラベル発見（推奨・明示名 override 付き。将来 Swift macro で置換可）か、明示名必須か
-2. 競合ポリシー: GUI ドラッグと `set_param` の競合は last-writer-wins + `revision` エコー（v1 推奨）か、`ifRevision` 楽観ロックか
-3. `preserveClock` の既定: オプトイン（推奨・t 駆動スケッチの驚き最小）か、watch 時デフォルト ON か
-4. 永続化スコープ: `.metaphor/params/` はスケッチディレクトリ単位で v1 は固定（プリセット = params.json の名前付きコピーは将来機能）で良いか
-5. インスペクタ UI の所有権: スケッチ内パネル先行 → cli サイドパネル後日、で確定して良いか
-6. live-viewer.md §A-3（stdin saveState 動詞 + stdout base64）の正式な改訂タイミング（B の実装 PR で同時改訂を想定）
-7. `string` 型の `choices`: v1 から入れる（推奨: ドロップダウン化と AI への合法値提示が安価に手に入る）か
+1. **確定: Mirror によるラベル発見 + 明示名 override**（`@Param("myName")`）。将来 Swift macro で置換可。トップレベルのプロパティのみ発見対象（ネストした型の中は対象外）
+2. **確定: last-writer-wins + `revision` エコー**。`ifRevision` 楽観ロックは入れない（拒否時のリトライ規約とエラー面を契約に増やす割に、人間がツマみながら AI が書く実際の使い方で得が薄い）。反映確認は `appliedRequestId` + `revision`、拒否理由は `params.json` の `warnings[]`
+3. 未決（B のスコープ）: `preserveClock` の既定は オプトイン（推奨・t 駆動スケッチの驚き最小）か、watch 時デフォルト ON か
+4. **確定: スケッチディレクトリ単位で固定・v1 はプリセットなし**。名前付きプリセットは実作品（Epic J [#414](https://github.com/shinyaoguri/metaphor/issues/414)）で必要になったら additive に足す
+5. **確定: スケッチ内 `gui.params()` 先行 → cli サイドパネルは後日**
+6. 未決（B のスコープ）: live-viewer.md §A-3（stdin saveState 動詞 + stdout base64）の正式な改訂タイミング（B の実装 PR で同時改訂を想定）
+7. **確定: `string` の `choices` は v1 から入れる**。`params.json` に `choices` が出るので AI に合法値がそのまま伝わり、範囲外は拒否されて `warnings[]` に載る
+
+### D1 の実装で決めた細部（設計叩き台からの差分）
+
+- **`warnings[]` を `params.json` に追加**（叩き台の形式には無かった）。拒否理由（未知の名前・型不一致・`choices` 外）を返す面が無いと、AI は「書いたのに変わらない」を無言で踏む。`frame.json` の `warnings[]` と同じ流儀
+- **`min` / `max` は外部書き込みのみクランプ**し、コードからの代入は素通し（スケッチ作者のコードを驚かせない）
+- **`revision` はプロセス起動時にも 1 つ進む**。宣言そのもの（新しい `@Param`・レンジ変更）が変わり得るため、「内容が変われば revision も変わる」を保つ
+- **`Float` と `Double` はどちらも型タグ `float`**（wire は JSON number のため）

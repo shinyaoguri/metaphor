@@ -57,6 +57,14 @@ here.
 - Observability (Probe / input injection) runtime cost: `MetaphorProbePlugin.swift`,
   `InputInjectionPlugin.swift`, plugin dispatch in `MetaphorRenderer.swift`,
   `MetaphorRenderer.probePlugin` cache used by `Sketch+Probe.swift`.
+- `@Param` not persisting / external writes ignored: `Parameters/ParameterPlugin.swift`
+  (mtime polling of `set-request.json`, debounced write of `params.json`),
+  `Parameters/ParameterStore.swift` (Mirror discovery, type/range/choices checks),
+  `Parameters/ParamValue.swift` (JSON ⇄ typed value). Rejected writes are reported in
+  `params.json`'s `warnings[]`; `METAPHOR_DEBUG=1` adds stderr diagnostics.
+  Note that `JSONSerialization` returns numbers and booleans alike as `NSNumber`,
+  and Swift's `is Bool` is true for the numbers 0 and 1 — type checks here must use
+  `CFBooleanGetTypeID`, or `[1, 0.5, 0.25, 1]` silently stops being a color.
 
 ## Invariants
 
@@ -102,6 +110,10 @@ here.
   through the cached `MetaphorRenderer.probePlugin` (no per-call scan). Regression
   guards live in `Tests/metaphorTests/ObservabilityOverheadTests.swift`; keep
   them green when touching plugin dispatch, `probe(...)`, or the probe hot path.
+  `ParameterPlugin` follows the same shape: it is only registered when the sketch
+  declares at least one `@Param`, and its per-frame cost is one `stat()` of
+  `set-request.json` plus a revision comparison; encoding happens on the main
+  thread only when a value changed, disk I/O on a dedicated serial queue.
 
 ## Verification
 

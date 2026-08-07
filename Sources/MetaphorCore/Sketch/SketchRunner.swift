@@ -132,6 +132,16 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
         }
 
+        // `@Param` が 1 つでも宣言されていれば Parameter Store を自動有効化
+        // （素の `swift run` でも永続化が効く = cli 不要の単独価値）。
+        // オプトアウトは METAPHOR_PARAMS=0。Mirror 走査はここ 1 回だけで、
+        // フレームループには現れない。
+        if ParameterPlugin.shouldAutoRegister(
+            sketch: sketch, env: ProcessInfo.processInfo.environment
+        ), renderer.plugin(id: ParameterPlugin.id) == nil {
+            renderer.addPlugin(ParameterPlugin(), sketch: sketch)
+        }
+
         // ヘッドレス（ライブビューア）モードでは stdin 入力注入プラグインを自動登録。
         // 親プロセス（metaphor-cli）が JSON Lines でイベントを送る。
         if isHeadless,

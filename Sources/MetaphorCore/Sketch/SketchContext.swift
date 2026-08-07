@@ -153,6 +153,15 @@ public final class SketchContext {
     /// イミディエイトモードコントロール用のパラメータ GUI インスタンス。
     public let gui = ParameterGUI()
 
+    // MARK: - Parameter Store
+
+    /// `@Param` で宣言されたパラメータのストア（``gui`` の兄弟）。
+    ///
+    /// 人間の GUI と外部（AI エージェント）の `set-request.json` は、どちらも
+    /// このストアを叩く対称なクライアントです。``ParameterPlugin`` が
+    /// `.metaphor/params/` との橋渡し（永続化・外部書込の適用）を担います。
+    public let params = ParameterStore()
+
     // MARK: - Performance HUD
 
     /// パフォーマンス HUD インスタンス。無効の場合は nil。
