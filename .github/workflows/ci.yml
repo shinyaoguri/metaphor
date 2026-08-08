@@ -97,6 +97,13 @@ jobs:
         # リリース時の `changelog.py check` は従来どおり「有無」も見るゲートの
         # まま。ここはその前半分を per-PR に前倒しするだけ（Issue #405）。
         run: python3 scripts/changelog.py lint
+      - name: Test generator scripts
+        # scripts/ 配下の Python 生成器のユニットテスト。llms.txt の中身は
+        # 「生成物が最新か」のチェック（下）では守れない — 生成器が API 面を
+        # 取りこぼしても出力は自己整合したまま緑になるため、フィルタ規則そのもの
+        # を合成シンボルグラフで固定する（Issue #298 / #421）。
+        # ビルド不要なので Xcode / Syphon の手前に置く。
+        run: python3 -m unittest discover -s scripts/tests
       - name: Detect Source changes
         id: source-changed
         run: |
