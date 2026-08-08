@@ -193,7 +193,7 @@ jobs:
       # どう変わったか」が分からず、ローカル再現が必須になってしまうため。
       - name: Upload golden image diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: golden-image-failures
           path: .build/golden-failures/
