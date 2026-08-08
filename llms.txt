@@ -972,7 +972,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class AutoSubsystemManager` -- 登録された ``SketchSubsystem`` 群のライフサイクルと毎フレーム更新を自動で駆動する
 
 - `let pluginID: String`
-- `init(_ subsystems: [any SketchSubsystem], pluginID: String = "org.metaphor.auto-subsystems")` -- - subsystems: 自動駆動するサブシステム群（登録順に更新されます）。
+- `init(_ subsystems: [any SketchSubsystem], pluginID: String = "org.metaphor.auto-subsystems")`
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
 - `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
 - `func onAttach(renderer: MetaphorRenderer)`
@@ -1374,6 +1374,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3)` -- カメラを指定された状態にリセットします。
 - `func update()` -- 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
 
+### `@propertyWrapper final class Param<Value> where Value : ParamRepresentable` -- スケッチのプロパティを **Parameter Store のパラメータとして宣言**する
+
+- `let choices: [String]?` -- `string` の合法値。
+- `let max: Double?` -- 上限（数値型のみ）。
+- `let min: Double?` -- 下限（数値型のみ）。
+- `var projectedValue: Param<Value> { get }` -- `$radius` で宣言情報（レンジ・選択肢・登録名）へアクセスします。
+- `var wrappedValue: Value { get set }`
+- `init(wrappedValue: Value, _ name: String? = nil, min: Double? = nil, max: Double? = nil, choices: [String]? = nil)`
+
 ### `final class ParameterGUI` -- ランタイムでパラメータを調整するための軽量イミディエートモードGUIを提供します。
 
 - `var backgroundColor: Color` -- パネルの背景色
@@ -1608,6 +1617,106 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `typealias Vec3 = SIMD3<Float>` -- `SIMD3<Float>` のエイリアスである3次元ベクトル。
 
+### `extension Bool`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
+### `extension Double`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
+### `extension Float`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+- `static func interpolate(from: Float, to: Float, t: Float) -> Float`
+
+### `extension Int`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
+### `extension MTLClearColor`
+
+- `static let black: MTLClearColor` -- 不透明黒のクリアカラー
+- `static let clear: MTLClearColor` -- 透明のクリアカラー
+- `static let white: MTLClearColor` -- 不透明白のクリアカラー
+
+### `extension SIMD2 where Scalar == Float`
+
+- `var magnitude: Float { get }` -- ベクトルの長さ（大きさ）を返します。
+- `var magnitudeSquared: Float { get }` -- 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+- `func angleBetween(_ other: SIMD2<Float>) -> Float` -- このベクトルと別のベクトルの間の符号付き角度をラジアンで計算します。
+- `func cross(_ other: SIMD2<Float>) -> Float` -- 3D外積のz成分に相当する2D外積を計算します。
+- `func dist(to other: SIMD2<Float>) -> Float` -- 別のベクトルまでのユークリッド距離を計算します。
+- `func dot(_ other: SIMD2<Float>) -> Float` -- 別のベクトルとの内積を計算します。
+- `static func fromAngle(_ angle: Float) -> SIMD2<Float>` -- 指定された角度から単位ベクトルを作成します。
+- `func heading() -> Float` -- 正のx軸から測定したベクトルの角度をラジアンで計算します。
+- `static func interpolate(from: SIMD2<Float>, to: SIMD2<Float>, t: Float) -> SIMD2<Float>`
+- `func lerp(to other: SIMD2<Float>, t: Float) -> SIMD2<Float>` -- 別のベクトルに向かって線形補間を行います。
+- `mutating func limit(_ max: Float)` -- このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+- `func limited(_ max: Float) -> SIMD2<Float>` -- 指定された最大値に大きさをクランプした新しいベクトルを返します。
+- `mutating func normalize()` -- このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+- `func normalized() -> SIMD2<Float>` -- 同じ方向を向いた単位ベクトルを返します。
+- `static func random2D() -> SIMD2<Float>` -- 均一に分布した方向を持つランダムな単位ベクトルを作成します。
+- `mutating func rotate(_ angle: Float)` -- このベクトルをその場で回転します（``rotated(_:)`` の mutating 版）。
+- `func rotated(_ angle: Float) -> SIMD2<Float>` -- 指定された角度で回転した新しいベクトルを返します。
+- `mutating func setMag(_ len: Float)` -- 方向を維持したまま、このベクトルの大きさをその場で設定します
+- `func withMagnitude(_ len: Float) -> SIMD2<Float>` -- 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+
+### `extension SIMD3 where Scalar == Float`
+
+- `var magnitude: Float { get }` -- ベクトルの長さ（大きさ）を返します。
+- `var magnitudeSquared: Float { get }` -- 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+- `func angleBetween(_ other: SIMD3<Float>) -> Float` -- このベクトルと別のベクトルの間の符号なし角度をラジアンで計算します。
+- `func cross(_ other: SIMD3<Float>) -> SIMD3<Float>` -- 別のベクトルとの外積を計算します。
+- `func dist(to other: SIMD3<Float>) -> Float` -- 別のベクトルまでのユークリッド距離を計算します。
+- `func dot(_ other: SIMD3<Float>) -> Float` -- 別のベクトルとの内積を計算します。
+- `static func interpolate(from: SIMD3<Float>, to: SIMD3<Float>, t: Float) -> SIMD3<Float>`
+- `func lerp(to other: SIMD3<Float>, t: Float) -> SIMD3<Float>` -- 別のベクトルに向かって線形補間を行います。
+- `mutating func limit(_ max: Float)` -- このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+- `func limited(_ max: Float) -> SIMD3<Float>` -- 指定された最大値に大きさをクランプした新しいベクトルを返します。
+- `mutating func normalize()` -- このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+- `func normalized() -> SIMD3<Float>` -- 同じ方向を向いた単位ベクトルを返します。
+- `static func random3D() -> SIMD3<Float>` -- 単位球の表面上に均一に分布するランダムな単位ベクトルを作成します。
+- `mutating func setMag(_ len: Float)` -- 方向を維持したまま、このベクトルの大きさをその場で設定します
+- `func withMagnitude(_ len: Float) -> SIMD3<Float>` -- 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+
+### `extension SIMD4 where Scalar == Float`
+
+- `static func interpolate(from: SIMD4<Float>, to: SIMD4<Float>, t: Float) -> SIMD4<Float>`
+
+### `extension simd_float4x4`
+
+- `static let identity: float4x4` -- 単位行列を作成します。
+- `init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>)` -- look-at 方式のビュー行列を作成します。
+- `init(orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float)` -- 正射影行列を作成します。
+- `init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float)` -- 透視投影行列を作成します。
+- `init(rotationX angle: Float)` -- X軸まわりの回転行列を作成します。
+- `init(rotationY angle: Float)` -- Y軸まわりの回転行列を作成します。
+- `init(rotationZ angle: Float)` -- Z軸まわりの回転行列を作成します。
+- `init(scale: SIMD3<Float>)` -- 非均一スケール行列を作成します。
+- `init(scale: Float)` -- 均一スケール行列を作成します。
+- `init(translation: SIMD3<Float>)` -- 3Dベクトルから平行移動行列を作成します。
+
+### `extension String`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
 ## Utility Functions
 
 ### Math
@@ -1727,24 +1836,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## metaphor
 
-### AudioAnalyzer
+### `extension AudioAnalyzer`
 
 - `func onStart()`
 - `func onStop()`
 - `func update(deltaTime: Float)` -- 毎フレームの FFT/ビート解析更新。`deltaTime` は使わない（内部で前回時刻を持つ）。
 
-### Node
+### `extension Node`
 
 - `func syncFromPhysics(_ body: PhysicsBody2D)` -- 2D物理ボディからこのノードの XY 位置を同期します。
 - `func syncToPhysics(_ body: PhysicsBody2D)` -- このノードの XY 位置を2D物理ボディに書き戻します。
 
-### Physics2D
+### `extension Physics2D`
 
 - `func onStart()`
 - `func onStop()`
 - `func update(deltaTime: Float)` -- 物理ステップを進める。`deltaTime` をそのままタイムステップに使う。
 
-### VideoPlayer
+### `extension VideoPlayer`
 
 - `func onStart()`
 - `func onStop()`
@@ -2273,7 +2382,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorSyphon
 
-### MetaphorRenderer
+### `extension MetaphorRenderer`
 
 - `var syphonOutput: SyphonOutput? { get }` -- An optional Syphon output for sharing video between applications.
 - `func startSyphonServer(name: String)` -- Starts a Syphon server under the given name for sharing textures between applications.

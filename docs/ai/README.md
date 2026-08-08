@@ -43,7 +43,8 @@ here.
 - Build/setup failures: `Package.swift`, `Makefile`, `scripts/preflight-check.sh`,
   `scripts/build-syphon.sh`.
 - Missing public API in AI docs: `Makefile` `symbol-graphs`, then
-  `scripts/generate-llms-txt.py`, then regenerate `llms.txt`.
+  `scripts/generate-llms-txt.py` (its inclusion rules are pinned by
+  `scripts/tests/test_generate_llms_txt.py`), then regenerate `llms.txt`.
 - Sketch lifecycle or input bugs: `SketchRunner.swift`, `SketchContext.swift`,
   `InputManager.swift`, `MetaphorRenderer.swift`.
 - 2D drawing bugs: start at the relevant `Sketch+*.swift` wrapper, then

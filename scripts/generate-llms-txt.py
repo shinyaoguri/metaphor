@@ -46,9 +46,16 @@ MEMBER_KINDS = {
     KIND_INIT, KIND_ENUM_CASE, KIND_SUBSCRIPT,
 }
 
-# Extension-file suffixes from system frameworks — always skip
-_SYSTEM_EXTENSION_SUFFIXES = {"@Swift", "@simd", "@Metal", "@CoreGraphics",
-                              "@Foundation", "@CoreMedia", "@Accelerate"}
+# `Module@Other.symbols.json` files hold this library's extensions on types
+# declared elsewhere (Swift stdlib SIMD2/SIMD3, simd, Metal, …). They are NOT
+# skipped: those members exist only because metaphor adds them, so llms.txt is
+# the only place an agent can discover them (#298).
+
+# Attributes are stripped from rendered declarations (mostly concurrency and
+# availability noise). These are kept because they tell a sketch author how to
+# spell the declaration — a property wrapper is written `@Param` at the use
+# site, so dropping the attribute hides the entire point of the type (#421).
+_KEPT_ATTRIBUTES = {"@propertyWrapper"}
 
 # Sketch protocol name (used as the anchor for API-surface detection)
 _SKETCH_TYPE = "Sketch"
@@ -169,6 +176,12 @@ def is_deprecated(symbol: dict) -> bool:
     return False
 
 
+def is_property_wrapper(symbol: dict) -> bool:
+    """Check if a type is declared `@propertyWrapper`."""
+    return any(f["kind"] == "attribute" and f["spelling"] == "@propertyWrapper"
+               for f in symbol.get("declarationFragments", []))
+
+
 def get_declaration(symbol: dict) -> str:
     """Build a clean one-line declaration from declarationFragments."""
     frags = symbol.get("declarationFragments", [])
@@ -179,6 +192,10 @@ def get_declaration(symbol: dict) -> str:
     skip_ws = False
     for f in frags:
         if f["kind"] == "attribute":
+            if f["spelling"] in _KEPT_ATTRIBUTES:
+                parts.append(f["spelling"])
+                skip_ws = False
+                continue
             skip_ws = True
             continue
         if skip_ws and f["kind"] == "text" and f["spelling"].strip() == "":
@@ -216,7 +233,11 @@ def get_doc_summary(symbol: dict) -> str:
         text = line.get("text", "").strip()
         if not text:
             continue
-        if text.startswith("- Parameter") or text.startswith("- Returns"):
+        # Any `- …` line is a DocC list item (`- Parameters:` and its indented
+        # children, `- Returns:`, `- Note:`), never the summary. Symbols
+        # documented with parameter docs but no abstract have no summary at all
+        # — better empty than a stray "- wrappedValue: …" fragment.
+        if text.startswith("-"):
             continue
         return text
     return ""
@@ -254,9 +275,6 @@ def load_symbol_graphs(sg_dir: str) -> dict:
 
     for json_file in sorted(sg_path.glob("*.symbols.json")):
         stem = json_file.stem
-
-        if any(stem.endswith(s) for s in _SYSTEM_EXTENSION_SUFFIXES):
-            continue
 
         with open(json_file) as fh:
             data = json.load(fh)
@@ -355,13 +373,21 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
     seen_sketch_decls: set[str] = set()
     seen_member_decls: dict[str, set[str]] = defaultdict(set)
     seen_top_decls: set[str] = set()
+    extension_blocks: dict[tuple[str, str], dict] = {}
 
     for module_name, mod_data in modules.items():
         for sym in mod_data["symbols"]:
             kind = sym["kind"]["identifier"]
             path = sym.get("pathComponents", [])
 
-            if kind == KIND_EXTENSION or is_deprecated(sym):
+            if kind == KIND_EXTENSION:
+                # Keep one block per extended type as a stand-in declaration for
+                # types this package does not own (back-filled below).
+                if len(path) == 1:
+                    extension_blocks.setdefault((module_name, path[0]), sym)
+                continue
+
+            if is_deprecated(sym):
                 continue
 
             decl = get_declaration(sym)
@@ -418,6 +444,21 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
                     seen_member_decls[type_name].add(decl)
                     target[type_name]["members"].append(sym)
 
+    # --- Back-fill extensions on types declared outside this package ---
+    # `extension SIMD2 where Scalar == Float` produces members whose owning type
+    # symbol lives in the Swift stdlib, so the placeholder created by the member
+    # branch above keeps symbol=None and the whole extension is dropped. Adopting
+    # the extension block as the stand-in declaration keeps that API — which
+    # exists only because metaphor adds it — reachable from llms.txt (#298).
+    for (module_name, type_name), ext_sym in extension_blocks.items():
+        if type_name == _SKETCH_TYPE:
+            continue
+        target = types if module_name == main_module \
+            else submodule_types[module_name]
+        info = target.get(type_name)
+        if info is not None and info.get("symbol") is None:
+            info["symbol"] = ext_sym
+
     # --- Post-processing: determine which types to show / skip / condense ---
     all_sketch_syms = sketch_methods + sketch_properties
     referenced_types = compute_api_referenced_types(all_sketch_syms)
@@ -463,15 +504,23 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
                     referenced_types.add(source_name)
 
     # Filter core types to only API-referenced + always include enums (they
-    # represent mode parameters) and protocols (they define plugin contracts).
+    # represent mode parameters), protocols (they define plugin contracts), and
+    # extensions on foreign types (their members exist nowhere else).
     filtered_types: dict = {}
     for type_name, info in types.items():
         sym = info.get("symbol")
         if not sym:
             continue
         kind = sym["kind"]["identifier"]
-        if kind in {KIND_ENUM, KIND_PROTOCOL}:
-            # Enums and protocols are compact and always useful
+        if kind in {KIND_ENUM, KIND_PROTOCOL, KIND_EXTENSION}:
+            # Enums and protocols are compact and always useful; an extension
+            # here means the extended type is declared outside this package
+            # (back-filled above), so its members appear nowhere else.
+            filtered_types[type_name] = info
+        elif is_property_wrapper(sym):
+            # Property wrappers are spelled at the declaration site (`@Param var
+            # radius: Float`) and so never appear in any Sketch signature — the
+            # reference-based filter below can never reach them (#421).
             filtered_types[type_name] = info
         elif type_name in referenced_types:
             filtered_types[type_name] = info
@@ -558,14 +607,14 @@ def emit_type_section(name: str, info: dict, lines: list,
 
 
 def type_sort_key(item: tuple) -> tuple:
-    """Sort types: protocols → structs → enums → classes → typealias."""
+    """Sort types: protocols → structs → enums → classes → typealias → extensions."""
     name, info = item
     sym = info.get("symbol")
     if not sym:
         return (9, name.lower())
     order = {
         KIND_PROTOCOL: 0, KIND_STRUCT: 1, KIND_ENUM: 2,
-        KIND_CLASS: 3, KIND_TYPEALIAS: 4,
+        KIND_CLASS: 3, KIND_TYPEALIAS: 4, KIND_EXTENSION: 5,
     }
     return (order.get(sym["kind"]["identifier"], 5), name.lower())
 
