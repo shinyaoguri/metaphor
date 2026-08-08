@@ -72,7 +72,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 - **compute・particles・postFX・GIF・orbitControl**: `Sketch+Advanced.swift`
 - **ブリッジ**（audio/video/physics/network/noise/scene/render graph）: `Sketch+AudioBridge.swift`, `Sketch+VideoBridge.swift`, `Sketch+PhysicsBridge.swift`, `Sketch+NetworkBridge.swift`, `Sketch+NoiseBridge.swift`, `Sketch+SceneGraphBridge.swift`, `Sketch+RenderGraphBridge.swift`
 - **Probe（AI）**（probe, MetaphorProbePlugin）: `Sketch+Probe.swift`
-- **Parameter Store**（`@Param`, params, ParameterPlugin）: `Parameters/*.swift`, `Sketch+Params.swift`
+- **Parameter Store**（`@Param`, params, ParameterPlugin, `gui.params()`）: `Parameters/*.swift`, `Sketch+Params.swift`, `UI/ParameterGUI+Params.swift`
 - **スタンドアロン noise()**: `Noise.swift`
 
 ## ドキュメント階層（真実の在処）

@@ -1,7 +1,7 @@
 {
-  "count": 278,
+  "count": 279,
   "statusCounts": {
-    "supported": 258,
+    "supported": 259,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -2644,6 +2644,20 @@
         "interaction",
         "live",
         "oscloopback",
+        "samples"
+      ]
+    },
+    {
+      "title": "ParameterPanel",
+      "path": "Examples/Samples/ParameterPanel",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "parameterpanel",
         "samples"
       ]
     },

@@ -69,6 +69,13 @@ Supported types: `Float` / `Double` / `Int` / `Bool` / `String` (with optional
 `choices`) / `Color` / `Vec2` / `Vec3`. Names default to the property name; pass
 `@Param("myName")` to override. Opt out with `METAPHOR_PARAMS=0`.
 
+Call `gui.params()` inside `draw()` to get a control panel for every declared
+parameter (sliders, toggle, color picker, and a button that cycles `choices`).
+Dragging a widget writes through the same store, so the value is persisted and
+restored just like an external write. `gui.param("radius")` places a single
+parameter when laying the panel out by hand. Declare `min` / `max` on numbers —
+otherwise the slider range is guessed from the first displayed value.
+
 For AI assistants: to retune a running sketch, write
 `.metaphor/params/set-request.json` atomically (`.tmp` → rename) with a **new**
 `id` each time — `{"id": "<unique>", "values": {"radius": 120}}` — then read back

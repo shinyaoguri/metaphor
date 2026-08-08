@@ -435,6 +435,37 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(x: Float, y: Float, diameter: Float, color: Color = .white)` -- Creates a circle instance from scalar coordinates, diameter, and ``Color``.
 - `init(x: Float, y: Float, diameter: Float, color: SIMD4<Float>)` -- Creates a circle instance from scalar coordinates, diameter, and SIMD color.
 
+### `struct Color` -- 浮動小数点成分を持つ RGBA カラー。
+
+- `var a: Float` -- アルファ（不透明度）成分。0.0 から 1.0 の範囲。
+- `var b: Float` -- 青成分。0.0 から 1.0 の範囲。
+- `static let black: Color` -- 純粋な黒。
+- `static let blue: Color` -- 純粋な青。
+- `static let clear: Color` -- 完全に透明な黒。
+- `var clearColor: MTLClearColor { get }` -- Metal レンダーパスで使用するための `MTLClearColor` としてカラーを返します。
+- `static let cyan: Color` -- 純粋なシアン。
+- `var g: Float` -- 緑成分。0.0 から 1.0 の範囲。
+- `static let green: Color` -- 純粋な緑。
+- `static let magenta: Color` -- 純粋なマゼンタ。
+- `static let orange: Color` -- オレンジ。
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `var r: Float` -- 赤成分。0.0 から 1.0 の範囲。
+- `static let red: Color` -- 純粋な赤。
+- `var simd: SIMD4<Float> { get }` -- カラーを (r, g, b, a) 順の `SIMD4<Float>` として返します。
+- `static let white: Color` -- 純粋な白。
+- `static let yellow: Color` -- 純粋な黄。
+- `init(_ simd: SIMD4<Float>)` -- (r, g, b, a) として解釈される `SIMD4<Float>` ベクトルからカラーを作成します。
+- `init(gray: Float, alpha: Float = 1.0)` -- グレースケールカラーを作成します。0.0 が黒、1.0 が白。
+- `init(hex: UInt32)` -- 0xRRGGBB または 0xAARRGGBB 形式の整数16進数値からカラーを作成します。
+- `init?(hex: String)` -- "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+- `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- 色相、彩度、明度の成分からカラーを作成します。
+- `init?(paramValue: ParamValue)`
+- `init(r: Float, g: Float, b: Float, a: Float = 1.0)` -- 0.0 から 1.0 の範囲の RGB 成分からカラーを作成します。
+- `static func interpolate(from: Color, to: Color, t: Float) -> Color`
+- `func lerp(to other: Color, t: Float) -> Color` -- このカラーと別のカラーの間を線形補間します。
+- `func withAlpha(_ alpha: Float) -> Color` -- 指定されたアルファ値を持つ新しいカラーを返します。
+
 ### `struct DrawingStyle` -- Canvas2D と Canvas3D で共有される描画スタイルプロパティを保持します。
 
 - `var colorModeConfig: ColorModeConfig` -- カラーモード設定。
@@ -968,6 +999,48 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(radius: Float = 5.0)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
+### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
+
+- （ほか 85 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var colorModeConfig: ColorModeConfig`
+- `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
+- `var fillColor: SIMD4<Float>`
+- `var hasFill: Bool`
+- `var hasStroke: Bool`
+- `let height: Float` -- キャンバスの高さ（ピクセル単位）。
+- `var strokeColor: SIMD4<Float>`
+- `let width: Float` -- キャンバスの幅（ピクセル単位）。
+- `init(device: any MTLDevice, shaderLibrary: ShaderLibrary, depthStencilCache: DepthStencilCache, width: Float, height: Float, sampleCount: Int = 1) throws` -- 個別のコンポーネントからキャンバスを生成します。
+- `convenience init(renderer: MetaphorRenderer) throws` -- ``MetaphorRenderer`` インスタンスからキャンバスを生成します。
+- `func begin(encoder: (any MTLRenderCommandEncoder)?, bufferIndex: Int = 0)` -- 指定のレンダーコマンドエンコーダーで新しい描画フレームを開始します。
+- `func clearTextCache()` -- テキスト描画キャッシュ（テクスチャとグリフアトラス）をすべて破棄します。
+- `func end()` -- 蓄積されたすべての頂点をフラッシュし、エンコーダーを解放してフレームを終了します。
+- `func flush()` -- カラー、テクスチャ、インスタンスを含むすべての保留中の描画バッチをフラッシュします。
+- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- モデル座標を現在の 2D 変換でスクリーン座標へ変換します。
+- `func syncStyle(_ style: DrawingStyle)`
+
+### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
+
+- （ほか 62 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var colorModeConfig: ColorModeConfig`
+- `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
+- `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
+- `var currentViewProjection: float4x4 { get }` -- 現在のビュー投影行列を返します。
+- `var fillColor: SIMD4<Float>`
+- `var hasFill: Bool`
+- `var hasStroke: Bool`
+- `let height: Float` -- 3D キャンバスの高さ（ポイント単位）。
+- `var strokeColor: SIMD4<Float>`
+- `let width: Float` -- 3D キャンバスの幅（ポイント単位）。
+- `init(device: any MTLDevice, shaderLibrary: ShaderLibrary, depthStencilCache: DepthStencilCache, width: Float, height: Float, sampleCount: Int = 1) throws` -- 明示的な Metal リソースと寸法でキャンバスを生成します。
+- `convenience init(renderer: MetaphorRenderer) throws` -- レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
+- `func clearCustomPipelineCache()` -- カスタムパイプラインキャッシュをクリアします。通常、シェーダーホットリロード後に呼び出します。
+- `func clearMeshCache()` -- メッシュキャッシュをクリアし、キャッシュ済みの GPU メッシュバッファをすべて解放します。
+- `func popState()` -- 直前に保存した状態を復元します。
+- `func pushState()` -- 変換、スタイル、マテリアルを含む全状態を保存します。
+- `func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- モデル座標を現在のモデル変換・カメラ・投影でスクリーン座標へ変換します。
+- `func syncStyle(_ style: DrawingStyle)`
+
 ### `final class CaptureDevice` -- カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
 
 - `var actualHeight: Int? { get }` -- 実際のキャプチャ高さ（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
@@ -1322,6 +1395,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func colorPicker(_ label: String, _ value: inout Color, canvas: Canvas2D, input: InputManager)` -- R/G/B スライダーで構成されるシンプルなカラーピッカーを描画します。
 - `func drawBackground(canvas: Canvas2D)` -- パネル背景を描画します（`begin()` の後、ウィジェットの前に呼び出し）。
 - `func end() -> (Float, Float, Float, Float)` -- 現在のGUIレイアウトフレームを終了します（`draw()` の末尾で呼び出し）。
+- `func param(_ name: String)` -- 名前で 1 つのパラメータを描画します（型に応じたウィジェットが選ばれます）。
+- `func param(_ name: String, store: ParameterStore, canvas: Canvas2D, input: InputManager)` -- 描画先とストアを明示して 1 つのパラメータを描画します。
+- `func params() -> (Float, Float, Float, Float)` -- 宣言された全ての `@Param` を、宣言順に自動レイアウトして描画します。
+- `func params(store: ParameterStore, canvas: Canvas2D, input: InputManager) -> (Float, Float, Float, Float)` -- 描画先とストアを明示して自動パネルを描画します（テスト・自前の GUI インスタンス向け）。
 - `func slider(_ label: String, _ value: inout Float, min minVal: Float = 0, max maxVal: Float = 1, canvas: Canvas2D, input: InputManager)` -- スライダーウィジェットを描画し、バインドされた値を更新します。
 - `func toggle(_ label: String, _ value: inout Bool, canvas: Canvas2D, input: InputManager)` -- トグルウィジェットを描画し、バインドされた値を更新します。
 - `func updateInput(input: InputManager)` -- 内部入力トラッキング状態を更新します（各フレームの末尾で呼び出し）。
@@ -1411,6 +1488,34 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func registerFromFile(path: String, as key: String) throws` -- ディスクから MSL ソースファイルを読み込み、登録します。
 - `func reload(key: String, source: String) throws` -- MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
 - `func reloadFromFile(key: String, path: String) throws` -- ディスク上のファイルからシェーダーをリロードし、既存ライブラリを置換します。
+
+### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
+
+- （ほか 210 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
+- `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
+- `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。
+- `var deltaTime: Float` -- 前フレームからの経過時間（秒単位）。
+- `var drawingStyle: DrawingStyle { get set }` -- 現在の共有描画スタイルを返します。
+- `var encoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダー。フレーム中のみ有効。
+- `var frameCount: Int` -- これまでにレンダリングされたフレーム数。
+- `let gifExporter: GIFExporter` -- GIF エクスポーターインスタンス。
+- `let gui: ParameterGUI` -- イミディエイトモードコントロール用のパラメータ GUI インスタンス。
+- `var height: Float { get }` -- キャンバスの高さ（ピクセル単位）。
+- `let input: InputManager` -- マウスとキーボードの状態を管理する入力マネージャ。
+- `var isLooping: Bool { get }` -- 描画ループが現在実行中かどうか。
+- `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
+- `let orbitCamera: OrbitCamera` -- オービットカメラインスタンス。
+- `let params: ParameterStore` -- `@Param` で宣言されたパラメータのストア（``gui`` の兄弟）。
+- `let renderer: MetaphorRenderer` -- 基盤のレンダラー（上級者向け）。
+- `let resourceLoader: ResourceLoader` -- バックグラウンドでの画像/モデル読み込み用の非同期リソースローダー。
+- `var time: Float` -- スケッチ開始からの経過時間（秒単位）。
+- `let tweenManager: TweenManager` -- 毎フレーム登録済みトゥイーンを自動更新するトゥイーンマネージャ。
+- `var width: Float { get }` -- キャンバスの幅（ピクセル単位）。
+- `func addCleanupHandler(_ handler: () -> Void)` -- クリーンアップハンドラを登録します。
+- `func performCleanup()` -- 登録されたクリーンアップハンドラを実行し、リストをクリアします。
+- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- 2D モデル座標のスクリーン座標を返します。
+- `func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- 3D モデル座標のスクリーン座標を返します。
 
 ### `final class SketchWindow` -- マルチウィンドウスケッチ用のセカンダリウィンドウ。
 

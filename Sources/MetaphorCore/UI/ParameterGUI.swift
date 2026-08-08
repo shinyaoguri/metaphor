@@ -2,6 +2,19 @@ import simd
 
 /// ランタイムでパラメータを調整するための軽量イミディエートモードGUIを提供します。
 ///
+/// `@Param` で宣言したパラメータなら ``params()`` 1 行で全部のパネルが出ます
+/// （値は ``ParameterStore`` が唯一の真実で、ドラッグした値はそのまま永続化される）:
+///
+/// ```swift
+/// @Param(min: 10, max: 200) var radius: Float = 50
+///
+/// func draw() {
+///     gui.params()
+///     circle(width / 2, height / 2, radius)
+/// }
+/// ```
+///
+/// 以下は宣言なしで手元の変数を直接束縛するイミディエートモードの使い方です。
 /// Canvas2D プリミティブを使用してレンダリングします。`draw()` 内で毎フレームウィジェットメソッドを呼び出してください。
 /// ```swift
 /// var radius: Float = 50
@@ -53,16 +66,32 @@ public final class ParameterGUI {
 
     // MARK: - Internal State
 
+    // 以下はレイアウト状態。`gui.params()`（``ParameterGUI+Params.swift``）が同じ
+    // レイアウトの上に自動パネルを積むため、モジュール内公開にしています。
+
     /// 現在ドラッグ中のスライダーID
-    private var activeSliderID: String?
+    var activeSliderID: String?
     /// フレーム内のウィジェット通し番号（同一ラベルの ID 衝突を防ぐ）
-    private var widgetCounter: Int = 0
+    var widgetCounter: Int = 0
     /// 次のウィジェットの累積Y位置
-    private var currentY: Float = 0
+    var currentY: Float = 0
     /// レイアウト後の計算済みパネル幅
-    private var panelWidth: Float = 0
+    var panelWidth: Float = 0
     /// レイアウト後の計算済みパネル高さ
-    private var panelHeight: Float = 0
+    var panelHeight: Float = 0
+
+    /// `min` / `max` を宣言しなかったパラメータに割り当てた自動レンジ。
+    ///
+    /// 初回表示時の値から 1 度だけ決めて固定します（毎フレーム再計算すると、
+    /// ドラッグでレンジ自体が動いてスライダーが逃げるため）。
+    var autoRanges: [String: (min: Float, max: Float)] = [:]
+
+    /// `gui.params()` が描画・入力・ストアを解決するための接続先。
+    ///
+    /// ``SketchContext`` が自身の初期化時に設定します（弱参照。GUI → コンテキストの
+    /// 逆流は張らない）。ユーザーが自前で作った ``ParameterGUI`` では `nil` のままで、
+    /// その場合 `params()` は明示引数の overload を使う必要があります。
+    weak var boundContext: SketchContext?
 
     /// 新しい ParameterGUI インスタンスを作成します。
     public init() {}
@@ -103,6 +132,20 @@ public final class ParameterGUI {
         canvas: Canvas2D,
         input: InputManager
     ) {
+        slider(label, &value, min: minVal, max: maxVal, canvas: canvas, input: input, valueText: nil)
+    }
+
+    /// スライダー本体。`valueText` を渡すと右肩の値表示を差し替えます
+    /// （`int` パラメータを `4.00` ではなく `4` と出すため）。
+    func slider(
+        _ label: String,
+        _ value: inout Float,
+        min minVal: Float,
+        max maxVal: Float,
+        canvas: Canvas2D,
+        input: InputManager,
+        valueText: String?
+    ) {
         guard isVisible else { return }
 
         let sliderX = x + padding
@@ -112,7 +155,7 @@ public final class ParameterGUI {
 
         // ラベル＋値テキスト
         drawLabel(label, at: sliderX, y: labelY, canvas: canvas)
-        let valStr = String(format: "%.2f", value)
+        let valStr = valueText ?? String(format: "%.2f", value)
         drawValue(valStr, at: sliderX + widgetWidth, y: labelY, canvas: canvas)
 
         // トラック背景
@@ -285,10 +328,10 @@ public final class ParameterGUI {
     // MARK: - Private
 
     /// 前フレームでマウスが押されていたかどうか
-    private var wasMouseDown: Bool = false
+    var wasMouseDown: Bool = false
 
     /// 指定位置に左揃えラベルを描画
-    private func drawLabel(_ text: String, at x: Float, y: Float, canvas: Canvas2D) {
+    func drawLabel(_ text: String, at x: Float, y: Float, canvas: Canvas2D) {
         canvas.push()
         canvas.fill(labelColor)
         canvas.noStroke()
@@ -299,7 +342,7 @@ public final class ParameterGUI {
     }
 
     /// 指定位置に右揃え値文字列を描画
-    private func drawValue(_ text: String, at rightX: Float, y: Float, canvas: Canvas2D) {
+    func drawValue(_ text: String, at rightX: Float, y: Float, canvas: Canvas2D) {
         canvas.push()
         canvas.fill(valueColor)
         canvas.noStroke()

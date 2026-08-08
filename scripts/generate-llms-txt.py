@@ -397,6 +397,12 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
                 target = types if is_main else submodule_types[module_name]
                 if type_name not in target:
                     target[type_name] = {"symbol": sym, "members": []}
+                elif target[type_name]["symbol"] is None:
+                    # Members can arrive before the type itself (e.g. the type is
+                    # declared in one file and extended in another). Without this,
+                    # the placeholder created by the member branch below would keep
+                    # symbol=None and the whole type would be dropped from llms.txt.
+                    target[type_name]["symbol"] = sym
                 continue
 
             # --- Type members ---
