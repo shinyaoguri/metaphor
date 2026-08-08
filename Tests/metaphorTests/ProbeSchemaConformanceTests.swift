@@ -77,6 +77,14 @@ struct ProbeSchemaConformanceTests {
                 memoryMB: 412.3,
                 cpuPercent: 87.5,
                 thermalState: "nominal"
+            ),
+            params: .init(
+                revision: 7,
+                values: [
+                    "radius": .float(120.0),
+                    "showGrid": .bool(false),
+                    "tint": .color(1, 1, 1, 1),
+                ]
             )
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame.json"), path: "frame")
@@ -84,7 +92,7 @@ struct ProbeSchemaConformanceTests {
 
     @Test("frame.json (minimal) は optional 省略時の構造と一致する")
     func frameMinimalMatchesExample() throws {
-        // label / sourceStamp / stats / performance を nil にすると
+        // label / sourceStamp / stats / performance / params を nil にすると
         // JSONEncoder はキー自体を省略する。
         let metadata = ProbeFrameMetadata(
             schemaVersion: 4,
@@ -98,7 +106,8 @@ struct ProbeSchemaConformanceTests {
             customTypes: [:],
             warnings: ["frame appears nearly blank (variance=0.000001)"],
             stats: nil,
-            performance: nil
+            performance: nil,
+            params: nil
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame-minimal.json"), path: "frame-minimal")
     }
@@ -119,7 +128,8 @@ struct ProbeSchemaConformanceTests {
             customTypes: [:],
             warnings: ["failed to allocate staging texture; frame.png was not written"],
             stats: nil,
-            performance: nil
+            performance: nil,
+            params: nil
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame-failure.json"), path: "frame-failure")
     }
