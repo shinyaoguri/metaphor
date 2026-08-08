@@ -15,6 +15,9 @@ import Foundation
 ///
 /// 値の読み書きは宣言したプロパティを直接使えば十分で、``params`` は
 /// 名前でのアクセス（GUI・デバッグ・ツール実装）のための入口です。
+///
+/// 人間が触るパネルが要るときは `draw()` で ``ParameterGUI/params()`` を呼びます
+/// （`gui.params()` の 1 行。GUI と外部エージェントは同じストアの対称なクライアント）。
 @MainActor
 public extension Sketch {
     /// `@Param` で宣言されたパラメータのストア。

@@ -277,6 +277,8 @@ public final class SketchContext {
         self.width = canvas.width
         self.height = canvas.height
         wireDrawSeqProviders()
+        // gui.params() が描画先・入力・ストアを自力で解決できるようにする（弱参照）。
+        gui.boundContext = self
     }
 
     // MARK: - Shape Recording Target (#150)

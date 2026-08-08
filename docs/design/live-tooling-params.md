@@ -1,6 +1,6 @@
 # 設計: ライブツーリング基盤（Parameter Store / 状態保持リロード / インスペクタ / 往復レイテンシ）
 
-- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/` は実装済み**（2026-08-07）。B / C / D と A の残り（D2 GUI 自動パネル / D3 `frame.json` の `params` 節 / D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
+- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/`（2026-08-07）と D2 = `gui.params()` 自動パネル（2026-08-08）は実装済み**。B / C / D と A の残り（D3 `frame.json` の `params` 節 / D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
 - **親**: [roadmap-processing-unity.md](roadmap-processing-unity.md) の Epic C / D / H
 - **作成**: 2026-07-30
 
@@ -42,8 +42,16 @@
 ```
 
 - `gui.params()` は ParameterGUI の新メソッド。既存 slider/toggle/colorPicker ウィジェットを store-backed で再利用
-- 既存の即時モード `gui.slider("x", &x, …)` は不変。名前だけの overload `gui.slider("radius")` で store に束縛
+- 既存の即時モード `gui.slider("x", &x, …)` は不変
 - v1 型セット: `float` / `int` / `bool` / `color` / `vec2` / `vec3` / `string`（`choices` 付き）— `ProbeValue` のタグ体系と整合
+
+**D2 実装で確定した点**（2026-08-08）:
+
+- 手動レイアウト用の入口は、型別の名前 overload（`gui.slider("radius")`）ではなく**型ディスパッチする 1 つの `gui.param("radius")`** にした。宣言側で型は決まっているのに呼び出し側で型別の名前を選ばせるのは、名前の取り違え（`gui.slider("showGrid")`）が実行時診断でしか出ない分だけ損
+- 型 → ウィジェット: `float`/`int` = スライダー（`int` は値表示を整数に）、`bool` = トグル、`color` = RGB ピッカー、`vec2`/`vec3` = 成分スライダー、`string` = `choices` があればクリックで回る候補ボタン / 無ければ読み取り専用表示（自由入力ウィジェットは非採用。外部からの `set-request` では変更できる）
+- `min`/`max` を宣言しなかった数値は、**初回表示時の値から作った自動レンジ（`1/2/5 × 10^n` 刻み）を固定**して使う。毎フレーム測り直すとドラッグ中にレンジが動いてスライダーが逃げる
+- パネル背景は行高テーブル（`rowHeight(for:)`）から**先に全高を確定してから**描く。既存の `drawBackground()` は `begin()` 直後に呼ぶと高さが 0 になり、1 フレーム目のキャプチャで背景が出なかった
+- GUI は値を持たず、変化したときだけ `store.setValue` を通す（無操作フレームで `revision` が進むと `params.json` を毎フレーム書き直してしまう）
 
 ### ファイル形式（案）
 

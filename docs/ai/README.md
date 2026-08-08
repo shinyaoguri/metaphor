@@ -65,6 +65,15 @@ here.
   Note that `JSONSerialization` returns numbers and booleans alike as `NSNumber`,
   and Swift's `is Bool` is true for the numbers 0 and 1 — type checks here must use
   `CFBooleanGetTypeID`, or `[1, 0.5, 0.25, 1]` silently stops being a color.
+- `gui.params()` panel misplaced / a widget overlapping the next one:
+  `UI/ParameterGUI+Params.swift`. The panel background is drawn *before* the
+  widgets from `rowHeight(for:)`, so that single-frame captures are correct; that
+  one table is the layout canon and every row is snapped to it. A widget whose
+  drawing advances `currentY` differently from the table will overlap — the
+  "layout table matches widgets" test in `ParameterGUITests.swift` guards this.
+  The GUI never stores values: it reads `ParameterStore` and writes back through
+  `setValue` only when a value actually changed (otherwise `revision` would climb
+  every frame and `params.json` would be rewritten forever).
 
 ## Invariants
 
