@@ -1,6 +1,6 @@
 # 設計: ライブツーリング基盤（Parameter Store / 状態保持リロード / インスペクタ / 往復レイテンシ）
 
-- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/`（2026-08-07）と D2 = `gui.params()` 自動パネル（2026-08-08）は実装済み**。B / C / D と A の残り（D3 `frame.json` の `params` 節 / D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
+- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/`（2026-08-07）/ D2 = `gui.params()` 自動パネル / D3 = `frame.json` の `params` 節（いずれも 2026-08-08）は実装済み**。B / C / D と A の残り（D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
 - **親**: [roadmap-processing-unity.md](roadmap-processing-unity.md) の Epic C / D / H
 - **作成**: 2026-07-30
 
@@ -72,6 +72,12 @@
 ```
 
 さらに `frame.json` に additive な `params: {revision, values{…}}` 節を追加（`performance` と同じ additive ルール。1 回の snapshot で「画像 + それを生んだパラメータ」が揃い、`sourceStamp` の来歴と合成できる）。
+
+**D3 実装で確定した点**（2026-08-08・Issue #424）:
+
+- `frame.json` 側は**値のスナップショットに徹する**（型・レンジ・`choices` の正典は `params.json`）。フレームごとに宣言情報を繰り返しても consumer の判断は変わらず、wire だけ太る
+- `performance` と違い**連続キャプチャの各フレームにも載せる**。`params` はメモリ内の読み取りだけで syscall が無く、キャプチャ中にパラメータを掃引したときの識別（どのフレームがどの `revision` か）にそのまま効く
+- `@Param` ゼロのスケッチと失敗応答ではキー省略（`performance?` と同じ「採れないものは書かない」規約）
 
 ### 分担・契約・規模
 

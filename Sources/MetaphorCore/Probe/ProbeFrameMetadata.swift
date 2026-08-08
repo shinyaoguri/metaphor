@@ -52,6 +52,12 @@ struct ProbeFrameMetadata: Encodable {
     /// （`sequence/frame.NNNN.json`）と失敗応答では省略する（nil）。
     let performance: Performance?
 
+    /// このフレームを生んだ `@Param` の値（schemaVersion 4 のまま additive 追加、Issue #424）。
+    /// 画像とパラメータが 1 回のスナップショットで揃うため、AI は「この絵はどの値の
+    /// ときのものか」を別ファイルの読み取りタイミングに賭けずに言える。
+    /// `@Param` が 1 つも宣言されていないスケッチでは省略する（nil）。
+    let params: Params?
+
     struct Size: Encodable {
         let width: Int
         let height: Int
@@ -86,6 +92,19 @@ struct ProbeFrameMetadata: Encodable {
             let mean: Double
             let max: Double
         }
+    }
+
+    /// このフレームを生んだ Parameter Store のスナップショット。
+    ///
+    /// 型・レンジ・`choices` の正典は `.metaphor/params/params.json`（契約点 7）のままで、
+    /// ここは**値のスナップショット**に徹します（wire を小さく保つ）。
+    struct Params: Encodable {
+        /// ストアの `revision`（値が変わるたびに単調増加）。consumer は自分が書いた
+        /// set-request の反映後のフレームかを、画像とセットで判定できる。
+        let revision: Int
+
+        /// パラメータ名 → 現在値（型タグ無しの裸の JSON。`params.json` と同じ表現）。
+        let values: [String: ParamValue]
     }
 
     /// 32x32 グリッドサンプルから 1 パスで計算する画像統計。

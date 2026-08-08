@@ -158,6 +158,20 @@ public final class ParameterStore {
         )
     }
 
+    /// 名前 → 現在値の辞書（`frame.json` の `params` 節用、Issue #424）。
+    ///
+    /// 宣言情報（型・レンジ・`choices`）は含めません。それらの正典は `params.json` で、
+    /// フレームごとに繰り返す価値がないためです。ファイル I/O もエンコードも伴わない
+    /// メモリ内の読み取りだけなので、連続キャプチャの各フレームでも呼べます。
+    func valuesSnapshot() -> [String: ParamValue] {
+        var snapshot: [String: ParamValue] = [:]
+        snapshot.reserveCapacity(names.count)
+        for name in names {
+            snapshot[name] = entries[name]?.currentParamValue
+        }
+        return snapshot
+    }
+
     /// 永続化された値を適用します（名前 + 型が一致するものだけ採用）。
     ///
     /// 起動時に 1 度だけ呼ばれ、`setup()` / `draw()` は最初から復元値を見ます。

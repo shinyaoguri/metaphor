@@ -183,7 +183,8 @@ enum ProbeWriter {
             customTypes: metadata.customTypes,
             warnings: metadata.warnings + analysis.warnings,
             stats: analysis.stats,
-            performance: metadata.performance
+            performance: metadata.performance,
+            params: metadata.params
         )
 
         writeJSON(enriched, to: dirURL, baseName: baseName)

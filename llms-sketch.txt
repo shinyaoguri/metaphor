@@ -83,6 +83,10 @@ For AI assistants: to retune a running sketch, write
 explained in `warnings`). That round trip takes one frame; **edit code only for
 structural changes**, not for tuning numbers.
 
+A Probe snapshot carries the values that produced it: `frame.json` has
+`params{revision, values}` alongside the image, so you never have to guess whether
+`params.json` was read before or after the frame you are looking at.
+
 ## Common Requests
 
 ### 2D Generative Motion
