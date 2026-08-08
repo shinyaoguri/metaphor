@@ -76,12 +76,14 @@ restored just like an external write. `gui.param("radius")` places a single
 parameter when laying the panel out by hand. Declare `min` / `max` on numbers —
 otherwise the slider range is guessed from the first displayed value.
 
-For AI assistants: to retune a running sketch, write
-`.metaphor/params/set-request.json` atomically (`.tmp` → rename) with a **new**
-`id` each time — `{"id": "<unique>", "values": {"radius": 120}}` — then read back
-`.metaphor/params/params.json` and check `appliedRequestId` (rejected values are
-explained in `warnings`). That round trip takes one frame; **edit code only for
-structural changes**, not for tuning numbers.
+For AI assistants: to retune a running sketch, call the `params` MCP tool to see
+what is tunable and `set_param` to change values (`metaphor mcp`; works while a
+human has the sketch open in `metaphor watch` too). Without MCP, do the same over
+files: write `.metaphor/params/set-request.json` atomically (`.tmp` → rename) with
+a **new** `id` each time — `{"id": "<unique>", "values": {"radius": 120}}` — then
+read back `.metaphor/params/params.json` and check `appliedRequestId` (rejected
+values are explained in `warnings`). Either way the round trip takes one frame;
+**edit code only for structural changes**, not for tuning numbers.
 
 A Probe snapshot carries the values that produced it: `frame.json` has
 `params{revision, values}` alongside the image, so you never have to guess whether
