@@ -1373,8 +1373,7 @@ struct Canvas3DDynamicMeshUVTests {
         // サンプルしてしまう。赤一色のテクスチャ × 緑の stroke なら
         // 貼り直しに失敗した線は黒（赤 × 緑）になり、緑画素が消える
         guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            // 塗りを消してワイヤーだけにする（dynamicMesh の stroke は深度バイアスを
-            // 掛けないため、fill があると線が塗りに負けて見えない・#436）
+            // 塗りを消してワイヤーだけにし、テクスチャ経路からの貼り直しだけを見る
             canvas3D.noFill()
             canvas3D.stroke(0, 255, 0)
             canvas3D.texture(img)
@@ -1424,5 +1423,80 @@ struct Canvas3DDynamicMeshUVTests {
 
         #expect(countWhite(pixels, texW, texH) > 100,
                 "clear() must drop the UV declaration and fall back to the plain fill path")
+    }
+}
+
+// MARK: - DynamicMesh の stroke（#436）
+
+@Suite("Canvas3D DynamicMesh Stroke", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Canvas3DDynamicMeshStrokeTests {
+
+    /// 画面中央の quad を組んだ ``DynamicMesh``。`color` を渡すと頂点カラーを付けます。
+    private func quadMesh(device: MTLDevice, w: Float, h: Float, size: Float,
+                          color: SIMD4<Float>? = nil) -> DynamicMesh {
+        let cx = w / 2, cy = h / 2, s = size / 2
+        let mesh = DynamicMesh(device: device)
+        mesh.addNormal(SIMD3(0, 0, 1))
+        if let color { mesh.addColor(color) }
+        mesh.addVertex(cx - s, cy - s, 0)
+        mesh.addVertex(cx + s, cy - s, 0)
+        mesh.addVertex(cx + s, cy + s, 0)
+        mesh.addVertex(cx - s, cy + s, 0)
+        mesh.addTriangle(0, 1, 2)
+        mesh.addTriangle(0, 2, 3)
+        return mesh
+    }
+
+    private func countRedGreenBlue(_ pixels: [UInt8], _ texW: Int, _ texH: Int)
+        -> (red: Int, green: Int, blue: Int) {
+        var red = 0, green = 0, blue = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                let b = pixels[i], g = pixels[i + 1], r = pixels[i + 2]
+                if r > 128 && g < 96 && b < 96 { red += 1 }
+                if g > 128 && r < 96 && b < 96 { green += 1 }
+                if b > 128 && r < 96 && g < 96 { blue += 1 }
+            }
+        }
+        return (red, green, blue)
+    }
+
+    @Test("stroke on a dynamic mesh uses the stroke color, not the vertex color (#436)")
+    func strokeColorIgnoresVertexColor() throws {
+        let device = MetalTestHelper.device!
+
+        // 頂点カラー赤 × stroke 緑。`wirePipelineState` を通らないと
+        // フラグメントは `in.color * uniforms.color` = 黒になり、緑が 1 画素も残らない
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noFill()
+            canvas3D.stroke(0, 255, 0)
+            canvas3D.dynamicMesh(quadMesh(device: device, w: w, h: h,
+                                          size: min(w, h) * 0.6,
+                                          color: SIMD4(1, 0, 0, 1)))
+        }) else { return }
+
+        let scan = countRedGreenBlue(pixels, texW, texH)
+        #expect(scan.green > 50,
+                "Wireframe must be drawn in the stroke color (green=\(scan.green))")
+    }
+
+    @Test("stroke stays visible over the fill of the same dynamic mesh (#436)")
+    func strokeVisibleOverOwnFill() throws {
+        let device = MetalTestHelper.device!
+
+        // fill と stroke は同一ジオメトリを 2 パスで描く。深度バイアスを掛けないと
+        // 線は深度比較 `.less` で塗りに負けて 1 本も残らない（#429 と同じ症状）
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.fill(0, 0, 255)
+            canvas3D.stroke(255, 0, 0)
+            canvas3D.dynamicMesh(quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6))
+        }) else { return }
+
+        let scan = countRedGreenBlue(pixels, texW, texH)
+        #expect(scan.blue > 100, "Fill must render (blue=\(scan.blue))")
+        #expect(scan.red > 50,
+                "Stroke must be visible over the fill of the same mesh (red=\(scan.red))")
     }
 }

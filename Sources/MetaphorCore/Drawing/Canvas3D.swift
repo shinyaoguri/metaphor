@@ -835,12 +835,11 @@ public final class Canvas3D: CanvasStyle {
         if hasStroke {
             encoder.setTriangleFillMode(.lines)
 
-            // fill でテクスチャ経路に入っていた場合、線は UV なしの頂点列と
-            // 通常パイプラインへ貼り直す（positionNormalUV のまま線を描かない）
-            if isTextured {
-                encoder.setRenderPipelineState(pipelineState)
-                encoder.setVertexBuffer(vb, offset: 0, index: 0)
-            }
+            // stroke は頂点カラーを無視して stroke 色だけで描く（#429 / #436）。
+            // wirePipelineState は positionNormalColor なので、fill でテクスチャ経路
+            // （positionNormalUV）に入っていた場合も UV なしの頂点列へ貼り直す
+            encoder.setRenderPipelineState(wirePipelineState)
+            encoder.setVertexBuffer(vb, offset: 0, index: 0)
 
             var wireUniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
@@ -862,6 +861,7 @@ public final class Canvas3D: CanvasStyle {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            Canvas3D.beginStrokeDepthBias(on: encoder)
             if let ib = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
                     type: .triangle, indexCount: mesh.indexCount,
@@ -870,6 +870,7 @@ public final class Canvas3D: CanvasStyle {
             } else {
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
             }
+            Canvas3D.endStrokeDepthBias(on: encoder)
 
             encoder.setTriangleFillMode(.fill)
         }
