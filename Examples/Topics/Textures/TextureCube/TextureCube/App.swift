@@ -43,7 +43,9 @@ final class TextureCube: Sketch {
     }
 
     func texturedCube() {
-        beginShape(.triangles)
+        beginShape3D(.triangles)
+        // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
+        // has no UV channel, so this renders with the current fill (metaphor #387).
         texture(tex)
 
         // +Z front face (2 triangles per quad)
@@ -70,7 +72,7 @@ final class TextureCube: Sketch {
         vertex(-1, -1, -1); vertex(-1, -1, 1); vertex(-1, 1, 1)
         vertex(-1, -1, -1); vertex(-1, 1, 1); vertex(-1, 1, -1)
 
-        endShape()
+        endShape3D()
     }
 
     func mouseDragged() {

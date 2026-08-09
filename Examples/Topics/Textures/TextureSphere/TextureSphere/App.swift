@@ -90,7 +90,9 @@ final class TextureSphere: Sketch {
             let mxz = multXZ[i]
             let mxzPlus = multXZ[i + 1]
 
-            beginShape(.triangleStrip)
+            beginShape3D(.triangleStrip)
+            // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
+            // has no UV channel, so this renders with the current fill (metaphor #387).
             texture(img)
             for j in 0..<numPointsW {
                 normal(-coorX[j] * mxz, -coory, -coorZ[j] * mxz)
@@ -98,7 +100,7 @@ final class TextureSphere: Sketch {
                 normal(-coorX[j] * mxzPlus, -cooryPlus, -coorZ[j] * mxzPlus)
                 vertex(coorX[j] * mxzPlus * rx, cooryPlus * ry, coorZ[j] * mxzPlus * rz)
             }
-            endShape()
+            endShape3D()
         }
     }
 

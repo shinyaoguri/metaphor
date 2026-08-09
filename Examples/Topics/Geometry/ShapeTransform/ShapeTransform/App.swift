@@ -52,27 +52,27 @@ final class ShapeTransform: Sketch {
         }
 
         // Draw tube
-        beginShape(.triangleStrip)
+        beginShape3D(.triangleStrip)
         for j in 0...pts {
             vertex(topVerts[j].0, topVerts[j].1, topVerts[j].2)
             vertex(bottomVerts[j].0, bottomVerts[j].1, bottomVerts[j].2)
         }
-        endShape()
+        endShape3D()
 
         // Draw caps
-        beginShape(.triangleFan)
+        beginShape3D(.triangleFan)
         vertex(0, 0, cylinderLength)
         for j in 0...pts {
             vertex(topVerts[j].0, topVerts[j].1, topVerts[j].2)
         }
-        endShape()
+        endShape3D()
 
-        beginShape(.triangleFan)
+        beginShape3D(.triangleFan)
         vertex(0, 0, -cylinderLength)
         for j in 0...pts {
             vertex(bottomVerts[j].0, bottomVerts[j].1, bottomVerts[j].2)
         }
-        endShape()
+        endShape3D()
     }
 
     func keyPressed() {

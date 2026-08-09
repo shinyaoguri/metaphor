@@ -308,6 +308,19 @@ the Processing original with every number left alone.
 At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 `directionalLight` calls in a frame are dropped silently.
 
+> **Build 3D shapes with `beginShape3D()`, not `beginShape()`.** Processing has
+> one shape recorder and picks 2D or 3D from the renderer; metaphor has two.
+> `beginShape()` records into the **2D** canvas, so a `vertex(x, y, z)` inside it
+> drops z and draws flat — `rotateX` / `rotateY` then have nothing to rotate and
+> the shape collapses into a plane. Porting a `P3D` sketch means renaming the
+> pair to `beginShape3D()` / `endShape3D()`; the `vertex` calls stay as they are.
+> The first such `vertex` in a run logs a warning in debug builds
+> ([#387](https://github.com/shinyaoguri/metaphor/issues/387)).
+>
+> `texture(img)` currently has **no effect on custom 3D shapes**: the 3D vertex
+> format has no UV channel yet, so a textured `beginShape3D()` renders with the
+> current fill instead. Textured meshes (`loadModel`, primitives) are unaffected.
+
 ### Input
 
 | Processing | metaphor |

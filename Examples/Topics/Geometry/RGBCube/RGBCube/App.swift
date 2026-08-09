@@ -33,45 +33,45 @@ final class RGBCube: Sketch {
 
         // Front face (+Z): cyan->white->magenta->blue
         fill(128, 128, 255)
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         vertex(-1, 1, 1); vertex(1, 1, 1); vertex(1, -1, 1)
         vertex(-1, 1, 1); vertex(1, -1, 1); vertex(-1, -1, 1)
-        endShape()
+        endShape3D()
 
         // Right face (+X): white->yellow->red->magenta
         fill(255, 128, 128)
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         vertex(1, 1, 1); vertex(1, 1, -1); vertex(1, -1, -1)
         vertex(1, 1, 1); vertex(1, -1, -1); vertex(1, -1, 1)
-        endShape()
+        endShape3D()
 
         // Back face (-Z): yellow->green->black->red
         fill(128, 128, 0)
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         vertex(1, 1, -1); vertex(-1, 1, -1); vertex(-1, -1, -1)
         vertex(1, 1, -1); vertex(-1, -1, -1); vertex(1, -1, -1)
-        endShape()
+        endShape3D()
 
         // Left face (-X): green->cyan->blue->black
         fill(0, 128, 128)
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         vertex(-1, 1, -1); vertex(-1, 1, 1); vertex(-1, -1, 1)
         vertex(-1, 1, -1); vertex(-1, -1, 1); vertex(-1, -1, -1)
-        endShape()
+        endShape3D()
 
         // Top face (-Y): green->yellow->white->cyan
         fill(128, 255, 128)
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         vertex(-1, 1, -1); vertex(1, 1, -1); vertex(1, 1, 1)
         vertex(-1, 1, -1); vertex(1, 1, 1); vertex(-1, 1, 1)
-        endShape()
+        endShape3D()
 
         // Bottom face (+Y): black->red->magenta->blue
         fill(128, 0, 128)
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         vertex(-1, -1, -1); vertex(1, -1, -1); vertex(1, -1, 1)
         vertex(-1, -1, -1); vertex(1, -1, 1); vertex(-1, -1, 1)
-        endShape()
+        endShape3D()
 
         popMatrix()
     }

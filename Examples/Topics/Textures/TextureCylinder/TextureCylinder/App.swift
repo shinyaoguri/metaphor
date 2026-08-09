@@ -42,7 +42,9 @@ final class TextureCylinder: Sketch {
         rotateY(map(mouseX, 0, width, -.pi, .pi))
 
         // Cylinder tube
-        beginShape(.triangleStrip)
+        beginShape3D(.triangleStrip)
+        // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
+        // has no UV channel, so this renders with the current fill (metaphor #387).
         texture(img)
         for i in 0..<tubeRes {
             let x = tubeX[i] * 100
@@ -50,10 +52,10 @@ final class TextureCylinder: Sketch {
             vertex(x, -100, z)
             vertex(x, 100, z)
         }
-        endShape()
+        endShape3D()
 
         // Side quad
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         texture(img)
         vertex(0, -100, 0)
         vertex(100, -100, 0)
@@ -61,6 +63,6 @@ final class TextureCylinder: Sketch {
         vertex(0, -100, 0)
         vertex(100, 100, 0)
         vertex(0, 100, 0)
-        endShape()
+        endShape3D()
     }
 }
