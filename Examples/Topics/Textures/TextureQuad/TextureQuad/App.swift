@@ -31,7 +31,9 @@ final class TextureQuad: Sketch {
         rotateY(map(mouseX, 0, width, -.pi, .pi))
         rotateZ(.pi / 6)
 
-        beginShape(.triangles)
+        beginShape3D(.triangles)
+        // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
+        // has no UV channel, so this renders with the current fill (metaphor #387).
         texture(img)
         vertex(-100, -100, 0)
         vertex(100, -100, 0)
@@ -39,6 +41,6 @@ final class TextureQuad: Sketch {
         vertex(-100, -100, 0)
         vertex(100, 100, 0)
         vertex(-100, 100, 0)
-        endShape()
+        endShape3D()
     }
 }

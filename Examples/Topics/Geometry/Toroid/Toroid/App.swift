@@ -53,7 +53,7 @@ final class Toroid: Sketch {
         for i in 0...segments {
             var currentRing = [(x: Float, y: Float, z: Float)](repeating: (0, 0, 0), count: pts + 1)
 
-            beginShape(.triangleStrip)
+            beginShape3D(.triangleStrip)
             for j in 0...pts {
                 if i > 0 {
                     vertex(prevRing[j].x, prevRing[j].y, prevRing[j].z)
@@ -70,7 +70,7 @@ final class Toroid: Sketch {
                 currentRing[j] = (cx, cy, cz)
                 vertex(cx, cy, cz)
             }
-            endShape()
+            endShape3D()
 
             prevRing = currentRing
             if isHelix {

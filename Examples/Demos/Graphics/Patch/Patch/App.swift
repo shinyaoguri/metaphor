@@ -31,7 +31,7 @@ final class Patch: Sketch {
         noStroke()
         fill(255)
         for i in 0..<(RESI - 1) {
-            beginShape(.triangleStrip)
+            beginShape3D(.triangleStrip)
             for j in 0..<RESJ {
                 let n = normp[i][j]
                 normal(n.0, n.1, n.2)
@@ -40,7 +40,7 @@ final class Patch: Sketch {
                 let p2 = outp[i + 1][j]
                 vertex(p2.0, p2.1, p2.2)
             }
-            endShape()
+            endShape3D()
         }
     }
 

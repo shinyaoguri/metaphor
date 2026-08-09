@@ -24,37 +24,37 @@ final class Vertices: Sketch {
         let angleIncrement = Float.pi * 2 / Float(sides)
 
         // Tube
-        beginShape(.triangleStrip)
+        beginShape3D(.triangleStrip)
         var angle: Float = 0
         for _ in 0...sides {
             vertex(topRadius * cos(angle), 0, topRadius * sin(angle))
             vertex(bottomRadius * cos(angle), tall, bottomRadius * sin(angle))
             angle += angleIncrement
         }
-        endShape()
+        endShape3D()
 
         // Top cap
         if topRadius != 0 {
-            beginShape(.triangleFan)
+            beginShape3D(.triangleFan)
             vertex(0, 0, 0)
             angle = 0
             for _ in 0...sides {
                 vertex(topRadius * cos(angle), 0, topRadius * sin(angle))
                 angle += angleIncrement
             }
-            endShape()
+            endShape3D()
         }
 
         // Bottom cap
         if bottomRadius != 0 {
-            beginShape(.triangleFan)
+            beginShape3D(.triangleFan)
             vertex(0, tall, 0)
             angle = 0
             for _ in 0...sides {
                 vertex(bottomRadius * cos(angle), tall, bottomRadius * sin(angle))
                 angle += angleIncrement
             }
-            endShape()
+            endShape3D()
         }
     }
 }

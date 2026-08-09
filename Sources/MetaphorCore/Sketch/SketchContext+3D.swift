@@ -19,8 +19,10 @@ extension SketchContext {
     ///   - z: z 座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         // 2D 記録中（beginShape()）の 3 引数 vertex は z を無視して 2D へ
-        // ルーティング（Processing 互換。従来は 3D へ誤送出され何も描かれなかった）
+        // ルーティング（Processing 互換。従来は 3D へ誤送出され何も描かれなかった）。
+        // 立体を組んだつもりのスケッチが黙って平面になるため、初回だけ警告する（#387）
         if activeShapeRecording == .twoD {
+            warnVertexZIgnoredOnce()
             canvas.vertex(x, y)
         } else {
             canvas3D.vertex(x, y, z)
@@ -35,6 +37,7 @@ extension SketchContext {
     ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         if activeShapeRecording == .twoD {
+            warnVertexZIgnoredOnce()
             canvas.vertex(x, y, color)
         } else {
             canvas3D.vertex(x, y, z, color)

@@ -292,6 +292,24 @@ public final class SketchContext {
     /// 現在アクティブなシェイプ記録先。
     var activeShapeRecording: ShapeRecordingTarget = .none
 
+    /// 2D 記録中に 3 引数 `vertex` が来たことを一度だけ知らせたか（#387）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnVertexZIgnored = false
+
+    /// `beginShape()`（2D）の記録中に `vertex(x, y, z)` が来たことを一度だけ警告する。
+    ///
+    /// z は落ちて 2D キャンバスへルーティングされるため（Processing 互換）、
+    /// 立体を組んだつもりのスケッチは `rotateX`/`rotateY` が効かず平面に潰れる。
+    /// 黙って平面になるのが最もわかりにくいので、初回だけ 3D 版への誘導を出す。
+    func warnVertexZIgnoredOnce() {
+        guard !didWarnVertexZIgnored else { return }
+        didWarnVertexZIgnored = true
+        metaphorWarning(
+            "vertex(x, y, z) inside beginShape() ignores z and draws on the 2D canvas. "
+                + "Use beginShape3D() / endShape3D() to build a 3D shape."
+        )
+    }
+
     // MARK: - Draw Sequence (#71)
 
     /// draw() 内の 2D/3D 呼び出し順を表す単調シーケンス番号。
