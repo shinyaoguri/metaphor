@@ -36,7 +36,7 @@
 
 - 全面 `@MainActor`（ジョブシステム化は隔離モデルの再設計が必要 → 非目標）
 - `TextureManager` は `colorAttachments[0]` 固定（MRT 不可 → deferred rendering は非目標）
-- `Canvas3D.swift`（約 1,700 行）はパイプライン系機能を足す前に分割が必要（Epic G の門番タスク）
+- ~~`Canvas3D.swift`（約 1,700 行）はパイプライン系機能を足す前に分割が必要（Epic G の門番タスク）~~ → [#439](https://github.com/shinyaoguri/metaphor/issues/439) で関心事ごとの `Canvas3D+*.swift` へ分割済み（本体 1,985 → 435 行）
 - 3 層 API 転送（Sketch → SketchContext → Canvas）のため、新プリミティブ 1 つに 3 箇所編集。小粒 API は束ねて実装する
 
 ## レビュー所見の追補（2026-08-07 機能インベントリ）
@@ -106,7 +106,7 @@
 | canvas 全体 filter()/blend() | Processing | S–M | 既存 postFX の配線替えが主 |
 | drawInstanced(mesh, transforms) 公開 API | Unity | M | InstanceData3D は内部実装済み |
 | ゲームパッド（GCController） | 両方 | S | |
-| Canvas3D.swift 分割（リファクタ） | — | M | Phase 3 の門番。独立 Issue・blocking リンク |
+| Canvas3D.swift 分割（リファクタ） | — | M | Phase 3 の門番。[#439](https://github.com/shinyaoguri/metaphor/issues/439)（**完了**） |
 | 英語 docs 第 2 弾（公開 API doc コメント） | 両方 | M | cli #86（api_reference 強化）と相乗 |
 
 ### Phase 3「エディタ税なしのモダン 3D」
@@ -168,7 +168,7 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#290](https://github.com/shinyaoguri/metaphor/issues/290) D: Parameter Store & AI 共同操作 | Phase 2 フラッグシップ | D1 store コア / D2 ParameterGUI 再基盤 / D3 probe schema 拡張 / D4 MCP 書込チャネル（cli）/ D5 リロード永続 / D6 ノードインスペクタ（Phase 3） |
 | [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ（blocking）/ E2 loadShader API / E3 ファイル監視リロード |
 | [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 / F2 textToPoints / F3 text-on-path（stretch） |
-| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割（blocking）/ G1 UV / G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
+| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
 | [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント / I3 website（#74） |
 | [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。所見が K/L の子 Issue の設計根拠になる |

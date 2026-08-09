@@ -203,7 +203,7 @@ Decision 2（および 2026-07-03 Amendment の 2）は「リソース生成・�
 
 ADR-0005 執筆時の Option A の Cons は「既存スケッチの描画結果が変わる破壊的変更」だったが、
 再評価の過程で**前提が違っていた**ことが分かった。`Canvas3D.begin()` は毎フレーム
-Processing P3D と同型の既定カメラへリセットする（[Canvas3D.swift:421-431](../../Sources/MetaphorCore/Drawing/Canvas3D.swift#L421)）:
+Processing P3D と同型の既定カメラへリセットする（[Canvas3D+Frame.swift の begin()](../../Sources/MetaphorCore/Drawing/Canvas3D+Frame.swift)）:
 
 ```swift
 let defaultZ = (height / 2) / tan(Canvas3D.defaultFov / 2)   // defaultFov = π/3

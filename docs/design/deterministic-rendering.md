@@ -36,11 +36,11 @@ onCompute → [main pass] onDraw → [shadow] onAfterDraw → RenderGraph → Po
             (854-859)              (862)
 ```
 
-3D 描画（[Canvas3D.drawMesh](../../Sources/MetaphorCore/Drawing/Canvas3D.swift#L953)）は**2つのこと**を同時に行う:
-1. `recordedDrawCalls` に**記録**（[Canvas3D.swift:960-973](../../Sources/MetaphorCore/Drawing/Canvas3D.swift#L960-L973)、`shadowMap != nil` のときのみ）。
-2. 即座にメインパスへ**エンコード**（インスタンスバッチ/イミディエイト）。このとき `shadow.shadowTexture` をサンプルするが、その内容は**前フレーム N-1**（[Canvas3D.swift:1105](../../Sources/MetaphorCore/Drawing/Canvas3D.swift#L1105)）。
+3D 描画（[Canvas3D.drawMesh](../../Sources/MetaphorCore/Drawing/Canvas3D+MeshDrawing.swift)）は**2つのこと**を同時に行う:
+1. `recordedDrawCalls` に**記録**（[drawMesh の記録分岐](../../Sources/MetaphorCore/Drawing/Canvas3D+MeshDrawing.swift)、`shadowMap != nil` のときのみ）。
+2. 即座にメインパスへ**エンコード**（インスタンスバッチ/イミディエイト）。このとき `shadow.shadowTexture` をサンプルするが、その内容は**前フレーム N-1**（[flushInstanceBatch / drawMeshImmediate](../../Sources/MetaphorCore/Drawing/Canvas3D+MeshDrawing.swift)）。
 
-シャドウ深度パス（[Canvas3D.performShadowPass](../../Sources/MetaphorCore/Drawing/Canvas3D.swift#L355)、配線は [SketchRunner.swift:419-422](../../Sources/MetaphorCore/Sketch/SketchRunner.swift#L419-L422)）は `onAfterDraw` で `recordedDrawCalls` から shadow N を生成。**メイン（影を読む）がシャドウ生成（影を書く）より先**に走るため、動く影が常に1フレーム遅れる。静止スケッチでは N == N-1 なので2フレーム目で一致する。
+シャドウ深度パス（[Canvas3D.performShadowPass](../../Sources/MetaphorCore/Drawing/Canvas3D+Frame.swift)、配線は [SketchRunner.swift:419-422](../../Sources/MetaphorCore/Sketch/SketchRunner.swift#L419-L422)）は `onAfterDraw` で `recordedDrawCalls` から shadow N を生成。**メイン（影を読む）がシャドウ生成（影を書く）より先**に走るため、動く影が常に1フレーム遅れる。静止スケッチでは N == N-1 なので2フレーム目で一致する。
 
 ## 設計判断（詳細は ADR-0002）
 

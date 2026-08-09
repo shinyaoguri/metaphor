@@ -49,8 +49,10 @@ here.
   `InputManager.swift`, `MetaphorRenderer.swift`.
 - 2D drawing bugs: start at the relevant `Sketch+*.swift` wrapper, then
   `SketchContext+*.swift`, then `Canvas2D*.swift`.
-- 3D drawing bugs: `Sketch+3D.swift`, `SketchContext+3D.swift`, `Canvas3D.swift`,
-  `Mesh.swift`, `PipelineFactory.swift`, shader files.
+- 3D drawing bugs: `Sketch+3D.swift`, `SketchContext+3D.swift`, `Canvas3D*.swift`
+  (split by concern: `+Frame`, `+Recording`, `+Primitives`, `+Shapes`,
+  `+ShapeDrawing`, `+MeshDrawing`), `Mesh.swift`, `PipelineFactory.swift`,
+  shader files.
 - Shader failures: keep `Shaders/Metal/*.metal`, `Shaders/ShaderSources/*.txt`,
   and shader function constants in sync.
 - Export/readback bugs: `FrameExporter.swift`, `VideoExporter.swift`,
