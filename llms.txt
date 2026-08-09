@@ -1105,6 +1105,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class DynamicMesh` -- 頂点を動的に追加・変更できる3Dメッシュを提供します。
 
+- `var hasUVs: Bool { get }` -- このメッシュが UV 座標を持つかどうか。
 - `var indexBuffer: (any MTLBuffer)? { get }` -- インデックスバッファを返します（ensureBuffers 呼び出し後に有効）。
 - `var indexCount: Int { get }` -- インデックス数
 - `var vertexCount: Int { get }` -- 頂点数
@@ -1113,6 +1114,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func addColor(_ color: SIMD4<Float>)` -- SIMD4 値を使用して、次に追加される頂点に適用するカラーを設定します。
 - `func addIndex(_ i: UInt32)` -- インデックスを1つ追加します。
 - `func addNormal(_ normal: SIMD3<Float>)` -- 次に追加される頂点に適用する法線を設定します。
+- `func addTexCoord(_ uv: SIMD2<Float>)` -- 次に追加される頂点に適用するテクスチャ座標を設定します。
+- `func addTexCoord(_ u: Float, _ v: Float)` -- 次に追加される頂点に適用するテクスチャ座標を設定します。
 - `func addTriangle(_ i0: UInt32, _ i1: UInt32, _ i2: UInt32)` -- 三角形を構成する3つのインデックスを追加します。
 - `func addVertex(_ position: SIMD3<Float>)` -- 指定位置に頂点を追加します。
 - `func addVertex(_ x: Float, _ y: Float, _ z: Float)` -- 指定された x, y, z 座標に頂点を追加します。
@@ -1120,6 +1123,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func getVertex(_ index: Int) -> SIMD3<Float>` -- 指定インデックスの頂点位置を返します。
 - `func setColor(_ index: Int, _ color: SIMD4<Float>)` -- 指定インデックスの頂点カラーを設定します。
 - `func setNormal(_ index: Int, _ normal: SIMD3<Float>)` -- 指定インデックスの頂点法線を設定します。
+- `func setTexCoord(_ index: Int, _ uv: SIMD2<Float>)` -- 指定インデックスの頂点のテクスチャ座標を設定します。
 - `func setVertex(_ index: Int, _ position: SIMD3<Float>)` -- 指定インデックスの頂点位置を設定します。
 
 ### `final class GIFExporter` -- キャプチャしたフレームをアニメーションGIFファイルとしてエクスポートします。
