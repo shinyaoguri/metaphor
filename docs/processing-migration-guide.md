@@ -297,7 +297,7 @@ the Processing original with every number left alone.
 | `specular(…)` / `shininess(n)` / `emissive(…)` | `specular(_ color: Color)` (also grayscale) / `shininess(_ value: Float)` / `emissive(_ color: Color)` |
 | `ambient(…)` | — not implemented as a per-material call (only scene-wide `ambientLight`) |
 | — | `metallic(_:)`, `roughness(_:)`, `ambientOcclusion(_:)`, `pbr(_ enabled: Bool)` for the PBR path. `roughness(_:)` switches the whole shading model to PBR as a side effect |
-| `texture(img)` / `noTexture()` | `texture(_ img: MImage)` / `noTexture()` |
+| `texture(img)` / `noTexture()` | `texture(_ img: MImage)` / `noTexture()`. For `beginShape3D()`, pass UV per vertex: `vertex(x, y, z, u, v)` |
 | `textureMode()` / `textureWrap()` | — not implemented |
 | `normal(nx, ny, nz)` | `normal(_ nx: Float, _ ny: Float, _ nz: Float)` |
 | `beginShape()` in 3D | `beginShape3D(_ mode: ShapeMode = .polygon)` / `endShape3D(_ close: CloseMode = .open)` |
@@ -317,9 +317,11 @@ At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 > The first such `vertex` in a run logs a warning in debug builds
 > ([#387](https://github.com/shinyaoguri/metaphor/issues/387)).
 >
-> `texture(img)` currently has **no effect on custom 3D shapes**: the 3D vertex
-> format has no UV channel yet, so a textured `beginShape3D()` renders with the
-> current fill instead. Textured meshes (`loadModel`, primitives) are unaffected.
+> To texture a custom 3D shape, give each vertex its texture coordinates with the
+> five-argument `vertex(x, y, z, u, v)`. `u` / `v` are **normalized (0…1)** —
+> there is no `textureMode()`, so a Processing sketch using `textureMode(IMAGE)`
+> divides its coordinates by the image size. A `beginShape3D()` whose vertices
+> carry no UV renders with the current fill, as before.
 
 ### Input
 

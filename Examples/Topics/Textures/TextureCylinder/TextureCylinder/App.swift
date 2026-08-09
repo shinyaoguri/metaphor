@@ -43,26 +43,25 @@ final class TextureCylinder: Sketch {
 
         // Cylinder tube
         beginShape3D(.triangleStrip)
-        // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
-        // has no UV channel, so this renders with the current fill (metaphor #387).
         texture(img)
         for i in 0..<tubeRes {
             let x = tubeX[i] * 100
             let z = tubeY[i] * 100
-            vertex(x, -100, z)
-            vertex(x, 100, z)
+            let u = Float(i) / Float(tubeRes - 1)
+            vertex(x, -100, z, u, 0)
+            vertex(x, 100, z, u, 1)
         }
         endShape3D()
 
         // Side quad
         beginShape3D(.triangles)
         texture(img)
-        vertex(0, -100, 0)
-        vertex(100, -100, 0)
-        vertex(100, 100, 0)
-        vertex(0, -100, 0)
-        vertex(100, 100, 0)
-        vertex(0, 100, 0)
+        vertex(0, -100, 0, 0, 0)
+        vertex(100, -100, 0, 1, 0)
+        vertex(100, 100, 0, 1, 1)
+        vertex(0, -100, 0, 0, 0)
+        vertex(100, 100, 0, 1, 1)
+        vertex(0, 100, 0, 0, 1)
         endShape3D()
     }
 }

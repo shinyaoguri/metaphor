@@ -218,6 +218,11 @@ public final class Canvas3D: CanvasStyle {
     private var isRecordingShape3D: Bool = false
     private var shapeMode3D: ShapeMode = .polygon
     private var shapeVertices3D: [Vertex3D] = []
+    /// 記録中の頂点 UV。`shapeVertices3D` と同じ添字で 1:1 に対応する（未指定の頂点は (0, 0)）。
+    private var shapeUVs3D: [SIMD2<Float>] = []
+    /// このシェイプで `vertex(x, y, z, u, v)` が一度でも呼ばれたか。
+    /// `texture()` と両方揃ったときだけテクスチャ経路へ入る。
+    private var shapeHasExplicitUV: Bool = false
     private var pendingNormal: SIMD3<Float>?
 
     // MARK: - メッシュキャッシュ
@@ -863,6 +868,8 @@ public final class Canvas3D: CanvasStyle {
         isRecordingShape3D = true
         shapeMode3D = mode
         shapeVertices3D.removeAll(keepingCapacity: true)
+        shapeUVs3D.removeAll(keepingCapacity: true)
+        shapeHasExplicitUV = false
         pendingNormal = nil
     }
 
@@ -874,11 +881,7 @@ public final class Canvas3D: CanvasStyle {
     ///   - z: z座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecordingShape3D else { return }
-        shapeVertices3D.append(Vertex3D(
-            position: SIMD3(x, y, z),
-            normal: pendingNormal ?? SIMD3(0, 1, 0),
-            color: fillColor
-        ))
+        appendShapeVertex3D(position: SIMD3(x, y, z), color: fillColor, uv: .zero)
     }
 
     /// 頂点カラー付きの 3D 頂点を追加します。
@@ -890,11 +893,34 @@ public final class Canvas3D: CanvasStyle {
     ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         guard isRecordingShape3D else { return }
+        appendShapeVertex3D(position: SIMD3(x, y, z), color: color.simd, uv: .zero)
+    }
+
+    /// テクスチャ座標付きの 3D 頂点を追加します。
+    ///
+    /// `texture(_:)` で画像を設定したシェイプでのみ効果があります。テクスチャ未設定の場合は
+    /// UV が無視され、通常の fill で塗られます。
+    ///
+    /// - Parameters:
+    ///   - x: x座標。
+    ///   - y: y座標。
+    ///   - z: z座標。
+    ///   - u: 水平テクスチャ座標（0.0〜1.0 に正規化）。
+    ///   - v: 垂直テクスチャ座標（0.0〜1.0 に正規化）。
+    public func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float) {
+        guard isRecordingShape3D else { return }
+        shapeHasExplicitUV = true
+        appendShapeVertex3D(position: SIMD3(x, y, z), color: fillColor, uv: SIMD2(u, v))
+    }
+
+    // 頂点と UV を対で積む。両配列の添字対応はテッセレーション（インデックス列）が前提にする。
+    private func appendShapeVertex3D(position: SIMD3<Float>, color: SIMD4<Float>, uv: SIMD2<Float>) {
         shapeVertices3D.append(Vertex3D(
-            position: SIMD3(x, y, z),
+            position: position,
             normal: pendingNormal ?? SIMD3(0, 1, 0),
-            color: color.simd
+            color: color
         ))
+        shapeUVs3D.append(uv)
     }
 
     /// 以降の頂点に適用する法線ベクトルを設定します。
@@ -964,8 +990,14 @@ public final class Canvas3D: CanvasStyle {
     // 受け付けないため、超過分は永続トリプルバッファ（shapeVertexBuffer）への
     // バンプ確保でバインドします（beginShape のポリゴンは 30 点程度で既に超過する）。
     // バインドできなかった場合は false を返すので、呼び出し側は描画を中止すること。
-    private func bindShapeVertices(_ vertices: [Vertex3D], on encoder: MTLRenderCommandEncoder) -> Bool {
-        let length = MemoryLayout<Vertex3D>.stride * vertices.count
+    //
+    // `Vertex3D`（positionNormalColor）と `Vertex3DTextured`（positionNormalUV）は
+    // どちらも 48B stride のため、同じリングをバイト単位で共有します
+    // （`Canvas3DShapeUVTests` が stride 一致を固定）。
+    private func bindShapeVertices<V>(_ vertices: [V], on encoder: MTLRenderCommandEncoder) -> Bool {
+        assert(MemoryLayout<V>.stride == MemoryLayout<Vertex3D>.stride,
+               "shapeVertexBuffer は 48B stride の頂点型のみ共有できる")
+        let length = MemoryLayout<V>.stride * vertices.count
         if length <= 4096 {
             vertices.withUnsafeBytes { buf in
                 encoder.setVertexBytes(buf.baseAddress!, length: length, index: 0)
@@ -981,9 +1013,9 @@ public final class Canvas3D: CanvasStyle {
             activeIndex: shapeVertexBufferIndex,
             usedCount: shapeVertexBufferUsed
         ) {
-            let dst = shapeVertexBuffer.pointer(for: shapeVertexBufferIndex) + alignedUsed
-            vertices.withUnsafeBufferPointer { src in
-                dst.update(from: src.baseAddress!, count: src.count)
+            let dst = UnsafeMutableRawPointer(shapeVertexBuffer.pointer(for: shapeVertexBufferIndex) + alignedUsed)
+            vertices.withUnsafeBytes { src in
+                dst.copyMemory(from: src.baseAddress!, byteCount: src.count)
             }
             encoder.setVertexBuffer(
                 shapeVertexBuffer.buffer(for: shapeVertexBufferIndex),
@@ -995,7 +1027,9 @@ public final class Canvas3D: CanvasStyle {
         }
         // リングの maxCapacity を超えるフレームのみ、従来の使い捨てバッファへ
         // フォールバック（機能は保つ）
-        guard let buffer = device.makeBuffer(bytes: vertices, length: length, options: .storageModeShared) else {
+        guard let buffer = vertices.withUnsafeBytes({ src in
+            device.makeBuffer(bytes: src.baseAddress!, length: length, options: .storageModeShared)
+        }) else {
             return false
         }
         // コマンドバッファが完了まで buffer を保持するため、ここで参照を手放してよい
@@ -1106,6 +1140,113 @@ public final class Canvas3D: CanvasStyle {
         }
     }
 
+    // テッセレーション済みの UV 付き 3D 頂点を、テクスチャを貼って描画する。
+    // `vertices`（positionNormalColor）は stroke パスと記録経路の Mesh 本体、
+    // `uvVertices`（positionNormalUV）は fill パスのテクスチャサンプリングに使う。
+    private func drawShape3DTexturedVertices(_ vertices: [Vertex3D], uvVertices: [Vertex3DTextured]) {
+        guard !vertices.isEmpty else { return }
+        guard hasFill || hasStroke else { return }
+
+        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: UV つきの一時 Mesh 化で
+        // drawMesh に載せる。`Mesh.hasUVs` が立つため drawMesh 側がテクスチャ付きと
+        // 判定し、シャドウにも落ちる（テクスチャなしの経路と同じ構造・#152）
+        if shouldRecordMainPass && !isReplaying {
+            if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil, uvVertices: uvVertices) {
+                drawMesh(mesh)
+            }
+            return
+        }
+
+        guard let encoder = encoder else { return }
+
+        flushInstanceBatch()
+
+        let normalMatrix = computeNormalMatrix(from: currentTransform)
+        let viewProj = computeViewProjection()
+
+        if hasFill {
+            guard bindShapeVertices(uvVertices, on: encoder) else { return }
+
+            encoder.setRenderPipelineState(texturedPipelineState)
+            if let depthState = depthState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setFrontFacing(.counterClockwise)
+            encoder.setCullMode(.none)
+
+            var uniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: fillColor,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: UInt32(lightArray.count),
+                hasTexture: 1
+            )
+
+            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            if lightArray.isEmpty {
+                var dummy = Light3D.zero
+                encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+            } else {
+                lightArray.withUnsafeBufferPointer { ptr in
+                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                }
+            }
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            if let tex = currentTexture {
+                encoder.setFragmentTexture(tex, index: 0)
+            }
+
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: uvVertices.count)
+        }
+
+        if hasStroke {
+            // stroke は頂点カラーを無視して stroke 色だけで描く（#429）。
+            // wirePipelineState は positionNormalColor なので UV なしの頂点列を貼り直す
+            guard bindShapeVertices(vertices, on: encoder) else { return }
+
+            encoder.setTriangleFillMode(.lines)
+            encoder.setRenderPipelineState(wirePipelineState)
+            if let depthState = depthState {
+                encoder.setDepthStencilState(depthState)
+            }
+            encoder.setFrontFacing(.counterClockwise)
+            encoder.setCullMode(.none)
+
+            var wireUniforms = Canvas3DUniforms(
+                modelMatrix: currentTransform,
+                viewProjectionMatrix: viewProj,
+                normalMatrix: normalMatrix,
+                color: strokeColor,
+                cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
+                time: currentTime,
+                lightCount: 0,
+                hasTexture: 0
+            )
+
+            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+
+            var dummy = Light3D.zero
+            encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
+
+            var mat = currentMaterial
+            encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            Canvas3D.beginStrokeDepthBias(on: encoder)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+            Canvas3D.endStrokeDepthBias(on: encoder)
+            encoder.setTriangleFillMode(.fill)
+        }
+    }
+
     // MARK: - ストロークの深度バイアス
 
     // ワイヤーフレーム（stroke）は塗りつぶしと同一のジオメトリを線として描き直す。
@@ -1126,73 +1267,89 @@ public final class Canvas3D: CanvasStyle {
     private func drawShape3DPolygon(close: CloseMode) {
         guard shapeVertices3D.count >= 3 else { return }
 
-        var triangulated: [Vertex3D] = []
-        triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
-
-        // 最初の3頂点から面法線を計算
-        let p0 = shapeVertices3D[0].position
-        let p1 = shapeVertices3D[1].position
-        let p2 = shapeVertices3D[2].position
-        let faceNormal = simd_normalize(simd_cross(p1 - p0, p2 - p0))
-        let safeNormal = faceNormal.x.isNaN ? SIMD3<Float>(0, 1, 0) : faceNormal
-
-        for i in 1..<(shapeVertices3D.count - 1) {
-            var v0 = shapeVertices3D[0]
-            var v1 = shapeVertices3D[i]
-            var v2 = shapeVertices3D[i + 1]
-            // 明示的な法線がない頂点に面法線を適用
-            if pendingNormal == nil {
-                v0.normal = safeNormal
-                v1.normal = safeNormal
-                v2.normal = safeNormal
+        // 最初の3頂点から面法線を計算し、明示的な法線がない場合は全頂点へ適用
+        if pendingNormal == nil {
+            let p0 = shapeVertices3D[0].position
+            let p1 = shapeVertices3D[1].position
+            let p2 = shapeVertices3D[2].position
+            let faceNormal = simd_normalize(simd_cross(p1 - p0, p2 - p0))
+            let safeNormal = faceNormal.x.isNaN ? SIMD3<Float>(0, 1, 0) : faceNormal
+            for i in shapeVertices3D.indices {
+                shapeVertices3D[i].normal = safeNormal
             }
-            triangulated.append(v0)
-            triangulated.append(v1)
-            triangulated.append(v2)
         }
 
-        drawShape3DVertices(triangulated)
+        var indices: [Int] = []
+        indices.reserveCapacity((shapeVertices3D.count - 2) * 3)
+        for i in 1..<(shapeVertices3D.count - 1) {
+            indices.append(0)
+            indices.append(i)
+            indices.append(i + 1)
+        }
+
+        drawShape3DIndexed(indices)
     }
 
     // 独立した三角形として頂点を直接描画（3頂点ごとに1つの三角形）
     private func drawShape3DTriangles() {
         let count = (shapeVertices3D.count / 3) * 3
         guard count >= 3 else { return }
-        drawShape3DVertices(Array(shapeVertices3D.prefix(count)))
+        drawShape3DIndexed(Array(0..<count))
     }
 
     // 三角形ストリップを独立した三角形にテッセレーション
     private func drawShape3DTriangleStrip() {
         guard shapeVertices3D.count >= 3 else { return }
-        var triangulated: [Vertex3D] = []
-        triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
+        var indices: [Int] = []
+        indices.reserveCapacity((shapeVertices3D.count - 2) * 3)
 
         for i in 0..<(shapeVertices3D.count - 2) {
             if i % 2 == 0 {
-                triangulated.append(shapeVertices3D[i])
-                triangulated.append(shapeVertices3D[i + 1])
-                triangulated.append(shapeVertices3D[i + 2])
+                indices.append(contentsOf: [i, i + 1, i + 2])
             } else {
-                triangulated.append(shapeVertices3D[i + 1])
-                triangulated.append(shapeVertices3D[i])
-                triangulated.append(shapeVertices3D[i + 2])
+                indices.append(contentsOf: [i + 1, i, i + 2])
             }
         }
-        drawShape3DVertices(triangulated)
+        drawShape3DIndexed(indices)
     }
 
     // 三角形ファンを独立した三角形にテッセレーション
     private func drawShape3DTriangleFan() {
         guard shapeVertices3D.count >= 3 else { return }
-        var triangulated: [Vertex3D] = []
-        triangulated.reserveCapacity((shapeVertices3D.count - 2) * 3)
+        var indices: [Int] = []
+        indices.reserveCapacity((shapeVertices3D.count - 2) * 3)
 
         for i in 1..<(shapeVertices3D.count - 1) {
-            triangulated.append(shapeVertices3D[0])
-            triangulated.append(shapeVertices3D[i])
-            triangulated.append(shapeVertices3D[i + 1])
+            indices.append(contentsOf: [0, i, i + 1])
         }
-        drawShape3DVertices(triangulated)
+        drawShape3DIndexed(indices)
+    }
+
+    // テッセレーション済みのインデックス列を頂点列へ展開して描画する。
+    // 三角形化を「元頂点の並べ替え」として表現することで、位置・法線・カラーと
+    // UV（`shapeUVs3D`）が同じ添字で必ず一緒に運ばれる。
+    private func drawShape3DIndexed(_ indices: [Int]) {
+        guard !indices.isEmpty else { return }
+
+        // UV を宣言していても texture() 未設定なら通常の fill 経路（Processing 互換）
+        guard shapeHasExplicitUV, currentTexture != nil else {
+            var vertices: [Vertex3D] = []
+            vertices.reserveCapacity(indices.count)
+            for i in indices { vertices.append(shapeVertices3D[i]) }
+            drawShape3DVertices(vertices)
+            return
+        }
+
+        var vertices: [Vertex3D] = []
+        var uvVertices: [Vertex3DTextured] = []
+        vertices.reserveCapacity(indices.count)
+        uvVertices.reserveCapacity(indices.count)
+        for i in indices {
+            let v = shapeVertices3D[i]
+            vertices.append(v)
+            uvVertices.append(Vertex3DTextured(position: v.position, normal: v.normal, uv: shapeUVs3D[i]))
+        }
+        drawShape3DTexturedVertices(vertices, uvVertices: uvVertices)
     }
 
     // 各頂点を小さな三角形として描画し、ポイントをシミュレート

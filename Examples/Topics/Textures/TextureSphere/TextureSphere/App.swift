@@ -91,14 +91,16 @@ final class TextureSphere: Sketch {
             let mxzPlus = multXZ[i + 1]
 
             beginShape3D(.triangleStrip)
-            // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
-            // has no UV channel, so this renders with the current fill (metaphor #387).
             texture(img)
+            // u wraps around the equator, v walks from pole to pole
+            let v = Float(i) / Float(numPointsH - 1)
+            let vPlus = Float(i + 1) / Float(numPointsH - 1)
             for j in 0..<numPointsW {
+                let u = Float(j) / Float(numPointsW - 1)
                 normal(-coorX[j] * mxz, -coory, -coorZ[j] * mxz)
-                vertex(coorX[j] * mxz * rx, coory * ry, coorZ[j] * mxz * rz)
+                vertex(coorX[j] * mxz * rx, coory * ry, coorZ[j] * mxz * rz, u, v)
                 normal(-coorX[j] * mxzPlus, -cooryPlus, -coorZ[j] * mxzPlus)
-                vertex(coorX[j] * mxzPlus * rx, cooryPlus * ry, coorZ[j] * mxzPlus * rz)
+                vertex(coorX[j] * mxzPlus * rx, cooryPlus * ry, coorZ[j] * mxzPlus * rz, u, vPlus)
             }
             endShape3D()
         }
