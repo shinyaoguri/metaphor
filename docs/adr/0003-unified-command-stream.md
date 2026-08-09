@@ -56,7 +56,7 @@ Option C を採用する。決め手は「宿題①〜④を根治しつつ、�
 
 ### 深度・順序のセマンティクス（実装の核心）
 
-2D は `depthCompareFunction = .always`・深度書き込み無効（[Canvas2D.swift:388](../../Sources/MetaphorCore/Drawing/Canvas2D.swift#L388)）、3D は `.readWrite`（[Canvas3D.swift:267](../../Sources/MetaphorCore/Drawing/Canvas3D.swift#L267)）で、**共有深度テクスチャ1枚**（`TextureManager` の単一 `renderPassDescriptor`）を使う。再生を **seq 昇順** で行えば:
+2D は `depthCompareFunction = .always`・深度書き込み無効（[Canvas2D.swift:388](../../Sources/MetaphorCore/Drawing/Canvas2D.swift#L388)）、3D は `.readWrite`（[Canvas3D.swift の init](../../Sources/MetaphorCore/Drawing/Canvas3D.swift)）で、**共有深度テクスチャ1枚**（`TextureManager` の単一 `renderPassDescriptor`）を使う。再生を **seq 昇順** で行えば:
 
 - 「3D 背後に置いた 2D」は先に描かれ、後続 3D が `.readWrite` で深度クリア値(1.0)に対しテストして **その上に重なる**（2D は深度を書かないので深度を汚さない）。
 - 「前面 2D（オーバーレイ）」は 3D より後の seq なので最後に `.always` で上書き = 最前面。
@@ -213,7 +213,7 @@ ADR-0003 執筆時には存在しなかった全画素比較基盤（#330 / PR #
 - `Sources/MetaphorCore/Drawing/Canvas2D.swift:388,521,650`（深度 disabled / replayForeground / flushInstancedBatch）
 - `Sources/MetaphorCore/Drawing/Canvas2D+Clipping.swift:18,54,85`（clip / flush 群）
 - `Sources/MetaphorCore/Drawing/Canvas2DMassive.swift:94`（massive 即時パス）
-- `Sources/MetaphorCore/Drawing/Canvas3D.swift:267,381,1008`（深度 readWrite / replayMainPass / drawMesh）
+- `Sources/MetaphorCore/Drawing/Canvas3D.swift`（深度 readWrite）、`Canvas3D+Recording.swift`（記録の再生）、`Canvas3D+MeshDrawing.swift`（drawMesh）
 - `Sources/MetaphorCore/Drawing/ShadowMap.swift:19`（DrawCall3D）
 - `Sources/MetaphorCore/Core/MetaphorRenderer.swift:871`（活性化分岐・ロールバック点）
 - Issue #71、Epic #75
