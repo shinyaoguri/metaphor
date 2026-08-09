@@ -774,7 +774,12 @@ public final class Canvas3D: CanvasStyle {
         // DynamicMesh はインスタンシング対象外
         flushInstanceBatch()
 
-        encoder.setRenderPipelineState(pipelineState)
+        // UV を宣言したメッシュに texture() が設定されているときだけテクスチャ経路へ入る
+        // （UV 未宣言のメッシュを全頂点 uv=(0,0) でサンプルしないため・#435）
+        let uvBuffer = mesh.uvVertexBuffer
+        let isTextured = currentTexture != nil && uvBuffer != nil
+
+        encoder.setRenderPipelineState(isTextured ? texturedPipelineState : pipelineState)
         if let depthState = depthState {
             encoder.setDepthStencilState(depthState)
         }
@@ -784,7 +789,7 @@ public final class Canvas3D: CanvasStyle {
         let normalMatrix = computeNormalMatrix(from: currentTransform)
         let viewProj = computeViewProjection()
 
-        encoder.setVertexBuffer(vb, offset: 0, index: 0)
+        encoder.setVertexBuffer(isTextured ? uvBuffer : vb, offset: 0, index: 0)
 
         if hasFill {
             var uniforms = Canvas3DUniforms(
@@ -795,7 +800,7 @@ public final class Canvas3D: CanvasStyle {
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
                 time: currentTime,
                 lightCount: UInt32(lightArray.count),
-                hasTexture: 0
+                hasTexture: isTextured ? 1 : 0
             )
 
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
@@ -813,6 +818,10 @@ public final class Canvas3D: CanvasStyle {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            if isTextured, let tex = currentTexture {
+                encoder.setFragmentTexture(tex, index: 0)
+            }
+
             if let ib = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
                     type: .triangle, indexCount: mesh.indexCount,
@@ -825,6 +834,13 @@ public final class Canvas3D: CanvasStyle {
 
         if hasStroke {
             encoder.setTriangleFillMode(.lines)
+
+            // fill でテクスチャ経路に入っていた場合、線は UV なしの頂点列と
+            // 通常パイプラインへ貼り直す（positionNormalUV のまま線を描かない）
+            if isTextured {
+                encoder.setRenderPipelineState(pipelineState)
+                encoder.setVertexBuffer(vb, offset: 0, index: 0)
+            }
 
             var wireUniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,

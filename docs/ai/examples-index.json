@@ -1,7 +1,7 @@
 {
-  "count": 279,
+  "count": 280,
   "statusCounts": {
-    "supported": 259,
+    "supported": 260,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -2624,6 +2624,22 @@
         "interaction",
         "metaphormousetrail",
         "plugins"
+      ]
+    },
+    {
+      "title": "DynamicMeshTexture",
+      "path": "Examples/Samples/DynamicMeshTexture",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "dynamicmeshtexture",
+        "samples",
+        "typography"
       ]
     },
     {

@@ -917,21 +917,15 @@ struct Canvas3DShapeStrokeTests {
     }
 }
 
-// MARK: - Canvas3D Shape UV (#433)
+// MARK: - UV テストの共通ハーネス（#433 / #435）
 
-@Suite("Canvas3D Shape UV", .enabled(if: MetalTestHelper.isGPUAvailable))
+/// UV 付き描画のピクセル検証で使う共通処理。`beginShape3D`（#433）と
+/// `DynamicMesh`（#435）のどちらのテストからも使う。
 @MainActor
-struct Canvas3DShapeUVTests {
-
-    /// `bindShapeVertices` は `Vertex3D` 用のリング（`GrowableGPUBuffer<Vertex3D>`）を
-    /// `Vertex3DTextured` と共有する。両者の stride が一致することが前提。
-    @Test("Vertex3D and Vertex3DTextured share the same stride")
-    func vertexStridesMatch() {
-        #expect(MemoryLayout<Vertex3DTextured>.stride == MemoryLayout<Vertex3D>.stride)
-    }
+fileprivate enum UVTestSupport {
 
     /// colorTexture を BGRA8 で読み戻します。
-    private func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)? {
+    static func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)? {
         let w = renderer.textureManager.width
         let h = renderer.textureManager.height
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -956,7 +950,7 @@ struct Canvas3DShapeUVTests {
     }
 
     /// 左半分が赤・右半分が緑の 2×1 テクスチャ（BGRA8）。
-    private func makeHalfRedHalfGreenTexture(device: MTLDevice) -> MImage? {
+    static func makeHalfRedHalfGreenTexture(device: MTLDevice) -> MImage? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: 2, height: 1, mipmapped: false)
         desc.usage = [.shaderRead]
@@ -969,7 +963,7 @@ struct Canvas3DShapeUVTests {
     }
 
     /// 赤画素・緑画素の個数と平均 x を数えます。
-    private func scanRedGreen(_ pixels: [UInt8], _ texW: Int, _ texH: Int)
+    static func scanRedGreen(_ pixels: [UInt8], _ texW: Int, _ texH: Int)
         -> (red: Int, green: Int, redMeanX: Float, greenMeanX: Float) {
         var red = 0, green = 0
         var redSumX = 0, greenSumX = 0
@@ -986,29 +980,8 @@ struct Canvas3DShapeUVTests {
                 green > 0 ? Float(greenSumX) / Float(green) : 0)
     }
 
-    /// 画面中央に一辺 `size` の quad を UV つきで描きます（左端 u=0 / 右端 u=1）。
-    private func texturedQuad(_ canvas3D: Canvas3D, w: Float, h: Float, size: Float,
-                              mode: ShapeMode = .polygon) {
-        let cx = w / 2, cy = h / 2, s = size / 2
-        canvas3D.beginShape(mode)
-        switch mode {
-        case .triangleStrip:
-            // strip の頂点順（左上 → 左下 → 右上 → 右下）
-            canvas3D.vertex(cx - s, cy - s, 0, 0, 0)
-            canvas3D.vertex(cx - s, cy + s, 0, 0, 1)
-            canvas3D.vertex(cx + s, cy - s, 0, 1, 0)
-            canvas3D.vertex(cx + s, cy + s, 0, 1, 1)
-        default:
-            canvas3D.vertex(cx - s, cy - s, 0, 0, 0)
-            canvas3D.vertex(cx + s, cy - s, 0, 1, 0)
-            canvas3D.vertex(cx + s, cy + s, 0, 1, 1)
-            canvas3D.vertex(cx - s, cy + s, 0, 0, 1)
-        }
-        canvas3D.endShape(.close)
-    }
-
     /// 1 フレーム描画して読み戻す共通ハーネス。
-    private func render(_ body: (Canvas3D, Float, Float) -> Void) throws
+    static func render(_ body: (Canvas3D, Float, Float) -> Void) throws
         -> (pixels: [UInt8], width: Int, height: Int)? {
         let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
@@ -1035,16 +1008,51 @@ struct Canvas3DShapeUVTests {
 
         return readback(renderer: renderer)
     }
+}
+
+// MARK: - Canvas3D Shape UV (#433)
+
+@Suite("Canvas3D Shape UV", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Canvas3DShapeUVTests {
+
+    /// `bindShapeVertices` は `Vertex3D` 用のリング（`GrowableGPUBuffer<Vertex3D>`）を
+    /// `Vertex3DTextured` と共有する。両者の stride が一致することが前提。
+    @Test("Vertex3D and Vertex3DTextured share the same stride")
+    func vertexStridesMatch() {
+        #expect(MemoryLayout<Vertex3DTextured>.stride == MemoryLayout<Vertex3D>.stride)
+    }
+
+    /// 画面中央に一辺 `size` の quad を UV つきで描きます（左端 u=0 / 右端 u=1）。
+    private func texturedQuad(_ canvas3D: Canvas3D, w: Float, h: Float, size: Float,
+                              mode: ShapeMode = .polygon) {
+        let cx = w / 2, cy = h / 2, s = size / 2
+        canvas3D.beginShape(mode)
+        switch mode {
+        case .triangleStrip:
+            // strip の頂点順（左上 → 左下 → 右上 → 右下）
+            canvas3D.vertex(cx - s, cy - s, 0, 0, 0)
+            canvas3D.vertex(cx - s, cy + s, 0, 0, 1)
+            canvas3D.vertex(cx + s, cy - s, 0, 1, 0)
+            canvas3D.vertex(cx + s, cy + s, 0, 1, 1)
+        default:
+            canvas3D.vertex(cx - s, cy - s, 0, 0, 0)
+            canvas3D.vertex(cx + s, cy - s, 0, 1, 0)
+            canvas3D.vertex(cx + s, cy + s, 0, 1, 1)
+            canvas3D.vertex(cx - s, cy + s, 0, 0, 1)
+        }
+        canvas3D.endShape(.close)
+    }
 
     @Test("vertex(x,y,z,u,v) maps the texture across a beginShape3D quad")
     func texturedQuadSamplesTexture() throws {
         let device = MetalTestHelper.device!
-        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
         }
 
-        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
             canvas3D.noStroke()
             // fill は白。テクスチャ色は fill 色で tint されるため、UV が効かなければ全面白になる
             canvas3D.fill(255, 255, 255)
@@ -1052,7 +1060,7 @@ struct Canvas3DShapeUVTests {
             texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
         }) else { return }
 
-        let scan = scanRedGreen(pixels, texW, texH)
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "Left half must sample the red texel (red=\(scan.red))")
         #expect(scan.green > 100, "Right half must sample the green texel (green=\(scan.green))")
         #expect(scan.redMeanX < scan.greenMeanX,
@@ -1061,13 +1069,13 @@ struct Canvas3DShapeUVTests {
 
     @Test("UV is ignored when no texture is bound")
     func uvWithoutTextureFallsBackToFill() throws {
-        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
             canvas3D.noStroke()
             canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
             texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
         }) else { return }
 
-        let scan = scanRedGreen(pixels, texW, texH)
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "Shape must still be filled (red=\(scan.red))")
         #expect(scan.green == 0, "No texture is bound, so no texel color may appear (green=\(scan.green))")
     }
@@ -1075,14 +1083,14 @@ struct Canvas3DShapeUVTests {
     @Test("texture() without UV vertices keeps the plain fill path")
     func textureWithoutUVKeepsFillPath() throws {
         let device = MetalTestHelper.device!
-        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
         }
 
         // texture() を呼んでも vertex(x,y,z) だけで組んだシェイプは従来どおり fill で塗る
         // （テクスチャ座標がないため。UV 対応の前後で挙動が変わらないことを固定する）
-        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
             canvas3D.noStroke()
             // fill は白。UV 経路へ誤って入ると全頂点 uv=(0,0) でテクスチャ左端の
             // 赤をサンプルするため、赤画素の有無で取り違えを検出できる
@@ -1113,19 +1121,19 @@ struct Canvas3DShapeUVTests {
     @Test("UV follows the vertices through triangleStrip tessellation")
     func triangleStripKeepsUVAlignment() throws {
         let device = MetalTestHelper.device!
-        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
         }
 
-        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
             canvas3D.noStroke()
             canvas3D.fill(255, 255, 255)
             canvas3D.texture(img)
             texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6, mode: .triangleStrip)
         }) else { return }
 
-        let scan = scanRedGreen(pixels, texW, texH)
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "red=\(scan.red)")
         #expect(scan.green > 100, "green=\(scan.green)")
         #expect(scan.redMeanX < scan.greenMeanX,
@@ -1135,14 +1143,14 @@ struct Canvas3DShapeUVTests {
     @Test("textured shape larger than the setVertexBytes limit uses the ring buffer")
     func largeTexturedShapeBindsViaRing() throws {
         let device = MetalTestHelper.device!
-        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
         }
 
         // setVertexBytes は 4096B まで = 48B stride で 85 頂点。三角形ファンで
         // 128 頂点（= 378 頂点へ展開）を描き、リングバッファ経路を通す
-        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
             canvas3D.noStroke()
             canvas3D.fill(255, 255, 255)
             canvas3D.texture(img)
@@ -1157,10 +1165,264 @@ struct Canvas3DShapeUVTests {
             canvas3D.endShape(.close)
         }) else { return }
 
-        let scan = scanRedGreen(pixels, texW, texH)
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "red=\(scan.red)")
         #expect(scan.green > 100, "green=\(scan.green)")
         #expect(scan.redMeanX < scan.greenMeanX,
                 "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
+    }
+}
+
+// MARK: - Canvas3D DynamicMesh UV (#435)
+
+@Suite("Canvas3D DynamicMesh UV", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Canvas3DDynamicMeshUVTests {
+
+    /// 画面中央に一辺 `size` の quad を組んだ ``DynamicMesh`` を返します（左端 u=0 / 右端 u=1）。
+    ///
+    /// - Parameters:
+    ///   - indexed: true なら 4 頂点 + インデックス、false なら 6 頂点の非インデックス描画。
+    ///   - withUV: false なら `addTexCoord` を一度も呼ばない（UV 未宣言のメッシュ）。
+    private func quadMesh(device: MTLDevice, w: Float, h: Float, size: Float,
+                          indexed: Bool, withUV: Bool = true) -> DynamicMesh {
+        let cx = w / 2, cy = h / 2, s = size / 2
+        let corners: [(SIMD3<Float>, SIMD2<Float>)] = [
+            (SIMD3(cx - s, cy - s, 0), SIMD2(0, 0)),
+            (SIMD3(cx + s, cy - s, 0), SIMD2(1, 0)),
+            (SIMD3(cx + s, cy + s, 0), SIMD2(1, 1)),
+            (SIMD3(cx - s, cy + s, 0), SIMD2(0, 1)),
+        ]
+        let mesh = DynamicMesh(device: device)
+        mesh.addNormal(SIMD3(0, 0, 1))
+
+        if indexed {
+            for (position, uv) in corners {
+                if withUV { mesh.addTexCoord(uv) }
+                mesh.addVertex(position)
+            }
+            mesh.addTriangle(0, 1, 2)
+            mesh.addTriangle(0, 2, 3)
+        } else {
+            for i in [0, 1, 2, 0, 2, 3] {
+                if withUV { mesh.addTexCoord(corners[i].1) }
+                mesh.addVertex(corners[i].0)
+            }
+        }
+        return mesh
+    }
+
+    /// 白画素（= テクスチャを貼らず fill 色のまま）の個数を数えます。
+    private func countWhite(_ pixels: [UInt8], _ texW: Int, _ texH: Int) -> Int {
+        var white = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                if pixels[i] > 200 && pixels[i + 1] > 200 && pixels[i + 2] > 200 { white += 1 }
+            }
+        }
+        return white
+    }
+
+    @Test("addTexCoord maps the texture across an indexed dynamic mesh")
+    func indexedDynamicMeshSamplesTexture() throws {
+        let device = MetalTestHelper.device!
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            // fill は白。UV が効かなければ全面白のまま（テクスチャ色は fill で tint される）
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "Left half must sample the red texel (red=\(scan.red))")
+        #expect(scan.green > 100, "Right half must sample the green texel (green=\(scan.green))")
+        #expect(scan.redMeanX < scan.greenMeanX,
+                "u=0 must land left of u=1 (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+    }
+
+    @Test("UV follows the vertices on the non-indexed draw path")
+    func nonIndexedDynamicMeshSamplesTexture() throws {
+        let device = MetalTestHelper.device!
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: false)
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "red=\(scan.red)")
+        #expect(scan.green > 100, "green=\(scan.green)")
+        #expect(scan.redMeanX < scan.greenMeanX,
+                "UV must stay aligned with its vertex (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+    }
+
+    @Test("texture() without addTexCoord keeps the plain fill path")
+    func textureWithoutUVKeepsFillPath() throws {
+        let device = MetalTestHelper.device!
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        // UV を宣言していないメッシュはテクスチャ経路へ入れない。誤って入ると
+        // 全頂点 uv=(0,0) でテクスチャ左端の赤をサンプルするため白が消える
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6,
+                                indexed: true, withUV: false)
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        #expect(countWhite(pixels, texW, texH) > 100,
+                "Mesh without UV must stay on the plain fill path")
+    }
+
+    @Test("UV is ignored when no texture is bound")
+    func uvWithoutTextureFallsBackToFill() throws {
+        let device = MetalTestHelper.device!
+
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
+            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "Mesh must still be filled (red=\(scan.red))")
+        #expect(scan.green == 0, "No texture is bound, so no texel color may appear (green=\(scan.green))")
+    }
+
+    @Test("setTexCoord respreads the UV of an existing vertex")
+    func setTexCoordUpdatesExistingVertex() throws {
+        let device = MetalTestHelper.device!
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        // 全頂点 uv=(0,0)（= 一様に赤）で組んでから、右側 2 頂点だけ u=1 へ差し替える。
+        // 差し替えが GPU バッファへ反映されなければ緑は 1 画素も出ない
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+
+            let cx = w / 2, cy = h / 2, s = min(w, h) * 0.3
+            let mesh = DynamicMesh(device: device)
+            mesh.addNormal(SIMD3(0, 0, 1))
+            mesh.addTexCoord(0, 0)
+            mesh.addVertex(cx - s, cy - s, 0)
+            mesh.addVertex(cx + s, cy - s, 0)
+            mesh.addVertex(cx + s, cy + s, 0)
+            mesh.addVertex(cx - s, cy + s, 0)
+            mesh.addTriangle(0, 1, 2)
+            mesh.addTriangle(0, 2, 3)
+
+            mesh.setTexCoord(1, SIMD2(1, 0))
+            mesh.setTexCoord(2, SIMD2(1, 1))
+
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "red=\(scan.red)")
+        #expect(scan.green > 100, "setTexCoord must reach the GPU buffer (green=\(scan.green))")
+        #expect(scan.redMeanX < scan.greenMeanX,
+                "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
+    }
+
+    /// 全面が赤の 1×1 テクスチャ（BGRA8）。
+    private func makeRedTexture(device: MTLDevice) -> MImage? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 1, height: 1, mipmapped: false)
+        desc.usage = [.shaderRead]
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,
+                    withBytes: [0, 0, 255, 255] as [UInt8], bytesPerRow: 4)
+        return MImage(texture: tex)
+    }
+
+    @Test("stroke on a textured mesh rebinds the non-UV vertices")
+    func strokeOnTexturedMeshUsesPlainVertices() throws {
+        let device = MetalTestHelper.device!
+        guard let img = makeRedTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        // fill でテクスチャ経路（positionNormalUV）へ入ったあと、stroke パスが
+        // 通常パイプライン + UV なしの頂点列へ戻さないと線もテクスチャを
+        // サンプルしてしまう。赤一色のテクスチャ × 緑の stroke なら
+        // 貼り直しに失敗した線は黒（赤 × 緑）になり、緑画素が消える
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            // 塗りを消してワイヤーだけにする（dynamicMesh の stroke は深度バイアスを
+            // 掛けないため、fill があると線が塗りに負けて見えない・#436）
+            canvas3D.noFill()
+            canvas3D.stroke(0, 255, 0)
+            canvas3D.texture(img)
+            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        // ワイヤーは quad の外周に出る。緑（stroke 色）の画素が残っていること
+        var greenLine = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                if pixels[i + 1] > 180 && pixels[i + 2] < 120 && pixels[i] < 120 { greenLine += 1 }
+            }
+        }
+        #expect(greenLine > 50, "Stroke must stay in the stroke color (greenLine=\(greenLine))")
+    }
+
+    @Test("clear() resets the UV declaration")
+    func clearResetsUVDeclaration() throws {
+        let device = MetalTestHelper.device!
+        guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        // UV 付きで一度組んだメッシュを clear() し、UV なしで組み直す。宣言フラグが
+        // 残っていると（前回の pending UV で）テクスチャ経路へ入り白が消える
+        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+
+            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+            mesh.ensureBuffers()
+            mesh.clear()
+
+            let cx = w / 2, cy = h / 2, s = min(w, h) * 0.3
+            mesh.addNormal(SIMD3(0, 0, 1))
+            mesh.addVertex(cx - s, cy - s, 0)
+            mesh.addVertex(cx + s, cy - s, 0)
+            mesh.addVertex(cx + s, cy + s, 0)
+            mesh.addTriangle(0, 1, 2)
+
+            canvas3D.dynamicMesh(mesh)
+        }) else { return }
+
+        #expect(countWhite(pixels, texW, texH) > 100,
+                "clear() must drop the UV declaration and fall back to the plain fill path")
     }
 }

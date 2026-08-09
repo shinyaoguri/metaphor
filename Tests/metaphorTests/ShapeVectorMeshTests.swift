@@ -361,6 +361,126 @@ struct DynamicMeshTests {
         // Just verifying it doesn't crash
         #expect(mesh.vertexCount == 1)
     }
+
+    // MARK: - UV (#435)
+
+    @Test("hasUVs is false until addTexCoord is called")
+    func hasUVsDefaultsToFalse() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let mesh = DynamicMesh(device: device)
+        mesh.addVertex(0, 0, 0)
+        #expect(mesh.hasUVs == false)
+
+        mesh.addTexCoord(0, 0)
+        #expect(mesh.hasUVs)
+    }
+
+    @Test("ensureBuffers builds the UV buffer only when UV is declared")
+    func uvBufferOnlyWhenDeclared() {
+        let device = MTLCreateSystemDefaultDevice()!
+
+        let plain = DynamicMesh(device: device)
+        plain.addVertex(0, 0, 0)
+        plain.addVertex(1, 0, 0)
+        plain.addVertex(0, 1, 0)
+        plain.ensureBuffers()
+        #expect(plain.uvVertexBuffer == nil)
+
+        let textured = DynamicMesh(device: device)
+        textured.addTexCoord(0, 0)
+        textured.addVertex(0, 0, 0)
+        textured.addTexCoord(1, 0)
+        textured.addVertex(1, 0, 0)
+        textured.addTexCoord(1, 1)
+        textured.addVertex(0, 1, 0)
+        textured.ensureBuffers()
+        #expect(textured.uvVertexBuffer != nil)
+    }
+
+    @Test("UV buffer carries the declared coordinates in vertex order")
+    func uvBufferContents() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let mesh = DynamicMesh(device: device)
+        mesh.addTexCoord(0, 0)
+        mesh.addVertex(0, 0, 0)
+        mesh.addTexCoord(0.25, 0.5)
+        mesh.addVertex(1, 0, 0)
+        // addTexCoord は「次の頂点以降」に効くペンディング方式（addNormal / addColor と同じ）
+        mesh.addVertex(0, 1, 0)
+        mesh.ensureBuffers()
+
+        guard let buffer = mesh.uvVertexBuffer else {
+            Issue.record("UV buffer must exist")
+            return
+        }
+        let uvVertices = buffer.contents().bindMemory(to: Vertex3DTextured.self, capacity: 3)
+        #expect(uvVertices[0].uv == SIMD2<Float>(0, 0))
+        #expect(uvVertices[1].uv == SIMD2<Float>(0.25, 0.5))
+        #expect(uvVertices[2].uv == SIMD2<Float>(0.25, 0.5))
+        #expect(uvVertices[1].position == SIMD3<Float>(1, 0, 0))
+    }
+
+    @Test("setTexCoord marks the mesh dirty and rebuilds the UV buffer")
+    func setTexCoordRebuilds() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let mesh = DynamicMesh(device: device)
+        mesh.addTexCoord(0, 0)
+        mesh.addVertex(0, 0, 0)
+        mesh.addVertex(1, 0, 0)
+        mesh.addVertex(0, 1, 0)
+        mesh.ensureBuffers()
+
+        mesh.setTexCoord(1, SIMD2(1, 1))
+        mesh.ensureBuffers()
+
+        guard let buffer = mesh.uvVertexBuffer else {
+            Issue.record("UV buffer must exist")
+            return
+        }
+        let uvVertices = buffer.contents().bindMemory(to: Vertex3DTextured.self, capacity: 3)
+        #expect(uvVertices[1].uv == SIMD2<Float>(1, 1))
+    }
+
+    @Test("clear resets the UV declaration and buffer")
+    func clearResetsUV() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let mesh = DynamicMesh(device: device)
+        mesh.addTexCoord(1, 1)
+        mesh.addVertex(0, 0, 0)
+        mesh.ensureBuffers()
+        #expect(mesh.hasUVs)
+
+        mesh.clear()
+        #expect(mesh.hasUVs == false)
+
+        // clear() 後に UV なしで組み直したメッシュは UV バッファを持たない
+        mesh.addVertex(0, 0, 0)
+        mesh.addVertex(1, 0, 0)
+        mesh.addVertex(0, 1, 0)
+        mesh.ensureBuffers()
+        #expect(mesh.uvVertexBuffer == nil)
+    }
+
+    @Test("makeSnapshotMesh carries UV into the recorded Mesh")
+    func snapshotMeshCarriesUV() {
+        let device = MTLCreateSystemDefaultDevice()!
+
+        let plain = DynamicMesh(device: device)
+        plain.addVertex(0, 0, 0)
+        plain.addVertex(1, 0, 0)
+        plain.addVertex(0, 1, 0)
+        #expect(plain.makeSnapshotMesh()?.hasUVs == false)
+
+        let textured = DynamicMesh(device: device)
+        textured.addTexCoord(0, 0)
+        textured.addVertex(0, 0, 0)
+        textured.addVertex(1, 0, 0)
+        textured.addVertex(0, 1, 0)
+        textured.addTriangle(0, 1, 2)
+        let snapshot = textured.makeSnapshotMesh()
+        #expect(snapshot?.hasUVs == true)
+        #expect(snapshot?.uvVertexCount == 3)
+    }
 }
 
 // MARK: - B-10: Custom Vertex Shader Tests
