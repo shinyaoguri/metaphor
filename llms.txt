@@ -576,6 +576,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let canvas3DTexturedFragment: String` -- Canvas3D テクスチャ付きフラグメントシェーダーのMSL関数名。
 - `static let canvas3DTexturedVertex: String` -- Canvas3D テクスチャ付き頂点シェーダーのMSL関数名。
 - `static let canvas3DVertex: String` -- Canvas3D 頂点シェーダーのMSL関数名。
+- `static let canvas3DWireVertex: String` -- Canvas3D ワイヤーフレーム（stroke）頂点シェーダーのMSL関数名。
 - `static let flatColorFragment: String` -- フラットカラーフラグメントシェーダーのMSL関数名。
 - `static let flatColorVertex: String` -- フラットカラー頂点シェーダーのMSL関数名。
 - `static let litFragment: String` -- ライティング付きフラグメントシェーダーのMSL関数名。

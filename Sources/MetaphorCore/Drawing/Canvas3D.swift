@@ -68,12 +68,17 @@ public final class Canvas3D: CanvasStyle {
     private let sampleCount: Int
     private let pipelineState: MTLRenderPipelineState
     private let texturedPipelineState: MTLRenderPipelineState
+    /// ワイヤーフレーム（stroke）パス専用。頂点カラー（= 記録時の fill 色）を
+    /// 無視して stroke 色だけで描く（#429）。
+    private let wirePipelineState: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState?
     private let dummyShadowTexture: MTLTexture
 
     // インスタンスレンダリングパイプライン
     private let instancedPipelineState: MTLRenderPipelineState
     private let instancedTexturedPipelineState: MTLRenderPipelineState
+    /// インスタンス描画のワイヤーフレーム（stroke）パス専用（#429）。
+    private let instancedWirePipelineState: MTLRenderPipelineState
     private let instanceBatcher: InstanceBatcher3D
 
     static let maxLights = 8
@@ -337,6 +342,20 @@ public final class Canvas3D: CanvasStyle {
             .sampleCount(sampleCount)
             .build()
 
+        // ワイヤーフレーム（stroke）パイプライン。フラグメントは共通（stroke は
+        // ライティングなしで描くため lightCount=0 の分岐に入り in.color を返す）
+        let wireVertexFn = shaderLibrary.function(
+            named: BuiltinShaders.FunctionName.canvas3DWireVertex,
+            from: ShaderLibrary.BuiltinKey.canvas3D
+        )
+        self.wirePipelineState = try PipelineFactory(device: device)
+            .vertex(wireVertexFn)
+            .fragment(fragmentFn)
+            .vertexLayout(.positionNormalColor)
+            .blending(.alpha)
+            .sampleCount(sampleCount)
+            .build()
+
         // テクスチャパイプライン
         let texVertexFn = shaderLibrary.function(
             named: BuiltinShaders.FunctionName.canvas3DTexturedVertex,
@@ -367,6 +386,19 @@ public final class Canvas3D: CanvasStyle {
         )
         self.instancedPipelineState = try PipelineFactory(device: device)
             .vertex(instVertexFn)
+            .fragment(instFragmentFn)
+            .vertexLayout(.positionNormalColor)
+            .blending(.alpha)
+            .sampleCount(sampleCount)
+            .build()
+
+        // インスタンスパイプライン（ワイヤーフレーム / stroke）
+        let instWireVertexFn = shaderLibrary.function(
+            named: Canvas3DInstancedShaders.wireVertexFunctionName,
+            from: ShaderLibrary.BuiltinKey.canvas3DInstanced
+        )
+        self.instancedWirePipelineState = try PipelineFactory(device: device)
+            .vertex(instWireVertexFn)
             .fragment(instFragmentFn)
             .vertexLayout(.positionNormalColor)
             .blending(.alpha)
@@ -1038,7 +1070,9 @@ public final class Canvas3D: CanvasStyle {
 
         if hasStroke {
             encoder.setTriangleFillMode(.lines)
-            encoder.setRenderPipelineState(pipelineState)
+            // 頂点カラーには記録時の fill 色が焼き込まれているため、通常の
+            // パイプラインでは線が「fill 色 × stroke 色」になる（#429）
+            encoder.setRenderPipelineState(wirePipelineState)
             if let depthState = depthState {
                 encoder.setDepthStencilState(depthState)
             }
@@ -1065,9 +1099,27 @@ public final class Canvas3D: CanvasStyle {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            Canvas3D.beginStrokeDepthBias(on: encoder)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+            Canvas3D.endStrokeDepthBias(on: encoder)
             encoder.setTriangleFillMode(.fill)
         }
+    }
+
+    // MARK: - ストロークの深度バイアス
+
+    // ワイヤーフレーム（stroke）は塗りつぶしと同一のジオメトリを線として描き直す。
+    // 深度比較が `.less` のため、等しい深度になる線は塗りに負けて 1 本も残らない（#429）。
+    // 線をわずかに手前へずらして必ず勝たせる。1e-4 は正規化デバイス深度に対する
+    // 値で、手前の別ジオメトリを貫通するほど大きくはない。
+    private static let strokeDepthBias: Float = -1e-4
+
+    private static func beginStrokeDepthBias(on encoder: MTLRenderCommandEncoder) {
+        encoder.setDepthBias(strokeDepthBias, slopeScale: -1, clamp: 0)
+    }
+
+    private static func endStrokeDepthBias(on encoder: MTLRenderCommandEncoder) {
+        encoder.setDepthBias(0, slopeScale: 0, clamp: 0)
     }
 
     // 単純な三角形ファンでポリゴンをテッセレーション（凸ポリゴン向け）
@@ -1440,13 +1492,17 @@ public final class Canvas3D: CanvasStyle {
         // --- ワイヤーフレーム（ストローク）パス ---
         if batchHasStroke {
             encoder.setTriangleFillMode(.lines)
-            encoder.setRenderPipelineState(instancedPipelineState)
+            encoder.setRenderPipelineState(instancedWirePipelineState)
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
 
-            // ワイヤーフレームはライティングなし。ストローク色は全インスタンスで統一
-            // （BatchKey が同一 strokeColor を要求するため、全インスタンスが同じ値を共有）。
-            // ストローク用にインスタンスバッファの色を上書きする代わりに、
-            // シーンユニフォームで lightCount=0 とし、インスタンスの色をそのまま使用します。
+            // ワイヤーフレームはライティングなし（lightCount=0）。ストローク色は
+            // 全インスタンスで統一（BatchKey が同一 strokeColor を要求する）なので、
+            // インスタンスバッファを書き換えず buffer(4) で 1 色だけ渡す。
+            // インスタンス色（= fill 色）を流用していたときは stroke 色が反映されず、
+            // 頂点カラーとの乗算で線が消えることもあった（#429）
+            var wireColor = instanceBatcher.currentStrokeColor
+            encoder.setVertexBytes(&wireColor, length: MemoryLayout<SIMD4<Float>>.stride, index: 4)
+
             var wireSceneUniforms = InstancedSceneUniforms(
                 viewProjectionMatrix: computeViewProjection(),
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
@@ -1467,6 +1523,7 @@ public final class Canvas3D: CanvasStyle {
             encoder.setFragmentBytes(&shadowOff, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
             encoder.setFragmentTexture(dummyShadowTexture, index: 1)
 
+            Canvas3D.beginStrokeDepthBias(on: encoder)
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
                     type: .triangle, indexCount: mesh.indexCount,
@@ -1479,6 +1536,7 @@ public final class Canvas3D: CanvasStyle {
                     instanceCount: instanceBatcher.instanceCount
                 )
             }
+            Canvas3D.endStrokeDepthBias(on: encoder)
 
             encoder.setTriangleFillMode(.fill)
         }
@@ -1597,7 +1655,8 @@ public final class Canvas3D: CanvasStyle {
                 hasTexture: 0
             )
 
-            encoder.setRenderPipelineState(pipelineState)
+            // 頂点カラーを無視して stroke 色だけで描く（#429）
+            encoder.setRenderPipelineState(wirePipelineState)
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
             encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
@@ -1608,6 +1667,7 @@ public final class Canvas3D: CanvasStyle {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            Canvas3D.beginStrokeDepthBias(on: encoder)
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
                 encoder.drawIndexedPrimitives(
                     type: .triangle, indexCount: mesh.indexCount,
@@ -1619,6 +1679,7 @@ public final class Canvas3D: CanvasStyle {
                     vertexCount: mesh.vertexCount
                 )
             }
+            Canvas3D.endStrokeDepthBias(on: encoder)
 
             encoder.setTriangleFillMode(.fill)
         }

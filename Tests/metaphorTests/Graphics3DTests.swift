@@ -712,3 +712,207 @@ struct Canvas3DBatchFlushTests {
                 "Second large polygon (right) must render at its own ring offset (nonBlackRight=\(nonBlackRight))")
     }
 }
+
+// MARK: - beginShape の stroke（#429）
+
+@Suite("Canvas3D Shape Stroke", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Canvas3DShapeStrokeTests {
+
+    /// colorTexture を BGRA8 で読み戻します。
+    private func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)? {
+        let w = renderer.textureManager.width
+        let h = renderer.textureManager.height
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        desc.storageMode = .shared
+        guard let staging = renderer.device.makeTexture(descriptor: desc),
+              let blitCB = renderer.commandQueue.makeCommandBuffer(),
+              let blit = blitCB.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: renderer.textureManager.colorTexture,
+                  sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: w, height: h, depth: 1),
+                  to: staging, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        blitCB.commit()
+        blitCB.waitUntilCompleted()
+        var pixels = [UInt8](repeating: 0, count: w * h * 4)
+        staging.getBytes(&pixels, bytesPerRow: w * 4,
+                         from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        return (pixels, w, h)
+    }
+
+    /// 半径 radius の正三角形を beginShape/endShape で 1 枚描きます。
+    private func triangle(_ canvas3D: Canvas3D, radius: Float) {
+        canvas3D.beginShape()
+        for i in 0..<3 {
+            let a = Float(i) / 3 * 2 * Float.pi - Float.pi / 2
+            canvas3D.vertex(cos(a) * radius, sin(a) * radius, 0)
+        }
+        canvas3D.endShape(.close)
+    }
+
+    @Test("stroke-only shape survives when a filled shape is drawn in the same frame (#429)")
+    func strokeOnlyShapeCoexistsWithFilledShape() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        guard let commandBuffer = renderer.commandQueue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return
+        }
+        let rpd = renderer.textureManager.renderPassDescriptor
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            Issue.record("Failed to create encoder")
+            return
+        }
+
+        let w = Float(renderer.textureManager.width)
+        let h = Float(renderer.textureManager.height)
+        let radius = min(w, h) * 0.2
+
+        canvas3D.begin(encoder: encoder, time: 0)
+        // 右: fill のみ（青）。この fill 色が以降の vertex() に焼き込まれる
+        canvas3D.pushMatrix()
+        canvas3D.translate(w * 0.75, h / 2, 0)
+        canvas3D.noStroke()
+        canvas3D.fill(0, 0, 255)
+        triangle(canvas3D, radius: radius)
+        canvas3D.popMatrix()
+        // 左: stroke のみ（赤のワイヤーフレーム）。noFill でも直前の fill 色は
+        // 頂点カラーとして残るため、線が「青 × 赤 = 黒」になって丸ごと消えていた
+        // のが #429 の症状 B。stroke 色だけで描かれなければならない
+        canvas3D.pushMatrix()
+        canvas3D.translate(w * 0.25, h / 2, 0)
+        canvas3D.noFill()
+        canvas3D.stroke(255, 0, 0)
+        triangle(canvas3D, radius: radius)
+        canvas3D.popMatrix()
+        canvas3D.end()
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        guard let (pixels, texW, texH) = readback(renderer: renderer) else {
+            Issue.record("Failed to read back color texture")
+            return
+        }
+        var redLeft = 0
+        var blueRight = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                let b = pixels[i], r = pixels[i + 2]
+                if x < texW / 2 {
+                    if r > 128 && b < 64 { redLeft += 1 }
+                } else {
+                    if b > 128 && r < 64 { blueRight += 1 }
+                }
+            }
+        }
+        #expect(redLeft > 100,
+                "Stroke-only shape must keep its own stroke color next to a filled one (redLeft=\(redLeft))")
+        #expect(blueRight > 100,
+                "Filled shape must render (blueRight=\(blueRight))")
+    }
+
+    @Test("stroke is visible on a shape that also has fill (#429)")
+    func strokeVisibleOnFilledShape() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        guard let commandBuffer = renderer.commandQueue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return
+        }
+        let rpd = renderer.textureManager.renderPassDescriptor
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            Issue.record("Failed to create encoder")
+            return
+        }
+
+        let w = Float(renderer.textureManager.width)
+        let h = Float(renderer.textureManager.height)
+
+        canvas3D.begin(encoder: encoder, time: 0)
+        canvas3D.translate(w / 2, h / 2, 0)
+        // fill は青、stroke は赤。同一ジオメトリを 2 パスで描くため、深度比較が
+        // 厳密な `<` だと後から来る線が等深度で不合格になり赤が 1 画素も出ない
+        canvas3D.fill(0, 0, 255)
+        canvas3D.stroke(255, 0, 0)
+        triangle(canvas3D, radius: min(w, h) * 0.4)
+        canvas3D.end()
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        guard let (pixels, texW, texH) = readback(renderer: renderer) else {
+            Issue.record("Failed to read back color texture")
+            return
+        }
+        var redPixels = 0
+        var bluePixels = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                let b = pixels[i], r = pixels[i + 2]
+                if r > 128 && b < 64 { redPixels += 1 }
+                if b > 128 && r < 64 { bluePixels += 1 }
+            }
+        }
+        #expect(bluePixels > 100, "Fill must render (bluePixels=\(bluePixels))")
+        #expect(redPixels > 50,
+                "Stroke must be visible over the fill of the same shape (redPixels=\(redPixels))")
+    }
+
+    @Test("stroke on a primitive mesh uses the stroke color, not the fill color (#429)")
+    func strokeColorOnPrimitiveMesh() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        guard let commandBuffer = renderer.commandQueue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return
+        }
+        let rpd = renderer.textureManager.renderPassDescriptor
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            Issue.record("Failed to create encoder")
+            return
+        }
+
+        let w = Float(renderer.textureManager.width)
+        let h = Float(renderer.textureManager.height)
+
+        canvas3D.begin(encoder: encoder, time: 0)
+        canvas3D.translate(w / 2, h / 2, 0)
+        // インスタンス経路（box / sphere など）のワイヤーはインスタンス色
+        // （= fill 色）で描かれていたため、stroke 色が反映されなかった
+        canvas3D.fill(0, 0, 255)
+        canvas3D.stroke(255, 0, 0)
+        canvas3D.box(min(w, h) * 0.5)
+        canvas3D.end()
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        guard let (pixels, texW, texH) = readback(renderer: renderer) else {
+            Issue.record("Failed to read back color texture")
+            return
+        }
+        var redPixels = 0
+        var bluePixels = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                let b = pixels[i], r = pixels[i + 2]
+                if r > 128 && b < 64 { redPixels += 1 }
+                if b > 128 && r < 64 { bluePixels += 1 }
+            }
+        }
+        #expect(bluePixels > 100, "Box fill must render (bluePixels=\(bluePixels))")
+        #expect(redPixels > 50,
+                "Box wireframe must be drawn in the stroke color (redPixels=\(redPixels))")
+    }
+}

@@ -379,6 +379,30 @@ vertex Canvas3DInstancedVertexOut metaphor_canvas3DInstancedVertex(
     return out;
 }
 
+// ワイヤーフレーム（stroke）専用のインスタンス頂点シェーダー。
+//
+// 頂点カラーもインスタンス色（= fill 色）も無視し、バッチ共通の stroke 色を
+// buffer(4) から受け取ってそのまま使う。通常の頂点シェーダーを流用していた
+// ときは線が「頂点カラー × fill 色」で描かれ、stroke 色が反映されないうえ、
+// 補色関係では黒くなって線が消えていた（#429）。stroke 色がバッチ共通なのは
+// BatchKey3D が strokeColor を含むため（色が変われば別バッチになる）。
+vertex Canvas3DInstancedVertexOut metaphor_canvas3DInstancedWireVertex(
+    Canvas3DInstancedVertexIn in [[stage_in]],
+    uint instanceID [[instance_id]],
+    device const InstanceData3D *instances [[buffer(6)]],
+    constant InstancedSceneUniforms &scene [[buffer(1)]],
+    constant float4 &strokeColor [[buffer(4)]]
+) {
+    Canvas3DInstancedVertexOut out;
+    InstanceData3D inst = instances[instanceID];
+    float4 worldPos = inst.modelMatrix * float4(in.position, 1.0);
+    out.worldPosition = worldPos.xyz;
+    out.position = scene.viewProjectionMatrix * worldPos;
+    out.normal = (inst.normalMatrix * float4(in.normal, 0.0)).xyz;
+    out.color = strokeColor;
+    return out;
+}
+
 fragment float4 metaphor_canvas3DInstancedFragment(
     Canvas3DInstancedVertexOut in [[stage_in]],
     constant InstancedSceneUniforms &scene [[buffer(1)]],
