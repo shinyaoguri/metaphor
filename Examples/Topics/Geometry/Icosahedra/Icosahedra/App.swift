@@ -89,18 +89,18 @@ final class Icosahedra: Sketch {
             let next = (i + 1) % 5
 
             // Top cap
-            beginShape()
+            beginShape3D()
             vertex(ico.topPent[i].0, ico.topPent[i].1, ico.topPent[i].2)
             vertex(ico.topPoint.0, ico.topPoint.1, ico.topPoint.2)
             vertex(ico.topPent[next].0, ico.topPent[next].1, ico.topPent[next].2)
-            endShape(.close)
+            endShape3D(.close)
 
             // Bottom cap
-            beginShape()
+            beginShape3D()
             vertex(ico.bottomPent[i].0, ico.bottomPent[i].1, ico.bottomPent[i].2)
             vertex(ico.bottomPoint.0, ico.bottomPoint.1, ico.bottomPoint.2)
             vertex(ico.bottomPent[next].0, ico.bottomPent[next].1, ico.bottomPent[next].2)
-            endShape(.close)
+            endShape3D(.close)
         }
 
         // Body triangles
@@ -108,17 +108,17 @@ final class Icosahedra: Sketch {
             let next1 = (i + 1) % 5
             let next2 = (i + 2) % 5
 
-            beginShape()
+            beginShape3D()
             vertex(ico.topPent[i].0, ico.topPent[i].1, ico.topPent[i].2)
             vertex(ico.bottomPent[next1].0, ico.bottomPent[next1].1, ico.bottomPent[next1].2)
             vertex(ico.bottomPent[next2].0, ico.bottomPent[next2].1, ico.bottomPent[next2].2)
-            endShape(.close)
+            endShape3D(.close)
 
-            beginShape()
+            beginShape3D()
             vertex(ico.bottomPent[next2].0, ico.bottomPent[next2].1, ico.bottomPent[next2].2)
             vertex(ico.topPent[i].0, ico.topPent[i].1, ico.topPent[i].2)
             vertex(ico.topPent[next1].0, ico.topPent[next1].1, ico.topPent[next1].2)
-            endShape(.close)
+            endShape3D(.close)
         }
     }
 }

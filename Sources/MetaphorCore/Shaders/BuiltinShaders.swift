@@ -301,6 +301,8 @@ public enum BuiltinShaders {
         public static let canvas3DVertex = "metaphor_canvas3DVertex"
         /// Canvas3D フラグメントシェーダーのMSL関数名。
         public static let canvas3DFragment = "metaphor_canvas3DFragment"
+        /// Canvas3D ワイヤーフレーム（stroke）頂点シェーダーのMSL関数名。
+        public static let canvas3DWireVertex = "metaphor_canvas3DWireVertex"
         /// Canvas2D テクスチャ付き頂点シェーダーのMSL関数名。
         public static let canvas2DTexturedVertex = "metaphor_canvas2DTexturedVertex"
         /// Canvas2D テクスチャ付きフラグメントシェーダーのMSL関数名。
