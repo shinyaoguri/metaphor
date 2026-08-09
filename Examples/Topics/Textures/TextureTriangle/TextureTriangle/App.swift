@@ -31,12 +31,10 @@ final class TextureTriangle: Sketch {
         rotateY(map(mouseX, 0, width, -.pi, .pi))
 
         beginShape3D(.triangles)
-        // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
-        // has no UV channel, so this renders with the current fill (metaphor #387).
         texture(img)
-        vertex(-100, -100, 0)
-        vertex(100, -40, 0)
-        vertex(0, 100, 0)
+        vertex(-100, -100, 0, 0, 0)
+        vertex(100, -40, 0, 1, 0.3)
+        vertex(0, 100, 0, 0.5, 1)
         endShape3D()
     }
 }

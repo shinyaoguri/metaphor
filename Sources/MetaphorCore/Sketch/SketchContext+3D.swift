@@ -44,6 +44,23 @@ extension SketchContext {
         }
     }
 
+    /// テクスチャ座標付き 3D 頂点を追加します。
+    /// - Parameters:
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - z: z 座標。
+    ///   - u: 水平テクスチャ座標（0.0〜1.0 に正規化）。
+    ///   - v: 垂直テクスチャ座標（0.0〜1.0 に正規化）。
+    public func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float) {
+        // 2D 記録中は z を落として 2D の UV 付き頂点へルーティングする（#387 と同じ方針）
+        if activeShapeRecording == .twoD {
+            warnVertexZIgnoredOnce()
+            canvas.vertex(x, y, u, v)
+        } else {
+            canvas3D.vertex(x, y, z, u, v)
+        }
+    }
+
     /// 次の 3D 頂点の法線ベクトルを設定します。
     /// - Parameters:
     ///   - nx: 法線の x 成分。

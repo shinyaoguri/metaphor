@@ -44,33 +44,33 @@ final class TextureCube: Sketch {
 
     func texturedCube() {
         beginShape3D(.triangles)
-        // NOTE: texture() has no effect on a custom 3D shape yet — the 3D vertex format
-        // has no UV channel, so this renders with the current fill (metaphor #387).
         texture(tex)
 
+        // Each face maps the whole texture (u, v in 0...1)
+
         // +Z front face (2 triangles per quad)
-        vertex(-1, -1, 1); vertex(1, -1, 1); vertex(1, 1, 1)
-        vertex(-1, -1, 1); vertex(1, 1, 1); vertex(-1, 1, 1)
+        vertex(-1, -1, 1, 0, 0); vertex(1, -1, 1, 1, 0); vertex(1, 1, 1, 1, 1)
+        vertex(-1, -1, 1, 0, 0); vertex(1, 1, 1, 1, 1); vertex(-1, 1, 1, 0, 1)
 
         // -Z back face
-        vertex(1, -1, -1); vertex(-1, -1, -1); vertex(-1, 1, -1)
-        vertex(1, -1, -1); vertex(-1, 1, -1); vertex(1, 1, -1)
+        vertex(1, -1, -1, 0, 0); vertex(-1, -1, -1, 1, 0); vertex(-1, 1, -1, 1, 1)
+        vertex(1, -1, -1, 0, 0); vertex(-1, 1, -1, 1, 1); vertex(1, 1, -1, 0, 1)
 
         // +Y bottom face
-        vertex(-1, 1, 1); vertex(1, 1, 1); vertex(1, 1, -1)
-        vertex(-1, 1, 1); vertex(1, 1, -1); vertex(-1, 1, -1)
+        vertex(-1, 1, 1, 0, 0); vertex(1, 1, 1, 1, 0); vertex(1, 1, -1, 1, 1)
+        vertex(-1, 1, 1, 0, 0); vertex(1, 1, -1, 1, 1); vertex(-1, 1, -1, 0, 1)
 
         // -Y top face
-        vertex(-1, -1, -1); vertex(1, -1, -1); vertex(1, -1, 1)
-        vertex(-1, -1, -1); vertex(1, -1, 1); vertex(-1, -1, 1)
+        vertex(-1, -1, -1, 0, 0); vertex(1, -1, -1, 1, 0); vertex(1, -1, 1, 1, 1)
+        vertex(-1, -1, -1, 0, 0); vertex(1, -1, 1, 1, 1); vertex(-1, -1, 1, 0, 1)
 
         // +X right face
-        vertex(1, -1, 1); vertex(1, -1, -1); vertex(1, 1, -1)
-        vertex(1, -1, 1); vertex(1, 1, -1); vertex(1, 1, 1)
+        vertex(1, -1, 1, 0, 0); vertex(1, -1, -1, 1, 0); vertex(1, 1, -1, 1, 1)
+        vertex(1, -1, 1, 0, 0); vertex(1, 1, -1, 1, 1); vertex(1, 1, 1, 0, 1)
 
         // -X left face
-        vertex(-1, -1, -1); vertex(-1, -1, 1); vertex(-1, 1, 1)
-        vertex(-1, -1, -1); vertex(-1, 1, 1); vertex(-1, 1, -1)
+        vertex(-1, -1, -1, 0, 0); vertex(-1, -1, 1, 1, 0); vertex(-1, 1, 1, 1, 1)
+        vertex(-1, -1, -1, 0, 0); vertex(-1, 1, 1, 1, 1); vertex(-1, 1, -1, 0, 1)
 
         endShape3D()
     }

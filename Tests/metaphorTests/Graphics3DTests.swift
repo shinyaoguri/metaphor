@@ -916,3 +916,251 @@ struct Canvas3DShapeStrokeTests {
                 "Box wireframe must be drawn in the stroke color (redPixels=\(redPixels))")
     }
 }
+
+// MARK: - Canvas3D Shape UV (#433)
+
+@Suite("Canvas3D Shape UV", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Canvas3DShapeUVTests {
+
+    /// `bindShapeVertices` は `Vertex3D` 用のリング（`GrowableGPUBuffer<Vertex3D>`）を
+    /// `Vertex3DTextured` と共有する。両者の stride が一致することが前提。
+    @Test("Vertex3D and Vertex3DTextured share the same stride")
+    func vertexStridesMatch() {
+        #expect(MemoryLayout<Vertex3DTextured>.stride == MemoryLayout<Vertex3D>.stride)
+    }
+
+    /// colorTexture を BGRA8 で読み戻します。
+    private func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)? {
+        let w = renderer.textureManager.width
+        let h = renderer.textureManager.height
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        desc.storageMode = .shared
+        guard let staging = renderer.device.makeTexture(descriptor: desc),
+              let blitCB = renderer.commandQueue.makeCommandBuffer(),
+              let blit = blitCB.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: renderer.textureManager.colorTexture,
+                  sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: w, height: h, depth: 1),
+                  to: staging, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        blitCB.commit()
+        blitCB.waitUntilCompleted()
+        var pixels = [UInt8](repeating: 0, count: w * h * 4)
+        staging.getBytes(&pixels, bytesPerRow: w * 4,
+                         from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        return (pixels, w, h)
+    }
+
+    /// 左半分が赤・右半分が緑の 2×1 テクスチャ（BGRA8）。
+    private func makeHalfRedHalfGreenTexture(device: MTLDevice) -> MImage? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 2, height: 1, mipmapped: false)
+        desc.usage = [.shaderRead]
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        // BGRA 並び: 左 = 赤(0,0,255,255)、右 = 緑(0,255,0,255)
+        let bytes: [UInt8] = [0, 0, 255, 255, 0, 255, 0, 255]
+        tex.replace(region: MTLRegionMake2D(0, 0, 2, 1), mipmapLevel: 0,
+                    withBytes: bytes, bytesPerRow: 2 * 4)
+        return MImage(texture: tex)
+    }
+
+    /// 赤画素・緑画素の個数と平均 x を数えます。
+    private func scanRedGreen(_ pixels: [UInt8], _ texW: Int, _ texH: Int)
+        -> (red: Int, green: Int, redMeanX: Float, greenMeanX: Float) {
+        var red = 0, green = 0
+        var redSumX = 0, greenSumX = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                let b = pixels[i], g = pixels[i + 1], r = pixels[i + 2]
+                if r > 128 && g < 96 && b < 96 { red += 1; redSumX += x }
+                if g > 128 && r < 96 && b < 96 { green += 1; greenSumX += x }
+            }
+        }
+        return (red, green,
+                red > 0 ? Float(redSumX) / Float(red) : 0,
+                green > 0 ? Float(greenSumX) / Float(green) : 0)
+    }
+
+    /// 画面中央に一辺 `size` の quad を UV つきで描きます（左端 u=0 / 右端 u=1）。
+    private func texturedQuad(_ canvas3D: Canvas3D, w: Float, h: Float, size: Float,
+                              mode: ShapeMode = .polygon) {
+        let cx = w / 2, cy = h / 2, s = size / 2
+        canvas3D.beginShape(mode)
+        switch mode {
+        case .triangleStrip:
+            // strip の頂点順（左上 → 左下 → 右上 → 右下）
+            canvas3D.vertex(cx - s, cy - s, 0, 0, 0)
+            canvas3D.vertex(cx - s, cy + s, 0, 0, 1)
+            canvas3D.vertex(cx + s, cy - s, 0, 1, 0)
+            canvas3D.vertex(cx + s, cy + s, 0, 1, 1)
+        default:
+            canvas3D.vertex(cx - s, cy - s, 0, 0, 0)
+            canvas3D.vertex(cx + s, cy - s, 0, 1, 0)
+            canvas3D.vertex(cx + s, cy + s, 0, 1, 1)
+            canvas3D.vertex(cx - s, cy + s, 0, 0, 1)
+        }
+        canvas3D.endShape(.close)
+    }
+
+    /// 1 フレーム描画して読み戻す共通ハーネス。
+    private func render(_ body: (Canvas3D, Float, Float) -> Void) throws
+        -> (pixels: [UInt8], width: Int, height: Int)? {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+
+        guard let commandBuffer = renderer.commandQueue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return nil
+        }
+        let rpd = renderer.textureManager.renderPassDescriptor
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else {
+            Issue.record("Failed to create encoder")
+            return nil
+        }
+
+        let w = Float(renderer.textureManager.width)
+        let h = Float(renderer.textureManager.height)
+
+        canvas3D.begin(encoder: encoder, time: 0)
+        body(canvas3D, w, h)
+        canvas3D.end()
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        return readback(renderer: renderer)
+    }
+
+    @Test("vertex(x,y,z,u,v) maps the texture across a beginShape3D quad")
+    func texturedQuadSamplesTexture() throws {
+        let device = MetalTestHelper.device!
+        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            // fill は白。テクスチャ色は fill 色で tint されるため、UV が効かなければ全面白になる
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
+        }) else { return }
+
+        let scan = scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "Left half must sample the red texel (red=\(scan.red))")
+        #expect(scan.green > 100, "Right half must sample the green texel (green=\(scan.green))")
+        #expect(scan.redMeanX < scan.greenMeanX,
+                "u=0 must land left of u=1 (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+    }
+
+    @Test("UV is ignored when no texture is bound")
+    func uvWithoutTextureFallsBackToFill() throws {
+        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
+            texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
+        }) else { return }
+
+        let scan = scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "Shape must still be filled (red=\(scan.red))")
+        #expect(scan.green == 0, "No texture is bound, so no texel color may appear (green=\(scan.green))")
+    }
+
+    @Test("texture() without UV vertices keeps the plain fill path")
+    func textureWithoutUVKeepsFillPath() throws {
+        let device = MetalTestHelper.device!
+        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        // texture() を呼んでも vertex(x,y,z) だけで組んだシェイプは従来どおり fill で塗る
+        // （テクスチャ座標がないため。UV 対応の前後で挙動が変わらないことを固定する）
+        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            // fill は白。UV 経路へ誤って入ると全頂点 uv=(0,0) でテクスチャ左端の
+            // 赤をサンプルするため、赤画素の有無で取り違えを検出できる
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            let cx = w / 2, cy = h / 2, s = min(w, h) * 0.3
+            canvas3D.beginShape()
+            canvas3D.vertex(cx - s, cy - s, 0)
+            canvas3D.vertex(cx + s, cy - s, 0)
+            canvas3D.vertex(cx + s, cy + s, 0)
+            canvas3D.vertex(cx - s, cy + s, 0)
+            canvas3D.endShape(.close)
+        }) else { return }
+
+        // 正しい挙動では quad は fill 色の白のまま。テクスチャ経路へ入ると
+        // 全頂点 uv=(0,0) でテクセルをサンプルし、白ではなくなる
+        var whitePixels = 0
+        for y in 0..<texH {
+            for x in 0..<texW {
+                let i = (y * texW + x) * 4  // BGRA
+                if pixels[i] > 200 && pixels[i + 1] > 200 && pixels[i + 2] > 200 { whitePixels += 1 }
+            }
+        }
+        #expect(whitePixels > 100,
+                "Shape without UV must stay on the plain fill path (whitePixels=\(whitePixels))")
+    }
+
+    @Test("UV follows the vertices through triangleStrip tessellation")
+    func triangleStripKeepsUVAlignment() throws {
+        let device = MetalTestHelper.device!
+        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6, mode: .triangleStrip)
+        }) else { return }
+
+        let scan = scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "red=\(scan.red)")
+        #expect(scan.green > 100, "green=\(scan.green)")
+        #expect(scan.redMeanX < scan.greenMeanX,
+                "Reordering must carry UV with its vertex (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+    }
+
+    @Test("textured shape larger than the setVertexBytes limit uses the ring buffer")
+    func largeTexturedShapeBindsViaRing() throws {
+        let device = MetalTestHelper.device!
+        guard let img = makeHalfRedHalfGreenTexture(device: device) else {
+            Issue.record("Failed to create texture")
+            return
+        }
+
+        // setVertexBytes は 4096B まで = 48B stride で 85 頂点。三角形ファンで
+        // 128 頂点（= 378 頂点へ展開）を描き、リングバッファ経路を通す
+        guard let (pixels, texW, texH) = try render({ canvas3D, w, h in
+            canvas3D.noStroke()
+            canvas3D.fill(255, 255, 255)
+            canvas3D.texture(img)
+            let cx = w / 2, cy = h / 2, radius = min(w, h) * 0.35
+            canvas3D.beginShape(.polygon)
+            for i in 0..<128 {
+                let a = Float(i) / 128 * 2 * Float.pi
+                // u は x に対応させる（左半分 = 赤、右半分 = 緑）
+                canvas3D.vertex(cx + cos(a) * radius, cy + sin(a) * radius, 0,
+                                (cos(a) + 1) / 2, (sin(a) + 1) / 2)
+            }
+            canvas3D.endShape(.close)
+        }) else { return }
+
+        let scan = scanRedGreen(pixels, texW, texH)
+        #expect(scan.red > 100, "red=\(scan.red)")
+        #expect(scan.green > 100, "green=\(scan.green)")
+        #expect(scan.redMeanX < scan.greenMeanX,
+                "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
+    }
+}
