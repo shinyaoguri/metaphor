@@ -6,6 +6,12 @@ import simd
 
 @testable import MetaphorCore
 
+/// 下限（segments = 3 / rings = 2）に届かない分割数。
+///
+/// `@Test(arguments:)` は Suite の外（nonisolated）から評価されるため、`@MainActor` な
+/// Suite の static プロパティには置けない。
+private let degenerateDetails = [-24, -1, 0, 1, 2]
+
 /// プリミティブ生成の分割数が下限へ丸められることを固定する（Issue #445）。
 ///
 /// `detail` を `@Param` / OSC / MIDI から流すと 0 や負の値が入りうる。`Mesh` のファクトリは
@@ -17,13 +23,10 @@ import simd
 @MainActor
 struct MeshSegmentClampTests {
 
-    /// 下限（segments = 3 / rings = 2）に届かない分割数。
-    private static let degenerateDetails = [-24, -1, 0, 1, 2]
-
     // MARK: - Mesh ファクトリ直呼び
 
     @Test("Mesh ファクトリは 0 以下の分割数でも落ちず、有限な頂点を返す",
-          arguments: MeshSegmentClampTests.degenerateDetails)
+          arguments: degenerateDetails)
     func meshFactoriesSurviveDegenerateSegments(detail: Int) throws {
         let device = try #require(MetalTestHelper.device)
 
@@ -72,7 +75,7 @@ struct MeshSegmentClampTests {
     // MARK: - 生成 API（Canvas3D 経由）
 
     @Test("createXxxMesh は 0 以下の detail でも nil にならず落ちない",
-          arguments: MeshSegmentClampTests.degenerateDetails)
+          arguments: degenerateDetails)
     func createMeshAPIsSurviveDegenerateDetail(detail: Int) throws {
         let c = try makeContext()
 
