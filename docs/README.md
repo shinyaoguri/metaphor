@@ -18,6 +18,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 | metaphor に依存する人 | バージョン指定の判断材料・何が壊れうるかを知る | [api-stability-policy.md](api-stability-policy.md)（英語）→ [CHANGELOG.md](../CHANGELOG.md) |
 | クロスリポ変更を扱う人 | metaphor ⇄ metaphor-cli の契約に触れる | [CONTRACT.md](../CONTRACT.md) |
 | リリース担当 | リリースを出す | [releasing.md](releasing.md) |
+| リリース自動化を触る人 | 3 リポ（metaphor / metaphor-cli / homebrew-tap）の関係と自動連鎖を掴む | [release-pipeline.md](release-pipeline.md) |
 
 ## ディレクトリ構成
 
@@ -36,6 +37,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [design/live-tooling-params.md](design/live-tooling-params.md) — Parameter Store / 状態保持リロード / インスペクタの設計叩き台
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 リリース準備計画（readiness review・準備トラック・リリース条件）
 - **[releasing.md](releasing.md)** — リリース手順（週次トレイン + `release:now` の express）+ CHANGELOG の昇格・リリースノート生成
+- **[release-pipeline.md](release-pipeline.md)** — 3 リポジトリ（metaphor / metaphor-cli / homebrew-tap）の依存関係とリリース自動連鎖の全体地図。詳細は releasing.md / metaphor-cli 側 docs へ委譲
 
 リポジトリルートには [CHANGELOG.md](../CHANGELOG.md)（利用者向けの変更履歴。Keep a Changelog 形式・英語。ユーザー影響のある PR は CHANGELOG.md ではなく [changelog.d/](../changelog.d/README.md) に 1 ファイル置き、リリース時に集約される）もあります。Examples 側には [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグを使った「順に学ぶ」推奨順路）もあります。
 
@@ -55,5 +57,6 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 | 設計判断の根拠 | [adr/](adr/) |
 | 何が公開 API か・何が壊れうるか | [api-stability-policy.md](api-stability-policy.md) |
 | metaphor ⇄ metaphor-cli の契約 | [CONTRACT.md](../CONTRACT.md) と `contract/*.schema.json` |
+| 3 リポの関係とリリース連鎖の全体像 | [release-pipeline.md](release-pipeline.md) |
 | コードの触り方・規約 | [CLAUDE.md](../CLAUDE.md) と [ai/README.md](ai/README.md) |
 | セットアップ・ビルド | [DEVELOPMENT.md](../DEVELOPMENT.md) |
