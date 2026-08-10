@@ -70,6 +70,36 @@ public protocol Sketch: AnyObject {
     ///
     /// - Parameter paths: ドロップされたファイルの絶対パスの配列。
     func fileDropped(_ paths: [String])
+
+    // MARK: - State Preservation (optional)
+
+    /// リロードをまたいで保持したい状態を返します（オプション）。
+    ///
+    /// `metaphor watch` は再ビルドのたびにスケッチのプロセスを作り直すため、既定では
+    /// `draw()` が積み上げた状態が失われます。ここでスナップショットを返すと、
+    /// 再起動後の ``restoreState(_:)`` に同じデータが渡されます。
+    ///
+    /// ```swift
+    /// private struct SimState: Codable { var particles: [Particle] }
+    ///
+    /// func saveState() -> Data? { encodeState(SimState(particles: particles)) }
+    /// func restoreState(_ data: Data) {
+    ///     guard let s: SimState = decodeState(data) else { return }
+    ///     particles = s.particles
+    /// }
+    /// ```
+    ///
+    /// 既定は `nil`（状態を保存しない）。時計（`frameCount` / `time`）の保持だけなら
+    /// このメソッドは不要で、``SketchConfig/preserveClock`` を `true` にしてください。
+    func saveState() -> Data?
+
+    /// ``saveState()`` が返した状態を復元します（オプション）。
+    ///
+    /// `setup()` の**後**に一度だけ呼ばれます。デコードに失敗したら何もせず
+    /// 初期状態のまま続けてください（開発ツールの都合でスケッチが壊れないように）。
+    ///
+    /// - Parameter data: 直前のプロセスが ``saveState()`` で返したデータ。
+    func restoreState(_ data: Data)
 }
 
 // MARK: - Per-Instance Context (Pure Swift Storage)
@@ -136,6 +166,8 @@ extension Sketch {
     public func keyReleased() {}
     public func keyTyped() {}
     public func fileDropped(_ paths: [String]) {}
+    public func saveState() -> Data? { nil }
+    public func restoreState(_ data: Data) {}
 }
 
 // MARK: - @main Entry Point
@@ -240,6 +272,18 @@ public struct SketchConfig: Sendable {
     /// GPU 負荷が下がります。
     public var msaa: Int
 
+    /// リロードをまたいで時計（`frameCount` / `time`）を復元するか（既定 `false`）。
+    ///
+    /// `metaphor watch` の再ビルドで子プロセスが作り直されると、既定では
+    /// `frameCount` が 0 に、`time` が 0 秒に戻ります。`true` にすると、
+    /// 直前のプロセスが保存した時計を引き継いで再開します——**スケッチ側の
+    /// コードはゼロ行**で、t 駆動のアニメーションが編集のたびに巻き戻りません。
+    ///
+    /// 既定を `false`（オプトイン）にしているのは、時刻が外部の都合で飛ぶことを
+    /// 前提にしていないスケッチ（一定時間で終わる演出・録画）を驚かせないためです。
+    /// ``Sketch/saveState()`` による状態の保存とは独立に使えます。
+    public var preserveClock: Bool
+
     /// スケッチセットアップ時に登録するプラグインファクトリ。
     ///
     /// プラグインは ``Sketch/setup()`` が呼ばれる前にインスタンス化されスケッチに接続されます。
@@ -264,6 +308,7 @@ public struct SketchConfig: Sendable {
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
     ///   - preventAppNap: スケッチ実行中に App Nap を抑止するか（デフォルト: `true`）。
     ///   - msaa: MSAA サンプル数（デフォルト: `4`。`1` で無効、非対応値は `1` にフォールバック）。
+    ///   - preserveClock: リロードをまたいで `frameCount` / `time` を復元するか（デフォルト: `false`）。
     ///   - plugins: スケッチに登録するプラグインファクトリの配列。
     public init(
         width: Int = 1920,
@@ -277,6 +322,7 @@ public struct SketchConfig: Sendable {
         renderLoopMode: RenderLoopMode = .displayLink,
         preventAppNap: Bool = true,
         msaa: Int = 4,
+        preserveClock: Bool = false,
         plugins: [PluginFactory] = []
     ) {
         self.width = width
@@ -290,6 +336,7 @@ public struct SketchConfig: Sendable {
         self.renderLoopMode = renderLoopMode
         self.preventAppNap = preventAppNap
         self.msaa = msaa
+        self.preserveClock = preserveClock
         self.plugins = plugins
     }
 }

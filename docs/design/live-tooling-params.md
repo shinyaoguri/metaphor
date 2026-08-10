@@ -105,6 +105,7 @@ func restoreState(_ data: Data) {
 
 両方とも `Sketch` にデフォルト実装（nil / no-op）で「draw() 以外は全部任意」を維持。
 
+- **実装状況（2026-08-10・Issue #451）**: metaphor 側（フック + `encodeState`/`decodeState` + `StatePlugin` + `METAPHOR_RESTORE_STATE` + `preserveClock` + 契約点 8）は実装済み。cli 側の監督シーケンスは metaphor-cli#105。`state.json` は `params.json` と違い**同期書出**（consumer が ready を待つ時間がそのままリロードの待ち時間になるため）
 - **metaphor**: フック + ヘルパー + StatePlugin + env var — **M** / **metaphor-cli**: 監督シーケンス — **S**
 - **契約**: env var `METAPHOR_RESTORE_STATE`（契約点 2）+ state ファイル群（`user` 節はエンベロープのみスキーマ管理・中身は意図的に opaque）。クロスリポ同時 PR
 - **順序**: A の後（パラメータという「最も保持したい状態」は A だけでリロードを生存するため。B はシミュレーション状態と時計のため）
@@ -146,10 +147,10 @@ A (store+wrapper+files+GUI → cli MCP ツール)      ← 基盤
 
 1. **確定: Mirror によるラベル発見 + 明示名 override**（`@Param("myName")`）。将来 Swift macro で置換可。トップレベルのプロパティのみ発見対象（ネストした型の中は対象外）
 2. **確定: last-writer-wins + `revision` エコー**。`ifRevision` 楽観ロックは入れない（拒否時のリトライ規約とエラー面を契約に増やす割に、人間がツマみながら AI が書く実際の使い方で得が薄い）。反映確認は `appliedRequestId` + `revision`、拒否理由は `params.json` の `warnings[]`
-3. 未決（B のスコープ）: `preserveClock` の既定は オプトイン（推奨・t 駆動スケッチの驚き最小）か、watch 時デフォルト ON か
+3. **確定: `preserveClock` はオプトイン（`SketchConfig(preserveClock: true)`・既定 `false`）**（2026-08-10・Issue #451）。watch 時デフォルト ON にしなかったのは、時刻が外部の都合で飛ぶ前提を全スケッチに敷くと、一定時間で終わる演出・録画・`time` を単調と仮定した処理が黙って壊れるため。opt-in なら「巻き戻ってほしくない」と自覚したスケッチだけが 1 行で得をする（`saveState()` の実装とは独立に効く）
 4. **確定: スケッチディレクトリ単位で固定・v1 はプリセットなし**。名前付きプリセットは実作品（Epic J [#414](https://github.com/shinyaoguri/metaphor/issues/414)）で必要になったら additive に足す
 5. **確定: スケッチ内 `gui.params()` 先行 → cli サイドパネルは後日**
-6. 未決（B のスコープ）: live-viewer.md §A-3（stdin saveState 動詞 + stdout base64）の正式な改訂タイミング（B の実装 PR で同時改訂を想定）
+6. **確定: B の実装 PR（Issue #451）で [live-viewer.md](live-viewer.md) §A-3 を同時改訂した**（2026-08-10）。stdin/stdout を捨てた理由は 3 点——stdout はスケッチの `print()` と混ざる / 共有セッションでは子の stdin を watch が所有するため第三者（MCP）が触れない / 既存 2 契約と同型ならプロトコルも consumer 実装も再利用できる
 7. **確定: `string` の `choices` は v1 から入れる**。`params.json` に `choices` が出るので AI に合法値がそのまま伝わり、範囲外は拒否されて `warnings[]` に載る
 
 ### D1 の実装で決めた細部（設計叩き台からの差分）

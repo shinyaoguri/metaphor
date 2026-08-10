@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 281
+Example count: 282
 
-Status: supported 261, partial 0, stub 10, obsolete 10
+Status: supported 262, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -219,6 +219,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [SVG Export](../../Examples/Samples/SVGExport) [Intermediate] -- Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVGRecord()/endSVGRecord() — the file is generated from the same draw calls as the raster output, so what y... Tags: export, interaction, samples, svgexport.
 - [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: samples, scenegraphbasics.
 - [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: samples, scenegraphhybrid.
+- [StatePreservation](../../Examples/Samples/StatePreservation) Tags: samples, statepreservation.
 - [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: live, samples, syphon, syphonmultiwindow.
 - [SyphonOutput](../../Examples/Samples/Syphon/SyphonOutput) (Syphon) Tags: live, samples, syphon, syphonoutput.
 - [SyphonTripleWindow](../../Examples/Samples/Syphon/SyphonTripleWindow) (Syphon) Tags: live, samples, syphon, syphontriplewindow.

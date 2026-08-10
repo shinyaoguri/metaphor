@@ -170,6 +170,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func curveTightness(_ t: Float)` -- Catmull-Rom スプラインカーブの張り具合を設定します。
 - `func curveVertex(_ x: Float, _ y: Float)` -- 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
 - `func cylinder(radius: Float, height: Float, detail: Int = 24)` -- 円柱を描画します。
+- `func decodeState<T>(_ data: Data, as type: T.Type = T.self) -> T? where T : Decodable` -- ``restoreState(_:)`` で受け取ったデータをデコードします。失敗したら `nil`。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float)` -- デフォルト色のディレクショナルライトを追加します。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` -- 色を指定してディレクショナルライトを追加します。
 - `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
@@ -190,6 +191,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enableFeedback()` -- フレームバッファフィードバック（前フレームアクセス）を有効にします。
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
+- `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
 - `func endContour()` -- 現在のコンター定義を終了します。
 - `func endFrameRecord()` -- フレーム連番の記録を停止します。
@@ -303,6 +305,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
 - `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
+- `func restoreState(_ data: Data)` -- ``saveState()`` が返した状態を復元します（オプション）。
 - `func rotate(_ angle: Float)` -- 現在の変換に回転を適用します。
 - `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
 - `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
@@ -312,6 +315,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
 - `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
 - `func saveJSON(_ value: some Encodable, _ path: String, pretty: Bool = true) throws` -- `Encodable` な値（``JSONValue`` を含む）を JSON ファイルへ書き込みます。
+- `func saveState() -> Data?` -- リロードをまたいで保持したい状態を返します（オプション）。
 - `func saveStrings(_ lines: [String], _ path: String) throws` -- 行の配列をテキストファイルへ書き込みます（UTF-8・各行に改行を付与）。
 - `func saveTable(_ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true) throws` -- ``Table`` を CSV/TSV ファイルへ書き込みます。
 - `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
@@ -515,6 +519,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var height: Int` -- オフスクリーンテクスチャの高さ（ピクセル単位）。
 - `var msaa: Int` -- MSAA（マルチサンプルアンチエイリアス）のサンプル数（既定 `4`）。
 - `var plugins: [PluginFactory]` -- スケッチセットアップ時に登録するプラグインファクトリ。
+- `var preserveClock: Bool` -- リロードをまたいで時計（`frameCount` / `time`）を復元するか（既定 `false`）。
 - `var preventAppNap: Bool` -- スケッチ実行中に macOS の App Nap を抑止するか（既定 `true`）。
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
 - `var syphon: Bool` -- Syphon 出力を有効化するか（既定 `false`）。
@@ -522,7 +527,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, preserveClock: Bool = false, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
 ### `struct SketchWindowConfig` -- セカンダリスケッチウィンドウの設定。
 
@@ -1558,6 +1563,23 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func close()` -- このウィンドウを閉じリソースを解放します。
 - `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- このウィンドウの描画クロージャを設定します。
 - `func onDraw(_ closure: @MainActor (SketchContext) -> Void)` -- 毎フレーム自動実行される永続的な描画クロージャを設定します。
+
+### `final class StatePlugin` -- リロードをまたいでスケッチの状態を運ぶプラグイン（保存側）。
+
+- `let config: SketchStateConfig` -- プラグイン設定。
+- `static let id: String`
+- `let pluginID: String`
+- `init(config: SketchStateConfig = SketchStateConfig())`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
 
 ### `final class Table` -- CSV/TSV の表データ。Processing の `Table` に相当します。
 
