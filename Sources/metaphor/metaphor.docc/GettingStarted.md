@@ -29,7 +29,7 @@ metaphor は Swift + Metal のクリエイティブコーディングライブ�
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.0")
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.1")
 ]
 ```
 
