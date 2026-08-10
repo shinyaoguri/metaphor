@@ -56,12 +56,13 @@ make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付�
 - **`CONTRACT.md` のクロスリポ byte-identity** — GitHub API を叩くため CI のみ（`scripts/check-contract-identity.sh`）
 - **生成物の鮮度**（`llms.txt` / examples index / shader sources）— `make setup` が入れる pre-push フックが見ます
 
-テスト実行を切り替える環境変数（いずれも既定 OFF。ローカルでは通常不要）:
+動作を切り替える環境変数（いずれも既定 OFF。ローカルでは通常不要）:
 
 | 変数 | 効果 |
 |---|---|
 | `METAPHOR_PERF_TESTS=1` | 壁時計しきい値のアサーションを有効化（`PerformanceBenchmarks` と `ObservabilityOverhead: idle hot path`）。共有ランナーの負荷で揺れるため必須チェックからは分離している（#149 / #329） |
 | `METAPHOR_REQUIRE_GPU=1` | 「この環境には GPU がある」と宣言する。Metal デバイスが無ければ `CI Environment Guard` が fail する。CI（`ci.yml`）が設定しており、GPU 依存テストの大量 skip が green のまま見過ごされるのを防ぐ |
+| `METAPHOR_COMMAND_RECORD=1` | 影オフのスケッチでもメインパスを「記録 → 再生」経路で処理する（既定は影オン時のみ）。2D/3D が呼び出し順どおりに合成されるため、2D を 3D の背後に置ける。既定 OFF なのは、影オフ既定 = 即時経路を ADR-0003 Amendment（#327）で 1.0 の確定仕様として凍結したため。**既知の制限**: この経路では `loadPixels()` の同一フレーム readback が効かず、直近のコミット済みフレームへフォールバックする（初回に警告。`draw()` が記録パスとして先に走りメインパスを分割できないため — ADR-0005 Decision 6 / #326）。オーバーヘッドは記録された 3D ドローコール 1 件あたり ≈ 0.22µs、遅延 2D コマンド 1 件あたり ≈ 0.13µs で、バッチに畳まれる 2D や `circles()` の GPU インスタンシングは実質ゼロ（#327 の実測） |
 
 ### CI が赤いまま終わらせない（Stop hook）
 
