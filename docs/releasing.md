@@ -237,6 +237,10 @@ python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changel
 
 ## リリースは Homebrew に届いて完了(下流への波及)
 
+> 3 リポジトリ（metaphor / metaphor-cli / homebrew-tap）の依存関係・付番規則・
+> 資格情報まで含めた全体地図は [release-pipeline.md](release-pipeline.md)。
+> 本節はこのリポジトリ視点での要約です。
+
 metaphor のタグを打った時点では、**まだ誰の手元も変わっていません**。
 `brew install shinyaoguri/tap/metaphor` のユーザーに届くまでに 4 段あります:
 

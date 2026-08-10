@@ -19,6 +19,7 @@ this table.
 | Depending on metaphor from a package | Decide how to bound the version, and know what may break | [api-stability-policy.md](api-stability-policy.md) → [CHANGELOG.md](../CHANGELOG.md) |
 | Cross-repo changes | Touching the metaphor ⇄ metaphor-cli contract | [CONTRACT.md](../CONTRACT.md) |
 | Cutting a release | Ship a release | [releasing.md](releasing.md) |
+| Touching release automation | See how the three repos (metaphor / metaphor-cli / homebrew-tap) connect and release automatically | [release-pipeline.md](release-pipeline.md) (Japanese) |
 
 ## Directory Layout
 
@@ -36,7 +37,8 @@ this table.
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Roadmap for attracting Processing / Unity users (living document, Epic list)
   - [design/live-tooling-params.md](design/live-tooling-params.md) — Design draft for the Parameter Store / stateful reload / inspector
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 release readiness plan (review findings, prep tracks, release criteria)
-- **[releasing.md](releasing.md)** — Release procedure (driven by a PR's `release:*` label), plus CHANGELOG promotion and release-note generation
+- **[releasing.md](releasing.md)** — Release procedure (weekly release train + `release:now` express), plus CHANGELOG promotion and release-note generation
+- **[release-pipeline.md](release-pipeline.md)** — Overview map of the three repositories (metaphor / metaphor-cli / homebrew-tap): dependency structure and the automated release chain, delegating details to releasing.md and metaphor-cli's docs (Japanese)
 
 The repository root also has [CHANGELOG.md](../CHANGELOG.md) (user-facing change
 history, Keep a Changelog format, English; a user-impacting pull request drops
@@ -62,5 +64,6 @@ effort (Epic I), English documentation is maintained within this scope:
 | Rationale for a design decision | [adr/](adr/) |
 | What is public API, and what may break | [api-stability-policy.md](api-stability-policy.md) |
 | The metaphor ⇄ metaphor-cli contract | [CONTRACT.md](../CONTRACT.md) and `contract/*.schema.json` |
+| How the three repos connect and release | [release-pipeline.md](release-pipeline.md) (Japanese) |
 | Codebase conventions | [CLAUDE.md](../CLAUDE.md) and [ai/README.md](ai/README.md) |
 | Setup and build | [DEVELOPMENT.md](../DEVELOPMENT.md) |
