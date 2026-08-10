@@ -531,6 +531,103 @@ extension Sketch {
         context.createDynamicMesh()
     }
 
+    // MARK: - プリミティブメッシュの生成
+
+    /// ボックスのメッシュを生成します（描画はしません）。
+    ///
+    /// ``box(_:_:_:)`` が「描く」のに対し、こちらは ``Mesh`` を**値として**返します。
+    /// ``mesh(_:)`` や ``drawInstanced(_:transforms:)`` に渡すためのものです。
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     cube = createBoxMesh(12)
+    /// }
+    /// func draw() {
+    ///     drawInstanced(cube, transforms: transforms)
+    /// }
+    /// ```
+    ///
+    /// 同じ引数の再呼び出しは同一インスタンスを返します（``loadModel(_:normalize:cache:)``
+    /// と同じ挙動）。寸法を毎フレーム変えて呼ぶとメッシュを作り直し続けるため、生成は
+    /// `setup()` で行い、大きさの変化は ``scale(_:)`` や `transforms` 側で表現してください。
+    ///
+    /// - Parameters:
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh? {
+        context.createBoxMesh(width, height, depth)
+    }
+
+    /// 同じ寸法の立方体メッシュを生成します（描画はしません）。
+    ///
+    /// - Parameter size: 立方体の辺の長さ。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createBoxMesh(_ size: Float) -> Mesh? {
+        context.createBoxMesh(size)
+    }
+
+    /// 球のメッシュを生成します（描画はしません）。
+    ///
+    /// `detail` の解釈は ``sphere(_:detail:)`` と同じで、同じ引数なら同じジオメトリになります。
+    ///
+    /// - Parameters:
+    ///   - radius: 球の半径。
+    ///   - detail: 分割数（デフォルトは 24）。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh? {
+        context.createSphereMesh(radius, detail: detail)
+    }
+
+    /// 平面のメッシュを生成します（描画はしません）。
+    ///
+    /// XY 平面上の矩形で、法線は +Z 方向です。
+    ///
+    /// - Parameters:
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh? {
+        context.createPlaneMesh(width, height)
+    }
+
+    /// 円柱のメッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
+    ///   - detail: 分割数（デフォルトは 24）。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        context.createCylinderMesh(radius: radius, height: height, detail: detail)
+    }
+
+    /// 円錐のメッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
+    ///   - detail: 分割数（デフォルトは 24）。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        context.createConeMesh(radius: radius, height: height, detail: detail)
+    }
+
+    /// トーラスのメッシュを生成します（描画はしません）。
+    ///
+    /// `detail` の解釈は ``torus(ringRadius:tubeRadius:detail:)`` と同じで、
+    /// 同じ引数なら同じジオメトリになります。
+    ///
+    /// - Parameters:
+    ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
+    ///   - tubeRadius: チューブの半径。
+    ///   - detail: 分割数（デフォルトは 24）。
+    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    public func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh? {
+        context.createTorusMesh(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
+    }
+
     /// ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
     ///
     /// 既定でパスキーのキャッシュが効き、同じパス・同じ `normalize` の再読込は

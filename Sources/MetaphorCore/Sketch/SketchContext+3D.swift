@@ -513,6 +513,73 @@ extension SketchContext {
         DynamicMesh(device: renderer.device)
     }
 
+    // MARK: - プリミティブメッシュの生成
+
+    /// ボックスメッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh? {
+        canvas3D.createBoxMesh(width, height, depth)
+    }
+
+    /// 立方体メッシュを生成します（描画はしません）。
+    /// - Parameter size: 立方体の辺の長さ。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createBoxMesh(_ size: Float) -> Mesh? {
+        canvas3D.createBoxMesh(size)
+    }
+
+    /// 球メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - radius: 球の半径。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createSphereMesh(radius, detail: detail)
+    }
+
+    /// 平面メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh? {
+        canvas3D.createPlaneMesh(width, height)
+    }
+
+    /// 円柱メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createCylinderMesh(radius: radius, height: height, detail: detail)
+    }
+
+    /// 円錐メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createConeMesh(radius: radius, height: height, detail: detail)
+    }
+
+    /// トーラスメッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - ringRadius: リング（メジャー）半径。
+    ///   - tubeRadius: チューブ（マイナー）半径。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createTorusMesh(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
+    }
+
     /// 3D モデルファイル（OBJ、USDZ、ABC 形式）を読み込みます。
     ///
     /// 既定でパスキーのキャッシュが効き、同じパス・同じ `normalize` の再読込は
