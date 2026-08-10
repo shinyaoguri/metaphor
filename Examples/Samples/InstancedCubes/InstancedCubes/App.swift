@@ -31,11 +31,9 @@ final class InstancedCubes: Sketch {
     var cube: Mesh!
 
     func setup() {
-        // Mesh はデバイス上のバッファなので、renderer の MTLDevice から作ります
-        // （ファイルから読むなら loadModel(path) でも Mesh が得られます）
-        guard let mesh = try? Mesh.box(
-            device: context.renderer.device, width: unit, height: unit, depth: unit
-        ) else {
+        // createBoxMesh は box() と同じジオメトリを「値としての Mesh」で返します
+        // （sphere / plane / cylinder / cone / torus も同様。ファイルから読むなら loadModel(path)）
+        guard let mesh = createBoxMesh(unit) else {
             fatalError("キューブメッシュを作れませんでした")
         }
         cube = mesh

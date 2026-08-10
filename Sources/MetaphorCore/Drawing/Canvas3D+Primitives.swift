@@ -1,7 +1,8 @@
 import Metal
 import simd
 
-// 組み込みプリミティブと Mesh/DynamicMesh の描画入口。単位メッシュのキャッシュもここが持つ。
+// 組み込みプリミティブと Mesh/DynamicMesh の描画入口、およびプリミティブメッシュの生成入口。
+// メッシュキャッシュ（描画側の単位メッシュ・生成側の寸法込みメッシュ）もここが持つ。
 extension Canvas3D {
     // MARK: - 3D プリミティブ
 
@@ -93,6 +94,102 @@ extension Canvas3D {
         let key = "torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)"
         guard let mesh = cachedMesh(key: key, create: { try Mesh.torus(device: device, ringRadius: ringRadius, tubeRadius: tubeRadius, segments: detail, tubeSegments: tubeDetail) }) else { return }
         drawMesh(mesh)
+    }
+
+    // MARK: - プリミティブメッシュの生成
+
+    // 描画側（上の box/sphere/…）は単位メッシュ + スケールでキャッシュ churn を避けるが、
+    // 「値としての Mesh」は変換を持てないので寸法込みで生成する。そのぶんキーも寸法込みで、
+    // 描画側のキー（"box_unit" 等）とは "mesh_" prefix で分ける。
+    //
+    // 同じ引数の再呼び出しは同一インスタンスを返す（loadModel と同じ挙動）。毎フレーム
+    // 寸法を変えて呼ぶとキャッシュが入れ替わり続けるため、生成は setup() が基本。
+
+    /// 指定した寸法のボックスメッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh? {
+        cachedMesh(key: "mesh_box_\(width)_\(height)_\(depth)") {
+            try Mesh.box(device: device, width: width, height: height, depth: depth)
+        }
+    }
+
+    /// 同じ寸法の立方体メッシュを生成します（描画はしません）。
+    ///
+    /// - Parameter size: 立方体の辺の長さ。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createBoxMesh(_ size: Float) -> Mesh? { createBoxMesh(size, size, size) }
+
+    /// 指定した半径とテッセレーション詳細度の球メッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - radius: 球の半径。
+    ///   - detail: 経度方向のセグメント数（リングはここから導出されます）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh? {
+        let rings = max(detail / 2, 4)  // ``sphere(_:detail:)`` と同じ導出
+        return cachedMesh(key: "mesh_sphere_\(radius)_\(detail)_\(rings)") {
+            try Mesh.sphere(device: device, radius: radius, segments: detail, rings: rings)
+        }
+    }
+
+    /// 指定した寸法の平面メッシュ（XY 平面・+Z 法線）を生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh? {
+        cachedMesh(key: "mesh_plane_\(width)_\(height)") {
+            try Mesh.plane(device: device, width: width, height: height)
+        }
+    }
+
+    /// 指定した半径・高さ・テッセレーション詳細度の円柱メッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
+    ///   - detail: 放射方向のセグメント数。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        cachedMesh(key: "mesh_cylinder_\(radius)_\(height)_\(detail)") {
+            try Mesh.cylinder(device: device, radius: radius, height: height, segments: detail)
+        }
+    }
+
+    /// 指定した半径・高さ・テッセレーション詳細度の円錐メッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
+    ///   - detail: 放射方向のセグメント数。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        cachedMesh(key: "mesh_cone_\(radius)_\(height)_\(detail)") {
+            try Mesh.cone(device: device, radius: radius, height: height, segments: detail)
+        }
+    }
+
+    /// 指定したリング半径とチューブ半径のトーラスメッシュを生成します（描画はしません）。
+    ///
+    /// - Parameters:
+    ///   - ringRadius: トーラスの中心からチューブ中心までの距離。
+    ///   - tubeRadius: チューブの半径。
+    ///   - detail: リング周囲の放射方向セグメント数。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh? {
+        let tubeDetail = max(detail / 2, 8)  // ``torus(ringRadius:tubeRadius:detail:)`` と同じ導出
+        return cachedMesh(key: "mesh_torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)") {
+            try Mesh.torus(
+                device: device, ringRadius: ringRadius, tubeRadius: tubeRadius,
+                segments: detail, tubeSegments: tubeDetail
+            )
+        }
     }
 
     /// キャッシュ済みメッシュを検索または生成します。失敗時はエラーをログ出力します。
