@@ -211,7 +211,7 @@ CLI を使わず、`metaphor` を通常の Swift Package として依存に追�
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0"),
 ]
 ```
 
