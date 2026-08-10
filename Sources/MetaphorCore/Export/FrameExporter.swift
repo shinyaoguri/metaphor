@@ -11,10 +11,10 @@ import Foundation
 ///
 /// ```swift
 /// // In setup()
-/// beginRecord()
+/// beginFrameRecord()
 ///
 /// // After 100 frames
-/// endRecord()
+/// endFrameRecord()
 /// ```
 @MainActor
 public final class FrameExporter {
