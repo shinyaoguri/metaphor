@@ -35,7 +35,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
   - [design/live-tooling-params.md](design/live-tooling-params.md) — Parameter Store / 状態保持リロード / インスペクタの設計叩き台
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 リリース準備計画（readiness review・準備トラック・リリース条件）
-- **[releasing.md](releasing.md)** — リリース手順（PR の `release:*` ラベル駆動）+ CHANGELOG の昇格・リリースノート生成
+- **[releasing.md](releasing.md)** — リリース手順（週次トレイン + `release:now` の express）+ CHANGELOG の昇格・リリースノート生成
 
 リポジトリルートには [CHANGELOG.md](../CHANGELOG.md)（利用者向けの変更履歴。Keep a Changelog 形式・英語。ユーザー影響のある PR は CHANGELOG.md ではなく [changelog.d/](../changelog.d/README.md) に 1 ファイル置き、リリース時に集約される）もあります。Examples 側には [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグを使った「順に学ぶ」推奨順路）もあります。
 

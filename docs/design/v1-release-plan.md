@@ -7,7 +7,7 @@
 
 ## バージョンマイルストーン(決定事項)
 
-**戦略: v1.0.0 を目指しつつ、リリース直前のものを v0.9.x で育てる。** prerelease タグ(`1.0.0-rc`)は使わず、通常のラベル駆動リリースのまま 0.9 系を実質 RC 系列として運用する。
+**戦略: v1.0.0 を目指しつつ、リリース直前のものを v0.9.x で育てる。** prerelease タグ(`1.0.0-rc`)は使わず、通常のリリース(週次トレイン)のまま 0.9 系を実質 RC 系列として運用する。
 
 | 期間 | 位置づけ | 内容 |
 |---|---|---|
@@ -34,7 +34,7 @@ v1.0.0 は機能の節目ではなく **SemVer 上の契約宣言**である。�
 
 - テスト 1,130 本・XCTest ゼロ(Swift Testing 統一)・`.disabled`/`withKnownIssue` ゼロ・warnings-as-errors
 - 契約検証 4 層(トークン grep / JSON Schema / byte-identity / 自動 pin bump)と生成物鮮度検証(pre-push + CI 二重)
-- リリース完全自動化(ラベル駆動・タグ前 example smoke ゲート・merge SHA 明示タグでレース回避)
+- リリース完全自動化(週次トレインが履歴から bump を導く・タグ前 example smoke ゲート・merge SHA 明示タグでレース回避)
 - 外部 SwiftPM 依存ゼロ(利用者の resolve が速く供給網が小さい)
 - ADR による設計判断の記録。deprecation ポリシーが ADR-0005 Amendment に成文化済み
 - doc コメント密度(`///` 9,597 行 / public 宣言 2,288)、DocC サイトのビルド・デプロイ稼働済み

@@ -11,31 +11,86 @@ workflow. No PAT required — the workflow re-enters CI on its own release branc
 using `workflow_dispatch` (which is exempt from the `GITHUB_TOKEN` recursion
 guard).
 
-## Label-driven releases (the normal path)
+`release.yml` はリリースロジックの唯一の在処（Syphon ビルド、`Package.swift` と
+バージョン定数の bump、タグ、GitHub Release、metaphor-cli への pin dispatch）で、
+その引き金を引くものが 3 つあります。**どれも `release.yml` 自体は変えず、
+「出すかどうか」と「どれだけ上げるか」だけを決めます**:
 
-**どのラベルを貼るか**は [api-stability-policy.md](api-stability-policy.md) の
-「Where each kind of change lands」表が正典（公開 API の削除・改名 = major、追加と
-deprecation = minor、描画結果や実行時契約の破壊的変更 = minor 以上で `Breaking
-Changes` 記載、最小サポート引き上げ = minor）。
+| 引き金 | いつ | 何を決めるか |
+|---|---|---|
+| [`release-train.yml`](../.github/workflows/release-train.yml) | 毎週月曜 09:00 JST | 通常運用。`main` の履歴から bump を導く |
+| [`release-on-merge.yml`](../.github/workflows/release-on-merge.yml) | `release:now` などのラベル付き PR がマージされた瞬間 | express（hotfix・major） |
+| `release.yml` の `workflow_dispatch` | 手動 | prerelease（beta/rc）と復旧 |
 
-Releases are cut by **labeling a PR**, not by a separate branch:
+## 週次リリーストレイン（the normal path）
 
-1. On the PR you want to ship, add one label: `release:patch` / `release:minor`
-   / `release:major`.
-2. Merge it (squash). `release-on-merge.yml` reads the label and dispatches the
-   **Release** workflow with that bump, which builds, bumps versions, tags, and
-   publishes:
-   - **metaphor** → git tag + GitHub Release (SPM) + Syphon-pin dispatch to metaphor-cli.
-   - **metaphor-cli** → tarballs + Homebrew formula pushed to `shinyaoguri/homebrew-tap`.
-3. A PR **without** a `release:*` label merges normally and does **not** release.
-   (The Release workflow's own "Release vX.Y.Z" PR is unlabeled, so it never
-   re-triggers a release — no loop.)
+**通常、リリースのために何もしません。** 毎週月曜 09:00 JST に
+[`release-train.yml`](../.github/workflows/release-train.yml) が発車し、
+前回の stable タグ以降に `main` へ入ったコミットから bump を決めて、
+出すべきものがあるときだけ **Release** ワークフローを 1 本 dispatch します。
 
-> **auto-merge を使うときは、arm する *前* にラベルを貼る。** `--auto` で arm した
-> PR は required checks が green になった瞬間にマージされるので、armed → green →
-> merge の隙間にラベルを付け損ねると無ラベルのままマージされ、リリースは走らない
-> (`release-on-merge.yml` はマージ時点のラベルしか見ない)。取り返すには Release
-> ワークフローを手で `workflow_dispatch` する。
+| 前回タグ以降に入ったもの | その週の発車 |
+|---|---|
+| `feat` が 1 本でもある | **minor** |
+| `fix` / `perf` だけ | **patch** |
+| `docs` / `chore` / `ci` / `refactor` / `test` だけ | **出ない**（次に feat/fix が入った週へ同乗） |
+| 破壊的変更（後述） | **停車**（train が fail して人を呼ぶ） |
+
+判定は [`scripts/release-bump.py`](../scripts/release-bump.py) にあり、手元でも
+同じ答えを確認できます:
+
+```bash
+python3 scripts/release-bump.py --explain
+```
+
+`main` は squash merge のみで、PR タイトルは Conventional Commits を
+`ci.yml` が lint 済み。つまり `main` の各コミット subject は PR タイトルそのもので、
+type がそのまま信用できます。**トレインは状態を持ちません** — マージ時に何も記録せず、
+毎回履歴から bump を導き直すので、貼り忘れるラベルも、ずれるキューもありません。
+週次の run が落ちても、翌週が同じ履歴から同じ結論に到達します。
+
+### なぜトレインなのか
+
+- **ラベル駆動は実際に機能していなかった。** v0.8.0 以降、`release:*` ラベルが付いた
+  PR は 40 連続で 0 件、その間に feat 9 本・fix 10 本・`changelog.d/` 13 件が
+  滞留しました。`gh pr merge --auto` は required checks が green になった瞬間に
+  マージするので、ラベルを貼る安定した瞬間が構造的に存在しません。
+- **マージごとのリリースは粒度が細かすぎる**（metaphor-cli はこの方式）。metaphor は
+  リリースのたびに Syphon.xcframework asset を焼いて publish し、metaphor-cli へ
+  pin bump を dispatch します（cli 側はそれでまた 1 リリース）。同じ 9 日間で
+  19 リリース + 下流 19 リリースになる計算で、ライブラリの版数としては細かすぎます。
+
+### 破壊的変更は自動で major にしない
+
+PR タイトルの `!` マーカー（`feat(core)!: ...`）か `changelog.d/*.breaking.md` を
+見つけると、トレインは **発車せず fail** します。v0.9.0 の API freeze 以降、破壊は
+major を意味し（[api-stability-policy.md](api-stability-policy.md) の
+「Where each kind of change lands」表が正典）、v1.0.0 への到達は技術条件だけで
+決まらないためです（[design/v1-release-plan.md](design/v1-release-plan.md)）。
+赤いトレインは「bump を人が確認しろ」という設計どおりの結果で、`release:major`
+ラベルで明示的に出すか、実は破壊でないなら PR タイトルを直します。同じことは
+`changelog.d/` が空のまま feat/fix が溜まったときにも起きます（発車前の
+`changelog.py check` で止まる）。**どちらも気付ける前提は GitHub の Actions 失敗通知**
+なので、リリース系ワークフローの失敗が手元に届く設定になっているかは一度確認しておきます。
+
+## 急ぐとき（express: `release:now`）
+
+月曜を待てない hotfix は、PR にラベルを貼ってマージすれば即座に出ます
+（[`release-on-merge.yml`](../.github/workflows/release-on-merge.yml)）。
+
+| ラベル | bump |
+|---|---|
+| `release:now` | PR タイトルから推定（`feat` → minor / `fix`・`perf` → patch / それ以外 → patch） |
+| `release:patch` / `release:minor` / `release:major` | そのラベルどおり。**major を出す唯一の手段** |
+
+ラベルの無い PR は普通にマージされ、次のトレインに乗ります（＝通常運用）。
+Release ワークフロー自身が開く "Release vX.Y.Z" PR は無ラベルなので、
+express を再帰的に起こしません（ループ無し）。
+
+> **express を使うときだけ、auto-merge を arm する *前* にラベルを貼る。** `--auto` で
+> arm した PR は green の瞬間にマージされ、`release-on-merge.yml` はマージ時点の
+> ラベルしか見ません。貼り損ねても失われるのは即時性だけで、変更は次のトレインに
+> 乗ります（急ぐなら Release ワークフローを手で `workflow_dispatch`）。
 
 Pre-releases (beta/rc) are cut manually via the Release workflow's
 `workflow_dispatch` (`bump=prerelease` etc.).
@@ -58,9 +113,9 @@ pass. Consequences and rationale:
   (GitHub's `DIRTY` state), and semantic conflicts between independently green
   PRs are caught by the `push: main` CI run right after the merge — if main
   goes red, fix forward with a follow-up PR.
-- Release labeling is unaffected: auto-merge performs a normal squash merge,
-  so `release-on-merge.yml` (`pull_request: closed`) fires as before. Label
-  **before** arming (see the note above).
+- **リリースは auto-merge と衝突しない。** マージ時点で決まることは何も無く、
+  次のトレインが `main` の履歴から bump を導きます。arm する前に何かを貼る必要が
+  あるのは express（`release:now`）のときだけです。
 - **Only required checks gate the merge.** Required = the single aggregate
   gate **`ci-gate`** (Issue #411). It `needs:` every job in `ci.yml`
   (`build-and-test`, `build-swift-5-10`, `examples-detect`,
@@ -132,6 +187,7 @@ conflict — 全 PR が `## [Unreleased]` の同じ行を触ると、並行 PR �
 | いつ | 何を | 失敗したら |
 |------|------|-----------|
 | **PR ごと**(`ci.yml` の *Lint changelog.d entries*) | `changelog.py lint` — 置かれたファイルの**名前と中身だけ**を検証(カテゴリ typo・区切りなし・`.md` 以外・空ファイル)。**エントリの有無は問わない**(内部作業は正当にエントリ無し)。`build-and-test` のステップとして走り、その失敗は required check `ci-gate` が fail に畳むのでマージをブロックする | **PR がマージ不能**。typo を書いた本人がその場で直す(Issue #405 — 以前はリリース時まで発覚しなかった) |
+| 発車前(`release-train.yml` の *Require CHANGELOG entries*) | 同じ `changelog.py check`。bump が決まった週だけ走る | **トレインが fail**。dispatch されないので Release ワークフローは起動しない。エントリを足して手で `workflow_dispatch`(dry_run=false)するか、翌週に乗せる |
 | ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `changelog.d/` にエントリがあるか、`## [Unreleased]` の中身が空でないこと(両対応)。ファイル名の不備(カテゴリ不明・区切りなし・`.md` 以外・空ファイル)もここで弾く | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
 | *Push release branch*(stable のみ) | `changelog.py release <version>` — まず `changelog.d/*.md` を `## [Unreleased]` へ集約してファイルを削除し、続けて `## [X.Y.Z] - YYYY-MM-DD` へ昇格、空の Unreleased を上に開き、末尾のリンク定義を更新。**削除も含めて**バージョンバンプと同じコミットに入る(`git add ... changelog.d`) | 同上(タグ前) |
 | *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書き、Syphon checksum を足す。`unreleased` 指定時は未集約の `changelog.d/` も表示用に畳み込む。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |

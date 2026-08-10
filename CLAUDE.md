@@ -103,7 +103,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 ## ブランチ運用（GitHub Flow）
 
 - `main` が唯一の長命ブランチかつデフォルト。すべての作業は PR 経由で main へ戻る。ルールセットで保護（PR 必須、集約ゲート `ci-gate` 必須、直接 push 不可、**squash のみ**）。
-- `release/<tag>` は Release ワークフロー予約。リリースは PR の `release:*` ラベル駆動（手順は [docs/releasing.md](docs/releasing.md)）。
+- `release/<tag>` は Release ワークフロー予約。リリースは**週次トレイン**（月曜 09:00 JST に `main` の履歴から bump を導く）。PR 側でリリースのために行う操作は無く、急ぐときだけ `release:now` ラベルで即時に出す（手順は [docs/releasing.md](docs/releasing.md)）。
 - ブランチ命名・Conventional Commits・1 コミット 1 関心などの一般的な git 規約はグローバル CLAUDE.md にあり、ここでは繰り返しません。
 
 ### Claude への注記
