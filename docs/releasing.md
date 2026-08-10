@@ -22,6 +22,14 @@ guard).
 | [`release-on-merge.yml`](../.github/workflows/release-on-merge.yml) | `release:now` などのラベル付き PR がマージされた瞬間 | express（hotfix・major） |
 | `release.yml` の `workflow_dispatch` | 手動 | prerelease（beta/rc）と復旧 |
 
+バージョン bump のコミットは `git commit` ではなく GitHub の GraphQL
+`createCommitOnBranch` で作ります（[`scripts/signed-commit.py`](../scripts/signed-commit.py)）。
+main は**署名必須**（ruleset、2026-08-04 追加）で runner に署名鍵が無いため、
+`git commit` した unsigned コミットではリリース PR をマージできず、**Syphon ビルドと
+CI が終わったあとで**止まります（2026-08-10 の v0.9.0 で実際に起きました）。
+API 経由のコミットは GitHub 自身が署名するので、Actions に ruleset の bypass を
+与える（＝他のすべてのルールも回避できるようになる）ことなくルールを満たせます。
+
 ## 週次リリーストレイン（the normal path）
 
 **通常、リリースのために何もしません。** 毎週月曜 09:00 JST に
