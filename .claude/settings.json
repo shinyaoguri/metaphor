@@ -32,6 +32,18 @@
     ]
   },
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/ci-watch-mark.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -40,6 +52,16 @@
             "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ -n \"$(git diff --name-only HEAD -- 'Sources/**/*.swift')$(git diff --name-only --cached HEAD -- 'Sources/**/*.swift')\" ]; then make llms-txt >/dev/null 2>&1 && { git diff --quiet llms.txt 2>/dev/null || git add llms.txt; }; fi",
             "async": true,
             "statusMessage": "Regenerating llms.txt"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/ci-watch-stop.sh",
+            "timeout": 30,
+            "statusMessage": "Checking CI on the pushed PR"
           }
         ]
       }
