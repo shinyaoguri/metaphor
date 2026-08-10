@@ -134,6 +134,10 @@ here.
 - Run `make llms-txt` after public API edits.
 - Run focused Swift tests with `swift test --filter <SuiteOrTestName>` while
   iterating, then `make test` before handing off broader changes.
+- Run `make ci-check` before pushing — it is `make build` + `make test` with
+  CI's `-Xswiftc -warnings-as-errors`. Plain `make build` / `make test` let
+  warnings pass, so a locally green branch can still fail CI (see
+  DEVELOPMENT.md, "push 前は `make ci-check`").
 - For rendering behavior, prefer pixel/readback tests via `MetaphorTestSupport`
   over visual-only examples.
 
