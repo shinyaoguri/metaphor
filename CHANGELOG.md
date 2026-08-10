@@ -41,6 +41,8 @@ Maintaining this file
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-10
+
 ### Breaking Changes
 
 - **`mouseButton` is now a `MouseButton?` instead of an `Int`.** The new enum has `left`, `right` and `middle` cases ([#382](https://github.com/shinyaoguri/metaphor/issues/382)). The old `Int` made the Processing idiom `if mouseButton == LEFT` **compile and always evaluate to `false`**: metaphor's `LEFT` is the left-arrow virtual key code (`UInt16` 123), and Swift permits heterogeneous integer comparison, so nothing diagnosed it. That comparison is now a compile error. Migrate `mouseButton == 0` / `1` / `2` to `mouseButton == .left` / `.right` / `.middle`; no `Int`-typed alias is provided, deliberately, because it would re-open the exact `== LEFT` hole this change closes.
@@ -99,6 +101,128 @@ Maintaining this file
 - `SoundFile.disableAnalysis()`, the missing counterpart to `enableAnalysis(fftSize:)`. It removes the main-mixer tap and releases the analyzer, after which `spectrum` / `analysisVolume` / `isBeat` / `band(_:)` report their neutral values again ([#322](https://github.com/shinyaoguri/metaphor/issues/322))
 - `docs/api-stability-policy.md`, the API stability policy: what counts as public API across the four layers (and what does not), source compatibility with no ABI guarantee, the deprecation window, where rendering output / the Probe wire schema / stdin / environment variables sit under SemVer, the frozen `@_exported import Metal / MetalKit / simd`, supported platforms, and the `0.9.x` freeze discipline. Both READMEs also now state that the project is maintained by one person on a best-effort basis ([#338](https://github.com/shinyaoguri/metaphor/issues/338))
 - `docs/processing-migration-guide.md`, a "the Processing X is metaphor's Y" mapping table plus a pitfalls collection (value vs reference types, `@MainActor`, the two color ranges, the 2D/3D transform split, `loadPixels()` pass splitting, `LEFT` being a key code rather than an alignment constant) and an explicit list of Processing APIs that are not implemented yet. Linked from both READMEs ([#336](https://github.com/shinyaoguri/metaphor/issues/336))
+- `@Param` declares a tunable sketch property that **persists across restarts** and can be
+  changed **without rebuilding**. Values live in a `ParameterStore` (`SketchContext.params`),
+  are written atomically to `.metaphor/params/params.json`, and are restored on the next
+  launch before `setup()` runs. External tools and AI agents change them by writing
+  `.metaphor/params/set-request.json` (`{"id": "<unique>", "values": {…}}`); the next frame
+  applies it and echoes `appliedRequestId` / `revision`, with rejected values explained in
+  `warnings`. Supported types: `Float` / `Double` / `Int` / `Bool` / `String` (optional
+  `choices`) / `Color` / `Vec2` / `Vec3`; `min` / `max` clamp external writes.
+
+  ```swift
+  @main final class MySketch: Sketch {
+      @Param(min: 10, max: 200) var radius: Float = 50
+      @Param(choices: ["add", "multiply"]) var mode: String = "add"
+
+      func draw() { circle(width / 2, height / 2, radius) }
+  }
+  ```
+
+  Enabled automatically when a sketch declares at least one `@Param` (no CLI needed);
+  opt out with `METAPHOR_PARAMS=0`. The file formats are cross-repo contract point 7
+  ([CONTRACT.md](https://github.com/shinyaoguri/metaphor/blob/main/CONTRACT.md),
+  [#419](https://github.com/shinyaoguri/metaphor/issues/419))
+- `gui.params()` draws a live control panel for every `@Param` a sketch declares — one line,
+  no wiring. The panel and an AI agent writing `.metaphor/params/set-request.json` are
+  symmetric clients of the same `ParameterStore`, so a value dragged on a slider is
+  persisted to `.metaphor/params/params.json` and restored on the next launch.
+
+  ```swift
+  @main final class MySketch: Sketch {
+      @Param(min: 10, max: 200) var radius: Float = 50
+      @Param var showGrid: Bool = true
+      @Param(choices: ["cool", "warm"]) var palette: String = "cool"
+
+      func draw() {
+          gui.params()                              // sliders / toggles / pickers
+          circle(width / 2, height / 2, radius)
+      }
+  }
+  ```
+
+  Widgets follow the declared type: `Float` / `Int` become sliders, `Bool` a toggle,
+  `Color` an RGB picker, `Vec2` / `Vec3` component sliders, and a `String` with `choices`
+  a button that cycles through them. Numbers declared without `min` / `max` get a stable
+  auto range derived from their first displayed value. `gui.param("radius")` places a
+  single parameter when you want to lay the panel out yourself, and the existing immediate
+  mode (`gui.slider("x", &x, …)`) is unchanged. New example:
+  `Examples/Samples/ParameterPanel`
+  ([#422](https://github.com/shinyaoguri/metaphor/issues/422))
+- A Probe snapshot now carries the parameters that produced it. `frame.json` gains an
+  additive `params` section — `{"revision": 7, "values": {"radius": 120.0, …}}` — so an AI
+  agent reading a frame knows exactly which `@Param` values were in effect, instead of
+  reading `.metaphor/params/params.json` separately and hoping nothing changed in between.
+  `revision` matches the store's counter, which makes "is this the frame after my
+  `set_param`?" a comparison rather than a guess.
+
+  The section is omitted for sketches that declare no `@Param`, and for failure responses.
+  Unlike `performance`, it is also written for every frame of a `capture_sequence` run
+  (reading the store costs no syscall), so sweeping a parameter during a capture stays
+  legible frame by frame. Type, range and `choices` remain canon in `params.json`;
+  `frame.json` carries values only. Wire format: `schemaVersion` stays 4 (additive),
+  contract point 4 in [CONTRACT.md](https://github.com/shinyaoguri/metaphor/blob/main/CONTRACT.md)
+  ([#424](https://github.com/shinyaoguri/metaphor/issues/424))
+- `vertex(x, y, z, u, v)` gives a `beginShape3D()` vertex its texture
+  coordinates, so `texture(img)` now applies to custom 3D shapes. Until now the
+  3D vertex format had no UV channel and a textured `beginShape3D()` silently
+  rendered with the current fill; the five shipped `Topics/Textures` examples
+  (`TextureQuad` / `TextureCube` / `TextureSphere` / `TextureTriangle` /
+  `TextureCylinder`) now show their textures. `u` / `v` are normalized (0…1),
+  the UV travels with its vertex through every tessellation mode, and a shape
+  whose vertices carry no UV keeps rendering with the fill exactly as before
+  ([#433](https://github.com/shinyaoguri/metaphor/issues/433))
+- `DynamicMesh.addTexCoord(u, v)` (and `setTexCoord(index:_:)`) gives a dynamic
+  mesh its texture coordinates, so `texture(img)` now applies to
+  `dynamicMesh(mesh)` as well. Until now `DynamicMesh` carried only
+  position / normal / color, and a textured dynamic mesh silently rendered with
+  the current fill. `u` / `v` are normalized (0…1), UV stays aligned with its
+  vertex through `setVertex` / indexed drawing, and a mesh that never declares a
+  texture coordinate keeps rendering with the fill exactly as before. Textures
+  also survive the recorded path (shadows / `METAPHOR_COMMAND_RECORD`). New
+  sample: `Examples/Samples/DynamicMeshTexture`
+  ([#435](https://github.com/shinyaoguri/metaphor/issues/435))
+- `drawInstanced(mesh, transforms:)` (and the `colors:` overload) draws one mesh
+  at many transforms in a single call. Each instance is placed at
+  `currentTransform * transforms[i]`, so it is equivalent to a
+  `pushMatrix()` / `applyMatrix(t)` / `mesh(m)` / `popMatrix()` loop — but the
+  per-instance state evaluation (batch key, matrix composition, normal matrix)
+  happens once instead of N times (20k cubes: ~15ms → ~11ms of CPU encoding in a
+  debug build). `colors` sets the fill color per instance; entries beyond
+  `transforms` are ignored and missing ones fall back to the current fill.
+  Stroke color, material and texture stay shared across instances. Works on the
+  recorded path (shadows / `METAPHOR_COMMAND_RECORD`) too, where all instances
+  share one draw sequence number. New sample: `Examples/Samples/InstancedCubes`
+  ([#442](https://github.com/shinyaoguri/metaphor/issues/442))
+- Primitive meshes can now be created from the sketch layer, without reaching for
+  `MTLDevice`: `createBoxMesh(_:_:_:)` / `createBoxMesh(_:)` / `createSphereMesh(_:detail:)` /
+  `createPlaneMesh(_:_:)` / `createCylinderMesh(radius:height:detail:)` /
+  `createConeMesh(radius:height:detail:)` / `createTorusMesh(ringRadius:tubeRadius:detail:)`.
+  Each takes the same arguments as the matching drawing primitive (`box`, `sphere`, …) and
+  returns the same geometry as a `Mesh` value, ready for `mesh(_:)` and
+  `drawInstanced(_:transforms:)`. Repeated calls with the same arguments return the same
+  instance, so create meshes in `setup()` rather than per frame
+  ([#443](https://github.com/shinyaoguri/metaphor/issues/443))
+
+  ```swift
+  // before
+  let cube = try? Mesh.box(device: context.renderer.device, width: 12, height: 12, depth: 12)
+  // after
+  let cube = createBoxMesh(12)
+  ```
+- `saveState()` / `restoreState(_:)` carry a sketch's own state across a live
+  reload, and `SketchConfig(preserveClock: true)` carries `frameCount` and `time`
+  with no sketch code at all. Both are optional: the default implementations are
+  `nil` / no-op, and a failed decode silently keeps the initial state instead of
+  breaking the reload. `encodeState` / `decodeState` wrap `Codable` payloads.
+  The state travels through a new file contract (`.metaphor/state/state.json` +
+  `save-request.json`, CONTRACT.md point 8) in the same style as Probe and the
+  Parameter Store — atomic writes, mtime polling, `id` echo — so it works with
+  `metaphor watch` and by hand alike. Enabled automatically in headless
+  (`metaphor watch`) runs; `METAPHOR_STATE=1` turns it on for a plain
+  `swift run`, `METAPHOR_STATE=0` off. New sample:
+  `Examples/Samples/StatePreservation`
+  ([#451](https://github.com/shinyaoguri/metaphor/issues/451))
 
 ### Changed
 
@@ -110,6 +234,7 @@ Maintaining this file
 - `ambientLight()` and `lights()` now document the default ambient level on every layer (`Sketch`, `SketchContext`, `Graphics3D`, `Canvas3D`): the ambient that `lights()` — or the first light you add — installs for you is **30% of the current `colorMode` range**, i.e. `ambientLight(76.5)` in the default 0–255 range. It was previously written as a raw `0.3` in the source, which read as if `ambientLight(0.3)` would reproduce it when in fact that value is 1/255 of it. Rendering is unchanged, bit for bit ([#392](https://github.com/shinyaoguri/metaphor/issues/392))
 - **Every module now builds warning-free under Swift 6 strict concurrency**, on both the newest toolchain and the oldest supported one (Swift 5.10 / Xcode 15.4), and CI keeps it that way — `build-and-test` already compiled with `-warnings-as-errors`, `build-swift-5-10` now does too, and a manifest check refuses a new target that forgets the setting. Public signatures are unchanged; the only observable difference is that `MetaphorRenderer`'s two `MTKViewDelegate` methods (`draw(in:)`, `mtkView(_:drawableSizeWillChange:)`) are now `nonisolated` and assert main-actor isolation internally, because the requirement is not main-actor-isolated in the 5.10 SDK. Along the way `@preconcurrency import` went from 29 occurrences to 13 — every one was removed and only those the compiler still demands were put back, each with a comment saying why. This is the groundwork for adopting the Swift 6 language mode once the minimum toolchain is raised ([#328](https://github.com/shinyaoguri/metaphor/issues/328))
 - Failure modes are now documented explicitly in three places, with no behavior change: the `SoundFile` usage example shows `do`/`catch` instead of `try!`, which would crash the sketch on a missing or undecodable file; `GPUBuffer`'s subscript states that out-of-range access traps, matching `Swift.Array`; and the gradient-stop noise texture APIs state that fewer than 2 color stops return nil, now locked by tests ([#374](https://github.com/shinyaoguri/metaphor/pull/374))
+- Changelog entries now live one-per-file in [`changelog.d/`](https://github.com/shinyaoguri/metaphor/tree/main/changelog.d) instead of being appended to `## [Unreleased]` by every pull request, which made concurrent pull requests conflict on the same lines almost every time. `scripts/changelog.py collect` folds them into `## [Unreleased]` at release time (and `changelog.py release` runs it first), so the published changelog is unchanged — only the way contributors write into it is. Writing under `## [Unreleased]` directly still works
 
 ### Deprecated
 
@@ -132,6 +257,57 @@ Maintaining this file
 - `screenY(x, y, z)` (3D) returned a y coordinate mirrored relative to the 2D `screenY(x, y)`, because `Canvas3D.screenPosition(_:_:_:)` mapped NDC y to pixel space with the same `(ndc + 1) / 2` formula used for x, without accounting for the Y-flip already baked into the view-projection matrix ([#378](https://github.com/shinyaoguri/metaphor/issues/378)). A point above the canvas center now correctly reports a smaller `screenY`, matching the 2D API's left-top-origin, Y-down convention. `screenX(x, y, z)` and `screenZ(x, y, z)` were unaffected.
 - With `enableShadows()`, the shadow factor is now applied to **direct light only** (diffuse + specular). Ambient light, emissive colour and the PBR ambient-occlusion factor are no longer folded into the shadow attenuation, in both the Blinn-Phong and PBR paths ([#364](https://github.com/shinyaoguri/metaphor/issues/364)). Previously an emissive material went completely dark inside a shadow, and `ambientOcclusion()` was cancelled there, making shadowed surfaces *brighter* than the lit ones next to them. **Shaded output can change for sketches that call `emissive()` or `ambientOcclusion()` together with `enableShadows()`** — shadowed areas of those materials now keep their emissive glow and their occlusion. Materials that use neither (the default) render exactly as before, bit for bit. `ambientLight()` and `directionalLight()` also document two conventions that are easy to get wrong: ambient takes a value in the current `colorMode` range (0–255 by default, so `ambientLight(0.35)` is essentially black), and a light direction is the direction the light *travels* in a y-down world, so `directionalLight(0, 1, 0)` is the one that shines from above.
 - `frameRate(0)` and negative values are now clamped to `1` before reaching `renderer.targetFPS` (which Probe's `frame.json` reports verbatim) and `MTKView.preferredFramesPerSecond`, with a `metaphorWarning` when clamping happens ([#358](https://github.com/shinyaoguri/metaphor/issues/358)). Previously the `max(fps, 1)` clamp was only applied to the timer-loop interval calculation, so the displayLink path (`MTKView.preferredFramesPerSecond`) and the reported `targetFPS` silently received `0` or negative values — `0` means "as fast as possible" for `MTKView`, and Probe consumers (AI agents) would read an invalid frame rate. `frameRate(_:)` still forwards its argument verbatim from `Sketch` through `SketchContext`; the clamp is applied once, at the entry of `SketchRunner`'s internal frame-rate handler, so it covers `targetFPS`, the timer interval, and `MTKView` uniformly.
+- `llms.txt` now lists the API you write at a **declaration site** rather than only the API
+  that appears in a `Sketch` signature. Two whole families of public symbols were invisible
+  to AI agents reading it:
+
+  - **`@Param`** — the property wrapper is spelled at the declaration (`@Param(min: 10,
+    max: 200) var radius: Float = 50`) and so appears in no method signature. It is now
+    emitted with its `@propertyWrapper` attribute intact
+    ([#421](https://github.com/shinyaoguri/metaphor/issues/421))
+  - **Extensions on types metaphor does not own** — the PVector-style vector API
+    (`normalized()` / `limited(_:)` / `heading()` / `rotated(_:)` / `dist(to:)` /
+    `lerp(to:t:)` / `setMag(_:)` and the `mutating` variants on `Vec2` / `Vec3`), the
+    `simd_float4x4` helpers, and the `ParamRepresentable` conformances on `Float` / `Int` /
+    `Bool` / `String` / `Color`. These exist only because metaphor adds them, so `llms.txt`
+    was the one place they could be discovered — and it omitted all of them
+    ([#298](https://github.com/shinyaoguri/metaphor/issues/298))
+
+  A symbol documented with a `- Parameters:` block but no abstract also no longer shows the
+  first parameter's description as its summary. No API changed — only what the generated
+  reference reports about it.
+- Ten shipped examples that build 3D geometry with `beginShape()` + `vertex(x, y, z)`
+  now use `beginShape3D()` / `endShape3D()`, so they render as solids again instead of
+  collapsing into a plane (`Topics/Geometry/{Vertices,ShapeTransform,RGBCube,Toroid}`,
+  `Topics/Textures/{TextureQuad,TextureCube,TextureSphere,TextureTriangle,TextureCylinder}`,
+  `Demos/Graphics/Patch`). The library behaviour is unchanged — `beginShape()` still
+  records into the 2D canvas — but the first `vertex(x, y, z)` inside a 2D `beginShape()`
+  now logs a one-shot warning in debug builds pointing at `beginShape3D()`
+  ([#387](https://github.com/shinyaoguri/metaphor/issues/387))
+- 3D shapes now draw their wireframe in the stroke color instead of blending it
+  with the fill color. The stroke pass reused the vertex colors baked in at
+  `vertex()` time (the fill color) and multiplied them with the stroke color, so
+  a stroke could come out wrong — or vanish entirely when the two colors were
+  complementary (a blue fill and a red stroke multiplied to black). Strokes on
+  `box()` / `sphere()` and friends were drawn in the fill color for the same
+  reason. Wireframes are also depth-biased slightly toward the camera, so the
+  lines of a shape that also has a fill are no longer rejected by the depth test
+  against their own fill ([#429](https://github.com/shinyaoguri/metaphor/issues/429))
+- `dynamicMesh()` now draws its wireframe in the stroke color and depth-biases it
+  toward the camera, matching `beginShape3D()` and the mesh primitives. The
+  stroke pass was left on the regular pipeline, so it multiplied the per-vertex
+  colors set with `addColor()` into the stroke color (a red vertex color and a
+  green stroke came out near black), and without the depth bias the lines lost
+  the depth test against their own fill and disappeared
+  ([#436](https://github.com/shinyaoguri/metaphor/issues/436))
+- 3D primitives no longer crash on a non-positive `detail`. `sphere()`,
+  `cylinder()`, `cone()`, `torus()` and their `createXxxMesh()` counterparts used
+  to hit `Range requires lowerBound <= upperBound` (an untrappable `fatalError`)
+  for a negative segment count, and produced degenerate geometry with `inf`/`NaN`
+  coordinates for `0`. Segment counts are now clamped at the `Mesh` factories to
+  a minimum of 3 (2 for sphere rings), so a `detail` driven from `@Param`, OSC or
+  MIDI can pass through zero without killing a live sketch
+  ([#445](https://github.com/shinyaoguri/metaphor/issues/445))
 
 ## [0.8.0] - 2026-08-01
 
@@ -211,7 +387,8 @@ Adds `PixelBuffer`, multi-window improvements, Core ML examples (face detection,
 
 First public release. [Release notes](https://github.com/shinyaoguri/metaphor/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/shinyaoguri/metaphor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/shinyaoguri/metaphor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/shinyaoguri/metaphor/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/shinyaoguri/metaphor/compare/v0.5.3...v0.6.0
