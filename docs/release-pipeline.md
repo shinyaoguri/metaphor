@@ -92,7 +92,9 @@ sequenceDiagram
   dispatch を取りこぼしても、週次 poll（月曜 06:17 UTC）が backstop として同じ処理を走らせます。
 - **段 3 の結合はラベル 1 枚**。pin bump PR のタイトルは `chore:` なので、それ単独では
   metaphor-cli のリリースは出ません。`syphon-bump.yml` が `release:patch` ラベルを明示的に
-  貼ることでリリースへ接続しています。
+  貼ることでリリースへ接続しています。このラベル結合は両リポの
+  `scripts/check-contract.sh` が機械検査します（cli#117 — ラベルが消える・改名される
+  変更は 48 時間後の監査ではなく PR の CI で止まる）。
 - **段 4 に dispatch は無い**。homebrew-tap には `repository_dispatch` の受け口が存在せず、
   metaphor-cli が GitHub App トークンで Formula PR を**直接 push** します。tap 側は
   `tests.yml`（brew test-bot、PR でのみ実ビルド + bottle 生成）→ `publish.yml`
@@ -142,6 +144,7 @@ App の初回セットアップ手順は
 
 | いつ | 何を | どこ |
 |---|---|---|
+| PR ごと | 段 2→3 を繋ぐ `release:patch` ラベルの存在（契約チェック。cli#117） | 両リポ `ci.yml` → `scripts/check-contract.sh` |
 | リリース時 | 公開した Syphon asset を DL し checksum 照合（壊れた pin を下流に流さない） | metaphor `release.yml` の *Verify published Syphon asset* |
 | リリース時 | 段 1 の dispatch 失敗を**ジョブの赤**として顕在化（黙って skip しない） | metaphor `release.yml` の *Dispatch Syphon pin bump to metaphor-cli* |
 | 毎週（トレイン発車時） | dispatch 用資格情報の死活確認（トークンを発行して捨てる） | metaphor `release-train.yml` の *Verify downstream dispatch credentials* |
