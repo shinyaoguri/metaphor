@@ -39,6 +39,7 @@ don't need an entry. See changelog.d/README.md and CONTRIBUTING.md.
 Fixes #<!-- issue number, if applicable -->
 
 <!--
-Maintainer note: release:patch / release:minor / release:major labels drive
-automatic releases on merge — please leave them for maintainers to set.
+Maintainer note: releases ride the weekly train (Mondays 09:00 JST) — no label
+needed. release:now / release:patch / release:minor / release:major cut one
+immediately instead; please leave them for maintainers to set.
 -->

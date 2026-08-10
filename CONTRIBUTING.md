@@ -85,9 +85,11 @@ green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
   also adding an `enum` case or a protocol requirement), and the deprecation
   window: a symbol is marked deprecated in a *published* release before it can
   be removed, never both in one.
-- `release:patch` / `release:minor` / `release:major` labels drive automatic
-  releases on merge — they're **maintainer-only**; please don't add them to
-  your PR.
+- Releases ride a **weekly train** (Mondays, 09:00 JST): whatever is on `main`
+  ships together, with the bump derived from the merged PR titles. Nothing to
+  do on your side. The `release:now` / `release:patch` / `release:minor` /
+  `release:major` labels cut a release immediately instead — they're
+  **maintainer-only**; please don't add them to your PR.
 - A few files are **generated** and must not be hand-edited — change the
   input and regenerate instead (a pre-push hook and CI both check for
   staleness):

@@ -191,7 +191,11 @@ curl -s -F "access_token=$(op read "${GYAZO_TOKEN_REF:-op://Automation/Gyazo API
 
 ## Release Process
 
-リリースは PR の `release:patch|minor|major` ラベル駆動です。手順の全体は [docs/releasing.md](docs/releasing.md) を参照してください。
+リリースは**週次トレイン**です。毎週月曜 09:00 JST に `release-train.yml` が `main` の履歴を見て、前回の stable タグ以降に `feat` があれば minor、`fix`/`perf` だけなら patch を出します（何も無ければ出しません）。**PR 側でリリースのために行う操作はありません。** 月曜を待てない hotfix だけ `release:now` ラベルで即時に出せます。手順の全体は [docs/releasing.md](docs/releasing.md) を参照してください。
+
+```bash
+python3 scripts/release-bump.py --explain   # 次のトレインが何を出すかを手元で確認
+```
 
 release workflow は Syphon.xcframework をビルドして GitHub Release asset として公開し、`Package.swift` の binary target URL/checksum を更新します。
 
