@@ -44,6 +44,29 @@ jobs:
         with:
           fetch-depth: 0 # the bump is derived from history since the latest tag
 
+      # A release hands off to metaphor-cli with a GitHub App installation token
+      # (release.yml, "Dispatch Syphon pin bump"). That step runs only when a
+      # release actually departs — a few times a month — so a mistyped secret, a
+      # rotated private key or a narrowed App installation would sit unnoticed
+      # until the next release, and the hand-off would fail after the ~10 min
+      # Syphon build and a full CI run.
+      #
+      # The train runs EVERY Monday, bump or no bump. Minting the token here (and
+      # throwing it away) turns that weekly tick into a liveness check on the
+      # credential: it costs one API call, and it fails loudly on the week the
+      # credential dies rather than on the release that needed it.
+      #
+      # This is not redundant with metaphor-cli's release-pipeline-audit.yml —
+      # that one reports a delivery that already failed to arrive; this one
+      # reports the cause before anything is dispatched.
+      - name: Verify downstream dispatch credentials
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.REPO_AUTOMATION_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REPO_AUTOMATION_APP_PRIVATE_KEY }}
+          owner: shinyaoguri
+          repositories: metaphor-cli
+
       # Exits 2 on a breaking change: since v0.9.0 that means major, and major
       # is never inferred (docs/api-stability-policy.md). A red train is the
       # intended outcome there — it asks for the `release:major` label.
