@@ -89,6 +89,37 @@ A Probe snapshot carries the values that produced it: `frame.json` has
 `params{revision, values}` alongside the image, so you never have to guess whether
 `params.json` was read before or after the frame you are looking at.
 
+## Surviving A Reload (`saveState` / `preserveClock`)
+
+`metaphor watch` relaunches the sketch on every save, so a simulation restarts
+from scratch and the clock jumps back to zero. `@Param` values already survive
+(above); for everything else there are two opt-ins:
+
+```swift
+@main final class MySketch: Sketch {
+    private struct Saved: Codable { var particles: [Particle] }
+    private var particles: [Particle] = []
+
+    // Carry frameCount and time across the reload — no other code needed.
+    var config: SketchConfig { SketchConfig(preserveClock: true) }
+
+    func saveState() -> Data? { encodeState(Saved(particles: particles)) }
+    func restoreState(_ data: Data) {          // called once, right after setup()
+        guard let s: Saved = decodeState(data) else { return }
+        particles = s.particles
+    }
+}
+```
+
+Save only what is expensive to rebuild. A failed decode (you changed the shape of
+`Saved` while editing) silently keeps the initial state instead of crashing, so
+these hooks never block a reload. Sample: `Examples/Samples/StatePreservation`.
+
+For AI assistants: the state travels through `.metaphor/state/` — write
+`save-request.json` atomically with a new `id`, wait for `state.json` to echo it
+in `savedRequestId`, then relaunch with `METAPHOR_RESTORE_STATE=<path to
+state.json>`. `metaphor watch` does this for you.
+
 ## Common Requests
 
 ### 2D Generative Motion

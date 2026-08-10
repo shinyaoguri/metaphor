@@ -87,6 +87,13 @@ case "$REPO" in
       ".metaphor/params" "set-request.json" METAPHOR_PARAMS
     check "Sources/MetaphorCore/Parameters/ParameterFile.swift" \
       "currentSchemaVersion = 1"
+    # State preservation file protocol: root path, request file name, enable/disable env
+    # var and the restore env var (contract point 8). JSON structure is the canon of
+    # contract/state.schema.json + contract/state-save-request.schema.json.
+    check "Sources/MetaphorCore/State/StatePlugin.swift" \
+      ".metaphor/state" "save-request.json" METAPHOR_STATE METAPHOR_RESTORE_STATE
+    check "Sources/MetaphorCore/State/SketchStateFile.swift" \
+      "currentSchemaVersion = 1"
     # Syphon Release dispatch event_type fired to metaphor-cli (auto-bump, L2a).
     check ".github/workflows/release.yml" \
       "event_type=syphon-release"

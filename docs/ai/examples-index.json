@@ -1,7 +1,7 @@
 {
-  "count": 281,
+  "count": 282,
   "statusCounts": {
-    "supported": 261,
+    "supported": 262,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -2824,6 +2824,20 @@
       "tags": [
         "samples",
         "scenegraphhybrid"
+      ]
+    },
+    {
+      "title": "StatePreservation",
+      "path": "Examples/Samples/StatePreservation",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "samples",
+        "statepreservation"
       ]
     },
     {
