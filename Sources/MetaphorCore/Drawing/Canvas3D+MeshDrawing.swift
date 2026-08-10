@@ -92,6 +92,123 @@ extension Canvas3D {
         }
     }
 
+    // MARK: - 明示インスタンス描画（#442）
+
+    /// 同一メッシュを複数のトランスフォームで一括描画します。
+    ///
+    /// 各インスタンスは `currentTransform * transforms[i]` で描かれ、
+    /// `pushMatrix()` / `applyMatrix(t)` / `mesh(m)` / `popMatrix()` のループと同値です。
+    /// 状態（fill / stroke / material / texture / ライト）はインスタンス間で共有され、
+    /// `colors` を渡したときだけ fill 色が per-instance になります。
+    ///
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。空なら何も描きません。
+    ///   - colors: インスタンスごとの fill 色。`transforms` より短い分は現在の fill 色、
+    ///     長い分は無視されます。
+    func drawMeshInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [SIMD4<Float>]?) {
+        guard hasFill || hasStroke, !transforms.isEmpty else { return }
+
+        let isTextured = currentTexture != nil && mesh.hasUVs
+        let baseTransform = currentTransform
+        let baseFill = fillColor
+
+        // i 番目のインスタンス色（colors 不足分は現在の fill 色）
+        func color(_ i: Int) -> SIMD4<Float> {
+            guard let colors, i < colors.count else { return baseFill }
+            return colors[i]
+        }
+
+        // 記録経路（影オン / コマンド記録）: スナップショットと seq を全インスタンスで共有し、
+        // 「1 回の描画呼び出し」として 2D とインターリーブされるようにする。同 seq のときの
+        // マージは 3D 優先（DrawStreamMerge.mergeOrder）なので run は割れない。
+        if shouldRecordMainPass && !isReplaying {
+            flushPending2D?()
+            let snapshot = snapshotForRecording()
+            let seq = seqProvider?() ?? 0
+            recordedDrawCalls.reserveCapacity(recordedDrawCalls.count + transforms.count)
+            for (i, local) in transforms.enumerated() {
+                recordedDrawCalls.append(DrawCall3D(
+                    mesh: mesh,
+                    transform: baseTransform * local,
+                    fillColor: color(i),
+                    material: currentMaterial,
+                    customMaterial: currentCustomMaterial,
+                    texture: currentTexture,
+                    isTextured: isTextured,
+                    hasFill: hasFill,
+                    hasStroke: hasStroke,
+                    strokeColor: strokeColor,
+                    seq: seq,
+                    stateSnapshot: snapshot
+                ))
+            }
+            return
+        }
+
+        guard encoder != nil else { return }
+
+        // カスタム頂点シェーダーはインスタンシング不可; イミディエイトパスにフォールバック
+        if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {
+            flushInstanceBatch()
+            for (i, local) in transforms.enumerated() {
+                currentTransform = baseTransform * local
+                fillColor = color(i)
+                drawMeshImmediate(mesh)
+            }
+            currentTransform = baseTransform
+            fillColor = baseFill
+            return
+        }
+
+        // バッチキーは全インスタンスで共通（fill 色は per-instance データでキーに入らない）
+        let key = BatchKey3D(
+            meshID: ObjectIdentifier(mesh),
+            isTextured: isTextured,
+            textureID: currentTexture.map { ObjectIdentifier($0 as AnyObject) },
+            material: currentMaterial,
+            customMaterialID: currentCustomMaterial.map { ObjectIdentifier($0) },
+            hasFill: hasFill,
+            hasStroke: hasStroke,
+            strokeColor: strokeColor
+        )
+
+        for (i, local) in transforms.enumerated() {
+            let transform = baseTransform * local
+            let normalMatrix = computeNormalMatrix(from: transform)
+            let instanceColor = color(i)
+
+            func add() -> Bool {
+                instanceBatcher.tryAddInstance(
+                    key: key,
+                    mesh: mesh,
+                    texture: currentTexture,
+                    material: currentMaterial,
+                    customMaterial: currentCustomMaterial,
+                    hasFill: hasFill,
+                    hasStroke: hasStroke,
+                    strokeColor: strokeColor,
+                    transform: transform,
+                    normalMatrix: normalMatrix,
+                    color: instanceColor
+                )
+            }
+
+            if !add() {
+                // キー不一致（直前の別バッチ）またはバッファ満杯; フラッシュしてリトライ
+                flushInstanceBatch()
+                if !add() {
+                    // リトライも失敗; 非インスタンスド描画にフォールバック
+                    currentTransform = transform
+                    fillColor = instanceColor
+                    drawMeshImmediate(mesh)
+                    currentTransform = baseTransform
+                    fillColor = baseFill
+                }
+            }
+        }
+    }
+
     // MARK: - インスタンスバッチフラッシュ
 
     /// 蓄積されたインスタンスを単一のインスタンス描画コールとしてフラッシュします。

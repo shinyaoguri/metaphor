@@ -485,6 +485,38 @@ extension Sketch {
         context.mesh(mesh)
     }
 
+    /// 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
+    ///
+    /// 各インスタンスは「現在の変換行列 × `transforms[i]`」で描かれます。次のループと同値ですが、
+    /// 状態評価が 1 回で済むぶん CPU 側が軽くなります。
+    ///
+    /// ```swift
+    /// for t in transforms {
+    ///     pushMatrix(); applyMatrix(t); mesh(m); popMatrix()
+    /// }
+    /// ```
+    ///
+    /// fill / stroke / material / texture / ライトはインスタンス間で共有されます
+    /// （インスタンスごとに変えられるのは ``drawInstanced(_:transforms:colors:)`` の fill 色のみ）。
+    ///
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。空配列なら何も描きません。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4]) {
+        context.drawInstanced(mesh, transforms: transforms)
+    }
+
+    /// 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
+    ///
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。空配列なら何も描きません。
+    ///   - colors: インスタンスごとの fill 色。`transforms` より短いときは不足分に現在の
+    ///     fill 色を使い、長いときは余りを無視します。stroke 色とマテリアルは共通のままです。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color]) {
+        context.drawInstanced(mesh, transforms: transforms, colors: colors)
+    }
+
     /// ダイナミックメッシュを描画します。
     ///
     /// - Parameter mesh: 描画するダイナミックメッシュ。

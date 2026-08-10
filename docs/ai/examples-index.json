@@ -1,7 +1,7 @@
 {
-  "count": 280,
+  "count": 281,
   "statusCounts": {
-    "supported": 260,
+    "supported": 261,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -2640,6 +2640,20 @@
         "dynamicmeshtexture",
         "samples",
         "typography"
+      ]
+    },
+    {
+      "title": "InstancedCubes",
+      "path": "Examples/Samples/InstancedCubes",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "instancedcubes",
+        "samples"
       ]
     },
     {

@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 280
+Example count: 281
 
-Status: supported 260, partial 0, stub 10, obsolete 10
+Status: supported 261, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -207,6 +207,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 ## Samples
 
 - [DynamicMeshTexture](../../Examples/Samples/DynamicMeshTexture) Tags: 3d, dynamicmeshtexture, samples, typography.
+- [InstancedCubes](../../Examples/Samples/InstancedCubes) Tags: instancedcubes, samples.
 - [OSC Loopback](../../Examples/Samples/OSCLoopback) [Intermediate] -- Sends the mouse position over OSC with OSCSender and draws whatever an OSCReceiver on the same port gets back. Change the host/port to talk to TouchDesigner, Max, or TouchOSC instead of the local loopback. Tags: interaction, live, oscloopback, samples.
 - [ParameterPanel](../../Examples/Samples/ParameterPanel) Tags: parameterpanel, samples.
 - [PluginFPSLogger](../../Examples/Samples/PluginFPSLogger) Tags: pluginfpslogger, samples.

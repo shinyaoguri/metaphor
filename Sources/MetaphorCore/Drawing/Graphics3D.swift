@@ -460,4 +460,21 @@ public final class Graphics3D {
     /// カスタムメッシュを描画します。
     /// - Parameter mesh: レンダリングするメッシュ。
     public func mesh(_ mesh: Mesh) { canvas3D.mesh(mesh) }
+
+    /// 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4]) {
+        canvas3D.drawInstanced(mesh, transforms: transforms)
+    }
+
+    /// 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。
+    ///   - colors: インスタンスごとの fill 色。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color]) {
+        canvas3D.drawInstanced(mesh, transforms: transforms, colors: colors)
+    }
 }
