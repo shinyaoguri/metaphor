@@ -63,6 +63,24 @@ make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付�
 | `METAPHOR_PERF_TESTS=1` | 壁時計しきい値のアサーションを有効化（`PerformanceBenchmarks` と `ObservabilityOverhead: idle hot path`）。共有ランナーの負荷で揺れるため必須チェックからは分離している（#149 / #329） |
 | `METAPHOR_REQUIRE_GPU=1` | 「この環境には GPU がある」と宣言する。Metal デバイスが無ければ `CI Environment Guard` が fail する。CI（`ci.yml`）が設定しており、GPU 依存テストの大量 skip が green のまま見過ごされるのを防ぐ |
 
+### CI が赤いまま終わらせない（Stop hook）
+
+`make ci-check` を通しても CI だけが赤くなることはあります（上の 3 つ、あるいは単なる見落とし）。push しっぱなしで気付かないのを防ぐため、Claude Code のセッションには**赤い CI を残して終われない**仕掛けを入れています（`.claude/settings.json` + `.claude/hooks/`）。
+
+| フック | 役割 |
+|---|---|
+| `ci-watch-mark.sh`（PostToolUse / Bash） | `git push` を見たら「この PR の CI を見届ける」印を `.git/claude-ci-watch/<session>` に置く。push していないセッションでは何もしない |
+| `ci-watch-stop.sh`（Stop） | 印があるときだけ `gh pr view` でチェック状況を見る。**実行中**なら見届けを促し、**赤**なら失敗ジョブ名・ログ取得コマンドを添えて差し戻す。green / マージ済み / bot の PR / PR 無しなら印を消して黙る |
+
+- 対象は**自分の PR ブランチだけ**です（`main` と bot の PR は対象外）。
+- 暴走しないよう**自動修正は 3 回・待機は 6 回**で打ち切り、以降はその PR について黙ります（人間の判断へ返す）。
+- 差し戻しの指示には「テストを削る・skip する・アサーションを緩める対処はしない」「無関係な既存の赤や flaky なら直さず報告してよい」を明記しています。
+- 動作確認: `.claude/hooks/tests/ci-watch-test.sh`（使い捨ての git リポと `gh` スタブで全分岐を検証。GitHub にも Claude セッションにも触りません）
+
+```bash
+.claude/hooks/tests/ci-watch-test.sh
+```
+
 カバレッジのモジュール別サマリは CI の artifact（`coverage-report`）とジョブ要約で確認できます。手元で見るには:
 
 ```bash
