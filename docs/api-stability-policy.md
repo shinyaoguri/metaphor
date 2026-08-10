@@ -2,9 +2,10 @@
 
 What `metaphor` promises not to break, and what it does not promise at all.
 
-**Status.** The library is currently `0.8.x` — the last period in which a minor
-release may break API deliberately. This policy takes effect with **`v0.9.0`**,
-the API-freeze release, and is what `v1.0.0` will declare formally. See
+**Status.** The library is currently `0.9.x`. This policy has been **in effect
+since `v0.9.0`** (released 2026-08-10), the API-freeze release: breaking a
+public API now requires a major release. `v1.0.0` will declare the same
+contract formally. See
 [docs/design/v1-release-plan.md](design/v1-release-plan.md) for the milestones.
 
 `metaphor` follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
