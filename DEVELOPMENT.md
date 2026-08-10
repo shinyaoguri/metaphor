@@ -121,7 +121,9 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 
 ## PR に見た目の証跡を載せる
 
-**描画結果が変わる PR(シェーダ・ライティング・変換・レイアウト・ゴールデン更新・example の見た目)には、before/after の画像を PR 本文に載せる**。レビューで diff から見た目を想像させない。
+**描画結果が変わる PR(シェーダ・ライティング・変換・レイアウト・ゴールデン更新・example の見た目)には、before/after の画像を PR 本文に載せる**。レビューで diff から見た目を想像させない。**動きが変わる PR(アニメーション・パーティクル・物理・イージング・orbitControl 等のインタラクション・時間依存シェーダ)には、画像に加えて GIF も載せる** — 時間方向の変化は静止画を何枚並べても判定できない。
+
+リポジトリに画像・GIF をコミットしない(容量を圧迫する)。ゴールデン PNG のように既にコミットされているもの以外は Gyazo へ上げて URL を貼る。
 
 - **ゴールデン PNG を更新した PR**: 画像は既にコミットに入っているので、raw URL で埋め込むのが最速。
 
@@ -138,10 +140,50 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
   検討する(証跡と回帰検出網を同時に得られる)。ゴールデン化が不適切な場合は
   Probe でヘッドレスにスクリーンショットを撮る — `METAPHOR_PROBE=1` で起動し
   `.metaphor/probe/current/frame.png` を取得(request.json は起動前に置く。
-  詳細は [CONTRACT.md](CONTRACT.md))。撮った PNG はコミットに含めない場合
-  raw URL にできないので、PR 作成後に GitHub 上で添付する。
+  詳細は [CONTRACT.md](CONTRACT.md))。撮った PNG は Gyazo へ上げて URL を貼る
+  (下の「Gyazo へ上げる」)。
 - 差分が微妙な場合は、ゴールデンテストの失敗アーティファクト(実画像・期待画像・
   差分画像)をローカルで生成して差分画像も添える(`.build/golden-failures/`)。
+
+### アニメーションするスケッチを撮るときの注意
+
+- **回転・移動が `frameCount` 依存だと 2 回の実行で絵が揃わない**。比較用に一時的に
+  `Float(frameCount)` を定数へ置換して位相を固定すると、frame 番号がずれても同じ絵になる
+  (撮影後に戻す)。
+- **request.json を起動前に置くと frame 1 が撮れるが、「前フレームまでの描画状態」に依存する
+  バグはそこでは再現しない**。数フレーム走らせてから request.json を書く。どちらも
+  「撮ったのに差が出ない → 修正が効いていないと誤読する」に直結する。
+
+### 動きの証跡を GIF で撮る
+
+Probe は時間軸も撮れる。`request.json` に `frames`(採取枚数、上限 64)と `every`(ストライド)を
+書くと `.metaphor/probe/current/sequence/frame.NNNN.png`(0 始まり 4 桁)と `sequence.json` が出る
+(MCP 経由なら `capture_sequence`)。この連番を GIF にまとめる:
+
+```bash
+ffmpeg -y -framerate 15 -start_number 0 \
+  -i .metaphor/probe/current/sequence/frame.%04d.png \
+  -filter_complex "[0:v]fps=15,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5" \
+  -loop 0 motion.gif
+```
+
+画面収録ではなくレンダラ由来のフレームから作るので、他アプリの映り込みもウィンドウ位置への
+依存もない。目安は幅 720 / 15fps / 3〜6 秒(1200x800 の 60 枚で 1MB 弱)。**GIF は静止画の
+置き換えではなく併載** — 差分の精査は静止画の方が向く。
+
+### Gyazo へ上げる
+
+Gyazo の Upload API へ渡すと `https://i.gyazo.com/<id>.gif` が返る。GitHub は外部画像を camo
+経由で配信するが、アニメーションはそのまま再生される。
+
+```bash
+curl -s -F "access_token=$(op read "${GYAZO_TOKEN_REF:-op://Automation/Gyazo API/credential}")" \
+  -F "imagedata=@motion.gif" https://upload.gyazo.com/api/upload
+```
+
+返り値 `url` を `![説明](URL)` で PR 本文に貼り、**どこを見てほしいか**を本文で補う。
+アクセストークンは 1Password から都度読む(平文の環境変数として常駐させない)。
+手順の一般形は repo-standards プラグインの gyazo-capture スキルにある。
 
 ## Cross-Repo Contract
 
