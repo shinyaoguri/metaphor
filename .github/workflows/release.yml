@@ -173,10 +173,17 @@ jobs:
 
       # --- Push release branch with version-bump commit ---
       - name: Push release branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # Identity for the annotated tag later in this job. The release commit
+          # itself is NOT made with `git commit` — see the end of this step.
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # main's HEAD is an already-signed commit; the release branch starts
+          # there and the bump is layered on through the API.
+          BASE_SHA=$(git rev-parse HEAD)
           git checkout -b "$RELEASE_BRANCH"
           sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
@@ -214,17 +221,47 @@ jobs:
             # re-checks and fails rather than writing an empty section.
             python3 scripts/changelog.py release "${VERSION_NUM}" --date "$(date -u +%Y-%m-%d)"
           fi
-          # `changelog.d` carries the DELETION of every collected entry file
-          # (`git add <dir>` stages removals). Without it the release commit
-          # would promote the entries and leave the files behind, so the next
-          # release would collect them a second time.
-          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt CHANGELOG.md changelog.d
-          if git diff --cached --quiet; then
+          # The exact file set the bump is allowed to touch. Scoping matters:
+          # unscoped, `git status` on a runner would also see build output that
+          # merely happens not to be ignored (Frameworks/, artifacts, caches).
+          BUMP_PATHS=(
+            Package.swift
+            Sources/MetaphorCore/Core/MetaphorVersion.swift
+            README.md
+            README.en.md
+            Sources/metaphor/metaphor.docc/GettingStarted.md
+            llms.txt
+            CHANGELOG.md
+            changelog.d
+          )
+          if [ -z "$(git status --porcelain -- "${BUMP_PATHS[@]}")" ]; then
             echo "::error::No version-bump diff produced."
             exit 1
           fi
-          git commit -m "Release ${TAG_NAME}"
-          git push origin "$RELEASE_BRANCH"
+          # The commit goes through GitHub's API, not `git commit`: the ruleset
+          # requires signed commits (2026-08-04) and the runner has no signing
+          # key, so a pushed `git commit` is unsigned and the release PR then
+          # cannot be merged — after the Syphon build and a full CI run have
+          # already happened. That is exactly how v0.9.0 failed on 2026-08-10.
+          # `createCommitOnBranch` commits are signed by GitHub itself, which
+          # satisfies the rule without opening a ruleset bypass for Actions.
+          #
+          # signed-commit.py reads `git status --porcelain`, so every edit above
+          # is carried as-is — including the DELETION of each collected
+          # `changelog.d/` entry. Without those deletions the release would
+          # promote the entries and leave the files behind, and the next release
+          # would collect them a second time.
+          git push origin "${BASE_SHA}:refs/heads/${RELEASE_BRANCH}"
+          PATH_ARGS=()
+          for bump_path in "${BUMP_PATHS[@]}"; do
+            PATH_ARGS+=(--path "$bump_path")
+          done
+          python3 scripts/signed-commit.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --branch "$RELEASE_BRANCH" \
+            --expected-head "$BASE_SHA" \
+            --message "Release ${TAG_NAME}" \
+            "${PATH_ARGS[@]}"
 
       # --- Human-readable release notes (Issue #335) ---
       # Compose the Release body here, while the job can still fail harmlessly
