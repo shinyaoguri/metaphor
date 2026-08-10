@@ -251,7 +251,7 @@ jobs:
           # `changelog.d/` entry. Without those deletions the release would
           # promote the entries and leave the files behind, and the next release
           # would collect them a second time.
-          git push origin "$BASE_SHA:refs/heads/$RELEASE_BRANCH"
+          git push origin "${BASE_SHA}:refs/heads/${RELEASE_BRANCH}"
           PATH_ARGS=()
           for bump_path in "${BUMP_PATHS[@]}"; do
             PATH_ARGS+=(--path "$bump_path")
