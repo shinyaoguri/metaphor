@@ -246,7 +246,11 @@ consumer がタイムアウトではなく id 一致で失敗を検知できる�
 - **有効化**: ヘッドレス（`METAPHOR_VIEWER=1` = watch の子プロセス）で自動。素の
   `swift run` で試すときは `METAPHOR_STATE=1`、オプトアウトは `METAPHOR_STATE=0`。
   リクエストが無いフレームのコストは save-request の `stat()` 1 回（契約点 4/7 と同じ
-  性能契約）。
+  性能契約）。**consumer 側の規約**: `metaphor watch` は子へ `METAPHOR_STATE=1` を
+  明示注入する（`--no-viewer` でも状態が運ばれるように。ユーザーが環境で
+  `METAPHOR_STATE` を設定していればそれを尊重する）。また、**保存要求が一度も
+  応答されなかった watch セッションでは以降の要求を止める** — 状態保持を使っていない
+  スケッチでリロードのたびにタイムアウトぶん待たないため。
 - **consumer 規約**: 未知のキーは無視する（additive ルール）。キーのリネーム／削除／
   型変更は破壊的変更で、`schemaVersion` を上げ、両リポジトリの本節を同時に更新すること。
 

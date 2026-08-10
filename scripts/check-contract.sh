@@ -127,6 +127,13 @@ case "$REPO" in
       "request.json.tmp"
     check "Sources/MetaphorCLICore/MCP/ProbeSequenceTool.swift" \
       "request.json.tmp"
+    # State handoff on reload: root path, atomic save-request write, and the restore env
+    # var handed to the next child (contract point 8).
+    check "Sources/MetaphorCLICore/StateHandoff.swift" \
+      ".metaphor" "save-request.json.tmp" METAPHOR_RESTORE_STATE
+    # watch opts the child into the state plugin explicitly (contract point 8).
+    check "Sources/MetaphorCLICore/WatchSession.swift" \
+      METAPHOR_STATE
     # Syphon.xcframework Release pin (binaryTarget fallback) — presence + format (contract point 1).
     check "Package.swift" \
       "releases/download/v" "checksum:"
