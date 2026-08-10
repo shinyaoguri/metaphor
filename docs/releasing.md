@@ -235,6 +235,44 @@ python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changel
 python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changelog.d notes 0.9.0   # Release 本文の Highlights
 ```
 
+## リリースは Homebrew に届いて完了(下流への波及)
+
+metaphor のタグを打った時点では、**まだ誰の手元も変わっていません**。
+`brew install shinyaoguri/tap/metaphor` のユーザーに届くまでに 4 段あります:
+
+| 段 | 何が起きる | どこ |
+|---|---|---|
+| 1 | 安定版リリースが `repository_dispatch`(`syphon-release`) を撃つ | `release.yml` の *Dispatch Syphon pin bump to metaphor-cli* |
+| 2 | metaphor-cli が `Package.swift` の Syphon pin を上げる PR を出し、CI green で auto-merge | metaphor-cli `syphon-bump.yml` |
+| 3 | その PR の `release:patch` ラベルで metaphor-cli のリリースが出る | metaphor-cli `release-on-merge.yml` → `release.yml` |
+| 4 | homebrew-tap へ Formula 更新 PR が出て、brew test-bot が green なら bottle 込みで main へ | metaphor-cli `release.yml` → homebrew-tap `publish.yml` |
+
+**どの段が止まっても、前後の段は緑のままに見えます。** 実際、段 1 の資格情報
+(`CLI_DISPATCH_TOKEN`)は一度も設定されておらず、`v0.1.0` から `v0.9.0` まで
+dispatch は毎回 `::notice::` を出して黙って skip し、リリースは常に成功でした。
+生きていたのは metaphor-cli 側の週次 poll だけで、`v0.8.0` が pin に反映されるまで
+9 日かかっています。
+
+そのため、いまは次の 2 つで守っています:
+
+- **段 1 は失敗させる**。dispatch に使うのは GitHub App のインストールトークン
+  (`REPO_AUTOMATION_APP_*`)で、取得や dispatch に失敗すれば **release ジョブが赤に
+  なります**。タグと Release はその手前で公開済みなので、赤は「リリースは出たが
+  引き継ぎに失敗した」という意味であって、リリースのやり直しは不要です。
+  metaphor-cli の週次 poll は依然として backstop として残ります。
+- **端から端を毎日確かめる**。metaphor-cli の
+  `release-pipeline-audit.yml`(`scripts/audit-release-pipeline.py`)が tap の Formula
+  から逆算し、48 時間経っても届いていなければ詰まっている段を名指しして Issue を
+  立てます。全段揃うと自動でクローズされます。手元でも同じ判定を出せます:
+
+  ```bash
+  # metaphor-cli で
+  python3 scripts/audit-release-pipeline.py --dry-run
+  ```
+
+metaphor-cli 側の手順・GitHub App に必要な権限・bottle の扱いは metaphor-cli の
+`docs/homebrew.md` が正本です。
+
 ## 配布防御(タグと Release asset)
 
 公開済みのタグと Release asset は **不変** として扱う。理由は SwiftPM の
@@ -272,6 +310,7 @@ python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changel
 |------|------|------|
 | リリース時 | 公開した asset を実際にダウンロードし、Package.swift に書いた checksum と照合 | `release.yml` の *Verify published Syphon asset* ステップ(metaphor-cli への pin 通知より前に落ちる) |
 | 週次(月曜 05:00 JST) | 全 `v*` タグの binaryTarget URL が 200 を返すか | `.github/workflows/asset-health.yml` → `scripts/check-release-assets.sh` |
+| 毎日(16:00 JST) | 最新安定版が homebrew-tap の Formula まで届いたか(上の 4 段) | metaphor-cli `release-pipeline-audit.yml` → `scripts/audit-release-pipeline.py` |
 
 手元でも同じチェックを走らせられる:
 
