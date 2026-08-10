@@ -257,13 +257,17 @@ dispatch は毎回 `::notice::` を出して黙って skip し、リリースは
 生きていたのは metaphor-cli 側の週次 poll だけで、`v0.8.0` が pin に反映されるまで
 9 日かかっています。
 
-そのため、いまは次の 2 つで守っています:
+そのため、いまは次の仕組みで守っています:
 
 - **段 1 は失敗させる**。dispatch に使うのは GitHub App のインストールトークン
   (`REPO_AUTOMATION_APP_*`)で、取得や dispatch に失敗すれば **release ジョブが赤に
   なります**。タグと Release はその手前で公開済みなので、赤は「リリースは出たが
   引き継ぎに失敗した」という意味であって、リリースのやり直しは不要です。
   metaphor-cli の週次 poll は依然として backstop として残ります。
+- **段 2→3 の結合は契約チェックで守る**。pin bump PR をリリースへ接続する
+  `release:patch` ラベル(`chore:` タイトル単独では release-on-merge が発火しない)は、
+  両リポの `scripts/check-contract.sh` が機械検査します(cli#117)。ラベルを消す・
+  改名する変更は監査を待たず PR の CI で止まります。
 - **端から端を毎日確かめる**。metaphor-cli の
   `release-pipeline-audit.yml`(`scripts/audit-release-pipeline.py`)が tap の Formula
   から逆算し、48 時間経っても届いていなければ詰まっている段を名指しして Issue を
