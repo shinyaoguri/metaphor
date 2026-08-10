@@ -33,9 +33,15 @@ cd metaphor
 make setup    # submodules + Syphon.xcframework
 make build
 make test
+make ci-check # before pushing: build + test with CI's -warnings-as-errors
 ```
 
 Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
+
+`make build` / `make test` stay lenient so you can iterate through warnings,
+but CI builds and tests with `-Xswiftc -warnings-as-errors` — run
+`make ci-check` before you push so a warning doesn't turn into a red CI on a
+green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
 
 ## Sending a pull request
 

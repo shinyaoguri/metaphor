@@ -31,6 +31,7 @@ make setup
 make setup      # サブモジュール初期化 + Syphon.xcframework ビルド
 make build      # swift build
 make test       # swift test
+make ci-check   # CI と同条件（-warnings-as-errors）で build + test
 make clean      # ビルド成果物をクリーン
 make check      # セットアップ状態を確認
 make docs       # DocC ドキュメントをビルド
@@ -38,6 +39,22 @@ make llms-txt   # AI-readable API reference を生成
 ```
 
 テストは Swift Testing フレームワーク（`@Suite` / `@Test`）を使います。反復中は `swift test --filter <SuiteOrTestName>` で絞り、仕上げに `make test` を通してください。
+
+### push 前は `make ci-check`
+
+`make build` / `make test` は素の `swift build` / `swift test` です。CI（`ci.yml` の `build-and-test` と `build-swift-5-10`）は `-Xswiftc -warnings-as-errors` 付きで走るため、**警告が 1 つ入るとローカルだけ green で CI が赤**になります（strict concurrency 系の警告は Swift 6 モードでエラーになる予備軍なので、これは繰り返し起きます — #448）。
+
+日常のターゲットは試行錯誤しやすいよう緩いまま残し、CI と同じ厳しさは `make ci-check` に集約しています。push / PR の前にこれを通してください。
+
+```bash
+make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付きで（METAPHOR_REQUIRE_GPU=1 も CI に合わせる）
+```
+
+`make ci-check` で再現できないものは次の 3 つです。
+
+- **Swift 5.10 / Xcode 15.4 でのビルド** — CI の `build-swift-5-10` が担当（このジョブでしか出ない警告が実在します。#328）
+- **`CONTRACT.md` のクロスリポ byte-identity** — GitHub API を叩くため CI のみ（`scripts/check-contract-identity.sh`）
+- **生成物の鮮度**（`llms.txt` / examples index / shader sources）— `make setup` が入れる pre-push フックが見ます
 
 テスト実行を切り替える環境変数（いずれも既定 OFF。ローカルでは通常不要）:
 

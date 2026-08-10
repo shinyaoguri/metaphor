@@ -28,6 +28,7 @@ Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのタ
 make setup    # 初回: サブモジュール初期化 + Syphon.xcframework ビルド
 make build    # swift build
 make test     # swift test
+make ci-check # CI と同条件（-Xswiftc -warnings-as-errors）で build + test — push 前に通す
 make check    # セットアップ状態を確認（Syphon.xcframework / submodules）
 make llms-txt # llms.txt（AI 向け API リファレンス）を生成
 ```
