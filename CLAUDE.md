@@ -111,7 +111,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 - push / merge の判断基準（丁寧なコミットログと PR 本文・green なら指示を待たず merge・不可逆操作のみ事前確認）はグローバル CLAUDE.md に従う。
 - squash merge のみ。PR タイトル/本文に最終コミットメッセージを 1 本きれいに書く（ブランチ上の各コミットは使い捨て）。
 - merge は `gh pr merge --squash --auto` で手離れさせる（CI green で自動 merge され、BEHIND でも追随不要 — [docs/releasing.md](docs/releasing.md) の "Merging PRs"）。green を待つために CI を watch して手動 merge する運用はしない。
-- ただし**赤い CI を残したままセッションを終えない**。push した PR の CI は Stop hook（`.claude/hooks/ci-watch-stop.sh`）が見張り、赤いまま終わろうとすると失敗ジョブとログ取得コマンドを添えて差し戻してくる。そのまま原因を直して追加コミットする（自動修正は 3 回で打ち切り、それ以降は状況を報告して人間に返す）。仕組みの詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の「CI が赤いまま終わらせない（Stop hook）」。
+- ただし**赤い CI を残したままセッションを終えない**。push した PR の CI は Stop hook（個人環境の `repo-standards` プラグインが供給。このリポには同梱していない）が見張り、赤いまま終わろうとすると失敗ジョブとログ取得コマンドを添えて差し戻してくる。そのまま原因を直して追加コミットする（自動修正は 3 回で打ち切り、それ以降は状況を報告して人間に返す）。仕組みの詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の「CI が赤いまま終わらせない（Stop hook）」。
 - 描画結果が変わる PR には before/after 画像を PR 本文に載せる（手順は [DEVELOPMENT.md](DEVELOPMENT.md) の「PR に見た目の証跡を載せる」）。
 - 並行してエージェント/PR を走らせるときの合流点ルール: 同時 in-flight PR は 3 本程度まで / 同じファイル群（特に Sources 全域・生成物）を触るタスク同士は直列に / Sources 系と docs 系を混ぜてバッチを組む / 生成物が conflict したら `git merge origin/main` 後に再生成すれば常に正。
 - merge 後は main に戻って pull し、`git fetch -p` でローカルブランチを掃除する。
