@@ -144,6 +144,25 @@ extension Canvas3D {
     /// - Parameter mesh: 描画するメッシュ。
     public func mesh(_ mesh: Mesh) { drawMesh(mesh) }
 
+    /// 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
+    ///
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。現在の変換行列に右から掛かります。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4]) {
+        drawMeshInstanced(mesh, transforms: transforms, colors: nil)
+    }
+
+    /// 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
+    ///
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。現在の変換行列に右から掛かります。
+    ///   - colors: インスタンスごとの fill 色。不足分は現在の fill 色、余りは無視されます。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color]) {
+        drawMeshInstanced(mesh, transforms: transforms, colors: colors.map(\.simd))
+    }
+
     /// 実行時の頂点変更に対応するダイナミックメッシュを描画します。
     ///
     /// - Parameter mesh: 描画するダイナミックメッシュ。
