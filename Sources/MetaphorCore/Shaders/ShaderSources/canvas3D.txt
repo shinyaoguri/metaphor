@@ -378,11 +378,19 @@ fragment float4 metaphor_canvas3DFragment(
     Canvas3DVertexOut in [[stage_in]],
     constant Canvas3DUniforms &uniforms [[buffer(1)]],
     constant Light3D *lights [[buffer(2)]],
-    constant Material3D &material [[buffer(3)]]
+    constant Material3D &material [[buffer(3)]],
+    constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
+    texture2d<float> shadowMap [[texture(1)]]
 ) {
     if (uniforms.lightCount == 0) {
         return in.color;
     }
+
+    // 影は直接光にのみ掛ける（ambient / emissive / AO は影の中でも保つ, #364）。
+    // インスタンス経路と同じ計算をここでも行う。非インスタンス（イミディエイト）
+    // 経路はバインドだけしてシェーダーが無視しており、影が落ちなかった（#391）。
+    constexpr sampler shadowSampler(filter::linear, address::clamp_to_edge, compare_func::never);
+    float shadow = calculateShadow(in.worldPosition, shadowUniforms, shadowMap, shadowSampler);
 
     float3 lit = calculateLighting(
         in.worldPosition,
@@ -391,7 +399,8 @@ fragment float4 metaphor_canvas3DFragment(
         in.color.rgb,
         lights,
         uniforms.lightCount,
-        material
+        material,
+        shadow
     );
 
     return float4(lit, in.color.a);

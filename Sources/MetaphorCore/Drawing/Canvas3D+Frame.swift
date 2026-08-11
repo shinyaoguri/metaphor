@@ -77,4 +77,38 @@ extension Canvas3D {
 
         shadow.render(drawCalls: recordedDrawCalls, commandBuffer: commandBuffer)
     }
+
+    // MARK: - シャドウリソースのバインド
+
+    /// 3D フラグメントシェーダーが要求するシャドウリソース（`buffer(5)` のユニフォームと
+    /// `texture(1)` のシャドウマップ）をバインドします。
+    ///
+    /// 組み込み 3D フラグメントシェーダーは**すべて**この 2 つを引数に取るため、
+    /// `pipelineState` / `texturedPipelineState` / `wirePipelineState` /
+    /// インスタンス系パイプラインのどれで描く場合も、描画前に必ず呼ぶこと
+    /// （バインド漏れは Metal のバリデーションで落ちる）。
+    ///
+    /// - Parameters:
+    ///   - encoder: バインド先のレンダーコマンドエンコーダー。
+    ///   - enabled: `false` ならシャドウ無効のユニフォームとダミーテクスチャを
+    ///     バインドする。ライティングを行わないワイヤーフレーム（stroke）パス用。
+    func bindShadowResources(on encoder: MTLRenderCommandEncoder, enabled: Bool = true) {
+        if enabled, let shadow = shadowMap {
+            var uniforms = ShadowFragmentUniforms(
+                lightSpaceMatrix: shadow.lightSpaceMatrix,
+                shadowBias: shadow.shadowBias,
+                shadowEnabled: 1.0
+            )
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+            encoder.setFragmentTexture(shadow.shadowTexture, index: 1)
+        } else {
+            var uniforms = ShadowFragmentUniforms(
+                lightSpaceMatrix: .identity,
+                shadowBias: 0,
+                shadowEnabled: 0
+            )
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+            encoder.setFragmentTexture(dummyShadowTexture, index: 1)
+        }
+    }
 }
