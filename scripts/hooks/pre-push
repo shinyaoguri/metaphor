@@ -153,6 +153,16 @@ if [ "$needs_tutorial" -eq 1 ]; then
         exit 1
     fi
     echo "[pre-push] ✅ tutorial snippets are up to date."
+
+    echo "[pre-push] Verifying tutorial result images are up to date..."
+    if ! python3 scripts/generate-tutorial-shots.py --check; then
+        echo "[pre-push] ❌ docs/tutorial/images が古い。撮り直してコミットしてください:" >&2
+        echo "" >&2
+        echo "    make tutorial-shots" >&2
+        echo "    git add docs/tutorial/images" >&2
+        echo "" >&2
+        exit 1
+    fi
 fi
 
 exit 0

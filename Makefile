@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets symbol-graphs llms-txt ai-docs-check hooks contract-schema
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets tutorial-shots symbol-graphs llms-txt ai-docs-check hooks contract-schema
 
 # Default target
 all: setup build
@@ -213,6 +213,12 @@ examples-index:
 tutorial-snippets:
 	@python3 scripts/generate-tutorial-snippets.py
 
+# Re-shoot docs/tutorial/images/** by running each tutorial sketch (needs a GPU)
+# 撮影はローカル専用。CI は --check で「コードを変えたのに撮り直していない」
+# だけを見る（GPU 出力はビット単位で再現しないため画像自体は比較しない）。
+tutorial-shots:
+	@python3 scripts/generate-tutorial-shots.py $(ARGS)
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -242,4 +248,5 @@ help:
 	@echo "  make examples-list  - List all available examples"
 	@echo "  make examples-index - Generate AI-friendly examples index"
 	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
+	@echo "  make tutorial-shots - Re-shoot tutorial result images (needs a GPU)"
 	@echo "  make help           - Show this help"
