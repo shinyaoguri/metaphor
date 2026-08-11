@@ -32,7 +32,23 @@ public final class Canvas3D: CanvasStyle {
     let instancedTexturedPipelineState: MTLRenderPipelineState
     /// インスタンス描画のワイヤーフレーム（stroke）パス専用（#429）。
     let instancedWirePipelineState: MTLRenderPipelineState
-    let instanceBatcher: InstanceBatcher3D
+    private(set) var instanceBatcher: InstanceBatcher3D
+
+    /// テスト用: インスタンスバッチの容量を差し替えます。
+    ///
+    /// 「バッファ満杯 → 非インスタンス（イミディエイト）経路へフォールバック」は
+    /// 既定では 1 フレームに 65,536 インスタンスを積まないと再現できない。数個の
+    /// 描画で同じ分岐を踏ませ、フォールバック経路の見た目を固定するための唯一の
+    /// 手段として用意している（#391）。
+    ///
+    /// - Parameter maxInstances: フレームあたりの最大インスタンス数（1 以上）。
+    func setInstanceCapacityForTesting(_ maxInstances: Int) throws {
+        instanceBatcher = try InstanceBatcher3D(device: device, maxInstances: maxInstances)
+    }
+
+    /// テスト用: 非インスタンス（イミディエイト）経路を通った描画回数（生成以降の累計）。
+    /// フォールバックを狙ったテストが、実際にはインスタンス経路を通って素通りするのを防ぐ。
+    var immediateDrawCountForTesting = 0
 
     static let maxLights = 8
 

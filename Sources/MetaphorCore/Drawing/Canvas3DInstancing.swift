@@ -105,9 +105,9 @@ final class InstanceBatcher3D {
     /// 現在のバッチで使用されるストローク色。
     private(set) var currentStrokeColor: SIMD4<Float> = .one
 
-    init(device: MTLDevice) throws {
+    init(device: MTLDevice, maxInstances: Int = 65536) throws {
         self.batcher = try InstanceBatcher<InstanceData3D>(
-            device: device, maxInstances: 65536, label: "metaphor.instance3D"
+            device: device, maxInstances: maxInstances, label: "metaphor.instance3D"
         )
     }
 

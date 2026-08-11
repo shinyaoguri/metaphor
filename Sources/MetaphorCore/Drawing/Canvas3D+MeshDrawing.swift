@@ -277,23 +277,7 @@ extension Canvas3D {
             }
 
             // シャドウ
-            if let shadow = shadowMap {
-                var shadowUniforms = ShadowFragmentUniforms(
-                    lightSpaceMatrix: shadow.lightSpaceMatrix,
-                    shadowBias: shadow.shadowBias,
-                    shadowEnabled: 1.0
-                )
-                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-                encoder.setFragmentTexture(shadow.shadowTexture, index: 1)
-            } else {
-                var shadowUniforms = ShadowFragmentUniforms(
-                    lightSpaceMatrix: .identity,
-                    shadowBias: 0,
-                    shadowEnabled: 0
-                )
-                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-                encoder.setFragmentTexture(dummyShadowTexture, index: 1)
-            }
+            bindShadowResources(on: encoder)
 
             // テクスチャ
             if isTextured, let tex = instanceBatcher.currentTexture {
@@ -346,9 +330,7 @@ extension Canvas3D {
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
             // ワイヤーフレームではシャドウ無効
-            var shadowOff = ShadowFragmentUniforms(lightSpaceMatrix: .identity, shadowBias: 0, shadowEnabled: 0)
-            encoder.setFragmentBytes(&shadowOff, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-            encoder.setFragmentTexture(dummyShadowTexture, index: 1)
+            bindShadowResources(on: encoder, enabled: false)
 
             Canvas3D.beginStrokeDepthBias(on: encoder)
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {
@@ -376,6 +358,8 @@ extension Canvas3D {
     // インスタンシングなしでメッシュを描画（カスタム頂点シェーダー用フォールバック）
     private func drawMeshImmediate(_ mesh: Mesh) {
         guard let encoder = encoder else { return }
+
+        immediateDrawCountForTesting += 1
 
         let isTextured = currentTexture != nil && mesh.hasUVs
 
@@ -432,23 +416,9 @@ extension Canvas3D {
                 encoder.setFragmentBytes(&params, length: params.count, index: 4)
             }
 
-            if let shadow = shadowMap {
-                var shadowUniforms = ShadowFragmentUniforms(
-                    lightSpaceMatrix: shadow.lightSpaceMatrix,
-                    shadowBias: shadow.shadowBias,
-                    shadowEnabled: 1.0
-                )
-                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-                encoder.setFragmentTexture(shadow.shadowTexture, index: 1)
-            } else {
-                var shadowUniforms = ShadowFragmentUniforms(
-                    lightSpaceMatrix: .identity,
-                    shadowBias: 0,
-                    shadowEnabled: 0
-                )
-                encoder.setFragmentBytes(&shadowUniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
-                encoder.setFragmentTexture(dummyShadowTexture, index: 1)
-            }
+            // インスタンス経路と同じくシャドウを適用する（バインドだけして
+            // シェーダーが無視していたのを #391 で解消）
+            bindShadowResources(on: encoder)
 
             if isTextured, let tex = currentTexture {
                 encoder.setFragmentTexture(tex, index: 0)
@@ -493,6 +463,9 @@ extension Canvas3D {
 
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            // ワイヤーフレームではシャドウ無効
+            bindShadowResources(on: encoder, enabled: false)
 
             Canvas3D.beginStrokeDepthBias(on: encoder)
             if let indexBuffer = mesh.indexBuffer, mesh.indexCount > 0 {

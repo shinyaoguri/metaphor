@@ -119,6 +119,8 @@ extension Canvas3D {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            bindShadowResources(on: encoder)
+
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
         }
 
@@ -152,6 +154,8 @@ extension Canvas3D {
 
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            bindShadowResources(on: encoder, enabled: false)
 
             Canvas3D.beginStrokeDepthBias(on: encoder)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
@@ -220,6 +224,8 @@ extension Canvas3D {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            bindShadowResources(on: encoder)
+
             if let tex = currentTexture {
                 encoder.setFragmentTexture(tex, index: 0)
             }
@@ -259,6 +265,8 @@ extension Canvas3D {
 
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            bindShadowResources(on: encoder, enabled: false)
 
             Canvas3D.beginStrokeDepthBias(on: encoder)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
@@ -341,6 +349,9 @@ extension Canvas3D {
         encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
         var mat = currentMaterial
         encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+        // ポイントはライティングなし（lightCount=0）なのでシャドウ無効
+        bindShadowResources(on: encoder, enabled: false)
 
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: allVerts.count)
     }

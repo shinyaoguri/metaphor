@@ -327,6 +327,8 @@ extension Canvas3D {
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
+            bindShadowResources(on: encoder)
+
             if isTextured, let tex = currentTexture {
                 encoder.setFragmentTexture(tex, index: 0)
             }
@@ -369,6 +371,9 @@ extension Canvas3D {
 
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
+
+            // ワイヤーフレームではシャドウ無効
+            bindShadowResources(on: encoder, enabled: false)
 
             Canvas3D.beginStrokeDepthBias(on: encoder)
             if let ib = mesh.indexBuffer, mesh.indexCount > 0 {
