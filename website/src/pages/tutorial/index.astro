@@ -1,0 +1,19 @@
+---
+import TutorialLayout from '../../layouts/TutorialLayout.astro';
+import TutorialIndex from '../../components/TutorialIndex.astro';
+import { getContent } from '../../i18n/ui';
+import { getTutorialParts } from '../../lib/tutorial';
+
+const lang = 'ja' as const;
+const t = getContent(lang);
+const parts = await getTutorialParts(lang);
+---
+
+<TutorialLayout
+  lang={lang}
+  title={t.tutorial.meta.title}
+  description={t.tutorial.meta.description}
+  parts={parts}
+>
+  <TutorialIndex lang={lang} parts={parts} />
+</TutorialLayout>

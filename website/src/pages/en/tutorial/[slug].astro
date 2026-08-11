@@ -1,0 +1,38 @@
+---
+import { render } from 'astro:content';
+import TutorialLayout from '../../../layouts/TutorialLayout.astro';
+import TutorialArticle from '../../../components/TutorialArticle.astro';
+import { getContent } from '../../../i18n/ui';
+import { tutorialStaticPaths, type TutorialPart } from '../../../lib/tutorial';
+import type { Lang } from '../../../i18n/ui';
+
+// 章立ての背骨は言語共通。英訳（docs/tutorial/en/NN-slug.md）が無い部も
+// 日本語の本文で 1 枚生成し、記事の頭で翻訳準備中であることを明示する
+// （getTutorialParts のフォールバック）。本文が 1 本も無ければページ 0 枚。
+export async function getStaticPaths() {
+  return tutorialStaticPaths('en');
+}
+
+interface Props {
+  lang: Lang;
+  part: TutorialPart;
+  parts: TutorialPart[];
+  prev?: TutorialPart;
+  next?: TutorialPart;
+}
+
+const { lang, part, parts, prev, next } = Astro.props as Props;
+const t = getContent(lang);
+const { headings } = await render(part.entry);
+---
+
+<TutorialLayout
+  lang={lang}
+  title={`${part.title} — ${t.tutorial.title} — metaphor`}
+  description={part.description ?? t.tutorial.meta.description}
+  parts={parts}
+  activeSlug={part.slug}
+  headings={headings}
+>
+  <TutorialArticle lang={lang} part={part} prev={prev} next={next} />
+</TutorialLayout>
