@@ -22,6 +22,8 @@ draft: true
 
 ## 1.3 スケッチの骨格
 
+![スケッチの骨格の実行結果](images/01-GettingStarted/03-SketchSkeleton.png)
+
 スケッチは `Sketch` プロトコルに準拠した 1 つの型です。役割は 3 つに分かれます。
 `config` が起動時の設定、`setup()` が最初に一度だけ、`draw()` が毎フレーム呼ばれます。
 
@@ -67,6 +69,8 @@ final class SketchSkeleton: Sketch {
 - `background(24)` を `draw()` から消すと、何が残りますか
 
 ## 1.4 キャンバスと座標系
+
+![キャンバスと座標系の実行結果](images/01-GettingStarted/04-CanvasAndCoordinates.png)
 
 原点は左上で、`y` は下に向かって増えます。キャンバスの大きさは `width` と `height`
 で取れるので、`config` の数値を直接書かずに済みます。
@@ -133,6 +137,8 @@ final class CanvasAndCoordinates: Sketch {
 （執筆予定: `metaphor watch` で保存のたびに再ビルドし、窓を保ったまま直す）
 
 ## 1.6 描画を止める・進める
+
+![描画を止める・進めるの実行結果](images/01-GettingStarted/06-DrawControl.png)
 
 `draw()` は既定で毎フレーム呼ばれ続けます。`noLoop()` で止め、`loop()` で再開し、
 `redraw()` で 1 フレームだけ進められます。`frameRate(_:)` は 1 秒あたりの描画回数です。
