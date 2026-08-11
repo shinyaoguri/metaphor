@@ -1500,3 +1500,77 @@ struct Canvas3DDynamicMeshStrokeTests {
                 "Stroke must be visible over the fill of the same mesh (red=\(scan.red))")
     }
 }
+
+// MARK: - loadPixels の鮮度と順序保証（#158 / #353）
+
+@Suite("Graphics3D loadPixels Freshness", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Graphics3DLoadPixelsFreshnessTests {
+
+    private func makeGraphics3D(
+        queue: MTLCommandQueue, width: Int = 400, height: Int = 300
+    ) throws -> Graphics3D {
+        let device = MetalTestHelper.device!
+        let shaderLib = try MetalTestHelper.shaderLibrary()
+        let depthCache = MetalTestHelper.depthStencilCache()
+        return try Graphics3D(
+            device: device,
+            commandQueue: queue,
+            shaderLibrary: shaderLib,
+            depthStencilCache: depthCache,
+            width: width,
+            height: height
+        )
+    }
+
+    /// 中心付近の画素を返します（box の面の内側を狙う）。
+    private func centerPixel(_ img: MImage) -> Color {
+        img.loadPixels()
+        return img.get(Int(img.width) / 2, Int(img.height) / 2)
+    }
+
+    @Test("toImage carries the drawing queue as the readback queue")
+    func toImageCarriesReadbackQueue() throws {
+        let queue = try #require(MetalTestHelper.commandQueue())
+        let pg3d = try makeGraphics3D(queue: queue)
+        pg3d.beginDraw()
+        pg3d.endDraw()
+
+        let img = pg3d.toImage()
+        // リードバックが別キューだと commit 順序が保証されず、endDraw(wait: false)
+        // 直後の loadPixels が描画完了前のテクスチャ（＝全黒）を読み得る。
+        // CI で Graphics3D 系テストが nonBlackCount = 0 で落ちる flaky の原因（#353）。
+        #expect(img.preferredReadbackQueue === queue,
+                "toImage() は描画キューをリードバックキューとして引き継ぐ")
+    }
+
+    @Test("draw then loadPixels immediately reads the latest content")
+    func loadPixelsAfterEndDraw() throws {
+        let queue = try #require(MetalTestHelper.commandQueue())
+        let pg3d = try makeGraphics3D(queue: queue)
+
+        // 赤い box を unlit（lightCount == 0 で頂点カラーをそのまま出す）で描き、
+        // wait なしで終了 → 直後の loadPixels でも最新が読める
+        // （リードバックが描画と同じキューに載るため commit 順序で保証される）
+        pg3d.beginDraw()
+        pg3d.fill(Color(r: 1, g: 0, b: 0, a: 1))
+        pg3d.translate(200, 150, 0)
+        pg3d.box(100)
+        pg3d.endDraw(wait: false)
+
+        let img = pg3d.toImage()
+        let red = centerPixel(img)
+        #expect(red.r > 0.9 && red.g < 0.1, "1 回目の描画結果が読める (got \(red))")
+
+        // 再描画後も最新が読める（ラップテクスチャはピクセルキャッシュを信頼しない）
+        pg3d.beginDraw()
+        pg3d.fill(Color(r: 0, g: 1, b: 0, a: 1))
+        pg3d.translate(200, 150, 0)
+        pg3d.box(100)
+        pg3d.endDraw(wait: false)
+
+        let green = centerPixel(img)
+        #expect(green.g > 0.9 && green.r < 0.1,
+                "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
+    }
+}
