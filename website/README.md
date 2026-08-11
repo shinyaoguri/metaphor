@@ -1,43 +1,62 @@
-# Astro Starter Kit: Minimal
+# website
 
-```sh
-npm create astro@latest -- --template minimal
+metaphor のランディングページとチュートリアルを配信する [Astro](https://astro.build) プロジェクトです。ビルド結果は `.github/workflows/docs.yml` が DocC の出力と混ぜて GitHub Pages（`https://shinyaoguri.github.io/metaphor/`）へ公開します。
+
+| パス | 中身 | 出どころ |
+|---|---|---|
+| `/` · `/en/` | ランディングページ | `src/components/*.astro` + `src/i18n/ui.ts`（ハードコード） |
+| `/tutorial/` · `/en/tutorial/` | チュートリアル | **`docs/tutorial/`**（content collection として読み込み） |
+| `/documentation/metaphor/` | API リファレンス | DocC（`docs.yml` がビルド後に混ぜる） |
+
+## コマンド
+
+```bash
+npm ci
+npm run dev      # http://localhost:4321/metaphor/
+npm run build    # dist/ を生成（CI の website-build ジョブと同じ）
+npm run preview  # dist/ をそのまま配信して確認する
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## チュートリアルの読み込み方
 
-## 🚀 Project Structure
+本文の正本は **`docs/tutorial/`** です（GitHub 上でもそのまま読めることが要件のため）。website はコピーを持たず、`src/content.config.ts` の glob loader が `base: '../docs/tutorial'` を指して直接読みます。**本文を編集すればサイトに反映され、website 側での同期作業はありません。**
 
-Inside of your Astro project, you'll see the following folders and files:
+拾う対象は次の 2 つだけです。
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+- `docs/tutorial/NN-slug.md` — 部ごとに 1 ファイル（日本語）
+- `docs/tutorial/en/NN-slug.md` — その英訳
+
+数字 2 桁のプレフィックスをパターンで要求しているので、章立ての設計文書である `docs/tutorial/README.md` と画像置き場 `docs/tutorial/images/` は自動的に公開対象から外れます。サイト側の目次（サイドバーと `/tutorial/`）が README の章立てを置き換えます。
+
+### frontmatter
+
+正本は [`docs/tutorial/README.md`](../docs/tutorial/README.md) です。website 側のスキーマ（`src/content.config.ts`）はそれに追従します。
+
+```yaml
+---
+title: 入門              # 部のタイトル（「第 N 部」は含めない）
+part: 1                 # 部番号。並び順に使う（省略時はファイル名の数字で代用）
+slug: getting-started   # URL に使う。ファイル名の slug と一致させる
+description: この部で何ができるようになるか（1 文）
+draft: true             # 執筆中は公開対象から外れる
+---
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+章立ての順序はどこにもハードコードしていません。`part`（無ければファイル名の数字）で並ぶので、本文を追加するだけでサイドバーと前後のページ送りに載ります。本文が 0 件でもビルドは通り、`/tutorial/` は「準備中」の案内を出します。
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+### 画像
 
-Any static assets, like images, can be placed in the `public/` directory.
+本文からの相対リンク（`![...](./images/01-getting-started/1-1-....png)`）で参照します。Astro が最適化して `dist/_astro/` へ出すので、website 側に画像を複製する必要はありません。
 
-## 🧞 Commands
+### コードブロック
 
-All commands are run from the root of the project, from a terminal:
+Astro 組み込みの Shiki（テーマ `vitesse-light`）でハイライトします。ランディングページの `CodeExample.astro` は Tailwind クラスを手書きした擬似ハイライトですが、あちらは LP 専用の飾りなので踏襲しません。
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+### 英語版が無いとき
 
-## 👀 Want to learn more?
+日本語ファースト（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）です。章立ての背骨は言語共通で、`docs/tutorial/en/` に対応するファイルが無い部は **UI は英語のまま日本語の本文を出し**、記事の頭で「English translation in progress」と明示します。英語側のリンクが切れないので、章立てが揃っている限り英訳は 1 部ずつ足していけます。
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## 参照
+
+- [docs/tutorial/README.md](../docs/tutorial/README.md) — 章立てと執筆規約（正本）
+- [docs/README.md](../docs/README.md) — ドキュメント全体の地図

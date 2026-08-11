@@ -1,0 +1,70 @@
+---
+import Layout from './Layout.astro';
+import Navigation from '../components/Navigation.astro';
+import Footer from '../components/Footer.astro';
+import TutorialSidebar from '../components/TutorialSidebar.astro';
+import TutorialToc from '../components/TutorialToc.astro';
+import { getContent, type Lang } from '../i18n/ui';
+import { tutorialHref, tutorialIndexHref, type TutorialPart } from '../lib/tutorial';
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description?: string;
+  parts: TutorialPart[];
+  /** 表示中の部。一覧ページでは undefined。 */
+  activeSlug?: string;
+  headings?: MarkdownHeading[];
+}
+
+const { lang, title, description, parts, activeSlug, headings = [] } = Astro.props;
+const t = getContent(lang);
+
+// 言語トグルは、対応する部があればその部へ移す（無ければ一覧へ）。
+// 英訳が無い部も日本語本文で必ず生成されるので、章立てが同じ限りリンクは切れない。
+const counterpart = (target: Lang) =>
+  activeSlug ? tutorialHref(target, activeSlug) : tutorialIndexHref(target);
+---
+
+<Layout title={title} description={description} lang={lang}>
+  <Navigation lang={lang} jaHref={counterpart('ja')} enHref={counterpart('en')} />
+
+  <div class="mx-auto flex max-w-7xl gap-10 px-6 pt-16">
+    <!-- 章立てナビ（デスクトップ） -->
+    <aside
+      class="sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 overflow-y-auto py-12 lg:block"
+    >
+      <TutorialSidebar lang={lang} parts={parts} activeSlug={activeSlug} headings={headings} />
+    </aside>
+
+    <div class="min-w-0 flex-1 py-12">
+      <!-- 章立てナビ（狭い画面では折りたたみ） -->
+      {
+        parts.length > 0 && (
+          <details class="mb-8 rounded-2xl border border-border bg-surface px-5 py-4 lg:hidden">
+            <summary class="cursor-pointer text-sm font-semibold text-text">
+              {t.tutorial.contents}
+            </summary>
+            <div class="mt-4">
+              <TutorialSidebar lang={lang} parts={parts} activeSlug={activeSlug} />
+            </div>
+          </details>
+        )
+      }
+
+      <slot />
+    </div>
+
+    <!-- 節内目次 -->
+    {
+      headings.length > 0 && (
+        <aside class="sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-12 xl:block">
+          <TutorialToc lang={lang} headings={headings} />
+        </aside>
+      )
+    }
+  </div>
+
+  <Footer lang={lang} />
+</Layout>

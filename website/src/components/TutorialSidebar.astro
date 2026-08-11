@@ -1,0 +1,75 @@
+---
+import { getContent, type Lang } from '../i18n/ui';
+import { tutorialIndexHref, type TutorialPart } from '../lib/tutorial';
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  lang: Lang;
+  parts: TutorialPart[];
+  /** 表示中の部。一覧ページでは undefined。 */
+  activeSlug?: string;
+  /** 表示中の部の見出し（節）。サイドバーの当該部の下に展開する。 */
+  headings?: MarkdownHeading[];
+}
+
+const { lang, parts, activeSlug, headings = [] } = Astro.props;
+const t = getContent(lang);
+const sections = headings.filter((h) => h.depth === 2);
+---
+
+<nav class="text-sm" aria-label={t.tutorial.contents}>
+  <a
+    href={tutorialIndexHref(lang)}
+    class:list={[
+      'mb-4 block font-display text-base font-semibold tracking-tight transition-colors hover:text-accent',
+      activeSlug ? 'text-text' : 'text-accent',
+    ]}
+  >
+    {t.tutorial.home}
+  </a>
+
+  {
+    parts.length > 0 && (
+      <p class="mb-2 text-xs font-semibold tracking-widest text-text-muted uppercase">
+        {t.tutorial.contents}
+      </p>
+    )
+  }
+
+  <ol class="space-y-1 border-l border-border">
+    {
+      parts.map((part) => (
+        <li>
+          <a
+            href={part.href}
+            aria-current={part.slug === activeSlug ? 'page' : undefined}
+            class:list={[
+              '-ml-px flex gap-2 border-l py-1.5 pl-4 transition-colors',
+              part.slug === activeSlug
+                ? 'border-accent font-semibold text-accent'
+                : 'border-transparent text-text-muted hover:border-border hover:text-text',
+            ]}
+          >
+            <span class="tabular-nums opacity-60">{part.order}</span>
+            <span>{part.title}</span>
+          </a>
+
+          {part.slug === activeSlug && sections.length > 0 && (
+            <ul class="mb-2 ml-4 space-y-1 border-l border-border/70">
+              {sections.map((heading) => (
+                <li>
+                  <a
+                    href={`#${heading.slug}`}
+                    class="-ml-px block border-l border-transparent py-1 pl-3 text-text-muted transition-colors hover:border-border hover:text-text"
+                  >
+                    {heading.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>

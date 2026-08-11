@@ -49,3 +49,141 @@ body {
   background-color: var(--color-accent);
   color: #fbfdfc;
 }
+
+/* ---------------------------------------------------------------------------
+ * チュートリアル本文（docs/tutorial/*.md の描画結果）
+ *
+ * Astro が出す素の HTML に当てるスタイル。Markdown の出力はコンポーネントの
+ * スコープ付き <style> の対象外なので、ここに置く。コードブロックの色は
+ * Astro 組み込みの Shiki（vitesse-light）がインライン style で付けるため、
+ * ここでは器だけを整える。
+ * ------------------------------------------------------------------------ */
+.tutorial-prose {
+  color: var(--color-text);
+  line-height: 1.9;
+}
+
+.tutorial-prose > * + * {
+  margin-top: 1.25em;
+}
+
+.tutorial-prose h2 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+  scroll-margin-top: 5rem;
+}
+
+.tutorial-prose h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 2.25rem;
+  scroll-margin-top: 5rem;
+}
+
+.tutorial-prose h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  scroll-margin-top: 5rem;
+}
+
+.tutorial-prose a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.tutorial-prose a:hover {
+  text-decoration-color: var(--color-accent);
+}
+
+.tutorial-prose strong {
+  font-weight: 600;
+}
+
+.tutorial-prose ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.tutorial-prose ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+
+.tutorial-prose li + li {
+  margin-top: 0.4rem;
+}
+
+.tutorial-prose li > ul,
+.tutorial-prose li > ol {
+  margin-top: 0.4rem;
+}
+
+/* インラインコード（API 名）。コードブロック内の code には効かせない。 */
+.tutorial-prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  padding: 0.1em 0.35em;
+}
+
+.tutorial-prose pre {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  border: 1px solid var(--color-border);
+  border-radius: 0.875rem;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+}
+
+.tutorial-prose blockquote {
+  border-left: 3px solid var(--color-accent-light);
+  padding-left: 1rem;
+  color: var(--color-text-muted);
+}
+
+.tutorial-prose img {
+  border: 1px solid var(--color-border);
+  border-radius: 0.875rem;
+  max-width: 100%;
+  height: auto;
+}
+
+.tutorial-prose hr {
+  border-color: var(--color-border);
+}
+
+/* 表は器ごと横スクロールさせる（節の API 対応表が狭い画面で溢れないように） */
+.tutorial-prose table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tutorial-prose th,
+.tutorial-prose td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tutorial-prose th {
+  background-color: var(--color-surface-2);
+  font-weight: 600;
+  white-space: nowrap;
+}

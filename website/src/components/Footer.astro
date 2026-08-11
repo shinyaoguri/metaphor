@@ -1,5 +1,6 @@
 ---
 import { getContent, docsUrl, githubUrl, homeFor, otherLang, type Lang } from '../i18n/ui';
+import { tutorialIndexHref } from '../lib/tutorial';
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
@@ -14,7 +15,10 @@ const other = otherLang(lang);
       <span>·</span>
       <span>{t.footer.license}</span>
     </div>
-    <div class="flex items-center gap-6 text-sm text-text-muted">
+    <div class="flex flex-wrap items-center justify-center gap-6 text-sm text-text-muted">
+      <a href={tutorialIndexHref(lang)} class="transition-colors hover:text-text">
+        {t.nav.tutorial}
+      </a>
       <a href={docsUrl} class="transition-colors hover:text-text">{t.footer.docs}</a>
       <a href={homeFor(other)} class="transition-colors hover:text-text">{t.nav.toggleLabel}</a>
       <a
