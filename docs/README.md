@@ -8,8 +8,9 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 
 | 読者 | 目的 | 読むもの |
 |---|---|---|
+| metaphor がはじめての人 | 順に読んで、作品を作れるようになる | [tutorial/](tutorial/)（章立てを確定済み。本文は執筆中 — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)） |
 | スケッチを書く人 | metaphor で作品を作る | [README](../README.md) → [ai/for-sketch-authors.md](ai/for-sketch-authors.md) → [ai/examples-index.md](ai/examples-index.md) |
-| Examples を順に学びたい人 | 278 本の索引ではなく、まず何から動かすか知りたい | [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグ付きの推奨順路） |
+| Examples を掘りたい人 | 索引を引くのではなく、どの順に開くか知りたい | [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグ付きの推奨順路） |
 | Processing / p5.js から移る人 | 「Processing の X は metaphor では Y」を引く | [processing-migration-guide.md](processing-migration-guide.md)（英語。API 対応表・落とし穴集・未対応 API） |
 | マイク・カメラを使うスケッチを書く人 | 権限ダイアログや拒否後の詰まりを解消する | [permissions.md](permissions.md)（英語。TCC の仕組みと復旧手順） |
 | AI と一緒に作る人 | AI に観測させながら反復する | [README「AI と協調する」](../README.md#ai-と協調する観測--操作--反復) → [metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する) → [ai/prompts/](ai/prompts/) |
@@ -22,6 +23,8 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 
 ## ディレクトリ構成
 
+- **[tutorial/](tutorial/)** — 体系的チュートリアル（日本語ファースト・初心者向けの読み物）
+  - [tutorial/README.md](tutorial/README.md) — 章立て・執筆規約・既存ドキュメントとの役割分担。本文は各部が `NN-slug.md` として追加される
 - **[ai/](ai/)** — AI 支援まわりのドキュメント一式
   - [ai/README.md](ai/README.md) — 実装デバッグ・拡張ノート（ライブラリ開発者と AI エージェント向け）
   - [ai/for-sketch-authors.md](ai/for-sketch-authors.md) — AI と一緒にスケッチを書く人向けガイド
@@ -48,12 +51,14 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 - **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）、[docs/README.en.md](README.en.md)（本ページの英語版。Issue #337）、[permissions.md](permissions.md)・[Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)・[processing-migration-guide.md](processing-migration-guide.md)（新設・英語のみ）
 - **日本語のまま**（翻訳しない）: [adr/](adr/) 全体（設計判断の記録。ADR 全訳は非目標）、[design/](design/)、[CLAUDE.md](../CLAUDE.md)・[ai/README.md](ai/README.md) などの開発者・エージェント向け内部ドキュメント
 - **今後の弾**: 第 2 弾 = 公開 API doc コメントの英語化（cli #86 と相乗）、第 3 弾 = website（#74）。着手時に起票
+- **日本語ファースト・英語は後追い**: [tutorial/](tutorial/)（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。本文が溜まってから英語版を起票します
 
 ## 真実の在処（どれが正か）
 
 | 知りたいこと | 正典 |
 |---|---|
 | 公開 API シグネチャ | [`llms.txt`](../llms.txt)（生成物） |
+| チュートリアルの章立て・執筆規約 | [tutorial/README.md](tutorial/README.md) |
 | 設計判断の根拠 | [adr/](adr/) |
 | 何が公開 API か・何が壊れうるか | [api-stability-policy.md](api-stability-policy.md) |
 | metaphor ⇄ metaphor-cli の契約 | [CONTRACT.md](../CONTRACT.md) と `contract/*.schema.json` |
