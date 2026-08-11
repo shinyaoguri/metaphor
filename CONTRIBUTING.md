@@ -99,6 +99,7 @@ green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
   | `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` | `make llms-txt` |
   | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` | `make examples-index` |
   | `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` | `python3 scripts/generate-shader-sources.py` |
+  | Embedded code blocks in `docs/tutorial/*.md` | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
 
 - If your change touches the runtime contract with `metaphor-cli`
   (environment variables, stdin JSON Lines, Probe files, Syphon version pin),

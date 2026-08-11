@@ -19,6 +19,17 @@ STATUS_VALUES = ("supported", "partial", "stub", "obsolete")
 DEFAULT_STATUS = "supported"
 
 
+# 索引に載せない Examples/ 直下のディレクトリ。
+#
+# Tutorial/ は docs/tutorial/*.md の各節に対応する学習用スケッチ。この索引は
+# 「やりたいことから近い作例を探す」ためのもので、説明の流れに沿って書かれた
+# 学習用コードが混ざるとノイズになる（#484 で確定・#485 で実装）。除外しても
+# ビルド保証は落ちない — `make examples-check` と per-PR CI の差分ビルドは
+# Examples/**/Package.swift を直接歩くため、Tutorial 配下も対象のまま。
+# 本文への埋め込みは scripts/generate-tutorial-snippets.py が別途担当する。
+EXCLUDED_TOP_LEVEL_DIRS = {"Tutorial"}
+
+
 KEYWORD_TAGS = {
     "audio": ("audio", "fft", "sound", "beat", "microphone"),
     "video": ("video", "capture", "movie"),
@@ -113,6 +124,10 @@ def discover_examples(examples_dir: Path) -> list[dict]:
     package_files: list[Path] = []
     for root, dirnames, filenames in os.walk(examples_dir):
         dirnames[:] = [name for name in dirnames if name not in {".build", ".swiftpm"}]
+        if Path(root) == examples_dir:
+            dirnames[:] = [
+                name for name in dirnames if name not in EXCLUDED_TOP_LEVEL_DIRS
+            ]
         if "Package.swift" in filenames:
             package_files.append(Path(root) / "Package.swift")
 

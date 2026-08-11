@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks contract-schema
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets symbol-graphs llms-txt ai-docs-check hooks contract-schema
 
 # Default target
 all: setup build
@@ -83,7 +83,8 @@ test-lcov:
 # ここで再現できないもの（いずれも別の場所で担保されている）:
 #   - Swift 5.10 / Xcode 15.4 でのビルド → CI の build-swift-5-10
 #   - CONTRACT.md のクロスリポ byte-identity → GitHub API が要るので CI のみ
-#   - 生成物の鮮度（llms.txt / examples index / shader sources）→ pre-push フック
+#   - 生成物の鮮度（llms.txt / examples index / shader sources /
+#     tutorial snippets）→ pre-push フック
 #
 # NOTE: swiftc のフラグが変わるとビルドキャッシュは作り直しになるので、
 # `make build` と交互に走らせると毎回フルリビルドになる。実測で 10 秒台
@@ -207,6 +208,11 @@ examples-list:
 examples-index:
 	@python3 scripts/generate-examples-index.py
 
+# Embed Examples/Tutorial/** code into docs/tutorial/*.md
+# 正典はパッケージ側。本文の埋め込みブロックは生成物なので手で編集しない。
+tutorial-snippets:
+	@python3 scripts/generate-tutorial-snippets.py
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -235,4 +241,5 @@ help:
 	@echo "  make examples-check - Build-only verification (parallel)"
 	@echo "  make examples-list  - List all available examples"
 	@echo "  make examples-index - Generate AI-friendly examples index"
+	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
 	@echo "  make help           - Show this help"
