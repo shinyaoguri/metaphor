@@ -1,12 +1,18 @@
 # Learning Path
 
-[Examples/](.) has 278 self-contained sketches, which is great for search but
-useless for "what do I run first?" This page is a curated route through a
-representative handful, grouped by what you're learning next. It reuses the
-difficulty tags (`[Beginner]` / `[Intermediate]` / `[Advanced]`) already
-present in [`docs/ai/examples-index.md`](../docs/ai/examples-index.md) — that
-file remains the full, searchable index; this page is a suggested order
-through it.
+[Examples/](.) is a large collection of self-contained sketches: great for
+"show me one that does X", useless for "what do I run first?" This page is a
+curated route through a representative handful, grouped by what you're
+learning next. It reuses the difficulty tags (`[Beginner]` /
+`[Intermediate]` / `[Advanced]`) already present in
+[`docs/ai/examples-index.md`](../docs/ai/examples-index.md) — that file
+remains the full, searchable index; this page is a suggested order through it.
+
+**New to metaphor?** Start with the tutorial
+([`docs/tutorial/`](../docs/tutorial/) — Japanese, being written under
+[Epic #483](https://github.com/shinyaoguri/metaphor/issues/483)). It teaches
+the library in order with its own sketches. This page is the map for digging
+through the examples themselves once you want more than the tutorial covers.
 
 Each stop links straight to an example directory. Run any of them the same
 way:
@@ -110,6 +116,7 @@ Sending/receiving external control signals and outputting to other apps.
 
 ## Where to go next
 
+- **Learn the library in order**: [`docs/tutorial/`](../docs/tutorial/) — the systematic tutorial (Japanese), with its own sketches and rendered output per section.
 - **Full, searchable index**: [`docs/ai/examples-index.md`](../docs/ai/examples-index.md) — every example, with tags, difficulty, and status (`supported` / `partial` / `stub` / `obsolete`).
 - **Processing sample by name**: `Basics/` and `Topics/` mirror the official Processing example structure closely — most examples ship the original `.pde` alongside the Swift port.
 - **Writing your own sketch with AI**: [`docs/ai/for-sketch-authors.md`](../docs/ai/for-sketch-authors.md).
