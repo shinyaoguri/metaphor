@@ -127,8 +127,8 @@ public final class MImage {
 
     /// リードバックに使用するコマンドキュー。テクスチャへ書き込むキューと同じものを
     /// 設定すると、commit 順序により「直前の描画 → loadPixels」が正しく順序付けられる
-    /// （``Graphics/toImage()`` が設定する）。未設定時はデバイス共有のリードバック
-    /// キューを使用する。
+    /// （``Graphics/toImage()`` と ``Graphics3D/toImage()`` が設定する）。未設定時は
+    /// デバイス共有のリードバックキューを使用する。
     var preferredReadbackQueue: MTLCommandQueue?
 
     /// デバイスごとの共有リードバックキュー（呼び出しごとの makeCommandQueue 生成を回避）

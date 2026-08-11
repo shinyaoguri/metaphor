@@ -112,7 +112,9 @@ public final class Graphics3D {
     /// このため既定では GPU 完了を待たずに即時返ります。
     ///
     /// - Parameter wait: `true` の場合は `waitUntilCompleted()` で GPU 完了を明示的に待機します。
-    ///   CPU 側でテクスチャの内容を直接読み取る場合のみ必要です。
+    ///   CPU 側でテクスチャの内容を直接読み取る（`getBytes` など）場合のみ必要です。
+    ///   ``toImage()`` が返す `MImage` 経由の `loadPixels()` では不要です
+    ///   （リードバックが同じキューに載るため commit 順序で保証されます）。
     public func endDraw(wait: Bool = false) {
         canvas3D.end()
         encoder?.endEncoding()
@@ -129,7 +131,11 @@ public final class Graphics3D {
     /// オフスクリーンテクスチャを MImage として返します。
     /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
-        MImage(texture: textureManager.colorTexture)
+        let image = MImage(texture: textureManager.colorTexture)
+        // リードバックを描画と同じキューに載せ、endDraw(wait: false) 直後の
+        // loadPixels でも commit 順序で最新内容が読めるようにする
+        image.preferredReadbackQueue = commandQueue
+        return image
     }
 
     // MARK: - Camera
