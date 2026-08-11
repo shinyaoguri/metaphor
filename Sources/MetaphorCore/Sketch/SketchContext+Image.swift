@@ -584,9 +584,18 @@ extension SketchContext {
     ///
     /// このメソッドを使用する前に ``enableFeedback()`` を呼び出してください。
     /// フィードバックが無効の場合や最初のフレームでは nil を返します。
+    ///
+    /// 返される画像は `loadPixels()` / `get()` による CPU 読み取りにも使えます
+    /// （リードバックは前フレームのコピーを行った描画キューに載るため、
+    /// そのフレーム冒頭のコピー完了後の内容が読めます）。
     /// - Returns: 前フレームの `MImage`。または nil。
     public func previousFrame() -> MImage? {
         guard let tex = renderer.previousFrameTexture else { return nil }
-        return MImage(texture: tex)
+        let image = MImage(texture: tex)
+        // 前フレームのコピー（capturePreviousFrame）はフレームのコマンドバッファ、
+        // すなわち renderer.commandQueue に載る。リードバックを同じキューに載せ、
+        // commit 順序で「コピー → loadPixels」を正しく順序付ける
+        image.preferredReadbackQueue = renderer.commandQueue
+        return image
     }
 }
