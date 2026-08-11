@@ -126,11 +126,12 @@ pass. Consequences and rationale:
   あるのは express（`release:now`）のときだけです。
 - **Only required checks gate the merge.** Required = the single aggregate
   gate **`ci-gate`** (Issue #411). It `needs:` every job in `ci.yml`
-  (`build-and-test`, `build-swift-5-10`, `examples-detect`,
+  (`build-and-test`, `build-swift-5-10`, `website-build`, `examples-detect`,
   `examples-diff-build`), always runs, and fails if any of them failed —
-  skipped jobs count as success. (`docs.yml` and `asset-health.yml` never run
-  on PRs — `push: main` and a weekly cron respectively.) Consequences worth
-  knowing:
+  skipped jobs count as success. (`asset-health.yml` never runs on PRs — it is
+  a weekly cron. `docs.yml` only runs on `push: main`; the Astro build it
+  performs *is* covered per-PR by `website-build`, but the DocC build and the
+  Pages deploy are not — Issue #491.) Consequences worth knowing:
   - A PR that does not touch `Examples/` merges as soon as the fast jobs are
     green (`build-and-test` ~6 min); `examples-diff-build` is skipped and the
     gate folds the skip into success. A PR that *does* touch `Examples/`
@@ -174,7 +175,8 @@ pass. Consequences and rationale:
 Pre-release tags (anything containing `-`) are automatically marked as
 Pre-release on GitHub. The `from:` install snippet is bumped only for stable
 releases, across every file that carries it: `README.md`, `README.en.md`,
-`Sources/metaphor/metaphor.docc/GettingStarted.md`, `llms.txt`.
+`Sources/metaphor/metaphor.docc/GettingStarted.md`, `llms.txt`,
+`website/src/components/Hero.astro`.
 
 That file set lives in two places that must always change together — the sed in
 `release.yml`'s *Push release branch* step, and `version_docs` in

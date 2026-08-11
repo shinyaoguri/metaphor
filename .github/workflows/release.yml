@@ -195,7 +195,8 @@ jobs:
           # Only stable versions appear in `from:` install snippets. Keep every
           # file that carries the snippet in sync — CI on this release branch
           # enforces agreement (validate-ai-docs.sh check #6 compares
-          # README.en.md, GettingStarted.md and llms.txt against README.md, and
+          # README.en.md, GettingStarted.md, llms.txt and the landing page's
+          # Hero.astro against README.md, and
           # the llms.txt staleness check regenerates with the README version
           # embedded), so updating README.md alone deadlocks the release.
           # NOTE: this list and validate-ai-docs.sh's `version_docs` are two
@@ -206,12 +207,17 @@ jobs:
           if [ "$IS_PRERELEASE" = "false" ]; then
             VERSION_NUM=${TAG_NAME#v}
             # Anchor on the dependency URL so unrelated `from:` parameter
-            # labels (e.g. tween(from:to:)) in llms.txt are left alone.
+            # labels (e.g. tween(from:to:)) in llms.txt are left alone. The
+            # anchor deliberately stops at `metaphor.git` rather than the full
+            # host, because the landing page elides it for width
+            # ("…/metaphor.git") — the replacement keeps whatever prefix is
+            # already there.
             sed -i '' "s|metaphor\.git\", from: \"[0-9][^\"]*\"|metaphor.git\", from: \"${VERSION_NUM}\"|g" \
               README.md \
               README.en.md \
               Sources/metaphor/metaphor.docc/GettingStarted.md \
-              llms.txt
+              llms.txt \
+              website/src/components/Hero.astro
             # Fold `changelog.d/*.md` into `## [Unreleased]`, then promote it
             # into this version's section (Issue #335). Stable-only, matching
             # the `from:` snippets above: a prerelease cycle keeps accumulating
@@ -231,6 +237,7 @@ jobs:
             README.en.md
             Sources/metaphor/metaphor.docc/GettingStarted.md
             llms.txt
+            website/src/components/Hero.astro
             CHANGELOG.md
             changelog.d
           )
@@ -301,7 +308,7 @@ jobs:
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
-            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt)' || '' }}.")
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt, Hero.astro)' || '' }}.")
           echo "PR_NUMBER=${PR_URL##*/}" >> "$GITHUB_ENV"
 
       - name: Trigger CI on release branch
