@@ -24,12 +24,7 @@ extension Canvas2D {
         if isDeferring {
             let drewSomething = hasDrawnAnything || (hasRecorded3D?() ?? false)
             guard drewSomething else { return }
-            addVertexRaw(0, 0, c)
-            addVertexRaw(width, 0, c)
-            addVertexRaw(width, height, c)
-            addVertexRaw(0, 0, c)
-            addVertexRaw(width, height, c)
-            addVertexRaw(0, height, c)
+            addBackgroundQuad(c)
             flush()
             return
         }
@@ -43,14 +38,35 @@ extension Canvas2D {
         }
         // 全画面クワッドを描画（既に何かが描画されているか、
         // loadAction = .load で明示的なクリアが必要な場合）。
-        addVertexRaw(0, 0, c)
-        addVertexRaw(width, 0, c)
-        addVertexRaw(width, height, c)
-        addVertexRaw(0, 0, c)
-        addVertexRaw(width, height, c)
-        addVertexRaw(0, height, c)
+        addBackgroundQuad(c)
         hasDrawnAnything = true
         flush()
+    }
+
+    /// キャンバス全体を覆う背景クワッドを積みます。
+    ///
+    /// 投影行列は「整数座標 = ピクセル中心」のハーフピクセル規約（``Canvas2D/init``）
+    /// なので、`(0,0)-(width,height)` のクワッドはビューポート座標で `0.5 ..< w+0.5`
+    /// しか覆わず、上端 1 行・左端 1 列のカバレッジが半分になる。MSAA 既定（4x）では
+    /// これが「背景色 50% + クリアカラー 50%」として出力され、単一フレームの
+    /// キャプチャ（`noLoop` / Probe snapshot / 1 フレーム目の `save()`）に常に残る（#373）。
+    ///
+    /// そのぶんだけ外へ広げてキャンバスの縁まで届かせる。はみ出した領域は
+    /// ビューポート外なのでラスタライズ時に捨てられる。
+    ///
+    /// なお `rect(0, 0, width, height)` の縁が半分になるのは規約どおりの正しい挙動で、
+    /// ここで補正するのは「キャンバス全体を塗る」という `background()` の意味論のみ。
+    private func addBackgroundQuad(_ c: SIMD4<Float>) {
+        let x0: Float = -0.5
+        let y0: Float = -0.5
+        let x1 = width - 0.5
+        let y1 = height - 0.5
+        addVertexRaw(x0, y0, c)
+        addVertexRaw(x1, y0, c)
+        addVertexRaw(x1, y1, c)
+        addVertexRaw(x0, y0, c)
+        addVertexRaw(x1, y1, c)
+        addVertexRaw(x0, y1, c)
     }
 
     /// このフレームで指定された背景色が次回以降の render pass clear に反映されたことを記録します。

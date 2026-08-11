@@ -337,6 +337,33 @@ struct GoldenImageTests {
         }
     }
 
+    /// 影オフ（既定）経路と記録経路が、**1 フレーム描画**で同じ画素を出す（Issue #373）。
+    ///
+    /// 記録経路は `draw()` がメインエンコーダー生成**前**に走るので `background()` が
+    /// 同一フレームの `loadAction = .clear` に載る。影オフ経路は初回フレームだけ
+    /// 全画面クワッドで塗る。#327 の全画素比較では 3 フレーム描画後は 1 ビットも
+    /// 違わないのに、1 フレームだけだと上端 1 行・左端 1 列が食い違っていた
+    /// （影オフ側がクワッドのカバレッジ不足で半輝度）。
+    ///
+    /// 単一フレームのキャプチャ（`noLoop` / Probe snapshot）はこの経路差の上に乗るため、
+    /// 「どちらの経路で描いても 1 フレーム目が一致する」ことを画素で固定する。
+    @Test("1 フレーム描画で影オフ経路と記録経路が一致する")
+    func singleFrameMatchesRecordedPath() throws {
+        let scene: (SketchContext) -> Void = { c in
+            c.background(Color(r: 0.08, g: 0.09, b: 0.12))
+            c.noStroke()
+            c.fill(Color(r: 0.90, g: 0.30, b: 0.25))
+            c.rect(10, 10, 44, 30)
+            c.fill(Color(r: 0.20, g: 0.70, b: 0.90))
+            c.circle(92, 30, 40)
+        }
+        let immediate = try render(shadows: false, draw: scene)
+        let recorded = try render(shadows: true, draw: scene)
+
+        let diff = immediate.compare(to: recorded)
+        #expect(diff.isIdentical, "\(diff.summary)")
+    }
+
     // NOTE: テキストレンダリングのゴールデンは意図的に持たない。
     // グリフのラスタライズは OS のフォントスタック（Core Text のヒンティング・
     // フォント差し替え）に依存し、macOS のマイナー更新でも画素が変わり得るため、

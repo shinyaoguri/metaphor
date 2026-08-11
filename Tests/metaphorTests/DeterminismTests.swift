@@ -21,9 +21,10 @@ struct DeterminismTests {
     /// `startHeadlessLoop`）と同じ結線で、`background()` → クリアカラーを駆動する
     /// onDraw を構成する。`renderFrame()` を 1 回呼ぶ = 論理 1 フレーム。
     private func makeContext(
-        clear: Color
+        clear: Color,
+        size: Int = 32
     ) throws -> (renderer: MetaphorRenderer, context: SketchContext) {
-        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let renderer = try MetaphorRenderer(width: size, height: size)
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
         let context = SketchContext(
@@ -45,10 +46,20 @@ struct DeterminismTests {
         return (renderer, context)
     }
 
-    /// オフスクリーンカラーテクスチャの中心ピクセルを読み戻す（BGRA→RGB）。
-    private func readbackCenterPixel(
-        _ renderer: MetaphorRenderer
-    ) throws -> (r: UInt8, g: UInt8, b: UInt8) {
+    /// 読み戻したオフスクリーンカラーテクスチャ（BGRA8）。
+    private struct Framebuffer {
+        let width: Int
+        let height: Int
+        let bgra: [UInt8]
+
+        func pixel(x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8) {
+            let off = (y * width + x) * 4
+            return (r: bgra[off + 2], g: bgra[off + 1], b: bgra[off + 0])
+        }
+    }
+
+    /// オフスクリーンカラーテクスチャ全体を読み戻す。
+    private func readbackFramebuffer(_ renderer: MetaphorRenderer) throws -> Framebuffer {
         let w = renderer.textureManager.width
         let h = renderer.textureManager.height
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -78,8 +89,15 @@ struct DeterminismTests {
             &px, bytesPerRow: w * 4,
             from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0
         )
-        let off = ((h / 2) * w + (w / 2)) * 4
-        return (r: px[off + 2], g: px[off + 1], b: px[off + 0])
+        return Framebuffer(width: w, height: h, bgra: px)
+    }
+
+    /// オフスクリーンカラーテクスチャの中心ピクセルを読み戻す（BGRA→RGB）。
+    private func readbackCenterPixel(
+        _ renderer: MetaphorRenderer
+    ) throws -> (r: UInt8, g: UInt8, b: UInt8) {
+        let fb = try readbackFramebuffer(renderer)
+        return fb.pixel(x: fb.width / 2, y: fb.height / 2)
     }
 
     /// noLoop の核心: **最初の 1 フレーム**で背景色が確定する（2 フレーム待ち不要）。
@@ -95,6 +113,50 @@ struct DeterminismTests {
         #expect(p.b > 250, "1 フレーム目で青背景が確定すべき: B=\(p.b)")
         #expect(p.r < 8, "R=\(p.r)")
         #expect(p.g < 8, "G=\(p.g)")
+    }
+
+    /// `background()` は**キャンバス全体**を塗る（Issue #373）。
+    ///
+    /// 初回フレームは `loadAction = .clear` に頼れず（クリアカラーが確定するのは
+    /// `background()` の呼び出し時点で、エンコーダーはその前に作られている）、
+    /// 代わりに全画面クワッドで塗る。2D の投影行列は「整数座標 = ピクセル中心」の
+    /// ハーフピクセル規約なので、`(0,0)-(w,h)` のクワッドはビューポート座標で
+    /// `0.5 .. w+0.5` を覆い、上端 1 行・左端 1 列のカバレッジが半分になっていた。
+    /// MSAA 既定（4x）ではこれが「背景色 50% + クリア色（黒）50%」として出力される。
+    ///
+    /// 定常アニメーションでは 1 フレーム目だけの現象だが、単一フレームのキャプチャ
+    /// （`noLoop` / Probe snapshot / 1 フレーム目の `save()`）では常に出るため、
+    /// 「初回フレームでも縁まで背景色ちょうど」を不変条件として固定する。
+    @Test("単一フレームの background がキャンバスの縁まで届く")
+    func backgroundCoversCanvasEdgesInFirstFrame() throws {
+        let (renderer, _) = try makeContext(clear: Color(r: 0.08, g: 0.09, b: 0.12), size: 64)
+        renderer.renderFrame()  // 論理 1 フレームのみ
+
+        // 期待値は中心画素（クワッドが確実に覆う位置）に置く。色変換の規約に
+        // 依存せず「縁だけ他と違う」ことだけを見るため。
+        let fb = try readbackFramebuffer(renderer)
+        let expected = fb.pixel(x: fb.width / 2, y: fb.height / 2)
+        var offenders: [String] = []
+        for y in 0..<fb.height {
+            for x in 0..<fb.width {
+                let p = fb.pixel(x: x, y: y)
+                let diff = max(
+                    abs(Int(p.r) - Int(expected.r)),
+                    abs(Int(p.g) - Int(expected.g)),
+                    abs(Int(p.b) - Int(expected.b))
+                )
+                if diff > 2, offenders.count < 8 {
+                    offenders.append("(\(x),\(y))=\(p)")
+                }
+            }
+        }
+        #expect(
+            offenders.isEmpty,
+            """
+            background() が塗り残した画素がある（期待 \(expected)）: \
+            \(offenders.joined(separator: " "))
+            """
+        )
     }
 
     /// noLoop の単一フレーム化で `frameCount` が 1 になる（旧実装は 2 だった）。
