@@ -72,13 +72,36 @@ For particle counts in the tens of thousands and up, see
 [Demos/Performance/MassiveCircles](Demos/Performance/MassiveCircles) (explicit
 batched drawing) once you've outgrown per-particle `circle()` calls.
 
-## 6. GPU shaders and post-processing
+## 6. GPU effects: post-processing (and what is still missing)
 
-Custom Metal Shading Language fragment shaders applied as a post-process pass.
+metaphor draws through Metal, but the GPU work you can drive yourself happens
+either *after* `draw()` — as a post-process pass over the finished frame — or on
+3D geometry as a custom material.
 
-- [Topics/Shaders/EdgeDetect](Topics/Shaders/EdgeDetect) — a minimal single-pass filter shader.
-- [Topics/Shaders/BlurFilter](Topics/Shaders/BlurFilter) — a two-pass (horizontal/vertical) filter.
-- [Topics/Shaders/ToonShading](Topics/Shaders/ToonShading) — a stylized shading pass.
+- [Samples/RenderGraphCompose](Samples/RenderGraphCompose) — the one example in
+  this repository that actually runs GPU effect passes:
+  `createEffectPass(_:effects:)` applies `ChromaticAberrationEffect` /
+  `VignetteEffect` to individual passes of a render graph. Advanced; comes back
+  in section 7.
+
+The rest of the surface has no example yet, so read it in `llms.txt`:
+`addPostEffect()` / `setPostEffects()` chain the same built-in effects over the
+whole frame, `createPostEffect(name:source:fragmentFunction:)` compiles your own
+Metal Shading Language fragment function into that chain, and
+`createMaterial(source:fragmentFunction:)` + `material()` give 3D geometry a
+custom surface shader.
+
+**`Topics/Shaders/` is not where you learn any of that.** Those 15 sketches port
+Processing samples whose originals were GLSL, and metaphor has no 2D custom draw
+shader yet — Processing's `loadShader()` / `shader()` is planned in
+[Epic #291](https://github.com/shinyaoguri/metaphor/issues/291). They recreate
+the effect with CPU pixel loops instead, which is why
+[`docs/ai/examples-index.md`](../docs/ai/examples-index.md) tags them
+`cpu-approximation`. They are still worth reading for the effect itself (an
+edge-detection kernel, a separable blur, Game of Life rules) — just not as
+shader code. See
+[Topics/Shaders/README.md](Topics/Shaders/README.md), which also explains why the
+unused `.glsl` files are kept.
 
 ## 7. metaphor-specific features
 

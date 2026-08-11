@@ -2088,8 +2088,7 @@
       "tags": [
         "demos",
         "graphics",
-        "lowlevelglvbointerleaved",
-        "shader"
+        "lowlevelglvbointerleaved"
       ]
     },
     {
@@ -2104,8 +2103,7 @@
       "tags": [
         "demos",
         "graphics",
-        "lowlevelglvboseparate",
-        "shader"
+        "lowlevelglvboseparate"
       ]
     },
     {
@@ -2535,7 +2533,6 @@
       "featured": [],
       "tags": [
         "demos",
-        "shader",
         "specstest",
         "tests"
       ]
@@ -2774,7 +2771,8 @@
       "featured": [],
       "tags": [
         "rendergraphcompose",
-        "samples"
+        "samples",
+        "shader"
       ]
     },
     {
@@ -4479,8 +4477,8 @@
       "featured": [],
       "tags": [
         "blurfilter",
+        "cpu-approximation",
         "image",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4496,7 +4494,7 @@
       "featured": [],
       "tags": [
         "conway",
-        "shader",
+        "cpu-approximation",
         "shaders",
         "topics"
       ]
@@ -4511,8 +4509,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "customblend",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4527,8 +4525,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "deform",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4544,7 +4542,6 @@
       "featured": [],
       "tags": [
         "domeprojection",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4559,8 +4556,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "edgedetect",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4575,9 +4572,9 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "edgefilter",
         "image",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4592,8 +4589,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "glossyfisheye",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4608,9 +4605,9 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "image",
         "imagemask",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4625,8 +4622,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "infinitetiles",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4641,8 +4638,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "landscape",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4657,8 +4654,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "monjori",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4673,8 +4670,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "nebula",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4689,8 +4686,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "sepblur",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4705,7 +4702,7 @@
       "description": "",
       "featured": [],
       "tags": [
-        "shader",
+        "cpu-approximation",
         "shaders",
         "toonshading",
         "topics"
