@@ -30,10 +30,13 @@ DEFAULT_STATUS = "supported"
 EXCLUDED_TOP_LEVEL_DIRS = {"Tutorial"}
 
 
+# Tags inferred from words in an example's path, title, description and
+# `featured` list. Cheap, but only ever as truthful as the prose it reads —
+# anything that has to describe what the *code* does belongs in
+# `source_tags_for()` instead (see the `shader` tag, removed from here in #489).
 KEYWORD_TAGS = {
     "audio": ("audio", "fft", "sound", "beat", "microphone"),
     "video": ("video", "capture", "movie"),
-    "shader": ("shader", "metal", "glsl", "fragment"),
     "3d": ("3d", "box", "sphere", "camera", "light", "mesh", "raytracing", "ray tracing"),
     "particles": ("particle", "particles", "emitter"),
     "physics": ("physics", "collision", "gravity", "bounce"),
@@ -43,6 +46,26 @@ KEYWORD_TAGS = {
     "live": ("osc", "midi", "syphon", "vj", "live"),
     "export": ("record", "export", "gif", "video"),
 }
+
+
+# Calls that prove a sketch really drives metaphor's shader / post-process
+# pipeline (rather than merely living in a directory called "Shaders").
+SHADER_API_MARKERS = (
+    "addPostEffect",
+    "setPostEffects",
+    "createPostEffect",
+    "CustomPostEffect",
+    "createEffectPass",
+    "createMaterial",
+    "CustomMaterial",
+    "reloadShader",
+    "loadShader(",
+    "shader(",
+)
+
+# Directories never scanned for source evidence: build products are gitignored,
+# so reading them would make the generated index depend on local state.
+SKIP_DIRS = {".build", ".swiftpm"}
 
 
 def clean_text(value: object, limit: int = 180) -> str:
@@ -97,7 +120,60 @@ def status_for(example_dir: Path, metadata: dict) -> str:
     return DEFAULT_STATUS
 
 
-def tags_for(rel_path: Path, metadata: dict) -> list[str]:
+def _files_in(example_dir: Path, pattern: str) -> list[Path]:
+    return sorted(
+        path
+        for path in example_dir.rglob(pattern)
+        if not SKIP_DIRS.intersection(path.parts)
+    )
+
+
+def source_tags_for(example_dir: Path, status: str) -> set[str]:
+    """Derive shader-related tags from an example's files, not from its name.
+
+    ``shader`` used to be a ``KEYWORD_TAGS`` entry, so the substring match tagged
+    every sketch under ``Examples/Topics/Shaders/`` — all of which reimplement the
+    original GLSL effect on the CPU — plus every description that merely says
+    "metaphor is Metal-only". Agents then read those entries as shader references
+    (#489). Decide from the files instead:
+
+    - ``shader``: the sketch calls metaphor's shader / post-process API, or ships
+      its own ``.metal`` source.
+    - ``cpu-approximation``: the sketch keeps the original Processing sample's
+      ``.glsl`` beside it but recreates the effect on the CPU. Only meaningful for
+      examples that actually run — a ``stub``/``obsolete`` placeholder implements
+      nothing to approximate with.
+
+    Both flip on their own once an example is ported to a real shader, so the
+    index cannot drift back out of sync with the code.
+    """
+    tags: set[str] = set()
+
+    if _files_in(example_dir, "*.metal"):
+        tags.add("shader")
+    else:
+        for path in _files_in(example_dir, "*.swift"):
+            if path.name == "Package.swift":
+                continue
+            try:
+                source = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if any(marker in source for marker in SHADER_API_MARKERS):
+                tags.add("shader")
+                break
+
+    if (
+        "shader" not in tags
+        and status in ("supported", "partial")
+        and _files_in(example_dir, "*.glsl")
+    ):
+        tags.add("cpu-approximation")
+
+    return tags
+
+
+def tags_for(rel_path: Path, metadata: dict, source_tags: set[str] | None = None) -> list[str]:
     haystack = " ".join([
         str(rel_path),
         str(metadata.get("title", "")),
@@ -115,6 +191,8 @@ def tags_for(rel_path: Path, metadata: dict) -> list[str]:
     for tag, needles in KEYWORD_TAGS.items():
         if any(needle in haystack for needle in needles):
             tags.add(tag)
+
+    tags |= source_tags or set()
 
     return sorted(tags)
 
@@ -143,6 +221,8 @@ def discover_examples(examples_dir: Path) -> list[dict]:
         parts = rel_path.parts
         group = parts[0] if len(parts) >= 1 else "Other"
         subcategory = parts[1] if len(parts) >= 3 else ""
+        status = status_for(example_dir, metadata)
+        source_tags = source_tags_for(example_dir, status)
 
         examples.append({
             "title": title,
@@ -150,10 +230,10 @@ def discover_examples(examples_dir: Path) -> list[dict]:
             "group": group,
             "subcategory": subcategory,
             "level": clean_text(metadata.get("level", ""), limit=40),
-            "status": status_for(example_dir, metadata),
+            "status": status,
             "description": description,
             "featured": metadata.get("featured", []) or [],
-            "tags": tags_for(rel_path, metadata),
+            "tags": tags_for(rel_path, metadata, source_tags),
         })
     return examples
 
@@ -187,6 +267,14 @@ def render_markdown(examples: list[dict]) -> str:
         "  literally.",
         "- Avoid `[stub]` (placeholder, blocked on a planned API) and `[obsolete]`",
         "  (Processing/OpenGL-specific, won't be added) examples as references.",
+        "- `shader` is assigned from the code: the sketch calls metaphor's shader /",
+        "  post-process API (`addPostEffect`, `createPostEffect`, `createMaterial`,",
+        "  `createEffectPass`, ...) or ships its own `.metal` source.",
+        "  `cpu-approximation` marks the opposite case — a port of a Processing",
+        "  sample whose original was GLSL, redone with CPU pixel loops. Everything",
+        "  under `Examples/Topics/Shaders/` is `cpu-approximation`: read those for",
+        "  the effect, never as shader references. 2D custom shaders",
+        "  (`loadShader()` / `shader()`) are not implemented yet — issue #291.",
         "",
         "## Machine-Readable Access",
         "",
