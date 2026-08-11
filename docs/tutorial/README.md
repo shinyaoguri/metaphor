@@ -2,11 +2,19 @@
 
 **日本語** | English (後追い予定)
 
-metaphor の体系的チュートリアル（読み物）の設計図です。本文はまだありません。この文書は Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483) の第 1 弾 [#484](https://github.com/shinyaoguri/metaphor/issues/484) として、**執筆を始める前に情報アーキテクチャを確定させる**ために置かれています。
+metaphor の体系的チュートリアル（読み物）の設計図です。この文書は Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483) の第 1 弾 [#484](https://github.com/shinyaoguri/metaphor/issues/484) として、**執筆を始める前に情報アーキテクチャを確定させる**ために置かれました。以降は執筆規約の正典として使います。
 
 - 各部の本文は `docs/tutorial/NN-slug.md` として、この章立てのとおりに追加されます
 - 本文が揃った部から website のチュートリアル領域（[#487](https://github.com/shinyaoguri/metaphor/issues/487)）で公開されます
 - 執筆はパイロット（第 1 部・第 2 部、[#488](https://github.com/shinyaoguri/metaphor/issues/488)）から始め、手応えを見て第 3 部以降を起票します
+
+現在の本文:
+
+| 部 | ファイル | 状態 |
+|---|---|---|
+| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 |
+| 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 |
+| 第 3 部以降 | — | 未着手 |
 
 ## 対象読者と、他ドキュメントとの役割分担
 

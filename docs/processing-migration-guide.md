@@ -4,6 +4,11 @@ For people who already write Processing (or p5.js) sketches and want to know wha
 changes — and what does not — when the same sketch is written against
 [metaphor](../README.en.md).
 
+**Never used Processing?** This page is not the place to start: it explains
+metaphor in terms of an API you would not recognise. Read the tutorial instead
+([`docs/tutorial/`](tutorial/) — Japanese), which assumes no graphics
+programming background and teaches the library in order.
+
 The short version: **the drawing vocabulary is deliberately the same**. `setup()` /
 `draw()`, `background()`, `fill()`, `rect()`, `map()`, `noise()`, `mouseX` and the
 0–255 color range all mean what you expect. What changes is the language around
