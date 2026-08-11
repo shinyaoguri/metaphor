@@ -55,7 +55,7 @@ make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付�
 - **Swift 5.10 / Xcode 15.4 でのビルド** — CI の `build-swift-5-10` が担当（このジョブでしか出ない警告が実在します。#328）
 - **`website/` の Astro ビルド** — CI の `website-build` が担当（#491）。手元で見るなら `cd website && npm ci && npm run build`
 - **`CONTRACT.md` のクロスリポ byte-identity** — GitHub API を叩くため CI のみ（`scripts/check-contract-identity.sh`）
-- **生成物の鮮度**（`llms.txt` / examples index / shader sources）— `make setup` が入れる pre-push フックが見ます
+- **生成物の鮮度**（`llms.txt` / examples index / shader sources / tutorial snippets）— `make setup` が入れる pre-push フックが見ます
 
 動作を切り替える環境変数（いずれも既定 OFF。ローカルでは通常不要）:
 
@@ -109,6 +109,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 | `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` | `make llms-txt` |
 | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` | `make examples-index` |
 | `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` | `python3 scripts/generate-shader-sources.py` |
+| `docs/tutorial/*.md` の埋め込みコードブロック | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
 
 - 生成器は**決定的**であること（全コレクションをソート）。非決定的出力は auto-fix bot が毎回 push する原因になります。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。

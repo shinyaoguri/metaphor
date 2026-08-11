@@ -188,7 +188,38 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 - Markdown へは生成スクリプトで埋め込みます。`--check` と pre-push フック・CI がドリフトを検出します（基盤は [#485](https://github.com/shinyaoguri/metaphor/issues/485)）
 - これにより**チュートリアルの全コードが CI でコンパイルを通っていること**が構造的に保証されます
 - 節の途中で見せる差分・抜粋は手書きでよい。ただし必ず完全なコードを同じ節に置き、抜粋だけで終わらせません
-- チュートリアルのコードは `docs/ai/examples-index` の索引には載せません（索引は「やりたいことから探す」ためのもので、チュートリアルの学習用コードはノイズになります）。除外の実装は [#485](https://github.com/shinyaoguri/metaphor/issues/485) で行います
+- チュートリアルのコードは `docs/ai/examples-index` の索引には載せません（索引は「やりたいことから探す」ためのもので、チュートリアルの学習用コードはノイズになります）。除外は [#485](https://github.com/shinyaoguri/metaphor/issues/485) で実装済みです
+
+埋め込みは本文に次の 2 行を置き、`make tutorial-snippets` を実行します。開始マーカーの引数は `Examples/Tutorial/` からの相対パスです。
+
+```markdown
+<!-- tutorial-snippet: 01-GettingStarted/03-SketchSkeleton -->
+<!-- /tutorial-snippet -->
+```
+
+マーカーの間はスクリプトが毎回まるごと書き換えます（**手で編集しない**）。書き出されるのは、パッケージ配下の `*.swift` を並べた ```` ```swift ```` フェンスと、実行方法の 1 行です。ソースが 2 本以上あるときは各フェンスの前にファイル名が付きます。
+
+新しい節のコードを足す手順:
+
+1. `Examples/Tutorial/{部番号}-{部スラッグ}/{節番号}-{節スラッグ}/` にパッケージを作る（`Package.swift` の `metaphor` 依存は `path: "../../../.."`）
+2. `cd` して `swift run` で動くことを確かめる
+3. 本文にマーカーを置き、`make tutorial-snippets` を実行する
+
+`--check` が pre-push フックと CI（`build-and-test`）で走り、コードと本文がずれたまま push・merge されるのを止めます。
+
+### 本文ファイルの frontmatter
+
+各部の Markdown は YAML frontmatter を持ちます。website のチュートリアル領域（[#487](https://github.com/shinyaoguri/metaphor/issues/487)）はこれを読んで並び順と見出しを決めます。
+
+```yaml
+---
+title: 入門          # 部のタイトル（「第 N 部」は含めない）
+part: 1              # 部番号。サイドバーの並び順に使う
+slug: getting-started # URL に使う。ファイル名 NN-slug.md の slug と一致させる
+description: この部で何ができるようになるか（1 文）
+draft: true          # 執筆中は true。公開対象から外す
+---
+```
 
 ### 実行結果の画像
 
