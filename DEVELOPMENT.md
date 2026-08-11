@@ -50,9 +50,10 @@ make llms-txt   # AI-readable API reference を生成
 make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付きで（METAPHOR_REQUIRE_GPU=1 も CI に合わせる）
 ```
 
-`make ci-check` で再現できないものは次の 3 つです。
+`make ci-check` で再現できないものは次の 4 つです。
 
 - **Swift 5.10 / Xcode 15.4 でのビルド** — CI の `build-swift-5-10` が担当（このジョブでしか出ない警告が実在します。#328）
+- **`website/` の Astro ビルド** — CI の `website-build` が担当（#491）。手元で見るなら `cd website && npm ci && npm run build`
 - **`CONTRACT.md` のクロスリポ byte-identity** — GitHub API を叩くため CI のみ（`scripts/check-contract-identity.sh`）
 - **生成物の鮮度**（`llms.txt` / examples index / shader sources）— `make setup` が入れる pre-push フックが見ます
 

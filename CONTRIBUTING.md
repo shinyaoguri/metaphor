@@ -59,8 +59,8 @@ green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
   [`.github/pull_request_template.md`](.github/pull_request_template.md).
 - The only required CI check is the aggregate gate `ci-gate`, which fails if
   any upstream job — `build-and-test`, `build-swift-5-10` (the Swift 5.10 /
-  Xcode 15.4 minimum toolchain), or `examples-diff-build` — failed (skipped
-  jobs count as success). PRs are merged with `gh pr merge --squash --auto`;
+  Xcode 15.4 minimum toolchain), `website-build` (the Astro landing page), or
+  `examples-diff-build` — failed (skipped jobs count as success). PRs are merged with `gh pr merge --squash --auto`;
   a PR touching `Examples/` waits for the changed examples to build (up to
   60 min), other PRs merge as soon as the fast jobs are green (see
   [docs/releasing.md](docs/releasing.md)).

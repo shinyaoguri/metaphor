@@ -360,6 +360,37 @@ jobs:
         # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
         run: swift build --target metaphor -Xswiftc -warnings-as-errors
 
+  # website（Astro のランディングページ。DocC の出力もここへ載せて Pages へ出る）
+  # をビルドするのは docs.yml だけで、あれは **main への push でしか走らない**。
+  # そのため Astro を壊す PR がそのまま main に入り、デプロイが落ちて初めて
+  # 気付く状態だった（Issue #491）。
+  # `website/**` を触った PR だけに絞る条件分岐は入れない: ubuntu ランナーで
+  # 1 分弱、build-and-test（~6 分）と並列なので merge 所要時間に影響せず、
+  # 常に走って常に報告するジョブのほうが（skip され得るジョブが必要とする
+  # ci-gate 側の畳み込みを考えなくてよい分）単純に済む。
+  website-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+      - name: Build website
+        # docs.yml の "Build Landing Page" と同じコマンド。あちらは DocC を
+        # 載せ替えて Pages へ公開する本番経路で、こちらは PR 時点で
+        # 構文・依存・Astro のビルドが通ることだけを見る。
+        working-directory: website
+        run: |
+          npm ci
+          npm run build
+
   # Examples の *全数*（278 本）は per-PR では建てない。各 example は独立した
   # SwiftPM パッケージで metaphor をフルビルドし直すため、全数は時間もコストも
   # 見合わない（macOS ランナーは 10 倍課金）。分担は次のとおり:
@@ -479,7 +510,7 @@ jobs:
   # 走り、常に報告する）。将来ジョブを足すときは needs に追加するだけでよく、
   # ruleset を触る必要はない。
   ci-gate:
-    needs: [build-and-test, build-swift-5-10, examples-detect, examples-diff-build]
+    needs: [build-and-test, build-swift-5-10, website-build, examples-detect, examples-diff-build]
     # 既定では upstream の失敗時にこのジョブごと skip されてしまい、legacy status
     # 評価では「報告なし = 永久 pending」になる。always() で必ず走らせ、結果は
     # 下のステップで needs.*.result から自前で判定する。
