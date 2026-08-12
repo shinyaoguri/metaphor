@@ -40,6 +40,14 @@ GitHub でも website でも動くため。mp4 は GitHub の Markdown が相対
 - 撮影は**入力を流し終えてから**始まるので、撮り直しても同じ絵になる。代わりに
   `noLoop()` のスケッチとは両立しない（起動後に置いた request を処理する機会が無い）
 
+## 撮れない節（#544）
+
+音・カメラ・機械学習のように、**実行環境に依存して絵が決まらない**節がある。マイクが
+無音なら何も動かず、カメラの映像は撮る場所によって変わり、どちらもヘッドレス起動では
+TCC の権限が降りないこともある。この種の節はパッケージ直下に `no-capture.txt` を置き、
+撮らない理由を 1 行書く。撮影も鮮度検査も飛ばし、本文は画像の代わりに「何が起きるか」を
+文章で書く（docs/tutorial/README.md の「実行結果の画像」）。
+
 ## なぜ PNG のバイト比較で鮮度を見ないか
 
 GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビット単位には一致しない。
@@ -86,6 +94,8 @@ POLL_INTERVAL_SEC = 0.2
 
 # 撮影用の入力台本（#509）。パッケージ直下に置くと起動後に stdin へ流す。
 INPUT_SCRIPT_NAME = "probe-input.jsonl"
+# 撮らない節の申告（#544）。パッケージ直下に置くと撮影も鮮度検査も飛ばす。
+NO_CAPTURE_NAME = "no-capture.txt"
 # 1 行送るごとに空ける間隔。60fps の 2 フレームぶん空けて、1 フレームに複数の
 # イベントがまとめて届く（＝軌跡の中間点が失われる）のを避ける。
 INPUT_INTERVAL_SEC = 0.033
@@ -260,6 +270,21 @@ def parse_input_script(text: str, ref: str) -> list[dict]:
     if not events:
         raise ShotError(f"'{ref}' の {INPUT_SCRIPT_NAME} にイベントが 1 つも無い")
     return events
+
+
+def no_capture_reason(package_dir: Path, ref: str) -> str | None:
+    """節が「撮らない」と申告していれば、その理由を返す（申告が無ければ None）。
+
+    音・カメラ・ML の節は実行環境で絵が変わり、ヘッドレスでは権限も降りない。
+    理由を書かせるのは、あとから読む人が「撮り忘れ」と区別できるようにするため。
+    """
+    path = package_dir / NO_CAPTURE_NAME
+    if not path.is_file():
+        return None
+    reason = " ".join(path.read_text(encoding="utf-8").split())
+    if not reason:
+        raise ShotError(f"'{ref}' の {NO_CAPTURE_NAME} に撮らない理由が書かれていない")
+    return reason
 
 
 def load_input_script(package_dir: Path, ref: str) -> list[dict] | None:
@@ -590,6 +615,16 @@ def check(refs: list[str], shots: dict, motions: dict[str, dict] | None = None) 
             raise ShotError(f"'{ref}' に対応する SwiftPM パッケージが無い")
         recorded = shots.get(ref)
         motion = motions.get(ref)
+        if no_capture_reason(package_dir, ref) is not None:
+            # 撮らないと申告した節（#544）。動きの証跡との併記は矛盾なので止める。
+            if motion is not None:
+                raise ShotError(
+                    f"'{ref}' は {NO_CAPTURE_NAME} があるのに "
+                    f"{MOTION_CONFIG.name} にも登録されている"
+                )
+            if recorded is not None or image_path_for(ref).is_file():
+                stale.append(f"{ref}: {NO_CAPTURE_NAME} があるのに画像が残っている")
+            continue
         if recorded is None:
             stale.append(f"{ref}: 画像がまだ無い")
             continue
@@ -648,7 +683,9 @@ def main() -> int:
         if args.check:
             stale = check(refs, shots, motions)
             if not stale:
-                print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある")
+                skipped = [r for r in refs if no_capture_reason(CODE_DIR / r, r)]
+                aside = f"（うち {len(skipped)} 節は {NO_CAPTURE_NAME} で撮らない）" if skipped else ""
+                print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある{aside}")
                 return 0
             print("error: 実行結果画像が古い:", file=sys.stderr)
             for line in stale:
@@ -661,6 +698,18 @@ def main() -> int:
             return 1
 
         targets = refs if args.force else [r for r in refs if check([r], shots, motions)]
+        # 撮らないと申告した節（#544）は撮影対象から外し、以前撮った画像が残って
+        # いれば片付ける。--force でも撮らない。
+        skipped = [r for r in targets if no_capture_reason(CODE_DIR / r, r)]
+        targets = [r for r in targets if r not in skipped]
+        for ref in skipped:
+            print(f"skipping {ref}（{no_capture_reason(CODE_DIR / ref, ref)}）")
+            image_path_for(ref).unlink(missing_ok=True)
+            for kind in MOTION_KINDS:
+                motion_path_for(ref, kind).unlink(missing_ok=True)
+            shots.pop(ref, None)
+        if skipped:
+            save_manifest(shots)
         if not targets:
             print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある")
             return 0

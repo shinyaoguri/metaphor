@@ -342,6 +342,12 @@
       "width": 640,
       "height": 360,
       "frame": 1
+    },
+    "07-Media/04-VideoPlayback": {
+      "sourceHash": "5bc0288bbc65b9fd6bfb1696dc76f0afe8b6e71c401dbcd06eed8c851692ee09",
+      "width": 640,
+      "height": 360,
+      "frame": 115
     }
   }
 }

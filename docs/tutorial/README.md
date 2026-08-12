@@ -18,7 +18,8 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 | 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 |
 | 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 |
 | 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 |
-| 第 7 部以降 | — | 起票済み（[#544](https://github.com/shinyaoguri/metaphor/issues/544)〜[#547](https://github.com/shinyaoguri/metaphor/issues/547)） |
+| 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 |
+| 第 8 部以降 | — | 起票済み（[#545](https://github.com/shinyaoguri/metaphor/issues/545)〜[#547](https://github.com/shinyaoguri/metaphor/issues/547)） |
 
 ## 対象読者と、他ドキュメントとの役割分担
 
@@ -342,6 +343,23 @@ JSON Lines（[CONTRACT.md](../../CONTRACT.md) 契約点 3）を入力として�
   待ち時間は実時間なので、そうすれば実行環境のフレームレートに関係なく同じ位置に来ます
 - 台本はパッケージ配下なので指紋（`sourceHash`）に入ります。台本を書き換えれば `--check` が
   撮り直しを要求し、本文の埋め込み（`*.swift` だけを拾う）には現れません
+
+### 撮れない節（[#544](https://github.com/shinyaoguri/metaphor/issues/544)）
+
+音・カメラ・機械学習のように、**実行環境に依存して絵が決まらない**節があります。マイクが無音なら何も動かず、カメラの映像は撮る場所によって変わり、どちらもヘッドレス起動では TCC の権限が降りないこともあります（[permissions.md](../permissions.md)）。
+
+この種の節はパッケージ直下に `no-capture.txt` を置き、**撮らない理由を 1 行書きます**。撮影も鮮度検査も飛ばされ、`--check` は画像を要求しません。
+
+```text
+マイク入力は環境（無音・権限）で絵が変わり、撮っても読者の画面と一致しない
+```
+
+規約:
+
+- 理由は必須です。空のファイルはエラーになります。「撮り忘れ」と区別できるようにするためです
+- 撮らない節の本文は、画像の代わりに**何が起きるかを文章で書きます**。「何を作るか」で絵を見せられないぶん、操作と反応を言葉で補います
+- `motion.json` との併記は矛盾なのでエラーになります
+- 撮ったあとで「撮らない」に変えたときは、`make tutorial-shots` が古い画像と manifest のエントリを片付けます（`--check` は片付くまで差し戻します）
 
 ### 起動直後は絵が完成しない節（[#543](https://github.com/shinyaoguri/metaphor/issues/543)）
 
