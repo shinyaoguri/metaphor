@@ -17,7 +17,7 @@ MetaphorCore は Metal レンダリングパイプライン、2D/3D 描画バッ
 
 通常は MetaphorCore を直接インポートせず、`import metaphor`（アンブレラモジュール）を使用してください。
 すべてのモジュール（オーディオ、物理演算、ML など）を含む
-[完全な API リファレンスはこちら](https://shinyaoguri.github.io/metaphor/documentation/metaphor)。
+[完全な API リファレンスはこちら](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor)。
 
 ## Topics
 

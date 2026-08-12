@@ -174,12 +174,14 @@ contract-schema:
 
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
+# base path は公開時と同じ /metaphor/reference/（DocC は baseUrl を出力へ焼き込む
+# ので、ここが CI とずれるとローカルでは気付けない不具合になる — Issue #529）
 docs: symbol-graphs
 	@echo "Building DocC documentation..."
 	xcrun docc convert Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
-		--hosting-base-path metaphor \
+		--hosting-base-path metaphor/reference \
 		--output-path .build/docs
 
 # Preview DocC documentation locally

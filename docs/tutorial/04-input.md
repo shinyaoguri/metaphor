@@ -210,7 +210,7 @@ final class Mouse: Sketch {
 
 ### もっと詳しく
 
-- [`mouseX`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/mousex), [`mouseY`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/mousey), [`pmouseX`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/pmousex), [`isMousePressed`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/ismousepressed), [`MouseButton`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/mousebutton/)
+- [`mouseX`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/mousex), [`mouseY`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/mousey), [`pmouseX`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/pmousex), [`isMousePressed`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/ismousepressed), [`MouseButton`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/mousebutton/)
 - [`Basics/Input/Mouse2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/Mouse2D), [`Basics/Input/MousePress`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/MousePress), [`Basics/Input/MouseFunctions`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/MouseFunctions), [`Basics/Input/StoringInput`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/StoringInput)
 
 ## 4.2 キーボード
@@ -414,7 +414,7 @@ final class Keyboard: Sketch {
 
 ### もっと詳しく
 
-- [`key`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/key), [`keyCode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/keycode), [`isKeyDown`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/iskeydown%28_:%29), [`isKeyRepeat`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/iskeyrepeat)
+- [`key`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/key), [`keyCode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/keycode), [`isKeyDown`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/iskeydown%28_:%29), [`isKeyRepeat`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/iskeyrepeat)
 - [`Basics/Input/Keyboard`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/Keyboard), [`Basics/Input/KeyboardFunctions`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/KeyboardFunctions)
 
 ## 4.3 当たり判定と UI を自作する
@@ -614,7 +614,7 @@ final class HitTesting: Sketch {
 
 ### もっと詳しく
 
-- [`constrain`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/constrain%28_:_:_:%29), [`norm`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/norm%28_:_:_:%29), [`dist`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/dist%28_:_:_:_:%29)
+- [`constrain`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/constrain%28_:_:_:%29), [`norm`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/norm%28_:_:_:%29), [`dist`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/dist%28_:_:_:_:%29)
 - [`Topics/GUI/Button`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/GUI/Button), [`Topics/GUI/Rollover`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/GUI/Rollover), [`Topics/GUI/Handles`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/GUI/Handles), [`Topics/GUI/Scrollbar`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/GUI/Scrollbar)
 
 ## 4.4 ウィンドウ
@@ -790,7 +790,7 @@ final class Window: Sketch {
 
 ### もっと詳しく
 
-- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketchconfig/), [`createCanvas`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/createcanvas%28width:height:%29), [`createWindow`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/createwindow%28_:%29), [`SketchWindow`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketchwindow/), [`noCursor`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/nocursor%28%29)
+- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchconfig/), [`createCanvas`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createcanvas%28width:height:%29), [`createWindow`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createwindow%28_:%29), [`SketchWindow`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchwindow/), [`noCursor`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/nocursor%28%29)
 - [`Demos/Tests/MultipleWindows`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Demos/Tests/MultipleWindows), [`Samples/Syphon/SyphonMultiWindow`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Samples/Syphon/SyphonMultiWindow)
 
 ---

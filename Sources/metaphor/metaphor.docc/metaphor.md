@@ -23,6 +23,10 @@ Processing、p5.js、openFrameworks にインスパイアされた Swift + Metal
 
 ## Overview
 
+> Tip: ここは**引くためのリファレンス**です。はじめて触るなら、通しで読める
+> [チュートリアル](https://shinyaoguri.github.io/metaphor/tutorial/)（第 1 部「入門」から）が近道です。
+> 全体像は [metaphor のサイト](https://shinyaoguri.github.io/metaphor/)にあります。
+
 metaphor は Metal を活用したイミディエイトモードのクリエイティブコーディング環境を提供します。
 `Sketch` プロトコルを実装するだけで、ウィンドウ生成、レンダーループ、GPU パイプラインの構築をライブラリが自動的に行います。
 

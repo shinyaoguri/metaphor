@@ -28,7 +28,7 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 | ドキュメント | 読者 | 使い方 |
 |---|---|---|
 | **チュートリアル**（本ディレクトリ） | 初心者。metaphor が初めて | 最初から順に読む。各節に完結したコードと実行結果が付く |
-| [API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/) | 型やメソッドのシグネチャを知りたい人 | 引く。チュートリアルの各節から深いリンクを張る |
+| [API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/) | 型やメソッドのシグネチャを知りたい人 | 引く。チュートリアルの各節から深いリンクを張る |
 | [`llms.txt`](../../llms.txt) | AI エージェント | 引く（コンテキストに貼る） |
 | [processing-migration-guide.md](../processing-migration-guide.md) | Processing / p5.js の既習者 | 引く。「Processing の X は metaphor では Y」の対応表 |
 | [Examples/LEARNING_PATH.md](../../Examples/LEARNING_PATH.md) | チュートリアルを読み終えた人 | Examples を掘るための地図 |

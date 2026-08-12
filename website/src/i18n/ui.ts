@@ -18,7 +18,14 @@ export function otherLang(lang: Lang): Lang {
   return lang === 'en' ? 'ja' : 'en';
 }
 
-export const docsUrl = `${base}/documentation/metaphor/`;
+/**
+ * API リファレンス（DocC）の入口。DocC は Astro とは別にビルドされ、
+ * `/reference/` 配下へ丸ごと置かれる（`.github/workflows/docs.yml`）。
+ *
+ * `/reference/` 自体は DocC の出力ルートで、開くと SPA が "page can't be found"
+ * を出す（リダイレクタではない）。リンク先は必ずフレームワークのページまで指すこと。
+ */
+export const docsUrl = `${base}/reference/documentation/metaphor/`;
 export const githubUrl = 'https://github.com/shinyaoguri/metaphor';
 export const examplesUrl = 'https://github.com/shinyaoguri/metaphor/tree/main/Examples';
 /** チュートリアル本文の正典（website はここを content collection として読む）。 */

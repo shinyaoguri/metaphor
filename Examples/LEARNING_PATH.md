@@ -143,4 +143,4 @@ Sending/receiving external control signals and outputting to other apps.
 - **Full, searchable index**: [`docs/ai/examples-index.md`](../docs/ai/examples-index.md) — every example, with tags, difficulty, and status (`supported` / `partial` / `stub` / `obsolete`).
 - **Processing sample by name**: `Basics/` and `Topics/` mirror the official Processing example structure closely — most examples ship the original `.pde` alongside the Swift port.
 - **Writing your own sketch with AI**: [`docs/ai/for-sketch-authors.md`](../docs/ai/for-sketch-authors.md).
-- **All public API**: [`llms.txt`](../llms.txt) at the repository root, or the [DocC reference](https://shinyaoguri.github.io/metaphor/documentation/metaphor/) if you'd rather browse in a browser.
+- **All public API**: [`llms.txt`](../llms.txt) at the repository root, or the [DocC reference](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/) if you'd rather browse in a browser.

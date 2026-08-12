@@ -54,6 +54,7 @@ make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付�
 
 - **Swift 5.10 / Xcode 15.4 でのビルド** — CI の `build-swift-5-10` が担当（このジョブでしか出ない警告が実在します。#328）
 - **`website/` の Astro ビルド** — CI の `website-build` が担当（#491）。手元で見るなら `cd website && npm ci && npm run build`
+  - 公開サイトは Astro（LP + `/tutorial/`）と DocC（`/reference/`）の 2 つのビルドを**並べた**ものです。両方そろった状態を手元で見るには、`make docs` の後に下記の「公開サイトの構成を手元で確認する」を実行します（構成のずれで公開側だけ壊れた前科があります — #529）
 - **`CONTRACT.md` のクロスリポ byte-identity** — GitHub API を叩くため CI のみ（`scripts/check-contract-identity.sh`）
 - **生成物の鮮度**（`llms.txt` / examples index / shader sources / tutorial snippets）— `make setup` が入れる pre-push フックが見ます
 
@@ -115,6 +116,37 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - 生成器は**決定的**であること（全コレクションをソート）。非決定的出力は auto-fix bot が毎回 push する原因になります。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
+
+## 公開サイトの構成を手元で確認する
+
+公開サイト（`https://shinyaoguri.github.io/metaphor/`）は 2 つのビルドを**並べた**ものです。混ぜてはいません（#529）。
+
+| パス | 出どころ |
+|---|---|
+| `/` · `/en/` · `/tutorial/` | Astro（`website/`） |
+| `/reference/` | DocC（`make docs` の `.build/docs` を丸ごと配置） |
+
+`docs.yml` がやっているのは「Astro の `dist` へ `.build/docs` を `reference/` として置く」だけなので、手元でも同じ形を組み立てられます。**DocC は `--hosting-base-path metaphor/reference` を焼き込むため、`/metaphor/` をルートに見せる形で配信しないと CSS も配色も当たりません**（この足場を作らずに `dist` を直接開くと壊れて見えます）。
+
+```bash
+make docs                                   # .build/docs
+cd website && npm ci && npm run build && cd ..
+cp -R .build/docs website/dist/reference
+mkdir -p /tmp/site/metaphor && cp -R website/dist/. /tmp/site/metaphor/
+cd /tmp/site && python3 -m http.server 8000  # → http://localhost:8000/metaphor/
+```
+
+`/metaphor/reference/theme-settings.json` が 200 で引ければ、リファレンス面の配色（`Sources/metaphor/metaphor.docc/theme-settings.json`）が公開サイトでも効きます。
+
+### `theme-settings.json` を触るときの制約
+
+DocC-Render はこのファイルの `theme.color` を**そのままの階層で** CSS 変数名にします（`color.foo.bar` → `--color-foo-bar`）。したがって:
+
+- **色名は `theme.color` の直下にフラットに並べる。** `standard` / `custom` のようなグループを挟むと `--color-custom-0-name` のような無意味な変数になり、**エラーも警告も出ないまま何も効きません**（#529 でこの状態だったことが判明）。
+- **値は 1 つしか書けず、light / dark で出し分けられません。** 上書きは inline style として `<body>` に載るので、DocC 側の `prefers-color-scheme` 定義に必ず勝ちます。背景（`fill*`）やテキスト（`figure-gray*`）を指定すると**ダークモードが無効になり、白背景に固定されます**。上書きは light / dark の両方で成立する色（アクセント）に限り、地の色は DocC の既定に任せます。
+- そのため上書きする色は**両モードでコントラスト比 4.5:1 を満たす明度**を選びます（白背景と黒背景の両方で 4.5 を超えられる帯は狭く、相対輝度 0.18 前後が上限です）。
+
+確認は `make docs` 後の実ページで行います（`getComputedStyle(document.body).getPropertyValue('--color-standard-blue')` が期待値かどうか）。JSON を書いただけでは効いたことになりません。
 
 ## Syphon Framework Handling
 

@@ -1,12 +1,14 @@
 # website
 
-metaphor のランディングページとチュートリアルを配信する [Astro](https://astro.build) プロジェクトです。ビルド結果は `.github/workflows/docs.yml` が DocC の出力と混ぜて GitHub Pages（`https://shinyaoguri.github.io/metaphor/`）へ公開します。
+metaphor のランディングページとチュートリアルを配信する [Astro](https://astro.build) プロジェクトです。ビルド結果は `.github/workflows/docs.yml` が DocC の出力と**並べて** GitHub Pages（`https://shinyaoguri.github.io/metaphor/`）へ公開します。
 
 | パス | 中身 | 出どころ |
 |---|---|---|
 | `/` · `/en/` | ランディングページ | `src/components/*.astro` + `src/i18n/ui.ts`（ハードコード） |
 | `/tutorial/` · `/en/tutorial/` | チュートリアル | **`docs/tutorial/`**（content collection として読み込み） |
-| `/documentation/metaphor/` | API リファレンス | DocC（`docs.yml` がビルド後に混ぜる） |
+| `/reference/documentation/metaphor/` | API リファレンス | DocC（`docs.yml` が `dist/reference/` へ丸ごと置く） |
+
+2 つのサイトは**混ざりません**。Astro は `dist` のルート、DocC は `dist/reference/` 配下だけを使い、行き来はリンクで行います（ナビの「リファレンス」＝ `src/i18n/ui.ts` の `docsUrl`、DocC 側からはトップページの導線）。かつてはルートへ重ねていたため、コピー対象の列挙から漏れた `theme-settings.json` が公開されず配色が効かない不具合が出ていました（[#529](https://github.com/shinyaoguri/metaphor/issues/529)）。`/reference/` 配下は Astro が生成しないので、この種の衝突・取りこぼしは起きません。
 
 ## コマンド
 

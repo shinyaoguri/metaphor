@@ -129,7 +129,7 @@ final class Time: Sketch {
 
 ### もっと詳しく
 
-- [`frameCount`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/framecount), [`time`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/time), [`deltaTime`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/deltatime)
+- [`frameCount`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/framecount), [`time`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/time), [`deltaTime`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/deltatime)
 - [`Topics/Motion/Linear`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Motion/Linear), [`Basics/Input/Milliseconds`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/Milliseconds)
 
 ## 3.2 数値を変換する
@@ -224,7 +224,7 @@ final class Mapping: Sketch {
 
 ### もっと詳しく
 
-- [`map`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/map%28_:_:_:_:_:%29), [`norm`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/norm%28_:_:_:%29), [`constrain`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/constrain%28_:_:_:%29)
+- [`map`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/map%28_:_:_:_:_:%29), [`norm`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/norm%28_:_:_:%29), [`constrain`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/constrain%28_:_:_:%29)
 - [`Basics/Math/Map`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Map), [`Basics/Input/Constrain`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/Constrain), [`Basics/Math/Interpolate`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Interpolate)
 
 ## 3.3 イージング
@@ -343,7 +343,7 @@ final class Easing: Sketch {
 
 ### もっと詳しく
 
-- [`lerp`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/) — 2 つの値の間を線形補間する
+- [`lerp`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/) — 2 つの値の間を線形補間する
 - [`Basics/Input/Easing`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Input/Easing), [`Topics/Interaction/Follow1`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Interaction/Follow1)
 
 ## 3.4 三角関数で動かす
@@ -472,7 +472,7 @@ final class Trigonometry: Sketch {
 
 ### もっと詳しく
 
-- [`PI`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/pi), [`TWO_PI`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/two_pi), [`HALF_PI`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/half_pi)
+- [`PI`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/pi), [`TWO_PI`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/two_pi), [`HALF_PI`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/half_pi)
 - [`Basics/Math/SineCosine`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/SineCosine), [`Basics/Math/SineWave`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/SineWave), [`Basics/Math/AdditiveWave`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/AdditiveWave), [`Basics/Math/Arctangent`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Arctangent)
 
 ## 3.5 乱数
@@ -589,7 +589,7 @@ final class RandomValues: Sketch {
 
 ### もっと詳しく
 
-- [`random`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/random%28_:_:%29), [`randomGaussian`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/randomgaussian%28_:_:%29), [`randomSeed`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/randomseed%28_:%29)
+- [`random`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/random%28_:_:%29), [`randomGaussian`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/randomgaussian%28_:_:%29), [`randomSeed`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/randomseed%28_:%29)
 - [`Basics/Math/Random`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Random), [`Basics/Math/RandomGaussian`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/RandomGaussian), [`Basics/Math/DoubleRandom`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/DoubleRandom)
 
 ## 3.6 ノイズ
@@ -711,7 +711,7 @@ final class NoiseBasics: Sketch {
 
 ### もっと詳しく
 
-- [`noise`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/noise%28_:%29), [`noiseSeed`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/noiseseed%28_:%29), [`noiseDetail`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/noisedetail%28octaves:falloff:%29)
+- [`noise`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/noise%28_:%29), [`noiseSeed`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/noiseseed%28_:%29), [`noiseDetail`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/noisedetail%28octaves:falloff:%29)
 - [`Basics/Math/Noise1D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Noise1D), [`Basics/Math/Noise2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Noise2D), [`Basics/Math/Noise3D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/Noise3D), [`Basics/Math/NoiseWave`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Math/NoiseWave)
 
 ## 3.7 ベクトル
@@ -840,7 +840,7 @@ final class Vectors: Sketch {
 
 ### もっと詳しく
 
-- [`Vec2`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/vec2), [`Vec3`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/vec3)
+- [`Vec2`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/vec2), [`Vec3`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/vec3)
 - [`Topics/Vectors/VectorMath`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Vectors/VectorMath), [`Topics/Vectors/BouncingBall`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Vectors/BouncingBall), [`Topics/Vectors/AccelerationWithVectors`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Vectors/AccelerationWithVectors)
 
 ## 3.8 たくさんのものを動かす
@@ -973,7 +973,7 @@ final class ManyObjects: Sketch {
 
 ### もっと詳しく
 
-- [`Sketch`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/) — `draw()` の中での更新と描画
+- [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — `draw()` の中での更新と描画
 - [`Basics/Objects/Objects`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Objects/Objects), [`Topics/Motion/BouncyBubbles`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Motion/BouncyBubbles)
 
 ## 3.9 パーティクル
@@ -1090,7 +1090,7 @@ final class Particles: Sketch {
 
 ### もっと詳しく
 
-- [`blendMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/blendmode%28_:%29), [`BlendMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/blendmode/)
+- [`blendMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/blendmode%28_:%29), [`BlendMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/blendmode/)
 - [`Topics/Simulate/SimpleParticleSystem`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Simulate/SimpleParticleSystem), [`Topics/Simulate/SmokeParticleSystem`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Simulate/SmokeParticleSystem), [`Topics/Simulate/ForcesWithVectors`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Simulate/ForcesWithVectors)
 
 ## 3.10 数を増やす
@@ -1206,7 +1206,7 @@ final class Massive: Sketch {
 
 ### もっと詳しく
 
-- [`circles`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/circles%28_:%29), [`CircleInstance`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/circleinstance/)
+- [`circles`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/circles%28_:%29), [`CircleInstance`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/circleinstance/)
 - [`Demos/Performance/MassiveCircles`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Demos/Performance/MassiveCircles)
 
 ---

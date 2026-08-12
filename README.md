@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)
+[![Docs](https://img.shields.io/badge/docs-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/)
 [![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -120,7 +120,7 @@ final class MySketch: Sketch {
 
 チュートリアルは通しで読むものです。個々の API を引くときは次を使ってください。
 
-API 全体は [`llms.txt`](llms.txt) にまとまっています。ブラウザで型やメソッドを引くなら **[API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)**（[プロジェクトサイト](https://shinyaoguri.github.io/metaphor/)）が便利です。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
+API 全体は [`llms.txt`](llms.txt) にまとまっています。ブラウザで型やメソッドを引くなら **[API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/)**（[プロジェクトサイト](https://shinyaoguri.github.io/metaphor/)）が便利です。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
 
 Processing / p5.js から移ってくる場合は **[docs/processing-migration-guide.md](docs/processing-migration-guide.md)**（英語）が近道です。カテゴリ別の API 対応表（`size()` → `SketchConfig`、`PVector` → `Vec2`、`rectMode(CENTER)` → `rectMode(.center)` など）と、値型と参照型・`@MainActor`・色の 2 系統・2D/3D の適用規則といった落とし穴、未対応 API の一覧をまとめています。
 

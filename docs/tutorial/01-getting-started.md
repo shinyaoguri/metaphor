@@ -34,7 +34,7 @@ metaphor のドキュメントは読者と用途で分かれています。こ�
 | ドキュメント | 使いどころ |
 |---|---|
 | このチュートリアル | 最初から順に読む。各節に完結したコードと実行結果が付く |
-| [API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/) | 型やメソッドのシグネチャを引く |
+| [API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/) | 型やメソッドのシグネチャを引く |
 | [`llms.txt`](https://github.com/shinyaoguri/metaphor/blob/main/llms.txt) | 公開 API の全シグネチャ。AI エージェントのコンテキストへ貼る |
 | [Examples](https://github.com/shinyaoguri/metaphor/tree/main/Examples) | 動くサンプル集。[LEARNING_PATH.md](https://github.com/shinyaoguri/metaphor/blob/main/Examples/LEARNING_PATH.md) がどの順に開くかの地図 |
 | [processing-migration-guide.md](https://github.com/shinyaoguri/metaphor/blob/main/docs/processing-migration-guide.md) | Processing / p5.js の経験がある場合の対応表（英語） |
@@ -107,8 +107,8 @@ final class FirstSketch: Sketch {
 
 ### もっと詳しく
 
-- [`Sketch`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/) — スケッチが準拠するプロトコル
-- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketchconfig/) — `config` で指定できる項目
+- [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — スケッチが準拠するプロトコル
+- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchconfig/) — `config` で指定できる項目
 - [metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) — CLI のインストールと全コマンド
 
 ## 1.3 スケッチの骨格
@@ -177,7 +177,7 @@ final class SketchSkeleton: Sketch {
 
 ### もっと詳しく
 
-- [`Sketch`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/) — ライフサイクルのメソッド一覧
+- [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — ライフサイクルのメソッド一覧
 - [`Basics/Structure/SetupDraw`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Structure/SetupDraw) — 同じ題材の最小サンプル
 
 ## 1.4 キャンバスと座標系
@@ -248,7 +248,7 @@ final class CanvasAndCoordinates: Sketch {
 
 この 2 つが分かれているおかげで、画面には小さく出しながら高解像度で書き出す、といったことができます。ウィンドウの縦横比が絵と合わないときは、比率を保ったまま余白（レターボックス）が入ります。絵が引き伸ばされて歪むことはありません。
 
-キャンバスの大きさは `setup()` の中から [`createCanvas(width:height:)`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/createcanvas%28width:height:%29) でも指定できます。
+キャンバスの大きさは `setup()` の中から [`createCanvas(width:height:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createcanvas%28width:height:%29) でも指定できます。
 
 ### 試してみる
 
@@ -258,7 +258,7 @@ final class CanvasAndCoordinates: Sketch {
 
 ### もっと詳しく
 
-- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketchconfig/) — `windowScale` や `fullScreen` を含む設定の一覧
+- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchconfig/) — `windowScale` や `fullScreen` を含む設定の一覧
 - [`Basics/Structure/Coordinates`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Structure/Coordinates), [`Basics/Structure/WidthHeight`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Structure/WidthHeight) — 座標系のサンプル
 
 ## 1.5 ライブ編集
@@ -278,7 +278,7 @@ metaphor watch
 ### もっと詳しく
 
 - [metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) — `watch` の詳しい挙動とオプション
-- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketchconfig/) — `preserveClock`
+- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchconfig/) — `preserveClock`
 
 ## 1.6 描画を止める・進める
 
@@ -358,7 +358,7 @@ final class DrawControl: Sketch {
 
 ### もっと詳しく
 
-- [`noLoop()`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/noloop%28%29), [`loop()`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/loop%28%29), [`redraw()`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/redraw%28%29), [`frameRate(_:)`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/framerate%28_:%29)
+- [`noLoop()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/noloop%28%29), [`loop()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/loop%28%29), [`redraw()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/redraw%28%29), [`frameRate(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/framerate%28_:%29)
 - [`Basics/Structure/NoLoop`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Structure/NoLoop), [`Basics/Structure/Redraw`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Structure/Redraw)
 
 ---
