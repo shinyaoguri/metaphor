@@ -300,6 +300,48 @@
       "width": 640,
       "height": 360,
       "frame": 1
+    },
+    "06-GPU/01-Compute": {
+      "sourceHash": "bbf38c33c4b78b36061b14eeec1aee8519a93942cee94bce7780c045f503928e",
+      "width": 640,
+      "height": 360,
+      "frame": 91
+    },
+    "06-GPU/02-Particles": {
+      "sourceHash": "9d4848e3ce5336b7cafb83b1472c5b3689b89630c0330cb5f4c3e521d7eef652",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 40,
+        "every": 4,
+        "fps": 15,
+        "width": 560,
+        "quality": null,
+        "file": "02-Particles.webp",
+        "bytes": 206966
+      }
+    },
+    "06-GPU/03-PostProcess": {
+      "sourceHash": "0b45429f500a490338eccd1065ee0946688337a2ff361d5ee277822670d68c53",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "03-PostProcess.webp",
+        "bytes": 110180
+      }
+    },
+    "06-GPU/04-CustomPostEffect": {
+      "sourceHash": "8c152d347801d7d556898e52d668da99a4c8454e8d8c3330a0b1a3dd8b6ff646",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     }
   }
 }

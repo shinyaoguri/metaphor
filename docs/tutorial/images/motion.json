@@ -56,6 +56,20 @@
       "every": 4,
       "fps": 15,
       "width": 640
+    },
+    "06-GPU/02-Particles": {
+      "kind": "webp",
+      "frames": 40,
+      "every": 4,
+      "fps": 15,
+      "width": 560
+    },
+    "06-GPU/03-PostProcess": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
     }
   }
 }
