@@ -186,6 +186,8 @@ private final class RecordingSketch: Sketch {
     /// compute / draw の各時点で観測した `(time, deltaTime)`。
     var clockAtCompute: [(time: Float, delta: Float)] = []
     var clockAtDraw: [(time: Float, delta: Float)] = []
+    /// draw の各時点で観測した `(pmouseX, mouseX)`。
+    var mouseAtDraw: [(pmouse: Float, mouse: Float)] = []
     /// `fileDropped` が受け取ったパス。
     var droppedPaths: [[String]] = []
     /// setup() 内で実行する追加処理（noLoop の検証など）。
@@ -212,6 +214,7 @@ private final class RecordingSketch: Sketch {
         log.append("draw")
         frameCountAtDraw.append(frameCount)
         clockAtDraw.append((time: time, delta: deltaTime))
+        mouseAtDraw.append((pmouse: pmouseX, mouse: mouseX))
     }
 
     func mousePressed() { log.append("mousePressed") }
@@ -770,6 +773,76 @@ struct SketchInputDispatchTests {
         plugin.pre(commandBuffer: cb, time: 0)   // renderer は nil
         cb.commit()
         #expect(renderer.input.mouseX == 0, "detach 済みのプラグインは入力へ届かない")
+    }
+
+    // MARK: - pmouse のフレーム同期（#522）
+
+    // pmouse は「1 フレーム前」であって 2 フレーム前ではない。イベントがフレームの
+    // どこで処理されるかは経路によって違う（ヘッドレスの InputInjectionPlugin は
+    // pre() = updateFrame() の後、AppKit はフレーム間）ので、両方を renderFrame() の
+    // 実経路で回して確かめる。単体で InputManager を叩くだけでは配線を検証できない。
+
+    @Test("pmouse は draw から見て 1 フレーム前を指す（イベントがフレーム頭の後に届く経路）")
+    func pmouseIsOneFrameOldWithInFrameInjection() throws {
+        let sketch = RecordingSketch()
+        let harness = try SketchRunnerHarness(sketch: sketch)
+        harness.connectInput()
+        harness.start()
+        // ヘッドレス注入と同じく、フレーム頭（updateFrame）の後・draw の前に位置を進める。
+        let feed = MouseFeedPlugin(positions: [10, 30, 60])
+        harness.renderer.addPlugin(feed, sketch: sketch)
+
+        harness.renderer.renderFrame()
+        harness.renderer.renderFrame()
+        harness.renderer.renderFrame()
+
+        let seen = sketch.mouseAtDraw.map { [$0.pmouse, $0.mouse] }
+        #expect(seen == [[0, 10], [10, 30], [30, 60]],
+                "各フレームの pmouse は直前フレームの mouse: \(seen)")
+    }
+
+    @Test("pmouse は draw から見て 1 フレーム前を指す（イベントがフレーム頭の前に届く経路）")
+    func pmouseIsOneFrameOldWithBetweenFrameEvents() throws {
+        let sketch = RecordingSketch()
+        let harness = try SketchRunnerHarness(sketch: sketch)
+        harness.connectInput()
+        harness.start()
+        let input = harness.renderer.input
+
+        // AppKit と同じく、フレームとフレームの間（renderFrame の外）で位置が進む。
+        input.handleMouseMoved(x: 10, y: 0)
+        harness.renderer.renderFrame()
+        input.handleMouseMoved(x: 30, y: 0)
+        harness.renderer.renderFrame()
+        input.handleMouseMoved(x: 60, y: 0)
+        harness.renderer.renderFrame()
+
+        let seen = sketch.mouseAtDraw.map { [$0.pmouse, $0.mouse] }
+        #expect(seen == [[10, 10], [10, 30], [30, 60]],
+                "1 フレーム目は前フレームが無いので pmouse == mouse: \(seen)")
+    }
+}
+
+/// 各フレームの `pre()`（= `updateFrame()` の後、`draw()` の前）で
+/// マウス位置を 1 つずつ進めるテスト用プラグイン。ヘッドレスの
+/// ``InputInjectionPlugin`` と同じタイミングを、スレッドを挟まず決定的に再現する。
+@MainActor
+private final class MouseFeedPlugin: MetaphorPlugin {
+    let pluginID = "test.mouse-feed"
+    private var positions: [Float]
+    private weak var renderer: MetaphorRenderer?
+
+    init(positions: [Float]) {
+        self.positions = positions
+    }
+
+    func onAttach(renderer: MetaphorRenderer) {
+        self.renderer = renderer
+    }
+
+    func pre(commandBuffer: MTLCommandBuffer, time: Double) {
+        guard !positions.isEmpty else { return }
+        renderer?.input.handleMouseMoved(x: positions.removeFirst(), y: 0)
     }
 }
 

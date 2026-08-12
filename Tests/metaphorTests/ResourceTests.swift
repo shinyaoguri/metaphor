@@ -90,6 +90,60 @@ struct InputManagerTests {
         #expect(input.mouseY == 40)
     }
 
+    // pmouse は「1 フレーム前」であって 2 フレーム前ではない（#522）。
+    // イベントがフレームのどこで処理されるかは経路で違う（ヘッドレスの
+    // InputInjectionPlugin は updateFrame() の後、AppKit はフレーム間）ため、
+    // 両方の順序でフレームを 3 回進めて確かめる。
+    @Test("pmouse はイベントがフレーム頭の後に届いても 1 フレーム前を指す")
+    func previousMouseWithEventsAfterFrameStart() {
+        let input = InputManager()
+
+        // フレーム 1: 起動直後。前フレームが無いので pmouse は動かない。
+        input.updateFrame()
+        input.handleMouseMoved(x: 10, y: 20)
+        #expect(input.pmouseX == 0)
+        #expect(input.pmouseY == 0)
+        input.endFrame()
+
+        // フレーム 2: 前フレームの draw() が見ていた (10, 20)。
+        input.updateFrame()
+        #expect(input.pmouseX == 10)
+        #expect(input.pmouseY == 20)
+        input.handleMouseMoved(x: 30, y: 40)
+        #expect(input.pmouseX == 10, "同じフレーム内で動いても pmouse は据え置き")
+        input.endFrame()
+
+        // フレーム 3: 2 フレーム前の (10, 20) ではなく前フレームの (30, 40)。
+        input.updateFrame()
+        #expect(input.pmouseX == 30)
+        #expect(input.pmouseY == 40)
+        #expect(input.mouseX - input.pmouseX == 0, "動いていないフレームでは移動量 0")
+    }
+
+    @Test("pmouse はイベントがフレーム頭の前に届いても 1 フレーム前を指す")
+    func previousMouseWithEventsBeforeFrameStart() {
+        let input = InputManager()
+
+        // フレーム 1: 起動直後、まだイベントは来ていない。
+        input.updateFrame()
+        input.endFrame()
+
+        // フレーム 2: イベントはフレームの外（前フレーム末〜このフレーム頭の間）で処理される。
+        input.handleMouseMoved(x: 10, y: 20)
+        input.updateFrame()
+        #expect(input.pmouseX == 0)
+        #expect(input.mouseX == 10)
+        input.endFrame()
+
+        // フレーム 3: 前フレームの (10, 20) を指し、移動量は 1 フレーム分。
+        input.handleMouseMoved(x: 30, y: 40)
+        input.updateFrame()
+        #expect(input.pmouseX == 10)
+        #expect(input.pmouseY == 20)
+        #expect(input.mouseX - input.pmouseX == 20, "移動量が 2 フレーム分にならない")
+        input.endFrame()
+    }
+
     @Test("key down/up tracking")
     func keyTracking() {
         let input = InputManager()

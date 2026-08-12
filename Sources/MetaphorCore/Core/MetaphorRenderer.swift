@@ -1111,6 +1111,9 @@ public final class MetaphorRenderer: NSObject {
         }
 
         input.updateFrame()
+        // このフレームの draw() が見た位置を、次フレームの pmouse 用に必ず保存する
+        // （早期 return する経路でも 1 フレームぶんの差を保つため defer で置く）。
+        defer { input.endFrame() }
         let time = elapsedTime
         frameRateTracker.record(at: CACurrentMediaTime())
 

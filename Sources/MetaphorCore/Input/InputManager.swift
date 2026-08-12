@@ -92,10 +92,10 @@ public final class InputManager {
 
     // MARK: - Private State
 
-    // 前フレームのマウス位置追跡用の2フレームバッファ。
-    // マウスイベントはランループ上で renderFrame() の前に到着するため、
-    // 単純に `pmouseX = mouseX` と代入すると常に同じ値になります。
-    // この2フレームバッファにより、前フレームの位置を正しく保持します。
+    // 「前フレームの draw が見ていたマウス位置」。フレーム末の endFrame() で保存し、
+    // 次フレーム頭の updateFrame() で pmouseX/pmouseY へ渡します。
+    // イベントの到着がフレームのどこであっても（AppKit はフレーム間、ヘッドレスの
+    // InputInjectionPlugin は updateFrame() の後の pre()）、ちょうど 1 フレーム前を指します。
     private var _savedMouseX: Float = 0
     private var _savedMouseY: Float = 0
     private var _isFirstFrame: Bool = true
@@ -118,27 +118,34 @@ public final class InputManager {
 
     // MARK: - Frame Update
 
-    /// 新しいフレームの開始時に前フレームのマウス座標を更新します。
+    /// 新しいフレームの開始時に、前フレームのマウス座標とスクロールデルタを更新します。
     ///
-    /// 2フレームバッファ戦略を使用して前フレームのマウス位置を正しく追跡し、
-    /// ランループのイベント処理により `pmouseX`/`pmouseY` が
-    /// 現在の位置と同一になる問題を回避します。
+    /// ``endFrame()`` が前フレーム末に保存した位置を `pmouseX`/`pmouseY` へ渡します。
+    /// この 2 つが対になって「`draw()` から見える `pmouse` はちょうど 1 フレーム前」を保ちます。
     func updateFrame() {
         scrollX = 0
         scrollY = 0
 
         if _isFirstFrame {
-            _savedMouseX = mouseX
-            _savedMouseY = mouseY
+            // 起動直後は「前フレーム」が無い。原点から現在位置への線が引かれないよう
+            // 現在位置を入れる（Processing の 1 フレーム目と同じ扱い）。
             pmouseX = mouseX
             pmouseY = mouseY
             _isFirstFrame = false
         } else {
             pmouseX = _savedMouseX
             pmouseY = _savedMouseY
-            _savedMouseX = mouseX
-            _savedMouseY = mouseY
         }
+    }
+
+    /// フレームの終わりに、`draw()` が見ていたマウス座標を次フレームの `pmouse` 用に保存します。
+    ///
+    /// ``updateFrame()`` の側（フレーム頭）で保存すると、イベントがフレームのどこで
+    /// 処理されるかによって 1 フレームぶん余計にずれます（`pmouse` が 2 フレーム前になる）。
+    /// 保存を `draw()` の後に置くことで、イベントの到着位置に依存しなくなります。
+    func endFrame() {
+        _savedMouseX = mouseX
+        _savedMouseY = mouseY
     }
 
     // MARK: - Event Handlers (called from MetaphorMTKView)
