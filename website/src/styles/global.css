@@ -136,6 +136,25 @@ body {
   margin-top: 0.4rem;
 }
 
+/* 節末の「ふりかえり」のタスクリスト（`- [ ] …`）。GFM が <input type="checkbox">
+   を出すので、中黒を残すとマーカーが二重に並ぶ。マーカーを外し、チェックボックスだけ
+   左の余白へぶら下げる。状態は保存しない（読者が目で追うための静的な表示）。
+   li を flex にしないこと — 項目に混ざるインラインの <code> が個別の flex item に
+   なって 1 語ずつ改行される。 */
+.tutorial-prose ul.contains-task-list {
+  list-style: none;
+  padding-left: 1.6rem;
+}
+
+.tutorial-prose li.task-list-item > input[type='checkbox'] {
+  width: 0.95em;
+  height: 0.95em;
+  margin-left: -1.6rem;
+  margin-right: 0.65rem;
+  vertical-align: -0.05em;
+  accent-color: var(--color-accent);
+}
+
 /* インラインコード（API 名）。コードブロック内の code には効かせない。 */
 .tutorial-prose :not(pre) > code {
   font-family: var(--font-mono);
