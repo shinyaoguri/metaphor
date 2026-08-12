@@ -35,7 +35,7 @@ this table.
   - [ai/prompts/](ai/prompts/) — Prompt templates by use case (audio-reactive / shader, etc.)
 - **[processing-migration-guide.md](processing-migration-guide.md)** — Processing / p5.js migration guide: API mapping tables by category, the pitfalls that bite, and the Processing APIs that are not implemented yet (with roadmap links)
 - **[permissions.md](permissions.md)** — Microphone/camera TCC permissions: how permission requests work for a `swift run` binary, recovering from a denial, and how Info.plist is (and isn't) involved
-- **[api-stability-policy.md](api-stability-policy.md)** — What counts as public API across the four layers, source compatibility (no ABI guarantee), the deprecation window, where rendering output / the Probe wire schema / stdin / environment variables sit under SemVer, and the `0.9.x` freeze discipline
+- **[api-stability-policy.md](api-stability-policy.md)** — What counts as public API across the four layers, source compatibility (no ABI guarantee), the deprecation window, where rendering output / the Probe wire schema / stdin / environment variables sit under SemVer, and the rule that breaking changes ship in a minor until `1.0.0` ([ADR-0009](adr/0009-unfreeze-api-until-1-0.md))
 - **[adr/](adr/)** — Architecture Decision Records: an append-only log of design decisions. See [adr/README.md](adr/README.md) for the format
 - **[design/](design/)** — Design docs for in-progress / past projects. The implementation and [CONTRACT.md](../CONTRACT.md) are the source of truth for settled specs; these documents stay Japanese (see the language boundary below)
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Roadmap for attracting Processing / Unity users (living document, Epic list)

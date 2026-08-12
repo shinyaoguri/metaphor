@@ -199,7 +199,7 @@ dependencies: [
 
 この形でもライブラリは完全に使えます（AI には `llms.txt` を渡せばコード生成も可能）。ただし AI に「いま見えている絵」を観測させる MCP ループには CLI（`metaphor mcp`）が必要です。はじめて使う場合は `metaphor new` を推奨します — `Package.swift`、テンプレート、リソースディレクトリ、AI 向けガイド、更新導線が最初から揃います。
 
-バージョンの上げ方を判断する材料として、**何が公開 API で、何が壊れうるか**は [docs/api-stability-policy.md](docs/api-stability-policy.md)（英語）にまとめています。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあり、破壊的変更は `Breaking Changes` 見出しに集約されています。現在は `0.x` なので **minor で API が壊れることがあります**（`v0.9.0` で API 凍結、以降は上記ポリシーの規律で運用します）。
+バージョンの上げ方を判断する材料として、**何が公開 API で、何が壊れうるか**は [docs/api-stability-policy.md](docs/api-stability-policy.md)（英語）にまとめています。変更履歴は [CHANGELOG.md](CHANGELOG.md) にあり、破壊的変更は `Breaking Changes` 見出しに集約されています。現在は `0.x` なので **minor で API が壊れることがあります**。`v0.9.0` で一度 API 凍結を宣言しましたが、1.0 までに片付けたい設計課題が残っていたため撤回しました（[ADR-0009](docs/adr/0009-unfreeze-api-until-1-0.md)）— 凍結が始まるのは `v1.0.0` です。壊れて困る場合は `.upToNextMinor(from: "0.9.0")` で上限を固定してください。
 
 ## Requirements
 

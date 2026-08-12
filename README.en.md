@@ -201,7 +201,7 @@ On the target side:
 
 The library fully works this way (you can even generate code via AI with `llms.txt`). But the MCP loop that lets AI observe "what's on screen right now" needs the CLI (`metaphor mcp`). We recommend `metaphor new` for first-time use—`Package.swift`, templates, resource directories, AI guides, and update paths come built-in.
 
-To decide how to bound that version requirement, see [docs/api-stability-policy.md](docs/api-stability-policy.md) — what counts as public API, and what may break. [CHANGELOG.md](CHANGELOG.md) records every user-visible change, with breaking ones collected under `Breaking Changes`. While the version is `0.x`, **a minor release may break API**; `v0.9.0` freezes the API and runs under that policy from then on.
+To decide how to bound that version requirement, see [docs/api-stability-policy.md](docs/api-stability-policy.md) — what counts as public API, and what may break. [CHANGELOG.md](CHANGELOG.md) records every user-visible change, with breaking ones collected under `Breaking Changes`. While the version is `0.x`, **a minor release may break API**. `v0.9.0` announced an API freeze, but it was withdrawn — design work was still outstanding ([ADR-0009](docs/adr/0009-unfreeze-api-until-1-0.md)) — so the freeze starts at `v1.0.0`. Pin `.upToNextMinor(from: "0.9.0")` if you need to be insulated from that.
 
 ## Requirements
 

@@ -71,12 +71,14 @@ type がそのまま信用できます。**トレインは状態を持ちませ�
 ### 破壊的変更は自動で major にしない
 
 PR タイトルの `!` マーカー（`feat(core)!: ...`）か `changelog.d/*.breaking.md` を
-見つけると、トレインは **発車せず fail** します。v0.9.0 の API freeze 以降、破壊は
-major を意味し（[api-stability-policy.md](api-stability-policy.md) の
-「Where each kind of change lands」表が正典）、v1.0.0 への到達は技術条件だけで
-決まらないためです（[design/v1-release-plan.md](design/v1-release-plan.md)）。
-赤いトレインは「bump を人が確認しろ」という設計どおりの結果で、`release:major`
-ラベルで明示的に出すか、実は破壊でないなら PR タイトルを直します。同じことは
+見つけると、トレインは **発車せず fail** します。`0.x` の破壊は minor に載せる規約
+ですが（[api-stability-policy.md](api-stability-policy.md) の
+「Where each kind of change lands」表が正典。1.0.0 以降は major）、**どの破壊も
+「設計として良くなる」と判断したうえで入れるもの**なので、bump を自動で決めさせず
+人の確認を挟みます（[ADR-0009](adr/0009-unfreeze-api-until-1-0.md)）。
+赤いトレインは「bump を人が確認しろ」という設計どおりの結果で、`release:minor`
+（`1.0.0` 以降は `release:major`）で明示的に出すか、実は破壊でないなら PR タイトルを
+直します。同じことは
 `changelog.d/` が空のまま feat/fix が溜まったときにも起きます（発車前の
 `changelog.py check` で止まる）。**どちらも気付ける前提は GitHub の Actions 失敗通知**
 なので、リリース系ワークフローの失敗が手元に届く設定になっているかは一度確認しておきます。
