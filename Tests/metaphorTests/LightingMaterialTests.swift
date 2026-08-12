@@ -552,3 +552,74 @@ struct AmbientLightUnitTests {
         #expect(abs(canvas3D.ambientColor.x - 60.0 / 255.0) < 1e-5)
     }
 }
+
+// MARK: - マテリアルのグレー値の単位（#527）
+
+@Suite("Material gray units", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MaterialGrayUnitTests {
+
+    /// `ambientLight` と同じく、マテリアルのグレー値も `colorMode` のレンジ基準。
+    /// ここが素通しだと `specular(200)` がスペキュラ色 200.0 になり、`shininess()` を
+    /// 上げてもハイライトが白い塊のまま残る（#527）。
+    @Test("specular のグレー値は colorMode のレンジに従う")
+    func specularGrayUsesColorModeRange() throws {
+        let canvas3D = try Canvas3D(renderer: MetaphorRenderer())
+
+        canvas3D.specular(230)
+        #expect(abs(canvas3D.currentMaterial.specularAndShininess.x - 230.0 / 255.0) < 1e-5)
+        #expect(canvas3D.currentMaterial.specularAndShininess.y
+                == canvas3D.currentMaterial.specularAndShininess.x)
+        #expect(canvas3D.currentMaterial.specularAndShininess.z
+                == canvas3D.currentMaterial.specularAndShininess.x)
+
+        // 0〜1 スケールのつもりで書くと 0.9/255 ≒ 0.0035 = ハイライトがほぼ消える
+        canvas3D.specular(0.9)
+        #expect(canvas3D.currentMaterial.specularAndShininess.x < 0.005)
+
+        // colorMode を 0〜1 にすれば 0.9 がそのまま 90% になる
+        canvas3D.colorMode(.rgb, 1)
+        canvas3D.specular(0.9)
+        #expect(abs(canvas3D.currentMaterial.specularAndShininess.x - 0.9) < 1e-5)
+    }
+
+    @Test("emissive のグレー値は colorMode のレンジに従う")
+    func emissiveGrayUsesColorModeRange() throws {
+        let canvas3D = try Canvas3D(renderer: MetaphorRenderer())
+
+        canvas3D.emissive(128)
+        #expect(abs(canvas3D.currentMaterial.emissiveAndMetallic.x - 128.0 / 255.0) < 1e-5)
+
+        canvas3D.colorMode(.rgb, 1)
+        canvas3D.emissive(0.5)
+        #expect(abs(canvas3D.currentMaterial.emissiveAndMetallic.x - 0.5) < 1e-5)
+    }
+
+    /// `Color` を受ける版は正規化済みの値なので、`colorMode` を変えても素通しのまま。
+    @Test("Color を渡す版は colorMode の影響を受けない")
+    func colorOverloadsStayNormalized() throws {
+        let canvas3D = try Canvas3D(renderer: MetaphorRenderer())
+        canvas3D.colorMode(.rgb, 1)
+
+        canvas3D.specular(Color(r: 0.8, g: 0.8, b: 0.8))
+        #expect(abs(canvas3D.currentMaterial.specularAndShininess.x - 0.8) < 1e-5)
+
+        canvas3D.colorMode(.rgb, 255)
+        canvas3D.specular(Color(r: 0.8, g: 0.8, b: 0.8))
+        #expect(abs(canvas3D.currentMaterial.specularAndShininess.x - 0.8) < 1e-5)
+    }
+
+    /// グレー値を変えても `shininess`（w 成分）と `metallic`（同）は保たれる。
+    @Test("グレー値の設定は shininess / metallic を壊さない")
+    func grayKeepsPackedCompanions() throws {
+        let canvas3D = try Canvas3D(renderer: MetaphorRenderer())
+
+        canvas3D.shininess(48)
+        canvas3D.specular(200)
+        #expect(canvas3D.currentMaterial.specularAndShininess.w == 48)
+
+        canvas3D.metallic(0.7)
+        canvas3D.emissive(40)
+        #expect(abs(canvas3D.currentMaterial.emissiveAndMetallic.w - 0.7) < 1e-5)
+    }
+}
