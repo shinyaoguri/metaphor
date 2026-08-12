@@ -100,52 +100,24 @@ final class MySketch: Sketch {
 }
 ```
 
-| ライフサイクル | 呼ばれるタイミング |
+`setup()` が起動時に 1 回、`draw()` が毎フレーム呼ばれます。ここから先 — 座標系、色や線の指定、変換、動かし方、入力の受け方 — は下のチュートリアルが順に説明します。
+
+## チュートリアル
+
+[docs/tutorial/](docs/tutorial/) に、Processing の経験を前提としない体系的なチュートリアル（日本語）があります。ブラウザで読むなら **[metaphor チュートリアル](https://shinyaoguri.github.io/metaphor/tutorial/)**。各節が完結した 1 本のスケッチで、本文のコードは [`Examples/Tutorial/`](Examples/Tutorial/) の実パッケージから埋め込まれ、実行結果の画像も同じスケッチから撮られています（**本文のコードはそのまま動きます**）。
+
+| 部 | 学べること |
 |---|---|
-| `setup()` | 起動時に1回 |
-| `compute()` | 毎フレーム、`draw` の前（GPU compute 用） |
-| `draw()` | 毎フレーム |
-| `mousePressed()` / `mouseDragged()` / `mouseScrolled()` など | マウスイベント |
-| `keyPressed()` / `keyReleased()` | キーボードイベント |
+| [第 1 部 入門](docs/tutorial/01-getting-started.md) | スケッチの骨格（`config` / `setup()` / `draw()`）、キャンバスと座標系、`metaphor watch` でのライブ編集、`noLoop()` / `frameRate()` |
+| [第 2 部 2D を描く](docs/tutorial/02-drawing-2d.md) | 図形プリミティブ、色、線の表情、自作の形、変換と `push` / `pop`、テキスト、画像、ピクセル、ブレンドモード |
+| [第 3 部 動かす](docs/tutorial/03-motion.md) | 時間、`map` / `lerp`、イージング、三角関数、乱数、ノイズ、ベクトル、パーティクル |
+| [第 4 部 入力を受ける](docs/tutorial/04-input.md) | マウス、キーボード、当たり判定から UI を自作する、ウィンドウ |
 
-`noLoop()` で 1 フレームだけ描画して停止、`loop()` で再開、`frameRate(n)` で FPS を指定できます。
+第 5 部以降（3D / GPU / メディア / 外とつなぐ / 作品にする / AI と作る）は Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483) で執筆中です。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md) に、それまでの引き先は下の「引くためのドキュメント」と [Examples](#examples) にあります。
 
-### よく使う関数
+### 引くためのドキュメント
 
-```swift
-// --- 2D shapes
-circle(x, y, diameter)
-rect(x, y, w, h)
-line(x1, y1, x2, y2)
-triangle(x1, y1, x2, y2, x3, y3)
-arc(x, y, w, h, start, stop)
-text("hello", x, y)
-
-// --- 3D shapes
-box(size)
-sphere(radius)
-plane(w, h)
-cylinder(radius: 0.5, height: 1)
-torus(ringRadius: 0.5, tubeRadius: 0.2)
-
-// --- スタイル（色は既定で 0〜255。Processing と同じ。colorMode で変更可）
-background(r, g, b)
-fill(r, g, b);  fill(gray)
-stroke(r, g, b); strokeWeight(2)
-noFill();  noStroke()
-blendMode(.additive)
-
-// --- 変換（push/pop でスタック）
-push()
-translate(x, y);  translate(x, y, z)
-rotate(angle);    rotateX(a); rotateY(a); rotateZ(a)
-scale(s)
-pop()
-
-// --- 状態 / ユーティリティ
-mouseX, mouseY, frameCount, deltaTime, width, height
-random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
-```
+チュートリアルは通しで読むものです。個々の API を引くときは次を使ってください。
 
 API 全体は [`llms.txt`](llms.txt) にまとまっています。ブラウザで型やメソッドを引くなら **[API リファレンス（DocC）](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)**（[プロジェクトサイト](https://shinyaoguri.github.io/metaphor/)）が便利です。「Processing でいうところの○○」を探すときは [Examples](#examples) から近いサンプルを見つけるのが早道です。
 

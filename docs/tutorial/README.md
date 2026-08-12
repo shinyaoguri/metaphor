@@ -330,10 +330,10 @@ Examples の本数やバージョン番号のような、増減する数値を�
 
 | ドキュメント | 再配置後の役割 | いつ |
 |---|---|---|
-| [README.md](../../README.md) の「はじめてのスケッチ」 | 60 秒スタートと最小のコード例は残し、詳細（ライフサイクル表・よく使う関数一覧）はチュートリアル第 1 部へ委譲してリンクする | 第 1 部の本文がマージされてから |
-| DocC [GettingStarted.md](../../Sources/metaphor/metaphor.docc/GettingStarted.md) | API リファレンス側の最小導入に絞る（インストール + 最小のスケッチ + `Sketch` へのリンク）。ライフサイクル・設定・入力の詳細はチュートリアルへ送り出す | 第 1 部・第 4 部の本文がマージされてから |
-| [processing-migration-guide.md](../processing-migration-guide.md) | そのまま維持。読者が違う（既習者向け）ことを冒頭で相互に明記する | 第 1 部と同時 |
-| [Examples/LEARNING_PATH.md](../../Examples/LEARNING_PATH.md) | **統合せず残す**。「チュートリアルを読み終えた人が Examples を掘るための地図」に位置づけ直し、冒頭でチュートリアルへ送り出す | 本文（#484）と同時 |
+| [README.md](../../README.md) / [README.en.md](../../README.en.md) の「はじめてのスケッチ」 | 60 秒スタートと最小のコード例は残し、詳細（ライフサイクル表・よく使う関数一覧）はチュートリアル第 1 部・第 2 部へ委譲してリンクする | 完了（[#510](https://github.com/shinyaoguri/metaphor/issues/510)）。`## チュートリアル` 節から公開中の各部へ張る |
+| DocC [GettingStarted.md](../../Sources/metaphor/metaphor.docc/GettingStarted.md) | API リファレンス側の最小導入に絞る（インストール + 最小のスケッチ + `Sketch` へのリンク）。ライフサイクル・設定・入力の詳細はチュートリアルへ送り出す | 完了（入力は [#509](https://github.com/shinyaoguri/metaphor/issues/509)、残りは [#510](https://github.com/shinyaoguri/metaphor/issues/510)） |
+| [processing-migration-guide.md](../processing-migration-guide.md) | そのまま維持。読者が違う（既習者向け）ことを冒頭で相互に明記する | 完了（冒頭の "Never used Processing?" から本チュートリアルへ送り出している） |
+| [Examples/LEARNING_PATH.md](../../Examples/LEARNING_PATH.md) | **統合せず残す**。「チュートリアルを読み終えた人が Examples を掘るための地図」に位置づけ直し、冒頭でチュートリアルへ送り出す | 完了（[#484](https://github.com/shinyaoguri/metaphor/issues/484) の本文と同時） |
 
 `LEARNING_PATH.md` を残す理由: 読者と目的が違うためです。チュートリアルは日本語ファーストで**代表コードを通しで読む**もの、`LEARNING_PATH.md` は英語で **Examples 全体をどの順に開くか**の地図です。統合すると Examples 側の入口が消え、英語の資産も失われます。重複する入門部分（"First shapes" など）はチュートリアルへの導線に置き換えます。
 
