@@ -14,8 +14,9 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 |---|---|---|
 | 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 |
 | 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 |
-| 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 執筆中（3.3 のみ。[#508](https://github.com/shinyaoguri/metaphor/issues/508)） |
-| 第 4 部以降 | — | 未着手 |
+| 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 |
+| 第 4 部 入力を受ける | — | 未着手（[#509](https://github.com/shinyaoguri/metaphor/issues/509)） |
+| 第 5 部以降 | — | 未起票 |
 
 ## 対象読者と、他ドキュメントとの役割分担
 
