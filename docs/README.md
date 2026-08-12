@@ -34,7 +34,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [ai/prompts/](ai/prompts/) — 用途別プロンプトテンプレート（audio-reactive / shader など）
 - **[processing-migration-guide.md](processing-migration-guide.md)** — Processing / p5.js 移行ガイド（英語）。カテゴリ別 API 対応表、落とし穴集、未対応 API とロードマップへの導線
 - **[permissions.md](permissions.md)** — マイク・カメラの TCC 権限（英語）。`swift run` バイナリでの権限要求の仕組み、拒否後の復旧手順、Info.plist の扱い
-- **[api-stability-policy.md](api-stability-policy.md)** — API 安定性ポリシー（英語）。4 層のどこまでが公開 API か、ソース互換のみ（ABI 非保証）、deprecation 窓、描画結果 / Probe wire schema / stdin / 環境変数が SemVer のどこに載るか、0.9.x の凍結規律
+- **[api-stability-policy.md](api-stability-policy.md)** — API 安定性ポリシー（英語）。4 層のどこまでが公開 API か、ソース互換のみ（ABI 非保証）、deprecation 窓、描画結果 / Probe wire schema / stdin / 環境変数が SemVer のどこに載るか、1.0 までは breaking を minor で許容する規律（[ADR-0009](adr/0009-unfreeze-api-until-1-0.md)）
 - **[adr/](adr/)** — Architecture Decision Records。設計判断の蓄積（append-only）。書き方は [adr/README.md](adr/README.md)
 - **[design/](design/)** — 進行中 / 過去プロジェクトの設計ドキュメント。確定仕様は実装と [CONTRACT.md](../CONTRACT.md) が正
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）

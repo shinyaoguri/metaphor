@@ -47,6 +47,7 @@
 | [0006](0006-static-shields-badges-for-github-metadata.md) | Accepted | GitHub メタデータ参照バッジを静的化する（shields.io 動的バッジの不安定性回避） |
 | [0007](0007-finalize-public-api-surface.md) | Accepted | 1.0 凍結に向けて公開 API 表面を最終整理する（命名規範・記録 API・二層 API・`@_exported`） |
 | [0008](0008-docc-reference-images-via-gyazo.md) | Accepted | DocC リファレンスの画像を Gyazo の外部 URL で参照する（リポジトリにコミットしない） |
+| [0009](0009-unfreeze-api-until-1-0.md) | Accepted | v0.9.0 の API 凍結を撤回し、1.0 までは設計の質を優先して破壊的変更を許容する |
 
 ## 参考
 
