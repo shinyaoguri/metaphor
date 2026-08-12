@@ -100,15 +100,13 @@ final class Easing: Sketch {
             circle(xs[i], ys[i], 24)
         }
 
-        // どの色がどの係数かを凡例で示す。文字はいま fill 色を反映しない
-        // （metaphor の既知の不具合 #516）ので、色は四角で示す
+        // どの色がどの係数かを凡例で示す。文字も図形と同じく fill 色で塗られる
         textSize(14)
         for i in easings.indices {
             let (r, g, b) = colors[i]
             let baseline = 28 + Float(i) * 22
             fill(r, g, b)
-            rect(20, baseline - 11, 12, 12)
-            text("easing = \(easings[i])", 40, baseline)
+            text("easing = \(easings[i])", 20, baseline)
         }
     }
 

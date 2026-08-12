@@ -86,7 +86,7 @@
       "frame": 1
     },
     "03-Motion/03-Easing": {
-      "sourceHash": "d02d76ef322686f989455e4ecbbbcc3c4942023e78ef455c656dd47c14fc99a5",
+      "sourceHash": "e50d34bf804f0cba3a181e4e0acbdbc53a4a9dd9f27a8c547ab74e9600213568",
       "width": 640,
       "height": 360,
       "motion": {
@@ -97,7 +97,7 @@
         "width": 720,
         "quality": null,
         "file": "03-Easing.webp",
-        "bytes": 35804
+        "bytes": 35516
       }
     }
   }
