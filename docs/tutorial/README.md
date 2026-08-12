@@ -19,7 +19,8 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 | 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 |
 | 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 |
 | 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 |
-| 第 8 部以降 | — | 起票済み（[#545](https://github.com/shinyaoguri/metaphor/issues/545)〜[#547](https://github.com/shinyaoguri/metaphor/issues/547)） |
+| 第 8 部 外とつなぐ | [`08-connect.md`](08-connect.md) | 公開 |
+| 第 9 部以降 | — | 起票済み（[#546](https://github.com/shinyaoguri/metaphor/issues/546)〜[#547](https://github.com/shinyaoguri/metaphor/issues/547)） |
 
 ## 対象読者と、他ドキュメントとの役割分担
 
