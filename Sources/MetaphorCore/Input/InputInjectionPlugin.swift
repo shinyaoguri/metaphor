@@ -26,8 +26,9 @@ import os
 ///
 /// 読み取りは専用スレッドで行い、パース済みイベントをロック付きキューに溜め、
 /// 各フレーム冒頭の ``pre(commandBuffer:time:)`` でメインアクター上から
-/// ``InputManager`` に流し込みます。``InputManager/updateFrame()`` が同フレームの
-/// `pre()` より前に呼ばれるため、`pmouseX`/`pmouseY` の更新も正しく機能します。
+/// ``InputManager`` に流し込みます。ここで注入したイベントは同フレームの `draw()` から
+/// 見えます。`pmouseX`/`pmouseY` はフレーム末（``InputManager/endFrame()``）に保存された
+/// 位置を指すため、注入が `updateFrame()` の後であってもちょうど 1 フレーム前になります。
 ///
 /// ## 性能契約（ランタイム非侵害・Issue #118）
 ///
