@@ -42,6 +42,10 @@ MANIFEST = IMAGES_DIR / "manifest.json"
 # いる節 = 画像が要る節、と定義する。
 SNIPPET_RE = re.compile(r"^<!-- tutorial-snippet:\s*(?P<ref>\S+)\s*-->$")
 
+# 指紋の材料から外すもの。ビルド生成物・IDE 設定・Probe の作業ディレクトリ・
+# Finder のメタデータで、いずれも絵には影響しない（すべて gitignore 済み）。
+EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store"}
+
 # 起動から frame.png が書かれるまでの待ち時間。初回はシェーダーのコンパイルが
 # 入るぶん遅い。
 CAPTURE_TIMEOUT_SEC = 90.0
@@ -66,16 +70,24 @@ def referenced_refs() -> list[str]:
 
 
 def source_files(package_dir: Path) -> list[Path]:
-    files = [
-        path
-        for path in package_dir.rglob("*.swift")
-        if ".build" not in path.parts and ".swiftpm" not in path.parts
-    ]
+    """指紋の材料。Swift だけでなくリソースも含める（#505）。"""
+    files = []
+    for path in package_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(package_dir)
+        if EXCLUDED_NAMES.intersection(relative.parts):
+            continue
+        files.append(path)
     return sorted(files, key=lambda p: p.relative_to(package_dir).as_posix())
 
 
 def source_hash(package_dir: Path) -> str:
-    """パッケージの Swift ソースから決まる指紋。撮り直しの要否はこれで判定する。"""
+    """パッケージのソースとリソースから決まる指紋。撮り直しの要否はこれで判定する。
+
+    絵を変えうるものはすべて材料にする。Swift だけを見ていた頃は、同梱画像や
+    シェーダーを差し替えても `--check` が「最新」と答えていた（#505）。
+    """
     digest = hashlib.sha256()
     for path in source_files(package_dir):
         digest.update(path.relative_to(package_dir).as_posix().encode("utf-8"))

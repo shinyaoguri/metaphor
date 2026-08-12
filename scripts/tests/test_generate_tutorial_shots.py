@@ -110,14 +110,42 @@ class TestStaleness(ShotsTestCase):
         with self.assertRaises(gen.ShotError):
             gen.check(["99-Missing/99-Missing"], {})
 
-    def test_build_products_do_not_change_the_hash(self) -> None:
-        # .build は gitignore 済みで、あるかないかで撮り直しが要るとは言えない。
+    def test_stale_when_resource_changed(self) -> None:
+        # 画像・シェーダー・データファイルを差し替えても絵は変わる（#505）。
+        package_dir = self.add_package()
+        resource = package_dir / "Section/Resources/sample.png"
+        resource.parent.mkdir(parents=True)
+        resource.write_bytes(b"\x89PNG\r\n\x1a\nbefore")
+        self.add_image()
+        recorded = self.record()
+        resource.write_bytes(b"\x89PNG\r\n\x1a\nafter")
+        self.assertEqual(len(gen.check([REF], recorded)), 1)
+
+    def test_stale_when_manifest_changed(self) -> None:
+        # Package.swift の依存・リソース宣言の変更も絵を変えうる。
+        package_dir = self.add_package()
+        self.add_image()
+        recorded = self.record()
+        (package_dir / "Package.swift").write_text(
+            "// swift-tools-version: 5.10\n// resources 宣言を追加\n"
+        )
+        self.assertEqual(len(gen.check([REF], recorded)), 1)
+
+    def test_generated_directories_do_not_change_the_hash(self) -> None:
+        # .build / .swiftpm / .metaphor は gitignore 済みの生成物で、
+        # あるかないかで撮り直しが要るとは言えない。
         package_dir = self.add_package()
         self.add_image()
         before = gen.source_hash(package_dir)
-        checkout = package_dir / ".build/checkouts/dep"
-        checkout.mkdir(parents=True)
-        (checkout / "Dep.swift").write_text("import Foundation\n")
+        for relative, name, body in (
+            (".build/checkouts/dep", "Dep.swift", "import Foundation\n"),
+            (".swiftpm/xcode", "settings.json", "{}\n"),
+            (".metaphor/probe/current", "frame.json", "{}\n"),
+        ):
+            directory = package_dir / relative
+            directory.mkdir(parents=True)
+            (directory / name).write_text(body)
+        (package_dir / ".DS_Store").write_bytes(b"\x00\x00\x00\x01Bud1")
         self.assertEqual(gen.source_hash(package_dir), before)
 
 
