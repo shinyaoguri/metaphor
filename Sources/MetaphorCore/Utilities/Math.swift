@@ -463,6 +463,30 @@ public func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Floa
                    (-a + 3 * b - 3 * c + d) * t3)
 }
 
+/// `curveTightness` を反映した Catmull-Rom スプライン上の点を評価します。
+///
+/// Processing の `curveInit()` と同じ基底行列を使います。`tightness` は基底そのものを
+/// 変える係数で、直線との線形ブレンドではありません。`tightness == 0` のときは
+/// ``curvePoint(_:_:_:_:_:)`` と一致し、`tightness` の値によらず `t = 0` で `b`、
+/// `t = 1` で `c` を通ります。
+///
+/// - Parameters:
+///   - a: 1番目の制御点。
+///   - b: 2番目の制御点（`t = 0` でこの点を通過）。
+///   - c: 3番目の制御点（`t = 1` でこの点を通過）。
+///   - d: 4番目の制御点。
+///   - s: タイトネス（0 が標準 Catmull-Rom）。
+///   - t: スプライン上のパラメータ。通常 [0, 1] の範囲。
+/// - Returns: パラメータ `t` におけるスプライン上の値。
+func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, tightness s: Float, _ t: Float) -> Float {
+    let t2 = t * t
+    let t3 = t2 * t
+    let k3 = (s - 1) / 2 * a + (s + 3) / 2 * b + (-3 - s) / 2 * c + (1 - s) / 2 * d
+    let k2 = (1 - s) * a + (-5 - s) / 2 * b + (s + 2) * c + (s - 1) / 2 * d
+    let k1 = (s - 1) / 2 * a + (1 - s) / 2 * c
+    return k3 * t3 + k2 * t2 + k1 * t + b
+}
+
 /// 指定されたパラメータにおける Catmull-Rom スプラインの接線を評価します。
 ///
 /// - Parameters:
