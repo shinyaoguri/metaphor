@@ -261,6 +261,8 @@ extension SketchContext {
     }
 
     /// グレースケール値でスペキュラーハイライトの色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     /// - Parameter gray: グレースケールの強度。
     public func specular(_ gray: Float) {
         canvas3D.specular(gray)
@@ -279,6 +281,8 @@ extension SketchContext {
     }
 
     /// グレースケール値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     /// - Parameter gray: グレースケールの強度。
     public func emissive(_ gray: Float) {
         canvas3D.emissive(gray)

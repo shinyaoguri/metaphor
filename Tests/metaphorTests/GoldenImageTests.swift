@@ -200,6 +200,12 @@ struct GoldenImageTests {
     /// もとは `0.35`（= 0.35/255 ≒ 実質 0）で、環境光の退行をまったく検出できなかった
     /// （Issue #392）。レンジの 35% = `90` に直したことで、光が当たらない面の明るさが
     /// ゴールデンに写り、ambient が消える／変わる退行を捉えられる。
+    ///
+    /// `specular` も同じく colorMode 基準（#527 でグレー値が素通しだったのを直した）。
+    /// もとは `0.9` と書かれていて、素通しだったため偶然ほぼ同じ値
+    /// （`230/255 ≒ 0.902`）で描かれていた。そのため単位を直してもゴールデンは変わらない。
+    /// なお **`shininess(48)` のハイライトはこのシーンの可視面にほとんど乗っていない**ため、
+    /// 鏡面の強さを変えても絵が動かない（＝鏡面の退行はまだ捉えられていない）。#535。
     @Test("ゴールデン: 3D ライティング（Blinn-Phong）")
     func lightingBlinnPhong() throws {
         try verifyScene("lighting-blinn-phong", tolerance: .shaded) { c in
@@ -209,7 +215,7 @@ struct GoldenImageTests {
             // 可視面がほぼ環境光だけになり、ゴールデンの識別力が落ちる。
             c.ambientLight(90)  // colorMode 基準（既定 0〜255）= レンジの約 35%
             c.directionalLight(-0.4, -0.5, -1)
-            c.specular(0.9)
+            c.specular(230)  // colorMode 基準（既定 0〜255）= レンジの 90%
             c.shininess(48)
             c.fill(Color(r: 0.85, g: 0.55, b: 0.25))
             c.pushMatrix()

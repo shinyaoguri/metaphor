@@ -249,6 +249,8 @@ extension Sketch {
 
     /// グレースケール値でスペキュラーハイライトの色を設定します。
     ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
     /// - Parameter gray: グレースケールの明るさ。
     public func specular(_ gray: Float) {
         context.specular(gray)
@@ -269,6 +271,8 @@ extension Sketch {
     }
 
     /// グレースケール値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     ///
     /// - Parameter gray: グレースケールの明るさ。
     public func emissive(_ gray: Float) {
