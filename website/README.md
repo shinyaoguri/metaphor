@@ -30,7 +30,7 @@ npm run preview  # dist/ をそのまま配信して確認する
 
 数字 2 桁のプレフィックスをパターンで要求しているので、章立ての設計文書である `docs/tutorial/README.md` と画像置き場 `docs/tutorial/images/` は自動的に公開対象から外れます。サイト側の目次（サイドバーと `/tutorial/`）が README の章立てを置き換えます。
 
-#### website の外を読むときは docs.yml の paths も見る
+### website の外を読むときは docs.yml の paths も見る
 
 `docs.yml` は `on.push.paths` で起動を絞っているので、**website の外にあるビルド入力はそこにも並んでいないと反映されません**。`docs/tutorial/**` が抜けていたため、本文だけを変えた push でサイトが更新されない状態でした（[#554](https://github.com/shinyaoguri/metaphor/issues/554)）。ビルドは緑のまま公開サイトだけが古くなるので、気付く手掛かりがありません。
 
