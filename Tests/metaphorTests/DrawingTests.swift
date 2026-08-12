@@ -180,6 +180,128 @@ struct CurveVertexTests {
     }
 }
 
+// MARK: - curve() Tests (#538)
+
+@Suite("curve", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct CurveTests {
+
+    /// p0/p3 を制御ハンドルに、p1 → p2 を描く 4 点。
+    private let pts: [(Float, Float)] = [(0, 50), (20, 20), (80, 80), (100, 50)]
+
+    private func makeCanvas() throws -> Canvas2D {
+        let device = MTLCreateSystemDefaultDevice()!
+        return try Canvas2D(
+            device: device,
+            shaderLibrary: ShaderLibrary(device: device),
+            depthStencilCache: DepthStencilCache(device: device),
+            width: 640,
+            height: 360
+        )
+    }
+
+    /// `curve()` が描く経路の頂点列を返します。
+    private func path(
+        _ canvas: Canvas2D, tightness: Float? = nil, detail: Int? = nil
+    ) -> [(x: Float, y: Float)] {
+        if let tightness { canvas.curveTightness(tightness) }
+        if let detail { canvas.curveDetail(detail) }
+        return canvas.curveSegmentPoints(
+            pts[0].0, pts[0].1, pts[1].0, pts[1].1, pts[2].0, pts[2].1, pts[3].0, pts[3].1)
+    }
+
+    @Test("既定の tightness では標準 Catmull-Rom（curvePoint）と一致する")
+    func matchesStandardCatmullRom() throws {
+        let canvas = try makeCanvas()
+        let detail = 8
+        let verts = path(canvas, detail: detail)
+
+        #expect(verts.count == detail + 1)
+        for step in 1...detail {
+            let t = Float(step) / Float(detail)
+            let ex = curvePoint(pts[0].0, pts[1].0, pts[2].0, pts[3].0, t)
+            let ey = curvePoint(pts[0].1, pts[1].1, pts[2].1, pts[3].1, t)
+            #expect(abs(verts[step].x - ex) < 0.001)
+            #expect(abs(verts[step].y - ey) < 0.001)
+        }
+    }
+
+    @Test("curveTightness が経路を変える")
+    func tightnessChangesPath() throws {
+        let loose = path(try makeCanvas(), tightness: -2, detail: 12)
+        let normal = path(try makeCanvas(), tightness: 0, detail: 12)
+        let tight = path(try makeCanvas(), tightness: 0.8, detail: 12)
+
+        // 制御点が対称な配置だと t = 0.5 の 1 点だけは tightness に依らず同じ位置に来るため、
+        // 中央の頂点ではなく経路全体の最大ずれで比較する
+        func maxDiff(_ a: [(x: Float, y: Float)], _ b: [(x: Float, y: Float)]) -> Float {
+            zip(a, b).map { max(abs($0.x - $1.x), abs($0.y - $1.y)) }.max() ?? 0
+        }
+        #expect(maxDiff(loose, normal) > 0.5)
+        #expect(maxDiff(tight, normal) > 0.5)
+    }
+
+    @Test("tightness = 1 では 2 点を結ぶ直線の経路になる")
+    func tightnessOneIsStraight() throws {
+        let verts = path(try makeCanvas(), tightness: 1, detail: 16)
+
+        // p1 → p2 の線分からの距離が 0（媒介変数の進み方は等速でなくてよい）
+        let (ax, ay) = pts[1]
+        let (bx, by) = pts[2]
+        let len = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+        for v in verts {
+            let cross = (bx - ax) * (v.y - ay) - (by - ay) * (v.x - ax)
+            #expect(abs(cross) / len < 0.001)
+        }
+    }
+
+    @Test("tightness を変えても端点は制御点に固定される", arguments: [Float(-5), -1, 0, 1, 5])
+    func tightnessKeepsEndpoints(_ tightness: Float) throws {
+        let verts = path(try makeCanvas(), tightness: tightness, detail: 12)
+
+        let first = try #require(verts.first)
+        let last = try #require(verts.last)
+        #expect(abs(first.x - pts[1].0) < 0.001)
+        #expect(abs(first.y - pts[1].1) < 0.001)
+        #expect(abs(last.x - pts[2].0) < 0.001)
+        #expect(abs(last.y - pts[2].1) < 0.001)
+    }
+
+    @Test("画面の経路と SVG 書き出しが一致する", arguments: [Float(0), 0.5, -1])
+    func matchesSVGOutput(_ tightness: Float) throws {
+        let canvas = try makeCanvas()
+        let recorder = SVGRecorder(
+            width: canvas.width, height: canvas.height, outputPath: "/dev/null")
+        canvas.svgRecorder = recorder
+        canvas.hasStroke = true
+        canvas.curveTightness(tightness)
+        canvas.curveDetail(10)
+        canvas.curve(
+            pts[0].0, pts[0].1, pts[1].0, pts[1].1, pts[2].0, pts[2].1, pts[3].0, pts[3].1)
+
+        // SVG は同じ区間を cubic bezier 1 本で書き出す（M x y C c1x c1y c2x c2y x y）
+        let n = try pathNumbers(recorder.svgString())
+        #expect(n.count == 8)
+
+        let verts = path(canvas)
+        for (i, v) in verts.enumerated() {
+            let t = Float(i) / Float(verts.count - 1)
+            #expect(abs(bezierPoint(n[0], n[2], n[4], n[6], t) - v.x) < 0.01)
+            #expect(abs(bezierPoint(n[1], n[3], n[5], n[7], t) - v.y) < 0.01)
+        }
+    }
+
+    /// SVG 文字列の最初の `<path d="...">` から数値を出現順に取り出します。
+    private func pathNumbers(_ svg: String) throws -> [Float] {
+        let head = try #require(svg.range(of: "<path d=\""))
+        let rest = svg[head.upperBound...]
+        let tail = try #require(rest.range(of: "\""))
+        return rest[..<tail.lowerBound]
+            .split(whereSeparator: { !"0123456789.-".contains($0) })
+            .compactMap { Float($0) }
+    }
+}
+
 // MARK: - Canvas2D GPU Tests
 
 @Suite("Canvas2D", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
