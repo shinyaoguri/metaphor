@@ -82,6 +82,104 @@ struct BeginShapeTests {
     }
 }
 
+// MARK: - curveVertex Tests (#503)
+
+@Suite("curveVertex", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct CurveVertexTests {
+
+    private func makeCanvas() throws -> Canvas2D {
+        let device = MTLCreateSystemDefaultDevice()!
+        return try Canvas2D(
+            device: device,
+            shaderLibrary: ShaderLibrary(device: device),
+            depthStencilCache: DepthStencilCache(device: device),
+            width: 640,
+            height: 360
+        )
+    }
+
+    /// 4 点の curveVertex を記録し、展開後の頂点列を返します。
+    private func expand(
+        _ canvas: Canvas2D, _ points: [(Float, Float)], tightness: Float? = nil, detail: Int? = nil
+    ) -> [(Float, Float)] {
+        if let tightness { canvas.curveTightness(tightness) }
+        if let detail { canvas.curveDetail(detail) }
+        canvas.beginShape()
+        for p in points { canvas.curveVertex(p.0, p.1) }
+        return canvas.expandShapeVerticesEx().map { ($0.x, $0.y) }
+    }
+
+    @Test("曲線は制御点 p1 から始まり p2 で終わる")
+    func passesThroughControlPoints() throws {
+        let canvas = try makeCanvas()
+        let verts = expand(canvas, [(0, 50), (20, 20), (80, 80), (100, 50)], detail: 20)
+
+        let first = try #require(verts.first)
+        let last = try #require(verts.last)
+        #expect(abs(first.0 - 20) < 0.001)
+        #expect(abs(first.1 - 20) < 0.001)
+        #expect(abs(last.0 - 80) < 0.001)
+        #expect(abs(last.1 - 80) < 0.001)
+    }
+
+    @Test("既定の tightness では標準 Catmull-Rom（curvePoint）と一致する")
+    func matchesStandardCatmullRom() throws {
+        let canvas = try makeCanvas()
+        let pts: [(Float, Float)] = [(0, 50), (20, 20), (80, 80), (100, 50)]
+        let detail = 8
+        let verts = expand(canvas, pts, detail: detail)
+
+        // verts[0] は始点 p1。以降 detail 個が t = 1/detail ... 1 に対応する
+        #expect(verts.count == detail + 1)
+        for step in 1...detail {
+            let t = Float(step) / Float(detail)
+            let ex = curvePoint(pts[0].0, pts[1].0, pts[2].0, pts[3].0, t)
+            let ey = curvePoint(pts[0].1, pts[1].1, pts[2].1, pts[3].1, t)
+            #expect(abs(verts[step].0 - ex) < 0.001)
+            #expect(abs(verts[step].1 - ey) < 0.001)
+        }
+    }
+
+    @Test("tightness を変えても端点は制御点に固定される", arguments: [Float(-5), -1, 0, 1, 5])
+    func tightnessKeepsEndpoints(_ tightness: Float) throws {
+        let canvas = try makeCanvas()
+        let verts = expand(canvas, [(0, 50), (20, 20), (80, 80), (100, 50)], tightness: tightness, detail: 12)
+
+        let first = try #require(verts.first)
+        let last = try #require(verts.last)
+        #expect(abs(first.0 - 20) < 0.001)
+        #expect(abs(first.1 - 20) < 0.001)
+        #expect(abs(last.0 - 80) < 0.001)
+        #expect(abs(last.1 - 80) < 0.001)
+    }
+
+    @Test("円周上に打った点は円の内側に収まる（拡大・平行移動しない）")
+    func staysOnCircle() throws {
+        let canvas = try makeCanvas()
+        let cx: Float = 320, cy: Float = 180, r: Float = 100
+        var pts: [(Float, Float)] = []
+        for i in -1...74 {
+            let a = Float(i) / 72 * TWO_PI
+            pts.append((cx + cos(a) * r, cy + sin(a) * r))
+        }
+        let verts = expand(canvas, pts, detail: 20)
+
+        #expect(!verts.isEmpty)
+        for v in verts {
+            let d = sqrt((v.0 - cx) * (v.0 - cx) + (v.1 - cy) * (v.1 - cy))
+            // Catmull-Rom は円を厳密には再現しないが、半径のずれは 1% 未満に収まる
+            #expect(abs(d - r) < r * 0.01)
+        }
+    }
+
+    @Test("curveVertex が 4 点未満なら何も展開しない")
+    func tooFewPoints() throws {
+        let canvas = try makeCanvas()
+        #expect(expand(canvas, [(0, 0), (10, 10), (20, 0)]).isEmpty)
+    }
+}
+
 // MARK: - Canvas2D GPU Tests
 
 @Suite("Canvas2D", .enabled(if: MTLCreateSystemDefaultDevice() != nil))

@@ -434,19 +434,23 @@ final class CustomShapes: Sketch {
 
 `.triangleStrip` は帯やリボン、`.triangleFan` は円盤状の形を少ない頂点数で作れます。
 
-### いまできないこと
+### 頂点そのものを通る曲線
 
-頂点そのものを通る滑らかな曲線を引く `curveVertex(...)`（Catmull-Rom スプライン）は、現状では**指定した点を通りません**。展開式の係数が二重に効いてしまい、形が拡大して位置もずれます（[#503](https://github.com/shinyaoguri/metaphor/issues/503)）。曲線が要る場面では、上のように `bezierVertex(...)` で組み立てます。
+`bezierVertex(...)` は制御点を自分で置くぶん狙った形にできますが、「打った点を順に通ってほしい」だけなら `curveVertex(...)`（Catmull-Rom スプライン）が近道です。通したい点を並べるだけで、間を滑らかにつないでくれます。
+
+最初と最後の点は曲線の向きを決めるためだけに使われ、実際に描かれるのは 2 番目から最後から 2 番目までの区間です。張りは `curveTightness(...)` で変えられ、`0` が既定、`1` にすると点と点を直線で結んだ形になります。
 
 ### 試してみる
 
 - 星の内側の半径 `26` を `56` に近づけると、形はどうなりますか
 - `bezierVertex` の制御点を到達点に近づけると、曲線はどうなりますか
 - 穴の頂点の順序を逆にすると、穴は開いたままですか
+- 星の `vertex` を `curveVertex` に変えると、尖った角はどうなりますか（最初と最後の点は制御点として消費されることに注意）
 
 ### もっと詳しく
 
 - [`ShapeMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/shapemode/), [`CloseMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/closemode/)
+- [`Sketch`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/) — `curveVertex` / `curveTightness` / `curveDetail`
 - [`Basics/Form/Star`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Form/Star), [`Topics/Create Shapes/BeginEndContour`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Create%20Shapes/BeginEndContour)
 
 ## 2.5 変換と push / pop

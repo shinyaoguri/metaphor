@@ -212,7 +212,7 @@ extension Canvas2D {
                 }
             }
             if curvePoints.count >= 4 {
-                let s = (1 - curveTightnessValue) / 2
+                let s = curveTightnessValue
                 for i in 1..<(curvePoints.count - 2) {
                     let p0 = curvePoints[i - 1]
                     let p1 = curvePoints[i]
@@ -221,18 +221,8 @@ extension Canvas2D {
                     if i == 1 { result.append(ExpandedVertex(x: p1.0, y: p1.1)) }
                     for step in 1...curveDetailCount {
                         let t = Float(step) / Float(curveDetailCount)
-                        let t2 = t * t
-                        let t3 = t2 * t
-                        let x = s * ((-p0.0 + 3 * p1.0 - 3 * p2.0 + p3.0) * t3
-                                    + (2 * p0.0 - 5 * p1.0 + 4 * p2.0 - p3.0) * t2
-                                    + (-p0.0 + p2.0) * t
-                                    + 2 * p1.0) / 1.0
-                            + (1 - s) * curvePointLinear(p1.0, p2.0, t)
-                        let y = s * ((-p0.1 + 3 * p1.1 - 3 * p2.1 + p3.1) * t3
-                                    + (2 * p0.1 - 5 * p1.1 + 4 * p2.1 - p3.1) * t2
-                                    + (-p0.1 + p2.1) * t
-                                    + 2 * p1.1) / 1.0
-                            + (1 - s) * curvePointLinear(p1.1, p2.1, t)
+                        let x = curvePoint(p0.0, p1.0, p2.0, p3.0, tightness: s, t)
+                        let y = curvePoint(p0.1, p1.1, p2.1, p3.1, tightness: s, t)
                         result.append(ExpandedVertex(x: x, y: y))
                     }
                 }
@@ -266,10 +256,6 @@ extension Canvas2D {
             }
         }
         return result
-    }
-
-    private func curvePointLinear(_ a: Float, _ b: Float, _ t: Float) -> Float {
-        a + (b - a) * t
     }
 
     // MARK: - プライベート: シェイプテッセレーション
