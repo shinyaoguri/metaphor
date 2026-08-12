@@ -1,0 +1,12 @@
+{
+  "comment": "動きが分からないと伝わらない節の設定（手で書く。撮影結果は manifest.json）。kind は webp（アニメーション WebP）か sheet（コンタクトシート）。規約は docs/tutorial/README.md の「実行結果の画像」。",
+  "sections": {
+    "03-Motion/03-Easing": {
+      "kind": "webp",
+      "frames": 64,
+      "every": 4,
+      "fps": 15,
+      "width": 720
+    }
+  }
+}

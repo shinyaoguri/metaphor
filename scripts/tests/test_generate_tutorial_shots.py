@@ -12,6 +12,7 @@ Run from the repository root:
 """
 
 import importlib.util
+import json
 import shutil
 import sys
 import tempfile
@@ -42,6 +43,7 @@ class ShotsTestCase(unittest.TestCase):
             ("IMAGES_DIR", self.images),
             ("CODE_DIR", self.code),
             ("MANIFEST", self.images / "manifest.json"),
+            ("MOTION_CONFIG", self.images / "motion.json"),
         ):
             original = getattr(gen, name)
             setattr(gen, name, value)
@@ -65,8 +67,22 @@ class ShotsTestCase(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"\x89PNG\r\n\x1a\n")
 
-    def record(self, ref: str = REF) -> dict:
-        return {ref: {"sourceHash": gen.source_hash(self.code / ref)}}
+    def record(self, ref: str = REF, motion: dict | None = None) -> dict:
+        entry = {"sourceHash": gen.source_hash(self.code / ref)}
+        if motion is not None:
+            entry["motion"] = motion
+        return {ref: entry}
+
+    def write_motion_config(self, sections: dict) -> None:
+        self.images.mkdir(parents=True, exist_ok=True)
+        (self.images / "motion.json").write_text(
+            json.dumps({"sections": sections}), encoding="utf-8"
+        )
+
+    def add_motion_file(self, ref: str = REF, kind: str = "webp") -> None:
+        path = gen.motion_path_for(ref, kind)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"RIFF____WEBP")
 
 
 class TestReferencedRefs(ShotsTestCase):
@@ -147,6 +163,155 @@ class TestStaleness(ShotsTestCase):
             (directory / name).write_text(body)
         (package_dir / ".DS_Store").write_bytes(b"\x00\x00\x00\x01Bud1")
         self.assertEqual(gen.source_hash(package_dir), before)
+
+
+class TestMotionConfig(ShotsTestCase):
+    """動きが要る節の設定（docs/tutorial/images/motion.json）の読み取り（#507）。"""
+
+    def test_missing_file_is_empty(self) -> None:
+        self.assertEqual(gen.load_motion_config(), {})
+
+    def test_defaults_fill_in(self) -> None:
+        self.write_motion_config({REF: {"kind": "webp"}})
+        config = gen.load_motion_config()[REF]
+        self.assertEqual(config["kind"], "webp")
+        self.assertEqual(config["frames"], gen.MOTION_DEFAULTS["frames"])
+        self.assertEqual(config["every"], gen.MOTION_DEFAULTS["every"])
+        self.assertIsNone(config["quality"])
+
+    def test_unknown_kind_is_an_error(self) -> None:
+        self.write_motion_config({REF: {"kind": "gif"}})
+        with self.assertRaises(gen.ShotError):
+            gen.load_motion_config()
+
+    def test_frames_above_the_probe_limit_is_an_error(self) -> None:
+        # Probe 側が 64 でクランプする（CONTRACT.md 契約点 4）。黙って丸めない。
+        self.write_motion_config({REF: {"kind": "webp", "frames": 128}})
+        with self.assertRaises(gen.ShotError):
+            gen.load_motion_config()
+
+    def test_single_frame_is_an_error(self) -> None:
+        self.write_motion_config({REF: {"kind": "webp", "frames": 1}})
+        with self.assertRaises(gen.ShotError):
+            gen.load_motion_config()
+
+    def test_non_integer_setting_is_an_error(self) -> None:
+        self.write_motion_config({REF: {"kind": "webp", "fps": "15"}})
+        with self.assertRaises(gen.ShotError):
+            gen.load_motion_config()
+
+
+class TestMotionStaleness(ShotsTestCase):
+    def settings(self, **overrides) -> dict:
+        base = {"kind": "webp", **gen.MOTION_DEFAULTS, "quality": None}
+        base.update(overrides)
+        return base
+
+    def test_fresh_when_settings_and_file_match(self) -> None:
+        self.add_package()
+        self.add_image()
+        self.add_motion_file()
+        motions = {REF: self.settings()}
+        recorded = self.record(motion={**self.settings(), "file": "02-Section.webp"})
+        self.assertEqual(gen.check([REF], recorded, motions), [])
+
+    def test_stale_when_motion_was_never_captured(self) -> None:
+        self.add_package()
+        self.add_image()
+        self.assertEqual(len(gen.check([REF], self.record(), {REF: self.settings()})), 1)
+
+    def test_stale_when_settings_changed(self) -> None:
+        self.add_package()
+        self.add_image()
+        self.add_motion_file()
+        recorded = self.record(motion=self.settings(fps=15))
+        stale = gen.check([REF], recorded, {REF: self.settings(fps=30)})
+        self.assertEqual(len(stale), 1)
+
+    def test_stale_when_motion_file_is_missing(self) -> None:
+        self.add_package()
+        self.add_image()
+        recorded = self.record(motion=self.settings())
+        self.assertEqual(len(gen.check([REF], recorded, {REF: self.settings()})), 1)
+
+    def test_stale_when_section_left_motion_config(self) -> None:
+        # 設定から外したのに証跡が manifest に残っている = 撮り直して片付ける。
+        self.add_package()
+        self.add_image()
+        self.add_motion_file()
+        recorded = self.record(motion=self.settings())
+        self.assertEqual(len(gen.check([REF], recorded, {})), 1)
+
+
+class TestWebPCommand(ShotsTestCase):
+    def test_frame_delay_comes_from_fps(self) -> None:
+        command = gen.webp_command([Path("a.png"), Path("b.png")], Path("out.webp"), 15, None)
+        self.assertIn("-d", command)
+        self.assertEqual(command[command.index("-d") + 1], "67")
+        # 品質指定が無ければ img2webp に lossy / lossless を選ばせる。
+        self.assertIn("-mixed", command)
+        self.assertNotIn("-lossy", command)
+
+    def test_quality_switches_to_lossy(self) -> None:
+        command = gen.webp_command([Path("a.png")], Path("out.webp"), 30, 70)
+        self.assertIn("-lossy", command)
+        self.assertEqual(command[command.index("-q") + 1], "70")
+        self.assertNotIn("-mixed", command)
+
+    def test_frames_keep_their_order_and_output_is_last(self) -> None:
+        frames = [Path(f"frame.{i:04d}.png") for i in range(3)]
+        command = gen.webp_command(frames, Path("out.webp"), 15, None)
+        positions = [command.index(str(path)) for path in frames]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(command[-2:], ["-o", "out.webp"])
+
+    def test_loops_forever(self) -> None:
+        command = gen.webp_command([Path("a.png")], Path("out.webp"), 15, None)
+        self.assertEqual(command[command.index("-loop") + 1], "0")
+
+
+class TestMotionPaths(ShotsTestCase):
+    def test_webp_sits_next_to_the_still(self) -> None:
+        self.assertEqual(
+            gen.motion_path_for(REF, "webp").name, "02-Section.webp"
+        )
+
+    def test_contact_sheet_is_suffixed(self) -> None:
+        self.assertEqual(
+            gen.motion_path_for(REF, "sheet").name, "02-Section.sheet.png"
+        )
+
+
+class TestSequenceReadiness(ShotsTestCase):
+    """CONTRACT.md 契約点 4 の完了規約（sequence.json が最後・id エコー）。"""
+
+    def write_manifest(self, sequence_dir: Path, payload: dict) -> None:
+        sequence_dir.mkdir(parents=True, exist_ok=True)
+        (sequence_dir / "sequence.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_none_until_the_manifest_appears(self) -> None:
+        self.assertIsNone(gen.sequence_manifest(self.root / "seq", "req-1"))
+
+    def test_ready_when_id_and_count_match(self) -> None:
+        seq = self.root / "seq"
+        self.write_manifest(seq, {"id": "req-1", "frameCount": 2, "frames": [{}, {}]})
+        self.assertIsNotNone(gen.sequence_manifest(seq, "req-1"))
+
+    def test_not_ready_for_a_previous_request(self) -> None:
+        seq = self.root / "seq"
+        self.write_manifest(seq, {"id": "older", "frameCount": 2, "frames": [{}, {}]})
+        self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
+
+    def test_not_ready_when_frames_are_short(self) -> None:
+        seq = self.root / "seq"
+        self.write_manifest(seq, {"id": "req-1", "frameCount": 4, "frames": [{}, {}]})
+        self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
+
+    def test_partial_write_is_not_ready(self) -> None:
+        seq = self.root / "seq"
+        seq.mkdir(parents=True)
+        (seq / "sequence.json").write_text('{"id": "req-1", "frame', encoding="utf-8")
+        self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
 
 
 if __name__ == "__main__":

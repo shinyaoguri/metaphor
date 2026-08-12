@@ -110,7 +110,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` | `make examples-index` |
 | `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` | `python3 scripts/generate-shader-sources.py` |
 | `docs/tutorial/*.md` の埋め込みコードブロック | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
-| `docs/tutorial/images/**` + `manifest.json` | `Examples/Tutorial/**` の実行結果, `scripts/generate-tutorial-shots.py` | `make tutorial-shots`（GPU が要るのでローカル専用） |
+| `docs/tutorial/images/**` + `manifest.json` | `Examples/Tutorial/**` の実行結果, `docs/tutorial/images/motion.json`, `scripts/generate-tutorial-shots.py` | `make tutorial-shots`（GPU が要るのでローカル専用） |
 
 - 生成器は**決定的**であること（全コレクションをソート）。非決定的出力は auto-fix bot が毎回 push する原因になります。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
