@@ -348,6 +348,24 @@
       "width": 640,
       "height": 360,
       "frame": 115
+    },
+    "08-Connect/01-OSC": {
+      "sourceHash": "c43fcc3e0d3698d510e5efb6ddce44607905995988f283621e012a9d4776fa5b",
+      "width": 640,
+      "height": 360,
+      "frame": 95
+    },
+    "08-Connect/03-Syphon": {
+      "sourceHash": "935a72385412b70b2f7b1cac1ca5efc579046cc61c29f98d7eff41f6be51cc4d",
+      "width": 1280,
+      "height": 720,
+      "frame": 1
+    },
+    "08-Connect/04-Parameters": {
+      "sourceHash": "ee625bd2508c5417f55cb181fab0999fc38973077ce9cfe0e82e8db8cbb93955",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     }
   }
 }

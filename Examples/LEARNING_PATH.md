@@ -138,6 +138,12 @@ Sending/receiving external control signals and outputting to other apps.
 
 - [Samples/OSCLoopback](Samples/OSCLoopback) — `OSCSender` / `OSCReceiver` round-tripping the mouse position.
 - [Samples/Syphon/SyphonOutput](Samples/Syphon/SyphonOutput) — publishing frames to other Syphon-compatible apps (VJ software, TouchDesigner, etc.).
+- [Samples/ParameterPanel](Samples/ParameterPanel) — `@Param` declarations driving both a live GUI panel and the `.metaphor/params/` file contract.
+
+MIDI has no sample outside the tutorial. Part 8 of the tutorial covers all four
+topics with a sketch each — `Examples/Tutorial/08-Connect/01-OSC` (loopback),
+`02-MIDI` (knobs and pads), `03-Syphon` (fixed-resolution output) and
+`04-Parameters` (`@Param` plus `gui.params()`).
 
 ## Where to go next
 
