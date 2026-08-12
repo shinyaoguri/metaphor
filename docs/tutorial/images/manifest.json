@@ -198,6 +198,30 @@
       "width": 640,
       "height": 360,
       "frame": 1
+    },
+    "04-Input/01-Mouse": {
+      "sourceHash": "3059474d73e6c5ff08a76d81d11baf25bf7e024839a187e54a3b55429548f98b",
+      "width": 640,
+      "height": 360,
+      "frame": 208
+    },
+    "04-Input/02-Keyboard": {
+      "sourceHash": "69baaf69b67c7a81f329f1954d8bab0024dc7d00d361757a580c84fcee4ee9fd",
+      "width": 640,
+      "height": 360,
+      "frame": 271
+    },
+    "04-Input/03-HitTesting": {
+      "sourceHash": "71dbeb4650789c951796c47a785529f609c468c893fad2730796dd421ba6aa39",
+      "width": 640,
+      "height": 360,
+      "frame": 178
+    },
+    "04-Input/04-Window": {
+      "sourceHash": "4c33e45e99afab4934f40d78f5d2d5663ae5f302fa12514d5c55e270f4f8b0ef",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     }
   }
 }
