@@ -124,11 +124,13 @@ you clicked Deny.
 - [ML/FaceDetection](ML/FaceDetection) — `CaptureDevice` → `MLTextureConverter` → Vision's `VNDetectFaceRectanglesRequest`.
 - [ML/PersonSegmentation](ML/PersonSegmentation) — the same pipeline feeding `VNGeneratePersonSegmentationRequest`.
 
-No example in this repository uses the microphone (`AudioAnalyzer` /
-`createAudioInput()`) yet; [`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli)'s
+For the microphone (`AudioAnalyzer` / `createAudioInput()`), the tutorial's
+part 7 has two sketches — `Examples/Tutorial/07-Media/01-AudioInput` (volume)
+and `02-Spectrum` (FFT and beat detection). To start a new sketch from a
+template instead, [`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli)'s
 `audio-reactive` project template (`metaphor new MySketch --template
-audio-reactive`) is the closest working starting point, and the same
-permission mechanics apply to it.
+audio-reactive`) wires the same API up for you; the permission mechanics above
+apply to it the same way.
 
 ## 9. Live performance: OSC, MIDI, Syphon
 
