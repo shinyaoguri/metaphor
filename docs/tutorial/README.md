@@ -17,7 +17,8 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 | 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 |
 | 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 |
 | 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 |
-| 第 6 部以降 | — | 未起票 |
+| 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 |
+| 第 7 部以降 | — | 起票済み（[#544](https://github.com/shinyaoguri/metaphor/issues/544)〜[#547](https://github.com/shinyaoguri/metaphor/issues/547)） |
 
 ## 対象読者と、他ドキュメントとの役割分担
 
@@ -307,6 +308,7 @@ make tutorial-shots ARGS="--force"                                    # 全部
 - **1 ファイル 500KB 以下**。超えるとスクリプトがエラーにします。`width` か `frames` を落としてください
 - 動きの証跡を撮る節のスケッチは、**乱数の種を固定し、時刻ではなく `frameCount` で動かします**。連続キャプチャは `noLoop()` と両立しないので、そうしないと撮るたびに絵が変わり、差分レビューがノイズだらけになります（`time` / `deltaTime` を教える 3.1 のような節は例外）
 - 撮り直しは指紋（スケッチ + `motion.json` の設定）が変わったときだけです。`--force` を付けない限り、無関係な PR で画像が差し替わることはありません
+- **例外**: `ParticleSystem`（GPU パーティクル、6.2）のように**時刻と `deltaTime` で駆動される仕組みは、原理的に同じ絵を再現できません**（放出の乱数が時刻から作られます）。この種の節は撮り直すたびに細部が変わります。撮り直し自体は指紋が変わったときだけなので差分の量は増えませんが、レビューでは「同じ絵か」ではなく「同じ性質の絵か」で見ます
 
 ### 入力が要る節（[#509](https://github.com/shinyaoguri/metaphor/issues/509)）
 
@@ -340,6 +342,23 @@ JSON Lines（[CONTRACT.md](../../CONTRACT.md) 契約点 3）を入力として�
   待ち時間は実時間なので、そうすれば実行環境のフレームレートに関係なく同じ位置に来ます
 - 台本はパッケージ配下なので指紋（`sourceHash`）に入ります。台本を書き換えれば `--check` が
   撮り直しを要求し、本文の埋め込み（`*.swift` だけを拾う）には現れません
+
+### 起動直後は絵が完成しない節（[#543](https://github.com/shinyaoguri/metaphor/issues/543)）
+
+撮影スクリプトはリクエストを**起動前**に置くので、静止画は 1 フレーム目です。ところが
+`compute()` で GPU に計算させた結果が `GPUBuffer` に届くのは**次のフレーム**なので、
+6.1 のような節は 1 フレーム目だと「まだ何も計算されていない絵」が撮れてしまいます。
+
+入力が要らなくても、`probe-input.jsonl` に**待つだけの行**を置けば解決します。台本がある節は
+下見の 1 枚を待ってから本番のリクエストを置く仕組みなので、そのぶん撮影が後ろへずれます。
+
+```text
+// 入力は要らない。GPU の計算結果が届くまで撮影を遅らせるための台本
+{"wait": 400}
+```
+
+`noLoop()` と両立しないのは入力の節と同じです（起動後に置いたリクエストを処理する機会が
+無いため）。
 
 ### API 名の表記とリンク
 
@@ -378,4 +397,4 @@ Examples の本数やバージョン番号のような、増減する数値を�
 - [#486](https://github.com/shinyaoguri/metaphor/issues/486) 画像基盤（Probe + 決定論レンダリング）
 - [#487](https://github.com/shinyaoguri/metaphor/issues/487) website のチュートリアル領域
 - [#488](https://github.com/shinyaoguri/metaphor/issues/488) 執筆パイロット（第 1 部・第 2 部）
-- [#508](https://github.com/shinyaoguri/metaphor/issues/508) 第 3 部 / [#509](https://github.com/shinyaoguri/metaphor/issues/509) 第 4 部 / [#526](https://github.com/shinyaoguri/metaphor/issues/526) 第 5 部
+- [#508](https://github.com/shinyaoguri/metaphor/issues/508) 第 3 部 / [#509](https://github.com/shinyaoguri/metaphor/issues/509) 第 4 部 / [#526](https://github.com/shinyaoguri/metaphor/issues/526) 第 5 部 / [#543](https://github.com/shinyaoguri/metaphor/issues/543) 第 6 部
