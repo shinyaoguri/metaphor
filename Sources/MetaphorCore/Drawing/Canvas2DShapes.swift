@@ -470,6 +470,7 @@ extension Canvas2D {
     /// 4点を通る Catmull-Rom スプライン曲線を描画します。
     ///
     /// 第2点から第3点の間に曲線が描画され、第1点と第4点は制御ハンドルとして使用されます。
+    /// 分割数は ``curveDetail(_:)``、曲線の張りは ``curveTightness(_:)`` に従います。
     /// - Parameters:
     ///   - x1: 第1制御点のx座標。
     ///   - y1: 第1制御点のy座標。
@@ -489,18 +490,39 @@ extension Canvas2D {
         svgRecorder?.recordCurve(
             p0: (x1, y1), p1: (x2, y2), p2: (x3, y3), p3: (x4, y4),
             tightness: curveTightnessValue, style: svgStyle())
+
+        let points = curveSegmentPoints(x1, y1, x2, y2, x3, y3, x4, y4)
+        for i in 1..<points.count {
+            strokeLine(points[i - 1].x, points[i - 1].y, points[i].x, points[i].y)
+        }
+    }
+
+    /// ``curve(_:_:_:_:_:_:_:_:)`` が描く折れ線の頂点列を返します（先頭は曲線の始点 `(x2, y2)`）。
+    ///
+    /// 描画は `strokeLine` を呼ぶだけで頂点列を残さないため、経路そのものを検証できるよう
+    /// 展開部分を切り出しています。`curveVertex` 側（``Canvas2D/expandShapeVerticesEx()``）と
+    /// 同じ tightness 対応の基底を使うので、両 API の形は一致します。
+    func curveSegmentPoints(
+        _ x1: Float, _ y1: Float,
+        _ x2: Float, _ y2: Float,
+        _ x3: Float, _ y3: Float,
+        _ x4: Float, _ y4: Float
+    ) -> [(x: Float, y: Float)] {
         let segments = curveDetailCount
-        var prevX = x2
-        var prevY = y2
+        let s = curveTightnessValue
+        var points: [(x: Float, y: Float)] = []
+        points.reserveCapacity(segments + 1)
+        points.append((x2, y2))
 
         for i in 1...segments {
             let t = Float(i) / Float(segments)
-            let px = curvePoint(x1, x2, x3, x4, t)
-            let py = curvePoint(y1, y2, y3, y4, t)
-            strokeLine(prevX, prevY, px, py)
-            prevX = px
-            prevY = py
+            points.append(
+                (
+                    curvePoint(x1, x2, x3, x4, tightness: s, t),
+                    curvePoint(y1, y2, y3, y4, tightness: s, t)
+                ))
         }
+        return points
     }
 
     /// 指定位置に小さな塗りつぶし円として点を描画します。
