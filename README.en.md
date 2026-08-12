@@ -100,52 +100,26 @@ final class MySketch: Sketch {
 }
 ```
 
-| Lifecycle | Called when |
+`setup()` runs once at startup and `draw()` runs every frame. Everything past that — the coordinate system, colors and strokes, transforms, motion, input — is covered in order by the tutorial below.
+
+## Tutorial
+
+[docs/tutorial/](docs/tutorial/) holds a guided tutorial that assumes no Processing background. Read it in the browser at **[metaphor Tutorial](https://shinyaoguri.github.io/metaphor/en/tutorial/)**. Every section is one self-contained sketch: the code in the text is embedded from the real packages under [`Examples/Tutorial/`](Examples/Tutorial/), and the rendered images come from those same sketches, so **the code on the page runs as printed**.
+
+**The prose is Japanese for now** (English is planned once the parts are complete — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)); the code, API names, and images are language-independent.
+
+| Part | What you learn |
 |---|---|
-| `setup()` | Once at startup |
-| `compute()` | Every frame, before `draw` (for GPU compute) |
-| `draw()` | Every frame |
-| `mousePressed()` / `mouseDragged()` / `mouseScrolled()`, etc. | Mouse events |
-| `keyPressed()` / `keyReleased()` | Keyboard events |
+| [Part 1 — Getting started](docs/tutorial/01-getting-started.md) | Sketch skeleton (`config` / `setup()` / `draw()`), canvas and coordinates, live editing with `metaphor watch`, `noLoop()` / `frameRate()` |
+| [Part 2 — Drawing in 2D](docs/tutorial/02-drawing-2d.md) | Shape primitives, color, stroke styling, custom shapes, transforms with `push` / `pop`, text, images, pixels, blend modes |
+| [Part 3 — Motion](docs/tutorial/03-motion.md) | Time, `map` / `lerp`, easing, trigonometry, randomness, noise, vectors, particles |
+| [Part 4 — Handling input](docs/tutorial/04-input.md) | Mouse, keyboard, hit testing and hand-rolled UI, windows |
 
-Use `noLoop()` to draw one frame and stop, `loop()` to resume, and `frameRate(n)` to specify FPS.
+Part 5 onward (3D, GPU, media, connecting to the outside, shipping a piece, making things with an AI) is being written under Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483). The full outline is in [docs/tutorial/README.md](docs/tutorial/README.md); until those parts land, use the reference documentation below and [Examples](#examples).
 
-### Common functions
+### Reference documentation
 
-```swift
-// --- 2D shapes
-circle(x, y, diameter)
-rect(x, y, w, h)
-line(x1, y1, x2, y2)
-triangle(x1, y1, x2, y2, x3, y3)
-arc(x, y, w, h, start, stop)
-text("hello", x, y)
-
-// --- 3D shapes
-box(size)
-sphere(radius)
-plane(w, h)
-cylinder(radius: 0.5, height: 1)
-torus(ringRadius: 0.5, tubeRadius: 0.2)
-
-// --- Style (color defaults to 0–255, same as Processing; can be changed with colorMode)
-background(r, g, b)
-fill(r, g, b);  fill(gray)
-stroke(r, g, b); strokeWeight(2)
-noFill();  noStroke()
-blendMode(.additive)
-
-// --- Transforms (push/pop for stack)
-push()
-translate(x, y);  translate(x, y, z)
-rotate(angle);    rotateX(a); rotateY(a); rotateZ(a)
-scale(s)
-pop()
-
-// --- State / Utilities
-mouseX, mouseY, frameCount, deltaTime, width, height
-random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
-```
+The tutorial is meant to be read in order. To look up individual APIs, use these instead.
 
 The full API is in [`llms.txt`](llms.txt). To browse types and methods, see the **[API reference (DocC)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)** ([project site](https://shinyaoguri.github.io/metaphor/)). When hunting for "the Processing equivalent of X," [Examples](#examples) has quick answers.
 
