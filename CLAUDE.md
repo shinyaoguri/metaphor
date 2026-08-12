@@ -98,6 +98,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 ## 規約
 
 - Swift Testing フレームワーク（`@Suite`, `@Test`）を使う。XCTest は使わない。
+- **DocC に載せる画像は Gyazo へ上げて外部 URL で参照する**（`![alt](https://i.gyazo.com/<hash>.png)`）。`.docc/Resources/` に画像を置かない（[ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)。DocC は WebP を無言で落とすため動きは GIF、ダーク/Retina の出し分けは効かない）。チュートリアル `docs/tutorial/` の画像はリポジトリ内・アニメーション WebP のまま（#511）。
 - 新しい example は既存のレイアウト `Examples/{Category}/{Subcategory}/{Name}/` に従い、各々が自己完結した SwiftPM パッケージ（[Examples/README.md](Examples/README.md) 参照）。追加後は `make examples-index` で索引を再生成。
 
 ## ブランチ運用（GitHub Flow）
