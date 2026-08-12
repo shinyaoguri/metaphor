@@ -67,6 +67,14 @@ body {
   margin-top: 1.25em;
 }
 
+/* 本文の Markdown は GitHub 上でも単体で読めることが要件なので、各部のファイルは
+   自分の見出し（`# 第 N 部 …`）を持つ。サイト側は同じ見出しを frontmatter の
+   `title` から大きく描いているため、本文側の h1 は重複になる — 隠す。
+   ページの h1 は TutorialArticle.astro が 1 つだけ出す。 */
+.tutorial-prose h1 {
+  display: none;
+}
+
 .tutorial-prose h2 {
   font-family: var(--font-display);
   font-size: 1.75rem;
