@@ -11,7 +11,9 @@ description: 図形・色・線・変換・テキスト・画像といった 2D 
 
 読み終えると、頭の中にある構図を「どの関数をどの順に呼べばよいか」に翻訳できるようになります。第 3 部でこれらを時間の関数として動かします。
 
-第 1 部を読んでいることを前提とします。特に「原点は左上、`y` は下向き」「スタイルは変えるまで残る」の 2 つは、この部の全体を通して効いてきます。
+## この部の前提
+
+第 1 部を読んでいることを前提とします。特に 1.3 の「スタイルは変えるまで以降の描画すべてに残る」と 1.4 の「原点は左上、`y` は下向き」の 2 つは、この部の全体を通して効いてきます。
 
 ## 2.1 図形プリミティブ
 
@@ -103,6 +105,13 @@ final class ShapePrimitives: Sketch {
 - `circle` の 3 番目の引数を `rect` の幅と同じ数にすると、大きさはどう見えますか
 - `rectMode(.center)` を `draw()` の先頭で呼ぶと、矩形はどこへ動きますか
 - `arc` の `.pie` を `.chord` や `.open` に変えると、閉じ方はどう変わりますか
+
+### ふりかえり
+
+- [ ] 円は中心と直径、矩形は既定で左上と幅・高さ、と引数の意味を区別できるようになった
+- [ ] 角度がラジアンで、`radians()` / `PI` / `TWO_PI` で扱えると分かった
+- [ ] `rectMode` / `ellipseMode` で `x, y` の解釈を変えられるようになった
+- [ ] モード系の指定も他のスタイルと同じく、変えるまで以降に効き続けると分かった
 
 ### もっと詳しく
 
@@ -211,6 +220,14 @@ fill(242, 89, 38)                                // 0〜255（既定の colorMod
 - 3 段目の彩度 `80` を `20` にすると、帯の見え方はどう変わりますか
 - `lerpColor` に渡す 2 色を入れ替えると、グラデーションの向きはどうなりますか
 
+### ふりかえり
+
+- [ ] `background()` / `fill()` / `stroke()` と、`noFill()` / `noStroke()` を使い分けられるようになった
+- [ ] 引数の数でグレースケール・RGB・アルファの解釈が変わると分かった
+- [ ] `colorMode(.hsb, ...)` で色相から色を作り、使い終わったら戻せるようになった
+- [ ] `Color` 型の成分が `colorMode` と無関係につねに 0〜1 だと分かった
+- [ ] `lerpColor()` で 2 色の間を補間できるようになった
+
 ### もっと詳しく
 
 - [`Color`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/color/), [`ColorSpace`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/colorspace/), [`ColorModeConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/colormodeconfig/)
@@ -291,6 +308,12 @@ final class Stroke: Sketch {
 - `strokeWeight(20)` を `strokeWeight(4)` にすると、3 つのキャップの違いは見えますか
 - `.miter` の折れ線の角度を鋭くしていくと、角の尖り方はどうなりますか
 - `noFill()` を消すと、折れ線はどう変わりますか
+
+### ふりかえり
+
+- [ ] `strokeWeight()` / `strokeCap()` / `strokeJoin()` の 3 つで線の表情を変えられるようになった
+- [ ] `.square` と `.butt` の違いが「端点より半径分だけ伸ばすかどうか」だと分かった
+- [ ] 角の処理（ジョイン）は `line()` を並べただけでは効かず、ひとつながりの折れ線が要ると分かった
 
 ### もっと詳しく
 
@@ -447,6 +470,14 @@ final class CustomShapes: Sketch {
 - 穴の頂点の順序を逆にすると、穴は開いたままですか
 - 星の `vertex` を `curveVertex` に変えると、尖った角はどうなりますか（最初と最後の点は制御点として消費されることに注意）
 
+### ふりかえり
+
+- [ ] `beginShape()` / `vertex()` / `endShape()` で組み込みに無い形を作れるようになった
+- [ ] `bezierVertex()` が「直前の頂点から、2 つの制御点を経て、指定の点まで」だと分かった
+- [ ] 穴をあけるには `beginContour()` の中を外周と逆回りに打つ、と覚えた
+- [ ] 同じ頂点列でも `beginShape()` のモードで解釈が変わると分かった
+- [ ] 打った点を通したいだけなら `curveVertex()` が近道だと分かった
+
 ### もっと詳しく
 
 - [`ShapeMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/shapemode/), [`CloseMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/closemode/)
@@ -564,6 +595,14 @@ final class Transform: Sketch {
 - `rotate()` と `translate()` の順序を入れ替えると、四角形はどこへ行きますか
 - `scale(1.6, 0.8)` の後に円を描くと、円はどんな形になりますか
 
+### ふりかえり
+
+- [ ] 図形の座標を計算し直す代わりに、座標系のほうを動かして描けるようになった
+- [ ] `rotate()` と `scale()` がつねに原点まわりに効くと分かった
+- [ ] 中央で回すには `translate()` してから `rotate()` し、図形は原点まわりの座標で描くと覚えた
+- [ ] `push()` / `pop()` で変換とスタイルを囲って戻せるようになった
+- [ ] 入れ子にすると「親に対する子の位置」だけで組み立てられると分かった
+
 ### もっと詳しく
 
 - [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — `translate` / `rotate` / `scale` / `push` / `pop`
@@ -652,6 +691,13 @@ final class Repetition: Sketch {
 - `columns` と `rows` を 2 倍にすると、模様の印象はどう変わりますか
 - 回転角の式 `(u + v) * PI * 0.5` を `u * PI` にすると、模様はどう変わりますか
 - `rect` を `circle` に替えると、格子の見え方はどうなりますか
+
+### ふりかえり
+
+- [ ] 入れ子のループでグリッドをたどり、マスの中心を求められるようになった
+- [ ] マスごとに `push()` / `pop()` で囲むと、原点をマスの中心として描けると分かった
+- [ ] 位置を 0〜1 に正規化してから色や角度に配ると、密度を変えても模様が保たれると分かった
+- [ ] 密度を決める数値をプロパティに出しておくと、1 か所で試せると分かった
 
 ### もっと詳しく
 
@@ -771,6 +817,14 @@ final class Text2D: Sketch {
 - `textSize(40)` の文字にベースラインの線を引くと、線はどこを通りますか
 - `textFont("Courier")` の後に `textFont(...)` を書かずに文字を描くと、書体はどうなりますか
 
+### ふりかえり
+
+- [ ] `text()` / `textSize()` / `fill()` で文字を描けるようになった
+- [ ] 既定の `x, y` が図形と違い「ベースラインの左端」だと分かった
+- [ ] `textAlign()` で水平・垂直の基準を変えられ、これも以降に効き続けると分かった
+- [ ] 文字も図形と同じく `translate()` / `rotate()` の影響を受けると分かった
+- [ ] フォントファイルの読み込みや字形の取り出しはまだできないと分かった
+
 ### もっと詳しく
 
 - [`TextAlignH`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/textalignh/), [`TextAlignV`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/textalignv/)
@@ -866,6 +920,14 @@ final class Images: Sketch {
 - `tint(120, 200, 255)` の 3 つの数を 255 に近づけると、色の付き方はどうなりますか
 - `imageMode(.corner)` へ戻す行を消すと、最後の画像はどこへ動きますか
 - `image()` の幅・高さを元の縦横比と違う値にすると、絵はどう歪みますか
+
+### ふりかえり
+
+- [ ] 画像の読み込みは `setup()` で一度だけ行い、`draw()` では描くだけにすると覚えた
+- [ ] `Bundle.module` と `resources:` で、同梱した画像のパスを解決できるようになった
+- [ ] `image()` の引数の数で、元の大きさのままか指定した寸法かが決まると分かった
+- [ ] `tint()` が画像に色を掛ける指定で、白がそのまま・`noTint()` で解除だと分かった
+- [ ] 読み込みは失敗しうるので `guard` で受けて落とさない書き方を覚えた
 
 ### もっと詳しく
 
@@ -966,6 +1028,13 @@ final class Pixels: Sketch {
 - 加工する範囲を右半分から全体に広げると、描画にかかる時間はどうなりますか
 - `updatePixels()` を消すと、画面はどうなりますか
 
+### ふりかえり
+
+- [ ] `loadPixels()` → `pixels` の書き換え → `updatePixels()` の順序を覚えた
+- [ ] `(x, y)` からの添字が `y * 幅 + x` で、1 要素が BGRA を詰めた `UInt32` だと分かった
+- [ ] `loadPixels()` を `draw()` の途中で呼べば「描いてから加工する」順で書けると分かった
+- [ ] この経路が GPU の完了待ちと常駐メモリという代償を伴うと分かった
+
 ### もっと詳しく
 
 - [`loadPixels()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/loadpixels%28%29), [`updatePixels()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/updatepixels%28%29)
@@ -1048,6 +1117,13 @@ final class BlendModes: Sketch {
 - `background(40)` を `background(220)` にすると、4 つの見え方はどう変わりますか
 - 円の色のアルファ `200` を `80` にすると、どのモードで差が大きいですか
 - 3 つの円を同じ色にすると、`.additive` と `.screen` の違いは見えますか
+
+### ふりかえり
+
+- [ ] `blendMode()` で重ねたときの混ざり方を選べるようになった
+- [ ] `.additive` が明るく、`.multiply` が暗くなる方向だと分かった
+- [ ] `blendMode()` も他のスタイルと同じく、変えるまで以降に効き続けると分かった
+- [ ] `.additive` は暗い背景、`.multiply` は明るい背景で素直に働くと分かった
 
 ### もっと詳しく
 

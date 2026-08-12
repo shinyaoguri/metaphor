@@ -12,6 +12,10 @@ draft: false
 
 道具は 3 つだけです。**時間**（いま何フレーム目か、何秒経ったか）、**値の変換**（時間を位置や色に読み替える）、**状態**（前のフレームの値を覚えておく）。この 3 つの組み合わせで、跳ねるボールからパーティクルまで作れます。
 
+## この部の前提
+
+第 1 部 1.3 の「フレームをまたぐ値は型のプロパティとして持つ」と、第 2 部の図形・色・変換をひととおり使います。特に 2.5 の `push()` / `pop()` と 2.10 のブレンドモードは、後半のパーティクルの節でそのまま出てきます。
+
 ## 3.1 時間を使う
 
 ![時間の実行結果](images/03-Motion/01-Time.png)
@@ -127,6 +131,13 @@ final class Time: Sketch {
 - `accumulated` の行を `accumulated += speed / 60` に変えると、フレームレートを落としたときに何が起きますか
 - `truncatingRemainder(dividingBy:)` をやめて `constrain` にすると、点は右端でどうなりますか
 
+### ふりかえり
+
+- [ ] `frameCount` / `time` / `deltaTime` の 3 つが何を指すか区別できるようになった
+- [ ] フレーム数に比例させると、描画が重くなったとき進みも遅くなると分かった
+- [ ] 速さが途中で変わる動きには `deltaTime` を足し込む形が要ると分かった
+- [ ] 実時間に合わせるなら `time` / `deltaTime`、同じ絵を再現するなら `frameCount`、と使い分けられるようになった
+
 ### もっと詳しく
 
 - [`frameCount`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/framecount), [`time`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/time), [`deltaTime`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/deltatime)
@@ -221,6 +232,13 @@ final class Mapping: Sketch {
 - `lerp(left, right, t * t)` を `lerp(left, right, sqrt(t))` にすると、点はどちら側に詰まりますか
 - 2 行目の `constrain` を外すと、点はどこへ描かれますか
 - `map(v, 0, 100, left, right)` の出力範囲を入れ替えて `map(v, 0, 100, right, left)` にすると、色と位置の対応はどうなりますか
+
+### ふりかえり
+
+- [ ] `map()` / `norm()` / `constrain()` / `lerp()` の 4 つを使い分けられるようになった
+- [ ] `map()` が範囲外も外挿するので、必要なら `constrain()` と組み合わせると分かった
+- [ ] `map()` は入力の範囲を知っているとき、`lerp()` は 0〜1 の割合が手元にあるとき、と使い分けられるようになった
+- [ ] 割合を加工する（`t * t` にする）と、それがそのまま動きの表情になると分かった
 
 ### もっと詳しく
 
@@ -340,6 +358,13 @@ final class Easing: Sketch {
 - `easings` の値を `[0.5, 0.9, 1.0]` にすると、3 つの点の違いはどうなりますか
 - `lerp(xs[i], targetX, easings[i])` の `easings[i]` を `easings[i] * 2` にすると、行き過ぎ（オーバーシュート）は起きますか
 - 目標を切り替える間隔（`frameCount % 75`）を短くすると、遅い点は目標に追いつけますか
+
+### ふりかえり
+
+- [ ] `x = lerp(x, target, t)` を毎フレーム呼ぶだけで慣性のある動きになると分かった
+- [ ] 係数が同じでも残り距離が縮むので、自然に減速すると分かった
+- [ ] 係数の大きさが追従の速さで、`1.0` なら瞬間移動・`0` なら動かないと分かった
+- [ ] 撮り直しても同じ絵にするために、種を固定し `frameCount` で切り替える書き方を覚えた
 
 ### もっと詳しく
 
@@ -470,6 +495,13 @@ final class Trigonometry: Sketch {
 - 波の式の `* 0.03` だけを変えると、波の何が変わりますか
 - `cos(angle) * radius` を `cos(angle) * radius * 0.4` にすると、軌道はどんな形になりますか
 
+### ふりかえり
+
+- [ ] 角度を進めて `cos()` を横・`sin()` を縦に使うと円運動になると分かった
+- [ ] 掛ける値が振幅、角度の進む速さが周期を決めると分かった
+- [ ] 位置ごとに角度をずらす（位相）と、同じ関数が波になると分かった
+- [ ] 位置から向きを知りたいときは `atan2(dy, dx)` を使い、戻る範囲が −`PI`〜`PI` だと分かった
+
 ### もっと詳しく
 
 - [`PI`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/pi), [`TWO_PI`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/two_pi), [`HALF_PI`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/half_pi)
@@ -586,6 +618,13 @@ final class RandomValues: Sketch {
 - `randomSeed(7)` の数字を変えると、2 つのヒストグラムの形は変わりますか。山の位置はどうですか
 - `randomGaussian() * 0.13` の `0.13` を `0.3` にすると、山はどうなりますか
 - `sampleCount` を 100 まで減らすと、平らなはずの上のグラフはどう見えますか
+
+### ふりかえり
+
+- [ ] `random()` の一様分布と `randomGaussian()` の正規分布の違いが分かった
+- [ ] `randomGaussian()` は平均 0・標準偏差 1 なので、掛けて足してから使うと覚えた
+- [ ] 散らばりの形の選び方（ばらまくなら一様、個体差なら正規分布）が分かった
+- [ ] `randomSeed()` で種を固定すると同じ列が出て、絵を再現できると分かった
 
 ### もっと詳しく
 
@@ -708,6 +747,13 @@ final class NoiseBasics: Sketch {
 - 下段の `noise(gx * 0.012, gy * 0.012)` の係数を `0.05` にすると、雲の粒はどうなりますか
 - `setup()` の `noLoop()` を消し、下段を `noise(gx * 0.012, gy * 0.012, time * 0.3)` にすると何が起きますか
 - `setup()` に `noiseDetail(octaves: 1)` を足すと、模様の質感はどう変わりますか
+
+### ふりかえり
+
+- [ ] `noise()` が 0〜1 を返し、近い座標には近い値を返すと分かった
+- [ ] なめらかさはノイズ側ではなく、渡す座標の刻み幅で決まると分かった
+- [ ] 1 次元は時間の揺らぎ、2 次元は模様、3 次元は模様を時間で流す、と使い分けられるようになった
+- [ ] `noiseSeed()` / `noiseDetail()` で再現性と質感を調整できると分かった
 
 ### もっと詳しく
 
@@ -837,6 +883,13 @@ final class Vectors: Sketch {
 - `velocity.x *= -1` を `velocity.x *= -0.9` に変えると、ボールは最後にどうなりますか
 - `gravity` を `Vec2(0.1, 0.34)` にすると、軌道はどう傾きますか
 - `velocity += gravity` の直後に `velocity = velocity.limited(9)` を足すと、落下はどう変わりますか
+
+### ふりかえり
+
+- [ ] 位置・速度・加速度を `Vec2` としてまとめて扱えるようになった
+- [ ] 「加速度を速度へ、速度を位置へ足す」2 行が動きの本体だと分かった
+- [ ] `magnitude` / `normalized()` / `limited(_:)` / `dist(to:)` の使いどころが分かった
+- [ ] 壁の反射がぶつかった軸の符号の反転で書け、係数を 1 未満にすると勢いを失うと分かった
 
 ### もっと詳しく
 
@@ -971,6 +1024,14 @@ final class ManyObjects: Sketch {
 - `moverCount` を 800 にすると、絵と速度はどうなりますか
 - 画面外でのラップアラウンドを、3.7 のような反射に変えるとどう見えますか
 
+### ふりかえり
+
+- [ ] 1 つぶんの状態を型にまとめ、配列で持つ形が書けるようになった
+- [ ] 中身を書き換えるメソッドに `mutating` が要ると分かった
+- [ ] 更新のループと描画のループを分ける理由が分かった
+- [ ] 構造体は値型なので、更新には `indices` と添字が要ると分かった
+- [ ] 角度と速さから速度ベクトルを作ると、向きを均等に散らせると分かった
+
 ### もっと詳しく
 
 - [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — `draw()` の中での更新と描画
@@ -1088,6 +1149,13 @@ final class Particles: Sketch {
 - 1 フレームに生む数を 3 から 20 に増やすと、見た目と個数はどう変わりますか
 - `velocity += Vec2(0, 0.07)` を `velocity += Vec2(0.05, -0.02)` にすると、粒はどちらへ流れますか
 
+### ふりかえり
+
+- [ ] パーティクルが「生む → 動かす → 消す」の 3 手順で書けると分かった
+- [ ] 消す処理を忘れると配列が増え続けるので、個数の釣り合いを見ると覚えた
+- [ ] 寿命を 1 から 0 へ減る値として持ち、不透明度と大きさの両方に使うと消えぎわが自然になると分かった
+- [ ] 力の加え方が 3.7 と同じで、重力を差し替えれば別の動きになると分かった
+
 ### もっと詳しく
 
 - [`blendMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/blendmode%28_:%29), [`BlendMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/blendmode/)
@@ -1203,6 +1271,13 @@ final class Massive: Sketch {
 - `dotCount` を 100_000 にすると、動きは保たれますか
 - `circles(dots)` を `for dot in dots { fill(Color(dot.color)); circle(dot.position.x, dot.position.y, dot.diameter) }` に書き換えると、どのくらい遅くなりますか
 - `blendMode(.additive)` を外すと、重なりの見え方はどう変わりますか
+
+### ふりかえり
+
+- [ ] 速度の限界が図形の計算よりも「描画の指示を出す回数」で決まりやすいと分かった
+- [ ] 同じスタイルで続けて呼ぶと自動でまとまり、スタイルを変えるとそこで切れると分かった
+- [ ] 数万個には `circles()` に配列ごと渡す一括描画があると分かった
+- [ ] 一括描画では色をインスタンスが持ち、`fill()` は「塗るかどうか」しか効かないと分かった
 
 ### もっと詳しく
 

@@ -17,6 +17,10 @@ draft: false
 | 毎フレーム聞く（ポーリング） | `mouseX`, `isMousePressed`, `isKeyDown(_:)` | 位置に追従させる、押している間だけ変える |
 | 瞬間に呼ばれる（コールバック） | `mousePressed()`, `keyPressed()` | 1 回だけ起こす（記録、切り替え、生成） |
 
+## この部の前提
+
+第 1 部 1.4 の座標系（原点は左上）と、第 2 部の図形・変換を使います。第 3 部からは 3.1 の `deltaTime`（押しっぱなしの移動をフレームレートに依らせないため）と、3.2 の `constrain()` / `norm()`（4.3 のスライダーで値を範囲に収めるため）が出てきます。
+
 ## 4.1 マウス
 
 ![マウスの実行結果](images/04-Input/01-Mouse.png)
@@ -207,6 +211,14 @@ final class Mouse: Sketch {
 - `background(20)` を `setup()` へ移すと、軌跡を溜めなくても線が残ります。そのとき軌跡の配列は何のために要るでしょうか
 - `mouseDragged()` の中の `addTrace()` を消すと、押しながら動かした跡はどう変わりますか
 - `mouseClicked()` を足して印を打つと、`mouseReleased()` の印とどこが違いますか（押してから動かして離すと分かります）
+
+### ふりかえり
+
+- [ ] `mouseX` / `mouseY` / `pmouseX` / `pmouseY` / `isMousePressed` を読めるようになった
+- [ ] マウス座標がキャンバス座標系（原点は左上）で届くと分かった
+- [ ] `line(pmouseX, pmouseY, mouseX, mouseY)` で線が引ける定番の 1 行を覚えた
+- [ ] 「1 回だけ起こしたいこと」はコールバックに書く、と使い分けられるようになった
+- [ ] `mouseDragged()` が呼ばれる間は `mouseMoved()` が呼ばれないと分かった
 
 ### もっと詳しく
 
@@ -412,6 +424,14 @@ final class Keyboard: Sketch {
 - `speed * deltaTime` を固定値の `3` に変えると、`config` の `fps` を 30 にしたときの速さはどう変わりますか
 - `isKeyDown(LEFT)` の代わりに `keyCode == LEFT` で移動を書くと、同時押しはどう振る舞いますか
 
+### ふりかえり
+
+- [ ] `key` は文字、`keyCode` はキーコードで、特殊キーは後者で見分けると分かった
+- [ ] `LEFT` / `SPACE` などの定数を使って数値を覚えずに書けるようになった
+- [ ] 同時押しは `isKeyDown(_:)` で 1 つずつ聞く、と覚えた
+- [ ] 押しっぱなしの移動量は `speed * deltaTime` で決めると分かった
+- [ ] `keyPressed()` はオートリピートで何度も呼ばれるので、`isKeyRepeat` で弾けると分かった
+
 ### もっと詳しく
 
 - [`key`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/key), [`keyCode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/keycode), [`isKeyDown`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/iskeydown%28_:%29), [`isKeyRepeat`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/iskeyrepeat)
@@ -612,6 +632,14 @@ final class HitTesting: Sketch {
 - `dragging` を使わず「マウスがハンドルの上にあり、かつ押されている」で値を更新すると、速く動かしたときにどうなりますか
 - ボタンを円にして、`contains(_:_:)` を距離の判定に置き換えてみてください
 
+### ふりかえり
+
+- [ ] 矩形は 4 つの比較、円は `dist()` と半径の比較で内外を判定できるようになった
+- [ ] 判定を図形の持ち物（`contains(_:_:)`）にしておくと書く場所が 1 つに決まると分かった
+- [ ] hover / press / drag という 3 つの状態の違いが分かった
+- [ ] ドラッグは掴んだかどうかを自分で覚え、部品から外れても追従させると分かった
+- [ ] ボタンは「同じ部品の上で押して離した」ときだけ作動させる作法を覚えた
+
 ### もっと詳しく
 
 - [`constrain`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/constrain%28_:_:_:%29), [`norm`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/norm%28_:_:_:%29), [`dist`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/dist%28_:_:_:_:%29)
@@ -787,6 +815,14 @@ final class Window: Sketch {
 - `windowScale` を `1.0` にすると、ウィンドウはどのくらいの大きさになりますか。絵の中の数字は変わりますか
 - `createCanvas(width: 320, height: 180)` を `setup()` に足すと、`width` / `height` と図はどう変わりますか
 - `noCursor()` を `setup()` に足して、4.1 のスケッチと組み合わせてみてください
+
+### ふりかえり
+
+- [ ] ウィンドウの大きさが「レンダリング解像度 × `windowScale`」だと分かった
+- [ ] ウィンドウをどう変えてもマウス座標がキャンバス座標系で届くと分かった
+- [ ] 縦横比が違うぶんは余白になり、絵は歪まないと分かった
+- [ ] `fullScreen` / `createCanvas()` / `createWindow()` / `noCursor()` の使いどころが分かった
+- [ ] リサイズを知らせるコールバックがまだ無いと分かった
 
 ### もっと詳しく
 
