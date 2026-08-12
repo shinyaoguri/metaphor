@@ -42,6 +42,20 @@
       "every": 4,
       "fps": 15,
       "width": 640
+    },
+    "05-ThreeD/03-Transform": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "05-ThreeD/04-Camera": {
+      "kind": "webp",
+      "frames": 64,
+      "every": 4,
+      "fps": 15,
+      "width": 640
     }
   }
 }

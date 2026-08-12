@@ -112,8 +112,9 @@ final class MySketch: Sketch {
 | [第 2 部 2D を描く](docs/tutorial/02-drawing-2d.md) | 図形プリミティブ、色、線の表情、自作の形、変換と `push` / `pop`、テキスト、画像、ピクセル、ブレンドモード |
 | [第 3 部 動かす](docs/tutorial/03-motion.md) | 時間、`map` / `lerp`、イージング、三角関数、乱数、ノイズ、ベクトル、パーティクル |
 | [第 4 部 入力を受ける](docs/tutorial/04-input.md) | マウス、キーボード、当たり判定から UI を自作する、ウィンドウ |
+| [第 5 部 3D へ](docs/tutorial/05-3d.md) | プリミティブ、3D の変換、カメラと投影、ライティング、マテリアルと PBR、影、テクスチャ、メッシュとモデル、インスタンシング |
 
-第 5 部以降（3D / GPU / メディア / 外とつなぐ / 作品にする / AI と作る）は Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483) で執筆中です。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md) に、それまでの引き先は下の「引くためのドキュメント」と [Examples](#examples) にあります。
+第 6 部以降（GPU / メディア / 外とつなぐ / 作品にする / AI と作る）は Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483) で執筆中です。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md) に、それまでの引き先は下の「引くためのドキュメント」と [Examples](#examples) にあります。
 
 ### 引くためのドキュメント
 

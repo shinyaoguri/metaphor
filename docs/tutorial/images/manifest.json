@@ -222,6 +222,84 @@
       "width": 640,
       "height": 360,
       "frame": 1
+    },
+    "05-ThreeD/01-Space": {
+      "sourceHash": "0d26e1c1e172978a5036dd0c456fa89fcfc894bd48011c3c81985233355f9171",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/02-Primitives": {
+      "sourceHash": "b1c1c6f41c049075cced6d0f8d9c1f567b213428c813819f4bef596467953193",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/03-Transform": {
+      "sourceHash": "c5760074ef1a2664329e9e4a2bc8f0f46e1dbd14af0cc8d3967caabe75a1d162",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "03-Transform.webp",
+        "bytes": 149816
+      }
+    },
+    "05-ThreeD/04-Camera": {
+      "sourceHash": "b3d5c07b1b916e3b1ff8924018b53b13b0d1dcb1d1ad96728c578f90c2814a02",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 64,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "04-Camera.webp",
+        "bytes": 203270
+      }
+    },
+    "05-ThreeD/05-Lighting": {
+      "sourceHash": "9abfbc04f26ba14a4d6edbda61a8b5daa957d23d7c78b9c6a205377b1c44e213",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/06-Material": {
+      "sourceHash": "d980b2c8535db25eb24567d787389b26d330e581f3f2426ea8c0bf902c51b8a5",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/07-Shadow": {
+      "sourceHash": "a9975982fc4325e032f4c7e445d3be724d4d2e0d941f926ef2fbaad3f65967d9",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/08-Texture": {
+      "sourceHash": "2aeea7713be1a345fab6734a792e41422b3be3a90b6b4200eb3b4757b1b4ae4e",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/09-Mesh": {
+      "sourceHash": "2306368af09aee88df139988c90ac6f0581682386561f2b2fde5912271dea5af",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "05-ThreeD/10-Instancing": {
+      "sourceHash": "1bcad6dcb175639fbecdcf93340cc985e3938f54bb966e3fa479341fdef1152b",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     }
   }
 }
