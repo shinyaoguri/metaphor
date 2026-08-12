@@ -71,9 +71,12 @@ extension Canvas2D {
     // MARK: - プライベート: テクスチャ付きクワッド（バッチ処理）
 
     /// テクスチャ付きクワッドを頂点バッファに蓄積します（同一テクスチャのクワッドはバッチ処理されます）。
+    /// - Parameter color: 頂点色。`nil` なら `tint()`（画像用）を使います。テキストのように
+    ///   tint ではなく fill 色で塗るべき描画は、ここに色を渡します（#516）。
     func drawTexturedQuad(
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
-        srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil
+        srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil,
+        color: SIMD4<Float>? = nil
     ) {
         // 記録フレーム（isDeferring）でも蓄積する。encoder のみのガードだと
         // 影オン / METAPHOR_COMMAND_RECORD のフレームで image() が消失する（#152）
@@ -120,8 +123,8 @@ extension Canvas2D {
         let u1 = (srcX + (srcW ?? tw)) / tw
         let v1 = (srcY + (srcH ?? th)) / th
 
-        let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
-        let r = tint.x, g = tint.y, b = tint.z, a = tint.w
+        let vertexColor = color ?? (hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1))
+        let r = vertexColor.x, g = vertexColor.y, b = vertexColor.z, a = vertexColor.w
         let p0 = currentTransform * SIMD3<Float>(x, y, 1)
         let p1 = currentTransform * SIMD3<Float>(x + w, y, 1)
         let p2 = currentTransform * SIMD3<Float>(x + w, y + h, 1)
@@ -183,8 +186,11 @@ extension Canvas2D {
             }
         }
 
-        let tint = hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1)
-        let r = tint.x, g = tint.y, b = tint.z, a = tint.w
+        // グリフのアトラスは白（プリマルチプライ済み）で焼かれているので、頂点色を
+        // 掛けるとその色の文字になる。ここは tint ではなく fill 色を使う（#516）。
+        // tint() は image() 用の API で、文字色ではない。
+        let textColor = fillColor
+        let r = textColor.x, g = textColor.y, b = textColor.z, a = textColor.w
         let verts = texturedVertices
         var off = texturedBufferOffset + texturedVertexCount
 

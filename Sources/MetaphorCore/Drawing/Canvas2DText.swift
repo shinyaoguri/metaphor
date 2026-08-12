@@ -111,7 +111,11 @@ extension Canvas2D {
         case .bottom: drawY -= cached.height
         }
 
-        drawTexturedQuad(texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height)
+        // アトラス経路と同じく fill 色で塗る（tint は image() 用、#516）
+        drawTexturedQuad(
+            texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height,
+            color: fillColor
+        )
     }
 
     /// バウンディングボックス内に自動改行付きでテキストを描画します。
@@ -148,6 +152,10 @@ extension Canvas2D {
         case .bottom: drawY += h - cached.height
         }
 
-        drawTexturedQuad(texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height)
+        // 3 引数版と同じく fill 色で塗る（tint は image() 用、#516）
+        drawTexturedQuad(
+            texture: cached.texture, x: drawX, y: drawY, w: cached.width, h: cached.height,
+            color: fillColor
+        )
     }
 }
