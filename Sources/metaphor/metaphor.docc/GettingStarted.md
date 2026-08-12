@@ -123,30 +123,19 @@ func setup() {
 | `frameCount` | `Int` | これまでにレンダリングされたフレーム数 |
 | `time` | `Float` | スケッチ開始からの経過秒数 |
 | `deltaTime` | `Float` | 前フレームからの経過秒数 |
-| `mouseX` | `Float` | 現在のマウス X 座標 |
-| `mouseY` | `Float` | 現在のマウス Y 座標 |
-| `pmouseX` | `Float` | 前フレームのマウス X 座標 |
-| `pmouseY` | `Float` | 前フレームのマウス Y 座標 |
-| `isMousePressed` | `Bool` | マウスボタンが押されているか |
-| `mouseButton` | `MouseButton?` | 最後に押されたマウスボタン（`.left` / `.right` / `.middle`）。未押下なら `nil` |
-| `isKeyPressed` | `Bool` | キーが押されているか |
-| `key` | `Character?` | 最後に押されたキー |
-| `keyCode` | `UInt16?` | 最後に押されたキーのキーコード |
 
-### 入力イベントコールバック
+### 入力
 
-以下のメソッドをオーバーライドしてユーザー入力に応答できます:
+マウスとキーボードの状態は毎フレーム読める値（`mouseX` / `mouseY` / `pmouseX` / `pmouseY` /
+`isMousePressed` / `mouseButton` / `isKeyPressed` / `isKeyRepeat` / `key` / `keyCode`）として、
+入力の発生は実装すれば呼ばれるコールバック（`mousePressed()` / `mouseReleased()` /
+`mouseClicked()` / `mouseMoved()` / `mouseDragged()` / `mouseScrolled()` / `keyPressed()` /
+`keyReleased()` / `keyTyped()`）として受け取ります。押しっぱなしのキーは
+`isKeyDown(_:)` で 1 つずつ問い合わせます（同時押しに対応するため）。
 
-| メソッド | 説明 |
-|--------|------|
-| `mousePressed()` | マウスボタンが押された |
-| `mouseReleased()` | マウスボタンが離された |
-| `mouseMoved()` | マウスが移動した |
-| `mouseDragged()` | マウスがドラッグされた |
-| `mouseScrolled()` | マウススクロールイベント |
-| `mouseClicked()` | マウスクリック（ドラッグなしの押下＋解放） |
-| `keyPressed()` | キーが押された |
-| `keyReleased()` | キーが離された |
+個々のシグネチャは ``MetaphorCore/Sketch`` を参照してください。値とコールバックの使い分け、
+当たり判定から UI を組み立てる方法は、チュートリアル
+[第 4 部 入力を受ける](https://shinyaoguri.github.io/metaphor/tutorial/input/)で解説しています。
 
 ## 描画
 

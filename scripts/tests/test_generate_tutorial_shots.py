@@ -314,5 +314,103 @@ class TestSequenceReadiness(ShotsTestCase):
         self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
 
 
+class TestCurrentFrame(ShotsTestCase):
+    """単一フレームの応答も **id 一致**で見る（下見の応答と取り違えないため。#509）。"""
+
+    def write_frame(self, output_dir: Path, payload: dict, png: bool = True) -> None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "frame.json").write_text(json.dumps(payload), encoding="utf-8")
+        if png:
+            (output_dir / "frame.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    def test_none_until_the_frame_appears(self) -> None:
+        self.assertIsNone(gen.current_frame(self.root / "current", "req-1"))
+
+    def test_ready_when_id_matches(self) -> None:
+        current = self.root / "current"
+        self.write_frame(current, {"id": "req-1", "frame": 12})
+        self.assertEqual(gen.current_frame(current, "req-1"), {"id": "req-1", "frame": 12})
+
+    def test_not_ready_for_the_warmup_response(self) -> None:
+        current = self.root / "current"
+        self.write_frame(current, {"id": "req-1-warmup", "frame": 3})
+        self.assertIsNone(gen.current_frame(current, "req-1"))
+
+    def test_failure_response_is_returned_without_a_png(self) -> None:
+        # 失敗応答は frame.json だけが書かれる（契約点 4）。ready として返し、
+        # 呼び出し側が PNG の不在を見て warnings をエラーにする
+        current = self.root / "current"
+        self.write_frame(current, {"id": "req-1", "warnings": ["no staging texture"]}, png=False)
+        answer = gen.current_frame(current, "req-1")
+        self.assertEqual(answer.get("warnings"), ["no staging texture"])
+
+    def test_partial_write_is_not_ready(self) -> None:
+        current = self.root / "current"
+        current.mkdir(parents=True)
+        (current / "frame.json").write_text('{"id": "req-', encoding="utf-8")
+        self.assertIsNone(gen.current_frame(current, "req-1"))
+
+
+class TestInputScript(ShotsTestCase):
+    """撮影用の入力台本（`probe-input.jsonl`）の読み取り規則（#509）。"""
+
+    def parse(self, text: str) -> list[dict]:
+        return gen.parse_input_script(text, REF)
+
+    def test_events_keep_their_order(self) -> None:
+        events = self.parse(
+            '{"t":"mouseMove","x":10,"y":20}\n{"t":"mouseDown","x":10,"y":20,"button":0}\n'
+        )
+        self.assertEqual([event["t"] for event in events], ["mouseMove", "mouseDown"])
+
+    def test_wait_lines_are_kept_as_waits(self) -> None:
+        events = self.parse('{"wait":250}\n{"t":"mouseUp","x":1,"y":2}\n')
+        self.assertEqual(events[0], {"wait": 250})
+        self.assertEqual(events[1]["t"], "mouseUp")
+
+    def test_comments_and_blank_lines_are_ignored(self) -> None:
+        events = self.parse('// 台本の意図\n\n{"t":"keyDown","code":49}\n')
+        self.assertEqual(len(events), 1)
+
+    def test_a_line_without_t_or_wait_is_an_error(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            self.parse('{"x":10,"y":20}\n')
+
+    def test_a_negative_wait_is_an_error(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            self.parse('{"wait":-5}\n')
+
+    def test_broken_json_is_an_error(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            self.parse('{"t":"mouseMove",\n')
+
+    def test_a_script_without_events_is_an_error(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            self.parse("// 説明だけ\n\n")
+
+    def test_missing_script_means_no_input(self) -> None:
+        package_dir = self.add_package()
+        self.assertIsNone(gen.load_input_script(package_dir, REF))
+
+    def test_script_is_read_from_the_package_root(self) -> None:
+        package_dir = self.add_package()
+        (package_dir / gen.INPUT_SCRIPT_NAME).write_text(
+            '{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8"
+        )
+        self.assertEqual(len(gen.load_input_script(package_dir, REF) or []), 1)
+
+    def test_script_changes_make_the_shot_stale(self) -> None:
+        # 台本はパッケージ配下なので指紋に入る（絵が変わるため撮り直しが要る）
+        package_dir = self.add_package()
+        self.add_doc()
+        self.add_image()
+        script = package_dir / gen.INPUT_SCRIPT_NAME
+        script.write_text('{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8")
+        shots = self.record()
+        self.assertEqual(gen.check([REF], shots), [])
+        script.write_text('{"t":"mouseMove","x":9,"y":9}\n', encoding="utf-8")
+        self.assertEqual(len(gen.check([REF], shots)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

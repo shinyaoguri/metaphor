@@ -23,6 +23,23 @@
 GitHub でも website でも動くため。mp4 は GitHub の Markdown が相対パスの
 動画を再生しないので採らない。
 
+## 入力が要る節（#509）
+
+マウス・キーボードを扱う節は、入力が無いと絵が出来上がらない。パッケージ直下に
+`probe-input.jsonl` を置くと、スケッチを起動した後に**その内容を stdin へ流してから**
+撮る。ヘッドレス起動では `InputInjectionPlugin` が自動登録され、stdin の JSON Lines
+（CONTRACT.md 契約点 3）を入力として受け取るため、cli を挟まずに入力を再現できる。
+
+    {"t":"mouseMove","x":120,"y":80}
+    {"t":"mouseDown","x":120,"y":80,"button":0}
+    {"wait":120}
+
+- `t` を持つ行はそのまま送る。`t` を持たない `{"wait": ミリ秒}` の行は待つだけで送らない
+- `//` で始まる行と空行は無視する（台本に意図を書けるようにするため）
+- `mouseUp` / `keyUp` を送らずに終えれば「押されている状態」の絵が撮れる
+- 撮影は**入力を流し終えてから**始まるので、撮り直しても同じ絵になる。代わりに
+  `noLoop()` のスケッチとは両立しない（起動後に置いた request を処理する機会が無い）
+
 ## なぜ PNG のバイト比較で鮮度を見ないか
 
 GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビット単位には一致しない。
@@ -66,6 +83,16 @@ EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store"}
 # 入るぶん遅い。
 CAPTURE_TIMEOUT_SEC = 90.0
 POLL_INTERVAL_SEC = 0.2
+
+# 撮影用の入力台本（#509）。パッケージ直下に置くと起動後に stdin へ流す。
+INPUT_SCRIPT_NAME = "probe-input.jsonl"
+# 1 行送るごとに空ける間隔。60fps の 2 フレームぶん空けて、1 フレームに複数の
+# イベントがまとめて届く（＝軌跡の中間点が失われる）のを避ける。
+INPUT_INTERVAL_SEC = 0.033
+# 最後のイベントが描画に反映されるまでの猶予。この後に request.json を置く。
+INPUT_SETTLE_SEC = 0.6
+# 下見の 1 枚が撮れてから流し始めるまでの間。フレームレートが落ち着くのを待つ。
+INPUT_LEAD_SEC = 0.3
 
 # 動きの証跡の既定値と上限（docs/tutorial/README.md の規約と対）。
 MOTION_KINDS = ("webp", "sheet")
@@ -199,6 +226,71 @@ def webp_command(frame_paths: list[Path], output: Path, fps: int, quality) -> li
     return command
 
 
+def parse_input_script(text: str, ref: str) -> list[dict]:
+    """撮影用の入力台本を、送る順のイベント列に直す。
+
+    `t` を持つ行は stdin へ送るイベント、`wait` だけの行は待ち時間。`//` の行と
+    空行は台本に意図を書くためのもので読み飛ばす。
+    """
+    events: list[dict] = []
+    for number, raw in enumerate(text.split("\n"), start=1):
+        line = raw.strip()
+        if not line or line.startswith("//"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ShotError(
+                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目が JSON として読めない: {exc}"
+            ) from exc
+        if not isinstance(event, dict):
+            raise ShotError(
+                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目はオブジェクトである必要がある"
+            )
+        if "t" in event:
+            events.append(event)
+            continue
+        wait = event.get("wait")
+        if not isinstance(wait, (int, float)) or isinstance(wait, bool) or wait < 0:
+            raise ShotError(
+                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目は 't' か "
+                f"'wait'（0 以上のミリ秒）を持つ必要がある: {line}"
+            )
+        events.append({"wait": wait})
+    if not events:
+        raise ShotError(f"'{ref}' の {INPUT_SCRIPT_NAME} にイベントが 1 つも無い")
+    return events
+
+
+def load_input_script(package_dir: Path, ref: str) -> list[dict] | None:
+    """節に入力台本があれば読む（無ければ None）。"""
+    path = package_dir / INPUT_SCRIPT_NAME
+    if not path.is_file():
+        return None
+    return parse_input_script(path.read_text(encoding="utf-8"), ref)
+
+
+def send_input_script(process: subprocess.Popen, events: list[dict], ref: str) -> None:
+    """台本を stdin へ流す。流し終えるまで戻らない。"""
+    stdin = process.stdin
+    if stdin is None:  # 呼び出し側が PIPE で開いていない（起こらないはず）
+        raise ShotError(f"'{ref}' の stdin が開いていない")
+    time.sleep(INPUT_LEAD_SEC)
+    for event in events:
+        if process.poll() is not None:
+            raise ShotError(f"'{ref}' が入力の途中で終了した（exit {process.returncode}）")
+        if "wait" in event:
+            time.sleep(event["wait"] / 1000)
+            continue
+        try:
+            stdin.write(json.dumps(event) + "\n")
+            stdin.flush()
+        except BrokenPipeError as exc:
+            raise ShotError(f"'{ref}' が stdin を閉じた（入力を受け取れていない）") from exc
+        time.sleep(INPUT_INTERVAL_SEC)
+    time.sleep(INPUT_SETTLE_SEC)
+
+
 def load_manifest() -> dict:
     if not MANIFEST.is_file():
         return {}
@@ -235,16 +327,31 @@ def capture(ref: str, motion: dict | None = None) -> dict:
     shutil.rmtree(probe_dir, ignore_errors=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # リクエストは**起動前**に置く。noLoop のスケッチは最初の 1 フレームしか
-    # 描かないため、起動後に置いても処理する機会が来ない。
+    input_script = load_input_script(package_dir, ref)
+
     request_id = f"tutorial-shot-{ref}"
+    # 入力台本がある節では、まず 1 枚撮らせて「描画ループが回っている」ことを
+    # 確かめてから入力を流す（後述）。その下見用のリクエストと本番を id で分ける。
+    warmup_id = f"{request_id}-warmup"
     request = {"id": request_id, "label": ref, "scale": 1.0}
     if motion:
         request["frames"] = motion["frames"]
         request["every"] = motion["every"]
-    tmp = probe_dir / "request.json.tmp"
-    tmp.write_text(json.dumps(request), encoding="utf-8")
-    tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
+
+    def place_request(payload: dict) -> None:
+        tmp = probe_dir / "request.json.tmp"
+        tmp.write_text(json.dumps(payload), encoding="utf-8")
+        tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
+
+    # リクエストは**起動前**に置く。noLoop のスケッチは最初の 1 フレームしか
+    # 描かないため、起動後に置いても処理する機会が来ない。
+    # 入力台本がある節は、代わりに下見用のリクエストを置く（本番は入力を
+    # 流し終えてから。#509）。
+    place_request(
+        {"id": warmup_id, "label": f"{ref} (warmup)", "scale": 1.0}
+        if input_script is not None
+        else request
+    )
 
     print(f"  building {ref} ...", flush=True)
     build = subprocess.run(
@@ -262,45 +369,64 @@ def capture(ref: str, motion: dict | None = None) -> dict:
         ["swift", "run"],
         cwd=package_dir,
         env=env,
+        stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
     )
     sequence_dir = output_dir / "sequence"
     frame_png = output_dir / "frame.png"
-    frame_json = output_dir / "frame.json"
-    deadline = time.monotonic() + CAPTURE_TIMEOUT_SEC
     entry: dict = {}
     ready: dict | None = None
-    try:
+
+    def fail_if_dead() -> None:
+        if process.poll() is None:
+            return
+        stderr = (process.stderr.read() if process.stderr else "") or ""
+        raise ShotError(
+            f"'{ref}' が画像を書く前に終了した（exit {process.returncode}）\n{stderr[-2000:]}"
+        )
+
+    def wait_for(what: str, poll) -> dict:
+        """`poll()` が応答を返すまで待つ（返り値が None の間は待ち続ける）。"""
+        deadline = time.monotonic() + CAPTURE_TIMEOUT_SEC
         while time.monotonic() < deadline:
-            if motion:
-                # 完了規約: sequence.json が最後に書かれる（CONTRACT.md 契約点 4）。
-                ready = sequence_manifest(sequence_dir, request_id)
-                if ready is not None:
-                    break
-            elif frame_png.is_file() and frame_json.is_file():
-                # frame.json は PNG より後に書かれるので、両方揃った時点で完了。
-                break
-            if process.poll() is not None:
-                stderr = (process.stderr.read() if process.stderr else "") or ""
-                raise ShotError(
-                    f"'{ref}' が画像を書く前に終了した（exit {process.returncode}）"
-                    f"\n{stderr[-2000:]}"
-                )
+            answer = poll()
+            if answer is not None:
+                return answer
+            fail_if_dead()
             time.sleep(POLL_INTERVAL_SEC)
+        raise ShotError(
+            f"'{ref}' が {CAPTURE_TIMEOUT_SEC:.0f} 秒以内に {what} を書かなかった"
+        )
+
+    try:
+        if input_script is not None:
+            # 下見の 1 枚を待つ。**描画ループが回り始めてから入力を流す**ため。
+            # 起動直後（Metal パイプラインの構築中）に送ったイベントは stdin に
+            # 溜まり、最初のフレームでまとめて処理されてしまう（＝軌跡の中間点が
+            # 消え、1 フレームに集約された線が 1 本だけ残る）。
+            wait_for(f"frame.json（下見 id={warmup_id}）",
+                     lambda: current_frame(output_dir, warmup_id))
+            print(f"  input    {ref} ({len(input_script)} events) ...", flush=True)
+            send_input_script(process, input_script, ref)
+            place_request(request)
+
+        if motion:
+            # 完了規約: sequence.json が最後に書かれる（CONTRACT.md 契約点 4）。
+            ready = wait_for("sequence.json", lambda: sequence_manifest(sequence_dir, request_id))
         else:
-            target = "sequence.json" if motion else "frame.png"
-            raise ShotError(
-                f"'{ref}' が {CAPTURE_TIMEOUT_SEC:.0f} 秒以内に {target} を書かなかった"
-            )
+            metadata = wait_for("frame.png", lambda: current_frame(output_dir, request_id))
+            if not frame_png.is_file():
+                # id が一致する frame.json に PNG が伴わないのは失敗応答（契約点 4）。
+                warnings = "; ".join(metadata.get("warnings") or []) or "理由の申告なし"
+                raise ShotError(f"'{ref}' の撮影が失敗応答を返した: {warnings}")
 
         destination = image_path_for(ref)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if motion:
             entry = collect_sequence(ref, sequence_dir, ready, motion, destination)
         else:
-            metadata = json.loads(frame_json.read_text(encoding="utf-8"))
             shutil.copyfile(frame_png, destination)
             # motion.json から外された節の古い証跡を残さない。
             for kind in MOTION_KINDS:
@@ -312,6 +438,11 @@ def capture(ref: str, motion: dict | None = None) -> dict:
                 "frame": metadata.get("frame"),
             }
     finally:
+        if process.stdin is not None and not process.stdin.closed:
+            try:
+                process.stdin.close()
+            except BrokenPipeError:
+                pass
         process.terminate()
         try:
             process.wait(timeout=10)
@@ -320,6 +451,24 @@ def capture(ref: str, motion: dict | None = None) -> dict:
         shutil.rmtree(probe_dir, ignore_errors=True)
 
     return {"sourceHash": source_hash(package_dir), **entry}
+
+
+def current_frame(output_dir: Path, request_id: str) -> dict | None:
+    """単一フレームの応答が来ていれば `frame.json` の中身を返す。
+
+    consumer 規約（CONTRACT.md 契約点 4）どおり **id 一致**で見る。ファイルの
+    有無だけで見ると、下見のリクエストへの応答を本番の応答と取り違える。
+    """
+    frame_json = output_dir / "frame.json"
+    if not frame_json.is_file():
+        return None
+    try:
+        data = json.loads(frame_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None  # 書き込み途中を読んだ。次のポーリングで見直す
+    if data.get("id") != request_id:
+        return None
+    return data
 
 
 def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
