@@ -8,7 +8,7 @@ metaphor のランディングページとチュートリアルを配信する [
 | `/tutorial/` · `/en/tutorial/` | チュートリアル | **`docs/tutorial/`**（content collection として読み込み） |
 | `/reference/documentation/metaphor/` | API リファレンス | DocC（`docs.yml` が `dist/reference/` へ丸ごと置く） |
 
-2 つのサイトは**混ざりません**。Astro は `dist` のルート、DocC は `dist/reference/` 配下だけを使い、行き来はリンクで行います（ナビの「リファレンス」＝ `src/i18n/ui.ts` の `docsUrl`、DocC 側からはトップページの導線）。かつてはルートへ重ねていたため、コピー対象の列挙から漏れた `theme-settings.json` が公開されず配色が効かない不具合が出ていました（[#529](https://github.com/shinyaoguri/metaphor/issues/529)）。`/reference/` 配下は Astro が生成しないので、この種の衝突・取りこぼしは起きません。
+2 つのサイトは**混ざりません**。Astro は `dist` のルート、DocC は `dist/reference/` 配下だけを使い、行き来はリンクで行います（ナビの「リファレンス」＝ `src/i18n/ui.ts` の `referenceUrl`、DocC 側からはトップページの導線）。かつてはルートへ重ねていたため、コピー対象の列挙から漏れた `theme-settings.json` が公開されず配色が効かない不具合が出ていました（[#529](https://github.com/shinyaoguri/metaphor/issues/529)）。`/reference/` 配下は Astro が生成しないので、この種の衝突・取りこぼしは起きません。
 
 ## コマンド
 
@@ -30,7 +30,7 @@ npm run preview  # dist/ をそのまま配信して確認する
 
 数字 2 桁のプレフィックスをパターンで要求しているので、章立ての設計文書である `docs/tutorial/README.md` と画像置き場 `docs/tutorial/images/` は自動的に公開対象から外れます。サイト側の目次（サイドバーと `/tutorial/`）が README の章立てを置き換えます。
 
-#### website の外を読むときは docs.yml の paths も見る
+### website の外を読むときは docs.yml の paths も見る
 
 `docs.yml` は `on.push.paths` で起動を絞っているので、**website の外にあるビルド入力はそこにも並んでいないと反映されません**。`docs/tutorial/**` が抜けていたため、本文だけを変えた push でサイトが更新されない状態でした（[#554](https://github.com/shinyaoguri/metaphor/issues/554)）。ビルドは緑のまま公開サイトだけが古くなるので、気付く手掛かりがありません。
 

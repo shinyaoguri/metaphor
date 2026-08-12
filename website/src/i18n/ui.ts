@@ -24,8 +24,12 @@ export function otherLang(lang: Lang): Lang {
  *
  * `/reference/` 自体は DocC の出力ルートで、開くと SPA が "page can't be found"
  * を出す（リダイレクタではない）。リンク先は必ずフレームワークのページまで指すこと。
+ *
+ * 導線の呼称は「リファレンス / Reference」。チュートリアルもドキュメントなので
+ * 「ドキュメント」では並列の選択肢にならず、指しているのは型やメソッドを引く場所
+ * だから（#530。README と p5.js の Reference もこの語）。
  */
-export const docsUrl = `${base}/reference/documentation/metaphor/`;
+export const referenceUrl = `${base}/reference/documentation/metaphor/`;
 export const githubUrl = 'https://github.com/shinyaoguri/metaphor';
 export const examplesUrl = 'https://github.com/shinyaoguri/metaphor/tree/main/Examples';
 /** チュートリアル本文の正典（website はここを content collection として読む）。 */
@@ -34,7 +38,7 @@ export const tutorialSourceUrl =
 
 interface Content {
   meta: { title: string; description: string };
-  nav: { docs: string; tutorial: string; toggleLabel: string };
+  nav: { reference: string; tutorial: string; toggleLabel: string };
   tutorial: {
     /** 一覧ページの <title> と description。 */
     meta: { title: string; description: string };
@@ -62,7 +66,7 @@ interface Content {
     titleLead: string;
     titleAccent: string;
     lead: string;
-    ctaDocs: string;
+    ctaReference: string;
     ctaGithub: string;
     swiftLabel: string;
     brewLabel: string;
@@ -98,7 +102,7 @@ interface Content {
     categories: { title: string; desc: string; items: string[] }[];
     cta: string;
   };
-  footer: { license: string; docs: string };
+  footer: { license: string; reference: string };
 }
 
 export const content: Record<Lang, Content> = {
@@ -108,7 +112,7 @@ export const content: Record<Lang, Content> = {
       description:
         '思いついた絵を、そのままコードに。2D・3D、GPU、音、映像までを draw() だけのシンプルな API でスケッチできる macOS ネイティブのクリエイティブコーディング・ランタイム。AI と観測ループを回せるのも大きな特長です。',
     },
-    nav: { docs: 'ドキュメント', tutorial: 'チュートリアル', toggleLabel: 'EN' },
+    nav: { reference: 'リファレンス', tutorial: 'チュートリアル', toggleLabel: 'EN' },
     tutorial: {
       meta: {
         title: 'チュートリアル — metaphor',
@@ -140,7 +144,7 @@ export const content: Record<Lang, Content> = {
       titleLead: 'Metal で描く、',
       titleAccent: 'クリエイティブコーディング',
       lead: '思いついた絵を、そのままコードに。2D・3D、GPU コンピュート、音、映像までを、Processing 譲りの draw() だけのシンプルな API でスケッチできます。そして metaphor の最大の魅力は、AI が「いま動いている作品」を見ながら、あなたと一緒に手を入れられることです。',
-      ctaDocs: 'ドキュメントを読む',
+      ctaReference: 'リファレンスを見る',
       ctaGithub: 'GitHub',
       swiftLabel: 'SwiftPM',
       brewLabel: 'CLI',
@@ -223,7 +227,7 @@ export const content: Record<Lang, Content> = {
       ],
       cta: 'GitHub で全サンプルを見る',
     },
-    footer: { license: 'MIT License', docs: 'ドキュメント' },
+    footer: { license: 'MIT License', reference: 'リファレンス' },
   },
 
   en: {
@@ -232,7 +236,7 @@ export const content: Record<Lang, Content> = {
       description:
         'A macOS-native creative coding runtime. Start from a Processing-style draw() and sketch across 2D, 3D, GPU, audio and video in one continuous API — with AI collaboration as a standout feature.',
     },
-    nav: { docs: 'Docs', tutorial: 'Tutorial', toggleLabel: '日本語' },
+    nav: { reference: 'Reference', tutorial: 'Tutorial', toggleLabel: '日本語' },
     tutorial: {
       meta: {
         title: 'Tutorial — metaphor',
@@ -264,7 +268,7 @@ export const content: Record<Lang, Content> = {
       titleLead: 'Creative coding,',
       titleAccent: 'drawn with Metal',
       lead: 'Start from a Processing-style draw() and sketch across 2D, 3D, GPU compute, audio and video — one continuous API. Turn the image in your head straight into code. And an AI can watch the very image on screen and iterate right alongside you: metaphor’s signature move.',
-      ctaDocs: 'Read the docs',
+      ctaReference: 'Browse the reference',
       ctaGithub: 'GitHub',
       swiftLabel: 'SwiftPM',
       brewLabel: 'CLI',
@@ -347,7 +351,7 @@ export const content: Record<Lang, Content> = {
       ],
       cta: 'See all examples on GitHub',
     },
-    footer: { license: 'MIT License', docs: 'Docs' },
+    footer: { license: 'MIT License', reference: 'Reference' },
   },
 };
 

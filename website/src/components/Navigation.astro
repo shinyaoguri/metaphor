@@ -1,5 +1,5 @@
 ---
-import { getContent, docsUrl, githubUrl, homeFor, type Lang } from '../i18n/ui';
+import { getContent, referenceUrl, githubUrl, homeFor, type Lang } from '../i18n/ui';
 import { tutorialIndexHref } from '../lib/tutorial';
 
 interface Props {
@@ -33,10 +33,10 @@ const t = getContent(lang);
       </a>
       <!-- 狭い画面ではバーに 2 本入らないため DocC への導線は隠す（フッタにある） -->
       <a
-        href={docsUrl}
+        href={referenceUrl}
         class="hidden text-xs font-medium whitespace-nowrap text-text-muted transition-colors hover:text-text sm:inline sm:text-sm"
       >
-        {t.nav.docs}
+        {t.nav.reference}
       </a>
       <!-- Language toggle switch -->
       <div

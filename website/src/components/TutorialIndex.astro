@@ -1,5 +1,5 @@
 ---
-import { getContent, docsUrl, tutorialSourceUrl, type Lang } from '../i18n/ui';
+import { getContent, referenceUrl, tutorialSourceUrl, type Lang } from '../i18n/ui';
 import type { TutorialPart } from '../lib/tutorial';
 
 interface Props {
@@ -20,8 +20,8 @@ const t = getContent(lang);
   </h1>
   <p class="mt-4 max-w-2xl text-lg leading-relaxed text-text-muted">{t.tutorial.lead}</p>
   <p class="mt-4 text-sm">
-    <a href={docsUrl} class="text-accent transition-colors hover:text-accent-light">
-      {t.nav.docs} →
+    <a href={referenceUrl} class="text-accent transition-colors hover:text-accent-light">
+      {t.nav.reference} →
     </a>
   </p>
 </header>
