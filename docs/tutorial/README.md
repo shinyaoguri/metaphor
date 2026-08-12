@@ -16,7 +16,8 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 | 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 |
 | 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 |
 | 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 |
-| 第 5 部以降 | — | 未起票 |
+| 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 |
+| 第 6 部以降 | — | 未起票 |
 
 ## 対象読者と、他ドキュメントとの役割分担
 
@@ -97,14 +98,14 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 |---|---|---|---|
 | 5.1 3D 空間に入る | 2D と同じ語彙のまま奥行きを足す、既定のカメラ | `box`, `sphere`, `lights` | `Basics/Form/Primitives3D` |
 | 5.2 プリミティブ | 箱・球・平面・円柱・トーラス、分割数 | `box`, `sphere`, `plane`, `cylinder`, `torus` | `Basics/Form/Primitives3D`, `Topics/Geometry/Toroid` |
-| 5.3 3D の変換 | 軸まわりの回転、入れ子の座標系、マウスで視点を回す | `rotateX/Y/Z`, `translate(x,y,z)`, `orbitControl` | `Basics/Transform/RotateXY`, `Topics/Motion/CubesWithinCube` |
-| 5.4 カメラ | 視点・注視点、画角、透視投影と平行投影 | `camera`, `perspective`, `ortho` | `Basics/Control/Camera/MoveEye`, `Basics/Control/Camera/Perspective`, `Basics/Control/Camera/Orthographic` |
+| 5.3 3D の変換 | 軸まわりの回転、入れ子の座標系 | `rotateX/Y/Z`, `translate(x,y,z)`, `scale(x,y,z)` | `Basics/Transform/RotateXY`, `Topics/Motion/CubesWithinCube` |
+| 5.4 カメラ | 視点・注視点、画角、透視投影と平行投影、マウスで視点を回す | `camera`, `perspective`, `ortho`, `orbitControl` | `Basics/Control/Camera/MoveEye`, `Basics/Control/Camera/Perspective`, `Basics/Control/Camera/Orthographic` |
 | 5.5 ライティング | 環境光・平行光・点光源・スポット、鏡面反射 | `lights`, `directionalLight`, `pointLight`, `spotLight`, `ambientLight`, `specular` | `Basics/Lights/OnOff`, `Basics/Lights/Directional`, `Basics/Lights/Spot`, `Basics/Lights/Mixture`, `Basics/Lights/Reflection` |
-| 5.6 マテリアルと PBR | Blinn-Phong と PBR の切り替え、金属感・粗さ | `material`, `pbr` | `Basics/Lights/Reflection` |
-| 5.7 影 | シャドウマップの有効化と、影が出ないときの見どころ | シャドウ設定 API | — |
+| 5.6 マテリアルと PBR | Blinn-Phong と PBR の切り替え、金属感・粗さ | `specular`, `shininess`, `metallic`, `roughness`, `pbr` | `Basics/Lights/Reflection` |
+| 5.7 影 | シャドウマップの有効化と、影が出ないときの見どころ | `enableShadows`, `shadowBias` | — |
 | 5.8 テクスチャ | 画像を面に貼る、UV の考え方 | `texture`, `vertex(u:v:)` | `Topics/Textures/TextureQuad`, `Topics/Textures/TextureCube`, `Topics/Textures/TextureSphere` |
-| 5.9 メッシュとモデル | 頂点から自作する、OBJ / USDZ / ABC を読み込む | `beginShape` (3D), `loadModel` | `Topics/Geometry/Vertices`, `Topics/Geometry/Icosahedra`, `Basics/Shape/LoadDisplayOBJ` |
-| 5.10 大量の 3D | 同一形状の連続描画が自動バッチされる仕組み、明示インスタンシング | インスタンシング API | `Samples/InstancedCubes`, `Demos/Performance/CubicGridImmediate` |
+| 5.9 メッシュとモデル | 頂点から自作する、OBJ / USDZ / ABC を読み込む | `beginShape3D`, `normal`, `mesh`, `loadModel` | `Topics/Geometry/Vertices`, `Topics/Geometry/Icosahedra`, `Basics/Shape/LoadDisplayOBJ` |
+| 5.10 大量の 3D | 同一形状の連続描画が自動バッチされる仕組み、明示インスタンシング | `drawInstanced`, `createBoxMesh` | `Samples/InstancedCubes`, `Demos/Performance/CubicGridImmediate` |
 
 ### 第 6 部 GPU を使う
 
@@ -351,3 +352,4 @@ Examples の本数やバージョン番号のような、増減する数値を�
 - [#486](https://github.com/shinyaoguri/metaphor/issues/486) 画像基盤（Probe + 決定論レンダリング）
 - [#487](https://github.com/shinyaoguri/metaphor/issues/487) website のチュートリアル領域
 - [#488](https://github.com/shinyaoguri/metaphor/issues/488) 執筆パイロット（第 1 部・第 2 部）
+- [#508](https://github.com/shinyaoguri/metaphor/issues/508) 第 3 部 / [#509](https://github.com/shinyaoguri/metaphor/issues/509) 第 4 部 / [#526](https://github.com/shinyaoguri/metaphor/issues/526) 第 5 部

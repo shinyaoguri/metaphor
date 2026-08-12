@@ -145,6 +145,6 @@ final class MySketch: Sketch {
 
 - チュートリアル[第 1 部 入門](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/)から順に読む
 - ``MetaphorCore/Canvas2D`` で 2D 描画を探索する
-- ``MetaphorCore/Canvas3D`` で 3D レンダリングを学ぶ
+- チュートリアル[第 5 部 3D へ](https://shinyaoguri.github.io/metaphor/tutorial/3d/)で 3D の描き方を通しで学ぶ（低レベル API は ``MetaphorCore/Canvas3D``）
 - ``MetaphorCore/PostEffect`` でポストプロセスエフェクトを追加する
 - ``MetaphorSyphon/SyphonOutput`` で Syphon 出力を設定する

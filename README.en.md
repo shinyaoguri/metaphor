@@ -114,8 +114,9 @@ final class MySketch: Sketch {
 | [Part 2 — Drawing in 2D](docs/tutorial/02-drawing-2d.md) | Shape primitives, color, stroke styling, custom shapes, transforms with `push` / `pop`, text, images, pixels, blend modes |
 | [Part 3 — Motion](docs/tutorial/03-motion.md) | Time, `map` / `lerp`, easing, trigonometry, randomness, noise, vectors, particles |
 | [Part 4 — Handling input](docs/tutorial/04-input.md) | Mouse, keyboard, hit testing and hand-rolled UI, windows |
+| [Part 5 — Into 3D](docs/tutorial/05-3d.md) | Primitives, 3D transforms, cameras and projection, lighting, materials and PBR, shadows, textures, meshes and models, instancing |
 
-Part 5 onward (3D, GPU, media, connecting to the outside, shipping a piece, making things with an AI) is being written under Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483). The full outline is in [docs/tutorial/README.md](docs/tutorial/README.md); until those parts land, use the reference documentation below and [Examples](#examples).
+Part 6 onward (GPU, media, connecting to the outside, shipping a piece, making things with an AI) is being written under Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483). The full outline is in [docs/tutorial/README.md](docs/tutorial/README.md); until those parts land, use the reference documentation below and [Examples](#examples).
 
 ### Reference documentation
 

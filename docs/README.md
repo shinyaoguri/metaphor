@@ -8,7 +8,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 
 | 読者 | 目的 | 読むもの |
 |---|---|---|
-| metaphor がはじめての人 | 順に読んで、作品を作れるようになる | [tutorial/](tutorial/)（第 1 部〜第 4 部を公開中。第 5 部以降は執筆中 — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)） |
+| metaphor がはじめての人 | 順に読んで、作品を作れるようになる | [tutorial/](tutorial/)（第 1 部〜第 5 部を公開中。第 6 部以降は執筆中 — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)） |
 | スケッチを書く人 | metaphor で作品を作る | [README](../README.md) → [ai/for-sketch-authors.md](ai/for-sketch-authors.md) → [ai/examples-index.md](ai/examples-index.md) |
 | Examples を掘りたい人 | 索引を引くのではなく、どの順に開くか知りたい | [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)（英語。難度タグ付きの推奨順路） |
 | Processing / p5.js から移る人 | 「Processing の X は metaphor では Y」を引く | [processing-migration-guide.md](processing-migration-guide.md)（英語。API 対応表・落とし穴集・未対応 API） |
@@ -25,7 +25,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 
 - **[tutorial/](tutorial/)** — 体系的チュートリアル（日本語ファースト・初心者向けの読み物）
   - [tutorial/README.md](tutorial/README.md) — 章立て・執筆規約・既存ドキュメントとの役割分担。本文は各部が `NN-slug.md` として追加される
-  - 公開中の本文: [第 1 部 入門](tutorial/01-getting-started.md) / [第 2 部 2D を描く](tutorial/02-drawing-2d.md) / [第 3 部 動かす](tutorial/03-motion.md) / [第 4 部 入力を受ける](tutorial/04-input.md)。website 版は [/tutorial/](https://shinyaoguri.github.io/metaphor/tutorial/)
+  - 公開中の本文: [第 1 部 入門](tutorial/01-getting-started.md) / [第 2 部 2D を描く](tutorial/02-drawing-2d.md) / [第 3 部 動かす](tutorial/03-motion.md) / [第 4 部 入力を受ける](tutorial/04-input.md) / [第 5 部 3D へ](tutorial/05-3d.md)。website 版は [/tutorial/](https://shinyaoguri.github.io/metaphor/tutorial/)
 - **[ai/](ai/)** — AI 支援まわりのドキュメント一式
   - [ai/README.md](ai/README.md) — 実装デバッグ・拡張ノート（ライブラリ開発者と AI エージェント向け）
   - [ai/for-sketch-authors.md](ai/for-sketch-authors.md) — AI と一緒にスケッチを書く人向けガイド
