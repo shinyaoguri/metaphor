@@ -106,7 +106,7 @@ final class ShapePrimitives: Sketch {
 
 ### もっと詳しく
 
-- [`RectMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/rectmode/), [`EllipseMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/ellipsemode/), [`ArcMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/arcmode/)
+- [`RectMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/rectmode/), [`EllipseMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/ellipsemode/), [`ArcMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/arcmode/)
 - [`Basics/Form/ShapePrimitives`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Form/ShapePrimitives), [`Basics/Form/PieChart`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Form/PieChart)
 
 ## 2.2 色
@@ -213,7 +213,7 @@ fill(242, 89, 38)                                // 0〜255（既定の colorMod
 
 ### もっと詳しく
 
-- [`Color`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/color/), [`ColorSpace`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/colorspace/), [`ColorModeConfig`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/colormodeconfig/)
+- [`Color`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/color/), [`ColorSpace`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/colorspace/), [`ColorModeConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/colormodeconfig/)
 - [`Basics/Color/Hue`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Color/Hue), [`Basics/Color/LinearGradient`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Color/LinearGradient)
 
 ## 2.3 線の表情
@@ -294,7 +294,7 @@ final class Stroke: Sketch {
 
 ### もっと詳しく
 
-- [`StrokeCap`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/strokecap/), [`StrokeJoin`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/strokejoin/)
+- [`StrokeCap`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/strokecap/), [`StrokeJoin`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/strokejoin/)
 - [`Basics/Form/PointsLines`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Form/PointsLines), [`Topics/Drawing/ContinuousLines`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Drawing/ContinuousLines)
 
 ## 2.4 自分で形を作る
@@ -449,8 +449,8 @@ final class CustomShapes: Sketch {
 
 ### もっと詳しく
 
-- [`ShapeMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/shapemode/), [`CloseMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/closemode/)
-- [`Sketch`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/) — `curveVertex` / `curveTightness` / `curveDetail`
+- [`ShapeMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/shapemode/), [`CloseMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/closemode/)
+- [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — `curveVertex` / `curveTightness` / `curveDetail`
 - [`Basics/Form/Star`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Form/Star), [`Topics/Create Shapes/BeginEndContour`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Create%20Shapes/BeginEndContour)
 
 ## 2.5 変換と push / pop
@@ -566,7 +566,7 @@ final class Transform: Sketch {
 
 ### もっと詳しく
 
-- [`Sketch`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/) — `translate` / `rotate` / `scale` / `push` / `pop`
+- [`Sketch`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/) — `translate` / `rotate` / `scale` / `push` / `pop`
 - [`Basics/Transform/RotatePushPop`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Transform/RotatePushPop), [`Basics/Transform/Arm`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Transform/Arm)
 
 ## 2.6 くり返しで模様を作る
@@ -773,7 +773,7 @@ final class Text2D: Sketch {
 
 ### もっと詳しく
 
-- [`TextAlignH`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/textalignh/), [`TextAlignV`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/textalignv/)
+- [`TextAlignH`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/textalignh/), [`TextAlignV`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/textalignv/)
 - [`Basics/Typography/Words`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Typography/Words), [`Basics/Typography/TextRotation`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Typography/TextRotation)
 
 ## 2.8 画像
@@ -869,7 +869,7 @@ final class Images: Sketch {
 
 ### もっと詳しく
 
-- [`MImage`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/mimage/), [`ImageMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/imagemode/)
+- [`MImage`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/mimage/), [`ImageMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/imagemode/)
 - [`Basics/Image/LoadDisplayImage`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Image/LoadDisplayImage), [`Basics/Image/Transparency`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Image/Transparency)
 
 ## 2.9 ピクセルを直接触る
@@ -968,7 +968,7 @@ final class Pixels: Sketch {
 
 ### もっと詳しく
 
-- [`loadPixels()`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/loadpixels%28%29), [`updatePixels()`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/sketch/updatepixels%28%29)
+- [`loadPixels()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/loadpixels%28%29), [`updatePixels()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/updatepixels%28%29)
 - [`Topics/Image Processing/BrightnessPixels`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Image%20Processing/BrightnessPixels), [`Topics/Image Processing/Blur`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Image%20Processing/Blur)
 
 ## 2.10 ブレンドモード
@@ -1051,7 +1051,7 @@ final class BlendModes: Sketch {
 
 ### もっと詳しく
 
-- [`BlendMode`](https://shinyaoguri.github.io/metaphor/documentation/metaphorcore/blendmode/)
+- [`BlendMode`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/blendmode/)
 - [`Topics/Image Processing/Blending`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Image%20Processing/Blending)
 
 ---

@@ -50,11 +50,14 @@ jobs:
       - name: Build Library and extract symbol graphs (parallel)
         run: make symbol-graphs
       - name: Build DocC Documentation
+        # base path は Astro のサイト（/metaphor/）ではなくその配下の /reference/。
+        # DocC は baseUrl を出力へ焼き込むので、これで JS / CSS / theme-settings.json
+        # の参照が /metaphor/reference/... を向き、下の cp と噛み合う。
         run: |
           xcrun docc convert Sources/metaphor/metaphor.docc \
             --additional-symbol-graph-dir .build/symbol-graphs \
             --transform-for-static-hosting \
-            --hosting-base-path metaphor \
+            --hosting-base-path metaphor/reference \
             --output-path .build/docs
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -67,22 +70,21 @@ jobs:
           cd website
           npm ci
           npm run build
-      - name: Merge DocC into Astro output
+      - name: Place DocC reference under /reference/
+        # 2 つのビルドを **混ぜない**。Astro（LP + /tutorial/）は website/dist の
+        # ルート、DocC は丸ごと /reference/ 配下。Astro が生成しないパスなので
+        # 衝突が起きず、コピー対象の列挙も要らない。
+        #
+        # かつては DocC の出力をルートへ重ねており、トップの index.html などが
+        # 衝突するためコピー対象を固定リストで列挙していた。その結果 images /
+        # videos / downloads / metadata.json / theme-settings.json を取りこぼし、
+        # テーマ設定が公開サイトで効いていなかった（Issue #529）。
+        #
+        # 404.html は要らない: --transform-for-static-hosting が全ページの実体を
+        # 出すので client-side routing のフォールバックに頼る必要がなく、旧 URL
+        # (/metaphor/documentation/**) の救済は website 側の 404 ページが担う。
         run: |
-          # Copy DocC directories into Astro output.
-          #
-          # Astro 側の出力（LP + /tutorial/）はここより前の "Build Landing Page" が
-          # website/dist へ吐き済みで、この手順は DocC の出力を *足す* だけ。よって
-          # チュートリアルのためにコピー対象を増やす必要はない。名前も衝突しない:
-          # 下の tutorials は DocC の「チュートリアル」（複数形）で、Astro が出すのは
-          # /tutorial/（単数形）。
-          for dir in documentation data css js img index tutorials; do
-            if [ -d ".build/docs/$dir" ]; then
-              cp -R ".build/docs/$dir" "website/dist/$dir"
-            fi
-          done
-          # Copy DocC's SPA fallback for client-side routing
-          cp .build/docs/documentation/metaphor/index.html website/dist/404.html
+          cp -R .build/docs website/dist/reference
           # Disable Jekyll processing
           touch website/dist/.nojekyll
       - name: Upload artifact

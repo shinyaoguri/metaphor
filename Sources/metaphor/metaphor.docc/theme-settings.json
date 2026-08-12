@@ -1,80 +1,11 @@
 {
   "theme": {
     "color": {
-      "standard": {
-        "documentation-intro-fill": "light",
-        "documentation-intro-accent": "#4F46E5"
-      },
-      "custom": [
-        {
-          "name": "fill",
-          "value": "#FFFFFF"
-        },
-        {
-          "name": "fill-secondary",
-          "value": "#F9FAFB"
-        },
-        {
-          "name": "fill-tertiary",
-          "value": "#F3F4F6"
-        },
-        {
-          "name": "figure-blue",
-          "value": "#4F46E5"
-        },
-        {
-          "name": "figure-gray",
-          "value": "#6B7280"
-        },
-        {
-          "name": "figure-gray-secondary",
-          "value": "#9CA3AF"
-        },
-        {
-          "name": "figure-gray-secondary-alt",
-          "value": "#D1D5DB"
-        },
-        {
-          "name": "figure-gray-tertiary",
-          "value": "#E5E7EB"
-        },
-        {
-          "name": "figure-green",
-          "value": "#059669"
-        },
-        {
-          "name": "figure-light-blue",
-          "value": "#6366F1"
-        },
-        {
-          "name": "figure-orange",
-          "value": "#D97706"
-        },
-        {
-          "name": "figure-purple",
-          "value": "#7C3AED"
-        },
-        {
-          "name": "figure-red",
-          "value": "#DC2626"
-        },
-        {
-          "name": "tutorials-teal",
-          "value": "#0D9488"
-        },
-        {
-          "name": "article",
-          "value": "#6366F1"
-        },
-        {
-          "name": "tutorial",
-          "value": "#0D9488"
-        },
-        {
-          "name": "standard-blue",
-          "value": "#4F46E5"
-        }
-      ]
+      "documentation-intro-fill": "light",
+      "documentation-intro-accent": "#4F46E5",
+      "standard-blue": "#6165EF",
+      "figure-blue": "#6165EF",
+      "article": "#6165EF"
     },
     "typography": {
       "html-font": "system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
