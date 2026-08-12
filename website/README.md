@@ -30,6 +30,16 @@ npm run preview  # dist/ をそのまま配信して確認する
 
 数字 2 桁のプレフィックスをパターンで要求しているので、章立ての設計文書である `docs/tutorial/README.md` と画像置き場 `docs/tutorial/images/` は自動的に公開対象から外れます。サイト側の目次（サイドバーと `/tutorial/`）が README の章立てを置き換えます。
 
+#### website の外を読むときは docs.yml の paths も見る
+
+`docs.yml` は `on.push.paths` で起動を絞っているので、**website の外にあるビルド入力はそこにも並んでいないと反映されません**。`docs/tutorial/**` が抜けていたため、本文だけを変えた push でサイトが更新されない状態でした（[#554](https://github.com/shinyaoguri/metaphor/issues/554)）。ビルドは緑のまま公開サイトだけが古くなるので、気付く手掛かりがありません。
+
+追随漏れは `scripts/check-docs-workflow-paths.py` が検査します。`content.config.ts` の loader `base` を正本に、`docs.yml` の paths がそれを覆っているかを突き合わせ、CI では `scripts/tests/test_check_docs_workflow_paths.py` として毎 PR 走ります。**website の外を読む collection を足したら、`docs.yml` の paths にも同じ範囲を足してください**（手元での確認は次のとおり）。
+
+```bash
+python3 scripts/check-docs-workflow-paths.py
+```
+
 ### frontmatter
 
 正本は [`docs/tutorial/README.md`](../docs/tutorial/README.md) です。website 側のスキーマ（`src/content.config.ts`）はそれに追従します。

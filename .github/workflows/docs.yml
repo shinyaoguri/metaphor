@@ -3,11 +3,17 @@ name: Documentation
 on:
   push:
     branches: [main]
+    # website のビルド入力を漏らさないこと。Astro はチュートリアル本文のコピーを
+    # 持たず `docs/tutorial/` を content collection として直接読むので、ここに無いと
+    # 本文だけを変えた push でサイトが更新されない（Issue #554）。
+    # `website/src/content.config.ts` の loader base との突き合わせは
+    # scripts/check-docs-workflow-paths.py が CI で毎 PR 検査する。
     paths:
       - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
       - 'website/**'
+      - 'docs/tutorial/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
