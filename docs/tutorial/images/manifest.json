@@ -85,6 +85,27 @@
       "height": 360,
       "frame": 1
     },
+    "03-Motion/01-Time": {
+      "sourceHash": "6dc1683c3493d023aadecbb5f6921ed045bef81a51d93375c4a04ab39b757071",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "01-Time.webp",
+        "bytes": 43150
+      }
+    },
+    "03-Motion/02-Mapping": {
+      "sourceHash": "3c3677c139f0d3a69838360bb030c0a149aeb3df4b5001449dbf1d0d232af8be",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
     "03-Motion/03-Easing": {
       "sourceHash": "e50d34bf804f0cba3a181e4e0acbdbc53a4a9dd9f27a8c547ab74e9600213568",
       "width": 640,
@@ -99,6 +120,84 @@
         "file": "03-Easing.webp",
         "bytes": 35516
       }
+    },
+    "03-Motion/04-Trigonometry": {
+      "sourceHash": "0d82aa593cc29ea9196499e3098c6c801c19068924e951cefbac60780b192e51",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "04-Trigonometry.webp",
+        "bytes": 164804
+      }
+    },
+    "03-Motion/05-Random": {
+      "sourceHash": "4b0a1f771088c604cb2d16ff17c00a61f698208f8daa447b2c9991f2e9b7d44a",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "03-Motion/06-Noise": {
+      "sourceHash": "431743ee31eb2bb9cff0bb78e43f8b79d7397e6ccdcdd1025eaaebcc4133be6f",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "03-Motion/07-Vectors": {
+      "sourceHash": "d7c6150f70e48ba4cf531c48d554f7708a0ae74c53a4460dd2c5d8c1842b703f",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "07-Vectors.webp",
+        "bytes": 58884
+      }
+    },
+    "03-Motion/08-ManyObjects": {
+      "sourceHash": "de34c952de48b3f7b46035791071bb8305cffaf24cbd1d33427aec61811f3e93",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 40,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "08-ManyObjects.webp",
+        "bytes": 388588
+      }
+    },
+    "03-Motion/09-Particles": {
+      "sourceHash": "e50de34a9ab68abdcc766fbde7148ab34ff2065f3cb5454942e4833680eb3675",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "09-Particles.webp",
+        "bytes": 138364
+      }
+    },
+    "03-Motion/10-Massive": {
+      "sourceHash": "155bdbaeab64daf9acaeb49a4e035f8efef20e1e7c8d4eeb5532594b9a0baf90",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     }
   }
 }
