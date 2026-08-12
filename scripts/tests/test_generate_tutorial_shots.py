@@ -243,6 +243,52 @@ class TestMotionStaleness(ShotsTestCase):
         self.assertEqual(len(gen.check([REF], recorded, {})), 1)
 
 
+class TestNoCapture(ShotsTestCase):
+    """撮れない節の申告（no-capture.txt）の扱い（#544）。"""
+
+    def declare(self, ref: str = REF, reason: str = "マイク入力は環境で絵が変わる") -> None:
+        (self.code / ref / gen.NO_CAPTURE_NAME).write_text(reason + "\n", encoding="utf-8")
+
+    def test_fresh_without_any_image(self) -> None:
+        # 撮らないと申告した節は、画像が無くても鮮度検査を通る。
+        self.add_package()
+        self.declare()
+        self.assertEqual(gen.check([REF], {}), [])
+
+    def test_source_change_does_not_make_it_stale(self) -> None:
+        package_dir = self.add_package()
+        self.declare()
+        (package_dir / "Section" / "App.swift").write_text("import metaphor\n// 追記\n")
+        self.assertEqual(gen.check([REF], {}), [])
+
+    def test_stale_when_an_old_image_is_left_behind(self) -> None:
+        # 撮ってからあとで「撮らない」に変えた節。画像を片付けさせる。
+        self.add_package()
+        self.add_image()
+        self.declare()
+        self.assertEqual(len(gen.check([REF], self.record())), 1)
+
+    def test_motion_config_conflicts(self) -> None:
+        self.add_package()
+        self.declare()
+        motions = {REF: {"kind": "webp", **gen.MOTION_DEFAULTS, "quality": None}}
+        with self.assertRaises(gen.ShotError):
+            gen.check([REF], {}, motions)
+
+    def test_empty_reason_is_an_error(self) -> None:
+        self.add_package()
+        self.declare(reason="   ")
+        with self.assertRaises(gen.ShotError):
+            gen.check([REF], {})
+
+    def test_reason_is_returned_for_the_log(self) -> None:
+        package_dir = self.add_package()
+        self.declare(reason="カメラ映像は撮る場所で変わる\n")
+        self.assertEqual(
+            gen.no_capture_reason(package_dir, REF), "カメラ映像は撮る場所で変わる"
+        )
+
+
 class TestWebPCommand(ShotsTestCase):
     def test_frame_delay_comes_from_fps(self) -> None:
         command = gen.webp_command([Path("a.png"), Path("b.png")], Path("out.webp"), 15, None)
