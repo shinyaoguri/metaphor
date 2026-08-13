@@ -52,6 +52,65 @@ struct InterpolatableTests {
         #expect(mid.g == 0.5)
         #expect(mid.b == 0)
     }
+
+    // オーバーシュートするイージング（easeOutBack / easeOutElastic）は 0...1 を外れた
+    // t を渡してくるため、組み込みの Interpolatable はクランプせず外挿する契約。
+    @Test("範囲外の t をクランプせず外挿する")
+    func extrapolatesOutOfRangeT() {
+        #expect(abs(Float.interpolate(from: 0, to: 100, t: 1.2) - 120) < 1e-3)
+        #expect(abs(Float.interpolate(from: 0, to: 100, t: -0.2) - (-20)) < 1e-3)
+
+        let over = SIMD2<Float>.interpolate(from: SIMD2(0, 0), to: SIMD2(10, 20), t: 1.5)
+        #expect(over.x == 15)
+        #expect(over.y == 30)
+
+        let under = SIMD3<Float>.interpolate(
+            from: SIMD3(0, 0, 0), to: SIMD3(10, 20, 30), t: -0.1)
+        #expect(abs(under.x - (-1)) < 1e-3)
+        #expect(abs(under.z - (-3)) < 1e-3)
+    }
+
+    @Test("Color の外挿は成分が 0...1 を外れうる")
+    @MainActor
+    func colorExtrapolatesBeyondUnitRange() {
+        let a = Color(r: 0, g: 0, b: 0, a: 1)
+        let b = Color(r: 1, g: 0.5, b: 0, a: 1)
+        let over = Color.interpolate(from: a, to: b, t: 1.2)
+        #expect(over.r > 1.0)
+        #expect(abs(over.g - 0.6) < 1e-6)
+        #expect(over.b == 0)
+    }
+}
+
+// MARK: - Easing Overshoot
+
+@Suite("Easing overshoot")
+struct EasingOvershootTests {
+
+    private static func sampledRange(_ easing: (Float) -> Float) -> (min: Float, max: Float) {
+        let samples = stride(from: Float(0), through: Float(1), by: 0.005).map(easing)
+        return (samples.min()!, samples.max()!)
+    }
+
+    @Test("easeOutBack / easeOutElastic は 1.0 を超える区間を持つ")
+    func outEasingsOvershoot() {
+        #expect(Self.sampledRange(easeOutBack).max > 1.0)
+        #expect(Self.sampledRange(easeOutElastic).max > 1.0)
+    }
+
+    @Test("easeInBack / easeInElastic は 0.0 を下回る区間を持つ")
+    func inEasingsUndershoot() {
+        #expect(Self.sampledRange(easeInBack).min < 0.0)
+        #expect(Self.sampledRange(easeInElastic).min < 0.0)
+    }
+
+    @Test("両端は 0 と 1 に固定される")
+    func endpointsAreExact() {
+        for easing in [easeOutBack, easeOutElastic, easeInBack, easeInElastic] {
+            #expect(abs(easing(0)) < 1e-5)
+            #expect(abs(easing(1) - 1) < 1e-5)
+        }
+    }
 }
 
 // MARK: - Tween
