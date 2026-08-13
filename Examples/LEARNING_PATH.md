@@ -145,6 +145,20 @@ topics with a sketch each — `Examples/Tutorial/08-Connect/01-OSC` (loopback),
 `02-MIDI` (knobs and pads), `03-Syphon` (fixed-resolution output) and
 `04-Parameters` (`@Param` plus `gui.params()`).
 
+## 10. Exporting your work
+
+Getting the picture out of the window: stills, video, vector, and the settings
+that make a render reproducible.
+
+- [Samples/SVGExport](Samples/SVGExport) — `beginSVGRecord()` / `endSVGRecord()` writing plotter-ready line art from the same draw calls the screen gets.
+- [Samples/StatePreservation](Samples/StatePreservation) — `saveState()` / `restoreState(_:)` and `preserveClock` keeping a simulation alive across a live-reload.
+
+Part 9 of the tutorial covers the whole surface with a sketch each —
+`Examples/Tutorial/09-Artwork/01-SaveImage` (`save()` and PNG sequences),
+`02-RecordMotion` (video and GIF), `03-VectorExport` (SVG), `04-DeterministicRender`
+(`beginOfflineRender()` plus fixed seeds, byte-identical across runs) and
+`05-LongRun` (state preservation and the performance HUD).
+
 ## Where to go next
 
 - **Learn the library in order**: [`docs/tutorial/`](../docs/tutorial/) — the systematic tutorial (Japanese), with its own sketches and rendered output per section.

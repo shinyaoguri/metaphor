@@ -187,7 +187,6 @@ final class SaveImageSketch: Sketch {
 
 - [`save(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/save%28_:%29), [`save()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/save%28%29), [`saveFrame(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/saveframe%28_:%29)
 - [`beginFrameRecord(directory:pattern:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/beginframerecord%28directory:pattern:%29), [`endFrameRecord()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endframerecord%28%29)
-- 元になった例: [`Examples/Topics/File IO/SaveOneImage`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/File%20IO/SaveOneImage)
 
 ## 9.2 動画・GIF で書き出す
 
@@ -394,7 +393,7 @@ final class RecordMotionSketch: Sketch {
 ### もっと詳しく
 
 - [`beginVideoRecord(_:config:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/beginvideorecord%28_:config:%29), [`endVideoRecord(completion:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endvideorecord%28completion:%29), [`VideoExportConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/videoexportconfig/)
-- [`beginGIFRecord(fps:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/begingifrecord%28fps:%29), [`endGIFRecord(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endgifrecord%28_:%29), [`GIFExporter`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/gifexporter/)
+- [`beginGIFRecord(fps:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/begingifrecord%28fps:%29), [`endGIFRecord(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endgifrecord%28_:%29-57dkf), [`GIFExporter`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/gifexporter/)
 
 ## 9.3 ベクタで書き出す
 
@@ -888,8 +887,10 @@ final class LongRunSketch: Sketch {
 
     /// 毎フレーム 1 粒だけ積む。上限に達したら古いものから捨てる
     private func addGrain() {
-        let angle = noise(time * 0.05) * TWO_PI * 2
-        let radius = 40 + noise(time * 0.13, 5) * 110
+        // 落とす場所はゆっくり一周する。時間そのもので動かしているので、
+        // リロードで time が戻ると積む場所も戻る（preserveClock で防ぐ）
+        let angle = time * 1.1
+        let radius = 50 + noise(time * 0.4) * 100
         grains.append(
             Grain(
                 x: width / 2 + cos(angle) * radius + random(-6, 6),
