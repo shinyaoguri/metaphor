@@ -366,6 +366,45 @@
       "width": 640,
       "height": 360,
       "frame": 1
+    },
+    "09-Artwork/01-SaveImage": {
+      "sourceHash": "deac4ff0913f10cd76630475fa56b8f14f96b3858d559542acbfd3b651fc8981",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "09-Artwork/02-RecordMotion": {
+      "sourceHash": "ba19ac6c473a98f6c3c2ba0a527803e33a710bfecf686581e15c87c503ccc98d",
+      "width": 640,
+      "height": 360,
+      "motion": {
+        "kind": "webp",
+        "frames": 48,
+        "every": 4,
+        "fps": 15,
+        "width": 640,
+        "quality": null,
+        "file": "02-RecordMotion.webp",
+        "bytes": 161942
+      }
+    },
+    "09-Artwork/03-VectorExport": {
+      "sourceHash": "d9990a36940a00287c7696e7a57cbb4fef2df5e75aed391c6a72b001e26b66c2",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "09-Artwork/04-DeterministicRender": {
+      "sourceHash": "c4b070f35633c4b4c0c2c74feb60a5c96f945721304d2a42298cef1fc0d9406c",
+      "width": 1920,
+      "height": 1080,
+      "frame": 1
+    },
+    "09-Artwork/05-LongRun": {
+      "sourceHash": "ece5d5f59fb0dc17e8b94862691425d8748cf84dc552527cdd086b51d50abc62",
+      "width": 640,
+      "height": 360,
+      "frame": 181
     }
   }
 }
