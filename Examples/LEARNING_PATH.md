@@ -9,7 +9,7 @@ learning next. It reuses the difficulty tags (`[Beginner]` /
 remains the full, searchable index; this page is a suggested order through it.
 
 **New to metaphor?** Start with the tutorial
-([`docs/tutorial/`](../docs/tutorial/) — Japanese, being written under
+([`docs/tutorial/`](../docs/tutorial/) — Japanese, all ten parts published under
 [Epic #483](https://github.com/shinyaoguri/metaphor/issues/483)). It teaches
 the library in order with its own sketches. This page is the map for digging
 through the examples themselves once you want more than the tutorial covers.
@@ -111,6 +111,11 @@ Beyond the Processing-parity surface: the things that only exist in metaphor.
 - [Samples/RenderGraphCompose](Samples/RenderGraphCompose) — composing render passes with `RenderGraph`.
 - [Samples/SceneGraphBasics](Samples/SceneGraphBasics) — retained-mode `SceneGraph` nodes instead of immediate-mode `draw()` calls.
 - [Samples/RayTracing](Samples/RayTracing) — MPS/Metal ray tracing.
+
+Part 10 of the tutorial turns the Probe into a workflow — `Examples/Tutorial/10-AI/01-ObservationLoop`
+(why a frame that compiles can still be empty), `02-ProbeState` (`probe()` and what
+lands in `frame.json`) and `03-AgentTools` (`probe()` plus `@Param`, the surface an
+agent drives over MCP).
 
 ## 8. Camera, ML, and audio — permission-gated
 

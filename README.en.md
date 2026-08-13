@@ -115,8 +115,13 @@ final class MySketch: Sketch {
 | [Part 3 — Motion](docs/tutorial/03-motion.md) | Time, `map` / `lerp`, easing, trigonometry, randomness, noise, vectors, particles |
 | [Part 4 — Handling input](docs/tutorial/04-input.md) | Mouse, keyboard, hit testing and hand-rolled UI, windows |
 | [Part 5 — Into 3D](docs/tutorial/05-3d.md) | Primitives, 3D transforms, cameras and projection, lighting, materials and PBR, shadows, textures, meshes and models, instancing |
+| [Part 6 — Using the GPU](docs/tutorial/06-gpu.md) | Compute kernels, GPU particles, post-processing, custom post effects |
+| [Part 7 — Media](docs/tutorial/07-media.md) | Microphone input, FFT analysis, camera input, video playback, machine learning |
+| [Part 8 — Connecting outward](docs/tutorial/08-connect.md) | OSC, MIDI, Syphon, exposing values with `@Param` |
+| [Part 9 — Shipping a piece](docs/tutorial/09-artwork.md) | Stills, video, GIF and SVG export, deterministic renders, long runs |
+| [Part 10 — Making things with an AI](docs/tutorial/10-ai.md) | The observation loop, declaring state with `probe()`, MCP, shared sessions, the context an AI needs |
 
-Part 6 onward (GPU, media, connecting to the outside, shipping a piece, making things with an AI) is being written under Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483). The full outline is in [docs/tutorial/README.md](docs/tutorial/README.md); until those parts land, use the reference documentation below and [Examples](#examples).
+All ten parts are published (Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)). The full outline lives in [docs/tutorial/README.md](docs/tutorial/README.md); an English translation is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548). Once you have read it, use the reference documentation below and [Examples](#examples).
 
 ### Reference documentation
 

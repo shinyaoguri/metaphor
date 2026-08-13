@@ -21,7 +21,7 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 | 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 |
 | 第 8 部 外とつなぐ | [`08-connect.md`](08-connect.md) | 公開 |
 | 第 9 部 作品にする | [`09-artwork.md`](09-artwork.md) | 公開 |
-| 第 10 部 AI と作る | — | 起票済み（[#547](https://github.com/shinyaoguri/metaphor/issues/547)） |
+| 第 10 部 AI と作る | [`10-ai.md`](10-ai.md) | 公開 |
 
 ## 対象読者と、他ドキュメントとの役割分担
 
@@ -156,7 +156,7 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 |---|---|---|---|
 | 10.1 観測ループという考え方 | AI が「いま見えている絵」を見て直せることの意味 | — | — |
 | 10.2 内部状態を申告する | `probe()` で AI に見せたい値を渡す | `probe` | `Samples/ProbeSnapshot` |
-| 10.3 MCP でつなぐ | `metaphor mcp` の 5 ツール（snapshot / capture_sequence / input / build_status / api_reference） | — | — |
+| 10.3 MCP でつなぐ | `metaphor mcp` が公開する道具（snapshot / capture_sequence / input / params / set_param / build_status / api_reference） | `probe`, `@Param` | — |
 | 10.4 人と AI で同じスケッチを見る | `metaphor watch` と共有セッション | — | — |
 | 10.5 AI に metaphor 流を教える | `llms.txt` / `llms-sketch.txt` / [用途別プロンプト](../ai/prompts/) | — | — |
 
@@ -363,6 +363,18 @@ JSON Lines（[CONTRACT.md](../../CONTRACT.md) 契約点 3）を入力として�
 - `motion.json` との併記は矛盾なのでエラーになります
 - 撮ったあとで「撮らない」に変えたときは、`make tutorial-shots` が古い画像と manifest のエントリを片付けます（`--check` は片付くまで差し戻します）
 
+### スケッチを持たない節（[#547](https://github.com/shinyaoguri/metaphor/issues/547)）
+
+**題材がコードではなく操作や文脈である節**は、`Examples/Tutorial/` にパッケージを置きません（第 10 部 10.4 の共有セッション、10.5 の AI へ渡す資料）。パッケージが無ければ埋め込みも撮影も対象外なので、仕組みの側で足すものはありません。
+
+「撮れない節」（`no-capture.txt`）とは別物です。あちらは**スケッチはあるが絵が決まらない**節で、こちらは**そもそもスケッチが無い**節です。
+
+規約:
+
+- 節の冒頭で**スケッチが無いことと、代わりに何を扱うかを 1 文で書きます**。「何を作るか」の画像が無い理由を読者に説明しないまま始めません
+- 手順が主役になるので、**確かめ方を「試してみる」に書きます**（この順で起動する、逆順にして直す、など）
+- 操作の正典が別リポジトリ（metaphor-cli）にあるときは、深いリンクで送り出して**手順を二重に持ちません**
+
 ### 起動直後は絵が完成しない節（[#543](https://github.com/shinyaoguri/metaphor/issues/543)）
 
 撮影スクリプトはリクエストを**起動前**に置くので、静止画は 1 フレーム目です。ところが
@@ -417,4 +429,4 @@ Examples の本数やバージョン番号のような、増減する数値を�
 - [#486](https://github.com/shinyaoguri/metaphor/issues/486) 画像基盤（Probe + 決定論レンダリング）
 - [#487](https://github.com/shinyaoguri/metaphor/issues/487) website のチュートリアル領域
 - [#488](https://github.com/shinyaoguri/metaphor/issues/488) 執筆パイロット（第 1 部・第 2 部）
-- [#508](https://github.com/shinyaoguri/metaphor/issues/508) 第 3 部 / [#509](https://github.com/shinyaoguri/metaphor/issues/509) 第 4 部 / [#526](https://github.com/shinyaoguri/metaphor/issues/526) 第 5 部 / [#543](https://github.com/shinyaoguri/metaphor/issues/543) 第 6 部
+- [#508](https://github.com/shinyaoguri/metaphor/issues/508) 第 3 部 / [#509](https://github.com/shinyaoguri/metaphor/issues/509) 第 4 部 / [#526](https://github.com/shinyaoguri/metaphor/issues/526) 第 5 部 / [#543](https://github.com/shinyaoguri/metaphor/issues/543) 第 6 部 / [#544](https://github.com/shinyaoguri/metaphor/issues/544) 第 7 部 / [#545](https://github.com/shinyaoguri/metaphor/issues/545) 第 8 部 / [#546](https://github.com/shinyaoguri/metaphor/issues/546) 第 9 部 / [#547](https://github.com/shinyaoguri/metaphor/issues/547) 第 10 部

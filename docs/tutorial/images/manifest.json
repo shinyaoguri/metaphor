@@ -405,6 +405,24 @@
       "width": 640,
       "height": 360,
       "frame": 187
+    },
+    "10-AI/01-ObservationLoop": {
+      "sourceHash": "2163b943c9be7f2693140447d0d59a31c8e788b8db611a9adbfa3a6c31f32939",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "10-AI/02-ProbeState": {
+      "sourceHash": "dde3d3e02e88250947eb04be00e174adfa63822260538988f688be04cc5a34e0",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "10-AI/03-AgentTools": {
+      "sourceHash": "e962326cc468ca4ae6053ee74fe85aea913412d7802f81afd568822e9798a5bc",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     }
   }
 }
