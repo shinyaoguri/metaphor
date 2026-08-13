@@ -451,20 +451,20 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `struct Color` -- 浮動小数点成分を持つ RGBA カラー。
 
-- `var a: Float` -- アルファ（不透明度）成分。0.0 から 1.0 の範囲。
-- `var b: Float` -- 青成分。0.0 から 1.0 の範囲。
+- `var a: Float` -- アルファ（不透明度）成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+- `var b: Float` -- 青成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
 - `static let black: Color` -- 純粋な黒。
 - `static let blue: Color` -- 純粋な青。
 - `static let clear: Color` -- 完全に透明な黒。
 - `var clearColor: MTLClearColor { get }` -- Metal レンダーパスで使用するための `MTLClearColor` としてカラーを返します。
 - `static let cyan: Color` -- 純粋なシアン。
-- `var g: Float` -- 緑成分。0.0 から 1.0 の範囲。
+- `var g: Float` -- 緑成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
 - `static let green: Color` -- 純粋な緑。
 - `static let magenta: Color` -- 純粋なマゼンタ。
 - `static let orange: Color` -- オレンジ。
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
-- `var r: Float` -- 赤成分。0.0 から 1.0 の範囲。
+- `var r: Float` -- 赤成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
 - `static let red: Color` -- 純粋な赤。
 - `var simd: SIMD4<Float> { get }` -- カラーを (r, g, b, a) 順の `SIMD4<Float>` として返します。
 - `static let white: Color` -- 純粋な白。
@@ -475,7 +475,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init?(hex: String)` -- "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
 - `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- 色相、彩度、明度の成分からカラーを作成します。
 - `init?(paramValue: ParamValue)`
-- `init(r: Float, g: Float, b: Float, a: Float = 1.0)` -- 0.0 から 1.0 の範囲の RGB 成分からカラーを作成します。
+- `init(r: Float, g: Float, b: Float, a: Float = 1.0)` -- 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
 - `static func interpolate(from: Color, to: Color, t: Float) -> Color`
 - `func lerp(to other: Color, t: Float) -> Color` -- このカラーと別のカラーの間を線形補間します。
 - `func withAlpha(_ alpha: Float) -> Color` -- 指定されたアルファ値を持つ新しいカラーを返します。

@@ -525,7 +525,7 @@ There are two ways to say "white", and they use different scales:
 
 ```swift
 fill(255)                    // numeric overload — honours colorMode(), default 0...255
-fill(.white)                 // Color value — components are always 0...1
+fill(.white)                 // Color value — components use a 0...1 scale
 fill(Color(r: 1, g: 1, b: 1))
 ```
 
