@@ -392,7 +392,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `protocol Interpolatable` -- 2つの値の間で線形補間をサポートする型を定義します。
 
-- `static func interpolate(from: Self, to: Self, t: Float) -> Self` -- パラメータ t（0.0〜1.0）で2つの値を線形補間します。
+- `static func interpolate(from: Self, to: Self, t: Float) -> Self` -- パラメータ t で2つの値を線形補間します。
 
 ### `protocol MetaphorOutputPlugin : MetaphorPlugin` -- 最終フレームを外部へ出力（publish / stream / record）するプラグインのマーカープロトコル。
 
