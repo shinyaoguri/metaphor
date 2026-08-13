@@ -294,23 +294,77 @@ public final class TableRow {
         return cells[index]
     }
 
-    /// 列名でセル値を Int として取得します。数値でなければ 0。
-    public func getInt(_ column: String) -> Int { Int(Double(getString(column)) ?? 0) }
+    /// 列名でセル値を Int として取得します。Int として表現できなければ 0。
+    ///
+    /// 小数は 0 方向へ切り捨てます。数値でない文字列に加え、`nan` / `inf` などの
+    /// 非有限値と Int の範囲を超える値も 0 になります。
+    public func getInt(_ column: String) -> Int { Self.int(from: getString(column)) }
 
-    /// 列インデックスでセル値を Int として取得します。数値でなければ 0。
-    public func getInt(_ index: Int) -> Int { Int(Double(getString(index)) ?? 0) }
+    /// 列インデックスでセル値を Int として取得します。Int として表現できなければ 0。
+    public func getInt(_ index: Int) -> Int { Self.int(from: getString(index)) }
 
-    /// 列名でセル値を Float として取得します。数値でなければ 0。
-    public func getFloat(_ column: String) -> Float { Float(getString(column)) ?? 0 }
+    /// 列名でセル値を Float として取得します。有限な数値でなければ 0。
+    public func getFloat(_ column: String) -> Float { Self.float(from: getString(column)) }
 
-    /// 列インデックスでセル値を Float として取得します。数値でなければ 0。
-    public func getFloat(_ index: Int) -> Float { Float(getString(index)) ?? 0 }
+    /// 列インデックスでセル値を Float として取得します。有限な数値でなければ 0。
+    public func getFloat(_ index: Int) -> Float { Self.float(from: getString(index)) }
 
-    /// 列名でセル値を Double として取得します。数値でなければ 0。
-    public func getDouble(_ column: String) -> Double { Double(getString(column)) ?? 0 }
+    /// 列名でセル値を Double として取得します。有限な数値でなければ 0。
+    public func getDouble(_ column: String) -> Double { Self.double(from: getString(column)) }
 
-    /// 列インデックスでセル値を Double として取得します。数値でなければ 0。
-    public func getDouble(_ index: Int) -> Double { Double(getString(index)) ?? 0 }
+    /// 列インデックスでセル値を Double として取得します。有限な数値でなければ 0。
+    public func getDouble(_ index: Int) -> Double { Self.double(from: getString(index)) }
+
+    // MARK: - 数値変換
+
+    /// `Int` が表現できる範囲の上限（排他）。`2^63` は Double で正確に表せる。
+    private static let intUpperExclusive = 9_223_372_036_854_775_808.0
+    /// `Int` が表現できる範囲の下限（包含）。`-2^63` は Double で正確に表せる。
+    private static let intLowerInclusive = -9_223_372_036_854_775_808.0
+
+    /// セル文字列を `Int` へ変換します。表現できない値は 0（Issue #580）。
+    ///
+    /// 従来は `Int(Double(cell) ?? 0)` を素通ししていたため、`nan` / `inf` や
+    /// `Int` の範囲を超える有限値で「Double value cannot be converted to Int」の
+    /// トラップが起き、CSV を読むだけでスケッチが終了していた。欠損列・非数値
+    /// 文字列が 0 になるのは正常系なので、警告は「数値には見えるが Int として
+    /// 表現できない」ケースだけに絞る。
+    private static func int(from cell: String) -> Int {
+        guard let value = Double(cell) else { return 0 }
+        guard value.isFinite else {
+            metaphorWarning("TableRow.getInt: '\(cell)' is not a finite number; using 0")
+            return 0
+        }
+        let truncated = value.rounded(.towardZero)
+        guard truncated >= intLowerInclusive, truncated < intUpperExclusive else {
+            metaphorWarning("TableRow.getInt: '\(cell)' is outside the Int range; using 0")
+            return 0
+        }
+        return Int(truncated)
+    }
+
+    /// セル文字列を有限な `Float` へ変換します。非有限値は 0（Issue #580）。
+    ///
+    /// NaN は以降の演算を黙って汚染するため、`getInt` と同じく 0 へ寄せて
+    /// 「数値でなければ 0」の意味を 3 つの getter で揃える。
+    private static func float(from cell: String) -> Float {
+        guard let value = Float(cell) else { return 0 }
+        guard value.isFinite else {
+            metaphorWarning("TableRow.getFloat: '\(cell)' is not a finite Float; using 0")
+            return 0
+        }
+        return value
+    }
+
+    /// セル文字列を有限な `Double` へ変換します。非有限値は 0（Issue #580）。
+    private static func double(from cell: String) -> Double {
+        guard let value = Double(cell) else { return 0 }
+        guard value.isFinite else {
+            metaphorWarning("TableRow.getDouble: '\(cell)' is not a finite Double; using 0")
+            return 0
+        }
+        return value
+    }
 
     // MARK: - 設定
 
