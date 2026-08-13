@@ -106,7 +106,7 @@ final class MySketch: Sketch {
 
 [docs/tutorial/](docs/tutorial/) holds a guided tutorial that assumes no Processing background. Read it in the browser at **[metaphor Tutorial](https://shinyaoguri.github.io/metaphor/en/tutorial/)**. Every section is one self-contained sketch: the code in the text is embedded from the real packages under [`Examples/Tutorial/`](Examples/Tutorial/), and the rendered images come from those same sketches, so **the code on the page runs as printed**.
 
-**The prose is Japanese for now** (English is planned once the parts are complete — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)); the code, API names, and images are language-independent.
+**The prose is Japanese for now** (an English edition is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548)); the code, API names, and images are language-independent.
 
 | Part | What you learn |
 |---|---|
@@ -121,7 +121,7 @@ final class MySketch: Sketch {
 | [Part 9 — Shipping a piece](docs/tutorial/09-artwork.md) | Stills, video, GIF and SVG export, deterministic renders, long runs |
 | [Part 10 — Making things with an AI](docs/tutorial/10-ai.md) | The observation loop, declaring state with `probe()`, MCP, shared sessions, the context an AI needs |
 
-All ten parts are published (Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)). The full outline lives in [docs/tutorial/README.md](docs/tutorial/README.md); an English translation is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548). Once you have read it, use the reference documentation below and [Examples](#examples).
+<!-- tutorial-status: en-status -->Parts 1–10 are published<!-- /tutorial-status --> (Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)). The full outline lives in [docs/tutorial/README.md](docs/tutorial/README.md); an English translation is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548). Once you have read it, use the reference documentation below and [Examples](#examples).
 
 ### Reference documentation
 

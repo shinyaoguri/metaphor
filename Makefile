@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets tutorial-shots symbol-graphs llms-txt ai-docs-check hooks contract-schema
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema
 
 # Default target
 all: setup build
@@ -84,7 +84,7 @@ test-lcov:
 #   - Swift 5.10 / Xcode 15.4 でのビルド → CI の build-swift-5-10
 #   - CONTRACT.md のクロスリポ byte-identity → GitHub API が要るので CI のみ
 #   - 生成物の鮮度（llms.txt / examples index / shader sources /
-#     tutorial snippets）→ pre-push フック
+#     tutorial snippets / tutorial publication status）→ pre-push フック
 #
 # NOTE: swiftc のフラグが変わるとビルドキャッシュは作り直しになるので、
 # `make build` と交互に走らせると毎回フルリビルドになる。実測で 10 秒台
@@ -221,6 +221,11 @@ tutorial-snippets:
 tutorial-shots:
 	@python3 scripts/generate-tutorial-shots.py $(ARGS)
 
+# Write "how far the tutorial is published" into the entry docs from frontmatter
+# 正典は docs/tutorial/*.md の frontmatter。README 群の案内は生成物（#584）。
+tutorial-status:
+	@python3 scripts/generate-tutorial-status.py
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -251,4 +256,5 @@ help:
 	@echo "  make examples-index - Generate AI-friendly examples index"
 	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
 	@echo "  make tutorial-shots - Re-shoot tutorial result images (needs a GPU)"
+	@echo "  make tutorial-status - Write the tutorial publication status into the READMEs"
 	@echo "  make help           - Show this help"

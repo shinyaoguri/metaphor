@@ -207,6 +207,11 @@ jobs:
       # コンパイルを通っている」が構造的に保証される。
       - name: Verify tutorial snippets are up to date
         run: python3 scripts/generate-tutorial-snippets.py --check
+      # 「どこまで公開されているか」の正典は本文の frontmatter（#584）。README 群の
+      # 案内は生成物なので、部を 1 つ公開するたびに 5 ファイルを手で直す運用に
+      # 戻さない。公開済みの部への導線の有無もここで見る。
+      - name: Verify tutorial publication status is up to date
+        run: python3 scripts/generate-tutorial-status.py --check
       # 画像そのものは比較しない（GPU 出力はビット単位で再現しない）。
       # manifest に記録した撮影時のソース指紋と現在のソースを突き合わせ、
       # 「スケッチを変えたのに撮り直していない」だけを捕まえる（#486）。

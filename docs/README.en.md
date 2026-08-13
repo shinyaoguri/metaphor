@@ -9,7 +9,7 @@ this table.
 
 | Reader | Goal | Read |
 |---|---|---|
-| New to metaphor | Read straight through and learn to build sketches | [tutorial/](tutorial/) (Japanese; Parts 1–4 are published, Part 5 onward is being written — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)) |
+| New to metaphor | Read straight through and learn to build sketches | [tutorial/](tutorial/) (Japanese; <!-- tutorial-status: en-status -->Parts 1–10 are published<!-- /tutorial-status --> — Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)) |
 | Writing sketches | Build artwork with metaphor | [README](../README.en.md) → [ai/for-sketch-authors.md](ai/for-sketch-authors.md) → [ai/examples-index.md](ai/examples-index.md) |
 | Digging through Examples | Want an order to open them in, not an index to query | [Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md) (curated route using the existing difficulty tags) |
 | Coming from Processing / p5.js | Look up "the Processing X is metaphor's Y" | [processing-migration-guide.md](processing-migration-guide.md) (API mapping tables, pitfalls, what is not implemented yet) |
@@ -26,7 +26,7 @@ this table.
 
 - **[tutorial/](tutorial/)** — The systematic tutorial: prose for beginners, written Japanese-first
   - [tutorial/README.md](tutorial/README.md) — Chapter outline, writing conventions, and how it divides work with the other documents. Each part lands as `NN-slug.md`
-  - Published so far: [Part 1 Getting started](tutorial/01-getting-started.md) / [Part 2 Drawing in 2D](tutorial/02-drawing-2d.md) / [Part 3 Motion](tutorial/03-motion.md) / [Part 4 Handling input](tutorial/04-input.md). The website edition lives at [/tutorial/](https://shinyaoguri.github.io/metaphor/tutorial/)
+  - <!-- tutorial-status: en-status -->Parts 1–10 are published<!-- /tutorial-status --> — the outline with every part linked is in [tutorial/README.md](tutorial/README.md), and [README.en.md](../README.en.md#tutorial) lists them in English. The website edition lives at [/tutorial/](https://shinyaoguri.github.io/metaphor/tutorial/)
 - **[ai/](ai/)** — AI-assistance documentation
   - [ai/README.md](ai/README.md) — Implementation/debugging notes and invariants (for library developers and AI agents)
   - [ai/for-sketch-authors.md](ai/for-sketch-authors.md) — Guide for writing sketches together with AI
