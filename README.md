@@ -113,8 +113,13 @@ final class MySketch: Sketch {
 | [第 3 部 動かす](docs/tutorial/03-motion.md) | 時間、`map` / `lerp`、イージング、三角関数、乱数、ノイズ、ベクトル、パーティクル |
 | [第 4 部 入力を受ける](docs/tutorial/04-input.md) | マウス、キーボード、当たり判定から UI を自作する、ウィンドウ |
 | [第 5 部 3D へ](docs/tutorial/05-3d.md) | プリミティブ、3D の変換、カメラと投影、ライティング、マテリアルと PBR、影、テクスチャ、メッシュとモデル、インスタンシング |
+| [第 6 部 GPU を使う](docs/tutorial/06-gpu.md) | compute カーネル、GPU パーティクル、ポストプロセス、カスタムポストエフェクト |
+| [第 7 部 メディア](docs/tutorial/07-media.md) | マイク入力、FFT による分析、カメラ入力、動画再生、機械学習 |
+| [第 8 部 外とつなぐ](docs/tutorial/08-connect.md) | OSC、MIDI、Syphon、`@Param` によるパラメータの公開 |
+| [第 9 部 作品にする](docs/tutorial/09-artwork.md) | 静止画・動画・GIF・SVG の書き出し、決定論的な焼き出し、長時間の運用 |
+| [第 10 部 AI と作る](docs/tutorial/10-ai.md) | 観測ループ、`probe()` による状態の申告、MCP、共有セッション、AI へ渡す文脈 |
 
-第 6 部以降（GPU / メディア / 外とつなぐ / 作品にする / AI と作る）は Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483) で執筆中です。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md) に、それまでの引き先は下の「引くためのドキュメント」と [Examples](#examples) にあります。
+全 10 部が公開されています（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md)、英語版は [#548](https://github.com/shinyaoguri/metaphor/issues/548) で後追いします。読み終えたあとの引き先は下の「引くためのドキュメント」と [Examples](#examples) です。
 
 ### 引くためのドキュメント
 
