@@ -38,6 +38,30 @@ public final class PerformanceHUD {
         gpuTime = Float((end - start) * 1000) // ms
     }
 
+    // MARK: - 見た目
+
+    /// パネルの色（半透明の黒）。
+    static let panelColor = Color(r: 0, g: 0, b: 0, a: 0.6)
+
+    /// 数字の色（緑）。
+    static let textColor = Color(r: 0, g: 1, b: 0, a: 1)
+
+    /// パネルの塗りを適用します。
+    ///
+    /// HUD は画面の付属物なので、スケッチ側の `colorMode` に左右されてはいけません。
+    /// チャンネル値をとる `fill(_:_:_:_:)` は `ColorModeConfig`（既定の最大値 255）を
+    /// 通るため、0-1 の値で呼ぶとほぼ透明になります。``Color`` を直接渡して
+    /// 変換そのものを避けます。
+    static func applyPanelStyle(to canvas: Canvas2D) {
+        canvas.fill(panelColor)
+        canvas.noStroke()
+    }
+
+    /// 数字の塗りを適用します（``applyPanelStyle(to:)`` と同じ理由で ``Color`` を渡します）。
+    static func applyTextStyle(to canvas: Canvas2D) {
+        canvas.fill(textColor)
+    }
+
     /// Canvas2D プリミティブを使用してHUDオーバーレイを描画します。
     /// - Parameters:
     ///   - canvas: 描画に使用する Canvas2D インスタンス。
@@ -48,8 +72,7 @@ public final class PerformanceHUD {
         canvas.pushStyle()
 
         // 背景
-        canvas.fill(0, 0, 0, 0.6)   // 半透明の黒
-        canvas.noStroke()
+        Self.applyPanelStyle(to: canvas)
         let hudWidth: Float = 180
         let hudHeight: Float = 80
         let x = width - hudWidth - 10
@@ -57,7 +80,7 @@ public final class PerformanceHUD {
         canvas.rect(x, y, hudWidth, hudHeight, 4)
 
         // テキスト
-        canvas.fill(0, 1, 0, 1)     // 緑色のテキスト
+        Self.applyTextStyle(to: canvas)
         canvas.textSize(12)
         canvas.textAlign(.left, .top)
 
