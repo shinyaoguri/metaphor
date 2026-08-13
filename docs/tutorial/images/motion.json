@@ -70,6 +70,13 @@
       "every": 4,
       "fps": 15,
       "width": 640
+    },
+    "09-Artwork/02-RecordMotion": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
     }
   }
 }
