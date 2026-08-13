@@ -18,7 +18,7 @@ draft: false
 
 ## 9.1 静止画で書き出す
 
-![静止画の書き出し](images/09-Artwork/01-SaveImage.png)
+![静止画の書き出しの実行結果](images/09-Artwork/01-SaveImage.png)
 
 ノイズで大きさの変わる円が並び、ゆっくり呼吸しています。**S** を押すとその瞬間の 1 枚が `output/artwork.png` に、**R** を押すと止めるまでの全フレームが `output/frames/` に連番で書き出されます。画面の下の帯には、いま何をしたかが出ます。
 
@@ -190,11 +190,11 @@ final class SaveImageSketch: Sketch {
 
 ## 9.2 動画・GIF で書き出す
 
-![動画と GIF の書き出し](images/09-Artwork/02-RecordMotion.png)
+![動画と GIF の書き出しの実行結果](images/09-Artwork/02-RecordMotion.png)
 
-![動く様子](images/09-Artwork/02-RecordMotion.webp)
+![録画される動き](images/09-Artwork/02-RecordMotion.webp)
 
-輪になった粒が回りながら伸び縮みします。**V** で動画（`output/motion.mp4`）、**G** で GIF（`output/motion.gif`）の録画が始まり、もう一度同じキーで止まります。録画中は左下のランプが赤くなり、何フレーム録ったかが出ます。
+うねる輪に並んだ粒が、回りながら伸び縮みします。**V** で動画（`output/motion.mp4`）、**G** で GIF（`output/motion.gif`）の録画が始まり、もう一度同じキーで止まります。録画中は左下のランプが赤くなり、何フレーム録ったかが出ます。
 
 ### 動画
 
@@ -397,7 +397,7 @@ final class RecordMotionSketch: Sketch {
 
 ## 9.3 ベクタで書き出す
 
-![ベクタの書き出し](images/09-Artwork/03-VectorExport.png)
+![ベクタの書き出しの実行結果](images/09-Artwork/03-VectorExport.png)
 
 ノイズで揺れた 26 本の線が並びます。**S** を押すと、いま画面に出ているのと同じ線が `output/plot.svg` に書き出されます。ラスター画像と違って、SVG は**線が線のまま**入っているので、拡大しても粗くならず、ペンプロッタやカッティングマシンにそのまま渡せます。
 
@@ -562,7 +562,7 @@ final class VectorExportSketch: Sketch {
 
 ## 9.4 きれいに焼き出す
 
-![高解像度の焼き出し](images/09-Artwork/04-DeterministicRender.png)
+![焼き出しの実行結果](images/09-Artwork/04-DeterministicRender.png)
 
 六角形のリングが 44 枚、少しずつ違う速さで回ります。**B** を押すと 120 フレームが `output/render/` に連番で書き出されます。窓は小さく開いていますが、出てくる画像は 1920×1080 です。
 
@@ -754,7 +754,7 @@ final class DeterministicRenderSketch: Sketch {
 
 ## 9.5 長く動かす
 
-![長く動かす](images/09-Artwork/05-LongRun.png)
+![長く動かすの実行結果](images/09-Artwork/05-LongRun.png)
 
 粒がゆっくり積み上がっていきます。右上には FPS・1 フレームにかかった時間・GPU の時間が出ていて、左下には粒の数、`frameCount` と `time`、そして「復元された回数」が出ます。
 
@@ -792,7 +792,7 @@ SketchConfig(width: 640, height: 360, preserveClock: true)
 echo '{"id":"save-1"}' > .metaphor/state/save-request.json
 ```
 
-`METAPHOR_STATE=1` を付けて起動していれば、このファイルが置かれた次のフレームで `saveState()` が呼ばれ、`state.json` が書かれます。
+このファイルが置かれた次のフレームで `saveState()` が呼ばれ、`state.json` が書かれます。仕組みが動くのは `metaphor watch` のとき（自動で有効になります）と、素の `swift run` に `METAPHOR_STATE=1` を付けたときです。
 
 ### 増え続けるものを置かない
 
