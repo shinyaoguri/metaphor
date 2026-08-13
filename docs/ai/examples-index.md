@@ -271,7 +271,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [SaveFile1](../../Examples/Topics/File%20IO/SaveFile1) (File IO) Tags: file-io, savefile1, topics.
 - [SaveFile2](../../Examples/Topics/File%20IO/SaveFile2) (File IO) Tags: file-io, savefile2, topics.
 - [SaveFrames](../../Examples/Topics/File%20IO/SaveFrames) (File IO) Tags: file-io, saveframes, topics.
-- [SaveOneImage](../../Examples/Topics/File%20IO/SaveOneImage) [Intermediate] (File IO) -- The save() function allows you to save an image from the display window. In this example, the save() function is run when a mouse button is pressed. The image line.tif is saved to the same folder as the sketch's program... Tags: file-io, image, interaction, saveoneimage, topics.
+- [SaveOneImage](../../Examples/Topics/File%20IO/SaveOneImage) [Intermediate] (File IO) -- The save() function saves an image from the display window. Here it runs when a mouse button is pressed and writes output/line.png, relative to the launch directory. metaphor writes PNG, not Processing's TIFF. Tags: file-io, image, interaction, saveoneimage, topics.
 - [TileImages](../../Examples/Topics/File%20IO/TileImages) (File IO) Tags: file-io, image, tileimages, topics.
 - [Koch Curve](../../Examples/Topics/Fractals%20and%20L-Systems/Koch) [Advanced] (Fractals and L-Systems) -- Renders a simple fractal, the Koch snowflake. Each recursive level is drawn in sequence. Tags: fractals-and-l-systems, koch, topics.
 - [The Mandelbrot Set](../../Examples/Topics/Fractals%20and%20L-Systems/Mandelbrot) [Intermediate] (Fractals and L-Systems) -- Simple rendering of the Mandelbrot set. Tags: fractals-and-l-systems, image, mandelbrot, topics.

@@ -4,6 +4,6 @@
   "author": "",
   "level": "Intermediate",
   "order": "2",
-  "description": "The save() function allows you to save an image from the display window. In this example, the save() function is run when a mouse button is pressed. The image line.tif is saved to the same folder as the sketch's program file.",
+  "description": "The save() function saves an image from the display window. Here it runs when a mouse button is pressed and writes output/line.png, relative to the launch directory. metaphor writes PNG, not Processing's TIFF.",
   "featured": []
 }

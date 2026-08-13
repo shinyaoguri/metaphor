@@ -118,6 +118,9 @@ examples-report.md
 # MetaphorProbe runtime artifacts (snapshot output + request file)
 .metaphor/
 
+# Files written by running the examples (save() / beginFrameRecord() / video / SVG)
+Examples/**/output/
+
 # Python bytecode cache (scripts/ generators and their tests)
 __pycache__/
 *.pyc
