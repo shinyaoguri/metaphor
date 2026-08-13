@@ -1601,12 +1601,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class TableRow` -- ``Table`` の 1 行。Processing の `TableRow` に相当します。
 
 - `var values: [String] { get }` -- この行のセル値の配列（列順）
-- `func getDouble(_ column: String) -> Double` -- 列名でセル値を Double として取得します。数値でなければ 0。
-- `func getDouble(_ index: Int) -> Double` -- 列インデックスでセル値を Double として取得します。数値でなければ 0。
-- `func getFloat(_ column: String) -> Float` -- 列名でセル値を Float として取得します。数値でなければ 0。
-- `func getFloat(_ index: Int) -> Float` -- 列インデックスでセル値を Float として取得します。数値でなければ 0。
-- `func getInt(_ column: String) -> Int` -- 列名でセル値を Int として取得します。数値でなければ 0。
-- `func getInt(_ index: Int) -> Int` -- 列インデックスでセル値を Int として取得します。数値でなければ 0。
+- `func getDouble(_ column: String) -> Double` -- 列名でセル値を Double として取得します。有限な数値でなければ 0。
+- `func getDouble(_ index: Int) -> Double` -- 列インデックスでセル値を Double として取得します。有限な数値でなければ 0。
+- `func getFloat(_ column: String) -> Float` -- 列名でセル値を Float として取得します。有限な数値でなければ 0。
+- `func getFloat(_ index: Int) -> Float` -- 列インデックスでセル値を Float として取得します。有限な数値でなければ 0。
+- `func getInt(_ column: String) -> Int` -- 列名でセル値を Int として取得します。Int として表現できなければ 0。
+- `func getInt(_ index: Int) -> Int` -- 列インデックスでセル値を Int として取得します。Int として表現できなければ 0。
 - `func getString(_ column: String) -> String` -- 列名でセル値を取得します。列が存在しなければ空文字列（警告つき）。
 - `func getString(_ index: Int) -> String` -- 列インデックスでセル値を取得します。範囲外は空文字列。
 - `func setDouble(_ column: String, _ value: Double)` -- 列名でセル値を Double として設定します。
