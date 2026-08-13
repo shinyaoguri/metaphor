@@ -2140,8 +2140,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let channel: UInt8` -- The MIDI channel (0-15).
 - `var controlNumber: UInt8 { get }` -- Returns the CC number (for Control Change messages).
 - `var controlValue: UInt8 { get }` -- Returns the CC value (for Control Change messages, 0-127).
-- `let data1: UInt8` -- The first data byte (note number or CC number).
-- `let data2: UInt8` -- The second data byte (velocity or CC value).
+- `let data1: UInt8` -- The first data byte (note number or CC number, 0-127).
+- `let data2: UInt8` -- The second data byte (velocity or CC value, 0-127).
 - `var isControlChange: Bool { get }` -- Indicates whether this is a Control Change message.
 - `var isNoteOff: Bool { get }` -- Indicates whether this is a Note Off message.
 - `var isNoteOn: Bool { get }` -- Indicates whether this is a Note On message.

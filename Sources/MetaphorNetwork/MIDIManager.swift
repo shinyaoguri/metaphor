@@ -284,27 +284,36 @@ public final class MIDIManager {
     // MARK: - 出力
 
     /// Sends a Note On message.
+    ///
+    /// MIDI 1.0 data bytes are 7-bit: a `note` or `velocity` above 127 is sent as
+    /// 127 (with a debug warning) rather than wrapping around to a low value.
     /// - Parameters:
-    ///   - note: The MIDI note number (0-127).
-    ///   - velocity: The note velocity (0-127, defaults to 100).
+    ///   - note: The MIDI note number (0-127; higher values are sent as 127).
+    ///   - velocity: The note velocity (0-127, defaults to 100; higher values are sent as 127).
     ///   - channel: The MIDI channel (0-15, defaults to 0).
     public func sendNoteOn(note: UInt8, velocity: UInt8 = 100, channel: UInt8 = 0) {
         sendMessage(status: 0x90 | (channel & 0x0F), data1: note, data2: velocity)
     }
 
     /// Sends a Note Off message.
+    ///
+    /// MIDI 1.0 data bytes are 7-bit: a `note` or `velocity` above 127 is sent as
+    /// 127 (with a debug warning) rather than wrapping around to a low value.
     /// - Parameters:
-    ///   - note: The MIDI note number (0-127).
-    ///   - velocity: The release velocity (0-127, defaults to 0).
+    ///   - note: The MIDI note number (0-127; higher values are sent as 127).
+    ///   - velocity: The release velocity (0-127, defaults to 0; higher values are sent as 127).
     ///   - channel: The MIDI channel (0-15, defaults to 0).
     public func sendNoteOff(note: UInt8, velocity: UInt8 = 0, channel: UInt8 = 0) {
         sendMessage(status: 0x80 | (channel & 0x0F), data1: note, data2: velocity)
     }
 
     /// Sends a Control Change message.
+    ///
+    /// MIDI 1.0 data bytes are 7-bit: a `cc` or `value` above 127 is sent as 127
+    /// (with a debug warning) rather than wrapping around to a low value.
     /// - Parameters:
-    ///   - cc: The CC number (0-127).
-    ///   - value: The CC value (0-127).
+    ///   - cc: The CC number (0-127; higher values are sent as 127).
+    ///   - value: The CC value (0-127; higher values are sent as 127).
     ///   - channel: The MIDI channel (0-15, defaults to 0).
     public func sendControlChange(cc: UInt8, value: UInt8, channel: UInt8 = 0) {
         sendMessage(status: 0xB0 | (channel & 0x0F), data1: cc, data2: value)
@@ -326,6 +335,13 @@ public final class MIDIManager {
     }
 
     private func sendMessage(status: UInt8, data1: UInt8, data2: UInt8) {
+        // 範囲外は clamp して送るが、値が黙って変わる方が原因を追いにくいので
+        // DEBUG ビルドでだけ知らせる（Release では呼び出しごと消える）。
+        if data1 > 127 || data2 > 127 {
+            debugWarning(
+                "MIDI data byte out of range (data1: \(data1), data2: \(data2)). "
+                    + "MIDI 1.0 data bytes are 7-bit — values above 127 are sent as 127")
+        }
         guard isRunning else { return }
 
         let destCount = MIDIGetNumberOfDestinations()
@@ -334,7 +350,7 @@ public final class MIDIManager {
         var eventList = MIDIEventList()
         var packet = MIDIEventListInit(&eventList, ._1_0)
         let words: [UInt32] = [
-            UInt32(0x20000000) | UInt32(status) << 16 | UInt32(data1) << 8 | UInt32(data2)
+            Self.makeChannelVoiceWord(status: status, data1: data1, data2: data2)
         ]
         packet = MIDIEventListAdd(&eventList, 256, packet, 0, words.count, words)
 
@@ -343,6 +359,18 @@ public final class MIDIManager {
             let dest = MIDIGetDestination(i)
             MIDISendEventList(outPort, dest, &eventList)
         }
+    }
+
+    /// Builds the single UMP word of a MIDI 1.0 Channel Voice message.
+    ///
+    /// Data bytes are 7-bit on the wire, so anything above 127 is clamped rather
+    /// than masked. Masking wraps: a velocity of 128 would become 0, turning a
+    /// Note On into a Note Off, and a note of 128 would sound as the lowest note
+    /// instead of the highest. Clamping pins an out-of-range parameter at the top
+    /// of the range, where it is audible as saturation rather than as a jump.
+    // internal: テストから生成ワードのビット列を直接検証できるようにする
+    nonisolated static func makeChannelVoiceWord(status: UInt8, data1: UInt8, data2: UInt8) -> UInt32 {
+        UInt32(0x20000000) | UInt32(status) << 16 | UInt32(min(data1, 127)) << 8 | UInt32(min(data2, 127))
     }
 
     /// The word count per UMP message type (MIDI 2.0 UMP spec). Used to skip
