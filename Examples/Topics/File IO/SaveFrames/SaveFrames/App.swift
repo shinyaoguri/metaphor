@@ -6,6 +6,10 @@ final class SaveFrames: Sketch {
         SketchConfig(width: 640, height: 360, title: "SaveFrames")
     }
 
+    // Relative to the directory the sketch was launched in
+    // (the package root when started with `swift run`). Created if missing.
+    let outputDirectory = "output/frames"
+
     var recording = false
     var savedCount = 0
 
@@ -26,7 +30,10 @@ final class SaveFrames: Sketch {
             a += 0.2
         }
 
-        // If recording, increment counter (original would call saveFrame)
+        // beginFrameRecord() keeps writing one PNG per frame until endFrameRecord(),
+        // so there is no per-frame call here. Unlike the original, which called
+        // saveFrame() before drawing the overlay, metaphor exports the finished
+        // frame -- the status text and the red dot below end up in the files too.
         if recording {
             savedCount += 1
         }
@@ -56,9 +63,13 @@ final class SaveFrames: Sketch {
             recording = !recording
             if recording {
                 savedCount = 0
-                print("Recording started")
+                // The original numbered files with "frames####.png";
+                // metaphor takes a printf-style pattern instead.
+                beginFrameRecord(directory: outputDirectory, pattern: "frames%04d.png")
+                print("Recording started -> \(outputDirectory)")
             } else {
-                print("Recording stopped. \(savedCount) frames captured.")
+                endFrameRecord()
+                print("Recording stopped. \(savedCount) frames written to \(outputDirectory).")
             }
         }
     }

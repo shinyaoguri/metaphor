@@ -7,6 +7,8 @@ final class TileImages: Sketch {
     }
 
     let scaleValue: Int = 3
+    // Created if missing, relative to the launch directory.
+    let outputDirectory = "output"
     var xoffset: Int = 0
     var yoffset: Int = 0
     var finished = false
@@ -27,14 +29,13 @@ final class TileImages: Sketch {
             line(0, 600, 600, 0)
             popMatrix()
 
-            // Display tile info
-            fill(0)
-            textSize(14)
-            textAlign(.left, .top)
-            text("Tile [\(yoffset), \(xoffset)]", 10, 10)
-
-            // Original would save tile image here
-            print("Saving tile lines-\(yoffset)-\(xoffset).png")
+            // One tile per frame. save() exports the finished frame, so nothing
+            // else may be drawn on top -- an on-screen tile label would be baked
+            // into the file. Relative paths resolve from the directory the sketch
+            // was launched in (the package root when started with `swift run`).
+            let path = "\(outputDirectory)/lines-\(yoffset)-\(xoffset).png"
+            save(path)
+            print("Saving \(path)")
             setOffset()
         } else {
             // Show all tiles overview
@@ -75,7 +76,7 @@ final class TileImages: Sketch {
             xoffset = 0
             yoffset += 1
             if yoffset == scaleValue {
-                print("Tiles saved.")
+                print("Tiles saved to \(outputDirectory)/.")
                 finished = true
             }
         }
