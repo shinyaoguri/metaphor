@@ -119,7 +119,7 @@ final class MySketch: Sketch {
 | [第 9 部 作品にする](docs/tutorial/09-artwork.md) | 静止画・動画・GIF・SVG の書き出し、決定論的な焼き出し、長時間の運用 |
 | [第 10 部 AI と作る](docs/tutorial/10-ai.md) | 観測ループ、`probe()` による状態の申告、MCP、共有セッション、AI へ渡す文脈 |
 
-全 10 部が公開されています（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md)、英語版は [#548](https://github.com/shinyaoguri/metaphor/issues/548) で後追いします。読み終えたあとの引き先は下の「引くためのドキュメント」と [Examples](#examples) です。
+<!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->です（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md)、英語版は [#548](https://github.com/shinyaoguri/metaphor/issues/548) で後追いします。読み終えたあとの引き先は下の「引くためのドキュメント」と [Examples](#examples) です。
 
 ### 引くためのドキュメント
 

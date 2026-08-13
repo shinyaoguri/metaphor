@@ -262,6 +262,8 @@ draft: true          # 執筆中は true。公開対象から外す
 ---
 ```
 
+**この frontmatter が「どこまで公開されているか」の正典です**（[#584](https://github.com/shinyaoguri/metaphor/issues/584)）。README 群（[README.md](../../README.md) / [README.en.md](../../README.en.md) / [docs/README.md](../README.md) / [docs/README.en.md](../README.en.md) / [Examples/README.md](../../Examples/README.md)）が案内する公開状況は `<!-- tutorial-status: … -->` ブロックの**生成物**なので、手で編集せず `make tutorial-status` で書き出します。部を 1 つ公開するときに手で直すのは、この表の状態欄と README.md / README.en.md の部の表（説明文が手書き）だけです — 両方とも `--check`（pre-push と CI）が frontmatter と突き合わせます。
+
 ### 実行結果の画像
 
 - 置き場は `docs/tutorial/images/{部番号}-{部スラッグ}/{節番号}-{節スラッグ}.png`
