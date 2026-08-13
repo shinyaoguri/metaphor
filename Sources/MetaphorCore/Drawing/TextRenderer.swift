@@ -633,10 +633,11 @@ final class TextRenderer {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
-        // CoreText はボトムレフト原点を使用。CGBitmapContext もボトムレフト原点。
-        // ただしテクスチャはトップレフト原点なので、描画前に垂直反転。
-        ctx.translateBy(x: 0, y: CGFloat(texHeight))
-        ctx.scaleBy(x: 1.0, y: -1.0)
+        // ここで垂直反転してはいけない（#504）。CGBitmapContext の座標系はボトム
+        // レフト原点だが、バイト列は先頭行が画像の上端。CTFrameDraw をそのまま
+        // 描けば、出来上がったバイト列は既にトップレフト原点の絵になっている。
+        // 反転を挟むと二重にかかり、文字が上下反転・行順も逆になる（単一行の
+        // renderText とグリフアトラスも反転を挟まない — 経路間で揃える）。
 
         // テキストフレームを作成して描画
         let framePath = CGPath(
