@@ -229,8 +229,12 @@ public final class MImage {
     /// CPU の ``pixels`` 配列を GPU テクスチャに書き戻します。
     ///
     /// アップロード前にピクセルデータはテクスチャのピクセルフォーマットに合わせて変換されます。
-    /// 現在のテクスチャがプライベートストレージモードの場合、CPU から書き込めないため
-    /// 新しいマネージドテクスチャが作成されて置き換えられます。
+    /// 現在のテクスチャがプライベートストレージモード (`MTLStorageMode.private`) の場合、
+    /// CPU から直接書き込めないため、共有ストレージモード (`MTLStorageMode.shared`) の
+    /// テクスチャを新しく作成して置き換えます（Apple Silicon の統合メモリでは CPU/GPU が
+    /// 同じメモリを参照するため、`synchronizeResource` は不要です）。
+    /// 置き換えでは元テクスチャのピクセルフォーマットと usage を引き継ぎますが、
+    /// ``texture`` の実体は別インスタンスに変わります。
     public func updatePixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
             print("[metaphor] Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")

@@ -615,6 +615,37 @@ struct MImageTests {
 
         #expect(readback == [0, 255, 0, 255])
     }
+
+    // private テクスチャは CPU から書き込めないため、updatePixels() は別テクスチャへ
+    // 置き換える。置換先は managed ではなく shared（Apple Silicon の統合メモリ前提）。
+    @Test("private テクスチャの updatePixels は usage を継承した shared テクスチャへ置き換える")
+    func updatePixelsReplacesPrivateTextureWithShared() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false
+        )
+        desc.usage = [.shaderRead, .renderTarget]
+        desc.storageMode = .private
+        let texture = device.makeTexture(descriptor: desc)!
+
+        let img = MImage(texture: texture)
+        img.pixels = [10, 20, 30, 255]
+        img.updatePixels()
+
+        #expect(img.texture !== texture)
+        #expect(img.texture.storageMode == .shared)
+        #expect(img.texture.usage == texture.usage)
+        #expect(img.texture.pixelFormat == texture.pixelFormat)
+
+        var readback = [UInt8](repeating: 0, count: 4)
+        img.texture.getBytes(
+            &readback,
+            bytesPerRow: 4,
+            from: MTLRegionMake2D(0, 0, 1, 1),
+            mipmapLevel: 0
+        )
+        #expect(readback == [10, 20, 30, 255])
+    }
 }
 
 // MARK: - TextRenderer Tests
