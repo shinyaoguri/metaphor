@@ -178,6 +178,17 @@ DocC-Render はこのファイルの `theme.color` を**そのままの階層で
 
 リポジトリに画像・GIF をコミットしない(容量を圧迫する)。ゴールデン PNG のように既にコミットされているもの以外は Gyazo へ上げて URL を貼る。ドキュメントの画像も同じ方針で、DocC は [ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)、チュートリアルは [ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)(撮影からアップロード・本文の URL 書き戻しまで `make tutorial-shots` が行う)。
 
+### CI が検査する(Issue #631)
+
+`Sources/MetaphorCore/` の `Drawing` / `Sketch` / `Shaders` / `UI` / `PostProcess` / `Particle` / `Geometry` を触った PR は、**本文に画像が 1 枚も無いと CI が落ちる**。squash マージなのでブランチは消え、PR 本文がそのまま履歴に残る唯一の記録になる — merge 後に足すことはできない。
+
+落ちたら、どちらかで通る。
+
+1. before/after を撮って本文に貼る(動きが変わるなら GIF も)
+2. 本当に絵が変わらないなら PR に `no-visual-change` ラベルを貼る(内部リファクタ・境界値の修正など。「絵は変わらない」という判断が PR に残る)
+
+本文とラベルは実行時に API から読むので、直したあと `gh run rerun --failed <run-id>` だけで通り、push は要らない。対象ディレクトリの判定は [`scripts/require-visual-evidence.py`](scripts/require-visual-evidence.py) が正本(`python3 -m unittest discover -s scripts/tests` で検証)。
+
 - **ゴールデン PNG を更新した PR**: 画像は既にコミットに入っているので、raw URL で埋め込むのが最速。
 
   ```markdown

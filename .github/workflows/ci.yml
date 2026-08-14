@@ -144,6 +144,41 @@ jobs:
           git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" -- 'changelog.d/*.md' \
             | python3 scripts/require-changelog-entry.py --subject "$TITLE" \
                 ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
+      - name: Require visual evidence for drawing changes
+        # CLAUDE.md の「描画結果が変わる PR には before/after 画像を、動きが
+        # 変わる PR には GIF も」を機械で守る（Issue #631）。squash マージなので
+        # ブランチは消え、**PR 本文がそのまま履歴に残る唯一の記録**になる。
+        # merge 時に書かれなかった証跡は後から復元できない。
+        #
+        # warning ではなく落とす: auto-merge は required が green になった瞬間に
+        # マージするので、非必須の赤は誰にも見られない（このジョブの冒頭コメントと
+        # Issue #411 と同じ理由でここに置いている）。
+        #
+        # 対象ディレクトリは過去 PR で実証して決めた（判定とテストは
+        # scripts/require-visual-evidence.py / scripts/tests/ 側が正本）。
+        # 誤検知は `no-visual-change` ラベルで通る ＝ 「絵は変わらない」という
+        # 判断が PR に記録される。
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # 本文もラベルも実行時に API から引く（上の 2 つと同じ理由）。画像を
+          # 貼るかラベルを付けるかしたあと `gh run rerun --failed <run-id>` だけで
+          # 通り、push は要らない。
+          PR_JSON=$(gh pr view "$PR_NUMBER" --json body,labels)
+          BODY=$(jq -r '.body // ""' <<<"$PR_JSON")
+          LABEL_ARGS=()
+          while IFS= read -r label; do
+            [ -n "$label" ] && LABEL_ARGS+=(--label "$label")
+          done < <(jq -r '.labels[].name' <<<"$PR_JSON")
+          # 空配列の展開は上のステップと同じ回避形（/bin/bash 3.2 + set -u）。
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'Sources/*' \
+            | python3 scripts/require-visual-evidence.py --body "$BODY" \
+                ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
       - name: Lint workflows (actionlint)
         # `.github/workflows/*.yml` を検証するものが無く、構文エラーや式の書き
         # 間違いは「そのワークフローが次に走ったとき」まで見つからなかった
