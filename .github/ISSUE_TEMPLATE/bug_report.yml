@@ -2,7 +2,7 @@ name: Bug report
 description: Something in the metaphor library isn't working as expected.
 title: "[bug] "
 labels:
-  - bug
+  - "type: bug"
 body:
   - type: markdown
     attributes:

@@ -21,6 +21,33 @@ command: `new` / `run` / `watch` / `mcp`, installation, Homebrew), file it
 here and we'll route it — the Issue template's contact links also point at
 the CLI repo directly.
 
+### Issue titles and labels
+
+Title an Issue the same way you'd title a PR — as a
+[Conventional Commit](https://www.conventionalcommits.org/),
+`<type>(<scope>): <summary>` — and the right label is applied for you when the
+Issue is opened. This matters most when filing through `gh issue create`, which
+skips the templates (and their labels) entirely.
+
+| Type | Label |
+|---|---|
+| `fix` | `type: bug` |
+| `feat`, `api` | `type: feature` |
+| `docs` | `type: docs` |
+| `design` — deciding an approach before implementing it | `type: design` |
+| `chore`, `ci`, `test`, `refactor`, `build`, `perf` | `type: maintenance` |
+
+Labels are grouped by dimension: `type:` says what an Issue is, `status:` says
+where it stands. An Issue normally carries one of each at most.
+
+If the title isn't in that shape, the Issue gets `status: needs-triage` instead
+and a human sorts it out — nothing is lost, so don't let this stop you from
+filing. Fixing the title afterwards re-runs the check and replaces the label.
+
+The mapping lives in [`scripts/label-issues.py`](scripts/label-issues.py) and is
+applied by [`.github/workflows/issue-labeler.yml`](.github/workflows/issue-labeler.yml).
+Labels a human has already set are never touched.
+
 ## Development setup
 
 Full setup, build/test commands, generated-file handling, and the release
