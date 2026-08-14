@@ -1,0 +1,17 @@
+// クリックした位置が頂点として積まれ、折れ線になるスケッチ。入力が無いと頂点が
+// 0 個で、background(204) の一色しか写らない。5 点打ってから撮る。640x360。
+{"t":"mouseDown","x":90,"y":250,"button":0}
+{"t":"mouseUp","x":90,"y":250,"button":0}
+{"wait":120}
+{"t":"mouseDown","x":210,"y":120,"button":0}
+{"t":"mouseUp","x":210,"y":120,"button":0}
+{"wait":120}
+{"t":"mouseDown","x":330,"y":230,"button":0}
+{"t":"mouseUp","x":330,"y":230,"button":0}
+{"wait":120}
+{"t":"mouseDown","x":450,"y":90,"button":0}
+{"t":"mouseUp","x":450,"y":90,"button":0}
+{"wait":120}
+{"t":"mouseDown","x":560,"y":200,"button":0}
+{"t":"mouseUp","x":560,"y":200,"button":0}
+{"wait":400}

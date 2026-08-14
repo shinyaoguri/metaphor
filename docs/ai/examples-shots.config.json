@@ -1,0 +1,9 @@
+{
+  "comment": "撮り方の例外（手書きの正典）。台帳 examples-shots.json は生成物なので分ける。settle = 描画ループが回ってから本番の 1 枚を撮るまでの秒数（既定 1.5）。",
+  "settings": {
+    "Examples/Topics/Simulate/SoftBody": {
+      "settle": 0.4,
+      "why": "形は mouseX/mouseY へバネで寄る。入力の無いヘッドレスでは平衡点が (0,0) なので、待つほど画面外へ抜ける（1.5 秒後は完全に外）。立ち上がりの、まだ画面中央にいる瞬間を撮る"
+    }
+  }
+}

@@ -51,6 +51,13 @@
       "width": 640,
       "height": 360
     },
+    "Examples/Basics/Color/WaveGradient": {
+      "origin": "captured",
+      "sourceHash": "c8b2acce5841ea7b13128865b9aed8898ad4ab1dc0e7c5094ecadb0c786815af",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
     "Examples/Basics/Control/Camera/MoveEye": {
       "origin": "processing",
       "width": 1280,
@@ -536,10 +543,255 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Demos/Graphics/DepthSort": {
+      "origin": "captured",
+      "sourceHash": "1edfd339cc266686855dfd44ca72f50a7f8924cc52585e98d5871c0d99462a43",
+      "width": 640,
+      "height": 720,
+      "frame": 106
+    },
+    "Examples/Demos/Graphics/Patch": {
+      "origin": "captured",
+      "sourceHash": "0bc19326b146705db17569e474934fb2ac22d0c7ae3958f0492fd50d6ce9da8d",
+      "width": 1024,
+      "height": 768,
+      "frame": 109
+    },
+    "Examples/Demos/Graphics/RotatingArcs": {
+      "origin": "captured",
+      "sourceHash": "01f5cb24174f39a623296f78b30874a96247b0ad08c62239537e8841431ada4c",
+      "width": 1024,
+      "height": 768,
+      "frame": 13
+    },
+    "Examples/Demos/Performance/CubicGridImmediate": {
+      "origin": "captured",
+      "sourceHash": "f0bccb51a087e2de08776a2cdad1cf80d27690c30955213c73b53e207b5b4c43",
+      "width": 640,
+      "height": 360,
+      "frame": 21
+    },
+    "Examples/Demos/Performance/DynamicParticlesImmediate": {
+      "origin": "captured",
+      "sourceHash": "25d10615fc1ca4c1a9854336029e374232bbe693bfe8176da8e6afa340548212",
+      "width": 640,
+      "height": 480,
+      "frame": 188
+    },
+    "Examples/Demos/Performance/Esfera": {
+      "origin": "captured",
+      "sourceHash": "bfa342ae8d95984c8ca8bca2e96679aaffc66d6b1d075fba3d0a38f9c15258c9",
+      "width": 1024,
+      "height": 768,
+      "frame": 21
+    },
+    "Examples/Demos/Performance/LineRendering": {
+      "origin": "captured",
+      "sourceHash": "94617d46c6d82c4981b923c8d2340ccb1fbacd88def61f9be22f05317f15c94e",
+      "width": 800,
+      "height": 600,
+      "frame": 16
+    },
+    "Examples/Demos/Performance/MassiveCircles": {
+      "origin": "captured",
+      "sourceHash": "fb5c2f4cadd5c95810b7cfba8fb85405944d5dd2ce58351b6e3e1e9961510646",
+      "width": 960,
+      "height": 540,
+      "frame": 36
+    },
+    "Examples/Demos/Performance/QuadRendering": {
+      "origin": "captured",
+      "sourceHash": "8dbf37207cc67e053f5575b8bbcea9b250684be3bcc239e724fe16ff9109fa34",
+      "width": 800,
+      "height": 600,
+      "frame": 107
+    },
+    "Examples/Demos/Performance/StaticParticlesImmediate": {
+      "origin": "captured",
+      "sourceHash": "beca6e54a3e8344902f3d8866845ef5eccc3e6a352eb747315b2b7020395c6f0",
+      "width": 800,
+      "height": 600,
+      "frame": 98
+    },
+    "Examples/Demos/Performance/TextRendering": {
+      "origin": "captured",
+      "sourceHash": "6ebb74de65300aee4baaae8698f688f6a27641901395240ed5fe50c0deaedbe9",
+      "width": 800,
+      "height": 600,
+      "frame": 102
+    },
+    "Examples/Demos/Tests/MultipleWindows": {
+      "origin": "captured",
+      "sourceHash": "98388aedfcf56358dfa0ffcecb6f00275b40d6250e5305fc1c215c148791b7ab",
+      "width": 320,
+      "height": 240,
+      "frame": 103
+    },
+    "Examples/Demos/Tests/NoBackgroundTest": {
+      "origin": "captured",
+      "sourceHash": "1d05eb1da8a9ee3ee9fa3f74eb59e30e5466996b7b2ae883e1989688e5c9b81a",
+      "width": 400,
+      "height": 400,
+      "frame": 105
+    },
+    "Examples/Demos/Tests/OffscreenTest": {
+      "origin": "captured",
+      "sourceHash": "fdf49ffa77d221c808a66386e9e208279ba95cf8eb254b42cf1624a01bc1c52c",
+      "width": 400,
+      "height": 400,
+      "frame": 55
+    },
+    "Examples/Demos/Tests/RedrawTest": {
+      "origin": "captured",
+      "sourceHash": "05304a440ff6b38a39fe8e55537a12047879bb788822f5fbf1fcede3c3ea32f1",
+      "width": 400,
+      "height": 400,
+      "frame": 1
+    },
+    "Examples/Demos/Tests/ResizeTest": {
+      "origin": "captured",
+      "sourceHash": "c1aeab04b75a63958cf106cb7c6f59e4a563222a10900e9466240be9f75501c6",
+      "width": 400,
+      "height": 400,
+      "frame": 103
+    },
+    "Examples/ML/ImageClassification": {
+      "origin": "captured",
+      "sourceHash": "2069856335e0d3c187edcade1f4f2cb813f12d640c38aba389148d857d5e2c67",
+      "width": 800,
+      "height": 600,
+      "frame": 105
+    },
+    "Examples/ML/StyleTransfer": {
+      "origin": "captured",
+      "sourceHash": "f2ce74c0f92303e46995430d5c373d3274db23a98cef62906bb8ad27285d2125",
+      "width": 800,
+      "height": 600,
+      "frame": 105
+    },
+    "Examples/Samples/DynamicMeshTexture": {
+      "origin": "captured",
+      "sourceHash": "293ec2ca437b0941522e985bdf0dfeb5483b345c82a12c283e95f22dec8a64ff",
+      "width": 800,
+      "height": 600,
+      "frame": 100
+    },
+    "Examples/Samples/InstancedCubes": {
+      "origin": "captured",
+      "sourceHash": "0d6f329c8f8394508e4d15129c8556a5afa09442b01c99e34b95a0ab9cedb2d8",
+      "width": 900,
+      "height": 700,
+      "frame": 104
+    },
+    "Examples/Samples/ParameterPanel": {
+      "origin": "captured",
+      "sourceHash": "59efc965f9481abbaecdce43b64d49de9979012d1c2a62fc7e1c96763528df83",
+      "width": 800,
+      "height": 600,
+      "frame": 95
+    },
+    "Examples/Samples/PluginFPSLogger": {
+      "origin": "captured",
+      "sourceHash": "2e00a81a010e46815c70d7a05db37935ddde780713d1aba2daf5348e6122096a",
+      "width": 640,
+      "height": 360,
+      "frame": 97
+    },
+    "Examples/Samples/ProbeBenchmark": {
+      "origin": "captured",
+      "sourceHash": "7671d0dbc69891a577f4c1b4a44f51391036ebb28db34853a740f38855eecd31",
+      "width": 800,
+      "height": 600,
+      "frame": 107
+    },
+    "Examples/Samples/ProbeSnapshot": {
+      "origin": "captured",
+      "sourceHash": "ef3097f7efe56bcd14ebc856639aa258a32155d499ebdbd794577952028a9b95",
+      "width": 640,
+      "height": 360,
+      "frame": 102
+    },
+    "Examples/Samples/RayTracing": {
+      "origin": "captured",
+      "sourceHash": "a3ced0dd9ea80f8a93b32c21af8c57336e3d29698213d8bfd572a02bc8da8482",
+      "width": 960,
+      "height": 320,
+      "frame": 50
+    },
+    "Examples/Samples/RenderGraphCompose": {
+      "origin": "captured",
+      "sourceHash": "9542e83f8905aaf2900f54f6185e4b5bd859b90c55336b33203846f9459376a8",
+      "width": 960,
+      "height": 540,
+      "frame": 99
+    },
+    "Examples/Samples/SVGExport": {
+      "origin": "captured",
+      "sourceHash": "efc71dd4e2b166cf944b68f5850f725f266c41c2e3e13b766bb187fdc18eb2f2",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "Examples/Samples/SceneGraphBasics": {
+      "origin": "captured",
+      "sourceHash": "2b7c8a6ee2126613ff7792c8d59c215744b7ead5d73b55c1cbe09777b9a998a1",
+      "width": 800,
+      "height": 600,
+      "frame": 102
+    },
+    "Examples/Samples/SceneGraphHybrid": {
+      "origin": "captured",
+      "sourceHash": "bbed1075e614171c9d771fbbd5dc0e4b6f21c4f4466505d799af9cc2cc252816",
+      "width": 800,
+      "height": 600,
+      "frame": 105
+    },
+    "Examples/Samples/StatePreservation": {
+      "origin": "captured",
+      "sourceHash": "77add9b7bf514174ff0a2933bea7fdd5f57eb9cdaa23c37534a339f1134337ff",
+      "width": 900,
+      "height": 600,
+      "frame": 95
+    },
+    "Examples/Samples/Syphon/SyphonMultiWindow": {
+      "origin": "captured",
+      "sourceHash": "5656074a3422c46016a0c7a1bb25ba9dd1a614cdb4d39fe414c34248395d61fd",
+      "width": 1920,
+      "height": 1080,
+      "frame": 111
+    },
+    "Examples/Samples/Syphon/SyphonOutput": {
+      "origin": "captured",
+      "sourceHash": "58caaca686e93a3a4bf2d848b8b2254637e1486392da94bab4e951302a764c02",
+      "width": 1920,
+      "height": 1080,
+      "frame": 109
+    },
+    "Examples/Samples/Syphon/SyphonTripleWindow": {
+      "origin": "captured",
+      "sourceHash": "fd91f0bc58dd8729e81c5aafd9f1ab3ad27c4c5e5ea4c7e684c9570d8761adde",
+      "width": 1920,
+      "height": 1080,
+      "frame": 70
+    },
     "Examples/Topics/Advanced Data/ArrayListClass": {
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/Advanced Data/CountingStrings": {
+      "origin": "captured",
+      "sourceHash": "6bded783fe2bdadf2c1f528bb5e21af3983b8383f9f3313c366842bf6fa5408c",
+      "width": 640,
+      "height": 360,
+      "frame": 96
+    },
+    "Examples/Topics/Advanced Data/HashMapClass": {
+      "origin": "captured",
+      "sourceHash": "0d52f1ec5caf4e1e25a8527302fa3ace259562821ae7a2a702262f652845209c",
+      "width": 640,
+      "height": 360,
+      "frame": 95
     },
     "Examples/Topics/Advanced Data/IntListLottery": {
       "origin": "processing",
@@ -556,6 +808,20 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Advanced Data/Regex": {
+      "origin": "captured",
+      "sourceHash": "490819e9b369f71c90e46805a5243a30418b7223bc7a94bf3cec71b0b269d1a9",
+      "width": 640,
+      "height": 360,
+      "frame": 94
+    },
+    "Examples/Topics/Advanced Data/Threads": {
+      "origin": "captured",
+      "sourceHash": "4432d59f50eed449d92d635ea91fc05811acc41a370375d8b1b50a2555597e67",
+      "width": 640,
+      "height": 360,
+      "frame": 102
+    },
     "Examples/Topics/Animation/AnimatedSprite": {
       "origin": "processing",
       "width": 1280,
@@ -571,10 +837,94 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Cellular Automata/Spore1": {
+      "origin": "captured",
+      "sourceHash": "814599d0879ff396bb4d5dc4967b3dd5ade8ad96179cdefaef7751f612b9a796",
+      "width": 640,
+      "height": 360,
+      "frame": 16
+    },
+    "Examples/Topics/Cellular Automata/Spore2": {
+      "origin": "captured",
+      "sourceHash": "e7ce851054e06e627ca78ef99b156270f76b5a27e8022437e19cc825df828b65",
+      "width": 640,
+      "height": 360,
+      "frame": 16
+    },
     "Examples/Topics/Cellular Automata/Wolfram": {
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/Create Shapes/BeginEndContour": {
+      "origin": "captured",
+      "sourceHash": "844f1b5efc0196e545902e9c6f93c55eea91904c19935822e696efd6445b3ffb",
+      "width": 640,
+      "height": 360,
+      "frame": 97
+    },
+    "Examples/Topics/Create Shapes/GroupPShape": {
+      "origin": "captured",
+      "sourceHash": "6d55231e02b433a5b8ad0c79a0042b901042cba6a4daf655acdbf2d2fc7eeef4",
+      "width": 640,
+      "height": 360,
+      "frame": 97
+    },
+    "Examples/Topics/Create Shapes/PathPShape": {
+      "origin": "captured",
+      "sourceHash": "dbee39e22b53a3248a0323284ade80721c5800cfb1ecdd3d08b8b2c5d90360f9",
+      "width": 640,
+      "height": 360,
+      "frame": 95
+    },
+    "Examples/Topics/Create Shapes/PolygonPShape": {
+      "origin": "captured",
+      "sourceHash": "b63d8737dd4dc9ad5a5a5953f2ba25c0586e89d23a9a55b25661162694035c32",
+      "width": 640,
+      "height": 360,
+      "frame": 98
+    },
+    "Examples/Topics/Create Shapes/PolygonPShapeOOP": {
+      "origin": "captured",
+      "sourceHash": "725f5904a119794fbc38301bb37952e6227fe9466d6e7dd02cdc300d23d52870",
+      "width": 640,
+      "height": 360,
+      "frame": 94
+    },
+    "Examples/Topics/Create Shapes/PolygonPShapeOOP2": {
+      "origin": "captured",
+      "sourceHash": "f6eee4feb8f9caefd187c2edb3e3fdd59e9f52d5b3d6ff5e036c061fbe493187",
+      "width": 640,
+      "height": 360,
+      "frame": 95
+    },
+    "Examples/Topics/Create Shapes/PolygonPShapeOOP3": {
+      "origin": "captured",
+      "sourceHash": "44768472ccea15d146c7688061238ebfe481f87eec867bea91d712d3c26a3dfd",
+      "width": 640,
+      "height": 360,
+      "frame": 104
+    },
+    "Examples/Topics/Create Shapes/PrimitivePShape": {
+      "origin": "captured",
+      "sourceHash": "adbd05fc45d3ebc00b6494ba3bdaebe5b7ab7ae11b3dda4b7656354a2e66bb43",
+      "width": 640,
+      "height": 360,
+      "frame": 94
+    },
+    "Examples/Topics/Create Shapes/WigglePShape": {
+      "origin": "captured",
+      "sourceHash": "39524de2874e213a27f4e9e648d9b789c8e8e17e364a3f7f74fbbcfcbf36bb7a",
+      "width": 640,
+      "height": 360,
+      "frame": 101
+    },
+    "Examples/Topics/Curves/ArcLengthParametrization": {
+      "origin": "captured",
+      "sourceHash": "b4dc63e3643b7f10241ce07ebe9f1996e7220440f7033e62a30a6dfad75386a3",
+      "width": 640,
+      "height": 360,
+      "frame": 96
     },
     "Examples/Topics/Drawing/ContinuousLines": {
       "origin": "processing",
@@ -591,6 +941,20 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/File IO/DirectoryList": {
+      "origin": "captured",
+      "sourceHash": "73f3954924e5545fb5f42074305527a80d1d92a1058d2d9867fd8cb0b1f6720d",
+      "width": 640,
+      "height": 480,
+      "frame": 1
+    },
+    "Examples/Topics/File IO/DropImage": {
+      "origin": "captured",
+      "sourceHash": "facb6344878997017600b1125c29de69393d55a12edc7ab69d87b335e8ae95d2",
+      "width": 640,
+      "height": 360,
+      "frame": 99
+    },
     "Examples/Topics/File IO/LoadFile1": {
       "origin": "processing",
       "width": 2560,
@@ -601,10 +965,24 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/File IO/SaveFrames": {
+      "origin": "captured",
+      "sourceHash": "f9d7e1be2b0f6e9c92e79f02a87fd4dac20ef7355dd76c35172e30793f9b7b39",
+      "width": 640,
+      "height": 360,
+      "frame": 96
+    },
     "Examples/Topics/File IO/SaveOneImage": {
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/File IO/TileImages": {
+      "origin": "captured",
+      "sourceHash": "14299866955c8b3c58657d9f8fb766b2358ee771761fc559fd167f9780f25443",
+      "width": 600,
+      "height": 600,
+      "frame": 1
     },
     "Examples/Topics/Fractals and L-Systems/Koch": {
       "origin": "processing",
@@ -698,6 +1076,13 @@
       "height": 360,
       "frame": 97
     },
+    "Examples/Topics/Image Processing/Blending": {
+      "origin": "captured",
+      "sourceHash": "a776c6b2dd0a63fa1209a2264c4c0ead543c3c8ea40cc23b328417f755aa22a1",
+      "width": 640,
+      "height": 360,
+      "frame": 98
+    },
     "Examples/Topics/Image Processing/Blur": {
       "origin": "processing",
       "width": 1280,
@@ -718,15 +1103,50 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Image Processing/Explode": {
+      "origin": "captured",
+      "sourceHash": "99bd22a9f2c6a963d0961543a1a880918aa15380fb550adf677a44712f466e4f",
+      "width": 640,
+      "height": 360,
+      "frame": 22
+    },
+    "Examples/Topics/Image Processing/Extrusion": {
+      "origin": "captured",
+      "sourceHash": "0f184fb5d41bd765c668bc346299e7743a7c03e0ce676af99fdb3feacc857407",
+      "width": 640,
+      "height": 360,
+      "frame": 98
+    },
     "Examples/Topics/Image Processing/Histogram": {
       "origin": "processing",
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Image Processing/LinearImage": {
+      "origin": "captured",
+      "sourceHash": "1f5b7beb4ec3bb5180722ea7f21f2ce1e712d045a68f6a4474f3ea806b8455b0",
+      "width": 640,
+      "height": 360,
+      "frame": 24
+    },
     "Examples/Topics/Image Processing/PixelArray": {
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/Image Processing/Sharpen": {
+      "origin": "captured",
+      "sourceHash": "433692abb860c099bc6fe6380f0ea028ae9cc40597559fbe8034d1943da55e85",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "Examples/Topics/Image Processing/Zoom": {
+      "origin": "captured",
+      "sourceHash": "e73aa76b79ec8233f8ab3e4cd84fc05f462b8989cf54909156f45cf4d0672161",
+      "width": 640,
+      "height": 360,
+      "frame": 103
     },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
@@ -783,6 +1203,13 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Motion/CubesWithinCube": {
+      "origin": "captured",
+      "sourceHash": "67e92d90e284f04e1305cd5ba336c0d456036f19c6d52df02673468e8bad0bec",
+      "width": 640,
+      "height": 360,
+      "frame": 99
+    },
     "Examples/Topics/Motion/Linear": {
       "origin": "processing",
       "width": 1280,
@@ -808,6 +1235,104 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Shaders/BlurFilter": {
+      "origin": "captured",
+      "sourceHash": "bba771f799700a880f49fd226a56f3607c05aeab35c0cb749f45a848dff4839b",
+      "width": 640,
+      "height": 360,
+      "frame": 95
+    },
+    "Examples/Topics/Shaders/Conway": {
+      "origin": "captured",
+      "sourceHash": "9c53bba03abb9bf5867cd51c85dbeead4cef40fca01d9205ee9be377fac3c672",
+      "width": 400,
+      "height": 400,
+      "frame": 53
+    },
+    "Examples/Topics/Shaders/CustomBlend": {
+      "origin": "captured",
+      "sourceHash": "0111ced297fefd6c5f958306d9a6a9031ced9f5d548268ce289ec42adb4e7f6a",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "Examples/Topics/Shaders/Deform": {
+      "origin": "captured",
+      "sourceHash": "d9ed1304f16a9c1ca9a36b36d89ddf4d91efc73f6888b8779c587b643416a62f",
+      "width": 640,
+      "height": 360,
+      "frame": 85
+    },
+    "Examples/Topics/Shaders/EdgeDetect": {
+      "origin": "captured",
+      "sourceHash": "18584ad21fe3ae038f0347ba3c9ed28f948079041b26b611bb43e0a7daeed13f",
+      "width": 640,
+      "height": 360,
+      "frame": 1
+    },
+    "Examples/Topics/Shaders/EdgeFilter": {
+      "origin": "captured",
+      "sourceHash": "da6783bb9253593c31c29f2a5bd057652364e7fe48638825f2841ce8b96fcf47",
+      "width": 640,
+      "height": 360,
+      "frame": 105
+    },
+    "Examples/Topics/Shaders/GlossyFishEye": {
+      "origin": "captured",
+      "sourceHash": "4e3dbb705d320b919aeee0dee7f9a8f158f73ac1df995cddae31663ee34bb382",
+      "width": 640,
+      "height": 640,
+      "frame": 103
+    },
+    "Examples/Topics/Shaders/ImageMask": {
+      "origin": "captured",
+      "sourceHash": "2d0582d0109df56808bd6cc99615954095bb5d6f06e794321bedc5b217fd531c",
+      "width": 640,
+      "height": 360,
+      "frame": 12
+    },
+    "Examples/Topics/Shaders/InfiniteTiles": {
+      "origin": "captured",
+      "sourceHash": "78bffa59e901bd9921c09e39efa71b2d4c48e8db1a8b2a063b9008b3e801c684",
+      "width": 640,
+      "height": 480,
+      "frame": 20
+    },
+    "Examples/Topics/Shaders/Landscape": {
+      "origin": "captured",
+      "sourceHash": "293b6980306a1eb8ee77c4f5d8f7ca4cf736604ac8f64f58de54e2bdfa9035f7",
+      "width": 640,
+      "height": 360,
+      "frame": 51
+    },
+    "Examples/Topics/Shaders/Monjori": {
+      "origin": "captured",
+      "sourceHash": "607118985dd74b9bb8fd2bb6fd1b57a8585f5a9fe89ab2b321e980b2f0a93b78",
+      "width": 640,
+      "height": 360,
+      "frame": 88
+    },
+    "Examples/Topics/Shaders/Nebula": {
+      "origin": "captured",
+      "sourceHash": "d459ff78b6d986b08700725c1aeabee820061c17b29832c3986a3129a59ab3e1",
+      "width": 640,
+      "height": 360,
+      "frame": 79
+    },
+    "Examples/Topics/Shaders/SepBlur": {
+      "origin": "captured",
+      "sourceHash": "e3ae3f40216dc30741d791a9fb51d50621bc19820b03942250d4de5f43d517aa",
+      "width": 640,
+      "height": 360,
+      "frame": 100
+    },
+    "Examples/Topics/Shaders/ToonShading": {
+      "origin": "captured",
+      "sourceHash": "6655897f601e1266a7da7adbc5e267485611823c0f7b554ed62807b82027263f",
+      "width": 640,
+      "height": 360,
+      "frame": 98
+    },
     "Examples/Topics/Simulate/Flocking": {
       "origin": "processing",
       "width": 1152,
@@ -817,6 +1342,13 @@
       "origin": "processing",
       "width": 1152,
       "height": 648
+    },
+    "Examples/Topics/Simulate/GravitationalAttraction3D": {
+      "origin": "captured",
+      "sourceHash": "51906b10138077579c0ab74886f129be812c9589b64c96db410521156216b42c",
+      "width": 640,
+      "height": 360,
+      "frame": 97
     },
     "Examples/Topics/Simulate/MultipleParticleSystems": {
       "origin": "processing",
@@ -832,6 +1364,55 @@
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/Simulate/SoftBody": {
+      "origin": "captured",
+      "sourceHash": "dd79f96de3bdf87b8c58d78aa11b1da363ab37f6ab05ffb8c4da69af0e526439",
+      "width": 640,
+      "height": 360,
+      "frame": 36
+    },
+    "Examples/Topics/Subsystems/AutoSubsystems": {
+      "origin": "captured",
+      "sourceHash": "ac7a8c220e58fb5799a840a6d29eb9164e9287ac1acffe921b63675c1965c530",
+      "width": 640,
+      "height": 360,
+      "frame": 100
+    },
+    "Examples/Topics/Textures/TextureCube": {
+      "origin": "captured",
+      "sourceHash": "ec258e3896828fbf0274d5b18393dcd3df2e3a34afd34fe717f0ddc96a32e0ca",
+      "width": 640,
+      "height": 360,
+      "frame": 94
+    },
+    "Examples/Topics/Textures/TextureCylinder": {
+      "origin": "captured",
+      "sourceHash": "6851bb1a4e8a7b6cd9f730d299dcfb029113e20adaa2039f678c69dde6e97690",
+      "width": 640,
+      "height": 360,
+      "frame": 96
+    },
+    "Examples/Topics/Textures/TextureQuad": {
+      "origin": "captured",
+      "sourceHash": "477b71eeb4ca8420a96fb783b21a0f9f3619d95a0258731130d59b0b35a80912",
+      "width": 640,
+      "height": 360,
+      "frame": 97
+    },
+    "Examples/Topics/Textures/TextureSphere": {
+      "origin": "captured",
+      "sourceHash": "4e913ecbdf7fa9b56d4c7675dfa6d195ac40a05bc13a6dc6237c0b9331d822de",
+      "width": 640,
+      "height": 360,
+      "frame": 106
+    },
+    "Examples/Topics/Textures/TextureTriangle": {
+      "origin": "captured",
+      "sourceHash": "d98641e0385a8677a515c84798472b178fae0c7bd63d1f656a4a2fc8affaeb59",
+      "width": 640,
+      "height": 360,
+      "frame": 106
     },
     "Examples/Topics/Vectors/AccelerationWithVectors": {
       "origin": "processing",

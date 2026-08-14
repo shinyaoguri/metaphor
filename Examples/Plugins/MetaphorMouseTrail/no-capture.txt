@@ -1,0 +1,1 @@
+プラグイン本体のライブラリで実行できない（動かして見るのは Examples/Samples/PluginMouseTrail）
