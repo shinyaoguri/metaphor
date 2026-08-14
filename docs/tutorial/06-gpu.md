@@ -541,12 +541,25 @@ effect.setParameters(RippleParams(frequency: 42, phase: Float(frameCount) * 0.08
 
 ### 書き換えながら試す
 
-シェーダーを書くときは、値を少し変えては絵を見る往復になります。手段は 2 つあります。
+シェーダーを書くときは、値を少し変えては絵を見る往復になります。**MSL を別ファイルに置いて `createPostEffectFromFile(name:path:fragmentFunction:)` で読む**と、この往復からビルドが消えます。
 
-- `metaphor watch` で走らせる（保存のたびに再ビルドされ、ウィンドウは開いたまま）
-- MSL を別ファイルに置き、`reloadShaderFromFile(key:path:)` で読み直す。キーは `createPostEffect(name:)` の名前から決まり、`"user.posteffect.<name>"` になります
+```swift
+effect = try createPostEffectFromFile(
+    name: "ripple", path: "Sources/Ripple/ripple.metal", fragmentFunction: "ripple")
+```
 
-後者は再ビルドが要らない代わりに、読み直す操作を自分で呼ぶ必要があります（キー入力に割り当てるなど）。
+読み込んだ `.metal` ファイルは自動で監視されます。**保存するとその場で再コンパイルされ、絵が変わります**——ウィンドウは開いたまま、Swift の再ビルドもありません。同じことが 3D の `createMaterialFromFile()` と 2D の `loadShader()` でも起きます。
+
+書きかけの MSL はコンパイルに落ちますが、そのとき画面は**直前の動くシェーダーのまま**で、エラーだけがコンソールに出ます。直して保存すればそのまま戻ります。
+
+| | 何が要るか |
+|---|---|
+| ファイルを保存する | 何も要らない（自動リロード） |
+| Swift のコードを変えた | `metaphor watch`（保存のたびに再ビルド、ウィンドウは開いたまま） |
+
+自動リロードが働くのは開発中のビルド（`swift run`）だけで、`swift build -c release` で作った配布用のビルドではファイル監視は起きません。切り替えたいときは `SketchConfig(shaderHotReload:)` か、環境変数 `METAPHOR_SHADER_HOT_RELOAD`（`1` で有効・`0` で無効）を使います。
+
+ソース文字列から作った `createPostEffect(name:source:)` にはファイルがないので、この自動リロードは働きません。任意のタイミングで自分で読み直したいときは `reloadShaderFromFile(key:path:)` が残っています（キーは `"user.posteffect.<name>"`）。
 
 <!-- tutorial-snippet: 06-GPU/04-CustomPostEffect -->
 ```swift
@@ -648,12 +661,13 @@ final class Ripple: Sketch {
 - [ ] ソースの先頭に `PostProcessShaders.commonStructs` が要ると分かった
 - [ ] 入力の絵が `texture(0)`、組み込みパラメータが `buffer(0)` で来ると分かった
 - [ ] 自前の値は `setParameters()` で `buffer(1)` へ渡すと分かった
-- [ ] シェーダーを書き換えながら試す手段が 2 つあると分かった
+- [ ] MSL を別ファイルに置けば、保存するだけでビルド無しに反映されると分かった
+- [ ] 壊れたシェーダーを保存しても、直前のシェーダーのまま描き続けると分かった
 
 ### もっと詳しく
 
 - [`createPostEffect(name:source:fragmentFunction:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createposteffect%28name:source:fragmentfunction:%29), [`CustomPostEffect`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/customposteffect), [`PostProcessShaders`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/postprocessshaders)
-- [`reloadShaderFromFile(key:path:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/reloadshaderfromfile%28key:path:%29)
+- [`createPostEffectFromFile(name:path:fragmentFunction:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createposteffectfromfile%28name:path:fragmentfunction:%29), [`reloadShaderFromFile(key:path:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/reloadshaderfromfile%28key:path:%29)
 
 ## 6.5 いまできないこと
 

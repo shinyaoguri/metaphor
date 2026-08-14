@@ -162,6 +162,33 @@ public final class SketchContext {
     /// `.metaphor/params/` との橋渡し（永続化・外部書込の適用）を担います。
     public let params = ParameterStore()
 
+    // MARK: - Shader Hot Reload (#648)
+
+    /// ファイルから読んだシェーダを保存のたびに自動リロードするか。
+    ///
+    /// ``SketchRunner`` が ``SketchConfig/shaderHotReload`` と環境変数
+    /// `METAPHOR_SHADER_HOT_RELOAD` から解決して `setup()` の前に設定します。
+    /// 無効なら監視スレッドは 1 本も起きません。
+    var shaderHotReloadEnabled = false
+
+    /// シェーダ監視の実体。ファイル由来のシェーダを実際に読んだときだけ生成します。
+    private var _shaderHotReloader: ShaderHotReloader?
+
+    /// 有効なときだけリローダを返します（必要になった時点で生成）。
+    var shaderHotReloader: ShaderHotReloader? {
+        guard shaderHotReloadEnabled else { return nil }
+        if let existing = _shaderHotReloader { return existing }
+        let reloader = ShaderHotReloader(context: self)
+        _shaderHotReloader = reloader
+        return reloader
+    }
+
+    /// シェーダ監視を停止します（スケッチ終了時）。
+    func stopShaderHotReload() {
+        _shaderHotReloader?.stop()
+        _shaderHotReloader = nil
+    }
+
     // MARK: - Performance HUD
 
     /// パフォーマンス HUD インスタンス。無効の場合は nil。

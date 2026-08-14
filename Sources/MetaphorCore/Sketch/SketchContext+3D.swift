@@ -804,6 +804,12 @@ extension SketchContext {
     }
 
     /// 外部 MSL ファイルからカスタムマテリアルを作成します。
+    ///
+    /// 読み込んだファイルは**自動で監視対象**になります（#648）。保存するとビルド無しで
+    /// 再コンパイルされ、絵がその場で変わります。コンパイルに失敗しても直前の動く
+    /// シェーダのまま描き続け、エラーだけがコンソールに出ます。無効化は
+    /// ``SketchConfig/shaderHotReload`` か環境変数 `METAPHOR_SHADER_HOT_RELOAD=0`。
+    ///
     /// - Parameters:
     ///   - path: MSL ソースのファイルパス。
     ///   - fragmentFunction: フラグメントシェーダー関数名。
@@ -829,10 +835,13 @@ extension SketchContext {
             vtxFn = vf
         }
 
-        return CustomMaterial(
+        let material = CustomMaterial(
             fragmentFunction: fn, functionName: fragmentFunction, libraryKey: key,
             vertexFunction: vtxFn, vertexFunctionName: vertexFunction
         )
+        shaderHotReloader?.register(
+            material: material, path: path, fragment: fragmentFunction)
+        return material
     }
 
     // MARK: - Tween

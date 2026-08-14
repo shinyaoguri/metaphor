@@ -240,6 +240,26 @@ extension Sketch {
         try context.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
     }
 
+    /// 外部 MSL ファイルからカスタムポストプロセスエフェクトを作成します。
+    ///
+    /// 読み込んだファイルは自動でホットリロードの対象になります（#648）。
+    ///
+    /// - Parameters:
+    ///   - name: エフェクトの表示名。
+    ///   - path: MSL ソースファイルのファイルパス。
+    ///   - fragmentFunction: フラグメント関数の名前。
+    /// - Returns: 新しい ``CustomPostEffect`` インスタンス。
+    /// - Throws: ``MetaphorError``。ソースファイルを読み込めなかった場合は
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、MSL のコンパイルに
+    ///   失敗した場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、
+    ///   指定したフラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
+    public func createPostEffectFromFile(
+        name: String, path: String, fragmentFunction: String
+    ) throws -> CustomPostEffect {
+        try context.createPostEffectFromFile(
+            name: name, path: path, fragmentFunction: fragmentFunction)
+    }
+
     /// ポストプロセスエフェクトをパイプラインに追加します。
     ///
     /// - Parameter effect: 追加するポストプロセスエフェクト。
