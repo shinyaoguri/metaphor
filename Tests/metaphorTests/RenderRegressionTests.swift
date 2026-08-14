@@ -83,6 +83,19 @@ struct RenderRegressionTests {
         #expect(p2.r < 50, "Second frame should be blue: R=\(p2.r)")
     }
 
+    @Test("clear alpha reaches the render target via the alpha: label")
+    func clearAlphaLabel() throws {
+        var helper = try RenderTestHelper(width: 16, height: 16)
+
+        // ラベルは alpha:（#656 で a: から統一）。既定の 1.0 に頼らず明示して、
+        // 綴りと「4 番目の引数がアルファに届く」ことの両方を固定する。
+        helper.setClearColor(r: 0, g: 0, b: 0, alpha: 0.5)
+        try helper.render { _ in }
+
+        let p = helper.readPixel(x: 8, y: 8)
+        #expect(p.a > 120 && p.a < 136, "Half-opaque clear: A=\(p.a)")
+    }
+
     @Test("rect covers expected region only")
     func rectCoverage() throws {
         var helper = try RenderTestHelper(width: 64, height: 64)
