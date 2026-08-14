@@ -676,6 +676,13 @@
       "height": 700,
       "frame": 104
     },
+    "Examples/Samples/OSCLoopback": {
+      "origin": "captured",
+      "sourceHash": "3f27b2c9264c4d7593633a436ad5abedd863fd9542f8d8f94e5a266747d95031",
+      "width": 640,
+      "height": 360,
+      "frame": 106
+    },
     "Examples/Samples/ParameterPanel": {
       "origin": "captured",
       "sourceHash": "59efc965f9481abbaecdce43b64d49de9979012d1c2a62fc7e1c96763528df83",
@@ -688,6 +695,13 @@
       "sourceHash": "2e00a81a010e46815c70d7a05db37935ddde780713d1aba2daf5348e6122096a",
       "width": 640,
       "height": 360,
+      "frame": 97
+    },
+    "Examples/Samples/PluginMouseTrail": {
+      "origin": "captured",
+      "sourceHash": "d47a701d96dc00bd795f8afbac92a1d3d71064f3401f95564f1bdc51bb9a5cd0",
+      "width": 800,
+      "height": 600,
       "frame": 97
     },
     "Examples/Samples/ProbeBenchmark": {
@@ -849,6 +863,27 @@
       "height": 360,
       "frame": 97
     },
+    "Examples/Topics/Create Shapes/GroupPShape": {
+      "origin": "captured",
+      "sourceHash": "fbf67e30d2e9acd807f01cb2ff6caf4d9a2f2faec6d3feb3cfb6d20e20cd2128",
+      "width": 640,
+      "height": 360,
+      "frame": 104
+    },
+    "Examples/Topics/Create Shapes/PathPShape": {
+      "origin": "captured",
+      "sourceHash": "7df3edd90a505fc9ef84c73453624bb7ba6fb2ac95b7596316bf2a68734e8190",
+      "width": 640,
+      "height": 360,
+      "frame": 105
+    },
+    "Examples/Topics/Create Shapes/PolygonPShape": {
+      "origin": "captured",
+      "sourceHash": "652801ddb754f2977811bfee938b4c149d474b9606decda5cde421a5456db614",
+      "width": 640,
+      "height": 360,
+      "frame": 100
+    },
     "Examples/Topics/Create Shapes/PolygonPShapeOOP": {
       "origin": "captured",
       "sourceHash": "725f5904a119794fbc38301bb37952e6227fe9466d6e7dd02cdc300d23d52870",
@@ -869,6 +904,13 @@
       "width": 640,
       "height": 360,
       "frame": 104
+    },
+    "Examples/Topics/Create Shapes/PrimitivePShape": {
+      "origin": "captured",
+      "sourceHash": "08564657c3c543249756637ce9b886256ab7cdb7f35bdbd170a3310f17f121d9",
+      "width": 640,
+      "height": 360,
+      "frame": 102
     },
     "Examples/Topics/Create Shapes/WigglePShape": {
       "origin": "captured",
@@ -915,6 +957,13 @@
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/File IO/SaveFile1": {
+      "origin": "captured",
+      "sourceHash": "1605ff1da637c466dd5ebd94e31ff5c6dd1769ec6cd0a33e56fc6734587ef832",
+      "width": 640,
+      "height": 360,
+      "frame": 142
     },
     "Examples/Topics/File IO/SaveFrames": {
       "origin": "captured",
@@ -991,6 +1040,13 @@
       "width": 640,
       "height": 360,
       "frame": 70
+    },
+    "Examples/Topics/Geometry/RGBCube": {
+      "origin": "captured",
+      "sourceHash": "b7fd1b27d42e4fd2288b6f017929ac35f79bb3bc6022d20766d5dc356dd1a632",
+      "width": 640,
+      "height": 360,
+      "frame": 101
     },
     "Examples/Topics/Geometry/ShapeTransform": {
       "origin": "captured",
@@ -1077,6 +1133,13 @@
       "width": 640,
       "height": 360,
       "frame": 1
+    },
+    "Examples/Topics/Image Processing/Zoom": {
+      "origin": "captured",
+      "sourceHash": "e9e8317618934304b9173f66e2aa8d71633b0785fb4e4670b52f1996179ef11d",
+      "width": 640,
+      "height": 360,
+      "frame": 159
     },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
@@ -1165,6 +1228,13 @@
       "width": 1280,
       "height": 720
     },
+    "Examples/Topics/Shaders/BlurFilter": {
+      "origin": "captured",
+      "sourceHash": "d9f66b7da25d17840279078d86b8b63157367ddbe62fde3a4096cd022be889a7",
+      "width": 640,
+      "height": 360,
+      "frame": 114
+    },
     "Examples/Topics/Shaders/Conway": {
       "origin": "captured",
       "sourceHash": "9c53bba03abb9bf5867cd51c85dbeead4cef40fca01d9205ee9be377fac3c672",
@@ -1199,6 +1269,13 @@
       "width": 640,
       "height": 640,
       "frame": 103
+    },
+    "Examples/Topics/Shaders/ImageMask": {
+      "origin": "captured",
+      "sourceHash": "94caa4b9a61b5d4c595bf4c47c135513f3a2d534bc451b01b2aea6d81beb020b",
+      "width": 640,
+      "height": 360,
+      "frame": 16
     },
     "Examples/Topics/Shaders/InfiniteTiles": {
       "origin": "captured",

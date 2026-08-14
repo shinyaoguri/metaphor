@@ -2,11 +2,13 @@
 """スケッチの実行結果画像を撮るスクリプトが共有する部品。
 
 チュートリアル（`generate-tutorial-shots.py`）と Examples
-（`generate-example-shots.py`）で共通なのは 2 つだけです。
+（`generate-example-shots.py`）で共通なのは 3 つです。
 
 - **撮影時のソースの指紋**（`source_hash`）— 「コードを変えたのに画像が古い」を
   検出する仕組みの土台。ここを 2 実装持つと、片側だけ検出が弱る（#505）
 - **画像の縦横**（`image_size`）— 台帳に実寸を持たせるため
+- **入力台本**（`probe-input.jsonl` の読み取りと送出）— マウス・キーボードが要る
+  スケッチを撮るための唯一の経路。規約（#509）が 1 つなので実装も 1 つにする（#610）
 
 画像の置き場は用途で違います（チュートリアルは Gyazo = ADR-0010、Examples は
 リポジトリ内）。撮り方・台帳・本文の書き換えも用途ごとに違うので、各スクリプトが
@@ -16,11 +18,24 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import subprocess
+import time
 from pathlib import Path
 
 # 指紋の材料から外すもの。ビルド生成物・IDE 設定・Probe の作業ディレクトリ・
 # Finder のメタデータで、いずれも絵には影響しない（すべて gitignore 済み）。
 EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store"}
+
+# 撮影用の入力台本（#509）。パッケージ直下に置くと起動後に stdin へ流す。
+INPUT_SCRIPT_NAME = "probe-input.jsonl"
+# 1 行送るごとに空ける間隔。60fps の 2 フレームぶん空けて、1 フレームに複数の
+# イベントがまとめて届く（＝軌跡の中間点が失われる）のを避ける。
+INPUT_INTERVAL_SEC = 0.033
+# 最後のイベントが描画に反映されるまでの猶予。この後に request.json を置く。
+INPUT_SETTLE_SEC = 0.6
+# 下見の 1 枚が撮れてから流し始めるまでの間。フレームレートが落ち着くのを待つ。
+INPUT_LEAD_SEC = 0.3
 
 
 class ShotError(Exception):
@@ -85,3 +100,74 @@ def source_hash(package_dir: Path) -> str:
         digest.update(path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def parse_input_script(text: str, ref: str) -> list[dict]:
+    """撮影用の入力台本を、送る順のイベント列に直す。
+
+    `t` を持つ行は stdin へ送るイベント、`wait` だけの行は待ち時間。`//` の行と
+    空行は台本に意図を書くためのもので読み飛ばす。
+    """
+    events: list[dict] = []
+    for number, raw in enumerate(text.split("\n"), start=1):
+        line = raw.strip()
+        if not line or line.startswith("//"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ShotError(
+                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目が JSON として読めない: {exc}"
+            ) from exc
+        if not isinstance(event, dict):
+            raise ShotError(
+                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目はオブジェクトである必要がある"
+            )
+        if "t" in event:
+            events.append(event)
+            continue
+        wait = event.get("wait")
+        if not isinstance(wait, (int, float)) or isinstance(wait, bool) or wait < 0:
+            raise ShotError(
+                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目は 't' か "
+                f"'wait'（0 以上のミリ秒）を持つ必要がある: {line}"
+            )
+        events.append({"wait": wait})
+    if not events:
+        raise ShotError(f"'{ref}' の {INPUT_SCRIPT_NAME} にイベントが 1 つも無い")
+    return events
+
+
+def load_input_script(package_dir: Path, ref: str) -> list[dict] | None:
+    """パッケージに入力台本があれば読む（無ければ None）。"""
+    path = package_dir / INPUT_SCRIPT_NAME
+    if not path.is_file():
+        return None
+    return parse_input_script(path.read_text(encoding="utf-8"), ref)
+
+
+def send_input_script(process: subprocess.Popen, events: list[dict], ref: str) -> None:
+    """台本を stdin へ流す。流し終えるまで戻らない。
+
+    受け側はヘッドレス起動（`METAPHOR_VIEWER=1`）で自動登録される
+    `InputInjectionPlugin`（CONTRACT.md 契約点 3）。呼ぶ前に**描画ループが回って
+    いること**を確かめておく（起動直後に送ると stdin に溜まり、最初のフレームで
+    まとめて処理されて軌跡の中間点が消える）。
+    """
+    stdin = process.stdin
+    if stdin is None:  # 呼び出し側が PIPE で開いていない（起こらないはず）
+        raise ShotError(f"'{ref}' の stdin が開いていない")
+    time.sleep(INPUT_LEAD_SEC)
+    for event in events:
+        if process.poll() is not None:
+            raise ShotError(f"'{ref}' が入力の途中で終了した（exit {process.returncode}）")
+        if "wait" in event:
+            time.sleep(event["wait"] / 1000)
+            continue
+        try:
+            stdin.write(json.dumps(event) + "\n")
+            stdin.flush()
+        except BrokenPipeError as exc:
+            raise ShotError(f"'{ref}' が stdin を閉じた（入力を受け取れていない）") from exc
+        time.sleep(INPUT_INTERVAL_SEC)
+    time.sleep(INPUT_SETTLE_SEC)

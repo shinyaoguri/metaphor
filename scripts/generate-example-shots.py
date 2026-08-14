@@ -45,11 +45,22 @@ LoadDisplayOBJ は contentFraction 0、Flocking は 0.001）。そこで:
 `docs/ai/examples-shots.config.json` に `{"<パス>": {"settle": 秒}}` で書く
 （台帳は生成物なので、手書きの設定とは分ける）。
 
+## 入力が要る example（#509 / #610）
+
+マウス・キーボードで絵が決まる example は、入力が無いと「原点 = 画面左上に描かれた
+見切れた絵」しか撮れない。パッケージ直下に `probe-input.jsonl`（JSON Lines）を置くと、
+下見のあとに**その内容を stdin へ流してから**本番の 1 枚を撮る。ヘッドレス起動では
+`InputInjectionPlugin` が自動登録され、stdin の入力イベント（CONTRACT.md 契約点 3）を
+受け取るので、cli を挟まずに入力を再現できる。書式と送り方はチュートリアル側と同じ
+（`shots_common.parse_input_script`、規約は docs/tutorial/README.md）。
+
+待ち時間は台本の `{"wait": ミリ秒}` が持つ（`settle` は使わない）。入力を流し終えてから
+撮るので、撮り直しても同じ絵になる。代わりに `noLoop()` のスケッチとは両立しない
+（起動後に置いた request を処理する機会が来ない）ので、両方あるときはエラーにする。
+
 ## 撮らない example
 
 - パッケージ直下に `no-capture.txt` があるもの（#544 と同じ規約。理由を 1 行書く）
-- パッケージ直下に `probe-input.jsonl` があるもの（#509）。入力を流してから撮る経路は
-  まだこのスクリプトに無い。必要になったら generate-tutorial-shots.py から持ってくる
 - 索引の `status` が `supported` でないもの（stub / obsolete）
 
 ## なぜ画像のバイト比較で鮮度を見ないか
@@ -71,7 +82,14 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from shots_common import ShotError, image_size, source_hash  # noqa: E402
+from shots_common import (  # noqa: E402
+    INPUT_SCRIPT_NAME,
+    ShotError,
+    image_size,
+    load_input_script,
+    send_input_script,
+    source_hash,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES_DIR = REPO_ROOT / "Examples"
@@ -91,9 +109,9 @@ POLL_INTERVAL_SEC = 0.2
 # 下見の 1 枚が撮れてから本番のリクエストを置くまでの間（= 絵が出来上がるのを待つ）。
 SETTLE_SEC = 1.5
 
-# 撮らない申告（#544）と、入力が要る申告（#509）。どちらもパッケージ直下に置く。
+# 撮らない申告（#544）。パッケージ直下に置く（入力台本 INPUT_SCRIPT_NAME は
+# shots_common が持つ。撮らない申告ではなく「こう撮る」という指定なので分ける）。
 NO_CAPTURE_NAME = "no-capture.txt"
-INPUT_SCRIPT_NAME = "probe-input.jsonl"
 
 # `noLoop()` の呼び出し。コメント行は数えない（絵が止まるかどうかの判定なので、
 # 実際に呼んでいる行だけを見る）。
@@ -135,8 +153,6 @@ def no_capture_reason(package: Path) -> str | None:
     if marker.is_file():
         reason = marker.read_text(encoding="utf-8").strip().split("\n")[0]
         return reason or f"{NO_CAPTURE_NAME} に理由が書かれていない"
-    if (package / INPUT_SCRIPT_NAME).is_file():
-        return f"{INPUT_SCRIPT_NAME} がある（入力を流してから撮る経路は未対応）"
     return None
 
 
@@ -148,6 +164,21 @@ def uses_no_loop(package: Path) -> bool:
         if NO_LOOP_RE.search(source.read_text(encoding="utf-8", errors="ignore")):
             return True
     return False
+
+
+def input_script_for(package: Path, path: str, still: bool) -> list[dict] | None:
+    """入力台本があれば読む（#509 / #610）。無ければ None。
+
+    `noLoop()` のスケッチとは両立しない。入力は起動後に流すが、止まったスケッチには
+    その後の request を処理する機会が来ないため、黙って入力なしで撮る代わりに落とす。
+    """
+    events = load_input_script(package, path)
+    if events is not None and still:
+        raise ShotError(
+            f"'{path}' は {INPUT_SCRIPT_NAME} と noLoop() の両方を持つ（両立しない）。"
+            "入力は起動後に流すが、止まったスケッチはその後の request を処理しない"
+        )
+    return events
 
 
 def load_config() -> dict[str, dict]:
@@ -270,6 +301,7 @@ def capture(path: str, destination: Path, settle: float) -> dict:
     warmup_id = f"{request_id}-warmup"
     request = {"id": request_id, "label": package.name, "scale": 1.0}
     still = uses_no_loop(package)
+    input_script = input_script_for(package, path, still)
 
     def place_request(payload: dict) -> None:
         tmp = probe_dir / "request.json.tmp"
@@ -293,7 +325,7 @@ def capture(path: str, destination: Path, settle: float) -> dict:
         ["swift", "run"],
         cwd=package,
         env=env,
-        stdin=subprocess.DEVNULL,
+        stdin=subprocess.PIPE,  # 入力台本を流す経路（#610）
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
@@ -319,8 +351,16 @@ def capture(path: str, destination: Path, settle: float) -> dict:
 
     try:
         if not still:
+            # 下見を待つのは、**描画ループが回り始めてから**次へ進むため。起動直後
+            # （Metal パイプラインの構築中）に送った入力は stdin に溜まり、最初の
+            # フレームでまとめて処理される（＝軌跡の中間点が消える）。
             wait_for(f"frame.json（下見 id={warmup_id}）", warmup_id)
-            time.sleep(settle)
+            if input_script is not None:
+                # 待ちは台本の {"wait": ミリ秒} が持つので settle は使わない。
+                print(f"  input {len(input_script)} events", flush=True)
+                send_input_script(process, input_script, path)
+            else:
+                time.sleep(settle)
             place_request(request)
         metadata = wait_for("frame.png", request_id)
         frame_png = output_dir / "frame.png"
@@ -331,6 +371,11 @@ def capture(path: str, destination: Path, settle: float) -> dict:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(frame_png, destination)
     finally:
+        if process.stdin is not None and not process.stdin.closed:
+            try:
+                process.stdin.close()
+            except BrokenPipeError:
+                pass
         process.terminate()
         try:
             process.wait(timeout=10)
