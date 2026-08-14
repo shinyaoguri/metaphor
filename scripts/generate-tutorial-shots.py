@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
-"""Examples/Tutorial/** を実際に走らせ、実行結果画像を撮り直す。
+"""Examples/Tutorial/** を実際に走らせ、実行結果画像を撮り直して Gyazo へ上げる。
 
 各節のスケッチを `METAPHOR_PROBE=1 METAPHOR_VIEWER=1` で起動し、Probe が書く
-`.metaphor/probe/current/frame.png` を
-`docs/tutorial/images/{部番号}-{部スラッグ}/{節番号}-{節スラッグ}.png` へ配置する。
+`.metaphor/probe/current/frame.png` を Gyazo へアップロードして、返ってきた URL を
+`docs/tutorial/images/manifest.json`（台帳）と本文の `![](...)` に書き戻す。
 手で撮ったスクリーンショットは置かない（Issue #486 / docs/tutorial/README.md）。
 
     make tutorial-shots                     # 参照されている全節を撮り直す
     make tutorial-shots ARGS="--only 01-GettingStarted/03-SketchSkeleton"
     python3 scripts/generate-tutorial-shots.py --check   # 鮮度だけ調べる
+
+## 画像をリポジトリに置かない（ADR-0010）
+
+画像の実体は Gyazo（`https://i.gyazo.com/<hash>.<ext>`）に置き、Git で管理するのは
+**本文と台帳（URL + content hash）だけ**にする。アセットは不変・追記型で、撮り直しは
+既存 URL の差し替えではなく新規アップロードとして扱い、本文と台帳の URL を更新する。
+古い URL は消さない（過去のリビジョンをそのまま開けば当時の絵が出る）。
+
+台帳が「どの節がどの URL を指すか」の正本なので、本文の書き換えは文字列置換ではなく
+**節の構造から位置を決めて台帳の URL で上書きする**（`rewrite_docs`）。初回の外部化・
+撮り直し・途中で中断したあとの再実行が、すべて同じべき等な操作になる。
+
+アップロードには 1Password 上の Gyazo トークンが要るため、撮影と同じくローカルでのみ
+行う。`--check` はネットワークにもトークンにも触れず、台帳と本文の突き合わせだけで
+鮮度を判定する（CI で走るのはこちら）。URL の生死は週次のワークフローが見る
+（scripts/check-tutorial-image-urls.py）。
 
 ## 動きが要る節（#507）
 
@@ -16,12 +32,12 @@
 `docs/tutorial/images/motion.json` に登録すると Probe の連続キャプチャ
 （CONTRACT.md 契約点 4 の `frames >= 2`）で撮り、静止画に加えて
 
-- `kind: "webp"` — アニメーション WebP `{節}.webp`（`img2webp` が要る）
-- `kind: "sheet"` — コンタクトシート `{節}.sheet.png`（Probe が合成したもの）
+- `kind: "webp"` — アニメーション WebP（`img2webp` が要る）
+- `kind: "sheet"` — コンタクトシート（Probe が合成したもの）
 
-を置く。GIF ではなく WebP なのは、同じ絵で 1 桁小さく、`![](...)` のまま
-GitHub でも website でも動くため。mp4 は GitHub の Markdown が相対パスの
-動画を再生しないので採らない。
+を上げる。GIF ではなく WebP なのは、同じ絵で 1 桁小さく、`![](...)` のまま GitHub でも
+website でも動くため（Gyazo はアニメーション WebP をそのまま受け取り、バイト列を変えず
+に配信する）。mp4 は GitHub の Markdown が再生しないので採らない。
 
 ## 入力が要る節（#509）
 
@@ -48,7 +64,7 @@ TCC の権限が降りないこともある。この種の節はパッケージ�
 撮らない理由を 1 行書く。撮影も鮮度検査も飛ばし、本文は画像の代わりに「何が起きるか」を
 文章で書く（docs/tutorial/README.md の「実行結果の画像」）。
 
-## なぜ PNG のバイト比較で鮮度を見ないか
+## なぜ画像のバイト比較で鮮度を見ないか
 
 GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビット単位には一致しない。
 撮り直すたびに差分が出るので、`--check` は画像そのものではなく
@@ -56,7 +72,10 @@ GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビッ�
 現在のソースを突き合わせる。これで「コードを変えたのに画像を撮り直していない」
 という実際に起きるドリフトだけを、GPU の無い CI ランナーでも検出できる。
 
-撮影自体はローカルで行いコミットする（CI では走らせない）。
+台帳の `sha256` は鮮度判定には使わない（用途が違う）。こちらは**上げたバイト列そのもの
+の指紋**で、URL が指す中身が入れ替わっていないことを後から確かめるためのもの。
+
+撮影とアップロードはローカルで行い、本文と台帳をコミットする（CI では走らせない）。
 """
 
 import argparse
@@ -78,10 +97,26 @@ IMAGES_DIR = DOCS_DIR / "images"
 MANIFEST = IMAGES_DIR / "manifest.json"
 # 動きの証跡が要る節の設定（手書きの正典。manifest.json は生成物なので分ける）。
 MOTION_CONFIG = IMAGES_DIR / "motion.json"
+# 撮った画像の一時置き場。上げ終われば用済みなので gitignore 済みの .build/ に置く。
+STAGING_DIR = REPO_ROOT / ".build/tutorial-shots"
 
 # 埋め込みマーカー（generate-tutorial-snippets.py と同じ書式）。本文が参照して
 # いる節 = 画像が要る節、と定義する。
 SNIPPET_RE = re.compile(r"^<!-- tutorial-snippet:\s*(?P<ref>\S+)\s*-->$")
+# 本文の画像行。alt を保ったまま target だけ差し替えられるように分けて捕まえる。
+# 独立した 1 行だけを見る（文中に混ぜた画像は本文の規約で認めていない）。
+IMAGE_LINE_RE = re.compile(
+    r"^(?P<head>!\[(?P<alt>[^\]]*)\]\()(?P<target>[^)\s]+)(?P<tail>\))\s*$"
+)
+
+# 画像の実体の置き場（ADR-0010）。
+GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
+GYAZO_HOST = "i.gyazo.com"
+# トークンは 1Password から都度読む（平文の環境変数として常駐させない）。参照先を
+# 環境変数で差し替えられるようにしておくのは DEVELOPMENT.md の手順と同じ流儀。
+GYAZO_TOKEN_REF = os.environ.get(
+    "GYAZO_TOKEN_REF", "op://Automation/Gyazo API/credential"
+)
 
 # 指紋の材料から外すもの。ビルド生成物・IDE 設定・Probe の作業ディレクトリ・
 # Finder のメタデータで、いずれも絵には影響しない（すべて gitignore 済み）。
@@ -165,8 +200,223 @@ def image_path_for(ref: str) -> Path:
 def motion_path_for(ref: str, kind: str) -> Path:
     """動きの証跡の置き場。静止画 `{節}.png` の隣に並べる。"""
     part, section = ref.split("/", 1)
-    suffix = "webp" if kind == "webp" else "sheet.png"
+    suffix = motion_suffix(kind)
     return IMAGES_DIR / part / f"{section}.{suffix}"
+
+
+def motion_suffix(kind: str) -> str:
+    return "webp" if kind == "webp" else "sheet.png"
+
+
+def staging_path_for(ref: str, kind: str | None = None) -> Path:
+    """撮った直後の置き場（アップロード前）。リポジトリには残さない。"""
+    part, section = ref.split("/", 1)
+    suffix = motion_suffix(kind) if kind else "png"
+    return STAGING_DIR / part / f"{section}.{suffix}"
+
+
+def file_sha256(path: Path) -> str:
+    """上げたバイト列の指紋。URL の中身が入れ替わっていないことを後から確かめる。"""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+_GYAZO_TOKEN: list[str] = []
+
+
+def gyazo_token() -> str:
+    """1Password から Gyazo のアクセストークンを 1 度だけ読む。
+
+    `--check` からは決して呼ばない（CI にはトークンが無いため）。
+    """
+    if _GYAZO_TOKEN:
+        return _GYAZO_TOKEN[0]
+    if shutil.which("op") is None:
+        raise ShotError(
+            "1Password CLI（op）が見つからない。画像のアップロードにはトークンが要る。"
+            "brew install 1password-cli で入ります"
+        )
+    result = subprocess.run(
+        ["op", "read", GYAZO_TOKEN_REF], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise ShotError(
+            f"Gyazo のトークンを読めなかった（{GYAZO_TOKEN_REF}）:\n{result.stderr.strip()}"
+        )
+    token = result.stdout.strip()
+    if not token:
+        raise ShotError(f"Gyazo のトークンが空だった（{GYAZO_TOKEN_REF}）")
+    _GYAZO_TOKEN.append(token)
+    return token
+
+
+def gyazo_url_from_response(body: str, expected_suffix: str) -> str:
+    """Upload API の応答から URL を取り出して検証する（組み立てだけを切り出す）。"""
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise ShotError(f"Gyazo の応答が JSON として読めない: {body[:200]}") from exc
+    url = data.get("url")
+    if not isinstance(url, str) or not url.startswith(f"https://{GYAZO_HOST}/"):
+        raise ShotError(f"Gyazo の応答に想定した URL が無い: {body[:200]}")
+    if not url.endswith(expected_suffix):
+        # 形式が変換されたら本文の見え方が変わる。黙って進めない。
+        raise ShotError(
+            f"Gyazo が別の形式で返した（{expected_suffix} を上げたのに {url}）"
+        )
+    return url
+
+
+def upload_to_gyazo(path: Path, ref: str) -> str:
+    """画像を Gyazo へ上げて URL を返す。
+
+    アセットは不変・追記型なので、既にある URL を差し替えることはしない。
+    撮り直しは常に新しい URL になり、古い URL は過去のリビジョンのために残る。
+    """
+    token = gyazo_token()
+    result = subprocess.run(
+        [
+            "curl", "-sS", "--fail", "--retry", "3", "--retry-delay", "2",
+            "-F", f"access_token={token}",
+            "-F", f"imagedata=@{path}",
+            "-F", f"title=metaphor tutorial {ref}",
+            GYAZO_UPLOAD_URL,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        # コマンド列にはトークンが入っているので、決してそのまま出さない。
+        raise ShotError(
+            f"'{ref}' の {path.name} をアップロードできなかった"
+            f"（curl exit {result.returncode}）:\n{result.stderr.strip()[-500:]}"
+        )
+    return gyazo_url_from_response(result.stdout, path.suffix)
+
+
+def upload_asset(ref: str, path: Path, recorded: dict | None) -> tuple[str, str]:
+    """画像を上げて `(url, sha256)` を返す。中身が同じなら上げ直さない。
+
+    アップロードだけが失敗した直後の再実行を速く済ませるためで、Gyazo 側に同じ絵の
+    URL が増えても害は無い（台帳が最新を指していればよい）。
+    """
+    digest = file_sha256(path)
+    if recorded and recorded.get("sha256") == digest and recorded.get("url"):
+        return recorded["url"], digest
+    return upload_to_gyazo(path, ref), digest
+
+
+def doc_paths() -> list[Path]:
+    """本文のファイル。翻訳（#548）も同じ台帳から書き換えるので最初から見る。"""
+    docs = [doc for doc in sorted(DOCS_DIR.glob("*.md")) if doc.name != "README.md"]
+    return docs + sorted(DOCS_DIR.glob("en/*.md"))
+
+
+def doc_image_lines(text: str, doc_name: str) -> dict[str, list[int]]:
+    """本文の「どの節のどの行が画像か」を、節の構造から決める（ref -> 行番号）。
+
+    URL の文字列一致ではなく位置で対応づけるのは、途中で中断しても自己修復できる
+    ようにするため。文字列置換だと、本文と台帳のどちらが新しいか分からなくなった
+    時点で置換のキーを失う。
+    """
+    sections: list[dict] = []
+    current: dict | None = None
+    for index, line in enumerate(text.split("\n")):
+        if line.startswith("## "):
+            current = {"ref": None, "images": [], "line": index + 1}
+            sections.append(current)
+        matched = SNIPPET_RE.match(line)
+        if matched:
+            if current is None:
+                continue  # 節の外のマーカー。画像の対応づけには使えないので見ない
+            ref = matched.group("ref")
+            if current["ref"] not in (None, ref):
+                raise ShotError(
+                    f"{doc_name} {current['line']} 行目の節が 2 つの節を埋め込んでいる"
+                    f"（{current['ref']} と {ref}）"
+                )
+            current["ref"] = ref
+        if IMAGE_LINE_RE.match(line):
+            if current is None:
+                raise ShotError(f"{doc_name} {index + 1} 行目の画像が節の外にある")
+            current["images"].append(index)
+
+    lines: dict[str, list[int]] = {}
+    for section in sections:
+        if not section["images"]:
+            continue
+        if section["ref"] is None:
+            raise ShotError(
+                f"{doc_name} {section['line']} 行目の節に画像があるが、"
+                "どの節のものか（埋め込みマーカー）が無い"
+            )
+        if section["ref"] in lines:
+            raise ShotError(f"{doc_name} が '{section['ref']}' を 2 つの節で使っている")
+        if len(section["images"]) > 2:
+            raise ShotError(
+                f"{doc_name} の '{section['ref']}' に画像が "
+                f"{len(section['images'])} 本ある（静止画と動きの証跡で最大 2 本）"
+            )
+        lines[section["ref"]] = section["images"]
+    return lines
+
+
+def body_image_targets() -> dict[str, list[tuple[str, list[str]]]]:
+    """本文が実際に指している画像。ref -> [(ファイル名, target 列)]。"""
+    targets: dict[str, list[tuple[str, list[str]]]] = {}
+    for doc in doc_paths():
+        text = doc.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        for ref, indices in doc_image_lines(text, doc.name).items():
+            found = [IMAGE_LINE_RE.match(lines[i]).group("target") for i in indices]
+            targets.setdefault(ref, []).append((doc.name, found))
+    return targets
+
+
+def expected_targets(entry: dict) -> list[str]:
+    """台帳が定める、その節の画像 URL（静止画、動きの証跡の順）。"""
+    urls = [entry["url"]]
+    motion = entry.get("motion") or {}
+    if motion.get("url"):
+        urls.append(motion["url"])
+    return urls
+
+
+def rewrite_docs(shots: dict) -> list[Path]:
+    """台帳を正として本文の画像 URL を上書きする。書き換えたファイルを返す。
+
+    まだ外部化していない節（台帳に URL が無い）は触らない。移行の途中でも本文が
+    壊れないようにするため。
+    """
+    changed: list[Path] = []
+    for doc in doc_paths():
+        text = doc.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        dirty = False
+        for ref, indices in doc_image_lines(text, doc.name).items():
+            entry = shots.get(ref)
+            if not entry or not entry.get("url"):
+                continue
+            urls = expected_targets(entry)
+            if len(indices) != len(urls):
+                raise ShotError(
+                    f"{doc.name} の '{ref}' は画像行が {len(indices)} 本だが、"
+                    f"台帳の画像は {len(urls)} 本"
+                    "（本文か motion.json のどちらかを直してください）"
+                )
+            for index, url in zip(indices, urls):
+                matched = IMAGE_LINE_RE.match(lines[index])
+                if matched.group("target") == url:
+                    continue
+                lines[index] = f"{matched.group('head')}{url}{matched.group('tail')}"
+                dirty = True
+        if dirty:
+            doc.write_text("\n".join(lines), encoding="utf-8")
+            changed.append(doc)
+    return changed
 
 
 def load_motion_config() -> dict[str, dict]:
@@ -327,7 +577,10 @@ def save_manifest(shots: dict) -> None:
     payload = {
         "comment": (
             "Generated by scripts/generate-tutorial-shots.py. "
-            "sourceHash is the fingerprint of the sketch the image was taken from."
+            "sourceHash is the fingerprint of the sketch the image was taken from; "
+            "url/sha256 are the immutable asset the docs point at (ADR-0010). "
+            "Assets are append-only: a retake gets a new URL, old URLs stay alive "
+            "so past revisions keep rendering."
         ),
         "shots": dict(sorted(shots.items())),
     }
@@ -337,8 +590,8 @@ def save_manifest(shots: dict) -> None:
     )
 
 
-def capture(ref: str, motion: dict | None = None) -> dict:
-    """1 節ぶん撮る。撮れた画像の manifest エントリを返す。
+def capture(ref: str, motion: dict | None = None, recorded: dict | None = None) -> dict:
+    """1 節ぶん撮って Gyazo へ上げ、台帳のエントリを返す。
 
     `motion` を渡すと Probe の連続キャプチャで撮り、静止画に加えて動きの証跡
     （WebP かコンタクトシート）も作る。
@@ -447,15 +700,12 @@ def capture(ref: str, motion: dict | None = None) -> dict:
                 warnings = "; ".join(metadata.get("warnings") or []) or "理由の申告なし"
                 raise ShotError(f"'{ref}' の撮影が失敗応答を返した: {warnings}")
 
-        destination = image_path_for(ref)
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        still = staging_path_for(ref)
+        still.parent.mkdir(parents=True, exist_ok=True)
         if motion:
-            entry = collect_sequence(ref, sequence_dir, ready, motion, destination)
+            entry = collect_sequence(ref, sequence_dir, ready, motion, still)
         else:
-            shutil.copyfile(frame_png, destination)
-            # motion.json から外された節の古い証跡を残さない。
-            for kind in MOTION_KINDS:
-                motion_path_for(ref, kind).unlink(missing_ok=True)
+            shutil.copyfile(frame_png, still)
             size = metadata.get("size", {})
             entry = {
                 "width": size.get("width"),
@@ -475,7 +725,36 @@ def capture(ref: str, motion: dict | None = None) -> dict:
             process.kill()
         shutil.rmtree(probe_dir, ignore_errors=True)
 
+    entry = publish(ref, entry, motion, recorded)
     return {"sourceHash": source_hash(package_dir), **entry}
+
+
+def publish(
+    ref: str, entry: dict, motion: dict | None, recorded: dict | None
+) -> dict:
+    """撮った画像を Gyazo へ上げ、台帳のエントリに URL と指紋を書き入れる。"""
+    still = staging_path_for(ref)
+    url, digest = upload_asset(ref, still, recorded)
+    published = {**entry, "url": url, "sha256": digest}
+    if motion:
+        path = staging_path_for(ref, motion["kind"])
+        motion_url, motion_digest = upload_asset(
+            ref, path, (recorded or {}).get("motion")
+        )
+        published["motion"] = {
+            **published["motion"],
+            "url": motion_url,
+            "sha256": motion_digest,
+        }
+    retire_local_files(ref)
+    return published
+
+
+def retire_local_files(ref: str) -> None:
+    """リポジトリに残っている古い画像を片付ける（実体は Gyazo にある。ADR-0010）。"""
+    image_path_for(ref).unlink(missing_ok=True)
+    for kind in MOTION_KINDS:
+        motion_path_for(ref, kind).unlink(missing_ok=True)
 
 
 def current_frame(output_dir: Path, request_id: str) -> dict | None:
@@ -529,11 +808,8 @@ def collect_sequence(
     # 代表静止画は真ん中のフレーム。動きの節でも本文の頭に 1 枚置けるようにする。
     shutil.copyfile(frames[len(frames) // 2], still)
 
-    output = motion_path_for(ref, motion["kind"])
-    # kind を切り替えたときに前の形式のファイルを置き去りにしない。
-    for kind in MOTION_KINDS:
-        if kind != motion["kind"]:
-            motion_path_for(ref, kind).unlink(missing_ok=True)
+    output = staging_path_for(ref, motion["kind"])
+    output.parent.mkdir(parents=True, exist_ok=True)
     if motion["kind"] == "sheet":
         sheet = manifest.get("contactSheet")
         if not sheet or not (sequence_dir / sheet).is_file():
@@ -554,7 +830,7 @@ def collect_sequence(
     return {
         "width": size.get("width"),
         "height": size.get("height"),
-        "motion": {**motion, "file": output.name, "bytes": written},
+        "motion": {**motion, "bytes": written},
     }
 
 
@@ -605,9 +881,20 @@ def motion_settings(entry: dict | None) -> dict | None:
     return {key: entry.get(key) for key in keys}
 
 
-def check(refs: list[str], shots: dict, motions: dict[str, dict] | None = None) -> list[str]:
-    """撮り直しが要る節を返す（画像が無い / ソースが変わった / 設定が変わった）。"""
+def check(
+    refs: list[str],
+    shots: dict,
+    motions: dict[str, dict] | None = None,
+    body: dict[str, list[tuple[str, list[str]]]] | None = None,
+) -> list[str]:
+    """撮り直しが要る節を返す（画像が無い / ソースが変わった / 設定が変わった）。
+
+    ネットワークにもトークンにも触れない（CI で走る）。外部化済みの節は本文の URL が
+    台帳と揃っているかまで見るが、URL の生死は見ない（週次のワークフローの担当）。
+    """
     motions = motions or {}
+    if body is None:
+        body = body_image_targets()
     stale: list[str] = []
     for ref in refs:
         package_dir = CODE_DIR / ref
@@ -622,24 +909,108 @@ def check(refs: list[str], shots: dict, motions: dict[str, dict] | None = None) 
                     f"'{ref}' は {NO_CAPTURE_NAME} があるのに "
                     f"{MOTION_CONFIG.name} にも登録されている"
                 )
-            if recorded is not None or image_path_for(ref).is_file():
+            if recorded is not None or image_path_for(ref).is_file() or body.get(ref):
                 stale.append(f"{ref}: {NO_CAPTURE_NAME} があるのに画像が残っている")
             continue
         if recorded is None:
             stale.append(f"{ref}: 画像がまだ無い")
             continue
-        if not image_path_for(ref).is_file():
-            stale.append(f"{ref}: manifest にあるが画像ファイルが無い")
-            continue
-        if recorded.get("sourceHash") != source_hash(package_dir):
-            stale.append(f"{ref}: 撮影後にスケッチが変わった")
-            continue
-        recorded_motion = recorded.get("motion")
-        if motion_settings(motion) != motion_settings(recorded_motion):
-            stale.append(f"{ref}: motion.json の設定が撮影時と違う")
-        elif motion and not motion_path_for(ref, motion["kind"]).is_file():
-            stale.append(f"{ref}: 動きの証跡のファイルが無い")
+        if recorded.get("url"):
+            stale += external_stale(ref, package_dir, recorded, motion, body)
+        else:
+            stale += local_stale(ref, package_dir, recorded, motion)
     return stale
+
+
+def external_stale(
+    ref: str,
+    package_dir: Path,
+    recorded: dict,
+    motion: dict | None,
+    body: dict[str, list[tuple[str, list[str]]]],
+) -> list[str]:
+    """外部ストレージへ移した節の鮮度（ADR-0010）。台帳と本文だけで判定する。"""
+    if recorded.get("sourceHash") != source_hash(package_dir):
+        return [f"{ref}: 撮影後にスケッチが変わった"]
+    if motion_settings(motion) != motion_settings(recorded.get("motion")):
+        return [f"{ref}: motion.json の設定が撮影時と違う"]
+    if motion and not (recorded.get("motion") or {}).get("url"):
+        return [f"{ref}: 動きの証跡が台帳に無い"]
+    urls = expected_targets(recorded)
+    references = body.get(ref)
+    if not references:
+        return [f"{ref}: 台帳にあるが本文が画像を参照していない"]
+    return [
+        f"{doc_name}: '{ref}' の画像 URL が台帳と違う"
+        for doc_name, found in references
+        if found != urls
+    ]
+
+
+def local_stale(
+    ref: str, package_dir: Path, recorded: dict, motion: dict | None
+) -> list[str]:
+    """まだリポジトリに画像を置いている節の鮮度（移行前・移行の途中）。
+
+    外部化が済めば通らなくなる経路だが、移行を 1 つの PR で全節いっせいにやらずに
+    済むよう、URL を持たない節はここで従来どおり判定する。
+    """
+    if not image_path_for(ref).is_file():
+        return [f"{ref}: manifest にあるが画像ファイルが無い"]
+    if recorded.get("sourceHash") != source_hash(package_dir):
+        return [f"{ref}: 撮影後にスケッチが変わった"]
+    if motion_settings(motion) != motion_settings(recorded.get("motion")):
+        return [f"{ref}: motion.json の設定が撮影時と違う"]
+    if motion and not motion_path_for(ref, motion["kind"]).is_file():
+        return [f"{ref}: 動きの証跡のファイルが無い"]
+    return []
+
+
+def migrate_existing(refs: list[str], shots: dict, motions: dict[str, dict]) -> list[str]:
+    """リポジトリに残っている画像を、撮り直さずにそのまま外部ストレージへ移す。
+
+    GPU の出力はビット単位で再現しないので、撮り直すと中身の変わらない差分が全節に
+    出る。移行では上げ直すだけにして、いまの絵をそのまま引き継ぐ。
+    """
+    moved: list[str] = []
+    for ref in refs:
+        recorded = shots.get(ref)
+        if recorded is None or recorded.get("url"):
+            continue  # 撮っていない節と、移行済みの節は触らない
+        still = image_path_for(ref)
+        if not still.is_file():
+            raise ShotError(
+                f"'{ref}' は台帳にあるが画像ファイルが無い（--only で撮り直してください）"
+            )
+        print(f"migrating {ref}")
+        entry = dict(recorded)
+        entry["url"], entry["sha256"] = upload_asset(ref, still, recorded)
+        motion = motions.get(ref)
+        if motion:
+            path = motion_path_for(ref, motion["kind"])
+            if not path.is_file():
+                raise ShotError(f"'{ref}' の動きの証跡（{path.name}）が無い")
+            url, digest = upload_asset(ref, path, recorded.get("motion"))
+            settings = {
+                key: value
+                for key, value in (recorded.get("motion") or motion).items()
+                if key != "file"  # 実体はもう手元に無いのでファイル名は持たない
+            }
+            entry["motion"] = {
+                **settings,
+                "bytes": path.stat().st_size,
+                "url": url,
+                "sha256": digest,
+            }
+        shots[ref] = entry
+        retire_local_files(ref)
+        # 1 節ずつ台帳と本文を確定させる。中断しても済んだ節は整合したまま残る。
+        save_manifest(shots)
+        rewrite_docs(shots)
+        for url in expected_targets(entry):
+            print(f"  -> {url}")
+        moved.append(ref)
+    return moved
 
 
 def main() -> int:
@@ -648,6 +1019,11 @@ def main() -> int:
         "--check",
         action="store_true",
         help="撮らずに鮮度だけ調べる（撮り直しが要れば exit 1）",
+    )
+    parser.add_argument(
+        "--migrate-existing",
+        action="store_true",
+        help="リポジトリに残っている画像を撮り直さずに外部ストレージへ移す（ADR-0010）",
     )
     parser.add_argument(
         "--only",
@@ -680,6 +1056,14 @@ def main() -> int:
                 f"{', '.join(unknown)}"
             )
 
+        if args.migrate_existing:
+            moved = migrate_existing(refs, shots, motions)
+            if not moved:
+                print("OK: リポジトリに残っている画像は無い（全節が外部ストレージ）")
+                return 0
+            print(f"\n{len(moved)} 節を外部ストレージへ移しました。")
+            return 0
+
         if args.check:
             stale = check(refs, shots, motions)
             if not stale:
@@ -704,9 +1088,7 @@ def main() -> int:
         targets = [r for r in targets if r not in skipped]
         for ref in skipped:
             print(f"skipping {ref}（{no_capture_reason(CODE_DIR / ref, ref)}）")
-            image_path_for(ref).unlink(missing_ok=True)
-            for kind in MOTION_KINDS:
-                motion_path_for(ref, kind).unlink(missing_ok=True)
+            retire_local_files(ref)
             shots.pop(ref, None)
         if skipped:
             save_manifest(shots)
@@ -717,13 +1099,12 @@ def main() -> int:
         for ref in targets:
             print(f"capturing {ref}")
             motion = motions.get(ref)
-            shots[ref] = capture(ref, motion)
-            print(f"  -> {image_path_for(ref).relative_to(REPO_ROOT)}")
-            if motion:
-                path = motion_path_for(ref, motion["kind"])
-                size = path.stat().st_size / 1024
-                print(f"  -> {path.relative_to(REPO_ROOT)} ({size:.0f}KB)")
-        save_manifest(shots)
+            shots[ref] = capture(ref, motion, shots.get(ref))
+            # 1 節ずつ台帳と本文を確定させる。中断しても済んだ節は整合したまま残る。
+            save_manifest(shots)
+            rewrite_docs(shots)
+            for url in expected_targets(shots[ref]):
+                print(f"  -> {url}")
         print(f"\n{len(targets)} 節を撮り直しました。")
     except ShotError as exc:
         print(f"error: {exc}", file=sys.stderr)
