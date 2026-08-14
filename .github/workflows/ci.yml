@@ -81,12 +81,24 @@ jobs:
           # 寛容に見る: type と区切りだけを強制し、要約の中身（日本語・記号）は
           # 一切問わない。scope は任意、`!` は破壊的変更の接尾辞。
           # dependabot の `chore(deps): bump ...` はこれを満たす。
+          #
+          # ここが許可 type の正本（Issue #498）。`build` は「ビルド基盤・生成
+          # パイプラインの変更」に慣例どおり使えるよう入れてある — 無かった頃は
+          # `chore` に押し込むしかなく、実際に PR #496 がこれで落ちた。
+          # 慣例（angular）の 11 種のうち `style` / `revert` は入れていない:
+          # フォーマットのみの変更は `chore`、revert は打ち消す側の type を
+          # 名乗る運用で、使う機会が無いまま一覧を長くしても迷いが増えるだけ。
+          # 足すときは下の `::error::` の一覧も併せて直すこと。
+          #
+          # 未知の type を足しても bump 判定は壊れない: release-bump.py は
+          # feat -> minor / fix, perf -> patch だけを見て、それ以外は
+          # 「それ自体ではリリースしない」に落ちる（chore と同じ扱い）。
           if printf '%s' "$TITLE" \
-              | grep -Eq '^(feat|fix|docs|refactor|test|chore|ci|perf)(\([^)]+\))?!?: .+'; then
+              | grep -Eq '^(feat|fix|docs|refactor|test|chore|ci|perf|build)(\([^)]+\))?!?: .+'; then
             echo "OK: Conventional Commits 形式です。"
             exit 0
           fi
-          echo "::error::PR title must be Conventional Commits — '<type>(<scope>)?: <summary>' with type in feat|fix|docs|refactor|test|chore|ci|perf (optional '!' for a breaking change). Got: ${TITLE}"
+          echo "::error::PR title must be Conventional Commits — '<type>(<scope>)?: <summary>' with type in feat|fix|docs|refactor|test|chore|ci|perf|build (optional '!' for a breaking change). Got: ${TITLE}"
           echo "Fix the PR title, then re-run this job with 'gh run rerun --failed ${GITHUB_RUN_ID}'."
           echo "The title is read live from the API, so no push is needed."
           exit 1
