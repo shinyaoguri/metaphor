@@ -241,6 +241,87 @@ struct ShaderFileHotReloadTests {
         #expect(context.shaderHotReloader == nil)
     }
 
+    // MARK: - 世代の観測（#671）
+
+    @Test("登録した時点で digest が立ち、generation は 0 のまま")
+    func stampStartsAtRegistration() throws {
+        let context = try makeContext()
+        #expect(context.activeShaderHotReloader == nil)
+
+        let path = try writeShaderFile(Self.passthroughSource)
+        let shader = try context.loadShader(path, fragment: "hotFragment")
+        _ = shader  // 台帳は弱参照。束縛が切れると登録ごと落ちる。
+
+        let reloader = try #require(context.activeShaderHotReloader)
+        #expect(reloader.contentDigest != nil)
+        #expect(reloader.generation == 0)
+        #expect(reloader.lastError == nil)
+    }
+
+    @Test("着地したリロードで digest が変わり generation が進む")
+    func landedReloadAdvancesStamp() throws {
+        let context = try makeContext()
+        let path = try writeShaderFile(Self.passthroughSource)
+        let shader = try context.loadShader(path, fragment: "hotFragment")
+        _ = shader
+        let reloader = try #require(context.activeShaderHotReloader)
+        let before = try #require(reloader.contentDigest)
+
+        try Self.invertedSource.write(toFile: path, atomically: true, encoding: .utf8)
+        #expect(reloader.reload(paths: [path]))
+
+        #expect(reloader.contentDigest != before)
+        #expect(reloader.generation == 1)
+        #expect(reloader.lastError == nil)
+    }
+
+    @Test("コンパイルに失敗したリロードは刻印を動かさず lastError を残す")
+    func failedReloadKeepsStampAndReportsError() throws {
+        let context = try makeContext()
+        let path = try writeShaderFile(Self.passthroughSource)
+        let shader = try context.loadShader(path, fragment: "hotFragment")
+        _ = shader
+        let reloader = try #require(context.activeShaderHotReloader)
+        let before = try #require(reloader.contentDigest)
+
+        try Self.brokenSource.write(toFile: path, atomically: true, encoding: .utf8)
+        #expect(reloader.reload(paths: [path]) == false)
+
+        // 描いているのは直前の動くシェーダなので、刻印も据え置き = 正しく「未反映」。
+        #expect(reloader.contentDigest == before)
+        #expect(reloader.generation == 0)
+        // これが無いと consumer は「まだ来ない」と「壊れていて来ない」を区別できず、
+        // タイムアウトまで待つことになる（#671）。
+        let error = try #require(reloader.lastError)
+        #expect(error.contains("hotFragment"))
+
+        // 直して保存し直せばエラーは消え、刻印が進む。
+        try Self.invertedSource.write(toFile: path, atomically: true, encoding: .utf8)
+        #expect(reloader.reload(paths: [path]))
+        #expect(reloader.lastError == nil)
+        #expect(reloader.generation == 1)
+        #expect(reloader.contentDigest != before)
+    }
+
+    @Test("内容を元に戻すと digest も戻るが generation は進み続ける")
+    func revertKeepsGenerationMonotonic() throws {
+        let context = try makeContext()
+        let path = try writeShaderFile(Self.passthroughSource)
+        let shader = try context.loadShader(path, fragment: "hotFragment")
+        _ = shader
+        let reloader = try #require(context.activeShaderHotReloader)
+        let original = try #require(reloader.contentDigest)
+
+        try Self.invertedSource.write(toFile: path, atomically: true, encoding: .utf8)
+        #expect(reloader.reload(paths: [path]))
+        try Self.passthroughSource.write(toFile: path, atomically: true, encoding: .utf8)
+        #expect(reloader.reload(paths: [path]))
+
+        // digest だけを見ていると「元に戻す」編集の着地を取りこぼす。generation が拾う。
+        #expect(reloader.contentDigest == original)
+        #expect(reloader.generation == 2)
+    }
+
     // MARK: - 有効化の解決
 
     @Test("環境変数が config より優先される")

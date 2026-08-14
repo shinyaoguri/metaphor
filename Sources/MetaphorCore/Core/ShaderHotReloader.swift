@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// ファイルから読んだシェーダを、保存のたびに自動で再コンパイルして差し替えます
@@ -38,6 +39,37 @@ final class ShaderHotReloader {
 
     /// キャッシュ破棄と再描画のために参照するコンテキスト。
     private weak var context: SketchContext?
+
+    // MARK: - 世代の観測（#671）
+
+    /// 監視対象パス（絶対パス） → **いま実際にライブラリに載っている**ソースのハッシュ。
+    ///
+    /// 「読んだファイルの現在の中身」ではなく「差し替えに成功した中身」を持つのが要点です。
+    /// コンパイルに失敗したリロードは旧シェーダを残すので、ここも据え置きになります。
+    private var loadedDigests: [String: String] = [:]
+
+    /// 起動からの**着地回数**。差し替えが 1 つでも成功したリロードごとに +1 します。
+    ///
+    /// 内容ハッシュ（``contentDigest``）と役割が補完的です。内容を編集前に戻すと
+    /// ハッシュは元の値に戻りますが、こちらは単調増加なので「反映されたか」を取りこぼしません。
+    private(set) var generation = 0
+
+    /// 直近のリロードで出たコンパイルエラー。全て成功したリロードで nil に戻ります。
+    ///
+    /// これが無いと consumer は「ハッシュが変わらない」＝未反映としか分からず、
+    /// 壊れた MSL を保存したときにタイムアウトまで待つことになります（#671）。
+    private(set) var lastError: String?
+
+    /// いま載っているファイル由来シェーダ全体の集約ハッシュ（SHA-256 先頭 16 桁）。
+    /// ファイル由来のシェーダが 1 つも無ければ nil。
+    var contentDigest: String? {
+        guard !loadedDigests.isEmpty else { return nil }
+        var hasher = SHA256()
+        for path in loadedDigests.keys.sorted() {
+            hasher.update(data: Data("\(path)\n\(loadedDigests[path]!)\n".utf8))
+        }
+        return Self.shortHex(hasher.finalize())
+    }
 
     init(context: SketchContext) {
         self.context = context
@@ -99,6 +131,15 @@ final class ShaderHotReloader {
     private func add(path: String, registration: Registration) {
         let target = (path as NSString).standardizingPath
         registrations[target, default: []].append(registration)
+        // 呼び出し元（loadShader / createMaterialFromFile / createPostEffectFromFile）は
+        // 既にこのファイルを読んでコンパイルまで済ませているが、3 経路のうち 2 つは
+        // `ShaderLibrary.registerFromFile` の中で読むのでソースが手元に無い。public API の
+        // シグネチャを変えるより、登録時 1 回だけ読み直す。直後に書き換わっても watcher が
+        // 追いかけて直すので実害は無い。
+        if loadedDigests[target] == nil,
+           let source = try? String(contentsOfFile: target, encoding: .utf8) {
+            loadedDigests[target] = Self.digest(of: source)
+        }
         startWatchingIfNeeded()
         watcher?.watch(path: target)
         metaphorDiagnostic(
@@ -117,6 +158,7 @@ final class ShaderHotReloader {
         watcher?.stop()
         watcher = nil
         registrations.removeAll()
+        loadedDigests.removeAll()
     }
 
     // MARK: - リロード
@@ -128,6 +170,8 @@ final class ShaderHotReloader {
     func reload(paths: [String]) -> Bool {
         guard let context else { return false }
         var reloaded = false
+        // このバッチで出たエラー。最後に `lastError` を丸ごと置き換える（全成功なら nil に戻る）。
+        var errors: [String] = []
 
         for path in paths.map({ ($0 as NSString).standardizingPath }) {
             guard let entries = registrations[path], !entries.isEmpty else { continue }
@@ -136,11 +180,12 @@ final class ShaderHotReloader {
             do {
                 source = try String(contentsOfFile: path, encoding: .utf8)
             } catch {
-                report("\(path) を読めませんでした: \(error.localizedDescription)")
+                errors.append(report("\(path) を読めませんでした: \(error.localizedDescription)"))
                 continue
             }
 
             var alive: [Registration] = []
+            var landed = true
             for entry in entries {
                 do {
                     try context.renderer.shaderLibrary.reload(
@@ -153,14 +198,26 @@ final class ShaderHotReloader {
                     }
                 } catch {
                     // コンパイル失敗。直前の動くシェーダは残っているので描画は続く。
-                    report("\(entry.label) (\(path)):\n\(error)")
+                    errors.append(report("\(entry.label) (\(path)):\n\(error)"))
                     alive.append(entry)
+                    landed = false
                 }
             }
             registrations[path] = alive
+            // 1 つでも失敗したパスは旧シェーダが残っている＝未反映。刻印も据え置く（#671）。
+            // 生存登録が空（対象オブジェクトが解放済み）になったパスは台帳から落とす。
+            if alive.isEmpty {
+                loadedDigests[path] = nil
+            } else if landed {
+                loadedDigests[path] = Self.digest(of: source)
+            }
         }
 
-        if reloaded { applySideEffects() }
+        lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
+        if reloaded {
+            generation += 1
+            applySideEffects()
+        }
         return reloaded
     }
 
@@ -179,8 +236,31 @@ final class ShaderHotReloader {
     /// `metaphorWarning` と違って **DEBUG ゲートを通しません**。ホットリロード自体が
     /// 開発時のみ有効な機能で、その価値は「なぜ絵が変わらないか」がすぐ分かることに
     /// あるためです。stdout を汚さないよう stderr に書きます（MCP の JSON-RPC 対策）。
-    private func report(_ message: String) {
+    ///
+    /// - Returns: `lastError`（= `frame.json` の `shaders.lastError`）に積む短縮版。
+    ///   MSL コンパイラの出力は長くなりうるので wire 用に切り詰めます。
+    @discardableResult
+    private func report(_ message: String) -> String {
         FileHandle.standardError.write(
             "[metaphor] shader hot reload failed: \(message)\n".data(using: .utf8)!)
+        return Self.truncate(message, to: 500)
+    }
+
+    // MARK: - ハッシュ
+
+    /// 1 ファイル分のソースのハッシュ（SHA-256 先頭 16 桁）。
+    private static func digest(of source: String) -> String {
+        shortHex(SHA256.hash(data: Data(source.utf8)))
+    }
+
+    /// ダイジェストを 16 進小文字の先頭 16 桁へ。64 bit あれば編集の取り違えは起きず、
+    /// AI が読む wire を短く保てます（暗号用途ではない）。
+    private static func shortHex(_ digest: some Sequence<UInt8>) -> String {
+        String(digest.map { String(format: "%02x", $0) }.joined().prefix(16))
+    }
+
+    /// 長すぎるメッセージを末尾省略で切ります。
+    private static func truncate(_ message: String, to limit: Int) -> String {
+        message.count <= limit ? message : String(message.prefix(limit)) + "…"
     }
 }

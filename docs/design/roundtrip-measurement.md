@@ -13,6 +13,11 @@ Epic #75 は成功を **「機能数でなく」** 往復時間・観測の決�
 実際の AI ループ経路（`metaphor mcp` の stdio JSON-RPC）を外部から駆動する測定ハーネス [`scripts/measure-roundtrip.py`（metaphor-cli）](https://github.com/shinyaoguri/metaphor-cli) を用いる。`mcp` は内部で `WatchSession`（ファイル監視＋`swift build`＋子プロセス再起動）を回しつつ `METAPHOR_VIEWER=1` でヘッドレス描画するため、**観測（snapshot）と編集→反映を同一経路で**測れる。
 
 - **反映の機械判定**: 編集が新フレームに反映されたかは `frame.json` の **`sourceStamp`（#115）の変化**で判定する。cli が監視 `.swift` の (パス:mtime:サイズ) を集約した決定論的スタンプを子 env `METAPHOR_SOURCE_STAMP` に注入し、producer が `frame.json` に echo する。これにより「古いフレーム（編集前）」と「リビルド後の新フレーム」を確実に区別できる。
+  - **シェーダ編集はこの判定に乗らない**（#671）。`.metal` の保存はホットリロード（#648）で
+    **再起動なしに**絵を変えるので、起動時に固定される `sourceStamp` は動かない。`.metal` を
+    測定対象にするときは `frame.json` の **`shaders.generation` の増加**（着地）と
+    `shaders.lastError`（コンパイル失敗）で判定する。リビルド + 再起動を経ないぶん、
+    B（保存→反映）の性質そのものが `.swift` 編集と別物になる点に注意。
 - **編集**: ベンチスケッチ末尾にビルド安全な sentinel 行を append/更新（測定後に原状復帰）。
 - **指標**: cold-start snapshot / warm snapshot 往復 / roundtrip（編集→反映）の p50・p95。
 - **ground truth**: 画面キャプチャ権限は不要。`frame.png`/`frame.json` の読み戻し。
