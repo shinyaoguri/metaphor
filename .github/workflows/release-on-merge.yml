@@ -56,12 +56,16 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
           set -euo pipefail
+          # 右辺はクォートする: `patch` は実在するコマンド名なので、裸で書くと
+          # SC2209（コマンド出力を代入したいのでは）で警告される。
+          # NOTE: 行頭を `# shellcheck` で始めると directive と誤解釈されるので、
+          # このコメントのように語を行頭に置かないこと。
           if echo "$LABELS" | grep -q 'release:major'; then
-            BUMP=major
+            BUMP="major"
           elif echo "$LABELS" | grep -q 'release:minor'; then
-            BUMP=minor
+            BUMP="minor"
           elif echo "$LABELS" | grep -q 'release:patch'; then
-            BUMP=patch
+            BUMP="patch"
           else
             # Squash-only repo: the PR title is the commit message on main.
             # `--fallback patch` because `release:now` is an explicit request to

@@ -109,6 +109,20 @@ jobs:
         # リリース時の `changelog.py check` は従来どおり「有無」も見るゲートの
         # まま。ここはその前半分を per-PR に前倒しするだけ（Issue #405）。
         run: python3 scripts/changelog.py lint
+      - name: Lint workflows (actionlint)
+        # `.github/workflows/*.yml` を検証するものが無く、構文エラーや式の書き
+        # 間違いは「そのワークフローが次に走ったとき」まで見つからなかった
+        # （Issue #460）。release.yml / release-train.yml / release-on-merge.yml は
+        # PR では走らない（dispatch / schedule / pull_request:closed）ので、
+        # 壊れていても気付くのは「リリースが出ない」「トレインが発車しない」
+        # という形になる。数秒で終わるのでビルドの手前に置く。
+        #
+        # バージョン pin・SHA256 検証・偽陽性の抑制はスクリプトと
+        # .github/actionlint.yaml 側。手元の `make lint-workflows` と同じ実体を
+        # 呼ぶので、ローカルと CI で結果が食い違わない（shellcheck もピンして
+        # 落とす — macOS ランナーには入っておらず、「あれば使う」にすると
+        # `run:` の中身の検証が CI でだけ黙って外れる）。
+        run: ./scripts/lint-workflows.sh
       - name: Test generator scripts
         # scripts/ 配下の Python 生成器のユニットテスト。llms.txt の中身は
         # 「生成物が最新か」のチェック（下）では守れない — 生成器が API 面を

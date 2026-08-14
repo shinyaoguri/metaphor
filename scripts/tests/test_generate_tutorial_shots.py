@@ -425,52 +425,10 @@ class TestCurrentFrame(ShotsTestCase):
 
 
 class TestInputScript(ShotsTestCase):
-    """撮影用の入力台本（`probe-input.jsonl`）の読み取り規則（#509）。"""
+    """撮影用の入力台本（`probe-input.jsonl`）のうち、チュートリアル側の扱い（#509）。
 
-    def parse(self, text: str) -> list[dict]:
-        return gen.parse_input_script(text, REF)
-
-    def test_events_keep_their_order(self) -> None:
-        events = self.parse(
-            '{"t":"mouseMove","x":10,"y":20}\n{"t":"mouseDown","x":10,"y":20,"button":0}\n'
-        )
-        self.assertEqual([event["t"] for event in events], ["mouseMove", "mouseDown"])
-
-    def test_wait_lines_are_kept_as_waits(self) -> None:
-        events = self.parse('{"wait":250}\n{"t":"mouseUp","x":1,"y":2}\n')
-        self.assertEqual(events[0], {"wait": 250})
-        self.assertEqual(events[1]["t"], "mouseUp")
-
-    def test_comments_and_blank_lines_are_ignored(self) -> None:
-        events = self.parse('// 台本の意図\n\n{"t":"keyDown","code":49}\n')
-        self.assertEqual(len(events), 1)
-
-    def test_a_line_without_t_or_wait_is_an_error(self) -> None:
-        with self.assertRaises(gen.ShotError):
-            self.parse('{"x":10,"y":20}\n')
-
-    def test_a_negative_wait_is_an_error(self) -> None:
-        with self.assertRaises(gen.ShotError):
-            self.parse('{"wait":-5}\n')
-
-    def test_broken_json_is_an_error(self) -> None:
-        with self.assertRaises(gen.ShotError):
-            self.parse('{"t":"mouseMove",\n')
-
-    def test_a_script_without_events_is_an_error(self) -> None:
-        with self.assertRaises(gen.ShotError):
-            self.parse("// 説明だけ\n\n")
-
-    def test_missing_script_means_no_input(self) -> None:
-        package_dir = self.add_package()
-        self.assertIsNone(gen.load_input_script(package_dir, REF))
-
-    def test_script_is_read_from_the_package_root(self) -> None:
-        package_dir = self.add_package()
-        (package_dir / gen.INPUT_SCRIPT_NAME).write_text(
-            '{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8"
-        )
-        self.assertEqual(len(gen.load_input_script(package_dir, REF) or []), 1)
+    読み取り規則そのものは Examples 側と共有なので test_shots_common.py が見る（#610）。
+    """
 
     def test_script_changes_make_the_shot_stale(self) -> None:
         # 台本はパッケージ配下なので指紋に入る（絵が変わるため撮り直しが要る）

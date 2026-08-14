@@ -11,7 +11,8 @@ Run from the repository root:
   = 真っ黒や初期姿勢を撮ってしまう。#501 の実測）
 - 原典由来（`origin: processing`）は鮮度判定の対象外で、撮ったもの
   （`origin: captured`）だけがソース変更で stale になる
-- 撮らない申告（`no-capture.txt`）と入力が要る申告（`probe-input.jsonl`）を尊重する
+- 撮らない申告（`no-capture.txt`）を尊重し、入力台本（`probe-input.jsonl`）がある
+  example は**撮る対象になる**（#610）
 """
 
 import importlib.util
@@ -132,7 +133,7 @@ class TestNoLoop(ExampleShotsTestCase):
 
 
 class TestNoCapture(ExampleShotsTestCase):
-    """撮らない申告と、入力が要る申告。"""
+    """撮らない申告。"""
 
     def test_no_capture_reports_the_written_reason(self) -> None:
         package = self.package()
@@ -144,13 +145,58 @@ class TestNoCapture(ExampleShotsTestCase):
         (package / gen.NO_CAPTURE_NAME).write_text("\n")
         self.assertIn(gen.NO_CAPTURE_NAME, gen.no_capture_reason(package) or "")
 
-    def test_an_input_script_skips_for_now(self) -> None:
-        package = self.package()
-        (package / gen.INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":1,"y":2}\n')
-        self.assertIn(gen.INPUT_SCRIPT_NAME, gen.no_capture_reason(package) or "")
-
     def test_a_plain_package_is_captured(self) -> None:
         self.assertIsNone(gen.no_capture_reason(self.package()))
+
+
+class TestInputScript(ExampleShotsTestCase):
+    """入力台本（`probe-input.jsonl`）の扱い（#509 / #610）。"""
+
+    def with_script(self, source: str = "func draw() {}\n") -> Path:
+        package = self.package(source=source)
+        (package / gen.INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":1,"y":2}\n')
+        return package
+
+    def test_an_input_script_is_captured_not_skipped(self) -> None:
+        # 台本は「撮らない申告」ではなく「こう撮る」という指定（#610 以前は除外していた）
+        self.assertIsNone(gen.no_capture_reason(self.with_script()))
+
+    def test_the_script_is_read_from_the_package_root(self) -> None:
+        package = self.with_script()
+        events = gen.input_script_for(package, PATH, still=False)
+        self.assertEqual(events, [{"t": "mouseMove", "x": 1, "y": 2}])
+
+    def test_no_script_means_no_input(self) -> None:
+        self.assertIsNone(gen.input_script_for(self.package(), PATH, still=False))
+
+    def test_a_script_on_a_stopped_sketch_is_an_error(self) -> None:
+        # noLoop() のスケッチは起動後に置く request を処理しない。黙って入力なしで
+        # 撮ると「台本を書いたのに効いていない絵」が台帳へ入る。
+        package = self.with_script(source="func setup() { noLoop() }\n")
+        with self.assertRaises(gen.ShotError):
+            gen.input_script_for(package, PATH, still=gen.uses_no_loop(package))
+
+    def test_a_broken_script_is_an_error(self) -> None:
+        package = self.package()
+        (package / gen.INPUT_SCRIPT_NAME).write_text('{"x":1,"y":2}\n')
+        with self.assertRaises(gen.ShotError):
+            gen.input_script_for(package, PATH, still=False)
+
+    def test_script_changes_make_the_shot_stale(self) -> None:
+        # 台本はパッケージ配下なので指紋に入る（絵が変わるため撮り直しが要る）
+        package = self.with_script()
+        self.image()
+        shots = {
+            PATH: {
+                "origin": gen.ORIGIN_CAPTURED,
+                "sourceHash": gen.source_hash(package),
+                "width": 640,
+                "height": 360,
+            }
+        }
+        self.assertEqual(gen.stale_entries([self.entry()], shots), [])
+        (package / gen.INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":9,"y":9}\n')
+        self.assertEqual(len(gen.stale_entries([self.entry()], shots)), 1)
 
 
 class TestManifest(ExampleShotsTestCase):
