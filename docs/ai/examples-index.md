@@ -20,10 +20,11 @@ Status: supported 264, partial 0, stub 10, obsolete 10
   post-process API (`addPostEffect`, `createPostEffect`, `createMaterial`,
   `createEffectPass`, ...) or ships its own `.metal` source.
   `cpu-approximation` marks the opposite case — a port of a Processing
-  sample whose original was GLSL, redone with CPU pixel loops. Everything
-  under `Examples/Topics/Shaders/` is `cpu-approximation`: read those for
-  the effect, never as shader references. 2D custom shaders
-  (`loadShader()` / `shader()`) are not implemented yet — issue #291.
+  sample whose original was GLSL, redone with CPU pixel loops. Every
+  example under `Examples/Topics/Shaders/` except `CustomShader2D` is
+  `cpu-approximation`: read those for the effect, never as shader
+  references. For 2D custom shaders (`loadShader()` / `createShader()` /
+  `shader()` / `resetShader()`), `CustomShader2D` is the reference.
 
 ## Machine-Readable Access
 

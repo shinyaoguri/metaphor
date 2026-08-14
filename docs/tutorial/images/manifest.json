@@ -457,6 +457,14 @@
       "url": "https://i.gyazo.com/3ddb574bfde49d497bebfa7db26be179.png",
       "sha256": "2a0713deeb3645396c9df6cea86e653fd5c2afeeeb56e3f1e9bcb86d871f1be9"
     },
+    "06-GPU/05-ShapeShader": {
+      "sourceHash": "9cd58f38acad481c3d6460ef34d760e9550247a8a15e89bfffa71f4a9343b506",
+      "width": 640,
+      "height": 360,
+      "frame": 1,
+      "url": "https://i.gyazo.com/4b5f419b68e54b8cfe2d6a1408c18c9d.png",
+      "sha256": "4da9a7a9e431232244cdfe2b099c6331996243025a420d77cac2614d2df4bc6a"
+    },
     "07-Media/04-VideoPlayback": {
       "sourceHash": "5bc0288bbc65b9fd6bfb1696dc76f0afe8b6e71c401dbcd06eed8c851692ee09",
       "width": 640,
