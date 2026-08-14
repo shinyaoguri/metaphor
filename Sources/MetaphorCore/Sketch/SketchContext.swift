@@ -183,6 +183,13 @@ public final class SketchContext {
         return reloader
     }
 
+    /// **既に生成済みの**リローダだけを返します（Probe の観測用、#671）。
+    ///
+    /// 上の ``shaderHotReloader`` はアクセスした時点で生成する lazy アクセサなので、
+    /// 観測のたびに呼ぶと「ファイル由来シェーダが 1 つも無いのに台帳だけある」状態を
+    /// 作ってしまいます。読むだけの経路はこちらを使います。
+    var activeShaderHotReloader: ShaderHotReloader? { _shaderHotReloader }
+
     /// シェーダ監視を停止します（スケッチ終了時）。
     func stopShaderHotReload() {
         _shaderHotReloader?.stop()

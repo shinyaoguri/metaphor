@@ -85,6 +85,12 @@ struct ProbeSchemaConformanceTests {
                     "showGrid": .bool(false),
                     "tint": .color(1, 1, 1, 1),
                 ]
+            ),
+            shaders: .init(
+                generation: 2,
+                digest: "9f2c4a1b7d3e5081",
+                lastError: "waveFragment (/abs/path/wave.metal): program_source:12:9: "
+                    + "error: use of undeclared identifier 'wobble'"
             )
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame.json"), path: "frame")
@@ -92,7 +98,7 @@ struct ProbeSchemaConformanceTests {
 
     @Test("frame.json (minimal) は optional 省略時の構造と一致する")
     func frameMinimalMatchesExample() throws {
-        // label / sourceStamp / stats / performance / params を nil にすると
+        // label / sourceStamp / stats / performance / params / shaders を nil にすると
         // JSONEncoder はキー自体を省略する。
         let metadata = ProbeFrameMetadata(
             schemaVersion: 4,
@@ -107,7 +113,8 @@ struct ProbeSchemaConformanceTests {
             warnings: ["frame appears nearly blank (variance=0.000001)"],
             stats: nil,
             performance: nil,
-            params: nil
+            params: nil,
+            shaders: nil
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame-minimal.json"), path: "frame-minimal")
     }
@@ -129,7 +136,8 @@ struct ProbeSchemaConformanceTests {
             warnings: ["failed to allocate staging texture; frame.png was not written"],
             stats: nil,
             performance: nil,
-            params: nil
+            params: nil,
+            shaders: nil
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame-failure.json"), path: "frame-failure")
     }

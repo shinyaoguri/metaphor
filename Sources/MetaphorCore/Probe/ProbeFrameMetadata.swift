@@ -58,6 +58,13 @@ struct ProbeFrameMetadata: Encodable {
     /// `@Param` が 1 つも宣言されていないスケッチでは省略する（nil）。
     let params: Params?
 
+    /// ファイル由来シェーダのホットリロード世代（schemaVersion 4 のまま additive 追加、Issue #671）。
+    /// `sourceStamp` はプロセス起動時に固定されるため、`.metal` を保存して**再起動なしで**
+    /// 絵が変わるホットリロード（#648）を刻印で追えない。ここは**リロードが着地した後にしか
+    /// 動かない**世代情報を載せ、「保存 → 反映」の完了を機械検出できるようにする。
+    /// ファイル由来のシェーダが 1 つも無いスケッチでは省略する（nil）。
+    let shaders: Shaders?
+
     struct Size: Encodable {
         let width: Int
         let height: Int
@@ -105,6 +112,24 @@ struct ProbeFrameMetadata: Encodable {
 
         /// パラメータ名 → 現在値（型タグ無しの裸の JSON。`params.json` と同じ表現）。
         let values: [String: ParamValue]
+    }
+
+    /// このフレームを描いたファイル由来シェーダの世代（Issue #671）。
+    ///
+    /// `generation` と `digest` は役割が補完的です。`digest` は内容由来なのでプロセスを
+    /// またいで比較でき、`generation` は単調増加なので「編集して戻す」で取りこぼしません。
+    /// どちらも**差し替えに成功した後にしか動かない**ため、デバウンスやコンパイル中の窓で
+    /// 「新しい刻印・古い描画」の偽陽性が出ません。
+    struct Shaders: Encodable {
+        /// スケッチ起動からの着地回数（差し替えが 1 つでも成功したリロードごとに +1）。
+        let generation: Int
+
+        /// いまライブラリに載っているファイル由来シェーダ全体の集約ハッシュ。
+        let digest: String
+
+        /// 直近のリロードで出たコンパイルエラー。全て成功していれば省略（nil）。
+        /// 「まだ反映されていない」と「壊れていて反映されない」を consumer が区別するため。
+        let lastError: String?
     }
 
     /// 32x32 グリッドサンプルから 1 パスで計算する画像統計。
