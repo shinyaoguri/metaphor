@@ -156,6 +156,26 @@ public final class Mesh {
     }
 }
 
+// MARK: - 分割数のクランプ
+
+extension Mesh {
+    /// 円周方向の分割数の下限。
+    ///
+    /// 0 以下だと `0...segments` が逆順 Range になって fatalError（`throws` では拾えない）、
+    /// `Float(i) / Float(segments)` も inf/NaN になる。閉じた輪を作れる最小値が 3。
+    static let minimumSegments = 3
+
+    /// 球の緯度方向リング数の下限（両極を結ぶには最低 2 段必要）。
+    static let minimumRings = 2
+
+    /// 分割数を下限へ丸めます。
+    ///
+    /// `detail` を `@Param` / OSC / MIDI から流して 0 や負に触れても落とさないための入口ガード。
+    /// 描画側（`sphere()` 等）と生成側（`createSphereMesh()` 等）は同じファクトリを通るため、
+    /// ここ 1 箇所で両方に効きます。
+    static func clamped(_ n: Int, min lowerBound: Int) -> Int { max(n, lowerBound) }
+}
+
 // MARK: - Box
 
 extension Mesh {
@@ -234,6 +254,8 @@ extension Mesh {
 extension Mesh {
     /// スムーズ法線とUV座標を持つUVスフィアメッシュを作成します。
     ///
+    /// `segments` / `rings` は下限（3 / 2）へ丸められます。
+    ///
     /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func sphere(
         device: MTLDevice,
@@ -241,6 +263,8 @@ extension Mesh {
         segments: Int = 24,
         rings: Int = 16
     ) throws -> Mesh {
+        let segments = clamped(segments, min: minimumSegments)
+        let rings = clamped(rings, min: minimumRings)
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
         vertices.reserveCapacity((rings + 1) * (segments + 1))
@@ -324,6 +348,8 @@ extension Mesh {
 extension Mesh {
     /// 側面、上面キャップ、底面キャップ、UV座標を持つシリンダーメッシュを作成します。
     ///
+    /// `segments` は下限 3 へ丸められます。
+    ///
     /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func cylinder(
         device: MTLDevice,
@@ -331,6 +357,7 @@ extension Mesh {
         height: Float = 1,
         segments: Int = 24
     ) throws -> Mesh {
+        let segments = clamped(segments, min: minimumSegments)
         let hh = height / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
@@ -417,6 +444,8 @@ extension Mesh {
 extension Mesh {
     /// 側面、底面キャップ、UV座標を持つコーンメッシュを作成します。
     ///
+    /// `segments` は下限 3 へ丸められます。
+    ///
     /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func cone(
         device: MTLDevice,
@@ -424,6 +453,7 @@ extension Mesh {
         height: Float = 1,
         segments: Int = 24
     ) throws -> Mesh {
+        let segments = clamped(segments, min: minimumSegments)
         let hh = height / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
@@ -488,6 +518,8 @@ extension Mesh {
 extension Mesh {
     /// パラメトリックサーフェスとUV座標を使用してトーラスメッシュを作成します。
     ///
+    /// `segments` / `tubeSegments` は下限 3 へ丸められます。
+    ///
     /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func torus(
         device: MTLDevice,
@@ -496,6 +528,8 @@ extension Mesh {
         segments: Int = 24,
         tubeSegments: Int = 16
     ) throws -> Mesh {
+        let segments = clamped(segments, min: minimumSegments)
+        let tubeSegments = clamped(tubeSegments, min: minimumSegments)
         let white = SIMD4<Float>(1, 1, 1, 1)
         var vertices: [Vertex3D] = []
         vertices.reserveCapacity((segments + 1) * (tubeSegments + 1))

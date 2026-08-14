@@ -1,0 +1,35 @@
+// 4.2 キーボード — 撮影用の入力台本（stdin JSON Lines / CONTRACT.md 契約点 3）
+// 右を押しっぱなし → 下 → 左と上を同時押し → Space で色 → 文字を打つ → 最後は右を押したまま撮る
+// code は macOS の仮想キーコード（LEFT=123 / RIGHT=124 / DOWN=125 / UP=126 / SPACE=49）。
+// 矢印キーの chars には U+F700 台の機能キー文字が届く（文字としては表示できない）。
+{"t": "keyDown", "code": 124, "chars": "\uf703", "repeat": false}
+{"wait": 700}
+{"t": "keyUp", "code": 124}
+{"wait": 100}
+{"t": "keyDown", "code": 125, "chars": "\uf701", "repeat": false}
+{"wait": 400}
+{"t": "keyUp", "code": 125}
+{"wait": 100}
+{"t": "keyDown", "code": 123, "chars": "\uf702", "repeat": false}
+{"t": "keyDown", "code": 126, "chars": "\uf700", "repeat": false}
+{"wait": 500}
+{"t": "keyUp", "code": 123}
+{"t": "keyUp", "code": 126}
+{"wait": 150}
+{"t": "keyDown", "code": 49, "chars": " ", "repeat": false}
+{"t": "keyUp", "code": 49}
+{"wait": 150}
+{"t": "keyDown", "code": 46, "chars": "m", "repeat": false}
+{"t": "keyUp", "code": 46}
+{"wait": 80}
+{"t": "keyDown", "code": 14, "chars": "e", "repeat": false}
+{"t": "keyUp", "code": 14}
+{"wait": 80}
+{"t": "keyDown", "code": 17, "chars": "t", "repeat": false}
+{"t": "keyUp", "code": 17}
+{"wait": 80}
+{"t": "keyDown", "code": 0, "chars": "a", "repeat": false}
+{"t": "keyUp", "code": 0}
+{"wait": 150}
+{"t": "keyDown", "code": 124, "chars": "\uf703", "repeat": false}
+{"wait": 300}

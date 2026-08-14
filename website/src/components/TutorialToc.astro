@@ -1,0 +1,42 @@
+---
+import { getContent, type Lang } from '../i18n/ui';
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  lang: Lang;
+  headings: MarkdownHeading[];
+}
+
+const { lang, headings } = Astro.props;
+const t = getContent(lang);
+// 節（h2）とその下の小見出し（h3）まで。それより深いものは目次に出さない。
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{
+  items.length > 0 && (
+    <nav class="text-sm" aria-labelledby="toc-heading">
+      <p
+        id="toc-heading"
+        class="mb-3 text-xs font-semibold tracking-widest text-text-muted uppercase"
+      >
+        {t.tutorial.onThisPage}
+      </p>
+      <ul class="space-y-1 border-l border-border">
+        {items.map((heading) => (
+          <li>
+            <a
+              href={`#${heading.slug}`}
+              class:list={[
+                '-ml-px block border-l border-transparent py-1 text-text-muted transition-colors hover:border-accent hover:text-text',
+                heading.depth === 2 ? 'pl-4' : 'pl-8 text-[0.8rem]',
+              ]}
+            >
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}

@@ -4,6 +4,11 @@ For people who already write Processing (or p5.js) sketches and want to know wha
 changes — and what does not — when the same sketch is written against
 [metaphor](../README.en.md).
 
+**Never used Processing?** This page is not the place to start: it explains
+metaphor in terms of an API you would not recognise. Read the tutorial instead
+([`docs/tutorial/`](tutorial/) — Japanese), which assumes no graphics
+programming background and teaches the library in order.
+
 The short version: **the drawing vocabulary is deliberately the same**. `setup()` /
 `draw()`, `background()`, `fill()`, `rect()`, `map()`, `noise()`, `mouseX` and the
 0–255 color range all mean what you expect. What changes is the language around
@@ -297,7 +302,7 @@ the Processing original with every number left alone.
 | `specular(…)` / `shininess(n)` / `emissive(…)` | `specular(_ color: Color)` (also grayscale) / `shininess(_ value: Float)` / `emissive(_ color: Color)` |
 | `ambient(…)` | — not implemented as a per-material call (only scene-wide `ambientLight`) |
 | — | `metallic(_:)`, `roughness(_:)`, `ambientOcclusion(_:)`, `pbr(_ enabled: Bool)` for the PBR path. `roughness(_:)` switches the whole shading model to PBR as a side effect |
-| `texture(img)` / `noTexture()` | `texture(_ img: MImage)` / `noTexture()` |
+| `texture(img)` / `noTexture()` | `texture(_ img: MImage)` / `noTexture()`. For `beginShape3D()`, pass UV per vertex: `vertex(x, y, z, u, v)` |
 | `textureMode()` / `textureWrap()` | — not implemented |
 | `normal(nx, ny, nz)` | `normal(_ nx: Float, _ ny: Float, _ nz: Float)` |
 | `beginShape()` in 3D | `beginShape3D(_ mode: ShapeMode = .polygon)` / `endShape3D(_ close: CloseMode = .open)` |
@@ -307,6 +312,21 @@ the Processing original with every number left alone.
 
 At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 `directionalLight` calls in a frame are dropped silently.
+
+> **Build 3D shapes with `beginShape3D()`, not `beginShape()`.** Processing has
+> one shape recorder and picks 2D or 3D from the renderer; metaphor has two.
+> `beginShape()` records into the **2D** canvas, so a `vertex(x, y, z)` inside it
+> drops z and draws flat — `rotateX` / `rotateY` then have nothing to rotate and
+> the shape collapses into a plane. Porting a `P3D` sketch means renaming the
+> pair to `beginShape3D()` / `endShape3D()`; the `vertex` calls stay as they are.
+> The first such `vertex` in a run logs a warning in debug builds
+> ([#387](https://github.com/shinyaoguri/metaphor/issues/387)).
+>
+> To texture a custom 3D shape, give each vertex its texture coordinates with the
+> five-argument `vertex(x, y, z, u, v)`. `u` / `v` are **normalized (0…1)** —
+> there is no `textureMode()`, so a Processing sketch using `textureMode(IMAGE)`
+> divides its coordinates by the image size. A `beginShape3D()` whose vertices
+> carry no UV renders with the current fill, as before.
 
 ### Input
 
@@ -505,7 +525,7 @@ There are two ways to say "white", and they use different scales:
 
 ```swift
 fill(255)                    // numeric overload — honours colorMode(), default 0...255
-fill(.white)                 // Color value — components are always 0...1
+fill(.white)                 // Color value — components use a 0...1 scale
 fill(Color(r: 1, g: 1, b: 1))
 ```
 

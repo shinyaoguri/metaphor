@@ -173,10 +173,17 @@ jobs:
 
       # --- Push release branch with version-bump commit ---
       - name: Push release branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # Identity for the annotated tag later in this job. The release commit
+          # itself is NOT made with `git commit` — see the end of this step.
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # main's HEAD is an already-signed commit; the release branch starts
+          # there and the bump is layered on through the API.
+          BASE_SHA=$(git rev-parse HEAD)
           git checkout -b "$RELEASE_BRANCH"
           sed -i '' "s|releases/download/v[^/]*/|releases/download/${TAG_NAME}/|g" Package.swift
           sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
@@ -188,7 +195,8 @@ jobs:
           # Only stable versions appear in `from:` install snippets. Keep every
           # file that carries the snippet in sync — CI on this release branch
           # enforces agreement (validate-ai-docs.sh check #6 compares
-          # README.en.md, GettingStarted.md and llms.txt against README.md, and
+          # README.en.md, GettingStarted.md, llms.txt and the landing page's
+          # Hero.astro against README.md, and
           # the llms.txt staleness check regenerates with the README version
           # embedded), so updating README.md alone deadlocks the release.
           # NOTE: this list and validate-ai-docs.sh's `version_docs` are two
@@ -199,12 +207,17 @@ jobs:
           if [ "$IS_PRERELEASE" = "false" ]; then
             VERSION_NUM=${TAG_NAME#v}
             # Anchor on the dependency URL so unrelated `from:` parameter
-            # labels (e.g. tween(from:to:)) in llms.txt are left alone.
+            # labels (e.g. tween(from:to:)) in llms.txt are left alone. The
+            # anchor deliberately stops at `metaphor.git` rather than the full
+            # host, because the landing page elides it for width
+            # ("…/metaphor.git") — the replacement keeps whatever prefix is
+            # already there.
             sed -i '' "s|metaphor\.git\", from: \"[0-9][^\"]*\"|metaphor.git\", from: \"${VERSION_NUM}\"|g" \
               README.md \
               README.en.md \
               Sources/metaphor/metaphor.docc/GettingStarted.md \
-              llms.txt
+              llms.txt \
+              website/src/components/Hero.astro
             # Fold `changelog.d/*.md` into `## [Unreleased]`, then promote it
             # into this version's section (Issue #335). Stable-only, matching
             # the `from:` snippets above: a prerelease cycle keeps accumulating
@@ -214,17 +227,48 @@ jobs:
             # re-checks and fails rather than writing an empty section.
             python3 scripts/changelog.py release "${VERSION_NUM}" --date "$(date -u +%Y-%m-%d)"
           fi
-          # `changelog.d` carries the DELETION of every collected entry file
-          # (`git add <dir>` stages removals). Without it the release commit
-          # would promote the entries and leave the files behind, so the next
-          # release would collect them a second time.
-          git add Package.swift Sources/MetaphorCore/Core/MetaphorVersion.swift README.md README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt CHANGELOG.md changelog.d
-          if git diff --cached --quiet; then
+          # The exact file set the bump is allowed to touch. Scoping matters:
+          # unscoped, `git status` on a runner would also see build output that
+          # merely happens not to be ignored (Frameworks/, artifacts, caches).
+          BUMP_PATHS=(
+            Package.swift
+            Sources/MetaphorCore/Core/MetaphorVersion.swift
+            README.md
+            README.en.md
+            Sources/metaphor/metaphor.docc/GettingStarted.md
+            llms.txt
+            website/src/components/Hero.astro
+            CHANGELOG.md
+            changelog.d
+          )
+          if [ -z "$(git status --porcelain -- "${BUMP_PATHS[@]}")" ]; then
             echo "::error::No version-bump diff produced."
             exit 1
           fi
-          git commit -m "Release ${TAG_NAME}"
-          git push origin "$RELEASE_BRANCH"
+          # The commit goes through GitHub's API, not `git commit`: the ruleset
+          # requires signed commits (2026-08-04) and the runner has no signing
+          # key, so a pushed `git commit` is unsigned and the release PR then
+          # cannot be merged — after the Syphon build and a full CI run have
+          # already happened. That is exactly how v0.9.0 failed on 2026-08-10.
+          # `createCommitOnBranch` commits are signed by GitHub itself, which
+          # satisfies the rule without opening a ruleset bypass for Actions.
+          #
+          # signed-commit.py reads `git status --porcelain`, so every edit above
+          # is carried as-is — including the DELETION of each collected
+          # `changelog.d/` entry. Without those deletions the release would
+          # promote the entries and leave the files behind, and the next release
+          # would collect them a second time.
+          git push origin "${BASE_SHA}:refs/heads/${RELEASE_BRANCH}"
+          PATH_ARGS=()
+          for bump_path in "${BUMP_PATHS[@]}"; do
+            PATH_ARGS+=(--path "$bump_path")
+          done
+          python3 scripts/signed-commit.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --branch "$RELEASE_BRANCH" \
+            --expected-head "$BASE_SHA" \
+            --message "Release ${TAG_NAME}" \
+            "${PATH_ARGS[@]}"
 
       # --- Human-readable release notes (Issue #335) ---
       # Compose the Release body here, while the job can still fail harmlessly
@@ -264,7 +308,7 @@ jobs:
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
-            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt)' || '' }}.")
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt, Hero.astro)' || '' }}.")
           echo "PR_NUMBER=${PR_URL##*/}" >> "$GITHUB_ENV"
 
       - name: Trigger CI on release branch
@@ -320,10 +364,13 @@ jobs:
           # only as a check_run, so the ruleset stays unsatisfied even
           # though CI is green. Mirror our successful check_run as a
           # status with the same context so the rule is satisfied.
+          # The required context is the aggregate gate `ci-gate` (Issue #411).
+          # ci.yml's own bridge step posts this too, but belt-and-suspenders:
+          # this workflow must not depend on the dispatched run's bridging.
           PR_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
             -f state=success \
-            -f context=build-and-test \
+            -f context=ci-gate \
             -f description="CI passed via workflow_dispatch run"
 
       - name: Squash-merge release PR
@@ -405,23 +452,46 @@ jobs:
 
       # --- Notify metaphor-cli to bump its Syphon.xcframework pin (stable only) ---
       # metaphor-cli pins this repo's Syphon Release URL + checksum in its
-      # Package.swift. On every stable release that rebuilds Syphon, fire a
-      # repository_dispatch so metaphor-cli can open a pin-bump PR automatically
-      # (see CONTRACT.md, L2a). Requires a PAT with `repo` scope on
-      # shinyaoguri/metaphor-cli stored as the CLI_DISPATCH_TOKEN secret; the
-      # step is skipped (with a notice) when the secret is absent.
+      # Package.swift, and only a metaphor-cli release carries that pin to
+      # Homebrew users (see CONTRACT.md, L2a). On every stable release that
+      # rebuilds Syphon, fire a repository_dispatch so metaphor-cli can open —
+      # and auto-merge — a pin-bump PR.
+      #
+      # The credential is an installation token from the same GitHub App
+      # metaphor-cli already uses for its own bot PRs and for pushing to
+      # homebrew-tap (docs/releasing.md, "Cross-repo automation"). It expires
+      # within the hour, so a leak cannot outlive the run, and there is no PAT
+      # to rotate. The App needs Contents: write on shinyaoguri/metaphor-cli —
+      # that is what the dispatches endpoint checks.
+      - name: Mint metaphor-cli dispatch token
+        id: cli-token
+        if: env.IS_PRERELEASE == 'false'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.REPO_AUTOMATION_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REPO_AUTOMATION_APP_PRIVATE_KEY }}
+          owner: shinyaoguri
+          repositories: metaphor-cli
+
+      # This step is deliberately allowed to FAIL the job. The previous version
+      # exited 0 with a `::notice::` when the credential was missing, and the
+      # secret was in fact never set: every stable release from v0.1.0 to v0.9.0
+      # silently skipped the dispatch, leaving the weekly poll in metaphor-cli
+      # (syphon-bump.yml `schedule`) as the only live path — up to 9 days of lag,
+      # measured between v0.8.0 and the pin bump that consumed it.
+      #
+      # The tag and the Release are already published by this point, so a red job
+      # here does not undo them: it reports "the release shipped but the
+      # downstream hand-off did not", which is exactly the fact worth surfacing.
+      # syphon-bump.yml's weekly poll still backstops a missed dispatch, and
+      # metaphor-cli's pin-drift audit reports a lag that outlives both.
       - name: Dispatch Syphon pin bump to metaphor-cli
         if: env.IS_PRERELEASE == 'false'
         env:
-          CLI_DISPATCH_TOKEN: ${{ secrets.CLI_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.cli-token.outputs.token }}
         run: |
           set -euo pipefail
-          if [ -z "${CLI_DISPATCH_TOKEN:-}" ]; then
-            echo "::notice::CLI_DISPATCH_TOKEN not set — skipping metaphor-cli Syphon pin dispatch."
-            exit 0
-          fi
           gh api -X POST repos/shinyaoguri/metaphor-cli/dispatches \
-            -H "Authorization: token ${CLI_DISPATCH_TOKEN}" \
             -f event_type=syphon-release \
             -f "client_payload[tag]=${TAG_NAME}" \
             -f "client_payload[checksum]=${CHECKSUM}"

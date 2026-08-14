@@ -43,13 +43,16 @@ here.
 - Build/setup failures: `Package.swift`, `Makefile`, `scripts/preflight-check.sh`,
   `scripts/build-syphon.sh`.
 - Missing public API in AI docs: `Makefile` `symbol-graphs`, then
-  `scripts/generate-llms-txt.py`, then regenerate `llms.txt`.
+  `scripts/generate-llms-txt.py` (its inclusion rules are pinned by
+  `scripts/tests/test_generate_llms_txt.py`), then regenerate `llms.txt`.
 - Sketch lifecycle or input bugs: `SketchRunner.swift`, `SketchContext.swift`,
   `InputManager.swift`, `MetaphorRenderer.swift`.
 - 2D drawing bugs: start at the relevant `Sketch+*.swift` wrapper, then
   `SketchContext+*.swift`, then `Canvas2D*.swift`.
-- 3D drawing bugs: `Sketch+3D.swift`, `SketchContext+3D.swift`, `Canvas3D.swift`,
-  `Mesh.swift`, `PipelineFactory.swift`, shader files.
+- 3D drawing bugs: `Sketch+3D.swift`, `SketchContext+3D.swift`, `Canvas3D*.swift`
+  (split by concern: `+Frame`, `+Recording`, `+Primitives`, `+Shapes`,
+  `+ShapeDrawing`, `+MeshDrawing`), `Mesh.swift`, `PipelineFactory.swift`,
+  shader files.
 - Shader failures: keep `Shaders/Metal/*.metal`, `Shaders/ShaderSources/*.txt`,
   and shader function constants in sync.
 - Export/readback bugs: `FrameExporter.swift`, `VideoExporter.swift`,
@@ -57,6 +60,23 @@ here.
 - Observability (Probe / input injection) runtime cost: `MetaphorProbePlugin.swift`,
   `InputInjectionPlugin.swift`, plugin dispatch in `MetaphorRenderer.swift`,
   `MetaphorRenderer.probePlugin` cache used by `Sketch+Probe.swift`.
+- `@Param` not persisting / external writes ignored: `Parameters/ParameterPlugin.swift`
+  (mtime polling of `set-request.json`, debounced write of `params.json`),
+  `Parameters/ParameterStore.swift` (Mirror discovery, type/range/choices checks),
+  `Parameters/ParamValue.swift` (JSON ⇄ typed value). Rejected writes are reported in
+  `params.json`'s `warnings[]`; `METAPHOR_DEBUG=1` adds stderr diagnostics.
+  Note that `JSONSerialization` returns numbers and booleans alike as `NSNumber`,
+  and Swift's `is Bool` is true for the numbers 0 and 1 — type checks here must use
+  `CFBooleanGetTypeID`, or `[1, 0.5, 0.25, 1]` silently stops being a color.
+- `gui.params()` panel misplaced / a widget overlapping the next one:
+  `UI/ParameterGUI+Params.swift`. The panel background is drawn *before* the
+  widgets from `rowHeight(for:)`, so that single-frame captures are correct; that
+  one table is the layout canon and every row is snapped to it. A widget whose
+  drawing advances `currentY` differently from the table will overlap — the
+  "layout table matches widgets" test in `ParameterGUITests.swift` guards this.
+  The GUI never stores values: it reads `ParameterStore` and writes back through
+  `setValue` only when a value actually changed (otherwise `revision` would climb
+  every frame and `params.json` would be rewritten forever).
 
 ## Invariants
 
@@ -102,6 +122,10 @@ here.
   through the cached `MetaphorRenderer.probePlugin` (no per-call scan). Regression
   guards live in `Tests/metaphorTests/ObservabilityOverheadTests.swift`; keep
   them green when touching plugin dispatch, `probe(...)`, or the probe hot path.
+  `ParameterPlugin` follows the same shape: it is only registered when the sketch
+  declares at least one `@Param`, and its per-frame cost is one `stat()` of
+  `set-request.json` plus a revision comparison; encoding happens on the main
+  thread only when a value changed, disk I/O on a dedicated serial queue.
 
 ## Verification
 
@@ -110,6 +134,10 @@ here.
 - Run `make llms-txt` after public API edits.
 - Run focused Swift tests with `swift test --filter <SuiteOrTestName>` while
   iterating, then `make test` before handing off broader changes.
+- Run `make ci-check` before pushing — it is `make build` + `make test` with
+  CI's `-Xswiftc -warnings-as-errors`. Plain `make build` / `make test` let
+  warnings pass, so a locally green branch can still fail CI (see
+  DEVELOPMENT.md, "push 前は `make ci-check`").
 - For rendering behavior, prefer pixel/readback tests via `MetaphorTestSupport`
   over visual-only examples.
 

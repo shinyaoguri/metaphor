@@ -50,6 +50,37 @@ struct SketchAPIValidationTests {
         #expect(ctx.activeShapeRecording == .none)
     }
 
+    @Test("vertex(x,y,z) inside 2D beginShape raises the z-ignored diagnostic once")
+    func vertex3ArgsInside2DShapeWarns() throws {
+        let (_, ctx) = try makeContext()
+        #expect(ctx.didWarnVertexZIgnored == false, "初期状態では未発火")
+
+        ctx.beginShape()
+        ctx.vertex(0, 0, 0)
+        #expect(ctx.didWarnVertexZIgnored, "2D 記録中の 3 引数 vertex で診断が発火する")
+        ctx.vertex(10, 0, 0)
+        ctx.vertex(5, 10, 0)
+        ctx.endShape(.close)
+
+        // 2 度目以降は沈黙する（毎フレーム呼ばれる API なのでログを埋めない）
+        ctx.didWarnVertexZIgnored = false
+        ctx.warnVertexZIgnoredOnce()
+        ctx.warnVertexZIgnoredOnce()
+        #expect(ctx.didWarnVertexZIgnored, "一度発火したらフラグは立ったまま")
+    }
+
+    @Test("vertex(x,y,z) inside beginShape3D does not raise the diagnostic")
+    func vertex3ArgsInside3DShapeDoesNotWarn() throws {
+        let (_, ctx) = try makeContext()
+        ctx.beginShape3D()
+        ctx.vertex(0, 0, 0)
+        ctx.vertex(10, 0, 5)
+        ctx.vertex(5, 10, -5)
+        ctx.endShape3D(.close)
+        #expect(ctx.didWarnVertexZIgnored == false,
+                "3D 記録中の vertex(x,y,z) は正しい使い方なので警告しない")
+    }
+
     @Test("vertex(x,y) inside beginShape3D routes to the 3D shape")
     func vertex2ArgsInside3DShape() throws {
         let (_, ctx) = try makeContext()

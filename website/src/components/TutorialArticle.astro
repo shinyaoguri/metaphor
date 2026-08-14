@@ -1,0 +1,62 @@
+---
+import { render } from 'astro:content';
+import TutorialPager from './TutorialPager.astro';
+import { defaultLang, getContent, type Lang } from '../i18n/ui';
+import { sourceUrlFor, type TutorialPart } from '../lib/tutorial';
+
+interface Props {
+  lang: Lang;
+  part: TutorialPart;
+  prev?: TutorialPart;
+  next?: TutorialPart;
+}
+
+const { lang, part, prev, next } = Astro.props;
+const t = getContent(lang);
+// content collection の描画済み HTML はビルド時に一度だけ生成されるため、
+// ページ側（見出し取得）と二度呼んでも本文が二重に組み立てられることはない。
+const { Content } = await render(part.entry);
+---
+
+<article>
+  <header class="mb-10">
+    <p class="mb-2 text-xs font-semibold tracking-widest text-accent uppercase">
+      {t.tutorial.partLabel.replace('{n}', String(part.order))}
+    </p>
+    <h1 class="font-display text-4xl font-semibold tracking-tight text-text sm:text-5xl">
+      {part.title}
+    </h1>
+    {
+      part.description && (
+        <p class="mt-4 text-lg leading-relaxed text-text-muted">{part.description}</p>
+      )
+    }
+  </header>
+
+  {
+    !part.translated && (
+      <aside class="mb-10 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4 text-sm">
+        <p class="font-semibold text-text">{t.tutorial.pending.title}</p>
+        <p class="mt-1 text-text-muted">{t.tutorial.pending.body}</p>
+      </aside>
+    )
+  }
+
+  <!-- フォールバック時は本文だけが既定言語なので、その範囲に lang を付け直す -->
+  <div class="tutorial-prose" lang={part.translated ? undefined : defaultLang}>
+    <Content />
+  </div>
+
+  <p class="mt-12 text-sm">
+    <a
+      href={sourceUrlFor(part.entry)}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="text-text-muted transition-colors hover:text-accent"
+    >
+      {t.tutorial.editOnGitHub} →
+    </a>
+  </p>
+
+  <TutorialPager lang={lang} prev={prev} next={next} />
+</article>

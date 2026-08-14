@@ -1,0 +1,82 @@
+{
+  "comment": "動きが分からないと伝わらない節の設定（手で書く。撮影結果は manifest.json）。kind は webp（アニメーション WebP）か sheet（コンタクトシート）。規約は docs/tutorial/README.md の「実行結果の画像」。",
+  "sections": {
+    "03-Motion/01-Time": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "03-Motion/03-Easing": {
+      "kind": "webp",
+      "frames": 64,
+      "every": 4,
+      "fps": 15,
+      "width": 720
+    },
+    "03-Motion/04-Trigonometry": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "03-Motion/07-Vectors": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "03-Motion/08-ManyObjects": {
+      "kind": "webp",
+      "frames": 40,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "03-Motion/09-Particles": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "05-ThreeD/03-Transform": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "05-ThreeD/04-Camera": {
+      "kind": "webp",
+      "frames": 64,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "06-GPU/02-Particles": {
+      "kind": "webp",
+      "frames": 40,
+      "every": 4,
+      "fps": 15,
+      "width": 560
+    },
+    "06-GPU/03-PostProcess": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    },
+    "09-Artwork/02-RecordMotion": {
+      "kind": "webp",
+      "frames": 48,
+      "every": 4,
+      "fps": 15,
+      "width": 640
+    }
+  }
+}

@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov syphon preflight docs docs-preview examples examples-check examples-list examples-index symbol-graphs llms-txt ai-docs-check hooks contract-schema
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema
 
 # Default target
 all: setup build
@@ -67,6 +67,34 @@ test-lcov:
 		-ignore-filename-regex='Tests/|\.build/' \
 		-format=lcov > .build/coverage.lcov 2>/dev/null || true
 	@echo "LCOV written to .build/coverage.lcov"
+
+# CI と同条件で検証する（push / PR を出す前の 1 コマンド）
+#
+# ci.yml の build-and-test は `-Xswiftc -warnings-as-errors` 付きで
+# build / test するのに対し、上の `build` / `test` は素の swift build /
+# swift test。試行錯誤の途中で警告ひとつビルドが止まる体験を避けるため
+# 日常ターゲットはあえて緩いままにし、「CI と同じ厳しさ」はここへ集約する
+# （Issue #448。strict concurrency の警告は Swift 6 モードでエラーになる
+# 予備軍なので、ローカル green → CI だけ赤が起きていた）。
+#
+# METAPHOR_REQUIRE_GPU=1 も CI に合わせる。Metal デバイスが見えない環境では
+# GPU 依存テストが軒並み skip されたまま green を返すため、それを fail にする。
+#
+# ここで再現できないもの（いずれも別の場所で担保されている）:
+#   - Swift 5.10 / Xcode 15.4 でのビルド → CI の build-swift-5-10
+#   - CONTRACT.md のクロスリポ byte-identity → GitHub API が要るので CI のみ
+#   - 生成物の鮮度（llms.txt / examples index / shader sources /
+#     tutorial snippets / tutorial publication status）→ pre-push フック
+#
+# NOTE: swiftc のフラグが変わるとビルドキャッシュは作り直しになるので、
+# `make build` と交互に走らせると毎回フルリビルドになる。実測で 10 秒台
+# （ライブラリ + テスト、Apple Silicon）に収まるため、専用の --scratch-path は
+# 設けず CI と同じ .build をそのまま使う。
+ci-check:
+	@echo "Building with -warnings-as-errors (CI parity)..."
+	swift build -Xswiftc -warnings-as-errors
+	@echo "Testing with -warnings-as-errors (CI parity)..."
+	METAPHOR_REQUIRE_GPU=1 swift test -Xswiftc -warnings-as-errors
 
 # Clean build artifacts (including every per-example .build)
 clean: clean-examples
@@ -146,12 +174,14 @@ contract-schema:
 
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
+# base path は公開時と同じ /metaphor/reference/（DocC は baseUrl を出力へ焼き込む
+# ので、ここが CI とずれるとローカルでは気付けない不具合になる — Issue #529）
 docs: symbol-graphs
 	@echo "Building DocC documentation..."
 	xcrun docc convert Sources/metaphor/metaphor.docc \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
-		--hosting-base-path metaphor \
+		--hosting-base-path metaphor/reference \
 		--output-path .build/docs
 
 # Preview DocC documentation locally
@@ -180,6 +210,22 @@ examples-list:
 examples-index:
 	@python3 scripts/generate-examples-index.py
 
+# Embed Examples/Tutorial/** code into docs/tutorial/*.md
+# 正典はパッケージ側。本文の埋め込みブロックは生成物なので手で編集しない。
+tutorial-snippets:
+	@python3 scripts/generate-tutorial-snippets.py
+
+# Re-shoot docs/tutorial/images/** by running each tutorial sketch (needs a GPU)
+# 撮影はローカル専用。CI は --check で「コードを変えたのに撮り直していない」
+# だけを見る（GPU 出力はビット単位で再現しないため画像自体は比較しない）。
+tutorial-shots:
+	@python3 scripts/generate-tutorial-shots.py $(ARGS)
+
+# Write "how far the tutorial is published" into the entry docs from frontmatter
+# 正典は docs/tutorial/*.md の frontmatter。README 群の案内は生成物（#584）。
+tutorial-status:
+	@python3 scripts/generate-tutorial-status.py
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -193,6 +239,7 @@ help:
 	@echo "  make test-verbose   - Run tests with verbose output"
 	@echo "  make test-coverage  - Run tests and show coverage report"
 	@echo "  make test-lcov     - Run tests and generate LCOV for CI"
+	@echo "  make ci-check       - Build + test with CI's -warnings-as-errors (run before pushing)"
 	@echo "  make clean          - Clean build artifacts (incl. Examples/**/.build)"
 	@echo "  make clean-examples - Remove per-example .build dirs only"
 	@echo "  make check          - Check if setup is complete"
@@ -207,4 +254,7 @@ help:
 	@echo "  make examples-check - Build-only verification (parallel)"
 	@echo "  make examples-list  - List all available examples"
 	@echo "  make examples-index - Generate AI-friendly examples index"
+	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
+	@echo "  make tutorial-shots - Re-shoot tutorial result images (needs a GPU)"
+	@echo "  make tutorial-status - Write the tutorial publication status into the READMEs"
 	@echo "  make help           - Show this help"

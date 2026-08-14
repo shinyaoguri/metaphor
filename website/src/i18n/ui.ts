@@ -18,19 +18,55 @@ export function otherLang(lang: Lang): Lang {
   return lang === 'en' ? 'ja' : 'en';
 }
 
-export const docsUrl = `${base}/documentation/metaphor/`;
+/**
+ * API リファレンス（DocC）の入口。DocC は Astro とは別にビルドされ、
+ * `/reference/` 配下へ丸ごと置かれる（`.github/workflows/docs.yml`）。
+ *
+ * `/reference/` 自体は DocC の出力ルートで、開くと SPA が "page can't be found"
+ * を出す（リダイレクタではない）。リンク先は必ずフレームワークのページまで指すこと。
+ *
+ * 導線の呼称は「リファレンス / Reference」。チュートリアルもドキュメントなので
+ * 「ドキュメント」では並列の選択肢にならず、指しているのは型やメソッドを引く場所
+ * だから（#530。README と p5.js の Reference もこの語）。
+ */
+export const referenceUrl = `${base}/reference/documentation/metaphor/`;
 export const githubUrl = 'https://github.com/shinyaoguri/metaphor';
 export const examplesUrl = 'https://github.com/shinyaoguri/metaphor/tree/main/Examples';
+/** チュートリアル本文の正典（website はここを content collection として読む）。 */
+export const tutorialSourceUrl =
+  'https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial';
 
 interface Content {
   meta: { title: string; description: string };
-  nav: { docs: string; toggleLabel: string };
+  nav: { reference: string; tutorial: string; toggleLabel: string };
+  tutorial: {
+    /** 一覧ページの <title> と description。 */
+    meta: { title: string; description: string };
+    eyebrow: string;
+    title: string;
+    lead: string;
+    /** サイドバー / パンくずに出る「チュートリアル」。 */
+    home: string;
+    /** サイドバーの章立て見出し。 */
+    contents: string;
+    /** 節内目次の見出し。 */
+    onThisPage: string;
+    prev: string;
+    next: string;
+    /** `{n}` を部番号に置換して使う。 */
+    partLabel: string;
+    /** 本文が 1 本も無いときの案内。 */
+    empty: { title: string; body: string; cta: string };
+    /** 訳が無い部を既定言語の本文で出すときの告知。 */
+    pending: { title: string; body: string };
+    editOnGitHub: string;
+  };
   hero: {
     badge: string;
     titleLead: string;
     titleAccent: string;
     lead: string;
-    ctaDocs: string;
+    ctaReference: string;
     ctaGithub: string;
     swiftLabel: string;
     brewLabel: string;
@@ -66,7 +102,7 @@ interface Content {
     categories: { title: string; desc: string; items: string[] }[];
     cta: string;
   };
-  footer: { license: string; docs: string };
+  footer: { license: string; reference: string };
 }
 
 export const content: Record<Lang, Content> = {
@@ -76,13 +112,39 @@ export const content: Record<Lang, Content> = {
       description:
         '思いついた絵を、そのままコードに。2D・3D、GPU、音、映像までを draw() だけのシンプルな API でスケッチできる macOS ネイティブのクリエイティブコーディング・ランタイム。AI と観測ループを回せるのも大きな特長です。',
     },
-    nav: { docs: 'ドキュメント', toggleLabel: 'EN' },
+    nav: { reference: 'リファレンス', tutorial: 'チュートリアル', toggleLabel: 'EN' },
+    tutorial: {
+      meta: {
+        title: 'チュートリアル — metaphor',
+        description:
+          'Processing 経験を前提としない、metaphor の体系的なチュートリアルです。最初のスケッチから 2D・3D・GPU・メディア、そして AI と作るところまでを順に読み進められます。',
+      },
+      eyebrow: '順に読む',
+      title: 'チュートリアル',
+      lead: '最初から順に読んで、作品を作れるようになるための読み物です。各節に完結したコードと実行結果が付きます。型やメソッドの詳細を引きたいときは API リファレンスへ。',
+      home: 'チュートリアル',
+      contents: '章立て',
+      onThisPage: 'このページの内容',
+      prev: '前の部',
+      next: '次の部',
+      partLabel: '第 {n} 部',
+      empty: {
+        title: '本文を準備しています',
+        body: 'チュートリアルの章立ては確定していて、本文は部ごとに順次追加されます。いまの章立てと執筆規約は GitHub で読めます。',
+        cta: '章立てを GitHub で見る',
+      },
+      pending: {
+        title: '英訳は準備中です',
+        body: 'この部はまだ英訳がないため、日本語の本文を表示しています。',
+      },
+      editOnGitHub: 'GitHub でこのページを編集する',
+    },
     hero: {
       badge: 'オープンソース · Swift + Metal',
       titleLead: 'Metal で描く、',
       titleAccent: 'クリエイティブコーディング',
       lead: '思いついた絵を、そのままコードに。2D・3D、GPU コンピュート、音、映像までを、Processing 譲りの draw() だけのシンプルな API でスケッチできます。そして metaphor の最大の魅力は、AI が「いま動いている作品」を見ながら、あなたと一緒に手を入れられることです。',
-      ctaDocs: 'ドキュメントを読む',
+      ctaReference: 'リファレンスを見る',
       ctaGithub: 'GitHub',
       swiftLabel: 'SwiftPM',
       brewLabel: 'CLI',
@@ -165,7 +227,7 @@ export const content: Record<Lang, Content> = {
       ],
       cta: 'GitHub で全サンプルを見る',
     },
-    footer: { license: 'MIT License', docs: 'ドキュメント' },
+    footer: { license: 'MIT License', reference: 'リファレンス' },
   },
 
   en: {
@@ -174,13 +236,39 @@ export const content: Record<Lang, Content> = {
       description:
         'A macOS-native creative coding runtime. Start from a Processing-style draw() and sketch across 2D, 3D, GPU, audio and video in one continuous API — with AI collaboration as a standout feature.',
     },
-    nav: { docs: 'Docs', toggleLabel: '日本語' },
+    nav: { reference: 'Reference', tutorial: 'Tutorial', toggleLabel: '日本語' },
+    tutorial: {
+      meta: {
+        title: 'Tutorial — metaphor',
+        description:
+          'A guided tour of metaphor that assumes no Processing background: from your first sketch through 2D, 3D, GPU, media, and making things with an AI.',
+      },
+      eyebrow: 'Read in order',
+      title: 'Tutorial',
+      lead: 'A read-it-in-order guide that takes you from nothing to finished work. Every section ships a complete sketch and the image it produces. Reach for the API reference when you need a signature.',
+      home: 'Tutorial',
+      contents: 'Contents',
+      onThisPage: 'On this page',
+      prev: 'Previous',
+      next: 'Next',
+      partLabel: 'Part {n}',
+      empty: {
+        title: 'The chapters are being written',
+        body: 'The outline is settled and parts land one by one. The outline and the writing conventions are already readable on GitHub.',
+        cta: 'See the outline on GitHub',
+      },
+      pending: {
+        title: 'English translation in progress',
+        body: 'This part has not been translated yet, so the Japanese text is shown here.',
+      },
+      editOnGitHub: 'Edit this page on GitHub',
+    },
     hero: {
       badge: 'Open source · Swift + Metal',
       titleLead: 'Creative coding,',
       titleAccent: 'drawn with Metal',
       lead: 'Start from a Processing-style draw() and sketch across 2D, 3D, GPU compute, audio and video — one continuous API. Turn the image in your head straight into code. And an AI can watch the very image on screen and iterate right alongside you: metaphor’s signature move.',
-      ctaDocs: 'Read the docs',
+      ctaReference: 'Browse the reference',
       ctaGithub: 'GitHub',
       swiftLabel: 'SwiftPM',
       brewLabel: 'CLI',
@@ -263,7 +351,7 @@ export const content: Record<Lang, Content> = {
       ],
       cta: 'See all examples on GitHub',
     },
-    footer: { license: 'MIT License', docs: 'Docs' },
+    footer: { license: 'MIT License', reference: 'Reference' },
   },
 };
 

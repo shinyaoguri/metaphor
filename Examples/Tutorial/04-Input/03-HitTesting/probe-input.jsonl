@@ -1,0 +1,25 @@
+// 4.3 当たり判定と UI — 撮影用の入力台本（stdin JSON Lines / CONTRACT.md 契約点 3）
+// ボタンへ寄って押して離す（ON になる）→ スライダーのハンドルへ移動 → 掴んで右へ引き、掴んだまま撮る
+{"t": "mouseMove", "x": 300, "y": 320}
+{"t": "mouseMove", "x": 230, "y": 240}
+{"t": "mouseMove", "x": 170, "y": 150}
+{"t": "mouseMove", "x": 145, "y": 100}
+{"wait": 250}
+{"t": "mouseDown", "x": 145, "y": 100, "button": 0}
+{"wait": 200}
+{"t": "mouseUp", "x": 145, "y": 100, "button": 0}
+{"wait": 250}
+{"t": "mouseMove", "x": 148, "y": 130}
+{"t": "mouseMove", "x": 150, "y": 170}
+{"t": "mouseMove", "x": 150, "y": 200}
+{"t": "mouseMove", "x": 150, "y": 214}
+{"wait": 250}
+{"t": "mouseDown", "x": 150, "y": 214, "button": 0}
+{"t": "mouseDrag", "x": 175, "y": 214}
+{"t": "mouseDrag", "x": 205, "y": 213}
+{"t": "mouseDrag", "x": 240, "y": 212}
+{"t": "mouseDrag", "x": 275, "y": 211}
+{"t": "mouseDrag", "x": 305, "y": 210}
+{"t": "mouseDrag", "x": 330, "y": 209}
+{"t": "mouseDrag", "x": 348, "y": 208}
+{"wait": 200}

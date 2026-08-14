@@ -19,8 +19,10 @@ extension SketchContext {
     ///   - z: z 座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         // 2D 記録中（beginShape()）の 3 引数 vertex は z を無視して 2D へ
-        // ルーティング（Processing 互換。従来は 3D へ誤送出され何も描かれなかった）
+        // ルーティング（Processing 互換。従来は 3D へ誤送出され何も描かれなかった）。
+        // 立体を組んだつもりのスケッチが黙って平面になるため、初回だけ警告する（#387）
         if activeShapeRecording == .twoD {
+            warnVertexZIgnoredOnce()
             canvas.vertex(x, y)
         } else {
             canvas3D.vertex(x, y, z)
@@ -35,9 +37,27 @@ extension SketchContext {
     ///   - color: 頂点カラー。
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         if activeShapeRecording == .twoD {
+            warnVertexZIgnoredOnce()
             canvas.vertex(x, y, color)
         } else {
             canvas3D.vertex(x, y, z, color)
+        }
+    }
+
+    /// テクスチャ座標付き 3D 頂点を追加します。
+    /// - Parameters:
+    ///   - x: x 座標。
+    ///   - y: y 座標。
+    ///   - z: z 座標。
+    ///   - u: 水平テクスチャ座標（0.0〜1.0 に正規化）。
+    ///   - v: 垂直テクスチャ座標（0.0〜1.0 に正規化）。
+    public func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float) {
+        // 2D 記録中は z を落として 2D の UV 付き頂点へルーティングする（#387 と同じ方針）
+        if activeShapeRecording == .twoD {
+            warnVertexZIgnoredOnce()
+            canvas.vertex(x, y, u, v)
+        } else {
+            canvas3D.vertex(x, y, z, u, v)
         }
     }
 
@@ -241,6 +261,8 @@ extension SketchContext {
     }
 
     /// グレースケール値でスペキュラーハイライトの色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     /// - Parameter gray: グレースケールの強度。
     public func specular(_ gray: Float) {
         canvas3D.specular(gray)
@@ -259,6 +281,8 @@ extension SketchContext {
     }
 
     /// グレースケール値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     /// - Parameter gray: グレースケールの強度。
     public func emissive(_ gray: Float) {
         canvas3D.emissive(gray)
@@ -464,6 +488,23 @@ extension SketchContext {
         canvas3D.mesh(mesh)
     }
 
+    /// 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4]) {
+        canvas3D.drawInstanced(mesh, transforms: transforms)
+    }
+
+    /// 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
+    /// - Parameters:
+    ///   - mesh: 描画するメッシュ。
+    ///   - transforms: インスタンスごとのローカル変換。
+    ///   - colors: インスタンスごとの fill 色。
+    public func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color]) {
+        canvas3D.drawInstanced(mesh, transforms: transforms, colors: colors)
+    }
+
     /// ダイナミックメッシュを描画します。
     /// - Parameter mesh: 描画するダイナミックメッシュ。
     public func dynamicMesh(_ mesh: DynamicMesh) {
@@ -474,6 +515,73 @@ extension SketchContext {
     /// - Returns: 新しい `DynamicMesh` インスタンス。
     public func createDynamicMesh() -> DynamicMesh {
         DynamicMesh(device: renderer.device)
+    }
+
+    // MARK: - プリミティブメッシュの生成
+
+    /// ボックスメッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - width: ボックスの幅。
+    ///   - height: ボックスの高さ。
+    ///   - depth: ボックスの奥行き。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh? {
+        canvas3D.createBoxMesh(width, height, depth)
+    }
+
+    /// 立方体メッシュを生成します（描画はしません）。
+    /// - Parameter size: 立方体の辺の長さ。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createBoxMesh(_ size: Float) -> Mesh? {
+        canvas3D.createBoxMesh(size)
+    }
+
+    /// 球メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - radius: 球の半径。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createSphereMesh(radius, detail: detail)
+    }
+
+    /// 平面メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - width: 平面の幅。
+    ///   - height: 平面の高さ。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh? {
+        canvas3D.createPlaneMesh(width, height)
+    }
+
+    /// 円柱メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - radius: 円柱の半径。
+    ///   - height: 円柱の高さ。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createCylinderMesh(radius: radius, height: height, detail: detail)
+    }
+
+    /// 円錐メッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - radius: 底面の半径。
+    ///   - height: 円錐の高さ。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createConeMesh(radius: radius, height: height, detail: detail)
+    }
+
+    /// トーラスメッシュを生成します（描画はしません）。
+    /// - Parameters:
+    ///   - ringRadius: リング（メジャー）半径。
+    ///   - tubeRadius: チューブ（マイナー）半径。
+    ///   - detail: テッセレーションレベル（デフォルト 24）。
+    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    public func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh? {
+        canvas3D.createTorusMesh(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 
     /// 3D モデルファイル（OBJ、USDZ、ABC 形式）を読み込みます。

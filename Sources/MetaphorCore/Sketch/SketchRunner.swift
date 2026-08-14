@@ -132,6 +132,24 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
         }
 
+        // `@Param` が 1 つでも宣言されていれば Parameter Store を自動有効化
+        // （素の `swift run` でも永続化が効く = cli 不要の単独価値）。
+        // オプトアウトは METAPHOR_PARAMS=0。Mirror 走査はここ 1 回だけで、
+        // フレームループには現れない。
+        if ParameterPlugin.shouldAutoRegister(
+            sketch: sketch, env: ProcessInfo.processInfo.environment
+        ), renderer.plugin(id: ParameterPlugin.id) == nil {
+            renderer.addPlugin(ParameterPlugin(), sketch: sketch)
+        }
+
+        // リロードをまたぐ状態保存（契約点 8）。既定で有効なのはヘッドレス
+        // （`metaphor watch` の子プロセス = save-request を書く相手が居る経路）だけ。
+        // METAPHOR_STATE=1 で明示有効・=0 でオプトアウト。
+        if StatePlugin.shouldAutoRegister(env: ProcessInfo.processInfo.environment),
+           renderer.plugin(id: StatePlugin.id) == nil {
+            renderer.addPlugin(StatePlugin(), sketch: sketch)
+        }
+
         // ヘッドレス（ライブビューア）モードでは stdin 入力注入プラグインを自動登録。
         // 親プロセス（metaphor-cli）が JSON Lines でイベントを送る。
         if isHeadless,
@@ -150,6 +168,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         context.onNoLoop = { [weak self] in
             self?.handleNoLoop()
         }
+
+        // 直前のプロセスが保存した状態を復元（`metaphor watch` のリロード。契約点 8）。
+        // setup() の後・描画コールバック構成の前に置く: スケッチが setup() で確保した器の
+        // 上に値を載せ、時計オフセットを prevTime の初期化より先に確定させるため。
+        Self.applyRestoredState(
+            sketch: sketch, context: context, renderer: renderer, config: config
+        )
 
         // コンピュートフェーズ + 描画ループのコールバックを構成
         configureRenderCallbacks(sketch: sketch, context: context, renderer: renderer)
@@ -451,6 +476,32 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         renderTimer = timer
     }
 
+    /// 直前のプロセスが保存した状態（`METAPHOR_RESTORE_STATE`）を適用します。
+    ///
+    /// - `user` ペイロードは ``Sketch/restoreState(_:)`` へ渡す（`setup()` の後）
+    /// - `runtime`（時計）は ``SketchConfig/preserveClock`` が `true` のときだけ復元する
+    ///
+    /// 環境変数が無い・ファイルが読めない・デコードできない場合は**黙って何もしません**
+    /// （開発ツールの都合でスケッチが起動しないのを避ける。CONTRACT.md 契約点 8）。
+    static func applyRestoredState(
+        sketch: any Sketch,
+        context: SketchContext,
+        renderer: MetaphorRenderer,
+        config: SketchConfig,
+        env: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+        guard let restored = SketchStateRestore.load(env: env) else { return }
+
+        if let payload = restored.payload {
+            sketch.restoreState(payload)
+        }
+
+        guard config.preserveClock else { return }
+        // 巻き戻り（負の経過時間）は時計として無意味なので捨てる。
+        context.frameCount = max(0, restored.frameCount)
+        renderer.clockOffset = max(0, restored.elapsedSeconds)
+    }
+
     /// コンピュートフェーズと描画ループのレンダラーコールバックを構成します（両モード共通）。
     private func configureRenderCallbacks(
         sketch: any Sketch, context: SketchContext, renderer: MetaphorRenderer
@@ -462,7 +513,10 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
 
         // onCompute と onDraw で共有する直前フレーム時刻（onDraw が更新）。
-        var prevTime: Float = 0
+        // 時計を引き継いだリロード（preserveClock）では時刻がオフセットぶん進んだ
+        // 状態で始まるため、起点も合わせる（合わせないと初回 deltaTime が
+        // 引き継いだ経過時間そのものになる）。
+        var prevTime = Float(renderer.clockOffset)
 
         renderer.onCompute = { [weak context, weak sketch] commandBuffer, time in
             guard let context, let sketch else { return }

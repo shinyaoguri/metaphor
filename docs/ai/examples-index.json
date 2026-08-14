@@ -1,7 +1,7 @@
 {
-  "count": 278,
+  "count": 282,
   "statusCounts": {
-    "supported": 258,
+    "supported": 262,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -2088,8 +2088,7 @@
       "tags": [
         "demos",
         "graphics",
-        "lowlevelglvbointerleaved",
-        "shader"
+        "lowlevelglvbointerleaved"
       ]
     },
     {
@@ -2104,8 +2103,7 @@
       "tags": [
         "demos",
         "graphics",
-        "lowlevelglvboseparate",
-        "shader"
+        "lowlevelglvboseparate"
       ]
     },
     {
@@ -2535,7 +2533,6 @@
       "featured": [],
       "tags": [
         "demos",
-        "shader",
         "specstest",
         "tests"
       ]
@@ -2627,6 +2624,36 @@
       ]
     },
     {
+      "title": "DynamicMeshTexture",
+      "path": "Examples/Samples/DynamicMeshTexture",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "dynamicmeshtexture",
+        "samples",
+        "typography"
+      ]
+    },
+    {
+      "title": "InstancedCubes",
+      "path": "Examples/Samples/InstancedCubes",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "instancedcubes",
+        "samples"
+      ]
+    },
+    {
       "title": "OSC Loopback",
       "path": "Examples/Samples/OSCLoopback",
       "group": "Samples",
@@ -2644,6 +2671,20 @@
         "interaction",
         "live",
         "oscloopback",
+        "samples"
+      ]
+    },
+    {
+      "title": "ParameterPanel",
+      "path": "Examples/Samples/ParameterPanel",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "parameterpanel",
         "samples"
       ]
     },
@@ -2730,7 +2771,8 @@
       "featured": [],
       "tags": [
         "rendergraphcompose",
-        "samples"
+        "samples",
+        "shader"
       ]
     },
     {
@@ -2780,6 +2822,20 @@
       "tags": [
         "samples",
         "scenegraphhybrid"
+      ]
+    },
+    {
+      "title": "StatePreservation",
+      "path": "Examples/Samples/StatePreservation",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "samples",
+        "statepreservation"
       ]
     },
     {
@@ -3482,7 +3538,7 @@
       "subcategory": "File IO",
       "level": "Intermediate",
       "status": "supported",
-      "description": "The save() function allows you to save an image from the display window. In this example, the save() function is run when a mouse button is pressed. The image line.tif is saved to the same folder as the sketch's program...",
+      "description": "The save() function saves an image from the display window. Here it runs when a mouse button is pressed and writes output/line.png, relative to the launch directory. metaphor writes PNG, not Processing's TIFF.",
       "featured": [],
       "tags": [
         "file-io",
@@ -4421,8 +4477,8 @@
       "featured": [],
       "tags": [
         "blurfilter",
+        "cpu-approximation",
         "image",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4438,7 +4494,7 @@
       "featured": [],
       "tags": [
         "conway",
-        "shader",
+        "cpu-approximation",
         "shaders",
         "topics"
       ]
@@ -4453,8 +4509,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "customblend",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4469,8 +4525,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "deform",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4486,7 +4542,6 @@
       "featured": [],
       "tags": [
         "domeprojection",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4501,8 +4556,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "edgedetect",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4517,9 +4572,9 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "edgefilter",
         "image",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4534,8 +4589,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "glossyfisheye",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4550,9 +4605,9 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "image",
         "imagemask",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4567,8 +4622,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "infinitetiles",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4583,8 +4638,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "landscape",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4599,8 +4654,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "monjori",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4615,8 +4670,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "nebula",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4631,8 +4686,8 @@
       "description": "",
       "featured": [],
       "tags": [
+        "cpu-approximation",
         "sepblur",
-        "shader",
         "shaders",
         "topics"
       ]
@@ -4647,7 +4702,7 @@
       "description": "",
       "featured": [],
       "tags": [
-        "shader",
+        "cpu-approximation",
         "shaders",
         "toonshading",
         "topics"

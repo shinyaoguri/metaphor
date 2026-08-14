@@ -1,6 +1,6 @@
 # 設計: ライブツーリング基盤（Parameter Store / 状態保持リロード / インスペクタ / 往復レイテンシ）
 
-- **ステータス**: 設計叩き台（実装未着手）。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md) が正典
+- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/`（2026-08-07）/ D2 = `gui.params()` 自動パネル / D3 = `frame.json` の `params` 節（いずれも 2026-08-08）は実装済み**。B / C / D と A の残り（D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
 - **親**: [roadmap-processing-unity.md](roadmap-processing-unity.md) の Epic C / D / H
 - **作成**: 2026-07-30
 
@@ -42,8 +42,16 @@
 ```
 
 - `gui.params()` は ParameterGUI の新メソッド。既存 slider/toggle/colorPicker ウィジェットを store-backed で再利用
-- 既存の即時モード `gui.slider("x", &x, …)` は不変。名前だけの overload `gui.slider("radius")` で store に束縛
+- 既存の即時モード `gui.slider("x", &x, …)` は不変
 - v1 型セット: `float` / `int` / `bool` / `color` / `vec2` / `vec3` / `string`（`choices` 付き）— `ProbeValue` のタグ体系と整合
+
+**D2 実装で確定した点**（2026-08-08）:
+
+- 手動レイアウト用の入口は、型別の名前 overload（`gui.slider("radius")`）ではなく**型ディスパッチする 1 つの `gui.param("radius")`** にした。宣言側で型は決まっているのに呼び出し側で型別の名前を選ばせるのは、名前の取り違え（`gui.slider("showGrid")`）が実行時診断でしか出ない分だけ損
+- 型 → ウィジェット: `float`/`int` = スライダー（`int` は値表示を整数に）、`bool` = トグル、`color` = RGB ピッカー、`vec2`/`vec3` = 成分スライダー、`string` = `choices` があればクリックで回る候補ボタン / 無ければ読み取り専用表示（自由入力ウィジェットは非採用。外部からの `set-request` では変更できる）
+- `min`/`max` を宣言しなかった数値は、**初回表示時の値から作った自動レンジ（`1/2/5 × 10^n` 刻み）を固定**して使う。毎フレーム測り直すとドラッグ中にレンジが動いてスライダーが逃げる
+- パネル背景は行高テーブル（`rowHeight(for:)`）から**先に全高を確定してから**描く。既存の `drawBackground()` は `begin()` 直後に呼ぶと高さが 0 になり、1 フレーム目のキャプチャで背景が出なかった
+- GUI は値を持たず、変化したときだけ `store.setValue` を通す（無操作フレームで `revision` が進むと `params.json` を毎フレーム書き直してしまう）
 
 ### ファイル形式（案）
 
@@ -64,6 +72,12 @@
 ```
 
 さらに `frame.json` に additive な `params: {revision, values{…}}` 節を追加（`performance` と同じ additive ルール。1 回の snapshot で「画像 + それを生んだパラメータ」が揃い、`sourceStamp` の来歴と合成できる）。
+
+**D3 実装で確定した点**（2026-08-08・Issue #424）:
+
+- `frame.json` 側は**値のスナップショットに徹する**（型・レンジ・`choices` の正典は `params.json`）。フレームごとに宣言情報を繰り返しても consumer の判断は変わらず、wire だけ太る
+- `performance` と違い**連続キャプチャの各フレームにも載せる**。`params` はメモリ内の読み取りだけで syscall が無く、キャプチャ中にパラメータを掃引したときの識別（どのフレームがどの `revision` か）にそのまま効く
+- `@Param` ゼロのスケッチと失敗応答ではキー省略（`performance?` と同じ「採れないものは書かない」規約）
 
 ### 分担・契約・規模
 
@@ -91,6 +105,7 @@ func restoreState(_ data: Data) {
 
 両方とも `Sketch` にデフォルト実装（nil / no-op）で「draw() 以外は全部任意」を維持。
 
+- **実装状況（2026-08-10・Issue #451）**: metaphor 側（フック + `encodeState`/`decodeState` + `StatePlugin` + `METAPHOR_RESTORE_STATE` + `preserveClock` + 契約点 8）は実装済み。cli 側の監督シーケンスは metaphor-cli#105。`state.json` は `params.json` と違い**同期書出**（consumer が ready を待つ時間がそのままリロードの待ち時間になるため）
 - **metaphor**: フック + ヘルパー + StatePlugin + env var — **M** / **metaphor-cli**: 監督シーケンス — **S**
 - **契約**: env var `METAPHOR_RESTORE_STATE`（契約点 2）+ state ファイル群（`user` 節はエンベロープのみスキーマ管理・中身は意図的に opaque）。クロスリポ同時 PR
 - **順序**: A の後（パラメータという「最も保持したい状態」は A だけでリロードを生存するため。B はシミュレーション状態と時計のため）
@@ -128,12 +143,19 @@ A (store+wrapper+files+GUI → cli MCP ツール)      ← 基盤
 
 **最強の初回マイルストーン = A 一式 + D 計測**。他のすべてが A に依存し、素の `swift run` / watch / MCP のどのモードでも単独価値があり、製品の看板数値を「2,811ms」から「最頻イテレーションは <100ms」に変える。
 
-## 未決事項（実装着手時にユーザーと確定する）
+## 未決事項（2026-08-07 に 1 / 2 / 4 / 5 / 7 を確定、3 / 6 は B 着手時）
 
-1. `@Param` の命名: Mirror によるラベル発見（推奨・明示名 override 付き。将来 Swift macro で置換可）か、明示名必須か
-2. 競合ポリシー: GUI ドラッグと `set_param` の競合は last-writer-wins + `revision` エコー（v1 推奨）か、`ifRevision` 楽観ロックか
-3. `preserveClock` の既定: オプトイン（推奨・t 駆動スケッチの驚き最小）か、watch 時デフォルト ON か
-4. 永続化スコープ: `.metaphor/params/` はスケッチディレクトリ単位で v1 は固定（プリセット = params.json の名前付きコピーは将来機能）で良いか
-5. インスペクタ UI の所有権: スケッチ内パネル先行 → cli サイドパネル後日、で確定して良いか
-6. live-viewer.md §A-3（stdin saveState 動詞 + stdout base64）の正式な改訂タイミング（B の実装 PR で同時改訂を想定）
-7. `string` 型の `choices`: v1 から入れる（推奨: ドロップダウン化と AI への合法値提示が安価に手に入る）か
+1. **確定: Mirror によるラベル発見 + 明示名 override**（`@Param("myName")`）。将来 Swift macro で置換可。トップレベルのプロパティのみ発見対象（ネストした型の中は対象外）
+2. **確定: last-writer-wins + `revision` エコー**。`ifRevision` 楽観ロックは入れない（拒否時のリトライ規約とエラー面を契約に増やす割に、人間がツマみながら AI が書く実際の使い方で得が薄い）。反映確認は `appliedRequestId` + `revision`、拒否理由は `params.json` の `warnings[]`
+3. **確定: `preserveClock` はオプトイン（`SketchConfig(preserveClock: true)`・既定 `false`）**（2026-08-10・Issue #451）。watch 時デフォルト ON にしなかったのは、時刻が外部の都合で飛ぶ前提を全スケッチに敷くと、一定時間で終わる演出・録画・`time` を単調と仮定した処理が黙って壊れるため。opt-in なら「巻き戻ってほしくない」と自覚したスケッチだけが 1 行で得をする（`saveState()` の実装とは独立に効く）
+4. **確定: スケッチディレクトリ単位で固定・v1 はプリセットなし**。名前付きプリセットは実作品（Epic J [#414](https://github.com/shinyaoguri/metaphor/issues/414)）で必要になったら additive に足す
+5. **確定: スケッチ内 `gui.params()` 先行 → cli サイドパネルは後日**
+6. **確定: B の実装 PR（Issue #451）で [live-viewer.md](live-viewer.md) §A-3 を同時改訂した**（2026-08-10）。stdin/stdout を捨てた理由は 3 点——stdout はスケッチの `print()` と混ざる / 共有セッションでは子の stdin を watch が所有するため第三者（MCP）が触れない / 既存 2 契約と同型ならプロトコルも consumer 実装も再利用できる
+7. **確定: `string` の `choices` は v1 から入れる**。`params.json` に `choices` が出るので AI に合法値がそのまま伝わり、範囲外は拒否されて `warnings[]` に載る
+
+### D1 の実装で決めた細部（設計叩き台からの差分）
+
+- **`warnings[]` を `params.json` に追加**（叩き台の形式には無かった）。拒否理由（未知の名前・型不一致・`choices` 外）を返す面が無いと、AI は「書いたのに変わらない」を無言で踏む。`frame.json` の `warnings[]` と同じ流儀
+- **`min` / `max` は外部書き込みのみクランプ**し、コードからの代入は素通し（スケッチ作者のコードを驚かせない）
+- **`revision` はプロセス起動時にも 1 つ進む**。宣言そのもの（新しい `@Param`・レンジ変更）が変わり得るため、「内容が変われば revision も変わる」を保つ
+- **`Float` と `Double` はどちらも型タグ `float`**（wire は JSON number のため）

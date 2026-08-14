@@ -220,6 +220,39 @@ struct TableTests {
         #expect(row.getString(9) == "")
     }
 
+    @Test("non-finite and out-of-range numeric cells fall back to 0 (#580)")
+    func nonRepresentableNumbers() throws {
+        // Double へは変換できるが Int では表現できない値。修正前の getInt は
+        // Int(Double(...)) をそのまま通し、「Double value cannot be converted to
+        // Int because it is either infinite or NaN」でプロセスごと終了していた
+        let table = try Table(string: "v\nnan\ninf\n-inf\n1e999\n1e30\n-1e30\n9223372036854775808\n")
+        let expected = [0, 0, 0, 0, 0, 0, 0]
+        for (index, want) in expected.enumerated() {
+            let row = try #require(table.getRow(index))
+            #expect(row.getInt("v") == want, "row \(index): \(row.getString("v"))")
+        }
+
+        // Float / Double も「数値でなければ 0」を非有限値まで一貫させる
+        // （NaN は下流の演算を黙って汚染するため素通しさせない）
+        for index in 0..<4 {
+            let row = try #require(table.getRow(index))
+            #expect(row.getFloat("v") == 0)
+            #expect(row.getDouble("v") == 0)
+        }
+    }
+
+    @Test("representable numeric cells keep their existing behaviour (#580)")
+    func representableNumbersUnchanged() throws {
+        let table = try Table(string: "v\n42\n-7\n3.9\n-3.9\n2e3\nabc\n")
+        let expectedInts = [42, -7, 3, -3, 2000, 0]
+        for (index, want) in expectedInts.enumerated() {
+            let row = try #require(table.getRow(index))
+            #expect(row.getInt("v") == want, "row \(index): \(row.getString("v"))")
+        }
+        #expect(try #require(table.getRow(2)).getFloat("v") == 3.9)
+        #expect(try #require(table.getRow(4)).getDouble("v") == 2000)
+    }
+
     @Test("serialization quotes special fields and round-trips")
     func serializeRoundTrip() throws {
         let table = Table(columnTitles: ["name", "note"])

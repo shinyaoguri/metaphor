@@ -99,6 +99,66 @@ struct RenderRegressionTests {
         #expect(!bottomRight, "Bottom-right should remain black")
     }
 
+    // MARK: - 範囲外の Color 成分（#594）
+
+    // Color の成分は 0...1 にクランプされないが、レンダーターゲットが bgra8Unorm のため
+    // 描画時に飽和する。以下 3 本はその契約を固定する。ターゲットを浮動小数点フォーマットへ
+    // 変えると（HDR 化）ここが赤くなるので、変更が黙って通らない。
+
+    @Test("out-of-range fill components saturate when drawn")
+    func outOfRangeFillSaturates() throws {
+        var helper = try RenderTestHelper(width: 32, height: 32)
+        helper.setClearColor(r: 0, g: 0, b: 0)
+        try helper.render { canvas in
+            canvas.fill(Color(r: 2.0, g: -1.0, b: 0.5))
+            canvas.noStroke()
+            canvas.rect(8, 8, 16, 16)
+        }
+        let p = helper.readPixel(x: 16, y: 16)
+        #expect(p.r == 255, "r=2.0 should saturate to 255, got \(p.r)")
+        #expect(p.g == 0, "g=-1.0 should saturate to 0, got \(p.g)")
+        #expect(abs(Int(p.b) - 128) <= 1, "b=0.5 should stay mid-gray, got \(p.b)")
+    }
+
+    @Test("alpha above 1 draws the same as alpha 1")
+    func alphaAboveOneMatchesOpaque() throws {
+        // クランプが無ければ dst 係数が (1 - 1.5) = -0.5 となり、背景が引かれて暗くなる。
+        // 実際は GPU がブレンド前に alpha を 1 へクランプするので両者は一致する。
+        func renderGray(alpha: Float) throws -> RenderTestHelper.Pixel {
+            var helper = try RenderTestHelper(width: 32, height: 32)
+            helper.setClearColor(r: 1, g: 1, b: 1)
+            try helper.render { canvas in
+                canvas.fill(Color(r: 0.5, g: 0.5, b: 0.5, a: alpha))
+                canvas.noStroke()
+                canvas.rect(8, 8, 16, 16)
+            }
+            return helper.readPixel(x: 16, y: 16)
+        }
+
+        let over = try renderGray(alpha: 1.5)
+        let opaque = try renderGray(alpha: 1.0)
+        #expect(over.r == opaque.r && over.g == opaque.g && over.b == opaque.b,
+                "a=1.5 gave (\(over.r),\(over.g),\(over.b)), a=1.0 gave (\(opaque.r),\(opaque.g),\(opaque.b))")
+        #expect(abs(Int(opaque.r) - 128) <= 1, "gray(0.5) over white should stay mid-gray, got \(opaque.r)")
+    }
+
+    @Test("negative components do not darken under additive blend")
+    func negativeComponentsDoNotDarken() throws {
+        // クランプが無ければ 0.5 + (-1.0) で黒へ沈む。ブレンド前にクランプされるので背景のまま。
+        var helper = try RenderTestHelper(width: 32, height: 32)
+        helper.setClearColor(r: 0.5, g: 0.5, b: 0.5)
+        try helper.render { canvas in
+            canvas.blendMode(.additive)
+            canvas.fill(Color(r: -1.0, g: 0, b: 0, a: 1))
+            canvas.noStroke()
+            canvas.rect(8, 8, 16, 16)
+        }
+        let inside = helper.readPixel(x: 16, y: 16)
+        let outside = helper.readPixel(x: 2, y: 2)
+        #expect(inside.r == outside.r,
+                "Negative red should leave the background untouched: inside=\(inside.r) outside=\(outside.r)")
+    }
+
     /// 単色テクスチャの MImage を作成します（描画順テスト用）。
     private func makeSolidImage(
         device: MTLDevice, width: Int, height: Int,

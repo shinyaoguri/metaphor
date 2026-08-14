@@ -31,14 +31,14 @@ final class TextureQuad: Sketch {
         rotateY(map(mouseX, 0, width, -.pi, .pi))
         rotateZ(.pi / 6)
 
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         texture(img)
-        vertex(-100, -100, 0)
-        vertex(100, -100, 0)
-        vertex(100, 100, 0)
-        vertex(-100, -100, 0)
-        vertex(100, 100, 0)
-        vertex(-100, 100, 0)
-        endShape()
+        vertex(-100, -100, 0, 0, 0)
+        vertex(100, -100, 0, 1, 0)
+        vertex(100, 100, 0, 1, 1)
+        vertex(-100, -100, 0, 0, 0)
+        vertex(100, 100, 0, 1, 1)
+        vertex(-100, 100, 0, 0, 1)
+        endShape3D()
     }
 }

@@ -33,9 +33,15 @@ cd metaphor
 make setup    # submodules + Syphon.xcframework
 make build
 make test
+make ci-check # before pushing: build + test with CI's -warnings-as-errors
 ```
 
 Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
+
+`make build` / `make test` stay lenient so you can iterate through warnings,
+but CI builds and tests with `-Xswiftc -warnings-as-errors` — run
+`make ci-check` before you push so a warning doesn't turn into a red CI on a
+green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
 
 ## Sending a pull request
 
@@ -46,10 +52,18 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   final commit message, so write it as a
   [Conventional Commit](https://www.conventionalcommits.org/):
   `<type>(<scope>): <summary>` (`feat` / `fix` / `docs` / `refactor` / `test`
-  / `chore` / `ci`). Fill in the PR body's Purpose / Changes / How to verify
-  sections from [`.github/pull_request_template.md`](.github/pull_request_template.md).
-- The required CI check is `build-and-test` (it also builds against the
-  Swift 5.10 / Xcode 15.4 minimum toolchain). It must be green before merge.
+  / `chore` / `ci` / `perf`; append `!` for a breaking change). **This is
+  enforced** — the *Lint PR title* step of `build-and-test` rejects anything
+  else, so a merge is blocked until the title is fixed. Fill in the PR body's
+  Purpose / Changes / How to verify sections from
+  [`.github/pull_request_template.md`](.github/pull_request_template.md).
+- The only required CI check is the aggregate gate `ci-gate`, which fails if
+  any upstream job — `build-and-test`, `build-swift-5-10` (the Swift 5.10 /
+  Xcode 15.4 minimum toolchain), `website-build` (the Astro landing page), or
+  `examples-diff-build` — failed (skipped jobs count as success). PRs are merged with `gh pr merge --squash --auto`;
+  a PR touching `Examples/` waits for the changed examples to build (up to
+  60 min), other PRs merge as soon as the fast jobs are green (see
+  [docs/releasing.md](docs/releasing.md)).
 - **If your change is user-facing, add a file to
   [`changelog.d/`](changelog.d/README.md)** — not to `CHANGELOG.md` itself,
   which every pull request would otherwise edit on the same lines. Name it
@@ -71,9 +85,11 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   also adding an `enum` case or a protocol requirement), and the deprecation
   window: a symbol is marked deprecated in a *published* release before it can
   be removed, never both in one.
-- `release:patch` / `release:minor` / `release:major` labels drive automatic
-  releases on merge — they're **maintainer-only**; please don't add them to
-  your PR.
+- Releases ride a **weekly train** (Mondays, 09:00 JST): whatever is on `main`
+  ships together, with the bump derived from the merged PR titles. Nothing to
+  do on your side. The `release:now` / `release:patch` / `release:minor` /
+  `release:major` labels cut a release immediately instead — they're
+  **maintainer-only**; please don't add them to your PR.
 - A few files are **generated** and must not be hand-edited — change the
   input and regenerate instead (a pre-push hook and CI both check for
   staleness):
@@ -83,6 +99,8 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
   | `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` | `make llms-txt` |
   | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` | `make examples-index` |
   | `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` | `python3 scripts/generate-shader-sources.py` |
+  | Embedded code blocks in `docs/tutorial/*.md` | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
+  | `docs/tutorial/images/**` + `manifest.json` | running `Examples/Tutorial/**`, `docs/tutorial/images/motion.json`, `scripts/generate-tutorial-shots.py` | `make tutorial-shots` (needs a GPU — local only) |
 
 - If your change touches the runtime contract with `metaphor-cli`
   (environment variables, stdin JSON Lines, Probe files, Syphon version pin),

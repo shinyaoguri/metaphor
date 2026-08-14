@@ -1,0 +1,76 @@
+---
+import { getContent, referenceUrl, tutorialSourceUrl, type Lang } from '../i18n/ui';
+import type { TutorialPart } from '../lib/tutorial';
+
+interface Props {
+  lang: Lang;
+  parts: TutorialPart[];
+}
+
+const { lang, parts } = Astro.props;
+const t = getContent(lang);
+---
+
+<header class="mb-12">
+  <p class="mb-2 text-xs font-semibold tracking-widest text-accent uppercase">
+    {t.tutorial.eyebrow}
+  </p>
+  <h1 class="font-display text-4xl font-semibold tracking-tight text-text sm:text-5xl">
+    {t.tutorial.title}
+  </h1>
+  <p class="mt-4 max-w-2xl text-lg leading-relaxed text-text-muted">{t.tutorial.lead}</p>
+  <p class="mt-4 text-sm">
+    <a href={referenceUrl} class="text-accent transition-colors hover:text-accent-light">
+      {t.nav.reference} →
+    </a>
+  </p>
+</header>
+
+{
+  parts.length === 0 ? (
+    <div class="rounded-2xl border border-border bg-surface px-6 py-8">
+      <p class="font-display text-xl font-semibold text-text">{t.tutorial.empty.title}</p>
+      <p class="mt-2 max-w-2xl leading-relaxed text-text-muted">{t.tutorial.empty.body}</p>
+      <p class="mt-4 text-sm">
+        <a
+          href={tutorialSourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-accent transition-colors hover:text-accent-light"
+        >
+          {t.tutorial.empty.cta} →
+        </a>
+      </p>
+    </div>
+  ) : (
+    <ol class="space-y-3">
+      {parts.map((part) => (
+        <li>
+          <a
+            href={part.href}
+            class="group flex gap-5 rounded-2xl border border-border bg-surface px-5 py-4 transition-colors hover:border-accent/50"
+          >
+            <span class="font-display text-2xl tabular-nums text-text-muted/70 transition-colors group-hover:text-accent">
+              {String(part.order).padStart(2, '0')}
+            </span>
+            <span class="min-w-0">
+              <span class="block font-medium text-text transition-colors group-hover:text-accent">
+                {part.title}
+              </span>
+              {part.description && (
+                <span class="mt-1 block text-sm leading-relaxed text-text-muted">
+                  {part.description}
+                </span>
+              )}
+              {!part.translated && (
+                <span class="mt-2 inline-block rounded-full border border-border px-2 py-0.5 text-xs text-text-muted">
+                  {t.tutorial.pending.title}
+                </span>
+              )}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  )
+}

@@ -127,11 +127,22 @@ public final class Physics2D {
     ///   - dt: The time step (seconds).
     ///   - iterations: The number of constraint/collision resolution
     ///     iterations (defaults to 4). More iterations yield more stable results.
+    ///     `0` integrates without solving constraints, collisions or bounds.
+    ///     Negative values are ignored and the whole step is skipped.
     public func step(_ dt: Float, iterations: Int = 4) {
         // 非有限・負の dt は Verlet 積分を通じて全ボディの位置を NaN に
         // 汚染する（その後の空間ハッシュでクラッシュ/ハング）ため弾く。
         // dt == 0 は「積分せず拘束・衝突だけ解決する」用途として許可する
         guard dt.isFinite, dt >= 0 else { return }
+
+        // 負の iterations は下の `0..<iterations` が逆順 Range となり fatalError
+        // する（throws では拾えない）。重力適用と積分を終えた後にトラップして
+        // 半端に進んだワールドを残さないよう、dt と同じく入口で step ごと捨てる。
+        // iterations == 0 は「積分だけ行い拘束・衝突・境界を解かない」用途として
+        // 許可する（dt == 0 と対）。
+        // MetaphorPhysics は Core 非依存（Tier 1）で metaphorWarning を使えないため、
+        // dt guard と同じく無言で返す
+        guard iterations >= 0 else { return }
 
         // 重力を適用
         for body in bodies {

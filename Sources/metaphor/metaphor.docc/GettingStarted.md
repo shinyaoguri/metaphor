@@ -15,6 +15,10 @@ metaphor で最初のクリエイティブコーディングプロジェクト�
 metaphor は Swift + Metal のクリエイティブコーディングライブラリです。
 ``MetaphorCore/Sketch`` プロトコルを実装するだけで、ウィンドウ生成、Metal のセットアップ、レンダーループをライブラリが処理します。
 
+このページは API リファレンス側の最小の導入で、インストールから最初のスケッチが動くところまでを扱います。
+**metaphor がはじめてなら、[チュートリアル](https://shinyaoguri.github.io/metaphor/tutorial/)を順に読むのが近道です** —
+各節に動くスケッチと実行結果の画像が付いていて、座標系・色・変換・動き・入力までを通しで学べます。
+
 ## 動作環境
 
 | 要件 | バージョン |
@@ -29,7 +33,7 @@ metaphor は Swift + Metal のクリエイティブコーディングライブ�
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.0")
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0")
 ]
 ```
 
@@ -82,71 +86,40 @@ final class MySketch: Sketch {
 - `draw()` — 毎フレーム呼ばれます。描画コードをここに書きます。
 - `compute()` — 毎フレーム、描画の前に呼ばれます。GPU コンピュートディスパッチに使います。
 
+連続描画を止める `noLoop()`、再開する `loop()`、1 フレームだけ描き直す `redraw()`、
+フレームレートを指定する `frameRate(_:)` の使い分けは、チュートリアル
+[第 1 部 入門](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/)で解説しています。
+
 ## 設定
 
-``MetaphorCore/SketchConfig`` でスケッチの動作をカスタマイズできます。
-``MetaphorCore/Sketch`` クラスの `config` プロパティをオーバーライドしてください:
+ウィンドウサイズ・タイトル・フレームレート・Syphon 出力などは ``MetaphorCore/SketchConfig`` で指定し、
+``MetaphorCore/Sketch`` の `config` プロパティから返します。すべてのパラメータに既定値があるため、
+`SketchConfig()` だけで 1920×1080・60fps のキャンバスが得られます。個々のパラメータは
+``MetaphorCore/SketchConfig`` を参照してください。
 
-```swift
-var config: SketchConfig {
-    SketchConfig(
-        width: 1920,       // オフスクリーンテクスチャの幅（デフォルト: 1920）
-        height: 1080,      // オフスクリーンテクスチャの高さ（デフォルト: 1080）
-        title: "My Sketch", // ウィンドウタイトル（デフォルト: "metaphor"）
-        fps: 60,           // 目標フレームレート（デフォルト: 60）
-        syphonName: nil,   // Syphon サーバー名、nil で無効（デフォルト: nil）
-        windowScale: 0.5,  // ウィンドウサイズ = テクスチャサイズ × scale（デフォルト: 0.5）
-        fullScreen: false,  // フルスクリーンで起動（デフォルト: false）
-        renderLoopMode: .displayLink // .displayLink または .timer(fps:)（デフォルト: .displayLink）
-    )
-}
-```
-
-すべてのパラメータにデフォルト値があるため、`SketchConfig()` だけで 1920×1080、60fps のキャンバスが得られます。
-
-`setup()` 内で `createCanvas(width:height:)` を使って動的にキャンバスサイズを変更することもできます:
-
-```swift
-func setup() {
-    createCanvas(width: 800, height: 600)
-}
-```
+`setup()` 内で `createCanvas(width:height:)` を呼べば、キャンバスサイズを動的に変更できます。
+レンダリング解像度とウィンドウの大きさが別物である（`windowScale` で分離される）ことと、
+そのために座標がどう振る舞うかは、チュートリアル
+[第 1 部 入門](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/)で扱っています。
 
 ### 組み込みプロパティ
 
-すべての ``MetaphorCore/Sketch`` 実装で以下のプロパティにアクセスできます:
+キャンバスの大きさ（`width` / `height`）、描いたフレーム数（`frameCount`）、
+経過時間（`time` / `deltaTime`）は、すべての ``MetaphorCore/Sketch`` 実装からプロパティとして読めます。
+型と意味は ``MetaphorCore/Sketch`` を参照してください。
 
-| プロパティ | 型 | 説明 |
-|----------|------|------|
-| `width` | `Float` | キャンバスの幅（ピクセル） |
-| `height` | `Float` | キャンバスの高さ（ピクセル） |
-| `frameCount` | `Int` | これまでにレンダリングされたフレーム数 |
-| `time` | `Float` | スケッチ開始からの経過秒数 |
-| `deltaTime` | `Float` | 前フレームからの経過秒数 |
-| `mouseX` | `Float` | 現在のマウス X 座標 |
-| `mouseY` | `Float` | 現在のマウス Y 座標 |
-| `pmouseX` | `Float` | 前フレームのマウス X 座標 |
-| `pmouseY` | `Float` | 前フレームのマウス Y 座標 |
-| `isMousePressed` | `Bool` | マウスボタンが押されているか |
-| `mouseButton` | `MouseButton?` | 最後に押されたマウスボタン（`.left` / `.right` / `.middle`）。未押下なら `nil` |
-| `isKeyPressed` | `Bool` | キーが押されているか |
-| `key` | `Character?` | 最後に押されたキー |
-| `keyCode` | `UInt16?` | 最後に押されたキーのキーコード |
+### 入力
 
-### 入力イベントコールバック
+マウスとキーボードの状態は毎フレーム読める値（`mouseX` / `mouseY` / `pmouseX` / `pmouseY` /
+`isMousePressed` / `mouseButton` / `isKeyPressed` / `isKeyRepeat` / `key` / `keyCode`）として、
+入力の発生は実装すれば呼ばれるコールバック（`mousePressed()` / `mouseReleased()` /
+`mouseClicked()` / `mouseMoved()` / `mouseDragged()` / `mouseScrolled()` / `keyPressed()` /
+`keyReleased()` / `keyTyped()`）として受け取ります。押しっぱなしのキーは
+`isKeyDown(_:)` で 1 つずつ問い合わせます（同時押しに対応するため）。
 
-以下のメソッドをオーバーライドしてユーザー入力に応答できます:
-
-| メソッド | 説明 |
-|--------|------|
-| `mousePressed()` | マウスボタンが押された |
-| `mouseReleased()` | マウスボタンが離された |
-| `mouseMoved()` | マウスが移動した |
-| `mouseDragged()` | マウスがドラッグされた |
-| `mouseScrolled()` | マウススクロールイベント |
-| `mouseClicked()` | マウスクリック（ドラッグなしの押下＋解放） |
-| `keyPressed()` | キーが押された |
-| `keyReleased()` | キーが離された |
+個々のシグネチャは ``MetaphorCore/Sketch`` を参照してください。値とコールバックの使い分け、
+当たり判定から UI を組み立てる方法は、チュートリアル
+[第 4 部 入力を受ける](https://shinyaoguri.github.io/metaphor/tutorial/input/)で解説しています。
 
 ## 描画
 
@@ -165,9 +138,13 @@ final class MySketch: Sketch {
 エクステンションとして提供されます。内部では ``MetaphorCore/SketchContext`` に委譲されており、
 `context` プロパティから直接アクセスすることもできます。
 
+図形・色・線・自作の形・変換（`push` / `pop`）・テキスト・画像といった 2D の語彙は、チュートリアル
+[第 2 部 2D を描く](https://shinyaoguri.github.io/metaphor/tutorial/drawing-2d/)がひととおり扱います。
+
 ## 次のステップ
 
+- チュートリアル[第 1 部 入門](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/)から順に読む
 - ``MetaphorCore/Canvas2D`` で 2D 描画を探索する
-- ``MetaphorCore/Canvas3D`` で 3D レンダリングを学ぶ
+- チュートリアル[第 5 部 3D へ](https://shinyaoguri.github.io/metaphor/tutorial/3d/)で 3D の描き方を通しで学ぶ（低レベル API は ``MetaphorCore/Canvas3D``）
 - ``MetaphorCore/PostEffect`` でポストプロセスエフェクトを追加する
 - ``MetaphorSyphon/SyphonOutput`` で Syphon 出力を設定する

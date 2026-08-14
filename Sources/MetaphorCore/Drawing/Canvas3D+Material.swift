@@ -16,10 +16,13 @@ extension Canvas3D {
 
     /// グレースケール値でスペキュラハイライト色を設定します。
     ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
     /// - Parameter gray: 全チャンネルに適用されるグレースケール強度。
     public func specular(_ gray: Float) {
+        let c = colorModeConfig.toGray(gray)
         currentMaterial.specularAndShininess = SIMD4(
-            gray, gray, gray,
+            c.r, c.g, c.b,
             currentMaterial.specularAndShininess.w
         )
     }
@@ -43,10 +46,13 @@ extension Canvas3D {
 
     /// グレースケール値でエミッシブ色を設定します。
     ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
     /// - Parameter gray: 全チャンネルに適用されるグレースケール強度。
     public func emissive(_ gray: Float) {
+        let c = colorModeConfig.toGray(gray)
         currentMaterial.emissiveAndMetallic = SIMD4(
-            gray, gray, gray,
+            c.r, c.g, c.b,
             currentMaterial.emissiveAndMetallic.w
         )
     }

@@ -6,6 +6,8 @@ final class SaveOneImage: Sketch {
         SketchConfig(width: 640, height: 360, title: "SaveOneImage")
     }
 
+    let outputPath = "output/line.png"
+
     func setup() {}
 
     func draw() {
@@ -15,7 +17,12 @@ final class SaveOneImage: Sketch {
     }
 
     func mousePressed() {
-        // Original calls save("line.tif")
-        print("Image would be saved here (save() not available in metaphor)")
+        // The original saves "line.tif" next to the sketch. metaphor writes PNG,
+        // and relative paths resolve from the directory the sketch was launched in
+        // (the package root when started with `swift run`).
+        // save() only reserves the write: the file is produced from the finished
+        // frame, after draw() returns.
+        save(outputPath)
+        print("Saved \(outputPath)")
     }
 }

@@ -3,11 +3,17 @@ name: Documentation
 on:
   push:
     branches: [main]
+    # website のビルド入力を漏らさないこと。Astro はチュートリアル本文のコピーを
+    # 持たず `docs/tutorial/` を content collection として直接読むので、ここに無いと
+    # 本文だけを変えた push でサイトが更新されない（Issue #554）。
+    # `website/src/content.config.ts` の loader base との突き合わせは
+    # scripts/check-docs-workflow-paths.py が CI で毎 PR 検査する。
     paths:
       - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
       - 'website/**'
+      - 'docs/tutorial/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -50,11 +56,14 @@ jobs:
       - name: Build Library and extract symbol graphs (parallel)
         run: make symbol-graphs
       - name: Build DocC Documentation
+        # base path は Astro のサイト（/metaphor/）ではなくその配下の /reference/。
+        # DocC は baseUrl を出力へ焼き込むので、これで JS / CSS / theme-settings.json
+        # の参照が /metaphor/reference/... を向き、下の cp と噛み合う。
         run: |
           xcrun docc convert Sources/metaphor/metaphor.docc \
             --additional-symbol-graph-dir .build/symbol-graphs \
             --transform-for-static-hosting \
-            --hosting-base-path metaphor \
+            --hosting-base-path metaphor/reference \
             --output-path .build/docs
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -62,21 +71,37 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: website/package-lock.json
+      - name: Cache remote tutorial images
+        # 本文の画像は Gyazo にあり、Astro がビルド時に取得して dist/ へ最適化配置
+        # する（ADR-0010）。cacheDir は npm ci で消えない website/.astro-cache に
+        # 出してあるので、ここでキャッシュすれば毎回全点を取り直さずに済む。
+        # restore-keys があるのが要点 — 台帳が 1 節変わっただけで全点の取り直しに
+        # 戻らないよう、直前のキャッシュを土台にして差分だけ取りに行かせる。
+        uses: actions/cache@v6
+        with:
+          path: website/.astro-cache
+          key: tutorial-images-${{ hashFiles('docs/tutorial/images/manifest.json') }}
+          restore-keys: tutorial-images-
       - name: Build Landing Page
         run: |
           cd website
           npm ci
           npm run build
-      - name: Merge DocC into Astro output
+      - name: Place DocC reference under /reference/
+        # 2 つのビルドを **混ぜない**。Astro（LP + /tutorial/）は website/dist の
+        # ルート、DocC は丸ごと /reference/ 配下。Astro が生成しないパスなので
+        # 衝突が起きず、コピー対象の列挙も要らない。
+        #
+        # かつては DocC の出力をルートへ重ねており、トップの index.html などが
+        # 衝突するためコピー対象を固定リストで列挙していた。その結果 images /
+        # videos / downloads / metadata.json / theme-settings.json を取りこぼし、
+        # テーマ設定が公開サイトで効いていなかった（Issue #529）。
+        #
+        # 404.html は要らない: --transform-for-static-hosting が全ページの実体を
+        # 出すので client-side routing のフォールバックに頼る必要がなく、旧 URL
+        # (/metaphor/documentation/**) の救済は website 側の 404 ページが担う。
         run: |
-          # Copy DocC directories into Astro output
-          for dir in documentation data css js img index tutorials; do
-            if [ -d ".build/docs/$dir" ]; then
-              cp -R ".build/docs/$dir" "website/dist/$dir"
-            fi
-          done
-          # Copy DocC's SPA fallback for client-side routing
-          cp .build/docs/documentation/metaphor/index.html website/dist/404.html
+          cp -R .build/docs website/dist/reference
           # Disable Jekyll processing
           touch website/dist/.nojekyll
       - name: Upload artifact

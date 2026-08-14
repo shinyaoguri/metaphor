@@ -2,8 +2,9 @@
 
 > ステータス: 実装済み（方式C / Phase 1a–1c-β3 完了・実機確認済み）。`metaphor watch --viewer`
 > が既定で、ライブビューア窓を維持したまま子スケッチのみ差し替え、マウス/キー入力にも反応する。
-> 残りは Phase 2（`saveState`/`restoreState`、任意）のみ。本書は当初の設計提案であり、確定仕様は
-> 実装と各 PR を正とする。
+> Phase 2（`saveState`/`restoreState`）は producer 側を実装済み（Issue #451。トランスポートは
+> 当初案の stdin/stdout ではなくファイル契約 = [CONTRACT.md](../../CONTRACT.md) 契約点 8 へ改訂。
+> §A-3 参照）。本書は当初の設計提案であり、確定仕様は実装と各 PR を正とする。
 > 対象: metaphor 本体（ライブラリ側の小〜中規模変更）+ metaphor-cli（ビューア本体）
 > 関連: Syphon 統合、Probe プラグイン、`RenderLoopMode`、`SketchRunner`
 
@@ -110,16 +111,30 @@ metaphor-cli (親/常駐)              スケッチ (子/使い捨て)
   - `{"t":"keyDown","code":53,"chars":"a","repeat":false}`
 - 座標: 子はキャンバス座標で受け取る。ビューア→キャンバスの逆変換（レターボックス考慮）は親の責務。
 
-### A-3. （Phase 2 / 任意）状態保持フック
+### A-3. 状態保持フック（実装済み・トランスポートはファイルベースへ改訂）
+
+> **改訂（Issue #451）**: 当初案の「stdin `saveState` 動詞 → stdout base64」は、
+> Probe / Parameter Store が確立した**ファイル契約**（アトミック書込・mtime ポーリング・
+> `id` エコー）へ置き換えた。理由は 3 つ: (1) stdout はスケッチの `print()` と混ざる
+> （ユーザーコードが壊しうる経路に状態を載せない）、(2) 共有セッションでは子の stdin を
+> watch が所有するため、MCP など第三者が触れない（`input` と同じ制約を持ち込まない）、
+> (3) 既存の 2 契約と同じ形なら consumer 実装も規約も再利用できる。確定仕様は
+> [CONTRACT.md](../../CONTRACT.md) 契約点 8。
+
 - 対象: `Sketch` プロトコル
 - 追加:
   ```swift
   func saveState() -> Data?       // default: nil
   func restoreState(_ data: Data) // default: no-op
   ```
-- 流れ: 再起動直前に親が `{"t":"saveState"}` を送信 → 子が stdout に Data(base64) 出力 → 親が保持
-  → 新しい子の起動時に渡す。Probe の atomic write 基盤を流用。decode 失敗時は黙って初期状態へ
-  フォールバック。
+- 流れ: 再起動直前に親が `.metaphor/state/save-request.json` に `{id}` を書く →
+  子（`StatePlugin`）が `pre()` で検知して `saveState()` を呼び、`.metaphor/state/state.json`
+  をアトミック書出（`savedRequestId` に `id` をエコー）→ 親が id 一致で ready 検知（~250ms
+  タイムアウト）→ 子を kill し、新しい子を `METAPHOR_RESTORE_STATE=<path>` 付きで起動 →
+  新しい子が `setup()` の後に `restoreState(_:)` を呼ぶ。decode 失敗・タイムアウトは黙って
+  初期状態へフォールバック。
+- 時計（`frameCount` / `time`）は `state.json` の `runtime` 節として metaphor 自身が復元する
+  （`SketchConfig(preserveClock: true)` のときだけ。**スケッチコードゼロで t が巻き戻らない**）。
 
 ## 5. ワークストリーム B: CLI ビューア（metaphor-cli リポジトリ）
 

@@ -233,7 +233,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             customTypes: customTypes,
             warnings: [],
             stats: nil,
-            performance: samplePerformance()
+            performance: samplePerformance(),
+            params: sampleParams()
         )
 
         let outputDirectory = config.outputDirectory
@@ -324,6 +325,9 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         // `performance` は単一フレーム経路のみ（#271）。per-frame で全フィールドは
         // 冗長で、フレームループ内の syscall も避ける。時系列の性能観測に需要が
         // 出たら「per-frame は fps のみ + manifest にサマリ」等を別途検討する。
+        // `params` は逆に per-frame で載せる（#424）: メモリ内の読み取りだけで
+        // syscall が無く、シーケンス中に外部が値を変えたフレームを revision で
+        // 切り分けられる（キャプチャ中のパラメータ掃引がそのまま観測できる）。
         let metadata = ProbeFrameMetadata(
             schemaVersion: 4,
             id: seq.id,
@@ -336,7 +340,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             customTypes: customTypes,
             warnings: [],
             stats: nil,
-            performance: nil
+            performance: nil,
+            params: sampleParams()
         )
 
         let base = ProbeWriter.sequenceBaseName(index)
@@ -493,7 +498,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             customTypes: [:],
             warnings: [warning],
             stats: nil,
-            performance: nil
+            performance: nil,
+            params: nil
         )
     }
 
@@ -518,6 +524,18 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             memoryMB: ProcessStatsSampler.memoryFootprintMB().map(Self.round1),
             cpuPercent: statsSampler.cpuPercent(now: now).map(Self.round1),
             thermalState: ProcessStatsSampler.thermalStateName()
+        )
+    }
+
+    /// `frame.json` の `params` セクションを組み立てます（Issue #424）。
+    ///
+    /// `@Param` が 1 つも宣言されていないスケッチではキーごと省略します
+    /// （`performance` と同じ「採れないものは書かない」規約）。
+    private func sampleParams() -> ProbeFrameMetadata.Params? {
+        guard let store = sketch?._context?.params, !store.isEmpty else { return nil }
+        return ProbeFrameMetadata.Params(
+            revision: store.revision,
+            values: store.valuesSnapshot()
         )
     }
 

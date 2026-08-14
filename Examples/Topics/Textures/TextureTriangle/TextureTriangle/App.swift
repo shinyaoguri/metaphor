@@ -30,11 +30,11 @@ final class TextureTriangle: Sketch {
         translate(width / 2, height / 2, 0)
         rotateY(map(mouseX, 0, width, -.pi, .pi))
 
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         texture(img)
-        vertex(-100, -100, 0)
-        vertex(100, -40, 0)
-        vertex(0, 100, 0)
-        endShape()
+        vertex(-100, -100, 0, 0, 0)
+        vertex(100, -40, 0, 1, 0.3)
+        vertex(0, 100, 0, 0.5, 1)
+        endShape3D()
     }
 }

@@ -183,7 +183,8 @@ enum ProbeWriter {
             customTypes: metadata.customTypes,
             warnings: metadata.warnings + analysis.warnings,
             stats: analysis.stats,
-            performance: metadata.performance
+            performance: metadata.performance,
+            params: metadata.params
         )
 
         writeJSON(enriched, to: dirURL, baseName: baseName)
@@ -249,7 +250,10 @@ enum ProbeWriter {
     /// （途中リサイズでサイズが混在しても崩れない）。
     ///
     /// - Returns: 書き出した contact sheet の相対ファイル名。失敗時は nil。
-    private static func composeContactSheet(
+    ///
+    /// テストから直接呼べるよう internal です（合成結果の向きは、レンダラを
+    /// 起こさずに入力 PNG と出力 PNG の画素だけで検証できる）。
+    static func composeContactSheet(
         directory: String,
         frameFiles: [String],
         refWidth: Int,
@@ -285,10 +289,9 @@ enum ProbeWriter {
         ctx.setFillColor(CGColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1))
         ctx.fill(CGRect(x: 0, y: 0, width: sheetW, height: sheetH))
 
-        // CG の原点は左下。上→下・左→右に並べ、画像が上下反転しないよう CTM を反転。
-        ctx.translateBy(x: 0, y: CGFloat(sheetH))
-        ctx.scaleBy(x: 1, y: -1)
-
+        // CG の原点は左下。フレームを上→下・左→右に並べるため、行だけを
+        // 下から数える。ここで CTM を上下反転すると並び順は作れるが、
+        // `ctx.draw(_:in:)` は CTM に従うのでセルの中身まで反転する（#514）。
         let dirURL = URL(fileURLWithPath: directory)
         for (i, name) in frameFiles.enumerated() {
             let url = dirURL.appendingPathComponent(name)
@@ -297,7 +300,7 @@ enum ProbeWriter {
             let col = i % cols
             let row = i / cols
             let cell = CGRect(
-                x: col * cellW, y: row * cellH, width: cellW, height: cellH
+                x: col * cellW, y: (rows - 1 - row) * cellH, width: cellW, height: cellH
             )
             ctx.draw(img, in: aspectFit(imageW: img.width, imageH: img.height, into: cell))
         }
@@ -575,21 +578,10 @@ enum ProbeWriter {
         return Analysis(warnings: warnings, stats: stats)
     }
 
-    /// 一時ファイルから本番パスへの原子的なリネーム。
-    ///
-    /// `rename(2)` は同一ボリューム内で既存の宛先を **原子的に** 置き換える
-    /// （`removeItem` → `moveItem` の 2 段階だと、間に出力ファイルが存在しない
-    /// 瞬間窓ができて「原子的リネーム」の契約が破れる）。
+    /// 一時ファイルから本番パスへの原子的なリネーム
+    /// （実体は共通ヘルパー ``metaphorAtomicReplace(tmp:final:label:)``。
+    /// Parameter Store の書き出しと同じ規約を共有する）。
     private static func atomicReplace(tmp: URL, final: URL) {
-        let result = tmp.withUnsafeFileSystemRepresentation { tmpPath -> Int32 in
-            final.withUnsafeFileSystemRepresentation { finalPath -> Int32 in
-                guard let tmpPath, let finalPath else { return -1 }
-                return rename(tmpPath, finalPath)
-            }
-        }
-        if result != 0 {
-            print("[metaphor] Probe: failed to rename \(tmp.lastPathComponent) -> "
-                + "\(final.lastPathComponent) (errno \(errno))")
-        }
+        metaphorAtomicReplace(tmp: tmp, final: final, label: "Probe")
     }
 }

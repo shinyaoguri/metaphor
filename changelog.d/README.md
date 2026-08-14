@@ -39,6 +39,15 @@ two files.
 **Internal-only work needs no entry** — design docs, CI plumbing, refactors with
 no observable effect, website dependency bumps.
 
+## What CI checks on your pull request
+
+`changelog.py lint`, a step of the required `build-and-test` job, validates the
+files that are here: the name has to be `<slug>.<category>.md` with a known
+category, and the file must not be empty. It **never demands that an entry
+exist** — whether a change is user-facing is a judgement call CI cannot make.
+
+Run the same check locally with `python3 scripts/changelog.py lint`.
+
 ## What happens at release
 
 `.github/workflows/release.yml` runs `changelog.py check` at the very start of

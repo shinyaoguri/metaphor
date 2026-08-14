@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - Wire-schema conformance (producer side)
 //
@@ -30,18 +31,9 @@ struct ProbeSchemaConformanceTests {
     }
 
     private func loadExample(_ name: String) throws -> [String: Any] {
-        // #filePath = .../metaphor/Tests/metaphorTests/ProbeSchemaConformanceTests.swift
-        // → 3 段上がるとリポジトリルート。
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()  // metaphorTests
-            .deletingLastPathComponent()  // Tests
-            .deletingLastPathComponent()  // repo root
-        let url = repoRoot
-            .appendingPathComponent("contract/examples")
-            .appendingPathComponent(name)
-        let data = try Data(contentsOf: url)
-        let object = try JSONSerialization.jsonObject(with: data)
-        return try #require(object as? [String: Any])
+        // 構造比較ヘルパーと example ローダーは MetaphorTestSupport/JSONStructure.swift
+        // に共有（Parameter Store の適合テストと同じ二段検証を使うため）。
+        try loadContractExample(name)
     }
 
     // MARK: frame.json
@@ -85,6 +77,14 @@ struct ProbeSchemaConformanceTests {
                 memoryMB: 412.3,
                 cpuPercent: 87.5,
                 thermalState: "nominal"
+            ),
+            params: .init(
+                revision: 7,
+                values: [
+                    "radius": .float(120.0),
+                    "showGrid": .bool(false),
+                    "tint": .color(1, 1, 1, 1),
+                ]
             )
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame.json"), path: "frame")
@@ -92,7 +92,7 @@ struct ProbeSchemaConformanceTests {
 
     @Test("frame.json (minimal) は optional 省略時の構造と一致する")
     func frameMinimalMatchesExample() throws {
-        // label / sourceStamp / stats / performance を nil にすると
+        // label / sourceStamp / stats / performance / params を nil にすると
         // JSONEncoder はキー自体を省略する。
         let metadata = ProbeFrameMetadata(
             schemaVersion: 4,
@@ -106,7 +106,8 @@ struct ProbeSchemaConformanceTests {
             customTypes: [:],
             warnings: ["frame appears nearly blank (variance=0.000001)"],
             stats: nil,
-            performance: nil
+            performance: nil,
+            params: nil
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame-minimal.json"), path: "frame-minimal")
     }
@@ -127,7 +128,8 @@ struct ProbeSchemaConformanceTests {
             customTypes: [:],
             warnings: ["failed to allocate staging texture; frame.png was not written"],
             stats: nil,
-            performance: nil
+            performance: nil,
+            params: nil
         )
         try assertStructurallyEqual(encode(metadata), loadExample("frame-failure.json"), path: "frame-failure")
     }
@@ -166,52 +168,5 @@ struct ProbeSchemaConformanceTests {
             ]
         )
         try assertStructurallyEqual(encode(manifest), loadExample("sequence.json"), path: "sequence")
-    }
-}
-
-// MARK: - Structural comparison
-
-/// JSON 値の「種別」。値そのものではなく形だけを比較するために使う。
-private func jsonKind(_ value: Any) -> String {
-    if value is NSNull { return "null" }
-    if let number = value as? NSNumber {
-        // JSONSerialization は Bool を NSNumber(CFBoolean) として返すため区別する。
-        if CFGetTypeID(number) == CFBooleanGetTypeID() { return "bool" }
-        return "number"
-    }
-    if value is String { return "string" }
-    if value is [Any] { return "array" }
-    if value is [String: Any] { return "object" }
-    return "unknown(\(type(of: value)))"
-}
-
-/// `actual`（実エンコーダ出力）と `expected`（committed example）が **構造的に**
-/// 一致する（同じキー集合・同じ JSON 種別）ことを再帰的に検証する。値は比較しない。
-private func assertStructurallyEqual(_ actual: Any, _ expected: Any, path: String) throws {
-    let ak = jsonKind(actual)
-    let ek = jsonKind(expected)
-    #expect(ak == ek, "\(path): JSON 種別が不一致 (encoder=\(ak) example=\(ek))")
-    guard ak == ek else { return }
-
-    switch ak {
-    case "object":
-        let a = actual as! [String: Any]
-        let e = expected as! [String: Any]
-        let aKeys = Set(a.keys)
-        let eKeys = Set(e.keys)
-        #expect(aKeys == eKeys,
-                "\(path): キー集合が不一致 — encoder のみ=\(aKeys.subtracting(eKeys).sorted()) example のみ=\(eKeys.subtracting(aKeys).sorted())")
-        for key in aKeys.intersection(eKeys).sorted() {
-            try assertStructurallyEqual(a[key]!, e[key]!, path: "\(path).\(key)")
-        }
-    case "array":
-        let a = actual as! [Any]
-        let e = expected as! [Any]
-        // 配列は要素の種別だけを代表要素で確認する（長さは値域なのでスキーマ側の責務）。
-        if let af = a.first, let ef = e.first {
-            try assertStructurallyEqual(af, ef, path: "\(path)[0]")
-        }
-    default:
-        break
     }
 }

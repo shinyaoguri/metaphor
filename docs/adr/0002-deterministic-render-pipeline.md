@@ -63,5 +63,5 @@ Option C を採用する。決め手は「決定論性という成功基準を�
 - 設計ドキュメント: [docs/design/deterministic-rendering.md](../design/deterministic-rendering.md)
 - `Sources/MetaphorCore/Sketch/SketchRunner.swift:443,463-470,488-489`（noLoop 2フレーム）
 - `Sources/MetaphorCore/Core/MetaphorRenderer.swift:795,854-862,989`（renderFrame パス順 / draw(in:)）
-- `Sources/MetaphorCore/Drawing/Canvas3D.swift:355,960-973,1105`（記録 / 即時描画 / シャドウサンプル）
+- `Sources/MetaphorCore/Drawing/Canvas3D+Frame.swift`（performShadowPass）、`Canvas3D+MeshDrawing.swift`（記録 / 即時描画 / シャドウサンプル）
 - Issue #70、#71、Epic #75

@@ -2,9 +2,14 @@
 
 What `metaphor` promises not to break, and what it does not promise at all.
 
-**Status.** The library is currently `0.8.x` — the last period in which a minor
-release may break API deliberately. This policy takes effect with **`v0.9.0`**,
-the API-freeze release, and is what `v1.0.0` will declare formally. See
+**Status.** The library is currently `0.9.x`, and **the API is not frozen**.
+`v0.9.0` (released 2026-08-10) was announced as the API-freeze release, but that
+freeze was **withdrawn on 2026-08-13**
+([ADR-0009](adr/0009-unfreeze-api-until-1-0.md)): design work was still
+outstanding, and the freeze made it unreachable. Until `1.0.0`, a breaking
+change to public API may ship in a **minor** release when the design justifies
+it — with a deprecation window by default, and always with a
+`### Breaking Changes` entry. `v1.0.0` is where the freeze actually starts. See
 [docs/design/v1-release-plan.md](design/v1-release-plan.md) for the milestones.
 
 `metaphor` follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
@@ -74,9 +79,15 @@ release):
 - A symbol is marked `@available(*, deprecated, message:)` with the replacement
   named in the message, and that state must appear in a **published minor
   release**.
-- Removal happens no earlier than the following minor (through `0.9.x`), and
-  after `1.0.0` requires a **major** release.
+- Removal happens no earlier than the following minor. Through `0.9.x` that
+  minor is a normal release; after `1.0.0` it takes a **major** release.
 - Deprecations and removals both get CHANGELOG entries with a migration table.
+
+The window is the default, not an absolute. Until `1.0.0`, a change may skip it
+when **keeping the old name is itself the design problem** — an alias that
+pollutes the surface, or one that makes an existing call site ambiguous. Such a
+change ships in a minor with a migration table **and the reason the window was
+skipped** (ADR-0009). After `1.0.0` there is no such escape hatch.
 
 ## 4. Where each kind of change lands
 
@@ -85,9 +96,14 @@ files, stdin, environment variables) and rendering output carry their own
 versioning and coordination rules, described below; they never force a library
 major on their own.
 
+The table below states the rule **from `1.0.0` on**. While the version is `0.x`,
+SemVer gives the minor digit the role the major digit takes later: every row
+that says **major** is a **minor** release today, still carrying its
+`### Breaking Changes` entry and migration table (ADR-0009).
+
 | Change | Bump |
 |---|---|
-| Removing, renaming, or source-incompatibly changing public API (§2) | **major** |
+| Removing, renaming, or source-incompatibly changing public API (§2) | **major** (minor while `0.x`) |
 | Adding public API | minor |
 | Deprecating public API | minor |
 | Bug fix with no API change | patch |
@@ -169,19 +185,28 @@ handled in a major release.
 
 ## 9. The `0.9.x` discipline
 
-`0.9.x` is the freeze rehearsal, run under exactly these rules:
+`0.9.x` is the last stretch of design work before the freeze, not the freeze
+itself ([ADR-0009](adr/0009-unfreeze-api-until-1-0.md) withdrew the `v0.9.0`
+freeze announcement). It runs under these rules:
 
-- **Additive changes and fixes only.** Anything breaking that becomes necessary
-  is a signal that the freeze was premature, not a routine exception — it gets
-  discussed as such before it is merged.
-- All 13 modules are treated as frozen for the whole `0.9` series. `v1.0.0` is
-  the last `0.9.x` promoted essentially unchanged.
-- **Preview (unstable) modules.** If a module turns out to need breaking changes
-  during `0.9.x`, it is not force-frozen: it is declared **preview** at 1.0. A
-  preview module is listed as such in a table in this document, says so in the
-  first line of its own module documentation, and may take breaking changes in a
-  minor release with a CHANGELOG entry. **No module is preview today** — the
-  line is drawn from the `0.9.x` record, not from speculation.
+- **Breaking changes are allowed when the design justifies them**, in a minor
+  release, through §3's deprecation window by default. What is *not* allowed is
+  a breaking change that arrives silently: no `### Breaking Changes` entry, no
+  migration table, no reason on record.
+- **The bar is the design, not the calendar.** "We can still break things" is
+  not a reason to break them. Every one is a decision that the surface is better
+  afterwards, taken knowing that after `1.0.0` the same change costs a major.
+- **Known design debt is tracked as such.** Anything that must be settled before
+  the freeze — naming, Processing-compat semantics, asymmetric APIs — is an open
+  issue, and clearing that list is a `v1.0.0` promotion condition
+  ([v1-release-plan.md](design/v1-release-plan.md)).
+- **Preview (unstable) modules.** The framework is kept for promotion time: if a
+  module still needs room to change when `1.0.0` is cut, it is declared
+  **preview** rather than force-frozen. A preview module is listed as such in a
+  table in this document, says so in the first line of its own module
+  documentation, and may take breaking changes in a minor release with a
+  CHANGELOG entry. **No module is preview today** — that line gets drawn at
+  promotion, from the record, not from speculation.
 
 ## 10. Maintenance expectations
 
@@ -194,6 +219,8 @@ not silently break**, not about response times.
 
 ## References
 
+- [ADR-0009](adr/0009-unfreeze-api-until-1-0.md) — withdrawing the `v0.9.0` API
+  freeze; breaking changes stay available in a minor until `1.0.0`
 - [ADR-0005](adr/0005-sketch-api-consistency.md) — Sketch-layer conventions, the
   deprecation window, error reporting, deferred typed throws, `P3D` semantics
 - [ADR-0007](adr/0007-finalize-public-api-surface.md) — the two-layer naming

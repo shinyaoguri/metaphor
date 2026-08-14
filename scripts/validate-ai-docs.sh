@@ -151,13 +151,29 @@ else
     # change them together. A file listed only here is never bumped by a
     # release yet is checked, which deadlocks the release; a file listed only
     # there is bumped but nothing stops it drifting back out of sync.
-    version_docs=(README.en.md Sources/metaphor/metaphor.docc/GettingStarted.md llms.txt)
+    version_docs=(
+        README.en.md
+        Sources/metaphor/metaphor.docc/GettingStarted.md
+        llms.txt
+        website/src/components/Hero.astro
+    )
     for doc in "${version_docs[@]}"; do
         if [ ! -f "$doc" ]; then
             fail "$doc — file not found"
             continue
         fi
-        versions=$(grep -oE 'github\.com/shinyaoguri/metaphor\.git", from: "[^"]+"' "$doc" | sed -E 's/.*from: "([^"]+)".*/\1/' | sort -u || true)
+        # Anchored on `metaphor.git", from:` rather than the full URL: the
+        # landing page elides the host for width ("…/metaphor.git"), and an
+        # unrelated `from:` parameter label in llms.txt (tween(from:to:)) is
+        # still excluded. The same anchor is used by release.yml's bump sed.
+        versions=$(grep -oE 'metaphor\.git", from: "[^"]+"' "$doc" | sed -E 's/.*from: "([^"]+)".*/\1/' | sort -u || true)
+        if [ -z "$versions" ]; then
+            # A silent zero-match is how Hero.astro drifted to 0.4.0 unnoticed
+            # (Issue #491): every file listed here is expected to carry the
+            # snippet, so finding none is a failure, not a pass.
+            fail "$doc — no SPM dependency snippet found (expected \`metaphor.git\", from: \"…\"\`)"
+            continue
+        fi
         for version in $versions; do
             if [ "$version" = "$stable_version" ]; then
                 pass "$doc: SPM version $version"

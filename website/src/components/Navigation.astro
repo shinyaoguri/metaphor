@@ -1,22 +1,42 @@
 ---
-import { getContent, docsUrl, githubUrl, homeFor, type Lang } from '../i18n/ui';
+import { getContent, referenceUrl, githubUrl, homeFor, type Lang } from '../i18n/ui';
+import { tutorialIndexHref } from '../lib/tutorial';
 
-interface Props { lang: Lang; }
-const { lang } = Astro.props;
+interface Props {
+  lang: Lang;
+  /**
+   * 言語トグルの遷移先。既定は各言語のトップ。チュートリアルのように
+   * 対応するページがある画面では、そのページの URL を渡して同じ場所に留まる。
+   */
+  jaHref?: string;
+  enHref?: string;
+}
+const { lang, jaHref = homeFor('ja'), enHref = homeFor('en') } = Astro.props;
 const t = getContent(lang);
 ---
 
 <nav class="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
-  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-    <a href={homeFor(lang)} class="font-display text-xl font-semibold tracking-tight text-text">
+  <!-- 幅の余裕は狭い画面が基準（日本語のラベルは英語より横に長い） -->
+  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+    <a
+      href={homeFor(lang)}
+      class="font-display text-lg font-semibold tracking-tight text-text sm:text-xl"
+    >
       metaphor
     </a>
-    <div class="flex items-center gap-6">
+    <div class="flex items-center gap-4 sm:gap-6">
       <a
-        href={docsUrl}
-        class="text-sm font-medium text-text-muted transition-colors hover:text-text"
+        href={tutorialIndexHref(lang)}
+        class="text-xs font-medium whitespace-nowrap text-text-muted transition-colors hover:text-text sm:text-sm"
       >
-        {t.nav.docs}
+        {t.nav.tutorial}
+      </a>
+      <!-- 狭い画面ではバーに 2 本入らないため DocC への導線は隠す（フッタにある） -->
+      <a
+        href={referenceUrl}
+        class="hidden text-xs font-medium whitespace-nowrap text-text-muted transition-colors hover:text-text sm:inline sm:text-sm"
+      >
+        {t.nav.reference}
       </a>
       <!-- Language toggle switch -->
       <div
@@ -32,7 +52,7 @@ const t = getContent(lang);
           ]}
         ></span>
         <a
-          href={homeFor('ja')}
+          href={jaHref}
           aria-current={lang === 'ja' ? 'true' : undefined}
           class:list={[
             'relative z-10 w-10 rounded-full py-1 text-center transition-colors',
@@ -40,7 +60,7 @@ const t = getContent(lang);
           ]}
         >JA</a>
         <a
-          href={homeFor('en')}
+          href={enHref}
           aria-current={lang === 'en' ? 'true' : undefined}
           class:list={[
             'relative z-10 w-10 rounded-full py-1 text-center transition-colors',

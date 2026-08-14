@@ -32,7 +32,9 @@ fragment float4 metaphor_canvas3DTexturedFragment(
     constant Canvas3DUniforms &uniforms [[buffer(1)]],
     constant Light3D *lights [[buffer(2)]],
     constant Material3D &material [[buffer(3)]],
-    texture2d<float> tex [[texture(0)]]
+    constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
+    texture2d<float> tex [[texture(0)]],
+    texture2d<float> shadowMap [[texture(1)]]
 ) {
     constexpr sampler s(filter::linear, address::repeat);
     float4 texColor = tex.sample(s, in.uv);
@@ -42,6 +44,10 @@ fragment float4 metaphor_canvas3DTexturedFragment(
         return tintedColor;
     }
 
+    // 影は直接光にのみ掛ける（ambient / emissive / AO は影の中でも保つ, #364 / #391）。
+    constexpr sampler shadowSampler(filter::linear, address::clamp_to_edge, compare_func::never);
+    float shadow = calculateShadow(in.worldPosition, shadowUniforms, shadowMap, shadowSampler);
+
     float3 lit = calculateLighting(
         in.worldPosition,
         in.normal,
@@ -49,7 +55,8 @@ fragment float4 metaphor_canvas3DTexturedFragment(
         tintedColor.rgb,
         lights,
         uniforms.lightCount,
-        material
+        material,
+        shadow
     );
 
     return float4(lit, tintedColor.a);

@@ -126,10 +126,15 @@ set; built-in and external (USB) cameras work either way.
 
 ## Microphone input from an example
 
-No example in this repository currently exercises `AudioAnalyzer` /
-`createAudioInput()` directly (`grep -r "createAudioInput" Examples/` turns up
-nothing as of this writing), so there's no in-repo microphone example to point
-to yet. If you want a working starting point,
+The tutorial's part 7 has two microphone sketches:
+[`Examples/Tutorial/07-Media/01-AudioInput`](../Examples/Tutorial/07-Media/01-AudioInput)
+drives a circle from `volume`, and
+[`02-Spectrum`](../Examples/Tutorial/07-Media/02-Spectrum) draws the FFT
+spectrum and flashes on beats. Both print the reason on screen when `start()`
+throws, which is what a denied permission looks like from inside a sketch —
+see [第 7 部 メディア](tutorial/07-media.md) for the walkthrough.
+
+To start a new sketch from a template instead,
 [`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli)'s `audio-reactive`
 project template (`metaphor new MySketch --template audio-reactive`) wires up
 `createAudioInput()` for you — the microphone TCC behavior described on this

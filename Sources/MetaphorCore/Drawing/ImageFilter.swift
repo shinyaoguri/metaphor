@@ -67,12 +67,19 @@ public enum ImageFilter {
 
     /// ピクセル配列にフィルタを直接適用します。
     ///
+    /// `pixels` は `width * height * 4` バイトちょうどの RGBA データである必要が
+    /// あります。寸法が負、寸法の積がオーバーフローする、長さが一致しない場合は
+    /// 警告を出して何もしません（Issue #582）。空配列 + 0 寸法は正常な no-op です。
+    ///
+    /// MPS 系のフィルタタイプはこの CPU 経路では何もしません（GPU 専用）。
+    ///
     /// - Parameters:
     ///   - filter: 適用するフィルタタイプ。
     ///   - pixels: インプレースで変更する RGBA ピクセルデータ。
     ///   - width: 画像の幅（ピクセル単位）。
     ///   - height: 画像の高さ（ピクセル単位）。
     public static func applyToPixels(_ filter: FilterType, pixels: inout [UInt8], width: Int, height: Int) {
+        guard isValidBuffer(pixels, width: width, height: height) else { return }
         switch filter {
         case .threshold(let level):
             applyThreshold(pixels: &pixels, level: level)
@@ -100,6 +107,43 @@ public enum ImageFilter {
         case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
             break
         }
+    }
+
+    // MARK: - Input Validation
+
+    /// `pixels` が `width` x `height` の RGBA バッファとして整合しているか判定します（Issue #582）。
+    ///
+    /// `applyToPixels()` は public なので MImage を経由しないバッファも渡されます。
+    /// 4 バイト刻みのフィルタは `pixels[i + 1]` を、空間フィルタは
+    /// `(y * width + x) * 4` を無条件に読むため、不整合な入力は Array の範囲外
+    /// アクセスでプロセスを終了させていました。#150 の方針どおり warning + no-op に
+    /// 寄せ、実行は落としません。
+    ///
+    /// - Returns: 処理すべきバッファなら `true`。空バッファ（0 寸法）は警告なしで `false`。
+    private static func isValidBuffer(_ pixels: [UInt8], width: Int, height: Int) -> Bool {
+        guard width >= 0, height >= 0 else {
+            metaphorWarning("ImageFilter: negative dimensions (\(width)x\(height)); skipping")
+            return false
+        }
+        let (area, areaOverflowed) = width.multipliedReportingOverflow(by: height)
+        guard !areaOverflowed else {
+            metaphorWarning("ImageFilter: dimensions \(width)x\(height) overflow Int; skipping")
+            return false
+        }
+        let (expected, byteCountOverflowed) = area.multipliedReportingOverflow(by: 4)
+        guard !byteCountOverflowed else {
+            metaphorWarning("ImageFilter: \(width)x\(height) RGBA byte count overflows Int; skipping")
+            return false
+        }
+        guard pixels.count == expected else {
+            metaphorWarning("""
+                ImageFilter: pixels.count \(pixels.count) does not match \
+                \(width) * \(height) * 4 (\(expected)); skipping
+                """)
+            return false
+        }
+        // 0 寸法 + 空配列は正常な no-op（apply(_:to:) も空画像を早期 return する）
+        return expected > 0
     }
 
     // MARK: - Private Filter Implementations

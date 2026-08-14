@@ -153,6 +153,15 @@ public final class SketchContext {
     /// イミディエイトモードコントロール用のパラメータ GUI インスタンス。
     public let gui = ParameterGUI()
 
+    // MARK: - Parameter Store
+
+    /// `@Param` で宣言されたパラメータのストア（``gui`` の兄弟）。
+    ///
+    /// 人間の GUI と外部（AI エージェント）の `set-request.json` は、どちらも
+    /// このストアを叩く対称なクライアントです。``ParameterPlugin`` が
+    /// `.metaphor/params/` との橋渡し（永続化・外部書込の適用）を担います。
+    public let params = ParameterStore()
+
     // MARK: - Performance HUD
 
     /// パフォーマンス HUD インスタンス。無効の場合は nil。
@@ -268,6 +277,8 @@ public final class SketchContext {
         self.width = canvas.width
         self.height = canvas.height
         wireDrawSeqProviders()
+        // gui.params() が描画先・入力・ストアを自力で解決できるようにする（弱参照）。
+        gui.boundContext = self
     }
 
     // MARK: - Shape Recording Target (#150)
@@ -280,6 +291,24 @@ public final class SketchContext {
 
     /// 現在アクティブなシェイプ記録先。
     var activeShapeRecording: ShapeRecordingTarget = .none
+
+    /// 2D 記録中に 3 引数 `vertex` が来たことを一度だけ知らせたか（#387）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnVertexZIgnored = false
+
+    /// `beginShape()`（2D）の記録中に `vertex(x, y, z)` が来たことを一度だけ警告する。
+    ///
+    /// z は落ちて 2D キャンバスへルーティングされるため（Processing 互換）、
+    /// 立体を組んだつもりのスケッチは `rotateX`/`rotateY` が効かず平面に潰れる。
+    /// 黙って平面になるのが最もわかりにくいので、初回だけ 3D 版への誘導を出す。
+    func warnVertexZIgnoredOnce() {
+        guard !didWarnVertexZIgnored else { return }
+        didWarnVertexZIgnored = true
+        metaphorWarning(
+            "vertex(x, y, z) inside beginShape() ignores z and draws on the 2D canvas. "
+                + "Use beginShape3D() / endShape3D() to build a 3D shape."
+        )
+    }
 
     // MARK: - Draw Sequence (#71)
 

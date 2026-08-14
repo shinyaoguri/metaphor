@@ -39,12 +39,17 @@ jobs:
       - name: Get Syphon submodule hash
         id: syphon-hash
         run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      # ビルド環境（Xcode 版）をキーに含める。キー規則は ci.yml / release.yml と
+      # 共通（異なる Xcode でビルドされたキャッシュを共有すると ABI/SDK 差異を拾い得るため）
+      - name: Get Xcode version
+        id: xcode-version
+        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
       - name: Cache Syphon.xcframework
         id: cache-syphon
         uses: actions/cache@v6
         with:
           path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}
+          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
       - name: Build Syphon
         if: steps.cache-syphon.outputs.cache-hit != 'true'
         run: make setup

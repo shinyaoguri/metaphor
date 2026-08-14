@@ -308,6 +308,38 @@ struct PhysicsNonFiniteTests {
         #expect(hash.queryPairs().isEmpty)
     }
 
+    @Test("negative iterations are rejected without trapping or half-updating the world", arguments: [-1, -4, Int.min])
+    func negativeIterations(iterations: Int) {
+        let world = Physics2D(cellSize: 50)
+        world.setGravity(0, 980)
+        let ball = world.addCircle(x: 100, y: 100, radius: 20)
+        let before = ball.position
+
+        // 修正前は重力適用と積分を終えた後に `0..<iterations` を構築し、
+        // 「Range requires lowerBound <= upperBound」でトラップしていた
+        world.step(1.0 / 60.0, iterations: iterations)
+
+        // dt の guard と同じく、無効入力ではワールドを一切進めない
+        #expect(ball.position == before)
+
+        // その後の正常な step は機能する
+        world.step(1.0 / 60.0)
+        #expect(ball.position.y > before.y)
+    }
+
+    @Test("zero iterations integrates but solves nothing")
+    func zeroIterations() {
+        let world = Physics2D(cellSize: 50)
+        world.setGravity(0, 980)
+        let ball = world.addCircle(x: 100, y: 100, radius: 20)
+
+        world.step(1.0 / 60.0, iterations: 0)
+
+        // 積分は行われる（拘束・衝突・境界だけを解かない）
+        #expect(ball.position.y > 100)
+        #expect(ball.position.x.isFinite && ball.position.y.isFinite)
+    }
+
     @Test("constraint stiffness is clamped to [0, 1]")
     func stiffnessClamped() {
         let world = Physics2D()

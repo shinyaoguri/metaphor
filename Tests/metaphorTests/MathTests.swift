@@ -155,6 +155,17 @@ struct ColorTests {
         #expect(c.a == 1.0)
     }
 
+    // 0...1 は「スケール」であって不変条件ではない（#594）。
+    // Tween<Color> のオーバーシュートが範囲外の成分を作るため、初期化子はクランプしない。
+    @Test("RGB init keeps out-of-range components")
+    func rgbInitDoesNotClamp() {
+        let c = Color(r: 1.4, g: -0.2, b: 0.5, a: 2.0)
+        #expect(c.r == 1.4)
+        #expect(c.g == -0.2)
+        #expect(c.b == 0.5)
+        #expect(c.a == 2.0)
+    }
+
     @Test("grayscale init sets equal RGB")
     func grayInit() {
         let c = Color(gray: 0.5)
@@ -162,6 +173,15 @@ struct ColorTests {
         #expect(c.g == 0.5)
         #expect(c.b == 0.5)
         #expect(c.a == 1.0)
+    }
+
+    @Test("grayscale init keeps out-of-range components")
+    func grayInitDoesNotClamp() {
+        let c = Color(gray: -0.5, alpha: 1.5)
+        #expect(c.r == -0.5)
+        #expect(c.g == -0.5)
+        #expect(c.b == -0.5)
+        #expect(c.a == 1.5)
     }
 
     @Test("HSB pure red")
@@ -194,6 +214,42 @@ struct ColorTests {
         #expect(abs(c.r - 0.7) < 0.001)
         #expect(abs(c.g - 0.7) < 0.001)
         #expect(abs(c.b - 0.7) < 0.001)
+    }
+
+    // HSB だけクランプするのは値域の約束ではなく、HSB→RGB 変換の前提を守る防御（#594）。
+    // alpha は変換に関与しないのでクランプしない、という非対称もここで固定する。
+    @Test("HSB init clamps saturation and brightness but not alpha")
+    func hsbClampsSaturationAndBrightness() {
+        // saturation 5 / brightness 2 は 1 として扱われ、純赤を超えない
+        let over = Color(hue: 0, saturation: 5, brightness: 2, alpha: 1.5)
+        #expect(abs(over.r - 1.0) < 0.001)
+        #expect(abs(over.g - 0.0) < 0.001)
+        #expect(abs(over.b - 0.0) < 0.001)
+        #expect(over.a == 1.5)
+
+        // 負の saturation は 0 として扱われ、brightness そのままのグレーになる
+        let under = Color(hue: 0.5, saturation: -1, brightness: 0.6, alpha: -0.5)
+        #expect(abs(under.r - 0.6) < 0.001)
+        #expect(abs(under.g - 0.6) < 0.001)
+        #expect(abs(under.b - 0.6) < 0.001)
+        #expect(under.a == -0.5)
+
+        // 負の brightness は 0 として扱われ、黒になる
+        let dark = Color(hue: 0.5, saturation: 1, brightness: -3)
+        #expect(abs(dark.r - 0.0) < 0.001)
+        #expect(abs(dark.g - 0.0) < 0.001)
+        #expect(abs(dark.b - 0.0) < 0.001)
+    }
+
+    @Test("HSB hue wraps at 1.0 instead of clamping")
+    func hsbHueWraps() {
+        let base = Color(hue: 0.25, saturation: 1, brightness: 1)
+        for hue in [Float(1.25), 2.25, -0.75] {
+            let c = Color(hue: hue, saturation: 1, brightness: 1)
+            #expect(abs(c.r - base.r) < 0.001, "hue=\(hue) R=\(c.r)")
+            #expect(abs(c.g - base.g) < 0.001, "hue=\(hue) G=\(c.g)")
+            #expect(abs(c.b - base.b) < 0.001, "hue=\(hue) B=\(c.b)")
+        }
     }
 
     @Test("HSB non-finite hue does not crash", arguments: [Float.nan, .infinity, -.infinity])
@@ -269,6 +325,27 @@ struct ColorTests {
         #expect(Color.green == Color(r: 0, g: 1, b: 0))
         #expect(Color.blue == Color(r: 0, g: 0, b: 1))
         #expect(Color.clear.a == 0)
+    }
+
+    // colorMode() の最大値を超える入力は正規化されるだけで、上限は強制されない（#594）。
+    // Processing の fill(300) が白になるのと結果は一致するが、それは描画時の飽和による。
+    @Test("ColorModeConfig normalizes without enforcing an upper bound")
+    func colorModeConfigDoesNotClamp() {
+        let rgb = ColorModeConfig()  // 既定: .rgb / max 255
+        let over = rgb.toColor(300, 0, 0)
+        #expect(abs(over.r - 300.0 / 255.0) < 0.001)
+        #expect(over.r > 1.0)
+
+        let under = rgb.toGray(-30)
+        #expect(abs(under.r - (-30.0 / 255.0)) < 0.001)
+        #expect(under.r < 0.0)
+
+        // .hsb では init(hue:) 側が彩度・明度をクランプする
+        var hsb = ColorModeConfig()
+        hsb.space = .hsb
+        let clamped = hsb.toColor(0, 500, 500)
+        #expect(abs(clamped.r - 1.0) < 0.001)
+        #expect(abs(clamped.g - 0.0) < 0.001)
     }
 
     @Test("clearColor conversion")

@@ -18,7 +18,7 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 - **Tier 1（Core 非依存）**: MetaphorAudio / MetaphorNetwork / MetaphorPhysics / MetaphorML / MetaphorVideo
 - **Tier 2（MetaphorCore 依存）**: MetaphorNoise / MetaphorMPS / MetaphorCoreImage / MetaphorRenderGraph / MetaphorSceneGraph / MetaphorSyphon
 
-`MetaphorSyphon` は Syphon 出力（旧 Core 内蔵、Issue #73 で分離）。`Syphon` binaryTarget はこのターゲットだけが持ちます。`MetaphorCore` 単体は Syphon 非依存の純粋な描画コアで、出力は `MetaphorOutputRegistry` 経由で疎結合（`import metaphor` 利用者はロード時の自動登録により従来どおり `config.syphon` 等で手軽に Syphon 出力可能）。
+Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのターゲットだけ。`MetaphorCore` は Syphon 非依存で、出力は `MetaphorOutputRegistry` 経由（`import metaphor` なら自動登録により従来どおり `config.syphon` が使えます）。
 
 アンブレラターゲット `Sources/metaphor/` はブリッジ拡張（`Sketch+AudioBridge.swift` 等）を持ち、`import metaphor` 利用者に `createAudioInput()` / `createOSCReceiver()` / `createPhysics2D()` などの便利メソッドを提供します。
 
@@ -28,6 +28,7 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 make setup    # 初回: サブモジュール初期化 + Syphon.xcframework ビルド
 make build    # swift build
 make test     # swift test
+make ci-check # CI と同条件（-Xswiftc -warnings-as-errors）で build + test — push 前に通す
 make check    # セットアップ状態を確認（Syphon.xcframework / submodules）
 make llms-txt # llms.txt（AI 向け API リファレンス）を生成
 ```
@@ -42,15 +43,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 ### 自動生成される AI 向けファイル
 
-`llms.txt` と `docs/ai/examples-index.{md,json}` はチェックインされていますが **生成物** です。手で編集しないこと。入力を変えたら push 前に再生成します。
-
-| 出力 | 入力 |
-|---|---|
-| `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` |
-| `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` |
-| `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` |
-
-`make setup` が入れる pre-push フックが陳腐化を検出して push を中断します（CI も safety net として再生成）。生成器は決定的であること（全コレクションをソート）——非決定的出力は auto-fix bot が毎回 push する原因になります。
+`llms.txt` / `docs/ai/examples-index.{md,json}` / `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` は生成物です。手で編集せず、入力を変えたら push 前に再生成します（pre-push フックと CI が陳腐化を検出、llms.txt はセッション終了時の Stop hook でも自動再生成）。入力と再生成コマンドの対応表は [DEVELOPMENT.md](DEVELOPMENT.md) の「生成物の管理」、Sources 編集時は metaphor-contrib:generated-artifacts スキルが手順を案内します。
 
 ## アーキテクチャ
 
@@ -80,62 +73,50 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 - **compute・particles・postFX・GIF・orbitControl**: `Sketch+Advanced.swift`
 - **ブリッジ**（audio/video/physics/network/noise/scene/render graph）: `Sketch+AudioBridge.swift`, `Sketch+VideoBridge.swift`, `Sketch+PhysicsBridge.swift`, `Sketch+NetworkBridge.swift`, `Sketch+NoiseBridge.swift`, `Sketch+SceneGraphBridge.swift`, `Sketch+RenderGraphBridge.swift`
 - **Probe（AI）**（probe, MetaphorProbePlugin）: `Sketch+Probe.swift`
+- **Parameter Store**（`@Param`, params, ParameterPlugin, `gui.params()`）: `Parameters/*.swift`, `Sketch+Params.swift`, `UI/ParameterGUI+Params.swift`
 - **スタンドアロン noise()**: `Noise.swift`
 
 ## ドキュメント階層（真実の在処）
 
-- **CLAUDE.md（本ファイル）**: 玄関口 / コンセプト / 地図 / 規約
-- **[docs/README.md](docs/README.md)**: docs/ 全体の地図（読者別の入口・真実の在処の一覧）
-- **[DEVELOPMENT.md](DEVELOPMENT.md)**: ライブラリ本体開発者向けのセットアップ・コマンド・生成物の管理
-- **`llms.txt`**: 公開 API シグネチャ（生成物）
-- **[docs/ai/README.md](docs/ai/README.md)**: 実装デバッグ・拡張ノート。スケッチ作者向けは `docs/ai/for-sketch-authors.md` と `docs/ai/examples-index.md`
-- **[CONTRACT.md](CONTRACT.md)**: metaphor ⇄ metaphor-cli のクロスリポジトリ契約
-- **[docs/adr/](docs/adr/)**: 設計判断の蓄積（Architecture Decision Records）
-- **[docs/design/](docs/design/)**: 進行中プロジェクトの設計ドキュメント
-- **[docs/releasing.md](docs/releasing.md)**: リリース手順
-- **[CHANGELOG.md](CHANGELOG.md)**: 利用者向けの変更履歴（Keep a Changelog・英語）。**ユーザー影響のある変更を入れたら CHANGELOG.md ではなく [`changelog.d/`](changelog.d/README.md) に 1 ファイル置く**（`<slug>.<category>.md`。破壊的変更は `.breaking.md`）。リリース時に `scripts/changelog.py` が集約・昇格する。どちらも空のままだとリリースが中断する
+読者別の入口・ディレクトリ構成・「どれが正か」の一覧は [docs/README.md](docs/README.md) が正本です。本ファイルは玄関口 / コンセプト / 地図 / 規約に徹します。エージェントが最頻で参照するのは次の 4 つ:
 
-仕様の根拠は `docs/adr/`、コードの触り方は本ファイルと `docs/ai/`、API は `llms.txt` が真実の在処です。
+- **`llms.txt`**: 公開 API シグネチャ（生成物）
+- **[docs/ai/README.md](docs/ai/README.md)**: 実装デバッグ・拡張ノート
+- **[docs/adr/](docs/adr/)**: 設計判断の根拠
+- **[CONTRACT.md](CONTRACT.md)**: metaphor ⇄ metaphor-cli の契約
+
+**ユーザー影響のある変更を入れたら [CHANGELOG.md](CHANGELOG.md) ではなく [`changelog.d/`](changelog.d/README.md) に 1 ファイル置く**（`<slug>.<category>.md`。破壊的変更は `.breaking.md`）。リリース時に集約・昇格され、どちらも空のままだとリリースが中断します。
 
 ## AI Probe
 
-`MetaphorProbePlugin` を有効化すると、スケッチが「いま見えている画像」と「内部状態」を AI エージェントへ渡せます。
-
-- **有効化**: 環境変数 `METAPHOR_PROBE=1` で自動登録、または `SketchConfig(plugins: [PluginFactory { MetaphorProbePlugin() }])`。
-- **やり取り**: AI が `.metaphor/probe/request.json` を書き、次フレームで処理。出力は `.metaphor/probe/current/frame.{png,json}`（`.tmp` 経由のアトミックリネーム）。
-- **状態報告**: スケッチの `draw()` 内で `probe("particles.count", n)`（未登録時は no-op）。
-- 複数フレーム取得（`frames`/`every`）やスキーマ（`frame.json` の `schemaVersion` 現行値を含む）の詳細は [CONTRACT.md](CONTRACT.md) を参照。例: `Examples/Samples/ProbeSnapshot`。
+`MetaphorProbePlugin`（環境変数 `METAPHOR_PROBE=1` で自動登録）を有効化すると、実行中スケッチの「いま見えている画像」と「内部状態」を AI エージェントへ渡せます。wire format・複数フレーム取得・スキーマの詳細は [CONTRACT.md](CONTRACT.md)、例は `Examples/Samples/ProbeSnapshot`。
 
 ## クロスリポジトリ契約（metaphor ⇄ metaphor-cli）
 
-`metaphor-cli`（別リポジトリ `shinyaoguri/metaphor-cli`）は本リポジトリを Swift ライブラリとして依存しませんが、**実行時/バイナリ契約**（環境変数、stdin JSON Lines 入力、Probe ファイル、Syphon Release pin）で結合しています。
-
-**重要（エージェント向け）**: 以下に触れる変更は metaphor 単独で完了できません。常に metaphor-cli を同時更新し、両リポの `CONTRACT.md` を揃え、`./scripts/check-contract.sh` が green であることを確認してください。片方のみで作業する場合は、もう片方に対応する PR/Issue を立てること。対象・変更ルールの全体は **[CONTRACT.md](CONTRACT.md)** を参照。
+`metaphor-cli`（別リポジトリ `shinyaoguri/metaphor-cli`）とは実行時/バイナリ契約（環境変数、stdin JSON Lines 入力、Probe ファイル、Syphon Release pin）で結合しています。**契約対象に触れる変更は metaphor 単独で完了できません** — 常に metaphor-cli 側と揃えます。対象・変更ルールは [CONTRACT.md](CONTRACT.md) が正本で、契約ファイルに触れると metaphor-contrib:cross-repo-contract スキルが手順を案内します。
 
 ## 規約
 
 - Swift Testing フレームワーク（`@Suite`, `@Test`）を使う。XCTest は使わない。
+- **ドキュメントの画像はリポジトリに置かず Gyazo へ上げて外部 URL で参照する**（`![alt](https://i.gyazo.com/<hash>.png)`）。DocC は `.docc/Resources/` に画像を置かない（[ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)。DocC は WebP を無言で落とすため動きは GIF、ダーク/Retina の出し分けは効かない）。チュートリアル `docs/tutorial/` も同様で、**画像は `make tutorial-shots` が撮影・アップロード・本文の URL 書き戻しまで行う**（[ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)。台帳は `docs/tutorial/images/manifest.json`、動きはアニメーション WebP のまま、本文の URL を手で書かない）。アセットは不変・追記型で、撮り直しは新規アップロード + URL 更新とし、古い URL は消さない。
 - 新しい example は既存のレイアウト `Examples/{Category}/{Subcategory}/{Name}/` に従い、各々が自己完結した SwiftPM パッケージ（[Examples/README.md](Examples/README.md) 参照）。追加後は `make examples-index` で索引を再生成。
 
 ## ブランチ運用（GitHub Flow）
 
-- **`main`** が唯一の長命ブランチかつデフォルト。すべての作業は PR 経由で main へ戻る。ルールセットで保護（PR 必須、`build-and-test` 必須、直接 push 不可、**squash のみ**）。
-- 非自明な作業（新機能、1〜2 行を超える修正、リファクタ、複数コミットに跨る変更）は main からブランチを切る。命名は kebab-case + カテゴリ接頭辞（`feature/` `fix/` `refactor/` `chore/` `docs/`）。`release/<tag>` は Release ワークフロー予約。
-
-```bash
-git checkout -b feature/<name>          # main から
-gh pr create --base main                # リリースは --label release:minor 等を付与
-gh pr merge --squash --delete-branch    # squash のみ、ブランチ自動削除
-```
-
-リリースは PR の `release:*` ラベル駆動（手順は [docs/releasing.md](docs/releasing.md)）。一般的な git 規約（Conventional Commits、1 コミット 1 関心など）はグローバル CLAUDE.md にあり、ここでは繰り返しません。
+- `main` が唯一の長命ブランチかつデフォルト。すべての作業は PR 経由で main へ戻る。ルールセットで保護（PR 必須、集約ゲート `ci-gate` 必須、直接 push 不可、**squash のみ**）。
+- `release/<tag>` は Release ワークフロー予約。リリースは**週次トレイン**（月曜 09:00 JST に `main` の履歴から bump を導く）。PR 側でリリースのために行う操作は無く、急ぐときだけ `release:now` ラベルで即時に出す（手順は [docs/releasing.md](docs/releasing.md)）。
+- ブランチ命名・Conventional Commits・1 コミット 1 関心などの一般的な git 規約はグローバル CLAUDE.md にあり、ここでは繰り返しません。
 
 ### Claude への注記
 
-- **push / merge はグローバル CLAUDE.md の基準で進める**: コミットログと PR 本文（目的・変更点・確認方法）を丁寧に書き、必須チェック `build-and-test` が green なら、指示を待たず `gh pr merge` まで進めてよい。force push・履歴の書き換えなど不可逆な操作のみ事前にユーザーへ確認。
+- push / merge の判断基準（丁寧なコミットログと PR 本文・green なら指示を待たず merge・不可逆操作のみ事前確認）はグローバル CLAUDE.md に従う。
 - squash merge のみ。PR タイトル/本文に最終コミットメッセージを 1 本きれいに書く（ブランチ上の各コミットは使い捨て）。
+- merge は `gh pr merge --squash --auto` で手離れさせる（CI green で自動 merge され、BEHIND でも追随不要 — [docs/releasing.md](docs/releasing.md) の "Merging PRs"）。green を待つために CI を watch して手動 merge する運用はしない。
+- ただし**赤い CI を残したままセッションを終えない**。push した PR の CI は Stop hook（個人環境の `repo-standards` プラグインが供給。このリポには同梱していない）が見張り、赤いまま終わろうとすると失敗ジョブとログ取得コマンドを添えて差し戻してくる。そのまま原因を直して追加コミットする（自動修正は 3 回で打ち切り、それ以降は状況を報告して人間に返す）。仕組みの詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の「CI が赤いまま終わらせない（Stop hook）」。
+- 描画結果が変わる PR には before/after 画像を、**動きが変わる PR には GIF も**載せる（手順は [DEVELOPMENT.md](DEVELOPMENT.md) の「PR に見た目の証跡を載せる」）。
+- 並行してエージェント/PR を走らせるときの合流点ルール: 同時 in-flight PR は 3 本程度まで / 同じファイル群（特に Sources 全域・生成物）を触るタスク同士は直列に / Sources 系と docs 系を混ぜてバッチを組む / 生成物が conflict したら `git merge origin/main` 後に再生成すれば常に正。
 - merge 後は main に戻って pull し、`git fetch -p` でローカルブランチを掃除する。
 
 ### 気付きは Issue へ
 
-本プロジェクトはまだ問題が残っている前提で開発しています。作業中に本題以外のバグ・ドキュメント不備・改善アイデアに気付いたら、**その場で直そうとせず、気軽に `gh issue create` で Issue を立ててください**（重複がないか `gh issue list --search` で軽く確認）。小さな気付きの起票も歓迎で、確信が持てないものは「提案」として立てて構いません。CLI 側の事象なら `shinyaoguri/metaphor-cli` に、両リポに跨るものは両方に立てて相互リンクします（[CONTRACT.md](CONTRACT.md) 参照）。
+本題以外のバグ・ドキュメント不備・改善アイデアはその場で直さず、気軽に Issue を起票する（手順は metaphor-contrib:quick-issue スキル）。CLI 側の事象は `shinyaoguri/metaphor-cli` へ、両リポに跨るものは両方に立てて相互リンクします（[CONTRACT.md](CONTRACT.md) 参照）。

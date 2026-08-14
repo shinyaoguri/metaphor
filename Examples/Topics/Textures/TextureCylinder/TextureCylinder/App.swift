@@ -42,25 +42,26 @@ final class TextureCylinder: Sketch {
         rotateY(map(mouseX, 0, width, -.pi, .pi))
 
         // Cylinder tube
-        beginShape(.triangleStrip)
+        beginShape3D(.triangleStrip)
         texture(img)
         for i in 0..<tubeRes {
             let x = tubeX[i] * 100
             let z = tubeY[i] * 100
-            vertex(x, -100, z)
-            vertex(x, 100, z)
+            let u = Float(i) / Float(tubeRes - 1)
+            vertex(x, -100, z, u, 0)
+            vertex(x, 100, z, u, 1)
         }
-        endShape()
+        endShape3D()
 
         // Side quad
-        beginShape(.triangles)
+        beginShape3D(.triangles)
         texture(img)
-        vertex(0, -100, 0)
-        vertex(100, -100, 0)
-        vertex(100, 100, 0)
-        vertex(0, -100, 0)
-        vertex(100, 100, 0)
-        vertex(0, 100, 0)
-        endShape()
+        vertex(0, -100, 0, 0, 0)
+        vertex(100, -100, 0, 1, 0)
+        vertex(100, 100, 0, 1, 1)
+        vertex(0, -100, 0, 0, 0)
+        vertex(100, 100, 0, 1, 1)
+        vertex(0, 100, 0, 0, 1)
+        endShape3D()
     }
 }

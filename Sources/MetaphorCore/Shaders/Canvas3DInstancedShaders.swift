@@ -11,6 +11,8 @@ enum Canvas3DInstancedShaders {
     static let vertexFunctionName = "metaphor_canvas3DInstancedVertex"
     /// 非テクスチャインスタンス描画フラグメントシェーダーのMSL関数名。
     static let fragmentFunctionName = "metaphor_canvas3DInstancedFragment"
+    /// ワイヤーフレーム（stroke）用インスタンス描画頂点シェーダーのMSL関数名。
+    static let wireVertexFunctionName = "metaphor_canvas3DInstancedWireVertex"
     /// テクスチャ付きインスタンス描画頂点シェーダーのMSL関数名。
     static let texturedVertexFunctionName = "metaphor_canvas3DTexInstancedVertex"
     /// テクスチャ付きインスタンス描画フラグメントシェーダーのMSL関数名。

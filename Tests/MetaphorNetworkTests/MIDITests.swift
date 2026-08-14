@@ -162,6 +162,114 @@ struct MIDIEventListParsingTests {
     }
 }
 
+// MARK: - 7-bit data bytes
+
+/// UMP word の data1 (bit 8-15) と data2 (bit 0-7) を 8-bit のまま取り出します。
+/// 7-bit でマスクして読むと範囲外ビットの混入自体が見えなくなるため、
+/// 検証側はワイヤ上のバイトをそのまま取ります。
+private func dataBytes(of word: UInt32) -> (data1: UInt8, data2: UInt8) {
+    (UInt8((word >> 8) & 0xFF), UInt8(word & 0xFF))
+}
+
+/// MIDI 1.0 Channel Voice メッセージの data byte は 7-bit。API の型は `UInt8`
+/// なので 128〜255 も渡せてしまい、そのまま UMP word へ載せると規格外の
+/// メッセージを送っていた (#583)。範囲外は 127 へ clamp する。
+@Suite("MIDI 7-bit data bytes")
+struct MIDIDataByteRangeTests {
+
+    @Test("in-range data bytes pass through unchanged", arguments: [UInt8(0), 1, 64, 100, 126, 127])
+    func inRangeUnchanged(value: UInt8) {
+        let word = MIDIManager.makeChannelVoiceWord(status: 0x90, data1: value, data2: value)
+        let bytes = dataBytes(of: word)
+        #expect(bytes.data1 == value)
+        #expect(bytes.data2 == value)
+    }
+
+    @Test("out-of-range data bytes are clamped to 127", arguments: [UInt8(128), 129, 200, 255])
+    func outOfRangeClamped(value: UInt8) {
+        let word = MIDIManager.makeChannelVoiceWord(status: 0x90, data1: value, data2: value)
+        let bytes = dataBytes(of: word)
+        // mask (& 0x7F) だと 128 → 0、255 → 127 と折り返して別の値に化ける
+        #expect(bytes.data1 == 127)
+        #expect(bytes.data2 == 127)
+    }
+
+    /// 折り返しを許すと velocity 128 が 0 になり、Note On が Note Off の意味に
+    /// なる（`isNoteOn` は data2 > 0）。clamp ならその取り違えが起きない。
+    @Test("velocity above the range stays a Note On")
+    func loudVelocityStaysNoteOn() {
+        let word = MIDIManager.makeChannelVoiceWord(status: 0x90, data1: 60, data2: 200)
+        let bytes = dataBytes(of: word)
+        #expect(bytes.data2 == 127)
+
+        let messages = parseSingleWord(word)
+        #expect(messages.count == 1)
+        #expect(messages.first?.isNoteOn == true)
+        #expect(messages.first?.isNoteOff == false)
+        #expect(messages.first?.velocity == 127)
+    }
+
+    /// note 128 を折り返すと最高音のつもりが最低音になる。
+    @Test("note above the range stays at the top of the range")
+    func highNoteStaysHigh() {
+        let word = MIDIManager.makeChannelVoiceWord(status: 0x90, data1: 130, data2: 100)
+        #expect(dataBytes(of: word).data1 == 127)
+    }
+
+    /// data byte の clamp が status byte（上位ニブル + channel）と UMP の
+    /// message type を巻き添えにしないこと。
+    @Test("status byte and UMP message type survive clamping", arguments: [UInt8(0x90), 0x80, 0xB0, 0x9F, 0xBF])
+    func statusPreserved(status: UInt8) {
+        let word = MIDIManager.makeChannelVoiceWord(status: status, data1: 255, data2: 255)
+        #expect(UInt8((word >> 16) & 0xFF) == status)
+        #expect((word >> 28) & 0x0F == 2, "MIDI 1.0 Channel Voice は UMP message type 2")
+    }
+
+    /// 既存の channel マスク（`0x90 | (channel & 0x0F)`）は送信 API 側にあり、
+    /// data byte の clamp を入れても意味が変わらないこと。
+    @Test("channel mask keeps wrapping as before")
+    func channelMaskUnchanged() {
+        let word = MIDIManager.makeChannelVoiceWord(status: 0x90 | (UInt8(20) & 0x0F), data1: 60, data2: 100)
+        #expect(UInt8((word >> 16) & 0xFF) == 0x94, "channel 20 は 4 へ折り返す（従来どおり）")
+    }
+
+    /// `MIDIMessage` は受信経路（`parseEventList`）では常に 7-bit だが、公開
+    /// 初期化子だけ抜けていた。`pitchBendValue` / `normalizedControlValue` は
+    /// 7-bit を前提に計算するため、ここでも不変条件を保つ。
+    @Test("MIDIMessage clamps its data bytes")
+    func messageInitClamps() {
+        let msg = MIDIMessage(status: 0xB0, channel: 0, data1: 200, data2: 255)
+        #expect(msg.data1 == 127)
+        #expect(msg.data2 == 127)
+        #expect(msg.normalizedControlValue == 1.0)
+    }
+
+    @Test("MIDIMessage keeps in-range data bytes")
+    func messageInitInRange() {
+        let msg = MIDIMessage(status: 0x90, channel: 3, data1: 60, data2: 127)
+        #expect(msg.data1 == 60)
+        #expect(msg.data2 == 127)
+        #expect(msg.channel == 3)
+        #expect(msg.status == 0x90)
+    }
+}
+
+/// 単一ワードの `MIDIEventList` を組んでパースします。
+private func parseSingleWord(_ word: UInt32) -> [MIDIMessage] {
+    let capacity = 256
+    let rawPtr = UnsafeMutableRawPointer.allocate(
+        byteCount: capacity, alignment: MemoryLayout<MIDIEventList>.alignment)
+    defer { rawPtr.deallocate() }
+    let listPtr = rawPtr.assumingMemoryBound(to: MIDIEventList.self)
+
+    var packet = MIDIEventListInit(listPtr, ._1_0)
+    var word = word
+    packet = MIDIEventListAdd(listPtr, capacity, packet, 1, 1, &word)
+    _ = packet
+
+    return MIDIManager.parseEventList(UnsafePointer(listPtr))
+}
+
 // MARK: - MIDIMessageBuffer
 
 @Suite("MIDI message buffer")

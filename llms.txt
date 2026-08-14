@@ -31,7 +31,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 
 SPM dependency:
 ```swift
-.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.0")
+.package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0")
 ```
 
 ## Architecture Notes
@@ -72,6 +72,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var mouseX: Float { get }` -- 現在のマウス x 座標。
 - `var mouseY: Float { get }` -- 現在のマウス y 座標。
 - `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。
+- `var params: ParameterStore { get }` -- `@Param` で宣言されたパラメータのストア。
 - `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
 - `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
 - `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
@@ -124,6 +125,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func cone(radius: Float, height: Float, detail: Int = 24)` -- 円錐を描画します。
 - `func copy(_ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float)` -- キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
 - `func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer` -- リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
+- `func createBoxMesh(_ size: Float) -> Mesh?` -- 同じ寸法の立方体メッシュを生成します（描画はしません）。
+- `func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh?` -- ボックスのメッシュを生成します（描画はしません）。
 - `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
 - `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
 - `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
@@ -131,6 +134,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice` -- 名前でカメラを選択してキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
 - `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice` -- カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
 - `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
+- `func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- 円錐のメッシュを生成します（描画はしません）。
+- `func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- 円柱のメッシュを生成します（描画はしません）。
 - `func createDynamicMesh() -> DynamicMesh` -- 新しい空のダイナミックメッシュを作成します。
 - `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
 - `func createGraphics(_ w: Int, _ h: Int) -> Graphics?` -- 2D オフスクリーングラフィックスバッファを作成します。
@@ -148,11 +153,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createOSCSender(host: String, port: UInt16) -> OSCSender?` -- OSC メッセージ送信用のセンダーを作成します。
 - `func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem` -- GPU パーティクルシステムを作成します。
 - `func createPhysics2D(cellSize: Float = 50) -> Physics2D` -- 2D物理シミュレーションワールドを作成します。
+- `func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh?` -- 平面のメッシュを生成します（描画はしません）。
 - `func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect` -- MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
 - `func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer` -- GPU アクセラレーションによるレイ交差クエリ用のレイトレーサーを作成します。
 - `func createShape() -> MShape` -- カスタムジオメトリ用の空のリテインドシェイプを作成します。
 - `func createShape(_ kind: ShapeKind) -> MShape` -- ``ShapeKind`` からリテインドシェイプを作成します。
 - `func createSourcePass(label: String, width: Int, height: Int) -> SourcePass?` -- レンダーグラフ用のソースパスを作成します。
+- `func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh?` -- 球のメッシュを生成します（描画はしません）。
+- `func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh?` -- トーラスのメッシュを生成します（描画はしません）。
 - `func createVector(_ x: Float = 0, _ y: Float = 0) -> Vec2` -- 2D ベクトルを作成します（Processing PVector 互換）。
 - `func createVector(_ x: Float, _ y: Float, _ z: Float) -> Vec3` -- 3D ベクトルを作成します（Processing PVector 互換）。
 - `func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow?` -- マルチウィンドウ出力用のセカンダリウィンドウを作成します。
@@ -162,6 +170,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func curveTightness(_ t: Float)` -- Catmull-Rom スプラインカーブの張り具合を設定します。
 - `func curveVertex(_ x: Float, _ y: Float)` -- 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
 - `func cylinder(radius: Float, height: Float, detail: Int = 24)` -- 円柱を描画します。
+- `func decodeState<T>(_ data: Data, as type: T.Type = T.self) -> T? where T : Decodable` -- ``restoreState(_:)`` で受け取ったデータをデコードします。失敗したら `nil`。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float)` -- デフォルト色のディレクショナルライトを追加します。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` -- 色を指定してディレクショナルライトを追加します。
 - `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
@@ -170,6 +179,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
 - `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
+- `func drawInstanced(_ mesh: Mesh, transforms: [float4x4])` -- 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
+- `func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color])` -- 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
 - `func drawParticles(_ system: ParticleSystem)` -- パーティクルシステムを描画します（``draw()`` 内で呼び出してください）。
 - `func drawScene(_ root: Node)` -- 指定ルートノードからシーングラフを描画します。
 - `func dynamicMesh(_ mesh: DynamicMesh)` -- ダイナミックメッシュを描画します。
@@ -180,6 +191,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enableFeedback()` -- フレームバッファフィードバック（前フレームアクセス）を有効にします。
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
+- `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
 - `func endContour()` -- 現在のコンター定義を終了します。
 - `func endFrameRecord()` -- フレーム連番の記録を停止します。
@@ -293,6 +305,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
 - `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
+- `func restoreState(_ data: Data)` -- ``saveState()`` が返した状態を復元します（オプション）。
 - `func rotate(_ angle: Float)` -- 現在の変換に回転を適用します。
 - `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
 - `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
@@ -302,6 +315,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
 - `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
 - `func saveJSON(_ value: some Encodable, _ path: String, pretty: Bool = true) throws` -- `Encodable` な値（``JSONValue`` を含む）を JSON ファイルへ書き込みます。
+- `func saveState() -> Data?` -- リロードをまたいで保持したい状態を返します（オプション）。
 - `func saveStrings(_ lines: [String], _ path: String) throws` -- 行の配列をテキストファイルへ書き込みます（UTF-8・各行に改行を付与）。
 - `func saveTable(_ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true) throws` -- ``Table`` を CSV/TSV ファイルへ書き込みます。
 - `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
@@ -362,6 +376,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func vertex(_ x: Float, _ y: Float, _ color: Color)` -- 現在のシェイプに頂点カラー付き 2D 頂点を追加します。
 - `func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color)` -- 現在のシェイプに頂点カラー付き 3D 頂点を追加します。
 - `func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float)` -- 現在のシェイプにテクスチャ座標付き 2D 頂点を追加します。
+- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float)` -- 現在のシェイプにテクスチャ座標付き 3D 頂点を追加します。
 
 ## Core Types
 
@@ -377,7 +392,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `protocol Interpolatable` -- 2つの値の間で線形補間をサポートする型を定義します。
 
-- `static func interpolate(from: Self, to: Self, t: Float) -> Self` -- パラメータ t（0.0〜1.0）で2つの値を線形補間します。
+- `static func interpolate(from: Self, to: Self, t: Float) -> Self` -- パラメータ t で2つの値を線形補間します。
 
 ### `protocol MetaphorOutputPlugin : MetaphorPlugin` -- 最終フレームを外部へ出力（publish / stream / record）するプラグインのマーカープロトコル。
 
@@ -394,6 +409,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func onStop()` -- レンダーループ停止時に呼ばれます。
 - `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)` -- フレームがオフスクリーンテクスチャにレンダリングされた後に呼ばれます。
 - `func pre(commandBuffer: any MTLCommandBuffer, time: Double)` -- 各フレームの開始時、レンダリング前に呼ばれます。
+
+### `protocol ParamRepresentable` -- `@Param` で宣言できる Swift 型。
+
+- `static var paramTypeTag: String { get }` -- この型が写る型タグ（`params.json` の `type`）。
+- `var paramValue: ParamValue { get }` -- ストアが保持する値表現へ変換します。
+- `init?(paramValue: ParamValue)` -- ストアの値表現から復元します。型が合わないときは `nil`。
 
 ### `protocol PostEffect : AnyObject` -- レンダリング済みフレームに適用されるポストプロセスエフェクト
 
@@ -428,6 +449,37 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(x: Float, y: Float, diameter: Float, color: Color = .white)` -- Creates a circle instance from scalar coordinates, diameter, and ``Color``.
 - `init(x: Float, y: Float, diameter: Float, color: SIMD4<Float>)` -- Creates a circle instance from scalar coordinates, diameter, and SIMD color.
 
+### `struct Color` -- 浮動小数点成分を持つ RGBA カラー。
+
+- `var a: Float` -- アルファ（不透明度）成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+- `var b: Float` -- 青成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+- `static let black: Color` -- 純粋な黒。
+- `static let blue: Color` -- 純粋な青。
+- `static let clear: Color` -- 完全に透明な黒。
+- `var clearColor: MTLClearColor { get }` -- Metal レンダーパスで使用するための `MTLClearColor` としてカラーを返します。
+- `static let cyan: Color` -- 純粋なシアン。
+- `var g: Float` -- 緑成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+- `static let green: Color` -- 純粋な緑。
+- `static let magenta: Color` -- 純粋なマゼンタ。
+- `static let orange: Color` -- オレンジ。
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `var r: Float` -- 赤成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+- `static let red: Color` -- 純粋な赤。
+- `var simd: SIMD4<Float> { get }` -- カラーを (r, g, b, a) 順の `SIMD4<Float>` として返します。
+- `static let white: Color` -- 純粋な白。
+- `static let yellow: Color` -- 純粋な黄。
+- `init(_ simd: SIMD4<Float>)` -- (r, g, b, a) として解釈される `SIMD4<Float>` ベクトルからカラーを作成します。
+- `init(gray: Float, alpha: Float = 1.0)` -- グレースケールカラーを作成します。0.0 が黒、1.0 が白。
+- `init(hex: UInt32)` -- 0xRRGGBB または 0xAARRGGBB 形式の整数16進数値からカラーを作成します。
+- `init?(hex: String)` -- "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+- `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- 色相、彩度、明度の成分からカラーを作成します。
+- `init?(paramValue: ParamValue)`
+- `init(r: Float, g: Float, b: Float, a: Float = 1.0)` -- 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
+- `static func interpolate(from: Color, to: Color, t: Float) -> Color`
+- `func lerp(to other: Color, t: Float) -> Color` -- このカラーと別のカラーの間を線形補間します。
+- `func withAlpha(_ alpha: Float) -> Color` -- 指定されたアルファ値を持つ新しいカラーを返します。
+
 ### `struct DrawingStyle` -- Canvas2D と Canvas3D で共有される描画スタイルプロパティを保持します。
 
 - `var colorModeConfig: ColorModeConfig` -- カラーモード設定。
@@ -435,6 +487,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var hasFill: Bool` -- 塗りつぶしが有効かどうか。
 - `var hasStroke: Bool` -- ストロークが有効かどうか。
 - `var strokeColor: SIMD4<Float>` -- ストローク色（RGBA）。
+
+### `struct ParamDescriptor` -- パラメータの宣言情報（名前・型タグ・レンジ・選択肢）。
+
+- `let choices: [String]?` -- `string` 型の合法値。指定時、範囲外の値は拒否される。
+- `let max: Double?` -- 上限（同上）。
+- `let min: Double?` -- 下限（数値型のみ。外部からの書き込みはこの範囲にクランプされる）。
+- `let name: String` -- ストア内の一意な名前。既定はプロパティ名（`@Param var radius` → `radius`）。
+- `let type: String` -- 型タグ（`float` / `int` / `bool` / `string` / `color` / `vec2` / `vec3`）。
 
 ### `struct PluginFactory` -- ``SketchConfig`` で使用するプラグインインスタンスを生成するファクトリ。
 
@@ -459,6 +519,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var height: Int` -- オフスクリーンテクスチャの高さ（ピクセル単位）。
 - `var msaa: Int` -- MSAA（マルチサンプルアンチエイリアス）のサンプル数（既定 `4`）。
 - `var plugins: [PluginFactory]` -- スケッチセットアップ時に登録するプラグインファクトリ。
+- `var preserveClock: Bool` -- リロードをまたいで時計（`frameCount` / `time`）を復元するか（既定 `false`）。
 - `var preventAppNap: Bool` -- スケッチ実行中に macOS の App Nap を抑止するか（既定 `true`）。
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
 - `var syphon: Bool` -- Syphon 出力を有効化するか（既定 `false`）。
@@ -466,7 +527,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, preserveClock: Bool = false, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
 ### `struct SketchWindowConfig` -- セカンダリスケッチウィンドウの設定。
 
@@ -530,6 +591,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let canvas3DTexturedFragment: String` -- Canvas3D テクスチャ付きフラグメントシェーダーのMSL関数名。
 - `static let canvas3DTexturedVertex: String` -- Canvas3D テクスチャ付き頂点シェーダーのMSL関数名。
 - `static let canvas3DVertex: String` -- Canvas3D 頂点シェーダーのMSL関数名。
+- `static let canvas3DWireVertex: String` -- Canvas3D ワイヤーフレーム（stroke）頂点シェーダーのMSL関数名。
 - `static let flatColorFragment: String` -- フラットカラーフラグメントシェーダーのMSL関数名。
 - `static let flatColorVertex: String` -- フラットカラー頂点シェーダーのMSL関数名。
 - `static let litFragment: String` -- ライティング付きフラグメントシェーダーのMSL関数名。
@@ -765,6 +827,25 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case released`
 - `case scrolled`
 
+### `enum ParamSetOutcome` -- 外部（AI エージェント / GUI）からの書き込み結果。
+
+- `case applied` -- 適用された（クランプされた場合は `clampedTo` に実際の値の説明が入る）。
+- `case rejectedChoice` -- `choices` に無い文字列。
+- `case typeMismatch` -- 宣言された型と違う JSON 値。
+- `case unknownName` -- 宣言されていない名前。
+
+### `enum ParamValue` -- Parameter Store が保持できる値の型セット（v1）。
+
+- `case bool(Bool)`
+- `case color(Float, Float, Float, Float)`
+- `case float(Double)`
+- `case int(Int)`
+- `case string(String)`
+- `case vec2(Float, Float)`
+- `case vec3(Float, Float, Float)`
+- `var typeTag: String { get }` -- `params.json` の `type` フィールドに書き出す型タグ。
+- `func encode(to encoder: any Encoder) throws`
+
 ### `enum ParticleForce` -- 各フレームでパーティクルに適用できるフォースの種類を定義します。
 
 - `case attraction(x: Float, y: Float, z: Float, strength: Float)` -- 指定した強度でのポイントへの引力
@@ -907,7 +988,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class AutoSubsystemManager` -- 登録された ``SketchSubsystem`` 群のライフサイクルと毎フレーム更新を自動で駆動する
 
 - `let pluginID: String`
-- `init(_ subsystems: [any SketchSubsystem], pluginID: String = "org.metaphor.auto-subsystems")` -- - subsystems: 自動駆動するサブシステム群（登録順に更新されます）。
+- `init(_ subsystems: [any SketchSubsystem], pluginID: String = "org.metaphor.auto-subsystems")`
 - `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
 - `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
 - `func onAttach(renderer: MetaphorRenderer)`
@@ -933,6 +1014,48 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var radius: Float`
 - `init(radius: Float = 5.0)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
+
+### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
+
+- （ほか 85 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var colorModeConfig: ColorModeConfig`
+- `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
+- `var fillColor: SIMD4<Float>`
+- `var hasFill: Bool`
+- `var hasStroke: Bool`
+- `let height: Float` -- キャンバスの高さ（ピクセル単位）。
+- `var strokeColor: SIMD4<Float>`
+- `let width: Float` -- キャンバスの幅（ピクセル単位）。
+- `init(device: any MTLDevice, shaderLibrary: ShaderLibrary, depthStencilCache: DepthStencilCache, width: Float, height: Float, sampleCount: Int = 1) throws` -- 個別のコンポーネントからキャンバスを生成します。
+- `convenience init(renderer: MetaphorRenderer) throws` -- ``MetaphorRenderer`` インスタンスからキャンバスを生成します。
+- `func begin(encoder: (any MTLRenderCommandEncoder)?, bufferIndex: Int = 0)` -- 指定のレンダーコマンドエンコーダーで新しい描画フレームを開始します。
+- `func clearTextCache()` -- テキスト描画キャッシュ（テクスチャとグリフアトラス）をすべて破棄します。
+- `func end()` -- 蓄積されたすべての頂点をフラッシュし、エンコーダーを解放してフレームを終了します。
+- `func flush()` -- カラー、テクスチャ、インスタンスを含むすべての保留中の描画バッチをフラッシュします。
+- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- モデル座標を現在の 2D 変換でスクリーン座標へ変換します。
+- `func syncStyle(_ style: DrawingStyle)`
+
+### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
+
+- （ほか 72 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `var colorModeConfig: ColorModeConfig`
+- `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
+- `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
+- `var currentViewProjection: float4x4 { get }` -- 現在のビュー投影行列を返します。
+- `var fillColor: SIMD4<Float>`
+- `var hasFill: Bool`
+- `var hasStroke: Bool`
+- `let height: Float` -- 3D キャンバスの高さ（ポイント単位）。
+- `var strokeColor: SIMD4<Float>`
+- `let width: Float` -- 3D キャンバスの幅（ポイント単位）。
+- `init(device: any MTLDevice, shaderLibrary: ShaderLibrary, depthStencilCache: DepthStencilCache, width: Float, height: Float, sampleCount: Int = 1) throws` -- 明示的な Metal リソースと寸法でキャンバスを生成します。
+- `convenience init(renderer: MetaphorRenderer) throws` -- レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
+- `func clearCustomPipelineCache()` -- カスタムパイプラインキャッシュをクリアします。通常、シェーダーホットリロード後に呼び出します。
+- `func clearMeshCache()` -- メッシュキャッシュをクリアし、キャッシュ済みの GPU メッシュバッファをすべて解放します。
+- `func popState()` -- 直前に保存した状態を復元します。
+- `func pushState()` -- 変換、スタイル、マテリアルを含む全状態を保存します。
+- `func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- モデル座標を現在のモデル変換・カメラ・投影でスクリーン座標へ変換します。
+- `func syncStyle(_ style: DrawingStyle)`
 
 ### `final class CaptureDevice` -- カメラからのライブビデオフレームをキャプチャし、Metal テクスチャとして提供します。
 
@@ -996,6 +1119,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class DynamicMesh` -- 頂点を動的に追加・変更できる3Dメッシュを提供します。
 
+- `var hasUVs: Bool { get }` -- このメッシュが UV 座標を持つかどうか。
 - `var indexBuffer: (any MTLBuffer)? { get }` -- インデックスバッファを返します（ensureBuffers 呼び出し後に有効）。
 - `var indexCount: Int { get }` -- インデックス数
 - `var vertexCount: Int { get }` -- 頂点数
@@ -1004,6 +1128,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func addColor(_ color: SIMD4<Float>)` -- SIMD4 値を使用して、次に追加される頂点に適用するカラーを設定します。
 - `func addIndex(_ i: UInt32)` -- インデックスを1つ追加します。
 - `func addNormal(_ normal: SIMD3<Float>)` -- 次に追加される頂点に適用する法線を設定します。
+- `func addTexCoord(_ uv: SIMD2<Float>)` -- 次に追加される頂点に適用するテクスチャ座標を設定します。
+- `func addTexCoord(_ u: Float, _ v: Float)` -- 次に追加される頂点に適用するテクスチャ座標を設定します。
 - `func addTriangle(_ i0: UInt32, _ i1: UInt32, _ i2: UInt32)` -- 三角形を構成する3つのインデックスを追加します。
 - `func addVertex(_ position: SIMD3<Float>)` -- 指定位置に頂点を追加します。
 - `func addVertex(_ x: Float, _ y: Float, _ z: Float)` -- 指定された x, y, z 座標に頂点を追加します。
@@ -1011,6 +1137,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func getVertex(_ index: Int) -> SIMD3<Float>` -- 指定インデックスの頂点位置を返します。
 - `func setColor(_ index: Int, _ color: SIMD4<Float>)` -- 指定インデックスの頂点カラーを設定します。
 - `func setNormal(_ index: Int, _ normal: SIMD3<Float>)` -- 指定インデックスの頂点法線を設定します。
+- `func setTexCoord(_ index: Int, _ uv: SIMD2<Float>)` -- 指定インデックスの頂点のテクスチャ座標を設定します。
 - `func setVertex(_ index: Int, _ position: SIMD3<Float>)` -- 指定インデックスの頂点位置を設定します。
 
 ### `final class GIFExporter` -- キャプチャしたフレームをアニメーションGIFファイルとしてエクスポートします。
@@ -1048,7 +1175,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 53 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 55 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
@@ -1267,6 +1394,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3)` -- カメラを指定された状態にリセットします。
 - `func update()` -- 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
 
+### `@propertyWrapper final class Param<Value> where Value : ParamRepresentable` -- スケッチのプロパティを **Parameter Store のパラメータとして宣言**する
+
+- `let choices: [String]?` -- `string` の合法値。
+- `let max: Double?` -- 上限（数値型のみ）。
+- `let min: Double?` -- 下限（数値型のみ）。
+- `var projectedValue: Param<Value> { get }` -- `$radius` で宣言情報（レンジ・選択肢・登録名）へアクセスします。
+- `var wrappedValue: Value { get set }`
+- `init(wrappedValue: Value, _ name: String? = nil, min: Double? = nil, max: Double? = nil, choices: [String]? = nil)`
+
 ### `final class ParameterGUI` -- ランタイムでパラメータを調整するための軽量イミディエートモードGUIを提供します。
 
 - `var backgroundColor: Color` -- パネルの背景色
@@ -1288,9 +1424,40 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func colorPicker(_ label: String, _ value: inout Color, canvas: Canvas2D, input: InputManager)` -- R/G/B スライダーで構成されるシンプルなカラーピッカーを描画します。
 - `func drawBackground(canvas: Canvas2D)` -- パネル背景を描画します（`begin()` の後、ウィジェットの前に呼び出し）。
 - `func end() -> (Float, Float, Float, Float)` -- 現在のGUIレイアウトフレームを終了します（`draw()` の末尾で呼び出し）。
+- `func param(_ name: String)` -- 名前で 1 つのパラメータを描画します（型に応じたウィジェットが選ばれます）。
+- `func param(_ name: String, store: ParameterStore, canvas: Canvas2D, input: InputManager)` -- 描画先とストアを明示して 1 つのパラメータを描画します。
+- `func params() -> (Float, Float, Float, Float)` -- 宣言された全ての `@Param` を、宣言順に自動レイアウトして描画します。
+- `func params(store: ParameterStore, canvas: Canvas2D, input: InputManager) -> (Float, Float, Float, Float)` -- 描画先とストアを明示して自動パネルを描画します（テスト・自前の GUI インスタンス向け）。
 - `func slider(_ label: String, _ value: inout Float, min minVal: Float = 0, max maxVal: Float = 1, canvas: Canvas2D, input: InputManager)` -- スライダーウィジェットを描画し、バインドされた値を更新します。
 - `func toggle(_ label: String, _ value: inout Bool, canvas: Canvas2D, input: InputManager)` -- トグルウィジェットを描画し、バインドされた値を更新します。
 - `func updateInput(input: InputManager)` -- 内部入力トラッキング状態を更新します（各フレームの末尾で呼び出し）。
+
+### `final class ParameterPlugin` -- `@Param` で宣言されたパラメータをファイル契約（`.metaphor/params/`）へ橋渡しする
+
+- `let config: ParameterStoreConfig` -- プラグイン設定。
+- `static let id: String`
+- `let pluginID: String`
+- `init(config: ParameterStoreConfig = ParameterStoreConfig())`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
+
+### `final class ParameterStore` -- `@Param` で宣言されたパラメータの実体を束ねるストア。
+
+- `var isEmpty: Bool { get }` -- パラメータが 1 つも宣言されていないか。
+- `var names: [String] { get }` -- 宣言順のパラメータ名（`params.json` の並び順 = 宣言順で決定的）。
+- `var revision: Int { get }` -- 値が変わるたびに増える単調カウンタ。`params.json` にエコーされます。
+- `init()`
+- `func descriptor(_ name: String) -> ParamDescriptor?` -- 宣言情報（型・レンジ・選択肢）を返します。
+- `func setValue(_ value: ParamValue, for name: String) -> ParamSetOutcome` -- 外部クライアント（GUI / AI）からの書き込み。
+- `func value(_ name: String) -> ParamValue?` -- 現在値を返します。未宣言の名前は `nil`。
 
 ### `final class ParticleSystem` -- Metal コンピュートシェーダーを使用した GPU ベースパーティクルシステムを駆動します。
 
@@ -1351,6 +1518,34 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func reload(key: String, source: String) throws` -- MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
 - `func reloadFromFile(key: String, path: String) throws` -- ディスク上のファイルからシェーダーをリロードし、既存ライブラリを置換します。
 
+### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
+
+- （ほか 220 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
+- `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
+- `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。
+- `var deltaTime: Float` -- 前フレームからの経過時間（秒単位）。
+- `var drawingStyle: DrawingStyle { get set }` -- 現在の共有描画スタイルを返します。
+- `var encoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダー。フレーム中のみ有効。
+- `var frameCount: Int` -- これまでにレンダリングされたフレーム数。
+- `let gifExporter: GIFExporter` -- GIF エクスポーターインスタンス。
+- `let gui: ParameterGUI` -- イミディエイトモードコントロール用のパラメータ GUI インスタンス。
+- `var height: Float { get }` -- キャンバスの高さ（ピクセル単位）。
+- `let input: InputManager` -- マウスとキーボードの状態を管理する入力マネージャ。
+- `var isLooping: Bool { get }` -- 描画ループが現在実行中かどうか。
+- `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
+- `let orbitCamera: OrbitCamera` -- オービットカメラインスタンス。
+- `let params: ParameterStore` -- `@Param` で宣言されたパラメータのストア（``gui`` の兄弟）。
+- `let renderer: MetaphorRenderer` -- 基盤のレンダラー（上級者向け）。
+- `let resourceLoader: ResourceLoader` -- バックグラウンドでの画像/モデル読み込み用の非同期リソースローダー。
+- `var time: Float` -- スケッチ開始からの経過時間（秒単位）。
+- `let tweenManager: TweenManager` -- 毎フレーム登録済みトゥイーンを自動更新するトゥイーンマネージャ。
+- `var width: Float { get }` -- キャンバスの幅（ピクセル単位）。
+- `func addCleanupHandler(_ handler: () -> Void)` -- クリーンアップハンドラを登録します。
+- `func performCleanup()` -- 登録されたクリーンアップハンドラを実行し、リストをクリアします。
+- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- 2D モデル座標のスクリーン座標を返します。
+- `func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- 3D モデル座標のスクリーン座標を返します。
+
 ### `final class SketchWindow` -- マルチウィンドウスケッチ用のセカンダリウィンドウ。
 
 - `let config: SketchWindowConfig` -- ウィンドウ設定。
@@ -1368,6 +1563,23 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func close()` -- このウィンドウを閉じリソースを解放します。
 - `func draw(_ closure: @MainActor (SketchContext) -> Void)` -- このウィンドウの描画クロージャを設定します。
 - `func onDraw(_ closure: @MainActor (SketchContext) -> Void)` -- 毎フレーム自動実行される永続的な描画クロージャを設定します。
+
+### `final class StatePlugin` -- リロードをまたいでスケッチの状態を運ぶプラグイン（保存側）。
+
+- `let config: SketchStateConfig` -- プラグイン設定。
+- `static let id: String`
+- `let pluginID: String`
+- `init(config: SketchStateConfig = SketchStateConfig())`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
 
 ### `final class Table` -- CSV/TSV の表データ。Processing の `Table` に相当します。
 
@@ -1389,12 +1601,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class TableRow` -- ``Table`` の 1 行。Processing の `TableRow` に相当します。
 
 - `var values: [String] { get }` -- この行のセル値の配列（列順）
-- `func getDouble(_ column: String) -> Double` -- 列名でセル値を Double として取得します。数値でなければ 0。
-- `func getDouble(_ index: Int) -> Double` -- 列インデックスでセル値を Double として取得します。数値でなければ 0。
-- `func getFloat(_ column: String) -> Float` -- 列名でセル値を Float として取得します。数値でなければ 0。
-- `func getFloat(_ index: Int) -> Float` -- 列インデックスでセル値を Float として取得します。数値でなければ 0。
-- `func getInt(_ column: String) -> Int` -- 列名でセル値を Int として取得します。数値でなければ 0。
-- `func getInt(_ index: Int) -> Int` -- 列インデックスでセル値を Int として取得します。数値でなければ 0。
+- `func getDouble(_ column: String) -> Double` -- 列名でセル値を Double として取得します。有限な数値でなければ 0。
+- `func getDouble(_ index: Int) -> Double` -- 列インデックスでセル値を Double として取得します。有限な数値でなければ 0。
+- `func getFloat(_ column: String) -> Float` -- 列名でセル値を Float として取得します。有限な数値でなければ 0。
+- `func getFloat(_ index: Int) -> Float` -- 列インデックスでセル値を Float として取得します。有限な数値でなければ 0。
+- `func getInt(_ column: String) -> Int` -- 列名でセル値を Int として取得します。Int として表現できなければ 0。
+- `func getInt(_ index: Int) -> Int` -- 列インデックスでセル値を Int として取得します。Int として表現できなければ 0。
 - `func getString(_ column: String) -> String` -- 列名でセル値を取得します。列が存在しなければ空文字列（警告つき）。
 - `func getString(_ index: Int) -> String` -- 列インデックスでセル値を取得します。範囲外は空文字列。
 - `func setDouble(_ column: String, _ value: Double)` -- 列名でセル値を Double として設定します。
@@ -1441,6 +1653,106 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `typealias Vec2 = SIMD2<Float>` -- `SIMD2<Float>` のエイリアスである2次元ベクトル。
 
 ### `typealias Vec3 = SIMD3<Float>` -- `SIMD3<Float>` のエイリアスである3次元ベクトル。
+
+### `extension Bool`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
+### `extension Double`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
+### `extension Float`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+- `static func interpolate(from: Float, to: Float, t: Float) -> Float`
+
+### `extension Int`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+
+### `extension MTLClearColor`
+
+- `static let black: MTLClearColor` -- 不透明黒のクリアカラー
+- `static let clear: MTLClearColor` -- 透明のクリアカラー
+- `static let white: MTLClearColor` -- 不透明白のクリアカラー
+
+### `extension SIMD2 where Scalar == Float`
+
+- `var magnitude: Float { get }` -- ベクトルの長さ（大きさ）を返します。
+- `var magnitudeSquared: Float { get }` -- 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+- `func angleBetween(_ other: SIMD2<Float>) -> Float` -- このベクトルと別のベクトルの間の符号付き角度をラジアンで計算します。
+- `func cross(_ other: SIMD2<Float>) -> Float` -- 3D外積のz成分に相当する2D外積を計算します。
+- `func dist(to other: SIMD2<Float>) -> Float` -- 別のベクトルまでのユークリッド距離を計算します。
+- `func dot(_ other: SIMD2<Float>) -> Float` -- 別のベクトルとの内積を計算します。
+- `static func fromAngle(_ angle: Float) -> SIMD2<Float>` -- 指定された角度から単位ベクトルを作成します。
+- `func heading() -> Float` -- 正のx軸から測定したベクトルの角度をラジアンで計算します。
+- `static func interpolate(from: SIMD2<Float>, to: SIMD2<Float>, t: Float) -> SIMD2<Float>`
+- `func lerp(to other: SIMD2<Float>, t: Float) -> SIMD2<Float>` -- 別のベクトルに向かって線形補間を行います。
+- `mutating func limit(_ max: Float)` -- このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+- `func limited(_ max: Float) -> SIMD2<Float>` -- 指定された最大値に大きさをクランプした新しいベクトルを返します。
+- `mutating func normalize()` -- このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+- `func normalized() -> SIMD2<Float>` -- 同じ方向を向いた単位ベクトルを返します。
+- `static func random2D() -> SIMD2<Float>` -- 均一に分布した方向を持つランダムな単位ベクトルを作成します。
+- `mutating func rotate(_ angle: Float)` -- このベクトルをその場で回転します（``rotated(_:)`` の mutating 版）。
+- `func rotated(_ angle: Float) -> SIMD2<Float>` -- 指定された角度で回転した新しいベクトルを返します。
+- `mutating func setMag(_ len: Float)` -- 方向を維持したまま、このベクトルの大きさをその場で設定します
+- `func withMagnitude(_ len: Float) -> SIMD2<Float>` -- 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+
+### `extension SIMD3 where Scalar == Float`
+
+- `var magnitude: Float { get }` -- ベクトルの長さ（大きさ）を返します。
+- `var magnitudeSquared: Float { get }` -- 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
+- `func angleBetween(_ other: SIMD3<Float>) -> Float` -- このベクトルと別のベクトルの間の符号なし角度をラジアンで計算します。
+- `func cross(_ other: SIMD3<Float>) -> SIMD3<Float>` -- 別のベクトルとの外積を計算します。
+- `func dist(to other: SIMD3<Float>) -> Float` -- 別のベクトルまでのユークリッド距離を計算します。
+- `func dot(_ other: SIMD3<Float>) -> Float` -- 別のベクトルとの内積を計算します。
+- `static func interpolate(from: SIMD3<Float>, to: SIMD3<Float>, t: Float) -> SIMD3<Float>`
+- `func lerp(to other: SIMD3<Float>, t: Float) -> SIMD3<Float>` -- 別のベクトルに向かって線形補間を行います。
+- `mutating func limit(_ max: Float)` -- このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+- `func limited(_ max: Float) -> SIMD3<Float>` -- 指定された最大値に大きさをクランプした新しいベクトルを返します。
+- `mutating func normalize()` -- このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+- `func normalized() -> SIMD3<Float>` -- 同じ方向を向いた単位ベクトルを返します。
+- `static func random3D() -> SIMD3<Float>` -- 単位球の表面上に均一に分布するランダムな単位ベクトルを作成します。
+- `mutating func setMag(_ len: Float)` -- 方向を維持したまま、このベクトルの大きさをその場で設定します
+- `func withMagnitude(_ len: Float) -> SIMD3<Float>` -- 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+
+### `extension SIMD4 where Scalar == Float`
+
+- `static func interpolate(from: SIMD4<Float>, to: SIMD4<Float>, t: Float) -> SIMD4<Float>`
+
+### `extension simd_float4x4`
+
+- `static let identity: float4x4` -- 単位行列を作成します。
+- `init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>)` -- look-at 方式のビュー行列を作成します。
+- `init(orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float)` -- 正射影行列を作成します。
+- `init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float)` -- 透視投影行列を作成します。
+- `init(rotationX angle: Float)` -- X軸まわりの回転行列を作成します。
+- `init(rotationY angle: Float)` -- Y軸まわりの回転行列を作成します。
+- `init(rotationZ angle: Float)` -- Z軸まわりの回転行列を作成します。
+- `init(scale: SIMD3<Float>)` -- 非均一スケール行列を作成します。
+- `init(scale: Float)` -- 均一スケール行列を作成します。
+- `init(translation: SIMD3<Float>)` -- 3Dベクトルから平行移動行列を作成します。
+
+### `extension String`
+
+- `static var paramTypeTag: String { get }`
+- `var paramValue: ParamValue { get }`
+- `init?(paramValue: ParamValue)`
 
 ## Utility Functions
 
@@ -1561,24 +1873,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## metaphor
 
-### AudioAnalyzer
+### `extension AudioAnalyzer`
 
 - `func onStart()`
 - `func onStop()`
 - `func update(deltaTime: Float)` -- 毎フレームの FFT/ビート解析更新。`deltaTime` は使わない（内部で前回時刻を持つ）。
 
-### Node
+### `extension Node`
 
 - `func syncFromPhysics(_ body: PhysicsBody2D)` -- 2D物理ボディからこのノードの XY 位置を同期します。
 - `func syncToPhysics(_ body: PhysicsBody2D)` -- このノードの XY 位置を2D物理ボディに書き戻します。
 
-### Physics2D
+### `extension Physics2D`
 
 - `func onStart()`
 - `func onStop()`
 - `func update(deltaTime: Float)` -- 物理ステップを進める。`deltaTime` をそのままタイムステップに使う。
 
-### VideoPlayer
+### `extension VideoPlayer`
 
 - `func onStart()`
 - `func onStop()`
@@ -1828,8 +2140,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let channel: UInt8` -- The MIDI channel (0-15).
 - `var controlNumber: UInt8 { get }` -- Returns the CC number (for Control Change messages).
 - `var controlValue: UInt8 { get }` -- Returns the CC value (for Control Change messages, 0-127).
-- `let data1: UInt8` -- The first data byte (note number or CC number).
-- `let data2: UInt8` -- The second data byte (velocity or CC value).
+- `let data1: UInt8` -- The first data byte (note number or CC number, 0-127).
+- `let data2: UInt8` -- The second data byte (velocity or CC value, 0-127).
 - `var isControlChange: Bool { get }` -- Indicates whether this is a Control Change message.
 - `var isNoteOff: Bool { get }` -- Indicates whether this is a Note Off message.
 - `var isNoteOn: Bool { get }` -- Indicates whether this is a Note On message.
@@ -2107,7 +2419,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## MetaphorSyphon
 
-### MetaphorRenderer
+### `extension MetaphorRenderer`
 
 - `var syphonOutput: SyphonOutput? { get }` -- An optional Syphon output for sharing video between applications.
 - `func startSyphonServer(name: String)` -- Starts a Syphon server under the given name for sharing textures between applications.

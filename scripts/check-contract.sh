@@ -79,6 +79,21 @@ case "$REPO" in
     # Schema version VALUES — a bump here is a breaking change; CONTRACT.md must move too.
     check "Sources/MetaphorCore/Probe/MetaphorProbePlugin.swift" \
       "schemaVersion: 4" "schemaVersion: 1"
+    # Parameter Store file protocol: root path, request file name, opt-out env var
+    # (contract point 7). The JSON structure is the canon of contract/params.schema.json
+    # and contract/param-set-request.schema.json (check-contract-schema.sh), so grep here
+    # is limited to non-JSON tokens plus the schemaVersion VALUE below.
+    check "Sources/MetaphorCore/Parameters/ParameterPlugin.swift" \
+      ".metaphor/params" "set-request.json" METAPHOR_PARAMS
+    check "Sources/MetaphorCore/Parameters/ParameterFile.swift" \
+      "currentSchemaVersion = 1"
+    # State preservation file protocol: root path, request file name, enable/disable env
+    # var and the restore env var (contract point 8). JSON structure is the canon of
+    # contract/state.schema.json + contract/state-save-request.schema.json.
+    check "Sources/MetaphorCore/State/StatePlugin.swift" \
+      ".metaphor/state" "save-request.json" METAPHOR_STATE METAPHOR_RESTORE_STATE
+    check "Sources/MetaphorCore/State/SketchStateFile.swift" \
+      "currentSchemaVersion = 1"
     # Syphon Release dispatch event_type fired to metaphor-cli (auto-bump, L2a).
     check ".github/workflows/release.yml" \
       "event_type=syphon-release"
@@ -112,6 +127,13 @@ case "$REPO" in
       "request.json.tmp"
     check "Sources/MetaphorCLICore/MCP/ProbeSequenceTool.swift" \
       "request.json.tmp"
+    # State handoff on reload: root path, atomic save-request write, and the restore env
+    # var handed to the next child (contract point 8).
+    check "Sources/MetaphorCLICore/StateHandoff.swift" \
+      ".metaphor" "save-request.json.tmp" METAPHOR_RESTORE_STATE
+    # watch opts the child into the state plugin explicitly (contract point 8).
+    check "Sources/MetaphorCLICore/WatchSession.swift" \
+      METAPHOR_STATE
     # Syphon.xcframework Release pin (binaryTarget fallback) — presence + format (contract point 1).
     check "Package.swift" \
       "releases/download/v" "checksum:"
@@ -122,6 +144,15 @@ case "$REPO" in
     # Syphon Release dispatch event_type received from metaphor (auto-bump, L2a).
     check ".github/workflows/syphon-bump.yml" \
       "syphon-release"
+    # Release-chain stage 2 -> 3 coupling: the bump PR's `chore:` title alone never
+    # releases — the release:patch label is the single thread that turns a merged pin
+    # bump into a cli release. The labeler (syphon-bump.yml) and the reader
+    # (release-on-merge.yml) must keep using the same label name (cli #117; see
+    # metaphor docs/release-pipeline.md for the chain).
+    check ".github/workflows/syphon-bump.yml" \
+      "release:patch"
+    check ".github/workflows/release-on-merge.yml" \
+      "release:patch"
     # AI doc filenames the `api_reference` MCP tool reads from the metaphor package.
     check "Sources/MetaphorCLICore/MCP/MetaphorDocsLocator.swift" \
       "llms.txt"

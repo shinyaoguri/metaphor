@@ -739,8 +739,16 @@ public final class MetaphorRenderer: NSObject {
         if isOfflineRendering {
             return Double(offlineFrameIndex) / offlineFrameRate
         }
-        return CACurrentMediaTime() - startTime
+        return CACurrentMediaTime() - startTime + clockOffset
     }
+
+    /// 実時間の経過に加算するオフセット（秒）。
+    ///
+    /// リロードで状態を引き継ぐとき（`config.preserveClock` + `METAPHOR_RESTORE_STATE`、
+    /// CONTRACT.md 契約点 8）に、直前のプロセスの経過時間をここへ入れて時計を継続させます。
+    /// 通常実行では常に 0 で、オフラインレンダリング（フレームインデックス由来の決定論的な
+    /// 時間）には影響しません。
+    var clockOffset: Double = 0
 
     /// オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。
     public var offlineDeltaTime: Double {
@@ -1103,6 +1111,9 @@ public final class MetaphorRenderer: NSObject {
         }
 
         input.updateFrame()
+        // このフレームの draw() が見た位置を、次フレームの pmouse 用に必ず保存する
+        // （早期 return する経路でも 1 フレームぶんの差を保つため defer で置く）。
+        defer { input.endFrame() }
         let time = elapsedTime
         frameRateTracker.record(at: CACurrentMediaTime())
 

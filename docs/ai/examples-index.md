@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 278
+Example count: 282
 
-Status: supported 258, partial 0, stub 10, obsolete 10
+Status: supported 262, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -16,6 +16,14 @@ Status: supported 258, partial 0, stub 10, obsolete 10
   literally.
 - Avoid `[stub]` (placeholder, blocked on a planned API) and `[obsolete]`
   (Processing/OpenGL-specific, won't be added) examples as references.
+- `shader` is assigned from the code: the sketch calls metaphor's shader /
+  post-process API (`addPostEffect`, `createPostEffect`, `createMaterial`,
+  `createEffectPass`, ...) or ships its own `.metal` source.
+  `cpu-approximation` marks the opposite case — a port of a Processing
+  sample whose original was GLSL, redone with CPU pixel loops. Everything
+  under `Examples/Topics/Shaders/` is `cpu-approximation`: read those for
+  the effect, never as shader references. 2D custom shaders
+  (`loadShader()` / `shader()`) are not implemented yet — issue #291.
 
 ## Machine-Readable Access
 
@@ -161,8 +169,8 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 
 - [DepthSort](../../Examples/Demos/Graphics/DepthSort) (Graphics) Tags: demos, depthsort, graphics.
 - [GetTessGroups](../../Examples/Demos/Graphics/GetTessGroups) [obsolete] (Graphics) -- Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal. Tags: demos, gettessgroups, graphics.
-- [LowLevelGLVboInterleaved](../../Examples/Demos/Graphics/LowLevelGLVboInterleaved) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvbointerleaved, shader.
-- [LowLevelGLVboSeparate](../../Examples/Demos/Graphics/LowLevelGLVboSeparate) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvboseparate, shader.
+- [LowLevelGLVboInterleaved](../../Examples/Demos/Graphics/LowLevelGLVboInterleaved) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvbointerleaved.
+- [LowLevelGLVboSeparate](../../Examples/Demos/Graphics/LowLevelGLVboSeparate) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvboseparate.
 - [MeshTweening](../../Examples/Demos/Graphics/MeshTweening) [stub] (Graphics) Tags: 3d, demos, graphics, meshtweening.
 - [MultipleWindows](../../Examples/Demos/Graphics/MultipleWindows) [obsolete] (Graphics) -- Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal. Tags: demos, graphics, multiplewindows.
 - [Particles](../../Examples/Demos/Graphics/Particles) [stub] (Graphics) Tags: demos, graphics, particles.
@@ -190,7 +198,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [OffscreenTest](../../Examples/Demos/Tests/OffscreenTest) (Tests) Tags: demos, offscreentest, tests.
 - [RedrawTest](../../Examples/Demos/Tests/RedrawTest) (Tests) Tags: demos, redrawtest, tests.
 - [ResizeTest](../../Examples/Demos/Tests/ResizeTest) (Tests) Tags: demos, resizetest, tests.
-- [SpecsTest](../../Examples/Demos/Tests/SpecsTest) [obsolete] (Tests) -- Requires the OpenGL specification-query API. metaphor is Metal-only and exposes no OpenGL introspection; non-goal. Tags: demos, shader, specstest, tests.
+- [SpecsTest](../../Examples/Demos/Tests/SpecsTest) [obsolete] (Tests) -- Requires the OpenGL specification-query API. metaphor is Metal-only and exposes no OpenGL introspection; non-goal. Tags: demos, specstest, tests.
 
 ## ML
 
@@ -206,16 +214,20 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 
 ## Samples
 
+- [DynamicMeshTexture](../../Examples/Samples/DynamicMeshTexture) Tags: 3d, dynamicmeshtexture, samples, typography.
+- [InstancedCubes](../../Examples/Samples/InstancedCubes) Tags: instancedcubes, samples.
 - [OSC Loopback](../../Examples/Samples/OSCLoopback) [Intermediate] -- Sends the mouse position over OSC with OSCSender and draws whatever an OSCReceiver on the same port gets back. Change the host/port to talk to TouchDesigner, Max, or TouchOSC instead of the local loopback. Tags: interaction, live, oscloopback, samples.
+- [ParameterPanel](../../Examples/Samples/ParameterPanel) Tags: parameterpanel, samples.
 - [PluginFPSLogger](../../Examples/Samples/PluginFPSLogger) Tags: pluginfpslogger, samples.
 - [PluginMouseTrail](../../Examples/Samples/PluginMouseTrail) Tags: interaction, pluginmousetrail, samples.
 - [ProbeBenchmark](../../Examples/Samples/ProbeBenchmark) Tags: probebenchmark, samples.
 - [ProbeSnapshot](../../Examples/Samples/ProbeSnapshot) Tags: probesnapshot, samples.
 - [RayTracing](../../Examples/Samples/RayTracing) Tags: 3d, raytracing, samples.
-- [RenderGraphCompose](../../Examples/Samples/RenderGraphCompose) Tags: rendergraphcompose, samples.
+- [RenderGraphCompose](../../Examples/Samples/RenderGraphCompose) Tags: rendergraphcompose, samples, shader.
 - [SVG Export](../../Examples/Samples/SVGExport) [Intermediate] -- Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVGRecord()/endSVGRecord() — the file is generated from the same draw calls as the raster output, so what y... Tags: export, interaction, samples, svgexport.
 - [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: samples, scenegraphbasics.
 - [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: samples, scenegraphhybrid.
+- [StatePreservation](../../Examples/Samples/StatePreservation) Tags: samples, statepreservation.
 - [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: live, samples, syphon, syphonmultiwindow.
 - [SyphonOutput](../../Examples/Samples/Syphon/SyphonOutput) (Syphon) Tags: live, samples, syphon, syphonoutput.
 - [SyphonTripleWindow](../../Examples/Samples/Syphon/SyphonTripleWindow) (Syphon) Tags: live, samples, syphon, syphontriplewindow.
@@ -259,7 +271,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [SaveFile1](../../Examples/Topics/File%20IO/SaveFile1) (File IO) Tags: file-io, savefile1, topics.
 - [SaveFile2](../../Examples/Topics/File%20IO/SaveFile2) (File IO) Tags: file-io, savefile2, topics.
 - [SaveFrames](../../Examples/Topics/File%20IO/SaveFrames) (File IO) Tags: file-io, saveframes, topics.
-- [SaveOneImage](../../Examples/Topics/File%20IO/SaveOneImage) [Intermediate] (File IO) -- The save() function allows you to save an image from the display window. In this example, the save() function is run when a mouse button is pressed. The image line.tif is saved to the same folder as the sketch's program... Tags: file-io, image, interaction, saveoneimage, topics.
+- [SaveOneImage](../../Examples/Topics/File%20IO/SaveOneImage) [Intermediate] (File IO) -- The save() function saves an image from the display window. Here it runs when a mouse button is pressed and writes output/line.png, relative to the launch directory. metaphor writes PNG, not Processing's TIFF. Tags: file-io, image, interaction, saveoneimage, topics.
 - [TileImages](../../Examples/Topics/File%20IO/TileImages) (File IO) Tags: file-io, image, tileimages, topics.
 - [Koch Curve](../../Examples/Topics/Fractals%20and%20L-Systems/Koch) [Advanced] (Fractals and L-Systems) -- Renders a simple fractal, the Koch snowflake. Each recursive level is drawn in sequence. Tags: fractals-and-l-systems, koch, topics.
 - [The Mandelbrot Set](../../Examples/Topics/Fractals%20and%20L-Systems/Mandelbrot) [Intermediate] (Fractals and L-Systems) -- Simple rendering of the Mandelbrot set. Tags: fractals-and-l-systems, image, mandelbrot, topics.
@@ -307,21 +319,21 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Moving On Curves](../../Examples/Topics/Motion/MovingOnCurves) [Intermediate] (Motion) -- In this example, the circles moves along the curve y = x^4. Click the mouse to have it move to a new position. Tags: interaction, motion, movingoncurves, topics.
 - [Non-orthogonal Reflection](../../Examples/Topics/Motion/Reflection1) [Advanced] (Motion) -- Based on the equation (R = 2N(NL)-L) where R is the reflection vector, N is the normal, and L is the incident vector. Tags: motion, reflection1, topics.
 - [Non-orthogonal Collision with Multiple Ground Segments](../../Examples/Topics/Motion/Reflection2) [Advanced] (Motion) -- Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move! Tags: motion, physics, reflection2, topics.
-- [BlurFilter](../../Examples/Topics/Shaders/BlurFilter) (Shaders) Tags: blurfilter, image, shader, shaders, topics.
-- [Conway](../../Examples/Topics/Shaders/Conway) (Shaders) Tags: conway, shader, shaders, topics.
-- [CustomBlend](../../Examples/Topics/Shaders/CustomBlend) (Shaders) Tags: customblend, shader, shaders, topics.
-- [Deform](../../Examples/Topics/Shaders/Deform) (Shaders) Tags: deform, shader, shaders, topics.
-- [DomeProjection](../../Examples/Topics/Shaders/DomeProjection) [obsolete] (Shaders) -- Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now. Tags: domeprojection, shader, shaders, topics.
-- [EdgeDetect](../../Examples/Topics/Shaders/EdgeDetect) (Shaders) Tags: edgedetect, shader, shaders, topics.
-- [EdgeFilter](../../Examples/Topics/Shaders/EdgeFilter) (Shaders) Tags: edgefilter, image, shader, shaders, topics.
-- [GlossyFishEye](../../Examples/Topics/Shaders/GlossyFishEye) (Shaders) Tags: glossyfisheye, shader, shaders, topics.
-- [ImageMask](../../Examples/Topics/Shaders/ImageMask) (Shaders) Tags: image, imagemask, shader, shaders, topics.
-- [InfiniteTiles](../../Examples/Topics/Shaders/InfiniteTiles) (Shaders) Tags: infinitetiles, shader, shaders, topics.
-- [Landscape](../../Examples/Topics/Shaders/Landscape) (Shaders) Tags: landscape, shader, shaders, topics.
-- [Monjori](../../Examples/Topics/Shaders/Monjori) (Shaders) Tags: monjori, shader, shaders, topics.
-- [Nebula](../../Examples/Topics/Shaders/Nebula) (Shaders) Tags: nebula, shader, shaders, topics.
-- [SepBlur](../../Examples/Topics/Shaders/SepBlur) (Shaders) Tags: sepblur, shader, shaders, topics.
-- [ToonShading](../../Examples/Topics/Shaders/ToonShading) (Shaders) Tags: shader, shaders, toonshading, topics.
+- [BlurFilter](../../Examples/Topics/Shaders/BlurFilter) (Shaders) Tags: blurfilter, cpu-approximation, image, shaders, topics.
+- [Conway](../../Examples/Topics/Shaders/Conway) (Shaders) Tags: conway, cpu-approximation, shaders, topics.
+- [CustomBlend](../../Examples/Topics/Shaders/CustomBlend) (Shaders) Tags: cpu-approximation, customblend, shaders, topics.
+- [Deform](../../Examples/Topics/Shaders/Deform) (Shaders) Tags: cpu-approximation, deform, shaders, topics.
+- [DomeProjection](../../Examples/Topics/Shaders/DomeProjection) [obsolete] (Shaders) -- Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now. Tags: domeprojection, shaders, topics.
+- [EdgeDetect](../../Examples/Topics/Shaders/EdgeDetect) (Shaders) Tags: cpu-approximation, edgedetect, shaders, topics.
+- [EdgeFilter](../../Examples/Topics/Shaders/EdgeFilter) (Shaders) Tags: cpu-approximation, edgefilter, image, shaders, topics.
+- [GlossyFishEye](../../Examples/Topics/Shaders/GlossyFishEye) (Shaders) Tags: cpu-approximation, glossyfisheye, shaders, topics.
+- [ImageMask](../../Examples/Topics/Shaders/ImageMask) (Shaders) Tags: cpu-approximation, image, imagemask, shaders, topics.
+- [InfiniteTiles](../../Examples/Topics/Shaders/InfiniteTiles) (Shaders) Tags: cpu-approximation, infinitetiles, shaders, topics.
+- [Landscape](../../Examples/Topics/Shaders/Landscape) (Shaders) Tags: cpu-approximation, landscape, shaders, topics.
+- [Monjori](../../Examples/Topics/Shaders/Monjori) (Shaders) Tags: cpu-approximation, monjori, shaders, topics.
+- [Nebula](../../Examples/Topics/Shaders/Nebula) (Shaders) Tags: cpu-approximation, nebula, shaders, topics.
+- [SepBlur](../../Examples/Topics/Shaders/SepBlur) (Shaders) Tags: cpu-approximation, sepblur, shaders, topics.
+- [ToonShading](../../Examples/Topics/Shaders/ToonShading) (Shaders) Tags: cpu-approximation, shaders, toonshading, topics.
 - [Flocking](../../Examples/Topics/Simulate/Flocking) [Advanced] (Simulate) -- An implementation of Craig Reynold's Boids program to simulate the flocking behavior of birds. Each boid steers itself based on rules of avoidance, alignment, and coherence. Click the mouse to add a new boid. Tags: flocking, interaction, simulate, topics.
 - [Forces (Gravity and Fluid Resistence) with Vectors](../../Examples/Topics/Simulate/ForcesWithVectors) [Advanced] (Simulate) -- Demonstration of multiple forces acting on bodies. Bodies experience gravity continuously and fluid resistance when in simulated water. Tags: forceswithvectors, physics, simulate, topics.
 - [GravitationalAttraction3D](../../Examples/Topics/Simulate/GravitationalAttraction3D) (Simulate) Tags: 3d, gravitationalattraction3d, simulate, topics.

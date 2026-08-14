@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)
+[![Reference](https://img.shields.io/badge/reference-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/)
 [![Swift 5.10+](https://img.shields.io/badge/Swift-5.10%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platform macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://developer.apple.com/macos/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -100,54 +100,34 @@ final class MySketch: Sketch {
 }
 ```
 
-| Lifecycle | Called when |
+`setup()` runs once at startup and `draw()` runs every frame. Everything past that — the coordinate system, colors and strokes, transforms, motion, input — is covered in order by the tutorial below.
+
+## Tutorial
+
+[docs/tutorial/](docs/tutorial/) holds a guided tutorial that assumes no Processing background. Read it in the browser at **[metaphor Tutorial](https://shinyaoguri.github.io/metaphor/en/tutorial/)**. Every section is one self-contained sketch: the code in the text is embedded from the real packages under [`Examples/Tutorial/`](Examples/Tutorial/), and the rendered images come from those same sketches, so **the code on the page runs as printed**.
+
+**The prose is Japanese for now** (an English edition is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548)); the code, API names, and images are language-independent.
+
+| Part | What you learn |
 |---|---|
-| `setup()` | Once at startup |
-| `compute()` | Every frame, before `draw` (for GPU compute) |
-| `draw()` | Every frame |
-| `mousePressed()` / `mouseDragged()` / `mouseScrolled()`, etc. | Mouse events |
-| `keyPressed()` / `keyReleased()` | Keyboard events |
+| [Part 1 — Getting started](docs/tutorial/01-getting-started.md) | Sketch skeleton (`config` / `setup()` / `draw()`), canvas and coordinates, live editing with `metaphor watch`, `noLoop()` / `frameRate()` |
+| [Part 2 — Drawing in 2D](docs/tutorial/02-drawing-2d.md) | Shape primitives, color, stroke styling, custom shapes, transforms with `push` / `pop`, text, images, pixels, blend modes |
+| [Part 3 — Motion](docs/tutorial/03-motion.md) | Time, `map` / `lerp`, easing, trigonometry, randomness, noise, vectors, particles |
+| [Part 4 — Handling input](docs/tutorial/04-input.md) | Mouse, keyboard, hit testing and hand-rolled UI, windows |
+| [Part 5 — Into 3D](docs/tutorial/05-3d.md) | Primitives, 3D transforms, cameras and projection, lighting, materials and PBR, shadows, textures, meshes and models, instancing |
+| [Part 6 — Using the GPU](docs/tutorial/06-gpu.md) | Compute kernels, GPU particles, post-processing, custom post effects |
+| [Part 7 — Media](docs/tutorial/07-media.md) | Microphone input, FFT analysis, camera input, video playback, machine learning |
+| [Part 8 — Connecting outward](docs/tutorial/08-connect.md) | OSC, MIDI, Syphon, exposing values with `@Param` |
+| [Part 9 — Shipping a piece](docs/tutorial/09-artwork.md) | Stills, video, GIF and SVG export, deterministic renders, long runs |
+| [Part 10 — Making things with an AI](docs/tutorial/10-ai.md) | The observation loop, declaring state with `probe()`, MCP, shared sessions, the context an AI needs |
 
-Use `noLoop()` to draw one frame and stop, `loop()` to resume, and `frameRate(n)` to specify FPS.
+<!-- tutorial-status: en-status -->Parts 1–10 are published<!-- /tutorial-status --> (Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)). The full outline lives in [docs/tutorial/README.md](docs/tutorial/README.md); an English translation is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548). Once you have read it, use the reference documentation below and [Examples](#examples).
 
-### Common functions
+### Reference documentation
 
-```swift
-// --- 2D shapes
-circle(x, y, diameter)
-rect(x, y, w, h)
-line(x1, y1, x2, y2)
-triangle(x1, y1, x2, y2, x3, y3)
-arc(x, y, w, h, start, stop)
-text("hello", x, y)
+The tutorial is meant to be read in order. To look up individual APIs, use these instead.
 
-// --- 3D shapes
-box(size)
-sphere(radius)
-plane(w, h)
-cylinder(radius: 0.5, height: 1)
-torus(ringRadius: 0.5, tubeRadius: 0.2)
-
-// --- Style (color defaults to 0–255, same as Processing; can be changed with colorMode)
-background(r, g, b)
-fill(r, g, b);  fill(gray)
-stroke(r, g, b); strokeWeight(2)
-noFill();  noStroke()
-blendMode(.additive)
-
-// --- Transforms (push/pop for stack)
-push()
-translate(x, y);  translate(x, y, z)
-rotate(angle);    rotateX(a); rotateY(a); rotateZ(a)
-scale(s)
-pop()
-
-// --- State / Utilities
-mouseX, mouseY, frameCount, deltaTime, width, height
-random(0, 1);  noise(x, y);  map(v, 0, 1, 100, 200)
-```
-
-The full API is in [`llms.txt`](llms.txt). To browse types and methods, see the **[API reference (DocC)](https://shinyaoguri.github.io/metaphor/documentation/metaphor/)** ([project site](https://shinyaoguri.github.io/metaphor/)). When hunting for "the Processing equivalent of X," [Examples](#examples) has quick answers.
+The full API is in [`llms.txt`](llms.txt). To browse types and methods, see the **[API reference (DocC)](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/)** ([project site](https://shinyaoguri.github.io/metaphor/)). When hunting for "the Processing equivalent of X," [Examples](#examples) has quick answers.
 
 Coming from Processing or p5.js? Start with **[docs/processing-migration-guide.md](docs/processing-migration-guide.md)** — API mapping tables by category (`size()` → `SketchConfig`, `PVector` → `Vec2`, `rectMode(CENTER)` → `rectMode(.center)`, …), the pitfalls that bite (value vs. reference types, `@MainActor`, the two color ranges, the 2D/3D transform split), and what is not implemented yet.
 
@@ -211,7 +191,7 @@ You can also add `metaphor` as a normal Swift Package dependency without the CLI
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.8.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0"),
 ]
 ```
 
@@ -226,7 +206,7 @@ On the target side:
 
 The library fully works this way (you can even generate code via AI with `llms.txt`). But the MCP loop that lets AI observe "what's on screen right now" needs the CLI (`metaphor mcp`). We recommend `metaphor new` for first-time use—`Package.swift`, templates, resource directories, AI guides, and update paths come built-in.
 
-To decide how to bound that version requirement, see [docs/api-stability-policy.md](docs/api-stability-policy.md) — what counts as public API, and what may break. [CHANGELOG.md](CHANGELOG.md) records every user-visible change, with breaking ones collected under `Breaking Changes`. While the version is `0.x`, **a minor release may break API**; `v0.9.0` freezes the API and runs under that policy from then on.
+To decide how to bound that version requirement, see [docs/api-stability-policy.md](docs/api-stability-policy.md) — what counts as public API, and what may break. [CHANGELOG.md](CHANGELOG.md) records every user-visible change, with breaking ones collected under `Breaking Changes`. While the version is `0.x`, **a minor release may break API**. `v0.9.0` announced an API freeze, but it was withdrawn — design work was still outstanding ([ADR-0009](docs/adr/0009-unfreeze-api-until-1-0.md)) — so the freeze starts at `v1.0.0`. Pin `.upToNextMinor(from: "0.9.0")` if you need to be insulated from that.
 
 ## Requirements
 
