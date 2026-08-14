@@ -133,14 +133,15 @@ ADR-0008 が Follow-up として積み残していたものでもある。
 
 ### Follow-ups / 残課題
 - ~~台帳の `width` / `height` を website 側の remark プラグインで焼き込む~~ **完了**
-  （`website/src/plugins/remark-tutorial-image-size.mjs`）。Astro は寸法が分からないと
+  （`website/src/plugins/remark-tutorial-images.mjs`）。Astro は寸法が分からないと
   毎ビルド全点へプローブのフェッチを飛ばしていた（取得キャッシュとは別経路なので
   `actions/cache` が当たっていても飛ぶ）。焼き込みで消え、キャッシュが温まった状態の
   ビルドは **約 19 秒 → 0.9 秒**になった。副作用としてレイアウトシフトの防止にもなる。
-- [#553](https://github.com/shinyaoguri/metaphor/issues/553)（`prefers-reduced-motion`）は
+- ~~[#553](https://github.com/shinyaoguri/metaphor/issues/553)（`prefers-reduced-motion`）は
   「`{節}.webp` ↔ `{節}.png` というファイル名の対」で静止画と動きを対応づける前提だった。
   外部化すると URL はハッシュになり、しかも website 側では両方 `.webp` になるため、
-  **台帳の `url` / `motion.url` の対**から引く形に変える必要がある。
+  **台帳の `url` / `motion.url` の対**から引く形に変える必要がある。~~ **完了** — 同じ
+  プラグインが台帳の `motion.url` を見て動きの側に印を付け、`global.css` が出し分ける。
 - 撮り直しのたびに Gyazo 側へ孤児 URL が溜まる（不変・追記型の帰結として受け入れる）。
   棚卸ししたくなったら台帳の git log が全 URL の履歴になっている。
 - Examples の画像（359 点・22.8 MiB。リポジトリのメディアの 86%）は手つかず。ゴールデン

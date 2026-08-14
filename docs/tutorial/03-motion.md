@@ -18,9 +18,9 @@ draft: false
 
 ## 3.1 時間を使う
 
-![時間の実行結果](https://i.gyazo.com/a3905609a2aae8bbe7dee3cdd1fd254b.png)
+![3 本の横線の上を進む点。frameCount・time・deltaTime の積算でそれぞれ位置が違い、下に実測値が出ている](https://i.gyazo.com/a3905609a2aae8bbe7dee3cdd1fd254b.png)
 
-![時間の動き](https://i.gyazo.com/e0dbd11a1c6af08fa2bfc523a8685f47.webp)
+![3 つの点が同時に左端から走り出し、どの時計を使うかで進み方がずれていく](https://i.gyazo.com/e0dbd11a1c6af08fa2bfc523a8685f47.webp)
 
 動きの出発点は「いまがいつか」を知ることです。`draw()` の中では 3 つの時計が使えます。
 
@@ -145,7 +145,7 @@ final class Time: Sketch {
 
 ## 3.2 数値を変換する
 
-![数値の変換の実行結果](https://i.gyazo.com/d9ad47839b0e52495d0ad035dec0046a.png)
+![map・constrain・lerp の 3 段に、0 から 100 の値を変換した円が横に並ぶ。値が上がるほど色が青からオレンジへ変わる](https://i.gyazo.com/d9ad47839b0e52495d0ad035dec0046a.png)
 
 時間から動きを作るとき、いちばん多い作業は**範囲の読み替え**です。0 から 1 で表された進み具合を、キャンバスの座標や色の濃さに移す、という変換がひたすら出てきます。metaphor には 4 つの関数があります。
 
@@ -247,9 +247,9 @@ final class Mapping: Sketch {
 
 ## 3.3 イージング
 
-![イージングの実行結果](https://i.gyazo.com/adb27aed65a57f762b0f73eaf23ec6c7.png)
+![白い輪（目標）へ向かう 3 つの円。イージングの係数が小さい円ほど後ろに取り残されている](https://i.gyazo.com/adb27aed65a57f762b0f73eaf23ec6c7.png)
 
-![イージングの動き](https://i.gyazo.com/69007e688968a82e15b53820f15861a0.webp)
+![3 つの円が目標の輪を追いかけ、近づくほど減速する。係数の小さい円ほど遅れて着く](https://i.gyazo.com/69007e688968a82e15b53820f15861a0.webp)
 
 目標の位置へ図形を動かすとき、いちばん素朴な書き方は「目標の座標をそのまま代入する」ことです。これだと図形は瞬間移動します。
 
@@ -373,9 +373,9 @@ final class Easing: Sketch {
 
 ## 3.4 三角関数で動かす
 
-![三角関数の実行結果](https://i.gyazo.com/528ae81542591e2af5742c3e83af2dbe.png)
+![左に角度を示す単位円、右にその角度から作った sin の波。波の上を黄色い点が進む](https://i.gyazo.com/528ae81542591e2af5742c3e83af2dbe.png)
 
-![三角関数の動き](https://i.gyazo.com/f9cfddc0c9bef07a7c49a78bb8fcafa4.webp)
+![単位円の腕が回り続け、右の波形が左へ流れていく](https://i.gyazo.com/f9cfddc0c9bef07a7c49a78bb8fcafa4.webp)
 
 まっすぐ進む動きの次は、**回る動き**と**揺れる動き**です。どちらも `sin()` と `cos()` の 2 つで書けます。
 
@@ -509,7 +509,7 @@ final class Trigonometry: Sketch {
 
 ## 3.5 乱数
 
-![乱数の実行結果](https://i.gyazo.com/dcee7686eb77c91d82193a8aea1459e5.png)
+![上が random(0, 1) の一様な赤いヒストグラム、下が randomGaussian() の釣鐘型をした緑のヒストグラム](https://i.gyazo.com/dcee7686eb77c91d82193a8aea1459e5.png)
 
 規則正しい動きに揺らぎを混ぜると、一気に生き物らしくなります。metaphor の乱数は 2 種類です。
 
@@ -633,7 +633,7 @@ final class RandomValues: Sketch {
 
 ## 3.6 ノイズ
 
-![ノイズの実行結果](https://i.gyazo.com/6a52759fc76feed26c2e20db146d9fd6.png)
+![上段は乱数のギザギザな赤い折れ線となめらかな緑のノイズ曲線の対比。下段は 2D ノイズを濃淡で描いた雲模様](https://i.gyazo.com/6a52759fc76feed26c2e20db146d9fd6.png)
 
 乱数には弱点があります。**隣同士に関係が無い**ことです。毎フレーム `random()` で位置を決めると、図形は暴れるだけで「動いて」は見えません。
 
@@ -762,9 +762,9 @@ final class NoiseBasics: Sketch {
 
 ## 3.7 ベクトル
 
-![ベクトルの実行結果](https://i.gyazo.com/c89bc9bf7dbdd534420048f1230e4f43.png)
+![重力で放物線を描き、床で跳ねた赤い円。通った跡が点線で残り、速度と重力の大きさが左上に出ている](https://i.gyazo.com/c89bc9bf7dbdd534420048f1230e4f43.png)
 
-![ベクトルの動き](https://i.gyazo.com/f92dd69e0691270d79edc1235ea8b1d9.webp)
+![赤い円が放物線を描いて落ち、床で跳ね返りながら軌跡を残していく](https://i.gyazo.com/f92dd69e0691270d79edc1235ea8b1d9.webp)
 
 位置を `x` と `y` の 2 変数で持つと、同じ計算を 2 回ずつ書くことになります。まとめて 1 つの値として扱うのが**ベクトル**です。metaphor では `Vec2`（2 次元）と `Vec3`（3 次元）を使います。実体は `SIMD2<Float>` / `SIMD3<Float>` なので、足し算・引き算・スカラー倍がそのまま書けます。
 
@@ -898,9 +898,9 @@ final class Vectors: Sketch {
 
 ## 3.8 たくさんのものを動かす
 
-![たくさんのものの実行結果](https://i.gyazo.com/73e1995a2750cb4fe14e52910b2e4941.png)
+![大きさも色も違う 80 個の円が、画面いっぱいに散らばっている](https://i.gyazo.com/73e1995a2750cb4fe14e52910b2e4941.png)
 
-![たくさんのものの動き](https://i.gyazo.com/312eaf7df9ec1026b7c07615e432a0e5.webp)
+![80 個の円がそれぞれの速度で動き、画面の端に当たると跳ね返る](https://i.gyazo.com/312eaf7df9ec1026b7c07615e432a0e5.webp)
 
 動くものが 1 つから 80 個になっても、書くことは増えません。**1 つぶんの状態を型にまとめ、配列で持つ**だけです。
 
@@ -1039,9 +1039,9 @@ final class ManyObjects: Sketch {
 
 ## 3.9 パーティクル
 
-![パーティクルの実行結果](https://i.gyazo.com/eebdb00db4e0410464ee2efd07d68d46.png)
+![画面の下から噴き上がる 249 個のオレンジ色の粒。上へ行くほど散って薄くなる](https://i.gyazo.com/eebdb00db4e0410464ee2efd07d68d46.png)
 
-![パーティクルの動き](https://i.gyazo.com/4e2ac8a91f229ae8275b891930d21b40.webp)
+![粒が下の口から次々に生まれて噴き上がり、上で消えていく。個数は釣り合ったまま増え続けない](https://i.gyazo.com/4e2ac8a91f229ae8275b891930d21b40.webp)
 
 前の節との違いは**数が変わる**ことです。パーティクル（粒子）は生まれて、動いて、消えます。`draw()` はこの 3 つを順に行うだけです。
 
@@ -1163,7 +1163,7 @@ final class Particles: Sketch {
 
 ## 3.10 数を増やす
 
-![数を増やす実行結果](https://i.gyazo.com/0eeff71f2a315ef3aae6eb9877b9aa54.png)
+![3 万個の粒で描いた紫と水色の渦巻き。中心から 3 本の腕が伸びている](https://i.gyazo.com/0eeff71f2a315ef3aae6eb9877b9aa54.png)
 
 3 万個の粒を渦に並べて回します。1 個ずつ描くのではなく、配列ごと 1 回で渡すのがこの節の主題です。
 

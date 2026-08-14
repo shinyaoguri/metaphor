@@ -2,7 +2,7 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import tailwindcss from '@tailwindcss/vite';
-import { remarkTutorialImageSize } from './src/plugins/remark-tutorial-image-size.mjs';
+import { remarkTutorialImages } from './src/plugins/remark-tutorial-images.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -29,12 +29,22 @@ export default defineConfig({
   // 取得結果のキャッシュ。既定は node_modules/.astro だが、CI は毎回 npm ci で
   // node_modules を作り直すため、そのままでは毎ビルド全点を取り直すことになる。
   // 外へ出して actions/cache の対象にする（.github/workflows/docs.yml）。
+  //
+  // 注意: ここには画像（assets/）だけでなく **content collection の描画済み HTML**
+  // （data-store.json）も入る。その鮮度は本文のファイルと content.config.ts だけで
+  // 決まり、**remark プラグインを直しても古い HTML が出続ける**（config digest は
+  // 関数を null に潰すので差が出ない）。CI はこのディレクトリを restore-keys 付きで
+  // 復元するため、本文を触らない website だけの変更が公開サイトへ出ないことになる。
+  // package.json の prebuild で毎回消している（描画は 25 ページで 1 秒強、画像の
+  // キャッシュは別ディレクトリなので効き続ける）。
   cacheDir: './.astro-cache',
   markdown: {
-    // 台帳が持つ縦横を本文へ焼き込み、Astro がリモート画像の寸法を取りに行くのを
-    // 止める（毎ビルド 65 回のラウンドトリップが消え、ビルドの成否が外部サービスに
-    // 繋がらなくなる）。副作用としてレイアウトシフトの防止にもなる。
-    remarkPlugins: [remarkTutorialImageSize],
+    // 台帳（images/manifest.json）を正に、本文の画像へ縦横を焼き込み、動きの証跡
+    // には印を付ける。前者は Astro がリモート画像の寸法を取りに行くのを止め（毎
+    // ビルド 65 回のラウンドトリップが消え、ビルドの成否が外部サービスに繋がら
+    // なくなる。レイアウトシフトの防止にもなる）、後者は prefers-reduced-motion の
+    // 読者に動くほうを出さないために使う。
+    remarkPlugins: [remarkTutorialImages],
     // Astro 組み込みの Shiki。LP の CodeExample.astro は Tailwind クラスを手書きした
     // 擬似ハイライトだが、チュートリアルは本物のトークナイザで色を付ける。
     shikiConfig: {
