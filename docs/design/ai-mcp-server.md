@@ -1,7 +1,9 @@
 # 設計ドキュメント: AI協調ローカルMCPサーバ（`metaphor mcp`）
 
 > ステータス: 実装済み（M1/M2 = metaphor-cli の `metaphor mcp`、M3 = README 反映 #91 完了）。
-> MCP ツールは `snapshot` / `capture_sequence` / `input` / `build_status` / `api_reference` の 5 つ。
+> MCP ツールは `snapshot` / `capture_sequence` / `input` / `params` / `set_param` /
+> `build_status` / `api_reference` の 7 つ（`params` / `set_param` は metaphor-cli v0.6.0 以降）。
+> 共有セッション（`metaphor watch` へアタッチ）で使えないのは `input` のみ。
 > 本書は当初の設計提案であり、確定仕様は実装・CONTRACT.md を正とする。
 > 対象: metaphor-cli（MCPサーバ本体）+ metaphor 本体（変更なし、契約の消費のみ）
 > 関連: Probe プラグイン、`InputInjectionPlugin`、ライブビューア（[live-viewer.md](./live-viewer.md)）、CONTRACT.md
@@ -70,8 +72,21 @@ AIエージェント ──MCP(JSON-RPC 2.0 / stdio)──→ metaphor mcp <sket
 `snapshot` が MCP の image content で **フレームをそのままエージェントに見せる**のが肝。
 これで「観測 → 編集 → 再観測 → 検証」が 1 インターフェイスで閉じる。
 
-> 実装追記: 上記 v1 の 3 ツールに加え、実装では `api_reference`（同梱 `llms.txt` / 作法ガイド /
-> サンプル索引を返す）と `capture_sequence`（§5.1）を加えた 5 ツールを露出している。
+> 実装追記: 上記の表は **v1 設計時点の 3 ツール**であり、現行の実装が露出しているのは
+> **7 ツール**である。v1 の 3 つに加えて `capture_sequence`（§5.1）、`api_reference`
+> （同梱 `llms.txt` / 作法ガイド / サンプル索引を返す）、および Parameter Store（契約点 7・
+> [live-tooling-params.md](./live-tooling-params.md) の A）を露出する `params` / `set_param`
+> が入っている。正典は metaphor-cli の `MCP/SketchToolHandler.swift` の `tools` 定義。
+>
+> | ツール | 追加時期 | 共有セッション |
+> |---|---|---|
+> | `snapshot` | v1 | 有効 |
+> | `input` | v1 | **無効**（操作はコード編集・[shared-session.md](./shared-session.md)） |
+> | `build_status` | v1 | 有効 |
+> | `capture_sequence` | 実装で追加（§5.1） | 有効 |
+> | `api_reference` | 実装で追加 | 有効 |
+> | `params` | metaphor-cli v0.6.0 | 有効 |
+> | `set_param` | metaphor-cli v0.6.0 | 有効 |
 
 将来候補（v1 には入れない）: `reload`（強制再ビルド）、`get_state`（新snapshotなしで直近frame.json）。
 

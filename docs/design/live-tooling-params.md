@@ -1,6 +1,15 @@
 # 設計: ライブツーリング基盤（Parameter Store / 状態保持リロード / インスペクタ / 往復レイテンシ）
 
-- **ステータス**: **A（Parameter Store）の D1 = ストアコア + `@Param` + `.metaphor/params/`（2026-08-07）/ D2 = `gui.params()` 自動パネル / D3 = `frame.json` の `params` 節（いずれも 2026-08-08）は実装済み**。B / C / D と A の残り（D4 cli の MCP ツール）は設計叩き台のまま。実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7）が正典
+- **ステータス**: **A（Parameter Store）と B（状態保持リロード）は producer / consumer とも実装・出荷済み。C（インスペクタ）/ D（往復レイテンシ）は設計叩き台のまま。** 実装 PR で確定した内容が正となり、契約変更は [CONTRACT.md](../../CONTRACT.md)（契約点 7 / 8）が正典
+
+  | 節 | producer（metaphor） | consumer（metaphor-cli） |
+  |---|---|---|
+  | **A. Parameter Store** | **実装済み** — D1 ストアコア + `@Param` + `.metaphor/params/`（2026-08-07）/ D2 `gui.params()` 自動パネル / D3 `frame.json` の `params` 節（いずれも 2026-08-08） | **実装済み** — D4 MCP ツール `params` / `set_param`（`MCP/ParameterStoreTool.swift`。metaphor-cli **v0.6.0 以降**で利用可能） |
+  | **B. 状態保持リロード** | **実装済み** — `saveState`/`restoreState` + `encodeState`/`decodeState` + `StatePlugin` + `METAPHOR_RESTORE_STATE` + `preserveClock` + 契約点 8（2026-08-10・#451） | **実装済み** — watch のリビルド監督シーケンス（`StateHandoff.swift`。metaphor-cli#105 → **v0.7.0 以降**） |
+  | **C. インスペクタ / シーン観測** | 叩き台（C1 / C2 / C3 とも未着手） | 叩き台 |
+  | **D. 往復レイテンシ** | 叩き台 | 叩き台 |
+
+  > A の D1〜D4 は本書 §A の実装計画上の分割で、B の「実装済み」記録は §B 末尾にもある。**部分実装を文書全体の draft / done の二値で表さない**ため、本表を単一の正とする（Issue [#585](https://github.com/shinyaoguri/metaphor/issues/585)）。
 - **親**: [roadmap-processing-unity.md](roadmap-processing-unity.md) の Epic C / D / H
 - **作成**: 2026-07-30
 
@@ -105,7 +114,7 @@ func restoreState(_ data: Data) {
 
 両方とも `Sketch` にデフォルト実装（nil / no-op）で「draw() 以外は全部任意」を維持。
 
-- **実装状況（2026-08-10・Issue #451）**: metaphor 側（フック + `encodeState`/`decodeState` + `StatePlugin` + `METAPHOR_RESTORE_STATE` + `preserveClock` + 契約点 8）は実装済み。cli 側の監督シーケンスは metaphor-cli#105。`state.json` は `params.json` と違い**同期書出**（consumer が ready を待つ時間がそのままリロードの待ち時間になるため）
+- **実装状況（2026-08-10・Issue #451）**: metaphor 側（フック + `encodeState`/`decodeState` + `StatePlugin` + `METAPHOR_RESTORE_STATE` + `preserveClock` + 契約点 8）は実装済み。cli 側の監督シーケンスも metaphor-cli#105（`StateHandoff.swift`）で**実装済み・v0.7.0 以降で出荷**。`state.json` は `params.json` と違い**同期書出**（consumer が ready を待つ時間がそのままリロードの待ち時間になるため）
 - **metaphor**: フック + ヘルパー + StatePlugin + env var — **M** / **metaphor-cli**: 監督シーケンス — **S**
 - **契約**: env var `METAPHOR_RESTORE_STATE`（契約点 2）+ state ファイル群（`user` 節はエンベロープのみスキーマ管理・中身は意図的に opaque）。クロスリポ同時 PR
 - **順序**: A の後（パラメータという「最も保持したい状態」は A だけでリロードを生存するため。B はシミュレーション状態と時計のため）

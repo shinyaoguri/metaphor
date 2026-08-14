@@ -39,7 +39,7 @@ this table.
 - **[adr/](adr/)** — Architecture Decision Records: an append-only log of design decisions. See [adr/README.md](adr/README.md) for the format
 - **[design/](design/)** — Design docs for in-progress / past projects. The implementation and [CONTRACT.md](../CONTRACT.md) are the source of truth for settled specs; these documents stay Japanese (see the language boundary below)
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Roadmap for attracting Processing / Unity users (living document, Epic list)
-  - [design/live-tooling-params.md](design/live-tooling-params.md) — Design draft for the Parameter Store / stateful reload / inspector
+  - [design/live-tooling-params.md](design/live-tooling-params.md) — Live-tooling foundations. The Parameter Store (A) and stateful reload (B) are implemented on both the producer and consumer sides; the inspector (C) and round-trip latency (D) are still drafts (per-section status is tabulated at the top of the document)
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 release readiness plan (review findings, prep tracks, release criteria)
 - **[releasing.md](releasing.md)** — Release procedure (weekly release train + `release:now` express), plus CHANGELOG promotion and release-note generation
 - **[release-pipeline.md](release-pipeline.md)** — Overview map of the three repositories (metaphor / metaphor-cli / homebrew-tap): dependency structure and the automated release chain, delegating details to releasing.md and metaphor-cli's docs (Japanese)

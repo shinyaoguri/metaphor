@@ -31,8 +31,12 @@ MCP は **stdio トランスポート**で、**クライアント（Claude Code�
 - **`metaphor watch` が誰の変更かに関係なく再ビルド・差し替え**
 
 つまり編集は「両者がディスクを書き、watch が 1 つだけ再ビルドする」で共有完了。
-**MCP に残る役割は観測だけ**（snapshot / build_status）。AI からの入力注入（`input`）は
-協調の必須要素ではなく、共有セッションでは**対象外**とする（操作はコード編集で行う）。
+**共有セッションで落ちるツールは `input` だけ**——AI からの入力注入（stdin JSON Lines）は
+子の stdin を watch が所有しているため使えず、かつ協調の必須要素でもないので**対象外**と
+する（操作はコード編集で行う）。残りは観測（`snapshot` / `capture_sequence` /
+`build_status`）と参照（`api_reference`）に加え、**パラメータ操作（`params` /
+`set_param`）も有効**である。後者は stdin ではなく `.metaphor/params/` のファイル契約
+（契約点 7）なので所有権の衝突が起きない。
 
 ## 4. 設計: 「所有者＝watch」「mcp＝アタッチする観測クライアント」
 
@@ -69,15 +73,19 @@ Claude Code ──MCP(stdio)──→ [ metaphor mcp ]（ATTACH：spawnしない
 - `metaphor mcp`:
   - 起動時に `session.json` を読み、**pid が生存していれば ATTACH**（spawn しない・
     build しない）。なければ従来どおり **自前で headless 子を spawn**（CI・単独利用を維持）。
-  - ATTACH 中: `snapshot`=Probe 往復、`build_status`=`build-status.json`。`input`（AI からの
-    入力注入）は**対象外**で、呼ばれたら明示メッセージを返す。
+  - ATTACH 中: `snapshot` / `capture_sequence`=Probe 往復、`build_status`=`build-status.json`、
+    `params` / `set_param`=`.metaphor/params/` 往復（契約点 7）、`api_reference`=同梱ドキュメント。
+    `input`（AI からの入力注入）だけが**対象外**で、呼ばれたら明示メッセージを返す。
 
 ## 5. 設計判断（確定）
 
 - **トランスポート＝ファイル IPC**。supervisor は既に `PollingFileWatcher` を回しており
   追加コストが小さい。観測（Probe）はファイル往復で十分。
-- **AI からの入力注入は対象外**。人間/AI ともに操作はコード編集で行う（`watch` が
-  再ビルドして反映）。共有セッションに入力チャネルは設けない。
+- **AI からの入力注入（HID）は対象外**。人間/AI ともに操作はコード編集で行う（`watch` が
+  再ビルドして反映）。共有セッションに stdin の入力チャネルは設けない。
+  ※ただし `@Param` の値だけは例外で、`set_param`（`.metaphor/params/` のファイル契約 =
+  契約点 7）が共有セッションでも効く。stdin と違い所有権の衝突が無く、人間の GUI
+  スライダーと同一ストアの対称なクライアントになるため。
 - **precedence**: 生存セッションがあれば mcp は必ず attach（build しない）→ 現状の
   「2 プロセスが同じ `.build` を奪い合う」競合が原理的に消滅。
 - **セッション断**: ATTACH 中に所有者 pid が消えたら**黙って self-spawn せず**、以後の
@@ -101,13 +109,17 @@ Claude Code ──MCP(stdio)──→ [ metaphor mcp ]（ATTACH：spawnしない
 
 ## 7. スコープ
 
-実装済み: 観測アタッチ（`snapshot` + `build_status`）。watch が Probe ON＋manifest＋
-build-status を公開し、mcp がアタッチして観測する。
+実装済み: `input` を除く**全 MCP ツールのアタッチ**。watch が Probe ON＋manifest＋
+build-status を公開し、mcp がアタッチして観測する（`snapshot` / `capture_sequence` /
+`build_status` / `api_reference`）。加えて `params` / `set_param` も有効で、AI は
+再ビルドなしに `@Param` の値を動かせる（`.metaphor/params/` のファイル契約 = 契約点 7。
+人間の GUI スライダーと同一ストアの対称なクライアントであり、ライブビューア窓にも
+即座に反映される）。
 
 スコープ外:
 
-- **AI からの入力注入（`input`）の共有**。共有セッションでは行わない（操作はコード編集）。
-  ※単独（self-spawn）モードの `input` は M2 の既存機能として残る。
+- **AI からの入力注入（`input`）の共有**。共有セッションでは行わない（操作はコード編集と
+  `set_param`）。※単独（self-spawn）モードの `input` は M2 の既存機能として残る。
 - 同一インスタンスを人間と AI が**両方とも操作**するフル双方向（live-viewer の
   `saveState`/`restoreState` 領域）。
 - 複数スケッチ／複数セッションの同時管理（セッションはスケッチディレクトリ単位）。
