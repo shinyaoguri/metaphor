@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "TextRotation",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "TextRotation"
+            path: "TextRotation",
+            resources: [.copy("Resources")]
         ),
     ]
 )

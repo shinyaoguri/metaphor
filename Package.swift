@@ -166,7 +166,7 @@ let package = Package(
         .testTarget(
             name: "metaphorTests",
             dependencies: ["metaphor", "MetaphorTestSupport"],
-            exclude: ["Golden"],
+            exclude: ["Golden", "Fixtures"],
             swiftSettings: strictConcurrency
         ),
     ]
