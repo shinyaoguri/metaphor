@@ -17,7 +17,7 @@ description: 図形・色・線・変換・テキスト・画像といった 2D 
 
 ## 2.1 図形プリミティブ
 
-![図形プリミティブの実行結果](images/02-Drawing2D/01-ShapePrimitives.png)
+![図形プリミティブの実行結果](https://i.gyazo.com/1d286c3fedc35f2a80da9a3afcf5bcae.png)
 
 まずは組み込みの図形です。呼ぶだけで描けるものが一通り揃っています。
 
@@ -120,7 +120,7 @@ final class ShapePrimitives: Sketch {
 
 ## 2.2 色
 
-![色の実行結果](images/02-Drawing2D/02-Color.png)
+![色の実行結果](https://i.gyazo.com/cab140ec0cc720385a20be27b723cb4d.png)
 
 色を指定する関数は 3 つです。`background()` がキャンバス全体、`fill()` が図形の内側、`stroke()` が輪郭線です。`noFill()` と `noStroke()` でそれぞれを描かない指定にできます。
 
@@ -235,7 +235,7 @@ fill(242, 89, 38)                                // 0〜255（既定の colorMod
 
 ## 2.3 線の表情
 
-![線の表情の実行結果](images/02-Drawing2D/03-Stroke.png)
+![線の表情の実行結果](https://i.gyazo.com/0a26b2061ea56d8d798a19a1e44273ea.png)
 
 線には太さのほかに、端をどう処理するか（キャップ）と角をどうつなぐか（ジョイン）という設定があります。細い線では違いが見えませんが、太くすると表情がはっきり変わります。
 
@@ -322,7 +322,7 @@ final class Stroke: Sketch {
 
 ## 2.4 自分で形を作る
 
-![自分で形を作るの実行結果](images/02-Drawing2D/04-CustomShapes.png)
+![自分で形を作るの実行結果](https://i.gyazo.com/63ad4de4b1183d3ad62cfcc4d70199a3.png)
 
 組み込みの図形に無い形は、頂点を並べて作ります。`beginShape()` と `endShape()` で挟み、その間に `vertex(x, y)` を並べます。
 
@@ -486,7 +486,7 @@ final class CustomShapes: Sketch {
 
 ## 2.5 変換と push / pop
 
-![変換と push / pop の実行結果](images/02-Drawing2D/05-Transform.png)
+![変換と push / pop の実行結果](https://i.gyazo.com/7e1ce8fa7f7ced75cbacecf707b11a21.png)
 
 図形の座標を計算し直す代わりに、**座標系のほうを動かして**描く方法があります。
 
@@ -610,7 +610,7 @@ final class Transform: Sketch {
 
 ## 2.6 くり返しで模様を作る
 
-![くり返しで模様を作るの実行結果](images/02-Drawing2D/06-Repetition.png)
+![くり返しで模様を作るの実行結果](https://i.gyazo.com/77c4506eca00ce2d6764df35063fe66d.png)
 
 ここまでの道具は、ループと組み合わせたときに一番効きます。同じ図形を規則的にずらして並べるだけで、手では描けない密度の絵になります。
 
@@ -706,7 +706,7 @@ final class Repetition: Sketch {
 
 ## 2.7 テキスト
 
-![テキストの実行結果](images/02-Drawing2D/07-Text.png)
+![テキストの実行結果](https://i.gyazo.com/823f4b486d779bd5263c5f0325eccb9e.png)
 
 文字は `text(_:_:_:)` で描きます。色は `fill()`、大きさは `textSize(_:)` です。図形と同じ道具立てで扱えます。
 
@@ -832,7 +832,7 @@ final class Text2D: Sketch {
 
 ## 2.8 画像
 
-![画像の実行結果](images/02-Drawing2D/08-Images.png)
+![画像の実行結果](https://i.gyazo.com/3e12ef11d5ab81943e5cdde879f0d872.png)
 
 画像はファイルから読み込んで `MImage` として持ち、`image(_:_:_:)` で描きます。読み込みは重い処理なので `setup()` で一度だけ行い、`draw()` では描くだけにします。
 
@@ -936,7 +936,7 @@ final class Images: Sketch {
 
 ## 2.9 ピクセルを直接触る
 
-![ピクセルを直接触るの実行結果](images/02-Drawing2D/09-Pixels.png)
+![ピクセルを直接触るの実行結果](https://i.gyazo.com/19b6cccb4ce07498ea8a70e415742458.png)
 
 描いた結果を 1 画素ずつ読んだり書いたりできます。`loadPixels()` がその時点のキャンバスを CPU 側の配列へ読み戻し、`pixels` を書き換えたあと `updatePixels()` で画面へ戻します。
 
@@ -1042,7 +1042,7 @@ final class Pixels: Sketch {
 
 ## 2.10 ブレンドモード
 
-![ブレンドモードの実行結果](images/02-Drawing2D/10-BlendMode.png)
+![ブレンドモードの実行結果](https://i.gyazo.com/5535f0dc11628413fe95d2194ab1d893.png)
 
 図形を重ねたとき、下にある色とどう混ぜるかを決めるのがブレンドモードです。既定は `.alpha` で、アルファの分だけ下が透ける「普通の重ね方」です。
 

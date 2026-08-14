@@ -121,6 +121,13 @@ examples-report.md
 # Files written by running the examples (save() / beginFrameRecord() / video / SVG)
 Examples/**/output/
 
+# チュートリアルの画像は Gyazo に置き、リポジトリは本文と台帳(manifest.json /
+# motion.json)だけを持つ(ADR-0010)。撮影の一時出力は .build/tutorial-shots/ だが、
+# 手で置いた・古い版から復活した画像がうっかり混ざらないようここでも塞ぐ
+docs/tutorial/images/**/*.png
+docs/tutorial/images/**/*.webp
+docs/tutorial/images/**/*.gif
+
 # Python bytecode cache (scripts/ generators and their tests)
 __pycache__/
 *.pyc

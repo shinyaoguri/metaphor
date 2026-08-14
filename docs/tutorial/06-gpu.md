@@ -20,7 +20,7 @@ draft: false
 
 ## 6.1 GPU に計算させる
 
-![GPU 計算の実行結果](images/06-GPU/01-Compute.png)
+![GPU 計算の実行結果](https://i.gyazo.com/e7815e6f0f7c2cdd05ad6da59bb4b986.png)
 
 キャンバスを 14400 個のセルに区切り、そのすべてについて「ジュリア集合の発散までの回数」を計算しています。計算しているのは GPU で、CPU は返ってきた値で塗り分けているだけです。
 
@@ -237,9 +237,9 @@ final class Compute: Sketch {
 
 ## 6.2 GPU パーティクル
 
-![GPU パーティクルの実行結果](images/06-GPU/02-Particles.png)
+![GPU パーティクルの実行結果](https://i.gyazo.com/90c559db39efb25bc421c9fb6268f601.png)
 
-![GPU パーティクルの動き](images/06-GPU/02-Particles.webp)
+![GPU パーティクルの動き](https://i.gyazo.com/82f241918e6d2e7b9a4b661f08355ed4.webp)
 
 100 万粒が円形の口から立ちのぼっています。第 3 部 3.9 で作った CPU のパーティクルは配列を Swift のループで回していましたが、ここでは**位置も色も GPU の中だけで更新され、CPU には一度も降りてきません**。
 
@@ -367,9 +367,9 @@ final class Particles: Sketch {
 
 ## 6.3 ポストプロセス
 
-![ポストプロセスの実行結果](images/06-GPU/03-PostProcess.png)
+![ポストプロセスの実行結果](https://i.gyazo.com/dda4dd3bbf40a95bc833a885767807d0.png)
 
-![ポストプロセスの重ねがけ](images/06-GPU/03-PostProcess.webp)
+![ポストプロセスの重ねがけ](https://i.gyazo.com/5c4727eeab63d554e4b093b5d3743765.webp)
 
 同じ絵に、48 フレームごとに違う効果をかけています。「効果無し」「Bloom」「Bloom + Vignette」「Grayscale」の 4 通りです。
 
@@ -498,7 +498,7 @@ final class PostProcess: Sketch {
 
 ## 6.4 カスタムポストエフェクト
 
-![カスタムポストエフェクトの実行結果](images/06-GPU/04-CustomPostEffect.png)
+![カスタムポストエフェクトの実行結果](https://i.gyazo.com/3ddb574bfde49d497bebfa7db26be179.png)
 
 組み込みのエフェクトで足りないときは、フラグメントシェーダーを自分で書いて同じ列に並べられます。ここでは画面中心からの距離に応じてサンプリング位置をずらし、格子を波打たせています。
 

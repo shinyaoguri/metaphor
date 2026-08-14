@@ -513,7 +513,7 @@ final class Camera: Sketch {
 
 ## 7.4 動画再生
 
-![動画再生の実行結果](images/07-Media/04-VideoPlayback.png)
+![動画再生の実行結果](https://i.gyazo.com/ed60a629d04e2ad7fba55f4ccb350355.png)
 
 同梱の動画がくり返し再生され、下に再生位置のバーと経過時間が出ます。クリックで一時停止と再開、スペースキーで先頭へ、`[` と `]` で再生速度が変わります。
 
