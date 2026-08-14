@@ -899,13 +899,6 @@
       "width": 1280,
       "height": 720
     },
-    "Examples/Topics/File IO/DirectoryList": {
-      "origin": "captured",
-      "sourceHash": "73f3954924e5545fb5f42074305527a80d1d92a1058d2d9867fd8cb0b1f6720d",
-      "width": 640,
-      "height": 480,
-      "frame": 1
-    },
     "Examples/Topics/File IO/DropImage": {
       "origin": "captured",
       "sourceHash": "facb6344878997017600b1125c29de69393d55a12edc7ab69d87b335e8ae95d2",
