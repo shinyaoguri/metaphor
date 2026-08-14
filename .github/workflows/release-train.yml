@@ -67,9 +67,13 @@ jobs:
           owner: shinyaoguri
           repositories: metaphor-cli
 
-      # Exits 2 on a breaking change: since v0.9.0 that means major, and major
-      # is never inferred (docs/api-stability-policy.md). A red train is the
-      # intended outcome there — it asks for the `release:major` label.
+      # A breaking change (`!` in a subject, or a `changelog.d/*.breaking.md`
+      # entry) raises the bump to at least minor and is annotated as a warning:
+      # while the library is `0.x` that is where a break lands (ADR-0009). From
+      # `1.0.0` on the same marker means major, major is never inferred
+      # (docs/api-stability-policy.md §4), and this step exits 2 instead — a red
+      # train is the intended outcome there, asking for the `release:major`
+      # label. The script reads the latest tag, so the switch is automatic.
       - name: Decide the bump from history
         id: bump
         run: python3 scripts/release-bump.py --explain --github-output "$GITHUB_OUTPUT"
