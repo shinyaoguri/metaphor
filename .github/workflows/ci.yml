@@ -239,6 +239,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
+          # この run の実行中に PR が squash merge されるとブランチが auto-delete
+          # され、下の fetch が exit 128 で job ごと落ちる（Issue #383）。落ちるのは
+          # この後始末ステップだけなのに merge 済み PR に赤 X が残り、履歴上
+          # 「必須チェックが落ちた PR が merge されている」ように見えてしまう。
+          # ブランチが消えている＝もう push し戻す先が無いので、黙って降りる。
+          # 生成物の鮮度は下の `Validate AI-facing docs`（PR / push の両方で走る）
+          # が引き続き見るので、このスキップで検証は漏れない。
+          #
+          # fetch の失敗をまとめて握り潰すのではなく ls-remote の終了コードで
+          # 分岐する: ref 不在（2）だけを無害化し、通信エラー等は従来どおり
+          # 落とす（静かにスキップすると生成物の再生成が飛ぶため）。
+          # `if ! cmd` だと `$?` が `!` の反転後（0）になるので、`|| status=$?`
+          # で拾う（`set -e` もこの形なら発火しない）。
+          status=0
+          git ls-remote --exit-code --heads origin "$HEAD_REF" >/dev/null || status=$?
+          if [ "$status" -ne 0 ]; then
+            if [ "$status" -ne 2 ]; then
+              echo "::error::Failed to query origin for $HEAD_REF (git ls-remote exited $status)."
+              exit "$status"
+            fi
+            echo "::notice::Head branch $HEAD_REF is gone (PR merged and auto-deleted) — skipping examples index regeneration."
+            exit 0
+          fi
           # Default checkout is the merge commit. Switch to the PR head branch
           # so we can commit + push back without rebasing.
           git fetch origin "$HEAD_REF"
