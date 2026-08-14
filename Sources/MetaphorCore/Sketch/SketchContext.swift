@@ -340,6 +340,19 @@ public final class SketchContext {
             guard let self else { return false }
             return !self.canvas3D.recordedDrawCalls.isEmpty
         }
+        // カスタム 2D シェーダの組み込み uniform（#647）。Canvas2D は解像度とフレーム数を
+        // 自分で持てるが、時間とマウスは Context 側にしか無いのでここから供給する。
+        canvas.shaderInputs = { [weak self] in self?.shaderInputs() ?? Canvas2DShaderInputs(
+            time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0) }
+    }
+
+    /// カスタム 2D シェーダへ渡す組み込み uniform の現在値（#647）。
+    func shaderInputs() -> Canvas2DShaderInputs {
+        Canvas2DShaderInputs(
+            time: time,
+            mouse: SIMD2<Float>(input.mouseX, input.mouseY),
+            frameCount: UInt32(truncatingIfNeeded: frameCount)
+        )
     }
 
     // MARK: - Compute Frame Management (internal)

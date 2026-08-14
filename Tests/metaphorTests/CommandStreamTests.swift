@@ -57,10 +57,11 @@ struct CommandStreamTests {
             Deferred2DSlot(
                 seq: 1,
                 command: .colorBatch(
-                    pipeline: Canvas2DPipelineKey(.color, .alpha), vertexStart: 0, vertexCount: 6)),
+                    pipeline: Canvas2DPipelineKey(.color, .alpha), vertexStart: 0, vertexCount: 6,
+                    shaderParams: nil)),
         ]
         #expect(slots.map(\.seq) == [0, 1])
-        if case .colorBatch(let pipeline, _, let count) = slots[1].command {
+        if case .colorBatch(let pipeline, _, let count, _) = slots[1].command {
             #expect(pipeline.kind == .color)
             #expect(pipeline.blend == .alpha)
             #expect(count == 6)
@@ -561,10 +562,10 @@ struct Canvas2DPipelineKeyRecordingTests {
     private func recordedPipelineKeys(_ canvas: Canvas2D) -> [Canvas2DPipelineKey] {
         canvas.deferred2DCommands.compactMap { slot in
             switch slot.command {
-            case .colorBatch(let key, _, _): return key
-            case .texturedBatch(let key, _, _, _): return key
-            case .instancedBatch(let key, _, _, _, _): return key
-            case .massiveCircles(let key, _, _, _, _): return key
+            case .colorBatch(let key, _, _, _): return key
+            case .texturedBatch(let key, _, _, _, _): return key
+            case .instancedBatch(let key, _, _, _, _, _): return key
+            case .massiveCircles(let key, _, _, _, _, _): return key
             case .setScissor: return nil
             }
         }

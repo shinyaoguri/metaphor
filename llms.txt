@@ -156,6 +156,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh?` -- 平面のメッシュを生成します（描画はしません）。
 - `func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect` -- MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
 - `func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer` -- GPU アクセラレーションによるレイ交差クエリ用のレイトレーサーを作成します。
+- `func createShader(source: String, fragment: String) throws -> Shader2D` -- MSL ソースからカスタム 2D フラグメントシェーダを作成します。
 - `func createShape() -> MShape` -- カスタムジオメトリ用の空のリテインドシェイプを作成します。
 - `func createShape(_ kind: ShapeKind) -> MShape` -- ``ShapeKind`` からリテインドシェイプを作成します。
 - `func createSourcePass(label: String, width: Int, height: Int) -> SourcePass?` -- レンダーグラフ用のソースパスを作成します。
@@ -240,6 +241,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
 - `func loadModelAsync(_ path: String, normalize: Bool = true, cache: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
 - `func loadPixels()` -- **呼び出し時点の**キャンバス内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
+- `func loadShader(_ path: String, fragment: String) throws -> Shader2D` -- 外部 MSL ファイルからカスタム 2D フラグメントシェーダを読み込みます。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
 - `func loadStrings(_ source: String) throws -> [String]` -- テキストファイル/URL を行の配列として読み込みます。
 - `func loadStringsAsync(_ source: String) async throws -> [String]` -- テキストファイル/URL を行の配列として非同期で読み込みます。
@@ -305,6 +307,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
 - `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
+- `func resetShader()` -- カスタム 2D シェーダを解除し、組み込みシェーダへ戻します。
 - `func restoreState(_ data: Data)` -- ``saveState()`` が返した状態を復元します（オプション）。
 - `func rotate(_ angle: Float)` -- 現在の変換に回転を適用します。
 - `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
@@ -331,6 +334,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func setPostEffects(_ effects: [any PostEffect])` -- すべてのポストプロセスエフェクトを指定した配列で置き換えます。
 - `func setRenderGraph(_ graph: RenderGraph?)` -- アクティブなレンダーグラフを設定またはクリアします。
 - `func setup()` -- 一度だけ実行される初期化処理（オプション）。
+- `func shader(_ shader: Shader2D)` -- 以降の 2D 描画にカスタムフラグメントシェーダを適用します。
 - `func shadowBias(_ value: Float)` -- シャドウアクネを軽減するためのシャドウデプスバイアスを設定します。
 - `func shape(_ s: MShape)` -- リテインドシェイプを原点に描画します。
 - `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- リテインドシェイプを指定位置に描画します。
@@ -580,6 +584,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let canvas2DInstancedExclusionFragment: String` -- Canvas2D インスタンス描画除外ブレンドフラグメントシェーダーのMSL関数名。
 - `static let canvas2DInstancedFragment: String` -- Canvas2D インスタンス描画フラグメントシェーダーのMSL関数名。
 - `static let canvas2DInstancedVertex: String` -- Canvas2D インスタンス描画頂点シェーダーのMSL関数名。
+- `static let canvas2DPreamble: String` -- カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
+- `static let canvas2DStructs: String` -- カスタム 2D フラグメントシェーダが受け取る stage_in と uniform の MSL 定義。
 - `static let canvas2DTexturedDifferenceFragment: String` -- Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
 - `static let canvas2DTexturedExclusionFragment: String` -- Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。
 - `static let canvas2DTexturedFragment: String` -- Canvas2D テクスチャ付きフラグメントシェーダーのMSL関数名。
@@ -1017,7 +1023,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 85 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 87 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1166,7 +1172,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
 
-- （ほか 60 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 62 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw()` -- コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
@@ -1486,6 +1492,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadImageAsync(path: String) async throws -> MImage` -- ファイルパスから画像を非同期で読み込みます。
 - `func loadModelAsync(path: String, normalize: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます。
 
+### `final class Shader2D` -- 2D 描画に適用するカスタムフラグメントシェーダ（Epic #291 E2）。
+
+- `let fragmentFunctionName: String` -- フラグメントシェーダ関数名。
+- `func reload(shaderLibrary: ShaderLibrary) throws` -- シェーダライブラリから関数を引き直し、このシェーダを更新します（#648 / E3 の土台）。
+- `func setParameters<T>(_ value: T)` -- カスタムパラメータを生バイト列として設定します。
+
 ### `final class ShaderLibrary` -- Metal シェーダーのコンパイルとキャッシュを管理します。
 
 - `static let blit: String` -- オフスクリーンテクスチャを画面にコンポジットするブリットシェーダー
@@ -1520,7 +1532,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 220 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 224 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

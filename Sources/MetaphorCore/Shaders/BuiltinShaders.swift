@@ -28,6 +28,48 @@ public enum BuiltinShaders {
     };
     """
 
+    // MARK: - Canvas2D カスタムシェーダ用の構造体 (#647 / Epic #291 E2)
+
+    /// カスタム 2D フラグメントシェーダが受け取る stage_in と uniform の MSL 定義。
+    ///
+    /// `loadShader()` / `createShader()` は ``canvas2DPreamble``（stdlib + これ）を
+    /// **必ず**先頭へ足すので、ユーザーのソースでこれらを再定義しないでください。
+    ///
+    /// - `Canvas2DVertexOut`: `rect()` / `circle()` / `line()` などカラー系の stage_in。
+    ///   color / instanced / massive のどの経路でも同じレイアウトです。
+    /// - `Canvas2DTexVertexOut`: `image()` / `text()` のテクスチャ系の stage_in。
+    /// - `Canvas2DShaderUniforms`: metaphor が `buffer(3)` へ自動供給する組み込み uniform。
+    ///
+    /// 2D のカラー頂点は UV を持たないので、uv はフラグメントの `[[position]]`（画面ピクセル座標）を
+    /// `resolution` で割って作ります（Shadertoy の `fragCoord / iResolution` と同じ形）。
+    public static let canvas2DStructs = """
+    struct Canvas2DVertexOut {
+        float4 position [[position]];
+        float4 color;
+    };
+
+    struct Canvas2DTexVertexOut {
+        float4 position [[position]];
+        float2 texCoord;
+        float4 color;
+    };
+
+    struct Canvas2DShaderUniforms {
+        float2 resolution;
+        float2 mouse;
+        float time;
+        uint frameCount;
+    };
+    """
+
+    /// カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
+    public static let canvas2DPreamble = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    \(canvas2DStructs)
+    """
+
     // MARK: - Canvas3D 共有構造体 (共通3Dシェーダー定義)
 
     /// Canvas3D の非テクスチャおよびテクスチャシェーダーで共有されるMSL構造体定義。

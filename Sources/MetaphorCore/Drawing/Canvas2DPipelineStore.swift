@@ -25,17 +25,20 @@ enum Canvas2DPipelineKind: Hashable, CaseIterable, Sendable {
 /// キーを記録側で焼き込むことで、コマンド列だけで描画結果が一意に決まります
 /// （#71 の決定論コマンドストリームが要求する性質）。
 ///
-/// E2（2D カスタムシェーダ）ではこのキーにシェーダ識別子が加わり、
+/// E2（#647）でこのキーにカスタムシェーダの識別子が加わり、
 /// ``Canvas2DPipelineStore`` 側がカスタムパイプラインをキャッシュします。
 struct Canvas2DPipelineKey: Hashable, Sendable {
     /// パイプラインの系統。
     let kind: Canvas2DPipelineKind
     /// ブレンドモード。
     let blend: BlendMode
+    /// 適用中のカスタムフラグメントシェーダ。組み込みシェーダなら nil（#647 / Epic #291 E2）。
+    let shader: Canvas2DShaderID?
 
-    init(_ kind: Canvas2DPipelineKind, _ blend: BlendMode) {
+    init(_ kind: Canvas2DPipelineKind, _ blend: BlendMode, shader: Canvas2DShaderID? = nil) {
         self.kind = kind
         self.blend = blend
+        self.shader = shader
     }
 }
 
@@ -57,8 +60,19 @@ final class Canvas2DPipelineStore {
     private let shaderLibrary: ShaderLibrary
     private let sampleCount: Int
 
-    /// 解決済みパイプライン。組み込み分は `init` で全件先行生成します。
+    /// 解決済みパイプライン。組み込み分は `init` で全件先行生成し、
+    /// カスタムシェーダ分は初回参照時に遅延生成してここへ足します。
     private var states: [Canvas2DPipelineKey: MTLRenderPipelineState] = [:]
+
+    /// 適用中のカスタムシェーダのフラグメント関数（#647）。
+    /// `Canvas2D.shader(_:)` が ``register(_:)`` 経由で登録します。
+    private var customFunctions: [Canvas2DShaderID: MTLFunction] = [:]
+
+    /// パイプライン生成に失敗したカスタムキー。毎フレーム再試行しないための負のキャッシュ。
+    private var failedCustomKeys: Set<Canvas2DPipelineKey> = []
+
+    /// カスタムパイプラインへフォールバックした旨の警告を出したかどうか（初回のみ出す）。
+    private var didWarnFallback = false
 
     /// 組み込みパイプラインを全系統 × 全ブレンドモード分だけ生成します。
     ///
@@ -85,8 +99,73 @@ final class Canvas2DPipelineStore {
     ///
     /// 再生時（`Canvas2D.encode(_:into:)`）はこの引きだけを行い、
     /// Canvas2D の可変状態は一切参照しません。
+    ///
+    /// カスタムシェーダのキー（`key.shader != nil`）は初回だけここで生成します。
+    /// 生成に失敗した場合は**同じ系統・ブレンドの組み込みパイプラインへフォールバック**します
+    /// （nil を返すと呼び出し側の flush が描画ごと捨ててしまい、絵が消えるため）。
     func state(for key: Canvas2DPipelineKey) -> MTLRenderPipelineState? {
-        states[key]
+        if let cached = states[key] { return cached }
+        // 組み込みキーは init で全件生成済み。ここに来るのはカスタムキーだけ。
+        guard let shaderID = key.shader else { return nil }
+        guard !failedCustomKeys.contains(key), let fragment = customFunctions[shaderID] else {
+            return builtinFallback(for: key)
+        }
+        do {
+            let state = try makeCustom(kind: key.kind, blend: key.blend, fragment: fragment)
+            states[key] = state
+            return state
+        } catch {
+            failedCustomKeys.insert(key)
+            warnFallback(kind: key.kind, error: error)
+            return builtinFallback(for: key)
+        }
+    }
+
+    /// カスタムシェーダのフラグメント関数を登録します（`Canvas2D.shader(_:)` から呼ばれます）。
+    func register(_ shader: Shader2D) {
+        customFunctions[shader.id] = shader.fragmentFunction
+    }
+
+    /// カスタムパイプラインのキャッシュを捨てます（シェーダのホットリロード後・#648 / E3 用）。
+    ///
+    /// 組み込み分は影響を受けません。
+    func invalidateCustomPipelines() {
+        states = states.filter { $0.key.shader == nil }
+        failedCustomKeys.removeAll()
+    }
+
+    /// カスタムパイプラインを生成できなかったときの逃げ先（同じ系統・ブレンドの組み込み）。
+    private func builtinFallback(for key: Canvas2DPipelineKey) -> MTLRenderPipelineState? {
+        states[Canvas2DPipelineKey(key.kind, key.blend)]
+    }
+
+    private func warnFallback(kind: Canvas2DPipelineKind, error: Error) {
+        guard !didWarnFallback else { return }
+        didWarnFallback = true
+        print("""
+        [metaphor] カスタム 2D シェーダを \(kind) 経路のパイプラインに載せられませんでした。\
+        組み込みシェーダで描画します（フラグメント関数の stage_in が \
+        この経路の頂点出力と合っていない可能性があります）: \(error)
+        """)
+    }
+
+    // MARK: - パイプラインの生成
+
+    /// 組み込み頂点関数 + カスタムフラグメント関数でパイプラインを作ります。
+    ///
+    /// 頂点側は差し替えません。2D の頂点は投影変換と色の受け渡しだけを行い、
+    /// カスタマイズの余地はフラグメント側にあるためです。
+    private func makeCustom(
+        kind: Canvas2DPipelineKind, blend: BlendMode, fragment: MTLFunction
+    ) throws -> MTLRenderPipelineState {
+        let functions = Self.builtinFunctions(kind: kind, blend: blend)
+        return try PipelineFactory(device: device)
+            .vertex(shaderLibrary.function(named: functions.vertex, from: functions.libraryKey))
+            .fragment(fragment)
+            .vertexLayout(Self.vertexLayout(for: kind))
+            .blending(blend)
+            .sampleCount(sampleCount)
+            .build()
     }
 
     // MARK: - 組み込みパイプラインの生成

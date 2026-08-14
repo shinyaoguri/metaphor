@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 282
+Example count: 283
 
-Status: supported 262, partial 0, stub 10, obsolete 10
+Status: supported 263, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -322,6 +322,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [BlurFilter](../../Examples/Topics/Shaders/BlurFilter) (Shaders) Tags: blurfilter, cpu-approximation, image, shaders, topics.
 - [Conway](../../Examples/Topics/Shaders/Conway) (Shaders) Tags: conway, cpu-approximation, shaders, topics.
 - [CustomBlend](../../Examples/Topics/Shaders/CustomBlend) (Shaders) Tags: cpu-approximation, customblend, shaders, topics.
+- [Custom Shader 2D](../../Examples/Topics/Shaders/CustomShader2D) [Intermediate] (Shaders) -- Apply a custom Metal fragment shader to 2D shapes. loadShader() reads the MSL file, shader() applies it so rect()/circle() become surfaces the shader runs on, and resetShader() goes back to the built-in shader. Built-in... Tags: customshader2d, interaction, shader, shaders, topics.
 - [Deform](../../Examples/Topics/Shaders/Deform) (Shaders) Tags: cpu-approximation, deform, shaders, topics.
 - [DomeProjection](../../Examples/Topics/Shaders/DomeProjection) [obsolete] (Shaders) -- Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now. Tags: domeprojection, shaders, topics.
 - [EdgeDetect](../../Examples/Topics/Shaders/EdgeDetect) (Shaders) Tags: cpu-approximation, edgedetect, shaders, topics.

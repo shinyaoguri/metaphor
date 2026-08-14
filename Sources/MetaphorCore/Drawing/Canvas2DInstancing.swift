@@ -34,6 +34,14 @@ struct BatchKey2D: Equatable {
     let shapeType: Shape2DType
     /// このバッチのブレンドモード。
     let blendMode: BlendMode
+    /// このバッチに適用中のカスタムフラグメントシェーダ（#647）。組み込みなら nil。
+    let shader: Canvas2DShaderID?
+
+    init(shapeType: Shape2DType, blendMode: BlendMode, shader: Canvas2DShaderID? = nil) {
+        self.shapeType = shapeType
+        self.blendMode = blendMode
+        self.shader = shader
+    }
 }
 
 // MARK: - 2D Instance Batcher (thin wrapper over generic InstanceBatcher)

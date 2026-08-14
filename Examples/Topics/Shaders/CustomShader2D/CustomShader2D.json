@@ -1,0 +1,14 @@
+{
+  "name": "Custom Shader 2D",
+  "title": "Custom Shader 2D",
+  "author": "",
+  "level": "Intermediate",
+  "order": "1",
+  "description": "Apply a custom Metal fragment shader to 2D shapes. loadShader() reads the MSL file, shader() applies it so rect()/circle() become surfaces the shader runs on, and resetShader() goes back to the built-in shader. Built-in uniforms (resolution, mouse, time, frameCount) arrive at buffer(3); setParameters() sends your own struct to buffer(4).",
+  "featured": [
+    "loadShader_fragment_",
+    "shader_",
+    "resetShader_",
+    "setParameters_"
+  ]
+}
