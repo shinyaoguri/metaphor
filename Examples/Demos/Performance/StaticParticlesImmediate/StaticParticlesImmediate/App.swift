@@ -30,6 +30,8 @@ final class StaticParticlesImmediate: Sketch {
         background(0)
         noStroke()
 
+        // HUD が回転・平行移動を引きずらないよう、パーティクルの変換は push/pop で閉じる。
+        pushMatrix()
         translate(width / 2, height / 2)
         rotateY(Float(frameCount) * 0.01)
 
@@ -37,9 +39,13 @@ final class StaticParticlesImmediate: Sketch {
         for n in 0..<npartTotal {
             pushMatrix()
             translate(posX[n], posY[n], posZ[n])
-            ellipse(0, 0, partSize, partSize)
+            // 3 引数 translate は 3D 描画にしか効かないため、原典の ellipse() ではなく
+            // sphere() で描く（2D プリミティブだと全粒子が中央 1 点に潰れる / ADR-0005）。
+            // 5,000 個を毎フレーム描くので分割数は既定の 24 から落とす。
+            sphere(partSize / 2, detail: 6)
             popMatrix()
         }
+        popMatrix()
 
         fcount += 1
         let m = millis()

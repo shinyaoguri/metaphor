@@ -56,8 +56,9 @@ final class Explode: Sketch {
                     translate(Float(x) + 200, Float(y) + 100, z)
                     fill(r, g, b, 204)
                     noStroke()
-                    rectMode(.center)
-                    rect(0, 0, Float(cellSize), Float(cellSize))
+                    // 3 引数 translate は 3D 描画にしか効かないため、原典の rect() ではなく
+                    // box() で押し出す（2D プリミティブだと全セルが原点に重なる / ADR-0005）。
+                    box(Float(cellSize))
                     popMatrix()
                 }
             }

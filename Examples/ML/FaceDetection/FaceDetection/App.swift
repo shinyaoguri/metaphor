@@ -29,7 +29,8 @@ final class FaceDetection: Sketch {
     func draw() {
         background(.black)
 
-        guard let cam = capture else {
+        // createCapture() は非 Optional を返すので、カメラの有無は isAvailable で見る。
+        guard let cam = capture, cam.isAvailable else {
             fill(.white)
             textSize(20)
             text("Camera not available", 50, height / 2)

@@ -1,11 +1,31 @@
 // ボタンを押している間だけ点を打つスケッチ。入力が無いと何も描かれない。
-// なお入力を流しても、このスケッチは background() を一度も呼ばないため
-// 黒地に黒い点で見えない見込み（移植の取りこぼし。Issue で追跡）。640x360。
-{"t":"mouseDown","x":140,"y":110,"button":0}
-{"t":"mouseDrag","x":220,"y":180}
-{"t":"mouseDrag","x":300,"y":130}
-{"t":"mouseDrag","x":380,"y":220}
-{"t":"mouseDrag","x":470,"y":150}
-{"t":"mouseDrag","x":540,"y":240}
-{"t":"mouseUp","x":540,"y":240,"button":0}
+// frameRate(12) なので、ドラッグの合間に wait を挟まないと 1 位置につき点が
+// 打たれないまま次の位置へ飛ぶ。灰色の地に黒い点の軌跡が残る。640x360。
+{"t":"mouseDown","x":90,"y":180,"button":0}
+{"wait":100}
+{"t":"mouseDrag","x":130,"y":130}
+{"wait":100}
+{"t":"mouseDrag","x":170,"y":100}
+{"wait":100}
+{"t":"mouseDrag","x":210,"y":95}
+{"wait":100}
+{"t":"mouseDrag","x":250,"y":115}
+{"wait":100}
+{"t":"mouseDrag","x":290,"y":155}
+{"wait":100}
+{"t":"mouseDrag","x":330,"y":200}
+{"wait":100}
+{"t":"mouseDrag","x":370,"y":240}
+{"wait":100}
+{"t":"mouseDrag","x":410,"y":262}
+{"wait":100}
+{"t":"mouseDrag","x":450,"y":258}
+{"wait":100}
+{"t":"mouseDrag","x":490,"y":230}
+{"wait":100}
+{"t":"mouseDrag","x":530,"y":185}
+{"wait":100}
+{"t":"mouseDrag","x":560,"y":140}
+{"wait":100}
+{"t":"mouseUp","x":560,"y":140,"button":0}
 {"wait":400}
