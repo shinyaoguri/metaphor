@@ -600,12 +600,17 @@ final class TextRenderer {
             Vec2(Float(offset.x + p.x), Float(-(offset.y + p.y)))
         }
         // 制御点を結んだ折れ線の長さから分割数を決める（曲率が強いほど点が増える）
+        // 式を細かく分けているのは Swift 5.10 の型チェッカ対策（#650）。
         func segmentCount(_ points: [CGPoint]) -> Int {
             var length: CGFloat = 0
             for i in 1..<points.count {
-                length += hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+                let dx: CGFloat = points[i].x - points[i - 1].x
+                let dy: CGFloat = points[i].y - points[i - 1].y
+                length += (dx * dx + dy * dy).squareRoot()
             }
-            return min(64, max(2, Int((length * CGFloat(sampleFactor)).rounded(.up))))
+            let scaled: CGFloat = length * CGFloat(sampleFactor)
+            let count = Int(scaled.rounded(.up))
+            return min(64, max(2, count))
         }
         func flushContour() {
             if state.current.count > 2 { state.contours.append(state.current) }
@@ -627,29 +632,35 @@ final class TextRenderer {
 
             case .addQuadCurveToPoint:
                 let control = element.points[0], end = element.points[1]
-                let n = segmentCount([state.cursor, control, end])
+                let start = state.cursor
+                let n = segmentCount([start, control, end])
                 for step in 1...n {
-                    let t = CGFloat(step) / CGFloat(n)
-                    let u = 1 - t
-                    let point = CGPoint(
-                        x: u * u * state.cursor.x + 2 * u * t * control.x + t * t * end.x,
-                        y: u * u * state.cursor.y + 2 * u * t * control.y + t * t * end.y)
-                    state.current.append(map(point))
+                    let t: CGFloat = CGFloat(step) / CGFloat(n)
+                    let u: CGFloat = 1 - t
+                    // 重みを先に畳む（1 行に詰めると Swift 5.10 の型チェッカが落ちる）
+                    let w0: CGFloat = u * u
+                    let w1: CGFloat = 2 * u * t
+                    let w2: CGFloat = t * t
+                    let px: CGFloat = w0 * start.x + w1 * control.x + w2 * end.x
+                    let py: CGFloat = w0 * start.y + w1 * control.y + w2 * end.y
+                    state.current.append(map(CGPoint(x: px, y: py)))
                 }
                 state.cursor = end
 
             case .addCurveToPoint:
                 let c1 = element.points[0], c2 = element.points[1], end = element.points[2]
-                let n = segmentCount([state.cursor, c1, c2, end])
+                let start = state.cursor
+                let n = segmentCount([start, c1, c2, end])
                 for step in 1...n {
-                    let t = CGFloat(step) / CGFloat(n)
-                    let u = 1 - t
-                    let point = CGPoint(
-                        x: u * u * u * state.cursor.x + 3 * u * u * t * c1.x
-                            + 3 * u * t * t * c2.x + t * t * t * end.x,
-                        y: u * u * u * state.cursor.y + 3 * u * u * t * c1.y
-                            + 3 * u * t * t * c2.y + t * t * t * end.y)
-                    state.current.append(map(point))
+                    let t: CGFloat = CGFloat(step) / CGFloat(n)
+                    let u: CGFloat = 1 - t
+                    let w0: CGFloat = u * u * u
+                    let w1: CGFloat = 3 * u * u * t
+                    let w2: CGFloat = 3 * u * t * t
+                    let w3: CGFloat = t * t * t
+                    let px: CGFloat = w0 * start.x + w1 * c1.x + w2 * c2.x + w3 * end.x
+                    let py: CGFloat = w0 * start.y + w1 * c1.y + w2 * c2.y + w3 * end.y
+                    state.current.append(map(CGPoint(x: px, y: py)))
                 }
                 state.cursor = end
 
