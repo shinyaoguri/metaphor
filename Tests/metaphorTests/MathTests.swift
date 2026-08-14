@@ -149,21 +149,11 @@ struct ColorTests {
         #expect(c.a == 0.8)
     }
 
-    // 旧ラベル a: が deprecated エイリアスとして併存する間、3 引数の呼び出しが
-    // 曖昧にならず新シグネチャへ解決されることのガードでもある（#566）。
+    // 3 引数の呼び出しが不透明へ解決されることのガード（#566）。
     @Test("RGB init defaults alpha to 1")
     func rgbDefaultAlpha() {
         let c = Color(r: 1, g: 0, b: 0)
         #expect(c.a == 1.0)
-    }
-
-    // #566 フェーズ 1: 旧ラベル a: は新シグネチャへ転送する deprecated エイリアス。
-    // 旧ラベルを削除するフェーズ 2 では、このテストごと消す。
-    @available(*, deprecated, message: "旧ラベル a: の転送を検証するテスト（#566）")
-    @Test("deprecated a: label forwards to the alpha: initializer")
-    func deprecatedAlphaLabelForwards() {
-        let old = Color(r: 0.2, g: 0.4, b: 0.6, a: 0.8)
-        #expect(old == Color(r: 0.2, g: 0.4, b: 0.6, alpha: 0.8))
     }
 
     // 0...1 は「スケール」であって不変条件ではない（#594）。
