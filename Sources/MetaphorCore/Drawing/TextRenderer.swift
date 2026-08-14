@@ -531,6 +531,141 @@ final class TextRenderer {
         return (texture, glyphs)
     }
 
+    // MARK: - Outline API
+
+    /// 文字列のグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 座標は**ベースライン左端が原点**で、y は metaphor の 2D 座標系に合わせて下向き
+    /// （Core Text のグリフパスは y 上向きなので反転している）。各ポリラインは終点に
+    /// 始点を重ねません（閉じているものとして扱ってください）。
+    ///
+    /// 文字の穴（`o` の内側など）も 1 本の輪郭として返ります。どれが穴かは呼び出し側で
+    /// 包含関係から判定します — TrueType と CFF で外周の巻き方向の慣習が逆で、
+    /// 巻き方向からは決められないためです。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名（`MFont` の PostScript 名も可）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリラインの配列。
+    func glyphContours(
+        string: String, fontSize: Float, fontFamily: String, sampleFactor: Float
+    ) -> [[Vec2]] {
+        guard !string.isEmpty else { return [] }
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
+        let attrString = NSAttributedString(string: string, attributes: [.font: font])
+        let line = CTLineCreateWithAttributedString(attrString)
+        guard let runs = CTLineGetGlyphRuns(line) as? [CTRun] else { return [] }
+
+        var result: [[Vec2]] = []
+        for run in runs {
+            let count = CTRunGetGlyphCount(run)
+            guard count > 0 else { continue }
+            // run ごとにフォントが違いうる（要求フォントに無い文字はフォールバックへ回る）
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            let runFont = attributes[kCTFontAttributeName as String] as! CTFont? ?? font
+
+            var glyphs = [CGGlyph](repeating: 0, count: count)
+            var positions = [CGPoint](repeating: .zero, count: count)
+            let range = CFRange(location: 0, length: count)
+            CTRunGetGlyphs(run, range, &glyphs)
+            CTRunGetPositions(run, range, &positions)
+
+            for i in 0..<count {
+                guard let path = CTFontCreatePathForGlyph(runFont, glyphs[i], nil) else {
+                    continue  // 空白など輪郭を持たないグリフ
+                }
+                result.append(contentsOf: Self.flatten(
+                    path: path, offset: positions[i], sampleFactor: sampleFactor))
+            }
+        }
+        return result
+    }
+
+    /// `CGPath` を輪郭ごとの折れ線へ変換します（`offset` 平行移動 + y 反転こみ）。
+    private static func flatten(
+        path: CGPath, offset: CGPoint, sampleFactor: Float
+    ) -> [[Vec2]] {
+        // applyWithBlock のブロックはエスケープ扱いのため、状態はクラスに逃がす
+        final class State {
+            var contours: [[Vec2]] = []
+            var current: [Vec2] = []
+            var cursor: CGPoint = .zero
+            var start: CGPoint = .zero
+        }
+        let state = State()
+
+        func map(_ p: CGPoint) -> Vec2 {
+            Vec2(Float(offset.x + p.x), Float(-(offset.y + p.y)))
+        }
+        // 制御点を結んだ折れ線の長さから分割数を決める（曲率が強いほど点が増える）
+        func segmentCount(_ points: [CGPoint]) -> Int {
+            var length: CGFloat = 0
+            for i in 1..<points.count {
+                length += hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+            }
+            return min(64, max(2, Int((length * CGFloat(sampleFactor)).rounded(.up))))
+        }
+        func flushContour() {
+            if state.current.count > 2 { state.contours.append(state.current) }
+            state.current = []
+        }
+
+        path.applyWithBlock { elementPointer in
+            let element = elementPointer.pointee
+            switch element.type {
+            case .moveToPoint:
+                flushContour()
+                state.cursor = element.points[0]
+                state.start = state.cursor
+                state.current.append(map(state.cursor))
+
+            case .addLineToPoint:
+                state.cursor = element.points[0]
+                state.current.append(map(state.cursor))
+
+            case .addQuadCurveToPoint:
+                let control = element.points[0], end = element.points[1]
+                let n = segmentCount([state.cursor, control, end])
+                for step in 1...n {
+                    let t = CGFloat(step) / CGFloat(n)
+                    let u = 1 - t
+                    let point = CGPoint(
+                        x: u * u * state.cursor.x + 2 * u * t * control.x + t * t * end.x,
+                        y: u * u * state.cursor.y + 2 * u * t * control.y + t * t * end.y)
+                    state.current.append(map(point))
+                }
+                state.cursor = end
+
+            case .addCurveToPoint:
+                let c1 = element.points[0], c2 = element.points[1], end = element.points[2]
+                let n = segmentCount([state.cursor, c1, c2, end])
+                for step in 1...n {
+                    let t = CGFloat(step) / CGFloat(n)
+                    let u = 1 - t
+                    let point = CGPoint(
+                        x: u * u * u * state.cursor.x + 3 * u * u * t * c1.x
+                            + 3 * u * t * t * c2.x + t * t * t * end.x,
+                        y: u * u * u * state.cursor.y + 3 * u * u * t * c1.y
+                            + 3 * u * t * t * c2.y + t * t * t * end.y)
+                    state.current.append(map(point))
+                }
+                state.cursor = end
+
+            case .closeSubpath:
+                // 閉じた輪郭として扱うので始点を重ねて追加しない
+                flushContour()
+                state.cursor = state.start
+
+            @unknown default:
+                break
+            }
+        }
+        flushContour()
+        return state.contours
+    }
+
     // MARK: - Private
 
     private func renderText(string: String, fontSize: Float, fontFamily: String) -> CachedText? {

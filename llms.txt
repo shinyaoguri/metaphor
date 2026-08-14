@@ -360,6 +360,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func textFont(_ font: MFont)` -- 以降のテキスト描画に使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
 - `func textLeading(_ leading: Float)` -- 複数行テキストの行間を設定します。
 - `func textSize(_ size: Float)` -- 以降のテキスト描画のテキストサイズを設定します。
+- `func textToContours(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [[Vec2]]` -- テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+- `func textToPoints(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [Vec2]` -- テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
+- `func textToShape(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> MShape` -- テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
 - `func texture(_ img: MImage)` -- 以降の 3D シェイプのテクスチャを設定します。
 - `func textWidth(_ string: String) -> Float` -- 現在のフォント設定でテキスト文字列の幅を計算します。
 - `func tint(_ color: Color)` -- 画像のティント色を設定します。
@@ -1030,7 +1033,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 86 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 88 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1533,7 +1536,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 222 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 225 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

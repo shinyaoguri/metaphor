@@ -42,6 +42,63 @@ extension Sketch {
         try await context.resourceLoader.loadImageAsync(named: name)
     }
 
+    /// テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 現在の ``textSize(_:)`` / ``textFont(_:)-(String)`` / ``textAlign(_:_:)`` を
+    /// `text()` と同じように解釈するため、同じ引数で呼べば描画結果と同じ位置の輪郭が
+    /// 得られます。文字の穴（`o` の内側など）も 1 本の輪郭として返ります。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリライン。
+    public func textToContours(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [[Vec2]] {
+        context.textToContours(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
+    ///
+    /// 輪郭の区切りは失われます。文字を粒子や図形の配置元として使うときに向きます。
+    ///
+    /// ```swift
+    /// for p in textToPoints("metaphor", 40, 200) {
+    ///     circle(p.x, p.y, 4)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: アウトライン上の点。
+    public func textToPoints(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [Vec2] {
+        context.textToPoints(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
+    ///
+    /// 返るのは外周ごとの子を持つグループシェイプ。`o` の内側のような穴はコンターとして
+    /// 子に載るため、``shape(_:_:_:)`` でそのまま塗り分けられます。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 現在のスタイルをキャプチャしたグループシェイプ。
+    public func textToShape(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> MShape {
+        context.textToShape(string, x, y, sampleFactor: sampleFactor)
+    }
+
     /// 指定したファイルパスからフォントを読み込みます。
     ///
     /// フォントは現在のプロセスにだけ登録されます（システムのフォント設定は変更しません）。

@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 282
+Example count: 283
 
-Status: supported 262, partial 0, stub 10, obsolete 10
+Status: supported 263, partial 0, stub 10, obsolete 10
 
 ## How To Use
 
@@ -347,6 +347,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [TextureQuad](../../Examples/Topics/Textures/TextureQuad) (Textures) Tags: texturequad, textures, topics, typography.
 - [TextureSphere](../../Examples/Topics/Textures/TextureSphere) (Textures) Tags: 3d, textures, texturesphere, topics, typography.
 - [TextureTriangle](../../Examples/Topics/Textures/TextureTriangle) (Textures) Tags: textures, texturetriangle, topics, typography.
+- [Text Particles](../../Examples/Topics/Typography/TextParticles) [Intermediate] (Typography) -- Generative typography with textToPoints(). Glyph outlines become a point cloud that particles fly into; textToContours() draws the same outlines as strokes behind them. Move the mouse to push the particles away and watc... Tags: interaction, particles, textparticles, topics, typography.
 - [Acceleration with Vectors](../../Examples/Topics/Vectors/AccelerationWithVectors) [Advanced] (Vectors) -- Demonstration of the basics of motion with vector. A 'Mover' object stores location, velocity, and acceleration as vectors. The motion is controlled by affecting the acceleration (in this case towards the mouse). Tags: accelerationwithvectors, interaction, topics, vectors.
 - [Bouncing Ball with Vectors](../../Examples/Topics/Vectors/BouncingBall) [Intermediate] (Vectors) -- Demonstration of using vectors to control motion of a body. This example is not object-oriented See AccelerationWithVectors for an example of how to simulate motion using vectors in an object. Tags: bouncingball, topics, vectors.
 - [Vector](../../Examples/Topics/Vectors/VectorMath) [Intermediate] (Vectors) -- Demonstration of some basic vector math: subtraction, normalization, scaling. Normalizing a vector sets its length to 1. Tags: topics, vectormath, vectors.
