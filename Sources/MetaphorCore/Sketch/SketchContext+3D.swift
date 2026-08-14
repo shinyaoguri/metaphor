@@ -592,6 +592,7 @@ extension SketchContext {
     /// - Parameters:
     ///   - path: モデルのファイルパス。
     ///   - normalize: バウンディングボックスを [-1, 1] に正規化するかどうか（デフォルト true）。
+    ///     原点中心・最大辺 2 単位になるため、ピクセル座標系では `scale(_:)` で大きさを与える。
     ///   - cache: キャッシュを使うか（既定 true。false で独立したコピーを読み込み）。
     /// - Returns: 読み込まれたメッシュ。失敗時は nil。
     public func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh? {

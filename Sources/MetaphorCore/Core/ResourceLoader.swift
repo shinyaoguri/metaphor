@@ -128,6 +128,7 @@ public final class ResourceLoader {
     /// - Parameters:
     ///   - path: モデルのファイルパス
     ///   - normalize: バウンディングボックスを正規化するかどうか
+    ///     （原点中心・最大辺 2 単位 = [-1, 1] に収める）
     /// - Returns: 読み込まれた ``Mesh``
     /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
     ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
