@@ -32,9 +32,11 @@ for `require-changelog-entry.py`: a `no-visual-change` label says "this one
 genuinely does not change the picture" and the check passes, leaving that
 decision recorded on the PR instead of nowhere.
 
-Usage (the changed files come in on stdin, one path per line):
+Usage (the changed files come in on stdin, one path per line). The list has to
+come from the merge base, not from a two-dot diff against the base tip — see
+`scripts/pr-changed-files.sh` for why (Issue #642):
 
-    git diff --name-only "$BASE" "$HEAD" \\
+    scripts/pr-changed-files.sh "$BASE" "$HEAD" -- 'Sources/*' \\
         | python3 scripts/require-visual-evidence.py \\
               --body "$BODY" --label "$LABEL" ...
 
