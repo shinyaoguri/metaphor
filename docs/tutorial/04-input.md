@@ -23,7 +23,7 @@ draft: false
 
 ## 4.1 マウス
 
-![マウスの実行結果](images/04-Input/01-Mouse.png)
+![マウスの実行結果](https://i.gyazo.com/69b1224c0d3fb08ef7610cf74546dbc0.png)
 
 マウスの状態は 6 つの値で読めます。座標はすべて**キャンバス座標系**（第 1 部 1.4）で、原点は左上です。
 
@@ -227,7 +227,7 @@ final class Mouse: Sketch {
 
 ## 4.2 キーボード
 
-![キーボードの実行結果](images/04-Input/02-Keyboard.png)
+![キーボードの実行結果](https://i.gyazo.com/38db525078805ca12f02fc149e824c85.png)
 
 キーボードもマウスと同じ 2 通りで受け取ります。ただし**押しっぱなし**の扱いに癖があります。
 
@@ -439,7 +439,7 @@ final class Keyboard: Sketch {
 
 ## 4.3 当たり判定と UI を自作する
 
-![当たり判定と UI の実行結果](images/04-Input/03-HitTesting.png)
+![当たり判定と UI の実行結果](https://i.gyazo.com/3a6f3be2704b68b08c9cd3196979458d.png)
 
 metaphor には調整用の GUI が用意されていますが（`@Param` と `gui.params()`。第 8 部 8.4）、ボタンやスライダーを**自分で描いて自分で判定する**やり方を一度通ると、画面の中の何にでも反応させられるようになります。必要なのは 2 つの判定だけです。
 
@@ -647,7 +647,7 @@ final class HitTesting: Sketch {
 
 ## 4.4 ウィンドウ
 
-![ウィンドウの実行結果](images/04-Input/04-Window.png)
+![ウィンドウの実行結果](https://i.gyazo.com/15abff75e038538fae6657c390881951.png)
 
 入力を扱い始めると、座標がどの空間の値なのかが気になります。metaphor は**レンダリング解像度とウィンドウの大きさを分けて**持っているためです。
 

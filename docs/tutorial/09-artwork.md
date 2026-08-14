@@ -18,7 +18,7 @@ draft: false
 
 ## 9.1 静止画で書き出す
 
-![静止画の書き出しの実行結果](images/09-Artwork/01-SaveImage.png)
+![静止画の書き出しの実行結果](https://i.gyazo.com/dec49dbe07710158c842ef3f966190d3.png)
 
 ノイズで大きさの変わる円が並び、ゆっくり呼吸しています。**S** を押すとその瞬間の 1 枚が `output/artwork.png` に、**R** を押すと止めるまでの全フレームが `output/frames/` に連番で書き出されます。画面の下の帯には、いま何をしたかが出ます。
 
@@ -190,9 +190,9 @@ final class SaveImageSketch: Sketch {
 
 ## 9.2 動画・GIF で書き出す
 
-![動画と GIF の書き出しの実行結果](images/09-Artwork/02-RecordMotion.png)
+![動画と GIF の書き出しの実行結果](https://i.gyazo.com/331e87a56723a34a812aaaa0162ef753.png)
 
-![録画される動き](images/09-Artwork/02-RecordMotion.webp)
+![録画される動き](https://i.gyazo.com/25a2477dd103155e16c269e134635d56.webp)
 
 うねる輪に並んだ粒が、回りながら伸び縮みします。**V** で動画（`output/motion.mp4`）、**G** で GIF（`output/motion.gif`）の録画が始まり、もう一度同じキーで止まります。録画中は左下のランプが赤くなり、何フレーム録ったかが出ます。
 
@@ -397,7 +397,7 @@ final class RecordMotionSketch: Sketch {
 
 ## 9.3 ベクタで書き出す
 
-![ベクタの書き出しの実行結果](images/09-Artwork/03-VectorExport.png)
+![ベクタの書き出しの実行結果](https://i.gyazo.com/1b05815667d2bcd2472cf5c3802362ed.png)
 
 ノイズで揺れた 26 本の線が並びます。**S** を押すと、いま画面に出ているのと同じ線が `output/plot.svg` に書き出されます。ラスター画像と違って、SVG は**線が線のまま**入っているので、拡大しても粗くならず、ペンプロッタやカッティングマシンにそのまま渡せます。
 
@@ -562,7 +562,7 @@ final class VectorExportSketch: Sketch {
 
 ## 9.4 きれいに焼き出す
 
-![焼き出しの実行結果](images/09-Artwork/04-DeterministicRender.png)
+![焼き出しの実行結果](https://i.gyazo.com/e744a84e319144a4a84b212ea0370641.png)
 
 六角形のリングが 44 枚、少しずつ違う速さで回ります。**B** を押すと 120 フレームが `output/render/` に連番で書き出されます。窓は小さく開いていますが、出てくる画像は 1920×1080 です。
 
@@ -754,7 +754,7 @@ final class DeterministicRenderSketch: Sketch {
 
 ## 9.5 長く動かす
 
-![長く動かすの実行結果](images/09-Artwork/05-LongRun.png)
+![長く動かすの実行結果](https://i.gyazo.com/d6e186ec074eabb89a3be005dbf336b5.png)
 
 粒がゆっくり積み上がっていきます。右上には FPS・1 フレームにかかった時間・GPU の時間が出ていて、左下には粒の数、`frameCount` と `time`、そして「復元された回数」が出ます。
 
