@@ -78,7 +78,10 @@ class Gesture {
     func smooth() {
         let weight: Float = 18
         let scale: Float = 1.0 / (weight + 2)
-        for i in 1..<(nPoints - 2) {
+        // 原典 (Gesture.pde) は C 形式の for なので上限が下限を下回れば 0 回で済むが、
+        // Swift の ..< は下限 > 上限をトラップする。nPoints == 2 の 1 回だけ起きるので
+        // 上限を下限で切り上げて空ループにする。
+        for i in 1..<max(1, nPoints - 2) {
             let lower = path[i - 1]
             path[i].x = (lower.x + weight * path[i].x + path[i + 1].x) * scale
             path[i].y = (lower.y + weight * path[i].y + path[i + 1].y) * scale

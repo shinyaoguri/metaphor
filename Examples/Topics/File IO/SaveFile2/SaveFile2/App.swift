@@ -10,6 +10,10 @@ final class SaveFile2: Sketch {
 
     func setup() {
         frameRate(12)
+        // draw() で background() を呼ばずに点を積み上げる作りなので、
+        // ここで一度だけ塗る（原典 Processing の既定背景と同じグレー）。
+        background(204)
+        stroke(0)  // 原典の既定 stroke と同じ黒。既定のままだとグレー地に白で見えない
     }
 
     func draw() {

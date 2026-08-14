@@ -564,6 +564,13 @@
       "height": 768,
       "frame": 13
     },
+    "Examples/Demos/Graphics/Yellowtail": {
+      "origin": "captured",
+      "sourceHash": "4d78ac3d6bc6205691f69ee0f6797f7d2db40b730cefa9a3ed26eb259bf310b2",
+      "width": 1024,
+      "height": 768,
+      "frame": 378
+    },
     "Examples/Demos/Performance/CubicGridImmediate": {
       "origin": "captured",
       "sourceHash": "f0bccb51a087e2de08776a2cdad1cf80d27690c30955213c73b53e207b5b4c43",
@@ -605,6 +612,13 @@
       "width": 800,
       "height": 600,
       "frame": 107
+    },
+    "Examples/Demos/Performance/StaticParticlesImmediate": {
+      "origin": "captured",
+      "sourceHash": "b4dec3ff65508816f3bbcdd768338194313fd283d40cf019f15a0c5cafbf2f13",
+      "width": 800,
+      "height": 600,
+      "frame": 104
     },
     "Examples/Demos/Performance/TextRendering": {
       "origin": "captured",
@@ -965,6 +979,13 @@
       "height": 360,
       "frame": 142
     },
+    "Examples/Topics/File IO/SaveFile2": {
+      "origin": "captured",
+      "sourceHash": "d45962d6d0054c2563495220c89c77efa5fde43f289ee73f04c7f0b5885b4f62",
+      "width": 640,
+      "height": 360,
+      "frame": 40
+    },
     "Examples/Topics/File IO/SaveFrames": {
       "origin": "captured",
       "sourceHash": "f9d7e1be2b0f6e9c92e79f02a87fd4dac20ef7355dd76c35172e30793f9b7b39",
@@ -1102,6 +1123,13 @@
       "origin": "processing",
       "width": 1280,
       "height": 720
+    },
+    "Examples/Topics/Image Processing/Explode": {
+      "origin": "captured",
+      "sourceHash": "9032683f7637a0b6463b41bc206c116d40251f96a665128610f530312408a50e",
+      "width": 640,
+      "height": 360,
+      "frame": 19
     },
     "Examples/Topics/Image Processing/Extrusion": {
       "origin": "captured",
