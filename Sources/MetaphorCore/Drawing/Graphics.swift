@@ -227,6 +227,25 @@ public final class Graphics {
     /// - Parameter mode: ブレンドモード。
     public func blendMode(_ mode: BlendMode) { canvas.blendMode(mode) }
 
+    // MARK: - カスタムシェーダ（#647 / Epic #291 E2）
+
+    /// 以降の描画にカスタム 2D フラグメントシェーダを適用します。
+    ///
+    /// `loadShader()` / `createShader()` で作ったシェーダはメインキャンバスと共有できます
+    /// （同じ ``ShaderLibrary`` の関数を使うため）。組み込み uniform の `resolution` は
+    /// この `Graphics` の寸法になります。
+    /// - Parameter shader: 適用するシェーダ。
+    public func shader(_ shader: Shader2D) { canvas.shader(shader) }
+
+    /// カスタム 2D シェーダを解除し、組み込みシェーダへ戻します。
+    public func resetShader() { canvas.resetShader() }
+
+    /// 組み込み uniform の時間・マウス・フレーム数を供給するフックを配線します
+    /// （`SketchContext.createGraphics` から呼ばれます）。
+    func wireShaderInputs(_ provider: @escaping () -> Canvas2DShaderInputs) {
+        canvas.shaderInputs = provider
+    }
+
     /// カラーモードとオプションの最大チャンネル値を設定します。
     /// - Parameters:
     ///   - space: カラースペース（RGB または HSB）。

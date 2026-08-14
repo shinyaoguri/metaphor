@@ -116,6 +116,9 @@ extension Canvas2D {
             }
         }
 
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: texturedVertexCount == 0)
+
         let tw = Float(texture.width)
         let th = Float(texture.height)
         let u0 = srcX / tw
@@ -191,6 +194,8 @@ extension Canvas2D {
         // tint() は image() 用の API で、文字色ではない。
         let textColor = fillColor
         let r = textColor.x, g = textColor.y, b = textColor.z, a = textColor.w
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: texturedVertexCount == 0)
         let verts = texturedVertices
         var off = texturedBufferOffset + texturedVertexCount
 

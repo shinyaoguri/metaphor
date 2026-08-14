@@ -45,6 +45,8 @@ extension Canvas2D {
             flushInstancedBatch()
         }
         guard ensureColorCapacity() else { return }
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: vertexCount == 0)
         let writeIndex = bufferOffset + vertexCount
         let p = currentTransform * SIMD3<Float>(x, y, 1)
         vertices[writeIndex] = Vertex2D(
@@ -64,6 +66,7 @@ extension Canvas2D {
             flushInstancedBatch()
         }
         guard ensureColorCapacity() else { return }
+        captureShaderParams(ifBatchEmpty: vertexCount == 0)
         let writeIndex = bufferOffset + vertexCount
         vertices[writeIndex] = Vertex2D(
             posX: x, posY: y,

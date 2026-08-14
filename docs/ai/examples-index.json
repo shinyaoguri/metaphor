@@ -1,7 +1,7 @@
 {
-  "count": 283,
+  "count": 284,
   "statusCounts": {
-    "supported": 263,
+    "supported": 264,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -4511,6 +4511,28 @@
       "tags": [
         "cpu-approximation",
         "customblend",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
+      "title": "Custom Shader 2D",
+      "path": "Examples/Topics/Shaders/CustomShader2D",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "Intermediate",
+      "status": "supported",
+      "description": "Apply a custom Metal fragment shader to 2D shapes. loadShader() reads the MSL file, shader() applies it so rect()/circle() become surfaces the shader runs on, and resetShader() goes back to the built-in shader. Built-in...",
+      "featured": [
+        "loadShader_fragment_",
+        "shader_",
+        "resetShader_",
+        "setParameters_"
+      ],
+      "tags": [
+        "customshader2d",
+        "interaction",
+        "shader",
         "shaders",
         "topics"
       ]

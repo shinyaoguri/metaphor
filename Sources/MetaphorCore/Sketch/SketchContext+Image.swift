@@ -285,7 +285,7 @@ extension SketchContext {
     ///   - h: バッファの高さ（ピクセル単位）。
     /// - Returns: 新しい Graphics インスタンス。失敗時は nil。
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
-        try? Graphics(
+        let graphics = try? Graphics(
             device: renderer.device,
             commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
@@ -293,6 +293,12 @@ extension SketchContext {
             width: w,
             height: h
         )
+        // オフスクリーンでもカスタム 2D シェーダの time / mouse が効くようにする（#647）。
+        graphics?.wireShaderInputs { [weak self] in
+            self?.shaderInputs() ?? Canvas2DShaderInputs(
+                time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0)
+        }
+        return graphics
     }
 
     /// オフスクリーン 3D 描画バッファを作成します。

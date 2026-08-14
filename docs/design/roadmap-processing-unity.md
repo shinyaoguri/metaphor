@@ -100,7 +100,7 @@
 |---|---|---|---|
 | **Parameter Store（フラッグシップ）** | 両方 | L | 詳細は [live-tooling-params.md](live-tooling-params.md)。#87 を吸収、#273/#275 は同じ schema 変更に同乗 |
 | 状態保持リロード（saveState/restoreState） | 両方 | M | [#451](https://github.com/shinyaoguri/metaphor/issues/451) + [cli#105](https://github.com/shinyaoguri/metaphor-cli/issues/105)（**完了**・契約点 8 新設。[live-viewer.md](live-viewer.md) §A-3 をファイルベースへ改訂） |
-| loadShader()/shader() の 2D 対応 + シェーダファイル監視ホットリロード | Processing | L | 前提: Canvas2D パイプライン状態リファクタ（独立 PR） |
+| loadShader()/shader() の 2D 対応 + シェーダファイル監視ホットリロード | Processing | L | 前提の Canvas2D パイプライン状態リファクタ [#646](https://github.com/shinyaoguri/metaphor/issues/646) と loadShader/shader/resetShader [#647](https://github.com/shinyaoguri/metaphor/issues/647) は**完了**。残りはファイル監視リロード [#648](https://github.com/shinyaoguri/metaphor/issues/648) |
 | フォントファイル読込（CTFontManager）+ textToPoints | Processing | M | 生成タイポグラフィの解放 |
 | SVG 読み込み（loadShape → MShape） | Processing | M | Phase 1 の SVG 書き出しと対になる |
 | canvas 全体 filter()/blend() | Processing | S–M | 既存 postFX の配線替えが主 |
@@ -166,7 +166,7 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#288](https://github.com/shinyaoguri/metaphor/issues/288) B: ベクタ往復 | SVG/PDF | B1 SVG 書き出し #285（**完了**・方式は API フックに改訂）/ B2 loadShape（Phase 2）/ B3 PDF（Phase 4） |
 | [#289](https://github.com/shinyaoguri/metaphor/issues/289) C: 往復レイテンシ（クロスリポ） | ビルド高速化 + 状態運搬 | C1 ビルド高速化 pass 1（[cli#88](https://github.com/shinyaoguri/metaphor-cli/issues/88)・**完了**）/ C2 saveState/restoreState [#451](https://github.com/shinyaoguri/metaphor/issues/451)（**完了**）/ C3 watch 側状態運搬（[cli#105](https://github.com/shinyaoguri/metaphor-cli/issues/105)・**完了**）/ C4 計測分解（**完了**） |
 | [#290](https://github.com/shinyaoguri/metaphor/issues/290) D: Parameter Store & AI 共同操作 | Phase 2 フラッグシップ | D1 store コア / D2 ParameterGUI 再基盤 / D3 probe schema 拡張 / D4 MCP 書込チャネル（cli）/ D5 リロード永続 [#451](https://github.com/shinyaoguri/metaphor/issues/451)（**完了**）/ D6 ノードインスペクタ（Phase 3） |
-| [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ [#646](https://github.com/shinyaoguri/metaphor/issues/646)（blocking）/ E2 loadShader API [#647](https://github.com/shinyaoguri/metaphor/issues/647) / E3 ファイル監視リロード [#648](https://github.com/shinyaoguri/metaphor/issues/648) |
+| [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ [#646](https://github.com/shinyaoguri/metaphor/issues/646)（**完了**）/ E2 loadShader API [#647](https://github.com/shinyaoguri/metaphor/issues/647)（**完了**）/ E3 ファイル監視リロード [#648](https://github.com/shinyaoguri/metaphor/issues/648) |
 | [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 [#649](https://github.com/shinyaoguri/metaphor/issues/649) / F2 textToPoints [#650](https://github.com/shinyaoguri/metaphor/issues/650) / F3 text-on-path（stretch）[#651](https://github.com/shinyaoguri/metaphor/issues/651) |
 | [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |

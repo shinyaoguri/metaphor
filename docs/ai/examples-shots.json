@@ -1290,6 +1290,13 @@
       "height": 360,
       "frame": 1
     },
+    "Examples/Topics/Shaders/CustomShader2D": {
+      "origin": "captured",
+      "sourceHash": "5955241d15a0c0b6167eab5d244bb3ff87a65af42e2ad9f9b3997b9ac8e7ee2f",
+      "width": 640,
+      "height": 360,
+      "frame": 97
+    },
     "Examples/Topics/Shaders/Deform": {
       "origin": "captured",
       "sourceHash": "d9ed1304f16a9c1ca9a36b36d89ddf4d91efc73f6888b8779c587b643416a62f",
