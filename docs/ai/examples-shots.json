@@ -606,13 +606,6 @@
       "height": 600,
       "frame": 107
     },
-    "Examples/Demos/Performance/StaticParticlesImmediate": {
-      "origin": "captured",
-      "sourceHash": "beca6e54a3e8344902f3d8866845ef5eccc3e6a352eb747315b2b7020395c6f0",
-      "width": 800,
-      "height": 600,
-      "frame": 98
-    },
     "Examples/Demos/Performance/TextRendering": {
       "origin": "captured",
       "sourceHash": "6ebb74de65300aee4baaae8698f688f6a27641901395240ed5fe50c0deaedbe9",
@@ -786,13 +779,6 @@
       "height": 360,
       "frame": 96
     },
-    "Examples/Topics/Advanced Data/HashMapClass": {
-      "origin": "captured",
-      "sourceHash": "0d52f1ec5caf4e1e25a8527302fa3ace259562821ae7a2a702262f652845209c",
-      "width": 640,
-      "height": 360,
-      "frame": 95
-    },
     "Examples/Topics/Advanced Data/IntListLottery": {
       "origin": "processing",
       "width": 1280,
@@ -863,27 +849,6 @@
       "height": 360,
       "frame": 97
     },
-    "Examples/Topics/Create Shapes/GroupPShape": {
-      "origin": "captured",
-      "sourceHash": "6d55231e02b433a5b8ad0c79a0042b901042cba6a4daf655acdbf2d2fc7eeef4",
-      "width": 640,
-      "height": 360,
-      "frame": 97
-    },
-    "Examples/Topics/Create Shapes/PathPShape": {
-      "origin": "captured",
-      "sourceHash": "dbee39e22b53a3248a0323284ade80721c5800cfb1ecdd3d08b8b2c5d90360f9",
-      "width": 640,
-      "height": 360,
-      "frame": 95
-    },
-    "Examples/Topics/Create Shapes/PolygonPShape": {
-      "origin": "captured",
-      "sourceHash": "b63d8737dd4dc9ad5a5a5953f2ba25c0586e89d23a9a55b25661162694035c32",
-      "width": 640,
-      "height": 360,
-      "frame": 98
-    },
     "Examples/Topics/Create Shapes/PolygonPShapeOOP": {
       "origin": "captured",
       "sourceHash": "725f5904a119794fbc38301bb37952e6227fe9466d6e7dd02cdc300d23d52870",
@@ -904,13 +869,6 @@
       "width": 640,
       "height": 360,
       "frame": 104
-    },
-    "Examples/Topics/Create Shapes/PrimitivePShape": {
-      "origin": "captured",
-      "sourceHash": "adbd05fc45d3ebc00b6494ba3bdaebe5b7ab7ae11b3dda4b7656354a2e66bb43",
-      "width": 640,
-      "height": 360,
-      "frame": 94
     },
     "Examples/Topics/Create Shapes/WigglePShape": {
       "origin": "captured",
@@ -976,13 +934,6 @@
       "origin": "processing",
       "width": 1280,
       "height": 720
-    },
-    "Examples/Topics/File IO/TileImages": {
-      "origin": "captured",
-      "sourceHash": "14299866955c8b3c58657d9f8fb766b2358ee771761fc559fd167f9780f25443",
-      "width": 600,
-      "height": 600,
-      "frame": 1
     },
     "Examples/Topics/Fractals and L-Systems/Koch": {
       "origin": "processing",
@@ -1102,13 +1053,6 @@
       "origin": "processing",
       "width": 1280,
       "height": 720
-    },
-    "Examples/Topics/Image Processing/Explode": {
-      "origin": "captured",
-      "sourceHash": "99bd22a9f2c6a963d0961543a1a880918aa15380fb550adf677a44712f466e4f",
-      "width": 640,
-      "height": 360,
-      "frame": 22
     },
     "Examples/Topics/Image Processing/Extrusion": {
       "origin": "captured",
@@ -1325,13 +1269,6 @@
       "width": 640,
       "height": 360,
       "frame": 100
-    },
-    "Examples/Topics/Shaders/ToonShading": {
-      "origin": "captured",
-      "sourceHash": "6655897f601e1266a7da7adbc5e267485611823c0f7b554ed62807b82027263f",
-      "width": 640,
-      "height": 360,
-      "frame": 98
     },
     "Examples/Topics/Simulate/Flocking": {
       "origin": "processing",
