@@ -97,7 +97,7 @@ jobs:
           cd Frameworks
           zip -r Syphon.xcframework.zip Syphon.xcframework
           shasum -a 256 Syphon.xcframework.zip > checksum.txt
-          echo "CHECKSUM=$(awk '{print $1}' checksum.txt)" >> $GITHUB_ENV
+          echo "CHECKSUM=$(awk '{print $1}' checksum.txt)" >> "$GITHUB_ENV"
 
       # --- Examples smoke build（API ドリフトゲート） ---
       # Examples は per-PR CI では検証されない（コスト。ci.yml 参照）ため、

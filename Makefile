@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
 
 # Default target
 all: setup build
@@ -172,6 +172,11 @@ ai-docs-check:
 contract-schema:
 	@./scripts/check-contract-schema.sh
 
+# Lint GitHub Actions workflows with actionlint (same entry point as CI).
+# Pins actionlint and downloads it on demand; shellcheck makes it check run: too.
+lint-workflows:
+	@./scripts/lint-workflows.sh
+
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
 # base path は公開時と同じ /metaphor/reference/（DocC は baseUrl を出力へ焼き込む
@@ -253,6 +258,7 @@ help:
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
+	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
 	@echo "  make examples       - Run examples in parallel (10 workers)"
