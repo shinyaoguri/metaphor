@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "HashMapClass",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "HashMapClass"
+            path: "HashMapClass",
+            resources: [.copy("Resources")]
         ),
     ]
 )

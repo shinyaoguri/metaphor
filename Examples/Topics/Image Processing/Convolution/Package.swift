@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "Convolution",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "Convolution"
+            path: "Convolution",
+            resources: [.copy("Resources")]
         ),
     ]
 )

@@ -1,3 +1,4 @@
+import Foundation
 import metaphor
 
 // NOTE: Original uses a GLSL edge detection shader.
@@ -15,25 +16,12 @@ final class EdgeDetect: Sketch {
 
     func setup() {
         noLoop()
-        let w = Int(width), h = Int(height)
-
-        // Generate leaf-like image
-        img = createImage(w, h)
-        img.loadPixels()
-        for y in 0..<h {
-            for x in 0..<w {
-                let idx = (y * w + x) * 4
-                let nx = Float(x) / Float(w)
-                let ny = Float(y) / Float(h)
-                let leaf = sin(nx * 12 + ny * 8) * cos(nx * 6 - ny * 10)
-                let r = UInt8(max(0, min(255, Int(leaf * 60 + 80))))
-                let g = UInt8(max(0, min(255, Int(leaf * 40 + 140))))
-                let b = UInt8(max(0, min(255, Int(leaf * 30 + 50))))
-                img.pixels[idx] = r; img.pixels[idx + 1] = g
-                img.pixels[idx + 2] = b; img.pixels[idx + 3] = 255
-            }
-        }
-        img.updatePixels()
+        guard
+            let path = Bundle.module.path(forResource: "leaves", ofType: "jpg", inDirectory: "Resources"),
+            let loaded = try? loadImage(path)
+        else { return }
+        img = loaded
+        let w = Int(img.width), h = Int(img.height)
 
         // Compute edge detection
         let kernel: [[Float]] = [[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]]

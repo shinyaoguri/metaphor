@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "Blur",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "Blur"
+            path: "Blur",
+            resources: [.copy("Resources")]
         ),
     ]
 )
