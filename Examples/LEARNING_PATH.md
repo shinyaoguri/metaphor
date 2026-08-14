@@ -72,11 +72,19 @@ For particle counts in the tens of thousands and up, see
 [Demos/Performance/MassiveCircles](Demos/Performance/MassiveCircles) (explicit
 batched drawing) once you've outgrown per-particle `circle()` calls.
 
-## 6. GPU effects: post-processing (and what is still missing)
+## 6. GPU effects: custom shaders and post-processing
 
-metaphor draws through Metal, but the GPU work you can drive yourself happens
-either *after* `draw()` — as a post-process pass over the finished frame — or on
-3D geometry as a custom material.
+metaphor draws through Metal, and you can drive that GPU work yourself in three
+places: *while* shapes are drawn (a custom 2D fragment shader), *after* `draw()`
+(a post-process pass over the finished frame), and on 3D geometry (a custom
+material).
+
+- [Topics/Shaders/CustomShader2D](Topics/Shaders/CustomShader2D) — `loadShader()`
+  reads a Metal fragment function, `shader()` makes `rect()` / `circle()` render
+  through it, `resetShader()` goes back. Built-in uniforms (resolution, mouse,
+  time, frame count) arrive in `buffer(3)`; your own struct goes to `buffer(4)`
+  via `setParameters()`. The `.metal` file is watched, so saving it recompiles
+  the shader without rebuilding the sketch.
 
 - [Samples/RenderGraphCompose](Samples/RenderGraphCompose) — the one example in
   this repository that actually runs GPU effect passes:
@@ -91,10 +99,8 @@ Metal Shading Language fragment function into that chain, and
 `createMaterial(source:fragmentFunction:)` + `material()` give 3D geometry a
 custom surface shader.
 
-**`Topics/Shaders/` is not where you learn any of that.** Those 15 sketches port
-Processing samples whose originals were GLSL, and metaphor has no 2D custom draw
-shader yet — Processing's `loadShader()` / `shader()` is planned in
-[Epic #291](https://github.com/shinyaoguri/metaphor/issues/291). They recreate
+**The other 15 sketches in `Topics/Shaders/` are not where you learn any of
+that.** They port Processing samples whose originals were GLSL, but they recreate
 the effect with CPU pixel loops instead, which is why
 [`docs/ai/examples-index.md`](../docs/ai/examples-index.md) tags them
 `cpu-approximation`. They are still worth reading for the effect itself (an

@@ -43,6 +43,7 @@ other, and it is the rule to predict any name this page does not list.
   - [Image](#image)
   - [Pixels](#pixels)
   - [3D, lighting, camera, material](#3d-lighting-camera-material)
+  - [Shaders](#shaders)
   - [Input](#input)
   - [Math, random, noise](#math-random-noise)
   - [Vectors: PVector → Vec2 / Vec3](#vectors-pvector--vec2--vec3)
@@ -328,6 +329,34 @@ At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 > divides its coordinates by the image size. A `beginShape3D()` whose vertices
 > carry no UV renders with the current fill, as before.
 
+### Shaders
+
+Shaders are **Metal Shading Language, not GLSL**. The call structure ports over —
+load, apply, draw, reset — but the shader body has to be rewritten. A 2D custom
+shader replaces the *fragment* stage only; the vertex stage stays built in
+(3D materials accept an optional custom vertex function).
+
+| Processing | metaphor |
+|---|---|
+| `loadShader("wave.glsl")` | `loadShader(_ path: String, fragment: String) -> Shader2D` — the fragment function is named explicitly |
+| `createShader(vert, frag)` | `createShader(source: String, fragment: String) -> Shader2D` — one MSL source, fragment only |
+| `shader(s)` / `resetShader()` | `shader(_ shader: Shader2D)` / `resetShader()` — same "applies until reset" semantics |
+| `filter(shader)` | `createPostEffect(name:source:fragmentFunction:)` + `addPostEffect(_:)` (the whole frame, not the shapes) |
+| `s.set("uniformName", …)` | built-ins arrive as one struct in `buffer(3)` (`resolution`, `mouse`, `time`, `frameCount`); your own values go through `setParameters(_:)` into `buffer(4)` |
+| `gl_FragCoord.xy / u_resolution` | `in.position.xy / u.resolution` — 2D vertices carry no UV, so texture coordinates are derived from the pixel position |
+| 3D surface shaders | `createMaterial(source:fragmentFunction:vertexFunction:)` + `material(_:)` |
+
+The MSL preamble (`#include <metal_stdlib>` and the `Canvas2DVertexOut` /
+`Canvas2DTexVertexOut` / `Canvas2DShaderUniforms` definitions) is prepended by
+metaphor — write the fragment function alone, and do not redefine those structs.
+Shaders read from a file (`loadShader`, `createMaterialFromFile`,
+`createPostEffectFromFile`) are watched, so saving the `.metal` recompiles it
+without rebuilding the sketch.
+
+`blendMode(.difference)` and `.exclusion` cannot be combined with a custom 2D
+shader: both are implemented as framebuffer-fetch fragments, so they fall back to
+normal alpha blending (with one warning) while a shader is applied.
+
 ### Input
 
 | Processing | metaphor |
@@ -492,7 +521,7 @@ are skipped with a one-time warning.
 | `PShape` | `MShape` |
 | `PVector` | `Vec2` = `SIMD2<Float>`, `Vec3` = `SIMD3<Float>` |
 | `PFont` | — (use `textFont(_ family: String)`) |
-| `PShader` | `CustomMaterial` (3D) / `CustomPostEffect` (post-process). No 2D shader type yet |
+| `PShader` | `Shader2D` (2D draw shaders) / `CustomMaterial` (3D) / `CustomPostEffect` (post-process) |
 | `PMatrix2D` / `PMatrix3D` | `float3x3` / `float4x4` (from `simd`) |
 | `Table` / `TableRow` | `Table` / `TableRow` |
 | `JSONObject` / `JSONArray` | `JSONValue` (one enum covering both) |
@@ -793,7 +822,6 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 
 | Processing | Status |
 |---|---|
-| `loadShader()` / `shader()` / `resetShader()` for 2D | Planned, Phase 2 — [Epic #291](https://github.com/shinyaoguri/metaphor/issues/291). Today: `createMaterial` for 3D and `createPostEffect` for post-processing, both taking Metal Shading Language. |
 | `loadShape()` (SVG as `PShape`) | Planned, Phase 2 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). Today: `loadModel()` reads OBJ / USDZ / ABC into a `Mesh`; SVG is export-only. |
 | `createFont()` / `loadFont()` / `PFont`, `textToPoints()` | Planned, Phase 2 — [Epic #292](https://github.com/shinyaoguri/metaphor/issues/292). Today `textFont(_:)` resolves installed family names only. |
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |

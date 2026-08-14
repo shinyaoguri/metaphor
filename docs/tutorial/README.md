@@ -119,7 +119,8 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 | 6.2 GPU パーティクル | 100 万粒子を CPU に降ろさず動かす | `createParticleSystem` | `Demos/Performance/DynamicParticlesImmediate` |
 | 6.3 ポストプロセス | 描き終えた絵に効果をかける、組み込みエフェクトの重ねがけ | `addPostEffect`, `BloomEffect` ほか | — |
 | 6.4 カスタムポストエフェクト | 自分の MSL フラグメントシェーダーを効果として差し込む、保存だけで効く自動ホットリロード | `createPostEffect`, `createPostEffectFromFile` | — |
-| 6.5 いまできないこと | 描画そのもののシェーダー差し替え（[#291](https://github.com/shinyaoguri/metaphor/issues/291)）は未実装。`Topics/Shaders/` の各例は元の GLSL を CPU で近似したもので、カスタムシェーダーの書き方の参考にはならない | — | — |
+| 6.5 図形をシェーダーで塗る | 図形の塗り方そのものを自分の MSL フラグメントシェーダーへ置き換える、組み込み uniform と自前パラメータ、`.metal` ファイルの自動ホットリロード | `loadShader`, `createShader`, `shader`, `resetShader` | `Topics/Shaders/CustomShader2D` |
+| 6.6 いまできないこと | 2D で差し替えられるのはフラグメントだけ（頂点シェーダーの口は無い）。`Topics/Shaders/` の各例は元の GLSL を CPU で近似したもので、カスタムシェーダーの書き方の参考にはならない | — | — |
 
 ### 第 7 部 メディア
 
@@ -162,15 +163,14 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 
 ## 未実装領域の扱い
 
-未実装の機能について**章や節を立てません**。関係する節の末尾に「いまできないこと」として現状と対応 Issue を書きます（例: 2.7 テキストにフォント読み込みの制約、6.5 に描画シェーダーの差し替え）。
+未実装の機能について**章や節を立てません**。関係する節の末尾に「いまできないこと」として現状と対応 Issue を書きます（例: 2.7 テキストにフォント読み込みの制約、6.6 に 2D の頂点シェーダー差し替え）。
 
 | 領域 | Issue | 書く場所 |
 |---|---|---|
-| 2D カスタムシェーダ（`loadShader` / `shader`） | [#291](https://github.com/shinyaoguri/metaphor/issues/291) | 6.5 |
 | タイポグラフィ（フォントファイル / textToPoints / text-on-path） | [#292](https://github.com/shinyaoguri/metaphor/issues/292) | 2.7 |
 | モダン 3D（UV / PBR テクスチャ / IBL / glTF） | [#293](https://github.com/shinyaoguri/metaphor/issues/293) | 5.6, 5.8, 5.9 |
 
-実装されたら、その節の「いまできないこと」を本文に昇格させます。
+実装されたら、その節の「いまできないこと」を本文に昇格させます。2D カスタムシェーダ（`loadShader` / `shader`、[Epic #291](https://github.com/shinyaoguri/metaphor/issues/291)）がその実例で、6.5 の本文へ昇格しました（[#670](https://github.com/shinyaoguri/metaphor/issues/670)）。**この昇格は自動では起きません**——機能を入れる PR でチュートリアルまで見るか、この表から消えた領域を後で拾い直します。
 
 ## 執筆規約
 
@@ -444,7 +444,7 @@ Examples の本数やバージョン番号のような、増減する数値を�
 
 `LEARNING_PATH.md` を残す理由: 読者と目的が違うためです。チュートリアルは日本語ファーストで**代表コードを通しで読む**もの、`LEARNING_PATH.md` は英語で **Examples 全体をどの順に開くか**の地図です。統合すると Examples 側の入口が消え、英語の資産も失われます。重複する入門部分（"First shapes" など）はチュートリアルへの導線に置き換えます。
 
-なお `LEARNING_PATH.md` には GPU shader 節が実態と食い違う問題が別にあります（[#489](https://github.com/shinyaoguri/metaphor/issues/489)）。チュートリアル 6.5 が同じ誤解を引き継がないよう、そちらを先に解消します。
+なお `LEARNING_PATH.md` の GPU shader 節は、実態と食い違う記述を 2 度直しています（[#489](https://github.com/shinyaoguri/metaphor/issues/489) で「`Topics/Shaders/` は CPU 近似」、[#670](https://github.com/shinyaoguri/metaphor/issues/670) で「2D カスタムシェーダは実装済み」）。チュートリアル 6.5 / 6.6 と同じことを書く場所なので、片方だけ直さないようにします。
 
 ## 英語版
 
