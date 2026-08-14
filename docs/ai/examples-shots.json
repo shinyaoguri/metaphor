@@ -519,19 +519,25 @@
       "height": 720
     },
     "Examples/Basics/Typography/Letters": {
-      "origin": "processing",
-      "width": 2560,
-      "height": 1440
+      "origin": "captured",
+      "sourceHash": "8d1f88f5ad0af0a3f0d455ed46a3abee925b694c79f8e47579e3e2dbc9918dec",
+      "width": 640,
+      "height": 360,
+      "frame": 98
     },
     "Examples/Basics/Typography/TextRotation": {
-      "origin": "processing",
-      "width": 2560,
-      "height": 1440
+      "origin": "captured",
+      "sourceHash": "e1538043b8baf36117eb9523abcfc7a80f3813a09074c7c791909d04ce0134f3",
+      "width": 640,
+      "height": 360,
+      "frame": 99
     },
     "Examples/Basics/Typography/Words": {
-      "origin": "processing",
-      "width": 2560,
-      "height": 1440
+      "origin": "captured",
+      "sourceHash": "b83808f4a4ec09974a645753cd1e6309f50b6734b16ff9537296e3ae9c4117a9",
+      "width": 640,
+      "height": 360,
+      "frame": 96
     },
     "Examples/Basics/Web/EmbeddedLinks": {
       "origin": "processing",
@@ -1441,6 +1447,13 @@
       "width": 640,
       "height": 360,
       "frame": 106
+    },
+    "Examples/Topics/Typography/TextParticles": {
+      "origin": "captured",
+      "sourceHash": "8573e52c63042c70d3a958ac7376c8c8dd8893724c47317e169c007f9db09752",
+      "width": 640,
+      "height": 360,
+      "frame": 103
     },
     "Examples/Topics/Vectors/AccelerationWithVectors": {
       "origin": "processing",

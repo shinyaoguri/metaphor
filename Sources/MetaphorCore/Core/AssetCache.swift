@@ -18,6 +18,7 @@ public final class AssetCache {
 
     private var images: [String: Entry<MImage>] = [:]
     private var meshes: [String: Entry<Mesh>] = [:]
+    private var fonts: [String: Entry<MFont>] = [:]
 
     /// アクセス順を記録する単調カウンタ（LRU の evict 判定に使用）
     private var tick: UInt64 = 0
@@ -64,12 +65,29 @@ public final class AssetCache {
         insert(&meshes, key: Self.meshKey(path, normalize: normalize), value: mesh)
     }
 
+    // MARK: - フォント
+
+    /// パスに対応するキャッシュ済みフォントを返します（なければ nil）。
+    func font(forPath path: String) -> MFont? {
+        access(&fonts, key: Self.normalizeKey(path))
+    }
+
+    /// フォントをキャッシュへ格納します。
+    func store(_ font: MFont, forPath path: String) {
+        insert(&fonts, key: Self.normalizeKey(path), value: font)
+    }
+
     // MARK: - 管理
 
     /// すべてのエントリを破棄します（``SketchContext/clearCaches()`` から呼ばれます）。
+    ///
+    /// フォントの登録自体（`CTFontManager` への `.process` スコープ登録）は取り消されません。
+    /// 破棄されるのはパス → ``MFont`` の対応表だけで、既に `textFont` で選んだフォントは
+    /// 引き続き描画に使えます。
     public func clear() {
         images.removeAll()
         meshes.removeAll()
+        fonts.removeAll()
     }
 
     /// キャッシュ中の画像エントリ数。
@@ -77,6 +95,9 @@ public final class AssetCache {
 
     /// キャッシュ中のメッシュエントリ数。
     public var meshCount: Int { meshes.count }
+
+    /// キャッシュ中のフォントエントリ数。
+    public var fontCount: Int { fonts.count }
 
     // MARK: - LRU 実装
 

@@ -1,0 +1,14 @@
+{
+  "name": "Text Particles",
+  "title": "Text Particles",
+  "author": "",
+  "level": "Intermediate",
+  "order": "0",
+  "description": "Generative typography with textToPoints(). Glyph outlines become a point cloud that particles fly into; textToContours() draws the same outlines as strokes behind them. Move the mouse to push the particles away and watch them settle back.",
+  "featured": [
+    "textToPoints_",
+    "textToContours_",
+    "textSize_",
+    "textAlign_"
+  ]
+}

@@ -1,7 +1,7 @@
 {
-  "count": 283,
+  "count": 284,
   "statusCounts": {
-    "supported": 263,
+    "supported": 264,
     "partial": 0,
     "stub": 10,
     "obsolete": 10
@@ -4976,6 +4976,28 @@
       "tags": [
         "textures",
         "texturetriangle",
+        "topics",
+        "typography"
+      ]
+    },
+    {
+      "title": "Text Particles",
+      "path": "Examples/Topics/Typography/TextParticles",
+      "group": "Topics",
+      "subcategory": "Typography",
+      "level": "Intermediate",
+      "status": "supported",
+      "description": "Generative typography with textToPoints(). Glyph outlines become a point cloud that particles fly into; textToContours() draws the same outlines as strokes behind them. Move the mouse to push the particles away and watc...",
+      "featured": [
+        "textToPoints_",
+        "textToContours_",
+        "textSize_",
+        "textAlign_"
+      ],
+      "tags": [
+        "interaction",
+        "particles",
+        "textparticles",
         "topics",
         "typography"
       ]
