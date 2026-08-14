@@ -56,7 +56,7 @@ extension Color: Interpolatable {
             r: Float.interpolate(from: from.r, to: to.r, t: t),
             g: Float.interpolate(from: from.g, to: to.g, t: t),
             b: Float.interpolate(from: from.b, to: to.b, t: t),
-            a: Float.interpolate(from: from.a, to: to.a, t: t)
+            alpha: Float.interpolate(from: from.a, to: to.a, t: t)
         )
     }
 }

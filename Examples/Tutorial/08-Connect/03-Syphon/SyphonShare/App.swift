@@ -27,7 +27,7 @@ final class SyphonShare: Sketch {
         for ring in 0..<ringCount {
             let ringF = Float(ring)
             let radius = 90 + ringF * 55
-            stroke(Color(r: 0.3 + ringF * 0.12, g: 0.7, b: 1, a: 0.9 - ringF * 0.12))
+            stroke(Color(r: 0.3 + ringF * 0.12, g: 0.7, b: 1, alpha: 0.9 - ringF * 0.12))
             strokeWeight(4)
             let sweep = PI + sin(t + ringF * 0.7) * PI * 0.6
             arc(0, 0, radius * 2, radius * 2, t * (ringF + 1) * 0.3, t * (ringF + 1) * 0.3 + sweep)

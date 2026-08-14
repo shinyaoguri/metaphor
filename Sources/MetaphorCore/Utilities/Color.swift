@@ -8,7 +8,7 @@ import simd
 ///
 /// ## 範囲外の成分
 ///
-/// ``init(r:g:b:a:)`` と ``init(gray:alpha:)`` は引数をクランプせず、そのまま保持します。
+/// ``init(r:g:b:alpha:)`` と ``init(gray:alpha:)`` は引数をクランプせず、そのまま保持します。
 /// 範囲外の成分は意図的にも作られます — `Color` は ``Interpolatable`` に準拠して線形外挿するため、
 /// `easeOutBack` / `easeOutElastic` のようにオーバーシュートするイージングで `Tween<Color>` を回すと
 /// 0.0...1.0 を外れた成分が生まれます。
@@ -45,19 +45,31 @@ public struct Color: Sendable, Equatable {
     ///   - r: 赤成分。
     ///   - g: 緑成分。
     ///   - b: 青成分。
-    ///   - a: アルファ成分。デフォルトは 1.0（完全に不透明）。
-    public init(r: Float, g: Float, b: Float, a: Float = 1.0) {
+    ///   - alpha: アルファ成分。デフォルトは 1.0（完全に不透明）。
+    public init(r: Float, g: Float, b: Float, alpha: Float = 1.0) {
         self.r = r
         self.g = g
         self.b = b
-        self.a = a
+        self.a = alpha
+    }
+
+    /// ``init(r:g:b:alpha:)`` の旧ラベルです（アルファのラベルが `a:` から `alpha:` に
+    /// 変わりました。``init(gray:alpha:)`` / ``init(hue:saturation:brightness:alpha:)``
+    /// と揃えるためです）。
+    ///
+    /// 新旧どちらにもデフォルト値があると `Color(r:g:b:)` がどちらにも一致して
+    /// 曖昧になるため、この旧シグネチャは `a` のデフォルト値を持ちません。
+    /// 3 引数の呼び出しは新シグネチャへ解決されます。
+    @available(*, deprecated, renamed: "init(r:g:b:alpha:)")
+    public init(r: Float, g: Float, b: Float, a: Float) {
+        self.init(r: r, g: g, b: b, alpha: a)
     }
 
     // MARK: - Grayscale
 
     /// グレースケールカラーを作成します。0.0 が黒、1.0 が白。
     ///
-    /// ``init(r:g:b:a:)`` と同じく引数はクランプされません。
+    /// ``init(r:g:b:alpha:)`` と同じく引数はクランプされません。
     ///
     /// - Parameters:
     ///   - gray: グレースケール値。
@@ -182,7 +194,7 @@ public struct Color: Sendable, Equatable {
     /// - Parameter alpha: 新しいアルファ値。
     /// - Returns: 指定されたアルファを持つこのカラーのコピー。
     public func withAlpha(_ alpha: Float) -> Color {
-        Color(r: r, g: g, b: b, a: alpha)
+        Color(r: r, g: g, b: b, alpha: alpha)
     }
 
     /// このカラーと別のカラーの間を線形補間します。
@@ -197,7 +209,7 @@ public struct Color: Sendable, Equatable {
             r: r + (other.r - r) * t,
             g: g + (other.g - g) * t,
             b: b + (other.b - b) * t,
-            a: a + (other.a - a) * t
+            alpha: a + (other.a - a) * t
         )
     }
 
@@ -222,7 +234,7 @@ public struct Color: Sendable, Equatable {
     /// オレンジ。
     public static let orange = Color(r: 1, g: 0.6, b: 0)
     /// 完全に透明な黒。
-    public static let clear = Color(r: 0, g: 0, b: 0, a: 0)
+    public static let clear = Color(r: 0, g: 0, b: 0, alpha: 0)
 }
 
 // MARK: - Global Color Functions
@@ -283,7 +295,7 @@ public struct ColorModeConfig: Sendable, Equatable {
         let nA = (alpha ?? maxAlpha) / maxAlpha
         switch space {
         case .rgb:
-            return Color(r: v1 / max1, g: v2 / max2, b: v3 / max3, a: nA)
+            return Color(r: v1 / max1, g: v2 / max2, b: v3 / max3, alpha: nA)
         case .hsb:
             return Color(hue: v1 / max1, saturation: v2 / max2, brightness: v3 / max3, alpha: nA)
         }

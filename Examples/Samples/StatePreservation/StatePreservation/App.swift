@@ -105,7 +105,7 @@ final class StatePreservationApp: Sketch {
     }
 
     private func color(for hue: Float) -> Color {
-        Color(r: 0.35 + hue * 0.65, g: 0.55, b: 1.0 - hue * 0.5, a: 1.0)
+        Color(r: 0.35 + hue * 0.65, g: 0.55, b: 1.0 - hue * 0.5, alpha: 1.0)
     }
 
     /// Shows the two things a reload normally resets.

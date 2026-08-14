@@ -128,7 +128,7 @@ struct RenderRegressionTests {
             var helper = try RenderTestHelper(width: 32, height: 32)
             helper.setClearColor(r: 1, g: 1, b: 1)
             try helper.render { canvas in
-                canvas.fill(Color(r: 0.5, g: 0.5, b: 0.5, a: alpha))
+                canvas.fill(Color(r: 0.5, g: 0.5, b: 0.5, alpha: alpha))
                 canvas.noStroke()
                 canvas.rect(8, 8, 16, 16)
             }
@@ -149,7 +149,7 @@ struct RenderRegressionTests {
         helper.setClearColor(r: 0.5, g: 0.5, b: 0.5)
         try helper.render { canvas in
             canvas.blendMode(.additive)
-            canvas.fill(Color(r: -1.0, g: 0, b: 0, a: 1))
+            canvas.fill(Color(r: -1.0, g: 0, b: 0, alpha: 1))
             canvas.noStroke()
             canvas.rect(8, 8, 16, 16)
         }

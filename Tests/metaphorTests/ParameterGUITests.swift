@@ -11,7 +11,7 @@ private final class MixedHost {
     @Param(min: 10, max: 200) var radius: Float = 50
     @Param(min: 1, max: 512) var count: Int = 4
     @Param var showGrid: Bool = true
-    @Param var tint: Color = Color(r: 1, g: 1, b: 1, a: 1)
+    @Param var tint: Color = Color(r: 1, g: 1, b: 1, alpha: 1)
     @Param var origin: Vec2 = Vec2(0, 0)
     @Param var axis: Vec3 = Vec3(0, 1, 0)
     @Param(choices: ["add", "multiply"]) var blend: String = "add"

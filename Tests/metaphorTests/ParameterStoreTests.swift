@@ -12,7 +12,7 @@ private final class ParamHost {
     @Param(min: 10, max: 200) var radius: Float = 50
     @Param var showGrid: Bool = true
     @Param("blend", choices: ["add", "multiply"]) var mode: String = "add"
-    @Param var tint: Color = Color(r: 1, g: 1, b: 1, a: 1)
+    @Param var tint: Color = Color(r: 1, g: 1, b: 1, alpha: 1)
     @Param var origin: Vec2 = Vec2(0, 0)
     @Param(min: 1, max: 512) var count: Int = 4
 }
@@ -152,7 +152,7 @@ struct ParameterStoreTests {
         ))
 
         #expect(host.origin == Vec2(320, 180))
-        #expect(host.tint == Color(r: 1, g: 0.5, b: 0.25, a: 1))
+        #expect(host.tint == Color(r: 1, g: 0.5, b: 0.25, alpha: 1))
     }
 
     @Test("永続値は名前 + 型が一致するものだけ復元される")
@@ -450,6 +450,6 @@ struct ParameterSchemaConformanceTests {
         #expect(host.count == 256)
         #expect(host.showGrid == true)
         #expect(host.origin == Vec2(320, 180))
-        #expect(host.tint == Color(r: 1, g: 0.5, b: 0.25, a: 1))
+        #expect(host.tint == Color(r: 1, g: 0.5, b: 0.25, alpha: 1))
     }
 }

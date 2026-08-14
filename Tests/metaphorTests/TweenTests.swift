@@ -45,8 +45,8 @@ struct InterpolatableTests {
     @Test("Color interpolation")
     @MainActor
     func colorInterpolation() {
-        let a = Color(r: 1, g: 0, b: 0, a: 1)
-        let b = Color(r: 0, g: 1, b: 0, a: 1)
+        let a = Color(r: 1, g: 0, b: 0, alpha: 1)
+        let b = Color(r: 0, g: 1, b: 0, alpha: 1)
         let mid = Color.interpolate(from: a, to: b, t: 0.5)
         #expect(mid.r == 0.5)
         #expect(mid.g == 0.5)
@@ -73,8 +73,8 @@ struct InterpolatableTests {
     @Test("Color の外挿は成分が 0...1 を外れうる")
     @MainActor
     func colorExtrapolatesBeyondUnitRange() {
-        let a = Color(r: 0, g: 0, b: 0, a: 1)
-        let b = Color(r: 1, g: 0.5, b: 0, a: 1)
+        let a = Color(r: 0, g: 0, b: 0, alpha: 1)
+        let b = Color(r: 1, g: 0.5, b: 0, alpha: 1)
         let over = Color.interpolate(from: a, to: b, t: 1.2)
         #expect(over.r > 1.0)
         #expect(abs(over.g - 0.6) < 1e-6)

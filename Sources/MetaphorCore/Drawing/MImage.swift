@@ -299,7 +299,7 @@ public final class MImage {
             r: Float(pixels[i]) / 255.0,
             g: Float(pixels[i + 1]) / 255.0,
             b: Float(pixels[i + 2]) / 255.0,
-            a: Float(pixels[i + 3]) / 255.0
+            alpha: Float(pixels[i + 3]) / 255.0
         )
     }
 

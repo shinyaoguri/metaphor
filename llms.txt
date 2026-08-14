@@ -477,7 +477,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init?(hex: String)` -- "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
 - `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- 色相、彩度、明度の成分からカラーを作成します。
 - `init?(paramValue: ParamValue)`
-- `init(r: Float, g: Float, b: Float, a: Float = 1.0)` -- 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
+- `init(r: Float, g: Float, b: Float, alpha: Float = 1.0)` -- 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
 - `static func interpolate(from: Color, to: Color, t: Float) -> Color`
 - `func lerp(to other: Color, t: Float) -> Color` -- このカラーと別のカラーの間を線形補間します。
 - `func withAlpha(_ alpha: Float) -> Color` -- 指定されたアルファ値を持つ新しいカラーを返します。
