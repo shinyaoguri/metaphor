@@ -310,11 +310,28 @@ struct Canvas2DShaderTests {
         }
     }
 
-    @Test("パイプラインを作れないシェーダは組み込みへフォールバックし、描画を落とさない")
-    func unbuildableShaderFallsBackToBuiltin() throws {
+    @Test("解決できないカスタムキーは組み込みへフォールバックする")
+    func unresolvableShaderKeyFallsBackToBuiltin() throws {
         let context = try makeContext()
         let canvas = context.canvas
-        // texCoord を要求する関数はカラー系の頂点出力と合わず、パイプライン生成が失敗する。
+        // register していないシェーダのキー。ホットリロードやキャッシュ破棄の直後に起こりうる。
+        // ここを nil で返すと呼び出し側の flush が描画ごと捨てて絵が消える。
+        let shader = try context.createShader(source: Self.bareSource, fragment: "testFragment")
+        let key = Canvas2DPipelineKey(.color, .alpha, shader: shader.id)
+
+        let fallback = canvas.pipelineStore.state(for: key)
+        #expect(fallback === canvas.pipelineStore.state(for: Canvas2DPipelineKey(.color, .alpha)),
+                "同じ系統・ブレンドの組み込みパイプラインを返すこと")
+    }
+
+    @Test("stage_in が経路と合わないシェーダでも描画を落とさない")
+    func mismatchedStageInStillResolves() throws {
+        let context = try makeContext()
+        let canvas = context.canvas
+        // texCoord を要求する関数をカラー経路へ載せる。**成否はドライバ依存**で、
+        // Apple Silicon の AGX はパイプライン生成を拒否するが、CI の paravirtualized GPU は
+        // 通してしまう。どちらに転んでも守るべき性質は「nil を返さない」— nil だと
+        // flush が draw ごと捨てて絵が消える。どのパイプラインが返るかは固定しない。
         let textured = try context.createShader(source: """
             fragment float4 texturedOnlyFragment(Canvas2DTexVertexOut in [[stage_in]]) {
                 return float4(in.texCoord, 0.0, 1.0);
@@ -323,9 +340,8 @@ struct Canvas2DShaderTests {
         canvas.pipelineStore.register(textured)
 
         let key = Canvas2DPipelineKey(.color, .alpha, shader: textured.id)
-        let fallback = canvas.pipelineStore.state(for: key)
-        #expect(fallback != nil, "組み込みへフォールバックして描画を落とさないこと")
-        #expect(fallback === canvas.pipelineStore.state(for: Canvas2DPipelineKey(.color, .alpha)))
+        #expect(canvas.pipelineStore.state(for: key) != nil,
+                "生成に失敗しても組み込みへ逃がして描画を落とさないこと")
     }
 
     @Test("reload で revision が進み、別のパイプラインキーになる")
