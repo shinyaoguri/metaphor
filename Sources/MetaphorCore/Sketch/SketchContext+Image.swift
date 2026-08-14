@@ -46,6 +46,76 @@ extension SketchContext {
         return image
     }
 
+    // MARK: - Text Outline
+
+    /// テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 現在の ``textSize(_:)`` / ``textFont(_:)-(String)`` / ``textAlign(_:_:)`` を
+    /// `text()` と同じように解釈します。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリライン。
+    public func textToContours(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [[Vec2]] {
+        canvas.textToContours(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: アウトライン上の点。
+    public func textToPoints(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [Vec2] {
+        canvas.textToPoints(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
+    ///
+    /// 返るのは外周ごとの子を持つ ``ShapeKind/group``。`o` の内側のような穴は
+    /// コンターとして子に載るため、``shape(_:_:_:)`` でそのまま塗り分けられます。
+    ///
+    /// ```swift
+    /// let logo = textToShape("metaphor", 40, 200)
+    /// logo.setFill(.white)
+    /// shape(logo, 0, 0)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 現在のスタイルをキャプチャしたグループシェイプ。
+    public func textToShape(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> MShape {
+        let group = createShape(.group)
+        let contours = canvas.textToContours(string, x, y, sampleFactor: sampleFactor)
+        for nested in ContourNesting.group(contours) {
+            let child = createShape()
+            child.beginShape()
+            for point in nested.outer { child.vertex(point.x, point.y) }
+            for hole in nested.holes {
+                child.beginContour()
+                for point in hole { child.vertex(point.x, point.y) }
+                child.endContour()
+            }
+            child.endShape(.close)
+            group.addChild(child)
+        }
+        return group
+    }
+
     // MARK: - Font
 
     /// 指定したファイルパスからフォントを読み込みます。

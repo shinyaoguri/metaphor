@@ -1441,6 +1441,13 @@
       "height": 360,
       "frame": 106
     },
+    "Examples/Topics/Typography/TextParticles": {
+      "origin": "captured",
+      "sourceHash": "8573e52c63042c70d3a958ac7376c8c8dd8893724c47317e169c007f9db09752",
+      "width": 640,
+      "height": 360,
+      "frame": 103
+    },
     "Examples/Topics/Vectors/AccelerationWithVectors": {
       "origin": "processing",
       "width": 1280,

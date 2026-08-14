@@ -61,6 +61,40 @@ extension Canvas2D {
         textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
     }
 
+    /// テキストの基準点 `(x, y)` を、現在の ``textAlign(_:_:)`` からベースライン左端へ
+    /// 変換します。
+    ///
+    /// 描画（`text()`）とアウトライン取得（``textToContours(_:_:_:sampleFactor:)``）で
+    /// 同じ配置になるよう、変換はここ 1 か所に置きます。
+    ///
+    /// - Parameters:
+    ///   - x: 呼び出し側が指定した x。
+    ///   - y: 呼び出し側が指定した y。
+    ///   - width: 配置対象のテキスト幅。
+    /// - Returns: ベースライン左端の座標。
+    func textBaselineOrigin(x: Float, y: Float, width: Float) -> (x: Float, y: Float) {
+        let ascent = textRenderer.textAscent(
+            fontSize: currentTextSize, fontFamily: currentFontFamily)
+        let descent = textRenderer.textDescent(
+            fontSize: currentTextSize, fontFamily: currentFontFamily)
+
+        var originX = x
+        switch currentTextAlignH {
+        case .left: break
+        case .center: originX -= width / 2
+        case .right: originX -= width
+        }
+
+        var originY = y
+        switch currentTextAlignV {
+        case .top: originY += ascent
+        case .center: originY += ascent - (ascent + descent) / 2
+        case .baseline: break
+        case .bottom: originY -= descent
+        }
+        return (originX, originY)
+    }
+
     /// 指定位置にテキスト文字列を描画します。
     /// - Parameters:
     ///   - string: 描画するテキスト。
@@ -74,29 +108,10 @@ extension Canvas2D {
             string: string, fontSize: currentTextSize, fontFamily: currentFontFamily
         ), !glyphs.isEmpty {
             let totalWidth = glyphs.last.map { $0.x + $0.width } ?? 0
-            let ascent = textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
-            let descent = textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
-            let totalHeight = ascent + descent
-
-            var drawX = x
-            var drawY = y
-            switch currentTextAlignH {
-            case .left: break
-            case .center: drawX -= totalWidth / 2
-            case .right: drawX -= totalWidth
-            }
             // drawTextFromAtlas の y は「ベースライン」位置（PositionedGlyph の座標が
-            // ベースライン基準のため）。各揃えモードからベースラインへ変換する。
-            // 従来は y をテキスト上端とみなして .baseline で ascent を引いており、
-            // フォールバック経路より約 1 ascent 上にずれていた。
-            switch currentTextAlignV {
-            case .top: drawY += ascent
-            case .center: drawY += ascent - totalHeight / 2
-            case .baseline: break
-            case .bottom: drawY -= descent
-            }
-
-            drawTextFromAtlas(texture: atlasTex, glyphs: glyphs, x: drawX, y: drawY)
+            // ベースライン基準のため）。textBaselineOrigin が各揃えモードから変換する。
+            let origin = textBaselineOrigin(x: x, y: y, width: totalWidth)
+            drawTextFromAtlas(texture: atlasTex, glyphs: glyphs, x: origin.x, y: origin.y)
             return
         }
 
