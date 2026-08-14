@@ -126,7 +126,9 @@
         "quality": null,
         "bytes": 43150,
         "url": "https://i.gyazo.com/e0dbd11a1c6af08fa2bfc523a8685f47.webp",
-        "sha256": "3a3b19208b7a3b3661a2c846da33a9e749c0daf030a14771805a09e887ac3d53"
+        "sha256": "3a3b19208b7a3b3661a2c846da33a9e749c0daf030a14771805a09e887ac3d53",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/a3905609a2aae8bbe7dee3cdd1fd254b.png",
       "sha256": "44ecc0c5cfe056fc81004e19f37d99dc183c5c40aebb9e4130c9da17f74c8ba8"
@@ -152,7 +154,9 @@
         "quality": null,
         "bytes": 35516,
         "url": "https://i.gyazo.com/69007e688968a82e15b53820f15861a0.webp",
-        "sha256": "b3952ac9b82dd879982bcf0e30d4eb0df135b819755fda2633414fc42e05ce63"
+        "sha256": "b3952ac9b82dd879982bcf0e30d4eb0df135b819755fda2633414fc42e05ce63",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/adb27aed65a57f762b0f73eaf23ec6c7.png",
       "sha256": "ac442d812ee1ca21771016959e86da08bbeec8e6b8c01bc1b1c241699257efd6"
@@ -170,7 +174,9 @@
         "quality": null,
         "bytes": 164804,
         "url": "https://i.gyazo.com/f9cfddc0c9bef07a7c49a78bb8fcafa4.webp",
-        "sha256": "5859bf7b6867388067c87b760fa0250bbcf93f824a83a7490ca16e7fd92ebeef"
+        "sha256": "5859bf7b6867388067c87b760fa0250bbcf93f824a83a7490ca16e7fd92ebeef",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/528ae81542591e2af5742c3e83af2dbe.png",
       "sha256": "20d92b08639e526989cd543a853a5595a10e262f4b322ee59f631e6a0ac8721e"
@@ -204,7 +210,9 @@
         "quality": null,
         "bytes": 58884,
         "url": "https://i.gyazo.com/f92dd69e0691270d79edc1235ea8b1d9.webp",
-        "sha256": "800b74d0681e70dc297248ed7e66dfc736ba9d39fa25f19579152197a86b9c5c"
+        "sha256": "800b74d0681e70dc297248ed7e66dfc736ba9d39fa25f19579152197a86b9c5c",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/c89bc9bf7dbdd534420048f1230e4f43.png",
       "sha256": "f86cb33ae1286a0917f58bacaa02d14f0ec448f0d0031c25b8d7335428211ed8"
@@ -222,7 +230,9 @@
         "quality": null,
         "bytes": 388588,
         "url": "https://i.gyazo.com/312eaf7df9ec1026b7c07615e432a0e5.webp",
-        "sha256": "4932018dce824e8f23afa838d863651b23c33240cacb77211493c5c6541daef6"
+        "sha256": "4932018dce824e8f23afa838d863651b23c33240cacb77211493c5c6541daef6",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/73e1995a2750cb4fe14e52910b2e4941.png",
       "sha256": "8272207b0e7683159c4c6089a4715a610245243bc4ac4a61e3d7ffec18d66505"
@@ -240,7 +250,9 @@
         "quality": null,
         "bytes": 138364,
         "url": "https://i.gyazo.com/4e2ac8a91f229ae8275b891930d21b40.webp",
-        "sha256": "9b5e86ab0a7a4a27137c57e782f95db39243c39835c832680df1135a6f955dc8"
+        "sha256": "9b5e86ab0a7a4a27137c57e782f95db39243c39835c832680df1135a6f955dc8",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/eebdb00db4e0410464ee2efd07d68d46.png",
       "sha256": "0329dd5851c76c7476871ea5ed7d1b1028e697a7a4b9c8a1245b9fdaf52c0396"
@@ -314,7 +326,9 @@
         "quality": null,
         "bytes": 149816,
         "url": "https://i.gyazo.com/76c06176e32fd10487219dd84900d41f.webp",
-        "sha256": "9f8edc4446d539b817a5c9c9c52e449a8dd7bb7377bbee39586d6b14b7f5a52a"
+        "sha256": "9f8edc4446d539b817a5c9c9c52e449a8dd7bb7377bbee39586d6b14b7f5a52a",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/d097b3c93f47e2f19618325d1ca1d835.png",
       "sha256": "f542cf54c3872bdfc47f79be535e1d8314b5ce6340d1e1aeca2e64507a7d15f4"
@@ -332,7 +346,9 @@
         "quality": null,
         "bytes": 203270,
         "url": "https://i.gyazo.com/4803701ef1a2faad4224d68002c1b241.webp",
-        "sha256": "8812a39639dc63eba2d5ddedadd2a3c3ca87936208b68ddea3c776797221c935"
+        "sha256": "8812a39639dc63eba2d5ddedadd2a3c3ca87936208b68ddea3c776797221c935",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/bb81b5ee08cedaf5309c53b787fc5d64.png",
       "sha256": "864e0ab5e416ea90e3cb2eb11c656256e804a17c746d55c026628d3e27c02f37"
@@ -406,7 +422,9 @@
         "quality": null,
         "bytes": 206966,
         "url": "https://i.gyazo.com/82f241918e6d2e7b9a4b661f08355ed4.webp",
-        "sha256": "9c43cb06a89f4fe33b0749c0258a18f2918fb146d62c17e7f8143b3ab53ff03d"
+        "sha256": "9c43cb06a89f4fe33b0749c0258a18f2918fb146d62c17e7f8143b3ab53ff03d",
+        "outputWidth": 560,
+        "outputHeight": 315
       },
       "url": "https://i.gyazo.com/90c559db39efb25bc421c9fb6268f601.png",
       "sha256": "d7aac71028bf95c18949a6e07a0d5fadd9b319e1b98d0cd442d397d7028661fa"
@@ -424,7 +442,9 @@
         "quality": null,
         "bytes": 110180,
         "url": "https://i.gyazo.com/5c4727eeab63d554e4b093b5d3743765.webp",
-        "sha256": "e50a28db9c40a4f70c698008162978e62a26abe2bc2e55562c19c49aa2fb643d"
+        "sha256": "e50a28db9c40a4f70c698008162978e62a26abe2bc2e55562c19c49aa2fb643d",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/dda4dd3bbf40a95bc833a885767807d0.png",
       "sha256": "563cc7c8fd8974af340503cc030ce8b8e1c9b933e48ce82b6c4fb1c3d0d49c27"
@@ -490,7 +510,9 @@
         "quality": null,
         "bytes": 161942,
         "url": "https://i.gyazo.com/25a2477dd103155e16c269e134635d56.webp",
-        "sha256": "c2b70c3d02fea60559e0b9753d1dc05ba68a367ad7e5548e5783a80e6d680709"
+        "sha256": "c2b70c3d02fea60559e0b9753d1dc05ba68a367ad7e5548e5783a80e6d680709",
+        "outputWidth": 640,
+        "outputHeight": 360
       },
       "url": "https://i.gyazo.com/331e87a56723a34a812aaaa0162ef753.png",
       "sha256": "3f9adde9a8ae9ebb39e1b91cda7941287205011bde09625d645afa7bf9b898fe"
