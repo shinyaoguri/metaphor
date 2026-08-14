@@ -42,7 +42,7 @@ API 経由のコミットは GitHub 自身が署名するので、Actions に ru
 | `feat` が 1 本でもある | **minor** |
 | `fix` / `perf` だけ | **patch** |
 | `docs` / `chore` / `ci` / `refactor` / `test` だけ | **出ない**（次に feat/fix が入った週へ同乗） |
-| 破壊的変更（後述） | **停車**（train が fail して人を呼ぶ） |
+| 破壊的変更（後述） | **minor**（`0.x` の間。`1.0.0` 以降は**停車**して人を呼ぶ） |
 
 判定は [`scripts/release-bump.py`](../scripts/release-bump.py) にあり、手元でも
 同じ答えを確認できます:
@@ -68,22 +68,31 @@ type がそのまま信用できます。**トレインは状態を持ちませ�
   pin bump を dispatch します（cli 側はそれでまた 1 リリース）。同じ 9 日間で
   19 リリース + 下流 19 リリースになる計算で、ライブラリの版数としては細かすぎます。
 
-### 破壊的変更は自動で major にしない
+### 破壊的変更は `0.x` のうちは minor に載せる（`1.0.0` から停車）
 
 PR タイトルの `!` マーカー（`feat(core)!: ...`）か `changelog.d/*.breaking.md` を
-見つけると、トレインは **発車せず fail** します。`0.x` の破壊は minor に載せる規約
-ですが（[api-stability-policy.md](api-stability-policy.md) の
-「Where each kind of change lands」表が正典。1.0.0 以降は major）、**どの破壊も
-「設計として良くなる」と判断したうえで入れるもの**なので、bump を自動で決めさせず
-人の確認を挟みます（[ADR-0009](adr/0009-unfreeze-api-until-1-0.md)）。
-赤いトレインは「bump を人が確認しろ」という設計どおりの結果で、`release:minor`
-（`1.0.0` 以降は `release:major`）で明示的に出すか、実は破壊でないなら PR タイトルを
-直します。同じことは
-`changelog.d/` が空のまま feat/fix が溜まったときにも起きます（発車前の
-`changelog.py check` で止まる）。ただし後者はもう滅多に起きません — feat/fix/perf の
-PR にエントリが無ければ per-PR CI がその場でブロックするようになったので
+見つけると、トレインは bump を**最低でも minor へ引き上げ**、`::warning::` で
+「この minor には破壊的変更が乗っている」と内訳つきで注記して発車します。`0.x` の破壊は
+minor に載せる規約だからです（[api-stability-policy.md](api-stability-policy.md) の
+「Where each kind of change lands」表が正典・[ADR-0009](adr/0009-unfreeze-api-until-1-0.md)）。
+`refactor(api)!:` のように**単独ではリリースを起こさない type**でも、破壊がある週は
+minor が出ます — 旧名の削除が「どのリリースにも乗らない」状態を作らないためです。
+
+**`1.0.0` 以降は同じマーカーが major を意味する**ので、そのときトレインは
+**発車せず fail** します。major は自動で決めず、`release:major` で人が明示的に出します
+（1.0 への昇格自体に非技術条件があり、技術判断だけで到達してはいけない —
+[v1-release-plan.md](design/v1-release-plan.md)）。どちらの規約が効くかは
+**直近の stable タグから読む**ので、`v1.0.0` が出た瞬間に自動で厳しくなります
+（`release-bump.py` を人が直す必要はありません）。
+
+破壊のたびに要求されるものは版に関係なく同じで、CHANGELOG の `### Breaking Changes` と
+移行表です。それは PR 側で `changelog.d/*.breaking.md` として書きます。
+
+停車はもう 1 つ、`changelog.d/` が空のまま feat/fix が溜まったときにも起きます
+（発車前の `changelog.py check` で止まる）。ただしこちらはもう滅多に起きません —
+feat/fix/perf の PR にエントリが無ければ per-PR CI がその場でブロックするようになったので
 （Issue #461）、月曜のトレインまで持ち越されるのは `no-changelog` を貼った
-PR ばかりが続いた週だけです。**どちらも気付ける前提は GitHub の Actions 失敗通知**
+PR ばかりが続いた週だけです。**停車に気付ける前提は GitHub の Actions 失敗通知**
 なので、リリース系ワークフローの失敗が手元に届く設定になっているかは一度確認しておきます。
 
 ## 急ぐとき（express: `release:now`）

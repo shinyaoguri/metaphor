@@ -403,32 +403,12 @@ jobs:
       # サマリはジョブ要約にも出す（PR コメントは権限と保守コストの割に得るものが
       # 少ないので採らない — artifact + Summary で十分に追える）。
       - name: Coverage Report
+        # `if: always()` なので、前段が落ちて .build が無い run でもここへ来る。
+        # 「データが無ければ warning + skip」の判断はスクリプト側が持ち、
+        # scripts/tests/test_coverage_report.py がその挙動を固定する（Issue #639
+        # — インラインの run: だった頃はガードが set -e で到達不能だった）。
         if: always()
-        run: |
-          # pipefail: 下の `llvm-cov report | tee` で llvm-cov の失敗を tee に
-          # 握り潰させない。
-          set -euo pipefail
-          # -L 必須: .build/debug は .build/arm64-apple-macosx/debug へのシンボリック
-          # リンクで、追跡しない find は何も返さない（＝これまでレポートは静かに
-          # 空振りしていた。下の warning がその再発を可視化する）。
-          BIN=$(find -L .build/debug -name 'metaphorPackageTests' -type f | head -1)
-          if [ -z "$BIN" ] || [ ! -f .build/debug/codecov/default.profdata ]; then
-            echo "::warning::coverage data not found (tests may have failed before profiling) — skipping report"
-            exit 0
-          fi
-          mkdir -p coverage
-          PROF=.build/debug/codecov/default.profdata
-          IGNORE='Tests/|\.build/'
-          xcrun llvm-cov report "$BIN" -instr-profile="$PROF" \
-            -ignore-filename-regex="$IGNORE" | tee coverage/coverage-files.txt
-          xcrun llvm-cov export "$BIN" -instr-profile="$PROF" \
-            -ignore-filename-regex="$IGNORE" -format=lcov > coverage/coverage.lcov
-          xcrun llvm-cov export "$BIN" -instr-profile="$PROF" \
-            -ignore-filename-regex="$IGNORE" -format=text > coverage/coverage.json
-          python3 scripts/coverage-summary.py coverage/coverage.json \
-            > coverage/coverage-modules.md
-          cat coverage/coverage-modules.md
-          cat coverage/coverage-modules.md >> "$GITHUB_STEP_SUMMARY"
+        run: ./scripts/coverage-report.sh
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7
