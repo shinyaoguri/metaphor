@@ -626,6 +626,13 @@
       "height": 600,
       "frame": 104
     },
+    "Examples/Demos/Performance/StaticParticlesRetained": {
+      "origin": "captured",
+      "sourceHash": "1426c5a1075b31177cb16a1a2d665710b98ba25cd894cd41ca712414bfc1ea42",
+      "width": 800,
+      "height": 600,
+      "frame": 97
+    },
     "Examples/Demos/Performance/TextRendering": {
       "origin": "captured",
       "sourceHash": "6ebb74de65300aee4baaae8698f688f6a27641901395240ed5fe50c0deaedbe9",
