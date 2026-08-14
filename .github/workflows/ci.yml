@@ -107,12 +107,9 @@ jobs:
         #
         # バージョン pin・SHA256 検証・偽陽性の抑制はスクリプトと
         # .github/actionlint.yaml 側。手元の `make lint-workflows` と同じ実体を
-        # 呼ぶので、ローカルと CI で結果が食い違わない。
-        env:
-          # runner に shellcheck があることを前提にしない。actionlint は
-          # shellcheck が無いと `run:` の中身の検証を黙ってスキップするため、
-          # 無ければ落として「CI が知らないうちに緩くなる」のを防ぐ。
-          REQUIRE_SHELLCHECK: '1'
+        # 呼ぶので、ローカルと CI で結果が食い違わない（shellcheck もピンして
+        # 落とす — macOS ランナーには入っておらず、「あれば使う」にすると
+        # `run:` の中身の検証が CI でだけ黙って外れる）。
         run: ./scripts/lint-workflows.sh
       - name: Test generator scripts
         # scripts/ 配下の Python 生成器のユニットテスト。llms.txt の中身は

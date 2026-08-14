@@ -76,8 +76,8 @@ make lint-workflows   # .github/workflows/*.yml を actionlint にかける
 
 これが要るのは、**リリース系ワークフローは PR では走らない**からです（`release.yml` / `release-train.yml` / `release-on-merge.yml` は dispatch / schedule / `pull_request:closed`）。構文や式を壊しても PR では何も起きず、気付くのは「リリースが出ない」「トレインが発車しない」という形になります。
 
-- actionlint のバージョンは `scripts/lint-workflows.sh` に pin してあり、無ければ `.build/tools/` へ落として SHA256 を検証してから実行します（手元に同版が入っていればそれを使います）
-- **`shellcheck` を入れておいてください**（`brew install shellcheck`）。あると actionlint が `run:` の中身まで検証します。CI は `REQUIRE_SHELLCHECK=1` で必須にしているので、入れずに書くと手元で気付けない指摘が CI で出ます
+- **actionlint と shellcheck の両方**を `scripts/lint-workflows.sh` で pin しています。無ければ `.build/tools/` へ落として SHA256 を検証してから実行します（手元に同版が入っていればそれを使うので、`brew install` 済みでも無駄になりません）
+- shellcheck が要るのは、あると actionlint が `run:` の中身まで検証するからです（導入時に `release.yml` の SC2086 をこれで捕まえました）。**GitHub の macOS ランナーには shellcheck が入っていない**ので、「あれば使う」にすると検証範囲が CI でだけ黙って狭くなります。だから任意ではなく固定で落とします
 - 偽陽性の抑制は `.github/actionlint.yaml`。理由をコメントで残してあります
 
 `run:` のコメントで **行頭を `# shellcheck` にしない**でください。shellcheck の directive と解釈されて `SC1073` で落ちます。
