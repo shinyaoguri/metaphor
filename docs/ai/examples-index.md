@@ -6,7 +6,7 @@ generating new metaphor content.
 
 Example count: 284
 
-Status: supported 264, partial 0, stub 10, obsolete 10
+Status: supported 265, partial 0, stub 9, obsolete 10
 
 ## How To Use
 
@@ -192,7 +192,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Massive Circles](../../Examples/Demos/Performance/MassiveCircles) [Intermediate] (Performance) -- Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls. Tags: demos, massivecircles, performance.
 - [QuadRendering](../../Examples/Demos/Performance/QuadRendering) (Performance) Tags: demos, performance, quadrendering.
 - [StaticParticlesImmediate](../../Examples/Demos/Performance/StaticParticlesImmediate) (Performance) Tags: demos, particles, performance, staticparticlesimmediate.
-- [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) [stub] (Performance) Tags: demos, particles, performance, staticparticlesretained.
+- [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) (Performance) Tags: demos, particles, performance, staticparticlesretained.
 - [TextRendering](../../Examples/Demos/Performance/TextRendering) (Performance) Tags: demos, performance, textrendering, typography.
 - [MultipleWindows](../../Examples/Demos/Tests/MultipleWindows) (Tests) Tags: demos, multiplewindows, tests.
 - [NoBackgroundTest](../../Examples/Demos/Tests/NoBackgroundTest) (Tests) Tags: demos, nobackgroundtest, tests.

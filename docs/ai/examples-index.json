@@ -1,9 +1,9 @@
 {
   "count": 284,
   "statusCounts": {
-    "supported": 264,
+    "supported": 265,
     "partial": 0,
-    "stub": 10,
+    "stub": 9,
     "obsolete": 10
   },
   "examples": [
@@ -2421,7 +2421,7 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
