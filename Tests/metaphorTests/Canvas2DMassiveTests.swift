@@ -65,7 +65,10 @@ struct Canvas2DMassiveShaderTests {
     @Test("Canvas2D initializes massive circle pipelines")
     func canvasInitializesPipelines() throws {
         let canvas = try MetalTestHelper.canvas2D(width: 64, height: 64)
-        #expect(!canvas.massiveCirclePipelineStates.isEmpty)
+        // massive 系パイプラインは全ブレンドモード分そろっている（#646 で store へ移譲）。
+        #expect(BlendMode.allCases.allSatisfy {
+            canvas.pipelineStore.state(for: Canvas2DPipelineKey(.massiveCircle, $0)) != nil
+        })
     }
 }
 

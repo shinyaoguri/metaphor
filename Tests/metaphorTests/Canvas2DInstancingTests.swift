@@ -267,7 +267,10 @@ struct Canvas2DInstancingIntegrationTests {
 
         #expect(canvas.unitCircleVertexCount == 192)
         #expect(canvas.unitRectVertexCount == 6)
-        #expect(!canvas.instancedPipelineStates.isEmpty)
+        // インスタンス系パイプラインは全ブレンドモード分そろっている（#646 で store へ移譲）。
+        #expect(BlendMode.allCases.allSatisfy {
+            canvas.pipelineStore.state(for: Canvas2DPipelineKey(.instanced, $0)) != nil
+        })
     }
 
     @Test("Shader library registers canvas2DInstanced")
