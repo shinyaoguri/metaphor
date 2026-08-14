@@ -2,6 +2,9 @@
 //
 // loadShader() で MSL を読み、shader() で適用し、図形を描き、resetShader() で解除する。
 // 図形（rect / circle）が「シェーダを通す面」になる。
+//
+// 読み込んだ .metal は自動で監視される（#648）。走らせたまま
+// CustomShader2D/Resources/wave.metal を編集して保存すると、再ビルド無しで絵が変わる。
 
 import Foundation
 import metaphor
@@ -20,12 +23,23 @@ final class CustomShader2D: Sketch {
 
     var wave: Shader2D?
 
+    /// 読み込む wave.metal のパス。
+    ///
+    /// `swift run` はパッケージディレクトリで動くので、**ソース側のファイル**を先に探す。
+    /// バンドル内のコピー（`.build` 配下）を読んでしまうと、編集しても再ビルドするまで
+    /// 変わらず、ホットリロード（#648）を試せない。別の場所から起動されたときのために
+    /// バンドルへフォールバックする。
+    private func shaderPath() -> String? {
+        let source = "CustomShader2D/Resources/wave.metal"
+        if FileManager.default.fileExists(atPath: source) { return source }
+        return Bundle.module.path(
+            forResource: "wave", ofType: "metal", inDirectory: "Resources")
+    }
+
     func setup() {
         noStroke()
-        guard let path = Bundle.module.path(
-            forResource: "wave", ofType: "metal", inDirectory: "Resources"
-        ) else {
-            print("wave.metal がバンドルに見つかりません")
+        guard let path = shaderPath() else {
+            print("wave.metal が見つかりません")
             return
         }
         do {

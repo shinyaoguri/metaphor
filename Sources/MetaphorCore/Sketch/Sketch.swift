@@ -284,6 +284,21 @@ public struct SketchConfig: Sendable {
     /// ``Sketch/saveState()`` による状態の保存とは独立に使えます。
     public var preserveClock: Bool
 
+    /// ファイルから読んだシェーダを保存のたびに自動リロードするか
+    /// （既定は **DEBUG ビルドで `true`**、Release ビルドで `false`）。
+    ///
+    /// `loadShader()` / `createMaterialFromFile()` / `createPostEffectFromFile()` で読んだ
+    /// `.metal` ファイルが監視され、保存するとビルド無しで再コンパイルされます（#648）。
+    /// 書きかけの MSL でコンパイルに失敗しても**直前の動くシェーダのまま描き続け**、
+    /// エラーだけがコンソールに出ます。
+    ///
+    /// 既定を Release で `false` にしているのは、作品として配布するビルドに
+    /// ファイル監視スレッドを残さないためです。監視が起きるのはファイル由来の
+    /// シェーダを実際に読んだときだけなので、使わないスケッチのコストはゼロです。
+    /// 環境変数 `METAPHOR_SHADER_HOT_RELOAD`（`1` で有効・`0` で無効）があれば
+    /// そちらが優先されます。
+    public var shaderHotReload: Bool
+
     /// スケッチセットアップ時に登録するプラグインファクトリ。
     ///
     /// プラグインは ``Sketch/setup()`` が呼ばれる前にインスタンス化されスケッチに接続されます。
@@ -309,6 +324,7 @@ public struct SketchConfig: Sendable {
     ///   - preventAppNap: スケッチ実行中に App Nap を抑止するか（デフォルト: `true`）。
     ///   - msaa: MSAA サンプル数（デフォルト: `4`。`1` で無効、非対応値は `1` にフォールバック）。
     ///   - preserveClock: リロードをまたいで `frameCount` / `time` を復元するか（デフォルト: `false`）。
+    ///   - shaderHotReload: シェーダファイルの自動リロード（デフォルト: DEBUG ビルドで `true`）。
     ///   - plugins: スケッチに登録するプラグインファクトリの配列。
     public init(
         width: Int = 1920,
@@ -323,6 +339,7 @@ public struct SketchConfig: Sendable {
         preventAppNap: Bool = true,
         msaa: Int = 4,
         preserveClock: Bool = false,
+        shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault,
         plugins: [PluginFactory] = []
     ) {
         self.width = width
@@ -337,6 +354,20 @@ public struct SketchConfig: Sendable {
         self.preventAppNap = preventAppNap
         self.msaa = msaa
         self.preserveClock = preserveClock
+        self.shaderHotReload = shaderHotReload
         self.plugins = plugins
+    }
+
+    /// ``shaderHotReload`` の既定値。DEBUG ビルドでのみ `true`。
+    ///
+    /// SwiftPM は依存パッケージも同じコンフィギュレーションでビルドするので、
+    /// スケッチを `swift run`（debug）すれば有効・`swift build -c release` なら
+    /// 無効、が再コンパイル無しで成り立ちます。
+    public static var shaderHotReloadDefault: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
     }
 }

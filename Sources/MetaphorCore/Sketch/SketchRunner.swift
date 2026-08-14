@@ -157,6 +157,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer.addPlugin(InputInjectionPlugin(), sketch: sketch)
         }
 
+        // シェーダファイルの自動ホットリロード（#648）。setup() の前に決める：
+        // ファイル由来のシェーダを読むのは大抵 setup() の中で、そこで監視登録が走る。
+        context.shaderHotReloadEnabled = Self.resolveShaderHotReload(
+            config: config, env: ProcessInfo.processInfo.environment
+        )
+
         // setup() 中に noLoop ハンドラを一時的に抑制し、
         // onDraw が構成される前の早期一時停止を防止。
         context.onNoLoop = nil
@@ -206,6 +212,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             ProcessInfo.processInfo.endActivity(activity)
             self.activity = nil
         }
+        // シェーダ監視の DispatchSource を止める（#648）。
+        context?.stopShaderHotReload()
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
         // SyphonPlugin はここで Syphon サーバーを停止する。
         renderer?.shutdown()
@@ -384,6 +392,20 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     ) -> Bool {
         if env["METAPHOR_ALLOW_APP_NAP"] == "1" { return false }
         return config.preventAppNap
+    }
+
+    /// シェーダファイルの自動ホットリロードを有効にするか（#648）。
+    ///
+    /// 環境変数 `METAPHOR_SHADER_HOT_RELOAD` が最優先（`1` で有効・`0` で無効）。
+    /// 無ければ ``SketchConfig/shaderHotReload``（既定は DEBUG ビルドでのみ `true`）。
+    nonisolated static func resolveShaderHotReload(
+        config: SketchConfig, env: [String: String]
+    ) -> Bool {
+        switch env["METAPHOR_SHADER_HOT_RELOAD"] {
+        case "1": return true
+        case "0": return false
+        default: return config.shaderHotReload
+        }
     }
 
     /// レンダーループの実効 FPS を解決します（ウィンドウ/ヘッドレス共通）。

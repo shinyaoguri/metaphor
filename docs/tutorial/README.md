@@ -118,7 +118,7 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 | 6.1 GPU に計算させる | `compute()` フックの位置づけ、MSL カーネルを書いて呼ぶ、CPU との往復の考え方 | `createComputeKernel`, `compute()` | — |
 | 6.2 GPU パーティクル | 100 万粒子を CPU に降ろさず動かす | `createParticleSystem` | `Demos/Performance/DynamicParticlesImmediate` |
 | 6.3 ポストプロセス | 描き終えた絵に効果をかける、組み込みエフェクトの重ねがけ | `addPostEffect`, `BloomEffect` ほか | — |
-| 6.4 カスタムポストエフェクト | 自分の MSL フラグメントシェーダーを効果として差し込む、ホットリロード | `createPostEffect` | — |
+| 6.4 カスタムポストエフェクト | 自分の MSL フラグメントシェーダーを効果として差し込む、保存だけで効く自動ホットリロード | `createPostEffect`, `createPostEffectFromFile` | — |
 | 6.5 いまできないこと | 描画そのもののシェーダー差し替え（[#291](https://github.com/shinyaoguri/metaphor/issues/291)）は未実装。`Topics/Shaders/` の各例は元の GLSL を CPU で近似したもので、カスタムシェーダーの書き方の参考にはならない | — | — |
 
 ### 第 7 部 メディア

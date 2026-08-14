@@ -24,6 +24,42 @@ extension SketchContext {
         return CustomPostEffect(name: name, fragmentFunctionName: fragmentFunction, libraryKey: key)
     }
 
+    /// 外部 MSL ファイルからカスタムポストプロセスエフェクトを作成します。
+    ///
+    /// 読み込んだファイルは**自動で監視対象**になります（#648）。保存するとビルド無しで
+    /// 再コンパイルされ、絵がその場で変わります。コンパイルに失敗しても直前の動く
+    /// シェーダのまま描き続け、エラーだけがコンソールに出ます。無効化は
+    /// ``SketchConfig/shaderHotReload`` か環境変数 `METAPHOR_SHADER_HOT_RELOAD=0`。
+    ///
+    /// ファイルの中身は**そのまま**コンパイルされます（``createMaterialFromFile(path:fragmentFunction:vertexFunction:)``
+    /// と同じ扱い。前文を自動で足すのは 2D の ``loadShader(_:fragment:)`` だけ）。
+    /// `PPVertexOut` / `PostProcessParams` を使うなら、``PostProcessShaders/commonStructs``
+    /// と同じ定義をファイルの先頭に置いてください。
+    ///
+    /// - Parameters:
+    ///   - name: エフェクト名（ライブラリキーとして使用）。
+    ///   - path: MSL ソースファイルのパス。
+    ///   - fragmentFunction: フラグメントシェーダー関数名。
+    /// - Returns: `CustomPostEffect` インスタンス。
+    /// - Throws: ``MetaphorError``。ソースファイルを読み込めなかった場合は
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、MSL のコンパイルに失敗した
+    ///   場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
+    ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
+    public func createPostEffectFromFile(
+        name: String, path: String, fragmentFunction: String
+    ) throws -> CustomPostEffect {
+        let key = "user.posteffect.\(name)"
+        try renderer.shaderLibrary.registerFromFile(path: path, as: key)
+        guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {
+            throw MetaphorError.shaderNotFound(fragmentFunction)
+        }
+        let effect = CustomPostEffect(
+            name: name, fragmentFunctionName: fragmentFunction, libraryKey: key)
+        shaderHotReloader?.register(
+            postEffect: effect, path: path, fragment: fragmentFunction)
+        return effect
+    }
+
     /// ポストプロセスエフェクトをパイプラインに追加します。
     /// - Parameter effect: 追加するポストプロセスエフェクト。
     public func addPostEffect(_ effect: any PostEffect) {

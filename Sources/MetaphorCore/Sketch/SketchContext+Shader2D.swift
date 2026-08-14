@@ -43,6 +43,11 @@ extension SketchContext {
     /// let wave = try loadShader("data/wave.metal", fragment: "waveFragment")
     /// ```
     ///
+    /// 読み込んだファイルは**自動で監視対象**になります（#648）。保存するとビルド無しで
+    /// 再コンパイルされ、絵がその場で変わります。コンパイルに失敗しても直前の動く
+    /// シェーダのまま描き続け、エラーだけがコンソールに出ます。無効化は
+    /// ``SketchConfig/shaderHotReload`` か環境変数 `METAPHOR_SHADER_HOT_RELOAD=0`。
+    ///
     /// - Parameters:
     ///   - path: MSL ソースファイルのパス。
     ///   - fragment: フラグメントシェーダ関数名。
@@ -60,7 +65,10 @@ extension SketchContext {
             throw MetaphorError.shaderSourceLoadFailed(
                 path: path, detail: error.localizedDescription)
         }
-        return try makeShader2D(source: Shader2DSource.complete(source), fragment: fragment)
+        let shader = try makeShader2D(
+            source: Shader2DSource.complete(source), fragment: fragment)
+        shaderHotReloader?.register(shader: shader, path: path, fragment: fragment)
+        return shader
     }
 
     /// 以降の 2D 描画にカスタムフラグメントシェーダを適用します。
