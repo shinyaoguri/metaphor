@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema
 
 # Default target
 all: setup build
@@ -210,6 +210,12 @@ examples-list:
 examples-index:
 	@python3 scripts/generate-examples-index.py
 
+# Shoot Examples/**/<Name>.png by running each example (needs a GPU)
+# 既定は「画像がまだ無い example だけ」を撮る。原典由来の 162 枚は一括では
+# 置き換えない（#501。個別に差し替えるときは --only と --force を併用）。
+example-shots:
+	@python3 scripts/generate-example-shots.py $(ARGS)
+
 # Embed Examples/Tutorial/** code into docs/tutorial/*.md
 # 正典はパッケージ側。本文の埋め込みブロックは生成物なので手で編集しない。
 tutorial-snippets:
@@ -254,6 +260,7 @@ help:
 	@echo "  make examples-check - Build-only verification (parallel)"
 	@echo "  make examples-list  - List all available examples"
 	@echo "  make examples-index - Generate AI-friendly examples index"
+	@echo "  make example-shots  - Shoot missing example result images (needs a GPU)"
 	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
 	@echo "  make tutorial-shots - Re-shoot tutorial result images (needs a GPU)"
 	@echo "  make tutorial-status - Write the tutorial publication status into the READMEs"

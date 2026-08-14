@@ -680,52 +680,6 @@ class TestExternalStaleness(ShotsTestCase):
         self.assertEqual(gen.check([REF], self.external()), [])
 
 
-class TestImageSize(ShotsTestCase):
-    """台帳に入れる実寸をヘッダから読む（website がこれを本文へ焼き込む）。"""
-
-    def png(self, width: int, height: int) -> Path:
-        path = self.root / "shot.png"
-        path.write_bytes(
-            b"\x89PNG\r\n\x1a\n"
-            + (13).to_bytes(4, "big")
-            + b"IHDR"
-            + width.to_bytes(4, "big")
-            + height.to_bytes(4, "big")
-        )
-        return path
-
-    def webp(self, chunk: bytes, payload: bytes) -> Path:
-        path = self.root / "shot.webp"
-        body = b"WEBP" + chunk + len(payload).to_bytes(4, "little") + payload
-        path.write_bytes(b"RIFF" + len(body).to_bytes(4, "little") + body)
-        return path
-
-    def test_png(self) -> None:
-        self.assertEqual(gen.image_size(self.png(640, 360)), (640, 360))
-
-    def test_animated_webp_reads_the_canvas(self) -> None:
-        # 動きの証跡はこの形式（VP8X）。canvas は 1 始まりで 3 バイトずつ。
-        payload = b"\x10\x00\x00\x00" + (639).to_bytes(3, "little") + (359).to_bytes(3, "little")
-        self.assertEqual(gen.image_size(self.webp(b"VP8X", payload)), (640, 360))
-
-    def test_lossy_webp(self) -> None:
-        payload = b"\x00" * 6 + (560).to_bytes(2, "little") + (315).to_bytes(2, "little")
-        self.assertEqual(gen.image_size(self.webp(b"VP8 ", payload)), (560, 315))
-
-    def test_lossless_webp(self) -> None:
-        bits = (640 - 1) | ((360 - 1) << 14)
-        self.assertEqual(
-            gen.image_size(self.webp(b"VP8L", b"\x2f" + bits.to_bytes(4, "little"))),
-            (640, 360),
-        )
-
-    def test_an_unknown_format_is_an_error(self) -> None:
-        path = self.root / "shot.png"
-        path.write_bytes(b"GIF89a" + b"\x00" * 20)
-        with self.assertRaises(gen.ShotError):
-            gen.image_size(path)
-
-
 class TestGyazoResponse(ShotsTestCase):
     """Upload API の応答の検証（形式が変換されたら黙って進めない）。"""
 
@@ -764,7 +718,9 @@ class TestUploadSkipsUnchangedAssets(ShotsTestCase):
         path.write_bytes(b"\x89PNG\r\n\x1a\ncontent")
         recorded = {"url": STILL_URL, "sha256": gen.file_sha256(path)}
         # upload_to_gyazo を呼ばない（トークンが無い環境でも通る）ことが要点。
-        self.assertEqual(gen.upload_asset(REF, path, recorded), (STILL_URL, recorded["sha256"]))
+        self.assertEqual(
+            gen.upload_asset(REF, path, recorded), (STILL_URL, recorded["sha256"])
+        )
 
     def test_changed_bytes_are_uploaded_again(self) -> None:
         path = self.root / "shot.png"

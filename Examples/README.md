@@ -35,10 +35,25 @@ ShapePrimitives/
 ├── Sources/…/App.swift  # スケッチ本体
 ├── ShapePrimitives.pde  # 元になった Processing スケッチ（移植の場合）
 ├── ShapePrimitives.json # メタデータ（説明・タグ・status）
-└── ShapePrimitives.png  # スクリーンショット
+└── ShapePrimitives.png  # 実行結果画像
 ```
 
 メタデータの `status` は `supported`（動作する参照実装）/ `partial` / `stub` / `obsolete` のいずれかで、索引と CI のビルドゲートに使われます。
+
+## 実行結果画像（`<Name>.png`）
+
+出所が 2 つあり、台帳 [docs/ai/examples-shots.json](../docs/ai/examples-shots.json) の `origin` で区別します。
+
+- **`processing`** — Processing 原典から移植初日に持ち込んだ 162 枚。metaphor が描いた絵ではないので、**実装と食い違っていることがあります**（実測は [#501](https://github.com/shinyaoguri/metaphor/issues/501) のコメント）。撮影時のソースが分からないため鮮度判定の対象外です
+- **`captured`** — `make example-shots` が Probe のヘッドレス実行で撮ったもの。撮影時のソースの指紋を持ち、`--check` が「コードを変えたのに画像が古い」を検出します
+
+```bash
+make example-shots                       # 画像がまだ無い example を撮る
+make example-shots ARGS="--check"        # 鮮度だけ調べる（撮影しない）
+make example-shots ARGS="--compare --only Examples/Basics/Form"  # 原典と並べて見比べる
+```
+
+画像は**手で置かないでください**（撮影は生成物で、台帳と対になっています）。撮影には GPU が要るのでローカルで実行します。実行環境に依存して絵が決まらない example はパッケージ直下に `no-capture.txt` を置いて理由を 1 行書きます。マウス・キーボードの入力が無いと題意が出ない example は `probe-input.jsonl` を置きます（入力を流してから撮る経路は未対応で、いまは撮影対象から外れます）。
 
 ## 新しいサンプルを追加する
 

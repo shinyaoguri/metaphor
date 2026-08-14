@@ -90,6 +90,17 @@ import tempfile
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# 「撮影時のソースの指紋」と「画像の縦横」は Examples 側
+# （generate-example-shots.py）と共通。実装を 2 つ持つと、片側だけ鮮度検出が
+# 弱る（#505）。
+from shots_common import (  # noqa: E402
+    ShotError,
+    image_size,
+    source_files,
+    source_hash,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CODE_DIR = REPO_ROOT / "Examples/Tutorial"
 DOCS_DIR = REPO_ROOT / "docs/tutorial"
@@ -109,7 +120,8 @@ IMAGE_LINE_RE = re.compile(
     r"^(?P<head>!\[(?P<alt>[^\]]*)\]\()(?P<target>[^)\s]+)(?P<tail>\))\s*$"
 )
 
-# 画像の実体の置き場（ADR-0010）。
+# 画像の実体の置き場（ADR-0010）。チュートリアルの本文だけが外部 URL を指す
+# （Examples の画像はリポジトリ内に置くので、この経路を使わない）。
 GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
 GYAZO_HOST = "i.gyazo.com"
 # トークンは 1Password から都度読む（平文の環境変数として常駐させない）。参照先を
@@ -117,10 +129,6 @@ GYAZO_HOST = "i.gyazo.com"
 GYAZO_TOKEN_REF = os.environ.get(
     "GYAZO_TOKEN_REF", "op://Automation/Gyazo API/credential"
 )
-
-# 指紋の材料から外すもの。ビルド生成物・IDE 設定・Probe の作業ディレクトリ・
-# Finder のメタデータで、いずれも絵には影響しない（すべて gitignore 済み）。
-EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store"}
 
 # 起動から frame.png が書かれるまでの待ち時間。初回はシェーダーのコンパイルが
 # 入るぶん遅い。
@@ -147,10 +155,6 @@ MOTION_DEFAULTS = {"frames": MOTION_MAX_FRAMES, "every": 4, "fps": 15, "width": 
 MOTION_MAX_BYTES = 500 * 1024
 
 
-class ShotError(Exception):
-    """撮影も検証もできない構成（利用者が直す必要がある）。"""
-
-
 def referenced_refs() -> list[str]:
     """docs/tutorial/*.md が埋め込んでいる節を、登場順・重複排除で返す。"""
     refs: list[str] = []
@@ -162,34 +166,6 @@ def referenced_refs() -> list[str]:
             if matched and matched.group("ref") not in refs:
                 refs.append(matched.group("ref"))
     return refs
-
-
-def source_files(package_dir: Path) -> list[Path]:
-    """指紋の材料。Swift だけでなくリソースも含める（#505）。"""
-    files = []
-    for path in package_dir.rglob("*"):
-        if not path.is_file():
-            continue
-        relative = path.relative_to(package_dir)
-        if EXCLUDED_NAMES.intersection(relative.parts):
-            continue
-        files.append(path)
-    return sorted(files, key=lambda p: p.relative_to(package_dir).as_posix())
-
-
-def source_hash(package_dir: Path) -> str:
-    """パッケージのソースとリソースから決まる指紋。撮り直しの要否はこれで判定する。
-
-    絵を変えうるものはすべて材料にする。Swift だけを見ていた頃は、同梱画像や
-    シェーダーを差し替えても `--check` が「最新」と答えていた（#505）。
-    """
-    digest = hashlib.sha256()
-    for path in source_files(package_dir):
-        digest.update(path.relative_to(package_dir).as_posix().encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
 
 
 def image_path_for(ref: str) -> Path:
@@ -213,38 +189,6 @@ def staging_path_for(ref: str, kind: str | None = None) -> Path:
     part, section = ref.split("/", 1)
     suffix = motion_suffix(kind) if kind else "png"
     return STAGING_DIR / part / f"{section}.{suffix}"
-
-
-def image_size(path: Path) -> tuple[int, int]:
-    """画像の縦横を、ヘッダだけ読んで返す（PNG / WebP）。
-
-    台帳に実寸を持たせるためのもの。website 側はこれを本文へ焼き込み、Astro が
-    寸法を知るために毎ビルド全点へフェッチを飛ばすのを止める（ADR-0010 の
-    Follow-up）。外部コマンドにも追加の依存にも頼らないので、撮影と同じ経路で
-    確実に得られる。
-    """
-    data = path.read_bytes()
-    if data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR":
-        return (
-            int.from_bytes(data[16:20], "big"),
-            int.from_bytes(data[20:24], "big"),
-        )
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        chunk, payload = data[12:16], data[20:]
-        if chunk == b"VP8X":  # 拡張形式（アニメーションはこれ）。canvas は 1 始まり
-            return (
-                int.from_bytes(payload[4:7], "little") + 1,
-                int.from_bytes(payload[7:10], "little") + 1,
-            )
-        if chunk == b"VP8 ":  # lossy。キーフレームヘッダの 14 bit ずつ
-            return (
-                int.from_bytes(payload[6:8], "little") & 0x3FFF,
-                int.from_bytes(payload[8:10], "little") & 0x3FFF,
-            )
-        if chunk == b"VP8L":  # lossless。signature の次に 14 bit ずつ（1 始まり）
-            bits = int.from_bytes(payload[1:5], "little")
-            return ((bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1)
-    raise ShotError(f"{path.name} の縦横を読めない（PNG / WebP のみ対応）")
 
 
 def file_sha256(path: Path) -> str:
