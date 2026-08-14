@@ -1,3 +1,4 @@
+import Foundation
 import metaphor
 
 @main
@@ -10,32 +11,11 @@ final class EdgeDetection: Sketch {
 
     func setup() {
         noLoop()
-        guard let generated = generateTestImage(Int(width) / 2, Int(height)) else { return }
-        img = generated
-    }
-
-    func generateTestImage(_ w: Int, _ h: Int) -> MImage? {
-        guard let img = createImage(w, h) else { return nil }
-        img.loadPixels()
-        for y in 0..<h {
-            for x in 0..<w {
-                let idx = (y * w + x) * 4
-                let nx = Float(x) / Float(w)
-                let ny = Float(y) / Float(h)
-                let cx = nx - 0.5, cy = ny - 0.5
-                let d = sqrt(cx * cx + cy * cy)
-                let base = (1.0 - d * 2) * 200 + sin(nx * 20) * 30 + cos(ny * 15) * 20
-                let v = UInt8(max(0, min(255, Int(base))))
-                img.pixels[idx] = v
-                let greenVal = Float(v) * 0.8 + ny * 50
-                img.pixels[idx + 1] = UInt8(max(0, min(255, Int(greenVal))))
-                let blueVal = Float(v) * 0.6 + nx * 80
-                img.pixels[idx + 2] = UInt8(max(0, min(255, Int(blueVal))))
-                img.pixels[idx + 3] = 255
-            }
-        }
-        img.updatePixels()
-        return img
+        guard
+            let path = Bundle.module.path(forResource: "moon", ofType: "jpg", inDirectory: "Resources"),
+            let loaded = try? loadImage(path)
+        else { return }
+        img = loaded
     }
 
     func draw() {

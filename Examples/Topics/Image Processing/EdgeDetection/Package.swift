@@ -10,7 +10,8 @@ let package = Package(
         .executableTarget(
             name: "EdgeDetection",
             dependencies: [.product(name: "metaphor", package: "metaphor")],
-            path: "EdgeDetection"
+            path: "EdgeDetection",
+            resources: [.copy("Resources")]
         ),
     ]
 )
