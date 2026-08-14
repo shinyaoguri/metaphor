@@ -108,7 +108,7 @@ sequenceDiagram
 | リリースの単位 | **週次トレイン**（月曜 09:00 JST、履歴から bump を導出） | **マージごと**（ラベル > PR タイトルで判定） |
 | minor | 前回タグ以降に `feat` が 1 本でもあった週 | `feat` タイトルの PR がマージされた瞬間 |
 | patch | `fix` / `perf` だけの週 | `fix` / `perf` の PR、Syphon pin bump PR |
-| major | **`release:major` ラベルのみ**（`!` マーカーはトレインを停車させ、人を呼ぶ） | **`release:major` ラベルのみ**（自動推論しない） |
+| major | **`release:major` ラベルのみ**（`0.x` の `!` マーカーは minor に載る。`1.0.0` 以降はトレインが停車して人を呼ぶ） | **`release:major` ラベルのみ**（自動推論しない） |
 | 出ない | `docs` / `chore` / `ci` 等だけの週 | 上記以外の type、または `release:skip` ラベル |
 | 即時に出す | `release:now`（または `release:patch/minor/major`）ラベル | 常時即時（マージごと） |
 | prerelease | `release.yml` の手動 `workflow_dispatch` | 同左 |

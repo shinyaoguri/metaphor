@@ -44,10 +44,15 @@ jobs:
     steps:
       # Only needed for scripts/release-bump.py, which keeps the title -> bump
       # rule identical here and on the train. No history required: the
-      # `--subject` path reads the given title, not the log.
+      # `--subject` path reads the given title, not the log — but the tags are,
+      # because what a `!` marker means depends on which side of `1.0.0` the
+      # version is on. Without `fetch-tags` the script would see no release at
+      # all and take the pre-1.0 branch, which is the right answer today and
+      # the wrong one the moment v1.0.0 ships.
       - uses: actions/checkout@v7
         with:
           ref: main
+          fetch-tags: true
 
       - name: Determine bump (explicit label, else PR title)
         id: bump
