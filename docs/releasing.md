@@ -80,7 +80,10 @@ PR タイトルの `!` マーカー（`feat(core)!: ...`）か `changelog.d/*.br
 （`1.0.0` 以降は `release:major`）で明示的に出すか、実は破壊でないなら PR タイトルを
 直します。同じことは
 `changelog.d/` が空のまま feat/fix が溜まったときにも起きます（発車前の
-`changelog.py check` で止まる）。**どちらも気付ける前提は GitHub の Actions 失敗通知**
+`changelog.py check` で止まる）。ただし後者はもう滅多に起きません — feat/fix/perf の
+PR にエントリが無ければ per-PR CI がその場でブロックするようになったので
+（Issue #461）、月曜のトレインまで持ち越されるのは `no-changelog` を貼った
+PR ばかりが続いた週だけです。**どちらも気付ける前提は GitHub の Actions 失敗通知**
 なので、リリース系ワークフローの失敗が手元に届く設定になっているかは一度確認しておきます。
 
 ## 急ぐとき（express: `release:now`）
@@ -198,7 +201,8 @@ conflict — 全 PR が `## [Unreleased]` の同じ行を触ると、並行 PR �
 
 | いつ | 何を | 失敗したら |
 |------|------|-----------|
-| **PR ごと**(`ci.yml` の *Lint changelog.d entries*) | `changelog.py lint` — 置かれたファイルの**名前と中身だけ**を検証(カテゴリ typo・区切りなし・`.md` 以外・空ファイル)。**エントリの有無は問わない**(内部作業は正当にエントリ無し)。`build-and-test` のステップとして走り、その失敗は required check `ci-gate` が fail に畳むのでマージをブロックする | **PR がマージ不能**。typo を書いた本人がその場で直す(Issue #405 — 以前はリリース時まで発覚しなかった) |
+| **PR ごと**(`ci.yml` の *Lint changelog.d entries*) | `changelog.py lint` — 置かれたファイルの**名前と中身だけ**を検証(カテゴリ typo・区切りなし・`.md` 以外・空ファイル)。**エントリの有無は問わない**。`build-and-test` のステップとして走り、その失敗は required check `ci-gate` が fail に畳むのでマージをブロックする | **PR がマージ不能**。typo を書いた本人がその場で直す(Issue #405 — 以前はリリース時まで発覚しなかった) |
+| **PR ごと**(`ci.yml` の *Require a changelog.d entry for user-facing PRs*) | `require-changelog-entry.py` — 有無の方を見る。PR タイトルの type が**単独でリリースを起こす**(`feat` / `fix` / `perf`。判定は `release-bump.py` の `BUMP_BY_TYPE` を import して共有)か `!` 付きなら、`changelog.d/` にファイルを追加していることを要求する。判断は書き手に残っており、`no-changelog` ラベルを貼れば通る | **PR がマージ不能**。エントリを足すか `no-changelog` を貼る。どちらもタイトル・ラベルを API から読むので `gh run rerun --failed <run-id>` だけで通る(Issue #461 — 以前は下の 2 つで週明けに発覚していた) |
 | 発車前(`release-train.yml` の *Require CHANGELOG entries*) | 同じ `changelog.py check`。bump が決まった週だけ走る | **トレインが fail**。dispatch されないので Release ワークフローは起動しない。エントリを足して手で `workflow_dispatch`(dry_run=false)するか、翌週に乗せる |
 | ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `changelog.d/` にエントリがあるか、`## [Unreleased]` の中身が空でないこと(両対応)。ファイル名の不備(カテゴリ不明・区切りなし・`.md` 以外・空ファイル)もここで弾く | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
 | *Push release branch*(stable のみ) | `changelog.py release <version>` — まず `changelog.d/*.md` を `## [Unreleased]` へ集約してファイルを削除し、続けて `## [X.Y.Z] - YYYY-MM-DD` へ昇格、空の Unreleased を上に開き、末尾のリンク定義を更新。**削除も含めて**バージョンバンプと同じコミットに入る(`git add ... changelog.d`) | 同上(タグ前) |

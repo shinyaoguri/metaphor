@@ -74,7 +74,10 @@ green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
   people would notice, anything that needs a migration step; breaking ones go
   in a `.breaking.md` file, since they become the 1.0 migration guide.
   Internal-only work — design docs, CI plumbing, refactors with no observable
-  effect — doesn't need an entry. The release workflow collects these files
+  effect — doesn't need an entry. CI asks for one when your PR title is a type
+  that releases on its own (`feat` / `fix` / `perf`) or is marked breaking
+  (`!`); if such a change genuinely has nothing to write, label the PR
+  `no-changelog` and the check passes. The release workflow collects these files
   into `## [Unreleased]` and refuses to cut a release while there is nothing
   to collect, so nothing ships undocumented; see
   [changelog.d/README.md](changelog.d/README.md) and

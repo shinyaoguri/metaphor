@@ -109,6 +109,41 @@ jobs:
         # リリース時の `changelog.py check` は従来どおり「有無」も見るゲートの
         # まま。ここはその前半分を per-PR に前倒しするだけ（Issue #405）。
         run: python3 scripts/changelog.py lint
+      - name: Require a changelog.d entry for user-facing PRs
+        # 上のステップが見ない「有無」の方（Issue #461）。判断は機械化できない
+        # ままなので、週次トレインが既に使っている規則を借りる: PR タイトルの
+        # type が単独でリリースを起こす（feat / fix / perf）か `!` 付きなら、
+        # エントリを書いていることを要求する。判断そのものは書き手に残っており、
+        # `no-changelog` ラベルを貼れば通る（＝「書くことが無い」という判断が
+        # PR に記録される）。
+        #
+        # これが無かった頃は、書き忘れた PR が素通りして**月曜のトレイン**が
+        # 発車できずに止まった。直すべき人と気付く人が 1 週間離れていた。
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # base/head は `Detect Source changes` と同じ取り方。checkout は
+          # fetch-depth: 0 なので両方たどれる。
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # タイトルもラベルもイベントペイロードではなく実行時に API から引く
+          # （上のタイトル lint と同じ理由）。こうしておくとエントリを足すか
+          # ラベルを貼るかしたあと `gh run rerun --failed <run-id>` だけで通る。
+          PR_JSON=$(gh pr view "$PR_NUMBER" --json title,labels)
+          TITLE=$(jq -r '.title' <<<"$PR_JSON")
+          LABEL_ARGS=()
+          while IFS= read -r label; do
+            [ -n "$label" ] && LABEL_ARGS+=(--label "$label")
+          done < <(jq -r '.labels[].name' <<<"$PR_JSON")
+          # ラベルが 1 つも無い PR では LABEL_ARGS が空配列になる。macOS ランナーの
+          # /bin/bash は 3.2 で、空配列の "${a[@]}" は set -u に unbound variable と
+          # 見なされて落ちるため、この展開形で回避する。
+          git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" -- 'changelog.d/*.md' \
+            | python3 scripts/require-changelog-entry.py --subject "$TITLE" \
+                ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
       - name: Lint workflows (actionlint)
         # `.github/workflows/*.yml` を検証するものが無く、構文エラーや式の書き
         # 間違いは「そのワークフローが次に走ったとき」まで見つからなかった

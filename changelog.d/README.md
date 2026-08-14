@@ -37,16 +37,41 @@ One change per file. A pull request with a breaking change *and* a new API adds
 two files.
 
 **Internal-only work needs no entry** — design docs, CI plumbing, refactors with
-no observable effect, website dependency bumps.
+no observable effect, website dependency bumps. Those pull requests are normally
+titled `chore` / `ci` / `docs` / `refactor` / `test`, which the check below
+leaves alone.
 
 ## What CI checks on your pull request
 
-`changelog.py lint`, a step of the required `build-and-test` job, validates the
-files that are here: the name has to be `<slug>.<category>.md` with a known
-category, and the file must not be empty. It **never demands that an entry
-exist** — whether a change is user-facing is a judgement call CI cannot make.
+Two steps of the required `build-and-test` job look at this directory.
 
-Run the same check locally with `python3 scripts/changelog.py lint`.
+**`changelog.py lint`** validates the files that are here: the name has to be
+`<slug>.<category>.md` with a known category, and the file must not be empty. It
+never asks whether an entry exists.
+
+**`require-changelog-entry.py`** asks that separate question, using the rule the
+weekly release train already applies: when the pull request title is a type that
+releases on its own (`feat`, `fix`, `perf`) or is marked breaking (`!`), the pull
+request has to add a file here. The releasing types are imported from
+`release-bump.py` rather than listed again, so the two can never disagree.
+
+This used to be a release-time check only, which meant a forgotten entry was
+found on a Monday by a train that could not leave — a week after the person who
+could fix it had moved on (Issue #461).
+
+**The judgement call is still yours.** If a `feat` or `fix` genuinely has nothing
+an upgrader needs told, label the pull request `no-changelog` and the check
+passes; the decision is then recorded on the pull request instead of nowhere.
+Either fix takes effect on a re-run alone (`gh run rerun --failed <run-id>`) —
+the title and labels are read live from the API, so no push is needed.
+
+Run both locally:
+
+```bash
+python3 scripts/changelog.py lint
+git diff --name-only --diff-filter=A origin/main... \
+    | python3 scripts/require-changelog-entry.py --subject "<your PR title>"
+```
 
 ## What happens at release
 
