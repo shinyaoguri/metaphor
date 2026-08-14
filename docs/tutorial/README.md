@@ -347,6 +347,7 @@ alt は「何の画像か」ではなく、**「何が見えるか」を 1 文**
 `probe-input.jsonl` を置くと、撮影スクリプトがスケッチを起動した後に**その内容を stdin へ
 流してから**撮ります。ヘッドレス起動では `InputInjectionPlugin` が自動登録され、stdin の
 JSON Lines（[CONTRACT.md](../../CONTRACT.md) 契約点 3）を入力として受け取るため、cli を挟まずに入力を再現できます。
+この規約と実装は Examples の撮影（`make example-shots`）と共有です（[#610](https://github.com/shinyaoguri/metaphor/issues/610)。読み取りと送出は `scripts/shots_common.py`）。
 
 ```text
 // コメント行と空行は無視される

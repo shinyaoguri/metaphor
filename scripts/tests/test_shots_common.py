@@ -6,10 +6,11 @@ Run from the repository root:
     python3 -m unittest discover -s scripts/tests
 
 チュートリアル（generate-tutorial-shots.py）と Examples（generate-example-shots.py）が
-共有する部分だけをここで確かめる。確かめるのは 2 つ — **台帳に入れる実寸をヘッダから
-読めること**と、**撮影時のソースの指紋が「絵を変えうる変更」だけで動くこと**。
-後者はどちらのスクリプトでも「コードを変えたのに画像が古い」を検出する土台なので、
-ここが壊れると両方の `--check` が同時に嘘をつく。
+共有する部分だけをここで確かめる。確かめるのは 3 つ — **台帳に入れる実寸をヘッダから
+読めること**、**撮影時のソースの指紋が「絵を変えうる変更」だけで動くこと**、
+**入力台本の読み取り規則**。指紋はどちらのスクリプトでも「コードを変えたのに画像が
+古い」を検出する土台なので、ここが壊れると両方の `--check` が同時に嘘をつく。台本は
+入力が要るスケッチを撮る唯一の経路で、こちらも両スクリプトが同じ実装を使う（#610）。
 """
 
 import importlib.util
@@ -125,6 +126,53 @@ class TestSourceHash(CommonTestCase):
         before = common.source_hash(package)
         (package / "Sketch/App.swift").rename(package / "Sketch/Main.swift")
         self.assertNotEqual(common.source_hash(package), before)
+
+
+class TestInputScript(CommonTestCase):
+    """撮影用の入力台本（`probe-input.jsonl`）の読み取り規則（#509）。"""
+
+    def parse(self, text: str) -> list[dict]:
+        return common.parse_input_script(text, "ref")
+
+    def test_events_keep_their_order(self) -> None:
+        events = self.parse(
+            '{"t":"mouseMove","x":10,"y":20}\n{"t":"mouseDown","x":10,"y":20,"button":0}\n'
+        )
+        self.assertEqual([event["t"] for event in events], ["mouseMove", "mouseDown"])
+
+    def test_wait_lines_are_kept_as_waits(self) -> None:
+        events = self.parse('{"wait":250}\n{"t":"mouseUp","x":1,"y":2}\n')
+        self.assertEqual(events[0], {"wait": 250})
+        self.assertEqual(events[1]["t"], "mouseUp")
+
+    def test_comments_and_blank_lines_are_ignored(self) -> None:
+        events = self.parse('// 台本の意図\n\n{"t":"keyDown","code":49}\n')
+        self.assertEqual(len(events), 1)
+
+    def test_a_line_without_t_or_wait_is_an_error(self) -> None:
+        with self.assertRaises(common.ShotError):
+            self.parse('{"x":10,"y":20}\n')
+
+    def test_a_negative_wait_is_an_error(self) -> None:
+        with self.assertRaises(common.ShotError):
+            self.parse('{"wait":-5}\n')
+
+    def test_broken_json_is_an_error(self) -> None:
+        with self.assertRaises(common.ShotError):
+            self.parse('{"t":"mouseMove",\n')
+
+    def test_a_script_without_events_is_an_error(self) -> None:
+        with self.assertRaises(common.ShotError):
+            self.parse("// 説明だけ\n\n")
+
+    def test_missing_script_means_no_input(self) -> None:
+        self.assertIsNone(common.load_input_script(self.root, "ref"))
+
+    def test_script_is_read_from_the_package_root(self) -> None:
+        (self.root / common.INPUT_SCRIPT_NAME).write_text(
+            '{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8"
+        )
+        self.assertEqual(len(common.load_input_script(self.root, "ref") or []), 1)
 
 
 if __name__ == "__main__":

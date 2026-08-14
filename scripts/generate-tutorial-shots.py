@@ -91,12 +91,15 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-# 「撮影時のソースの指紋」と「画像の縦横」は Examples 側
+# 「撮影時のソースの指紋」「画像の縦横」「入力台本」は Examples 側
 # （generate-example-shots.py）と共通。実装を 2 つ持つと、片側だけ鮮度検出が
-# 弱る（#505）。
+# 弱り（#505）、片側だけ入力を流せない（#610）。
 from shots_common import (  # noqa: E402
+    INPUT_SCRIPT_NAME,
     ShotError,
     image_size,
+    load_input_script,
+    send_input_script,
     source_files,
     source_hash,
 )
@@ -135,17 +138,8 @@ GYAZO_TOKEN_REF = os.environ.get(
 CAPTURE_TIMEOUT_SEC = 90.0
 POLL_INTERVAL_SEC = 0.2
 
-# 撮影用の入力台本（#509）。パッケージ直下に置くと起動後に stdin へ流す。
-INPUT_SCRIPT_NAME = "probe-input.jsonl"
 # 撮らない節の申告（#544）。パッケージ直下に置くと撮影も鮮度検査も飛ばす。
 NO_CAPTURE_NAME = "no-capture.txt"
-# 1 行送るごとに空ける間隔。60fps の 2 フレームぶん空けて、1 フレームに複数の
-# イベントがまとめて届く（＝軌跡の中間点が失われる）のを避ける。
-INPUT_INTERVAL_SEC = 0.033
-# 最後のイベントが描画に反映されるまでの猶予。この後に request.json を置く。
-INPUT_SETTLE_SEC = 0.6
-# 下見の 1 枚が撮れてから流し始めるまでの間。フレームレートが落ち着くのを待つ。
-INPUT_LEAD_SEC = 0.3
 
 # 動きの証跡の既定値と上限（docs/tutorial/README.md の規約と対）。
 MOTION_KINDS = ("webp", "sheet")
@@ -462,42 +456,6 @@ def webp_command(frame_paths: list[Path], output: Path, fps: int, quality) -> li
     return command
 
 
-def parse_input_script(text: str, ref: str) -> list[dict]:
-    """撮影用の入力台本を、送る順のイベント列に直す。
-
-    `t` を持つ行は stdin へ送るイベント、`wait` だけの行は待ち時間。`//` の行と
-    空行は台本に意図を書くためのもので読み飛ばす。
-    """
-    events: list[dict] = []
-    for number, raw in enumerate(text.split("\n"), start=1):
-        line = raw.strip()
-        if not line or line.startswith("//"):
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise ShotError(
-                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目が JSON として読めない: {exc}"
-            ) from exc
-        if not isinstance(event, dict):
-            raise ShotError(
-                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目はオブジェクトである必要がある"
-            )
-        if "t" in event:
-            events.append(event)
-            continue
-        wait = event.get("wait")
-        if not isinstance(wait, (int, float)) or isinstance(wait, bool) or wait < 0:
-            raise ShotError(
-                f"'{ref}' の {INPUT_SCRIPT_NAME} {number} 行目は 't' か "
-                f"'wait'（0 以上のミリ秒）を持つ必要がある: {line}"
-            )
-        events.append({"wait": wait})
-    if not events:
-        raise ShotError(f"'{ref}' の {INPUT_SCRIPT_NAME} にイベントが 1 つも無い")
-    return events
-
-
 def no_capture_reason(package_dir: Path, ref: str) -> str | None:
     """節が「撮らない」と申告していれば、その理由を返す（申告が無ければ None）。
 
@@ -511,35 +469,6 @@ def no_capture_reason(package_dir: Path, ref: str) -> str | None:
     if not reason:
         raise ShotError(f"'{ref}' の {NO_CAPTURE_NAME} に撮らない理由が書かれていない")
     return reason
-
-
-def load_input_script(package_dir: Path, ref: str) -> list[dict] | None:
-    """節に入力台本があれば読む（無ければ None）。"""
-    path = package_dir / INPUT_SCRIPT_NAME
-    if not path.is_file():
-        return None
-    return parse_input_script(path.read_text(encoding="utf-8"), ref)
-
-
-def send_input_script(process: subprocess.Popen, events: list[dict], ref: str) -> None:
-    """台本を stdin へ流す。流し終えるまで戻らない。"""
-    stdin = process.stdin
-    if stdin is None:  # 呼び出し側が PIPE で開いていない（起こらないはず）
-        raise ShotError(f"'{ref}' の stdin が開いていない")
-    time.sleep(INPUT_LEAD_SEC)
-    for event in events:
-        if process.poll() is not None:
-            raise ShotError(f"'{ref}' が入力の途中で終了した（exit {process.returncode}）")
-        if "wait" in event:
-            time.sleep(event["wait"] / 1000)
-            continue
-        try:
-            stdin.write(json.dumps(event) + "\n")
-            stdin.flush()
-        except BrokenPipeError as exc:
-            raise ShotError(f"'{ref}' が stdin を閉じた（入力を受け取れていない）") from exc
-        time.sleep(INPUT_INTERVAL_SEC)
-    time.sleep(INPUT_SETTLE_SEC)
 
 
 def load_manifest() -> dict:
