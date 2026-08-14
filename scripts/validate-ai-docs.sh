@@ -9,6 +9,7 @@
 #   5. Makefile symbol-graphs extracts every library product
 #   6. SPM dependency snippets use the stable version from README.md
 #   7. Generated examples index is up to date
+#   8. Example counts written in prose match the generated index
 #
 # Exit code: 0 if all checks pass, 1 if any fail.
 
@@ -193,6 +194,64 @@ if python3 scripts/generate-examples-index.py --check; then
     pass "examples index is up to date"
 else
     fail "examples index is out of date"
+fi
+
+# --------------------------------------------------------------------------
+# 8. Example counts written in prose
+# --------------------------------------------------------------------------
+# Hand-written counts fall behind every time an example is added: by Issue #490
+# four different numbers (278 / 274 / 270+ / 282) were in circulation. The
+# generated index is the single source of truth; anything that spells the number
+# out in prose is checked against it here.
+echo "Checking example counts in prose..."
+
+index_json=docs/ai/examples-index.json
+if [ ! -f "$index_json" ]; then
+    fail "$index_json — file not found"
+else
+    total_count=$(python3 -c "import json; print(json.load(open('$index_json'))['count'])")
+    supported_count=$(python3 -c "import json; print(json.load(open('$index_json'))['statusCounts']['supported'])")
+
+    # "<file>|<expected>|<regex>" — the regex matches the phrase carrying the
+    # number, and must contain exactly one number so it can be read back out.
+    # Keep `|` out of the regexes: it is the field separator here.
+    count_claims=(
+        "README.md|$total_count|サンプルが [0-9]+ 本"
+        "Examples/README.md|$total_count|[0-9]+ 本の索引"
+        "docs/api-stability-policy.md|$total_count|\([0-9]+ standalone packages\)"
+        "website/src/i18n/ui.ts|$total_count|[0-9]+ の実行可能なサンプル"
+        "website/src/i18n/ui.ts|$supported_count|うち [0-9]+ が動作確認済み"
+        "website/src/i18n/ui.ts|$total_count|[0-9]+ runnable examples"
+        "website/src/i18n/ui.ts|$supported_count|\([0-9]+ verified\)"
+    )
+
+    for claim in "${count_claims[@]}"; do
+        claim_file=${claim%%|*}
+        claim_rest=${claim#*|}
+        claim_expected=${claim_rest%%|*}
+        claim_pattern=${claim_rest#*|}
+
+        if [ ! -f "$claim_file" ]; then
+            fail "$claim_file — file not found"
+            continue
+        fi
+        # A silent zero-match means the sentence was reworded: that is a failure,
+        # not a pass, or the check quietly stops guarding anything (cf. #491).
+        # `|| true` is load-bearing: under `set -o pipefail` a zero-match grep
+        # would abort the whole script here, with no diagnostic printed at all.
+        claim_found=$(grep -oE "$claim_pattern" "$claim_file" | grep -oE '[0-9]+' | sort -u || true)
+        if [ -z "$claim_found" ]; then
+            fail "$claim_file — no example count matched /$claim_pattern/ (reworded? update scripts/validate-ai-docs.sh)"
+            continue
+        fi
+        for claim_number in $claim_found; do
+            if [ "$claim_number" = "$claim_expected" ]; then
+                pass "$claim_file: $claim_number ($claim_pattern)"
+            else
+                fail "$claim_file: $claim_number does not match $index_json ($claim_expected) — /$claim_pattern/"
+            fi
+        done
+    done
 fi
 
 # --------------------------------------------------------------------------
