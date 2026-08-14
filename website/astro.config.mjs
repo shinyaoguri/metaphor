@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import tailwindcss from '@tailwindcss/vite';
+import { remarkTutorialImageSize } from './src/plugins/remark-tutorial-image-size.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -30,6 +31,10 @@ export default defineConfig({
   // 外へ出して actions/cache の対象にする（.github/workflows/docs.yml）。
   cacheDir: './.astro-cache',
   markdown: {
+    // 台帳が持つ縦横を本文へ焼き込み、Astro がリモート画像の寸法を取りに行くのを
+    // 止める（毎ビルド 65 回のラウンドトリップが消え、ビルドの成否が外部サービスに
+    // 繋がらなくなる）。副作用としてレイアウトシフトの防止にもなる。
+    remarkPlugins: [remarkTutorialImageSize],
     // Astro 組み込みの Shiki。LP の CodeExample.astro は Tailwind クラスを手書きした
     // 擬似ハイライトだが、チュートリアルは本物のトークナイザで色を付ける。
     shikiConfig: {

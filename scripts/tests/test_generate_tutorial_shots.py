@@ -86,10 +86,20 @@ class ShotsTestCase(unittest.TestCase):
         path.write_bytes(b"\x89PNG\r\n\x1a\n")
 
     def record(self, ref: str = REF, motion: dict | None = None) -> dict:
-        entry = {"sourceHash": gen.source_hash(self.code / ref)}
+        """台帳のエントリ。画像は外部ストレージにあるので URL を持つ（ADR-0010）。"""
+        entry = {
+            "sourceHash": gen.source_hash(self.code / ref),
+            "url": STILL_URL,
+            "sha256": "y",
+        }
         if motion is not None:
-            entry["motion"] = motion
+            entry["motion"] = {**motion, "url": MOTION_URL, "sha256": "z"}
         return {ref: entry}
+
+    def add_body(self, ref: str = REF, motion: bool = False) -> Path:
+        """`record()` と対になる本文（台帳が指すのと同じ URL を参照する）。"""
+        targets = [STILL_URL] + ([MOTION_URL] if motion else [])
+        return self.add_section_doc(targets, ref=ref)
 
     def write_motion_config(self, sections: dict) -> None:
         self.images.mkdir(parents=True, exist_ok=True)
@@ -97,10 +107,6 @@ class ShotsTestCase(unittest.TestCase):
             json.dumps({"sections": sections}), encoding="utf-8"
         )
 
-    def add_motion_file(self, ref: str = REF, kind: str = "webp") -> None:
-        path = gen.motion_path_for(ref, kind)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(b"RIFF____WEBP")
 
 
 class TestReferencedRefs(ShotsTestCase):
@@ -119,25 +125,32 @@ class TestReferencedRefs(ShotsTestCase):
 class TestStaleness(ShotsTestCase):
     def test_fresh_when_hash_matches(self) -> None:
         self.add_package()
-        self.add_image()
+        self.add_body()
         self.assertEqual(gen.check([REF], self.record()), [])
 
     def test_stale_when_sketch_changed_after_capture(self) -> None:
         package_dir = self.add_package()
-        self.add_image()
+        self.add_body()
         recorded = self.record()
         (package_dir / "Section" / "App.swift").write_text(
             "import metaphor\n// 追記\n", encoding="utf-8"
         )
         self.assertEqual(len(gen.check([REF], recorded)), 1)
 
-    def test_stale_when_image_missing(self) -> None:
+    def test_stale_when_the_ledger_has_no_url(self) -> None:
+        # 画像はもうリポジトリに置かない（ADR-0010）。URL の無いエントリは
+        # 「上げていない」ということなので、撮り直しを促す。指紋は合わせておき、
+        # URL が無いこと**だけ**が理由で古いと判定されることを確かめる。
         self.add_package()
-        self.assertEqual(len(gen.check([REF], self.record())), 1)
+        self.add_body()
+        recorded = {REF: {"sourceHash": gen.source_hash(self.code / REF)}}
+        stale = gen.check([REF], recorded)
+        self.assertEqual(len(stale), 1)
+        self.assertIn("URL", stale[0])
 
     def test_stale_when_never_captured(self) -> None:
         self.add_package()
-        self.add_image()
+        self.add_body()
         self.assertEqual(len(gen.check([REF], {})), 1)
 
     def test_unknown_package_is_an_error(self) -> None:
@@ -150,7 +163,7 @@ class TestStaleness(ShotsTestCase):
         resource = package_dir / "Section/Resources/sample.png"
         resource.parent.mkdir(parents=True)
         resource.write_bytes(b"\x89PNG\r\n\x1a\nbefore")
-        self.add_image()
+        self.add_body()
         recorded = self.record()
         resource.write_bytes(b"\x89PNG\r\n\x1a\nafter")
         self.assertEqual(len(gen.check([REF], recorded)), 1)
@@ -158,7 +171,7 @@ class TestStaleness(ShotsTestCase):
     def test_stale_when_manifest_changed(self) -> None:
         # Package.swift の依存・リソース宣言の変更も絵を変えうる。
         package_dir = self.add_package()
-        self.add_image()
+        self.add_body()
         recorded = self.record()
         (package_dir / "Package.swift").write_text(
             "// swift-tools-version: 5.10\n// resources 宣言を追加\n"
@@ -169,7 +182,6 @@ class TestStaleness(ShotsTestCase):
         # .build / .swiftpm / .metaphor は gitignore 済みの生成物で、
         # あるかないかで撮り直しが要るとは言えない。
         package_dir = self.add_package()
-        self.add_image()
         before = gen.source_hash(package_dir)
         for relative, name, body in (
             (".build/checkouts/dep", "Dep.swift", "import Foundation\n"),
@@ -225,38 +237,35 @@ class TestMotionStaleness(ShotsTestCase):
         base.update(overrides)
         return base
 
-    def test_fresh_when_settings_and_file_match(self) -> None:
+    def test_fresh_when_settings_and_assets_match(self) -> None:
         self.add_package()
-        self.add_image()
-        self.add_motion_file()
+        self.add_body(motion=True)
         motions = {REF: self.settings()}
-        recorded = self.record(motion={**self.settings(), "file": "02-Section.webp"})
-        self.assertEqual(gen.check([REF], recorded, motions), [])
+        self.assertEqual(gen.check([REF], self.record(motion=self.settings()), motions), [])
 
     def test_stale_when_motion_was_never_captured(self) -> None:
         self.add_package()
-        self.add_image()
+        self.add_body()
         self.assertEqual(len(gen.check([REF], self.record(), {REF: self.settings()})), 1)
 
     def test_stale_when_settings_changed(self) -> None:
         self.add_package()
-        self.add_image()
-        self.add_motion_file()
+        self.add_body(motion=True)
         recorded = self.record(motion=self.settings(fps=15))
         stale = gen.check([REF], recorded, {REF: self.settings(fps=30)})
         self.assertEqual(len(stale), 1)
 
-    def test_stale_when_motion_file_is_missing(self) -> None:
+    def test_stale_when_the_motion_asset_is_missing_from_the_ledger(self) -> None:
         self.add_package()
-        self.add_image()
+        self.add_body(motion=True)
         recorded = self.record(motion=self.settings())
+        del recorded[REF]["motion"]["url"]
         self.assertEqual(len(gen.check([REF], recorded, {REF: self.settings()})), 1)
 
     def test_stale_when_section_left_motion_config(self) -> None:
-        # 設定から外したのに証跡が manifest に残っている = 撮り直して片付ける。
+        # 設定から外したのに証跡が台帳に残っている = 撮り直して片付ける。
         self.add_package()
-        self.add_image()
-        self.add_motion_file()
+        self.add_body(motion=True)
         recorded = self.record(motion=self.settings())
         self.assertEqual(len(gen.check([REF], recorded, {})), 1)
 
@@ -466,8 +475,7 @@ class TestInputScript(ShotsTestCase):
     def test_script_changes_make_the_shot_stale(self) -> None:
         # 台本はパッケージ配下なので指紋に入る（絵が変わるため撮り直しが要る）
         package_dir = self.add_package()
-        self.add_doc()
-        self.add_image()
+        self.add_body()
         script = package_dir / gen.INPUT_SCRIPT_NAME
         script.write_text('{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8")
         shots = self.record()
@@ -670,6 +678,52 @@ class TestExternalStaleness(ShotsTestCase):
         self.add_section_doc([STILL_URL])
         self.add_image()
         self.assertEqual(gen.check([REF], self.external()), [])
+
+
+class TestImageSize(ShotsTestCase):
+    """台帳に入れる実寸をヘッダから読む（website がこれを本文へ焼き込む）。"""
+
+    def png(self, width: int, height: int) -> Path:
+        path = self.root / "shot.png"
+        path.write_bytes(
+            b"\x89PNG\r\n\x1a\n"
+            + (13).to_bytes(4, "big")
+            + b"IHDR"
+            + width.to_bytes(4, "big")
+            + height.to_bytes(4, "big")
+        )
+        return path
+
+    def webp(self, chunk: bytes, payload: bytes) -> Path:
+        path = self.root / "shot.webp"
+        body = b"WEBP" + chunk + len(payload).to_bytes(4, "little") + payload
+        path.write_bytes(b"RIFF" + len(body).to_bytes(4, "little") + body)
+        return path
+
+    def test_png(self) -> None:
+        self.assertEqual(gen.image_size(self.png(640, 360)), (640, 360))
+
+    def test_animated_webp_reads_the_canvas(self) -> None:
+        # 動きの証跡はこの形式（VP8X）。canvas は 1 始まりで 3 バイトずつ。
+        payload = b"\x10\x00\x00\x00" + (639).to_bytes(3, "little") + (359).to_bytes(3, "little")
+        self.assertEqual(gen.image_size(self.webp(b"VP8X", payload)), (640, 360))
+
+    def test_lossy_webp(self) -> None:
+        payload = b"\x00" * 6 + (560).to_bytes(2, "little") + (315).to_bytes(2, "little")
+        self.assertEqual(gen.image_size(self.webp(b"VP8 ", payload)), (560, 315))
+
+    def test_lossless_webp(self) -> None:
+        bits = (640 - 1) | ((360 - 1) << 14)
+        self.assertEqual(
+            gen.image_size(self.webp(b"VP8L", b"\x2f" + bits.to_bytes(4, "little"))),
+            (640, 360),
+        )
+
+    def test_an_unknown_format_is_an_error(self) -> None:
+        path = self.root / "shot.png"
+        path.write_bytes(b"GIF89a" + b"\x00" * 20)
+        with self.assertRaises(gen.ShotError):
+            gen.image_size(path)
 
 
 class TestGyazoResponse(ShotsTestCase):

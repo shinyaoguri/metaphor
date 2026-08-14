@@ -132,9 +132,11 @@ ADR-0008 が Follow-up として積み残していたものでもある。
 - `docs/tutorial/images/` に JSON 2 つだけが残る見た目になる。
 
 ### Follow-ups / 残課題
-- 台帳の `width` / `height` を website 側の remark プラグインで焼き込む。いまは Astro が
-  寸法を知るために毎ビルド全点へプローブのフェッチを飛ばしており（これは取得キャッシュの
-  対象外）、焼き込めばビルドがネットワークからほぼ自立し、CLS 対策にもなる。
+- ~~台帳の `width` / `height` を website 側の remark プラグインで焼き込む~~ **完了**
+  （`website/src/plugins/remark-tutorial-image-size.mjs`）。Astro は寸法が分からないと
+  毎ビルド全点へプローブのフェッチを飛ばしていた（取得キャッシュとは別経路なので
+  `actions/cache` が当たっていても飛ぶ）。焼き込みで消え、キャッシュが温まった状態の
+  ビルドは **約 19 秒 → 0.9 秒**になった。副作用としてレイアウトシフトの防止にもなる。
 - [#553](https://github.com/shinyaoguri/metaphor/issues/553)（`prefers-reduced-motion`）は
   「`{節}.webp` ↔ `{節}.png` というファイル名の対」で静止画と動きを対応づける前提だった。
   外部化すると URL はハッシュになり、しかも website 側では両方 `.webp` になるため、

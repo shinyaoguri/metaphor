@@ -215,6 +215,38 @@ def staging_path_for(ref: str, kind: str | None = None) -> Path:
     return STAGING_DIR / part / f"{section}.{suffix}"
 
 
+def image_size(path: Path) -> tuple[int, int]:
+    """画像の縦横を、ヘッダだけ読んで返す（PNG / WebP）。
+
+    台帳に実寸を持たせるためのもの。website 側はこれを本文へ焼き込み、Astro が
+    寸法を知るために毎ビルド全点へフェッチを飛ばすのを止める（ADR-0010 の
+    Follow-up）。外部コマンドにも追加の依存にも頼らないので、撮影と同じ経路で
+    確実に得られる。
+    """
+    data = path.read_bytes()
+    if data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR":
+        return (
+            int.from_bytes(data[16:20], "big"),
+            int.from_bytes(data[20:24], "big"),
+        )
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        chunk, payload = data[12:16], data[20:]
+        if chunk == b"VP8X":  # 拡張形式（アニメーションはこれ）。canvas は 1 始まり
+            return (
+                int.from_bytes(payload[4:7], "little") + 1,
+                int.from_bytes(payload[7:10], "little") + 1,
+            )
+        if chunk == b"VP8 ":  # lossy。キーフレームヘッダの 14 bit ずつ
+            return (
+                int.from_bytes(payload[6:8], "little") & 0x3FFF,
+                int.from_bytes(payload[8:10], "little") & 0x3FFF,
+            )
+        if chunk == b"VP8L":  # lossless。signature の次に 14 bit ずつ（1 始まり）
+            bits = int.from_bytes(payload[1:5], "little")
+            return ((bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1)
+    raise ShotError(f"{path.name} の縦横を読めない（PNG / WebP のみ対応）")
+
+
 def file_sha256(path: Path) -> str:
     """上げたバイト列の指紋。URL の中身が入れ替わっていないことを後から確かめる。"""
     digest = hashlib.sha256()
@@ -827,10 +859,18 @@ def collect_sequence(
             f"（{MOTION_MAX_BYTES // 1024}KB）を超えた。"
             "motion.json の width か frames を落としてください"
         )
+    # motion の width は「上限の指定」なので、実際に書けた縦横は別に記録する
+    # （website がこれを本文へ焼き込む）。
+    motion_width, motion_height = image_size(output)
     return {
         "width": size.get("width"),
         "height": size.get("height"),
-        "motion": {**motion, "bytes": written},
+        "motion": {
+            **motion,
+            "bytes": written,
+            "outputWidth": motion_width,
+            "outputHeight": motion_height,
+        },
     }
 
 
@@ -915,10 +955,10 @@ def check(
         if recorded is None:
             stale.append(f"{ref}: 画像がまだ無い")
             continue
-        if recorded.get("url"):
-            stale += external_stale(ref, package_dir, recorded, motion, body)
-        else:
-            stale += local_stale(ref, package_dir, recorded, motion)
+        if not recorded.get("url"):
+            stale.append(f"{ref}: 台帳に URL が無い（撮り直して上げ直してください）")
+            continue
+        stale += external_stale(ref, package_dir, recorded, motion, body)
     return stale
 
 
@@ -945,25 +985,6 @@ def external_stale(
         for doc_name, found in references
         if found != urls
     ]
-
-
-def local_stale(
-    ref: str, package_dir: Path, recorded: dict, motion: dict | None
-) -> list[str]:
-    """まだリポジトリに画像を置いている節の鮮度（移行前・移行の途中）。
-
-    外部化が済めば通らなくなる経路だが、移行を 1 つの PR で全節いっせいにやらずに
-    済むよう、URL を持たない節はここで従来どおり判定する。
-    """
-    if not image_path_for(ref).is_file():
-        return [f"{ref}: manifest にあるが画像ファイルが無い"]
-    if recorded.get("sourceHash") != source_hash(package_dir):
-        return [f"{ref}: 撮影後にスケッチが変わった"]
-    if motion_settings(motion) != motion_settings(recorded.get("motion")):
-        return [f"{ref}: motion.json の設定が撮影時と違う"]
-    if motion and not motion_path_for(ref, motion["kind"]).is_file():
-        return [f"{ref}: 動きの証跡のファイルが無い"]
-    return []
 
 
 def migrate_existing(refs: list[str], shots: dict, motions: dict[str, dict]) -> list[str]:
