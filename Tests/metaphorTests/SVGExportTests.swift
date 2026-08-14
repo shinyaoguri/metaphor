@@ -222,32 +222,4 @@ struct SVGExportTests {
         // endSVGRecord 後は記録が止まる
         #expect(context.canvas.svgRecorder == nil)
     }
-
-    /// ADR-0007 の rename で残した deprecated エイリアス（フェーズ 2 で削除予定）が
-    /// 新名へ正しく転送されることを確認する。呼び出し側を deprecated にすることで
-    /// CI の `-warnings-as-errors` に引っかからないようにしている。
-    @available(*, deprecated)
-    @Test("deprecated beginSVG/endSVG forwards to the *Record names")
-    func deprecatedSVGAliasesForward() throws {
-        let renderer = try MetaphorRenderer(width: 64, height: 64)
-        let context = SketchContext(
-            renderer: renderer,
-            canvas: try Canvas2D(renderer: renderer),
-            canvas3D: try Canvas3D(renderer: renderer),
-            input: renderer.input
-        )
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("metaphor-svg-\(UUID().uuidString)")
-        let path = dir.appendingPathComponent("out.svg").path
-        defer { try? FileManager.default.removeItem(at: dir) }
-
-        context.beginSVG(path)
-        #expect(context.canvas.svgRecorder != nil)
-        context.canvas.circle(32, 32, 16)
-        context.endSVG()
-
-        let written = try String(contentsOfFile: path, encoding: .utf8)
-        #expect(written.contains("<ellipse cx=\"32\" cy=\"32\""))
-        #expect(context.canvas.svgRecorder == nil)
-    }
 }

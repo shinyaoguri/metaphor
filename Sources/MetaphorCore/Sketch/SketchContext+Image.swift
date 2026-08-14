@@ -81,18 +81,6 @@ extension SketchContext {
         }
     }
 
-    /// ``beginSVGRecord(_:)`` の旧名です。
-    @available(*, deprecated, renamed: "beginSVGRecord(_:)")
-    public func beginSVG(_ path: String) {
-        beginSVGRecord(path)
-    }
-
-    /// ``endSVGRecord()`` の旧名です。
-    @available(*, deprecated, renamed: "endSVGRecord()")
-    public func endSVG() {
-        endSVGRecord()
-    }
-
     /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
     ///
     /// コピー元はオフスクリーンレンダーターゲットの現在の内容（前フレームまでの
@@ -463,18 +451,6 @@ extension SketchContext {
         renderer.frameExporter.endSequence()
     }
 
-    /// ``beginFrameRecord(directory:pattern:)`` の旧名です。
-    @available(*, deprecated, renamed: "beginFrameRecord(directory:pattern:)")
-    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
-        beginFrameRecord(directory: directory, pattern: pattern)
-    }
-
-    /// ``endFrameRecord()`` の旧名です。
-    @available(*, deprecated, renamed: "endFrameRecord()")
-    public func endRecord() {
-        endFrameRecord()
-    }
-
     /// 動画録画を開始します。
     /// - Parameters:
     ///   - path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
@@ -512,12 +488,6 @@ extension SketchContext {
     /// ``endVideoRecord(completion:)`` の async/await 版です。
     public func endVideoRecordAsync() async {
         await renderer.videoExporter.endRecordAsync()
-    }
-
-    /// ``endVideoRecordAsync()`` の旧名です。
-    @available(*, deprecated, renamed: "endVideoRecordAsync()")
-    public func endVideoRecord() async {
-        await endVideoRecordAsync()
     }
 
     /// 現在のフレームを単一画像ファイルとして保存します（Processing 互換）。

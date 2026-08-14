@@ -413,18 +413,6 @@ extension Sketch {
         context.endSVGRecord()
     }
 
-    /// ``beginSVGRecord(_:)`` の旧名です。
-    @available(*, deprecated, renamed: "beginSVGRecord(_:)")
-    public func beginSVG(_ path: String) {
-        beginSVGRecord(path)
-    }
-
-    /// ``endSVGRecord()`` の旧名です。
-    @available(*, deprecated, renamed: "endSVGRecord()")
-    public func endSVG() {
-        endSVGRecord()
-    }
-
     /// フレーム連番の画像ファイルとしての記録を開始します。
     ///
     /// ``endFrameRecord()`` を呼ぶまで、毎フレームが `pattern` に従った
@@ -440,18 +428,6 @@ extension Sketch {
     /// フレーム連番の記録を停止します。
     public func endFrameRecord() {
         context.endFrameRecord()
-    }
-
-    /// ``beginFrameRecord(directory:pattern:)`` の旧名です。
-    @available(*, deprecated, renamed: "beginFrameRecord(directory:pattern:)")
-    public func beginRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
-        beginFrameRecord(directory: directory, pattern: pattern)
-    }
-
-    /// ``endFrameRecord()`` の旧名です。
-    @available(*, deprecated, renamed: "endFrameRecord()")
-    public func endRecord() {
-        endFrameRecord()
     }
 
     /// 単一フレームを画像ファイルに保存します。
@@ -484,12 +460,6 @@ extension Sketch {
     /// ``endVideoRecord(completion:)`` の async/await 版です。
     public func endVideoRecordAsync() async {
         await context.endVideoRecordAsync()
-    }
-
-    /// ``endVideoRecordAsync()`` の旧名です。
-    @available(*, deprecated, renamed: "endVideoRecordAsync()")
-    public func endVideoRecord() async {
-        await endVideoRecordAsync()
     }
 
     // MARK: Offline Rendering

@@ -455,9 +455,4 @@ public final class VideoExporter {
         }
     }
 
-    /// ``endRecordAsync()`` の旧名です。
-    @available(*, deprecated, renamed: "endRecordAsync()")
-    public func endRecord() async {
-        await endRecordAsync()
-    }
 }
