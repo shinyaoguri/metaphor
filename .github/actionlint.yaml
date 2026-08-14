@@ -1,0 +1,23 @@
+# actionlint の設定（Issue #460）。
+#
+# 抑制はコマンドラインのフラグではなくこのファイルに書く — CI
+# (`scripts/lint-workflows.sh`) と手元の `make lint-workflows` で同じ結果に
+# なるようにするため。
+#
+# self-hosted runner は使っていないので `self-hosted-runner` の宣言は無い。
+paths:
+  .github/workflows/*.yml:
+    ignore:
+      # actionlint はよく使われる action の入力定義をバイナリに焼き込んで検証
+      # するが、その定義が actions/create-github-app-token の **client-id 認証**
+      # （app-id の代替）をまだ知らず、正しい書き方を偽陽性で弾く:
+      #
+      #   missing input "app-id" which is required by action ...
+      #   input "client-id" is not defined in action ...
+      #
+      # 実運用では通っている（release-train.yml の "Verify downstream dispatch
+      # credentials" は 2026-08-10 の週次 run で success）。action 名まで含めた
+      # 正規表現に絞ってあるので、他の action の入力ミスは従来どおり捕まる。
+      # actionlint 側の定義が更新されたらこの 2 行は消せる。
+      - 'missing input "app-id" which is required by action "actions/create-github-app-token'
+      - 'input "client-id" is not defined in action "actions/create-github-app-token'

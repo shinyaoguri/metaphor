@@ -66,6 +66,22 @@ make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付�
 | `METAPHOR_REQUIRE_GPU=1` | 「この環境には GPU がある」と宣言する。Metal デバイスが無ければ `CI Environment Guard` が fail する。CI（`ci.yml`）が設定しており、GPU 依存テストの大量 skip が green のまま見過ごされるのを防ぐ |
 | `METAPHOR_COMMAND_RECORD=1` | 影オフのスケッチでもメインパスを「記録 → 再生」経路で処理する（既定は影オン時のみ）。2D/3D が呼び出し順どおりに合成されるため、2D を 3D の背後に置ける。既定 OFF なのは、影オフ既定 = 即時経路を ADR-0003 Amendment（#327）で 1.0 の確定仕様として凍結したため。**既知の制限**: この経路では `loadPixels()` の同一フレーム readback が効かず、直近のコミット済みフレームへフォールバックする（初回に警告。`draw()` が記録パスとして先に走りメインパスを分割できないため — ADR-0005 Decision 6 / #326）。オーバーヘッドは記録された 3D ドローコール 1 件あたり ≈ 0.22µs、遅延 2D コマンド 1 件あたり ≈ 0.13µs で、バッチに畳まれる 2D や `circles()` の GPU インスタンシングは実質ゼロ（#327 の実測） |
 
+### ワークフローを触ったら `make lint-workflows`
+
+`.github/workflows/*.yml` は actionlint で検証します（#460）。CI の `build-and-test` が同じスクリプトを呼ぶので、手元で通れば CI でも通ります。
+
+```bash
+make lint-workflows   # .github/workflows/*.yml を actionlint にかける
+```
+
+これが要るのは、**リリース系ワークフローは PR では走らない**からです（`release.yml` / `release-train.yml` / `release-on-merge.yml` は dispatch / schedule / `pull_request:closed`）。構文や式を壊しても PR では何も起きず、気付くのは「リリースが出ない」「トレインが発車しない」という形になります。
+
+- actionlint のバージョンは `scripts/lint-workflows.sh` に pin してあり、無ければ `.build/tools/` へ落として SHA256 を検証してから実行します（手元に同版が入っていればそれを使います）
+- **`shellcheck` を入れておいてください**（`brew install shellcheck`）。あると actionlint が `run:` の中身まで検証します。CI は `REQUIRE_SHELLCHECK=1` で必須にしているので、入れずに書くと手元で気付けない指摘が CI で出ます
+- 偽陽性の抑制は `.github/actionlint.yaml`。理由をコメントで残してあります
+
+`run:` のコメントで **行頭を `# shellcheck` にしない**でください。shellcheck の directive と解釈されて `SC1073` で落ちます。
+
 ### CI が赤いまま終わらせない（Stop hook）
 
 `make ci-check` を通しても CI だけが赤くなることはあります（上の 3 つ、あるいは単なる見落とし）。push しっぱなしで気付かないのを防ぐため、Claude Code のセッションが**赤い CI を残して終われない**ようにしています。`git push` を見たら見届け対象の印を置き、セッションを終えようとしたときに PR のチェック状況を見て、実行中なら見届けを促し、赤なら失敗ジョブ名とログ取得コマンドを添えて差し戻す Stop hook です（自動修正は 3 回・待機は 6 回で打ち切り、以降は人間の判断に返します）。
