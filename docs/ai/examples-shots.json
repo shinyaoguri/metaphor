@@ -734,10 +734,10 @@
     },
     "Examples/Samples/SceneGraphHybrid": {
       "origin": "captured",
-      "sourceHash": "bbed1075e614171c9d771fbbd5dc0e4b6f21c4f4466505d799af9cc2cc252816",
+      "sourceHash": "25cb4a1ad9abbdcb21c14eab6ba5358214a44b885bea101de7cb06068bcd03cc",
       "width": 800,
       "height": 600,
-      "frame": 105
+      "frame": 607
     },
     "Examples/Samples/StatePreservation": {
       "origin": "captured",
@@ -1085,13 +1085,6 @@
       "height": 360,
       "frame": 1
     },
-    "Examples/Topics/Image Processing/Zoom": {
-      "origin": "captured",
-      "sourceHash": "e73aa76b79ec8233f8ab3e4cd84fc05f462b8989cf54909156f45cf4d0672161",
-      "width": 640,
-      "height": 360,
-      "frame": 103
-    },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
       "width": 1280,
@@ -1179,13 +1172,6 @@
       "width": 1280,
       "height": 720
     },
-    "Examples/Topics/Shaders/BlurFilter": {
-      "origin": "captured",
-      "sourceHash": "bba771f799700a880f49fd226a56f3607c05aeab35c0cb749f45a848dff4839b",
-      "width": 640,
-      "height": 360,
-      "frame": 95
-    },
     "Examples/Topics/Shaders/Conway": {
       "origin": "captured",
       "sourceHash": "9c53bba03abb9bf5867cd51c85dbeead4cef40fca01d9205ee9be377fac3c672",
@@ -1207,13 +1193,6 @@
       "height": 360,
       "frame": 85
     },
-    "Examples/Topics/Shaders/EdgeDetect": {
-      "origin": "captured",
-      "sourceHash": "18584ad21fe3ae038f0347ba3c9ed28f948079041b26b611bb43e0a7daeed13f",
-      "width": 640,
-      "height": 360,
-      "frame": 1
-    },
     "Examples/Topics/Shaders/EdgeFilter": {
       "origin": "captured",
       "sourceHash": "da6783bb9253593c31c29f2a5bd057652364e7fe48638825f2841ce8b96fcf47",
@@ -1227,13 +1206,6 @@
       "width": 640,
       "height": 640,
       "frame": 103
-    },
-    "Examples/Topics/Shaders/ImageMask": {
-      "origin": "captured",
-      "sourceHash": "2d0582d0109df56808bd6cc99615954095bb5d6f06e794321bedc5b217fd531c",
-      "width": 640,
-      "height": 360,
-      "frame": 12
     },
     "Examples/Topics/Shaders/InfiniteTiles": {
       "origin": "captured",

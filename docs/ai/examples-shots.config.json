@@ -4,6 +4,10 @@
     "Examples/Topics/Simulate/SoftBody": {
       "settle": 0.4,
       "why": "形は mouseX/mouseY へバネで寄る。入力の無いヘッドレスでは平衡点が (0,0) なので、待つほど画面外へ抜ける（1.5 秒後は完全に外）。立ち上がりの、まだ画面中央にいる瞬間を撮る"
+    },
+    "Examples/Samples/SceneGraphHybrid": {
+      "settle": 10.0,
+      "why": "アームの軌跡が 600 点たまって初めて絵になる。60fps で 10 秒かかるので、既定の 1.5 秒では 1/6 しか描かれていない"
     }
   }
 }
