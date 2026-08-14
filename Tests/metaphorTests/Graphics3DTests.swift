@@ -219,7 +219,7 @@ struct Graphics3DTransformTests {
         let pg3d = try makeGraphics3D()
         pg3d.beginDraw()
         pg3d.lights()
-        pg3d.fill(Color(r: 1, g: 1, b: 1, a: 1))
+        pg3d.fill(Color(r: 1, g: 1, b: 1, alpha: 1))
         pg3d.translate(200, 150, 0)  // center of 400x300
         pg3d.box(100)
         pg3d.endDraw()
@@ -251,7 +251,7 @@ struct Graphics3DTransformTests {
         // Test unlit path: lightCount == 0, should return vertex color directly
         let pg3d = try makeGraphics3D()
         pg3d.beginDraw()
-        pg3d.fill(Color(r: 1, g: 1, b: 1, a: 1))
+        pg3d.fill(Color(r: 1, g: 1, b: 1, alpha: 1))
         pg3d.translate(200, 150, 0)
         pg3d.box(100)
         pg3d.endDraw()
@@ -1553,7 +1553,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
         // wait なしで終了 → 直後の loadPixels でも最新が読める
         // （リードバックが描画と同じキューに載るため commit 順序で保証される）
         pg3d.beginDraw()
-        pg3d.fill(Color(r: 1, g: 0, b: 0, a: 1))
+        pg3d.fill(Color(r: 1, g: 0, b: 0, alpha: 1))
         pg3d.translate(200, 150, 0)
         pg3d.box(100)
         pg3d.endDraw(wait: false)
@@ -1564,7 +1564,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
 
         // 再描画後も最新が読める（ラップテクスチャはピクセルキャッシュを信頼しない）
         pg3d.beginDraw()
-        pg3d.fill(Color(r: 0, g: 1, b: 0, a: 1))
+        pg3d.fill(Color(r: 0, g: 1, b: 0, alpha: 1))
         pg3d.translate(200, 150, 0)
         pg3d.box(100)
         pg3d.endDraw(wait: false)

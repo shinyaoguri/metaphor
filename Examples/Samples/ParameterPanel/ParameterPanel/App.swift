@@ -22,7 +22,7 @@ final class ParameterPanelApp: Sketch {
     @Param(min: 0, max: 4) var speed: Float = 1.0
     @Param(min: 2, max: 40) var dotSize: Float = 14
     @Param var showRing: Bool = true
-    @Param var tint: Color = Color(r: 0.4, g: 0.8, b: 1.0, a: 1.0)
+    @Param var tint: Color = Color(r: 0.4, g: 0.8, b: 1.0, alpha: 1.0)
     @Param(choices: ["cool", "warm", "mono"]) var palette: String = "cool"
 
     var config: SketchConfig {
@@ -60,10 +60,10 @@ final class ParameterPanelApp: Sketch {
         let phase = Float(index) / Float(count)
         switch palette {
         case "warm":
-            return Color(r: 1.0, g: 0.4 + phase * 0.4, b: 0.2, a: 1.0)
+            return Color(r: 1.0, g: 0.4 + phase * 0.4, b: 0.2, alpha: 1.0)
         case "mono":
             let v = 0.3 + phase * 0.7
-            return Color(r: v, g: v, b: v, a: 1.0)
+            return Color(r: v, g: v, b: v, alpha: 1.0)
         default:
             return Color(
                 r: tint.r * (0.4 + phase * 0.6),

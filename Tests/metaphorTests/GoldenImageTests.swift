@@ -191,7 +191,7 @@ struct GoldenImageTests {
             c.rect(8, 64, 56, 56)
 
             c.blendMode(.alpha)
-            c.fill(Color(r: 1, g: 1, b: 1, a: 0.5))
+            c.fill(Color(r: 1, g: 1, b: 1, alpha: 0.5))
             c.rect(64, 64, 56, 56)
         }
     }

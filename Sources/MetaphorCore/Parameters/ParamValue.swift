@@ -203,7 +203,7 @@ extension Color: ParamRepresentable {
     public var paramValue: ParamValue { .color(r, g, b, a) }
     public init?(paramValue: ParamValue) {
         guard case .color(let r, let g, let b, let a) = paramValue else { return nil }
-        self.init(r: r, g: g, b: b, a: a)
+        self.init(r: r, g: g, b: b, alpha: a)
     }
 }
 

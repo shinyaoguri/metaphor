@@ -51,7 +51,7 @@ final class PersonSegmentation: Sketch {
 
         // マスクを半透明オーバーレイ
         if let mask = maskImage {
-            tint(Color(r: 0, g: 1, b: 0.5, a: 0.5))
+            tint(Color(r: 0, g: 1, b: 0.5, alpha: 0.5))
             image(mask, 0, 0, width, height)
             noTint()
         }

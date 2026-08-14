@@ -529,7 +529,7 @@ fill(.white)                 // Color value — components use a 0...1 scale
 fill(Color(r: 1, g: 1, b: 1))
 ```
 
-`Color(r:g:b:a:)`, `Color(gray:)`, `Color(hue:saturation:brightness:)` and the
+`Color(r:g:b:alpha:)`, `Color(gray:)`, `Color(hue:saturation:brightness:)` and the
 named constants (`.white`, `.red`, …) are **not** affected by `colorMode()` —
 they are always normalized. The numeric `fill` / `stroke` / `background` /
 `tint` overloads are. Mixing `fill(1.0)` (nearly black under the default mode)

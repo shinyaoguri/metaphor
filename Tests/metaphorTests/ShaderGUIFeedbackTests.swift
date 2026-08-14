@@ -309,7 +309,7 @@ struct FBOFeedbackTests {
     @Test("previousFrame carries the renderer queue as the readback queue")
     func previousFrameCarriesReadbackQueue() throws {
         let harness = try makeFeedbackHarness { c in
-            c.background(Color(r: 1, g: 0, b: 0, a: 1))
+            c.background(Color(r: 1, g: 0, b: 0, alpha: 1))
         }
         harness.renderer.renderFrame()
 
@@ -322,13 +322,13 @@ struct FBOFeedbackTests {
 
     @Test("previousFrame loadPixels reads the frame copied at this frame's start")
     func previousFrameLoadPixelsFreshness() throws {
-        var color = Color(r: 1, g: 0, b: 0, a: 1)
+        var color = Color(r: 1, g: 0, b: 0, alpha: 1)
         let harness = try makeFeedbackHarness { c in c.background(color) }
 
         // フレーム 1: 赤を描く（コピー元はまだ初期状態）
         harness.renderer.renderFrame()
         // フレーム 2: 冒頭で「赤」がコピーされ、そのあと緑を描く
-        color = Color(r: 0, g: 1, b: 0, a: 1)
+        color = Color(r: 0, g: 1, b: 0, alpha: 1)
         harness.renderer.renderFrame()
 
         let img = try #require(harness.context.previousFrame())

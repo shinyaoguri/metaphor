@@ -183,7 +183,7 @@ struct MImageResizeMaskTests {
 
     @Test("mask sets alpha from mask blue channel")
     func maskAppliesBlueChannel() throws {
-        let img = try #require(makeImage(8, 8, fill: Color(r: 1, g: 0, b: 0, a: 1)))
+        let img = try #require(makeImage(8, 8, fill: Color(r: 1, g: 0, b: 0, alpha: 1)))
         // マスク: 青 0.5 → アルファ約 0.5 になる
         let maskImg = try #require(makeImage(8, 8, fill: Color(r: 0, g: 0, b: 0.5)))
         img.mask(maskImg)
@@ -194,7 +194,7 @@ struct MImageResizeMaskTests {
 
     @Test("mask with mismatched size is a no-op")
     func maskSizeMismatch() throws {
-        let img = try #require(makeImage(8, 8, fill: Color(r: 1, g: 0, b: 0, a: 1)))
+        let img = try #require(makeImage(8, 8, fill: Color(r: 1, g: 0, b: 0, alpha: 1)))
         let maskImg = try #require(makeImage(4, 4, fill: Color(r: 0, g: 0, b: 0)))
         img.mask(maskImg)
         img.loadPixels()
