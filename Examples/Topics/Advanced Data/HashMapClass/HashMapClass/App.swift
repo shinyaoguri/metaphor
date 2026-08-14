@@ -1,3 +1,4 @@
+import Foundation
 import metaphor
 
 struct WordItem {
@@ -36,18 +37,26 @@ final class HashMapClass: Sketch {
 
     var words: [String: WordItem] = [:]
 
+    /// 原典 `splitTokens(allText, " ,.?!:;[]-\"'")` と同じ区切り。
+    let delimiters = CharacterSet(charactersIn: " ,.?!:;[]-\"'").union(.whitespacesAndNewlines)
+
     func setup() {
-        // Simulated book texts
-        let book1 = "the castle was dark the count stood by the window the wolves howled in the dark forest the blood ran cold through the veins the castle walls were ancient the night was eternal the count descended the stairs the darkness surrounded him the fangs gleamed in the moonlight the coffin lay open the castle echoed with silence the count hungered the blood the castle the darkness the night the wolves the count the fangs the coffin the blood the darkness the castle the count"
+        loadBook("dracula", isBook1: true)
+        loadBook("frankenstein", isBook1: false)
+    }
 
-        let book2 = "the laboratory was cold the scientist worked through the night the creature lay on the table the lightning struck the tower the creature opened its eyes the scientist screamed the monster rose from the table the storm raged outside the laboratory the creature walked the scientist fled the monster roamed the village the lightning the storm the creature the scientist the laboratory the monster the lightning the creature the storm the laboratory the scientist the monster the village the creature"
-
-        loadText(book1, isBook1: true)
-        loadText(book2, isBook1: false)
+    func loadBook(_ name: String, isBook1: Bool) {
+        guard
+            let path = Bundle.module.path(forResource: name, ofType: "txt", inDirectory: "Resources"),
+            let lines = try? loadStrings(path)
+        else { return }
+        loadText(lines.joined(separator: " "), isBook1: isBook1)
     }
 
     func loadText(_ text: String, isBook1: Bool) {
-        let tokens = text.lowercased().split(separator: " ").map { String($0) }
+        let tokens = text.lowercased()
+            .components(separatedBy: delimiters)
+            .filter { !$0.isEmpty }
         for s in tokens {
             if words[s] == nil {
                 words[s] = WordItem(word: s, width: width, height: height)

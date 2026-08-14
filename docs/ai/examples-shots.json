@@ -807,6 +807,13 @@
       "height": 360,
       "frame": 96
     },
+    "Examples/Topics/Advanced Data/HashMapClass": {
+      "origin": "captured",
+      "sourceHash": "185f48484a100d8b4eaf285cb630ab75efdee50701d6712842508d3064b13e68",
+      "width": 640,
+      "height": 360,
+      "frame": 48
+    },
     "Examples/Topics/Advanced Data/IntListLottery": {
       "origin": "processing",
       "width": 1280,
@@ -1283,6 +1290,13 @@
       "width": 640,
       "height": 360,
       "frame": 85
+    },
+    "Examples/Topics/Shaders/EdgeDetect": {
+      "origin": "captured",
+      "sourceHash": "88c06cf4defe0f379138724051497ac180a9635ee2ab2eabbdf7edb36f61191f",
+      "width": 640,
+      "height": 360,
+      "frame": 1
     },
     "Examples/Topics/Shaders/EdgeFilter": {
       "origin": "captured",
