@@ -45,6 +45,9 @@ API/Sketch 層レビュー（Issue #151）で、個別のバグではなく**設
 
 1. **2D/3D 適用規則**: Option C を採用。現状の割り当て（下表）を規範とし、**両層の doc に「2D のみ」「2D/3D 両方」を明記**する。変換ファミリ（`translate`/`rotate`/`scale`）の P3D 意味論への統一は 1.0 前の破壊的変更ウィンドウで再評価する（follow-up）。
 
+   > **この表は [Amendment（2026-08-02）§8](#8-consequences) で更新済み。** 現行の規範は §8 の表を参照する
+   > （下表は決定当時の記録として残す）。
+
    | 適用先 | API |
    |---|---|
    | 2D/3D 両方 | `fill` / `stroke` / `noFill` / `noStroke` / `pushMatrix` / `popMatrix` / `scale(s)`（均一） |
@@ -422,7 +425,7 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
 | `shearX` / `shearY` | 可能（せん断は 4x4 で表現可・単位なし） | **2D 専用のまま**。3D に対応する API がなく、Examples でも 3D との併用はゼロ。doc に「統一の対象外」と明記した |
 | `applyMatrix(float3x3)` | 可能（3x3 アフィンを 4x4 へ持ち上げる） | **2D 専用のまま**。`applyMatrix(float4x4)` が 3D 専用として既にあり、3x3 版を両方へ流すと「3x3 は両方 / 4x4 は 3D だけ」という別の非対称を作る |
 | `resetMatrix()` | — | **既に両方**に効く（変更なし） |
-| `pushMatrix` / `popMatrix` / `push` / `pop` / `pushStyle` / `popStyle` | — | **既に両方**（ADR-0005 の表が実装と食い違っている件の残りは #379） |
+| `pushMatrix` / `popMatrix` / `push` / `pop` / `pushStyle` / `popStyle` | — | **既に両方**（Decision 1 の旧表との食い違いは §8 の表と #379 で解消済み） |
 
 「変換ファミリ = 変換 API 全部」と読めば `shear`/`applyMatrix` も対象になるが、
 **Processing 互換の実利がある 3 本に絞る**方を採った。`shearX`/`shearY` は Processing にも
@@ -456,8 +459,11 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
   使っていた箇所は `pushMatrix()` / `popMatrix()` で囲む（Processing と同じ作法）。
   `public` API のシグネチャは変わらないため**ソース互換は壊れない**——変わるのは描画結果だけ。
 - 本 Amendment は**変換ファミリの適用先だけ**を決めた。ADR-0005 の表そのものの誤りのうち
-  `push`/`pop` の分類は本 PR で是正したが、残り（`pushStyle`/`popStyle` の欠落・「3D のみ」注記の
-  欠落・`ortho()` の既定値）は **#379 が引き続き担当**する。
+  `push`/`pop` の分類と `pushStyle`/`popStyle` の欠落は、本 Amendment の表（上記）で是正済み。
+  残り（Sketch 層 doc の「3D のみ」注記の欠落・`ortho()` の既定値）は **#379 で消化した**
+  ——`Sketch+3D.swift` のカメラ/投影・ライティング・シャドウ・マテリアル・テクスチャ・3D 変換に
+  「**3D のみ**」注記を入れ、`ortho()` の既定値を実装（`left` 0 / `right` 幅 / `bottom` 高さ /
+  `top` 0。Y 下向き）に合わせ、Decision 1 の旧表に本 §8 への前方参照を足した（2026-08-15）。
 - `screenPosition(x,y,z)` の y 反転（#378）は本判断と独立に修正が必要。統一により
   `translate(x,y)` 経由でも 3D の `screenY` を踏む経路が増えるため、優先度は上がった。
 - 逆方向が直らない 9 examples（§3）は **#387** で扱う。
