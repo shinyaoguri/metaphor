@@ -139,11 +139,15 @@ metaphor is designed so AI agents can develop while **observing a running sketch
 |---|---|
 | `snapshot` | Returns image (PNG) and internal state of the current frame (`frameCount` / `time` / `probe()` values / color & region stats / warnings) |
 | `capture_sequence` | Captures a sequence of frames, returns contact sheet image and per-frame manifest (observe motion / rhythm / transitions) |
-| `input` | Sends mouse & keyboard input to the running sketch |
+| `input` | Sends mouse & keyboard input to the running sketch (standalone mode only) |
+| `params` | Returns the parameters the sketch declared with `@Param` (type, current value, range, `choices`) |
+| `set_param` | Rewrites a parameter value **without a rebuild** and returns the applied value |
 | `build_status` | Returns success/failure and errors from the most recent `swift build` |
 | `api_reference` | Returns metaphor API documentation (usage guide / all APIs / sample index). Consult before using new APIs |
 
-When a human runs `metaphor watch`, the AI's `metaphor mcp` **attaches to the same running sketch** (shared session). The human edits while watching the live viewer; AI cooperates via file edits and `snapshot`.
+With `params` / `set_param` the AI can **do more than look at the picture — it can turn the knobs**. A request like "sweep the radius from 40 to 120 and find the best value" lands in a single frame without editing any source (the values in play are the ones the sketch declared with [`@Param`](docs/tutorial/08-connect.md)).
+
+When a human runs `metaphor watch`, the AI's `metaphor mcp` **attaches to the same running sketch** (shared session). The human edits while watching the live viewer; AI cooperates via file edits and `snapshot`. `input` is the only tool unavailable in a shared session — `@Param` values can still be changed from the AI's `set_param` without a rebuild (the human's GUI sliders and `set_param` are symmetric clients of the same store, and both show up in the live viewer window immediately).
 
 The observation mechanism itself is metaphor's **Probe** plugin. To pass internal state to AI, declare it in `draw()` like `probe("count", n)` (example: [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)).
 

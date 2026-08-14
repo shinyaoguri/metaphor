@@ -38,7 +38,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 - **[adr/](adr/)** — Architecture Decision Records。設計判断の蓄積（append-only）。書き方は [adr/README.md](adr/README.md)
 - **[design/](design/)** — 進行中 / 過去プロジェクトの設計ドキュメント。確定仕様は実装と [CONTRACT.md](../CONTRACT.md) が正
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
-  - [design/live-tooling-params.md](design/live-tooling-params.md) — Parameter Store / 状態保持リロード / インスペクタの設計叩き台
+  - [design/live-tooling-params.md](design/live-tooling-params.md) — ライブツーリング基盤の設計。Parameter Store（A）と状態保持リロード（B）は producer / consumer とも実装済みで、インスペクタ（C）/ 往復レイテンシ（D）が叩き台（節ごとの状況は文書冒頭の表）
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 リリース準備計画（readiness review・準備トラック・リリース条件）
 - **[releasing.md](releasing.md)** — リリース手順（週次トレイン + `release:now` の express）+ CHANGELOG の昇格・リリースノート生成
 - **[release-pipeline.md](release-pipeline.md)** — 3 リポジトリ（metaphor / metaphor-cli / homebrew-tap）の依存関係とリリース自動連鎖の全体地図。詳細は releasing.md / metaphor-cli 側 docs へ委譲

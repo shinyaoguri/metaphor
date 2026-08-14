@@ -137,11 +137,15 @@ metaphor は、AI エージェントが**実行中のスケッチを観測しな
 |---|---|
 | `snapshot` | 現在フレームの画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域統計 / 警告）を返す |
 | `capture_sequence` | 連続フレーム列を採取し、コンタクトシート画像とフレーム別 manifest を返す（動き・リズム・遷移を観測する） |
-| `input` | 実行中のスケッチへマウス・キー入力を送る |
+| `input` | 実行中のスケッチへマウス・キー入力を送る（単独モードのみ） |
+| `params` | スケッチが `@Param` で宣言したパラメータの一覧（型・現在値・レンジ・`choices`）を返す |
+| `set_param` | パラメータ値を**再ビルドなしで**書き換え、反映後の値を返す |
 | `build_status` | 直近の `swift build` の成否とエラーを返す |
 | `api_reference` | metaphor の API ドキュメント（作法ガイド / 全 API / サンプル索引）を返す。新しい API を使う前に参照する |
 
-さらに、人間が `metaphor watch` を起動しておくと、AI の `metaphor mcp` は**同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。
+`params` / `set_param` があるので、AI は**絵を見るだけでなく値を動かして試せます**。「半径を 40〜120 で振って一番良い値を探して」のような指示が、ソースを書き換えずに 1 フレームで反映されます（対象はスケッチが [`@Param`](docs/tutorial/08-connect.md) で宣言した値）。
+
+さらに、人間が `metaphor watch` を起動しておくと、AI の `metaphor mcp` は**同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。共有セッションで使えないのは `input` だけで、`@Param` の値は AI の `set_param` からも再ビルドなしに変えられます（人間の GUI スライダーと同一ストアの対称なクライアントで、ライブビューア窓にも即座に反映されます）。
 
 この観測の仕組み自体は metaphor 本体の機能（**Probe** プラグイン）です。内部状態を AI に渡すには `draw()` 内で `probe("count", n)` のように申告します（例: [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)）。
 
