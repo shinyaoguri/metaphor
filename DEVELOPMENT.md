@@ -222,6 +222,24 @@ curl -s -F "access_token=$(op read "${GYAZO_TOKEN_REF:-op://Automation/Gyazo API
 アクセストークンは 1Password から都度読む(平文の環境変数として常駐させない)。
 手順の一般形は repo-standards プラグインの gyazo-capture スキルにある。
 
+## 依存更新 PR（dependabot）を手元で検証する
+
+dependabot の PR は PR head だけで CI が回ります。ルールセットの `strict_required_status_checks_policy` は off なので BEHIND のままでも merge できますが（[docs/releasing.md](docs/releasing.md)）、その分**個別に green な PR 同士の意味的な衝突は merge 後の `push: main` CI まで表に出ません**。website の改修と astro の bump が並走したときのように、合成しないと分からないものは merge 前に確かめます。
+
+```bash
+./scripts/verify-dep-pr.sh 441
+```
+
+使い捨ての worktree（`$TMPDIR`）で `origin/main` と PR head をマージし、PR が触った領域の検証だけを回します。**手元の作業ツリー・ローカルブランチ・HEAD には触れません**（終了時に worktree も一時 ref も片付きます）。
+
+| PR が触った領域 | やること |
+|---|---|
+| `website/**` | `npm ci && npm run build`（CI の `website-build` ジョブと同じコマンド） |
+| `.github/workflows/**` | ローカル検証は無し（PR の checks が正）。runner 一覧だけ出して、Node 版縛りのある `actions/*` bump の判断材料にする |
+| `Sources/**` · `Package.swift` · `Vendor/**` | 対象外（`Syphon.xcframework` が要る）。セットアップ済みの手元ツリーで `make ci-check` |
+
+領域を指定して回すこともできます（`--only website`）。PR 以外の ref も `--ref <git-ref> --only website` で同じ検証にかけられます。
+
 ## Cross-Repo Contract
 
 環境変数・stdin JSON Lines・Probe ファイル・Syphon pin など、[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) との実行時契約に触れる変更は、**両リポジトリの同時更新**が必要です。対象と変更ルールは [CONTRACT.md](CONTRACT.md) を参照し、`./scripts/check-contract.sh` が green であることを確認してください。

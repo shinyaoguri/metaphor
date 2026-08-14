@@ -20,6 +20,7 @@
       "Bash(python3 -m unittest:*)",
       "Bash(python3 scripts/generate-tutorial-snippets.py:*)",
       "Bash(./scripts/check-contract.sh:*)",
+      "Bash(./scripts/verify-dep-pr.sh:*)",
       "Bash(./scripts/changed-examples.sh:*)",
       "Bash(python3 scripts/changelog.py check:*)",
       "Bash(python3 scripts/coverage-summary.py:*)",
