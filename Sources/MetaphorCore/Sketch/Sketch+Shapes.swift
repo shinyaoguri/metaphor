@@ -13,16 +13,23 @@ extension Sketch {
     }
 
     /// 最後に保存された変換とスタイル状態をスタックから復元します。
+    ///
+    /// - Note: **2D と 3D の両方**に作用します（``push()`` と対）。
     public func pop() {
         context.pop()
     }
 
     /// 現在のスタイル状態（fill、stroke など）をスタックに保存します。
+    ///
+    /// - Note: **2D と 3D の両方**に作用します。``push()`` との違いは変換を含まないことで、
+    ///   こちらはスタイルのみを保存します（ADR-0005 Amendment 2026-08-02）。
     public func pushStyle() {
         context.pushStyle()
     }
 
     /// 最後に保存されたスタイル状態をスタックから復元します。
+    ///
+    /// - Note: **2D と 3D の両方**に作用します（``pushStyle()`` と対）。
     public func popStyle() {
         context.popStyle()
     }

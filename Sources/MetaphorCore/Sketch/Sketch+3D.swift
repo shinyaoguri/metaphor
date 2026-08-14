@@ -68,6 +68,8 @@ extension Sketch {
 
     /// eye、center、up ベクトルで 3D カメラを設定します。
     ///
+    /// - Note: **3D のみ**に作用します（2D の描画はカメラの影響を受けません。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - eye: カメラの位置。
     ///   - center: カメラが注視する点。
@@ -82,6 +84,8 @@ extension Sketch {
 
     /// 透視投影を設定します。
     ///
+    /// - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - fov: ラジアン単位の視野角。
     ///   - near: ニアクリッピング面の距離。
@@ -92,11 +96,16 @@ extension Sketch {
 
     /// 正射影を設定します。
     ///
+    /// 省略した面はキャンバス境界で埋まります。y 軸は 2D と同じく**画面下向き**のため、
+    /// `bottom` がキャンバス高さ、`top` が 0 になる点に注意してください。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
+    ///
     /// - Parameters:
-    ///   - left: 左クリッピング面（デフォルトはキャンバス境界）。
-    ///   - right: 右クリッピング面（デフォルトはキャンバス境界）。
-    ///   - bottom: 下クリッピング面（デフォルトはキャンバス境界）。
-    ///   - top: 上クリッピング面（デフォルトはキャンバス境界）。
+    ///   - left: 左クリッピング面（`nil` のときは 0）。
+    ///   - right: 右クリッピング面（`nil` のときはキャンバス幅）。
+    ///   - bottom: 下クリッピング面（`nil` のときはキャンバス高さ）。
+    ///   - top: 上クリッピング面（`nil` のときは 0）。
     ///   - near: ニアクリッピング面の距離。
     ///   - far: ファークリッピング面の距離。
     public func ortho(
@@ -114,11 +123,15 @@ extension Sketch {
     /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
     /// `ambientLight(76.5)` 相当）に設定されます。ライトを個別に足す場合も、
     /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
     public func lights() {
         context.lights()
     }
 
     /// すべてのライトを無効にします。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     public func noLights() {
         context.noLights()
     }
@@ -128,6 +141,8 @@ extension Sketch {
     /// 指定するのは「光が**進む**向き」で、y 軸は Processing と同じく画面下向きです。
     /// つまり `directionalLight(0, 1, 0)` が「真上から差す光」、`(0, -1, 0)` は
     /// 「真下から差す光」になります（`enableShadows()` 時の影の向きもこれに従う）。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: ライト方向の x 成分。
@@ -139,6 +154,8 @@ extension Sketch {
 
     /// 色を指定してディレクショナルライトを追加します。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: ライト方向の x 成分。
     ///   - y: ライト方向の y 成分。
@@ -149,6 +166,8 @@ extension Sketch {
     }
 
     /// 指定位置にポイントライトを追加します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: ライト位置の x 座標。
@@ -165,6 +184,8 @@ extension Sketch {
     }
 
     /// 指定位置・方向にスポットライトを追加します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: ライト位置の x 座標。
@@ -200,6 +221,8 @@ extension Sketch {
     /// アンビエントは `enableShadows()` の影の中でも減衰しません（影が掛かるのは
     /// 直接光の diffuse / specular のみ）。影の中のディテールはこの値で決まります。
     ///
+    /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
+    ///
     /// - Parameter strength: アンビエントライトの強度（`colorMode` のレンジ基準）。
     public func ambientLight(_ strength: Float) {
         context.ambientLight(strength)
@@ -208,6 +231,8 @@ extension Sketch {
     /// RGB 値でアンビエントライトの色を設定します。
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameters:
     ///   - r: 赤成分。
@@ -221,17 +246,23 @@ extension Sketch {
 
     /// シャドウマッピングを有効にします。
     ///
+    /// - Note: **3D のみ**に作用します（影が落ちるのは 3D シェイプだけです。ADR-0005）。
+    ///
     /// - Parameter resolution: シャドウマップの解像度（ピクセル単位）。
     public func enableShadows(resolution: Int = 2048) {
         context.enableShadows(resolution: resolution)
     }
 
     /// シャドウマッピングを無効にします。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     public func disableShadows() {
         context.disableShadows()
     }
 
     /// シャドウアクネを軽減するためのシャドウデプスバイアスを設定します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter value: バイアス値。
     public func shadowBias(_ value: Float) {
@@ -242,6 +273,8 @@ extension Sketch {
 
     /// スペキュラーハイライトの色を設定します。
     ///
+    /// - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
+    ///
     /// - Parameter color: スペキュラー色。
     public func specular(_ color: Color) {
         context.specular(color)
@@ -251,6 +284,8 @@ extension Sketch {
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameter gray: グレースケールの明るさ。
     public func specular(_ gray: Float) {
         context.specular(gray)
@@ -258,12 +293,16 @@ extension Sketch {
 
     /// スペキュラーの光沢度指数を設定します。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameter value: 光沢度（値が大きいほどハイライトが小さくなります）。
     public func shininess(_ value: Float) {
         context.shininess(value)
     }
 
     /// エミッシブ（自己発光）色を設定します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) {
@@ -274,12 +313,16 @@ extension Sketch {
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameter gray: グレースケールの明るさ。
     public func emissive(_ gray: Float) {
         context.emissive(gray)
     }
 
     /// マテリアルのメタリック係数を設定します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter value: メタリック値（0 = 誘電体、1 = 金属）。
     public func metallic(_ value: Float) {
@@ -288,6 +331,8 @@ extension Sketch {
 
     /// PBR ラフネスを設定します（自動的に PBR モードに切り替わります）。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameter value: ラフネス値（0 = 滑らか、1 = 粗い）。
     public func roughness(_ value: Float) {
         context.roughness(value)
@@ -295,12 +340,16 @@ extension Sketch {
 
     /// PBR アンビエントオクルージョン係数を設定します。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameter value: アンビエントオクルージョン値（0 = 完全に遮蔽、1 = 遮蔽なし）。
     public func ambientOcclusion(_ value: Float) {
         context.ambientOcclusion(value)
     }
 
     /// PBR レンダリングモードを明示的に切り替えます。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter enabled: PBR レンダリングを有効にするかどうか。
     public func pbr(_ enabled: Bool) {
@@ -310,6 +359,10 @@ extension Sketch {
     // MARK: 3D Custom Material
 
     /// MSL ソースコードからカスタムシェーダーマテリアルを作成します。
+    ///
+    /// - Note: 作成されるマテリアルは **3D のみ**に適用されます。2D にカスタムシェーダーを
+    ///   掛けるには ``loadShader(_:fragment:)`` / ``shader(_:)`` を使用してください
+    ///   （ADR-0005）。
     ///
     /// - Parameters:
     ///   - source: Metal Shading Language のソースコード。
@@ -326,12 +379,16 @@ extension Sketch {
 
     /// カスタムマテリアルを以降の 3D 描画に適用します。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    ///
     /// - Parameter customMaterial: 適用するカスタムマテリアル。
     public func material(_ customMaterial: CustomMaterial) {
         context.material(customMaterial)
     }
 
     /// アクティブなカスタムマテリアルを解除しデフォルトシェーディングに戻します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     public func noMaterial() {
         context.noMaterial()
     }
@@ -340,12 +397,17 @@ extension Sketch {
 
     /// 以降の 3D シェイプのテクスチャを設定します。
     ///
+    /// - Note: **3D のみ**に作用します（2D で画像を描くには `image()` を
+    ///   使用してください。ADR-0005）。
+    ///
     /// - Parameter img: テクスチャ画像。
     public func texture(_ img: MImage) {
         context.texture(img)
     }
 
     /// アクティブなテクスチャを解除します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
     public func noTexture() {
         context.noTexture()
     }
@@ -361,11 +423,16 @@ extension Sketch {
     }
 
     /// 最後に保存された変換行列（2D と 3D の両方）をスタックから復元します。
+    ///
+    /// - Note: **2D と 3D の両方**に作用します（``pushMatrix()`` と対）。
     public func popMatrix() {
         context.popMatrix()
     }
 
     /// 現在の変換に 3D 平行移動を適用します。
+    ///
+    /// - Note: **3D のみ**に作用します。2 引数の ``translate(_:_:)`` は 2D と 3D の
+    ///   両方に作用します（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameters:
     ///   - x: x 軸方向の移動量。
@@ -377,12 +444,16 @@ extension Sketch {
 
     /// x 軸周りの回転を適用します。
     ///
+    /// - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
+    ///
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateX(_ angle: Float) {
         context.rotateX(angle)
     }
 
     /// y 軸周りの回転を適用します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateY(_ angle: Float) {
@@ -391,12 +462,19 @@ extension Sketch {
 
     /// z 軸周りの回転を適用します。
     ///
+    /// - Note: **3D のみ**に作用します。1 引数の ``rotate(_:)`` は 2D と 3D の両方に
+    ///   作用し、3D 側は本メソッドと同じ z 軸まわりの回転になります
+    ///   （ADR-0005 Amendment 2026-08-02）。
+    ///
     /// - Parameter angle: ラジアン単位の回転角度。
     public func rotateZ(_ angle: Float) {
         context.rotateZ(angle)
     }
 
     /// 現在の変換に非均一 3D スケールを適用します。
+    ///
+    /// - Note: **3D のみ**に作用します。2 引数の ``scale(_:_:)`` は 2D と 3D の
+    ///   両方に作用します（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameters:
     ///   - x: x 軸方向のスケール係数。
