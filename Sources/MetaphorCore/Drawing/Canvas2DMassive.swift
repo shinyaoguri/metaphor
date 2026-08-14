@@ -93,7 +93,8 @@ extension Canvas2D {
     }
 
     private func drawCircleInstances(buffer: MTLBuffer, byteOffset: Int, count: Int) {
-        guard massiveCirclePipelineStates[currentBlendMode] != nil, count > 0 else { return }
+        let pipelineKey = Canvas2DPipelineKey(.massiveCircle, currentBlendMode)
+        guard pipelineStore.state(for: pipelineKey) != nil, count > 0 else { return }
         guard isDeferring || encoder != nil else { return }
 
         // 保留中の通常バッチを先に確定し、massive を呼び出し順どおりに続ける。
@@ -103,7 +104,7 @@ extension Canvas2D {
         // 遅延モードでは記録（影オン時の宿題②を根治）。即時モードでは即座にエンコード。
         // massive は変換を描画時に適用するため、記録時の変換を埋め込んで保持する。
         emit(.massiveCircles(
-            blend: currentBlendMode, dataBuffer: buffer, byteOffset: byteOffset, count: count,
+            pipeline: pipelineKey, dataBuffer: buffer, byteOffset: byteOffset, count: count,
             transform: Canvas2D.embed2DTransform(currentTransform)))
     }
 }

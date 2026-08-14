@@ -52,7 +52,9 @@ extension Canvas2D {
     // カラー頂点バッチのみをフラッシュ（遅延モードでは明示コマンドとして積む。#70 / #71）
     func flushColorVertices() {
         guard vertexCount > 0 else { return }
-        guard pipelineStates[currentBlendMode] != nil else { return }
+        // パイプラインは記録時に確定させる（#646）。再生時は Canvas2D の可変状態を見ない。
+        let pipelineKey = Canvas2DPipelineKey(.color, currentBlendMode)
+        guard pipelineStore.state(for: pipelineKey) != nil else { return }
         guard isDeferring || encoder != nil else { return }
 
         let vStart = bufferOffset
@@ -60,13 +62,14 @@ extension Canvas2D {
         bufferOffset += vertexCount
         vertexCount = 0
 
-        emit(.colorBatch(blend: currentBlendMode, vertexStart: vStart, vertexCount: vCount))
+        emit(.colorBatch(pipeline: pipelineKey, vertexStart: vStart, vertexCount: vCount))
     }
 
     // テクスチャ頂点バッチのみをフラッシュ（遅延モードでは明示コマンドとして積む。#70 / #71）
     func flushTexturedVertices() {
         guard texturedVertexCount > 0 else { return }
-        guard texturedPipelineStates[currentBlendMode] != nil else { return }
+        let pipelineKey = Canvas2DPipelineKey(.textured, currentBlendMode)
+        guard pipelineStore.state(for: pipelineKey) != nil else { return }
         guard let texture = currentBoundTexture else { return }
         guard isDeferring || encoder != nil else { return }
 
@@ -76,6 +79,6 @@ extension Canvas2D {
         texturedVertexCount = 0
 
         emit(.texturedBatch(
-            blend: currentBlendMode, vertexStart: vStart, vertexCount: vCount, texture: texture))
+            pipeline: pipelineKey, vertexStart: vStart, vertexCount: vCount, texture: texture))
     }
 }
