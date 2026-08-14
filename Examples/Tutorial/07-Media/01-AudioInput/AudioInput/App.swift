@@ -47,7 +47,7 @@ final class AudioInput: Sketch {
         level = lerp(level, loudness, 0.25)
 
         noStroke()
-        fill(Color(r: 0.25, g: 0.8, b: 1, a: 0.9))
+        fill(Color(r: 0.25, g: 0.8, b: 1, alpha: 0.9))
         circle(width / 2, height / 2 - 20, map(level, 0, 1, 40, 280))
 
         // 追従前の生の値も細い線で重ねる。イージングが何をしているかが見える

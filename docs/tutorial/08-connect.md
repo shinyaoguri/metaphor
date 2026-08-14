@@ -172,7 +172,7 @@ final class OSCSketch: Sketch {
     private func drawReceived() {
         guard let received else { return }
         noStroke()
-        fill(Color(r: 0.3, g: 0.75, b: 1, a: 0.85))
+        fill(Color(r: 0.3, g: 0.75, b: 1, alpha: 0.85))
         circle(received.x, received.y, receivedSize)
     }
 
@@ -388,7 +388,7 @@ final class MIDISketch: Sketch {
             if held {
                 fill(Color(r: 1, g: 0.85, b: 0.4))
             } else if after > 0 {
-                fill(Color(r: 1, g: 0.85, b: 0.4, a: after * 0.6))
+                fill(Color(r: 1, g: 0.85, b: 0.4, alpha: after * 0.6))
             } else {
                 fill(Color(gray: 0.22))
             }
@@ -552,7 +552,7 @@ final class SyphonShare: Sketch {
         for ring in 0..<ringCount {
             let ringF = Float(ring)
             let radius = 90 + ringF * 55
-            stroke(Color(r: 0.3 + ringF * 0.12, g: 0.7, b: 1, a: 0.9 - ringF * 0.12))
+            stroke(Color(r: 0.3 + ringF * 0.12, g: 0.7, b: 1, alpha: 0.9 - ringF * 0.12))
             strokeWeight(4)
             let sweep = PI + sin(t + ringF * 0.7) * PI * 0.6
             arc(0, 0, radius * 2, radius * 2, t * (ringF + 1) * 0.3, t * (ringF + 1) * 0.3 + sweep)

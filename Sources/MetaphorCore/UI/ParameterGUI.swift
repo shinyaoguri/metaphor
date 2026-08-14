@@ -49,17 +49,17 @@ public final class ParameterGUI {
     /// ラベルのフォントサイズ
     public var fontSize: Float = 12
     /// パネルの背景色
-    public var backgroundColor: Color = Color(r: 0.0, g: 0.0, b: 0.0, a: 0.6)
+    public var backgroundColor: Color = Color(r: 0.0, g: 0.0, b: 0.0, alpha: 0.6)
     /// スライダートラックの色
-    public var trackColor: Color = Color(r: 0.3, g: 0.3, b: 0.3, a: 1.0)
+    public var trackColor: Color = Color(r: 0.3, g: 0.3, b: 0.3, alpha: 1.0)
     /// スライダーの塗りつぶし色
-    public var fillColor: Color = Color(r: 0.3, g: 0.6, b: 1.0, a: 1.0)
+    public var fillColor: Color = Color(r: 0.3, g: 0.6, b: 1.0, alpha: 1.0)
     /// トグル有効時の色
-    public var toggleOnColor: Color = Color(r: 0.3, g: 0.6, b: 1.0, a: 1.0)
+    public var toggleOnColor: Color = Color(r: 0.3, g: 0.6, b: 1.0, alpha: 1.0)
     /// ラベルテキストの色
-    public var labelColor: Color = Color(r: 1.0, g: 1.0, b: 1.0, a: 0.9)
+    public var labelColor: Color = Color(r: 1.0, g: 1.0, b: 1.0, alpha: 0.9)
     /// 値テキストの色
-    public var valueColor: Color = Color(r: 0.8, g: 0.8, b: 0.8, a: 0.7)
+    public var valueColor: Color = Color(r: 0.8, g: 0.8, b: 0.8, alpha: 0.7)
 
     /// GUIの表示フラグ
     public var isVisible: Bool = true
@@ -293,15 +293,15 @@ public final class ParameterGUI {
         // R/G/B スライダー
         var simd = value.simd
         let savedFill = fillColor
-        fillColor = Color(r: 0.9, g: 0.3, b: 0.3, a: 1.0)
+        fillColor = Color(r: 0.9, g: 0.3, b: 0.3, alpha: 1.0)
         slider("  R", &simd.x, min: 0, max: 1, canvas: canvas, input: input)
-        fillColor = Color(r: 0.3, g: 0.9, b: 0.3, a: 1.0)
+        fillColor = Color(r: 0.3, g: 0.9, b: 0.3, alpha: 1.0)
         slider("  G", &simd.y, min: 0, max: 1, canvas: canvas, input: input)
-        fillColor = Color(r: 0.3, g: 0.3, b: 0.9, a: 1.0)
+        fillColor = Color(r: 0.3, g: 0.3, b: 0.9, alpha: 1.0)
         slider("  B", &simd.z, min: 0, max: 1, canvas: canvas, input: input)
         fillColor = savedFill
 
-        value = Color(r: simd.x, g: simd.y, b: simd.z, a: simd.w)
+        value = Color(r: simd.x, g: simd.y, b: simd.z, alpha: simd.w)
     }
 
     // MARK: - Panel Background

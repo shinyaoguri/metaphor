@@ -92,7 +92,7 @@ final class MIDISketch: Sketch {
             if held {
                 fill(Color(r: 1, g: 0.85, b: 0.4))
             } else if after > 0 {
-                fill(Color(r: 1, g: 0.85, b: 0.4, a: after * 0.6))
+                fill(Color(r: 1, g: 0.85, b: 0.4, alpha: after * 0.6))
             } else {
                 fill(Color(gray: 0.22))
             }

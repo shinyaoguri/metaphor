@@ -206,7 +206,7 @@ extension ParameterGUI {
             commit(.bool(b), original: value, name: name, store: store)
 
         case .color(let r, let g, let b, let a):
-            var color = Color(r: r, g: g, b: b, a: a)
+            var color = Color(r: r, g: g, b: b, alpha: a)
             colorPicker(name, &color, canvas: canvas, input: input)
             commit(
                 .color(color.r, color.g, color.b, color.a),

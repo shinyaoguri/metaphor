@@ -8,7 +8,7 @@ import MetaphorTestSupport
 private final class ParamProbeSketch: Sketch {
     @Param(min: 10, max: 200) var radius: Float = 50
     @Param var showGrid: Bool = true
-    @Param var tint: Color = Color(r: 1, g: 0.5, b: 0.25, a: 1)
+    @Param var tint: Color = Color(r: 1, g: 0.5, b: 0.25, alpha: 1)
 }
 
 /// 宣言ゼロのスケッチ（キーが省略されることの確認用）。

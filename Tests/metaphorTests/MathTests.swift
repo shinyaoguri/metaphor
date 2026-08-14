@@ -142,24 +142,35 @@ struct ColorTests {
 
     @Test("RGB init stores correct components")
     func rgbInit() {
-        let c = Color(r: 0.2, g: 0.4, b: 0.6, a: 0.8)
+        let c = Color(r: 0.2, g: 0.4, b: 0.6, alpha: 0.8)
         #expect(c.r == 0.2)
         #expect(c.g == 0.4)
         #expect(c.b == 0.6)
         #expect(c.a == 0.8)
     }
 
+    // 旧ラベル a: が deprecated エイリアスとして併存する間、3 引数の呼び出しが
+    // 曖昧にならず新シグネチャへ解決されることのガードでもある（#566）。
     @Test("RGB init defaults alpha to 1")
     func rgbDefaultAlpha() {
         let c = Color(r: 1, g: 0, b: 0)
         #expect(c.a == 1.0)
     }
 
+    // #566 フェーズ 1: 旧ラベル a: は新シグネチャへ転送する deprecated エイリアス。
+    // 旧ラベルを削除するフェーズ 2 では、このテストごと消す。
+    @available(*, deprecated, message: "旧ラベル a: の転送を検証するテスト（#566）")
+    @Test("deprecated a: label forwards to the alpha: initializer")
+    func deprecatedAlphaLabelForwards() {
+        let old = Color(r: 0.2, g: 0.4, b: 0.6, a: 0.8)
+        #expect(old == Color(r: 0.2, g: 0.4, b: 0.6, alpha: 0.8))
+    }
+
     // 0...1 は「スケール」であって不変条件ではない（#594）。
     // Tween<Color> のオーバーシュートが範囲外の成分を作るため、初期化子はクランプしない。
     @Test("RGB init keeps out-of-range components")
     func rgbInitDoesNotClamp() {
-        let c = Color(r: 1.4, g: -0.2, b: 0.5, a: 2.0)
+        let c = Color(r: 1.4, g: -0.2, b: 0.5, alpha: 2.0)
         #expect(c.r == 1.4)
         #expect(c.g == -0.2)
         #expect(c.b == 0.5)
@@ -295,7 +306,7 @@ struct ColorTests {
 
     @Test("SIMD conversion roundtrip")
     func simdConversion() {
-        let original = Color(r: 0.1, g: 0.2, b: 0.3, a: 0.4)
+        let original = Color(r: 0.1, g: 0.2, b: 0.3, alpha: 0.4)
         let reconstructed = Color(original.simd)
         #expect(original == reconstructed)
     }
@@ -350,7 +361,7 @@ struct ColorTests {
 
     @Test("clearColor conversion")
     func clearColorConversion() {
-        let c = Color(r: 0.5, g: 0.25, b: 0.75, a: 1.0)
+        let c = Color(r: 0.5, g: 0.25, b: 0.75, alpha: 1.0)
         let cc = c.clearColor
         #expect(abs(cc.red - 0.5) < 0.001)
         #expect(abs(cc.green - 0.25) < 0.001)

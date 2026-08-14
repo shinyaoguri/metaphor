@@ -41,10 +41,10 @@ public final class PerformanceHUD {
     // MARK: - 見た目
 
     /// パネルの色（半透明の黒）。
-    static let panelColor = Color(r: 0, g: 0, b: 0, a: 0.6)
+    static let panelColor = Color(r: 0, g: 0, b: 0, alpha: 0.6)
 
     /// 数字の色（緑）。
-    static let textColor = Color(r: 0, g: 1, b: 0, a: 1)
+    static let textColor = Color(r: 0, g: 1, b: 0, alpha: 1)
 
     /// パネルの塗りを適用します。
     ///

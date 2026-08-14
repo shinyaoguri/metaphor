@@ -73,7 +73,7 @@ final class OSCSketch: Sketch {
     private func drawReceived() {
         guard let received else { return }
         noStroke()
-        fill(Color(r: 0.3, g: 0.75, b: 1, a: 0.85))
+        fill(Color(r: 0.3, g: 0.75, b: 1, alpha: 0.85))
         circle(received.x, received.y, receivedSize)
     }
 
