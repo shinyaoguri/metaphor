@@ -124,7 +124,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           # base/head は `Detect Source changes` と同じ取り方。checkout は
-          # fetch-depth: 0 なので両方たどれる。
+          # fetch-depth: 0 なので merge-base までたどれる（差分の取り方は
+          # scripts/pr-changed-files.sh 側が正本）。
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -141,7 +142,11 @@ jobs:
           # ラベルが 1 つも無い PR では LABEL_ARGS が空配列になる。macOS ランナーの
           # /bin/bash は 3.2 で、空配列の "${a[@]}" は set -u に unbound variable と
           # 見なされて落ちるため、この展開形で回避する。
-          git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" -- 'changelog.d/*.md' \
+          # 差分は merge-base 起点（3 点表記）で取る。2 点間だと、リリースが消した
+          # changelog.d/*.md が「この PR が足したもの」として `--diff-filter=A` に
+          # 乗り、エントリを書いていない PR が通ってしまう（Issue #642）。
+          scripts/pr-changed-files.sh "$BASE_SHA" "$HEAD_SHA" \
+              --diff-filter=A -- 'changelog.d/*.md' \
             | python3 scripts/require-changelog-entry.py --subject "$TITLE" \
                 ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
       - name: Require visual evidence for drawing changes
@@ -176,7 +181,10 @@ jobs:
             [ -n "$label" ] && LABEL_ARGS+=(--label "$label")
           done < <(jq -r '.labels[].name' <<<"$PR_JSON")
           # 空配列の展開は上のステップと同じ回避形（/bin/bash 3.2 + set -u）。
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'Sources/*' \
+          # 差分は merge-base 起点（3 点表記）で取る。2 点間だと、PR がブランチした
+          # あとに main へ入った描画変更が「この PR の変更」として混ざり、Swift を
+          # 1 行も触っていない PR が落ちる（Issue #642）。
+          scripts/pr-changed-files.sh "$BASE_SHA" "$HEAD_SHA" -- 'Sources/*' \
             | python3 scripts/require-visual-evidence.py --body "$BODY" \
                 ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
       - name: Lint workflows (actionlint)
@@ -221,7 +229,9 @@ jobs:
           fi
           # After a force push the old tip can be unreachable; fall back to
           # assuming Sources changed rather than failing the whole job.
-          if ! changed_files=$(git diff --name-only "$base" "$head" \
+          # merge-base 起点で取る（Issue #642）。ここは PR 以外も通るが、base が
+          # head の祖先なら 3 点表記は 2 点間と同じ結果になるので挙動は変わらない。
+          if ! changed_files=$(scripts/pr-changed-files.sh "$base" "$head" \
               -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' 2>/dev/null); then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0

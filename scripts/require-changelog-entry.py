@@ -24,9 +24,13 @@ The judgement call stays with the author: a `no-changelog` label says "this one
 genuinely has nothing to write" and the check passes, leaving that decision
 recorded on the PR instead of nowhere.
 
-Usage (the added files come in on stdin, one path per line):
+Usage (the added files come in on stdin, one path per line). The list has to
+come from the merge base, not from a two-dot diff against the base tip: a
+release deletes every `changelog.d/*.md`, so two-dot would report those as
+files this PR added — see `scripts/pr-changed-files.sh` (Issue #642):
 
-    git diff --name-only --diff-filter=A "$BASE" "$HEAD" \\
+    scripts/pr-changed-files.sh "$BASE" "$HEAD" \\
+            --diff-filter=A -- 'changelog.d/*.md' \\
         | python3 scripts/require-changelog-entry.py \\
               --subject "$TITLE" --label "$LABEL" ...
 
