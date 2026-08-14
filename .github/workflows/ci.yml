@@ -398,6 +398,15 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: website/package-lock.json
+      - name: Cache remote tutorial images
+        # docs.yml と同じ理由（ADR-0010）。本文の画像は Gyazo にあり、Astro が
+        # ビルド時に取りに行く。ここでキャッシュしておくと、PR ごとのビルドが
+        # 毎回 65 点を取り直さずに済む。
+        uses: actions/cache@v6
+        with:
+          path: website/.astro-cache
+          key: tutorial-images-${{ hashFiles('docs/tutorial/images/manifest.json') }}
+          restore-keys: tutorial-images-
       - name: Build website
         # docs.yml の "Build Landing Page" と同じコマンド。あちらは DocC を
         # 載せ替えて Pages へ公開する本番経路で、こちらは PR 時点で

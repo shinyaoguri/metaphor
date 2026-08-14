@@ -2,6 +2,9 @@
 dist/
 # generated types
 .astro/
+# 外部アセット（Gyazo）の取得キャッシュ。cacheDir を node_modules の外へ出している
+# ため（astro.config.mjs / ADR-0010）、ここも無視する
+.astro-cache/
 
 # dependencies
 node_modules/

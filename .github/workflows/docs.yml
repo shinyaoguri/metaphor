@@ -71,6 +71,17 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: website/package-lock.json
+      - name: Cache remote tutorial images
+        # 本文の画像は Gyazo にあり、Astro がビルド時に取得して dist/ へ最適化配置
+        # する（ADR-0010）。cacheDir は npm ci で消えない website/.astro-cache に
+        # 出してあるので、ここでキャッシュすれば毎回全点を取り直さずに済む。
+        # restore-keys があるのが要点 — 台帳が 1 節変わっただけで全点の取り直しに
+        # 戻らないよう、直前のキャッシュを土台にして差分だけ取りに行かせる。
+        uses: actions/cache@v6
+        with:
+          path: website/.astro-cache
+          key: tutorial-images-${{ hashFiles('docs/tutorial/images/manifest.json') }}
+          restore-keys: tutorial-images-
       - name: Build Landing Page
         run: |
           cd website

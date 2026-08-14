@@ -62,6 +62,24 @@ class ShotsTestCase(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def add_section_doc(
+        self,
+        targets: list[str],
+        ref: str = REF,
+        name: str = "01-part.md",
+        heading: str = "## 1.2 節の見出し",
+    ) -> Path:
+        """本文らしい形（節見出し → 画像 → 埋め込みマーカー）の 1 節を書く。"""
+        lines = ["# 第 1 部", "", heading, ""]
+        for index, target in enumerate(targets):
+            lines += [f"![説明{index}]({target})", ""]
+        lines += ["本文。", "", f"<!-- tutorial-snippet: {ref} -->", "```swift", "```",
+                  "<!-- /tutorial-snippet -->", ""]
+        path = self.docs / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return path
+
     def add_image(self, ref: str = REF) -> None:
         path = gen.image_path_for(ref)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -456,6 +474,255 @@ class TestInputScript(ShotsTestCase):
         self.assertEqual(gen.check([REF], shots), [])
         script.write_text('{"t":"mouseMove","x":9,"y":9}\n', encoding="utf-8")
         self.assertEqual(len(gen.check([REF], shots)), 1)
+
+
+STILL_URL = "https://i.gyazo.com/1111111111111111111111111111aaaa.png"
+MOTION_URL = "https://i.gyazo.com/2222222222222222222222222222bbbb.webp"
+
+
+class TestDocImageLines(ShotsTestCase):
+    """本文の画像を「節の構造」で対応づける（URL の文字列一致では追わない）。"""
+
+    def parse(self, text: str) -> dict:
+        return gen.doc_image_lines(text, "01-part.md")
+
+    def test_images_belong_to_the_section_that_embeds_the_sketch(self) -> None:
+        self.add_section_doc(["images/01-Part/02-Section.png"])
+        text = (self.docs / "01-part.md").read_text(encoding="utf-8")
+        self.assertEqual(list(self.parse(text)), [REF])
+
+    def test_still_and_motion_keep_their_order(self) -> None:
+        self.add_section_doc(["a.png", "a.webp"])
+        text = (self.docs / "01-part.md").read_text(encoding="utf-8")
+        lines = text.split("\n")
+        indices = self.parse(text)[REF]
+        self.assertEqual(len(indices), 2)
+        self.assertTrue(lines[indices[0]].endswith("(a.png)"))
+        self.assertTrue(lines[indices[1]].endswith("(a.webp)"))
+
+    def test_sections_without_images_are_absent(self) -> None:
+        self.add_section_doc([])
+        text = (self.docs / "01-part.md").read_text(encoding="utf-8")
+        self.assertEqual(self.parse(text), {})
+
+    def test_an_image_outside_a_section_is_an_error(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            self.parse("![前書きの絵](a.png)\n\n## 1.1 節\n")
+
+    def test_an_image_without_a_marker_is_an_error(self) -> None:
+        # どの節の画像か決められない = 台帳と対応づけられない。
+        with self.assertRaises(gen.ShotError):
+            self.parse("## 1.1 節\n\n![絵](a.png)\n")
+
+    def test_three_images_in_one_section_is_an_error(self) -> None:
+        self.add_section_doc(["a.png", "a.webp", "b.png"])
+        text = (self.docs / "01-part.md").read_text(encoding="utf-8")
+        with self.assertRaises(gen.ShotError):
+            self.parse(text)
+
+    def test_inline_images_are_not_touched(self) -> None:
+        # 文中に混ぜた画像は規約で認めていない。拾わない（＝書き換えもしない）。
+        self.assertEqual(
+            self.parse("## 1.1 節\n\n文の途中に ![絵](a.png) がある\n"), {}
+        )
+
+
+class TestRewriteDocs(ShotsTestCase):
+    """台帳を正として本文の URL を上書きする（初回も撮り直しも同じ操作）。"""
+
+    def ledger(self, still: str = STILL_URL, motion: str | None = None) -> dict:
+        entry = {"sourceHash": "x", "url": still, "sha256": "y"}
+        if motion:
+            entry["motion"] = {"kind": "webp", "url": motion, "sha256": "z"}
+        return {REF: entry}
+
+    def test_relative_paths_become_urls(self) -> None:
+        doc = self.add_section_doc(["images/01-Part/02-Section.png"])
+        self.assertEqual(gen.rewrite_docs(self.ledger()), [doc])
+        self.assertIn(f"![説明0]({STILL_URL})", doc.read_text(encoding="utf-8"))
+
+    def test_alt_text_is_preserved(self) -> None:
+        doc = self.add_section_doc(["images/01-Part/02-Section.png"])
+        doc.write_text(
+            doc.read_text(encoding="utf-8").replace("![説明0]", "![跳ねるボールの実行結果]"),
+            encoding="utf-8",
+        )
+        gen.rewrite_docs(self.ledger())
+        self.assertIn(f"![跳ねるボールの実行結果]({STILL_URL})", doc.read_text(encoding="utf-8"))
+
+    def test_an_old_url_is_replaced_by_the_new_one(self) -> None:
+        # 撮り直し = 新しいアセット。古い URL は消さないが、本文は新しいほうを指す。
+        old = "https://i.gyazo.com/0000000000000000000000000000dead.png"
+        doc = self.add_section_doc([old])
+        gen.rewrite_docs(self.ledger())
+        text = doc.read_text(encoding="utf-8")
+        self.assertIn(STILL_URL, text)
+        self.assertNotIn(old, text)
+
+    def test_rewriting_twice_changes_nothing(self) -> None:
+        doc = self.add_section_doc(["images/01-Part/02-Section.png"])
+        gen.rewrite_docs(self.ledger())
+        before = doc.read_text(encoding="utf-8")
+        self.assertEqual(gen.rewrite_docs(self.ledger()), [])
+        self.assertEqual(doc.read_text(encoding="utf-8"), before)
+
+    def test_a_broken_body_is_repaired_from_the_ledger(self) -> None:
+        # 途中で中断して本文だけ古い / 手で壊した状態からでも、位置で決めて直せる。
+        doc = self.add_section_doc(["まったく別の文字列.png", "images/x.webp"])
+        gen.rewrite_docs(self.ledger(motion=MOTION_URL))
+        text = doc.read_text(encoding="utf-8")
+        self.assertIn(f"![説明0]({STILL_URL})", text)
+        self.assertIn(f"![説明1]({MOTION_URL})", text)
+
+    def test_sections_without_a_url_are_left_alone(self) -> None:
+        # 移行の途中。まだ上げていない節は相対パスのまま壊さない。
+        doc = self.add_section_doc(["images/01-Part/02-Section.png"])
+        self.assertEqual(gen.rewrite_docs({REF: {"sourceHash": "x"}}), [])
+        self.assertIn("images/01-Part/02-Section.png", doc.read_text(encoding="utf-8"))
+
+    def test_image_count_mismatch_is_an_error(self) -> None:
+        # 本文は 1 本なのに台帳は 2 本（motion.json を足して本文を直し忘れた）。
+        self.add_section_doc(["images/01-Part/02-Section.png"])
+        with self.assertRaises(gen.ShotError):
+            gen.rewrite_docs(self.ledger(motion=MOTION_URL))
+
+    def test_translations_share_the_same_assets(self) -> None:
+        # 英語版（#548）は本文が別ファイルでも同じ台帳から書き換える。
+        doc = self.add_section_doc(["images/01-Part/02-Section.png"])
+        translated = self.add_section_doc(
+            ["images/01-Part/02-Section.png"], name="en/01-part.md"
+        )
+        self.assertEqual(set(gen.rewrite_docs(self.ledger())), {doc, translated})
+        self.assertIn(STILL_URL, translated.read_text(encoding="utf-8"))
+
+
+class TestExternalStaleness(ShotsTestCase):
+    """外部ストレージへ移した節の鮮度（ADR-0010）。ローカルの画像は見ない。"""
+
+    def external(self, motion_url: str | None = None) -> dict:
+        entry = {
+            "sourceHash": gen.source_hash(self.code / REF),
+            "url": STILL_URL,
+            "sha256": "y",
+        }
+        if motion_url:
+            entry["motion"] = {
+                "kind": "webp",
+                **gen.MOTION_DEFAULTS,
+                "quality": None,
+                "url": motion_url,
+                "sha256": "z",
+            }
+        return {REF: entry}
+
+    def test_fresh_without_any_local_file(self) -> None:
+        self.add_package()
+        self.add_section_doc([STILL_URL])
+        self.assertEqual(gen.check([REF], self.external()), [])
+
+    def test_stale_when_the_body_points_elsewhere(self) -> None:
+        self.add_package()
+        self.add_section_doc(["https://i.gyazo.com/0000000000000000000000000000dead.png"])
+        self.assertEqual(len(gen.check([REF], self.external())), 1)
+
+    def test_stale_when_the_body_still_uses_a_relative_path(self) -> None:
+        self.add_package()
+        self.add_section_doc(["images/01-Part/02-Section.png"])
+        self.assertEqual(len(gen.check([REF], self.external())), 1)
+
+    def test_stale_when_the_sketch_changed(self) -> None:
+        package_dir = self.add_package()
+        self.add_section_doc([STILL_URL])
+        recorded = self.external()
+        (package_dir / "Section" / "App.swift").write_text("import metaphor\n// 追記\n")
+        self.assertEqual(len(gen.check([REF], recorded)), 1)
+
+    def test_stale_when_the_motion_asset_is_not_in_the_ledger(self) -> None:
+        self.add_package()
+        self.add_section_doc([STILL_URL])
+        motions = {REF: {"kind": "webp", **gen.MOTION_DEFAULTS, "quality": None}}
+        recorded = self.external()
+        recorded[REF]["motion"] = {"kind": "webp", **gen.MOTION_DEFAULTS, "quality": None}
+        self.assertEqual(len(gen.check([REF], recorded, motions)), 1)
+
+    def test_fresh_with_both_assets(self) -> None:
+        self.add_package()
+        self.add_section_doc([STILL_URL, MOTION_URL])
+        motions = {REF: {"kind": "webp", **gen.MOTION_DEFAULTS, "quality": None}}
+        self.assertEqual(gen.check([REF], self.external(MOTION_URL), motions), [])
+
+    def test_stale_when_the_body_dropped_the_images(self) -> None:
+        self.add_package()
+        self.add_section_doc([])
+        self.assertEqual(len(gen.check([REF], self.external())), 1)
+
+    def test_a_translation_that_drifted_is_reported(self) -> None:
+        self.add_package()
+        self.add_section_doc([STILL_URL])
+        self.add_section_doc(["images/01-Part/02-Section.png"], name="en/01-part.md")
+        stale = gen.check([REF], self.external())
+        self.assertEqual(len(stale), 1)
+        self.assertIn("01-part.md", stale[0])
+
+    def test_local_files_do_not_matter_once_external(self) -> None:
+        # 移行後にローカルへ残骸が復活しても、参照されていないので鮮度には効かない。
+        self.add_package()
+        self.add_section_doc([STILL_URL])
+        self.add_image()
+        self.assertEqual(gen.check([REF], self.external()), [])
+
+
+class TestGyazoResponse(ShotsTestCase):
+    """Upload API の応答の検証（形式が変換されたら黙って進めない）。"""
+
+    def test_url_is_taken_from_the_response(self) -> None:
+        body = json.dumps({"url": STILL_URL, "type": "png"})
+        self.assertEqual(gen.gyazo_url_from_response(body, ".png"), STILL_URL)
+
+    def test_animated_webp_keeps_its_extension(self) -> None:
+        body = json.dumps({"url": MOTION_URL, "type": "webp"})
+        self.assertEqual(gen.gyazo_url_from_response(body, ".webp"), MOTION_URL)
+
+    def test_a_converted_format_is_an_error(self) -> None:
+        body = json.dumps({"url": STILL_URL, "type": "png"})
+        with self.assertRaises(gen.ShotError):
+            gen.gyazo_url_from_response(body, ".webp")
+
+    def test_another_host_is_an_error(self) -> None:
+        body = json.dumps({"url": "https://example.com/x.png"})
+        with self.assertRaises(gen.ShotError):
+            gen.gyazo_url_from_response(body, ".png")
+
+    def test_an_error_response_is_reported(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            gen.gyazo_url_from_response('{"message":"unauthorized"}', ".png")
+
+    def test_a_non_json_response_is_reported(self) -> None:
+        with self.assertRaises(gen.ShotError):
+            gen.gyazo_url_from_response("<html>502</html>", ".png")
+
+
+class TestUploadSkipsUnchangedAssets(ShotsTestCase):
+    """同じバイト列を上げ直さない（アップロードだけ失敗した再実行を速くする）。"""
+
+    def test_same_digest_reuses_the_recorded_url(self) -> None:
+        path = self.root / "shot.png"
+        path.write_bytes(b"\x89PNG\r\n\x1a\ncontent")
+        recorded = {"url": STILL_URL, "sha256": gen.file_sha256(path)}
+        # upload_to_gyazo を呼ばない（トークンが無い環境でも通る）ことが要点。
+        self.assertEqual(gen.upload_asset(REF, path, recorded), (STILL_URL, recorded["sha256"]))
+
+    def test_changed_bytes_are_uploaded_again(self) -> None:
+        path = self.root / "shot.png"
+        path.write_bytes(b"\x89PNG\r\n\x1a\nnew")
+        recorded = {"url": STILL_URL, "sha256": "他のバイト列の指紋"}
+        calls: list[Path] = []
+        original = gen.upload_to_gyazo
+        gen.upload_to_gyazo = lambda p, ref: calls.append(p) or MOTION_URL
+        self.addCleanup(setattr, gen, "upload_to_gyazo", original)
+        url, digest = gen.upload_asset(REF, path, recorded)
+        self.assertEqual((url, calls), (MOTION_URL, [path]))
+        self.assertEqual(digest, gen.file_sha256(path))
 
 
 if __name__ == "__main__":

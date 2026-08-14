@@ -18,6 +18,17 @@ export default defineConfig({
   // 節に図やインタラクティブな作例を差し込みたくなったときに拡張子を .mdx へ
   // 変えるだけで済むよう、content collection のパターンごと最初から通してある。
   integrations: [mdx()],
+  // チュートリアルの画像は Gyazo に置き、本文は絶対 URL で指す（ADR-0010）。
+  // ここに載せたホストの画像だけを Astro が**ビルド時に取得して最適化し、
+  // dist/ へ配置する**（載せ忘れると素通しになり、配信サイズも遅延読み込みも
+  // 失われるのに、見た目は正しいまま = 気付けない）。
+  image: {
+    remotePatterns: [{ protocol: 'https', hostname: 'i.gyazo.com' }],
+  },
+  // 取得結果のキャッシュ。既定は node_modules/.astro だが、CI は毎回 npm ci で
+  // node_modules を作り直すため、そのままでは毎ビルド全点を取り直すことになる。
+  // 外へ出して actions/cache の対象にする（.github/workflows/docs.yml）。
+  cacheDir: './.astro-cache',
   markdown: {
     // Astro 組み込みの Shiki。LP の CodeExample.astro は Tailwind クラスを手書きした
     // 擬似ハイライトだが、チュートリアルは本物のトークナイザで色を付ける。
