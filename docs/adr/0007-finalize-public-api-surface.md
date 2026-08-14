@@ -227,6 +227,10 @@ rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated
   (SketchContext 側 9 引数 `camera` / deprecation message の文言)は削除により消滅。
 - **#322(命名統一実装)**: Decision 表 #1(対欠損補完)#2(記録 rename)#3(async rename)
   #4(filter 引き上げ)#7(dispatch ラベル是正)。deprecated エイリアス → 次 minor で削除の 2 段階。
+  **両フェーズとも実施済み**: フェーズ 1 = 旧名のエイリアス化(PR #368、2026-08-01)、
+  フェーズ 2 = 旧名 16 箇所の削除(2026-08-14)。フェーズ 2 の窓は
+  `v0.9.0`(2026-08-10、deprecation を含む minor)の公開で充足した。ADR-0009 で API 凍結を
+  撤回したため、削除は major ではなく **minor + Breaking Changes** で入っている。
 - **#323(typed throws)**: 本 ADR の原則(下位層 = Swift 慣行)を前提にエラー型を設計。
 - **#388(論点 6 の内部 public 隠蔽)**: **実施済み(2026-08-02)**。個別判定表の全文は
   [#388 のコメント](https://github.com/shinyaoguri/metaphor/issues/388)。結論だけ記すと:

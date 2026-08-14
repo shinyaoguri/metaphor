@@ -100,31 +100,6 @@ extension Sketch {
         context.dispatch(kernel, width: width, height: height, configure: configure)
     }
 
-    /// ``dispatch(_:threads:configure:)`` の旧シグネチャです（末尾クロージャに
-    /// `configure:` ラベルが付きました。trailing closure 記法での呼び出しは不変です）。
-    @_disfavoredOverload
-    @available(*, deprecated, renamed: "dispatch(_:threads:configure:)")
-    public func dispatch(
-        _ kernel: ComputeKernel,
-        threads: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
-    ) {
-        dispatch(kernel, threads: threads, configure: configure)
-    }
-
-    /// ``dispatch(_:width:height:configure:)`` の旧シグネチャです（末尾クロージャに
-    /// `configure:` ラベルが付きました。trailing closure 記法での呼び出しは不変です）。
-    @_disfavoredOverload
-    @available(*, deprecated, renamed: "dispatch(_:width:height:configure:)")
-    public func dispatch(
-        _ kernel: ComputeKernel,
-        width: Int,
-        height: Int,
-        _ configure: (MTLComputeCommandEncoder) -> Void
-    ) {
-        dispatch(kernel, width: width, height: height, configure: configure)
-    }
-
     /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
     public func computeBarrier() {
         context.computeBarrier()
@@ -339,13 +314,6 @@ extension Sketch {
         try await context.endGIFRecordAsync(path)
     }
 
-    /// ``endGIFRecordAsync(_:)`` の旧名です。
-    ///
-    /// - Throws: ``MetaphorError/export(_:)``。ケースは ``endGIFRecordAsync(_:)`` と同じです。
-    @available(*, deprecated, renamed: "endGIFRecordAsync(_:)")
-    public func endGIFRecord(_ path: String? = nil) async throws {
-        try await endGIFRecordAsync(path)
-    }
 }
 
 // MARK: - Orbit Camera (D-20)

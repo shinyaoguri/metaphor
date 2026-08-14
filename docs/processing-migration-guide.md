@@ -445,12 +445,12 @@ folder lookup.
 | — | `beginOfflineRender(fps: Double = 60)` / `endOfflineRender()` for deterministic, non-realtime rendering |
 
 > **These names changed after 0.8.0.** `beginSVG`/`endSVG` and the unprefixed
-> `beginRecord`/`endRecord` still exist as deprecated aliases and will be removed
-> in the following minor release. Use `beginSVGRecord` and `beginFrameRecord`. The
-> rename exists precisely because metaphor's old `beginRecord()` recorded a *PNG
-> sequence* while Processing's `beginRecord()` starts *vector* recording — the kind
-> of trap that cannot be fixed after 1.0 (ADR-0007). `beginOfflineRender()` keeps
-> its name: it switches rendering *mode* rather than starting a recording.
+> `beginRecord`/`endRecord` were deprecated in 0.9.0 and have since been
+> **removed** — use `beginSVGRecord` and `beginFrameRecord`. The rename exists
+> precisely because metaphor's old `beginRecord()` recorded a *PNG sequence*
+> while Processing's `beginRecord()` starts *vector* recording — the kind of trap
+> that cannot be fixed after 1.0 (ADR-0007). `beginOfflineRender()` keeps its
+> name: it switches rendering *mode* rather than starting a recording.
 
 `beginSVGRecord` is meant to be called inside `draw()`, wrapping the frame you
 want to export:

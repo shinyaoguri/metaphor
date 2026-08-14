@@ -77,7 +77,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 | コマンド記録の既定 ON 化(影オフ時の opt-in 撤廃) | ADR-0003 | **見送り確定**(#327 / ADR-0003 Amendment 2026-08-02)。現行の「影オン=常時記録 / 影オフ=`METAPHOR_COMMAND_RECORD` opt-in」を 1.0 の確定仕様として凍結 |
 | 生成系 API の typed throws 化 | ADR-0005 Decision 2 | **エラー型統一で代替済み**(#323)。typed throws 構文は Swift 5.10 サポート終了まで延期(見送り理由は ADR-0005 Amendment 2026-08-02) |
 | deprecated 7 件の削除 | ADR-0005 Amendment | 削除可能条件を満たして残存 |
-| 命名統一(G3)・二層 API 名の整合 | (新規、本レビューで顕在化) | 未整理 |
+| 命名統一(G3)・二層 API 名の整合 | (新規、本レビューで顕在化) | **実施済み**(#322 / ADR-0007)。フェーズ 1(旧名を deprecated エイリアス化、PR #368)→ `v0.9.0` 公開 → フェーズ 2(旧名 16 箇所を削除、2026-08-14)。二層 API 名は ADR-0007 論点 4 で「Sketch 層 = 利用者 API の正典、下位層名は実装都合で可」と規範化した |
 | Swift 6 strict concurrency 対応(G2) | (新規) | **実施済み**(#328 / PR #386・#394 / 2026-08-02)。全 Swift ターゲットに適用し新旧両ツールチェーンで警告ゼロ・CI ゲート化まで完了。公開 API のシグネチャ変更は発生せず |
 | `@_exported import Metal/MetalKit/simd` の扱い決定(G16) | (新規) | 未判断 |
 | `GPUBuffer` subscript / `NoiseTexture` stops の failure mode 統一(G14) | (新規) | 不統一のまま |
