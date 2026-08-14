@@ -103,6 +103,21 @@ ADR-0008 が Follow-up として積み残していたものでもある。
 アセットを参照していたか」が Git の履歴そのものになり、過去のリビジョンを checkout すれば
 当時の絵が出る。
 
+### 適用範囲 — Examples の実行結果画像は対象外
+
+この決定が及ぶのは**読み物の本文が参照する画像**（`docs/tutorial/**`。DocC の #531 も同じ
+仕組みに乗せられる）だけで、`Examples/<...>/<Name>.png` は含めない。理由は用途が違うため:
+
+- Examples の画像は**開発者と AI エージェントが手元で見る**もの。パッケージの隣にあれば
+  `Read` 一発で開ける。外部 URL にすると、コードを読んでいる最中に絵を確かめる導線が切れる
+- 点数あたりの容量が小さい。撮影は 640x360 前後で 5〜90 KiB（実測）で、原典由来の 1280x720
+  （平均 115 KiB）より軽い。ビルド時に全点を取りに行く website の事情（本 ADR の Context）も、
+  ローカルアセットなら最初から発生しない
+
+撮影の仕組みは共有する（`scripts/shots_common.py` の「撮影時のソースの指紋」）。
+Examples 側の運用は [Examples/README.md](../../Examples/README.md) と
+[#501](https://github.com/shinyaoguri/metaphor/issues/501) を参照。
+
 ## Consequences
 
 ### Positive
