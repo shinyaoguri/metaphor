@@ -69,7 +69,7 @@ metaphor run
 
 生成された `App.swift` を、次の内容に置き換えてみます。オレンジの円が 1 つ出れば成功です。
 
-![最初のスケッチの実行結果](https://i.gyazo.com/aaf01427be5e1b5f6908082f9fce84b4.png)
+![濃い灰色の背景の中央に、オレンジ色の円がひとつだけ描かれている](https://i.gyazo.com/aaf01427be5e1b5f6908082f9fce84b4.png)
 
 <!-- tutorial-snippet: 01-GettingStarted/02-FirstSketch -->
 ```swift
@@ -128,7 +128,7 @@ final class FirstSketch: Sketch {
 
 ## 1.3 スケッチの骨格
 
-![スケッチの骨格の実行結果](https://i.gyazo.com/f7bacf239808c31a8b310b7d9b9e5693.png)
+![濃い灰色の背景の上寄りに、オレンジ色の正方形がひとつ描かれている](https://i.gyazo.com/f7bacf239808c31a8b310b7d9b9e5693.png)
 
 スケッチは `Sketch` プロトコルに準拠した 1 つの型です。役割は 3 つに分かれます。`config` が起動時の設定、`setup()` が最初に一度だけ、`draw()` が毎フレーム呼ばれます。
 
@@ -204,7 +204,7 @@ final class SketchSkeleton: Sketch {
 
 ## 1.4 キャンバスと座標系
 
-![キャンバスと座標系の実行結果](https://i.gyazo.com/be01b81886f3f2971efa1576d673ef40.png)
+![格子を敷いたキャンバス。左上の原点に赤い四分円、中央に水色の円、右下の隅に黄色い四分円が置かれている](https://i.gyazo.com/be01b81886f3f2971efa1576d673ef40.png)
 
 キャンバスの原点 `(0, 0)` は**左上**です。`x` は右へ、`y` は**下へ**向かって増えます。数学のグラフとは `y` の向きが逆になる点だけ、最初に慣れが要ります。
 
@@ -317,7 +317,7 @@ metaphor watch
 
 ## 1.6 描画を止める・進める
 
-![描画を止める・進めるの実行結果](https://i.gyazo.com/da3c8b573c5ecc53478f1a32c4b63eae.png)
+![濃い灰色の背景を横切って、白い水平線が 1 本だけ引かれている](https://i.gyazo.com/da3c8b573c5ecc53478f1a32c4b63eae.png)
 
 `draw()` は既定で毎フレーム呼ばれ続けます。1 秒あたりの回数はディスプレイのリフレッシュレートに合わせて 60 回前後です。
 

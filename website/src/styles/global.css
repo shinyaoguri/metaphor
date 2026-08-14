@@ -191,6 +191,20 @@ body {
   height: auto;
 }
 
+/*
+ * 動きの証跡（アニメーション WebP）は `<img>` なので、読者に止める手段が無い。
+ * 「視差効果を減らす」を設定している読者には出さず、対の代表静止画（すぐ上の行に
+ * 必ずある）だけを見てもらう。印は remark-tutorial-images.mjs が台帳を見て付ける。
+ * 段落ごと消すのは、画像だけ消すと空の段落の余白が残るため。隠れた画像は
+ * loading="lazy" と相まって取得もされない（GitHub 上の Markdown では効かない）。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-prose img.tutorial-motion,
+  .tutorial-prose p.tutorial-motion {
+    display: none;
+  }
+}
+
 .tutorial-prose hr {
   border-color: var(--color-border);
 }

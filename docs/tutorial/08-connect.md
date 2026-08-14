@@ -18,7 +18,7 @@ draft: false
 
 ## 8.1 OSC
 
-![OSC の実行結果](https://i.gyazo.com/4c0d6e2b508ac72a98094d230f3bb975.png)
+![自分へ送った OSC の座標で描いた絵。十字が送った位置、水色の円が返ってきた位置で、下に送信と受信のログが並ぶ](https://i.gyazo.com/4c0d6e2b508ac72a98094d230f3bb975.png)
 
 マウスを動かすと、細い十字がマウスの位置に、塗りつぶした円が**ネットワークを一周して返ってきた位置**に描かれます。動かしている間だけ円がわずかに遅れ、止めると重なります。下の帯には、いま送っているアドレスと、直前に受け取ったメッセージの中身が出ます。
 
@@ -463,7 +463,7 @@ final class MIDISketch: Sketch {
 
 ## 8.3 Syphon
 
-![Syphon 出力の実行結果](https://i.gyazo.com/181125a27366540735a7c533574881f4.png)
+![Syphon で配信している同心円の絵。下に配信名 metaphor-tutorial と 1280x720 の表示](https://i.gyazo.com/181125a27366540735a7c533574881f4.png)
 
 実行すると円弧が回り続けます。画面だけを見ていると、ここまでのスケッチと何も変わりません。違うのは、**同じ絵が Syphon サーバー `metaphor-tutorial` としても出ている**ことです。MadMapper・Resolume・VDMX や Syphon Simple Client のような受け側のアプリを開くと、サーバーの一覧にこの名前が現れ、選べば映像が届きます。
 
@@ -614,7 +614,7 @@ final class SyphonShare: Sketch {
 
 ## 8.4 パラメータを外に出す
 
-![パラメータパネルの実行結果](https://i.gyazo.com/3f18be7419ba082be09d9414546e2f00.png)
+![左に count / radius / dotSize / showRing / palette のパラメータパネル、右にその値どおり輪に並んだ 9 個の水色の点](https://i.gyazo.com/3f18be7419ba082be09d9414546e2f00.png)
 
 左のパネルにスライダー・トグル・選択肢が並び、ドラッグすると右の図形がその場で変わります。このパネルは自分でレイアウトしたものではなく、**プロパティの宣言から自動で作られたもの**です。
 
