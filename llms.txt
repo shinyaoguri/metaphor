@@ -230,6 +230,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- 2点間に線を描画します。
 - `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- リニアグラデーション矩形を描画します。
 - `func listCaptureDevices() -> [CaptureDeviceInfo]` -- 接続中のカメラを列挙します。
+- `func loadFont(_ path: String, cache: Bool = true) throws -> MFont` -- 指定したファイルパスからフォントを読み込みます。
 - `func loadImage(_ path: String, cache: Bool = true) throws -> MImage` -- 指定したファイルパスから画像を読み込みます。
 - `func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage` -- 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
 - `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
@@ -356,6 +357,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func textAscent() -> Float` -- 現在のフォントのアセント値を返します。
 - `func textDescent() -> Float` -- 現在のフォントのディセント値を返します。
 - `func textFont(_ family: String)` -- 以降のテキスト描画のフォントファミリーを設定します。
+- `func textFont(_ font: MFont)` -- 以降のテキスト描画に使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
 - `func textLeading(_ leading: Float)` -- 複数行テキストの行間を設定します。
 - `func textSize(_ size: Float)` -- 以降のテキスト描画のテキストサイズを設定します。
 - `func texture(_ img: MImage)` -- 以降の 3D シェイプのテクスチャを設定します。
@@ -487,6 +489,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var hasFill: Bool` -- 塗りつぶしが有効かどうか。
 - `var hasStroke: Bool` -- ストロークが有効かどうか。
 - `var strokeColor: SIMD4<Float>` -- ストローク色（RGBA）。
+
+### `struct MFont` -- ``SketchContext/loadFont(_:cache:)`` が読み込んだフォントファイルへのハンドル。
+
+- `let familyName: String` -- フォントのファミリー名（例: `Space Mono`）。
+- `let path: String` -- 読み込み元のファイルパス。
+- `let postScriptName: String` -- フォントの PostScript 名。テキスト描画時のフォント解決に使われます。
 
 ### `struct ParamDescriptor` -- パラメータの宣言情報（名前・型タグ・レンジ・選択肢）。
 
@@ -776,6 +784,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case noFrames` -- キャプチャされたフレームがない
 - `case notRecording` -- endRecord() 呼び出し時に録画がアクティブでなかった
 - `case writerFailed(String)` -- AVAssetWriter がエラーを検出した
+- `case font(MetaphorError.FontFailure)` -- フォント操作の失敗
+- `case fileNotFound(path: String)` -- フォントファイルが見つからなかった
+- `case noFontsInFile(path: String)` -- フォントファイルにフォントが 1 つも入っていなかった (非対応フォーマット・破損)
+- `case registrationFailed(path: String, detail: String)` -- フォントをプロセスへ登録できなかった
 - `case image(MetaphorError.ImageFailure)` -- 画像操作の失敗
 - `case invalidImage` -- ソース画像が無効、または CGImage への変換に失敗した
 - `case loadFailed(source: String, detail: String)` -- 画像をテクスチャとして読み込めなかった (不在・非対応フォーマット・I/O エラー)
@@ -981,6 +993,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class AssetCache` -- パスキーのアセットキャッシュ（LRU）。
 
+- `var fontCount: Int { get }` -- キャッシュ中のフォントエントリ数。
 - `var imageCount: Int { get }` -- キャッシュ中の画像エントリ数。
 - `var meshCount: Int { get }` -- キャッシュ中のメッシュエントリ数。
 - `func clear()` -- すべてのエントリを破棄します（``SketchContext/clearCaches()`` から呼ばれます）。
@@ -1017,7 +1030,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 85 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 86 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1520,7 +1533,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 220 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 222 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

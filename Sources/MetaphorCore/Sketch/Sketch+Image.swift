@@ -42,6 +42,34 @@ extension Sketch {
         try await context.resourceLoader.loadImageAsync(named: name)
     }
 
+    /// 指定したファイルパスからフォントを読み込みます。
+    ///
+    /// フォントは現在のプロセスにだけ登録されます（システムのフォント設定は変更しません）。
+    /// 返された ``MFont`` を ``textFont(_:)-(MFont)`` へ渡すと、以降のテキスト描画・計測が
+    /// そのフォントで行われます。既定でパスキーのキャッシュが効くため、`draw()` 内で
+    /// 呼んでも毎フレームの再登録は起きません。
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     guard let path = Bundle.module.path(
+    ///         forResource: "SpaceMono-Regular", ofType: "ttf", inDirectory: "Resources")
+    ///     else { return }
+    ///     textFont(try! loadFont(path))
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - path: フォントファイル（`.ttf` / `.otf` / `.ttc` / `.otc` / `.dfont`）のパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
+    /// - Returns: 読み込まれたフォント。
+    /// - Throws: ``MetaphorError/font(_:)``。ファイルが無い場合は
+    ///   ``MetaphorError/FontFailure/fileNotFound(path:)``、フォントとして読めない場合は
+    ///   ``MetaphorError/FontFailure/noFontsInFile(path:)``、登録に失敗した場合は
+    ///   ``MetaphorError/FontFailure/registrationFailed(path:detail:)``。
+    public func loadFont(_ path: String, cache: Bool = true) throws -> MFont {
+        try context.loadFont(path, cache: cache)
+    }
+
     /// 指定したサイズの空白画像を作成します。
     ///
     /// - Parameters:
@@ -309,6 +337,13 @@ extension Sketch {
     /// - Parameter family: フォントファミリー名。
     public func textFont(_ family: String) {
         context.textFont(family)
+    }
+
+    /// 以降のテキスト描画に使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
+    ///
+    /// - Parameter font: 読み込み済みのフォント。
+    public func textFont(_ font: MFont) {
+        context.textFont(font)
     }
 
     /// テキストの配置を設定します。

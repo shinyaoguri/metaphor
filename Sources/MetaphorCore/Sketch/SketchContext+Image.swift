@@ -46,6 +46,45 @@ extension SketchContext {
         return image
     }
 
+    // MARK: - Font
+
+    /// 指定したファイルパスからフォントを読み込みます。
+    ///
+    /// フォントは現在のプロセスにだけ登録されます（システムのフォント設定は変更しません）。
+    /// 返された ``MFont`` を ``textFont(_:)-(MFont)`` へ渡すと、以降のテキスト描画・計測が
+    /// そのフォントで行われます。
+    ///
+    /// 既定でパスキーのキャッシュが効き、同じパスの再読込は同一の ``MFont`` を返します
+    /// （`draw()` 内で呼んでも再登録されません）。
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     guard let path = Bundle.module.path(
+    ///         forResource: "SpaceMono-Regular", ofType: "ttf", inDirectory: "Resources")
+    ///     else { return }
+    ///     textFont(try! loadFont(path))
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - path: フォントファイル（`.ttf` / `.otf` / `.ttc` / `.otc` / `.dfont`）のパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
+    /// - Returns: 読み込まれたフォント。
+    /// - Throws: ``MetaphorError/font(_:)``。ファイルが無い場合は
+    ///   ``MetaphorError/FontFailure/fileNotFound(path:)``、フォントとして読めない場合は
+    ///   ``MetaphorError/FontFailure/noFontsInFile(path:)``、登録に失敗した場合は
+    ///   ``MetaphorError/FontFailure/registrationFailed(path:detail:)``。
+    public func loadFont(_ path: String, cache: Bool = true) throws -> MFont {
+        if cache, let cached = assetCache.font(forPath: path) {
+            return cached
+        }
+        let font = try FontRegistry.load(path: path)
+        if cache {
+            assetCache.store(font, forPath: path)
+        }
+        return font
+    }
+
     // MARK: - SVG Export
 
     /// SVG 記録を開始します。
@@ -367,6 +406,12 @@ extension SketchContext {
     /// - Parameter family: フォントファミリー名。
     public func textFont(_ family: String) {
         canvas.textFont(family)
+    }
+
+    /// テキストレンダリングに使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
+    /// - Parameter font: 読み込み済みのフォント。
+    public func textFont(_ font: MFont) {
+        canvas.textFont(font)
     }
 
     /// テキストの配置を設定します。

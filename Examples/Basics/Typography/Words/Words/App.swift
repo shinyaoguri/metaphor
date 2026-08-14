@@ -1,11 +1,18 @@
 import metaphor
+import Foundation
 
 @main
 final class Words: Sketch {
     var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Words") }
     func setup() {
-        textFont("Menlo")
         textSize(18)
+        // 同梱の .ttf を読む（原典の createFont("SpaceMono-Regular.ttf", 18) 相当）
+        if let path = Bundle.module.path(
+            forResource: "SpaceMono-Regular", ofType: "ttf", inDirectory: "Resources"),
+            let font = try? loadFont(path)
+        {
+            textFont(font)
+        }
     }
     func draw() {
         background(102)

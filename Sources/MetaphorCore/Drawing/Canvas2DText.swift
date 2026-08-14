@@ -17,6 +17,16 @@ extension Canvas2D {
         currentFontFamily = family
     }
 
+    /// 読み込み済みのフォントを設定します。
+    ///
+    /// ``MFont`` はプロセスへ登録済みのフォントを PostScript 名で指すため、内部の
+    /// 保持形式はファミリー名指定と同じ文字列 1 本で済みます（`push`/`pop` でも保存されます）。
+    ///
+    /// - Parameter font: ``SketchContext/loadFont(_:cache:)`` が返したフォント。
+    public func textFont(_ font: MFont) {
+        currentFontFamily = font.postScriptName
+    }
+
     /// テキストの揃え方を設定します。
     /// - Parameters:
     ///   - horizontal: 水平方向の揃え。

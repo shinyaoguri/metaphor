@@ -1,12 +1,19 @@
 import metaphor
+import Foundation
 
 @main
 final class Letters: Sketch {
     var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Letters") }
     func setup() {
         background(0)
-        textFont("Menlo")
         textAlign(.center, .center)
+        // 同梱の .ttf を読む（原典の createFont("SourceCodePro-Regular.ttf", 24) 相当）
+        if let path = Bundle.module.path(
+            forResource: "SourceCodePro-Regular", ofType: "ttf", inDirectory: "Resources"),
+            let font = try? loadFont(path)
+        {
+            textFont(font)
+        }
     }
     func draw() {
         background(0)

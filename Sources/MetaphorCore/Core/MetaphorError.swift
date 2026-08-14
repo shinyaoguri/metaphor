@@ -81,6 +81,11 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
     /// 画像操作の失敗
     case image(ImageFailure)
 
+    // MARK: - フォント
+
+    /// フォント操作の失敗
+    case font(FontFailure)
+
     // MARK: - マテリアル
 
     /// マテリアル操作の失敗
@@ -139,6 +144,15 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
         ///
         /// `source` はファイルパス・アセット名など読み込み元の識別子です。
         case loadFailed(source: String, detail: String)
+    }
+
+    public enum FontFailure: Sendable {
+        /// フォントファイルが見つからなかった
+        case fileNotFound(path: String)
+        /// フォントファイルにフォントが 1 つも入っていなかった (非対応フォーマット・破損)
+        case noFontsInFile(path: String)
+        /// フォントをプロセスへ登録できなかった
+        case registrationFailed(path: String, detail: String)
     }
 
     public enum MaterialFailure: Sendable {
@@ -248,6 +262,15 @@ public enum MetaphorError: Error, CustomStringConvertible, LocalizedError {
                 "[metaphor] Invalid image or CGImage conversion failed"
             case .loadFailed(let source, let detail):
                 "[metaphor] Failed to load image '\(source)': \(detail)"
+            }
+        case .font(let f):
+            switch f {
+            case .fileNotFound(let path):
+                "[metaphor] Font file not found: '\(path)'"
+            case .noFontsInFile(let path):
+                "[metaphor] No fonts found in '\(path)' (unsupported format or corrupt file)"
+            case .registrationFailed(let path, let detail):
+                "[metaphor] Failed to register font '\(path)': \(detail)"
             }
         case .material(let f):
             switch f {
