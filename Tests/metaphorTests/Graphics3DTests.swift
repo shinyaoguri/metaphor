@@ -1574,3 +1574,45 @@ struct Graphics3DLoadPixelsFreshnessTests {
                 "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
     }
 }
+
+// MARK: - 同一フレーム内の描き換え（#745）
+
+@Suite("Graphics3D same-frame redraw", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Graphics3DSameFrameRedrawTests {
+
+    /// `Graphics` と同じく、貼った時点の内容が残る（`Graphics3D` も `toImage()` が
+    /// カラーテクスチャを参照するだけなので、同じ症状を持っていた）。
+    @Test("same-frame redraw keeps the content each image() saw")
+    func sameFrameRedrawKeepsEachSnapshot() throws {
+        let fb = try OffscreenSketchHarness.render(size: 64) { ctx in
+            guard let pg3d = ctx.createGraphics3D(32, 32) else { return }
+            ctx.background(0)
+
+            // ライト無し（unlit）なので fill 色がそのまま出る
+            pg3d.beginDraw()
+            pg3d.fill(Color(r: 0, g: 0, b: 1, alpha: 1))
+            pg3d.box(64)
+            pg3d.endDraw()
+            ctx.image(pg3d, 0, 0)
+
+            pg3d.beginDraw()
+            pg3d.fill(Color(r: 0, g: 1, b: 0, alpha: 1))
+            pg3d.box(64)
+            pg3d.endDraw()
+            ctx.image(pg3d, 32, 0)
+        }
+
+        func pixel(_ x: Int, _ y: Int) -> SIMD3<Int> {
+            let i = (y * fb.width + x) * 4
+            return SIMD3(Int(fb.rgba[i]), Int(fb.rgba[i + 1]), Int(fb.rgba[i + 2]))
+        }
+
+        let left = pixel(16, 16)
+        let right = pixel(48, 16)
+        #expect(left.z > 200 && left.y < 60,
+                "先に貼った側は image() 時点の青のままであるべき (got \(left)) — #745")
+        #expect(right.y > 200 && right.z < 60,
+                "後に貼った側は緑 (got \(right))")
+    }
+}

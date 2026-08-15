@@ -37,6 +37,9 @@ public final class Graphics {
     /// テスト用: 次の beginDraw で使われるバッファスロット。
     var nextBufferIndexForTesting: Int { bufferIndex }
 
+    /// 描画先テクスチャの copy-on-write ローテーション（#745）。
+    private let targetRotator: OffscreenTargetRotator
+
     /// 幅をピクセル単位で返します。
     public var width: Float { canvas.width }
 
@@ -44,7 +47,13 @@ public final class Graphics {
     public var height: Float { canvas.height }
 
     /// MImage 取得用の内部カラーテクスチャを返します。
-    public var texture: MTLTexture { textureManager.colorTexture }
+    ///
+    /// 返したテクスチャの内容は次の ``beginDraw()`` で凍結されます（描き先が別の
+    /// テクスチャへ回るため、`image()` で貼った絵が後から書き換わらない。#745）。
+    public var texture: MTLTexture {
+        targetRotator.markHandedOut()
+        return textureManager.colorTexture
+    }
 
     // MARK: - Initialization
 
@@ -70,6 +79,7 @@ public final class Graphics {
             height: Float(height),
             sampleCount: 1
         )
+        self.targetRotator = OffscreenTargetRotator(textureManager: textureManager)
         self.canvas.onSetClearColor = { [weak textureManager] r, g, b, a in
             textureManager?.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
         }
@@ -81,6 +91,10 @@ public final class Graphics {
     public func beginDraw() {
         // endDraw 漏れの不均衡呼び出しでもセマフォが詰まらないよう先に閉じる
         if commandBuffer != nil { endDraw() }
+
+        // 前のパスの絵を外へ渡していたら、描き先を別のテクスチャへ回す（#745）。
+        // これで同一フレーム内に描き換えても、既に貼った絵は貼った時点のまま残る。
+        targetRotator.rotateIfNeeded(commandQueue: commandQueue)
 
         // GPU が inflightCount フレーム以上遅れている場合はここでブロックし、
         // GPU がまだ読んでいる頂点バッファスロットへの上書きを防ぐ
@@ -134,12 +148,20 @@ public final class Graphics {
     // MARK: - MImage Conversion
 
     /// オフスクリーンテクスチャを MImage として返します。
+    ///
+    /// `image()` で貼ると**そのとき見えていた内容**が描かれます。同じバッファを同一
+    /// フレーム内で描き換えて何度でも貼れます（描き換えるたびに描き先が別のテクスチャへ
+    /// 回るため、内部テクスチャは描き換えた回数ぶん増えます。#745）。
+    ///
+    /// 返した `MImage` からの ``MImage/loadPixels()`` は常に最新の内容を読みます。
+    ///
     /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
         let image = MImage(texture: textureManager.colorTexture)
         // リードバックを描画と同じキューに載せ、endDraw(wait: false) 直後の
         // loadPixels でも commit 順序で最新内容が読めるようにする
         image.preferredReadbackQueue = commandQueue
+        targetRotator.markHandedOut(image)
         return image
     }
 
@@ -244,6 +266,8 @@ public final class Graphics {
     /// （`SketchContext.createGraphics` から呼ばれます）。
     func wireShaderInputs(_ provider: @escaping () -> Canvas2DShaderInputs) {
         canvas.shaderInputs = provider
+        // 描画先テクスチャを使い回してよい時期の判定にフレーム番号を使う（#745）
+        targetRotator.frameCountProvider = { provider().frameCount }
     }
 
     /// カラーモードとオプションの最大チャンネル値を設定します。
