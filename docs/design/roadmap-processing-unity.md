@@ -270,12 +270,12 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 [#649](https://github.com/shinyaoguri/metaphor/issues/649) / F2 textToPoints [#650](https://github.com/shinyaoguri/metaphor/issues/650) / F3 text-on-path（stretch）[#651](https://github.com/shinyaoguri/metaphor/issues/651) |
 | [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3a トーンマッピング [#706](https://github.com/shinyaoguri/metaphor/issues/706)（**完了**）/ G3b skybox・IBL [#710](https://github.com/shinyaoguri/metaphor/issues/710)（**完了**）/ G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
-| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント / I3 website（#74） |
+| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | **クローズ済み**（2026-08-16・I2 / I3 を移管して役目を終えた）: I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント [#334](https://github.com/shinyaoguri/metaphor/issues/334)（**Epic #314 の W3-1 が管轄**）/ I3 website（i18n 構成は #487・#491 で導入済み。残る LP 英語文言の見直しは [#740](https://github.com/shinyaoguri/metaphor/issues/740)） |
 | [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。**1 本目 `0815-strata` / 2 本目 `0815-salvage`（AI 単独制作実験）完走**（所見は「J の所見」節、起票は #684〜#688 / cli#133 / #700〜#702） |
 | [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票。1 本目の所見では**補間の自動化**が最優先 |
 | [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット。1 本目では**自己監視の不在**のみ実需として確認 |
 
-既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#275 は Epic D の schema 変更に同乗。#273 は Epic L が吸収（2026-08-07 変更。Probe schema に触れる部分のみ Epic D の schema 変更に同乗）。cli #86 は Epic I の I2 と相乗。
+既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#275 は Epic D の schema 変更に同乗。#273 は Epic L が吸収（2026-08-07 変更。Probe schema に触れる部分のみ Epic D の schema 変更に同乗）。cli #86 は API doc コメント英語化 #334（Epic #314 の W3-1）と相乗。
 
 ## 実装の進め方（将来セッションへの指示）
 
