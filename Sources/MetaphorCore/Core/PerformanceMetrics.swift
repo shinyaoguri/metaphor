@@ -1,11 +1,13 @@
 import Foundation
 import Darwin
+import QuartzCore
 
 /// 実測フレームレートの軽量トラッカー。
 ///
 /// ``MetaphorRenderer/renderFrame()`` が毎フレーム ``record(at:)`` を呼び、
-/// Probe リクエスト処理時に ``windowStats(now:window:)`` で直近ウィンドウの
-/// 実測 fps とフレーム時間を読み出します（Issue #271）。
+/// Probe リクエスト処理時（および ``Sketch/performance`` の読み出し時）に
+/// ``windowStats(now:window:)`` で直近ウィンドウの実測 fps とフレーム時間を
+/// 読み出します（Issue #271 / #692）。
 ///
 /// ホットパス側（`record`）は固定長リングバッファへの書き込み 1 回だけで
 /// アロケーションが無く、Probe の性能契約（ランタイム非侵害・Issue #118）を
@@ -177,5 +179,138 @@ final class ProcessStatsSampler {
         case .critical: return "critical"
         @unknown default: return "unknown"
         }
+    }
+}
+
+// MARK: - 公開 API（Issue #692）
+
+/// システムの熱状態。負荷を自分で落とす（自己 degrade）ときの判断材料です。
+///
+/// 意味論は `ProcessInfo.ThermalState` および Probe の wire format
+/// （CONTRACT.md 契約点 4 の `performance.thermalState`）と同じです。
+public enum ThermalState: String, Sendable, Codable, CaseIterable {
+    /// 平常。
+    case nominal
+    /// やや上昇。ファンが回り始める程度。
+    case fair
+    /// 高い。システムが省電力へ寄せ始めるので、負荷を落とす頃合い。
+    case serious
+    /// 危険。表示を維持することより発熱を下げることが優先される。
+    case critical
+    /// 将来の OS が返す未知の状態。
+    case unknown
+}
+
+/// スケッチ自身が読める実行時パフォーマンスの一式（Issue #692）。
+///
+/// 値は Probe の `frame.json` の `performance`（CONTRACT.md 契約点 4）と**同じ採取経路・
+/// 同じ意味論**です。Probe が有効かどうかとは無関係に読めます（`METAPHOR_PROBE=1` は
+/// 観測用の窓口であって、作品の実行条件ではありません）。
+///
+/// ```swift
+/// func draw() {
+///     if let fps = performance.fps, fps < 50 {
+///         particleCount = max(1000, particleCount - 100)   // 自己 degrade
+///     }
+///     if performance.thermalState == .serious { ... }
+/// }
+/// ```
+///
+/// - Note: 採取にコストがある項目（``memoryMB`` / ``cpuPercent`` は syscall）は
+///   最短 0.5 秒間隔でしか更新されません。毎フレーム読んでも syscall は増えません。
+public struct SketchPerformance: Sendable {
+
+    /// フレーム時間の統計（ミリ秒）。
+    public struct FrameTime: Sendable {
+        /// 直近ウィンドウの平均フレーム時間（ミリ秒）。
+        public let mean: Float
+        /// 直近ウィンドウの最大フレーム時間（ミリ秒）。スパイクの検出用。
+        public let max: Float
+    }
+
+    /// 直近およそ 1 秒の**実測**フレームレート。
+    ///
+    /// 算出に足るフレームが無いとき（起動直後・`noLoop()` で停止中）は `nil`。
+    /// 設定値ではなく実測値なので、``targetFPS`` と食い違うことがあります。
+    public let fps: Float?
+
+    /// 目標フレームレート（`frameRate()` / 環境変数 `METAPHOR_FPS` の解決結果）。
+    public let targetFPS: Int
+
+    /// 直近ウィンドウのフレーム時間。算出不能なときは `nil`。
+    public let frameTimeMs: FrameTime?
+
+    /// 自プロセスの phys_footprint（MB）。Activity Monitor の「メモリ」に相当します。
+    /// 取得に失敗したときは `nil`。
+    public let memoryMB: Float?
+
+    /// 直近サンプルからの平均 CPU 使用率（%）。**1 コア = 100%** で、
+    /// マルチコアを使い切ると 100 を超えます（`top` / Activity Monitor と同じ規約）。
+    public let cpuPercent: Float?
+
+    /// システムの熱状態。
+    public let thermalState: ThermalState
+}
+
+/// ``SketchPerformance`` を組み立てるサンプラー（レンダラーが 1 つだけ持つ）。
+///
+/// fps とフレーム時間は ``FrameRateTracker`` から読むだけなのでコストがありません。
+/// メモリと CPU は syscall を伴うため、**最短更新間隔**を設けてキャッシュします。
+/// 毎フレーム `performance` を読むスケッチでも syscall は 0.5 秒に 1 回です
+/// （Probe の性能契約 #118 と同じ考え方）。
+///
+/// Probe プラグインは自前の ``ProcessStatsSampler`` を持ち続けます。`cpuPercent` は
+/// 「前回サンプルからの平均」という状態を持つため、サンプラーを共有すると
+/// 「Probe が読んだ直後にスケッチが読む」ケースで極端に短い区間の値が返り、
+/// どちらの値も不安定になるからです。実測コストは 0.5 秒に 1 回の syscall なので、
+/// 経路を分けても実害はありません。
+@MainActor
+final class PerformanceMonitor {
+    /// 実測 fps の供給元（レンダラーが毎フレーム更新しているもの）。
+    private let tracker: FrameRateTracker
+
+    /// syscall を伴う項目のサンプラー。初回読み出しまで作りません
+    /// （`performance` を読まないスケッチにコストを負わせないため）。
+    private var statsSampler: ProcessStatsSampler?
+
+    /// 直近のサンプル（時刻・メモリ・CPU）。
+    private var cachedAt: Double?
+    private var cachedMemoryMB: Double?
+    private var cachedCPUPercent: Double?
+
+    /// syscall を伴う項目の最短更新間隔（秒）。
+    private let minimumSampleInterval: Double
+
+    init(tracker: FrameRateTracker, minimumSampleInterval: Double = 0.5) {
+        self.tracker = tracker
+        self.minimumSampleInterval = minimumSampleInterval
+    }
+
+    /// 現在のスナップショットを返します。
+    func snapshot(now: Double = CACurrentMediaTime(), targetFPS: Int) -> SketchPerformance {
+        let window = tracker.windowStats(now: now)
+        refreshProcessStatsIfNeeded(now: now)
+        return SketchPerformance(
+            fps: window.map { Float($0.fps) },
+            targetFPS: targetFPS,
+            frameTimeMs: window.map {
+                SketchPerformance.FrameTime(
+                    mean: Float($0.frameTimeMeanMs), max: Float($0.frameTimeMaxMs)
+                )
+            },
+            memoryMB: cachedMemoryMB.map(Float.init),
+            cpuPercent: cachedCPUPercent.map(Float.init),
+            thermalState: ThermalState(rawValue: ProcessStatsSampler.thermalStateName()) ?? .unknown
+        )
+    }
+
+    /// 最短間隔を過ぎていれば syscall を発行して値を更新します。
+    private func refreshProcessStatsIfNeeded(now: Double) {
+        if let cachedAt, now - cachedAt < minimumSampleInterval { return }
+        let sampler = statsSampler ?? ProcessStatsSampler(now: now)
+        statsSampler = sampler
+        cachedMemoryMB = ProcessStatsSampler.memoryFootprintMB()
+        cachedCPUPercent = sampler.cpuPercent(now: now)
+        cachedAt = now
     }
 }

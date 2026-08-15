@@ -140,6 +140,10 @@ public final class MetaphorRenderer: NSObject {
     /// Probe が `frame.json` の `performance` セクションとして読み出します。
     let frameRateTracker = FrameRateTracker()
 
+    /// スケッチ向けのパフォーマンス採取（``Sketch/performance``。Issue #692）。
+    /// fps は上のトラッカーを共有し、syscall を伴う項目だけ間隔を空けて採ります。
+    lazy var performanceMonitor = PerformanceMonitor(tracker: frameRateTracker)
+
     /// 実効ターゲット FPS（`METAPHOR_FPS` / `SketchConfig.fps` / `frameRate()` 解決後）。
     /// SketchRunner がレンダーループ構成時と `frameRate()` 変更時に更新します。
     var targetFPS: Int = 60

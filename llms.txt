@@ -73,6 +73,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var mouseY: Float { get }` -- 現在のマウス y 座標。
 - `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。
 - `var params: ParameterStore { get }` -- `@Param` で宣言されたパラメータのストア。
+- `var performance: SketchPerformance { get }` -- 実測 fps・フレーム時間・メモリ・CPU・熱状態のスナップショット。
 - `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
 - `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
 - `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
@@ -546,6 +547,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
 - `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, preserveClock: Bool = false, shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
+### `struct SketchPerformance` -- スケッチ自身が読める実行時パフォーマンスの一式（Issue #692）。
+
+- `let cpuPercent: Float?` -- 直近サンプルからの平均 CPU 使用率（%）。**1 コア = 100%** で、
+- `let fps: Float?` -- 直近およそ 1 秒の**実測**フレームレート。
+- `let frameTimeMs: SketchPerformance.FrameTime?` -- 直近ウィンドウのフレーム時間。算出不能なときは `nil`。
+- `let max: Float` -- 直近ウィンドウの最大フレーム時間（ミリ秒）。スパイクの検出用。
+- `let mean: Float` -- 直近ウィンドウの平均フレーム時間（ミリ秒）。
+- `let memoryMB: Float?` -- 自プロセスの phys_footprint（MB）。Activity Monitor の「メモリ」に相当します。
+- `let targetFPS: Int` -- 目標フレームレート（`frameRate()` / 環境変数 `METAPHOR_FPS` の解決結果）。
+- `let thermalState: ThermalState` -- システムの熱状態。
+
 ### `struct SketchWindowConfig` -- セカンダリスケッチウィンドウの設定。
 
 - `var fps: Int` -- 目標フレームレート。
@@ -979,6 +991,19 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case bottom`
 - `case center`
 - `case top`
+
+### `enum ThermalState` -- システムの熱状態。負荷を自分で落とす（自己 degrade）ときの判断材料です。
+
+- `case critical` -- 危険。表示を維持することより発熱を下げることが優先される。
+- `case fair` -- やや上昇。ファンが回り始める程度。
+- `case nominal` -- 平常。
+- `case serious` -- 高い。システムが省電力へ寄せ始めるので、負荷を落とす頃合い。
+- `case unknown` -- 将来の OS が返す未知の状態。
+- `var hashValue: Int { get }`
+- `init(from decoder: any Decoder) throws` -- Creates a new instance by decoding from the given decoder, when the
+- `init?(rawValue: String)`
+- `func encode(to encoder: any Encoder) throws` -- Encodes this value into the given encoder, when the type's `RawValue`
+- `func hash(into hasher: inout Hasher)`
 
 ### `enum VertexLayout` -- Metal レンダーパイプライン用の定義済み頂点属性レイアウト
 
@@ -1566,6 +1591,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
 - `let orbitCamera: OrbitCamera` -- オービットカメラインスタンス。
 - `let params: ParameterStore` -- `@Param` で宣言されたパラメータのストア（``gui`` の兄弟）。
+- `var performance: SketchPerformance { get }` -- 実測 fps・フレーム時間・メモリ・CPU・熱状態のスナップショット。
 - `let renderer: MetaphorRenderer` -- 基盤のレンダラー（上級者向け）。
 - `let resourceLoader: ResourceLoader` -- バックグラウンドでの画像/モデル読み込み用の非同期リソースローダー。
 - `var time: Float` -- スケッチ開始からの経過時間（秒単位）。
