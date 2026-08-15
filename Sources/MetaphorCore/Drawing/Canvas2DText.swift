@@ -6,15 +6,25 @@ import simd
 extension Canvas2D {
 
     /// テキストサイズを設定します。
+    ///
+    /// Processing と同じく、行間（``textLeading(_:)``）は新しいフォントサイズから
+    /// 導出される既定値へ戻ります。行間を指定するときは `textSize()` の**後**に
+    /// ``textLeading(_:)`` を呼んでください。
+    ///
     /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         currentTextSize = size
+        currentTextLeading = nil
     }
 
     /// フォントファミリーを設定します。
+    ///
+    /// ``textSize(_:)`` と同じく行間は既定値へ戻ります。
+    ///
     /// - Parameter family: フォントファミリー名。
     public func textFont(_ family: String) {
         currentFontFamily = family
+        currentTextLeading = nil
     }
 
     /// 読み込み済みのフォントを設定します。
@@ -25,6 +35,7 @@ extension Canvas2D {
     /// - Parameter font: ``SketchContext/loadFont(_:cache:)`` が返したフォント。
     public func textFont(_ font: MFont) {
         currentFontFamily = font.postScriptName
+        currentTextLeading = nil
     }
 
     /// テキストの揃え方を設定します。
@@ -36,17 +47,50 @@ extension Canvas2D {
         currentTextAlignV = vertical
     }
 
-    /// テキストの行間を設定します（1.0 = 詰め、1.2 = デフォルト）。
-    /// - Parameter leading: 行間の倍率。
+    /// テキストの行間（行の高さ）を設定します。
+    ///
+    /// Processing と同じく**ピクセル単位**で、隣り合う行のベースライン同士の距離に
+    /// なります。``textSize(_:)`` / ``textFont(_:)`` を呼ぶと、新しいフォントから
+    /// 導出される既定値へ戻ります。
+    ///
+    /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {
         currentTextLeading = leading
     }
 
+    /// 実際に使う行の高さ（ピクセル単位）。
+    ///
+    /// ``textLeading(_:)`` で明示されていればその値、していなければ Processing の
+    /// `handleTextSize` と同じく `(ascent + descent) * 1.275` を使います。
+    var effectiveTextLeading: Float {
+        if let leading = currentTextLeading { return leading }
+        let ascent = textRenderer.textAscent(
+            fontSize: currentTextSize, fontFamily: currentFontFamily)
+        let descent = textRenderer.textDescent(
+            fontSize: currentTextSize, fontFamily: currentFontFamily)
+        return (ascent + descent) * 1.275
+    }
+
     /// テキスト文字列のレンダリング後の幅を返します。
+    ///
+    /// 改行を含む文字列では、Processing と同じく**最も長い行**の幅を返します。
+    ///
     /// - Parameter string: 計測するテキスト。
     /// - Returns: ピクセル単位の幅。
     public func textWidth(_ string: String) -> Float {
-        textRenderer.textWidth(string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
+        Self.lines(of: string)
+            .map { textRenderer.textWidth(string: $0, fontSize: currentTextSize, fontFamily: currentFontFamily) }
+            .max() ?? 0
+    }
+
+    /// 文字列を改行で行へ分けます（`\r\n` と `\r` も改行として扱います）。
+    ///
+    /// 空行は残します — 空行ぶんだけ行送りする必要があるためです。
+    static func lines(of string: String) -> [String] {
+        string
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .components(separatedBy: "\n")
     }
 
     /// 現在のフォントのアセントを返します。
@@ -96,12 +140,44 @@ extension Canvas2D {
     }
 
     /// 指定位置にテキスト文字列を描画します。
+    ///
+    /// 改行を含む文字列は行ごとに分けて描かれ、行の高さは ``textLeading(_:)`` に従います。
+    /// 水平方向の揃えは行ごとの幅で、垂直方向の揃えは全行を 1 つのブロックとみなして
+    /// 決まります（``TextAlignV/baseline`` は 1 行目のベースラインが `y` に来ます）。
+    ///
     /// - Parameters:
     ///   - string: 描画するテキスト。
     ///   - x: x座標。
     ///   - y: y座標。
     public func text(_ string: String, _ x: Float, _ y: Float) {
         svgRecorder?.recordUnsupported("text() (planned: textToPoints in Epic F)")
+        guard !string.isEmpty else { return }
+
+        let lines = Self.lines(of: string)
+        guard lines.count > 1 else {
+            drawTextLine(lines[0], x, y)
+            return
+        }
+
+        // 2 行目以降がぶら下がるぶん、ブロック全体を垂直方向の揃えに合わせて持ち上げる。
+        // 1 行のときは持ち上げ量が 0 になり、単一行の配置と完全に一致する。
+        let leading = effectiveTextLeading
+        let hangingHeight = Float(lines.count - 1) * leading
+        var lineY = y
+        switch currentTextAlignV {
+        case .top, .baseline: break
+        case .center: lineY -= hangingHeight / 2
+        case .bottom: lineY -= hangingHeight
+        }
+
+        for line in lines {
+            if !line.isEmpty { drawTextLine(line, x, lineY) }
+            lineY += leading
+        }
+    }
+
+    /// 改行を含まない 1 行を描画します（``text(_:_:_:)`` の実体）。
+    private func drawTextLine(_ string: String, _ x: Float, _ y: Float) {
         guard !string.isEmpty else { return }
 
         if let (atlasTex, glyphs) = textRenderer.textGlyphs(
@@ -144,6 +220,10 @@ extension Canvas2D {
     }
 
     /// バウンディングボックス内に自動改行付きでテキストを描画します。
+    ///
+    /// 行の高さは ``textLeading(_:)`` に従い、箱の高さに入り切らない行は
+    /// Processing と同じく描かれません（箱でクリップされます）。
+    ///
     /// - Parameters:
     ///   - string: 描画するテキスト。
     ///   - x: バウンディングボックスのx座標。
@@ -159,7 +239,7 @@ extension Canvas2D {
             fontFamily: currentFontFamily,
             maxWidth: w,
             maxHeight: h,
-            leading: currentTextLeading,
+            leading: effectiveTextLeading,
             frameCount: frameCounter
         ) else { return }
 

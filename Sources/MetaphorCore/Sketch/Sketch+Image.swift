@@ -384,6 +384,9 @@ extension Sketch {
 
     /// 以降のテキスト描画のテキストサイズを設定します。
     ///
+    /// Processing と同じく、行間（``textLeading(_:)``）はフォントから導出される
+    /// 既定値へ戻ります。行間を指定するときはこの後に呼んでください。
+    ///
     /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         context.textSize(size)
@@ -412,7 +415,10 @@ extension Sketch {
         context.textAlign(horizontal, vertical)
     }
 
-    /// 複数行テキストの行間を設定します。
+    /// 複数行テキストの行間（行の高さ）を設定します。
+    ///
+    /// 隣り合う行のベースライン同士の距離です。``textSize(_:)`` / ``textFont(_:)``
+    /// を呼ぶと既定値へ戻るので、この後に呼んでください。
     ///
     /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {
@@ -420,6 +426,8 @@ extension Sketch {
     }
 
     /// 指定位置にテキスト文字列を描画します。
+    ///
+    /// 改行 (`\n`) を含む文字列は複数行として描かれます（行の高さは ``textLeading(_:)``）。
     ///
     /// - Parameters:
     ///   - string: 描画するテキスト。
@@ -430,6 +438,8 @@ extension Sketch {
     }
 
     /// バウンディングボックス内にテキスト文字列を描画します。
+    ///
+    /// 箱の幅で自動的に折り返します。箱の高さに入り切らない行は描かれません。
     ///
     /// - Parameters:
     ///   - string: 描画するテキスト。
@@ -442,6 +452,8 @@ extension Sketch {
     }
 
     /// 現在のフォント設定でテキスト文字列の幅を計算します。
+    ///
+    /// 改行を含む文字列では最も長い行の幅を返します。
     ///
     /// - Parameter string: 計測するテキスト。
     /// - Returns: テキストの幅（ピクセル単位）。

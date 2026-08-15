@@ -447,7 +447,7 @@ final class TextRenderer {
     ///   - fontFamily: フォントファミリー名。
     ///   - maxWidth: 行折り返しの最大幅。
     ///   - maxHeight: 最大高さ。0で無制限。
-    ///   - leading: 行間隔の倍率。
+    ///   - leading: 行の高さ（ピクセル単位）。
     ///   - frameCount: LRU トラッキング用の現在のフレーム番号。
     /// - Returns: キャッシュされたテキストエントリ。レンダリングに失敗した場合は nil。
     func textTextureMultiline(
@@ -741,9 +741,12 @@ final class TextRenderer {
     ) -> CachedText? {
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
 
-        // 段落スタイル（行間隔）
+        // 段落スタイル（行の高さ）。leading はピクセル単位の行の高さなので、最小と最大を
+        // 揃えて固定する（lineSpacing で「足す」形だと、leading が自然な行高より小さい
+        // ときに詰められず、3 引数版の text() と行ピッチがずれる）。
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = CGFloat(fontSize) * CGFloat(leading - 1.0)
+        paragraphStyle.minimumLineHeight = CGFloat(leading)
+        paragraphStyle.maximumLineHeight = CGFloat(leading)
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,

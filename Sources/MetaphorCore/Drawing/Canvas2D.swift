@@ -156,7 +156,9 @@ public final class Canvas2D: CanvasStyle {
     var currentFontFamily: String = "Helvetica"
     var currentTextAlignH: TextAlignH = .left
     var currentTextAlignV: TextAlignV = .baseline
-    var currentTextLeading: Float = 1.2
+    /// 明示された行の高さ（ピクセル単位）。nil ならフォントから導出します
+    /// （``Canvas2D/effectiveTextLeading``）。`textSize()` / `textFont()` で nil に戻ります。
+    var currentTextLeading: Float?
     let textRenderer: TextRenderer
     var frameCounter: Int = 0
 
@@ -246,7 +248,7 @@ public final class Canvas2D: CanvasStyle {
         var fontFamily: String
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
-        var textLeading: Float
+        var textLeading: Float?
         var curveDetail: Int
         var curveTightness: Float
         var strokeCap: StrokeCap
