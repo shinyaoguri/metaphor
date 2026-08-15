@@ -337,7 +337,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Monjori](../../Examples/Topics/Shaders/Monjori) (Shaders) Tags: cpu-approximation, monjori, shaders, topics.
 - [Nebula](../../Examples/Topics/Shaders/Nebula) (Shaders) Tags: cpu-approximation, nebula, shaders, topics.
 - [SepBlur](../../Examples/Topics/Shaders/SepBlur) (Shaders) Tags: cpu-approximation, sepblur, shaders, topics.
-- [ToonShading](../../Examples/Topics/Shaders/ToonShading) (Shaders) Tags: cpu-approximation, shaders, toonshading, topics.
+- [ToonShading](../../Examples/Topics/Shaders/ToonShading) (Shaders) Tags: shader, shaders, toonshading, topics.
 - [Flocking](../../Examples/Topics/Simulate/Flocking) [Advanced] (Simulate) -- An implementation of Craig Reynold's Boids program to simulate the flocking behavior of birds. Each boid steers itself based on rules of avoidance, alignment, and coherence. Click the mouse to add a new boid. Tags: flocking, interaction, simulate, topics.
 - [Forces (Gravity and Fluid Resistence) with Vectors](../../Examples/Topics/Simulate/ForcesWithVectors) [Advanced] (Simulate) -- Demonstration of multiple forces acting on bodies. Bodies experience gravity continuously and fluid resistance when in simulated water. Tags: forceswithvectors, physics, simulate, topics.
 - [GravitationalAttraction3D](../../Examples/Topics/Simulate/GravitationalAttraction3D) (Simulate) Tags: 3d, gravitationalattraction3d, simulate, topics.

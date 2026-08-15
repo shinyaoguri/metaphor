@@ -1409,6 +1409,13 @@
       "height": 360,
       "frame": 100
     },
+    "Examples/Topics/Shaders/ToonShading": {
+      "origin": "captured",
+      "sourceHash": "0b55bdd80497c9fa3c7b3ed5599021df0c9ce730f59acda7530e67cc222ca4cc",
+      "width": 640,
+      "height": 360,
+      "frame": 78
+    },
     "Examples/Topics/Simulate/Flocking": {
       "origin": "processing",
       "width": 1152,
