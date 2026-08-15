@@ -3,20 +3,23 @@
 // 生成元: Sources/MetaphorCore/Shaders/Metal/*.h
 // 再生成: python3 scripts/generate-shader-sources.py
 //
-// 公開 API（`BuiltinShaders.canvas3DStructs` など）とその doc コメントは
-// `BuiltinShaders.swift` 側にあります。ここが持つのは中身だけです。
+// 公開 API（`BuiltinShaders.canvas3DStructs` / `PostProcessShaders.commonStructs`
+// など）とその doc コメントは `BuiltinShaders.swift` / `PostProcessShaders.swift`
+// 側にあります。ここが持つのは中身だけです。
 
-/// ``BuiltinShaders`` が公開する MSL 前文の実体。
+/// ``BuiltinShaders`` / ``PostProcessShaders`` が公開する MSL 前文の実体。
 ///
 /// 組み込みシェーダーと同じ `Shaders/Metal/*.h` から生成されるので、ライティングの
-/// 実装を直せばカスタムマテリアルシェーダーへ配られる前文も一緒に動きます（#707）。
+/// 実装や構造体のレイアウトを直せばカスタムシェーダーへ配られる前文も一緒に
+/// 動きます（#707 / #718）。
 ///
-/// 各定数は `#ifndef` ガードで包まれています。``BuiltinShaders/canvas3DPreamble`` は
-/// `createMaterial()` が必ず前置するので、以前の作法どおり自分でも前置している
-/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713）。
+/// 各定数は `#ifndef` ガードで包まれています。前文は `createMaterial()` /
+/// `createPostEffect()` が必ず前置するので、以前の作法どおり自分でも前置している
+/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713 / #718）。
 ///
 /// 定数そのものは `#include <metal_stdlib>` と `using namespace metal;` を持ちません
-/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble``）。
+/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble`` や
+/// ``PostProcessShaders/postProcessPreamble``）。
 enum BuiltinShadersGenerated {
 
     /// 生成元: MetaphorCanvas3DTypes.h
@@ -625,6 +628,44 @@ static inline float3 calculateBlinnPhongLighting(
 ) {
     return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
 }
+
+#endif
+"""#
+
+    /// 生成元: MetaphorPostProcessTypes.h
+    static let postProcessStructs = #"""
+#ifndef METAPHOR_PRELUDE_POSTPROCESS_STRUCTS
+#define METAPHOR_PRELUDE_POSTPROCESS_STRUCTS
+
+// ポストプロセスが GPU へ渡す構造体。Swift 側の正本は `PostProcess/PostEffect.swift`
+// （`PostProcessParams`）。
+//
+// このヘッダはそのまま `PostProcessShaders.commonStructs` として、ユーザーの
+// カスタムポストエフェクトへ配られる（`scripts/generate-shader-sources.py` が生成）。
+// **中身を変えると公開される前文も変わる**ので、フィールドの増減は Swift 側と
+// `ShaderPreludeTests` のレイアウト検査に必ず揃えること。
+
+// 組み込みのポストプロセス頂点シェーダーの出力 = カスタムフラグメントシェーダーの
+// `[[stage_in]]`。`texCoord` は 0〜1 の画面座標。
+struct PPVertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+};
+
+// metaphor が `buffer(0)` へ自動供給する組み込みパラメータ。
+struct PostProcessParams {
+    float2 texelSize;
+    float  intensity;
+    float  threshold;
+    float  brightness;
+    float  contrast;
+    float  saturation;
+    float  temperature;
+    float  radius;
+    float  smoothness;
+    float  _pad0;
+    float  _pad1;
+};
 
 #endif
 """#

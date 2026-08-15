@@ -6,7 +6,10 @@ extension SketchContext {
 
     /// MSL フラグメントシェーダーソースからカスタムポストプロセスエフェクトを作成します。
     ///
-    /// シェーダーソースには `PostProcessShaders.commonStructs` をプレフィクスとして含める必要があります。
+    /// 前文（stdlib + `PPVertexOut` / `PostProcessParams`）は**自動で足されます**（#718）。
+    /// ソースに書くのはフラグメント関数だけで、``PostProcessShaders/commonStructs`` が
+    /// 配る型を自分で定義しないでください。
+    ///
     /// - Parameters:
     ///   - name: エフェクト名（ライブラリキーとして使用）。
     ///   - source: MSL シェーダーソースコード。
@@ -17,7 +20,7 @@ extension SketchContext {
     ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         let key = "user.posteffect.\(name)"
-        try renderer.shaderLibrary.register(source: source, as: key)
+        try renderer.shaderLibrary.register(source: PostEffectSource.complete(source), as: key)
         guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {
             throw MetaphorError.shaderNotFound(fragmentFunction)
         }
@@ -31,10 +34,8 @@ extension SketchContext {
     /// シェーダのまま描き続け、エラーだけがコンソールに出ます。無効化は
     /// ``SketchConfig/shaderHotReload`` か環境変数 `METAPHOR_SHADER_HOT_RELOAD=0`。
     ///
-    /// ファイルの中身は**そのまま**コンパイルされます（``createMaterialFromFile(path:fragmentFunction:vertexFunction:)``
-    /// と同じ扱い。前文を自動で足すのは 2D の ``loadShader(_:fragment:)`` だけ）。
-    /// `PPVertexOut` / `PostProcessParams` を使うなら、``PostProcessShaders/commonStructs``
-    /// と同じ定義をファイルの先頭に置いてください。
+    /// ソース経路（``createPostEffect(name:source:fragmentFunction:)``）と同じく、前文は
+    /// **自動で足されます**（#718）。ファイルに書くのはフラグメント関数だけです。
     ///
     /// - Parameters:
     ///   - name: エフェクト名（ライブラリキーとして使用）。
@@ -49,7 +50,16 @@ extension SketchContext {
         name: String, path: String, fragmentFunction: String
     ) throws -> CustomPostEffect {
         let key = "user.posteffect.\(name)"
-        try renderer.shaderLibrary.registerFromFile(path: path, as: key)
+        // `registerFromFile` ではなく自分で読むのは、前文を足してから登録するため
+        // （2D の `loadShader` / 3D の `createMaterialFromFile` と同じ形）。
+        let source: String
+        do {
+            source = try String(contentsOfFile: path, encoding: .utf8)
+        } catch {
+            throw MetaphorError.shaderSourceLoadFailed(
+                path: path, detail: error.localizedDescription)
+        }
+        try renderer.shaderLibrary.register(source: PostEffectSource.complete(source), as: key)
         guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {
             throw MetaphorError.shaderNotFound(fragmentFunction)
         }
@@ -196,5 +206,23 @@ extension SketchContext {
     /// 3D モデル座標のスクリーン座標を返します。
     public func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
         canvas3D.screenPosition(x, y, z)
+    }
+}
+
+// MARK: - カスタムポストエフェクトのソース組み立て (#718)
+
+/// カスタムポストエフェクトのソースへ前文を足す。
+enum PostEffectSource {
+    /// 前文（stdlib + `PPVertexOut` / `PostProcessParams`）を先頭へ足した完全な
+    /// ソースを返します。
+    ///
+    /// **常に足します。**2D（``Shader2DSource/complete(_:)``）・3D
+    /// （``Shader3DSource/complete(_:)``）と同じ判断で、「ソースに前文があれば
+    /// 素通しする」という条件付きの規約は採りません。postFX は前文を自分で前置する
+    /// 作法（`PostProcessShaders.commonStructs + ...`）が長く案内されていたので、
+    /// 二重に前置されるケースが必ず出ますが、前文そのものが `#ifndef` ガードを
+    /// 持つため 2 回目は空になります（``PostProcessShaders/postProcessPreamble``）。
+    static func complete(_ source: String) -> String {
+        PostProcessShaders.postProcessPreamble + "\n\n" + source
     }
 }

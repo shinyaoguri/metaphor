@@ -126,8 +126,8 @@ struct CommonStructsTests {
     @Test("commonStructs contains required Metal declarations")
     func containsRequiredDeclarations() {
         let src = PostProcessShaders.commonStructs
-        #expect(src.contains("#include <metal_stdlib>"))
-        #expect(src.contains("using namespace metal"))
+        // 構造体だけを持つ（stdlib と using は前文側 = postProcessPreamble の担当）。
+        #expect(!src.contains("#include <metal_stdlib>"))
         #expect(src.contains("struct PPVertexOut"))
         #expect(src.contains("struct PostProcessParams"))
         #expect(src.contains("float4 position [[position]]"))
@@ -137,6 +137,94 @@ struct CommonStructsTests {
         #expect(src.contains("float  threshold"))
         #expect(src.contains("float  radius"))
         #expect(src.contains("float  smoothness"))
+    }
+
+    @Test("postProcessPreamble adds stdlib on top of commonStructs")
+    func preambleAddsStdlib() {
+        let src = PostProcessShaders.postProcessPreamble
+        #expect(src.contains("#include <metal_stdlib>"))
+        #expect(src.contains("using namespace metal"))
+        #expect(src.contains(PostProcessShaders.commonStructs))
+    }
+}
+
+// MARK: - 前文の自動付与（#718）
+
+@Suite("CustomPostEffect Preamble", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct CustomPostEffectPreambleTests {
+
+    /// 前文を 1 行も書かない、フラグメント関数だけのソース。
+    private static let bareSource = """
+    fragment float4 bareEffect(
+        PPVertexOut in [[stage_in]],
+        texture2d<float> tex [[texture(0)]],
+        constant PostProcessParams &params [[buffer(0)]]
+    ) {
+        constexpr sampler s(filter::linear);
+        float4 color = tex.sample(s, in.texCoord);
+        return float4(color.rgb * params.intensity, color.a);
+    }
+    """
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        return SketchContext(
+            renderer: renderer,
+            canvas: try Canvas2D(renderer: renderer),
+            canvas3D: try Canvas3D(renderer: renderer),
+            input: renderer.input
+        )
+    }
+
+    @Test("前文を書かないフラグメント関数だけのソースが通る")
+    func bareFragmentCompiles() throws {
+        let context = try makeContext()
+        let effect = try context.createPostEffect(
+            name: "bare", source: Self.bareSource, fragmentFunction: "bareEffect")
+        #expect(effect.fragmentFunctionName == "bareEffect")
+    }
+
+    @Test("自分で前文を前置した従来形のソースも通る")
+    func selfPrefixedSourceStillCompiles() throws {
+        // #718 以前に案内していた書き方。ガードが効いていないと、前文が 2 回現れて
+        // `redefinition of 'PPVertexOut'` で落ちる。
+        let legacy = PostProcessShaders.postProcessPreamble + """
+
+
+        \(Self.bareSource)
+        """
+        let context = try makeContext()
+        let effect = try context.createPostEffect(
+            name: "legacy", source: legacy, fragmentFunction: "bareEffect")
+        #expect(effect.fragmentFunctionName == "bareEffect")
+    }
+
+    @Test("ファイルから読む経路でも前文が足される")
+    func fileSourceGetsPreamble() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("metaphor-postfx-preamble-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("bare.metal")
+        try Self.bareSource.write(to: file, atomically: true, encoding: .utf8)
+
+        let context = try makeContext()
+        let effect = try context.createPostEffectFromFile(
+            name: "bareFile", path: file.path, fragmentFunction: "bareEffect")
+        #expect(effect.fragmentFunctionName == "bareEffect")
+    }
+
+    @Test("読めないパスは shaderSourceLoadFailed になる")
+    func missingFileThrows() throws {
+        let context = try makeContext()
+        #expect(throws: MetaphorError.self) {
+            _ = try context.createPostEffectFromFile(
+                name: "missing",
+                path: "/nonexistent/metaphor-\(UUID().uuidString).metal",
+                fragmentFunction: "bareEffect")
+        }
     }
 }
 
@@ -151,7 +239,7 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.commonStructs + """
+        let source = PostProcessShaders.postProcessPreamble + """
 
         fragment float4 testCustomInvert(
             PPVertexOut in [[stage_in]],
@@ -176,7 +264,7 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.commonStructs + """
+        let source = PostProcessShaders.postProcessPreamble + """
 
         struct MyCustomParams {
             float amount;
@@ -208,7 +296,7 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.commonStructs + """
+        let source = PostProcessShaders.postProcessPreamble + """
 
         fragment float4 testBuildPipeline(
             PPVertexOut in [[stage_in]],
@@ -241,7 +329,7 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.commonStructs + """
+        let source = PostProcessShaders.postProcessPreamble + """
 
         fragment float4 testChainEffect(
             PPVertexOut in [[stage_in]],
@@ -289,7 +377,7 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.commonStructs + """
+        let source = PostProcessShaders.postProcessPreamble + """
 
         fragment float4 existingFunction(
             PPVertexOut in [[stage_in]],

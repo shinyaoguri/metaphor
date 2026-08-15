@@ -1,24 +1,8 @@
-#include <metal_stdlib>
-using namespace metal;
+#include "MetaphorPostProcessTypes.h"
 
-struct PPVertexOut {
-    float4 position [[position]];
-    float2 texCoord;
-};
-
-struct PostProcessParams {
-    float2 texelSize;
-    float  intensity;
-    float  threshold;
-    float  brightness;
-    float  contrast;
-    float  saturation;
-    float  temperature;
-    float  radius;
-    float  smoothness;
-    float  _pad0;
-    float  _pad1;
-};
+// `PPVertexOut` / `PostProcessParams` は `MetaphorPostProcessTypes.h`（= カスタム
+// ポストエフェクトへ配る前文）にある。組み込みとカスタムで stage_in と
+// パラメータのレイアウトがずれないよう、定義は 1 箇所に置く。
 
 // MARK: - Invert
 
