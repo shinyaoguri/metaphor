@@ -194,6 +194,53 @@ public final class TextureManager {
         try TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
     }
 
+    // MARK: - カラーテクスチャの差し替え（オフスクリーンバッファの copy-on-write、#745）
+
+    /// 現在のカラーテクスチャと同じ構成（フォーマット・サイズ・用途）で 1 枚作ります。
+    ///
+    /// `Graphics` / `Graphics3D` が「外へ渡したテクスチャは凍結し、次のパスは別の
+    /// テクスチャへ描く」copy-on-write を行うために使います（``replaceColorTexture(_:)``）。
+    ///
+    /// - Returns: 差し替え先として使える新しいカラーテクスチャ
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
+    public func makeMatchingColorTexture() throws -> MTLTexture {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: colorTexture.pixelFormat,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .private
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
+        }
+        return texture
+    }
+
+    /// 描画先のカラーテクスチャを差し替えます。
+    ///
+    /// リサイズは新しいインスタンスの作成で行う（イミュータブル）方針の例外で、
+    /// **同じ寸法・同じフォーマットのまま描き先だけを回す**ための入り口です。
+    /// オフスクリーンバッファを同一フレーム内で描き換えても、既に貼った絵が
+    /// 遡って変わらないようにするために使います（#745）。
+    ///
+    /// - Parameter texture: 新しい描画先。``makeMatchingColorTexture()`` で作ったもの。
+    public func replaceColorTexture(_ texture: MTLTexture) {
+        guard texture.width == width, texture.height == height,
+              texture.pixelFormat == colorTexture.pixelFormat else {
+            metaphorWarning("replaceColorTexture requires a texture of the same size and format. Ignoring.")
+            return
+        }
+        colorTexture = texture
+        if sampleCount > 1 {
+            // MSAA はマルチサンプルテクスチャへ描いて colorTexture へリゾルブする
+            renderPassDescriptor.colorAttachments[0].resolveTexture = texture
+        } else {
+            renderPassDescriptor.colorAttachments[0].texture = texture
+        }
+    }
+
     /// レンダーパスデスクリプタのクリアカラーを更新します。
     ///
     /// - Parameter color: 新しいクリアカラー

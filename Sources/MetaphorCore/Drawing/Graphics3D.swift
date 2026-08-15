@@ -36,6 +36,9 @@ public final class Graphics3D {
     private let inflightSemaphore = DispatchSemaphore(value: inflightCount)
     private var bufferIndex = 0
 
+    /// 描画先テクスチャの copy-on-write ローテーション（#745）。
+    private let targetRotator: OffscreenTargetRotator
+
     /// 幅をピクセル単位で返します。
     public var width: Float { canvas3D.width }
 
@@ -43,7 +46,13 @@ public final class Graphics3D {
     public var height: Float { canvas3D.height }
 
     /// 内部カラーテクスチャを返します。
-    public var texture: MTLTexture { textureManager.colorTexture }
+    ///
+    /// 返したテクスチャの内容は次の ``beginDraw(time:)`` で凍結されます（描き先が
+    /// 別のテクスチャへ回るため、`image()` で貼った絵が後から書き換わらない。#745）。
+    public var texture: MTLTexture {
+        targetRotator.markHandedOut()
+        return textureManager.colorTexture
+    }
 
     // MARK: - Initialization
 
@@ -70,6 +79,13 @@ public final class Graphics3D {
             height: Float(height),
             sampleCount: 1
         )
+        self.targetRotator = OffscreenTargetRotator(textureManager: textureManager)
+    }
+
+    /// 描画先テクスチャの使い回し判定に使うフレーム番号を配線します
+    /// （`SketchContext.createGraphics3D` から呼ばれます）。
+    func wireFrameCount(_ provider: @escaping () -> UInt32) {
+        targetRotator.frameCountProvider = provider
     }
 
     // MARK: - Draw Lifecycle
@@ -79,6 +95,9 @@ public final class Graphics3D {
     public func beginDraw(time: Float = 0) {
         // endDraw 漏れの不均衡呼び出しでもセマフォが詰まらないよう先に閉じる
         if commandBuffer != nil { endDraw() }
+
+        // 前のパスの絵を外へ渡していたら、描き先を別のテクスチャへ回す（#745）
+        targetRotator.rotateIfNeeded(commandQueue: commandQueue)
 
         // GPU が inflightCount フレーム以上遅れている場合はここでブロックし、
         // GPU がまだ読んでいるバッファスロットへの上書きを防ぐ
@@ -129,12 +148,18 @@ public final class Graphics3D {
     // MARK: - MImage Conversion
 
     /// オフスクリーンテクスチャを MImage として返します。
+    ///
+    /// `image()` で貼ると**そのとき見えていた内容**が描かれます。同じバッファを同一
+    /// フレーム内で描き換えて何度でも貼れます（描き換えるたびに描き先が別のテクスチャへ
+    /// 回るため、内部テクスチャは描き換えた回数ぶん増えます。#745）。
+    ///
     /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
         let image = MImage(texture: textureManager.colorTexture)
         // リードバックを描画と同じキューに載せ、endDraw(wait: false) 直後の
         // loadPixels でも commit 順序で最新内容が読めるようにする
         image.preferredReadbackQueue = commandQueue
+        targetRotator.markHandedOut(image)
         return image
     }
 

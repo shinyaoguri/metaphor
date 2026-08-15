@@ -280,6 +280,18 @@ extension SketchContext {
     }
 
     /// オフスクリーン 2D 描画バッファを作成します。
+    ///
+    /// 1 枚を同一フレーム内で描き換えて何度でも貼れます。`image()` で描かれるのは
+    /// **貼った時点の内容**です（描き換えるたびに描き先が別のテクスチャへ回るため、
+    /// 使い回した回数ぶん内部テクスチャが増えます。#745）。
+    ///
+    /// ```swift
+    /// pg.beginDraw(); pg.background(60, 120, 240); pg.endDraw()
+    /// image(pg, 100, 100)   // 青
+    /// pg.beginDraw(); pg.background(60, 220, 120); pg.endDraw()
+    /// image(pg, 300, 100)   // 緑（100,100 は青のまま）
+    /// ```
+    ///
     /// - Parameters:
     ///   - w: バッファの幅（ピクセル単位）。
     ///   - h: バッファの高さ（ピクセル単位）。
@@ -307,7 +319,7 @@ extension SketchContext {
     ///   - h: バッファの高さ（ピクセル単位）。
     /// - Returns: 新しい Graphics3D インスタンス。失敗時は nil。
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
-        try? Graphics3D(
+        let graphics = try? Graphics3D(
             device: renderer.device,
             commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
@@ -315,6 +327,11 @@ extension SketchContext {
             width: w,
             height: h
         )
+        // 描画先テクスチャを使い回してよい時期の判定に使う（#745）
+        graphics?.wireFrameCount { [weak self] in
+            UInt32(truncatingIfNeeded: self?.frameCount ?? 0)
+        }
+        return graphics
     }
 
     // MARK: - Camera Capture
@@ -401,6 +418,10 @@ extension SketchContext {
     }
 
     /// Graphics バッファを指定位置に描画します。
+    ///
+    /// 描かれるのは**呼んだ時点の内容**です。同じバッファを描き換えて同一フレーム内で
+    /// 何度でも貼れます（#745）。
+    ///
     /// - Parameters:
     ///   - pg: オフスクリーングラフィックスバッファ。
     ///   - x: x 座標。
@@ -421,6 +442,10 @@ extension SketchContext {
     }
 
     /// Graphics3D バッファを指定位置に描画します。
+    ///
+    /// 描かれるのは**呼んだ時点の内容**です。同じバッファを描き換えて同一フレーム内で
+    /// 何度でも貼れます（#745）。
+    ///
     /// - Parameters:
     ///   - pg: オフスクリーン 3D グラフィックスバッファ。
     ///   - x: x 座標。
