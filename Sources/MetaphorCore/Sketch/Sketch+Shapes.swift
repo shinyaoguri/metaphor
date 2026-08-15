@@ -495,12 +495,16 @@ extension Sketch {
         context.curveTightness(t)
     }
 
-    /// 現在のシェイプ内にコンター（穴）の定義を開始します。
+    /// 現在のシェイプ内にコンター（穴）の定義を開始します（2D シェイプ専用）。
+    ///
+    /// `beginShape3D()` で組む 3D シェイプでは穴を開けられません（呼んでも何も起きず、
+    /// 初回だけ警告が出ます）。3D で穴の開いた面が要るときは、内側と外側のあいだの
+    /// 輪帯を自分で三角形に割ってください。
     public func beginContour() {
         context.beginContour()
     }
 
-    /// 現在のコンター定義を終了します。
+    /// 現在のコンター定義を終了します（2D シェイプ専用）。
     public func endContour() {
         context.endContour()
     }

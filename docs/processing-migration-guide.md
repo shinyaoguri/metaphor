@@ -160,7 +160,7 @@ free functions noted as such.
 | `vertex(x, y)` / `vertex(x, y, u, v)` | `vertex(x, y)` / `vertex(x, y, u, v)`, plus `vertex(x, y, color)` |
 | `bezierVertex(…)` / `curveVertex(x, y)` | `bezierVertex(cx1, cy1, cx2, cy2, x, y)` / `curveVertex(x, y)` |
 | `quadraticVertex(…)` | — not implemented |
-| `beginContour()` / `endContour()` | `beginContour()` / `endContour()` |
+| `beginContour()` / `endContour()` | `beginContour()` / `endContour()` — 2D shapes only; on a 3D shape they warn and do nothing ([#736](https://github.com/shinyaoguri/metaphor/issues/736)) |
 | `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` |
 | `rectMode(CORNER/CORNERS/CENTER/RADIUS)` | `rectMode(.corner)` / `.corners` / `.center` / `.radius` — default `.corner` |
 | `ellipseMode(…)` | `ellipseMode(.center)` / `.radius` / `.corner` / `.corners` — default `.center` |

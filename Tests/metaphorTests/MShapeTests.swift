@@ -348,6 +348,46 @@ struct MShapeBuilderTests {
         #expect(s.vertices2D.count == 8)
         #expect(s.contourRanges.count == 1)
         #expect(s.contourRanges[0] == 4..<8)
+        #expect(s.didWarnContourIn3D == false, "2D シェイプの contour は正しい使い方なので警告しない")
+    }
+
+    @Test("contour on a 3D shape warns instead of silently doing nothing")
+    func contourIn3DWarns() {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        // 外側の四角（3D 頂点なので kind は .path3D になる）
+        s.vertex(0, 0, 0)
+        s.vertex(200, 0, 0)
+        s.vertex(200, 200, 0)
+        s.vertex(0, 200, 0)
+        // 穴を開けたつもりのコンター（3D では効かない）
+        s.beginContour()
+        s.vertex(50, 50, 0)
+        s.vertex(150, 50, 0)
+        s.vertex(150, 150, 0)
+        s.endContour()
+        s.endShape(.close)
+
+        #expect(s.didWarnContourIn3D, "3D シェイプの beginContour() は黙って無視せず警告する")
+        #expect(s.contourRanges.isEmpty, "3D 頂点は vertices2D に入らないのでコンター範囲もできない")
+        #expect(s.isInContour == false, "3D では 2D 側のコンター記録状態を汚さない")
+        #expect(s.contourStartIndex == 0)
+    }
+
+    @Test("contour opened before any vertex still warns on a 3D shape")
+    func contourBeforeVertexIn3DWarns() {
+        // beginContour() の時点では kind がまだ .path2D なので、endShape() 側の
+        // 取りこぼし防止が効いていないと警告が出ない
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.beginContour()
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0, 1, 0)
+        s.endContour()
+        s.endShape(.close)
+
+        #expect(s.didWarnContourIn3D, "頂点より先に開いたコンターでも 3D なら警告する")
     }
 
     @Test("style methods during shape definition")
