@@ -76,6 +76,82 @@ struct AppNapPreventionTests {
     }
 }
 
+// MARK: - Termination Signal Tests
+
+/// 終了シグナル（#715）のハンドラ設置を検証します。
+///
+/// 実際に自プロセスへシグナルを送るため、シグナル動作（`SIG_IGN` / `SIG_DFL`）が
+/// プロセス全体に及びます。他テストと重ならないよう `.serialized` で直列化します。
+@Suite("Termination signal handlers", .serialized)
+struct TerminationSignalTests {
+
+    /// `onTerminate` が呼ばれたことを別スレッドから観測するためのフラグ。
+    private final class TerminationFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+
+        func fire() { lock.withLock { value = true } }
+        var fired: Bool { lock.withLock { value } }
+    }
+
+    /// ハンドラを設置して `sig` を自プロセスへ送り、ハンドラが発火したかを返します。
+    ///
+    /// シグナル動作は必ず既定へ戻します（戻さないとテストランナー自体が
+    /// `SIGTERM` を無視し続ける）。
+    private func firesHandler(for sig: Int32) async -> Bool {
+        let flag = TerminationFlag()
+        let sources = SketchRunner.installTerminationSignalHandlers(env: [:]) { flag.fire() }
+        defer {
+            for source in sources { source.cancel() }
+            signal(SIGINT, SIG_DFL)
+            signal(SIGTERM, SIG_DFL)
+        }
+
+        // DispatchSource は別キューで発火するため、送出後にポーリングで待つ（最大 2 秒）。
+        kill(getpid(), sig)
+        for _ in 0..<200 {
+            if flag.fired { return true }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return false
+    }
+
+    @Test("SIGTERM runs the graceful termination path")
+    func sigtermFires() async {
+        #expect(await firesHandler(for: SIGTERM))
+    }
+
+    @Test("SIGINT runs the graceful termination path")
+    func sigintFires() async {
+        #expect(await firesHandler(for: SIGINT))
+    }
+
+    @Test("handlers are installed by default")
+    func installedByDefault() {
+        #expect(SketchRunner.resolveInstallSignalHandlers(env: [:]))
+    }
+
+    @Test("METAPHOR_SIGNAL_HANDLERS=0 opts out")
+    func envOptOut() {
+        #expect(!SketchRunner.resolveInstallSignalHandlers(
+            env: ["METAPHOR_SIGNAL_HANDLERS": "0"]
+        ))
+        #expect(SketchRunner.installTerminationSignalHandlers(
+            env: ["METAPHOR_SIGNAL_HANDLERS": "0"]
+        ).isEmpty)
+    }
+
+    @Test("METAPHOR_SIGNAL_HANDLERS with non-0 value is ignored")
+    func envNonZeroIgnored() {
+        #expect(SketchRunner.resolveInstallSignalHandlers(
+            env: ["METAPHOR_SIGNAL_HANDLERS": "1"]
+        ))
+        #expect(SketchRunner.resolveInstallSignalHandlers(
+            env: ["METAPHOR_SIGNAL_HANDLERS": ""]
+        ))
+    }
+}
+
 // MARK: - SketchContext Tests
 
 @Suite("SketchContext", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
