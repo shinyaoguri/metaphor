@@ -49,21 +49,15 @@ struct ToneMappingTests {
     ///   - shadows: `true` にすると影パスが有効になり、描画が**記録経路**を通る。
     ///     記録経路はマテリアルをスナップショットへ丸ごと保存して再生時に復元するので、
     ///     トーンマップ設定がそこで巻き戻らないことの確認に使う。
-    ///   - instanceCapacity: 指定するとインスタンスバッチの容量を差し替え、2 個目以降の
-    ///     3D 描画を非インスタンス（イミディエイト）経路へ落とす（#391 と同じ手）。
     ///   - inspect: 1 フレーム描画後に `Canvas3D` を検査するフック。
     private func render(
         shadows: Bool = false,
-        instanceCapacity: Int? = nil,
         inspect: ((Canvas3D) -> Void)? = nil,
         draw: @escaping (SketchContext) -> Void
     ) throws -> GoldenImage {
         let renderer = try MetaphorRenderer(width: Self.size, height: Self.size)
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        if let instanceCapacity {
-            try canvas3D.setInstanceCapacityForTesting(instanceCapacity)
-        }
         let context = SketchContext(
             renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
         )
@@ -340,11 +334,11 @@ struct ToneMappingTests {
         let applied = Applied()
         var immediateDraws = 0
 
-        // カスタムフラグメントが `Canvas3DUniforms` を読む形なので、非インスタンス
-        // （イミディエイト）経路へ落とす。インスタンス経路の uniforms は
-        // `InstancedSceneUniforms` で別レイアウトのため、混ぜると読み違える。
+        // カスタムフラグメントは `Canvas3DUniforms` を読む形で、インスタンス経路の
+        // `InstancedSceneUniforms` とはレイアウトが合わない。#717 以降はカスタム
+        // マテリアル中の描画が自動でイミディエイト経路へ落ちるので、ここでは
+        // それが実際に効いていることを `immediateDrawCountForTesting` で固定する。
         let image = try render(
-            instanceCapacity: 1,
             inspect: { immediateDraws = $0.immediateDrawCountForTesting },
             draw: overexposedPlane { c in
                 c.toneMapping(.acesFilmic)
@@ -354,14 +348,9 @@ struct ToneMappingTests {
                     c.material(custom)
                     applied.value = true
                 }
-                // 容量 1 のバッチをここで使い切り、続く本命を即時経路へ送る。
-                c.pushMatrix()
-                c.translate(-1000, 0, 0)
-                c.box(1)
-                c.popMatrix()
             })
         #expect(applied.value, "カスタムマテリアルを生成できていない（テストが空回りしている）")
-        #expect(immediateDraws > 0, "本命が即時経路を通っていない（テストが空回りしている）")
+        #expect(immediateDraws > 0, "カスタムマテリアルが即時経路へ落ちていない（#717）")
 
         let got = pixel(image, Self.center).x
         let want = Self.expected255(Self.acesFilmic(Self.rawLuminance))
