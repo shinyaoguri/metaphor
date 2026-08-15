@@ -50,6 +50,21 @@ extension SIMD4<Float>: Interpolatable {
     }
 }
 
+extension Double: Interpolatable {
+    public static func interpolate(from: Double, to: Double, t: Float) -> Double {
+        from + (to - from) * Double(t)
+    }
+}
+
+extension Int: Interpolatable {
+    /// 整数の補間は**四捨五入**します（バンド数・段数のように整数で持ちたい値のため）。
+    ///
+    /// 端点は必ずその値になります（`t = 0` で `from`、`t = 1` で `to`）。
+    public static func interpolate(from: Int, to: Int, t: Float) -> Int {
+        Int((Float(from) + (Float(to) - Float(from)) * t).rounded())
+    }
+}
+
 extension Color: Interpolatable {
     public static func interpolate(from: Color, to: Color, t: Float) -> Color {
         Color(
