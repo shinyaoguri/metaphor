@@ -121,6 +121,104 @@ struct TextToPointsTests {
         #expect(box.maxY <= ascent + 1)
     }
 
+    // MARK: - 複数行（#748）
+
+    @Test("a newline splits the outline into rows instead of concatenating them")
+    func newlineSplitsRows() throws {
+        let context = try makeContext()
+        let leading = context.canvas.effectiveTextLeading
+        let one = boundingBox(context.textToPoints("A", 0, 0))
+        let two = boundingBox(context.textToPoints("A\nA", 0, 0))
+
+        // 1 行目は単一行と同じ位置に残り、2 行目が leading ぶん下へ積まれる
+        #expect(abs(two.minY - one.minY) < 0.01)
+        #expect(abs(two.maxY - (one.maxY + leading)) < 0.01)
+        // 横幅は 1 行ぶんのまま（連結していると 2 文字ぶんに伸びる）
+        #expect(abs(two.maxX - one.maxX) < 0.01)
+    }
+
+    @Test("CR and CRLF break rows just like LF")
+    func carriageReturnBreaksRows() throws {
+        let context = try makeContext()
+        let lf = boundingBox(context.textToPoints("A\nA", 0, 0))
+        for separator in ["\r\n", "\r"] {
+            let box = boundingBox(context.textToPoints("A\(separator)A", 0, 0))
+            #expect(abs(box.maxY - lf.maxY) < 0.01)
+            #expect(abs(box.maxX - lf.maxX) < 0.01)
+        }
+    }
+
+    @Test("a blank row still advances by one leading")
+    func blankRowAdvances() throws {
+        let context = try makeContext()
+        let leading = context.canvas.effectiveTextLeading
+        let one = boundingBox(context.textToPoints("A", 0, 0))
+        let skipped = boundingBox(context.textToPoints("A\n\nA", 0, 0))
+        #expect(abs(skipped.maxY - (one.maxY + 2 * leading)) < 0.01)
+    }
+
+    @Test("textLeading() sets the distance between rows")
+    func explicitLeading() throws {
+        let context = try makeContext()
+        context.textLeading(100)
+        let one = boundingBox(context.textToPoints("A", 0, 0))
+        let two = boundingBox(context.textToPoints("A\nA", 0, 0))
+        #expect(abs(two.maxY - (one.maxY + 100)) < 0.01)
+    }
+
+    @Test("each row is horizontally aligned on its own width")
+    func perRowHorizontalAlign() throws {
+        let context = try makeContext()
+        context.textAlign(.center, .baseline)
+        let leading = context.canvas.effectiveTextLeading
+        // 長さの違う 2 行。行ごとに中央揃えでなければ短い行が右へずれる
+        let points = context.textToPoints("WWWW\nA", 100, 0)
+        let firstPoints = points.filter { $0.y < leading / 2 }
+        let secondPoints = points.filter { $0.y >= leading / 2 }
+        // 連結されていると 2 行目の点が 1 つも無く、以降の判定が測れない
+        try #require(!firstPoints.isEmpty && !secondPoints.isEmpty)
+        let first = boundingBox(firstPoints)
+        let second = boundingBox(secondPoints)
+
+        // 光学バウンズと advance 幅の差があるので数 px の許容を置く
+        #expect(abs((first.minX + first.maxX) / 2 - 100) < 4)
+        #expect(abs((second.minX + second.maxX) / 2 - 100) < 4)
+        #expect(second.maxX - second.minX < first.maxX - first.minX)
+    }
+
+    @Test("vertical align treats every row as one block", arguments: [
+        TextAlignV.baseline, .top, .center, .bottom,
+    ])
+    func verticalAlignLiftsTheBlock(align: TextAlignV) throws {
+        let context = try makeContext()
+        context.textAlign(.left, align)
+        let leading = context.canvas.effectiveTextLeading
+        let one = boundingBox(context.textToPoints("A", 0, 0))
+        let two = boundingBox(context.textToPoints("A\nA", 0, 0))
+
+        // 描画側 text() と同じ持ち上げ量。baseline / top は 1 行目が動かず下へ伸び、
+        // bottom は最終行が単一行の位置に残り、center はその半分だけ持ち上がる。
+        let lift: Float
+        switch align {
+        case .top, .baseline: lift = 0
+        case .center: lift = leading / 2
+        case .bottom: lift = leading
+        }
+        #expect(abs(two.minY - (one.minY - lift)) < 0.01)
+        #expect(abs(two.maxY - (one.maxY + leading - lift)) < 0.01)
+    }
+
+    @Test("a string without newlines stays on one row")
+    func singleRowUnchanged() throws {
+        let context = try makeContext()
+        let leading = context.canvas.effectiveTextLeading
+        let plain = boundingBox(context.textToPoints("metaphor", 40, 200))
+        // 行分割の経路を通っても単一行はベースライン 1 本ぶんに収まる（回帰の番人）
+        #expect(plain.maxY - plain.minY < leading)
+        #expect(plain.minX >= 40 - 1)
+        #expect(plain.maxX <= 40 + context.canvas.textWidth("metaphor") + 1)
+    }
+
     // MARK: - sampleFactor
 
     @Test("a larger sampleFactor yields more points")
