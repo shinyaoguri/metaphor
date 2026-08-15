@@ -8,6 +8,10 @@
     "Examples/Samples/SceneGraphHybrid": {
       "settle": 10.0,
       "why": "アームの軌跡が 600 点たまって初めて絵になる。60fps で 10 秒かかるので、既定の 1.5 秒では 1/6 しか描かれていない"
+    },
+    "Examples/Demos/Performance/StaticParticlesRetained": {
+      "settle": 0.3,
+      "why": "対の StaticParticlesImmediate と同じ回転角で並べるため。50,000 粒子の即時描画は撮影の debug ビルドだと重く、既定の 1.5 秒では 20 フレーム弱しか進まない。retained 側は同じ時間で 100 フレーム以上進み、rotateY が 60 度回って板が edge-on の縦縞になるので、フレーム数を揃える側で待ちを詰める"
     }
   }
 }
