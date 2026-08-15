@@ -412,7 +412,7 @@ extension Sketch {
         context.polygon(points)
     }
 
-    /// 円弧を描画します。
+    /// 円弧を描画します（`stopAngle` は `startAngle` より大きいこと。2π 超は 1 周にクランプ）。
     ///
     /// - Parameters:
     ///   - x: 円弧の中心の x 座標。
@@ -420,10 +420,13 @@ extension Sketch {
     ///   - w: 円弧の外接楕円の幅。
     ///   - h: 円弧の外接楕円の高さ。
     ///   - startAngle: ラジアン単位の開始角度。
-    ///   - stopAngle: ラジアン単位の終了角度。
+    ///   - stopAngle: ラジアン単位の終了角度。`startAngle` 以下なら何も描きません。
     ///   - mode: 円弧の描画モード。省略時は Processing のデフォルトと同じく
     ///     「扇形の fill + 弧のみの stroke」（``ArcMode/default``）。明示 ``ArcMode/open`` の
     ///     fill は弦で閉じた弓形になる点が省略時と異なる。
+    ///
+    /// 角度は Processing と同じく描画前に正規化されます。`stopAngle <= startAngle` は何も描かず
+    /// （逆回りには描かない）、範囲が 2π を超える場合は 0〜2π へクランプします（重ね描きしない）。
     ///
     /// ### 実行結果
     ///

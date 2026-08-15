@@ -178,8 +178,11 @@ extension SketchContext {
     ///   - w: 外接楕円の幅。
     ///   - h: 外接楕円の高さ。
     ///   - startAngle: ラジアン単位の開始角度。
-    ///   - stopAngle: ラジアン単位の終了角度。
+    ///   - stopAngle: ラジアン単位の終了角度。`startAngle` 以下なら何も描きません。
     ///   - mode: 円弧の描画モード（デフォルト `.default` = 扇形の fill + 弧のみの stroke）。
+    ///
+    /// 角度は Processing と同じく正規化されます（`stopAngle <= startAngle` は描かない・
+    /// 2π 超は 0〜2π へクランプ）。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,

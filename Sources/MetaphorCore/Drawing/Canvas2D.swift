@@ -150,6 +150,19 @@ public final class Canvas2D: CanvasStyle {
     /// `blendMode(.difference)` / `.exclusion` を通常ブレンドへ落とした警告を出したかどうか。
     private var didWarnBlendFallback = false
 
+    /// `arc()` に `stop <= start` の角度が渡され、何も描かなかった警告を出したかどうか（#743）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnArcReversedAngles = false
+
+    /// `arc()` の角度が逆転している（= 何も描かれない）ことを初回だけ警告します。
+    func warnArcReversedAnglesOnce() {
+        guard !didWarnArcReversedAngles else { return }
+        didWarnArcReversedAngles = true
+        metaphorWarning(
+            "arc(): stopAngle は startAngle より大きい必要があります（Processing 互換）。"
+                + "この呼び出しは何も描きません。角度を入れ替えるか、stopAngle に 2π を足してください")
+    }
+
     // MARK: - テキスト状態
 
     var currentTextSize: Float = 32
