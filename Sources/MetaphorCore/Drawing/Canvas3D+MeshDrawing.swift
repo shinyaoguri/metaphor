@@ -37,8 +37,10 @@ extension Canvas3D {
         // メインパスへの実エンコード（影オフのライブ描画、または影オンの replay）。
         guard encoder != nil else { return }
 
-        // カスタム頂点シェーダーはインスタンシング不可; イミディエイトパスにフォールバック
-        if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {
+        // カスタムマテリアルはインスタンシング不可; イミディエイトパスにフォールバック。
+        // インスタンス経路の buffer(1) は InstancedSceneUniforms で、カスタムシェーダーが
+        // 読む Canvas3DUniforms と別レイアウト。混ぜると頂点が画面外へ飛ぶ（#717）
+        if currentCustomMaterial != nil {
             flushInstanceBatch()
             drawMeshImmediate(mesh)
             return
@@ -51,7 +53,6 @@ extension Canvas3D {
             isTextured: isTextured,
             textureID: currentTexture.map { ObjectIdentifier($0 as AnyObject) },
             material: currentMaterial,
-            customMaterialID: currentCustomMaterial.map { ObjectIdentifier($0) },
             hasFill: hasFill,
             hasStroke: hasStroke,
             strokeColor: strokeColor
@@ -63,7 +64,6 @@ extension Canvas3D {
             mesh: mesh,
             texture: currentTexture,
             material: currentMaterial,
-            customMaterial: currentCustomMaterial,
             hasFill: hasFill,
             hasStroke: hasStroke,
             strokeColor: strokeColor,
@@ -78,7 +78,6 @@ extension Canvas3D {
                 mesh: mesh,
                 texture: currentTexture,
                 material: currentMaterial,
-                customMaterial: currentCustomMaterial,
                 hasFill: hasFill,
                 hasStroke: hasStroke,
                 strokeColor: strokeColor,
@@ -148,8 +147,9 @@ extension Canvas3D {
 
         guard encoder != nil else { return }
 
-        // カスタム頂点シェーダーはインスタンシング不可; イミディエイトパスにフォールバック
-        if let customMat = currentCustomMaterial, customMat.vertexFunction != nil {
+        // カスタムマテリアルはインスタンシング不可; イミディエイトパスにフォールバック（#717。
+        // 理由は drawMesh の同じ分岐を参照）
+        if currentCustomMaterial != nil {
             flushInstanceBatch()
             for (i, local) in transforms.enumerated() {
                 currentTransform = baseTransform * local
@@ -167,7 +167,6 @@ extension Canvas3D {
             isTextured: isTextured,
             textureID: currentTexture.map { ObjectIdentifier($0 as AnyObject) },
             material: currentMaterial,
-            customMaterialID: currentCustomMaterial.map { ObjectIdentifier($0) },
             hasFill: hasFill,
             hasStroke: hasStroke,
             strokeColor: strokeColor
@@ -184,7 +183,6 @@ extension Canvas3D {
                     mesh: mesh,
                     texture: currentTexture,
                     material: currentMaterial,
-                    customMaterial: currentCustomMaterial,
                     hasFill: hasFill,
                     hasStroke: hasStroke,
                     strokeColor: strokeColor,
@@ -223,13 +221,9 @@ extension Canvas3D {
         let batchHasFill = instanceBatcher.currentHasFill
         let batchHasStroke = instanceBatcher.currentHasStroke
 
-        // パイプラインを選択
-        if let customMat = instanceBatcher.currentCustomMaterial,
-           let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured) {
-            encoder.setRenderPipelineState(customPipeline)
-        } else {
-            encoder.setRenderPipelineState(isTextured ? instancedTexturedPipelineState : instancedPipelineState)
-        }
+        // カスタムマテリアルはバッチへ入らない（drawMesh がイミディエイトへ落とす #717）
+        // ので、パイプラインは常に組み込みのインスタンス版
+        encoder.setRenderPipelineState(isTextured ? instancedTexturedPipelineState : instancedPipelineState)
 
         if let depthState = depthState {
             encoder.setDepthStencilState(depthState)
@@ -272,11 +266,6 @@ extension Canvas3D {
             // マテリアル
             var mat = instanceBatcher.currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
-
-            // カスタムマテリアルパラメータ
-            if let customMat = instanceBatcher.currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
-                encoder.setFragmentBytes(&params, length: params.count, index: 4)
-            }
 
             // シャドウ
             bindShadowResources(on: encoder)
@@ -357,7 +346,8 @@ extension Canvas3D {
 
     // MARK: - イミディエイト描画（フォールバック、非インスタンス）
 
-    // インスタンシングなしでメッシュを描画（カスタム頂点シェーダー用フォールバック）
+    // インスタンシングなしでメッシュを描画（カスタムマテリアル用フォールバック #717、
+    // およびバッファ満杯時の退避先）
     private func drawMeshImmediate(_ mesh: Mesh) {
         guard let encoder = encoder else { return }
 
