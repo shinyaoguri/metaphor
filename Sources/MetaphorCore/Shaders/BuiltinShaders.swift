@@ -15,19 +15,6 @@ import Foundation
 /// （陳腐化は pre-push フックと CI が検出します）。
 public enum BuiltinShaders {
 
-    // MARK: - 共通構造体
-
-    /// すべてのシェーダーで共有されるMSL構造体定義。
-    static let commonStructs = """
-    struct MetaphorUniforms {
-        float4x4 modelMatrix;
-        float4x4 viewProjectionMatrix;
-        float4 color;
-        float3 lightDirection;
-        float time;
-    };
-    """
-
     // MARK: - Canvas2D カスタムシェーダ用の構造体 (#647 / Epic #291 E2)
 
     /// カスタム 2D フラグメントシェーダが受け取る stage_in と uniform の MSL 定義。
