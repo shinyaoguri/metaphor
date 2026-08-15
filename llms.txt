@@ -173,8 +173,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func curveVertex(_ x: Float, _ y: Float)` -- 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
 - `func cylinder(radius: Float, height: Float, detail: Int = 24)` -- 円柱を描画します。
 - `func decodeState<T>(_ data: Data, as type: T.Type = T.self) -> T? where T : Decodable` -- ``restoreState(_:)`` で受け取ったデータをデコードします。失敗したら `nil`。
-- `func directionalLight(_ x: Float, _ y: Float, _ z: Float)` -- デフォルト色のディレクショナルライトを追加します。
-- `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` -- 色を指定してディレクショナルライトを追加します。
+- `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0)` -- ディレクショナルライトを追加します。
 - `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- シャドウマッピングを無効にします。
@@ -278,7 +277,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func plane(_ width: Float, _ height: Float)` -- 平面を描画します。
 - `func plugin(id: String) -> (any MetaphorPlugin)?` -- 識別子を指定して登録済みプラグインを検索します。
 - `func point(_ x: Float, _ y: Float)` -- 単一の点を描画します。
-- `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1)` -- 指定位置にポイントライトを追加します。
+- `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1, intensity: Float = 1.0)` -- 指定位置にポイントライトを追加します。
 - `func polygon(_ points: [(Float, Float)])` -- 座標タプルの配列からポリゴンを描画します。
 - `func polygon(_ points: [Vec2])` -- ``Vec2`` 配列からポリゴンを描画します。
 - `func pop()` -- 最後に保存された変換とスタイル状態をスタックから復元します。
@@ -347,7 +346,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func specular(_ color: Color)` -- スペキュラーハイライトの色を設定します。
 - `func specular(_ gray: Float)` -- グレースケール値でスペキュラーハイライトの色を設定します。
 - `func sphere(_ radius: Float, detail: Int = 24)` -- 球を描画します。
-- `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white)` -- 指定位置・方向にスポットライトを追加します。
+- `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white, intensity: Float = 1.0)` -- 指定位置・方向にスポットライトを追加します。
 - `func square(_ x: Float, _ y: Float, _ size: Float)` -- 正方形を描画します。
 - `func stroke(_ color: Color)` -- ストローク色を設定します。
 - `func stroke(_ gray: Float)` -- グレースケール値でストローク色を設定します。
@@ -1062,7 +1061,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
 
-- （ほか 72 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 71 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
 - `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
@@ -1200,7 +1199,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 55 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 54 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
@@ -1551,7 +1550,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 230 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 229 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

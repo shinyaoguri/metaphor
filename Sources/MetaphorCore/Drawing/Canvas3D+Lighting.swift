@@ -27,16 +27,6 @@ extension Canvas3D {
         lightArray.removeAll(keepingCapacity: true)
     }
 
-    /// 指定方向の白色ディレクショナルライトを追加します。
-    ///
-    /// - Parameters:
-    ///   - x: ライト方向のx成分。
-    ///   - y: ライト方向のy成分。
-    ///   - z: ライト方向のz成分。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
-        directionalLight(x, y, z, color: Color.white)
-    }
-
     /// 指定方向・色のディレクショナルライトを追加します。
     ///
     /// - Parameters:
@@ -44,7 +34,12 @@ extension Canvas3D {
     ///   - y: ライト方向のy成分。
     ///   - z: ライト方向のz成分。
     ///   - color: ライトの色。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
+    ///   - intensity: ライトの強度倍率（既定 1.0）。色に乗算されます。
+    ///     PBR（``pbr(_:)``）では直接光が `albedo / π` で減衰するため、
+    ///     単灯で立体感を出すには 1.0 より大きい値（2〜4 程度）が要ります。
+    public func directionalLight(
+        _ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0
+    ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
         ensureAmbientIfFirstLight()
@@ -53,7 +48,7 @@ extension Canvas3D {
         var light = Light3D.zero
         light.positionAndType = SIMD4(0, 0, 0, 0)
         light.directionAndCutoff = SIMD4(td.x, td.y, td.z, 0)
-        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, 1.0)
+        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, intensity)
         light.attenuationAndOuterCutoff = SIMD4(1, 0, 0, 0)
         lightArray.append(light)
     }
@@ -66,10 +61,14 @@ extension Canvas3D {
     ///   - z: ライト位置のz座標。
     ///   - color: ライトの色。
     ///   - falloff: 減衰フォールオフ係数。
+    ///   - intensity: ライトの強度倍率（既定 1.0）。色に乗算されます。
+    ///     PBR（``pbr(_:)``）では直接光が `albedo / π` で減衰するため、
+    ///     単灯で立体感を出すには 1.0 より大きい値（2〜4 程度）が要ります。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
-        falloff: Float = 0.1
+        falloff: Float = 0.1,
+        intensity: Float = 1.0
     ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
@@ -78,7 +77,7 @@ extension Canvas3D {
         let tp = currentTransform * SIMD4(x, y, z, 1)
         var light = Light3D.zero
         light.positionAndType = SIMD4(tp.x, tp.y, tp.z, 1)
-        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, 1.0)
+        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, intensity)
         light.attenuationAndOuterCutoff = SIMD4(1.0, falloff, falloff * 0.1, 0)
         lightArray.append(light)
     }
@@ -95,12 +94,16 @@ extension Canvas3D {
     ///   - angle: 外側コーン角度（ラジアン）。
     ///   - falloff: 減衰フォールオフ係数。
     ///   - color: ライトの色。
+    ///   - intensity: ライトの強度倍率（既定 1.0）。色に乗算されます。
+    ///     PBR（``pbr(_:)``）では直接光が `albedo / π` で減衰するため、
+    ///     単灯で立体感を出すには 1.0 より大きい値（2〜4 程度）が要ります。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
         angle: Float = Float.pi / 6,
         falloff: Float = 0.01,
-        color: Color = .white
+        color: Color = .white,
+        intensity: Float = 1.0
     ) {
         guard lightArray.count < Canvas3D.maxLights else { return }
         flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
@@ -112,7 +115,7 @@ extension Canvas3D {
         var light = Light3D.zero
         light.positionAndType = SIMD4(tp.x, tp.y, tp.z, 2)
         light.directionAndCutoff = SIMD4(td.x, td.y, td.z, cos(innerAngle))
-        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, 1.0)
+        light.colorAndIntensity = SIMD4(color.r, color.g, color.b, intensity)
         light.attenuationAndOuterCutoff = SIMD4(1.0, falloff, falloff * 0.1, cos(angle))
         lightArray.append(light)
     }
