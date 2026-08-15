@@ -11,9 +11,11 @@ final class StaticParticlesRetained: Sketch {
         SketchConfig(width: 800, height: 600, title: "StaticParticlesRetained")
     }
 
-    // 対の StaticParticlesImmediate と同じ条件（原典は 50,000 / 20）。
-    let npartTotal = 5000
-    let partSize: Float = 6
+    // 対の StaticParticlesImmediate と同じ条件（粒子数は原典と同じ 50,000 / #680）。
+    // partSize だけ原典の 20 から落としてある: 原典は半透明スプライトを重ねるが
+    // metaphor 版は不透明の単色なので、20 のままだと画面が白い塊で埋まる。
+    let npartTotal = 50000
+    let partSize: Float = 3
 
     /// 全パーティクルを 1 つのメッシュに詰めたシェイプ。
     var particles: MShape!
@@ -59,8 +61,9 @@ final class StaticParticlesRetained: Sketch {
     /// metaphor の `.group` は 1 本の VBO に畳まれず子を 1 つずつ描く
     /// （`Sources/MetaphorCore/Drawing/MShapeDrawing.swift` の `case .group:`）。
     /// つまり子シェイプに分けると粒子数ぶんのメッシュ・ドローコールになり、即時描画と
-    /// 同じコストに戻る（実測 50,000 粒子 / 800x600 / Apple Silicon:
-    /// 即時 ≒ 36 fps、`.group` + `addChild` ≒ 36 fps、この 1 メッシュ版は 120 fps 上限に張り付き）。
+    /// 同じコストに戻る（実測 50,000 粒子 / 800x600 / Apple Silicon / release / `frameRate(60)`:
+    /// 即時 ≒ 32 fps、`.group` + `addChild` も即時と同程度、この 1 メッシュ版は 60 fps
+    /// 上限に張り付いたまま）。
     /// retained の利点を出すにはこのように 1 シェイプへまとめる。
     private func makeParticles() -> MShape {
         let s = createShape()

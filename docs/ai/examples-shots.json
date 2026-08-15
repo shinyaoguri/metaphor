@@ -621,17 +621,17 @@
     },
     "Examples/Demos/Performance/StaticParticlesImmediate": {
       "origin": "captured",
-      "sourceHash": "b4dec3ff65508816f3bbcdd768338194313fd283d40cf019f15a0c5cafbf2f13",
+      "sourceHash": "cbe32f7be6fc82958717bd59f5dd0b44d955774bfd4710c9d4f5793593167112",
       "width": 800,
       "height": 600,
-      "frame": 104
+      "frame": 20
     },
     "Examples/Demos/Performance/StaticParticlesRetained": {
       "origin": "captured",
-      "sourceHash": "1426c5a1075b31177cb16a1a2d665710b98ba25cd894cd41ca712414bfc1ea42",
+      "sourceHash": "04ba93bb649db9c5f7315c0ad5e1c9da4ef8a12e4d32801574e139259d894f05",
       "width": 800,
       "height": 600,
-      "frame": 97
+      "frame": 31
     },
     "Examples/Demos/Performance/TextRendering": {
       "origin": "captured",

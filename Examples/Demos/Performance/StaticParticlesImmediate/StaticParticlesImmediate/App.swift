@@ -6,8 +6,12 @@ final class StaticParticlesImmediate: Sketch {
         SketchConfig(width: 800, height: 600, title: "StaticParticlesImmediate")
     }
 
-    let npartTotal = 5000
-    let partSize: Float = 6
+    // 粒子数は原典と同じ 50,000。ここを減らすと即時描画でも frameRate(60) に届いてしまい、
+    // 対の StaticParticlesRetained と同じ数字が並んで比較にならない（#680）。
+    // partSize だけ原典の 20 から落としてある: 原典は半透明スプライトを重ねるが、
+    // metaphor 版は不透明の sphere なので 20 のままだと画面が白い塊で埋まる。
+    let npartTotal = 50000
+    let partSize: Float = 3
     var posX: [Float] = []
     var posY: [Float] = []
     var posZ: [Float] = []
@@ -41,7 +45,7 @@ final class StaticParticlesImmediate: Sketch {
             translate(posX[n], posY[n], posZ[n])
             // 3 引数 translate は 3D 描画にしか効かないため、原典の ellipse() ではなく
             // sphere() で描く（2D プリミティブだと全粒子が中央 1 点に潰れる / ADR-0005）。
-            // 5,000 個を毎フレーム描くので分割数は既定の 24 から落とす。
+            // 50,000 個を毎フレーム描くので分割数は既定の 24 から落とす。
             sphere(partSize / 2, detail: 6)
             popMatrix()
         }
