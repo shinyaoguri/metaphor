@@ -71,7 +71,14 @@ def image_size(path: Path) -> tuple[int, int]:
         if chunk == b"VP8L":  # lossless。signature の次に 14 bit ずつ（1 始まり）
             bits = int.from_bytes(payload[1:5], "little")
             return ((bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1)
-    raise ShotError(f"{path.name} の縦横を読めない（PNG / WebP のみ対応）")
+    if data[:6] in (b"GIF87a", b"GIF89a"):  # 論理画面記述子の先頭 4 バイト
+        # リファレンス（DocC）の動きは GIF になる。DocC は WebP を無言で落とすため
+        # WebP を使えない（ADR-0008）。
+        return (
+            int.from_bytes(data[6:8], "little"),
+            int.from_bytes(data[8:10], "little"),
+        )
+    raise ShotError(f"{path.name} の縦横を読めない（PNG / WebP / GIF のみ対応）")
 
 
 def source_files(package_dir: Path) -> list[Path]:

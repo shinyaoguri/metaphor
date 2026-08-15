@@ -287,7 +287,7 @@ make tutorial-shots ARGS="--force"                                    # 全部
 
 鮮度の見方は他の生成物と違い、**画像のバイト比較ではありません**。GPU の出力は環境によってビット単位には一致しないためです。代わりに `images/manifest.json` が「撮影したときのスケッチの指紋」を持ち、`--check`（pre-push と CI）が現在のソースと突き合わせて「コードを変えたのに撮り直していない」だけを検出します。指紋の材料はパッケージ配下の全ファイル（`.build` / `.swiftpm` / `.metaphor` を除く）なので、Swift だけでなく同梱リソースの差し替えも拾います（[#505](https://github.com/shinyaoguri/metaphor/issues/505)）。あわせて「本文が指す URL が台帳と揃っているか」も見ます。台帳の `sha256` は鮮度判定には使いません（上げたバイト列の指紋で、URL の中身が入れ替わっていないことを後から確かめるためのものです）。
 
-外部 URL は**死んでも本文の変換もサイトのビルドも成功してしまう**ので、生死は週次の [`asset-health.yml`](../../.github/workflows/asset-health.yml) が見張ります（`scripts/check-tutorial-image-urls.py`）。per-PR の CI には入れません（ネットワークの一時的な不調で PR を止めないため）。
+外部 URL は**死んでも本文の変換もサイトのビルドも成功してしまう**ので、生死は週次の [`asset-health.yml`](../../.github/workflows/asset-health.yml) が見張ります（`scripts/check-image-urls.py`）。per-PR の CI には入れません（ネットワークの一時的な不調で PR を止めないため）。
 
 外部化のトレードオフとして、**fork や外部コントリビュータは画像を差し替えられません**（アップロードにトークンが要るため、メンテナのアップロード待ちになります）。コードだけの PR は従来どおり出せます。また**オフラインでは本文の画像が出ません**。
 
