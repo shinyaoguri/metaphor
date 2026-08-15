@@ -12,6 +12,19 @@ func metaphorWarning(_ message: @autoclosure () -> String) {
     #endif
 }
 
+/// **Release ビルドでも必ず** stderr に出す警告。
+///
+/// 「ユーザーのコードは正しいのに、環境の都合で黙って動かない」条件だけに使います
+/// （例: カメラ / マイクの権限が `.notDetermined` のまま入力が 1 つも来ない。
+/// 素の実行ファイルには TCC ダイアログが出ないため、原因が観測できない・Issue #685）。
+///
+/// ``metaphorWarning`` は DEBUG 限定、``metaphorDiagnostic`` は `METAPHOR_DEBUG=1`
+/// 限定なので、**Release の `.app`** という「まさにその症状が出る形態」では
+/// どちらも沈黙してしまいます。stdout を汚さないよう必ず stderr に書きます。
+func metaphorAlert(_ message: @autoclosure () -> String) {
+    FileHandle.standardError.write("[metaphor] Warning: \(message())\n".data(using: .utf8)!)
+}
+
 /// `METAPHOR_DEBUG=1` が設定されているか（プロセス起動時に 1 度だけ評価）。
 private let metaphorDebugEnabled: Bool =
     ProcessInfo.processInfo.environment["METAPHOR_DEBUG"] == "1"
