@@ -1,5 +1,4 @@
-#include <metal_stdlib>
-using namespace metal;
+#include "MetaphorCanvas2DTypes.h"
 
 // Per-instance data (80 bytes, 16-byte aligned)
 struct InstanceData2D {
@@ -11,22 +10,21 @@ struct Canvas2DInstancedVertexIn {
     float2 position [[attribute(0)]];
 };
 
-struct Canvas2DInstancedVertexOut {
-    float4 position [[position]];
-    float4 color;
-};
+// 頂点出力は `Canvas2DVertexOut`（`MetaphorCanvas2DTypes.h`）を使う。カスタム
+// フラグメントはこの経路の頂点関数とも組まれるので、カラー経路と同じ型でなければ
+// ならない。
 
 // ──────────────────────────────────────────────
 // Vertex shader
 // ──────────────────────────────────────────────
 
-vertex Canvas2DInstancedVertexOut metaphor_canvas2DInstancedVertex(
+vertex Canvas2DVertexOut metaphor_canvas2DInstancedVertex(
     Canvas2DInstancedVertexIn in [[stage_in]],
     uint instanceID [[instance_id]],
     device const InstanceData2D *instances [[buffer(6)]],
     constant float4x4 &projection [[buffer(1)]]
 ) {
-    Canvas2DInstancedVertexOut out;
+    Canvas2DVertexOut out;
     InstanceData2D inst = instances[instanceID];
     float4 worldPos = inst.transform * float4(in.position, 0.0, 1.0);
     out.position = projection * worldPos;
@@ -39,13 +37,13 @@ vertex Canvas2DInstancedVertexOut metaphor_canvas2DInstancedVertex(
 // ──────────────────────────────────────────────
 
 fragment float4 metaphor_canvas2DInstancedFragment(
-    Canvas2DInstancedVertexOut in [[stage_in]]
+    Canvas2DVertexOut in [[stage_in]]
 ) {
     return in.color;
 }
 
 fragment float4 metaphor_canvas2DInstancedDifferenceFragment(
-    Canvas2DInstancedVertexOut in [[stage_in]],
+    Canvas2DVertexOut in [[stage_in]],
     float4 dest [[color(0)]]
 ) {
     float4 src = in.color;
@@ -56,7 +54,7 @@ fragment float4 metaphor_canvas2DInstancedDifferenceFragment(
 }
 
 fragment float4 metaphor_canvas2DInstancedExclusionFragment(
-    Canvas2DInstancedVertexOut in [[stage_in]],
+    Canvas2DVertexOut in [[stage_in]],
     float4 dest [[color(0)]]
 ) {
     float4 src = in.color;

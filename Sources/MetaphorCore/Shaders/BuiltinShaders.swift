@@ -14,10 +14,9 @@ import Foundation
 /// `python3 scripts/generate-shader-sources.py` で `.txt` を再生成してください
 /// （陳腐化は pre-push フックと CI が検出します）。
 ///
-/// カスタムシェーダー向けの 3D 前文（``canvas3DStructs`` / ``canvas3DLightingFn``）と
-/// postFX 前文（``PostProcessShaders/commonStructs``）も同じスクリプトが `.h` から
-/// 生成します（実体は `BuiltinShaders+Generated.swift`）。2D 前文
-/// （``canvas2DStructs``）は対応する `.h` が無いため、まだ手書きです（#714）。
+/// カスタムシェーダー向けの前文（``canvas2DStructs`` / ``canvas3DStructs`` /
+/// ``canvas3DLightingFn`` / ``PostProcessShaders/commonStructs``）も同じスクリプトが
+/// `.h` から生成します（実体は `BuiltinShaders+Generated.swift`）。
 public enum BuiltinShaders {
 
     // MARK: - Canvas2D カスタムシェーダ用の構造体 (#647 / Epic #291 E2)
@@ -28,39 +27,21 @@ public enum BuiltinShaders {
     /// **必ず**先頭へ足すので、ユーザーのソースでこれらを再定義しないでください。
     ///
     /// - `Canvas2DVertexOut`: `rect()` / `circle()` / `line()` などカラー系の stage_in。
-    ///   color / instanced / massive のどの経路でも同じレイアウトです。
+    ///   color / instanced / massive のどの経路でも同じ型です。
     /// - `Canvas2DTexVertexOut`: `image()` / `text()` のテクスチャ系の stage_in。
     /// - `Canvas2DShaderUniforms`: metaphor が `buffer(3)` へ自動供給する組み込み uniform。
+    /// - `Canvas2DVertexIn` / `Canvas2DTexVertexIn`: 組み込み頂点シェーダーの入力
+    ///   （頂点は差し替えられないので、通常は読むだけです）。
     ///
     /// 2D のカラー頂点は UV を持たないので、uv はフラグメントの `[[position]]`（画面ピクセル座標）を
     /// `resolution` で割って作ります（Shadertoy の `fragCoord / iResolution` と同じ形）。
     ///
     /// 3D の前文と同じく `#ifndef` ガードで包んであるので、これを自分で前置したソースを
     /// 渡しても二重定義にはなりません（#713）。
-    public static let canvas2DStructs = """
-    #ifndef METAPHOR_PRELUDE_CANVAS2D_STRUCTS
-    #define METAPHOR_PRELUDE_CANVAS2D_STRUCTS
-
-    struct Canvas2DVertexOut {
-        float4 position [[position]];
-        float4 color;
-    };
-
-    struct Canvas2DTexVertexOut {
-        float4 position [[position]];
-        float2 texCoord;
-        float4 color;
-    };
-
-    struct Canvas2DShaderUniforms {
-        float2 resolution;
-        float2 mouse;
-        float time;
-        uint frameCount;
-    };
-
-    #endif
-    """
+    ///
+    /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorCanvas2DTypes.h` からの
+    /// 生成物です（#714）。
+    public static let canvas2DStructs = BuiltinShadersGenerated.canvas2DStructs
 
     /// カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
     public static let canvas2DPreamble = """

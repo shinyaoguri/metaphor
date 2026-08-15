@@ -1,5 +1,59 @@
+
 #include <metal_stdlib>
 using namespace metal;
+
+// Canvas2D の頂点入出力と、カスタムシェーダへ配る組み込み uniform。Swift 側の正本は
+// 頂点が `Drawing/Canvas2D.swift`（`Vertex2D` / `TexturedVertex2D`）、uniform が
+// `Drawing/Shader2D.swift`（`Canvas2DShaderUniforms`）。
+//
+// このヘッダはそのまま `BuiltinShaders.canvas2DStructs` として、ユーザーの
+// カスタム 2D シェーダへ配られる（`scripts/generate-shader-sources.py` が生成）。
+// **中身を変えると公開される前文も変わる**ので、フィールドの増減は Swift 側と
+// `ShaderPreludeTests` のレイアウト検査に必ず揃えること。
+
+// カラー系（`rect()` / `circle()` / `line()` など）の頂点入力。
+struct Canvas2DVertexIn {
+    float2 position [[attribute(0)]];
+    float4 color [[attribute(1)]];
+};
+
+// カラー系の頂点出力 = カスタムフラグメントシェーダの `[[stage_in]]`。
+//
+// `Canvas2DPipelineStore` はユーザーのフラグメントを color / instanced / massive の
+// **どの経路の組み込み頂点関数とも組む**ので、3 経路の頂点出力はこの 1 型に揃えてある。
+// ずれてもパイプライン生成が失敗して組み込みの絵へ静かに落ちるだけなので、
+// 定義を分けないこと。
+struct Canvas2DVertexOut {
+    float4 position [[position]];
+    float4 color;
+};
+
+// テクスチャ系（`image()` / `text()`）の頂点入力。
+struct Canvas2DTexVertexIn {
+    float2 position [[attribute(0)]];
+    float2 texCoord [[attribute(1)]];
+    float4 color [[attribute(2)]];
+};
+
+// テクスチャ系の頂点出力 = テクスチャ経路のカスタムフラグメントの `[[stage_in]]`。
+struct Canvas2DTexVertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+    float4 color;
+};
+
+// metaphor が `buffer(3)` へ自動供給する組み込み uniform。
+//
+// 組み込みシェーダーは使わない（カスタムシェーダ専用）が、Swift 側とレイアウトを
+// 突き合わせる先が必要なのでここに置く。2D のカラー頂点は UV を持たないので、UV は
+// フラグメントの `[[position]]`（画面ピクセル座標）を `resolution` で割って作る。
+struct Canvas2DShaderUniforms {
+    float2 resolution;
+    float2 mouse;
+    float time;
+    uint frameCount;
+};
+
 
 // Per-circle instance data (32 bytes, 16-byte aligned).
 struct CircleInstance {
@@ -13,19 +67,18 @@ struct Canvas2DMassiveVertexIn {
     float2 position [[attribute(0)]];
 };
 
-struct Canvas2DMassiveVertexOut {
-    float4 position [[position]];
-    float4 color;
-};
+// 頂点出力は `Canvas2DVertexOut`（`MetaphorCanvas2DTypes.h`）を使う。カスタム
+// フラグメントはこの経路の頂点関数とも組まれるので、カラー経路と同じ型でなければ
+// ならない。
 
-vertex Canvas2DMassiveVertexOut metaphor_canvas2DMassiveCircleVertex(
+vertex Canvas2DVertexOut metaphor_canvas2DMassiveCircleVertex(
     Canvas2DMassiveVertexIn in [[stage_in]],
     uint instanceID [[instance_id]],
     device const CircleInstance *instances [[buffer(6)]],
     constant float4x4 &projection [[buffer(1)]],
     constant float4x4 &transform [[buffer(2)]]
 ) {
-    Canvas2DMassiveVertexOut out;
+    Canvas2DVertexOut out;
     CircleInstance inst = instances[instanceID];
     float2 localPos = inst.position + in.position * inst.diameter;
     float4 worldPos = transform * float4(localPos, 0.0, 1.0);
@@ -35,13 +88,13 @@ vertex Canvas2DMassiveVertexOut metaphor_canvas2DMassiveCircleVertex(
 }
 
 fragment float4 metaphor_canvas2DMassiveFragment(
-    Canvas2DMassiveVertexOut in [[stage_in]]
+    Canvas2DVertexOut in [[stage_in]]
 ) {
     return in.color;
 }
 
 fragment float4 metaphor_canvas2DMassiveDifferenceFragment(
-    Canvas2DMassiveVertexOut in [[stage_in]],
+    Canvas2DVertexOut in [[stage_in]],
     float4 dest [[color(0)]]
 ) {
     float4 src = in.color;
@@ -52,7 +105,7 @@ fragment float4 metaphor_canvas2DMassiveDifferenceFragment(
 }
 
 fragment float4 metaphor_canvas2DMassiveExclusionFragment(
-    Canvas2DMassiveVertexOut in [[stage_in]],
+    Canvas2DVertexOut in [[stage_in]],
     float4 dest [[color(0)]]
 ) {
     float4 src = in.color;

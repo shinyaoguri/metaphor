@@ -1,15 +1,8 @@
-#include <metal_stdlib>
-using namespace metal;
+#include "MetaphorCanvas2DTypes.h"
 
-struct Canvas2DVertexIn {
-    float2 position [[attribute(0)]];
-    float4 color [[attribute(1)]];
-};
-
-struct Canvas2DVertexOut {
-    float4 position [[position]];
-    float4 color;
-};
+// `Canvas2DVertexIn` / `Canvas2DVertexOut` は `MetaphorCanvas2DTypes.h`（= カスタム
+// 2D シェーダへ配る前文）にある。組み込みとカスタムで stage_in のレイアウトが
+// ずれないよう、定義は 1 箇所に置く。
 
 vertex Canvas2DVertexOut metaphor_canvas2DVertex(
     Canvas2DVertexIn in [[stage_in]],
