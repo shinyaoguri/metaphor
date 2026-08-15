@@ -243,8 +243,7 @@ extension SketchContext {
             if let mesh = s.primitiveMesh3D { canvas3D.mesh(mesh) }
 
         case .path3D:
-            s.ensureCacheValid()
-            if let mesh = s.cachedMesh3D { canvas3D.mesh(mesh) }
+            drawPath3D(s)
 
         case .group:
             for child in s.children {
@@ -261,6 +260,40 @@ extension SketchContext {
         }
 
         canvas3D.popState()
+    }
+
+    /// カスタム 3D シェイプを、塗りとストロークで別々に描きます（#735）。
+    ///
+    /// 塗りメッシュをそのままワイヤーフレーム化すると、テッセレーションで生まれた内部の辺まで
+    /// 線になります。輪郭だけを引くため、ストロークは ``MShape/cachedStrokeMesh3D`` を
+    /// `hasFill = false` で流します。呼び出し元が `canvas3D.pushState()` の内側なので、
+    /// ここで書き換えた状態は `popState()` で戻ります。
+    private func drawPath3D(_ s: MShape) {
+        s.ensureCacheValid()
+
+        let wantsStroke = canvas3D.hasStroke
+        let hasOutline = s.cachedStrokeMesh3D != nil
+
+        if let mesh = s.cachedMesh3D {
+            // 輪郭を別に引くなら、塗りメッシュ側のワイヤーフレームは止める
+            if hasOutline { canvas3D.hasStroke = false }
+            canvas3D.mesh(mesh)
+            canvas3D.hasStroke = wantsStroke
+        }
+
+        if let outline = s.cachedStrokeMesh3D {
+            if wantsStroke {
+                canvas3D.hasFill = false
+                canvas3D.mesh(outline)
+                canvas3D.hasFill = true
+            } else if s.cachedMesh3D == nil, !s.warned3DStrokeOnlyMode {
+                // 線・点だけのシェイプを noStroke() で描くと、黙って何も出ない
+                s.warned3DStrokeOnlyMode = true
+                metaphorWarning(
+                    "MShape: beginShape(.lines) / beginShape(.points) draws with stroke only — "
+                    + "noStroke() leaves nothing to draw")
+            }
+        }
     }
 
     private func drawShape3DWithSize(_ s: MShape, tx: Float, ty: Float, tz: Float,
@@ -288,8 +321,7 @@ extension SketchContext {
 
         case .path3D:
             canvas3D.scale(w, h, w)
-            s.ensureCacheValid()
-            if let mesh = s.cachedMesh3D { canvas3D.mesh(mesh) }
+            drawPath3D(s)
 
         case .group:
             canvas3D.scale(w, h, w)

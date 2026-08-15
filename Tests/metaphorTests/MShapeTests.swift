@@ -555,6 +555,104 @@ struct MShapeTessellationTests {
         #expect(s.cachedMesh3D!.vertexCount == 3)
     }
 
+    // MARK: - 3D ストロークジオメトリ（#735）
+    //
+    // ストロークは退化三角形 (a, b, b) の列で表す。ワイヤーフレーム描画（`triangleFillMode = .lines`）
+    // が三角形の 3 辺を線で描くため、線分 a-b だけが残る。よって辺 1 本 = 頂点 3 つ。
+
+    @Test("closed polygon strokes every edge including the closing one")
+    func path3DStrokeClosedPolygon() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        for i in 0..<5 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape(.close)
+
+        s.ensureCacheValid()
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 15)  // 5 辺（最後→最初を含む）
+    }
+
+    @Test("open polygon leaves the closing edge out")
+    func path3DStrokeOpenPolygon() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        for i in 0..<5 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 12)  // 4 辺
+    }
+
+    @Test("lines mode draws segments instead of a fill mesh")
+    func path3DStrokeLinesMode() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.lines)
+        for i in 0..<6 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)  // 塗る面は無い
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 9)  // 3 本の線分
+    }
+
+    @Test("points mode draws a small triangle per vertex")
+    func path3DStrokePointsMode() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.points)
+        for i in 0..<4 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 12)  // 4 点 × 3 頂点
+    }
+
+    @Test("triangle modes keep the wireframe stroke (no outline mesh)")
+    func path3DStrokeTriangleModes() {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0.5, 1, 0)
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D != nil)
+        // 三角形系は塗りメッシュ自身のワイヤーフレームが辺を描くので、別メッシュは持たない
+        #expect(s.cachedStrokeMesh3D == nil)
+    }
+
+    @Test("stroke mesh is rebuilt after setVertex")
+    func path3DStrokeRebuiltAfterSetVertex() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0.5, 1, 0)
+        s.endShape(.close)
+
+        s.ensureCacheValid()
+        let original = try #require(s.cachedStrokeMesh3D)
+
+        s.setVertex(2, 0.5, 5, 0)
+        #expect(s.cachedStrokeMesh3D == nil)  // 古い形のまま描き続けない
+
+        s.ensureCacheValid()
+        let rebuilt = try #require(s.cachedStrokeMesh3D)
+        #expect(rebuilt !== original)
+    }
+
     @Test("re-tessellation after setVertex")
     func reTessellationAfterSetVertex() throws {
         let s = MShape(device: device, kind: .path2D)
