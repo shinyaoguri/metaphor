@@ -141,13 +141,13 @@ fi
 
 # --- shader sources staleness check -------------------------------------------
 if [ "$needs_shaders" -eq 1 ]; then
-    echo "[pre-push] Shaders changed — verifying ShaderSources/*.txt are up to date..."
+    echo "[pre-push] Shaders changed — verifying generated shader sources are up to date..."
     if ! python3 scripts/generate-shader-sources.py --check; then
-        echo "[pre-push] ❌ ShaderSources/*.txt are stale (canonical is Metal/*.metal)." >&2
+        echo "[pre-push] ❌ Generated shader sources are stale (canonical is Metal/*.metal and Metal/*.h)." >&2
         echo "[pre-push] Regenerate and commit:" >&2
         echo "" >&2
         echo "    python3 scripts/generate-shader-sources.py" >&2
-        echo "    git add Sources/MetaphorCore/Shaders/ShaderSources" >&2
+        echo "    git add Sources/MetaphorCore/Shaders/ShaderSources Sources/MetaphorCore/Shaders/BuiltinShaders+Generated.swift" >&2
         echo "    git commit --amend --no-edit  # or a new commit" >&2
         echo "" >&2
         exit 1
