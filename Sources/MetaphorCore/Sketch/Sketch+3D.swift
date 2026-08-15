@@ -363,6 +363,49 @@ extension Sketch {
         context.ambientOcclusion(value)
     }
 
+    // MARK: 3D Tone Mapping
+
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    ///
+    /// レンダーターゲットは LDR（8bit）なので、ライティング結果が 1.0 を超えると
+    /// そのままではクランプされ、ハイライトが白く潰れます。トーンマッピングは
+    /// 高輝度側を滑らかに丸めて階調を残します。
+    ///
+    /// ```swift
+    /// toneMapping(.acesFilmic)
+    /// metallic(0.9)
+    /// roughness(0.25)
+    /// sphere(80)
+    /// ```
+    ///
+    /// 既定は ``ToneMapMode/none`` です（既存のスケッチの絵が変わらないようにするため）。
+    /// **金属や強い光源を使うなら ``ToneMapMode/acesFilmic`` を明示してください。**
+    ///
+    /// - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません
+    ///   （3D の陰影は物理量、2D の色は最終色、という非対称を意図的に採っています）。
+    ///   ライトが 1 つも無いときの描画（無照明パス）にも掛かりません。
+    ///
+    /// - Note: `pushStyle()` / `popStyle()` では**巻き戻りません**。画面全体の性質として
+    ///   扱われます。
+    ///
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) {
+        context.toneMapping(mode)
+    }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    ///
+    /// 露出は ``toneMapping(_:)`` のモードに関わらず掛かります。既定値の 1.0 は
+    /// 恒等倍なので、何も設定しなければ絵は変わりません。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では
+    ///   巻き戻りません。
+    ///
+    /// - Parameter value: 露出倍率（既定 1.0。大きいほど明るい）。
+    public func exposure(_ value: Float) {
+        context.exposure(value)
+    }
+
     /// PBR レンダリングモードを明示的に切り替えます。
     ///
     /// - Note: **3D のみ**に作用します（ADR-0005）。

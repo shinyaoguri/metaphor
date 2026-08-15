@@ -313,6 +313,18 @@ extension SketchContext {
         canvas3D.pbr(enabled)
     }
 
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) {
+        canvas3D.toneMapping(mode)
+    }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    /// - Parameter value: 露出倍率（既定 1.0）。
+    public func exposure(_ value: Float) {
+        canvas3D.exposure(value)
+    }
+
     // MARK: - 3D Custom Material
 
     /// MSL シェーダーソースからカスタムマテリアルを作成します。

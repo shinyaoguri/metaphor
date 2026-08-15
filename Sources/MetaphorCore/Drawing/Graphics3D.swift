@@ -293,6 +293,14 @@ public final class Graphics3D {
     /// - Parameter enabled: PBR シェーディングを使用するかどうか。
     public func pbr(_ enabled: Bool) { canvas3D.pbr(enabled) }
 
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) { canvas3D.toneMapping(mode) }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    /// - Parameter value: 露出倍率（既定 1.0）。
+    public func exposure(_ value: Float) { canvas3D.exposure(value) }
+
     /// 後続の描画呼び出しにカスタムマテリアルを設定します。
     /// - Parameter custom: 適用するカスタムマテリアル。
     public func material(_ custom: CustomMaterial) { canvas3D.material(custom) }

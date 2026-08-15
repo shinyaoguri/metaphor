@@ -40,6 +40,7 @@ struct Material3D {
     float4 specularAndShininess;
     float4 emissiveAndMetallic;
     float4 pbrParams;             // x=roughness, y=usePBR(0/1), z=ao, w=reserved
+    float4 toneMapParams;         // x=toneMapMode, y=exposure, zw=reserved
 };
 
 #endif
