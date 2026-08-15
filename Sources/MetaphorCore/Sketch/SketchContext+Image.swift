@@ -473,6 +473,9 @@ extension SketchContext {
     // MARK: - Text
 
     /// テキストレンダリングのサイズを設定します。
+    ///
+    /// Processing と同じく行間（``textLeading(_:)``）は既定値へ戻ります。
+    ///
     /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         canvas.textSize(size)
@@ -498,7 +501,10 @@ extension SketchContext {
         canvas.textAlign(horizontal, vertical)
     }
 
-    /// 複数行テキストの行間を設定します。
+    /// 複数行テキストの行間（行の高さ）を設定します。
+    ///
+    /// ``textSize(_:)`` / ``textFont(_:)`` を呼ぶと既定値へ戻ります。
+    ///
     /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {
         canvas.textLeading(leading)

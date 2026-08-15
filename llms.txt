@@ -368,7 +368,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func textDescent() -> Float` -- 現在のフォントのディセント値を返します。
 - `func textFont(_ family: String)` -- 以降のテキスト描画のフォントファミリーを設定します。
 - `func textFont(_ font: MFont)` -- 以降のテキスト描画に使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
-- `func textLeading(_ leading: Float)` -- 複数行テキストの行間を設定します。
+- `func textLeading(_ leading: Float)` -- 複数行テキストの行間（行の高さ）を設定します。
 - `func textSize(_ size: Float)` -- 以降のテキスト描画のテキストサイズを設定します。
 - `func textToContours(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [[Vec2]]` -- テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
 - `func textToPoints(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [Vec2]` -- テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。

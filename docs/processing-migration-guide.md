@@ -233,7 +233,7 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")` |
 | `createFont(…)` / `loadFont(…)` | — not implemented; there is no `PFont` type |
 | `textAlign(CENTER, TOP)` | `textAlign(.center, .top)` — `TextAlignH` is `.left/.center/.right`, `TextAlignV` is `.top/.center/.baseline/.bottom` (default `.baseline`) |
-| `textLeading(l)` | `textLeading(_ leading: Float)` |
+| `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
 | `textAscent()` / `textDescent()` | `textAscent() -> Float` / `textDescent() -> Float` |
 
