@@ -5,9 +5,10 @@
 
 1. `Shaders/ShaderSources/*.txt` — ランタイムコンパイル / ホットリロード用。
 2. `Shaders/BuiltinShaders+Generated.swift` — ユーザーのカスタムシェーダーへ配る
-   MSL 前文（`BuiltinShaders.canvas3DStructs` / `canvas3DLightingFn` /
-   `PostProcessShaders.commonStructs` の実体）。以前は Swift の文字列リテラルとして
-   手書きされており、`.metal` / `.h` と二重管理になっていた（#707 / #714）。
+   MSL 前文（`BuiltinShaders.canvas2DStructs` / `canvas3DStructs` /
+   `canvas3DLightingFn` / `PostProcessShaders.commonStructs` の実体）。以前は Swift の
+   文字列リテラルとして手書きされており、`.metal` / `.h` と二重管理になっていた
+   （#707 / #714）。
 
 生成規則:
 - `Metaphor<Name>.metal` → `<name>.txt`（先頭 1 文字を小文字化。連続大文字の
@@ -44,6 +45,13 @@ SWIFT_PRELUDE_PATH = REPO_ROOT / "Sources/MetaphorCore/Shaders/BuiltinShaders+Ge
 # 作法どおり自分で `BuiltinShaders.canvas3DStructs` や
 # `PostProcessShaders.commonStructs` を前置しているソースも動き続ける必要がある。
 SWIFT_PRELUDES = [
+    (
+        "canvas2DStructs",
+        "MetaphorCanvas2DTypes.h",
+        (),
+        "METAPHOR_PRELUDE_CANVAS2D_STRUCTS",
+        "MetaphorCanvas2DTypes.h",
+    ),
     (
         "canvas3DStructs",
         "MetaphorCanvas3DTypes.h",

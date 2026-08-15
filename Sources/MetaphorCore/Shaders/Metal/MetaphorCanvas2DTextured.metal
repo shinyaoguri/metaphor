@@ -1,17 +1,7 @@
-#include <metal_stdlib>
-using namespace metal;
+#include "MetaphorCanvas2DTypes.h"
 
-struct Canvas2DTexVertexIn {
-    float2 position [[attribute(0)]];
-    float2 texCoord [[attribute(1)]];
-    float4 color [[attribute(2)]];
-};
-
-struct Canvas2DTexVertexOut {
-    float4 position [[position]];
-    float2 texCoord;
-    float4 color;
-};
+// `Canvas2DTexVertexIn` / `Canvas2DTexVertexOut` は `MetaphorCanvas2DTypes.h`（= カスタム
+// 2D シェーダへ配る前文）にある。
 
 vertex Canvas2DTexVertexOut metaphor_canvas2DTexturedVertex(
     Canvas2DTexVertexIn in [[stage_in]],

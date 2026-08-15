@@ -3,9 +3,9 @@ import Metal
 @testable import metaphor
 @testable import MetaphorCore
 
-/// カスタムシェーダ用の前文（``BuiltinShaders/canvas3DStructs`` /
-/// ``BuiltinShaders/canvas3DLightingFn`` / ``PostProcessShaders/commonStructs``）を、
-/// 実際に MSL としてコンパイルして固定する。
+/// カスタムシェーダ用の前文（``BuiltinShaders/canvas2DStructs`` /
+/// ``BuiltinShaders/canvas3DStructs`` / ``BuiltinShaders/canvas3DLightingFn`` /
+/// ``PostProcessShaders/commonStructs``）を、実際に MSL としてコンパイルして固定する。
 ///
 /// この前文は組み込みシェーダー（`Shaders/Metal/*.h`）と**同じ実装を配る**ものなので、
 /// 片方だけ直すと組み込みとカスタムマテリアルで挙動が食い違う（#707）。従来の検査は
@@ -177,6 +177,62 @@ struct ShaderPreludeTests {
 
         let library = try compile(source)
         #expect(library.makeFunction(name: "doublePreludeFragment") != nil)
+    }
+
+    // MARK: - 2D の前文（#647 / #714）
+
+    @Test("canvas2DPreamble だけで 4 経路ぶんの stage_in が解決する")
+    func canvas2DPreambleAloneIsEnough() throws {
+        // `loadShader()` / `createShader()` がユーザーのソースへ足すのはこれ 1 つ。
+        // `Canvas2DPipelineStore.makeCustom()` はユーザーのフラグメントを color /
+        // instanced / massive / textured の組み込み頂点関数と組むので、カラー系
+        // （3 経路で共通）とテクスチャ系の 2 つの stage_in が前文だけで書けること。
+        let source = """
+            \(BuiltinShaders.canvas2DPreamble)
+
+            fragment float4 preludeColorFragment(
+                Canvas2DVertexOut in [[stage_in]],
+                constant Canvas2DShaderUniforms &u [[buffer(3)]]
+            ) {
+                float2 uv = in.position.xy / u.resolution;
+                return float4(uv, u.time, 1.0) * in.color;
+            }
+
+            fragment float4 preludeTexturedFragment(
+                Canvas2DTexVertexOut in [[stage_in]],
+                texture2d<float> tex [[texture(0)]],
+                constant Canvas2DShaderUniforms &u [[buffer(3)]]
+            ) {
+                constexpr sampler s(filter::linear);
+                return tex.sample(s, in.texCoord + u.mouse / u.resolution) * in.color;
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "preludeColorFragment") != nil)
+        #expect(library.makeFunction(name: "preludeTexturedFragment") != nil)
+    }
+
+    @Test("canvas2DStructs のレイアウトが Swift 側と一致する")
+    func canvas2DStructsMatchSwiftLayout() throws {
+        // `Canvas2DShaderUniforms` は metaphor が `buffer(3)` へ書き込む側と、ユーザーが
+        // 読む側の両方をこの 1 つで賄う。Swift 側（`Drawing/Shader2D.swift`）と
+        // `.h` のどちらかだけを直すと、カスタムシェーダが黙って別の値を読む。
+        let source = """
+            \(BuiltinShaders.canvas2DPreamble)
+
+            static_assert(sizeof(Canvas2DShaderUniforms) == \(MemoryLayout<Canvas2DShaderUniforms>.stride),
+                          "Canvas2DShaderUniforms layout drifted from Swift");
+
+            fragment float4 canvas2DLayoutFragment(
+                constant Canvas2DShaderUniforms &u [[buffer(3)]]
+            ) {
+                return float4(u.resolution, u.mouse.x, float(u.frameCount));
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "canvas2DLayoutFragment") != nil)
     }
 
     @Test("2D 前文も二重に置ける（ガードが効く）")
