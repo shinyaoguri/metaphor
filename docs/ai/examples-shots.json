@@ -808,6 +808,13 @@
       "height": 1080,
       "frame": 70
     },
+    "Examples/Samples/ToneMapping": {
+      "origin": "captured",
+      "sourceHash": "d2658962f771e66e955e45823272e89cacfd8a495fe144fb9ee30ea1b8bb0faf",
+      "width": 900,
+      "height": 520,
+      "frame": 97
+    },
     "Examples/Topics/Advanced Data/ArrayListClass": {
       "origin": "processing",
       "width": 1280,

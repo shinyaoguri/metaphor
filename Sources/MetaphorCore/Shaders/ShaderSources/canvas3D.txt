@@ -38,6 +38,7 @@ struct Material3D {
     float4 specularAndShininess;
     float4 emissiveAndMetallic;
     float4 pbrParams;             // x=roughness, y=usePBR(0/1), z=ao, w=reserved
+    float4 toneMapParams;         // x=toneMapMode, y=exposure, zw=reserved
 };
 
 
@@ -77,6 +78,53 @@ static inline float3 FresnelSchlick(float cosTheta, float3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+
+
+// トーンマッピング（Issue #706）
+//
+// 3D のライティング結果は物理量なので 1.0 を超えうるが、レンダーターゲットは
+// `.bgra8Unorm`（LDR 8bit）なので、そのまま書き出すとハードクランプされて
+// ハイライトが白く潰れる。ここで 0…1 へ写像してから書き出す。
+//
+// 掛かるのは **3D のライティング結果だけ**で、2D の描画には掛からない
+// （3D の lit は物理量・2D の color は最終色、という非対称を明示的に採る）。
+
+// Reinhard: x / (1 + x)。単純で色相が安定するが、中間調のコントラストは眠くなる。
+static inline float3 metaphorToneMapReinhard(float3 x) {
+    return x / (1.0 + x);
+}
+
+// ACES filmic 近似（Narkowicz 2015）。暗部を締めてハイライトを滑らかに丸めるため、
+// 金属や強い光源のある絵で破綻しにくい。
+static inline float3 metaphorToneMapACESFilmic(float3 x) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
+
+// `mode` は `ToneMapMode` の rawValue（0 = none / 1 = reinhard / 2 = acesFilmic）。
+//
+// `exposure` は **モードに関わらず**トーンマップ前に掛かる。既定の 1.0 は恒等倍なので、
+// `.none` のままなら結果は従来と完全に一致する。
+static inline float3 metaphorApplyToneMap(float3 color, float mode, float exposure) {
+    float3 c = color * exposure;
+    if (mode > 1.5) return metaphorToneMapACESFilmic(c);
+    if (mode > 0.5) return saturate(metaphorToneMapReinhard(c));
+    return c;
+}
+
+
+// マテリアルに設定されたトーンマッピングをライティング結果へ適用する。
+//
+// 適用は**公開エントリポイント 1 か所だけ**で行う（`calculateLighting` /
+// `calculatePBRLighting` / `calculateBlinnPhongLighting`）。内部の `…Raw`
+// 関数はトーンマップ前の値を返すので、どの入口から呼んでも二重に掛からない。
+static inline float3 metaphorToneMapped(float3 lit, Material3D material) {
+    return metaphorApplyToneMap(lit, material.toneMapParams.x, material.toneMapParams.y);
+}
 
 // シャドウフラグメントユニフォーム
 struct ShadowFragmentUniforms {
@@ -122,12 +170,12 @@ static inline float calculateShadow(
     return shadow / 9.0;
 }
 
-// PBR (Cook-Torrance GGX) ライティング
+// PBR (Cook-Torrance GGX) ライティング（トーンマップ前の生の値）
 //
 // `shadow` はシャドウマップの可視率（1 = 完全に照らされる / 0 = 完全な影）。
 // 影は**直接光（diffuse + specular）にのみ**掛かる。環境光（ambient）と自発光
 // （emissive）は遮蔽物の裏にも残るため減衰させない（Issue #364）。
-static inline float3 calculatePBRLighting(
+static inline float3 metaphorPBRLightingRaw(
     float3 worldPos,
     float3 normal,
     float3 cameraPos,
@@ -205,10 +253,10 @@ static inline float3 calculatePBRLighting(
     return ambient + emissive + Lo * shadow;
 }
 
-// Blinn-Phong ライティング（既存互換）
+// Blinn-Phong ライティング（既存互換・トーンマップ前の生の値）
 //
-// `shadow` の意味は ``calculatePBRLighting`` と同じ（直接光にのみ掛かる）。
-static inline float3 calculateBlinnPhongLighting(
+// `shadow` の意味は ``metaphorPBRLightingRaw`` と同じ（直接光にのみ掛かる）。
+static inline float3 metaphorBlinnPhongLightingRaw(
     float3 worldPos,
     float3 normal,
     float3 cameraPos,
@@ -272,7 +320,42 @@ static inline float3 calculateBlinnPhongLighting(
     return ambient + material.emissiveAndMetallic.xyz + direct * shadow;
 }
 
+// PBR (Cook-Torrance GGX) ライティング。結果にはトーンマッピングが適用される。
+static inline float3 calculatePBRLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow
+) {
+    float3 lit = metaphorPBRLightingRaw(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
+// Blinn-Phong ライティング。結果にはトーンマッピングが適用される。
+static inline float3 calculateBlinnPhongLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow
+) {
+    float3 lit = metaphorBlinnPhongLightingRaw(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
 // 統合エントリポイント: pbrParams.y で Blinn-Phong / PBR を自動切替
+//
+// トーンマッピングはここで 1 回だけ適用する（`…Raw` を呼んでから掛けるので、
+// ``calculatePBRLighting`` 経由と二重に掛かることはない）。
 static inline float3 calculateLighting(
     float3 worldPos,
     float3 normal,
@@ -283,10 +366,12 @@ static inline float3 calculateLighting(
     Material3D material,
     float shadow
 ) {
-    if (material.pbrParams.y > 0.5) {
-        return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
-    }
-    return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    float3 lit = (material.pbrParams.y > 0.5)
+        ? metaphorPBRLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow)
+        : metaphorBlinnPhongLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
 }
 
 // 影なし版（後方互換）。カスタムマテリアルシェーダーが従来のシグネチャで

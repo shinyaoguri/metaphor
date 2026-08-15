@@ -1,7 +1,44 @@
 import Metal
 import simd
 
+// MARK: - ToneMapMode
+
+/// 3D のライティング結果を 0…1 へ写像する方法。
+///
+/// レンダーターゲットは LDR（8bit）なので、ライティング結果が 1.0 を超えると
+/// そのままではハードクランプされ、ハイライトが白く潰れます。トーンマッピングは
+/// 高輝度側を滑らかに丸めて階調を残します。
+///
+/// - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません。
+public enum ToneMapMode: Int, CaseIterable, Hashable, Sendable {
+    /// トーンマッピングなし（**既定**）。1.0 を超えた値はクランプされます。
+    case none = 0
+    /// Reinhard（`x / (1 + x)`）。単純で色相が安定しますが、中間調は眠くなります。
+    case reinhard = 1
+    /// ACES filmic 近似。暗部を締めてハイライトを滑らかに丸めます。
+    /// 金属や強い光源のある絵ではこちらが破綻しにくいです。
+    case acesFilmic = 2
+}
+
 extension Canvas3D {
+    // MARK: - トーンマッピング
+
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    ///
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) {
+        toneMapParams.x = Float(mode.rawValue)
+        currentMaterial.toneMapParams = toneMapParams
+    }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    ///
+    /// - Parameter value: 露出倍率（既定 1.0）。
+    public func exposure(_ value: Float) {
+        toneMapParams.y = value
+        currentMaterial.toneMapParams = toneMapParams
+    }
+
     // MARK: - マテリアル
 
     /// 現在のマテリアルのスペキュラハイライト色を設定します。

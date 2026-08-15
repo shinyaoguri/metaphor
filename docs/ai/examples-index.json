@@ -1,7 +1,7 @@
 {
-  "count": 284,
+  "count": 285,
   "statusCounts": {
-    "supported": 265,
+    "supported": 266,
     "partial": 0,
     "stub": 9,
     "obsolete": 10
@@ -2884,6 +2884,20 @@
         "samples",
         "syphon",
         "syphontriplewindow"
+      ]
+    },
+    {
+      "title": "ToneMapping",
+      "path": "Examples/Samples/ToneMapping",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "samples",
+        "tonemapping"
       ]
     },
     {

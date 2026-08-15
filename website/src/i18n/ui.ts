@@ -218,7 +218,7 @@ export const content: Record<Lang, Content> = {
     },
     examples: {
       title: 'サンプルで学ぶ',
-      subtitle: '基礎から高度な GPU テクニックまで、284 の実行可能なサンプル（うち 265 が動作確認済み）。',
+      subtitle: '基礎から高度な GPU テクニックまで、285 の実行可能なサンプル（うち 266 が動作確認済み）。',
       categories: [
         { title: 'Basics', desc: 'シェイプ・カラー・数学・入力・タイポグラフィ', items: ['ShapePrimitives', 'Hue', 'Noise2D', 'Interactive'] },
         { title: 'Topics', desc: 'シェーダー・シミュレーション・ジオメトリ・曲線', items: ['Shaders', 'Flocking', 'Fractals', 'Curves'] },
@@ -342,7 +342,7 @@ export const content: Record<Lang, Content> = {
     },
     examples: {
       title: 'Learn from examples',
-      subtitle: 'From basics to advanced GPU techniques — 284 runnable examples (265 verified).',
+      subtitle: 'From basics to advanced GPU techniques — 285 runnable examples (266 verified).',
       categories: [
         { title: 'Basics', desc: 'Shapes, color, math, input, typography', items: ['ShapePrimitives', 'Hue', 'Noise2D', 'Interactive'] },
         { title: 'Topics', desc: 'Shaders, simulation, geometry, curves', items: ['Shaders', 'Flocking', 'Fractals', 'Curves'] },

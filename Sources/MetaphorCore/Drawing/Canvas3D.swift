@@ -124,7 +124,24 @@ public final class Canvas3D: CanvasStyle {
 
     // MARK: - マテリアル状態
 
-    var currentMaterial: Material3D = .default
+    var currentMaterial: Material3D = .default {
+        didSet {
+            // トーンマッピングは画面全体の性質なので、マテリアルの差し替えでは
+            // 巻き戻らない。`currentMaterial` は pushStyle/popStyle・記録経路の
+            // スナップショット復元・`MShape` のマテリアル適用で丸ごと代入される
+            // ため、書き込みのたびにここで現在値へ焼き直す（Issue #706）。
+            if currentMaterial.toneMapParams != toneMapParams {
+                currentMaterial.toneMapParams = toneMapParams
+            }
+        }
+    }
+
+    // MARK: - トーンマッピング状態
+
+    /// トーンマッピングの実体（x=モード, y=露出, zw=予約）。
+    ///
+    /// GPU へは ``Material3D/toneMapParams`` に相乗りして運ぶが、値の持ち主はこちら。
+    var toneMapParams: SIMD4<Float> = SIMD4(0, 1, 0, 0)
 
     // MARK: - テクスチャ状態
 

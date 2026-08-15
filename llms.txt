@@ -205,6 +205,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endSVGRecord()` -- SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
 - `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
 - `func endVideoRecordAsync() async` -- 動画の録画を非同期で停止しファイルを完成させます。
+- `func exposure(_ value: Float)` -- トーンマッピング前に掛ける露出倍率を設定します。
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
 - `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
@@ -374,6 +375,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func tint(_ gray: Float)` -- グレースケール値で画像のティントを設定します。
 - `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
 - `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
+- `func toneMapping(_ mode: ToneMapMode)` -- 3D のライティング結果に適用するトーンマッピングを設定します。
 - `func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
 - `func translate(_ x: Float, _ y: Float)` -- 現在の変換に平行移動を適用します。
 - `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
@@ -1023,6 +1025,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func encode(to encoder: any Encoder) throws` -- Encodes this value into the given encoder, when the type's `RawValue`
 - `func hash(into hasher: inout Hasher)`
 
+### `enum ToneMapMode` -- 3D のライティング結果を 0…1 へ写像する方法。
+
+- `case acesFilmic` -- ACES filmic 近似。暗部を締めてハイライトを滑らかに丸めます。
+- `case none` -- トーンマッピングなし（**既定**）。1.0 を超えた値はクランプされます。
+- `case reinhard` -- Reinhard（`x / (1 + x)`）。単純で色相が安定しますが、中間調は眠くなります。
+- `var hashValue: Int { get }`
+- `init?(rawValue: Int)`
+- `func hash(into hasher: inout Hasher)`
+
 ### `enum VertexLayout` -- Metal レンダーパイプライン用の定義済み頂点属性レイアウト
 
 - `case position` -- float3 位置のみ格納 (ストライド: 12 バイト)
@@ -1104,7 +1115,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
 
-- （ほか 71 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 73 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
 - `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
@@ -1244,7 +1255,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 54 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 56 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
@@ -1601,7 +1612,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 229 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 231 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

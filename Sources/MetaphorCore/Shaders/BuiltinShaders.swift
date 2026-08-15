@@ -108,6 +108,7 @@ public enum BuiltinShaders {
         float4 specularAndShininess;
         float4 emissiveAndMetallic;
         float4 pbrParams;
+        float4 toneMapParams;
     };
 
     struct ShadowFragmentUniforms {
@@ -176,11 +177,43 @@ public enum BuiltinShaders {
         return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
     }
 
-    // PBR (Cook-Torrance GGX) lighting
+    // Tone mapping (Issue #706)
+    //
+    // 3D のライティング結果は 1.0 を超えうるが、レンダーターゲットは LDR 8bit
+    // なのでそのまま書くとハイライトが白く潰れる。0…1 へ写像してから書き出す。
+    float3 metaphorToneMapReinhard(float3 x) {
+        return x / (1.0 + x);
+    }
+
+    float3 metaphorToneMapACESFilmic(float3 x) {
+        const float a = 2.51;
+        const float b = 0.03;
+        const float c = 2.43;
+        const float d = 0.59;
+        const float e = 0.14;
+        return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+    }
+
+    // mode: 0 = none / 1 = reinhard / 2 = acesFilmic。exposure はモードに関わらず
+    // トーンマップ前に掛かる（既定 1.0 は恒等倍）。
+    float3 metaphorApplyToneMap(float3 color, float mode, float exposure) {
+        float3 c = color * exposure;
+        if (mode > 1.5) return metaphorToneMapACESFilmic(c);
+        if (mode > 0.5) return saturate(metaphorToneMapReinhard(c));
+        return c;
+    }
+
+    // 適用は公開エントリポイント 1 か所だけで行う。内部の `…Raw` はトーンマップ前の
+    // 値を返すので、どの入口から呼んでも二重に掛からない。
+    float3 metaphorToneMapped(float3 lit, Material3D material) {
+        return metaphorApplyToneMap(lit, material.toneMapParams.x, material.toneMapParams.y);
+    }
+
+    // PBR (Cook-Torrance GGX) lighting（トーンマップ前の生の値）
     //
     // `shadow` はシャドウマップの可視率（1 = 完全に照らされる / 0 = 完全な影）。
     // 影は直接光（diffuse + specular）にのみ掛かる（Issue #364）。
-    float3 calculatePBRLighting(
+    float3 metaphorPBRLightingRaw(
         float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
         constant Light3D *lights, uint lightCount, Material3D material, float shadow
     ) {
@@ -228,8 +261,8 @@ public enum BuiltinShaders {
         return material.ambientColor.xyz * baseColor * ao + material.emissiveAndMetallic.xyz + Lo * shadow;
     }
 
-    // Blinn-Phong lighting
-    float3 calculateBlinnPhongLighting(
+    // Blinn-Phong lighting（トーンマップ前の生の値）
+    float3 metaphorBlinnPhongLightingRaw(
         float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
         constant Light3D *lights, uint lightCount, Material3D material, float shadow
     ) {
@@ -277,15 +310,40 @@ public enum BuiltinShaders {
         return ambient + material.emissiveAndMetallic.xyz + direct * shadow;
     }
 
+    // PBR lighting。結果にはトーンマッピングが適用される。
+    float3 calculatePBRLighting(
+        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
+        constant Light3D *lights, uint lightCount, Material3D material, float shadow
+    ) {
+        float3 lit = metaphorPBRLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+        return metaphorToneMapped(lit, material);
+    }
+
+    // Blinn-Phong lighting。結果にはトーンマッピングが適用される。
+    float3 calculateBlinnPhongLighting(
+        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
+        constant Light3D *lights, uint lightCount, Material3D material, float shadow
+    ) {
+        float3 lit = metaphorBlinnPhongLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+        return metaphorToneMapped(lit, material);
+    }
+
     // Unified entry point: auto-switch based on pbrParams.y
+    //
+    // トーンマッピングはここで 1 回だけ適用する（`…Raw` を呼んでから掛けるので
+    // calculatePBRLighting 経由と二重に掛かることはない）。
     float3 calculateLighting(
         float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
         constant Light3D *lights, uint lightCount, Material3D material, float shadow
     ) {
-        if (material.pbrParams.y > 0.5) {
-            return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
-        }
-        return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+        float3 lit = (material.pbrParams.y > 0.5)
+            ? metaphorPBRLightingRaw(
+                worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow)
+            : metaphorBlinnPhongLightingRaw(
+                worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+        return metaphorToneMapped(lit, material);
     }
 
     // 影なし版（後方互換）。従来のシグネチャで呼ぶカスタムシェーダー向け。
