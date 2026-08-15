@@ -20,9 +20,15 @@ extension Canvas3D {
         self.ambientColor = SIMD3(0.2, 0.2, 0.2)
         self.userSetAmbient = false
         self.currentMaterial = .default
+        // `Material3D.default` のアンビエントはフレームごとに戻るので、環境が
+        // 有効な間は毎フレーム 0 へ焼き直す（IBL との二重計上を避ける・#710）
+        if environment != nil {
+            applyDefaultAmbient()
+        }
         self.currentTexture = nil
         self.currentCustomMaterial = nil
         self.recordedDrawCalls.removeAll(keepingCapacity: true)
+        self.skyboxDrawnThisFrame = false
         self.meshCacheFrameCounter += 1
 
         // 各フレームで Processing 風のデフォルトに投影をリセット。
@@ -83,16 +89,22 @@ extension Canvas3D {
     /// 3D フラグメントシェーダーが要求するシャドウリソース（`buffer(5)` のユニフォームと
     /// `texture(1)` のシャドウマップ）をバインドします。
     ///
-    /// 組み込み 3D フラグメントシェーダーは**すべて**この 2 つを引数に取るため、
+    /// 組み込み 3D フラグメントシェーダーは**すべて**シャドウと環境を引数に取るため、
     /// `pipelineState` / `texturedPipelineState` / `wirePipelineState` /
     /// インスタンス系パイプラインのどれで描く場合も、描画前に必ず呼ぶこと
     /// （バインド漏れは Metal のバリデーションで落ちる）。
     ///
+    /// 環境（IBL）のキューブマップも同時にバインドする。呼び出し側を 1 か所に
+    /// 保つため、シャドウと環境をこの 1 本にまとめている（#710）。
+    ///
     /// - Parameters:
     ///   - encoder: バインド先のレンダーコマンドエンコーダー。
-    ///   - enabled: `false` ならシャドウ無効のユニフォームとダミーテクスチャを
-    ///     バインドする。ライティングを行わないワイヤーフレーム（stroke）パス用。
+    ///   - enabled: `false` ならシャドウ・環境ともに無効のユニフォームとダミー
+    ///     テクスチャをバインドする。ライティングを行わないワイヤーフレーム
+    ///     （stroke）パス用。
     func bindShadowResources(on encoder: MTLRenderCommandEncoder, enabled: Bool = true) {
+        bindEnvironmentResources(on: encoder, enabled: enabled)
+
         if enabled, let shadow = shadowMap {
             var uniforms = ShadowFragmentUniforms(
                 lightSpaceMatrix: shadow.lightSpaceMatrix,

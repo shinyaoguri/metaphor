@@ -148,6 +148,21 @@ box(120)
 pop()
 ```
 
+For metal, glass, or any shiny PBR material, set an environment first —
+otherwise raising `metallic` removes diffuse light with nothing to reflect and
+the surface collapses into a flat grey blob:
+
+```swift
+func setup() {
+    environment(.studio)   // also .sunset / .overcast; draws a skybox too
+}
+```
+
+`environment(_:)` needs no asset, promotes tone mapping to `.acesFilmic`, and
+applies to the PBR path (`roughness(...)` / `pbr(true)`). Pass
+`background: false` to keep your own background, and `noEnvironment()` to turn
+it off.
+
 ### Audio Reactive
 
 Create the analyzer once:

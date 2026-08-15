@@ -211,7 +211,7 @@ metaphor-sketches の [`2026/0815-salvage`](https://github.com/shinyaoguri/metap
 
 | 層 | 事象 | Issue |
 |---|---|---|
-| 3D | IBL が無いため `metallic` を上げると拡散が消え、埋める環境光が無く灰色に潰れる。**スカラーの metallic が 0.2 超で死に機能** | [#293](https://github.com/shinyaoguri/metaphor/issues/293) へ実需（G3 > G2 の一票） |
+| 3D | IBL が無いため `metallic` を上げると拡散が消え、埋める環境光が無く灰色に潰れる。**スカラーの metallic が 0.2 超で死に機能** | [#293](https://github.com/shinyaoguri/metaphor/issues/293) へ実需（G3 > G2 の一票）→ G3a [#706](https://github.com/shinyaoguri/metaphor/issues/706) / G3b [#710](https://github.com/shinyaoguri/metaphor/issues/710) で解消 |
 | 3D | `emissive` / `specular` に 0..255 の 3 引数版が無く `fill` と書き味が揃わない | [#700](https://github.com/shinyaoguri/metaphor/issues/700) |
 | 映像 | `VideoPlayer` / `CaptureDevice` を 3D のテクスチャとして貼れない（`texture()` が `MImage` 限定）。2D の書き割りで回避 | [#701](https://github.com/shinyaoguri/metaphor/issues/701) |
 | 並行性 | `Sketch` の外にアセットを持つ型は `@MainActor` が要る（最初のビルドのエラーが全部これ）。文書に無い | [#702](https://github.com/shinyaoguri/metaphor/issues/702) |
@@ -268,7 +268,7 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#290](https://github.com/shinyaoguri/metaphor/issues/290) D: Parameter Store & AI 共同操作 | Phase 2 フラッグシップ | D1 store コア / D2 ParameterGUI 再基盤 / D3 probe schema 拡張 / D4 MCP 書込チャネル（cli）/ D5 リロード永続 [#451](https://github.com/shinyaoguri/metaphor/issues/451)（**完了**）/ D6 ノードインスペクタ（Phase 3） |
 | [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ [#646](https://github.com/shinyaoguri/metaphor/issues/646)（**完了**）/ E2 loadShader API [#647](https://github.com/shinyaoguri/metaphor/issues/647)（**完了**）/ E3 ファイル監視リロード [#648](https://github.com/shinyaoguri/metaphor/issues/648)（**完了**） |
 | [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 [#649](https://github.com/shinyaoguri/metaphor/issues/649) / F2 textToPoints [#650](https://github.com/shinyaoguri/metaphor/issues/650) / F3 text-on-path（stretch）[#651](https://github.com/shinyaoguri/metaphor/issues/651) |
-| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
+| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3a トーンマッピング [#706](https://github.com/shinyaoguri/metaphor/issues/706)（**完了**）/ G3b skybox・IBL [#710](https://github.com/shinyaoguri/metaphor/issues/710)（**完了**）/ G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
 | [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント / I3 website（#74） |
 | [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。**1 本目 `0815-strata` / 2 本目 `0815-salvage`（AI 単独制作実験）完走**（所見は「J の所見」節、起票は #684〜#688 / cli#133 / #700〜#702） |

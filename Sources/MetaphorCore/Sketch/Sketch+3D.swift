@@ -434,6 +434,73 @@ extension Sketch {
         context.exposure(value)
     }
 
+    // MARK: 3D Environment (IBL / skybox)
+
+    /// 環境（IBL と背景の skybox）を設定します。
+    ///
+    /// PBR では `metallic` を上げるほど拡散反射が消えます（物理的に正しい挙動）。
+    /// 消えた分を埋めるのは**周囲の環境からの反射**なので、環境が無い状態で
+    /// `metallic` を上げると、金属ではなく特徴のない灰色の塊になります。
+    /// `environment()` はその環境を与えるので、これを呼んで初めて
+    /// `metallic` / `roughness` が意図どおりの質感になります。
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     environment(.studio)   // これだけで IBL + 背景が入る
+    /// }
+    ///
+    /// func draw() {
+    ///     background(0)
+    ///     directionalLight(-0.4, -0.6, -1, intensity: 2)
+    ///     translate(width / 2, height / 2, 0)
+    ///     metallic(0.9)
+    ///     roughness(0.25)
+    ///     sphere(120)
+    /// }
+    /// ```
+    ///
+    /// プリセットはすべて手続き的に生成されるので、HDR 画像などのアセットは要りません。
+    /// 焼き上げ（キューブマップの生成と畳み込み）はプリセットにつき 1 回だけ走り、
+    /// 以降のフレームのコストはサンプリングだけです。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では
+    ///   巻き戻りません。画面全体の性質として扱われます。
+    ///
+    /// - Note: IBL が掛かるのは **PBR 経路だけ**です（``roughness(_:)`` を呼ぶか
+    ///   ``pbr(_:)`` を有効にしたとき）。Blinn-Phong の絵は変わりません。
+    ///
+    /// - Note: トーンマッピングが未指定なら ``ToneMapMode/acesFilmic`` へ自動的に
+    ///   昇格します（環境を入れると輝度が 1.0 を超えるため）。``toneMapping(_:)`` を
+    ///   明示していれば、そちらが優先されます。
+    ///
+    /// - Note: `background: true` のとき、skybox は**最初の 3D 描画の直前**に
+    ///   1 回だけ描かれます。したがって、それより前に描いた 2D は skybox に覆われ、
+    ///   後に描いた 2D（HUD などの前景）は上に残ります。3D を 1 つも描かない
+    ///   フレームでは skybox も描かれません。
+    ///
+    /// - Note: ``ambientLight(_:)`` を明示していない場合、既定のアンビエントは
+    ///   0 になります（IBL の拡散項と二重に足さないため）。
+    ///
+    /// - Parameters:
+    ///   - preset: 環境プリセット。
+    ///   - intensity: 環境の強度（既定 1.0）。0 以下で無効になります。
+    ///   - background: `true`（既定）なら背景としても描きます。IBL だけ欲しいときは
+    ///     `false` を渡してください。
+    public func environment(
+        _ preset: EnvironmentPreset,
+        intensity: Float = 1.0,
+        background: Bool = true
+    ) {
+        context.environment(preset, intensity: intensity, background: background)
+    }
+
+    /// 環境（IBL と skybox）を無効化します。
+    ///
+    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    public func noEnvironment() {
+        context.noEnvironment()
+    }
+
     /// PBR レンダリングモードを明示的に切り替えます。
     ///
     /// - Note: **3D のみ**に作用します（ADR-0005）。

@@ -347,6 +347,26 @@ extension SketchContext {
         canvas3D.exposure(value)
     }
 
+    // MARK: - 3D Environment (IBL / skybox)
+
+    /// 環境（IBL と背景の skybox）を設定します。
+    /// - Parameters:
+    ///   - preset: 環境プリセット。
+    ///   - intensity: 環境の強度（既定 1.0）。0 以下で無効。
+    ///   - background: `true` なら背景としても描く。
+    public func environment(
+        _ preset: EnvironmentPreset,
+        intensity: Float = 1.0,
+        background: Bool = true
+    ) {
+        canvas3D.environment(preset, intensity: intensity, background: background)
+    }
+
+    /// 環境（IBL と skybox）を無効化します。
+    public func noEnvironment() {
+        canvas3D.noEnvironment()
+    }
+
     // MARK: - 3D Custom Material
 
     /// MSL シェーダーソースからカスタムマテリアルを作成します。

@@ -696,6 +696,13 @@
       "height": 600,
       "frame": 100
     },
+    "Examples/Samples/EnvironmentIBL": {
+      "origin": "captured",
+      "sourceHash": "b97f7a6f318e50635b539341b147fda7049b3c03a93e4b226abd12cbe97cc44f",
+      "width": 900,
+      "height": 600,
+      "frame": 104
+    },
     "Examples/Samples/InstancedCubes": {
       "origin": "captured",
       "sourceHash": "0d6f329c8f8394508e4d15129c8556a5afa09442b01c99e34b95a0ab9cedb2d8",

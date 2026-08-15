@@ -1,7 +1,7 @@
 {
-  "count": 285,
+  "count": 286,
   "statusCounts": {
-    "supported": 266,
+    "supported": 267,
     "partial": 0,
     "stub": 9,
     "obsolete": 10
@@ -2637,6 +2637,20 @@
         "dynamicmeshtexture",
         "samples",
         "typography"
+      ]
+    },
+    {
+      "title": "EnvironmentIBL",
+      "path": "Examples/Samples/EnvironmentIBL",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "environmentibl",
+        "samples"
       ]
     },
     {

@@ -53,9 +53,11 @@ fragment float4 metaphor_canvas3DFragment(
     constant Light3D *lights [[buffer(2)]],
     constant Material3D &material [[buffer(3)]],
     constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
-    texture2d<float> shadowMap [[texture(1)]]
+    texture2d<float> shadowMap [[texture(1)]],
+    texturecube<float> irradianceMap [[texture(2)]],
+    texturecube<float> prefilteredMap [[texture(3)]]
 ) {
-    if (uniforms.lightCount == 0) {
+    if (metaphorSkipsLighting(material, uniforms.lightCount)) {
         return in.color;
     }
 
@@ -73,7 +75,9 @@ fragment float4 metaphor_canvas3DFragment(
         lights,
         uniforms.lightCount,
         material,
-        shadow
+        shadow,
+        irradianceMap,
+        prefilteredMap
     );
 
     return float4(lit, in.color.a);

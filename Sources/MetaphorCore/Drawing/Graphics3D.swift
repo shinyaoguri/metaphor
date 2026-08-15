@@ -319,6 +319,22 @@ public final class Graphics3D {
     /// - Parameter value: 露出倍率（既定 1.0）。
     public func exposure(_ value: Float) { canvas3D.exposure(value) }
 
+    /// 環境（IBL と背景の skybox）を設定します。
+    /// - Parameters:
+    ///   - preset: 環境プリセット。
+    ///   - intensity: 環境の強度（既定 1.0）。0 以下で無効。
+    ///   - background: `true` なら背景としても描く。
+    public func environment(
+        _ preset: EnvironmentPreset,
+        intensity: Float = 1.0,
+        background: Bool = true
+    ) {
+        canvas3D.environment(preset, intensity: intensity, background: background)
+    }
+
+    /// 環境（IBL と skybox）を無効化します。
+    public func noEnvironment() { canvas3D.noEnvironment() }
+
     /// 後続の描画呼び出しにカスタムマテリアルを設定します。
     /// - Parameter custom: 適用するカスタムマテリアル。
     public func material(_ custom: CustomMaterial) { canvas3D.material(custom) }

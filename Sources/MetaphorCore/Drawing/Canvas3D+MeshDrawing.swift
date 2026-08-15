@@ -217,6 +217,8 @@ extension Canvas3D {
               instanceBatcher.instanceCount > 0,
               let mesh = instanceBatcher.currentMesh else { return }
 
+        ensureSkyboxDrawn()
+
         let isTextured = instanceBatcher.currentBatchKey?.isTextured ?? false
         let batchHasFill = instanceBatcher.currentHasFill
         let batchHasStroke = instanceBatcher.currentHasStroke
@@ -359,6 +361,7 @@ extension Canvas3D {
     private func drawMeshImmediate(_ mesh: Mesh) {
         guard let encoder = encoder else { return }
 
+        ensureSkyboxDrawn()
         immediateDrawCountForTesting += 1
 
         let isTextured = currentTexture != nil && mesh.hasUVs

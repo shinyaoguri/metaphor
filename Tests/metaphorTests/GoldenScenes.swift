@@ -19,6 +19,7 @@ let goldenSceneNames: [String] = [
     "blend-modes",
     "lighting-blinn-phong",
     "lighting-pbr",
+    "lighting-ibl",
     "shadow-cast",
     "post-process",
     "transform-2d-on-3d",
@@ -90,6 +91,7 @@ enum GoldenScenes {
         blendModes,
         lightingBlinnPhong,
         lightingPBR,
+        lightingIBL,
         shadowCast,
         postProcess,
         transform2DOn3D,
@@ -188,6 +190,34 @@ enum GoldenScenes {
         c.pushMatrix()
         c.translate(64, 64, 0)
         c.sphere(40, detail: 24)
+        c.popMatrix()
+    }
+
+    /// 環境（IBL + skybox）が入った PBR。#710（Epic #293 G3b）。
+    ///
+    /// `lighting-pbr` が「環境が無いので metallic を上げられない」構図なのに対し、
+    /// こちらは **metallic を実用域（0.85）まで上げた金属**を写す。ここが退行すると
+    /// 「金属が特徴のない灰色の塊に戻る」ので、IBL の寄与が消えたことを検出できる。
+    /// 背景も skybox なので、環境キューブの向き（+Y が画面下）の取り違えも写る。
+    static let lightingIBL = GoldenScene(name: "lighting-ibl", tolerance: .shaded) { c in
+        c.background(Color(r: 0.03, g: 0.03, b: 0.05))
+        c.environment(.studio)
+        // 環境は埋める光なので、形を出す直接光は別に要る（y は画面下向き）
+        c.directionalLight(-0.4, 0.55, -0.75, intensity: 2.0)
+        c.noStroke()
+        c.fill(Color(r: 0.80, g: 0.78, b: 0.74))
+        c.metallic(0.85)
+        c.roughness(0.22)
+        c.pushMatrix()
+        c.translate(44, 64, 0)
+        c.sphere(28, detail: 24)
+        c.popMatrix()
+        // 誘電体側も並べて、kD / kS の配分が壊れたら気付けるようにする
+        c.metallic(0.0)
+        c.roughness(0.55)
+        c.pushMatrix()
+        c.translate(90, 64, 0)
+        c.sphere(28, detail: 24)
         c.popMatrix()
     }
 
