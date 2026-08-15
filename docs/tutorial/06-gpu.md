@@ -367,7 +367,7 @@ final class Particles: Sketch {
 
 ## 6.3 ポストプロセス
 
-![黄色い点の輪と中央の白い点に Bloom と Vignette がかかり、光がにじんで四隅が落ちている](https://i.gyazo.com/dda4dd3bbf40a95bc833a885767807d0.png)
+![黄色い点の輪と中央の白い点に Bloom と Vignette がかかり、光がにじんで四隅が落ちている](https://i.gyazo.com/d0e134c2855732fac4734defc7b02bce.png)
 
 ![同じ絵に、効果無し → Bloom → Bloom + Vignette → Grayscale の 4 通りを順にかけていく](https://i.gyazo.com/5c4727eeab63d554e4b093b5d3743765.webp)
 
@@ -391,6 +391,8 @@ metaphor は、まずオフスクリーンのテクスチャに 1 フレーム�
 | `GrayscaleEffect` / `InvertEffect` | 灰色化 / 反転 | — |
 
 `BloomEffect` の `threshold` は「どれくらい明るい画素をにじませるか」です。このスケッチでは 0.45 にしてあるので、明るい点だけがにじみ、暗い点はそのまま残ります。
+
+`VignetteEffect` の `intensity` は **0.0 で無効、1.0 で最も強い**という素直な強度です。このスケッチは 0.4 にしてあるので、四隅がうっすら落ちる程度に留まります。
 
 ### 並べる、入れ替える
 
@@ -434,7 +436,7 @@ final class PostProcess: Sketch {
         case 2:
             setPostEffects([
                 BloomEffect(intensity: 2.2, threshold: 0.45),
-                VignetteEffect(intensity: 1.0, smoothness: 0.35),
+                VignetteEffect(intensity: 0.4, smoothness: 0.35),
             ])
         default:
             setPostEffects([GrayscaleEffect()])

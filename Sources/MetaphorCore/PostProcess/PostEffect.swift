@@ -151,10 +151,28 @@ public final class GrayscaleEffect: PostEffect {
 }
 
 /// エッジを暗くするビネットエフェクトを適用します。
+///
+/// ```swift
+/// addPostEffect(VignetteEffect())                  // 既定 = 中くらいの周辺減光
+/// addPostEffect(VignetteEffect(intensity: 0.25))   // 弱く
+/// addPostEffect(VignetteEffect(intensity: 1.0))    // 最も強く
+/// ```
 @MainActor
 public final class VignetteEffect: PostEffect {
     public let name = "vignette"
+
+    /// 周辺減光の強度。**0.0 で無効、1.0 で最も強い**（範囲外はクランプされます）。
+    ///
+    /// 内部では「黒に落ちきる半径」へ写しています（画面中心が `dist = 0`、
+    /// 隅が `dist = 0.707`）。`0.5` から上げるほど暗い輪が中心へ寄ります。
+    ///
+    /// - Note: v0.9.0 までは、この値が**半径そのもの**で「大きいほど弱い」という
+    ///   逆向きの意味でした。`VignetteEffect(intensity: 1.0)` のような旧来の値は
+    ///   いまや「最も強い」になります。旧 `intensity` を `r` とすると、
+    ///   おおよそ `新 = (1.25 - r) / 0.6` が同じ見た目です（Issue #684）。
     public var intensity: Float
+
+    /// 減光が始まってから黒に落ちきるまでの幅（`dist` 換算）。大きいほどなだらかです。
     public var smoothness: Float
 
     public init(intensity: Float = 0.5, smoothness: Float = 0.5) {

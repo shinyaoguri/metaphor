@@ -25,7 +25,7 @@ final class PostProcess: Sketch {
         case 2:
             setPostEffects([
                 BloomEffect(intensity: 2.2, threshold: 0.45),
-                VignetteEffect(intensity: 1.0, smoothness: 0.35),
+                VignetteEffect(intensity: 0.4, smoothness: 0.35),
             ])
         default:
             setPostEffects([GrayscaleEffect()])

@@ -53,8 +53,15 @@ fragment float4 metaphor_postVignette(
     constexpr sampler s(filter::linear);
     float4 color = tex.sample(s, in.texCoord);
     float2 uv = in.texCoord - 0.5;
-    float dist = length(uv);
-    float vig = smoothstep(params.intensity, params.intensity - params.smoothness, dist);
+    float dist = length(uv);          // 中心 0 〜 隅 0.707
+    // intensity は 0（無効）〜 1（最も強い）の強度。内部で「黒に落ちきる半径」へ写す。
+    // 0 のとき inner = 1.25 - 0.5 = 0.75 > 隅の 0.707 なので、画面のどこも暗くならない。
+    // 以前は intensity をそのまま半径として使っていたため、既定値のままで
+    // dist >= 0.5 の領域（16:9 の画面の大半）が純黒に潰れていた（Issue #684）。
+    float strength = clamp(params.intensity, 0.0, 1.0);
+    float outer = mix(1.25, 0.65, strength);
+    float inner = outer - max(params.smoothness, 1e-4);
+    float vig = smoothstep(outer, inner, dist);
     return float4(color.rgb * vig, color.a);
 }
 
