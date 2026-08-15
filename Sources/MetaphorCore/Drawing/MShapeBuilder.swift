@@ -294,13 +294,23 @@ extension MShape {
     }
 
     /// 3Dカスタムシェイプの頂点から Mesh を構築し、結果をキャッシュします。
+    ///
+    /// 塗りとストロークで別のメッシュを持ちます（#735）。理由は
+    /// ``MShape/cachedStrokeMesh3D`` を参照。
     func buildMesh3D() {
         guard case .path3D = kind, !vertices3D.isEmpty else {
             cachedMesh3D = nil
+            cachedStrokeMesh3D = nil
             isDirty = false
             return
         }
 
+        cachedMesh3D = buildFillMesh3D()
+        cachedStrokeMesh3D = buildStrokeMesh3D()
+        isDirty = false
+    }
+
+    private func buildFillMesh3D() -> Mesh? {
         let hasUVs = vertices3D.contains { $0.uv != nil }
         let white = SIMD4<Float>(1, 1, 1, 1)
 
@@ -353,32 +363,84 @@ extension MShape {
                 indices.append(contentsOf: [0, UInt32(i), UInt32(i + 1)])
             }
         case .lines, .points:
-            // 描画時に別処理。塗りつぶしメッシュなし
+            // 塗る面は無い。線分・点は buildStrokeMesh3D() が持つ
             break
         }
 
-        guard !indices.isEmpty else {
-            cachedMesh3D = nil
-            isDirty = false
-            return
-        }
+        guard !indices.isEmpty else { return nil }
 
         if meshVertices.count <= 65535 {
-            cachedMesh3D = try? Mesh(
+            return try? Mesh(
                 device: device,
                 vertices: meshVertices,
                 indices: indices.map { UInt16($0) },
                 uvVertices: uvVertices
             )
-        } else {
-            cachedMesh3D = try? Mesh(
-                device: device,
-                vertices: meshVertices,
-                indices32: indices,
-                uvVertices: uvVertices
-            )
         }
-        isDirty = false
+        return try? Mesh(
+            device: device,
+            vertices: meshVertices,
+            indices32: indices,
+            uvVertices: uvVertices
+        )
+    }
+
+    /// ストローク用メッシュを構築します。線分は退化三角形 `(a, b, b)` で表します。
+    ///
+    /// ワイヤーフレーム描画は三角形の 3 辺を線で描くので、`a-b` / `b-b`（点）/ `b-a` となり
+    /// 線分 `a-b` だけが残ります。これにより新しいパイプラインを足さずに、既存のストローク経路
+    /// （ライティング無し・`strokeColor` 単色・depth bias・インスタンシング・コマンド記録）を
+    /// そのまま使えます。
+    ///
+    /// 三角形系モードは塗りメッシュ自身のワイヤーフレームが正しい辺を描くため nil を返します。
+    private func buildStrokeMesh3D() -> Mesh? {
+        // 位置以外は使われない（ストロークの色はワイヤーパイプラインの strokeColor が決め、
+        // ライティングも掛からない）ので、法線と色は既定値で埋める。
+        let normal = SIMD3<Float>(0, 1, 0)
+        let white = SIMD4<Float>(1, 1, 1, 1)
+        var verts: [Vertex3D] = []
+
+        func appendSegment(_ a: SIMD3<Float>, _ b: SIMD3<Float>) {
+            verts.append(Vertex3D(position: a, normal: normal, color: white))
+            verts.append(Vertex3D(position: b, normal: normal, color: white))
+            verts.append(Vertex3D(position: b, normal: normal, color: white))
+        }
+
+        switch shapeMode3D {
+        case .polygon:
+            guard vertices3D.count >= 2 else { return nil }
+            verts.reserveCapacity(vertices3D.count * 3)
+            for i in 0..<(vertices3D.count - 1) {
+                appendSegment(vertices3D[i].position, vertices3D[i + 1].position)
+            }
+            if closeMode3D == .close {
+                appendSegment(vertices3D[vertices3D.count - 1].position, vertices3D[0].position)
+            }
+
+        case .lines:
+            verts.reserveCapacity((vertices3D.count / 2) * 3)
+            var i = 0
+            while i + 1 < vertices3D.count {
+                appendSegment(vertices3D[i].position, vertices3D[i + 1].position)
+                i += 2
+            }
+
+        case .points:
+            // 点は線分にできないので、イミディエイトの `drawShape3DPoints()` と同じ小三角形を置く
+            let s: Float = 0.5
+            verts.reserveCapacity(vertices3D.count * 3)
+            for v in vertices3D {
+                verts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: normal, color: white))
+                verts.append(Vertex3D(position: v.position + SIMD3(s, -s, 0), normal: normal, color: white))
+                verts.append(Vertex3D(position: v.position + SIMD3(0, s, 0), normal: normal, color: white))
+            }
+
+        case .triangles, .triangleStrip, .triangleFan:
+            return nil
+        }
+
+        guard !verts.isEmpty else { return nil }
+        return try? Mesh(device: device, vertices: verts, indices: nil)
     }
 
     /// ジオメトリキャッシュが最新であることを保証します。描画前に呼び出されます。

@@ -257,6 +257,14 @@ public final class MShape {
     /// 3Dカスタムシェイプ（path3D）用のキャッシュされたメッシュ。
     var cachedMesh3D: Mesh?
 
+    /// path3D のストローク用にキャッシュされたメッシュ（#735）。
+    ///
+    /// 線分を退化三角形 `(a, b, b)` として持ちます。ワイヤーフレーム描画が三角形の 3 辺を
+    /// 線で描くため、これを ``cachedMesh3D`` と別に流すと「面の縁取り」が引けます
+    /// （塗りメッシュ自身をワイヤーフレーム化するとテッセレーションの対角線まで出てしまう）。
+    /// 塗りメッシュのワイヤーフレームで足りる三角形系モードでは nil のままです。
+    var cachedStrokeMesh3D: Mesh?
+
     /// 3Dプリミティブ（box、sphere など）用のキャッシュされたメッシュ。
     var primitiveMesh3D: Mesh?
 
@@ -270,6 +278,9 @@ public final class MShape {
 
     /// 2D 描画経路での頂点カラー/UV 未対応警告を出したかどうか（一度だけ警告）。
     var warned2DVertexAttributes: Bool = false
+
+    /// `.lines` / `.points` を noStroke() で描こうとした警告を出したかどうか（一度だけ警告）。
+    var warned3DStrokeOnlyMode: Bool = false
 
     /// 最後のキャッシュビルド以降にジオメトリが変更されたかどうか。
     var isDirty: Bool = true
@@ -528,5 +539,6 @@ public final class MShape {
         cachedTriangles2D = nil
         cachedStrokeOutline2D = nil
         cachedMesh3D = nil
+        cachedStrokeMesh3D = nil
     }
 }
