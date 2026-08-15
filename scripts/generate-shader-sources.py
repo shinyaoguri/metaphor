@@ -33,22 +33,28 @@ METAL_DIR = REPO_ROOT / "Sources/MetaphorCore/Shaders/Metal"
 TXT_DIR = REPO_ROOT / "Sources/MetaphorCore/Shaders/ShaderSources"
 SWIFT_PRELUDE_PATH = REPO_ROOT / "Sources/MetaphorCore/Shaders/BuiltinShaders+Generated.swift"
 
-# Swift 定数名 → (ルートヘッダ, 展開済みとして扱うヘッダ, 由来の説明)
+# Swift 定数名 → (ルートヘッダ, 展開済みとして扱うヘッダ, ガードマクロ, 由来の説明)
 #
 # ルートは**必ず 1 本**にする。`expand()` はルート自身を「展開済み」に登録しない
 # ため、推移的に include されるヘッダ（例: MetaphorLighting.h → MetaphorPBR.h）を
 # 一緒に並べると二重展開になり、MSL が二重定義でコンパイル不能になる。
+#
+# ガードマクロは前文が**二重に前置されても壊れない**ようにするためのもの（#713）。
+# `createMaterial()` が前文を必ず足すようになった一方、以前の作法どおり自分で
+# `BuiltinShaders.canvas3DStructs` を前置しているソースも動き続ける必要がある。
 SWIFT_PRELUDES = [
     (
         "canvas3DStructs",
         "MetaphorCanvas3DTypes.h",
         (),
+        "METAPHOR_PRELUDE_CANVAS3D_STRUCTS",
         "MetaphorCanvas3DTypes.h",
     ),
     (
         "canvas3DLightingFn",
         "MetaphorLighting.h",
         ("MetaphorCanvas3DTypes.h",),  # 構造体は canvas3DStructs 側が配る
+        "METAPHOR_PRELUDE_CANVAS3D_LIGHTING",
         "MetaphorLighting.h（MetaphorPBR.h / MetaphorToneMapping.h を推移的に含む）",
     ),
 ]
@@ -130,12 +136,16 @@ def generate(metal_path: Path) -> str:
     return text
 
 
-def generate_prelude(root: str, preincluded: tuple) -> str:
+def generate_prelude(root: str, preincluded: tuple, guard: str) -> str:
     """`.h` 1 本を展開して、カスタムシェーダ前文の本文を返す。
 
     `generate()` は通さない（あちらは stdlib が 1 度も出なければ先頭に補うので、
     前文の頭に `#include <metal_stdlib>` が生えてしまう）。ここでは stdlib と
     `using namespace metal;` を「出力済み」と種蒔きして、どちらも落とす。
+
+    出力はインクルードガードで包む。`createMaterial()` は前文を必ず前置するので、
+    以前の作法どおり自分でも前置しているソースでは前文が 2 回現れる。ガードが
+    無いと MSL が構造体の二重定義で落ちる（#713）。
     """
     path = METAL_DIR / root
     if not path.is_file():
@@ -145,7 +155,8 @@ def generate_prelude(root: str, preincluded: tuple) -> str:
         "stdlib_emitted": True,
         "using_emitted": True,
     }
-    return "\n".join(expand(path, state)).strip("\n")
+    body = "\n".join(expand(path, state)).strip("\n")
+    return f"#ifndef {guard}\n#define {guard}\n\n{body}\n\n#endif"
 
 
 SWIFT_FILE_HEADER = '''\
@@ -162,16 +173,20 @@ SWIFT_FILE_HEADER = '''\
 /// 組み込みシェーダーと同じ `Shaders/Metal/*.h` から生成されるので、ライティングの
 /// 実装を直せばカスタムマテリアルシェーダーへ配られる前文も一緒に動きます（#707）。
 ///
-/// 前文は `#include <metal_stdlib>` と `using namespace metal;` を**持ちません**
-/// （利用者が自分で書く前提。2D の ``BuiltinShaders/canvas2DPreamble`` とは非対称）。
+/// 各定数は `#ifndef` ガードで包まれています。``BuiltinShaders/canvas3DPreamble`` は
+/// `createMaterial()` が必ず前置するので、以前の作法どおり自分でも前置している
+/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713）。
+///
+/// 定数そのものは `#include <metal_stdlib>` と `using namespace metal;` を持ちません
+/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble``）。
 enum BuiltinShadersGenerated {
 '''
 
 
 def generate_swift_preludes() -> str:
     parts = [SWIFT_FILE_HEADER]
-    for name, root, preincluded, origin in SWIFT_PRELUDES:
-        payload = generate_prelude(root, preincluded)
+    for name, root, preincluded, guard, origin in SWIFT_PRELUDES:
+        payload = generate_prelude(root, preincluded, guard)
         # raw string リテラルを閉じてしまう並びが入ると、生成された Swift が
         # 静かに壊れる（今の `.h` には無いが、将来の追記で踏みうる）。
         for forbidden in ('"""#', '\\#'):

@@ -630,6 +630,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let canvas2DVertex: String` -- Canvas2D 頂点シェーダーのMSL関数名。
 - `static let canvas3DFragment: String` -- Canvas3D フラグメントシェーダーのMSL関数名。
 - `static let canvas3DLightingFn: String` -- MSLライティング関数 (Blinn-Phong + PBR Cook-Torrance GGX)。
+- `static let canvas3DPreamble: String` -- カスタムマテリアルシェーダのソースへ自動で足される前文
 - `static let canvas3DStructs: String` -- Canvas3D の非テクスチャおよびテクスチャシェーダーで共有されるMSL構造体定義。
 - `static let canvas3DTexturedFragment: String` -- Canvas3D テクスチャ付きフラグメントシェーダーのMSL関数名。
 - `static let canvas3DTexturedVertex: String` -- Canvas3D テクスチャ付き頂点シェーダーのMSL関数名。

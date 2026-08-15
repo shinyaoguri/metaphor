@@ -514,6 +514,22 @@ extension Sketch {
 
     /// MSL ソースコードからカスタムシェーダーマテリアルを作成します。
     ///
+    /// ``BuiltinShaders/canvas3DPreamble``（stdlib + 3D 用の構造体定義 + ライティング関数）を
+    /// **必ず**先頭へ足すので、フラグメント関数だけを書けば動きます。`Canvas3DUniforms` /
+    /// `Canvas3DVertexOut` などは自分で定義しないでください（#713）。
+    ///
+    /// ```swift
+    /// let mat = try createMaterial(source: """
+    /// fragment float4 myFragment(Canvas3DVertexOut in [[stage_in]],
+    ///                            constant Canvas3DUniforms &u [[buffer(1)]]) {
+    ///     return float4(abs(normalize(in.normal)), 1.0);
+    /// }
+    /// """, fragmentFunction: "myFragment")
+    /// material(mat)
+    /// box(100)
+    /// noMaterial()
+    /// ```
+    ///
     /// - Note: 作成されるマテリアルは **3D のみ**に適用されます。2D にカスタムシェーダーを
     ///   掛けるには ``loadShader(_:fragment:)`` / ``shader(_:)`` を使用してください
     ///   （ADR-0005）。

@@ -17,7 +17,7 @@ import Foundation
 /// カスタムマテリアルシェーダー向けの 3D 前文（``canvas3DStructs`` /
 /// ``canvas3DLightingFn``）も同じスクリプトが `.h` から生成します
 /// （実体は `BuiltinShaders+Generated.swift`）。2D 前文（``canvas2DStructs``）は
-/// 対応する `.h` が無いため、まだ手書きです。
+/// 対応する `.h` が無いため、まだ手書きです（#714）。
 public enum BuiltinShaders {
 
     // MARK: - Canvas2D カスタムシェーダ用の構造体 (#647 / Epic #291 E2)
@@ -34,7 +34,13 @@ public enum BuiltinShaders {
     ///
     /// 2D のカラー頂点は UV を持たないので、uv はフラグメントの `[[position]]`（画面ピクセル座標）を
     /// `resolution` で割って作ります（Shadertoy の `fragCoord / iResolution` と同じ形）。
+    ///
+    /// 3D の前文と同じく `#ifndef` ガードで包んであるので、これを自分で前置したソースを
+    /// 渡しても二重定義にはなりません（#713）。
     public static let canvas2DStructs = """
+    #ifndef METAPHOR_PRELUDE_CANVAS2D_STRUCTS
+    #define METAPHOR_PRELUDE_CANVAS2D_STRUCTS
+
     struct Canvas2DVertexOut {
         float4 position [[position]];
         float4 color;
@@ -52,6 +58,8 @@ public enum BuiltinShaders {
         float time;
         uint frameCount;
     };
+
+    #endif
     """
 
     /// カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
@@ -66,29 +74,41 @@ public enum BuiltinShaders {
 
     /// Canvas3D の非テクスチャおよびテクスチャシェーダーで共有されるMSL構造体定義。
     ///
-    /// カスタムマテリアルシェーダー記述時にプレフィックスとして使用します。
-    /// ```swift
-    /// let source = """
-    /// #include <metal_stdlib>
-    /// using namespace metal;
-    /// \(BuiltinShaders.canvas3DStructs)
-    /// // カスタムフラグメントシェーダー ...
-    /// """
-    /// ```
+    /// `createMaterial()` / `createMaterialFromFile()` は ``canvas3DPreamble``（stdlib +
+    /// これ + ``canvas3DLightingFn``）を**必ず**先頭へ足すので、通常は自分で前置する
+    /// 必要はありません。`Canvas3DUniforms` / `Light3D` / `Material3D` /
+    /// `ShadowFragmentUniforms` と、stage_in の `Canvas3DVertexOut` /
+    /// `Canvas3DTexVertexOut`（+ 頂点入力の 2 型）が入っています。
+    ///
+    /// 前置しても壊れません（`#ifndef` ガードで包んであるため）。以前の作法で書かれた
+    /// ソースはそのまま動きます（#713）。
     ///
     /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorCanvas3DTypes.h` からの
-    /// 生成物です（#707）。2D の ``canvas2DStructs`` と違い、3D は前文が自動で足されない
-    /// ので、`#include <metal_stdlib>` と `using namespace metal;` は自分で書きます。
+    /// 生成物です（#707）。
     public static let canvas3DStructs = BuiltinShadersGenerated.canvas3DStructs
 
     /// MSLライティング関数 (Blinn-Phong + PBR Cook-Torrance GGX)。
     ///
-    /// カスタムマテリアルシェーダーで組み込みライティング計算が必要な場合に使用します。
-    /// 構造体を参照するので、``canvas3DStructs`` と**セットで**前置してください。
+    /// ``canvas3DPreamble`` の一部として自動で足されるので、カスタムマテリアルの中では
+    /// `calculateLighting()` などをそのまま呼べます。単体で前置するときは構造体を
+    /// 参照するので ``canvas3DStructs`` と**セットで**使ってください。
     ///
     /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorLighting.h` からの生成物
     /// です（#707）。ライティングの実装を直せば、ここで配られる前文も一緒に動きます。
     public static let canvas3DLightingFn = BuiltinShadersGenerated.canvas3DLightingFn
+
+    /// カスタムマテリアルシェーダのソースへ自動で足される前文
+    /// （stdlib + ``canvas3DStructs`` + ``canvas3DLightingFn``）。
+    ///
+    /// 2D の ``canvas2DPreamble`` と対称です。フラグメント関数だけを書けば動きます。
+    public static let canvas3DPreamble = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    \(canvas3DStructs)
+
+    \(canvas3DLightingFn)
+    """
 
     // MARK: - シェーダー関数名
 

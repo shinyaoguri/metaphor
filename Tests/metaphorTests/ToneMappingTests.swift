@@ -321,13 +321,6 @@ struct ToneMappingTests {
             \(BuiltinShaders.canvas3DStructs)
             \(BuiltinShaders.canvas3DLightingFn)
 
-            struct Canvas3DVertexOut {
-                float4 position [[position]];
-                float3 worldPosition;
-                float3 normal;
-                float4 color;
-            };
-
             fragment float4 toneMapCustomFragment(
                 Canvas3DVertexOut in [[stage_in]],
                 constant Canvas3DUniforms &uniforms [[buffer(1)]],

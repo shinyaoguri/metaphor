@@ -1,18 +1,9 @@
 #include "MetaphorCanvas3DTypes.h"
 #include "MetaphorLighting.h"
 
-struct Canvas3DVertexIn {
-    float3 position [[attribute(0)]];
-    float3 normal   [[attribute(1)]];
-    float4 color    [[attribute(2)]];
-};
-
-struct Canvas3DVertexOut {
-    float4 position [[position]];
-    float3 worldPosition;
-    float3 normal;
-    float4 color;
-};
+// `Canvas3DVertexIn` / `Canvas3DVertexOut` は `MetaphorCanvas3DTypes.h`（= カスタム
+// マテリアルシェーダーへ配る前文）にある。組み込みとカスタムで stage_in の
+// レイアウトがずれないよう、定義は 1 箇所に置く。
 
 vertex Canvas3DVertexOut metaphor_canvas3DVertex(
     Canvas3DVertexIn in [[stage_in]],

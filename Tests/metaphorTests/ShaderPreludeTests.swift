@@ -131,6 +131,72 @@ struct ShaderPreludeTests {
         #expect(library.makeFunction(name: "preludeLightingFragment") != nil)
     }
 
+    // MARK: - 前文そのもの（#713）
+
+    @Test("canvas3DPreamble だけでフラグメント関数が書ける")
+    func preambleAloneIsEnough() throws {
+        // `createMaterial()` がユーザーのソースへ足すのはこれ 1 つ。stage_in も
+        // ライティング関数も含めて、これだけで最小のマテリアルが成立する。
+        let source = """
+            \(BuiltinShaders.canvas3DPreamble)
+
+            fragment float4 preamblePreludeFragment(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                float3 lit = calculateLighting(
+                    in.worldPosition, in.normal, uniforms.cameraPosition.xyz,
+                    in.color.rgb, lights, uniforms.lightCount, material);
+                return float4(lit, in.color.a);
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "preamblePreludeFragment") != nil)
+    }
+
+    @Test("前文が二重に置かれてもコンパイルできる（ガードが効く）")
+    func preambleIsIdempotent() throws {
+        // `createMaterial()` は前文を必ず足すので、以前の作法で自分でも前置している
+        // ソースでは前文が 2 回現れる。ガードが無いと構造体の二重定義で落ちる。
+        let source = """
+            \(BuiltinShaders.canvas3DPreamble)
+
+            \(BuiltinShaders.canvas3DPreamble)
+
+            fragment float4 doublePreludeFragment(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]]
+            ) {
+                return uniforms.color;
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "doublePreludeFragment") != nil)
+    }
+
+    @Test("2D 前文も二重に置ける（ガードが効く）")
+    func canvas2DPreambleIsIdempotent() throws {
+        let source = """
+            \(BuiltinShaders.canvas2DPreamble)
+
+            \(BuiltinShaders.canvas2DPreamble)
+
+            fragment float4 double2DFragment(
+                Canvas2DVertexOut in [[stage_in]],
+                constant Canvas2DShaderUniforms &u [[buffer(3)]]
+            ) {
+                return float4(in.position.xy / u.resolution, 0.0, 1.0);
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "double2DFragment") != nil)
+    }
+
     @Test("canvas3DStructs 抜きの canvas3DLightingFn は成立しない（前文は 2 つで 1 組）")
     func lightingFunctionsNeedStructs() {
         // 「構造体も入っているから前文は 1 つでよい」と誤解させないための固定。

@@ -22,13 +22,6 @@ struct CustomMaterialPropertyTests {
 
         \(BuiltinShaders.canvas3DStructs)
 
-        struct Canvas3DVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
-
         fragment float4 testCustomFragment(
             Canvas3DVertexOut in [[stage_in]],
             constant Canvas3DUniforms &uniforms [[buffer(1)]],
@@ -58,13 +51,6 @@ struct CustomMaterialPropertyTests {
         using namespace metal;
 
         \(BuiltinShaders.canvas3DStructs)
-
-        struct Canvas3DVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
 
         fragment float4 testParamFragment(
             Canvas3DVertexOut in [[stage_in]],
@@ -100,13 +86,6 @@ struct CustomMaterialPropertyTests {
         using namespace metal;
 
         \(BuiltinShaders.canvas3DStructs)
-
-        struct Canvas3DVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
 
         struct CustomParams {
             float4 tintColor;
@@ -160,13 +139,6 @@ struct CustomMaterialPipelineTests {
 
         \(BuiltinShaders.canvas3DStructs)
 
-        struct Canvas3DVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
-
         fragment float4 testUntexturedCustom(
             Canvas3DVertexOut in [[stage_in]],
             constant Canvas3DUniforms &uniforms [[buffer(1)]],
@@ -205,13 +177,6 @@ struct CustomMaterialPipelineTests {
         using namespace metal;
 
         \(BuiltinShaders.canvas3DStructs)
-
-        struct Canvas3DTexVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float2 uv;
-        };
 
         fragment float4 testTexturedCustom(
             Canvas3DTexVertexOut in [[stage_in]],
@@ -288,13 +253,6 @@ struct Canvas3DCustomMaterialStateTests {
 
         \(BuiltinShaders.canvas3DStructs)
 
-        struct Canvas3DVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
-
         fragment float4 testStateMaterial(
             Canvas3DVertexOut in [[stage_in]],
             constant Canvas3DUniforms &uniforms [[buffer(1)]],
@@ -315,6 +273,97 @@ struct Canvas3DCustomMaterialStateTests {
 
         // noMaterial() should reset
         canvas3D.noMaterial()
+    }
+}
+
+// MARK: - 前文の自動付与 (#713)
+
+/// `createMaterial()` / `createMaterialFromFile()` が前文を**必ず**足すことを固定する。
+///
+/// 2D（`createShader` / `loadShader`）は前からそうなっていたが、3D はユーザーが手で
+/// 前置する作法だった。忘れると `use of undeclared identifier 'Canvas3DUniforms'` で
+/// 落ちる一方、以前の作法で自分で前置しているソースも動き続ける必要がある（前文が
+/// `#ifndef` ガードを持つのはそのため）。両方をここで見る。
+@Suite("CustomMaterial Preamble", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct CustomMaterialPreambleTests {
+
+    /// 前文を 1 行も書かない、フラグメント関数だけのソース。
+    private static let bareSource = """
+    fragment float4 bareFragment(
+        Canvas3DVertexOut in [[stage_in]],
+        constant Canvas3DUniforms &uniforms [[buffer(1)]],
+        constant Light3D *lights [[buffer(2)]],
+        constant Material3D &material [[buffer(3)]]
+    ) {
+        float3 lit = calculateLighting(
+            in.worldPosition, in.normal, uniforms.cameraPosition.xyz,
+            in.color.rgb, lights, uniforms.lightCount, material);
+        return float4(lit, in.color.a);
+    }
+    """
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        return SketchContext(
+            renderer: renderer,
+            canvas: try Canvas2D(renderer: renderer),
+            canvas3D: try Canvas3D(renderer: renderer),
+            input: renderer.input
+        )
+    }
+
+    @Test("前文を書かないフラグメント関数だけのソースが通る")
+    func bareFragmentCompiles() throws {
+        let context = try makeContext()
+        let material = try context.createMaterial(
+            source: Self.bareSource, fragmentFunction: "bareFragment")
+        #expect(material.fragmentFunctionName == "bareFragment")
+    }
+
+    @Test("自分で前文を前置した従来形のソースも通る")
+    func selfPrefixedSourceStillCompiles() throws {
+        // #713 以前に案内していた書き方。ガードが効いていないと、前文が 2 回現れて
+        // `redefinition of 'Canvas3DUniforms'` で落ちる。
+        let legacy = """
+        #include <metal_stdlib>
+        using namespace metal;
+
+        \(BuiltinShaders.canvas3DStructs)
+        \(BuiltinShaders.canvas3DLightingFn)
+
+        \(Self.bareSource)
+        """
+        let context = try makeContext()
+        let material = try context.createMaterial(
+            source: legacy, fragmentFunction: "bareFragment")
+        #expect(material.fragmentFunctionName == "bareFragment")
+    }
+
+    @Test("ファイルから読む経路でも前文が足される")
+    func fileSourceGetsPreamble() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("metaphor-preamble-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("bare.metal")
+        try Self.bareSource.write(to: file, atomically: true, encoding: .utf8)
+
+        let context = try makeContext()
+        let material = try context.createMaterialFromFile(
+            path: file.path, fragmentFunction: "bareFragment")
+        #expect(material.fragmentFunctionName == "bareFragment")
+    }
+
+    @Test("読めないパスは shaderSourceLoadFailed になる")
+    func missingFileThrows() throws {
+        let context = try makeContext()
+        #expect(throws: MetaphorError.self) {
+            _ = try context.createMaterialFromFile(
+                path: "/nonexistent/metaphor-\(UUID().uuidString).metal",
+                fragmentFunction: "bareFragment")
+        }
     }
 }
 

@@ -371,8 +371,20 @@ extension SketchContext {
 
     /// MSL シェーダーソースからカスタムマテリアルを作成します。
     ///
-    /// MSL ソースをコンパイルし、指定したフラグメント関数から `CustomMaterial` を構築します。
-    /// ソースには `BuiltinShaders.canvas3DStructs` をプレフィクスとして含める必要があります。
+    /// ``BuiltinShaders/canvas3DPreamble``（`#include <metal_stdlib>` +
+    /// `using namespace metal;` + 3D 用の構造体定義 + ライティング関数）を**必ず**
+    /// 先頭へ足すので、フラグメント関数だけを書けば動きます（#713）。
+    /// `Canvas3DUniforms` / `Canvas3DVertexOut` などは自分で定義しないでください。
+    ///
+    /// ```swift
+    /// let mat = try createMaterial(source: """
+    /// fragment float4 myFragment(Canvas3DVertexOut in [[stage_in]],
+    ///                            constant Canvas3DUniforms &u [[buffer(1)]]) {
+    ///     return float4(abs(normalize(in.normal)), 1.0);
+    /// }
+    /// """, fragmentFunction: "myFragment")
+    /// ```
+    ///
     /// - Parameters:
     ///   - source: MSL シェーダーソースコード。
     ///   - fragmentFunction: フラグメントシェーダー関数名。
@@ -384,7 +396,7 @@ extension SketchContext {
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
-        try renderer.shaderLibrary.register(source: source, as: key)
+        try renderer.shaderLibrary.register(source: Shader3DSource.complete(source), as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
             throw MetaphorError.material(.shaderNotFound(fragmentFunction))
         }
@@ -860,6 +872,10 @@ extension SketchContext {
 
     /// 外部 MSL ファイルからカスタムマテリアルを作成します。
     ///
+    /// ``createMaterial(source:fragmentFunction:vertexFunction:)`` と同じく
+    /// ``BuiltinShaders/canvas3DPreamble`` を**必ず**先頭へ足すので、`.metal` には
+    /// フラグメント関数だけを書けば動きます（#713）。
+    ///
     /// 読み込んだファイルは**自動で監視対象**になります（#648）。保存するとビルド無しで
     /// 再コンパイルされ、絵がその場で変わります。コンパイルに失敗しても直前の動く
     /// シェーダのまま描き続け、エラーだけがコンソールに出ます。無効化は
@@ -877,7 +893,16 @@ extension SketchContext {
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
-        try renderer.shaderLibrary.registerFromFile(path: path, as: key)
+        // `registerFromFile` ではなく自分で読むのは、前文を足してから登録するため
+        // （2D の `loadShader` と同じ形）。
+        let source: String
+        do {
+            source = try String(contentsOfFile: path, encoding: .utf8)
+        } catch {
+            throw MetaphorError.shaderSourceLoadFailed(
+                path: path, detail: error.localizedDescription)
+        }
+        try renderer.shaderLibrary.register(source: Shader3DSource.complete(source), as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
             throw MetaphorError.material(.shaderNotFound(fragmentFunction))
         }
@@ -1009,4 +1034,18 @@ extension SketchContext {
         canvas3D.camera(eye: orbitCamera.eye, center: orbitCamera.target, up: orbitCamera.up)
     }
 
+}
+
+/// カスタムマテリアルシェーダのソース整形（#713）。
+enum Shader3DSource {
+    /// 前文（stdlib + 3D 構造体 + ライティング関数）を先頭へ足した完全なソースを返します。
+    ///
+    /// **常に足します。**2D（``Shader2DSource/complete(_:)``）と同じ判断で、
+    /// 「ソースに前文があれば素通しする」という条件付きの規約は採りません。
+    /// 3D は前文を自分で前置する作法が長く案内されていたので、二重に前置される
+    /// ケースが必ず出ますが、前文そのものが `#ifndef` ガードを持つため
+    /// 2 回目は空になります（`BuiltinShaders.canvas3DPreamble`）。
+    static func complete(_ source: String) -> String {
+        BuiltinShaders.canvas3DPreamble + "\n\n" + source
+    }
 }
