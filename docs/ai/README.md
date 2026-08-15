@@ -53,6 +53,17 @@ here.
   (split by concern: `+Frame`, `+Recording`, `+Primitives`, `+Shapes`,
   `+ShapeDrawing`, `+MeshDrawing`), `Mesh.swift`, `PipelineFactory.swift`,
   shader files.
+- 2D drawn *after* a 3D object shows up *behind* it, or a sketch looks different
+  with `METAPHOR_COMMAND_RECORD=1`: the immediate path fixes z-order when a 2D
+  batch is **flushed**, not when the call is made, so 2D that overlaps 3D must sit
+  in the last batch of the frame. Batches flush early on a `blendMode()` change,
+  on alternating with `image()` / `text()` (textured vertices) or `circles()`
+  (instancing), on `beginClip()` / `endClip()`, and when the vertex buffer cannot
+  grow — `Canvas2D.blendMode(_:)`, `Canvas2DVertexWriter.addVertex`,
+  `Canvas2D+Clipping.swift`. The record path (shadows on, or the opt-in) replays in
+  call order via `Canvas3D.flushPending2D`, so the paths disagree exactly here.
+  Conditions and measurements: the 2026-08-16 note under the Amendment in
+  [ADR-0003](../adr/0003-unified-command-stream.md).
 - Shader failures: keep `Shaders/Metal/*.metal`, `Shaders/ShaderSources/*.txt`,
   and shader function constants in sync.
 - Export/readback bugs: `FrameExporter.swift`, `VideoExporter.swift`,
