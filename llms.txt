@@ -623,6 +623,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case back` -- 背面カメラ
 - `case front` -- 前面カメラ
 
+### `enum CaptureAuthorizationStatus` -- カメラ（TCC）の権限状態。
+
+- `case authorized` -- 許可済み。フレームが流れる。
+- `case denied` -- ユーザーが拒否した。システム設定から変える必要がある。
+- `case notDetermined` -- まだ誰も答えていない。**素の実行ファイルではここから動かない**。
+- `case restricted` -- ペアレンタルコントロール等で制限されている。
+- `var hashValue: Int { get }`
+- `init(from decoder: any Decoder) throws` -- Creates a new instance by decoding from the given decoder, when the
+- `init?(rawValue: String)`
+- `func encode(to encoder: any Encoder) throws` -- Encodes this value into the given encoder, when the type's `RawValue`
+- `func hash(into hasher: inout Hasher)`
+
 ### `enum CaptureDeviceKind` -- 接続中のカメラの種類
 
 - `case builtIn` -- Mac 内蔵カメラ
@@ -1085,8 +1097,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var actualHeight: Int? { get }` -- 実際のキャプチャ高さ（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
 - `var actualWidth: Int? { get }` -- 実際のキャプチャ幅（ピクセル）。セッション設定に成功した場合のみ非 `nil`。
+- `var authorizationStatus: CaptureAuthorizationStatus { get }` -- カメラ（TCC）の権限状態。
 - `var deviceInfo: CaptureDeviceInfo? { get }` -- 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
 - `let height: Int` -- 要求されたキャプチャ高さ（ピクセル）。
+- `var isAuthorized: Bool { get }` -- カメラの使用が許可されているか（``authorizationStatus`` == `.authorized`）。
 - `var isAvailable: Bool { get }` -- カメラが利用可能でキャプチャセッションの設定が成功したかどうかを示すフラグ。
 - `var onDisconnect: (() -> Void)?` -- 使用中のカメラが切断される等で利用不能になったときに呼ばれるコールバック。
 - `var texture: (any MTLTexture)? { get }` -- ``read()`` 呼び出し後に利用可能な、最新のカメラフレームの Metal テクスチャ
@@ -1930,7 +1944,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class AudioAnalyzer` -- Performs FFT analysis and beat detection on microphone or line input.
 
+- `var authorizationStatus: MicrophoneAuthorizationStatus { get }` -- マイク（TCC）の権限状態。
 - `var beatThreshold: Float` -- Beat detection sensitivity (higher values make detection less sensitive).
+- `var isAuthorized: Bool { get }` -- マイクの使用が許可されているか（``authorizationStatus`` == `.authorized`）。
 - `var isBeat: Bool { get }` -- Beat detection flag (reset on every `update()` call).
 - `var onConfigurationChange: (() -> Void)?` -- Called (on the main thread) when the audio engine's configuration
 - `var sampleRate: Double?` -- The sample rate of the audio being analyzed (Hz).
@@ -1946,7 +1962,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func stop()` -- Stops audio capture.
 - `func update()` -- Updates analysis data once per frame (call this at the top of `draw()`).
 
-### `enum AudioAnalyzerError` -- Represents errors that can occur during `AudioAnalyzer` operations.
+### `enum AudioAnalyzerError`
 
 - `case engineStartFailed(detail: String)` -- Indicates that the audio engine failed to start for another reason.
 - `case microphonePermissionDenied` -- Indicates that microphone permission has been denied.
@@ -1956,6 +1972,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var helpAnchor: String? { get }`
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
+
+### `enum MicrophoneAuthorizationStatus` -- Represents errors that can occur during `AudioAnalyzer` operations.
+
+- `case authorized` -- 許可済み。サンプルが流れる。
+- `case denied` -- ユーザーが拒否した。システム設定から変える必要がある。
+- `case notDetermined` -- まだ誰も答えていない。**素の実行ファイルではここから動かない**。
+- `case restricted` -- ペアレンタルコントロール等で制限されている。
+- `var hashValue: Int { get }`
+- `init(from decoder: any Decoder) throws` -- Creates a new instance by decoding from the given decoder, when the
+- `init?(rawValue: String)`
+- `func encode(to encoder: any Encoder) throws` -- Encodes this value into the given encoder, when the type's `RawValue`
+- `func hash(into hasher: inout Hasher)`
 
 ### `final class SoundFile` -- Plays an audio file (MP3, WAV, AAC, etc.) and integrates spectrum analysis.
 

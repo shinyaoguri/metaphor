@@ -178,6 +178,17 @@ public final class AudioAnalyzer {
     /// の deinit が `removeObserver` を呼ぶ。
     private var configurationObserver: NotificationObserverToken?
 
+    // MARK: - 権限待ちの観測（Issue #685）
+
+    /// 直近の `start()` の時刻（`CACurrentMediaTime()`）。未開始なら nil。
+    private var startedAt: Double?
+
+    /// タップから 1 度でもサンプルを受け取ったか（無音でも受け取りは起きる）。
+    private var hasDeliveredSamples = false
+
+    /// 「権限が未決のままサンプルが来ない」警告を出したか（1 回だけ出す）。
+    private var didWarnAboutPendingPermission = false
+
     // MARK: - vDSP FFT
 
     private let fftHolder: FFTSetupHolder
@@ -296,6 +307,7 @@ public final class AudioAnalyzer {
 
         self.engine = engine
         self.isRunning = true
+        self.startedAt = CACurrentMediaTime()
     }
 
     /// Stops audio capture.
@@ -319,14 +331,73 @@ public final class AudioAnalyzer {
     /// updates `volume`, `spectrum`, `waveform`, and `isBeat`.
     public func update() {
         if sampleBuffer.take(into: &tapSamples) {
+            hasDeliveredSamples = true
             injectedSamples = nil
             processSamples(tapSamples)
         } else if let samples = injectedSamples {
             injectedSamples = nil
             processSamples(samples)
         } else {
+            warnIfPermissionDialogWillNeverAppear()
             isBeat = false
         }
+    }
+
+    // MARK: - 権限の無言待ち（Issue #685）
+
+    /// マイク（TCC）の権限状態。
+    ///
+    /// - Important: `.notDetermined` のままサンプルが来ないことがあります。macOS は
+    ///   `Info.plist` に `NSMicrophoneUsageDescription` を持つ**バンドル済みアプリにしか**
+    ///   許可ダイアログを出さないため、`swift run` で作る素の実行ファイルでは
+    ///   `.notDetermined` から動きません（カメラと同じ穴。Issue #685）。
+    public var authorizationStatus: MicrophoneAuthorizationStatus {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized: return .authorized
+        case .denied: return .denied
+        case .restricted: return .restricted
+        case .notDetermined: return .notDetermined
+        @unknown default: return .notDetermined
+        }
+    }
+
+    /// マイクの使用が許可されているか（``authorizationStatus`` == `.authorized`）。
+    public var isAuthorized: Bool { authorizationStatus == .authorized }
+
+    /// `.notDetermined` のままサンプルが 0 のときに警告を出すまでの猶予（秒）。
+    static let pendingPermissionWarningDelay: Double = 3.0
+
+    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    static func shouldWarnAboutPendingPermission(
+        status: MicrophoneAuthorizationStatus,
+        isRunning: Bool,
+        hasDeliveredSamples: Bool,
+        elapsed: Double,
+        alreadyWarned: Bool
+    ) -> Bool {
+        guard !alreadyWarned, isRunning, !hasDeliveredSamples else { return false }
+        guard status == .notDetermined else { return false }
+        return elapsed >= pendingPermissionWarningDelay
+    }
+
+    /// 「許可ダイアログが出ないまま無音で死ぬ」状態を一度だけ報告します。
+    private func warnIfPermissionDialogWillNeverAppear() {
+        guard let startedAt else { return }
+        guard Self.shouldWarnAboutPendingPermission(
+            status: authorizationStatus,
+            isRunning: isRunning,
+            hasDeliveredSamples: hasDeliveredSamples,
+            elapsed: CACurrentMediaTime() - startedAt,
+            alreadyWarned: didWarnAboutPendingPermission
+        ) else { return }
+        didWarnAboutPendingPermission = true
+        audioAlert(
+            "Microphone permission is still 'notDetermined' and no samples have arrived "
+                + "after \(Int(Self.pendingPermissionWarningDelay))s. macOS only shows the "
+                + "permission dialog for a bundled app that declares NSMicrophoneUsageDescription — "
+                + "a plain executable (swift run) never gets asked, so the input stays silent. "
+                + "Wrap the sketch in a .app to be prompted, or grant it in "
+                + "System Settings > Privacy & Security > Microphone.")
     }
 
     /// Injects samples from an external source (used by SoundFile).
@@ -514,6 +585,21 @@ public final class AudioAnalyzer {
 /// Throwing `AudioAnalyzer` APIs only ever throw this type: failures coming from
 /// AVFoundation are wrapped into ``engineStartFailed(detail:)`` rather than being
 /// re-thrown as raw `NSError`.
+/// マイク（TCC）の権限状態。
+///
+/// `AVCaptureDevice.authorizationStatus(for: .audio)` をそのまま写したものです
+/// （利用側に AVFoundation の import を強いないための独自型）。
+public enum MicrophoneAuthorizationStatus: String, Sendable, Codable {
+    /// 許可済み。サンプルが流れる。
+    case authorized
+    /// ユーザーが拒否した。システム設定から変える必要がある。
+    case denied
+    /// ペアレンタルコントロール等で制限されている。
+    case restricted
+    /// まだ誰も答えていない。**素の実行ファイルではここから動かない**。
+    case notDetermined
+}
+
 public enum AudioAnalyzerError: Error, LocalizedError, Sendable {
     /// Indicates that no audio input device is available.
     case noInputDevice

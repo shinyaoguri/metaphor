@@ -40,6 +40,26 @@ final class CaptureSessionHolder: @unchecked Sendable {
     }
 }
 
+/// カメラ（TCC）の権限状態。
+///
+/// `AVCaptureDevice.authorizationStatus(for: .video)` をそのまま写したものです
+/// （利用側に AVFoundation の import を強いないための独自型）。
+///
+/// - Important: **`.notDetermined` のままフレームが来ない**ことがあります。macOS は
+///   `Info.plist` に `NSCameraUsageDescription` を持つ**バンドル済みアプリにしか**
+///   許可ダイアログを出さないため、`swift run` で作る素の実行ファイルでは
+///   `.notDetermined` から永遠に変わりません（Issue #685）。
+public enum CaptureAuthorizationStatus: String, Sendable, Codable {
+    /// 許可済み。フレームが流れる。
+    case authorized
+    /// ユーザーが拒否した。システム設定から変える必要がある。
+    case denied
+    /// ペアレンタルコントロール等で制限されている。
+    case restricted
+    /// まだ誰も答えていない。**素の実行ファイルではここから動かない**。
+    case notDetermined
+}
+
 /// キャプチャに使用するカメラ位置の指定
 ///
 /// - Note: macOS では内蔵・外付けを問わずほとんどのカメラが位置情報を持たない
@@ -133,7 +153,34 @@ public final class CaptureDevice {
     /// カメラ権限が拒否されている場合は `false` になります。また使用中の
     /// カメラが切断された・セッションがエラーで停止した場合も `false` へ
     /// 変わります（``onDisconnect`` で検知できます）。
+    ///
+    /// - Important: これは「**セッションを構成できた**」を表すフラグで、
+    ///   「フレームが来る」ことは保証しません。権限が ``authorizationStatus`` の
+    ///   `.notDetermined` のままでも `true` になります（Issue #685）。
+    ///   フレームが来ているかは ``texture`` が非 nil かで判断してください。
     public private(set) var isAvailable: Bool = false
+
+    /// カメラ（TCC）の権限状態。
+    ///
+    /// 呼ぶたびにシステムへ問い合わせるので、実行中に許可が変わっても追随します。
+    ///
+    /// ```swift
+    /// if capture.authorizationStatus == .notDetermined {
+    ///     // 素の実行ファイルではダイアログが出ない。.app に包む必要がある
+    /// }
+    /// ```
+    public var authorizationStatus: CaptureAuthorizationStatus {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: return .authorized
+        case .denied: return .denied
+        case .restricted: return .restricted
+        case .notDetermined: return .notDetermined
+        @unknown default: return .notDetermined
+        }
+    }
+
+    /// カメラの使用が許可されているか（``authorizationStatus`` == `.authorized`）。
+    public var isAuthorized: Bool { authorizationStatus == .authorized }
 
     /// 実際に使用しているカメラの情報（セッション設定に成功した場合のみ非 nil）
     public private(set) var deviceInfo: CaptureDeviceInfo?
@@ -197,6 +244,17 @@ public final class CaptureDevice {
 
     /// キャプチャセッションが現在実行中かどうか
     private var isRunning: Bool = false
+
+    // MARK: - 権限待ちの観測（Issue #685）
+
+    /// 直近の `start()` の時刻（`CACurrentMediaTime()`）。未開始なら nil。
+    private var startedAt: Double?
+
+    /// 1 枚でもフレームを受け取ったか。
+    private var hasDeliveredFrame = false
+
+    /// 「権限が未決のままフレームが来ない」警告を出したか（1 回だけ出す）。
+    private var didWarnAboutPendingPermission = false
 
     /// `startRunning`/`stopRunning` を直列化するための専用キュー。
     ///
@@ -292,6 +350,7 @@ public final class CaptureDevice {
     public func start() {
         guard !isRunning, let session = captureSession else { return }
         isRunning = true
+        startedAt = CACurrentMediaTime()
         sessionQueue.async {
             session.startRunning()
         }
@@ -314,7 +373,11 @@ public final class CaptureDevice {
     /// テクスチャはゼロコピー GPU アクセスのため、最新のピクセルバッファから
     /// `CVMetalTextureCache` 経由で作成されます。
     public func read() {
-        guard let pixelBuffer = delegateHelper.latestPixelBuffer else { return }
+        guard let pixelBuffer = delegateHelper.latestPixelBuffer else {
+            warnIfPermissionDialogWillNeverAppear()
+            return
+        }
+        hasDeliveredFrame = true
 
         let bufferWidth = CVPixelBufferGetWidth(pixelBuffer)
         let bufferHeight = CVPixelBufferGetHeight(pixelBuffer)
@@ -509,6 +572,55 @@ public final class CaptureDevice {
                     self?.markUnavailable(reason: "session runtime error: \(message)")
                 }
             }, center: center))
+    }
+
+    // MARK: - 権限の無言待ち（Issue #685）
+
+    /// `.notDetermined` のままフレームが 0 のときに警告を出すまでの猶予（秒）。
+    ///
+    /// `.app` から起動していればこの間に TCC ダイアログが出て許可され、フレームが
+    /// 流れ始めます。素の実行ファイルではダイアログ自体が現れないため、
+    /// この時間を過ぎても 0 のままになります。
+    static let pendingPermissionWarningDelay: Double = 3.0
+
+    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    ///
+    /// - Parameters:
+    ///   - status: 現在の権限状態。
+    ///   - isRunning: `start()` 済みか（開始していないならフレームが来ないのは当然）。
+    ///   - hasDeliveredFrame: 1 枚でもフレームを受け取ったか。
+    ///   - elapsed: `start()` からの経過秒。
+    ///   - alreadyWarned: すでに警告済みか（同じ警告を毎フレーム出さない）。
+    static func shouldWarnAboutPendingPermission(
+        status: CaptureAuthorizationStatus,
+        isRunning: Bool,
+        hasDeliveredFrame: Bool,
+        elapsed: Double,
+        alreadyWarned: Bool
+    ) -> Bool {
+        guard !alreadyWarned, isRunning, !hasDeliveredFrame else { return false }
+        guard status == .notDetermined else { return false }
+        return elapsed >= pendingPermissionWarningDelay
+    }
+
+    /// 「許可ダイアログが出ないまま無音で死ぬ」状態を一度だけ報告します。
+    private func warnIfPermissionDialogWillNeverAppear() {
+        guard let startedAt else { return }
+        guard Self.shouldWarnAboutPendingPermission(
+            status: authorizationStatus,
+            isRunning: isRunning,
+            hasDeliveredFrame: hasDeliveredFrame,
+            elapsed: CACurrentMediaTime() - startedAt,
+            alreadyWarned: didWarnAboutPendingPermission
+        ) else { return }
+        didWarnAboutPendingPermission = true
+        metaphorAlert(
+            "Camera permission is still 'notDetermined' and no frames have arrived "
+                + "after \(Int(Self.pendingPermissionWarningDelay))s. macOS only shows the "
+                + "permission dialog for a bundled app that declares NSCameraUsageDescription — "
+                + "a plain executable (swift run) never gets asked, so the camera stays silent. "
+                + "Wrap the sketch in a .app to be prompted, or grant it in "
+                + "System Settings > Privacy & Security > Camera.")
     }
 
     /// デバイスを利用不能としてマークし、``onDisconnect`` を一度だけ呼びます。
