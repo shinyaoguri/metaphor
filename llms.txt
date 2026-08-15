@@ -1672,9 +1672,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class VignetteEffect` -- エッジを暗くするビネットエフェクトを適用します。
 
-- `var intensity: Float`
+- `var intensity: Float` -- 周辺減光の強度。**0.0 で無効、1.0 で最も強い**（範囲外はクランプされます）。
 - `let name: String`
-- `var smoothness: Float`
+- `var smoothness: Float` -- 減光が始まってから黒に落ちきるまでの幅（`dist` 換算）。大きいほどなだらかです。
 - `init(intensity: Float = 0.5, smoothness: Float = 0.5)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 

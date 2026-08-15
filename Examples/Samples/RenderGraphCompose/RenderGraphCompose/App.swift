@@ -163,7 +163,7 @@ final class RenderGraphCompose: Sketch {
         // 描画が崩れる既知の問題があるため、単パスエフェクトのみを使う。
         guard let vignetteOverlay = createEffectPass(
             overlayNode,
-            effects: [VignetteEffect(intensity: 0.5, smoothness: 0.5)]
+            effects: [VignetteEffect(intensity: 1.0, smoothness: 0.5)]
         ) else {
             fatalError("createEffectPass(overlay) に失敗")
         }
