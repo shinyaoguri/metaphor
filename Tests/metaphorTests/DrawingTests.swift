@@ -571,3 +571,84 @@ struct Position2DTexCoordColorTests {
         #expect(desc.layouts[0].stride == 32)
     }
 }
+
+// MARK: - arc() Angle Normalization Tests (#743)
+
+@Suite("arc angle normalization", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct ArcAngleNormalizationTests {
+
+    private func makeCanvas() throws -> Canvas2D {
+        let device = MTLCreateSystemDefaultDevice()!
+        return try Canvas2D(
+            device: device,
+            shaderLibrary: ShaderLibrary(device: device),
+            depthStencilCache: DepthStencilCache(device: device),
+            width: 200,
+            height: 200
+        )
+    }
+
+    @Test("stop < start draws nothing (Processing parity)")
+    func reversedAnglesDrawNothing() throws {
+        let canvas = try makeCanvas()
+        canvas.hasFill = true
+        canvas.hasStroke = true
+        canvas.arc(100, 100, 90, 90, .pi, .pi * 0.25)
+        #expect(canvas.vertexCount == 0)
+    }
+
+    @Test("stop == start draws nothing")
+    func degenerateSweepDrawsNothing() throws {
+        let canvas = try makeCanvas()
+        canvas.hasFill = true
+        canvas.hasStroke = true
+        canvas.arc(100, 100, 90, 90, .pi, .pi)
+        #expect(canvas.vertexCount == 0)
+    }
+
+    @Test("sweep beyond 2pi is clamped to a single turn")
+    func sweepIsClampedToFullTurn() throws {
+        let clamped = try makeCanvas()
+        clamped.hasFill = true
+        clamped.hasStroke = false
+        clamped.arc(100, 100, 90, 90, 0, .pi * 5)
+
+        let fullTurn = try makeCanvas()
+        fullTurn.hasFill = true
+        fullTurn.hasStroke = false
+        fullTurn.arc(100, 100, 90, 90, 0, .pi * 2)
+
+        #expect(fullTurn.vertexCount > 0)
+        #expect(clamped.vertexCount == fullTurn.vertexCount)
+    }
+
+    @Test("a normal arc is unaffected")
+    func normalArcStillDraws() throws {
+        let canvas = try makeCanvas()
+        canvas.hasFill = true
+        canvas.hasStroke = false
+        canvas.arc(100, 100, 90, 90, 0, .pi / 2)
+        #expect(canvas.vertexCount > 0)
+        #expect(!canvas.didWarnArcReversedAngles)
+    }
+
+    @Test("reversed angles warn once")
+    func reversedAnglesWarn() throws {
+        let canvas = try makeCanvas()
+        canvas.hasFill = true
+        #expect(!canvas.didWarnArcReversedAngles)
+        canvas.arc(100, 100, 90, 90, .pi, .pi * 0.25)
+        #expect(canvas.didWarnArcReversedAngles)
+    }
+
+    @Test("non-finite angles draw nothing")
+    func nonFiniteAnglesDrawNothing() throws {
+        let canvas = try makeCanvas()
+        canvas.hasFill = true
+        canvas.hasStroke = true
+        canvas.arc(100, 100, 90, 90, 0, .nan)
+        canvas.arc(100, 100, 90, 90, 0, .infinity)
+        #expect(canvas.vertexCount == 0)
+    }
+}
