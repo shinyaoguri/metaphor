@@ -13,6 +13,10 @@ extension Canvas2D {
     /// 文字の穴（`o` の内側など）も 1 本の輪郭として返ります。塗り分けに穴の情報が要る
     /// 場合は ``SketchContext/textToShape(_:_:_:sampleFactor:)`` を使ってください。
     ///
+    /// 改行を含む文字列は ``text(_:_:_:)`` と同じく行ごとに分けて配置され、行の高さは
+    /// ``textLeading(_:)`` に従います。水平方向の揃えは行ごとの幅で、垂直方向の揃えは
+    /// 全行を 1 つのブロックとみなして決まります。
+    ///
     /// - Parameters:
     ///   - string: アウトラインを取り出すテキスト。
     ///   - x: テキストの x 座標（`text()` と同じ意味）。
@@ -23,6 +27,35 @@ extension Canvas2D {
         _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
     ) -> [[Vec2]] {
         guard !string.isEmpty, sampleFactor > 0 else { return [] }
+
+        let lines = Self.lines(of: string)
+        guard lines.count > 1 else {
+            return lineContours(lines[0], x, y, sampleFactor: sampleFactor)
+        }
+
+        // 描画側 text(_:_:_:) と同じ持ち上げ量。1 行のときは 0 になり単一行と一致する。
+        let leading = effectiveTextLeading
+        let hangingHeight = Float(lines.count - 1) * leading
+        var lineY = y
+        switch currentTextAlignV {
+        case .top, .baseline: break
+        case .center: lineY -= hangingHeight / 2
+        case .bottom: lineY -= hangingHeight
+        }
+
+        var contours: [[Vec2]] = []
+        for line in lines {
+            contours += lineContours(line, x, lineY, sampleFactor: sampleFactor)
+            lineY += leading
+        }
+        return contours
+    }
+
+    /// 改行を含まない 1 行のアウトラインを返します（``textToContours(_:_:_:sampleFactor:)`` の実体）。
+    private func lineContours(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float
+    ) -> [[Vec2]] {
+        guard !string.isEmpty else { return [] }
         let contours = textRenderer.glyphContours(
             string: string, fontSize: currentTextSize, fontFamily: currentFontFamily,
             sampleFactor: sampleFactor)
