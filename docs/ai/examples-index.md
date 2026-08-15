@@ -6,7 +6,7 @@ generating new metaphor content.
 
 Example count: 286
 
-Status: supported 267, partial 0, stub 9, obsolete 10
+Status: supported 270, partial 0, stub 6, obsolete 10
 
 ## How To Use
 
@@ -176,12 +176,12 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [MultipleWindows](../../Examples/Demos/Graphics/MultipleWindows) [obsolete] (Graphics) -- Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal. Tags: demos, graphics, multiplewindows.
 - [Particles](../../Examples/Demos/Graphics/Particles) [stub] (Graphics) Tags: demos, graphics, particles.
 - [Patch](../../Examples/Demos/Graphics/Patch) (Graphics) Tags: demos, graphics, patch.
-- [Planets](../../Examples/Demos/Graphics/Planets) [stub] (Graphics) Tags: demos, graphics, planets.
+- [Planets](../../Examples/Demos/Graphics/Planets) (Graphics) Tags: demos, graphics, planets.
 - [Ribbons](../../Examples/Demos/Graphics/Ribbons) [obsolete] (Graphics) -- Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal. Tags: demos, graphics, ribbons.
 - [RotatingArcs](../../Examples/Demos/Graphics/RotatingArcs) (Graphics) Tags: demos, graphics, rotatingarcs.
 - [TessUpdate](../../Examples/Demos/Graphics/TessUpdate) [obsolete] (Graphics) -- Requires Processing's PShape tessellation API (setVertex on tessellated shapes). metaphor does not expose tessellated-geometry introspection; non-goal. Tags: demos, graphics, tessupdate.
-- [Trefoil](../../Examples/Demos/Graphics/Trefoil) [stub] (Graphics) Tags: demos, graphics, trefoil.
-- [Wiggling](../../Examples/Demos/Graphics/Wiggling) [stub] (Graphics) Tags: demos, graphics, wiggling.
+- [Trefoil](../../Examples/Demos/Graphics/Trefoil) (Graphics) Tags: demos, graphics, trefoil.
+- [Wiggling](../../Examples/Demos/Graphics/Wiggling) (Graphics) Tags: demos, graphics, wiggling.
 - [Yellowtail](../../Examples/Demos/Graphics/Yellowtail) (Graphics) Tags: demos, graphics, yellowtail.
 - [CubicGridImmediate](../../Examples/Demos/Performance/CubicGridImmediate) (Performance) Tags: cubicgridimmediate, demos, performance.
 - [CubicGridRetained](../../Examples/Demos/Performance/CubicGridRetained) [stub] (Performance) Tags: cubicgridretained, demos, performance.
