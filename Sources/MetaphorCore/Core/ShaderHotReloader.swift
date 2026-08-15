@@ -121,7 +121,7 @@ final class ShaderHotReloader {
             path: path,
             registration: Registration(
                 libraryKey: postEffect.libraryKey,
-                prepareSource: { $0 },
+                prepareSource: PostEffectSource.complete,
                 apply: { [weak postEffect] _ in postEffect != nil },
                 label: fragment
             )
@@ -132,10 +132,9 @@ final class ShaderHotReloader {
         let target = (path as NSString).standardizingPath
         registrations[target, default: []].append(registration)
         // 呼び出し元（loadShader / createMaterialFromFile / createPostEffectFromFile）は
-        // 既にこのファイルを読んでコンパイルまで済ませているが、3 経路のうち 2 つは
-        // `ShaderLibrary.registerFromFile` の中で読むのでソースが手元に無い。public API の
-        // シグネチャを変えるより、登録時 1 回だけ読み直す。直後に書き換わっても watcher が
-        // 追いかけて直すので実害は無い。
+        // 既にこのファイルを読んでコンパイルまで済ませているが、どれも読んだソースを
+        // ここへ渡さない。public API のシグネチャを変えるより、登録時 1 回だけ読み直す。
+        // 直後に書き換わっても watcher が追いかけて直すので実害は無い。
         if loadedDigests[target] == nil,
            let source = try? String(contentsOfFile: target, encoding: .utf8) {
             loadedDigests[target] = Self.digest(of: source)

@@ -4,10 +4,10 @@
 正典は `.metal` / `.h`。生成物は手で編集しないこと（llms.txt と同じ運用）。
 
 1. `Shaders/ShaderSources/*.txt` — ランタイムコンパイル / ホットリロード用。
-2. `Shaders/BuiltinShaders+Generated.swift` — ユーザーのカスタムマテリアル
-   シェーダーへ配る MSL 前文（`BuiltinShaders.canvas3DStructs` /
-   `canvas3DLightingFn` の実体）。以前は Swift の文字列リテラルとして手書き
-   されており、`.h` と二重管理になっていた（#707）。
+2. `Shaders/BuiltinShaders+Generated.swift` — ユーザーのカスタムシェーダーへ配る
+   MSL 前文（`BuiltinShaders.canvas3DStructs` / `canvas3DLightingFn` /
+   `PostProcessShaders.commonStructs` の実体）。以前は Swift の文字列リテラルとして
+   手書きされており、`.metal` / `.h` と二重管理になっていた（#707 / #714）。
 
 生成規則:
 - `Metaphor<Name>.metal` → `<name>.txt`（先頭 1 文字を小文字化。連続大文字の
@@ -39,9 +39,10 @@ SWIFT_PRELUDE_PATH = REPO_ROOT / "Sources/MetaphorCore/Shaders/BuiltinShaders+Ge
 # ため、推移的に include されるヘッダ（例: MetaphorLighting.h → MetaphorPBR.h）を
 # 一緒に並べると二重展開になり、MSL が二重定義でコンパイル不能になる。
 #
-# ガードマクロは前文が**二重に前置されても壊れない**ようにするためのもの（#713）。
-# `createMaterial()` が前文を必ず足すようになった一方、以前の作法どおり自分で
-# `BuiltinShaders.canvas3DStructs` を前置しているソースも動き続ける必要がある。
+# ガードマクロは前文が**二重に前置されても壊れない**ようにするためのもの（#713 / #718）。
+# `createMaterial()` / `createPostEffect()` が前文を必ず足すようになった一方、以前の
+# 作法どおり自分で `BuiltinShaders.canvas3DStructs` や
+# `PostProcessShaders.commonStructs` を前置しているソースも動き続ける必要がある。
 SWIFT_PRELUDES = [
     (
         "canvas3DStructs",
@@ -56,6 +57,13 @@ SWIFT_PRELUDES = [
         ("MetaphorCanvas3DTypes.h",),  # 構造体は canvas3DStructs 側が配る
         "METAPHOR_PRELUDE_CANVAS3D_LIGHTING",
         "MetaphorLighting.h（MetaphorPBR.h / MetaphorToneMapping.h を推移的に含む）",
+    ),
+    (
+        "postProcessStructs",
+        "MetaphorPostProcessTypes.h",
+        (),
+        "METAPHOR_PRELUDE_POSTPROCESS_STRUCTS",
+        "MetaphorPostProcessTypes.h",
     ),
 ]
 
@@ -143,9 +151,9 @@ def generate_prelude(root: str, preincluded: tuple, guard: str) -> str:
     前文の頭に `#include <metal_stdlib>` が生えてしまう）。ここでは stdlib と
     `using namespace metal;` を「出力済み」と種蒔きして、どちらも落とす。
 
-    出力はインクルードガードで包む。`createMaterial()` は前文を必ず前置するので、
-    以前の作法どおり自分でも前置しているソースでは前文が 2 回現れる。ガードが
-    無いと MSL が構造体の二重定義で落ちる（#713）。
+    出力はインクルードガードで包む。`createMaterial()` / `createPostEffect()` は前文を
+    必ず前置するので、以前の作法どおり自分でも前置しているソースでは前文が 2 回
+    現れる。ガードが無いと MSL が構造体の二重定義で落ちる（#713 / #718）。
     """
     path = METAL_DIR / root
     if not path.is_file():
@@ -165,20 +173,23 @@ SWIFT_FILE_HEADER = '''\
 // 生成元: Sources/MetaphorCore/Shaders/Metal/*.h
 // 再生成: python3 scripts/generate-shader-sources.py
 //
-// 公開 API（`BuiltinShaders.canvas3DStructs` など）とその doc コメントは
-// `BuiltinShaders.swift` 側にあります。ここが持つのは中身だけです。
+// 公開 API（`BuiltinShaders.canvas3DStructs` / `PostProcessShaders.commonStructs`
+// など）とその doc コメントは `BuiltinShaders.swift` / `PostProcessShaders.swift`
+// 側にあります。ここが持つのは中身だけです。
 
-/// ``BuiltinShaders`` が公開する MSL 前文の実体。
+/// ``BuiltinShaders`` / ``PostProcessShaders`` が公開する MSL 前文の実体。
 ///
 /// 組み込みシェーダーと同じ `Shaders/Metal/*.h` から生成されるので、ライティングの
-/// 実装を直せばカスタムマテリアルシェーダーへ配られる前文も一緒に動きます（#707）。
+/// 実装や構造体のレイアウトを直せばカスタムシェーダーへ配られる前文も一緒に
+/// 動きます（#707 / #718）。
 ///
-/// 各定数は `#ifndef` ガードで包まれています。``BuiltinShaders/canvas3DPreamble`` は
-/// `createMaterial()` が必ず前置するので、以前の作法どおり自分でも前置している
-/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713）。
+/// 各定数は `#ifndef` ガードで包まれています。前文は `createMaterial()` /
+/// `createPostEffect()` が必ず前置するので、以前の作法どおり自分でも前置している
+/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713 / #718）。
 ///
 /// 定数そのものは `#include <metal_stdlib>` と `using namespace metal;` を持ちません
-/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble``）。
+/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble`` や
+/// ``PostProcessShaders/postProcessPreamble``）。
 enum BuiltinShadersGenerated {
 '''
 

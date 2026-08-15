@@ -3,8 +3,9 @@ import Metal
 @testable import metaphor
 @testable import MetaphorCore
 
-/// カスタムマテリアルシェーダ用の前文（``BuiltinShaders/canvas3DStructs`` /
-/// ``BuiltinShaders/canvas3DLightingFn``）を、実際に MSL としてコンパイルして固定する。
+/// カスタムシェーダ用の前文（``BuiltinShaders/canvas3DStructs`` /
+/// ``BuiltinShaders/canvas3DLightingFn`` / ``PostProcessShaders/commonStructs``）を、
+/// 実際に MSL としてコンパイルして固定する。
 ///
 /// この前文は組み込みシェーダー（`Shaders/Metal/*.h`）と**同じ実装を配る**ものなので、
 /// 片方だけ直すと組み込みとカスタムマテリアルで挙動が食い違う（#707）。従来の検査は
@@ -195,6 +196,70 @@ struct ShaderPreludeTests {
 
         let library = try compile(source)
         #expect(library.makeFunction(name: "double2DFragment") != nil)
+    }
+
+    // MARK: - postFX の前文（#718）
+
+    @Test("postProcessPreamble だけでフラグメント関数が書ける")
+    func postProcessPreambleAloneIsEnough() throws {
+        // `createPostEffect()` がユーザーのソースへ足すのはこれ 1 つ。stage_in も
+        // 組み込みパラメータも含めて、これだけで最小のエフェクトが成立する。
+        let source = """
+            \(PostProcessShaders.postProcessPreamble)
+
+            fragment float4 postPreludeFragment(
+                PPVertexOut in [[stage_in]],
+                texture2d<float> tex [[texture(0)]],
+                constant PostProcessParams &params [[buffer(0)]]
+            ) {
+                constexpr sampler s(filter::linear);
+                float4 color = tex.sample(s, in.texCoord + params.texelSize * params.intensity);
+                return float4(1.0 - color.rgb, color.a);
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "postPreludeFragment") != nil)
+    }
+
+    @Test("postFX 前文も二重に置ける（ガードが効く）")
+    func postProcessPreambleIsIdempotent() throws {
+        // `createPostEffect()` は前文を必ず足すので、以前の作法（`commonStructs` を
+        // 自分で前置する）で書かれたソースでは前文が 2 回現れる。
+        let source = """
+            \(PostProcessShaders.postProcessPreamble)
+
+            \(PostProcessShaders.commonStructs)
+
+            fragment float4 doublePostPreludeFragment(
+                PPVertexOut in [[stage_in]],
+                constant PostProcessParams &params [[buffer(0)]]
+            ) {
+                return float4(in.texCoord, params.intensity, 1.0);
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "doublePostPreludeFragment") != nil)
+    }
+
+    @Test("postProcessStructs のレイアウトが Swift 側と一致する")
+    func postProcessStructsMatchSwiftLayout() throws {
+        let source = """
+            \(PostProcessShaders.postProcessPreamble)
+
+            static_assert(sizeof(PostProcessParams) == \(MemoryLayout<PostProcessParams>.stride),
+                          "PostProcessParams layout drifted from Swift");
+
+            fragment float4 postLayoutFragment(
+                constant PostProcessParams &params [[buffer(0)]]
+            ) {
+                return float4(params.texelSize, params.brightness, params.saturation);
+            }
+            """
+
+        let library = try compile(source)
+        #expect(library.makeFunction(name: "postLayoutFragment") != nil)
     }
 
     @Test("canvas3DStructs 抜きの canvas3DLightingFn は成立しない（前文は 2 つで 1 組）")

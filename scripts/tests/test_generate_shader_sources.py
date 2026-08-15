@@ -18,7 +18,8 @@ Run from the repository root:
 - 前文には stdlib / `using namespace metal;` を出さないこと
 - 前文が**ガードで包まれている**こと（二重に前置されても壊れない・#713）
 - 生成 Swift が複数行リテラルとして成立する形（インデント剥がしに耐える）
-- 前文の割り当て（構造体は canvas3DStructs 側、関数は canvas3DLightingFn 側）
+- 前文の割り当て（構造体は canvas3DStructs 側、関数は canvas3DLightingFn 側、
+  postFX の型は postProcessStructs 側）
 """
 
 import importlib.util
@@ -201,6 +202,16 @@ class SwiftPreludeFileTests(unittest.TestCase):
                      "Canvas3DTexVertexIn", "Canvas3DTexVertexOut"):
             self.assertTrue(f"struct {name}" in structs,
                             f"{name} が canvas3DStructs から消えている")
+
+    def test_postprocess_prelude_carries_the_postfx_types(self):
+        # postFX の前文（#718）。`createPostEffect()` がこれを必ず前置するので、
+        # ここから型が落ちるとユーザーのソースが `unknown type name` で落ちる。
+        post = self.preludes["postProcessStructs"]
+        for name in ("PPVertexOut", "PostProcessParams"):
+            self.assertTrue(f"struct {name}" in post,
+                            f"{name} が postProcessStructs から消えている")
+        self.assertFalse("struct Canvas3DUniforms" in post,
+                         "3D の構造体が postProcessStructs に混ざっている")
 
     def test_no_duplicate_struct_definitions_across_both_preludes(self):
         combined = "\n".join(self.preludes.values())

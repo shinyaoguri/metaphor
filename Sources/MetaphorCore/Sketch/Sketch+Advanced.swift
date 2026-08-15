@@ -228,6 +228,24 @@ extension Sketch {
 extension Sketch {
     /// MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
     ///
+    /// ``PostProcessShaders/postProcessPreamble``（stdlib + `PPVertexOut` /
+    /// `PostProcessParams` の定義）を**必ず**先頭へ足すので、フラグメント関数だけを
+    /// 書けば動きます。これらの型は自分で定義しないでください（#718）。
+    ///
+    /// ```swift
+    /// let effect = try createPostEffect(name: "invert", source: """
+    /// fragment float4 invert(
+    ///     PPVertexOut in [[stage_in]],
+    ///     texture2d<float> tex [[texture(0)]]
+    /// ) {
+    ///     constexpr sampler s(filter::linear);
+    ///     float4 c = tex.sample(s, in.texCoord);
+    ///     return float4(1.0 - c.rgb, c.a);
+    /// }
+    /// """, fragmentFunction: "invert")
+    /// addPostEffect(effect)
+    /// ```
+    ///
     /// - Parameters:
     ///   - name: エフェクトの表示名。
     ///   - source: Metal Shading Language のソースコード。
@@ -242,7 +260,8 @@ extension Sketch {
 
     /// 外部 MSL ファイルからカスタムポストプロセスエフェクトを作成します。
     ///
-    /// 読み込んだファイルは自動でホットリロードの対象になります（#648）。
+    /// 読み込んだファイルは自動でホットリロードの対象になります（#648）。前文は
+    /// ソース経路と同じく自動で足されます（#718）。
     ///
     /// - Parameters:
     ///   - name: エフェクトの表示名。

@@ -14,10 +14,10 @@ import Foundation
 /// `python3 scripts/generate-shader-sources.py` で `.txt` を再生成してください
 /// （陳腐化は pre-push フックと CI が検出します）。
 ///
-/// カスタムマテリアルシェーダー向けの 3D 前文（``canvas3DStructs`` /
-/// ``canvas3DLightingFn``）も同じスクリプトが `.h` から生成します
-/// （実体は `BuiltinShaders+Generated.swift`）。2D 前文（``canvas2DStructs``）は
-/// 対応する `.h` が無いため、まだ手書きです（#714）。
+/// カスタムシェーダー向けの 3D 前文（``canvas3DStructs`` / ``canvas3DLightingFn``）と
+/// postFX 前文（``PostProcessShaders/commonStructs``）も同じスクリプトが `.h` から
+/// 生成します（実体は `BuiltinShaders+Generated.swift`）。2D 前文
+/// （``canvas2DStructs``）は対応する `.h` が無いため、まだ手書きです（#714）。
 public enum BuiltinShaders {
 
     // MARK: - Canvas2D カスタムシェーダ用の構造体 (#647 / Epic #291 E2)

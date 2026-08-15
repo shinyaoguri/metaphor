@@ -183,8 +183,9 @@ struct ShaderFileHotReloadTests {
         let material = try context.createMaterialFromFile(
             path: materialPath, fragmentFunction: "hotMaterialFragment")
 
-        let postSource = PostProcessShaders.commonStructs + """
-
+        // 前文（`PPVertexOut` / `PostProcessParams`）は読み込み時もリロード時も
+        // 自動で足される（#718）。書くのはフラグメント関数だけ。
+        let postSource = """
         fragment float4 hotPostFragment(
             PPVertexOut in [[stage_in]],
             texture2d<float> tex [[texture(0)]],

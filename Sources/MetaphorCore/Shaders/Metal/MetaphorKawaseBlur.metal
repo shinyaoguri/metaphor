@@ -1,10 +1,4 @@
-#include <metal_stdlib>
-using namespace metal;
-
-struct PPVertexOut {
-    float4 position [[position]];
-    float2 texCoord;
-};
+#include "MetaphorPostProcessTypes.h"
 
 // Kawase downsample: 5タップ（中心 + 4対角）→ 半解像度に縮小
 fragment float4 metaphor_kawaseDownsample(

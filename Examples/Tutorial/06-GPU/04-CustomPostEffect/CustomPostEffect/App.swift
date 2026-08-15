@@ -15,9 +15,9 @@ final class Ripple: Sketch {
 
     var effect: CustomPostEffect?
 
-    // 共通の構造体定義（PPVertexOut / PostProcessParams）に自作の関数を足す
-    let source = PostProcessShaders.commonStructs + """
-
+    // 前文（PPVertexOut / PostProcessParams の定義）は metaphor が足すので、
+    // 書くのは自作の構造体とフラグメント関数だけ
+    let source = """
     struct RippleParams {
         float frequency;
         float phase;

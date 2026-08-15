@@ -926,7 +926,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `enum PostProcessShaders` -- ポストプロセスエフェクトシェーダー関数名と共有構造体定義。
 
-- `static let commonStructs: String` -- カスタムポストプロセスシェーダー用のMSL共通構造体定義。
+- `static let commonStructs: String` -- カスタムポストプロセスシェーダーが受け取る stage_in と組み込みパラメータの MSL 定義。
 - `static let postBloomComposite: String` -- ブルーム合成ポストプロセスシェーダーのMSL関数名。
 - `static let postBloomExtract: String` -- ブルーム抽出ポストプロセスシェーダーのMSL関数名。
 - `static let postBlurH: String` -- 水平ガウシアンブラーポストプロセスシェーダーのMSL関数名。
@@ -935,6 +935,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let postColorGrade: String` -- カラーグレーディングポストプロセスシェーダーのMSL関数名。
 - `static let postGrayscale: String` -- グレースケールポストプロセスシェーダーのMSL関数名。
 - `static let postInvert: String` -- 反転ポストプロセスシェーダーのMSL関数名。
+- `static let postProcessPreamble: String` -- カスタムポストエフェクトのソースへ自動で足される前文（stdlib + ``commonStructs``）。
 - `static let postVignette: String` -- ビネットポストプロセスシェーダーのMSL関数名。
 
 ### `enum ProbeValue` -- AI エージェントが観測したい任意の値。`frame.json` の `custom` セクションに

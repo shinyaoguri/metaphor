@@ -500,16 +500,16 @@ final class PostProcess: Sketch {
 
 ## 6.4 カスタムポストエフェクト
 
-![自作シェーダーで波打たせた市松模様の上に、オレンジ色の円がひとつ乗っている](https://i.gyazo.com/3ddb574bfde49d497bebfa7db26be179.png)
+![自作シェーダーで波打たせた市松模様の上に、オレンジ色の円がひとつ乗っている](https://i.gyazo.com/e042c95161502b815cc24aa8db5d93d5.png)
 
 組み込みのエフェクトで足りないときは、フラグメントシェーダーを自分で書いて同じ列に並べられます。ここでは画面中心からの距離に応じてサンプリング位置をずらし、格子を波打たせています。
 
-### 共通の構造体に自作の関数を足す
+### フラグメント関数を書く
 
-`createPostEffect(name:source:fragmentFunction:)` に MSL のソースを渡します。ソースの先頭には `PostProcessShaders.commonStructs` を置きます。これに `PPVertexOut`（頂点シェーダーからの入力）と `PostProcessParams`（組み込みのパラメータ）の定義が入っています。
+`createPostEffect(name:source:fragmentFunction:)` に MSL のソースを渡します。ソースに書くのは**フラグメント関数だけ**です。前文（Metal 標準ライブラリの取り込みと、`PPVertexOut`（頂点シェーダーからの入力）・`PostProcessParams`（組み込みのパラメータ）の定義）は metaphor が**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。
 
 ```swift
-let source = PostProcessShaders.commonStructs + """
+let source = """
 fragment float4 ripple(
     PPVertexOut in [[stage_in]],                       // in.texCoord が 0〜1 の画面座標
     texture2d<float> tex [[texture(0)]],               // 直前までに描き上がった絵
@@ -582,9 +582,9 @@ final class Ripple: Sketch {
 
     var effect: CustomPostEffect?
 
-    // 共通の構造体定義（PPVertexOut / PostProcessParams）に自作の関数を足す
-    let source = PostProcessShaders.commonStructs + """
-
+    // 前文（PPVertexOut / PostProcessParams の定義）は metaphor が足すので、
+    // 書くのは自作の構造体とフラグメント関数だけ
+    let source = """
     struct RippleParams {
         float frequency;
         float phase;
@@ -660,7 +660,7 @@ final class Ripple: Sketch {
 ### ふりかえり
 
 - [ ] 自作のフラグメントシェーダーを組み込みエフェクトと同じ列に並べられると分かった
-- [ ] ソースの先頭に `PostProcessShaders.commonStructs` が要ると分かった
+- [ ] MSL に書くのはフラグメント関数だけで、前文は metaphor が足すと分かった
 - [ ] 入力の絵が `texture(0)`、組み込みパラメータが `buffer(0)` で来ると分かった
 - [ ] 自前の値は `setParameters()` で `buffer(1)` へ渡すと分かった
 - [ ] MSL を別ファイルに置けば、保存するだけでビルド無しに反映されると分かった
@@ -703,7 +703,7 @@ resetShader()              // ここまで
 
 ### 前文は metaphor が足す
 
-ソースに書くのは**フラグメント関数だけ**です。6.4 では `PostProcessShaders.commonStructs` を自分で先頭に置きましたが、2D の描画シェーダーと 3D のカスタムマテリアル（`createMaterial()`）では metaphor が前文（Metal 標準ライブラリの取り込みと構造体の定義）を**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。定義すると再定義エラーになります。
+ソースに書くのは**フラグメント関数だけ**です。6.4 のポストエフェクトと同じく、2D の描画シェーダーでも 3D のカスタムマテリアル（`createMaterial()`）でも metaphor が前文（Metal 標準ライブラリの取り込みと構造体の定義）を**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。定義すると再定義エラーになります。
 
 ```metal
 fragment float4 paint(
