@@ -96,7 +96,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func background(_ gray: Float)` -- グレースケール値でキャンバスをクリアします。
 - `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- 指定したカラーチャンネル値でキャンバスをクリアします。
 - `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 以降の描画を指定した矩形にクリッピングします。
-- `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します。
+- `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します（2D シェイプ専用）。
 - `func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
 - `func beginGIFRecord(fps: Int = 15)` -- GIF エクスポート用のフレーム記録を開始します。
 - `func beginOfflineRender(fps: Double = 60)` -- 決定論的タイミングのオフラインレンダリングモードを有効にします。
@@ -196,7 +196,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
 - `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
-- `func endContour()` -- 現在のコンター定義を終了します。
+- `func endContour()` -- 現在のコンター定義を終了します（2D シェイプ専用）。
 - `func endFrameRecord()` -- フレーム連番の記録を停止します。
 - `func endGIFRecord(_ path: String? = nil) throws` -- 記録を停止し GIF ファイルに書き出します。
 - `func endGIFRecordAsync(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。

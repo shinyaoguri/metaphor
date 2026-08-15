@@ -293,13 +293,23 @@ extension SketchContext {
         canvas.curveTightness(t)
     }
 
-    /// 現在のシェイプ内にコンター（穴）の記録を開始します。
+    /// 現在のシェイプ内にコンター（穴）の記録を開始します（2D シェイプ専用）。
+    ///
+    /// `beginShape3D()` の記録中は穴を開けられないため、何もせず初回だけ警告します（#736）。
     public func beginContour() {
+        if activeShapeRecording == .threeD {
+            warnContourIn3DOnce()
+            return
+        }
         canvas.beginContour()
     }
 
-    /// 現在のコンター（穴）の記録を終了します。
+    /// 現在のコンター（穴）の記録を終了します（2D シェイプ専用）。
     public func endContour() {
+        if activeShapeRecording == .threeD {
+            warnContourIn3DOnce()
+            return
+        }
         canvas.endContour()
     }
 

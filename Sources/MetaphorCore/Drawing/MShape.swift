@@ -282,6 +282,24 @@ public final class MShape {
     /// `.lines` / `.points` を noStroke() で描こうとした警告を出したかどうか（一度だけ警告）。
     var warned3DStrokeOnlyMode: Bool = false
 
+    /// 3D シェイプで `beginContour()` が呼ばれたことを一度だけ知らせたか（#736）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnContourIn3D: Bool = false
+
+    /// 3D シェイプで `beginContour()` が呼ばれたことを一度だけ警告する（#736）。
+    ///
+    /// コンター（穴）は ``tessellate2D()`` からしか読まれず、``buildMesh3D()`` は
+    /// `.polygon` をファン分割するだけなので、穴を開けたつもりのコードが
+    /// **穴の無いシェイプとして黙って通る**。絵が出てしまう分だけ気付きにくい。
+    func warnContourIn3DOnce() {
+        guard !didWarnContourIn3D else { return }
+        didWarnContourIn3D = true
+        metaphorWarning(
+            "MShape.beginContour() / endContour() only apply to 2D shapes; a 3D shape keeps no hole. "
+                + "Build the ring geometry yourself, or define the shape with 2D vertices."
+        )
+    }
+
     /// 最後のキャッシュビルド以降にジオメトリが変更されたかどうか。
     var isDirty: Bool = true
 
@@ -295,6 +313,11 @@ public final class MShape {
 
     /// コンター定義内にいるかどうかを追跡。
     var isInContour: Bool = false
+
+    /// 記録中に `beginContour()` が呼ばれたかどうか（#736 の診断用）。
+    /// `beginContour()` が最初の頂点より先に来ると、その時点では `kind` がまだ
+    /// 2D/3D どちらか確定していないので、`endShape()` で改めて判定するために持つ。
+    var usedContourWhileRecording: Bool = false
 
     /// vertices2D 内の現在のコンターの開始インデックス。
     var contourStartIndex: Int = 0

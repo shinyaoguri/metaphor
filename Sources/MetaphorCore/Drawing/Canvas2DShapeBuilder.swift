@@ -81,7 +81,7 @@ extension Canvas2D {
         shapeVertexList.append(.curve(x, y))
     }
 
-    /// 現在のシェイプ内のコンター（穴）の記録を開始します（beginShape と endShape の間で使用）。
+    /// 現在のシェイプ内のコンター（穴）の記録を開始します（2D シェイプ専用。beginShape と endShape の間で使用）。
     public func beginContour() {
         guard isRecordingShape else { return }
         svgRecorder?.beginContour()
@@ -89,7 +89,7 @@ extension Canvas2D {
         currentContour.removeAll(keepingCapacity: true)
     }
 
-    /// 現在のコンター（穴）の記録を終了します。
+    /// 現在のコンター（穴）の記録を終了します（2D シェイプ専用）。
     public func endContour() {
         guard isRecordingContour else { return }
         svgRecorder?.endContour()

@@ -344,6 +344,23 @@ public final class SketchContext {
         )
     }
 
+    /// 3D 記録中に `beginContour()` が来たことを一度だけ知らせたか（#736）。
+    var didWarnContourIn3D = false
+
+    /// `beginShape3D()` の記録中に `beginContour()` が来たことを一度だけ警告する。
+    ///
+    /// コンター（穴）は 2D シェイプのテッセレーションでしか読まれず、3D は
+    /// ファン分割するだけなので、穴を開けたつもりのコードが**穴の無いシェイプとして
+    /// 黙って通る**。絵が出てしまう分だけ気付きにくいので、初回だけ理由を出す。
+    func warnContourIn3DOnce() {
+        guard !didWarnContourIn3D else { return }
+        didWarnContourIn3D = true
+        metaphorWarning(
+            "beginContour() / endContour() only apply to 2D shapes; a 3D shape keeps no hole. "
+                + "Build the ring geometry yourself, or draw the shape with beginShape()."
+        )
+    }
+
     // MARK: - Draw Sequence (#71)
 
     /// draw() 内の 2D/3D 呼び出し順を表す単調シーケンス番号。

@@ -21,6 +21,7 @@ extension MShape {
         pendingNormal3D = nil
         isInContour = false
         contourStartIndex = 0
+        usedContourWhileRecording = false
         shapeMode2D = mode
         shapeMode3D = mode
         invalidateCache()
@@ -83,16 +84,23 @@ extension MShape {
 
     // MARK: - コンター（2D穴）
 
-    /// 2Dシェイプ内のコンター（穴）の記録を開始します。
+    /// 2Dシェイプ内のコンター（穴）の記録を開始します（2D シェイプ専用）。
     ///
     /// この呼び出しから `endContour()` までに追加された頂点が穴の境界を定義します。
+    /// 3D シェイプ（`vertex(x, y, z)` で組んだもの）では穴を開けられないため、
+    /// 呼ばれても何もせず初回だけ警告します（#736）。
     public func beginContour() {
         guard isRecording else { return }
+        usedContourWhileRecording = true
+        if case .path3D = kind {
+            warnContourIn3DOnce()
+            return
+        }
         isInContour = true
         contourStartIndex = vertices2D.count
     }
 
-    /// 2Dシェイプ内のコンター（穴）の記録を終了します。
+    /// 2Dシェイプ内のコンター（穴）の記録を終了します（2D シェイプ専用）。
     public func endContour() {
         guard isRecording, isInContour else { return }
         isInContour = false
@@ -158,6 +166,11 @@ extension MShape {
             closeMode2D = close
         } else if case .path3D = kind {
             closeMode3D = close
+            // beginContour() が最初の頂点より先に来ると、その時点では kind がまだ
+            // .path3D になっていない。ここで改めて拾って取りこぼさない（#736）
+            if usedContourWhileRecording {
+                warnContourIn3DOnce()
+            }
         }
 
         // ジオメトリは最初の描画時に遅延構築される
