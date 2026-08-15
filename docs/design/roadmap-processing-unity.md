@@ -140,9 +140,46 @@
 
 | Epic | 内容 | ゲート |
 |---|---|---|
-| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証（リファレンス作品） | 作品を 1 本作り切り、踏んだ穴を都度 Issue 化。v1.0 昇格条件「実運用検証を通過」の具体化を兼ねる | Phase 2 と並行で着手可 |
-| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援の最小セット | Scene プロトコル + 遷移 / cue リスト / `after()`/`every()`。既存 tween/easing の上に薄く載せる | 子 Issue は J の所見後に起票（Phase 2.5 相当） |
+| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証（リファレンス作品） | 作品を 1 本作り切り、踏んだ穴を都度 Issue 化。v1.0 昇格条件「実運用検証を通過」の具体化を兼ねる | **1 本目 `0815-strata` 完走（2026-08-15）**。下記「J の所見」 |
+| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援の最小セット | Scene プロトコル + 遷移 / cue リスト / `after()`/`every()`。既存 tween/easing の上に薄く載せる | 子 Issue は J の所見後に起票（Phase 2.5 相当）。1 本目の所見は出た |
 | [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ配置（NSScreen 指定）・キオスク（常時最前面/スリープ抑止/自動復帰）・自己監視の公開 API（#273 吸収）・GPU エラー検知 | 優先度は J の運用要件で確定。単体アプリ常設をやると決めるまで着手しない |
+
+#### J の所見: 1 本目 `0815-strata`（2026-08-15）
+
+metaphor-sketches の [`2026/0815-strata`](https://github.com/shinyaoguri/metaphor-sketches/tree/main/2026/0815-strata) を作り切った。
+生成的地形（3D PBR × 時間変容）を 4 シーン（`formation` / `erosion` / `strata` / `dormant`）で巡回させ、
+入力はカメラ（動き量・輝度）と OSC（シーン指定・パラメータ書き込み）の 2 系統、
+出力は単体アプリ常設と Syphon 送出の両対応。要件（複数シーン + 複数入力 + 30 分無人稼働）は全て満たした。
+
+**踏んだ穴と起票**（作品側で握り潰さず、回避策にコメントを残したうえで Issue 化した）:
+
+| 層 | 事象 | Issue |
+|---|---|---|
+| ポスト | `VignetteEffect` の `intensity` が「強度」ではなく「黒に落ちきる半径」で意味が逆。既定値のままで画面の大半が黒くなる | [#684](https://github.com/shinyaoguri/metaphor/issues/684) |
+| 入力 | `CaptureDevice` が権限 `notDetermined` でも `isAvailable=true` を返し、フレーム 0 のまま無言で失敗する | [#685](https://github.com/shinyaoguri/metaphor/issues/685) |
+| 3D | `DynamicMesh` に in-place 更新が無く、毎フレーム頂点・インデックス両方のバッファを確保し直す | [#686](https://github.com/shinyaoguri/metaphor/issues/686) |
+| 3D | `directionalLight` / `pointLight` に intensity が無く、PBR 単灯だと `albedo/π` で沈む | [#687](https://github.com/shinyaoguri/metaphor/issues/687) |
+| 契約 | `.app` 起動では cwd が `/` になり `.metaphor/`（Probe / Parameter Store）が壊れる | [#688](https://github.com/shinyaoguri/metaphor/issues/688) / [cli#133](https://github.com/shinyaoguri/metaphor-cli/issues/133) |
+
+既存の検討 Issue には実測を書き戻した: [#573](https://github.com/shinyaoguri/metaphor/issues/573)（App bundle）へは
+「**配布以前に、カメラ・マイクを使う作品は `swift run` では完成させられない**」（TCC ダイアログは
+`Info.plist` を持つバンドルにしか出ない）と、手で `.app` を組むのに必要だった 6 工程。
+[#571](https://github.com/shinyaoguri/metaphor/issues/571)（Scene の寿命境界）へは
+「この作品ではリソースも購読も全シーン共有で、**寿命境界は要らず、欲しかったのは
+値の束の補間と保持時間つき巡回**だった」という反証寄りの所見。
+
+**K（#415）への含意**: 手書きしたのは `SceneProfile`（25 フィールド）+ 手動の線形補間 30 行 +
+`SceneDirector` 70 行。**一番効くのは補間の自動化**で、寿命管理ではない。
+外部指定（OSC）と自律タイマーの共存規約も自前で決める必要があった。
+
+**L（#416）への含意**: 単体アプリ常設を選ぶと `.app` 化が必須になり、そこは #573 とほぼ同じ問題に着地する。
+自己監視 API の不在は実際に効いた — 30 分の劣化計測は **Probe を外から叩いて** 行うしかなく、
+作品自身が fps / メモリを読んで degrade することはできない。一方でマルチディスプレイ・
+キオスク（最前面・スリープ抑止）は今回の 1 本では実需として出ていない（常設の現場に置いていないため）。
+
+**2 本目の切り口**: 今回は「1 つの絵をパラメータで変容させ続ける」型だったため、シーンが
+リソースを持たなかった。シーンごとにアセット（動画・音・モデル）が入れ替わる型を試すと
+#571 の寿命境界の要否が判定できる。
 
 ## 非目標
 
@@ -171,9 +208,9 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
 | [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント / I3 website（#74） |
-| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。所見が K/L の子 Issue の設計根拠になる |
-| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票 |
-| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット |
+| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。**1 本目 `0815-strata` 完走**（所見は「J の所見」節、起票は #684〜#688 / cli#133） |
+| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票。1 本目の所見では**補間の自動化**が最優先 |
+| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット。1 本目では**自己監視の不在**のみ実需として確認 |
 
 既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#275 は Epic D の schema 変更に同乗。#273 は Epic L が吸収（2026-08-07 変更。Probe schema に触れる部分のみ Epic D の schema 変更に同乗）。cli #86 は Epic I の I2 と相乗。
 
