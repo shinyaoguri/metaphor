@@ -229,6 +229,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 - [ ] Examples の全数スイープ green(`examples-sweep.yml` full=true)。本数は `docs/ai/examples-index.json` の `count` が正典(#490)
 - [ ] API doc コメント英語化(W3-1)完了
 - [ ] metaphor-sketches での実運用検証を通過（具体化 = リファレンス作品 Epic [#414](https://github.com/shinyaoguri/metaphor/issues/414)。要件は [roadmap-processing-unity.md](roadmap-processing-unity.md) の「作品トラック」— 複数シーン + 複数入力 + 30 分無人稼働。2026-08-07 追記）
+  - 2026-08-15: **1 本目 `0815-strata` が要件を満たして完走**（所見と起票は roadmap の「J の所見」）。ここで見つかった穴（#684〜#688 / cli#133）の解消と、2 本目（シーンがリソースを持つ型 — #571 の寿命境界の要否を判定する）をもって条件充足とするかは未判断
 - [ ] リリースノートに 0.x → 1.0 の人間向けハイライトと移行ガイド(CHANGELOG から生成)
 
 **コミュニティ条件**(採用の実績):
