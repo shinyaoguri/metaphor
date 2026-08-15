@@ -280,6 +280,8 @@ extension Canvas3D {
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
 
+        ensureSkyboxDrawn()
+
         // DynamicMesh はインスタンシング対象外
         flushInstanceBatch()
 

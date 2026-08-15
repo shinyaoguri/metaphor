@@ -27,6 +27,9 @@ extension Canvas3D {
     ///
     /// - Parameter mode: トーンマッピングの方法。
     public func toneMapping(_ mode: ToneMapMode) {
+        // 明示指定を記録しておく。`environment()` は未指定のときだけ
+        // `.acesFilmic` へ自動昇格させる（#710）。
+        userSetToneMapping = true
         toneMapParams.x = Float(mode.rawValue)
         currentMaterial.toneMapParams = toneMapParams
     }

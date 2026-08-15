@@ -34,13 +34,15 @@ fragment float4 metaphor_canvas3DTexturedFragment(
     constant Material3D &material [[buffer(3)]],
     constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
     texture2d<float> tex [[texture(0)]],
-    texture2d<float> shadowMap [[texture(1)]]
+    texture2d<float> shadowMap [[texture(1)]],
+    texturecube<float> irradianceMap [[texture(2)]],
+    texturecube<float> prefilteredMap [[texture(3)]]
 ) {
     constexpr sampler s(filter::linear, address::repeat);
     float4 texColor = tex.sample(s, in.uv);
     float4 tintedColor = texColor * uniforms.color;
 
-    if (uniforms.lightCount == 0) {
+    if (metaphorSkipsLighting(material, uniforms.lightCount)) {
         return tintedColor;
     }
 
@@ -56,7 +58,9 @@ fragment float4 metaphor_canvas3DTexturedFragment(
         lights,
         uniforms.lightCount,
         material,
-        shadow
+        shadow,
+        irradianceMap,
+        prefilteredMap
     );
 
     return float4(lit, tintedColor.a);

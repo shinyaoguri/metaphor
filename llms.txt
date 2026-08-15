@@ -206,6 +206,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endSVGRecord()` -- SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
 - `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
 - `func endVideoRecordAsync() async` -- 動画の録画を非同期で停止しファイルを完成させます。
+- `func environment(_ preset: EnvironmentPreset, intensity: Float = 1.0, background: Bool = true)` -- 環境（IBL と背景の skybox）を設定します。
 - `func exposure(_ value: Float)` -- トーンマッピング前に掛ける露出倍率を設定します。
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
@@ -264,6 +265,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func mouseReleased()` -- マウスボタン離し時に呼ばれます。
 - `func mouseScrolled()` -- マウススクロール時に呼ばれます。
 - `func noCursor()` -- カーソルを非表示にします。
+- `func noEnvironment()` -- 環境（IBL と skybox）を無効化します。
 - `func noFill()` -- 図形の塗りつぶしを無効にします。
 - `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- ノイズテクスチャを画像として生成します（便利メソッド）。
 - `func noLights()` -- すべてのライトを無効にします。
@@ -708,6 +710,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case point(Float, Float, Float)` -- 単一の点から放出
 - `case sphere(x: Float, y: Float, z: Float, radius: Float)` -- 球の表面から放出
 
+### `enum EnvironmentPreset` -- `environment()` で選べる環境プリセット。
+
+- `case overcast` -- 曇天の白いドーム。全方位から柔らかい光が来るので影の輪郭が出にくくなります。
+- `case studio` -- 天井の白いパネルと暗い床を持つ無彩色のスタジオ。素材の質感を見るのに向きます。
+- `case sunset` -- 地平線のオレンジから上空の青へ抜けるグラデーションと、低い太陽。
+- `var hashValue: Int { get }`
+- `init?(rawValue: Int)`
+- `func hash(into hasher: inout Hasher)`
+
 ### `enum FilterType` -- 画像フィルタタイプを定義します（Processing 互換および拡張）。
 
 - `case blur(Int)` -- ぼかし効果（半径）。
@@ -1117,7 +1128,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
 
-- （ほか 75 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 77 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
 - `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
@@ -1257,7 +1268,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 58 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 60 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
@@ -1614,7 +1625,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 233 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 235 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

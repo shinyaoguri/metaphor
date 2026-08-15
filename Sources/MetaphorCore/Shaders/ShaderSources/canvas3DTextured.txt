@@ -38,7 +38,7 @@ struct Material3D {
     float4 specularAndShininess;
     float4 emissiveAndMetallic;
     float4 pbrParams;             // x=roughness, y=usePBR(0/1), z=ao, w=reserved
-    float4 toneMapParams;         // x=toneMapMode, y=exposure, zw=reserved
+    float4 toneMapParams;         // x=toneMapMode, y=exposure, z=envIntensity(IBL), w=reserved
 };
 
 
@@ -76,6 +76,66 @@ static inline float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 // Fresnel-Schlick approximation
 static inline float3 FresnelSchlick(float cosTheta, float3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// 粗さを考慮した Fresnel-Schlick。環境（IBL）項では入射方向が半球全体に広がるため、
+// 直接光用の ``FresnelSchlick`` をそのまま使うと粗い面の縁が過剰に光る。
+static inline float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness) {
+    float3 maxF = max(float3(1.0 - roughness), F0);
+    return F0 + (maxF - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// split-sum 近似の第 2 項（環境 BRDF）の解析近似。
+//
+// 一般的な実装は 2ch の LUT テクスチャを焼くが、Karis / Lazarov の多項式近似で
+// 置き換えている（テクスチャ 1 枚・ベイクパス 1 本・バインドスロット 1 つを削れて、
+// 見た目の差はほぼ無い）。戻り値は (scale, bias) で `F * scale + bias` として使う。
+static inline float2 EnvBRDFApprox(float NdotV, float roughness) {
+    const float4 c0 = float4(-1.0, -0.0275, -0.572, 0.022);
+    const float4 c1 = float4(1.0, 0.0425, 1.04, -0.04);
+    float4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    return float2(-1.04, 1.04) * a004 + r.zw;
+}
+
+// IBL（image-based lighting）の寄与。
+//
+// 拡散はコサイン畳み込み済みのイラディアンスキューブ、鏡面は roughness ごとに
+// GGX でプリフィルタしたキューブの mip を引く（split-sum 近似）。`intensity` が
+// 0 のとき（= `environment()` 未設定）は完全に 0 を返すので、環境なしの絵は不変。
+static inline float3 metaphorIBLContribution(
+    float3 N,
+    float3 V,
+    float3 baseColor,
+    float metallic,
+    float roughness,
+    float ao,
+    float intensity,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    if (intensity <= 0.0) return float3(0.0);
+
+    constexpr sampler envSampler(filter::linear, mip_filter::linear, address::clamp_to_edge);
+
+    float NdotV = max(dot(N, V), 0.0);
+    float3 F0 = mix(float3(0.04), baseColor, metallic);
+    float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
+    // エネルギー保存: 金属には拡散が無い
+    float3 kD = (1.0 - F) * (1.0 - metallic);
+
+    float3 irradiance = irradianceMap.sample(envSampler, N).rgb;
+    float3 diffuse = irradiance * baseColor;
+
+    float3 R = reflect(-V, N);
+    float mipCount = float(max(prefilteredMap.get_num_mip_levels(), 1u));
+    float lod = clamp(roughness, 0.0, 1.0) * (mipCount - 1.0);
+    float3 prefiltered = prefilteredMap.sample(envSampler, R, level(lod)).rgb;
+
+    float2 ab = EnvBRDFApprox(NdotV, roughness);
+    float3 specular = prefiltered * (F * ab.x + ab.y);
+
+    return (kD * diffuse + specular) * ao * intensity;
 }
 
 
@@ -124,6 +184,17 @@ static inline float3 metaphorApplyToneMap(float3 color, float mode, float exposu
 // 関数はトーンマップ前の値を返すので、どの入口から呼んでも二重に掛からない。
 static inline float3 metaphorToneMapped(float3 lit, Material3D material) {
     return metaphorApplyToneMap(lit, material.toneMapParams.x, material.toneMapParams.y);
+}
+
+// ライトが 1 つも無いときに無照明パス（fill 色をそのまま出す）へ落とすか。
+//
+// Processing 互換で「`lights()` を呼ばなければ塗りつぶし色がそのまま出る」のが既定
+// だが、環境（IBL）を設定した PBR マテリアルだけは例外で、ライトが無くても環境が
+// 照らす（`environment(.studio)` の 1 行で金属が金属に見えるようにするため・#710）。
+// Blinn-Phong は IBL の対象外なので従来どおり無照明パスへ落とす。
+static inline bool metaphorSkipsLighting(Material3D material, uint lightCount) {
+    if (lightCount > 0) return false;
+    return !(material.toneMapParams.z > 0.0 && material.pbrParams.y > 0.5);
 }
 
 // シャドウフラグメントユニフォーム
@@ -253,6 +324,41 @@ static inline float3 metaphorPBRLightingRaw(
     return ambient + emissive + Lo * shadow;
 }
 
+// PBR ライティング + IBL（トーンマップ前の生の値）。
+//
+// 直接光の計算は ``metaphorPBRLightingRaw`` をそのまま使い、環境の寄与だけを足す。
+// IBL は環境光と同じく**影で減衰しない項**に入れる（``metaphorPBRLightingRaw`` の
+// コメントにある Issue #364 の契約と一貫させる）。強度は
+// `material.toneMapParams.z`（= `environment()` の intensity）で運ばれ、0 なら
+// ``metaphorIBLContribution`` が 0 を返すので環境なしの絵は完全に不変。
+static inline float3 metaphorPBRLightingRawIBL(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    float3 lit = metaphorPBRLightingRaw(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+
+    float3 N = normalize(normal);
+    float3 V = normalize(cameraPos - worldPos);
+    lit += metaphorIBLContribution(
+        N, V, baseColor,
+        material.emissiveAndMetallic.w,
+        clamp(material.pbrParams.x, 0.04, 1.0),
+        material.pbrParams.z,
+        material.toneMapParams.z,
+        irradianceMap, prefilteredMap);
+
+    return lit;
+}
+
 // Blinn-Phong ライティング（既存互換・トーンマップ前の生の値）
 //
 // `shadow` の意味は ``metaphorPBRLightingRaw`` と同じ（直接光にのみ掛かる）。
@@ -374,6 +480,52 @@ static inline float3 calculateLighting(
     return metaphorToneMapped(lit, material);
 }
 
+// 統合エントリポイント（IBL 付き）: 組み込み 3D フラグメントシェーダーが使う。
+//
+// キューブマップ 2 枚を追加で取るだけで、それ以外の意味は引数 8 個版と同じ。
+// 環境が無効なとき（`toneMapParams.z == 0`）は 1x1 のダミーキューブがバインドされ、
+// IBL の寄与は 0 になる。カスタムマテリアルシェーダーは従来どおり引数 8 個版を
+// 呼べる（その場合 IBL は掛からない）。
+static inline float3 calculateLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    float3 lit = (material.pbrParams.y > 0.5)
+        ? metaphorPBRLightingRawIBL(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow,
+            irradianceMap, prefilteredMap)
+        : metaphorBlinnPhongLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
+// PBR ライティング + IBL。結果にはトーンマッピングが適用される。
+static inline float3 calculatePBRLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    float3 lit = metaphorPBRLightingRawIBL(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow,
+        irradianceMap, prefilteredMap);
+    return metaphorToneMapped(lit, material);
+}
+
 // 影なし版（後方互換）。カスタムマテリアルシェーダーが従来のシグネチャで
 // 呼んでいるため残す。
 static inline float3 calculateLighting(
@@ -446,13 +598,15 @@ fragment float4 metaphor_canvas3DTexturedFragment(
     constant Material3D &material [[buffer(3)]],
     constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
     texture2d<float> tex [[texture(0)]],
-    texture2d<float> shadowMap [[texture(1)]]
+    texture2d<float> shadowMap [[texture(1)]],
+    texturecube<float> irradianceMap [[texture(2)]],
+    texturecube<float> prefilteredMap [[texture(3)]]
 ) {
     constexpr sampler s(filter::linear, address::repeat);
     float4 texColor = tex.sample(s, in.uv);
     float4 tintedColor = texColor * uniforms.color;
 
-    if (uniforms.lightCount == 0) {
+    if (metaphorSkipsLighting(material, uniforms.lightCount)) {
         return tintedColor;
     }
 
@@ -468,7 +622,9 @@ fragment float4 metaphor_canvas3DTexturedFragment(
         lights,
         uniforms.lightCount,
         material,
-        shadow
+        shadow,
+        irradianceMap,
+        prefilteredMap
     );
 
     return float4(lit, tintedColor.a);

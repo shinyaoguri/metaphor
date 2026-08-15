@@ -48,7 +48,7 @@ struct Material3D {
     var specularAndShininess: SIMD4<Float> // xyz=スペキュラ色, w=光沢度
     var emissiveAndMetallic: SIMD4<Float>  // xyz=エミッシブ色, w=メタリック
     var pbrParams: SIMD4<Float>            // x=ラフネス, y=usePBR(0/1), z=ao, w=予約
-    var toneMapParams: SIMD4<Float>        // x=トーンマップモード, y=露出, zw=予約
+    var toneMapParams: SIMD4<Float>        // x=トーンマップモード, y=露出, z=環境強度(IBL), w=予約
 
     static let `default` = Material3D(
         ambientColor: SIMD4(0.2, 0.2, 0.2, 0),

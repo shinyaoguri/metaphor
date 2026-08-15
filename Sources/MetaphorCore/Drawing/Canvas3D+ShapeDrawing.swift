@@ -75,6 +75,8 @@ extension Canvas3D {
 
         guard let encoder = encoder else { return }
 
+        ensureSkyboxDrawn()
+
         // beginShape/endShape は個別頂点描画を使用するため、インスタンスバッチをフラッシュ
         flushInstanceBatch()
 
@@ -183,6 +185,7 @@ extension Canvas3D {
 
         guard let encoder = encoder else { return }
 
+        ensureSkyboxDrawn()
         flushInstanceBatch()
 
         let normalMatrix = computeNormalMatrix(from: currentTransform)
@@ -315,6 +318,8 @@ extension Canvas3D {
         }
 
         guard let encoder = encoder else { return }
+
+        ensureSkyboxDrawn()
 
         // 他の endShape パスと同様、先に保留中のインスタンスバッチを確定して
         // 描画順序を保つ（これがないとポイントがバッチ済みシェイプより先に
