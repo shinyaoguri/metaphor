@@ -52,6 +52,24 @@ extension Sketch {
     ///   ``rotateZ(_:)`` と同じ。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位の回転角度。
+    ///
+    /// ### 実行結果
+    ///
+    /// 回転の中心は原点なので、``translate(_:_:)`` で中心を移してから回します。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// noStroke()
+    /// translate(width / 2, height / 2)
+    /// rotate(Float(frameCount) * 0.02)
+    /// fill(255, 190, 60)
+    /// rect(-70, -70, 140, 140)
+    /// ```
+    ///
+    /// ![rotate(_:) の実行結果](https://i.gyazo.com/d9dc00c2281d603324e5f7997a5e2868.png)
+    /// ![rotate(_:) の実行結果（動き）](https://i.gyazo.com/8656acd6a04201a802b96f14ac58ac0a.gif)
     public func rotate(_ angle: Float) {
         context.rotate(angle)
     }
@@ -186,6 +204,21 @@ extension Sketch {
     ///   - y: y 座標。
     ///   - w: 幅。
     ///   - h: 高さ。
+    ///
+    /// ### 実行結果
+    ///
+    /// x, y の解釈は ``rectMode(_:)`` で変わります（既定は左上隅）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// fill(255, 190, 60)
+    /// noStroke()
+    /// rect(60, 90, 160, 180)
+    /// ```
+    ///
+    /// ![rect(_:_:_:_:) の実行結果](https://i.gyazo.com/353e3c185f55a74b535e66da3cd85262.png)
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.rect(x, y, w, h)
     }
@@ -271,6 +304,19 @@ extension Sketch {
     ///   - x: 中心の x 座標。
     ///   - y: 中心の y 座標。
     ///   - diameter: 円の直径。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// fill(80, 170, 255)
+    /// noStroke()
+    /// circle(width / 2, height / 2, 200)
+    /// ```
+    ///
+    /// ![circle(_:_:_:) の実行結果](https://i.gyazo.com/5db1a81abf5604a4ee8a316406fc5049.png)
     public func circle(_ x: Float, _ y: Float, _ diameter: Float) {
         context.circle(x, y, diameter)
     }
@@ -378,6 +424,20 @@ extension Sketch {
     ///   - mode: 円弧の描画モード。省略時は Processing のデフォルトと同じく
     ///     「扇形の fill + 弧のみの stroke」（``ArcMode/default``）。明示 ``ArcMode/open`` の
     ///     fill は弦で閉じた弓形になる点が省略時と異なる。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// fill(255, 120, 140)
+    /// stroke(255)
+    /// strokeWeight(3)
+    /// arc(width / 2, height / 2, 220, 220, 0, Float.pi * 1.2)
+    /// ```
+    ///
+    /// ![arc(_:_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/66c138c57b6838b7a60c9d58b222b5eb.png)
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
@@ -398,6 +458,31 @@ extension Sketch {
     ///   - cy2: 第2制御点の y 座標。
     ///   - x2: 終点の x 座標。
     ///   - y2: 終点の y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// 制御点（灰色）は曲線上には乗らず、両端から引っぱる向きだけを決めます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// noFill()
+    /// stroke(120, 230, 180)
+    /// strokeWeight(4)
+    /// bezier(60, 280, 140, 40, 340, 320, 420, 80)
+    ///
+    /// // 端点と、それを引っぱっている制御点を結んで見せる
+    /// stroke(130)
+    /// strokeWeight(1)
+    /// line(60, 280, 140, 40)
+    /// line(420, 80, 340, 320)
+    /// strokeWeight(12)
+    /// point(140, 40)
+    /// point(340, 320)
+    /// ```
+    ///
+    /// ![bezier(_:_:_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/0b721460f802e496b860f974378c500c.png)
     public func bezier(
         _ x1: Float, _ y1: Float,
         _ cx1: Float, _ cy1: Float,

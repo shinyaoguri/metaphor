@@ -1,0 +1,8 @@
+{
+  "comment": "Hand-written capture settings for scripts/generate-reference-shots.py. Keys are '<source path>::<symbol>' (or just '<symbol>'). Everything here is optional; omit an entry to take the defaults (480x360 still). Add 'motion' to shoot a GIF instead — only for symbols whose meaning cannot be read from a single frame (ADR-0008: DocC cannot use WebP, so motion costs a GIF).",
+  "shots": {
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rotate(_:)": {
+      "motion": { "frames": 36, "every": 2, "fps": 15 }
+    }
+  }
+}

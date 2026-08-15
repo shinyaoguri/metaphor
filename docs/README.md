@@ -26,6 +26,8 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 - **[tutorial/](tutorial/)** — 体系的チュートリアル（日本語ファースト・初心者向けの読み物）
   - [tutorial/README.md](tutorial/README.md) — 章立て・執筆規約・既存ドキュメントとの役割分担。本文は各部が `NN-slug.md` として追加される
   - 公開中の本文: <!-- tutorial-status: ja-links:tutorial/ -->[第 1 部 入門](tutorial/01-getting-started.md) / [第 2 部 2D を描く](tutorial/02-drawing-2d.md) / [第 3 部 動かす](tutorial/03-motion.md) / [第 4 部 入力を受ける](tutorial/04-input.md) / [第 5 部 3D へ](tutorial/05-3d.md) / [第 6 部 GPU を使う](tutorial/06-gpu.md) / [第 7 部 メディア](tutorial/07-media.md) / [第 8 部 外とつなぐ](tutorial/08-connect.md) / [第 9 部 作品にする](tutorial/09-artwork.md) / [第 10 部 AI と作る](tutorial/10-ai.md)<!-- /tutorial-status -->。website 版は [/tutorial/](https://shinyaoguri.github.io/metaphor/tutorial/)
+- **[reference/](reference/)** — DocC の API リファレンスに載せる実行結果画像の規約
+  - [reference/README.md](reference/README.md) — doc コメントへのスニペットの書き方・撮影（`make reference-shots`）・CI が見るもの
 - **[ai/](ai/)** — AI 支援まわりのドキュメント一式
   - [ai/README.md](ai/README.md) — 実装デバッグ・拡張ノート（ライブラリ開発者と AI エージェント向け）
   - [ai/for-sketch-authors.md](ai/for-sketch-authors.md) — AI と一緒にスケッチを書く人向けガイド
@@ -60,6 +62,7 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 |---|---|
 | 公開 API シグネチャ | [`llms.txt`](../llms.txt)（生成物） |
 | チュートリアルの章立て・執筆規約 | [tutorial/README.md](tutorial/README.md) |
+| リファレンスの実行結果画像の規約 | [reference/README.md](reference/README.md) |
 | 設計判断の根拠 | [adr/](adr/) |
 | 何が公開 API か・何が壊れうるか | [api-stability-policy.md](api-stability-policy.md) |
 | metaphor ⇄ metaphor-cli の契約 | [CONTRACT.md](../CONTRACT.md) と `contract/*.schema.json` |

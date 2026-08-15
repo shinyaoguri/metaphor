@@ -212,6 +212,6 @@ Examples 側の運用は [Examples/README.md](../../Examples/README.md) と
 - [Issue #511](https://github.com/shinyaoguri/metaphor/issues/511) — Gyazo 外部化の可否と
   サイズ規律。本 ADR はこの決定を更新する
 - `scripts/generate-tutorial-shots.py` — 撮影・アップロード・台帳・本文の書き換え
-- `scripts/check-tutorial-image-urls.py` / `.github/workflows/asset-health.yml` — 週次の死活監視
+- `scripts/check-image-urls.py` / `.github/workflows/asset-health.yml` — 週次の死活監視
 - `website/astro.config.mjs` — `image.remotePatterns` と `cacheDir`
 - `docs/tutorial/README.md` — 画像の規約（正本）

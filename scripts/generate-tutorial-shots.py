@@ -24,7 +24,7 @@
 アップロードには 1Password 上の Gyazo トークンが要るため、撮影と同じくローカルでのみ
 行う。`--check` はネットワークにもトークンにも触れず、台帳と本文の突き合わせだけで
 鮮度を判定する（CI で走るのはこちら）。URL の生死は週次のワークフローが見る
-（scripts/check-tutorial-image-urls.py）。
+（scripts/check-image-urls.py）。
 
 ## 動きが要る節（#507）
 

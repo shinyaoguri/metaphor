@@ -130,6 +130,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 | `docs/tutorial/*.md` の埋め込みコードブロック | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
 | `docs/tutorial/images/**` + `manifest.json` | `Examples/Tutorial/**` の実行結果, `docs/tutorial/images/motion.json`, `scripts/generate-tutorial-shots.py` | `make tutorial-shots`（GPU が要るのでローカル専用） |
 | README 群の「どこまで公開されているか」（`README.md` / `README.en.md` / `docs/README.md` / `docs/README.en.md` / `Examples/README.md` の `<!-- tutorial-status: … -->` ブロック） | `docs/tutorial/*.md` の frontmatter（`part` / `title` / `draft`）, `scripts/generate-tutorial-status.py` | `make tutorial-status` |
+| doc コメントの**画像行**（`![…](https://i.gyazo.com/…)`）+ `docs/reference/images/manifest.json` | doc コメントの `<!-- reference-shot -->` 付きスニペットの実行結果, `docs/reference/shots.config.json`, `scripts/generate-reference-shots.py` | `make reference-shots`（GPU が要るのでローカル専用。規約は [docs/reference/README.md](docs/reference/README.md)） |
 
 - 生成器は**決定的**であること（全コレクションをソート）。非決定的出力は auto-fix bot が毎回 push する原因になります。
 - **前文（カスタムシェーダーへ配る MSL の頭）は 2D / 3D / postFX とも `.h` からの生成物**です（3D は #707、postFX は #718、2D は #714）。構造体を直すときは `Shaders/Metal/Metaphor{Canvas2D,Canvas3D,PostProcess}Types.h` を直して再生成します — Swift 側に前文の文字列を書き足さないでください。組み込みシェーダーも同じ `.h` を include するので、片方だけ直して食い違うことがありません（`ShaderPreludeTests` が Swift 側とのレイアウト一致まで見ます）。

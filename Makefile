@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
 
 # Default target
 all: setup build
@@ -237,6 +237,12 @@ tutorial-shots:
 tutorial-status:
 	@python3 scripts/generate-tutorial-status.py
 
+# Shoot the DocC reference images by running the snippets in doc comments (needs a GPU)
+# 正典は doc コメントの ```swift フェンス。画像行は生成物で、URL は Gyazo（ADR-0008）。
+# 撮影はローカル専用。CI は --check（鮮度）と --compile-only（例が壊れていないか）を見る。
+reference-shots:
+	@python3 scripts/generate-reference-shots.py $(ARGS)
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -270,4 +276,5 @@ help:
 	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
 	@echo "  make tutorial-shots - Re-shoot tutorial result images (needs a GPU)"
 	@echo "  make tutorial-status - Write the tutorial publication status into the READMEs"
+	@echo "  make reference-shots - Re-shoot DocC reference result images (needs a GPU)"
 	@echo "  make help           - Show this help"
