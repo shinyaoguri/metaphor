@@ -873,11 +873,11 @@ GPU まわりには、まだ口が開いていない場所があります。作�
 
 6.5 で置き換えたのは「画素の色を決める関数」です。**頂点をどこへ動かすかを決める頂点シェーダーは、2D では組み込みのまま**で、差し替える口がありません。図形の形そのものを GPU で歪ませたいときは、Swift 側で座標を作って `beginShape()` / `vertex()` で流すか、6.1 のように GPU で計算した値を読んで図形に反映させます。
 
-3D は事情が違い、`createMaterial(source:fragmentFunction:vertexFunction:)` で頂点シェーダーも一緒に渡せます。面の塗り方を変えるだけなら 2D と同じくフラグメントだけで足ります（前文も 2D と同じく metaphor が足すので、`Canvas3DVertexOut` や `Canvas3DUniforms` は自分で定義しません）。
+3D は事情が違い、`createMaterial(source:fragmentFunction:vertexFunction:)` で頂点シェーダーも一緒に渡せます。面の塗り方を変えるだけなら 2D と同じくフラグメントだけで足ります（前文も 2D と同じく metaphor が足すので、`Canvas3DVertexOut` や `Canvas3DUniforms` は自分で定義しません）。実物は [`Examples/Topics/Shaders/ToonShading`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/ToonShading) で、明るさを 4 段に量子化するフラグメント関数だけを書き、頂点は組み込みのまま使っています。
 
-### Topics/Shaders の例は参考にならない
+### Topics/Shaders の大半は参考にならない
 
-[`Examples/Topics/Shaders/`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders) には Monjori や Nebula といった名前のサンプルが並んでいますが、これらは**元の GLSL の絵を CPU 側で近似したもの**で、`.metal` ファイルは 1 つも入っていません。Processing の移植として残しているだけなので、シェーダーの書き方を探しているなら 6.4 / 6.5 と [`Examples/Topics/Shaders/CustomShader2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/CustomShader2D) が実際の入口です。
+[`Examples/Topics/Shaders/`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders) には Monjori や Nebula といった名前のサンプルが並んでいますが、これらは**元の GLSL の絵を CPU 側で近似したもの**で、`.metal` ファイルが入っていません。Processing の移植として残しているだけなので、シェーダーの書き方を探しているなら 6.4 / 6.5 と、実際に `.metal` を読む 2 本 — 2D の [`CustomShader2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/CustomShader2D) と 3D の [`ToonShading`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/ToonShading) — が実際の入口です。
 
 ### 実装されたら本文へ
 

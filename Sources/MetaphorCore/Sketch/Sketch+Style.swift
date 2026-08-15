@@ -7,6 +7,28 @@ extension Sketch {
     /// 矩形の描画モードを設定します。
     ///
     /// - Parameter mode: 矩形の解釈モード。
+    ///
+    /// ### 実行結果
+    ///
+    /// 同じ引数の ``rect(_:_:_:_:)`` が、モードによって別の位置・大きさに出ます
+    /// （左が既定の ``RectMode/corner``、右が ``RectMode/center``）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// noStroke()
+    ///
+    /// rectMode(.corner)
+    /// fill(255, 190, 60)
+    /// rect(60, 130, 100, 100)
+    ///
+    /// rectMode(.center)
+    /// fill(80, 170, 255)
+    /// rect(340, 180, 100, 100)
+    /// ```
+    ///
+    /// ![rectMode(_:) の実行結果](https://i.gyazo.com/6ac18537fecfcc54f72e033ecca4fa67.png)
     public func rectMode(_ mode: RectMode) {
         context.rectMode(mode)
     }
@@ -163,6 +185,21 @@ extension Sketch {
     /// - Note: **2D のみ**に作用します（3D のワイヤーフレームには効きません。ADR-0005）。
     ///
     /// - Parameter weight: ストローク幅（ピクセル単位）。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// stroke(255)
+    /// for (index, weight) in [1, 4, 12, 28].enumerated() {
+    ///     strokeWeight(Float(weight))
+    ///     line(80, 70 + Float(index) * 70, 400, 70 + Float(index) * 70)
+    /// }
+    /// ```
+    ///
+    /// ![strokeWeight(_:) の実行結果](https://i.gyazo.com/d8e6cd010c5b5629ebfd57cf15e400ba.png)
     public func strokeWeight(_ weight: Float) {
         context.strokeWeight(weight)
     }
@@ -187,6 +224,28 @@ extension Sketch {
     ///   ADR-0005）。
     ///
     /// - Parameter mode: 適用するブレンドモード。
+    ///
+    /// ### 実行結果
+    ///
+    /// ``BlendMode/additive`` は重なりが明るくなり、``BlendMode/alpha``（既定）は
+    /// 後から描いたほうが上に乗ります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// ```swift
+    /// background(24)
+    /// noStroke()
+    ///
+    /// blendMode(.additive)
+    /// fill(255, 60, 60)
+    /// circle(190, 150, 150)
+    /// fill(60, 255, 60)
+    /// circle(260, 150, 150)
+    /// fill(60, 60, 255)
+    /// circle(225, 220, 150)
+    /// ```
+    ///
+    /// ![blendMode(_:) の実行結果](https://i.gyazo.com/c073f497a82f5354038960f521ec3029.png)
     public func blendMode(_ mode: BlendMode) {
         context.blendMode(mode)
     }

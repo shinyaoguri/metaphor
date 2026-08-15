@@ -72,9 +72,17 @@ class TestImageSize(CommonTestCase):
             (640, 360),
         )
 
+    def test_gif_reads_the_logical_screen(self) -> None:
+        # DocC リファレンスの動きは GIF になる（WebP を無言で落とすため。ADR-0008）。
+        path = self.root / "shot.gif"
+        path.write_bytes(
+            b"GIF89a" + (480).to_bytes(2, "little") + (360).to_bytes(2, "little") + b"\x00" * 8
+        )
+        self.assertEqual(common.image_size(path), (480, 360))
+
     def test_an_unknown_format_is_an_error(self) -> None:
         path = self.root / "shot.png"
-        path.write_bytes(b"GIF89a" + b"\x00" * 20)
+        path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 20)  # JPEG（未対応）
         with self.assertRaises(common.ShotError):
             common.image_size(path)
 

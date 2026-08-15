@@ -323,6 +323,16 @@ jobs:
       # 「スケッチを変えたのに撮り直していない」だけを捕まえる（#486）。
       - name: Verify tutorial result images are up to date
         run: python3 scripts/generate-tutorial-shots.py --check
+      # リファレンス（DocC）の実行結果画像。台帳との突き合わせはチュートリアルと
+      # 同じ理屈だが、正典は doc コメントのスニペットで、画像は Gyazo（ADR-0008）。
+      - name: Verify reference result images are up to date
+        run: python3 scripts/generate-reference-shots.py --check
+      # doc コメントのスニペットが**実際にコンパイルできる**ことの保証（#531）。
+      # p5.js の「リファレンスの例は実行される」に相当するものを Swift で置く。
+      # 撮影と違って GPU もトークンも要らないので per-PR で走らせられる。
+      - name: Verify reference snippets compile
+        if: steps.source-changed.outputs.changed == 'true'
+        run: python3 scripts/generate-reference-shots.py --compile-only
       - name: Verify llms.txt is up to date
         if: steps.source-changed.outputs.changed == 'true'
         run: |
