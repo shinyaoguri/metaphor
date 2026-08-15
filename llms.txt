@@ -390,6 +390,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ## Core Types
 
+### `protocol Blendable : AnyObject` -- **値の束**（シーンのプロファイルなど）を 1 行で補間できるようにするプロトコル。
+
+- `init()` -- 補間結果を入れる新しいインスタンスを作るために使います。
+- `static func blend(_ a: Self, _ b: Self, _ t: Float) -> Self` -- `a` と `b` を `t` で補間した**新しいインスタンス**を返します。
+- `func blend(from a: Self, to b: Self, t: Float)` -- `a` と `b` を `t` で補間した値を**自分自身へ**書き込みます。
+
 ### `protocol CanvasStyle : AnyObject` -- Canvas2D と Canvas3D の間で共有されるスタイル管理プロトコル。
 
 - （ほか 12 件の描画・変換メンバーは Sketch API と同名・同挙動）
@@ -1293,6 +1299,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var scrollY: Float { get }` -- 現在のフレームの垂直スクロールデルタ
 - `init()` -- デフォルト状態で新しい入力マネージャを作成します。
 
+### `@propertyWrapper final class Interpolated<Value> where Value : Interpolatable` -- プロパティを **補間の対象として宣言**するプロパティラッパー。
+
+- `var projectedValue: Interpolated<Value> { get }` -- `$elevation` で箱そのものを取り出せます。
+- `var wrappedValue: Value` -- 現在の値。
+- `init(wrappedValue: Value)`
+
 ### `final class InvertEffect` -- 全カラーを反転します。
 
 - `let name: String`
@@ -1735,6 +1747,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
 - `init?(paramValue: ParamValue)`
+- `static func interpolate(from: Double, to: Double, t: Float) -> Double`
 
 ### `extension Float`
 
@@ -1748,6 +1761,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
 - `init?(paramValue: ParamValue)`
+- `static func interpolate(from: Int, to: Int, t: Float) -> Int` -- 整数の補間は**四捨五入**します（バンド数・段数のように整数で持ちたい値のため）。
 
 ### `extension MTLClearColor`
 
