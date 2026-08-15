@@ -6,6 +6,9 @@ import QuartzCore
 ///
 /// 既定はプロジェクトのカレントディレクトリ配下の `.metaphor/params/`
 /// （Probe の `.metaphor/probe/` と同じ流儀。CONTRACT.md 契約点 7）。
+///
+/// 相対パスは環境変数 `METAPHOR_STATE_DIR`（未設定なら cwd）を基準に解決されます
+/// （`.app` 起動では cwd が `/` になるため。Issue #688）。
 public struct ParameterStoreConfig: Sendable {
     /// `params.json` を書き出すディレクトリ。
     public var directory: String
@@ -23,8 +26,8 @@ public struct ParameterStoreConfig: Sendable {
         setRequestFilePath: String = ".metaphor/params/set-request.json",
         writeDebounce: Double = 0.2
     ) {
-        self.directory = directory
-        self.setRequestFilePath = setRequestFilePath
+        self.directory = MetaphorPaths.resolve(directory)
+        self.setRequestFilePath = MetaphorPaths.resolve(setRequestFilePath)
         self.writeDebounce = writeDebounce
     }
 }

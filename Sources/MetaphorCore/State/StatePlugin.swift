@@ -6,6 +6,9 @@ import Metal
 /// 既定はプロジェクトのカレントディレクトリ配下の `.metaphor/state/`
 /// （Probe の `.metaphor/probe/`・Parameter Store の `.metaphor/params/` と同じ流儀。
 /// CONTRACT.md 契約点 8）。
+///
+/// 相対パスは環境変数 `METAPHOR_STATE_DIR`（未設定なら cwd）を基準に解決されます
+/// （`.app` 起動では cwd が `/` になるため。Issue #688）。
 public struct SketchStateConfig: Sendable {
     /// `state.json` を書き出すディレクトリ。
     public var directory: String
@@ -17,8 +20,8 @@ public struct SketchStateConfig: Sendable {
         directory: String = ".metaphor/state",
         saveRequestFilePath: String = ".metaphor/state/save-request.json"
     ) {
-        self.directory = directory
-        self.saveRequestFilePath = saveRequestFilePath
+        self.directory = MetaphorPaths.resolve(directory)
+        self.saveRequestFilePath = MetaphorPaths.resolve(saveRequestFilePath)
     }
 }
 
@@ -182,7 +185,10 @@ public final class StatePlugin: MetaphorPlugin {
 enum SketchStateRestore {
     /// 復元対象を読み取ります。環境変数が無い/読めない/壊れている場合は `nil`。
     static func load(env: [String: String]) -> RestoredSketchState? {
-        guard let path = env["METAPHOR_RESTORE_STATE"], !path.isEmpty else { return nil }
+        guard let raw = env["METAPHOR_RESTORE_STATE"], !raw.isEmpty else { return nil }
+        // 契約上は絶対パスだが、相対で渡ってきても `METAPHOR_STATE_DIR`（未設定なら cwd）
+        // 基準で解決する。絶対パスはそのまま（Issue #688）。
+        let path = MetaphorPaths.resolve(raw)
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             metaphorDiagnostic("state: METAPHOR_RESTORE_STATE のファイルを読めませんでした（初期状態で起動します）")
             return nil

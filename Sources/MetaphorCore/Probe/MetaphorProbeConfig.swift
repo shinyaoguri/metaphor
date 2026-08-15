@@ -4,6 +4,9 @@ import Foundation
 ///
 /// 出力先ディレクトリやリクエストファイルのパスをカスタマイズできます。
 /// デフォルトはプロジェクトのカレントディレクトリ配下の `.metaphor/probe/`。
+///
+/// 相対パスは環境変数 `METAPHOR_STATE_DIR`（未設定なら cwd）を基準に解決されます
+/// （`.app` 起動では cwd が `/` になるため。Issue #688・CONTRACT.md 契約点 2）。
 public struct MetaphorProbeConfig: Sendable {
     /// PNG と JSON を書き出すディレクトリ。
     public var outputDirectory: String
@@ -25,8 +28,8 @@ public struct MetaphorProbeConfig: Sendable {
         defaultScale: Float = 1.0,
         sourceStamp: String? = nil
     ) {
-        self.outputDirectory = outputDirectory
-        self.requestFilePath = requestFilePath
+        self.outputDirectory = MetaphorPaths.resolve(outputDirectory)
+        self.requestFilePath = MetaphorPaths.resolve(requestFilePath)
         self.defaultScale = defaultScale
         self.sourceStamp = sourceStamp
     }
