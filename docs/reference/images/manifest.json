@@ -3,7 +3,7 @@
   "shots": {
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::arc(_:_:_:_:_:_:_:)": {
       "symbol": "arc(_:_:_:_:_:_:_:)",
-      "snippetHash": "d2c4f34c238095f66da2e18f1d5eded7b790232cea1576b5e07aeba56f5c226b",
+      "snippetHash": "d43917f7f4590a6692d5119bd2ee93c8d85144f3a1fa4145d6a1b50cca25e31d",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/66c138c57b6838b7a60c9d58b222b5eb.png",
@@ -70,7 +70,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::strokeWeight(_:)": {
       "symbol": "strokeWeight(_:)",
-      "snippetHash": "c6d69bcfb3a349c83fad160f61ecd876d538c51e4ca229aca99b56a189444947",
+      "snippetHash": "a08eab9a89bafee380550e5ce4861ba54ecd7a9e6df93972843870d6bf599205",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/d8e6cd010c5b5629ebfd57cf15e400ba.png",

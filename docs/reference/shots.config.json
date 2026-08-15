@@ -1,8 +1,11 @@
 {
-  "comment": "Hand-written capture settings for scripts/generate-reference-shots.py. Keys are '<source path>::<symbol>' (or just '<symbol>'). Everything here is optional; omit an entry to take the defaults (480x360 still). Add 'motion' to shoot a GIF instead — only for symbols whose meaning cannot be read from a single frame (ADR-0008: DocC cannot use WebP, so motion costs a GIF).",
+  "comment": "Hand-written capture and layout settings for scripts/generate-reference-shots.py. Keys are '<source path>::<symbol>' (or just '<symbol>'). Everything here is optional; omit an entry to take the defaults (480x360 still, laid out as a two-column row with the image on the left). 'motion' shoots a GIF instead of a still — only for symbols whose meaning cannot be read from a single frame (ADR-0008: DocC cannot use WebP, so motion costs a GIF). 'layout': 'stack' puts the code above the image at full width — for wide figures and for snippets whose lines do not fit a column.",
   "shots": {
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rotate(_:)": {
       "motion": { "frames": 36, "every": 2, "fps": 15 }
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezier(_:_:_:_:_:_:_:_:)": {
+      "layout": "stack"
     }
   }
 }

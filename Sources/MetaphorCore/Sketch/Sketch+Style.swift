@@ -15,20 +15,25 @@ extension Sketch {
     ///
     /// <!-- reference-shot -->
     ///
-    /// ```swift
-    /// background(24)
-    /// noStroke()
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![rectMode(_:) の実行結果](https://i.gyazo.com/6ac18537fecfcc54f72e033ecca4fa67.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
     ///
-    /// rectMode(.corner)
-    /// fill(255, 190, 60)
-    /// rect(60, 130, 100, 100)
+    ///       rectMode(.corner)
+    ///       fill(255, 190, 60)
+    ///       rect(60, 130, 100, 100)
     ///
-    /// rectMode(.center)
-    /// fill(80, 170, 255)
-    /// rect(340, 180, 100, 100)
-    /// ```
-    ///
-    /// ![rectMode(_:) の実行結果](https://i.gyazo.com/6ac18537fecfcc54f72e033ecca4fa67.png)
+    ///       rectMode(.center)
+    ///       fill(80, 170, 255)
+    ///       rect(340, 180, 100, 100)
+    ///       ```
+    ///    }
+    /// }
     public func rectMode(_ mode: RectMode) {
         context.rectMode(mode)
     }
@@ -190,16 +195,23 @@ extension Sketch {
     ///
     /// <!-- reference-shot -->
     ///
-    /// ```swift
-    /// background(24)
-    /// stroke(255)
-    /// for (index, weight) in [1, 4, 12, 28].enumerated() {
-    ///     strokeWeight(Float(weight))
-    ///     line(80, 70 + Float(index) * 70, 400, 70 + Float(index) * 70)
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![strokeWeight(_:) の実行結果](https://i.gyazo.com/d8e6cd010c5b5629ebfd57cf15e400ba.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       stroke(255)
+    ///       var y: Float = 70
+    ///       for weight in [1, 4, 12, 28] {
+    ///           strokeWeight(Float(weight))
+    ///           line(80, y, 400, y)
+    ///           y += 70
+    ///       }
+    ///       ```
+    ///    }
     /// }
-    /// ```
-    ///
-    /// ![strokeWeight(_:) の実行結果](https://i.gyazo.com/d8e6cd010c5b5629ebfd57cf15e400ba.png)
     public func strokeWeight(_ weight: Float) {
         context.strokeWeight(weight)
     }
@@ -232,20 +244,25 @@ extension Sketch {
     ///
     /// <!-- reference-shot -->
     ///
-    /// ```swift
-    /// background(24)
-    /// noStroke()
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![blendMode(_:) の実行結果](https://i.gyazo.com/c073f497a82f5354038960f521ec3029.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
     ///
-    /// blendMode(.additive)
-    /// fill(255, 60, 60)
-    /// circle(190, 150, 150)
-    /// fill(60, 255, 60)
-    /// circle(260, 150, 150)
-    /// fill(60, 60, 255)
-    /// circle(225, 220, 150)
-    /// ```
-    ///
-    /// ![blendMode(_:) の実行結果](https://i.gyazo.com/c073f497a82f5354038960f521ec3029.png)
+    ///       blendMode(.additive)
+    ///       fill(255, 60, 60)
+    ///       circle(190, 150, 150)
+    ///       fill(60, 255, 60)
+    ///       circle(260, 150, 150)
+    ///       fill(60, 60, 255)
+    ///       circle(225, 220, 150)
+    ///       ```
+    ///    }
+    /// }
     public func blendMode(_ mode: BlendMode) {
         context.blendMode(mode)
     }
