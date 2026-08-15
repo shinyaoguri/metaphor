@@ -45,8 +45,68 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let sketch = sketchType.init()
         runner.sketchRef = sketch
 
+        // SIGTERM / SIGINT を通常終了と同じ後始末経路へ合流させる（#715）。
+        // source は解放するとハンドラが外れるため、プロセス寿命まで保持する。
+        retainedSignalSources = installTerminationSignalHandlers()
+
         app.run()
     }
+
+    /// 終了シグナル（`SIGINT` / `SIGTERM`）を受けたら `NSApp.terminate(_:)` を呼び、
+    /// 通常終了と同じ後始末（``applicationWillTerminate(_:)``）を通してから終了させます。
+    ///
+    /// 既定のシグナル動作はプロセスを即座に終了させるため、`applicationWillTerminate` が
+    /// 走らず ``MetaphorRenderer/shutdown()`` → プラグインの `onDetach()` に到達しません。
+    /// 結果として Syphon サーバーの retire 通知が送出されず、`SyphonServerDirectory` を
+    /// 保持し続けているクライアント（ライブビューア・MadMapper 等）からは死んだサーバーが
+    /// 生きているように見え続けます。`metaphor watch` はリロードのたびに子スケッチを
+    /// `SIGTERM` で止めるため、リロードのたびにゾンビが 1 つ増えていました（#715）。
+    ///
+    /// シグナルハンドラ内で呼べる関数は限られる（async-signal-safe）ため、
+    /// `signal(sig, SIG_IGN)` でデフォルト動作を無効にしたうえで `DispatchSource` で受け、
+    /// 実際の後始末は通常のキューで実行します（metaphor-cli 側も同型）。
+    ///
+    /// - Parameters:
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    ///   - onTerminate: シグナル受信時に実行する処理。既定はメインスレッドでの
+    ///     `NSApp.terminate(nil)`（テストから差し替え可能）。
+    /// - Returns: 設置した signal source。**呼び出し側が保持し続ける必要があります**
+    ///   （解放するとハンドラが外れる）。オプトアウト時は空配列。
+    nonisolated static func installTerminationSignalHandlers(
+        env: [String: String] = ProcessInfo.processInfo.environment,
+        onTerminate: (@Sendable () -> Void)? = nil
+    ) -> [any DispatchSourceSignal] {
+        guard resolveInstallSignalHandlers(env: env) else { return [] }
+
+        let terminate = onTerminate ?? {
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { NSApp.terminate(nil) }
+            }
+        }
+
+        return [SIGINT, SIGTERM].map { sig in
+            // デフォルト動作（即時終了）を無効にしないと DispatchSource へ届く前に殺される。
+            signal(sig, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: sig, queue: .global())
+            source.setEventHandler(handler: terminate)
+            source.resume()
+            return source
+        }
+    }
+
+    /// 終了シグナルのハンドラを設置するか（既定は設置する）。
+    ///
+    /// 環境変数 `METAPHOR_SIGNAL_HANDLERS=0` でオプトアウトできます。スケッチを組み込んだ
+    /// ホスト側が独自にシグナルを扱いたい場合の逃げ道で、`0` 以外の値は無視します。
+    nonisolated static func resolveInstallSignalHandlers(env: [String: String]) -> Bool {
+        env["METAPHOR_SIGNAL_HANDLERS"] != "0"
+    }
+
+    /// 設置した signal source の保持先（プロセス寿命）。
+    ///
+    /// `run(sketchType:)` から 1 回だけ書き込み、以降は読み書きしないため
+    /// `nonisolated(unsafe)` とします。
+    private nonisolated(unsafe) static var retainedSignalSources: [any DispatchSourceSignal] = []
 
     // MARK: - NSApplicationDelegate
 
