@@ -698,10 +698,10 @@
     },
     "Examples/Samples/EnvironmentIBL": {
       "origin": "captured",
-      "sourceHash": "b97f7a6f318e50635b539341b147fda7049b3c03a93e4b226abd12cbe97cc44f",
+      "sourceHash": "6d52495d96d5e1af73ae8e7e3374f1d98f176a54077163a7b221cccdf29255b5",
       "width": 900,
       "height": 600,
-      "frame": 104
+      "frame": 100
     },
     "Examples/Samples/InstancedCubes": {
       "origin": "captured",
@@ -719,10 +719,10 @@
     },
     "Examples/Samples/ParameterPanel": {
       "origin": "captured",
-      "sourceHash": "59efc965f9481abbaecdce43b64d49de9979012d1c2a62fc7e1c96763528df83",
+      "sourceHash": "ad1a635b534e5017bfdb5a7d75683f6144cd01eb14cff466b068f243d6ebfc08",
       "width": 800,
       "height": 600,
-      "frame": 95
+      "frame": 99
     },
     "Examples/Samples/PluginFPSLogger": {
       "origin": "captured",
@@ -789,10 +789,10 @@
     },
     "Examples/Samples/StatePreservation": {
       "origin": "captured",
-      "sourceHash": "77add9b7bf514174ff0a2933bea7fdd5f57eb9cdaa23c37534a339f1134337ff",
+      "sourceHash": "d320f29642d7a76518686c1ea13458ec434bf93b7a98fbabc44e7a6f139f0fa7",
       "width": 900,
       "height": 600,
-      "frame": 95
+      "frame": 100
     },
     "Examples/Samples/Syphon/SyphonMultiWindow": {
       "origin": "captured",
@@ -817,10 +817,10 @@
     },
     "Examples/Samples/ToneMapping": {
       "origin": "captured",
-      "sourceHash": "d2658962f771e66e955e45823272e89cacfd8a495fe144fb9ee30ea1b8bb0faf",
+      "sourceHash": "5cc3944f2c8d27a9897a562507e6786e82b2895d769c3c907d2f911f26ef1b33",
       "width": 900,
       "height": 520,
-      "frame": 97
+      "frame": 104
     },
     "Examples/Topics/Advanced Data/ArrayListClass": {
       "origin": "processing",
@@ -1313,10 +1313,10 @@
     },
     "Examples/Topics/Shaders/CustomShader2D": {
       "origin": "captured",
-      "sourceHash": "5955241d15a0c0b6167eab5d244bb3ff87a65af42e2ad9f9b3997b9ac8e7ee2f",
+      "sourceHash": "3575b7c917593d794ab7e4522b9775b0b0ce326bf6723c83b02d1d57fc1f9d2d",
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 99
     },
     "Examples/Topics/Shaders/Deform": {
       "origin": "captured",
