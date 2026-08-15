@@ -261,6 +261,17 @@ extension SketchContext {
         canvas3D.specular(color)
     }
 
+    /// チャンネル値でスペキュラーハイライトの色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) {
+        canvas3D.specular(v1, v2, v3)
+    }
+
     /// グレースケール値でスペキュラーハイライトの色を設定します。
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
@@ -279,6 +290,17 @@ extension SketchContext {
     /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) {
         canvas3D.emissive(color)
+    }
+
+    /// チャンネル値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) {
+        canvas3D.emissive(v1, v2, v3)
     }
 
     /// グレースケール値でエミッシブ色を設定します。

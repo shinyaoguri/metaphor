@@ -261,6 +261,15 @@ public final class Graphics3D {
     /// - Parameter color: スペキュラ色。
     public func specular(_ color: Color) { canvas3D.specular(color) }
 
+    /// スペキュラハイライトの色をチャンネル値で設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) { canvas3D.specular(v1, v2, v3) }
+
     /// スペキュラハイライトをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
     public func specular(_ gray: Float) { canvas3D.specular(gray) }
@@ -272,6 +281,15 @@ public final class Graphics3D {
     /// エミッシブ色を設定します。
     /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) { canvas3D.emissive(color) }
+
+    /// エミッシブ色をチャンネル値で設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) { canvas3D.emissive(v1, v2, v3) }
 
     /// エミッシブをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
