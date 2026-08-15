@@ -190,6 +190,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func ellipseMode(_ mode: EllipseMode)` -- 楕円の描画モードを設定します。
 - `func emissive(_ color: Color)` -- エミッシブ（自己発光）色を設定します。
 - `func emissive(_ gray: Float)` -- グレースケール値でエミッシブ色を設定します。
+- `func emissive(_ v1: Float, _ v2: Float, _ v3: Float)` -- チャンネル値でエミッシブ色を設定します。
 - `func enableFeedback()` -- フレームバッファフィードバック（前フレームアクセス）を有効にします。
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
@@ -347,6 +348,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func shininess(_ value: Float)` -- スペキュラーの光沢度指数を設定します。
 - `func specular(_ color: Color)` -- スペキュラーハイライトの色を設定します。
 - `func specular(_ gray: Float)` -- グレースケール値でスペキュラーハイライトの色を設定します。
+- `func specular(_ v1: Float, _ v2: Float, _ v3: Float)` -- チャンネル値でスペキュラーハイライトの色を設定します。
 - `func sphere(_ radius: Float, detail: Int = 24)` -- 球を描画します。
 - `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white, intensity: Float = 1.0)` -- 指定位置・方向にスポットライトを追加します。
 - `func square(_ x: Float, _ y: Float, _ size: Float)` -- 正方形を描画します。
@@ -1115,7 +1117,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
 
-- （ほか 73 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 75 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
 - `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
@@ -1255,7 +1257,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 56 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 58 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
@@ -1612,7 +1614,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 231 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 233 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

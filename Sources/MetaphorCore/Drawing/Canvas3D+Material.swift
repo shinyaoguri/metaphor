@@ -51,6 +51,22 @@ extension Canvas3D {
         )
     }
 
+    /// チャンネル値でスペキュラハイライト色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) {
+        let c = colorModeConfig.toColor(v1, v2, v3, nil)
+        currentMaterial.specularAndShininess = SIMD4(
+            c.r, c.g, c.b,
+            currentMaterial.specularAndShininess.w
+        )
+    }
+
     /// グレースケール値でスペキュラハイライト色を設定します。
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
@@ -77,6 +93,22 @@ extension Canvas3D {
     public func emissive(_ color: Color) {
         currentMaterial.emissiveAndMetallic = SIMD4(
             color.r, color.g, color.b,
+            currentMaterial.emissiveAndMetallic.w
+        )
+    }
+
+    /// チャンネル値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) {
+        let c = colorModeConfig.toColor(v1, v2, v3, nil)
+        currentMaterial.emissiveAndMetallic = SIMD4(
+            c.r, c.g, c.b,
             currentMaterial.emissiveAndMetallic.w
         )
     }

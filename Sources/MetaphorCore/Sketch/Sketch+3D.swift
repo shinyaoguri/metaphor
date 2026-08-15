@@ -296,6 +296,20 @@ extension Sketch {
         context.specular(color)
     }
 
+    /// チャンネル値でスペキュラーハイライトの色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) {
+        context.specular(v1, v2, v3)
+    }
+
     /// グレースケール値でスペキュラーハイライトの色を設定します。
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
@@ -323,6 +337,20 @@ extension Sketch {
     /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) {
         context.emissive(color)
+    }
+
+    /// チャンネル値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) {
+        context.emissive(v1, v2, v3)
     }
 
     /// グレースケール値でエミッシブ色を設定します。
