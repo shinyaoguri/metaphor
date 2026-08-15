@@ -1,4 +1,4 @@
-#include "MetaphorShaderTypes.h"
+#include "MetaphorCanvas3DTypes.h"
 #include "MetaphorLighting.h"
 
 // Per-instance data (160 bytes, 16-byte aligned)

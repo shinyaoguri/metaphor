@@ -2,14 +2,13 @@
 #include <metal_stdlib>
 using namespace metal;
 
-// 基本3Dシェーダー用ユニフォーム
-struct MetaphorUniforms {
-    float4x4 modelMatrix;
-    float4x4 viewProjectionMatrix;
-    float4 color;
-    float3 lightDirection;
-    float time;
-};
+// Canvas3D が GPU へ渡す構造体。Swift 側の正本は `Drawing/Canvas3DTypes.swift`
+// （`ShadowFragmentUniforms` だけ `Drawing/ShadowMap.swift`）。
+//
+// このヘッダはそのまま `BuiltinShaders.canvas3DStructs` として、ユーザーの
+// カスタムマテリアルシェーダーへ配られる（`scripts/generate-shader-sources.py`
+// が生成）。**中身を変えると公開される前文も変わる**ので、フィールドの増減は
+// Swift 側と `ShaderPreludeTests` のレイアウト検査に必ず揃えること。
 
 // Canvas3D ユニフォーム
 struct Canvas3DUniforms {
@@ -39,6 +38,14 @@ struct Material3D {
     float4 emissiveAndMetallic;
     float4 pbrParams;             // x=roughness, y=usePBR(0/1), z=ao, w=reserved
     float4 toneMapParams;         // x=toneMapMode, y=exposure, z=envIntensity(IBL), w=reserved
+};
+
+// シャドウフラグメントユニフォーム
+struct ShadowFragmentUniforms {
+    float4x4 lightSpaceMatrix;
+    float shadowBias;
+    float shadowEnabled;
+    float2 _pad;
 };
 
 
@@ -177,6 +184,10 @@ static inline float3 metaphorApplyToneMap(float3 color, float mode, float exposu
 }
 
 
+// このヘッダは関数だけを持つ（構造体は `MetaphorCanvas3DTypes.h`）。
+// そのまま `BuiltinShaders.canvas3DLightingFn` としてユーザーのカスタムマテリアル
+// シェーダーへ配られる（`scripts/generate-shader-sources.py` が生成）。
+
 // マテリアルに設定されたトーンマッピングをライティング結果へ適用する。
 //
 // 適用は**公開エントリポイント 1 か所だけ**で行う（`calculateLighting` /
@@ -196,14 +207,6 @@ static inline bool metaphorSkipsLighting(Material3D material, uint lightCount) {
     if (lightCount > 0) return false;
     return !(material.toneMapParams.z > 0.0 && material.pbrParams.y > 0.5);
 }
-
-// シャドウフラグメントユニフォーム
-struct ShadowFragmentUniforms {
-    float4x4 lightSpaceMatrix;
-    float shadowBias;
-    float shadowEnabled;
-    float2 _pad;
-};
 
 // PCF ソフトシャドウ計算
 static inline float calculateShadow(

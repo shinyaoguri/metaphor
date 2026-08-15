@@ -1,9 +1,13 @@
 #ifndef MetaphorLighting_h
 #define MetaphorLighting_h
 
-#include "MetaphorShaderTypes.h"
+#include "MetaphorCanvas3DTypes.h"
 #include "MetaphorPBR.h"
 #include "MetaphorToneMapping.h"
+
+// このヘッダは関数だけを持つ（構造体は `MetaphorCanvas3DTypes.h`）。
+// そのまま `BuiltinShaders.canvas3DLightingFn` としてユーザーのカスタムマテリアル
+// シェーダーへ配られる（`scripts/generate-shader-sources.py` が生成）。
 
 // マテリアルに設定されたトーンマッピングをライティング結果へ適用する。
 //
@@ -24,14 +28,6 @@ static inline bool metaphorSkipsLighting(Material3D material, uint lightCount) {
     if (lightCount > 0) return false;
     return !(material.toneMapParams.z > 0.0 && material.pbrParams.y > 0.5);
 }
-
-// シャドウフラグメントユニフォーム
-struct ShadowFragmentUniforms {
-    float4x4 lightSpaceMatrix;
-    float shadowBias;
-    float shadowEnabled;
-    float2 _pad;
-};
 
 // PCF ソフトシャドウ計算
 static inline float calculateShadow(
