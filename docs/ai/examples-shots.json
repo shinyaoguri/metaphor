@@ -563,12 +563,33 @@
       "height": 768,
       "frame": 109
     },
+    "Examples/Demos/Graphics/Planets": {
+      "origin": "captured",
+      "sourceHash": "24d3885290afe51cd9954bb3a3324f9db387a652a671ef015aad7a4c0fa6fa53",
+      "width": 1024,
+      "height": 768,
+      "frame": 107
+    },
     "Examples/Demos/Graphics/RotatingArcs": {
       "origin": "captured",
       "sourceHash": "01f5cb24174f39a623296f78b30874a96247b0ad08c62239537e8841431ada4c",
       "width": 1024,
       "height": 768,
       "frame": 13
+    },
+    "Examples/Demos/Graphics/Trefoil": {
+      "origin": "captured",
+      "sourceHash": "5102717f6c2782e04b2f245a96dbea31c4e601988f6bacd41f7065cccbfed8e3",
+      "width": 1024,
+      "height": 768,
+      "frame": 97
+    },
+    "Examples/Demos/Graphics/Wiggling": {
+      "origin": "captured",
+      "sourceHash": "4f6841aa6430f83113fd066a33af70076fa683b038d001157bf5e2a5b5489558",
+      "width": 1024,
+      "height": 768,
+      "frame": 108
     },
     "Examples/Demos/Graphics/Yellowtail": {
       "origin": "captured",

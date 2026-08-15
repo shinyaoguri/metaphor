@@ -1,9 +1,9 @@
 {
   "count": 286,
   "statusCounts": {
-    "supported": 267,
+    "supported": 270,
     "partial": 0,
-    "stub": 9,
+    "stub": 6,
     "obsolete": 10
   },
   "examples": [
@@ -2173,7 +2173,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2233,7 +2233,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
@@ -2248,7 +2248,7 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
