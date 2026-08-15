@@ -27,6 +27,13 @@ import MetalKit
 ///     }
 /// }
 /// ```
+///
+/// ## ヘッドレスモード
+///
+/// 環境変数 `METAPHOR_VIEWER=1`（`metaphor-cli` のライブビューアが子プロセスへ注入する
+/// ヘッドレス指定）で起動した場合、セカンダリウィンドウも **`NSWindow` を作らず**
+/// オフスクリーンで描画だけを回します（プライマリと同じ扱い）。``config`` の
+/// ``SketchWindowConfig/syphonName`` を設定していれば、そこへの publish は従来どおり続きます。
 @MainActor
 public final class SketchWindow {
     // MARK: - Public Properties
@@ -75,6 +82,7 @@ public final class SketchWindow {
     var onWindowClosed: ((@MainActor () -> Void))?
 
     private let renderer: MetaphorRenderer
+    private let isHeadless: Bool
     private var window: NSWindow?
     private var mtkView: MetaphorMTKView?
     private var windowDelegate: WindowDelegate?
@@ -85,10 +93,24 @@ public final class SketchWindow {
 
     private static var windowCounter: Int = 0
 
+    /// ネイティブの `NSWindow` を実際に作ったかどうか（テスト用の観測点）。
+    /// ヘッドレスでは `false`。
+    var hasNativeWindow: Bool { window != nil }
+
     // MARK: - Initialization
 
-    init(config: SketchWindowConfig, sharedResources: SharedMetalResources) throws {
+    /// - Parameters:
+    ///   - config: ウィンドウ設定。
+    ///   - sharedResources: プライマリと共有する Metal リソース。
+    ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか。既定は環境変数
+    ///     `METAPHOR_VIEWER` からの解決（テストからの注入用に引数化している）。
+    init(
+        config: SketchWindowConfig,
+        sharedResources: SharedMetalResources,
+        isHeadless: Bool = SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
+    ) throws {
         self.config = config
+        self.isHeadless = isHeadless
 
         let renderer = try MetaphorRenderer(
             sharedResources: sharedResources,
@@ -162,9 +184,46 @@ public final class SketchWindow {
         }
     }
 
+    // MARK: - Environment Resolution
+
+    /// ヘッドレス（ウィンドウを開かない）で動かすかを環境変数から解決します。
+    ///
+    /// `METAPHOR_VIEWER=1` は `metaphor-cli` のライブビューアが子プロセスへ注入する
+    /// ヘッドレス指定で、プライマリ（``SketchRunner``）と同じ変数を見ます。
+    ///
+    /// - Parameter env: 参照する環境変数（テストから注入可能）。
+    /// - Returns: ヘッドレスなら `true`。
+    nonisolated static func resolveHeadless(env: [String: String]) -> Bool {
+        env["METAPHOR_VIEWER"] == "1"
+    }
+
+    /// 実効レンダーループモードを解決します。
+    ///
+    /// - ヘッドレスでは `MTKView` が無くディスプレイリンクを駆動できないため、常にタイマー。
+    /// - ``SketchWindowConfig/syphonName`` があり `.displayLink` のままなら、出力の安定のため
+    ///   タイマーへ切り替える（従来どおり）。
+    ///
+    /// - Parameters:
+    ///   - config: ウィンドウ設定。
+    ///   - isHeadless: ヘッドレスかどうか。
+    /// - Returns: 実際に使うレンダーループモード。
+    nonisolated static func resolveLoopMode(
+        config: SketchWindowConfig, isHeadless: Bool
+    ) -> RenderLoopMode {
+        if isHeadless { return .timer(fps: config.fps) }
+        if config.syphonName != nil, config.renderLoopMode == .displayLink {
+            return .timer(fps: config.fps)
+        }
+        return config.renderLoopMode
+    }
+
     // MARK: - Private Setup
 
     private func setupWindow() {
+        // ヘッドレスではネイティブウィンドウも `MTKView` も作らない（プライマリと同じ扱い）。
+        // 描画は setupRenderLoop() のタイマーが `renderFrame()` を回して継続する。
+        if isHeadless { return }
+
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
 
@@ -208,15 +267,9 @@ public final class SketchWindow {
     }
 
     private func setupRenderLoop() {
-        // レンダーループモードの決定。
-        // syphonName が設定されているが renderLoopMode が displayLink のままの場合、
-        // Syphon 互換性のため自動的にタイマーモードに切り替え。
-        let loopMode: RenderLoopMode
-        if config.syphonName != nil && config.renderLoopMode == .displayLink {
-            loopMode = .timer(fps: config.fps)
-        } else {
-            loopMode = config.renderLoopMode
-        }
+        // レンダーループモードの決定（ヘッドレスは常にタイマー / syphonName ありの
+        // displayLink はタイマーへ切り替え）。
+        let loopMode = Self.resolveLoopMode(config: config, isHeadless: isHeadless)
 
         switch loopMode {
         case .displayLink:

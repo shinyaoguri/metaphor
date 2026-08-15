@@ -26,6 +26,9 @@ extension Sketch {
     /// }
     /// ```
     ///
+    /// ヘッドレス実行（`METAPHOR_VIEWER=1`）ではウィンドウを表示せず、オフスクリーンの
+    /// 描画と ``SketchWindowConfig/syphonName`` への出力だけを行います。
+    ///
     /// - Parameter config: ウィンドウ設定。
     /// - Returns: 新しい ``SketchWindow``。作成に失敗した場合は `nil`。
     public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
