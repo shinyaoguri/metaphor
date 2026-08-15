@@ -1,18 +1,8 @@
 #include "MetaphorCanvas3DTypes.h"
 #include "MetaphorLighting.h"
 
-struct Canvas3DTexVertexIn {
-    float3 position [[attribute(0)]];
-    float3 normal   [[attribute(1)]];
-    float2 uv       [[attribute(2)]];
-};
-
-struct Canvas3DTexVertexOut {
-    float4 position [[position]];
-    float3 worldPosition;
-    float3 normal;
-    float2 uv;
-};
+// `Canvas3DTexVertexIn` / `Canvas3DTexVertexOut` は `MetaphorCanvas3DTypes.h` にある
+// （非テクスチャ経路と同じ理由 — カスタムマテリアルへ配る前文と定義を共有する）。
 
 vertex Canvas3DTexVertexOut metaphor_canvas3DTexturedVertex(
     Canvas3DTexVertexIn in [[stage_in]],

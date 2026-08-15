@@ -11,12 +11,19 @@
 /// 組み込みシェーダーと同じ `Shaders/Metal/*.h` から生成されるので、ライティングの
 /// 実装を直せばカスタムマテリアルシェーダーへ配られる前文も一緒に動きます（#707）。
 ///
-/// 前文は `#include <metal_stdlib>` と `using namespace metal;` を**持ちません**
-/// （利用者が自分で書く前提。2D の ``BuiltinShaders/canvas2DPreamble`` とは非対称）。
+/// 各定数は `#ifndef` ガードで包まれています。``BuiltinShaders/canvas3DPreamble`` は
+/// `createMaterial()` が必ず前置するので、以前の作法どおり自分でも前置している
+/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713）。
+///
+/// 定数そのものは `#include <metal_stdlib>` と `using namespace metal;` を持ちません
+/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble``）。
 enum BuiltinShadersGenerated {
 
     /// 生成元: MetaphorCanvas3DTypes.h
     static let canvas3DStructs = #"""
+#ifndef METAPHOR_PRELUDE_CANVAS3D_STRUCTS
+#define METAPHOR_PRELUDE_CANVAS3D_STRUCTS
+
 // Canvas3D が GPU へ渡す構造体。Swift 側の正本は `Drawing/Canvas3DTypes.swift`
 // （`ShadowFragmentUniforms` だけ `Drawing/ShadowMap.swift`）。
 //
@@ -62,10 +69,47 @@ struct ShadowFragmentUniforms {
     float shadowEnabled;
     float2 _pad;
 };
+
+// 頂点シェーダーの入力（頂点バッファのレイアウト）。カスタム頂点シェーダーを
+// 書くときの `[[stage_in]]` にあたる。
+struct Canvas3DVertexIn {
+    float3 position [[attribute(0)]];
+    float3 normal   [[attribute(1)]];
+    float4 color    [[attribute(2)]];
+};
+
+// 組み込み頂点シェーダーの出力 = カスタムフラグメントシェーダーの `[[stage_in]]`。
+// 組み込みの頂点シェーダーをそのまま使うなら、この型で受け取る。
+struct Canvas3DVertexOut {
+    float4 position [[position]];
+    float3 worldPosition;
+    float3 normal;
+    float4 color;
+};
+
+// テクスチャ経路（`texture()` 適用時）の頂点入力。
+struct Canvas3DTexVertexIn {
+    float3 position [[attribute(0)]];
+    float3 normal   [[attribute(1)]];
+    float2 uv       [[attribute(2)]];
+};
+
+// テクスチャ経路の `[[stage_in]]`。頂点カラーの代わりに UV を持つ。
+struct Canvas3DTexVertexOut {
+    float4 position [[position]];
+    float3 worldPosition;
+    float3 normal;
+    float2 uv;
+};
+
+#endif
 """#
 
     /// 生成元: MetaphorLighting.h（MetaphorPBR.h / MetaphorToneMapping.h を推移的に含む）
     static let canvas3DLightingFn = #"""
+#ifndef METAPHOR_PRELUDE_CANVAS3D_LIGHTING
+#define METAPHOR_PRELUDE_CANVAS3D_LIGHTING
+
 // GGX/Trowbridge-Reitz Normal Distribution Function
 static inline float DistributionGGX(float3 N, float3 H, float roughness) {
     float a = roughness * roughness;
@@ -581,5 +625,7 @@ static inline float3 calculateBlinnPhongLighting(
 ) {
     return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
 }
+
+#endif
 """#
 }

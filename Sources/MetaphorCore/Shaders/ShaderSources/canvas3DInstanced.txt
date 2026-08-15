@@ -48,6 +48,38 @@ struct ShadowFragmentUniforms {
     float2 _pad;
 };
 
+// 頂点シェーダーの入力（頂点バッファのレイアウト）。カスタム頂点シェーダーを
+// 書くときの `[[stage_in]]` にあたる。
+struct Canvas3DVertexIn {
+    float3 position [[attribute(0)]];
+    float3 normal   [[attribute(1)]];
+    float4 color    [[attribute(2)]];
+};
+
+// 組み込み頂点シェーダーの出力 = カスタムフラグメントシェーダーの `[[stage_in]]`。
+// 組み込みの頂点シェーダーをそのまま使うなら、この型で受け取る。
+struct Canvas3DVertexOut {
+    float4 position [[position]];
+    float3 worldPosition;
+    float3 normal;
+    float4 color;
+};
+
+// テクスチャ経路（`texture()` 適用時）の頂点入力。
+struct Canvas3DTexVertexIn {
+    float3 position [[attribute(0)]];
+    float3 normal   [[attribute(1)]];
+    float2 uv       [[attribute(2)]];
+};
+
+// テクスチャ経路の `[[stage_in]]`。頂点カラーの代わりに UV を持つ。
+struct Canvas3DTexVertexOut {
+    float4 position [[position]];
+    float3 worldPosition;
+    float3 normal;
+    float2 uv;
+};
+
 
 
 

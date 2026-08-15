@@ -16,6 +16,7 @@ Run from the repository root:
 - ローカル include の展開規則（インクルードガード除去・同一ヘッダ 1 回）と、
   **ルートを複数並べると二重展開になる**という前文マニフェストの制約
 - 前文には stdlib / `using namespace metal;` を出さないこと
+- 前文が**ガードで包まれている**こと（二重に前置されても壊れない・#713）
 - 生成 Swift が複数行リテラルとして成立する形（インデント剥がしに耐える）
 - 前文の割り当て（構造体は canvas3DStructs 側、関数は canvas3DLightingFn 側）
 """
@@ -64,19 +65,36 @@ class ExpandRuleTests(unittest.TestCase):
     def write(self, name, text):
         (self.dir / name).write_text(text, encoding="utf-8")
 
+    def prelude(self, root, preincluded=(), guard="GUARD"):
+        return gen.generate_prelude(root, preincluded, guard)
+
     def test_include_guard_is_stripped_and_body_inlined_once(self):
         self.write("Leaf.h", "#ifndef Leaf_h\n#define Leaf_h\nstruct Leaf { int a; };\n#endif\n")
         self.write("Mid.h", '#ifndef Mid_h\n#define Mid_h\n#include "Leaf.h"\nint mid();\n#endif\n')
         # Root は Leaf を直接も、Mid 経由でも include する
         self.write("Root.h", '#ifndef Root_h\n#define Root_h\n#include "Leaf.h"\n#include "Mid.h"\n#endif\n')
 
-        out = gen.generate_prelude("Root.h", ())
+        out = self.prelude("Root.h")
 
         self.assertEqual(out.count("struct Leaf"), 1, "同一ヘッダは 1 回だけ展開される")
         self.assertIn("int mid();", out)
-        self.assertNotIn("#ifndef", out)
-        self.assertNotIn("#define", out)
-        self.assertNotIn("#endif", out)
+        # ヘッダ自身のガードは剥がれ、前文用のガードが 1 組だけ残る。
+        self.assertEqual(out.count("#ifndef"), 1)
+        self.assertEqual(out.count("#define"), 1)
+        self.assertEqual(out.count("#endif"), 1)
+        for name in ("Leaf_h", "Mid_h", "Root_h"):
+            self.assertNotIn(name, out)
+
+    def test_prelude_is_wrapped_in_its_guard(self):
+        # 前文は `createMaterial()` が必ず前置する。以前の作法で自分でも前置している
+        # ソースでは 2 回現れるので、ガードが無いと MSL が二重定義で落ちる（#713）。
+        self.write("Root.h", "#ifndef Root_h\n#define Root_h\nstruct R { int a; };\n#endif\n")
+
+        out = self.prelude("Root.h", guard="METAPHOR_PRELUDE_TEST")
+
+        self.assertTrue(out.startswith(
+            "#ifndef METAPHOR_PRELUDE_TEST\n#define METAPHOR_PRELUDE_TEST\n"))
+        self.assertTrue(out.endswith("#endif"))
 
     def test_root_is_not_registered_so_listing_it_twice_would_duplicate(self):
         # マニフェストのルートを 1 本に縛っている理由の回帰。`expand()` はルート自身を
@@ -91,13 +109,13 @@ class ExpandRuleTests(unittest.TestCase):
         self.assertEqual(both.count("struct Leaf"), 2)
 
         # 正しい使い方（ルート 1 本）なら 1 回だけ
-        self.assertEqual(gen.generate_prelude("Root.h", ()).count("struct Leaf"), 1)
+        self.assertEqual(self.prelude("Root.h").count("struct Leaf"), 1)
 
     def test_preincluded_headers_are_skipped(self):
         self.write("Types.h", "#ifndef Types_h\n#define Types_h\nstruct T { int a; };\n#endif\n")
         self.write("Fn.h", '#ifndef Fn_h\n#define Fn_h\n#include "Types.h"\nint f(T t);\n#endif\n')
 
-        out = gen.generate_prelude("Fn.h", ("Types.h",))
+        out = self.prelude("Fn.h", ("Types.h",))
 
         self.assertNotIn("struct T", out, "前文をまたいで構造体が二重定義されない")
         self.assertIn("int f(T t);", out)
@@ -107,7 +125,7 @@ class ExpandRuleTests(unittest.TestCase):
                              "#include <metal_stdlib>\nusing namespace metal;\n"
                              "struct R { int a; };\n#endif\n")
 
-        out = gen.generate_prelude("Root.h", ())
+        out = self.prelude("Root.h")
 
         self.assertNotIn("metal_stdlib", out)
         self.assertNotIn("using namespace metal", out)
@@ -128,8 +146,8 @@ class SwiftPreludeFileTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.swift = gen.generate_swift_preludes()
-        cls.preludes = {name: gen.generate_prelude(root, pre)
-                        for name, root, pre, _ in gen.SWIFT_PRELUDES}
+        cls.preludes = {name: gen.generate_prelude(root, pre, guard)
+                        for name, root, pre, guard, _ in gen.SWIFT_PRELUDES}
 
     def test_closing_delimiter_and_payload_are_unindented(self):
         # Swift は閉じデリミタのインデント量を全行から剥がすので、閉じが字下げ
@@ -166,6 +184,23 @@ class SwiftPreludeFileTests(unittest.TestCase):
         for fn in ("calculateLighting", "calculatePBRLighting", "calculateBlinnPhongLighting",
                    "calculateShadow", "metaphorSkipsLighting"):
             self.assertTrue(fn in lighting, f"{fn} が canvas3DLightingFn から消えている")
+
+    def test_each_prelude_has_its_own_guard(self):
+        # ガードを共有すると、先に置かれた前文だけが展開されて片方が消える。
+        guards = [guard for _, _, _, guard, _ in gen.SWIFT_PRELUDES]
+        self.assertEqual(len(guards), len(set(guards)), f"ガードが衝突している: {guards}")
+        for name, payload in self.preludes.items():
+            self.assertTrue(payload.startswith("#ifndef METAPHOR_PRELUDE_"),
+                            f"{name} がガードで包まれていない")
+
+    def test_stage_in_structs_are_published_to_users(self):
+        # フラグメントの stage_in を前文が配らないと、利用者は組み込みの
+        # `Canvas3DVertexOut` を手で書き写すことになる（#713 で前文へ移した）。
+        structs = self.preludes["canvas3DStructs"]
+        for name in ("Canvas3DVertexIn", "Canvas3DVertexOut",
+                     "Canvas3DTexVertexIn", "Canvas3DTexVertexOut"):
+            self.assertTrue(f"struct {name}" in structs,
+                            f"{name} が canvas3DStructs から消えている")
 
     def test_no_duplicate_struct_definitions_across_both_preludes(self):
         combined = "\n".join(self.preludes.values())

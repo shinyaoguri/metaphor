@@ -5,11 +5,20 @@ import Metal
 /// `createMaterial()` でインスタンスを作成し、`material()` で適用します。
 /// 適用中、Canvas3D の描画は組み込みシェーダーの代わりにカスタムフラグメントシェーダーを使用します。
 ///
+/// 前文（stdlib + 構造体 + ライティング関数）は `createMaterial()` が自動で足すので、
+/// 書くのはフラグメント関数だけです（#713）。
+///
 /// ```swift
-/// let mat = try createMaterial(
-///     source: BuiltinShaders.canvas3DStructs + myFragmentSource,
-///     fragmentFunction: "myCustomFragment"
-/// )
+/// let mat = try createMaterial(source: """
+/// struct MyParams { float3 color; };
+///
+/// fragment float4 myCustomFragment(
+///     Canvas3DVertexOut in [[stage_in]],
+///     constant MyParams &params [[buffer(4)]]
+/// ) {
+///     return float4(params.color, 1.0);
+/// }
+/// """, fragmentFunction: "myCustomFragment")
 /// mat.setParameters(MyParams(color: SIMD3(1, 0, 0)))
 /// material(mat)
 /// box(100)

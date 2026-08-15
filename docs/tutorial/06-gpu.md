@@ -703,7 +703,7 @@ resetShader()              // ここまで
 
 ### 前文は metaphor が足す
 
-ソースに書くのは**フラグメント関数だけ**です。6.4 では `PostProcessShaders.commonStructs` を自分で先頭に置きましたが、2D では metaphor が前文（Metal 標準ライブラリの取り込みと構造体の定義）を**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。定義すると再定義エラーになります。
+ソースに書くのは**フラグメント関数だけ**です。6.4 では `PostProcessShaders.commonStructs` を自分で先頭に置きましたが、2D の描画シェーダーと 3D のカスタムマテリアル（`createMaterial()`）では metaphor が前文（Metal 標準ライブラリの取り込みと構造体の定義）を**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。定義すると再定義エラーになります。
 
 ```metal
 fragment float4 paint(
@@ -873,7 +873,7 @@ GPU まわりには、まだ口が開いていない場所があります。作�
 
 6.5 で置き換えたのは「画素の色を決める関数」です。**頂点をどこへ動かすかを決める頂点シェーダーは、2D では組み込みのまま**で、差し替える口がありません。図形の形そのものを GPU で歪ませたいときは、Swift 側で座標を作って `beginShape()` / `vertex()` で流すか、6.1 のように GPU で計算した値を読んで図形に反映させます。
 
-3D は事情が違い、`createMaterial(source:fragmentFunction:vertexFunction:)` で頂点シェーダーも一緒に渡せます。面の塗り方を変えるだけなら 2D と同じくフラグメントだけで足ります。
+3D は事情が違い、`createMaterial(source:fragmentFunction:vertexFunction:)` で頂点シェーダーも一緒に渡せます。面の塗り方を変えるだけなら 2D と同じくフラグメントだけで足ります（前文も 2D と同じく metaphor が足すので、`Canvas3DVertexOut` や `Canvas3DUniforms` は自分で定義しません）。
 
 ### Topics/Shaders の例は参考にならない
 

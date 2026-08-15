@@ -20,7 +20,7 @@ final class ShaderHotReloader {
         /// ``ShaderLibrary`` の登録キー。
         let libraryKey: String
 
-        /// 読んだソースを登録前に整える（2D だけ前文を足す）。
+        /// 読んだソースを登録前に整える（2D / 3D は前文を足す）。
         let prepareSource: (String) -> String
 
         /// ライブラリ差し替え後に、対象オブジェクトの関数を引き直す。
@@ -100,7 +100,7 @@ final class ShaderHotReloader {
             path: path,
             registration: Registration(
                 libraryKey: material.libraryKey,
-                prepareSource: { $0 },
+                prepareSource: Shader3DSource.complete,
                 apply: { [weak material] library in
                     guard let material else { return false }
                     try material.reload(shaderLibrary: library)
