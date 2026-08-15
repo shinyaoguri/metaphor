@@ -124,6 +124,12 @@ extension Sketch {
     /// `ambientLight(76.5)` 相当）に設定されます。ライトを個別に足す場合も、
     /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
     ///
+    /// 既定リグの灯は `intensity` 0.7 で、Blinn-Phong（既定）に合わせた明るさです。
+    /// PBR（``pbr(_:)``）では直接光が `albedo / π` で沈むため、同じリグでも
+    /// **3〜4 割暗く**なります（96×96 の球で実測: Blinn-Phong 80.4 / PBR 51.2）。
+    /// PBR で立体感が要るときは ``directionalLight(_:_:_:color:intensity:)`` を
+    /// `intensity` 付きで自分で置いてください。
+    ///
     /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
     public func lights() {
         context.lights()
@@ -136,11 +142,21 @@ extension Sketch {
         context.noLights()
     }
 
-    /// デフォルト色のディレクショナルライトを追加します。
+    /// ディレクショナルライトを追加します。
     ///
     /// 指定するのは「光が**進む**向き」で、y 軸は Processing と同じく画面下向きです。
     /// つまり `directionalLight(0, 1, 0)` が「真上から差す光」、`(0, -1, 0)` は
     /// 「真下から差す光」になります（`enableShadows()` 時の影の向きもこれに従う）。
+    ///
+    /// `intensity` は色に掛かる強度倍率です。PBR（``pbr(_:)``）の直接光は
+    /// `albedo / π` で減衰し、環境光は ``ambientLight(_:)`` のフォールバックしか
+    /// 無いため、**単灯で立体感を出すには 2〜4 程度**が要ります。
+    /// Blinn-Phong（既定）では 1.0 のままで従来どおりの明るさです。
+    ///
+    /// ```swift
+    /// pbr(true)
+    /// directionalLight(-0.4, 1, -0.6, intensity: 3)   // キーライトを持ち上げる
+    /// ```
     ///
     /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
     ///
@@ -148,21 +164,12 @@ extension Sketch {
     ///   - x: ライト方向の x 成分。
     ///   - y: ライト方向の y 成分。
     ///   - z: ライト方向の z 成分。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
-        context.directionalLight(x, y, z)
-    }
-
-    /// 色を指定してディレクショナルライトを追加します。
-    ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
-    ///
-    /// - Parameters:
-    ///   - x: ライト方向の x 成分。
-    ///   - y: ライト方向の y 成分。
-    ///   - z: ライト方向の z 成分。
-    ///   - color: ライトの色。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
-        context.directionalLight(x, y, z, color: color)
+    ///   - color: ライトの色（デフォルト白）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
+    public func directionalLight(
+        _ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0
+    ) {
+        context.directionalLight(x, y, z, color: color, intensity: intensity)
     }
 
     /// 指定位置にポイントライトを追加します。
@@ -175,12 +182,15 @@ extension Sketch {
     ///   - z: ライト位置の z 座標。
     ///   - color: ライトの色。
     ///   - falloff: 減衰係数。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。PBR で単灯のときは
+    ///     1.0 より大きい値が要ります（``directionalLight(_:_:_:color:intensity:)`` 参照）。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
-        falloff: Float = 0.1
+        falloff: Float = 0.1,
+        intensity: Float = 1.0
     ) {
-        context.pointLight(x, y, z, color: color, falloff: falloff)
+        context.pointLight(x, y, z, color: color, falloff: falloff, intensity: intensity)
     }
 
     /// 指定位置・方向にスポットライトを追加します。
@@ -197,14 +207,20 @@ extension Sketch {
     ///   - angle: ラジアン単位のコーン角度。
     ///   - falloff: 減衰係数。
     ///   - color: ライトの色。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。PBR で単灯のときは
+    ///     1.0 より大きい値が要ります（``directionalLight(_:_:_:color:intensity:)`` 参照）。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
         angle: Float = Float.pi / 6,
         falloff: Float = 0.01,
-        color: Color = .white
+        color: Color = .white,
+        intensity: Float = 1.0
     ) {
-        context.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
+        context.spotLight(
+            x, y, z, dirX, dirY, dirZ,
+            angle: angle, falloff: falloff, color: color, intensity: intensity
+        )
     }
 
     /// グレースケール値でアンビエントライトの強度を設定します。

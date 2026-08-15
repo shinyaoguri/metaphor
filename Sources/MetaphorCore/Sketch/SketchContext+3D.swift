@@ -136,23 +136,17 @@ extension SketchContext {
         canvas3D.noLights()
     }
 
-    /// ディレクショナルライトの方向を設定します。
+    /// ディレクショナルライトの方向・色・強度を設定します。
     /// - Parameters:
     ///   - x: 方向の x 成分。
     ///   - y: 方向の y 成分。
     ///   - z: 方向の z 成分。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
-        canvas3D.directionalLight(x, y, z)
-    }
-
-    /// ディレクショナルライトの方向と色を設定します。
-    /// - Parameters:
-    ///   - x: 方向の x 成分。
-    ///   - y: 方向の y 成分。
-    ///   - z: 方向の z 成分。
-    ///   - color: ライトの色。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
-        canvas3D.directionalLight(x, y, z, color: color)
+    ///   - color: ライトの色（デフォルト白）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
+    public func directionalLight(
+        _ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0
+    ) {
+        canvas3D.directionalLight(x, y, z, color: color, intensity: intensity)
     }
 
     /// シーンにポイントライトを追加します。
@@ -162,12 +156,14 @@ extension SketchContext {
     ///   - z: ライトの z 位置。
     ///   - color: ライトの色（デフォルト白）。
     ///   - falloff: 減衰係数（デフォルト 0.1）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
-        falloff: Float = 0.1
+        falloff: Float = 0.1,
+        intensity: Float = 1.0
     ) {
-        canvas3D.pointLight(x, y, z, color: color, falloff: falloff)
+        canvas3D.pointLight(x, y, z, color: color, falloff: falloff, intensity: intensity)
     }
 
     /// シーンにスポットライトを追加します。
@@ -181,14 +177,19 @@ extension SketchContext {
     ///   - angle: ラジアン単位のコーン角度（デフォルト pi/6）。
     ///   - falloff: 減衰係数（デフォルト 0.01）。
     ///   - color: ライトの色（デフォルト白）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
         angle: Float = Float.pi / 6,
         falloff: Float = 0.01,
-        color: Color = .white
+        color: Color = .white,
+        intensity: Float = 1.0
     ) {
-        canvas3D.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
+        canvas3D.spotLight(
+            x, y, z, dirX, dirY, dirZ,
+            angle: angle, falloff: falloff, color: color, intensity: intensity
+        )
     }
 
     /// アンビエントライトの強度を設定します。
