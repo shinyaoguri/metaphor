@@ -159,7 +159,7 @@ metaphor は、AI エージェントが**実行中のスケッチを観測しな
 
 ## Examples
 
-[Examples/](Examples/) には、Processing 公式サンプルの Swift / Metal 移植と、metaphor 独自機能のサンプルが 284 本揃っています。各サンプルは独立した SwiftPM パッケージです。
+[Examples/](Examples/) には、Processing 公式サンプルの Swift / Metal 移植と、metaphor 独自機能のサンプルが 285 本揃っています。各サンプルは独立した SwiftPM パッケージです。
 
 ```bash
 cd Examples/Basics/Form/ShapePrimitives
