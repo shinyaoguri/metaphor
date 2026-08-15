@@ -26,14 +26,24 @@
     ///
     /// <!-- reference-shot -->
     ///
-    /// ```swift
-    /// background(240)
-    /// circle(width / 2, height / 2, 200)
-    /// ```
-    ///
-    /// ![circle() の実行結果](https://i.gyazo.com/<hash>.png)
+    /// @Row {
+    ///    @Column(size: 2) {
+    ///       ![circle() の実行結果](https://i.gyazo.com/<hash>.png)
+    ///    }
+    ///    @Column(size: 3) {
+    ///       ```swift
+    ///       background(240)
+    ///       circle(width / 2, height / 2, 200)
+    ///       ```
+    ///    }
+    /// }
 
-- **コードは人が書く（正典）／画像行は生成物**（このスクリプトが書き戻す・手で書かない）
+**印から下は生成物領域**で、`@Row` の骨組みも画像行もこのスクリプトが書く。人が書くのは
+コードだけ。並べ方は p5.js に合わせて「絵が左・コードが右」を既定にし（狭い画面では DocC が
+縦に折る）、横長の絵や行の長いコードは `shots.config.json` の `"layout": "stack"` で縦積みへ
+逃がせる。
+
+- **コードは人が書く（正典）／それ以外は生成物**（このスクリプトが書き戻す・手で書かない）
 - スニペットは `draw()` の本体そのもの。背景も自分で塗る（自己完結。外部 URL では
   ダーク/Retina の出し分けが効かないため、配色をスケッチ側で固定する — ADR-0008）
 - 印が HTML コメントなのは、**DocC が警告なく落とす**ことを実測で確かめたから。読者には
@@ -115,6 +125,35 @@ IMAGE_LINE_RE = re.compile(
 FENCE_OPEN = "```swift"
 FENCE_CLOSE = "```"
 
+# 本文での並べ方。既定は p5.js の reference と同じ「絵が左・コードが右」の横並び
+# （`@Row` / `@Column` は symbol の doc コメントでも通ることを実測済み）。横長の絵や
+# 行の長いコードは列に収まらないので、シンボル単位で `stack`（縦積み）へ逃がせる。
+LAYOUTS = ("row", "stack")
+DEFAULT_LAYOUT = "row"
+# 列の幅の比。コード側を広く取る（絵は縮んでも読めるが、コードは折り返せない）。
+ROW_IMAGE_SIZE = 1
+ROW_CODE_SIZE = 2
+
+# 横並びのときのコード 1 行の上限（文字数）。
+#
+# Swift-DocC-Render のコードブロックは**折り返しも内部スクロールもせず、行の長さぶんに
+# 広がって列からはみ出す**（@Row の外でも同じなので DocC 側の性質）。はみ出したぶんは
+# ページ側でも切り落とされ、読めなくなる。
+#
+# 一番狭くなるのは、DocC がまだ列を縦に折らないギリギリの幅。実測でこう決めた:
+#
+#   - 列が縦に折れるのは 735px 以下（`.row.with-columns` のメディアクエリ）
+#   - 736px のとき本文は 576px、コード列はその 2/3 で約 371px
+#   - 等幅フォントは 1 文字 9.03px、コードブロックの padding は左右 14px ずつ
+#   - (371 - 28) / 9.03 ≒ 38 文字
+#
+# これを超えるものは、短く書き直すか `layout: "stack"` で縦積みへ逃がす。
+MAX_ROW_LINE = 38
+
+# 生成物領域に置いてよい骨組み。ここに無い行が紛れていたら、人が書いた文章を
+# 消してしまう可能性があるので止める（印から下はスクリプトが所有する規約）。
+SCAFFOLD_RE = re.compile(r"^(@Row\s*\{|@Column(\(size:\s*\d+\))?\s*\{|\}|)$")
+
 GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
 GYAZO_HOST = "i.gyazo.com"
 # トークンは 1Password から都度読む（平文の環境変数として常駐させない）。
@@ -148,16 +187,17 @@ class Snippet:
         path: Path,
         symbol: str,
         code: list[str],
-        fence_end: int,
-        image_line: int | None,
+        marker: int,
+        block_end: int,
         indent: str,
     ) -> None:
         self.path = path
         self.rel = path.relative_to(REPO_ROOT).as_posix()
         self.symbol = symbol
         self.code = code
-        self.fence_end = fence_end  # 閉じフェンスの行番号（0 起点）
-        self.image_line = image_line  # 既にある画像行（無ければ None）
+        # 印の行から doc コメントの終わりまでが生成物領域（0 起点・block_end は排他）。
+        self.marker = marker
+        self.block_end = block_end
         self.indent = indent
 
     @property
@@ -171,6 +211,30 @@ class Snippet:
         stem = re.sub(r"[^0-9A-Za-z]+", "_", Path(self.rel).stem)
         name = re.sub(r"[^0-9A-Za-z]+", "_", self.symbol).strip("_")
         return f"Shot_{stem}_{name}"
+
+    def layout(self, config: dict) -> str:
+        """本文での並べ方（`row` = 絵とコードを横並び / `stack` = 縦積み）。
+
+        **撮影設定とは別に持つ**。レイアウトは絵に影響しないので `fingerprint()` には
+        入れない（入れると、並べ方を変えただけで全点が stale になり、意味のない
+        再撮影と再アップロードが走る）。
+        """
+        entry = config.get(self.key) or config.get(self.symbol) or {}
+        layout = entry.get("layout", DEFAULT_LAYOUT)
+        if layout not in LAYOUTS:
+            raise ShotError(
+                f"{self.key}: layout は {' / '.join(LAYOUTS)} のいずれか（{layout!r} が指定された）"
+            )
+        if layout == "row":
+            too_long = [line for line in self.code if len(line) > MAX_ROW_LINE]
+            if too_long:
+                raise ShotError(
+                    f"{self.key}: 横並びのコードは 1 行 {MAX_ROW_LINE} 文字までです"
+                    f"（{len(too_long[0])} 文字の行があります）。短く書き直すか、"
+                    f'shots.config.json に "layout": "stack" を指定してください:\n'
+                    f"    {too_long[0]}"
+                )
+        return layout
 
     def settings(self, config: dict) -> dict:
         """撮影設定（既定 + `shots.config.json` の上書き）を返す。"""
@@ -353,21 +417,24 @@ def extract(path: Path) -> list[Snippet]:
                 f"{path.relative_to(REPO_ROOT)}:{fence_start + 1} のフェンスが閉じていない"
             )
 
-        code = [doc_content(lines[line]) or "" for line in range(fence_start + 1, fence_end)]
+        code = dedent(
+            [doc_content(lines[line]) or "" for line in range(fence_start + 1, fence_end)]
+        )
         if not any(line.strip() for line in code):
             raise ShotError(
                 f"{path.relative_to(REPO_ROOT)}:{fence_start + 1} のスニペットが空"
             )
 
-        # フェンスの後、最初の中身のある行が画像行ならそれを更新する。無ければ後で挿す。
-        image_line = None
-        for line in range(fence_end + 1, block_end):
+        # 印から下はスクリプトが所有する。人が書いた文章が紛れていたら、書き戻しで
+        # 消してしまう前に止める（コードと骨組みと画像行だけが許される）。
+        for line in list(range(marker + 1, fence_start)) + list(range(fence_end + 1, block_end)):
             content = (doc_content(lines[line]) or "").strip()
-            if not content:
+            if SCAFFOLD_RE.match(content) or IMAGE_LINE_RE.match(content):
                 continue
-            if IMAGE_LINE_RE.match(content):
-                image_line = line
-            break
+            raise ShotError(
+                f"{path.relative_to(REPO_ROOT)}:{line + 1} — {MARKER} から下は生成物領域です。"
+                f"説明は印より前に書いてください（{content[:40]!r}）"
+            )
 
         symbol = declaration_symbol(lines, block_end)
         if symbol is None:
@@ -375,9 +442,21 @@ def extract(path: Path) -> list[Snippet]:
                 f"{path.relative_to(REPO_ROOT)}:{block_end + 1} の doc コメントに"
                 "対応する宣言を読み取れなかった"
             )
-        indent = lines[fence_start][: len(lines[fence_start]) - len(lines[fence_start].lstrip())]
-        snippets.append(Snippet(path, symbol, code, fence_end, image_line, indent))
+        marker_line = lines[marker]
+        indent = marker_line[: len(marker_line) - len(marker_line.lstrip())]
+        snippets.append(Snippet(path, symbol, code, marker, block_end, indent))
     return snippets
+
+
+def dedent(code: list[str]) -> list[str]:
+    """コード行の共通インデントを外す。
+
+    `@Column` の中に入るとフェンスごと字下げされるので、外さずに読み書きすると
+    再実行のたびにインデントが積み増される。
+    """
+    widths = [len(line) - len(line.lstrip()) for line in code if line.strip()]
+    margin = min(widths) if widths else 0
+    return [line[margin:] if line.strip() else "" for line in code]
 
 
 def collect(only: str | None = None) -> list[Snippet]:
@@ -839,19 +918,23 @@ def load_config() -> dict:
 
 
 def expected_targets(entry: dict) -> list[str]:
-    """台帳が指す URL を、doc コメントに並ぶ順（静止画 → 動き）で返す。"""
-    targets = [entry["url"]] if entry.get("url") else []
+    """本文に出す URL を返す。
+
+    動きがあるときは **GIF だけ**を出す（静止画は台帳に残す）。同じ絵を静止画と動きで
+    2 枚並べても情報が増えず、横並びの列が縦に伸びるだけなので。
+    """
     motion = entry.get("motion") or {}
     if motion.get("url"):
-        targets.append(motion["url"])
-    return targets
+        return [motion["url"]]
+    return [entry["url"]] if entry.get("url") else []
 
 
-def rewrite_sources(snippets: list[Snippet], shots: dict) -> list[Path]:
-    """doc コメントの画像行を台帳の URL で上書きする（無ければ挿す）。
+def rewrite_sources(snippets: list[Snippet], shots: dict, config: dict) -> list[Path]:
+    """印から下（生成物領域）を、レイアウトに沿った形で書き直す。
 
-    URL の文字列一致ではなく**フェンスの位置**で対応づけるので、初回・撮り直し・途中で
-    中断したあとの再実行が、すべて同じべき等な操作になる。
+    URL の文字列一致ではなく**印の位置**で対応づけるので、初回・撮り直し・レイアウト
+    変更・途中で中断したあとの再実行が、すべて同じべき等な操作になる。人が書いた
+    コードは行単位でそのまま入れ直す。
     """
     touched: list[Path] = []
     by_path: dict[Path, list[Snippet]] = {}
@@ -862,23 +945,15 @@ def rewrite_sources(snippets: list[Snippet], shots: dict) -> list[Path]:
         lines = path.read_text(encoding="utf-8").split("\n")
         changed = False
         # 行番号がずれないよう、後ろから書き換える。
-        for snippet in sorted(items, key=lambda s: s.fence_end, reverse=True):
+        for snippet in sorted(items, key=lambda s: s.marker, reverse=True):
             entry = shots.get(snippet.key)
             targets = expected_targets(entry) if entry else []
             if not targets:
+                continue  # まだ撮っていない（人が書いた素のフェンスのまま置いておく）
+            replacement = render_region(snippet, targets, snippet.layout(config))
+            if lines[snippet.marker + 1: snippet.block_end] == replacement:
                 continue
-            existing = existing_image_lines(lines, snippet)
-            replacement = [
-                image_line(snippet, url, index) for index, url in enumerate(targets)
-            ]
-            if existing:
-                start, end = existing[0], existing[-1] + 1
-            else:
-                start = end = snippet.fence_end + 1
-                replacement = [f"{snippet.indent}///"] + replacement
-            if lines[start:end] == replacement:
-                continue
-            lines[start:end] = replacement
+            lines[snippet.marker + 1: snippet.block_end] = replacement
             changed = True
         if changed:
             path.write_text("\n".join(lines), encoding="utf-8")
@@ -886,32 +961,57 @@ def rewrite_sources(snippets: list[Snippet], shots: dict) -> list[Path]:
     return touched
 
 
-def existing_image_lines(lines: list[str], snippet: Snippet) -> list[int]:
-    """フェンスの後に並んでいる画像行の行番号を返す（無ければ空）。"""
-    found: list[int] = []
-    index = snippet.fence_end + 1
-    while index < len(lines):
-        content = doc_content(lines[index])
-        if content is None:
-            break
-        stripped = content.strip()
-        if not stripped:
-            if found:
-                break  # 画像行の並びが終わった
-            index += 1
-            continue
-        if IMAGE_LINE_RE.match(stripped):
-            found.append(index)
-            index += 1
-            continue
-        break
+def render_region(snippet: Snippet, targets: list[str], layout: str) -> list[str]:
+    """生成物領域（印の次の行から doc コメントの終わりまで）の中身を組み立てる。"""
+    def doc(text: str = "") -> str:
+        return f"{snippet.indent}///{' ' + text if text else ''}"
+
+    def images(level: int) -> list[str]:
+        pad = "   " * level
+        return [doc(pad + image_markup(snippet, url, index))
+                for index, url in enumerate(targets)]
+
+    def code(level: int) -> list[str]:
+        pad = "   " * level
+        return [
+            doc(pad + FENCE_OPEN),
+            *[doc(pad + line) if line else doc() for line in snippet.code],
+            doc(pad + FENCE_CLOSE),
+        ]
+
+    if layout == "row":
+        # p5.js の reference と同じ「絵が左・コードが右」。狭い画面では DocC 側が縦に折る。
+        return [
+            doc(),
+            doc("@Row {"),
+            doc(f"   @Column(size: {ROW_IMAGE_SIZE}) {{"),
+            *images(2),
+            doc("   }"),
+            doc(f"   @Column(size: {ROW_CODE_SIZE}) {{"),
+            *code(2),
+            doc("   }"),
+            doc("}"),
+        ]
+    return [doc(), *code(0), doc(), *images(0)]
+
+
+def image_markup(snippet: Snippet, url: str, index: int) -> str:
+    """画像 1 枚ぶんの Markdown（`@Image` は外部 URL を解決できないので `![]()`）。"""
+    moving = url.endswith(".gif")
+    alt = f"{snippet.symbol} の実行結果（動き）" if moving else f"{snippet.symbol} の実行結果"
+    if index > 0:
+        alt = f"{alt} {index + 1}"
+    return f"![{alt}]({url})"
+
+
+def region_image_targets(lines: list[str], snippet: Snippet) -> list[str]:
+    """生成物領域に実際に書かれている画像 URL を、出てくる順に返す。"""
+    found: list[str] = []
+    for index in range(snippet.marker + 1, snippet.block_end):
+        matched = IMAGE_LINE_RE.match((doc_content(lines[index]) or "").strip())
+        if matched:
+            found.append(matched.group("target"))
     return found
-
-
-def image_line(snippet: Snippet, url: str, index: int) -> str:
-    """画像行を組み立てる（静止画が 1 本目、動きが 2 本目）。"""
-    alt = f"{snippet.symbol} の実行結果（動き）" if index == 1 else f"{snippet.symbol} の実行結果"
-    return f"{snippet.indent}/// ![{alt}]({url})"
 
 
 # --- 検査 ---------------------------------------------------------------------
@@ -955,14 +1055,16 @@ def check(snippets: list[Snippet], shots: dict, config: dict) -> int:
                 f"（設定={wants_motion} / 台帳={has_motion}）"
             )
         lines = snippet.path.read_text(encoding="utf-8").split("\n")
-        found = [
-            (doc_content(lines[line]) or "").strip()
-            for line in existing_image_lines(lines, snippet)
-        ]
-        targets = [IMAGE_LINE_RE.match(line).group("target") for line in found]
-        if targets != expected_targets(entry):
+        if region_image_targets(lines, snippet) != expected_targets(entry):
             problems.append(
                 f"{snippet.key}: doc コメントの画像 URL が台帳と違う"
+                "（make reference-shots で書き戻せます）"
+            )
+        # レイアウトを変えたあと書き戻していない、も同じ経路で捕まえる。
+        region = lines[snippet.marker + 1: snippet.block_end]
+        if region != render_region(snippet, expected_targets(entry), snippet.layout(config)):
+            problems.append(
+                f"{snippet.key}: 本文の並べ方が layout の指定と違う"
                 "（make reference-shots で書き戻せます）"
             )
 
@@ -1015,7 +1117,7 @@ def shoot(
 
     prune_orphans(shots, snippets, prune)
 
-    touched = rewrite_sources(snippets, shots)
+    touched = rewrite_sources(snippets, shots, config)
     for path in touched:
         print(f"  updated  {path.relative_to(REPO_ROOT)}")
     shutil.rmtree(STAGING_DIR, ignore_errors=True)

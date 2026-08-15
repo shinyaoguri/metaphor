@@ -9,7 +9,8 @@ Run from the repository root:
 
 - **抽出** — doc コメントから撮影対象を拾い、宣言から DocC と同じシンボル表記を作る。
   ここが狂うと、別のシンボルのページに絵が出る
-- **書き戻し** — 画像行の挿入・更新がべき等（2 回走らせても差分が出ない）
+- **書き戻し** — 生成物領域の組み立てがべき等（2 回走らせても差分が出ない）。横並び
+  （`@Row`）と縦積みの行き来と、字下げが積み増されないこと
 - **台帳の掃除** — `--only` で絞っているときは掃除しない。絞ったまま掃除すると、
   視界の外のエントリを「消えたスニペット」と取り違えて台帳ごと消す（実際に踏んだ）
 - **鮮度検査** — コードを変えたら赤くなり、URL がずれても赤くなる
@@ -141,38 +142,127 @@ class ReferenceShotsTestCase(unittest.TestCase):
 
     # --- 書き戻し -----------------------------------------------------------
 
-    def test_rewrite_inserts_then_stays_idempotent(self):
+    def test_rewrite_builds_a_row_then_stays_idempotent(self):
+        """既定は p5.js と同じ「絵が左・コードが右」の横並び。"""
         circle, _ = self.extract()
         ledger = {circle.key: {"url": "https://i.gyazo.com/aaa.png"}}
 
-        touched = shots.rewrite_sources([circle], ledger)
+        touched = shots.rewrite_sources([circle], ledger, {})
         self.assertEqual(touched, [self.source])
         text = self.source.read_text(encoding="utf-8")
-        self.assertIn("/// ![circle(_:_:_:) の実行結果](https://i.gyazo.com/aaa.png)", text)
+        self.assertIn("/// @Row {", text)
+        self.assertIn("/// ![circle(_:_:_:) の実行結果](https://i.gyazo.com/aaa.png)", text.replace("   ", ""))
+        # 絵の列がコードの列より先（＝左）に来る
+        self.assertLess(text.index("aaa.png"), text.index("```swift"))
 
         # 2 回目は差分が出ない（位置で対応づけているので自己修復的）
-        self.assertEqual(shots.rewrite_sources(self.extract(), ledger), [])
+        self.assertEqual(shots.rewrite_sources(self.extract(), ledger, {}), [])
         self.assertEqual(self.source.read_text(encoding="utf-8"), text)
 
-    def test_rewrite_replaces_stale_url_and_adds_motion(self):
+    def test_rewrite_keeps_the_code_verbatim_without_creeping_indent(self):
+        """コードは人が書いたもの。列に入れても字下げが積み増されない。"""
         circle, _ = self.extract()
-        shots.rewrite_sources([circle], {circle.key: {"url": "https://i.gyazo.com/old.png"}})
-        fresh = self.extract()[0]
+        ledger = {circle.key: {"url": "https://i.gyazo.com/aaa.png"}}
+        for _ in range(3):
+            shots.rewrite_sources(self.extract(), ledger, {})
+        again = self.extract()[0]
+        self.assertEqual(
+            again.code, ["background(24)", "circle(width / 2, height / 2, 200)"]
+        )
+
+    def test_layout_stack_puts_the_code_first(self):
+        circle, _ = self.extract()
+        ledger = {circle.key: {"url": "https://i.gyazo.com/aaa.png"}}
+        config = {circle.key: {"layout": "stack"}}
+
+        shots.rewrite_sources([circle], ledger, config)
+        text = self.source.read_text(encoding="utf-8")
+        self.assertNotIn("@Row", text)
+        self.assertLess(text.index("```swift"), text.index("aaa.png"))
+
+        # 横並びへ戻せる（レイアウトの往復でコードが壊れない）
+        shots.rewrite_sources(self.extract(), ledger, {})
+        back = self.extract()[0]
+        self.assertIn("@Row", self.source.read_text(encoding="utf-8"))
+        self.assertEqual(back.code, circle.code)
+
+    def _with_first_code_line(self, line: str) -> object:
+        self.source.write_text(
+            self.source.read_text(encoding="utf-8").replace(
+                "    /// background(24)\n", f"    /// {line}\n", 1
+            ),
+            encoding="utf-8",
+        )
+        return self.extract()[0]
+
+    def test_long_lines_are_refused_in_a_row_but_allowed_when_stacked(self):
+        """列に収まらないコードは止める（DocC は折り返さず、はみ出しは切れる）。
+
+        上限は「DocC がまだ列を縦に折らない一番狭い幅」から実測で決めた値なので、
+        テスト側も実測に沿った具体的な長さで確かめる（定数から行を作ると、定数を
+        変えたときにテストごと一緒に動いてしまい、何も検出しなくなる）。
+        """
+        self.assertLess(shots.MAX_ROW_LINE, 60, "上限を緩めるなら実測をやり直すこと")
+        circle = self._with_first_code_line("line(80, 70, 400, 70) // " + "x" * 35)
+        with self.assertRaises(shots.ShotError):
+            circle.layout({})
+        self.assertEqual(circle.layout({circle.key: {"layout": "stack"}}), "stack")
+
+    def test_a_line_exactly_at_the_budget_is_allowed(self):
+        circle = self._with_first_code_line("x" * shots.MAX_ROW_LINE)
+        self.assertEqual(circle.layout({}), "row")
+
+    def test_an_unknown_layout_is_an_error(self):
+        circle, _ = self.extract()
+        with self.assertRaises(shots.ShotError):
+            circle.layout({circle.key: {"layout": "sidebar"}})
+
+    def test_layout_is_not_part_of_the_fingerprint(self):
+        """並べ方を変えても撮り直しにはならない（絵は変わらないので）。"""
+        circle, _ = self.extract()
+        self.assertEqual(
+            circle.fingerprint({}),
+            circle.fingerprint({circle.key: {"layout": "stack"}}),
+        )
+
+    def test_motion_shows_only_the_gif(self):
+        circle, _ = self.extract()
         shots.rewrite_sources(
-            [fresh],
+            [circle],
             {
-                fresh.key: {
-                    "url": "https://i.gyazo.com/new.png",
-                    "motion": {"url": "https://i.gyazo.com/new.gif"},
+                circle.key: {
+                    "url": "https://i.gyazo.com/still.png",
+                    "motion": {"url": "https://i.gyazo.com/moving.gif"},
                 }
             },
+            {},
+        )
+        text = self.source.read_text(encoding="utf-8")
+        self.assertIn("moving.gif", text)
+        self.assertNotIn("still.png", text)
+        self.assertIn("の実行結果（動き）", text)
+
+    def test_rewrite_replaces_a_stale_url(self):
+        circle, _ = self.extract()
+        shots.rewrite_sources([circle], {circle.key: {"url": "https://i.gyazo.com/old.png"}}, {})
+        shots.rewrite_sources(
+            self.extract(), {circle.key: {"url": "https://i.gyazo.com/new.png"}}, {}
         )
         text = self.source.read_text(encoding="utf-8")
         self.assertNotIn("old.png", text)
         self.assertIn("](https://i.gyazo.com/new.png)", text)
-        self.assertIn("](https://i.gyazo.com/new.gif)", text)
-        # 宣言が画像行に押し流されていない
+        # 宣言が生成物領域に押し流されていない
         self.assertIn("public func circle(_ x: Float", text)
+
+    def test_prose_after_the_marker_is_refused(self):
+        """印から下は生成物領域。人の文章があれば、消す前に止める。"""
+        text = self.source.read_text(encoding="utf-8").replace(
+            "    /// <!-- reference-shot -->\n",
+            "    /// <!-- reference-shot -->\n    ///\n    /// これは消えてはいけない説明。\n",
+        )
+        self.source.write_text(text, encoding="utf-8")
+        with self.assertRaises(shots.ShotError):
+            self.extract()
 
     # --- 台帳の掃除 ---------------------------------------------------------
 
@@ -213,7 +303,7 @@ class ReferenceShotsTestCase(unittest.TestCase):
                 "snippetHash": arc.fingerprint(config),
             },
         }
-        shots.rewrite_sources([circle, arc], ledger)
+        shots.rewrite_sources([circle, arc], ledger, config)
         self.assertEqual(shots.check(self.extract(), ledger, config), 0)
 
         # コードを変えたら赤くなる
