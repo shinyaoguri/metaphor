@@ -1,4 +1,4 @@
-#include "MetaphorShaderTypes.h"
+#include "MetaphorCanvas3DTypes.h"
 #include "MetaphorLighting.h"
 
 struct Canvas3DTexVertexIn {
