@@ -321,3 +321,113 @@ struct TweenManagerTests {
         #expect(manager.count == 0)
     }
 }
+
+// MARK: - Tween invalid delta
+
+/// `TweenManager.update(_:)` は public で、利用者が自前で計算した `deltaTime` を
+/// そのまま受け取る。非有限・負・巨大な刻みでも状態が壊れず、必ず停止することを固定する。
+@Suite("Tween invalid delta")
+struct TweenInvalidDeltaTests {
+
+    @Test("NaN の刻みを 1 回受けても状態が汚れず、次のフレームから復帰する")
+    @MainActor
+    func nanDeltaDoesNotPoisonState() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+
+        for _ in 0..<16 { manager.update(1.0 / 64) }  // 0.25 秒ぶん進める
+        #expect(abs(tw.value - 25.0) < 0.01)
+
+        manager.update(Float.nan)  // 壊れた刻みを 1 回だけ渡す
+        #expect(tw.value.isNaN == false)
+        #expect(abs(tw.value - 25.0) < 0.01)  // 値は据え置き
+
+        for _ in 0..<600 { manager.update(1.0 / 64) }  // 以降は通常どおり進んで完了する
+        #expect(tw.value == 100.0)
+        #expect(tw.isComplete == true)
+        #expect(manager.count == 0)  // 完了したので登録も外れる
+    }
+
+    @Test("ディレイ中に NaN を受けてもディレイが明ける")
+    @MainActor
+    func nanDeltaDuringDelayDoesNotStall() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5)
+        tw.start()
+
+        tw.update(0.25)
+        tw.update(Float.nan)  // ディレイ中に壊れた刻み
+        #expect(tw.value.isNaN == false)
+
+        tw.update(0.25)  // ここでディレイが明ける
+        #expect(tw.isActive == true)
+
+        tw.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+
+    @Test("負の刻みは無視され、from を下回って外挿されない")
+    @MainActor
+    func negativeDeltaIsIgnored() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        tw.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+
+        tw.update(-0.75)
+        #expect(tw.value >= 0)                // from を下回らない
+        #expect(abs(tw.value - 50.0) < 0.01)  // 進みも戻りもしない
+
+        tw.update(0.25)  // 続きは通常どおり
+        #expect(abs(tw.value - 75.0) < 0.01)
+    }
+
+    // 以下 3 本は修正前だと while を抜けられずテストランナーごとハングするため
+    // .timeLimit を必ず付ける。
+    @Test("無限リピートに .infinity を渡しても停止する", .timeLimit(.minutes(1)))
+    @MainActor
+    func infiniteDeltaWithInfiniteRepeatTerminates() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+            .repeatCount(0)  // 無限リピート
+        tw.start()
+        tw.update(0.25)
+
+        tw.update(.infinity)
+        #expect(tw.isActive == true)
+        #expect(tw.value.isNaN == false)
+        #expect(abs(tw.value - 50.0) < 0.01)  // 直前の位置のまま
+    }
+
+    @Test("無限リピートに巨大な有限刻みを渡しても桁飽和で停止する", .timeLimit(.minutes(1)))
+    @MainActor
+    func hugeFiniteDeltaWithInfiniteRepeatTerminates() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+            .repeatCount(0)  // 無限リピート
+        tw.start()
+
+        // Float では 1e9 - 0.5 == 1e9（ulp(1e9) = 64）。有限値なので入口の guard では
+        // 止まらず、while 側で飽和を検出して抜ける必要がある。
+        tw.update(1e9)
+        #expect(tw.isActive == true)
+        #expect(tw.value.isNaN == false)
+
+        tw.update(0.25)  // サイクル先頭へ丸まっているので通常どおり進む
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+
+    @Test("有限リピートに巨大な刻みを渡すと全サイクル経過とみなして完了する",
+          .timeLimit(.minutes(1)))
+    @MainActor
+    func hugeFiniteDeltaWithFiniteRepeatCompletes() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+            .repeatCount(3)
+        tw.start()
+
+        // 飽和検出が有限リピートの完了を横取りしないこと（修正前もここは完了していた）。
+        tw.update(1e9)
+        #expect(tw.isComplete == true)
+        #expect(tw.value == 100.0)
+    }
+}
