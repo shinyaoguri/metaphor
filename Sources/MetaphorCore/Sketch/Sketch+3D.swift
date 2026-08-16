@@ -213,8 +213,8 @@ extension Sketch {
     ///       ortho(
     ///           left: -width / 2,
     ///           right: width / 2,
-    ///           bottom: height / 2,
-    ///           top: -height / 2
+    ///           bottom: -height / 2,
+    ///           top: height / 2
     ///       )
     ///       translate(width / 2, height / 2, 0)
     ///

@@ -346,7 +346,11 @@
       "sha256": "1c8ef448ee146b2ac093e62f7e5854fe3746045d9435b9474acb019d375878a2"
     },
     "05-ThreeD/04-Camera": {
-      "sourceHash": "b3d5c07b1b916e3b1ff8924018b53b13b0d1dcb1d1ad96728c578f90c2814a02",
+      "sourceHash": "8049c61bff56b08e1d79b13a3923c4c0650c111812eb0671a7b42c8997f1a3e3",
+      "provenance": {
+        "commit": "254a823b657bc8ac45351af21b9bc511197217a7",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
       "motion": {
@@ -356,14 +360,14 @@
         "fps": 15,
         "width": 640,
         "quality": null,
-        "bytes": 203270,
-        "url": "https://i.gyazo.com/4803701ef1a2faad4224d68002c1b241.webp",
-        "sha256": "8812a39639dc63eba2d5ddedadd2a3c3ca87936208b68ddea3c776797221c935",
+        "bytes": 181866,
         "outputWidth": 640,
-        "outputHeight": 360
+        "outputHeight": 360,
+        "url": "https://i.gyazo.com/621040c342be57e618f98cfbf6643c07.webp",
+        "sha256": "4e582b1d9c09adf024d1a74e3b81920b2c74ffbcbe5462b2e6d5363289ba338e"
       },
-      "url": "https://i.gyazo.com/bb81b5ee08cedaf5309c53b787fc5d64.png",
-      "sha256": "864e0ab5e416ea90e3cb2eb11c656256e804a17c746d55c026628d3e27c02f37"
+      "url": "https://i.gyazo.com/d5a5d40ee4e671c0be9ff17a3a663aa4.png",
+      "sha256": "c5047b7be43cb6063af6ab2529c661d557d2d62d13f69d16ab3548e6147da797"
     },
     "05-ThreeD/05-Lighting": {
       "sourceHash": "9abfbc04f26ba14a4d6edbda61a8b5daa957d23d7c78b9c6a205377b1c44e213",

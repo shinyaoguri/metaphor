@@ -99,9 +99,9 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::ortho(left:right:bottom:top:near:far:)": {
       "symbol": "ortho(left:right:bottom:top:near:far:)",
-      "snippetHash": "ee602c25ad671e6842265e43fc619fd39a12c94afa7f4b8c97b26e01946d37f6",
+      "snippetHash": "7fb16ecccf5f25b310c6d4a761cfa4e3ab109ff68faf75fd061891b4a2dffc57",
       "provenance": {
-        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "commit": "254a823b657bc8ac45351af21b9bc511197217a7",
         "dirty": true
       },
       "width": 480,

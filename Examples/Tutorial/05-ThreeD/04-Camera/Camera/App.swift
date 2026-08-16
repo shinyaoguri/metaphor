@@ -22,11 +22,12 @@ final class Camera: Sketch {
         if isPerspective {
             perspective(fov: PI / 3)
         } else {
-            // ortho() の既定の範囲はキャンバスの寸法（原点が左上）なので、
-            // camera() で視点を移したときは範囲も視点に合わせて指定する
+            // ortho() の既定の範囲はキャンバスの寸法ぶん。回り込む視点でも
+            // シーンが端で切れないよう、少し広めに取る。bottom が小さい側
+            // （= 画面の上端）で、逆に渡すと絵が上下反転する
             ortho(
                 left: -width * 0.6, right: width * 0.6,
-                bottom: height * 0.6, top: -height * 0.6
+                bottom: -height * 0.6, top: height * 0.6
             )
         }
 
