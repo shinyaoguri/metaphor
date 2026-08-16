@@ -10,6 +10,17 @@ import Metal
 /// let textures = try TextureManager(device: device, width: 1920, height: 1080)
 /// ```
 public final class TextureManager {
+    /// 2D テクスチャの 1 辺の上限（ピクセル）。
+    ///
+    /// metaphor が対象とする Apple Silicon（GPU Family Apple 7 以降）の上限で、
+    /// Metal Feature Set Tables の "Maximum 2D texture width and height" が根拠です。
+    /// これを超える寸法は `MTLTextureDescriptor` の検証を通らず、`makeTexture` の
+    /// `nil` ではなく `validateWithDevice:` のアサーションでプロセスが終了します
+    /// （`throws` でも Optional でも拾えない形の失敗）。そのため Metal へ渡す前に
+    /// ``init(device:width:height:pixelFormat:depthFormat:clearColor:sampleCount:)``
+    /// で弾きます（#842）。
+    public static let maxDimension = 16384
+
     /// テクスチャ作成に使用される Metal デバイス
     public let device: MTLDevice
 
@@ -52,7 +63,8 @@ public final class TextureManager {
     ///   - depthFormat: デプステクスチャのピクセルフォーマット
     ///   - clearColor: レンダーパスのクリアカラー
     ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
-    /// - Throws: 幅・高さが 1 未満の場合、およびテクスチャを作成できなかった場合
+    /// - Throws: 幅・高さが ``TextureManager/maxDimension`` の範囲外
+    ///   （1 未満または上限超え）の場合、およびテクスチャを作成できなかった場合
     ///   ``MetaphorError/textureCreationFailed(width:height:format:)``
     public init(
         device: MTLDevice,
@@ -63,11 +75,12 @@ public final class TextureManager {
         clearColor: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1),
         sampleCount: Int = 4
     ) throws {
-        // 寸法の検証: 0 以下は Metal へ渡す前に止める（#798）。
-        // MTLTextureDescriptor は退化サイズを makeTexture の nil で返さず
+        // 寸法の検証: 範囲外は Metal へ渡す前に止める（0 以下は #798、上限超えは #842）。
+        // MTLTextureDescriptor はどちらも makeTexture の nil で返さず
         // `validateWithDevice:` のアサーションでプロセスを終了させるため、
         // ここを通してしまうと throws でも Optional でも失敗を拾えない。
-        guard width > 0, height > 0 else {
+        guard width > 0, height > 0,
+              width <= Self.maxDimension, height <= Self.maxDimension else {
             throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
         }
 
