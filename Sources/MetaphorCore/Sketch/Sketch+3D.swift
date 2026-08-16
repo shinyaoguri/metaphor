@@ -94,7 +94,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![camera(eye:center:up:) の実行結果](https://i.gyazo.com/f8d331b0230086d331b5ff42c0b55a71.png)
+    ///       ![camera(eye:center:up:) の実行結果](https://i.gyazo.com/300bb909ffb972fba5ac4e2ff4589779.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -244,6 +244,9 @@ extension Sketch {
     /// `ambientLight(76.5)` 相当）に設定されます。ライトを個別に足す場合も、
     /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
     ///
+    /// 既定リグの灯は**右上手前**から差します（``directionalLight(_:_:_:color:intensity:)``
+    /// でいう `(-0.5, 1, -0.8)`）。``enableShadows()`` の影もこの向きに落ちます。
+    ///
     /// 既定リグの灯は `intensity` 0.7 で、Blinn-Phong（既定）に合わせた明るさです。
     /// PBR（``pbr(_:)``）では直接光が `albedo / π` で沈むため、同じリグでも
     /// **3〜4 割暗く**なります（96×96 の球で実測: Blinn-Phong 80.4 / PBR 51.2）。
@@ -262,7 +265,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![lights() の実行結果](https://i.gyazo.com/0c3145d0641680144f78c1f93d58dfc2.png)
+    ///       ![lights() の実行結果](https://i.gyazo.com/016885f45d91c0122a6c2c8718c53d7d.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -604,7 +607,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![specular(_:_:_:) の実行結果](https://i.gyazo.com/458ee55935538919a5a8dc3c971eccb2.png)
+    ///       ![specular(_:_:_:) の実行結果](https://i.gyazo.com/57ad27360e44b22561d478fcaeb42c4f.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -660,7 +663,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![shininess(_:) の実行結果](https://i.gyazo.com/82793d43a490a943d5286ef18a3c337f.png)
+    ///       ![shininess(_:) の実行結果](https://i.gyazo.com/bea51a3d3dd331ebe38a1c640df52995.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1099,7 +1102,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![rotateX(_:) の実行結果](https://i.gyazo.com/c4219d511eed186207e762822b9b84d6.png)
+    ///       ![rotateX(_:) の実行結果](https://i.gyazo.com/b0b8e39439a4f019fce20cc0b3d9b242.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1139,7 +1142,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![rotateY(_:) の実行結果（動き）](https://i.gyazo.com/1aad78bebf366d921a53381303032a9e.gif)
+    ///       ![rotateY(_:) の実行結果（動き）](https://i.gyazo.com/c3943175afcd9b9dbe6774544cce3d6d.gif)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1207,7 +1210,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![box(_:) の実行結果](https://i.gyazo.com/41ddd0c938a519b47d664e7910b4733c.png)
+    ///       ![box(_:) の実行結果](https://i.gyazo.com/0628f02a4dc47cb59470fef39ebbb2ee.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1241,7 +1244,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![sphere(_:detail:) の実行結果](https://i.gyazo.com/cef89181618b3dc5212a98c7f3a24863.png)
+    ///       ![sphere(_:detail:) の実行結果](https://i.gyazo.com/8c6edd1a90dba05c05819b18ef94be4d.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1275,14 +1278,13 @@ extension Sketch {
     /// ### 実行結果
     ///
     /// 正対させると ``rect(_:_:_:_:)`` と見分けが付かないので、``rotateX(_:)`` で
-    /// 寝かせて奥行きを出しています。既定の ``lights()`` は右下手前から差すため、
-    /// 負の角で傾けた面（＝下を向いた面）が明るくなります。
+    /// 寝かせて奥行きを出しています。
     ///
     /// <!-- reference-shot -->
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![plane(_:_:) の実行結果](https://i.gyazo.com/ade802380125fe0ac629d024fb98ff77.png)
+    ///       ![plane(_:_:) の実行結果](https://i.gyazo.com/2e0a8660fec506bbd00c282c843ab94e.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1316,7 +1318,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![cylinder(radius:height:detail:) の実行結果](https://i.gyazo.com/b21d836b4cf4c05ae59bc1e3a3b4f533.png)
+    ///       ![cylinder(radius:height:detail:) の実行結果](https://i.gyazo.com/47680338f40c5454225003010160b2a1.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1347,14 +1349,13 @@ extension Sketch {
     /// ### 実行結果
     ///
     /// y 軸は画面下向きなので、そのまま描くと**頂点が下**を向きます。上向きの円錐に
-    /// するには ``rotateZ(_:)`` で半回転させてください（既定の ``lights()`` は
-    /// 右下手前から差すため、半回転させると側面が陰に入ります）。
+    /// するには ``rotateZ(_:)`` で半回転させてください。
     ///
     /// <!-- reference-shot -->
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![cone(radius:height:detail:) の実行結果](https://i.gyazo.com/b7db8402277b7f92c05b5a83a97f97c4.png)
+    ///       ![cone(radius:height:detail:) の実行結果](https://i.gyazo.com/26fccf002e09c5699fcf42b9935b6379.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1388,7 +1389,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![torus(ringRadius:tubeRadius:detail:) の実行結果](https://i.gyazo.com/22b06b17868accc9b2d073f8295d1896.png)
+    ///       ![torus(ringRadius:tubeRadius:detail:) の実行結果](https://i.gyazo.com/6238ad4f021c6d0294b39d844d9796f0.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
