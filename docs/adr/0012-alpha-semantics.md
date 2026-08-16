@@ -3,7 +3,7 @@
 - **Status**: Accepted
 - **Date**: 2026-08-16
 - **Deciders**: @shinyaoguri
-- **PR / Commit**: #834
+- **PR / Commit**: #855
 
 ## Context
 
