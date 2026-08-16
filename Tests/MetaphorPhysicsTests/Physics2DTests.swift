@@ -780,3 +780,137 @@ struct PhysicsConstraint2DSolveTests {
         #expect(c.stiffness == 0.0)
     }
 }
+
+// MARK: - 固定刻みのアキュムレータ（#756）
+
+/// 実フレーム時間は常に揺れる。Verlet は速度を「1 ステップあたりの変位」で持つので、
+/// 揺れた dt をそのまま `step` へ渡すとエネルギーが出入りし、同じスケッチが実行のたびに
+/// 違う動きになる。`advance` は経過時間を溜めて固定刻みで消化することでこれを断つ。
+@Suite("Physics2D fixed timestep")
+@MainActor
+struct Physics2DFixedTimestepTests {
+
+    /// 自由落下だけの世界を作る（拘束・衝突は挟まない）。
+    private func makeFallingWorld() -> (Physics2D, PhysicsBody2D) {
+        let world = Physics2D(cellSize: 50)
+        world.setGravity(0, -1000)
+        let body = world.addCircle(x: 0, y: 0, radius: 1)
+        return (world, body)
+    }
+
+    /// 一定刻みと、平均は同じでジッタのある刻み。合計時間はどちらも 10 秒。
+    private static let steadySteps = [Float](repeating: 1.0 / 60.0, count: 600)
+    private static let jitteredSteps: [Float] =
+        (0..<600).map { $0 % 2 == 0 ? 1.0 / 120.0 : 1.0 / 40.0 }
+
+    @Test("advance() makes the fall independent of frame-time jitter")
+    func advanceAbsorbsJitter() {
+        let (steadyWorld, steadyBody) = makeFallingWorld()
+        for dt in Self.steadySteps { steadyWorld.advance(dt, iterations: 0) }
+
+        let (jitteredWorld, jitteredBody) = makeFallingWorld()
+        for dt in Self.jitteredSteps { jitteredWorld.advance(dt, iterations: 0) }
+
+        let steady = steadyBody.position.y
+        let jittered = jitteredBody.position.y
+        #expect(steady < -1000, "そもそも落ちていること")
+        // 許容差 1% 未満（素の step() だと 25% ずれる）
+        #expect(abs(jittered - steady) / abs(steady) < 0.01)
+    }
+
+    // 失敗系: 低レベル API の step() は今までどおり dt の揺れをそのまま食らう。
+    // これが advance() の存在理由なので、揺れが消えたら doc ごと見直す合図になる。
+
+    @Test("step() still integrates whatever dt it is given")
+    func stepIsSensitiveToJitter() {
+        let (steadyWorld, steadyBody) = makeFallingWorld()
+        for dt in Self.steadySteps { steadyWorld.step(dt, iterations: 0) }
+
+        let (jitteredWorld, jitteredBody) = makeFallingWorld()
+        for dt in Self.jitteredSteps { jitteredWorld.step(dt, iterations: 0) }
+
+        let ratio = jitteredBody.position.y / steadyBody.position.y
+        #expect(ratio > 1.2)
+    }
+
+    @Test("advance() keeps leftover time for the next call")
+    func advanceCarriesRemainder() {
+        let (world, body) = makeFallingWorld()
+        // fixedTimeStep の 1/4 ずつ渡す。3 回目までは 1 ステップも走らない
+        let quarter = world.fixedTimeStep / 4
+        for _ in 0..<3 { world.advance(quarter, iterations: 0) }
+        #expect(body.position.y == 0)
+
+        // 4 回目で溜まりが 1 ステップぶんに届く
+        world.advance(quarter, iterations: 0)
+        #expect(body.position.y < 0)
+
+        // 同じ時間を 1 回で渡したときと一致する（溜め方で結果が変わらない）
+        let (reference, referenceBody) = makeFallingWorld()
+        reference.advance(world.fixedTimeStep, iterations: 0)
+        #expect(abs(body.position.y - referenceBody.position.y) < 1e-6)
+    }
+
+    // 境界値: 長すぎるフレームは打ち切ってスパイラルを避ける
+
+    @Test("advance() caps the sub-steps of one call")
+    func advanceCapsSubSteps() {
+        let (world, body) = makeFallingWorld()
+        world.maxSubSteps = 4
+        // 上限の 100 倍の時間を渡しても 4 ステップぶんしか進まない
+        world.advance(world.fixedTimeStep * 400, iterations: 0)
+
+        let (reference, referenceBody) = makeFallingWorld()
+        for _ in 0..<4 { reference.step(reference.fixedTimeStep, iterations: 0) }
+        #expect(abs(body.position.y - referenceBody.position.y) < 1e-6)
+
+        // 打ち切ったぶんは持ち越さない（次の呼び出しが取り返そうとしない）
+        world.advance(0, iterations: 0)
+        #expect(abs(body.position.y - referenceBody.position.y) < 1e-6)
+    }
+
+    @Test("advance() ignores non-finite and negative elapsed time")
+    func advanceRejectsBadElapsed() {
+        let (world, body) = makeFallingWorld()
+        for bad in [Float.nan, .infinity, -1.0 / 60.0] {
+            world.advance(bad, iterations: 0)
+        }
+        #expect(body.position.y == 0)
+        #expect(body.position.x.isFinite && body.position.y.isFinite)
+
+        // 負の iterations も step() と同じく丸ごと捨てる
+        world.advance(1.0, iterations: -1)
+        #expect(body.position.y == 0)
+
+        // 弾いた値がアキュムレータを汚していないこと。NaN を足していたら
+        // 以降 `accumulator >= fixedTimeStep` が永久に偽になり、物理が無言で死ぬ。
+        world.advance(world.fixedTimeStep, iterations: 0)
+        let (reference, referenceBody) = makeFallingWorld()
+        reference.step(reference.fixedTimeStep, iterations: 0)
+        #expect(abs(body.position.y - referenceBody.position.y) < 1e-6)
+        #expect(body.position.y < 0)
+    }
+
+    @Test("fixedTimeStep and maxSubSteps sanitize invalid values")
+    func settingsAreSanitized() {
+        let world = Physics2D(cellSize: 50)
+        let defaultStep = world.fixedTimeStep
+        #expect(abs(defaultStep - 1.0 / 120.0) < 1e-9)
+
+        world.fixedTimeStep = 1.0 / 240.0
+        #expect(abs(world.fixedTimeStep - 1.0 / 240.0) < 1e-9)
+        for bad in [Float.nan, 0, -1] {
+            world.fixedTimeStep = bad
+            #expect(world.fixedTimeStep == defaultStep)
+            world.fixedTimeStep = 1.0 / 240.0
+        }
+
+        #expect(world.maxSubSteps == 8)
+        world.maxSubSteps = 0
+        #expect(world.maxSubSteps == 1, "0 だと物理が止まるので 1 へ切り上げる")
+        world.maxSubSteps = -5
+        #expect(world.maxSubSteps == 1)
+        world.maxSubSteps = 16
+        #expect(world.maxSubSteps == 16)
+    }
+}
