@@ -124,10 +124,21 @@ public final class GKNoiseWrapper {
     /// - Parameters:
     ///   - width: The grid width, in samples.
     ///   - height: The grid height, in samples.
-    /// - Returns: A flat, row-major array of noise values.
+    /// - Returns: A flat, row-major array of noise values. Empty when `width` or `height`
+    ///   is not positive, or when `width * height` overflows.
     public func sampleGrid(width: Int, height: Int) -> [Float] {
+        // 退化サイズは標準ライブラリへ渡す前に止める（#806）。ここは Metal を
+        // 通らないので、負の寸法は `[Float](repeating:count:)` の precondition と
+        // `0..<height` の "Range requires lowerBound <= upperBound" という
+        // 純 Swift の trap になる。どちらも戻り値では表現できない失敗。
+        let (elementCount, overflowed) = width.multipliedReportingOverflow(by: height)
+        guard width > 0, height > 0, !overflowed else {
+            metaphorWarning("sampleGrid: dimensions must be positive (got \(width)x\(height))")
+            return []
+        }
+
         let map = makeNoiseMap(width: width, height: height)
-        var result = [Float](repeating: 0, count: width * height)
+        var result = [Float](repeating: 0, count: elementCount)
         for y in 0..<height {
             for x in 0..<width {
                 var val = map.value(at: vector_int2(Int32(x), Int32(y)))
@@ -148,8 +159,15 @@ public final class GKNoiseWrapper {
     /// - Parameters:
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
-    /// - Returns: A Metal texture containing the noise, or nil on failure.
+    /// - Returns: A Metal texture containing the noise, or nil on failure (including a
+    ///   width or height outside `1...TextureManager.maxDimension`).
     public func texture(width: Int, height: Int) -> MTLTexture? {
+        // グリッドを回す前に寸法を見る（#806）。上限超えは
+        // `sampleGrid` が先に巨大な `[Float]` を確保してしまうため、
+        // 検証の順序に意味がある。
+        guard NoiseTextureBuilder.isValidSize(width, height, api: "noise texture") else {
+            return nil
+        }
         let values = sampleGrid(width: width, height: height)
         return NoiseTextureBuilder.buildTexture(
             device: device, values: values, width: width, height: height
@@ -182,11 +200,16 @@ public final class GKNoiseWrapper {
     ///     gradient. At least 2 stops are required; passing an empty array or
     ///     a single stop returns nil.
     /// - Returns: A Metal texture containing the color-mapped noise, or nil
-    ///   if fewer than 2 color stops are given or texture allocation fails.
+    ///   if the width or height is outside `1...TextureManager.maxDimension`,
+    ///   fewer than 2 color stops are given, or texture allocation fails.
     public func colorMappedTexture(
         width: Int, height: Int,
         colorStops: [(Float, SIMD4<UInt8>)]
     ) -> MTLTexture? {
+        // `texture(width:height:)` と同じ理由でグリッドより先に寸法を見る（#806）。
+        guard NoiseTextureBuilder.isValidSize(width, height, api: "noise colorMappedTexture") else {
+            return nil
+        }
         let values = sampleGrid(width: width, height: height)
         return NoiseTextureBuilder.buildColorMappedTexture(
             device: device, values: values, width: width, height: height,
