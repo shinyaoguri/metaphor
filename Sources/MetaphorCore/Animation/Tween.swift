@@ -127,6 +127,22 @@ public final class Tween<T: Interpolatable> {
     private var repeatCount: Int = 0
     private var forward: Bool = true
 
+    // MARK: - Registration
+
+    /// 登録先の `TweenManager`（`add(_:)` が設定します）。
+    ///
+    /// マネージャ側は登録したトゥイーンをクロージャで**強参照**するため、
+    /// こちらは弱参照にして循環を作りません。登録を外れても参照は残したままにして、
+    /// あとで ``start()`` されたときに同じマネージャへ戻れるようにします。
+    weak var registrar: TweenManager?
+
+    /// マネージャの登録から外してよい状態かどうか。
+    ///
+    /// 完了済み（`.complete`）だけでなく、まだ始まっていない / ``reset()`` された
+    /// （`.idle`）ものも含みます。どちらも `update(_:)` が何もしない状態なので、
+    /// 登録に残しておいても毎フレーム空振りするだけで、解放も妨げます。
+    var isDormant: Bool { state == .complete || state == .idle }
+
     // MARK: - Initialization
 
     /// 新しいトゥイーンアニメーションを作成します。
@@ -192,6 +208,10 @@ public final class Tween<T: Interpolatable> {
     // MARK: - Control
 
     /// アニメーションを最初から開始します。
+    ///
+    /// 完了や ``reset()`` で `TweenManager` の登録から外れていても、ここで登録し直します
+    /// （一度登録したマネージャを覚えているため）。`TweenManager.add(_:)` は同じ
+    /// インスタンスの二重登録を弾くので、登録が残っていても倍速にはなりません。
     public func start() {
         elapsed = 0
         repeatCount = 0
@@ -203,6 +223,8 @@ public final class Tween<T: Interpolatable> {
         } else {
             state = .running
         }
+
+        registrar?.add(self)
     }
 
     /// アニメーションを初期値のアイドル状態にリセットします。

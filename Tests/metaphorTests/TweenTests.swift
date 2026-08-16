@@ -322,6 +322,111 @@ struct TweenManagerTests {
     }
 }
 
+// MARK: - Tween registration lifetime
+
+/// 登録の唯一の出口が「完了」だったため、そこへ至らない経路
+/// （未 start のまま・完了後にもう一度 `start()`）が噛み合っていなかった。
+/// 登録の寿命が `Tween` の状態機械と一致することを固定する。
+@Suite("Tween registration lifetime")
+struct TweenRegistrationLifetimeTests {
+
+    @Test("完走して登録が外れたトゥイーンでも start() でもう一度動く")
+    @MainActor
+    func restartAfterCompletionReregisters() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+
+        manager.update(0.5)
+        #expect(tw.isComplete == true)
+        #expect(manager.count == 0)  // 完了したので登録は外れている
+
+        tw.start()  // 再演。登録し直されないと二度と動かない
+        #expect(manager.count == 1)
+
+        manager.update(0.25)
+        #expect(abs(tw.value - 50.0) < 0.01)
+        #expect(tw.isActive == true)
+    }
+
+    @Test("未 start のトゥイーンは滞留せず、参照も解放される")
+    @MainActor
+    func idleTweensAreEvictedAndReleased() {
+        let manager = TweenManager()
+        for _ in 0..<600 {
+            manager.add(Tween(from: 0.0 as Float, to: 1.0, duration: 1.0))
+        }
+        #expect(manager.count == 600)
+
+        manager.update(1.0 / 60)
+        #expect(manager.count == 0)
+
+        // AnyTween の 2 クロージャがトゥイーンを強参照するので、外れないことは
+        // そのままメモリ滞留を意味する。外れれば解放されることまで見る。
+        weak var weakTween: Tween<Float>?
+        do {
+            let tw = Tween(from: 0.0 as Float, to: 1.0, duration: 1.0)
+            weakTween = tw
+            manager.add(tw)
+        }
+        #expect(weakTween != nil)  // マネージャが握っている
+        manager.update(1.0 / 60)
+        #expect(weakTween == nil)  // 未 start なので外れ、解放される
+    }
+
+    @Test("reset() で idle に戻したトゥイーンも外れ、start() で戻る")
+    @MainActor
+    func resetEvictsAndStartRestores() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+        manager.update(0.5)
+        #expect(manager.count == 1)
+
+        tw.reset()
+        manager.update(1.0 / 60)
+        #expect(manager.count == 0)
+        #expect(tw.value == 0)
+
+        tw.start()
+        #expect(manager.count == 1)
+        manager.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+
+    @Test("同じトゥイーンを二重に add しても 1 倍速のまま")
+    @MainActor
+    func doubleAddDoesNotDoubleSpeed() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+        manager.add(tw)  // 2 回目は弾かれる
+        #expect(manager.count == 1)
+
+        manager.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)  // 2 倍速なら 100.0 になり完了してしまう
+        #expect(tw.isComplete == false)
+    }
+
+    @Test("start() 済みのトゥイーンを add しても二重登録にならない")
+    @MainActor
+    func addAfterStartDoesNotDoubleRegister() {
+        // `tween()` ファクトリは add するが start しない。利用者が受け取ってから
+        // start() すると再登録が走るので、そこで二重登録にならないことを見る。
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        manager.add(tw)   // ファクトリ相当（まだ .idle）
+        tw.start()        // ここで再登録が走る
+        #expect(manager.count == 1)
+
+        manager.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+}
+
 // MARK: - Tween invalid delta
 
 /// `TweenManager.update(_:)` は public で、利用者が自前で計算した `deltaTime` を
