@@ -33,6 +33,38 @@ struct SaveFrameDestinationTests {
         }
     }
 
+    /// 同一フレーム内の複数回呼び出し（Issue #762）。
+    ///
+    /// 保留中の保存先が単一スロットだった頃は、2 回目以降が前の値を無言で上書きし、
+    /// 最後の 1 枚しか残らなかった。撮られるのは「呼んだ時点の途中経過」ではなく
+    /// **そのフレームの最終出力**なので、複数パスの中身は同一になるのが正しい。
+    @Test("同一フレーム内で複数回呼ぶと、すべてのパスに同じ絵が書かれる")
+    func multipleCallsInOneFrameAllWritten() throws {
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let first = dir.appendingPathComponent("shots/first.png")
+            let second = dir.appendingPathComponent("shots/second.png")
+            let third = dir.appendingPathComponent("latest.png")
+
+            _ = try OffscreenSketchHarness.render(size: 64) { context in
+                context.background(20, 120, 200)
+                context.saveFrame(first.path)
+                context.saveFrame(second.path)
+                context.save(third.path)
+            }
+
+            for target in [first, second, third] {
+                #expect(waitForFile(at: target), "書き出されていない: \(target.path)")
+            }
+
+            // 同じフレームの最終出力なので、3 枚は同一バイト列になる
+            // （「最後の 1 枚だけ書いて他は空／別フレーム」を弾く）。
+            let contents = try [first, second, third].map { try Data(contentsOf: $0) }
+            #expect(contents[0].count > 0, "空のファイルが書かれている")
+            #expect(contents[0] == contents[1], "1 枚目と 2 枚目の中身が違う")
+            #expect(contents[0] == contents[2], "1 枚目と 3 枚目の中身が違う")
+        }
+    }
+
     /// PNG の書き出しは GPU の完了ハンドラ内で走るため、少しだけ待つ。
     private func waitForFile(at url: URL, timeout: TimeInterval = 5) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)

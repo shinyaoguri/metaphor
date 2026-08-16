@@ -190,7 +190,9 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - スクリーンショット
 
-    private var pendingSavePath: String?
+    /// このフレームの終了時に書き出す保存先。同一フレーム内の複数回の予約を取りこぼさないよう
+    /// 単一スロットではなくキューで持つ（#762）。
+    private var pendingSavePaths: [String] = []
     /// `frameBufferIndex` でインデックスするスクリーンショット用ステージングテクスチャ（トリプルバッファ）
     private var stagingTextures: [MTLTexture?] = [nil, nil, nil]
 
@@ -778,9 +780,13 @@ public final class MetaphorRenderer: NSObject {
 
     /// 次のフレーム終了時にスクリーンショットの保存をスケジュールします。
     ///
+    /// 同一フレーム内で複数回呼ぶと、そのフレームがすべてのパスへ書き出されます。
+    /// 書き出されるのは呼んだ時点の途中経過ではなく**フレームの最終出力**
+    /// （ポストプロセス適用後）なので、複数パスの中身は同一になります。
+    ///
     /// - Parameter path: PNG 画像の書き込み先ファイルパス
     public func saveScreenshot(to path: String) {
-        pendingSavePath = path
+        pendingSavePaths.append(path)
     }
 
     // MARK: - 座標変換
@@ -961,18 +967,21 @@ public final class MetaphorRenderer: NSObject {
         createOrReuseStagingTexture(cache: &videoStagingTextures)
     }
 
-    /// テクスチャの内容を指定パスの PNG ファイルに書き出します。
+    /// テクスチャの内容を指定パスすべてに PNG ファイルとして書き出します。
     ///
     /// このメソッドは `nonisolated static` であり、完了ハンドラーから安全に呼び出せます。
+    /// テクスチャからの読み出しは 1 回だけ行い、同じバイト列を各パスへ書きます
+    /// （同一フレーム内で複数回 `saveScreenshot(to:)` を呼んだ場合、中身は全て同じ）。
     ///
     /// - Parameters:
     ///   - texture: ピクセルデータを含むマネージドステージングテクスチャ
     ///   - width: 画像の幅（ピクセル）
     ///   - height: 画像の高さ（ピクセル）
-    ///   - path: PNG を保存するファイルパス
+    ///   - paths: PNG を保存するファイルパス（空でないこと）
     nonisolated static func writePNG(
-        texture: MTLTexture, width: Int, height: Int, path: String
+        texture: MTLTexture, width: Int, height: Int, paths: [String]
     ) {
+        guard !paths.isEmpty else { return }
         let bytesPerRow = width * 4
         var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
         texture.getBytes(
@@ -981,7 +990,9 @@ public final class MetaphorRenderer: NSObject {
             from: MTLRegionMake2D(0, 0, width, height),
             mipmapLevel: 0
         )
-        writePNG(bgraPixels: pixels, width: width, height: height, path: path)
+        for path in paths {
+            writePNG(bgraPixels: pixels, width: width, height: height, path: path)
+        }
     }
 
     /// BGRA バイト列を PNG として書き出します（テクスチャ読み出し済みのデータ用）。
@@ -1207,9 +1218,11 @@ public final class MetaphorRenderer: NSObject {
         }
         lastOutputTexture = outputTexture
 
-        // スクリーンショットを保存（失敗時はスキップ、フレーム処理は継続）
-        if let savePath = pendingSavePath {
-            pendingSavePath = nil
+        // スクリーンショットを保存（失敗時はスキップ、フレーム処理は継続）。
+        // 同一フレームに複数の予約があっても、読み戻しは 1 回で済ませて各パスへ書く。
+        if !pendingSavePaths.isEmpty {
+            let savePaths = pendingSavePaths
+            pendingSavePaths.removeAll()
             if let staging = getOrCreateStagingTexture() {
                 if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
                     blitEncoder.copy(
@@ -1230,12 +1243,12 @@ public final class MetaphorRenderer: NSObject {
 
                 let width = textureManager.width
                 let height = textureManager.height
-                let path = savePath
+                let paths = savePaths
                 readbackGroup.enter()
                 commandBuffer.addCompletedHandler { _ in
                     defer { readbackGroup.leave() }
                     MetaphorRenderer.writePNG(
-                        texture: staging, width: width, height: height, path: path
+                        texture: staging, width: width, height: height, paths: paths
                     )
                 }
             }

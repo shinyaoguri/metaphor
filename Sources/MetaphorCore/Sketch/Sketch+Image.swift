@@ -485,6 +485,9 @@ extension Sketch {
     /// 相対パスは**プロジェクト直下**（`swift run` ならパッケージ直下、`metaphor run` /
     /// `watch` ならそのプロジェクト）から解決されます。絶対パスと `~` 始まりはそのままです。
     ///
+    /// ``saveFrame(_:)`` と同じく、同一フレーム内で複数回呼べばすべての保存先へ
+    /// 同じ絵（そのフレームの最終出力）が書き出されます。
+    ///
     /// - Parameter path: 出力ファイルパス。
     public func save(_ path: String) {
         context.save(path)
@@ -549,6 +552,10 @@ extension Sketch {
     /// - `saveFrame()` — `output/screen-<フレーム番号>.png`（プロジェクトの中）
     /// - `saveFrame("shots/a.png")` — プロジェクト直下からの相対
     /// - `saveFrame("/tmp/a.png")` / `saveFrame("~/Pictures/a.png")` — そのまま
+    ///
+    /// 同一フレーム内で複数回呼べば、そのフレームがすべての保存先へ書き出されます
+    /// （更新用の固定パスと履歴用の連番を同時に出す、など）。保存されるのは呼んだ時点の
+    /// 途中経過ではなく**そのフレームの最終出力**なので、複数の保存先の中身は同一です。
     ///
     /// - Parameter filename: 出力ファイル名（`nil` の場合は自動生成）。
     public func saveFrame(_ filename: String? = nil) {
