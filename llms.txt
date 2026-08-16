@@ -494,7 +494,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(_ simd: SIMD4<Float>)` -- (r, g, b, a) として解釈される `SIMD4<Float>` ベクトルからカラーを作成します。
 - `init(gray: Float, alpha: Float = 1.0)` -- グレースケールカラーを作成します。0.0 が黒、1.0 が白。
 - `init(hex: UInt32)` -- 0xRRGGBB または 0xAARRGGBB 形式の整数16進数値からカラーを作成します。
-- `init?(hex: String)` -- "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+- `init?(hex: String)` -- "#RGB" / "#RRGGBB" / "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
 - `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- 色相、彩度、明度の成分からカラーを作成します。
 - `init?(paramValue: ParamValue)`
 - `init(r: Float, g: Float, b: Float, alpha: Float = 1.0)` -- 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
