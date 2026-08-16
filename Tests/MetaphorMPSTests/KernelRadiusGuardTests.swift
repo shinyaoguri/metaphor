@@ -175,15 +175,18 @@ struct MPSImageFilterKernelRadiusTests {
         #expect(try median(diameter: input) == (try median(diameter: expected)))
     }
 
-    /// ガードが効きすぎていないこと。範囲内の奇数はそのまま通り、
-    /// 直径ごとに違う絵（= 違うカーネル）になる。
+    /// ガードが効きすぎていないこと。範囲内の奇数はそのまま通る。
+    ///
+    /// 直径ごとの違いは `MedianEdgeModeTests` が 5x5 の暗部で見ている（#920 で
+    /// `edgeMode` を `.clamp` へ揃えたあとは、1 点の外れ値だけのこのパターンでは
+    /// どの直径でも同じ「全画素 200」になるため、ここでは区別できない）。
     @Test("正当な median の直径はそのまま効く")
     func validMedianDiameterStillFilters() throws {
         let d3 = try median(diameter: 3)
-        // 1 点だけの外れ値は 3x3 の中央値では残らない（内側の画素で見る。
-        // median の edgeMode は既定の `.zero` なので縁は画像の外の 0 を拾う）
-        #expect(d3[(1 * Self.side + 1) * 4] == 200)
-        // 直径が違えば違う絵になる = 3 も 5 も丸められずそのまま届いている
-        #expect(try median(diameter: 5) != d3)
+        // 色 3 チャンネルで見る（`MPSImageMedian` はアルファを中央値の対象にせず素通しする）
+        let colors = d3.enumerated().filter { $0.offset % 4 != 3 }.map(\.element)
+        #expect(colors.allSatisfy { $0 == 200 },
+                "1 点の外れ値が中央値で消えていないか、縁が暗く落ちている（#920）")
+        #expect(d3 != Self.makePattern(), "median が何も変えていない")
     }
 }
