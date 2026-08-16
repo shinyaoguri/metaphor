@@ -393,3 +393,122 @@ struct NoiseConfigRebuildTests {
         #expect(before != after)
     }
 }
+
+// MARK: - 点サンプリングとグリッドの座標系（#785）
+
+/// `sample(x:y:)` と `sampleGrid` / `texture` / `image` は別の座標系で場を読む。
+/// これは直せない非対称ではなく **doc で約束した仕様** なので、崩れたら気付けるように固定する。
+///
+/// - `sample(x:y:)` は `origin` / `sampleScale` を一切通さない生のノイズ空間
+/// - グリッド系は `origin` を起点に `GKNoiseMap` へ委ねる（刻みは GameplayKit 側の都合で決まる）
+@Suite("GKNoiseWrapper coordinate spaces", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct NoiseCoordinateSpaceTests {
+
+    /// octaves 1 / frequency 1.0 なら 1 単位程度で値がよく動くので、
+    /// 座標がずれていれば必ず値の差として現れる。
+    private func makeConfig() -> NoiseConfig {
+        var config = NoiseConfig(octaves: 1, frequency: 1.0, seed: 21)
+        config.normalized = false
+        return config
+    }
+
+    /// 格子点ちょうど（整数座標）は Perlin が 0 を返して差が出ないので、必ず格子から外す。
+    private let probePoints: [(Float, Float)] = [
+        (0.37, 0.61), (1.7, 2.3), (5.5, 8.1), (0.01, 9.9), (-3.25, 4.75),
+    ]
+
+    @Test("origin does not move sample(x:y:)")
+    func originDoesNotMovePointSampling() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let wrapper = GKNoiseWrapper(type: .perlin, config: makeConfig(), device: device)
+
+        let before = probePoints.map { wrapper.sample(x: $0.0, y: $0.1) }
+
+        var config = wrapper.config
+        config.origin = SIMD2(5.0, -7.0)
+        wrapper.config = config
+
+        // 1 ビットも動かないことを固定する（差ではなく完全一致で見る）
+        let after = probePoints.map { wrapper.sample(x: $0.0, y: $0.1) }
+        #expect(before == after)
+    }
+
+    @Test("sampleScale does not scale sample(x:y:)")
+    func sampleScaleDoesNotScalePointSampling() {
+        let device = MTLCreateSystemDefaultDevice()!
+        let wrapper = GKNoiseWrapper(type: .perlin, config: makeConfig(), device: device)
+
+        let before = probePoints.map { wrapper.sample(x: $0.0, y: $0.1) }
+
+        var config = wrapper.config
+        config.sampleScale = SIMD2(3.0, 3.0)
+        wrapper.config = config
+
+        let after = probePoints.map { wrapper.sample(x: $0.0, y: $0.1) }
+        #expect(before == after)
+    }
+
+    @Test("origin is the grid's first sample")
+    func gridStartsAtOrigin() {
+        let device = MTLCreateSystemDefaultDevice()!
+        var config = makeConfig()
+        config.origin = SIMD2(0.35, -0.75)
+        config.sampleScale = SIMD2(1.0, 1.0)
+        let wrapper = GKNoiseWrapper(type: .perlin, config: config, device: device)
+
+        let grid = wrapper.sampleGrid(width: 64, height: 64)
+        let atOrigin = wrapper.sample(x: config.origin.x, y: config.origin.y)
+
+        // grid の起点だけは点サンプリングと一致する（doc の「最初の 1 点だけ重なる」の根拠）
+        #expect(abs(grid[0] - atOrigin) < 1e-6)
+    }
+
+    // 失敗系: 起点を合わせても 2 点目以降は一致しない（一致させられない、が doc の約束）
+
+    @Test("grid values past the first sample do not match sample(x:y:)")
+    func gridDivergesFromPointSampling() {
+        let device = MTLCreateSystemDefaultDevice()!
+        var config = makeConfig()
+        config.origin = SIMD2(0.35, -0.75)
+        config.sampleScale = SIMD2(1.0, 1.0)
+        let wrapper = GKNoiseWrapper(type: .perlin, config: config, device: device)
+
+        let grid = wrapper.sampleGrid(width: 64, height: 64)
+
+        // origin + index × sampleScale で追いかけても追随しない
+        var maxDiff: Float = 0
+        for i in 1..<16 {
+            let expected = wrapper.sample(
+                x: config.origin.x + Double(i) * config.sampleScale.x,
+                y: config.origin.y
+            )
+            maxDiff = max(maxDiff, abs(grid[i] - expected))
+        }
+        #expect(maxDiff > 0.05)
+    }
+
+    // 境界値: 同じ sampleScale でも格子の大きさを変えると同じ index が別の座標を指す
+
+    @Test("grid step depends on the grid size, not on sampleScale alone")
+    func gridStepDependsOnGridSize() {
+        let device = MTLCreateSystemDefaultDevice()!
+        var config = makeConfig()
+        config.origin = SIMD2(0.35, -0.75)
+        config.sampleScale = SIMD2(1.0, 1.0)
+        let wrapper = GKNoiseWrapper(type: .perlin, config: config, device: device)
+
+        let wide = wrapper.sampleGrid(width: 64, height: 64)
+        let narrow = wrapper.sampleGrid(width: 16, height: 16)
+
+        // 起点だけは格子の大きさによらず一致する
+        #expect(abs(wide[0] - narrow[0]) < 1e-6)
+
+        // 刻みが sampleScale だけで決まるなら行 0 は前半 16 点まで一致するはずだが、しない
+        var maxDiff: Float = 0
+        for i in 1..<16 {
+            maxDiff = max(maxDiff, abs(wide[i] - narrow[i]))
+        }
+        #expect(maxDiff > 0.01)
+    }
+}
