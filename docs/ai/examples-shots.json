@@ -551,17 +551,25 @@
     },
     "Examples/Demos/Graphics/DepthSort": {
       "origin": "captured",
-      "sourceHash": "1edfd339cc266686855dfd44ca72f50a7f8924cc52585e98d5871c0d99462a43",
+      "sourceHash": "6c84bb07aa220d9e0dbed450af0bda98c276da6335839e5470482e306681592c",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 720,
-      "frame": 106
+      "frame": 95
     },
     "Examples/Demos/Graphics/Patch": {
       "origin": "captured",
-      "sourceHash": "0bc19326b146705db17569e474934fb2ac22d0c7ae3958f0492fd50d6ce9da8d",
+      "sourceHash": "37757a0c91d22e66f9a411cd35ca8706dd8af0042d6756cce8867ebbbdbe360b",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 1024,
       "height": 768,
-      "frame": 109
+      "frame": 107
     },
     "Examples/Demos/Graphics/Planets": {
       "origin": "captured",
@@ -614,10 +622,14 @@
     },
     "Examples/Demos/Performance/Esfera": {
       "origin": "captured",
-      "sourceHash": "bfa342ae8d95984c8ca8bca2e96679aaffc66d6b1d075fba3d0a38f9c15258c9",
+      "sourceHash": "8622ba4296eaf80ac104744a71e2838f22a8a8d2b2826dd1624dba4479202e0f",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 1024,
       "height": 768,
-      "frame": 21
+      "frame": 19
     },
     "Examples/Demos/Performance/LineRendering": {
       "origin": "captured",
@@ -1105,31 +1117,47 @@
     },
     "Examples/Topics/Geometry/Icosahedra": {
       "origin": "captured",
-      "sourceHash": "b4435acf532c032bf53dcccba2f17c696e542b2f5e3769cd0d876035978efb44",
+      "sourceHash": "4b4a57c6d5edfc444549daa62d6f84babfa7ef1c49839e9145a84608f514cfda",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 94
+      "frame": 105
     },
     "Examples/Topics/Geometry/NoiseSphere": {
       "origin": "captured",
-      "sourceHash": "3aaddde8396e10cbeebc6a8fe7032015744e38775f870d90ab7600c3457848ca",
+      "sourceHash": "7ca90d307f30822825e9d56dabe2f1d803c4a62df2b639ab0fd446a7820bd29a",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 70
+      "frame": 66
     },
     "Examples/Topics/Geometry/RGBCube": {
       "origin": "captured",
-      "sourceHash": "b7fd1b27d42e4fd2288b6f017929ac35f79bb3bc6022d20766d5dc356dd1a632",
+      "sourceHash": "0d9c0e7d87a87fe7fd8c6e03c07c91a6c3b5667df5e3a7aa61e89cc988462cc4",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 101
+      "frame": 96
     },
     "Examples/Topics/Geometry/ShapeTransform": {
       "origin": "captured",
-      "sourceHash": "5229424869ba861005d839d9fe7eceb14dd64dc26cb2ca75735471c76f6e03c3",
+      "sourceHash": "3067d26a1b8a60272a882b6a48df24d2291bb9eecf0c533668e830f031577283",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 99
+      "frame": 98
     },
     "Examples/Topics/Geometry/SpaceJunk": {
       "origin": "captured",
@@ -1140,17 +1168,25 @@
     },
     "Examples/Topics/Geometry/Toroid": {
       "origin": "captured",
-      "sourceHash": "348460b36a544d7134c1be40bb80f8f4c82516db71d26f054932c418fa8c22dd",
+      "sourceHash": "ab7e17d9f431b02d2ecf07aa346a4d2bebfffd1c4d45005670ba4ee4254644e8",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 95
+      "frame": 103
     },
     "Examples/Topics/Geometry/Vertices": {
       "origin": "captured",
       "sourceHash": "40d6df34de9faf36a4873b02aaa32d60ad257118894f494714b2e565e5231d06",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 96
     },
     "Examples/Topics/Image Processing/Blending": {
       "origin": "captured",
@@ -1188,10 +1224,14 @@
     },
     "Examples/Topics/Image Processing/Extrusion": {
       "origin": "captured",
-      "sourceHash": "0f184fb5d41bd765c668bc346299e7743a7c03e0ce676af99fdb3feacc857407",
+      "sourceHash": "e6970f6ebe616190a03fcbb99821e6ffcaeccc346b27e18de1293cbb8334f17d",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 98
+      "frame": 66
     },
     "Examples/Topics/Image Processing/Histogram": {
       "origin": "processing",
@@ -1219,10 +1259,14 @@
     },
     "Examples/Topics/Image Processing/Zoom": {
       "origin": "captured",
-      "sourceHash": "e9e8317618934304b9173f66e2aa8d71633b0785fb4e4670b52f1996179ef11d",
+      "sourceHash": "8f9a4a2de1439ee5b3fa5fa70bec49d0062ef66f1f53a0380ad57a8e01507390",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 159
+      "frame": 154
     },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
@@ -1469,37 +1513,57 @@
     "Examples/Topics/Textures/TextureCube": {
       "origin": "captured",
       "sourceHash": "ec258e3896828fbf0274d5b18393dcd3df2e3a34afd34fe717f0ddc96a32e0ca",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 94
+      "frame": 104
     },
     "Examples/Topics/Textures/TextureCylinder": {
       "origin": "captured",
       "sourceHash": "6851bb1a4e8a7b6cd9f730d299dcfb029113e20adaa2039f678c69dde6e97690",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 96
+      "frame": 100
     },
     "Examples/Topics/Textures/TextureQuad": {
       "origin": "captured",
       "sourceHash": "477b71eeb4ca8420a96fb783b21a0f9f3619d95a0258731130d59b0b35a80912",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 96
     },
     "Examples/Topics/Textures/TextureSphere": {
       "origin": "captured",
       "sourceHash": "4e913ecbdf7fa9b56d4c7675dfa6d195ac40a05bc13a6dc6237c0b9331d822de",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 106
+      "frame": 102
     },
     "Examples/Topics/Textures/TextureTriangle": {
       "origin": "captured",
       "sourceHash": "d98641e0385a8677a515c84798472b178fae0c7bd63d1f656a4a2fc8affaeb59",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 106
+      "frame": 95
     },
     "Examples/Topics/Typography/TextParticles": {
       "origin": "captured",
