@@ -294,6 +294,10 @@ public final class MShape {
     /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
     var didWarnContourIn3D: Bool = false
 
+    /// ``setTint(_:)`` が効かないことを一度だけ知らせたか（#852）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnTintIgnored: Bool = false
+
     /// 3D シェイプで `beginContour()` が呼ばれたことを一度だけ警告する（#736）。
     ///
     /// コンター（穴）は ``tessellate2D()`` からしか読まれず、``buildMesh3D()`` は
@@ -305,6 +309,25 @@ public final class MShape {
         metaphorWarning(
             "MShape.beginContour() / endContour() only apply to 2D shapes; a 3D shape keeps no hole. "
                 + "Build the ring geometry yourself, or define the shape with 2D vertices."
+        )
+    }
+
+    /// ``setTint(_:)`` が効かないシェイプを描いたことを一度だけ警告する（#852）。
+    ///
+    /// `capturedStyle.tintColor` / `hasTint` は ``setTint(_:)`` が書くだけで、
+    /// 描画時に状態を復元する `applyShapeStyle2D` / `applyShapeStyle3D` の
+    /// **どちらも canvas へ渡していない**。しかも渡し先が無い:
+    /// 2D の MShape 経路にはテクスチャ描画自体が無く、3D のテクスチャは
+    /// `fillColor`（インスタンス色 / `uniforms.color`）を掛けて着色するので、
+    /// tint 専用のスロットがそもそも存在しない。
+    ///
+    /// 絵は出てしまう（ただ色が変わらないだけ）ぶん気付きにくいので、黙って捨てない。
+    func warnTintIgnoredOnce() {
+        guard !didWarnTintIgnored else { return }
+        didWarnTintIgnored = true
+        metaphorWarning(
+            "MShape.setTint() has no effect and is ignored. The 2D shape path draws no textures, "
+                + "and a textured 3D shape is tinted by its fill color — use setFill() instead."
         )
     }
 
@@ -389,7 +412,15 @@ public final class MShape {
         self.texture = img.texture
     }
 
-    /// テクスチャレンダリング用のティント色を設定します。
+    /// ティント色を記録します。**現在どの描画経路でも効きません**（#852）。
+    ///
+    /// 色は ``ShapeStyle/tintColor`` に残りますが、描画時に読み出す経路がありません。
+    /// 2D の MShape 経路にはテクスチャ描画自体が無く、3D のテクスチャは
+    /// **`fillColor` を掛けて着色する**ため tint 専用のスロットが存在しないからです。
+    /// 効かないシェイプを描くと一度だけ警告が出ます。
+    ///
+    /// テクスチャ付きの 3D シェイプに色を掛けたいときは ``setFill(_:)`` を使ってください。
+    /// スケッチ側の `tint()` は `image()` に対しては従来どおり効きます（こちらは別経路）。
     public func setTint(_ color: Color) {
         capturedStyle.tintColor = color.simd
         capturedStyle.hasTint = true

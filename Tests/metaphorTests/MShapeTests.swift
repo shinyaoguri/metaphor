@@ -1174,3 +1174,122 @@ struct MShapeBuilderColorModeTests {
         expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
     }
 }
+
+// MARK: - setTint() が効かないことを黙って隠さない（#852）
+//
+// `MShape.setTint()` は `capturedStyle.tintColor` / `hasTint` に書くだけで、
+// **リポジトリ内のどこからも読まれていない**（描画時に style を復元する
+// `applyShapeStyle2D` / `applyShapeStyle3D` のどちらも渡していない）。
+//
+// 2D の MShape 経路にはテクスチャ描画自体が無く、3D のテクスチャは
+// `fillColor`（インスタンス色 / `uniforms.color`）を掛けて着色するので、
+// どちらの経路でも `setTint()` は何もしない。黙って無視せず一度だけ警告する。
+//
+// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+
+@Suite("MShape setTint diagnostics", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeSetTintDiagnosticTests {
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        return SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+    }
+
+    /// 塗りつぶした 2D の四角。
+    private func make2DSquare(_ ctx: SketchContext) -> MShape {
+        let s = ctx.createShape()
+        s.beginShape()
+        s.vertex(0, 0)
+        s.vertex(10, 0)
+        s.vertex(10, 10)
+        s.vertex(0, 10)
+        s.endShape(.close)
+        return s
+    }
+
+    /// 塗りつぶした 3D の三角形。
+    private func make3DTriangle(_ ctx: SketchContext) -> MShape {
+        let s = ctx.createShape()
+        s.beginShape(.triangles)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0.5, 1, 0)
+        s.endShape()
+        return s
+    }
+
+    @Test("drawing a 2D shape with a tint warns instead of ignoring it silently")
+    func tintOn2DShapeWarns() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        s.setTint(Color(r: 1, g: 0, b: 0))
+
+        #expect(s.didWarnTintIgnored == false, "描く前は未発火")
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored, "2D 経路の setTint() は黙って無視せず警告する")
+    }
+
+    @Test("drawing a 3D shape with a tint warns too — it is a no-op there as well")
+    func tintOn3DShapeWarns() throws {
+        let ctx = try makeContext()
+        let s = make3DTriangle(ctx)
+        s.setTint(Color(r: 0, g: 1, b: 0))
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored,
+                "3D のテクスチャは fillColor で着色するので setTint() は 3D でも効かない")
+    }
+
+    @Test("a shape that never sets a tint stays quiet")
+    func noTintNoWarning() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored == false, "setTint() を呼んでいないシェイプは警告しない")
+    }
+
+    @Test("disableStyle() suppresses the warning — the shape's style is not applied at all")
+    func disabledStyleStaysQuiet() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        s.setTint(Color(r: 1, g: 0, b: 0))
+        s.disableStyle()
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored == false,
+                "styleEnabled == false ならシェイプのスタイル自体が使われないので警告の出番も無い")
+    }
+
+    @Test("the warning fires once however many times the shape is drawn")
+    func warnsOnlyOnce() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        s.setTint(Color(r: 1, g: 0, b: 0))
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored)
+        // 毎フレーム描かれるので、2 回目以降に出し続けるとログが埋まる。
+        // フラグが立ったままで、警告経路へ再突入しないこと。
+        s.didWarnTintIgnored = false
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored,
+                "フラグを戻せば再度出る = 抑止しているのはフラグだけで、条件判定は毎回通る")
+    }
+
+    @Test("setTint records the color even though nothing reads it back")
+    func tintIsStillRecorded() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        #expect(s.capturedStyle.hasTint == false)
+
+        s.setTint(Color(r: 1, g: 0, b: 0))
+        #expect(s.capturedStyle.hasTint)
+        #expect(s.capturedStyle.tintColor.x == 1)
+    }
+}
