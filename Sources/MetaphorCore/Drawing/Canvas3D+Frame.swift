@@ -33,7 +33,7 @@ extension Canvas3D {
 
         // 各フレームで Processing 風のデフォルトに投影をリセット。
         // カスタム投影には毎フレーム perspective()/ortho() を呼ぶ必要があります。
-        let defaultZ = (height / 2) / tan(Canvas3D.defaultFov / 2)
+        let defaultZ = defaultCameraZ
         self.fov = Canvas3D.defaultFov
         self.nearPlane = defaultZ / 10
         self.farPlane = defaultZ * 10

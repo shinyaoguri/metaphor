@@ -300,7 +300,7 @@ the Processing original with every number left alone.
 | — | `plane(_ width: Float, _ height: Float)`, `cone(radius:height:detail:)`, `cylinder(radius:height:detail:)`, `torus(ringRadius:tubeRadius:detail:)` — sizes are required arguments (no defaults), and like `box` / `sphere` they are pixel sizes under the default camera |
 | `camera(ex, ey, ez, cx, cy, cz, ux, uy, uz)` | `camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` |
 | `perspective(fov, aspect, near, far)` | `perspective(fov: Float = .pi / 3, near: Float = 0.1, far: Float = 10000)` — aspect comes from the canvas |
-| `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to the canvas box |
+| `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to a canvas-sized box centred on the default camera (`-width/2 … width/2`, `-height/2 … height/2`), so a bare `ortho()` keeps 2D pixel coordinates |
 | `beginCamera()` / `endCamera()` / `frustum()` | — not implemented ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | `lights()` / `noLights()` | `lights()` / `noLights()` — `lights()` **clears** the light list first, then installs one directional plus ambient, so call it before your own lights, not after |
 | `ambientLight(r, g, b)` | `ambientLight(_ r: Float, _ g: Float, _ b: Float)`, plus `ambientLight(_ strength: Float)` |

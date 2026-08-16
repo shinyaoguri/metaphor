@@ -277,7 +277,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noTexture()` -- アクティブなテクスチャを解除します。
 - `func noTint()` -- 画像のティントを解除します。
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（``draw()`` 内で呼び出してください）。
-- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float = -1000, far: Float = 1000)` -- 正射影を設定します。
+- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- 正射影を設定します。
 - `func pbr(_ enabled: Bool)` -- PBR レンダリングモードを明示的に切り替えます。
 - `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- 透視投影を設定します。
 - `func plane(_ width: Float, _ height: Float)` -- 平面を描画します。
