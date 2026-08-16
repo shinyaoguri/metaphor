@@ -119,6 +119,16 @@ struct BlendModeTests {
         #expect(desc.rgbBlendOperation == .reverseSubtract)
     }
 
+    /// 減算するのは色だけで、アルファは下地のものを残す（#800）。
+    @Test("subtract does not subtract the alpha channel")
+    func subtractKeepsDestinationAlpha() {
+        let desc = MTLRenderPipelineColorAttachmentDescriptor()
+        BlendMode.subtract.apply(to: desc)
+        #expect(desc.alphaBlendOperation == .add)
+        #expect(desc.sourceAlphaBlendFactor == .zero)
+        #expect(desc.destinationAlphaBlendFactor == .one)
+    }
+
     @Test("lightest uses max operation")
     func lightestOperation() {
         let desc = MTLRenderPipelineColorAttachmentDescriptor()

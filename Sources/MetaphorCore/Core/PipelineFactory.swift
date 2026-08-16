@@ -174,10 +174,14 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
         case .subtract:
             attachment.isBlendingEnabled = true
             attachment.rgbBlendOperation = .reverseSubtract
-            attachment.alphaBlendOperation = .reverseSubtract
             attachment.sourceRGBBlendFactor = .sourceAlpha
             attachment.destinationRGBBlendFactor = .one
-            attachment.sourceAlphaBlendFactor = .one
+            // 引くのは色であって不透明度ではない。以前は alpha も .reverseSubtract で
+            // final.a = dst.a - src.a となり、不透明どうしを重ねると 0 になって
+            // 描いた領域に穴が開いていた（PNG 書き出しや Syphon で透けて出る）。
+            // 「下地の色から引く」モードなので、下地の不透明度をそのまま残す。
+            attachment.alphaBlendOperation = .add
+            attachment.sourceAlphaBlendFactor = .zero
             attachment.destinationAlphaBlendFactor = .one
 
         case .lightest:
