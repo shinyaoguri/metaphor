@@ -6,8 +6,11 @@ extension Sketch {
 
     /// 3D カスタムシェイプの頂点記録を開始します。
     ///
-    /// 現在の `fill` は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の
-    /// 間で `fill` を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 現在の色は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の間で
+    /// 色を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 使われるのは面モード（`.polygon` / `.triangles` など）では `fill`、
+    /// **`.lines` / `.points` では `stroke`** です（Processing の LINES / POINTS と同じ。
+    /// `noStroke()` のときは `fill` に戻ります）。
     ///
     /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
