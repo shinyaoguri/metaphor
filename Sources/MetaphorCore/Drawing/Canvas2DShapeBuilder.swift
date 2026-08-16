@@ -263,15 +263,14 @@ extension Canvas2D {
     func drawPolygonShape(_ verts: [(Float, Float)], close: CloseMode) {
         if hasFill && verts.count >= 3 {
             if contourVertices.isEmpty {
-                let indices = EarClipTriangulator.triangulate(verts)
+                // 自己交差する頂点列（五芒星など）は nonzero winding で分解してから塗る。
+                let tess = EarClipTriangulator.triangulateNonZero(verts)
                 var i = 0
-                while i + 2 < indices.count {
-                    addTriangle(
-                        verts[indices[i]].0, verts[indices[i]].1,
-                        verts[indices[i + 1]].0, verts[indices[i + 1]].1,
-                        verts[indices[i + 2]].0, verts[indices[i + 2]].1,
-                        fillColor
-                    )
+                while i + 2 < tess.indices.count {
+                    let a = tess.vertices[tess.indices[i]]
+                    let b = tess.vertices[tess.indices[i + 1]]
+                    let c = tess.vertices[tess.indices[i + 2]]
+                    addTriangle(a.0, a.1, b.0, b.1, c.0, c.1, fillColor)
                     i += 3
                 }
             } else {
@@ -375,22 +374,31 @@ extension Canvas2D {
 
     func drawPolygonShapeEx(_ verts: [ExpandedVertex], close: CloseMode) {
         if hasFill && verts.count >= 3 {
-            let tuples = verts.map { $0.tuple }
-            let indices = EarClipTriangulator.triangulate(tuples)
+            let tess = EarClipTriangulator.triangulateNonZero(verts.map { $0.tuple })
             var i = 0
-            while i + 2 < indices.count {
-                let v0 = verts[indices[i]]
-                let v1 = verts[indices[i + 1]]
-                let v2 = verts[indices[i + 2]]
-                addVertex(v0.x, v0.y, v0.color ?? fillColor)
-                addVertex(v1.x, v1.y, v1.color ?? fillColor)
-                addVertex(v2.x, v2.y, v2.color ?? fillColor)
+            while i + 2 < tess.indices.count {
+                for offset in 0..<3 {
+                    let index = tess.indices[i + offset]
+                    let p = tess.vertices[index]
+                    addVertex(p.0, p.1, blendedColor(verts, tess.origins[index]))
+                }
                 i += 3
             }
         }
         if hasStroke && verts.count >= 2 {
             strokePolyline(verts.map { $0.tuple }, closed: close == .close)
         }
+    }
+
+    /// テッセレーションで増えた頂点（自己交差の交点）の色を、元の辺の両端から補間します。
+    private func blendedColor(
+        _ verts: [ExpandedVertex],
+        _ origin: EarClipTriangulator.VertexOrigin
+    ) -> SIMD4<Float> {
+        let from = verts[origin.from].color ?? fillColor
+        guard origin.from != origin.to else { return from }
+        let to = verts[origin.to].color ?? fillColor
+        return from + (to - from) * origin.t
     }
 
     func drawTrianglesShapeEx(_ verts: [ExpandedVertex]) {
