@@ -60,12 +60,13 @@ extension MShape {
     // MARK: - 3D 頂点
 
     /// 記録中のシェイプに3D頂点を追加します。
+    ///
+    /// 直近の `normal(_:_:_:)` の値を焼き込みます（`endShape()` まで持続。#876）。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecording else { return }
         kind = .path3D
         let normal = pendingNormal3D ?? SIMD3(0, 1, 0)
         vertices3D.append(ShapeVertex3D(position: SIMD3(x, y, z), normal: normal))
-        pendingNormal3D = nil
     }
 
     /// テクスチャ座標付きの3D頂点を追加します。
@@ -75,16 +76,16 @@ extension MShape {
         let normal = pendingNormal3D ?? SIMD3(0, 1, 0)
         vertices3D.append(ShapeVertex3D(
             position: SIMD3(x, y, z), normal: normal, uv: SIMD2(u, v)))
-        pendingNormal3D = nil
     }
 
-    /// 次の3D頂点に適用する法線ベクトルを設定します。
+    /// 以降の 3D 頂点に適用する法線ベクトルを設定します。
     ///
-    /// - Important: **次に積む 1 頂点にだけ**効きます（イミディエイトの
-    ///   ``Canvas3D/normal(_:_:_:)`` は `endShape()` まで持続するので非対称です。
-    ///   統一は #876）。全頂点に同じ法線を入れたいなら頂点ごとに呼び直してください。
+    /// 次に `beginShape()` を呼ぶか `endShape()` で記録を閉じるまで持続します。
+    /// イミディエイトの ``Canvas3D/normal(_:_:_:)`` と同じ範囲で、Processing の
+    /// `PShape.normal()` とも同じです（#876。以前は**次の 1 頂点だけ**でした）。
+    /// 頂点ごとに違う法線を入れたいなら、これまでどおり頂点ごとに呼び直します。
     /// - Note: 一度でも呼ぶと**そのシェイプ全体で**面法線の自動計算が止まります（#738）。
-    ///   呼ばなかった頂点は既定の (0, 1, 0) のままになります。
+    ///   最初の `normal()` より前に積んだ頂点は既定の (0, 1, 0) のままになります。
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         pendingNormal3D = SIMD3(nx, ny, nz)
         usedExplicitNormal3D = true
@@ -206,6 +207,10 @@ extension MShape {
                 warnContourIn3DOnce()
             }
         }
+
+        // `normal()` の持続はこのシェイプの中だけ（イミディエイトの
+        // `Canvas3D.endShape()` と同じ位置で畳む。#876）。
+        pendingNormal3D = nil
 
         // ジオメトリは最初の描画時に遅延構築される
         isDirty = true

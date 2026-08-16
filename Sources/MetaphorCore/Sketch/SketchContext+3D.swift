@@ -72,7 +72,7 @@ extension SketchContext {
         }
     }
 
-    /// 次の 3D 頂点の法線ベクトルを設定します。
+    /// 以降の 3D 頂点の法線ベクトルを設定します（`endShape3D()` まで持続。#876）。
     /// - Parameters:
     ///   - nx: 法線の x 成分。
     ///   - ny: 法線の y 成分。

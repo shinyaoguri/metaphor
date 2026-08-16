@@ -93,8 +93,8 @@ final class StaticParticlesRetained: Sketch {
             SIMD2(-h, -h), SIMD2(h, -h), SIMD2(h, h),
             SIMD2(-h, -h), SIMD2(h, h), SIMD2(-h, h),
         ]
+        s.normal(0, 0, 1)  // 以降の頂点に持続する（原典と同じ 1 回）
         for o in corners {
-            s.normal(0, 0, 1)  // normal() は次の 1 頂点にだけ効く
             s.vertex(c.x + o.x, c.y + o.y, c.z)
         }
     }
