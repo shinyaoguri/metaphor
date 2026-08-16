@@ -1024,6 +1024,9 @@ public final class MetaphorRenderer: NSObject {
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
+                // レンダーターゲットの中身は premultiplied（ADR-0012）。宣言を実体に
+                // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
+                // **ファイルは straight** になる（PNG に premultiplied は無い）。
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             ) else { return nil }
             return ctx.makeImage()
