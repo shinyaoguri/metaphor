@@ -114,11 +114,8 @@ extension Canvas3D {
 
         guard !shapeVertices3D.isEmpty else { return }
 
-        // polygon/triangles モードで法線が明示的に設定されていない場合、自動計算
-        if pendingNormal == nil {
-            autoComputeNormals()
-        }
-
+        // `normal()` を書かなかったシェイプの法線は、テッセレーション後の
+        // `drawShape3DIndexed()` が組み上がったインデックス列から入れる（#875）。
         switch shapeMode3D {
         case .polygon:
             drawShape3DPolygon(close: close)
@@ -139,39 +136,9 @@ extension Canvas3D {
 
     // MARK: - プライベート: 3D シェイプテッセレーション
 
-    // 3頂点ごとに面法線を計算
-    private func autoComputeNormals() {
-        var i = 0
-        while i + 2 < shapeVertices3D.count {
-            let p0 = shapeVertices3D[i].position
-            let p1 = shapeVertices3D[i + 1].position
-            let p2 = shapeVertices3D[i + 2].position
-            let edge1 = p1 - p0
-            let edge2 = p2 - p0
-            let n = simd_normalize(simd_cross(edge1, edge2))
-            let safeN = n.x.isNaN ? SIMD3<Float>(0, 1, 0) : n
-            shapeVertices3D[i].normal = safeN
-            shapeVertices3D[i + 1].normal = safeN
-            shapeVertices3D[i + 2].normal = safeN
-            i += 3
-        }
-    }
-
     // 単純な三角形ファンでポリゴンをテッセレーション（凸ポリゴン向け）
     private func drawShape3DPolygon(close: CloseMode) {
         guard shapeVertices3D.count >= 3 else { return }
-
-        // 最初の3頂点から面法線を計算し、明示的な法線がない場合は全頂点へ適用
-        if pendingNormal == nil {
-            let p0 = shapeVertices3D[0].position
-            let p1 = shapeVertices3D[1].position
-            let p2 = shapeVertices3D[2].position
-            let faceNormal = simd_normalize(simd_cross(p1 - p0, p2 - p0))
-            let safeNormal = faceNormal.x.isNaN ? SIMD3<Float>(0, 1, 0) : faceNormal
-            for i in shapeVertices3D.indices {
-                shapeVertices3D[i].normal = safeNormal
-            }
-        }
 
         var indices: [Int] = []
         indices.reserveCapacity((shapeVertices3D.count - 2) * 3)
@@ -222,8 +189,13 @@ extension Canvas3D {
     // テッセレーション済みのインデックス列を頂点列へ展開して描画する。
     // 三角形化を「元頂点の並べ替え」として表現することで、位置・法線・カラーと
     // UV（`shapeUVs3D`）が同じ添字で必ず一緒に運ばれる。
+    //
+    // `normal()` を書かなかったシェイプへ面法線を入れるのもここ（#875）。
+    // 面モードはすべてここへ合流するので、規則が 1 箇所で済む。
     private func drawShape3DIndexed(_ indices: [Int]) {
         guard !indices.isEmpty else { return }
+
+        applyAutoNormals(indices)
 
         // UV を宣言していても texture() 未設定なら通常の fill 経路（Processing 互換）
         guard shapeHasExplicitUV, currentTexture != nil else {
@@ -244,6 +216,28 @@ extension Canvas3D {
             uvVertices.append(Vertex3DTextured(position: v.position, normal: v.normal, uv: shapeUVs3D[i]))
         }
         drawShape3DTexturedVertices(vertices, uvVertices: uvVertices)
+    }
+
+    // `normal()` を一度も書かなかったシェイプへ面法線を入れる（#875）。
+    //
+    // 規則はリテインド側（`MShapeBuilder.buildFillMesh3D()`）と同じ共有ヘルパー
+    // `FaceNormals` 1 つだけ。組み上がったインデックス列を 1 三角形ずつ読むので、
+    // `.polygon` / `.triangles` / `.triangleStrip` / `.triangleFan` が同じ経路で
+    // 片付く。旧実装は「3 頂点ごと」（`i += 3`）で、ストリップ／ファンの topology に
+    // 合わず後ろの頂点が既定値のまま取り残されていた。
+    //
+    // `.lines` / `.points` はここを通らない（面のインデックス列を持たない）ので、
+    // 既定の (0, 1, 0) のまま。線・点に面法線は無いので、旧実装が入れていた
+    // 「3 頂点ごとの面法線」という幾何的に無意味な値は引き継がない。
+    private func applyAutoNormals(_ indices: [Int]) {
+        guard pendingNormal == nil else { return }
+
+        let normals = FaceNormals.compute(
+            positions: shapeVertices3D.map(\.position),
+            indices: indices.map { UInt32($0) })
+        for i in shapeVertices3D.indices {
+            shapeVertices3D[i].normal = normals[i]
+        }
     }
 
     // 線分を細い三角形ペアとして描画（セグメントあたり2頂点）
