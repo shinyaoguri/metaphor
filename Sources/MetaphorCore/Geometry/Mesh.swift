@@ -176,18 +176,55 @@ extension Mesh {
     static func clamped(_ n: Int, min lowerBound: Int) -> Int { max(n, lowerBound) }
 }
 
+// MARK: - 寸法の検証
+
+extension Mesh {
+    /// 非有限な寸法（`NaN` / `±infinity`）を弾きます（Issue #894）。
+    ///
+    /// プリミティブの頂点数は寸法に依らず決まる（box は 24、plane は 4、それ以外は分割数だけで
+    /// 決まる）ため、`NaN` を渡してもバッファ長は変わらず**落ちません**。代わりに全頂点が
+    /// 非有限のメッシュが黙って出来上がり、描いても何も出ないまま `Canvas3D` のメッシュ
+    /// キャッシュへ `"mesh_box_nan_nan_nan"` というキーで載って居座ります（キーは寸法の
+    /// 文字列補間なので、符号や signaling の違う `NaN` も全部同じキーに畳まれます）。
+    ///
+    /// 分割数（#445）は下限へ丸めますが、寸法は**丸めずに弾きます**。分割数には
+    /// 「閉じた輪を作れる最小値 = 3」という明らかに正しい代わりの値がある一方、`NaN` の
+    /// 長さに相当する値は無く、勝手に 1 などへ丸めるとスケッチが頼んでいないジオメトリを
+    /// 黙って作ることになるためです。0 や負の寸法は潰れたメッシュ・鏡像として意味があるので
+    /// そのまま通します。
+    ///
+    /// 生成側（`createBoxMesh()` 等）はこの throw を `cachedMesh` が受けて `nil` を返すため、
+    /// キャッシュにも載りません（キャッシュへの挿入は `create()` が成功した後だけ）。
+    ///
+    /// - Throws: 非有限な寸法があれば ``MetaphorError/invalidParameter(_:)``
+    static func requireFiniteDimensions(
+        _ dimensions: KeyValuePairs<String, Float>, of shape: String
+    ) throws {
+        for (name, value) in dimensions where !value.isFinite {
+            let message = "Mesh.\(shape): \(name) must be finite (got \(value))"
+            metaphorWarning(message)
+            throw MetaphorError.invalidParameter(message)
+        }
+    }
+}
+
 // MARK: - Box
 
 extension Mesh {
     /// 24頂点、36インデックス、フラット法線、UV座標を持つボックスメッシュを作成します。
     ///
-    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
+    /// 寸法は有限でなければなりません（0 や負は通ります）。
+    ///
+    /// - Throws: 寸法が非有限（`NaN` / `±infinity`）の場合 ``MetaphorError/invalidParameter(_:)``、
+    ///   頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func box(
         device: MTLDevice,
         width: Float = 1,
         height: Float = 1,
         depth: Float = 1
     ) throws -> Mesh {
+        try requireFiniteDimensions(
+            ["width": width, "height": height, "depth": depth], of: "box")
         let hw = width / 2, hh = height / 2, hd = depth / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
 
@@ -254,15 +291,17 @@ extension Mesh {
 extension Mesh {
     /// スムーズ法線とUV座標を持つUVスフィアメッシュを作成します。
     ///
-    /// `segments` / `rings` は下限（3 / 2）へ丸められます。
+    /// `segments` / `rings` は下限（3 / 2）へ丸められます。`radius` は有限でなければなりません。
     ///
-    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
+    /// - Throws: `radius` が非有限（`NaN` / `±infinity`）の場合 ``MetaphorError/invalidParameter(_:)``、
+    ///   頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func sphere(
         device: MTLDevice,
         radius: Float = 0.5,
         segments: Int = 24,
         rings: Int = 16
     ) throws -> Mesh {
+        try requireFiniteDimensions(["radius": radius], of: "sphere")
         let segments = clamped(segments, min: minimumSegments)
         let rings = clamped(rings, min: minimumRings)
         let white = SIMD4<Float>(1, 1, 1, 1)
@@ -315,12 +354,16 @@ extension Mesh {
 extension Mesh {
     /// +Z法線とUV座標を持つXY平面メッシュを作成します。
     ///
-    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
+    /// 寸法は有限でなければなりません（0 や負は通ります）。
+    ///
+    /// - Throws: 寸法が非有限（`NaN` / `±infinity`）の場合 ``MetaphorError/invalidParameter(_:)``、
+    ///   頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func plane(
         device: MTLDevice,
         width: Float = 1,
         height: Float = 1
     ) throws -> Mesh {
+        try requireFiniteDimensions(["width": width, "height": height], of: "plane")
         let hw = width / 2, hh = height / 2
         let normal = SIMD3<Float>(0, 0, 1)
         let white = SIMD4<Float>(1, 1, 1, 1)
@@ -348,15 +391,17 @@ extension Mesh {
 extension Mesh {
     /// 側面、上面キャップ、底面キャップ、UV座標を持つシリンダーメッシュを作成します。
     ///
-    /// `segments` は下限 3 へ丸められます。
+    /// `segments` は下限 3 へ丸められます。寸法は有限でなければなりません。
     ///
-    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
+    /// - Throws: 寸法が非有限（`NaN` / `±infinity`）の場合 ``MetaphorError/invalidParameter(_:)``、
+    ///   頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func cylinder(
         device: MTLDevice,
         radius: Float = 0.5,
         height: Float = 1,
         segments: Int = 24
     ) throws -> Mesh {
+        try requireFiniteDimensions(["radius": radius, "height": height], of: "cylinder")
         let segments = clamped(segments, min: minimumSegments)
         let hh = height / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
@@ -444,15 +489,17 @@ extension Mesh {
 extension Mesh {
     /// 側面、底面キャップ、UV座標を持つコーンメッシュを作成します。
     ///
-    /// `segments` は下限 3 へ丸められます。
+    /// `segments` は下限 3 へ丸められます。寸法は有限でなければなりません。
     ///
-    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
+    /// - Throws: 寸法が非有限（`NaN` / `±infinity`）の場合 ``MetaphorError/invalidParameter(_:)``、
+    ///   頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func cone(
         device: MTLDevice,
         radius: Float = 0.5,
         height: Float = 1,
         segments: Int = 24
     ) throws -> Mesh {
+        try requireFiniteDimensions(["radius": radius, "height": height], of: "cone")
         let segments = clamped(segments, min: minimumSegments)
         let hh = height / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
@@ -518,9 +565,10 @@ extension Mesh {
 extension Mesh {
     /// パラメトリックサーフェスとUV座標を使用してトーラスメッシュを作成します。
     ///
-    /// `segments` / `tubeSegments` は下限 3 へ丸められます。
+    /// `segments` / `tubeSegments` は下限 3 へ丸められます。半径は有限でなければなりません。
     ///
-    /// - Throws: 頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
+    /// - Throws: 半径が非有限（`NaN` / `±infinity`）の場合 ``MetaphorError/invalidParameter(_:)``、
+    ///   頂点バッファを確保できなかった場合 ``MetaphorError/bufferCreationFailed(size:)``
     public static func torus(
         device: MTLDevice,
         ringRadius: Float = 0.5,
@@ -528,6 +576,8 @@ extension Mesh {
         segments: Int = 24,
         tubeSegments: Int = 16
     ) throws -> Mesh {
+        try requireFiniteDimensions(
+            ["ringRadius": ringRadius, "tubeRadius": tubeRadius], of: "torus")
         let segments = clamped(segments, min: minimumSegments)
         let tubeSegments = clamped(tubeSegments, min: minimumSegments)
         let white = SIMD4<Float>(1, 1, 1, 1)
