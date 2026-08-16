@@ -204,10 +204,29 @@ struct SelfIntersectingDegenerateTests {
         #expect(tess.covers((5, 5)))
     }
 
-    @Test("頂点が辺の上に乗る接触交差でも面が分かれる")
-    func vertexTouchingEdgeIsResolved() {
-        // 正方形の上辺 (0,10)-(10,10) の中点 (5,10) に、下から三角の突起が触れる。
-        // 交差はしないが辺の上に頂点が乗る（T 字接触）。
+    @Test("交点が既存の頂点にぴったり重なっても辺が割れる（T 字接触）")
+    func vertexOnEdgeInteriorSplitsThatEdge() {
+        // 蝶ネクタイの交点 (5,5) を、片方の辺の頂点としても書いた形。
+        // 閉じる辺 (10,10)-(0,0) はその点を内部に通るので、乗られた側だけを
+        // 割らないと平面分割にならない（交点は既存の頂点にまとめる）。
+        let polygon: [(Float, Float)] = [
+            (0, 0), (10, 0), (5, 5), (0, 10), (10, 10)
+        ]
+        let tess = EarClipTriangulator.triangulateNonZero(polygon)
+        #expect(tess.isWellFormed)
+        // (5,5) は既にある頂点なので、交点として増えない。
+        #expect(tess.vertices.count == 5)
+        #expect(tess.covers((5, 2)))    // 下のループ
+        #expect(tess.covers((5, 8)))    // 上のループ
+        #expect(!tess.covers((1, 5)))   // 左の空き
+        #expect(!tess.covers((9, 5)))   // 右の空き
+        #expect(abs(tess.totalArea - 50) < 1e-2)
+    }
+
+    @Test("辺の途中に突起が接しても面が分かれる")
+    func spikeTouchingAtSharedVertexIsResolved() {
+        // 正方形の上辺を (5,10) で折り、そこから三角の突起が生える。
+        // 頂点が 2 度現れる（座標が一致する頂点）ケース。
         let polygon: [(Float, Float)] = [
             (0, 0), (10, 0), (10, 10), (5, 10), (7, 14), (3, 14), (5, 10), (0, 10)
         ]
