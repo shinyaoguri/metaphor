@@ -25,12 +25,27 @@ struct PostProcessParams {
 /// カスタムエフェクトを作成するにはこのプロトコルを実装してください。組み込みエフェクトには
 /// ``BloomEffect``、``BlurEffect``、``InvertEffect``、``GrayscaleEffect``、
 /// ``VignetteEffect``、``ChromaticAberrationEffect``、``ColorGradeEffect`` があります。
+///
+/// ## アルファの契約
+///
+/// **`input` は premultiplied alpha で入ってきます。`output` にも premultiplied alpha を
+/// 書いてください**（ADR-0012 の規範 5）。ポストプロセスの中間テクスチャはすべて内部表現なので、
+/// straight へ割り戻す必要はありません。
+///
+/// - RGB だけを変えて α を素通しする実装（ビネット・カラーグレード等）は、premultiplied の
+///   ままで正しく動きます。
+/// - **α を定数（`1.0` など）で上書きしないでください**。透明な領域が不透明を名乗ることになり、
+///   後段の合成やぼかしが壊れます。
+/// - ぼかし・縮小は premultiplied のまま平均するのが正解です（straight のまま平均すると
+///   透明画素の色が混ざります）。
 @MainActor
 public protocol PostEffect: AnyObject {
     /// このエフェクトの表示名
     var name: String { get }
 
     /// `input` から読み取り、結果を `output` に書き込んでこのエフェクトを適用します。
+    ///
+    /// `input` / `output` とも premultiplied alpha です（ADR-0012）。
     func apply(
         input: MTLTexture, output: MTLTexture,
         commandBuffer: MTLCommandBuffer, context: PostEffectContext
