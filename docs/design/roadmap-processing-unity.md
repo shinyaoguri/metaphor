@@ -54,6 +54,52 @@
 
 この所見から作品軸と「作品トラック」（Epic J/K/L）を追加した。
 
+## レビュー所見の追補（2026-08-16 パリティ再監査）
+
+Phase 1 完了・Epic A/E/F の消化から時間が経ったため、**「標準ライブラリとして p5.js / Processing に足りないものは何か」を機械的に洗い直した**。2026-07-30 の「主要ギャップ」表（上）は当時の所見としてそのまま残し、本節が現在値の正典。
+
+**手法**（再現可能。次回も同じ手順で差分だけ見ればよい）:
+
+- Processing 4 のリファレンス全 293 項目 = `processing/processing-docs` の `content/api_en/*.xml`（`_` を含まないファイル名がトップレベル API）
+- p5.js 2.x の公開 API 全 343 項目 = `processing/p5.js` の `docs/parameterData.json`（`p5` キー配下がグローバル関数、他キーがクラスメソッド）
+- metaphor 側は `llms.txt` から識別子を抽出して小文字で突合し、**同名なしの候補を 1 件ずつ実装ソースで裏取り**（名前違い・Swift 標準での代替・非該当を人手で除去）
+
+**結論: 描画の語彙はほぼ埋まっている。** 同名なしは Processing 115 / p5 183 だが、大半は Swift 標準で代替（`abs`/`sin`/`sort`/`split`…）・名前違い（`mouseWheel`→`mouseScrolled`、`keyIsDown`→`isKeyDown`、`loadJSONObject`→`loadJSON`）・非該当（DOM・モバイルセンサ・Web ストレージ）。実質のギャップは**コア API の周辺 6 群**と**同梱ライブラリ 4 本**に集中する。
+
+### コア API の実質ギャップ
+
+| 群 | 内容 | 受け皿 |
+|---|---|---|
+| 色の分解 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()`。`Color` は HSB→RGB の一方向のみで逆変換が無い | [#811](https://github.com/shinyaoguri/metaphor/issues/811)（新規） |
+| キャンバスのピクセル | `get(x,y)` / `get(x,y,w,h)` / `set(x,y,c)`。`MImage` にはあるがキャンバス版が無い | [#812](https://github.com/shinyaoguri/metaphor/issues/812)（新規） |
+| 2D 形状 | `quadraticVertex` / `bezierDetail` / `shapeMode`。調査中に **`bezier()` だけ分割数 24 固定・`bezierVertex()` は `curveDetail`(20) 依存**という食い違いも判明 | [#813](https://github.com/shinyaoguri/metaphor/issues/813)（新規） |
+| 3D の逆変換 | `modelX/Y/Z`。ADR-0007 が Follow-up に明記したまま未起票だった | [#814](https://github.com/shinyaoguri/metaphor/issues/814)（新規） |
+| 3D のパリティ残り | `ambient()` / `textureMode` / `textureWrap` / `lightFalloff` / `lightSpecular` / `beginCamera` / `frustum`。`ambient()` は uniform 側（`currentMaterial.ambientColor`）が既にあり口を開けるだけ | [#815](https://github.com/shinyaoguri/metaphor/issues/815)（新規） |
+| テキストのスタイル | p5 の `textStyle` / `textWrap` / `textBounds`。太字は `textFont("Helvetica Neue Bold")` で**実は出せる**（実測）が未文書 | [#816](https://github.com/shinyaoguri/metaphor/issues/816)（新規） |
+| canvas 全体の `filter()` / `blend()` | 現状は `filter(_ image:_ type:)`（画像単体）と postFX のみ | Phase 2 に既載・**未起票** |
+| データ IO の小物 | `loadXML`/`saveXML`・`loadBytes`/`saveBytes`・`createReader`/`createWriter`・`nf`/`nfc`/`nfp`/`nfs`/`hex`/`binary` | 需要待ち（JSON/Table/Strings は Phase 1 #278 で充足） |
+| 画像からの IBL | p5 の `imageLight()` / `panorama()` 相当。`environment()` はプリセット 3 種のみ（G3b #710） | Epic G の残り（G2/G4 と同じ「AI が届く絵の天井」側） |
+| 意図的な非目標 | `pixelDensity` / `windowResized` / `resizeCanvas` / `exit` / `delay` / `thread` / `hint` / `angleMode` / DOM 系 / センサ系 | 非目標（移行ガイドに明記済み） |
+
+### 同梱ライブラリ（Processing の Libraries / p5 のアドオン）
+
+| 標準 | metaphor | 判定 |
+|---|---|---|
+| Video（Capture / Movie） | `CaptureDevice` / `VideoPlayer` | ○（3D テクスチャに貼れない [#701](https://github.com/shinyaoguri/metaphor/issues/701)） |
+| **Sound / p5.sound** | `SoundFile`（再生・rate・gain）+ `AudioAnalyzer`（FFT・volume・beat） | **△ 最大のギャップ**。オシレータ・エンベロープ・フィルタ・Reverb/Delay・録音・pan・出力デバイス選択がすべて無い（`AVAudioSourceNode` の参照ゼロ） |
+| **Serial（Arduino）** | なし | × Phase 4 接続層 |
+| **Network（TCP Client/Server）** | OSC / MIDI のみ | × Phase 4。なお OSC/MIDI は Processing 標準を上回る |
+| SVG Export | `beginSVGRecord` | ○（image/text/gradient は落ちる → [#652](https://github.com/shinyaoguri/metaphor/issues/652)） |
+| PDF Export | なし | × Epic B の B3（Phase 4） |
+| **DXF Export** | なし | × **本監査まで記載が無かった**（下の Phase 4 に追記） |
+| p5.dom | `ParameterGUI` | 非該当・代替あり |
+
+音声は「解析と再生はできるが、音を**作れない**」状態で、p5.sound を前提にしたスケッチは移植できない。Phase 4 の「音声合成 minimal」がここに対応する。
+
+### 副産物: 移行ガイドの陳腐化
+
+[`docs/processing-migration-guide.md`](../processing-migration-guide.md) の「Not available yet」に、実装済みの項目が残っていた（`loadFont()`/`PFont`・`textToPoints`・`frameRate` の読み取り = `performance.fps`）。`#673` が `textToPoints` の 1 行だけを追跡していたが、実際の範囲はより広い。→ 同 Issue のスコープを広げて解消する。
+
 ## 戦略的判断（決定事項）
 
 1. **各フェーズ = フラッグシップ 1 つ + S/M パリティ束**。比率は Phase 1 ≈ 80% Processing / Phase 2 ≈ 50:50 / Phase 3 ≈ 80% Unity。S 項目は 3 層転送コストの償却のため同一 PR トレインに束ねる
@@ -136,9 +182,9 @@
 需要シグナル（ユーザー要望・作品制作での具体的必要・**AI 制作実験で実際に詰まったこと** — 2026-08-15 追加）が出たときのみ着手する。スケルタルアニメーション・3D 物理はこのゲートの典型対象: 「AI にゲームを作らせたら物理が無くて詰んだ」が出た時点で Jolt 等のラップを起票する（先回りで自作しない — 決定 6 と同じ規律）。
 
 - 3D 物理: Jolt 等のラップによる optional モジュール（**自作はしない**）
-- 音声合成 minimal（AVAudioSourceNode ベースの p5.sound-lite）
-- PDF 書き出し（SVG バックエンドの再利用）
-- WebSocket/HTTP モジュール
+- 音声合成 minimal（AVAudioSourceNode ベースの p5.sound-lite）。**欠落の具体は**（2026-08-16 の再監査で確定）オシレータ（`SinOsc`/`SawOsc`/`SqrOsc`/各種ノイズ）・エンベロープ（`Env`/ADSR）・フィルタ（Low/High/Band）・エフェクト（Reverb / Delay / Distortion）・録音・pan・出力デバイス選択と多チャンネル。**再生と解析（`SoundFile` / `AudioAnalyzer`）は実装済み**なので、足りないのは「音を作る」側だけ
+- PDF 書き出し（SVG バックエンドの再利用）/ DXF 書き出し（2026-08-16 追記。Processing は `beginRaw(DXF)` で 3D ジオメトリを吐く。需要は PDF より薄い見込み）
+- WebSocket/HTTP モジュール（Processing の Net ライブラリ相当 = TCP Client/Server も同じ受け皿。`loadJSON`/`loadStrings` の URL 取得は実装済みで、足りないのは POST と常時接続）
 - 接続層（2026-08-07 追記）: DMX/Art-Net・NDI 出力・シリアル（Arduino）・深度センサ/マルチタッチ入力・音声入出力デバイス選択と多チャンネル出力。出力系は `MetaphorOutputRegistry`、入力系は Tier 1 モジュール構造が受け皿で、コアに手を入れず optional モジュールで追加できる
 
 ### 作品トラック（フェーズ横断・2026-08-07 追加）
