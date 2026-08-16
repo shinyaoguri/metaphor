@@ -9,6 +9,22 @@
       "url": "https://i.gyazo.com/66c138c57b6838b7a60c9d58b222b5eb.png",
       "sha256": "2d3945246ced73e159f71b2f221750b95c8e8ebb9ee8e58b10a9e321d79249e6"
     },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::beginContour()": {
+      "symbol": "beginContour()",
+      "snippetHash": "e5f2681c9503eab5ec33a2e35019a8eb78f88f377218ff9c8fc08c0c01971ac7",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/0589e9f453959e2667e5a33fb94cf8a4.png",
+      "sha256": "6adc27bae0395dc0d83a364e72fa74264cc64df3865877e727f53cc7c4fffc27"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::beginShape(_:)": {
+      "symbol": "beginShape(_:)",
+      "snippetHash": "758ee4e503963995a819ba7cdcc1a7bd9f3a7d9034d024dcfaf2450deb094536",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/a10e43fb6502ebfdf514b7598cbf1c5c.png",
+      "sha256": "dd4f499484f7375a58b8c4d44cff7ac5ba17b43fe49e02740207c34aed8bfcb1"
+    },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezier(_:_:_:_:_:_:_:_:)": {
       "symbol": "bezier(_:_:_:_:_:_:_:_:)",
       "snippetHash": "eaffd01274e2842f1a1383f72012e4c56b1f9f5c4d0b357717d471f66d06cf6e",
@@ -17,6 +33,14 @@
       "url": "https://i.gyazo.com/0b721460f802e496b860f974378c500c.png",
       "sha256": "5fa41fc4e609b3fa19a0f59337d59605abcf045dac2e55e0605c115472269c07"
     },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezierVertex(_:_:_:_:_:_:)": {
+      "symbol": "bezierVertex(_:_:_:_:_:_:)",
+      "snippetHash": "94d2d31036e23778ea213a202009451ded85f8c6b58d226a1c70298b9717bf05",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/96c2d0ca7b953a80922e8477d611243e.png",
+      "sha256": "5a2b3886829a0c3db9c13f0b0f57a50ce5711649d7d6bca70890684394e1ec36"
+    },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::circle(_:_:_:)": {
       "symbol": "circle(_:_:_:)",
       "snippetHash": "fc8a717cb4143315c5f27e14d7ade99585715431d8672ca14dcb631cbb101f88",
@@ -24,6 +48,14 @@
       "height": 360,
       "url": "https://i.gyazo.com/5db1a81abf5604a4ee8a316406fc5049.png",
       "sha256": "a4557fc6b2a4311b635bfe920be7a0461e6f5ab8b8ed29f2a00c3858473de4b8"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::curveVertex(_:_:)": {
+      "symbol": "curveVertex(_:_:)",
+      "snippetHash": "5b20f38e91aefc84a55c93f8165432469e136a57e25aea95425134e4384b5557",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/46e0b074f4363c0b55f426584e360940.png",
+      "sha256": "57f5fdff22c97742bcdb10c99395a97e452b4ed10ca3aa5fdc30ec27893ad16f"
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::ellipse(_:_:_:_:)": {
       "symbol": "ellipse(_:_:_:_:)",
@@ -56,6 +88,14 @@
       "height": 360,
       "url": "https://i.gyazo.com/3878c966403fc6876992923c40bb27bd.png",
       "sha256": "ef5289e56238b0bdb07d837a042a85bada45d9f5c3de3fa3ee83c2587a8f35cb"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::push()": {
+      "symbol": "push()",
+      "snippetHash": "c4f83b824647dcd9a8799f439fa37da4419ccfa09fe9444a5fb7add229c53655",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/ed6c97031c145c2561123ddf7fa4d8ad.png",
+      "sha256": "4c647eac579e6760ac7253d7b20bdca205a2a5ae97417e6961185f4510f59cdf"
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::quad(_:_:_:_:_:_:_:_:)": {
       "symbol": "quad(_:_:_:_:_:_:_:_:)",
@@ -116,6 +156,30 @@
       "url": "https://i.gyazo.com/d9dc00c2281d603324e5f7997a5e2868.png",
       "sha256": "14ae9ac06ec57493595bde916dfaeb6fc0c5a3399d3bfc23ae114382aef35c3c"
     },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::scale(_:_:)": {
+      "symbol": "scale(_:_:)",
+      "snippetHash": "9e435601a0f88a84c21e5b910c621f16021884b80e68fadc4f8ce53de577bea0",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/6582ff8b7eb8b8487a4d49b9a3cb4459.png",
+      "sha256": "09b37b6456bcf6a5cac378ba26a0b8595691db0571f7766b7fd51281ec5c3834"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::shearX(_:)": {
+      "symbol": "shearX(_:)",
+      "snippetHash": "8e0f9a0106a3839747c33329d571f62f68f38d49b3c750c85bdf21d6b3808e55",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/b3c4494e7b7eb88b4bd839c0ced4d974.png",
+      "sha256": "d43a74afbb194e00b8b41db42eff9c5a7f57a7f14d5027506b51b2d78dc7ff01"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::shearY(_:)": {
+      "symbol": "shearY(_:)",
+      "snippetHash": "ac1eafb602c4c746c2151c4febb5e85adf05ff3be280ef6e32f71727cbdb5759",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/a5344a38d3dfaf3943dba560232c20a8.png",
+      "sha256": "b6fbe977700200289c80127f2f5b5a603ed20ce64892c98e02befe34c923b455"
+    },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::square(_:_:_:)": {
       "symbol": "square(_:_:_:)",
       "snippetHash": "350b9200400ed1cb2c948a7f89702b1ee405430e210ac5135a91951ca3a5dc68",
@@ -124,6 +188,14 @@
       "url": "https://i.gyazo.com/e39d66e012449b14a5ae4cdb4d346578.png",
       "sha256": "8d5d96a0ef79100789e857f8bf1a538523b127e0d83dbba92abc9208ee292aa2"
     },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::translate(_:_:)": {
+      "symbol": "translate(_:_:)",
+      "snippetHash": "ce0762ff6e4013ebb6f786b8c3d0fe3ae5671bc3b6c92ed8b183952812e14580",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/99b0ad0fcee4710064a4f8b5f0d59146.png",
+      "sha256": "fb5d802fb404286bc8a23560f717bdc594bef79329a593d977fe6f6ebab76119"
+    },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::triangle(_:_:_:_:_:_:)": {
       "symbol": "triangle(_:_:_:_:_:_:)",
       "snippetHash": "7496cc006961361181d581a321e2cc729ba765cb59ff12da3f46fb743ef437ba",
@@ -131,6 +203,14 @@
       "height": 360,
       "url": "https://i.gyazo.com/9f04166a0245ba36661e30099eae1e45.png",
       "sha256": "285cca406bc8b3aed9b6e8f8d0409073c8ec3110be4bc7442a9fc0ce88f82a07"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::vertex(_:_:)": {
+      "symbol": "vertex(_:_:)",
+      "snippetHash": "f6f9744409be6a5fabee520686cc9991fcae1824e4b0c84d77073ef71c5db354",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/050fa166d5c66c43957cb13a43d68b44.png",
+      "sha256": "9b1f22c9e483d0ac37a9a6e1a91fc76e9cb84978f161e82aaa985542a1cbd0d0"
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::blendMode(_:)": {
       "symbol": "blendMode(_:)",
