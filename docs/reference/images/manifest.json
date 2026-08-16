@@ -282,11 +282,15 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::beginShape(_:)": {
       "symbol": "beginShape(_:)",
-      "snippetHash": "758ee4e503963995a819ba7cdcc1a7bd9f3a7d9034d024dcfaf2450deb094536",
+      "snippetHash": "912bdfff33b140787e6984330ff8baf45b20c31329de487a794b4d1eff7ef041",
+      "provenance": {
+        "commit": "7ad2b3eafc2008832b7d1720dc4e0e7e6211a685",
+        "dirty": true
+      },
       "width": 480,
       "height": 360,
-      "url": "https://i.gyazo.com/a10e43fb6502ebfdf514b7598cbf1c5c.png",
-      "sha256": "dd4f499484f7375a58b8c4d44cff7ac5ba17b43fe49e02740207c34aed8bfcb1"
+      "url": "https://i.gyazo.com/d965e3aa16851653671ff363b8edd959.png",
+      "sha256": "a93c16f0908ceafb5bf034799999c10e2b15142c41ad333394d4818585879920"
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezier(_:_:_:_:_:_:_:_:)": {
       "symbol": "bezier(_:_:_:_:_:_:_:_:)",
