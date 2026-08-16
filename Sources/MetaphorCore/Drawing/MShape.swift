@@ -339,12 +339,13 @@ public final class MShape {
     /// beginShape() が呼ばれ、endShape() がまだ呼ばれていないかどうか。
     var isRecording: Bool = false
 
-    /// 次の3D頂点に適用する保留中の法線。
+    /// 以降の 3D 頂点に適用する法線（`beginShape()` から `endShape()` まで持続。#876）。
     var pendingNormal3D: SIMD3<Float>?
 
     /// 記録中に `normal()` が一度でも呼ばれたかどうか（#738）。
     /// 呼ばれていなければ `buildFillMesh3D()` が面法線を自動計算する。
-    /// `pendingNormal3D` は頂点を積むたびに nil へ戻るため、これとは別に持つ。
+    /// メッシュを組むのは `endShape()` より後（遅延構築）で、そのとき
+    /// `pendingNormal3D` は畳まれているため、これとは別に持つ。
     var usedExplicitNormal3D: Bool = false
 
     /// コンター定義内にいるかどうかを追跡。

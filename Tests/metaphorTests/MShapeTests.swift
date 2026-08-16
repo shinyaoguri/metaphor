@@ -316,7 +316,8 @@ struct MShapeBuilderTests {
         #expect(s.vertices3D.count == 3)
     }
 
-    @Test("normal sets pending normal for next 3D vertex")
+    // 持続範囲そのものは ShapeNormalScopeTests が固定する（#876）。
+    @Test("normal sets the normal for the 3D vertices that follow")
     func normalSetting() {
         let s = MShape(device: device, kind: .path2D)
         s.beginShape()
@@ -859,8 +860,8 @@ struct MShapeAutoNormalTests {
     func explicitNormalWins() throws {
         let s = MShape(device: device, kind: .path2D)
         s.beginShape(.triangles)
-        // リテインドの normal() は次の 1 頂点にしか効かないので毎回呼ぶ
-        // （持続範囲がイミディエイトと非対称なのは #738 とは別件）。
+        // 頂点ごとに呼んでも 1 回だけ呼んでも同じ（normal() は endShape() まで
+        // 持続する。#876）。ここは「頂点ごとに呼ぶ」書き方が壊れないことも兼ねる。
         s.normal(1, 0, 0)
         s.vertex(0, 0, 0)
         s.normal(1, 0, 0)
