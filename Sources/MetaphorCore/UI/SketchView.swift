@@ -11,6 +11,11 @@ import MetalKit
 /// ``SketchContext/frameRate(_:)`` によるアニメーション制御も、スタンドアロン実行
 /// （`Sketch` プロトコル）と同じように効きます(#808)。
 ///
+/// setup クロージャ内の ``SketchContext/createCanvas(width:height:)`` も効きます(#828)。
+/// ただしこの経路が作り直すのは**レンダリング解像度（オフスクリーンテクスチャ）だけ**で、
+/// ビューの寸法は SwiftUI のレイアウトが決めます。画面への転送は従来どおりアスペクト比を
+/// 保つため、指定した比率とビューの比率が食い違えばレターボックス/ピラーボックスになります。
+///
 /// ```swift
 /// struct ContentView: View {
 ///     @State var radius: Float = 100
@@ -83,7 +88,11 @@ public struct SketchView: NSViewRepresentable {
         // 検証できるようにする(#808)
         private(set) var renderer: MetaphorRenderer?
         private(set) var sketchContext: SketchContext?
-        private var hasCalledSetup = false
+
+        /// setup() 内で `noLoop()` が呼ばれたときに立てる「初回フレームを描き切ってから
+        /// 止める」印(#828)。setup はフレームの外で走るので、その場で `isPaused` を立てると
+        /// 1 フレームも描かれないまま止まってしまう。
+        private var pauseAfterFirstFrame = false
 
         /// フレーム時刻の起点。``SketchContext/loop()`` での再開時に寄せ直し、
         /// 止めていた実時間まるごとが 1 フレームぶんの `deltaTime` に化けるのを防ぎます(#793)。
@@ -134,10 +143,12 @@ public struct SketchView: NSViewRepresentable {
                 view?.isPaused = false
                 self.renderer?.notifyPluginsStart()
             }
-            context.onNoLoop = { [weak self, weak view] in
+            // setup() の間だけ外すため、ハンドラは名前を付けて持っておく(#828)
+            let noLoopHandler: () -> Void = { [weak self, weak view] in
                 view?.isPaused = true
                 self?.renderer?.notifyPluginsStop()
             }
+            context.onNoLoop = noLoopHandler
             context.onRedraw = { [weak view] in
                 // MTKView.draw() は draw(in:) を同期的に呼び、renderFrame() とブリットを
                 // ちょうど 1 回ずつ実行する（isPaused のトグルより時点が確かめやすい）
@@ -149,27 +160,71 @@ public struct SketchView: NSViewRepresentable {
                 view?.preferredFramesPerSecond = clampedFPS
             }
 
+            // キャンバスリサイズのコールバック（setup() 内での createCanvas() を許可、#828）。
+            // SketchRunner.handleCreateCanvas と同じ手順から、ウィンドウ操作だけを落とした形。
+            // この経路のビュー寸法は SwiftUI が決めるので作り直すのはオフスクリーンだけで、
+            // 画面へのブリットは毎フレーム textureManager.aspectRatio を引き直すため自動で追随する。
+            context.onCreateCanvas = { [weak self] width, height in
+                self?.handleCreateCanvas(width: width, height: height)
+            }
+
             // フレームコールバックを接続
-            renderer.onDraw = { [weak self] encoder, time in
+            renderer.onDraw = { [weak self, weak view] encoder, time in
                 guard let self, let ctx = self.sketchContext else { return }
                 let t = Float(time)
                 let dt = self.frameClock.advance(to: t)
 
-                // 初回フレームで setup を呼び出し
-                if !self.hasCalledSetup {
-                    self.setupClosure?(ctx)
-                    self.hasCalledSetup = true
-                }
-
                 ctx.beginFrame(encoder: encoder, time: t, deltaTime: dt)
                 self.drawClosure(ctx)
                 ctx.endFrame()
+
+                // setup() 内の noLoop() はここまで持ち越して止める(#828)。
+                if self.pauseAfterFirstFrame {
+                    self.pauseAfterFirstFrame = false
+                    view?.isPaused = true
+                    self.renderer?.notifyPluginsStop()
+                }
             }
 
             renderer.onAfterDraw = { [weak context] commandBuffer in
                 guard let context else { return }
                 context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
             }
+
+            // setup() はフレームの外で呼ぶ(#828)。SketchRunner が setupCore で
+            // 描画コールバックを構成する前に sketch.setup() を呼ぶのと同じ位置づけ。
+            // createCanvas() が通る MetaphorRenderer.resizeCanvas はインフライトフレームを
+            // 枯らすため inflightSemaphore を 3 つ取りに行くので、renderFrame() が 1 つ
+            // 掴んだままのフレーム中に呼ぶと 5 秒スタックしてタイムアウトする。
+            //
+            // ただし setup() 内の noLoop() をそのまま効かせると 1 フレームも描かれないまま
+            // 止まるので、SketchRunner.setupCore と同じくハンドラを一時的に外し、
+            // 「初回フレームを描き切ってから止める」へ読み替える。
+            context.onNoLoop = nil
+            setupClosure?(context)
+            context.onNoLoop = noLoopHandler
+            pauseAfterFirstFrame = !context.isLooping
+        }
+
+        /// テクスチャとキャンバスを新しいキャンバスサイズに合わせて再構築します(#828)。
+        ///
+        /// - Parameters:
+        ///   - width: 新しいキャンバスの幅（ピクセル単位）。
+        ///   - height: 新しいキャンバスの高さ（ピクセル単位）。
+        private func handleCreateCanvas(width: Int, height: Int) {
+            guard let renderer, let context = sketchContext else { return }
+
+            renderer.resizeCanvas(width: width, height: height)
+
+            guard let newCanvas = try? Canvas2D(renderer: renderer),
+                  let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+                metaphorWarning("createCanvas(\(width), \(height)) failed to rebuild canvases")
+                return
+            }
+            newCanvas.onSetClearColor = { [weak renderer] r, g, b, a in
+                renderer?.setClearColor(r, g, b, a)
+            }
+            context.rebuildCanvas(canvas: newCanvas, canvas3D: newCanvas3D)
         }
     }
 }
