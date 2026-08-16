@@ -236,6 +236,72 @@ struct TextToPointsTests {
         #expect(context.textToPoints("o", 0, 0, sampleFactor: 0).isEmpty)
     }
 
+    // MARK: - 字送りが text() と一致する（#821）
+
+    /// 2 つの点集合が（並び順も含めて）同じ位置かを見る。
+    private func maxPointDistance(_ a: [[Vec2]], _ b: [[Vec2]]) -> Float {
+        guard a.count == b.count else { return .infinity }
+        var worst: Float = 0
+        for (ca, cb) in zip(a, b) {
+            guard ca.count == cb.count else { return .infinity }
+            for (pa, pb) in zip(ca, cb) {
+                worst = max(worst, simd_distance(pa, pb))
+            }
+        }
+        return worst
+    }
+
+    @Test("a kerning pair is laid out with the same advance as text()")
+    func kerningPairUsesDrawingAdvance() throws {
+        let context = try makeContext()
+        // Helvetica 64pt の "AV" は CTLine に通すと約 4.7px 詰まるカーニングペア。
+        // 描画側 text() は 1 文字ずつ advance で送るので詰まらない。
+        let together = context.textToContours("AV", 0, 0)
+        let separate = context.textToContours("A", 0, 0)
+            + context.textToContours("V", context.canvas.textWidth("A"), 0)
+
+        #expect(!together.isEmpty)
+        #expect(maxPointDistance(together, separate) < 0.01)
+    }
+
+    @Test("outline width stays within textWidth for a kerning pair")
+    func kerningPairFitsTextWidth() throws {
+        let context = try makeContext()
+        let box = boundingBox(context.textToPoints("AV", 0, 0))
+        // 輪郭がカーニングで詰まっていると右端が textWidth より内側に寄る。
+        // "V" の右端は advance 幅いっぱいまで来るので、詰まりは maxX に出る。
+        let width = context.canvas.textWidth("AV")
+        #expect(box.maxX > width - 2)
+        #expect(box.maxX <= width + 1)
+    }
+
+    // 境界値: カーニングの無い並びと、フォールバックへ回る文字は今までどおり
+
+    @Test("a pair without kerning is unchanged")
+    func nonKerningPairIsAdditive() throws {
+        let context = try makeContext()
+        // "ov" は Helvetica にカーニングペアが無い（詰めても詰めなくても同じ位置）
+        let together = context.textToContours("ov", 0, 0)
+        let separate = context.textToContours("o", 0, 0)
+            + context.textToContours("v", context.canvas.textWidth("o"), 0)
+        #expect(maxPointDistance(together, separate) < 0.01)
+    }
+
+    @Test("characters missing from the font still resolve through fallback")
+    func fallbackFontStillResolves() throws {
+        let context = try makeContext()
+        // Helvetica に無い文字。1 文字ずつシェーピングしても
+        // フォールバック解決（CTLine 任せ）が効き続けることを見る。
+        let contours = context.textToContours("あ", 0, 0)
+        #expect(!contours.isEmpty)
+
+        // 混在した並びでも、字送りは 1 文字ずつの advance で積まれる
+        let mixed = context.textToContours("Aあ", 0, 0)
+        let separate = context.textToContours("A", 0, 0)
+            + context.textToContours("あ", context.canvas.textWidth("A"), 0)
+        #expect(maxPointDistance(mixed, separate) < 0.01)
+    }
+
     // MARK: - 縮退入力
 
     @Test("empty and outline-less strings return empty")

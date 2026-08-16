@@ -616,6 +616,16 @@ final class TextRenderer {
     /// 包含関係から判定します — TrueType と CFF で外周の巻き方向の慣習が逆で、
     /// 巻き方向からは決められないためです。
     ///
+    /// 字送りは ``GlyphAtlas/layoutGlyphs(string:)`` と同じく **1 文字ずつ
+    /// ``TextMetrics/measure(_:font:attributes:)`` の advance** で進めます。文字列全体を
+    /// 1 本の `CTLine` に通すとカーニングが入って `text()` の描画と字間がずれるためです
+    /// （#821）。その代わり、**複数文字にまたがるシェーピング（リガチャ、アラビア文字の
+    /// 連結形、インド系文字の並べ替え）は掛かりません** — 1 文字ぶんのシェーピング結果を
+    /// 順に置いた輪郭になります。これは `text()` の描画と `textWidth()` の加法性
+    /// （`textWidth("ab") == textWidth("a") + textWidth("b")`、#802）に合わせた選択で、
+    /// Processing がカーニングを掛けないのとも揃っています。フォントに無い文字の
+    /// フォールバックは 1 文字ぶんの `CTLine` が解決するので従来どおり効きます。
+    ///
     /// - Parameters:
     ///   - string: アウトラインを取り出すテキスト。
     ///   - fontSize: ポイント単位のフォントサイズ。
@@ -627,17 +637,32 @@ final class TextRenderer {
     ) -> [[Vec2]] {
         guard !string.isEmpty else { return [] }
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
-        let attrString = NSAttributedString(string: string, attributes: [.font: font])
-        let line = CTLineCreateWithAttributedString(attrString)
-        guard let runs = CTLineGetGlyphRuns(line) as? [CTRun] else { return [] }
 
         var result: [[Vec2]] = []
+        var cursorX: CGFloat = 0
+        for char in string {
+            // 描く側と同じ物差しで送る。1 文字ずつ測るので隣の字のカーニングが入らない。
+            let metrics = TextMetrics.measure(char, font: font)
+            appendContours(
+                of: metrics.line, fallbackFont: font, cursorX: cursorX,
+                sampleFactor: sampleFactor, into: &result)
+            cursorX += CGFloat(metrics.advance)
+        }
+        return result
+    }
+
+    /// 1 文字ぶんの `CTLine` からグリフ輪郭を取り出し、`cursorX` へ寄せて積みます。
+    private func appendContours(
+        of line: CTLine, fallbackFont: CTFont, cursorX: CGFloat,
+        sampleFactor: Float, into result: inout [[Vec2]]
+    ) {
+        guard let runs = CTLineGetGlyphRuns(line) as? [CTRun] else { return }
         for run in runs {
             let count = CTRunGetGlyphCount(run)
             guard count > 0 else { continue }
             // run ごとにフォントが違いうる（要求フォントに無い文字はフォールバックへ回る）
             let attributes = CTRunGetAttributes(run) as NSDictionary
-            let runFont = attributes[kCTFontAttributeName as String] as! CTFont? ?? font
+            let runFont = attributes[kCTFontAttributeName as String] as! CTFont? ?? fallbackFont
 
             var glyphs = [CGGlyph](repeating: 0, count: count)
             var positions = [CGPoint](repeating: .zero, count: count)
@@ -649,11 +674,12 @@ final class TextRenderer {
                 guard let path = CTFontCreatePathForGlyph(runFont, glyphs[i], nil) else {
                     continue  // 空白など輪郭を持たないグリフ
                 }
+                // 1 文字が複数グリフ（結合文字など）でも、その中の相対位置は活かす
+                let offset = CGPoint(x: cursorX + positions[i].x, y: positions[i].y)
                 result.append(contentsOf: Self.flatten(
-                    path: path, offset: positions[i], sampleFactor: sampleFactor))
+                    path: path, offset: offset, sampleFactor: sampleFactor))
             }
         }
-        return result
     }
 
     /// `CGPath` を輪郭ごとの折れ線へ変換します（`offset` 平行移動 + y 反転こみ）。
