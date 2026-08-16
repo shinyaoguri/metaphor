@@ -645,8 +645,9 @@ public final class Canvas2D: CanvasStyle {
 
     /// 記録時にパイプラインキーを確定させます（#646 の性質を保つ入口）。
     ///
-    /// カスタムシェーダ適用中の `.difference` / `.exclusion` は `.alpha` へ正規化します。
-    /// この 2 モードは `float4 dest [[color(0)]]` を読む専用フラグメントで実装されていて
+    /// カスタムシェーダ適用中の分離可能ブレンドモード（`.multiply` / `.screen` /
+    /// `.subtract` / `.lightest` / `.darkest` / `.difference` / `.exclusion`）は `.alpha` へ
+    /// 正規化します。これらは `float4 dest [[color(0)]]` を読む専用フラグメントで実装されていて
     /// カスタムフラグメントと原理的に排他だからです（#647 の規約）。正規化を**記録時**に
     /// 行うのは、コマンド列が「実際にどう描かれたか」をそのまま語るようにするためです。
     func pipelineKey(_ kind: Canvas2DPipelineKind, blend: BlendMode) -> Canvas2DPipelineKey {
@@ -657,9 +658,10 @@ public final class Canvas2D: CanvasStyle {
         if !didWarnBlendFallback {
             didWarnBlendFallback = true
             print("""
-            [metaphor] blendMode(.difference) / .exclusion はカスタム 2D シェーダと\
-            同時には使えません（フレームバッファフェッチ用の組み込みフラグメントで\
-            実装されているため）。通常のアルファブレンドで描画します。
+            [metaphor] blendMode(.multiply / .screen / .subtract / .lightest / .darkest / \
+            .difference / .exclusion) はカスタム 2D シェーダと同時には使えません\
+            （フレームバッファフェッチ用の組み込みフラグメントで実装されているため）。\
+            通常のアルファブレンドで描画します。
             """)
         }
         return Canvas2DPipelineKey(kind, .alpha, shader: shader.id)

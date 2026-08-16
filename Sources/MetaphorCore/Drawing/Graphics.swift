@@ -81,7 +81,7 @@ public final class Graphics {
         )
         self.targetRotator = OffscreenTargetRotator(textureManager: textureManager)
         self.canvas.onSetClearColor = { [weak textureManager] r, g, b, a in
-            textureManager?.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
+            textureManager?.setClearColor(TextureManager.premultipliedClearColor(r, g, b, a))
         }
     }
 

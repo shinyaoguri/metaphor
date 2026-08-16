@@ -185,58 +185,45 @@ final class Canvas2DPipelineStore {
 
     /// 系統とブレンドモードから、使用する組み込みシェーダー関数を決めます。
     ///
-    /// `.difference` / `.exclusion` はフレームバッファフェッチ（`float4 dest [[color(0)]]`）を
-    /// 読む専用のフラグメント関数で実装されているため、ここだけ関数名が分岐します。
+    /// 分離可能ブレンドモード（`BlendMode.requiresFramebufferFetch` が true）は
+    /// フレームバッファフェッチ（`float4 dest [[color(0)]]`）を読む専用のフラグメント関数で
+    /// 実装されているため、ここでフラグメント名が分岐します。名前は
+    /// `metaphor_canvas2D<系統><接尾辞>Fragment` の規則で組み立てます（ADR-0012 / #801）。
     private static func builtinFunctions(
         kind: Canvas2DPipelineKind, blend: BlendMode
     ) -> (libraryKey: String, vertex: String, fragment: String) {
+        let info = builtinKindInfo(kind)
+        guard let suffix = blend.fragmentFunctionSuffix else {
+            return (info.libraryKey, info.vertex, info.fragment)
+        }
+        return (info.libraryKey, info.vertex, "metaphor_canvas2D\(info.infix)\(suffix)Fragment")
+    }
+
+    /// 系統ごとの固定情報（ライブラリキー・頂点関数・既定フラグメント・関数名の中置き）。
+    private static func builtinKindInfo(
+        _ kind: Canvas2DPipelineKind
+    ) -> (libraryKey: String, vertex: String, fragment: String, infix: String) {
         switch kind {
         case .color:
-            let fragment: String
-            switch blend {
-            case .difference: fragment = BuiltinShaders.FunctionName.canvas2DDifferenceFragment
-            case .exclusion: fragment = BuiltinShaders.FunctionName.canvas2DExclusionFragment
-            default: fragment = BuiltinShaders.FunctionName.canvas2DFragment
-            }
             return (ShaderLibrary.BuiltinKey.canvas2D,
                     BuiltinShaders.FunctionName.canvas2DVertex,
-                    fragment)
-
+                    BuiltinShaders.FunctionName.canvas2DFragment,
+                    "")
         case .textured:
-            let fragment: String
-            switch blend {
-            case .difference:
-                fragment = BuiltinShaders.FunctionName.canvas2DTexturedDifferenceFragment
-            case .exclusion:
-                fragment = BuiltinShaders.FunctionName.canvas2DTexturedExclusionFragment
-            default:
-                fragment = BuiltinShaders.FunctionName.canvas2DTexturedFragment
-            }
             return (ShaderLibrary.BuiltinKey.canvas2DTextured,
                     BuiltinShaders.FunctionName.canvas2DTexturedVertex,
-                    fragment)
-
+                    BuiltinShaders.FunctionName.canvas2DTexturedFragment,
+                    "Textured")
         case .instanced:
-            let fragment: String
-            switch blend {
-            case .difference: fragment = Canvas2DInstancedShaders.differenceFragmentFunctionName
-            case .exclusion: fragment = Canvas2DInstancedShaders.exclusionFragmentFunctionName
-            default: fragment = Canvas2DInstancedShaders.fragmentFunctionName
-            }
             return (ShaderLibrary.BuiltinKey.canvas2DInstanced,
                     Canvas2DInstancedShaders.vertexFunctionName,
-                    fragment)
-
+                    Canvas2DInstancedShaders.fragmentFunctionName,
+                    "Instanced")
         case .massiveCircle:
-            let fragment: String
-            switch blend {
-            case .difference: fragment = Canvas2DMassiveShaders.differenceFragmentFunctionName
-            case .exclusion: fragment = Canvas2DMassiveShaders.exclusionFragmentFunctionName
-            default: fragment = Canvas2DMassiveShaders.fragmentFunctionName
-            }
             return (ShaderLibrary.BuiltinKey.canvas2DMassive,
                     Canvas2DMassiveShaders.circleVertexFunctionName,
-                    fragment)
+                    Canvas2DMassiveShaders.fragmentFunctionName,
+                    "Massive")
         }
     }
 

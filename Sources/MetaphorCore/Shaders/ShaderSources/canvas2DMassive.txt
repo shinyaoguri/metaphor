@@ -54,6 +54,106 @@ struct Canvas2DShaderUniforms {
     uint frameCount;
 };
 
+// アルファの変換ヘルパ（ADR-0012）。
+//
+// metaphor は**公開 API が straight alpha、内部が premultiplied alpha**という規範を
+// 採っている。`in.color`（fill / tint 由来）は straight で渡ってくるが、
+// **フラグメントが返す値は premultiplied でなければならない**。キャンバスの中身が
+// premultiplied だからで、straight のまま返すと合成のたびに α が二重に掛かる。
+//
+// カスタム 2D フラグメントの最後は次の形にする:
+//
+//     return metaphorPremultiply(float4(rgb, alpha));
+//
+// 不透明（alpha = 1）しか返さないシェーダは premultiplied と straight が一致するので、
+// そのままで構わない。
+//
+// 成分は掛ける前に 0...1 へ飽和させる。`Color` は範囲外の値を保持する仕様（Tween の
+// オーバーシュートなど）で、「描画時に飽和する」ことを doc が保証しているため。
+// 以前は GPU がフラグメント出力をブレンド前にクランプすることでこれが成立していたが、
+// α を自分で掛けるようになると `a = 1.5` が色を 1.5 倍してしまう。
+inline float4 metaphorPremultiply(float4 c) {
+    float4 s = clamp(c, 0.0, 1.0);
+    return float4(s.rgb * s.a, s.a);
+}
+
+// premultiplied → straight。α = 0 の画素は色を持たないので黒を返す。
+inline float4 metaphorUnpremultiply(float4 c) {
+    return c.a > 0.0 ? float4(c.rgb / c.a, c.a) : float4(0.0);
+}
+
+
+
+// 分離可能ブレンドモードの実装（ADR-0012 / #801）。
+//
+// `.multiply` / `.screen` / `.subtract` / `.lightest` / `.darkest` / `.difference` /
+// `.exclusion` は固定関数のブレンド係数では書けない。src の α を「混ぜ方をどれだけ
+// 効かせるか」として使うため、`mix(dst, blend(src, dst), src.a)` という**係数の積和に
+// 乗らない形**が要るからで、そのためフレームバッファフェッチ（`float4 dest [[color(0)]]`）
+// でキャンバスの値を読み、合成をここで行う。
+//
+// 式は W3C Compositing and Blending Level 1 の source-over + 分離可能ブレンド:
+//
+//     co = as·(1 − ab)·Cs + as·ab·B(Cb, Cs) + (1 − as)·ab·Cb
+//     ao = as + ab·(1 − as)
+//
+// `co` は既に premultiplied なので、そのまま返せばキャンバスの規範（内部は
+// premultiplied）に合う。下地が無い（ab = 0）ところでは `co = as·Cs` となり、
+// 「混ぜる相手が無ければ src がそのまま出る」という素直な振る舞いになる。
+//
+// この経路のパイプラインは固定関数のブレンドを無効にしている（`BlendMode.apply(to:)`）。
+
+// 範囲外の成分を飽和させる（`Color` は範囲外を保持し、飽和は描画時の約束）。
+inline float4 metaphorClampSrc2D(float4 c) { return clamp(c, 0.0, 1.0); }
+
+// ブレンド関数 B(Cb, Cs)。引数はどちらも straight。
+inline float3 metaphorBlendMultiply(float3 Cs, float3 Cb) { return Cs * Cb; }
+inline float3 metaphorBlendScreen(float3 Cs, float3 Cb) { return Cs + Cb - Cs * Cb; }
+inline float3 metaphorBlendSubtract(float3 Cs, float3 Cb) { return max(Cb - Cs, 0.0); }
+inline float3 metaphorBlendLightest(float3 Cs, float3 Cb) { return max(Cs, Cb); }
+inline float3 metaphorBlendDarkest(float3 Cs, float3 Cb) { return min(Cs, Cb); }
+inline float3 metaphorBlendDifference(float3 Cs, float3 Cb) { return abs(Cs - Cb); }
+inline float3 metaphorBlendExclusion(float3 Cs, float3 Cb) {
+    return Cs + Cb - 2.0 * Cs * Cb;
+}
+
+// src（straight）と dest（premultiplied）とブレンド結果から、premultiplied な出力を作る。
+// src は `metaphorClampSrc2D` で飽和済みのものを渡すこと。
+inline float4 metaphorComposite2D(float4 src, float4 dest, float3 blended) {
+    float as = src.a;
+    float ab = dest.a;
+    float3 Cb = metaphorUnpremultiply(dest).rgb;
+    float3 co = as * (1.0 - ab) * src.rgb + as * ab * blended + (1.0 - as) * ab * Cb;
+    return float4(co, as + ab * (1.0 - as));
+}
+
+// カラー経路（color / instanced / massive）のブレンドフラグメントを 1 本作る。
+// 3 経路は `Canvas2DVertexOut` を共有するので、本体はまったく同じになる。
+#define METAPHOR_CANVAS2D_BLEND_FRAGMENT(NAME, BLEND_FN)                             \
+    fragment float4 NAME(                                                            \
+        Canvas2DVertexOut in [[stage_in]],                                           \
+        float4 dest [[color(0)]]                                                     \
+    ) {                                                                              \
+        float4 src = metaphorClampSrc2D(in.color);                                   \
+        float3 Cb = metaphorUnpremultiply(dest).rgb;                                 \
+        return metaphorComposite2D(src, dest, BLEND_FN(src.rgb, Cb));                \
+    }
+
+// テクスチャ経路（`image()` / `text()`）のブレンドフラグメント。
+// テクスチャは premultiplied で入ってくるので、straight に戻してから頂点色を掛ける。
+#define METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(NAME, BLEND_FN)                    \
+    fragment float4 NAME(                                                            \
+        Canvas2DTexVertexOut in [[stage_in]],                                        \
+        texture2d<float> tex [[texture(0)]],                                         \
+        float4 dest [[color(0)]]                                                     \
+    ) {                                                                              \
+        constexpr sampler s(filter::linear, address::clamp_to_edge);                 \
+        float4 texColor = metaphorUnpremultiply(tex.sample(s, in.texCoord));         \
+        float4 src = metaphorClampSrc2D(texColor * in.color);                        \
+        float3 Cb = metaphorUnpremultiply(dest).rgb;                                 \
+        return metaphorComposite2D(src, dest, BLEND_FN(src.rgb, Cb));                \
+    }
+
 
 // Per-circle instance data (32 bytes, 16-byte aligned).
 struct CircleInstance {
@@ -90,27 +190,14 @@ vertex Canvas2DVertexOut metaphor_canvas2DMassiveCircleVertex(
 fragment float4 metaphor_canvas2DMassiveFragment(
     Canvas2DVertexOut in [[stage_in]]
 ) {
-    return in.color;
+    return metaphorPremultiply(in.color);
 }
 
-fragment float4 metaphor_canvas2DMassiveDifferenceFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = abs(src.rgb - dest.rgb);
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
-
-fragment float4 metaphor_canvas2DMassiveExclusionFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveExclusionFragment, metaphorBlendExclusion)

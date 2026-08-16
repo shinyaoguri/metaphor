@@ -1,4 +1,5 @@
 #include "MetaphorCanvas2DTypes.h"
+#include "MetaphorCanvas2DBlend.h"
 
 // `Canvas2DVertexIn` / `Canvas2DVertexOut` は `MetaphorCanvas2DTypes.h`（= カスタム
 // 2D シェーダへ配る前文）にある。組み込みとカスタムで stage_in のレイアウトが
@@ -14,30 +15,19 @@ vertex Canvas2DVertexOut metaphor_canvas2DVertex(
     return out;
 }
 
+// 頂点色は straight で渡ってくる（fill / stroke がそのまま入る）。キャンバスの中身は
+// premultiplied なので、ここで掛けてから返す（ADR-0012）。
 fragment float4 metaphor_canvas2DFragment(
     Canvas2DVertexOut in [[stage_in]]
 ) {
-    return in.color;
+    return metaphorPremultiply(in.color);
 }
 
-fragment float4 metaphor_canvas2DDifferenceFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = abs(src.rgb - dest.rgb);
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
-
-fragment float4 metaphor_canvas2DExclusionFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DExclusionFragment, metaphorBlendExclusion)

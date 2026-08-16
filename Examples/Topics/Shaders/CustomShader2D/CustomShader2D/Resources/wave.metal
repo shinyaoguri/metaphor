@@ -36,6 +36,8 @@ fragment float4 waveFragment(
     float2 m = u.mouse / u.resolution;
     rgb += 0.35 * exp(-24.0 * distance(uv, m));
 
-    // 図形の頂点色（fill / alpha）を掛けて、図形の形にシェーダを通す
-    return float4(rgb, 1.0) * in.color;
+    // 図形の頂点色（fill / alpha）を掛けて、図形の形にシェーダを通す。
+    // キャンバスの中身は premultiplied なので、返す直前に metaphorPremultiply() を通す
+    // （前文に入っているヘルパ）。不透明しか返さないなら掛けても値は変わらない。
+    return metaphorPremultiply(float4(rgb, 1.0) * in.color);
 }

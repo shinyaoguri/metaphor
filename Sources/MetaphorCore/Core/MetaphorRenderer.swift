@@ -732,7 +732,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - b: 青コンポーネント (0.0〜1.0)
     ///   - a: アルファコンポーネント (0.0〜1.0)
     public func setClearColor(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1.0) {
-        textureManager.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
+        textureManager.setClearColor(TextureManager.premultipliedClearColor(r, g, b, a))
     }
 
     // MARK: - レンダリング

@@ -361,8 +361,20 @@ extension Sketch {
 
     /// 以降の描画操作のブレンドモードを設定します。
     ///
+    /// `fill` / `stroke` のアルファは、どのモードでも**混ぜ方をどれだけ効かせるか**を表します
+    /// （ADR-0012）。`α = 0` はどのモードでも何も起こらず、`α = 0.5` は下地とそのモードの
+    /// 合成結果のちょうど中間になります。結果のアルファはモードによらず
+    /// `src.a + dst.a · (1 − src.a)` で、``blendMode(_:)`` が塗った領域の不透明度を
+    /// 削ることはありません。
+    ///
     /// - Note: **2D のみ**に作用します（3D は不透明/加算のマテリアル設定に従います。
     ///   ADR-0005）。
+    ///
+    /// - Note: ``BlendMode/multiply`` / ``BlendMode/screen`` / ``BlendMode/subtract`` /
+    ///   ``BlendMode/lightest`` / ``BlendMode/darkest`` / ``BlendMode/difference`` /
+    ///   ``BlendMode/exclusion`` は描き込み先の色を読む専用フラグメントで実装されているため、
+    ///   **カスタム 2D シェーダとは併用できません**（適用中は ``BlendMode/alpha`` へ落ち、
+    ///   コンソールへ 1 度だけ警告が出ます）。
     ///
     /// - Parameter mode: 適用するブレンドモード。
     ///

@@ -223,7 +223,41 @@ public final class MImage {
             }
         }
 
+        // テクスチャの中身は premultiplied（ADR-0012）。``pixels`` / ``get(_:_:)`` は
+        // 公開 API なので straight で返す。割り戻さないと `set(x, y, get(x, y))` が
+        // 恒等にならず、``mask(_:)`` のように RGB を触らず α だけ差し替える操作も破綻する。
+        Self.unpremultiply(&pixels)
+
         needsGPUReadback = false
+    }
+
+    /// straight な RGBA バイト列を premultiplied にします（GPU へ渡す直前）。
+    private static func premultiply(_ bytes: inout [UInt8]) {
+        bytes.withUnsafeMutableBufferPointer { buf in
+            guard let ptr = buf.baseAddress else { return }
+            for i in stride(from: 0, to: buf.count, by: 4) {
+                let a = Int(ptr[i + 3])
+                if a == 255 { continue }
+                ptr[i] = UInt8((Int(ptr[i]) * a + 127) / 255)
+                ptr[i + 1] = UInt8((Int(ptr[i + 1]) * a + 127) / 255)
+                ptr[i + 2] = UInt8((Int(ptr[i + 2]) * a + 127) / 255)
+            }
+        }
+    }
+
+    /// premultiplied な RGBA バイト列を straight にします（CPU へ返す直前）。
+    /// α = 0 の画素は色を持たないので 0 のままにします。
+    private static func unpremultiply(_ bytes: inout [UInt8]) {
+        bytes.withUnsafeMutableBufferPointer { buf in
+            guard let ptr = buf.baseAddress else { return }
+            for i in stride(from: 0, to: buf.count, by: 4) {
+                let a = Int(ptr[i + 3])
+                if a == 255 || a == 0 { continue }
+                ptr[i] = UInt8(min(255, (Int(ptr[i]) * 255 + a / 2) / a))
+                ptr[i + 1] = UInt8(min(255, (Int(ptr[i + 1]) * 255 + a / 2) / a))
+                ptr[i + 2] = UInt8(min(255, (Int(ptr[i + 2]) * 255 + a / 2) / a))
+            }
+        }
     }
 
     /// CPU の ``pixels`` 配列を GPU テクスチャに書き戻します。
@@ -247,7 +281,10 @@ public final class MImage {
         let count = bytesPerRow * h
         guard pixels.count == count else { return }
 
+        // ``pixels`` は straight、テクスチャは premultiplied（ADR-0012）。
+        // 掛けるのはアップロード用のコピーだけで、利用者の配列は straight のまま保つ。
         var uploadPixels = pixels
+        Self.premultiply(&uploadPixels)
         if byteOrder == .bgra {
             uploadPixels.withUnsafeMutableBufferPointer { buf in
                 let ptr = buf.baseAddress!
