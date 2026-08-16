@@ -227,6 +227,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func image(_ video: VideoPlayer, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- ビデオプレーヤーの現在のフレームを指定位置・サイズで描画します。
 - `func image(_ img: MImage, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float, _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float)` -- 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
 - `func imageMode(_ mode: ImageMode)` -- 画像の描画モードを設定します。
+- `func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool` -- 3D モデル座標の点がカメラ平面より前にあるかを返します。
 - `func isKeyDown(_ keyCode: UInt16) -> Bool` -- 特定のキーが現在押下されているかを確認します。
 - `func keyPressed()` -- キー押下時に呼ばれます。
 - `func keyReleased()` -- キー離し時に呼ばれます。
@@ -1149,7 +1150,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas3D` -- イミディエイトモード 3D 描画コンテキストを提供します。
 
-- （ほか 77 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 78 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentCameraRight: SIMD3<Float> { get }` -- カメラの右方向ベクトルを返します。ビルボーディングに便利です。
 - `var currentCameraUp: SIMD3<Float> { get }` -- カメラの上方向ベクトルを返します。ビルボーディングに便利です。
@@ -1646,7 +1647,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 235 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 236 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

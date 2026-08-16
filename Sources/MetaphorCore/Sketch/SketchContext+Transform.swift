@@ -204,8 +204,16 @@ extension SketchContext {
     }
 
     /// 3D モデル座標のスクリーン座標を返します。
+    ///
+    /// カメラ背後の点では x/y が原点対称に反転し z が 0...1 を外れます。
+    /// ``isInFront(_:_:_:)`` で判別してください。
     public func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
         canvas3D.screenPosition(x, y, z)
+    }
+
+    /// 3D モデル座標の点がカメラ平面より前にあるかを返します。
+    public func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool {
+        canvas3D.isInFront(x, y, z)
     }
 }
 
