@@ -766,13 +766,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     ///   以前はこのクランプがタイマー経路の interval 計算にしか掛かっておらず、
     ///   `renderer.targetFPS`（→ Probe の `frame.json`）と
     ///   `MTKView.preferredFramesPerSecond` には無効値がそのまま渡っていた。
-    ///   入口で 1 回だけクランプし、全経路へ同じ値を渡すことで揃える。
+    ///   入口で 1 回だけクランプし、全経路へ同じ値を渡すことで揃える
+    ///   （クランプ自体は ``clampedFrameRate(_:)`` が持ち、`SketchView` 経路と共有）。
     // internal: テストから直接呼べるようにする(#358)
     func handleFrameRate(_ fps: Int) {
-        let clampedFPS = max(fps, 1)
-        if clampedFPS != fps {
-            metaphorWarning("frameRate(\(fps)) is invalid (must be positive); clamping to \(clampedFPS).")
-        }
+        let clampedFPS = clampedFrameRate(fps)
         renderer?.targetFPS = clampedFPS
         if let renderTimer {
             // タイマーモード: タイマーをリスケジュール

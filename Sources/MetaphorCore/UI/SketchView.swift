@@ -7,6 +7,10 @@ import MetalKit
 /// `draw` クロージャが毎フレーム呼び出され、アクティブなコンテキストを通じて
 /// 描画APIへのフルアクセスを提供します。
 ///
+/// ``SketchContext/loop()`` / ``SketchContext/noLoop()`` / ``SketchContext/redraw()`` /
+/// ``SketchContext/frameRate(_:)`` によるアニメーション制御も、スタンドアロン実行
+/// （`Sketch` プロトコル）と同じように効きます(#808)。
+///
 /// ```swift
 /// struct ContentView: View {
 ///     @State var radius: Float = 100
@@ -75,9 +79,15 @@ public struct SketchView: NSViewRepresentable {
         private let setupClosure: (@MainActor (SketchContext) -> Void)?
         private let drawClosure: @MainActor (SketchContext) -> Void
 
-        private var renderer: MetaphorRenderer?
-        private var sketchContext: SketchContext?
+        // internal: テストから配線の効き（isPaused / targetFPS / deltaTime の起点）を
+        // 検証できるようにする(#808)
+        private(set) var renderer: MetaphorRenderer?
+        private(set) var sketchContext: SketchContext?
         private var hasCalledSetup = false
+
+        /// フレーム時刻の起点。``SketchContext/loop()`` での再開時に寄せ直し、
+        /// 止めていた実時間まるごとが 1 フレームぶんの `deltaTime` に化けるのを防ぎます(#793)。
+        private let frameClock = FrameClock()
 
         init(
             config: SketchConfig,
@@ -115,14 +125,35 @@ public struct SketchView: NSViewRepresentable {
             view.isPaused = false
             renderer.configure(view: view)
 
-            // フレームコールバックを接続
-            var prevTime: Float = 0
+            // アニメーション制御コールバック（SketchRunner のディスプレイリンク経路と同じ挙動。
+            // この経路はタイマーモードを持たないので、MTKView の一時停止だけで止め方が足りる）
+            context.onLoop = { [weak self, weak view] in
+                guard let self else { return }
+                // 時計は止めている間も進むので、フレームを再開する前に起点を寄せ直す(#793)
+                self.frameClock.resync(to: Float(self.renderer?.elapsedTime ?? 0))
+                view?.isPaused = false
+                self.renderer?.notifyPluginsStart()
+            }
+            context.onNoLoop = { [weak self, weak view] in
+                view?.isPaused = true
+                self?.renderer?.notifyPluginsStop()
+            }
+            context.onRedraw = { [weak view] in
+                // MTKView.draw() は draw(in:) を同期的に呼び、renderFrame() とブリットを
+                // ちょうど 1 回ずつ実行する（isPaused のトグルより時点が確かめやすい）
+                view?.draw()
+            }
+            context.onFrameRate = { [weak self, weak view] fps in
+                let clampedFPS = clampedFrameRate(fps)
+                self?.renderer?.targetFPS = clampedFPS
+                view?.preferredFramesPerSecond = clampedFPS
+            }
 
+            // フレームコールバックを接続
             renderer.onDraw = { [weak self] encoder, time in
                 guard let self, let ctx = self.sketchContext else { return }
                 let t = Float(time)
-                let dt = t - prevTime
-                prevTime = t
+                let dt = self.frameClock.advance(to: t)
 
                 // 初回フレームで setup を呼び出し
                 if !self.hasCalledSetup {
