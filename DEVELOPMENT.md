@@ -178,6 +178,27 @@ DocC-Render はこのファイルの `theme.color` を**そのままの階層で
 
 確認は `make docs` 後の実ページで行います（`getComputedStyle(document.body).getPropertyValue('--color-standard-blue')` が期待値かどうか）。JSON を書いただけでは効いたことになりません。
 
+#### 書けるキーは決まっている（`scripts/check-theme-settings.py`）
+
+DocC はこのファイルをスキーマ検証せず、DocC-Render は知らないキーを黙って無視します。**間違いが一切表に出ない**ので、書いた本人は効いたつもりで公開ページだけが既定のまま出ます（#529 の色グループ、#763 の `i18n` フラグと `meta.title`）。そこで、書いてよいキーを機械で検査します。
+
+```bash
+python3 scripts/check-theme-settings.py                  # 効かないキーが入っていたら赤
+python3 scripts/check-theme-settings.py --against-render # DocC を更新したとき、下の表のずれを見る
+```
+
+正本は Xcode 同梱の DocC-Render（`$(xcrun --find docc)/../../share/docc/render/js/*.js`）で、そこで `getSetting([...])` に渡されているパスがこのファイルから読まれるキーのすべてです。実測した結果:
+
+| キー | 効くか | 備考 |
+|---|---|---|
+| `theme.color.*` / `theme.typography.*` / `theme.borderRadius` | ✅ | CSS 変数へ展開される（上記の制約つき） |
+| `theme.icons.<名前>` / `theme.device-frames.<名前>` | ✅ | 組み込み SVG の差し替え。未使用 |
+| `theme.code.indentationWidth` | ✅ | 未使用（既定 4） |
+| `features.docs.quickNavigation.enable` | ✅ | 使用中 |
+| `features.docs.onThisPageNavigator.disable` | ✅ | **`enable` ではありません**（既定 ON を切るためのキー）。未使用 |
+| `meta.title` | ❌ | render は読むが、モジュール読み込み時に既定値 `"Documentation"` へ束縛され、`theme-settings.json` の取得はそのあと。`<title>` も `og:site_name` も変わりません（#763 で実測） |
+| `features.docs.i18n.enable` | ❌ 単体では | 有効化の条件が `availableLocales.length > 1`。availableLocales は render JSON の `metadata.availableLocales` からしか埋まらず、DocC 本体はこれを出力しません（#763） |
+
 ## Syphon Framework Handling
 
 - ローカル開発では `Frameworks/Syphon.xcframework` が存在する場合、`Package.swift` はローカルパスを使用します。

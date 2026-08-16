@@ -16,9 +16,6 @@
     "docs": {
       "quickNavigation": {
         "enable": true
-      },
-      "i18n": {
-        "enable": true
       }
     }
   }
