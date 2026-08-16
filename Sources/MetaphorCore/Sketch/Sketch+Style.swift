@@ -41,6 +41,33 @@ extension Sketch {
     /// 楕円の描画モードを設定します。
     ///
     /// - Parameter mode: 楕円の解釈モード。
+    ///
+    /// ### 実行結果
+    ///
+    /// 同じ引数の ``ellipse(_:_:_:_:)`` が、モードによって別の位置に出ます
+    /// （左が既定の ``EllipseMode/center``、右が ``EllipseMode/corner``）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![ellipseMode(_:) の実行結果](https://i.gyazo.com/4873852670151d89625389351ee618d0.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///
+    ///       ellipseMode(.center)
+    ///       fill(255, 190, 60)
+    ///       ellipse(140, 180, 140, 100)
+    ///
+    ///       ellipseMode(.corner)
+    ///       fill(80, 170, 255)
+    ///       ellipse(280, 130, 140, 100)
+    ///       ```
+    ///    }
+    /// }
     public func ellipseMode(_ mode: EllipseMode) {
         context.ellipseMode(mode)
     }
@@ -65,6 +92,29 @@ extension Sketch {
     ///   - max2: 第2チャンネルの最大値。省略時は現在値を維持。
     ///   - max3: 第3チャンネルの最大値。省略時は現在値を維持。
     ///   - maxA: アルファチャンネルの最大値。省略時は現在値を維持。
+    ///
+    /// ### 実行結果
+    ///
+    /// ``ColorSpace/hsb`` にすると、第1チャンネルが色相になります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![colorMode(_:_:_:_:_:) の実行結果](https://i.gyazo.com/9f0d6c7c8fee971710865b73239fa811.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       colorMode(.hsb, 360, 100, 100, 100)
+    ///       noStroke()
+    ///       for i in 0..<12 {
+    ///           fill(Float(i) * 30, 80, 100)
+    ///           rect(Float(i) * 40, 120, 40, 120)
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil) {
         context.colorMode(space, max1, max2, max3, maxA)
     }
@@ -142,6 +192,29 @@ extension Sketch {
     }
 
     /// 図形の塗りつぶしを無効にします。
+    ///
+    /// ### 実行結果
+    ///
+    /// 塗りだけが消え、ストロークは残ります（右が ``noFill()`` を呼んだあと）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![noFill() の実行結果](https://i.gyazo.com/01df4c758c2b0ef1adef4252a47eef79.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       stroke(255, 190, 60)
+    ///       strokeWeight(6)
+    ///       fill(80, 170, 255)
+    ///       circle(150, 180, 150)
+    ///       noFill()
+    ///       circle(330, 180, 150)
+    ///       ```
+    ///    }
+    /// }
     public func noFill() {
         context.noFill()
     }
@@ -181,6 +254,29 @@ extension Sketch {
     }
 
     /// 図形のストロークを無効にします。
+    ///
+    /// ### 実行結果
+    ///
+    /// 輪郭だけが消え、塗りは残ります（右が ``noStroke()`` を呼んだあと）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![noStroke() の実行結果](https://i.gyazo.com/6196c1479b479d50c9d06fa4943ad56d.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       stroke(255)
+    ///       strokeWeight(8)
+    ///       fill(255, 190, 60)
+    ///       circle(150, 180, 150)
+    ///       noStroke()
+    ///       circle(330, 180, 150)
+    ///       ```
+    ///    }
+    /// }
     public func noStroke() {
         context.noStroke()
     }
@@ -219,6 +315,35 @@ extension Sketch {
     /// ストロークの端点スタイルを設定します。
     ///
     /// - Parameter cap: 線の端点スタイル。
+    ///
+    /// ### 実行結果
+    ///
+    /// 上から ``StrokeCap/butt``（既定）/ ``StrokeCap/round`` /
+    /// ``StrokeCap/square``。太い線ほど差が出ます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![strokeCap(_:) の実行結果](https://i.gyazo.com/adb3a1d176e5578166f0633159e709a3.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       let caps: [StrokeCap] = [
+    ///           .butt, .round, .square
+    ///       ]
+    ///       background(24)
+    ///       stroke(255, 190, 60)
+    ///       strokeWeight(26)
+    ///       var y: Float = 90
+    ///       for cap in caps {
+    ///           strokeCap(cap)
+    ///           line(140, y, 340, y)
+    ///           y += 90
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func strokeCap(_ cap: StrokeCap) {
         context.strokeCap(cap)
     }
@@ -226,6 +351,10 @@ extension Sketch {
     /// ストロークの接続スタイルを設定します。
     ///
     /// - Parameter join: 線の接続スタイル。
+    ///
+    /// - Note: ``StrokeJoin/round`` は現在丸くならず、角に欠けが出ます
+    ///   （[#769](https://github.com/shinyaoguri/metaphor/issues/769)）。実行結果の絵は
+    ///   これが直ってから載せます。
     public func strokeJoin(_ join: StrokeJoin) {
         context.strokeJoin(join)
     }
