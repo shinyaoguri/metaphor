@@ -361,16 +361,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
 
-        let windowRect = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
-        let window = NSWindow(
-            contentRect: windowRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
+        // 生成は SketchWindowFactory へ集約（isReleasedWhenClosed = false を含む。#835）。
+        // プライマリは applicationShouldTerminateAfterLastWindowClosed が閉じたあとに
+        // `window?.isVisible` を読むため、AppKit に解放されると解放済み参照を触る。
+        let window = SketchWindowFactory.makeWindow(
+            contentSize: NSSize(width: windowWidth, height: windowHeight),
+            title: config.title,
+            aspectRatio: NSSize(width: config.width, height: config.height)
         )
-        window.title = config.title
-        window.contentAspectRatio = NSSize(width: config.width, height: config.height)
-        window.center()
         self.window = window
 
         // MTKView
