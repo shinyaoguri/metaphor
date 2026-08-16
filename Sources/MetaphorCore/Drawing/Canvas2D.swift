@@ -50,6 +50,13 @@ public final class Canvas2D: CanvasStyle {
     var massiveCircleBufferOffset: Int = 0
     var currentBoundTexture: MTLTexture?
 
+    /// 蓄積中のテクスチャバッチが「straight なテクスチャ」かどうか（`updatePixels()`。#848）。
+    ///
+    /// 既定は `false` = premultiplied（グリフアトラス・読み込んだ画像・オフスクリーン。
+    /// ADR-0012）。`drawTexturedQuad(straightAlpha:)` が切り替え時にバッチを閉じるので、
+    /// 蓄積中のバッチは常に単一の系統に属します。
+    var texturedIsStraightAlpha: Bool = false
+
     // 現在のバッファの頂点ポインタ
     var vertices: UnsafeMutablePointer<Vertex2D> {
         colorBuffer.pointer(for: currentBufferIndex)
@@ -447,6 +454,7 @@ public final class Canvas2D: CanvasStyle {
         self.texturedBufferOffset = 0
         self.massiveCircleBufferOffset = 0
         self.currentBoundTexture = nil
+        self.texturedIsStraightAlpha = false
         self.currentTransform = float3x3(1)
         self.stateStack.removeAll(keepingCapacity: true)
         // 不均衡な pushMatrix()/pushStyle() が draw() 内に残っていても、

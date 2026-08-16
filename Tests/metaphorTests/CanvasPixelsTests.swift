@@ -324,6 +324,105 @@ struct CanvasPixelsTests {
                 "updatePixels の no-op がキャンバスを壊していないこと")
     }
 
+    // MARK: - pixels は straight alpha（ADR-0012 / #848）
+
+    /// 半透明を作るのに使う色。premultiplied で格納されると `× 0.5` された値になる。
+    private static let translucent = Color(r: 0.2, g: 0.8, b: 0.4, alpha: 0.5)
+
+    /// キャンバスに半透明の画素を敷いたフレームを 1 枚回す。
+    ///
+    /// `background(α<1)` ではなく `.opaque` の `rect()` で作る（`background()` は
+    /// 置き換えの意味論を持つ別の経路で、ここで見たいのは `pixels` の境界だから）。
+    private func harnessWithTranslucentCanvas(
+        after: @escaping (SketchContext) -> Void
+    ) throws -> (MetaphorRenderer, SketchContext) {
+        try makeHarness { c in
+            c.blendMode(.opaque)
+            c.noStroke()
+            c.fill(Self.translucent)
+            c.rect(0, 0, 64, 64)
+            after(c)
+        }
+    }
+
+    /// `loadPixels()` が返すのは straight alpha（= 利用者が `fill()` で指定した値）。
+    ///
+    /// キャンバスの中身は premultiplied（ADR-0012）なので、blit で写しただけでは
+    /// `α` が掛かった値が見える。`color(r, g, b, a)` は straight を詰める helper なので、
+    /// 割り戻さないと**読む側と書く側で世界が食い違う**（#848）。
+    @Test("loadPixels returns straight alpha, not premultiplied")
+    func loadPixelsReturnsStraightAlpha() throws {
+        var got: (r: UInt32, g: UInt32, b: UInt32, a: UInt32) = (0, 0, 0, 0)
+        let (renderer, _) = try harnessWithTranslucentCanvas { c in
+            c.loadPixels()
+            if let pb = c.pixelBuffer {
+                got = self.channels(pb.pixels[32 * 64 + 32])
+            }
+        }
+        renderer.renderFrame()
+
+        // fill(0.2, 0.8, 0.4, 0.5) = (51, 204, 102, 128)。premultiplied なら (26, 102, 51, 128)
+        #expect(abs(Int(got.r) - 51) <= 2 && abs(Int(got.g) - 204) <= 2
+                && abs(Int(got.b) - 102) <= 2 && abs(Int(got.a) - 128) <= 2,
+                "loadPixels が premultiplied のまま返している: \(got) — #848")
+    }
+
+    /// `color()` で作った straight な半透明画素が、`fill()` と同じように合成される。
+    ///
+    /// `updatePixels()` はフルスクリーンクワッドを描くので、テクスチャの中身が
+    /// straight であることを描画側にも伝えないと、**α を掛けずに over される**（明るく出る）。
+    @Test("a straight translucent pixel written into pixels composites like fill()")
+    func updatePixelsCompositesStraightAlpha() throws {
+        let (renderer, _) = try makeHarness { c in
+            c.blendMode(.opaque)
+            c.noStroke()
+            c.fill(Color(r: 1, g: 1, b: 1))       // 不透明な白の下地
+            c.rect(0, 0, 64, 64)
+            c.loadPixels()
+            if let pb = c.pixelBuffer {
+                for i in 0..<pb.pixels.count {
+                    pb.pixels[i] = color(102, 102, 102, 128)   // straight な半透明グレー
+                }
+            }
+            c.blendMode(.alpha)
+            c.updatePixels()
+        }
+        renderer.renderFrame()
+
+        let image = try framebuffer(renderer)
+        let i = (32 * image.width + 32) * 4
+        let r = Int(image.rgba[i])
+        // 0.4 * 0.502 + 1.0 * (1 - 0.502) = 0.699 → 178。α を掛けずに over すると 229
+        #expect(abs(r - 178) <= 2,
+                "straight な pixels が α を掛けずに合成されている: \(r) — #848")
+    }
+
+    /// 読んだ値をそのまま書き戻したら、キャンバスは変わらない（`set(x, y, get(x, y))` が恒等）。
+    ///
+    /// 読む側だけ・書く側だけを直すとここが落ちる（境界は 2 つで 1 組）。
+    @Test("loadPixels then updatePixels leaves a translucent canvas unchanged")
+    func pixelRoundTripIsIdentityOnTheCanvas() throws {
+        func render(withRoundTrip: Bool) throws -> GoldenImage {
+            let (renderer, _) = try harnessWithTranslucentCanvas { c in
+                guard withRoundTrip else { return }
+                c.loadPixels()
+                c.updatePixels()   // 加工せずそのまま描き戻す
+            }
+            renderer.renderFrame()
+            return try self.framebuffer(renderer)
+        }
+
+        let baseline = try render(withRoundTrip: false)
+        let roundTripped = try render(withRoundTrip: true)
+        let i = (32 * baseline.width + 32) * 4
+        let want = (baseline.rgba[i], baseline.rgba[i + 1], baseline.rgba[i + 2], baseline.rgba[i + 3])
+        let got = (roundTripped.rgba[i], roundTripped.rgba[i + 1],
+                   roundTripped.rgba[i + 2], roundTripped.rgba[i + 3])
+        #expect(abs(Int(got.0) - Int(want.0)) <= 1 && abs(Int(got.1) - Int(want.1)) <= 1
+                && abs(Int(got.2) - Int(want.2)) <= 1 && abs(Int(got.3) - Int(want.3)) <= 1,
+                "pixels の往復が恒等でない: \(want) → \(got) — #848")
+    }
+
     @Test("寸法が合わないテクスチャからの読み戻しはエンコードされない")
     func downloadRejectsMismatchedSource() throws {
         let device = try #require(MetalTestHelper.device)
