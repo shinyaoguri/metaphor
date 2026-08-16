@@ -7,12 +7,13 @@ import Testing
 /// 桁数を見ずに `UInt32(_:radix:)` へ丸投げしていたころは、その約束が桁数の誤りだけをすり抜けて
 /// **別の色として静かに通って**いました（`"#FFF"` が白ではなく青になる）。
 ///
-/// 検査の要点は 2 つ:
+/// 検査の要点は 3 つ:
 ///
 /// - 受け付ける綴りは 3 / 6 / 8 桁だけ。それ以外は色を作らず `nil`
 /// - 桁数が合っていても中身が ASCII の 16 進数字でなければ `nil`
 ///   （`UInt32(_:radix:)` は先頭の符号を受けるので `"+FFFFF"` は 6 文字で通ってしまう。
 ///   全角の `"ＦＦＦＦＦＦ"` は `isHexDigit` を通るので `isASCII` との併用が要る）
+/// - 通った綴りは綴りどおりの色になる。とくに 8 桁のアルファ `00` が落ちない（Issue #870）
 @Suite("Color hex string")
 struct ColorHexStringTests {
 
@@ -106,5 +107,50 @@ struct ColorHexStringTests {
         #expect(Color(hex: "#FF800") == nil)
         // 2 つ目以降の # は 16 進数字ではないので nil
         #expect(Color(hex: "##FF8000") == nil)
+    }
+
+    // MARK: - 8 桁のアルファ 00（Issue #870）
+
+    /// 8 桁のアルファは `00` も綴りどおりに読む。
+    ///
+    /// `init(hex: UInt32)` へ委譲していたころは、整数側が**値の大小**（`hex > 0xFFFFFF`）で
+    /// 桁数を判別するため `0x00FFFFFF == 0xFFFFFF` が RGB 分岐に落ち、
+    /// **アルファ `00` のときだけ** `1.0` に化けていました。`01` 以上なら正しく読まれるので、
+    /// 完全透明を綴ったときだけ不透明になるという気付きにくい壊れ方です。
+    @Test("8 桁のアルファ 00 は透明のまま（RGB は綴りどおり）")
+    func zeroAlphaStaysTransparent() throws {
+        #expect(bytes(try #require(Color(hex: "#00FFFFFF"))) == (0xFF, 0xFF, 0xFF, 0x00))
+        #expect(bytes(try #require(Color(hex: "#00FF0000"))) == (0xFF, 0x00, 0x00, 0x00))
+        #expect(bytes(try #require(Color(hex: "#000000FF"))) == (0x00, 0x00, 0xFF, 0x00))
+    }
+
+    /// 境界値: アルファ `00`（透明）と `01`（ほぼ透明）と `FF`（不透明）が隣り合って壊れない。
+    @Test("アルファは 00 / 01 / FF が連続して読まれる")
+    func alphaBoundaries() throws {
+        #expect(try #require(Color(hex: "#00FFFFFF")).a == 0)
+        #expect(bytes(try #require(Color(hex: "#01FFFFFF"))) == (0xFF, 0xFF, 0xFF, 0x01))
+        #expect(try #require(Color(hex: "#FFFFFFFF")).a == 1)
+    }
+
+    /// アルファ `00` の 8 桁は、同じ RGB の 6 桁とは**別の色**でなければなりません
+    /// （壊れていたころは両者が一致していました）。6 桁側は不透明のまま据え置きです。
+    @Test("6 桁は不透明のまま。アルファ 00 の 8 桁とは一致しない")
+    func sixDigitsRemainOpaque() throws {
+        #expect(try #require(Color(hex: "#FFFFFF")).a == 1)
+        #expect(Color(hex: "#00FFFFFF") != Color(hex: "#FFFFFF"))
+        #expect(Color(hex: "#000000") == Color(hex: "#FF000000"))  // 6 桁の黒 = アルファ FF の黒
+        #expect(Color(hex: "#00000000") == Color.clear)
+    }
+
+    /// 整数の `init(hex:)` は据え置きです（値からは桁数を判別できないため）。
+    /// `0x00FFFFFF` は `0xFFFFFF` と同じ値で、透明な白を整数で綴る方法は原理的にありません。
+    /// doc に書いた仕様どおりであることをここで固定し、文字列側の修正が整数側へ
+    /// 波及していないことも示します。
+    @Test("整数の init(hex:) は値の大小で判別するのでアルファ 00 を表現できない")
+    func integerInitCannotExpressZeroAlpha() {
+        #expect(Color(hex: 0x00FF_FFFF) == Color(hex: 0xFF_FFFF))
+        #expect(Color(hex: 0x00FF_FFFF).a == 1)
+        // 0xFFFFFF を超える値は AARRGGBB として読まれる（こちらは曖昧さがない）。
+        #expect(bytes(Color(hex: 0x8000_0000)) == (0x00, 0x00, 0x00, 0x80))
     }
 }
