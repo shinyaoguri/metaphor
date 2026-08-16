@@ -7,7 +7,8 @@ extension SketchContext {
 
     /// ``ShapeKind`` からリテインドシェイプを作成します。
     ///
-    /// シェイプは現在の fill、stroke、マテリアル状態をキャプチャします。
+    /// シェイプは現在の fill、stroke、マテリアル、`colorMode()` をキャプチャします
+    /// （`colorMode()` はシェイプ定義中の `fill(gray)` / `stroke(gray)` の解釈に使われます）。
     /// カスタムシェイプの場合は ``createShape()`` に続けて `beginShape`/`vertex`/`endShape` を使用します。
     ///
     /// ```swift
@@ -20,7 +21,9 @@ extension SketchContext {
     /// - Returns: 新しい ``MShape`` インスタンス。
     public func createShape(_ kind: ShapeKind) -> MShape {
         let style = captureCurrentStyle()
-        return MShape(device: renderer.device, kind: kind, style: style)
+        return MShape(
+            device: renderer.device, kind: kind, style: style,
+            colorModeConfig: canvas.colorModeConfig)
     }
 
     /// カスタムジオメトリ定義用の空のリテインドシェイプを作成します。
@@ -43,7 +46,9 @@ extension SketchContext {
     /// - Returns: kind が `.path2D` の新しい ``MShape`` インスタンス。
     public func createShape() -> MShape {
         let style = captureCurrentStyle()
-        return MShape(device: renderer.device, kind: .path2D, style: style)
+        return MShape(
+            device: renderer.device, kind: .path2D, style: style,
+            colorModeConfig: canvas.colorModeConfig)
     }
 
     // MARK: - Style Capture

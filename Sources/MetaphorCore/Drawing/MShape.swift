@@ -203,6 +203,14 @@ public final class MShape {
     /// このシェイプに割り当てられたテクスチャ。
     public var texture: MTLTexture?
 
+    /// このシェイプの ``fill(_:)`` / ``stroke(_:)`` が数値を解釈するときの色モード（#853）。
+    ///
+    /// ``Sketch/createShape()`` した時点のスケッチの `colorMode()` を写し取ります
+    /// （fill / stroke / material と同じ「作成時のスナップショット」）。これが無いと
+    /// 同じ `fill(128)` がシェイプ定義の中と外で別の色になります。
+    /// スケッチ文脈を持たずに組んだシェイプは既定（RGB 0-255）のままです。
+    var colorModeConfig: ColorModeConfig
+
     // MARK: - Per-Shape Transform
 
     /// このシェイプの累積2D変換行列。
@@ -335,10 +343,16 @@ public final class MShape {
     ///   - device: GPU リソース用の Metal デバイス。
     ///   - kind: 作成するシェイプのタイプ。
     ///   - style: 初期スタイルスナップショット。
-    init(device: MTLDevice, kind: ShapeKind, style: ShapeStyle = ShapeStyle()) {
+    ///   - colorModeConfig: ``fill(_:)`` / ``stroke(_:)`` に渡す数値の解釈規則
+    ///     （作成時のスケッチの `colorMode()`。既定は RGB 0-255）。
+    init(
+        device: MTLDevice, kind: ShapeKind, style: ShapeStyle = ShapeStyle(),
+        colorModeConfig: ColorModeConfig = ColorModeConfig()
+    ) {
         self.device = device
         self.kind = kind
         self.capturedStyle = style
+        self.colorModeConfig = colorModeConfig
     }
 
     // MARK: - Style Modification

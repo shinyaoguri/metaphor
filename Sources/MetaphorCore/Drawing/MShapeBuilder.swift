@@ -126,10 +126,21 @@ extension MShape {
         capturedStyle.hasFill = true
     }
 
-    /// グレースケール値（0-255）で塗りつぶし色を設定します。
+    /// グレースケール値で塗りつぶし色を設定します。
+    ///
+    /// 値は ``Sketch/createShape()`` した時点の `colorMode()` のレンジで解釈されます
+    /// （既定は 0-255）。スケッチ側の `fill(_:)` と同じ規則です。
     public func fill(_ gray: Float) {
-        let v = gray / 255.0
-        capturedStyle.fillColor = SIMD4(v, v, v, 1)
+        capturedStyle.fillColor = colorModeConfig.toGray(gray).simd
+        capturedStyle.hasFill = true
+    }
+
+    /// グレースケール値と不透明度で塗りつぶし色を設定します。
+    ///
+    /// どちらの値も ``Sketch/createShape()`` した時点の `colorMode()` のレンジで
+    /// 解釈されます（既定はどちらも 0-255）。
+    public func fill(_ gray: Float, _ alpha: Float) {
+        capturedStyle.fillColor = colorModeConfig.toGray(gray, alpha).simd
         capturedStyle.hasFill = true
     }
 
@@ -144,10 +155,21 @@ extension MShape {
         capturedStyle.hasStroke = true
     }
 
-    /// グレースケール値（0-255）でストローク色を設定します。
+    /// グレースケール値でストローク色を設定します。
+    ///
+    /// 値は ``Sketch/createShape()`` した時点の `colorMode()` のレンジで解釈されます
+    /// （既定は 0-255）。スケッチ側の `stroke(_:)` と同じ規則です。
     public func stroke(_ gray: Float) {
-        let v = gray / 255.0
-        capturedStyle.strokeColor = SIMD4(v, v, v, 1)
+        capturedStyle.strokeColor = colorModeConfig.toGray(gray).simd
+        capturedStyle.hasStroke = true
+    }
+
+    /// グレースケール値と不透明度でストローク色を設定します。
+    ///
+    /// どちらの値も ``Sketch/createShape()`` した時点の `colorMode()` のレンジで
+    /// 解釈されます（既定はどちらも 0-255）。
+    public func stroke(_ gray: Float, _ alpha: Float) {
+        capturedStyle.strokeColor = colorModeConfig.toGray(gray, alpha).simd
         capturedStyle.hasStroke = true
     }
 
