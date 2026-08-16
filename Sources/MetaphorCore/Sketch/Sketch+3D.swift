@@ -131,6 +131,38 @@ extension Sketch {
     /// `intensity` 付きで自分で置いてください。
     ///
     /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
+    ///
+    /// ### 実行結果
+    ///
+    /// ライトが 1 つも無いと陰影の計算そのものが省かれ、``fill(_:_:_:_:)`` の色で
+    /// べた塗りになります（左）。ライトは描画のたびに評価されるので、同じフレームの
+    /// 途中で足せば以降の形状だけが照らされます（右）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![lights() の実行結果](https://i.gyazo.com/0c3145d0641680144f78c1f93d58dfc2.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       noStroke()
+    ///       fill(120, 200, 255)
+    ///
+    ///       push()
+    ///       translate(140, height / 2, 0)
+    ///       sphere(90)
+    ///       pop()
+    ///
+    ///       lights()
+    ///       push()
+    ///       translate(340, height / 2, 0)
+    ///       sphere(90)
+    ///       pop()
+    ///       ```
+    ///    }
+    /// }
     public func lights() {
         context.lights()
     }
@@ -669,6 +701,31 @@ extension Sketch {
     /// 辺の長さが等しいキューブを描画します。
     ///
     /// - Parameter size: 辺の長さ。
+    ///
+    /// ### 実行結果
+    ///
+    /// 既定カメラの原点はキャンバス左上なので、``translate(_:_:_:)`` で中央へ寄せます。
+    /// 正対させると正方形にしか見えないため、2 軸で傾けています。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![box(_:) の実行結果](https://i.gyazo.com/41ddd0c938a519b47d664e7910b4733c.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///       translate(width / 2, height / 2, 0)
+    ///       rotateY(0.6)
+    ///       rotateX(-0.35)
+    ///       box(150)
+    ///       ```
+    ///    }
+    /// }
     public func box(_ size: Float) {
         context.box(size)
     }
@@ -678,6 +735,37 @@ extension Sketch {
     /// - Parameters:
     ///   - radius: 球の半径。
     ///   - detail: メッシュテッセレーションの分割数。
+    ///
+    /// ### 実行結果
+    ///
+    /// `detail` は球をどれだけ細かく分割するかで、小さくすると多面体になります
+    /// （左が `detail: 5`、右が既定の 24）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![sphere(_:detail:) の実行結果](https://i.gyazo.com/cef89181618b3dc5212a98c7f3a24863.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(120, 200, 255)
+    ///
+    ///       push()
+    ///       translate(130, height / 2, 0)
+    ///       sphere(80, detail: 5)
+    ///       pop()
+    ///
+    ///       push()
+    ///       translate(350, height / 2, 0)
+    ///       sphere(80)
+    ///       pop()
+    ///       ```
+    ///    }
+    /// }
     public func sphere(_ radius: Float, detail: Int = 24) {
         context.sphere(radius, detail: detail)
     }
@@ -687,6 +775,31 @@ extension Sketch {
     /// - Parameters:
     ///   - width: 平面の幅。
     ///   - height: 平面の高さ。
+    ///
+    /// ### 実行結果
+    ///
+    /// 正対させると ``rect(_:_:_:_:)`` と見分けが付かないので、``rotateX(_:)`` で
+    /// 寝かせて奥行きを出しています。既定の ``lights()`` は右下手前から差すため、
+    /// 負の角で傾けた面（＝下を向いた面）が明るくなります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![plane(_:_:) の実行結果](https://i.gyazo.com/ade802380125fe0ac629d024fb98ff77.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(150, 220, 120)
+    ///       translate(width / 2, height / 2, 0)
+    ///       rotateX(-1.1)
+    ///       plane(280, 220)
+    ///       ```
+    ///    }
+    /// }
     public func plane(_ width: Float, _ height: Float) {
         context.plane(width, height)
     }
@@ -700,6 +813,27 @@ extension Sketch {
     ///   - radius: 円柱の半径。
     ///   - height: 円柱の高さ。
     ///   - detail: 円周方向の分割数。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![cylinder(radius:height:detail:) の実行結果](https://i.gyazo.com/b21d836b4cf4c05ae59bc1e3a3b4f533.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(255, 150, 120)
+    ///       translate(width / 2, height / 2, 0)
+    ///       rotateX(-0.45)
+    ///       cylinder(radius: 80, height: 190)
+    ///       ```
+    ///    }
+    /// }
     public func cylinder(radius: Float, height: Float, detail: Int = 24) {
         context.cylinder(radius: radius, height: height, detail: detail)
     }
@@ -713,6 +847,31 @@ extension Sketch {
     ///   - radius: 底面の半径。
     ///   - height: 円錐の高さ。
     ///   - detail: 円周方向の分割数。
+    ///
+    /// ### 実行結果
+    ///
+    /// y 軸は画面下向きなので、そのまま描くと**頂点が下**を向きます。上向きの円錐に
+    /// するには ``rotateZ(_:)`` で半回転させてください（既定の ``lights()`` は
+    /// 右下手前から差すため、半回転させると側面が陰に入ります）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![cone(radius:height:detail:) の実行結果](https://i.gyazo.com/b7db8402277b7f92c05b5a83a97f97c4.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(255, 205, 90)
+    ///       translate(width / 2, height / 2, 0)
+    ///       rotateX(-0.45)
+    ///       cone(radius: 95, height: 200)
+    ///       ```
+    ///    }
+    /// }
     public func cone(radius: Float, height: Float, detail: Int = 24) {
         context.cone(radius: radius, height: height, detail: detail)
     }
@@ -726,6 +885,30 @@ extension Sketch {
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: 分割数。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![torus(ringRadius:tubeRadius:detail:) の実行結果](https://i.gyazo.com/22b06b17868accc9b2d073f8295d1896.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(200, 140, 255)
+    ///       translate(width / 2, height / 2, 0)
+    ///       rotateX(-0.95)
+    ///       torus(
+    ///           ringRadius: 110,
+    ///           tubeRadius: 40
+    ///       )
+    ///       ```
+    ///    }
+    /// }
     public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) {
         context.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
