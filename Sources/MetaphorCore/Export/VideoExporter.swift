@@ -84,6 +84,18 @@ public struct VideoExportConfig: Sendable {
 ///     print("Recording complete")
 /// }
 /// ```
+///
+/// ## アルファの扱い
+///
+/// **書き出した動画に α は残りません。**h264 / hevc はアルファチャンネルを持てないので、
+/// フレームの α は捨てられます。metaphor のレンダーターゲットは premultiplied alpha
+/// （[ADR-0012](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0012-alpha-semantics.md)）
+/// なので、残る RGB は「**黒に合成済み**」の値です。
+///
+/// つまり `background(0, 0, 0, 0)` の上に `α = 0.5` で描いた領域は、動画では
+/// 半分だけ黒に沈んだ色になります。PNG（`save()`）は α を保つため、**同じフレームでも
+/// PNG と MP4 で半透明部の見え方が変わります**。透過を保ったまま書き出したいときは
+/// 連番 PNG を使ってください。
 @MainActor
 public final class VideoExporter {
     /// 現在記録中かどうかを示すフラグ

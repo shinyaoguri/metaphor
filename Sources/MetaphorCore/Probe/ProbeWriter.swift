@@ -283,6 +283,8 @@ enum ProbeWriter {
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: colorSpace,
+            // 貼り込むフレームが premultiplied（ADR-0012）なので、下地も同じ表現で
+            // 用意して合成に変換を挟ませない。
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
@@ -407,6 +409,8 @@ enum ProbeWriter {
             bitsPerComponent: 8,
             bytesPerRow: width * 4,
             space: colorSpace,
+            // 縮小は premultiplied のまま行う（ADR-0012）。straight のまま平均すると
+            // 透明画素の色が混ざって、半透明の縁に黒や別の色が滲む。
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ),
         let image = srcCtx.makeImage() else {
@@ -423,6 +427,7 @@ enum ProbeWriter {
                 bitsPerComponent: 8,
                 bytesPerRow: outW * 4,
                 space: colorSpace,
+                // 出力側も premultiplied で受ける（入力と揃えて変換を挟ませない）。
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             ) else { return false }
             dstCtx.interpolationQuality = .high
@@ -449,6 +454,9 @@ enum ProbeWriter {
             bitsPerComponent: 8,
             bytesPerRow: bytesPerRow,
             space: colorSpace,
+            // 読み戻したテクスチャの中身は premultiplied（ADR-0012）。宣言を実体に
+            // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
+            // **frame.png は straight** になる（受け手はそのまま読めばよい）。
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ),
         let cgImage = ctx.makeImage(),
