@@ -13,6 +13,24 @@ import simd
 /// let value = noise.sample(x: 0.5, y: 0.3)
 /// let tex = noise.texture(width: 512, height: 512)
 /// ```
+///
+/// ## Two entry points, two coordinate spaces
+///
+/// The noise can be read either point by point or as a grid, and **the two read the
+/// field through different coordinate spaces**:
+///
+/// - ``sample(x:y:)`` samples the noise space directly. It applies neither
+///   ``NoiseConfig/origin`` nor ``NoiseConfig/sampleScale``.
+/// - ``sampleGrid(width:height:)`` — and therefore ``texture(width:height:)``,
+///   ``image(width:height:)`` and ``colorMappedTexture(width:height:colorStops:)`` —
+///   hands `origin` and `sampleScale` to `GKNoiseMap` and lets GameplayKit walk the grid.
+///
+/// Only the grid's first sample coincides with point sampling, at
+/// `sample(x: origin.x, y: origin.y)`. Past that the two diverge, and they cannot be
+/// lined up from here: GameplayKit does not step `GKNoiseMap` by
+/// `origin + index × sampleScale`, and its effective step changes with the grid
+/// dimensions rather than with `sampleScale` alone. Pick one entry point per sketch
+/// instead of mixing them.
 @MainActor
 public final class GKNoiseWrapper {
     /// Returns the noise type.
@@ -53,11 +71,25 @@ public final class GKNoiseWrapper {
 
     /// Samples the noise value at a 2D point.
     ///
+    /// This samples the noise space directly: `x` and `y` reach the underlying noise
+    /// source unchanged, so neither ``NoiseConfig/origin`` nor
+    /// ``NoiseConfig/sampleScale`` is applied. Those two settings only steer the
+    /// grid-based entry points. Offset and scale the coordinates yourself if you want
+    /// them here.
+    ///
     /// When `config.normalized` is true, the returned value is in the 0.0-1.0 range.
     /// Otherwise, the raw -1.0-1.0 range is returned.
+    ///
+    /// - Important: The values returned here **do not match**
+    ///   ``sampleGrid(width:height:)`` (nor ``texture(width:height:)`` /
+    ///   ``image(width:height:)``, which are built on it). Only the grid's first sample
+    ///   coincides, at `sample(x: origin.x, y: origin.y)`; `sample(x: origin.x + Float(i)
+    ///   * sampleScale.x, y: origin.y)` does not reproduce the grid's `i`-th value,
+    ///   because GameplayKit steps `GKNoiseMap` on its own terms. See
+    ///   ``GKNoiseWrapper`` for the full picture.
     /// - Parameters:
-    ///   - x: The x coordinate.
-    ///   - y: The y coordinate.
+    ///   - x: The x coordinate, in noise space.
+    ///   - y: The y coordinate, in noise space.
     /// - Returns: The noise value at the given point.
     public func sample(x: Float, y: Float) -> Float {
         let raw = gkNoise.value(atPosition: vector_float2(x, y))
@@ -76,6 +108,19 @@ public final class GKNoiseWrapper {
     // MARK: - グリッドサンプリング
 
     /// Generates noise values as a 2D grid.
+    ///
+    /// The grid starts at ``NoiseConfig/origin`` and spans
+    /// `sampleScale × (width, height)` of noise space, so ``NoiseConfig/sampleScale``
+    /// decides how much noise a grid of a given size covers. Both are handed to
+    /// `GKNoiseMap`, which walks the grid itself.
+    ///
+    /// - Important: This is a different coordinate space from ``sample(x:y:)``, which
+    ///   applies neither `origin` nor `sampleScale`. Index `(0, 0)` equals
+    ///   `sample(x: origin.x, y: origin.y)`, but no other index lines up: GameplayKit
+    ///   does not step the map by `origin + index × sampleScale`, and the step it does
+    ///   use changes with `width` / `height` — the same `sampleScale` on a 64×64 and a
+    ///   16×16 grid puts index `(1, 0)` at different points in the noise. Read the field
+    ///   through one entry point per sketch rather than expecting the two to agree.
     /// - Parameters:
     ///   - width: The grid width, in samples.
     ///   - height: The grid height, in samples.
@@ -96,6 +141,10 @@ public final class GKNoiseWrapper {
     // MARK: - テクスチャ生成
 
     /// Generates a grayscale BGRA8 noise texture.
+    ///
+    /// - Note: Built on ``sampleGrid(width:height:)``, so ``NoiseConfig/origin`` and
+    ///   ``NoiseConfig/sampleScale`` apply here and the pixels do not correspond to
+    ///   ``sample(x:y:)`` values.
     /// - Parameters:
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
@@ -108,6 +157,10 @@ public final class GKNoiseWrapper {
     }
 
     /// Generates a noise image.
+    ///
+    /// - Note: Built on ``sampleGrid(width:height:)``, so ``NoiseConfig/origin`` and
+    ///   ``NoiseConfig/sampleScale`` apply here and the pixels do not correspond to
+    ///   ``sample(x:y:)`` values.
     /// - Parameters:
     ///   - width: The image width, in pixels.
     ///   - height: The image height, in pixels.
@@ -118,6 +171,10 @@ public final class GKNoiseWrapper {
     }
 
     /// Generates a color-mapped noise texture using gradient stops.
+    ///
+    /// - Note: Built on ``sampleGrid(width:height:)``, so ``NoiseConfig/origin`` and
+    ///   ``NoiseConfig/sampleScale`` apply here and the pixels do not correspond to
+    ///   ``sample(x:y:)`` values.
     /// - Parameters:
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
