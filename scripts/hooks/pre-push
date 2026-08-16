@@ -11,10 +11,18 @@
 #   - Examples/**
 #   - scripts/generate-examples-index.py
 #
-# docs/tutorial/*.md の埋め込みコードは、次に触れたときに検証される:
+# docs/tutorial/*.md の埋め込みコードと実行結果画像は、次に触れたときに検証される:
 #   - Examples/Tutorial/**
 #   - docs/tutorial/**
 #   - scripts/generate-tutorial-snippets.py
+#   - scripts/generate-tutorial-shots.py
+#   - scripts/shots_common.py
+#
+# doc コメントの実行結果画像（リファレンス）は、次に触れたときに検証される:
+#   - Sources/**/*.swift（<!-- reference-shot --> 付きスニペットが正典）
+#   - docs/reference/**（台帳 manifest.json と shots.config.json）
+#   - scripts/generate-reference-shots.py
+#   - scripts/shots_common.py
 #
 # README 群が案内する「どこまで公開されているか」は、次に触れたときに検証される:
 #   - docs/tutorial/**（frontmatter が正典）
@@ -37,6 +45,7 @@ needs_llms=0
 needs_index=0
 needs_shaders=0
 needs_tutorial=0
+needs_reference=0
 needs_status=0
 zero=0000000000000000000000000000000000000000
 
@@ -53,6 +62,7 @@ while read -r _ local_sha _ remote_sha; do
             needs_index=1
             needs_shaders=1
             needs_tutorial=1
+            needs_reference=1
             needs_status=1
             break
         fi
@@ -80,11 +90,30 @@ while read -r _ local_sha _ remote_sha; do
         needs_shaders=1
     fi
     # tutorial snippets depend on the tutorial packages, the prose that embeds
-    # them, AND the generator script.
+    # them, AND the generator script. The result images hanging off the same
+    # flag depend on two more: their own generator, and shots_common.py — which
+    # is where the freshness fingerprint itself lives, so changing it restales
+    # every section at once (#788; it slipped through in #787).
+    #
+    # shots_common.py does not feed the *snippet* half, so it over-fires that
+    # one check by ~0.05s. Splitting the flag to save that is not worth a
+    # fourth trigger list.
     if git diff --name-only "$range" \
-        -- 'Examples/Tutorial/' 'docs/tutorial/' 'scripts/generate-tutorial-snippets.py' \
+        -- 'Examples/Tutorial/' 'docs/tutorial/' \
+           'scripts/generate-tutorial-snippets.py' \
+           'scripts/generate-tutorial-shots.py' 'scripts/shots_common.py' \
         | grep -q .; then
         needs_tutorial=1
+    fi
+    # reference result images: the canonical source is the `<!-- reference-shot
+    # -->` snippet in the doc comment, and the ledger/config live under
+    # docs/reference/. Already a required CI gate (ci.yml), so this only moves
+    # the failure earlier — it introduces no new rule (#788).
+    if git diff --name-only "$range" \
+        -- 'Sources/**/*.swift' 'docs/reference/' \
+           'scripts/generate-reference-shots.py' 'scripts/shots_common.py' \
+        | grep -q .; then
+        needs_reference=1
     fi
     # publication status depends on the tutorial frontmatter, the entry docs
     # that advertise it, AND the generator script.
@@ -179,6 +208,22 @@ if [ "$needs_tutorial" -eq 1 ]; then
         echo "" >&2
         exit 1
     fi
+fi
+
+# --- reference result images staleness check ----------------------------------
+if [ "$needs_reference" -eq 1 ]; then
+    echo "[pre-push] Sources or reference config changed — verifying reference result images..."
+    if ! python3 scripts/generate-reference-shots.py --check; then
+        echo "[pre-push] ❌ doc コメントの実行結果画像が古い（正典はスニペット）。" >&2
+        echo "[pre-push] 撮り直してコミットしてください（GPU と Gyazo トークンが要ります）:" >&2
+        echo "" >&2
+        echo "    make reference-shots" >&2
+        echo "    git add Sources docs/reference/images/manifest.json" >&2
+        echo "" >&2
+        echo "[pre-push] （CI の必須ゲートと同じ検査です。ここで止めるのは早く気付くため）" >&2
+        exit 1
+    fi
+    echo "[pre-push] ✅ reference result images are up to date."
 fi
 
 # --- tutorial publication status check ----------------------------------------
