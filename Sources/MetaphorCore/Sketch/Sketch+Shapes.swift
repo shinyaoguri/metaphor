@@ -886,12 +886,14 @@ extension Sketch {
     /// ### 実行結果
     ///
     /// ``vertex(_:_:)`` で頂点を並べ、``endShape(_:)`` で閉じて描きます。
+    /// 星の順（5 点を 2 つ飛ばし）に並べると辺どうしが交差しますが、塗りは
+    /// nonzero winding 規則なので五芒星になります。
     ///
     /// <!-- reference-shot -->
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![beginShape(_:) の実行結果](https://i.gyazo.com/a10e43fb6502ebfdf514b7598cbf1c5c.png)
+    ///       ![beginShape(_:) の実行結果](https://i.gyazo.com/d965e3aa16851653671ff363b8edd959.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -899,11 +901,11 @@ extension Sketch {
     ///       fill(255, 190, 60)
     ///       noStroke()
     ///       beginShape()
-    ///       vertex(240, 50)
-    ///       vertex(410, 175)
-    ///       vertex(345, 320)
-    ///       vertex(135, 320)
-    ///       vertex(70, 175)
+    ///       vertex(240, 60)
+    ///       vertex(330, 300)
+    ///       vertex(90, 150)
+    ///       vertex(390, 150)
+    ///       vertex(150, 300)
     ///       endShape(.close)
     ///       ```
     ///    }
@@ -1130,6 +1132,10 @@ extension Sketch {
     }
 
     /// 現在のシェイプの記録を終了し描画します。
+    ///
+    /// - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います
+    ///   （Processing / p5.js と同じ）。巻き数が 0 でない領域が塗られるので、五芒星は
+    ///   中央の五角形まで塗られたべた塗りの星になります。
     ///
     /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {

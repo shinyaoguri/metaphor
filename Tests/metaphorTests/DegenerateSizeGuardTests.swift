@@ -191,12 +191,79 @@ struct OversizedGuardTests {
         #expect(context.createGraphics3D(size.width, size.height) == nil)
     }
 
+    /// `TextureManager` を通らず自前で descriptor を組むため、#842 の上限ガードの
+    /// 外側に残っていた口 (Issue #806)。下限だけが #798 で塞がれていた。
+    @Test("MImage.createImage(device:) が上限超えで nil を返す", arguments: oversizedSizes)
+    fileprivate func createImageReturnsNil(size: DegenerateSize) throws {
+        #expect(MImage.createImage(size.width, size.height, device: MetalTestHelper.device!) == nil)
+    }
+
+    /// ガードが効きすぎていないこと。上限ちょうどは 1GiB を確保してしまうので、
+    /// じゅうぶん大きい実用サイズで代用する。
+    @Test("上限内の大きな MImage は作れる")
+    func largeValidImageSucceeds() throws {
+        #expect(MImage.createImage(4096, 4096, device: MetalTestHelper.device!) != nil)
+    }
+
     /// ガードが効きすぎていないこと。上限ちょうど (16384 角) は色 + 深度で 2GiB を
     /// 確保するためテストでは作らず、じゅうぶん大きい実用サイズで代用する。
     @Test("上限内の大きなサイズは作れる")
     func largeValidSizeSucceeds() throws {
         let context = try makeContext()
         #expect(context.createGraphics(2048, 2048) != nil)
+    }
+}
+
+// MARK: - サイズではなく個数を取る口 (Issue #806)
+
+/// `createParticleSystem(count:)` は寸法ではなく個数を取るが、
+/// `MemoryLayout<Particle>.stride * count` がそのままバッファ長になる同じ形。
+///
+/// 実測では負の `count` でも `makeBuffer(length:)` が nil を返すため abort はせず、
+/// `SketchContext` 側のガード (#195) と合わせて失敗は `throws` で表現できていた。
+/// ただしそれは Metal 側の実装依存なので、``ParticleSystem`` の init 自身にも
+/// 明示のガードを置いて契約として固定する。
+@Suite("パーティクル数のガード", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct DegenerateParticleCountTests {
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        return SketchContext(
+            renderer: renderer,
+            canvas: try Canvas2D(renderer: renderer),
+            canvas3D: try Canvas3D(renderer: renderer),
+            input: renderer.input
+        )
+    }
+
+    @Test("ParticleSystem の init が 0 以下の count を throw で弾く", arguments: [0, -1, -100_000])
+    func particleSystemInitThrows(count: Int) throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        #expect(throws: MetaphorError.self) {
+            _ = try ParticleSystem(
+                device: renderer.device,
+                shaderLibrary: renderer.shaderLibrary,
+                sampleCount: 1,
+                count: count
+            )
+        }
+    }
+
+    @Test("createParticleSystem が 0 以下の count を throw で弾く", arguments: [0, -1, -100_000])
+    func createParticleSystemThrows(count: Int) throws {
+        let context = try makeContext()
+        #expect(throws: MetaphorError.self) {
+            _ = try context.createParticleSystem(count: count)
+        }
+    }
+
+    /// ガードが効きすぎていないこと。1 個でも作れる。
+    @Test("正の count は作れる", arguments: [1, 1_000])
+    func positiveCountSucceeds(count: Int) throws {
+        let context = try makeContext()
+        let system = try context.createParticleSystem(count: count)
+        #expect(system.count == count)
     }
 }
 

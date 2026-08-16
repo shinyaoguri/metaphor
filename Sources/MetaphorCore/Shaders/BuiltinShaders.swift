@@ -129,6 +129,13 @@ public enum BuiltinShaders {
         public static let canvas2DTexturedVertex = "metaphor_canvas2DTexturedVertex"
         /// Canvas2D テクスチャ付きフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedFragment = "metaphor_canvas2DTexturedFragment"
+        /// Canvas2D straight alpha テクスチャ用フラグメントシェーダーのMSL関数名。
+        ///
+        /// `updatePixels()` のように**テクスチャが既に straight**な経路で使います
+        /// （既定の ``canvas2DTexturedFragment`` は premultiplied を前提に割り戻す。
+        /// ADR-0012 / #848）。
+        public static let canvas2DStraightTexturedFragment =
+            "metaphor_canvas2DStraightTexturedFragment"
         /// Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedDifferenceFragment = "metaphor_canvas2DTexturedDifferenceFragment"
         /// Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。

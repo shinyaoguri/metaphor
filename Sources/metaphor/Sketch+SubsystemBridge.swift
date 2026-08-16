@@ -22,6 +22,9 @@ extension VideoPlayer: SketchSubsystem {
 }
 
 extension Physics2D: SketchSubsystem {
-    /// 物理ステップを進める。`deltaTime` をそのままタイムステップに使う。
-    public func update(deltaTime: Float) { step(deltaTime) }
+    /// 物理を `deltaTime` ぶん進める。実フレーム時間は常に揺れるので、そのまま
+    /// `step(deltaTime)` へ渡さず固定刻みのアキュムレータ（`advance`）を通す。
+    /// Verlet の速度は「1 ステップあたりの変位」なので、dt が揺れるとエネルギーが
+    /// 出入りし、同じスケッチが実行のたび・機械ごとに違う動きになる（#756）。
+    public func update(deltaTime: Float) { advance(deltaTime) }
 }

@@ -82,6 +82,36 @@ struct MetaphorRendererTests {
         #expect(renderer.textureManager.height == 768)
     }
 
+    // 回帰テスト(#856): resizeCanvas は inflightSemaphore（値 3）を 3 つとも取りに行くが、
+    // renderFrame() は先頭で 1 つ取って GPU 完了ハンドラまで保持する。フレームの中から
+    // 呼ぶと必ず 3 つ目で 5 秒待ってタイムアウトし、そのうえで記録中のエンコーダの足元で
+    // TextureManager を差し替えていた。フレーム中の呼び出しは待たずに弾く。
+    @Test("resizeCanvas はフレーム中の呼び出しを待たずに弾く")
+    func resizeCanvasRejectedDuringFrame() throws {
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        renderer.onDraw = { [weak renderer] _, _ in
+            renderer?.resizeCanvas(width: 128, height: 32)
+        }
+
+        // 壁時計の絶対値ではなく、ドレイン待ちのタイムアウトそのものを物差しにする(#891)。
+        let timeout = Duration.seconds(MetaphorRenderer.inflightDrainTimeoutSeconds)
+        let started = ContinuousClock.now
+        renderer.renderFrame()
+        let elapsed = ContinuousClock.now - started
+
+        #expect(elapsed < timeout / 2,
+                "実測 \(elapsed): タイムアウト(\(timeout))級ならドレイン待ちに落ちている(#856)")
+        #expect(renderer.textureManager.width == 64, "フレーム中のリサイズは行われないべき")
+        #expect(renderer.textureManager.height == 64)
+        #expect(renderer.isRenderingFrame == false, "フレームを抜けたら印は下りているべき")
+
+        // フレームの外なら従来どおり効く（弾く印がフレームの外へ漏れていないこと）。
+        renderer.onDraw = nil
+        renderer.resizeCanvas(width: 128, height: 32)
+        #expect(renderer.textureManager.width == 128)
+        #expect(renderer.textureManager.height == 32)
+    }
+
     @Test("setClearColor updates textureManager clearColor")
     func setClearColor() throws {
         let renderer = try MetaphorRenderer()

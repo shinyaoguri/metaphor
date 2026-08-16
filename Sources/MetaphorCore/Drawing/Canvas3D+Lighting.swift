@@ -9,13 +9,15 @@ extension Canvas3D {
     /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
     /// `ambientLight(76.5)` 相当）に設定されます。
     public func lights() {
-        flushInstanceBatch()  // 送信済みシェイプを変更前のライトで確定
+        flushInstanceBatch()  // 送信済みライトで確定してから差し替える
         lightArray.removeAll(keepingCapacity: true)
         applyDefaultAmbient()
 
         var light = Light3D.zero
         light.positionAndType = SIMD4(0, 0, 0, 0)
-        light.directionAndCutoff = SIMD4(-0.5, -1.0, -0.8, 0)
+        // ワールド +Y は画面下向きなので、上から差す光の向きは +Y。
+        // 以前は y = -1 で、定義上「真下から」差していた（#774）。
+        light.directionAndCutoff = SIMD4(-0.5, 1.0, -0.8, 0)
         light.colorAndIntensity = SIMD4(1, 1, 1, 0.7)
         light.attenuationAndOuterCutoff = SIMD4(1, 0, 0, 0)
         lightArray.append(light)

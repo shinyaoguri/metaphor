@@ -6,6 +6,10 @@ extension Canvas2D {
 
     /// 現在の変換を無視して、キャンバス全体を単色で塗りつぶします。
     ///
+    /// **背景は合成ではなく置き換え**です。`blendMode()` は効かず、α < 1 の背景色は
+    /// 下地と混ざらずにそのまま入ります（`background(0, 0, 0, 0)` はキャンバスを透明に
+    /// 戻します）。Processing の `background()` と同じ意味づけです（ADR-0012 / #829）。
+    ///
     /// このフレームでまだ何も描画されていない場合、最適なパフォーマンスのため
     /// クリアカラーの更新のみを行います。
     ///
@@ -24,8 +28,7 @@ extension Canvas2D {
         if isDeferring {
             let drewSomething = hasDrawnAnything || (hasRecorded3D?() ?? false)
             guard drewSomething else { return }
-            addBackgroundQuad(c)
-            flush()
+            emitBackgroundQuad(c)
             return
         }
         let canUseRenderPassClear = onSetClearColor != nil && appliedClearColor == c
@@ -38,9 +41,30 @@ extension Canvas2D {
         }
         // 全画面クワッドを描画（既に何かが描画されているか、
         // loadAction = .load で明示的なクリアが必要な場合）。
-        addBackgroundQuad(c)
+        emitBackgroundQuad(c)
         hasDrawnAnything = true
+    }
+
+    /// 背景クワッドを積んで、``BlendMode/opaque``（= 合成せず値をそのまま書く）で出します。
+    ///
+    /// **`background()` は合成ではなく置き換え**です。レンダーパスの `loadAction = .clear`
+    /// に乗る経路はクリアカラーをそのまま書く（= 置き換え）ので、クワッド経路もそこへ
+    /// 揃えないと、同じ 1 行が「前のフレームと同じ色かどうか」で意味を変えてしまいます。
+    /// 実際、通常の α ブレンドで描くと **α = 0 のクワッドは合成の定義上まったく
+    /// 何もしない**ため、透明で塗り直せませんでした（#829）。
+    ///
+    /// 組み込みフラグメントは premultiplied を返す（ADR-0012）ので、ブレンドを切って
+    /// そのまま書けば ``TextureManager/premultipliedClearColor(_:_:_:_:)`` と同じ値が入り、
+    /// 2 つの経路の結果が一致します。
+    private func emitBackgroundQuad(_ c: SIMD4<Float>) {
+        // ここまでの描画は、それぞれのブレンドモードのまま先に出し切る
+        // （背景を `.opaque` へ切り替えるので、保留中のバッチを巻き込まないため）。
         flush()
+        let savedBlendMode = currentBlendMode
+        currentBlendMode = .opaque
+        addBackgroundQuad(c)
+        flushColorVertices()
+        currentBlendMode = savedBlendMode
     }
 
     /// キャンバス全体を覆う背景クワッドを積みます。

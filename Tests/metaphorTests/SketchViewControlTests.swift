@@ -12,6 +12,11 @@ import MetaphorTestSupport
 // フレームが止まらなかった（isLooping だけ false になり実挙動と食い違う）。
 // SketchRunner 側の同じ配線は SketchAPISurfaceTests が見ているので、ここは SketchView 側だけを見る。
 
+/// `resizeCanvas` のインフライトフレームのドレイン待ちタイムアウト。
+///
+/// 壁時計の絶対値で閾値を切ると CI で揺れる（#891）ので、タイムアウトの値そのものを物差しにする。
+private let resizeDrainTimeout = Duration.seconds(MetaphorRenderer.inflightDrainTimeoutSeconds)
+
 /// ``SketchView/Coordinator`` を単体構築し、制御 API の効きを観測するためのハーネス。
 ///
 /// `SketchView` 自体は `NSViewRepresentable` で SwiftUI のライフサイクルに乗るためテストから
@@ -26,6 +31,12 @@ private final class SketchViewHarness {
     private(set) var drawCalls = 0
     private(set) var deltaTimes: [Float] = []
 
+    /// 毎フレーム draw クロージャの末尾で走る観測フック（#856 で追加）。
+    ///
+    /// init の引数にすると、既存の呼び出し側の末尾クロージャが `setup` ではなく
+    /// こちらへ結び付いてしまう（後方マッチング）ため、構築後に差し込む形にしている。
+    var onDraw: (@MainActor (SketchContext) -> Void)?
+
     init(
         config: SketchConfig = SketchConfig(width: 64, height: 64),
         setup: (@MainActor (SketchContext) -> Void)? = nil
@@ -33,6 +44,7 @@ private final class SketchViewHarness {
         coordinator = SketchView.Coordinator(config: config, setup: setup) { [weak self] ctx in
             self?.drawCalls += 1
             self?.deltaTimes.append(ctx.deltaTime)
+            self?.onDraw?(ctx)
         }
         try coordinator.initialize(view: view)
     }
@@ -161,7 +173,8 @@ struct SketchViewCreateCanvasTests {
     // 回帰テスト(#828): setup をフレームの中で呼んでいると、resizeCanvas が
     // inflightSemaphore を 3 つ取りに行くのに renderFrame() が 1 つ掴んだままなので、
     // 5 秒待って "Timed out waiting for in-flight frame during resize" に落ちる。
-    // 実時間で見るしかない性質のずれなので、タイムアウト（5s）の半分を閾値にする。
+    // 実時間で見るしかない性質のずれなので、タイムアウトそのものの半分を閾値にする
+    // （壁時計の絶対値で切ると CI で揺れる。#891）。
     // 初期化だけでなく最初のフレームまで含めて測る: setup をフレームの中で呼ぶ旧形では
     // createCanvas() が走るのが最初の renderFrame() の中なので、そこまで回さないと現れない。
     @Test("setup 内の createCanvas() がインフライトフレームのタイムアウトで止まらない")
@@ -173,8 +186,8 @@ struct SketchViewCreateCanvasTests {
         try harness.renderer.renderFrame()
         let elapsed = ContinuousClock.now - started
 
-        #expect(elapsed < .seconds(2.5),
-                "実測 \(elapsed): 5 秒級なら setup がフレームの中で走っている(#828)")
+        #expect(elapsed < resizeDrainTimeout / 2,
+                "実測 \(elapsed): タイムアウト(\(resizeDrainTimeout))級なら setup がフレームの中で走っている(#828)")
     }
 
     // 回帰テスト(#828): setup をフレームの外へ移した副作用の押さえ。
@@ -214,5 +227,100 @@ struct SketchViewCreateCanvasTests {
         renderer.renderFrame()
 
         #expect(harness.view.isPaused == false, "止める理由が無いのに止まっている")
+    }
+}
+
+// このスイートは `draw()` の**中**から `createCanvas()` を呼んだときの振る舞いを固定する（#856）。
+//
+// `MetaphorRenderer.resizeCanvas` は古いテクスチャを GPU が掴んでいないことを保証するため
+// `inflightSemaphore`（値 3）を 3 つとも取りに行くが、`renderFrame()` は先頭で 1 つ取って
+// GPU 完了ハンドラまで保持する。`draw()` はそのフレームの中で走るので、フレーム中の
+// `createCanvas()` は必ず 3 つ目で 5 秒待ってタイムアウトし、その後もそのまま
+// `TextureManager` を差し替えて記録中のフレームを捨てていた。
+// いまは待たずに弾き、そのフレームは元のキャンバスのまま描き切る。
+
+/// `draw()` の中で観測した値の置き場（エスケープするクロージャから書き込むため参照型）。
+@MainActor
+private final class DrawProbe {
+    var canvasBefore: Canvas2D?
+    var canvasAfter: Canvas2D?
+    var widthDuringDraw: Float = 0
+    var isRenderingFrameDuringDraw = false
+}
+
+@Suite("SketchView createCanvas in draw", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct SketchViewCreateCanvasInDrawTests {
+
+    // 回帰テスト(#856): 修正前はここで 5 秒待たされていた。
+    @Test("draw() 中の createCanvas() はインフライトフレームのドレイン待ちで止まらない")
+    func createCanvasInDrawDoesNotStall() throws {
+        let harness = try SketchViewHarness(config: SketchConfig(width: 64, height: 64))
+        harness.onDraw = { ctx in
+            ctx.createCanvas(width: 128, height: 32)
+        }
+        let renderer = try harness.renderer
+
+        // 初期化コストを混ぜないよう、測るのはフレーム 1 枚ぶんだけにする。
+        let started = ContinuousClock.now
+        renderer.renderFrame()
+        let elapsed = ContinuousClock.now - started
+
+        #expect(elapsed < resizeDrainTimeout / 2,
+                "実測 \(elapsed): タイムアウト(\(resizeDrainTimeout))級ならドレイン待ちに落ちている(#856)")
+    }
+
+    // 回帰テスト(#856): 弾くだけでなく「半端に効かせない」ことも見る。リサイズを飛ばしても
+    // Canvas2D/Canvas3D を作り直してしまうと、その差し替えはエンコーダを持たない新品なので
+    // 以降の描画がまるごと消え、スタイル状態も既定へ戻る。
+    @Test("draw() 中の createCanvas() は無視され、そのフレームは元のキャンバスのまま続く")
+    func createCanvasInDrawKeepsFrameIntact() throws {
+        let probe = DrawProbe()
+        let harness = try SketchViewHarness(config: SketchConfig(width: 64, height: 64))
+        harness.onDraw = { ctx in
+            probe.canvasBefore = ctx.canvas
+            probe.isRenderingFrameDuringDraw = ctx.renderer.isRenderingFrame
+            ctx.createCanvas(width: 128, height: 32)
+            probe.canvasAfter = ctx.canvas
+            probe.widthDuringDraw = ctx.width
+        }
+        let context = try harness.context
+        let renderer = try harness.renderer
+
+        renderer.renderFrame()
+
+        #expect(probe.isRenderingFrameDuringDraw,
+                "draw() の中なのに isRenderingFrame が立っていない(#856)")
+        #expect(probe.canvasAfter === probe.canvasBefore,
+                "フレームの途中で Canvas2D が差し替わると、以降の描画はエンコーダの無い新品へ落ちて消える(#856)")
+        #expect(probe.widthDuringDraw == 64,
+                "実測 \(probe.widthDuringDraw): 寸法だけ先に動くと draw() の残りが食い違う")
+        #expect(context.width == 64)
+        #expect(context.height == 64)
+        #expect(renderer.textureManager.width == 64, "リサイズは行われないべき")
+        #expect(renderer.textureManager.height == 64)
+    }
+
+    // 境界: 弾く印はフレームの外まで漏れない（漏れると createCanvas() が二度と効かなくなる）。
+    @Test("フレームの外からの createCanvas() は draw() 中に弾かれた後も効く")
+    func createCanvasOutsideFrameStillWorksAfterRejection() throws {
+        let harness = try SketchViewHarness(config: SketchConfig(width: 64, height: 64))
+        harness.onDraw = { ctx in
+            ctx.createCanvas(width: 128, height: 32)
+        }
+        let context = try harness.context
+        let renderer = try harness.renderer
+
+        renderer.renderFrame()
+        #expect(renderer.isRenderingFrame == false, "フレームを抜けたら印は下りているべき")
+
+        // フレームの外（= 通常の setup() と同じ位置）なら従来どおり効く。
+        harness.onDraw = nil
+        context.createCanvas(width: 128, height: 32)
+
+        #expect(context.width == 128, "実測 \(context.width): 印が漏れて弾かれ続けている(#856)")
+        #expect(context.height == 32)
+        #expect(renderer.textureManager.width == 128)
+        #expect(renderer.textureManager.height == 32)
     }
 }

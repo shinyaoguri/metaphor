@@ -318,6 +318,24 @@ public final class Graphics {
     /// 最後に保存した描画状態（スタイルとトランスフォーム）をスタックからポップします。
     public func pop() { canvas.pop() }
 
+    /// 現在の変換行列のみをマトリクススタックにプッシュします。
+    ///
+    /// スタイルは積まないので、``pushStyle()`` と積み分けられます。
+    /// スタックは ``beginDraw()`` ごとに畳まれます（不均衡なまま `endDraw()`
+    /// しても次のパスへ持ち越しません）。
+    public func pushMatrix() { canvas.pushMatrix() }
+
+    /// マトリクススタックから変換行列のみをポップします。スタイルは変わりません。
+    public func popMatrix() { canvas.popMatrix() }
+
+    /// 変換を除くスタイル状態のみをスタイル専用スタックにプッシュします。
+    ///
+    /// スタックは ``beginDraw()`` ごとに畳まれます。
+    public func pushStyle() { canvas.pushStyle() }
+
+    /// スタイル専用スタックからスタイル状態のみをポップします。変換は変わりません。
+    public func popStyle() { canvas.popStyle() }
+
     /// 指定されたオフセットで座標系を平行移動します。
     /// - Parameters:
     ///   - x: 水平オフセット。
@@ -337,6 +355,64 @@ public final class Graphics {
     /// 座標系を均一にスケーリングします。
     /// - Parameter s: 均一スケールファクター。
     public func scale(_ s: Float) { canvas.scale(s) }
+
+    /// 現在の変換に指定した 3x3 行列を乗算します。
+    /// - Parameter matrix: 連結する 3x3 行列。
+    public func applyMatrix(_ matrix: float3x3) { canvas.applyMatrix(matrix) }
+
+    /// 現在の変換に Processing 形式の 6 成分アフィン行列を乗算します。
+    ///
+    /// 成分は行優先で、変換は `x' = n00*x + n01*y + n02`、`y' = n10*x + n11*y + n12`。
+    public func applyMatrix(
+        _ n00: Float, _ n01: Float, _ n02: Float,
+        _ n10: Float, _ n11: Float, _ n12: Float
+    ) { canvas.applyMatrix(n00, n01, n02, n10, n11, n12) }
+
+    /// 現在の変換行列を単位行列にリセットします。
+    public func resetMatrix() { canvas.resetMatrix() }
+
+    /// 現在の変換に x 軸方向のせん断（シアー）を適用します。
+    ///
+    /// `x' = x + tan(angle) * y`（Processing の `shearX()` と互換）。
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearX(_ angle: Float) { canvas.shearX(angle) }
+
+    /// 現在の変換に y 軸方向のせん断（シアー）を適用します。
+    ///
+    /// `y' = y + tan(angle) * x`（Processing の `shearY()` と互換）。
+    /// - Parameter angle: ラジアン単位のせん断角度。
+    public func shearY(_ angle: Float) { canvas.shearY(angle) }
+
+    /// モデル座標を現在の変換で**このバッファの**ピクセル座標へ変換します。
+    ///
+    /// `Sketch` の同名 API が画面のピクセル座標を返すのに対し、`Graphics` では
+    /// ``width`` × ``height`` のオフスクリーンバッファ内の座標を返します
+    /// （`image()` で貼る位置は含みません）。
+    ///
+    /// - Parameters:
+    ///   - x: モデル座標の x。
+    ///   - y: モデル座標の y。
+    /// - Returns: バッファ内のピクセル座標。
+    public func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float> { canvas.screenPosition(x, y) }
+
+    /// 指定した矩形に後続の描画をクリッピングします。
+    ///
+    /// 矩形はこのバッファのピクセル座標で、``width`` × ``height`` の範囲へ
+    /// クランプされます。`Sketch` 側と同じく**現在の変換の影響を受けません**
+    /// （``translate(_:_:)`` の内側で呼んでも矩形は動きません）。
+    /// ``endClip()`` で前のクリップ領域へ戻り、ネストできます。
+    /// クリップ状態は ``endDraw()`` で畳まれるため、閉じ忘れても次のパスへ
+    /// 持ち越しません。
+    ///
+    /// - Parameters:
+    ///   - x: クリップ領域のX座標。
+    ///   - y: クリップ領域のY座標。
+    ///   - w: クリップ領域の幅。
+    ///   - h: クリップ領域の高さ。
+    public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.beginClip(x, y, w, h) }
+
+    /// 現在のクリップ領域を終了し、前のクリップ領域を復元します。
+    public func endClip() { canvas.endClip() }
 
     /// 矩形を描画します。
     /// - Parameters:
@@ -434,6 +510,39 @@ public final class Graphics {
     /// - Parameter points: ポリゴン頂点を定義する (x, y) タプルの配列。
     public func polygon(_ points: [(Float, Float)]) { canvas.polygon(points) }
 
+    /// 線形グラデーションで塗りつぶされた矩形を描画します。
+    ///
+    /// 現在の ``fill(_:)-(Color)`` / ``rectMode(_:)`` は使わず、渡した 2 色と
+    /// 左上原点の矩形として描きます。
+    ///
+    /// - Parameters:
+    ///   - x: 矩形のX座標。
+    ///   - y: 矩形のY座標。
+    ///   - w: 矩形の幅。
+    ///   - h: 矩形の高さ。
+    ///   - color1: グラデーションの開始色。
+    ///   - color2: グラデーションの終了色。
+    ///   - axis: グラデーションの方向。
+    public func linearGradient(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float,
+        _ color1: Color, _ color2: Color,
+        axis: GradientAxis = .vertical
+    ) { canvas.linearGradient(x, y, w, h, color1, color2, axis: axis) }
+
+    /// 指定した中心点に放射状グラデーションを描画します。
+    /// - Parameters:
+    ///   - cx: 中心のX座標。
+    ///   - cy: 中心のY座標。
+    ///   - radius: グラデーションの外側半径。
+    ///   - innerColor: 中心の色。
+    ///   - outerColor: 外縁の色。
+    ///   - segments: 円の近似に使用するセグメント数。
+    public func radialGradient(
+        _ cx: Float, _ cy: Float, _ radius: Float,
+        _ innerColor: Color, _ outerColor: Color,
+        segments: Int = 36
+    ) { canvas.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments) }
+
     /// 三次ベジェ曲線を描画します。
     /// - Parameters:
     ///   - x1: 始点X。
@@ -484,6 +593,28 @@ public final class Graphics {
     ///   - y: Y座標。
     public func curveVertex(_ x: Float, _ y: Float) { canvas.curveVertex(x, y) }
 
+    /// 曲線の近似に使用するセグメント数を設定します。
+    ///
+    /// ``curve(_:_:_:_:_:_:_:_:)`` と ``curveVertex(_:_:)`` の両方に効きます。
+    /// - Parameter n: セグメント数（1 未満は 1 に丸められます）。
+    public func curveDetail(_ n: Int) { canvas.curveDetail(n) }
+
+    /// Catmull-Rom スプライン曲線の張り具合を設定します。
+    ///
+    /// ``curve(_:_:_:_:_:_:_:_:)`` と ``curveVertex(_:_:)`` の両方に効きます。
+    /// - Parameter t: 張り値（0 が標準の Catmull-Rom、1 で 2 点を結ぶ直線）。
+    public func curveTightness(_ t: Float) { canvas.curveTightness(t) }
+
+    /// 現在のシェイプにコンター（穴）の記録を開始します。
+    ///
+    /// ``beginShape(_:)`` と ``endShape(_:)`` の間でのみ効きます。
+    public func beginContour() { canvas.beginContour() }
+
+    /// 現在のコンター（穴）の記録を終了します。
+    ///
+    /// 頂点が 3 つ未満のコンターは捨てられます。
+    public func endContour() { canvas.endContour() }
+
     /// 頂点の記録を終了し、現在のシェイプを描画します。
     /// - Parameter close: シェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) { canvas.endShape(close) }
@@ -518,6 +649,14 @@ public final class Graphics {
     ///   - vertical: 垂直方向の配置。
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) { canvas.textAlign(horizontal, vertical) }
 
+    /// テキストの行間（行の高さ）を設定します。
+    ///
+    /// ピクセル単位で、隣り合う行のベースライン同士の距離になります。
+    /// ``textSize(_:)`` / ``textFont(_:)`` を呼ぶと既定値へ戻ります。
+    ///
+    /// - Parameter leading: 行の高さ（ピクセル単位）。
+    public func textLeading(_ leading: Float) { canvas.textLeading(leading) }
+
     /// 指定位置にテキスト文字列を描画します。
     /// - Parameters:
     ///   - string: 描画するテキスト。
@@ -537,4 +676,35 @@ public final class Graphics {
     /// 現在のフォントのディセントを返します。
     /// - Returns: ピクセル単位のフォントディセント。
     public func textDescent() -> Float { canvas.textDescent() }
+
+    /// テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 座標はこのバッファのピクセル座標で、現在の ``textSize(_:)`` /
+    /// ``textFont(_:)`` / ``textAlign(_:_:)`` / ``textLeading(_:)`` を
+    /// ``text(_:_:_:)`` と同じように解釈します。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストのX座標（`text()` と同じ意味）。
+    ///   - y: テキストのY座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリライン。空文字や輪郭を持たない文字だけなら空配列。
+    public func textToContours(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [[Vec2]] { canvas.textToContours(string, x, y, sampleFactor: sampleFactor) }
+
+    /// テキストのグリフアウトライン上の点を 1 本の配列で返します。
+    ///
+    /// 輪郭の区切りは失われます。輪郭ごとに扱いたい場合は
+    /// ``textToContours(_:_:_:sampleFactor:)`` を使ってください。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストのX座標（`text()` と同じ意味）。
+    ///   - y: テキストのY座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: アウトライン上の点。
+    public func textToPoints(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [Vec2] { canvas.textToPoints(string, x, y, sampleFactor: sampleFactor) }
 }

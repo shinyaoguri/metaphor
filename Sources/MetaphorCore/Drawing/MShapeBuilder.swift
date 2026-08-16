@@ -60,12 +60,13 @@ extension MShape {
     // MARK: - 3D 頂点
 
     /// 記録中のシェイプに3D頂点を追加します。
+    ///
+    /// 直近の `normal(_:_:_:)` の値を焼き込みます（`endShape()` まで持続。#876）。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecording else { return }
         kind = .path3D
         let normal = pendingNormal3D ?? SIMD3(0, 1, 0)
         vertices3D.append(ShapeVertex3D(position: SIMD3(x, y, z), normal: normal))
-        pendingNormal3D = nil
     }
 
     /// テクスチャ座標付きの3D頂点を追加します。
@@ -75,16 +76,16 @@ extension MShape {
         let normal = pendingNormal3D ?? SIMD3(0, 1, 0)
         vertices3D.append(ShapeVertex3D(
             position: SIMD3(x, y, z), normal: normal, uv: SIMD2(u, v)))
-        pendingNormal3D = nil
     }
 
-    /// 次の3D頂点に適用する法線ベクトルを設定します。
+    /// 以降の 3D 頂点に適用する法線ベクトルを設定します。
     ///
-    /// - Important: **次に積む 1 頂点にだけ**効きます（イミディエイトの
-    ///   ``Canvas3D/normal(_:_:_:)`` は `endShape()` まで持続するので非対称です。
-    ///   統一は #876）。全頂点に同じ法線を入れたいなら頂点ごとに呼び直してください。
+    /// 次に `beginShape()` を呼ぶか `endShape()` で記録を閉じるまで持続します。
+    /// イミディエイトの ``Canvas3D/normal(_:_:_:)`` と同じ範囲で、Processing の
+    /// `PShape.normal()` とも同じです（#876。以前は**次の 1 頂点だけ**でした）。
+    /// 頂点ごとに違う法線を入れたいなら、これまでどおり頂点ごとに呼び直します。
     /// - Note: 一度でも呼ぶと**そのシェイプ全体で**面法線の自動計算が止まります（#738）。
-    ///   呼ばなかった頂点は既定の (0, 1, 0) のままになります。
+    ///   最初の `normal()` より前に積んだ頂点は既定の (0, 1, 0) のままになります。
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         pendingNormal3D = SIMD3(nx, ny, nz)
         usedExplicitNormal3D = true
@@ -126,10 +127,21 @@ extension MShape {
         capturedStyle.hasFill = true
     }
 
-    /// グレースケール値（0-255）で塗りつぶし色を設定します。
+    /// グレースケール値で塗りつぶし色を設定します。
+    ///
+    /// 値は ``Sketch/createShape()`` した時点の `colorMode()` のレンジで解釈されます
+    /// （既定は 0-255）。スケッチ側の `fill(_:)` と同じ規則です。
     public func fill(_ gray: Float) {
-        let v = gray / 255.0
-        capturedStyle.fillColor = SIMD4(v, v, v, 1)
+        capturedStyle.fillColor = colorModeConfig.toGray(gray).simd
+        capturedStyle.hasFill = true
+    }
+
+    /// グレースケール値と不透明度で塗りつぶし色を設定します。
+    ///
+    /// どちらの値も ``Sketch/createShape()`` した時点の `colorMode()` のレンジで
+    /// 解釈されます（既定はどちらも 0-255）。
+    public func fill(_ gray: Float, _ alpha: Float) {
+        capturedStyle.fillColor = colorModeConfig.toGray(gray, alpha).simd
         capturedStyle.hasFill = true
     }
 
@@ -144,10 +156,21 @@ extension MShape {
         capturedStyle.hasStroke = true
     }
 
-    /// グレースケール値（0-255）でストローク色を設定します。
+    /// グレースケール値でストローク色を設定します。
+    ///
+    /// 値は ``Sketch/createShape()`` した時点の `colorMode()` のレンジで解釈されます
+    /// （既定は 0-255）。スケッチ側の `stroke(_:)` と同じ規則です。
     public func stroke(_ gray: Float) {
-        let v = gray / 255.0
-        capturedStyle.strokeColor = SIMD4(v, v, v, 1)
+        capturedStyle.strokeColor = colorModeConfig.toGray(gray).simd
+        capturedStyle.hasStroke = true
+    }
+
+    /// グレースケール値と不透明度でストローク色を設定します。
+    ///
+    /// どちらの値も ``Sketch/createShape()`` した時点の `colorMode()` のレンジで
+    /// 解釈されます（既定はどちらも 0-255）。
+    public func stroke(_ gray: Float, _ alpha: Float) {
+        capturedStyle.strokeColor = colorModeConfig.toGray(gray, alpha).simd
         capturedStyle.hasStroke = true
     }
 
@@ -165,6 +188,10 @@ extension MShape {
 
     /// シェイプを確定し、記録された頂点からジオメトリを構築します。
     ///
+    /// - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います
+    ///   （即時モードの `endShape(_:)` と同じ）。巻き数が 0 でない領域が塗られるので、
+    ///   五芒星は中央の五角形まで塗られたべた塗りの星になります。
+    ///
     /// - Parameter close: 最後の頂点から最初の頂点に接続してシェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         guard isRecording else { return }
@@ -180,6 +207,10 @@ extension MShape {
                 warnContourIn3DOnce()
             }
         }
+
+        // `normal()` の持続はこのシェイプの中だけ（イミディエイトの
+        // `Canvas3D.endShape()` と同じ位置で畳む。#876）。
+        pendingNormal3D = nil
 
         // ジオメトリは最初の描画時に遅延構築される
         isDirty = true
@@ -236,9 +267,10 @@ extension MShape {
         }
 
         if contourRanges.isEmpty {
-            // 穴なしの単純ポリゴン
-            let indices = EarClipTriangulator.triangulate(outerPoints)
-            cachedTriangles2D = buildTrianglesFromIndices(indices, points: outerPoints)
+            // 穴なし。自己交差があれば nonzero winding で塗り分ける（#886）。
+            // 交点ぶん頂点が増えるので、インデックスは返ってきた頂点配列に当てる。
+            let tess = EarClipTriangulator.triangulateNonZero(outerPoints)
+            cachedTriangles2D = buildTrianglesFromIndices(tess.indices, points: tess.vertices)
         } else {
             // 穴ありポリゴン
             let holes: [[(Float, Float)]] = contourRanges.map { range in
@@ -372,6 +404,10 @@ extension MShape {
                 i += 3
             }
         case .triangleStrip:
+            // 三角形 1 枚に足りない頂点数は `count - 2` が負になり、Range の生成でトラップする。
+            // 塗る面が作れないだけなのでインデックスを空のままにする（2D 側の
+            // `tessellateTriangleStrip2D()` と同じガード。#881）。
+            guard vertices3D.count >= 3 else { break }
             for i in 0..<(vertices3D.count - 2) {
                 if i % 2 == 0 {
                     indices.append(contentsOf: [UInt32(i), UInt32(i + 1), UInt32(i + 2)])
@@ -380,6 +416,8 @@ extension MShape {
                 }
             }
         case .triangleFan:
+            // 同上（2D 側の `tessellateTriangleFan2D()` と同じガード。#881）。
+            guard vertices3D.count >= 3 else { break }
             for i in 1..<(vertices3D.count - 1) {
                 indices.append(contentsOf: [0, UInt32(i), UInt32(i + 1)])
             }

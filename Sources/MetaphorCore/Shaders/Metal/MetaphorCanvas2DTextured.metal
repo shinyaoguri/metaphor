@@ -29,6 +29,19 @@ fragment float4 metaphor_canvas2DTexturedFragment(
     return metaphorPremultiply(texColor * in.color);
 }
 
+// `pixels` / `updatePixels()` 用（ADR-0012 / #848）。こちらのテクスチャは
+// **straight で入ってくる** — `loadPixels()` が読み戻しのあと割り戻し、利用者は
+// `color(r, g, b, a)`（straight を詰める helper）で書くため。割り戻さずに
+// 頂点色を掛け、premultiplied にして返す。
+fragment float4 metaphor_canvas2DStraightTexturedFragment(
+    Canvas2DTexVertexOut in [[stage_in]],
+    texture2d<float> tex [[texture(0)]]
+) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float4 texColor = tex.sample(s, in.texCoord);
+    return metaphorPremultiply(texColor * in.color);
+}
+
 // フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
 METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
     metaphor_canvas2DTexturedMultiplyFragment, metaphorBlendMultiply)
@@ -44,3 +57,20 @@ METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
     metaphor_canvas2DTexturedDifferenceFragment, metaphorBlendDifference)
 METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
     metaphor_canvas2DTexturedExclusionFragment, metaphorBlendExclusion)
+
+// straight なテクスチャ側のフェッチ経路。`updatePixels()` は現在のブレンドモードに
+// 従って描くので、分離可能ブレンドも同数だけ要る。
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedExclusionFragment, metaphorBlendExclusion)

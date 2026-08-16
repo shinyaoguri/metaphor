@@ -277,7 +277,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noTexture()` -- アクティブなテクスチャを解除します。
 - `func noTint()` -- 画像のティントを解除します。
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（``draw()`` 内で呼び出してください）。
-- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float = -1000, far: Float = 1000)` -- 正射影を設定します。
+- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- 正射影を設定します。
 - `func pbr(_ enabled: Bool)` -- PBR レンダリングモードを明示的に切り替えます。
 - `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- 透視投影を設定します。
 - `func plane(_ width: Float, _ height: Float)` -- 平面を描画します。
@@ -623,6 +623,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let canvas2DInstancedFragment: String` -- Canvas2D インスタンス描画フラグメントシェーダーのMSL関数名。
 - `static let canvas2DInstancedVertex: String` -- Canvas2D インスタンス描画頂点シェーダーのMSL関数名。
 - `static let canvas2DPreamble: String` -- カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
+- `static let canvas2DStraightTexturedFragment: String` -- Canvas2D straight alpha テクスチャ用フラグメントシェーダーのMSL関数名。
 - `static let canvas2DStructs: String` -- カスタム 2D フラグメントシェーダが受け取る stage_in と uniform の MSL 定義。
 - `static let canvas2DTexturedDifferenceFragment: String` -- Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
 - `static let canvas2DTexturedExclusionFragment: String` -- Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。
@@ -1281,16 +1282,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
 
-- （ほか 62 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 82 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw()` -- コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
 - `func endDraw(wait: Bool = false)` -- 描画を終了します。
+- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- モデル座標を現在の変換で**このバッファの**ピクセル座標へ変換します。
 - `func toImage() -> MImage` -- オフスクリーンテクスチャを MImage として返します。
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 60 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 63 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
@@ -1403,6 +1405,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let input: InputManager` -- キーボードとマウスイベント処理用の入力マネージャー
 - `var isOfflineRendering: Bool` -- 決定論的フレームタイミングのオフラインレンダリングモードを有効化
 - `var isPostProcessAvailable: Bool { get }` -- ポストプロセスエフェクトが利用可能かどうかを示す
+- `var isRenderingFrame: Bool { get }` -- いま ``renderFrame()`` の内側か（= `draw()` が走っている最中か）。
 - `var lastGPUEndTime: Double { get }` -- 最後に完了したフレームの GPU 終了タイムスタンプ（秒）
 - `var lastGPUStartTime: Double { get }` -- 最後に完了したフレームの GPU 開始タイムスタンプ（秒）
 - `var offlineDeltaTime: Double { get }` -- オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。
@@ -1466,7 +1469,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MShape` -- ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
 
-- （ほか 28 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 30 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var capturedStyle: ShapeStyle` -- 作成時にキャプチャされたスタイルスナップショット。
 - `var childCount: Int { get }` -- 直接の子の数。
 - `var children: [MShape] { get }` -- 子シェイプ（グループシェイプ用）。
@@ -1489,7 +1492,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func setStroke(_ enabled: Bool)` -- このシェイプのストロークを有効または無効にします。
 - `func setStrokeWeight(_ weight: Float)` -- このシェイプのストロークの太さを設定します。
 - `func setTexture(_ img: MImage)` -- このシェイプのテクスチャを設定します。
-- `func setTint(_ color: Color)` -- テクスチャレンダリング用のティント色を設定します。
+- `func setTint(_ color: Color)` -- ティント色を記録します。**現在どの描画経路でも効きません**（#852）。
 - `func setVertex(_ index: Int, _ x: Float, _ y: Float)` -- インデックスで頂点位置を設定します（2D）。
 - `func setVertex(_ index: Int, _ x: Float, _ y: Float, _ z: Float)` -- インデックスで頂点位置を設定します（3D）。
 
@@ -1903,6 +1906,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func mag(_ x: Float, _ y: Float) -> Float` -- 2Dベクトルの大きさを計算します。
 - `func mag(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3Dベクトルの大きさを計算します。
 - `func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float` -- 値をある範囲から別の範囲にリマップします。
+- `func metaphorAlert(_ message: () -> String)` -- **Release ビルドでも必ず** stderr に出す警告。
+- `func metaphorDiagnostic(_ message: () -> String)` -- ランタイムゲート付きの診断ログ（stderr）。
+- `func metaphorWarning(_ message: () -> String)` -- 開発者向けの警告（stdout、**DEBUG ビルドのみ**）。
 - `func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float` -- 値を指定された範囲から [0, 1] の範囲に正規化します。
 - `func radians(_ degrees: Float) -> Float` -- 度数法をラジアンに変換します。
 - `func random(_ high: Float) -> Float` -- 0 から指定された上限（上限を含まない）までのランダムな Float 値を返します。
@@ -2018,7 +2024,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `func onStart()`
 - `func onStop()`
-- `func update(deltaTime: Float)` -- 物理ステップを進める。`deltaTime` をそのままタイムステップに使う。
+- `func update(deltaTime: Float)` -- 物理を `deltaTime` ぶん進める。実フレーム時間は常に揺れるので、そのまま
 
 ### `extension VideoPlayer`
 
@@ -2424,10 +2430,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var bodies: [PhysicsBody2D] { get }` -- The list of physics bodies currently in the world.
 - `var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?` -- An optional bounding box that confines all bodies within its limits.
 - `var constraints: [PhysicsConstraint2D] { get }` -- The list of constraints currently in the world.
+- `var fixedTimeStep: Float { get set }` -- The fixed time step, in seconds, that ``advance(_:iterations:)`` integrates with.
+- `var maxSubSteps: Int { get set }` -- The largest number of fixed sub-steps ``advance(_:iterations:)`` runs for one call.
 - `init(cellSize: Float = 50)` -- Creates a new 2D physics world.
 - `func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D` -- Adds a circular physics body to the world.
 - `func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D` -- Adds a distance constraint between two bodies.
 - `func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D` -- Adds a rectangular physics body to the world.
+- `func advance(_ elapsed: Float, iterations: Int = 4)` -- Advances the simulation by `elapsed` seconds, integrating at ``fixedTimeStep``.
 - `func clear()` -- Removes all bodies and constraints from the world.
 - `func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D` -- Pins a body to a fixed position in world space.
 - `func removeBody(_ body: PhysicsBody2D)` -- Removes a body and all constraints referencing it from the world.

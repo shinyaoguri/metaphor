@@ -1,4 +1,5 @@
 import Foundation
+import MetaphorLog
 import Network
 import os
 
@@ -82,7 +83,7 @@ public final class OSCSender {
         let errors = errorBox
         connection.stateUpdateHandler = { update in
             if case .failed(let error) = update {
-                print("[metaphor] OSC sender connection failed: \(error)")
+                metaphorAlert("OSC sender connection failed: \(error)")
                 errors.store(error)
             }
         }

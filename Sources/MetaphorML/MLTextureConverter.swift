@@ -1,4 +1,5 @@
 import CoreML
+import MetaphorLog
 import CoreVideo
 import Metal
 import ObjectiveC.runtime
@@ -77,7 +78,7 @@ public final class MLTextureConverter {
         // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
         // チャンネル化けになる前に弾く
         guard texture.pixelFormat == .bgra8Unorm else {
-            print("[metaphor] MLTextureConverter.pixelBuffer(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
+            metaphorWarning("MLTextureConverter.pixelBuffer(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
             return nil
         }
         let width = texture.width
@@ -204,7 +205,7 @@ public final class MLTextureConverter {
         // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
         // チャンネル化けになる前に弾く
         guard texture.pixelFormat == .bgra8Unorm else {
-            print("[metaphor] MLTextureConverter.cgImage(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
+            metaphorWarning("MLTextureConverter.cgImage(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
             return nil
         }
         let width = texture.width
@@ -306,7 +307,7 @@ public final class MLTextureConverter {
             if multiArray.dataType.rawValue == 131080 {
                 copyElements(Int8.self) { Float($0) }
             } else {
-                print("[metaphor] Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
+                metaphorWarning("Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
                 return nil
             }
         }

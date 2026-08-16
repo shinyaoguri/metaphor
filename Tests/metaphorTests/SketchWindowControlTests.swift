@@ -92,13 +92,21 @@ struct SketchWindowControlTests {
         window.context.noLoop()
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        // 止めている間に時計が 5 秒進んだ状況を作る（clockOffset は elapsedTime に乗る）。
+        // 止めている間に時計が進んだ状況を作る（clockOffset は elapsedTime に乗る）。
+        let stoppedGap: Double = 5.0
         delta.reset()
-        window.context.renderer.clockOffset = 5.0
+        window.context.renderer.clockOffset = stoppedGap
         window.context.loop()
         try await Task.sleep(nanoseconds: 300_000_000)
 
-        #expect(delta.value < 0.5, "実測 \(delta.value)s: 止めていた 5 秒が deltaTime に乗っている")
+        // 見たいのは「止めていた時間が丸ごと乗ったか」の一点なので、注入した値そのものを
+        // 物差しにする。壁時計の絶対値で閾値を切ると、CI ランナーの負荷でフレーム間隔が
+        // 伸びただけで落ちる（0.5s 固定だった頃に実測 0.659s で flake した）。跳ねが起きれば
+        // deltaTime は stoppedGap 以上になるので、その 1/4 で両者は十分に隔たっている。
+        #expect(
+            delta.value < Float(stoppedGap) / 4,
+            "実測 \(delta.value)s: 止めていた \(stoppedGap) 秒が deltaTime に乗っている"
+        )
     }
 
     // MARK: - redraw()

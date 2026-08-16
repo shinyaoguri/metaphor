@@ -124,7 +124,7 @@ final class Trefoil: Sketch {
     private func appendVertex(
         _ obj: MShape, _ p: SIMD3<Float>, _ n: SIMD3<Float>, _ u: Float, _ v: Float
     ) {
-        obj.normal(n.x, n.y, n.z)  // normal() は次の 1 頂点にだけ効く
+        obj.normal(n.x, n.y, n.z)  // 頂点ごとに法線が違う面なので頂点ごとに呼ぶ
         obj.vertex(p.x, p.y, p.z, u, v)
     }
 

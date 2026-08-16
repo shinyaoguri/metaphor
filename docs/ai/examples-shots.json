@@ -144,9 +144,15 @@
       "height": 720
     },
     "Examples/Basics/Form/Primitives3D": {
-      "origin": "processing",
-      "width": 1280,
-      "height": 720
+      "origin": "captured",
+      "sourceHash": "1683c2f9a8d18c0cd5f1f4458ca6fbdc1519de81773bf0ccdd8075ab0f616a08",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 1
     },
     "Examples/Basics/Form/RegularPolygon": {
       "origin": "processing",
@@ -424,9 +430,15 @@
       "height": 720
     },
     "Examples/Basics/Shape/LoadDisplayOBJ": {
-      "origin": "processing",
-      "width": 1280,
-      "height": 720
+      "origin": "captured",
+      "sourceHash": "0f126bef36a25904725d388055e9e4cd6e6d700b7f89410f74225409eb20cbfe",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 99
     },
     "Examples/Basics/Shape/ScaleShape": {
       "origin": "processing",
@@ -564,12 +576,12 @@
       "origin": "captured",
       "sourceHash": "b6fde45a0755a13696343e893f11a75f88a34825c01f76156d385b5ae53d0aa6",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
       },
       "width": 1024,
       "height": 768,
-      "frame": 107
+      "frame": 432
     },
     "Examples/Demos/Graphics/Planets": {
       "origin": "captured",
@@ -588,16 +600,24 @@
     "Examples/Demos/Graphics/Trefoil": {
       "origin": "captured",
       "sourceHash": "87a7ed2179d9cc292adb152132e609c519188d14fd373f4bd833d9b7250cfae5",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 1024,
       "height": 768,
-      "frame": 97
+      "frame": 105
     },
     "Examples/Demos/Graphics/Wiggling": {
       "origin": "captured",
       "sourceHash": "d7d36195196c5b35bd2e3d19e73f7af19df83dd001b13d50729b4795aeeeeae5",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 1024,
       "height": 768,
-      "frame": 108
+      "frame": 99
     },
     "Examples/Demos/Graphics/Yellowtail": {
       "origin": "captured",
@@ -624,12 +644,12 @@
       "origin": "captured",
       "sourceHash": "598c6018e66d113245744f5a987e68bb68eca81cdc1dd0a2585348b7c95c202d",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
         "dirty": false
       },
       "width": 1024,
       "height": 768,
-      "frame": 19
+      "frame": 20
     },
     "Examples/Demos/Performance/LineRendering": {
       "origin": "captured",
@@ -809,9 +829,13 @@
     "Examples/Samples/SceneGraphBasics": {
       "origin": "captured",
       "sourceHash": "e4acea6f572109677cca65c7990c20e7867f8bb880bf278bef1cb312800280db",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 800,
       "height": 600,
-      "frame": 102
+      "frame": 97
     },
     "Examples/Samples/SceneGraphHybrid": {
       "origin": "captured",
@@ -1119,23 +1143,23 @@
       "origin": "captured",
       "sourceHash": "56f41af12b499948fde3acafe758ae80f293cb4a904446e6088647b3daab2b31",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 105
+      "frame": 102
     },
     "Examples/Topics/Geometry/NoiseSphere": {
       "origin": "captured",
       "sourceHash": "f6d48725ab2b5f03801ff043c975c06b78b2bd3127b6a2a6e0dd915c7c9d71d3",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
         "dirty": false
       },
       "width": 640,
       "height": 360,
-      "frame": 66
+      "frame": 108
     },
     "Examples/Topics/Geometry/RGBCube": {
       "origin": "captured",
@@ -1152,12 +1176,12 @@
       "origin": "captured",
       "sourceHash": "6b76f56652516cf44336c95051575d2819893a8d77f4514517611c1e8e99ace3",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 98
+      "frame": 100
     },
     "Examples/Topics/Geometry/SpaceJunk": {
       "origin": "captured",
@@ -1170,23 +1194,23 @@
       "origin": "captured",
       "sourceHash": "1e5ed96c51defb9727efe491ffece50baae203eca37c16012b9bf0055bef0412",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 103
+      "frame": 112
     },
     "Examples/Topics/Geometry/Vertices": {
       "origin": "captured",
       "sourceHash": "06fe156fdbfa688605db99fcf3956210d8c52ecd3f90c1237f049263e3be64d1",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 96
+      "frame": 101
     },
     "Examples/Topics/Image Processing/Blending": {
       "origin": "captured",
@@ -1226,12 +1250,12 @@
       "origin": "captured",
       "sourceHash": "24193f3ad34eb36ccb34aa3e094d7277a060cd5cb3b9f42b9d39d408904fbbd6",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
         "dirty": false
       },
       "width": 640,
       "height": 360,
-      "frame": 66
+      "frame": 100
     },
     "Examples/Topics/Image Processing/Histogram": {
       "origin": "processing",
@@ -1261,12 +1285,12 @@
       "origin": "captured",
       "sourceHash": "5159614c59ed45f6eea859952808e9dcd1f1a09d391f2345aa60284c8cc923f0",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
         "dirty": false
       },
       "width": 640,
       "height": 360,
-      "frame": 154
+      "frame": 160
     },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
@@ -1326,9 +1350,13 @@
     "Examples/Topics/Motion/CubesWithinCube": {
       "origin": "captured",
       "sourceHash": "20b0b7c927e635bd4fe176a0529921ffe6e221646b8bfcf16c1f2bac71a9f5f5",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 99
+      "frame": 97
     },
     "Examples/Topics/Motion/Linear": {
       "origin": "processing",
@@ -1400,9 +1428,13 @@
     "Examples/Topics/Shaders/EdgeFilter": {
       "origin": "captured",
       "sourceHash": "b81cab762a51e75558cd6f2986e8cb84c620116aab4d05a304fcbd275dc47ce2",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 105
+      "frame": 117
     },
     "Examples/Topics/Shaders/GlossyFishEye": {
       "origin": "captured",
@@ -1473,9 +1505,13 @@
     "Examples/Topics/Simulate/GravitationalAttraction3D": {
       "origin": "captured",
       "sourceHash": "ec99fd4ac2f68ee126da9c47c1117c7bd7d9103a8ee61de9a9d0145a5731a0c1",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 100
     },
     "Examples/Topics/Simulate/MultipleParticleSystems": {
       "origin": "processing",

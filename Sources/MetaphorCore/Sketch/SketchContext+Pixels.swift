@@ -84,9 +84,14 @@ extension SketchContext {
     /// ピクセルバッファを GPU にアップロードしフルスクリーンクワッドとして描画します。
     ///
     /// `pixels` バッファの変更後にこれを呼び出して変更を表示してください。
+    ///
+    /// `pixels` は straight alpha（ADR-0012 / #848）なので、`straightAlpha: true` で
+    /// **割り戻さない**フラグメントを選びます。ここを既定の（premultiplied 前提の）
+    /// 経路で描くと、半透明の画素が α を掛けずに合成されて明るく出ます。
     public func updatePixels() {
         guard let pb = pixelBuffer else { return }
         pb.upload()
-        canvas.drawTexturedQuad(texture: pb.texture, x: 0, y: 0, w: width, h: height)
+        canvas.drawTexturedQuad(
+            texture: pb.texture, x: 0, y: 0, w: width, h: height, straightAlpha: true)
     }
 }

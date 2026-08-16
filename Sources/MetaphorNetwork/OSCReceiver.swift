@@ -1,4 +1,5 @@
 import Foundation
+import MetaphorLog
 import Network
 import os
 
@@ -251,7 +252,7 @@ public final class OSCReceiver {
         listener.stateUpdateHandler = { listenerUpdate in
             switch listenerUpdate {
             case .failed(let error):
-                print("[metaphor] OSC listener failed: \(error)")
+                metaphorAlert("OSC listener failed: \(error)")
                 // 失敗したリスナーを片付けて isRunning を false に戻す
                 // （明示的な stop() なしで再 start() できる）。エラーは
                 // lastError 経由でメインスレッドから観測できる

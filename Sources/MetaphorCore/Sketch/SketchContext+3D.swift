@@ -7,8 +7,11 @@ extension SketchContext {
 
     /// 3D 頂点ベースのカスタムシェイプの記録を開始します。
     ///
-    /// 現在の `fill` は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の
-    /// 間で `fill` を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 現在の色は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の間で
+    /// 色を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 使われるのは面モード（`.polygon` / `.triangles` など）では `fill`、
+    /// **`.lines` / `.points` では `stroke`** です（Processing の LINES / POINTS と同じ。
+    /// `noStroke()` のときは `fill` に戻ります）。
     ///
     /// - Parameter mode: シェイプの描画モード（デフォルト `.polygon`）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
@@ -69,7 +72,7 @@ extension SketchContext {
         }
     }
 
-    /// 次の 3D 頂点の法線ベクトルを設定します。
+    /// 以降の 3D 頂点の法線ベクトルを設定します（`endShape3D()` まで持続。#876）。
     /// - Parameters:
     ///   - nx: 法線の x 成分。
     ///   - ny: 法線の y 成分。
@@ -114,17 +117,20 @@ extension SketchContext {
     }
 
     /// 正射影に切り替えます。
+    ///
+    /// 省略した面は既定カメラと噛み合う範囲（原点＝画面中央を挟む形）で埋まります。
+    /// `bottom` / `top` はビュー空間の y が小さい側が `bottom`（＝画面の上端）です。
     /// - Parameters:
-    ///   - left: 左クリッピング面（nil の場合は 0）。
-    ///   - right: 右クリッピング面（nil の場合はキャンバス幅）。
-    ///   - bottom: 下クリッピング面（nil の場合はキャンバス高さ。y は画面下向き）。
-    ///   - top: 上クリッピング面（nil の場合は 0）。
-    ///   - near: ニアクリッピング面の距離（デフォルト -1000）。
-    ///   - far: ファークリッピング面の距離（デフォルト 1000）。
+    ///   - left: 左クリッピング面（nil の場合は `-width / 2`）。
+    ///   - right: 右クリッピング面（nil の場合は `width / 2`）。
+    ///   - bottom: 下クリッピング面（nil の場合は `-height / 2`）。
+    ///   - top: 上クリッピング面（nil の場合は `height / 2`）。
+    ///   - near: ニアクリッピング面の距離（nil の場合は既定カメラ距離の -10 倍）。
+    ///   - far: ファークリッピング面の距離（nil の場合は既定カメラ距離の 10 倍）。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
-        near: Float = -1000, far: Float = 1000
+        near: Float? = nil, far: Float? = nil
     ) {
         canvas3D.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far)
     }

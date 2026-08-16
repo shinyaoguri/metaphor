@@ -137,8 +137,8 @@ struct AlphaSemanticsTests {
     func offscreenRoundTripIsNotDoubleMultiplied() throws {
         let layer = try makeGraphics()
         layer.beginDraw()
-        // 半透明の画素を作るのに `.opaque`（= 合成せず値をそのまま書く）を使う。
-        // `background(α<1)` は呼んだフレームに効かない別の不具合があるため（#829）。
+        // 半透明の画素を作るのに `.opaque`（= 合成せず値をそのまま書く）を使う
+        // （`background(α<1)` でも作れるが、それは #829 の検査が別に見ている）。
         layer.blendMode(.opaque)
         layer.noStroke()
         layer.fill(Color(r: 1, g: 0, b: 0, alpha: 0.5))
@@ -161,6 +161,88 @@ struct AlphaSemanticsTests {
                 "オフスクリーンの戻しで α が二重に掛かっている: \(got) — #847")
     }
 
+    // MARK: - background は合成ではなく置き換え（#829）
+
+    /// `background(α = 0)` は、呼んだそのフレームでキャンバスを透明にする。
+    ///
+    /// 背景がレンダーパスのクリアに乗らないとき（= 前フレームと違う色を指定した初回）は
+    /// 全画面クワッドで塗る。これを通常の α ブレンドで描くと **α = 0 のクワッドは合成の
+    /// 定義上まったく何もしない**ため、透明で塗り直せなかった（#829）。
+    @Test("background(alpha = 0) empties the canvas in the frame it is called")
+    func transparentBackgroundAppliesInTheSameFrame() throws {
+        let pg = try makeGraphics()
+        pg.beginDraw()
+        pg.background(Color(r: 1, g: 1, b: 1))
+        pg.noStroke()
+        pg.fill(Color(r: 1, g: 1, b: 1))
+        pg.rect(0, 0, Float(Self.size), Float(Self.size))
+        pg.endDraw(wait: true)
+        #expect(center(pg) == (255, 255, 255, 255), "下地を作れていない")
+
+        pg.beginDraw()
+        pg.background(Color(r: 0, g: 0, b: 0, alpha: 0))
+        pg.endDraw(wait: true)
+
+        let got = center(pg)
+        #expect(got == (0, 0, 0, 0), "background(α=0) が呼んだフレームに効いていない: \(got) — #829")
+    }
+
+    /// α < 1 の背景も「置き換え」。下地は残らず、指定した色と α がそのまま入る。
+    @Test("background(alpha = 0.5) replaces the canvas instead of compositing onto it")
+    func semiTransparentBackgroundReplacesTheCanvas() throws {
+        let pg = try makeGraphics()
+        pg.beginDraw()
+        pg.background(Color(r: 1, g: 1, b: 1))
+        pg.endDraw(wait: true)
+
+        pg.beginDraw()
+        pg.background(Color(r: 1, g: 0, b: 0, alpha: 0.5))
+        pg.endDraw(wait: true)
+
+        // 置き換えなら赤の半透明。α ブレンドだと白が透けて (255,128,128,255) になる
+        let got = center(pg)
+        #expect(abs(got.r - 255) <= 1 && got.g <= 1 && got.b <= 1 && abs(got.a - 128) <= 1,
+                "半透明の background が下地と合成されている: \(got) — #829")
+    }
+
+    /// フレーム途中の `background(α < 1)` も置き換え。先に描いた図形は残らない。
+    ///
+    /// この経路（`hasDrawnAnything == true`）はレンダーパスのクリアに逃がせないので、
+    /// 必ずクワッドで塗る。透明で塗り直せることをここでも固定する。
+    @Test("a mid-frame background(alpha = 0) erases what was already drawn")
+    func midFrameTransparentBackgroundErasesTheFrame() throws {
+        let pg = try makeGraphics()
+        pg.beginDraw()
+        pg.noStroke()
+        pg.fill(Color(r: 1, g: 1, b: 1))
+        pg.rect(0, 0, Float(Self.size), Float(Self.size))
+        pg.background(Color(r: 0, g: 0, b: 0, alpha: 0))
+        pg.endDraw(wait: true)
+
+        let got = center(pg)
+        #expect(got == (0, 0, 0, 0),
+                "フレーム途中の background(α=0) が先に描いた図形を消していない: \(got) — #829")
+    }
+
+    /// `blendMode()` は背景に効かない。背景は合成ではなく置き換えだから。
+    @Test("background ignores the active blend mode")
+    func backgroundIgnoresTheActiveBlendMode() throws {
+        let pg = try makeGraphics()
+        pg.beginDraw()
+        pg.noStroke()
+        pg.fill(Color(r: 0.5, g: 0.5, b: 0.5))
+        pg.rect(0, 0, Float(Self.size), Float(Self.size))
+        pg.blendMode(.multiply)
+        pg.background(Color(r: 0.5, g: 0.5, b: 0.5))
+        pg.endDraw(wait: true)
+
+        // 置き換えなら 128。乗算に乗ると 0.5 * 0.5 = 64 まで落ちる
+        let got = center(pg)
+        #expect(abs(got.r - 128) <= 1 && abs(got.g - 128) <= 1 && abs(got.b - 128) <= 1
+                && got.a == 255,
+                "background に blendMode が効いている: \(got) — #829")
+    }
+
     // MARK: - ピクセルの読み書き（#848）
 
     /// 読んだ色をそのまま書き戻したら、絵は変わらない。
@@ -171,7 +253,7 @@ struct AlphaSemanticsTests {
     func pixelRoundTripIsIdentity() throws {
         let pg = try makeGraphics()
         pg.beginDraw()
-        // 半透明の画素を作るのに `.opaque` を使う理由は上と同じ（#829）。
+        // 半透明の画素を作るのに `.opaque` を使う理由は上と同じ。
         pg.blendMode(.opaque)
         pg.noStroke()
         pg.fill(Color(r: 0.2, g: 0.8, b: 0.4, alpha: 0.5))
@@ -218,5 +300,135 @@ struct AlphaSemanticsTests {
                     && abs(got.b - want.b) <= 1 && abs(got.a - want.a) <= 1,
                     "\(mode) の α=1: got \(got), want \(want)")
         }
+    }
+}
+
+// MARK: - Graphics3D の下地（#830）
+
+/// 3D オフスクリーンにも `background()` があり、2D と同じく「合成ではなく置き換え」で
+/// 効くことを画素で確かめる検査。`Graphics3D` は長らく背景を指定する口を持たず、
+/// 下地が不透明な黒で固定されていたため、`MergePass(.alpha)` の前景に置くと
+/// 下の層が丸ごと消えていた（#830）。
+@Suite("Graphics3D background", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct Graphics3DBackgroundTests {
+
+    private static let size = 32
+
+    private func makeGraphics3D() throws -> Graphics3D {
+        try Graphics3D(
+            device: MetalTestHelper.device!,
+            commandQueue: MetalTestHelper.commandQueue()!,
+            shaderLibrary: try MetalTestHelper.shaderLibrary(),
+            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            width: Self.size,
+            height: Self.size
+        )
+    }
+
+    /// 中心画素を 0...255 の整数で読む（Issue の再現手順と直接突き合わせるため）。
+    private func center(_ pg3d: Graphics3D) -> (r: Int, g: Int, b: Int, a: Int) {
+        let img = pg3d.toImage()
+        img.loadPixels()
+        let c = img.get(Self.size / 2, Self.size / 2)
+        func q(_ v: Float) -> Int { Int((v * 255).rounded()) }
+        return (q(c.r), q(c.g), q(c.b), q(c.a))
+    }
+
+    /// 中心を確実に覆う白い箱を 1 つ描く（下地が残っているかを見分けるため）。
+    private func drawCoveringBox(_ pg3d: Graphics3D) {
+        pg3d.noLights()
+        pg3d.noStroke()
+        pg3d.fill(Color(r: 1, g: 1, b: 1))
+        pg3d.pushMatrix()
+        pg3d.translate(Float(Self.size) / 2, Float(Self.size) / 2, 0)
+        pg3d.box(Float(Self.size) / 2)
+        pg3d.popMatrix()
+    }
+
+    /// `background()` を呼ばなければ下地は不透明な黒のまま。
+    ///
+    /// 既定値を変えると既存の 3D オフスクリーンの見た目が動くので、`Graphics`（2D）と
+    /// 揃えた不透明な黒であることをここで固定する（#830 では既定を変えない判断）。
+    @Test("the default backdrop stays opaque black")
+    func defaultBackdropIsOpaqueBlack() throws {
+        let pg3d = try makeGraphics3D()
+        pg3d.beginDraw(time: 0)
+        pg3d.endDraw(wait: true)
+
+        let got = center(pg3d)
+        #expect(got == (0, 0, 0, 255), "既定の下地が不透明な黒でない: \(got) — #830")
+    }
+
+    /// `background(α = 0)` は、呼んだそのフレームで下地を透明にする。
+    ///
+    /// `Graphics3D` の下地はレンダーパスの `loadAction = .clear` が作る。クリア色は
+    /// パスを開いた時点で確定するので、`beginDraw()` の後に色を変えても**そのパスには
+    /// 効かない**。`Graphics` と同じ素直な書き方をそのフレームで効かせる必要がある。
+    @Test("background(alpha = 0) empties the backdrop in the frame it is called")
+    func transparentBackgroundAppliesInTheSameFrame() throws {
+        let pg3d = try makeGraphics3D()
+        pg3d.beginDraw(time: 0)
+        pg3d.background(0, 0, 0, 0)
+        pg3d.endDraw(wait: true)
+
+        let got = center(pg3d)
+        #expect(got == (0, 0, 0, 0),
+                "background(α=0) が呼んだフレームに効いていない: \(got) — #830")
+    }
+
+    /// α < 1 の背景も「置き換え」。前フレームの絵は残らず、指定した色と α がそのまま入る。
+    @Test("background(alpha = 0.5) replaces the backdrop instead of compositing onto it")
+    func semiTransparentBackgroundReplacesTheBackdrop() throws {
+        let pg3d = try makeGraphics3D()
+        pg3d.beginDraw(time: 0)
+        drawCoveringBox(pg3d)
+        pg3d.endDraw(wait: true)
+        #expect(center(pg3d).a == 255, "前提: 1 フレーム目で不透明な絵を作れている")
+
+        pg3d.beginDraw(time: 0)
+        pg3d.background(255, 0, 0, 128)
+        pg3d.endDraw(wait: true)
+
+        // 置き換えなら赤の半透明。合成だと白が透けて (255,128,128,255) になる
+        let got = center(pg3d)
+        #expect(abs(got.r - 255) <= 1 && got.g <= 1 && got.b <= 1 && abs(got.a - 128) <= 1,
+                "半透明の background が下地と合成されている: \(got) — #830")
+    }
+
+    /// フレーム途中の `background(α = 0)` は、先に描いた 3D を色ごと消す。
+    ///
+    /// 開き直したパスはデプスもクリアされるので、深度も残らない。
+    @Test("a mid-frame background(alpha = 0) erases what was already drawn")
+    func midFrameTransparentBackgroundErasesTheFrame() throws {
+        let pg3d = try makeGraphics3D()
+        pg3d.beginDraw(time: 0)
+        drawCoveringBox(pg3d)
+        pg3d.endDraw(wait: true)
+        #expect(center(pg3d) == (255, 255, 255, 255), "前提: 中心を覆う白い箱を描けている")
+
+        pg3d.beginDraw(time: 0)
+        drawCoveringBox(pg3d)
+        pg3d.background(0, 0, 0, 0)
+        pg3d.endDraw(wait: true)
+
+        let got = center(pg3d)
+        #expect(got == (0, 0, 0, 0),
+                "フレーム途中の background(α=0) が先に描いた 3D を消していない: \(got) — #830")
+    }
+
+    /// 設定した背景色は次のフレーム以降も保たれる（毎フレーム呼び直さなくてよい）。
+    @Test("the background color set once keeps clearing the following frames")
+    func backgroundColorPersistsAcrossFrames() throws {
+        let pg3d = try makeGraphics3D()
+        pg3d.beginDraw(time: 0)
+        pg3d.background(0, 0, 0, 0)
+        pg3d.endDraw(wait: true)
+
+        pg3d.beginDraw(time: 0)
+        pg3d.endDraw(wait: true)
+
+        let got = center(pg3d)
+        #expect(got == (0, 0, 0, 0), "背景色が次のフレームで不透明な黒へ戻っている: \(got) — #830")
     }
 }

@@ -6,8 +6,11 @@ extension Sketch {
 
     /// 3D カスタムシェイプの頂点記録を開始します。
     ///
-    /// 現在の `fill` は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の
-    /// 間で `fill` を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 現在の色は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の間で
+    /// 色を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 使われるのは面モード（`.polygon` / `.triangles` など）では `fill`、
+    /// **`.lines` / `.points` では `stroke`** です（Processing の LINES / POINTS と同じ。
+    /// `noStroke()` のときは `fill` に戻ります）。
     ///
     /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
@@ -55,6 +58,9 @@ extension Sketch {
 
     /// 以降の 3D 頂点の法線ベクトルを設定します。
     ///
+    /// `endShape3D()` まで持続します。リテインドな ``MShape/normal(_:_:_:)`` も
+    /// 同じ範囲です（#876）。頂点ごとに違う法線を入れたいなら頂点ごとに呼びます。
+    ///
     /// - Parameters:
     ///   - nx: 法線の x 成分。
     ///   - ny: 法線の y 成分。
@@ -91,7 +97,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![camera(eye:center:up:) の実行結果](https://i.gyazo.com/f8d331b0230086d331b5ff42c0b55a71.png)
+    ///       ![camera(eye:center:up:) の実行結果](https://i.gyazo.com/300bb909ffb972fba5ac4e2ff4589779.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -164,28 +170,33 @@ extension Sketch {
 
     /// 正射影を設定します。
     ///
-    /// 省略した面はキャンバス境界で埋まります。y 軸は 2D と同じく**画面下向き**のため、
-    /// `bottom` がキャンバス高さ、`top` が 0 になる点に注意してください。
+    /// 省略した面は**既定カメラと噛み合う範囲**で埋まります。正射影は**ビュー空間**に
+    /// 効くのに対し既定カメラはキャンバス中央を注視しているため、省略時の範囲も原点
+    /// （＝画面中央）を挟む形になります。これで `ortho()` を単独で呼ぶだけで、2D と
+    /// 同じピクセル座標のまま平行投影に切り替わります（#777）。
+    ///
+    /// - Important: `bottom` / `top` は投影行列の規約どおり「ビュー空間の y が
+    ///   **小さい**側が `bottom`」です。metaphor の y は 2D と同じく画面下向きなので、
+    ///   `bottom` は画面の**上端**、`top` は**下端**に対応します。上下を逆に渡すと
+    ///   絵が上下反転します。
     ///
     /// - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
     ///
     /// - Parameters:
-    ///   - left: 左クリッピング面（`nil` のときは 0）。
-    ///   - right: 右クリッピング面（`nil` のときはキャンバス幅）。
-    ///   - bottom: 下クリッピング面（`nil` のときはキャンバス高さ）。
-    ///   - top: 上クリッピング面（`nil` のときは 0）。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
+    ///   - left: 左クリッピング面（`nil` のときは `-width / 2`）。
+    ///   - right: 右クリッピング面（`nil` のときは `width / 2`）。
+    ///   - bottom: 下クリッピング面（`nil` のときは `-height / 2`）。
+    ///   - top: 上クリッピング面（`nil` のときは `height / 2`）。
+    ///   - near: ニアクリッピング面の距離（`nil` のときは既定カメラ距離の -10 倍）。
+    ///   - far: ファークリッピング面の距離（`nil` のときは既定カメラ距離の 10 倍）。
     ///
     /// ### 実行結果
     ///
     /// ``perspective(fov:near:far:)`` と**同じ配置**を平行投影で撮ったものです。
     /// 奥行きをずらしても大きさが変わらないので、3 つの箱が同じ寸法で並びます。
     ///
-    /// 面を省略すると 0〜キャンバス寸法で埋まりますが、**既定カメラと組み合わせると
-    /// 中心がずれます**（既定カメラはキャンバス中央を注視するので、ビュー空間では
-    /// 原点が画面中央になり、0〜幅の範囲では隅に寄る）。既定カメラのまま使うときは
-    /// 下の例のように原点を挟む範囲を渡してください。
+    /// 下の例は範囲を明示していますが、既定カメラのままなら `ortho()` だけでも
+    /// 中央に同じ大きさで写ります（明示するのは写す範囲を絞りたいときです）。
     ///
     /// <!-- reference-shot -->
     ///
@@ -223,7 +234,7 @@ extension Sketch {
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
-        near: Float = -1000, far: Float = 1000
+        near: Float? = nil, far: Float? = nil
     ) {
         context.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far)
     }
@@ -235,6 +246,9 @@ extension Sketch {
     /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
     /// `ambientLight(76.5)` 相当）に設定されます。ライトを個別に足す場合も、
     /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
+    ///
+    /// 既定リグの灯は**右上手前**から差します（``directionalLight(_:_:_:color:intensity:)``
+    /// でいう `(-0.5, 1, -0.8)`）。``enableShadows()`` の影もこの向きに落ちます。
     ///
     /// 既定リグの灯は `intensity` 0.7 で、Blinn-Phong（既定）に合わせた明るさです。
     /// PBR（``pbr(_:)``）では直接光が `albedo / π` で沈むため、同じリグでも
@@ -254,7 +268,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![lights() の実行結果](https://i.gyazo.com/0c3145d0641680144f78c1f93d58dfc2.png)
+    ///       ![lights() の実行結果](https://i.gyazo.com/016885f45d91c0122a6c2c8718c53d7d.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -596,7 +610,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![specular(_:_:_:) の実行結果](https://i.gyazo.com/458ee55935538919a5a8dc3c971eccb2.png)
+    ///       ![specular(_:_:_:) の実行結果](https://i.gyazo.com/57ad27360e44b22561d478fcaeb42c4f.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -652,7 +666,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![shininess(_:) の実行結果](https://i.gyazo.com/82793d43a490a943d5286ef18a3c337f.png)
+    ///       ![shininess(_:) の実行結果](https://i.gyazo.com/bea51a3d3dd331ebe38a1c640df52995.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1091,7 +1105,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![rotateX(_:) の実行結果](https://i.gyazo.com/c4219d511eed186207e762822b9b84d6.png)
+    ///       ![rotateX(_:) の実行結果](https://i.gyazo.com/b0b8e39439a4f019fce20cc0b3d9b242.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1131,7 +1145,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![rotateY(_:) の実行結果（動き）](https://i.gyazo.com/1aad78bebf366d921a53381303032a9e.gif)
+    ///       ![rotateY(_:) の実行結果（動き）](https://i.gyazo.com/c3943175afcd9b9dbe6774544cce3d6d.gif)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1199,7 +1213,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![box(_:) の実行結果](https://i.gyazo.com/41ddd0c938a519b47d664e7910b4733c.png)
+    ///       ![box(_:) の実行結果](https://i.gyazo.com/0628f02a4dc47cb59470fef39ebbb2ee.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1233,7 +1247,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![sphere(_:detail:) の実行結果](https://i.gyazo.com/cef89181618b3dc5212a98c7f3a24863.png)
+    ///       ![sphere(_:detail:) の実行結果](https://i.gyazo.com/8c6edd1a90dba05c05819b18ef94be4d.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1267,14 +1281,13 @@ extension Sketch {
     /// ### 実行結果
     ///
     /// 正対させると ``rect(_:_:_:_:)`` と見分けが付かないので、``rotateX(_:)`` で
-    /// 寝かせて奥行きを出しています。既定の ``lights()`` は右下手前から差すため、
-    /// 負の角で傾けた面（＝下を向いた面）が明るくなります。
+    /// 寝かせて奥行きを出しています。
     ///
     /// <!-- reference-shot -->
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![plane(_:_:) の実行結果](https://i.gyazo.com/ade802380125fe0ac629d024fb98ff77.png)
+    ///       ![plane(_:_:) の実行結果](https://i.gyazo.com/2e0a8660fec506bbd00c282c843ab94e.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1308,7 +1321,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![cylinder(radius:height:detail:) の実行結果](https://i.gyazo.com/b21d836b4cf4c05ae59bc1e3a3b4f533.png)
+    ///       ![cylinder(radius:height:detail:) の実行結果](https://i.gyazo.com/47680338f40c5454225003010160b2a1.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1339,14 +1352,13 @@ extension Sketch {
     /// ### 実行結果
     ///
     /// y 軸は画面下向きなので、そのまま描くと**頂点が下**を向きます。上向きの円錐に
-    /// するには ``rotateZ(_:)`` で半回転させてください（既定の ``lights()`` は
-    /// 右下手前から差すため、半回転させると側面が陰に入ります）。
+    /// するには ``rotateZ(_:)`` で半回転させてください。
     ///
     /// <!-- reference-shot -->
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![cone(radius:height:detail:) の実行結果](https://i.gyazo.com/b7db8402277b7f92c05b5a83a97f97c4.png)
+    ///       ![cone(radius:height:detail:) の実行結果](https://i.gyazo.com/26fccf002e09c5699fcf42b9935b6379.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -1380,7 +1392,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![torus(ringRadius:tubeRadius:detail:) の実行結果](https://i.gyazo.com/22b06b17868accc9b2d073f8295d1896.png)
+    ///       ![torus(ringRadius:tubeRadius:detail:) の実行結果](https://i.gyazo.com/6238ad4f021c6d0294b39d844d9796f0.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift

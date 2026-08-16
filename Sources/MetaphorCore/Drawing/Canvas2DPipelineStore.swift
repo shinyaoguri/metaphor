@@ -5,12 +5,17 @@ import Metal
 /// 2D 描画パイプラインの系統。頂点レイアウトと組み込みシェーダー関数の組を表します。
 ///
 /// `Canvas2D` の 4 つの flush 経路（カラー頂点・テクスチャ頂点・インスタンス・massive 円）に
-/// 1 対 1 で対応します。
+/// 対応します。テクスチャ頂点だけは、テクスチャの α の持ち方で 2 系統に分かれます。
 enum Canvas2DPipelineKind: Hashable, CaseIterable, Sendable {
     /// 色付き頂点バッチ（`flushColorVertices`）。
     case color
-    /// テクスチャ付き頂点バッチ（`flushTexturedVertices`）。
+    /// テクスチャ付き頂点バッチ（`flushTexturedVertices`）。テクスチャは premultiplied。
     case textured
+    /// テクスチャ付き頂点バッチのうち、**テクスチャが straight** のもの（`updatePixels()`）。
+    ///
+    /// 頂点レイアウトも頂点関数も ``textured`` と同じで、違うのはフラグメントが
+    /// サンプル値を割り戻すかどうかだけです（ADR-0012 / #848）。
+    case straightTextured
     /// インスタンス描画バッチ（`flushInstancedBatch`）。
     case instanced
     /// massive 円インスタンス（`circles()`）。
@@ -214,6 +219,11 @@ final class Canvas2DPipelineStore {
                     BuiltinShaders.FunctionName.canvas2DTexturedVertex,
                     BuiltinShaders.FunctionName.canvas2DTexturedFragment,
                     "Textured")
+        case .straightTextured:
+            return (ShaderLibrary.BuiltinKey.canvas2DTextured,
+                    BuiltinShaders.FunctionName.canvas2DTexturedVertex,
+                    BuiltinShaders.FunctionName.canvas2DStraightTexturedFragment,
+                    "StraightTextured")
         case .instanced:
             return (ShaderLibrary.BuiltinKey.canvas2DInstanced,
                     Canvas2DInstancedShaders.vertexFunctionName,
@@ -231,7 +241,7 @@ final class Canvas2DPipelineStore {
     private static func vertexLayout(for kind: Canvas2DPipelineKind) -> VertexLayout {
         switch kind {
         case .color: return .position2DColor
-        case .textured: return .position2DTexCoordColor
+        case .textured, .straightTextured: return .position2DTexCoordColor
         // インスタンス系は単位メッシュ（位置のみ）を頂点バッファに取り、
         // 変換と色はインスタンスバッファ（index 6）から読む。
         case .instanced, .massiveCircle: return .position2DOnly
