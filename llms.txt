@@ -2480,7 +2480,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class MergePass` -- Blends the outputs of two upstream render passes into a single texture.
 
 - `case add` -- Additive blending (A + B).
-- `case alpha` -- Alpha compositing (B over A).
+- `case alpha` -- Alpha compositing, B over A: `B.rgb + A.rgb * (1 - B.a)`.
 - `case multiply` -- Multiply blending (A * B).
 - `case screen` -- Screen blending (1 - (1-A) * (1-B)).
 - `var blendType: MergePass.BlendType` -- The blend mode used for compositing. Can be changed at runtime.

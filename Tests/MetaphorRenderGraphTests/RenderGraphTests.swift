@@ -278,3 +278,152 @@ struct MergePassSizeFormatTests {
         #expect(merge.output?.pixelFormat == .rgba16Float)
     }
 }
+
+// MARK: - MergePass(.alpha) の premultiplied 合成（#831 / ADR-0012）
+
+/// `MergePass` の入力はレンダーターゲットの中身なので premultiplied（ADR-0012 の規範 2）。
+/// `.alpha` は `b.rgb + a.rgb * (1 - b.a)` でなければならない。修正前は
+/// `b.rgb * b.a + ...` と α を 2 回掛けており、重ねた層が暗くなっていた。
+@Suite("MergePass alpha (premultiplied)", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MergePassAlphaTests {
+    let device = MTLCreateSystemDefaultDevice()!
+
+    /// BGRA の 8bit 値を敷き詰めたテクスチャを作る。
+    ///
+    /// 呼び出し側は premultiplied な値（`rgb <= a`）を渡す。
+    private func makeSolidTexture(size: Int, b: UInt8, g: UInt8, r: UInt8, a: UInt8) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: size, height: size, mipmapped: false
+        )
+        desc.usage = [.shaderRead]
+        desc.storageMode = .shared
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        var bytes = [UInt8](repeating: 0, count: size * size * 4)
+        for i in stride(from: 0, to: bytes.count, by: 4) {
+            bytes[i] = b
+            bytes[i + 1] = g
+            bytes[i + 2] = r
+            bytes[i + 3] = a
+        }
+        tex.replace(
+            region: MTLRegionMake2D(0, 0, size, size),
+            mipmapLevel: 0, withBytes: bytes, bytesPerRow: size * 4
+        )
+        return tex
+    }
+
+    /// 2 枚を `.alpha` で合成し、中央画素の BGRA を返す。
+    private func mergeAlpha(_ texA: MTLTexture, _ texB: MTLTexture) throws -> [UInt8] {
+        let queue = device.makeCommandQueue()!
+        let shaderLib = try ShaderLibrary(device: device)
+        let merge = try MergePass(
+            StubTexturePass(label: "a", texture: texA),
+            StubTexturePass(label: "b", texture: texB),
+            blend: .alpha, device: device, shaderLibrary: shaderLib
+        )
+
+        let renderer = try MetaphorRenderer(device: device, width: texA.width, height: texA.height)
+        guard let cmdBuf = queue.makeCommandBuffer() else {
+            Issue.record("Failed to create command buffer")
+            return []
+        }
+        merge.execute(commandBuffer: cmdBuf, time: 0, renderer: renderer)
+        cmdBuf.commit()
+        cmdBuf.waitUntilCompleted()
+
+        guard let output = merge.output else {
+            Issue.record("No merge output")
+            return []
+        }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: output.pixelFormat,
+            width: output.width, height: output.height, mipmapped: false
+        )
+        desc.storageMode = .shared
+        guard let staging = device.makeTexture(descriptor: desc),
+              let blitBuf = queue.makeCommandBuffer(),
+              let blit = blitBuf.makeBlitCommandEncoder() else {
+            Issue.record("Failed to create staging texture")
+            return []
+        }
+        blit.copy(from: output, to: staging)
+        blit.endEncoding()
+        blitBuf.commit()
+        blitBuf.waitUntilCompleted()
+
+        var bytes = [UInt8](repeating: 0, count: output.width * output.height * 4)
+        staging.getBytes(
+            &bytes, bytesPerRow: output.width * 4,
+            from: MTLRegionMake2D(0, 0, output.width, output.height), mipmapLevel: 0
+        )
+        let center = ((output.height / 2) * output.width + output.width / 2) * 4
+        return Array(bytes[center..<(center + 4)])
+    }
+
+    /// 8bit の丸め（±2）を許容した比較。
+    private func expectBGRA(
+        _ actual: [UInt8], b: Int, g: Int, r: Int, a: Int, _ what: String
+    ) {
+        guard actual.count == 4 else {
+            Issue.record("\(what): 画素を読めなかった")
+            return
+        }
+        let expected = [b, g, r, a]
+        for (i, name) in ["B", "G", "R", "A"].enumerated() {
+            #expect(
+                abs(Int(actual[i]) - expected[i]) <= 2,
+                "\(what): \(name) が \(expected[i]) ではなく \(actual[i])"
+            )
+        }
+    }
+
+    @Test("premultiplied な前景に α が 2 回掛からない（#831）")
+    func alphaOverDoesNotDoubleMultiply() throws {
+        // 下地 A: 不透明 rgb(0.600, 0.200, 0.102) = BGRA(26, 51, 153, 255)
+        // 前景 B: straight rgb(0.200, 0.800, 0.400) / α=0.502 を premultiplied で格納
+        //         = BGRA(51, 102, 26, 128)
+        guard let texA = makeSolidTexture(size: 16, b: 26, g: 51, r: 153, a: 255),
+              let texB = makeSolidTexture(size: 16, b: 51, g: 102, r: 26, a: 128) else {
+            Issue.record("Failed to create test textures")
+            return
+        }
+
+        // b.rgb + a.rgb * (1 - b.a)
+        //   R = 26 + 153 * 0.498 = 102.2 / G = 102 + 51 * 0.498 = 127.4
+        //   B = 51 + 26 * 0.498 = 64.0  / A = 128 + 255 * 0.498 = 255
+        // 修正前は BGRA(39, 77, 89, 255) と、α を 2 回掛けた分だけ暗かった。
+        expectBGRA(try mergeAlpha(texA, texB), b: 64, g: 127, r: 102, a: 255, "半透明の前景を不透明な下地に重ねる")
+    }
+
+    @Test("透明な下地への合成は前景そのまま（over の単位元）")
+    func alphaOverTransparentIsIdentity() throws {
+        guard let texA = makeSolidTexture(size: 16, b: 0, g: 0, r: 0, a: 0),
+              let texB = makeSolidTexture(size: 16, b: 128, g: 128, r: 128, a: 128) else {
+            Issue.record("Failed to create test textures")
+            return
+        }
+        // 修正前は BGRA(64, 64, 64, 128)。何も無いところへ重ねただけで暗くなっていた。
+        expectBGRA(try mergeAlpha(texA, texB), b: 128, g: 128, r: 128, a: 128, "透明な下地へ重ねる")
+    }
+
+    @Test("α=0 の前景は下地を変えない（境界値）")
+    func alphaOverFullyTransparentForeground() throws {
+        guard let texA = makeSolidTexture(size: 16, b: 26, g: 51, r: 153, a: 255),
+              let texB = makeSolidTexture(size: 16, b: 0, g: 0, r: 0, a: 0) else {
+            Issue.record("Failed to create test textures")
+            return
+        }
+        expectBGRA(try mergeAlpha(texA, texB), b: 26, g: 51, r: 153, a: 255, "α=0 の前景")
+    }
+
+    @Test("α=1 の前景は下地を完全に隠す（境界値）")
+    func alphaOverFullyOpaqueForeground() throws {
+        guard let texA = makeSolidTexture(size: 16, b: 26, g: 51, r: 153, a: 255),
+              let texB = makeSolidTexture(size: 16, b: 51, g: 204, r: 102, a: 255) else {
+            Issue.record("Failed to create test textures")
+            return
+        }
+        expectBGRA(try mergeAlpha(texA, texB), b: 51, g: 204, r: 102, a: 255, "α=1 の前景")
+    }
+}

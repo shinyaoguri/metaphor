@@ -13,6 +13,9 @@ struct MergeParams {
 };
 
 /// 2テクスチャ合成コンピュートカーネル
+///
+/// 入力・出力とも premultiplied alpha（ADR-0012 の規範 2「内部は premultiplied」）。
+/// 入力はレンダーターゲットの中身なので、rgb には既に α が掛かっている。
 kernel void metaphor_mergeTextures(
     texture2d<float, access::read>  texA   [[texture(0)]],
     texture2d<float, access::read>  texB   [[texture(1)]],
@@ -35,9 +38,10 @@ kernel void metaphor_mergeTextures(
             result = float4(a.rgb + b.rgb, saturate(a.a + b.a));
             break;
         case BLEND_ALPHA:
-            // B over A (B が前景)
+            // B over A (B が前景)。b.rgb には既に α が掛かっているので、ここで
+            // もう一度掛けない（#831。掛けると重ねた層が暗くなる）
             result = float4(
-                b.rgb * b.a + a.rgb * (1.0 - b.a),
+                b.rgb + a.rgb * (1.0 - b.a),
                 b.a + a.a * (1.0 - b.a)
             );
             break;
