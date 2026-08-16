@@ -304,6 +304,41 @@ extension Sketch {
     ///   - z: ライト方向の z 成分。
     ///   - color: ライトの色（デフォルト白）。
     ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 光の x 成分だけを -1 / 0 / +1 と変えた 3 つ。方向光は位置を持たないので、
+    /// どこに置いた球でも同じ向きから当たります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![directionalLight(_:_:_:color:intensity:) の実行結果](https://i.gyazo.com/91028fa6f248fab585f01a0e5fcc3d8f.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       noStroke()
+    ///       fill(220)
+    ///
+    ///       for i in 0..<3 {
+    ///           noLights()
+    ///           ambientLight(40)
+    ///           directionalLight(
+    ///               Float(i - 1), 1, -0.6
+    ///           )
+    ///           push()
+    ///           translate(
+    ///               90 + Float(i) * 150,
+    ///               height / 2, 0
+    ///           )
+    ///           sphere(65)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func directionalLight(
         _ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0
     ) {
@@ -322,6 +357,44 @@ extension Sketch {
     ///   - falloff: 減衰係数。
     ///   - intensity: ライトの強度倍率（デフォルト 1.0）。PBR で単灯のときは
     ///     1.0 より大きい値が要ります（``directionalLight(_:_:_:color:intensity:)`` 参照）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 方向光と違って**位置**を持つので、灯に近い球ほど明るくなります
+    /// （灯はキャンバス中央の手前に 1 つだけ置いています）。`falloff` は距離減衰の
+    /// 係数で、**線形項にそのまま・二次項にその 1/10** が入ります。ピクセル空間では
+    /// 距離が数百のオーダーになるため、既定の 0.1 のままだとほぼ光が届きません。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![pointLight(_:_:_:color:falloff:intensity:) の実行結果](https://i.gyazo.com/0bc0a58c490fe49b0292db8bc80817dd.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       noStroke()
+    ///       fill(220)
+    ///       ambientLight(30)
+    ///       pointLight(
+    ///           240, 180, 130,
+    ///           falloff: 0.004,
+    ///           intensity: 3
+    ///       )
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               90 + Float(i) * 150,
+    ///               height / 2, 0
+    ///           )
+    ///           sphere(70)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
@@ -347,6 +420,37 @@ extension Sketch {
     ///   - color: ライトの色。
     ///   - intensity: ライトの強度倍率（デフォルト 1.0）。PBR で単灯のときは
     ///     1.0 より大きい値が要ります（``directionalLight(_:_:_:color:intensity:)`` 参照）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 正対させた ``plane(_:_:)`` を手前から照らすと、`angle` で決まる円錐の断面が
+    /// 円として切り取られます。`falloff` は ``pointLight(_:_:_:color:falloff:intensity:)``
+    /// と同じ距離減衰で、ピクセル空間では既定の 0.01 でもほぼ光が届きません。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![spotLight(_:_:_:_:_:_:angle:falloff:color:intensity:) の実行結果](https://i.gyazo.com/1fe96b4c5fb912f33eb124a9faca0af2.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       noStroke()
+    ///       fill(220)
+    ///       ambientLight(20)
+    ///       spotLight(
+    ///           240, 180, 300,
+    ///           0, 0, -1,
+    ///           angle: PI / 7,
+    ///           falloff: 0.0005,
+    ///           intensity: 4
+    ///       )
+    ///       translate(width / 2, height / 2, 0)
+    ///       plane(460, 340)
+    ///       ```
+    ///    }
+    /// }
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
@@ -378,6 +482,38 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
     ///
     /// - Parameter strength: アンビエントライトの強度（`colorMode` のレンジ基準）。
+    ///
+    /// ### 実行結果
+    ///
+    /// アンビエントは向きを持たないので、単独では陰影が付かず色が一様に持ち上がるだけです
+    /// （左）。立体に見せるには方向を持つ灯と組み合わせます（右）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![ambientLight(_:) の実行結果](https://i.gyazo.com/2e655165dc3a1d94aa012eaae135a24e.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       noStroke()
+    ///       fill(120, 200, 255)
+    ///       ambientLight(90)
+    ///
+    ///       push()
+    ///       translate(140, height / 2, 0)
+    ///       sphere(90)
+    ///       pop()
+    ///
+    ///       directionalLight(-0.5, 1, -0.8)
+    ///       push()
+    ///       translate(340, height / 2, 0)
+    ///       sphere(90)
+    ///       pop()
+    ///       ```
+    ///    }
+    /// }
     public func ambientLight(_ strength: Float) {
         context.ambientLight(strength)
     }
@@ -444,6 +580,43 @@ extension Sketch {
     ///   - v1: 第1カラーチャンネル値（赤または色相）。
     ///   - v2: 第2カラーチャンネル値（緑または彩度）。
     ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 同じ暗い ``fill(_:_:_:_:)`` に、赤・緑・青のハイライトを載せた 3 つ。
+    /// 拡散色と違い、ハイライトの色だけが変わります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![specular(_:_:_:) の実行結果](https://i.gyazo.com/458ee55935538919a5a8dc3c971eccb2.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(75, 82, 105)
+    ///       shininess(28)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               90 + Float(i) * 150,
+    ///               height / 2, 0
+    ///           )
+    ///           specular(
+    ///               i == 0 ? 255 : 70,
+    ///               i == 1 ? 255 : 70,
+    ///               i == 2 ? 255 : 70
+    ///           )
+    ///           sphere(65)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func specular(_ v1: Float, _ v2: Float, _ v3: Float) {
         context.specular(v1, v2, v3)
     }
@@ -464,6 +637,38 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter value: 光沢度（値が大きいほどハイライトが小さくなります）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 左から 4 / 44 / 84。値が大きいほどハイライトが小さく鋭くなります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![shininess(_:) の実行結果](https://i.gyazo.com/82793d43a490a943d5286ef18a3c337f.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(70, 100, 170)
+    ///       specular(255)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               90 + Float(i) * 150,
+    ///               height / 2, 0
+    ///           )
+    ///           shininess(4 + Float(i) * 40)
+    ///           sphere(65)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func shininess(_ value: Float) {
         context.shininess(value)
     }
@@ -507,6 +712,45 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter value: メタリック値（0 = 誘電体、1 = 金属）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 左から 0 / 0.5 / 1.0。金属に寄るほど拡散色が失われ、灯の映り込みだけで
+    /// 形が見えるようになります。PBR は既定リグでは暗いので、`intensity` を上げた
+    /// 灯を自分で置いています。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![metallic(_:) の実行結果](https://i.gyazo.com/11783e6a751c5ff69bc3ca34b12138c6.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       pbr(true)
+    ///       noStroke()
+    ///       ambientLight(55)
+    ///       directionalLight(
+    ///           -0.4, 1, -0.6,
+    ///           intensity: 3
+    ///       )
+    ///       fill(225, 190, 90)
+    ///       roughness(0.25)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               90 + Float(i) * 150,
+    ///               height / 2, 0
+    ///           )
+    ///           metallic(Float(i) * 0.5)
+    ///           sphere(65)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func metallic(_ value: Float) {
         context.metallic(value)
     }
@@ -516,6 +760,44 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter value: ラフネス値（0 = 滑らか、1 = 粗い）。
+    ///
+    /// ### 実行結果
+    ///
+    /// 金属（`metallic(1)`）のまま左から 0.1 / 0.45 / 0.8。粗いほどハイライトが
+    /// 広く鈍くなり、磨いた金属からつや消しへ移ります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![roughness(_:) の実行結果](https://i.gyazo.com/3319317fd51bee92127acc9719282fbe.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       pbr(true)
+    ///       noStroke()
+    ///       ambientLight(55)
+    ///       directionalLight(
+    ///           -0.4, 1, -0.6,
+    ///           intensity: 3
+    ///       )
+    ///       fill(225, 190, 90)
+    ///       metallic(1)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               90 + Float(i) * 150,
+    ///               height / 2, 0
+    ///           )
+    ///           roughness(0.1 + Float(i) * 0.35)
+    ///           sphere(65)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func roughness(_ value: Float) {
         context.roughness(value)
     }
@@ -644,6 +926,45 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（ADR-0005）。
     ///
     /// - Parameter enabled: PBR レンダリングを有効にするかどうか。
+    ///
+    /// ### 実行結果
+    ///
+    /// 同じ灯・同じ ``fill(_:_:_:_:)`` で、左が既定の Blinn-Phong、右が PBR
+    /// （``metallic(_:)`` と ``roughness(_:)`` 付き）。PBR の直接光は `albedo / π` で
+    /// 沈むので、同じリグでは暗くなります（``lights()`` の説明を参照）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![pbr(_:) の実行結果](https://i.gyazo.com/8f4a9111a6510b0a7238c4ca69cefba9.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       noStroke()
+    ///       ambientLight(55)
+    ///       directionalLight(
+    ///           -0.4, 1, -0.6,
+    ///           intensity: 3
+    ///       )
+    ///       fill(225, 190, 90)
+    ///
+    ///       push()
+    ///       translate(140, height / 2, 0)
+    ///       sphere(90)
+    ///       pop()
+    ///
+    ///       pbr(true)
+    ///       metallic(0.9)
+    ///       roughness(0.3)
+    ///       push()
+    ///       translate(340, height / 2, 0)
+    ///       sphere(90)
+    ///       pop()
+    ///       ```
+    ///    }
+    /// }
     public func pbr(_ enabled: Bool) {
         context.pbr(enabled)
     }
