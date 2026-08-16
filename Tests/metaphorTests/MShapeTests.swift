@@ -719,6 +719,82 @@ struct MShapeTessellationTests {
     }
 }
 
+// MARK: - 面を作れない頂点数でも落ちない（#881）
+//
+// 頂点数はジェネラティブな組み立てで動的に決まるので、三角形 1 枚に足りない
+// 頂点数（0〜2）は普通に起こる。塗る面が無いなら空メッシュ（3D は nil、2D は空配列）を
+// 返すのが素直で、プロセスごと落ちてはいけない。
+//
+// `.triangleStrip` / `.triangleFan` の 3D 側は `0..<(count - 2)` / `1..<(count - 1)` を
+// 直に組んでいたため、count == 1 で負幅の `Range` を作ってトラップしていた。
+
+@Suite("MShape degenerate vertex counts", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeDegenerateVertexCountTests {
+
+    let device = MTLCreateSystemDefaultDevice()!
+
+    /// 三角形 1 枚に足りない頂点数（0〜2）を積んだ 3D シェイプ。
+    private func make3D(_ mode: ShapeMode, vertexCount: Int) -> MShape {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(mode)
+        for i in 0..<vertexCount {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+        return s
+    }
+
+    @Test("3D triangle strip survives every vertex count below a full triangle",
+          arguments: [0, 1, 2])
+    func triangleStrip3DBelowThreshold(vertexCount: Int) {
+        let s = make3D(.triangleStrip, vertexCount: vertexCount)
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)  // 塗る面は作れない
+        #expect(s.isDirty == false)
+    }
+
+    @Test("3D triangle fan survives every vertex count below a full triangle",
+          arguments: [0, 1, 2])
+    func triangleFan3DBelowThreshold(vertexCount: Int) {
+        let s = make3D(.triangleFan, vertexCount: vertexCount)
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)
+        #expect(s.isDirty == false)
+    }
+
+    @Test("3D triangle strip still builds a mesh once three vertices are in")
+    func triangleStrip3DAtThreshold() throws {
+        let s = make3D(.triangleStrip, vertexCount: 3)
+        s.ensureCacheValid()
+        let mesh = try #require(s.cachedMesh3D)
+        #expect(mesh.vertexCount == 3)
+    }
+
+    @Test("3D triangle fan still builds a mesh once three vertices are in")
+    func triangleFan3DAtThreshold() throws {
+        let s = make3D(.triangleFan, vertexCount: 3)
+        s.ensureCacheValid()
+        let mesh = try #require(s.cachedMesh3D)
+        #expect(mesh.vertexCount == 3)
+    }
+
+    /// 2D 側は元から `guard count >= 3` を持つ。3D を直したあとも規則が 2 つに割れないよう固定する。
+    @Test("2D triangle strip / fan stay empty below three vertices",
+          arguments: [ShapeMode.triangleStrip, .triangleFan], [0, 1, 2])
+    func triangleStripFan2DBelowThreshold(mode: ShapeMode, vertexCount: Int) throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(mode)
+        for i in 0..<vertexCount {
+            s.vertex(Float(i), 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(try #require(s.cachedTriangles2D).isEmpty)
+    }
+}
+
 // MARK: - リテインドな 3D シェイプの法線自動計算（#738）
 //
 // `normal()` を書かないリテインド 3D シェイプは全頂点が既定の (0, 1, 0) のままで、
