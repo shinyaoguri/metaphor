@@ -8,9 +8,11 @@ extension Canvas3D {
 
     /// 3D カスタムシェイプの頂点記録を開始します。
     ///
-    /// 頂点は記録時の fill 色を焼き込んで積むため、記録の途中で fill を変えると
-    /// 頂点ごとに色が付きます。描画側は焼き込み済みを前提に tint を白で送ります
-    /// （`Canvas3D.bakedShapeTint`。二重適用の防止, #825）。
+    /// 頂点は記録時の色を焼き込んで積むため、記録の途中で色を変えると頂点ごとに色が
+    /// 付きます。焼き込む色は面モード（`.polygon` / `.triangles` など）では fill、
+    /// **`.lines` / `.points` では stroke** です（線・点の色を決めるのは `stroke()`。
+    /// `noStroke()` のときは fill に戻ります, #739）。描画側は焼き込み済みを前提に
+    /// tint を白で送ります（`Canvas3D.bakedShapeTint`。二重適用の防止, #825）。
     ///
     /// - Parameter mode: シェイプのテッセレーションモード。
     public func beginShape(_ mode: ShapeMode = .polygon) {
@@ -30,7 +32,7 @@ extension Canvas3D {
     ///   - z: z座標。
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         guard isRecordingShape3D else { return }
-        appendShapeVertex3D(position: SIMD3(x, y, z), color: fillColor, uv: .zero)
+        appendShapeVertex3D(position: SIMD3(x, y, z), color: bakedVertexColor, uv: .zero)
     }
 
     /// 頂点カラー付きの 3D 頂点を追加します。
@@ -62,7 +64,25 @@ extension Canvas3D {
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float) {
         guard isRecordingShape3D else { return }
         shapeHasExplicitUV = true
-        appendShapeVertex3D(position: SIMD3(x, y, z), color: fillColor, uv: SIMD2(u, v))
+        appendShapeVertex3D(position: SIMD3(x, y, z), color: bakedVertexColor, uv: SIMD2(u, v))
+    }
+
+    // 色を明示しない頂点へ焼き込む色（#739）。
+    //
+    // `.lines` / `.points` は「線・点」なので、色を決めるのは `stroke()` — Processing の
+    // LINES / POINTS と同じ語彙にする。`stroke()` を頂点の途中で変えれば線分ごと・点ごとに
+    // 色が変わる。`vertex(x, y, z, color)` で明示した色はここを通らないので、
+    // 頂点カラーは今までどおり勝つ（#825 の点ごとの色分けを保つ）。
+    //
+    // `noStroke()` のときは従来どおり fill 色。線・点しか無いシェイプを黙って消さないため
+    // （`drawShape3DVertices` の `hasFill || hasStroke` ガードで、両方無ければ元から描かれない）。
+    private var bakedVertexColor: SIMD4<Float> {
+        switch shapeMode3D {
+        case .lines, .points:
+            return hasStroke ? strokeColor : fillColor
+        default:
+            return fillColor
+        }
     }
 
     // 頂点と UV を対で積む。両配列の添字対応はテッセレーション（インデックス列）が前提にする。

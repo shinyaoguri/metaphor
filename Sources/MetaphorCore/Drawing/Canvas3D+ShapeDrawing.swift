@@ -332,7 +332,12 @@ extension Canvas3D {
         encoder.setDepthBias(0, slopeScale: 0, clamp: 0)
     }
 
-    // 各頂点を小さな三角形として描画し、ポイントをシミュレート
+    // 各頂点を小さな三角形として描画し、ポイントをシミュレート。
+    //
+    // 三角形を組んだら他のシェイプと同じ `drawShape3DVertices` へ渡す。かつてはここに
+    // 独自のエンコードがあり、ストロークパスを持たないぶん記録経路（影オン）と別の絵に
+    // なっていた（同じスケッチが `shadows()` の有無で変わる・#739）。経路を 1 本に
+    // まとめたので、記録・カスタムマテリアル（#826）・シャドウの扱いも自動的に揃う。
     func drawShape3DPoints() {
         guard !shapeVertices3D.isEmpty else { return }
 
@@ -347,57 +352,6 @@ extension Canvas3D {
             allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
         }
 
-        // 一時 Mesh 化して drawMesh へ渡す（記録経路 #152 / カスタムマテリアル #826）
-        if shouldRouteShapeThroughMesh {
-            if let mesh = try? Mesh(device: device, vertices: allVerts, indices: nil) {
-                drawBakedShapeMesh(mesh)
-            }
-            return
-        }
-
-        guard let encoder = encoder else { return }
-
-        ensureSkyboxDrawn()
-
-        // 他の endShape パスと同様、先に保留中のインスタンスバッチを確定して
-        // 描画順序を保つ（これがないとポイントがバッチ済みシェイプより先に
-        // エンコードされる）
-        flushInstanceBatch()
-
-        let normalMatrix = computeNormalMatrix(from: currentTransform)
-        let viewProj = computeViewProjection()
-
-        encoder.setRenderPipelineState(pipelineState)
-        if let depthState = depthState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-
-        // 点ごとの色は頂点カラーが運ぶ。ここに先頭頂点の色を入れると
-        // 「頂点[i] の色 × 頂点[0] の色」になり、点ごとの色分けが壊れる（#825）
-        var uniforms = Canvas3DUniforms(
-            modelMatrix: currentTransform,
-            viewProjectionMatrix: viewProj,
-            normalMatrix: normalMatrix,
-            color: Canvas3D.bakedShapeTint,
-            cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
-            time: currentTime,
-            lightCount: 0,
-            hasTexture: 0
-        )
-
-        guard bindShapeVertices(allVerts, on: encoder) else { return }
-        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-
-        var dummy = Light3D.zero
-        encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
-        var mat = currentMaterial
-        encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
-
-        // ポイントはライティングなし（lightCount=0）なのでシャドウ無効
-        bindShadowResources(on: encoder, enabled: false)
-
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: allVerts.count)
+        drawShape3DVertices(allVerts)
     }
 }

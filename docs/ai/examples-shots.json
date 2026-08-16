@@ -624,8 +624,8 @@
       "origin": "captured",
       "sourceHash": "598c6018e66d113245744f5a987e68bb68eca81cdc1dd0a2585348b7c95c202d",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "d5791e0d901d4f108abe6457ed50ed38d757ce10",
+        "dirty": true
       },
       "width": 1024,
       "height": 768,
@@ -1130,12 +1130,12 @@
       "origin": "captured",
       "sourceHash": "f6d48725ab2b5f03801ff043c975c06b78b2bd3127b6a2a6e0dd915c7c9d71d3",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "d5791e0d901d4f108abe6457ed50ed38d757ce10",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 66
+      "frame": 70
     },
     "Examples/Topics/Geometry/RGBCube": {
       "origin": "captured",
@@ -1226,12 +1226,12 @@
       "origin": "captured",
       "sourceHash": "24193f3ad34eb36ccb34aa3e094d7277a060cd5cb3b9f42b9d39d408904fbbd6",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "d5791e0d901d4f108abe6457ed50ed38d757ce10",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 66
+      "frame": 101
     },
     "Examples/Topics/Image Processing/Histogram": {
       "origin": "processing",
@@ -1261,12 +1261,12 @@
       "origin": "captured",
       "sourceHash": "5159614c59ed45f6eea859952808e9dcd1f1a09d391f2345aa60284c8cc923f0",
       "provenance": {
-        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
-        "dirty": false
+        "commit": "d5791e0d901d4f108abe6457ed50ed38d757ce10",
+        "dirty": true
       },
       "width": 640,
       "height": 360,
-      "frame": 154
+      "frame": 158
     },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
