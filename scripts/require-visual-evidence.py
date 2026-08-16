@@ -71,11 +71,35 @@ SKIP_LABEL = "no-visual-change"
 # to the repository). GitHub's own attachment hosts are accepted too — dragging
 # an image onto the PR box does not commit anything to the repo either, and
 # refusing it would only teach people to work around the check.
+#
+# This repository's own raw URLs count as well (Issue #843). ADR-0008 /
+# ADR-0010 forbid *committing* an image; *referencing* a generated image that
+# is already in the tree (a golden PNG, an example shot) is a different act,
+# and DEVELOPMENT.md tells authors to do exactly that. Re-uploading it to
+# Gyazo would only copy the same picture into an append-only asset store, so
+# the docs and the check were simply contradicting each other.
+#
+# Two constraints stop that from hollowing the check out:
+#
+#   - The repository is pinned. `raw.githubusercontent.com/<anyone>/<any>` is
+#     no more evidence than `example.com`.
+#   - Only the forms that fetch image *bytes* count. `/raw/` and
+#     `blob/…?raw=1` redirect to raw.githubusercontent.com and render as
+#     images in the body; a bare `blob/` link opens a *page*, so accepting it
+#     would turn every "look at this file" link into evidence. The extension
+#     is required for the same reason — raw.githubusercontent.com serves the
+#     whole tree, and a link to a `.swift` file is not a picture.
+_REPO = r"shinyaoguri/metaphor"
+# What `make example-shots` / `make reference-shots` / the golden tests write.
+_IMAGE_EXT = r"\.(?:png|jpe?g|gif|webp)"
 _IMAGE_HOSTS = (
     r"i\.gyazo\.com",
     r"gyazo\.com/[0-9a-f]{32}",
     r"user-images\.githubusercontent\.com",
     r"github\.com/user-attachments/assets",
+    rf"raw\.githubusercontent\.com/{_REPO}/[^\s)]*{_IMAGE_EXT}",
+    rf"github\.com/{_REPO}/raw/[^\s)]*{_IMAGE_EXT}",
+    rf"github\.com/{_REPO}/blob/[^\s)]*{_IMAGE_EXT}\?(?:[^\s)]*&)?raw=(?:true|1)",
 )
 _IMAGE_RE = re.compile("|".join(_IMAGE_HOSTS), re.IGNORECASE)
 
@@ -135,7 +159,9 @@ def main(argv: list[str] | None = None, stdin=None) -> int:
         "記録になります。後から足せません。\n"
         "  1. before/after を撮って PR 本文に貼る"
         "（**動きが変わるなら GIF も**。手順は DEVELOPMENT.md「PR に見た目の"
-        "証跡を載せる」。リポジトリにはコミットせず Gyazo へ）\n"
+        "証跡を載せる」。新しく撮った画像はリポジトリにコミットせず Gyazo へ。"
+        "ゴールデン PNG や example の実行結果のように既にコミット済みのものは"
+        "そのまま raw URL で貼れます）\n"
         f"  2. 本当に絵が変わらないなら PR に `{SKIP_LABEL}` ラベルを貼る\n"
         "どちらの場合も、直したあと `gh run rerun --failed <run-id>` だけで通ります"
         "（本文とラベルは実行時に API から引くので push は不要です）。",
