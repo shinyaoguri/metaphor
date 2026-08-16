@@ -801,15 +801,30 @@ final class Text2D: Sketch {
 
 長い文章は、`text(_:_:_:_:_:)` に幅と高さも渡すと、その矩形の中で自動的に折り返します。スケッチの左下がそれで、渡した幅 260 のところで改行されています。
 
-### いまできないこと
+### 名前で選ぶ、ファイルから読む
 
-フォントは `textFont(_:)` に**ファミリー名**を渡して、インストール済みのものから選ぶ形だけです。次のことはまだできません。
+フォントの指定には 2 つの道があります。`textFont(_:)` に**名前**を渡してインストール済みのものから選ぶか、`loadFont(_:)` で**ファイルを読む**かです。
 
-- フォントファイルを読み込んで使う（`.ttf` / `.otf` の直接指定）
-- 文字の輪郭を頂点列として取り出す（`textToPoints` 相当）
-- パスに沿って文字を並べる
+```swift
+textFont("Helvetica Neue")                // 名前で選ぶ
+textFont("Helvetica Neue Bold")           // 太さも名前の一部として渡せる
 
-いずれも [#292](https://github.com/shinyaoguri/metaphor/issues/292) で扱う予定の領域です。字形そのものを素材にしたい場合は、いまのところ図形として自分で組み立てることになります。
+let f = try loadFont("assets/Inter.ttf")  // .ttf / .otf を読む
+textFont(f)
+```
+
+字形そのものを素材にしたいときは、輪郭を取り出せます。`textToPoints(_:_:_:)` は輪郭上の点を、`textToShape(_:_:_:)` は穴のあいた形をそのまま塗れる図形を返します。
+
+```swift
+for p in textToPoints("metaphor", 40, 200) {
+    circle(p.x, p.y, 4)
+}
+```
+
+まだできないのは次の 2 つです。
+
+- 書体を変えずに太さだけ切り替える（p5 の `textStyle(BOLD)` にあたるもの。上のように名前へ含める形になり、どの名前が使えるかはフォントによります — [#816](https://github.com/shinyaoguri/metaphor/issues/816)）
+- パスに沿って文字を並べる（[#651](https://github.com/shinyaoguri/metaphor/issues/651)）
 
 ### 試してみる
 
@@ -825,7 +840,7 @@ final class Text2D: Sketch {
 - [ ] `textAlign()` で水平・垂直の基準を変えられ、これも以降に効き続けると分かった
 - [ ] 文字も図形と同じく `translate()` / `rotate()` の影響を受けると分かった
 - [ ] 幅と高さを渡すと、その矩形の中で文章が折り返されると分かった
-- [ ] フォントファイルの読み込みや字形の取り出しはまだできないと分かった
+- [ ] フォントは名前でも `loadFont()` のファイル読み込みでも指定でき、`textToPoints()` で字形を素材にできると分かった
 
 ### もっと詳しく
 

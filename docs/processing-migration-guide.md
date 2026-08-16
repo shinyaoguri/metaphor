@@ -126,7 +126,7 @@ free functions noted as such.
 | `fullScreen()` | `SketchConfig(…, fullScreen: true)` | No function form. |
 | `smooth()` / `noSmooth()` | `SketchConfig(…, msaa: 4)` | MSAA sample count; default `4`. `msaa: 1` disables it. |
 | `frameRate(60)` | `frameRate(60)` | Setter only — see [Pitfalls](#pitfalls). |
-| `frameRate` (the variable) | — | Not implemented ([#273](https://github.com/shinyaoguri/metaphor/issues/273)). |
+| `frameRate` (the variable) | `performance.fps: Float?` | The *measured* rate over roughly the last second; `nil` until it can be computed. `performance` also carries frame time, memory, CPU and thermal state — see [Pitfalls](#framerate-sets-performance-reads). |
 | `frameCount` | `frameCount: Int` | |
 | `millis()` | `millis() -> Int` | Free function. |
 | `width` / `height` | `width: Float` / `height: Float` | `Float`, not `int`. |
@@ -159,7 +159,9 @@ free functions noted as such.
 | `beginShape(TRIANGLES)` etc. | `beginShape(.triangles)`, `.triangleStrip`, `.triangleFan`, `.lines`, `.points`, `.polygon` |
 | `vertex(x, y)` / `vertex(x, y, u, v)` | `vertex(x, y)` / `vertex(x, y, u, v)`, plus `vertex(x, y, color)` |
 | `bezierVertex(…)` / `curveVertex(x, y)` | `bezierVertex(cx1, cy1, cx2, cy2, x, y)` / `curveVertex(x, y)` |
-| `quadraticVertex(…)` | — not implemented |
+| `quadraticVertex(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)) |
+| `bezierDetail(n)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)). Note `bezier()` uses a fixed 24 segments while `bezierVertex()` follows `curveDetail()` (20 by default), so the same curve differs between the two |
+| `shapeMode(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)); `shape(s, x, y, w, h)` always interprets its arguments one way |
 | `beginContour()` / `endContour()` | `beginContour()` / `endContour()` — 2D shapes only; on a 3D shape they warn and do nothing ([#736](https://github.com/shinyaoguri/metaphor/issues/736)) |
 | `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` |
 | `rectMode(CORNER/CORNERS/CENTER/RADIUS)` | `rectMode(.corner)` / `.corners` / `.center` / `.radius` — default `.corner` |
@@ -191,7 +193,8 @@ The default color mode is **RGB with a 0–255 range, exactly like Processing**,
 | `color(…)` packed into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 in, packed `0xAARRGGBB` out) |
 | `tint(…)` / `noTint()` | `tint(…)` (same overloads as `fill`) / `noTint()` |
 | `blendMode(ADD)` | `blendMode(.additive)`; also `.alpha` `.multiply` `.screen` `.subtract` `.darkest` `.lightest` `.difference` `.exclusion` `.opaque` |
-| `red(c)` / `green(c)` / `hue(c)` … | `c.r` / `c.g` — no `hue()`/`saturation()`/`brightness()` extractors |
+| `red(c)` / `green(c)` / `hue(c)` … | `c.r` / `c.g` / `c.b` / `c.a` (always 0–1, ignoring `colorMode`) — there are **no `hue()`/`saturation()`/`brightness()`/`alpha()` extractors** and no RGB→HSB conversion ([#811](https://github.com/shinyaoguri/metaphor/issues/811)) |
+| `blendColor(c1, c2, MULTIPLY)` | — not implemented ([#811](https://github.com/shinyaoguri/metaphor/issues/811)); `blendMode()` applies to drawing, not to a pair of colors |
 
 Note the two distinct color entry points — see
 [Two color ranges](#two-color-ranges-0255-numbers-01-color) in the pitfalls.
@@ -218,7 +221,7 @@ Note the two distinct color entry points — see
 | `printMatrix()` | — not implemented | |
 | `screenX(x, y)` / `screenY(x, y)` | `screenX(_ x: Float, _ y: Float) -> Float`, `screenY(…)`; 3D overloads take `(x, y, z)` | |
 | `screenZ(x, y, z)` | `screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float` (normalized depth 0…1) | |
-| `modelX/Y/Z(…)` | — not implemented (ADR-0007 follow-up) | |
+| `modelX/Y/Z(…)` | — not implemented ([#814](https://github.com/shinyaoguri/metaphor/issues/814), ADR-0007 follow-up) | |
 
 Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 (that is a p5.js API) — use `radians(deg)` to convert.
@@ -230,8 +233,12 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `text("hi", x, y)` | `text(_ string: String, _ x: Float, _ y: Float)` |
 | `text("hi", x, y, w, h)` | `text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` |
 | `textSize(32)` | `textSize(_ size: Float)` |
-| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")` |
-| `createFont(…)` / `loadFont(…)` | — not implemented; there is no `PFont` type |
+| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")`. A style-qualified name works too: `textFont("Helvetica Neue Bold")` resolves to the bold face |
+| `createFont("f.ttf", 32)` / `loadFont(…)` | `loadFont(_ path: String, cache: Bool = true) throws -> MFont`, then `textFont(_ font: MFont)` |
+| `PFont` | `MFont` |
+| p5 `font.textToPoints(…)` | `textToPoints(_ string:_ x:_ y:sampleFactor:) -> [Vec2]`, plus `textToContours(…) -> [[Vec2]]` (one closed polyline per contour) and `textToShape(…) -> MShape` (holes included) |
+| p5 `textStyle(BOLD / ITALIC)` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)); use a style-qualified family name as above |
+| p5 `textWrap()` / `textBounds()` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)) |
 | `textAlign(CENTER, TOP)` | `textAlign(.center, .top)` — `TextAlignH` is `.left/.center/.right`, `TextAlignV` is `.top/.center/.baseline/.bottom` (default `.baseline`) |
 | `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
@@ -267,6 +274,7 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `color(r, g, b)` written into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 components) |
 | `updatePixels()` | `updatePixels()` |
 | `img.loadPixels()` / `img.pixels` | `MImage.loadPixels()` / `MImage.pixels: [UInt8]` — **RGBA bytes**, a different layout from the canvas buffer |
+| `get(x, y)` / `get(x, y, w, h)` / `set(x, y, c)` on the canvas | — not implemented ([#812](https://github.com/shinyaoguri/metaphor/issues/812)); go through `loadPixels()` / `pixels` / `updatePixels()`. The `MImage` methods below are the per-image equivalents |
 
 The packed value is `(A << 24) | (R << 16) | (G << 8) | B` — the same
 `0xAARRGGBB` integer a Processing sketch manipulates, so tricks like
@@ -293,18 +301,18 @@ the Processing original with every number left alone.
 | `camera(ex, ey, ez, cx, cy, cz, ux, uy, uz)` | `camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` |
 | `perspective(fov, aspect, near, far)` | `perspective(fov: Float = .pi / 3, near: Float = 0.1, far: Float = 10000)` — aspect comes from the canvas |
 | `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to the canvas box |
-| `beginCamera()` / `endCamera()` / `frustum()` | — not implemented |
+| `beginCamera()` / `endCamera()` / `frustum()` | — not implemented ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | `lights()` / `noLights()` | `lights()` / `noLights()` — `lights()` **clears** the light list first, then installs one directional plus ambient, so call it before your own lights, not after |
 | `ambientLight(r, g, b)` | `ambientLight(_ r: Float, _ g: Float, _ b: Float)`, plus `ambientLight(_ strength: Float)` |
 | `directionalLight(r, g, b, nx, ny, nz)` | `directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` — **direction first, color as a labelled argument** |
 | `pointLight(r, g, b, x, y, z)` | `pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1)` — **position first** |
 | `spotLight(…)` | `spotLight(_ x:_ y:_ z:_ dirX:_ dirY:_ dirZ:, angle:falloff:color:)` |
-| `lightFalloff()` / `lightSpecular()` | — use the `falloff:` / `color:` arguments on the individual lights |
+| `lightFalloff()` / `lightSpecular()` | — approximate with the `falloff:` / `color:` arguments on the individual lights. Processing's three-term falloff (constant / linear / quadratic) has no equivalent ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | `specular(…)` / `shininess(n)` / `emissive(…)` | `specular(_ color: Color)` (also grayscale) / `shininess(_ value: Float)` / `emissive(_ color: Color)` |
-| `ambient(…)` | — not implemented as a per-material call (only scene-wide `ambientLight`) |
+| `ambient(…)` | — not implemented as a per-material call (only scene-wide `ambientLight`) ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | — | `metallic(_:)`, `roughness(_:)`, `ambientOcclusion(_:)`, `pbr(_ enabled: Bool)` for the PBR path. `roughness(_:)` switches the whole shading model to PBR as a side effect |
 | `texture(img)` / `noTexture()` | `texture(_ img: MImage)` / `noTexture()`. For `beginShape3D()`, pass UV per vertex: `vertex(x, y, z, u, v)` |
-| `textureMode()` / `textureWrap()` | — not implemented |
+| `textureMode()` / `textureWrap()` | — not implemented ([#815](https://github.com/shinyaoguri/metaphor/issues/815)); UV is always normalized 0…1 |
 | `normal(nx, ny, nz)` | `normal(_ nx: Float, _ ny: Float, _ nz: Float)` |
 | `beginShape()` in 3D | `beginShape3D(_ mode: ShapeMode = .polygon)` / `endShape3D(_ close: CloseMode = .open)` |
 | `loadShape("m.obj")` | `loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh?` (OBJ / USDZ / ABC), drawn with `mesh(_:)` |
@@ -537,7 +545,7 @@ are skipped with a one-time warning.
 | `PGraphics` | `Graphics` (2D) / `Graphics3D` |
 | `PShape` | `MShape` |
 | `PVector` | `Vec2` = `SIMD2<Float>`, `Vec3` = `SIMD3<Float>` |
-| `PFont` | — (use `textFont(_ family: String)`) |
+| `PFont` | `MFont` (from `loadFont(_:cache:)`), or just a family name via `textFont(_ family: String)` |
 | `PShader` | `Shader2D` (2D draw shaders) / `CustomMaterial` (3D) / `CustomPostEffect` (post-process) |
 | `PMatrix2D` / `PMatrix3D` | `float3x3` / `float4x4` (from `simd`) |
 | `Table` / `TableRow` | `Table` / `TableRow` |
@@ -806,20 +814,43 @@ empty buffer until the first `loadPixels()`.
 Related: `copy(…)` reads from the offscreen target's *previous* contents, not the
 shapes drawn so far this frame.
 
-### `frameRate()` sets, but nothing reads
+### `frameRate()` sets, `performance` reads
 
-`frameRate(_ fps: Int)` changes the target frame rate. There is no `frameRate`
-variable to read the measured rate — it is a tracked follow-up
-([#273](https://github.com/shinyaoguri/metaphor/issues/273)). To *see* the
-current rate, `enablePerformanceHUD()` draws an on-screen overlay; to compute
-one, `1 / deltaTime`; and for animation timing prefer `deltaTime` and `time` over
+`frameRate(_ fps: Int)` changes the *target* frame rate; Processing's `frameRate`
+variable (the *measured* rate) is `performance.fps` instead:
+
+```swift
+if let fps = performance.fps, fps < 30 { particleCount = 1_000 }   // degrade yourself
+```
+
+`performance` also carries `frameTimeMs` (mean and max), `memoryMB`,
+`cpuPercent`, `thermalState` and the resolved `targetFPS`. Every field that
+cannot be computed yet is `nil`, so the first frames read as `nil` rather than 0.
+To *see* the rate instead of reading it, `enablePerformanceHUD()` draws an
+on-screen overlay. For animation timing prefer `deltaTime` and `time` over
 counting frames.
 
-### Fonts are family names, not files
+### Two ways to name a font, and no `textStyle()`
 
-`textFont(_ family: String)` takes an installed font family
-(`textFont("Helvetica Neue")`). There is no `PFont`, no `createFont()`, and no
-way to load a `.ttf` from disk yet.
+`textFont(_ family: String)` takes an installed font by name, and
+`loadFont(_ path:)` reads a `.ttf` / `.otf` from disk and returns an `MFont` for
+`textFont(_ font: MFont)`:
+
+```swift
+textFont("Helvetica Neue")                  // installed, by family name
+textFont("Helvetica Neue Bold")             // installed, style-qualified name
+let f = try loadFont("assets/Inter.ttf")    // from disk
+textFont(f)
+```
+
+What is missing is p5's `textStyle(BOLD)` — you cannot keep the family and switch
+the weight, because the style has to be part of the name you pass. Which
+style-qualified names exist depends on the font (`"Helvetica Neue Bold"` works,
+`"Some Font Bold"` may not), so a sketch that switches weights is not portable
+between fonts ([#816](https://github.com/shinyaoguri/metaphor/issues/816)).
+
+Glyph outlines are available: `textToPoints`, `textToContours` and `textToShape`
+turn a string into points, per-contour polylines, or a fillable `MShape`.
 
 ### There is no `data/` folder
 
@@ -840,12 +871,18 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | Processing | Status |
 |---|---|
 | `loadShape()` (SVG as `PShape`) | Planned, Phase 2 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). Today: `loadModel()` reads OBJ / USDZ / ABC into a `Mesh`; SVG is export-only. |
-| `createFont()` / `loadFont()` / `PFont`, `textToPoints()` | Planned, Phase 2 — [Epic #292](https://github.com/shinyaoguri/metaphor/issues/292). Today `textFont(_:)` resolves installed family names only. |
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |
-| `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). |
-| the `frameRate` variable | Not implemented — [#273](https://github.com/shinyaoguri/metaphor/issues/273). |
-| `modelX()` / `modelY()` / `modelZ()` | Not implemented (ADR-0007 follow-up). `screenX/Y/Z` exist. |
-| `quadraticVertex()`, `printMatrix()`, `beginCamera()` / `endCamera()`, `frustum()`, `textureMode()`, `textureWrap()`, `sphereDetail()`, `lightFalloff()`, `lightSpecular()`, `ambient()`, `hint()`, `pixelDensity()`, `windowResized()`, `exit()`, `delay()`, `loadBytes()` / `saveBytes()` | Not implemented. |
+| `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
+| `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()` | Not implemented — [#811](https://github.com/shinyaoguri/metaphor/issues/811). `Color` converts HSB→RGB but not back. |
+| `get()` / `set()` on the canvas | Not implemented — [#812](https://github.com/shinyaoguri/metaphor/issues/812). Use `loadPixels()` / `pixels`. |
+| `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
+| `modelX()` / `modelY()` / `modelZ()` | Not implemented — [#814](https://github.com/shinyaoguri/metaphor/issues/814) (ADR-0007 follow-up). `screenX/Y/Z` exist. |
+| `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
+| p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
+| `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |
+| sound synthesis (`SinOsc`, `Env`, `Reverb`, `Delay`, recording, panning) | Not implemented — playback (`loadSound`) and analysis (`createAudioInput`, FFT, beat) exist, but nothing generates audio. Demand-gated, Phase 4. |
+| `Serial` (Arduino), `Client` / `Server` (TCP) | Not implemented. OSC and MIDI are available instead (`createOSCSender` / `createOSCReceiver` / `createMIDI`), and both exceed Processing's standard set. Demand-gated, Phase 4. |
+| `printMatrix()`, `printCamera()`, `printProjection()`, `sphereDetail()`, `hint()`, `pixelDensity()`, `displayWidth` / `displayHeight`, `focused`, `windowResized()`, `exit()`, `delay()`, `thread()` | Not implemented. Several are deliberate: the window is aspect-locked (no `windowResized`), `delay()` is undesirable on the main actor, and `thread()` is Swift's `Task`. |
 
 The phases refer to
 [docs/design/roadmap-processing-unity.md](design/roadmap-processing-unity.md),
