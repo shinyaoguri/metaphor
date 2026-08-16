@@ -1291,7 +1291,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
 
-- （ほか 60 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 63 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
