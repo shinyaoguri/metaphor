@@ -303,11 +303,17 @@ extension Sketch {
     }
 
     /// 3D モデル座標が描画されるスクリーン x 座標を返します。
+    ///
+    /// - Important: カメラ背後の点では値が原点対称に反転します。
+    ///   ``isInFront(_:_:_:)`` で判別してください。
     public func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.screenPosition(x, y, z).x
     }
 
     /// 3D モデル座標が描画されるスクリーン y 座標を返します。
+    ///
+    /// - Important: カメラ背後の点では値が原点対称に反転します。
+    ///   ``isInFront(_:_:_:)`` で判別してください。
     public func screenY(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.screenPosition(x, y, z).y
     }
@@ -315,8 +321,30 @@ extension Sketch {
     /// 3D モデル座標の正規化デバイス深度（0...1）を返します。
     ///
     /// 手前ほど小さい値になります（Processing の `screenZ()` 相当）。
+    ///
+    /// - Important: 0...1 に収まるのは点が視錐台の内側にあるときだけです。
+    ///   カメラ背後では 1 を超え、カメラとニア平面のあいだでは負になります。
+    ///   ``isInFront(_:_:_:)`` で背後を弾いてから使ってください。
     public func screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.screenPosition(x, y, z).z
+    }
+
+    /// 3D モデル座標の点がカメラ平面より前にあるかを返します。
+    ///
+    /// ``screenX(_:_:_:)`` / ``screenY(_:_:_:)`` / ``screenZ(_:_:_:)`` は
+    /// カメラ背後の点に対して反転した値を返し、戻り値だけでは前方の点と区別できません。
+    /// ラベル配置やカリングの前にこの判定を挟んでください。
+    ///
+    /// ```swift
+    /// if isInFront(px, py, pz) {
+    ///     text("label", screenX(px, py, pz), screenY(px, py, pz))
+    /// }
+    /// ```
+    ///
+    /// - Note: true は「反転していない」ことだけを保証し、「画面内にある」ことは
+    ///   保証しません。正射影では反転が起きないため常に true を返します。
+    public func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool {
+        context.isInFront(x, y, z)
     }
 
     // MARK: 2D Shapes

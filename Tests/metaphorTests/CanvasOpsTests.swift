@@ -127,6 +127,97 @@ struct Canvas3DTransformOpsTests {
         let below = canvas3D.screenPosition(centerX, centerY + 100, 0)
         #expect(abs(below.y - (centerY + 100)) < 1.0)
     }
+
+    // 回帰テスト(#824): カメラ背後の点は clip.w < 0 になり、screenPosition の
+    // x/y が原点対称に反転して z が 0...1 を外れる。戻り値だけでは前方の点と
+    // 区別できないので、isInFront で判別できることを固定する。
+    @Test("isInFront はカメラ背後の点を false と判定する (regression #824)")
+    func isInFrontRejectsPointsBehindCamera() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.begin(encoder: nil, time: 0)
+        let centerX = canvas3D.width / 2
+        let centerY = canvas3D.height / 2
+        // 既定カメラの目は z = (height/2) / tan(fov/2)。その 120 だけ後ろへ点を置く。
+        let behindZ = canvas3D.cameraEye.z + 120
+
+        #expect(canvas3D.isInFront(centerX + 100, centerY, behindZ) == false)
+
+        // 判別が必要な理由（バグの実体）も一緒に固定する。中心より右へ置いた点が
+        // 中心より左に返り、深度が doc の言う 0...1 を外れる。
+        let behind = canvas3D.screenPosition(centerX + 100, centerY, behindZ)
+        #expect(behind.x < centerX, "背後の点は x が原点対称に反転する")
+        #expect(behind.z > 1, "背後の点は NDC 深度が 0...1 を外れる")
+    }
+
+    @Test("isInFront は前方の点を true と判定する (regression #824)")
+    func isInFrontAcceptsPointsInFront() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.begin(encoder: nil, time: 0)
+        let centerX = canvas3D.width / 2
+        let centerY = canvas3D.height / 2
+
+        for z in [Float(-400), -200, 0, 200, 400] {
+            #expect(canvas3D.isInFront(centerX + 100, centerY, z), "z = \(z) は視錐台内")
+            let p = canvas3D.screenPosition(centerX + 100, centerY, z)
+            #expect(p.x > centerX, "z = \(z) では反転しない")
+            #expect(p.z > 0 && p.z < 1, "z = \(z) の深度は 0...1")
+        }
+    }
+
+    // 境界値(#824): カメラ平面ちょうど（clip.w == 0）は screenPosition が
+    // ゼロベクトルを返す既存仕様。isInFront も「前方ではない」と答える。
+    @Test("isInFront はカメラ平面上の点を false と判定する (regression #824)")
+    func isInFrontRejectsPointOnCameraPlane() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.begin(encoder: nil, time: 0)
+        let centerX = canvas3D.width / 2
+        let centerY = canvas3D.height / 2
+        let eyeZ = canvas3D.cameraEye.z
+
+        #expect(canvas3D.isInFront(centerX, centerY, eyeZ) == false)
+        #expect(canvas3D.screenPosition(centerX, centerY, eyeZ) == .zero)
+    }
+
+    // isInFront はモデル変換を通した後の位置で判定する（screenPosition と同じ経路）。
+    @Test("isInFront は現在のモデル変換を考慮する (regression #824)")
+    func isInFrontFollowsModelTransform() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.begin(encoder: nil, time: 0)
+        let centerX = canvas3D.width / 2
+        let centerY = canvas3D.height / 2
+
+        #expect(canvas3D.isInFront(centerX, centerY, 0), "変換前は前方")
+        // 原点を目より奥（= 背後）へ押し出すとモデル座標は同じでも背後になる
+        canvas3D.translate(0, 0, canvas3D.cameraEye.z + 120)
+        #expect(canvas3D.isInFront(centerX, centerY, 0) == false, "平行移動で背後へ回る")
+        canvas3D.resetMatrix()
+        #expect(canvas3D.isInFront(centerX, centerY, 0), "resetMatrix で戻る")
+    }
+
+    // 正射影には遠近除算が無いため反転そのものが起きない。isInFront が
+    // 「反転していない」と答える（= 常に true）ことを固定する。
+    @Test("正射影では isInFront が常に true を返す (regression #824)")
+    func isInFrontIsAlwaysTrueUnderOrthographic() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.begin(encoder: nil, time: 0)
+        let centerX = canvas3D.width / 2
+        let centerY = canvas3D.height / 2
+        let behindZ = canvas3D.cameraEye.z + 120
+        canvas3D.ortho()
+
+        #expect(canvas3D.isInFront(centerX + 100, centerY, behindZ))
+        // 反転していないことも確かめる。正射影は遠近除算が無いので、奥行きが
+        // 変わっても同じモデル x/y は同じスクリーン x/y に写る。
+        let front = canvas3D.screenPosition(centerX + 100, centerY, 0)
+        let behind = canvas3D.screenPosition(centerX + 100, centerY, behindZ)
+        #expect(abs(front.x - behind.x) < 0.001)
+        #expect(abs(front.y - behind.y) < 0.001)
+    }
 }
 
 // MARK: - MImage resize / mask (#280)

@@ -1051,6 +1051,25 @@ struct TwoLayerSymmetryTests {
         #expect(h.sketch.screenZ(5, 9, 13) == p3.z)
     }
 
+    @Test("isInFront は canvas3D の判定へ 3 層とも同じ答えで届く (#824)")
+    func isInFrontForwardsThroughAllLayers() throws {
+        let h = try makeHarness()
+        h.context.canvas3D.begin(encoder: nil, time: 0)
+        let centerX = h.context.canvas3D.width / 2
+        let centerY = h.context.canvas3D.height / 2
+        let behindZ = h.context.canvas3D.cameraEye.z + 120
+
+        // 前方・背後の両方で 3 層が一致することを見る（片方だけだと定数を返す
+        // 実装でも通ってしまう）。
+        #expect(h.sketch.isInFront(centerX, centerY, 0))
+        #expect(h.context.isInFront(centerX, centerY, 0))
+        #expect(h.context.canvas3D.isInFront(centerX, centerY, 0))
+
+        #expect(h.sketch.isInFront(centerX, centerY, behindZ) == false)
+        #expect(h.context.isInFront(centerX, centerY, behindZ) == false)
+        #expect(h.context.canvas3D.isInFront(centerX, centerY, behindZ) == false)
+    }
+
     @Test("createCanvas は (width, height) の順で転送される")
     func createCanvasForwardsInOrder() throws {
         let h = try makeHarness()
