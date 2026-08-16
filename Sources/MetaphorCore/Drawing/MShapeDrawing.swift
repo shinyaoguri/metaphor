@@ -184,6 +184,8 @@ extension SketchContext {
         canvas.strokeColor = style.strokeColor
         canvas.hasStroke = style.hasStroke
         canvas.currentStrokeWeight = style.strokeWeight
+        // tintColor には渡し先が無い（2D 経路はテクスチャを描かない）。黙って捨てない（#852）
+        if style.hasTint { s.warnTintIgnoredOnce() }
     }
 
     private func computeBounds2D(_ s: MShape) -> (minX: Float, minY: Float, width: Float, height: Float) {
@@ -352,6 +354,9 @@ extension SketchContext {
         if let tex = s.texture {
             canvas3D.currentTexture = tex
         }
+        // 3D のテクスチャは fillColor（インスタンス色 / uniforms.color）を掛けて着色するので、
+        // tint 専用のスロットが無い。2D と同じく黙って捨てない（#852）
+        if style.hasTint { s.warnTintIgnoredOnce() }
     }
 
     private func ensurePrimitiveMesh3D(_ s: MShape, _ kind: ShapeKind) {
