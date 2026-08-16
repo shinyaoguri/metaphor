@@ -9,6 +9,15 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::rotateY(_:)": {
       "motion": { "frames": 36, "every": 2, "fps": 15 }
+    },
+    "Sources/MetaphorCore/Utilities/Noise.swift::noise(_:_:)": {
+      "layout": "stack"
+    },
+    "Sources/MetaphorCore/Utilities/Noise.swift::noiseDetail(octaves:falloff:)": {
+      "layout": "stack"
+    },
+    "Sources/MetaphorCore/Utilities/Easing.swift::ease(_:from:to:using:)": {
+      "motion": { "frames": 36, "every": 2, "fps": 15 }
     }
   }
 }

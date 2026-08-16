@@ -454,6 +454,41 @@
       "height": 360,
       "url": "https://i.gyazo.com/d8e6cd010c5b5629ebfd57cf15e400ba.png",
       "sha256": "a4f800e2d3ab1b0f6dc7c1ce596d4980c74fc27f2112342b42d4742260ad1540"
+    },
+    "Sources/MetaphorCore/Utilities/Easing.swift::ease(_:from:to:using:)": {
+      "symbol": "ease(_:from:to:using:)",
+      "snippetHash": "7d12d0d19b7eb32474a410afbd0537893eb751e42c86dee8b59f7d21a858f0ba",
+      "width": 480,
+      "height": 360,
+      "motion": {
+        "frames": 36,
+        "every": 2,
+        "fps": 15,
+        "width": 480,
+        "bytes": 34651,
+        "outputWidth": 480,
+        "outputHeight": 360,
+        "url": "https://i.gyazo.com/d3575413e871cb48991e71e3cf0f115f.gif",
+        "sha256": "4f8fe16976d118bbf3d4af0f5ab97b8ab7d8f9cea447014ec3bd8681fee1ba3c"
+      },
+      "url": "https://i.gyazo.com/7bfa4bb013c5098b06210e6d7e66f8b1.png",
+      "sha256": "36f5304cb17d16475f680bb0fb0a437ed51690f92eafa4aabcb2792e7c06d865"
+    },
+    "Sources/MetaphorCore/Utilities/Noise.swift::noise(_:_:)": {
+      "symbol": "noise(_:_:)",
+      "snippetHash": "4a6b2be527954dc73b89702a28f80d93b0aa891adcdaebbf16c73475bd1abecf",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/82f3c448f22ac2b872d21151835e8a65.png",
+      "sha256": "e72bc152ae6f3f812d020c6d2a1d6a9e8d9f5cc48e5bd75c5231a3e242f9ccc4"
+    },
+    "Sources/MetaphorCore/Utilities/Noise.swift::noiseDetail(octaves:falloff:)": {
+      "symbol": "noiseDetail(octaves:falloff:)",
+      "snippetHash": "bb5c73fca388c883698bd1aa999c05bb1efe41c3520e066cb27cb564a4abae0e",
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/f0227d85a5bc4811514058f6d74d004f.png",
+      "sha256": "211c52e1f5d44609a736950024751132ed641d644f8cf3c8adf25b4edcc1f721"
     }
   }
 }

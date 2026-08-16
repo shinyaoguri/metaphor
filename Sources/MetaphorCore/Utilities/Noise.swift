@@ -281,6 +281,28 @@ public func noise(_ x: Float) -> Float {
 ///   - x: x座標。
 ///   - y: y座標。
 /// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+///
+/// ### 実行結果
+///
+/// 2 次元の入力に対して、隣り合う点が近い値になる滑らかな濃淡が返ります
+/// （乱数と違って、拡大しても粒にならず雲のようにつながります）。
+///
+/// <!-- reference-shot -->
+///
+/// ```swift
+/// background(18)
+/// noStroke()
+///
+/// for y in stride(from: 0, to: height, by: 6) {
+///     for x in stride(from: 0, to: width, by: 6) {
+///         let n = noise(x * 0.012, y * 0.012)
+///         fill(n * 255)
+///         square(x, y, 6)
+///     }
+/// }
+/// ```
+///
+/// ![noise(_:_:) の実行結果](https://i.gyazo.com/82f3c448f22ac2b872d21151835e8a65.png)
 @MainActor
 public func noise(_ x: Float, _ y: Float) -> Float {
     _noiseGenerator.noise(x, y)
@@ -301,6 +323,32 @@ public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
 /// - Parameters:
 ///   - octaves: 合成するノイズレイヤーの数。1 未満は 1 にクランプされます。
 ///   - falloff: オクターブごとの振幅減衰率。負値・非有限値は 0 にクランプされます。
+///
+/// ### 実行結果
+///
+/// 同じ ``noise(_:)`` を 1D の折れ線で描いたもの。上から `octaves` が 1 / 3 / 5 で、
+/// 重ねるレイヤーが増えるほど細かい起伏が乗ります。
+///
+/// <!-- reference-shot -->
+///
+/// ```swift
+/// background(18)
+/// noFill()
+/// strokeWeight(2)
+///
+/// for i in 0..<3 {
+///     noiseDetail(octaves: 1 + i * 2)
+///     stroke(120, 190 - Float(i) * 30, 255)
+///     beginShape()
+///     for x in stride(from: 0, to: width, by: 3) {
+///         let n = noise(x * 0.01 + Float(i) * 40)
+///         vertex(x, 55 + Float(i) * 115 + n * 70)
+///     }
+///     endShape()
+/// }
+/// ```
+///
+/// ![noiseDetail(octaves:falloff:) の実行結果](https://i.gyazo.com/f0227d85a5bc4811514058f6d74d004f.png)
 @MainActor
 public func noiseDetail(octaves: Int = 4, falloff: Float = 0.5) {
     if octaves < 1 {
