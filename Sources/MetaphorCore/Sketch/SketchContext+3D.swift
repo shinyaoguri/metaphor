@@ -114,17 +114,20 @@ extension SketchContext {
     }
 
     /// 正射影に切り替えます。
+    ///
+    /// 省略した面は既定カメラと噛み合う範囲（原点＝画面中央を挟む形）で埋まります。
+    /// `bottom` / `top` はビュー空間の y が小さい側が `bottom`（＝画面の上端）です。
     /// - Parameters:
-    ///   - left: 左クリッピング面（nil の場合は 0）。
-    ///   - right: 右クリッピング面（nil の場合はキャンバス幅）。
-    ///   - bottom: 下クリッピング面（nil の場合はキャンバス高さ。y は画面下向き）。
-    ///   - top: 上クリッピング面（nil の場合は 0）。
-    ///   - near: ニアクリッピング面の距離（デフォルト -1000）。
-    ///   - far: ファークリッピング面の距離（デフォルト 1000）。
+    ///   - left: 左クリッピング面（nil の場合は `-width / 2`）。
+    ///   - right: 右クリッピング面（nil の場合は `width / 2`）。
+    ///   - bottom: 下クリッピング面（nil の場合は `-height / 2`）。
+    ///   - top: 上クリッピング面（nil の場合は `height / 2`）。
+    ///   - near: ニアクリッピング面の距離（nil の場合は既定カメラ距離の -10 倍）。
+    ///   - far: ファークリッピング面の距離（nil の場合は既定カメラ距離の 10 倍）。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
-        near: Float = -1000, far: Float = 1000
+        near: Float? = nil, far: Float? = nil
     ) {
         canvas3D.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far)
     }
