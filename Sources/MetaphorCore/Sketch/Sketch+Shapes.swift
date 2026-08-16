@@ -240,6 +240,24 @@ extension Sketch {
     ///   - w: 幅。
     ///   - h: 高さ。
     ///   - r: 角丸半径。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![rect(_:_:_:_:_:) の実行結果](https://i.gyazo.com/0c7c14f4b93a5a76ae0345d776144159.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(80, 170, 255)
+    ///       noStroke()
+    ///       rect(120, 90, 240, 180, 40)
+    ///       ```
+    ///    }
+    /// }
     public func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float) {
         context.rect(x, y, w, h, r)
     }
@@ -255,6 +273,29 @@ extension Sketch {
     ///   - tr: 右上の角丸半径。
     ///   - br: 右下の角丸半径。
     ///   - bl: 左下の角丸半径。
+    ///
+    /// ### 実行結果
+    ///
+    /// 半径は左上・右上・右下・左下の順に指定します。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![rect(_:_:_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/41bbd3412e6f36396c93f0b52c9a6384.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(80, 170, 255)
+    ///       noStroke()
+    ///       rect(
+    ///           120, 90, 240, 180,
+    ///           60, 0, 60, 0
+    ///       )
+    ///       ```
+    ///    }
+    /// }
     public func rect(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float
@@ -272,6 +313,26 @@ extension Sketch {
     ///   - c1: 開始色。
     ///   - c2: 終了色。
     ///   - axis: グラデーションの方向。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![linearGradient(_:_:_:_:_:_:axis:) の実行結果](https://i.gyazo.com/23aa77a3c8669991320fadbb7db44090.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       linearGradient(
+    ///           60, 60, 360, 240,
+    ///           Color(r: 1, g: 0.75, b: 0.24),
+    ///           Color(r: 0.31, g: 0.24, b: 0.63)
+    ///       )
+    ///       ```
+    ///    }
+    /// }
     public func linearGradient(
         _ x: Float, _ y: Float, _ w: Float, _ h: Float,
         _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical
@@ -288,6 +349,26 @@ extension Sketch {
     ///   - innerColor: 中心の色。
     ///   - outerColor: 外周の色。
     ///   - segments: 滑らかさのためのセグメント数。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![radialGradient(_:_:_:_:_:segments:) の実行結果](https://i.gyazo.com/b0ed7cd91d7755617b9d404847fe07f5.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       radialGradient(
+    ///           240, 180, 150,
+    ///           Color(r: 1, g: 0.94, b: 0.78),
+    ///           Color(r: 0.16, g: 0.16, b: 0.35)
+    ///       )
+    ///       ```
+    ///    }
+    /// }
     public func radialGradient(
         _ cx: Float, _ cy: Float, _ radius: Float,
         _ innerColor: Color, _ outerColor: Color,
@@ -303,6 +384,26 @@ extension Sketch {
     ///   - y: y 座標。
     ///   - w: 幅（水平方向の直径）。
     ///   - h: 高さ（垂直方向の直径）。
+    ///
+    /// ### 実行結果
+    ///
+    /// x, y の解釈は ``ellipseMode(_:)`` で変わります（既定は中心）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![ellipse(_:_:_:_:) の実行結果](https://i.gyazo.com/53a1b556de5a248e28f134d21f84ab8b.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(80, 170, 255)
+    ///       noStroke()
+    ///       ellipse(240, 180, 260, 150)
+    ///       ```
+    ///    }
+    /// }
     public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.ellipse(x, y, w, h)
     }
@@ -360,6 +461,26 @@ extension Sketch {
     ///   - x: x 座標。
     ///   - y: y 座標。
     ///   - size: 辺の長さ。
+    ///
+    /// ### 実行結果
+    ///
+    /// x, y の解釈は ``rectMode(_:)`` に従います（既定は左上隅）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![square(_:_:_:) の実行結果](https://i.gyazo.com/e39d66e012449b14a5ae4cdb4d346578.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(255, 190, 60)
+    ///       noStroke()
+    ///       square(160, 100, 160)
+    ///       ```
+    ///    }
+    /// }
     public func square(_ x: Float, _ y: Float, _ size: Float) {
         context.square(x, y, size)
     }
@@ -375,6 +496,29 @@ extension Sketch {
     ///   - y3: 第3頂点の y 座標。
     ///   - x4: 第4頂点の x 座標。
     ///   - y4: 第4頂点の y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// 頂点は順に結ばれるので、並べる順で凸にも凹にもなります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![quad(_:_:_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/dc84d016cc71fa60501d786d01d82692.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(150, 220, 120)
+    ///       noStroke()
+    ///       quad(
+    ///           120, 70, 400, 120,
+    ///           360, 300, 90, 250
+    ///       )
+    ///       ```
+    ///    }
+    /// }
     public func quad(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -391,6 +535,26 @@ extension Sketch {
     ///   - y1: 始点の y 座標。
     ///   - x2: 終点の x 座標。
     ///   - y2: 終点の y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// 太さは ``strokeWeight(_:)``、端点の形は ``strokeCap(_:)`` で変わります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![line(_:_:_:_:) の実行結果](https://i.gyazo.com/20e8d9c58aedcf6c2eead71cb4fca8e7.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       stroke(255, 190, 60)
+    ///       strokeWeight(6)
+    ///       line(80, 280, 400, 80)
+    ///       ```
+    ///    }
+    /// }
     public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
         context.line(x1, y1, x2, y2)
     }
@@ -404,6 +568,24 @@ extension Sketch {
     ///   - y2: 第2頂点の y 座標。
     ///   - x3: 第3頂点の x 座標。
     ///   - y3: 第3頂点の y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![triangle(_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/9f04166a0245ba36661e30099eae1e45.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(255, 120, 90)
+    ///       noStroke()
+    ///       triangle(240, 60, 400, 300, 80, 300)
+    ///       ```
+    ///    }
+    /// }
     public func triangle(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -520,6 +702,29 @@ extension Sketch {
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// 点の大きさは ``strokeWeight(_:)``、色は `stroke()` で決まります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![point(_:_:) の実行結果](https://i.gyazo.com/3878c966403fc6876992923c40bb27bd.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       stroke(255, 190, 60)
+    ///       strokeWeight(12)
+    ///       for i in 0..<9 {
+    ///           let x = 80 + Float(i) * 40
+    ///           point(x, 180 - Float(i % 3) * 50)
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func point(_ x: Float, _ y: Float) {
         context.point(x, y)
     }

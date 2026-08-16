@@ -207,10 +207,18 @@ class Snippet:
 
     @property
     def target(self) -> str:
-        """生成パッケージでの実行ターゲット名（Swift の識別子として使える形）。"""
+        """生成パッケージでの実行ターゲット名（Swift の識別子として使える形）。
+
+        オーバーロード（`rect(_:_:_:_:)` と `rect(_:_:_:_:_:)`）は別ターゲットになる必要が
+        あるので、関数名だけでなく**引数の数と外部ラベル**まで名前に入れる。ここを関数名
+        だけにすると `duplicate target named ...` で生成パッケージのビルドが落ちる。
+        """
         stem = re.sub(r"[^0-9A-Za-z]+", "_", Path(self.rel).stem)
-        name = re.sub(r"[^0-9A-Za-z]+", "_", self.symbol).strip("_")
-        return f"Shot_{stem}_{name}"
+        base, _, params = self.symbol.partition("(")
+        base = re.sub(r"[^0-9A-Za-z]+", "_", base).strip("_")
+        args = [a for a in params.rstrip(")").split(":") if a]
+        labels = [re.sub(r"[^0-9A-Za-z]+", "_", a).strip("_") for a in args if a != "_"]
+        return "_".join(["Shot", stem, base, str(len(args)), *labels])
 
     def layout(self, config: dict) -> str:
         """本文での並べ方（`row` = 絵とコードを横並び / `stack` = 縦積み）。

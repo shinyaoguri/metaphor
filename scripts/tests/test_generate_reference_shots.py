@@ -5,10 +5,12 @@ Run from the repository root:
 
     python3 -m unittest discover -s scripts/tests
 
-確かめるのは、撮影（GPU・ネットワーク・Gyazo トークンが要る）を除いた 4 つ。
+確かめるのは、撮影（GPU・ネットワーク・Gyazo トークンが要る）を除いた 5 つ。
 
 - **抽出** — doc コメントから撮影対象を拾い、宣言から DocC と同じシンボル表記を作る。
   ここが狂うと、別のシンボルのページに絵が出る
+- **ターゲット名** — オーバーロード（`rect()` の 3 種）が別ターゲットになる。同名になると
+  生成パッケージが `duplicate target named ...` で落ち、そのファイルの撮影が丸ごと止まる
 - **書き戻し** — 生成物領域の組み立てがべき等（2 回走らせても差分が出ない）。横並び
   （`@Row`）と縦積みの行き来と、字下げが積み増されないこと
 - **台帳の掃除** — `--only` で絞っているときは掃除しない。絞ったまま掃除すると、
@@ -130,6 +132,31 @@ class ReferenceShotsTestCase(unittest.TestCase):
         )
         with self.assertRaises(shots.ShotError):
             self.extract()
+
+    # --- 生成パッケージのターゲット名 ---------------------------------------
+
+    def _target(self, symbol: str) -> str:
+        return shots.Snippet(self.source, symbol, [], 0, 0, "    ").target
+
+    def test_overloads_get_distinct_targets(self):
+        """引数の数が違うオーバーロードは別ターゲットになる。
+
+        同じ名前になると生成パッケージが `duplicate target named ...` で
+        ビルドできず、そのファイルの撮影が丸ごと止まる。
+        """
+        self.assertEqual(self._target("rect(_:_:_:_:)"), "Shot_Sketch_Shapes_rect_4")
+        self.assertEqual(self._target("rect(_:_:_:_:_:)"), "Shot_Sketch_Shapes_rect_5")
+        self.assertEqual(
+            self._target("rect(_:_:_:_:_:_:_:_:)"), "Shot_Sketch_Shapes_rect_8"
+        )
+
+    def test_target_keeps_argument_labels(self):
+        """外部ラベルも名前に入る（引数の数が同じオーバーロードのため）。"""
+        self.assertEqual(
+            self._target("linearGradient(_:_:_:_:_:_:axis:)"),
+            "Shot_Sketch_Shapes_linearGradient_7_axis",
+        )
+        self.assertEqual(self._target("push()"), "Shot_Sketch_Shapes_push_0")
 
     # --- 指紋 ---------------------------------------------------------------
 
