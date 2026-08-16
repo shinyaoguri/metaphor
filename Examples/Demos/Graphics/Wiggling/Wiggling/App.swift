@@ -106,8 +106,8 @@ final class Wiggling: Sketch {
         s.fill(.white)
         s.noStroke()
         let z = cubeSize / 2
+        s.normal(0, 0, 1)  // 以降の頂点に持続する（原典と同じ 1 回）
         for p in facePositions() {
-            s.normal(0, 0, 1)  // normal() は次の 1 頂点にだけ効く
             s.vertex(p.x, p.y, z)
         }
         s.endShape()
