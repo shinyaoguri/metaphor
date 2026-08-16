@@ -207,6 +207,167 @@ struct Physics2DTests {
     }
 }
 
+// MARK: - 衝突応答（#755）
+
+/// `restitution` / `friction` が衝突後の速度に現れることを確かめる。
+///
+/// 速度は Verlet の位置差（1 ステップあたりの変位）なので、初速は
+/// `previousPosition` を直接置いて与える。位置補正が速度に化けていた頃は
+/// これらの値がすべて 0（あるいは押し戻し量そのもの）になっていた。
+@Suite("Physics2D collision response")
+@MainActor
+struct Physics2DCollisionResponseTests {
+
+    /// 床にちょうど接した円へ、既知の下向き接近速度だけを与えて 1 ステップ進める。
+    private func bounceBackFromRect(approach v: Float, restitution: Float = 0.9) -> Float {
+        let physics = Physics2D(cellSize: 100)
+        let floor = physics.addRect(x: 0, y: -50, width: 400, height: 100)  // 上面 y = 0
+        floor.isStatic = true
+        floor.restitution = restitution
+        floor.friction = 0
+
+        let ball = physics.addCircle(x: 0, y: 10, radius: 10)
+        ball.restitution = restitution
+        ball.friction = 0
+        ball.previousPosition = SIMD2(0, 10 + v)
+
+        physics.step(1.0 / 60.0)
+        return ball.velocity.y
+    }
+
+    @Test("restitution bounces a circle off a static rect", arguments: [Float(0.5), 4.0, 20.0])
+    func circleRectRestitution(approach: Float) {
+        let bounce = bounceBackFromRect(approach: approach)
+        let expected = 0.9 * approach
+        #expect(abs(bounce - expected) < expected * 0.05, "接近 \(approach) → 期待 \(expected), 実測 \(bounce)")
+    }
+
+    @Test("restitution bounces a circle off another circle")
+    func circleCircleRestitution() {
+        let physics = Physics2D(cellSize: 100)
+        let ground = physics.addCircle(x: 0, y: -100, radius: 100)  // 上端 y = 0
+        ground.isStatic = true
+        ground.restitution = 0.9
+        ground.friction = 0
+
+        let ball = physics.addCircle(x: 0, y: 10, radius: 10)
+        ball.restitution = 0.9
+        ball.friction = 0
+        ball.previousPosition = SIMD2(0, 10 + 4.0)
+
+        physics.step(1.0 / 60.0)
+
+        #expect(abs(ball.velocity.y - 3.6) < 0.18, "期待 3.6, 実測 \(ball.velocity.y)")
+    }
+
+    /// #755 の芯: めり込ませた状態から極小の接近速度で当てる。位置補正が速度へ
+    /// 混入していると、押し戻し量（5.0）がそのまま速度として出てくる。
+    @Test("penetration is resolved without injecting velocity")
+    func penetrationDoesNotInjectVelocity() {
+        let physics = Physics2D(cellSize: 100)
+        let floor = physics.addRect(x: 0, y: -50, width: 400, height: 100)
+        floor.isStatic = true
+        floor.restitution = 0.9
+        floor.friction = 0
+
+        let ball = physics.addCircle(x: 0, y: 5, radius: 10)  // 5 めり込んだ状態
+        ball.restitution = 0.9
+        ball.friction = 0
+        ball.previousPosition = SIMD2(0, 5 + 0.1)
+
+        physics.step(1.0 / 60.0)
+
+        #expect(abs(ball.velocity.y - 0.09) < 0.01, "期待 0.09, 実測 \(ball.velocity.y)")
+        #expect(abs(ball.position.y - 10) < 0.001, "床の上へ押し出される: \(ball.position.y)")
+    }
+
+    @Test("restitution 0 absorbs the approach speed")
+    func zeroRestitutionDoesNotBounce() {
+        let bounce = bounceBackFromRect(approach: 4.0, restitution: 0)
+        #expect(abs(bounce) < 0.01, "跳ね返らない: \(bounce)")
+    }
+
+    /// 床の上を滑る円の横速度を 60 ステップ後に見る。
+    private func slide(friction: Float) -> Float {
+        let physics = Physics2D(cellSize: 100)
+        physics.setGravity(0, -1000)
+
+        let floor = physics.addRect(x: 0, y: -50, width: 4000, height: 100)
+        floor.isStatic = true
+        floor.friction = friction
+        floor.restitution = 0
+
+        let ball = physics.addCircle(x: 0, y: 10, radius: 10)
+        ball.friction = friction
+        ball.restitution = 0
+        ball.previousPosition = SIMD2(-8, 10)  // 1 ステップあたり 8 で右へ
+
+        for _ in 0..<60 { physics.step(1.0 / 60.0) }
+        return ball.velocity.x
+    }
+
+    @Test("friction slows a sliding body, and friction 0 does not")
+    func frictionSlowsSliding() {
+        let frictionless = slide(friction: 0)
+        let rough = slide(friction: 1)
+
+        #expect(abs(frictionless - 8) < 0.01, "摩擦 0 は初速を保つ: \(frictionless)")
+        #expect(rough < frictionless - 1, "摩擦 1 は明確に遅い: \(rough) vs \(frictionless)")
+        #expect(rough >= -0.01, "摩擦で逆走しない: \(rough)")
+    }
+
+    /// 自由落下させて跳ね上がりの高さを見る。高さは速度の 2 乗に比例するので、
+    /// e = 0.9 なら落差に対して 0.81 前後まで戻るのが理屈。
+    @Test("a dropped ball bounces back to a height set by restitution")
+    func freeFallBounceHeight() {
+        let physics = Physics2D(cellSize: 100)
+        physics.setGravity(0, -1000)
+
+        let floor = physics.addRect(x: 0, y: -50, width: 400, height: 100)  // 上面 y = 0
+        floor.isStatic = true
+        floor.restitution = 0.9
+        floor.friction = 0
+
+        let drop: Float = 300
+        let ball = physics.addCircle(x: 0, y: drop, radius: 10)
+        ball.restitution = 0.9
+        ball.friction = 0
+
+        var lowest = drop
+        var peakAfterBounce: Float = 0
+        var bounced = false
+        for _ in 0..<400 {
+            physics.step(1.0 / 60.0)
+            lowest = min(lowest, ball.position.y)
+            if ball.velocity.y > 0 { bounced = true }
+            if bounced { peakAfterBounce = max(peakAfterBounce, ball.position.y) }
+        }
+
+        let fall = drop - 10                       // 接触までの落差
+        let rise = peakAfterBounce - 10            // 跳ね上がった高さ
+        #expect(bounced, "跳ね返る")
+        #expect(rise / fall > 0.6, "e = 0.9 に見合う高さまで戻る: 比 \(rise / fall)")
+        #expect(rise / fall < 1.0, "エネルギーが増えない: 比 \(rise / fall)")
+    }
+
+    /// 位置補正が速度を殺さなくなると、重力で毎ステップ生まれる接近速度が
+    /// 既定 restitution で跳ね返り続けかねない。休止接触が静定することを見る。
+    @Test("resting contact settles instead of jittering")
+    func restingContactSettles() {
+        let physics = Physics2D(cellSize: 100)
+        physics.setGravity(0, -1000)
+
+        let floor = physics.addRect(x: 0, y: -50, width: 400, height: 100)
+        floor.isStatic = true
+        let ball = physics.addCircle(x: 0, y: 10, radius: 10)  // 既定 restitution 0.5
+
+        for _ in 0..<120 { physics.step(1.0 / 60.0) }
+
+        #expect(abs(ball.velocity.y) < 0.3, "床の上で静定する: \(ball.velocity.y)")
+        #expect(abs(ball.position.y - 10) < 0.5, "沈まず浮かない: \(ball.position.y)")
+    }
+}
+
 // MARK: - SpatialHash2D Tests
 
 @Suite("SpatialHash2D")

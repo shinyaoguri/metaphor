@@ -27,9 +27,16 @@ public final class Physics2D {
     /// The spatial hash used for broad-phase collision detection.
     private let spatialHash: SpatialHash2D
 
+    /// The approach speed below which a contact is treated as inelastic (set per step).
+    private var restitutionThreshold: Float = 0
+
     /// An optional bounding box that confines all bodies within its limits.
     ///
     /// When set, bodies are clamped to the `min`-`max` range on each iteration.
+    /// The walls only clamp positions: unlike body-to-body contacts they ignore
+    /// ``PhysicsBody2D/restitution`` and ``PhysicsBody2D/friction``, so bodies
+    /// come to rest against them instead of bouncing. Add a static body with
+    /// ``addRect(x:y:width:height:mass:)`` where a bouncy wall is wanted.
     public var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?
 
     /// Creates a new 2D physics world.
@@ -143,6 +150,9 @@ public final class Physics2D {
         // MetaphorPhysics は Core 非依存（Tier 1）で metaphorWarning を使えないため、
         // dt guard と同じく無言で返す
         guard iterations >= 0 else { return }
+
+        // 休止接触を静定させる反発の下限（このステップで重力が生む接近速度の 1.5 倍）
+        restitutionThreshold = 1.5 * simd_length(gravity) * dt * dt
 
         // 重力を適用
         for body in bodies {
@@ -277,8 +287,8 @@ public final class Physics2D {
         let totalMass = (a.isStatic ? 0 : a.mass) + (b.isStatic ? 0 : b.mass)
         guard totalMass > 0 else { return }
 
-        if !a.isStatic { a.position -= normal * overlap * (b.isStatic ? 1 : b.mass / totalMass) }
-        if !b.isStatic { b.position += normal * overlap * (a.isStatic ? 1 : a.mass / totalMass) }
+        correctPosition(a, by: -normal * overlap * (b.isStatic ? 1 : b.mass / totalMass))
+        correctPosition(b, by: normal * overlap * (a.isStatic ? 1 : a.mass / totalMass))
         applyCollisionResponse(a, b, normal: normal)
     }
 
@@ -315,8 +325,8 @@ public final class Physics2D {
         let totalMass = (circle.isStatic ? 0 : circle.mass) + (rect.isStatic ? 0 : rect.mass)
         guard totalMass > 0 else { return }
 
-        if !circle.isStatic { circle.position += normal * overlap * (rect.isStatic ? 1 : rect.mass / totalMass) }
-        if !rect.isStatic { rect.position -= normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass) }
+        correctPosition(circle, by: normal * overlap * (rect.isStatic ? 1 : rect.mass / totalMass))
+        correctPosition(rect, by: -normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass))
         applyCollisionResponse(rect, circle, normal: normal)
     }
 
@@ -340,18 +350,33 @@ public final class Physics2D {
 
         if overlapX < overlapY {
             let sign: Float = dx > 0 ? 1 : -1
-            if !a.isStatic { a.position.x -= sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass) }
-            if !b.isStatic { b.position.x += sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass) }
+            correctPosition(a, by: SIMD2(-sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass), 0))
+            correctPosition(b, by: SIMD2(sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass), 0))
             applyCollisionResponse(a, b, normal: SIMD2(sign, 0))
         } else {
             let sign: Float = dy > 0 ? 1 : -1
-            if !a.isStatic { a.position.y -= sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass) }
-            if !b.isStatic { b.position.y += sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass) }
+            correctPosition(a, by: SIMD2(0, -sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass)))
+            correctPosition(b, by: SIMD2(0, sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass)))
             applyCollisionResponse(a, b, normal: SIMD2(0, sign))
         }
     }
 
-    /// Updates Verlet's `previousPosition` and applies the public restitution/friction coefficients to the collision response.
+    /// Moves a body out of an overlap without turning the correction into velocity.
+    ///
+    /// Verlet の速度は `position - previousPosition` なので、重なり解消で位置だけ
+    /// 動かすと補正量がそのまま速度になる。補正は接近分をちょうど打ち消す量なので、
+    /// `applyCollisionResponse` が見る接近速度が消え、`restitution` / `friction` が
+    /// 一度も適用されなかった（#755）。`previousPosition` も同量ずらして速度を不変に保つ。
+    private func correctPosition(_ body: PhysicsBody2D, by delta: SIMD2<Float>) {
+        guard !body.isStatic else { return }
+        body.position += delta
+        body.previousPosition += delta
+    }
+
+    /// Applies the restitution/friction impulse by rewriting Verlet's `previousPosition`.
+    ///
+    /// 速度は 1 ステップあたりの変位（px/step）なので、インパルスも同じ単位で
+    /// 扱い、最後に `previousPosition` を置き直して反映する。
     private func applyCollisionResponse(_ a: PhysicsBody2D, _ b: PhysicsBody2D, normal: SIMD2<Float>) {
         let invMassA = inverseMass(a)
         let invMassB = inverseMass(b)
@@ -364,7 +389,10 @@ public final class Physics2D {
         let normalSpeed = simd_dot(relativeVelocity, normal)
         guard normalSpeed < 0 else { return }
 
-        let restitution = min(a.restitution, b.restitution)
+        // 床に載ったボディは重力で毎ステップ `g * dt^2` だけ接近する。これを跳ね返すと
+        // 休止接触が永久に微振動するので、1 ステップ分の重力による接近は反発させない
+        // （摩擦は下で従来どおり効く）。重力ゼロのワールドでは閾値も 0 になる。
+        let restitution = -normalSpeed <= restitutionThreshold ? 0 : min(a.restitution, b.restitution)
         let impulseMagnitude = -(1 + restitution) * normalSpeed / invMassSum
         let impulse = impulseMagnitude * normal
 
