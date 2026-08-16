@@ -167,3 +167,45 @@ make reference-shots ARGS="--list"                    # 撮影対象を並べる
 
 書き戻しは URL の文字列一致ではなく**フェンスの位置**で対応づけるので、初回・撮り直し・
 途中で中断したあとの再実行が、すべて同じべき等な操作になります。
+
+## DocC でできること・できないこと（実測）
+
+「リファレンスの見た目をどこまで作り込めるか」を、実際に `docc convert` へ食わせて確かめた
+結果です。ここに書いていないことを試すときは、**render JSON（`.build/docs/data/…json`）を
+見て確かめてから**規約に採り入れてください。ドキュメントや直感より、出力が正です。
+
+| やりたいこと | 使えるか | 備考 |
+|---|---|---|
+| 画像を出す | ✅ `![alt](https://…)` | 外部 URL は render JSON に**絶対 URL のまま**残り、Swift-DocC-Render は `/` 始まりのときだけ baseUrl を前置するのでそのまま `<img src>` になる |
+| **`@Image(source: "https://…")`** | ❌ | `warning: Image resource '…' couldn't be found`。外部 URL は `![]()` 記法一択 |
+| 2 カラム | ✅ `@Row` / `@Column(size:)` | symbol の doc コメントでも通る。`numberOfColumns` は size の合計 |
+| タブ切替 | ✅ `@TabNavigator` / `@Tab` | 「1 つの API に複数の例」を出したくなったときの選択肢 |
+| 動画 | ✅ `@Video(source:poster:)` | ただし**ローカルアセット限定**（外部 URL は上と同じ理由で不可）。GIF を `@Video` に渡すこともできない |
+| 機械用のマーカーを埋める | ✅ HTML コメント | `<!-- … -->` は**警告も出さずに落ちる**。読者に見えず、機械には引っかかる |
+| 生の HTML / CSS | ❌ | まるごと sanitize される。独自のグリッドや吹き出しは作れない |
+| WebP | ❌ | **警告すら出さずに参照ごと消える**（ADR-0008 の決め手） |
+| ダーク / Retina の出し分け | ❌（外部 URL では） | `~dark` / `@2x` はローカルアセット専用の解決規則。だから**背景はスケッチ側で塗る** |
+| 色・フォント・quickNavigation | ✅ `theme-settings.json` | 公開サイトでも配信されている（`/reference/theme-settings.json` が 200） |
+| コードブロックの折り返し | ❌ | 行の長さぶんに広がって列からはみ出し、はみ出した分は切れる（上の 38 文字の根拠） |
+
+### Gyazo の性質
+
+**同じバイト列を上げると同じ URL が返ります。** 撮り直しても絵が変わっていなければ URL は
+増えないので、「実装を変えたが見た目は変わっていない」ことの確認にそのまま使えます
+（実際、`arc()` の角度正規化 [#743](https://github.com/shinyaoguri/metaphor/issues/743) の後に
+撮り直して同じ URL が返り、この例の絵は変わっていないと分かりました）。
+
+### 見た目を確かめるとき
+
+`xcrun docc preview` を立てて **DOM を実測する**のが確実です（列の幅・はみ出し・画像の実寸）。
+スクリーンショットはブラウザペインの描画状態に左右されて空になることがあり、証跡になりません。
+
+```js
+const row = document.querySelector('.row.with-columns');
+const cols = [...row.children].map(c => c.getBoundingClientRect());
+const pre = row.querySelector('pre').getBoundingClientRect();
+({ imageLeftOfCode: cols[0].left < cols[1].left,
+   sameRow: Math.abs(cols[0].top - cols[1].top) < 5,
+   codeSpill: pre.right - cols[1].right,          // 0 以下なら列に収まっている
+   pageScrollsX: document.documentElement.scrollWidth > document.documentElement.clientWidth })
+```
