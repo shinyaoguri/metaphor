@@ -1457,10 +1457,14 @@
     },
     "Examples/Topics/Subsystems/AutoSubsystems": {
       "origin": "captured",
-      "sourceHash": "ac7a8c220e58fb5799a840a6d29eb9164e9287ac1acffe921b63675c1965c530",
+      "sourceHash": "0f270af72717102fe10c34f82e40a6f0ed7c4b86b9f87def75f6dc27ae0ad2f7",
+      "provenance": {
+        "commit": "c60ce9bc55157fd5aa8b30e92c95b502a3d7a4e1",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 100
+      "frame": 96
     },
     "Examples/Topics/Textures/TextureCube": {
       "origin": "captured",
