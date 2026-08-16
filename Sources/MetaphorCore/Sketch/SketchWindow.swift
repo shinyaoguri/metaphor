@@ -91,7 +91,11 @@ public final class SketchWindow {
     private var renderTimer: DispatchSourceTimer?
     private var activity: NSObjectProtocol?
 
-    private static var windowCounter: Int = 0
+    /// このウィンドウが使うカスケード配置のスロット（0 起点）。
+    ///
+    /// ``SketchContext/createWindow(_:)`` が「いま空いている最小のスロット」を選んで渡します。
+    /// ヘッドレスでは配置に使いませんが、値は保持します（テスト用の観測点でもある）。
+    let cascadeIndex: Int
 
     /// ネイティブの `NSWindow` を実際に作ったかどうか（テスト用の観測点）。
     /// ヘッドレスでは `false`。
@@ -102,14 +106,17 @@ public final class SketchWindow {
     /// - Parameters:
     ///   - config: ウィンドウ設定。
     ///   - sharedResources: プライマリと共有する Metal リソース。
+    ///   - cascadeIndex: カスケード配置のスロット（0 起点。0 はオフセット無し）。
     ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか。既定は環境変数
     ///     `METAPHOR_VIEWER` からの解決（テストからの注入用に引数化している）。
     init(
         config: SketchWindowConfig,
         sharedResources: SharedMetalResources,
+        cascadeIndex: Int = 0,
         isHeadless: Bool = SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
     ) throws {
         self.config = config
+        self.cascadeIndex = cascadeIndex
         self.isHeadless = isHeadless
 
         let renderer = try MetaphorRenderer(
@@ -217,6 +224,18 @@ public final class SketchWindow {
         return config.renderLoopMode
     }
 
+    // MARK: - Window Placement
+
+    /// カスケードスロットに対応する配置オフセット（ポイント）。
+    ///
+    /// スロット 0 は中央（オフセット無し）で、1 枚増えるごとに右下へ 30pt ずらします。
+    ///
+    /// - Parameter slot: カスケードスロット（0 起点）。
+    /// - Returns: 中央からずらす量（ポイント）。
+    nonisolated static func cascadeOffset(slot: Int) -> CGFloat {
+        CGFloat(30 * slot)
+    }
+
     // MARK: - Private Setup
 
     private func setupWindow() {
@@ -234,13 +253,13 @@ public final class SketchWindow {
             aspectRatio: NSSize(width: config.width, height: config.height)
         )
 
-        // ウィンドウを重ならないようにカスケード
-        let offset = CGFloat(30 * SketchWindow.windowCounter)
+        // ウィンドウを重ならないようにカスケード。スロットは開いている枚数に連動し、
+        // 閉じれば空く（単調増加のカウンタだと開き直すたびに 30pt ずつ流れた。#837）
+        let offset = Self.cascadeOffset(slot: cascadeIndex)
         win.setFrameOrigin(NSPoint(
             x: win.frame.origin.x + offset,
             y: win.frame.origin.y - offset
         ))
-        SketchWindow.windowCounter += 1
 
         let mtkView = MetaphorMTKView()
         mtkView.frame = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)

@@ -253,13 +253,35 @@ public final class SketchContext {
     /// - Parameter config: ウィンドウ設定。
     /// - Returns: 新しい ``SketchWindow`` インスタンス。作成に失敗した場合は `nil`。
     public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
+        createWindow(
+            config,
+            isHeadless: SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
+        )
+    }
+
+    /// 新しいセカンダリウィンドウを作成します（ヘッドレス指定を注入できる内部版）。
+    ///
+    /// - Parameters:
+    ///   - config: ウィンドウ設定。
+    ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか（テストからの注入用に
+    ///     引数化している。``SketchWindow/init(config:sharedResources:cascadeIndex:isHeadless:)``
+    ///     と同じ位置づけ）。
+    /// - Returns: 新しい ``SketchWindow`` インスタンス。作成に失敗した場合は `nil`。
+    func createWindow(_ config: SketchWindowConfig, isHeadless: Bool) -> SketchWindow? {
         guard let shared = _sharedResources else {
             metaphorWarning("Cannot create window: shared resources unavailable")
             return nil
         }
 
         do {
-            let window = try SketchWindow(config: config, sharedResources: shared)
+            let window = try SketchWindow(
+                config: config,
+                sharedResources: shared,
+                cascadeIndex: Self.nextCascadeIndex(
+                    inUse: secondaryWindows.map(\.cascadeIndex)
+                ),
+                isHeadless: isHeadless
+            )
             secondaryWindows.append(window)
             window.onWindowClosed = { [weak self, weak window] in
                 guard let self, let window else { return }
@@ -270,6 +292,22 @@ public final class SketchContext {
             metaphorWarning("Failed to create window: \(error)")
             return nil
         }
+    }
+
+    /// 次に開くウィンドウへ渡すカスケードスロット（＝いま使われていない最小のスロット）。
+    ///
+    /// 以前は単調増加の静的カウンタで、閉じても減りませんでした。そのため開き直すたびに
+    /// 30pt ずつ右下へ流れ、繰り返すと画面外へ出ていました（#837）。空いたスロットへ
+    /// 戻すことで、流れを止めつつ「ウィンドウを重ならないように」という本来の意図
+    /// （真ん中を閉じてから開き直しても、他の窓とは重ならない）も保ちます。
+    ///
+    /// - Parameter inUse: いま開いているウィンドウが使っているスロット。
+    /// - Returns: 未使用の最小スロット（0 起点）。
+    nonisolated static func nextCascadeIndex(inUse: [Int]) -> Int {
+        let used = Set(inUse)
+        var slot = 0
+        while used.contains(slot) { slot += 1 }
+        return slot
     }
 
     /// すべてのセカンダリウィンドウを閉じリソースを解放します。
