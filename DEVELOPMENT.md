@@ -145,18 +145,28 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 |---|---|
 | `/` · `/en/` · `/tutorial/` | Astro（`website/`） |
 | `/reference/` | DocC（`make docs` の `.build/docs` を丸ごと配置） |
+| `/reference/ja/` | DocC の日本語版（`make docs-ja` の `.build/docs-ja`。[ADR-0011](docs/adr/0011-docc-english-canon-japanese-generated.md)） |
 
 `docs.yml` がやっているのは「Astro の `dist` へ `.build/docs` を `reference/` として置く」だけなので、手元でも同じ形を組み立てられます。**DocC は `--hosting-base-path metaphor/reference` を焼き込むため、`/metaphor/` をルートに見せる形で配信しないと CSS も配色も当たりません**（この足場を作らずに `dist` を直接開くと壊れて見えます）。
 
 ```bash
 make docs                                   # .build/docs
+make docs-ja                                # .build/docs-ja（英語版と同じ構造の日本語版）
 cd website && npm ci && npm run build && cd ..
 cp -R .build/docs website/dist/reference
+cp -R .build/docs-ja website/dist/reference/ja
 mkdir -p /tmp/site/metaphor && cp -R website/dist/. /tmp/site/metaphor/
 cd /tmp/site && python3 -m http.server 8000  # → http://localhost:8000/metaphor/
 ```
 
 `/metaphor/reference/theme-settings.json` が 200 で引ければ、リファレンス面の配色（`Sources/metaphor/metaphor.docc/theme-settings.json`）が公開サイトでも効きます。
+
+日本語版を触ったときは、**英語版とページ構造が 1:1 で一致していること**も確かめてください（言語切替のリンクがこの対応を前提にしています。カタログの複製名を間違えると日本語版だけ別のルート名で出ます）:
+
+```bash
+diff <(cd .build/docs && find documentation -name index.html | sort) \
+     <(cd .build/docs-ja && find documentation -name index.html | sort)
+```
 
 ### `theme-settings.json` を触るときの制約
 

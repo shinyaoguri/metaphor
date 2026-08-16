@@ -1,6 +1,6 @@
 ---
 import GenerativeCanvas from './GenerativeCanvas.astro';
-import { getContent, referenceUrl, githubUrl, type Lang } from '../i18n/ui';
+import { getContent, referenceUrlFor, githubUrl, type Lang } from '../i18n/ui';
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
@@ -39,7 +39,7 @@ const t = getContent(lang);
 
     <div class="flex flex-wrap items-center justify-center gap-4">
       <a
-        href={referenceUrl}
+        href={referenceUrlFor(lang)}
         class="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent-glow transition-all hover:bg-accent-light hover:shadow-xl"
       >
         {t.hero.ctaReference}

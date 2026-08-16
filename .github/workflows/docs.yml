@@ -14,6 +14,10 @@ on:
       - 'Package.resolved'
       - 'website/**'
       - 'docs/tutorial/**'
+      # 日本語リファレンス（ADR-0011）の入力。台帳やヘッダーだけを直した push でも
+      # /reference/ja/ を作り直さないと、英語版だけが新しい状態で公開され続ける。
+      - 'docs/reference/i18n/**'
+      - 'scripts/translate-reference.py'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -59,12 +63,39 @@ jobs:
         # base path は Astro のサイト（/metaphor/）ではなくその配下の /reference/。
         # DocC は baseUrl を出力へ焼き込むので、これで JS / CSS / theme-settings.json
         # の参照が /metaphor/reference/... を向き、下の cp と噛み合う。
+        # --experimental-enable-custom-templates は header.html（言語切替）を
+        # index.html へ注入させるために要る（ADR-0011）。Makefile の docs と同じ形。
         run: |
           xcrun docc convert Sources/metaphor/metaphor.docc \
             --additional-symbol-graph-dir .build/symbol-graphs \
             --transform-for-static-hosting \
+            --experimental-enable-custom-templates \
             --hosting-base-path metaphor/reference \
             --output-path .build/docs
+      - name: Build Japanese DocC Documentation
+        # 英語の doc コメントが正典で、日本語は台帳を当てた生成物（ADR-0011）。
+        # カタログの**ディレクトリ名がドキュメントのルート名になる**ので、複製先でも
+        # metaphor.docc の名前を保つ（英語版とのパスの 1:1 対応が言語切替の前提）。
+        # 訳が無い箇所は英語のまま残るので、このステップが落ちることはない。
+        # Makefile の docs-ja と同じ手順 — 変えるときは両方を揃える。
+        run: |
+          rm -rf .build/ja-catalog && mkdir -p .build/ja-catalog
+          cp -R Sources/metaphor/metaphor.docc .build/ja-catalog/metaphor.docc
+          cp docs/reference/i18n/header.ja.html .build/ja-catalog/metaphor.docc/header.html
+          xcrun docc convert .build/ja-catalog/metaphor.docc \
+            --additional-symbol-graph-dir .build/symbol-graphs \
+            --transform-for-static-hosting \
+            --experimental-enable-custom-templates \
+            --hosting-base-path metaphor/reference/ja \
+            --output-path .build/docs-ja
+          python3 scripts/translate-reference.py --apply --docs-dir .build/docs-ja
+      - name: Report Japanese reference coverage
+        # 未訳があっても公開は止めない（英語のまま出る）。#334 が Core を英語化した
+        # 直後は必ず未訳が増えるので、ここで気付ければ十分。
+        if: always()
+        run: |
+          python3 scripts/translate-reference.py --check --docs-dir .build/docs \
+            >> "$GITHUB_STEP_SUMMARY" || true
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
@@ -102,6 +133,9 @@ jobs:
         # (/metaphor/documentation/**) の救済は website 側の 404 ページが担う。
         run: |
           cp -R .build/docs website/dist/reference
+          # 日本語版は英語版の中の /ja/ へ。パスが 1:1 で対応するので、
+          # header.html の言語切替がそのまま噛み合う（ADR-0011）。
+          cp -R .build/docs-ja website/dist/reference/ja
           # Disable Jekyll processing
           touch website/dist/.nojekyll
       - name: Upload artifact

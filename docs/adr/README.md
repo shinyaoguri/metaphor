@@ -49,6 +49,7 @@
 | [0008](0008-docc-reference-images-via-gyazo.md) | Accepted | DocC リファレンスの画像を Gyazo の外部 URL で参照する（リポジトリにコミットしない） |
 | [0009](0009-unfreeze-api-until-1-0.md) | Accepted | v0.9.0 の API 凍結を撤回し、1.0 までは設計の質を優先して破壊的変更を許容する |
 | [0010](0010-tutorial-images-via-gyazo.md) | Accepted | チュートリアルの画像も Gyazo へ移し、Git では本文と台帳（URL + content hash）だけを管理する |
+| [0011](0011-docc-english-canon-japanese-generated.md) | Accepted | リファレンスは英語を正典とし、日本語版は機械翻訳の生成物として並べる |
 
 ## 参考
 
