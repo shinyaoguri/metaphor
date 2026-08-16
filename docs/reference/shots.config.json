@@ -6,6 +6,9 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezier(_:_:_:_:_:_:_:_:)": {
       "layout": "stack"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+3D.swift::rotateY(_:)": {
+      "motion": { "frames": 36, "every": 2, "fps": 15 }
     }
   }
 }

@@ -74,6 +74,33 @@ extension Sketch {
     ///   - eye: カメラの位置。
     ///   - center: カメラが注視する点。
     ///   - up: 上方向ベクトル。
+    ///
+    /// ### 実行結果
+    ///
+    /// 既定カメラはキャンバス左上を原点に置くピクセル空間ですが、`camera()` を呼ぶと
+    /// `center` を中心に見る座標系へ移ります（下の例では原点に置いた箱がそのまま
+    /// 画面中央に来るので、``translate(_:_:_:)`` が要りません）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![camera(eye:center:up:) の実行結果](https://i.gyazo.com/f8d331b0230086d331b5ff42c0b55a71.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(150, 200, 255)
+    ///       camera(
+    ///           eye: SIMD3(190, -150, 330),
+    ///           center: SIMD3(0, 0, 0)
+    ///       )
+    ///       box(150)
+    ///       ```
+    ///    }
+    /// }
     public func camera(
         eye: SIMD3<Float>,
         center: SIMD3<Float>,
@@ -90,6 +117,41 @@ extension Sketch {
     ///   - fov: ラジアン単位の視野角。
     ///   - near: ニアクリッピング面の距離。
     ///   - far: ファークリッピング面の距離。
+    ///
+    /// ### 実行結果
+    ///
+    /// 同じ大きさの箱を奥へ 3 つ並べると、遠いものほど小さく写ります。`fov` を狭めると
+    /// 望遠レンズのように遠近が浅くなります。同じ配置を平行投影で撮ったものが
+    /// ``ortho(left:right:bottom:top:near:far:)`` にあり、並べて見比べられます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![perspective(fov:near:far:) の実行結果](https://i.gyazo.com/8f6220f6e61ce88a2b720b1c4dac36fd.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///       perspective(fov: PI / 3)
+    ///       translate(width / 2, height / 2, 0)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               Float(i) * 120 - 120,
+    ///               0,
+    ///               Float(i) * -170
+    ///           )
+    ///           box(90)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000) {
         context.perspective(fov: fov, near: near, far: far)
     }
@@ -108,6 +170,50 @@ extension Sketch {
     ///   - top: 上クリッピング面（`nil` のときは 0）。
     ///   - near: ニアクリッピング面の距離。
     ///   - far: ファークリッピング面の距離。
+    ///
+    /// ### 実行結果
+    ///
+    /// ``perspective(fov:near:far:)`` と**同じ配置**を平行投影で撮ったものです。
+    /// 奥行きをずらしても大きさが変わらないので、3 つの箱が同じ寸法で並びます。
+    ///
+    /// 面を省略すると 0〜キャンバス寸法で埋まりますが、**既定カメラと組み合わせると
+    /// 中心がずれます**（既定カメラはキャンバス中央を注視するので、ビュー空間では
+    /// 原点が画面中央になり、0〜幅の範囲では隅に寄る）。既定カメラのまま使うときは
+    /// 下の例のように原点を挟む範囲を渡してください。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![ortho(left:right:bottom:top:near:far:) の実行結果](https://i.gyazo.com/76e24bd04603f61a942af99c875580d3.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(150, 220, 120)
+    ///       ortho(
+    ///           left: -width / 2,
+    ///           right: width / 2,
+    ///           bottom: height / 2,
+    ///           top: -height / 2
+    ///       )
+    ///       translate(width / 2, height / 2, 0)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               Float(i) * 120 - 120,
+    ///               0,
+    ///               Float(i) * -170
+    ///           )
+    ///           box(90)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
@@ -649,6 +755,37 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位の回転角度。
+    ///
+    /// ### 実行結果
+    ///
+    /// 左から順に 0 / 0.5 / 1.0 ラジアン。x 軸（画面の横方向）を軸に、上端が奥へ倒れます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![rotateX(_:) の実行結果](https://i.gyazo.com/c4219d511eed186207e762822b9b84d6.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///
+    ///       for i in 0..<3 {
+    ///           push()
+    ///           translate(
+    ///               110 + Float(i) * 130,
+    ///               height / 2, 0
+    ///           )
+    ///           rotateX(Float(i) * 0.5)
+    ///           box(95)
+    ///           pop()
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func rotateX(_ angle: Float) {
         context.rotateX(angle)
     }
@@ -658,6 +795,30 @@ extension Sketch {
     /// - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位の回転角度。
+    ///
+    /// ### 実行結果
+    ///
+    /// `frameCount` を角度に使うと、y 軸（画面の縦方向）を軸に回り続けます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![rotateY(_:) の実行結果（動き）](https://i.gyazo.com/1aad78bebf366d921a53381303032a9e.gif)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(18)
+    ///       lights()
+    ///       noStroke()
+    ///       fill(120, 200, 255)
+    ///       translate(width / 2, height / 2, 0)
+    ///       rotateY(Float(frameCount) * 0.0873)
+    ///       rotateX(-0.3)
+    ///       box(150)
+    ///       ```
+    ///    }
+    /// }
     public func rotateY(_ angle: Float) {
         context.rotateY(angle)
     }
