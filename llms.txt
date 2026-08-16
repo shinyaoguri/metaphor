@@ -2021,7 +2021,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `func onStart()`
 - `func onStop()`
-- `func update(deltaTime: Float)` -- 物理ステップを進める。`deltaTime` をそのままタイムステップに使う。
+- `func update(deltaTime: Float)` -- 物理を `deltaTime` ぶん進める。実フレーム時間は常に揺れるので、そのまま
 
 ### `extension VideoPlayer`
 
@@ -2427,10 +2427,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var bodies: [PhysicsBody2D] { get }` -- The list of physics bodies currently in the world.
 - `var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?` -- An optional bounding box that confines all bodies within its limits.
 - `var constraints: [PhysicsConstraint2D] { get }` -- The list of constraints currently in the world.
+- `var fixedTimeStep: Float { get set }` -- The fixed time step, in seconds, that ``advance(_:iterations:)`` integrates with.
+- `var maxSubSteps: Int { get set }` -- The largest number of fixed sub-steps ``advance(_:iterations:)`` runs for one call.
 - `init(cellSize: Float = 50)` -- Creates a new 2D physics world.
 - `func addCircle(x: Float, y: Float, radius: Float, mass: Float = 1.0) -> PhysicsBody2D` -- Adds a circular physics body to the world.
 - `func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D` -- Adds a distance constraint between two bodies.
 - `func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D` -- Adds a rectangular physics body to the world.
+- `func advance(_ elapsed: Float, iterations: Int = 4)` -- Advances the simulation by `elapsed` seconds, integrating at ``fixedTimeStep``.
 - `func clear()` -- Removes all bodies and constraints from the world.
 - `func pin(_ body: PhysicsBody2D, x: Float, y: Float) -> PhysicsConstraint2D` -- Pins a body to a fixed position in world space.
 - `func removeBody(_ body: PhysicsBody2D)` -- Removes a body and all constraints referencing it from the world.

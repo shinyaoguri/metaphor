@@ -128,10 +128,94 @@ public final class Physics2D {
 
     // MARK: - シミュレーション
 
+    /// The default fixed time step: two sub-steps per frame at 60 fps.
+    private static let defaultFixedTimeStep: Float = 1.0 / 120.0
+
+    private var storedFixedTimeStep: Float = Physics2D.defaultFixedTimeStep
+    private var storedMaxSubSteps: Int = 8
+
+    /// 未消化の経過時間（``advance(_:iterations:)`` のアキュムレータ）。
+    private var accumulator: Float = 0
+
+    /// The fixed time step, in seconds, that ``advance(_:iterations:)`` integrates with.
+    ///
+    /// Defaults to `1.0 / 120.0`. Verlet integration is stiffer and constraints converge
+    /// better at a smaller step, and 1/120 divides evenly into both the 60 Hz and 120 Hz
+    /// display rates, so the common case runs a whole number of sub-steps per frame.
+    ///
+    /// A value that is not finite or not positive is rejected and resets the property to
+    /// the default — a zero or negative step would either freeze the world or run it
+    /// backwards.
+    public var fixedTimeStep: Float {
+        get { storedFixedTimeStep }
+        set {
+            storedFixedTimeStep =
+                (newValue.isFinite && newValue > 0) ? newValue : Self.defaultFixedTimeStep
+        }
+    }
+
+    /// The largest number of fixed sub-steps ``advance(_:iterations:)`` runs for one call.
+    ///
+    /// Defaults to `8`, which is `1/15` s of simulation at the default
+    /// ``fixedTimeStep`` — enough to absorb an ordinary frame-rate dip. Time beyond the
+    /// budget is dropped rather than carried, so a machine that cannot keep up runs the
+    /// simulation in slow motion instead of spiralling (each long frame asking for more
+    /// sub-steps, which makes the next frame longer still).
+    ///
+    /// Values below `1` are clamped to `1`.
+    public var maxSubSteps: Int {
+        get { storedMaxSubSteps }
+        set { storedMaxSubSteps = max(1, newValue) }
+    }
+
+    /// Advances the simulation by `elapsed` seconds, integrating at ``fixedTimeStep``.
+    ///
+    /// This is the entry point to use when the caller has real frame time in hand —
+    /// including the automatic subsystem update that `import metaphor` installs. Verlet
+    /// integration carries velocity as *displacement per step*, so feeding it a varying
+    /// `dt` adds or removes energy: the same sketch then falls a different distance on
+    /// every run and on every machine (Issue #756). Buffering the elapsed time and
+    /// spending it in fixed-size steps keeps the result independent of frame-time jitter.
+    ///
+    /// Time smaller than one step is kept for the next call, so no time is lost.
+    ///
+    /// ```swift
+    /// // 描画ループ内: 実フレーム時間をそのまま渡してよい
+    /// physics.advance(deltaTime)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - elapsed: The wall-clock time to simulate, in seconds. Non-finite and negative
+    ///     values are ignored.
+    ///   - iterations: The number of constraint/collision resolution iterations passed to
+    ///     each ``step(_:iterations:)`` (defaults to 4). Negative values are ignored and
+    ///     the whole call is skipped.
+    public func advance(_ elapsed: Float, iterations: Int = 4) {
+        guard elapsed.isFinite, elapsed >= 0 else { return }
+        guard iterations >= 0 else { return }
+
+        accumulator += elapsed
+        // 消化しきれない余りは持ち越さず捨てる（持ち越すと、遅れたフレームほど
+        // 多くの step を呼び、それが次のフレームを更に遅らせる悪循環になる）
+        accumulator = min(accumulator, Float(storedMaxSubSteps) * storedFixedTimeStep)
+
+        while accumulator >= storedFixedTimeStep {
+            accumulator -= storedFixedTimeStep
+            step(storedFixedTimeStep, iterations: iterations)
+        }
+    }
+
     /// Advances the simulation by one time step.
     ///
     /// Applies gravity, updates positions with Verlet integration, then
     /// iteratively solves constraints and resolves collisions.
+    ///
+    /// - Important: Pass a **fixed** `dt`. Verlet carries velocity as displacement per
+    ///   step and the resting-contact threshold scales with `dt²`, so a `dt` that varies
+    ///   between calls changes the simulation's energy and its bounce settling — the
+    ///   same sequence of positions is not reproduced. Drive the world with
+    ///   ``advance(_:iterations:)`` when the time you have is real frame time; use this
+    ///   method when you own the schedule (a fixed-step loop, offline rendering, tests).
     ///
     /// - Parameters:
     ///   - dt: The time step (seconds).
