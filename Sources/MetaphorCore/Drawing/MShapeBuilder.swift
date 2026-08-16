@@ -19,6 +19,7 @@ extension MShape {
         vertices3D.removeAll(keepingCapacity: true)
         contourRanges.removeAll(keepingCapacity: true)
         pendingNormal3D = nil
+        usedExplicitNormal3D = false
         isInContour = false
         contourStartIndex = 0
         usedContourWhileRecording = false
@@ -78,8 +79,15 @@ extension MShape {
     }
 
     /// 次の3D頂点に適用する法線ベクトルを設定します。
+    ///
+    /// - Important: **次に積む 1 頂点にだけ**効きます（イミディエイトの
+    ///   ``Canvas3D/normal(_:_:_:)`` は `endShape()` まで持続するので非対称です。
+    ///   統一は #876）。全頂点に同じ法線を入れたいなら頂点ごとに呼び直してください。
+    /// - Note: 一度でも呼ぶと**そのシェイプ全体で**面法線の自動計算が止まります（#738）。
+    ///   呼ばなかった頂点は既定の (0, 1, 0) のままになります。
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         pendingNormal3D = SIMD3(nx, ny, nz)
+        usedExplicitNormal3D = true
     }
 
     // MARK: - コンター（2D穴）
@@ -381,6 +389,22 @@ extension MShape {
         }
 
         guard !indices.isEmpty else { return nil }
+
+        // `normal()` を一度も呼んでいないシェイプは、全頂点が既定の (0, 1, 0) のままで
+        // 真横からのライトに真っ黒に沈む。組み上がったインデックス列から面法線を
+        // 入れ直す（#738）。イミディエイト側が endShape() で自動計算するのと揃える。
+        if !usedExplicitNormal3D {
+            let normals = FaceNormals.compute(
+                positions: vertices3D.map(\.position), indices: indices)
+            for i in meshVertices.indices {
+                meshVertices[i].normal = normals[i]
+            }
+            if uvVertices != nil {
+                for i in uvVertices!.indices {
+                    uvVertices![i].normal = normals[i]
+                }
+            }
+        }
 
         if meshVertices.count <= 65535 {
             return try? Mesh(

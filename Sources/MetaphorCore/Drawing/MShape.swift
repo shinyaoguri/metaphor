@@ -311,6 +311,11 @@ public final class MShape {
     /// 次の3D頂点に適用する保留中の法線。
     var pendingNormal3D: SIMD3<Float>?
 
+    /// 記録中に `normal()` が一度でも呼ばれたかどうか（#738）。
+    /// 呼ばれていなければ `buildFillMesh3D()` が面法線を自動計算する。
+    /// `pendingNormal3D` は頂点を積むたびに nil へ戻るため、これとは別に持つ。
+    var usedExplicitNormal3D: Bool = false
+
     /// コンター定義内にいるかどうかを追跡。
     var isInContour: Bool = false
 

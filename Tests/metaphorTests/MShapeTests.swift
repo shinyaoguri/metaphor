@@ -719,6 +719,153 @@ struct MShapeTessellationTests {
     }
 }
 
+// MARK: - リテインドな 3D シェイプの法線自動計算（#738）
+//
+// `normal()` を書かないリテインド 3D シェイプは全頂点が既定の (0, 1, 0) のままで、
+// 真横からライトが当たる面が真っ黒に沈んでいた（イミディエイト側は面法線を
+// 自動計算するので、同じ形を書いても陰影が付く）。
+//
+// メッシュは `.storageModeShared` なので、CPU から頂点バッファを読んで固定できる。
+
+@Suite("MShape 3D auto normals", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeAutoNormalTests {
+
+    let device = MTLCreateSystemDefaultDevice()!
+
+    /// 塗りメッシュの頂点法線を CPU 側で読み出す。
+    private func fillNormals(_ s: MShape) throws -> [SIMD3<Float>] {
+        s.ensureCacheValid()
+        let mesh = try #require(s.cachedMesh3D)
+        let base = mesh.vertexBuffer.contents().bindMemory(
+            to: Vertex3D.self, capacity: mesh.vertexCount)
+        return (0..<mesh.vertexCount).map { base[$0].normal }
+    }
+
+    @Test("normal() 無しの三角形は面法線を得る")
+    func trianglesGetFaceNormal() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        // z = 0 平面の三角形。面法線は (0, 0, ±1) で、既定の (0, 1, 0) とは別物。
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0, 1, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 3)
+        for n in normals {
+            #expect(abs(abs(n.z) - 1) < 0.001, "z 成分が ±1 の面法線: \(n)")
+            #expect(abs(n.x) < 0.001 && abs(n.y) < 0.001, "x/y 成分は 0: \(n)")
+        }
+    }
+
+    @Test("normal() 無しの polygon は面法線を得る")
+    func polygonGetsFaceNormal() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        // z = 0 平面の五角形（#738 の再現に使った形）
+        for i in 0..<5 {
+            let a = Float(i) / 5 * 2 * .pi
+            s.vertex(cos(a), sin(a), 0)
+        }
+        s.endShape(.close)
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 5)
+        for n in normals {
+            #expect(abs(abs(n.z) - 1) < 0.001, "全頂点が面法線を持つ: \(n)")
+        }
+    }
+
+    // 失敗系: `normal()` を明示したシェイプでは自動計算が働かず指定値が残る。
+    @Test("normal() を明示したら自動計算は働かない")
+    func explicitNormalWins() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        // リテインドの normal() は次の 1 頂点にしか効かないので毎回呼ぶ
+        // （持続範囲がイミディエイトと非対称なのは #738 とは別件）。
+        s.normal(1, 0, 0)
+        s.vertex(0, 0, 0)
+        s.normal(1, 0, 0)
+        s.vertex(1, 0, 0)
+        s.normal(1, 0, 0)
+        s.vertex(0, 1, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        for n in normals {
+            #expect(abs(n.x - 1) < 0.001 && abs(n.y) < 0.001 && abs(n.z) < 0.001,
+                    "明示した (1, 0, 0) がそのまま残る: \(n)")
+        }
+    }
+
+    // 境界値: 3 頂点が一直線に並ぶ退化三角形。外積が零ベクトルになるので
+    // 正規化すると NaN になる。既定の (0, 1, 0) へ落ちること。
+    @Test("退化した三角形は NaN にならず既定の法線へ落ちる")
+    func degenerateTriangleFallsBack() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(2, 0, 0)   // 一直線
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        for n in normals {
+            #expect(!n.x.isNaN && !n.y.isNaN && !n.z.isNaN, "NaN を書き込まない: \(n)")
+            #expect(abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
+                    "既定の (0, 1, 0) へ落ちる: \(n)")
+        }
+    }
+
+    // `.triangleStrip` は「3 頂点ごと」ではインデックスの topology に合わないため、
+    // 後ろの頂点が既定のまま取り残される。組み上がったインデックス列から計算すれば
+    // 全頂点に法線が付く（巻き方向の反転もインデックス構築側が補正済み）。
+    @Test("triangleStrip は全頂点に法線が付く")
+    func triangleStripCoversEveryVertex() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangleStrip)
+        // z = 0 平面のジグザグ 5 頂点（3 頂点ごとの規則だと後ろ 2 頂点が漏れる）
+        s.vertex(0, 0, 0)
+        s.vertex(0, 1, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(1, 1, 0)
+        s.vertex(2, 0, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 5)
+        for (i, n) in normals.enumerated() {
+            #expect(abs(abs(n.z) - 1) < 0.001, "頂点 \(i) にも面法線が付く: \(n)")
+        }
+        // 巻き方向はインデックス構築側（i % 2 で入れ替え）が補正済みなので、
+        // ストリップ全体で法線の向きが揃う。
+        let first = normals[0]
+        for (i, n) in normals.enumerated() {
+            #expect(simd_dot(first, n) > 0.999, "頂点 \(i) の向きが先頭と揃う: \(n)")
+        }
+    }
+
+    @Test("triangleFan は全頂点に法線が付く")
+    func triangleFanCoversEveryVertex() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangleFan)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(1, 1, 0)
+        s.vertex(0, 1, 0)
+        s.vertex(-1, 1, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 5)
+        for (i, n) in normals.enumerated() {
+            #expect(abs(abs(n.z) - 1) < 0.001, "頂点 \(i) にも面法線が付く: \(n)")
+        }
+    }
+}
+
 // MARK: - サイズ指定 shape() の状態汚染防止（#158）
 
 @Suite("MShape Sized Draw", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
