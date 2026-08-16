@@ -16,6 +16,7 @@ let goldenImageSize = 128
 /// ``GoldenScenes/scene(named:)`` で引く。
 let goldenSceneNames: [String] = [
     "shapes-2d",
+    "alpha-compositing",
     "blend-modes",
     "lighting-blinn-phong",
     "lighting-pbr",
@@ -88,6 +89,7 @@ enum GoldenScenes {
     /// カタログ全体（ゴールデン用 + パリティ専用）。
     static let all: [GoldenScene] = [
         shapes2D,
+        alphaCompositing,
         blendModes,
         lightingBlinnPhong,
         lightingPBR,
@@ -116,6 +118,42 @@ enum GoldenScenes {
         c.stroke(Color(r: 0.35, g: 1.0, b: 0.55))
         c.strokeWeight(1)
         c.line(4, 64, 124, 64)
+    }
+
+    /// α < 1 の合成結果を丸ごと固定するシーン（ADR-0012 / #850）。
+    ///
+    /// 他のゴールデンは全画素が不透明なので、premultiplied / straight の取り違えを
+    /// **1 枚も捉えられなかった**（#801 / #831 / #846 / #847 を長く見逃した直接の原因）。
+    /// ここは意図的に
+    ///
+    /// - 透明なキャンバスで始める（`background(α = 0)`。非不透明画素がゴールデンに載る）
+    /// - 半透明どうしを重ねる（結果の α が `over` で積み上がることを見る）
+    /// - 半透明の画像を貼る（テクスチャ経路の割り戻しを見る）
+    ///
+    /// の 3 つを含む。1 画素でも α の扱いを変えれば、この 1 枚が落ちる。
+    static let alphaCompositing = GoldenScene(name: "alpha-compositing") { c in
+        // 透明で始める。ゴールデンの左下は最後まで塗られず α = 0 のまま残る
+        c.background(Color(r: 0, g: 0, b: 0, alpha: 0))
+        c.noStroke()
+
+        // 不透明な下地は上半分だけ。下半分は透明のまま合成される
+        c.blendMode(.opaque)
+        c.fill(Color(r: 0.40, g: 0.30, b: 0.20))
+        c.rect(0, 0, 128, 64)
+
+        // 半透明どうしを重ねる（交差部の α が over で積み上がる）
+        c.blendMode(.alpha)
+        c.fill(Color(r: 0.90, g: 0.25, b: 0.20, alpha: 0.5))
+        c.rect(8, 24, 64, 64)
+        c.fill(Color(r: 0.20, g: 0.55, b: 0.95, alpha: 0.5))
+        c.circle(72, 72, 72)
+
+        // 加算は premultiplied な src をそのまま足す
+        c.blendMode(.additive)
+        c.fill(Color(r: 0.30, g: 0.90, b: 0.40, alpha: 0.25))
+        c.rect(80, 8, 40, 40)
+
+        c.blendMode(.alpha)
     }
 
     static let blendModes = GoldenScene(name: "blend-modes") { c in

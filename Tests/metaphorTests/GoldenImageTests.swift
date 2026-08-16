@@ -160,6 +160,38 @@ struct GoldenImageTests {
         }
     }
 
+    /// **半透明の画素も** PNG 往復で 1 バイトも変わらないこと（#850）。
+    ///
+    /// 以前は `rgba`（straight）を `premultipliedLast` と宣言して書いていたため、
+    /// ImageIO が PNG（straight）へ書くときに α で割って飽和させ、
+    /// **α=128 の白で 127 もずれて**いた。「非不透明画素は再現しない」という
+    /// ゴールデンの前提はこの取り違えから来ていたので、往復が可逆であることを
+    /// α の全域で固定する。
+    @Test("PNG ラウンドトリップが半透明の画素も変えない")
+    func pngRoundTripPreservesTranslucentPixels() throws {
+        let alphas: [UInt8] = [0, 1, 4, 16, 64, 128, 192, 254, 255]
+        let colors: [(UInt8, UInt8, UInt8)] = [
+            (255, 255, 255), (128, 128, 128), (51, 204, 102), (255, 0, 0), (0, 0, 0),
+        ]
+        var bytes: [UInt8] = []
+        for a in alphas {
+            for c in colors {
+                bytes.append(contentsOf: [c.0, c.1, c.2, a])
+            }
+        }
+        let original = try GoldenImage(width: colors.count, height: alphas.count, rgba: bytes)
+
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let url = dir.appendingPathComponent("roundtrip-alpha.png")
+            try original.write(pngTo: url)
+            let reloaded = try GoldenImage.load(pngAt: url)
+
+            #expect(reloaded.rgba == original.rgba,
+                    "半透明の画素が PNG 往復で変化した — #850")
+            #expect(reloaded.sha256 == original.sha256)
+        }
+    }
+
     /// 許容差の意味（`maxChannelDiff` を超えた画素の割合で判定する）を固定する。
     @Test("許容差の判定: 微差は通り、局所的な大差は落ちる")
     func toleranceSemantics() throws {
