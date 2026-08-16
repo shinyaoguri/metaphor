@@ -474,17 +474,22 @@ public final class MImage {
     /// マネージドストレージモードで、``pixels`` 配列はゼロで事前確保されています。
     ///
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。1 以上。
-    ///   - height: 画像の高さ（ピクセル単位）。1 以上。
+    ///   - width: 画像の幅（ピクセル単位）。1 以上 ``TextureManager/maxDimension`` 以下。
+    ///   - height: 画像の高さ（ピクセル単位）。1 以上 ``TextureManager/maxDimension`` 以下。
     ///   - device: テクスチャ作成に使用する Metal デバイス。
     /// - Returns: 新しい ``MImage`` インスタンス。テクスチャを作成できない場合
-    ///   （幅・高さが 1 未満を含む）は `nil`。
+    ///   （幅・高さが `1...`  ``TextureManager/maxDimension`` の範囲外を含む）は `nil`。
     public static func createImage(_ width: Int, _ height: Int, device: MTLDevice) -> MImage? {
-        // 退化サイズは Metal へ渡す前に止める（#798）。descriptor の検証は
-        // `makeTexture` の nil ではなくアサーションでプロセスを終了させるため、
-        // ここを通すと呼び出し側の `guard let` では守れない。
-        guard width > 0, height > 0 else {
-            metaphorWarning("createImage: dimensions must be positive (got \(width)x\(height))")
+        // 範囲外のサイズは Metal へ渡す前に止める（0 以下は #798、上限超えは #806）。
+        // descriptor の検証は `makeTexture` の nil ではなくアサーションで
+        // プロセスを終了させるため、ここを通すと呼び出し側の `guard let` では守れない。
+        // `TextureManager` は #842 で上限を塞いだが、この static 版は
+        // `TextureManager` を通らず自前で descriptor を組むため外側に残っていた。
+        guard width > 0, height > 0,
+              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            metaphorWarning(
+                "createImage: dimensions must be within 1...\(TextureManager.maxDimension) "
+                + "(got \(width)x\(height))")
             return nil
         }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
