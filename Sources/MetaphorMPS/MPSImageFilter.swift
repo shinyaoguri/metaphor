@@ -368,6 +368,12 @@ public final class MPSImageFilterWrapper {
             for key in keysToRemove { medianCache.removeValue(forKey: key) }
         }
         let kernel = MPSImageMedian(device: device, kernelDiameter: d)
+        // `MPSUnaryImageKernel` の既定は `.zero`（画像の外を 0 として読む）。median は
+        // 「窓の中の値を 1 つ選ぶ」フィルタなので出力は入力に無い値にならないはずなのに、
+        // 既定のままだと窓の過半が画像外になる縁で中央値が 0 になり、**入力に存在しない黒**が
+        // 出ていた（直径 9 なら四隅から 4 画素ぶん）。同じファイルの gaussianBlur /
+        // erode / dilate は `.clamp` を明示しており、median だけ取り残されていた（#920）
+        kernel.edgeMode = .clamp
         medianCache[d] = kernel
         return kernel
     }
