@@ -1,3 +1,4 @@
+import MetaphorLog
 import simd
 
 /// Manages a 2D physics world using Verlet integration.
@@ -149,9 +150,10 @@ public final class Physics2D {
         // 半端に進んだワールドを残さないよう、dt と同じく入口で step ごと捨てる。
         // iterations == 0 は「積分だけ行い拘束・衝突・境界を解かない」用途として
         // 許可する（dt == 0 と対）。
-        // MetaphorPhysics は Core 非依存（Tier 1）で metaphorWarning を使えないため、
-        // dt guard と同じく無言で返す
-        guard iterations >= 0 else { return }
+        guard iterations >= 0 else {
+            metaphorWarning("Physics2D.step: iterations must not be negative (got \(iterations)); skipping the step")
+            return
+        }
 
         // 休止接触を静定させる反発の下限（このステップで重力が生む接近速度の 1.5 倍）
         restitutionThreshold = 1.5 * simd_length(gravity) * dt * dt

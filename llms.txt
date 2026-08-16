@@ -1903,6 +1903,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func mag(_ x: Float, _ y: Float) -> Float` -- 2Dベクトルの大きさを計算します。
 - `func mag(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3Dベクトルの大きさを計算します。
 - `func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float` -- 値をある範囲から別の範囲にリマップします。
+- `func metaphorAlert(_ message: () -> String)` -- **Release ビルドでも必ず** stderr に出す警告。
+- `func metaphorDiagnostic(_ message: () -> String)` -- ランタイムゲート付きの診断ログ（stderr）。
+- `func metaphorWarning(_ message: () -> String)` -- 開発者向けの警告（stdout、**DEBUG ビルドのみ**）。
 - `func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float` -- 値を指定された範囲から [0, 1] の範囲に正規化します。
 - `func radians(_ degrees: Float) -> Float` -- 度数法をラジアンに変換します。
 - `func random(_ high: Float) -> Float` -- 0 から指定された上限（上限を含まない）までのランダムな Float 値を返します。

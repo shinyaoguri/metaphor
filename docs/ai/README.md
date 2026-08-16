@@ -37,6 +37,16 @@ here.
 - Tier 2 modules (`MetaphorNoise`, `MetaphorMPS`, `MetaphorCoreImage`,
   `MetaphorRenderGraph`, `MetaphorSceneGraph`, `MetaphorSyphon`) may depend on
   `MetaphorCore` and are surfaced through the umbrella under `Sources/metaphor/`.
+- `MetaphorLog` sits below Core (Tier 0, zero dependencies) so every tier can use
+  the same diagnostics. Never write `print("[metaphor] …")` outside `MetaphorCore`:
+  pick `metaphorWarning` (stdout, DEBUG only — the caller passed a bad value),
+  `metaphorAlert` (stderr, always — the caller is right but the environment is
+  silently broken), or `metaphorDiagnostic` (stderr, `METAPHOR_DEBUG=1` only —
+  ignorable internal events worth isolating). The table in
+  `Sources/MetaphorLog/Log.swift` is the source of truth, and
+  `Tests/metaphorTests/LogConventionTests.swift` enforces it. `MetaphorCore` still
+  holds a few raw `print`s on purpose (Probe / state write failures that must stay
+  visible in Release); they are exempt from the scan, not an invitation to add more.
 
 ## Debugging Map
 

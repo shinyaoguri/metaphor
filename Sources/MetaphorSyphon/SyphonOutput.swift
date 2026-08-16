@@ -1,4 +1,5 @@
 import Metal
+import MetaphorLog
 import Syphon
 import Foundation
 
@@ -100,7 +101,7 @@ public final class SyphonOutput {
         // 正しい停止経路は所有者（SyphonPlugin.onDetach 等）による stop() で、
         // ここは呼び忘れに対する安全網（ログを出して best-effort で停止する）。
         if server != nil {
-            print("[metaphor] SyphonOutput deallocated without stop() — stopping server as a fallback")
+            metaphorWarning("SyphonOutput deallocated without stop() — stopping server as a fallback")
             server?.stop()
         }
     }

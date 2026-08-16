@@ -15,8 +15,11 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 
 `import metaphor`（アンブレラ。全モジュールを `@_exported import` で再エクスポート）か、個別モジュールを import します。
 
+- **Tier 0（依存ゼロ）**: MetaphorLog（診断ログ `metaphorWarning` / `metaphorAlert` / `metaphorDiagnostic` の実体。product には出さず `MetaphorCore` が `@_exported import` で再輸出）
 - **Tier 1（Core 非依存）**: MetaphorAudio / MetaphorNetwork / MetaphorPhysics / MetaphorML / MetaphorVideo
 - **Tier 2（MetaphorCore 依存）**: MetaphorNoise / MetaphorMPS / MetaphorCoreImage / MetaphorRenderGraph / MetaphorSceneGraph / MetaphorSyphon
+
+**ライブラリのメッセージは素の `print()` で書かない**。3 関数の使い分け表は [`Sources/MetaphorLog/Log.swift`](Sources/MetaphorLog/Log.swift) が正本（`MetaphorCore` 内の既存 `print` は Release でも見えるべき診断で、一括変換の対象外）。
 
 Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのターゲットだけ。`MetaphorCore` は Syphon 非依存で、出力は `MetaphorOutputRegistry` 経由（`import metaphor` なら自動登録により従来どおり `config.syphon` が使えます）。
 

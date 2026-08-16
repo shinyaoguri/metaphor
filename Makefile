@@ -143,7 +143,7 @@ symbol-graphs: build
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
 	export SDK_PATH; \
-	printf '%s\n' metaphor MetaphorCore \
+	printf '%s\n' metaphor MetaphorCore MetaphorLog \
 		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML MetaphorVideo \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
 		MetaphorRenderGraph MetaphorSceneGraph MetaphorSyphon \
