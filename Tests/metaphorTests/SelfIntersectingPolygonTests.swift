@@ -1,4 +1,5 @@
 import Foundation
+import Metal
 import MetaphorTestSupport
 import Testing
 @testable import MetaphorCore
@@ -39,6 +40,45 @@ private func triangleArea(_ a: (Float, Float), _ b: (Float, Float), _ c: (Float,
 
 private func polygonArea(_ poly: [(Float, Float)]) -> Float {
     abs(EarClipTriangulator.signedArea(poly))
+}
+
+/// `MShape` がキャッシュした三角形群のどれかが点を覆っているか。
+private func covers(
+    _ triangles: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)], _ p: (Float, Float)
+) -> Bool {
+    for (a, b, c) in triangles {
+        if EarClipTriangulator.pointInTriangle(p, (a.x, a.y), (b.x, b.y), (c.x, c.y)) {
+            return true
+        }
+    }
+    return false
+}
+
+/// ear clipping そのままの三角形（`MShape` の従来経路が返していた期待値）。
+private func earClippedTriangles(
+    _ polygon: [(Float, Float)]
+) -> [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)] {
+    let indices = EarClipTriangulator.triangulate(polygon)
+    return stride(from: 0, to: indices.count, by: 3).map { i in
+        let p = indices[i...(i + 2)].map { SIMD2<Float>(polygon[$0].0, polygon[$0].1) }
+        return (p[0], p[1], p[2])
+    }
+}
+
+/// タプルの三角形は Equatable でないので、比較用に配列へ均します。
+private func flattened(
+    _ triangles: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)]
+) -> [[SIMD2<Float>]] {
+    triangles.map { [$0.0, $0.1, $0.2] }
+}
+
+/// `MShape` がキャッシュした三角形群の面積合計。
+private func totalArea(_ triangles: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)]) -> Float {
+    var total: Float = 0
+    for (a, b, c) in triangles {
+        total += triangleArea((a.x, a.y), (b.x, b.y), (c.x, c.y))
+    }
+    return total
 }
 
 extension EarClipTriangulator.Tessellation {
@@ -347,6 +387,127 @@ struct SimplePolygonRegressionTests {
     }
 }
 
+// MARK: - MShape（createShape() の retained 経路）
+
+/// `createShape()` で作る ``MShape`` の塗りも即時モードと同じ規則で分けられること（#886）。
+///
+/// 判定は ``PentagramFillTests`` と同じ（腕が塗られる・切れ込みが塗られない・
+/// 面積が星の輪郭と一致する）で、経路だけ `MShapeBuilder` に替えています。
+@Suite("Self-Intersecting Fill: MShape", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct MShapeSelfIntersectingFillTests {
+
+    private let center: (Float, Float) = (240, 190)
+    private let radius: Float = 140
+
+    /// 頂点列を `beginShape()` / `vertex()` / `endShape(.close)` で流し込み、
+    /// テッセレーション済みの三角形を返します。
+    private func tessellate(_ polygon: [(Float, Float)]) throws
+        -> [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)] {
+        let device = try #require(MetalTestHelper.device)
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        for v in polygon { s.vertex(v.0, v.1) }
+        s.endShape(.close)
+        s.ensureCacheValid()
+        return try #require(s.cachedTriangles2D)
+    }
+
+    @Test("五芒星は星の形に塗られる（腕は塗られ、腕と腕のあいだは塗られない）")
+    func pentagramFillsAsStar() throws {
+        let tris = try tessellate(pentagram(center: center, radius: radius))
+
+        for k in 0..<5 {
+            let armCenter = polar(center: center, radius: radius * 0.8, degrees: Float(k) * 72)
+            #expect(covers(tris, armCenter), "腕 \(k) の中ほどが塗られていない")
+
+            let notch = polar(center: center, radius: radius * 0.6, degrees: Float(k) * 72 + 36)
+            #expect(!covers(tris, notch), "腕 \(k) と \(k + 1) のあいだが塗られている")
+        }
+    }
+
+    @Test("nonzero 規則なので中央の五角形も塗られる")
+    func centerIsFilledUnderNonZeroRule() throws {
+        let tris = try tessellate(pentagram(center: center, radius: radius))
+        #expect(covers(tris, center))
+        #expect(covers(tris, polar(center: center, radius: radius * 0.2, degrees: 0)))
+    }
+
+    @Test("塗られた面積は星の輪郭の面積と一致する（重なりも隙間も無い）")
+    func filledAreaMatchesStarOutline() throws {
+        let tris = try tessellate(pentagram(center: center, radius: radius))
+        let expected = polygonArea(starOutline(center: center, radius: radius))
+        #expect(abs(totalArea(tris) - expected) < expected * 1e-3)
+    }
+
+    @Test("Issue #886 の頂点列がそのまま星になる")
+    func issueVertexListFillsAsStar() throws {
+        // Issue 本文のスケッチと同じ頂点列。
+        let tris = try tessellate([
+            (240, 60), (330, 300), (90, 150), (390, 150), (150, 300)
+        ])
+        #expect(covers(tris, (240, 80)))
+        #expect(!covers(tris, (160, 120)))
+        #expect(!covers(tris, (320, 120)))
+        #expect(!covers(tris, (240, 265)))
+        #expect(covers(tris, (240, 180)))
+    }
+
+    @Test("8 の字は両方のループが塗られる")
+    func figureEightFillsBothLobes() throws {
+        let tris = try tessellate([(0, 0), (100, 0), (0, 100), (100, 100)])
+        #expect(covers(tris, (50, 20)))
+        #expect(covers(tris, (50, 80)))
+        #expect(!covers(tris, (15, 50)))
+        #expect(!covers(tris, (85, 50)))
+        #expect(abs(totalArea(tris) - 5000) < 1)
+    }
+
+    @Test("自己交差の無い単純多角形は ear clipping の結果と 1 三角形ずつ一致する")
+    func simplePolygonIsUnchanged() throws {
+        // 正方形と凹 L 字。従来経路（triangulate）が返す三角形と並びまで同じであること。
+        for polygon in [
+            [(0, 0), (100, 0), (100, 100), (0, 100)] as [(Float, Float)],
+            [(0, 0), (200, 0), (200, 100), (100, 100), (100, 200), (0, 200)] as [(Float, Float)]
+        ] {
+            let tris = try tessellate(polygon)
+            #expect(flattened(tris) == flattened(earClippedTriangles(polygon)))
+            #expect(tris.count == polygon.count - 2)
+        }
+    }
+
+    @Test("退化した頂点列でも空の結果を返してクラッシュしない")
+    func degenerateInputsProduceEmptyFill() throws {
+        #expect(try tessellate([(0, 0), (10, 10)]).isEmpty)
+        #expect(totalArea(try tessellate([(5, 5), (5, 5), (5, 5)])) < 1e-5)
+        #expect(totalArea(try tessellate([(0, 0), (1, 0), (2, 0), (3, 0)])) < 1e-5)
+    }
+
+    @Test("コンター（穴）付きのシェイプは従来どおり穴が抜ける")
+    func contourStillMakesHole() throws {
+        let device = try #require(MetalTestHelper.device)
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.vertex(0, 0)
+        s.vertex(200, 0)
+        s.vertex(200, 200)
+        s.vertex(0, 200)
+        s.beginContour()
+        s.vertex(50, 50)
+        s.vertex(150, 50)
+        s.vertex(150, 150)
+        s.vertex(50, 150)
+        s.endContour()
+        s.endShape(.close)
+        s.ensureCacheValid()
+
+        let tris = try #require(s.cachedTriangles2D)
+        #expect(covers(tris, (25, 100)))    // 外周と穴のあいだ
+        #expect(!covers(tris, (100, 100)))  // 穴の中
+        #expect(abs(totalArea(tris) - (40000 - 10000)) < 1e-1)
+    }
+}
+
 // MARK: - 実際に描いた絵
 
 /// テッセレーションだけでなく、`beginShape()` / `polygon()` の塗り経路が
@@ -402,6 +563,18 @@ struct SelfIntersectingRenderTests {
     func polygonDrawsStar() throws {
         let image = try renderPentagram { ctx, vertices in
             ctx.polygon(vertices)
+        }
+        expectStar(image)
+    }
+
+    @Test("createShape() の五芒星が星に描かれる")
+    func retainedShapeDrawsStar() throws {
+        let image = try renderPentagram { ctx, vertices in
+            let star = ctx.createShape()
+            star.beginShape()
+            for v in vertices { star.vertex(v.0, v.1) }
+            star.endShape(.close)
+            ctx.shape(star)
         }
         expectStar(image)
     }

@@ -187,6 +187,10 @@ extension MShape {
 
     /// シェイプを確定し、記録された頂点からジオメトリを構築します。
     ///
+    /// - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います
+    ///   （即時モードの `endShape(_:)` と同じ）。巻き数が 0 でない領域が塗られるので、
+    ///   五芒星は中央の五角形まで塗られたべた塗りの星になります。
+    ///
     /// - Parameter close: 最後の頂点から最初の頂点に接続してシェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         guard isRecording else { return }
@@ -258,9 +262,10 @@ extension MShape {
         }
 
         if contourRanges.isEmpty {
-            // 穴なしの単純ポリゴン
-            let indices = EarClipTriangulator.triangulate(outerPoints)
-            cachedTriangles2D = buildTrianglesFromIndices(indices, points: outerPoints)
+            // 穴なし。自己交差があれば nonzero winding で塗り分ける（#886）。
+            // 交点ぶん頂点が増えるので、インデックスは返ってきた頂点配列に当てる。
+            let tess = EarClipTriangulator.triangulateNonZero(outerPoints)
+            cachedTriangles2D = buildTrianglesFromIndices(tess.indices, points: tess.vertices)
         } else {
             // 穴ありポリゴン
             let holes: [[(Float, Float)]] = contourRanges.map { range in
