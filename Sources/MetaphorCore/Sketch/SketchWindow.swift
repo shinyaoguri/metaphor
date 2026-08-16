@@ -28,6 +28,21 @@ import MetalKit
 /// }
 /// ```
 ///
+/// ## 制御 API
+///
+/// ``context`` の `loop()` / `noLoop()` / `redraw()` / `frameRate(_:)` / `createCanvas(width:height:)`
+/// は、**その窓のレンダーループとキャンバス**に効きます（プライマリには影響しません）。
+///
+/// ```swift
+/// preview?.context.createCanvas(width: 800, height: 600)
+/// preview?.context.frameRate(30)   // この窓だけ 30fps
+/// preview?.context.noLoop()        // この窓だけ止める
+/// preview?.context.redraw()        // 止めたまま 1 枚だけ描く
+/// ```
+///
+/// `createCanvas()` はプライマリの `setup()` から呼ぶのが安全です。この窓自身の描画
+/// クロージャの中から呼ぶと、リサイズがそのフレームの完了を待つぶん待たされます。
+///
 /// ## ヘッドレスモード
 ///
 /// 環境変数 `METAPHOR_VIEWER=1`（`metaphor-cli` のライブビューアが子プロセスへ注入する
@@ -89,6 +104,12 @@ public final class SketchWindow {
     private var drawClosure: ((@MainActor (SketchContext) -> Void))?
     private var prevTime: Float = 0
     private var renderTimer: DispatchSourceTimer?
+    /// ``renderTimer`` を `suspend()` した状態かどうか。
+    ///
+    /// `DispatchSource` の suspend はカウント式なので、二重に掛けると同じ回数 resume するまで
+    /// 起き上がらず、掛かったまま解放するとクラッシュします。`noLoop()` / `loop()` の
+    /// 往復と teardown が釣り合うよう、`SketchRunner` と同じ形で状態を持ちます。
+    private var isRenderTimerSuspended = false
     private var activity: NSObjectProtocol?
 
     /// このウィンドウが使うカスケード配置のスロット（0 起点）。
@@ -167,6 +188,7 @@ public final class SketchWindow {
 
         setupWindow()
         setupRenderLoop()
+        connectControls()
         connectInput()
 
         // 出力（Syphon 等）は MetaphorOutputRegistry 経由で間接的に起動する（Core は Syphon を
@@ -373,6 +395,121 @@ public final class SketchWindow {
         }
     }
 
+    /// ``SketchContext`` の制御 API（`loop()` / `noLoop()` / `redraw()` / `frameRate()` /
+    /// `createCanvas()`）をこの窓のレンダラへ配線します（#857）。
+    ///
+    /// `SketchContext` はハンドラが `nil` なら状態だけ変えて黙って返るので、配線が無いと
+    /// 呼び出しはすべて no-op に落ちます（`SketchView` 経路の #808 / #828 と同じ穴）。
+    ///
+    /// 宛先は**この窓のレンダーループ**で、`SketchView` 経路の写経では足りません。
+    /// ``resolveLoopMode(config:isHeadless:)`` のとおり `SketchWindow` は 2 系統を持ち、
+    /// ヘッドレスと ``SketchWindowConfig/syphonName`` ありは**タイマー駆動**になります。
+    /// タイマーは `MTKView.isPaused` では止まらず（そもそもヘッドレスでは `mtkView` が `nil`）、
+    /// フレームレートも `preferredFramesPerSecond` ではなくタイマーの再スケジュールで変わります。
+    /// そのため `SketchRunner` と同じく `renderTimer` の有無で宛先を分けます。
+    private func connectControls() {
+        context.onLoop = { [weak self] in
+            guard let self else { return }
+            // 時計（renderer.elapsedTime）は止めている間も進むので、再開の前に deltaTime の
+            // 起点を寄せ直す。寄せないと再開後の最初のフレームへ「止めていた実時間まるごと」が
+            // 渡り、それを積分に使う側が 1 回で吹き飛ぶ（#793。SketchRunner.handleLoop と同じ）。
+            self.prevTime = Float(self.renderer.elapsedTime)
+            if let renderTimer = self.renderTimer {
+                self.resumeRenderTimerIfNeeded(renderTimer)
+            } else {
+                self.mtkView?.isPaused = false
+            }
+            self.renderer.notifyPluginsStart()
+        }
+
+        context.onNoLoop = { [weak self] in
+            guard let self else { return }
+            if let renderTimer = self.renderTimer {
+                self.suspendRenderTimerIfNeeded(renderTimer)
+            } else {
+                self.mtkView?.isPaused = true
+            }
+            self.renderer.notifyPluginsStop()
+        }
+
+        context.onRedraw = { [weak self] in
+            guard let self else { return }
+            if self.renderTimer != nil {
+                // タイマーモードは useExternalRenderLoop = true で、`MTKView.draw()` は
+                // 再レンダリングせずブリットするだけ。先にオフスクリーンを 1 枚描く。
+                // ヘッドレスは mtkView が無いので、この 1 回がそのまま redraw の実体になる。
+                self.renderer.renderFrame()
+            }
+            // ディスプレイリンクモード: draw(in:) が renderFrame() + ブリットを 1 回で行う。
+            self.mtkView?.draw()
+        }
+
+        context.onFrameRate = { [weak self] fps in
+            guard let self else { return }
+            // 0 以下のクランプは全経路で共通（#358）。
+            let clampedFPS = clampedFrameRate(fps)
+            self.renderer.targetFPS = clampedFPS
+            if let renderTimer = self.renderTimer {
+                let interval = 1.0 / Double(clampedFPS)
+                renderTimer.schedule(
+                    deadline: .now(), repeating: interval, leeway: .milliseconds(1)
+                )
+            } else {
+                self.mtkView?.preferredFramesPerSecond = clampedFPS
+            }
+        }
+
+        context.onCreateCanvas = { [weak self] width, height in
+            self?.handleCreateCanvas(width: width, height: height)
+        }
+    }
+
+    /// テクスチャ・キャンバスを新しいキャンバスサイズに合わせて再構築します（#857）。
+    ///
+    /// `SketchRunner.handleCreateCanvas` と同じ手順ですが、**窓を中央へ寄せ直しません**。
+    /// セカンダリ窓は開いている枚数に応じてカスケード配置されており（#837）、
+    /// `center()` を呼ぶとそのオフセットが消えて窓同士が重なるためです。
+    ///
+    /// - Note: `MetaphorRenderer.resizeCanvas` はインフライトフレームを枯らすため
+    ///   `inflightSemaphore` を 3 つ取りに行きます。この窓自身の描画クロージャの**中**から
+    ///   呼ぶと、そのフレームが 1 つ掴んだままなので待たされます。プライマリの `setup()` から
+    ///   `window.context.createCanvas(...)` と呼ぶのが安全な呼び出し位置です（#828 と同じ性質）。
+    ///
+    /// - Parameters:
+    ///   - width: 新しいキャンバスの幅（ピクセル単位）。
+    ///   - height: 新しいキャンバスの高さ（ピクセル単位）。
+    private func handleCreateCanvas(width: Int, height: Int) {
+        renderer.resizeCanvas(width: width, height: height)
+
+        guard let newCanvas = try? Canvas2D(renderer: renderer),
+              let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+            metaphorWarning("createCanvas(\(width), \(height)) failed to rebuild canvases")
+            return
+        }
+        newCanvas.onSetClearColor = { [weak renderer] r, g, b, a in
+            renderer?.setClearColor(r, g, b, a)
+        }
+        context.rebuildCanvas(canvas: newCanvas, canvas3D: newCanvas3D)
+
+        // 窓を持つときは中身の比率にも追随させる（ヘッドレスでは window が nil で no-op）。
+        let windowWidth = CGFloat(Float(width) * config.windowScale)
+        let windowHeight = CGFloat(Float(height) * config.windowScale)
+        window?.setContentSize(NSSize(width: windowWidth, height: windowHeight))
+        window?.contentAspectRatio = NSSize(width: width, height: height)
+    }
+
+    private func suspendRenderTimerIfNeeded(_ timer: DispatchSourceTimer) {
+        guard !isRenderTimerSuspended else { return }
+        timer.suspend()
+        isRenderTimerSuspended = true
+    }
+
+    private func resumeRenderTimerIfNeeded(_ timer: DispatchSourceTimer) {
+        guard isRenderTimerSuspended else { return }
+        timer.resume()
+        isRenderTimerSuspended = false
+    }
+
     private func connectInput() {
         let input = renderer.input
         input.onMousePressed = { [weak self] _, _, _ in
@@ -431,6 +568,11 @@ public final class SketchWindow {
     private func stopRenderTimer() {
         if let renderTimer {
             renderTimer.cancel()
+            // cancel 後に resume するのは、suspend されたまま（noLoop 中に閉じた場合など）の
+            // DispatchSource は解放時にクラッシュするため — cancel 済みなので resume で
+            // イベントハンドラが再発火することはなく、suspend カウントだけが 0 に戻る
+            // （`SketchRunner.applicationWillTerminate` と対称）。
+            resumeRenderTimerIfNeeded(renderTimer)
             self.renderTimer = nil
         }
         if let activity {
