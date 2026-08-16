@@ -18,6 +18,10 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var sketchRef: (any Sketch)?
     private var renderTimer: DispatchSourceTimer?
     private var isRenderTimerSuspended = false
+    // 描画コールバックが共有する直前フレーム時刻。ループを止めている間も時計は進むため、
+    // 再開時に起点を寄せ直せるよう runner 側で保持する(#793)。
+    // internal: テストから handleLoop() の効果を検証できるようにする。
+    let frameClock = FrameClock()
     private var activity: NSObjectProtocol?
     private var sharedResources: SharedMetalResources?
 
@@ -598,12 +602,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // 時計を引き継いだリロード（preserveClock）では時刻がオフセットぶん進んだ
         // 状態で始まるため、起点も合わせる（合わせないと初回 deltaTime が
         // 引き継いだ経過時間そのものになる）。
-        var prevTime = Float(renderer.clockOffset)
+        // クロージャは runner を強く掴まないよう、共有の時計だけを捕捉する。
+        let frameClock = self.frameClock
+        frameClock.resync(to: Float(renderer.clockOffset))
 
         renderer.onCompute = { [weak context, weak sketch] commandBuffer, time in
             guard let context, let sketch else { return }
             let t = Float(time)
-            let dt = t - prevTime
+            let dt = frameClock.delta(at: t)
             context.beginCompute(commandBuffer: commandBuffer, time: t, deltaTime: dt)
             sketch.compute()
             context.endCompute()
@@ -612,8 +618,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         renderer.onDraw = { [weak context, weak sketch] encoder, time in
             guard let context, let sketch else { return }
             let t = Float(time)
-            let dt = t - prevTime
-            prevTime = t
+            let dt = frameClock.advance(to: t)
             context.beginFrame(encoder: encoder, time: t, deltaTime: dt, preciseTime: time)
             sketch.draw()
             context.endFrame()
@@ -631,8 +636,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         renderer.onRecordFrame = { [weak context, weak sketch] time in
             guard let context, let sketch else { return }
             let t = Float(time)
-            let dt = t - prevTime
-            prevTime = t
+            let dt = frameClock.advance(to: t)
             context.beginRecordingFrame(time: t, deltaTime: dt)
             sketch.draw()
             context.endRecordingFrame()
@@ -712,7 +716,16 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     // MARK: - Animation Control
 
     /// レンダーループを再開します。
-    private func handleLoop() {
+    ///
+    /// 時計（``MetaphorRenderer/elapsedTime``）は実時間ベースで、止めている間も進みます。
+    /// 一方フレームは発火しないので、起点を寄せ直さないと再開後の最初のフレームへ
+    /// 「止めていた実時間まるごと」が `deltaTime` として渡り、それを積分に使う側
+    /// （`Physics2D` / `TweenManager` / スケッチ自前の速度積分）が 1 回で吹き飛びます(#793)。
+    /// フレームを再開する前に起点を現在時刻へ寄せ、再開後の最初の `deltaTime` を
+    /// 実測どおり（＝ほぼ 1 フレームぶん）にします。
+    // internal: テストから直接呼べるようにする(#793)
+    func handleLoop() {
+        frameClock.resync(to: Float(renderer?.elapsedTime ?? 0))
         if let renderTimer {
             resumeRenderTimerIfNeeded(renderTimer)
         } else {

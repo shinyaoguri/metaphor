@@ -84,6 +84,9 @@ extension Sketch {
         context.time    }
 
     /// 前フレームからの経過時間（秒単位）。
+    ///
+    /// ``noLoop()`` で止めていた時間はここに乗りません。``loop()`` で再開した直後の
+    /// フレームも 1 フレームぶんの経過になります（``time`` のほうは実時間に追いつきます）。
     public var deltaTime: Float {
         context.deltaTime    }
 
@@ -138,6 +141,9 @@ extension Sketch {
         context.isLooping    }
 
     /// アニメーションループを再開します。
+    ///
+    /// 再開後の最初のフレームの ``deltaTime`` は 1 フレームぶんの経過になります。
+    /// 止めていた実時間は ``time`` にだけ反映されます。
     public func loop() {
         context.loop()
     }

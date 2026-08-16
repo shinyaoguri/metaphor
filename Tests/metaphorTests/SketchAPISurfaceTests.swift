@@ -40,7 +40,7 @@ private final class SketchRunnerHarness {
     private(set) var createCanvasCalls: [(width: Int, height: Int)] = []
 
     /// onCompute と onDraw で共有する直前フレーム時刻（SketchRunner と同じ）。
-    private var prevTime: Float = 0
+    private let frameClock = FrameClock()
 
     init(
         sketch: any Sketch,
@@ -101,7 +101,7 @@ private final class SketchRunnerHarness {
         renderer.onCompute = { [weak self] commandBuffer, time in
             guard let self else { return }
             let t = Float(time)
-            let dt = t - self.prevTime
+            let dt = self.frameClock.delta(at: t)
             self.context.beginCompute(commandBuffer: commandBuffer, time: t, deltaTime: dt)
             self.sketch.compute()
             self.context.endCompute()
@@ -109,8 +109,7 @@ private final class SketchRunnerHarness {
         renderer.onDraw = { [weak self] encoder, time in
             guard let self else { return }
             let t = Float(time)
-            let dt = t - self.prevTime
-            self.prevTime = t
+            let dt = self.frameClock.advance(to: t)
             self.context.beginFrame(
                 encoder: encoder, time: t, deltaTime: dt, preciseTime: time
             )
@@ -435,6 +434,36 @@ struct SketchLifecycleTests {
         runner.handleFrameRate(30)
         #expect(runner.renderer?.targetFPS == 30)
         #expect(runner.mtkView?.preferredFramesPerSecond == 30)
+    }
+
+    // 回帰テスト(#793): noLoop() で止めている間も時計（renderer.elapsedTime）は進むが
+    // フレームは発火しないため、再開後の最初のフレームの deltaTime に「止めていた
+    // 実時間まるごと」が乗っていた（0.8 秒止めれば 60fps の 54 倍）。
+    // handleLoop() がフレーム再開の前に時計の起点を寄せ直すことを、
+    // handleFrameRate と同じ形（SketchRunner を単体構築して直接呼ぶ）で確かめる。
+    @Test("handleLoop は再開時にフレーム時刻の起点を現在時刻へ寄せ直す")
+    func handleLoopResyncsFrameClock() throws {
+        let runner = SketchRunner()
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        runner.renderer = renderer
+        runner.mtkView = MetaphorMTKView()
+
+        // t = 0 のフレームを描いた直後に noLoop() したとみなす。
+        _ = runner.frameClock.advance(to: 0)
+        #expect(runner.frameClock.previousTime == 0)
+
+        // 止めている間に時計が 5 秒進んだ状況を作る（clockOffset は elapsedTime に乗る）。
+        renderer.clockOffset = 5.0
+        let elapsedAtResume = Float(renderer.elapsedTime)
+        #expect(elapsedAtResume >= 5.0)
+
+        runner.handleLoop()
+
+        #expect(runner.frameClock.previousTime >= 5.0,
+                "起点が 0 のままだと、再開後の最初の deltaTime に 5 秒が乗る")
+        // 再開直後のフレーム（1/60 秒後）の deltaTime は 1 フレームぶんに収まる。
+        let firstFrameDelta = runner.frameClock.advance(to: elapsedAtResume + 1.0 / 60)
+        #expect(firstFrameDelta < 0.1, "実測 \(firstFrameDelta)s: 止めていた時間が乗っている")
     }
 
     @Test("制御コールバック未配線でも loop/noLoop/redraw/frameRate は no-op")
