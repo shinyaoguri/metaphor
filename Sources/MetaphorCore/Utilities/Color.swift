@@ -151,13 +151,25 @@ public struct Color: Sendable, Equatable {
         }
     }
 
-    /// "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+    /// "#RGB" / "#RRGGBB" / "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+    ///
+    /// 受け付けるのは **3 桁・6 桁・8 桁のみ**で、それ以外の桁数と、16進数字以外を含む文字列は
+    /// `nil` を返します。3 桁は CSS と同じ短縮形として各桁を 2 倍に展開します（"#FFF" は白）。
+    ///
+    /// **4 桁の短縮形は受け付けません。** このライブラリの 8 桁は AARRGGBB（アルファ先頭）で
+    /// CSS の RRGGBBAA と順序が逆なため、4 桁は ARGB とも RGBA とも読めます。どちらに決めても
+    /// もう一方の綴りが黙って別の色になるので、`nil` で綴りの誤りとして返します。
     ///
     /// - Parameter hex: 16進数カラー文字列。"#" プレフィックスは省略可能。
     public init?(hex: String) {
         var str = hex
         if str.hasPrefix("#") { str.removeFirst() }
-        guard let value = UInt32(str, radix: 16) else { return nil }
+        // 桁数だけでは足りない: `UInt32(_:radix:)` は先頭の符号を受けるので "+FFFFF" が 6 桁として
+        // 通ってしまう。全角の "ＦＦＦＦＦＦ" は `isHexDigit` が true になるため `isASCII` も要る。
+        guard str.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
+        // CSS の 3 桁短縮形を展開する（"0AF" → "00AAFF"）。
+        if str.count == 3 { str = String(str.flatMap { [$0, $0] }) }
+        guard str.count == 6 || str.count == 8, let value = UInt32(str, radix: 16) else { return nil }
         self.init(hex: value)
     }
 
