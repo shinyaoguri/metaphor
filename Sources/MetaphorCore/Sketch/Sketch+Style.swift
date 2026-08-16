@@ -352,9 +352,40 @@ extension Sketch {
     ///
     /// - Parameter join: 線の接続スタイル。
     ///
-    /// - Note: ``StrokeJoin/round`` は現在丸くならず、角に欠けが出ます
-    ///   （[#769](https://github.com/shinyaoguri/metaphor/issues/769)）。実行結果の絵は
-    ///   これが直ってから載せます。
+    /// ### 実行結果
+    ///
+    /// 左から ``StrokeJoin/miter``（既定。角を尖らせる）/ ``StrokeJoin/round``
+    /// （半径 `strokeWeight / 2` の弧で丸める）/ ``StrokeJoin/bevel``（平らに落とす）。
+    /// 太い線ほど差が出ます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![strokeJoin(_:) の実行結果](https://i.gyazo.com/7d327109e9183273cabce9fb05601bf5.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       let joins: [StrokeJoin] = [
+    ///           .miter, .round, .bevel
+    ///       ]
+    ///       background(24)
+    ///       noFill()
+    ///       stroke(80, 170, 255)
+    ///       strokeWeight(22)
+    ///       var x: Float = 70
+    ///       for join in joins {
+    ///           strokeJoin(join)
+    ///           beginShape()
+    ///           vertex(x, 240)
+    ///           vertex(x + 45, 120)
+    ///           vertex(x + 90, 240)
+    ///           endShape()
+    ///           x += 140
+    ///       }
+    ///       ```
+    ///    }
+    /// }
     public func strokeJoin(_ join: StrokeJoin) {
         context.strokeJoin(join)
     }

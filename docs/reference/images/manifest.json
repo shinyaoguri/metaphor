@@ -447,6 +447,18 @@
       "url": "https://i.gyazo.com/adb3a1d176e5578166f0633159e709a3.png",
       "sha256": "840888b54557f380b727326d929ee38938da59f58749e547489dbde35ef2b45e"
     },
+    "Sources/MetaphorCore/Sketch/Sketch+Style.swift::strokeJoin(_:)": {
+      "symbol": "strokeJoin(_:)",
+      "snippetHash": "24ef1e21510ba3b84845c6e44ae5185ab847ac976a3a955c5ca89c66dda93b9a",
+      "provenance": {
+        "commit": "e92c3e1e7a09bf796585c8a2cbee9557ca4fb8d2",
+        "dirty": false
+      },
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/7d327109e9183273cabce9fb05601bf5.png",
+      "sha256": "56af1b80d36ad500ae326307ee56b53b5d37bb140cf135db175a3359a0995ad7"
+    },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::strokeWeight(_:)": {
       "symbol": "strokeWeight(_:)",
       "snippetHash": "a08eab9a89bafee380550e5ce4861ba54ecd7a9e6df93972843870d6bf599205",
