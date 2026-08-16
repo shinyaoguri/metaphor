@@ -805,6 +805,25 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `subscript(key: String) -> JSONValue { get set }` -- オブジェクトのキーで値を取得・設定します。オブジェクトでない場合の取得は `.null`。
 - `subscript(index: Int) -> JSONValue { get set }` -- 配列のインデックスで値を取得・設定します。配列でない・範囲外の取得は `.null`。
 
+### `enum KeyCode` -- macOS の仮想キーコード定数の名前空間。
+
+- `static let alt: UInt16` -- Alt キー（``option`` のエイリアス。同じ仮想キーコードを指します）。
+- `static let backspace: UInt16` -- Backspace (Delete) キー。カーソルの手前を消す方。
+- `static let command: UInt16` -- Command キー。
+- `static let control: UInt16` -- Control キー。
+- `static let delete: UInt16` -- Forward Delete キー。カーソルの後ろを消す方。
+- `static let down: UInt16` -- 下矢印キー。
+- `static let enter: UInt16` -- テンキーの Enter キー。
+- `static let escape: UInt16` -- Escape キー。
+- `static let left: UInt16` -- 左矢印キー。
+- `static let option: UInt16` -- Option キー。
+- `static let `return`: UInt16` -- Return キー。
+- `static let right: UInt16` -- 右矢印キー。
+- `static let shift: UInt16` -- Shift キー。
+- `static let space: UInt16` -- Space キー。
+- `static let tab: UInt16` -- Tab キー。
+- `static let up: UInt16` -- 上矢印キー。
+
 ### `enum KeyEventType` -- プラグインに配信されるキーボードイベントの種類
 
 - `case pressed`

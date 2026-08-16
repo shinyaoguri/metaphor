@@ -512,6 +512,15 @@ are skipped with a one-time warning.
 | `LEFT` / `RIGHT` / `UP` / `DOWN` | same names — but they are **arrow-key virtual key codes** (`UInt16`), for use with `keyCode` |
 | `RETURN` / `ENTER` / `TAB` / `SPACE` / `BACKSPACE` / `DELETE` / `ESC` | `RETURN` / `ENTER` / `TAB` / `SPACE` / `BACKSPACE` / `DELETE` / `ESCAPE` |
 | `SHIFT` / `CONTROL` / `ALT` | `SHIFT` / `CONTROL` / `OPTION` (`ALT` is an alias) / `COMMAND` |
+
+> **`import Foundation` and the key-code constants.** Four of them — `RETURN`, `TAB`,
+> `BACKSPACE`, `CONTROL` — collide with macros of the same name in Darwin's `sys/tty.h`,
+> so a sketch that also imports Foundation fails to compile with `ambiguous use of 'RETURN'`.
+> Module-qualifying (`metaphor.RETURN`) does *not* disambiguate, because `metaphor`
+> re-exports Foundation. Use the `KeyCode` namespace instead — `KeyCode.return`,
+> `KeyCode.tab`, `KeyCode.backspace`, `KeyCode.control` — which carries the same values
+> and never collides.
+
 | `CENTER` / `CORNER` / `CORNERS` / `RADIUS` | — no such constants; the mode functions take enums (`.center`, `.corner`, …) |
 | `RGB` / `HSB` | `.rgb` / `.hsb` (`ColorSpace`) |
 | `BLEND` / `ADD` / `MULTIPLY` / `SCREEN` … | `.alpha` / `.additive` / `.multiply` / `.screen` … (`BlendMode`) |
