@@ -132,6 +132,11 @@ extension Sketch {
 
     /// 指定した色でキャンバスをクリアします。
     ///
+    /// **クリアは合成ではなく置き換え**です。`blendMode()` は効かず、α < 1 の背景色は
+    /// 下地と混ざらずにそのまま入ります（`background(0, 0, 0, 0)` はキャンバスを透明に
+    /// 戻します）。前フレームを薄く残したいときは、背景色の `rect()` を画面いっぱいに
+    /// 描いてください（ADR-0012 / #829）。
+    ///
     /// - Parameter color: 背景色。
     public func background(_ color: Color) {
         context.background(color)
