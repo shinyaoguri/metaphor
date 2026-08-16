@@ -70,7 +70,10 @@ extension Canvas2D {
     // テクスチャ頂点バッチのみをフラッシュ（遅延モードでは明示コマンドとして積む。#70 / #71）
     func flushTexturedVertices() {
         guard texturedVertexCount > 0 else { return }
-        let key = pipelineKey(.textured, blend: currentBlendMode)
+        // テクスチャの α の持ち方（premultiplied / straight）で系統が分かれる（#848）。
+        // 蓄積開始時の値は drawTexturedQuad が固定している。
+        let kind: Canvas2DPipelineKind = texturedIsStraightAlpha ? .straightTextured : .textured
+        let key = pipelineKey(kind, blend: currentBlendMode)
         guard pipelineStore.state(for: key) != nil else { return }
         guard let texture = currentBoundTexture else { return }
         guard isDeferring || encoder != nil else { return }

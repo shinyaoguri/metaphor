@@ -8,6 +8,10 @@ extension Sketch {
     /// パック値の作成には `color()` を使用します。`pixels[y * Int(width) + x]` でインデックスアクセスします。
     ///
     /// アクセス前に ``loadPixels()``、書き込み後に ``updatePixels()`` を呼び出してください。
+    ///
+    /// 色は **straight alpha**（`fill()` や `color()` と同じ、α を掛ける前の値）です。
+    /// 半透明の画素を読んでも色が沈まず、読んだ値をそのまま書き戻せば絵は変わりません
+    /// （ADR-0012 / #848）。
     public var pixels: UnsafeMutableBufferPointer<UInt32> {
         guard let pb = context.pixelBuffer else {
             return UnsafeMutableBufferPointer(start: nil, count: 0)

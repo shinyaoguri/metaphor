@@ -623,6 +623,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let canvas2DInstancedFragment: String` -- Canvas2D インスタンス描画フラグメントシェーダーのMSL関数名。
 - `static let canvas2DInstancedVertex: String` -- Canvas2D インスタンス描画頂点シェーダーのMSL関数名。
 - `static let canvas2DPreamble: String` -- カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
+- `static let canvas2DStraightTexturedFragment: String` -- Canvas2D straight alpha テクスチャ用フラグメントシェーダーのMSL関数名。
 - `static let canvas2DStructs: String` -- カスタム 2D フラグメントシェーダが受け取る stage_in と uniform の MSL 定義。
 - `static let canvas2DTexturedDifferenceFragment: String` -- Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
 - `static let canvas2DTexturedExclusionFragment: String` -- Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。
