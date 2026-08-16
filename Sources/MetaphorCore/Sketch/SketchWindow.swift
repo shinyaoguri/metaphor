@@ -472,7 +472,8 @@ public final class SketchWindow {
     ///
     /// - Note: `MetaphorRenderer.resizeCanvas` はインフライトフレームを枯らすため
     ///   `inflightSemaphore` を 3 つ取りに行きます。この窓自身の描画クロージャの**中**から
-    ///   呼ぶと、そのフレームが 1 つ掴んだままなので待たされます。プライマリの `setup()` から
+    ///   呼ぶと、そのフレームが 1 つ掴んだままで取り切れないので、`SketchContext.createCanvas`
+    ///   が警告を出して弾きます（#856）。プライマリの `setup()` から
     ///   `window.context.createCanvas(...)` と呼ぶのが安全な呼び出し位置です（#828 と同じ性質）。
     ///
     /// - Parameters:

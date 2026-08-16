@@ -1403,6 +1403,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let input: InputManager` -- キーボードとマウスイベント処理用の入力マネージャー
 - `var isOfflineRendering: Bool` -- 決定論的フレームタイミングのオフラインレンダリングモードを有効化
 - `var isPostProcessAvailable: Bool { get }` -- ポストプロセスエフェクトが利用可能かどうかを示す
+- `var isRenderingFrame: Bool { get }` -- いま ``renderFrame()`` の内側か（= `draw()` が走っている最中か）。
 - `var lastGPUEndTime: Double { get }` -- 最後に完了したフレームの GPU 終了タイムスタンプ（秒）
 - `var lastGPUStartTime: Double { get }` -- 最後に完了したフレームの GPU 開始タイムスタンプ（秒）
 - `var offlineDeltaTime: Double { get }` -- オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。

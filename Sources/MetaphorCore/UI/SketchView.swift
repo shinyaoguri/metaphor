@@ -195,7 +195,7 @@ public struct SketchView: NSViewRepresentable {
             // 描画コールバックを構成する前に sketch.setup() を呼ぶのと同じ位置づけ。
             // createCanvas() が通る MetaphorRenderer.resizeCanvas はインフライトフレームを
             // 枯らすため inflightSemaphore を 3 つ取りに行くので、renderFrame() が 1 つ
-            // 掴んだままのフレーム中に呼ぶと 5 秒スタックしてタイムアウトする。
+            // 掴んだままのフレーム中では成立しない（フレーム中の呼び出しは #856 で弾くようにした）。
             //
             // ただし setup() 内の noLoop() をそのまま効かせると 1 フレームも描かれないまま
             // 止まるので、SketchRunner.setupCore と同じくハンドラを一時的に外し、

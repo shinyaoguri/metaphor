@@ -127,10 +127,24 @@ public final class SketchContext {
     var onCreateCanvas: ((Int, Int) -> Void)?
 
     /// キャンバスサイズを設定します（セットアップ中に呼び出してください）。
+    ///
+    /// - Important: `draw()` の**中**からの呼び出しは警告を出して無視されます（#856）。
+    ///   リサイズは全インフライトフレームのドレインを伴うので、そのフレーム自身が
+    ///   スロットを握ったまま呼ぶと成立しません。ここで弾かずに先へ進めると、リサイズ
+    ///   だけ飛んで `Canvas2D` / `Canvas3D` の作り直しと窓の追随だけが起きるため、
+    ///   描画途中のフレームがエンコーダを持たない新品のキャンバスへ落ちて消えます。
+    ///
     /// - Parameters:
     ///   - width: キャンバスの幅（ピクセル単位）。
     ///   - height: キャンバスの高さ（ピクセル単位）。
     public func createCanvas(width: Int, height: Int) {
+        guard !renderer.isRenderingFrame else {
+            metaphorWarning(
+                "createCanvas(\(width), \(height)) ignored: it cannot run inside draw(). "
+                + "Call it from setup() instead."
+            )
+            return
+        }
         onCreateCanvas?(width, height)
     }
 
