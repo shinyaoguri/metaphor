@@ -546,7 +546,7 @@ extension SketchContext {
         canvas.textLeading(leading)
     }
 
-    /// 文字列のレンダリング幅を計算します。
+    /// 文字列の幅（1 文字ずつの advance の合計）を計算します。
     /// - Parameter string: 計測するテキスト。
     /// - Returns: 幅（ピクセル単位）。
     public func textWidth(_ string: String) -> Float {
