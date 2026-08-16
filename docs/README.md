@@ -53,8 +53,9 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 
 - **英語で提供する**: [README.en.md](../README.en.md)（60 秒スタート・Getting Started を含む入口。README.md と相互リンク）、`Examples/**` のコード内コメント、`docs/ai/examples-index.md` の description（生成元の example メタデータは英語）、[docs/README.en.md](README.en.md)（本ページの英語版。Issue #337）、[permissions.md](permissions.md)・[Examples/LEARNING_PATH.md](../Examples/LEARNING_PATH.md)・[processing-migration-guide.md](processing-migration-guide.md)（新設・英語のみ）
 - **日本語のまま**（翻訳しない）: [adr/](adr/) 全体（設計判断の記録。ADR 全訳は非目標）、[design/](design/)、[CLAUDE.md](../CLAUDE.md)・[ai/README.md](ai/README.md) などの開発者・エージェント向け内部ドキュメント
-- **今後の弾**: 第 2 弾 = 公開 API doc コメントの英語化（cli #86 と相乗）、第 3 弾 = website（#74）。着手時に起票
-- **日本語ファースト・英語は後追い**: [tutorial/](tutorial/)（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。本文が溜まってから英語版を起票します
+- **英語が正典・日本語は生成物**: API リファレンス（公開 API の doc コメントと `.docc` 記事）。英語版を `/reference/`、機械翻訳した日本語版を `/reference/ja/` へ並べます（[ADR-0011](adr/0011-docc-english-canon-japanese-generated.md)）。日本語は `docs/reference/i18n/ja.json` を当てた生成物なので**手で書きません**。doc コメント自体の英語化は [#334](https://github.com/shinyaoguri/metaphor/issues/334) が進行中で、訳の無い箇所は英語のまま出ます
+- **今後の弾**: 第 3 弾 = website（#74）。着手時に起票
+- **日本語ファースト・英語は後追い**: [tutorial/](tutorial/)（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。本文が溜まってから英語版を起票します。リファレンスとは向きが逆で、こちらは**本文が正典**なので機械翻訳では出しません
 
 ## 真実の在処（どれが正か）
 

@@ -28,8 +28,16 @@ export function otherLang(lang: Lang): Lang {
  * 導線の呼称は「リファレンス / Reference」。チュートリアルもドキュメントなので
  * 「ドキュメント」では並列の選択肢にならず、指しているのは型やメソッドを引く場所
  * だから（#530。README と p5.js の Reference もこの語）。
+ *
+ * 日本語版は `/reference/ja/` に同じ構造で並ぶ（ADR-0011）。英語の doc コメントが
+ * 正典で、日本語は台帳を当てた生成物。読者を入口で取り違えないよう、サイトの言語
+ * に合わせて入口を出し分ける（リファレンス内での切り替えは DocC 側のヘッダーが担う）。
  */
-export const referenceUrl = `${base}/reference/documentation/metaphor/`;
+export function referenceUrlFor(lang: Lang): string {
+  return lang === 'ja'
+    ? `${base}/reference/ja/documentation/metaphor/`
+    : `${base}/reference/documentation/metaphor/`;
+}
 export const githubUrl = 'https://github.com/shinyaoguri/metaphor';
 export const examplesUrl = 'https://github.com/shinyaoguri/metaphor/tree/main/Examples';
 /** チュートリアル本文の正典（website はここを content collection として読む）。 */

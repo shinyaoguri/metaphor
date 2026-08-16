@@ -1,5 +1,5 @@
 ---
-import { getContent, referenceUrl, githubUrl, homeFor, otherLang, type Lang } from '../i18n/ui';
+import { getContent, referenceUrlFor, githubUrl, homeFor, otherLang, type Lang } from '../i18n/ui';
 import { tutorialIndexHref } from '../lib/tutorial';
 
 interface Props { lang: Lang; }
@@ -19,7 +19,7 @@ const other = otherLang(lang);
       <a href={tutorialIndexHref(lang)} class="transition-colors hover:text-text">
         {t.nav.tutorial}
       </a>
-      <a href={referenceUrl} class="transition-colors hover:text-text">{t.footer.reference}</a>
+      <a href={referenceUrlFor(lang)} class="transition-colors hover:text-text">{t.footer.reference}</a>
       <a href={homeFor(other)} class="transition-colors hover:text-text">{t.nav.toggleLabel}</a>
       <a
         href={githubUrl}

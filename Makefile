@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
 
 # Default target
 all: setup build
@@ -181,13 +181,44 @@ lint-workflows:
 # Uses manual symbol graph extraction to work around SPM binary target issue
 # base path は公開時と同じ /metaphor/reference/（DocC は baseUrl を出力へ焼き込む
 # ので、ここが CI とずれるとローカルでは気付けない不具合になる — Issue #529）
+# 日本語版は同じ骨格を /metaphor/reference/ja/ へもう一度出す（DOCC_BASE_PATH）。
+DOCC_CATALOG ?= Sources/metaphor/metaphor.docc
+DOCC_BASE_PATH ?= metaphor/reference
+DOCC_OUTPUT ?= .build/docs
+
+# header.html（言語切替）は --experimental-enable-custom-templates が無いと注入されない。
 docs: symbol-graphs
 	@echo "Building DocC documentation..."
-	xcrun docc convert Sources/metaphor/metaphor.docc \
+	xcrun docc convert $(DOCC_CATALOG) \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
-		--hosting-base-path metaphor/reference \
-		--output-path .build/docs
+		--experimental-enable-custom-templates \
+		--hosting-base-path $(DOCC_BASE_PATH) \
+		--output-path $(DOCC_OUTPUT)
+
+# Build the Japanese reference (ADR-0011)
+# 英語の doc コメントが正典で、日本語は台帳 docs/reference/i18n/ja.json を当てた生成物。
+# 訳が無い箇所は英語のまま残る（落とさない）ので、#334 の英語化が進むほど日本語化も進む。
+# DocC が読むヘッダーはカタログ直下の header.html 1 本きりなので、カタログを複製して
+# 日本語版のヘッダーへ差し替えてから convert する。
+# カタログの**ディレクトリ名がドキュメントのルート名になる**ので、複製先でも
+# metaphor.docc の名前を保つ（metaphor-ja.docc にすると日本語版だけ
+# /ja/documentation/metaphor-ja/ に出て、英語版とのパスの 1:1 対応が壊れる）。
+docs-ja:
+	@rm -rf .build/ja-catalog
+	@mkdir -p .build/ja-catalog
+	@cp -R $(DOCC_CATALOG) .build/ja-catalog/$(notdir $(DOCC_CATALOG))
+	@cp docs/reference/i18n/header.ja.html .build/ja-catalog/$(notdir $(DOCC_CATALOG))/header.html
+	@$(MAKE) docs DOCC_CATALOG=.build/ja-catalog/$(notdir $(DOCC_CATALOG)) \
+		DOCC_BASE_PATH=metaphor/reference/ja DOCC_OUTPUT=.build/docs-ja
+	@python3 scripts/translate-reference.py --apply --docs-dir .build/docs-ja
+
+# Update the Japanese reference ledger
+# 既定は未訳の書き出し（何で訳しても良い → --import で戻す）。
+# ARGS="--engine google" なら Cloud Translation で直接埋める（GOOGLE_API_KEY が要る）。
+reference-i18n: docs
+	@python3 scripts/translate-reference.py --docs-dir .build/docs \
+		--export .build/reference-untranslated.json $(ARGS)
 
 # Preview DocC documentation locally
 docs-preview: symbol-graphs
@@ -266,6 +297,8 @@ help:
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make docs           - Build DocC documentation"
+	@echo "  make docs-ja        - Build the Japanese reference from the ledger (ADR-0011)"
+	@echo "  make reference-i18n - Export untranslated reference strings (ARGS=\"--engine google\")"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
 	@echo "  make examples       - Run examples in parallel (10 workers)"
 	@echo "  make examples-seq   - Run examples sequentially (interactive)"
