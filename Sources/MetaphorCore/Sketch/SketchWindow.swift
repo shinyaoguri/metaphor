@@ -227,16 +227,12 @@ public final class SketchWindow {
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
 
-        let windowRect = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
-        let win = NSWindow(
-            contentRect: windowRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
+        // 生成は SketchWindowFactory へ集約（isReleasedWhenClosed = false を含む。#835）。
+        let win = SketchWindowFactory.makeWindow(
+            contentSize: NSSize(width: windowWidth, height: windowHeight),
+            title: config.title,
+            aspectRatio: NSSize(width: config.width, height: config.height)
         )
-        win.title = config.title
-        win.contentAspectRatio = NSSize(width: config.width, height: config.height)
-        win.center()
 
         // ウィンドウを重ならないようにカスケード
         let offset = CGFloat(30 * SketchWindow.windowCounter)
