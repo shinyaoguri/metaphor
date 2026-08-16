@@ -269,7 +269,14 @@ class Snippet:
         return settings
 
     def fingerprint(self, config: dict) -> str:
-        """スニペットと撮影設定の指紋。どちらが変わっても撮り直しが要る。"""
+        """スニペットと撮影設定の指紋。どちらが変わっても撮り直しが要る。
+
+        材料に入れてよいのは**絵に影響する設定だけ**です。`layout` を外しているのと
+        同じ理由で（並べ方を変えただけで全点が stale になる）、撮影の段取りだけを
+        変える knob をここへ混ぜてはいけません。混ぜると、その knob を足した日にも
+        外した日にも全点の指紋が動き、絵が 1 枚も変わっていないのに台帳の移行か
+        全点の撮り直しが要ります（実際に `settle` で踏んだ — #784）。
+        """
         material = json.dumps(
             {"code": self.code, "settings": self.settings(config)},
             ensure_ascii=False,
