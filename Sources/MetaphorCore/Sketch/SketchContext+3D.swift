@@ -972,36 +972,26 @@ extension SketchContext {
     }
 
     /// GIF 記録を終了しファイルに書き出します。
-    /// - Parameter path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    /// - Parameter path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
     ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
     ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
     ///   書き出しに失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``。
     public func endGIFRecord(_ path: String? = nil) throws {
-        let actualPath: String
-        if let path {
-            actualPath = path
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
-        }
+        let actualPath = MetaphorOutputPaths.recording(
+            path, fileExtension: "gif", timestamp: MetaphorOutputPaths.timestamp())
         renderer.onCaptureOutput = nil
         try gifExporter.endRecord(to: actualPath)
     }
 
     /// GIF 記録を終了しバックグラウンドスレッドで非同期にファイルを書き出します。
-    /// - Parameter path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    /// - Parameter path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。ケースは ``endGIFRecord(_:)`` と同じです。
     public func endGIFRecordAsync(_ path: String? = nil) async throws {
-        let actualPath: String
-        if let path {
-            actualPath = path
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
-        }
+        let actualPath = MetaphorOutputPaths.recording(
+            path, fileExtension: "gif", timestamp: MetaphorOutputPaths.timestamp())
         renderer.onCaptureOutput = nil
         try await gifExporter.endRecordAsync(to: actualPath)
     }
