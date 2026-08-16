@@ -1005,3 +1005,172 @@ struct Canvas3DUnitMeshCacheTests {
                 "寸法アニメーションでメッシュキャッシュが増殖しない (count: \(canvas3D.meshCacheCountForTesting))")
     }
 }
+
+// MARK: - シェイプ定義中の fill(gray) / stroke(gray) が colorMode を通る（#853）
+//
+// `MShapeBuilder` の gray 版は `gray / 255` と α リテラル 1 を直に書いており、
+// 本線（`CanvasStyleProtocol` の `colorModeConfig.toGray()`）と結果が食い違っていた。
+// 同じ `fill(128)` が MShape の中と外で別の色になり、`colorMode(.rgb, 1.0)` では
+// 差が最大（0.5 が 0.00196 = ほぼ黒）になる。
+
+@Suite("MShape builder color mode", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeBuilderColorModeTests {
+
+    let device = MTLCreateSystemDefaultDevice()!
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        return SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+    }
+
+    private func expectClose(
+        _ actual: SIMD4<Float>, _ expected: SIMD4<Float>,
+        _ label: String, sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+        let d = abs(actual - expected)
+        #expect(d.max() < 0.001, "\(label): got \(actual), want \(expected)",
+                sourceLocation: sourceLocation)
+    }
+
+    // MARK: 既定（rgb 0-255）は今までどおり
+
+    @Test("the default 0-255 range keeps its existing result")
+    func defaultRangeUnchanged() throws {
+        let ctx = try makeContext()
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(128)
+        s.stroke(64)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 1), "fill")
+        expectClose(s.capturedStyle.strokeColor, SIMD4(64 / 255, 64 / 255, 64 / 255, 1), "stroke")
+    }
+
+    // MARK: colorMode のレンジを通る
+
+    @Test("fill(gray) follows colorMode(.rgb, 1.0)")
+    func fillFollowsUnitRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(0.5)
+        s.endShape()
+
+        // 直すまでは 0.5 / 255 = 0.00196（ほぼ黒）だった
+        expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
+        #expect(s.capturedStyle.hasFill)
+    }
+
+    @Test("stroke(gray) follows colorMode(.rgb, 1.0)")
+    func strokeFollowsUnitRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.stroke(0.25)
+        s.endShape()
+
+        expectClose(s.capturedStyle.strokeColor, SIMD4(0.25, 0.25, 0.25, 1), "stroke")
+        #expect(s.capturedStyle.hasStroke)
+    }
+
+    @Test("gray is measured against max1, whatever the color space is")
+    func grayUsesFirstChannelMax() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100, 1)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(180)
+        s.endShape()
+
+        // toGray は space を見ず gray / max1 を取る（本線と同じ）
+        expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
+    }
+
+    @Test("the shape and the sketch agree on the same gray value")
+    func shapeMatchesCanvas() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        ctx.fill(0.75)
+
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(0.75)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, ctx.canvas.fillColor, "shape vs canvas")
+    }
+
+    // MARK: α（#853 の「α をリテラル 1 で固定」）
+
+    @Test("fill(gray, alpha) carries the alpha through")
+    func fillWithAlpha() throws {
+        let ctx = try makeContext()
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(128, 64)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 64 / 255), "fill")
+    }
+
+    @Test("stroke(gray, alpha) carries the alpha through")
+    func strokeWithAlpha() throws {
+        let ctx = try makeContext()
+        let s = ctx.createShape()
+        s.beginShape()
+        s.stroke(255, 0)
+        s.endShape()
+
+        expectClose(s.capturedStyle.strokeColor, SIMD4(1, 1, 1, 0), "stroke")
+    }
+
+    @Test("alpha follows its own colorMode range")
+    func alphaFollowsItsOwnRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 255, 255, 255, 1)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(128, 0.5)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 0.5), "fill")
+    }
+
+    // MARK: 境界値
+
+    @Test("a shape built without a sketch context keeps the 0-255 default")
+    func withoutContextUsesDefault() {
+        // テストやライブラリ内部が直接組む MShape は colorMode を写す相手がいない。
+        // 既定の ColorModeConfig（rgb 0-255）で解釈されること。
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.fill(255)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(1, 1, 1, 1), "fill")
+    }
+
+    @Test("the color mode is the one in effect when the shape was created")
+    func capturedAtCreationTime() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        let s = ctx.createShape()
+
+        // 作成後にスケッチ側を戻しても、このシェイプは作成時のレンジで解釈し続ける
+        // （fill / stroke / material と同じ「createShape() 時点のスナップショット」）
+        ctx.colorMode(.rgb, 255)
+        s.beginShape()
+        s.fill(0.5)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
+    }
+}
