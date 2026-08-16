@@ -372,6 +372,10 @@ extension MShape {
                 i += 3
             }
         case .triangleStrip:
+            // 三角形 1 枚に足りない頂点数は `count - 2` が負になり、Range の生成でトラップする。
+            // 塗る面が作れないだけなのでインデックスを空のままにする（2D 側の
+            // `tessellateTriangleStrip2D()` と同じガード。#881）。
+            guard vertices3D.count >= 3 else { break }
             for i in 0..<(vertices3D.count - 2) {
                 if i % 2 == 0 {
                     indices.append(contentsOf: [UInt32(i), UInt32(i + 1), UInt32(i + 2)])
@@ -380,6 +384,8 @@ extension MShape {
                 }
             }
         case .triangleFan:
+            // 同上（2D 側の `tessellateTriangleFan2D()` と同じガード。#881）。
+            guard vertices3D.count >= 3 else { break }
             for i in 1..<(vertices3D.count - 1) {
                 indices.append(contentsOf: [0, UInt32(i), UInt32(i + 1)])
             }
