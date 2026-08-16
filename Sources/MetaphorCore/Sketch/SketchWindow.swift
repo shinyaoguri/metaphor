@@ -112,6 +112,9 @@ public final class SketchWindow {
     ///     揃えます（#836）。
     ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか。既定は環境変数
     ///     `METAPHOR_VIEWER` からの解決（テストからの注入用に引数化している）。
+    /// - Throws: ``SketchWindowConfig/windowScale`` が 0 以下のとき
+    ///   ``MetaphorError/invalidParameter(_:)``。キャンバス寸法が範囲外のときは
+    ///   ``MetaphorRenderer`` 経由で ``MetaphorError/textureCreationFailed(width:height:format:)``。
     init(
         config: SketchWindowConfig,
         sharedResources: SharedMetalResources,
@@ -119,6 +122,15 @@ public final class SketchWindow {
         clockOffset: Double = 0,
         isHeadless: Bool = SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
     ) throws {
+        // windowScale の検証（#842）。0 だと 0×0 pt のウィンドウが「開いている」ことになり、
+        // 見えないのに isOpen == true のまま残る。キャンバス側（テクスチャ）の寸法は
+        // 正常なので TextureManager のガードには掛からず、ここでしか止められない。
+        guard config.windowScale > 0 else {
+            throw MetaphorError.invalidParameter(
+                "windowScale must be greater than 0 (got \(config.windowScale))"
+            )
+        }
+
         self.config = config
         self.cascadeIndex = cascadeIndex
         self.isHeadless = isHeadless
