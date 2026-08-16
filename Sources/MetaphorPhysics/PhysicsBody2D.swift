@@ -45,11 +45,20 @@ public final class PhysicsBody2D {
     public var isStatic: Bool = false
 
     /// The coefficient of restitution (bounciness). Range is [0, 1].
+    ///
+    /// The smaller value of the two touching bodies is used. Contacts slower
+    /// than the approach speed gravity adds in a single step are treated as
+    /// perfectly inelastic, so resting bodies settle instead of jittering.
+    /// World ``Physics2D/bounds`` are unaffected — see their documentation.
     public var restitution: Float = 0.5 {
         didSet { restitution = Self.clampedUnit(restitution) }
     }
 
     /// The friction coefficient applied on contact.
+    ///
+    /// The average of the two touching bodies is used, and it bounds the
+    /// tangential impulse as a fraction of the normal impulse (Coulomb):
+    /// `0` slides freely, `1` sheds the tangential motion of the contact.
     public var friction: Float = 0.1 {
         didSet { friction = Self.clampedUnit(friction) }
     }
@@ -94,6 +103,11 @@ public final class PhysicsBody2D {
     }
 
     /// The body's current velocity, derived from the Verlet position difference.
+    ///
+    /// The unit is displacement **per step**, not per second: a body moving
+    /// `8` covers 8 units in every ``Physics2D/step(_:iterations:)`` call.
+    /// Give a body an initial velocity by offsetting ``previousPosition``
+    /// (`previousPosition = position - velocity`); there is no setter.
     public var velocity: SIMD2<Float> {
         position - previousPosition
     }
