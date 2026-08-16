@@ -52,7 +52,8 @@ public final class TextureManager {
     ///   - depthFormat: デプステクスチャのピクセルフォーマット
     ///   - clearColor: レンダーパスのクリアカラー
     ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
-    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
+    /// - Throws: 幅・高さが 1 未満の場合、およびテクスチャを作成できなかった場合
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``
     public init(
         device: MTLDevice,
         width: Int,
@@ -62,6 +63,14 @@ public final class TextureManager {
         clearColor: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1),
         sampleCount: Int = 4
     ) throws {
+        // 寸法の検証: 0 以下は Metal へ渡す前に止める（#798）。
+        // MTLTextureDescriptor は退化サイズを makeTexture の nil で返さず
+        // `validateWithDevice:` のアサーションでプロセスを終了させるため、
+        // ここを通してしまうと throws でも Optional でも失敗を拾えない。
+        guard width > 0, height > 0 else {
+            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
+        }
+
         self.device = device
         self.width = width
         self.height = height

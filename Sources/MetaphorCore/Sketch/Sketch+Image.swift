@@ -133,9 +133,9 @@ extension Sketch {
     /// 指定したサイズの空白画像を作成します。
     ///
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。
-    ///   - height: 画像の高さ（ピクセル単位）。
-    /// - Returns: 新しい空白画像。作成に失敗した場合は `nil`。
+    ///   - width: 画像の幅（ピクセル単位）。1 以上。
+    ///   - height: 画像の高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい空白画像。作成に失敗した場合（幅・高さが 1 未満を含む）は `nil`。
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         context.createImage(width, height)
     }
@@ -183,9 +183,10 @@ extension Sketch {
     /// 2D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい ``Graphics`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい ``Graphics`` インスタンス。作成に失敗した場合
+    ///   （幅・高さが 1 未満を含む）は `nil`。
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
         context.createGraphics(w, h)
     }
@@ -193,9 +194,10 @@ extension Sketch {
     /// 3D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい ``Graphics3D`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい ``Graphics3D`` インスタンス。作成に失敗した場合
+    ///   （幅・高さが 1 未満を含む）は `nil`。
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         context.createGraphics3D(w, h)
     }

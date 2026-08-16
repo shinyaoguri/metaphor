@@ -259,9 +259,9 @@ extension SketchContext {
 
     /// ピクセル操作用の空の画像を作成します。
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。
-    ///   - height: 画像の高さ（ピクセル単位）。
-    /// - Returns: 新しい空白画像。失敗時は nil。
+    ///   - width: 画像の幅（ピクセル単位）。1 以上。
+    ///   - height: 画像の高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい空白画像。失敗時（幅・高さが 1 未満を含む）は nil。
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         guard width > 0, height > 0 else {
             metaphorWarning("createImage: dimensions must be positive (got \(width)x\(height))")
@@ -296,10 +296,14 @@ extension SketchContext {
     /// ```
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい Graphics インスタンス。失敗時は nil。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい Graphics インスタンス。失敗時（幅・高さが 1 未満を含む）は nil。
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
+        guard w > 0, h > 0 else {
+            metaphorWarning("createGraphics: dimensions must be positive (got \(w)x\(h))")
+            return nil
+        }
         let graphics = try? Graphics(
             device: renderer.device,
             commandQueue: renderer.commandQueue,
@@ -318,10 +322,14 @@ extension SketchContext {
 
     /// オフスクリーン 3D 描画バッファを作成します。
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい Graphics3D インスタンス。失敗時は nil。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい Graphics3D インスタンス。失敗時（幅・高さが 1 未満を含む）は nil。
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
+        guard w > 0, h > 0 else {
+            metaphorWarning("createGraphics3D: dimensions must be positive (got \(w)x\(h))")
+            return nil
+        }
         let graphics = try? Graphics3D(
             device: renderer.device,
             commandQueue: renderer.commandQueue,
