@@ -139,7 +139,9 @@ fragment float4 metaphor_postBloomExtract(
     float4 color = tex.sample(s, in.texCoord);
     float brightness = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
     float contribution = max(0.0, brightness - params.threshold) / max(brightness, 0.001);
-    return float4(color.rgb * contribution, 1.0);
+    // α は素通し。premultiplied な入力の rgb だけを弱めるので結果も premultiplied のまま
+    // （ADR-0012）。1.0 に固定すると透明な領域まで不透明を名乗る（#849）
+    return float4(color.rgb * contribution, color.a);
 }
 
 // MARK: - Bloom Composite
