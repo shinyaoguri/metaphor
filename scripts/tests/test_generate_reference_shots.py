@@ -5,7 +5,7 @@ Run from the repository root:
 
     python3 -m unittest discover -s scripts/tests
 
-確かめるのは、撮影（GPU・ネットワーク・Gyazo トークンが要る）を除いた 5 つ。
+確かめるのは、GPU とネットワークと Gyazo トークンが要らない 6 つ。
 
 - **抽出** — doc コメントから撮影対象を拾い、宣言から DocC と同じシンボル表記を作る。
   ここが狂うと、別のシンボルのページに絵が出る
@@ -16,12 +16,17 @@ Run from the repository root:
 - **台帳の掃除** — `--only` で絞っているときは掃除しない。絞ったまま掃除すると、
   視界の外のエントリを「消えたスニペット」と取り違えて台帳ごと消す（実際に踏んだ）
 - **鮮度検査** — コードを変えたら赤くなり、URL がずれても赤くなる
+- **撮影の段取り** — 本番のリクエストを**起動前**に置く（#784）。絵そのものは GPU が
+  要るので撮れないが、「いつリクエストを置くか」は偽の Probe で確かめられる。ここが
+  ずれると、動きのスニペットは実行ごとに違う位相から撮れて撮り直しが毎回別物になる
 """
 
 import importlib.util
+import io
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -345,6 +350,228 @@ class ReferenceShotsTestCase(unittest.TestCase):
 
     def test_check_reports_missing_image(self):
         self.assertEqual(shots.check(self.extract(), {}, {}), 1)
+
+
+class FakeSketch:
+    """`swift run <target>` の代わり。`request.json` に応えるだけの最小 Probe。
+
+    **置かれたリクエストが何であっても同じように応える**ので、テストの主張
+    （＝どのリクエストを、いつ置いたか）だけが結果を分ける。撮影側が下見を挟んでも
+    挟まなくても素通しするため、直っていない実装はタイムアウトではなく主張の失敗で
+    落ちる。
+    """
+
+    POLL_SEC = 0.01
+
+    def __init__(self, probe_dir: Path) -> None:
+        self.probe_dir = probe_dir
+        # 起動時点と終了時点の request.json。撮影側が起動後に置き直したかが分かる。
+        self.request_at_launch = self._read_request()
+        self.request_at_exit: dict | None = None
+        self.returncode: int | None = None
+        self.stdin = None
+        self.stderr = None
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    # --- subprocess.Popen として振る舞う ---------------------------------------
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def terminate(self) -> None:
+        self.request_at_exit = self._read_request()
+        self._stop.set()
+        self.returncode = 0
+
+    def kill(self) -> None:
+        self.terminate()
+
+    def wait(self, timeout: float | None = None) -> int | None:
+        self._thread.join(timeout)
+        return self.returncode
+
+    # --- 最小 Probe -----------------------------------------------------------
+
+    def _read_request(self) -> dict | None:
+        path = self.probe_dir / "request.json"
+        if not path.is_file():
+            return None
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _serve(self) -> None:
+        handled: set[str] = set()
+        while not self._stop.wait(self.POLL_SEC):
+            request = self._read_request()
+            if request is None or request["id"] in handled:
+                continue
+            handled.add(request["id"])
+            if (request.get("frames") or 1) >= 2:
+                self._write_sequence(request)
+            else:
+                self._write_frame(request)
+
+    def _write_frame(self, request: dict) -> None:
+        current = self.probe_dir / "current"
+        current.mkdir(parents=True, exist_ok=True)
+        (current / "frame.png").write_bytes(b"png")
+        (current / "frame.json").write_text(
+            json.dumps({"id": request["id"], "size": {"width": 480, "height": 360}}),
+            encoding="utf-8",
+        )
+
+    def _write_sequence(self, request: dict) -> None:
+        directory = self.probe_dir / "current/sequence"
+        directory.mkdir(parents=True, exist_ok=True)
+        frames = [
+            {"index": index, "file": f"frame.{index:04d}.png"}
+            for index in range(request["frames"])
+        ]
+        # 完了規約: sequence.json が最後（CONTRACT.md 契約点 4）。
+        (directory / "sequence.json").write_text(
+            json.dumps(
+                {
+                    "id": request["id"],
+                    "frameCount": len(frames),
+                    "every": request.get("every", 1),
+                    "size": {"width": 480, "height": 360},
+                    "frames": frames,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+
+class DeadSketch:
+    """起動直後に落ちたスケッチ。撮影側が待ち続けずに諦めることの確認用。"""
+
+    def __init__(self, message: str = "Fatal error: no Metal device") -> None:
+        self.returncode = 1
+        self.stdin = None
+        self.stderr = io.StringIO(message)
+
+    def poll(self) -> int:
+        return self.returncode
+
+    def terminate(self) -> None:
+        pass
+
+    def kill(self) -> None:
+        pass
+
+    def wait(self, timeout: float | None = None) -> int:
+        return self.returncode
+
+
+class CaptureTestCase(unittest.TestCase):
+    """撮影の段取り（#784）。
+
+    動きのスニペットは `rotate(Float(frameCount) * 0.02)` のように frameCount で
+    駆動する。撮り始めのフレームが実行ごとに変わると全フレームの位相がずれ、同じ
+    コードを撮り直すだけで別の GIF になる（＝ #781 の鮮度照合が成り立たない）。
+    撮り始めを固定する唯一の方法は、本番のリクエストを**起動前**に置くこと。
+    """
+
+    def setUp(self) -> None:
+        self.work = Path(tempfile.mkdtemp(prefix="reference-shots-capture-"))
+        self._saved = {
+            "REPO_ROOT": shots.REPO_ROOT,
+            "WORK_DIR": shots.WORK_DIR,
+            "STAGING_DIR": shots.STAGING_DIR,
+            "CAPTURE_TIMEOUT_SEC": shots.CAPTURE_TIMEOUT_SEC,
+            "POLL_INTERVAL_SEC": shots.POLL_INTERVAL_SEC,
+            "collect_sequence": shots.collect_sequence,
+            "Popen": shots.subprocess.Popen,
+        }
+        shots.REPO_ROOT = self.work
+        shots.WORK_DIR = self.work / "build"
+        shots.STAGING_DIR = shots.WORK_DIR / "staging"
+        # 段取りが崩れていても待たずに落とす（既定は 120 秒）。
+        shots.CAPTURE_TIMEOUT_SEC = 5.0
+        shots.POLL_INTERVAL_SEC = 0.01
+        # 連番から GIF を作るところは ffmpeg が要るので、ここでは通らない。
+        shots.collect_sequence = lambda *args, **kwargs: {"width": 480, "height": 360}
+
+        self.probe_dir = shots.WORK_DIR / ".metaphor/probe"
+        self.launched: list[FakeSketch] = []
+        shots.subprocess.Popen = self._popen
+
+    def tearDown(self) -> None:
+        shots.REPO_ROOT = self._saved["REPO_ROOT"]
+        shots.WORK_DIR = self._saved["WORK_DIR"]
+        shots.STAGING_DIR = self._saved["STAGING_DIR"]
+        shots.CAPTURE_TIMEOUT_SEC = self._saved["CAPTURE_TIMEOUT_SEC"]
+        shots.POLL_INTERVAL_SEC = self._saved["POLL_INTERVAL_SEC"]
+        shots.collect_sequence = self._saved["collect_sequence"]
+        shots.subprocess.Popen = self._saved["Popen"]
+
+    def _popen(self, *args, **kwargs) -> FakeSketch:
+        process = FakeSketch(self.probe_dir)
+        self.launched.append(process)
+        return process
+
+    def _snippet(self) -> object:
+        return shots.Snippet(
+            self.work / "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift",
+            "rotate(_:)",
+            ["rotate(Float(frameCount) * 0.02)"],
+            0,
+            0,
+            "    ",
+        )
+
+    def test_motion_places_the_real_request_before_launch(self):
+        """動きでも起動前に本番を置く（下見を待って置き直さない）。
+
+        置き直すまでのあいだもスケッチは進むので、起動後に置くと撮り始めの
+        frameCount が実行ごとに変わる。
+        """
+        snippet = self._snippet()
+        settings = snippet.settings(
+            {snippet.key: {"motion": {"frames": 6, "every": 2, "fps": 15}}}
+        )
+        shots.capture(snippet, settings)
+
+        self.assertEqual(len(self.launched), 1)
+        launch = self.launched[0].request_at_launch
+        self.assertIsNotNone(launch, "起動前に request.json が置かれていない")
+        self.assertEqual(launch["id"], f"reference-shot-{snippet.target}")
+        self.assertEqual(launch["frames"], 6, "起動前に置いたのが連続キャプチャでない")
+        self.assertEqual(launch["every"], 2)
+        # 起動後に置き直していない（置き直すと撮り始めが実行ごとに変わる）。
+        self.assertEqual(self.launched[0].request_at_exit, launch)
+
+    def test_capture_settings_have_no_wall_clock_delay(self):
+        """撮影設定に実時間の待ちを持たない（持つと撮り始めがずれる）。
+
+        `settle` 秒の待ちがあった頃は、待っているあいだに進んだフレーム数が
+        実行ごとに違い、動きのスニペットが毎回別の絵になっていた（#784）。
+        """
+        snippet = self._snippet()
+        self.assertEqual(
+            set(snippet.settings({})), {"width", "height"}
+        )
+
+    def test_still_places_the_real_request_before_launch(self):
+        """静止画も起動前（noLoop は最初の 1 フレームしか描かない）。"""
+        snippet = self._snippet()
+        entry = shots.capture(snippet, snippet.settings({}))
+
+        launch = self.launched[0].request_at_launch
+        self.assertEqual(launch["id"], f"reference-shot-{snippet.target}")
+        self.assertNotIn("frames", launch, "静止画に連続キャプチャを頼んでいる")
+        self.assertEqual(entry, {"width": 480, "height": 360})
+        self.assertTrue((shots.STAGING_DIR / f"{snippet.target}.png").is_file())
+
+    def test_a_sketch_that_dies_is_reported_with_its_stderr(self):
+        """起動に失敗したら、タイムアウトを待たずに理由ごと止まる。"""
+        shots.subprocess.Popen = lambda *args, **kwargs: DeadSketch()
+        snippet = self._snippet()
+        with self.assertRaises(shots.ShotError) as raised:
+            shots.capture(snippet, snippet.settings({}))
+        self.assertIn("exit 1", str(raised.exception))
+        self.assertIn("no Metal device", str(raised.exception))
 
 
 if __name__ == "__main__":
