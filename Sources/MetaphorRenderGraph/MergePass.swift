@@ -14,10 +14,16 @@ public final class MergePass: RenderPassNode {
     // MARK: - ブレンドタイプ
 
     /// Defines the blend mode used when merging two textures.
+    ///
+    /// Both inputs and the output are **premultiplied alpha** — the render targets
+    /// produced by upstream passes already have alpha multiplied into RGB
+    /// (see ADR-0012). Formulas below are stated on those premultiplied values.
     public enum BlendType: String, CaseIterable, Sendable {
         /// Additive blending (A + B).
         case add
-        /// Alpha compositing (B over A).
+        /// Alpha compositing, B over A: `B.rgb + A.rgb * (1 - B.a)`.
+        ///
+        /// Because B is premultiplied, its RGB is *not* scaled by `B.a` again.
         case alpha
         /// Multiply blending (A * B).
         case multiply
