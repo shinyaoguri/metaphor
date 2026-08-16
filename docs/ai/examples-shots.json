@@ -1406,10 +1406,14 @@
     },
     "Examples/Topics/Shaders/CustomShader2D": {
       "origin": "captured",
-      "sourceHash": "fad2baa1c9d2e3a1bd5fecb8a4ba4f5535163501a26308420f907707d1e9871a",
+      "sourceHash": "9e5b0c2f2a48f1368db215eaca54527a725723fc46d1f1001bd724f49454ee70",
+      "provenance": {
+        "commit": "91c1ea8ee173988b587b4cb63910b891d67c1b82",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 99
+      "frame": 105
     },
     "Examples/Topics/Shaders/Deform": {
       "origin": "captured",
