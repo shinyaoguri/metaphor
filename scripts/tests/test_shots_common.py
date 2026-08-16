@@ -132,6 +132,26 @@ class TestSourceHash(CommonTestCase):
         (package / ".DS_Store").write_bytes(b"\x00")
         self.assertEqual(common.source_hash(package), before)
 
+    def test_excluded_output_does_not_change_the_hash(self) -> None:
+        # 出力（実行結果画像）をパッケージ直下に置く Examples 向け。材料に入れると
+        # 画像を差し替えただけで「ソースが変わった」になる（#820）。
+        package = self.package()
+        image = package / "Sketch.png"
+        image.write_bytes(b"\x89PNG\r\n\x1a\nold")
+        before = common.source_hash(package, exclude=[image])
+        image.write_bytes(b"\x89PNG\r\n\x1a\nnew")
+        self.assertEqual(common.source_hash(package, exclude=[image]), before)
+        # 外していないファイルは従来どおり材料に入る（守備範囲は狭めない）。
+        self.assertNotEqual(common.source_hash(package), before)
+
+    def test_excluding_a_path_that_is_not_there_is_harmless(self) -> None:
+        # 呼び出し側は出力の置き場を知っていればよく、有無は問わない。
+        package = self.package()
+        self.assertEqual(
+            common.source_hash(package, exclude=[package / "Sketch.png"]),
+            common.source_hash(package),
+        )
+
     def test_renaming_a_file_changes_the_hash(self) -> None:
         # 中身が同じでも構成が変われば絵は変わりうる（パス名も材料に入れている）。
         package = self.package()
