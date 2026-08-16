@@ -1018,23 +1018,31 @@ public final class MetaphorRenderer: NSObject {
             return ctx.makeImage()
         }
         guard let cgImage = cgImageOrNil else {
-            print("[metaphor] Failed to create CGImage for screenshot")
+            metaphorWarning("Failed to create CGImage for screenshot: \(path)")
             return
         }
 
-        // ディレクトリが存在しない場合は作成
+        // ディレクトリが存在しない場合は作成（作れなければ書き込みも失敗するので黙って進めない）
         let url = URL(fileURLWithPath: path)
         let dir = url.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        } catch {
+            metaphorWarning("Failed to create directory for screenshot: \(dir.path): \(error)")
+            return
+        }
 
         guard let dest = CGImageDestinationCreateWithURL(
             url as CFURL, "public.png" as CFString, 1, nil
         ) else {
-            print("[metaphor] Failed to create image destination: \(path)")
+            metaphorWarning("Failed to create image destination: \(path)")
             return
         }
         CGImageDestinationAddImage(dest, cgImage, nil)
-        CGImageDestinationFinalize(dest)
+        // 書き出しに失敗しても例外は飛ばない。無言で「保存できたつもり」にさせない。
+        if !CGImageDestinationFinalize(dest) {
+            metaphorWarning("Failed to write screenshot: \(path)")
+        }
     }
 
     /// オフスクリーンテクスチャを指定ビューポートで画面ドローアブルにブリットします。

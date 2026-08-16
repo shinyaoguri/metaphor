@@ -482,12 +482,15 @@ extension Sketch {
 
     /// 現在のフレームを指定したファイルパスに保存します。
     ///
+    /// 相対パスは**プロジェクト直下**（`swift run` ならパッケージ直下、`metaphor run` /
+    /// `watch` ならそのプロジェクト）から解決されます。絶対パスと `~` 始まりはそのままです。
+    ///
     /// - Parameter path: 出力ファイルパス。
     public func save(_ path: String) {
         context.save(path)
     }
 
-    /// 現在のフレームをデフォルトの場所に保存します。
+    /// 現在のフレームを `output/metaphor_<timestamp>.png` に保存します。
     public func save() {
         context.save()
     }
@@ -526,7 +529,9 @@ extension Sketch {
     /// 連番ファイル名で `directory` へ書き出されます。
     ///
     /// - Parameters:
-    ///   - directory: 出力ディレクトリ（`nil` の場合はデフォルトを使用）。
+    ///   - directory: 出力ディレクトリ（`nil` の場合は
+    ///     `output/metaphor_frames_<timestamp>/`）。相対パスはプロジェクト直下から
+    ///     解決されます。
     ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
     public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
         context.beginFrameRecord(directory: directory, pattern: pattern)
@@ -539,6 +544,12 @@ extension Sketch {
 
     /// 単一フレームを画像ファイルに保存します。
     ///
+    /// 保存先は次の規則で決まります。
+    ///
+    /// - `saveFrame()` — `output/screen-<フレーム番号>.png`（プロジェクトの中）
+    /// - `saveFrame("shots/a.png")` — プロジェクト直下からの相対
+    /// - `saveFrame("/tmp/a.png")` / `saveFrame("~/Pictures/a.png")` — そのまま
+    ///
     /// - Parameter filename: 出力ファイル名（`nil` の場合は自動生成）。
     public func saveFrame(_ filename: String? = nil) {
         context.saveFrame(filename)
@@ -549,7 +560,8 @@ extension Sketch {
     /// 動画出力の録画を開始します。
     ///
     /// - Parameters:
-    ///   - path: 出力ファイルパス（`nil` の場合は自動生成）。
+    ///   - path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.<拡張子>`）。
+    ///     相対パスはプロジェクト直下から解決されます。
     ///   - config: 動画エクスポート設定。
     public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
         context.beginVideoRecord(path, config: config)

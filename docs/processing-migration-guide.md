@@ -465,13 +465,21 @@ folder lookup.
 | Processing | metaphor |
 |---|---|
 | `save("out.png")` | `save(_ path: String)` |
-| `save()` | `save()` — writes `~/Desktop/metaphor_<timestamp>.png` |
-| `saveFrame()` / `saveFrame("f-####.png")` | `saveFrame(_ filename: String? = nil)` — default `~/Desktop/screen-####.png`, numbered by `frameCount` |
+| `save()` | `save()` — writes `output/metaphor_<timestamp>.png` |
+| `saveFrame()` / `saveFrame("f-####.png")` | `saveFrame(_ filename: String? = nil)` — default `output/screen-####.png`, numbered by `frameCount` |
 | `beginRecord(SVG, "out.svg")` / `endRecord()` | `beginSVGRecord(_ path: String)` / `endSVGRecord()` |
-| a PNG sequence | `beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` / `endFrameRecord()` — default directory `~/Desktop/metaphor_frames_<timestamp>` |
+| a PNG sequence | `beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` / `endFrameRecord()` — default directory `output/metaphor_frames_<timestamp>` |
 | — | `beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` / `endVideoRecord(completion:)` / `endVideoRecordAsync()` |
 | — | `beginGIFRecord(fps: Int = 15)` / `endGIFRecord(_ path: String? = nil) throws` / `endGIFRecordAsync(_:)` |
 | — | `beginOfflineRender(fps: Double = 60)` / `endOfflineRender()` for deterministic, non-realtime rendering |
+
+Every output path follows the same rule, close to Processing's sketch folder:
+a **relative** path resolves against the project directory (`swift run` → the
+package root; `metaphor run` / `watch` → that project, via `METAPHOR_STATE_DIR`),
+an **absolute** path or one starting with `~` is used as-is, and **omitting** the
+path writes into `output/` inside the project. Nothing is written to the Desktop
+unless you ask for it — these paths used to be Desktop-only
+([#757](https://github.com/shinyaoguri/metaphor/issues/757)).
 
 > **These names changed after 0.8.0.** `beginSVG`/`endSVG` and the unprefixed
 > `beginRecord`/`endRecord` were deprecated in 0.9.0 and have since been

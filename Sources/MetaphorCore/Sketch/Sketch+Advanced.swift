@@ -332,7 +332,8 @@ extension Sketch {
 
     /// 記録を停止し GIF ファイルに書き出します。
     ///
-    /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
+    /// - Parameter path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
     ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
     ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
@@ -344,7 +345,8 @@ extension Sketch {
     /// 記録を停止し GIF ファイルを非同期で書き出します。
     ///
     /// ブロッキングを避けるためファイル書き込みをバックグラウンドスレッドで実行します。
-    /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
+    /// - Parameter path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
     ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
     ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの

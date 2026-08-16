@@ -164,14 +164,16 @@ extension SketchContext {
     /// ``endSVGRecord()`` でファイルへ書き出されます。対応外の機能（`image()`/`text()`/
     /// グラデーション等）は警告を出力してスキップされます（機能ごとに 1 回）。
     ///
-    /// - Parameter path: 出力する SVG ファイルパス。
+    /// - Parameter path: 出力する SVG ファイルパス。相対パスはプロジェクト直下から
+    ///   解決されます（絶対パスと `~` 始まりはそのまま）。
     public func beginSVGRecord(_ path: String) {
         guard canvas.svgRecorder == nil else {
             metaphorWarning("beginSVGRecord: SVG recording is already active")
             return
         }
         canvas.svgRecorder = SVGRecorder(
-            width: canvas.width, height: canvas.height, outputPath: path)
+            width: canvas.width, height: canvas.height,
+            outputPath: MetaphorPaths.resolve(path))
     }
 
     /// SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
@@ -578,24 +580,20 @@ extension SketchContext {
     // MARK: - Screenshot
 
     /// 指定したファイルパスにスクリーンショットを保存します。
-    /// - Parameter path: 出力ファイルパス。
+    /// - Parameter path: 出力ファイルパス。相対パスはプロジェクト直下から解決されます
+    ///   （絶対パスと `~` 始まりはそのまま）。
     public func save(_ path: String) {
-        renderer.saveScreenshot(to: path)
+        renderer.saveScreenshot(to: MetaphorPaths.resolve(path))
     }
 
     /// フレーム連番エクスポートを開始します。
     /// - Parameters:
-    ///   - directory: 出力ディレクトリ（nil の場合はデスクトップに自動生成）。
+    ///   - directory: 出力ディレクトリ（nil の場合は `output/metaphor_frames_<timestamp>/`）。
+    ///     相対パスはプロジェクト直下から解決されます。
     ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
     public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
-        let dir: String
-        if let directory {
-            dir = directory
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            dir = NSHomeDirectory() + "/Desktop/metaphor_frames_\(formatter.string(from: Date()))"
-        }
+        let dir = MetaphorOutputPaths.frameSequenceDirectory(
+            directory, timestamp: MetaphorOutputPaths.timestamp())
         renderer.frameExporter.beginSequence(directory: dir, pattern: pattern)
     }
 
@@ -606,17 +604,15 @@ extension SketchContext {
 
     /// 動画録画を開始します。
     /// - Parameters:
-    ///   - path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    ///   - path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.<拡張子>`）。
+    ///     相対パスはプロジェクト直下から解決されます。
     ///   - config: 動画エクスポート設定。
     public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
-        let actualPath: String
-        if let path {
-            actualPath = path
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).\(config.format.fileExtension)"
-        }
+        let actualPath = MetaphorOutputPaths.recording(
+            path,
+            fileExtension: config.format.fileExtension,
+            timestamp: MetaphorOutputPaths.timestamp()
+        )
         do {
             try renderer.videoExporter.beginRecord(
                 path: actualPath,
@@ -644,25 +640,18 @@ extension SketchContext {
     }
 
     /// 現在のフレームを単一画像ファイルとして保存します（Processing 互換）。
-    /// - Parameter filename: 出力ファイル名（nil の場合は番号付き名前を自動生成）。
+    /// - Parameter filename: 出力ファイル名（nil の場合は `output/screen-<フレーム番号>.png`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     public func saveFrame(_ filename: String? = nil) {
-        let name: String
-        if let filename {
-            name = filename
-        } else {
-            name = "screen-\(String(format: "%04d", frameCount)).png"
-        }
-        let path = NSHomeDirectory() + "/Desktop/" + name
+        let path = MetaphorOutputPaths.screenshot(filename: filename, frameCount: frameCount)
         renderer.saveScreenshot(to: path)
     }
 
-    /// タイムスタンプ付きスクリーンショットをデスクトップに保存します。
+    /// タイムスタンプ付きスクリーンショットを `output/metaphor_<timestamp>.png` に保存します。
     public func save() {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd_HHmmss"
-        let name = "metaphor_\(formatter.string(from: Date())).png"
-        let path = NSHomeDirectory() + "/Desktop/" + name
-        save(path)
+        renderer.saveScreenshot(
+            to: MetaphorOutputPaths.timestampedScreenshot(
+                timestamp: MetaphorOutputPaths.timestamp()))
     }
 
     // MARK: - Offline Rendering

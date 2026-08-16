@@ -320,7 +320,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
 - `func rotateZ(_ angle: Float)` -- z 軸周りの回転を適用します。
 - `func roughness(_ value: Float)` -- PBR ラフネスを設定します（自動的に PBR モードに切り替わります）。
-- `func save()` -- 現在のフレームをデフォルトの場所に保存します。
+- `func save()` -- 現在のフレームを `output/metaphor_<timestamp>.png` に保存します。
 - `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
 - `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
 - `func saveJSON(_ value: some Encodable, _ path: String, pretty: Bool = true) throws` -- `Encodable` な値（``JSONValue`` を含む）を JSON ファイルへ書き込みます。
