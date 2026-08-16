@@ -75,6 +75,106 @@ struct GraphicsTests {
     }
 }
 
+// MARK: - 曲線の設定の転送（#540）
+
+// `Graphics` は `curve()` / `curveVertex()` / `bezier()` を canvas へ転送していたが、
+// その形を決める `curveDetail()` / `curveTightness()` の転送が落ちていたため、
+// オフスクリーンへ描くときだけ既定値（detail 20 / tightness 0）に固定されていた。
+
+@Suite("Graphics curve settings", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct GraphicsCurveSettingsTests {
+
+    private static let size = 64
+
+    private func makeGraphics() throws -> Graphics {
+        let device = MetalTestHelper.device!
+        return try Graphics(
+            device: device,
+            commandQueue: MetalTestHelper.commandQueue()!,
+            shaderLibrary: try MetalTestHelper.shaderLibrary(),
+            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            width: Self.size,
+            height: Self.size
+        )
+    }
+
+    /// p1 → p2 が y = 48 の水平線分になる 4 点を、既定の Catmull-Rom なら
+    /// t = 0.5 で (32, 24) まで弓なりに持ち上がるハンドル付きで描く。
+    ///
+    /// - Parameter configure: `curve()` の前に曲線の設定を入れるフック。
+    private func drawCurve(_ pg: Graphics, configure: (Graphics) -> Void) {
+        pg.beginDraw()
+        pg.background(Color(r: 0, g: 0, b: 0))
+        pg.noFill()
+        pg.stroke(Color(r: 1, g: 1, b: 1))
+        pg.strokeWeight(3)
+        configure(pg)
+        pg.curve(12, 240, 12, 48, 52, 48, 52, 240)
+        pg.endDraw(wait: true)
+    }
+
+    /// 描かれた曲線が縦に広がった行数。
+    ///
+    /// 画面の上下方向の取り方に依存しないよう、光った行の**広がり**だけを見る。
+    /// 既定の Catmull-Rom は弓なりに膨らむので広く、tightness = 1 や detail = 1 では
+    /// p1 → p2 の直線になるのでストローク幅ぶんしか広がらない。
+    private func litRowSpan(_ pg: Graphics) -> Int {
+        let img = pg.toImage()
+        img.loadPixels()
+        var minY = Int.max
+        var maxY = Int.min
+        for y in 0..<Self.size {
+            for x in 0..<Self.size where img.get(x, y).r > 0.5 {
+                minY = min(minY, y)
+                maxY = max(maxY, y)
+                break
+            }
+        }
+        return minY <= maxY ? maxY - minY + 1 : 0
+    }
+
+    // 前提: 何も設定しなければ弓なりに膨らむ（下の 2 本の「潰れた」判定の対照）。
+    @Test("既定では曲線は弓なりに膨らむ")
+    func defaultCurveBulges() throws {
+        let pg = try makeGraphics()
+        drawCurve(pg) { _ in }
+        let span = litRowSpan(pg)
+        #expect(span > 15, "実測 \(span) 行: 膨らんでいないと以降の比較が成立しない")
+    }
+
+    // 回帰テスト(#540): 転送が無いと tightness は無視され、既定のまま膨らんだままになる。
+    @Test("curveTightness(1) が効いて曲線が直線に潰れる")
+    func curveTightnessIsForwarded() throws {
+        let pg = try makeGraphics()
+        drawCurve(pg) { $0.curveTightness(1) }
+        let span = litRowSpan(pg)
+        #expect(span < 10,
+                "実測 \(span) 行: 弓なりのままなら curveTightness が canvas へ届いていない(#540)")
+    }
+
+    // 回帰テスト(#540): detail = 1 は p1 → p2 の 1 セグメント = 直線。
+    @Test("curveDetail(1) が効いて曲線が 1 セグメントに潰れる")
+    func curveDetailIsForwarded() throws {
+        let pg = try makeGraphics()
+        drawCurve(pg) { $0.curveDetail(1) }
+        let span = litRowSpan(pg)
+        #expect(span < 10,
+                "実測 \(span) 行: 弓なりのままなら curveDetail が canvas へ届いていない(#540)")
+    }
+
+    // 境界値: Canvas2D 側は `max(1, n)` で 1 へ丸める。転送が値をいじらずそのまま渡すので、
+    // 0 や負値でも 0 除算（t = i / 0）にならず detail = 1 と同じ直線になる。
+    @Test("curveDetail の 0 以下は 1 に丸められる", arguments: [0, -3])
+    func curveDetailClampsNonPositive(_ detail: Int) throws {
+        let pg = try makeGraphics()
+        drawCurve(pg) { $0.curveDetail(detail) }
+        let span = litRowSpan(pg)
+        #expect(span > 0, "実測 \(span) 行: 何も描かれていない（0 除算で頂点が壊れている）")
+        #expect(span < 10, "実測 \(span) 行: detail = 1 と同じ直線になるべき")
+    }
+}
+
 // MARK: - loadPixels の鮮度と順序保証（#158）
 
 @Suite("Graphics loadPixels Freshness", .enabled(if: MetalTestHelper.isGPUAvailable))
