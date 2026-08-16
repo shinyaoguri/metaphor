@@ -25,6 +25,23 @@ extension Canvas3D {
         drawMesh(mesh)
     }
 
+    // MARK: - Mesh 経由へ落とす条件
+
+    // テッセレーション済み頂点を一時 Mesh 化して drawMesh へ渡すべきか。
+    // この下の即時エンコードは組み込みパイプラインを直に張る簡略版なので、
+    // 次の 2 つは drawMesh 側の道具立てが要る:
+    //
+    // - 記録経路（影オン / METAPHOR_COMMAND_RECORD）: DrawCall3D として記録し、
+    //   同一フレームのシャドウへ落とす（#152）
+    // - カスタムマテリアル: パイプライン選択（`getCustomPipeline`）と buffer(4) の
+    //   パラメータ束縛は drawMeshImmediate にしかなく、即時エンコードは
+    //   `currentCustomMaterial` を一切見ていなかった。そのため `material(_:)` が
+    //   メッシュ／プリミティブにだけ効き、`beginShape3D` のシェイプには効かない
+    //   （かつ影オンでは効く）という食い違いになっていた（#826）
+    var shouldRouteShapeThroughMesh: Bool {
+        (shouldRecordMainPass && !isReplaying) || currentCustomMaterial != nil
+    }
+
     // MARK: - シェイプ頂点のバインド
 
     // ユーザー頂点列を index 0 にバインドします。
@@ -84,11 +101,9 @@ extension Canvas3D {
         guard !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
 
-        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: テッセレーション済み頂点を
-        // 一時 Mesh 化して drawMesh の記録経路（DrawCall3D）に載せる。従来は
-        // encoder 必須の即時経路しかなく、記録フレームでは本体が描画されず
-        // シャドウにも落ちなかった（#152）
-        if shouldRecordMainPass && !isReplaying {
+        // テッセレーション済み頂点を一時 Mesh 化して drawMesh へ渡す
+        // （記録経路 #152 / カスタムマテリアル #826。判定は shouldRouteShapeThroughMesh）
+        if shouldRouteShapeThroughMesh {
             if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil) {
                 drawBakedShapeMesh(mesh)
             }
@@ -196,10 +211,10 @@ extension Canvas3D {
         guard !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
 
-        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: UV つきの一時 Mesh 化で
-        // drawMesh に載せる。`Mesh.hasUVs` が立つため drawMesh 側がテクスチャ付きと
-        // 判定し、シャドウにも落ちる（テクスチャなしの経路と同じ構造・#152）
-        if shouldRecordMainPass && !isReplaying {
+        // UV つきの一時 Mesh 化で drawMesh に載せる。`Mesh.hasUVs` が立つため
+        // drawMesh 側がテクスチャ付きと判定し、シャドウにも落ちる
+        // （テクスチャなしの経路と同じ構造・#152 / #826）
+        if shouldRouteShapeThroughMesh {
             if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil, uvVertices: uvVertices) {
                 drawMesh(mesh)
             }
@@ -332,8 +347,8 @@ extension Canvas3D {
             allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
         }
 
-        // 記録経路: 一時 Mesh 化して DrawCall3D として記録（#152）
-        if shouldRecordMainPass && !isReplaying {
+        // 一時 Mesh 化して drawMesh へ渡す（記録経路 #152 / カスタムマテリアル #826）
+        if shouldRouteShapeThroughMesh {
             if let mesh = try? Mesh(device: device, vertices: allVerts, indices: nil) {
                 drawBakedShapeMesh(mesh)
             }
