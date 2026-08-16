@@ -525,7 +525,7 @@ public final class Graphics {
     ///   - y: Y座標。
     public func text(_ string: String, _ x: Float, _ y: Float) { canvas.text(string, x, y) }
 
-    /// テキスト文字列のレンダリング幅を返します。
+    /// テキスト文字列の幅（1 文字ずつの advance の合計）を返します。
     /// - Parameter string: 計測するテキスト。
     /// - Returns: ピクセル単位の幅。
     public func textWidth(_ string: String) -> Float { canvas.textWidth(string) }

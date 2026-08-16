@@ -71,7 +71,16 @@ extension Canvas2D {
         return (ascent + descent) * 1.275
     }
 
-    /// テキスト文字列のレンダリング後の幅を返します。
+    /// テキスト文字列の幅を返します。
+    ///
+    /// 返るのは**1 文字ずつの advance（次の文字までの送り量）を足した幅**で、
+    /// ``text(_:_:_:)`` が実際に文字を置く幅・``textAlign(_:_:)`` が揃えに使う幅と一致します。
+    /// そのため加法的で（`textWidth("ab") == textWidth("a") + textWidth("b")`）、語ごとに
+    /// 測って行を組めます。前後どちらの空白も幅に数えます。
+    ///
+    /// 墨面（インクの広がり）ではないので、`f` や斜体のようにはみ出す字形では
+    /// 実際のインクが幅から少し出ることがあります。Processing と同じく隣り合う字の
+    /// カーニングは掛かりません。
     ///
     /// 改行を含む文字列では、Processing と同じく**最も長い行**の幅を返します。
     ///
@@ -183,7 +192,11 @@ extension Canvas2D {
         if let (atlasTex, glyphs) = textRenderer.textGlyphs(
             string: string, fontSize: currentTextSize, fontFamily: currentFontFamily
         ), !glyphs.isEmpty {
-            let totalWidth = glyphs.last.map { $0.x + $0.width } ?? 0
+            // 揃えの基準は advance の合計 = textWidth() が返す幅（#803）。最後のグリフの
+            // ビットマップの右端（$0.x + $0.width）で測ると、アトラスへ書き込むときの
+            // 余白 2px（TextRenderer の glyphW）が幅に混ざる。
+            let totalWidth = textRenderer.textWidth(
+                string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
             // drawTextFromAtlas の y は「ベースライン」位置（PositionedGlyph の座標が
             // ベースライン基準のため）。textBaselineOrigin が各揃えモードから変換する。
             let origin = textBaselineOrigin(x: x, y: y, width: totalWidth)

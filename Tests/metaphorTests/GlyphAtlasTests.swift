@@ -71,6 +71,31 @@ struct GlyphAtlasTests {
         #expect(glyphs!.count == 0)
     }
 
+    /// グリフのビットマップは advance の箱を**左右対称に**はみ出す（#802）。
+    ///
+    /// アトラスへ書くビットマップはアンチエイリアスの裾を切らないよう左右 1px ずつ広い。
+    /// その左の 1px を `bearingX` で引いていないと、文字列全体が送り位置より 1px 右へ
+    /// ずれて描かれ、`textWidth()` で組んだレイアウトと 1px 食い違う。
+    @Test("glyph bitmaps overhang the advance box symmetrically")
+    func glyphBitmapOverhangIsSymmetric() {
+        let device = MetalTestHelper.device!
+        let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 32)
+        for char: Character in ["H", "i", "W", "."] {
+            guard let g = atlas.glyph(for: char) else {
+                Issue.record("グリフ \(char) を解決できない")
+                continue
+            }
+            // 送り位置を 0 としたときのビットマップの範囲は [bearingX, bearingX + width]
+            let leftOverhang = -g.bearingX
+            let rightOverhang = g.bearingX + g.width - g.advance
+            #expect(abs(leftOverhang - rightOverhang) <= 1,
+                    """
+                    \(char) のはみ出しが左 \(leftOverhang)px / 右 \(rightOverhang)px と非対称 \
+                    （advance \(g.advance) / ビットマップ幅 \(g.width)）
+                    """)
+        }
+    }
+
     @Test("measureWidth increases with more characters")
     func measureWidth() {
         let device = MetalTestHelper.device!

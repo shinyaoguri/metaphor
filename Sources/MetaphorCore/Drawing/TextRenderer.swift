@@ -37,6 +37,47 @@ struct PositionedGlyph {
     let u0: Float, v0: Float, u1: Float, v1: Float
 }
 
+// MARK: - Text Metrics
+
+/// 1 文字ぶんのタイポグラフィック計測を 1 か所に集めます。
+///
+/// 測る側（``TextRenderer/textWidth(string:fontSize:fontFamily:)``）と描く側
+/// （``GlyphAtlas``）で物差しがずれないよう、advance はここでしか計算しません（#802）。
+///
+/// 文字列全体をシェーピングすると隣り合う字のカーニングが入りますが、`text()` の描画は
+/// 1 文字ずつ置くので、計測も 1 文字ずつ行います。こうすると幅が加法的になり
+/// （`textWidth("ab") == textWidth("a") + textWidth("b")`）、語ごとに測って組版できます。
+enum TextMetrics {
+
+    /// 1 文字ぶんの計測結果。`line` は描画にも使えます（同じシェーピング結果を共有するため）。
+    struct CharMetrics {
+        let line: CTLine
+        let advance: Float
+        let ascent: CGFloat
+        let descent: CGFloat
+    }
+
+    /// 1 文字を単独でシェーピングして計測します。
+    ///
+    /// - Parameters:
+    ///   - char: 計測する文字。
+    ///   - font: 計測に使うフォント。
+    ///   - attributes: 追加の属性（描画に使う `line` が要るときの前景色など）。
+    /// - Returns: advance とベースライン基準の高さ、およびそれらを得た `CTLine`。
+    static func measure(
+        _ char: Character, font: CTFont, attributes: [NSAttributedString.Key: Any] = [:]
+    ) -> CharMetrics {
+        var attributes = attributes
+        attributes[.font] = font
+        let attrString = NSAttributedString(string: String(char), attributes: attributes)
+        let line = CTLineCreateWithAttributedString(attrString)
+
+        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+        let advance = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        return CharMetrics(line: line, advance: Float(advance), ascent: ascent, descent: descent)
+    }
+}
+
 // MARK: - Glyph Atlas
 
 /// シェルフパッキングを使用してフォントとサイズごとのグリフアトラスを管理します。
@@ -144,19 +185,15 @@ final class GlyphAtlas {
     // MARK: - Private
 
     private func addGlyph(_ char: Character) -> GlyphInfo? {
-        // Core Text 経由でグリフメトリクスを取得
-        let str = String(char)
-        let attrString = NSAttributedString(
-            string: str,
-            attributes: [.font: font, .foregroundColor: PlatformColor.white]
-        )
-        let line = CTLineCreateWithAttributedString(attrString)
+        // Core Text 経由でグリフメトリクスを取得（textWidth と同じ物差しを使う）
+        let metrics = TextMetrics.measure(
+            char, font: font, attributes: [.foregroundColor: PlatformColor.white])
+        let line = metrics.line
+        let ascent = metrics.ascent
+        let descent = metrics.descent
+        let advance = metrics.advance
 
-        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
-        let lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-        let advance = Float(lineWidth)
-
-        let glyphW = Int(ceil(lineWidth)) + 2
+        let glyphW = Int(ceil(CGFloat(advance))) + 2
         let glyphH = Int(ceil(ascent + descent)) + 2
         guard glyphW > 0, glyphH > 0 else { return nil }
 
@@ -191,7 +228,10 @@ final class GlyphAtlas {
             v1: Float(py + glyphH) / Float(atlasHeight),
             width: Float(glyphW),
             height: Float(glyphH),
-            bearingX: 0,
+            // ビットマップは左右に 1px の余白を持つ（textPosition.x = 1）。その 1px を
+            // 引かないと、文字が送り位置より 1px 右へずれて描かれる — 縦は bearingY が
+            // 同じ 1px を織り込み済み。これで advance の箱を左右対称にはみ出す形になる。
+            bearingX: -1,
             bearingY: Float(ascent) + 1,
             advance: advance
         )
@@ -298,6 +338,16 @@ final class TextRenderer {
     /// フォントを生成していたコストを回収する。
     private var fontCache: [GlyphAtlas.Key: CTFont] = [:]
 
+    /// 1 文字ぶんの advance のキャッシュキー。
+    private struct AdvanceKey: Hashable {
+        let fontFamily: String
+        let fontSize: Float
+        let char: Character
+    }
+
+    /// `textWidth` が使う 1 文字ぶんの advance キャッシュ。
+    private var advanceCache: [AdvanceKey: Float] = [:]
+
     /// テスト用: 現在保持しているアトラス数。
     var atlasCount: Int { atlases.count }
 
@@ -364,6 +414,7 @@ final class TextRenderer {
         atlases.removeAll()
         atlasLastUse.removeAll()
         fontCache.removeAll()
+        advanceCache.removeAll()
     }
 
     /// キャッシュからテキストテクスチャを取得するか、新しいものをレンダリングします。
@@ -403,18 +454,40 @@ final class TextRenderer {
 
     /// テキスト文字列の幅をレンダリングせずに計算します。
     ///
+    /// 1 文字ずつの advance を足した値で、`GlyphAtlas` がグリフを置くときの送り量と
+    /// 同じ物差しです（#802）。切り上げず、末尾の空白も数えます。
+    ///
     /// - Parameters:
     ///   - string: 計測するテキスト。
     ///   - fontSize: ポイント単位のフォントサイズ。
     ///   - fontFamily: フォントファミリー名。
     /// - Returns: ピクセル単位のテキスト幅。
     func textWidth(string: String, fontSize: Float, fontFamily: String) -> Float {
+        guard !string.isEmpty else { return 0 }
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let attrString = NSAttributedString(string: string, attributes: attributes)
-        let line = CTLineCreateWithAttributedString(attrString)
-        let bounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
-        return Float(ceil(bounds.width))
+        var width: Float = 0
+        for char in string {
+            width += advance(of: char, font: font, fontSize: fontSize, fontFamily: fontFamily)
+        }
+        return width
+    }
+
+    /// キャッシュ経由で 1 文字ぶんの advance を取得します。
+    ///
+    /// 1 文字ごとに `CTLine` を作るので、キャッシュが無いと文字数ぶんのシェーピングが
+    /// 毎フレーム走ります（`textWidth()` は行の配置計算で毎フレーム呼ばれます）。
+    private func advance(
+        of char: Character, font: CTFont, fontSize: Float, fontFamily: String
+    ) -> Float {
+        let key = AdvanceKey(fontFamily: fontFamily, fontSize: fontSize, char: char)
+        if let cached = advanceCache[key] { return cached }
+        let advance = TextMetrics.measure(char, font: font).advance
+        // フォントサイズアニメーション等でのキー増殖を防ぐ（cachedFont と同じ扱い）
+        if advanceCache.count >= 4096 {
+            advanceCache.removeAll()
+        }
+        advanceCache[key] = advance
+        return advance
     }
 
     /// フォントのアセント（ベースラインより上の高さ）を取得します。
