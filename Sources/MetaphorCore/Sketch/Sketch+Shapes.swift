@@ -1103,6 +1103,10 @@ extension Sketch {
 
     /// 現在のシェイプの記録を終了し描画します。
     ///
+    /// - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います
+    ///   （Processing / p5.js と同じ）。巻き数が 0 でない領域が塗られるので、五芒星は
+    ///   中央の五角形まで塗られたべた塗りの星になります。
+    ///
     /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) {
         context.endShape(close)

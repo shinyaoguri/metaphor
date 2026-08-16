@@ -325,21 +325,24 @@ extension Canvas2D {
     }
 
     /// 頂点位置の配列からポリゴンを描画します。凹多角形にも対応します。
+    ///
+    /// - Note: 自己交差する頂点列の塗りは **nonzero winding** 規則に従います
+    ///   （Processing / p5.js と同じ）。
+    ///
     /// - Parameter points: ポリゴン頂点を定義する `(x, y)` タプルの配列。
     public func polygon(_ points: [(Float, Float)]) {
         guard points.count >= 3 else { return }
         svgRecorder?.recordPolygon(points, closed: true, style: svgStyle())
 
         if hasFill {
-            let indices = EarClipTriangulator.triangulate(points)
+            // 自己交差する頂点列は nonzero winding で分解してから塗る。
+            let tess = EarClipTriangulator.triangulateNonZero(points)
             var i = 0
-            while i + 2 < indices.count {
-                addTriangle(
-                    points[indices[i]].0, points[indices[i]].1,
-                    points[indices[i + 1]].0, points[indices[i + 1]].1,
-                    points[indices[i + 2]].0, points[indices[i + 2]].1,
-                    fillColor
-                )
+            while i + 2 < tess.indices.count {
+                let a = tess.vertices[tess.indices[i]]
+                let b = tess.vertices[tess.indices[i + 1]]
+                let c = tess.vertices[tess.indices[i + 2]]
+                addTriangle(a.0, a.1, b.0, b.1, c.0, c.1, fillColor)
                 i += 3
             }
         }

@@ -5,7 +5,96 @@
 /// ポリゴンには十分高速です。
 enum EarClipTriangulator {
 
+    // MARK: - Result Types
+
+    /// テッセレーション結果の頂点が入力のどこから来たかを表します。
+    ///
+    /// 交点は入力エッジ `from` → `to` を `t`（0...1）で内分した位置にあります。
+    /// 入力頂点そのものは `from == to`, `t == 0` です。呼び出し元が頂点カラーや
+    /// UV を交点へ補間するために使います。
+    struct VertexOrigin: Equatable {
+        var from: Int
+        var to: Int
+        var t: Float
+
+        /// 入力頂点そのものを指す由来。
+        static func vertex(_ index: Int) -> VertexOrigin {
+            VertexOrigin(from: index, to: index, t: 0)
+        }
+    }
+
+    /// テッセレーション結果。
+    struct Tessellation {
+        /// 三角形が参照する頂点。自己交差が無ければ入力配列そのままです。
+        var vertices: [(Float, Float)]
+        /// `vertices` を参照する三角形インデックス（3 つずつで 1 三角形）。
+        var indices: [Int]
+        /// `vertices` と同じ並びの由来情報。
+        var origins: [VertexOrigin]
+    }
+
     // MARK: - Public API
+
+    /// 自己交差を含みうるポリゴンを nonzero winding 規則でテッセレーションします。
+    ///
+    /// ear clipping は単純ポリゴン専用なので、五芒星のように辺どうしが交差する
+    /// 頂点列をそのまま渡すと耳が尽きて破綻します。ここでは先に交点で辺を割って
+    /// 平面分割し、巻き数が 0 でない面だけを塗ります（Processing / p5.js と同じ規則）。
+    ///
+    /// 自己交差が無ければ ``triangulate(_:)`` と同じインデックス列を、入力頂点を
+    /// そのまま参照する形で返します（従来経路と結果は変わりません）。
+    static func triangulateNonZero(_ polygon: [(Float, Float)]) -> Tessellation {
+        let identityOrigins = (0..<polygon.count).map { VertexOrigin.vertex($0) }
+        guard polygon.count >= 3 else {
+            return Tessellation(vertices: polygon, indices: [], origins: identityOrigins)
+        }
+        guard let arrangement = PolygonArrangement.decompose(polygon) else {
+            // 自己交差なし。従来どおり入力頂点をそのまま参照する。
+            return Tessellation(vertices: polygon, indices: triangulate(polygon), origins: identityOrigins)
+        }
+
+        var indices: [Int] = []
+        let winding = PolygonArrangement.WindingCounter(polygon)
+        for face in arrangement.faces {
+            let facePolygon = face.map { arrangement.points[$0] }
+            let faceIndices = triangulate(facePolygon)
+            guard let inside = representativePoint(facePolygon, faceIndices) else { continue }
+            guard winding.windingNumber(at: inside) != 0 else { continue }
+            indices.reserveCapacity(indices.count + faceIndices.count)
+            for i in faceIndices { indices.append(face[i]) }
+        }
+
+        return Tessellation(
+            vertices: arrangement.points,
+            indices: indices,
+            origins: arrangement.origins
+        )
+    }
+
+    /// 面の内部にあると保証できる点を返します（面積が最大の三角形の重心）。
+    ///
+    /// 重心をポリゴン内の任意の点として使えるのは、三角形が ear clipping の結果 =
+    /// 面の内部にあるからです。面の重心や頂点の平均は凹形状で外へ出ることがあります。
+    private static func representativePoint(
+        _ polygon: [(Float, Float)],
+        _ indices: [Int]
+    ) -> (Float, Float)? {
+        var best: (Float, Float)?
+        var bestArea: Float = 0
+        var i = 0
+        while i + 2 < indices.count {
+            let a = polygon[indices[i]]
+            let b = polygon[indices[i + 1]]
+            let c = polygon[indices[i + 2]]
+            let area = abs((b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0))
+            if area > bestArea {
+                bestArea = area
+                best = ((a.0 + b.0 + c.0) / 3, (a.1 + b.1 + c.1) / 3)
+            }
+            i += 3
+        }
+        return best
+    }
 
     /// 単純なポリゴンを三角形にテッセレーションします。
     /// - Parameter polygon: 頂点の配列（最低3つ）。CW/CCW どちらの巻き方向も受け付けます。
