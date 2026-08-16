@@ -160,6 +160,11 @@ public final class AudioAnalyzer {
     /// automatically from the input device. When analyzing external samples
     /// via ``injectSamples(_:)``, it is used for the frequency-to-bin
     /// conversion in ``bandEnergy(lowFreq:highFreq:)``.
+    ///
+    /// - Important: On the ``injectSamples(_:)`` path this is **required** for
+    ///   ``bandEnergy(lowFreq:highFreq:)``. Leaving it `nil` makes that method
+    ///   return `0` (`spectrum`, ``volume`` and ``band(_:)`` keep working, so the
+    ///   symptom looks like a silent band rather than a missing setting).
     public var sampleRate: Double?
 
     /// Called (on the main thread) when the audio engine's configuration
@@ -188,6 +193,11 @@ public final class AudioAnalyzer {
 
     /// 「権限が未決のままサンプルが来ない」警告を出したか（1 回だけ出す）。
     private var didWarnAboutPendingPermission = false
+
+    // MARK: - サンプルレート未設定の観測（Issue #783）
+
+    /// 「`sampleRate` が無いので `bandEnergy` が 0 になる」警告を出したか（1 回だけ出す）。
+    private(set) var didWarnAboutMissingSampleRate = false
 
     // MARK: - vDSP FFT
 
@@ -218,6 +228,8 @@ public final class AudioAnalyzer {
     ///   - fftSize: The FFT size (must be a power of 2; defaults to 1024).
     ///   - sampleRate: The sample rate (Hz) when analyzing via ``injectSamples(_:)``.
     ///     Not needed when using ``start()`` (obtained automatically from the input device).
+    ///     Required for ``bandEnergy(lowFreq:highFreq:)`` on the ``injectSamples(_:)``
+    ///     path — see ``sampleRate``.
     public init(fftSize: Int = 1024, sampleRate: Double? = nil) {
         self.fftSize = fftSize
         self.halfFFTSize = fftSize / 2
@@ -479,6 +491,16 @@ public final class AudioAnalyzer {
     }
 
     /// Returns the energy of an arbitrary frequency range.
+    ///
+    /// Converting hertz to FFT bins needs the sample rate. With ``start()`` it is
+    /// read from the input device, but when analyzing external samples via
+    /// ``injectSamples(_:)`` you must supply it yourself — through
+    /// ``init(fftSize:sampleRate:)`` or the ``sampleRate`` property.
+    ///
+    /// - Note: Without a sample rate this returns `0`, which is indistinguishable
+    ///   from "the band is silent". A warning is logged once (DEBUG builds) so the
+    ///   missing setting does not pass unnoticed.
+    ///
     /// - Parameters:
     ///   - lowFreq: The lower bound frequency (Hz).
     ///   - highFreq: The upper bound frequency (Hz).
@@ -486,10 +508,10 @@ public final class AudioAnalyzer {
     public func bandEnergy(lowFreq: Float, highFreq: Float) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
-        // engine 稼働中は入力デバイスの実サンプルレートを優先し、
-        // injectSamples 経由の解析では ``sampleRate`` プロパティを使う
-        let engineRate = engine.map { $0.inputNode.outputFormat(forBus: 0).sampleRate }
-        guard let rate = engineRate ?? sampleRate, rate > 0 else { return 0 }
+        guard let rate = resolvedSampleRate() else {
+            warnAboutMissingSampleRate()
+            return 0
+        }
         let binWidth = Float(rate) / Float(fftSize)
 
         let lowBin = max(0, Int(lowFreq / binWidth))
@@ -502,6 +524,45 @@ public final class AudioAnalyzer {
             sum += spectrum[i]
         }
         return sum / Float(highBin - lowBin + 1)
+    }
+
+    // MARK: - サンプルレートの解決（Issue #783）
+
+    /// 周波数→ビン変換に使うサンプルレート。解決できなければ `nil`。
+    ///
+    /// engine 稼働中は入力デバイスの実サンプルレートを優先し、
+    /// `injectSamples` 経由の解析では ``sampleRate`` プロパティを使う。
+    func resolvedSampleRate() -> Double? {
+        let engineRate = engine.map { $0.inputNode.outputFormat(forBus: 0).sampleRate }
+        guard let rate = engineRate ?? sampleRate, rate > 0 else { return nil }
+        return rate
+    }
+
+    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    static func shouldWarnAboutMissingSampleRate(
+        resolvedRate: Double?,
+        alreadyWarned: Bool
+    ) -> Bool {
+        guard !alreadyWarned else { return false }
+        return resolvedRate == nil
+    }
+
+    /// 「`sampleRate` が無いので `bandEnergy` が 0 になる」状態を一度だけ報告します。
+    ///
+    /// `spectrum` と ``band(_:)`` は正常に動き続けるため、黙って 0 を返すと
+    /// 「その帯域にエネルギーが無い」ケースと区別が付かない（Issue #783）。
+    private func warnAboutMissingSampleRate() {
+        guard Self.shouldWarnAboutMissingSampleRate(
+            resolvedRate: resolvedSampleRate(),
+            alreadyWarned: didWarnAboutMissingSampleRate
+        ) else { return }
+        didWarnAboutMissingSampleRate = true
+        debugWarning(
+            "bandEnergy(lowFreq:highFreq:) returned 0 because the sample rate is unknown — "
+                + "this is not the same as 'the band is silent'. Analyzing injected samples "
+                + "needs the rate for the frequency-to-bin conversion, so pass it as "
+                + "AudioAnalyzer(fftSize:sampleRate:) or assign analyzer.sampleRate. "
+                + "(start() takes it from the input device automatically.)")
     }
 
     // MARK: - プライベート: FFT
