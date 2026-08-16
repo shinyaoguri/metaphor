@@ -6,15 +6,19 @@ Run from the repository root:
     python3 -m unittest discover -s scripts/tests
 
 チュートリアル（generate-tutorial-shots.py）と Examples（generate-example-shots.py）が
-共有する部分だけをここで確かめる。確かめるのは 3 つ — **台帳に入れる実寸をヘッダから
+共有する部分だけをここで確かめる。確かめるのは 4 つ — **台帳に入れる実寸をヘッダから
 読めること**、**撮影時のソースの指紋が「絵を変えうる変更」だけで動くこと**、
-**入力台本の読み取り規則**。指紋はどちらのスクリプトでも「コードを変えたのに画像が
-古い」を検出する土台なので、ここが壊れると両方の `--check` が同時に嘘をつく。台本は
-入力が要るスケッチを撮る唯一の経路で、こちらも両スクリプトが同じ実装を使う（#610）。
+**撮影時の来歴とそこから数える実装の隔たり**、**入力台本の読み取り規則**。指紋は
+どちらのスクリプトでも「コードを変えたのに画像が古い」を検出する土台なので、ここが
+壊れると両方の `--check` が同時に嘘をつく。来歴は指紋が拾えないライブラリ実装の変更を
+あとから言うためのもので、リファレンス（generate-reference-shots.py）もこれを使う
+（#586）。台本は入力が要るスケッチを撮る唯一の経路で、こちらも両スクリプトが同じ
+実装を使う（#610）。
 """
 
 import importlib.util
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -134,6 +138,125 @@ class TestSourceHash(CommonTestCase):
         before = common.source_hash(package)
         (package / "Sketch/App.swift").rename(package / "Sketch/Main.swift")
         self.assertNotEqual(common.source_hash(package), before)
+
+
+class GitTestCase(CommonTestCase):
+    """来歴の検査は git の履歴を要るので、使い捨てのリポジトリを 1 つ作る。"""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.repo = self.root / "repo"
+        (self.repo / "Sources").mkdir(parents=True)
+        (self.repo / "docs").mkdir()
+        self.git("init", "-q", "-b", "main")
+        self.git("config", "user.email", "test@example.com")
+        self.git("config", "user.name", "Test")
+        common.implementation_drift.cache_clear()
+        self.addCleanup(common.implementation_drift.cache_clear)
+
+    def git(self, *args: str) -> str:
+        result = subprocess.run(
+            ["git", *args], cwd=self.repo, capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()
+
+    def commit(self, path: str, text: str) -> str:
+        target = self.repo / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", f"touch {path}")
+        return self.git("rev-parse", "HEAD")
+
+
+class TestCaptureProvenance(GitTestCase):
+    """撮った実装を台帳に残す（指紋が拾えないライブラリ変更の手がかり。#586）。"""
+
+    def test_it_records_the_current_commit(self) -> None:
+        head = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.assertEqual(
+            common.capture_provenance(self.repo), {"commit": head, "dirty": False}
+        )
+
+    def test_uncommitted_sources_are_recorded_as_dirty(self) -> None:
+        # 直している最中に撮ることは普通にある。commit だけでは実装を特定できない。
+        self.commit("Sources/Draw.swift", "func draw() {}\n")
+        (self.repo / "Sources/Draw.swift").write_text("func draw() { circle() }\n")
+        provenance = common.capture_provenance(self.repo)
+        self.assertTrue(provenance["dirty"])
+
+    def test_changes_outside_sources_are_not_dirty(self) -> None:
+        self.commit("Sources/Draw.swift", "func draw() {}\n")
+        (self.repo / "docs/note.md").write_text("編集中\n")
+        self.assertFalse(common.capture_provenance(self.repo)["dirty"])
+
+    def test_a_directory_without_git_records_nothing(self) -> None:
+        # git が引けない環境でも撮影は続けられる必要がある。
+        self.assertIsNone(common.capture_provenance(self.root / "not-a-repo"))
+
+
+class TestImplementationDrift(GitTestCase):
+    """撮影時の commit から HEAD までに Sources/ が何回変わったか。"""
+
+    def test_no_change_since_the_shot(self) -> None:
+        head = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.assertEqual(common.implementation_drift(head, self.repo), 0)
+
+    def test_it_counts_commits_that_touched_sources(self) -> None:
+        shot = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.commit("Sources/Draw.swift", "func draw() { circle() }\n")
+        self.commit("Sources/Style.swift", "func fill() {}\n")
+        self.assertEqual(common.implementation_drift(shot, self.repo), 2)
+
+    def test_changes_outside_sources_are_not_counted(self) -> None:
+        # ドキュメントだけの PR で全点が「実装が変わった」と言われては困る。
+        shot = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.commit("docs/note.md", "書き足し\n")
+        self.assertEqual(common.implementation_drift(shot, self.repo), 0)
+
+    def test_an_unknown_commit_is_unknown_not_zero(self) -> None:
+        # 浅い clone・未 push のローカル commit。「変わっていない」と混同しない。
+        self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.assertIsNone(common.implementation_drift("0" * 40, self.repo))
+
+
+class TestDriftSummary(GitTestCase):
+    """点ごとに 300 行出さず、要約 1 本にまとめる（#586）。"""
+
+    def summary(self, entries: list[dict | None]) -> list[str]:
+        return common.drift_summary(entries, "スケッチと撮影設定", self.repo)
+
+    def test_nothing_to_say_when_every_shot_is_current(self) -> None:
+        head = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        entry = {"provenance": {"commit": head, "dirty": False}}
+        self.assertEqual(self.summary([entry, entry]), [])
+
+    def test_it_counts_shots_taken_before_a_source_change(self) -> None:
+        shot = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.commit("Sources/Draw.swift", "func draw() { circle() }\n")
+        lines = self.summary([{"provenance": {"commit": shot, "dirty": False}}])
+        self.assertIn("1 点は撮影後に Sources/ が変わっている（最大 1 コミット）", lines[0])
+
+    def test_entries_without_provenance_are_unknown(self) -> None:
+        # 既存の画像には来歴が無い。撮り直せば入る（遡って埋めはしない）。
+        lines = self.summary([{"sourceHash": "abc"}])
+        self.assertIn("1 点は撮影時の来歴が未記録", lines[0])
+
+    def test_a_dirty_shot_is_called_out(self) -> None:
+        head = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        self.commit("Sources/Draw.swift", "func draw() { circle() }\n")
+        lines = self.summary([{"provenance": {"commit": head, "dirty": True}}])
+        self.assertTrue(any("未コミットの変更がある状態で撮られている" in l for l in lines))
+
+    def test_a_dirty_shot_is_reported_even_with_no_drift(self) -> None:
+        # 隔たりが 0 でも、撮影時の実装は commit から復元できない。
+        head = self.commit("Sources/Draw.swift", "func draw() {}\n")
+        lines = self.summary([{"provenance": {"commit": head, "dirty": True}}])
+        self.assertTrue(any("未コミットの変更がある状態で撮られている" in l for l in lines))
+
+    def test_it_always_says_what_the_check_does_not_cover(self) -> None:
+        lines = self.summary([{"sourceHash": "abc"}])
+        self.assertIn("ライブラリ実装の変更は見ていない", lines[-1])
 
 
 class TestInputScript(CommonTestCase):

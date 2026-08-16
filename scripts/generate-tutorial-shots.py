@@ -97,6 +97,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
     ShotError,
+    capture_provenance,
+    drift_summary,
     image_size,
     load_input_script,
     send_input_script,
@@ -631,7 +633,13 @@ def capture(ref: str, motion: dict | None = None, recorded: dict | None = None) 
         shutil.rmtree(probe_dir, ignore_errors=True)
 
     entry = publish(ref, entry, motion, recorded)
-    return {"sourceHash": source_hash(package_dir), **entry}
+    fingerprint = {"sourceHash": source_hash(package_dir)}
+    # 指紋はパッケージ配下しか見ないので、ライブラリ本体の変更は拾えない（#586）。
+    # せめて「どの実装で撮ったか」を残し、あとから隔たりを数えられるようにする。
+    provenance = capture_provenance(REPO_ROOT)
+    if provenance:
+        fingerprint["provenance"] = provenance
+    return {**fingerprint, **entry}
 
 
 def publish(
@@ -835,6 +843,20 @@ def check(
     return stale
 
 
+def report_drift(shots: dict, refs: list[str]) -> None:
+    """「撮影後に実装が変わっている節がいくつあるか」を要約して伝える（#586）。
+
+    合否には混ぜない。実装が変わっても絵が変わったとは限らず、描画に触るあらゆる
+    PR を画像の撮り直しで止めることになるため。
+    """
+    for line in drift_summary(
+        (shots.get(ref) for ref in refs if ref in shots),
+        "スケッチと撮影設定",
+        REPO_ROOT,
+    ):
+        print(line)
+
+
 def external_stale(
     ref: str,
     package_dir: Path,
@@ -963,7 +985,13 @@ def main() -> int:
             if not stale:
                 skipped = [r for r in refs if no_capture_reason(CODE_DIR / r, r)]
                 aside = f"（うち {len(skipped)} 節は {NO_CAPTURE_NAME} で撮らない）" if skipped else ""
-                print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある{aside}")
+                # 「最新の画像がある」とは書かない。見ているのはスケッチと撮影設定
+                # だけで、ライブラリ実装の変更は含まない（#586）。
+                print(
+                    f"OK: 参照されている {len(refs)} 節すべてで、"
+                    f"スケッチと撮影設定は撮影時から変わっていない{aside}"
+                )
+                report_drift(shots, refs)
                 return 0
             print("error: 実行結果画像が古い:", file=sys.stderr)
             for line in stale:
@@ -987,7 +1015,11 @@ def main() -> int:
         if skipped:
             save_manifest(shots)
         if not targets:
-            print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある")
+            print(
+                f"OK: 参照されている {len(refs)} 節すべてで、"
+                "スケッチと撮影設定は撮影時から変わっていない"
+            )
+            report_drift(shots, refs)
             return 0
 
         for ref in targets:
