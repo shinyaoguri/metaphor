@@ -18,41 +18,59 @@ public let QUARTER_PI: Float = .pi / 4
 public let TAU: Float = .pi * 2
 
 // MARK: - Key Code Constants (macOS Virtual Key Codes)
+//
+// 値の正典は ``KeyCode``（Sources/MetaphorCore/Input/KeyCode.swift）で、ここはその
+// Processing 互換な別名です。`import Foundation` を併用すると Darwin の `sys/tty.h` が持つ
+// 同名マクロと衝突して書けなくなるものがあるため（Issue #794）、そのときは `KeyCode.return`
+// のように名前空間を経由してください。
 
 /// 左矢印キーの仮想キーコード。
-public let LEFT: UInt16 = 123
+public let LEFT: UInt16 = KeyCode.left
 /// 右矢印キーの仮想キーコード。
-public let RIGHT: UInt16 = 124
+public let RIGHT: UInt16 = KeyCode.right
 /// 下矢印キーの仮想キーコード。
-public let DOWN: UInt16 = 125
+public let DOWN: UInt16 = KeyCode.down
 /// 上矢印キーの仮想キーコード。
-public let UP: UInt16 = 126
+public let UP: UInt16 = KeyCode.up
 
 /// Return キーの仮想キーコード。
-public let RETURN: UInt16 = 36
+///
+/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります
+///   （`metaphor.RETURN` と修飾しても絞れません）。``KeyCode/return`` を使うか、
+///   `let r: UInt16 = RETURN` のように型注釈を付けてください。
+public let RETURN: UInt16 = KeyCode.return
 /// テンキー Enter キーの仮想キーコード。
-public let ENTER: UInt16 = 76
+public let ENTER: UInt16 = KeyCode.enter
 /// Tab キーの仮想キーコード。
-public let TAB: UInt16 = 48
+///
+/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。
+///   ``KeyCode/tab`` を使うか型注釈を付けてください。
+public let TAB: UInt16 = KeyCode.tab
 /// Space キーの仮想キーコード。
-public let SPACE: UInt16 = 49
+public let SPACE: UInt16 = KeyCode.space
 /// Backspace (Delete) キーの仮想キーコード。
-public let BACKSPACE: UInt16 = 51
+///
+/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。
+///   ``KeyCode/backspace`` を使うか型注釈を付けてください。
+public let BACKSPACE: UInt16 = KeyCode.backspace
 /// Forward Delete キーの仮想キーコード。
-public let DELETE: UInt16 = 117
+public let DELETE: UInt16 = KeyCode.delete
 /// Escape キーの仮想キーコード。
-public let ESCAPE: UInt16 = 53
+public let ESCAPE: UInt16 = KeyCode.escape
 
 /// Shift キーの仮想キーコード。
-public let SHIFT: UInt16 = 56
+public let SHIFT: UInt16 = KeyCode.shift
 /// Control キーの仮想キーコード。
-public let CONTROL: UInt16 = 59
+///
+/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。
+///   ``KeyCode/control`` を使うか型注釈を付けてください。
+public let CONTROL: UInt16 = KeyCode.control
 /// Option キーの仮想キーコード。
-public let OPTION: UInt16 = 58
+public let OPTION: UInt16 = KeyCode.option
 /// Alt キーの仮想キーコード（Option のエイリアス）。
-public let ALT: UInt16 = 58
+public let ALT: UInt16 = KeyCode.alt
 /// Command キーの仮想キーコード。
-public let COMMAND: UInt16 = 55
+public let COMMAND: UInt16 = KeyCode.command
 
 // MARK: - Time
 
