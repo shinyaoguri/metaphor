@@ -466,12 +466,16 @@
       "sha256": "47b7a7aa2901e92ce39d30b9e874b5f1b4e04add98822cf7c474762308385c2b"
     },
     "06-GPU/05-ShapeShader": {
-      "sourceHash": "9cd58f38acad481c3d6460ef34d760e9550247a8a15e89bfffa71f4a9343b506",
+      "sourceHash": "d27857cc6c84fdd91e12f6c551be466797d517d9cce00d7cc43ee09cc5846199",
+      "provenance": {
+        "commit": "7f7432c45c224fae131b954f5839984fb3f657f9",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/4b5f419b68e54b8cfe2d6a1408c18c9d.png",
-      "sha256": "4da9a7a9e431232244cdfe2b099c6331996243025a420d77cac2614d2df4bc6a"
+      "url": "https://i.gyazo.com/06a73f6ddc5efae52b6f9cb7e549a104.png",
+      "sha256": "bee0187438910a1c87ece2f8695b59372311d314a40f0691dcde204b90696678"
     },
     "07-Media/04-VideoPlayback": {
       "sourceHash": "5bc0288bbc65b9fd6bfb1696dc76f0afe8b6e71c401dbcd06eed8c851692ee09",
