@@ -189,7 +189,7 @@ class TestInputScript(ExampleShotsTestCase):
         shots = {
             PATH: {
                 "origin": gen.ORIGIN_CAPTURED,
-                "sourceHash": gen.source_hash(package),
+                "sourceHash": gen.source_fingerprint(PATH),
                 "width": 640,
                 "height": 360,
             }
@@ -221,12 +221,12 @@ class TestManifest(ExampleShotsTestCase):
         self.assertEqual(gen.adopted([], recorded), {})
 
     def test_a_captured_entry_is_left_alone(self) -> None:
-        package = self.package()
+        self.package()
         self.image()
         recorded = {
             PATH: {
                 "origin": gen.ORIGIN_CAPTURED,
-                "sourceHash": gen.source_hash(package),
+                "sourceHash": gen.source_fingerprint(PATH),
                 "width": 640,
                 "height": 360,
             }
@@ -237,31 +237,40 @@ class TestManifest(ExampleShotsTestCase):
 class TestStaleness(ExampleShotsTestCase):
     """鮮度判定。原典由来は対象外で、撮ったものだけがソース変更で古くなる。"""
 
-    def captured(self, package: Path) -> dict:
+    def captured(self) -> dict:
         return {
             PATH: {
                 "origin": gen.ORIGIN_CAPTURED,
-                "sourceHash": gen.source_hash(package),
+                "sourceHash": gen.source_fingerprint(PATH),
                 "width": 640,
                 "height": 360,
             }
         }
 
     def test_an_unchanged_capture_is_fresh(self) -> None:
-        package = self.package()
+        self.package()
         self.image()
-        self.assertEqual(gen.stale_entries([self.entry()], self.captured(package)), [])
+        self.assertEqual(gen.stale_entries([self.entry()], self.captured()), [])
 
     def test_changing_the_sketch_makes_it_stale(self) -> None:
         package = self.package()
         self.image()
-        shots = self.captured(package)
+        shots = self.captured()
         (package / "Sketch/App.swift").write_text("func draw() { circle(0, 0, 10) }\n")
         self.assertEqual(len(gen.stale_entries([self.entry()], shots)), 1)
 
+    def test_replacing_the_image_alone_is_not_stale(self) -> None:
+        # 指紋は入力の指紋。実行結果画像は出力なので、差し替えても
+        # 「ソースが変わった」にはならない（#820）。
+        self.package()
+        image = self.image()
+        shots = self.captured()
+        image.write_bytes(image.read_bytes() + b"\x00")
+        self.assertEqual(gen.stale_entries([self.entry()], shots), [])
+
     def test_a_missing_image_makes_it_stale(self) -> None:
-        package = self.package()
-        shots = self.captured(package)
+        self.package()
+        shots = self.captured()
         self.assertEqual(len(gen.stale_entries([self.entry()], shots)), 1)
 
     def test_a_processing_image_never_goes_stale(self) -> None:
@@ -275,7 +284,7 @@ class TestStaleness(ExampleShotsTestCase):
     def test_a_skipped_example_does_not_go_stale(self) -> None:
         package = self.package()
         self.image()
-        shots = self.captured(package)
+        shots = self.captured()
         (package / gen.NO_CAPTURE_NAME).write_text("実行環境に依存する\n")
         (package / "Sketch/App.swift").write_text("func draw() { circle(0, 0, 10) }\n")
         self.assertEqual(gen.stale_entries([self.entry()], shots), [])
