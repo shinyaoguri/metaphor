@@ -28,11 +28,10 @@ let physics = Physics2D(cellSize: 50)
 physics.setGravity(0, 500)
 physics.bounds = (min: SIMD2(0, 0), max: SIMD2(800, 600))
 
-// 跳ね返らせたい床は静的なボディとして置く（bounds の壁は位置を止めるだけで
-// restitution / friction を見ない）
-let floor = physics.addRect(x: 400, y: 580, width: 800, height: 40)
-floor.isStatic = true
-floor.restitution = 0.8
+// bounds の壁は「同じ係数を持つ動かないボディ」として振る舞う。置いた静的ボディと
+// 挙動は同じで、跳ねずに溜めたいときはボディ側の restitution を 0 にする
+let platform = physics.addRect(x: 400, y: 400, width: 300, height: 20)
+platform.isStatic = true
 
 let ball = physics.addCircle(x: 400, y: 100, radius: 20)
 ball.restitution = 0.8

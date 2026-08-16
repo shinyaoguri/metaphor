@@ -368,6 +368,181 @@ struct Physics2DCollisionResponseTests {
     }
 }
 
+// MARK: - World Bounds Response Tests
+
+/// ワールド境界の壁は「同じ係数を持つ無限質量の静的ボディ」として振る舞う（#796）。
+/// 静的な床を使う `Physics2D collision response` の各ケースと対になる。
+@Suite("Physics2D world bounds response")
+@MainActor
+struct Physics2DBoundsResponseTests {
+
+    /// 下端にちょうど接した円へ既知の下向き接近速度を与えて 1 ステップ進める。
+    ///
+    /// `intoBounds` が `true` ならワールド境界の下端（`min.y = 0`）に、`false` なら
+    /// 上面 `y = 0` の静的な矩形の床に当てる。どちらも接触面の位置は同じなので、
+    /// 結果が一致すべき（対称性）。
+    private func drop(
+        intoBounds: Bool,
+        approach v: Float,
+        restitution: Float = 0.9,
+        friction: Float = 0,
+        startY: Float = 10
+    ) -> PhysicsBody2D {
+        let physics = Physics2D(cellSize: 100)
+        if intoBounds {
+            physics.bounds = (min: SIMD2(-200, 0), max: SIMD2(200, 1000))
+        } else {
+            let floor = physics.addRect(x: 0, y: -50, width: 400, height: 100)  // 上面 y = 0
+            floor.isStatic = true
+            floor.restitution = restitution
+            floor.friction = friction
+        }
+
+        let ball = physics.addCircle(x: 0, y: startY, radius: 10)
+        ball.restitution = restitution
+        ball.friction = friction
+        ball.previousPosition = SIMD2(0, startY + v)
+
+        physics.step(1.0 / 60.0)
+        return ball
+    }
+
+    /// #796 の芯: 同じ設定でも床には跳ね返るのに壁には跳ね返らない、という非対称を潰す。
+    @Test("the bounds wall behaves like a static floor with the same coefficients")
+    func boundsMatchesStaticFloor() {
+        let onWall = drop(intoBounds: true, approach: 4.0)
+        let onFloor = drop(intoBounds: false, approach: 4.0)
+
+        #expect(
+            abs(onWall.velocity.y - onFloor.velocity.y) < 0.001,
+            "速度が一致する: 壁 \(onWall.velocity.y) vs 床 \(onFloor.velocity.y)"
+        )
+        #expect(
+            abs(onWall.position.y - onFloor.position.y) < 0.001,
+            "位置が一致する: 壁 \(onWall.position.y) vs 床 \(onFloor.position.y)"
+        )
+    }
+
+    @Test("restitution bounces a circle off the bounds wall", arguments: [Float(0.5), 4.0, 20.0])
+    func wallRestitution(approach: Float) {
+        let bounce = drop(intoBounds: true, approach: approach).velocity.y
+        let expected = 0.9 * approach
+        #expect(abs(bounce - expected) < expected * 0.05, "接近 \(approach) → 期待 \(expected), 実測 \(bounce)")
+    }
+
+    @Test("restitution 0 absorbs the approach speed at the wall")
+    func wallZeroRestitution() {
+        let bounce = drop(intoBounds: true, approach: 4.0, restitution: 0).velocity.y
+        #expect(abs(bounce) < 0.01, "跳ね返らない: \(bounce)")
+    }
+
+    /// クランプ量が速度に化けないこと。壁の外へ深く出た状態から極小の接近速度で当てる。
+    /// `previousPosition` を動かさずに位置だけ戻すと、押し戻し量（5.1）が速度として出る。
+    @Test("clamping to the wall does not inject velocity")
+    func wallClampDoesNotInjectVelocity() {
+        let ball = drop(intoBounds: true, approach: 0.1, startY: 5)  // 5 めり込んだ状態
+
+        #expect(abs(ball.velocity.y - 0.09) < 0.01, "期待 0.09, 実測 \(ball.velocity.y)")
+        #expect(abs(ball.position.y - 10) < 0.001, "壁の内側へ押し出される: \(ball.position.y)")
+    }
+
+    /// 壁沿いを滑る円の横速度を 60 ステップ後に見る。
+    private func slideAlongWall(friction: Float) -> Float {
+        let physics = Physics2D(cellSize: 100)
+        physics.setGravity(0, -1000)
+        physics.bounds = (min: SIMD2(-10000, 0), max: SIMD2(10000, 1000))
+
+        let ball = physics.addCircle(x: 0, y: 10, radius: 10)
+        ball.friction = friction
+        ball.restitution = 0
+        ball.previousPosition = SIMD2(-8, 10)  // 1 ステップあたり 8 で右へ
+
+        for _ in 0..<60 { physics.step(1.0 / 60.0) }
+        return ball.velocity.x
+    }
+
+    @Test("friction slows a body sliding along the wall, and friction 0 does not")
+    func wallFriction() {
+        let frictionless = slideAlongWall(friction: 0)
+        let rough = slideAlongWall(friction: 1)
+
+        #expect(abs(frictionless - 8) < 0.01, "摩擦 0 は初速を保つ: \(frictionless)")
+        #expect(rough < frictionless - 1, "摩擦 1 は明確に遅い: \(rough) vs \(frictionless)")
+        #expect(rough >= -0.01, "摩擦で逆走しない: \(rough)")
+    }
+
+    @Test("a ball dropped inside bounds bounces back to a height set by restitution")
+    func wallFreeFallBounceHeight() {
+        let physics = Physics2D(cellSize: 100)
+        physics.setGravity(0, -1000)
+        physics.bounds = (min: SIMD2(-200, 0), max: SIMD2(200, 1000))
+
+        let drop: Float = 300
+        let ball = physics.addCircle(x: 0, y: drop, radius: 10)
+        ball.restitution = 0.9
+        ball.friction = 0
+
+        var peakAfterBounce: Float = 0
+        var bounced = false
+        for _ in 0..<400 {
+            physics.step(1.0 / 60.0)
+            if ball.velocity.y > 0 { bounced = true }
+            if bounced { peakAfterBounce = max(peakAfterBounce, ball.position.y) }
+            #expect(ball.position.y >= 10 - 0.001, "壁を抜けない: \(ball.position.y)")
+        }
+
+        let fall = drop - 10                       // 接触までの落差
+        let rise = peakAfterBounce - 10            // 跳ね上がった高さ
+        #expect(bounced, "跳ね返る")
+        #expect(rise / fall > 0.6, "e = 0.9 に見合う高さまで戻る: 比 \(rise / fall)")
+        #expect(rise / fall < 1.0, "エネルギーが増えない: 比 \(rise / fall)")
+    }
+
+    @Test("resting contact on the bounds wall settles instead of jittering")
+    func wallRestingContactSettles() {
+        let physics = Physics2D(cellSize: 100)
+        physics.setGravity(0, -1000)
+        physics.bounds = (min: SIMD2(-200, 0), max: SIMD2(200, 1000))
+
+        let ball = physics.addCircle(x: 0, y: 10, radius: 10)  // 既定 restitution 0.5
+
+        for _ in 0..<120 { physics.step(1.0 / 60.0) }
+
+        // 落ち着いたあとの 60 ステップを見る。重力が毎ステップ生む接近を反発させると
+        // 微振動が続くので、振幅で捕まえる
+        var maxSpeed: Float = 0
+        var maxOffset: Float = 0
+        for _ in 0..<60 {
+            physics.step(1.0 / 60.0)
+            maxSpeed = max(maxSpeed, abs(ball.velocity.y))
+            maxOffset = max(maxOffset, abs(ball.position.y - 10))
+        }
+
+        #expect(maxSpeed < 0.05, "壁の上で静定する: \(maxSpeed)")
+        #expect(maxOffset < 0.05, "沈まず浮かない: \(maxOffset)")
+    }
+
+    /// 角では x / y の 2 面が同じステップで当たる。各軸が独立に反射し、
+    /// 二重に跳ねてエネルギーが増えることも、押し戻しで速度が痩せることもない。
+    @Test("a corner contact reflects both axes independently")
+    func cornerReflectsBothAxes() {
+        let physics = Physics2D(cellSize: 100)
+        physics.bounds = (min: SIMD2(0, 0), max: SIMD2(200, 200))
+
+        let ball = physics.addCircle(x: 12, y: 12, radius: 10)
+        ball.restitution = 0.9
+        ball.friction = 0
+        ball.previousPosition = SIMD2(12 + 4, 12 + 4)  // 角へ向かって斜めに接近（各軸 4）
+
+        physics.step(1.0 / 60.0)
+
+        // 各軸とも e = 0.9 で反射する → (3.6, 3.6)
+        #expect(abs(ball.velocity.x - 3.6) < 0.18, "x が反射する: \(ball.velocity.x)")
+        #expect(abs(ball.velocity.y - 3.6) < 0.18, "y が反射する: \(ball.velocity.y)")
+        #expect(abs(ball.position.x - 10) < 0.001 && abs(ball.position.y - 10) < 0.001, "角の内側へ収まる: \(ball.position)")
+    }
+}
+
 // MARK: - SpatialHash2D Tests
 
 @Suite("SpatialHash2D")

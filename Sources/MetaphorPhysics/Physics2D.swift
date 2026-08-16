@@ -32,11 +32,13 @@ public final class Physics2D {
 
     /// An optional bounding box that confines all bodies within its limits.
     ///
-    /// When set, bodies are clamped to the `min`-`max` range on each iteration.
-    /// The walls only clamp positions: unlike body-to-body contacts they ignore
-    /// ``PhysicsBody2D/restitution`` and ``PhysicsBody2D/friction``, so bodies
-    /// come to rest against them instead of bouncing. Add a static body with
-    /// ``addRect(x:y:width:height:mass:)`` where a bouncy wall is wanted.
+    /// When set, bodies are kept inside the `min`-`max` range on each iteration.
+    /// Each wall behaves like an immovable body carrying the same coefficients as
+    /// the body it touches, so ``PhysicsBody2D/restitution`` and
+    /// ``PhysicsBody2D/friction`` apply exactly as they do against a static body
+    /// added with ``addRect(x:y:width:height:mass:)``. Set `restitution` to `0`
+    /// (and `friction` to `0`) on a body that should simply come to rest against
+    /// the walls.
     public var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?
 
     /// Creates a new 2D physics world.
@@ -422,19 +424,75 @@ public final class Physics2D {
         body.isStatic ? 0 : 1 / body.mass
     }
 
-    /// Clamps all non-static bodies within the world bounds, accounting for shape size.
+    /// Confines all non-static bodies within the world bounds, accounting for shape size.
+    ///
+    /// 壁は「ボディと同じ係数を持つ無限質量の静的ボディ」として扱う。押し戻しは
+    /// ``correctPosition(_:by:)`` で速度中立に行い、そのうえで反発・摩擦を当てる。
     private func applyBounds(_ bounds: (min: SIMD2<Float>, max: SIMD2<Float>)) {
         for body in bodies where !body.isStatic {
+            let half: SIMD2<Float>
             switch body.shape {
             case .circle(let r):
-                body.position.x = max(bounds.min.x + r, min(bounds.max.x - r, body.position.x))
-                body.position.y = max(bounds.min.y + r, min(bounds.max.y - r, body.position.y))
+                half = SIMD2(r, r)
             case .rect(let w, let h):
-                let hw = w * 0.5
-                let hh = h * 0.5
-                body.position.x = max(bounds.min.x + hw, min(bounds.max.x - hw, body.position.x))
-                body.position.y = max(bounds.min.y + hh, min(bounds.max.y - hh, body.position.y))
+                half = SIMD2(w * 0.5, h * 0.5)
             }
+
+            // 角では x → y の順に 2 面へ当たるが、2 面目の応答は法線成分の接近速度が
+            // 残っていないぶんだけしか効かない（`applyWallResponse` の接近ガード）
+            resolveWall(body, axis: 0, low: bounds.min.x + half.x, high: bounds.max.x - half.x)
+            resolveWall(body, axis: 1, low: bounds.min.y + half.y, high: bounds.max.y - half.y)
         }
+    }
+
+    /// Pushes a body back inside one axis of the world bounds and applies the wall response.
+    private func resolveWall(_ body: PhysicsBody2D, axis: Int, low: Float, high: Float) {
+        var normal = SIMD2<Float>(0, 0)
+        var overlap: Float = 0
+
+        // ボディより狭い bounds では両側が同時にはみ出す。従来のクランプ
+        // （`max(low, min(high, x))`）と同じく low 側を優先する
+        if body.position[axis] > high {
+            normal[axis] = -1
+            overlap = body.position[axis] - high
+        }
+        if body.position[axis] < low {
+            normal[axis] = 1
+            overlap = low - body.position[axis]
+        }
+
+        guard overlap > 0 else { return }
+
+        correctPosition(body, by: normal * overlap)
+        applyWallResponse(body, normal: normal)
+    }
+
+    /// Applies restitution/friction for a contact with a world bounds wall.
+    ///
+    /// ``applyCollisionResponse(_:_:normal:)`` の片側が無限質量（`invMass == 0`）の場合に
+    /// 相当し、質量は式から消えるので速度の単位のまま計算する。壁は係数を持たないので
+    /// ボディ自身の値を使う（`min` も平均もボディ側の値になり、同じ係数の静的ボディを
+    /// 置いた場合と一致する）。`normal` は壁からボディへ向かう単位ベクトル。
+    private func applyWallResponse(_ body: PhysicsBody2D, normal: SIMD2<Float>) {
+        var velocity = body.velocity
+        let normalSpeed = simd_dot(velocity, normal)
+        guard normalSpeed < 0 else { return }
+
+        // ボディ同士の接触と同じく、1 ステップ分の重力による接近は反発させない
+        // （壁に載ったボディが永久に微振動しないように）
+        let restitution = -normalSpeed <= restitutionThreshold ? 0 : body.restitution
+        let normalImpulse = -(1 + restitution) * normalSpeed
+        velocity += normalImpulse * normal
+
+        let tangentVelocity = velocity - simd_dot(velocity, normal) * normal
+        let tangentLength = simd_length(tangentVelocity)
+        if tangentLength > 0.0001 {
+            let tangent = tangentVelocity / tangentLength
+            let maxFrictionImpulse = normalImpulse * body.friction
+            let tangentImpulse = -simd_dot(velocity, tangent)
+            velocity += max(-maxFrictionImpulse, min(maxFrictionImpulse, tangentImpulse)) * tangent
+        }
+
+        body.previousPosition = body.position - velocity
     }
 }

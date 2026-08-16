@@ -49,7 +49,7 @@ public final class PhysicsBody2D {
     /// The smaller value of the two touching bodies is used. Contacts slower
     /// than the approach speed gravity adds in a single step are treated as
     /// perfectly inelastic, so resting bodies settle instead of jittering.
-    /// World ``Physics2D/bounds`` are unaffected — see their documentation.
+    /// The walls of ``Physics2D/bounds`` use this body's own value.
     public var restitution: Float = 0.5 {
         didSet { restitution = Self.clampedUnit(restitution) }
     }
@@ -59,6 +59,7 @@ public final class PhysicsBody2D {
     /// The average of the two touching bodies is used, and it bounds the
     /// tangential impulse as a fraction of the normal impulse (Coulomb):
     /// `0` slides freely, `1` sheds the tangential motion of the contact.
+    /// The walls of ``Physics2D/bounds`` use this body's own value.
     public var friction: Float = 0.1 {
         didSet { friction = Self.clampedUnit(friction) }
     }
