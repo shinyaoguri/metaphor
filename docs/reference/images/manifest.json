@@ -3,7 +3,7 @@
   "shots": {
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::ambientLight(_:)": {
       "symbol": "ambientLight(_:)",
-      "snippetHash": "05f99de6efa4f558ce9ffe58668052b9617da4a53c81408d41176960d22a3b07",
+      "snippetHash": "6a9506ad73ff68a131d5a938682334ffb2a259407ac0607290a9eb6d7fb6f5f5",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -15,7 +15,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::box(_:)": {
       "symbol": "box(_:)",
-      "snippetHash": "8142d1e44ac166f5817260210ae71ee8a8a5ada5ee55d685fcf2e010e68e2b06",
+      "snippetHash": "909491242fda82f3cf99f5dbb44ccfc45111ca3fb459045d6b9e09236a526113",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -27,7 +27,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::camera(eye:center:up:)": {
       "symbol": "camera(eye:center:up:)",
-      "snippetHash": "43477b8e834bd9858370e33224f29630ad9c0deb8a0e3a7651bd437e2949c633",
+      "snippetHash": "cec0a951191e376fbff788da0d9cb77a0bffeacec9496b72db19f319eb21180f",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -39,7 +39,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::cone(radius:height:detail:)": {
       "symbol": "cone(radius:height:detail:)",
-      "snippetHash": "fd95a64206e10686b8b79cf590dac95b0480d24edbcae231ab159a5464015d65",
+      "snippetHash": "51a956d500b4b19d570b2ab2f8824c9251f06bd37923b37bafdabdf99d0c34c3",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -51,7 +51,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::cylinder(radius:height:detail:)": {
       "symbol": "cylinder(radius:height:detail:)",
-      "snippetHash": "5308557a22373abd4adeb52cbce7c946a4d9ea830838bce2184ae63b337e109d",
+      "snippetHash": "ec0f33e081f518aae4cb9c094df2d091f05311cc4e01621296d1d43a47f750a2",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -63,7 +63,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::directionalLight(_:_:_:color:intensity:)": {
       "symbol": "directionalLight(_:_:_:color:intensity:)",
-      "snippetHash": "0418b178c95bf2d8cb1afc753cbefc3199ee3f5b90f447815ecbdd624082ea60",
+      "snippetHash": "fa8be1fd37ba022a649daabda882e01045d60927d2939551a4bd487156ddea28",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -75,7 +75,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::lights()": {
       "symbol": "lights()",
-      "snippetHash": "2fc00e97315a124724f914e52752ed3ab2410f0d7e0ab83684ca6bc9145ecfaf",
+      "snippetHash": "8cc8728829c5b9af592c8a6f64f691f19202452d19f4be7561678a3250d87a05",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -87,7 +87,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::metallic(_:)": {
       "symbol": "metallic(_:)",
-      "snippetHash": "efe629074765279c43f2535bf5b2c75e4f8e5dddb21941f9e7c03890f8242f8b",
+      "snippetHash": "3d61e2b0e767116b9136915bfcc8343a920e9dd6f74a2f8caa0908a7b5825ac2",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -99,9 +99,9 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::ortho(left:right:bottom:top:near:far:)": {
       "symbol": "ortho(left:right:bottom:top:near:far:)",
-      "snippetHash": "7fb16ecccf5f25b310c6d4a761cfa4e3ab109ff68faf75fd061891b4a2dffc57",
+      "snippetHash": "a890e815efcb56b22c3ac8557168bc734194451b3fd7388a90ea512a2fcb07c2",
       "provenance": {
-        "commit": "254a823b657bc8ac45351af21b9bc511197217a7",
+        "commit": "fa2e822f744fa3c5b898a34a06b5241f8afcb91c",
         "dirty": true
       },
       "width": 480,
@@ -111,7 +111,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::pbr(_:)": {
       "symbol": "pbr(_:)",
-      "snippetHash": "f478b72a49bb39bc79e685aa39b48427257dddace7053bd59dd4f3fa2f023615",
+      "snippetHash": "135fa250958a3be2b351ed393571f8dde56474c2a782dcadd032377a00323c3b",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -123,7 +123,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::perspective(fov:near:far:)": {
       "symbol": "perspective(fov:near:far:)",
-      "snippetHash": "559071cf384edaf4e99ec39eec7bcacfe499d6b0646e9ec90311c71600246933",
+      "snippetHash": "2e77ee965f4f72dd0d27edc2abe2d2bd740826e998b015d957ae206e39280510",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -135,7 +135,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::plane(_:_:)": {
       "symbol": "plane(_:_:)",
-      "snippetHash": "63bffe43b2a03db62adcd6cbf1618e46c4e3acd298c92f92eb30b48fc9343eb8",
+      "snippetHash": "8c179d161af911823b8be50d3adf9cccc22f0c763d88f74c8f178d3427445a85",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -147,7 +147,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::pointLight(_:_:_:color:falloff:intensity:)": {
       "symbol": "pointLight(_:_:_:color:falloff:intensity:)",
-      "snippetHash": "8a972edf897713640f228d883c8e6289f954cf0d17eca3541a798adf43217a38",
+      "snippetHash": "60a608b15d740b85fabd4954da944eb14da57a583fb660da9abad7650e1a16fb",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -159,7 +159,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::rotateX(_:)": {
       "symbol": "rotateX(_:)",
-      "snippetHash": "14024f7942d34b210ba12ff89b28053cc101dff987cafaa2b297c92daf45c759",
+      "snippetHash": "1867ee87747a1e18b2349f67e6f267c67917743ea2a8c99bff1f9bdf2d920749",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -171,7 +171,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::rotateY(_:)": {
       "symbol": "rotateY(_:)",
-      "snippetHash": "795df161791195ccc0470879d505454b1d615a0ec507cb671bbc232554ca6b69",
+      "snippetHash": "d71cff356ba6bd27819f2b39a8e41243cd9118245eb81cfa3e29a664beb71e66",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -194,7 +194,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::roughness(_:)": {
       "symbol": "roughness(_:)",
-      "snippetHash": "2bb72eb41d3ce7d532daf959025178ceb35aff168f85f7181e94ef44e53e6e92",
+      "snippetHash": "92fc09668276e95aca653001ce749ef899de0d87245362ce02dadb9bde66a8e9",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -206,7 +206,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::shininess(_:)": {
       "symbol": "shininess(_:)",
-      "snippetHash": "e5df98553198c2b4287b994fe9a95524fc52448f9c44012aec447803ec6e1083",
+      "snippetHash": "7d87bcc076c449560732d33d58d94548f252f928b2857a7e4f6873a63f5c81bf",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -218,7 +218,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::specular(_:_:_:)": {
       "symbol": "specular(_:_:_:)",
-      "snippetHash": "7931386880322b148c4cc0fd5673e8a7aee5f6fa957688aaf470d7c3c17b88b9",
+      "snippetHash": "228cbbe6280fa055161bcbded4b298414f2a257c1409ee652edea33e7217ddc9",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -230,7 +230,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::sphere(_:detail:)": {
       "symbol": "sphere(_:detail:)",
-      "snippetHash": "275cefb8ba0a119f6e4b635e9c755ec2f29d663fa893ccc92bfdf3eb4e7f17d7",
+      "snippetHash": "677ee13c63927b4bc0d8b3a005260a724032e3329fbf398206ba32953ce94abe",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -242,7 +242,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::spotLight(_:_:_:_:_:_:angle:falloff:color:intensity:)": {
       "symbol": "spotLight(_:_:_:_:_:_:angle:falloff:color:intensity:)",
-      "snippetHash": "3d35fd8566225e1bd2702d20a8adb540239ce40f97a333a529d32815af96722c",
+      "snippetHash": "5ab5468813f745e4be653ac3863ef4e295fe417e6c77721126f0cecda5731039",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -254,7 +254,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::torus(ringRadius:tubeRadius:detail:)": {
       "symbol": "torus(ringRadius:tubeRadius:detail:)",
-      "snippetHash": "e18721ad1a6a7b4800eb5caf35147218ae0b9fb9c90aadaca68c7c37794e4cdc",
+      "snippetHash": "42482f2716ef50a1099e046f49cdefff5564fbae69a4fa68dd342940bcf46cab",
       "provenance": {
         "commit": "3912676580c3f9939a749242df874a44d3c26927",
         "dirty": true
@@ -266,7 +266,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::arc(_:_:_:_:_:_:_:)": {
       "symbol": "arc(_:_:_:_:_:_:_:)",
-      "snippetHash": "d43917f7f4590a6692d5119bd2ee93c8d85144f3a1fa4145d6a1b50cca25e31d",
+      "snippetHash": "7f2681a37310715d2f8ac4230dd7842fce4b4d3481402e1fb251647894f8efc0",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/66c138c57b6838b7a60c9d58b222b5eb.png",
@@ -274,7 +274,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::beginContour()": {
       "symbol": "beginContour()",
-      "snippetHash": "e5f2681c9503eab5ec33a2e35019a8eb78f88f377218ff9c8fc08c0c01971ac7",
+      "snippetHash": "6e69324898cef2f685bfc7c48838e63cc792a4e4e461d19ee651a8aba78d8b47",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/0589e9f453959e2667e5a33fb94cf8a4.png",
@@ -282,7 +282,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::beginShape(_:)": {
       "symbol": "beginShape(_:)",
-      "snippetHash": "912bdfff33b140787e6984330ff8baf45b20c31329de487a794b4d1eff7ef041",
+      "snippetHash": "840197b3039aed97acbbafa389168d10dd4a64eb94b67b0db30e586017f4bc43",
       "provenance": {
         "commit": "7ad2b3eafc2008832b7d1720dc4e0e7e6211a685",
         "dirty": true
@@ -294,7 +294,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezier(_:_:_:_:_:_:_:_:)": {
       "symbol": "bezier(_:_:_:_:_:_:_:_:)",
-      "snippetHash": "eaffd01274e2842f1a1383f72012e4c56b1f9f5c4d0b357717d471f66d06cf6e",
+      "snippetHash": "c337f8043aaa70aa0e5aa80250ca1e5b287a8ab1a073486345352511cd489038",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/0b721460f802e496b860f974378c500c.png",
@@ -302,7 +302,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::bezierVertex(_:_:_:_:_:_:)": {
       "symbol": "bezierVertex(_:_:_:_:_:_:)",
-      "snippetHash": "94d2d31036e23778ea213a202009451ded85f8c6b58d226a1c70298b9717bf05",
+      "snippetHash": "0a4ec570c37f9580d2a15fd67b3d4dde923122a9a73e4900b59390023633405c",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/96c2d0ca7b953a80922e8477d611243e.png",
@@ -310,7 +310,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::circle(_:_:_:)": {
       "symbol": "circle(_:_:_:)",
-      "snippetHash": "fc8a717cb4143315c5f27e14d7ade99585715431d8672ca14dcb631cbb101f88",
+      "snippetHash": "0bb9ad1cab760d4929f6cf94fa5f7871d02b40e84878c50ce52c747186933b84",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/5db1a81abf5604a4ee8a316406fc5049.png",
@@ -318,7 +318,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::curveVertex(_:_:)": {
       "symbol": "curveVertex(_:_:)",
-      "snippetHash": "5b20f38e91aefc84a55c93f8165432469e136a57e25aea95425134e4384b5557",
+      "snippetHash": "700b1f1f93616c69ce4001d34863fd37f4fc2edecab923e96700f3dce8c49410",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/46e0b074f4363c0b55f426584e360940.png",
@@ -326,7 +326,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::ellipse(_:_:_:_:)": {
       "symbol": "ellipse(_:_:_:_:)",
-      "snippetHash": "a843565f3afee7694bcac9a0fe402f3a87505874284991f9caf1ef5a246211ca",
+      "snippetHash": "7e3f46bc4884a5bf98997e1e510a693f6c2c08f565249032cfd11644847196a7",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/53a1b556de5a248e28f134d21f84ab8b.png",
@@ -334,7 +334,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::line(_:_:_:_:)": {
       "symbol": "line(_:_:_:_:)",
-      "snippetHash": "573a0a748771e1e3f60f7d0e4dec718989f284cc474923957c6888886f478d09",
+      "snippetHash": "2cb6ff489339f9bd18712734c01563198d5a9b6252da459adac253ae4017fc18",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/20e8d9c58aedcf6c2eead71cb4fca8e7.png",
@@ -342,7 +342,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::linearGradient(_:_:_:_:_:_:axis:)": {
       "symbol": "linearGradient(_:_:_:_:_:_:axis:)",
-      "snippetHash": "1495f4f551d47fa27111978f87c89565e578809c4b8908577dfa0e4786a4cadc",
+      "snippetHash": "b0d5f1896144417204a2084294526e6a9a1f2bd35db4fc382920882f2e628ec5",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/23aa77a3c8669991320fadbb7db44090.png",
@@ -350,7 +350,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::point(_:_:)": {
       "symbol": "point(_:_:)",
-      "snippetHash": "36fd5a687f3d0239a7fb80256b37dff15afddc098cd36daa2f3bbb1b721b5358",
+      "snippetHash": "0693712f5c7913e17ce78e4c909cb5be348b510176698b339598f5e35c6c4b2a",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/3878c966403fc6876992923c40bb27bd.png",
@@ -358,7 +358,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::push()": {
       "symbol": "push()",
-      "snippetHash": "c4f83b824647dcd9a8799f439fa37da4419ccfa09fe9444a5fb7add229c53655",
+      "snippetHash": "47b2609ad783a056794ed63f8406f8554aaa10ecd76c72cf5c415314b6582bcd",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/ed6c97031c145c2561123ddf7fa4d8ad.png",
@@ -366,7 +366,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::quad(_:_:_:_:_:_:_:_:)": {
       "symbol": "quad(_:_:_:_:_:_:_:_:)",
-      "snippetHash": "8f026ca123e6a6d62a7499f264894e6e05146dac277ef846fadba93056da4b9a",
+      "snippetHash": "f8214db96115d7c9321a6ad9b00394a35df17de5fb594c1cee4d29159127daa0",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/dc84d016cc71fa60501d786d01d82692.png",
@@ -374,7 +374,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::radialGradient(_:_:_:_:_:segments:)": {
       "symbol": "radialGradient(_:_:_:_:_:segments:)",
-      "snippetHash": "55d4697d0a5fb7f027f6dc74b3a5d02aa82efa908d5ef61a32ed448b3d7a77e9",
+      "snippetHash": "9fdb4f90eb94ad84544f5eb9a3d6cf65f8f2c20f675352164f270a9fa8400ea9",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/b0ed7cd91d7755617b9d404847fe07f5.png",
@@ -382,7 +382,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rect(_:_:_:_:)": {
       "symbol": "rect(_:_:_:_:)",
-      "snippetHash": "1ec63b8c1018ab45d88c30d937f018ef3fab47bf63061418dc645aef7b7fcc46",
+      "snippetHash": "4e83989bef3580cc541a676a6260ea9c7918ea0c555ab29e596b3b938170364f",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/353e3c185f55a74b535e66da3cd85262.png",
@@ -390,7 +390,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rect(_:_:_:_:_:)": {
       "symbol": "rect(_:_:_:_:_:)",
-      "snippetHash": "3a074fbe25853bcd5530074cb67b1e2c75df86a52809f07990e11ee5bf30a796",
+      "snippetHash": "7e3d1e21ec417a15e2d79d8322cb0abdfc1643ff2517bc429d770e74f2511abb",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/0c7c14f4b93a5a76ae0345d776144159.png",
@@ -398,7 +398,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rect(_:_:_:_:_:_:_:_:)": {
       "symbol": "rect(_:_:_:_:_:_:_:_:)",
-      "snippetHash": "2a651d556e8b6cd89f19513dde22974f63a5399bdb588a171cf61a34f1d3bf4f",
+      "snippetHash": "3043f28ee3bd09b0f98c172931e803948f99da8324d08d6ebec5017069a5f40c",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/41bbd3412e6f36396c93f0b52c9a6384.png",
@@ -406,7 +406,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rotate(_:)": {
       "symbol": "rotate(_:)",
-      "snippetHash": "c8327ec867e7707df6a117eca16c8b0274cd7d84d4a7bf7813aa8ba31024ed6c",
+      "snippetHash": "6da49a32dc2922d889c9958f94fd804e3c6157d935c7a56dc4692eeeae63911e",
       "width": 480,
       "height": 360,
       "motion": {
@@ -425,7 +425,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::scale(_:_:)": {
       "symbol": "scale(_:_:)",
-      "snippetHash": "9e435601a0f88a84c21e5b910c621f16021884b80e68fadc4f8ce53de577bea0",
+      "snippetHash": "390bf694ad2bd3dd57f994dbd8c4fd0d2b6ae8c014432f645e5b0d696b7cf5e8",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/6582ff8b7eb8b8487a4d49b9a3cb4459.png",
@@ -433,7 +433,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::shearX(_:)": {
       "symbol": "shearX(_:)",
-      "snippetHash": "8e0f9a0106a3839747c33329d571f62f68f38d49b3c750c85bdf21d6b3808e55",
+      "snippetHash": "56ebaf5d6b7c51a3b7e2782fc0846bffa2066b0d4a2de1dfd1d03ba9bbe82c1c",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/b3c4494e7b7eb88b4bd839c0ced4d974.png",
@@ -441,7 +441,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::shearY(_:)": {
       "symbol": "shearY(_:)",
-      "snippetHash": "ac1eafb602c4c746c2151c4febb5e85adf05ff3be280ef6e32f71727cbdb5759",
+      "snippetHash": "a4cd6d863f9d0ab1e2e33e7a6cdc50560389c4b49c380652995b80fc7912dab8",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/a5344a38d3dfaf3943dba560232c20a8.png",
@@ -449,7 +449,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::square(_:_:_:)": {
       "symbol": "square(_:_:_:)",
-      "snippetHash": "350b9200400ed1cb2c948a7f89702b1ee405430e210ac5135a91951ca3a5dc68",
+      "snippetHash": "a45a177c147f763a26e010067875c425b7093b6cccb86e7828a1b4880327fd84",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/e39d66e012449b14a5ae4cdb4d346578.png",
@@ -457,7 +457,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::translate(_:_:)": {
       "symbol": "translate(_:_:)",
-      "snippetHash": "ce0762ff6e4013ebb6f786b8c3d0fe3ae5671bc3b6c92ed8b183952812e14580",
+      "snippetHash": "ea5b79709892477adcc05ad4d882117a4d352b2a809ed9ed2b18176bf79c65d8",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/99b0ad0fcee4710064a4f8b5f0d59146.png",
@@ -465,7 +465,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::triangle(_:_:_:_:_:_:)": {
       "symbol": "triangle(_:_:_:_:_:_:)",
-      "snippetHash": "7496cc006961361181d581a321e2cc729ba765cb59ff12da3f46fb743ef437ba",
+      "snippetHash": "d635db130e99512247a008097a41bbdd5900e69b1895900268f073b82ccf3fbf",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/9f04166a0245ba36661e30099eae1e45.png",
@@ -473,7 +473,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::vertex(_:_:)": {
       "symbol": "vertex(_:_:)",
-      "snippetHash": "f6f9744409be6a5fabee520686cc9991fcae1824e4b0c84d77073ef71c5db354",
+      "snippetHash": "2c0d8ca763bd093c3151766a86558e2a2b20ecfc436c298744dbbfce0b15a86a",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/050fa166d5c66c43957cb13a43d68b44.png",
@@ -481,7 +481,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::blendMode(_:)": {
       "symbol": "blendMode(_:)",
-      "snippetHash": "65e34676aaa240cf45cfef82983a2d9d1c1e589b392c91ebebd149158e262359",
+      "snippetHash": "3adf0ab284bb82996bfee14138d7f32bb4c405f4224b118dbdcbbd2cd87fd9bd",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/c073f497a82f5354038960f521ec3029.png",
@@ -489,7 +489,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::colorMode(_:_:_:_:_:)": {
       "symbol": "colorMode(_:_:_:_:_:)",
-      "snippetHash": "737aaf1efe6500b4206c17c91692dc6a4cfb25235d4cdfe12fc67eb2f8785e54",
+      "snippetHash": "d5acc30cc9d1ed376d2fbdbb0fc7eca007978f48eaf7848a3f4ec1f4b5a8cca4",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/9f0d6c7c8fee971710865b73239fa811.png",
@@ -497,7 +497,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::ellipseMode(_:)": {
       "symbol": "ellipseMode(_:)",
-      "snippetHash": "79e8f355b42be9ec56a2f1508fd34046f64a3dc0c724976fe2de8c7d522e0d7b",
+      "snippetHash": "c833d221fd6d9c3b806334841b54617deded8358406743f1d5bbe0f9a043345e",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/4873852670151d89625389351ee618d0.png",
@@ -505,7 +505,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::noFill()": {
       "symbol": "noFill()",
-      "snippetHash": "c8de2607fc36e784052991b7d81d2d75e29707cb65350f754c1dd18780632f48",
+      "snippetHash": "8d5ad46ea85579c963491ef96f54b1cae791394d83bcc23a407be963abd86cb1",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/01df4c758c2b0ef1adef4252a47eef79.png",
@@ -513,7 +513,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::noStroke()": {
       "symbol": "noStroke()",
-      "snippetHash": "debae51f7e6e4ffc974b981c24dc3c82b28684ac92c18785fca230547d1debdd",
+      "snippetHash": "dda128fbe095f85e64e697ee0634f43e15f0b10889edda8c210e3bb6a6b50e7d",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/6196c1479b479d50c9d06fa4943ad56d.png",
@@ -521,7 +521,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::rectMode(_:)": {
       "symbol": "rectMode(_:)",
-      "snippetHash": "18da1f707d6b770c2fe0ce7d268986262eee172d16d9e237ac7d7e9af8baf4a6",
+      "snippetHash": "62748f7f58a15d98581e2d6115981d251c8ff6b8ae5f34efc85d9ba6f0a4ec8f",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/6ac18537fecfcc54f72e033ecca4fa67.png",
@@ -529,7 +529,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::strokeCap(_:)": {
       "symbol": "strokeCap(_:)",
-      "snippetHash": "df499c5e60f65da0039acb0d1657524bb423be194316563f4abe39c7893cef1c",
+      "snippetHash": "ef4a8df60e54a2953d9c23b13e06346879a4b9485e007900a9d87c01873a0c96",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/adb3a1d176e5578166f0633159e709a3.png",
@@ -537,7 +537,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::strokeJoin(_:)": {
       "symbol": "strokeJoin(_:)",
-      "snippetHash": "24ef1e21510ba3b84845c6e44ae5185ab847ac976a3a955c5ca89c66dda93b9a",
+      "snippetHash": "de87788b0d5daee8398939e8919e2f0d4631b24414f9030b9743c3b48c30b776",
       "provenance": {
         "commit": "386b26f182125350a4ceb53accba7618220d9d05",
         "dirty": false
@@ -549,7 +549,7 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+Style.swift::strokeWeight(_:)": {
       "symbol": "strokeWeight(_:)",
-      "snippetHash": "a08eab9a89bafee380550e5ce4861ba54ecd7a9e6df93972843870d6bf599205",
+      "snippetHash": "2131d21ae2ff2541b92850874692461904dcc37cec9ba0467461059b015c927c",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/d8e6cd010c5b5629ebfd57cf15e400ba.png",
@@ -557,7 +557,7 @@
     },
     "Sources/MetaphorCore/Utilities/Easing.swift::ease(_:from:to:using:)": {
       "symbol": "ease(_:from:to:using:)",
-      "snippetHash": "7d12d0d19b7eb32474a410afbd0537893eb751e42c86dee8b59f7d21a858f0ba",
+      "snippetHash": "2718f70e0733a158222d318e1ab514c2f9a7c53fc73cbacf2900a3ee62026e8f",
       "width": 480,
       "height": 360,
       "motion": {
@@ -576,7 +576,7 @@
     },
     "Sources/MetaphorCore/Utilities/Noise.swift::noise(_:_:)": {
       "symbol": "noise(_:_:)",
-      "snippetHash": "4a6b2be527954dc73b89702a28f80d93b0aa891adcdaebbf16c73475bd1abecf",
+      "snippetHash": "489613ba90d791516d8f74a9e84d4f296c602d9102059ddae5e6378fe9c763a5",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/82f3c448f22ac2b872d21151835e8a65.png",
@@ -584,7 +584,7 @@
     },
     "Sources/MetaphorCore/Utilities/Noise.swift::noiseDetail(octaves:falloff:)": {
       "symbol": "noiseDetail(octaves:falloff:)",
-      "snippetHash": "bb5c73fca388c883698bd1aa999c05bb1efe41c3520e066cb27cb564a4abae0e",
+      "snippetHash": "9d1726b8d681a3d72e8db09fbaecbc20fb66462fd2353f34c841250699133265",
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/f0227d85a5bc4811514058f6d74d004f.png",

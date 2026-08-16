@@ -169,8 +169,6 @@ GYAZO_TOKEN_REF = os.environ.get(
 # 起動から frame.png が書かれるまでの待ち時間。初回はシェーダーのコンパイルが入る。
 CAPTURE_TIMEOUT_SEC = 120.0
 POLL_INTERVAL_SEC = 0.2
-# 動くスケッチで、下見のあと本番のリクエストを置くまでの待ち。
-SETTLE_SEC = 1.0
 
 # 絵の既定サイズ。リファレンスは 1 シンボル 1 枚が縦に並ぶので、チュートリアル
 # （640x360）より小さく取る。
@@ -250,12 +248,18 @@ class Snippet:
         return layout
 
     def settings(self, config: dict) -> dict:
-        """撮影設定（既定 + `shots.config.json` の上書き）を返す。"""
+        """撮影設定（既定 + `shots.config.json` の上書き）を返す。
+
+        **実時間の待ちは持ちません**（#784）。「絵が出来上がるのを待つ」つもりの
+        `settle` 秒があった頃は、待っているあいだに進んだフレーム数が実行ごとに
+        違い、`frameCount` で駆動する動きのスニペットが毎回別の絵になっていました。
+        撮り始めを揃える方法は「起動前にリクエストを置いて frame 1 から撮る」しか
+        なく（`capture()` 参照）、開始を遅らせる knob は非決定を持ち込むだけです。
+        """
         entry = config.get(self.key) or config.get(self.symbol) or {}
         settings = {
             "width": entry.get("width", DEFAULT_WIDTH),
             "height": entry.get("height", DEFAULT_HEIGHT),
-            "settle": entry.get("settle", SETTLE_SEC),
         }
         motion = entry.get("motion")
         if motion:
@@ -265,7 +269,14 @@ class Snippet:
         return settings
 
     def fingerprint(self, config: dict) -> str:
-        """スニペットと撮影設定の指紋。どちらが変わっても撮り直しが要る。"""
+        """スニペットと撮影設定の指紋。どちらが変わっても撮り直しが要る。
+
+        材料に入れてよいのは**絵に影響する設定だけ**です。`layout` を外しているのと
+        同じ理由で（並べ方を変えただけで全点が stale になる）、撮影の段取りだけを
+        変える knob をここへ混ぜてはいけません。混ぜると、その knob を足した日にも
+        外した日にも全点の指紋が動き、絵が 1 枚も変わっていないのに台帳の移行か
+        全点の撮り直しが要ります（実際に `settle` で踏んだ — #784）。
+        """
         material = json.dumps(
             {"code": self.code, "settings": self.settings(config)},
             ensure_ascii=False,
@@ -624,24 +635,26 @@ def capture(snippet: Snippet, settings: dict) -> dict:
 
     motion = settings.get("motion")
     request_id = f"reference-shot-{snippet.target}"
-    warmup_id = f"{request_id}-warmup"
     request = {"id": request_id, "label": snippet.symbol, "scale": 1.0}
     if motion:
         request["frames"] = motion["frames"]
         request["every"] = motion["every"]
 
-    def place_request(payload: dict) -> None:
-        tmp = probe_dir / "request.json.tmp"
-        tmp.write_text(json.dumps(payload), encoding="utf-8")
-        tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
-
-    # 静止画は noLoop なので、起動**前**に置いた 1 通しか処理する機会が無い。
-    # 動きは下見を先に置き、描画ループが回ってから本番を置く。
-    place_request(
-        {"id": warmup_id, "label": f"{snippet.symbol} (warmup)", "scale": 1.0}
-        if motion
-        else request
-    )
+    # リクエストは静止画も動きも**起動前**に置く。
+    #
+    # 静止画（noLoop）は最初の 1 フレームしか描かないので、起動後に置いても処理する
+    # 機会が来ません。動きは起動後でも処理はされますが、置くまでに進んだフレーム数が
+    # 実行ごとに変わるため、`Float(frameCount)` で駆動するスニペットは毎回違う位相
+    # から撮れてしまいます（#784。撮り直すたびに別の GIF になり、#781 の鮮度照合が
+    # 成り立たない）。起動前に置けば Probe は最初の `pre()` で受け取るので、撮り始め
+    # のフレームが常に同じになります。
+    #
+    # 「数フレーム走らせてから撮りたい」は、この経路では**決定的にできません**
+    # （待ちを秒で測るしかなく、それが上のずれの原因）。要るならスニペット側で
+    # `frameCount` から作ってください。
+    tmp = probe_dir / "request.json.tmp"
+    tmp.write_text(json.dumps(request), encoding="utf-8")
+    tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
 
     env = dict(os.environ)
     env["METAPHOR_PROBE"] = "1"
@@ -683,12 +696,6 @@ def capture(snippet: Snippet, settings: dict) -> dict:
         still = STAGING_DIR / f"{snippet.target}.png"
         still.parent.mkdir(parents=True, exist_ok=True)
         if motion:
-            wait_for(
-                f"frame.json（下見 id={warmup_id}）",
-                lambda: current_frame(output_dir, warmup_id),
-            )
-            time.sleep(settings["settle"])
-            place_request(request)
             # 完了規約: sequence.json が最後に書かれる（CONTRACT.md 契約点 4）。
             ready = wait_for(
                 "sequence.json", lambda: sequence_manifest(sequence_dir, request_id)
