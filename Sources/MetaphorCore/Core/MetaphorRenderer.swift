@@ -120,6 +120,20 @@ public final class MetaphorRenderer: NSObject {
     /// インフライトフレーム数を3に制限するセマフォ
     private let inflightSemaphore = DispatchSemaphore(value: 3)
 
+    /// インフライトフレームのドレイン待ちタイムアウト（秒）。
+    ///
+    /// ``resizeCanvas(width:height:)`` と `drainInflightFrames(context:)` が
+    /// 全スロットを取りに行くときの上限。テストが「壁時計の絶対値」ではなく
+    /// この値そのものを物差しにできるよう定数で持つ（#856）。
+    nonisolated static let inflightDrainTimeoutSeconds = 5
+
+    /// いま ``renderFrame()`` の内側か（= `draw()` が走っている最中か）。
+    ///
+    /// このフレームは `inflightSemaphore` を 1 つ掴んだままなので、ここから
+    /// ``resizeCanvas(width:height:)`` を呼ぶと全スロットを取り切れずに必ず
+    /// タイムアウトする。フレーム中の呼び出しを弾くための印（#856）。
+    public private(set) var isRenderingFrame: Bool = false
+
     /// 現在のフレームのトリプルバッファリングリソース用バッファインデックス (0-2)
     public private(set) var frameBufferIndex: Int = 0
 
@@ -483,7 +497,7 @@ public final class MetaphorRenderer: NSObject {
     /// - Parameter context: タイムアウト警告に含める呼び出し元の説明。
     private func drainInflightFrames(context: String) {
         var acquired = 0
-        let deadline = DispatchTime.now() + .seconds(5)
+        let deadline = DispatchTime.now() + .seconds(Self.inflightDrainTimeoutSeconds)
         for _ in 0..<3 {
             if inflightSemaphore.wait(timeout: deadline) == .timedOut {
                 metaphorWarning("Timed out waiting for in-flight frames during \(context)")
@@ -646,12 +660,27 @@ public final class MetaphorRenderer: NSObject {
     }
 
     /// 全レンダーターゲットテクスチャを再作成してオフスクリーンキャンバスをリサイズします。
+    ///
+    /// - Important: フレームの**外**から呼んでください。``renderFrame()`` の中（= `draw()` の
+    ///   中）から呼ぶと、このフレームが握っているインフライトスロットが返らないので全スロットを
+    ///   取り切れません。以前はそこで 5 秒待った末に、記録中のエンコーダの足元でレンダーターゲット
+    ///   を差し替えてそのフレームを捨てていました。いまは待たずに警告を出して**何もしません**（#856）。
     public func resizeCanvas(width: Int, height: Int) {
+        guard !isRenderingFrame else {
+            metaphorWarning(
+                "resizeCanvas(\(width), \(height)) ignored: cannot resize while a frame is "
+                + "being rendered. Call it outside draw() (e.g. from setup())."
+            )
+            return
+        }
+
         // GPU が古いテクスチャを使用していないことを保証するため、全インフライトフレームをドレイン。
         // セマフォは値3（トリプルバッファリング）を持ち、全スロットを取得します。
         var acquired = 0
         for _ in 0..<3 {
-            let result = inflightSemaphore.wait(timeout: .now() + .seconds(5))
+            let result = inflightSemaphore.wait(
+                timeout: .now() + .seconds(Self.inflightDrainTimeoutSeconds)
+            )
             if result == .timedOut {
                 metaphorWarning("Timed out waiting for in-flight frame during resize")
                 break
@@ -1077,6 +1106,13 @@ public final class MetaphorRenderer: NSObject {
     /// コンピュート、オフスクリーン描画、スクリーンショット、ポストプロセス、
     /// フレーム/動画エクスポート、Syphon 出力の順でフルパイプラインを実行します。
     public func renderFrame() {
+        // フレーム中であることを立てる（#856）。`draw()` はこの中で走るので、ここから
+        // インフライトフレームのドレインを要求する API（``resizeCanvas(width:height:)``）
+        // を呼ぶと自分の掴んでいるスロットが返らず必ずタイムアウトする。早期 return の
+        // 経路もあるため defer で確実に下ろす。
+        isRenderingFrame = true
+        defer { isRenderingFrame = false }
+
         let semaphoreResult = inflightSemaphore.wait(timeout: .now() + .seconds(3))
         if semaphoreResult == .timedOut {
             metaphorWarning("GPU frame timed out after 3s. Skipping frame.")
