@@ -212,6 +212,8 @@ python3 scripts/check-theme-settings.py --against-render # DocC を更新した�
 
 リポジトリに画像・GIF をコミットしない(容量を圧迫する)。ゴールデン PNG のように既にコミットされているもの以外は Gyazo へ上げて URL を貼る。ドキュメントの画像も同じ方針で、DocC は [ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)、チュートリアルは [ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)(撮影からアップロード・本文の URL 書き戻しまで `make tutorial-shots` が行う)。
 
+**禁じているのは画像を*コミットする*ことであって、既にコミット済みの生成物(ゴールデン PNG・example の実行結果)を PR 本文から*参照する*ことではない**(#843)。後者は raw URL でそのまま貼ってよく、Gyazo へ上げ直すと同じ絵が追記型のアセットに二重に増えるだけで得るものが無い。
+
 ### CI が検査する(Issue #631)
 
 `Sources/MetaphorCore/` の `Drawing` / `Sketch` / `Shaders` / `UI` / `PostProcess` / `Particle` / `Geometry` を触った PR は、**本文に画像が 1 枚も無いと CI が落ちる**。squash マージなのでブランチは消え、PR 本文がそのまま履歴に残る唯一の記録になる — merge 後に足すことはできない。
@@ -234,6 +236,12 @@ python3 scripts/check-theme-settings.py --against-render # DocC を更新した�
   `<base-sha>` は分岐元の main、`<head-sha>` は PR の先頭コミット。GitHub の
   Files changed でも画像 diff(2-up / swipe / onion skin)が見られるが、
   PR 本文に並べておくとレビューの入口で意図が伝わる。
+
+  この形は上の CI 検査も満たす(#843)。`github.com/shinyaoguri/metaphor/raw/...`
+  と `.../blob/...?raw=true` も同じく画像として通る。**通らないのは
+  他リポジトリの raw URL と、`?raw=` の付かない `blob/` リンク** — 後者は
+  画像ではなくページなので、これを認めると「このファイルを見て」のリンクが
+  全部証跡になってしまう。
 - **ゴールデンにないシーンの見た目変更**: まず「そのシーンをゴールデン化できないか」を
   検討する(証跡と回帰検出網を同時に得られる)。ゴールデン化が不適切な場合は
   Probe でヘッドレスにスクリーンショットを撮る — `METAPHOR_PROBE=1` で起動し

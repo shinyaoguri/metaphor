@@ -14,6 +14,7 @@ The path list is therefore pinned against the actual PRs it was derived from
 
 import importlib.util
 import io
+import re
 import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -26,6 +27,10 @@ sys.modules["require_visual_evidence"] = rve
 _spec.loader.exec_module(rve)
 
 GYAZO = "![before/after](https://i.gyazo.com/0123456789abcdef0123456789abcdef.png)"
+RAW = (
+    "![after](https://raw.githubusercontent.com/shinyaoguri/metaphor/abc123/"
+    "Tests/metaphorTests/Golden/scene.png)"
+)
 
 
 def run(changed: list[str], body: str = "", labels: list[str] | None = None):
@@ -100,6 +105,87 @@ class HasEvidenceTests(unittest.TestCase):
             rve.has_evidence("https://user-images.githubusercontent.com/1/2.png")
         )
 
+    # Images already committed to *this* repository — goldens, example shots
+    # (Issue #843). Three URL shapes fetch the bytes; all three are accepted.
+
+    def test_this_repo_raw_url(self):
+        self.assertTrue(
+            rve.has_evidence(
+                "![after](https://raw.githubusercontent.com/shinyaoguri/metaphor"
+                "/abc123/Tests/metaphorTests/Golden/scene.png)"
+            )
+        )
+
+    def test_this_repo_raw_redirect_form(self):
+        self.assertTrue(
+            rve.has_evidence(
+                "https://github.com/shinyaoguri/metaphor/raw/abc123/"
+                "Examples/Basics/Form/Shapes/shot.png"
+            )
+        )
+
+    def test_this_repo_blob_url_with_raw_marker(self):
+        for query in ("?raw=true", "?raw=1", "?token=x&raw=true"):
+            with self.subTest(query=query):
+                self.assertTrue(
+                    rve.has_evidence(
+                        "https://github.com/shinyaoguri/metaphor/blob/abc123/"
+                        f"Tests/metaphorTests/Golden/scene.png{query}"
+                    )
+                )
+
+    def test_this_repo_animated_shot_formats(self):
+        for ext in ("gif", "webp", "jpg"):
+            with self.subTest(ext=ext):
+                self.assertTrue(
+                    rve.has_evidence(
+                        "https://raw.githubusercontent.com/shinyaoguri/metaphor"
+                        f"/abc123/docs/tutorial/images/spin.{ext}"
+                    )
+                )
+
+    # …and the boundaries that keep it from hollowing the check out.
+
+    def test_another_repos_raw_url_is_not_accepted(self):
+        # Pinning the repository is the point: without it, any image anywhere
+        # on the internet would satisfy a check that exists to show *this*
+        # PR's output.
+        self.assertFalse(
+            rve.has_evidence(
+                "https://raw.githubusercontent.com/other/repo/main/screenshot.png"
+            )
+        )
+        self.assertFalse(
+            rve.has_evidence(
+                "https://raw.githubusercontent.com/shinyaoguri/metaphor-cli"
+                "/main/screenshot.png"
+            )
+        )
+
+    def test_another_repos_raw_redirect_form_is_not_accepted(self):
+        self.assertFalse(
+            rve.has_evidence("https://github.com/other/repo/raw/main/screenshot.png")
+        )
+
+    def test_a_blob_link_without_the_raw_marker_is_not_an_image(self):
+        # This one opens a *page*. Accepting it would make every "look at this
+        # file" link count as visual evidence.
+        self.assertFalse(
+            rve.has_evidence(
+                "https://github.com/shinyaoguri/metaphor/blob/abc123/"
+                "Tests/metaphorTests/Golden/scene.png"
+            )
+        )
+
+    def test_a_raw_link_to_a_non_image_is_not_an_image(self):
+        # raw.githubusercontent.com serves the whole tree, not an image host.
+        self.assertFalse(
+            rve.has_evidence(
+                "https://raw.githubusercontent.com/shinyaoguri/metaphor/abc123/"
+                "Sources/MetaphorCore/Drawing/TextRenderer.swift"
+            )
+        )
+
     def test_prose_about_images_is_not_an_image(self):
         self.assertFalse(rve.has_evidence("before/after のスクリーンショットは省略します"))
 
@@ -135,6 +221,12 @@ class MainTests(unittest.TestCase):
         code, out, _ = run(
             ["Sources/MetaphorCore/Drawing/TextRenderer.swift"], body=GYAZO
         )
+        self.assertEqual(code, 0)
+        self.assertIn("視覚証跡あり", out)
+
+    def test_drawing_change_with_a_golden_raw_url_passes(self):
+        # The shape #841 was rejected for (Issue #843).
+        code, out, _ = run(["Sources/MetaphorCore/Drawing/TextRenderer.swift"], body=RAW)
         self.assertEqual(code, 0)
         self.assertIn("視覚証跡あり", out)
 
@@ -203,6 +295,31 @@ class RegressionTests(unittest.TestCase):
             with self.subTest(pr=pr):
                 code, _, _ = run(changed)
                 self.assertEqual(code, 1 if should_fire else 0)
+
+
+class DocumentedTemplateTests(unittest.TestCase):
+    """DEVELOPMENT.md's own template has to satisfy the check (Issue #843).
+
+    The bug was never a missing host — it was the documentation telling authors
+    to write something the required job then rejected. Reading the template out
+    of the file instead of restating it here is what keeps the two from drifting
+    apart again: editing either side alone turns this red.
+    """
+
+    _DEV_MD = Path(__file__).resolve().parents[2] / "DEVELOPMENT.md"
+    # `<base-sha>` / `<scene>` stand in for what an author fills in.
+    _PLACEHOLDER = re.compile(r"<[^>\s]+>")
+
+    def test_every_raw_url_the_docs_show_counts_as_evidence(self):
+        lines = [
+            line
+            for line in self._DEV_MD.read_text(encoding="utf-8").splitlines()
+            if "raw.githubusercontent.com" in line
+        ]
+        self.assertTrue(lines, "DEVELOPMENT.md no longer shows a raw URL template")
+        for line in lines:
+            with self.subTest(line=line.strip()[:70]):
+                self.assertTrue(rve.has_evidence(self._PLACEHOLDER.sub("abc123", line)))
 
 
 if __name__ == "__main__":
