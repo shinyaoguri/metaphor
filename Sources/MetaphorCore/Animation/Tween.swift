@@ -226,7 +226,15 @@ public final class Tween<T: Interpolatable> {
     // MARK: - Update (called by TweenManager)
 
     /// 指定されたデルタタイムでトゥイーン状態を更新します（TweenManager により毎フレーム呼ばれます）。
+    ///
+    /// 非有限（NaN / ±∞）と負の刻みは無視します。`TweenManager.update(_:)` は public で、
+    /// 利用者が自前で計算した `deltaTime` をそのまま受け取るためです。NaN が `elapsed` に
+    /// 入ると比較も `min` も NaN を素通しするので、値が NaN のまま完了判定が二度と真に
+    /// ならず、負の刻みは `elapsed` を負にして `from` を下回って外挿してしまいます。
+    /// 捨てるだけなので、次のまともな刻みからそのまま復帰します。
     func update(_ dt: Float) {
+        guard dt.isFinite, dt >= 0 else { return }
+
         switch state {
         case .idle, .complete:
             return
@@ -248,18 +256,31 @@ public final class Tween<T: Interpolatable> {
             elapsed += dt
 
             // 大きな delta time（フレーム停止など）で複数サイクル分が一度に経過しても
-            // 正しく消化できるよう while で回す。duration は init で max(0.001, …) に
-            // クランプされているため無限ループにはならない。
+            // 正しく消化できるよう while で回す。
             while elapsed >= duration {
                 // サイクル完了
                 repeatCount += 1
 
-                if repeatTotal > 0 && repeatCount >= repeatTotal {
+                // duration を init で max(0.001, …) にクランプしても、elapsed が大きすぎると
+                // 引き算が浮動小数の桁で飽和して減らなくなる（Float では 1e9 - 0.5 == 1e9。
+                // ulp(1e9) = 64）。有限リピートは repeatCount で必ず抜けるが、無限リピートは
+                // ここで while が終わらなくなるため、飽和を検出して「残りのサイクルはすべて
+                // 経過した」とみなす。サイクル数の上限で打ち切るのではなく「引いても減らな
+                // かったか」を直接見るので、入口の guard が退行しても停止性は保たれる。
+                let saturated = (elapsed - duration) >= elapsed
+
+                if repeatTotal > 0 && (saturated || repeatCount >= repeatTotal) {
                     // すべてのリピートが終了
                     value = forward ? toValue : fromValue
                     state = .complete
                     completionHandler?()
                     return
+                }
+
+                if saturated {
+                    // 無限リピート: サイクル先頭へ丸め、次のフレームから通常進行に戻す
+                    elapsed = 0
+                    break
                 }
 
                 // 次のサイクルを開始
