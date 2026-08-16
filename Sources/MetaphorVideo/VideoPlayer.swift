@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreVideo
 import Foundation
+import MetaphorLog
 import Metal
 import ObjectiveC.runtime
 
@@ -339,7 +340,7 @@ public final class VideoPlayer {
         // ネットワークマウント上のパス等でメタデータ読込が返らない場合に
         // メインスレッドが永久にハングしないようタイムアウトを設ける
         if semaphore.wait(timeout: .now() + 10) == .timedOut {
-            print("[metaphor] VideoPlayer: asset metadata load timed out (>10s) — continuing with defaults")
+            metaphorAlert("VideoPlayer: asset metadata load timed out (>10s) — continuing with defaults")
         }
         let (hasVideoTrack, duration, size) = box.get()
         return (hasVideoTrack, duration, size)

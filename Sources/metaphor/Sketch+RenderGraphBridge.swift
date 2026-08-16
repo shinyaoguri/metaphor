@@ -13,7 +13,7 @@ extension Sketch {
     /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。作成に失敗した場合は `nil`。
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
         guard width > 0, height > 0 else {
-            print("[metaphor] Warning: createSourcePass: dimensions must be positive (got \(width)x\(height))")
+            metaphorWarning("createSourcePass: dimensions must be positive (got \(width)x\(height))")
             return nil
         }
         do {
@@ -24,7 +24,7 @@ extension Sketch {
                 height: height
             )
         } catch {
-            print("[metaphor] Warning: Failed to create SourcePass '\(label)': \(error)")
+            metaphorWarning("Failed to create SourcePass '\(label)': \(error)")
             return nil
         }
     }
@@ -37,7 +37,7 @@ extension Sketch {
     /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。作成に失敗した場合は `nil`。
     public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass? {
         guard !effects.isEmpty else {
-            print("[metaphor] Warning: createEffectPass: effects must not be empty")
+            metaphorWarning("createEffectPass: effects must not be empty")
             return nil
         }
         do {
@@ -49,7 +49,7 @@ extension Sketch {
                 shaderLibrary: context.renderer.shaderLibrary
             )
         } catch {
-            print("[metaphor] Warning: Failed to create EffectPass: \(error)")
+            metaphorWarning("Failed to create EffectPass: \(error)")
             return nil
         }
     }
@@ -70,7 +70,7 @@ extension Sketch {
                 shaderLibrary: context.renderer.shaderLibrary
             )
         } catch {
-            print("[metaphor] Warning: Failed to create MergePass: \(error)")
+            metaphorWarning("Failed to create MergePass: \(error)")
             return nil
         }
     }

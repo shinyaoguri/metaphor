@@ -10,7 +10,7 @@ extension Sketch {
     /// - Returns: 新しい ``MetaphorPhysics/Physics2D`` インスタンス。
     public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
         guard cellSize > 0 else {
-            print("[metaphor] Warning: createPhysics2D: cellSize must be positive (got \(cellSize)); using 50")
+            metaphorWarning("createPhysics2D: cellSize must be positive (got \(cellSize)); using 50")
             return Physics2D(cellSize: 50)
         }
         return Physics2D(cellSize: cellSize)

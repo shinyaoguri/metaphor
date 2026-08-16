@@ -26,7 +26,7 @@ extension Sketch {
         do {
             return try OSCSender(host: host, port: port)
         } catch {
-            print("[metaphor] Warning: createOSCSender: \(error.localizedDescription)")
+            metaphorWarning("createOSCSender: \(error.localizedDescription)")
             return nil
         }
     }
