@@ -6,6 +6,9 @@ extension Sketch {
 
     /// 3D カスタムシェイプの頂点記録を開始します。
     ///
+    /// 現在の `fill` は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の
+    /// 間で `fill` を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    ///
     /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         context.beginShape3D(mode)
@@ -22,6 +25,9 @@ extension Sketch {
     }
 
     /// 現在のシェイプに頂点カラー付き 3D 頂点を追加します。
+    ///
+    /// 与えた色は現在の `fill` に左右されず、そのまま出ます。
+    /// `texture()` を貼ったシェイプでは頂点カラーは使われません（テクスチャの色が出ます）。
     ///
     /// - Parameters:
     ///   - x: x 座標。

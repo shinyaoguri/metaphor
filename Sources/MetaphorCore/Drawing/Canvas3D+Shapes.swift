@@ -8,6 +8,10 @@ extension Canvas3D {
 
     /// 3D カスタムシェイプの頂点記録を開始します。
     ///
+    /// 頂点は記録時の fill 色を焼き込んで積むため、記録の途中で fill を変えると
+    /// 頂点ごとに色が付きます。描画側は焼き込み済みを前提に tint を白で送ります
+    /// （`Canvas3D.bakedShapeTint`。二重適用の防止, #825）。
+    ///
     /// - Parameter mode: シェイプのテッセレーションモード。
     public func beginShape(_ mode: ShapeMode = .polygon) {
         isRecordingShape3D = true
@@ -30,6 +34,9 @@ extension Canvas3D {
     }
 
     /// 頂点カラー付きの 3D 頂点を追加します。
+    ///
+    /// 与えた色は現在の fill に左右されず、そのまま出ます（#825）。
+    /// `texture(_:)` を貼ったシェイプでは頂点カラーは使われません。
     ///
     /// - Parameters:
     ///   - x: x座標。

@@ -379,6 +379,10 @@
     },
     "05-ThreeD/08-Texture": {
       "sourceHash": "2aeea7713be1a345fab6734a792e41422b3be3a90b6b4200eb3b4757b1b4ae4e",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
@@ -387,11 +391,15 @@
     },
     "05-ThreeD/09-Mesh": {
       "sourceHash": "2306368af09aee88df139988c90ac6f0581682386561f2b2fde5912271dea5af",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/fd1f24de1b81015027160eff0451e01c.png",
-      "sha256": "8c83d6151e40a86de8061623a9975c0c43171a9ce3cb22ea77bf71ea45ccd162"
+      "url": "https://i.gyazo.com/1256178e86ad976538f9a3d611c96de6.png",
+      "sha256": "ee0b578c9ff9a3b0d64a2a2bf6b24deb0c62fc4ff8b5204a78fcdc4dd16d4d7f"
     },
     "05-ThreeD/10-Instancing": {
       "sourceHash": "1bcad6dcb175639fbecdcf93340cc985e3938f54bb966e3fa479341fdef1152b",
