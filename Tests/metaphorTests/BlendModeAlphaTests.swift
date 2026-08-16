@@ -63,10 +63,13 @@ struct BlendModeAlphaTests {
     }
 
     /// `.subtract` が引くのは色であって不透明度ではない。
-    /// 下地の α をそのまま残す（`.alpha` と同じ over にはしない）ので、
-    /// 半透明な下地に不透明な src を重ねても α は下地のまま。
-    @Test("subtract leaves the destination alpha untouched")
-    func subtractPreservesDestinationAlpha() throws {
+    ///
+    /// #800 の時点では「下地の α をそのまま残す」を選んでいたが、ADR-0012 で
+    /// **どのモードも結果 α は over（`src.a + dst.a·(1 − src.a)`）**に揃えた。
+    /// 塗った領域の不透明度を削らないという #800 の原則はそのままで（over は α を
+    /// 減算しない）、変わるのは「半透明な下地へ不透明な src を重ねたとき」だけ。
+    @Test("subtract composites the result alpha like every other mode")
+    func subtractUsesOverForResultAlpha() throws {
         let pg = try makeGraphics()
         let result = compose(
             dst: Color(r: 0.6, g: 0.6, b: 0.6, alpha: 0.5),
@@ -74,9 +77,9 @@ struct BlendModeAlphaTests {
             mode: .subtract,
             in: pg
         )
-        // 旧実装は 0.5 - 1.0 = 0、over なら 1.0 になる
-        #expect(abs(result.a - 0.5) < 0.02,
-                "subtract は下地のアルファを保つ (got \(result.a)) — #800")
+        // 旧実装は 0.5 - 1.0 = 0（穴が開く）、#800 の手当てでは 0.5 のままだった
+        #expect(abs(result.a - 1.0) < 0.02,
+                "不透明な src を重ねたら結果も不透明 (got \(result.a)) — ADR-0012")
     }
 
     /// RGB 側は従来どおり `dst - src`（#800 で変えていないことの固定）。

@@ -1,4 +1,5 @@
 #include "MetaphorCanvas2DTypes.h"
+#include "MetaphorCanvas2DBlend.h"
 
 // Per-instance data (80 bytes, 16-byte aligned)
 struct InstanceData2D {
@@ -33,33 +34,20 @@ vertex Canvas2DVertexOut metaphor_canvas2DInstancedVertex(
 }
 
 // ──────────────────────────────────────────────
-// Fragment shaders (3 variants for blend modes)
+// Fragment shaders
 // ──────────────────────────────────────────────
 
 fragment float4 metaphor_canvas2DInstancedFragment(
     Canvas2DVertexOut in [[stage_in]]
 ) {
-    return in.color;
+    return metaphorPremultiply(in.color);
 }
 
-fragment float4 metaphor_canvas2DInstancedDifferenceFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = abs(src.rgb - dest.rgb);
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
-
-fragment float4 metaphor_canvas2DInstancedExclusionFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DInstancedExclusionFragment, metaphorBlendExclusion)

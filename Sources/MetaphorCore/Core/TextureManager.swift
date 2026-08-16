@@ -257,6 +257,17 @@ public final class TextureManager {
         renderPassDescriptor.colorAttachments[0].clearColor = color
     }
 
+    /// straight alpha の成分から、クリアカラー（premultiplied）を組み立てます。
+    ///
+    /// キャンバスの中身は premultiplied（ADR-0012）。クリアはブレンドを通らず値を
+    /// そのまま書くので、ここで掛けておかないと「透明なのに色が乗っている」画素が
+    /// 下地として残り、以降の合成が全部ずれる。α = 1 なら straight と同値。
+    public static func premultipliedClearColor(
+        _ r: Double, _ g: Double, _ b: Double, _ a: Double
+    ) -> MTLClearColor {
+        MTLClearColor(red: r * a, green: g * a, blue: b * a, alpha: a)
+    }
+
     /// 次のレンダーパスで前フレームをクリアするか保持するかを設定します。
     ///
     /// - Parameter shouldClear: true の場合は `.clear` ロードアクション、false の場合は `.load`

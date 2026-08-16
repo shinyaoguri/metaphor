@@ -37,7 +37,8 @@ final class ShapeShader: Sketch {
         float band = smoothstep(-0.6, 0.6, wave);
         float3 rgb = mix(float3(0.09, 0.13, 0.30), float3(0.98, 0.55, 0.25), band);
 
-        return float4(rgb, 1.0) * in.color;       // fill() の色とアルファが掛かる
+        // fill() の色とアルファを掛け、premultiplied にして返す（キャンバスの規範）
+        return metaphorPremultiply(float4(rgb, 1.0) * in.color);
     }
     """
 

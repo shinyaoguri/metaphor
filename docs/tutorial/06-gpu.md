@@ -673,7 +673,7 @@ final class Ripple: Sketch {
 
 ## 6.5 図形をシェーダーで塗る
 
-![橙と紺の同心円の縞で塗られた画面。中央の円だけ縞が細かく明るく、下の帯に「矩形と円はシェーダー、この帯と文字は resetShader() のあと」と出ている](https://i.gyazo.com/4b5f419b68e54b8cfe2d6a1408c18c9d.png)
+![橙と紺の同心円の縞で塗られた画面。中央の円だけ縞が細かく明るく、下の帯に「矩形と円はシェーダー、この帯と文字は resetShader() のあと」と出ている](https://i.gyazo.com/06a73f6ddc5efae52b6f9cb7e549a104.png)
 
 同心円の縞を GPU で計算し、その縞で矩形と円を塗っています。図形の側で呼んでいるのは `rect()` と `circle()` だけで、**どの画素を何色にするかを決めているのは自分で書いたフラグメントシェーダー**です。
 
@@ -714,6 +714,16 @@ fragment float4 paint(
 ```
 
 `Canvas2DVertexOut` は `rect()` / `circle()` / `line()` などが流す stage_in です（`image()` / `text()` のテクスチャ系は `Canvas2DTexVertexOut`）。`in.color` に `fill()` の色とアルファが入っているので、返す色に掛ければ図形ごとの色分けをそのまま残せます。
+
+### 返す色は premultiplied にする
+
+metaphor のキャンバスは**アルファを掛けた後の色**（premultiplied alpha）を持ちます。`in.color` はアルファを掛ける前の値（straight）で渡ってくるので、**返す直前に前文のヘルパで掛けます**。
+
+```metal
+return metaphorPremultiply(float4(rgb, 1.0) * in.color);
+```
+
+掛け忘れると、半透明で描いたところが明るく浮きます。逆に**不透明しか返さないシェーダーでは値が変わらない**ので、アルファを使っていなければ気にしなくて構いません。割り戻す `metaphorUnpremultiply()` も同じ前文に入っていて、`Canvas2DTexVertexOut` の経路でテクスチャを読むとき（テクスチャも premultiplied です）に使います。
 
 ### 座標は自分で作る
 
@@ -756,7 +766,7 @@ circle(320, 170, 220)
 
 ### 一緒に使えないもの
 
-`blendMode(.difference)` と `.exclusion` は、カスタムシェーダーとは同時に使えません。この 2 つは「描き込み先の色を読む」専用のフラグメントで実装されていて、自分の関数と入れ替える場所が同じだからです。カスタムシェーダーの適用中は通常のアルファ合成に落ち、コンソールへ 1 度だけ警告が出ます。ほかのブレンドモード（`.add` / `.multiply` など、2.10 で扱ったもの）はそのまま使えます。
+`blendMode()` のうち **`.multiply` / `.screen` / `.subtract` / `.lightest` / `.darkest` / `.difference` / `.exclusion`** は、カスタムシェーダーとは同時に使えません。これらは「描き込み先の色を読む」専用のフラグメントで実装されていて、自分の関数と入れ替える場所が同じだからです。カスタムシェーダーの適用中は通常のアルファ合成に落ち、コンソールへ 1 度だけ警告が出ます。`.alpha` / `.additive` / `.opaque` はそのまま使えます。
 
 <!-- tutorial-snippet: 06-GPU/05-ShapeShader -->
 ```swift
@@ -799,7 +809,8 @@ final class ShapeShader: Sketch {
         float band = smoothstep(-0.6, 0.6, wave);
         float3 rgb = mix(float3(0.09, 0.13, 0.30), float3(0.98, 0.55, 0.25), band);
 
-        return float4(rgb, 1.0) * in.color;       // fill() の色とアルファが掛かる
+        // fill() の色とアルファを掛け、premultiplied にして返す（キャンバスの規範）
+        return metaphorPremultiply(float4(rgb, 1.0) * in.color);
     }
     """
 

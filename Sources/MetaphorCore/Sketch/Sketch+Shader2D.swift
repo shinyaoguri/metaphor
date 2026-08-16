@@ -9,6 +9,20 @@ extension Sketch {
     /// **必ず**先頭へ足すので、フラグメント関数だけを書けば動きます。
     /// `Canvas2DVertexOut` などは自分で定義しないでください。
     ///
+    /// ## 返す色は premultiplied alpha
+    ///
+    /// キャンバスはアルファを掛けた後の色を持ちます（ADR-0012）。`in.color` は掛ける前
+    /// （straight）で渡ってくるので、**返す直前に前文の `metaphorPremultiply()` を通します**。
+    ///
+    /// ```metal
+    /// return metaphorPremultiply(float4(rgb, 1.0) * in.color);
+    /// ```
+    ///
+    /// 掛け忘れると半透明で描いた部分が明るく浮きます（不透明しか返さないシェーダでは
+    /// 値が変わらないので、アルファを使わないなら気にする必要はありません）。テクスチャを
+    /// 読む経路では、テクスチャ側も premultiplied なので `metaphorUnpremultiply()` で
+    /// straight へ戻してから色を掛けます。
+    ///
     /// - Parameters:
     ///   - source: MSL シェーダソース。
     ///   - fragment: フラグメントシェーダ関数名。

@@ -79,6 +79,34 @@ struct Canvas2DShaderUniforms {
     uint frameCount;
 };
 
+// アルファの変換ヘルパ（ADR-0012）。
+//
+// metaphor は**公開 API が straight alpha、内部が premultiplied alpha**という規範を
+// 採っている。`in.color`（fill / tint 由来）は straight で渡ってくるが、
+// **フラグメントが返す値は premultiplied でなければならない**。キャンバスの中身が
+// premultiplied だからで、straight のまま返すと合成のたびに α が二重に掛かる。
+//
+// カスタム 2D フラグメントの最後は次の形にする:
+//
+//     return metaphorPremultiply(float4(rgb, alpha));
+//
+// 不透明（alpha = 1）しか返さないシェーダは premultiplied と straight が一致するので、
+// そのままで構わない。
+//
+// 成分は掛ける前に 0...1 へ飽和させる。`Color` は範囲外の値を保持する仕様（Tween の
+// オーバーシュートなど）で、「描画時に飽和する」ことを doc が保証しているため。
+// 以前は GPU がフラグメント出力をブレンド前にクランプすることでこれが成立していたが、
+// α を自分で掛けるようになると `a = 1.5` が色を 1.5 倍してしまう。
+inline float4 metaphorPremultiply(float4 c) {
+    float4 s = clamp(c, 0.0, 1.0);
+    return float4(s.rgb * s.a, s.a);
+}
+
+// premultiplied → straight。α = 0 の画素は色を持たないので黒を返す。
+inline float4 metaphorUnpremultiply(float4 c) {
+    return c.a > 0.0 ? float4(c.rgb / c.a, c.a) : float4(0.0);
+}
+
 #endif
 """#
 

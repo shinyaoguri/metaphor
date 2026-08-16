@@ -1,4 +1,5 @@
 #include "MetaphorCanvas2DTypes.h"
+#include "MetaphorCanvas2DBlend.h"
 
 // Per-circle instance data (32 bytes, 16-byte aligned).
 struct CircleInstance {
@@ -35,27 +36,14 @@ vertex Canvas2DVertexOut metaphor_canvas2DMassiveCircleVertex(
 fragment float4 metaphor_canvas2DMassiveFragment(
     Canvas2DVertexOut in [[stage_in]]
 ) {
-    return in.color;
+    return metaphorPremultiply(in.color);
 }
 
-fragment float4 metaphor_canvas2DMassiveDifferenceFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = abs(src.rgb - dest.rgb);
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
-
-fragment float4 metaphor_canvas2DMassiveExclusionFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMassiveExclusionFragment, metaphorBlendExclusion)
