@@ -209,6 +209,96 @@ struct AudioAnalyzerInjectTests {
         analyzer.injectSamples(samples)
         analyzer.update()
         #expect(analyzer.bandEnergy(lowFreq: 300, highFreq: 600) == 0)
+        // 0 を返すこと自体は変えていない。黙って返さないことが直したところ（Issue #783）
+        #expect(analyzer.didWarnAboutMissingSampleRate)
+    }
+
+    /// Issue #783 の再現そのまま。「解析は成立しているのに bandEnergy だけ 0」を固定する。
+    @Test("解析が成立していても sampleRate 未設定なら bandEnergy は 0 のまま警告する")
+    func bandEnergyWarnsWhenAnalysisSucceedsButRateIsMissing() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)  // sampleRate を渡し忘れた
+        var samples = [Float](repeating: 0, count: 1024)
+        for i in 0..<1024 {
+            samples[i] = sin(Float(i) * 2 * Float.pi * 440.0 / 44_100.0) * 0.5
+        }
+        analyzer.injectSamples(samples)
+        analyzer.update()
+
+        // spectrum の山は 440Hz のビンに立っている = 「その帯域に何も無い」わけではない。
+        // spectrum は EMA 平滑（既定 0.8）なので 1 フレームでは値が小さい。大きさではなく
+        // 山の位置で「解析が成立している」ことを見る
+        let peak = analyzer.spectrum.max() ?? 0
+        let peakBin = analyzer.spectrum.firstIndex(of: peak) ?? -1
+        let peakFreq = Float(peakBin) * Float(44_100) / 1024
+        #expect(peak > 0)
+        #expect(peakFreq > 350 && peakFreq < 550)
+
+        // それでも bandEnergy は 0。区別が付かないので警告が出る
+        #expect(analyzer.bandEnergy(lowFreq: 350, highFreq: 550) == 0)
+        #expect(analyzer.didWarnAboutMissingSampleRate)
+    }
+
+    @Test("sampleRate を後から入れれば警告せずに値が返る")
+    func bandEnergyStaysQuietOnceSampleRateIsSet() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        analyzer.sampleRate = 44_100
+        var samples = [Float](repeating: 0, count: 1024)
+        for i in 0..<1024 {
+            samples[i] = sin(Float(i) * 2 * Float.pi * 440.0 / 44_100.0) * 0.5
+        }
+        analyzer.injectSamples(samples)
+        analyzer.update()
+
+        #expect(analyzer.bandEnergy(lowFreq: 350, highFreq: 550) > 0)
+        #expect(!analyzer.didWarnAboutMissingSampleRate)
+    }
+}
+
+// MARK: - サンプルレート未設定の警告（Issue #783）
+
+/// `injectSamples` 経路で `sampleRate` を渡し忘れると `bandEnergy` が 0 になる。
+/// 「その帯域にエネルギーが無い」ケースと区別が付かないので 1 度だけ警告する。
+@Suite("Missing sample rate warning")
+@MainActor
+struct MissingSampleRateWarningTests {
+
+    @Test("解決できなければ警告する")
+    func warnsWhenRateCannotBeResolved() {
+        #expect(AudioAnalyzer.shouldWarnAboutMissingSampleRate(
+            resolvedRate: nil, alreadyWarned: false))
+    }
+
+    @Test("解決できていれば警告しない")
+    func staysQuietWhenRateIsKnown() {
+        #expect(!AudioAnalyzer.shouldWarnAboutMissingSampleRate(
+            resolvedRate: 44_100, alreadyWarned: false))
+    }
+
+    @Test("同じ警告は 1 度だけ")
+    func warnsOnlyOnce() {
+        #expect(!AudioAnalyzer.shouldWarnAboutMissingSampleRate(
+            resolvedRate: nil, alreadyWarned: true))
+    }
+
+    @Test("bandEnergy を何度呼んでもフラグは 1 度しか立たない")
+    func flagIsSetOnce() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        analyzer.injectSamples([Float](repeating: 0.5, count: 1024))
+        analyzer.update()
+
+        #expect(!analyzer.didWarnAboutMissingSampleRate)
+        _ = analyzer.bandEnergy(lowFreq: 300, highFreq: 600)
+        #expect(analyzer.didWarnAboutMissingSampleRate)
+        _ = analyzer.bandEnergy(lowFreq: 300, highFreq: 600)
+        #expect(analyzer.didWarnAboutMissingSampleRate)
+    }
+
+    @Test("sampleRate が 0 以下でも解決できない扱いにする")
+    func nonPositiveRateIsNotResolved() {
+        let analyzer = AudioAnalyzer(fftSize: 1024, sampleRate: 0)
+        #expect(analyzer.resolvedSampleRate() == nil)
+        _ = analyzer.bandEnergy(lowFreq: 300, highFreq: 600)
+        #expect(analyzer.didWarnAboutMissingSampleRate)
     }
 }
 
