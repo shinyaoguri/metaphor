@@ -85,6 +85,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
     ShotError,
+    capture_provenance,
+    drift_summary,
     image_size,
     load_input_script,
     send_input_script,
@@ -384,9 +386,17 @@ def capture(path: str, destination: Path, settle: float) -> dict:
         shutil.rmtree(probe_dir, ignore_errors=True)
 
     size = metadata.get("size", {})
-    return {
+    entry = {
         "origin": ORIGIN_CAPTURED,
         "sourceHash": source_hash(package),
+    }
+    # 指紋はパッケージ配下しか見ないので、ライブラリ本体の変更は拾えない（#586）。
+    # 撮った実装を来歴として残し、あとから隔たりを数えられるようにする。
+    provenance = capture_provenance(REPO_ROOT)
+    if provenance:
+        entry["provenance"] = provenance
+    return {
+        **entry,
         "width": size.get("width"),
         "height": size.get("height"),
         "frame": metadata.get("frame"),
@@ -520,7 +530,24 @@ def main() -> int:
                 if not image_path_for(e["path"]).is_file()
                 and not no_capture_reason(package_dir_for(e["path"]))
             ]
-            print(f"OK: {len(entries)} 本の画像はすべて最新")
+            # 「すべて最新」とは書かない。見ているのは撮影したものの
+            # ソースだけで、ライブラリ実装の変更は含まない（#586）。
+            captured = [
+                shots[e["path"]]
+                for e in entries
+                if shots.get(e["path"], {}).get("origin") == ORIGIN_CAPTURED
+            ]
+            aside = (
+                f"（原典由来の {len(entries) - len(captured)} 本は鮮度判定の対象外）"
+                if len(captured) != len(entries)
+                else ""
+            )
+            print(
+                f"OK: {len(entries)} 本のうち、このスクリプトが撮った {len(captured)} 本は"
+                f"ソースが撮影時から変わっていない{aside}"
+            )
+            for line in drift_summary(captured, "example のソース", REPO_ROOT):
+                print(line)
             if missing:
                 print(f"（画像がまだ無い example が {len(missing)} 本。make example-shots で撮れます）")
             return 0

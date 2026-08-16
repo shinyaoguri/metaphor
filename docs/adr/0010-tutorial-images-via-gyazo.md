@@ -19,6 +19,8 @@ DocC リファレンスの画像を Gyazo へ移したが、チュートリア�
 - 縦糸（第 1〜10 部）は完結したが、横糸（[#550](https://github.com/shinyaoguri/metaphor/issues/550) の部末ミニプロジェクト節など）で節は増え続ける
 - 画像は Probe から**再生成できる**。つまり API の描画を直せば 65 点が一斉に撮り直しになる。
   GPU の出力はビット単位で再現しないので、撮り直せば中身が同じでも必ず新しい blob になる
+  （この 1 行は誤り。下の [Amendment 2026-08-16](#amendment-2026-08-16--gpu-の出力は再現する)
+  を参照。結論そのものは変わらない）
 
 という構造上、「1 回の描画修正 = 数 MiB の恒久的な増加」が今後も繰り返される。history は
 書き換えない方針なので、増えたぶんは永久に残る。判断を先送りするほど、移行時に外部化できる
@@ -205,10 +207,30 @@ Examples 側の運用は [Examples/README.md](../../Examples/README.md) と
   画像・README のサムネイル・Processing 由来の入力データが混ざっており用途が違うので、
   別途切り分ける。
 
+## Amendment 2026-08-16 — GPU の出力は再現する
+
+Context の「GPU の出力はビット単位で再現しない」は誤りだった。
+[#586](https://github.com/shinyaoguri/metaphor/issues/586) で実測したところ、**同じマシン・
+同じ実装で撮り直せば、静止画も動きの WebP もバイト単位で一致する**（2D・3D・ライティング・
+画像リソースを読む節、frameCount で駆動する動きの節、いずれも一致）。一致しないのは
+`time` / `deltaTime` を題材そのものにしている節だけで、これは `docs/tutorial/README.md` が
+すでに例外として書いていたもの。
+
+**この ADR の決定は変わらない。** 撮り直しが新しい blob を積むかどうかは「不変・追記型で
+運用する」という決定の理由の 1 つでしかなく、外部化の主たる理由（増え方が構造的で、history を
+書き換えない以上その増加は永久に残る）はそのまま成り立つ。既存 65 点を撮り直さずに移した
+判断（Decision）も、余計な差分を避けるという意味で妥当なまま。
+
+更新されるのは**運用の見通し**のほうで、Gyazo が同じバイト列に同じ URL を返す性質と合わせると、
+「撮り直して URL が変わったか」がそのまま「絵が変わったか」の判定に使える。実装変更による
+陳腐化を検出する手段としてこの道が開いたことは #586 で扱う。
+
 ## References
 
 - [ADR-0008](0008-docc-reference-images-via-gyazo.md) — DocC の画像を Gyazo へ（本 ADR は
   その「tutorial はスコープ外」という限定を更新する）
+- [Issue #586](https://github.com/shinyaoguri/metaphor/issues/586) — 実行結果画像の鮮度
+  フィンガープリント（上の Amendment の出どころ）
 - [Issue #511](https://github.com/shinyaoguri/metaphor/issues/511) — Gyazo 外部化の可否と
   サイズ規律。本 ADR はこの決定を更新する
 - `scripts/generate-tutorial-shots.py` — 撮影・アップロード・台帳・本文の書き換え

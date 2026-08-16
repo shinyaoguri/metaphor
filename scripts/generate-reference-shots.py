@@ -101,7 +101,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from shots_common import ShotError, image_size  # noqa: E402
+from shots_common import (  # noqa: E402
+    ShotError,
+    capture_provenance,
+    drift_summary,
+    image_size,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCES_DIR = REPO_ROOT / "Sources"
@@ -1087,7 +1092,18 @@ def check(snippets: list[Snippet], shots: dict, config: dict) -> int:
         for problem in problems:
             print(f"  - {problem}", file=sys.stderr)
         return 1
-    print(f"リファレンスの実行結果画像は最新です（{len(snippets)} 本）")
+    # 「最新です」とは書かない。見ているのはスニペットと撮影設定だけで、ライブラリ
+    # 実装の変更は含まない（#586）。
+    print(
+        f"リファレンス {len(snippets)} 本すべてで、"
+        "スニペットと撮影設定は撮影時から変わっていません"
+    )
+    for line in drift_summary(
+        (shots[snippet.key] for snippet in snippets if snippet.key in shots),
+        "スニペットと撮影設定",
+        REPO_ROOT,
+    ):
+        print(line)
     return 0
 
 
@@ -1115,11 +1131,16 @@ def shoot(
         recorded = shots.get(snippet.key)
         entry = capture(snippet, settings)
         entry = publish(snippet, entry, recorded)
-        shots[snippet.key] = {
+        fingerprint = {
             "symbol": snippet.symbol,
             "snippetHash": snippet.fingerprint(config),
-            **entry,
         }
+        # snippetHash はスニペットと撮影設定しか見ないので、実装が変わって絵が
+        # 変わっても動かない（#586）。撮った実装を来歴として残す。
+        provenance = capture_provenance(REPO_ROOT)
+        if provenance:
+            fingerprint["provenance"] = provenance
+        shots[snippet.key] = {**fingerprint, **entry}
         save_manifest(shots)  # 1 本ごとに保存する（中断しても撮り直しにならない）
         print(f"  shot     {snippet.symbol} -> {entry['url']}", flush=True)
 

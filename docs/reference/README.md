@@ -124,8 +124,17 @@ make reference-shots ARGS="--list"                    # 撮影対象を並べる
 | `--compile-only` | per-PR（Sources 変更時） | **doc コメントの例が実際にコンパイルできる** |
 | `scripts/check-image-urls.py` | 週次（`asset-health.yml`） | Gyazo の URL が生きている |
 
-画像そのものは比較しません（GPU の出力は環境でビット単位に一致しないため）。鮮度は
-台帳 `images/manifest.json` の `snippetHash`（スニペット + 撮影設定の指紋）で見ます。
+画像そのものは比較しません（CI に GPU が無く、別の GPU・OS で同じバイト列になる保証も
+ないため）。鮮度は台帳 `images/manifest.json` の `snippetHash`（スニペット + 撮影設定の
+指紋）で見ます。
+
+**この検査が見ていないもの**: `snippetHash` の材料はスニペットと撮影設定だけで、
+`Sources/` の実装は入りません。**実装だけが変わって絵が変わっても「変わっていない」と
+答えます**（[#586](https://github.com/shinyaoguri/metaphor/issues/586)）。埋め合わせとして
+台帳は撮影時の来歴（`provenance`: 撮った commit と `Sources/` の汚れ）を持ち、`--check`
+は最後に「N 本は撮影後に `Sources/` が変わっている」と要約だけ伝えます。合否には混ぜ
+ません（実装が変わっても絵が変わったとは限らないため）。来歴は撮り直したものから順に
+入ります。
 
 ### 撮影設定
 
@@ -194,6 +203,14 @@ make reference-shots ARGS="--list"                    # 撮影対象を並べる
 増えないので、「実装を変えたが見た目は変わっていない」ことの確認にそのまま使えます
 （実際、`arc()` の角度正規化 [#743](https://github.com/shinyaoguri/metaphor/issues/743) の後に
 撮り直して同じ URL が返り、この例の絵は変わっていないと分かりました）。
+
+これが偶然でないことは [#586](https://github.com/shinyaoguri/metaphor/issues/586) で実測
+しました。**同じマシン・同じ実装で撮り直せば、静止画はバイト単位で一致します**（2D・3D・
+ライティング・画像リソースを読むもの、いずれも一致。1 本あたり 1〜2 秒）。ただし
+**動きは一致しません** — 静止画は `noLoop` で 1 フレーム目を撮るのに対し、動きは下見を
+1 枚撮って `settle` 秒待ってから本番のリクエストを置くため、撮り始めるフレームが実行
+ごとにずれます（チュートリアル側は起動前にリクエストを置くので、frameCount で駆動する
+節なら WebP までバイト一致します）。
 
 ### 見た目を確かめるとき
 
