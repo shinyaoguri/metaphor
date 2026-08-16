@@ -107,12 +107,16 @@ public final class SketchWindow {
     ///   - config: ウィンドウ設定。
     ///   - sharedResources: プライマリと共有する Metal リソース。
     ///   - cascadeIndex: カスケード配置のスロット（0 起点。0 はオフセット無し）。
+    ///   - clockOffset: このウィンドウの時計に足す秒数。``SketchContext/createWindow(_:)``
+    ///     がプライマリの経過時間を渡し、`context.time` の起点をスケッチ開始時刻へ
+    ///     揃えます（#836）。
     ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか。既定は環境変数
     ///     `METAPHOR_VIEWER` からの解決（テストからの注入用に引数化している）。
     init(
         config: SketchWindowConfig,
         sharedResources: SharedMetalResources,
         cascadeIndex: Int = 0,
+        clockOffset: Double = 0,
         isHeadless: Bool = SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
     ) throws {
         self.config = config
@@ -124,6 +128,10 @@ public final class SketchWindow {
             width: config.width,
             height: config.height
         )
+        // レンダーループを組む前に時計を合わせる。setupRenderLoop() のタイマーは
+        // `deadline: .now()` で resume するので、生成後に外から入れると最初の
+        // 1 フレームだけ 0 起点で描かれてしまう（#836）。
+        renderer.clockOffset = clockOffset
         self.renderer = renderer
 
         let canvas = try Canvas2D(renderer: renderer)
@@ -139,6 +147,11 @@ public final class SketchWindow {
             canvas3D: canvas3D,
             input: renderer.input
         )
+
+        // 時計を引き継いだぶん、deltaTime の起点も寄せる。合わせないと最初の 1 フレームの
+        // deltaTime が「スケッチ開始からの経過時間まるごと」になり、それを積分に使う側が
+        // 1 回で吹き飛ぶ（SketchRunner が preserveClock で FrameClock を resync するのと同じ理屈。#793）
+        self.prevTime = Float(clockOffset)
 
         setupWindow()
         setupRenderLoop()

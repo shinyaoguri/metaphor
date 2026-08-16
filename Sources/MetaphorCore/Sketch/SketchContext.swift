@@ -280,6 +280,10 @@ public final class SketchContext {
                 cascadeIndex: Self.nextCascadeIndex(
                     inUse: secondaryWindows.map(\.cascadeIndex)
                 ),
+                // セカンダリは自前の MetaphorRenderer を持ち、その startTime は
+                // ウィンドウ生成時刻になる。いまの経過時間を渡して `time` の起点を
+                // 「スケッチ開始」へ揃える（doc どおりの意味にする。#836）
+                clockOffset: renderer.elapsedTime,
                 isHeadless: isHeadless
             )
             secondaryWindows.append(window)
