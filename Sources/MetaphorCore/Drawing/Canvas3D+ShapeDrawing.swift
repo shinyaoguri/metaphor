@@ -3,6 +3,28 @@ import simd
 
 // テッセレーション済みシェイプ頂点の GPU エンコード（Canvas3D+Shapes.swift から呼ばれる）。
 extension Canvas3D {
+    // MARK: - fill の適用回数（#825）
+
+    // beginShape/endShape の頂点カラーには、記録の時点で「fill 色」または
+    // 「vertex(…color:) で与えた色」が焼き込まれている（Canvas3D+Shapes.swift）。
+    // 頂点シェーダーは `in.color * uniforms.color` を掛けるので、uniforms 側にも
+    // fill を送ると fill が 2 回掛かる（#825）。頂点カラーが白の組み込みメッシュ
+    // （Mesh.swift）と違い、シェイプ側は uniforms を白にして 1 回に揃える。
+    //
+    // 焼き込みをやめて uniforms 一本にしないのは、beginShape の途中で fill() を
+    // 変える書き方（Processing 由来の頂点ごとの色づけ）を保つため。
+    static let bakedShapeTint = SIMD4<Float>(1, 1, 1, 1)
+
+    // 記録経路（影オン / METAPHOR_COMMAND_RECORD）は drawMesh 経由になり、
+    // drawMesh は現在の fillColor を DrawCall3D へ載せる。焼き込み済みの頂点を
+    // 渡すあいだだけ fill を白へ退避して、即時経路と同じ結果にする（#825）。
+    func drawBakedShapeMesh(_ mesh: Mesh) {
+        let savedFill = fillColor
+        fillColor = Canvas3D.bakedShapeTint
+        defer { fillColor = savedFill }
+        drawMesh(mesh)
+    }
+
     // MARK: - シェイプ頂点のバインド
 
     // ユーザー頂点列を index 0 にバインドします。
@@ -68,7 +90,7 @@ extension Canvas3D {
         // シャドウにも落ちなかった（#152）
         if shouldRecordMainPass && !isReplaying {
             if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil) {
-                drawMesh(mesh)
+                drawBakedShapeMesh(mesh)
             }
             return
         }
@@ -95,11 +117,12 @@ extension Canvas3D {
             encoder.setFrontFacing(.counterClockwise)
             encoder.setCullMode(.none)
 
+            // 頂点カラーへ焼き込み済みなので tint は白（#825）
             var uniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
                 viewProjectionMatrix: viewProj,
                 normalMatrix: normalMatrix,
-                color: fillColor,
+                color: Canvas3D.bakedShapeTint,
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
                 time: currentTime,
                 lightCount: UInt32(lightArray.count),
@@ -312,7 +335,7 @@ extension Canvas3D {
         // 記録経路: 一時 Mesh 化して DrawCall3D として記録（#152）
         if shouldRecordMainPass && !isReplaying {
             if let mesh = try? Mesh(device: device, vertices: allVerts, indices: nil) {
-                drawMesh(mesh)
+                drawBakedShapeMesh(mesh)
             }
             return
         }
@@ -335,11 +358,13 @@ extension Canvas3D {
         }
         encoder.setCullMode(.none)
 
+        // 点ごとの色は頂点カラーが運ぶ。ここに先頭頂点の色を入れると
+        // 「頂点[i] の色 × 頂点[0] の色」になり、点ごとの色分けが壊れる（#825）
         var uniforms = Canvas3DUniforms(
             modelMatrix: currentTransform,
             viewProjectionMatrix: viewProj,
             normalMatrix: normalMatrix,
-            color: shapeVertices3D[0].color,
+            color: Canvas3D.bakedShapeTint,
             cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
             time: currentTime,
             lightCount: 0,

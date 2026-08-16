@@ -6,6 +6,10 @@ extension SketchContext {
     // MARK: - 3D Custom Shapes (beginShape / endShape)
 
     /// 3D 頂点ベースのカスタムシェイプの記録を開始します。
+    ///
+    /// 現在の `fill` は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の
+    /// 間で `fill` を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    ///
     /// - Parameter mode: シェイプの描画モード（デフォルト `.polygon`）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         activeShapeRecording = .threeD
@@ -30,6 +34,10 @@ extension SketchContext {
     }
 
     /// 頂点カラー付き 3D 頂点を追加します。
+    ///
+    /// 与えた色は現在の `fill` に左右されず、そのまま出ます。
+    /// `texture()` を貼ったシェイプでは頂点カラーは使われません（テクスチャの色が出ます）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
