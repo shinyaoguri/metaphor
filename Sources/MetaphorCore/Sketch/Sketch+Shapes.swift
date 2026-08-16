@@ -705,7 +705,7 @@ extension Sketch {
     ///
     /// ### 実行結果
     ///
-    /// 点の大きさは ``strokeWeight(_:)``、色は ``stroke(_:)`` で決まります。
+    /// 点の大きさは ``strokeWeight(_:)``、色は `stroke()` で決まります。
     ///
     /// <!-- reference-shot -->
     ///
