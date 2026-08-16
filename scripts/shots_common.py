@@ -89,8 +89,13 @@ def image_size(path: Path) -> tuple[int, int]:
     raise ShotError(f"{path.name} の縦横を読めない（PNG / WebP / GIF のみ対応）")
 
 
-def source_files(package_dir: Path) -> list[Path]:
-    """指紋の材料。Swift だけでなくリソースも含める（#505）。"""
+def source_files(package_dir: Path, *, exclude: Iterable[Path] = ()) -> list[Path]:
+    """指紋の材料。Swift だけでなくリソースも含める（#505）。
+
+    `exclude` には**このパッケージが生む出力**を渡す（実行結果画像など）。無い
+    パスを渡しても害はないので、呼び出し側は置き場を知っていればよい。
+    """
+    dropped = {path.resolve() for path in exclude}
     files = []
     for path in package_dir.rglob("*"):
         if not path.is_file():
@@ -98,23 +103,29 @@ def source_files(package_dir: Path) -> list[Path]:
         relative = path.relative_to(package_dir)
         if EXCLUDED_NAMES.intersection(relative.parts):
             continue
+        if path.resolve() in dropped:
+            continue
         files.append(path)
     return sorted(files, key=lambda p: p.relative_to(package_dir).as_posix())
 
 
-def source_hash(package_dir: Path) -> str:
+def source_hash(package_dir: Path, *, exclude: Iterable[Path] = ()) -> str:
     """パッケージのソースとリソースから決まる指紋。撮り直しの要否はこれで判定する。
 
     絵を変えうるものはすべて材料にする。Swift だけを見ていた頃は、同梱画像や
     シェーダーを差し替えても `--check` が「最新」と答えていた（#505）。
 
-    **材料はパッケージ配下だけ**で、`Package.swift` が path 依存で参照する
-    metaphor 本体（`Sources/`）は入りません。ライブラリの実装だけが変わって絵が
-    変わっても、この指紋は動かない（#586）。そこは `capture_provenance` が残す
-    来歴で補います。
+    **材料はパッケージ配下の入力だけ**です。
+
+    - `Package.swift` が path 依存で参照する metaphor 本体（`Sources/`）は入りません。
+      ライブラリの実装だけが変わって絵が変わっても、この指紋は動かない（#586）。
+      そこは `capture_provenance` が残す来歴で補います
+    - **出力も入りません**。実行結果画像をパッケージ直下に置く Examples では、
+      黙っていると画像自身が材料に入り、画像を差し替えただけで「ソースが変わった」に
+      なってしまう。出力の置き場を知っている呼び出し側が `exclude` で外す（#820）
     """
     digest = hashlib.sha256()
-    for path in source_files(package_dir):
+    for path in source_files(package_dir, exclude=exclude):
         digest.update(path.relative_to(package_dir).as_posix().encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())

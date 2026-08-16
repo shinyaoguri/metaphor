@@ -67,8 +67,11 @@ LoadDisplayOBJ は contentFraction 0、Flocking は 0.001）。そこで:
 
 GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビット単位には一致しない。撮り直す
 たびに差分が出るので、`--check` は画像そのものではなく**撮影時のソースの指紋**と現在の
-ソースを突き合わせる（`shots_common.source_hash`）。これで GPU の無い CI ランナーでも
-判定できる。
+ソースを突き合わせる（`source_fingerprint`）。これで GPU の無い CI ランナーでも判定できる。
+
+指紋の材料は**入力だけ**で、出力（`<Name>.png`）は外す。画像はパッケージ直下に置くので、
+そのまま採ると出力が入力の指紋に混ざり、画像を差し替えただけで「ソースが変わった」と
+報告してしまう（#820）。
 """
 
 import argparse
@@ -147,6 +150,16 @@ def image_path_for(path: str) -> Path:
     """実行結果画像の置き場。既存の 162 枚と同じ `<ディレクトリ名>.png`。"""
     package = package_dir_for(path)
     return package / f"{package.name}.png"
+
+
+def source_fingerprint(path: str) -> str:
+    """撮影時のソースの指紋。
+
+    実行結果画像はパッケージ直下（`image_path_for`）に置くので、そのまま指紋を採ると
+    **出力が入力の指紋に混ざる**。画像だけを差し替えただけで `--check` が
+    「ソースが変わった」と言い出すので、材料から外す（#820）。
+    """
+    return source_hash(package_dir_for(path), exclude=[image_path_for(path)])
 
 
 def no_capture_reason(package: Path) -> str | None:
@@ -267,7 +280,7 @@ def stale_entries(entries: list[dict], shots: dict) -> list[str]:
             continue
         if not image_path_for(path).is_file():
             stale.append(f"{path}（画像が無い）")
-        elif recorded.get("sourceHash") != source_hash(package):
+        elif recorded.get("sourceHash") != source_fingerprint(path):
             stale.append(f"{path}（撮影後にソースが変わった）")
     return stale
 
@@ -388,7 +401,7 @@ def capture(path: str, destination: Path, settle: float) -> dict:
     size = metadata.get("size", {})
     entry = {
         "origin": ORIGIN_CAPTURED,
-        "sourceHash": source_hash(package),
+        "sourceHash": source_fingerprint(path),
     }
     # 指紋はパッケージ配下しか見ないので、ライブラリ本体の変更は拾えない（#586）。
     # 撮った実装を来歴として残し、あとから隔たりを数えられるようにする。

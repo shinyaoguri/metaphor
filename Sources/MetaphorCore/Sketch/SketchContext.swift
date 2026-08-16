@@ -54,16 +54,16 @@ public final class SketchContext {
     /// 描画ループが現在実行中かどうか。
     public private(set) var isLooping: Bool = true
 
-    /// ループ再開時に呼ばれるコールバック（SketchRunner が設定）。
+    /// ループ再開時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onLoop: (() -> Void)?
 
-    /// ループ停止時に呼ばれるコールバック（SketchRunner が設定）。
+    /// ループ停止時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onNoLoop: (() -> Void)?
 
-    /// 単一フレーム再描画時に呼ばれるコールバック（SketchRunner が設定）。
+    /// 単一フレーム再描画時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onRedraw: (() -> Void)?
 
-    /// フレームレート変更時に呼ばれるコールバック（SketchRunner が設定）。
+    /// フレームレート変更時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onFrameRate: ((Int) -> Void)?
 
     /// アニメーションループを再開します。
