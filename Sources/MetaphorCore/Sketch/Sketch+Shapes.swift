@@ -8,6 +8,32 @@ extension Sketch {
     ///
     /// - Note: **2D と 3D の両方**に作用します。``pushMatrix()`` との違いは作用先ではなく
     ///   「スタイルを含むかどうか」で、こちらは変換 + スタイル、``pushMatrix()`` は変換のみです。
+    ///
+    /// ### 実行結果
+    ///
+    /// ``pop()`` を呼ぶと、あいだで変えた変換もスタイルも巻き戻ります
+    /// （青い矩形は ``translate(_:_:)`` の影響を受けません）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![push() の実行結果](https://i.gyazo.com/ed6c97031c145c2561123ddf7fa4d8ad.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///       push()
+    ///       translate(120, 100)
+    ///       fill(255, 190, 60)
+    ///       rect(-60, -50, 120, 100)
+    ///       pop()
+    ///       fill(80, 170, 255)
+    ///       rect(260, 210, 120, 100)
+    ///       ```
+    ///    }
+    /// }
     public func push() {
         context.push()
     }
@@ -42,6 +68,29 @@ extension Sketch {
     /// - Parameters:
     ///   - x: 水平方向の移動量。
     ///   - y: 垂直方向の移動量。
+    ///
+    /// ### 実行結果
+    ///
+    /// 以降の描画の原点が動くので、同じ引数の ``rect(_:_:_:_:)`` が別の場所に出ます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![translate(_:_:) の実行結果](https://i.gyazo.com/99b0ad0fcee4710064a4f8b5f0d59146.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///       rect(40, 40, 120, 100)
+    ///       translate(180, 140)
+    ///       fill(80, 170, 255)
+    ///       rect(40, 40, 120, 100)
+    ///       ```
+    ///    }
+    /// }
     public func translate(_ x: Float, _ y: Float) {
         context.translate(x, y)
     }
@@ -86,6 +135,29 @@ extension Sketch {
     /// - Parameters:
     ///   - sx: 水平方向のスケール係数。
     ///   - sy: 垂直方向のスケール係数。
+    ///
+    /// ### 実行結果
+    ///
+    /// 拡大の基点は原点なので、位置も係数ぶん動きます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![scale(_:_:) の実行結果](https://i.gyazo.com/6582ff8b7eb8b8487a4d49b9a3cb4459.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///       rect(60, 60, 120, 90)
+    ///       scale(1.6, 2.0)
+    ///       fill(80, 170, 255)
+    ///       rect(60, 60, 120, 90)
+    ///       ```
+    ///    }
+    /// }
     public func scale(_ sx: Float, _ sy: Float) {
         context.scale(sx, sy)
     }
@@ -151,6 +223,30 @@ extension Sketch {
     ///   せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位のせん断角度。
+    ///
+    /// ### 実行結果
+    ///
+    /// y が大きいところほど右へずれます（下が青、上が元の形）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![shearX(_:) の実行結果](https://i.gyazo.com/b3c4494e7b7eb88b4bd839c0ced4d974.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///       rect(80, 40, 140, 90)
+    ///       translate(0, 150)
+    ///       shearX(0.4)
+    ///       fill(80, 170, 255)
+    ///       rect(80, 40, 140, 90)
+    ///       ```
+    ///    }
+    /// }
     public func shearX(_ angle: Float) {
         context.shearX(angle)
     }
@@ -164,6 +260,30 @@ extension Sketch {
     ///   せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
     ///
     /// - Parameter angle: ラジアン単位のせん断角度。
+    ///
+    /// ### 実行結果
+    ///
+    /// x が大きいところほど下へずれます（右が青、左が元の形）。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![shearY(_:) の実行結果](https://i.gyazo.com/a5344a38d3dfaf3943dba560232c20a8.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///       fill(255, 190, 60)
+    ///       rect(50, 60, 120, 90)
+    ///       translate(200, 0)
+    ///       shearY(0.35)
+    ///       fill(80, 170, 255)
+    ///       rect(50, 60, 120, 90)
+    ///       ```
+    ///    }
+    /// }
     public func shearY(_ angle: Float) {
         context.shearY(angle)
     }
@@ -734,6 +854,32 @@ extension Sketch {
     /// カスタムシェイプの頂点記録を開始します。
     ///
     /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
+    ///
+    /// ### 実行結果
+    ///
+    /// ``vertex(_:_:)`` で頂点を並べ、``endShape(_:)`` で閉じて描きます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![beginShape(_:) の実行結果](https://i.gyazo.com/a10e43fb6502ebfdf514b7598cbf1c5c.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(255, 190, 60)
+    ///       noStroke()
+    ///       beginShape()
+    ///       vertex(240, 50)
+    ///       vertex(410, 175)
+    ///       vertex(345, 320)
+    ///       vertex(135, 320)
+    ///       vertex(70, 175)
+    ///       endShape(.close)
+    ///       ```
+    ///    }
+    /// }
     public func beginShape(_ mode: ShapeMode = .polygon) {
         context.beginShape(mode)
     }
@@ -743,6 +889,33 @@ extension Sketch {
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// ``endShape(_:)`` を ``CloseMode/open`` のまま閉じないと折れ線になります。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![vertex(_:_:) の実行結果](https://i.gyazo.com/050fa166d5c66c43957cb13a43d68b44.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noFill()
+    ///       stroke(80, 170, 255)
+    ///       strokeWeight(6)
+    ///       beginShape()
+    ///       vertex(70, 260)
+    ///       vertex(150, 110)
+    ///       vertex(240, 230)
+    ///       vertex(330, 90)
+    ///       vertex(410, 240)
+    ///       endShape()
+    ///       ```
+    ///    }
+    /// }
     public func vertex(_ x: Float, _ y: Float) {
         context.vertex(x, y)
     }
@@ -777,6 +950,32 @@ extension Sketch {
     ///   - cy2: 第2制御点の y 座標。
     ///   - x: アンカーポイントの x 座標。
     ///   - y: アンカーポイントの y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// 直前の頂点が始点になるので、``vertex(_:_:)`` を 1 つ置いてから呼びます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![bezierVertex(_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/96c2d0ca7b953a80922e8477d611243e.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noFill()
+    ///       stroke(255, 190, 60)
+    ///       strokeWeight(4)
+    ///       beginShape()
+    ///       vertex(80, 260)
+    ///       bezierVertex(
+    ///           120, 60, 360, 60, 400, 260
+    ///       )
+    ///       endShape()
+    ///       ```
+    ///    }
+    /// }
     public func bezierVertex(
         _ cx1: Float, _ cy1: Float,
         _ cx2: Float, _ cy2: Float,
@@ -790,6 +989,34 @@ extension Sketch {
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
+    ///
+    /// ### 実行結果
+    ///
+    /// 最初と最後の点は曲線の向きを決める制御点なので、同じ座標を 2 回置きます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![curveVertex(_:_:) の実行結果](https://i.gyazo.com/46e0b074f4363c0b55f426584e360940.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noFill()
+    ///       stroke(80, 170, 255)
+    ///       strokeWeight(4)
+    ///       beginShape()
+    ///       curveVertex(60, 240)
+    ///       curveVertex(60, 240)
+    ///       curveVertex(180, 120)
+    ///       curveVertex(300, 280)
+    ///       curveVertex(420, 140)
+    ///       curveVertex(420, 140)
+    ///       endShape()
+    ///       ```
+    ///    }
+    /// }
     public func curveVertex(_ x: Float, _ y: Float) {
         context.curveVertex(x, y)
     }
@@ -813,6 +1040,38 @@ extension Sketch {
     /// `beginShape3D()` で組む 3D シェイプでは穴を開けられません（呼んでも何も起きず、
     /// 初回だけ警告が出ます）。3D で穴の開いた面が要るときは、内側と外側のあいだの
     /// 輪帯を自分で三角形に割ってください。
+    ///
+    /// ### 実行結果
+    ///
+    /// 穴は外周と逆まわりに並べます。``endContour()`` で閉じてから
+    /// ``endShape(_:)`` を呼びます。
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![beginContour() の実行結果](https://i.gyazo.com/0589e9f453959e2667e5a33fb94cf8a4.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(255, 190, 60)
+    ///       noStroke()
+    ///       beginShape()
+    ///       vertex(100, 70)
+    ///       vertex(380, 70)
+    ///       vertex(380, 290)
+    ///       vertex(100, 290)
+    ///       beginContour()
+    ///       vertex(190, 130)
+    ///       vertex(190, 230)
+    ///       vertex(290, 230)
+    ///       vertex(290, 130)
+    ///       endContour()
+    ///       endShape(.close)
+    ///       ```
+    ///    }
+    /// }
     public func beginContour() {
         context.beginContour()
     }
