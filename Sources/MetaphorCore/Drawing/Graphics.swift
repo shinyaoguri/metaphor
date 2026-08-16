@@ -484,6 +484,18 @@ public final class Graphics {
     ///   - y: Y座標。
     public func curveVertex(_ x: Float, _ y: Float) { canvas.curveVertex(x, y) }
 
+    /// 曲線の近似に使用するセグメント数を設定します。
+    ///
+    /// ``curve(_:_:_:_:_:_:_:_:)`` と ``curveVertex(_:_:)`` の両方に効きます。
+    /// - Parameter n: セグメント数（1 未満は 1 に丸められます）。
+    public func curveDetail(_ n: Int) { canvas.curveDetail(n) }
+
+    /// Catmull-Rom スプライン曲線の張り具合を設定します。
+    ///
+    /// ``curve(_:_:_:_:_:_:_:_:)`` と ``curveVertex(_:_:)`` の両方に効きます。
+    /// - Parameter t: 張り値（0 が標準の Catmull-Rom、1 で 2 点を結ぶ直線）。
+    public func curveTightness(_ t: Float) { canvas.curveTightness(t) }
+
     /// 頂点の記録を終了し、現在のシェイプを描画します。
     /// - Parameter close: シェイプを閉じるかどうか。
     public func endShape(_ close: CloseMode = .open) { canvas.endShape(close) }
