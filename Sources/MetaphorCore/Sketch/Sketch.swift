@@ -17,6 +17,12 @@ import Metal
 ///     }
 /// }
 /// ```
+///
+/// このプロトコルは `@MainActor` です。スケッチの外へアセットや状態を切り出す型
+/// （シーン、アセット束、ゲーム状態など）を作るときは、**その型にも `@MainActor` を
+/// 付けてください**。`loadImage` / `loadModel` / `loadSound` / `loadVideo` と、それらが
+/// 返す ``MImage`` / ``Mesh`` / `SoundFile` / `VideoPlayer` のメンバーはすべて main actor
+/// 隔離されており、素の `class` からは呼べません。
 @MainActor
 public protocol Sketch: AnyObject {
     /// 引数なしの新しいインスタンスを作成します（`@main` で必須）。
