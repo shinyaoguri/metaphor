@@ -145,7 +145,7 @@ final class RenderGraphCompose: Sketch {
         let sceneNode = GraphicsNode(label: "scene", graphics: pgScene)
         let overlayNode = GraphicsNode(label: "overlay", graphics: pgOverlay)
 
-        // 4. Stars に色収差を適用（単パスシェーダで安全）
+        // 4. Stars に色収差を適用
         guard let chromaticStars = createEffectPass(
             starsNode,
             effects: [ChromaticAberrationEffect(intensity: 0.012)]
@@ -158,9 +158,9 @@ final class RenderGraphCompose: Sketch {
         // パラメータを強くして、軌道点が画面端に近づくと
         // 明らかに暗くなる/明るくなるのが見えるように。
         //
-        // 注: Bloom や大半径 Blur など複数の中間ヒープテクスチャを使う
-        // 多パスエフェクトは EffectPass 経由 + Graphics 入力で
-        // 描画が崩れる既知の問題があるため、単パスエフェクトのみを使う。
+        // ここでは単パスの Vignette を選んでいるが、単パスに限る必要は無い。
+        // Bloom や大半径 Blur のように複数の中間テクスチャを使う多パス
+        // エフェクトも、EffectPass 経由 + Graphics 入力でそのまま置ける（#833）。
         guard let vignetteOverlay = createEffectPass(
             overlayNode,
             effects: [VignetteEffect(intensity: 1.0, smoothness: 0.5)]
