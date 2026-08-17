@@ -229,7 +229,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
   - Note: **3D のみ**に作用します（影が落ちるのは 3D シェイプだけです。ADR-0005）。
-  - Note: **2D と 3D の重ね順**（#832 / ADR-0003 の 2026-08-16 追記）。既定（影オフ）の即時経路では、重ね順は**呼び出し順ではなくエンコード順**で決まります。2D はバッチにまとめてフレーム末尾で吐かれるため、**既定では 2D が 3D の手前**に出ます（`box()` の前に描いた 2D も手前に来ます）。ただし 2D バッチが途中で吐かれると、それ以降にエンコードされる 3D の背後へ回ります — 契機は `blendMode()` の変更 / `image()`・`text()` との交互 / `circles()` 等のインスタンス描画との交互 / `beginClip()`・`endClip()` / `loadPixels()` / 頂点バッファの上限です。**呼び出し順どおりに重ねたい**場合は、この `enableShadows()` を有効にするか、環境変数 `METAPHOR_COMMAND_RECORD=1` で記録経路に入れてください（どちらも `Canvas3D` が 3D の記録直前に 2D を確定するため、呼び出し順がそのまま復元されます）。
+  - Note: **2D と 3D の重ね順**（#832 / ADR-0003 の Amendment 節）。既定（影オフ）の即時経路では、重ね順は**呼び出し順ではなくエンコード順**で決まります。2D はバッチにまとめてフレーム末尾で吐かれるため、**既定では 2D が 3D の手前**に出ます（`box()` の前に描いた 2D も手前に来ます）。ただし 2D バッチが途中で吐かれると、それ以降にエンコードされる 3D の背後へ回ります — 契機は `blendMode()` の変更 / `image()`・`text()` との交互 / `circles()` 等のインスタンス描画との交互 / `beginClip()`・`endClip()` / `loadPixels()` / 頂点バッファの上限です。**呼び出し順どおりに重ねたい**場合は、この `enableShadows()` を有効にするか、環境変数 `METAPHOR_COMMAND_RECORD=1` で記録経路に入れてください（どちらも `Canvas3D` が 3D の記録直前に 2D を確定するため、呼び出し順がそのまま復元されます）。
 - `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
 - `func endContour()` -- 現在のコンター定義を終了します（2D シェイプ専用）。
