@@ -65,9 +65,10 @@ The attribution recorded here is transcribed from each font's own `name` table
 (nameID 0 `copyright`, 8 `manufacturer`, 9 `designer`, 13 `licenseDescription`),
 not from a secondary source.
 
-`Tests/metaphorTests/FontLicenseTests.swift` re-derives this section from the
-files on disk, so a font added without a matching entry — or an entry whose
-SHA-256 has gone stale — fails `make test`.
+This section is written by hand, but it is not trusted: at `make test` time
+`Tests/metaphorTests/FontLicenseTests.swift` walks the source tree and checks
+every font it finds against the text below. A font added without an entry — or
+an entry whose SHA-256 has gone stale — turns the test suite red.
 
 ### Source Code Pro (Regular)
 

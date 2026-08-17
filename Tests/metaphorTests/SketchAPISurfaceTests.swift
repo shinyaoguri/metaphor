@@ -1180,14 +1180,30 @@ struct SketchFailureModeTests {
         }
     }
 
+    @Test("pixels は context 未初期化でも空バッファ（読み取り系は fatalError しない）")
+    func pixelsWithoutContextIsEmpty() {
+        // 失敗モードの方針（ADR-0005 / Issue #356）: 描画系は `context` の getter で
+        // fatalError、`probe()` と `pixels` はそこを通らない。`pixels` が
+        // `context.pixelBuffer` を読んでいた頃は、この呼び出しが空バッファではなく
+        // 「Drawing APIs require an active SketchContext...」の fatalError で落ちていた
+        // ため、テストプロセスごと落ちる（#expect が失敗するのではない）のがこの
+        // テストの赤の見え方。
+        let sketch = RecordingSketch()
+        #expect(sketch._context == nil)
+
+        let px = sketch.pixels
+        #expect(px.count == 0, "context 未初期化の pixels は空: count=\(px.count)")
+        #expect(px.baseAddress == nil)
+    }
+
     @Test("loadPixels() 前の pixels は空バッファ（読み取り系はクラッシュより空）")
     func pixelsBeforeLoadIsEmpty() throws {
         let sketch = RecordingSketch()
         let harness = try SketchRunnerHarness(sketch: sketch)
         harness.start()
 
-        // 注: doc（Sketch.context）は「context 未初期化でも空バッファ」と読めるが、
-        // 実際に空が返るのは context がある状態で loadPixels() 前のときだけ → Issue #356。
+        // context はあるが loadPixels() 前、という別経路の空返し（context 未初期化側は
+        // pixelsWithoutContextIsEmpty が押さえる）。
         let before = sketch.pixels
         #expect(before.count == 0, "loadPixels 前は空バッファ: count=\(before.count)")
         #expect(before.baseAddress == nil)

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Examples/Tutorial/** のコードを docs/tutorial/*.md へ埋め込む。
+"""Examples/Tutorial/** のコードを docs/tutorial/{,en/}*.md へ埋め込む。
 
 正典は `Examples/Tutorial/<部>/<節>/` に実在する SwiftPM パッケージ。Markdown
 側の埋め込みブロックは**生成物**で、手で編集しないこと（llms.txt / examples
 index と同じ運用）。チュートリアルの全コードが `make examples-check` と per-PR
 CI の差分ビルドでコンパイルを通ることが、これで構造的に保証される（Issue #485）。
+
+英語版（`docs/tutorial/en/NN-slug.md`、Issue #548）も同じ正典から埋める。訳す
+のは散文だけで、コードは 1 本を両言語が共有する（`tutorial_documents`）。
 
 埋め込みの書式:
 
@@ -127,7 +130,18 @@ def referenced_refs(text: str) -> set[str]:
 
 
 def tutorial_documents() -> list[Path]:
-    return sorted(p for p in DOCS_DIR.glob("*.md") if p.name not in SKIP_DOCS)
+    """埋め込みの対象になる本文。翻訳（`en/`、Issue #548）も最初から見る。
+
+    **コードは訳さない** — `Examples/Tutorial/**` の 1 本を ja / en が共有する。
+    埋め込みの対象から en を外すと、英語版だけコードが埋まらないうえに、正典の
+    コードが変わったときのドリフト検出も効かなくなる（本文と実行結果が食い違う）。
+    画像も同じ考え方で、`generate-tutorial-shots.py` の `doc_paths()` が両方へ
+    同じ URL を書き戻す。website の content collection も同じ 2 つの glob を見る
+    （`website/src/content.config.ts`）。
+    """
+    docs = [p for p in DOCS_DIR.glob("*.md") if p.name not in SKIP_DOCS]
+    docs += [p for p in DOCS_DIR.glob("en/*.md") if p.name not in SKIP_DOCS]
+    return sorted(docs)
 
 
 def known_packages() -> list[str]:
@@ -181,8 +195,8 @@ def main() -> int:
     for ref in known_packages():
         if ref not in referenced:
             print(
-                f"warning: Examples/Tutorial/{ref} はどの docs/tutorial/*.md "
-                f"からも参照されていない",
+                f"warning: Examples/Tutorial/{ref} はどの本文（docs/tutorial/"
+                f"{{,en/}}*.md）からも参照されていない",
                 file=sys.stderr,
             )
 
