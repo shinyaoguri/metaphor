@@ -50,7 +50,15 @@ extension Sketch {
     ///   `loadPixels()` を呼ばないスケッチには一切コストがかかりません。
     ///
     /// - Note: 読み戻しのために内部でレンダーパスを分割するため、`loadPixels()` を
-    ///   またいだ 3D 同士は深度比較されません（2D は深度テストを使わないため影響なし）。
+    ///   またいだ 3D 同士は深度比較されません（継続パスでデプスがクリアされます）。
+    ///
+    /// - Note: `loadPixels()` は 2D バッチの確定点でもあります。影オフの即時経路では
+    ///   重ね順が呼び出し順ではなく**エンコード順**で決まるため、`loadPixels()` より
+    ///   **前**に描いた 2D は、**後**に描いた 3D の背後へ回ります。3D の手前に置きたい
+    ///   2D は `loadPixels()` の後に描いてください（#832。契機の一覧は
+    ///   [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md)
+    ///   の 2026-08-16 追記）。`loadPixels()` の前後それぞれの中では、フレーム末尾と
+    ///   同じく 2D が 3D の手前に出ます。
     public func loadPixels() {
         context.loadPixels()
     }

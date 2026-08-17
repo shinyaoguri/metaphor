@@ -197,7 +197,7 @@ Decision 3 の文面は**無条件に読める**が、実際には条件があ�
 
 > **3D と重なる 2D が、フレーム末尾まで吐かれない最後のバッチに収まっていること**
 
-2D バッチがフレーム末尾より前に吐かれる契機は 5 系統ある（すべて即時経路の話。記録経路では起きない）:
+2D バッチがフレーム末尾より前に吐かれる契機は 6 系統ある（すべて即時経路の話。記録経路では起きない）:
 
 | 契機 | 実装 |
 |---|---|
@@ -205,6 +205,7 @@ Decision 3 の文面は**無条件に読める**が、実際には条件があ�
 | 色頂点 ↔ テクスチャ頂点の切り替え（`image()` / `text()` と図形の交互） | `Canvas2DVertexWriter.addVertex` / `addVertexRaw`、`Canvas2DImage` |
 | インスタンスバッチとの切り替え（`circles()` 等 ↔ 通常の図形） | 同上、`Canvas2DShapes` |
 | `beginClip()` / `endClip()` | `Canvas2D+Clipping.swift` |
+| `loadPixels()`（同一フレーム読み戻しのパス分割。#326 / #832） | `SketchContext+Pixels.swift`（分割前に `canvas.flush()`） |
 | 頂点バッファが上限に達し拡張できない | `Canvas2DVertexWriter.ensureColorCapacity` |
 
 **実測**（2026-08-16。`OffscreenSketchHarness` の使い捨てシーン、128×128・3 フレーム・記録 OFF/ON の全画素比較）: 3D の箱に重なる半透明帯を描いたあと `text()` / `circles()` / `beginClip()` / `blendMode()` のいずれかを挟むと、**1748/16384 px（10.7%）が食い違う**。何も挟まなければ **0 px**（完全一致）。4 契機で差分量が同一なのは、いずれも同じ帯が背後へ落ちているため。
@@ -222,10 +223,18 @@ Decision 3 の文面は**無条件に読める**が、実際には条件があ�
 
 1.0 後に既定 ON へ倒すことは**ソース互換を壊さない**（public API は不変で、変わるのは既定の実行経路と `loadPixels()` の観測内容）。ただし利用者から見た挙動変更であり CHANGELOG での明示と minor bump を要する。
 
+#### 2026-08-18 追記（#832）— `loadPixels()` は 6 番目の契機、かつ分割点の吐き出し順が逆だった
+
+上の表に `loadPixels()` を 6 番目として足した。`loadPixels()` **より前**に描いた 2D は分割点で確定するので、**後**に描いた 3D の背後へ回る。これは他の 5 契機と同じ性質で、解消するとすれば記録経路の側（上の再評価の条件 (a)）である。
+
+これとは別に、**分割点そのものが `endFrame()` と逆順で吐いていた**不具合があった。フレーム末尾は `canvas3D.end()` → `canvas.end()`（3D → 2D）なのに、`SketchContext.loadPixels()` は `canvas.flush()` → `canvas3D.flushInstanceBatch()`（2D → 3D）だった。`box()` は即時エンコードではなくインスタンスバッチに溜まる（`Canvas3D+MeshDrawing.tryAddInstance`）ため、この 1 か所だけで重ね順が反転し、**分割より前に描いた 2D が、同じく分割より前に描いた 3D の背後へ落ちていた**。利用者から見ると「`loadPixels()` を末尾に 1 行足しただけで HUD が箱の後ろに回る」「z を変えても直らない」という形で現れる（#832 の報告。深度ではなくエンコード順の話なので z は効かない）。
+
+順序を `endFrame()` へ揃えて解消した。**実測**（2026-08-18。400×400・`background → lights → box(180) → 2D の帯`）: 修正前は `loadPixels()` あり/なしで PNG が別物、修正後は**バイト同一**（`loadPixels()` を呼ばないシーンの出力は修正の前後で不変）。回帰は `CanvasPixelsTests.splitPreserves2DOver3DCompositing` — 既存の `splitDoesNotChangeRenderedOutput` は 2D だけのシーンなので、この食い違いを原理的に検出できなかった。
+
 ### Consequences
 
 - ADR-0003「活性化方針（確定）」節の「既定 ON 化は安定後に判断（follow-up）」は本 Amendment で**決着済み**となる。Follow-ups の該当項目もクローズ。
-- 影の有無で 2D/3D の重ね順の自由度が変わる非対称が 1.0 の仕様として残る。`docs/ai/README.md` と Sketch 層 doc に「2D を 3D の背後に置きたい場合は影を有効にするか `METAPHOR_COMMAND_RECORD=1`」を明記する（別 PR）。
+- 影の有無で 2D/3D の重ね順の自由度が変わる非対称が 1.0 の仕様として残る。`docs/ai/README.md` と Sketch 層 doc に「2D を 3D の背後に置きたい場合は影を有効にするか `METAPHOR_COMMAND_RECORD=1`」を明記する（別 PR）→ **済み**（`docs/ai/README.md` は #682 / PR #730、Sketch 層 doc は #832 で `Sketch/enableShadows(resolution:)` の Note へ）。
 - 別 Issue とするもの:
   - 影オフの**初回フレーム**で `background()` の縁 1px が半輝度になる（§2。単一フレームキャプチャの品質に効く）→ **#373 に起票済み**（本判断とは独立した既存不具合）。
   - 記録 ON/OFF の**全画素パリティ常設テスト**（ゴールデン基盤 #330 の上に。Decision 3 の保証を CI で守る回帰ガード）→ **#375 に起票済み**。
