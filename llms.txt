@@ -2523,9 +2523,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func applyTurbulence(frequency: Double, power: Double, roughness: Int, seed: Int32)` -- Applies turbulence distortion to the noise.
 - `func clamp(min: Double, max: Double)` -- Clamps the output value to a range.
 - `func colorMappedTexture(width: Int, height: Int, colorStops: [(Float, SIMD4<UInt8>)]) -> (any MTLTexture)?` -- Generates a color-mapped noise texture using gradient stops.
-  - Note: Built on `sampleGrid(width:height:)`, so `NoiseConfig/origin` and `NoiseConfig/sampleScale` apply here and the pixels do not correspond to `sample(x:y:)` values.
+  - Note: Built on `sampleGrid(width:height:)`, so `NoiseConfig/origin` and `NoiseConfig/sampleScale` apply here and the pixels do not correspond to `sample(x:y:)-(Double,_)` values.
 - `func image(width: Int, height: Int) -> MImage?` -- Generates a noise image.
-  - Note: Built on `sampleGrid(width:height:)`, so `NoiseConfig/origin` and `NoiseConfig/sampleScale` apply here and the pixels do not correspond to `sample(x:y:)` values.
+  - Note: Built on `sampleGrid(width:height:)`, so `NoiseConfig/origin` and `NoiseConfig/sampleScale` apply here and the pixels do not correspond to `sample(x:y:)-(Double,_)` values.
 - `func invert()` -- Inverts the output value.
 - `func multiply(_ other: GKNoiseWrapper)` -- Composites another noise source by multiplication.
 - `func raiseToPower(_ exponent: Double)` -- Raises the output value to a power.
@@ -2533,9 +2533,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Important: The values returned here **do not match** `sampleGrid(width:height:)` (nor `texture(width:height:)` / `image(width:height:)`, which are built on it). Only the grid's first sample coincides, at `sample(x: origin.x, y: origin.y)`; `sample(x: origin.x + Float(i) * sampleScale.x, y: origin.y)` does not reproduce the grid's `i`-th value, because GameplayKit steps `GKNoiseMap` on its own terms. See `GKNoiseWrapper` for the full picture.
 - `func sample(x: Double, y: Double) -> Float` -- Samples the noise value at a 2D point (Double-precision input).
 - `func sampleGrid(width: Int, height: Int) -> [Float]` -- Generates noise values as a 2D grid.
-  - Important: This is a different coordinate space from `sample(x:y:)`, which applies neither `origin` nor `sampleScale`. Index `(0, 0)` equals `sample(x: origin.x, y: origin.y)`, but no other index lines up: GameplayKit does not step the map by `origin + index × sampleScale`, and the step it does use changes with `width` / `height` — the same `sampleScale` on a 64×64 and a 16×16 grid puts index `(1, 0)` at different points in the noise. Read the field through one entry point per sketch rather than expecting the two to agree.
+  - Important: This is a different coordinate space from `sample(x:y:)-(Double,_)`, which applies neither `origin` nor `sampleScale`. Index `(0, 0)` equals `sample(x: origin.x, y: origin.y)`, but no other index lines up: GameplayKit does not step the map by `origin + index × sampleScale`, and the step it does use changes with `width` / `height` — the same `sampleScale` on a 64×64 and a 16×16 grid puts index `(1, 0)` at different points in the noise. Read the field through one entry point per sketch rather than expecting the two to agree.
 - `func texture(width: Int, height: Int) -> (any MTLTexture)?` -- Generates a grayscale BGRA8 noise texture.
-  - Note: Built on `sampleGrid(width:height:)`, so `NoiseConfig/origin` and `NoiseConfig/sampleScale` apply here and the pixels do not correspond to `sample(x:y:)` values.
+  - Note: Built on `sampleGrid(width:height:)`, so `NoiseConfig/origin` and `NoiseConfig/sampleScale` apply here and the pixels do not correspond to `sample(x:y:)-(Double,_)` values.
 
 ### `struct NoiseConfig` -- Configures the parameters for GKNoise generation.
 
@@ -2544,10 +2544,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var normalized: Bool` -- Whether output normalization is enabled (remaps to 0.0-1.0).
 - `var octaves: Int` -- Number of fractal octaves (default is 6).
 - `var origin: SIMD2<Double>` -- Sampling offset.
-  - Important: Grid-only, like `sampleScale`. It is the noise-space point the grid starts from, and `GKNoiseWrapper/sample(x:y:)` ignores it entirely.
+  - Important: Grid-only, like `sampleScale`. It is the noise-space point the grid starts from, and `GKNoiseWrapper/sample(x:y:)-(Double,_)` ignores it entirely.
 - `var persistence: Double` -- Amplitude decay rate per octave (persistence, default is 0.5).
 - `var sampleScale: SIMD2<Double>` -- Sampling scale (maps to noiseMap's sampleSize).
-  - Important: Grid-only. It steers `GKNoiseWrapper/sampleGrid(width:height:)`, `GKNoiseWrapper/texture(width:height:)`, `GKNoiseWrapper/image(width:height:)` and `GKNoiseWrapper/colorMappedTexture(width:height:colorStops:)`; `GKNoiseWrapper/sample(x:y:)` ignores it entirely.
+  - Important: Grid-only. It steers `GKNoiseWrapper/sampleGrid(width:height:)`, `GKNoiseWrapper/texture(width:height:)`, `GKNoiseWrapper/image(width:height:)` and `GKNoiseWrapper/colorMappedTexture(width:height:colorStops:)`; `GKNoiseWrapper/sample(x:y:)-(Double,_)` ignores it entirely.
 - `var seed: Int32` -- Seed value for the noise generator.
 - `var voronoiDistanceEnabled: Bool` -- Voronoi-specific: use distance as the noise value.
 - `init(octaves: Int = 6, frequency: Double = 1.0, lacunarity: Double = 2.0, seed: Int32 = 0, persistence: Double = 0.5, normalized: Bool = true, voronoiDistanceEnabled: Bool = true, sampleScale: SIMD2<Double> = SIMD2(1.0, 1.0), origin: SIMD2<Double> = .zero)` -- Creates a noise configuration with the given parameters.
