@@ -81,6 +81,10 @@
       "en": "Executes the entire graph and returns the final output texture.",
       "ja": "グラフ全体を実行し、最終的な出力テクスチャを返します。"
     },
+    "0a0bf0fa94de9908c35f21826db909a7ecb02894ce7d9bb0d298662e5c785bfe": {
+      "en": "At 44.1 kHz that means roughly ⟦0⟧, which is far wider than a musical bass/mid/treble split: a 2 kHz tone is still “low” here. Use ⟦1⟧ to cut at frequencies of your own choosing.",
+      "ja": "44.1 kHz ならおよそ ⟦0⟧ になります。音楽でいう低音・中音・高音の区切りよりずっと広く、2 kHz の音でもここでは「低音」の扱いです。狙った周波数で切りたいときは ⟦1⟧ を使ってください。"
+    },
     "0a45774de4ea0d3a2afdb234df72e182ba8f2536801304cd223a67c91737ce4a": {
       "en": "Use toolbar(.hidden)",
       "ja": "toolbar(.hidden) を使ってください"
@@ -260,6 +264,10 @@
     "15bc42da76d3c1ce3d9008e3aa1eb554e5c8c0631c7f55c01e033b1f071b40df": {
       "en": "The root node of the tree (or subtree) to render.",
       "ja": "描画するツリー（または部分木）のルートノード。"
+    },
+    "15e2755730119ccfda28dd1d2fc3ddd1d8538afe8d94ab0211a6f67fb11f9eb0": {
+      "en": "The x4 gain makes everyday input levels visible without extra scaling, at the cost of saturating early — a sine wave already reads ⟦0⟧ from an amplitude of about 0.354 (⟦1⟧) upwards, so louder input no longer moves the value. Below saturation the raw RMS is ⟦2⟧.",
+      "ja": "4 倍のゲインは、ふだんの入力レベルを追加の調整なしに見えるようにするためのものです。代わりに早く飽和します — サイン波なら振幅 0.354 程度（⟦1⟧）から先はすでに ⟦0⟧ で、それより大きい入力では値が動きません。飽和する前の範囲なら、生の RMS は ⟦2⟧ で戻せます。"
     },
     "15ffb760880387571553ddbe26c2d1b82fd3a896a0ba99c74c718ce820402f94": {
       "en": "An axis-aligned rectangle with the given width and height.",
@@ -649,6 +657,10 @@
       "en": "Returns the normalized CC value (0.0-1.0).",
       "ja": "正規化した CC の値（0.0〜1.0）を返します。"
     },
+    "3a5bd91941ab45db277c235da2b8a8aeee19132b292419df791e589211100a12": {
+      "en": "The result averages ⟦0⟧, which is renormalized every frame against that frame’s loudest bin. It therefore describes how the energy is ⟦1⟧ rather than how loud the input is, and barely moves when the same sound merely gets quieter. Use ⟦2⟧ for level.",
+      "ja": "返る値は ⟦0⟧ の平均で、⟦0⟧ はフレームごとにそのフレームで最も大きいビンを基準に正規化し直されます。したがってこの値が表すのは入力の大きさではなくエネルギーの ⟦1⟧ で、同じ音が小さくなっただけではほとんど動きません。音量が知りたいときは ⟦2⟧ を見てください。"
+    },
     "3a7e9f1ec15abd5c9d4194d7d3df422e2d896b8fd2ab8d0fed2e4fd8dc6ec627": {
       "en": "The texture width, in pixels.",
       "ja": "テクスチャの幅（ピクセル）。"
@@ -860,6 +872,10 @@
     "4e0b9a513dff981b7632f17657886c67997cc34416fe12a792cacf353c809148": {
       "en": "The node to add as a child.",
       "ja": "子として追加するノード。"
+    },
+    "4fbc1e53e11e012dd1041d3e126d8913b5da1ceda9e8f68a134be118dd5f3854": {
+      "en": "Returns the playback level (available once analysis is enabled).",
+      "ja": "再生中のレベルを返します（解析を有効にすると使えます）。"
     },
     "4ff5a886f644323764d2fdc77a505d5a0f08b54bbc012c08bad0e54c7ff6d05b": {
       "en": "Indicates whether this is a Note Off message.",
@@ -1877,6 +1893,10 @@
       "en": "Sets the global gravitational acceleration applied to all bodies each step.",
       "ja": "毎ステップすべてのボディに加わる、全体の重力加速度を設定します。"
     },
+    "a98758f9487d096ec4897b27c7f49b8fcb0062c687b422c8d2c4fbb870e26a2f": {
+      "en": "Forwards to ⟦0⟧, so the same caveats apply: the edges are FFT bin ratios and therefore follow the sample rate in hertz (⟦1⟧, ⟦2⟧, ⟦3⟧ — roughly 0-2.8 kHz / 2.8-11 kHz / 11-22 kHz at 44.1 kHz), which is much wider than a musical bass/mid/treble split. The value averages the per-frame normalized ⟦4⟧, so it describes the distribution rather than the level.",
+      "ja": "⟦0⟧ に転送するだけなので、注意点もそのまま当てはまります。帯域の境目は FFT のビン比で決まり、ヘルツで見るとサンプルレートに従います（⟦1⟧・⟦2⟧・⟦3⟧ — 44.1 kHz ならおよそ 0〜2.8 kHz / 2.8〜11 kHz / 11〜22 kHz）。音楽でいう低音・中音・高音の区切りよりずっと広い範囲です。値はフレームごとに正規化された ⟦4⟧ の平均なので、音量ではなくエネルギーの分布を表します。"
+    },
     "a99e9c23a6274a1cbab0a8720983f801c4520bc1ca6ff95595c140a90ca9f039": {
       "en": "Removes a specific constraint from the world.",
       "ja": "指定した拘束をワールドから取り除きます。"
@@ -1973,6 +1993,10 @@
       "en": "Blends the outputs of two upstream render passes into a single texture.",
       "ja": "2 つの上流レンダーパスの出力を 1 枚のテクスチャへ合成します。"
     },
+    "b1d316ee6d1d3cd6a95eec16b878f335a7c26d1124edec17a175751ad39d6084": {
+      "en": "The band edges are FFT bin ratios, not hertz: band 0 spans bins ⟦0⟧, band 1 ⟦1⟧, band 2 ⟦2⟧, where ⟦3⟧ is ⟦4⟧. A bin is ⟦5⟧ wide, so the edges in hertz depend only on the sample rate — not on the FFT size — and land at ⟦6⟧, ⟦7⟧ and ⟦8⟧.",
+      "ja": "帯域の境目はヘルツではなく FFT のビン比で決まります。band 0 はビン ⟦0⟧、band 1 は ⟦1⟧、band 2 は ⟦2⟧ の範囲で、⟦3⟧ は ⟦4⟧ です。1 ビンの幅は ⟦5⟧ なので、ヘルツで見た境目は FFT サイズによらずサンプルレートだけで決まり、⟦6⟧・⟦7⟧・⟦8⟧ に来ます。"
+    },
     "b3830aa13f6980b0429c72562acc94b72ff01d449c846bdf7da329a27e24ae72": {
       "en": "Represents a value inside an OSC message.",
       "ja": "OSC メッセージの中の値を表します。"
@@ -2060,6 +2084,10 @@
     "bba0a75f4ac1ccfbeb43ecfea372a44f0f48faf62848ecfe2243532fd6e31d13": {
       "en": "replace styled NavigationView with NavigationStack or NavigationSplitView instead",
       "ja": "スタイル付きの NavigationView は、代わりに NavigationStack か NavigationSplitView に置き換えてください"
+    },
+    "bc6dd9018c1725ce642a0877919ec4d20ab973a6d0990889103ff913e16f5c79": {
+      "en": "The band energy (0.0-1.0), or 0 for an out-of-range index.",
+      "ja": "帯域のエネルギー（0.0〜1.0）。範囲外の添字なら 0。"
     },
     "bde1edea0edf51710f51aae283ffee111b8c49dd13d7650f3abb0f423f7e7098": {
       "en": "Creates a noise configuration with the given parameters.",
@@ -2537,9 +2565,17 @@
       "en": "The destination host (IP address or hostname).",
       "ja": "宛先のホスト（IP アドレスまたはホスト名）。"
     },
+    "e64c71a8765d48968088272efa4563443cd475e8902ba9ae4fe5e149c5665d78": {
+      "en": "Returns the energy of one of three fixed frequency bands.",
+      "ja": "あらかじめ決められた 3 つの周波数帯のうち 1 つのエネルギーを返します。"
+    },
     "e651aadbeefda49bcbcac259d2097259e0701ae778f9490c46ce542c368e5bf6": {
       "en": "Pauses playback.",
       "ja": "再生を一時停止します。"
+    },
+    "e73e88ee589726bf3fb45f7013941cadbfa57538322045e81718f48971e16d38": {
+      "en": "Returns the energy of a frequency band of the playing file.",
+      "ja": "再生中のファイルの、ある周波数帯のエネルギーを返します。"
     },
     "e7588e88de3e69391a1aa259aea2b8850ab42fdfc7b0a7a58e04b277d4cbcdf7": {
       "en": "Use `menuStyle(_:)` instead.",
@@ -2548,6 +2584,10 @@
     "e7732c6140b50282a06785a26dee960297b00205eb8c87670ef6fbaca8026b78": {
       "en": "Checkerboard pattern.",
       "ja": "市松模様。"
+    },
+    "e795168f6a803d566a07222275bfde4828813722852e1bbdcd5749c56ea4cb06": {
+      "en": "Same scale as ⟦0⟧: the frame’s RMS multiplied by 4 and clamped to 1.0, so it saturates well below full scale (a sine wave reads ⟦1⟧ from an amplitude of about 0.354 upwards).",
+      "ja": "⟦0⟧ と同じスケールです。そのフレームの RMS を 4 倍して 1.0 で頭打ちにした値なので、フルスケールよりかなり手前で飽和します（サイン波なら振幅 0.354 程度から先は ⟦1⟧ になります）。"
     },
     "e7a5955447d3f47a0d446646476b6104a1bfcb6a16990b3d9c91d1e7ff57d9d8": {
       "en": "The mesh to add.",
@@ -2700,6 +2740,10 @@
     "f6c2379032463cc6049067b776d1ef83fde6ab564372787fc9636f0cbd4a449a": {
       "en": "⟦0⟧ can be constructed from literals (integer → ⟦1⟧, decimal → ⟦2⟧, string → ⟦3⟧). Sending is asynchronous; failures can be observed via ⟦4⟧.",
       "ja": "⟦0⟧ はリテラルから作れます（整数 → ⟦1⟧、小数 → ⟦2⟧、文字列 → ⟦3⟧）。送信は非同期で、失敗は ⟦4⟧ で観測できます。"
+    },
+    "f7825cc9a27ad03c5ac2d07bd4182b8a9628ce704c7516eb905812a71ecb74ed": {
+      "en": "Display-oriented level: the frame’s RMS multiplied by 4, clamped to 1.0.",
+      "ja": "表示向けのレベル。そのフレームの RMS を 4 倍し、1.0 で頭打ちにした値です。"
     },
     "f7b952b86e99657b8a6bd5bd5464feccfc0ba232273359cd023da09f1694bee5": {
       "en": "Provides broad-phase collision detection using a uniform spatial hash grid.",

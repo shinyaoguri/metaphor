@@ -17,6 +17,12 @@ import Metal
 ///     }
 /// }
 /// ```
+///
+/// このプロトコルは `@MainActor` です。スケッチの外へアセットや状態を切り出す型
+/// （シーン、アセット束、ゲーム状態など）を作るときは、**その型にも `@MainActor` を
+/// 付けてください**。`loadImage` / `loadModel` / `loadSound` / `loadVideo` と、それらが
+/// 返す ``MImage`` / ``Mesh`` / `SoundFile` / `VideoPlayer` のメンバーはすべて main actor
+/// 隔離されており、素の `class` からは呼べません。
 @MainActor
 public protocol Sketch: AnyObject {
     /// 引数なしの新しいインスタンスを作成します（`@main` で必須）。
@@ -135,9 +141,12 @@ extension Sketch {
     /// アクティブなコンテキスト。Runner の初期化前（または teardown 後）に
     /// 描画 API を呼ぶと明確なメッセージでクラッシュします。
     ///
-    /// 失敗モードの方針: 描画系はここで fatalError（初期化前の呼び出しはプログラミング
-    /// エラー）、`probe()` は無言 no-op（観測は本体挙動を変えない）、`pixels` は
-    /// 空バッファを返す（読み取り系はクラッシュより空が安全）。
+    /// 失敗モードの方針（ADR-0005）: 描画系はここで fatalError（初期化前の呼び出しは
+    /// プログラミングエラー）、`probe()` は無言 no-op（観測は本体挙動を変えない）、
+    /// `pixels` は空バッファを返す（読み取り系はクラッシュより空が安全）。
+    ///
+    /// 後の 2 つは **この getter を経由しない**ことで成立している（`_context?` を直接読む）。
+    /// context 未初期化でも `probe()` は黙り、`pixels` は空を返す（#356）。
     @MainActor
     public var context: SketchContext {
         guard let ctx = _context else {

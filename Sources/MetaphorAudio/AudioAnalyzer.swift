@@ -131,7 +131,12 @@ public final class AudioAnalyzer {
 
     // MARK: - パブリックプロパティ
 
-    /// RMS volume level (0.0-1.0).
+    /// Display-oriented level: the frame's RMS multiplied by 4, clamped to 1.0.
+    ///
+    /// The x4 gain makes everyday input levels visible without extra scaling, at
+    /// the cost of saturating early — a sine wave already reads `1.0` from an
+    /// amplitude of about 0.354 (`= sqrt(2) / 4`) upwards, so louder input no
+    /// longer moves the value. Below saturation the raw RMS is `volume / 4`.
     public private(set) var volume: Float = 0
 
     /// Normalized FFT spectrum (0.0-1.0).
@@ -456,9 +461,25 @@ public final class AudioAnalyzer {
         detectBeat()
     }
 
-    /// Returns the energy of a frequency band.
+    /// Returns the energy of one of three fixed frequency bands.
+    ///
+    /// The band edges are FFT bin ratios, not hertz: band 0 spans bins
+    /// `0..<bins/8`, band 1 `bins/8..<bins/2`, band 2 `bins/2..<bins`, where
+    /// `bins` is `fftSize / 2`. A bin is `sampleRate / fftSize` wide, so the
+    /// edges in hertz depend only on the sample rate — not on the FFT size —
+    /// and land at `sampleRate/16`, `sampleRate/4` and `sampleRate/2`.
+    ///
+    /// At 44.1 kHz that means roughly **0-2.8 kHz / 2.8-11 kHz / 11-22 kHz**,
+    /// which is far wider than a musical bass/mid/treble split: a 2 kHz tone is
+    /// still "low" here. Use ``bandEnergy(lowFreq:highFreq:)`` to cut at
+    /// frequencies of your own choosing.
+    ///
+    /// - Note: The result averages ``spectrum``, which is renormalized every
+    ///   frame against that frame's loudest bin. It therefore describes how the
+    ///   energy is *distributed* rather than how loud the input is, and barely
+    ///   moves when the same sound merely gets quieter. Use ``volume`` for level.
     /// - Parameter index: The band index (0 = low, 1 = mid, 2 = high).
-    /// - Returns: The band energy (0.0-1.0).
+    /// - Returns: The band energy (0.0-1.0), or 0 for an out-of-range index.
     public func band(_ index: Int) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
@@ -470,13 +491,13 @@ public final class AudioAnalyzer {
         switch index {
         case 0:
             start = 0
-            end = bins / 8           // 低音（〜0-250 Hz）
+            end = bins / 8           // 低域: 0 〜 sampleRate/16（44.1 kHz で 〜2.8 kHz）
         case 1:
             start = bins / 8
-            end = bins / 2           // 中音（〜250-2 kHz）
+            end = bins / 2           // 中域: sampleRate/16 〜 sampleRate/4（44.1 kHz で 2.8〜11 kHz）
         case 2:
             start = bins / 2
-            end = bins               // 高音（〜2 kHz+）
+            end = bins               // 高域: sampleRate/4 〜 sampleRate/2（44.1 kHz で 11〜22 kHz）
         default:
             return 0
         }

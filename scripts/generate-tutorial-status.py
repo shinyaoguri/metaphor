@@ -19,7 +19,8 @@ README 群が案内する「どこまで公開されているか」は**生成�
 
 - README.md / README.en.md の部の表 — 公開済みの部への導線があり、執筆中の部
   へは張られていないこと
-- docs/tutorial/README.md の章立て表 — 状態の欄が frontmatter と一致すること
+- docs/tutorial/README.md の章立て表 — 状態の欄が frontmatter と一致し、英語版
+  の欄が `docs/tutorial/en/` の実体と一致すること（Issue #548）
 
 生成は決定的（入力が同じなら出力はバイト単位で同じ）。
 `--check` で陳腐化検出（差分があれば unified diff を出して exit 1）。
@@ -34,6 +35,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TUTORIAL_DIR = REPO_ROOT / "docs/tutorial"
+# 英語版の置き場（Issue #548）。ファイル名は日本語版と同じ `NN-slug.md`。
+EN_DIR_NAME = "en"
 
 # 公開状況を案内する入口ドキュメント。ここに載っていないファイルのマーカーは
 # 更新されないので、案内を増やしたらこの表にも足す。
@@ -57,13 +60,16 @@ MARKER_RE = re.compile(
     r"<!-- /tutorial-status -->"
 )
 
-# `| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 |`
+# `| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 | 未 |`
 OUTLINE_ROW_RE = re.compile(
-    r"^\|\s*第\s*(?P<part>\d+)\s*部[^|]*\|[^|]*\|\s*(?P<state>[^|]*?)\s*\|\s*$"
+    r"^\|\s*第\s*(?P<part>\d+)\s*部[^|]*\|[^|]*\|\s*(?P<state>[^|]*?)\s*"
+    r"\|\s*(?P<translation>[^|]*?)\s*\|\s*$"
 )
 
 PUBLISHED_LABEL = "公開"
 DRAFT_LABEL = "執筆中"
+TRANSLATED_LABEL = "済"
+UNTRANSLATED_LABEL = "未"
 
 
 class StatusError(Exception):
@@ -76,6 +82,9 @@ class Part:
     title: str
     filename: str
     draft: bool
+    #: 同名の `en/NN-slug.md` があるか（Issue #548）。公開/執筆中とは別の軸で、
+    #: 「日本語は公開されているが訳はまだ」という現在地をそのまま表す。
+    translated: bool = False
 
 
 def parse_frontmatter(text: str, label: str) -> dict[str, str]:
@@ -97,8 +106,13 @@ def parse_frontmatter(text: str, label: str) -> dict[str, str]:
 def tutorial_parts() -> list[Part]:
     """本文ファイルを部番号順に読む。正典はこの frontmatter。
 
-    glob は再帰しないので、英語版（`en/NN-slug.md`、Issue #548）は入らない。
-    公開状況の正典は日本語版のままで、部番号が二重に並ぶこともない。
+    glob は再帰しないので、英語版（`en/NN-slug.md`、Issue #548）は**部としては**
+    入らない。日本語ファーストなので公開状況の正典は日本語版のままで、部番号が
+    二重に並ぶこともない。
+
+    英語版は代わりに、その部に訳があるかという 1 つの属性（`translated`）として
+    付く。これで「第 N 部は公開済みだが訳はまだ」を 1 つの表で言えて、章立て表の
+    英語版の欄が実体とずれたら `--check` が落とす。
     """
     parts: list[Part] = []
     for path in sorted(TUTORIAL_DIR.glob("[0-9][0-9]-*.md")):
@@ -114,6 +128,7 @@ def tutorial_parts() -> list[Part]:
                 title=fields["title"],
                 filename=path.name,
                 draft=fields.get("draft") == "true",
+                translated=(TUTORIAL_DIR / EN_DIR_NAME / path.name).is_file(),
             )
         )
     if not parts:
@@ -222,7 +237,7 @@ def check_links(parts: list[Part]) -> list[str]:
 
 
 def check_outline(parts: list[Part]) -> list[str]:
-    """章立て表の状態の欄が frontmatter と一致することを見る。"""
+    """章立て表の状態と英語版の欄が、frontmatter・`en/` の実体と一致することを見る。"""
     by_number = {p.number: p for p in parts}
     seen: set[int] = set()
     problems: list[str] = []
@@ -242,6 +257,13 @@ def check_outline(parts: list[Part]) -> list[str]:
             problems.append(
                 f"{OUTLINE_DOC}:{i}: 第 {number} 部の状態が "
                 f"'{row.group('state')}' だが frontmatter では '{expected}'"
+            )
+        translation = TRANSLATED_LABEL if part.translated else UNTRANSLATED_LABEL
+        if row.group("translation") != translation:
+            problems.append(
+                f"{OUTLINE_DOC}:{i}: 第 {number} 部の英語版が "
+                f"'{row.group('translation')}' だが docs/tutorial/"
+                f"{EN_DIR_NAME}/ では '{translation}'"
             )
     for number in sorted(set(by_number) - seen):
         problems.append(f"{OUTLINE_DOC}: 第 {number} 部が章立て表に無い")

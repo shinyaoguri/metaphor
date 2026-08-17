@@ -40,8 +40,8 @@ final class AudioInput: Sketch {
         // draw() の先頭で 1 回呼ぶ。これで volume / spectrum / isBeat が更新される
         audio.update()
 
-        // volume は RMS なので、ふつうに話しても 0.1 前後にしかならない。
-        // 6 倍してから 0...1 に収め、絵に使える範囲へ広げる
+        // volume は RMS を 4 倍した値だが、それでもふつうに話して 0.1 前後にしかならない。
+        // さらに 6 倍してから 0...1 に収め、絵に使える範囲へ広げる
         let loudness = constrain(audio.volume * 6, 0, 1)
         // 第 3 部 3.3 のイージング。跳ねる値をそのまま見せると絵が落ち着かない
         level = lerp(level, loudness, 0.25)
