@@ -10,18 +10,20 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 
 現在の本文:
 
-| 部 | ファイル | 状態 |
-|---|---|---|
-| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 |
-| 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 |
-| 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 |
-| 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 |
-| 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 |
-| 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 |
-| 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 |
-| 第 8 部 外とつなぐ | [`08-connect.md`](08-connect.md) | 公開 |
-| 第 9 部 作品にする | [`09-artwork.md`](09-artwork.md) | 公開 |
-| 第 10 部 AI と作る | [`10-ai.md`](10-ai.md) | 公開 |
+| 部 | ファイル | 状態 | 英語版 |
+|---|---|---|---|
+| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 | 未 |
+| 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 | 未 |
+| 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 | 未 |
+| 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 | 未 |
+| 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 | 未 |
+| 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 | 未 |
+| 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 | 未 |
+| 第 8 部 外とつなぐ | [`08-connect.md`](08-connect.md) | 公開 | 未 |
+| 第 9 部 作品にする | [`09-artwork.md`](09-artwork.md) | 公開 | 未 |
+| 第 10 部 AI と作る | [`10-ai.md`](10-ai.md) | 公開 | 未 |
+
+「状態」は日本語版の公開状況（正典は各ファイルの frontmatter）、「英語版」は `en/<同じファイル名>` があるか（`済` / `未`）です。どちらも `--check`（pre-push と CI）が実体と突き合わせます（[#548](https://github.com/shinyaoguri/metaphor/issues/548)）。
 
 ## 対象読者と、他ドキュメントとの役割分担
 
@@ -311,7 +313,7 @@ make tutorial-shots ARGS="--force"                                    # 全部
 | `frames` | 採取枚数。**上限 64**（Probe 側のクランプ値。超えると設定エラー） |
 | `every` | 採取間隔。`4` なら 60fps 実行の 4 フレームごと＝約 4.3 秒ぶん |
 | `fps` | 書き出すアニメーションのフレームレート（既定 15） |
-| `width` | 幅の上限（既定 720。元より大きくても拡大はしません） |
+| `width` | 幅の上限（既定 720。元より大きくても拡大はしません）。`sheet` では**格子全体**の幅で、1 フレームぶんではありません |
 | `quality` | 省略すると `img2webp` に lossy / lossless を選ばせます。明示すると lossy 固定 |
 
 `kind` を指定した節でも**代表静止画は作られます**（連続キャプチャの真ん中のフレーム）。本文の頭に 1 枚置き、その下に動きを貼る形になります。台帳では静止画が `url`、動きの証跡が `motion.url` で、本文の画像行もその順に並びます。
@@ -450,7 +452,34 @@ Examples の本数やバージョン番号のような、増減する数値を�
 
 ## 英語版
 
-日本語ファーストで書き、英語は後追いです（[docs/README.md](../README.md) の「英語化の対象境界」と、ロードマップの「docs 翻訳は定型作業として委譲する」方針に従います）。本文が溜まってから `docs/tutorial/en/` として起票します。
+日本語ファーストで書き、英語は後追いです（[docs/README.md](../README.md) の「英語化の対象境界」と、ロードマップの「docs 翻訳は定型作業として委譲する」方針に従います）。置き場は `docs/tutorial/en/<日本語版と同じファイル名>` で、翻訳の進行は [#548](https://github.com/shinyaoguri/metaphor/issues/548) が追います。
+
+**訳すのは散文だけです。** コードも画像も日本語版と同じ 1 つの正典を共有し、生成物として両言語へ書き込まれます。
+
+| 要素 | 誰が書くか |
+|---|---|
+| 節見出し・本文・alt | 訳者（手で書く） |
+| ` ```swift ` ブロックと実行方法の 1 行 | `make tutorial-snippets`（正典は `Examples/Tutorial/**`） |
+| 画像行の URL | `make tutorial-shots`（正典は `images/manifest.json`） |
+
+**画像は撮り直しません。** [ADR-0010](../adr/0010-tutorial-images-via-gyazo.md) 以降、画像は Gyazo の絶対 URL なので ja / en がまったく同じ文字列を書けます（相対パスだった頃に必要だった `images/…` → `../images/…` の書き換えも要りません）。
+
+### en 側が満たす構造
+
+書き換えも検査も**節の構造に乗っている**ため、`en/` 側も次を守ります。日本語版と同じ形なので、素直に訳せば自然に満たせます。守られていないと `--check` がエラーで教えます。
+
+- frontmatter は日本語版と同じキー（`title` / `part` / `slug` / `description` / `draft`）。`part` と `slug` は日本語版に合わせる（並び順と URL は言語で変えない）
+- 節は `## ` 見出しで始める
+- その節に `<!-- tutorial-snippet: <ref> -->`（日本語版と同じ `<ref>`）を置く。**どの節の画像か**を決めるキーになる
+- 画像は**独立した 1 行**で書く（文中に混ぜない）。1 節に最大 2 本で、**静止画 → 動きの証跡**の順
+- URL は手で書かない。空でも壊れていても、`make tutorial-shots` が台帳の値で上書きする（alt はそのまま残るので、alt は英語で書く）
+
+### 訳が入ったときにすること
+
+1. `make tutorial-snippets` でコードを埋め、`make tutorial-shots ARGS="--check"` で画像行を確かめる（撮り直しは要りません）
+2. 上の章立て表の「英語版」の欄を `済` にする（`make tutorial-status` の `--check` が `en/` の実体と突き合わせるので、忘れると CI が落ちます）
+
+website 側の受け入れは済んでいます（[#487](https://github.com/shinyaoguri/metaphor/issues/487)）。英語版が無い部は日本語の本文をそのまま出し、記事の頭に「翻訳準備中」の告知が出ます（`website/src/lib/tutorial.ts` の `translated`）。訳を置くだけで、その部から順に英語へ切り替わります。
 
 ## 関連 Issue
 

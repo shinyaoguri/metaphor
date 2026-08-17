@@ -128,7 +128,11 @@ public final class SoundFile {
     /// Returns spectrum data (available once analysis is enabled).
     public var spectrum: [Float] { _analyzer?.spectrum ?? [] }
 
-    /// Returns the RMS volume level (available once analysis is enabled).
+    /// Returns the playback level (available once analysis is enabled).
+    ///
+    /// Same scale as ``AudioAnalyzer/volume``: the frame's RMS multiplied by 4
+    /// and clamped to 1.0, so it saturates well below full scale (a sine wave
+    /// reads `1.0` from an amplitude of about 0.354 upwards).
     public var analysisVolume: Float { _analyzer?.volume ?? 0 }
 
     /// Returns the beat detection flag (available once analysis is enabled).
@@ -335,9 +339,16 @@ public final class SoundFile {
         analyzer.update()
     }
 
-    /// Returns the energy of a frequency band (via `AudioAnalyzer`).
+    /// Returns the energy of a frequency band of the playing file.
+    ///
+    /// Forwards to ``AudioAnalyzer/band(_:)``, so the same caveats apply: the
+    /// edges are FFT bin ratios and therefore follow the sample rate in hertz
+    /// (`sampleRate/16`, `sampleRate/4`, `sampleRate/2` — roughly 0-2.8 kHz /
+    /// 2.8-11 kHz / 11-22 kHz at 44.1 kHz), which is much wider than a musical
+    /// bass/mid/treble split. The value averages the per-frame normalized
+    /// ``spectrum``, so it describes the distribution rather than the level.
     /// - Parameter index: The band index (0 = low, 1 = mid, 2 = high).
-    /// - Returns: The band energy (0.0-1.0).
+    /// - Returns: The band energy (0.0-1.0), or 0 for an out-of-range index.
     public func band(_ index: Int) -> Float {
         _analyzer?.band(index) ?? 0
     }
