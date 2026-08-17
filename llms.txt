@@ -66,9 +66,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isLooping: Bool { get }` -- アニメーションループが現在実行中かどうか。
 - `var isMousePressed: Bool { get }` -- マウスボタンが現在押されているかどうか。
 - `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
-- `var key: Character? { get }` -- 最後に押されたキー。
-- `var keyCode: UInt16? { get }` -- 最後に押されたキーのキーコード。
-- `var mouseButton: MouseButton? { get }` -- 最後に押されたマウスボタン。まだ一度も押されていなければ `nil`。
+- `var key: Character? { get }` -- 最後に**押された**キー。
+- `var keyCode: UInt16? { get }` -- 最後に**押された**キーのキーコード。
+- `var mouseButton: MouseButton? { get }` -- 最後に**押された**マウスボタン。まだ一度も押されていなければ `nil`。
 - `var mouseX: Float { get }` -- 現在のマウス x 座標。
 - `var mouseY: Float { get }` -- 現在のマウス y 座標。
 - `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。

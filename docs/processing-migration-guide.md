@@ -379,11 +379,11 @@ normal alpha blending (with one warning) while a shader is applied.
 | `mousePressed()` (the callback) | `func mousePressed()` |
 | `mouseReleased()` / `mouseMoved()` / `mouseDragged()` / `mouseClicked()` | same names, all `func …()` with no parameters |
 | `mouseWheel(event)` | `func mouseScrolled()` + `scrollX: Float` / `scrollY: Float` |
-| `mouseButton == LEFT` | `mouseButton == .left` (`MouseButton?` — `.left` / `.right` / `.middle`, `nil` until the first press) — see [Pitfalls](#pitfalls) |
+| `mouseButton == LEFT` | `mouseButton == .left` (`MouseButton?` — `.left` / `.right` / `.middle`, `nil` until the first press). Set on **press only**, so in `mouseReleased()` it names the last *pressed* button ([pitfall](#keyreleased-and-mousereleased-report-the-last-pressed-input)) — see also [Pitfalls](#pitfalls) |
 | `keyPressed` (the boolean) | `isKeyPressed: Bool` |
 | `keyPressed()` / `keyReleased()` / `keyTyped()` | same names |
-| `key` | `key: Character?` — **optional** |
-| `keyCode` | `keyCode: UInt16?` — **optional**, a macOS virtual key code |
+| `key` | `key: Character?` — **optional**. Updated on **press only**, so in `keyReleased()` it is the last *pressed* key, not the released one ([pitfall](#keyreleased-and-mousereleased-report-the-last-pressed-input)) |
+| `keyCode` | `keyCode: UInt16?` — **optional**, a macOS virtual key code. Same press-only rule as `key` |
 | `keyCode == LEFT` | `keyCode == LEFT` — the arrow-key constants carry over |
 | — | `isKeyDown(_ keyCode: UInt16) -> Bool` for polling held keys, `isKeyRepeat: Bool` |
 | `selectInput()` / `selectOutput()` | `selectInput(_ prompt: String = "Select a file", _ callback: @MainActor (String?) -> Void)` / `selectOutput(…)` |
@@ -675,13 +675,55 @@ fails because `mouseButton` is a `MouseButton?`, not an integer.
 > now a compile error rather than a silent `false` ([#382](https://github.com/shinyaoguri/metaphor/issues/382)).
 
 `mouseButton` is a `MouseButton?` (`.left` / `.right` / `.middle`) and is set on
-mouse-down only. It is `nil` until the first press, and afterwards keeps the last
-pressed button even after release — exactly like Processing, so `mouseReleased()`
-can still tell which button was let go. Use `isMousePressed` to ask whether a
-button is down *right now*.
+mouse-down **only**. It is `nil` until the first press, and afterwards keeps the
+last *pressed* button even after release. Reading it inside `mouseReleased()`
+therefore tells you which button was let go **only while a single button is
+involved** — see
+[`keyReleased()` and `mouseReleased()` report the last *pressed* input](#keyreleased-and-mousereleased-report-the-last-pressed-input).
+Use `isMousePressed` to ask whether a button is down *right now*.
 
 Also note `key` and `keyCode` are **optionals** (`Character?`, `UInt16?`), so
 `if key == "a"` works but `key!.isLetter` needs unwrapping.
+
+### `keyReleased()` and `mouseReleased()` report the last *pressed* input
+
+`keyReleased()` and `mouseReleased()` take no parameters, so the only way to ask
+*what* was released is to read `key` / `keyCode` / `mouseButton`. In Processing
+those are updated by the release event. **In metaphor they are updated on press
+only**, so inside a release callback they name the last thing you *pressed*, not
+the thing you just let go.
+
+While one key or button is involved these coincide, and the port works. They
+diverge the moment two are held at once:
+
+```swift
+// Press A, then press B (A still held), then release A:
+func keyReleased() {
+    print(key)      // Processing: "a"  ·  metaphor: "b"
+}
+
+// Press left, then press right (left still held), then release left:
+func mouseReleased() {
+    print(mouseButton)   // Processing: .left  ·  metaphor: .right
+}
+```
+
+So `if keyCode == SPACE` inside `keyReleased()` does not mean "space was
+released" — it means "space was the most recent key pressed", which is also true
+while space is still held and some other key is released.
+
+Until [#958](https://github.com/shinyaoguri/metaphor/issues/958) adds accessors
+for the released input, remember it yourself on the press side:
+
+```swift
+var pending: UInt16?
+
+func keyPressed()  { pending = keyCode }
+func keyReleased() { if pending == SPACE { … }; pending = nil }
+```
+
+`isKeyDown(_:)` polls whether a specific key is held right now, which covers the
+common "is a modifier still down?" case without tracking state.
 
 ### 2D and 3D are two canvases, but the transform family drives both
 

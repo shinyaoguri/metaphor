@@ -42,11 +42,19 @@ extension Sketch {
     public var scrollY: Float {
         context.input.scrollY    }
 
-    /// 最後に押されたマウスボタン。まだ一度も押されていなければ `nil`。
+    /// 最後に**押された**マウスボタン。まだ一度も押されていなければ `nil`。
     ///
-    /// Processing と同じく、ボタンを離しても値は保持されるため
-    /// ``mouseReleased()`` の中でどのボタンが離されたかを判定できる。
+    /// 更新は押下時だけで、ボタンを離しても値は保持される。そのため
+    /// ``mouseReleased()`` の中で読むと「**いま離したボタン**」ではなく
+    /// 「最後に押されたボタン」が返る。**単一ボタンの操作なら両者は一致する**ので
+    /// Processing と同じように書けるが、複数ボタンを同時に押している場合は
+    /// 一致しない（左押下 → 右押下 → 左リリースで `.right` が返る。Processing は
+    /// リリースでも更新するため `.left`）。
+    ///
+    /// 離したボタンを取る API は [#958] で検討中。それまでは押下側で覚えておく。
     /// 「いま押されているか」は ``isMousePressed`` と併用する。
+    ///
+    /// [#958]: https://github.com/shinyaoguri/metaphor/issues/958
     ///
     /// ```swift
     /// if isMousePressed && mouseButton == .right { … }
@@ -58,12 +66,36 @@ extension Sketch {
     public var isKeyPressed: Bool {
         context.input.isKeyPressed    }
 
-    /// 最後に押されたキー。
+    /// 最後に**押された**キー。
+    ///
+    /// 更新は押下時だけなので、``keyReleased()`` の中で読むと
+    /// 「**いま離したキー**」ではなく「最後に押されたキー」が返る。
+    /// **単一キーの操作なら両者は一致する**が、複数キーを同時に押している場合は
+    /// 一致しない（A 押下 → B 押下 → A リリースで `"b"` が返る。Processing は
+    /// リリースでも更新するため `"a"`）。詳しくは ``keyCode`` を参照。
     public var key: Character? {
         context.input.lastKey
     }
 
-    /// 最後に押されたキーのキーコード。
+    /// 最後に**押された**キーのキーコード。
+    ///
+    /// ``key`` と同じく更新は押下時だけで、``keyReleased()`` の中で読むと
+    /// 「いま離したキー」ではなく「最後に押されたキー」が返る。つまり
+    /// `keyReleased()` の中の `keyCode == SPACE` は「Space が離された」ではなく
+    /// 「最後に押されたキーが Space」を意味し、Space を押したまま別のキーを
+    /// 離したときにも成立してしまう。
+    ///
+    /// 離したキーを取る API は [#958] で検討中。それまでは押下側で覚えておく:
+    ///
+    /// ```swift
+    /// var pending: UInt16?
+    /// func keyPressed()  { pending = keyCode }
+    /// func keyReleased() { if pending == SPACE { … }; pending = nil }
+    /// ```
+    ///
+    /// いま押されているかを見るだけなら ``isKeyDown(_:)`` で足りる。
+    ///
+    /// [#958]: https://github.com/shinyaoguri/metaphor/issues/958
     public var keyCode: UInt16? {
         context.input.lastKeyCode
     }
