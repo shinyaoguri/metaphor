@@ -45,8 +45,12 @@ API/Sketch 層レビュー（Issue #151）で、個別のバグではなく**設
 
 1. **2D/3D 適用規則**: Option C を採用。現状の割り当て（下表）を規範とし、**両層の doc に「2D のみ」「2D/3D 両方」を明記**する。変換ファミリ（`translate`/`rotate`/`scale`）の P3D 意味論への統一は 1.0 前の破壊的変更ウィンドウで再評価する（follow-up）。
 
-   > **この表は [Amendment（2026-08-02）§8](#8-consequences) で更新済み。** 現行の規範は §8 の表を参照する
-   > （下表は決定当時の記録として残す）。
+   > **この表は [Amendment（2026-08-02）§8](#8-consequences) で更新済み。** 現行の規範は §8 の表と、
+   > それをシェイプ・メッシュ系へ広げた [Amendment（2026-08-18）§2](#2-決定-規範表の範囲をシェイプとメッシュへ広げる)
+   > を参照する（下表は決定当時の記録として残す）。
+   >
+   > **「両層の doc に明記」も [Amendment（2026-08-18）§1](#1-決定-作用先注記の正本は-sketch-層のみdecision-3-を採る) で
+   > 改めた**——作用先注記の正本は Sketch 層だけで、SketchContext 層には置かない。
 
    | 適用先 | API |
    |---|---|
@@ -453,6 +457,10 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
   | 2D のみ | `blendMode` / `strokeWeight` / `shearX`・`shearY` / `applyMatrix(float3x3)` |
   | 3D のみ | `translate(x,y,z)` / `rotateX/Y/Z` / `scale(x,y,z)` / `applyMatrix(float4x4)` / `camera` / `lights` / `material` 系 |
 
+  > **この表はスタイルと変換の API しか列挙していない。** シェイプ・メッシュ系と、
+  > 「記録中のシェイプが決める」という第 4 の区分は
+  > [Amendment（2026-08-18）§2](#2-決定-規範表の範囲をシェイプとメッシュへ広げる) が足す。
+
 - Decision 1 の「1.0 前の破壊的変更ウィンドウで再評価する」は本 Amendment で**決着**した。
 - **breaking**: 3D 描画を含むスケッチで 2 引数 `translate` / 1 引数 `rotate` / 2 引数 `scale` を
   使っていた場合、これまで 3D に効かなかったものが効くようになる。「2D だけを動かす」意図で
@@ -475,6 +483,69 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
 - Option D（P3D モード）に着手するとき。§3 の逆方向を含めて一度に片付けられるため、
   本 Amendment の到達点をその部分集合として取り込むことになる。
 
+## Amendment（2026-08-18, Issue #677）— 作用先注記の正本は Sketch 層だけとし、規範表をシェイプとメッシュへ広げる
+
+Decision 1 の「**両層の doc に**明記する」と Decision 3 の「SketchContext 層は
+『転送のみ』の簡潔なコメントに寄せる」は、**両層 doc の扱いで噛み合っていない**（#677）。
+#379 / PR #675 で Sketch 層に 33 本の注記が入った一方、`SketchContext+3D.swift` /
+`SketchContext+Transform.swift` の作用先注記は **0 件**のままで、実装は Decision 3 に寄っている。
+どちらが正かを決めないまま「機械的に注記を写す」ことはしない、という判断を先に確定させる。
+
+### 1. 決定: 作用先注記の正本は Sketch 層のみ（Decision 3 を採る）
+
+**「2D のみ」「2D/3D 両方」「3D のみ」の注記は `Sketch+*.swift` にだけ置く**。
+`SketchContext+*.swift` は「転送のみ」の簡潔なコメントに寄せ、作用先注記を**置かない**
+——したがって二重管理も発生しない。Decision 1 の「両層の doc に明記」は本 Amendment で
+**Sketch 層のみに改める**。
+
+根拠は 3 つ:
+
+- **Decision 3 の方が新しく、実装もそちらに寄っている**（実測 0 件）。Decision 3 自身が
+  「doc 正本は Option A（Sketch 層）」と決めており、Decision 1 の「両層」はその正本論と
+  最初から緊張関係にあった。
+- **`SketchContext` はユーザーが最初に触る面ではない**。Processing 風のグローバル API は
+  `Sketch` プロトコル拡張として晒され、`llms.txt`（= AI 生成コードの品質に直結する面）も
+  Sketch 層 API を主として並べる。ADR-0005 が挙げた「doc の 3 層複製」（Context の 4 番目）は、
+  複製を増やして揃えるのではなく**複製をやめる**ことで解く。
+- **二重管理はドリフト源そのもの**。同じ注記を 2 か所に置けば、片方だけ直る事故が必ず起きる
+  ——それが本 ADR の Context 4 で問題視した状態である。
+
+### 2. 決定: 規範表の範囲をシェイプとメッシュへ広げる
+
+§8 の表はスタイルと変換の API しか列挙しておらず、`box()` / `sphere()` / `mesh()` /
+`loadModel()` などは**どの表にも載っていなかった**。利用者の問い（「これは 2D に効くのか
+3D に効くのか」）は同じなので、規範の範囲に含める。§8 の表に次の行を足す:
+
+| 適用先 | API |
+|---|---|
+| 3D のみ（シェイプ） | `beginShape3D` / `normal` / `box` / `sphere` / `plane` / `cylinder` / `cone` / `torus` |
+| 3D のみ（メッシュ） | `mesh` / `drawInstanced` / `dynamicMesh` / `createDynamicMesh` / `create*Mesh` 系 / `loadModel` / `loadModelAsync` |
+| 記録中のシェイプが決める | 3 引数以上の `vertex(x,y,z…)` / `endShape3D` |
+
+最後の行は**新しい区分**である。`vertex(x, y, z)` と `endShape3D()` は
+`beginShape3D()` で始めたシェイプなら 3D へ、2D の `beginShape()` で始めたシェイプなら
+z を落として 2D へ流れる（`SketchContext+3D.swift`。Processing 互換として意図的にそうしてあり、
+初回だけ警告する。2026-08-02 Amendment §3 のパターン 2 / Issue #387）。
+「3D のみ」と書くと**実装と食い違う**ため、区分を足して正確に書く。
+§8 の表からはこの節への前方参照を張った（表そのものは決定当時の記録として据え置く）。
+
+`create*Mesh` 系・`loadModel` 系は描画しないので「作用する」ではなく
+「**生成されたメッシュを描けるのは 3D のみ**」と書く（`createMaterial` の既存注記と同じ形）。
+
+### 3. 帰結
+
+- `Sketch+3D.swift` の public メンバ **67 本すべて**が作用先注記を持つ状態になった。
+  内訳は「**3D のみ**」37 本（うち 33 本は #379 / PR #675）+ `pushMatrix` / `popMatrix` の
+  「**2D と 3D の両方**」2 本 + `toneMapping` の同義の注記（「掛かるのは **3D のライティング
+  結果だけ**」）1 本 + **本 Amendment の 27 本**。
+- 回帰は `Tests/metaphorTests/SketchScopeNoteTests.swift` が凍結する。`Sketch+3D.swift` に
+  注記なしの public メンバを足すと赤くなるので、**新 API を足す人が ADR を読んでいなくても
+  規約から外れない**。「新 API 追加時は本 ADR の規約に従う」（Consequences）を文書だけで
+  担保していた状態を、機械判定へ移す。
+- `SketchContext+*.swift` は**触らない**。注記を置かないことが本 Amendment の決定である。
+- 挙動は変わらない（doc コメントと ADR 本文のみ）。`llms.txt` も動かない
+  ——`scripts/generate-llms-txt.py` は要約に `-` 始まりの行を採らないため、`- Note:` は載らない。
+
 ## References
 
 - Issue #151（論点の全リスト）、#150（受け口検証の統一）、#158（loadPixels の順序保証）
@@ -489,6 +560,10 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
   Issue #379（ADR-0005 の 2D/3D 適用表の残りの是正）、Issue #378（`screenY(x,y,z)` の y 反転）、
   Issue #385（適用規則を凍結するテスト）、Issue #387（逆方向が直らない 9 examples）、
   Issue #330 / PR #366（ゴールデン基盤 = §4 の計測手段）
+- Amendment（2026-08-18）関連: Issue #677（Decision 1 と Decision 3 の噛み合わせ・シェイプ系の注記欠落）、
+  Issue #379 / PR #675（Sketch 層の 33 本の注記 = 本 Amendment の前段）、
+  Issue #387（2D の `beginShape()` に 3 引数 `vertex` を流す経路）
 - 回帰の凍結先: `Tests/metaphorTests/TransformSemanticsTests.swift`、
-  `Tests/metaphorTests/Golden/transform-2d-on-3d.png`
+  `Tests/metaphorTests/Golden/transform-2d-on-3d.png`、
+  `Tests/metaphorTests/SketchScopeNoteTests.swift`（作用先注記の存在そのもの）
 - 判断材料に使った試作ブランチ: `spike/p3d-transform-semantics`（コミット `ed22fd0`。実装は本 PR に取り込み済み）
