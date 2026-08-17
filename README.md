@@ -257,4 +257,4 @@ metaphor は**個人が単独でメンテナンスしているプロジェクト
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
 
-GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。
+[Examples/](Examples/) に同梱しているフォント（Source Code Pro / Space Mono / Merriweather）はいずれも SIL Open Font License 1.1 です。ライセンス全文は [OFL.txt](OFL.txt)、フォントごとの著作権表示・同梱パスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります。GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文も同じファイルにまとめています。
