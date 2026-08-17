@@ -6,7 +6,7 @@ import MetaphorCore
 ///
 /// Provides the Syphon output implementation, split out from `MetaphorCore`. When
 /// imported through the `import metaphor` umbrella, this module is linked automatically,
-/// and the output factory is registered with ``MetaphorOutputRegistry`` at load time.
+/// and the output factory is registered with ``MetaphorCore/MetaphorOutputRegistry`` at load time.
 /// This lets users continue to easily enable Syphon output via `SketchConfig(syphon: true)`,
 /// `syphonName:`, or the `METAPHOR_SYPHON_NAME` environment variable (there is no need to explicitly import `MetaphorSyphon`).
 ///

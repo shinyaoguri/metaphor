@@ -248,7 +248,7 @@ extension Sketch {
     /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
     ///
     /// 既定リグの灯は**右上手前**から差します（``directionalLight(_:_:_:color:intensity:)``
-    /// でいう `(-0.5, 1, -0.8)`）。``enableShadows()`` の影もこの向きに落ちます。
+    /// でいう `(-0.5, 1, -0.8)`）。``enableShadows(resolution:)`` の影もこの向きに落ちます。
     ///
     /// 既定リグの灯は `intensity` 0.7 で、Blinn-Phong（既定）に合わせた明るさです。
     /// PBR（``pbr(_:)``）では直接光が `albedo / π` で沈むため、同じリグでも

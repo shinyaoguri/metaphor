@@ -19,7 +19,7 @@ import simd
 /// The noise can be read either point by point or as a grid, and **the two read the
 /// field through different coordinate spaces**:
 ///
-/// - ``sample(x:y:)`` samples the noise space directly. It applies neither
+/// - ``sample(x:y:)-(Double,_)`` samples the noise space directly. It applies neither
 ///   ``NoiseConfig/origin`` nor ``NoiseConfig/sampleScale``.
 /// - ``sampleGrid(width:height:)`` — and therefore ``texture(width:height:)``,
 ///   ``image(width:height:)`` and ``colorMappedTexture(width:height:colorStops:)`` —
@@ -114,7 +114,7 @@ public final class GKNoiseWrapper {
     /// decides how much noise a grid of a given size covers. Both are handed to
     /// `GKNoiseMap`, which walks the grid itself.
     ///
-    /// - Important: This is a different coordinate space from ``sample(x:y:)``, which
+    /// - Important: This is a different coordinate space from ``sample(x:y:)-(Double,_)``, which
     ///   applies neither `origin` nor `sampleScale`. Index `(0, 0)` equals
     ///   `sample(x: origin.x, y: origin.y)`, but no other index lines up: GameplayKit
     ///   does not step the map by `origin + index × sampleScale`, and the step it does
@@ -155,7 +155,7 @@ public final class GKNoiseWrapper {
     ///
     /// - Note: Built on ``sampleGrid(width:height:)``, so ``NoiseConfig/origin`` and
     ///   ``NoiseConfig/sampleScale`` apply here and the pixels do not correspond to
-    ///   ``sample(x:y:)`` values.
+    ///   ``sample(x:y:)-(Double,_)`` values.
     /// - Parameters:
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
@@ -178,7 +178,7 @@ public final class GKNoiseWrapper {
     ///
     /// - Note: Built on ``sampleGrid(width:height:)``, so ``NoiseConfig/origin`` and
     ///   ``NoiseConfig/sampleScale`` apply here and the pixels do not correspond to
-    ///   ``sample(x:y:)`` values.
+    ///   ``sample(x:y:)-(Double,_)`` values.
     /// - Parameters:
     ///   - width: The image width, in pixels.
     ///   - height: The image height, in pixels.
@@ -192,7 +192,7 @@ public final class GKNoiseWrapper {
     ///
     /// - Note: Built on ``sampleGrid(width:height:)``, so ``NoiseConfig/origin`` and
     ///   ``NoiseConfig/sampleScale`` apply here and the pixels do not correspond to
-    ///   ``sample(x:y:)`` values.
+    ///   ``sample(x:y:)-(Double,_)`` values.
     /// - Parameters:
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.

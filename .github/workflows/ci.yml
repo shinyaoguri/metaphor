@@ -225,6 +225,7 @@ jobs:
           # Initial push (no prior tip) — assume Sources may have changed.
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "docc=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # After a force push the old tip can be unreachable; fall back to
@@ -234,6 +235,7 @@ jobs:
           if ! changed_files=$(scripts/pr-changed-files.sh "$base" "$head" \
               -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' 2>/dev/null); then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "docc=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # Trigger the llms.txt staleness check when either the inputs
@@ -242,6 +244,19 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          # DocC の警告チェック（下）の入力は doc コメントだけではない。カタログ
+          # (Sources/metaphor/metaphor.docc/**) は .swift ではないので上の判定に
+          # 乗らず、カタログだけ直した PR を取りこぼす。取りこぼすと**次に Sources を
+          # 触った無関係な PR**が、自分が入れていない警告で落ちる（責めるべき PR が
+          # ずれる）ので、判定はここで分けて持つ。逆に llms.txt / リファレンス
+          # スニペットの検査はカタログとは無関係なので、上の `changed` には混ぜない。
+          if echo "$changed_files" | grep -q . || \
+             scripts/pr-changed-files.sh "$base" "$head" \
+               -- 'Sources/**/*.docc/**' 2>/dev/null | grep -q .; then
+            echo "docc=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docc=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Check cross-repo contract
         run: ./scripts/check-contract.sh
@@ -342,6 +357,20 @@ jobs:
             git diff llms.txt
             exit 1
           fi
+      # DocC の警告 0 を per-PR で要求する（Issue #396）。ドキュメントを公開する
+      # docs.yml は **main への push でしか走らない**うえ警告で落ちないので、壊れた
+      # シンボルリンクは誰にも気付かれずに溜まっていた（起票時 11 件 → 31 件）。
+      #
+      # 閾値ではなく 0 件固定にできる: 警告は「internal 型を指す ``…``」「モジュール
+      # 跨ぎ」「オーバーロードの曖昧参照」「- Parameter の不備」の 4 種しかなく、
+      # どれも書き手がその場で直せる（直し方は Issue #396 のコメント）。
+      #
+      # コストは軽い。ビルドは上で済んでおり、symbol-graphs の抽出は並列（数秒）、
+      # docc convert 本体は数秒。ローカルの `make docs-check` と同じ実体を呼ぶので、
+      # 手元と CI で結果が食い違わない。
+      - name: Verify DocC builds without warnings
+        if: steps.source-changed.outputs.docc == 'true'
+        run: make docs-check
       - name: Auto-regenerate examples index (PR only)
         # Only run for PRs from the same repository — fork PRs can't push back
         # because the GITHUB_TOKEN is restricted to read-only on forks.

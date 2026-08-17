@@ -2054,7 +2054,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func stop()` -- Stops audio capture.
 - `func update()` -- Updates analysis data once per frame (call this at the top of `draw()`).
 
-### `enum AudioAnalyzerError`
+### `enum AudioAnalyzerError` -- Represents errors that can occur during `AudioAnalyzer` operations.
 
 - `case engineStartFailed(detail: String)` -- Indicates that the audio engine failed to start for another reason.
 - `case microphonePermissionDenied` -- Indicates that microphone permission has been denied.
@@ -2065,7 +2065,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `enum MicrophoneAuthorizationStatus` -- Represents errors that can occur during `AudioAnalyzer` operations.
+### `enum MicrophoneAuthorizationStatus` -- マイク（TCC）の権限状態。
 
 - `case authorized` -- 許可済み。サンプルが流れる。
 - `case denied` -- ユーザーが拒否した。システム設定から変える必要がある。
