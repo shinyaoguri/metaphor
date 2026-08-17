@@ -195,7 +195,7 @@ You can also add `metaphor` as a normal Swift Package dependency without the CLI
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.10.0"),
 ]
 ```
 
