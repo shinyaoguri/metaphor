@@ -75,6 +75,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var params: ParameterStore { get }` -- `@Param` で宣言されたパラメータのストア。
 - `var performance: SketchPerformance { get }` -- 実測 fps・フレーム時間・メモリ・CPU・熱状態のスナップショット。
 - `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
+  - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。`loadPixels()` 前でも、SketchRunner が context を用意する前（`init` やプロパティ初期化子）でも、teardown 後でも空バッファを返します。描画 API と違い `Sketch/context` を経由しないのはこのためです。
 - `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
 - `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
 - `var scrollX: Float { get }` -- 現在のフレームの水平スクロール量。
