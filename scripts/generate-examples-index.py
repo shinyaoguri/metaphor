@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -45,6 +46,55 @@ KEYWORD_TAGS = {
     "interaction": ("mouse", "keyboard", "input", "drag", "press"),
     "live": ("osc", "midi", "syphon", "vj", "live"),
     "export": ("record", "export", "gif", "video"),
+}
+
+
+# `KEYWORD_TAGS` needles are matched as *words*, not as bare substrings (#497).
+#
+# A plain `needle in haystack` tagged 13 examples from the inside of a longer
+# word: "Texture" → typography via `text`, "keyword" → typography via `word`,
+# "expression" → interaction via `press`, "lightness" → 3d via `light`.
+#
+# Three pieces, each of them load-bearing — dropping any one silently untags
+# examples that should keep their tag (see the regression tests):
+#
+# - **hump splitting**, so identifier-ish text becomes words before it is
+#   matched ("TextureSphere" → "texture sphere", "mousePressed_" →
+#   "mouse pressed_").
+#   Split on lowercase→uppercase, on an acronym running into a word
+#   (`OSCReceiver` → `OSC Receiver`), and on letter→digit. That last rule is
+#   what keeps `Noise3D` / `GravitationalAttraction3D` matching `3d`: splitting
+#   between the digit and `D` instead would tear the needle in half.
+# - **alphanumeric boundaries** instead of `\b`, because `_` is a word
+#   character to `re` and metadata `featured` entries are written with a
+#   trailing underscore (`loadPixels_` still has to match `pixel`).
+# - **inflection suffixes**, because whole-word-only matching drops the plurals
+#   and verb forms the prose actually uses: images / pixels / boxes / recorded
+#   / recording.
+_INFLECTIONS = r"(?:e?s|ed|ing|ers?)?"
+_HUMP_BOUNDARY = re.compile(
+    r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])"
+)
+
+
+def split_humps(text: str) -> str:
+    """Break CamelCase / Name3D runs apart so word matching can see them."""
+    return _HUMP_BOUNDARY.sub(" ", text)
+
+
+def keyword_pattern(needle: str) -> re.Pattern[str]:
+    """Compile one `KEYWORD_TAGS` needle into a word-ish matcher.
+
+    Multi-word needles ("ray tracing") join on `\\s+` so they survive both hump
+    splitting and the newlines that Processing-era descriptions carry.
+    """
+    body = r"\s+".join(re.escape(word) for word in needle.split())
+    return re.compile(rf"(?<![a-z0-9]){body}{_INFLECTIONS}(?![a-z0-9])")
+
+
+KEYWORD_PATTERNS = {
+    tag: tuple(keyword_pattern(needle) for needle in needles)
+    for tag, needles in KEYWORD_TAGS.items()
 }
 
 
@@ -174,13 +224,13 @@ def source_tags_for(example_dir: Path, status: str) -> set[str]:
 
 
 def tags_for(rel_path: Path, metadata: dict, source_tags: set[str] | None = None) -> list[str]:
-    haystack = " ".join([
+    haystack = split_humps(" ".join([
         str(rel_path),
         str(metadata.get("title", "")),
         str(metadata.get("name", "")),
         str(metadata.get("description", "")),
         " ".join(str(x) for x in metadata.get("featured", []) or []),
-    ]).lower()
+    ])).lower()
 
     tags: set[str] = set()
     for part in rel_path.parts:
@@ -188,8 +238,8 @@ def tags_for(rel_path: Path, metadata: dict, source_tags: set[str] | None = None
         if normalized:
             tags.add(normalized)
 
-    for tag, needles in KEYWORD_TAGS.items():
-        if any(needle in haystack for needle in needles):
+    for tag, patterns in KEYWORD_PATTERNS.items():
+        if any(pattern.search(haystack) for pattern in patterns):
             tags.add(tag)
 
     tags |= source_tags or set()
