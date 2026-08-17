@@ -162,7 +162,11 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Builder Methods
 
-    /// アニメーション開始前のディレイを設定します。
+    /// アニメーション開始前のディレイを設定します（繰り返しても初回のサイクルにのみ適用）。
+    ///
+    /// 待つのは ``start()`` の直後だけです。``repeatCount(_:)`` で繰り返しても
+    /// 2 周目以降は間を置かずに続くので、全体の所要時間は
+    /// `seconds + duration × サイクル数` になります。
     ///
     /// - Parameter seconds: ディレイ時間（秒）。
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
@@ -182,13 +186,16 @@ public final class Tween<T: Interpolatable> {
         return self
     }
 
-    /// アニメーションのリピート回数を設定します（0は無限）。
+    /// アニメーションを走らせる総サイクル数を設定します（既定は 1、`0` は無限）。
+    ///
+    /// `n` は「追加の繰り返し回数」ではなく**総サイクル数**です。`repeatCount(2)` なら
+    /// 合計 2 サイクル（``yoyo()`` と併せれば往路 + 復路の 1 往復）で完了します。
     ///
     /// 無限リピートのトゥイーンは自動では完了しないため、`TweenManager` に
     /// 登録した場合は不要になった時点で ``cancel()`` を呼んでください
     /// （呼ばない限りマネージャに保持され続けます）。
     ///
-    /// - Parameter n: リピート回数。
+    /// - Parameter n: 総サイクル数。`0` で無限。
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
     public func repeatCount(_ n: Int) -> Self {
@@ -196,7 +203,18 @@ public final class Tween<T: Interpolatable> {
         return self
     }
 
-    /// ヨーヨーモードを有効にします。各サイクルでアニメーション方向が反転します。
+    /// ヨーヨーモードを有効にします。``repeatCount(_:)`` が 2 以上（または `0` = 無限）のときだけ効きます。
+    ///
+    /// 方向が反転するのは**サイクルとサイクルの境目**です。既定は 1 サイクルなので境目が
+    /// 来る前に完了してしまい、`yoyo()` だけを付けても往復せず `to` へ着いて終わります。
+    ///
+    /// ```swift
+    /// tween(from: 0.0, to: 100.0, duration: 1.0).yoyo()                 // 往復しない（to で完了）
+    /// tween(from: 0.0, to: 100.0, duration: 1.0).yoyo().repeatCount(2)  // to へ行って from へ戻る
+    /// ```
+    ///
+    /// 有限リピートの着地点は総サイクル数の偶奇で決まります。奇数なら `to`、偶数なら `from`
+    /// です（`repeatCount(2)` は 1 往復して `from` に戻り、`repeatCount(3)` は `to` で終わる）。
     ///
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
