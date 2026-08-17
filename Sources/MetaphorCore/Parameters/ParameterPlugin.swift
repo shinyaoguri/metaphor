@@ -40,7 +40,7 @@ public struct ParameterStoreConfig: Sendable {
 /// - **外部書込**: `pre()` で `set-request.json` の mtime を確認し、変化していれば
 ///   読んで適用 → `appliedRequestId` / `revision` をエコーした `params.json` を即時書出。
 ///
-/// 有効化は自動です（`@Param` が 1 つでも宣言されていれば ``SketchRunner`` が登録）。
+/// 有効化は自動です（`@Param` が 1 つでも宣言されていれば `SketchRunner` が登録）。
 /// オプトアウトは環境変数 `METAPHOR_PARAMS=0`。明示登録も可能:
 /// `SketchConfig(plugins: [PluginFactory { ParameterPlugin() }])`。
 ///

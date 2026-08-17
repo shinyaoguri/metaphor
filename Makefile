@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
 
 # Default target
 all: setup build
@@ -187,14 +187,27 @@ DOCC_BASE_PATH ?= metaphor/reference
 DOCC_OUTPUT ?= .build/docs
 
 # header.html（言語切替）は --experimental-enable-custom-templates が無いと注入されない。
-docs: symbol-graphs
-	@echo "Building DocC documentation..."
-	xcrun docc convert $(DOCC_CATALOG) \
+# コマンド本体は docs と docs-check で共有する（片方だけフラグが増えると、
+# 「手元では出ない警告で CI が落ちる」が起きるため）。
+DOCC_CONVERT = xcrun docc convert $(DOCC_CATALOG) \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
 		--experimental-enable-custom-templates \
 		--hosting-base-path $(DOCC_BASE_PATH) \
 		--output-path $(DOCC_OUTPUT)
+
+docs: symbol-graphs
+	@echo "Building DocC documentation..."
+	$(DOCC_CONVERT)
+
+# DocC の警告 0 を要求する（Issue #396）。閾値ではなく 0 件固定。
+# 警告のほとんどは**解決できないシンボルリンク**で、internal 型を指す ``…`` や
+# オーバーロードの曖昧参照は放置すると必ず増える（起票時 11 件 → 31 件）。
+# docs.yml は **main への push でしか走らない**ため、PR 時点では誰も気付けなかった。
+# symbol-graphs は llms.txt の鮮度検査と同じものを使い回す（抽出は並列で数秒）。
+docs-check: symbol-graphs
+	@echo "Checking DocC warnings (must be zero)..."
+	$(DOCC_CONVERT) --warnings-as-errors
 
 # Build the Japanese reference (ADR-0011)
 # 英語の doc コメントが正典で、日本語は台帳 docs/reference/i18n/ja.json を当てた生成物。
@@ -297,6 +310,7 @@ help:
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make docs           - Build DocC documentation"
+	@echo "  make docs-check     - Build DocC and fail on any warning (CI と同条件)"
 	@echo "  make docs-ja        - Build the Japanese reference from the ledger (ADR-0011)"
 	@echo "  make reference-i18n - Export untranslated reference strings (ARGS=\"--engine google\")"
 	@echo "  make docs-preview   - Preview DocC documentation locally"

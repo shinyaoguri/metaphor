@@ -372,7 +372,7 @@ extension SketchContext {
     ///   - width: 要求するキャプチャ幅（ピクセル単位、デフォルト 1280）。最も近い
     ///     対応解像度が選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
     ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
-    ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
+    ///   - info: ``listCaptureDevices()`` で取得したデバイス情報。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
     public func createCapture(width: Int = 1280, height: Int = 720, device info: CaptureDeviceInfo) -> CaptureDevice {
         let capture = CaptureDevice(device: renderer.device, width: width, height: height, captureDevice: info)
@@ -539,7 +539,7 @@ extension SketchContext {
 
     /// 複数行テキストの行間（行の高さ）を設定します。
     ///
-    /// ``textSize(_:)`` / ``textFont(_:)`` を呼ぶと既定値へ戻ります。
+    /// ``textSize(_:)`` / ``textFont(_:)-(String)`` を呼ぶと既定値へ戻ります。
     ///
     /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {

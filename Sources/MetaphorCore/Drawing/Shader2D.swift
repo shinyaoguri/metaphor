@@ -119,7 +119,7 @@ public final class Shader2D {
 
     /// シェーダライブラリから関数を引き直し、このシェーダを更新します（#648 / E3 の土台）。
     ///
-    /// `ShaderLibrary.reload` のあとに呼びます。``revision`` が進むので、
+    /// `ShaderLibrary.reload` のあとに呼びます。`revision` が進むので、
     /// 以降の描画は新しいパイプラインキーで解決されます。
     /// - Parameter shaderLibrary: 更新済みのシェーダライブラリ。
     /// - Throws: 関数名が見つからない場合に ``MetaphorError/material(_:)`` の

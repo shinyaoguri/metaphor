@@ -240,9 +240,9 @@ export const content: Record<Lang, Content> = {
 
   en: {
     meta: {
-      title: 'metaphor — creative coding for Swift + Metal',
+      title: 'metaphor — creative coding with Swift + Metal',
       description:
-        'A macOS-native creative coding runtime. Start from a Processing-style draw() and sketch across 2D, 3D, GPU, audio and video in one continuous API — with AI collaboration as a standout feature.',
+        'A macOS-native creative coding runtime. Turn the image in your head straight into code — 2D, 3D, GPU, audio and video from one Processing-style draw() — and let an AI run the observation loop with you.',
     },
     nav: { reference: 'Reference', tutorial: 'Tutorial', toggleLabel: '日本語' },
     tutorial: {
@@ -253,7 +253,7 @@ export const content: Record<Lang, Content> = {
       },
       eyebrow: 'Read in order',
       title: 'Tutorial',
-      lead: 'A read-it-in-order guide that takes you from nothing to finished work. Every section ships a complete sketch and the image it produces. Reach for the API reference when you need a signature.',
+      lead: 'A read-it-in-order guide that takes you from nothing to finished artwork. Every section ships a complete sketch and the image it produces. Reach for the API reference when you need the details of a type or a method.',
       home: 'Tutorial',
       contents: 'Contents',
       onThisPage: 'On this page',
@@ -262,7 +262,7 @@ export const content: Record<Lang, Content> = {
       partLabel: 'Part {n}',
       empty: {
         title: 'The chapters are being written',
-        body: 'The outline is settled and parts land one by one. The outline and the writing conventions are already readable on GitHub.',
+        body: 'The outline is settled, and the parts land one by one. You can already read the outline and the writing conventions on GitHub.',
         cta: 'See the outline on GitHub',
       },
       pending: {
@@ -273,9 +273,9 @@ export const content: Record<Lang, Content> = {
     },
     hero: {
       badge: 'Open source · Swift + Metal',
-      titleLead: 'Creative coding,',
-      titleAccent: 'drawn with Metal',
-      lead: 'Start from a Processing-style draw() and sketch across 2D, 3D, GPU compute, audio and video — one continuous API. Turn the image in your head straight into code. And an AI can watch the very image on screen and iterate right alongside you: metaphor’s signature move.',
+      titleLead: 'Metal-powered',
+      titleAccent: 'creative coding',
+      lead: 'Turn the image in your head straight into code. Start from a Processing-style draw() and sketch across 2D, 3D, GPU compute, audio and video — one continuous API. And an AI can watch the artwork as it runs and work on it right alongside you: metaphor’s signature move.',
       ctaReference: 'Browse the reference',
       ctaGithub: 'GitHub',
       swiftLabel: 'SwiftPM',
@@ -283,39 +283,39 @@ export const content: Record<Lang, Content> = {
       envNote: 'macOS 14+ · Apple Silicon · Swift 5.10+',
     },
     ai: {
-      eyebrow: 'Only in metaphor · the observation loop',
-      title: 'Not just writing code — fixing it by looking at the image',
-      lead: 'This is metaphor’s headline feature. A typical AI only sees source code; metaphor hands the agent the live rendered image and internal state, closing a loop where you observe as you build.',
+      eyebrow: 'What sets metaphor apart · the observation loop',
+      title: 'Not just writing code — fixing it while watching the image',
+      lead: 'This is the feature we’re proudest of. A typical AI only sees source code; metaphor hands the agent the live rendered image and the internal state behind it, closing a loop where you build, observe and iterate.',
       cards: [
         {
           icon: '◉',
           title: 'Probe',
-          desc: 'Just declare probe("particles.count", n) inside draw(). The current frame image and internal state are recorded to JSON for the AI to observe.',
+          desc: 'Just declare probe("particles.count", n) inside draw(). metaphor writes the current frame and its internal state to JSON, where an AI can read them.',
         },
         {
           icon: '◐',
           title: 'Live viewer',
-          desc: 'metaphor watch redraws instantly on every save. Humans see the same running sketch the AI does, at the same time.',
+          desc: 'metaphor watch redraws instantly on every save. You and the AI watch the same running sketch at the same time.',
         },
         {
           icon: '⌘',
           title: 'Local MCP',
-          desc: 'metaphor mcp starts an MCP server so Claude and others iterate on code while watching the live image.',
+          desc: 'metaphor mcp starts an MCP server, so Claude and other clients can iterate on the code while watching the live image.',
         },
       ],
       toolsLabel: 'MCP tools',
       tools: [
         { name: 'snapshot', desc: 'Return the current frame image + internal state' },
-        { name: 'capture_sequence', desc: 'Grab a run of frames as a contact sheet' },
+        { name: 'capture_sequence', desc: 'Capture a sequence of frames as a contact sheet' },
         { name: 'input', desc: 'Inject mouse / key input into the running sketch' },
         { name: 'build_status', desc: 'Report the latest build result and errors' },
         { name: 'api_reference', desc: 'Serve API docs, idioms and an example index' },
       ],
     },
     features: {
-      title: 'From a sketch to a finished piece',
+      title: 'From sketch to finished artwork',
       subtitle:
-        'From a single 2D stroke to a GPU compute pipeline — everything you need to make work, in one toolkit built on Metal.',
+        'From a single 2D stroke to a GPU compute pipeline — everything you need to make artwork, in one continuous toolkit built on Metal.',
       items: [
         { icon: '◆', title: '2D drawing', desc: 'Immediate-mode shapes, text, images, gradients and blend modes. Fast via GPU instancing.' },
         { icon: '◇', title: '3D & lighting', desc: 'PBR / Blinn-Phong, shadow mapping, OBJ/USDZ loading, directional/point/spot lights, orbit camera.' },
@@ -330,7 +330,7 @@ export const content: Record<Lang, Content> = {
     code: {
       title: 'A friendly API,',
       titleAccent: 'a powerful engine',
-      lead: 'Implement the Sketch protocol and drawing begins. Window creation, the render loop and the GPU pipeline are handled for you.',
+      lead: 'Conform to the Sketch protocol and drawing begins. The library takes care of window creation, the render loop and the GPU pipeline.',
       points: [
         'Processing-style immediate-mode API',
         'Automatic GPU instancing and batching',
@@ -339,8 +339,8 @@ export const content: Record<Lang, Content> = {
       ],
     },
     cli: {
-      title: 'Start in a few commands',
-      lead: 'Install metaphor-cli and go from scaffold to live reload to AI collaboration in one breath.',
+      title: 'Get started in a few commands',
+      lead: 'Install metaphor-cli and go from scaffold to live reload to AI collaboration in one go.',
       steps: [
         { cmd: 'brew install shinyaoguri/tap/metaphor', desc: 'Install the CLI' },
         { cmd: 'metaphor new MySketch', desc: 'Scaffold a project' },

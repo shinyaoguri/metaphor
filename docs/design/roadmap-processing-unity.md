@@ -294,7 +294,8 @@ Phase 4 の需要ゲートは開かない。
 
 - クロスプラットフォーム（Windows/Linux/iOS/web）— macOS 14+/Apple Silicon の契約は維持
 - スケルタルアニメーション/スキニング（glTF import も skins を読まない。AI 制作実験で実需が出たときのみ再評価 — 決定 7）
-- フルゲームエンジン・エディタアプリ化（シーンシリアライズ形式・prefab・Play/Edit 分離は作らない。インスペクタはビューアの付帯機能）
+- フルゲームエンジン化（シーンシリアライズ形式・prefab・Play/Edit 分離は作らない。インスペクタはビューアの付帯機能）
+- **テキストエディタの自作**（テキスト編集・補完・診断を含む統合 IDE は作らず、SourceKit-LSP を持つ既存エディタに委ねる。**`.vscode/` 同梱・VSCode 拡張・エディタ連携は in scope** で、投資は「実行中のスケッチを触るコンパニオン」へ向ける — [ADR-0013](../adr/0013-companion-over-dedicated-editor.md)。`.app` ランチャーは同 ADR のゲート付きで凍結）
 - 物理エンジンの自作
 - MRT / deferred rendering（forward 維持）
 - ジョブシステム / マルチスレッド化（`@MainActor` 隔離は維持）

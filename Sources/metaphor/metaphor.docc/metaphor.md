@@ -62,14 +62,99 @@ metaphor は2パスレンダリングアーキテクチャを採用していま�
 - **SketchContext** — 描画状態、トランスフォーム、レンダリングコンテキストを管理するブリッジレイヤー。
 - **Canvas2D / Canvas3D** — Metal 描画コマンドを直接発行するローレベル描画バックエンド。
 
+### ブリッジ API
+
+`import metaphor` でしか生えないメソッド群です。オーディオ・映像・物理・ネットワークといった
+オプションのサブシステムを `Sketch` から 1 行で呼び出せるようにする糊で、
+アンブレラターゲット `metaphor` が `Sketch` のエクステンションとして提供します。
+
+```swift
+import metaphor
+
+@main
+final class MySketch: Sketch {
+    var audio: AudioAnalyzer?
+
+    func setup() {
+        let input = createAudioInput(fftSize: 2048)  // ← ブリッジ API
+        try? input.start()
+        audio = input
+    }
+
+    func draw() {
+        guard let audio else { return }
+        audio.update()
+        background(18)
+        circle(width / 2, height / 2, 100 + audio.volume * 600)
+    }
+}
+```
+
+`MetaphorCore` だけを import した最小構成にはこれらのメソッドは含まれません
+（`AudioAnalyzer` などを自分で組み立てることになります）。
+一覧は下の Topics の「ブリッジ API（…）」を参照してください。
+
 ## Topics
 
 ### はじめに
 
 - <doc:GettingStarted>
 - <doc:Architecture>
-- ``MetaphorCore/Sketch``
+- ``/MetaphorCore/Sketch``
 - ``MetaphorCore/SketchConfig``
+
+### ブリッジ API（オーディオ）
+
+- ``MetaphorCore/Sketch/createAudioInput(fftSize:)``
+- ``MetaphorCore/Sketch/loadSound(_:)``
+
+### ブリッジ API（映像）
+
+- ``MetaphorCore/Sketch/loadVideo(_:)``
+- ``MetaphorCore/Sketch/image(_:_:_:)``
+- ``MetaphorCore/Sketch/image(_:_:_:_:_:)``
+
+### ブリッジ API（ネットワーク）
+
+- ``MetaphorCore/Sketch/createOSCReceiver(port:)``
+- ``MetaphorCore/Sketch/createOSCSender(host:port:)``
+- ``MetaphorCore/Sketch/createMIDI()``
+
+### ブリッジ API（物理演算）
+
+- ``MetaphorCore/Sketch/createPhysics2D(cellSize:)``
+
+### ブリッジ API（ノイズ生成）
+
+- ``MetaphorCore/Sketch/createNoise(_:config:)``
+- ``MetaphorCore/Sketch/noiseTexture(_:width:height:config:)``
+
+### ブリッジ API（シーングラフ）
+
+- ``MetaphorCore/Sketch/createNode(_:)``
+- ``MetaphorCore/Sketch/drawScene(_:)``
+
+### ブリッジ API（レンダーグラフ）
+
+- ``MetaphorCore/Sketch/createSourcePass(label:width:height:)``
+- ``MetaphorCore/Sketch/createEffectPass(_:effects:)``
+- ``MetaphorCore/Sketch/createMergePass(_:_:blend:)``
+- ``MetaphorCore/Sketch/setRenderGraph(_:)``
+
+### ブリッジ API（Core Image）
+
+- ``MetaphorCore/Sketch/ciFilter(_:_:)``
+- ``MetaphorCore/Sketch/ciFilter(_:name:parameters:)``
+- ``MetaphorCore/Sketch/ciGenerate(_:width:height:)``
+
+### ブリッジ API（Metal Performance Shaders）
+
+- ``MetaphorCore/Sketch/createMPSFilter()``
+- ``MetaphorCore/Sketch/createRayTracer(width:height:)``
+
+### ブリッジ API（機械学習）
+
+- ``MetaphorCore/Sketch/createMLTextureConverter()``
 
 ### コア
 

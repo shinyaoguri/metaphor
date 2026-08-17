@@ -48,13 +48,13 @@ public struct NoiseConfig: Sendable {
     /// - Important: Grid-only. It steers ``GKNoiseWrapper/sampleGrid(width:height:)``,
     ///   ``GKNoiseWrapper/texture(width:height:)``, ``GKNoiseWrapper/image(width:height:)``
     ///   and ``GKNoiseWrapper/colorMappedTexture(width:height:colorStops:)``;
-    ///   ``GKNoiseWrapper/sample(x:y:)`` ignores it entirely.
+    ///   ``GKNoiseWrapper/sample(x:y:)-(Double,_)`` ignores it entirely.
     public var sampleScale: SIMD2<Double>
 
     /// Sampling offset.
     ///
     /// - Important: Grid-only, like ``sampleScale``. It is the noise-space point the
-    ///   grid starts from, and ``GKNoiseWrapper/sample(x:y:)`` ignores it entirely.
+    ///   grid starts from, and ``GKNoiseWrapper/sample(x:y:)-(Double,_)`` ignores it entirely.
     public var origin: SIMD2<Double>
 
     /// Creates a noise configuration with the given parameters.

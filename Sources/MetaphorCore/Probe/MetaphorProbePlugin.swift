@@ -28,7 +28,7 @@ import QuartzCore
 ///   重い処理（GPU readback → PNG/JSON 書き出し）は**リクエスト時のみ**、かつ
 ///   `deferReadback`/completion handler 経由で**GPU 完了後・描画スレッド外**に実行する。
 ///   `performance`（#271）の syscall（メモリ・CPU・thermal）も**リクエスト時のみ**。
-///   実測 fps の元データは ``FrameRateTracker``（レンダラー側・プラグイン ON/OFF に
+///   実測 fps の元データは `FrameRateTracker`（レンダラー側・プラグイン ON/OFF に
 ///   よらずリングバッファ書き込み 1 回/フレーム、ns オーダー）が常時蓄積する。
 ///
 /// この契約は `Tests/metaphorTests/ObservabilityOverheadTests.swift` の回帰ガードで守る。

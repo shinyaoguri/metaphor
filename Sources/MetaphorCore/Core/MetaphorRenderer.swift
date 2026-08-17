@@ -239,7 +239,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// `Sketch/probe(_:_:)` のホットパス用にキャッシュした Probe プラグイン。
     ///
-    /// プラグインの登録・解除は稀なので、その都度 ``refreshCachedPlugins()`` で更新します。
+    /// プラグインの登録・解除は稀なので、その都度 `refreshCachedPlugins()` で更新します。
     /// これにより `probe(...)` が呼び出しごとに `plugins` を線形走査（＋文字列比較＋`as?`）
     /// するコストを、毎フレーム多数の `probe(...)` を呼ぶスケッチでも O(1) に抑えます。
     /// プラグイン未登録時は `nil`（`probe(...)` は完全 no-op）。
@@ -254,6 +254,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
+    ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
     /// - Throws: ``MetaphorError``。Metal デバイスを取得できない場合は
     ///   ``MetaphorError/deviceNotAvailable``、コマンドキューを作成できない場合は
     ///   ``MetaphorError/commandQueueCreationFailed``、オフスクリーンテクスチャを
@@ -319,6 +320,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
+    ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
     /// - Throws: ``MetaphorError``。オフスクリーンテクスチャを作成できない場合は
     ///   ``MetaphorError/textureCreationFailed(width:height:format:)``、ブリット用の
     ///   シェーダー関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``、
@@ -449,7 +451,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// レンダーループ開始を全プラグインに通知します（冪等）。
     ///
-    /// 既に開始通知済みの場合は何もしません。``SketchRunner`` がループ開始時
+    /// 既に開始通知済みの場合は何もしません。`SketchRunner` がループ開始時
     /// および `loop()` による再開時に呼びます。
     public func notifyPluginsStart() {
         guard !pluginsRunning else { return }
@@ -461,7 +463,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// レンダーループ停止を全プラグインに通知します（冪等）。
     ///
-    /// 開始通知が出ていない場合は何もしません。``SketchRunner`` が `noLoop()` や
+    /// 開始通知が出ていない場合は何もしません。`SketchRunner` が `noLoop()` や
     /// アプリ終了時に呼びます。
     public func notifyPluginsStop() {
         guard pluginsRunning else { return }

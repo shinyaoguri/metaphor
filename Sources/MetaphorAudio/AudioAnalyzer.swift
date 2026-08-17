@@ -662,11 +662,6 @@ public final class AudioAnalyzer {
 
 // MARK: - エラー
 
-/// Represents errors that can occur during `AudioAnalyzer` operations.
-///
-/// Throwing `AudioAnalyzer` APIs only ever throw this type: failures coming from
-/// AVFoundation are wrapped into ``engineStartFailed(detail:)`` rather than being
-/// re-thrown as raw `NSError`.
 /// マイク（TCC）の権限状態。
 ///
 /// `AVCaptureDevice.authorizationStatus(for: .audio)` をそのまま写したものです
@@ -682,6 +677,11 @@ public enum MicrophoneAuthorizationStatus: String, Sendable, Codable {
     case notDetermined
 }
 
+/// Represents errors that can occur during `AudioAnalyzer` operations.
+///
+/// Throwing `AudioAnalyzer` APIs only ever throw this type: failures coming from
+/// AVFoundation are wrapped into ``engineStartFailed(detail:)`` rather than being
+/// re-thrown as raw `NSError`.
 public enum AudioAnalyzerError: Error, LocalizedError, Sendable {
     /// Indicates that no audio input device is available.
     case noInputDevice

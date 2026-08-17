@@ -93,6 +93,50 @@ struct TextRenderingColorTests {
         #expect(warm.r > warm.g * 1.5 && warm.g > warm.b,
                 "fill(230, 90, 70) の色相になっていない: R=\(warm.r) G=\(warm.g) B=\(warm.b)")
     }
+
+    /// `noFill()` は `text()` に効かない（#519 で意図的にそう決めた）。
+    ///
+    /// Processing はグリフを塗り図形として扱うので `noFill()` で文字が消えるが、
+    /// metaphor のテキストに stroke 経路は無く、「消える」を選ぶと移植したスケッチが
+    /// 黙って文字を失う。移行ガイドの Pitfalls に書いた約束をここで固定する。
+    @Test("noFill() は text() を消さない（直前の fill 色で描かれる）")
+    func noFillDoesNotHideText() throws {
+        let filled = try renderText { canvas in
+            canvas.fill(230, 90, 70)
+            canvas.text("MW", 10, 50)
+        }
+        let afterNoFill = try renderText { canvas in
+            canvas.fill(230, 90, 70)
+            canvas.noFill()
+            canvas.text("MW", 10, 50)
+        }
+        #expect(afterNoFill.r > 0.01,
+                "noFill() の後で文字が消えている（平均 R=\(afterNoFill.r)）")
+        // 「描かれる」だけでなく「直前の fill 色のまま」であることまで見る
+        #expect(abs(afterNoFill.r - filled.r) < 0.005
+                && abs(afterNoFill.g - filled.g) < 0.005
+                && abs(afterNoFill.b - filled.b) < 0.005,
+                """
+                noFill() が文字色を変えている: \
+                fill 時 R=\(filled.r) G=\(filled.g) B=\(filled.b) / \
+                noFill 後 R=\(afterNoFill.r) G=\(afterNoFill.g) B=\(afterNoFill.b)
+                """)
+    }
+
+    /// 文字を消したいときの案内（移行ガイドに書いた代替手段）が実際に効くこと。
+    /// `noFill()` と違い、fill のアルファはグリフまで届く。
+    @Test("fill のアルファ 0 なら text() は見えなくなる")
+    func zeroAlphaFillHidesText() throws {
+        let transparent = try renderText { canvas in
+            canvas.fill(230, 90, 70, 0)
+            canvas.text("MW", 10, 50)
+        }
+        #expect(transparent.r < 0.001 && transparent.g < 0.001 && transparent.b < 0.001,
+                """
+                アルファ 0 の fill でも文字が見えている: \
+                R=\(transparent.r) G=\(transparent.g) B=\(transparent.b)
+                """)
+    }
 }
 
 // MARK: - テキストの向き

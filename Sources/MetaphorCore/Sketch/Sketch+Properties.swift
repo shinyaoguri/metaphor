@@ -46,10 +46,10 @@ extension Sketch {
     ///
     /// Processing と同じく、ボタンを離しても値は保持されるため
     /// ``mouseReleased()`` の中でどのボタンが離されたかを判定できる。
-    /// 「いま押されているか」は ``mousePressed`` と併用する。
+    /// 「いま押されているか」は ``isMousePressed`` と併用する。
     ///
     /// ```swift
-    /// if mousePressed && mouseButton == .right { … }
+    /// if isMousePressed && mouseButton == .right { … }
     /// ```
     public var mouseButton: MouseButton? {
         context.input.mouseButton    }

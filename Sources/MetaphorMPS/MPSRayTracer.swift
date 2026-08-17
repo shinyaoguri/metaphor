@@ -77,7 +77,7 @@ public final class MPSRayTracer {
     ///   - commandQueue: The command queue used to encode ray-tracing work.
     ///   - width: The output texture width in pixels.
     ///   - height: The output texture height in pixels.
-    /// - Throws: ``MetaphorError``. `MetaphorError.textureCreationFailed` when `width` or
+    /// - Throws: ``MetaphorCore/MetaphorError``. `MetaphorError.textureCreationFailed` when `width` or
     ///   `height` is outside `1...TextureManager.maxDimension`,
     ///   `MetaphorError.mps(.accelerationStructureBuildFailed)`
     ///   when the bundled shader source or a kernel function is missing,
