@@ -184,7 +184,7 @@ The default color mode is **RGB with a 0–255 range, exactly like Processing**,
 | `background(0)` / `background(r, g, b)` | `background(_ gray: Float)` / `background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` |
 | `fill(g)` / `fill(g, a)` / `fill(r, g, b)` / `fill(r, g, b, a)` | `fill(_ gray:)`, `fill(_ gray:_ alpha:)`, `fill(_ v1:_ v2:_ v3:_ a:)` |
 | `stroke(…)` | `stroke(…)` — same overload set as `fill` |
-| `noFill()` / `noStroke()` | `noFill()` / `noStroke()` |
+| `noFill()` / `noStroke()` | `noFill()` / `noStroke()` — they apply to shapes; `noFill()` does **not** hide `text()` ([pitfall](#nofill-does-not-hide-text)) |
 | `colorMode(RGB, 255)` | `colorMode(.rgb, 255)` |
 | `colorMode(HSB, 360, 100, 100)` | `colorMode(.hsb, 360, 100, 100)` |
 | `color(r, g, b)` (a `color` value) | `Color(r: 1, g: 0.4, b: 0.2)` — components are **0–1** and ignore `colorMode` |
@@ -243,6 +243,10 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
 | `textAscent()` / `textDescent()` | `textAscent() -> Float` / `textDescent() -> Float` |
+
+Text is painted with the current **fill** color, as in Processing — but unlike
+Processing, `noFill()` does not make it disappear. See
+[`noFill()` does not hide `text()`](#nofill-does-not-hide-text) in the pitfalls.
 
 ### Image
 
@@ -829,6 +833,34 @@ cannot be computed yet is `nil`, so the first frames read as `nil` rather than 0
 To *see* the rate instead of reading it, `enablePerformanceHUD()` draws an
 on-screen overlay. For animation timing prefer `deltaTime` and `time` over
 counting frames.
+
+### `noFill()` does not hide `text()`
+
+In Processing a glyph is a filled shape, so `noFill()` makes `text()` invisible.
+In metaphor `text()` **always paints with the current fill color** — `noFill()`
+changes nothing about it:
+
+```swift
+fill(255, 0, 0)
+noFill()
+stroke(255)
+rect(20, 20, 100, 60)            // outline only, as in Processing
+text("still visible", 20, 120)   // Processing: nothing. metaphor: still red
+```
+
+This is deliberate ([#519](https://github.com/shinyaoguri/metaphor/issues/519)).
+metaphor has no stroke path for text — glyphs are drawn from a font atlas tinted
+by the fill color — so "fill paints it, stroke outlines it" has nothing to map
+onto. Given that, the safer of the two behaviors is the one that draws: an extra
+label on screen is obvious and takes one edit to remove, whereas silently losing
+text is easy to miss.
+
+To hide text, do not draw it (`if showLabels { text(…) }`), or make the fill
+transparent with `fill(255, 0)` — the alpha reaches the glyphs, unlike
+`noFill()`.
+
+`tint()` does not apply either; it is `image()`'s knob, not a text color
+([#516](https://github.com/shinyaoguri/metaphor/issues/516)).
 
 ### Two ways to name a font, and no `textStyle()`
 
