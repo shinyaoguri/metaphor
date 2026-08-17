@@ -460,6 +460,10 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
   > **この表はスタイルと変換の API しか列挙していない。** シェイプ・メッシュ系と、
   > 「記録中のシェイプが決める」という第 4 の区分は
   > [Amendment（2026-08-18）§2](#2-決定-規範表の範囲をシェイプとメッシュへ広げる) が足す。
+  >
+  > **スタイル系も列挙は網羅的でない。** `colorMode` / `background` / `strokeCap` /
+  > `strokeJoin` / `tint` 系は載っていないので、
+  > [Amendment（2026-08-18b）§1](#1-決定-規範表をスタイル系の全数へ広げるtint-は-2d-のみ) が足す。
 
 - Decision 1 の「1.0 前の破壊的変更ウィンドウで再評価する」は本 Amendment で**決着**した。
 - **breaking**: 3D 描画を含むスケッチで 2 引数 `translate` / 1 引数 `rotate` / 2 引数 `scale` を
@@ -545,6 +549,65 @@ z を落として 2D へ流れる（`SketchContext+3D.swift`。Processing 互換
 - `SketchContext+*.swift` は**触らない**。注記を置かないことが本 Amendment の決定である。
 - 挙動は変わらない（doc コメントと ADR 本文のみ）。`llms.txt` も動かない
   ——`scripts/generate-llms-txt.py` は要約に `-` 始まりの行を採らないため、`- Note:` は載らない。
+  （この最後の点は #786 / PR #969 で変わった。callout は `llms.txt` に載るようになったので、
+  注記を足したら再生成が要る。）
+
+## Amendment（2026-08-18b, Issue #954）— 規範表をスタイル系の全数へ広げ、`tint` を「2D のみ」と確定する
+
+2026-08-18 Amendment がシェイプ・メッシュ系を規範に取り込んだ結果、**スタイル系だけが
+部分的に残った**（#954）。`Sketch+Style.swift` の public メンバ 27 本のうち注記があるのは
+`strokeWeight` と `blendMode` の 2 本だけで、残る 25 本は無記載だった。
+
+無記載は「まだ書かれていないだけ」だが、`box()` に「**3D のみ**」と書かれた今は
+**沈黙が「2D 専用」と読める**。とりわけ `fill` / `stroke` は §8 の表が「2D/3D 両方」と
+規範で決めているのに doc に書かれておらず、規範と利用者から見える面が食い違っていた。
+
+### 1. 決定: 規範表をスタイル系の全数へ広げる（`tint` は「2D のみ」）
+
+§8 の表はスタイル系のうち `fill` / `stroke` / `noFill` / `noStroke` / `blendMode` /
+`strokeWeight` しか列挙していない。残りを規範に加える:
+
+| 適用先 | API | 実装上の根拠 |
+|---|---|---|
+| 2D/3D 両方 | `colorMode`×2 | `SketchContext+Style.swift` が `canvas` と `canvas3D` の両方へ転送 |
+| 2D/3D 両方 | `background`×3 | オフスクリーンのカラーテクスチャは 2D/3D が共有。フレーム途中の呼び出しは `hasRecorded3D` を見て全面クワッドを出す（#152）ので、既に描いた 3D も消える |
+| 2D のみ | `rectMode` / `ellipseMode` / `imageMode` | `canvas` のみへ転送。3D に対応する解釈モードが無い |
+| 2D のみ | `strokeCap` / `strokeJoin` | `canvas` のみへ転送（`strokeWeight` と同じ扱い） |
+| **2D のみ** | **`tint`×4 / `noTint`** | **`canvas` のみへ転送。`Canvas3D` に `tint` は存在しない** |
+
+**`tint` の作用先は「2D のみ」で確定する。** これはどの表にも載っていなかった
+（#954 の主要な問い）。実装で裏を取った根拠は 3 つ:
+
+- `SketchContext.tint()` は 4 本とも `canvas.tint(...)` だけを呼ぶ。`fill` / `stroke` が
+  使う `canvases.forEach`（= 両キャンバス）経路に乗っていない。
+- `tint` を持つのは `Canvas2D` だけで、共有スタイルの窓口である `CanvasStyle` プロトコルにも
+  `tintColor` は無い（`fillColor` / `strokeColor` / `hasFill` / `hasStroke` /
+  `colorModeConfig` のみ）。
+- **3D のテクスチャは `fillColor` を乗算して着色する**。`MetaphorCanvas3DTextured.metal` は
+  `texColor * uniforms.color`、インスタンス経路は `texColor * in.tintColor`（`inst.color`
+  = fill 由来）で、**ティント専用のスロットがそもそも無い**。`MShape.setTint()` が
+  「textured 3D shape is tinted by its fill color — use setFill() instead」と警告するのと
+  同じ構造である（#852）。
+
+したがって doc には「2D のみ」と書き、**テクスチャ付きの 3D に色を掛けたいときは
+`fill()` を使う**という代替手段まで書く（作用先だけ書くと利用者は次の一手を探せない）。
+
+### 2. 帰結
+
+- `Sketch+Style.swift` の public メンバ **27 本すべて**が作用先を宣言する状態になった。
+  内訳は「**2D と 3D の両方**」15 本（`colorMode`×2 / `background`×3 / `fill`×4 /
+  `noFill` / `stroke`×4 / `noStroke`）+「**2D のみ**」12 本（`rectMode` /
+  `ellipseMode` / `imageMode` / `strokeWeight` / `strokeCap` / `strokeJoin` /
+  `blendMode` / `tint`×4 / `noTint`）。うち 25 本が本 Amendment で足したぶん。
+- `SketchScopeNoteTests` の検査対象を**複数ファイル**へ広げ、`Sketch+Style.swift` を加えた。
+  同時に区分の目印へ「**2D のみ**」を足している——`Sketch+3D.swift` 1 本を見ていた頃は
+  2D 専用のメンバが無かったため、この目印が**そもそも存在しなかった**。
+- 残るのは `Sketch+Shapes.swift` の 2D 描画プリミティブ 36 本で、**#973** に分けた。
+  検査対象は「public メンバ全数が注記を持つ」ファイルだけを足す方針とする
+  （部分的な面を入れると赤が常態化して床の意味を失う）。
+- 挙動は変わらない（doc コメント・ADR 本文・テストのみ）。ただし **`llms.txt` は動く**
+  ——#786 / PR #969 で callout が生成物へ出るようになったため、2026-08-18 Amendment §3 の
+  「`llms.txt` も動かない」はこの日以降は成り立たない。
 
 ## References
 
