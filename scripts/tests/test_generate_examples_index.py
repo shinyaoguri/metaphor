@@ -10,12 +10,13 @@ Run from the repository root:
 チェックでは守れない（取りこぼしても出力は自己整合したまま緑になる）ため、
 規則そのものをここで固定する（DEVELOPMENT.md「生成物の管理」）。
 
-扱う規則は 2 つ:
+扱う規則は 3 つ:
 
 - `shader` / `cpu-approximation` タグ。以前はパスと説明文の部分一致で付いており、
   Examples/Topics/Shaders/ 配下（GLSL 原典の CPU 再実装）や説明文に "Metal" を
   含むものまでシェーダの参照実装に見えていた（#489）。いまは example 自身の
   ファイルから導く
+- `KEYWORD_TAGS` の照合単位。素の部分一致をやめ「語」で照合する（#497）
 - 索引に載せるパッケージの範囲。Examples/Tutorial/ の学習用スケッチは除外する
   （#484 / #485）
 """
@@ -128,6 +129,126 @@ class TagsForTests(unittest.TestCase):
         )
         self.assertIn("cpu-approximation", tags)
         self.assertEqual(tags, sorted(tags))
+
+
+class KeywordTagTests(unittest.TestCase):
+    """`KEYWORD_TAGS` は「語」単位で照合する（#497）。
+
+    以前は素の部分一致だったので、長い語の内側に needle が入っているだけで
+    タグが付いた（"Texture" → typography、"keyword" → typography、
+    "expression" → interaction、"lightness" → 3d）。実データで 13 件。
+
+    規則は 3 つあり、**どれか 1 つでも緩めると静かに退行する**。だから
+    「消える 13 件」と「残る側」を対で固定する:
+
+    1. 語境界で切る → 誤爆 13 件が消える（`test_substring_misfires_are_gone`）
+    2. 活用形は拾う → 複数形・過去形・進行形。単純な ``\\bneedle\\b`` にすると
+       8 件が落ちる（`test_inflected_forms_still_match`）
+    3. 照合前に CamelCase / 数字を分割する。英字→数字で切るのが要点で、
+       数字→大文字で切ると "Noise3D" が "noise3 d" になり `3d` needle が
+       真っ二つになる（`test_digit_run_keeps_the_3d_needle`）
+    """
+
+    # (path, metadata, 付いてはいけないタグ, 誤爆させていた語)
+    MISFIRES = (
+        ("Basics/Color/Brightness",
+         {"description": "Brightness is the relative lightness or darkness of a color."},
+         "3d", "light ⊂ lightness"),
+        ("Basics/Control/Conditionals2",
+         {"description": 'We extend the language of conditionals by adding the keyword "else".'},
+         "typography", "word ⊂ keyword"),
+        ("Basics/Control/LogicalOperators",
+         {"description": "combine simple relational statements into more complex expressions."},
+         "interaction", "press ⊂ expressions"),
+        ("Basics/Math/Noise2D",
+         {"description": "Using 2D noise to create simple texture."},
+         "typography", "text ⊂ texture"),
+        ("Basics/Math/Noise3D",
+         {"description": "Using 3D noise to create simple animated texture."},
+         "typography", "text ⊂ texture"),
+        ("Basics/Math/OperatorPrecedence",
+         {"description": "the order in which an expression is evaluated"},
+         "interaction", "press ⊂ expression"),
+        ("Basics/Structure/CreateGraphics",
+         {"description": "PGraphics is the main graphics and rendering context for Processing."},
+         "typography", "text ⊂ context"),
+        ("Samples/DynamicMeshTexture", {}, "typography", "text ⊂ DynamicMeshTexture"),
+        ("Topics/Textures/TextureCube", {}, "typography", "text ⊂ Textures / TextureCube"),
+        ("Topics/Textures/TextureCylinder", {}, "typography", "text ⊂ Textures / TextureCylinder"),
+        ("Topics/Textures/TextureQuad", {}, "typography", "text ⊂ Textures / TextureQuad"),
+        ("Topics/Textures/TextureSphere", {}, "typography", "text ⊂ Textures / TextureSphere"),
+        ("Topics/Textures/TextureTriangle", {}, "typography", "text ⊂ Textures / TextureTriangle"),
+    )
+
+    # (path, metadata, 残らないといけないタグ, 拾えている語)
+    INFLECTED = (
+        ("Basics/Data/CharactersStrings",
+         {"description": "to display text to the screen, and to load images or files."},
+         "image", "images"),
+        ("Topics/File IO/TileImages", {}, "image", "TileImages"),
+        ("Basics/Math/Graphing2DEquation",
+         {"featured": ["loadPixels_", "updatePixels_"]},
+         "image", "loadPixels_（末尾の _ は \\b を壊す）"),
+        ("Basics/Structure/Coordinates",
+         {"description": "the distance from the origin in units of pixels."},
+         "image", "pixels"),
+        ("Topics/Fractals and L-Systems/Mandelbrot",
+         {"featured": ["loadPixels_", "pixels[]"]},
+         "image", "pixels[]"),
+        ("Topics/GUI/Handles",
+         {"description": "Click and drag the white boxes to change their position."},
+         "3d", "boxes"),
+        ("Basics/Input/StoringInput",
+         {"description": "The positions of the mouse are recorded into an array"},
+         "export", "recorded"),
+        ("Topics/Motion/Brownian",
+         {"description": "Recording random movement as a continuous line."},
+         "export", "recording"),
+    )
+
+    def test_substring_misfires_are_gone(self) -> None:
+        for path, metadata, tag, why in self.MISFIRES:
+            with self.subTest(path=path, tag=tag):
+                self.assertNotIn(tag, gen.tags_for(Path(path), metadata), why)
+
+    def test_inflected_forms_still_match(self) -> None:
+        """語境界だけに単純化すると、この 8 件が黙って落ちる。"""
+        for path, metadata, tag, why in self.INFLECTED:
+            with self.subTest(path=path, tag=tag):
+                self.assertIn(tag, gen.tags_for(Path(path), metadata), why)
+
+    def test_digit_run_keeps_the_3d_needle(self) -> None:
+        # 英字→数字で切る。数字→大文字で切ると "Noise 3 D" 相当になり `3d` が消える。
+        self.assertEqual(gen.split_humps("Noise3D"), "Noise 3D")
+        self.assertEqual(
+            gen.split_humps("GravitationalAttraction3D"), "Gravitational Attraction 3D"
+        )
+        self.assertIn("3d", gen.tags_for(Path("Basics/Math/Noise3D"), {}))
+        self.assertIn(
+            "3d", gen.tags_for(Path("Topics/Simulate/GravitationalAttraction3D"), {})
+        )
+
+    def test_camel_case_is_split_before_matching(self) -> None:
+        self.assertEqual(gen.split_humps("TextureSphere"), "Texture Sphere")
+        # 頭字語 + 語も切る。切らないと "OSCReceiver" が live タグを取り落とす。
+        self.assertEqual(gen.split_humps("OSCReceiver"), "OSC Receiver")
+        self.assertIn("live", gen.tags_for(Path("Topics/Network/OSCReceiver"), {}))
+
+    def test_featured_identifiers_are_split_and_matched(self) -> None:
+        """`featured` は "mousePressed_" 形式。分割と _ の扱いを同時に踏む。"""
+        tags = gen.tags_for(Path("Topics/GUI/Button"), {"featured": ["mousePressed_"]})
+        self.assertIn("interaction", tags)
+
+    def test_multi_word_needle_matches_across_any_whitespace(self) -> None:
+        """2 語からなる needle（`ray tracing`）。
+
+        分割が入れる空白 1 個とも、Processing 由来の説明文が持ったままの
+        改行 + インデントとも噛み合う必要がある。
+        """
+        pattern = gen.keyword_pattern("ray tracing")
+        self.assertTrue(pattern.search("real-time ray tracing on the gpu"))
+        self.assertTrue(pattern.search("real-time ray\n  tracing on the gpu"))
+        self.assertIsNone(pattern.search("arrays tracing indices"))
 
 
 class DiscoverExamplesTests(unittest.TestCase):

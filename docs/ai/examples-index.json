@@ -75,7 +75,6 @@
         "fill_"
       ],
       "tags": [
-        "3d",
         "basics",
         "brightness",
         "color"
@@ -297,8 +296,7 @@
       "tags": [
         "basics",
         "conditionals2",
-        "control",
-        "typography"
+        "control"
       ]
     },
     {
@@ -351,7 +349,6 @@
       "tags": [
         "basics",
         "control",
-        "interaction",
         "logicaloperators"
       ]
     },
@@ -1291,8 +1288,7 @@
       "tags": [
         "basics",
         "math",
-        "noise2d",
-        "typography"
+        "noise2d"
       ]
     },
     {
@@ -1310,8 +1306,7 @@
         "3d",
         "basics",
         "math",
-        "noise3d",
-        "typography"
+        "noise3d"
       ]
     },
     {
@@ -1342,7 +1337,6 @@
       "featured": [],
       "tags": [
         "basics",
-        "interaction",
         "math",
         "operatorprecedence"
       ]
@@ -1671,8 +1665,7 @@
       "tags": [
         "basics",
         "creategraphics",
-        "structure",
-        "typography"
+        "structure"
       ]
     },
     {
@@ -2635,8 +2628,7 @@
       "tags": [
         "3d",
         "dynamicmeshtexture",
-        "samples",
-        "typography"
+        "samples"
       ]
     },
     {
@@ -4939,8 +4931,7 @@
       "tags": [
         "texturecube",
         "textures",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4955,8 +4946,7 @@
       "tags": [
         "texturecylinder",
         "textures",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4971,8 +4961,7 @@
       "tags": [
         "texturequad",
         "textures",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4988,8 +4977,7 @@
         "3d",
         "textures",
         "texturesphere",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -5004,8 +4992,7 @@
       "tags": [
         "textures",
         "texturetriangle",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
