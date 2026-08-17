@@ -12,8 +12,13 @@ extension Sketch {
     /// 色は **straight alpha**（`fill()` や `color()` と同じ、α を掛ける前の値）です。
     /// 半透明の画素を読んでも色が沈まず、読んだ値をそのまま書き戻せば絵は変わりません
     /// （ADR-0012 / #848）。
+    ///
+    /// - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。
+    ///   ``loadPixels()`` 前でも、SketchRunner が context を用意する前（`init` や
+    ///   プロパティ初期化子）でも、teardown 後でも空バッファを返します。描画 API と
+    ///   違い ``Sketch/context`` を経由しないのはこのためです。
     public var pixels: UnsafeMutableBufferPointer<UInt32> {
-        guard let pb = context.pixelBuffer else {
+        guard let pb = _context?.pixelBuffer else {
             return UnsafeMutableBufferPointer(start: nil, count: 0)
         }
         return pb.pixels
