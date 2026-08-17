@@ -223,6 +223,7 @@ final class OSCSketch: Sketch {
 
 ### もっと詳しく
 
+- [`createOSCReceiver(port:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createoscreceiver%28port:%29), [`createOSCSender(host:port:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createoscsender%28host:port:%29) — `import metaphor` で生えるブリッジ API です
 - [`OSCReceiver`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphornetwork/oscreceiver) — `on` / `onAny` / `poll` / `start`
 - [`OSCSender`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphornetwork/oscsender) — 複数のメッセージをまとめて送る `sendBundle(_:)` もあります
 - [`OSCValue`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphornetwork/oscvalue)
@@ -458,6 +459,7 @@ final class MIDISketch: Sketch {
 
 ### もっと詳しく
 
+- [`createMIDI()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createmidi%28%29) — `import metaphor` で生えるブリッジ API です
 - [`MIDIManager`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphornetwork/midimanager) — 入出力の全メソッド
 - [`MIDIMessage`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphornetwork/midimessage) — ピッチベンドやプログラムチェンジの読み方
 

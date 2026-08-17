@@ -36,7 +36,7 @@ Syphon 出力が有効な場合、このパスで Syphon にも供給されま�
 
 ### Sketch（トップレイヤー）
 
-``MetaphorCore/Sketch`` プロトコルがユーザー向けのメイン API です。
+``/MetaphorCore/Sketch`` プロトコルがユーザー向けのメイン API です。
 プロトコルエクステンションを通じて、下位レイヤーに委譲する便利なメソッドを提供します:
 
 ```swift

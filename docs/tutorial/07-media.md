@@ -187,9 +187,10 @@ final class AudioInput: Sketch {
 
 ### もっと詳しく
 
+- [`createAudioInput(fftSize:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createaudioinput%28fftsize:%29) — `import metaphor` で生えるブリッジ API です
 - [`AudioAnalyzer`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer), [`volume`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer/volume), [`start()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer/start%28%29), [`update()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer/update%28%29)
 - [マイク・カメラの権限（TCC）](https://github.com/shinyaoguri/metaphor/blob/main/docs/permissions.md) — ダイアログの主体、拒否したあとの復旧、Continuity Camera の制約
-- 音声ファイルを再生しながら解析するなら [`SoundFile`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/soundfile)。マイクの代わりに同じ `spectrum` が取れます
+- 音声ファイルを再生しながら解析するなら [`loadSound(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/loadsound%28_:%29) と [`SoundFile`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/soundfile)。マイクの代わりに同じ `spectrum` が取れます
 
 ## 7.2 音を分析する
 
@@ -696,6 +697,7 @@ final class VideoPlayback: Sketch {
 
 ### もっと詳しく
 
+- [`loadVideo(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/loadvideo%28_:%29) と、フレームをそのまま描く [`image(_:_:_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/image%28_:_:_:%29) / [`image(_:_:_:_:_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/image%28_:_:_:_:_:%29) — `import metaphor` で生えるブリッジ API です
 - [`VideoPlayer`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorvideo/videoplayer) — `position` / `rate` / `duration` / `isLooping` の一覧
 - ドラッグ＆ドロップでファイルを受け取る例: [`Examples/Basics/Video/VideoPlayback`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Video/VideoPlayback)
 - 同梱動画の作り方は [`Examples/Tutorial/07-Media/04-VideoPlayback/README.md`](https://github.com/shinyaoguri/metaphor/blob/main/Examples/Tutorial/07-Media/04-VideoPlayback/README.md) にあります
@@ -831,6 +833,7 @@ final class FaceDetection: Sketch {
 
 ### もっと詳しく
 
+- [`createMLTextureConverter()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createmltextureconverter%28%29) — `import metaphor` で生えるブリッジ API です
 - [`MLTextureConverter`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorml/mltextureconverter) — `CGImage` や `MLMultiArray` との変換もここにあります
 - 人物分割・画像分類・スタイル変換の例: [`Examples/ML`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/ML)
 - 探しているものが Examples にあるか引くときは [docs/ai/examples-index.md](https://github.com/shinyaoguri/metaphor/blob/main/docs/ai/examples-index.md)
