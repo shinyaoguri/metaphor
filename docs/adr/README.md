@@ -51,6 +51,7 @@
 | [0010](0010-tutorial-images-via-gyazo.md) | Accepted | チュートリアルの画像も Gyazo へ移し、Git では本文と台帳（URL + content hash）だけを管理する |
 | [0011](0011-docc-english-canon-japanese-generated.md) | Accepted | リファレンスは英語を正典とし、日本語版は機械翻訳の生成物として並べる |
 | [0012](0012-alpha-semantics.md) | Accepted | アルファは公開 API が straight、内部と出力が premultiplied と定める |
+| [0013](0013-companion-over-dedicated-editor.md) | Accepted | 専用エディタを作らず、既存エディタ + コンパニオンへ投資する（エディタ連携は in scope） |
 
 ## 参考
 
