@@ -18,9 +18,11 @@ Run from the repository root:
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "generate-example-shots.py"
@@ -312,6 +314,52 @@ class TestSettle(ExampleShotsTestCase):
         self.write_config({"settings": {PATH: {"settle": "しばらく"}}})
         with self.assertRaises(gen.ShotError):
             gen.settle_for(PATH, gen.load_config())
+
+
+class TestReleaseBuild(ExampleShotsTestCase):
+    """release ビルドの申告（#727）。
+
+    画面に fps を出す example は、debug で撮ると「利用者が見ない数字」を焼く。
+    どの example を release で撮るかは手書き設定に持たせる。
+    """
+
+    def write_config(self, payload: dict) -> None:
+        gen.CONFIG.write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_the_default_build_is_debug(self) -> None:
+        self.assertFalse(gen.release_for(PATH, gen.load_config()))
+
+    def test_a_config_entry_asks_for_release(self) -> None:
+        self.write_config({"settings": {PATH: {"release": True}}})
+        self.assertTrue(gen.release_for(PATH, gen.load_config()))
+
+    def test_a_non_boolean_release_is_an_error(self) -> None:
+        # "yes" や 1 を真と読むと、申告のつもりが黙って debug のままになる。
+        self.write_config({"settings": {PATH: {"release": "yes"}}})
+        with self.assertRaises(gen.ShotError):
+            gen.release_for(PATH, gen.load_config())
+
+    def test_the_flag_reaches_both_build_and_run(self) -> None:
+        # ビルドだけ release にしても、走らせるのが debug なら数字は変わらない。
+        self.assertEqual(gen.swift_command("build", True), ["swift", "build", "-c", "release"])
+        self.assertEqual(gen.swift_command("run", True), ["swift", "run", "-c", "release"])
+        self.assertEqual(gen.swift_command("build", False), ["swift", "build"])
+        self.assertEqual(gen.swift_command("run", False), ["swift", "run"])
+
+    def test_capture_builds_with_the_declared_configuration(self) -> None:
+        # 申告を読めても capture() が渡さなければ意味がない。ビルドを失敗させて
+        # 起動まで進ませず、swift build に渡った引数だけを見る。
+        self.package()
+        recorded: list[list[str]] = []
+
+        def fake_run(command, **_kwargs):
+            recorded.append(list(command))
+            return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+
+        with unittest.mock.patch.object(gen.subprocess, "run", fake_run):
+            with self.assertRaises(gen.ShotError):
+                gen.capture(PATH, self.root / "shot.png", 0.0, release=True)
+        self.assertEqual(recorded[0], ["swift", "build", "-c", "release"])
 
 
 if __name__ == "__main__":

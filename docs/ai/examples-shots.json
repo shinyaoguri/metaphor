@@ -637,16 +637,26 @@
     "Examples/Demos/Performance/CubicGridImmediate": {
       "origin": "captured",
       "sourceHash": "f631c64f47e0918db58acd18dac228e8b72f412b2f8e1fe0661b67c6606965ad",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 21
+      "frame": 141
     },
     "Examples/Demos/Performance/DynamicParticlesImmediate": {
       "origin": "captured",
       "sourceHash": "4a8e2037ad79ce24837423860b3ede74ef6a3dbe966ae6ceebcd89d5c041a08f",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 640,
       "height": 480,
-      "frame": 188
+      "frame": 433
     },
     "Examples/Demos/Performance/Esfera": {
       "origin": "captured",
@@ -683,16 +693,26 @@
     "Examples/Demos/Performance/StaticParticlesImmediate": {
       "origin": "captured",
       "sourceHash": "bbfeb31bcb4a0b4563b6e73740e302a715fecaee117770656c5431555adcc82d",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 800,
       "height": 600,
-      "frame": 20
+      "frame": 213
     },
     "Examples/Demos/Performance/StaticParticlesRetained": {
       "origin": "captured",
-      "sourceHash": "3b099deaac50f0081ea6526367f2826ceb09670dcb47e44ec2fc70eb1b974188",
+      "sourceHash": "b1b9efa451b4f336bdddcc6a4b5ffd8c26b8040aac10198cb2dc905ce32fe8d2",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 800,
       "height": 600,
-      "frame": 31
+      "frame": 219
     },
     "Examples/Demos/Performance/TextRendering": {
       "origin": "captured",
