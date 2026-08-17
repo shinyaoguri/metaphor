@@ -56,6 +56,7 @@ class SnippetTestCase(unittest.TestCase):
 
     def add_doc(self, name: str, text: str) -> Path:
         path = self.docs / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
         return path
 
@@ -122,6 +123,57 @@ class TestRenderSnippet(SnippetTestCase):
         # 設計文書。書式の説明としてマーカーを載せても生成対象にしない。
         doc = self.add_doc(
             "README.md",
+            "<!-- tutorial-snippet: 99-Missing/99-Missing -->\n<!-- /tutorial-snippet -->\n",
+        )
+        original = doc.read_text(encoding="utf-8")
+
+        self.assertEqual(self.run_main()[0], 0)
+        self.assertEqual(doc.read_text(encoding="utf-8"), original)
+
+
+class TestTranslations(SnippetTestCase):
+    """英語版（`en/NN-slug.md`、#548）も同じ正典からコードを埋める。
+
+    訳すのは散文だけで、コードは 1 本を ja / en が共有する。en を対象から外すと
+    英語版だけコードが埋まらず、正典が変わっても誰も気付けない。
+    """
+
+    MARKER = "<!-- tutorial-snippet: 01-Part/02-Section -->\n<!-- /tutorial-snippet -->\n"
+
+    def test_en_is_in_the_document_list(self) -> None:
+        self.add_doc("01-part.md", self.MARKER)
+        self.add_doc("en/01-part.md", self.MARKER)
+        self.assertEqual(
+            [p.relative_to(self.docs).as_posix() for p in gen.tutorial_documents()],
+            ["01-part.md", "en/01-part.md"],
+        )
+
+    def test_en_gets_the_same_code(self) -> None:
+        self.add_package("01-Part/02-Section", {"App.swift": "import metaphor\n"})
+        ja = self.add_doc("01-part.md", self.MARKER)
+        en = self.add_doc("en/01-part.md", self.MARKER)
+
+        self.assertEqual(self.run_main()[0], 0)
+        self.assertIn("```swift\nimport metaphor\n```", en.read_text(encoding="utf-8"))
+        # コードは訳さないので、埋め込まれた中身は ja / en で同一。
+        self.assertEqual(ja.read_text(encoding="utf-8"), en.read_text(encoding="utf-8"))
+
+    def test_check_catches_drift_in_the_translation(self) -> None:
+        self.add_package("01-Part/02-Section", {"App.swift": "import metaphor\n"})
+        self.add_doc("en/01-part.md", self.MARKER)
+        self.run_main()
+
+        (self.code / "01-Part/02-Section/Section/App.swift").write_text(
+            "import metaphor\n// 追記\n", encoding="utf-8"
+        )
+
+        code, stdout, _ = self.run_main("--check")
+        self.assertEqual(code, 1)
+        self.assertIn("docs/tutorial/en/01-part.md", stdout)
+
+    def test_en_readme_is_not_scanned(self) -> None:
+        doc = self.add_doc(
+            "en/README.md",
             "<!-- tutorial-snippet: 99-Missing/99-Missing -->\n<!-- /tutorial-snippet -->\n",
         )
         original = doc.read_text(encoding="utf-8")
