@@ -1756,12 +1756,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var value: T { get }` -- 現在の補間値
 - `init(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic)` -- 新しいトゥイーンアニメーションを作成します。
 - `func cancel()` -- アニメーションを完了状態にして停止します。
-- `func delay(_ seconds: Float) -> Self` -- アニメーション開始前のディレイを設定します。
+- `func delay(_ seconds: Float) -> Self` -- アニメーション開始前のディレイを設定します（繰り返しても初回のサイクルにのみ適用）。
 - `func onComplete(_ handler: () -> Void) -> Self` -- アニメーション完了時に呼び出すコールバックを設定します。
-- `func repeatCount(_ n: Int) -> Self` -- アニメーションのリピート回数を設定します（0は無限）。
+- `func repeatCount(_ n: Int) -> Self` -- アニメーションを走らせる総サイクル数を設定します（既定は 1、`0` は無限）。
 - `func reset()` -- アニメーションを初期値のアイドル状態にリセットします。
 - `func start()` -- アニメーションを最初から開始します。
-- `func yoyo() -> Self` -- ヨーヨーモードを有効にします。各サイクルでアニメーション方向が反転します。
+- `func yoyo() -> Self` -- ヨーヨーモードを有効にします。``repeatCount(_:)`` が 2 以上（または `0` = 無限）のときだけ効きます。
 
 ### `final class TweenManager` -- トゥイーンのコレクションを管理し、毎フレーム自動更新します。
 
