@@ -161,6 +161,58 @@ struct CanvasPixelsTests {
         #expect(diff.isIdentical, "loadPixels のパス分割で描画結果が変わった: \(diff.summary)")
     }
 
+    /// 2D と 3D が重なるシーンでも、分割が**見た目を変えない**こと（#832）。
+    ///
+    /// 上の `splitDoesNotChangeRenderedOutput` は 2D だけのシーンなので、
+    /// **2D と 3D をどちらの順で吐くか**という食い違いは原理的に検出できない。
+    /// フレーム末尾 `SketchContext.endFrame()` は `canvas3D.end()` → `canvas.end()`
+    /// の順（= 2D が 3D の手前）で吐くので、分割点も同じ順でなければならない。
+    /// 逆順（2D → 3D）で吐くと、分割前に描いた 2D が箱の背後へ落ちる。
+    @Test("2D/3D が重なるシーンでも loadPixels の分割で描画結果が変わらない")
+    func splitPreserves2DOver3DCompositing() throws {
+        func renderScene(callingLoadPixels: Bool) throws -> GoldenImage {
+            let (renderer, _) = try makeHarness { c in
+                c.background(Color(r: 0.05, g: 0.05, b: 0.08))
+                c.lights()
+                c.noStroke()
+                // 3D: 画面中央を覆う青い箱
+                c.fill(Color(r: 0.15, g: 0.35, b: 0.95))
+                c.pushMatrix()
+                c.translate(32, 32, 0)
+                c.box(28)
+                c.popMatrix()
+                // 2D: 箱に重なる黄色い帯。呼び出し順で箱の後なので手前に出るべき
+                c.fill(Color(r: 1.0, g: 0.85, b: 0.10))
+                c.rect(4, 28, 56, 8)
+                // ← 分割点。ここから先は何も描かないので、分割は「見た目に対して透明」
+                //    でなければならない
+                if callingLoadPixels { c.loadPixels() }
+            }
+            renderer.renderFrame()
+            return try framebuffer(renderer)
+        }
+
+        let plain = try renderScene(callingLoadPixels: false)
+        let split = try renderScene(callingLoadPixels: true)
+
+        // 前提の確認: そもそも帯が箱の手前に出ていること（この足場が崩れると
+        // 下の比較が「どちらも同じように壊れている」で通ってしまう）
+        func rgb(_ image: GoldenImage, _ x: Int, _ y: Int) -> (Int, Int, Int) {
+            let i = (y * image.width + x) * 4
+            return (Int(image.rgba[i]), Int(image.rgba[i + 1]), Int(image.rgba[i + 2]))
+        }
+        let overlapBaseline = rgb(plain, 32, 32)
+        #expect(overlapBaseline.0 > 150 && overlapBaseline.2 < 120,
+                "前提が崩れている: 分割なしでも帯が箱の手前に出ていない: \(overlapBaseline)")
+
+        let overlapSplit = rgb(split, 32, 32)
+        #expect(overlapSplit.0 > 150 && overlapSplit.2 < 120,
+                "loadPixels の分割で 2D の帯が 3D の箱の背後へ落ちた: \(overlapSplit) — #832")
+
+        let diff = plain.compare(to: split)
+        #expect(diff.isIdentical, "loadPixels のパス分割で描画結果が変わった: \(diff.summary) — #832")
+    }
+
     /// 分割後も 2D の状態（変換・スタイル・クリップ）が引き継がれること。
     @Test("分割後も変換・スタイル・クリップが維持される")
     func stateSurvivesTheSplit() throws {

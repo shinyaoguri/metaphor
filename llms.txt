@@ -229,6 +229,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
   - Note: **3D のみ**に作用します（影が落ちるのは 3D シェイプだけです。ADR-0005）。
+  - Note: **2D と 3D の重ね順**（#832 / ADR-0003 の 2026-08-16 追記）。既定（影オフ）の即時経路では、重ね順は**呼び出し順ではなくエンコード順**で決まります。2D はバッチにまとめてフレーム末尾で吐かれるため、**既定では 2D が 3D の手前**に出ます（`box()` の前に描いた 2D も手前に来ます）。ただし 2D バッチが途中で吐かれると、それ以降にエンコードされる 3D の背後へ回ります — 契機は `blendMode()` の変更 / `image()`・`text()` との交互 / `circles()` 等のインスタンス描画との交互 / `beginClip()`・`endClip()` / `loadPixels()` / 頂点バッファの上限です。**呼び出し順どおりに重ねたい**場合は、この `enableShadows()` を有効にするか、環境変数 `METAPHOR_COMMAND_RECORD=1` で記録経路に入れてください（どちらも `Canvas3D` が 3D の記録直前に 2D を確定するため、呼び出し順がそのまま復元されます）。
 - `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
 - `func endContour()` -- 現在のコンター定義を終了します（2D シェイプ専用）。
@@ -296,7 +297,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadPixels()` -- **呼び出し時点の**キャンバス内容を `pixels` 配列へ読み戻します（Processing 互換）。
   - Important: 同一フレームの読み戻しは**影オフの通常経路**で有効です。影を有効にしている場合（`enableShadows()`）は `draw()` が記録パスとして先に実行されるため分割できず、**直近にコミット済みのフレーム内容**が読めます（初回のみ警告）。`draw()` の外（`setup()` やフレーム間）で呼んだ場合も同じです。
   - Note: GPU の完了を待つためメインスレッドをブロックします（Processing と同等）。`loadPixels()` を呼ばないスケッチには一切コストがかかりません。
-  - Note: 読み戻しのために内部でレンダーパスを分割するため、`loadPixels()` をまたいだ 3D 同士は深度比較されません（2D は深度テストを使わないため影響なし）。
+  - Note: 読み戻しのために内部でレンダーパスを分割するため、`loadPixels()` をまたいだ 3D 同士は深度比較されません（継続パスでデプスがクリアされます）。
+  - Note: `loadPixels()` は 2D バッチの確定点でもあります。影オフの即時経路では重ね順が呼び出し順ではなく**エンコード順**で決まるため、`loadPixels()` より **前**に描いた 2D は、**後**に描いた 3D の背後へ回ります。3D の手前に置きたい 2D は `loadPixels()` の後に描いてください（#832。契機の一覧は [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md) の 2026-08-16 追記）。`loadPixels()` の前後それぞれの中では、フレーム末尾と同じく 2D が 3D の手前に出ます。
 - `func loadShader(_ path: String, fragment: String) throws -> Shader2D` -- 外部 MSL ファイルからカスタム 2D フラグメントシェーダを読み込みます。
 - `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
 - `func loadStrings(_ source: String) throws -> [String]` -- テキストファイル/URL を行の配列として読み込みます。

@@ -1,4 +1,8 @@
 // MARK: - 3D Drawing (Camera, Lighting, Material, Shapes, Transform)
+//
+// 2D と 3D の重ね順は ``Sketch/enableShadows(resolution:)`` の Note が正典。
+// 要点だけ: 既定（影オフ）の即時経路では重ね順が呼び出し順ではなくエンコード順で
+// 決まり、2D は 3D の手前に出る（#832 / ADR-0003 の 2026-08-16 追記）。
 
 extension Sketch {
 
@@ -576,6 +580,18 @@ extension Sketch {
     /// シャドウマッピングを有効にします。
     ///
     /// - Note: **3D のみ**に作用します（影が落ちるのは 3D シェイプだけです。ADR-0005）。
+    ///
+    /// - Note: **2D と 3D の重ね順**（#832 / ADR-0003 の Amendment 節）。既定
+    ///   （影オフ）の即時経路では、重ね順は**呼び出し順ではなくエンコード順**で決まります。
+    ///   2D はバッチにまとめてフレーム末尾で吐かれるため、**既定では 2D が 3D の手前**に
+    ///   出ます（`box()` の前に描いた 2D も手前に来ます）。ただし 2D バッチが途中で
+    ///   吐かれると、それ以降にエンコードされる 3D の背後へ回ります — 契機は
+    ///   `blendMode()` の変更 / `image()`・`text()` との交互 / `circles()` 等の
+    ///   インスタンス描画との交互 / `beginClip()`・`endClip()` / `loadPixels()` /
+    ///   頂点バッファの上限です。**呼び出し順どおりに重ねたい**場合は、この
+    ///   `enableShadows()` を有効にするか、環境変数 `METAPHOR_COMMAND_RECORD=1` で
+    ///   記録経路に入れてください（どちらも `Canvas3D` が 3D の記録直前に 2D を
+    ///   確定するため、呼び出し順がそのまま復元されます）。
     ///
     /// - Parameter resolution: シャドウマップの解像度（ピクセル単位）。
     public func enableShadows(resolution: Int = 2048) {

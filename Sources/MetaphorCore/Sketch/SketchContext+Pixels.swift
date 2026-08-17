@@ -22,8 +22,9 @@ extension SketchContext {
     /// `draw()` の途中で呼ばれた場合は、**その時点までの描画を GPU に確定させてから**
     /// 読み戻します（Processing の `loadPixels()` と同じ）。実装としてはメインの
     /// レンダーパスを一度閉じてコマンドバッファをコミットし、完了を待ってから
-    /// `loadAction = .load` の継続パスで描画を再開します。カラーは保持されるため、
-    /// 読み戻しを挟んでもフレームの見た目は変わりません。
+    /// `loadAction = .load` の継続パスで描画を再開します。カラーは保持され、保留中の
+    /// バッチは `endFrame()` と同じ順（3D → 2D。#832）で吐かれるため、読み戻しを
+    /// 挟んでもそこまでに描いた絵の見た目は変わりません。
     ///
     /// - Important: 同一フレーム読み戻しが効くのは**影オフの通常経路**です。
     ///   シャドウ同一フレーム化（#70）では `draw()` が「記録パス」として実行され、
@@ -36,7 +37,13 @@ extension SketchContext {
     ///   分割点で一度途切れます。呼ばないスケッチには一切コストがかかりません。
     ///
     /// - Note: 継続パスではデプスがクリアされます。`loadPixels()` をまたいだ 3D 同士は
-    ///   深度比較されません（2D は深度テストを使わないため影響なし）。
+    ///   深度比較されません。
+    ///
+    /// - Note: `loadPixels()` は 2D バッチの確定点でもあります（ADR-0003 の
+    ///   「2D バッチがフレーム末尾より前に吐かれる契機」の 6 番目）。即時経路の重ね順は
+    ///   エンコード順で決まるため、分割**前**に描いた 2D は分割**後**にエンコードされる
+    ///   3D の背後へ回ります。分割の前後それぞれの中では、`endFrame()` と同じく
+    ///   2D が 3D の手前に出ます。
     public func loadPixels() {
         let w = Int(width)
         let h = Int(height)
@@ -53,8 +60,12 @@ extension SketchContext {
         if canvas.currentEncoder != nil, !canvas.isDeferring, renderer.canSplitMainPass {
             // 保留中のバッチを分割前のパスへ出し切る（出し忘れると「ここまでの描画」に
             // 含まれない）。2D の頂点バッチと 3D のインスタンスバッチの両方。
-            canvas.flush()
+            //
+            // 順序は `endFrame()` と揃える（3D → 2D。#832）。即時経路の重ね順は
+            // エンコード順で決まるので、ここだけ 2D → 3D で吐くと分割前に描いた 2D が
+            // 3D の背後へ落ち、`loadPixels()` がフレームの見た目を変えてしまう。
             canvas3D.flushInstanceBatch()
+            canvas.flush()
 
             guard let continuation = renderer.splitMainPassForReadback({ commandBuffer in
                 pb.encodeDownload(from: source, into: commandBuffer)

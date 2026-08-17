@@ -68,12 +68,17 @@ here.
   batch is **flushed**, not when the call is made, so 2D that overlaps 3D must sit
   in the last batch of the frame. Batches flush early on a `blendMode()` change,
   on alternating with `image()` / `text()` (textured vertices) or `circles()`
-  (instancing), on `beginClip()` / `endClip()`, and when the vertex buffer cannot
+  (instancing), on `beginClip()` / `endClip()`, on `loadPixels()` (the same-frame
+  readback splits the main pass), and when the vertex buffer cannot
   grow — `Canvas2D.blendMode(_:)`, `Canvas2DVertexWriter.addVertex`,
-  `Canvas2D+Clipping.swift`. The record path (shadows on, or the opt-in) replays in
+  `Canvas2D+Clipping.swift`, `SketchContext+Pixels.swift`. The record path (shadows
+  on, or the opt-in) replays in
   call order via `Canvas3D.flushPending2D`, so the paths disagree exactly here.
-  Conditions and measurements: the 2026-08-16 note under the Amendment in
-  [ADR-0003](../adr/0003-unified-command-stream.md).
+  Conditions and measurements: the 2026-08-16 and 2026-08-18 notes under the
+  Amendment in [ADR-0003](../adr/0003-unified-command-stream.md).
+  Note that the split point itself must flush in the *same order as* `endFrame()`
+  (`canvas3D.end()` → `canvas.end()`, i.e. 3D then 2D); flushing 2D first there
+  put pre-split 2D behind pre-split 3D (#832, fixed).
 - Shader failures: keep `Shaders/Metal/*.metal`, `Shaders/ShaderSources/*.txt`,
   and shader function constants in sync.
 - Export/readback bugs: `FrameExporter.swift`, `VideoExporter.swift`,
