@@ -1,5 +1,5 @@
 {
-  "comment": "撮り方の例外（手書きの正典）。台帳 examples-shots.json は生成物なので分ける。settle = 描画ループが回ってから本番の 1 枚を撮るまでの秒数（既定 1.5）。",
+  "comment": "撮り方の例外（手書きの正典）。台帳 examples-shots.json は生成物なので分ける。settle = 描画ループが回ってから本番の 1 枚を撮るまでの秒数（既定 1.5）。release = swift build / swift run を -c release で行うか（既定 false）。",
   "settings": {
     "Examples/Topics/Simulate/SoftBody": {
       "settle": 0.4,
@@ -9,9 +9,25 @@
       "settle": 10.0,
       "why": "アームの軌跡が 600 点たまって初めて絵になる。60fps で 10 秒かかるので、既定の 1.5 秒では 1/6 しか描かれていない"
     },
+    "Examples/Demos/Performance/CubicGridImmediate": {
+      "settle": 3.5,
+      "release": true,
+      "why": "画面に fps を出す（#727）。HUD は fint = 3 秒ごとにしか更新しないので、既定の 1.5 秒では初回の計算前 = 0 が焼かれる。数字が利用者の見るものと一致するよう release で撮る（debug の fps を焼くと別物になる）"
+    },
+    "Examples/Demos/Performance/DynamicParticlesImmediate": {
+      "settle": 3.5,
+      "release": true,
+      "why": "画面に fps を出す（#727）。CubicGridImmediate と同じ理由。frameRate(120) の上限に張り付くので、3.5 秒で粒子の寿命 400 フレームも一巡する"
+    },
+    "Examples/Demos/Performance/StaticParticlesImmediate": {
+      "settle": 6.25,
+      "release": true,
+      "why": "画面に fps を出す（#727）ので release + 3 秒超。加えて対の StaticParticlesRetained と回転角を揃える: rotateY は frameCount * 0.01 rad で、揃える先は frame ≒ 225（130 度前後）。release の実測 35 fps だと 6.25 秒でそこに来る"
+    },
     "Examples/Demos/Performance/StaticParticlesRetained": {
-      "settle": 0.3,
-      "why": "対の StaticParticlesImmediate と同じ回転角で並べるため。50,000 粒子の即時描画は撮影の debug ビルドだと重く、既定の 1.5 秒では 20 フレーム弱しか進まない。retained 側は同じ時間で 100 フレーム以上進み、rotateY が 60 度回って板が edge-on の縦縞になるので、フレーム数を揃える側で待ちを詰める"
+      "settle": 3.5,
+      "release": true,
+      "why": "画面に fps を出す（#727）ので release + 3 秒超。frameRate(60) の上限に張り付くので 3.5 秒 = frame ≒ 225（130 度前後）で、対の StaticParticlesImmediate をこちらへ揃える。板が正面を向く 0 / 180 / 360 度は避ける: 手前の大きな板が左上へ来て HUD の数字を白く塗り潰す（359 度で実測。3 秒超が要る以上 0 度側へは戻れない）"
     }
   }
 }

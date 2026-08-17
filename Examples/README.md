@@ -64,6 +64,16 @@ make example-shots ARGS="--compare --only Examples/Basics/Form"  # 原典と並�
 
 待ち時間（描画ループが回ってから撮るまでの秒数、既定 1.5）が合わない example は [docs/ai/examples-shots.config.json](../docs/ai/examples-shots.config.json) に個別に書きます。台帳は生成物なので、手書きの例外はこちらに置きます。
 
+同じ設定ファイルで **`"release": true`** と申告した example だけ、`swift build` / `swift run` を `-c release` で撮ります（既定は debug）。**画面に数字を焼く example のためのもの**です — `Examples/Demos/Performance/**` は fps の HUD を描くので、debug で撮ると利用者が `swift run -c release` で見る数字と別物が画像に残ります（[#727](https://github.com/shinyaoguri/metaphor/issues/727)）。全件を release にはしません: 1 本あたり +17 秒（実測 26.3 秒 vs 9.1 秒）で全体では 1 時間以上増えるのに、絵の確認には効かないためです。撮った 1 枚が release だったことは台帳の `build` に残ります。
+
+```json
+"Examples/Demos/Performance/StaticParticlesRetained": {
+  "settle": 3.5,
+  "release": true,
+  "why": "画面に fps を出す。HUD は 3 秒ごとにしか更新しないので settle も 3 秒超にする"
+}
+```
+
 ## 新しいサンプルを追加する
 
 既存のレイアウト `{Category}/{Subcategory}/{Name}/` に従い、自己完結した SwiftPM パッケージとして追加してください。追加・変更後は索引の再生成が必要です（生成物を手で編集しないこと）:
