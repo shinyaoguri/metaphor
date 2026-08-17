@@ -178,6 +178,198 @@ class DocSummaryTests(unittest.TestCase):
                      ["大きさを変更します。", "- Parameters:", "  - size: 新しい大きさ。"])
         self.assertEqual(gen.get_doc_summary(sym), "大きさを変更します。")
 
+    def test_docc_symbol_links_are_flattened_to_plain_code_spans(self):
+        # ``foo()`` is DocC symbol-link syntax. llms.txt is not DocC, so the
+        # doubled delimiter carries no meaning there — only noise (#786).
+        sym = method(["Widget", "reset()"], "()",
+                     ["``configure(_:)`` を呼び直します。"])
+        self.assertEqual(gen.get_doc_summary(sym), "`configure(_:)` を呼び直します。")
+
+
+class DocCalloutTests(unittest.TestCase):
+    """`- Note:` / `- Important:` bodies belong in llms.txt (#786).
+
+    They carry the "call this wrong and it breaks" knowledge that the one-line
+    abstract cannot, so an agent reading only llms.txt used to miss it entirely.
+    """
+
+    def test_single_line_callout_is_captured(self):
+        sym = method(["Widget", "reset()"], "()",
+                     ["状態を初期化します。", "", "- Note: 描画中は呼べません。"])
+        self.assertEqual(gen.get_doc_callouts(sym), ["Note: 描画中は呼べません。"])
+
+    def test_continuation_lines_are_joined_into_one_callout(self):
+        # Two thirds of the real callouts wrap onto indented continuation
+        # lines; emitting only the first line would truncate mid-sentence.
+        # Japanese wraps mid-sentence, so the seam takes no space.
+        sym = method(["Widget", "reset()"], "()",
+                     ["状態を初期化します。",
+                      "",
+                      "- Note: 描画中は呼べません。フレームの外から",
+                      "  呼んでください。中から呼ぶと",
+                      "  スロットが返りません。"])
+        self.assertEqual(
+            gen.get_doc_callouts(sym),
+            ["Note: 描画中は呼べません。フレームの外から呼んでください。"
+             "中から呼ぶとスロットが返りません。"])
+
+    def test_english_continuation_lines_keep_the_word_break(self):
+        # The mirror of the case above: dropping the space here would weld two
+        # words together ("required for" + "bandEnergy").
+        sym = method(["Widget", "reset()"], "()",
+                     ["Resets the widget.",
+                      "- Note: Leaving this unset makes the call",
+                      "  return zero instead of failing."])
+        self.assertEqual(
+            gen.get_doc_callouts(sym),
+            ["Note: Leaving this unset makes the call return zero "
+             "instead of failing."])
+
+    def test_a_wrap_between_scripts_keeps_the_space(self):
+        # Only a CJK/CJK seam is closed up; a Japanese line wrapping onto an
+        # ASCII identifier still needs the separator, matching how the sources
+        # write it on one line: `Darwin の ``sys/tty.h`` にある`.
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。",
+                      "- Note: 先に呼ぶべきなのは",
+                      "  `configure(_:)` です。"])
+        self.assertEqual(gen.get_doc_callouts(sym),
+                         ["Note: 先に呼ぶべきなのは `configure(_:)` です。"])
+
+    def test_a_wrap_after_full_width_punctuation_takes_no_space(self):
+        # 。 is full-width and already carries its own padding. The sources
+        # write `になります。``metaphor`` は` with no space, so a wrap at that
+        # seam must not invent one.
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。",
+                      "- Note: 呼ばないと失敗します。",
+                      "  `configure(_:)` を先に呼びます。"])
+        self.assertEqual(gen.get_doc_callouts(sym),
+                         ["Note: 呼ばないと失敗します。`configure(_:)` を先に呼びます。"])
+
+    def test_a_wrap_before_full_width_punctuation_takes_no_space(self):
+        # The mirror case: a continuation starting with 、 must not be pushed
+        # away from the word it attaches to.
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。",
+                      "- Note: 使えるのは `reset()`",
+                      "  、および `clear()` です。"])
+        self.assertEqual(gen.get_doc_callouts(sym),
+                         ["Note: 使えるのは `reset()`、および `clear()` です。"])
+
+    def test_multiple_callouts_keep_source_order(self):
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。", "- Note: 一つ目。", "- Important: 二つ目。"])
+        self.assertEqual(gen.get_doc_callouts(sym),
+                         ["Note: 一つ目。", "Important: 二つ目。"])
+
+    def test_parameters_block_is_not_a_callout(self):
+        # `- Parameters:` and `- Returns:` are structural; the signature above
+        # them already says what they say.
+        sym = method(["Widget", "resize(to:)"], "(_ size: Float) -> Bool",
+                     ["大きさを変更します。",
+                      "- Parameters:",
+                      "  - size: 新しい大きさ。",
+                      "- Returns: 成功したかどうか。"])
+        self.assertEqual(gen.get_doc_callouts(sym), [])
+        self.assertEqual(gen.get_doc_summary(sym), "大きさを変更します。")
+
+    def test_a_parameter_named_note_is_not_a_callout(self):
+        # MIDIManager documents a parameter literally called `note`. Indentation
+        # is the only thing separating it from a callout, so this is what stops
+        # "Note: The MIDI note number (0-127)." being published as API guidance.
+        sym = method(["MIDIManager", "sendNoteOn(_:velocity:)"],
+                     "(_ note: UInt8, velocity: UInt8)",
+                     ["ノートオンを送ります。",
+                      "- Parameters:",
+                      "  - note: The MIDI note number (0-127).",
+                      "  - velocity: The velocity (0-127)."])
+        self.assertEqual(gen.get_doc_callouts(sym), [])
+
+    def test_a_lowercase_callout_is_matched_and_recapitalised(self):
+        # DocC renders `- note:` as a Note. Matching case-sensitively here
+        # would let a callout show up in the DocC reference but silently vanish
+        # from llms.txt — the same class of loss this whole change fixes.
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。", "- note: 描画中は呼べません。"])
+        self.assertEqual(gen.get_doc_callouts(sym),
+                         ["Note: 描画中は呼べません。"])
+
+    def test_an_indented_parameter_child_never_wins_over_indentation(self):
+        # The pair to the two tests above: same spelling, different indentation,
+        # opposite verdicts. Neither guard alone explains the behaviour.
+        top = method(["Widget", "reset()"], "()", ["説明。", "- Note: 効きます。"])
+        child = method(["Widget", "reset()"], "()",
+                       ["説明。", "- Parameters:", "  - Note: 効きません。"])
+        self.assertEqual(gen.get_doc_callouts(top), ["Note: 効きます。"])
+        self.assertEqual(gen.get_doc_callouts(child), [])
+
+    def test_seealso_is_not_emitted(self):
+        # Every `- SeeAlso:` reaching the symbol graphs comes from Apple's own
+        # SwiftUI docs, not from metaphor sources. Navigational, not advisory.
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。", "- SeeAlso: ``Widget/configure(_:)``"])
+        self.assertEqual(gen.get_doc_callouts(sym), [])
+
+    def test_callout_body_is_flattened_like_the_summary(self):
+        sym = method(["Widget", "reset()"], "()",
+                     ["説明。", "- Note: ``configure(_:)`` を先に呼びます。"])
+        self.assertEqual(gen.get_doc_callouts(sym),
+                         ["Note: `configure(_:)` を先に呼びます。"])
+
+    def test_a_bodiless_callout_is_dropped(self):
+        # Otherwise the marker alone renders as a dangling "  - Note: ".
+        sym = method(["Widget", "reset()"], "()", ["説明。", "- Note:"])
+        self.assertEqual(gen.get_doc_callouts(sym), [])
+
+    def test_callout_without_a_summary_is_still_captured(self):
+        # Parameter-only docs yield no summary; the callout must survive alone.
+        sym = method(["Widget", "reset()"], "()",
+                     ["- Parameter size: 大きさ。", "- Important: 破壊的です。"])
+        self.assertEqual(gen.get_doc_summary(sym), "")
+        self.assertEqual(gen.get_doc_callouts(sym), ["Important: 破壊的です。"])
+
+
+class CalloutRenderingTests(unittest.TestCase):
+    """Callouts are indented one level under the line they annotate."""
+
+    def test_member_callout_follows_its_declaration(self):
+        out = render(MetaphorCore=module(
+            SIMD2_EXTENSION,
+            method(["SIMD2", "normalized()"], "() -> SIMD2<Float>",
+                   ["単位ベクトルを返します。", "- Note: 零ベクトルでは零を返します。"]),
+        ))
+        self.assertIn(
+            "- `func normalized() -> SIMD2<Float>` -- 単位ベクトルを返します。\n"
+            "  - Note: 零ベクトルでは零を返します。",
+            out)
+
+    def test_symbol_without_callouts_stays_a_single_line(self):
+        # Guards the existing one-line shape against stray blank lines.
+        out = render(MetaphorCore=module(
+            SIMD2_EXTENSION,
+            method(["SIMD2", "normalized()"], "() -> SIMD2<Float>",
+                   ["単位ベクトルを返します。"]),
+        ))
+        self.assertIn(
+            "- `func normalized() -> SIMD2<Float>` -- 単位ベクトルを返します。\n\n",
+            out)
+
+    def test_type_level_callout_follows_the_heading(self):
+        # KeyCode's `- Important: import Foundation …` is documented on the
+        # type, not on a member, so heading-level callouts must render too.
+        own = symbol(gen.KIND_ENUM, ["KeyCode"], [
+            frag("keyword", "enum"),
+            frag("text", " "),
+            frag("identifier", "KeyCode"),
+        ], ["仮想キーコードの名前空間。",
+            "- Important: `import Foundation` と併用すると曖昧になります。"])
+        out = render(MetaphorCore=module(own))
+        self.assertIn(
+            "### `enum KeyCode` -- 仮想キーコードの名前空間。\n"
+            "  - Important: `import Foundation` と併用すると曖昧になります。",
+            out)
+
 
 if __name__ == "__main__":
     unittest.main()
