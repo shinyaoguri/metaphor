@@ -593,16 +593,37 @@ pick one convention per sketch.
 ### `Sketch` is `@MainActor`
 
 The `Sketch` protocol is annotated `@MainActor`, so `setup()`, `draw()` and the
-event callbacks all run on the main actor. Two consequences:
+event callbacks all run on the main actor. Three consequences:
 
 - Calling a metaphor drawing API from a background task will not compile without
   hopping back to the main actor.
 - The `…Async` loaders (`loadImageAsync`, `loadJSONAsync`, …) do the file or
   network I/O off the main thread and return to it, which is why they exist. Use
   them from a `Task { … }` started in `setup()` rather than blocking `draw()`.
+- A type you split **out** of the sketch class is not isolated just because the
+  sketch owns it. Annotate it `@MainActor` too.
 
 Anything stored on your sketch class is main-actor isolated too, so ordinary
-sketch state needs no locking.
+sketch state needs no locking. The third point is the one that bites as soon as a
+sketch outgrows one file: `loadImage` / `loadModel` / `loadSound` / `loadVideo`,
+and the members of the `MImage` / `Mesh` / `SoundFile` / `VideoPlayer` values they
+return, are all main-actor isolated, so a plain `class` cannot touch them.
+
+```swift
+// Does not compile: "call to main actor-isolated instance method
+// 'loadModel(_:normalize:cache:)' in a synchronous nonisolated context"
+final class StageAssets {
+    var obstacle: Mesh?
+    init(sketch: any Sketch) { obstacle = sketch.loadModel("obstacle.obj") }
+}
+
+// Fine
+@MainActor
+final class StageAssets {
+    var obstacle: Mesh?
+    init(sketch: any Sketch) { obstacle = sketch.loadModel("obstacle.obj") }
+}
+```
 
 ### Value types vs. reference types (`PVector` is a class, `Vec2` is not)
 

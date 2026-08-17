@@ -177,6 +177,56 @@ struct TweenTests {
         #expect(tw.value < 100)  // going backwards
     }
 
+    // 以下 3 本は #840 で doc に書き足した「組み合わせたときの挙動」を固定する。
+    // どれも実装は妥当だが doc からは読み取れず、読者が別の期待を持つ地点。
+
+    @Test("yoyo() 単独では往復せず to で完了する")
+    @MainActor
+    func yoyoWithoutRepeatDoesNotReverse() {
+        // 方向が反転するのはサイクルとサイクルの境目。既定は 1 サイクルなので
+        // 境目が来る前に完了し、yoyo() だけでは何も起きない。
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.yoyo()
+        tw.start()
+
+        tw.update(1.0)
+        #expect(tw.isComplete == true)
+        #expect(tw.value == 100.0, "往復したなら from(0) に戻っているはず")
+    }
+
+    @Test("yoyo() の着地点は総サイクル数の偶奇で決まる")
+    @MainActor
+    func yoyoFinalValueDependsOnCycleParity() {
+        // 往路 → 復路 → 往路 … と交互に走るので、偶数サイクルで終われば from、
+        // 奇数サイクルで終われば to に着く。
+        for (cycles, expected) in [(2, Float(0)), (3, Float(100)), (4, Float(0))] {
+            let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+            tw.yoyo().repeatCount(cycles)
+            tw.start()
+            for _ in 0..<cycles { tw.update(1.0) }
+
+            #expect(tw.isComplete == true, "cycles=\(cycles)")
+            #expect(tw.value == expected, "cycles=\(cycles) の着地点が \(tw.value)")
+        }
+    }
+
+    @Test("delay は繰り返しの初回サイクルにのみ掛かる")
+    @MainActor
+    func delayAppliesOnlyToFirstCycle() {
+        // 0.25 秒刻み（Float で誤差なく積める）。delay 0.5 + duration 1.0 × 3 サイクル
+        // = 3.5 秒 = 14 刻みで完了する。毎周 delay が掛かるなら 4.5 秒 = 18 刻みになる。
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5).repeatCount(3)
+        tw.start()
+
+        var ticks = 0
+        while !tw.isComplete && ticks < 100 {
+            tw.update(0.25)
+            ticks += 1
+        }
+        #expect(ticks == 14, "完了まで \(ticks) 刻み。毎周 delay が掛かるなら 18 になる")
+    }
+
     @Test("Tween repeat count")
     @MainActor
     func repeatMode() {

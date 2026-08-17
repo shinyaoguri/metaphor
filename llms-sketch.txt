@@ -7,6 +7,10 @@
 
 Generate complete, real-time-safe creative coding sketches for metaphor users.
 Prefer one self-contained `App.swift` unless the user asks for multiple files.
+When you do split the sketch up, mark **every** extracted type `@MainActor`:
+`Sketch` is `@MainActor`, and so are `loadImage` / `loadModel` / `loadSound` /
+`loadVideo` and the members of the `MImage` / `Mesh` / `SoundFile` / `VideoPlayer`
+values they return — a plain `class` holding assets does not compile.
 
 ## Minimal Shape
 
