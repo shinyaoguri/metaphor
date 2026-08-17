@@ -17,6 +17,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "generate-tutorial-shots.py"
@@ -26,6 +27,37 @@ sys.modules["generate_tutorial_shots"] = gen
 _spec.loader.exec_module(gen)
 
 REF = "01-Part/02-Section"
+
+
+def write_png(path: Path, width: int, height: int, seed: int = 0) -> None:
+    """`sips` が実際に縮められる本物の PNG を書く（8bit グレースケール）。
+
+    幅の上限（#521）は外部コマンドに縮めさせる処理なので、ヘッダだけの偽物では
+    確かめられない。中身はグラデーションで、`seed` を変えると絵が変わる。
+    """
+    rows = b"".join(
+        b"\x00" + bytes((x * 3 + y * 5 + seed) % 256 for x in range(width))
+        for y in range(height)
+    )
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            len(data).to_bytes(4, "big")
+            + tag
+            + data
+            + (zlib.crc32(tag + data) & 0xFFFFFFFF).to_bytes(4, "big")
+        )
+
+    header = (
+        width.to_bytes(4, "big") + height.to_bytes(4, "big") + bytes([8, 0, 0, 0, 0])
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(rows, 9))
+        + chunk(b"IEND", b"")
+    )
 
 
 class ShotsTestCase(unittest.TestCase):
@@ -353,6 +385,65 @@ class TestMotionPaths(ShotsTestCase):
         self.assertEqual(
             gen.motion_path_for(REF, "sheet").name, "02-Section.sheet.png"
         )
+
+
+class TestContactSheetWidth(ShotsTestCase):
+    """`width` は kind に依らない「幅の上限」（docs/tutorial/README.md の表）。
+
+    以前は縮小が webp の経路にしかなく、`kind: "sheet"` では**どんな値を書いても
+    素通り**していた（#521）。シートは格子なので 1 フレームよりずっと広く、台帳の
+    `size.width` と比べる webp と同じ判定は使えない、というのがこの節の要点。
+    """
+
+    FRAME = (320, 180)
+    SHEET = (960, 540)  # 3x3 の格子。1 フレームよりずっと広いのが効いてくる
+
+    def setUp(self) -> None:
+        super().setUp()
+        original = gen.STAGING_DIR
+        gen.STAGING_DIR = self.root / ".build/tutorial-shots"
+        self.addCleanup(setattr, gen, "STAGING_DIR", original)
+
+        self.sequence_dir = self.root / "seq"
+        frames = []
+        for index in range(4):
+            name = f"frame-{index}.png"
+            write_png(self.sequence_dir / name, *self.FRAME, seed=index * 7)
+            frames.append({"file": name})
+        write_png(self.sequence_dir / "sheet.png", *self.SHEET)
+        self.manifest = {
+            "frames": frames,
+            "contactSheet": "sheet.png",
+            "size": {"width": self.FRAME[0], "height": self.FRAME[1]},
+        }
+
+    def collect(self, width: int) -> dict:
+        motion = {"kind": "sheet", "frames": 4, "every": 4, "fps": 15,
+                  "width": width, "quality": None}
+        return gen.collect_sequence(
+            REF, self.sequence_dir, self.manifest, motion, self.root / "still.png"
+        )
+
+    def sheet_size(self) -> tuple[int, int]:
+        return gen.image_size(gen.staging_path_for(REF, "sheet"))
+
+    def test_width_shrinks_the_sheet(self) -> None:
+        # 1 フレーム（320）より広くシート（960）より狭い値。ここが #521 の罠で、
+        # 台帳の size.width と比べていると「元より大きい」と読んで何もしない。
+        entry = self.collect(480)
+        self.assertEqual(self.sheet_size(), (480, 270))
+        self.assertEqual(entry["motion"]["outputWidth"], 480)
+        self.assertEqual(entry["motion"]["outputHeight"], 270)
+
+    def test_width_above_the_sheet_does_not_upscale(self) -> None:
+        entry = self.collect(self.SHEET[0] * 2)
+        self.assertEqual(self.sheet_size(), self.SHEET)
+        self.assertEqual(entry["motion"]["outputWidth"], self.SHEET[0])
+
+    def test_the_still_stays_a_full_size_frame(self) -> None:
+        # 縮めるのは動きの証跡だけ。代表静止画は撮ったままの解像度で残す。
+        self.collect(160)
+        self.assertEqual(gen.image_size(self.root / "still.png"), self.FRAME)
 
 
 class TestSequenceReadiness(ShotsTestCase):
