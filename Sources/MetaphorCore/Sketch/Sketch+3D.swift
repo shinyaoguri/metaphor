@@ -12,12 +12,18 @@ extension Sketch {
     /// **`.lines` / `.points` では `stroke`** です（Processing の LINES / POINTS と同じ。
     /// `noStroke()` のときは `fill` に戻ります）。
     ///
+    /// - Note: **3D のみ**に作用します（2D のカスタムシェイプは ``beginShape(_:)`` です。ADR-0005）。
+    ///
     /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         context.beginShape3D(mode)
     }
 
     /// 現在のシェイプに 3D 頂点を追加します。
+    ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていれば
+    ///   3D へ、2D の ``beginShape(_:)`` で始めていれば z を落として 2D へ流れます
+    ///   （Processing 互換。立体を組んだつもりが平面になるため初回だけ警告します。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -32,6 +38,10 @@ extension Sketch {
     /// 与えた色は現在の `fill` に左右されず、そのまま出ます。
     /// `texture()` を貼ったシェイプでは頂点カラーは使われません（テクスチャの色が出ます）。
     ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていれば
+    ///   3D へ、2D の ``beginShape(_:)`` で始めていれば z を落として 2D へ流れます
+    ///   （ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -45,6 +55,10 @@ extension Sketch {
     ///
     /// `texture(_:)` で画像を設定したシェイプでのみ効果があります。テクスチャ未設定の場合は
     /// UV が無視され、通常の fill で塗られます。
+    ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていれば
+    ///   3D へ、2D の ``beginShape(_:)`` で始めていれば z を落として 2D へ流れます
+    ///   （ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -61,6 +75,8 @@ extension Sketch {
     /// `endShape3D()` まで持続します。リテインドな ``MShape/normal(_:_:_:)`` も
     /// 同じ範囲です（#876）。頂点ごとに違う法線を入れたいなら頂点ごとに呼びます。
     ///
+    /// - Note: **3D のみ**に作用します（2D のシェイプに法線はありません。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - nx: 法線の x 成分。
     ///   - ny: 法線の y 成分。
@@ -70,6 +86,9 @@ extension Sketch {
     }
 
     /// 現在の 3D シェイプの記録を終了し描画します。
+    ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。2D の ``beginShape(_:)`` で
+    ///   始めていた場合は ``endShape(_:)`` と同じく 2D で閉じます（ADR-0005）。
     ///
     /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
     public func endShape3D(_ close: CloseMode = .open) {
@@ -1192,6 +1211,8 @@ extension Sketch {
 
     /// 指定したサイズのボックスを描画します。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - width: ボックスの幅。
     ///   - height: ボックスの高さ。
@@ -1201,6 +1222,8 @@ extension Sketch {
     }
 
     /// 辺の長さが等しいキューブを描画します。
+    ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
     ///
     /// - Parameter size: 辺の長さ。
     ///
@@ -1233,6 +1256,8 @@ extension Sketch {
     }
 
     /// 球を描画します。
+    ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
     ///
     /// - Parameters:
     ///   - radius: 球の半径。
@@ -1274,6 +1299,8 @@ extension Sketch {
 
     /// 平面を描画します。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - width: 平面の幅。
     ///   - height: 平面の高さ。
@@ -1310,6 +1337,8 @@ extension Sketch {
     /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`radius` /
     /// `height` はピクセル相当の大きさで指定します。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - radius: 円柱の半径。
     ///   - height: 円柱の高さ。
@@ -1343,6 +1372,8 @@ extension Sketch {
     ///
     /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`radius` /
     /// `height` はピクセル相当の大きさで指定します。
+    ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
     ///
     /// - Parameters:
     ///   - radius: 底面の半径。
@@ -1381,6 +1412,8 @@ extension Sketch {
     /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`ringRadius` /
     /// `tubeRadius` はピクセル相当の大きさで指定します。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
@@ -1415,6 +1448,8 @@ extension Sketch {
 
     /// ビルド済みメッシュを描画します。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameter mesh: 描画するメッシュ。
     public func mesh(_ mesh: Mesh) {
         context.mesh(mesh)
@@ -1434,6 +1469,8 @@ extension Sketch {
     /// fill / stroke / material / texture / ライトはインスタンス間で共有されます
     /// （インスタンスごとに変えられるのは ``drawInstanced(_:transforms:colors:)`` の fill 色のみ）。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - mesh: 描画するメッシュ。
     ///   - transforms: インスタンスごとのローカル変換。空配列なら何も描きません。
@@ -1442,6 +1479,8 @@ extension Sketch {
     }
 
     /// 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
+    ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
     ///
     /// - Parameters:
     ///   - mesh: 描画するメッシュ。
@@ -1454,12 +1493,16 @@ extension Sketch {
 
     /// ダイナミックメッシュを描画します。
     ///
+    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    ///
     /// - Parameter mesh: 描画するダイナミックメッシュ。
     public func dynamicMesh(_ mesh: DynamicMesh) {
         context.dynamicMesh(mesh)
     }
 
     /// 新しい空のダイナミックメッシュを作成します。
+    ///
+    /// - Note: 作成されるメッシュを描けるのは **3D のみ**です（``dynamicMesh(_:)``。ADR-0005）。
     ///
     /// - Returns: 新しい ``DynamicMesh`` インスタンス。
     public func createDynamicMesh() -> DynamicMesh {
@@ -1486,6 +1529,9 @@ extension Sketch {
     /// と同じ挙動）。寸法を毎フレーム変えて呼ぶとメッシュを作り直し続けるため、生成は
     /// `setup()` で行い、大きさの変化は ``scale(_:)`` や `transforms` 側で表現してください。
     ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - width: ボックスの幅。
     ///   - height: ボックスの高さ。
@@ -1497,6 +1543,9 @@ extension Sketch {
 
     /// 同じ寸法の立方体メッシュを生成します（描画はしません）。
     ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    ///
     /// - Parameter size: 立方体の辺の長さ。
     /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
     public func createBoxMesh(_ size: Float) -> Mesh? {
@@ -1506,6 +1555,9 @@ extension Sketch {
     /// 球のメッシュを生成します（描画はしません）。
     ///
     /// `detail` の解釈は ``sphere(_:detail:)`` と同じで、同じ引数なら同じジオメトリになります。
+    ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
     ///
     /// - Parameters:
     ///   - radius: 球の半径。
@@ -1519,6 +1571,9 @@ extension Sketch {
     ///
     /// XY 平面上の矩形で、法線は +Z 方向です。
     ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - width: 平面の幅。
     ///   - height: 平面の高さ。
@@ -1528,6 +1583,9 @@ extension Sketch {
     }
 
     /// 円柱のメッシュを生成します（描画はしません）。
+    ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
     ///
     /// - Parameters:
     ///   - radius: 円柱の半径。
@@ -1539,6 +1597,9 @@ extension Sketch {
     }
 
     /// 円錐のメッシュを生成します（描画はしません）。
+    ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
     ///
     /// - Parameters:
     ///   - radius: 底面の半径。
@@ -1554,6 +1615,9 @@ extension Sketch {
     /// `detail` の解釈は ``torus(ringRadius:tubeRadius:detail:)`` と同じで、
     /// 同じ引数なら同じジオメトリになります。
     ///
+    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
@@ -1568,6 +1632,9 @@ extension Sketch {
     /// 既定でパスキーのキャッシュが効き、同じパス・同じ `normalize` の再読込は
     /// 同一の ``Mesh`` インスタンスを返します。
     ///
+    /// - Note: 読み込まれるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - path: モデルのファイルパス。
     ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
@@ -1581,6 +1648,9 @@ extension Sketch {
     }
 
     /// 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
+    ///
+    /// - Note: 読み込まれるメッシュを描けるのは **3D のみ**です
+    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
     ///
     /// - Parameters:
     ///   - path: モデルのファイルパス。

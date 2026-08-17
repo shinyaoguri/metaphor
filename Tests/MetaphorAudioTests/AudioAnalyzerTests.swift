@@ -254,6 +254,146 @@ struct AudioAnalyzerInjectTests {
     }
 }
 
+// MARK: - volume / band(_:) のスケール（Issue #782）
+
+/// doc コメントが謳うスケールを機械で留めておく検査。
+/// `volume` は素の RMS ではなく 4 倍して 1.0 で飽和させた表示用の値、
+/// `band(_:)` の境界は Hz ではなくビン比（`bins/8` / `bins/2`）で決まる。
+@Suite("volume と band のスケール")
+@MainActor
+struct VolumeAndBandScaleTests {
+
+    /// 振幅一定の矩形波なら RMS = 振幅なので、4 倍のゲインが直接読める。
+    @Test("volume は RMS の 4 倍")
+    func volumeIsFourTimesRMS() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        analyzer.injectSamples([Float](repeating: 0.1, count: 1024))
+        analyzer.update()
+
+        // RMS = 0.1 → 0.4。素の RMS を返しているなら 0.1 になる
+        #expect(abs(analyzer.volume - 0.4) < 1e-5)
+    }
+
+    @Test("volume は 1.0 で飽和する")
+    func volumeSaturates() {
+        let quarter = AudioAnalyzer(fftSize: 1024)
+        quarter.injectSamples([Float](repeating: 0.25, count: 1024))
+        quarter.update()
+        #expect(abs(quarter.volume - 1.0) < 1e-5)
+
+        // 4 倍でも 1.0、8 倍でも 1.0。飽和後は入力の大小が読めない
+        let half = AudioAnalyzer(fftSize: 1024)
+        half.injectSamples([Float](repeating: 0.5, count: 1024))
+        half.update()
+        #expect(half.volume == 1.0)
+    }
+
+    /// サイン波は RMS = 振幅/√2 なので、振幅 1/(4/√2) ≈ 0.354 で飽和する。
+    @Test("サイン波は振幅 0.354 あたりで飽和する")
+    func sineSaturatesAroundOneThird() {
+        func volume(amplitude: Float) -> Float {
+            let analyzer = AudioAnalyzer(fftSize: 1024)
+            analyzer.injectSamples(Self.sine(frequency: 1_000, amplitude: amplitude))
+            analyzer.update()
+            return analyzer.volume
+        }
+
+        // 振幅 0.2 → 4 * 0.2 / √2 ≈ 0.566（doc の「RMS そのもの」なら 0.141）
+        #expect(abs(volume(amplitude: 0.2) - 0.566) < 0.01)
+        #expect(volume(amplitude: 0.3) < 1.0)
+        #expect(volume(amplitude: 0.4) == 1.0)
+    }
+
+    /// doc に書いた 44.1 kHz の境界（0-2.8k / 2.8k-11k / 11k-22k）を実際の音で確かめる。
+    /// 旧コメントの「〜0-250 Hz」「250-2 kHz」「2 kHz+」なら 2 kHz は band 1 に入るはず。
+    @Test("44.1 kHz では 2 kHz でもまだ低域（band 0）")
+    func bandEdgesFollowSampleRate() {
+        func loudestBand(frequency: Float) -> Int {
+            let analyzer = AudioAnalyzer(fftSize: 1024, sampleRate: 44_100)
+            analyzer.smoothing = 0
+            analyzer.injectSamples(Self.sine(frequency: frequency, amplitude: 0.5))
+            analyzer.update()
+            let energies = (0..<3).map { analyzer.band($0) }
+            return energies.firstIndex(of: energies.max()!)!
+        }
+
+        #expect(loudestBand(frequency: 200) == 0)
+        #expect(loudestBand(frequency: 2_000) == 0)  // 上端は 44100/16 ≈ 2756 Hz
+        #expect(loudestBand(frequency: 5_000) == 1)  // 上端は 44100/4 = 11025 Hz
+        #expect(loudestBand(frequency: 15_000) == 2)
+    }
+
+    /// 境界はビン番号で決まるので、Hz は sampleRate に比例して動く。
+    /// 同じ 3 kHz でも 44.1 kHz なら中域、8 kHz なら（sampleRate/4 = 2 kHz を超えて）高域。
+    @Test("同じ周波数でもサンプルレートが変われば帯域が変わる")
+    func sameFrequencyMovesBandWithSampleRate() {
+        func loudestBand(frequency: Float, sampleRate: Double) -> Int {
+            let analyzer = AudioAnalyzer(fftSize: 1024, sampleRate: sampleRate)
+            analyzer.smoothing = 0
+            analyzer.injectSamples(
+                Self.sine(frequency: frequency, amplitude: 0.5, sampleRate: sampleRate))
+            analyzer.update()
+            let energies = (0..<3).map { analyzer.band($0) }
+            return energies.firstIndex(of: energies.max()!)!
+        }
+
+        #expect(loudestBand(frequency: 3_000, sampleRate: 44_100) == 1)
+        #expect(loudestBand(frequency: 3_000, sampleRate: 8_000) == 2)  // 8000/4 = 2000 Hz
+    }
+
+    /// ビン比で決まるということは、fftSize を変えても帯域の割り当ては変わらない。
+    @Test("fftSize を変えても帯域の割り当ては変わらない")
+    func bandEdgesAreIndependentOfFFTSize() {
+        func loudestBand(fftSize: Int) -> Int {
+            let analyzer = AudioAnalyzer(fftSize: fftSize, sampleRate: 44_100)
+            analyzer.smoothing = 0
+            analyzer.injectSamples(
+                Self.sine(frequency: 5_000, amplitude: 0.5, count: fftSize))
+            analyzer.update()
+            let energies = (0..<3).map { analyzer.band($0) }
+            return energies.firstIndex(of: energies.max()!)!
+        }
+
+        #expect(loudestBand(fftSize: 512) == 1)
+        #expect(loudestBand(fftSize: 1024) == 1)
+        #expect(loudestBand(fftSize: 4096) == 1)
+    }
+
+    /// `spectrum` はフレームごとに最大ビンで正規化されるので、`band(_:)` は
+    /// 絶対エネルギーではなく「そのフレームのどこに寄っているか」を返す。
+    @Test("band はスペクトルの形を返すので入力を絞っても値が落ちない")
+    func bandIsRelativeNotAbsolute() {
+        func bands(amplitude: Float) -> [Float] {
+            let analyzer = AudioAnalyzer(fftSize: 1024, sampleRate: 44_100)
+            analyzer.smoothing = 0
+            analyzer.injectSamples(Self.sine(frequency: 1_000, amplitude: amplitude))
+            analyzer.update()
+            return (0..<3).map { analyzer.band($0) }
+        }
+
+        // 振幅を 1/10 にしても値はほぼ同じ（volume なら 1/10 になる）
+        let loud = bands(amplitude: 0.5)
+        let quiet = bands(amplitude: 0.05)
+        for (l, q) in zip(loud, quiet) {
+            #expect(abs(l - q) < 1e-4)
+        }
+        #expect(loud[0] > 0)
+    }
+
+    // MARK: - ヘルパー
+
+    static func sine(
+        frequency: Float,
+        amplitude: Float,
+        sampleRate: Double = 44_100,
+        count: Int = 1024
+    ) -> [Float] {
+        (0..<count).map { i in
+            sin(Float(i) * 2 * Float.pi * frequency / Float(sampleRate)) * amplitude
+        }
+    }
+}
+
 // MARK: - サンプルレート未設定の警告（Issue #783）
 
 /// `injectSamples` 経路で `sampleRate` を渡し忘れると `bandEnergy` が 0 になる。
