@@ -35,7 +35,7 @@ public struct SketchStateConfig: Sendable {
 /// - **保存**: `pre()` で `save-request.json` の mtime を確認し、変化していれば
 ///   ``Sketch/saveState()`` を呼んで `state.json` をアトミックに書き出す。
 ///   応答した `id` をエコーするので、consumer はタイムアウトを待たずに ready を検知できる。
-/// - **復元**: 新しいプロセス側の担当（``SketchRunner`` が `setup()` の後に
+/// - **復元**: 新しいプロセス側の担当（`SketchRunner` が `setup()` の後に
 ///   ``Sketch/restoreState(_:)`` を呼ぶ）。
 ///
 /// 有効化は `metaphor watch` のヘッドレス実行（`METAPHOR_VIEWER=1`）で自動。

@@ -17,7 +17,7 @@ extension SketchContext {
         }
     }
 
-    /// キャンバスの内容を CPU の ``pixels`` 配列へ読み戻します（Processing 互換、#202 / #326）。
+    /// キャンバスの内容を CPU の ``Sketch/pixels`` 配列へ読み戻します（Processing 互換、#202 / #326）。
     ///
     /// `draw()` の途中で呼ばれた場合は、**その時点までの描画を GPU に確定させてから**
     /// 読み戻します（Processing の `loadPixels()` と同じ）。実装としてはメインの

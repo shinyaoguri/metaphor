@@ -4,7 +4,7 @@ import Metal
 ///
 /// `MetaphorCore` は具体的な出力実装（Syphon など）を**参照しません**。出力を提供する
 /// 別 target（例: `MetaphorSyphon`）が自身のロード時にここへファクトリを登録し、
-/// ``SketchRunner`` の自動配線（`config.syphon` / `config.syphonName` /
+/// `SketchRunner` の自動配線（`config.syphon` / `config.syphonName` /
 /// `METAPHOR_SYPHON_NAME` / ヘッドレス起動）がそれを**透過的に**利用します。
 ///
 /// これにより `MetaphorCore` 単体は Syphon 等のバイナリ依存を持たない純粋な描画コアになり、

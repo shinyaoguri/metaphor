@@ -33,7 +33,7 @@ public final class PixelBuffer {
     /// `pixels[y * width + x]` でインデックスします。
     ///
     /// **色は straight alpha**（= `color(r, g, b, a)` が詰めるのと同じ形）です。
-    /// キャンバスの中身は premultiplied ですが、``finishDownload()`` が読み戻しの直後に
+    /// キャンバスの中身は premultiplied ですが、`finishDownload()` が読み戻しの直後に
     /// 割り戻し、`updatePixels()` の描画側が straight として扱います（ADR-0012 / #848）。
     public let pixels: UnsafeMutableBufferPointer<UInt32>
 

@@ -420,7 +420,7 @@ public final class MShape {
     /// **`fillColor` を掛けて着色する**ため tint 専用のスロットが存在しないからです。
     /// 効かないシェイプを描くと一度だけ警告が出ます。
     ///
-    /// テクスチャ付きの 3D シェイプに色を掛けたいときは ``setFill(_:)`` を使ってください。
+    /// テクスチャ付きの 3D シェイプに色を掛けたいときは ``setFill(_:)-(Color)`` を使ってください。
     /// スケッチ側の `tint()` は `image()` に対しては従来どおり効きます（こちらは別経路）。
     public func setTint(_ color: Color) {
         capturedStyle.tintColor = color.simd
