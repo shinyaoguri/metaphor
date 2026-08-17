@@ -259,6 +259,9 @@ Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](h
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
 
-For the copyright notice and full license text of `Syphon.xcframework`
-(Simplified BSD License), redistributed as a GitHub Release asset, see
-[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+The fonts bundled in [Examples/](Examples/) (Source Code Pro, Space Mono and
+Merriweather) are all under the SIL Open Font License 1.1. The license text is
+in [OFL.txt](OFL.txt); the per-font copyright notices and the paths each font is
+bundled at are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), together
+with the copyright notice and full license text of `Syphon.xcframework`
+(Simplified BSD License), redistributed as a GitHub Release asset.
