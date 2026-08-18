@@ -304,6 +304,8 @@ extension Sketch {
 
     /// 3D モデル座標が描画されるスクリーン x 座標を返します。
     ///
+    /// - Note: **3D のみ**に作用します（2D の座標は ``screenX(_:_:)``（2 引数）です。ADR-0005）。
+    ///
     /// - Important: カメラ背後の点では値が原点対称に反転します。
     ///   ``isInFront(_:_:_:)`` で判別してください。
     public func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float {
@@ -311,6 +313,8 @@ extension Sketch {
     }
 
     /// 3D モデル座標が描画されるスクリーン y 座標を返します。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の座標は ``screenY(_:_:)``（2 引数）です。ADR-0005）。
     ///
     /// - Important: カメラ背後の点では値が原点対称に反転します。
     ///   ``isInFront(_:_:_:)`` で判別してください。
@@ -321,6 +325,8 @@ extension Sketch {
     /// 3D モデル座標の正規化デバイス深度（0...1）を返します。
     ///
     /// 手前ほど小さい値になります（Processing の `screenZ()` 相当）。
+    ///
+    /// - Note: **3D のみ**に作用します（2D の描画に深度はありません。ADR-0005）。
     ///
     /// - Important: 0...1 に収まるのは点が視錐台の内側にあるときだけです。
     ///   カメラ背後では 1 を超え、カメラとニア平面のあいだでは負になります。
@@ -340,6 +346,8 @@ extension Sketch {
     ///     text("label", screenX(px, py, pz), screenY(px, py, pz))
     /// }
     /// ```
+    ///
+    /// - Note: **3D のみ**に作用します（カメラ平面を持つのは 3D だけです。ADR-0005）。
     ///
     /// - Note: true は「反転していない」ことだけを保証し、「画面内にある」ことは
     ///   保証しません。正射影では反転が起きないため常に true を返します。
@@ -401,6 +409,8 @@ extension Sketch {
 
     /// 矩形を描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D の直方体は ``box(_:_:_:)``、平面は ``plane(_:_:)`` です。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -432,6 +442,8 @@ extension Sketch {
 
     /// 均一な角丸半径の角丸矩形を描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D に角丸のプリミティブはありません。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -461,6 +473,8 @@ extension Sketch {
     }
 
     /// 各角に個別の角丸半径を持つ角丸矩形を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D に角丸のプリミティブはありません。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -503,6 +517,8 @@ extension Sketch {
 
     /// リニアグラデーション矩形を描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D のグラデーションはシェーダか頂点カラーで作ります。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -539,6 +555,8 @@ extension Sketch {
     }
 
     /// 放射状グラデーション円を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D のグラデーションはシェーダか頂点カラーで作ります。ADR-0005）。
     ///
     /// - Parameters:
     ///   - cx: 中心の x 座標。
@@ -577,6 +595,8 @@ extension Sketch {
 
     /// 楕円を描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:detail:)`` です。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -607,6 +627,8 @@ extension Sketch {
     }
 
     /// 円を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:detail:)`` です。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: 中心の x 座標。
@@ -639,12 +661,16 @@ extension Sketch {
     /// `circle()` を多数回呼ぶ代わりに、位置・直径・色を持つ ``CircleInstance`` 配列を
     /// compact instancing path でまとめて描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:transforms:)`` です。ADR-0005）。
+    ///
     /// - Parameter instances: 描画する円インスタンス。
     public func circles(_ instances: [CircleInstance]) {
         context.circles(instances)
     }
 
     /// GPU バッファ上の円インスタンスを一括描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:transforms:)`` です。ADR-0005）。
     ///
     /// - Parameters:
     ///   - instances: ``CircleInstance`` を保持する GPU バッファ。
@@ -654,6 +680,8 @@ extension Sketch {
     }
 
     /// 正方形を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D の立方体は ``box(_:)`` です。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -684,6 +712,8 @@ extension Sketch {
     }
 
     /// 4つの頂点で定義される四角形を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D で任意の四角形を組むには ``beginShape3D(_:)`` を使います。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x1: 第1頂点の x 座標。
@@ -728,6 +758,8 @@ extension Sketch {
 
     /// 2点間に線を描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D の線は ``beginShape3D(_:)`` に ``ShapeMode/lines`` を渡します。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x1: 始点の x 座標。
     ///   - y1: 始点の y 座標。
@@ -758,6 +790,8 @@ extension Sketch {
     }
 
     /// 3つの頂点で定義される三角形を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D の三角形は ``beginShape3D(_:)`` で組みます。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x1: 第1頂点の x 座標。
@@ -794,6 +828,8 @@ extension Sketch {
 
     /// 座標タプルの配列からポリゴンを描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D は ``beginShape3D(_:)`` で組みます。ADR-0005）。
+    ///
     /// - Parameter points: `(x, y)` タプルとしてのポリゴン頂点。
     public func polygon(_ points: [(Float, Float)]) {
         context.polygon(points)
@@ -801,12 +837,16 @@ extension Sketch {
 
     /// ``Vec2`` 配列からポリゴンを描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D は ``beginShape3D(_:)`` で組みます。ADR-0005）。
+    ///
     /// - Parameter points: ポリゴン頂点。
     public func polygon(_ points: [Vec2]) {
         context.polygon(points)
     }
 
     /// 円弧を描画します（`stopAngle` は `startAngle` より大きいこと。2π 超は 1 周にクランプ）。
+    ///
+    /// - Note: **2D のみ**に作用します（3D に対応するプリミティブはありません。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: 円弧の中心の x 座標。
@@ -851,6 +891,8 @@ extension Sketch {
     }
 
     /// 3次ベジェ曲線を描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D のベジェ曲線はありません。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x1: 始点の x 座標。
@@ -897,6 +939,8 @@ extension Sketch {
 
     /// 単一の点を描画します。
     ///
+    /// - Note: **2D のみ**に作用します（3D の点は ``beginShape3D(_:)`` に ``ShapeMode/points`` を渡します。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -930,6 +974,8 @@ extension Sketch {
     // MARK: Custom Shapes (beginShape / endShape)
 
     /// カスタムシェイプの頂点記録を開始します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D のカスタムシェイプは ``beginShape3D(_:)`` です。ADR-0005）。
     ///
     /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
     ///
@@ -965,6 +1011,10 @@ extension Sketch {
     }
 
     /// 現在のシェイプに 2D 頂点を追加します。
+    ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape(_:)`` で始めていれば
+    ///   2D へ、``beginShape3D(_:)`` で始めていれば z = 0 の 3D 頂点として流れます
+    ///   （Processing 互換。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -1002,6 +1052,10 @@ extension Sketch {
 
     /// 現在のシェイプに頂点カラー付き 2D 頂点を追加します。
     ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape(_:)`` で始めていれば
+    ///   2D へ、``beginShape3D(_:)`` で始めていれば z = 0 の 3D 頂点として流れます
+    ///   （ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -1011,6 +1065,10 @@ extension Sketch {
     }
 
     /// 現在のシェイプにテクスチャ座標付き 2D 頂点を追加します。
+    ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape(_:)`` で始めていれば
+    ///   2D へ流れます。``beginShape3D(_:)`` の記録中は UV を落として z = 0 の 3D 頂点に
+    ///   なり、初回だけ警告します（ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -1022,6 +1080,8 @@ extension Sketch {
     }
 
     /// 現在のシェイプに3次ベジェ頂点を追加します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D のシェイプにベジェ頂点はありません。ADR-0005）。
     ///
     /// - Parameters:
     ///   - cx1: 第1制御点の x 座標。
@@ -1066,6 +1126,8 @@ extension Sketch {
 
     /// 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
     ///
+    /// - Note: **2D のみ**に作用します（3D のシェイプにスプライン頂点はありません。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -1103,12 +1165,21 @@ extension Sketch {
 
     /// カーブ補間のセグメント数を設定します。
     ///
+    /// - Note: **2D のみ**に作用します（``curveVertex(_:_:)`` /
+    ///   ``curve(_:_:_:_:_:_:_:_:)`` 用で、3D には効きません。ADR-0005）。
+    ///
     /// - Parameter n: カーブの詳細度。
     public func curveDetail(_ n: Int) {
         context.curveDetail(n)
     }
 
     /// Catmull-Rom スプラインカーブの張り具合を設定します。
+    ///
+    /// - Note: **2D のみ**に作用します（``curveVertex(_:_:)`` /
+    ///   ``curve(_:_:_:_:_:_:_:_:)`` 用で、3D には効きません。ADR-0005）。
+    ///
+    /// - Note: `-5.0` 〜 `5.0` が目安です。範囲外の値も受け付けます（Processing と同じく
+    ///   clamp しません）が、曲線が制御点から大きく外れます。
     ///
     /// - Parameter t: 張り値（0 = デフォルト、1 = 直線）。
     public func curveTightness(_ t: Float) {
@@ -1120,6 +1191,9 @@ extension Sketch {
     /// `beginShape3D()` で組む 3D シェイプでは穴を開けられません（呼んでも何も起きず、
     /// 初回だけ警告が出ます）。3D で穴の開いた面が要るときは、内側と外側のあいだの
     /// 輪帯を自分で三角形に割ってください。
+    ///
+    /// - Note: **2D のみ**に作用します（``beginShape3D(_:)`` の記録中は何もせず、
+    ///   初回だけ警告します。#736 / ADR-0005）。
     ///
     /// ### 実行結果
     ///
@@ -1157,11 +1231,16 @@ extension Sketch {
     }
 
     /// 現在のコンター定義を終了します（2D シェイプ専用）。
+    ///
+    /// - Note: **2D のみ**に作用します（``beginShape3D(_:)`` の記録中は何もせず、
+    ///   初回だけ警告します。#736 / ADR-0005）。
     public func endContour() {
         context.endContour()
     }
 
     /// 4点を通る Catmull-Rom スプラインカーブを描画します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D のスプライン曲線はありません。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x1: 第1制御点の x 座標。
@@ -1183,6 +1262,9 @@ extension Sketch {
 
     /// 現在のシェイプの記録を終了し描画します。
     ///
+    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていた
+    ///   シェイプもこれで閉じられます（``endShape3D(_:)`` と同じ結果。ADR-0005）。
+    ///
     /// - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います
     ///   （Processing / p5.js と同じ）。巻き数が 0 でない領域が塗られるので、五芒星は
     ///   中央の五角形まで塗られたべた塗りの星になります。
@@ -1196,6 +1278,8 @@ extension Sketch {
 
     /// 以降の描画を指定した矩形にクリッピングします。
     ///
+    /// - Note: **2D のみ**に作用します（3D の描画はクリップされません。ADR-0005）。
+    ///
     /// - Parameters:
     ///   - x: クリップ領域の x 座標。
     ///   - y: クリップ領域の y 座標。
@@ -1206,6 +1290,8 @@ extension Sketch {
     }
 
     /// 現在のクリップ領域を終了し、前の状態に復元します。
+    ///
+    /// - Note: **2D のみ**に作用します（3D の描画はクリップされません。ADR-0005）。
     public func endClip() {
         context.endClip()
     }

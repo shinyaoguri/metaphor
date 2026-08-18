@@ -105,7 +105,10 @@ extension Canvas2D {
         curveDetailCount = max(1, n)
     }
 
-    /// 曲線のタイトネスを設定します（-5.0 から 5.0; 0.0 が標準 Catmull-Rom）。
+    /// 曲線のタイトネスを設定します（-5.0 〜 5.0 が目安。0.0 が標準 Catmull-Rom）。
+    ///
+    /// 範囲外の値も受け付けます（Processing と同じく clamp しません）が、曲線が制御点から
+    /// 大きく外れます。
     /// - Parameter t: タイトネス値。
     public func curveTightness(_ t: Float) {
         curveTightnessValue = t

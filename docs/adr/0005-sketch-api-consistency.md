@@ -464,6 +464,10 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
   > **スタイル系も列挙は網羅的でない。** `colorMode` / `background` / `strokeCap` /
   > `strokeJoin` / `tint` 系は載っていないので、
   > [Amendment（2026-08-18b）§1](#1-決定-規範表をスタイル系の全数へ広げるtint-は-2d-のみ) が足す。
+  >
+  > **2D の描画プリミティブも載っていない。** `rect` / `ellipse` / `line` / `beginShape` /
+  > `vertex` 系・クリップ・コンターは
+  > [Amendment（2026-08-19）§1](#1-決定-規範表を-2d-描画プリミティブへ広げる) が足す。
 
 - Decision 1 の「1.0 前の破壊的変更ウィンドウで再評価する」は本 Amendment で**決着**した。
 - **breaking**: 3D 描画を含むスケッチで 2 引数 `translate` / 1 引数 `rotate` / 2 引数 `scale` を
@@ -608,6 +612,53 @@ z を落として 2D へ流れる（`SketchContext+3D.swift`。Processing 互換
 - 挙動は変わらない（doc コメント・ADR 本文・テストのみ）。ただし **`llms.txt` は動く**
   ——#786 / PR #969 で callout が生成物へ出るようになったため、2026-08-18 Amendment §3 の
   「`llms.txt` も動かない」はこの日以降は成り立たない。
+
+## Amendment（2026-08-19, Issue #973）— 規範表を 2D 描画プリミティブへ広げ、Sketch 層の 3 面すべてを機械検査に載せる
+
+2026-08-18b Amendment がスタイル系を取り込んだ結果、**残ったのは `Sketch+Shapes.swift` の
+2D 描画プリミティブだけ**になった（#973）。同ファイルの public メンバ 52 本のうち注記があるのは
+変換ファミリの 16 本（#379 / PR #675）だけで、`rect` / `circle` / `line` / `beginShape` といった
+**最初に触る API 36 本が無記載**のまま残っていた。
+
+無記載が最も誤解を招くのはこの面である。`box()` に「**3D のみ**」と書かれ、`tint` に
+「**2D のみ**」と書かれた今、`rect()` の沈黙は「両方に効く」とも「まだ書かれていないだけ」とも読める。
+`Sketch+Shapes.swift` は変換ファミリ（2D/3D 両方に効く）と 2D 専用プリミティブが**同居する
+唯一のファイル**なので、沈黙の解釈がとりわけ割れやすい。
+
+### 1. 決定: 規範表を 2D 描画プリミティブへ広げる
+
+§8 の表と 2 つの先行 Amendment はスタイル・変換・シェイプ・メッシュを覆ったが、2D の描画
+プリミティブ本体は依然どの表にも無い。実装（`SketchContext+Shapes.swift` の転送先）から
+機械的に定まるので、次のとおり規範へ加える:
+
+| 適用先 | API | 実装上の根拠 |
+|---|---|---|
+| 2D のみ（プリミティブ） | `rect`×3 / `linearGradient` / `radialGradient` / `ellipse` / `circle` / `circles`×2 / `square` / `quad` / `line` / `triangle` / `polygon`×2 / `arc` / `bezier` / `point` | `canvas` のみへ転送。3D の対応物は `box` / `sphere` / `beginShape3D` 側にあり、同名 API が両キャンバスへ分岐する構造ではない |
+| 2D のみ（カスタムシェイプ） | `beginShape` / `bezierVertex` / `curveVertex` / `curveDetail` / `curveTightness` / `curve` | 同上。`beginShape` は `activeShapeRecording = .twoD` を立てるだけで `canvas3D` に触れない |
+| **2D のみ**（コンター） | **`beginContour` / `endContour`** | **`canvas` のみへ転送。`beginShape3D()` の記録中は警告して no-op（#736）** |
+| 2D のみ（クリップ） | `beginClip` / `endClip` | `canvas` のみへ転送。3D の描画はクリップされない |
+| 記録中のシェイプが決める | `vertex`×3 / `endShape` | `activeShapeRecording` を見て `canvas3D` へ流す。2026-08-18 Amendment §2 が 3D 側で定義した区分の**裏返し**にあたる |
+| 3D のみ | `screenX` / `screenY` / `screenZ`（いずれも 3 引数）/ `isInFront` | 3D の投影とカメラ平面を問う API。2 引数版が 2D の対応物として別にある |
+
+**`beginContour` / `endContour` は「記録中のシェイプ」ではなく「2D のみ」と書く。**
+実装は `activeShapeRecording` を見るので形の上では「記録中のシェイプが決める」区分に似ているが、
+3D 記録中の分岐は**描画先を変えるのではなく警告して何もしない**（#736）。「記録中のシェイプが
+決める」は「どちらのキャンバスへ流れるか」を表す区分なので、流れ先が存在しないここへ当てると
+利用者は「3D でも穴が開く」と読み違える。既存 doc が「（2D シェイプ専用）」と書いていた実態にも合う。
+
+### 2. 帰結
+
+- `Sketch+Shapes.swift` の public メンバ **全数**が作用先を宣言する状態になった。本 Amendment で
+  足したのは 36 本で、内訳は「**2D のみ**」28 本 +「**記録中のシェイプ**」4 本（`vertex`×3 /
+  `endShape`）+「**3D のみ**」4 本（`screenX` / `screenY` / `screenZ` の 3 引数版と `isInFront`）。
+  既存の 16 本（変換ファミリ）と、#814 / PR #999 が注記付きで足した `modelX` / `modelY` / `modelZ`
+  の 3 本を合わせて 55 本。
+- `SketchScopeNoteTests` の検査対象が `Sketch+3D.swift` / `Sketch+Style.swift` /
+  `Sketch+Shapes.swift` の **3 面すべて**になった。ADR-0005 の規範表が触れる Sketch 層のファイルは
+  これで全数が機械判定の下に入り、「注記を書き忘れた新 API」はどの面でも赤で止まる。
+  #379 → #677 → #954 → #973 と 4 回に分けて後追いした作業は、これで**打ち止めになる**。
+- `llms.txt` を再生成した（#786 / PR #969 以降 callout が生成物へ載るため）。
+- 挙動は変わらない（doc コメント・ADR 本文・テストのみ）。
 
 ## References
 
