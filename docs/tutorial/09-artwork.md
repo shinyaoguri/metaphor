@@ -393,7 +393,7 @@ final class RecordMotionSketch: Sketch {
 ### もっと詳しく
 
 - [`beginVideoRecord(_:config:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/beginvideorecord%28_:config:%29), [`endVideoRecord(completion:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endvideorecord%28completion:%29), [`VideoExportConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/videoexportconfig/)
-- [`beginGIFRecord(fps:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/begingifrecord%28fps:%29), [`endGIFRecord(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endgifrecord%28_:%29-57dkf), [`GIFExporter`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/gifexporter/)
+- [`beginGIFRecord(fps:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/begingifrecord%28fps:%29), [`endGIFRecord(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/endgifrecord%28_:%29), [`GIFExporter`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/gifexporter/)
 
 ## 9.3 ベクタで書き出す
 
