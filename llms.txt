@@ -1624,7 +1624,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MShape` -- ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
 
-- （ほか 30 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 32 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var capturedStyle: ShapeStyle` -- 作成時にキャプチャされたスタイルスナップショット。
 - `var childCount: Int { get }` -- 直接の子の数。
 - `var children: [MShape] { get }` -- 子シェイプ（グループシェイプ用）。
