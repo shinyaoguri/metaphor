@@ -396,14 +396,14 @@ public final class ImageFilterGPU {
         if let lib = library { return lib }
         do {
             guard let source = ShaderLibrary.loadShaderSource("imageFilter") else {
-                print("[metaphor] Failed to load imageFilter shader source")
+                metaphorAlert("Failed to load imageFilter shader source")
                 return nil
             }
             let lib = try device.makeLibrary(source: source, options: nil)
             self.library = lib
             return lib
         } catch {
-            print("[metaphor] Failed to compile ImageFilter shaders: \(error)")
+            metaphorAlert("Failed to compile ImageFilter shaders: \(error)")
             return nil
         }
     }
@@ -427,7 +427,7 @@ public final class ImageFilterGPU {
             kernelCache[functionName] = pipeline
             return pipeline
         } catch {
-            print("[metaphor] Failed to create compute pipeline for \(functionName): \(error)")
+            metaphorAlert("Failed to create compute pipeline for \(functionName): \(error)")
             return nil
         }
     }

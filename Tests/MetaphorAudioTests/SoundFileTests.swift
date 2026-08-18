@@ -145,6 +145,7 @@ struct SoundFilePlaybackTests {
         sound.disableAnalysis()
         #expect(sound.spectrum.isEmpty)
         #expect(sound.analysisVolume == 0)
+        #expect(sound.analysisRMS == 0)
         #expect(sound.isBeat == false)
         #expect(sound.band(0) == 0)
 

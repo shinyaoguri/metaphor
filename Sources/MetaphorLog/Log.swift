@@ -33,6 +33,11 @@ import Foundation
 //
 // stdout はライブラリの出力チャネル（metaphor-cli との JSON Lines）と共有しているので、
 // **Release でも出るものは必ず stderr へ書きます**。素の `print()` は使わないでください。
+//
+// この規約は文章だけでは守られませんでした（#805 で明文化したあとも `Sources/` には
+// 生の `print()` が 19 箇所残っていた・Issue #896）。いまは
+// `scripts/check-no-raw-print.py` が CI で `Sources/` の生 `print(` を落とします。
+// 正当な例外はそのスクリプトの `ALLOWLIST` に理由つきで載せてください。
 
 /// 開発者向けの警告（stdout、**DEBUG ビルドのみ**）。
 ///

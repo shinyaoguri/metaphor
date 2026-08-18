@@ -136,8 +136,21 @@ public final class AudioAnalyzer {
     /// The x4 gain makes everyday input levels visible without extra scaling, at
     /// the cost of saturating early — a sine wave already reads `1.0` from an
     /// amplitude of about 0.354 (`= sqrt(2) / 4`) upwards, so louder input no
-    /// longer moves the value. Below saturation the raw RMS is `volume / 4`.
+    /// longer moves the value. Below saturation the raw RMS is `volume / 4`;
+    /// above it the input level is no longer recoverable from this value, so
+    /// read ``rms`` instead when you need the level itself.
     public private(set) var volume: Float = 0
+
+    /// The unscaled RMS of the current frame (0.0-1.0).
+    ///
+    /// This is the value ``volume`` is derived from, before the x4 gain and the
+    /// clamp to 1.0. Because that clamp saturates from an RMS of 0.25 upwards
+    /// (a sine wave of amplitude 0.354), `volume` stops distinguishing loud
+    /// inputs from each other while this keeps rising. Read it when you want the
+    /// level rather than a display bar — metering, thresholds, headroom checks.
+    ///
+    /// - SeeAlso: ``volume``
+    public private(set) var rms: Float = 0
 
     /// Normalized FFT spectrum (0.0-1.0).
     public private(set) var spectrum: [Float] = []
@@ -449,10 +462,12 @@ public final class AudioAnalyzer {
             waveform[i] = 0
         }
 
-        // RMS 音量を計算
-        var rms: Float = 0
-        vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
-        volume = min(rms * 4.0, 1.0)
+        // RMS 音量を計算。
+        // vDSP へは必ずローカル変数を渡す（`&self.rms` はプロパティの inout 渡しになる）。
+        var frameRMS: Float = 0
+        vDSP_rmsqv(samples, 1, &frameRMS, vDSP_Length(samples.count))
+        rms = frameRMS
+        volume = min(frameRMS * 4.0, 1.0)
 
         // FFT
         performFFT(samples)

@@ -13,7 +13,7 @@
 ## Overview
 
 MetaphorVideo はビデオファイルの再生とフレーム単位のテクスチャ取得を提供します。
-``VideoPlayer`` で MP4、MOV、M4V ファイルを再生し、
+``MetaphorVideo/VideoPlayer`` で MP4、MOV、M4V ファイルを再生し、
 CVMetalTextureCache によるゼロコピーの Metal テクスチャとしてフレームを取得できます。
 
 このモジュールは MetaphorCore に依存せず、単独で使用できます。
@@ -30,13 +30,3 @@ video.loop()
 video.update()
 image(video, 0, 0, width, height)
 ```
-
-## Topics
-
-### ビデオ再生
-
-- ``VideoPlayer``
-
-### エラー
-
-- ``VideoPlayerError``

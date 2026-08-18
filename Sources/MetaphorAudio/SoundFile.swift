@@ -135,6 +135,16 @@ public final class SoundFile {
     /// reads `1.0` from an amplitude of about 0.354 upwards).
     public var analysisVolume: Float { _analyzer?.volume ?? 0 }
 
+    /// Returns the unscaled RMS of the playback level (available once analysis is enabled).
+    ///
+    /// Same as ``AudioAnalyzer/rms``: what ``analysisVolume`` is derived from,
+    /// before the x4 gain and the clamp. Read this instead of `analysisVolume`
+    /// when the loud end matters — `analysisVolume` saturates at an RMS of 0.25
+    /// and stops telling loud passages apart.
+    ///
+    /// - SeeAlso: ``analysisVolume``
+    public var analysisRMS: Float { _analyzer?.rms ?? 0 }
+
     /// Returns the beat detection flag (available once analysis is enabled).
     public var isBeat: Bool { _analyzer?.isBeat ?? false }
 
@@ -319,8 +329,9 @@ public final class SoundFile {
     /// Disables spectrum analysis and releases the analyzer.
     ///
     /// Removes the tap installed on the main mixer by ``enableAnalysis(fftSize:)``.
-    /// After this call ``spectrum``, ``analysisVolume``, ``isBeat`` and ``band(_:)``
-    /// report their neutral values again, and ``update()`` becomes a no-op.
+    /// After this call ``spectrum``, ``analysisVolume``, ``analysisRMS``, ``isBeat``
+    /// and ``band(_:)`` report their neutral values again, and ``update()``
+    /// becomes a no-op.
     /// Calling it while analysis is not enabled does nothing.
     public func disableAnalysis() {
         guard _analyzer != nil else { return }
