@@ -1,5 +1,5 @@
 {
-  "comment": "Hand-written capture and layout settings for scripts/generate-reference-shots.py. Keys are '<source path>::<symbol>' (or just '<symbol>'). Everything here is optional; omit an entry to take the defaults (480x360 still, laid out as a two-column row with the image on the left). 'motion' shoots a GIF instead of a still — only for symbols whose meaning cannot be read from a single frame (ADR-0008: DocC cannot use WebP, so motion costs a GIF). 'layout': 'stack' puts the code above the image at full width — for wide figures and for snippets whose lines do not fit a column.",
+  "comment": "Hand-written capture and layout settings for scripts/generate-reference-shots.py. Keys are '<source path>::<symbol>' (or just '<symbol>'). Everything here is optional; omit an entry to take the defaults (480x360 still, laid out as a two-column row with the image on the left). 'motion' shoots a GIF instead of a still — only for symbols whose meaning cannot be read from a single frame (ADR-0008: DocC cannot use WebP, so motion costs a GIF). 'layout': 'stack' puts the code above the image at full width — for wide figures and for snippets whose lines do not fit a column. 'symmetric' ('vertical' | 'horizontal' | 'both') declares that the shot is meant to look the same when flipped, silencing the flip-PSNR warning on that axis (#985).",
   "shots": {
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::rotate(_:)": {
       "motion": { "frames": 36, "every": 2, "fps": 15 }
@@ -18,6 +18,15 @@
     },
     "Sources/MetaphorCore/Utilities/Easing.swift::ease(_:from:to:using:)": {
       "motion": { "frames": 36, "every": 2, "fps": 15 }
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+3D.swift::plane(_:_:)": {
+      "symmetric": "horizontal"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+3D.swift::cone(radius:height:detail:)": {
+      "symmetric": "horizontal"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::radialGradient(_:_:_:_:_:segments:)": {
+      "symmetric": "both"
     }
   }
 }

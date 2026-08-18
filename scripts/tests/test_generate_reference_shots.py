@@ -257,6 +257,90 @@ class ReferenceShotsTestCase(unittest.TestCase):
             circle.fingerprint({circle.key: {"layout": "stack"}}),
         )
 
+    def test_an_unknown_symmetric_value_is_an_error(self):
+        circle, _ = self.extract()
+        with self.assertRaises(shots.ShotError):
+            circle.symmetric({circle.key: {"symmetric": "diagonal"}})
+
+    def test_symmetric_is_not_part_of_the_fingerprint(self):
+        """「対称でよい」の申告は撮り直しを起こさない（絵は変わらないので）。
+
+        `layout` と同じ不変条件。これを破ると、申告を足した日にも外した日にも全点の
+        指紋が動き、絵が 1 枚も変わっていないのに 58 点の撮り直しが要る（#784 の `settle`
+        で実際に踏んだ）。
+        """
+        circle, _ = self.extract()
+        for value in shots.SYMMETRIES:
+            self.assertEqual(
+                circle.fingerprint({}),
+                circle.fingerprint({circle.key: {"symmetric": value}}),
+                f"symmetric: {value} が指紋を動かしている",
+            )
+
+    def test_a_flip_match_above_the_threshold_warns(self):
+        """反転と見分けが付かない絵は、軸ごとに警告になる（#985）。
+
+        しきい値は台帳 58 点の実測から決めた値なので、テスト側も実測に沿った具体的な
+        値で確かめる（定数から作ると、しきい値を動かしたときテストごと一緒に動いて
+        何も検出しなくなる）。#923 の `ortho` は直す前が上下反転と完全一致、
+        `perspective` は 58.7 dB、直した後は 16.7 / 20.5 dB だった。
+        """
+        self.assertLess(shots.FLIP_PSNR_WARN_DB, 43.5, "40 dB より上げると radialGradient 帯に入る")
+        self.assertGreater(shots.FLIP_PSNR_WARN_DB, 37.0, "40 dB より下げると通常の図形を拾う")
+        circle, _ = self.extract()
+        measured = {"vflip": float("inf"), "hflip": 58.66}
+        warnings = shots.symmetry_warnings(
+            circle, Path("still.png"), None, measure=lambda _, flip: measured[flip]
+        )
+        self.assertEqual(len(warnings), 2)
+        self.assertIn("上下", warnings[0])
+        self.assertIn("完全一致", warnings[0])
+        self.assertIn("左右", warnings[1])
+        self.assertIn("58.7 dB", warnings[1])
+
+    def test_an_asymmetric_shot_is_silent(self):
+        circle, _ = self.extract()
+        warnings = shots.symmetry_warnings(
+            circle, Path("still.png"), None, measure=lambda _f, _a: 20.46
+        )
+        self.assertEqual(warnings, [])
+
+    def test_an_unmeasurable_shot_says_so_instead_of_going_quiet(self):
+        """ffmpeg が無くて測れないときは、黙らずに note を返す。
+
+        警告を出すための仕組みが、測れないときに無言で「異常なし」と見分けが
+        付かなくなるのが一番危ない（実際 CI には ffmpeg が入っていない）。
+        """
+        circle, _ = self.extract()
+        notes = shots.symmetry_warnings(
+            circle, Path("still.png"), None, measure=lambda _f, _a: None
+        )
+        self.assertEqual(len(notes), 1)
+        self.assertIn("飛ばした", notes[0])
+        self.assertIn("ffmpeg", notes[0])
+
+    def test_flip_psnr_returns_none_without_ffmpeg(self):
+        """ffmpeg の有無を持つのは flip_psnr（計測経路を 1 本にする）。"""
+        saved = shots.shutil.which
+        shots.shutil.which = lambda _name: None
+        try:
+            self.assertIsNone(shots.flip_psnr(Path("still.png"), "vflip"))
+        finally:
+            shots.shutil.which = saved
+
+    def test_a_declared_axis_is_silenced_but_the_other_is_not(self):
+        circle, _ = self.extract()
+        measure = lambda _f, _a: float("inf")  # noqa: E731
+        vertical = shots.symmetry_warnings(
+            circle, Path("still.png"), "vertical", measure=measure
+        )
+        self.assertEqual(len(vertical), 1)
+        self.assertIn("左右", vertical[0])
+        self.assertEqual(
+            shots.symmetry_warnings(circle, Path("still.png"), "both", measure=measure),
+            [],
+        )
+
     def test_motion_shows_only_the_gif(self):
         circle, _ = self.extract()
         shots.rewrite_sources(
@@ -482,6 +566,7 @@ class CaptureTestCase(unittest.TestCase):
             "CAPTURE_TIMEOUT_SEC": shots.CAPTURE_TIMEOUT_SEC,
             "POLL_INTERVAL_SEC": shots.POLL_INTERVAL_SEC,
             "collect_sequence": shots.collect_sequence,
+            "flip_psnr": shots.flip_psnr,
             "Popen": shots.subprocess.Popen,
         }
         shots.REPO_ROOT = self.work
@@ -492,6 +577,11 @@ class CaptureTestCase(unittest.TestCase):
         shots.POLL_INTERVAL_SEC = 0.01
         # 連番から GIF を作るところは ffmpeg が要るので、ここでは通らない。
         shots.collect_sequence = lambda *args, **kwargs: {"width": 480, "height": 360}
+        # 反転一致の計測も ffmpeg が要る（偽の PNG に中身は無い）。既定は「対称でない」。
+        # flip_psnr は ffmpeg の有無まで受け持つので、これを差し替えれば
+        # ffmpeg の無い CI でも判定ロジックそのものを検査できる。
+        self.measured = 20.46
+        shots.flip_psnr = lambda *args, **kwargs: self.measured
 
         self.probe_dir = shots.WORK_DIR / ".metaphor/probe"
         self.launched: list[FakeSketch] = []
@@ -504,6 +594,7 @@ class CaptureTestCase(unittest.TestCase):
         shots.CAPTURE_TIMEOUT_SEC = self._saved["CAPTURE_TIMEOUT_SEC"]
         shots.POLL_INTERVAL_SEC = self._saved["POLL_INTERVAL_SEC"]
         shots.collect_sequence = self._saved["collect_sequence"]
+        shots.flip_psnr = self._saved["flip_psnr"]
         shots.subprocess.Popen = self._saved["Popen"]
 
     def _popen(self, *args, **kwargs) -> FakeSketch:
@@ -563,6 +654,33 @@ class CaptureTestCase(unittest.TestCase):
         self.assertNotIn("frames", launch, "静止画に連続キャプチャを頼んでいる")
         self.assertEqual(entry, {"width": 480, "height": 360})
         self.assertTrue((shots.STAGING_DIR / f"{snippet.target}.png").is_file())
+
+    def test_capture_surfaces_the_flip_warning(self):
+        """反転と見分けの付かない絵は、撮った直後に警告として出る（#985）。
+
+        撮影は止めない（対称なのが正しい絵は普通にある）。`shots.config.json` で
+        「対称でよい」と申告してあるものは黙る。
+        """
+        self.measured = float("inf")
+        snippet = self._snippet()
+
+        printed = io.StringIO()
+        stdout, sys.stdout = sys.stdout, printed
+        try:
+            entry = shots.capture(snippet, snippet.settings({}))
+        finally:
+            sys.stdout = stdout
+        self.assertEqual(entry, {"width": 480, "height": 360}, "警告は撮影を止めない")
+        self.assertIn("上下反転と見分けが付きません", printed.getvalue())
+        self.assertIn("左右反転と見分けが付きません", printed.getvalue())
+
+        printed = io.StringIO()
+        stdout, sys.stdout = sys.stdout, printed
+        try:
+            shots.capture(snippet, snippet.settings({}), "both")
+        finally:
+            sys.stdout = stdout
+        self.assertNotIn("見分けが付きません", printed.getvalue())
 
     def test_a_sketch_that_dies_is_reported_with_its_stderr(self):
         """起動に失敗したら、タイムアウトを待たずに理由ごと止まる。"""
