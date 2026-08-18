@@ -1,7 +1,7 @@
 # ``MetaphorNoise``
 
 @Metadata {
-    @PageColor(teal)
+    @PageColor(blue)
 }
 
 @Options {
@@ -52,17 +52,3 @@ let texture = noise.texture(width: 512, height: 512)
 格子の `width` / `height` によっても変わります）。
 
 **1 つのスケッチでは入口を片方に統一してください。** 混ぜると「絵と数値が食い違う」形で現れます。
-
-## Topics
-
-### ノイズタイプ
-
-- ``NoiseType``
-
-### 設定
-
-- ``NoiseConfig``
-
-### ジェネレータ
-
-- ``GKNoiseWrapper``
