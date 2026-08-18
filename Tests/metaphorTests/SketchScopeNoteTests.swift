@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-/// ADR-0005 の「2D/3D の作用先を Sketch 層 doc に明記する」規約を機械的に守る（Issue #677 / #954）。
+/// ADR-0005 の「2D/3D の作用先を Sketch 層 doc に明記する」規約を機械的に守る（Issue #677 / #954 / #973）。
 ///
 /// この規約は長らく散文だけで担保されていたため、#379（33 本）と #677（27 本）の
 /// 2 回に分けて後追いで埋める羽目になった。埋め終えた面をテストで凍結して、
@@ -9,7 +9,6 @@ import Testing
 ///
 /// 検査するのは ``auditedFiles`` に挙げたファイル。「public メンバ全数が注記を持つ」ことを
 /// 満たしたファイルだけを足す（部分的な面を入れると赤が常態化して意味を失う）。
-/// `Sketch+Shapes.swift` の 2D 描画プリミティブはまだ埋まっていないので対象外（#973）。
 ///
 /// `SketchContext+*.swift` は 2026-08-18 Amendment §1 が「注記を置かない」と決めた層なので、
 /// 何も要求しない（正本は Sketch 層のみ）。
@@ -19,7 +18,8 @@ struct SketchScopeNoteTests {
     /// 検査対象のファイルと、そこで拾えるべき public 宣言の下限。
     ///
     /// 下限は「スキャナが宣言を拾えなくなって常に緑になる」事故への保険で、
-    /// 実数（`Sketch+3D.swift` 67 / `Sketch+Style.swift` 27）より少し低く採る。
+    /// 実数（`Sketch+3D.swift` 67 / `Sketch+Style.swift` 27 / `Sketch+Shapes.swift` 55）より
+    /// 少し低く採る。
     struct AuditedFile: Sendable, CustomStringConvertible {
         let relativePath: String
         let minimumDeclarations: Int
@@ -31,6 +31,7 @@ struct SketchScopeNoteTests {
     static let auditedFiles: [AuditedFile] = [
         AuditedFile(relativePath: "Sources/MetaphorCore/Sketch/Sketch+3D.swift", minimumDeclarations: 60),
         AuditedFile(relativePath: "Sources/MetaphorCore/Sketch/Sketch+Style.swift", minimumDeclarations: 25),
+        AuditedFile(relativePath: "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift", minimumDeclarations: 48),
     ]
 
     /// ADR-0005 の作用先区分に対応する doc 上の目印。
