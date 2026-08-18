@@ -18,11 +18,12 @@ Run from the repository root:
 
 import importlib.util
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+from _git_helpers import git as hermetic_git, init_repo
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "shots_common.py"
 _spec = importlib.util.spec_from_file_location("shots_common", _SCRIPT)
@@ -165,20 +166,15 @@ class GitTestCase(CommonTestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.repo = self.root / "repo"
+        self.repo = init_repo(self.root / "repo")
         (self.repo / "Sources").mkdir(parents=True)
         (self.repo / "docs").mkdir()
-        self.git("init", "-q", "-b", "main")
-        self.git("config", "user.email", "test@example.com")
-        self.git("config", "user.name", "Test")
         common.implementation_drift.cache_clear()
         self.addCleanup(common.implementation_drift.cache_clear)
 
     def git(self, *args: str) -> str:
-        result = subprocess.run(
-            ["git", *args], cwd=self.repo, capture_output=True, text=True, check=True
-        )
-        return result.stdout.strip()
+        """開発機のグローバル設定から密封して git を引く（#979）。"""
+        return hermetic_git(*args, cwd=self.repo).strip()
 
     def commit(self, path: str, text: str) -> str:
         target = self.repo / path

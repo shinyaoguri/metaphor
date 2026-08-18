@@ -15,17 +15,27 @@ files plus deleted `changelog.d/` entries) as the central case.
 import base64
 import importlib.util
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import ExitStack, redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
+
+from _git_helpers import git as hermetic_git, hermetic_environ, init_repo
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "signed-commit.py"
 _spec = importlib.util.spec_from_file_location("signed_commit", _SCRIPT)
 sc = importlib.util.module_from_spec(_spec)
 sys.modules["signed_commit"] = sc
 _spec.loader.exec_module(sc)
+
+# `expectedHeadOid` is a GitObjectID, so the payload only ever carries the full
+# 40-character form — `main()` normalizes whatever was passed through
+# `git rev-parse` first (Issue #981). Tests that never resolve a real commit use
+# this placeholder, which `rev-parse` echoes back even in an empty repository.
+_FULL_SHA = "0" * 39 + "1"
 
 
 class ParsePorcelainTests(unittest.TestCase):
@@ -90,7 +100,7 @@ class BuildPayloadTests(unittest.TestCase):
         return sc.build_payload(
             repo="shinyaoguri/metaphor",
             branch="release/v0.9.0",
-            expected_head="abc123",
+            expected_head=_FULL_SHA,
             message=message,
             additions=[("Package.swift", "BASE64")],
             deletions=["changelog.d/419.added.md"],
@@ -108,7 +118,7 @@ class BuildPayloadTests(unittest.TestCase):
         )
         # Optimistic locking: without this the mutation could land on a branch
         # someone else moved.
-        self.assertEqual(given["expectedHeadOid"], "abc123")
+        self.assertEqual(given["expectedHeadOid"], _FULL_SHA)
 
     def test_file_changes(self):
         changes = self._payload()["variables"]["input"]["fileChanges"]
@@ -143,102 +153,163 @@ class EncodeFileTests(unittest.TestCase):
             )
 
 
-class MainTests(unittest.TestCase):
+class _RepoTestCase(unittest.TestCase):
+    """A throwaway repository, sealed off from the developer's git config (#979).
+
+    `main()` shells out to git itself — `status --porcelain`, and since #981 also
+    `rev-parse` — so `env=` is not ours to pass; `os.environ` gets the seal
+    instead. Without it the developer's global config reaches into these
+    repositories: a `core.excludesFile` that happens to cover `*.zip` would make
+    the path-scoping test below pass for the wrong reason, and keep passing after
+    the scoping broke.
+    """
+
+    def setUp(self) -> None:
+        stack = ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(hermetic_environ())
+        self.repo = init_repo(Path(stack.enter_context(tempfile.TemporaryDirectory())))
+
+    def seed(self) -> str:
+        """Give the repository one commit, and return its full SHA."""
+        hermetic_git("commit", "-q", "--allow-empty", "-m", "seed", cwd=self.repo)
+        return hermetic_git("rev-parse", "HEAD", cwd=self.repo).strip()
+
+    def run_main(self, *args: str) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = sc.main([*args, "--repo-root", str(self.repo), "--dry-run"])
+        return code, out.getvalue(), err.getvalue()
+
+
+class ResolveHeadTests(_RepoTestCase):
+    """`expectedHeadOid` only accepts 40 characters; everything else is expanded.
+
+    The four shapes below are the ones a caller actually reaches for — and before
+    #981 three of them died as a `Could not coerce value ... to GitObjectID`
+    after the whole change set had been base64-encoded and sent.
+    """
+
+    def test_a_short_sha_is_expanded(self):
+        head = self.seed()
+        self.assertEqual(sc.resolve_head(head[:7], self.repo), head)
+
+    def test_a_branch_name_is_expanded(self):
+        head = self.seed()
+        self.assertEqual(sc.resolve_head("main", self.repo), head)
+
+    def test_head_is_expanded(self):
+        head = self.seed()
+        self.assertEqual(sc.resolve_head("HEAD", self.repo), head)
+
+    def test_a_full_sha_is_passed_through_even_without_the_object(self):
+        # No `--verify`, on purpose: a caller that read the branch head from the
+        # API holds a valid SHA this checkout has never seen, and the mutation
+        # is what checks it anyway.
+        self.seed()
+        self.assertEqual(sc.resolve_head(_FULL_SHA, self.repo), _FULL_SHA)
+
+    def test_an_unknown_ref_is_an_error(self):
+        self.seed()
+        with self.assertRaises(subprocess.CalledProcessError):
+            sc.resolve_head("no-such-ref", self.repo)
+
+
+class MainTests(_RepoTestCase):
     def test_dry_run_reports_the_change_set_without_sending(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            import subprocess
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
 
-            for args in (
-                ["init", "-q"],
-                ["config", "user.email", "t@example.com"],
-                ["config", "user.name", "t"],
-            ):
-                subprocess.run(["git", "-C", str(repo), *args], check=True)
-            (repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
-
-            out, err = io.StringIO(), io.StringIO()
-            with redirect_stdout(out), redirect_stderr(err):
-                code = sc.main(
-                    [
-                        "--repo",
-                        "shinyaoguri/metaphor",
-                        "--branch",
-                        "release/v0.9.0",
-                        "--expected-head",
-                        "abc123",
-                        "--message",
-                        "Release v0.9.0",
-                        "--repo-root",
-                        str(repo),
-                        "--dry-run",
-                    ]
-                )
-            self.assertEqual(code, 0)
-            self.assertIn("Package.swift", out.getvalue())
-            self.assertIn("+ Package.swift", err.getvalue())
+        code, out, err = self.run_main(
+            "--repo",
+            "shinyaoguri/metaphor",
+            "--branch",
+            "release/v0.9.0",
+            "--expected-head",
+            _FULL_SHA,
+            "--message",
+            "Release v0.9.0",
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("Package.swift", out)
+        self.assertIn("+ Package.swift", err)
 
     def test_path_scoping_excludes_everything_else(self):
         # The release commit must carry the bumped files only. On a runner the
         # working tree also holds build output, and an unscoped commit would
         # sweep in whatever happens not to be gitignored.
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            import subprocess
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+        (self.repo / "build-output.zip").write_text("junk\n", encoding="utf-8")
 
-            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
-            (repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
-            (repo / "build-output.zip").write_text("junk\n", encoding="utf-8")
-
-            out, err = io.StringIO(), io.StringIO()
-            with redirect_stdout(out), redirect_stderr(err):
-                sc.main(
-                    [
-                        "--repo",
-                        "o/n",
-                        "--branch",
-                        "b",
-                        "--expected-head",
-                        "s",
-                        "--message",
-                        "m",
-                        "--repo-root",
-                        str(repo),
-                        "--path",
-                        "Package.swift",
-                        "--dry-run",
-                    ]
-                )
-            self.assertIn("Package.swift", out.getvalue())
-            self.assertNotIn("build-output.zip", out.getvalue())
+        _, out, _ = self.run_main(
+            "--repo",
+            "o/n",
+            "--branch",
+            "b",
+            "--expected-head",
+            _FULL_SHA,
+            "--message",
+            "m",
+            "--path",
+            "Package.swift",
+        )
+        self.assertIn("Package.swift", out)
+        self.assertNotIn("build-output.zip", out)
 
     def test_no_changes_is_an_error(self):
         # A release that produced no diff must not create an empty commit —
         # it means a sed stopped matching.
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            import subprocess
+        code, _, err = self.run_main(
+            "--repo",
+            "o/n",
+            "--branch",
+            "b",
+            "--expected-head",
+            _FULL_SHA,
+            "--message",
+            "m",
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("Nothing to commit", err)
 
-            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
-            err = io.StringIO()
-            with redirect_stderr(err):
-                code = sc.main(
-                    [
-                        "--repo",
-                        "o/n",
-                        "--branch",
-                        "b",
-                        "--expected-head",
-                        "s",
-                        "--message",
-                        "m",
-                        "--repo-root",
-                        str(repo),
-                        "--dry-run",
-                    ]
-                )
-            self.assertEqual(code, 1)
-            self.assertIn("Nothing to commit", err.getvalue())
+    def test_the_expanded_sha_is_what_reaches_the_payload(self):
+        head = self.seed()
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        with mock.patch.object(sc, "build_payload", wraps=sc.build_payload) as built:
+            code, _, _ = self.run_main(
+                "--repo",
+                "o/n",
+                "--branch",
+                "b",
+                "--expected-head",
+                "HEAD",
+                "--message",
+                "m",
+            )
+        self.assertEqual(code, 0)
+        self.assertEqual(built.call_args.kwargs["expected_head"], head)
+
+    def test_an_unknown_expected_head_fails_before_anything_is_encoded(self):
+        # The whole point of #981: the complaint has to name the argument, and
+        # arrive before the change set is read, encoded and uploaded.
+        self.seed()
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        with mock.patch.object(sc, "encode_file") as encode:
+            code, _, err = self.run_main(
+                "--repo",
+                "o/n",
+                "--branch",
+                "b",
+                "--expected-head",
+                "no-such-ref",
+                "--message",
+                "m",
+            )
+        self.assertEqual(code, 1)
+        self.assertIn("--expected-head", err)
+        self.assertIn("no-such-ref", err)
+        encode.assert_not_called()
 
 
 if __name__ == "__main__":

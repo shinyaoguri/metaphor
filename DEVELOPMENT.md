@@ -136,6 +136,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - 生成器は**決定的**であること（全コレクションをソート）。非決定的出力は auto-fix bot が毎回 push する原因になります。
 - **前文（カスタムシェーダーへ配る MSL の頭）は 2D / 3D / postFX とも `.h` からの生成物**です（3D は #707、postFX は #718、2D は #714）。構造体を直すときは `Shaders/Metal/Metaphor{Canvas2D,Canvas3D,PostProcess}Types.h` を直して再生成します — Swift 側に前文の文字列を書き足さないでください。組み込みシェーダーも同じ `.h` を include するので、片方だけ直して食い違うことがありません（`ShaderPreludeTests` が Swift 側とのレイアウト一致まで見ます）。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
+- **テストの中で一時リポジトリを `git init` するときは `scripts/tests/_git_helpers.py` の `init_repo()` / `git()` を使います**（#979）。素の `git` は開発機のグローバル設定を継ぐので、コミット署名を設定したマシンではテスト中の `git commit` まで署名を要求され、署名エージェントが使えなければ exit 128、ロック中なら応答待ちで止まります。CI の runner には署名設定が無く常に green なので、**このずれは CI からは永久に見えません**。密封の中身と、それが効いていることの回帰テストは `scripts/tests/test_git_helpers.py`。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
 
 ## 公開サイトの構成を手元で確認する
