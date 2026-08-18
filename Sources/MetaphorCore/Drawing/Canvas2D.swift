@@ -665,8 +665,8 @@ public final class Canvas2D: CanvasStyle {
         }
         if !didWarnBlendFallback {
             didWarnBlendFallback = true
-            print("""
-            [metaphor] blendMode(.multiply / .screen / .subtract / .lightest / .darkest / \
+            metaphorAlert("""
+            blendMode(.multiply / .screen / .subtract / .lightest / .darkest / \
             .difference / .exclusion) はカスタム 2D シェーダと同時には使えません\
             （フレームバッファフェッチ用の組み込みフラグメントで実装されているため）。\
             通常のアルファブレンドで描画します。

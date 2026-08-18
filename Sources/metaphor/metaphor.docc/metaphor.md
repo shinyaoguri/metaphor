@@ -229,6 +229,10 @@ final class MySketch: Sketch {
 - ``MetaphorAudio/AudioAnalyzer``
 - ``MetaphorAudio/SoundFile``
 
+### 映像
+
+- ``MetaphorVideo/VideoPlayer``
+
 ### ネットワーク
 
 - ``MetaphorNetwork/OSCReceiver``
@@ -246,11 +250,18 @@ final class MySketch: Sketch {
 - ``MetaphorMPS/MPSImageFilterWrapper``
 - ``MetaphorMPS/MPSRayTracer``
 - ``MetaphorMPS/RayTraceMode``
+- ``MetaphorMPS/MPSBlurEffect``
+- ``MetaphorMPS/MPSSobelEffect``
+- ``MetaphorMPS/MPSErodeEffect``
+- ``MetaphorMPS/MPSDilateEffect``
 
 ### Core Image
 
 - ``MetaphorCoreImage/CIFilterPreset``
 - ``MetaphorCoreImage/CIFilterWrapper``
+- ``MetaphorCoreImage/CIFilterValue``
+- ``MetaphorCoreImage/CIFilterEffect``
+- ``MetaphorCoreImage/CIFilterRawEffect``
 
 ### ノイズ生成
 
@@ -269,6 +280,7 @@ final class MySketch: Sketch {
 ### シーングラフ
 
 - ``MetaphorSceneGraph/Node``
+- ``MetaphorSceneGraph/AABB``
 - ``MetaphorSceneGraph/SceneRenderer``
 
 ### レンダーグラフ
@@ -301,6 +313,11 @@ final class MySketch: Sketch {
 - ``MetaphorCore/GIFExporter``
 - ``MetaphorCore/FrameExporter``
 
+### 出力（拡張ポイント）
+
+- ``MetaphorCore/MetaphorOutputPlugin``
+- ``MetaphorCore/MetaphorOutputRegistry``
+
 ### Syphon
 
 - ``MetaphorSyphon/SyphonOutput``
@@ -326,3 +343,4 @@ final class MySketch: Sketch {
 - ``MetaphorCore/MetaphorError``
 - ``MetaphorAudio/SoundFileError``
 - ``MetaphorNetwork/OSCReceiverError``
+- ``MetaphorVideo/VideoPlayerError``

@@ -187,26 +187,57 @@ enum GoldenScenes {
     /// `specular` も同じく colorMode 基準（#527 でグレー値が素通しだったのを直した）。
     /// もとは `0.9` と書かれていて、素通しだったため偶然ほぼ同じ値
     /// （`230/255 ≒ 0.902`）で描かれていた。そのため単位を直してもゴールデンは変わらない。
-    /// なお **`shininess(48)` のハイライトはこのシーンの可視面にほとんど乗っていない**ため、
-    /// 鏡面の強さを変えても絵が動かない（＝鏡面の退行はまだ捉えられていない）。#535。
+    ///
+    /// `shininess` はもとは `48` で、ハイライトがこのシーンの可視面にほとんど乗らず
+    /// **鏡面を丸ごと消しても 1 ビットも動かなかった**（`specular(230)` と `specular(0)` で
+    /// `maxChannelDiff=0`。Issue #535）。
+    ///
+    /// `12` は `lightingPBR` と同じ物差し（「ハイライトが 255 に張り付かない上限」）で
+    /// 選んだ値。shininess を下げるほどハイライトは広く強くなるので、**飽和しない側の端**が
+    /// もっとも検出力が高い。実測（128x128・鏡面あり／なしの比較）:
+    ///
+    /// | shininess | maxChannelDiff | 許容超過画素 | 255 に張り付いた画素 |
+    /// |---|---|---|---|
+    /// | 8  | 54 | 22.9% | 493 |
+    /// | 10 | 37 | 17.9% | 66 |
+    /// | **12** | **26** | **10.2%** | **0** |
+    /// | 16 | 13 | 2.7% | 0 |
+    /// | 24 | 3 | 0.0% | 0 |
+    /// | 48 | 0 | 0.0% | 0 |
+    ///
+    /// `10` 以下は階調がクリップして鏡面の強さの違いが潰れ、`24` 以上は許容差
+    /// （``GoldenTolerance/shaded``）に埋もれて退行を落とせない。`12` なら拡散・鏡面・
+    /// 環境光の 3 つが同時に識別でき、許容差に対して maxChannelDiff で 6 倍以上の余裕がある。
+    /// 実際に落とせることは `GoldenImageTests` の検出力検査が毎回測っている。
     static let lightingBlinnPhong = GoldenScene(
-        name: "lighting-blinn-phong", tolerance: .shaded
-    ) { c in
-        c.background(Color(r: 0.05, g: 0.05, b: 0.10))
-        c.pbr(false)
-        // カメラ（-z 方向を向く）側から当てて前面を照らす。真下からの光だと
-        // 可視面がほぼ環境光だけになり、ゴールデンの識別力が落ちる。
-        c.ambientLight(90)  // colorMode 基準（既定 0〜255）= レンジの約 35%
-        c.directionalLight(-0.4, -0.5, -1)
-        c.specular(230)  // colorMode 基準（既定 0〜255）= レンジの 90%
-        c.shininess(48)
-        c.fill(Color(r: 0.85, g: 0.55, b: 0.25))
-        c.pushMatrix()
-        c.translate(64, 64, 0)
-        c.rotateY(0.6)
-        c.rotateX(0.35)
-        c.box(58)
-        c.popMatrix()
+        name: "lighting-blinn-phong", tolerance: .shaded,
+        draw: blinnPhongDraw(specular: 230)  // colorMode 基準（既定 0〜255）= レンジの 90%
+    )
+
+    /// `lighting-blinn-phong` の描画本体。**鏡面の強さだけ**を差し替えられる形にしてある。
+    ///
+    /// ゴールデンが鏡面ハイライトを写しているかは絵を見ても分からないため、
+    /// 「鏡面を切った同じ絵」と突き合わせて `GoldenImageTests` が測る（#535）。
+    /// そのとき構図を検査側へ書き写すと、シーンだけ直されて検査が別の絵を見る事故が
+    /// 起きるので、可変点だけを引数にして構図はここ 1 箇所に置く（#375 / #357 と同じ理由）。
+    static func blinnPhongDraw(specular: Float) -> (SketchContext) -> Void {
+        { c in
+            c.background(Color(r: 0.05, g: 0.05, b: 0.10))
+            c.pbr(false)
+            // カメラ（-z 方向を向く）側から当てて前面を照らす。真下からの光だと
+            // 可視面がほぼ環境光だけになり、ゴールデンの識別力が落ちる。
+            c.ambientLight(90)  // colorMode 基準（既定 0〜255）= レンジの約 35%
+            c.directionalLight(-0.4, -0.5, -1)
+            c.specular(specular)
+            c.shininess(12)  // 飽和しない範囲でもっともハイライトが広がる値（#535）
+            c.fill(Color(r: 0.85, g: 0.55, b: 0.25))
+            c.pushMatrix()
+            c.translate(64, 64, 0)
+            c.rotateY(0.6)
+            c.rotateX(0.35)
+            c.box(58)
+            c.popMatrix()
+        }
     }
 
     /// ambient は `colorMode` のレンジ基準（既定 0〜255）。もとは `0.75`（実質 0）だった
@@ -214,21 +245,39 @@ enum GoldenScenes {
     /// 「鏡面ハイライトが 255 に張り付かない上限」で選んだ値で、拡散・鏡面・環境光の
     /// 3 つが同時に識別できる（レンジをこれ以上上げるとハイライトが飽和して
     /// 鏡面側の検出力が落ちる）。
-    static let lightingPBR = GoldenScene(name: "lighting-pbr", tolerance: .shaded) { c in
-        c.background(Color(r: 0.03, g: 0.03, b: 0.05))
-        c.pbr(true)
-        // 環境マップを持たないため metallic を上げすぎると真っ黒になる。
-        // 拡散と鏡面が両方見える範囲に収める（ゴールデンの識別力を確保）。
-        c.metallic(0.25)
-        c.roughness(0.45)
-        c.ambientLight(120)  // colorMode 基準（既定 0〜255）
-        c.directionalLight(-0.4, -0.5, -1)
-        c.pointLight(30, 20, 140, color: Color(r: 1.0, g: 0.8, b: 0.6))
-        c.fill(Color(r: 0.75, g: 0.75, b: 0.80))
-        c.pushMatrix()
-        c.translate(64, 64, 0)
-        c.sphere(40, detail: 24)
-        c.popMatrix()
+    ///
+    /// この「鏡面が識別できる」主張は #535 で実測して裏づけた。ラフネスを潰す
+    /// （`0.45` → `1.0`）と `maxChannelDiff=113`・33.8% の画素が動くので、Blinn-Phong 側で
+    /// 見つかった「鏡面が絵に出ていない」穴はこちらには無い。検査は `GoldenImageTests` にある。
+    static let lightingPBR = GoldenScene(
+        name: "lighting-pbr", tolerance: .shaded,
+        draw: pbrDraw(roughness: 0.45)
+    )
+
+    /// `lighting-pbr` の描画本体。**ラフネスだけ**を差し替えられる形にしてある。
+    ///
+    /// PBR に `specular()` は効かない（鏡面は Cook-Torrance の D・G・F から出る）ので、
+    /// Blinn-Phong 側の `specular(0)` にあたる「鏡面だけを動かす」つまみは `roughness`。
+    /// 直接光の経路でラフネスが入るのは `DistributionGGX` と `GeometrySmith` だけで、
+    /// 拡散項 `kD = (1 - F)(1 - metallic)` と環境光は素通しになるため、
+    /// ラフネスを動かして絵が変われば**鏡面が写っている**と言い切れる（#535）。
+    static func pbrDraw(roughness: Float) -> (SketchContext) -> Void {
+        { c in
+            c.background(Color(r: 0.03, g: 0.03, b: 0.05))
+            c.pbr(true)
+            // 環境マップを持たないため metallic を上げすぎると真っ黒になる。
+            // 拡散と鏡面が両方見える範囲に収める（ゴールデンの識別力を確保）。
+            c.metallic(0.25)
+            c.roughness(roughness)
+            c.ambientLight(120)  // colorMode 基準（既定 0〜255）
+            c.directionalLight(-0.4, -0.5, -1)
+            c.pointLight(30, 20, 140, color: Color(r: 1.0, g: 0.8, b: 0.6))
+            c.fill(Color(r: 0.75, g: 0.75, b: 0.80))
+            c.pushMatrix()
+            c.translate(64, 64, 0)
+            c.sphere(40, detail: 24)
+            c.popMatrix()
+        }
     }
 
     /// 環境（IBL + skybox）が入った PBR。#710（Epic #293 G3b）。

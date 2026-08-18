@@ -171,7 +171,10 @@ final class MPSRayScene {
         }
 
         if droppedTriangleCount > 0 {
-            print("[metaphor.MPSRayScene] Dropped \(droppedTriangleCount) degenerate triangle(s) of \(inputTriangleCount)")
+            metaphorWarning(
+                "MPSRayScene: dropped \(droppedTriangleCount) degenerate triangle(s) "
+                    + "of \(inputTriangleCount)"
+            )
         }
 
         // BVH 用にコンパクト化されたインデックス配列で置換

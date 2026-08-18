@@ -203,6 +203,13 @@ extension SketchContext {
         canvas.screenPosition(x, y)
     }
 
+    /// 3D モデル座標を現在のモデル変換だけで写したワールド座標を返します。
+    ///
+    /// カメラと投影は通しません（``camera(eye:center:up:)`` を動かしても変わりません）。
+    public func modelPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
+        canvas3D.modelPosition(x, y, z)
+    }
+
     /// 3D モデル座標のスクリーン座標を返します。
     ///
     /// カメラ背後の点では x/y が原点対称に反転し z が 0...1 を外れます。

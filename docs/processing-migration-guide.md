@@ -221,7 +221,7 @@ Note the two distinct color entry points — see
 | `printMatrix()` | — not implemented | |
 | `screenX(x, y)` / `screenY(x, y)` | `screenX(_ x: Float, _ y: Float) -> Float`, `screenY(…)`; 3D overloads take `(x, y, z)` | |
 | `screenZ(x, y, z)` | `screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float` (normalized depth 0…1) | |
-| `modelX/Y/Z(…)` | — not implemented ([#814](https://github.com/shinyaoguri/metaphor/issues/814), ADR-0007 follow-up) | |
+| `modelX/Y/Z(x, y, z)` | `modelX(_ x: Float, _ y: Float, _ z: Float) -> Float`, `modelY(…)`, `modelZ(…)` | Returns **world** coordinates after the current transform stack — camera-independent, as in Processing. Not the inverse of `screenX/Y/Z`: unprojecting a *screen* coordinate back into 3D (p5.js `screenToWorld()`) is a different API and does not exist yet. |
 
 Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 (that is a p5.js API) — use `radians(deg)` to convert.
@@ -973,7 +973,6 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()` | Not implemented — [#811](https://github.com/shinyaoguri/metaphor/issues/811). `Color` converts HSB→RGB but not back. |
 | `get()` / `set()` on the canvas | Not implemented — [#812](https://github.com/shinyaoguri/metaphor/issues/812). Use `loadPixels()` / `pixels`. |
 | `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
-| `modelX()` / `modelY()` / `modelZ()` | Not implemented — [#814](https://github.com/shinyaoguri/metaphor/issues/814) (ADR-0007 follow-up). `screenX/Y/Z` exist. |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
 | p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
 | `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |

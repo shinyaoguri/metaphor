@@ -76,6 +76,119 @@ struct AppNapPreventionTests {
     }
 }
 
+// MARK: - FPS Resolution Tests
+
+@Suite("FPS resolution")
+struct FPSResolutionTests {
+
+    @Test("falls back to config.fps when unset")
+    func fallsBackToConfig() {
+        #expect(SketchRunner.resolveFPS(config: SketchConfig(), env: [:]) == 60)
+        #expect(SketchRunner.resolveFPS(config: SketchConfig(fps: 24), env: [:]) == 24)
+    }
+
+    @Test("METAPHOR_FPS overrides config")
+    func envOverridesConfig() {
+        #expect(SketchRunner.resolveFPS(
+            config: SketchConfig(fps: 60), env: ["METAPHOR_FPS": "30"]
+        ) == 30)
+        // cli の `--fps` は下げるだけでなく上げる向きにも使うので両方向を固定する。
+        #expect(SketchRunner.resolveFPS(
+            config: SketchConfig(fps: 30), env: ["METAPHOR_FPS": "120"]
+        ) == 120)
+    }
+
+    @Test("unparsable METAPHOR_FPS falls back to config.fps")
+    func unparsableFallsBack() {
+        let config = SketchConfig(fps: 45)
+        // 0 以下・非数値・空文字は「無視して config へ」（起動しないより素直に動く方を選ぶ）。
+        for raw in ["0", "-1", "abc", "", " 30", "30.0"] {
+            #expect(
+                SketchRunner.resolveFPS(config: config, env: ["METAPHOR_FPS": raw]) == 45,
+                "METAPHOR_FPS=\(raw) should be ignored"
+            )
+        }
+    }
+}
+
+// MARK: - Output (Syphon) Name Resolution Tests
+
+@Suite("Output name resolution")
+struct OutputNameResolutionTests {
+
+    @Test("no output by default")
+    func disabledByDefault() {
+        #expect(SketchRunner.resolveSyphonName(config: SketchConfig(), env: [:]) == nil)
+    }
+
+    @Test("precedence: env > syphonName > (syphon ? title : nil)")
+    func precedence() {
+        let config = SketchConfig(title: "MyTitle", syphonName: "FromConfig", syphon: true)
+
+        // 1 段目: 環境変数が最優先。
+        #expect(SketchRunner.resolveSyphonName(
+            config: config, env: ["METAPHOR_SYPHON_NAME": "FromEnv"]
+        ) == "FromEnv")
+
+        // 2 段目: 環境変数が無ければ config.syphonName。
+        #expect(SketchRunner.resolveSyphonName(config: config, env: [:]) == "FromConfig")
+
+        // 3 段目: syphonName も無ければ syphon フラグ次第で title。
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(title: "MyTitle", syphon: true), env: [:]
+        ) == "MyTitle")
+    }
+
+    @Test("syphonName alone enables output")
+    func syphonNameImpliesEnabled() {
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(syphonName: "Named", syphon: false), env: [:]
+        ) == "Named")
+    }
+
+    @Test("empty METAPHOR_SYPHON_NAME is treated as unset")
+    func emptyEnvIsUnset() {
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(syphonName: "FromConfig"),
+            env: ["METAPHOR_SYPHON_NAME": ""]
+        ) == "FromConfig")
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(), env: ["METAPHOR_SYPHON_NAME": ""]
+        ) == nil)
+        // ヘッドレスでも同じ（= 名前が "" のサーバーを publish しない）。
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(title: "MyTitle"),
+            env: ["METAPHOR_SYPHON_NAME": ""], requiresOutput: true
+        ) == "MyTitle")
+    }
+
+    @Test("windowed path yields nil when nothing asks for output")
+    func windowedWithoutOutputIsNil() {
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(title: "MyTitle", syphon: false), env: [:]
+        ) == nil)
+    }
+
+    @Test("requiresOutput: true (headless) always resolves a name")
+    func headlessAlwaysResolves() {
+        // ヘッドレスは「ウィンドウ無し・出力のみ」なので、syphon フラグ抜きでも title へ落とす。
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(title: "MyTitle", syphon: false),
+            env: [:], requiresOutput: true
+        ) == "MyTitle")
+
+        // 優先順位そのものは requiresOutput では変わらない。
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(title: "MyTitle", syphonName: "FromConfig"),
+            env: [:], requiresOutput: true
+        ) == "FromConfig")
+        #expect(SketchRunner.resolveSyphonName(
+            config: SketchConfig(title: "MyTitle", syphonName: "FromConfig"),
+            env: ["METAPHOR_SYPHON_NAME": "FromEnv"], requiresOutput: true
+        ) == "FromEnv")
+    }
+}
+
 // MARK: - Termination Signal Tests
 
 /// 終了シグナル（#715）のハンドラ設置を検証します。

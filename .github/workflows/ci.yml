@@ -67,6 +67,11 @@ jobs:
         # 通る（再実行はペイロードを古いまま再生するため、payload 参照だと
         # 直したはずのタイトルで落ち続ける）。
         #
+        # 取得は scripts/gh-retry.sh 経由。GitHub の GraphQL が瞬断すると、中身が
+        # 正しい PR がこのステップだけで赤くなり auto-merge が止まっていた
+        # （Issue #949）。一過性の失敗だけを 3 回リトライし、定義的な失敗
+        # （403/404 等）は即落とす。
+        #
         # pull_request 以外（push / workflow_dispatch / merge_group）には検証
         # すべきタイトルが無いので skip。release.yml が開く "Release vX.Y.Z" PR は
         # workflow_dispatch 経由で CI に入るため、ここで落ちることはない。
@@ -76,7 +81,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+          TITLE=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json title --jq '.title')
           echo "PR title: ${TITLE}"
           # 寛容に見る: type と区切りだけを強制し、要約の中身（日本語・記号）は
           # 一切問わない。scope は任意、`!` は破壊的変更の接尾辞。
@@ -133,7 +138,8 @@ jobs:
           # タイトルもラベルもイベントペイロードではなく実行時に API から引く
           # （上のタイトル lint と同じ理由）。こうしておくとエントリを足すか
           # ラベルを貼るかしたあと `gh run rerun --failed <run-id>` だけで通る。
-          PR_JSON=$(gh pr view "$PR_NUMBER" --json title,labels)
+          # 一過性の 5xx で赤くならないよう gh-retry.sh 経由で引く（Issue #949）。
+          PR_JSON=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json title,labels)
           TITLE=$(jq -r '.title' <<<"$PR_JSON")
           LABEL_ARGS=()
           while IFS= read -r label; do
@@ -173,8 +179,8 @@ jobs:
           set -euo pipefail
           # 本文もラベルも実行時に API から引く（上の 2 つと同じ理由）。画像を
           # 貼るかラベルを付けるかしたあと `gh run rerun --failed <run-id>` だけで
-          # 通り、push は要らない。
-          PR_JSON=$(gh pr view "$PR_NUMBER" --json body,labels)
+          # 通り、push は要らない。取得は gh-retry.sh 経由（Issue #949）。
+          PR_JSON=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json body,labels)
           BODY=$(jq -r '.body // ""' <<<"$PR_JSON")
           LABEL_ARGS=()
           while IFS= read -r label; do
@@ -277,6 +283,14 @@ jobs:
       # 静かに穴になる。マニフェスト側の取りこぼしを機械的に潰す（Issue #328 段階 4）。
       - name: Check strict concurrency coverage
         run: python3 scripts/check-strict-concurrency.py
+      # stdout は metaphor-cli との JSON Lines と同じチャネルなので、Release でも出る
+      # ものを生の print() で書くと契約側のパースを壊しうる（CONTRACT.md 契約点 4）。
+      # #805 でその規約を Sources/MetaphorLog/Log.swift に明文化したのに、Sources には
+      # 生の print が 17 箇所残ったまま気付かれなかった（Issue #896）＝ 文章では
+      # 止まらない形の失敗なので、決定論的に落とす。判定規則と例外はスクリプト側が
+      # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
+      - name: Check for raw print() in Sources
+        run: python3 scripts/check-no-raw-print.py
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Get Syphon submodule hash

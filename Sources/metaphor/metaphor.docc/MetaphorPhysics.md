@@ -15,7 +15,7 @@ Verlet 積分と空間ハッシュによる 2D 物理シミュレーション。
 MetaphorPhysics は Verlet 積分を使用した軽量な 2D 物理エンジンを提供します。
 円や矩形のシェイプを持つ剛体を作成し、距離コンストレイントで接続したり
 ワールド座標にピン留めしたりして、毎フレームシミュレーションを更新します。
-広域位相の衝突検出には ``SpatialHash2D`` を使用し、多数のボディを効率的に処理します。
+広域位相の衝突検出には ``MetaphorPhysics/SpatialHash2D`` を使用し、多数のボディを効率的に処理します。
 
 このモジュールは MetaphorCore に依存せず、単独で使用できます。
 アンブレラモジュール（`import metaphor`）使用時は、`createPhysics2D()` などの
@@ -50,22 +50,3 @@ circle(ball.position.x, ball.position.y, 40)
 > 結果が依存しなくなります（`import metaphor` の自動サブシステム更新も
 > こちらを通ります）。`step()` は自分で刻みを決める場合（固定刻みループ、
 > オフラインレンダリング、テスト）向けの低レベル API として残っています。
-
-## Topics
-
-### 物理ワールド
-
-- ``Physics2D``
-
-### ボディとシェイプ
-
-- ``PhysicsBody2D``
-- ``PhysicsShape2D``
-
-### コンストレイント
-
-- ``PhysicsConstraint2D``
-
-### 衝突検出
-
-- ``SpatialHash2D``

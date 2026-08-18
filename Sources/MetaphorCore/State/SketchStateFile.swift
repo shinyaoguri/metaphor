@@ -153,7 +153,7 @@ enum SketchStateWriter {
             metaphorAtomicReplace(tmp: tmpURL, final: finalURL, label: "State")
             return true
         } catch {
-            print("[metaphor] State: failed to write state.json: \(error)")
+            metaphorAlert("State: failed to write state.json: \(error)")
             return false
         }
     }
