@@ -186,6 +186,104 @@ class DocSummaryTests(unittest.TestCase):
         self.assertEqual(gen.get_doc_summary(sym), "`configure(_:)` を呼び直します。")
 
 
+# Swift lets a keyword be used as an identifier by escaping it in backticks,
+# so the *declaration itself* carries backticks that the surrounding code span
+# has to clear. `case `default`` (ArcMode) and `static let `return`` (KeyCode)
+# are the two real ones (#961).
+ESCAPED_CASE = symbol(gen.KIND_ENUM_CASE, ["ArcMode", "default"], [
+    frag("keyword", "case"),
+    frag("text", " "),
+    frag("identifier", "`default`"),
+], ["mode 省略時のデフォルト。"])
+
+ESCAPED_TYPE = symbol(gen.KIND_STRUCT, ["`default`"], [
+    frag("keyword", "struct"),
+    frag("text", " "),
+    frag("identifier", "`default`"),
+], ["キーワード名の型。"])
+
+
+class CodeSpanTests(unittest.TestCase):
+    """Declarations containing backticks must still delimit their code span.
+
+    CommonMark closes a code span at the first backtick run of the *same*
+    length as the opener, so a single-backtick fence around `case `default``
+    used to end right after `case `, leaving the rest as prose — the reader
+    could no longer see where the declaration stopped (#961).
+    """
+
+    def test_a_plain_declaration_keeps_a_single_backtick_fence(self):
+        self.assertEqual(gen.code_span("func circle(x:y:d:)"),
+                         "`func circle(x:y:d:)`")
+
+    def test_an_inner_backtick_lengthens_the_fence(self):
+        self.assertEqual(gen.code_span("static let `return`: UInt16"),
+                         "``static let `return`: UInt16``")
+
+    def test_the_fence_clears_the_longest_run_inside(self):
+        self.assertEqual(gen.code_span("a ``b`` c"), "```a ``b`` c```")
+
+    def test_a_trailing_backtick_is_padded_on_both_sides(self):
+        # CommonMark strips one space from each end only when *both* ends carry
+        # one, so the pad has to be symmetric. Padding only the touching side
+        # would leave a stray space inside the rendered declaration.
+        self.assertEqual(gen.code_span("case `default`"),
+                         "`` case `default` ``")
+
+    def test_a_leading_backtick_is_padded_on_both_sides(self):
+        self.assertEqual(gen.code_span("`default` は既定値"),
+                         "`` `default` は既定値 ``")
+
+
+class EscapedIdentifierRenderingTests(unittest.TestCase):
+    """Every place a declaration is wrapped goes through `code_span` (#961).
+
+    Fixing only `fmt_symbol` would leave the type headings broken, so the
+    member line and both heading paths are pinned here too.
+    """
+
+    def test_member_line_escapes_a_backticked_identifier(self):
+        self.assertEqual(
+            gen.fmt_symbol(ESCAPED_CASE),
+            "- `` case `default` `` -- mode 省略時のデフォルト。")
+
+    def test_member_line_without_a_summary_escapes_too(self):
+        bare = symbol(gen.KIND_ENUM_CASE, ["ArcMode", "default"], [
+            frag("keyword", "case"),
+            frag("text", " "),
+            frag("identifier", "`default`"),
+        ])
+        self.assertEqual(gen.fmt_symbol(bare), "- `` case `default` ``")
+
+    def test_type_heading_escapes_a_backticked_identifier(self):
+        lines: list[str] = []
+        gen.emit_type_section("`default`",
+                              {"symbol": ESCAPED_TYPE, "members": []},
+                              lines, {})
+        self.assertEqual(lines[0],
+                         "### `` struct `default` `` -- キーワード名の型。")
+
+    def test_type_heading_without_a_summary_escapes_too(self):
+        bare = symbol(gen.KIND_STRUCT, ["`default`"], [
+            frag("keyword", "struct"),
+            frag("text", " "),
+            frag("identifier", "`default`"),
+        ])
+        lines: list[str] = []
+        gen.emit_type_section("`default`", {"symbol": bare, "members": []},
+                              lines, {})
+        self.assertEqual(lines[0], "### `` struct `default` ``")
+
+    def test_condensed_type_heading_escapes_a_backticked_identifier(self):
+        lines: list[str] = []
+        gen.emit_type_section("`default`",
+                              {"symbol": ESCAPED_TYPE, "members": []},
+                              lines, {"`default`": "Sketch API を鏡写しにします。"})
+        self.assertEqual(
+            lines[0],
+            "### `` struct `default` `` -- Sketch API を鏡写しにします。")
+
+
 class DocCalloutTests(unittest.TestCase):
     """`- Note:` / `- Important:` bodies belong in llms.txt (#786).
 

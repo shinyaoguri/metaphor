@@ -725,7 +725,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum ArcMode` -- `arc()` 呼び出しの描画モードを指定します。
 
 - `case chord` -- fill は弦で閉じた弓形、stroke は端点を弦（直線）で接続して閉じる。
-- `case `default`` -- mode 省略時のデフォルト。fill は中心を含む扇形、stroke は端点を接続せず弧のみを描画。
+- `` case `default` `` -- mode 省略時のデフォルト。fill は中心を含む扇形、stroke は端点を接続せず弧のみを描画。
 - `case open` -- fill は弦で閉じた弓形、stroke は端点を接続せず弧のみを描画。
 - `case pie` -- fill は中心を含む扇形、stroke は端点から中心へ線を引いてパイ形状に閉じる。
 
@@ -955,7 +955,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let escape: UInt16` -- Escape キー。
 - `static let left: UInt16` -- 左矢印キー。
 - `static let option: UInt16` -- Option キー。
-- `static let `return`: UInt16` -- Return キー。
+- ``static let `return`: UInt16`` -- Return キー。
 - `static let right: UInt16` -- 右矢印キー。
 - `static let shift: UInt16` -- Shift キー。
 - `static let space: UInt16` -- Space キー。
