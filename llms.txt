@@ -287,6 +287,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
 - `func filter(_ image: MImage, _ type: FilterType)` -- 画像に GPU 画像フィルタを適用します（in-place）。
 - `func frameRate(_ fps: Int)` -- フレームレートを動的に変更します。
+- `func get(_ x: Int, _ y: Int) -> Color` -- 1 画素の色を読みます（Processing の `get(x, y)` 互換）。
+  - Important: **暗黙の読み戻しはしません。** `loadPixels()` を先に呼んでください（呼んでいなければ黒を返し、初回だけ警告します）。Processing の `get()` は単に遅いだけですが、metaphor の読み戻しは GPU 待ちに加えて**レンダーパスの分割** を伴い、深度クリアと 2D/3D の重ね順を通じて**絵そのものを変えます**（`loadPixels()` の Note 群）。1 画素を読むたびにそれが起きないよう、読み戻しは明示的な `loadPixels()` だけに限っています。
+  - Important: 影を有効にしている場合（`enableShadows()`）は `loadPixels()` が同一フレームを読み戻せず、**直近にコミット済みのフレーム内容**が読めます。`get()` はその結果を読むので、同じ制約がそのまま乗ります。
+  - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。context が用意される前（`init` やプロパティ初期化子）でも黒を返します。
+- `func get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage?` -- キャンバスの矩形領域を `MImage` として切り出します（Processing の
+  - Important: `get(_:_:)` と同じく**暗黙の読み戻しはしません**。影オン時の制約も同じです（`loadPixels()` の `- Important:` を参照）。
 - `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- キャプチャデバイスの最新フレームを指定位置に描画します。
 - `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置に描画します。
 - `func image(_ pg: Graphics3D, _ x: Float, _ y: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置に描画します。
@@ -480,6 +486,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Important: 0...1 に収まるのは点が視錐台の内側にあるときだけです。カメラ背後では 1 を超え、カメラとニア平面のあいだでは負になります。`isInFront(_:_:_:)` で背後を弾いてから使ってください。
 - `func selectInput(_ prompt: String = "Select a file", _ callback: @MainActor (String?) -> Void)` -- ファイルを開くダイアログを表示します（Processing の `selectInput()` 互換）。
 - `func selectOutput(_ prompt: String = "Save as", _ callback: @MainActor (String?) -> Void)` -- ファイルを保存するダイアログを表示します（Processing の `selectOutput()` 互換）。
+- `func set(_ x: Int, _ y: Int, _ color: Color)` -- 1 画素の色を書き込みます（Processing の `set(x, y, c)` 互換）。
+  - Important: 書き込み先は CPU 側の `pixels` バッファです。キャンバスへ出すには `updatePixels()` が必要で、Processing の `set()` が即座に反映されるのとは異なります。`loadPixels()` を呼んでいなければ何もしません（初回だけ警告）。
 - `func setPostEffects(_ effects: [any PostEffect])` -- すべてのポストプロセスエフェクトを指定した配列で置き換えます。
 - `func setRenderGraph(_ graph: RenderGraph?)` -- アクティブなレンダーグラフを設定またはクリアします。
 - `func setup()` -- 一度だけ実行される初期化処理（オプション）。
@@ -771,7 +779,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `enum ArcMode` -- `arc()` 呼び出しの描画モードを指定します。
 
 - `case chord` -- fill は弦で閉じた弓形、stroke は端点を弦（直線）で接続して閉じる。
-- `case `default`` -- mode 省略時のデフォルト。fill は中心を含む扇形、stroke は端点を接続せず弧のみを描画。
+- `` case `default` `` -- mode 省略時のデフォルト。fill は中心を含む扇形、stroke は端点を接続せず弧のみを描画。
 - `case open` -- fill は弦で閉じた弓形、stroke は端点を接続せず弧のみを描画。
 - `case pie` -- fill は中心を含む扇形、stroke は端点から中心へ線を引いてパイ形状に閉じる。
 
@@ -1001,7 +1009,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static let escape: UInt16` -- Escape キー。
 - `static let left: UInt16` -- 左矢印キー。
 - `static let option: UInt16` -- Option キー。
-- `static let `return`: UInt16` -- Return キー。
+- ``static let `return`: UInt16`` -- Return キー。
 - `static let right: UInt16` -- 右矢印キー。
 - `static let shift: UInt16` -- Shift キー。
 - `static let space: UInt16` -- Space キー。
@@ -1473,7 +1481,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
 
-- （ほか 82 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 83 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 高さをピクセル単位で返します。
 - `var width: Float { get }` -- 幅をピクセル単位で返します。
 - `func beginDraw()` -- コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
@@ -1641,23 +1649,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MImage` -- `MTLTexture` をラップして画像を表現します。
 
+- （ほか 7 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- 画像の高さ（ピクセル単位）。
 - `var pixels: [UInt8]` -- `loadPixels()` 呼び出し後に格納される生の RGBA ピクセルデータ。
-- `var texture: any MTLTexture { get }` -- この画像の基盤となる Metal テクスチャ。
 - `var width: Float { get }` -- 画像の幅（ピクセル単位）。
 - `init(named name: String, device: any MTLDevice) throws` -- アプリバンドルから名前付きリソースを読み込んで画像を作成します。
 - `init(nsImage: NSImage, device: any MTLDevice) throws` -- `NSImage` から画像を作成します。
 - `init(path: String, device: any MTLDevice) throws` -- ファイルパスからテクスチャを読み込んで画像を作成します。
 - `init(texture: any MTLTexture)` -- 既存の `MTLTexture` から画像を作成します。
-- `static func createImage(_ width: Int, _ height: Int, device: any MTLDevice) -> MImage?` -- ピクセル操作に適した空の画像を作成します。
-- `func filter(_ type: FilterType)` -- `loadPixels()`、処理、`updatePixels()` を一括で実行して画像フィルタを適用します（CPU 版）。
-- `func get(_ x: Int, _ y: Int) -> Color` -- 指定された座標のピクセルの色を返します。
-- `func loadPixels()` -- GPU テクスチャから CPU 上の `pixels` 配列にピクセルデータを読み込みます。
 - `func mask(_ maskImage: MImage)` -- マスク画像をこの画像のアルファチャンネルへ適用します。
 - `func replaceTexture(_ newTexture: any MTLTexture)` -- バッキングテクスチャを新しいものに置き換えます（通常は GPU フィルタ適用後）。
 - `func resize(_ width: Int, _ height: Int)` -- 画像を指定サイズへリサイズします（GPU バイリニア補間）。
-- `func set(_ x: Int, _ y: Int, _ color: Color)` -- 指定された座標のピクセルの色を設定します。
-- `func updatePixels()` -- CPU の `pixels` 配列を GPU テクスチャに書き戻します。
 
 ### `final class MShape` -- ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
 
@@ -1843,7 +1845,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 236 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 239 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

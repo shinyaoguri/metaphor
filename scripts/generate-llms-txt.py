@@ -663,6 +663,26 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def code_span(text: str) -> str:
+    """Wrap a declaration in a Markdown code span that survives inner backticks.
+
+    Swift spells a keyword used as an identifier with backticks around it
+    (`case `default``, `static let `return``), so the declaration itself can
+    contain the very delimiter we wrap it in. CommonMark closes a code span at
+    the first backtick run of the *same* length as the opener, so a single
+    backtick fence would end mid-declaration and spill the rest into prose
+    (#961). Widening the fence past the longest inner run fixes that.
+
+    The padding spaces are symmetric on purpose: CommonMark strips one space
+    from each end only when *both* ends carry one, so padding just the side
+    that touches a backtick would leave a stray space in the rendered output.
+    """
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
 def fmt_callouts(sym: dict) -> list[str]:
     """Render a symbol's callouts as lines nested under its declaration.
 
@@ -676,7 +696,8 @@ def fmt_symbol(sym: dict) -> str:
     """Format a symbol as a markdown list item, with its callouts beneath."""
     decl = get_declaration(sym)
     doc = get_doc_summary(sym)
-    head = f"- `{decl}` -- {doc}" if doc else f"- `{decl}`"
+    head = (f"- {code_span(decl)} -- {doc}" if doc
+            else f"- {code_span(decl)}")
     return "\n".join([head, *fmt_callouts(sym)])
 
 
@@ -691,7 +712,7 @@ def emit_type_section(name: str, info: dict, lines: list,
         summary = condensed[name]
         if sym:
             decl = get_declaration(sym)
-            lines.append(f"{heading} `{decl}` -- {summary}")
+            lines.append(f"{heading} {code_span(decl)} -- {summary}")
             lines.extend(fmt_callouts(sym))
         else:
             lines.append(f"{heading} {name} -- {summary}")
@@ -713,8 +734,8 @@ def emit_type_section(name: str, info: dict, lines: list,
     if sym:
         doc = get_doc_summary(sym)
         decl = get_declaration(sym)
-        lines.append(f"{heading} `{decl}` -- {doc}" if doc
-                     else f"{heading} `{decl}`")
+        lines.append(f"{heading} {code_span(decl)} -- {doc}" if doc
+                     else f"{heading} {code_span(decl)}")
         lines.extend(fmt_callouts(sym))
     else:
         lines.append(f"{heading} {name}")
