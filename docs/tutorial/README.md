@@ -470,14 +470,15 @@ Examples の本数やバージョン番号のような、増減する数値を�
 
 - frontmatter は日本語版と同じキー（`title` / `part` / `slug` / `description` / `draft`）。`part` と `slug` は日本語版に合わせる（並び順と URL は言語で変えない）
 - 節は `## ` 見出しで始める
-- その節に `<!-- tutorial-snippet: <ref> -->`（日本語版と同じ `<ref>`）を置く。**どの節の画像か**を決めるキーになる
+- その節に `<!-- tutorial-snippet: <ref> -->`（日本語版と同じ `<ref>`）を置く。**どの節の画像か**を決めるキーになる。`<ref>` の並びは日本語版と**順序込みで**一致させる（節を落とす・増やす・入れ替えるのは不可。`make tutorial-snippets` が同名の日本語版と突き合わせます）
 - 画像は**独立した 1 行**で書く（文中に混ぜない）。1 節に最大 2 本で、**静止画 → 動きの証跡**の順
 - URL は手で書かない。空でも壊れていても、`make tutorial-shots` が台帳の値で上書きする（alt はそのまま残るので、alt は英語で書く）
 
 ### 訳が入ったときにすること
 
-1. `make tutorial-snippets` でコードを埋め、`make tutorial-shots ARGS="--check"` で画像行を確かめる（撮り直しは要りません）
+1. `make tutorial-snippets` でコードを埋め、`make tutorial-shots ARGS="--check"` で画像行を確かめる（撮り直しは要りません）。このとき `<ref>` の並びが日本語版と順序込みで一致していることも同時に見ます（[#956](https://github.com/shinyaoguri/metaphor/issues/956)）
 2. 上の章立て表の「英語版」の欄を `済` にする（`make tutorial-status` の `--check` が `en/` の実体と突き合わせるので、忘れると CI が落ちます）
+3. `make tutorial-status` を流し直す。入口ドキュメントの「訳がどこまで入っているか」は `<!-- tutorial-status: {ja,en}-translation -->` の**生成物**なので、手で書き換えません（[#956](https://github.com/shinyaoguri/metaphor/issues/956)。全部そろうと追跡 Issue への言及ごと消えます）
 
 website 側の受け入れは済んでいます（[#487](https://github.com/shinyaoguri/metaphor/issues/487)）。英語版が無い部は日本語の本文をそのまま出し、記事の頭に「翻訳準備中」の告知が出ます（`website/src/lib/tutorial.ts` の `translated`）。訳を置くだけで、その部から順に英語へ切り替わります。
 

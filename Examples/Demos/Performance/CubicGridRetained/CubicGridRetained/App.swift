@@ -13,7 +13,6 @@ import metaphor
 /// → #734 が入ったら実装に起こす。
 ///
 /// 原典: CubicGridRetained.pde
-
 @main
 final class CubicGridRetained: Sketch {
     var config: SketchConfig {

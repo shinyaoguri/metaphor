@@ -140,7 +140,7 @@ enum ParameterFileWriter {
                 try data.write(to: tmpURL)
                 metaphorAtomicReplace(tmp: tmpURL, final: finalURL, label: "Params")
             } catch {
-                print("[metaphor] Params: failed to write params.json: \(error)")
+                metaphorAlert("Params: failed to write params.json: \(error)")
             }
         }
     }

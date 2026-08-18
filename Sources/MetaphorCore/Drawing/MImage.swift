@@ -155,7 +155,7 @@ public final class MImage {
     /// このメソッドは即座に返ります — 割り当て、リードバック、変換のオーバーヘッドを回避します。
     public func loadPixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
-            print("[metaphor] Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
+            metaphorAlert("Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
             pixels = []
             needsGPUReadback = true
             return
@@ -271,7 +271,7 @@ public final class MImage {
     /// ``texture`` の実体は別インスタンスに変わります。
     public func updatePixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
-            print("[metaphor] Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
+            metaphorAlert("Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
             return
         }
 

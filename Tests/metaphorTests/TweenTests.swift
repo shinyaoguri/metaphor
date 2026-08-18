@@ -161,6 +161,73 @@ struct TweenTests {
         #expect(tw.isActive == true)
     }
 
+    // 以下 4 本は #946 で足した isWaiting を固定する。
+    // 「袖で出番を待っている（.delaying）」を「そもそも出番が無い（.idle）」から
+    // 外から区別できることが本題。
+
+    @Test("delay 待機中は isWaiting だけが true になる")
+    @MainActor
+    func waitingDuringDelay() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5)
+        tw.start()
+
+        #expect(tw.isWaiting == true)
+        #expect(tw.isActive == false, "待機中はまだ動いていない")
+        #expect(tw.isComplete == false)
+    }
+
+    @Test("待機が明けると isWaiting と isActive が入れ替わる")
+    @MainActor
+    func waitingFlipsToActiveWhenDelayElapses() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5)
+        tw.start()
+        #expect(tw.isWaiting == true)
+
+        tw.update(0.5)  // delay ちょうど分。ここで .delaying → .running
+
+        #expect(tw.isWaiting == false)
+        #expect(tw.isActive == true)
+    }
+
+    @Test("delay を付けなければ start() 直後から isWaiting は false")
+    @MainActor
+    func noDelayNeverWaits() {
+        // 境界: delayDuration == 0 は .delaying を通らず直接 .running に入る。
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+
+        #expect(tw.isWaiting == false)
+        #expect(tw.isActive == true)
+    }
+
+    @Test("走っていないトゥイーンは isWaiting も false（.idle と区別できる）")
+    @MainActor
+    func idleAndFinishedAreNotWaiting() {
+        // これが本題。delay 付きでも「待機中でない」3 つの状態はすべて false になる。
+        // ここが true に漏れると、isWaiting は「delay が設定されている」を意味してしまい、
+        // .delaying を指すプロパティとして役に立たない。
+        let notStarted = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        notStarted.delay(0.5)
+        #expect(notStarted.isWaiting == false, "未 start() は袖で待ってすらいない")
+
+        let afterReset = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        afterReset.delay(0.5)
+        afterReset.start()
+        #expect(afterReset.isWaiting == true)
+        afterReset.reset()
+        #expect(afterReset.isWaiting == false, "reset() は .idle へ落とす")
+
+        let afterCancel = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        afterCancel.delay(0.5)
+        afterCancel.start()
+        #expect(afterCancel.isWaiting == true)
+        afterCancel.cancel()
+        #expect(afterCancel.isWaiting == false, "cancel() は .complete へ落とす")
+        #expect(afterCancel.isComplete == true)
+    }
+
     @Test("Tween yoyo mode")
     @MainActor
     func yoyoMode() {

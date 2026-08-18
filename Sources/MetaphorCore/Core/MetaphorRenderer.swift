@@ -706,7 +706,7 @@ public final class MetaphorRenderer: NSObject {
             textureManager.setClearColor(currentClearColor)
             clearOffscreenTexture()
         } catch {
-            print("[metaphor] Failed to resize canvas: \(error)")
+            metaphorAlert("Failed to resize canvas: \(error)")
             return
         }
         stagingTextures = [nil, nil, nil]

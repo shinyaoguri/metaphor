@@ -13,11 +13,11 @@ Metal ベースのクリエイティブコーディングのための Core Image
 ## Overview
 
 MetaphorCoreImage は Apple の Core Image フレームワークと Metal テクスチャを橋渡しします。
-``CIFilterPreset`` で厳選されたフィルタプリセット（ディストーション、スタイライズ、ブラー、
-カラーエフェクト、ジェネレータなど）を適用するか、``CIFilterWrapper`` で任意の
+``MetaphorCoreImage/CIFilterPreset`` で厳選されたフィルタプリセット（ディストーション、スタイライズ、ブラー、
+カラーエフェクト、ジェネレータなど）を適用するか、``MetaphorCoreImage/CIFilterWrapper`` で任意の
 Core Image フィルタを名前で使用できます。
 
-``PostEffect`` 実装（``CIFilterEffect``、``CIFilterRawEffect``）も含まれており、
+``MetaphorCore/PostEffect`` 実装（``MetaphorCoreImage/CIFilterEffect``、``MetaphorCoreImage/CIFilterRawEffect``）も含まれており、
 ポストプロセスパイプラインで直接使用できます。
 
 このモジュールは MetaphorCore に依存します。
@@ -37,19 +37,3 @@ ci.apply(filterName: CIFilterPreset.twirl.filterName,
 let effect = CIFilterEffect(.kaleidoscope)
 postProcess(effect)
 ```
-
-## Topics
-
-### フィルタプリセット
-
-- ``CIFilterPreset``
-
-### フィルタラッパー
-
-- ``CIFilterWrapper``
-- ``CIFilterValue``
-
-### ポストプロセスエフェクト
-
-- ``CIFilterEffect``
-- ``CIFilterRawEffect``
