@@ -322,7 +322,7 @@ final class Stroke: Sketch {
 
 ## 2.4 自分で形を作る
 
-![頂点を並べて作った形が 6 つ。オレンジの星、水色の閉じた曲線、桃色のベジェ曲線、穴の空いた緑の矩形、黄色い斜めの線の列、水色のジグザグ](https://i.gyazo.com/63ad4de4b1183d3ad62cfcc4d70199a3.png)
+![頂点を並べて作った形が 8 つ。上 2 段はオレンジの星、水色の閉じた曲線、桃色のベジェ曲線、穴の空いた緑の矩形、黄色い斜めの線の列、水色のジグザグ。下段は同じ 4 つの白い点を通る形で、左は灰色の四角と外へふくらんだ橙の曲線が重なり、右は張りを変えた黄色い四角・水色の丸・ひとまわり大きい桃色の丸](https://i.gyazo.com/04da23c3a3a263bd6f5f288219f8fba1.png)
 
 組み込みの図形に無い形は、頂点を並べて作ります。`beginShape()` と `endShape()` で挟み、その間に `vertex(x, y)` を並べます。
 
@@ -355,7 +355,7 @@ import metaphor
 @main
 final class CustomShapes: Sketch {
     var config: SketchConfig {
-        SketchConfig(width: 640, height: 360, title: "Custom Shapes")
+        SketchConfig(width: 640, height: 540, title: "Custom Shapes")
     }
 
     func setup() {
@@ -433,6 +433,54 @@ final class CustomShapes: Sketch {
             vertex(x + 12, 320)
         }
         endShape()
+
+        // 下段は同じ 4 点を、打ち方だけ変えて描き比べる
+        let quad: [(x: Float, y: Float)] = [(-48, -48), (48, -48), (48, 48), (-48, 48)]
+
+        // curveVertex で輪を閉じるときは、先頭に戻ってもう一周ぶん打つ。
+        // 最初と最後の点は向きを決めるだけなので、3 点ぶん多めに打つ
+        func closedCurve(around cx: Float, _ cy: Float) {
+            beginShape()
+            for i in 0..<(quad.count + 3) {
+                let p = quad[i % quad.count]
+                curveVertex(cx + p.x, cy + p.y)
+            }
+            endShape()
+        }
+
+        // 6. curveVertex は Catmull-Rom スプライン。打った点を順に「通り」ながら
+        //    間をふくらませるので、同じ 4 点でも vertex（灰の四角）と形が変わる
+        noFill()
+        stroke(140)
+        strokeWeight(2)
+        beginShape()
+        for p in quad { vertex(160 + p.x, 440 + p.y) }
+        endShape(.close)
+
+        stroke(250, 140, 100)
+        strokeWeight(3)
+        closedCurve(around: 160, 440)
+
+        // 7. curveTightness は曲線の張り。同じ 4 点でも張り方で見え方が変わる
+        let tightnessTones: [(t: Float, r: Float, g: Float, b: Float)] = [
+            (-1, 240, 120, 180),  // ゆるめ: 点の外へ大きくふくらむ
+            (0, 110, 205, 235),  // 既定
+            (1, 230, 200, 110),  // 直線: vertex で結んだ形に戻る
+        ]
+        for tone in tightnessTones {
+            curveTightness(tone.t)
+            stroke(tone.r, tone.g, tone.b)
+            closedCurve(around: 480, 440)
+        }
+        curveTightness(0)
+
+        // 打った点。6 も 7 もまったく同じ 4 点を打っている
+        noStroke()
+        fill(250)
+        for p in quad {
+            circle(160 + p.x, 440 + p.y, 7)
+            circle(480 + p.x, 440 + p.y, 7)
+        }
     }
 }
 ```
@@ -453,7 +501,7 @@ final class CustomShapes: Sketch {
 | `.triangleStrip` | 直前の 2 頂点と組にして帯状に |
 | `.triangleFan` | 最初の頂点を扇の要にして |
 
-上のコードの下段は、同じ打ち方の頂点列を `.lines` と `.polygon` で描き分けたものです。左は独立した斜線が並び、右はひとつながりのジグザグになります。
+上のコードの中段は、同じ打ち方の頂点列を `.lines` と `.polygon` で描き分けたものです。左は独立した斜線が並び、右はひとつながりのジグザグになります。
 
 `.triangleStrip` は帯やリボン、`.triangleFan` は円盤状の形を少ない頂点数で作れます。
 
@@ -461,14 +509,33 @@ final class CustomShapes: Sketch {
 
 `bezierVertex(...)` は制御点を自分で置くぶん狙った形にできますが、「打った点を順に通ってほしい」だけなら `curveVertex(...)`（Catmull-Rom スプライン）が近道です。通したい点を並べるだけで、間を滑らかにつないでくれます。
 
-最初と最後の点は曲線の向きを決めるためだけに使われ、実際に描かれるのは 2 番目から最後から 2 番目までの区間です。張りは `curveTightness(...)` で変えられ、`0` が既定、`1` にすると点と点を直線で結んだ形になります。
+上のコードの下段は、この違いを**まったく同じ 4 点**で見比べたものです。左は `vertex` で結んだ灰色の四角に、`curveVertex` で打った橙の曲線を重ねてあります。白い点はどちらも同じ位置にあり、曲線もその点を通りますが、点と点のあいだでは外へふくらみます。
+
+最初と最後の点は曲線の向きを決めるためだけに使われ、実際に描かれるのは 2 番目から最後から 2 番目までの区間です。端まで描きたいときは、両端の点をもう一度打ちます。
+
+```swift
+beginShape()
+curveVertex(60, 240)     // 向きを決めるだけ（この点からは描かれない）
+curveVertex(60, 240)     // ここが曲線の始まり
+curveVertex(180, 120)
+curveVertex(300, 280)
+curveVertex(420, 140)    // ここが曲線の終わり
+curveVertex(420, 140)    // 向きを決めるだけ
+endShape()
+```
+
+輪にしたいときは、上のコードの `closedCurve` のように**先頭に戻ってもう一周ぶん打ちます**（向きを決める点があるので、点の数より 3 つ多く打つ）。
+
+張りは `curveTightness(...)` で変えられます。上のコードの下段右は、同じ 4 点を張りだけ変えて描いた 3 本です。`0`（水色）が既定、`1`（黄）にすると点と点を直線で結んだ形、つまり `vertex` で結んだのと同じ形に戻り、負の値（桃色）にすると点の外へ大きくふくらみます。
 
 ### 試してみる
 
 - 星の内側の半径 `26` を `56` に近づけると、形はどうなりますか
 - `bezierVertex` の制御点を到達点に近づけると、曲線はどうなりますか
 - 穴の頂点の順序を逆にすると、穴は開いたままですか
-- 星の `vertex` を `curveVertex` に変えると、尖った角はどうなりますか（最初と最後の点は制御点として消費されることに注意）
+- 1 の星の `vertex` を、6 の `closedCurve` と同じ打ち方で `curveVertex` に変えると、尖った角はどうなりますか
+- `quad` を三角形（3 点）や六角形（6 点）にすると、`curveVertex` の形はどう変わりますか
+- 7 の `curveTightness` に `-3` や `3` を渡すと、曲線はどこまで暴れますか（`-5` 〜 `5` の範囲を取ります）
 
 ### ふりかえり
 
@@ -476,7 +543,8 @@ final class CustomShapes: Sketch {
 - [ ] `bezierVertex()` が「直前の頂点から、2 つの制御点を経て、指定の点まで」だと分かった
 - [ ] 穴をあけるには `beginContour()` の中を外周と逆回りに打つ、と覚えた
 - [ ] 同じ頂点列でも `beginShape()` のモードで解釈が変わると分かった
-- [ ] 打った点を通したいだけなら `curveVertex()` が近道だと分かった
+- [ ] 打った点を通したいだけなら `curveVertex()` が近道で、輪にするには先頭に戻ってもう一周ぶん打つと分かった
+- [ ] `curveTightness()` は曲線の張りで、`1` にすると `vertex` で結んだ形に戻ると分かった
 
 ### もっと詳しく
 

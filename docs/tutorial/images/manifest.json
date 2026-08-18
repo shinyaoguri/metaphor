@@ -58,12 +58,16 @@
       "sha256": "e90c2bc655cab2543b1b0ffe00ef0c3773a9d2c24200768538d7022216a27ec7"
     },
     "02-Drawing2D/04-CustomShapes": {
-      "sourceHash": "a7878c21ee5d9b7e8ae1568ceff8622e3ef37ef9820bcecfa621636fc8819c94",
+      "sourceHash": "e61e0fa259d10683fcdc6392c6170f0540835ec137de84ab556b91d2ded919b7",
+      "provenance": {
+        "commit": "095c6e3e8225ce9a9dc45947e053fcb6091bf40b",
+        "dirty": false
+      },
       "width": 640,
-      "height": 360,
+      "height": 540,
       "frame": 1,
-      "url": "https://i.gyazo.com/63ad4de4b1183d3ad62cfcc4d70199a3.png",
-      "sha256": "2241cd9902af93df74f0cc55cf6950098c6dbbb1697c8ee7067e5de73d797536"
+      "url": "https://i.gyazo.com/04da23c3a3a263bd6f5f288219f8fba1.png",
+      "sha256": "a7771c5bd0172fa64deb973a6343cb0980d9cd8ae1359b53bfe585589a1803e1"
     },
     "02-Drawing2D/05-Transform": {
       "sourceHash": "32d2f843c6aa0784cfe096641cd84e45bfc038d924508dc53fa1419496e62d7e",
