@@ -172,13 +172,10 @@ def check_translations() -> list[str]:
             continue
         en_label = en_doc.relative_to(REPO_ROOT).as_posix()
         ja_doc = DOCS_DIR / en_doc.name
-        if not ja_doc.is_file():
-            problems.append(
-                f"{en_label}: 対応する日本語版 "
-                f"{(DOCS_DIR / en_doc.name).relative_to(REPO_ROOT).as_posix()} が無い"
-            )
-            continue
         ja_label = ja_doc.relative_to(REPO_ROOT).as_posix()
+        if not ja_doc.is_file():
+            problems.append(f"{en_label}: 対応する日本語版 {ja_label} が無い")
+            continue
         ja_refs = ordered_refs(ja_doc.read_text(encoding="utf-8"))
         en_refs = ordered_refs(en_doc.read_text(encoding="utf-8"))
         if ja_refs == en_refs:
