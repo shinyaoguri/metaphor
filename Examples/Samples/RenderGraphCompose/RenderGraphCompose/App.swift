@@ -61,7 +61,7 @@ final class GraphicsNode: RenderPassNode {
 //         ▼                  │                    ▼
 //   ┌────────────┐           │             ┌──────────────────┐
 //   │ EffectPass │           │             │ EffectPass       │
-//   │ (色収差)   │           │             │ (Vignette)       │
+//   │ (色収差)   │           │             │ (Bloom→Vignette) │
 //   └─────┬──────┘           │             └────────┬─────────┘
 //         │                  │                      │
 //         └─► MergePass(.add) ◄─┘                   │
@@ -75,8 +75,12 @@ final class GraphicsNode: RenderPassNode {
 //
 // このサンプルでの可視化:
 //   - 3つのソースを **完全に独立** して描画している。
-//   - Vignette は Overlay だけ、ChromaticAberration は Stars だけにかかる。
-//     Scene の青い円にはどちらも作用しない（DAG が要素を分離している証拠）。
+//   - Bloom → Vignette は Overlay だけ、ChromaticAberration は Stars だけにかかる。
+//     Overlay の光点だけがにじみ、すぐ隣にある Scene の青い円はまったく
+//     にじまない（DAG が要素を分離している証拠）。画面全体に効く addPostEffect
+//     では書けない絵で、冒頭 1. の「光源だけ Bloom させたい」がそのまま形になる。
+//   - 1つの EffectPass に **多パス + 単パスを連ねている**。Bloom は中間テクスチャを
+//     複数使う多パス、Vignette は単パス。チェーンの中では同じように並べられる。
 //   - 二段マージで **ブレンドモードを使い分けている**。背景と星は加算 (.add)、
 //     その上にオーバーレイをアルファ合成 (.alpha) で乗せる。
 //
@@ -153,17 +157,22 @@ final class RenderGraphCompose: Sketch {
             fatalError("createEffectPass(stars) に失敗")
         }
 
-        // 5. Overlay に強めの Vignette を適用
+        // 5. Overlay に Bloom → Vignette のチェーンを適用
         //
-        // パラメータを強くして、軌道点が画面端に近づくと
-        // 明らかに暗くなる/明るくなるのが見えるように。
+        // Bloom で光点のまわりにグロウを出し、そのあと Vignette で周辺を減光する。
+        // どちらも **Overlay の脚にしか掛からない** ので、すぐ隣に描かれている
+        // Scene の青い円は一切にじまず、明るさも変わらない。冒頭 1. で挙げた
+        // 「光源だけ Bloom させたい、ほかには効かせたくない」がそのまま絵になる。
         //
-        // ここでは単パスの Vignette を選んでいるが、単パスに限る必要は無い。
-        // Bloom や大半径 Blur のように複数の中間テクスチャを使う多パス
-        // エフェクトも、EffectPass 経由 + Graphics 入力でそのまま置ける（#833）。
-        guard let vignetteOverlay = createEffectPass(
+        // Bloom は中間テクスチャを複数使う多パスエフェクトだが、EffectPass 経由 +
+        // Graphics 入力でそのまま置ける（#833）。単パスの Vignette と混ぜて
+        // 1 本のチェーンにできるので、多パスと単パスの両方をここで見せている。
+        guard let glowOverlay = createEffectPass(
             overlayNode,
-            effects: [VignetteEffect(intensity: 1.0, smoothness: 0.5)]
+            effects: [
+                BloomEffect(intensity: 1.4, threshold: 0.5),
+                VignetteEffect(intensity: 1.0, smoothness: 0.5),
+            ]
         ) else {
             fatalError("createEffectPass(overlay) に失敗")
         }
@@ -178,12 +187,12 @@ final class RenderGraphCompose: Sketch {
         // 7. 二段目マージ: 背景レイヤーの上に Overlay を **アルファ合成**
         //
         // .alpha (B over A) を使うことで、Overlay の不透明な点は背景に
-        // 「上書き」される。これにより Vignette の明暗変化が点の見た目に
-        // ダイレクトに反映され、画面端で点が露骨に暗くなる/中央付近で
-        // ひときわ明るく見えるという差がはっきり可視化される。
+        // 「上書き」される。これにより Bloom のグロウと Vignette の明暗変化が
+        // 点の見た目にダイレクトに反映され、中央付近の点はにじみながらひときわ
+        // 明るく、画面端の点は露骨に暗くなるという差がはっきり可視化される。
         // .add のままだと背景に足し込まれるので減光が見えにくい。
         guard let composite = createMergePass(
-            bgWithStars, vignetteOverlay, blend: .alpha
+            bgWithStars, glowOverlay, blend: .alpha
         ) else {
             fatalError("createMergePass(overlay) に失敗")
         }
@@ -209,13 +218,14 @@ final class RenderGraphCompose: Sketch {
         pgScene.endDraw()
 
         // ======== Overlay パス ========
-        // 透明背景の上に小さな高輝度点を配置。Vignette で周辺減光される。
+        // 透明背景の上に小さな高輝度点を配置。Bloom でにじみ、Vignette で周辺減光される。
         pgOverlay.beginDraw()
         pgOverlay.background(0, 0, 0, 0)
         pgOverlay.noStroke()
         pgOverlay.fill(255, 240, 120)
         // 軌道は広めにとって、画面端まで届くようにする。
         // Vignette で外周は明らかに暗く、中央付近は明るく見える。
+        // Bloom の閾値 (0.5) を超えるので、点のまわりには薄いグロウが乗る。
         let count = 6
         for i in 0..<count {
             let a = t * 1.4 + Float(i) * (.pi * 2 / Float(count))
@@ -224,7 +234,7 @@ final class RenderGraphCompose: Sketch {
             let y = cy + sin(a) * r * 0.55
             pgOverlay.circle(x, y, 26)
         }
-        // 中央のひときわ明るい点（Vignette のピーク = 100% で見える）
+        // 中央のひときわ明るい点（Vignette のピーク = 100% で、Bloom のグロウも最も濃い）
         pgOverlay.fill(255, 255, 255)
         pgOverlay.circle(cx, cy, 16)
         pgOverlay.endDraw()
