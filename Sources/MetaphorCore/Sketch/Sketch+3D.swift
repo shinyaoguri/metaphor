@@ -163,7 +163,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![perspective(fov:near:far:) の実行結果](https://i.gyazo.com/8f6220f6e61ce88a2b720b1c4dac36fd.png)
+    ///       ![perspective(fov:near:far:) の実行結果](https://i.gyazo.com/8d0b1db9bce559a2b3c9789b5f8112da.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -173,6 +173,7 @@ extension Sketch {
     ///       fill(255, 190, 60)
     ///       perspective(fov: PI / 3)
     ///       translate(width / 2, height / 2, 0)
+    ///       rotateX(-0.25)
     ///
     ///       for i in 0..<3 {
     ///           push()
@@ -225,7 +226,7 @@ extension Sketch {
     ///
     /// @Row {
     ///    @Column(size: 1) {
-    ///       ![ortho(left:right:bottom:top:near:far:) の実行結果](https://i.gyazo.com/76e24bd04603f61a942af99c875580d3.png)
+    ///       ![ortho(left:right:bottom:top:near:far:) の実行結果](https://i.gyazo.com/2d792009de4259626f4828d453a0807e.png)
     ///    }
     ///    @Column(size: 2) {
     ///       ```swift
@@ -240,6 +241,7 @@ extension Sketch {
     ///           top: height / 2
     ///       )
     ///       translate(width / 2, height / 2, 0)
+    ///       rotateX(-0.25)
     ///
     ///       for i in 0..<3 {
     ///           push()

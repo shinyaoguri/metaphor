@@ -99,15 +99,15 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::ortho(left:right:bottom:top:near:far:)": {
       "symbol": "ortho(left:right:bottom:top:near:far:)",
-      "snippetHash": "a890e815efcb56b22c3ac8557168bc734194451b3fd7388a90ea512a2fcb07c2",
+      "snippetHash": "d462992541e60fbca15dfae01bcd9bc1a845841f84bf6740c3f1f20a62dc8541",
       "provenance": {
-        "commit": "fa2e822f744fa3c5b898a34a06b5241f8afcb91c",
+        "commit": "99b985a01d4ff192cbb7386ca5cf4e21da475191",
         "dirty": true
       },
       "width": 480,
       "height": 360,
-      "url": "https://i.gyazo.com/76e24bd04603f61a942af99c875580d3.png",
-      "sha256": "13d3ea9bcae5ef32cb7ac7911cb2c7ed064808eb3014b7f413618eeca232f822"
+      "url": "https://i.gyazo.com/2d792009de4259626f4828d453a0807e.png",
+      "sha256": "c2efff4374c9c55cbae4ac59e471edc6cb5c179639276870aa4d8909e45f52cd"
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::pbr(_:)": {
       "symbol": "pbr(_:)",
@@ -123,15 +123,15 @@
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::perspective(fov:near:far:)": {
       "symbol": "perspective(fov:near:far:)",
-      "snippetHash": "2e77ee965f4f72dd0d27edc2abe2d2bd740826e998b015d957ae206e39280510",
+      "snippetHash": "16a142a1a9899e10a4e8e4e40d3355cf92064cbc1060040e2c3e010d35856811",
       "provenance": {
-        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "commit": "095c6e3e8225ce9a9dc45947e053fcb6091bf40b",
         "dirty": true
       },
       "width": 480,
       "height": 360,
-      "url": "https://i.gyazo.com/8f6220f6e61ce88a2b720b1c4dac36fd.png",
-      "sha256": "8a5d1715e4be9a091d1d3fa70f4b5ab1ac79aeb3b0bb2a9618abc4b1b0fa3f25"
+      "url": "https://i.gyazo.com/8d0b1db9bce559a2b3c9789b5f8112da.png",
+      "sha256": "26e7e64f0074d607d5680d92e179fc400844201738464cfe51826987c8b42ce6"
     },
     "Sources/MetaphorCore/Sketch/Sketch+3D.swift::plane(_:_:)": {
       "symbol": "plane(_:_:)",
