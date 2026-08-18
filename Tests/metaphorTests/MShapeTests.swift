@@ -1174,6 +1174,95 @@ struct MShapeBuilderColorModeTests {
 
         expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
     }
+
+    // MARK: チャンネル指定版 fill(v1,v2,v3,a?) / stroke(v1,v2,v3,a?)（#897）
+    //
+    // 本線（`CanvasStyleProtocol`）にはある 3 成分版が `MShapeBuilder` に無く、
+    // `colorMode(.hsb, 360, 100, 100)` で色相を回す典型がシェイプ定義の中だけ
+    // 書けなかった。`colorModeConfig.toColor()` に流して本線と同じ規則にする。
+
+    @Test("fill(v1, v2, v3) follows the shape's colorMode space and ranges")
+    func fillChannelsFollowHSBRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(180, 100, 100)
+        s.endShape()
+
+        // 色相 180/360 = 0.5、彩度・明度は最大 → シアン
+        expectClose(s.capturedStyle.fillColor, SIMD4(0, 1, 1, 1), "fill")
+        #expect(s.capturedStyle.hasFill)
+    }
+
+    @Test("stroke(v1, v2, v3) follows the shape's colorMode space and ranges")
+    func strokeChannelsFollowHSBRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.stroke(180, 100, 100)
+        s.endShape()
+
+        expectClose(s.capturedStyle.strokeColor, SIMD4(0, 1, 1, 1), "stroke")
+        #expect(s.capturedStyle.hasStroke)
+    }
+
+    @Test("the shape and the sketch agree on the same three channel values")
+    func channelsMatchCanvas() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        ctx.fill(30, 80, 90)
+        ctx.stroke(210, 40, 60)
+
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(30, 80, 90)
+        s.stroke(210, 40, 60)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, ctx.canvas.fillColor, "fill: shape vs canvas")
+        expectClose(s.capturedStyle.strokeColor, ctx.canvas.strokeColor, "stroke: shape vs canvas")
+    }
+
+    @Test("omitting the alpha argument leaves the color fully opaque")
+    func channelsOmittedAlphaIsOpaque() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(0, 100, 100)
+        s.stroke(120, 100, 100)
+        s.endShape()
+
+        // maxAlpha / maxAlpha = 1.0（α の最大値が何であれ不透明）
+        #expect(s.capturedStyle.fillColor.w == 1)
+        #expect(s.capturedStyle.strokeColor.w == 1)
+    }
+
+    @Test("the fourth argument follows the alpha range, not the channel ranges")
+    func channelAlphaFollowsItsOwnRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 255, 255, 255, 1)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(255, 0, 0, 0.5)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(1, 0, 0, 0.5), "fill")
+    }
+
+    @Test("channel values on a shape built without a sketch context use the 0-255 default")
+    func channelsWithoutContextUseDefault() {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.fill(255, 0, 0)
+        s.stroke(0, 0, 255, 128)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(1, 0, 0, 1), "fill")
+        expectClose(s.capturedStyle.strokeColor, SIMD4(0, 0, 1, 128 / 255), "stroke")
+    }
 }
 
 // MARK: - setTint() が効かないことを黙って隠さない（#852）
