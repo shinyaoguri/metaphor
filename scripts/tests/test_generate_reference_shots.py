@@ -305,6 +305,29 @@ class ReferenceShotsTestCase(unittest.TestCase):
         )
         self.assertEqual(warnings, [])
 
+    def test_an_unmeasurable_shot_says_so_instead_of_going_quiet(self):
+        """ffmpeg が無くて測れないときは、黙らずに note を返す。
+
+        警告を出すための仕組みが、測れないときに無言で「異常なし」と見分けが
+        付かなくなるのが一番危ない（実際 CI には ffmpeg が入っていない）。
+        """
+        circle, _ = self.extract()
+        notes = shots.symmetry_warnings(
+            circle, Path("still.png"), None, measure=lambda _f, _a: None
+        )
+        self.assertEqual(len(notes), 1)
+        self.assertIn("飛ばした", notes[0])
+        self.assertIn("ffmpeg", notes[0])
+
+    def test_flip_psnr_returns_none_without_ffmpeg(self):
+        """ffmpeg の有無を持つのは flip_psnr（計測経路を 1 本にする）。"""
+        saved = shots.shutil.which
+        shots.shutil.which = lambda _name: None
+        try:
+            self.assertIsNone(shots.flip_psnr(Path("still.png"), "vflip"))
+        finally:
+            shots.shutil.which = saved
+
     def test_a_declared_axis_is_silenced_but_the_other_is_not(self):
         circle, _ = self.extract()
         measure = lambda _f, _a: float("inf")  # noqa: E731
@@ -555,6 +578,8 @@ class CaptureTestCase(unittest.TestCase):
         # 連番から GIF を作るところは ffmpeg が要るので、ここでは通らない。
         shots.collect_sequence = lambda *args, **kwargs: {"width": 480, "height": 360}
         # 反転一致の計測も ffmpeg が要る（偽の PNG に中身は無い）。既定は「対称でない」。
+        # flip_psnr は ffmpeg の有無まで受け持つので、これを差し替えれば
+        # ffmpeg の無い CI でも判定ロジックそのものを検査できる。
         self.measured = 20.46
         shots.flip_psnr = lambda *args, **kwargs: self.measured
 

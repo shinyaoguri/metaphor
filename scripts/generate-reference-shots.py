@@ -867,12 +867,20 @@ def run_capturing(command: list[str], what: str) -> str:
 PSNR_AVERAGE_RE = re.compile(r"\baverage:(\S+)")
 
 
-def flip_psnr(still: Path, flip: str) -> float:
-    """`still` と、それを `flip`（vflip / hflip）したものの PSNR（dB）。
+def flip_psnr(still: Path, flip: str) -> float | None:
+    """`still` と、それを `flip`（vflip / hflip）したものの PSNR（dB）。測れなければ None。
 
-    ffmpeg は GIF 生成で既に要るので、依存は増えない。psnr の要約は info で出るため
-    `-loglevel error` にはできない（`-nostats` で進捗行だけ黙らせる）。
+    ffmpeg は撮影の側（GIF 生成）で既に要るので依存は増えないが、**python テストだけを
+    回す CI のステップには入っていない**（`.github/workflows/ci.yml` の
+    `Test generator scripts` は ffmpeg を入れない）。有無の判定をここに置くことで、
+    `symmetry_warnings()` から見た計測経路は **この関数 1 つだけ**になり、テストは
+    これを差し替えるだけで判定ロジックを確かめられる。
+
+    psnr の要約は info で出るため `-loglevel error` にはできない
+    （`-nostats` で進捗行だけ黙らせる）。
     """
+    if shutil.which("ffmpeg") is None:
+        return None
     output = run_capturing(
         [
             "ffmpeg", "-hide_banner", "-nostats",
@@ -903,18 +911,24 @@ def symmetry_warnings(
     あり、撮影を止めると意図して対称な絵を出したいときに作業が詰まります。分かっている
     ものは `shots.config.json` の `"symmetric"` で軸ごとに黙らせられます。
 
-    `measure` を差し替えられるのは、テストが ffmpeg 無しで判定だけを確かめられるように
-    するためです（CI の macOS ランナーには ffmpeg が入っていない）。
+    **測れなかったときは黙りません。** ffmpeg が無い環境では検査ごと飛ばしますが、
+    その旨を note として返します。警告を出すための仕組みが、測れないときに無言で
+    「異常なし」と見分けが付かなくなるのが一番危ないためです。
+
+    `measure` は計測の差し替え口です（既定は `flip_psnr`。ffmpeg の有無もそちらが持つ）。
     """
     if measure is None:
-        if shutil.which("ffmpeg") is None:
-            return []  # GIF と同じ依存。無ければ黙って飛ばす（撮影そのものは成立する）
         measure = flip_psnr
     warnings: list[str] = []
     for axis, (flip, label) in FLIPS.items():
         if symmetric in (axis, "both"):
             continue
         value = measure(still, flip)
+        if value is None:
+            return [
+                f"  note     {snippet.symbol} の反転一致検査を飛ばした"
+                "（ffmpeg が無いので PSNR を測れない）"
+            ]
         if value <= FLIP_PSNR_WARN_DB:
             continue
         shown = "完全一致" if value == float("inf") else f"PSNR {value:.1f} dB"
