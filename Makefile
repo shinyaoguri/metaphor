@@ -117,6 +117,12 @@ clean-all: clean
 	rm -rf Vendor/Syphon-Framework
 
 # Check if setup is complete
+#
+# Frameworks/Syphon.xcframework が無くても Package.swift は release URL の
+# binaryTarget へフォールバックするので、そこが MISSING でも swift build /
+# swift test は通る（Issue #935）。submodule 側は「ディレクトリがある」だけでは
+# 足りない — git submodule update を通していない worktree には空ディレクトリだけが
+# 生えるので、xcodebuild が必要とする実体（Syphon.xcodeproj）の有無を見る。
 check:
 	@if [ -d "Frameworks/Syphon.xcframework" ]; then \
 		current=$$(git submodule status Vendor/Syphon-Framework 2>/dev/null | awk '{print $$1}'); \
@@ -127,10 +133,12 @@ check:
 			echo "Syphon.xcframework: OK"; \
 		fi; \
 	else \
-		echo "Syphon.xcframework: MISSING - run 'make setup'"; \
+		echo "Syphon.xcframework: MISSING - swift build falls back to the release binaryTarget (run 'make setup' to build it locally)"; \
 	fi
-	@if [ -d "Vendor/Syphon-Framework" ]; then \
+	@if [ -e "Vendor/Syphon-Framework/Syphon.xcodeproj" ]; then \
 		echo "Syphon submodule: OK"; \
+	elif [ -d "Vendor/Syphon-Framework" ]; then \
+		echo "Syphon submodule: NOT INITIALIZED (empty checkout) - run 'make submodules'"; \
 	else \
 		echo "Syphon submodule: MISSING - run 'make submodules'"; \
 	fi
@@ -138,11 +146,31 @@ check:
 # Extract symbol graphs (shared step for docs and llms-txt)
 # Each module is independent — run extraction in parallel via xargs -P.
 # Saves ~60s on CI (12 modules × ~7s sequential → bounded by core count).
+#
+# -F の解決先は 2 通りある（Issue #935）。Package.swift は Frameworks/Syphon.xcframework
+# が無ければ release URL の binaryTarget へフォールバックし、そのとき Syphon.framework は
+# swift build が .build/arm64-apple-macosx/debug/ へ置く。片方を決め打ちすると
+# `make setup` を通していない worktree で symbol-graphs だけが落ち、llms.txt の鮮度を
+# 見る pre-push フックごと push が通らなくなる（build / test は green のままなので
+# 原因に辿り着きにくい）。どちらの経路でも採れる symbol graph は同一なので、実在する
+# 方をレシピ内シェルで選ぶ。`:=` + $(shell) は build 依存より先に評価されてしまい、
+# 初回ビルド前は必ずフォールバック側に倒れるため、変数ではなくレシピ内で判定する。
+#
+# 説明をレシピの外（この位置）に置いているのは 2 つの理由による。レシピ本体は `\` 継続行の
+# ひとかたまりなので、途中に `#` を挟むと以降が丸ごとシェルコメントに飲まれる。加えて
+# scripts/validate-ai-docs.sh が `awk '/^symbol-graphs:/,/^# Generate llms.txt/'` で
+# このブロックを読み、`Metaphor*` 語を拾ってモジュール網羅を判定するので、ブロック内に
+# 語彙を増やすと網羅判定が鈍る。下の `# Generate llms.txt` は境界なので消さないこと。
 symbol-graphs: build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
-	export SDK_PATH; \
+	if [ -d Frameworks/Syphon.xcframework/macos-arm64_x86_64 ]; then \
+		SYPHON_F=Frameworks/Syphon.xcframework/macos-arm64_x86_64; \
+	else \
+		SYPHON_F=.build/arm64-apple-macosx/debug; \
+	fi; \
+	export SDK_PATH SYPHON_F; \
 	printf '%s\n' metaphor MetaphorCore MetaphorLog \
 		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML MetaphorVideo \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
@@ -153,7 +181,7 @@ symbol-graphs: build
 		-sdk "$$SDK_PATH" \
 		-I .build/arm64-apple-macosx/debug/Modules \
 		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorSyphonBootstrap.build/module.modulemap \
-		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+		-F "$$SYPHON_F" \
 		-minimum-access-level public \
 		-skip-inherited-docs \
 		-emit-extension-block-symbols \
