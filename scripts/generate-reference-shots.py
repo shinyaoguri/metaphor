@@ -175,6 +175,28 @@ POLL_INTERVAL_SEC = 0.2
 DEFAULT_WIDTH = 480
 DEFAULT_HEIGHT = 360
 
+# 反転一致の警告（#985）。撮った絵を上下・左右に反転して PSNR を測り、これを超える
+# ものを「反転しても実質同じ絵」＝**引数を間違えても同じ絵になる**とみなして警告する。
+#
+# しきい値は台帳の 58 点を実測して決めた（Gyazo の URL から落として sha256 照合。撮影は
+# 決定的なので本番と同じ値になる — #586）。40 dB の上と下には実測の空白帯があり、
+# 40 dB は 37.0 dB と 43.5 dB のあいだに落ちる:
+#
+#   - 40 dB 超は 6 点だけ。spotLight 98.8/94.0・pointLight 65.6/65.6・plane -/66.3・
+#     cone -/49.4・directionalLight -/45.2・radialGradient 43.5/43.5（vflip/hflip）
+#   - 次に高いのは strokeWeight の 37.0 dB で、そこから下は連続して散る
+#   - #923 で直した ortho / perspective は、**直す前**が inf と 58.7 dB、**直した後**が
+#     16.7 と 20.5 dB。40 dB は両者をきれいに分ける
+#
+# 真円や正方形を中央に描いた絵でも 33〜35 dB にしかならない（ラスタライズの半画素ずれ）。
+# つまり 40 dB は「幾何的に対称」ではなく「画素の水準で反転と見分けが付かない」を拾う。
+FLIP_PSNR_WARN_DB = 40.0
+
+# 「反転しても同じ絵でよい」の申告。`vertical` は上下反転（vflip）、`horizontal` は
+# 左右反転（hflip）に対して対称でよい、の意。
+FLIPS = {"vertical": ("vflip", "上下"), "horizontal": ("hflip", "左右")}
+SYMMETRIES = (*FLIPS, "both")
+
 # 動きの既定値。GIF は WebP の 1 桁上のサイズになるので、フレーム数は控えめに。
 MOTION_MAX_FRAMES = 64  # Probe 側のクランプ上限（CONTRACT.md 契約点 4）
 MOTION_DEFAULTS = {"frames": 36, "every": 2, "fps": 15, "width": DEFAULT_WIDTH}
@@ -246,6 +268,25 @@ class Snippet:
                     f"    {too_long[0]}"
                 )
         return layout
+
+    def symmetric(self, config: dict) -> str | None:
+        """「反転しても同じ絵でよい」という申告（無ければ None）。
+
+        **`layout` と同じく `settings()` の外で読みます**。`fingerprint()` の材料に
+        入れてよいのは絵に影響する設定だけで、撮影の段取りだけを変える knob を混ぜると、
+        その knob を足した日にも外した日にも全点の指紋が動きます（絵は 1 枚も変わって
+        いないのに、台帳の移行か全点の撮り直しが要る。`settle` で実際に踏んだ — #784）。
+        """
+        entry = config.get(self.key) or config.get(self.symbol) or {}
+        symmetric = entry.get("symmetric")
+        if symmetric is None:
+            return None
+        if symmetric not in SYMMETRIES:
+            raise ShotError(
+                f"{self.key}: symmetric は {' / '.join(SYMMETRIES)} のいずれか"
+                f"（{symmetric!r} が指定された）"
+            )
+        return symmetric
 
     def settings(self, config: dict) -> dict:
         """撮影設定（既定 + `shots.config.json` の上書き）を返す。
@@ -626,8 +667,12 @@ def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
     return data
 
 
-def capture(snippet: Snippet, settings: dict) -> dict:
-    """スニペット 1 本を走らせて撮り、台帳のエントリ（URL 抜き）を返す。"""
+def capture(snippet: Snippet, settings: dict, symmetric: str | None = None) -> dict:
+    """スニペット 1 本を走らせて撮り、台帳のエントリ（URL 抜き）を返す。
+
+    `symmetric` は「反転しても同じ絵でよい」の申告（`Snippet.symmetric`）。撮った絵が
+    反転と一致しすぎていないかの検査（#985）を黙らせるために渡す。
+    """
     probe_dir = WORK_DIR / ".metaphor/probe"
     output_dir = probe_dir / "current"
     shutil.rmtree(probe_dir, ignore_errors=True)
@@ -713,6 +758,9 @@ def capture(snippet: Snippet, settings: dict) -> dict:
             shutil.copyfile(frame_png, still)
             size = metadata.get("size", {})
             entry = {"width": size.get("width"), "height": size.get("height")}
+        # 動きの側も代表静止画を同じ `still` に書くので、ここ 1 箇所で両方を通せる。
+        for warning in symmetry_warnings(snippet, still, symmetric):
+            print(warning, flush=True)
     finally:
         process.terminate()
         try:
@@ -802,9 +850,81 @@ def render_gif(
 
 
 def run_or_raise(command: list[str], what: str) -> None:
+    run_capturing(command, what)
+
+
+def run_capturing(command: list[str], what: str) -> str:
+    """コマンドを走らせ、stdout と stderr を繋いで返す。"""
     result = subprocess.run(command, capture_output=True, text=True)
     if result.returncode != 0:
         raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
+    return result.stdout + result.stderr
+
+
+# --- 反転一致の検査（#985）----------------------------------------------------
+
+# ffmpeg の psnr フィルタが最後に出す 1 行。完全一致のときは `average:inf`。
+PSNR_AVERAGE_RE = re.compile(r"\baverage:(\S+)")
+
+
+def flip_psnr(still: Path, flip: str) -> float:
+    """`still` と、それを `flip`（vflip / hflip）したものの PSNR（dB）。
+
+    ffmpeg は GIF 生成で既に要るので、依存は増えない。psnr の要約は info で出るため
+    `-loglevel error` にはできない（`-nostats` で進捗行だけ黙らせる）。
+    """
+    output = run_capturing(
+        [
+            "ffmpeg", "-hide_banner", "-nostats",
+            "-i", str(still), "-i", str(still),
+            "-lavfi", f"[1]{flip}[flipped];[0][flipped]psnr",
+            "-f", "null", "-",
+        ],
+        f"{still.name} の {flip} との PSNR 計測",
+    )
+    matched = PSNR_AVERAGE_RE.search(output)
+    if not matched:
+        raise ShotError(f"ffmpeg の PSNR 出力を読み取れなかった:\n{output[-1000:]}")
+    return float("inf") if matched.group(1) == "inf" else float(matched.group(1))
+
+
+def symmetry_warnings(
+    snippet: Snippet, still: Path, symmetric: str | None, measure=None
+) -> list[str]:
+    """撮った絵が上下・左右反転と一致しすぎていないか調べ、警告文を返す（#985）。
+
+    「向きを決める引数」を説明するページなのに反転しても同じ絵 ＝ **引数を間違えても
+    同じ絵になる**ということで、その絵は向きの誤りを写せていません。#923 の `ortho` /
+    `perspective` がそれでした。これは**絵を見比べても発見できない**（撮り直したのに
+    sha256 と Gyazo URL が完全に同一だった、という副次的な観察から分かった）ので、
+    撮影のたびに機械で拾います。
+
+    **エラーにはしません**。対称なのが正しい絵（`radialGradient`、真円、正方形）は普通に
+    あり、撮影を止めると意図して対称な絵を出したいときに作業が詰まります。分かっている
+    ものは `shots.config.json` の `"symmetric"` で軸ごとに黙らせられます。
+
+    `measure` を差し替えられるのは、テストが ffmpeg 無しで判定だけを確かめられるように
+    するためです（CI の macOS ランナーには ffmpeg が入っていない）。
+    """
+    if measure is None:
+        if shutil.which("ffmpeg") is None:
+            return []  # GIF と同じ依存。無ければ黙って飛ばす（撮影そのものは成立する）
+        measure = flip_psnr
+    warnings: list[str] = []
+    for axis, (flip, label) in FLIPS.items():
+        if symmetric in (axis, "both"):
+            continue
+        value = measure(still, flip)
+        if value <= FLIP_PSNR_WARN_DB:
+            continue
+        shown = "完全一致" if value == float("inf") else f"PSNR {value:.1f} dB"
+        warnings.append(
+            f"  warning  {snippet.symbol} の絵は{label}反転と見分けが付きません"
+            f"（{shown} > {FLIP_PSNR_WARN_DB:.0f} dB）。向きを決める引数があるなら、"
+            f"それを間違えても同じ絵になっているおそれがあります。対称で正しいなら "
+            f'docs/reference/shots.config.json に "symmetric": "{axis}" を書いてください'
+        )
+    return warnings
 
 
 # --- Gyazo -------------------------------------------------------------------
@@ -1136,7 +1256,7 @@ def shoot(
     for snippet in pending:
         settings = snippet.settings(config)
         recorded = shots.get(snippet.key)
-        entry = capture(snippet, settings)
+        entry = capture(snippet, settings, snippet.symmetric(config))
         entry = publish(snippet, entry, recorded)
         fingerprint = {
             "symbol": snippet.symbol,
