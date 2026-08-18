@@ -288,6 +288,67 @@ struct VolumeAndBandScaleTests {
         #expect(half.volume == 1.0)
     }
 
+    // 以下 4 本は #941 で足した rms を固定する。
+    // volume は 4 倍 + 飽和なので、飽和後は割り戻しても入力が復元できない。
+    // rms はその手前の素の値を返す。
+
+    /// 振幅一定の矩形波なら RMS = 振幅。`volume` が 4 倍していた分がここには乗らない。
+    @Test("rms は素の RMS を返す（4 倍しない）")
+    func rmsIsUnscaled() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        analyzer.injectSamples([Float](repeating: 0.1, count: 1024))
+        analyzer.update()
+
+        #expect(abs(analyzer.rms - 0.1) < 1e-5)
+        // 同じフレームの volume は 4 倍された 0.4。両者は別物
+        #expect(abs(analyzer.volume - 0.4) < 1e-5)
+    }
+
+    /// この Issue の本題。`volume` が 1.0 に張り付く領域で `rms` は伸び続ける。
+    @Test("volume が飽和する領域でも rms は入力の大小を保つ")
+    func rmsKeepsResolutionWhereVolumeSaturates() {
+        func measure(_ amplitude: Float) -> (volume: Float, rms: Float) {
+            let analyzer = AudioAnalyzer(fftSize: 1024)
+            analyzer.injectSamples([Float](repeating: amplitude, count: 1024))
+            analyzer.update()
+            return (analyzer.volume, analyzer.rms)
+        }
+
+        let quarter = measure(0.25)  // RMS 0.25 = 飽和のちょうど境目
+        let half = measure(0.5)  // その 2 倍
+
+        // volume はどちらも 1.0。ここから入力の大小は読めない
+        #expect(abs(quarter.volume - 1.0) < 1e-5)
+        #expect(half.volume == 1.0)
+
+        // rms は 0.25 と 0.5 で区別できる
+        #expect(abs(quarter.rms - 0.25) < 1e-5)
+        #expect(abs(half.rms - 0.5) < 1e-5)
+        #expect(half.rms > quarter.rms)
+    }
+
+    @Test("無音では rms は 0")
+    func rmsIsZeroForSilence() {
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        analyzer.injectSamples([Float](repeating: 0, count: 1024))
+        analyzer.update()
+
+        #expect(analyzer.rms == 0)
+        #expect(analyzer.volume == 0)
+    }
+
+    @Test("解析前の rms は 0")
+    func rmsStartsAtZero() {
+        // processSamples を呼ぶのは update()。injectSamples すらしていない状態で
+        // 前フレームの残りや未初期化値が漏れないことを見る。
+        let analyzer = AudioAnalyzer(fftSize: 1024)
+        #expect(analyzer.rms == 0)
+
+        // injectSamples だけでは計算されない（update() を待つ）
+        analyzer.injectSamples([Float](repeating: 0.5, count: 1024))
+        #expect(analyzer.rms == 0)
+    }
+
     /// サイン波は RMS = 振幅/√2 なので、振幅 1/(4/√2) ≈ 0.354 で飽和する。
     @Test("サイン波は振幅 0.354 あたりで飽和する")
     func sineSaturatesAroundOneThird() {
