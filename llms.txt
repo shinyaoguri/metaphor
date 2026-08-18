@@ -1636,7 +1636,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func setStroke(_ enabled: Bool)` -- このシェイプのストロークを有効または無効にします。
 - `func setStrokeWeight(_ weight: Float)` -- このシェイプのストロークの太さを設定します。
 - `func setTexture(_ img: MImage)` -- このシェイプのテクスチャを設定します。
-- `func setTint(_ color: Color)` -- ティント色を記録します。**現在どの描画経路でも効きません**（#852）。
+- `func setTint(_ color: Color)` -- ティント色を記録します。**現在どの描画経路でも効きません**（#905）。
 - `func setVertex(_ index: Int, _ x: Float, _ y: Float)` -- インデックスで頂点位置を設定します（2D）。
 - `func setVertex(_ index: Int, _ x: Float, _ y: Float, _ z: Float)` -- インデックスで頂点位置を設定します（3D）。
 
