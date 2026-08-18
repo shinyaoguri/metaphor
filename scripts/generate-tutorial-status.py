@@ -9,9 +9,12 @@ README 群が案内する「どこまで公開されているか」は**生成�
 
     <!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->
 
-種類は 3 つ:
+種類は 5 つ:
 
 - `ja-status` / `en-status` — どこまで公開済みで、どこから執筆中かの 1 句
+- `ja-translation` / `en-translation` — 英語版（`docs/tutorial/en/`）がどこまで
+  入っているかの 1 文（Issue #956）。訳が 1 節も無い今は「後追いします」と出て、
+  訳が入った部から文面が変わり、全部そろうと追跡 Issue への言及ごと落ちる
 - `ja-links:<接頭辞>` — 公開済みの部への日本語リンクを ` / ` で並べたもの。
   接頭辞は本文から `docs/tutorial/` への相対パス（`tutorial/` など）
 
@@ -64,6 +67,13 @@ MARKER_RE = re.compile(
 OUTLINE_ROW_RE = re.compile(
     r"^\|\s*第\s*(?P<part>\d+)\s*部[^|]*\|[^|]*\|\s*(?P<state>[^|]*?)\s*"
     r"\|\s*(?P<translation>[^|]*?)\s*\|\s*$"
+)
+
+# 翻訳（#548）の進行を追う Epic。`ja-translation` / `en-translation` の文面が
+# 唯一この番号に触れるので、訳がそろえば入口ドキュメントから言及ごと消える。
+TRANSLATION_ISSUE = 548
+TRANSLATION_ISSUE_URL = (
+    f"https://github.com/shinyaoguri/metaphor/issues/{TRANSLATION_ISSUE}"
 )
 
 PUBLISHED_LABEL = "公開"
@@ -190,6 +200,61 @@ def en_status(parts: list[Part]) -> str:
     return f"{head}, {noun} {listed} {verb} being written"
 
 
+def _translation_link() -> str:
+    return f"[#{TRANSLATION_ISSUE}]({TRANSLATION_ISSUE_URL})"
+
+
+def ja_translation(parts: list[Part]) -> str:
+    """英語版がどこまで入っているかの 1 文（日本語、Issue #956）。
+
+    公開状況（`ja_status`）とは別の軸。訳は日本語版の公開順に入るとは限らないので
+    飛びも表現する。全部そろったら追跡 Issue への言及ごと落として、読者に
+    「まだ途中」と誤解させない。
+    """
+    translated = [p.number for p in parts if p.translated]
+    if translated and len(translated) == len(parts):
+        return "英語版もすべての部がそろっています"
+    link = _translation_link()
+    if not translated:
+        return f"英語版は {link} で後追いします"
+    if _contiguous_from_one(translated):
+        head = (
+            f"第 {translated[0]} 部"
+            if len(translated) == 1
+            else f"第 {translated[0]} 部〜第 {translated[-1]} 部"
+        )
+    else:
+        head = "第 " + "・".join(str(n) for n in translated) + " 部"
+    return f"英語版は{head}が訳出済みで、残りは {link} で後追いします"
+
+
+def en_translation(parts: list[Part]) -> str:
+    """英語版がどこまで入っているかの 1 文（英語、Issue #956）。
+
+    `ja_translation` と同じ内容を英語の入口向けに言う。文の頭に置ける形（大文字
+    始まり・句点を含まない）にして、表のセルにも地の文にもそのまま差し込める。
+    """
+    translated = [p.number for p in parts if p.translated]
+    if translated and len(translated) == len(parts):
+        return "Every part is available in English"
+    link = _translation_link()
+    if not translated:
+        return f"The prose is Japanese for now — an English edition is tracked in {link}"
+    if _contiguous_from_one(translated):
+        head = (
+            f"Part {translated[0]} is available in English"
+            if len(translated) == 1
+            else f"Parts {translated[0]}–{translated[-1]} are available in English"
+        )
+    else:
+        head = (
+            "Parts "
+            + ", ".join(str(n) for n in translated)
+            + " are available in English"
+        )
+    return f"{head} — the rest is tracked in {link}"
+
+
 def ja_links(parts: list[Part], prefix: str) -> str:
     return " / ".join(
         f"[第 {p.number} 部 {p.title}]({prefix}{p.filename})"
@@ -203,6 +268,10 @@ def render_marker(kind: str, parts: list[Part], label: str) -> str:
         return ja_status(parts)
     if kind == "en-status":
         return en_status(parts)
+    if kind == "ja-translation":
+        return ja_translation(parts)
+    if kind == "en-translation":
+        return en_translation(parts)
     if kind.startswith("ja-links"):
         _, _, prefix = kind.partition(":")
         return ja_links(parts, prefix)

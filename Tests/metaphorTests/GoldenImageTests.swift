@@ -80,6 +80,84 @@ struct GoldenImageTests {
         )
     }
 
+    // MARK: - ゴールデンの検出力
+
+    /// ライティングのゴールデンは「絵が変わったら落ちる」だけなので、**そもそも絵に
+    /// 写っていない要素**の退行はいくら比較しても落とせない。`ambientLight` が実質 0 で
+    /// 環境光を写していなかった #392 と同じ穴が鏡面にも空いていた（#535）ため、
+    /// 「その要素を殺したら許容差を超えて絵が動く」ことを検査として明示的に固定する。
+    ///
+    /// 許容差 `GoldenTolerance.shaded`（`maxChannelDiff = 4`）は GPU 世代差の量子化揺れを
+    /// 吸収するための下駄なので、**それを超える**ことを条件にする。超えなければ、
+    /// 鏡面項がまるごと消えてもゴールデン照合は緑のまま通る。
+    @Test("Blinn-Phong のゴールデンが鏡面の消失を検出できる")
+    func blinnPhongGoldenDetectsSpecularLoss() throws {
+        let scene = try GoldenScenes.scene(named: "lighting-blinn-phong")
+        let withSpecular = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
+        // 鏡面色を 0 にすると Blinn-Phong の鏡面項がまるごと落ちる
+        // （metallic 既定 0 なので specColor = specular 色そのもの）。
+        let withoutSpecular = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: GoldenScenes.blinnPhongDraw(specular: 0)
+        )
+
+        let diff = withSpecular.compare(
+            to: withoutSpecular, channelTolerance: scene.tolerance.maxChannelDiff
+        )
+        print("[golden-power] lighting-blinn-phong specular(230) vs specular(0): \(diff.summary)")
+        #expect(
+            diff.maxChannelDiff > scene.tolerance.maxChannelDiff,
+            """
+            鏡面を殺しても許容差を超えて絵が動かない（\(diff.summary)）。
+            この構図ではハイライトが可視面に乗っておらず、ゴールデンは鏡面の退行を検出できない。
+            shininess／ライト方向／カメラを見直してハイライトを可視面へ乗せること（#535）。
+            """
+        )
+        // 1 画素だけ動く状態を「検出できる」と呼ぶと、閾値超過ピクセル比率
+        // （`maxExceedingRatio = 0.002`）に飲まれてゴールデン照合は通ってしまう。
+        #expect(
+            diff.exceedingRatio > scene.tolerance.maxExceedingRatio,
+            "鏡面の消失が許容ピクセル比率に飲まれる（\(diff.summary)）"
+        )
+    }
+
+    /// PBR 側も同じ物差しで測る。#535 は Blinn-Phong の穴だったが、PBR の doc が
+    /// 「拡散・鏡面・環境光の 3 つが同時に識別できる」と主張している以上、その主張自体を
+    /// 検査で裏づけておく（主張だけが残って中身が空洞化するのを防ぐ）。
+    ///
+    /// PBR に `specular()` は効かないため、鏡面だけを動かすつまみは `roughness`
+    /// （直接光では `DistributionGGX` / `GeometrySmith` にしか入らない）。
+    @Test("PBR のゴールデンが鏡面ローブの変化を検出できる")
+    func pbrGoldenDetectsSpecularChange() throws {
+        let scene = try GoldenScenes.scene(named: "lighting-pbr")
+        let glossy = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
+        // roughness = 1.0 は GGX のローブが最大に広がる端で、鏡面ハイライトが消えた
+        // （= 一様に鈍い）状態にあたる。
+        let rough = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: GoldenScenes.pbrDraw(roughness: 1.0)
+        )
+
+        let diff = glossy.compare(
+            to: rough, channelTolerance: scene.tolerance.maxChannelDiff
+        )
+        print("[golden-power] lighting-pbr roughness(0.45) vs roughness(1.0): \(diff.summary)")
+        #expect(
+            diff.maxChannelDiff > scene.tolerance.maxChannelDiff,
+            "鏡面ローブを潰しても許容差を超えて絵が動かない（\(diff.summary)）"
+        )
+        #expect(
+            diff.exceedingRatio > scene.tolerance.maxExceedingRatio,
+            "鏡面ローブの変化が許容ピクセル比率に飲まれる（\(diff.summary)）"
+        )
+    }
+
     /// カタログに足したシーンを名前リストへ書き忘れると、そのシーンは**どのテストからも
     /// 呼ばれない**まま緑になる。名前リストとカタログの対応をここで固定する。
     @Test("シーン名リストがカタログを網羅している")
