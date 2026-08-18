@@ -100,8 +100,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **2D のみ**に作用します（ADR-0005 Amendment 2026-08-02。P3D 統一の対象外）。
 - `func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .default)` -- 円弧を描画します（`stopAngle` は `startAngle` より大きいこと。2π 超は 1 周にクランプ）。
 - `func background(_ color: Color)` -- 指定した色でキャンバスをクリアします。
+  - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
 - `func background(_ gray: Float)` -- グレースケール値でキャンバスをクリアします。
+  - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
 - `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- 指定したカラーチャンネル値でキャンバスをクリアします。
+  - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
 - `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 以降の描画を指定した矩形にクリッピングします。
 - `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します（2D シェイプ専用）。
 - `func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
@@ -133,7 +136,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
 - `func colorMode(_ space: ColorSpace, _ maxAll: Float)` -- 全チャンネル共通の最大値を指定してカラーモードを設定します。
+  - Note: **2D と 3D の両方**に作用します（`fill(_:)-(Color)` / `stroke(_:)-(Color)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
 - `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
+  - Note: **2D と 3D の両方**に作用します（`fill(_:)-(Color)` / `stroke(_:)-(Color)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
 - `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
 - `func cone(radius: Float, height: Float, detail: Int = 24)` -- 円錐を描画します。
@@ -219,6 +224,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
 - `func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 楕円を描画します。
 - `func ellipseMode(_ mode: EllipseMode)` -- 楕円の描画モードを設定します。
+  - Note: **2D のみ**に作用します（`ellipse(_:_:_:_:)` 用で、3D のプリミティブの位置の解釈には効きません。ADR-0005）。
 - `func emissive(_ color: Color)` -- エミッシブ（自己発光）色を設定します。
   - Note: **3D のみ**に作用します（ADR-0005）。
 - `func emissive(_ gray: Float)` -- グレースケール値でエミッシブ色を設定します。
@@ -254,9 +260,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では巻き戻りません。
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
+  - Note: **2D と 3D の両方**に作用します。3D ではプリミティブやメッシュの色になり、`texture(_:)` を貼っているときはテクスチャの色に乗算されます（ADR-0005）。
 - `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
+  - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
 - `func fill(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で塗りつぶし色を設定します。
+  - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
 - `func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で塗りつぶし色を設定します。
+  - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
 - `func filter(_ image: MImage, _ type: FilterType)` -- 画像に GPU 画像フィルタを適用します（in-place）。
 - `func frameRate(_ fps: Int)` -- フレームレートを動的に変更します。
 - `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- キャプチャデバイスの最新フレームを指定位置に描画します。
@@ -271,6 +281,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func image(_ video: VideoPlayer, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- ビデオプレーヤーの現在のフレームを指定位置・サイズで描画します。
 - `func image(_ img: MImage, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float, _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float)` -- 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
 - `func imageMode(_ mode: ImageMode)` -- 画像の描画モードを設定します。
+  - Note: **2D のみ**に作用します（`image()` 用で、3D の `texture(_:)` には効きません。ADR-0005）。
 - `func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool` -- 3D モデル座標の点がカメラ平面より前にあるかを返します。
   - Note: true は「反転していない」ことだけを保証し、「画面内にある」ことは保証しません。正射影では反転が起きないため常に true を返します。
 - `func isKeyDown(_ keyCode: UInt16) -> Bool` -- 特定のキーが現在押下されているかを確認します。
@@ -324,6 +335,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noEnvironment()` -- 環境（IBL と skybox）を無効化します。
   - Note: **3D のみ**に作用します（ADR-0005）。
 - `func noFill()` -- 図形の塗りつぶしを無効にします。
+  - Note: **2D と 3D の両方**に作用します。3D では面が描かれなくなり、`noStroke()` も併せて呼ぶとそのシェイプは何も描かれません（ADR-0005）。
 - `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- ノイズテクスチャを画像として生成します（便利メソッド）。
 - `func noLights()` -- すべてのライトを無効にします。
   - Note: **3D のみ**に作用します（ADR-0005）。
@@ -333,9 +345,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- 以降の 3D 頂点の法線ベクトルを設定します。
   - Note: **3D のみ**に作用します（2D のシェイプに法線はありません。ADR-0005）。
 - `func noStroke()` -- 図形のストロークを無効にします。
+  - Note: **2D と 3D の両方**に作用します。3D の既定は元からストローク無しなので、`stroke(_:)-(Color)` を呼んでいなければ見た目は変わりません（ADR-0005）。
 - `func noTexture()` -- アクティブなテクスチャを解除します。
   - Note: **3D のみ**に作用します（ADR-0005）。
 - `func noTint()` -- 画像のティントを解除します。
+  - Note: **2D のみ**に作用します（`tint(_:)-(Color)` と対。ADR-0005）。
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（`draw()` 内で呼び出してください）。
 - `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- 正射影を設定します。
   - Important: `bottom` / `top` は投影行列の規約どおり「ビュー空間の y が **小さい**側が `bottom`」です。metaphor の y は 2D と同じく画面下向きなので、`bottom` は画面の**上端**、`top` は**下端**に対応します。上下を逆に渡すと絵が上下反転します。
@@ -379,6 +393,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float)` -- 均一な角丸半径の角丸矩形を描画します。
 - `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float)` -- 各角に個別の角丸半径を持つ角丸矩形を描画します。
 - `func rectMode(_ mode: RectMode)` -- 矩形の描画モードを設定します。
+  - Note: **2D のみ**に作用します（`rect(_:_:_:_:)` 用で、3D のプリミティブの位置の解釈には効きません。ADR-0005）。
 - `func redraw()` -- 単一フレームをレンダリングします（`noLoop()` 呼び出し後に使用）。
 - `func registerPlugin(_ plugin: any MetaphorPlugin)` -- このスケッチにプラグインを登録します。
 - `func reloadShader(key: String, source: String) throws` -- シェーダーをソースから再コンパイルしパイプラインキャッシュをクリアします。
@@ -451,11 +466,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **3D のみ**に作用します（ADR-0005）。
 - `func square(_ x: Float, _ y: Float, _ size: Float)` -- 正方形を描画します。
 - `func stroke(_ color: Color)` -- ストローク色を設定します。
+  - Note: **2D と 3D の両方**に作用します。ただし太さを決める `strokeWeight(_:)` は **2D のみ**なので、3D の線の太さは変えられません（ADR-0005）。
 - `func stroke(_ gray: Float)` -- グレースケール値でストローク色を設定します。
+  - Note: **2D と 3D の両方**に作用します（太さを決める `strokeWeight(_:)` は 2D のみ。ADR-0005）。
 - `func stroke(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値でストローク色を設定します。
+  - Note: **2D と 3D の両方**に作用します（太さを決める `strokeWeight(_:)` は 2D のみ。ADR-0005）。
 - `func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値でストローク色を設定します。
+  - Note: **2D と 3D の両方**に作用します（太さを決める `strokeWeight(_:)` は 2D のみ。ADR-0005）。
 - `func strokeCap(_ cap: StrokeCap)` -- ストロークの端点スタイルを設定します。
+  - Note: **2D のみ**に作用します（`strokeWeight(_:)` と同じく、3D の線には効きません。ADR-0005）。
 - `func strokeJoin(_ join: StrokeJoin)` -- ストロークの接続スタイルを設定します。
+  - Note: **2D のみ**に作用します（`strokeWeight(_:)` と同じく、3D の線には効きません。ADR-0005）。
 - `func strokeWeight(_ weight: Float)` -- ストロークの太さ（線幅）を設定します。
   - Note: **2D のみ**に作用します（3D のワイヤーフレームには効きません。ADR-0005）。
 - `func text(_ string: String, _ x: Float, _ y: Float)` -- 指定位置にテキスト文字列を描画します。
@@ -474,9 +495,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **3D のみ**に作用します（2D で画像を描くには `image()` を使用してください。ADR-0005）。
 - `func textWidth(_ string: String) -> Float` -- 現在のフォント設定でテキスト文字列の幅を計算します。
 - `func tint(_ color: Color)` -- 画像のティント色を設定します。
+  - Note: **2D のみ**に作用します。掛かるのは `image()` で描く画像だけで、3D の `texture(_:)` には効きません——3D のテクスチャは `fill(_:)-(Color)` の色を乗算して着色するため、ティント専用のスロットがそもそもありません（ADR-0005）。テクスチャ付きの 3D に色を掛けたいときは `fill(_:)-(Color)` を使ってください。
 - `func tint(_ gray: Float)` -- グレースケール値で画像のティントを設定します。
+  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
 - `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
+  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
 - `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
+  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
 - `func toneMapping(_ mode: ToneMapMode)` -- 3D のライティング結果に適用するトーンマッピングを設定します。
   - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません（3D の陰影は物理量、2D の色は最終色、という非対称を意図的に採っています）。ライトが 1 つも無いときの描画（無照明パス）にも掛かりません。
   - Note: `pushStyle()` / `popStyle()` では**巻き戻りません**。画面全体の性質として扱われます。
