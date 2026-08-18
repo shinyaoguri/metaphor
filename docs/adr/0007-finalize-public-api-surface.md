@@ -214,7 +214,7 @@ rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated
 - 0.8.x 内に deprecation → 削除の 2 リリースが必要になり、リリース刻みの制約が生じる。
 
 ### Follow-ups / 残課題
-- `modelX/Y/Z` の追加(Processing パリティ、additive)— 0.9.x でも可
+- ~~`modelX/Y/Z` の追加(Processing パリティ、additive)— 0.9.x でも可~~ → **[#814](https://github.com/shinyaoguri/metaphor/issues/814) で実施済み**。Processing の `modelX/Y/Z` は `cameraInv * modelview * point`(`modelview = camera * currentMatrix`)でカメラが打ち消し合い、実質 `currentMatrix * point` = **ワールド座標**を返す(カメラ非依存)。「`screenX/Y/Z` の逆変換」は p5.js の `screenToWorld()` の仕様で別物であり、そちらは別途起票した。
 - save 系の `*Async` 追加(additive)— 0.9.x でも可
 - `screenX`+`screenY` 連続呼び出しの二重変換の解消(実装最適化)
 - `frameRate` getter(#273 と統合して判断)/ `SketchConfig.syphon`+`syphonName` 二重表現の doc 明記
@@ -245,7 +245,7 @@ rename の移行はすべて ADR-0005 Amendment の規約に従う: **deprecated
   - `SketchContext.renderer` / `encoder` / `resourceLoader` / `assetCache` / `gifExporter` /
     `orbitCamera` は **public のまま維持**。doc が「エスケープハッチ(上級者向け)」と明記しており
     「doc では内部」に該当しない。`Examples/Samples/RayTracing` が `context.renderer` を実使用。
-- **新規起票(ADR 確定後)**: Follow-ups の各項。
+- **新規起票(ADR 確定後)**: Follow-ups の各項。`modelX/Y/Z` は [#814](https://github.com/shinyaoguri/metaphor/issues/814) として起票・実施済み。
 
 ## References
 
