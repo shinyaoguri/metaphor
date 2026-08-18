@@ -204,7 +204,7 @@ enum ProbeWriter {
             try data.write(to: tmpJSON)
             atomicReplace(tmp: tmpJSON, final: finalJSON)
         } catch {
-            print("[metaphor] Probe: failed to write \(baseName).json: \(error)")
+            metaphorAlert("Probe: failed to write \(baseName).json: \(error)")
         }
     }
 
@@ -359,7 +359,7 @@ enum ProbeWriter {
             try data.write(to: tmpURL)
             atomicReplace(tmp: tmpURL, final: finalURL)
         } catch {
-            print("[metaphor] Probe: failed to write sequence.json: \(error)")
+            metaphorAlert("Probe: failed to write sequence.json: \(error)")
         }
     }
 
@@ -414,7 +414,7 @@ enum ProbeWriter {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ),
         let image = srcCtx.makeImage() else {
-            print("[metaphor] Probe: failed to build image for scaling — writing full size")
+            metaphorDiagnostic("Probe: failed to build image for scaling — writing full size")
             return nil
         }
 
@@ -435,7 +435,7 @@ enum ProbeWriter {
             return true
         }
         guard ok else {
-            print("[metaphor] Probe: failed to scale frame — writing full size")
+            metaphorDiagnostic("Probe: failed to scale frame — writing full size")
             return nil
         }
         return (dst, outW, outH)
@@ -463,7 +463,7 @@ enum ProbeWriter {
         let dest = CGImageDestinationCreateWithURL(
             url as CFURL, "public.png" as CFString, 1, nil
         ) else {
-            print("[metaphor] Probe: failed to encode PNG at \(url.path)")
+            metaphorAlert("Probe: failed to encode PNG at \(url.path)")
             return
         }
         CGImageDestinationAddImage(dest, cgImage, nil)

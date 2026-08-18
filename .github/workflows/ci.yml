@@ -277,6 +277,14 @@ jobs:
       # 静かに穴になる。マニフェスト側の取りこぼしを機械的に潰す（Issue #328 段階 4）。
       - name: Check strict concurrency coverage
         run: python3 scripts/check-strict-concurrency.py
+      # stdout は metaphor-cli との JSON Lines と同じチャネルなので、Release でも出る
+      # ものを生の print() で書くと契約側のパースを壊しうる（CONTRACT.md 契約点 4）。
+      # #805 でその規約を Sources/MetaphorLog/Log.swift に明文化したのに、Sources には
+      # 生の print が 17 箇所残ったまま気付かれなかった（Issue #896）＝ 文章では
+      # 止まらない形の失敗なので、決定論的に落とす。判定規則と例外はスクリプト側が
+      # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
+      - name: Check for raw print() in Sources
+        run: python3 scripts/check-no-raw-print.py
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Get Syphon submodule hash
