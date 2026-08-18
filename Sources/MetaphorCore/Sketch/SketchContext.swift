@@ -1,5 +1,6 @@
 import AppKit
 import Metal
+import QuartzCore
 import simd
 
 /// Sketch 内で使用される描画コンテキストを提供します。
@@ -559,7 +560,9 @@ public final class SketchContext {
 
         // パフォーマンス HUD オーバーレイ（canvas.end() の前に描画し最前面に表示）
         if let hud = performanceHUD {
-            hud.update(deltaTime: deltaTime)
+            // 表示は `performance.fps` / Probe の `frame.json` と同じ採取経路
+            // （レンダラーのトラッカーの直近ウィンドウ）から取る（#698）。
+            hud.update(stats: renderer.frameRateTracker.windowStats(now: CACurrentMediaTime()))
             hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
             hud.draw(canvas: canvas, width: Float(renderer.textureManager.width), height: Float(renderer.textureManager.height))
         }

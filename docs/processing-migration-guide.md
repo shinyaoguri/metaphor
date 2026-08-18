@@ -894,7 +894,9 @@ if let fps = performance.fps, fps < 30 { particleCount = 1_000 }   // degrade yo
 `cpuPercent`, `thermalState` and the resolved `targetFPS`. Every field that
 cannot be computed yet is `nil`, so the first frames read as `nil` rather than 0.
 To *see* the rate instead of reading it, `enablePerformanceHUD()` draws an
-on-screen overlay. For animation timing prefer `deltaTime` and `time` over
+on-screen overlay fed from the same measurement, so the number on screen and the
+number `performance.fps` returns are always the same one (it shows `--` exactly
+when `performance.fps` is `nil`). For animation timing prefer `deltaTime` and `time` over
 counting frames.
 
 ### `noFill()` does not hide `text()`
