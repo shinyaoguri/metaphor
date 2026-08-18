@@ -99,7 +99,29 @@ public final class Tween<T: Interpolatable> {
     public var isComplete: Bool { state == .complete }
 
     /// アニメーションが現在実行中かどうか
+    ///
+    /// ``delay(_:)`` の待機中は `false` です。**開始済みかどうか**を知りたいなら
+    /// `isActive || isWaiting` を見てください。
+    ///
+    /// - SeeAlso: ``isWaiting``
     public var isActive: Bool { state == .running }
+
+    /// ``delay(_:)`` の待機中かどうか（``start()`` は済んでいるが、まだ動き出していない）
+    ///
+    /// `delay(_:)` を付けたトゥイーンは ``start()`` 直後に必ずここを通り、待機が明けると
+    /// ``isActive`` へ移ります。待機中は ``isActive`` も ``isComplete`` も `false` なので、
+    /// この 2 つだけでは「袖で出番を待っている」と「そもそも出番が無い」
+    /// （未 ``start()`` / ``reset()`` 済み）が区別できません。
+    ///
+    /// | 状態 | `isWaiting` | `isActive` | `isComplete` |
+    /// | --- | --- | --- | --- |
+    /// | 未 ``start()`` / ``reset()`` 済み | `false` | `false` | `false` |
+    /// | ``delay(_:)`` 待機中 | `true` | `false` | `false` |
+    /// | 実行中 | `false` | `true` | `false` |
+    /// | 完了 / ``cancel()`` 済み | `false` | `false` | `true` |
+    ///
+    /// - SeeAlso: ``isActive``, ``delay(_:)``
+    public var isWaiting: Bool { state == .delaying }
 
     // MARK: - Configuration
 

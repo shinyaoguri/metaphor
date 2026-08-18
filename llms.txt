@@ -1898,6 +1898,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var isActive: Bool { get }` -- アニメーションが現在実行中かどうか
 - `var isComplete: Bool { get }` -- アニメーションが完了したかどうか
+- `var isWaiting: Bool { get }` -- `delay(_:)` の待機中かどうか（`start()` は済んでいるが、まだ動き出していない）
 - `var value: T { get }` -- 現在の補間値
 - `init(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic)` -- 新しいトゥイーンアニメーションを作成します。
 - `func cancel()` -- アニメーションを完了状態にして停止します。
