@@ -2,7 +2,7 @@ import Metal
 
 /// FPS、フレーム時間、GPU時間を表示するパフォーマンスメトリクスオーバーレイ
 ///
-/// fps とフレーム時間は ``FrameRateTracker`` の直近ウィンドウ集計をそのまま映します。
+/// fps とフレーム時間は `FrameRateTracker` の直近ウィンドウ集計をそのまま映します。
 /// つまり **``Sketch/performance``（`performance.fps`）と Probe の `frame.json` の
 /// `performance` と同じ採取経路**で、画面に出る数字とスケッチ／エージェントが読む数字が
 /// 食い違いません（Issue #698）。GPU 時間だけはトラッカーの管轄外で、コマンドバッファの
@@ -24,7 +24,7 @@ public final class PerformanceHUD {
 
     /// 直近ウィンドウの実測値から表示を更新します。
     ///
-    /// 値を自前で平均せず、``FrameRateTracker/windowStats(now:window:)`` の結果を
+    /// 値を自前で平均せず、`FrameRateTracker.windowStats(now:window:)` の結果を
     /// そのまま映すことが要点です（同じ窓・同じ算出）。
     /// - Parameter stats: 直近ウィンドウの集計。算出不能なら `nil`。
     func update(stats: FrameRateTracker.WindowStats?) {
