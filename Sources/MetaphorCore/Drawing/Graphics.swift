@@ -664,6 +664,23 @@ public final class Graphics {
     ///   - y: Y座標。
     public func text(_ string: String, _ x: Float, _ y: Float) { canvas.text(string, x, y) }
 
+    /// バウンディングボックス内にテキスト文字列を描画します。
+    ///
+    /// 箱の幅で自動的に折り返し、行の高さは ``textLeading(_:)`` に従います。
+    /// 箱の高さに入り切らない行は描かれません。
+    ///
+    /// 色の扱いは ``text(_:_:_:)`` と同じで、``noFill()`` はテキストに効きません。
+    ///
+    /// - Parameters:
+    ///   - string: 描画するテキスト。
+    ///   - x: バウンディングボックスの x 座標。
+    ///   - y: バウンディングボックスの y 座標。
+    ///   - w: バウンディングボックスの幅。
+    ///   - h: バウンディングボックスの高さ。
+    public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.text(string, x, y, w, h)
+    }
+
     /// テキスト文字列の幅（1 文字ずつの advance の合計）を返します。
     /// - Parameter string: 計測するテキスト。
     /// - Returns: ピクセル単位の幅。

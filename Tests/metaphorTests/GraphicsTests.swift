@@ -406,6 +406,18 @@ struct GraphicsAPIParityTests {
         return hi - lo
     }
 
+    /// インクの載っている行の y 座標（黒地に白で描いた前提）。
+    private func inkRows(_ img: MImage, _ size: Int) -> [Int] {
+        (0..<size).filter { y in (0..<size).contains { x in img.get(x, y).r > 0.25 } }
+    }
+
+    /// 連続したインク行のかたまり（= 1 行の文字）の先頭 y。行数と行送りを同時に測れる。
+    private func inkBandStarts(_ rows: [Int]) -> [Int] {
+        rows.enumerated()
+            .filter { $0.offset == 0 || $0.element != rows[$0.offset - 1] + 1 }
+            .map(\.element)
+    }
+
     // MARK: - クリップ
 
     // 回帰(#908): 転送が届かなければ（no-op なら）シザーが設定されず全面が白くなる。
@@ -577,6 +589,90 @@ struct GraphicsAPIParityTests {
         #expect(tight > 0, "実測 \(tight): 輪郭が取れていない")
         #expect(abs((loose - tight) - 30) < 1,
                 "行間 10 → 40 で 2 行の高さは 30 増えるはず (実測 \(tight) → \(loose))")
+    }
+
+    // MARK: - 矩形を取る text()（#747）
+
+    // `Graphics` には 3 引数の `text()` しか無く、箱で折り返す 5 引数版だけが
+    // 転送されていなかった（`textLeading` の方は #917 で解決済み）。
+    // 転送しても w/h を捨てて 3 引数版へ流したのでは意味が無いので、
+    // 「呼べるか」ではなく「箱が効いた結果が出るか」で見る。
+
+    // 回帰(#747): 折り返しが起きなければ、箱の幅を変えても行数が変わらない。
+    @Test("矩形版 text() が箱の幅で折り返す")
+    func wrappedTextIsForwarded() throws {
+        func drawn(boxWidth: Float) throws -> (lines: Int, inkRows: Int) {
+            let pg = try makeGraphics(width: 128, height: 128)
+            pg.textFont("Helvetica")
+            pg.textSize(12)
+            pg.textAlign(.left, .top)
+            pg.textLeading(20)
+            let img = render(pg) {
+                $0.fill(Color(r: 1, g: 1, b: 1))
+                $0.text("wrap this sentence into several lines", 4, 4, boxWidth, 120)
+            }
+            let rows = inkRows(img, 128)
+            return (inkBandStarts(rows).count, rows.count)
+        }
+        let narrow = try drawn(boxWidth: 40)
+        let wide = try drawn(boxWidth: 120)
+
+        #expect(narrow.lines >= 2, "狭い箱で折り返していない（行 \(narrow.lines) 本）")
+        #expect(narrow.lines > wide.lines,
+                "箱の幅で行数が変わらない: 幅 40 で \(narrow.lines) 行、幅 120 で \(wide.lines) 行 — w/h が canvas へ届いていない(#747)")
+        #expect(narrow.inkRows > wide.inkRows,
+                "狭い箱の方が縦に伸びるはず（実測 \(narrow.inkRows) vs \(wide.inkRows) 行）")
+    }
+
+    // 境界(#747): 1 行も入らない高さの箱では 1 ピクセルも描かない。
+    // 「箱に入り切らない行は描かれない」の極端な側で、高さを捨てて 3 引数版へ
+    // 流す実装だと 1 行描いてしまうのでここで捕まる。
+    //
+    // なお `h = 0` は「高さ無制限」の意味になり（`Canvas2DText` が 0 を
+    // `greatestFiniteMagnitude` へ読み替える）、何も描かない箱にはならない。
+    // 幅 0 も CoreText が 1 語ずつ折り返して描くので、ここでは使えない。
+    @Test("1 行も入らない高さの箱では何も描かれない")
+    func wrappedTextClipsWhenBoxIsTooShort() throws {
+        let pg = try makeGraphics(width: 128, height: 128)
+        pg.textFont("Helvetica")
+        pg.textSize(12)
+        pg.textAlign(.left, .top)
+        pg.textLeading(20)
+        let img = render(pg) {
+            $0.fill(Color(r: 1, g: 1, b: 1))
+            $0.text("wrap this sentence into several lines", 4, 4, 40, 8)
+        }
+        let rows = inkRows(img, 128)
+        #expect(rows.isEmpty,
+                "行の高さ 20 に対し箱の高さ 8 なので 1 行も入らないはず（実測 \(rows.count) 行にインク）")
+    }
+
+    // 矩形版は `textTextureMultiline(leading:)` を包むので `textLeading` を尊重する。
+    // 3 引数版へ流す実装だと折り返し自体が消えて 1 行になり、行送りが測れなくなる。
+    @Test("矩形版 text() の行送りが textLeading に従う")
+    func wrappedTextHonorsTextLeading() throws {
+        func bandStarts(leading: Float) throws -> [Int] {
+            let pg = try makeGraphics(width: 128, height: 128)
+            pg.textFont("Helvetica")
+            pg.textSize(12)
+            pg.textAlign(.left, .top)
+            pg.textLeading(leading)
+            let img = render(pg) {
+                $0.fill(Color(r: 1, g: 1, b: 1))
+                $0.text("MM MM", 4, 4, 30, 120)   // 幅 30 は "MM" 2 行に割れる
+            }
+            return inkBandStarts(inkRows(img, 128))
+        }
+        let tight = try bandStarts(leading: 20)
+        let loose = try bandStarts(leading: 40)
+
+        #expect(tight.count == 2, "leading 20 で 2 行にならなかった（帯 \(tight.count) 本）")
+        #expect(loose.count == 2, "leading 40 で 2 行にならなかった（帯 \(loose.count) 本）")
+        guard tight.count == 2, loose.count == 2 else { return }
+        #expect(abs((tight[1] - tight[0]) - 20) <= 1,
+                "leading 20 の行送りが \(tight[1] - tight[0])px")
+        #expect(abs((loose[1] - loose[0]) - 40) <= 1,
+                "leading 40 の行送りが \(loose[1] - loose[0])px — textLeading が矩形版へ効いていない(#747)")
     }
 
     @Test("textToPoints / textToContours がグリフのアウトラインを返す")
