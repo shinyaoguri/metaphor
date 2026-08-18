@@ -595,7 +595,7 @@ extension Sketch {
 
     /// 楕円を描画します。
     ///
-    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:_:)`` です。ADR-0005）。
+    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:detail:)`` です。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: x 座標。
@@ -628,7 +628,7 @@ extension Sketch {
 
     /// 円を描画します。
     ///
-    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:_:)`` です。ADR-0005）。
+    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:detail:)`` です。ADR-0005）。
     ///
     /// - Parameters:
     ///   - x: 中心の x 座標。
@@ -661,7 +661,7 @@ extension Sketch {
     /// `circle()` を多数回呼ぶ代わりに、位置・直径・色を持つ ``CircleInstance`` 配列を
     /// compact instancing path でまとめて描画します。
     ///
-    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:_:)`` です。ADR-0005）。
+    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:transforms:)`` です。ADR-0005）。
     ///
     /// - Parameter instances: 描画する円インスタンス。
     public func circles(_ instances: [CircleInstance]) {
@@ -670,7 +670,7 @@ extension Sketch {
 
     /// GPU バッファ上の円インスタンスを一括描画します。
     ///
-    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:_:)`` です。ADR-0005）。
+    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:transforms:)`` です。ADR-0005）。
     ///
     /// - Parameters:
     ///   - instances: ``CircleInstance`` を保持する GPU バッファ。
