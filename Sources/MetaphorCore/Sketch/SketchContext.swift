@@ -234,6 +234,10 @@ public final class SketchContext {
     /// 一度だけ警告するためのフラグ（毎フレーム警告するとログが埋まる）。
     var didWarnDeferredPixelReadback = false
 
+    /// `get()` / `set()` が `loadPixels()` より前に呼ばれたことを一度だけ警告する
+    /// ためのフラグ（`draw()` のループ内から呼ばれるとログが埋まる）。
+    var didWarnPixelAccessBeforeLoad = false
+
     // MARK: - Compute State (internal)
 
     /// 現在のコマンドバッファ。コンピュートフェーズ中のみ有効。

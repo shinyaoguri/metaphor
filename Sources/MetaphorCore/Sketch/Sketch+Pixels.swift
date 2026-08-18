@@ -72,4 +72,91 @@ extension Sketch {
     public func updatePixels() {
         context.updatePixels()
     }
+
+    /// 1 画素の色を読みます（Processing の `get(x, y)` 互換）。
+    ///
+    /// ``pixels`` のパック値をほどく手間を省くための入口で、実体は同じバッファを読みます。
+    ///
+    /// ```swift
+    /// func draw() {
+    ///     background(0)
+    ///     fill(255, 0, 0)
+    ///     circle(width / 2, height / 2, 100)
+    ///     loadPixels()                                  // ← 先に読み戻す
+    ///     let c = get(Int(width) / 2, Int(height) / 2)  // 円の中心の赤
+    ///     print(c)
+    /// }
+    /// ```
+    ///
+    /// - Important: **暗黙の読み戻しはしません。** ``loadPixels()`` を先に呼んでください
+    ///   （呼んでいなければ黒を返し、初回だけ警告します）。Processing の `get()` は
+    ///   単に遅いだけですが、metaphor の読み戻しは GPU 待ちに加えて**レンダーパスの分割**
+    ///   を伴い、深度クリアと 2D/3D の重ね順を通じて**絵そのものを変えます**
+    ///   （``loadPixels()`` の Note 群）。1 画素を読むたびにそれが起きないよう、
+    ///   読み戻しは明示的な ``loadPixels()`` だけに限っています。
+    ///
+    /// - Important: 影を有効にしている場合（`enableShadows()`）は ``loadPixels()`` が
+    ///   同一フレームを読み戻せず、**直近にコミット済みのフレーム内容**が読めます。
+    ///   `get()` はその結果を読むので、同じ制約がそのまま乗ります。
+    ///
+    /// - Parameters:
+    ///   - x: 水平方向のピクセル座標。
+    ///   - y: 垂直方向のピクセル座標。
+    /// - Returns: straight alpha の ``Color``（`fill()` に渡したのと同じ値。ADR-0012）。
+    ///   範囲外・未 ``loadPixels()`` の場合は黒。
+    ///
+    /// - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。
+    ///   context が用意される前（`init` やプロパティ初期化子）でも黒を返します。
+    public func get(_ x: Int, _ y: Int) -> Color {
+        guard let ctx = _context else { return .black }
+        return ctx.get(x, y)
+    }
+
+    /// キャンバスの矩形領域を ``MImage`` として切り出します（Processing の
+    /// `get(x, y, w, h)` 互換）。
+    ///
+    /// 返る画像は**要求した `w` × `h`** です。キャンバスからはみ出した部分は透明
+    /// （α = 0）で埋まります（Processing と同じ）。`image()` でそのまま貼れます。
+    ///
+    /// ```swift
+    /// loadPixels()
+    /// if let stamp = get(0, 0, 64, 64) {
+    ///     image(stamp, 100, 100)
+    /// }
+    /// ```
+    ///
+    /// - Important: ``get(_:_:)`` と同じく**暗黙の読み戻しはしません**。影オン時の制約も
+    ///   同じです（``loadPixels()`` の `- Important:` を参照）。
+    ///
+    /// - Parameters:
+    ///   - x: 切り出す矩形の左上 X 座標。
+    ///   - y: 切り出す矩形の左上 Y 座標。
+    ///   - w: 切り出す幅（1 以上）。
+    ///   - h: 切り出す高さ（1 以上）。
+    /// - Returns: 切り出した ``MImage``。未 ``loadPixels()``・サイズが 0 以下・テクスチャ
+    ///   確保に失敗した場合は nil。
+    public func get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage? {
+        guard let ctx = _context else { return nil }
+        return ctx.get(x, y, w, h)
+    }
+
+    /// 1 画素の色を書き込みます（Processing の `set(x, y, c)` 互換）。
+    ///
+    /// ```swift
+    /// loadPixels()
+    /// set(10, 20, Color(r: 1, g: 0, b: 0))
+    /// updatePixels()               // ← これでキャンバスへ出る
+    /// ```
+    ///
+    /// - Important: 書き込み先は CPU 側の ``pixels`` バッファです。キャンバスへ出すには
+    ///   ``updatePixels()`` が必要で、Processing の `set()` が即座に反映されるのとは
+    ///   異なります。``loadPixels()`` を呼んでいなければ何もしません（初回だけ警告）。
+    ///
+    /// - Parameters:
+    ///   - x: 水平方向のピクセル座標。範囲外は無視されます。
+    ///   - y: 垂直方向のピクセル座標。範囲外は無視されます。
+    ///   - color: 書き込む色。straight alpha として詰められます（ADR-0012）。
+    public func set(_ x: Int, _ y: Int, _ color: Color) {
+        context.set(x, y, color)
+    }
 }

@@ -278,12 +278,25 @@ Processing, `noFill()` does not make it disappear. See
 | `color(r, g, b)` written into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 components) |
 | `updatePixels()` | `updatePixels()` |
 | `img.loadPixels()` / `img.pixels` | `MImage.loadPixels()` / `MImage.pixels: [UInt8]` — **RGBA bytes**, a different layout from the canvas buffer |
-| `get(x, y)` / `get(x, y, w, h)` / `set(x, y, c)` on the canvas | — not implemented ([#812](https://github.com/shinyaoguri/metaphor/issues/812)); go through `loadPixels()` / `pixels` / `updatePixels()`. The `MImage` methods below are the per-image equivalents |
+| `get(x, y)` | `get(_ x: Int, _ y: Int) -> Color` — **call `loadPixels()` first** (see below) |
+| `get(x, y, w, h)` | `get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage?` — the returned image is always the requested `w`×`h`; anything outside the canvas is transparent, as in Processing |
+| `set(x, y, c)` | `set(_ x: Int, _ y: Int, _ color: Color)` — writes into the CPU buffer, so **`updatePixels()` is needed** to put it on the canvas |
 
 The packed value is `(A << 24) | (R << 16) | (G << 8) | B` — the same
 `0xAARRGGBB` integer a Processing sketch manipulates, so tricks like
 `pixels[i] ^= 0x00FF_FFFF` (invert, keep alpha) port directly. See
 [loadPixels() splits the render pass](#loadpixels-splits-the-render-pass).
+
+`get()` and `set()` are conveniences over that same buffer — they save you
+unpacking the `UInt32` by hand, and hand you a `Color` (straight alpha, exactly
+what you passed to `fill()`). Two differences from Processing:
+
+- **Neither reads the canvas back implicitly.** Before `loadPixels()`, `get()`
+  returns black and `set()` does nothing (warned once, in DEBUG). Processing's
+  `get(x, y)` is merely slow; metaphor's readback blocks on the GPU *and splits
+  the render pass*, which clears depth and reorders 2D against 3D — a single
+  pixel read would change the picture. Readback stays where you asked for it.
+- **`set()` needs `updatePixels()`**, like writing into `pixels[]` does.
 
 ### 3D, lighting, camera, material
 
@@ -876,7 +889,9 @@ continuation pass. Three things follow:
   warning.
 
 `updatePixels()` is a no-op if `loadPixels()` was never called, and `pixels` is an
-empty buffer until the first `loadPixels()`.
+empty buffer until the first `loadPixels()`. `get()` and `set()` sit on the same
+rule: they read and write that buffer and never trigger a readback of their own,
+so `get()` returns black and `set()` does nothing until you call `loadPixels()`.
 
 Related: `copy(…)` reads from the offscreen target's *previous* contents, not the
 shapes drawn so far this frame.
@@ -971,7 +986,6 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |
 | `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()` | Not implemented — [#811](https://github.com/shinyaoguri/metaphor/issues/811). `Color` converts HSB→RGB but not back. |
-| `get()` / `set()` on the canvas | Not implemented — [#812](https://github.com/shinyaoguri/metaphor/issues/812). Use `loadPixels()` / `pixels`. |
 | `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
 | p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
