@@ -13,8 +13,8 @@
 ## Overview
 
 MetaphorNetwork はクリエイティブコーディングやライブパフォーマンスで広く使われる
-リアルタイム通信プロトコルを提供します。``OSCReceiver`` は UDP ベースの
-Open Sound Control メッセージを受信し、``MIDIManager`` はコントローラー、
+リアルタイム通信プロトコルを提供します。``MetaphorNetwork/OSCReceiver`` は UDP ベースの
+Open Sound Control メッセージを受信し、``MetaphorNetwork/MIDIManager`` はコントローラー、
 シンセサイザーなどの MIDI デバイスとの CoreMIDI 入出力を処理します。
 
 このモジュールは MetaphorCore に依存せず、単独で使用できます。
@@ -39,17 +39,3 @@ midi.start()
 let messages = midi.poll()
 let knobValue = midi.controllerValue(1)  // CC#1 を 0.0〜1.0 に正規化
 ```
-
-## Topics
-
-### OSC
-
-- ``OSCReceiver``
-- ``OSCValue``
-- ``OSCReceiverError``
-
-### MIDI
-
-- ``MIDIManager``
-- ``MIDIMessage``
-- ``MIDIMessageType``

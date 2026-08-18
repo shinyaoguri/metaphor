@@ -381,12 +381,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window.contentView = mtkView
         self.mtkView = mtkView
 
+        let env = ProcessInfo.processInfo.environment
+
         // Syphon 実効名の解決（環境変数 > config.syphonName > (config.syphon ? title : nil)）。
         // ウィンドウ表示でも MadMapper 等へ publish できるよう、env / syphon フラグを尊重する。
-        let effectiveSyphonName = resolveSyphonName(config: config)
+        let effectiveSyphonName = Self.resolveSyphonName(config: config, env: env)
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードでも尊重）。
-        let fps = resolveFPS(config: config)
+        let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
         // レンダーループモードの決定。
@@ -426,16 +428,28 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Syphon サーバーの実効名を解決します（ウィンドウ表示モード用）。
+    /// 出力（Syphon 等）サーバーの実効名を解決します（ウィンドウ / ヘッドレス共通）。
     ///
     /// 優先順位: 環境変数 `METAPHOR_SYPHON_NAME` > ``SketchConfig/syphonName`` >
     /// （``SketchConfig/syphon`` が `true` なら ``SketchConfig/title``）。いずれも無ければ
-    /// `nil`（= Syphon 無効）。空文字の環境変数は未設定として扱います。
-    private func resolveSyphonName(config: SketchConfig) -> String? {
-        let env = ProcessInfo.processInfo.environment
+    /// `nil`（= 出力無効）。空文字の環境変数は未設定として扱います。
+    ///
+    /// ヘッドレス（`METAPHOR_VIEWER=1`）は「ウィンドウ無し・出力のみ」で、名前が決まらないと
+    /// 何も見えないプロセスになります。この経路は `requiresOutput: true` を渡し、
+    /// ``SketchConfig/syphon`` が `false` でも ``SketchConfig/title`` へ落ちる（= 戻り値は
+    /// 必ず非 `nil`）ようにします。
+    ///
+    /// - Parameters:
+    ///   - config: スケッチ設定。
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    ///   - requiresOutput: 出力が必須の経路（= ヘッドレス）なら `true`。
+    /// - Returns: 出力サーバー名。無効なら `nil`（`requiresOutput: true` では `nil` にならない）。
+    nonisolated static func resolveSyphonName(
+        config: SketchConfig, env: [String: String], requiresOutput: Bool = false
+    ) -> String? {
         if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return name }
         if let name = config.syphonName { return name }
-        if config.syphon { return config.title }
+        if config.syphon || requiresOutput { return config.title }
         return nil
     }
 
@@ -476,9 +490,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// metaphor-cli の `--fps` がヘッドレス（ライブビューア）だけでなく、ウィンドウ
     /// モード（`metaphor run` / `watch --no-viewer`）でも一様に効きます。
     /// 解析できない値（非数値・0 以下）は無視して `config.fps` にフォールバックします。
-    private func resolveFPS(config: SketchConfig) -> Int {
-        guard let raw = ProcessInfo.processInfo.environment["METAPHOR_FPS"],
-              let fps = Int(raw), fps > 0 else {
+    ///
+    /// - Parameters:
+    ///   - config: スケッチ設定。
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    /// - Returns: 実効 FPS。
+    nonisolated static func resolveFPS(config: SketchConfig, env: [String: String]) -> Int {
+        guard let raw = env["METAPHOR_FPS"], let fps = Int(raw), fps > 0 else {
             return config.fps
         }
         return fps
@@ -523,12 +541,16 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
 
-        // 出力サーバー名: 環境変数 > config.syphonName > タイトル の優先順。
-        let syphonName = env["METAPHOR_SYPHON_NAME"] ?? config.syphonName ?? config.title
-        startOutput(renderer: renderer, name: syphonName)
+        // 出力サーバー名: 環境変数 > config.syphonName > タイトル の優先順。ヘッドレスは
+        // 出力しか無いので requiresOutput: true（= config.syphon に関わらず必ず非 nil）。
+        if let syphonName = Self.resolveSyphonName(
+            config: config, env: env, requiresOutput: true
+        ) {
+            startOutput(renderer: renderer, name: syphonName)
+        }
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
-        let fps = resolveFPS(config: config)
+        let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
         // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。

@@ -310,6 +310,6 @@ public final class CIFilterWrapper {
     /// (post-processing runs every frame, so this prevents a log flood).
     private func warnOnce(_ message: String) {
         guard warnedMessages.insert(message).inserted else { return }
-        print("[metaphor.CoreImage] Warning: \(message)")
+        metaphorAlert("CoreImage: \(message)")
     }
 }

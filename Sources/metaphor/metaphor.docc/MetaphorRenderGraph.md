@@ -17,9 +17,9 @@ MetaphorRenderGraph は複雑なマルチパスレンダリングパイプライ
 オフスクリーンテクスチャにレンダリングするソースパスを作成し、
 ポストプロセスエフェクトをチェーンし、複数のパスをブレンド操作でマージできます。
 
-``SourcePass`` でオフスクリーンレンダーターゲットを描画コールバック付きで作成し、
-``EffectPass`` でポストプロセスチェーンを適用し、``MergePass`` で
-2つのパス出力をブレンドします。これらを ``RenderGraph`` に接続して自動実行します。
+``MetaphorRenderGraph/SourcePass`` でオフスクリーンレンダーターゲットを描画コールバック付きで作成し、
+``MetaphorRenderGraph/EffectPass`` でポストプロセスチェーンを適用し、``MetaphorRenderGraph/MergePass`` で
+2つのパス出力をブレンドします。これらを ``MetaphorRenderGraph/RenderGraph`` に接続して自動実行します。
 
 このモジュールは MetaphorCore に依存します。
 `MetaphorRenderGraph` を直接インポートするか、アンブレラモジュール（`import metaphor`）を使用してください。
@@ -40,16 +40,3 @@ passB.onDraw = { encoder, time in
 let merged = try MergePass(passA, passB, blend: .add, device: device, shaderLibrary: shaders)
 let graph = RenderGraph(root: merged)
 ```
-
-## Topics
-
-### グラフ
-
-- ``RenderGraph``
-
-### パスノード
-
-- ``RenderPassNode``
-- ``SourcePass``
-- ``EffectPass``
-- ``MergePass``

@@ -23,7 +23,9 @@ from `git status --porcelain` and sends it as one signed commit.
 
 `--expected-head` is the SHA the branch is expected to point at; GitHub rejects
 the mutation if someone else moved the branch in the meantime (optimistic
-locking — the mutation has no force mode).
+locking — the mutation has no force mode). It is normalized through
+`git rev-parse`, so `HEAD`, a branch name or a short SHA all work — the API
+itself only accepts the full 40-character form (Issue #981).
 
 `--dry-run` prints what would be sent instead of sending it, which is the only
 way to exercise this outside a real release.
@@ -123,6 +125,31 @@ def encode_file(path: Path) -> str:
     return base64.b64encode(path.read_bytes()).decode("ascii")
 
 
+def resolve_head(ref: str, repo_root: Path) -> str:
+    """Expand `ref` to the full 40-character SHA `expectedHeadOid` requires.
+
+    That field is a `GitObjectID`: a short SHA, a branch name or `HEAD` comes
+    back as `Could not coerce value "077bd06" to GitObjectID` — and only after
+    every file has been read and base64-encoded and the request has gone out, so
+    the log reads like a rejected commit rather than a bad argument (Issue #981).
+    `git rev-parse` settles it here instead, before anything is uploaded.
+
+    Deliberately without `--verify`. `release.yml` already hands over a full SHA
+    it read from the checkout (`BASE_SHA=$(git rev-parse HEAD)`), so a stricter
+    check buys the release path nothing; meanwhile a plain `rev-parse` echoes a
+    40-character SHA back even when that object is not present locally, which is
+    what a caller reading the branch head from the API would pass. Existence is
+    checked where it matters anyway — the mutation rejects a head that does not
+    match.
+    """
+    return subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", ref],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", required=True, help="owner/name")
@@ -130,7 +157,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--expected-head",
         required=True,
-        help="SHA the branch must currently point at.",
+        help=(
+            "Revision the branch must currently point at. Expanded through "
+            "`git rev-parse`, so `HEAD`, a branch name or a short SHA all work."
+        ),
     )
     parser.add_argument("--message", required=True, help="Commit message.")
     parser.add_argument(
@@ -157,6 +187,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # Before a single file is read: a bad ref here is an argument mistake, and
+    # it should read as one instead of as a rejected mutation.
+    try:
+        expected_head = resolve_head(args.expected_head, args.repo_root)
+    except subprocess.CalledProcessError as exc:
+        print(
+            f"::error::--expected-head {args.expected_head!r} is not a revision "
+            f"in {args.repo_root}: {exc.stderr.strip()}",
+            file=sys.stderr,
+        )
+        return 1
+
     command = ["git", "-C", str(args.repo_root), "status", "--porcelain"]
     if args.paths:
         command += ["--", *args.paths]
@@ -171,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = build_payload(
         repo=args.repo,
         branch=args.branch,
-        expected_head=args.expected_head,
+        expected_head=expected_head,
         message=args.message,
         additions=[(p, encode_file(args.repo_root / p)) for p in additions],
         deletions=deletions,

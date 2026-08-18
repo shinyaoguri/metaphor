@@ -28,18 +28,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from _git_helpers import git as _hermetic_git, hermetic_env, init_repo
+
 _SCRIPT = Path(__file__).resolve().parents[1] / "pr-changed-files.sh"
 
 
 def _git(repo: Path, *args: str) -> str:
-    """Run git in `repo`, returning stdout."""
-    result = subprocess.run(
-        ["git", "-C", str(repo), "-c", "commit.gpgsign=false", *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout
+    """Run git in `repo`, sealed off from the developer's global config (#979)."""
+    return _hermetic_git(*args, cwd=repo)
 
 
 def _commit(repo: Path, message: str, **files: str | None) -> str:
@@ -70,11 +66,7 @@ class PrChangedFilesTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
-        self.repo = Path(self._tmp.name)
-
-        _git(self.repo, "init", "-q", "-b", "main")
-        _git(self.repo, "config", "user.email", "t@example.com")
-        _git(self.repo, "config", "user.name", "t")
+        self.repo = init_repo(Path(self._tmp.name))
 
         # The script resolves the repository root from its own location, so it
         # has to live inside the synthetic repo (same as in a real checkout).
@@ -111,8 +103,12 @@ class PrChangedFilesTests(unittest.TestCase):
         )
 
     def run_script(self, *args: str) -> subprocess.CompletedProcess:
+        # The script runs git itself, so it gets the same seal (#979).
         return subprocess.run(
-            [str(self.script), *args], capture_output=True, text=True
+            [str(self.script), *args],
+            capture_output=True,
+            text=True,
+            env=hermetic_env(),
         )
 
     def changed(self, *args: str) -> list[str]:
@@ -194,6 +190,7 @@ class PrChangedFilesTests(unittest.TestCase):
             capture_output=True,
             text=True,
             cwd=str(self.repo / "scripts"),
+            env=hermetic_env(),
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "docs/new.md")

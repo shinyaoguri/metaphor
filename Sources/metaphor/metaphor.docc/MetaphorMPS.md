@@ -14,11 +14,11 @@ Metal Performance Shaders によるハードウェアアクセラレーション
 
 MetaphorMPS は Apple の Metal Performance Shaders フレームワークを通じて、
 GPU 最適化された画像フィルタとレイトレーシングを提供します。
-``MPSImageFilterWrapper`` はガウシアンブラー、Sobel エッジ検出、モルフォロジー演算などを提供し、
-``MPSRayTracer`` はメッシュベースのレイトレーシングで、アンビエントオクルージョン、
+``MetaphorMPS/MPSImageFilterWrapper`` はガウシアンブラー、Sobel エッジ検出、モルフォロジー演算などを提供し、
+``MetaphorMPS/MPSRayTracer`` はメッシュベースのレイトレーシングで、アンビエントオクルージョン、
 ソフトシャドウ、ディフューズシェーディングモードに対応します。
 
-``PostEffect`` 実装（``MPSBlurEffect``、``MPSSobelEffect`` 等）も含まれており、
+``MetaphorCore/PostEffect`` 実装（``MetaphorMPS/MPSBlurEffect``、``MetaphorMPS/MPSSobelEffect`` 等）も含まれており、
 ポストプロセスパイプラインで直接使用できます。
 
 このモジュールは MetaphorCore に依存します。
@@ -37,21 +37,3 @@ filter.gaussianBlur(image, sigma: 5.0)
 let blur = MPSBlurEffect(sigma: 3.0)
 postProcess(blur)
 ```
-
-## Topics
-
-### 画像フィルタ
-
-- ``MPSImageFilterWrapper``
-
-### ポストプロセスエフェクト
-
-- ``MPSBlurEffect``
-- ``MPSSobelEffect``
-- ``MPSErodeEffect``
-- ``MPSDilateEffect``
-
-### レイトレーシング
-
-- ``MPSRayTracer``
-- ``RayTraceMode``

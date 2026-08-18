@@ -854,10 +854,14 @@
     },
     "Examples/Samples/RenderGraphCompose": {
       "origin": "captured",
-      "sourceHash": "0ff5f725246f5a2d4939c2d5d9016e63ea24ca3145744b38bcbf9409db4fea08",
+      "sourceHash": "454eb7100beca2fb2fd1b383b5fa8f896a1f1e5a28964a3f6610f7d772cb872e",
+      "provenance": {
+        "commit": "07b62dae64784b6402ea949e0d9f23a75958af4c",
+        "dirty": false
+      },
       "width": 960,
       "height": 540,
-      "frame": 103
+      "frame": 129
     },
     "Examples/Samples/SVGExport": {
       "origin": "captured",

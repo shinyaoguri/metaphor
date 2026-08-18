@@ -347,6 +347,56 @@ extension Sketch {
         context.isInFront(x, y, z)
     }
 
+    /// 現在の変換を通した 3D モデル座標のワールド x 座標を返します。
+    ///
+    /// 変換スタックに積んだ `translate` / `rotateX/Y/Z` / `scale` の結果、その点が
+    /// ワールド空間のどこに来るかを返します（Processing の `modelX()` 相当）。
+    /// ``pushMatrix()`` 〜 ``popMatrix()`` の中で位置を控えておき、抜けた後に同じ場所へ
+    /// 別のものを置く、という使い方が典型です。
+    ///
+    /// ```swift
+    /// pushMatrix()
+    /// translate(100, 50, 0)
+    /// rotateY(angle)
+    /// translate(0, 0, 60)
+    /// // 回転の先端がワールドのどこに来るかを控える
+    /// let wx = modelX(0, 0, 0)
+    /// let wy = modelY(0, 0, 0)
+    /// let wz = modelZ(0, 0, 0)
+    /// popMatrix()
+    ///
+    /// pushMatrix()
+    /// translate(wx, wy, wz)   // 変換スタックの外から同じ場所へ置ける
+    /// box(10)
+    /// popMatrix()
+    /// ```
+    ///
+    /// - Note: **3D のみ**。スクリーン座標（ピクセル）が欲しいときは
+    ///   ``screenX(_:_:_:)`` を使ってください。
+    /// - Important: 返るのは**ワールド座標**で、カメラには依存しません。
+    ///   ``camera(eye:center:up:)`` や ``perspective(fov:near:far:)`` を変えても
+    ///   値は変わりません（Processing の `modelX()` と同じ意味論）。
+    public func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        context.modelPosition(x, y, z).x
+    }
+
+    /// 現在の変換を通した 3D モデル座標のワールド y 座標を返します。
+    ///
+    /// - Note: **3D のみ**。用例と注意点は ``modelX(_:_:_:)`` を参照してください。
+    /// - Important: カメラには依存しません（Processing の `modelY()` と同じ意味論）。
+    public func modelY(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        context.modelPosition(x, y, z).y
+    }
+
+    /// 現在の変換を通した 3D モデル座標のワールド z 座標を返します。
+    ///
+    /// - Note: **3D のみ**。用例と注意点は ``modelX(_:_:_:)`` を参照してください。
+    ///   スクリーン深度（0...1）が欲しいときは ``screenZ(_:_:_:)`` です。
+    /// - Important: カメラには依存しません（Processing の `modelZ()` と同じ意味論）。
+    public func modelZ(_ x: Float, _ y: Float, _ z: Float) -> Float {
+        context.modelPosition(x, y, z).z
+    }
+
     // MARK: 2D Shapes
 
     /// 矩形を描画します。

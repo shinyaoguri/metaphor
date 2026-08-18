@@ -371,6 +371,127 @@ class TestTranslations(StatusTestCase):
         self.assertIn("第 1 部が章立て表に無い", err)
 
 
+class TestTranslationPhrases(StatusTestCase):
+    """訳がどこまで入っているかの文面（Issue #956）。
+
+    `en/` がまだ 1 枚も無い今も意味がある: 「後追いします」を**手書きではなく
+    生成物として**出しておくことで、訳が 1 枚入った瞬間に文面が変わり、変えずに
+    push すると `--check` が落ちる。
+    """
+
+    LINK = f"[#{gen.TRANSLATION_ISSUE}]({gen.TRANSLATION_ISSUE_URL})"
+
+    def phrases(self) -> tuple[str, str]:
+        parts = gen.tutorial_parts()
+        return gen.ja_translation(parts), gen.en_translation(parts)
+
+    def test_no_translation_yet_points_at_the_tracking_issue(self) -> None:
+        self.add_parts(published=10)
+        self.assertEqual(
+            self.phrases(),
+            (
+                f"英語版は {self.LINK} で後追いします",
+                "The prose is Japanese for now — an English edition is tracked in "
+                f"{self.LINK}",
+            ),
+        )
+
+    def test_a_translated_prefix_is_a_range(self) -> None:
+        self.add_parts(published=10)
+        for number in (1, 2, 3):
+            self.add_translation(f"{number:02d}-slug{number}.md")
+        self.assertEqual(
+            self.phrases(),
+            (
+                f"英語版は第 1 部〜第 3 部が訳出済みで、残りは {self.LINK} で後追いします",
+                "Parts 1–3 are available in English — the rest is tracked in "
+                f"{self.LINK}",
+            ),
+        )
+
+    def test_a_single_translated_part_is_not_a_range(self) -> None:
+        self.add_parts(published=3)
+        self.add_translation("01-slug1.md")
+        self.assertEqual(
+            self.phrases(),
+            (
+                f"英語版は第 1 部が訳出済みで、残りは {self.LINK} で後追いします",
+                f"Part 1 is available in English — the rest is tracked in {self.LINK}",
+            ),
+        )
+
+    def test_a_gap_is_listed_instead_of_a_range(self) -> None:
+        # 訳は日本語版の公開順に入るとは限らない（訳しやすい部から入りうる）。
+        self.add_parts(published=3)
+        self.add_translation("01-slug1.md")
+        self.add_translation("03-slug3.md")
+        self.assertEqual(
+            self.phrases(),
+            (
+                f"英語版は第 1・3 部が訳出済みで、残りは {self.LINK} で後追いします",
+                "Parts 1, 3 are available in English — the rest is tracked in "
+                f"{self.LINK}",
+            ),
+        )
+
+    def test_a_complete_translation_drops_the_tracking_issue(self) -> None:
+        # 全部そろったら「まだ途中」と読ませない。Issue への言及ごと落とす。
+        self.add_parts(published=2)
+        self.add_translation("01-slug1.md")
+        self.add_translation("02-slug2.md")
+        ja, en = self.phrases()
+        self.assertEqual((ja, en), ("英語版もすべての部がそろっています", "Every part is available in English"))
+        self.assertNotIn(str(gen.TRANSLATION_ISSUE), ja + en)
+
+    def test_a_draft_part_still_counts_as_untranslated(self) -> None:
+        # 公開状況と訳の状況は別の軸。執筆中の部が残っていても訳は完了しうる。
+        self.add_parts(published=1, drafts=1)
+        self.add_translation("01-slug1.md")
+        self.assertEqual(
+            self.phrases()[0],
+            f"英語版は第 1 部が訳出済みで、残りは {self.LINK} で後追いします",
+        )
+
+
+class TestTranslationMarkers(StatusTestCase):
+    """`{ja,en}-translation` マーカーの書き換えと陳腐化検出。"""
+
+    MARKERS = (
+        "JA: <!-- tutorial-status: ja-translation --><!-- /tutorial-status -->\n"
+        "EN: <!-- tutorial-status: en-translation --><!-- /tutorial-status -->\n"
+    )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.add_parts(published=2)
+        self.write_outline()
+        self.set_docs(("README.md", "docs/README.en.md"))
+        self.write_link_doc()
+
+    def test_markers_are_filled_in_place(self) -> None:
+        doc = self.write_doc("docs/README.en.md", self.MARKERS)
+        self.assertEqual(self.run_main()[0], 0)
+        text = doc.read_text(encoding="utf-8")
+        self.assertIn("JA: <!-- tutorial-status: ja-translation -->英語版は [#548]", text)
+        self.assertIn("EN: <!-- tutorial-status: en-translation -->The prose is Japanese", text)
+        # 表のセルに入れられるよう、マーカーは行を分けない。
+        self.assertEqual(len(text.rstrip("\n").split("\n")), 2)
+
+    def test_a_new_translation_makes_the_entry_docs_stale(self) -> None:
+        # #956 の本体。訳を 1 枚置いただけで入口の文面が古くなることを検出する。
+        self.write_doc("docs/README.en.md", self.MARKERS)
+        self.assertEqual(self.run_main()[0], 0)
+
+        self.add_translation("01-slug1.md")
+        self.write_outline()  # 章立て表は正しく `済` にした（別の検査を鳴らさない）
+
+        code, out, err = self.run_main("--check")
+        self.assertEqual(code, 1)
+        self.assertIn("+EN: <!-- tutorial-status: en-translation -->Part 1 is available", out)
+        self.assertIn("+JA: <!-- tutorial-status: ja-translation -->英語版は第 1 部が訳出済み", out)
+        self.assertIn("公開状況の案内が古い", err)
+
+
 class TestFrontmatterErrors(StatusTestCase):
     def test_missing_frontmatter_is_an_error(self) -> None:
         (self.tutorial / "01-x.md").write_text("# 見出しだけ\n", encoding="utf-8")
