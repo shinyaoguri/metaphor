@@ -125,6 +125,34 @@ extension Canvas3D {
         currentTransform = .identity
     }
 
+    /// モデル座標を現在のモデル変換だけで写した**ワールド座標**を返します。
+    ///
+    /// `translate` / `rotateX/Y/Z` / `scale` / ``applyMatrix(_:)`` を積んだ状態でローカル
+    /// 座標を渡すと、その点がワールド空間のどこに来るかが返ります（Processing の
+    /// `modelX()` / `modelY()` / `modelZ()` 相当）。``screenPosition(_:_:_:)`` と違って
+    /// カメラも投影も通さないため、``camera(eye:center:up:)`` や
+    /// ``perspective(fov:near:far:)`` を変えても戻り値は変わりません。
+    ///
+    /// - Note: Processing の実装は `cameraInv * modelview * point`
+    ///   （`modelview = camera * currentMatrix`）で、カメラが打ち消し合って実質
+    ///   `currentMatrix * point` になります。metaphor はカメラを `currentTransform` と
+    ///   分けて持つため、打ち消しの往復なしに現在の変換行列だけを掛けます。
+    ///
+    /// - Parameters:
+    ///   - x: モデル座標の x。
+    ///   - y: モデル座標の y。
+    ///   - z: モデル座標の z。
+    /// - Returns: ワールド座標。
+    public func modelPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float> {
+        let world = currentTransform * SIMD4<Float>(x, y, z, 1)
+        let xyz = SIMD3<Float>(world.x, world.y, world.z)
+        // Processing と同じ扱い: w が 0 なら除算せずそのまま返す。translate / rotate /
+        // scale だけなら w は常に 1 で、0 になり得るのは applyMatrix(_:) に射影成分を
+        // 含む行列を渡した場合だけ。
+        guard world.w != 0 else { return xyz }
+        return xyz / world.w
+    }
+
     /// モデル座標を現在のモデル変換・カメラ・投影でスクリーン座標へ変換します。
     ///
     /// - Important: **カメラ背後の点では反転した値が返ります。**透視投影では

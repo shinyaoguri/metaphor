@@ -325,6 +325,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
 - `func metallic(_ value: Float)` -- マテリアルのメタリック係数を設定します。
   - Note: **3D のみ**に作用します（ADR-0005）。
+- `func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 現在の変換を通した 3D モデル座標のワールド x 座標を返します。
+  - Note: **3D のみ**。スクリーン座標（ピクセル）が欲しいときは `screenX(_:_:_:)` を使ってください。
+  - Important: 返るのは**ワールド座標**で、カメラには依存しません。`camera(eye:center:up:)` や `perspective(fov:near:far:)` を変えても値は変わりません（Processing の `modelX()` と同じ意味論）。
+- `func modelY(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 現在の変換を通した 3D モデル座標のワールド y 座標を返します。
+  - Note: **3D のみ**。用例と注意点は `modelX(_:_:_:)` を参照してください。
+  - Important: カメラには依存しません（Processing の `modelY()` と同じ意味論）。
+- `func modelZ(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 現在の変換を通した 3D モデル座標のワールド z 座標を返します。
+  - Note: **3D のみ**。用例と注意点は `modelX(_:_:_:)` を参照してください。スクリーン深度（0...1）が欲しいときは `screenZ(_:_:_:)` です。
+  - Important: カメラには依存しません（Processing の `modelZ()` と同じ意味論）。
 - `func mouseClicked()` -- マウスクリック時（ドラッグなしの押下→離し）に呼ばれます。
 - `func mouseDragged()` -- マウスドラッグ時に呼ばれます。
 - `func mouseMoved()` -- マウス移動時に呼ばれます。
@@ -1305,6 +1314,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `convenience init(renderer: MetaphorRenderer) throws` -- レンダラーからキャンバスを生成します。デバイス、シェーダーライブラリ、テクスチャサイズを継承します。
 - `func clearCustomPipelineCache()` -- カスタムパイプラインキャッシュをクリアします。通常、シェーダーホットリロード後に呼び出します。
 - `func clearMeshCache()` -- メッシュキャッシュをクリアし、キャッシュ済みの GPU メッシュバッファをすべて解放します。
+- `func modelPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- モデル座標を現在のモデル変換だけで写した**ワールド座標**を返します。
+  - Note: Processing の実装は `cameraInv * modelview * point`（`modelview = camera * currentMatrix`）で、カメラが打ち消し合って実質 `currentMatrix * point` になります。metaphor はカメラを `currentTransform` と分けて持つため、打ち消しの往復なしに現在の変換行列だけを掛けます。
 - `func popState()` -- 直前に保存した状態を復元します。
 - `func pushState()` -- 変換、スタイル、マテリアルを含む全状態を保存します。
 - `func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- モデル座標を現在のモデル変換・カメラ・投影でスクリーン座標へ変換します。
@@ -1818,6 +1829,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let tweenManager: TweenManager` -- 毎フレーム登録済みトゥイーンを自動更新するトゥイーンマネージャ。
 - `var width: Float { get }` -- キャンバスの幅（ピクセル単位）。
 - `func addCleanupHandler(_ handler: () -> Void)` -- クリーンアップハンドラを登録します。
+- `func modelPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- 3D モデル座標を現在のモデル変換だけで写したワールド座標を返します。
 - `func performCleanup()` -- 登録されたクリーンアップハンドラを実行し、リストをクリアします。
 - `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- 2D モデル座標のスクリーン座標を返します。
 - `func screenPosition(_ x: Float, _ y: Float, _ z: Float) -> SIMD3<Float>` -- 3D モデル座標のスクリーン座標を返します。
