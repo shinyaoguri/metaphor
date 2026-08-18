@@ -10,7 +10,7 @@ import Testing
 /// `THIRD_PARTY_LICENSES.md` への追記漏れは誰にも気付かれずに出荷されてしまう
 /// （実際 11 ファイルが未記載のまま出荷されていた）。
 ///
-/// そこでソースツリーを直接走査し、見つかったフォントが帰属表記と突き合わせられる
+/// そこで git の管理対象を走査し、見つかったフォントが帰属表記と突き合わせられる
 /// ことを確認する（`LogConventionTests` / `GoldenImageTests` と同じ方針）。
 @Suite("Bundled font licenses")
 struct FontLicenseTests {
@@ -23,37 +23,57 @@ struct FontLicenseTests {
 
     private static let fontExtensions: Set<String> = ["ttf", "otf", "ttc", "woff", "woff2"]
 
-    /// 走査から外すディレクトリ。
+    /// `git ls-files` の起動・実行に失敗したことを表す。
     ///
-    /// - `Vendor`: submodule（Syphon-Framework）。上流の頒布物で、こちらの帰属表記の対象外。
-    /// - `node_modules`: `website/` の依存。checked in ではない。
-    /// - `.` 始まり（`.build` / `.git` / `.claude` 等）: 生成物とツールの作業領域。
-    private static let skippedDirectories: Set<String> = ["Vendor", "node_modules"]
+    /// 走査できなかったときに「フォント 0 件 = 全部記載済み」と読めてしまうのが最悪なので、
+    /// 黙って空配列を返さずテストを失敗させる。
+    private struct GitListingFailure: Error, CustomStringConvertible {
+        let description: String
+    }
 
     /// リポジトリに checked in された全フォントを、ルートからの相対パスで返す。
+    ///
+    /// ワーキングツリーを `FileManager.enumerator` で舐めるのではなく `git ls-files` を使う。
+    /// テスト名どおり「checked in された」ものだけを見たいからで、こうしておけば
+    /// gitignore 済みのビルド生成物（`website/dist/` の `.woff2` など）が
+    /// 将来どこに増えても除外リストを育て続けずに済む（Issue #957）。
     private static func checkedInFonts() throws -> [String] {
-        let root = repositoryRoot.standardizedFileURL
-        let enumerator = try #require(
-            FileManager.default.enumerator(
-                at: root, includingPropertiesForKeys: [.isDirectoryKey]))
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        // `-z` は NUL 区切り。`Examples/Topics/Advanced Data/` のように空白を含むパスがある。
+        process.arguments = ["git", "ls-files", "-z"]
+        process.currentDirectoryURL = repositoryRoot.standardizedFileURL
 
-        var found: [String] = []
-        for case let url as URL in enumerator {
-            let name = url.lastPathComponent
-            let isDirectory =
-                (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-            if isDirectory, name.hasPrefix(".") || skippedDirectories.contains(name) {
-                enumerator.skipDescendants()
-                continue
-            }
-            guard !isDirectory, fontExtensions.contains(url.pathExtension.lowercased()) else {
-                continue
-            }
-            let relative = url.standardizedFileURL.path
-                .replacingOccurrences(of: root.path + "/", with: "")
-            found.append(relative)
+        let output = Pipe()
+        let errors = Pipe()
+        process.standardOutput = output
+        process.standardError = errors
+
+        do {
+            try process.run()
+        } catch {
+            throw GitListingFailure(description: "git ls-files を起動できなかった: \(error)")
         }
-        return found.sorted()
+        let stdout = output.fileHandleForReading.readDataToEndOfFile()
+        let stderr = errors.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            let message = String(decoding: stderr, as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw GitListingFailure(
+                description: """
+                    git ls-files が失敗した（終了コード \(process.terminationStatus)）: \(message)
+                    このテストは git の管理対象を正本にするので、走査できないときは緑にしない。
+                    """)
+        }
+
+        return
+            String(decoding: stdout, as: UTF8.self)
+            .split(separator: "\0")
+            .map(String.init)
+            .filter { fontExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
+            .sorted()
     }
 
     private static func sha256(of url: URL) throws -> String {
