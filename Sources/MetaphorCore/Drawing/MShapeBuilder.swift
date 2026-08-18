@@ -145,6 +145,22 @@ extension MShape {
         capturedStyle.hasFill = true
     }
 
+    /// 3 成分の値と、省略できる不透明度で塗りつぶし色を設定します。
+    ///
+    /// 値は ``Sketch/createShape()`` した時点の `colorMode()` の色空間とレンジで
+    /// 解釈されます（既定は RGB 0-255）。スケッチ側の `fill(_:_:_:_:)` と同じ規則なので、
+    /// `colorMode(.hsb, 360, 100, 100)` の下では `fill(180, 100, 100)` がシアンになります。
+    ///
+    /// - Parameters:
+    ///   - v1: 1 番目の成分（赤または色相）。
+    ///   - v2: 2 番目の成分（緑または彩度）。
+    ///   - v3: 3 番目の成分（青または明度）。
+    ///   - a: 不透明度。省略すると不透明（アルファの最大値）になります。
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        capturedStyle.fillColor = colorModeConfig.toColor(v1, v2, v3, a).simd
+        capturedStyle.hasFill = true
+    }
+
     /// 塗りつぶしを無効にします。
     public func noFill() {
         capturedStyle.hasFill = false
@@ -171,6 +187,22 @@ extension MShape {
     /// 解釈されます（既定はどちらも 0-255）。
     public func stroke(_ gray: Float, _ alpha: Float) {
         capturedStyle.strokeColor = colorModeConfig.toGray(gray, alpha).simd
+        capturedStyle.hasStroke = true
+    }
+
+    /// 3 成分の値と、省略できる不透明度でストローク色を設定します。
+    ///
+    /// 値は ``Sketch/createShape()`` した時点の `colorMode()` の色空間とレンジで
+    /// 解釈されます（既定は RGB 0-255）。スケッチ側の `stroke(_:_:_:_:)` と同じ規則なので、
+    /// `colorMode(.hsb, 360, 100, 100)` の下では `stroke(180, 100, 100)` がシアンになります。
+    ///
+    /// - Parameters:
+    ///   - v1: 1 番目の成分（赤または色相）。
+    ///   - v2: 2 番目の成分（緑または彩度）。
+    ///   - v3: 3 番目の成分（青または明度）。
+    ///   - a: 不透明度。省略すると不透明（アルファの最大値）になります。
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        capturedStyle.strokeColor = colorModeConfig.toColor(v1, v2, v3, a).simd
         capturedStyle.hasStroke = true
     }
 
