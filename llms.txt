@@ -136,9 +136,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
 - `func colorMode(_ space: ColorSpace, _ maxAll: Float)` -- 全チャンネル共通の最大値を指定してカラーモードを設定します。
-  - Note: **2D と 3D の両方**に作用します（`fill(_:)` / `stroke(_:)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
+  - Note: **2D と 3D の両方**に作用します（`fill(_:)-(Color)` / `stroke(_:)-(Color)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
 - `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
-  - Note: **2D と 3D の両方**に作用します（`fill(_:)` / `stroke(_:)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
+  - Note: **2D と 3D の両方**に作用します（`fill(_:)-(Color)` / `stroke(_:)-(Color)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
 - `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
 - `func cone(radius: Float, height: Float, detail: Int = 24)` -- 円錐を描画します。
@@ -343,11 +343,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- 以降の 3D 頂点の法線ベクトルを設定します。
   - Note: **3D のみ**に作用します（2D のシェイプに法線はありません。ADR-0005）。
 - `func noStroke()` -- 図形のストロークを無効にします。
-  - Note: **2D と 3D の両方**に作用します。3D の既定は元からストローク無しなので、`stroke(_:)` を呼んでいなければ見た目は変わりません（ADR-0005）。
+  - Note: **2D と 3D の両方**に作用します。3D の既定は元からストローク無しなので、`stroke(_:)-(Color)` を呼んでいなければ見た目は変わりません（ADR-0005）。
 - `func noTexture()` -- アクティブなテクスチャを解除します。
   - Note: **3D のみ**に作用します（ADR-0005）。
 - `func noTint()` -- 画像のティントを解除します。
-  - Note: **2D のみ**に作用します（`tint(_:)` と対。ADR-0005）。
+  - Note: **2D のみ**に作用します（`tint(_:)-(Color)` と対。ADR-0005）。
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（`draw()` 内で呼び出してください）。
 - `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- 正射影を設定します。
   - Important: `bottom` / `top` は投影行列の規約どおり「ビュー空間の y が **小さい**側が `bottom`」です。metaphor の y は 2D と同じく画面下向きなので、`bottom` は画面の**上端**、`top` は**下端**に対応します。上下を逆に渡すと絵が上下反転します。
@@ -493,13 +493,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: **3D のみ**に作用します（2D で画像を描くには `image()` を使用してください。ADR-0005）。
 - `func textWidth(_ string: String) -> Float` -- 現在のフォント設定でテキスト文字列の幅を計算します。
 - `func tint(_ color: Color)` -- 画像のティント色を設定します。
-  - Note: **2D のみ**に作用します。掛かるのは `image()` で描く画像だけで、3D の `texture(_:)` には効きません——3D のテクスチャは `fill(_:)` の色を乗算して着色するため、ティント専用のスロットがそもそもありません（ADR-0005）。テクスチャ付きの 3D に色を掛けたいときは `fill(_:)` を使ってください。
+  - Note: **2D のみ**に作用します。掛かるのは `image()` で描く画像だけで、3D の `texture(_:)` には効きません——3D のテクスチャは `fill(_:)-(Color)` の色を乗算して着色するため、ティント専用のスロットがそもそもありません（ADR-0005）。テクスチャ付きの 3D に色を掛けたいときは `fill(_:)-(Color)` を使ってください。
 - `func tint(_ gray: Float)` -- グレースケール値で画像のティントを設定します。
-  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)` の色で着色します。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
 - `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
-  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)` の色で着色します。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
 - `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
-  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)` の色で着色します。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
 - `func toneMapping(_ mode: ToneMapMode)` -- 3D のライティング結果に適用するトーンマッピングを設定します。
   - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません（3D の陰影は物理量、2D の色は最終色、という非対称を意図的に採っています）。ライトが 1 つも無いときの描画（無照明パス）にも掛かりません。
   - Note: `pushStyle()` / `popStyle()` では**巻き戻りません**。画面全体の性質として扱われます。
