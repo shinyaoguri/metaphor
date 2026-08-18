@@ -136,11 +136,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- 名前とカスタムパラメータを指定して CoreImage フィルタを画像に適用します。
 - `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- CoreImage ジェネレーターフィルタを使用して画像を生成します。
 - `func circle(_ x: Float, _ y: Float, _ diameter: Float)` -- 円を描画します。
-  - Note: **2D のみ**に作用します（3D の球は `sphere(_:_:)` です。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D の球は `sphere(_:detail:)` です。ADR-0005）。
 - `func circles(_ instances: [CircleInstance])` -- 複数の円を一括描画します。
-  - Note: **2D のみ**に作用します（3D の一括描画は `drawInstanced(_:_:)` です。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D の一括描画は `drawInstanced(_:transforms:)` です。ADR-0005）。
 - `func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil)` -- GPU バッファ上の円インスタンスを一括描画します。
-  - Note: **2D のみ**に作用します（3D の一括描画は `drawInstanced(_:_:)` です。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D の一括描画は `drawInstanced(_:transforms:)` です。ADR-0005）。
 - `func clearCaches()` -- GPU メモリを解放するためにすべての内部キャッシュをクリアします。
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
@@ -237,7 +237,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func dynamicMesh(_ mesh: DynamicMesh)` -- ダイナミックメッシュを描画します。
   - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
 - `func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 楕円を描画します。
-  - Note: **2D のみ**に作用します（3D の球は `sphere(_:_:)` です。ADR-0005）。
+  - Note: **2D のみ**に作用します（3D の球は `sphere(_:detail:)` です。ADR-0005）。
 - `func ellipseMode(_ mode: EllipseMode)` -- 楕円の描画モードを設定します。
   - Note: **2D のみ**に作用します（`ellipse(_:_:_:_:)` 用で、3D のプリミティブの位置の解釈には効きません。ADR-0005）。
 - `func emissive(_ color: Color)` -- エミッシブ（自己発光）色を設定します。
