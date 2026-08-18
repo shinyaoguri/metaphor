@@ -147,8 +147,8 @@ final class Canvas2DPipelineStore {
     private func warnFallback(kind: Canvas2DPipelineKind, error: Error) {
         guard !didWarnFallback else { return }
         didWarnFallback = true
-        print("""
-        [metaphor] カスタム 2D シェーダを \(kind) 経路のパイプラインに載せられませんでした。\
+        metaphorAlert("""
+        カスタム 2D シェーダを \(kind) 経路のパイプラインに載せられませんでした。\
         組み込みシェーダで描画します（フラグメント関数の stage_in が \
         この経路の頂点出力と合っていない可能性があります）: \(error)
         """)

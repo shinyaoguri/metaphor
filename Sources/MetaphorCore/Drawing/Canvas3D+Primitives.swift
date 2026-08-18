@@ -212,7 +212,7 @@ extension Canvas3D {
             }
             return mesh
         } catch {
-            print("[metaphor] Failed to create mesh '\(key)': \(error)")
+            metaphorAlert("Failed to create mesh '\(key)': \(error)")
             return nil
         }
     }

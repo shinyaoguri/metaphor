@@ -1661,7 +1661,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class MShape` -- ジオメトリ、スタイル、トランスフォームを保存して効率的に再利用するリテインドモードシェイプ。
 
-- （ほか 30 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 32 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var capturedStyle: ShapeStyle` -- 作成時にキャプチャされたスタイルスナップショット。
 - `var childCount: Int { get }` -- 直接の子の数。
 - `var children: [MShape] { get }` -- 子シェイプ（グループシェイプ用）。
@@ -2242,6 +2242,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isAuthorized: Bool { get }` -- マイクの使用が許可されているか（`authorizationStatus` == `.authorized`）。
 - `var isBeat: Bool { get }` -- Beat detection flag (reset on every `update()` call).
 - `var onConfigurationChange: (() -> Void)?` -- Called (on the main thread) when the audio engine's configuration
+- `var rms: Float { get }` -- The unscaled RMS of the current frame (0.0-1.0).
 - `var sampleRate: Double?` -- The sample rate of the audio being analyzed (Hz).
   - Important: On the `injectSamples(_:)` path this is **required** for `bandEnergy(lowFreq:highFreq:)`. Leaving it `nil` makes that method return `0` (`spectrum`, `volume` and `band(_:)` keep working, so the symptom looks like a silent band rather than a missing setting).
 - `var smoothing: Float { get set }` -- EMA smoothing factor for the spectrum (0.0 = no smoothing, 0.99 = very smooth).
@@ -2283,6 +2284,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SoundFile` -- Plays an audio file (MP3, WAV, AAC, etc.) and integrates spectrum analysis.
 
+- `var analysisRMS: Float { get }` -- Returns the unscaled RMS of the playback level (available once analysis is enabled).
 - `var analysisVolume: Float { get }` -- Returns the playback level (available once analysis is enabled).
 - `let duration: Double` -- Returns the file's total duration (seconds).
 - `var gain: Float { get set }` -- Controls the playback gain (0.0-1.0).

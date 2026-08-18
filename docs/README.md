@@ -28,6 +28,8 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - 公開中の本文: <!-- tutorial-status: ja-links:tutorial/ -->[第 1 部 入門](tutorial/01-getting-started.md) / [第 2 部 2D を描く](tutorial/02-drawing-2d.md) / [第 3 部 動かす](tutorial/03-motion.md) / [第 4 部 入力を受ける](tutorial/04-input.md) / [第 5 部 3D へ](tutorial/05-3d.md) / [第 6 部 GPU を使う](tutorial/06-gpu.md) / [第 7 部 メディア](tutorial/07-media.md) / [第 8 部 外とつなぐ](tutorial/08-connect.md) / [第 9 部 作品にする](tutorial/09-artwork.md) / [第 10 部 AI と作る](tutorial/10-ai.md)<!-- /tutorial-status -->。website 版は [/tutorial/](https://shinyaoguri.github.io/metaphor/tutorial/)
 - **[reference/](reference/)** — DocC の API リファレンスに載せる実行結果画像の規約
   - [reference/README.md](reference/README.md) — doc コメントへのスニペットの書き方・撮影（`make reference-shots`）・CI が見るもの
+  - **DocC カタログはリポジトリに 1 つだけ**（`Sources/metaphor/metaphor.docc/`）。`docc convert` は入力カタログを 1 つしか取れないので、モジュールのランディング（`MetaphorNoise` などモジュール自体を説明するページ）も**このカタログに `<モジュール名>.md` として置きます**（[#492](https://github.com/shinyaoguri/metaphor/issues/492)）。`Sources/<モジュール>/<モジュール>.docc/` に置いても convert の入力に入らず、**公開サイトに出ません**
+  - モジュールのランディングに書くのは**そのモジュール固有の散文**（Overview・クイックスタート・落とし穴）だけです。シンボルの Topics は `metaphor.docc/metaphor.md` が全モジュール分をまとめて curate しているので重複させません。シンボルリンクは ``` ``MetaphorNoise/NoiseConfig`` ``` のように**モジュール修飾**で書きます（無修飾は解決できず `make docs-check` が落ちます）
 - **[ai/](ai/)** — AI 支援まわりのドキュメント一式
   - [ai/README.md](ai/README.md) — 実装デバッグ・拡張ノート（ライブラリ開発者と AI エージェント向け）
   - [ai/for-sketch-authors.md](ai/for-sketch-authors.md) — AI と一緒にスケッチを書く人向けガイド
