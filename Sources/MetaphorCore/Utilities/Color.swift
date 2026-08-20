@@ -53,18 +53,6 @@ public struct Color: Sendable, Equatable {
         self.a = alpha
     }
 
-    /// ``init(r:g:b:alpha:)`` の旧ラベルです（アルファのラベルが `a:` から `alpha:` に
-    /// 変わりました。``init(gray:alpha:)`` / ``init(hue:saturation:brightness:alpha:)``
-    /// と揃えるためです）。
-    ///
-    /// 新旧どちらにもデフォルト値があると `Color(r:g:b:)` がどちらにも一致して
-    /// 曖昧になるため、この旧シグネチャは `a` のデフォルト値を持ちません。
-    /// 3 引数の呼び出しは新シグネチャへ解決されます。
-    @available(*, deprecated, renamed: "init(r:g:b:alpha:)")
-    public init(r: Float, g: Float, b: Float, a: Float) {
-        self.init(r: r, g: g, b: b, alpha: a)
-    }
-
     // MARK: - Grayscale
 
     /// グレースケールカラーを作成します。0.0 が黒、1.0 が白。
