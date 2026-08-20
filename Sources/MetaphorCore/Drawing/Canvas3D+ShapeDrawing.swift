@@ -3,6 +3,45 @@ import simd
 
 // テッセレーション済みシェイプ頂点の GPU エンコード（Canvas3D+Shapes.swift から呼ばれる）。
 extension Canvas3D {
+    // MARK: - fill の適用回数（#825）
+
+    // beginShape/endShape の頂点カラーには、記録の時点で「fill 色」または
+    // 「vertex(…color:) で与えた色」が焼き込まれている（Canvas3D+Shapes.swift）。
+    // 頂点シェーダーは `in.color * uniforms.color` を掛けるので、uniforms 側にも
+    // fill を送ると fill が 2 回掛かる（#825）。頂点カラーが白の組み込みメッシュ
+    // （Mesh.swift）と違い、シェイプ側は uniforms を白にして 1 回に揃える。
+    //
+    // 焼き込みをやめて uniforms 一本にしないのは、beginShape の途中で fill() を
+    // 変える書き方（Processing 由来の頂点ごとの色づけ）を保つため。
+    static let bakedShapeTint = SIMD4<Float>(1, 1, 1, 1)
+
+    // 記録経路（影オン / METAPHOR_COMMAND_RECORD）は drawMesh 経由になり、
+    // drawMesh は現在の fillColor を DrawCall3D へ載せる。焼き込み済みの頂点を
+    // 渡すあいだだけ fill を白へ退避して、即時経路と同じ結果にする（#825）。
+    func drawBakedShapeMesh(_ mesh: Mesh) {
+        let savedFill = fillColor
+        fillColor = Canvas3D.bakedShapeTint
+        defer { fillColor = savedFill }
+        drawMesh(mesh)
+    }
+
+    // MARK: - Mesh 経由へ落とす条件
+
+    // テッセレーション済み頂点を一時 Mesh 化して drawMesh へ渡すべきか。
+    // この下の即時エンコードは組み込みパイプラインを直に張る簡略版なので、
+    // 次の 2 つは drawMesh 側の道具立てが要る:
+    //
+    // - 記録経路（影オン / METAPHOR_COMMAND_RECORD）: DrawCall3D として記録し、
+    //   同一フレームのシャドウへ落とす（#152）
+    // - カスタムマテリアル: パイプライン選択（`getCustomPipeline`）と buffer(4) の
+    //   パラメータ束縛は drawMeshImmediate にしかなく、即時エンコードは
+    //   `currentCustomMaterial` を一切見ていなかった。そのため `material(_:)` が
+    //   メッシュ／プリミティブにだけ効き、`beginShape3D` のシェイプには効かない
+    //   （かつ影オンでは効く）という食い違いになっていた（#826）
+    var shouldRouteShapeThroughMesh: Bool {
+        (shouldRecordMainPass && !isReplaying) || currentCustomMaterial != nil
+    }
+
     // MARK: - シェイプ頂点のバインド
 
     // ユーザー頂点列を index 0 にバインドします。
@@ -62,18 +101,18 @@ extension Canvas3D {
         guard !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
 
-        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: テッセレーション済み頂点を
-        // 一時 Mesh 化して drawMesh の記録経路（DrawCall3D）に載せる。従来は
-        // encoder 必須の即時経路しかなく、記録フレームでは本体が描画されず
-        // シャドウにも落ちなかった（#152）
-        if shouldRecordMainPass && !isReplaying {
+        // テッセレーション済み頂点を一時 Mesh 化して drawMesh へ渡す
+        // （記録経路 #152 / カスタムマテリアル #826。判定は shouldRouteShapeThroughMesh）
+        if shouldRouteShapeThroughMesh {
             if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil) {
-                drawMesh(mesh)
+                drawBakedShapeMesh(mesh)
             }
             return
         }
 
         guard let encoder = encoder else { return }
+
+        ensureSkyboxDrawn()
 
         // beginShape/endShape は個別頂点描画を使用するため、インスタンスバッチをフラッシュ
         flushInstanceBatch()
@@ -93,11 +132,12 @@ extension Canvas3D {
             encoder.setFrontFacing(.counterClockwise)
             encoder.setCullMode(.none)
 
+            // 頂点カラーへ焼き込み済みなので tint は白（#825）
             var uniforms = Canvas3DUniforms(
                 modelMatrix: currentTransform,
                 viewProjectionMatrix: viewProj,
                 normalMatrix: normalMatrix,
-                color: fillColor,
+                color: Canvas3D.bakedShapeTint,
                 cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
                 time: currentTime,
                 lightCount: UInt32(lightArray.count),
@@ -171,10 +211,10 @@ extension Canvas3D {
         guard !vertices.isEmpty else { return }
         guard hasFill || hasStroke else { return }
 
-        // 記録経路（影オン / METAPHOR_COMMAND_RECORD）: UV つきの一時 Mesh 化で
-        // drawMesh に載せる。`Mesh.hasUVs` が立つため drawMesh 側がテクスチャ付きと
-        // 判定し、シャドウにも落ちる（テクスチャなしの経路と同じ構造・#152）
-        if shouldRecordMainPass && !isReplaying {
+        // UV つきの一時 Mesh 化で drawMesh に載せる。`Mesh.hasUVs` が立つため
+        // drawMesh 側がテクスチャ付きと判定し、シャドウにも落ちる
+        // （テクスチャなしの経路と同じ構造・#152 / #826）
+        if shouldRouteShapeThroughMesh {
             if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil, uvVertices: uvVertices) {
                 drawMesh(mesh)
             }
@@ -183,6 +223,7 @@ extension Canvas3D {
 
         guard let encoder = encoder else { return }
 
+        ensureSkyboxDrawn()
         flushInstanceBatch()
 
         let normalMatrix = computeNormalMatrix(from: currentTransform)
@@ -291,7 +332,12 @@ extension Canvas3D {
         encoder.setDepthBias(0, slopeScale: 0, clamp: 0)
     }
 
-    // 各頂点を小さな三角形として描画し、ポイントをシミュレート
+    // 各頂点を小さな三角形として描画し、ポイントをシミュレート。
+    //
+    // 三角形を組んだら他のシェイプと同じ `drawShape3DVertices` へ渡す。かつてはここに
+    // 独自のエンコードがあり、ストロークパスを持たないぶん記録経路（影オン）と別の絵に
+    // なっていた（同じスケッチが `shadows()` の有無で変わる・#739）。経路を 1 本に
+    // まとめたので、記録・カスタムマテリアル（#826）・シャドウの扱いも自動的に揃う。
     func drawShape3DPoints() {
         guard !shapeVertices3D.isEmpty else { return }
 
@@ -306,53 +352,6 @@ extension Canvas3D {
             allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
         }
 
-        // 記録経路: 一時 Mesh 化して DrawCall3D として記録（#152）
-        if shouldRecordMainPass && !isReplaying {
-            if let mesh = try? Mesh(device: device, vertices: allVerts, indices: nil) {
-                drawMesh(mesh)
-            }
-            return
-        }
-
-        guard let encoder = encoder else { return }
-
-        // 他の endShape パスと同様、先に保留中のインスタンスバッチを確定して
-        // 描画順序を保つ（これがないとポイントがバッチ済みシェイプより先に
-        // エンコードされる）
-        flushInstanceBatch()
-
-        let normalMatrix = computeNormalMatrix(from: currentTransform)
-        let viewProj = computeViewProjection()
-
-        encoder.setRenderPipelineState(pipelineState)
-        if let depthState = depthState {
-            encoder.setDepthStencilState(depthState)
-        }
-        encoder.setCullMode(.none)
-
-        var uniforms = Canvas3DUniforms(
-            modelMatrix: currentTransform,
-            viewProjectionMatrix: viewProj,
-            normalMatrix: normalMatrix,
-            color: shapeVertices3D[0].color,
-            cameraPosition: SIMD4(cameraEye.x, cameraEye.y, cameraEye.z, 0),
-            time: currentTime,
-            lightCount: 0,
-            hasTexture: 0
-        )
-
-        guard bindShapeVertices(allVerts, on: encoder) else { return }
-        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-
-        var dummy = Light3D.zero
-        encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
-        var mat = currentMaterial
-        encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
-
-        // ポイントはライティングなし（lightCount=0）なのでシャドウ無効
-        bindShadowResources(on: encoder, enabled: false)
-
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: allVerts.count)
+        drawShape3DVertices(allVerts)
     }
 }

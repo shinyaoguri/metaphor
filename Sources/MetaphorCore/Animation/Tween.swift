@@ -50,6 +50,21 @@ extension SIMD4<Float>: Interpolatable {
     }
 }
 
+extension Double: Interpolatable {
+    public static func interpolate(from: Double, to: Double, t: Float) -> Double {
+        from + (to - from) * Double(t)
+    }
+}
+
+extension Int: Interpolatable {
+    /// 整数の補間は**四捨五入**します（バンド数・段数のように整数で持ちたい値のため）。
+    ///
+    /// 端点は必ずその値になります（`t = 0` で `from`、`t = 1` で `to`）。
+    public static func interpolate(from: Int, to: Int, t: Float) -> Int {
+        Int((Float(from) + (Float(to) - Float(from)) * t).rounded())
+    }
+}
+
 extension Color: Interpolatable {
     public static func interpolate(from: Color, to: Color, t: Float) -> Color {
         Color(
@@ -84,7 +99,29 @@ public final class Tween<T: Interpolatable> {
     public var isComplete: Bool { state == .complete }
 
     /// アニメーションが現在実行中かどうか
+    ///
+    /// ``delay(_:)`` の待機中は `false` です。**開始済みかどうか**を知りたいなら
+    /// `isActive || isWaiting` を見てください。
+    ///
+    /// - SeeAlso: ``isWaiting``
     public var isActive: Bool { state == .running }
+
+    /// ``delay(_:)`` の待機中かどうか（``start()`` は済んでいるが、まだ動き出していない）
+    ///
+    /// `delay(_:)` を付けたトゥイーンは ``start()`` 直後に必ずここを通り、待機が明けると
+    /// ``isActive`` へ移ります。待機中は ``isActive`` も ``isComplete`` も `false` なので、
+    /// この 2 つだけでは「袖で出番を待っている」と「そもそも出番が無い」
+    /// （未 ``start()`` / ``reset()`` 済み）が区別できません。
+    ///
+    /// | 状態 | `isWaiting` | `isActive` | `isComplete` |
+    /// | --- | --- | --- | --- |
+    /// | 未 ``start()`` / ``reset()`` 済み | `false` | `false` | `false` |
+    /// | ``delay(_:)`` 待機中 | `true` | `false` | `false` |
+    /// | 実行中 | `false` | `true` | `false` |
+    /// | 完了 / ``cancel()`` 済み | `false` | `false` | `true` |
+    ///
+    /// - SeeAlso: ``isActive``, ``delay(_:)``
+    public var isWaiting: Bool { state == .delaying }
 
     // MARK: - Configuration
 
@@ -112,6 +149,22 @@ public final class Tween<T: Interpolatable> {
     private var repeatCount: Int = 0
     private var forward: Bool = true
 
+    // MARK: - Registration
+
+    /// 登録先の `TweenManager`（`add(_:)` が設定します）。
+    ///
+    /// マネージャ側は登録したトゥイーンをクロージャで**強参照**するため、
+    /// こちらは弱参照にして循環を作りません。登録を外れても参照は残したままにして、
+    /// あとで ``start()`` されたときに同じマネージャへ戻れるようにします。
+    weak var registrar: TweenManager?
+
+    /// マネージャの登録から外してよい状態かどうか。
+    ///
+    /// 完了済み（`.complete`）だけでなく、まだ始まっていない / ``reset()`` された
+    /// （`.idle`）ものも含みます。どちらも `update(_:)` が何もしない状態なので、
+    /// 登録に残しておいても毎フレーム空振りするだけで、解放も妨げます。
+    var isDormant: Bool { state == .complete || state == .idle }
+
     // MARK: - Initialization
 
     /// 新しいトゥイーンアニメーションを作成します。
@@ -131,7 +184,11 @@ public final class Tween<T: Interpolatable> {
 
     // MARK: - Builder Methods
 
-    /// アニメーション開始前のディレイを設定します。
+    /// アニメーション開始前のディレイを設定します（繰り返しても初回のサイクルにのみ適用）。
+    ///
+    /// 待つのは ``start()`` の直後だけです。``repeatCount(_:)`` で繰り返しても
+    /// 2 周目以降は間を置かずに続くので、全体の所要時間は
+    /// `seconds + duration × サイクル数` になります。
     ///
     /// - Parameter seconds: ディレイ時間（秒）。
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
@@ -151,13 +208,16 @@ public final class Tween<T: Interpolatable> {
         return self
     }
 
-    /// アニメーションのリピート回数を設定します（0は無限）。
+    /// アニメーションを走らせる総サイクル数を設定します（既定は 1、`0` は無限）。
+    ///
+    /// `n` は「追加の繰り返し回数」ではなく**総サイクル数**です。`repeatCount(2)` なら
+    /// 合計 2 サイクル（``yoyo()`` と併せれば往路 + 復路の 1 往復）で完了します。
     ///
     /// 無限リピートのトゥイーンは自動では完了しないため、`TweenManager` に
     /// 登録した場合は不要になった時点で ``cancel()`` を呼んでください
     /// （呼ばない限りマネージャに保持され続けます）。
     ///
-    /// - Parameter n: リピート回数。
+    /// - Parameter n: 総サイクル数。`0` で無限。
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
     public func repeatCount(_ n: Int) -> Self {
@@ -165,7 +225,18 @@ public final class Tween<T: Interpolatable> {
         return self
     }
 
-    /// ヨーヨーモードを有効にします。各サイクルでアニメーション方向が反転します。
+    /// ヨーヨーモードを有効にします。``repeatCount(_:)`` が 2 以上（または `0` = 無限）のときだけ効きます。
+    ///
+    /// 方向が反転するのは**サイクルとサイクルの境目**です。既定は 1 サイクルなので境目が
+    /// 来る前に完了してしまい、`yoyo()` だけを付けても往復せず `to` へ着いて終わります。
+    ///
+    /// ```swift
+    /// tween(from: 0.0, to: 100.0, duration: 1.0).yoyo()                 // 往復しない（to で完了）
+    /// tween(from: 0.0, to: 100.0, duration: 1.0).yoyo().repeatCount(2)  // to へ行って from へ戻る
+    /// ```
+    ///
+    /// 有限リピートの着地点は総サイクル数の偶奇で決まります。奇数なら `to`、偶数なら `from`
+    /// です（`repeatCount(2)` は 1 往復して `from` に戻り、`repeatCount(3)` は `to` で終わる）。
     ///
     /// - Returns: メソッドチェーン用のこのトゥイーンインスタンス。
     @discardableResult
@@ -177,6 +248,10 @@ public final class Tween<T: Interpolatable> {
     // MARK: - Control
 
     /// アニメーションを最初から開始します。
+    ///
+    /// 完了や ``reset()`` で `TweenManager` の登録から外れていても、ここで登録し直します
+    /// （一度登録したマネージャを覚えているため）。`TweenManager.add(_:)` は同じ
+    /// インスタンスの二重登録を弾くので、登録が残っていても倍速にはなりません。
     public func start() {
         elapsed = 0
         repeatCount = 0
@@ -188,6 +263,8 @@ public final class Tween<T: Interpolatable> {
         } else {
             state = .running
         }
+
+        registrar?.add(self)
     }
 
     /// アニメーションを初期値のアイドル状態にリセットします。
@@ -211,7 +288,15 @@ public final class Tween<T: Interpolatable> {
     // MARK: - Update (called by TweenManager)
 
     /// 指定されたデルタタイムでトゥイーン状態を更新します（TweenManager により毎フレーム呼ばれます）。
+    ///
+    /// 非有限（NaN / ±∞）と負の刻みは無視します。`TweenManager.update(_:)` は public で、
+    /// 利用者が自前で計算した `deltaTime` をそのまま受け取るためです。NaN が `elapsed` に
+    /// 入ると比較も `min` も NaN を素通しするので、値が NaN のまま完了判定が二度と真に
+    /// ならず、負の刻みは `elapsed` を負にして `from` を下回って外挿してしまいます。
+    /// 捨てるだけなので、次のまともな刻みからそのまま復帰します。
     func update(_ dt: Float) {
+        guard dt.isFinite, dt >= 0 else { return }
+
         switch state {
         case .idle, .complete:
             return
@@ -233,18 +318,31 @@ public final class Tween<T: Interpolatable> {
             elapsed += dt
 
             // 大きな delta time（フレーム停止など）で複数サイクル分が一度に経過しても
-            // 正しく消化できるよう while で回す。duration は init で max(0.001, …) に
-            // クランプされているため無限ループにはならない。
+            // 正しく消化できるよう while で回す。
             while elapsed >= duration {
                 // サイクル完了
                 repeatCount += 1
 
-                if repeatTotal > 0 && repeatCount >= repeatTotal {
+                // duration を init で max(0.001, …) にクランプしても、elapsed が大きすぎると
+                // 引き算が浮動小数の桁で飽和して減らなくなる（Float では 1e9 - 0.5 == 1e9。
+                // ulp(1e9) = 64）。有限リピートは repeatCount で必ず抜けるが、無限リピートは
+                // ここで while が終わらなくなるため、飽和を検出して「残りのサイクルはすべて
+                // 経過した」とみなす。サイクル数の上限で打ち切るのではなく「引いても減らな
+                // かったか」を直接見るので、入口の guard が退行しても停止性は保たれる。
+                let saturated = (elapsed - duration) >= elapsed
+
+                if repeatTotal > 0 && (saturated || repeatCount >= repeatTotal) {
                     // すべてのリピートが終了
                     value = forward ? toValue : fromValue
                     state = .complete
                     completionHandler?()
                     return
+                }
+
+                if saturated {
+                    // 無限リピート: サイクル先頭へ丸め、次のフレームから通常進行に戻す
+                    elapsed = 0
+                    break
                 }
 
                 // 次のサイクルを開始

@@ -104,6 +104,11 @@ extension Canvas3D {
     //
     // 同じ引数の再呼び出しは同一インスタンスを返す（loadModel と同じ挙動）。毎フレーム
     // 寸法を変えて呼ぶとキャッシュが入れ替わり続けるため、生成は setup() が基本。
+    //
+    // キーは寸法の文字列補間なので、非有限な寸法をそのまま通すと "mesh_box_nan_nan_nan" が
+    // キャッシュへ居座る（描いても何も出ないメッシュが、符号違いの NaN もろとも 1 キーに
+    // 畳まれた状態で残る）。寸法の検証は Mesh 側のファクトリが持ち、throw が cachedMesh の
+    // catch に落ちて nil になるので、ここには非有限のキーが載らない（#894）。
 
     /// 指定した寸法のボックスメッシュを生成します（描画はしません）。
     ///
@@ -111,7 +116,7 @@ extension Canvas3D {
     ///   - width: ボックスの幅。
     ///   - height: ボックスの高さ。
     ///   - depth: ボックスの奥行き。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh? {
         cachedMesh(key: "mesh_box_\(width)_\(height)_\(depth)") {
             try Mesh.box(device: device, width: width, height: height, depth: depth)
@@ -121,7 +126,7 @@ extension Canvas3D {
     /// 同じ寸法の立方体メッシュを生成します（描画はしません）。
     ///
     /// - Parameter size: 立方体の辺の長さ。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createBoxMesh(_ size: Float) -> Mesh? { createBoxMesh(size, size, size) }
 
     /// 指定した半径とテッセレーション詳細度の球メッシュを生成します（描画はしません）。
@@ -129,7 +134,7 @@ extension Canvas3D {
     /// - Parameters:
     ///   - radius: 球の半径。
     ///   - detail: 経度方向のセグメント数（リングはここから導出されます）。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh? {
         let rings = max(detail / 2, 4)  // ``sphere(_:detail:)`` と同じ導出
         return cachedMesh(key: "mesh_sphere_\(radius)_\(detail)_\(rings)") {
@@ -142,7 +147,7 @@ extension Canvas3D {
     /// - Parameters:
     ///   - width: 平面の幅。
     ///   - height: 平面の高さ。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh? {
         cachedMesh(key: "mesh_plane_\(width)_\(height)") {
             try Mesh.plane(device: device, width: width, height: height)
@@ -155,7 +160,7 @@ extension Canvas3D {
     ///   - radius: 円柱の半径。
     ///   - height: 円柱の高さ。
     ///   - detail: 放射方向のセグメント数。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
         cachedMesh(key: "mesh_cylinder_\(radius)_\(height)_\(detail)") {
             try Mesh.cylinder(device: device, radius: radius, height: height, segments: detail)
@@ -168,7 +173,7 @@ extension Canvas3D {
     ///   - radius: 底面の半径。
     ///   - height: 円錐の高さ。
     ///   - detail: 放射方向のセグメント数。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
         cachedMesh(key: "mesh_cone_\(radius)_\(height)_\(detail)") {
             try Mesh.cone(device: device, radius: radius, height: height, segments: detail)
@@ -181,7 +186,7 @@ extension Canvas3D {
     ///   - ringRadius: トーラスの中心からチューブ中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: リング周囲の放射方向セグメント数。
-    /// - Returns: 生成されたメッシュ。失敗時は nil。
+    /// - Returns: 生成されたメッシュ。失敗時は nil（寸法が非有限なら生成しません・#894）。
     public func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh? {
         let tubeDetail = max(detail / 2, 8)  // ``torus(ringRadius:tubeRadius:detail:)`` と同じ導出
         return cachedMesh(key: "mesh_torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)") {
@@ -207,7 +212,7 @@ extension Canvas3D {
             }
             return mesh
         } catch {
-            print("[metaphor] Failed to create mesh '\(key)': \(error)")
+            metaphorAlert("Failed to create mesh '\(key)': \(error)")
             return nil
         }
     }
@@ -279,6 +284,8 @@ extension Canvas3D {
         mesh.ensureBuffers()
         guard let encoder = encoder,
               let vb = mesh.vertexBuffer else { return }
+
+        ensureSkyboxDrawn()
 
         // DynamicMesh はインスタンシング対象外
         flushInstanceBatch()

@@ -155,7 +155,7 @@ public final class MImage {
     /// このメソッドは即座に返ります — 割り当て、リードバック、変換のオーバーヘッドを回避します。
     public func loadPixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
-            print("[metaphor] Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
+            metaphorAlert("Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
             pixels = []
             needsGPUReadback = true
             return
@@ -223,7 +223,41 @@ public final class MImage {
             }
         }
 
+        // テクスチャの中身は premultiplied（ADR-0012）。``pixels`` / ``get(_:_:)`` は
+        // 公開 API なので straight で返す。割り戻さないと `set(x, y, get(x, y))` が
+        // 恒等にならず、``mask(_:)`` のように RGB を触らず α だけ差し替える操作も破綻する。
+        Self.unpremultiply(&pixels)
+
         needsGPUReadback = false
+    }
+
+    /// straight な RGBA バイト列を premultiplied にします（GPU へ渡す直前）。
+    private static func premultiply(_ bytes: inout [UInt8]) {
+        bytes.withUnsafeMutableBufferPointer { buf in
+            guard let ptr = buf.baseAddress else { return }
+            for i in stride(from: 0, to: buf.count, by: 4) {
+                let a = Int(ptr[i + 3])
+                if a == 255 { continue }
+                ptr[i] = UInt8((Int(ptr[i]) * a + 127) / 255)
+                ptr[i + 1] = UInt8((Int(ptr[i + 1]) * a + 127) / 255)
+                ptr[i + 2] = UInt8((Int(ptr[i + 2]) * a + 127) / 255)
+            }
+        }
+    }
+
+    /// premultiplied な RGBA バイト列を straight にします（CPU へ返す直前）。
+    /// α = 0 の画素は色を持たないので 0 のままにします。
+    private static func unpremultiply(_ bytes: inout [UInt8]) {
+        bytes.withUnsafeMutableBufferPointer { buf in
+            guard let ptr = buf.baseAddress else { return }
+            for i in stride(from: 0, to: buf.count, by: 4) {
+                let a = Int(ptr[i + 3])
+                if a == 255 || a == 0 { continue }
+                ptr[i] = UInt8(min(255, (Int(ptr[i]) * 255 + a / 2) / a))
+                ptr[i + 1] = UInt8(min(255, (Int(ptr[i + 1]) * 255 + a / 2) / a))
+                ptr[i + 2] = UInt8(min(255, (Int(ptr[i + 2]) * 255 + a / 2) / a))
+            }
+        }
     }
 
     /// CPU の ``pixels`` 配列を GPU テクスチャに書き戻します。
@@ -237,7 +271,7 @@ public final class MImage {
     /// ``texture`` の実体は別インスタンスに変わります。
     public func updatePixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
-            print("[metaphor] Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
+            metaphorAlert("Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
             return
         }
 
@@ -247,7 +281,10 @@ public final class MImage {
         let count = bytesPerRow * h
         guard pixels.count == count else { return }
 
+        // ``pixels`` は straight、テクスチャは premultiplied（ADR-0012）。
+        // 掛けるのはアップロード用のコピーだけで、利用者の配列は straight のまま保つ。
         var uploadPixels = pixels
+        Self.premultiply(&uploadPixels)
         if byteOrder == .bgra {
             uploadPixels.withUnsafeMutableBufferPointer { buf in
                 let ptr = buf.baseAddress!
@@ -437,11 +474,24 @@ public final class MImage {
     /// マネージドストレージモードで、``pixels`` 配列はゼロで事前確保されています。
     ///
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。
-    ///   - height: 画像の高さ（ピクセル単位）。
+    ///   - width: 画像の幅（ピクセル単位）。1 以上 ``TextureManager/maxDimension`` 以下。
+    ///   - height: 画像の高さ（ピクセル単位）。1 以上 ``TextureManager/maxDimension`` 以下。
     ///   - device: テクスチャ作成に使用する Metal デバイス。
-    /// - Returns: 新しい ``MImage`` インスタンス。テクスチャを作成できない場合は `nil`。
+    /// - Returns: 新しい ``MImage`` インスタンス。テクスチャを作成できない場合
+    ///   （幅・高さが `1...`  ``TextureManager/maxDimension`` の範囲外を含む）は `nil`。
     public static func createImage(_ width: Int, _ height: Int, device: MTLDevice) -> MImage? {
+        // 範囲外のサイズは Metal へ渡す前に止める（0 以下は #798、上限超えは #806）。
+        // descriptor の検証は `makeTexture` の nil ではなくアサーションで
+        // プロセスを終了させるため、ここを通すと呼び出し側の `guard let` では守れない。
+        // `TextureManager` は #842 で上限を塞いだが、この static 版は
+        // `TextureManager` を通らず自前で descriptor を組むため外側に残っていた。
+        guard width > 0, height > 0,
+              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            metaphorWarning(
+                "createImage: dimensions must be within 1...\(TextureManager.maxDimension) "
+                + "(got \(width)x\(height))")
+            return nil
+        }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm,
             width: width,

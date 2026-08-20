@@ -25,9 +25,9 @@ struct Phase3GPUStructTests {
         #expect(MemoryLayout<Light3D>.stride == 64)
     }
 
-    @Test("Material3D stride is 64 bytes (with PBR params)")
+    @Test("Material3D stride is 80 bytes (PBR params + tone map params)")
     func material3DStride() {
-        #expect(MemoryLayout<Material3D>.stride == 64)
+        #expect(MemoryLayout<Material3D>.stride == 80)
     }
 }
 

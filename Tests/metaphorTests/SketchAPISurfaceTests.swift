@@ -40,7 +40,7 @@ private final class SketchRunnerHarness {
     private(set) var createCanvasCalls: [(width: Int, height: Int)] = []
 
     /// onCompute と onDraw で共有する直前フレーム時刻（SketchRunner と同じ）。
-    private var prevTime: Float = 0
+    private let frameClock = FrameClock()
 
     init(
         sketch: any Sketch,
@@ -101,7 +101,7 @@ private final class SketchRunnerHarness {
         renderer.onCompute = { [weak self] commandBuffer, time in
             guard let self else { return }
             let t = Float(time)
-            let dt = t - self.prevTime
+            let dt = self.frameClock.delta(at: t)
             self.context.beginCompute(commandBuffer: commandBuffer, time: t, deltaTime: dt)
             self.sketch.compute()
             self.context.endCompute()
@@ -109,8 +109,7 @@ private final class SketchRunnerHarness {
         renderer.onDraw = { [weak self] encoder, time in
             guard let self else { return }
             let t = Float(time)
-            let dt = t - self.prevTime
-            self.prevTime = t
+            let dt = self.frameClock.advance(to: t)
             self.context.beginFrame(
                 encoder: encoder, time: t, deltaTime: dt, preciseTime: time
             )
@@ -435,6 +434,36 @@ struct SketchLifecycleTests {
         runner.handleFrameRate(30)
         #expect(runner.renderer?.targetFPS == 30)
         #expect(runner.mtkView?.preferredFramesPerSecond == 30)
+    }
+
+    // 回帰テスト(#793): noLoop() で止めている間も時計（renderer.elapsedTime）は進むが
+    // フレームは発火しないため、再開後の最初のフレームの deltaTime に「止めていた
+    // 実時間まるごと」が乗っていた（0.8 秒止めれば 60fps の 54 倍）。
+    // handleLoop() がフレーム再開の前に時計の起点を寄せ直すことを、
+    // handleFrameRate と同じ形（SketchRunner を単体構築して直接呼ぶ）で確かめる。
+    @Test("handleLoop は再開時にフレーム時刻の起点を現在時刻へ寄せ直す")
+    func handleLoopResyncsFrameClock() throws {
+        let runner = SketchRunner()
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        runner.renderer = renderer
+        runner.mtkView = MetaphorMTKView()
+
+        // t = 0 のフレームを描いた直後に noLoop() したとみなす。
+        _ = runner.frameClock.advance(to: 0)
+        #expect(runner.frameClock.previousTime == 0)
+
+        // 止めている間に時計が 5 秒進んだ状況を作る（clockOffset は elapsedTime に乗る）。
+        renderer.clockOffset = 5.0
+        let elapsedAtResume = Float(renderer.elapsedTime)
+        #expect(elapsedAtResume >= 5.0)
+
+        runner.handleLoop()
+
+        #expect(runner.frameClock.previousTime >= 5.0,
+                "起点が 0 のままだと、再開後の最初の deltaTime に 5 秒が乗る")
+        // 再開直後のフレーム（1/60 秒後）の deltaTime は 1 フレームぶんに収まる。
+        let firstFrameDelta = runner.frameClock.advance(to: elapsedAtResume + 1.0 / 60)
+        #expect(firstFrameDelta < 0.1, "実測 \(firstFrameDelta)s: 止めていた時間が乗っている")
     }
 
     @Test("制御コールバック未配線でも loop/noLoop/redraw/frameRate は no-op")
@@ -1022,6 +1051,25 @@ struct TwoLayerSymmetryTests {
         #expect(h.sketch.screenZ(5, 9, 13) == p3.z)
     }
 
+    @Test("isInFront は canvas3D の判定へ 3 層とも同じ答えで届く (#824)")
+    func isInFrontForwardsThroughAllLayers() throws {
+        let h = try makeHarness()
+        h.context.canvas3D.begin(encoder: nil, time: 0)
+        let centerX = h.context.canvas3D.width / 2
+        let centerY = h.context.canvas3D.height / 2
+        let behindZ = h.context.canvas3D.cameraEye.z + 120
+
+        // 前方・背後の両方で 3 層が一致することを見る（片方だけだと定数を返す
+        // 実装でも通ってしまう）。
+        #expect(h.sketch.isInFront(centerX, centerY, 0))
+        #expect(h.context.isInFront(centerX, centerY, 0))
+        #expect(h.context.canvas3D.isInFront(centerX, centerY, 0))
+
+        #expect(h.sketch.isInFront(centerX, centerY, behindZ) == false)
+        #expect(h.context.isInFront(centerX, centerY, behindZ) == false)
+        #expect(h.context.canvas3D.isInFront(centerX, centerY, behindZ) == false)
+    }
+
     @Test("createCanvas は (width, height) の順で転送される")
     func createCanvasForwardsInOrder() throws {
         let h = try makeHarness()
@@ -1132,14 +1180,30 @@ struct SketchFailureModeTests {
         }
     }
 
+    @Test("pixels は context 未初期化でも空バッファ（読み取り系は fatalError しない）")
+    func pixelsWithoutContextIsEmpty() {
+        // 失敗モードの方針（ADR-0005 / Issue #356）: 描画系は `context` の getter で
+        // fatalError、`probe()` と `pixels` はそこを通らない。`pixels` が
+        // `context.pixelBuffer` を読んでいた頃は、この呼び出しが空バッファではなく
+        // 「Drawing APIs require an active SketchContext...」の fatalError で落ちていた
+        // ため、テストプロセスごと落ちる（#expect が失敗するのではない）のがこの
+        // テストの赤の見え方。
+        let sketch = RecordingSketch()
+        #expect(sketch._context == nil)
+
+        let px = sketch.pixels
+        #expect(px.count == 0, "context 未初期化の pixels は空: count=\(px.count)")
+        #expect(px.baseAddress == nil)
+    }
+
     @Test("loadPixels() 前の pixels は空バッファ（読み取り系はクラッシュより空）")
     func pixelsBeforeLoadIsEmpty() throws {
         let sketch = RecordingSketch()
         let harness = try SketchRunnerHarness(sketch: sketch)
         harness.start()
 
-        // 注: doc（Sketch.context）は「context 未初期化でも空バッファ」と読めるが、
-        // 実際に空が返るのは context がある状態で loadPixels() 前のときだけ → Issue #356。
+        // context はあるが loadPixels() 前、という別経路の空返し（context 未初期化側は
+        // pixelsWithoutContextIsEmpty が押さえる）。
         let before = sketch.pixels
         #expect(before.count == 0, "loadPixels 前は空バッファ: count=\(before.count)")
         #expect(before.baseAddress == nil)

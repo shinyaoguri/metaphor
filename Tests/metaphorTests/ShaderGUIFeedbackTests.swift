@@ -80,13 +80,6 @@ struct ShaderHotReloadTests {
 
         \(BuiltinShaders.canvas3DStructs)
 
-        struct Canvas3DVertexOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
-
         fragment float4 reloadTestFrag(
             Canvas3DVertexOut in [[stage_in]],
             constant Canvas3DUniforms &uniforms [[buffer(1)]],

@@ -73,14 +73,25 @@ extension Canvas2D {
     /// テクスチャ付きクワッドを頂点バッファに蓄積します（同一テクスチャのクワッドはバッチ処理されます）。
     /// - Parameter color: 頂点色。`nil` なら `tint()`（画像用）を使います。テキストのように
     ///   tint ではなく fill 色で塗るべき描画は、ここに色を渡します（#516）。
+    /// - Parameter straightAlpha: テクスチャの RGB が **α を掛ける前（straight）**なら `true`。
+    ///   既定は `false`（グリフアトラス・読み込んだ画像・オフスクリーンは premultiplied。
+    ///   ADR-0012）。`true` になるのは `updatePixels()` だけで、フラグメントが
+    ///   割り戻しを飛ばします（#848）。
     func drawTexturedQuad(
         texture: MTLTexture, x: Float, y: Float, w: Float, h: Float,
         srcX: Float = 0, srcY: Float = 0, srcW: Float? = nil, srcH: Float? = nil,
-        color: SIMD4<Float>? = nil
+        color: SIMD4<Float>? = nil, straightAlpha: Bool = false
     ) {
         // 記録フレーム（isDeferring）でも蓄積する。encoder のみのガードだと
         // 影オン / METAPHOR_COMMAND_RECORD のフレームで image() が消失する（#152）
         guard isDeferring || encoder != nil else { return }
+
+        // α の持ち方が変わるとフラグメントが変わる = 別バッチ。テクスチャ差し替えと
+        // 同じ理由で、先に出し切ってから切り替える。
+        if straightAlpha != texturedIsStraightAlpha {
+            flushTexturedVertices()
+            texturedIsStraightAlpha = straightAlpha
+        }
 
         // 描画順序を保つため、蓄積済みカラー頂点と保留中のインスタンスバッチを先にフラッシュ
         // （addVertex と同じ順序保証。これがないと circle(); image(); rect() で
@@ -115,6 +126,9 @@ extension Canvas2D {
                 }
             }
         }
+
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: texturedVertexCount == 0)
 
         let tw = Float(texture.width)
         let th = Float(texture.height)
@@ -191,6 +205,8 @@ extension Canvas2D {
         // tint() は image() 用の API で、文字色ではない。
         let textColor = fillColor
         let r = textColor.x, g = textColor.y, b = textColor.z, a = textColor.w
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: texturedVertexCount == 0)
         let verts = texturedVertices
         var off = texturedBufferOffset + texturedVertexCount
 

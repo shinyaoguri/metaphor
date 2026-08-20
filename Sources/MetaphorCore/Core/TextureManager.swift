@@ -10,6 +10,17 @@ import Metal
 /// let textures = try TextureManager(device: device, width: 1920, height: 1080)
 /// ```
 public final class TextureManager {
+    /// 2D テクスチャの 1 辺の上限（ピクセル）。
+    ///
+    /// metaphor が対象とする Apple Silicon（GPU Family Apple 7 以降）の上限で、
+    /// Metal Feature Set Tables の "Maximum 2D texture width and height" が根拠です。
+    /// これを超える寸法は `MTLTextureDescriptor` の検証を通らず、`makeTexture` の
+    /// `nil` ではなく `validateWithDevice:` のアサーションでプロセスが終了します
+    /// （`throws` でも Optional でも拾えない形の失敗）。そのため Metal へ渡す前に
+    /// ``init(device:width:height:pixelFormat:depthFormat:clearColor:sampleCount:)``
+    /// で弾きます（#842）。
+    public static let maxDimension = 16384
+
     /// テクスチャ作成に使用される Metal デバイス
     public let device: MTLDevice
 
@@ -52,7 +63,9 @@ public final class TextureManager {
     ///   - depthFormat: デプステクスチャのピクセルフォーマット
     ///   - clearColor: レンダーパスのクリアカラー
     ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
-    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
+    /// - Throws: 幅・高さが ``TextureManager/maxDimension`` の範囲外
+    ///   （1 未満または上限超え）の場合、およびテクスチャを作成できなかった場合
+    ///   ``MetaphorError/textureCreationFailed(width:height:format:)``
     public init(
         device: MTLDevice,
         width: Int,
@@ -62,6 +75,15 @@ public final class TextureManager {
         clearColor: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1),
         sampleCount: Int = 4
     ) throws {
+        // 寸法の検証: 範囲外は Metal へ渡す前に止める（0 以下は #798、上限超えは #842）。
+        // MTLTextureDescriptor はどちらも makeTexture の nil で返さず
+        // `validateWithDevice:` のアサーションでプロセスを終了させるため、
+        // ここを通してしまうと throws でも Optional でも失敗を拾えない。
+        guard width > 0, height > 0,
+              width <= Self.maxDimension, height <= Self.maxDimension else {
+            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
+        }
+
         self.device = device
         self.width = width
         self.height = height
@@ -194,11 +216,69 @@ public final class TextureManager {
         try TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
     }
 
+    // MARK: - カラーテクスチャの差し替え（オフスクリーンバッファの copy-on-write、#745）
+
+    /// 現在のカラーテクスチャと同じ構成（フォーマット・サイズ・用途）で 1 枚作ります。
+    ///
+    /// `Graphics` / `Graphics3D` が「外へ渡したテクスチャは凍結し、次のパスは別の
+    /// テクスチャへ描く」copy-on-write を行うために使います（``replaceColorTexture(_:)``）。
+    ///
+    /// - Returns: 差し替え先として使える新しいカラーテクスチャ
+    /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
+    public func makeMatchingColorTexture() throws -> MTLTexture {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: colorTexture.pixelFormat,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .private
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
+        }
+        return texture
+    }
+
+    /// 描画先のカラーテクスチャを差し替えます。
+    ///
+    /// リサイズは新しいインスタンスの作成で行う（イミュータブル）方針の例外で、
+    /// **同じ寸法・同じフォーマットのまま描き先だけを回す**ための入り口です。
+    /// オフスクリーンバッファを同一フレーム内で描き換えても、既に貼った絵が
+    /// 遡って変わらないようにするために使います（#745）。
+    ///
+    /// - Parameter texture: 新しい描画先。``makeMatchingColorTexture()`` で作ったもの。
+    public func replaceColorTexture(_ texture: MTLTexture) {
+        guard texture.width == width, texture.height == height,
+              texture.pixelFormat == colorTexture.pixelFormat else {
+            metaphorWarning("replaceColorTexture requires a texture of the same size and format. Ignoring.")
+            return
+        }
+        colorTexture = texture
+        if sampleCount > 1 {
+            // MSAA はマルチサンプルテクスチャへ描いて colorTexture へリゾルブする
+            renderPassDescriptor.colorAttachments[0].resolveTexture = texture
+        } else {
+            renderPassDescriptor.colorAttachments[0].texture = texture
+        }
+    }
+
     /// レンダーパスデスクリプタのクリアカラーを更新します。
     ///
     /// - Parameter color: 新しいクリアカラー
     public func setClearColor(_ color: MTLClearColor) {
         renderPassDescriptor.colorAttachments[0].clearColor = color
+    }
+
+    /// straight alpha の成分から、クリアカラー（premultiplied）を組み立てます。
+    ///
+    /// キャンバスの中身は premultiplied（ADR-0012）。クリアはブレンドを通らず値を
+    /// そのまま書くので、ここで掛けておかないと「透明なのに色が乗っている」画素が
+    /// 下地として残り、以降の合成が全部ずれる。α = 1 なら straight と同値。
+    public static func premultipliedClearColor(
+        _ r: Double, _ g: Double, _ b: Double, _ a: Double
+    ) -> MTLClearColor {
+        MTLClearColor(red: r * a, green: g * a, blue: b * a, alpha: a)
     }
 
     /// 次のレンダーパスで前フレームをクリアするか保持するかを設定します。

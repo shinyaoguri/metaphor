@@ -3,12 +3,15 @@ import simd
 
 /// ユーザー定義の MSL フラグメントシェーダーを使用してカスタムポストプロセスエフェクトを適用します。
 ///
-/// `createPostEffect()` で作成し、`addPostEffect(.custom(...))` でチェーンに追加します。
+/// `createPostEffect()` で作成し、`addPostEffect(_:)` にそのまま渡してチェーンに追加します。
+///
+/// 前文（`PPVertexOut` / `PostProcessParams` の定義）は自動で足されるので、書くのは
+/// フラグメント関数だけです（#718。配られる型は ``PostProcessShaders/commonStructs``）。
 ///
 /// ```swift
 /// let effect = try createPostEffect(
 ///     name: "myEffect",
-///     source: PostProcessShaders.commonStructs + """
+///     source: """
 ///     fragment float4 myFragment(
 ///         PPVertexOut in [[stage_in]],
 ///         texture2d<float> tex [[texture(0)]],
@@ -22,7 +25,7 @@ import simd
 ///     fragmentFunction: "myFragment"
 /// )
 /// effect.intensity = 0.5
-/// addPostEffect(.custom(effect))
+/// addPostEffect(effect)
 /// ```
 @MainActor
 public final class CustomPostEffect: PostEffect {

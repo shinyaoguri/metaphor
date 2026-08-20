@@ -18,6 +18,10 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var sketchRef: (any Sketch)?
     private var renderTimer: DispatchSourceTimer?
     private var isRenderTimerSuspended = false
+    // 描画コールバックが共有する直前フレーム時刻。ループを止めている間も時計は進むため、
+    // 再開時に起点を寄せ直せるよう runner 側で保持する(#793)。
+    // internal: テストから handleLoop() の効果を検証できるようにする。
+    let frameClock = FrameClock()
     private var activity: NSObjectProtocol?
     private var sharedResources: SharedMetalResources?
 
@@ -45,8 +49,68 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let sketch = sketchType.init()
         runner.sketchRef = sketch
 
+        // SIGTERM / SIGINT を通常終了と同じ後始末経路へ合流させる（#715）。
+        // source は解放するとハンドラが外れるため、プロセス寿命まで保持する。
+        retainedSignalSources = installTerminationSignalHandlers()
+
         app.run()
     }
+
+    /// 終了シグナル（`SIGINT` / `SIGTERM`）を受けたら `NSApp.terminate(_:)` を呼び、
+    /// 通常終了と同じ後始末（``applicationWillTerminate(_:)``）を通してから終了させます。
+    ///
+    /// 既定のシグナル動作はプロセスを即座に終了させるため、`applicationWillTerminate` が
+    /// 走らず ``MetaphorRenderer/shutdown()`` → プラグインの `onDetach()` に到達しません。
+    /// 結果として Syphon サーバーの retire 通知が送出されず、`SyphonServerDirectory` を
+    /// 保持し続けているクライアント（ライブビューア・MadMapper 等）からは死んだサーバーが
+    /// 生きているように見え続けます。`metaphor watch` はリロードのたびに子スケッチを
+    /// `SIGTERM` で止めるため、リロードのたびにゾンビが 1 つ増えていました（#715）。
+    ///
+    /// シグナルハンドラ内で呼べる関数は限られる（async-signal-safe）ため、
+    /// `signal(sig, SIG_IGN)` でデフォルト動作を無効にしたうえで `DispatchSource` で受け、
+    /// 実際の後始末は通常のキューで実行します（metaphor-cli 側も同型）。
+    ///
+    /// - Parameters:
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    ///   - onTerminate: シグナル受信時に実行する処理。既定はメインスレッドでの
+    ///     `NSApp.terminate(nil)`（テストから差し替え可能）。
+    /// - Returns: 設置した signal source。**呼び出し側が保持し続ける必要があります**
+    ///   （解放するとハンドラが外れる）。オプトアウト時は空配列。
+    nonisolated static func installTerminationSignalHandlers(
+        env: [String: String] = ProcessInfo.processInfo.environment,
+        onTerminate: (@Sendable () -> Void)? = nil
+    ) -> [any DispatchSourceSignal] {
+        guard resolveInstallSignalHandlers(env: env) else { return [] }
+
+        let terminate = onTerminate ?? {
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { NSApp.terminate(nil) }
+            }
+        }
+
+        return [SIGINT, SIGTERM].map { sig in
+            // デフォルト動作（即時終了）を無効にしないと DispatchSource へ届く前に殺される。
+            signal(sig, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: sig, queue: .global())
+            source.setEventHandler(handler: terminate)
+            source.resume()
+            return source
+        }
+    }
+
+    /// 終了シグナルのハンドラを設置するか（既定は設置する）。
+    ///
+    /// 環境変数 `METAPHOR_SIGNAL_HANDLERS=0` でオプトアウトできます。スケッチを組み込んだ
+    /// ホスト側が独自にシグナルを扱いたい場合の逃げ道で、`0` 以外の値は無視します。
+    nonisolated static func resolveInstallSignalHandlers(env: [String: String]) -> Bool {
+        env["METAPHOR_SIGNAL_HANDLERS"] != "0"
+    }
+
+    /// 設置した signal source の保持先（プロセス寿命）。
+    ///
+    /// `run(sketchType:)` から 1 回だけ書き込み、以降は読み書きしないため
+    /// `nonisolated(unsafe)` とします。
+    private nonisolated(unsafe) static var retainedSignalSources: [any DispatchSourceSignal] = []
 
     // MARK: - NSApplicationDelegate
 
@@ -157,6 +221,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             renderer.addPlugin(InputInjectionPlugin(), sketch: sketch)
         }
 
+        // シェーダファイルの自動ホットリロード（#648）。setup() の前に決める：
+        // ファイル由来のシェーダを読むのは大抵 setup() の中で、そこで監視登録が走る。
+        context.shaderHotReloadEnabled = Self.resolveShaderHotReload(
+            config: config, env: ProcessInfo.processInfo.environment
+        )
+
         // setup() 中に noLoop ハンドラを一時的に抑制し、
         // onDraw が構成される前の早期一時停止を防止。
         context.onNoLoop = nil
@@ -206,6 +276,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             ProcessInfo.processInfo.endActivity(activity)
             self.activity = nil
         }
+        // シェーダ監視の DispatchSource を止める（#648）。
+        context?.stopShaderHotReload()
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
         // SyphonPlugin はここで Syphon サーバーを停止する。
         renderer?.shutdown()
@@ -289,16 +361,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
 
-        let windowRect = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
-        let window = NSWindow(
-            contentRect: windowRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
+        // 生成は SketchWindowFactory へ集約（isReleasedWhenClosed = false を含む。#835）。
+        // プライマリは applicationShouldTerminateAfterLastWindowClosed が閉じたあとに
+        // `window?.isVisible` を読むため、AppKit に解放されると解放済み参照を触る。
+        let window = SketchWindowFactory.makeWindow(
+            contentSize: NSSize(width: windowWidth, height: windowHeight),
+            title: config.title,
+            aspectRatio: NSSize(width: config.width, height: config.height)
         )
-        window.title = config.title
-        window.contentAspectRatio = NSSize(width: config.width, height: config.height)
-        window.center()
         self.window = window
 
         // MTKView
@@ -311,12 +381,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         window.contentView = mtkView
         self.mtkView = mtkView
 
+        let env = ProcessInfo.processInfo.environment
+
         // Syphon 実効名の解決（環境変数 > config.syphonName > (config.syphon ? title : nil)）。
         // ウィンドウ表示でも MadMapper 等へ publish できるよう、env / syphon フラグを尊重する。
-        let effectiveSyphonName = resolveSyphonName(config: config)
+        let effectiveSyphonName = Self.resolveSyphonName(config: config, env: env)
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードでも尊重）。
-        let fps = resolveFPS(config: config)
+        let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
         // レンダーループモードの決定。
@@ -356,16 +428,28 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Syphon サーバーの実効名を解決します（ウィンドウ表示モード用）。
+    /// 出力（Syphon 等）サーバーの実効名を解決します（ウィンドウ / ヘッドレス共通）。
     ///
     /// 優先順位: 環境変数 `METAPHOR_SYPHON_NAME` > ``SketchConfig/syphonName`` >
     /// （``SketchConfig/syphon`` が `true` なら ``SketchConfig/title``）。いずれも無ければ
-    /// `nil`（= Syphon 無効）。空文字の環境変数は未設定として扱います。
-    private func resolveSyphonName(config: SketchConfig) -> String? {
-        let env = ProcessInfo.processInfo.environment
+    /// `nil`（= 出力無効）。空文字の環境変数は未設定として扱います。
+    ///
+    /// ヘッドレス（`METAPHOR_VIEWER=1`）は「ウィンドウ無し・出力のみ」で、名前が決まらないと
+    /// 何も見えないプロセスになります。この経路は `requiresOutput: true` を渡し、
+    /// ``SketchConfig/syphon`` が `false` でも ``SketchConfig/title`` へ落ちる（= 戻り値は
+    /// 必ず非 `nil`）ようにします。
+    ///
+    /// - Parameters:
+    ///   - config: スケッチ設定。
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    ///   - requiresOutput: 出力が必須の経路（= ヘッドレス）なら `true`。
+    /// - Returns: 出力サーバー名。無効なら `nil`（`requiresOutput: true` では `nil` にならない）。
+    nonisolated static func resolveSyphonName(
+        config: SketchConfig, env: [String: String], requiresOutput: Bool = false
+    ) -> String? {
         if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return name }
         if let name = config.syphonName { return name }
-        if config.syphon { return config.title }
+        if config.syphon || requiresOutput { return config.title }
         return nil
     }
 
@@ -386,15 +470,33 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         return config.preventAppNap
     }
 
+    /// シェーダファイルの自動ホットリロードを有効にするか（#648）。
+    ///
+    /// 環境変数 `METAPHOR_SHADER_HOT_RELOAD` が最優先（`1` で有効・`0` で無効）。
+    /// 無ければ ``SketchConfig/shaderHotReload``（既定は DEBUG ビルドでのみ `true`）。
+    nonisolated static func resolveShaderHotReload(
+        config: SketchConfig, env: [String: String]
+    ) -> Bool {
+        switch env["METAPHOR_SHADER_HOT_RELOAD"] {
+        case "1": return true
+        case "0": return false
+        default: return config.shaderHotReload
+        }
+    }
+
     /// レンダーループの実効 FPS を解決します（ウィンドウ/ヘッドレス共通）。
     ///
     /// 優先順位: 環境変数 `METAPHOR_FPS` > ``SketchConfig/fps``。これにより
     /// metaphor-cli の `--fps` がヘッドレス（ライブビューア）だけでなく、ウィンドウ
     /// モード（`metaphor run` / `watch --no-viewer`）でも一様に効きます。
     /// 解析できない値（非数値・0 以下）は無視して `config.fps` にフォールバックします。
-    private func resolveFPS(config: SketchConfig) -> Int {
-        guard let raw = ProcessInfo.processInfo.environment["METAPHOR_FPS"],
-              let fps = Int(raw), fps > 0 else {
+    ///
+    /// - Parameters:
+    ///   - config: スケッチ設定。
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    /// - Returns: 実効 FPS。
+    nonisolated static func resolveFPS(config: SketchConfig, env: [String: String]) -> Int {
+        guard let raw = env["METAPHOR_FPS"], let fps = Int(raw), fps > 0 else {
             return config.fps
         }
         return fps
@@ -439,12 +541,16 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
 
-        // 出力サーバー名: 環境変数 > config.syphonName > タイトル の優先順。
-        let syphonName = env["METAPHOR_SYPHON_NAME"] ?? config.syphonName ?? config.title
-        startOutput(renderer: renderer, name: syphonName)
+        // 出力サーバー名: 環境変数 > config.syphonName > タイトル の優先順。ヘッドレスは
+        // 出力しか無いので requiresOutput: true（= config.syphon に関わらず必ず非 nil）。
+        if let syphonName = Self.resolveSyphonName(
+            config: config, env: env, requiresOutput: true
+        ) {
+            startOutput(renderer: renderer, name: syphonName)
+        }
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
-        let fps = resolveFPS(config: config)
+        let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
         // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。
@@ -516,12 +622,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // 時計を引き継いだリロード（preserveClock）では時刻がオフセットぶん進んだ
         // 状態で始まるため、起点も合わせる（合わせないと初回 deltaTime が
         // 引き継いだ経過時間そのものになる）。
-        var prevTime = Float(renderer.clockOffset)
+        // クロージャは runner を強く掴まないよう、共有の時計だけを捕捉する。
+        let frameClock = self.frameClock
+        frameClock.resync(to: Float(renderer.clockOffset))
 
         renderer.onCompute = { [weak context, weak sketch] commandBuffer, time in
             guard let context, let sketch else { return }
             let t = Float(time)
-            let dt = t - prevTime
+            let dt = frameClock.delta(at: t)
             context.beginCompute(commandBuffer: commandBuffer, time: t, deltaTime: dt)
             sketch.compute()
             context.endCompute()
@@ -530,8 +638,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         renderer.onDraw = { [weak context, weak sketch] encoder, time in
             guard let context, let sketch else { return }
             let t = Float(time)
-            let dt = t - prevTime
-            prevTime = t
+            let dt = frameClock.advance(to: t)
             context.beginFrame(encoder: encoder, time: t, deltaTime: dt, preciseTime: time)
             sketch.draw()
             context.endFrame()
@@ -549,8 +656,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         renderer.onRecordFrame = { [weak context, weak sketch] time in
             guard let context, let sketch else { return }
             let t = Float(time)
-            let dt = t - prevTime
-            prevTime = t
+            let dt = frameClock.advance(to: t)
             context.beginRecordingFrame(time: t, deltaTime: dt)
             sketch.draw()
             context.endRecordingFrame()
@@ -630,7 +736,16 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     // MARK: - Animation Control
 
     /// レンダーループを再開します。
-    private func handleLoop() {
+    ///
+    /// 時計（``MetaphorRenderer/elapsedTime``）は実時間ベースで、止めている間も進みます。
+    /// 一方フレームは発火しないので、起点を寄せ直さないと再開後の最初のフレームへ
+    /// 「止めていた実時間まるごと」が `deltaTime` として渡り、それを積分に使う側
+    /// （`Physics2D` / `TweenManager` / スケッチ自前の速度積分）が 1 回で吹き飛びます(#793)。
+    /// フレームを再開する前に起点を現在時刻へ寄せ、再開後の最初の `deltaTime` を
+    /// 実測どおり（＝ほぼ 1 フレームぶん）にします。
+    // internal: テストから直接呼べるようにする(#793)
+    func handleLoop() {
+        frameClock.resync(to: Float(renderer?.elapsedTime ?? 0))
         if let renderTimer {
             resumeRenderTimerIfNeeded(renderTimer)
         } else {
@@ -671,13 +786,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     ///   以前はこのクランプがタイマー経路の interval 計算にしか掛かっておらず、
     ///   `renderer.targetFPS`（→ Probe の `frame.json`）と
     ///   `MTKView.preferredFramesPerSecond` には無効値がそのまま渡っていた。
-    ///   入口で 1 回だけクランプし、全経路へ同じ値を渡すことで揃える。
+    ///   入口で 1 回だけクランプし、全経路へ同じ値を渡すことで揃える
+    ///   （クランプ自体は ``clampedFrameRate(_:)`` が持ち、`SketchView` 経路と共有）。
     // internal: テストから直接呼べるようにする(#358)
     func handleFrameRate(_ fps: Int) {
-        let clampedFPS = max(fps, 1)
-        if clampedFPS != fps {
-            metaphorWarning("frameRate(\(fps)) is invalid (must be positive); clamping to \(clampedFPS).")
-        }
+        let clampedFPS = clampedFrameRate(fps)
         renderer?.targetFPS = clampedFPS
         if let renderTimer {
             // タイマーモード: タイマーをリスケジュール

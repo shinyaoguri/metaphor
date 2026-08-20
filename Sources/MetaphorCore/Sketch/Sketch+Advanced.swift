@@ -228,6 +228,24 @@ extension Sketch {
 extension Sketch {
     /// MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
     ///
+    /// ``PostProcessShaders/postProcessPreamble``（stdlib + `PPVertexOut` /
+    /// `PostProcessParams` の定義）を**必ず**先頭へ足すので、フラグメント関数だけを
+    /// 書けば動きます。これらの型は自分で定義しないでください（#718）。
+    ///
+    /// ```swift
+    /// let effect = try createPostEffect(name: "invert", source: """
+    /// fragment float4 invert(
+    ///     PPVertexOut in [[stage_in]],
+    ///     texture2d<float> tex [[texture(0)]]
+    /// ) {
+    ///     constexpr sampler s(filter::linear);
+    ///     float4 c = tex.sample(s, in.texCoord);
+    ///     return float4(1.0 - c.rgb, c.a);
+    /// }
+    /// """, fragmentFunction: "invert")
+    /// addPostEffect(effect)
+    /// ```
+    ///
     /// - Parameters:
     ///   - name: エフェクトの表示名。
     ///   - source: Metal Shading Language のソースコード。
@@ -238,6 +256,27 @@ extension Sketch {
     ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
     public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
         try context.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
+    }
+
+    /// 外部 MSL ファイルからカスタムポストプロセスエフェクトを作成します。
+    ///
+    /// 読み込んだファイルは自動でホットリロードの対象になります（#648）。前文は
+    /// ソース経路と同じく自動で足されます（#718）。
+    ///
+    /// - Parameters:
+    ///   - name: エフェクトの表示名。
+    ///   - path: MSL ソースファイルのファイルパス。
+    ///   - fragmentFunction: フラグメント関数の名前。
+    /// - Returns: 新しい ``CustomPostEffect`` インスタンス。
+    /// - Throws: ``MetaphorError``。ソースファイルを読み込めなかった場合は
+    ///   ``MetaphorError/shaderSourceLoadFailed(path:detail:)``、MSL のコンパイルに
+    ///   失敗した場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、
+    ///   指定したフラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
+    public func createPostEffectFromFile(
+        name: String, path: String, fragmentFunction: String
+    ) throws -> CustomPostEffect {
+        try context.createPostEffectFromFile(
+            name: name, path: path, fragmentFunction: fragmentFunction)
     }
 
     /// ポストプロセスエフェクトをパイプラインに追加します。
@@ -293,7 +332,8 @@ extension Sketch {
 
     /// 記録を停止し GIF ファイルに書き出します。
     ///
-    /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
+    /// - Parameter path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
     ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
     ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
@@ -305,7 +345,8 @@ extension Sketch {
     /// 記録を停止し GIF ファイルを非同期で書き出します。
     ///
     /// ブロッキングを避けるためファイル書き込みをバックグラウンドスレッドで実行します。
-    /// - Parameter path: 出力ファイルパス（`nil` の場合は自動生成）。
+    /// - Parameter path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
     ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
     ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの

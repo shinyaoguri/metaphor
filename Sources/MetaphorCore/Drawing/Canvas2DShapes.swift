@@ -325,21 +325,24 @@ extension Canvas2D {
     }
 
     /// 頂点位置の配列からポリゴンを描画します。凹多角形にも対応します。
+    ///
+    /// - Note: 自己交差する頂点列の塗りは **nonzero winding** 規則に従います
+    ///   （Processing / p5.js と同じ）。
+    ///
     /// - Parameter points: ポリゴン頂点を定義する `(x, y)` タプルの配列。
     public func polygon(_ points: [(Float, Float)]) {
         guard points.count >= 3 else { return }
         svgRecorder?.recordPolygon(points, closed: true, style: svgStyle())
 
         if hasFill {
-            let indices = EarClipTriangulator.triangulate(points)
+            // 自己交差する頂点列は nonzero winding で分解してから塗る。
+            let tess = EarClipTriangulator.triangulateNonZero(points)
             var i = 0
-            while i + 2 < indices.count {
-                addTriangle(
-                    points[indices[i]].0, points[indices[i]].1,
-                    points[indices[i + 1]].0, points[indices[i + 1]].1,
-                    points[indices[i + 2]].0, points[indices[i + 2]].1,
-                    fillColor
-                )
+            while i + 2 < tess.indices.count {
+                let a = tess.vertices[tess.indices[i]]
+                let b = tess.vertices[tess.indices[i + 1]]
+                let c = tess.vertices[tess.indices[i + 2]]
+                addTriangle(a.0, a.1, b.0, b.1, c.0, c.1, fillColor)
                 i += 3
             }
         }
@@ -358,14 +361,33 @@ extension Canvas2D {
     ///   - w: 弧を囲む楕円の幅。
     ///   - h: 弧を囲む楕円の高さ。
     ///   - startAngle: 開始角（ラジアン）。
-    ///   - stopAngle: 終了角（ラジアン）。
+    ///   - stopAngle: 終了角（ラジアン）。`startAngle` 以下なら何も描きません（Processing 互換・#743）。
     ///   - mode: 弧の閉じ方モード。省略時は扇形の fill + 弧のみの stroke（Processing のデフォルトと同じ）。
+    ///
+    /// 角度は Processing と同じく描画前に正規化されます。`stopAngle <= startAngle` は何も描かず
+    /// （初回だけ警告）、範囲が 2π を超える場合は 0〜2π へクランプします。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
         _ startAngle: Float, _ stopAngle: Float,
         _ mode: ArcMode = .default
     ) {
+        // 角度の正規化（Processing `PGraphics.arc` 互換・#743）。
+        // 逆転した角度を逆回りに描かない・2π 超を巻き付けて重ね描きしない。
+        // Processing の `while start < 0 { start += TWO_PI; stop += TWO_PI }` は cos/sin の
+        // 周期性から幾何的に no-op（差も不変）なので、精度を落とさないために入れていない。
+        guard startAngle.isFinite, stopAngle.isFinite else { return }
+        guard stopAngle > startAngle else {
+            warnArcReversedAnglesOnce()
+            return
+        }
+        var startAngle = startAngle
+        var stopAngle = stopAngle
+        if stopAngle - startAngle > .pi * 2 {
+            startAngle = 0
+            stopAngle = .pi * 2
+        }
+
         let rx = w * 0.5
         let ry = h * 0.5
         svgRecorder?.recordArc(
@@ -373,7 +395,7 @@ extension Canvas2D {
             start: startAngle, stop: stopAngle, mode: mode, style: svgStyle())
         let arcLength = stopAngle - startAngle
         let full = ellipseSegments(forRadius: max(rx, ry))
-        let segments = max(4, Int(Float(full) * abs(arcLength) / (Float.pi * 2)))
+        let segments = max(4, Int(Float(full) * arcLength / (Float.pi * 2)))
         let step = arcLength / Float(segments)
 
         if hasFill {

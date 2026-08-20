@@ -69,70 +69,54 @@ struct BlendModeTests {
         #expect(attachment.isBlendingEnabled == false)
     }
 
-    @Test("alpha enables blending with correct factors")
+    /// `.alpha` は premultiplied over（ADR-0012）。
+    /// フラグメントが premultiplied を返すので、ここで `src.a` を掛け直さない。
+    @Test("alpha composites premultiplied source over the destination")
     func alphaMode() {
         let attachment = MTLRenderPipelineColorAttachmentDescriptor()
         BlendMode.alpha.apply(to: attachment)
         #expect(attachment.isBlendingEnabled == true)
-        #expect(attachment.sourceRGBBlendFactor == .sourceAlpha)
+        #expect(attachment.sourceRGBBlendFactor == .one)
         #expect(attachment.destinationRGBBlendFactor == .oneMinusSourceAlpha)
+        #expect(attachment.sourceAlphaBlendFactor == .one)
+        #expect(attachment.destinationAlphaBlendFactor == .oneMinusSourceAlpha)
     }
 
-    @Test("additive enables blending with one destination")
+    @Test("additive adds the premultiplied source to the destination")
     func additiveMode() {
         let attachment = MTLRenderPipelineColorAttachmentDescriptor()
         BlendMode.additive.apply(to: attachment)
         #expect(attachment.isBlendingEnabled == true)
-        #expect(attachment.sourceRGBBlendFactor == .sourceAlpha)
+        #expect(attachment.sourceRGBBlendFactor == .one)
         #expect(attachment.destinationRGBBlendFactor == .one)
     }
 
-    @Test("multiply uses destination color")
-    func multiplyMode() {
-        let attachment = MTLRenderPipelineColorAttachmentDescriptor()
-        BlendMode.multiply.apply(to: attachment)
-        #expect(attachment.isBlendingEnabled == true)
-        #expect(attachment.sourceRGBBlendFactor == .destinationColor)
-        #expect(attachment.destinationRGBBlendFactor == .zero)
+    /// 分離可能ブレンドモードは固定関数では書けないので、フラグメント側で合成する
+    /// （ADR-0012 / #801）。パイプラインではブレンドを無効にしておく。
+    @Test("separable blend modes composite in the fragment", arguments: [
+        BlendMode.multiply, .screen, .subtract, .lightest, .darkest, .difference, .exclusion,
+    ])
+    func separableModesUseFramebufferFetch(mode: BlendMode) {
+        let desc = MTLRenderPipelineColorAttachmentDescriptor()
+        mode.apply(to: desc)
+        #expect(mode.requiresFramebufferFetch == true)
+        #expect(desc.isBlendingEnabled == false, "\(mode) が固定関数ブレンドを有効にしている")
+        #expect(mode.fragmentFunctionSuffix != nil, "\(mode) にフラグメント関数名の接尾辞が無い")
+    }
+
+    /// 固定関数で足りるモードはフェッチを要求しない（専用フラグメントも持たない）。
+    @Test("fixed-function modes need no framebuffer fetch", arguments: [
+        BlendMode.opaque, .alpha, .additive,
+    ])
+    func fixedFunctionModes(mode: BlendMode) {
+        #expect(mode.requiresFramebufferFetch == false)
+        #expect(mode.fragmentFunctionSuffix == nil)
     }
 
     @Test("all cases are present")
     func allCases() {
         let cases = BlendMode.allCases
         #expect(cases.count == 10)
-    }
-
-    @Test("screen blend factor correctness")
-    func screenFactors() {
-        let desc = MTLRenderPipelineColorAttachmentDescriptor()
-        BlendMode.screen.apply(to: desc)
-        #expect(desc.isBlendingEnabled == true)
-        #expect(desc.sourceRGBBlendFactor == .one)
-        #expect(desc.destinationRGBBlendFactor == .oneMinusSourceColor)
-    }
-
-    @Test("subtract uses reverseSubtract operation")
-    func subtractOperation() {
-        let desc = MTLRenderPipelineColorAttachmentDescriptor()
-        BlendMode.subtract.apply(to: desc)
-        #expect(desc.isBlendingEnabled == true)
-        #expect(desc.rgbBlendOperation == .reverseSubtract)
-    }
-
-    @Test("lightest uses max operation")
-    func lightestOperation() {
-        let desc = MTLRenderPipelineColorAttachmentDescriptor()
-        BlendMode.lightest.apply(to: desc)
-        #expect(desc.isBlendingEnabled == true)
-        #expect(desc.rgbBlendOperation == .max)
-    }
-
-    @Test("darkest uses min operation")
-    func darkestOperation() {
-        let desc = MTLRenderPipelineColorAttachmentDescriptor()
-        BlendMode.darkest.apply(to: desc)
-        #expect(desc.isBlendingEnabled == true)
-        #expect(desc.rgbBlendOperation == .min)
     }
 
     @Test("BlendMode is Hashable")

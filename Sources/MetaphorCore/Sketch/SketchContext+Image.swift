@@ -46,6 +46,116 @@ extension SketchContext {
         return image
     }
 
+    // MARK: - Text Outline
+
+    /// テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 現在の ``textSize(_:)`` / ``textFont(_:)-(String)`` / ``textAlign(_:_:)`` を
+    /// `text()` と同じように解釈します。改行を含む文字列は `text()` と同じく行ごとに
+    /// 分けて配置され、行の高さは ``textLeading(_:)`` に従います。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリライン。
+    public func textToContours(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [[Vec2]] {
+        canvas.textToContours(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: アウトライン上の点。
+    public func textToPoints(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [Vec2] {
+        canvas.textToPoints(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
+    ///
+    /// 返るのは外周ごとの子を持つ ``ShapeKind/group``。`o` の内側のような穴は
+    /// コンターとして子に載るため、``shape(_:_:_:)`` でそのまま塗り分けられます。
+    ///
+    /// ```swift
+    /// let logo = textToShape("metaphor", 40, 200)
+    /// logo.setFill(.white)
+    /// shape(logo, 0, 0)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 現在のスタイルをキャプチャしたグループシェイプ。
+    public func textToShape(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> MShape {
+        let group = createShape(.group)
+        let contours = canvas.textToContours(string, x, y, sampleFactor: sampleFactor)
+        for nested in ContourNesting.group(contours) {
+            let child = createShape()
+            child.beginShape()
+            for point in nested.outer { child.vertex(point.x, point.y) }
+            for hole in nested.holes {
+                child.beginContour()
+                for point in hole { child.vertex(point.x, point.y) }
+                child.endContour()
+            }
+            child.endShape(.close)
+            group.addChild(child)
+        }
+        return group
+    }
+
+    // MARK: - Font
+
+    /// 指定したファイルパスからフォントを読み込みます。
+    ///
+    /// フォントは現在のプロセスにだけ登録されます（システムのフォント設定は変更しません）。
+    /// 返された ``MFont`` を ``textFont(_:)-(MFont)`` へ渡すと、以降のテキスト描画・計測が
+    /// そのフォントで行われます。
+    ///
+    /// 既定でパスキーのキャッシュが効き、同じパスの再読込は同一の ``MFont`` を返します
+    /// （`draw()` 内で呼んでも再登録されません）。
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     guard let path = Bundle.module.path(
+    ///         forResource: "SpaceMono-Regular", ofType: "ttf", inDirectory: "Resources")
+    ///     else { return }
+    ///     textFont(try! loadFont(path))
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - path: フォントファイル（`.ttf` / `.otf` / `.ttc` / `.otc` / `.dfont`）のパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
+    /// - Returns: 読み込まれたフォント。
+    /// - Throws: ``MetaphorError/font(_:)``。ファイルが無い場合は
+    ///   ``MetaphorError/FontFailure/fileNotFound(path:)``、フォントとして読めない場合は
+    ///   ``MetaphorError/FontFailure/noFontsInFile(path:)``、登録に失敗した場合は
+    ///   ``MetaphorError/FontFailure/registrationFailed(path:detail:)``。
+    public func loadFont(_ path: String, cache: Bool = true) throws -> MFont {
+        if cache, let cached = assetCache.font(forPath: path) {
+            return cached
+        }
+        let font = try FontRegistry.load(path: path)
+        if cache {
+            assetCache.store(font, forPath: path)
+        }
+        return font
+    }
+
     // MARK: - SVG Export
 
     /// SVG 記録を開始します。
@@ -54,14 +164,16 @@ extension SketchContext {
     /// ``endSVGRecord()`` でファイルへ書き出されます。対応外の機能（`image()`/`text()`/
     /// グラデーション等）は警告を出力してスキップされます（機能ごとに 1 回）。
     ///
-    /// - Parameter path: 出力する SVG ファイルパス。
+    /// - Parameter path: 出力する SVG ファイルパス。相対パスはプロジェクト直下から
+    ///   解決されます（絶対パスと `~` 始まりはそのまま）。
     public func beginSVGRecord(_ path: String) {
         guard canvas.svgRecorder == nil else {
             metaphorWarning("beginSVGRecord: SVG recording is already active")
             return
         }
         canvas.svgRecorder = SVGRecorder(
-            width: canvas.width, height: canvas.height, outputPath: path)
+            width: canvas.width, height: canvas.height,
+            outputPath: MetaphorPaths.resolve(path))
     }
 
     /// SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
@@ -147,9 +259,9 @@ extension SketchContext {
 
     /// ピクセル操作用の空の画像を作成します。
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。
-    ///   - height: 画像の高さ（ピクセル単位）。
-    /// - Returns: 新しい空白画像。失敗時は nil。
+    ///   - width: 画像の幅（ピクセル単位）。1 以上。
+    ///   - height: 画像の高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい空白画像。失敗時（幅・高さが 1 未満を含む）は nil。
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         guard width > 0, height > 0 else {
             metaphorWarning("createImage: dimensions must be positive (got \(width)x\(height))")
@@ -171,12 +283,28 @@ extension SketchContext {
     }
 
     /// オフスクリーン 2D 描画バッファを作成します。
+    ///
+    /// 1 枚を同一フレーム内で描き換えて何度でも貼れます。`image()` で描かれるのは
+    /// **貼った時点の内容**です（描き換えるたびに描き先が別のテクスチャへ回るため、
+    /// 使い回した回数ぶん内部テクスチャが増えます。#745）。
+    ///
+    /// ```swift
+    /// pg.beginDraw(); pg.background(60, 120, 240); pg.endDraw()
+    /// image(pg, 100, 100)   // 青
+    /// pg.beginDraw(); pg.background(60, 220, 120); pg.endDraw()
+    /// image(pg, 300, 100)   // 緑（100,100 は青のまま）
+    /// ```
+    ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい Graphics インスタンス。失敗時は nil。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい Graphics インスタンス。失敗時（幅・高さが 1 未満を含む）は nil。
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
-        try? Graphics(
+        guard w > 0, h > 0 else {
+            metaphorWarning("createGraphics: dimensions must be positive (got \(w)x\(h))")
+            return nil
+        }
+        let graphics = try? Graphics(
             device: renderer.device,
             commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
@@ -184,15 +312,25 @@ extension SketchContext {
             width: w,
             height: h
         )
+        // オフスクリーンでもカスタム 2D シェーダの time / mouse が効くようにする（#647）。
+        graphics?.wireShaderInputs { [weak self] in
+            self?.shaderInputs() ?? Canvas2DShaderInputs(
+                time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0)
+        }
+        return graphics
     }
 
     /// オフスクリーン 3D 描画バッファを作成します。
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい Graphics3D インスタンス。失敗時は nil。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい Graphics3D インスタンス。失敗時（幅・高さが 1 未満を含む）は nil。
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
-        try? Graphics3D(
+        guard w > 0, h > 0 else {
+            metaphorWarning("createGraphics3D: dimensions must be positive (got \(w)x\(h))")
+            return nil
+        }
+        let graphics = try? Graphics3D(
             device: renderer.device,
             commandQueue: renderer.commandQueue,
             shaderLibrary: renderer.shaderLibrary,
@@ -200,6 +338,11 @@ extension SketchContext {
             width: w,
             height: h
         )
+        // 描画先テクスチャを使い回してよい時期の判定に使う（#745）
+        graphics?.wireFrameCount { [weak self] in
+            UInt32(truncatingIfNeeded: self?.frameCount ?? 0)
+        }
+        return graphics
     }
 
     // MARK: - Camera Capture
@@ -229,7 +372,7 @@ extension SketchContext {
     ///   - width: 要求するキャプチャ幅（ピクセル単位、デフォルト 1280）。最も近い
     ///     対応解像度が選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
     ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
-    ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
+    ///   - info: ``listCaptureDevices()`` で取得したデバイス情報。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
     public func createCapture(width: Int = 1280, height: Int = 720, device info: CaptureDeviceInfo) -> CaptureDevice {
         let capture = CaptureDevice(device: renderer.device, width: width, height: height, captureDevice: info)
@@ -286,6 +429,10 @@ extension SketchContext {
     }
 
     /// Graphics バッファを指定位置に描画します。
+    ///
+    /// 描かれるのは**呼んだ時点の内容**です。同じバッファを描き換えて同一フレーム内で
+    /// 何度でも貼れます（#745）。
+    ///
     /// - Parameters:
     ///   - pg: オフスクリーングラフィックスバッファ。
     ///   - x: x 座標。
@@ -306,6 +453,10 @@ extension SketchContext {
     }
 
     /// Graphics3D バッファを指定位置に描画します。
+    ///
+    /// 描かれるのは**呼んだ時点の内容**です。同じバッファを描き換えて同一フレーム内で
+    /// 何度でも貼れます（#745）。
+    ///
     /// - Parameters:
     ///   - pg: オフスクリーン 3D グラフィックスバッファ。
     ///   - x: x 座標。
@@ -358,6 +509,9 @@ extension SketchContext {
     // MARK: - Text
 
     /// テキストレンダリングのサイズを設定します。
+    ///
+    /// Processing と同じく行間（``textLeading(_:)``）は既定値へ戻ります。
+    ///
     /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         canvas.textSize(size)
@@ -369,6 +523,12 @@ extension SketchContext {
         canvas.textFont(family)
     }
 
+    /// テキストレンダリングに使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
+    /// - Parameter font: 読み込み済みのフォント。
+    public func textFont(_ font: MFont) {
+        canvas.textFont(font)
+    }
+
     /// テキストの配置を設定します。
     /// - Parameters:
     ///   - horizontal: 水平方向の配置。
@@ -377,13 +537,16 @@ extension SketchContext {
         canvas.textAlign(horizontal, vertical)
     }
 
-    /// 複数行テキストの行間を設定します。
+    /// 複数行テキストの行間（行の高さ）を設定します。
+    ///
+    /// ``textSize(_:)`` / ``textFont(_:)-(String)`` を呼ぶと既定値へ戻ります。
+    ///
     /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {
         canvas.textLeading(leading)
     }
 
-    /// 文字列のレンダリング幅を計算します。
+    /// 文字列の幅（1 文字ずつの advance の合計）を計算します。
     /// - Parameter string: 計測するテキスト。
     /// - Returns: 幅（ピクセル単位）。
     public func textWidth(_ string: String) -> Float {
@@ -425,24 +588,20 @@ extension SketchContext {
     // MARK: - Screenshot
 
     /// 指定したファイルパスにスクリーンショットを保存します。
-    /// - Parameter path: 出力ファイルパス。
+    /// - Parameter path: 出力ファイルパス。相対パスはプロジェクト直下から解決されます
+    ///   （絶対パスと `~` 始まりはそのまま）。
     public func save(_ path: String) {
-        renderer.saveScreenshot(to: path)
+        renderer.saveScreenshot(to: MetaphorPaths.resolve(path))
     }
 
     /// フレーム連番エクスポートを開始します。
     /// - Parameters:
-    ///   - directory: 出力ディレクトリ（nil の場合はデスクトップに自動生成）。
+    ///   - directory: 出力ディレクトリ（nil の場合は `output/metaphor_frames_<timestamp>/`）。
+    ///     相対パスはプロジェクト直下から解決されます。
     ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
     public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
-        let dir: String
-        if let directory {
-            dir = directory
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            dir = NSHomeDirectory() + "/Desktop/metaphor_frames_\(formatter.string(from: Date()))"
-        }
+        let dir = MetaphorOutputPaths.frameSequenceDirectory(
+            directory, timestamp: MetaphorOutputPaths.timestamp())
         renderer.frameExporter.beginSequence(directory: dir, pattern: pattern)
     }
 
@@ -453,17 +612,15 @@ extension SketchContext {
 
     /// 動画録画を開始します。
     /// - Parameters:
-    ///   - path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    ///   - path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.<拡張子>`）。
+    ///     相対パスはプロジェクト直下から解決されます。
     ///   - config: 動画エクスポート設定。
     public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
-        let actualPath: String
-        if let path {
-            actualPath = path
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).\(config.format.fileExtension)"
-        }
+        let actualPath = MetaphorOutputPaths.recording(
+            path,
+            fileExtension: config.format.fileExtension,
+            timestamp: MetaphorOutputPaths.timestamp()
+        )
         do {
             try renderer.videoExporter.beginRecord(
                 path: actualPath,
@@ -491,25 +648,18 @@ extension SketchContext {
     }
 
     /// 現在のフレームを単一画像ファイルとして保存します（Processing 互換）。
-    /// - Parameter filename: 出力ファイル名（nil の場合は番号付き名前を自動生成）。
+    /// - Parameter filename: 出力ファイル名（nil の場合は `output/screen-<フレーム番号>.png`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     public func saveFrame(_ filename: String? = nil) {
-        let name: String
-        if let filename {
-            name = filename
-        } else {
-            name = "screen-\(String(format: "%04d", frameCount)).png"
-        }
-        let path = NSHomeDirectory() + "/Desktop/" + name
+        let path = MetaphorOutputPaths.screenshot(filename: filename, frameCount: frameCount)
         renderer.saveScreenshot(to: path)
     }
 
-    /// タイムスタンプ付きスクリーンショットをデスクトップに保存します。
+    /// タイムスタンプ付きスクリーンショットを `output/metaphor_<timestamp>.png` に保存します。
     public func save() {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd_HHmmss"
-        let name = "metaphor_\(formatter.string(from: Date())).png"
-        let path = NSHomeDirectory() + "/Desktop/" + name
-        save(path)
+        renderer.saveScreenshot(
+            to: MetaphorOutputPaths.timestampedScreenshot(
+                timestamp: MetaphorOutputPaths.timestamp()))
     }
 
     // MARK: - Offline Rendering

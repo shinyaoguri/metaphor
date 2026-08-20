@@ -21,7 +21,7 @@ swift run
 ## 探し方
 
 - **はじめて metaphor を使う** → [docs/tutorial/](../docs/tutorial/)。順に読んで作品を作れるようになるための読み物（日本語。<!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->）。Examples を掘るのはその後で構いません。
-- **順番に学ぶ** → [LEARNING_PATH.md](LEARNING_PATH.md)（英語）。282 本の索引ではなく、難度タグを使ったカテゴリ別の推奨順路（代表 3〜5 本 x 各カテゴリ）です。
+- **順番に学ぶ** → [LEARNING_PATH.md](LEARNING_PATH.md)（英語）。286 本の索引ではなく、難度タグを使ったカテゴリ別の推奨順路（代表 3〜5 本 x 各カテゴリ）です。
 - **やりたいことから探す** → [docs/ai/examples-index.md](../docs/ai/examples-index.md)。全サンプルをタグ・難度つきで索引化しています（AI エージェントは MCP の `api_reference` ツールでも同じ索引を引けます）。
 - **Processing のサンプル名で探す** → `Basics/` / `Topics/` は Processing 公式サンプルとほぼ同じ階層・名前です。多くのサンプルに元の `.pde` とスクリーンショット `.png` が同梱されています。
 
@@ -63,6 +63,16 @@ make example-shots ARGS="--compare --only Examples/Basics/Form"  # 原典と並�
 台本があるものは「撮らない申告」ではなく**こう撮る**という指定です。待ち時間は台本の `wait` が持つので `settle` は使いません。`noLoop()` のスケッチとは両立しない（起動後に置いたリクエストを処理する機会が来ない）ので、両方あると撮影はエラーになります。
 
 待ち時間（描画ループが回ってから撮るまでの秒数、既定 1.5）が合わない example は [docs/ai/examples-shots.config.json](../docs/ai/examples-shots.config.json) に個別に書きます。台帳は生成物なので、手書きの例外はこちらに置きます。
+
+同じ設定ファイルで **`"release": true`** と申告した example だけ、`swift build` / `swift run` を `-c release` で撮ります（既定は debug）。**画面に数字を焼く example のためのもの**です — `Examples/Demos/Performance/**` は fps の HUD を描くので、debug で撮ると利用者が `swift run -c release` で見る数字と別物が画像に残ります（[#727](https://github.com/shinyaoguri/metaphor/issues/727)）。全件を release にはしません: 1 本あたり +17 秒（実測 26.3 秒 vs 9.1 秒）で全体では 1 時間以上増えるのに、絵の確認には効かないためです。撮った 1 枚が release だったことは台帳の `build` に残ります。
+
+```json
+"Examples/Demos/Performance/StaticParticlesRetained": {
+  "settle": 3.5,
+  "release": true,
+  "why": "画面に fps を出す。HUD は 3 秒ごとにしか更新しないので settle も 3 秒超にする"
+}
+```
 
 ## 新しいサンプルを追加する
 

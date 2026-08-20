@@ -1,16 +1,33 @@
 #ifndef MetaphorLighting_h
 #define MetaphorLighting_h
 
-#include "MetaphorShaderTypes.h"
+#include "MetaphorCanvas3DTypes.h"
 #include "MetaphorPBR.h"
+#include "MetaphorToneMapping.h"
 
-// シャドウフラグメントユニフォーム
-struct ShadowFragmentUniforms {
-    float4x4 lightSpaceMatrix;
-    float shadowBias;
-    float shadowEnabled;
-    float2 _pad;
-};
+// このヘッダは関数だけを持つ（構造体は `MetaphorCanvas3DTypes.h`）。
+// そのまま `BuiltinShaders.canvas3DLightingFn` としてユーザーのカスタムマテリアル
+// シェーダーへ配られる（`scripts/generate-shader-sources.py` が生成）。
+
+// マテリアルに設定されたトーンマッピングをライティング結果へ適用する。
+//
+// 適用は**公開エントリポイント 1 か所だけ**で行う（`calculateLighting` /
+// `calculatePBRLighting` / `calculateBlinnPhongLighting`）。内部の `…Raw`
+// 関数はトーンマップ前の値を返すので、どの入口から呼んでも二重に掛からない。
+static inline float3 metaphorToneMapped(float3 lit, Material3D material) {
+    return metaphorApplyToneMap(lit, material.toneMapParams.x, material.toneMapParams.y);
+}
+
+// ライトが 1 つも無いときに無照明パス（fill 色をそのまま出す）へ落とすか。
+//
+// Processing 互換で「`lights()` を呼ばなければ塗りつぶし色がそのまま出る」のが既定
+// だが、環境（IBL）を設定した PBR マテリアルだけは例外で、ライトが無くても環境が
+// 照らす（`environment(.studio)` の 1 行で金属が金属に見えるようにするため・#710）。
+// Blinn-Phong は IBL の対象外なので従来どおり無照明パスへ落とす。
+static inline bool metaphorSkipsLighting(Material3D material, uint lightCount) {
+    if (lightCount > 0) return false;
+    return !(material.toneMapParams.z > 0.0 && material.pbrParams.y > 0.5);
+}
 
 // PCF ソフトシャドウ計算
 static inline float calculateShadow(
@@ -48,12 +65,12 @@ static inline float calculateShadow(
     return shadow / 9.0;
 }
 
-// PBR (Cook-Torrance GGX) ライティング
+// PBR (Cook-Torrance GGX) ライティング（トーンマップ前の生の値）
 //
 // `shadow` はシャドウマップの可視率（1 = 完全に照らされる / 0 = 完全な影）。
 // 影は**直接光（diffuse + specular）にのみ**掛かる。環境光（ambient）と自発光
 // （emissive）は遮蔽物の裏にも残るため減衰させない（Issue #364）。
-static inline float3 calculatePBRLighting(
+static inline float3 metaphorPBRLightingRaw(
     float3 worldPos,
     float3 normal,
     float3 cameraPos,
@@ -131,10 +148,45 @@ static inline float3 calculatePBRLighting(
     return ambient + emissive + Lo * shadow;
 }
 
-// Blinn-Phong ライティング（既存互換）
+// PBR ライティング + IBL（トーンマップ前の生の値）。
 //
-// `shadow` の意味は ``calculatePBRLighting`` と同じ（直接光にのみ掛かる）。
-static inline float3 calculateBlinnPhongLighting(
+// 直接光の計算は ``metaphorPBRLightingRaw`` をそのまま使い、環境の寄与だけを足す。
+// IBL は環境光と同じく**影で減衰しない項**に入れる（``metaphorPBRLightingRaw`` の
+// コメントにある Issue #364 の契約と一貫させる）。強度は
+// `material.toneMapParams.z`（= `environment()` の intensity）で運ばれ、0 なら
+// ``metaphorIBLContribution`` が 0 を返すので環境なしの絵は完全に不変。
+static inline float3 metaphorPBRLightingRawIBL(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    float3 lit = metaphorPBRLightingRaw(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+
+    float3 N = normalize(normal);
+    float3 V = normalize(cameraPos - worldPos);
+    lit += metaphorIBLContribution(
+        N, V, baseColor,
+        material.emissiveAndMetallic.w,
+        clamp(material.pbrParams.x, 0.04, 1.0),
+        material.pbrParams.z,
+        material.toneMapParams.z,
+        irradianceMap, prefilteredMap);
+
+    return lit;
+}
+
+// Blinn-Phong ライティング（既存互換・トーンマップ前の生の値）
+//
+// `shadow` の意味は ``metaphorPBRLightingRaw`` と同じ（直接光にのみ掛かる）。
+static inline float3 metaphorBlinnPhongLightingRaw(
     float3 worldPos,
     float3 normal,
     float3 cameraPos,
@@ -198,7 +250,42 @@ static inline float3 calculateBlinnPhongLighting(
     return ambient + material.emissiveAndMetallic.xyz + direct * shadow;
 }
 
+// PBR (Cook-Torrance GGX) ライティング。結果にはトーンマッピングが適用される。
+static inline float3 calculatePBRLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow
+) {
+    float3 lit = metaphorPBRLightingRaw(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
+// Blinn-Phong ライティング。結果にはトーンマッピングが適用される。
+static inline float3 calculateBlinnPhongLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow
+) {
+    float3 lit = metaphorBlinnPhongLightingRaw(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
 // 統合エントリポイント: pbrParams.y で Blinn-Phong / PBR を自動切替
+//
+// トーンマッピングはここで 1 回だけ適用する（`…Raw` を呼んでから掛けるので、
+// ``calculatePBRLighting`` 経由と二重に掛かることはない）。
 static inline float3 calculateLighting(
     float3 worldPos,
     float3 normal,
@@ -209,10 +296,58 @@ static inline float3 calculateLighting(
     Material3D material,
     float shadow
 ) {
-    if (material.pbrParams.y > 0.5) {
-        return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
-    }
-    return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    float3 lit = (material.pbrParams.y > 0.5)
+        ? metaphorPBRLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow)
+        : metaphorBlinnPhongLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
+// 統合エントリポイント（IBL 付き）: 組み込み 3D フラグメントシェーダーが使う。
+//
+// キューブマップ 2 枚を追加で取るだけで、それ以外の意味は引数 8 個版と同じ。
+// 環境が無効なとき（`toneMapParams.z == 0`）は 1x1 のダミーキューブがバインドされ、
+// IBL の寄与は 0 になる。カスタムマテリアルシェーダーは従来どおり引数 8 個版を
+// 呼べる（その場合 IBL は掛からない）。
+static inline float3 calculateLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    float3 lit = (material.pbrParams.y > 0.5)
+        ? metaphorPBRLightingRawIBL(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow,
+            irradianceMap, prefilteredMap)
+        : metaphorBlinnPhongLightingRaw(
+            worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
+    return metaphorToneMapped(lit, material);
+}
+
+// PBR ライティング + IBL。結果にはトーンマッピングが適用される。
+static inline float3 calculatePBRLighting(
+    float3 worldPos,
+    float3 normal,
+    float3 cameraPos,
+    float3 baseColor,
+    constant Light3D *lights,
+    uint lightCount,
+    Material3D material,
+    float shadow,
+    texturecube<float> irradianceMap,
+    texturecube<float> prefilteredMap
+) {
+    float3 lit = metaphorPBRLightingRawIBL(
+        worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow,
+        irradianceMap, prefilteredMap);
+    return metaphorToneMapped(lit, material);
 }
 
 // 影なし版（後方互換）。カスタムマテリアルシェーダーが従来のシグネチャで

@@ -1,7 +1,47 @@
 import Metal
 import simd
 
+// MARK: - ToneMapMode
+
+/// 3D のライティング結果を 0…1 へ写像する方法。
+///
+/// レンダーターゲットは LDR（8bit）なので、ライティング結果が 1.0 を超えると
+/// そのままではハードクランプされ、ハイライトが白く潰れます。トーンマッピングは
+/// 高輝度側を滑らかに丸めて階調を残します。
+///
+/// - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません。
+public enum ToneMapMode: Int, CaseIterable, Hashable, Sendable {
+    /// トーンマッピングなし（**既定**）。1.0 を超えた値はクランプされます。
+    case none = 0
+    /// Reinhard（`x / (1 + x)`）。単純で色相が安定しますが、中間調は眠くなります。
+    case reinhard = 1
+    /// ACES filmic 近似。暗部を締めてハイライトを滑らかに丸めます。
+    /// 金属や強い光源のある絵ではこちらが破綻しにくいです。
+    case acesFilmic = 2
+}
+
 extension Canvas3D {
+    // MARK: - トーンマッピング
+
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    ///
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) {
+        // 明示指定を記録しておく。`environment()` は未指定のときだけ
+        // `.acesFilmic` へ自動昇格させる（#710）。
+        userSetToneMapping = true
+        toneMapParams.x = Float(mode.rawValue)
+        currentMaterial.toneMapParams = toneMapParams
+    }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    ///
+    /// - Parameter value: 露出倍率（既定 1.0）。
+    public func exposure(_ value: Float) {
+        toneMapParams.y = value
+        currentMaterial.toneMapParams = toneMapParams
+    }
+
     // MARK: - マテリアル
 
     /// 現在のマテリアルのスペキュラハイライト色を設定します。
@@ -10,6 +50,22 @@ extension Canvas3D {
     public func specular(_ color: Color) {
         currentMaterial.specularAndShininess = SIMD4(
             color.r, color.g, color.b,
+            currentMaterial.specularAndShininess.w
+        )
+    }
+
+    /// チャンネル値でスペキュラハイライト色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) {
+        let c = colorModeConfig.toColor(v1, v2, v3, nil)
+        currentMaterial.specularAndShininess = SIMD4(
+            c.r, c.g, c.b,
             currentMaterial.specularAndShininess.w
         )
     }
@@ -40,6 +96,22 @@ extension Canvas3D {
     public func emissive(_ color: Color) {
         currentMaterial.emissiveAndMetallic = SIMD4(
             color.r, color.g, color.b,
+            currentMaterial.emissiveAndMetallic.w
+        )
+    }
+
+    /// チャンネル値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値（赤または色相）。
+    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
+    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) {
+        let c = colorModeConfig.toColor(v1, v2, v3, nil)
+        currentMaterial.emissiveAndMetallic = SIMD4(
+            c.r, c.g, c.b,
             currentMaterial.emissiveAndMetallic.w
         )
     }

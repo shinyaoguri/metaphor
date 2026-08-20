@@ -43,6 +43,7 @@ other, and it is the rule to predict any name this page does not list.
   - [Image](#image)
   - [Pixels](#pixels)
   - [3D, lighting, camera, material](#3d-lighting-camera-material)
+  - [Shaders](#shaders)
   - [Input](#input)
   - [Math, random, noise](#math-random-noise)
   - [Vectors: PVector → Vec2 / Vec3](#vectors-pvector--vec2--vec3)
@@ -125,7 +126,7 @@ free functions noted as such.
 | `fullScreen()` | `SketchConfig(…, fullScreen: true)` | No function form. |
 | `smooth()` / `noSmooth()` | `SketchConfig(…, msaa: 4)` | MSAA sample count; default `4`. `msaa: 1` disables it. |
 | `frameRate(60)` | `frameRate(60)` | Setter only — see [Pitfalls](#pitfalls). |
-| `frameRate` (the variable) | — | Not implemented ([#273](https://github.com/shinyaoguri/metaphor/issues/273)). |
+| `frameRate` (the variable) | `performance.fps: Float?` | The *measured* rate over roughly the last second; `nil` until it can be computed. `performance` also carries frame time, memory, CPU and thermal state — see [Pitfalls](#framerate-sets-performance-reads). |
 | `frameCount` | `frameCount: Int` | |
 | `millis()` | `millis() -> Int` | Free function. |
 | `width` / `height` | `width: Float` / `height: Float` | `Float`, not `int`. |
@@ -158,8 +159,10 @@ free functions noted as such.
 | `beginShape(TRIANGLES)` etc. | `beginShape(.triangles)`, `.triangleStrip`, `.triangleFan`, `.lines`, `.points`, `.polygon` |
 | `vertex(x, y)` / `vertex(x, y, u, v)` | `vertex(x, y)` / `vertex(x, y, u, v)`, plus `vertex(x, y, color)` |
 | `bezierVertex(…)` / `curveVertex(x, y)` | `bezierVertex(cx1, cy1, cx2, cy2, x, y)` / `curveVertex(x, y)` |
-| `quadraticVertex(…)` | — not implemented |
-| `beginContour()` / `endContour()` | `beginContour()` / `endContour()` |
+| `quadraticVertex(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)) |
+| `bezierDetail(n)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)). Note `bezier()` uses a fixed 24 segments while `bezierVertex()` follows `curveDetail()` (20 by default), so the same curve differs between the two |
+| `shapeMode(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)); `shape(s, x, y, w, h)` always interprets its arguments one way |
+| `beginContour()` / `endContour()` | `beginContour()` / `endContour()` — 2D shapes only; on a 3D shape they warn and do nothing ([#736](https://github.com/shinyaoguri/metaphor/issues/736)) |
 | `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` |
 | `rectMode(CORNER/CORNERS/CENTER/RADIUS)` | `rectMode(.corner)` / `.corners` / `.center` / `.radius` — default `.corner` |
 | `ellipseMode(…)` | `ellipseMode(.center)` / `.radius` / `.corner` / `.corners` — default `.center` |
@@ -181,7 +184,7 @@ The default color mode is **RGB with a 0–255 range, exactly like Processing**,
 | `background(0)` / `background(r, g, b)` | `background(_ gray: Float)` / `background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` |
 | `fill(g)` / `fill(g, a)` / `fill(r, g, b)` / `fill(r, g, b, a)` | `fill(_ gray:)`, `fill(_ gray:_ alpha:)`, `fill(_ v1:_ v2:_ v3:_ a:)` |
 | `stroke(…)` | `stroke(…)` — same overload set as `fill` |
-| `noFill()` / `noStroke()` | `noFill()` / `noStroke()` |
+| `noFill()` / `noStroke()` | `noFill()` / `noStroke()` — they apply to shapes; `noFill()` does **not** hide `text()` ([pitfall](#nofill-does-not-hide-text)) |
 | `colorMode(RGB, 255)` | `colorMode(.rgb, 255)` |
 | `colorMode(HSB, 360, 100, 100)` | `colorMode(.hsb, 360, 100, 100)` |
 | `color(r, g, b)` (a `color` value) | `Color(r: 1, g: 0.4, b: 0.2)` — components are **0–1** and ignore `colorMode` |
@@ -190,7 +193,8 @@ The default color mode is **RGB with a 0–255 range, exactly like Processing**,
 | `color(…)` packed into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 in, packed `0xAARRGGBB` out) |
 | `tint(…)` / `noTint()` | `tint(…)` (same overloads as `fill`) / `noTint()` |
 | `blendMode(ADD)` | `blendMode(.additive)`; also `.alpha` `.multiply` `.screen` `.subtract` `.darkest` `.lightest` `.difference` `.exclusion` `.opaque` |
-| `red(c)` / `green(c)` / `hue(c)` … | `c.r` / `c.g` — no `hue()`/`saturation()`/`brightness()` extractors |
+| `red(c)` / `green(c)` / `hue(c)` … | `c.r` / `c.g` / `c.b` / `c.a` (always 0–1, ignoring `colorMode`) — there are **no `hue()`/`saturation()`/`brightness()`/`alpha()` extractors** and no RGB→HSB conversion ([#811](https://github.com/shinyaoguri/metaphor/issues/811)) |
+| `blendColor(c1, c2, MULTIPLY)` | — not implemented ([#811](https://github.com/shinyaoguri/metaphor/issues/811)); `blendMode()` applies to drawing, not to a pair of colors |
 
 Note the two distinct color entry points — see
 [Two color ranges](#two-color-ranges-0255-numbers-01-color) in the pitfalls.
@@ -217,7 +221,7 @@ Note the two distinct color entry points — see
 | `printMatrix()` | — not implemented | |
 | `screenX(x, y)` / `screenY(x, y)` | `screenX(_ x: Float, _ y: Float) -> Float`, `screenY(…)`; 3D overloads take `(x, y, z)` | |
 | `screenZ(x, y, z)` | `screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float` (normalized depth 0…1) | |
-| `modelX/Y/Z(…)` | — not implemented (ADR-0007 follow-up) | |
+| `modelX/Y/Z(x, y, z)` | `modelX(_ x: Float, _ y: Float, _ z: Float) -> Float`, `modelY(…)`, `modelZ(…)` | Returns **world** coordinates after the current transform stack — camera-independent, as in Processing. Not the inverse of `screenX/Y/Z`: unprojecting a *screen* coordinate back into 3D (p5.js `screenToWorld()`) is a different API and does not exist yet. |
 
 Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 (that is a p5.js API) — use `radians(deg)` to convert.
@@ -229,12 +233,20 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `text("hi", x, y)` | `text(_ string: String, _ x: Float, _ y: Float)` |
 | `text("hi", x, y, w, h)` | `text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` |
 | `textSize(32)` | `textSize(_ size: Float)` |
-| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")` |
-| `createFont(…)` / `loadFont(…)` | — not implemented; there is no `PFont` type |
+| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")`. A style-qualified name works too: `textFont("Helvetica Neue Bold")` resolves to the bold face |
+| `createFont("f.ttf", 32)` / `loadFont(…)` | `loadFont(_ path: String, cache: Bool = true) throws -> MFont`, then `textFont(_ font: MFont)` |
+| `PFont` | `MFont` |
+| p5 `font.textToPoints(…)` | `textToPoints(_ string:_ x:_ y:sampleFactor:) -> [Vec2]`, plus `textToContours(…) -> [[Vec2]]` (one closed polyline per contour) and `textToShape(…) -> MShape` (holes included) |
+| p5 `textStyle(BOLD / ITALIC)` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)); use a style-qualified family name as above |
+| p5 `textWrap()` / `textBounds()` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)) |
 | `textAlign(CENTER, TOP)` | `textAlign(.center, .top)` — `TextAlignH` is `.left/.center/.right`, `TextAlignV` is `.top/.center/.baseline/.bottom` (default `.baseline`) |
-| `textLeading(l)` | `textLeading(_ leading: Float)` |
+| `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
 | `textAscent()` / `textDescent()` | `textAscent() -> Float` / `textDescent() -> Float` |
+
+Text is painted with the current **fill** color, as in Processing — but unlike
+Processing, `noFill()` does not make it disappear. See
+[`noFill()` does not hide `text()`](#nofill-does-not-hide-text) in the pitfalls.
 
 ### Image
 
@@ -266,11 +278,25 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `color(r, g, b)` written into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 components) |
 | `updatePixels()` | `updatePixels()` |
 | `img.loadPixels()` / `img.pixels` | `MImage.loadPixels()` / `MImage.pixels: [UInt8]` — **RGBA bytes**, a different layout from the canvas buffer |
+| `get(x, y)` | `get(_ x: Int, _ y: Int) -> Color` — **call `loadPixels()` first** (see below) |
+| `get(x, y, w, h)` | `get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage?` — the returned image is always the requested `w`×`h`; anything outside the canvas is transparent, as in Processing |
+| `set(x, y, c)` | `set(_ x: Int, _ y: Int, _ color: Color)` — writes into the CPU buffer, so **`updatePixels()` is needed** to put it on the canvas |
 
 The packed value is `(A << 24) | (R << 16) | (G << 8) | B` — the same
 `0xAARRGGBB` integer a Processing sketch manipulates, so tricks like
 `pixels[i] ^= 0x00FF_FFFF` (invert, keep alpha) port directly. See
 [loadPixels() splits the render pass](#loadpixels-splits-the-render-pass).
+
+`get()` and `set()` are conveniences over that same buffer — they save you
+unpacking the `UInt32` by hand, and hand you a `Color` (straight alpha, exactly
+what you passed to `fill()`). Two differences from Processing:
+
+- **Neither reads the canvas back implicitly.** Before `loadPixels()`, `get()`
+  returns black and `set()` does nothing (warned once, in DEBUG). Processing's
+  `get(x, y)` is merely slow; metaphor's readback blocks on the GPU *and splits
+  the render pass*, which clears depth and reorders 2D against 3D — a single
+  pixel read would change the picture. Readback stays where you asked for it.
+- **`set()` needs `updatePixels()`**, like writing into `pixels[]` does.
 
 ### 3D, lighting, camera, material
 
@@ -291,19 +317,19 @@ the Processing original with every number left alone.
 | — | `plane(_ width: Float, _ height: Float)`, `cone(radius:height:detail:)`, `cylinder(radius:height:detail:)`, `torus(ringRadius:tubeRadius:detail:)` — sizes are required arguments (no defaults), and like `box` / `sphere` they are pixel sizes under the default camera |
 | `camera(ex, ey, ez, cx, cy, cz, ux, uy, uz)` | `camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` |
 | `perspective(fov, aspect, near, far)` | `perspective(fov: Float = .pi / 3, near: Float = 0.1, far: Float = 10000)` — aspect comes from the canvas |
-| `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to the canvas box |
-| `beginCamera()` / `endCamera()` / `frustum()` | — not implemented |
+| `ortho(l, r, b, t)` | `ortho(left:right:bottom:top:near:far:)` — every plane optional, defaulting to a canvas-sized box centred on the default camera (`-width/2 … width/2`, `-height/2 … height/2`), so a bare `ortho()` keeps 2D pixel coordinates |
+| `beginCamera()` / `endCamera()` / `frustum()` | — not implemented ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | `lights()` / `noLights()` | `lights()` / `noLights()` — `lights()` **clears** the light list first, then installs one directional plus ambient, so call it before your own lights, not after |
 | `ambientLight(r, g, b)` | `ambientLight(_ r: Float, _ g: Float, _ b: Float)`, plus `ambientLight(_ strength: Float)` |
 | `directionalLight(r, g, b, nx, ny, nz)` | `directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color)` — **direction first, color as a labelled argument** |
 | `pointLight(r, g, b, x, y, z)` | `pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1)` — **position first** |
 | `spotLight(…)` | `spotLight(_ x:_ y:_ z:_ dirX:_ dirY:_ dirZ:, angle:falloff:color:)` |
-| `lightFalloff()` / `lightSpecular()` | — use the `falloff:` / `color:` arguments on the individual lights |
+| `lightFalloff()` / `lightSpecular()` | — approximate with the `falloff:` / `color:` arguments on the individual lights. Processing's three-term falloff (constant / linear / quadratic) has no equivalent ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | `specular(…)` / `shininess(n)` / `emissive(…)` | `specular(_ color: Color)` (also grayscale) / `shininess(_ value: Float)` / `emissive(_ color: Color)` |
-| `ambient(…)` | — not implemented as a per-material call (only scene-wide `ambientLight`) |
+| `ambient(…)` | — not implemented as a per-material call (only scene-wide `ambientLight`) ([#815](https://github.com/shinyaoguri/metaphor/issues/815)) |
 | — | `metallic(_:)`, `roughness(_:)`, `ambientOcclusion(_:)`, `pbr(_ enabled: Bool)` for the PBR path. `roughness(_:)` switches the whole shading model to PBR as a side effect |
 | `texture(img)` / `noTexture()` | `texture(_ img: MImage)` / `noTexture()`. For `beginShape3D()`, pass UV per vertex: `vertex(x, y, z, u, v)` |
-| `textureMode()` / `textureWrap()` | — not implemented |
+| `textureMode()` / `textureWrap()` | — not implemented ([#815](https://github.com/shinyaoguri/metaphor/issues/815)); UV is always normalized 0…1 |
 | `normal(nx, ny, nz)` | `normal(_ nx: Float, _ ny: Float, _ nz: Float)` |
 | `beginShape()` in 3D | `beginShape3D(_ mode: ShapeMode = .polygon)` / `endShape3D(_ close: CloseMode = .open)` |
 | `loadShape("m.obj")` | `loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh?` (OBJ / USDZ / ABC), drawn with `mesh(_:)` |
@@ -328,6 +354,34 @@ At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 > divides its coordinates by the image size. A `beginShape3D()` whose vertices
 > carry no UV renders with the current fill, as before.
 
+### Shaders
+
+Shaders are **Metal Shading Language, not GLSL**. The call structure ports over —
+load, apply, draw, reset — but the shader body has to be rewritten. A 2D custom
+shader replaces the *fragment* stage only; the vertex stage stays built in
+(3D materials accept an optional custom vertex function).
+
+| Processing | metaphor |
+|---|---|
+| `loadShader("wave.glsl")` | `loadShader(_ path: String, fragment: String) -> Shader2D` — the fragment function is named explicitly |
+| `createShader(vert, frag)` | `createShader(source: String, fragment: String) -> Shader2D` — one MSL source, fragment only |
+| `shader(s)` / `resetShader()` | `shader(_ shader: Shader2D)` / `resetShader()` — same "applies until reset" semantics |
+| `filter(shader)` | `createPostEffect(name:source:fragmentFunction:)` + `addPostEffect(_:)` (the whole frame, not the shapes) |
+| `s.set("uniformName", …)` | built-ins arrive as one struct in `buffer(3)` (`resolution`, `mouse`, `time`, `frameCount`); your own values go through `setParameters(_:)` into `buffer(4)` |
+| `gl_FragCoord.xy / u_resolution` | `in.position.xy / u.resolution` — 2D vertices carry no UV, so texture coordinates are derived from the pixel position |
+| 3D surface shaders | `createMaterial(source:fragmentFunction:vertexFunction:)` + `material(_:)` |
+
+The MSL preamble (`#include <metal_stdlib>` and the `Canvas2DVertexOut` /
+`Canvas2DTexVertexOut` / `Canvas2DShaderUniforms` definitions) is prepended by
+metaphor — write the fragment function alone, and do not redefine those structs.
+Shaders read from a file (`loadShader`, `createMaterialFromFile`,
+`createPostEffectFromFile`) are watched, so saving the `.metal` recompiles it
+without rebuilding the sketch.
+
+`blendMode(.difference)` and `.exclusion` cannot be combined with a custom 2D
+shader: both are implemented as framebuffer-fetch fragments, so they fall back to
+normal alpha blending (with one warning) while a shader is applied.
+
 ### Input
 
 | Processing | metaphor |
@@ -338,11 +392,11 @@ At most **8 lights** are active at once; further `pointLight` / `spotLight` /
 | `mousePressed()` (the callback) | `func mousePressed()` |
 | `mouseReleased()` / `mouseMoved()` / `mouseDragged()` / `mouseClicked()` | same names, all `func …()` with no parameters |
 | `mouseWheel(event)` | `func mouseScrolled()` + `scrollX: Float` / `scrollY: Float` |
-| `mouseButton == LEFT` | `mouseButton == .left` (`MouseButton?` — `.left` / `.right` / `.middle`, `nil` until the first press) — see [Pitfalls](#pitfalls) |
+| `mouseButton == LEFT` | `mouseButton == .left` (`MouseButton?` — `.left` / `.right` / `.middle`, `nil` until the first press). Set on **press only**, so in `mouseReleased()` it names the last *pressed* button ([pitfall](#keyreleased-and-mousereleased-report-the-last-pressed-input)) — see also [Pitfalls](#pitfalls) |
 | `keyPressed` (the boolean) | `isKeyPressed: Bool` |
 | `keyPressed()` / `keyReleased()` / `keyTyped()` | same names |
-| `key` | `key: Character?` — **optional** |
-| `keyCode` | `keyCode: UInt16?` — **optional**, a macOS virtual key code |
+| `key` | `key: Character?` — **optional**. Updated on **press only**, so in `keyReleased()` it is the last *pressed* key, not the released one ([pitfall](#keyreleased-and-mousereleased-report-the-last-pressed-input)) |
+| `keyCode` | `keyCode: UInt16?` — **optional**, a macOS virtual key code. Same press-only rule as `key` |
 | `keyCode == LEFT` | `keyCode == LEFT` — the arrow-key constants carry over |
 | — | `isKeyDown(_ keyCode: UInt16) -> Bool` for polling held keys, `isKeyRepeat: Bool` |
 | `selectInput()` / `selectOutput()` | `selectInput(_ prompt: String = "Select a file", _ callback: @MainActor (String?) -> Void)` / `selectOutput(…)` |
@@ -436,13 +490,21 @@ folder lookup.
 | Processing | metaphor |
 |---|---|
 | `save("out.png")` | `save(_ path: String)` |
-| `save()` | `save()` — writes `~/Desktop/metaphor_<timestamp>.png` |
-| `saveFrame()` / `saveFrame("f-####.png")` | `saveFrame(_ filename: String? = nil)` — default `~/Desktop/screen-####.png`, numbered by `frameCount` |
+| `save()` | `save()` — writes `output/metaphor_<timestamp>.png` |
+| `saveFrame()` / `saveFrame("f-####.png")` | `saveFrame(_ filename: String? = nil)` — default `output/screen-####.png`, numbered by `frameCount` |
 | `beginRecord(SVG, "out.svg")` / `endRecord()` | `beginSVGRecord(_ path: String)` / `endSVGRecord()` |
-| a PNG sequence | `beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` / `endFrameRecord()` — default directory `~/Desktop/metaphor_frames_<timestamp>` |
+| a PNG sequence | `beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` / `endFrameRecord()` — default directory `output/metaphor_frames_<timestamp>` |
 | — | `beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` / `endVideoRecord(completion:)` / `endVideoRecordAsync()` |
 | — | `beginGIFRecord(fps: Int = 15)` / `endGIFRecord(_ path: String? = nil) throws` / `endGIFRecordAsync(_:)` |
 | — | `beginOfflineRender(fps: Double = 60)` / `endOfflineRender()` for deterministic, non-realtime rendering |
+
+Every output path follows the same rule, close to Processing's sketch folder:
+a **relative** path resolves against the project directory (`swift run` → the
+package root; `metaphor run` / `watch` → that project, via `METAPHOR_STATE_DIR`),
+an **absolute** path or one starting with `~` is used as-is, and **omitting** the
+path writes into `output/` inside the project. Nothing is written to the Desktop
+unless you ask for it — these paths used to be Desktop-only
+([#757](https://github.com/shinyaoguri/metaphor/issues/757)).
 
 > **These names changed after 0.8.0.** `beginSVG`/`endSVG` and the unprefixed
 > `beginRecord`/`endRecord` were deprecated in 0.9.0 and have since been
@@ -475,6 +537,15 @@ are skipped with a one-time warning.
 | `LEFT` / `RIGHT` / `UP` / `DOWN` | same names — but they are **arrow-key virtual key codes** (`UInt16`), for use with `keyCode` |
 | `RETURN` / `ENTER` / `TAB` / `SPACE` / `BACKSPACE` / `DELETE` / `ESC` | `RETURN` / `ENTER` / `TAB` / `SPACE` / `BACKSPACE` / `DELETE` / `ESCAPE` |
 | `SHIFT` / `CONTROL` / `ALT` | `SHIFT` / `CONTROL` / `OPTION` (`ALT` is an alias) / `COMMAND` |
+
+> **`import Foundation` and the key-code constants.** Four of them — `RETURN`, `TAB`,
+> `BACKSPACE`, `CONTROL` — collide with macros of the same name in Darwin's `sys/tty.h`,
+> so a sketch that also imports Foundation fails to compile with `ambiguous use of 'RETURN'`.
+> Module-qualifying (`metaphor.RETURN`) does *not* disambiguate, because `metaphor`
+> re-exports Foundation. Use the `KeyCode` namespace instead — `KeyCode.return`,
+> `KeyCode.tab`, `KeyCode.backspace`, `KeyCode.control` — which carries the same values
+> and never collides.
+
 | `CENTER` / `CORNER` / `CORNERS` / `RADIUS` | — no such constants; the mode functions take enums (`.center`, `.corner`, …) |
 | `RGB` / `HSB` | `.rgb` / `.hsb` (`ColorSpace`) |
 | `BLEND` / `ADD` / `MULTIPLY` / `SCREEN` … | `.alpha` / `.additive` / `.multiply` / `.screen` … (`BlendMode`) |
@@ -491,8 +562,8 @@ are skipped with a one-time warning.
 | `PGraphics` | `Graphics` (2D) / `Graphics3D` |
 | `PShape` | `MShape` |
 | `PVector` | `Vec2` = `SIMD2<Float>`, `Vec3` = `SIMD3<Float>` |
-| `PFont` | — (use `textFont(_ family: String)`) |
-| `PShader` | `CustomMaterial` (3D) / `CustomPostEffect` (post-process). No 2D shader type yet |
+| `PFont` | `MFont` (from `loadFont(_:cache:)`), or just a family name via `textFont(_ family: String)` |
+| `PShader` | `Shader2D` (2D draw shaders) / `CustomMaterial` (3D) / `CustomPostEffect` (post-process) |
 | `PMatrix2D` / `PMatrix3D` | `float3x3` / `float4x4` (from `simd`) |
 | `Table` / `TableRow` | `Table` / `TableRow` |
 | `JSONObject` / `JSONArray` | `JSONValue` (one enum covering both) |
@@ -539,16 +610,37 @@ pick one convention per sketch.
 ### `Sketch` is `@MainActor`
 
 The `Sketch` protocol is annotated `@MainActor`, so `setup()`, `draw()` and the
-event callbacks all run on the main actor. Two consequences:
+event callbacks all run on the main actor. Three consequences:
 
 - Calling a metaphor drawing API from a background task will not compile without
   hopping back to the main actor.
 - The `…Async` loaders (`loadImageAsync`, `loadJSONAsync`, …) do the file or
   network I/O off the main thread and return to it, which is why they exist. Use
   them from a `Task { … }` started in `setup()` rather than blocking `draw()`.
+- A type you split **out** of the sketch class is not isolated just because the
+  sketch owns it. Annotate it `@MainActor` too.
 
 Anything stored on your sketch class is main-actor isolated too, so ordinary
-sketch state needs no locking.
+sketch state needs no locking. The third point is the one that bites as soon as a
+sketch outgrows one file: `loadImage` / `loadModel` / `loadSound` / `loadVideo`,
+and the members of the `MImage` / `Mesh` / `SoundFile` / `VideoPlayer` values they
+return, are all main-actor isolated, so a plain `class` cannot touch them.
+
+```swift
+// Does not compile: "call to main actor-isolated instance method
+// 'loadModel(_:normalize:cache:)' in a synchronous nonisolated context"
+final class StageAssets {
+    var obstacle: Mesh?
+    init(sketch: any Sketch) { obstacle = sketch.loadModel("obstacle.obj") }
+}
+
+// Fine
+@MainActor
+final class StageAssets {
+    var obstacle: Mesh?
+    init(sketch: any Sketch) { obstacle = sketch.loadModel("obstacle.obj") }
+}
+```
 
 ### Value types vs. reference types (`PVector` is a class, `Vec2` is not)
 
@@ -596,13 +688,55 @@ fails because `mouseButton` is a `MouseButton?`, not an integer.
 > now a compile error rather than a silent `false` ([#382](https://github.com/shinyaoguri/metaphor/issues/382)).
 
 `mouseButton` is a `MouseButton?` (`.left` / `.right` / `.middle`) and is set on
-mouse-down only. It is `nil` until the first press, and afterwards keeps the last
-pressed button even after release — exactly like Processing, so `mouseReleased()`
-can still tell which button was let go. Use `isMousePressed` to ask whether a
-button is down *right now*.
+mouse-down **only**. It is `nil` until the first press, and afterwards keeps the
+last *pressed* button even after release. Reading it inside `mouseReleased()`
+therefore tells you which button was let go **only while a single button is
+involved** — see
+[`keyReleased()` and `mouseReleased()` report the last *pressed* input](#keyreleased-and-mousereleased-report-the-last-pressed-input).
+Use `isMousePressed` to ask whether a button is down *right now*.
 
 Also note `key` and `keyCode` are **optionals** (`Character?`, `UInt16?`), so
 `if key == "a"` works but `key!.isLetter` needs unwrapping.
+
+### `keyReleased()` and `mouseReleased()` report the last *pressed* input
+
+`keyReleased()` and `mouseReleased()` take no parameters, so the only way to ask
+*what* was released is to read `key` / `keyCode` / `mouseButton`. In Processing
+those are updated by the release event. **In metaphor they are updated on press
+only**, so inside a release callback they name the last thing you *pressed*, not
+the thing you just let go.
+
+While one key or button is involved these coincide, and the port works. They
+diverge the moment two are held at once:
+
+```swift
+// Press A, then press B (A still held), then release A:
+func keyReleased() {
+    print(key)      // Processing: "a"  ·  metaphor: "b"
+}
+
+// Press left, then press right (left still held), then release left:
+func mouseReleased() {
+    print(mouseButton)   // Processing: .left  ·  metaphor: .right
+}
+```
+
+So `if keyCode == SPACE` inside `keyReleased()` does not mean "space was
+released" — it means "space was the most recent key pressed", which is also true
+while space is still held and some other key is released.
+
+Until [#958](https://github.com/shinyaoguri/metaphor/issues/958) adds accessors
+for the released input, remember it yourself on the press side:
+
+```swift
+var pending: UInt16?
+
+func keyPressed()  { pending = keyCode }
+func keyReleased() { if pending == SPACE { … }; pending = nil }
+```
+
+`isKeyDown(_:)` polls whether a specific key is held right now, which covers the
+common "is a modifier still down?" case without tracking state.
 
 ### 2D and 3D are two canvases, but the transform family drives both
 
@@ -755,25 +889,80 @@ continuation pass. Three things follow:
   warning.
 
 `updatePixels()` is a no-op if `loadPixels()` was never called, and `pixels` is an
-empty buffer until the first `loadPixels()`.
+empty buffer until the first `loadPixels()`. `get()` and `set()` sit on the same
+rule: they read and write that buffer and never trigger a readback of their own,
+so `get()` returns black and `set()` does nothing until you call `loadPixels()`.
 
 Related: `copy(…)` reads from the offscreen target's *previous* contents, not the
 shapes drawn so far this frame.
 
-### `frameRate()` sets, but nothing reads
+### `frameRate()` sets, `performance` reads
 
-`frameRate(_ fps: Int)` changes the target frame rate. There is no `frameRate`
-variable to read the measured rate — it is a tracked follow-up
-([#273](https://github.com/shinyaoguri/metaphor/issues/273)). To *see* the
-current rate, `enablePerformanceHUD()` draws an on-screen overlay; to compute
-one, `1 / deltaTime`; and for animation timing prefer `deltaTime` and `time` over
+`frameRate(_ fps: Int)` changes the *target* frame rate; Processing's `frameRate`
+variable (the *measured* rate) is `performance.fps` instead:
+
+```swift
+if let fps = performance.fps, fps < 30 { particleCount = 1_000 }   // degrade yourself
+```
+
+`performance` also carries `frameTimeMs` (mean and max), `memoryMB`,
+`cpuPercent`, `thermalState` and the resolved `targetFPS`. Every field that
+cannot be computed yet is `nil`, so the first frames read as `nil` rather than 0.
+To *see* the rate instead of reading it, `enablePerformanceHUD()` draws an
+on-screen overlay fed from the same measurement, so the number on screen and the
+number `performance.fps` returns are always the same one (it shows `--` exactly
+when `performance.fps` is `nil`). For animation timing prefer `deltaTime` and `time` over
 counting frames.
 
-### Fonts are family names, not files
+### `noFill()` does not hide `text()`
 
-`textFont(_ family: String)` takes an installed font family
-(`textFont("Helvetica Neue")`). There is no `PFont`, no `createFont()`, and no
-way to load a `.ttf` from disk yet.
+In Processing a glyph is a filled shape, so `noFill()` makes `text()` invisible.
+In metaphor `text()` **always paints with the current fill color** — `noFill()`
+changes nothing about it:
+
+```swift
+fill(255, 0, 0)
+noFill()
+stroke(255)
+rect(20, 20, 100, 60)            // outline only, as in Processing
+text("still visible", 20, 120)   // Processing: nothing. metaphor: still red
+```
+
+This is deliberate ([#519](https://github.com/shinyaoguri/metaphor/issues/519)).
+metaphor has no stroke path for text — glyphs are drawn from a font atlas tinted
+by the fill color — so "fill paints it, stroke outlines it" has nothing to map
+onto. Given that, the safer of the two behaviors is the one that draws: an extra
+label on screen is obvious and takes one edit to remove, whereas silently losing
+text is easy to miss.
+
+To hide text, do not draw it (`if showLabels { text(…) }`), or make the fill
+transparent with `fill(255, 0)` — the alpha reaches the glyphs, unlike
+`noFill()`.
+
+`tint()` does not apply either; it is `image()`'s knob, not a text color
+([#516](https://github.com/shinyaoguri/metaphor/issues/516)).
+
+### Two ways to name a font, and no `textStyle()`
+
+`textFont(_ family: String)` takes an installed font by name, and
+`loadFont(_ path:)` reads a `.ttf` / `.otf` from disk and returns an `MFont` for
+`textFont(_ font: MFont)`:
+
+```swift
+textFont("Helvetica Neue")                  // installed, by family name
+textFont("Helvetica Neue Bold")             // installed, style-qualified name
+let f = try loadFont("assets/Inter.ttf")    // from disk
+textFont(f)
+```
+
+What is missing is p5's `textStyle(BOLD)` — you cannot keep the family and switch
+the weight, because the style has to be part of the name you pass. Which
+style-qualified names exist depends on the font (`"Helvetica Neue Bold"` works,
+`"Some Font Bold"` may not), so a sketch that switches weights is not portable
+between fonts ([#816](https://github.com/shinyaoguri/metaphor/issues/816)).
+
+Glyph outlines are available: `textToPoints`, `textToContours` and `textToShape`
+turn a string into points, per-contour polylines, or a fillable `MShape`.
 
 ### There is no `data/` folder
 
@@ -793,14 +982,17 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 
 | Processing | Status |
 |---|---|
-| `loadShader()` / `shader()` / `resetShader()` for 2D | Planned, Phase 2 — [Epic #291](https://github.com/shinyaoguri/metaphor/issues/291). Today: `createMaterial` for 3D and `createPostEffect` for post-processing, both taking Metal Shading Language. |
 | `loadShape()` (SVG as `PShape`) | Planned, Phase 2 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). Today: `loadModel()` reads OBJ / USDZ / ABC into a `Mesh`; SVG is export-only. |
-| `createFont()` / `loadFont()` / `PFont`, `textToPoints()` | Planned, Phase 2 — [Epic #292](https://github.com/shinyaoguri/metaphor/issues/292). Today `textFont(_:)` resolves installed family names only. |
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |
-| `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). |
-| the `frameRate` variable | Not implemented — [#273](https://github.com/shinyaoguri/metaphor/issues/273). |
-| `modelX()` / `modelY()` / `modelZ()` | Not implemented (ADR-0007 follow-up). `screenX/Y/Z` exist. |
-| `quadraticVertex()`, `printMatrix()`, `beginCamera()` / `endCamera()`, `frustum()`, `textureMode()`, `textureWrap()`, `sphereDetail()`, `lightFalloff()`, `lightSpecular()`, `ambient()`, `hint()`, `pixelDensity()`, `windowResized()`, `exit()`, `delay()`, `loadBytes()` / `saveBytes()` | Not implemented. |
+| `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
+| `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()` | Not implemented — [#811](https://github.com/shinyaoguri/metaphor/issues/811). `Color` converts HSB→RGB but not back. |
+| `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
+| `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
+| p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
+| `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |
+| sound synthesis (`SinOsc`, `Env`, `Reverb`, `Delay`, recording, panning) | Not implemented — playback (`loadSound`) and analysis (`createAudioInput`, FFT, beat) exist, but nothing generates audio. Demand-gated, Phase 4. |
+| `Serial` (Arduino), `Client` / `Server` (TCP) | Not implemented. OSC and MIDI are available instead (`createOSCSender` / `createOSCReceiver` / `createMIDI`), and both exceed Processing's standard set. Demand-gated, Phase 4. |
+| `printMatrix()`, `printCamera()`, `printProjection()`, `sphereDetail()`, `hint()`, `pixelDensity()`, `displayWidth` / `displayHeight`, `focused`, `windowResized()`, `exit()`, `delay()`, `thread()` | Not implemented. Several are deliberate: the window is aspect-locked (no `windowResized`), `delay()` is undesirable on the main actor, and `thread()` is Swift's `Task`. |
 
 The phases refer to
 [docs/design/roadmap-processing-unity.md](design/roadmap-processing-unity.md),

@@ -316,7 +316,8 @@ struct MShapeBuilderTests {
         #expect(s.vertices3D.count == 3)
     }
 
-    @Test("normal sets pending normal for next 3D vertex")
+    // 持続範囲そのものは ShapeNormalScopeTests が固定する（#876）。
+    @Test("normal sets the normal for the 3D vertices that follow")
     func normalSetting() {
         let s = MShape(device: device, kind: .path2D)
         s.beginShape()
@@ -348,6 +349,46 @@ struct MShapeBuilderTests {
         #expect(s.vertices2D.count == 8)
         #expect(s.contourRanges.count == 1)
         #expect(s.contourRanges[0] == 4..<8)
+        #expect(s.didWarnContourIn3D == false, "2D シェイプの contour は正しい使い方なので警告しない")
+    }
+
+    @Test("contour on a 3D shape warns instead of silently doing nothing")
+    func contourIn3DWarns() {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        // 外側の四角（3D 頂点なので kind は .path3D になる）
+        s.vertex(0, 0, 0)
+        s.vertex(200, 0, 0)
+        s.vertex(200, 200, 0)
+        s.vertex(0, 200, 0)
+        // 穴を開けたつもりのコンター（3D では効かない）
+        s.beginContour()
+        s.vertex(50, 50, 0)
+        s.vertex(150, 50, 0)
+        s.vertex(150, 150, 0)
+        s.endContour()
+        s.endShape(.close)
+
+        #expect(s.didWarnContourIn3D, "3D シェイプの beginContour() は黙って無視せず警告する")
+        #expect(s.contourRanges.isEmpty, "3D 頂点は vertices2D に入らないのでコンター範囲もできない")
+        #expect(s.isInContour == false, "3D では 2D 側のコンター記録状態を汚さない")
+        #expect(s.contourStartIndex == 0)
+    }
+
+    @Test("contour opened before any vertex still warns on a 3D shape")
+    func contourBeforeVertexIn3DWarns() {
+        // beginContour() の時点では kind がまだ .path2D なので、endShape() 側の
+        // 取りこぼし防止が効いていないと警告が出ない
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.beginContour()
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0, 1, 0)
+        s.endContour()
+        s.endShape(.close)
+
+        #expect(s.didWarnContourIn3D, "頂点より先に開いたコンターでも 3D なら警告する")
     }
 
     @Test("style methods during shape definition")
@@ -555,6 +596,104 @@ struct MShapeTessellationTests {
         #expect(s.cachedMesh3D!.vertexCount == 3)
     }
 
+    // MARK: - 3D ストロークジオメトリ（#735）
+    //
+    // ストロークは退化三角形 (a, b, b) の列で表す。ワイヤーフレーム描画（`triangleFillMode = .lines`）
+    // が三角形の 3 辺を線で描くため、線分 a-b だけが残る。よって辺 1 本 = 頂点 3 つ。
+
+    @Test("closed polygon strokes every edge including the closing one")
+    func path3DStrokeClosedPolygon() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        for i in 0..<5 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape(.close)
+
+        s.ensureCacheValid()
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 15)  // 5 辺（最後→最初を含む）
+    }
+
+    @Test("open polygon leaves the closing edge out")
+    func path3DStrokeOpenPolygon() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        for i in 0..<5 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 12)  // 4 辺
+    }
+
+    @Test("lines mode draws segments instead of a fill mesh")
+    func path3DStrokeLinesMode() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.lines)
+        for i in 0..<6 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)  // 塗る面は無い
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 9)  // 3 本の線分
+    }
+
+    @Test("points mode draws a small triangle per vertex")
+    func path3DStrokePointsMode() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.points)
+        for i in 0..<4 {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)
+        let stroke = try #require(s.cachedStrokeMesh3D)
+        #expect(stroke.vertexCount == 12)  // 4 点 × 3 頂点
+    }
+
+    @Test("triangle modes keep the wireframe stroke (no outline mesh)")
+    func path3DStrokeTriangleModes() {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0.5, 1, 0)
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D != nil)
+        // 三角形系は塗りメッシュ自身のワイヤーフレームが辺を描くので、別メッシュは持たない
+        #expect(s.cachedStrokeMesh3D == nil)
+    }
+
+    @Test("stroke mesh is rebuilt after setVertex")
+    func path3DStrokeRebuiltAfterSetVertex() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0.5, 1, 0)
+        s.endShape(.close)
+
+        s.ensureCacheValid()
+        let original = try #require(s.cachedStrokeMesh3D)
+
+        s.setVertex(2, 0.5, 5, 0)
+        #expect(s.cachedStrokeMesh3D == nil)  // 古い形のまま描き続けない
+
+        s.ensureCacheValid()
+        let rebuilt = try #require(s.cachedStrokeMesh3D)
+        #expect(rebuilt !== original)
+    }
+
     @Test("re-tessellation after setVertex")
     func reTessellationAfterSetVertex() throws {
         let s = MShape(device: device, kind: .path2D)
@@ -578,6 +717,229 @@ struct MShapeTessellationTests {
         let originalVerts = original.flatMap { [$0.0, $0.1, $0.2] }
         #expect(originalVerts.contains { abs($0.x - 100) < 0.001 && abs($0.y - 100) < 0.001 })
         #expect(!updatedVerts.contains { abs($0.x - 100) < 0.001 && abs($0.y - 100) < 0.001 })
+    }
+}
+
+// MARK: - 面を作れない頂点数でも落ちない（#881）
+//
+// 頂点数はジェネラティブな組み立てで動的に決まるので、三角形 1 枚に足りない
+// 頂点数（0〜2）は普通に起こる。塗る面が無いなら空メッシュ（3D は nil、2D は空配列）を
+// 返すのが素直で、プロセスごと落ちてはいけない。
+//
+// `.triangleStrip` / `.triangleFan` の 3D 側は `0..<(count - 2)` / `1..<(count - 1)` を
+// 直に組んでいたため、count == 1 で負幅の `Range` を作ってトラップしていた。
+
+@Suite("MShape degenerate vertex counts", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeDegenerateVertexCountTests {
+
+    let device = MTLCreateSystemDefaultDevice()!
+
+    /// 三角形 1 枚に足りない頂点数（0〜2）を積んだ 3D シェイプ。
+    private func make3D(_ mode: ShapeMode, vertexCount: Int) -> MShape {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(mode)
+        for i in 0..<vertexCount {
+            s.vertex(Float(i), 0, 0)
+        }
+        s.endShape()
+        return s
+    }
+
+    @Test("3D triangle strip survives every vertex count below a full triangle",
+          arguments: [0, 1, 2])
+    func triangleStrip3DBelowThreshold(vertexCount: Int) {
+        let s = make3D(.triangleStrip, vertexCount: vertexCount)
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)  // 塗る面は作れない
+        #expect(s.isDirty == false)
+    }
+
+    @Test("3D triangle fan survives every vertex count below a full triangle",
+          arguments: [0, 1, 2])
+    func triangleFan3DBelowThreshold(vertexCount: Int) {
+        let s = make3D(.triangleFan, vertexCount: vertexCount)
+        s.ensureCacheValid()
+        #expect(s.cachedMesh3D == nil)
+        #expect(s.isDirty == false)
+    }
+
+    @Test("3D triangle strip still builds a mesh once three vertices are in")
+    func triangleStrip3DAtThreshold() throws {
+        let s = make3D(.triangleStrip, vertexCount: 3)
+        s.ensureCacheValid()
+        let mesh = try #require(s.cachedMesh3D)
+        #expect(mesh.vertexCount == 3)
+    }
+
+    @Test("3D triangle fan still builds a mesh once three vertices are in")
+    func triangleFan3DAtThreshold() throws {
+        let s = make3D(.triangleFan, vertexCount: 3)
+        s.ensureCacheValid()
+        let mesh = try #require(s.cachedMesh3D)
+        #expect(mesh.vertexCount == 3)
+    }
+
+    /// 2D 側は元から `guard count >= 3` を持つ。3D を直したあとも規則が 2 つに割れないよう固定する。
+    @Test("2D triangle strip / fan stay empty below three vertices",
+          arguments: [ShapeMode.triangleStrip, .triangleFan], [0, 1, 2])
+    func triangleStripFan2DBelowThreshold(mode: ShapeMode, vertexCount: Int) throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(mode)
+        for i in 0..<vertexCount {
+            s.vertex(Float(i), 0)
+        }
+        s.endShape()
+
+        s.ensureCacheValid()
+        #expect(try #require(s.cachedTriangles2D).isEmpty)
+    }
+}
+
+// MARK: - リテインドな 3D シェイプの法線自動計算（#738）
+//
+// `normal()` を書かないリテインド 3D シェイプは全頂点が既定の (0, 1, 0) のままで、
+// 真横からライトが当たる面が真っ黒に沈んでいた（イミディエイト側は面法線を
+// 自動計算するので、同じ形を書いても陰影が付く）。
+//
+// メッシュは `.storageModeShared` なので、CPU から頂点バッファを読んで固定できる。
+
+@Suite("MShape 3D auto normals", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeAutoNormalTests {
+
+    let device = MTLCreateSystemDefaultDevice()!
+
+    /// 塗りメッシュの頂点法線を CPU 側で読み出す。
+    private func fillNormals(_ s: MShape) throws -> [SIMD3<Float>] {
+        s.ensureCacheValid()
+        let mesh = try #require(s.cachedMesh3D)
+        let base = mesh.vertexBuffer.contents().bindMemory(
+            to: Vertex3D.self, capacity: mesh.vertexCount)
+        return (0..<mesh.vertexCount).map { base[$0].normal }
+    }
+
+    @Test("normal() 無しの三角形は面法線を得る")
+    func trianglesGetFaceNormal() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        // z = 0 平面の三角形。面法線は (0, 0, ±1) で、既定の (0, 1, 0) とは別物。
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0, 1, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 3)
+        for n in normals {
+            #expect(abs(abs(n.z) - 1) < 0.001, "z 成分が ±1 の面法線: \(n)")
+            #expect(abs(n.x) < 0.001 && abs(n.y) < 0.001, "x/y 成分は 0: \(n)")
+        }
+    }
+
+    @Test("normal() 無しの polygon は面法線を得る")
+    func polygonGetsFaceNormal() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        // z = 0 平面の五角形（#738 の再現に使った形）
+        for i in 0..<5 {
+            let a = Float(i) / 5 * 2 * .pi
+            s.vertex(cos(a), sin(a), 0)
+        }
+        s.endShape(.close)
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 5)
+        for n in normals {
+            #expect(abs(abs(n.z) - 1) < 0.001, "全頂点が面法線を持つ: \(n)")
+        }
+    }
+
+    // 失敗系: `normal()` を明示したシェイプでは自動計算が働かず指定値が残る。
+    @Test("normal() を明示したら自動計算は働かない")
+    func explicitNormalWins() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        // 頂点ごとに呼んでも 1 回だけ呼んでも同じ（normal() は endShape() まで
+        // 持続する。#876）。ここは「頂点ごとに呼ぶ」書き方が壊れないことも兼ねる。
+        s.normal(1, 0, 0)
+        s.vertex(0, 0, 0)
+        s.normal(1, 0, 0)
+        s.vertex(1, 0, 0)
+        s.normal(1, 0, 0)
+        s.vertex(0, 1, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        for n in normals {
+            #expect(abs(n.x - 1) < 0.001 && abs(n.y) < 0.001 && abs(n.z) < 0.001,
+                    "明示した (1, 0, 0) がそのまま残る: \(n)")
+        }
+    }
+
+    // 境界値: 3 頂点が一直線に並ぶ退化三角形。外積が零ベクトルになるので
+    // 正規化すると NaN になる。既定の (0, 1, 0) へ落ちること。
+    @Test("退化した三角形は NaN にならず既定の法線へ落ちる")
+    func degenerateTriangleFallsBack() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangles)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(2, 0, 0)   // 一直線
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        for n in normals {
+            #expect(!n.x.isNaN && !n.y.isNaN && !n.z.isNaN, "NaN を書き込まない: \(n)")
+            #expect(abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
+                    "既定の (0, 1, 0) へ落ちる: \(n)")
+        }
+    }
+
+    // `.triangleStrip` は「3 頂点ごと」ではインデックスの topology に合わないため、
+    // 後ろの頂点が既定のまま取り残される。組み上がったインデックス列から計算すれば
+    // 全頂点に法線が付く（巻き方向の反転もインデックス構築側が補正済み）。
+    @Test("triangleStrip は全頂点に法線が付く")
+    func triangleStripCoversEveryVertex() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangleStrip)
+        // z = 0 平面のジグザグ 5 頂点（3 頂点ごとの規則だと後ろ 2 頂点が漏れる）
+        s.vertex(0, 0, 0)
+        s.vertex(0, 1, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(1, 1, 0)
+        s.vertex(2, 0, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 5)
+        for (i, n) in normals.enumerated() {
+            #expect(abs(abs(n.z) - 1) < 0.001, "頂点 \(i) にも面法線が付く: \(n)")
+        }
+        // 巻き方向はインデックス構築側（i % 2 で入れ替え）が補正済みなので、
+        // ストリップ全体で法線の向きが揃う。
+        let first = normals[0]
+        for (i, n) in normals.enumerated() {
+            #expect(simd_dot(first, n) > 0.999, "頂点 \(i) の向きが先頭と揃う: \(n)")
+        }
+    }
+
+    @Test("triangleFan は全頂点に法線が付く")
+    func triangleFanCoversEveryVertex() throws {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape(.triangleFan)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(1, 1, 0)
+        s.vertex(0, 1, 0)
+        s.vertex(-1, 1, 0)
+        s.endShape()
+
+        let normals = try fillNormals(s)
+        #expect(normals.count == 5)
+        for (i, n) in normals.enumerated() {
+            #expect(abs(abs(n.z) - 1) < 0.001, "頂点 \(i) にも面法線が付く: \(n)")
+        }
     }
 }
 
@@ -642,5 +1004,382 @@ struct Canvas3DUnitMeshCacheTests {
         // 単位メッシュ 2 種（box_unit / sphere_unit_24_12）だけがキャッシュされる
         #expect(canvas3D.meshCacheCountForTesting <= 2,
                 "寸法アニメーションでメッシュキャッシュが増殖しない (count: \(canvas3D.meshCacheCountForTesting))")
+    }
+}
+
+// MARK: - シェイプ定義中の fill(gray) / stroke(gray) が colorMode を通る（#853）
+//
+// `MShapeBuilder` の gray 版は `gray / 255` と α リテラル 1 を直に書いており、
+// 本線（`CanvasStyleProtocol` の `colorModeConfig.toGray()`）と結果が食い違っていた。
+// 同じ `fill(128)` が MShape の中と外で別の色になり、`colorMode(.rgb, 1.0)` では
+// 差が最大（0.5 が 0.00196 = ほぼ黒）になる。
+
+@Suite("MShape builder color mode", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeBuilderColorModeTests {
+
+    let device = MTLCreateSystemDefaultDevice()!
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        return SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+    }
+
+    private func expectClose(
+        _ actual: SIMD4<Float>, _ expected: SIMD4<Float>,
+        _ label: String, sourceLocation: SourceLocation = #_sourceLocation
+    ) {
+        let d = abs(actual - expected)
+        #expect(d.max() < 0.001, "\(label): got \(actual), want \(expected)",
+                sourceLocation: sourceLocation)
+    }
+
+    // MARK: 既定（rgb 0-255）は今までどおり
+
+    @Test("the default 0-255 range keeps its existing result")
+    func defaultRangeUnchanged() throws {
+        let ctx = try makeContext()
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(128)
+        s.stroke(64)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 1), "fill")
+        expectClose(s.capturedStyle.strokeColor, SIMD4(64 / 255, 64 / 255, 64 / 255, 1), "stroke")
+    }
+
+    // MARK: colorMode のレンジを通る
+
+    @Test("fill(gray) follows colorMode(.rgb, 1.0)")
+    func fillFollowsUnitRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(0.5)
+        s.endShape()
+
+        // 直すまでは 0.5 / 255 = 0.00196（ほぼ黒）だった
+        expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
+        #expect(s.capturedStyle.hasFill)
+    }
+
+    @Test("stroke(gray) follows colorMode(.rgb, 1.0)")
+    func strokeFollowsUnitRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.stroke(0.25)
+        s.endShape()
+
+        expectClose(s.capturedStyle.strokeColor, SIMD4(0.25, 0.25, 0.25, 1), "stroke")
+        #expect(s.capturedStyle.hasStroke)
+    }
+
+    @Test("gray is measured against max1, whatever the color space is")
+    func grayUsesFirstChannelMax() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100, 1)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(180)
+        s.endShape()
+
+        // toGray は space を見ず gray / max1 を取る（本線と同じ）
+        expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
+    }
+
+    @Test("the shape and the sketch agree on the same gray value")
+    func shapeMatchesCanvas() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        ctx.fill(0.75)
+
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(0.75)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, ctx.canvas.fillColor, "shape vs canvas")
+    }
+
+    // MARK: α（#853 の「α をリテラル 1 で固定」）
+
+    @Test("fill(gray, alpha) carries the alpha through")
+    func fillWithAlpha() throws {
+        let ctx = try makeContext()
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(128, 64)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 64 / 255), "fill")
+    }
+
+    @Test("stroke(gray, alpha) carries the alpha through")
+    func strokeWithAlpha() throws {
+        let ctx = try makeContext()
+        let s = ctx.createShape()
+        s.beginShape()
+        s.stroke(255, 0)
+        s.endShape()
+
+        expectClose(s.capturedStyle.strokeColor, SIMD4(1, 1, 1, 0), "stroke")
+    }
+
+    @Test("alpha follows its own colorMode range")
+    func alphaFollowsItsOwnRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 255, 255, 255, 1)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(128, 0.5)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 0.5), "fill")
+    }
+
+    // MARK: 境界値
+
+    @Test("a shape built without a sketch context keeps the 0-255 default")
+    func withoutContextUsesDefault() {
+        // テストやライブラリ内部が直接組む MShape は colorMode を写す相手がいない。
+        // 既定の ColorModeConfig（rgb 0-255）で解釈されること。
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.fill(255)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(1, 1, 1, 1), "fill")
+    }
+
+    @Test("the color mode is the one in effect when the shape was created")
+    func capturedAtCreationTime() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 1.0)
+        let s = ctx.createShape()
+
+        // 作成後にスケッチ側を戻しても、このシェイプは作成時のレンジで解釈し続ける
+        // （fill / stroke / material と同じ「createShape() 時点のスナップショット」）
+        ctx.colorMode(.rgb, 255)
+        s.beginShape()
+        s.fill(0.5)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(0.5, 0.5, 0.5, 1), "fill")
+    }
+
+    // MARK: チャンネル指定版 fill(v1,v2,v3,a?) / stroke(v1,v2,v3,a?)（#897）
+    //
+    // 本線（`CanvasStyleProtocol`）にはある 3 成分版が `MShapeBuilder` に無く、
+    // `colorMode(.hsb, 360, 100, 100)` で色相を回す典型がシェイプ定義の中だけ
+    // 書けなかった。`colorModeConfig.toColor()` に流して本線と同じ規則にする。
+
+    @Test("fill(v1, v2, v3) follows the shape's colorMode space and ranges")
+    func fillChannelsFollowHSBRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(180, 100, 100)
+        s.endShape()
+
+        // 色相 180/360 = 0.5、彩度・明度は最大 → シアン
+        expectClose(s.capturedStyle.fillColor, SIMD4(0, 1, 1, 1), "fill")
+        #expect(s.capturedStyle.hasFill)
+    }
+
+    @Test("stroke(v1, v2, v3) follows the shape's colorMode space and ranges")
+    func strokeChannelsFollowHSBRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.stroke(180, 100, 100)
+        s.endShape()
+
+        expectClose(s.capturedStyle.strokeColor, SIMD4(0, 1, 1, 1), "stroke")
+        #expect(s.capturedStyle.hasStroke)
+    }
+
+    @Test("the shape and the sketch agree on the same three channel values")
+    func channelsMatchCanvas() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        ctx.fill(30, 80, 90)
+        ctx.stroke(210, 40, 60)
+
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(30, 80, 90)
+        s.stroke(210, 40, 60)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, ctx.canvas.fillColor, "fill: shape vs canvas")
+        expectClose(s.capturedStyle.strokeColor, ctx.canvas.strokeColor, "stroke: shape vs canvas")
+    }
+
+    @Test("omitting the alpha argument leaves the color fully opaque")
+    func channelsOmittedAlphaIsOpaque() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.hsb, 360, 100, 100)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(0, 100, 100)
+        s.stroke(120, 100, 100)
+        s.endShape()
+
+        // maxAlpha / maxAlpha = 1.0（α の最大値が何であれ不透明）
+        #expect(s.capturedStyle.fillColor.w == 1)
+        #expect(s.capturedStyle.strokeColor.w == 1)
+    }
+
+    @Test("the fourth argument follows the alpha range, not the channel ranges")
+    func channelAlphaFollowsItsOwnRange() throws {
+        let ctx = try makeContext()
+        ctx.colorMode(.rgb, 255, 255, 255, 1)
+        let s = ctx.createShape()
+        s.beginShape()
+        s.fill(255, 0, 0, 0.5)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(1, 0, 0, 0.5), "fill")
+    }
+
+    @Test("channel values on a shape built without a sketch context use the 0-255 default")
+    func channelsWithoutContextUseDefault() {
+        let s = MShape(device: device, kind: .path2D)
+        s.beginShape()
+        s.fill(255, 0, 0)
+        s.stroke(0, 0, 255, 128)
+        s.endShape()
+
+        expectClose(s.capturedStyle.fillColor, SIMD4(1, 0, 0, 1), "fill")
+        expectClose(s.capturedStyle.strokeColor, SIMD4(0, 0, 1, 128 / 255), "stroke")
+    }
+}
+
+// MARK: - setTint() が効かないことを黙って隠さない（#852）
+//
+// `MShape.setTint()` は `capturedStyle.tintColor` / `hasTint` に書くだけで、
+// **リポジトリ内のどこからも読まれていない**（描画時に style を復元する
+// `applyShapeStyle2D` / `applyShapeStyle3D` のどちらも渡していない）。
+//
+// 2D の MShape 経路にはテクスチャ描画自体が無く、3D のテクスチャは
+// `fillColor`（インスタンス色 / `uniforms.color`）を掛けて着色するので、
+// どちらの経路でも `setTint()` は何もしない。黙って無視せず一度だけ警告する。
+//
+// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+
+@Suite("MShape setTint diagnostics", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct MShapeSetTintDiagnosticTests {
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        return SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
+        )
+    }
+
+    /// 塗りつぶした 2D の四角。
+    private func make2DSquare(_ ctx: SketchContext) -> MShape {
+        let s = ctx.createShape()
+        s.beginShape()
+        s.vertex(0, 0)
+        s.vertex(10, 0)
+        s.vertex(10, 10)
+        s.vertex(0, 10)
+        s.endShape(.close)
+        return s
+    }
+
+    /// 塗りつぶした 3D の三角形。
+    private func make3DTriangle(_ ctx: SketchContext) -> MShape {
+        let s = ctx.createShape()
+        s.beginShape(.triangles)
+        s.vertex(0, 0, 0)
+        s.vertex(1, 0, 0)
+        s.vertex(0.5, 1, 0)
+        s.endShape()
+        return s
+    }
+
+    @Test("drawing a 2D shape with a tint warns instead of ignoring it silently")
+    func tintOn2DShapeWarns() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        s.setTint(Color(r: 1, g: 0, b: 0))
+
+        #expect(s.didWarnTintIgnored == false, "描く前は未発火")
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored, "2D 経路の setTint() は黙って無視せず警告する")
+    }
+
+    @Test("drawing a 3D shape with a tint warns too — it is a no-op there as well")
+    func tintOn3DShapeWarns() throws {
+        let ctx = try makeContext()
+        let s = make3DTriangle(ctx)
+        s.setTint(Color(r: 0, g: 1, b: 0))
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored,
+                "3D のテクスチャは fillColor で着色するので setTint() は 3D でも効かない")
+    }
+
+    @Test("a shape that never sets a tint stays quiet")
+    func noTintNoWarning() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored == false, "setTint() を呼んでいないシェイプは警告しない")
+    }
+
+    @Test("disableStyle() suppresses the warning — the shape's style is not applied at all")
+    func disabledStyleStaysQuiet() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        s.setTint(Color(r: 1, g: 0, b: 0))
+        s.disableStyle()
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored == false,
+                "styleEnabled == false ならシェイプのスタイル自体が使われないので警告の出番も無い")
+    }
+
+    @Test("the warning fires once however many times the shape is drawn")
+    func warnsOnlyOnce() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        s.setTint(Color(r: 1, g: 0, b: 0))
+
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored)
+        // 毎フレーム描かれるので、2 回目以降に出し続けるとログが埋まる。
+        // フラグが立ったままで、警告経路へ再突入しないこと。
+        s.didWarnTintIgnored = false
+        ctx.shape(s, 0, 0)
+        #expect(s.didWarnTintIgnored,
+                "フラグを戻せば再度出る = 抑止しているのはフラグだけで、条件判定は毎回通る")
+    }
+
+    @Test("setTint records the color even though nothing reads it back")
+    func tintIsStillRecorded() throws {
+        let ctx = try makeContext()
+        let s = make2DSquare(ctx)
+        #expect(s.capturedStyle.hasTint == false)
+
+        s.setTint(Color(r: 1, g: 0, b: 0))
+        #expect(s.capturedStyle.hasTint)
+        #expect(s.capturedStyle.tintColor.x == 1)
     }
 }

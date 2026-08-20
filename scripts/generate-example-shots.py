@@ -45,6 +45,15 @@ LoadDisplayOBJ は contentFraction 0、Flocking は 0.001）。そこで:
 `docs/ai/examples-shots.config.json` に `{"<パス>": {"settle": 秒}}` で書く
 （台帳は生成物なので、手書きの設定とは分ける）。
 
+## release ビルドで撮る example（#727）
+
+撮影は既定で debug ビルド。**画面に fps を出す example だけ**は同じ設定ファイルに
+`{"release": true}` を書いて `swift build -c release` / `swift run -c release` で撮る。
+debug の数字を焼くと、利用者が `swift run -c release` で見る数字と別物になるため
+（`Examples/Demos/Performance/**` の HUD は 3 秒ごとにしか更新しないので、`settle` も
+あわせて 3 秒超にする）。全 262 本を release にはしない — 1 本あたり +17 秒（実測
+26.3 秒 vs 9.1 秒）で、全体では 1 時間以上増えるのに、絵の確認には効かない。
+
 ## 入力が要る example（#509 / #610）
 
 マウス・キーボードで絵が決まる example は、入力が無いと「原点 = 画面左上に描かれた
@@ -67,8 +76,11 @@ LoadDisplayOBJ は contentFraction 0、Flocking は 0.001）。そこで:
 
 GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビット単位には一致しない。撮り直す
 たびに差分が出るので、`--check` は画像そのものではなく**撮影時のソースの指紋**と現在の
-ソースを突き合わせる（`shots_common.source_hash`）。これで GPU の無い CI ランナーでも
-判定できる。
+ソースを突き合わせる（`source_fingerprint`）。これで GPU の無い CI ランナーでも判定できる。
+
+指紋の材料は**入力だけ**で、出力（`<Name>.png`）は外す。画像はパッケージ直下に置くので、
+そのまま採ると出力が入力の指紋に混ざり、画像を差し替えただけで「ソースが変わった」と
+報告してしまう（#820）。
 """
 
 import argparse
@@ -85,6 +97,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
     ShotError,
+    capture_provenance,
+    drift_summary,
     image_size,
     load_input_script,
     send_input_script,
@@ -147,6 +161,16 @@ def image_path_for(path: str) -> Path:
     return package / f"{package.name}.png"
 
 
+def source_fingerprint(path: str) -> str:
+    """撮影時のソースの指紋。
+
+    実行結果画像はパッケージ直下（`image_path_for`）に置くので、そのまま指紋を採ると
+    **出力が入力の指紋に混ざる**。画像だけを差し替えただけで `--check` が
+    「ソースが変わった」と言い出すので、材料から外す（#820）。
+    """
+    return source_hash(package_dir_for(path), exclude=[image_path_for(path)])
+
+
 def no_capture_reason(package: Path) -> str | None:
     """撮らない申告があればその理由を返す。"""
     marker = package / NO_CAPTURE_NAME
@@ -198,6 +222,25 @@ def settle_for(path: str, config: dict[str, dict]) -> float:
     if not isinstance(settle, (int, float)) or settle < 0:
         raise ShotError(f"{CONFIG.name} の '{path}' の settle が数値でない: {settle!r}")
     return float(settle)
+
+
+def release_for(path: str, config: dict[str, dict]) -> bool:
+    """release ビルドで撮る申告があるか（既定は debug / #727）。"""
+    entry = config.get(path) or {}
+    release = entry.get("release", False)
+    # "yes" や 1 を真と読むと、申告したつもりが黙って debug のままになる。
+    if not isinstance(release, bool):
+        raise ShotError(f"{CONFIG.name} の '{path}' の release が true/false でない: {release!r}")
+    return release
+
+
+def swift_command(verb: str, release: bool) -> list[str]:
+    """`swift build` / `swift run` のコマンド列。
+
+    申告があれば**両方**に `-c release` を渡す。ビルドだけ release にしても、
+    走らせるのが debug バイナリなら画面の数字は変わらない。
+    """
+    return ["swift", verb, *(["-c", "release"] if release else [])]
 
 
 def load_manifest() -> dict:
@@ -265,7 +308,7 @@ def stale_entries(entries: list[dict], shots: dict) -> list[str]:
             continue
         if not image_path_for(path).is_file():
             stale.append(f"{path}（画像が無い）")
-        elif recorded.get("sourceHash") != source_hash(package):
+        elif recorded.get("sourceHash") != source_fingerprint(path):
             stale.append(f"{path}（撮影後にソースが変わった）")
     return stale
 
@@ -286,7 +329,7 @@ def current_frame(output_dir: Path, request_id: str) -> dict | None:
     return data if data.get("id") == request_id else None
 
 
-def capture(path: str, destination: Path, settle: float) -> dict:
+def capture(path: str, destination: Path, settle: float, release: bool = False) -> dict:
     """example を 1 本撮って、台帳のエントリを返す。"""
     package = package_dir_for(path)
     if not (package / "Package.swift").is_file():
@@ -314,7 +357,9 @@ def capture(path: str, destination: Path, settle: float) -> dict:
         request if still else {"id": warmup_id, "label": f"{package.name} (warmup)", "scale": 1.0}
     )
 
-    build = subprocess.run(["swift", "build"], cwd=package, capture_output=True, text=True)
+    build = subprocess.run(
+        swift_command("build", release), cwd=package, capture_output=True, text=True
+    )
     if build.returncode != 0:
         raise ShotError(f"'{path}' のビルドに失敗した:\n{build.stdout[-1500:]}\n{build.stderr[-1500:]}")
 
@@ -322,7 +367,7 @@ def capture(path: str, destination: Path, settle: float) -> dict:
     env["METAPHOR_PROBE"] = "1"
     env["METAPHOR_VIEWER"] = "1"  # ヘッドレス（ウィンドウを開かない）
     process = subprocess.Popen(
-        ["swift", "run"],
+        swift_command("run", release),
         cwd=package,
         env=env,
         stdin=subprocess.PIPE,  # 入力台本を流す経路（#610）
@@ -384,9 +429,21 @@ def capture(path: str, destination: Path, settle: float) -> dict:
         shutil.rmtree(probe_dir, ignore_errors=True)
 
     size = metadata.get("size", {})
-    return {
+    entry = {
         "origin": ORIGIN_CAPTURED,
-        "sourceHash": source_hash(package),
+        "sourceHash": source_fingerprint(path),
+    }
+    # 画面に焼かれた数字（fps）は build configuration で変わるので、既定から外れた
+    # ものだけ来歴として残す（#727）。debug は既定なので書かない。
+    if release:
+        entry["build"] = "release"
+    # 指紋はパッケージ配下しか見ないので、ライブラリ本体の変更は拾えない（#586）。
+    # 撮った実装を来歴として残し、あとから隔たりを数えられるようにする。
+    provenance = capture_provenance(REPO_ROOT)
+    if provenance:
+        entry["provenance"] = provenance
+    return {
+        **entry,
         "width": size.get("width"),
         "height": size.get("height"),
         "frame": metadata.get("frame"),
@@ -417,7 +474,7 @@ def compare(paths: list[str], config: dict[str, dict]) -> list[Path]:
         original = image_path_for(path)
         shot = COMPARE_DIR / "shots" / f"{package.name}.png"
         print(f"capturing {path}", flush=True)
-        capture(path, shot, settle_for(path, config))
+        capture(path, shot, settle_for(path, config), release_for(path, config))
         cell = f"{index:03d}-{package.name}.png"
         width, height = COMPARE_CELL
         run_ffmpeg(
@@ -520,7 +577,24 @@ def main() -> int:
                 if not image_path_for(e["path"]).is_file()
                 and not no_capture_reason(package_dir_for(e["path"]))
             ]
-            print(f"OK: {len(entries)} 本の画像はすべて最新")
+            # 「すべて最新」とは書かない。見ているのは撮影したものの
+            # ソースだけで、ライブラリ実装の変更は含まない（#586）。
+            captured = [
+                shots[e["path"]]
+                for e in entries
+                if shots.get(e["path"], {}).get("origin") == ORIGIN_CAPTURED
+            ]
+            aside = (
+                f"（原典由来の {len(entries) - len(captured)} 本は鮮度判定の対象外）"
+                if len(captured) != len(entries)
+                else ""
+            )
+            print(
+                f"OK: {len(entries)} 本のうち、このスクリプトが撮った {len(captured)} 本は"
+                f"ソースが撮影時から変わっていない{aside}"
+            )
+            for line in drift_summary(captured, "example のソース", REPO_ROOT):
+                print(line)
             if missing:
                 print(f"（画像がまだ無い example が {len(missing)} 本。make example-shots で撮れます）")
             return 0
@@ -552,9 +626,11 @@ def main() -> int:
             return 0
 
         for index, path in enumerate(targets, start=1):
-            print(f"[{index}/{len(targets)}] capturing {path}", flush=True)
+            release = release_for(path, config)
+            note = "（release ビルド）" if release else ""
+            print(f"[{index}/{len(targets)}] capturing {path}{note}", flush=True)
             image = image_path_for(path)
-            shots[path] = capture(path, image, settle_for(path, config))
+            shots[path] = capture(path, image, settle_for(path, config), release)
             # 1 本ずつ台帳を確定させる。中断しても済んだぶんは整合したまま残る。
             save_manifest(shots)
             size = image.stat().st_size

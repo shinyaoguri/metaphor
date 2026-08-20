@@ -3,7 +3,7 @@ import metaphor
 @main
 final class CustomShapes: Sketch {
     var config: SketchConfig {
-        SketchConfig(width: 640, height: 360, title: "Custom Shapes")
+        SketchConfig(width: 640, height: 540, title: "Custom Shapes")
     }
 
     func setup() {
@@ -81,5 +81,53 @@ final class CustomShapes: Sketch {
             vertex(x + 12, 320)
         }
         endShape()
+
+        // 下段は同じ 4 点を、打ち方だけ変えて描き比べる
+        let quad: [(x: Float, y: Float)] = [(-48, -48), (48, -48), (48, 48), (-48, 48)]
+
+        // curveVertex で輪を閉じるときは、先頭に戻ってもう一周ぶん打つ。
+        // 最初と最後の点は向きを決めるだけなので、3 点ぶん多めに打つ
+        func closedCurve(around cx: Float, _ cy: Float) {
+            beginShape()
+            for i in 0..<(quad.count + 3) {
+                let p = quad[i % quad.count]
+                curveVertex(cx + p.x, cy + p.y)
+            }
+            endShape()
+        }
+
+        // 6. curveVertex は Catmull-Rom スプライン。打った点を順に「通り」ながら
+        //    間をふくらませるので、同じ 4 点でも vertex（灰の四角）と形が変わる
+        noFill()
+        stroke(140)
+        strokeWeight(2)
+        beginShape()
+        for p in quad { vertex(160 + p.x, 440 + p.y) }
+        endShape(.close)
+
+        stroke(250, 140, 100)
+        strokeWeight(3)
+        closedCurve(around: 160, 440)
+
+        // 7. curveTightness は曲線の張り。同じ 4 点でも張り方で見え方が変わる
+        let tightnessTones: [(t: Float, r: Float, g: Float, b: Float)] = [
+            (-1, 240, 120, 180),  // ゆるめ: 点の外へ大きくふくらむ
+            (0, 110, 205, 235),  // 既定
+            (1, 230, 200, 110),  // 直線: vertex で結んだ形に戻る
+        ]
+        for tone in tightnessTones {
+            curveTightness(tone.t)
+            stroke(tone.r, tone.g, tone.b)
+            closedCurve(around: 480, 440)
+        }
+        curveTightness(0)
+
+        // 打った点。6 も 7 もまったく同じ 4 点を打っている
+        noStroke()
+        fill(250)
+        for p in quad {
+            circle(160 + p.x, 440 + p.y, 7)
+            circle(480 + p.x, 440 + p.y, 7)
+        }
     }
 }

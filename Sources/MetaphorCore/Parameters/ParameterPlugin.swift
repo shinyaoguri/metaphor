@@ -6,6 +6,9 @@ import QuartzCore
 ///
 /// 既定はプロジェクトのカレントディレクトリ配下の `.metaphor/params/`
 /// （Probe の `.metaphor/probe/` と同じ流儀。CONTRACT.md 契約点 7）。
+///
+/// 相対パスは環境変数 `METAPHOR_STATE_DIR`（未設定なら cwd）を基準に解決されます
+/// （`.app` 起動では cwd が `/` になるため。Issue #688）。
 public struct ParameterStoreConfig: Sendable {
     /// `params.json` を書き出すディレクトリ。
     public var directory: String
@@ -23,8 +26,8 @@ public struct ParameterStoreConfig: Sendable {
         setRequestFilePath: String = ".metaphor/params/set-request.json",
         writeDebounce: Double = 0.2
     ) {
-        self.directory = directory
-        self.setRequestFilePath = setRequestFilePath
+        self.directory = MetaphorPaths.resolve(directory)
+        self.setRequestFilePath = MetaphorPaths.resolve(setRequestFilePath)
         self.writeDebounce = writeDebounce
     }
 }
@@ -37,7 +40,7 @@ public struct ParameterStoreConfig: Sendable {
 /// - **外部書込**: `pre()` で `set-request.json` の mtime を確認し、変化していれば
 ///   読んで適用 → `appliedRequestId` / `revision` をエコーした `params.json` を即時書出。
 ///
-/// 有効化は自動です（`@Param` が 1 つでも宣言されていれば ``SketchRunner`` が登録）。
+/// 有効化は自動です（`@Param` が 1 つでも宣言されていれば `SketchRunner` が登録）。
 /// オプトアウトは環境変数 `METAPHOR_PARAMS=0`。明示登録も可能:
 /// `SketchConfig(plugins: [PluginFactory { ParameterPlugin() }])`。
 ///

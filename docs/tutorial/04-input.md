@@ -246,6 +246,20 @@ final class Mouse: Sketch {
 if keyCode == SPACE { ... }   // 数値の 49 を覚える必要はない
 ```
 
+同じ定数は `KeyCode.space` のように名前空間経由でも書けます。ふだんはどちらでも構いませんが、
+**スケッチに `import Foundation` があるときは `RETURN` / `TAB` / `BACKSPACE` / `CONTROL` の
+4 つだけ `KeyCode` 側を使ってください**。この 4 つは macOS の C ヘッダにある同名のマクロと
+ぶつかり、`ambiguous use of 'RETURN'` というエラーになります（`metaphor.RETURN` と書いても
+解決しません）。状態保持リロードで使う `saveState()` / `restoreState(_:)` は `Data` を扱うので、
+Foundation を import するスケッチは珍しくありません。
+
+```swift
+import Foundation
+import metaphor
+
+if keyCode == KeyCode.return { ... }   // Foundation があってもこの形なら通る
+```
+
 **押しっぱなし**を扱うときは `isKeyDown(_:)` を使います。「そのキーがいま押されているか」を 1 つずつ聞ける関数で、同時押しにそのまま対応できます。`key` は最後に押された 1 つしか覚えていないので、2 つのキーを同時に押したときは片方しか見えません。
 
 ```swift

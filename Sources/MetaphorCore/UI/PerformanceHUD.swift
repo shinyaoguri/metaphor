@@ -1,33 +1,35 @@
 import Metal
 
 /// FPS、フレーム時間、GPU時間を表示するパフォーマンスメトリクスオーバーレイ
+///
+/// fps とフレーム時間は `FrameRateTracker` の直近ウィンドウ集計をそのまま映します。
+/// つまり **``Sketch/performance``（`performance.fps`）と Probe の `frame.json` の
+/// `performance` と同じ採取経路**で、画面に出る数字とスケッチ／エージェントが読む数字が
+/// 食い違いません（Issue #698）。GPU 時間だけはトラッカーの管轄外で、コマンドバッファの
+/// タイムスタンプから直接採ります。
 @MainActor
 public final class PerformanceHUD {
-    /// 平均化のための直近フレーム時間を格納するリングバッファ
-    private var frameTimes: [Float] = []
-    /// 保持するフレーム時間サンプルの最大数
-    private let maxSamples = 60
-
-    /// 平均フレームレート（fps）
-    public private(set) var fps: Float = 0
-    /// 平均フレーム時間（ミリ秒）
-    public private(set) var frameTime: Float = 0
+    /// 直近ウィンドウの実測フレームレート（fps）。算出に足るフレームが無いときは `nil`。
+    ///
+    /// `nil` は ``Sketch/performance`` の `fps` が `nil` になる条件と同じ
+    /// （起動直後・`noLoop()` で停止中）で、表示は `--` になります。
+    public private(set) var fps: Float?
+    /// 直近ウィンドウの平均フレーム時間（ミリ秒）。算出不能なときは `nil`。
+    public private(set) var frameTime: Float?
     /// 直近のGPU実行時間（ミリ秒）
     public private(set) var gpuTime: Float = 0
 
     /// 新しい PerformanceHUD インスタンスを作成します。
     public init() {}
 
-    /// 現在のフレームのデルタタイムからメトリクスを更新します。
-    /// - Parameter deltaTime: 前フレームからの経過時間（秒）。
-    func update(deltaTime: Float) {
-        frameTimes.append(deltaTime)
-        if frameTimes.count > maxSamples {
-            frameTimes.removeFirst()
-        }
-        let avgDt = frameTimes.reduce(0, +) / Float(frameTimes.count)
-        fps = avgDt > 0 ? 1.0 / avgDt : 0
-        frameTime = avgDt * 1000 // ms
+    /// 直近ウィンドウの実測値から表示を更新します。
+    ///
+    /// 値を自前で平均せず、`FrameRateTracker.windowStats(now:window:)` の結果を
+    /// そのまま映すことが要点です（同じ窓・同じ算出）。
+    /// - Parameter stats: 直近ウィンドウの集計。算出不能なら `nil`。
+    func update(stats: FrameRateTracker.WindowStats?) {
+        fps = stats.map { Float($0.fps) }
+        frameTime = stats.map { Float($0.frameTimeMeanMs) }
     }
 
     /// コマンドバッファのタイムスタンプからGPU実行時間を更新します。
@@ -36,6 +38,26 @@ public final class PerformanceHUD {
     ///   - end: GPU終了タイムスタンプ（秒）。
     func updateGPUTime(start: Double, end: Double) {
         gpuTime = Float((end - start) * 1000) // ms
+    }
+
+    // MARK: - 表示文字列
+
+    /// fps の表示。算出不能なときは `0` ではなく `--`（`noLoop()` の作品で
+    /// `FPS: 0` と出すと誤情報になるため）。
+    var fpsText: String {
+        guard let fps else { return "FPS: --" }
+        return String(format: "FPS: %.0f", fps)
+    }
+
+    /// フレーム時間の表示。算出不能なときは `--`。
+    var frameTimeText: String {
+        guard let frameTime else { return "Frame: -- ms" }
+        return String(format: "Frame: %.1f ms", frameTime)
+    }
+
+    /// GPU 時間の表示。
+    var gpuTimeText: String {
+        String(format: "GPU: %.2f ms", gpuTime)
     }
 
     // MARK: - 見た目
@@ -84,13 +106,9 @@ public final class PerformanceHUD {
         canvas.textSize(12)
         canvas.textAlign(.left, .top)
 
-        let fpsStr = String(format: "FPS: %.0f", fps)
-        let frameStr = String(format: "Frame: %.1f ms", frameTime)
-        let gpuStr = String(format: "GPU: %.2f ms", gpuTime)
-
-        canvas.text(fpsStr, x + 8, y + 8)
-        canvas.text(frameStr, x + 8, y + 28)
-        canvas.text(gpuStr, x + 8, y + 48)
+        canvas.text(fpsText, x + 8, y + 8)
+        canvas.text(frameTimeText, x + 8, y + 28)
+        canvas.text(gpuTimeText, x + 8, y + 48)
 
         canvas.popStyle()
     }

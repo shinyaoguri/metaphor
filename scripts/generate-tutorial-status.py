@@ -9,9 +9,12 @@ README 群が案内する「どこまで公開されているか」は**生成�
 
     <!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->
 
-種類は 3 つ:
+種類は 5 つ:
 
 - `ja-status` / `en-status` — どこまで公開済みで、どこから執筆中かの 1 句
+- `ja-translation` / `en-translation` — 英語版（`docs/tutorial/en/`）がどこまで
+  入っているかの 1 文（Issue #956）。訳が 1 節も無い今は「後追いします」と出て、
+  訳が入った部から文面が変わり、全部そろうと追跡 Issue への言及ごと落ちる
 - `ja-links:<接頭辞>` — 公開済みの部への日本語リンクを ` / ` で並べたもの。
   接頭辞は本文から `docs/tutorial/` への相対パス（`tutorial/` など）
 
@@ -19,7 +22,8 @@ README 群が案内する「どこまで公開されているか」は**生成�
 
 - README.md / README.en.md の部の表 — 公開済みの部への導線があり、執筆中の部
   へは張られていないこと
-- docs/tutorial/README.md の章立て表 — 状態の欄が frontmatter と一致すること
+- docs/tutorial/README.md の章立て表 — 状態の欄が frontmatter と一致し、英語版
+  の欄が `docs/tutorial/en/` の実体と一致すること（Issue #548）
 
 生成は決定的（入力が同じなら出力はバイト単位で同じ）。
 `--check` で陳腐化検出（差分があれば unified diff を出して exit 1）。
@@ -34,6 +38,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TUTORIAL_DIR = REPO_ROOT / "docs/tutorial"
+# 英語版の置き場（Issue #548）。ファイル名は日本語版と同じ `NN-slug.md`。
+EN_DIR_NAME = "en"
 
 # 公開状況を案内する入口ドキュメント。ここに載っていないファイルのマーカーは
 # 更新されないので、案内を増やしたらこの表にも足す。
@@ -57,13 +63,23 @@ MARKER_RE = re.compile(
     r"<!-- /tutorial-status -->"
 )
 
-# `| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 |`
+# `| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 | 未 |`
 OUTLINE_ROW_RE = re.compile(
-    r"^\|\s*第\s*(?P<part>\d+)\s*部[^|]*\|[^|]*\|\s*(?P<state>[^|]*?)\s*\|\s*$"
+    r"^\|\s*第\s*(?P<part>\d+)\s*部[^|]*\|[^|]*\|\s*(?P<state>[^|]*?)\s*"
+    r"\|\s*(?P<translation>[^|]*?)\s*\|\s*$"
+)
+
+# 翻訳（#548）の進行を追う Epic。`ja-translation` / `en-translation` の文面が
+# 唯一この番号に触れるので、訳がそろえば入口ドキュメントから言及ごと消える。
+TRANSLATION_ISSUE = 548
+TRANSLATION_ISSUE_URL = (
+    f"https://github.com/shinyaoguri/metaphor/issues/{TRANSLATION_ISSUE}"
 )
 
 PUBLISHED_LABEL = "公開"
 DRAFT_LABEL = "執筆中"
+TRANSLATED_LABEL = "済"
+UNTRANSLATED_LABEL = "未"
 
 
 class StatusError(Exception):
@@ -76,6 +92,9 @@ class Part:
     title: str
     filename: str
     draft: bool
+    #: 同名の `en/NN-slug.md` があるか（Issue #548）。公開/執筆中とは別の軸で、
+    #: 「日本語は公開されているが訳はまだ」という現在地をそのまま表す。
+    translated: bool = False
 
 
 def parse_frontmatter(text: str, label: str) -> dict[str, str]:
@@ -97,8 +116,13 @@ def parse_frontmatter(text: str, label: str) -> dict[str, str]:
 def tutorial_parts() -> list[Part]:
     """本文ファイルを部番号順に読む。正典はこの frontmatter。
 
-    glob は再帰しないので、英語版（`en/NN-slug.md`、Issue #548）は入らない。
-    公開状況の正典は日本語版のままで、部番号が二重に並ぶこともない。
+    glob は再帰しないので、英語版（`en/NN-slug.md`、Issue #548）は**部としては**
+    入らない。日本語ファーストなので公開状況の正典は日本語版のままで、部番号が
+    二重に並ぶこともない。
+
+    英語版は代わりに、その部に訳があるかという 1 つの属性（`translated`）として
+    付く。これで「第 N 部は公開済みだが訳はまだ」を 1 つの表で言えて、章立て表の
+    英語版の欄が実体とずれたら `--check` が落とす。
     """
     parts: list[Part] = []
     for path in sorted(TUTORIAL_DIR.glob("[0-9][0-9]-*.md")):
@@ -114,6 +138,7 @@ def tutorial_parts() -> list[Part]:
                 title=fields["title"],
                 filename=path.name,
                 draft=fields.get("draft") == "true",
+                translated=(TUTORIAL_DIR / EN_DIR_NAME / path.name).is_file(),
             )
         )
     if not parts:
@@ -175,6 +200,61 @@ def en_status(parts: list[Part]) -> str:
     return f"{head}, {noun} {listed} {verb} being written"
 
 
+def _translation_link() -> str:
+    return f"[#{TRANSLATION_ISSUE}]({TRANSLATION_ISSUE_URL})"
+
+
+def ja_translation(parts: list[Part]) -> str:
+    """英語版がどこまで入っているかの 1 文（日本語、Issue #956）。
+
+    公開状況（`ja_status`）とは別の軸。訳は日本語版の公開順に入るとは限らないので
+    飛びも表現する。全部そろったら追跡 Issue への言及ごと落として、読者に
+    「まだ途中」と誤解させない。
+    """
+    translated = [p.number for p in parts if p.translated]
+    if translated and len(translated) == len(parts):
+        return "英語版もすべての部がそろっています"
+    link = _translation_link()
+    if not translated:
+        return f"英語版は {link} で後追いします"
+    if _contiguous_from_one(translated):
+        head = (
+            f"第 {translated[0]} 部"
+            if len(translated) == 1
+            else f"第 {translated[0]} 部〜第 {translated[-1]} 部"
+        )
+    else:
+        head = "第 " + "・".join(str(n) for n in translated) + " 部"
+    return f"英語版は{head}が訳出済みで、残りは {link} で後追いします"
+
+
+def en_translation(parts: list[Part]) -> str:
+    """英語版がどこまで入っているかの 1 文（英語、Issue #956）。
+
+    `ja_translation` と同じ内容を英語の入口向けに言う。文の頭に置ける形（大文字
+    始まり・句点を含まない）にして、表のセルにも地の文にもそのまま差し込める。
+    """
+    translated = [p.number for p in parts if p.translated]
+    if translated and len(translated) == len(parts):
+        return "Every part is available in English"
+    link = _translation_link()
+    if not translated:
+        return f"The prose is Japanese for now — an English edition is tracked in {link}"
+    if _contiguous_from_one(translated):
+        head = (
+            f"Part {translated[0]} is available in English"
+            if len(translated) == 1
+            else f"Parts {translated[0]}–{translated[-1]} are available in English"
+        )
+    else:
+        head = (
+            "Parts "
+            + ", ".join(str(n) for n in translated)
+            + " are available in English"
+        )
+    return f"{head} — the rest is tracked in {link}"
+
+
 def ja_links(parts: list[Part], prefix: str) -> str:
     return " / ".join(
         f"[第 {p.number} 部 {p.title}]({prefix}{p.filename})"
@@ -188,6 +268,10 @@ def render_marker(kind: str, parts: list[Part], label: str) -> str:
         return ja_status(parts)
     if kind == "en-status":
         return en_status(parts)
+    if kind == "ja-translation":
+        return ja_translation(parts)
+    if kind == "en-translation":
+        return en_translation(parts)
     if kind.startswith("ja-links"):
         _, _, prefix = kind.partition(":")
         return ja_links(parts, prefix)
@@ -222,7 +306,7 @@ def check_links(parts: list[Part]) -> list[str]:
 
 
 def check_outline(parts: list[Part]) -> list[str]:
-    """章立て表の状態の欄が frontmatter と一致することを見る。"""
+    """章立て表の状態と英語版の欄が、frontmatter・`en/` の実体と一致することを見る。"""
     by_number = {p.number: p for p in parts}
     seen: set[int] = set()
     problems: list[str] = []
@@ -242,6 +326,13 @@ def check_outline(parts: list[Part]) -> list[str]:
             problems.append(
                 f"{OUTLINE_DOC}:{i}: 第 {number} 部の状態が "
                 f"'{row.group('state')}' だが frontmatter では '{expected}'"
+            )
+        translation = TRANSLATED_LABEL if part.translated else UNTRANSLATED_LABEL
+        if row.group("translation") != translation:
+            problems.append(
+                f"{OUTLINE_DOC}:{i}: 第 {number} 部の英語版が "
+                f"'{row.group('translation')}' だが docs/tutorial/"
+                f"{EN_DIR_NAME}/ では '{translation}'"
             )
     for number in sorted(set(by_number) - seen):
         problems.append(f"{OUTLINE_DOC}: 第 {number} 部が章立て表に無い")

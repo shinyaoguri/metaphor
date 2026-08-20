@@ -161,6 +161,73 @@ struct TweenTests {
         #expect(tw.isActive == true)
     }
 
+    // 以下 4 本は #946 で足した isWaiting を固定する。
+    // 「袖で出番を待っている（.delaying）」を「そもそも出番が無い（.idle）」から
+    // 外から区別できることが本題。
+
+    @Test("delay 待機中は isWaiting だけが true になる")
+    @MainActor
+    func waitingDuringDelay() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5)
+        tw.start()
+
+        #expect(tw.isWaiting == true)
+        #expect(tw.isActive == false, "待機中はまだ動いていない")
+        #expect(tw.isComplete == false)
+    }
+
+    @Test("待機が明けると isWaiting と isActive が入れ替わる")
+    @MainActor
+    func waitingFlipsToActiveWhenDelayElapses() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5)
+        tw.start()
+        #expect(tw.isWaiting == true)
+
+        tw.update(0.5)  // delay ちょうど分。ここで .delaying → .running
+
+        #expect(tw.isWaiting == false)
+        #expect(tw.isActive == true)
+    }
+
+    @Test("delay を付けなければ start() 直後から isWaiting は false")
+    @MainActor
+    func noDelayNeverWaits() {
+        // 境界: delayDuration == 0 は .delaying を通らず直接 .running に入る。
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+
+        #expect(tw.isWaiting == false)
+        #expect(tw.isActive == true)
+    }
+
+    @Test("走っていないトゥイーンは isWaiting も false（.idle と区別できる）")
+    @MainActor
+    func idleAndFinishedAreNotWaiting() {
+        // これが本題。delay 付きでも「待機中でない」3 つの状態はすべて false になる。
+        // ここが true に漏れると、isWaiting は「delay が設定されている」を意味してしまい、
+        // .delaying を指すプロパティとして役に立たない。
+        let notStarted = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        notStarted.delay(0.5)
+        #expect(notStarted.isWaiting == false, "未 start() は袖で待ってすらいない")
+
+        let afterReset = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        afterReset.delay(0.5)
+        afterReset.start()
+        #expect(afterReset.isWaiting == true)
+        afterReset.reset()
+        #expect(afterReset.isWaiting == false, "reset() は .idle へ落とす")
+
+        let afterCancel = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        afterCancel.delay(0.5)
+        afterCancel.start()
+        #expect(afterCancel.isWaiting == true)
+        afterCancel.cancel()
+        #expect(afterCancel.isWaiting == false, "cancel() は .complete へ落とす")
+        #expect(afterCancel.isComplete == true)
+    }
+
     @Test("Tween yoyo mode")
     @MainActor
     func yoyoMode() {
@@ -175,6 +242,56 @@ struct TweenTests {
         // Second cycle (reverse)
         tw.update(0.5)
         #expect(tw.value < 100)  // going backwards
+    }
+
+    // 以下 3 本は #840 で doc に書き足した「組み合わせたときの挙動」を固定する。
+    // どれも実装は妥当だが doc からは読み取れず、読者が別の期待を持つ地点。
+
+    @Test("yoyo() 単独では往復せず to で完了する")
+    @MainActor
+    func yoyoWithoutRepeatDoesNotReverse() {
+        // 方向が反転するのはサイクルとサイクルの境目。既定は 1 サイクルなので
+        // 境目が来る前に完了し、yoyo() だけでは何も起きない。
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.yoyo()
+        tw.start()
+
+        tw.update(1.0)
+        #expect(tw.isComplete == true)
+        #expect(tw.value == 100.0, "往復したなら from(0) に戻っているはず")
+    }
+
+    @Test("yoyo() の着地点は総サイクル数の偶奇で決まる")
+    @MainActor
+    func yoyoFinalValueDependsOnCycleParity() {
+        // 往路 → 復路 → 往路 … と交互に走るので、偶数サイクルで終われば from、
+        // 奇数サイクルで終われば to に着く。
+        for (cycles, expected) in [(2, Float(0)), (3, Float(100)), (4, Float(0))] {
+            let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+            tw.yoyo().repeatCount(cycles)
+            tw.start()
+            for _ in 0..<cycles { tw.update(1.0) }
+
+            #expect(tw.isComplete == true, "cycles=\(cycles)")
+            #expect(tw.value == expected, "cycles=\(cycles) の着地点が \(tw.value)")
+        }
+    }
+
+    @Test("delay は繰り返しの初回サイクルにのみ掛かる")
+    @MainActor
+    func delayAppliesOnlyToFirstCycle() {
+        // 0.25 秒刻み（Float で誤差なく積める）。delay 0.5 + duration 1.0 × 3 サイクル
+        // = 3.5 秒 = 14 刻みで完了する。毎周 delay が掛かるなら 4.5 秒 = 18 刻みになる。
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5).repeatCount(3)
+        tw.start()
+
+        var ticks = 0
+        while !tw.isComplete && ticks < 100 {
+            tw.update(0.25)
+            ticks += 1
+        }
+        #expect(ticks == 14, "完了まで \(ticks) 刻み。毎周 delay が掛かるなら 18 になる")
     }
 
     @Test("Tween repeat count")
@@ -319,5 +436,220 @@ struct TweenManagerTests {
         #expect(manager.count == 5)
         manager.clear()
         #expect(manager.count == 0)
+    }
+}
+
+// MARK: - Tween registration lifetime
+
+/// 登録の唯一の出口が「完了」だったため、そこへ至らない経路
+/// （未 start のまま・完了後にもう一度 `start()`）が噛み合っていなかった。
+/// 登録の寿命が `Tween` の状態機械と一致することを固定する。
+@Suite("Tween registration lifetime")
+struct TweenRegistrationLifetimeTests {
+
+    @Test("完走して登録が外れたトゥイーンでも start() でもう一度動く")
+    @MainActor
+    func restartAfterCompletionReregisters() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+
+        manager.update(0.5)
+        #expect(tw.isComplete == true)
+        #expect(manager.count == 0)  // 完了したので登録は外れている
+
+        tw.start()  // 再演。登録し直されないと二度と動かない
+        #expect(manager.count == 1)
+
+        manager.update(0.25)
+        #expect(abs(tw.value - 50.0) < 0.01)
+        #expect(tw.isActive == true)
+    }
+
+    @Test("未 start のトゥイーンは滞留せず、参照も解放される")
+    @MainActor
+    func idleTweensAreEvictedAndReleased() {
+        let manager = TweenManager()
+        for _ in 0..<600 {
+            manager.add(Tween(from: 0.0 as Float, to: 1.0, duration: 1.0))
+        }
+        #expect(manager.count == 600)
+
+        manager.update(1.0 / 60)
+        #expect(manager.count == 0)
+
+        // AnyTween の 2 クロージャがトゥイーンを強参照するので、外れないことは
+        // そのままメモリ滞留を意味する。外れれば解放されることまで見る。
+        weak var weakTween: Tween<Float>?
+        do {
+            let tw = Tween(from: 0.0 as Float, to: 1.0, duration: 1.0)
+            weakTween = tw
+            manager.add(tw)
+        }
+        #expect(weakTween != nil)  // マネージャが握っている
+        manager.update(1.0 / 60)
+        #expect(weakTween == nil)  // 未 start なので外れ、解放される
+    }
+
+    @Test("reset() で idle に戻したトゥイーンも外れ、start() で戻る")
+    @MainActor
+    func resetEvictsAndStartRestores() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+        manager.update(0.5)
+        #expect(manager.count == 1)
+
+        tw.reset()
+        manager.update(1.0 / 60)
+        #expect(manager.count == 0)
+        #expect(tw.value == 0)
+
+        tw.start()
+        #expect(manager.count == 1)
+        manager.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+
+    @Test("同じトゥイーンを二重に add しても 1 倍速のまま")
+    @MainActor
+    func doubleAddDoesNotDoubleSpeed() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+        manager.add(tw)  // 2 回目は弾かれる
+        #expect(manager.count == 1)
+
+        manager.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)  // 2 倍速なら 100.0 になり完了してしまう
+        #expect(tw.isComplete == false)
+    }
+
+    @Test("start() 済みのトゥイーンを add しても二重登録にならない")
+    @MainActor
+    func addAfterStartDoesNotDoubleRegister() {
+        // `tween()` ファクトリは add するが start しない。利用者が受け取ってから
+        // start() すると再登録が走るので、そこで二重登録にならないことを見る。
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        manager.add(tw)   // ファクトリ相当（まだ .idle）
+        tw.start()        // ここで再登録が走る
+        #expect(manager.count == 1)
+
+        manager.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+}
+
+// MARK: - Tween invalid delta
+
+/// `TweenManager.update(_:)` は public で、利用者が自前で計算した `deltaTime` を
+/// そのまま受け取る。非有限・負・巨大な刻みでも状態が壊れず、必ず停止することを固定する。
+@Suite("Tween invalid delta")
+struct TweenInvalidDeltaTests {
+
+    @Test("NaN の刻みを 1 回受けても状態が汚れず、次のフレームから復帰する")
+    @MainActor
+    func nanDeltaDoesNotPoisonState() {
+        let manager = TweenManager()
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        manager.add(tw)
+
+        for _ in 0..<16 { manager.update(1.0 / 64) }  // 0.25 秒ぶん進める
+        #expect(abs(tw.value - 25.0) < 0.01)
+
+        manager.update(Float.nan)  // 壊れた刻みを 1 回だけ渡す
+        #expect(tw.value.isNaN == false)
+        #expect(abs(tw.value - 25.0) < 0.01)  // 値は据え置き
+
+        for _ in 0..<600 { manager.update(1.0 / 64) }  // 以降は通常どおり進んで完了する
+        #expect(tw.value == 100.0)
+        #expect(tw.isComplete == true)
+        #expect(manager.count == 0)  // 完了したので登録も外れる
+    }
+
+    @Test("ディレイ中に NaN を受けてもディレイが明ける")
+    @MainActor
+    func nanDeltaDuringDelayDoesNotStall() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.delay(0.5)
+        tw.start()
+
+        tw.update(0.25)
+        tw.update(Float.nan)  // ディレイ中に壊れた刻み
+        #expect(tw.value.isNaN == false)
+
+        tw.update(0.25)  // ここでディレイが明ける
+        #expect(tw.isActive == true)
+
+        tw.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+
+    @Test("負の刻みは無視され、from を下回って外挿されない")
+    @MainActor
+    func negativeDeltaIsIgnored() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
+        tw.start()
+        tw.update(0.5)
+        #expect(abs(tw.value - 50.0) < 0.01)
+
+        tw.update(-0.75)
+        #expect(tw.value >= 0)                // from を下回らない
+        #expect(abs(tw.value - 50.0) < 0.01)  // 進みも戻りもしない
+
+        tw.update(0.25)  // 続きは通常どおり
+        #expect(abs(tw.value - 75.0) < 0.01)
+    }
+
+    // 以下 3 本は修正前だと while を抜けられずテストランナーごとハングするため
+    // .timeLimit を必ず付ける。
+    @Test("無限リピートに .infinity を渡しても停止する", .timeLimit(.minutes(1)))
+    @MainActor
+    func infiniteDeltaWithInfiniteRepeatTerminates() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+            .repeatCount(0)  // 無限リピート
+        tw.start()
+        tw.update(0.25)
+
+        tw.update(.infinity)
+        #expect(tw.isActive == true)
+        #expect(tw.value.isNaN == false)
+        #expect(abs(tw.value - 50.0) < 0.01)  // 直前の位置のまま
+    }
+
+    @Test("無限リピートに巨大な有限刻みを渡しても桁飽和で停止する", .timeLimit(.minutes(1)))
+    @MainActor
+    func hugeFiniteDeltaWithInfiniteRepeatTerminates() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+            .repeatCount(0)  // 無限リピート
+        tw.start()
+
+        // Float では 1e9 - 0.5 == 1e9（ulp(1e9) = 64）。有限値なので入口の guard では
+        // 止まらず、while 側で飽和を検出して抜ける必要がある。
+        tw.update(1e9)
+        #expect(tw.isActive == true)
+        #expect(tw.value.isNaN == false)
+
+        tw.update(0.25)  // サイクル先頭へ丸まっているので通常どおり進む
+        #expect(abs(tw.value - 50.0) < 0.01)
+    }
+
+    @Test("有限リピートに巨大な刻みを渡すと全サイクル経過とみなして完了する",
+          .timeLimit(.minutes(1)))
+    @MainActor
+    func hugeFiniteDeltaWithFiniteRepeatCompletes() {
+        let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })
+            .repeatCount(3)
+        tw.start()
+
+        // 飽和検出が有限リピートの完了を横取りしないこと（修正前もここは完了していた）。
+        tw.update(1e9)
+        #expect(tw.isComplete == true)
+        #expect(tw.value == 100.0)
     }
 }

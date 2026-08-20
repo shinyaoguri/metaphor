@@ -1,9 +1,9 @@
 {
-  "count": 282,
+  "count": 286,
   "statusCounts": {
-    "supported": 262,
+    "supported": 270,
     "partial": 0,
-    "stub": 10,
+    "stub": 6,
     "obsolete": 10
   },
   "examples": [
@@ -75,7 +75,6 @@
         "fill_"
       ],
       "tags": [
-        "3d",
         "basics",
         "brightness",
         "color"
@@ -297,8 +296,7 @@
       "tags": [
         "basics",
         "conditionals2",
-        "control",
-        "typography"
+        "control"
       ]
     },
     {
@@ -351,7 +349,6 @@
       "tags": [
         "basics",
         "control",
-        "interaction",
         "logicaloperators"
       ]
     },
@@ -778,7 +775,6 @@
         "constrain_"
       ],
       "tags": [
-        "3d",
         "basics",
         "constrain",
         "input",
@@ -890,7 +886,6 @@
         "mouseY"
       ],
       "tags": [
-        "3d",
         "basics",
         "input",
         "interaction",
@@ -911,7 +906,6 @@
         "mouseDragged_"
       ],
       "tags": [
-        "3d",
         "basics",
         "input",
         "interaction",
@@ -1291,8 +1285,7 @@
       "tags": [
         "basics",
         "math",
-        "noise2d",
-        "typography"
+        "noise2d"
       ]
     },
     {
@@ -1307,11 +1300,9 @@
         "noise_"
       ],
       "tags": [
-        "3d",
         "basics",
         "math",
-        "noise3d",
-        "typography"
+        "noise3d"
       ]
     },
     {
@@ -1342,7 +1333,6 @@
       "featured": [],
       "tags": [
         "basics",
-        "interaction",
         "math",
         "operatorprecedence"
       ]
@@ -1574,6 +1564,7 @@
         "shape_"
       ],
       "tags": [
+        "3d",
         "basics",
         "loaddisplayobj",
         "shape"
@@ -1671,8 +1662,7 @@
       "tags": [
         "basics",
         "creategraphics",
-        "structure",
-        "typography"
+        "structure"
       ]
     },
     {
@@ -1863,6 +1853,7 @@
         "popMatrix_"
       ],
       "tags": [
+        "3d",
         "basics",
         "rotatepushpop",
         "transform"
@@ -1881,6 +1872,7 @@
         "rotateY_"
       ],
       "tags": [
+        "3d",
         "basics",
         "rotatexy",
         "transform"
@@ -1989,7 +1981,6 @@
         "CaptureDevice"
       ],
       "tags": [
-        "3d",
         "basics",
         "cameraswitching",
         "export",
@@ -2056,6 +2047,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "depthsort",
         "graphics"
@@ -2116,7 +2108,6 @@
       "description": "",
       "featured": [],
       "tags": [
-        "3d",
         "demos",
         "graphics",
         "meshtweening"
@@ -2162,6 +2153,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "graphics",
         "patch"
@@ -2173,10 +2165,11 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "graphics",
         "planets"
@@ -2207,6 +2200,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "graphics",
         "rotatingarcs"
@@ -2233,10 +2227,11 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "graphics",
         "trefoil"
@@ -2248,10 +2243,11 @@
       "group": "Demos",
       "subcategory": "Graphics",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "graphics",
         "wiggling"
@@ -2282,6 +2278,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "cubicgridimmediate",
         "demos",
         "performance"
@@ -2344,6 +2341,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "esfera",
         "performance"
@@ -2409,6 +2407,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "particles",
         "performance",
@@ -2421,10 +2420,11 @@
       "group": "Demos",
       "subcategory": "Performance",
       "level": "",
-      "status": "stub",
+      "status": "supported",
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "particles",
         "performance",
@@ -2457,6 +2457,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "demos",
         "multiplewindows",
         "tests"
@@ -2635,8 +2636,22 @@
       "tags": [
         "3d",
         "dynamicmeshtexture",
-        "samples",
-        "typography"
+        "samples"
+      ]
+    },
+    {
+      "title": "EnvironmentIBL",
+      "path": "Examples/Samples/EnvironmentIBL",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "environmentibl",
+        "samples"
       ]
     },
     {
@@ -2649,6 +2664,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "instancedcubes",
         "samples"
       ]
@@ -2727,6 +2743,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "probebenchmark",
         "samples"
       ]
@@ -2755,7 +2772,6 @@
       "description": "",
       "featured": [],
       "tags": [
-        "3d",
         "raytracing",
         "samples"
       ]
@@ -2806,6 +2822,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "samples",
         "scenegraphbasics"
       ]
@@ -2820,6 +2837,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "samples",
         "scenegraphhybrid"
       ]
@@ -2848,6 +2866,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "live",
         "samples",
         "syphon",
@@ -2884,6 +2903,21 @@
         "samples",
         "syphon",
         "syphontriplewindow"
+      ]
+    },
+    {
+      "title": "ToneMapping",
+      "path": "Examples/Samples/ToneMapping",
+      "group": "Samples",
+      "subcategory": "",
+      "level": "",
+      "status": "supported",
+      "description": "",
+      "featured": [],
+      "tags": [
+        "3d",
+        "samples",
+        "tonemapping"
       ]
     },
     {
@@ -3722,7 +3756,6 @@
         "Array"
       ],
       "tags": [
-        "3d",
         "gui",
         "handles",
         "interaction",
@@ -3781,6 +3814,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "geometry",
         "icosahedra",
         "topics"
@@ -3812,6 +3846,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "geometry",
         "rgbcube",
         "topics"
@@ -3827,6 +3862,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "geometry",
         "shapetransform",
         "topics"
@@ -3842,6 +3878,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "geometry",
         "spacejunk",
         "topics"
@@ -3857,6 +3894,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "geometry",
         "topics",
         "toroid"
@@ -3872,6 +3910,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "geometry",
         "topics",
         "vertices"
@@ -3997,6 +4036,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "explode",
         "image",
         "image-processing",
@@ -4013,6 +4053,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "extrusion",
         "image",
         "image-processing",
@@ -4106,6 +4147,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "image",
         "image-processing",
         "topics",
@@ -4360,6 +4402,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "cubeswithincube",
         "motion",
         "topics"
@@ -4516,6 +4559,28 @@
       ]
     },
     {
+      "title": "Custom Shader 2D",
+      "path": "Examples/Topics/Shaders/CustomShader2D",
+      "group": "Topics",
+      "subcategory": "Shaders",
+      "level": "Intermediate",
+      "status": "supported",
+      "description": "Apply a custom Metal fragment shader to 2D shapes. loadShader() reads the MSL file, shader() applies it so rect()/circle() become surfaces the shader runs on, and resetShader() goes back to the built-in shader. Built-in...",
+      "featured": [
+        "loadShader_fragment_",
+        "shader_",
+        "resetShader_",
+        "setParameters_"
+      ],
+      "tags": [
+        "customshader2d",
+        "interaction",
+        "shader",
+        "shaders",
+        "topics"
+      ]
+    },
+    {
       "title": "Deform",
       "path": "Examples/Topics/Shaders/Deform",
       "group": "Topics",
@@ -4572,6 +4637,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "cpu-approximation",
         "edgefilter",
         "image",
@@ -4589,6 +4655,7 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "cpu-approximation",
         "glossyfisheye",
         "shaders",
@@ -4702,7 +4769,8 @@
       "description": "",
       "featured": [],
       "tags": [
-        "cpu-approximation",
+        "3d",
+        "shader",
         "shaders",
         "toonshading",
         "topics"
@@ -4887,10 +4955,10 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "texturecube",
         "textures",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4903,10 +4971,10 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "texturecylinder",
         "textures",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4919,10 +4987,10 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "texturequad",
         "textures",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4938,8 +5006,7 @@
         "3d",
         "textures",
         "texturesphere",
-        "topics",
-        "typography"
+        "topics"
       ]
     },
     {
@@ -4952,8 +5019,30 @@
       "description": "",
       "featured": [],
       "tags": [
+        "3d",
         "textures",
         "texturetriangle",
+        "topics"
+      ]
+    },
+    {
+      "title": "Text Particles",
+      "path": "Examples/Topics/Typography/TextParticles",
+      "group": "Topics",
+      "subcategory": "Typography",
+      "level": "Intermediate",
+      "status": "supported",
+      "description": "Generative typography with textToPoints(). Glyph outlines become a point cloud that particles fly into; textToContours() draws the same outlines as strokes behind them. Move the mouse to push the particles away and watc...",
+      "featured": [
+        "textToPoints_",
+        "textToContours_",
+        "textSize_",
+        "textAlign_"
+      ],
+      "tags": [
+        "interaction",
+        "particles",
+        "textparticles",
         "topics",
         "typography"
       ]

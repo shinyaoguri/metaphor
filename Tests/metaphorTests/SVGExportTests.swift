@@ -157,6 +157,25 @@ struct SVGExportTests {
         #expect(svg.contains(#"<ellipse cx="100" cy="50""#))
     }
 
+    @Test("arc with reversed angles emits no element (#743)")
+    func arcReversedAnglesEmitNothing() throws {
+        let canvas = try makeCanvas()
+        let recorder = attach(canvas)
+        canvas.arc(50, 50, 40, 40, Float.pi, Float.pi * 0.25, .pie)
+        let svg = recorder.svgString()
+        #expect(!svg.contains("<path"))
+        #expect(!svg.contains("<ellipse"))
+    }
+
+    @Test("arc sweeping beyond 2pi is clamped to an ellipse (#743)")
+    func arcOverfullSweepIsClamped() throws {
+        let canvas = try makeCanvas()
+        let recorder = attach(canvas)
+        canvas.arc(50, 50, 40, 40, 0, Float.pi * 5, .open)
+        let svg = recorder.svgString()
+        #expect(svg.contains(#"<ellipse cx="50" cy="50""#))
+    }
+
     @Test("clip wraps elements in a clipPath group")
     func clipGroup() throws {
         let canvas = try makeCanvas()

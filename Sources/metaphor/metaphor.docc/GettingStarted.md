@@ -13,7 +13,7 @@ metaphor で最初のクリエイティブコーディングプロジェクト�
 ## Overview
 
 metaphor は Swift + Metal のクリエイティブコーディングライブラリです。
-``MetaphorCore/Sketch`` プロトコルを実装するだけで、ウィンドウ生成、Metal のセットアップ、レンダーループをライブラリが処理します。
+``/MetaphorCore/Sketch`` プロトコルを実装するだけで、ウィンドウ生成、Metal のセットアップ、レンダーループをライブラリが処理します。
 
 このページは API リファレンス側の最小の導入で、インストールから最初のスケッチが動くところまでを扱います。
 **metaphor がはじめてなら、[チュートリアル](https://shinyaoguri.github.io/metaphor/tutorial/)を順に読むのが近道です** —
@@ -33,7 +33,7 @@ metaphor は Swift + Metal のクリエイティブコーディングライブ�
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0")
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.10.0")
 ]
 ```
 
@@ -50,7 +50,7 @@ dependencies: [
 
 ## 最初のスケッチを作る
 
-新しい Swift ファイルを作成し、``MetaphorCore/Sketch`` プロトコルを実装します:
+新しい Swift ファイルを作成し、``/MetaphorCore/Sketch`` プロトコルを実装します:
 
 ```swift
 import metaphor
@@ -80,7 +80,7 @@ final class MySketch: Sketch {
 
 ## スケッチのライフサイクル
 
-``MetaphorCore/Sketch`` プロトコルは、特定のタイミングで呼ばれるコールバックメソッドを提供します:
+``/MetaphorCore/Sketch`` プロトコルは、特定のタイミングで呼ばれるコールバックメソッドを提供します:
 
 - `setup()` — スケッチ開始時に一度だけ呼ばれます。リソースの読み込みや状態の初期化に使います。
 - `draw()` — 毎フレーム呼ばれます。描画コードをここに書きます。
@@ -93,7 +93,7 @@ final class MySketch: Sketch {
 ## 設定
 
 ウィンドウサイズ・タイトル・フレームレート・Syphon 出力などは ``MetaphorCore/SketchConfig`` で指定し、
-``MetaphorCore/Sketch`` の `config` プロパティから返します。すべてのパラメータに既定値があるため、
+``/MetaphorCore/Sketch`` の `config` プロパティから返します。すべてのパラメータに既定値があるため、
 `SketchConfig()` だけで 1920×1080・60fps のキャンバスが得られます。個々のパラメータは
 ``MetaphorCore/SketchConfig`` を参照してください。
 
@@ -105,8 +105,8 @@ final class MySketch: Sketch {
 ### 組み込みプロパティ
 
 キャンバスの大きさ（`width` / `height`）、描いたフレーム数（`frameCount`）、
-経過時間（`time` / `deltaTime`）は、すべての ``MetaphorCore/Sketch`` 実装からプロパティとして読めます。
-型と意味は ``MetaphorCore/Sketch`` を参照してください。
+経過時間（`time` / `deltaTime`）は、すべての ``/MetaphorCore/Sketch`` 実装からプロパティとして読めます。
+型と意味は ``/MetaphorCore/Sketch`` を参照してください。
 
 ### 入力
 
@@ -117,7 +117,7 @@ final class MySketch: Sketch {
 `keyReleased()` / `keyTyped()`）として受け取ります。押しっぱなしのキーは
 `isKeyDown(_:)` で 1 つずつ問い合わせます（同時押しに対応するため）。
 
-個々のシグネチャは ``MetaphorCore/Sketch`` を参照してください。値とコールバックの使い分け、
+個々のシグネチャは ``/MetaphorCore/Sketch`` を参照してください。値とコールバックの使い分け、
 当たり判定から UI を組み立てる方法は、チュートリアル
 [第 4 部 入力を受ける](https://shinyaoguri.github.io/metaphor/tutorial/input/)で解説しています。
 
@@ -134,7 +134,7 @@ final class MySketch: Sketch {
 }
 ```
 
-`background()`、`fill()`、`rect()`、`circle()` などの描画メソッドは ``MetaphorCore/Sketch`` プロトコルの
+`background()`、`fill()`、`rect()`、`circle()` などの描画メソッドは ``/MetaphorCore/Sketch`` プロトコルの
 エクステンションとして提供されます。内部では ``MetaphorCore/SketchContext`` に委譲されており、
 `context` プロパティから直接アクセスすることもできます。
 

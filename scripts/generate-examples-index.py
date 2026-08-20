@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -33,11 +34,11 @@ EXCLUDED_TOP_LEVEL_DIRS = {"Tutorial"}
 # Tags inferred from words in an example's path, title, description and
 # `featured` list. Cheap, but only ever as truthful as the prose it reads —
 # anything that has to describe what the *code* does belongs in
-# `source_tags_for()` instead (see the `shader` tag, removed from here in #489).
+# `source_tags_for()` instead (see the `shader` tag, removed from here in #489,
+# and `3d`, removed in #940).
 KEYWORD_TAGS = {
     "audio": ("audio", "fft", "sound", "beat", "microphone"),
     "video": ("video", "capture", "movie"),
-    "3d": ("3d", "box", "sphere", "camera", "light", "mesh", "raytracing", "ray tracing"),
     "particles": ("particle", "particles", "emitter"),
     "physics": ("physics", "collision", "gravity", "bounce"),
     "image": ("image", "pixel", "filter", "photo"),
@@ -45,6 +46,62 @@ KEYWORD_TAGS = {
     "interaction": ("mouse", "keyboard", "input", "drag", "press"),
     "live": ("osc", "midi", "syphon", "vj", "live"),
     "export": ("record", "export", "gif", "video"),
+}
+
+
+# `KEYWORD_TAGS` needles are matched as *words*, not as bare substrings (#497).
+#
+# A plain `needle in haystack` tagged 13 examples from the inside of a longer
+# word: "Texture" → typography via `text`, "keyword" → typography via `word`,
+# "expression" → interaction via `press`, "lightness" → 3d via `light`.
+#
+# Three pieces — dropping any of the first two silently untags examples that
+# should keep their tag (see the regression tests):
+#
+# - **hump splitting**, so identifier-ish text becomes words before it is
+#   matched ("TextureSphere" → "texture sphere", "mousePressed_" →
+#   "mouse pressed_").
+#   Split on lowercase→uppercase, on an acronym running into a word
+#   (`OSCReceiver` → `OSC Receiver`), and on letter→digit.
+# - **alphanumeric boundaries** instead of `\b`, because `_` is a word
+#   character to `re` and metadata `featured` entries are written with a
+#   trailing underscore (`loadPixels_` still has to match `pixel`).
+# - **inflection suffixes**, because whole-word-only matching drops the plurals
+#   and verb forms the prose actually uses: images / pixels / recorded /
+#   recording.
+#
+# Two sub-rules lost their real-data consumer when `3d` moved to source
+# evidence (#940), because `3d` held the only needle that met a digit run
+# (`Noise3D`) and the only `es` plural that mattered (`boxes` → `box`):
+# the **letter→digit** split and the **`es`** branch of the inflection group
+# now change no tag in the 286-example corpus. Both are kept — they are free,
+# and the next needle with a digit or an `es` plural would need them — but they
+# are pinned by direct pattern tests rather than by example data, so nobody
+# mistakes them for data-covered behaviour.
+_INFLECTIONS = r"(?:e?s|ed|ing|ers?)?"
+_HUMP_BOUNDARY = re.compile(
+    r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])"
+)
+
+
+def split_humps(text: str) -> str:
+    """Break CamelCase / Name3D runs apart so word matching can see them."""
+    return _HUMP_BOUNDARY.sub(" ", text)
+
+
+def keyword_pattern(needle: str) -> re.Pattern[str]:
+    """Compile one `KEYWORD_TAGS` needle into a word-ish matcher.
+
+    Multi-word needles ("ray tracing") join on `\\s+` so they survive both hump
+    splitting and the newlines that Processing-era descriptions carry.
+    """
+    body = r"\s+".join(re.escape(word) for word in needle.split())
+    return re.compile(rf"(?<![a-z0-9]){body}{_INFLECTIONS}(?![a-z0-9])")
+
+
+KEYWORD_PATTERNS = {
+    tag: tuple(keyword_pattern(needle) for needle in needles)
+    for tag, needles in KEYWORD_TAGS.items()
 }
 
 
@@ -62,6 +119,61 @@ SHADER_API_MARKERS = (
     "loadShader(",
     "shader(",
 )
+
+# Calls that prove a sketch really draws with metaphor's 3D canvas (rather than
+# merely describing a "camera", a "box" or a "mesh" in prose).
+#
+# `3d` used to be a `KEYWORD_TAGS` entry. #497 made the needles match as words,
+# which killed the misfires from inside longer words, but left the ones where
+# the word is right and the *meaning* is wrong (#940): `CameraSwitching`'s
+# "cameras" are video capture devices, `Handles`' "boxes" are 2D rectangles, and
+# `Mouse2D` — a sketch with 2D in its name — was tagged `3d` because its
+# description mentions a box.
+#
+# Only calls that are 3D-exclusive count. `pushMatrix` / `popMatrix` act on both
+# canvases, and `translate` / `scale` / `vertex` have 2D overloads, so none of
+# them prove anything (ADR-0005 §8).
+THREE_D_API_CALLS = (
+    # Primitives and custom 3D shapes
+    "box", "sphere", "plane", "cylinder", "cone", "torus",
+    "beginShape3D", "endShape3D", "normal",
+    # Camera and projection
+    "camera", "perspective", "ortho", "orbitControl",
+    # Lighting
+    "lights", "noLights", "ambientLight", "directionalLight",
+    "pointLight", "spotLight",
+    # Material and shading
+    "material", "noMaterial", "createMaterial", "pbr", "metallic", "roughness",
+    "specular", "shininess", "emissive", "texture", "noTexture",
+    "environment", "noEnvironment", "toneMapping", "exposure",
+    "ambientOcclusion",
+    # Shadows
+    "enableShadows", "disableShadows", "shadowBias",
+    # Meshes
+    "mesh", "drawInstanced", "dynamicMesh", "createDynamicMesh",
+    "createBoxMesh", "createSphereMesh", "createPlaneMesh",
+    "createCylinderMesh", "createConeMesh", "createTorusMesh",
+    "loadModel", "loadModelAsync",
+    # 3D-only transforms
+    "rotateX", "rotateY", "rotateZ",
+    # Offscreen 3D buffer
+    "createGraphics3D",
+)
+
+# The call has to be metaphor's own global, so reject anything preceded by an
+# identifier character or a dot: `converter.texture(from: cgImage)` in the three
+# ML examples is Core Video plumbing, not `texture()` on a 3D shape.
+THREE_D_CALL = re.compile(
+    r"(?<![A-Za-z0-9_.])(?:"
+    + "|".join(re.escape(call) for call in THREE_D_API_CALLS)
+    + r")\s*\("
+)
+
+# Comments describe intent, not what runs. `SyphonTripleWindow` documents a
+# "Morphing wireframe sphere" and then hand-rolls the projection with 2D lines —
+# reading its comments would tag it `3d` for a sphere it never calls.
+LINE_COMMENT = re.compile(r"//.*")
+
 
 # Directories never scanned for source evidence: build products are gitignored,
 # so reading them would make the generated index depend on local state.
@@ -128,40 +240,52 @@ def _files_in(example_dir: Path, pattern: str) -> list[Path]:
     )
 
 
+def _swift_sources(example_dir: Path) -> list[str]:
+    """Read the example's own Swift sources (never Package.swift, never build output)."""
+    sources: list[str] = []
+    for path in _files_in(example_dir, "*.swift"):
+        if path.name == "Package.swift":
+            continue
+        try:
+            sources.append(path.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    return sources
+
+
 def source_tags_for(example_dir: Path, status: str) -> set[str]:
-    """Derive shader-related tags from an example's files, not from its name.
+    """Derive capability tags from an example's files, not from its name.
 
     ``shader`` used to be a ``KEYWORD_TAGS`` entry, so the substring match tagged
     every sketch under ``Examples/Topics/Shaders/`` — all of which reimplement the
     original GLSL effect on the CPU — plus every description that merely says
     "metaphor is Metal-only". Agents then read those entries as shader references
-    (#489). Decide from the files instead:
+    (#489). ``3d`` had the same disease one level up: the needle matched the right
+    *word* with the wrong *meaning* (#940). Decide from the files instead:
 
     - ``shader``: the sketch calls metaphor's shader / post-process API, or ships
       its own ``.metal`` source.
+    - ``3d``: the sketch calls a 3D-exclusive metaphor API (see
+      ``THREE_D_API_CALLS``). No status gate — if the code calls ``box()`` it
+      draws a box, whatever the example's lifecycle says.
     - ``cpu-approximation``: the sketch keeps the original Processing sample's
       ``.glsl`` beside it but recreates the effect on the CPU. Only meaningful for
       examples that actually run — a ``stub``/``obsolete`` placeholder implements
       nothing to approximate with.
 
-    Both flip on their own once an example is ported to a real shader, so the
-    index cannot drift back out of sync with the code.
+    All of them flip on their own as an example is ported, so the index cannot
+    drift back out of sync with the code.
     """
     tags: set[str] = set()
+    sources = _swift_sources(example_dir)
 
     if _files_in(example_dir, "*.metal"):
         tags.add("shader")
-    else:
-        for path in _files_in(example_dir, "*.swift"):
-            if path.name == "Package.swift":
-                continue
-            try:
-                source = path.read_text(encoding="utf-8")
-            except OSError:
-                continue
-            if any(marker in source for marker in SHADER_API_MARKERS):
-                tags.add("shader")
-                break
+    elif any(marker in source for source in sources for marker in SHADER_API_MARKERS):
+        tags.add("shader")
+
+    if any(THREE_D_CALL.search(LINE_COMMENT.sub("", source)) for source in sources):
+        tags.add("3d")
 
     if (
         "shader" not in tags
@@ -174,13 +298,13 @@ def source_tags_for(example_dir: Path, status: str) -> set[str]:
 
 
 def tags_for(rel_path: Path, metadata: dict, source_tags: set[str] | None = None) -> list[str]:
-    haystack = " ".join([
+    haystack = split_humps(" ".join([
         str(rel_path),
         str(metadata.get("title", "")),
         str(metadata.get("name", "")),
         str(metadata.get("description", "")),
         " ".join(str(x) for x in metadata.get("featured", []) or []),
-    ]).lower()
+    ])).lower()
 
     tags: set[str] = set()
     for part in rel_path.parts:
@@ -188,8 +312,8 @@ def tags_for(rel_path: Path, metadata: dict, source_tags: set[str] | None = None
         if normalized:
             tags.add(normalized)
 
-    for tag, needles in KEYWORD_TAGS.items():
-        if any(needle in haystack for needle in needles):
+    for tag, patterns in KEYWORD_PATTERNS.items():
+        if any(pattern.search(haystack) for pattern in patterns):
             tags.add(tag)
 
     tags |= source_tags or set()
@@ -271,10 +395,11 @@ def render_markdown(examples: list[dict]) -> str:
         "  post-process API (`addPostEffect`, `createPostEffect`, `createMaterial`,",
         "  `createEffectPass`, ...) or ships its own `.metal` source.",
         "  `cpu-approximation` marks the opposite case — a port of a Processing",
-        "  sample whose original was GLSL, redone with CPU pixel loops. Everything",
-        "  under `Examples/Topics/Shaders/` is `cpu-approximation`: read those for",
-        "  the effect, never as shader references. 2D custom shaders",
-        "  (`loadShader()` / `shader()`) are not implemented yet — issue #291.",
+        "  sample whose original was GLSL, redone with CPU pixel loops. Every",
+        "  example under `Examples/Topics/Shaders/` except `CustomShader2D` is",
+        "  `cpu-approximation`: read those for the effect, never as shader",
+        "  references. For 2D custom shaders (`loadShader()` / `createShader()` /",
+        "  `shader()` / `resetShader()`), `CustomShader2D` is the reference.",
         "",
         "## Machine-Readable Access",
         "",

@@ -203,6 +203,14 @@ public final class MShape {
     /// このシェイプに割り当てられたテクスチャ。
     public var texture: MTLTexture?
 
+    /// このシェイプの ``fill(_:)`` / ``stroke(_:)`` が数値を解釈するときの色モード（#853）。
+    ///
+    /// ``Sketch/createShape()`` した時点のスケッチの `colorMode()` を写し取ります
+    /// （fill / stroke / material と同じ「作成時のスナップショット」）。これが無いと
+    /// 同じ `fill(128)` がシェイプ定義の中と外で別の色になります。
+    /// スケッチ文脈を持たずに組んだシェイプは既定（RGB 0-255）のままです。
+    var colorModeConfig: ColorModeConfig
+
     // MARK: - Per-Shape Transform
 
     /// このシェイプの累積2D変換行列。
@@ -257,6 +265,14 @@ public final class MShape {
     /// 3Dカスタムシェイプ（path3D）用のキャッシュされたメッシュ。
     var cachedMesh3D: Mesh?
 
+    /// path3D のストローク用にキャッシュされたメッシュ（#735）。
+    ///
+    /// 線分を退化三角形 `(a, b, b)` として持ちます。ワイヤーフレーム描画が三角形の 3 辺を
+    /// 線で描くため、これを ``cachedMesh3D`` と別に流すと「面の縁取り」が引けます
+    /// （塗りメッシュ自身をワイヤーフレーム化するとテッセレーションの対角線まで出てしまう）。
+    /// 塗りメッシュのワイヤーフレームで足りる三角形系モードでは nil のままです。
+    var cachedStrokeMesh3D: Mesh?
+
     /// 3Dプリミティブ（box、sphere など）用のキャッシュされたメッシュ。
     var primitiveMesh3D: Mesh?
 
@@ -271,6 +287,50 @@ public final class MShape {
     /// 2D 描画経路での頂点カラー/UV 未対応警告を出したかどうか（一度だけ警告）。
     var warned2DVertexAttributes: Bool = false
 
+    /// `.lines` / `.points` を noStroke() で描こうとした警告を出したかどうか（一度だけ警告）。
+    var warned3DStrokeOnlyMode: Bool = false
+
+    /// 3D シェイプで `beginContour()` が呼ばれたことを一度だけ知らせたか（#736）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnContourIn3D: Bool = false
+
+    /// ``setTint(_:)`` が効かないことを一度だけ知らせたか（#852）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnTintIgnored: Bool = false
+
+    /// 3D シェイプで `beginContour()` が呼ばれたことを一度だけ警告する（#736）。
+    ///
+    /// コンター（穴）は ``tessellate2D()`` からしか読まれず、``buildMesh3D()`` は
+    /// `.polygon` をファン分割するだけなので、穴を開けたつもりのコードが
+    /// **穴の無いシェイプとして黙って通る**。絵が出てしまう分だけ気付きにくい。
+    func warnContourIn3DOnce() {
+        guard !didWarnContourIn3D else { return }
+        didWarnContourIn3D = true
+        metaphorWarning(
+            "MShape.beginContour() / endContour() only apply to 2D shapes; a 3D shape keeps no hole. "
+                + "Build the ring geometry yourself, or define the shape with 2D vertices."
+        )
+    }
+
+    /// ``setTint(_:)`` が効かないシェイプを描いたことを一度だけ警告する（#852）。
+    ///
+    /// `capturedStyle.tintColor` / `hasTint` は ``setTint(_:)`` が書くだけで、
+    /// 描画時に状態を復元する `applyShapeStyle2D` / `applyShapeStyle3D` の
+    /// **どちらも canvas へ渡していない**。しかも渡し先が無い:
+    /// 2D の MShape 経路にはテクスチャ描画自体が無く、3D のテクスチャは
+    /// `fillColor`（インスタンス色 / `uniforms.color`）を掛けて着色するので、
+    /// tint 専用のスロットがそもそも存在しない。
+    ///
+    /// 絵は出てしまう（ただ色が変わらないだけ）ぶん気付きにくいので、黙って捨てない。
+    func warnTintIgnoredOnce() {
+        guard !didWarnTintIgnored else { return }
+        didWarnTintIgnored = true
+        metaphorWarning(
+            "MShape.setTint() has no effect and is ignored. The 2D shape path draws no textures, "
+                + "and a textured 3D shape is tinted by its fill color — use setFill() instead."
+        )
+    }
+
     /// 最後のキャッシュビルド以降にジオメトリが変更されたかどうか。
     var isDirty: Bool = true
 
@@ -279,11 +339,22 @@ public final class MShape {
     /// beginShape() が呼ばれ、endShape() がまだ呼ばれていないかどうか。
     var isRecording: Bool = false
 
-    /// 次の3D頂点に適用する保留中の法線。
+    /// 以降の 3D 頂点に適用する法線（`beginShape()` から `endShape()` まで持続。#876）。
     var pendingNormal3D: SIMD3<Float>?
+
+    /// 記録中に `normal()` が一度でも呼ばれたかどうか（#738）。
+    /// 呼ばれていなければ `buildFillMesh3D()` が面法線を自動計算する。
+    /// メッシュを組むのは `endShape()` より後（遅延構築）で、そのとき
+    /// `pendingNormal3D` は畳まれているため、これとは別に持つ。
+    var usedExplicitNormal3D: Bool = false
 
     /// コンター定義内にいるかどうかを追跡。
     var isInContour: Bool = false
+
+    /// 記録中に `beginContour()` が呼ばれたかどうか（#736 の診断用）。
+    /// `beginContour()` が最初の頂点より先に来ると、その時点では `kind` がまだ
+    /// 2D/3D どちらか確定していないので、`endShape()` で改めて判定するために持つ。
+    var usedContourWhileRecording: Bool = false
 
     /// vertices2D 内の現在のコンターの開始インデックス。
     var contourStartIndex: Int = 0
@@ -296,10 +367,16 @@ public final class MShape {
     ///   - device: GPU リソース用の Metal デバイス。
     ///   - kind: 作成するシェイプのタイプ。
     ///   - style: 初期スタイルスナップショット。
-    init(device: MTLDevice, kind: ShapeKind, style: ShapeStyle = ShapeStyle()) {
+    ///   - colorModeConfig: ``fill(_:)`` / ``stroke(_:)`` に渡す数値の解釈規則
+    ///     （作成時のスケッチの `colorMode()`。既定は RGB 0-255）。
+    init(
+        device: MTLDevice, kind: ShapeKind, style: ShapeStyle = ShapeStyle(),
+        colorModeConfig: ColorModeConfig = ColorModeConfig()
+    ) {
         self.device = device
         self.kind = kind
         self.capturedStyle = style
+        self.colorModeConfig = colorModeConfig
     }
 
     // MARK: - Style Modification
@@ -336,7 +413,15 @@ public final class MShape {
         self.texture = img.texture
     }
 
-    /// テクスチャレンダリング用のティント色を設定します。
+    /// ティント色を記録します。**現在どの描画経路でも効きません**（#905）。
+    ///
+    /// 色は ``ShapeStyle/tintColor`` に残りますが、描画時に読み出す経路がありません。
+    /// 2D の MShape 経路にはテクスチャ描画自体が無く、3D のテクスチャは
+    /// **`fillColor` を掛けて着色する**ため tint 専用のスロットが存在しないからです。
+    /// 効かないシェイプを描くと一度だけ警告が出ます（#852 で入れた明示化）。
+    ///
+    /// テクスチャ付きの 3D シェイプに色を掛けたいときは ``setFill(_:)-(Color)`` を使ってください。
+    /// スケッチ側の `tint()` は `image()` に対しては従来どおり効きます（こちらは別経路）。
     public func setTint(_ color: Color) {
         capturedStyle.tintColor = color.simd
         capturedStyle.hasTint = true
@@ -528,5 +613,6 @@ public final class MShape {
         cachedTriangles2D = nil
         cachedStrokeOutline2D = nil
         cachedMesh3D = nil
+        cachedStrokeMesh3D = nil
     }
 }

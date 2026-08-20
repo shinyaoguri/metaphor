@@ -14,12 +14,13 @@ does on each side of `1.0.0` (ride in a minor, or escalate to a human).
 
 import importlib.util
 import io
-import subprocess
 import sys
 import tempfile
 import unittest
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
+
+from _git_helpers import git as hermetic_git, init_repo
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "release-bump.py"
 _spec = importlib.util.spec_from_file_location("release_bump", _SCRIPT)
@@ -29,7 +30,8 @@ _spec.loader.exec_module(rb)
 
 
 def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+    """Run git in `repo`, sealed off from the developer's global config (#979)."""
+    hermetic_git(*args, cwd=repo)
 
 
 @contextmanager
@@ -42,14 +44,12 @@ def _repo_released_at(tag: str | None):
     on the day metaphor ships v1.0.0.
     """
     with tempfile.TemporaryDirectory() as tmp:
-        repo = Path(tmp)
-        _git(repo, "init", "-q")
-        _git(repo, "config", "user.email", "t@example.com")
-        _git(repo, "config", "user.name", "t")
+        repo = init_repo(Path(tmp))
         _git(repo, "commit", "-q", "--allow-empty", "-m", "chore: seed")
         if tag is not None:
-            # Annotated (`-m`) so the test survives a global `tag.gpgSign` /
-            # `tag.forceSignAnnotated`, which rejects a bare `git tag <name>`.
+            # Annotated (`-m`), which is the shape the release train creates —
+            # and what a bare `git tag <name>` would need anyway on a machine
+            # with `tag.forceSignAnnotated`, were the seal above not there.
             _git(repo, "tag", "-m", tag, tag)
         yield repo
 

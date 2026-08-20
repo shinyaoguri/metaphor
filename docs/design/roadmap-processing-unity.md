@@ -1,6 +1,6 @@
-# ロードマップ: Processing / Unity ユーザー獲得（v0.8〜v0.10 相当）
+# ロードマップ: Processing 移行者獲得と AI 制作能力（v0.8〜v0.10 相当）
 
-- **ステータス**: 運用中（living document）。各フェーズ完了時に見直し、Issue 番号・設計変更を本ドキュメントへ追記する
+- **ステータス**: 運用中（living document）。各フェーズ完了時に見直し、Issue 番号・設計変更を本ドキュメントへ追記する。旧題「Processing / Unity ユーザー獲得」— Unity 移行者獲得の市場仮説は 2026-08-15 に降ろした（決定 7）。ファイル名は既存リンク保全のため維持
 - **作成**: 2026-07-30（リポジトリ全体レビューに基づく）
 - **正典**: 本ドキュメント + 各 Epic Issue。詳細設計は個別の design doc（例: [live-tooling-params.md](live-tooling-params.md)）へ委譲
 
@@ -9,9 +9,10 @@
 **metaphor は「人間と AI が同じ実行中スケッチを一緒に操作できる」クリエイティブコーディング環境である。**
 
 - Processing ユーザーは「週末でスケッチが移植できる + キャンバスを見て操縦できる AI ペア」で乗り換える
-- Unity ユーザーは「エディタ税なしの Metal ネイティブなモダン 3D + 同じ AI ループ」で乗り換える
+- ~~Unity ユーザーは「エディタ税なしの Metal ネイティブなモダン 3D + 同じ AI ループ」で乗り換える~~ → **Unity 移行者獲得の市場仮説は降ろした**（2026-08-15・決定 7）。モダン 3D は「AI が到達できる絵の天井」のために作る
 - API パリティは摩擦の除去、AI 協調ループが乗り換えのトリガー。パリティ単体では誰も乗り換えない
 - パリティ軸に**作品軸**を併走させる（2026-08-07 追加）: 「metaphor で大規模インタラクティブ作品を一本作り切れるか」を検証指標に持ち、構造化支援・現場運用の設計は実作品の要求から逆算する（下記「作品トラック」）
+- **AI 制作能力（AI authoring）を中心目標に置く**（2026-08-15 追加・決定 7）: 「一緒に操作できる」の先の「**AI が一人でも作り切れる**」— AI エージェントが metaphor でゲーム・3DCG アニメーション・シミュレーションをハイクオリティに作り切れることを技術目標とする。Three.js で AI がハイクオリティを出せる構造（学習分布 / 表現力の天井 / アセット経路 / 実行・観測ループ）のうち、metaphor に足りないのは**表現力の天井（PBR maps・IBL・glTF = Epic G）とアセット経路（G4）**で、**実行・観測ループ（Probe・決定論・MCP）は既に Three.js を上回る** — この優位を #563/#564/#567/#608 で伸ばす。競合調査（2026-08-15）で「決定論的観測 + AI 操作」を持つ環境は他に存在しないことを確認済み
 
 ## レビュー所見の要約（2026-07-30 時点）
 
@@ -53,6 +54,52 @@
 
 この所見から作品軸と「作品トラック」（Epic J/K/L）を追加した。
 
+## レビュー所見の追補（2026-08-16 パリティ再監査）
+
+Phase 1 完了・Epic A/E/F の消化から時間が経ったため、**「標準ライブラリとして p5.js / Processing に足りないものは何か」を機械的に洗い直した**。2026-07-30 の「主要ギャップ」表（上）は当時の所見としてそのまま残し、本節が現在値の正典。
+
+**手法**（再現可能。次回も同じ手順で差分だけ見ればよい）:
+
+- Processing 4 のリファレンス全 293 項目 = `processing/processing-docs` の `content/api_en/*.xml`（`_` を含まないファイル名がトップレベル API）
+- p5.js 2.x の公開 API 全 343 項目 = `processing/p5.js` の `docs/parameterData.json`（`p5` キー配下がグローバル関数、他キーがクラスメソッド）
+- metaphor 側は `llms.txt` から識別子を抽出して小文字で突合し、**同名なしの候補を 1 件ずつ実装ソースで裏取り**（名前違い・Swift 標準での代替・非該当を人手で除去）
+
+**結論: 描画の語彙はほぼ埋まっている。** 同名なしは Processing 115 / p5 183 だが、大半は Swift 標準で代替（`abs`/`sin`/`sort`/`split`…）・名前違い（`mouseWheel`→`mouseScrolled`、`keyIsDown`→`isKeyDown`、`loadJSONObject`→`loadJSON`）・非該当（DOM・モバイルセンサ・Web ストレージ）。実質のギャップは**コア API の周辺 6 群**と**同梱ライブラリ 4 本**に集中する。
+
+### コア API の実質ギャップ
+
+| 群 | 内容 | 受け皿 |
+|---|---|---|
+| 色の分解 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()`。`Color` は HSB→RGB の一方向のみで逆変換が無い | [#811](https://github.com/shinyaoguri/metaphor/issues/811)（新規） |
+| キャンバスのピクセル | `get(x,y)` / `get(x,y,w,h)` / `set(x,y,c)`。`MImage` にはあるがキャンバス版が無い | [#812](https://github.com/shinyaoguri/metaphor/issues/812)（新規） |
+| 2D 形状 | `quadraticVertex` / `bezierDetail` / `shapeMode`。調査中に **`bezier()` だけ分割数 24 固定・`bezierVertex()` は `curveDetail`(20) 依存**という食い違いも判明 | [#813](https://github.com/shinyaoguri/metaphor/issues/813)（新規） |
+| 3D の逆変換 | `modelX/Y/Z`。ADR-0007 が Follow-up に明記したまま未起票だった | [#814](https://github.com/shinyaoguri/metaphor/issues/814)（新規） |
+| 3D のパリティ残り | `ambient()` / `textureMode` / `textureWrap` / `lightFalloff` / `lightSpecular` / `beginCamera` / `frustum`。`ambient()` は uniform 側（`currentMaterial.ambientColor`）が既にあり口を開けるだけ | [#815](https://github.com/shinyaoguri/metaphor/issues/815)（新規） |
+| テキストのスタイル | p5 の `textStyle` / `textWrap` / `textBounds`。太字は `textFont("Helvetica Neue Bold")` で**実は出せる**（実測）が未文書 | [#816](https://github.com/shinyaoguri/metaphor/issues/816)（新規） |
+| canvas 全体の `filter()` / `blend()` | 現状は `filter(_ image:_ type:)`（画像単体）と postFX のみ | Phase 2 に既載・**未起票** |
+| データ IO の小物 | `loadXML`/`saveXML`・`loadBytes`/`saveBytes`・`createReader`/`createWriter`・`nf`/`nfc`/`nfp`/`nfs`/`hex`/`binary` | 需要待ち（JSON/Table/Strings は Phase 1 #278 で充足） |
+| 画像からの IBL | p5 の `imageLight()` / `panorama()` 相当。`environment()` はプリセット 3 種のみ（G3b #710） | Epic G の残り（G2/G4 と同じ「AI が届く絵の天井」側） |
+| 意図的な非目標 | `pixelDensity` / `windowResized` / `resizeCanvas` / `exit` / `delay` / `thread` / `hint` / `angleMode` / DOM 系 / センサ系 | 非目標（移行ガイドに明記済み） |
+
+### 同梱ライブラリ（Processing の Libraries / p5 のアドオン）
+
+| 標準 | metaphor | 判定 |
+|---|---|---|
+| Video（Capture / Movie） | `CaptureDevice` / `VideoPlayer` | ○（3D テクスチャに貼れない [#701](https://github.com/shinyaoguri/metaphor/issues/701)） |
+| **Sound / p5.sound** | `SoundFile`（再生・rate・gain）+ `AudioAnalyzer`（FFT・volume・beat） | **△ 最大のギャップ**。オシレータ・エンベロープ・フィルタ・Reverb/Delay・録音・pan・出力デバイス選択がすべて無い（`AVAudioSourceNode` の参照ゼロ） |
+| **Serial（Arduino）** | なし | × Phase 4 接続層 |
+| **Network（TCP Client/Server）** | OSC / MIDI のみ | × Phase 4。なお OSC/MIDI は Processing 標準を上回る |
+| SVG Export | `beginSVGRecord` | ○（image/text/gradient は落ちる → [#652](https://github.com/shinyaoguri/metaphor/issues/652)） |
+| PDF Export | なし | × Epic B の B3（Phase 4） |
+| **DXF Export** | なし | × **本監査まで記載が無かった**（下の Phase 4 に追記） |
+| p5.dom | `ParameterGUI` | 非該当・代替あり |
+
+音声は「解析と再生はできるが、音を**作れない**」状態で、p5.sound を前提にしたスケッチは移植できない。Phase 4 の「音声合成 minimal」がここに対応する。
+
+### 副産物: 移行ガイドの陳腐化
+
+[`docs/processing-migration-guide.md`](../processing-migration-guide.md) の「Not available yet」に、実装済みの項目が残っていた（`loadFont()`/`PFont`・`textToPoints`・`frameRate` の読み取り = `performance.fps`）。`#673` が `textToPoints` の 1 行だけを追跡していたが、実際の範囲はより広い。→ 同 Issue のスコープを広げて解消する。
+
 ## 戦略的判断（決定事項）
 
 1. **各フェーズ = フラッグシップ 1 つ + S/M パリティ束**。比率は Phase 1 ≈ 80% Processing / Phase 2 ≈ 50:50 / Phase 3 ≈ 80% Unity。S 項目は 3 層転送コストの償却のため同一 PR トレインに束ねる
@@ -61,6 +108,12 @@
 4. **英語ドキュメントは並行トラックで in scope**（README/Getting Started → 公開 API doc コメント → website #74）。ADR 全訳は非目標
 5. **glTF は採用（Phase 3・import のみ・skins/animations なし）。3D 物理は Jolt 等のラップを Phase 4 需要ゲートに置く**。2D Verlet ソルバの剛体拡張はしない（角度状態を持たない土台のため不適）
 6. **作品駆動（2026-08-07 追加）**: 構造化支援（Epic K）・現場運用（Epic L）の子 Issue は、リファレンス作品（Epic J）の実需から逆算して起票する。抽象論で SceneManager を先に設計しない — ライブラリを Unity の劣化コピーへ向かわせないための規律。作品の完走は v1.0 昇格条件「metaphor-sketches での実運用検証」の具体化を兼ねる
+7. **AI 制作能力を中心目標に置く（2026-08-15 追加・オーナー合意）**: 「AI が metaphor でゲーム・3DCG アニメーション・シミュレーションを作り切れる」を技術目標とする。付随する判断:
+   - **Unity 移行者獲得の市場仮説は降ろす**。Phase 3 の実装項目（PBR maps / IBL / glTF）は 1 つも捨てず、目的を「AI が到達できる絵の天井を Three.js 相当へ引き上げる」に差し替える（glTF は「AI がアセットを調達する経路」として必然）。Unity 概念の移植（#294 H1 の GameObject/Component 等）は AI 制作実験の実需が出るまで起票しない
+   - **スケルタルアニメーション・3D 物理の非目標/ 需要ゲートは維持**し、ゲートの「需要」に「**AI 制作実験で実際に詰まった**」を含める（下記 Phase 4）
+   - **コミュニティ向け活動・情報発信より技術解決を先行する**。v1.0 昇格（スター 100）は急がない — [v1-release-plan.md](v1-release-plan.md) の「期限を設けない」方針と整合し、同文書の変更は不要
+   - AI は metaphor を事前学習で知らないため、「調べずに書いても概ね当たる」を設計観点に加える: 新 API は Processing / p5 / Three.js の既知イディオムからの距離を基準に含め（ADR-0007 の延長）、examples-index を AI が模倣する型紙として扱う
+   - 3D バックエンド戦略は #689 で決着（2026-08-15）: **自作 Metal 基盤 + 自前 glTF loader + Model I/O は `.obj`/`.usdz`/`.abc` の入口として維持**。SceneKit は deprecated（26.0）のため依存を作らず、RealityKit を visionOS/AR への出力面とする案は**再評価トリガー付きで保留**（トリガーは #689 のクローズコメント参照）
 
 ## フェーズ計画
 
@@ -100,7 +153,7 @@
 |---|---|---|---|
 | **Parameter Store（フラッグシップ）** | 両方 | L | 詳細は [live-tooling-params.md](live-tooling-params.md)。#87 を吸収、#273/#275 は同じ schema 変更に同乗 |
 | 状態保持リロード（saveState/restoreState） | 両方 | M | [#451](https://github.com/shinyaoguri/metaphor/issues/451) + [cli#105](https://github.com/shinyaoguri/metaphor-cli/issues/105)（**完了**・契約点 8 新設。[live-viewer.md](live-viewer.md) §A-3 をファイルベースへ改訂） |
-| loadShader()/shader() の 2D 対応 + シェーダファイル監視ホットリロード | Processing | L | 前提: Canvas2D パイプライン状態リファクタ（独立 PR） |
+| loadShader()/shader() の 2D 対応 + シェーダファイル監視ホットリロード | Processing | L | Canvas2D パイプライン状態リファクタ [#646](https://github.com/shinyaoguri/metaphor/issues/646)・loadShader/shader/resetShader [#647](https://github.com/shinyaoguri/metaphor/issues/647)・ファイル監視リロード [#648](https://github.com/shinyaoguri/metaphor/issues/648) とも**完了**（Epic クローズ済み） |
 | フォントファイル読込（CTFontManager）+ textToPoints | Processing | M | 生成タイポグラフィの解放 |
 | SVG 読み込み（loadShape → MShape） | Processing | M | Phase 1 の SVG 書き出しと対になる |
 | canvas 全体 filter()/blend() | Processing | S–M | 既存 postFX の配線替えが主 |
@@ -109,9 +162,9 @@
 | Canvas3D.swift 分割（リファクタ） | — | M | Phase 3 の門番。[#439](https://github.com/shinyaoguri/metaphor/issues/439)（**完了**） |
 | 英語 docs 第 2 弾（公開 API doc コメント） | 両方 | M | cli #86（api_reference 強化）と相乗 |
 
-### Phase 3「エディタ税なしのモダン 3D」
+### Phase 3「AI が届く絵の天井」（旧称「エディタ税なしのモダン 3D」・2026-08-15 に目的を再定義）
 
-目標: glTF サンプル（DamagedHelmet 等）が参照ビューア相当で描画される。「Unity 級」に見えるスクリーンショットが出せる。
+目標: **AI エージェントが Three.js で作る事例と同等の「ハイクオリティな絵」に、metaphor 上の AI が到達できる**。具体判定は従来どおり — glTF サンプル（DamagedHelmet 等）が参照ビューア相当で描画される。実装項目は再定義の前後で不変（決定 7）。「対象: Unity」の表記は移行者ペルソナの名残として残すが、取捨の基準は「Unity にあるか」ではなく「AI のハイクオリティ制作に要るか」。
 
 | 機能 | 対象 | 規模 | 備考 |
 |---|---|---|---|
@@ -126,12 +179,12 @@
 
 ### Phase 4（需要ゲート — コミットしない）
 
-需要シグナル（ユーザー要望・作品制作での具体的必要）が出たときのみ着手する。
+需要シグナル（ユーザー要望・作品制作での具体的必要・**AI 制作実験で実際に詰まったこと** — 2026-08-15 追加）が出たときのみ着手する。スケルタルアニメーション・3D 物理はこのゲートの典型対象: 「AI にゲームを作らせたら物理が無くて詰んだ」が出た時点で Jolt 等のラップを起票する（先回りで自作しない — 決定 6 と同じ規律）。
 
 - 3D 物理: Jolt 等のラップによる optional モジュール（**自作はしない**）
-- 音声合成 minimal（AVAudioSourceNode ベースの p5.sound-lite）
-- PDF 書き出し（SVG バックエンドの再利用）
-- WebSocket/HTTP モジュール
+- 音声合成 minimal（AVAudioSourceNode ベースの p5.sound-lite）。**欠落の具体は**（2026-08-16 の再監査で確定）オシレータ（`SinOsc`/`SawOsc`/`SqrOsc`/各種ノイズ）・エンベロープ（`Env`/ADSR）・フィルタ（Low/High/Band）・エフェクト（Reverb / Delay / Distortion）・録音・pan・出力デバイス選択と多チャンネル。**再生と解析（`SoundFile` / `AudioAnalyzer`）は実装済み**なので、足りないのは「音を作る」側だけ
+- PDF 書き出し（SVG バックエンドの再利用）/ DXF 書き出し（2026-08-16 追記。Processing は `beginRaw(DXF)` で 3D ジオメトリを吐く。需要は PDF より薄い見込み）
+- WebSocket/HTTP モジュール（Processing の Net ライブラリ相当 = TCP Client/Server も同じ受け皿。`loadJSON`/`loadStrings` の URL 取得は実装済みで、足りないのは POST と常時接続）
 - 接続層（2026-08-07 追記）: DMX/Art-Net・NDI 出力・シリアル（Arduino）・深度センサ/マルチタッチ入力・音声入出力デバイス選択と多チャンネル出力。出力系は `MetaphorOutputRegistry`、入力系は Tier 1 モジュール構造が受け皿で、コアに手を入れず optional モジュールで追加できる
 
 ### 作品トラック（フェーズ横断・2026-08-07 追加）
@@ -140,15 +193,109 @@
 
 | Epic | 内容 | ゲート |
 |---|---|---|
-| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証（リファレンス作品） | 作品を 1 本作り切り、踏んだ穴を都度 Issue 化。v1.0 昇格条件「実運用検証を通過」の具体化を兼ねる | Phase 2 と並行で着手可 |
-| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援の最小セット | Scene プロトコル + 遷移 / cue リスト / `after()`/`every()`。既存 tween/easing の上に薄く載せる | 子 Issue は J の所見後に起票（Phase 2.5 相当） |
+| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証（リファレンス作品） | 作品を 1 本作り切り、踏んだ穴を都度 Issue 化。v1.0 昇格条件「実運用検証を通過」の具体化を兼ねる | **1 本目 `0815-strata` / 2 本目 `0815-salvage` 完走（2026-08-15）**。下記「J の所見」 |
+| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援の最小セット | Scene プロトコル + 遷移 / cue リスト / `after()`/`every()`。既存 tween/easing の上に薄く載せる | 子 Issue は J の所見後に起票（Phase 2.5 相当）。1 本目の所見は出た |
 | [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ配置（NSScreen 指定）・キオスク（常時最前面/スリープ抑止/自動復帰）・自己監視の公開 API（#273 吸収）・GPU エラー検知 | 優先度は J の運用要件で確定。単体アプリ常設をやると決めるまで着手しない |
+
+#### J の所見: 1 本目 `0815-strata`（2026-08-15）
+
+metaphor-sketches の [`2026/0815-strata`](https://github.com/shinyaoguri/metaphor-sketches/tree/main/2026/0815-strata) を作り切った。
+生成的地形（3D PBR × 時間変容）を 4 シーン（`formation` / `erosion` / `strata` / `dormant`）で巡回させ、
+入力はカメラ（動き量・輝度）と OSC（シーン指定・パラメータ書き込み）の 2 系統、
+出力は単体アプリ常設と Syphon 送出の両対応。要件（複数シーン + 複数入力 + 30 分無人稼働）は全て満たした。
+
+**踏んだ穴と起票**（作品側で握り潰さず、回避策にコメントを残したうえで Issue 化した）:
+
+| 層 | 事象 | Issue |
+|---|---|---|
+| ポスト | `VignetteEffect` の `intensity` が「強度」ではなく「黒に落ちきる半径」で意味が逆。既定値のままで画面の大半が黒くなる | [#684](https://github.com/shinyaoguri/metaphor/issues/684) |
+| 入力 | `CaptureDevice` が権限 `notDetermined` でも `isAvailable=true` を返し、フレーム 0 のまま無言で失敗する | [#685](https://github.com/shinyaoguri/metaphor/issues/685) |
+| 3D | `DynamicMesh` に in-place 更新が無く、毎フレーム頂点・インデックス両方のバッファを確保し直す | [#686](https://github.com/shinyaoguri/metaphor/issues/686) |
+| 3D | `directionalLight` / `pointLight` に intensity が無く、PBR 単灯だと `albedo/π` で沈む | [#687](https://github.com/shinyaoguri/metaphor/issues/687) |
+| 契約 | `.app` 起動では cwd が `/` になり `.metaphor/`（Probe / Parameter Store）が壊れる | [#688](https://github.com/shinyaoguri/metaphor/issues/688) / [cli#133](https://github.com/shinyaoguri/metaphor-cli/issues/133) |
+
+既存の検討 Issue には実測を書き戻した: [#573](https://github.com/shinyaoguri/metaphor/issues/573)（App bundle）へは
+「**配布以前に、カメラ・マイクを使う作品は `swift run` では完成させられない**」（TCC ダイアログは
+`Info.plist` を持つバンドルにしか出ない）と、手で `.app` を組むのに必要だった 6 工程。
+[#571](https://github.com/shinyaoguri/metaphor/issues/571)（Scene の寿命境界）へは
+「この作品ではリソースも購読も全シーン共有で、**寿命境界は要らず、欲しかったのは
+値の束の補間と保持時間つき巡回**だった」という反証寄りの所見。
+
+**K（#415）への含意**: 手書きしたのは `SceneProfile`（25 フィールド）+ 手動の線形補間 30 行 +
+`SceneDirector` 70 行。**一番効くのは補間の自動化**で、寿命管理ではない。
+外部指定（OSC）と自律タイマーの共存規約も自前で決める必要があった。
+
+**L（#416）への含意**: 単体アプリ常設を選ぶと `.app` 化が必須になり、そこは #573 とほぼ同じ問題に着地する。
+自己監視 API の不在は実際に効いた — 30 分の劣化計測は **Probe を外から叩いて** 行うしかなく、
+作品自身が fps / メモリを読んで degrade することはできない。一方でマルチディスプレイ・
+キオスク（最前面・スリープ抑止）は今回の 1 本では実需として出ていない（常設の現場に置いていないため）。
+
+**2 本目の切り口**: 今回は「1 つの絵をパラメータで変容させ続ける」型だったため、シーンが
+リソースを持たなかった。シーンごとにアセット（動画・音・モデル）が入れ替わる型を試すと
+#571 の寿命境界の要否が判定できる。
+
+**2 本目は「AI 単独制作実験」を兼ねる**（2026-08-15 追加・決定 7）: AI エージェントに
+（人間の介入を最小にして）ゲームまたは 3DCG シミュレーションを 1 本作らせ、詰まった箇所 —
+書けなかったイディオム・表現力の欠落（PBR maps / IBL / glTF の不在がどこで効くか）・
+観測ループの穴（#563 入力リプレイ / #564 視覚検証の要否）・スケルタルアニメと 3D 物理の実需 —
+をすべて Issue 化する。1 本目 `0815-strata` の方法論（作品側で握り潰さず起票する）の再利用。
+これにより G2/G3/G4・#563/#564・物理/アニメの優先順位が抽象論でなく実測で決まる。
+「シーンがリソースを持つ型」（#571 判定）と兼ねられるかは実験設計時に判断する。
+
+#### J の所見: 2 本目 `0815-salvage`（2026-08-15・AI 単独制作実験）
+
+metaphor-sketches の [`2026/0815-salvage`](https://github.com/shinyaoguri/metaphor-sketches/tree/main/2026/0815-salvage) を作り切った。
+**3 ステージの 3D ゲーム**（`title` → `hull` → `reactor` → `vent` → `result`）で、
+ステージごとに**モデル・床テクスチャ・環境音・背景動画が丸ごと入れ替わる**。
+2 本目の 2 つの目的（#571 の寿命境界判定 / AI 単独制作実験）を 1 本で兼ねた。
+
+制作は企画から検証・記録まで AI（Claude Code）が行い、**題材も実装方針も人間に確認していない**。
+絵の確認も人間の目視ではなく、AI が Probe のスナップショットを読んで判断した。
+アセット（`.obj` / `.png` / `.wav` / `.mp4`）は依存を足さずに `scripts/gen-assets.py` で決定論的に生成している。
+
+**踏んだ穴と起票**:
+
+| 層 | 事象 | Issue |
+|---|---|---|
+| 3D | IBL が無いため `metallic` を上げると拡散が消え、埋める環境光が無く灰色に潰れる。**スカラーの metallic が 0.2 超で死に機能** | [#293](https://github.com/shinyaoguri/metaphor/issues/293) へ実需（G3 > G2 の一票）→ G3a [#706](https://github.com/shinyaoguri/metaphor/issues/706) / G3b [#710](https://github.com/shinyaoguri/metaphor/issues/710) で解消 |
+| 3D | `emissive` / `specular` に 0..255 の 3 引数版が無く `fill` と書き味が揃わない | [#700](https://github.com/shinyaoguri/metaphor/issues/700) |
+| 映像 | `VideoPlayer` / `CaptureDevice` を 3D のテクスチャとして貼れない（`texture()` が `MImage` 限定）。2D の書き割りで回避 | [#701](https://github.com/shinyaoguri/metaphor/issues/701) |
+| 並行性 | `Sketch` の外にアセットを持つ型は `@MainActor` が要る（最初のビルドのエラーが全部これ）。文書に無い | [#702](https://github.com/shinyaoguri/metaphor/issues/702) |
+
+既存の検討 Issue への書き戻し: [#563](https://github.com/shinyaoguri/metaphor/issues/563) へは
+「**ゲームでは状態への到達手段が無いのが一番効く**」（作品側に `SALVAGE_START` と自動操縦を自作した）、
+[#564](https://github.com/shinyaoguri/metaphor/issues/564) へは
+「`contentFraction` / `meanLuminance` で**壊れている**は弾けるが、**作品として成立していない**は画像を読むまで分からない」。
+
+**30 分無人稼働（`cache: false`・自動操縦）**: 178 サンプル・Probe timeout 0 件で
+fps 59.8 維持（前半 → 後半で ±0.0）、**47 周・238 シーン遷移・485 ロード / 477 解放**、
+`assetsLive` は 5〜9 の間で振動し周回とともに増えない（解放は効いている）。
+メモリは 30 分で +15.6MB（mean 464.8MB）。ただし **4〜5 分おきに +160MB のスパイク**が
+10〜20 秒出て戻る挙動があり（`frameTimeMs.max` も 40〜67ms へ伸びる）、1 本目では出ていない。原因は未特定。
+対照として `cache: true`（ライブラリのキャッシュ）で 7 分回すと mean 432.1MB・スパイクなし・
+ロード 9.5ms（`cache: false` は 15.7ms）で、**キャッシュを使うほうが安定する**。
+つまり現状は「キャッシュか寿命境界か」の二択で、**シーンのスコープでキャッシュする中間が無い**。
+
+**#571（Scene = 寿命境界）の判定**: 1 本目の反証寄りの所見に対し、2 本目は**要る側**の材料が出た。
+ただし欲しいのは Scene プロトコルではなく、その下の 3 つ（詳細は #571 のコメント）:
+(1) `SoundFile` / `VideoPlayer` は参照を捨てても止まらず明示的な `stop()` が要る、
+(2) `loadModel` / `loadImage` の `cache: true` 既定が寿命境界と衝突する（この作品は `cache: false` を
+選べたから成立した）、(3)「いま何が生きているか」を答える経路が無い（作品側で台帳を書いて Probe に出した）。
+Scene プロトコル自体は作品側で 130 行、しかも描画 API が `Sketch` 拡張である以上
+ライブラリ版は `func draw(_ s: any Sketch)` を強いて書き味を損なうため、ライブラリには要らないと判断した。
+
+**AI 制作能力（決定 7）への含意**: 詰まりの内訳は
+**表現力の天井（G3 IBL）が 1 件・アセット経路が 1 件・API の書き味が 1 件・文書が 1 件**で、
+実行・観測ループ（Probe / 決定論 / MCP）は 2 本目でも破綻しなかった。決定 7 のギャップ分解と整合する。
+スケルタルアニメと 3D 物理は**実需が出ていない**（当たり判定は球の距離だけで足りた）ため、
+Phase 4 の需要ゲートは開かない。
 
 ## 非目標
 
 - クロスプラットフォーム（Windows/Linux/iOS/web）— macOS 14+/Apple Silicon の契約は維持
-- スケルタルアニメーション/スキニング（glTF import も skins を読まない）
-- フルゲームエンジン・エディタアプリ化（シーンシリアライズ形式・prefab・Play/Edit 分離は作らない。インスペクタはビューアの付帯機能）
+- スケルタルアニメーション/スキニング（glTF import も skins を読まない。AI 制作実験で実需が出たときのみ再評価 — 決定 7）
+- フルゲームエンジン化（シーンシリアライズ形式・prefab・Play/Edit 分離は作らない。インスペクタはビューアの付帯機能）
+- **テキストエディタの自作**（テキスト編集・補完・診断を含む統合 IDE は作らず、SourceKit-LSP を持つ既存エディタに委ねる。**`.vscode/` 同梱・VSCode 拡張・エディタ連携は in scope** で、投資は「実行中のスケッチを触るコンパニオン」へ向ける — [ADR-0013](../adr/0013-companion-over-dedicated-editor.md)。`.app` ランチャーは同 ADR のゲート付きで凍結）
 - 物理エンジンの自作
 - MRT / deferred rendering（forward 維持）
 - ジョブシステム / マルチスレッド化（`@MainActor` 隔離は維持）
@@ -166,16 +313,16 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#288](https://github.com/shinyaoguri/metaphor/issues/288) B: ベクタ往復 | SVG/PDF | B1 SVG 書き出し #285（**完了**・方式は API フックに改訂）/ B2 loadShape（Phase 2）/ B3 PDF（Phase 4） |
 | [#289](https://github.com/shinyaoguri/metaphor/issues/289) C: 往復レイテンシ（クロスリポ） | ビルド高速化 + 状態運搬 | C1 ビルド高速化 pass 1（[cli#88](https://github.com/shinyaoguri/metaphor-cli/issues/88)・**完了**）/ C2 saveState/restoreState [#451](https://github.com/shinyaoguri/metaphor/issues/451)（**完了**）/ C3 watch 側状態運搬（[cli#105](https://github.com/shinyaoguri/metaphor-cli/issues/105)・**完了**）/ C4 計測分解（**完了**） |
 | [#290](https://github.com/shinyaoguri/metaphor/issues/290) D: Parameter Store & AI 共同操作 | Phase 2 フラッグシップ | D1 store コア / D2 ParameterGUI 再基盤 / D3 probe schema 拡張 / D4 MCP 書込チャネル（cli）/ D5 リロード永続 [#451](https://github.com/shinyaoguri/metaphor/issues/451)（**完了**）/ D6 ノードインスペクタ（Phase 3） |
-| [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ（blocking）/ E2 loadShader API / E3 ファイル監視リロード |
-| [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 / F2 textToPoints / F3 text-on-path（stretch） |
-| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3 skybox・IBL・HDR / G4 glTF / G5 drawInstanced |
+| [#291](https://github.com/shinyaoguri/metaphor/issues/291) E: 2D シェーダ | loadShader/shader | E1 Canvas2D パイプラインリファクタ [#646](https://github.com/shinyaoguri/metaphor/issues/646)（**完了**）/ E2 loadShader API [#647](https://github.com/shinyaoguri/metaphor/issues/647)（**完了**）/ E3 ファイル監視リロード [#648](https://github.com/shinyaoguri/metaphor/issues/648)（**完了**） |
+| [#292](https://github.com/shinyaoguri/metaphor/issues/292) F: タイポグラフィ | フォント/アウトライン | F1 フォントファイル読込 [#649](https://github.com/shinyaoguri/metaphor/issues/649) / F2 textToPoints [#650](https://github.com/shinyaoguri/metaphor/issues/650) / F3 text-on-path（stretch）[#651](https://github.com/shinyaoguri/metaphor/issues/651) |
+| [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3a トーンマッピング [#706](https://github.com/shinyaoguri/metaphor/issues/706)（**完了**）/ G3b skybox・IBL [#710](https://github.com/shinyaoguri/metaphor/issues/710)（**完了**）/ G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
-| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント / I3 website（#74） |
-| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。所見が K/L の子 Issue の設計根拠になる |
-| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票 |
-| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット |
+| [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | **クローズ済み**（2026-08-16・I2 / I3 を移管して役目を終えた）: I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント [#334](https://github.com/shinyaoguri/metaphor/issues/334)（**Epic #314 の W3-1 が管轄**）/ I3 website（i18n 構成は #487・#491 で導入済み。残る LP 英語文言の見直しは [#740](https://github.com/shinyaoguri/metaphor/issues/740)） |
+| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。**1 本目 `0815-strata` / 2 本目 `0815-salvage`（AI 単独制作実験）完走**（所見は「J の所見」節、起票は #684〜#688 / cli#133 / #700〜#702） |
+| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票。1 本目の所見では**補間の自動化**が最優先 |
+| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット。1 本目では**自己監視の不在**のみ実需として確認 |
 
-既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#275 は Epic D の schema 変更に同乗。#273 は Epic L が吸収（2026-08-07 変更。Probe schema に触れる部分のみ Epic D の schema 変更に同乗）。cli #86 は Epic I の I2 と相乗。
+既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#275 は Epic D の schema 変更に同乗。#273 は Epic L が吸収（2026-08-07 変更。Probe schema に触れる部分のみ Epic D の schema 変更に同乗）。cli #86 は API doc コメント英語化 #334（Epic #314 の W3-1）と相乗。
 
 ## 実装の進め方（将来セッションへの指示）
 

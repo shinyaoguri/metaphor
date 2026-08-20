@@ -76,31 +76,37 @@ public final class MPSImageFilterWrapper {
     /// Applies morphological erosion (area min) to an image.
     /// - Parameters:
     ///   - image: The image to process.
-    ///   - radius: The erosion radius, in pixels.
+    ///   - radius: The erosion radius, in pixels. Values outside
+    ///     `0...max(width, height) - 1` are clamped into range. A radius above 120 is
+    ///     applied in several passes, which produces an identical image.
     public func erode(_ image: MImage, radius: Int = 1) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
-        let size = radius * 2 + 1
-        let kernel = getOrCreateAreaMin(size: size)
-        kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
+        encodeArea(commandBuffer: cb, source: src, destination: dst, radius: radius, api: "erode") {
+            getOrCreateAreaMin(size: $0 * 2 + 1)
+        }
         finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// Applies morphological dilation (area max) to an image.
     /// - Parameters:
     ///   - image: The image to process.
-    ///   - radius: The dilation radius, in pixels.
+    ///   - radius: The dilation radius, in pixels. Values outside
+    ///     `0...max(width, height) - 1` are clamped into range. A radius above 120 is
+    ///     applied in several passes, which produces an identical image.
     public func dilate(_ image: MImage, radius: Int = 1) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
-        let size = radius * 2 + 1
-        let kernel = getOrCreateAreaMax(size: size)
-        kernel.encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
+        encodeArea(commandBuffer: cb, source: src, destination: dst, radius: radius, api: "dilate") {
+            getOrCreateAreaMax(size: $0 * 2 + 1)
+        }
         finalize(image: image, src: src, dst: dst, commandBuffer: cb)
     }
 
     /// Applies a median filter to an image.
     /// - Parameters:
     ///   - image: The image to process.
-    ///   - diameter: The filter kernel diameter (must be odd, minimum 3).
+    ///   - diameter: The filter kernel diameter. Even values are rounded up to the next
+    ///     odd number, and the result is clamped into the range the device supports
+    ///     (`MPSImageMedian.minKernelDiameter()...maxKernelDiameter()`, 3...127 on Apple Silicon).
     public func median(_ image: MImage, diameter: Int = 3) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
         let kernel = getOrCreateMedian(diameter: diameter)
@@ -170,16 +176,21 @@ public final class MPSImageFilterWrapper {
     ///   - commandBuffer: The command buffer to encode into.
     ///   - source: The source texture.
     ///   - destination: The destination texture.
-    ///   - radius: The erosion radius, in pixels.
+    ///   - radius: The erosion radius, in pixels. Values outside
+    ///     `0...max(source.width, source.height) - 1` are clamped into range. A radius above
+    ///     120 is applied in several passes, which produces an identical image.
     public func encodeErode(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture,
         radius: Int
     ) {
-        let size = radius * 2 + 1
-        let kernel = getOrCreateAreaMin(size: size)
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        encodeArea(
+            commandBuffer: commandBuffer, source: source, destination: destination,
+            radius: radius, api: "erode"
+        ) {
+            getOrCreateAreaMin(size: $0 * 2 + 1)
+        }
     }
 
     /// Encodes a morphological dilation operation into a command buffer.
@@ -187,16 +198,21 @@ public final class MPSImageFilterWrapper {
     ///   - commandBuffer: The command buffer to encode into.
     ///   - source: The source texture.
     ///   - destination: The destination texture.
-    ///   - radius: The dilation radius, in pixels.
+    ///   - radius: The dilation radius, in pixels. Values outside
+    ///     `0...max(source.width, source.height) - 1` are clamped into range. A radius above
+    ///     120 is applied in several passes, which produces an identical image.
     public func encodeDilate(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
         destination: MTLTexture,
         radius: Int
     ) {
-        let size = radius * 2 + 1
-        let kernel = getOrCreateAreaMax(size: size)
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        encodeArea(
+            commandBuffer: commandBuffer, source: source, destination: destination,
+            radius: radius, api: "dilate"
+        ) {
+            getOrCreateAreaMax(size: $0 * 2 + 1)
+        }
     }
 
     /// Encodes a median filter operation into a command buffer.
@@ -204,7 +220,9 @@ public final class MPSImageFilterWrapper {
     ///   - commandBuffer: The command buffer to encode into.
     ///   - source: The source texture.
     ///   - destination: The destination texture.
-    ///   - diameter: The filter kernel diameter (must be odd, minimum 3).
+    ///   - diameter: The filter kernel diameter. Even values are rounded up to the next
+    ///     odd number, and the result is clamped into the range the device supports
+    ///     (`MPSImageMedian.minKernelDiameter()...maxKernelDiameter()`, 3...127 on Apple Silicon).
     public func encodeMedian(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
@@ -243,6 +261,136 @@ public final class MPSImageFilterWrapper {
         areaMaxCache.removeAll()
         medianCache.removeAll()
         texturePool.removeAll()
+    }
+
+    // MARK: - プライベート: カーネルサイズのクランプ（#893）
+
+    /// erode / dilate の半径を丸めて、MPS へ渡してよいカーネル幅にします。
+    ///
+    /// `radius * 2 + 1` を検証せずに `MPSImageAreaMin` / `MPSImageAreaMax` へ渡すと、
+    /// `throws` でも Optional でも表現できない 2 通りの壊れ方をします（いずれも実測）。
+    ///
+    /// - **負の半径**: カーネル幅が負のまま `kernelWidth:`（`NSUInteger`）へ渡り、
+    ///   巨大な符号なし値として解釈されます。abort すらせず `waitUntilCompleted()` から
+    ///   二度と戻らないため、`erode(image, radius: -1)` はプロセスごと固まります。
+    /// - **巨大な半径**: `radius * 2 + 1` が `Int` をオーバーフローし、MPS に届く前に
+    ///   Swift の算術トラップ（SIGTRAP）でプロセスが落ちます（`radius: Int.max`）。
+    ///
+    /// 上限は「テクスチャの長辺 - 1」に置きます。`edgeMode = .clamp` なので、
+    /// 窓 `[x - r, x + r]` が全画素でテクスチャ全体を覆う `r >= max(width, height) - 1` に
+    /// 達した時点で出力は全画素が全体の min / max に飽和し、それ以上 `r` を増やしても
+    /// **絵は 1 ピクセルも変わりません**。よってこのクランプは効きすぎになりません。
+    private func clampedAreaRadius(radius: Int, source: MTLTexture, api: String) -> Int {
+        let limit = max(0, max(source.width, source.height) - 1)
+        let clamped = min(max(radius, 0), limit)
+        if clamped != radius {
+            metaphorWarning(
+                "MPSImageFilter: \(api) radius must be within 0...\(limit) for a "
+                + "\(source.width)x\(source.height) texture (got \(radius)); using \(clamped)")
+        }
+        return clamped
+    }
+
+    // MARK: - プライベート: 大きな半径の分割適用（#919）
+
+    /// 1 パスで `MPSImageAreaMin` / `MPSImageAreaMax` へ渡してよい最大半径。
+    ///
+    /// カーネル幅が 483（半径 241）以上になると **GPU のコマンドが完了しなくなります**。
+    /// 実測（macOS 26 / Apple Silicon）では幅 481 = 半径 240 までは 64x64 でも
+    /// 2048x2048 でも 12〜59ms で返り、幅 483 からはテクスチャの大きさに関係なく
+    /// `waitUntilCompleted()` から戻りません（CPU 0% でブロック。abort でもコマンド
+    /// バッファのエラーでもないのでログすら出ない）。#893 のクランプは半径を
+    /// 「長辺 - 1」までしか縮めないので、長辺 242px 以上のキャンバスなら
+    /// **正当な引数のまま**踏めます（`@Param` / OSC から半径を流すと射程内）。
+    ///
+    /// 平坦な構造要素の erosion / dilation は分解できます —
+    /// `erode(r1 + r2) == erode(r2) ∘ erode(r1)`。`edgeMode = .clamp` でも成り立ちます
+    /// （clamp は単調かつ冪等なので、2 段で到達できる添字の範囲が 1 段の窓
+    /// `[x - (r1 + r2), x + (r1 + r2)] ∩ [0, W - 1]` と一致するため）。読み戻した画素が
+    /// **ビット単位で一致する**ことは `MPSLargeRadiusSplitTests` が実測で固定しています。
+    ///
+    /// 実測の境界 240 のちょうど半分に取り、デバイスや OS で境界が下振れしても
+    /// 届かない位置に置いています。
+    private static let maxRadiusPerPass = 120
+
+    /// 半径を 1 パスあたりの上限以下へ分割します。上限以下ならそのまま 1 パス。
+    ///
+    /// 端数を最後へ寄せず均すので、よくある半径（1〜20）はこれまでどおり
+    /// `[radius]` の 1 要素が返り、コストも経路も変わりません。
+    static func areaRadiusPasses(_ radius: Int) -> [Int] {
+        guard radius > maxRadiusPerPass else { return [radius] }
+        let count = (radius + maxRadiusPerPass - 1) / maxRadiusPerPass
+        let base = radius / count, extra = radius % count
+        return (0..<count).map { base + ($0 < extra ? 1 : 0) }
+    }
+
+    /// erode / dilate を、必要なら複数パスに分けてエンコードします。
+    ///
+    /// 半径のクランプ（#893）と分割（#919）が通る**最も内側の共有点**で、
+    /// `erode` / `dilate` / `encodeErode` / `encodeDilate` の 4 つがここを通ります。
+    private func encodeArea(
+        commandBuffer: MTLCommandBuffer,
+        source: MTLTexture,
+        destination: MTLTexture,
+        radius: Int,
+        api: String,
+        kernel: (Int) -> MPSUnaryImageKernel
+    ) {
+        let clamped = clampedAreaRadius(radius: radius, source: source, api: api)
+        let passes = Self.areaRadiusPasses(clamped)
+        guard passes.count > 1 else {
+            kernel(passes[0]).encode(
+                commandBuffer: commandBuffer,
+                sourceTexture: source, destinationTexture: destination)
+            return
+        }
+        guard let scratch = getOrCreateTexture(
+            width: source.width, height: source.height,
+            pixelFormat: source.pixelFormat, tag: "mps_area_split"
+        ) else {
+            // 中間テクスチャを取れないときも 1 パスには落とさない（それがハングの正体）。
+            // 上限までの erosion / dilation を掛けて、効きが足りないことを知らせる
+            metaphorAlert(
+                "MPSImageFilter: \(api) could not allocate the scratch texture needed to apply "
+                + "radius \(clamped) in \(passes.count) passes; applying "
+                + "\(Self.maxRadiusPerPass) instead")
+            kernel(Self.maxRadiusPerPass).encode(
+                commandBuffer: commandBuffer,
+                sourceTexture: source, destinationTexture: destination)
+            return
+        }
+        metaphorDiagnostic(
+            "MPSImageFilter: \(api) radius \(clamped) applied in \(passes.count) passes "
+            + "(at most \(Self.maxRadiusPerPass) per pass; MPS hangs from radius 241)")
+
+        // destination と scratch を交互に使い、最後の書き込みが destination になるよう
+        // 開始側をパス数の偶奇で選ぶ。隣り合うパスで入力と出力が同じテクスチャにならない
+        var input = source
+        var output = passes.count.isMultiple(of: 2) ? scratch : destination
+        for (index, radius) in passes.enumerated() {
+            kernel(radius).encode(
+                commandBuffer: commandBuffer,
+                sourceTexture: input, destinationTexture: output)
+            input = output
+            if index < passes.count - 1 {
+                output = (output === destination) ? scratch : destination
+            }
+        }
+    }
+
+    /// median の直径を、奇数かつデバイスが受け付ける範囲へ丸めます。
+    ///
+    /// `MPSImageMedian` は範囲外の直径を戻り値ではなくアサーションで返す
+    /// （`Kernel diameter (1001) is larger than the supported max median filter
+    /// diameter allowed (127)` で `Abort trap: 6`）ため、`init` へ渡す前に丸めます。
+    /// 上下限はデバイスに問い合わせます（Apple Silicon では 3...127）。
+    private static func clampedMedianDiameter(_ diameter: Int) -> Int {
+        // 上下限が偶数で返っても範囲から出ないよう、下限は切り上げ・上限は切り下げで奇数にする
+        let lower = MPSImageMedian.minKernelDiameter() | 1
+        let upperRaw = MPSImageMedian.maxKernelDiameter()
+        let upper = upperRaw.isMultiple(of: 2) ? upperRaw - 1 : upperRaw
+        let odd = diameter | 1 // 偶数は 1 つ上の奇数へ（負数も奇数のまま下限で拾われる）
+        return min(max(odd, lower), max(lower, upper))
     }
 
     // MARK: - プライベート: カーネルキャッシュ
@@ -304,13 +452,25 @@ public final class MPSImageFilterWrapper {
     }
 
     private func getOrCreateMedian(diameter: Int) -> MPSImageMedian {
-        let d = max(3, diameter | 1) // 奇数でなければならない、最小3
+        let d = Self.clampedMedianDiameter(diameter)
+        if d != diameter {
+            metaphorWarning(
+                "MPSImageFilter: median diameter must be an odd number within "
+                + "\(MPSImageMedian.minKernelDiameter())...\(MPSImageMedian.maxKernelDiameter()) "
+                + "(got \(diameter)); using \(d)")
+        }
         if let cached = medianCache[d] { return cached }
         if medianCache.count >= Self.maxAreaCacheSize {
             let keysToRemove = Array(medianCache.keys).prefix(medianCache.count / 2)
             for key in keysToRemove { medianCache.removeValue(forKey: key) }
         }
         let kernel = MPSImageMedian(device: device, kernelDiameter: d)
+        // `MPSUnaryImageKernel` の既定は `.zero`（画像の外を 0 として読む）。median は
+        // 「窓の中の値を 1 つ選ぶ」フィルタなので出力は入力に無い値にならないはずなのに、
+        // 既定のままだと窓の過半が画像外になる縁で中央値が 0 になり、**入力に存在しない黒**が
+        // 出ていた（直径 9 なら四隅から 4 画素ぶん）。同じファイルの gaussianBlur /
+        // erode / dilate は `.clamp` を明示しており、median だけ取り残されていた（#920）
+        kernel.edgeMode = .clamp
         medianCache[d] = kernel
         return kernel
     }

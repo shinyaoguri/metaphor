@@ -51,8 +51,6 @@ struct BatchKey3D: Equatable {
     let textureID: ObjectIdentifier?
     /// このバッチのマテリアルプロパティ。
     let material: Material3D
-    /// カスタムマテリアルのオブジェクト識別子（存在する場合）。
-    let customMaterialID: ObjectIdentifier?
     /// 塗りつぶし描画が有効かどうか。
     let hasFill: Bool
     /// ストローク（ワイヤーフレーム）描画が有効かどうか。
@@ -67,7 +65,6 @@ struct BatchKey3D: Equatable {
         && lhs.hasFill == rhs.hasFill
         && lhs.hasStroke == rhs.hasStroke
         && lhs.strokeColor == rhs.strokeColor
-        && lhs.customMaterialID == rhs.customMaterialID
         && lhs.material.ambientColor == rhs.material.ambientColor
         && lhs.material.specularAndShininess == rhs.material.specularAndShininess
         && lhs.material.emissiveAndMetallic == rhs.material.emissiveAndMetallic
@@ -96,8 +93,6 @@ final class InstanceBatcher3D {
     private(set) var currentTexture: MTLTexture?
     /// 現在のバッチで使用されるマテリアル。
     private(set) var currentMaterial: Material3D = .default
-    /// 現在のバッチで使用されるカスタムマテリアル（存在する場合）。
-    private(set) var currentCustomMaterial: CustomMaterial?
     /// 現在のバッチで塗りつぶし描画が有効かどうか。
     private(set) var currentHasFill: Bool = true
     /// 現在のバッチでストローク描画が有効かどうか。
@@ -116,7 +111,6 @@ final class InstanceBatcher3D {
         currentBatchKey = nil
         currentMesh = nil
         currentTexture = nil
-        currentCustomMaterial = nil
     }
 
     func tryAddInstance(
@@ -124,7 +118,6 @@ final class InstanceBatcher3D {
         mesh: Mesh,
         texture: MTLTexture?,
         material: Material3D,
-        customMaterial: CustomMaterial?,
         hasFill: Bool,
         hasStroke: Bool,
         strokeColor: SIMD4<Float>,
@@ -141,7 +134,6 @@ final class InstanceBatcher3D {
             currentMesh = mesh
             currentTexture = texture
             currentMaterial = material
-            currentCustomMaterial = customMaterial
             currentHasFill = hasFill
             currentHasStroke = hasStroke
             currentStrokeColor = strokeColor
@@ -163,7 +155,6 @@ final class InstanceBatcher3D {
         currentBatchKey = nil
         currentMesh = nil
         currentTexture = nil
-        currentCustomMaterial = nil
         currentMaterial = .default
         currentHasFill = true
         currentHasStroke = false

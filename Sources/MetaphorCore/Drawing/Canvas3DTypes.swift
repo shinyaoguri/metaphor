@@ -38,17 +38,23 @@ extension Light3D: Equatable {}
 
 // MARK: - Material3D
 
-/// GPU 互換のマテリアルデータ（64バイト）。
+/// GPU 互換のマテリアルデータ（80バイト）。
+///
+/// `toneMapParams` はマテリアルごとの設定ではなく**画面全体の性質**で、GPU へ運ぶ
+/// 器としてここに相乗りしている。実体は ``Canvas3D/toneMapParams`` が保持し、
+/// `currentMaterial` へ書き込むたびに焼き直される（Issue #706）。
 struct Material3D {
     var ambientColor: SIMD4<Float>         // xyz=アンビエント色
     var specularAndShininess: SIMD4<Float> // xyz=スペキュラ色, w=光沢度
     var emissiveAndMetallic: SIMD4<Float>  // xyz=エミッシブ色, w=メタリック
     var pbrParams: SIMD4<Float>            // x=ラフネス, y=usePBR(0/1), z=ao, w=予約
+    var toneMapParams: SIMD4<Float>        // x=トーンマップモード, y=露出, z=環境強度(IBL), w=予約
 
     static let `default` = Material3D(
         ambientColor: SIMD4(0.2, 0.2, 0.2, 0),
         specularAndShininess: SIMD4(0, 0, 0, 32),
         emissiveAndMetallic: SIMD4(0, 0, 0, 0),
-        pbrParams: SIMD4(0.5, 0, 1, 0)    // roughness=0.5, usePBR=off, ao=1, reserved=0
+        pbrParams: SIMD4(0.5, 0, 1, 0),    // roughness=0.5, usePBR=off, ao=1, reserved=0
+        toneMapParams: SIMD4(0, 1, 0, 0)   // mode=none, exposure=1（= 既存の絵と同一）
     )
 }

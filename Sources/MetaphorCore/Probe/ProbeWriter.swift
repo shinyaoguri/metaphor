@@ -184,7 +184,8 @@ enum ProbeWriter {
             warnings: metadata.warnings + analysis.warnings,
             stats: analysis.stats,
             performance: metadata.performance,
-            params: metadata.params
+            params: metadata.params,
+            shaders: metadata.shaders
         )
 
         writeJSON(enriched, to: dirURL, baseName: baseName)
@@ -203,7 +204,7 @@ enum ProbeWriter {
             try data.write(to: tmpJSON)
             atomicReplace(tmp: tmpJSON, final: finalJSON)
         } catch {
-            print("[metaphor] Probe: failed to write \(baseName).json: \(error)")
+            metaphorAlert("Probe: failed to write \(baseName).json: \(error)")
         }
     }
 
@@ -282,6 +283,8 @@ enum ProbeWriter {
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: colorSpace,
+            // 貼り込むフレームが premultiplied（ADR-0012）なので、下地も同じ表現で
+            // 用意して合成に変換を挟ませない。
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
@@ -356,7 +359,7 @@ enum ProbeWriter {
             try data.write(to: tmpURL)
             atomicReplace(tmp: tmpURL, final: finalURL)
         } catch {
-            print("[metaphor] Probe: failed to write sequence.json: \(error)")
+            metaphorAlert("Probe: failed to write sequence.json: \(error)")
         }
     }
 
@@ -406,10 +409,12 @@ enum ProbeWriter {
             bitsPerComponent: 8,
             bytesPerRow: width * 4,
             space: colorSpace,
+            // 縮小は premultiplied のまま行う（ADR-0012）。straight のまま平均すると
+            // 透明画素の色が混ざって、半透明の縁に黒や別の色が滲む。
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ),
         let image = srcCtx.makeImage() else {
-            print("[metaphor] Probe: failed to build image for scaling — writing full size")
+            metaphorDiagnostic("Probe: failed to build image for scaling — writing full size")
             return nil
         }
 
@@ -422,6 +427,7 @@ enum ProbeWriter {
                 bitsPerComponent: 8,
                 bytesPerRow: outW * 4,
                 space: colorSpace,
+                // 出力側も premultiplied で受ける（入力と揃えて変換を挟ませない）。
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             ) else { return false }
             dstCtx.interpolationQuality = .high
@@ -429,7 +435,7 @@ enum ProbeWriter {
             return true
         }
         guard ok else {
-            print("[metaphor] Probe: failed to scale frame — writing full size")
+            metaphorDiagnostic("Probe: failed to scale frame — writing full size")
             return nil
         }
         return (dst, outW, outH)
@@ -448,13 +454,16 @@ enum ProbeWriter {
             bitsPerComponent: 8,
             bytesPerRow: bytesPerRow,
             space: colorSpace,
+            // 読み戻したテクスチャの中身は premultiplied（ADR-0012）。宣言を実体に
+            // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
+            // **frame.png は straight** になる（受け手はそのまま読めばよい）。
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ),
         let cgImage = ctx.makeImage(),
         let dest = CGImageDestinationCreateWithURL(
             url as CFURL, "public.png" as CFString, 1, nil
         ) else {
-            print("[metaphor] Probe: failed to encode PNG at \(url.path)")
+            metaphorAlert("Probe: failed to encode PNG at \(url.path)")
             return
         }
         CGImageDestinationAddImage(dest, cgImage, nil)

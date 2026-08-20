@@ -178,8 +178,11 @@ extension SketchContext {
     ///   - w: 外接楕円の幅。
     ///   - h: 外接楕円の高さ。
     ///   - startAngle: ラジアン単位の開始角度。
-    ///   - stopAngle: ラジアン単位の終了角度。
+    ///   - stopAngle: ラジアン単位の終了角度。`startAngle` 以下なら何も描きません。
     ///   - mode: 円弧の描画モード（デフォルト `.default` = 扇形の fill + 弧のみの stroke）。
+    ///
+    /// 角度は Processing と同じく正規化されます（`stopAngle <= startAngle` は描かない・
+    /// 2π 超は 0〜2π へクランプ）。
     public func arc(
         _ x: Float, _ y: Float,
         _ w: Float, _ h: Float,
@@ -293,13 +296,23 @@ extension SketchContext {
         canvas.curveTightness(t)
     }
 
-    /// 現在のシェイプ内にコンター（穴）の記録を開始します。
+    /// 現在のシェイプ内にコンター（穴）の記録を開始します（2D シェイプ専用）。
+    ///
+    /// `beginShape3D()` の記録中は穴を開けられないため、何もせず初回だけ警告します（#736）。
     public func beginContour() {
+        if activeShapeRecording == .threeD {
+            warnContourIn3DOnce()
+            return
+        }
         canvas.beginContour()
     }
 
-    /// 現在のコンター（穴）の記録を終了します。
+    /// 現在のコンター（穴）の記録を終了します（2D シェイプ専用）。
     public func endContour() {
+        if activeShapeRecording == .threeD {
+            warnContourIn3DOnce()
+            return
+        }
         canvas.endContour()
     }
 

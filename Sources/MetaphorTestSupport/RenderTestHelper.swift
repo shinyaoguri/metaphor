@@ -90,8 +90,11 @@ public struct RenderTestHelper {
     }
 
     /// Set the clear color for the next render pass.
-    public func setClearColor(r: Double, g: Double, b: Double, a: Double = 1.0) {
-        textureManager.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
+    ///
+    /// The alpha argument is spelled `alpha:` to match ``MetaphorCore/Color``
+    /// (Issue #566), whose initializers all take `alpha:`.
+    public func setClearColor(r: Double, g: Double, b: Double, alpha: Double = 1.0) {
+        textureManager.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: alpha))
     }
 
     /// Render a frame using the provided draw closure, then blit to staging for readback.

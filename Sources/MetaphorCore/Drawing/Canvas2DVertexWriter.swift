@@ -45,6 +45,8 @@ extension Canvas2D {
             flushInstancedBatch()
         }
         guard ensureColorCapacity() else { return }
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: vertexCount == 0)
         let writeIndex = bufferOffset + vertexCount
         let p = currentTransform * SIMD3<Float>(x, y, 1)
         vertices[writeIndex] = Vertex2D(
@@ -64,6 +66,7 @@ extension Canvas2D {
             flushInstancedBatch()
         }
         guard ensureColorCapacity() else { return }
+        captureShaderParams(ifBatchEmpty: vertexCount == 0)
         let writeIndex = bufferOffset + vertexCount
         vertices[writeIndex] = Vertex2D(
             posX: x, posY: y,
@@ -260,11 +263,16 @@ extension Canvas2D {
                     angle0 = atan2(s0.ny, s0.nx)
                     angle1 = atan2(s1.ny, s1.nx)
                 }
+                // 塗るのは角の外側 = 2 つの外向きオフセット方向がなす短いほうの弧。
+                // 外向きオフセットどうしの角度差は折れ角そのもの（絶対値は π 未満）で、
+                // 向きは cross と同符号になるから、符号が食い違ったときだけ 2π ぶん
+                // 回して短いほうへ寄せる。長いほうを取ると、2 本のクアッドが既に覆って
+                // いる内側だけを塗ることになり、外側が V 字の窪みとして残る（#769）。
                 var sweep = angle1 - angle0
                 if cross > 0 {
-                    if sweep > 0 { sweep -= Float.pi * 2 }
-                } else {
                     if sweep < 0 { sweep += Float.pi * 2 }
+                } else {
+                    if sweep > 0 { sweep -= Float.pi * 2 }
                 }
 
                 for i in 0..<joinSegments {

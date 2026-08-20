@@ -54,11 +54,16 @@ struct CommandStreamTests {
     func deferred2DCommandConstruction() {
         let slots = [
             Deferred2DSlot(seq: 0, command: .setScissor(nil)),
-            Deferred2DSlot(seq: 1, command: .colorBatch(blend: .alpha, vertexStart: 0, vertexCount: 6)),
+            Deferred2DSlot(
+                seq: 1,
+                command: .colorBatch(
+                    pipeline: Canvas2DPipelineKey(.color, .alpha), vertexStart: 0, vertexCount: 6,
+                    shaderParams: nil)),
         ]
         #expect(slots.map(\.seq) == [0, 1])
-        if case .colorBatch(let blend, _, let count) = slots[1].command {
-            #expect(blend == .alpha)
+        if case .colorBatch(let pipeline, _, let count, _) = slots[1].command {
+            #expect(pipeline.kind == .color)
+            #expect(pipeline.blend == .alpha)
             #expect(count == 6)
         } else {
             Issue.record("colorBatch を期待")
@@ -531,5 +536,90 @@ struct CommandStreamStateSnapshotTests {
         #expect(p.r > 30, "box は描画されるべき: \(p)")
         // 末尾の ambient が先行コールへ漏れると R は 255 に張り付く。
         #expect(p.r < 250, "フレーム末尾のアンビエントが先行コールに漏れている: \(p)")
+    }
+}
+
+/// 記録した 2D コマンドがパイプラインを自分で持つことを検証する（#646 / Epic #291 E1）。
+///
+/// 以前は再生時に `Canvas2D.currentBlendMode` を見て辞書を引いていたため、
+/// 「このコマンドがどのパイプラインで描かれるか」はコマンド列からは読めず、
+/// 再生時点の可変状態に依存していた。ここでは記録側で確定していることを固定する。
+/// 2D カスタムシェーダ（Epic #291 E2）はこの性質の上に載る。
+@Suite("CommandStream/PipelineKey", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct Canvas2DPipelineKeyRecordingTests {
+
+    /// 遅延（記録）モードの Canvas2D。影オン経路と同じ積み方で、encoder 無しに
+    /// コマンドだけを集める。
+    private func makeRecordingCanvas() throws -> Canvas2D {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        let canvas = try Canvas2D(renderer: renderer)
+        canvas.isDeferring = true
+        canvas.begin(encoder: nil)
+        return canvas
+    }
+
+    private func recordedPipelineKeys(_ canvas: Canvas2D) -> [Canvas2DPipelineKey] {
+        canvas.deferred2DCommands.compactMap { slot in
+            switch slot.command {
+            case .colorBatch(let key, _, _, _): return key
+            case .texturedBatch(let key, _, _, _, _): return key
+            case .instancedBatch(let key, _, _, _, _, _): return key
+            case .massiveCircles(let key, _, _, _, _, _): return key
+            case .setScissor: return nil
+            }
+        }
+    }
+
+    @Test("カラー頂点バッチは記録時点のブレンドモードをキーに焼き込む")
+    func colorBatchRecordsBlendAtRecordTime() throws {
+        let canvas = try makeRecordingCanvas()
+        canvas.noFill()
+        canvas.stroke(Color(r: 1, g: 0, b: 0))
+        canvas.strokeWeight(2)
+
+        canvas.blendMode(.alpha)
+        canvas.line(0, 0, 16, 16)
+        canvas.blendMode(.additive)
+        canvas.line(16, 0, 32, 16)
+        canvas.flush()
+
+        let keys = recordedPipelineKeys(canvas)
+        #expect(keys.count == 2, "blendMode の切替でバッチが 2 本に割れるべき: \(keys)")
+        #expect(keys.allSatisfy { $0.kind == .color })
+        #expect(keys.map(\.blend) == [.alpha, .additive],
+                "各バッチは記録時点のブレンドモードを持つべき（再生時の状態ではなく）: \(keys)")
+    }
+
+    @Test("インスタンスバッチは蓄積開始時のブレンドモードをキーに焼き込む")
+    func instancedBatchRecordsBlendAtRecordTime() throws {
+        let canvas = try makeRecordingCanvas()
+        canvas.noStroke()
+        canvas.fill(Color(r: 0, g: 1, b: 0))
+
+        canvas.blendMode(.alpha)
+        canvas.rect(0, 0, 8, 8)
+        canvas.blendMode(.multiply)
+        canvas.rect(8, 8, 8, 8)
+        canvas.flush()
+
+        let keys = recordedPipelineKeys(canvas)
+        #expect(keys.count == 2, "blendMode の切替でバッチが 2 本に割れるべき: \(keys)")
+        #expect(keys.allSatisfy { $0.kind == .instanced })
+        #expect(keys.map(\.blend) == [.alpha, .multiply],
+                "各バッチは蓄積開始時のブレンドモードを持つべき: \(keys)")
+    }
+
+    @Test("massive 円は記録時点のブレンドモードをキーに焼き込む")
+    func massiveCirclesRecordBlendAtRecordTime() throws {
+        let canvas = try makeRecordingCanvas()
+        canvas.fill(Color(r: 0, g: 0, b: 1))
+
+        canvas.blendMode(.screen)
+        canvas.circles([CircleInstance(x: 8, y: 8, diameter: 4, color: Color(r: 0, g: 0, b: 1))])
+        canvas.flush()
+
+        let keys = recordedPipelineKeys(canvas)
+        #expect(keys == [Canvas2DPipelineKey(.massiveCircle, .screen)], "\(keys)")
     }
 }

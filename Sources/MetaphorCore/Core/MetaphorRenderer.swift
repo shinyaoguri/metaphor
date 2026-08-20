@@ -120,6 +120,20 @@ public final class MetaphorRenderer: NSObject {
     /// インフライトフレーム数を3に制限するセマフォ
     private let inflightSemaphore = DispatchSemaphore(value: 3)
 
+    /// インフライトフレームのドレイン待ちタイムアウト（秒）。
+    ///
+    /// ``resizeCanvas(width:height:)`` と `drainInflightFrames(context:)` が
+    /// 全スロットを取りに行くときの上限。テストが「壁時計の絶対値」ではなく
+    /// この値そのものを物差しにできるよう定数で持つ（#856）。
+    nonisolated static let inflightDrainTimeoutSeconds = 5
+
+    /// いま ``renderFrame()`` の内側か（= `draw()` が走っている最中か）。
+    ///
+    /// このフレームは `inflightSemaphore` を 1 つ掴んだままなので、ここから
+    /// ``resizeCanvas(width:height:)`` を呼ぶと全スロットを取り切れずに必ず
+    /// タイムアウトする。フレーム中の呼び出しを弾くための印（#856）。
+    public private(set) var isRenderingFrame: Bool = false
+
     /// 現在のフレームのトリプルバッファリングリソース用バッファインデックス (0-2)
     public private(set) var frameBufferIndex: Int = 0
 
@@ -139,6 +153,10 @@ public final class MetaphorRenderer: NSObject {
     /// 実測フレームレートのトラッカー。``renderFrame()`` が毎フレーム記録し、
     /// Probe が `frame.json` の `performance` セクションとして読み出します。
     let frameRateTracker = FrameRateTracker()
+
+    /// スケッチ向けのパフォーマンス採取（``Sketch/performance``。Issue #692）。
+    /// fps は上のトラッカーを共有し、syscall を伴う項目だけ間隔を空けて採ります。
+    lazy var performanceMonitor = PerformanceMonitor(tracker: frameRateTracker)
 
     /// 実効ターゲット FPS（`METAPHOR_FPS` / `SketchConfig.fps` / `frameRate()` 解決後）。
     /// SketchRunner がレンダーループ構成時と `frameRate()` 変更時に更新します。
@@ -186,7 +204,9 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - スクリーンショット
 
-    private var pendingSavePath: String?
+    /// このフレームの終了時に書き出す保存先。同一フレーム内の複数回の予約を取りこぼさないよう
+    /// 単一スロットではなくキューで持つ（#762）。
+    private var pendingSavePaths: [String] = []
     /// `frameBufferIndex` でインデックスするスクリーンショット用ステージングテクスチャ（トリプルバッファ）
     private var stagingTextures: [MTLTexture?] = [nil, nil, nil]
 
@@ -219,7 +239,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// `Sketch/probe(_:_:)` のホットパス用にキャッシュした Probe プラグイン。
     ///
-    /// プラグインの登録・解除は稀なので、その都度 ``refreshCachedPlugins()`` で更新します。
+    /// プラグインの登録・解除は稀なので、その都度 `refreshCachedPlugins()` で更新します。
     /// これにより `probe(...)` が呼び出しごとに `plugins` を線形走査（＋文字列比較＋`as?`）
     /// するコストを、毎フレーム多数の `probe(...)` を呼ぶスケッチでも O(1) に抑えます。
     /// プラグイン未登録時は `nil`（`probe(...)` は完全 no-op）。
@@ -234,6 +254,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
+    ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
     /// - Throws: ``MetaphorError``。Metal デバイスを取得できない場合は
     ///   ``MetaphorError/deviceNotAvailable``、コマンドキューを作成できない場合は
     ///   ``MetaphorError/commandQueueCreationFailed``、オフスクリーンテクスチャを
@@ -299,6 +320,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - width: オフスクリーンレンダーテクスチャの幅（ピクセル）
     ///   - height: オフスクリーンレンダーテクスチャの高さ（ピクセル）
     ///   - clearColor: オフスクリーンレンダーパスのクリアカラー
+    ///   - sampleCount: MSAA サンプル数。デバイスが非対応の場合は 1 にフォールバック
     /// - Throws: ``MetaphorError``。オフスクリーンテクスチャを作成できない場合は
     ///   ``MetaphorError/textureCreationFailed(width:height:format:)``、ブリット用の
     ///   シェーダー関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``、
@@ -429,7 +451,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// レンダーループ開始を全プラグインに通知します（冪等）。
     ///
-    /// 既に開始通知済みの場合は何もしません。``SketchRunner`` がループ開始時
+    /// 既に開始通知済みの場合は何もしません。`SketchRunner` がループ開始時
     /// および `loop()` による再開時に呼びます。
     public func notifyPluginsStart() {
         guard !pluginsRunning else { return }
@@ -441,7 +463,7 @@ public final class MetaphorRenderer: NSObject {
 
     /// レンダーループ停止を全プラグインに通知します（冪等）。
     ///
-    /// 開始通知が出ていない場合は何もしません。``SketchRunner`` が `noLoop()` や
+    /// 開始通知が出ていない場合は何もしません。`SketchRunner` が `noLoop()` や
     /// アプリ終了時に呼びます。
     public func notifyPluginsStop() {
         guard pluginsRunning else { return }
@@ -477,7 +499,7 @@ public final class MetaphorRenderer: NSObject {
     /// - Parameter context: タイムアウト警告に含める呼び出し元の説明。
     private func drainInflightFrames(context: String) {
         var acquired = 0
-        let deadline = DispatchTime.now() + .seconds(5)
+        let deadline = DispatchTime.now() + .seconds(Self.inflightDrainTimeoutSeconds)
         for _ in 0..<3 {
             if inflightSemaphore.wait(timeout: deadline) == .timedOut {
                 metaphorWarning("Timed out waiting for in-flight frames during \(context)")
@@ -640,12 +662,27 @@ public final class MetaphorRenderer: NSObject {
     }
 
     /// 全レンダーターゲットテクスチャを再作成してオフスクリーンキャンバスをリサイズします。
+    ///
+    /// - Important: フレームの**外**から呼んでください。``renderFrame()`` の中（= `draw()` の
+    ///   中）から呼ぶと、このフレームが握っているインフライトスロットが返らないので全スロットを
+    ///   取り切れません。以前はそこで 5 秒待った末に、記録中のエンコーダの足元でレンダーターゲット
+    ///   を差し替えてそのフレームを捨てていました。いまは待たずに警告を出して**何もしません**（#856）。
     public func resizeCanvas(width: Int, height: Int) {
+        guard !isRenderingFrame else {
+            metaphorWarning(
+                "resizeCanvas(\(width), \(height)) ignored: cannot resize while a frame is "
+                + "being rendered. Call it outside draw() (e.g. from setup())."
+            )
+            return
+        }
+
         // GPU が古いテクスチャを使用していないことを保証するため、全インフライトフレームをドレイン。
         // セマフォは値3（トリプルバッファリング）を持ち、全スロットを取得します。
         var acquired = 0
         for _ in 0..<3 {
-            let result = inflightSemaphore.wait(timeout: .now() + .seconds(5))
+            let result = inflightSemaphore.wait(
+                timeout: .now() + .seconds(Self.inflightDrainTimeoutSeconds)
+            )
             if result == .timedOut {
                 metaphorWarning("Timed out waiting for in-flight frame during resize")
                 break
@@ -669,7 +706,7 @@ public final class MetaphorRenderer: NSObject {
             textureManager.setClearColor(currentClearColor)
             clearOffscreenTexture()
         } catch {
-            print("[metaphor] Failed to resize canvas: \(error)")
+            metaphorAlert("Failed to resize canvas: \(error)")
             return
         }
         stagingTextures = [nil, nil, nil]
@@ -726,7 +763,7 @@ public final class MetaphorRenderer: NSObject {
     ///   - b: 青コンポーネント (0.0〜1.0)
     ///   - a: アルファコンポーネント (0.0〜1.0)
     public func setClearColor(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1.0) {
-        textureManager.setClearColor(MTLClearColor(red: r, green: g, blue: b, alpha: a))
+        textureManager.setClearColor(TextureManager.premultipliedClearColor(r, g, b, a))
     }
 
     // MARK: - レンダリング
@@ -774,9 +811,13 @@ public final class MetaphorRenderer: NSObject {
 
     /// 次のフレーム終了時にスクリーンショットの保存をスケジュールします。
     ///
+    /// 同一フレーム内で複数回呼ぶと、そのフレームがすべてのパスへ書き出されます。
+    /// 書き出されるのは呼んだ時点の途中経過ではなく**フレームの最終出力**
+    /// （ポストプロセス適用後）なので、複数パスの中身は同一になります。
+    ///
     /// - Parameter path: PNG 画像の書き込み先ファイルパス
     public func saveScreenshot(to path: String) {
-        pendingSavePath = path
+        pendingSavePaths.append(path)
     }
 
     // MARK: - 座標変換
@@ -957,18 +998,21 @@ public final class MetaphorRenderer: NSObject {
         createOrReuseStagingTexture(cache: &videoStagingTextures)
     }
 
-    /// テクスチャの内容を指定パスの PNG ファイルに書き出します。
+    /// テクスチャの内容を指定パスすべてに PNG ファイルとして書き出します。
     ///
     /// このメソッドは `nonisolated static` であり、完了ハンドラーから安全に呼び出せます。
+    /// テクスチャからの読み出しは 1 回だけ行い、同じバイト列を各パスへ書きます
+    /// （同一フレーム内で複数回 `saveScreenshot(to:)` を呼んだ場合、中身は全て同じ）。
     ///
     /// - Parameters:
     ///   - texture: ピクセルデータを含むマネージドステージングテクスチャ
     ///   - width: 画像の幅（ピクセル）
     ///   - height: 画像の高さ（ピクセル）
-    ///   - path: PNG を保存するファイルパス
+    ///   - paths: PNG を保存するファイルパス（空でないこと）
     nonisolated static func writePNG(
-        texture: MTLTexture, width: Int, height: Int, path: String
+        texture: MTLTexture, width: Int, height: Int, paths: [String]
     ) {
+        guard !paths.isEmpty else { return }
         let bytesPerRow = width * 4
         var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
         texture.getBytes(
@@ -977,7 +1021,9 @@ public final class MetaphorRenderer: NSObject {
             from: MTLRegionMake2D(0, 0, width, height),
             mipmapLevel: 0
         )
-        writePNG(bgraPixels: pixels, width: width, height: height, path: path)
+        for path in paths {
+            writePNG(bgraPixels: pixels, width: width, height: height, path: path)
+        }
     }
 
     /// BGRA バイト列を PNG として書き出します（テクスチャ読み出し済みのデータ用）。
@@ -1009,28 +1055,39 @@ public final class MetaphorRenderer: NSObject {
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
+                // レンダーターゲットの中身は premultiplied（ADR-0012）。宣言を実体に
+                // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
+                // **ファイルは straight** になる（PNG に premultiplied は無い）。
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             ) else { return nil }
             return ctx.makeImage()
         }
         guard let cgImage = cgImageOrNil else {
-            print("[metaphor] Failed to create CGImage for screenshot")
+            metaphorWarning("Failed to create CGImage for screenshot: \(path)")
             return
         }
 
-        // ディレクトリが存在しない場合は作成
+        // ディレクトリが存在しない場合は作成（作れなければ書き込みも失敗するので黙って進めない）
         let url = URL(fileURLWithPath: path)
         let dir = url.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        } catch {
+            metaphorWarning("Failed to create directory for screenshot: \(dir.path): \(error)")
+            return
+        }
 
         guard let dest = CGImageDestinationCreateWithURL(
             url as CFURL, "public.png" as CFString, 1, nil
         ) else {
-            print("[metaphor] Failed to create image destination: \(path)")
+            metaphorWarning("Failed to create image destination: \(path)")
             return
         }
         CGImageDestinationAddImage(dest, cgImage, nil)
-        CGImageDestinationFinalize(dest)
+        // 書き出しに失敗しても例外は飛ばない。無言で「保存できたつもり」にさせない。
+        if !CGImageDestinationFinalize(dest) {
+            metaphorWarning("Failed to write screenshot: \(path)")
+        }
     }
 
     /// オフスクリーンテクスチャを指定ビューポートで画面ドローアブルにブリットします。
@@ -1051,6 +1108,13 @@ public final class MetaphorRenderer: NSObject {
     /// コンピュート、オフスクリーン描画、スクリーンショット、ポストプロセス、
     /// フレーム/動画エクスポート、Syphon 出力の順でフルパイプラインを実行します。
     public func renderFrame() {
+        // フレーム中であることを立てる（#856）。`draw()` はこの中で走るので、ここから
+        // インフライトフレームのドレインを要求する API（``resizeCanvas(width:height:)``）
+        // を呼ぶと自分の掴んでいるスロットが返らず必ずタイムアウトする。早期 return の
+        // 経路もあるため defer で確実に下ろす。
+        isRenderingFrame = true
+        defer { isRenderingFrame = false }
+
         let semaphoreResult = inflightSemaphore.wait(timeout: .now() + .seconds(3))
         if semaphoreResult == .timedOut {
             metaphorWarning("GPU frame timed out after 3s. Skipping frame.")
@@ -1195,9 +1259,11 @@ public final class MetaphorRenderer: NSObject {
         }
         lastOutputTexture = outputTexture
 
-        // スクリーンショットを保存（失敗時はスキップ、フレーム処理は継続）
-        if let savePath = pendingSavePath {
-            pendingSavePath = nil
+        // スクリーンショットを保存（失敗時はスキップ、フレーム処理は継続）。
+        // 同一フレームに複数の予約があっても、読み戻しは 1 回で済ませて各パスへ書く。
+        if !pendingSavePaths.isEmpty {
+            let savePaths = pendingSavePaths
+            pendingSavePaths.removeAll()
             if let staging = getOrCreateStagingTexture() {
                 if let blitEncoder = commandBuffer.makeBlitCommandEncoder() {
                     blitEncoder.copy(
@@ -1218,12 +1284,12 @@ public final class MetaphorRenderer: NSObject {
 
                 let width = textureManager.width
                 let height = textureManager.height
-                let path = savePath
+                let paths = savePaths
                 readbackGroup.enter()
                 commandBuffer.addCompletedHandler { _ in
                     defer { readbackGroup.leave() }
                     MetaphorRenderer.writePNG(
-                        texture: staging, width: width, height: height, path: path
+                        texture: staging, width: width, height: height, paths: paths
                     )
                 }
             }

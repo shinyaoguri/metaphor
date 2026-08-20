@@ -1,5 +1,6 @@
 import AppKit
 import Metal
+import QuartzCore
 import simd
 
 /// Sketch 内で使用される描画コンテキストを提供します。
@@ -54,16 +55,16 @@ public final class SketchContext {
     /// 描画ループが現在実行中かどうか。
     public private(set) var isLooping: Bool = true
 
-    /// ループ再開時に呼ばれるコールバック（SketchRunner が設定）。
+    /// ループ再開時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onLoop: (() -> Void)?
 
-    /// ループ停止時に呼ばれるコールバック（SketchRunner が設定）。
+    /// ループ停止時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onNoLoop: (() -> Void)?
 
-    /// 単一フレーム再描画時に呼ばれるコールバック（SketchRunner が設定）。
+    /// 単一フレーム再描画時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onRedraw: (() -> Void)?
 
-    /// フレームレート変更時に呼ばれるコールバック（SketchRunner が設定）。
+    /// フレームレート変更時に呼ばれるコールバック（SketchRunner / SketchView が設定）。
     var onFrameRate: ((Int) -> Void)?
 
     /// アニメーションループを再開します。
@@ -127,10 +128,24 @@ public final class SketchContext {
     var onCreateCanvas: ((Int, Int) -> Void)?
 
     /// キャンバスサイズを設定します（セットアップ中に呼び出してください）。
+    ///
+    /// - Important: `draw()` の**中**からの呼び出しは警告を出して無視されます（#856）。
+    ///   リサイズは全インフライトフレームのドレインを伴うので、そのフレーム自身が
+    ///   スロットを握ったまま呼ぶと成立しません。ここで弾かずに先へ進めると、リサイズ
+    ///   だけ飛んで `Canvas2D` / `Canvas3D` の作り直しと窓の追随だけが起きるため、
+    ///   描画途中のフレームがエンコーダを持たない新品のキャンバスへ落ちて消えます。
+    ///
     /// - Parameters:
     ///   - width: キャンバスの幅（ピクセル単位）。
     ///   - height: キャンバスの高さ（ピクセル単位）。
     public func createCanvas(width: Int, height: Int) {
+        guard !renderer.isRenderingFrame else {
+            metaphorWarning(
+                "createCanvas(\(width), \(height)) ignored: it cannot run inside draw(). "
+                + "Call it from setup() instead."
+            )
+            return
+        }
         onCreateCanvas?(width, height)
     }
 
@@ -162,6 +177,40 @@ public final class SketchContext {
     /// `.metaphor/params/` との橋渡し（永続化・外部書込の適用）を担います。
     public let params = ParameterStore()
 
+    // MARK: - Shader Hot Reload (#648)
+
+    /// ファイルから読んだシェーダを保存のたびに自動リロードするか。
+    ///
+    /// ``SketchRunner`` が ``SketchConfig/shaderHotReload`` と環境変数
+    /// `METAPHOR_SHADER_HOT_RELOAD` から解決して `setup()` の前に設定します。
+    /// 無効なら監視スレッドは 1 本も起きません。
+    var shaderHotReloadEnabled = false
+
+    /// シェーダ監視の実体。ファイル由来のシェーダを実際に読んだときだけ生成します。
+    private var _shaderHotReloader: ShaderHotReloader?
+
+    /// 有効なときだけリローダを返します（必要になった時点で生成）。
+    var shaderHotReloader: ShaderHotReloader? {
+        guard shaderHotReloadEnabled else { return nil }
+        if let existing = _shaderHotReloader { return existing }
+        let reloader = ShaderHotReloader(context: self)
+        _shaderHotReloader = reloader
+        return reloader
+    }
+
+    /// **既に生成済みの**リローダだけを返します（Probe の観測用、#671）。
+    ///
+    /// 上の ``shaderHotReloader`` はアクセスした時点で生成する lazy アクセサなので、
+    /// 観測のたびに呼ぶと「ファイル由来シェーダが 1 つも無いのに台帳だけある」状態を
+    /// 作ってしまいます。読むだけの経路はこちらを使います。
+    var activeShaderHotReloader: ShaderHotReloader? { _shaderHotReloader }
+
+    /// シェーダ監視を停止します（スケッチ終了時）。
+    func stopShaderHotReload() {
+        _shaderHotReloader?.stop()
+        _shaderHotReloader = nil
+    }
+
     // MARK: - Performance HUD
 
     /// パフォーマンス HUD インスタンス。無効の場合は nil。
@@ -184,6 +233,10 @@ public final class SketchContext {
     /// 影オン経路で `loadPixels()` の同一フレーム読み戻しが使えないことを
     /// 一度だけ警告するためのフラグ（毎フレーム警告するとログが埋まる）。
     var didWarnDeferredPixelReadback = false
+
+    /// `get()` / `set()` が `loadPixels()` より前に呼ばれたことを一度だけ警告する
+    /// ためのフラグ（`draw()` のループ内から呼ばれるとログが埋まる）。
+    var didWarnPixelAccessBeforeLoad = false
 
     // MARK: - Compute State (internal)
 
@@ -219,13 +272,39 @@ public final class SketchContext {
     /// - Parameter config: ウィンドウ設定。
     /// - Returns: 新しい ``SketchWindow`` インスタンス。作成に失敗した場合は `nil`。
     public func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow? {
+        createWindow(
+            config,
+            isHeadless: SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
+        )
+    }
+
+    /// 新しいセカンダリウィンドウを作成します（ヘッドレス指定を注入できる内部版）。
+    ///
+    /// - Parameters:
+    ///   - config: ウィンドウ設定。
+    ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか（テストからの注入用に
+    ///     引数化している。``SketchWindow/init(config:sharedResources:cascadeIndex:isHeadless:)``
+    ///     と同じ位置づけ）。
+    /// - Returns: 新しい ``SketchWindow`` インスタンス。作成に失敗した場合は `nil`。
+    func createWindow(_ config: SketchWindowConfig, isHeadless: Bool) -> SketchWindow? {
         guard let shared = _sharedResources else {
             metaphorWarning("Cannot create window: shared resources unavailable")
             return nil
         }
 
         do {
-            let window = try SketchWindow(config: config, sharedResources: shared)
+            let window = try SketchWindow(
+                config: config,
+                sharedResources: shared,
+                cascadeIndex: Self.nextCascadeIndex(
+                    inUse: secondaryWindows.map(\.cascadeIndex)
+                ),
+                // セカンダリは自前の MetaphorRenderer を持ち、その startTime は
+                // ウィンドウ生成時刻になる。いまの経過時間を渡して `time` の起点を
+                // 「スケッチ開始」へ揃える（doc どおりの意味にする。#836）
+                clockOffset: renderer.elapsedTime,
+                isHeadless: isHeadless
+            )
             secondaryWindows.append(window)
             window.onWindowClosed = { [weak self, weak window] in
                 guard let self, let window else { return }
@@ -236,6 +315,22 @@ public final class SketchContext {
             metaphorWarning("Failed to create window: \(error)")
             return nil
         }
+    }
+
+    /// 次に開くウィンドウへ渡すカスケードスロット（＝いま使われていない最小のスロット）。
+    ///
+    /// 以前は単調増加の静的カウンタで、閉じても減りませんでした。そのため開き直すたびに
+    /// 30pt ずつ右下へ流れ、繰り返すと画面外へ出ていました（#837）。空いたスロットへ
+    /// 戻すことで、流れを止めつつ「ウィンドウを重ならないように」という本来の意図
+    /// （真ん中を閉じてから開き直しても、他の窓とは重ならない）も保ちます。
+    ///
+    /// - Parameter inUse: いま開いているウィンドウが使っているスロット。
+    /// - Returns: 未使用の最小スロット（0 起点）。
+    nonisolated static func nextCascadeIndex(inUse: [Int]) -> Int {
+        let used = Set(inUse)
+        var slot = 0
+        while used.contains(slot) { slot += 1 }
+        return slot
     }
 
     /// すべてのセカンダリウィンドウを閉じリソースを解放します。
@@ -310,6 +405,23 @@ public final class SketchContext {
         )
     }
 
+    /// 3D 記録中に `beginContour()` が来たことを一度だけ知らせたか（#736）。
+    var didWarnContourIn3D = false
+
+    /// `beginShape3D()` の記録中に `beginContour()` が来たことを一度だけ警告する。
+    ///
+    /// コンター（穴）は 2D シェイプのテッセレーションでしか読まれず、3D は
+    /// ファン分割するだけなので、穴を開けたつもりのコードが**穴の無いシェイプとして
+    /// 黙って通る**。絵が出てしまう分だけ気付きにくいので、初回だけ理由を出す。
+    func warnContourIn3DOnce() {
+        guard !didWarnContourIn3D else { return }
+        didWarnContourIn3D = true
+        metaphorWarning(
+            "beginContour() / endContour() only apply to 2D shapes; a 3D shape keeps no hole. "
+                + "Build the ring geometry yourself, or draw the shape with beginShape()."
+        )
+    }
+
     // MARK: - Draw Sequence (#71)
 
     /// draw() 内の 2D/3D 呼び出し順を表す単調シーケンス番号。
@@ -340,6 +452,19 @@ public final class SketchContext {
             guard let self else { return false }
             return !self.canvas3D.recordedDrawCalls.isEmpty
         }
+        // カスタム 2D シェーダの組み込み uniform（#647）。Canvas2D は解像度とフレーム数を
+        // 自分で持てるが、時間とマウスは Context 側にしか無いのでここから供給する。
+        canvas.shaderInputs = { [weak self] in self?.shaderInputs() ?? Canvas2DShaderInputs(
+            time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0) }
+    }
+
+    /// カスタム 2D シェーダへ渡す組み込み uniform の現在値（#647）。
+    func shaderInputs() -> Canvas2DShaderInputs {
+        Canvas2DShaderInputs(
+            time: time,
+            mouse: SIMD2<Float>(input.mouseX, input.mouseY),
+            frameCount: UInt32(truncatingIfNeeded: frameCount)
+        )
     }
 
     // MARK: - Compute Frame Management (internal)
@@ -439,7 +564,9 @@ public final class SketchContext {
 
         // パフォーマンス HUD オーバーレイ（canvas.end() の前に描画し最前面に表示）
         if let hud = performanceHUD {
-            hud.update(deltaTime: deltaTime)
+            // 表示は `performance.fps` / Probe の `frame.json` と同じ採取経路
+            // （レンダラーのトラッカーの直近ウィンドウ）から取る（#698）。
+            hud.update(stats: renderer.frameRateTracker.windowStats(now: CACurrentMediaTime()))
             hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
             hud.draw(canvas: canvas, width: Float(renderer.textureManager.width), height: Float(renderer.textureManager.height))
         }

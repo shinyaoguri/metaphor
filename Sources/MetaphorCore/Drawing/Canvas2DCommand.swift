@@ -17,23 +17,38 @@ import simd
 /// ペイロードは「コマンドごとに変わるデータ」のみを持つ。頂点バッファ・投影行列・
 /// デプスステンシルステートといったフレーム定数や Canvas2D の内部状態は、再生時に
 /// Canvas2D 側が補う（PR-2 で実装）。
+///
+/// 描画バッチは ``Canvas2DPipelineKey`` を持つ（#646 / Epic #291 E1）。以前は `blend` だけを
+/// 持ち、再生時に `Canvas2D.currentBlendMode` を見て辞書を引いていたため、記録したコマンド列
+/// だけでは描画結果が決まらなかった。キーを記録時に焼き込むことで、再生は
+/// ``Canvas2DPipelineStore`` の引きだけになる。ブレンドモードは `pipeline.blend` で読める。
+///
+/// カスタム 2D シェーダ（#647 / Epic #291 E2）の `shaderParams` も同じ理由で記録側に持つ。
+/// 再生時に `Shader2D.parameters` を読むと、1 フレーム内でパラメータを変えたとき
+/// 全バッチが最後の値で描かれてしまい、コマンド列だけでは結果が決まらなくなる。
 enum Deferred2DCommand {
     /// 色付き頂点バッチ（`flushColorVertices` 相当）。変換は頂点書き込み時に焼き込み済み。
-    case colorBatch(blend: BlendMode, vertexStart: Int, vertexCount: Int)
+    case colorBatch(
+        pipeline: Canvas2DPipelineKey, vertexStart: Int, vertexCount: Int,
+        shaderParams: [UInt8]?)
 
     /// テクスチャ付き頂点バッチ（`flushTexturedVertices` 相当）。
-    case texturedBatch(blend: BlendMode, vertexStart: Int, vertexCount: Int, texture: MTLTexture)
+    case texturedBatch(
+        pipeline: Canvas2DPipelineKey, vertexStart: Int, vertexCount: Int, texture: MTLTexture,
+        shaderParams: [UInt8]?)
 
     /// インスタンス描画バッチ（`flushInstancedBatch` 相当）。インスタンスバッファは
     /// トリプルバッファ管理で記録/再生が同一フレーム内のため参照を保持する。
     case instancedBatch(
-        blend: BlendMode, shape: Shape2DType,
-        instanceBuffer: MTLBuffer, instanceOffset: Int, instanceCount: Int)
+        pipeline: Canvas2DPipelineKey, shape: Shape2DType,
+        instanceBuffer: MTLBuffer, instanceOffset: Int, instanceCount: Int,
+        shaderParams: [UInt8]?)
 
     /// massive 円インスタンス（`Canvas2DMassive.drawCircleInstances` 相当・宿題②）。
     /// massive は変換を描画時に適用するため、記録時の `currentTransform`（埋め込み済み）を保持する。
     case massiveCircles(
-        blend: BlendMode, dataBuffer: MTLBuffer, byteOffset: Int, count: Int, transform: float4x4)
+        pipeline: Canvas2DPipelineKey, dataBuffer: MTLBuffer, byteOffset: Int, count: Int,
+        transform: float4x4, shaderParams: [UInt8]?)
 
     /// クリップ（scissor）の設定・解除（`beginClip`/`endClip` 相当・宿題③）。
     /// `nil` はクリップ解除（フルビューポート）。

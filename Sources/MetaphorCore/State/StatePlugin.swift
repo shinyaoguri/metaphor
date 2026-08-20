@@ -6,6 +6,9 @@ import Metal
 /// 既定はプロジェクトのカレントディレクトリ配下の `.metaphor/state/`
 /// （Probe の `.metaphor/probe/`・Parameter Store の `.metaphor/params/` と同じ流儀。
 /// CONTRACT.md 契約点 8）。
+///
+/// 相対パスは環境変数 `METAPHOR_STATE_DIR`（未設定なら cwd）を基準に解決されます
+/// （`.app` 起動では cwd が `/` になるため。Issue #688）。
 public struct SketchStateConfig: Sendable {
     /// `state.json` を書き出すディレクトリ。
     public var directory: String
@@ -17,8 +20,8 @@ public struct SketchStateConfig: Sendable {
         directory: String = ".metaphor/state",
         saveRequestFilePath: String = ".metaphor/state/save-request.json"
     ) {
-        self.directory = directory
-        self.saveRequestFilePath = saveRequestFilePath
+        self.directory = MetaphorPaths.resolve(directory)
+        self.saveRequestFilePath = MetaphorPaths.resolve(saveRequestFilePath)
     }
 }
 
@@ -32,7 +35,7 @@ public struct SketchStateConfig: Sendable {
 /// - **保存**: `pre()` で `save-request.json` の mtime を確認し、変化していれば
 ///   ``Sketch/saveState()`` を呼んで `state.json` をアトミックに書き出す。
 ///   応答した `id` をエコーするので、consumer はタイムアウトを待たずに ready を検知できる。
-/// - **復元**: 新しいプロセス側の担当（``SketchRunner`` が `setup()` の後に
+/// - **復元**: 新しいプロセス側の担当（`SketchRunner` が `setup()` の後に
 ///   ``Sketch/restoreState(_:)`` を呼ぶ）。
 ///
 /// 有効化は `metaphor watch` のヘッドレス実行（`METAPHOR_VIEWER=1`）で自動。
@@ -182,7 +185,10 @@ public final class StatePlugin: MetaphorPlugin {
 enum SketchStateRestore {
     /// 復元対象を読み取ります。環境変数が無い/読めない/壊れている場合は `nil`。
     static func load(env: [String: String]) -> RestoredSketchState? {
-        guard let path = env["METAPHOR_RESTORE_STATE"], !path.isEmpty else { return nil }
+        guard let raw = env["METAPHOR_RESTORE_STATE"], !raw.isEmpty else { return nil }
+        // 契約上は絶対パスだが、相対で渡ってきても `METAPHOR_STATE_DIR`（未設定なら cwd）
+        // 基準で解決する。絶対パスはそのまま（Issue #688）。
+        let path = MetaphorPaths.resolve(raw)
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
             metaphorDiagnostic("state: METAPHOR_RESTORE_STATE のファイルを読めませんでした（初期状態で起動します）")
             return nil

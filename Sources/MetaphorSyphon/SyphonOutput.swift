@@ -1,4 +1,5 @@
 import Metal
+import MetaphorLog
 import Syphon
 import Foundation
 
@@ -12,6 +13,18 @@ import Foundation
 /// let syphon = SyphonOutput(device: device, name: "MyApp")
 /// syphon.publish(texture: outputTexture, commandBuffer: commandBuffer)
 /// ```
+///
+/// ## Alpha
+///
+/// Published frames carry **premultiplied alpha** and are handed to Syphon unmodified —
+/// metaphor's render targets are premultiplied
+/// ([ADR-0012](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0012-alpha-semantics.md))
+/// and this type does not convert them.
+///
+/// **Receivers must composite with premultiplied `over`**, i.e.
+/// `result = src.rgb + dst.rgb * (1 - src.a)`. Compositing with a straight-alpha `over`
+/// (`src.rgb * src.a + …`) multiplies alpha a second time and makes translucent areas
+/// come out too dark.
 public final class SyphonOutput {
     /// The underlying Syphon Metal server instance.
     private var server: SyphonMetalServer?
@@ -88,7 +101,7 @@ public final class SyphonOutput {
         // 正しい停止経路は所有者（SyphonPlugin.onDetach 等）による stop() で、
         // ここは呼び忘れに対する安全網（ログを出して best-effort で停止する）。
         if server != nil {
-            print("[metaphor] SyphonOutput deallocated without stop() — stopping server as a fallback")
+            metaphorWarning("SyphonOutput deallocated without stop() — stopping server as a fallback")
             server?.stop()
         }
     }

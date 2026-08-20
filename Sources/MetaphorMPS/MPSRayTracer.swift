@@ -77,11 +77,27 @@ public final class MPSRayTracer {
     ///   - commandQueue: The command queue used to encode ray-tracing work.
     ///   - width: The output texture width in pixels.
     ///   - height: The output texture height in pixels.
-    /// - Throws: ``MetaphorError``. `MetaphorError.mps(.accelerationStructureBuildFailed)`
+    /// - Throws: ``MetaphorCore/MetaphorError``. `MetaphorError.textureCreationFailed` when `width` or
+    ///   `height` is outside `1...TextureManager.maxDimension`,
+    ///   `MetaphorError.mps(.accelerationStructureBuildFailed)`
     ///   when the bundled shader source or a kernel function is missing,
     ///   `MetaphorError.shaderCompilationFailed` when the MSL source fails to compile,
     ///   and `MetaphorError.pipelineCreationFailed` when a compute pipeline cannot be built.
     public init(device: MTLDevice, commandQueue: MTLCommandQueue, width: Int, height: Int) throws {
+        // 出力サイズは Metal へ渡す前に検証する（#806）。`setupOutputTexture()` の
+        // `MTLTextureDescriptor` は範囲外の寸法を `makeTexture` の nil ではなく
+        // `validateWithDevice:` のアサーションで返すため、ここを通すと
+        // この init が `throws` であっても呼び出し側は失敗を捕まえられない
+        // （`try` を書いていてもプロセスごと落ちる）。
+        guard width > 0, height > 0,
+              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            metaphorWarning(
+                "MPSRayTracer: size must be within 1...\(TextureManager.maxDimension) "
+                + "(got \(width)x\(height))")
+            throw MetaphorError.textureCreationFailed(
+                width: width, height: height, format: "rayTracerOutput")
+        }
+
         self.device = device
         self.commandQueue = commandQueue
         self.width = width

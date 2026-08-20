@@ -31,6 +31,10 @@ public final class PixelBuffer {
     ///
     /// 各要素は BGRA パックされた色: `(A << 24) | (R << 16) | (G << 8) | B`。
     /// `pixels[y * width + x]` でインデックスします。
+    ///
+    /// **色は straight alpha**（= `color(r, g, b, a)` が詰めるのと同じ形）です。
+    /// キャンバスの中身は premultiplied ですが、`finishDownload()` が読み戻しの直後に
+    /// 割り戻し、`updatePixels()` の描画側が straight として扱います（ADR-0012 / #848）。
     public let pixels: UnsafeMutableBufferPointer<UInt32>
 
     /// ゼロコピーパス用のバッキング MTLBuffer（フォールバック使用時は nil）。
@@ -175,16 +179,53 @@ public final class PixelBuffer {
 
     /// ``encodeDownload(from:into:)`` の GPU 完了後に CPU 配列を確定させます。
     ///
-    /// ゼロコピーパスは blit が backingBuffer へ直接書くため何もしない。
-    /// アライメント非対応のフォールバックパスだけがテクスチャから吸い上げる。
+    /// ゼロコピーパスは blit が backingBuffer へ直接書くため吸い上げは要らない。
+    /// アライメント非対応のフォールバックパスだけがテクスチャから読む。
+    /// どちらの経路でも、最後に premultiplied を straight へ割り戻す。
     func finishDownload() {
-        guard let mem = rawMemory else { return }
-        texture.getBytes(
-            mem, bytesPerRow: bytesPerRow,
-            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                            size: MTLSize(width: width, height: height, depth: 1)),
-            mipmapLevel: 0
-        )
+        if let mem = rawMemory {
+            texture.getBytes(
+                mem, bytesPerRow: bytesPerRow,
+                from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
+                                size: MTLSize(width: width, height: height, depth: 1)),
+                mipmapLevel: 0
+            )
+        }
+        unpremultiply()
+    }
+
+    /// 読み戻した画素を premultiplied から straight へ割り戻します（ADR-0012 / #848）。
+    ///
+    /// キャンバスの中身は premultiplied だが、``pixels`` は**公開 API なので straight**
+    /// でなければならない。`color(r, g, b, a)` が straight を詰める helper である以上、
+    /// 読む側だけ premultiplied だと `pixels[i] = color(...)` と `pixels[i]` の読みが
+    /// 別の世界を指してしまう。
+    ///
+    /// ゼロコピー経路ではテクスチャの中身も一緒に straight になる（同じメモリを指す）。
+    /// これは意図的で、`updatePixels()` はこのテクスチャを straight として描く
+    /// （`Canvas2DPipelineKind.straightTextured`）。
+    ///
+    /// α = 255 は変換不要なので早期に飛ばす。不透明なキャンバス（大多数）では
+    /// 比較 1 回ぶんのコストしか掛からない。
+    private func unpremultiply() {
+        guard let base = pixels.baseAddress else { return }
+        for i in 0..<pixels.count {
+            let packed = base[i]
+            let a = (packed >> 24) & 0xFF
+            if a == 255 { continue }
+            // α = 0 の画素は色を持たない（premultiplied では RGB も 0）
+            if a == 0 { base[i] = 0; continue }
+            let r = Self.divide((packed >> 16) & 0xFF, by: a)
+            let g = Self.divide((packed >> 8) & 0xFF, by: a)
+            let b = Self.divide(packed & 0xFF, by: a)
+            base[i] = (a << 24) | (r << 16) | (g << 8) | b
+        }
+    }
+
+    /// 8bit の成分を α で割り戻します（四捨五入 + 飽和）。
+    @inline(__always)
+    private static func divide(_ component: UInt32, by alpha: UInt32) -> UInt32 {
+        min(255, (component * 255 + alpha / 2) / alpha)
     }
 
     /// ピクセルデータを GPU テクスチャにアップロードします。

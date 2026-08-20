@@ -1,15 +1,177 @@
+
 #include <metal_stdlib>
 using namespace metal;
 
+// Canvas2D の頂点入出力と、カスタムシェーダへ配る組み込み uniform。Swift 側の正本は
+// 頂点が `Drawing/Canvas2D.swift`（`Vertex2D` / `TexturedVertex2D`）、uniform が
+// `Drawing/Shader2D.swift`（`Canvas2DShaderUniforms`）。
+//
+// このヘッダはそのまま `BuiltinShaders.canvas2DStructs` として、ユーザーの
+// カスタム 2D シェーダへ配られる（`scripts/generate-shader-sources.py` が生成）。
+// **中身を変えると公開される前文も変わる**ので、フィールドの増減は Swift 側と
+// `ShaderPreludeTests` のレイアウト検査に必ず揃えること。
+
+// カラー系（`rect()` / `circle()` / `line()` など）の頂点入力。
 struct Canvas2DVertexIn {
     float2 position [[attribute(0)]];
     float4 color [[attribute(1)]];
 };
 
+// カラー系の頂点出力 = カスタムフラグメントシェーダの `[[stage_in]]`。
+//
+// `Canvas2DPipelineStore` はユーザーのフラグメントを color / instanced / massive の
+// **どの経路の組み込み頂点関数とも組む**ので、3 経路の頂点出力はこの 1 型に揃えてある。
+// ずれてもパイプライン生成が失敗して組み込みの絵へ静かに落ちるだけなので、
+// 定義を分けないこと。
 struct Canvas2DVertexOut {
     float4 position [[position]];
     float4 color;
 };
+
+// テクスチャ系（`image()` / `text()`）の頂点入力。
+struct Canvas2DTexVertexIn {
+    float2 position [[attribute(0)]];
+    float2 texCoord [[attribute(1)]];
+    float4 color [[attribute(2)]];
+};
+
+// テクスチャ系の頂点出力 = テクスチャ経路のカスタムフラグメントの `[[stage_in]]`。
+struct Canvas2DTexVertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+    float4 color;
+};
+
+// metaphor が `buffer(3)` へ自動供給する組み込み uniform。
+//
+// 組み込みシェーダーは使わない（カスタムシェーダ専用）が、Swift 側とレイアウトを
+// 突き合わせる先が必要なのでここに置く。2D のカラー頂点は UV を持たないので、UV は
+// フラグメントの `[[position]]`（画面ピクセル座標）を `resolution` で割って作る。
+struct Canvas2DShaderUniforms {
+    float2 resolution;
+    float2 mouse;
+    float time;
+    uint frameCount;
+};
+
+// アルファの変換ヘルパ（ADR-0012）。
+//
+// metaphor は**公開 API が straight alpha、内部が premultiplied alpha**という規範を
+// 採っている。`in.color`（fill / tint 由来）は straight で渡ってくるが、
+// **フラグメントが返す値は premultiplied でなければならない**。キャンバスの中身が
+// premultiplied だからで、straight のまま返すと合成のたびに α が二重に掛かる。
+//
+// カスタム 2D フラグメントの最後は次の形にする:
+//
+//     return metaphorPremultiply(float4(rgb, alpha));
+//
+// 不透明（alpha = 1）しか返さないシェーダは premultiplied と straight が一致するので、
+// そのままで構わない。
+//
+// 成分は掛ける前に 0...1 へ飽和させる。`Color` は範囲外の値を保持する仕様（Tween の
+// オーバーシュートなど）で、「描画時に飽和する」ことを doc が保証しているため。
+// 以前は GPU がフラグメント出力をブレンド前にクランプすることでこれが成立していたが、
+// α を自分で掛けるようになると `a = 1.5` が色を 1.5 倍してしまう。
+inline float4 metaphorPremultiply(float4 c) {
+    float4 s = clamp(c, 0.0, 1.0);
+    return float4(s.rgb * s.a, s.a);
+}
+
+// premultiplied → straight。α = 0 の画素は色を持たないので黒を返す。
+inline float4 metaphorUnpremultiply(float4 c) {
+    return c.a > 0.0 ? float4(c.rgb / c.a, c.a) : float4(0.0);
+}
+
+
+
+// 分離可能ブレンドモードの実装（ADR-0012 / #801）。
+//
+// `.multiply` / `.screen` / `.subtract` / `.lightest` / `.darkest` / `.difference` /
+// `.exclusion` は固定関数のブレンド係数では書けない。src の α を「混ぜ方をどれだけ
+// 効かせるか」として使うため、`mix(dst, blend(src, dst), src.a)` という**係数の積和に
+// 乗らない形**が要るからで、そのためフレームバッファフェッチ（`float4 dest [[color(0)]]`）
+// でキャンバスの値を読み、合成をここで行う。
+//
+// 式は W3C Compositing and Blending Level 1 の source-over + 分離可能ブレンド:
+//
+//     co = as·(1 − ab)·Cs + as·ab·B(Cb, Cs) + (1 − as)·ab·Cb
+//     ao = as + ab·(1 − as)
+//
+// `co` は既に premultiplied なので、そのまま返せばキャンバスの規範（内部は
+// premultiplied）に合う。下地が無い（ab = 0）ところでは `co = as·Cs` となり、
+// 「混ぜる相手が無ければ src がそのまま出る」という素直な振る舞いになる。
+//
+// この経路のパイプラインは固定関数のブレンドを無効にしている（`BlendMode.apply(to:)`）。
+
+// 範囲外の成分を飽和させる（`Color` は範囲外を保持し、飽和は描画時の約束）。
+inline float4 metaphorClampSrc2D(float4 c) { return clamp(c, 0.0, 1.0); }
+
+// ブレンド関数 B(Cb, Cs)。引数はどちらも straight。
+inline float3 metaphorBlendMultiply(float3 Cs, float3 Cb) { return Cs * Cb; }
+inline float3 metaphorBlendScreen(float3 Cs, float3 Cb) { return Cs + Cb - Cs * Cb; }
+inline float3 metaphorBlendSubtract(float3 Cs, float3 Cb) { return max(Cb - Cs, 0.0); }
+inline float3 metaphorBlendLightest(float3 Cs, float3 Cb) { return max(Cs, Cb); }
+inline float3 metaphorBlendDarkest(float3 Cs, float3 Cb) { return min(Cs, Cb); }
+inline float3 metaphorBlendDifference(float3 Cs, float3 Cb) { return abs(Cs - Cb); }
+inline float3 metaphorBlendExclusion(float3 Cs, float3 Cb) {
+    return Cs + Cb - 2.0 * Cs * Cb;
+}
+
+// src（straight）と dest（premultiplied）とブレンド結果から、premultiplied な出力を作る。
+// src は `metaphorClampSrc2D` で飽和済みのものを渡すこと。
+inline float4 metaphorComposite2D(float4 src, float4 dest, float3 blended) {
+    float as = src.a;
+    float ab = dest.a;
+    float3 Cb = metaphorUnpremultiply(dest).rgb;
+    float3 co = as * (1.0 - ab) * src.rgb + as * ab * blended + (1.0 - as) * ab * Cb;
+    return float4(co, as + ab * (1.0 - as));
+}
+
+// カラー経路（color / instanced / massive）のブレンドフラグメントを 1 本作る。
+// 3 経路は `Canvas2DVertexOut` を共有するので、本体はまったく同じになる。
+#define METAPHOR_CANVAS2D_BLEND_FRAGMENT(NAME, BLEND_FN)                             \
+    fragment float4 NAME(                                                            \
+        Canvas2DVertexOut in [[stage_in]],                                           \
+        float4 dest [[color(0)]]                                                     \
+    ) {                                                                              \
+        float4 src = metaphorClampSrc2D(in.color);                                   \
+        float3 Cb = metaphorUnpremultiply(dest).rgb;                                 \
+        return metaphorComposite2D(src, dest, BLEND_FN(src.rgb, Cb));                \
+    }
+
+// 既に straight なテクスチャ（`pixels` / `updatePixels()`。ADR-0012 / #848）用の
+// 恒等デコード。`METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT_IMPL` へ渡す。
+inline float4 metaphorKeepStraight(float4 c) { return c; }
+
+// テクスチャ経路（`image()` / `text()` / `updatePixels()`）のブレンドフラグメント。
+// 合成の式は経路によらず同じで、違うのは**サンプル値をどう straight にするか**だけ
+// なので、そこだけ `DECODE` で差し替える。
+#define METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT_IMPL(NAME, BLEND_FN, DECODE)       \
+    fragment float4 NAME(                                                            \
+        Canvas2DTexVertexOut in [[stage_in]],                                        \
+        texture2d<float> tex [[texture(0)]],                                         \
+        float4 dest [[color(0)]]                                                     \
+    ) {                                                                              \
+        constexpr sampler s(filter::linear, address::clamp_to_edge);                 \
+        float4 texColor = DECODE(tex.sample(s, in.texCoord));                        \
+        float4 src = metaphorClampSrc2D(texColor * in.color);                        \
+        float3 Cb = metaphorUnpremultiply(dest).rgb;                                 \
+        return metaphorComposite2D(src, dest, BLEND_FN(src.rgb, Cb));                \
+    }
+
+// テクスチャが premultiplied で入ってくる既定の経路（グリフアトラス・読み込んだ
+// 画像・オフスクリーン）。straight に戻してから頂点色を掛ける。
+#define METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(NAME, BLEND_FN)                    \
+    METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT_IMPL(NAME, BLEND_FN, metaphorUnpremultiply)
+
+// テクスチャが既に straight で入ってくる経路（`updatePixels()`）。割り戻さない。
+#define METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(NAME, BLEND_FN)           \
+    METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT_IMPL(NAME, BLEND_FN, metaphorKeepStraight)
+
+
+// `Canvas2DVertexIn` / `Canvas2DVertexOut` は `MetaphorCanvas2DTypes.h`（= カスタム
+// 2D シェーダへ配る前文）にある。組み込みとカスタムで stage_in のレイアウトが
+// ずれないよう、定義は 1 箇所に置く。
 
 vertex Canvas2DVertexOut metaphor_canvas2DVertex(
     Canvas2DVertexIn in [[stage_in]],
@@ -21,30 +183,19 @@ vertex Canvas2DVertexOut metaphor_canvas2DVertex(
     return out;
 }
 
+// 頂点色は straight で渡ってくる（fill / stroke がそのまま入る）。キャンバスの中身は
+// premultiplied なので、ここで掛けてから返す（ADR-0012）。
 fragment float4 metaphor_canvas2DFragment(
     Canvas2DVertexOut in [[stage_in]]
 ) {
-    return in.color;
+    return metaphorPremultiply(in.color);
 }
 
-fragment float4 metaphor_canvas2DDifferenceFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = abs(src.rgb - dest.rgb);
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
-
-fragment float4 metaphor_canvas2DExclusionFragment(
-    Canvas2DVertexOut in [[stage_in]],
-    float4 dest [[color(0)]]
-) {
-    float4 src = in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_BLEND_FRAGMENT(metaphor_canvas2DExclusionFragment, metaphorBlendExclusion)

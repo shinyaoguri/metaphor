@@ -2,7 +2,7 @@ name: Feature request
 description: Propose a new feature or enhancement for the metaphor library.
 title: "[feature] "
 labels:
-  - enhancement
+  - "type: feature"
 body:
   - type: markdown
     attributes:

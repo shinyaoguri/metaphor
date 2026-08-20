@@ -186,7 +186,9 @@ public final class ShaderLibrary {
 
     /// MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
     ///
-    /// 再コンパイル前に指定キーのキャッシュ済み関数をクリアします。
+    /// **コンパイルに成功したときだけ**差し替えます。失敗した場合は直前の動くライブラリと
+    /// その関数キャッシュがそのまま残るので、書きかけの MSL を保存しても描画は止まりません
+    /// （#648。旧実装は先に登録を削っていたため、コンパイルエラーで関数が引けなくなった）。
     ///
     /// - Parameters:
     ///   - key: リロードするライブラリキー
@@ -194,9 +196,11 @@ public final class ShaderLibrary {
     /// - Throws: ``MetaphorError/shaderCompilationFailed(name:underlying:)``
     ///   MSL ソースのコンパイルに失敗した場合
     public func reload(key: String, source: String) throws {
-        functions = functions.filter { !$0.key.hasPrefix("\(key).") }
-        libraries.removeValue(forKey: key)
+        // register は成功時にのみ libraries[key] を差し替える（失敗すれば throw して無傷）。
         try register(source: source, as: key)
+        // 差し替わった後に古い MTLFunction を捨てる。次回の function(named:from:) は
+        // 新しいライブラリから引き直す。
+        functions = functions.filter { !$0.key.hasPrefix("\(key).") }
     }
 
     /// ディスク上のファイルからシェーダーをリロードし、既存ライブラリを置換します。

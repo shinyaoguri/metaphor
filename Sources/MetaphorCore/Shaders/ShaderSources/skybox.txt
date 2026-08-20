@@ -1,0 +1,92 @@
+#include <metal_stdlib>
+
+using namespace metal;
+
+// トーンマッピング（Issue #706）
+//
+// 3D のライティング結果は物理量なので 1.0 を超えうるが、レンダーターゲットは
+// `.bgra8Unorm`（LDR 8bit）なので、そのまま書き出すとハードクランプされて
+// ハイライトが白く潰れる。ここで 0…1 へ写像してから書き出す。
+//
+// 掛かるのは **3D のライティング結果だけ**で、2D の描画には掛からない
+// （3D の lit は物理量・2D の color は最終色、という非対称を明示的に採る）。
+
+// Reinhard: x / (1 + x)。単純で色相が安定するが、中間調のコントラストは眠くなる。
+static inline float3 metaphorToneMapReinhard(float3 x) {
+    return x / (1.0 + x);
+}
+
+// ACES filmic 近似（Narkowicz 2015）。暗部を締めてハイライトを滑らかに丸めるため、
+// 金属や強い光源のある絵で破綻しにくい。
+static inline float3 metaphorToneMapACESFilmic(float3 x) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
+
+// `mode` は `ToneMapMode` の rawValue（0 = none / 1 = reinhard / 2 = acesFilmic）。
+//
+// `exposure` は **モードに関わらず**トーンマップ前に掛かる。既定の 1.0 は恒等倍なので、
+// `.none` のままなら結果は従来と完全に一致する。
+static inline float3 metaphorApplyToneMap(float3 color, float mode, float exposure) {
+    float3 c = color * exposure;
+    if (mode > 1.5) return metaphorToneMapACESFilmic(c);
+    if (mode > 0.5) return saturate(metaphorToneMapReinhard(c));
+    return c;
+}
+
+
+// skybox（環境の背景描画）。
+//
+// 頂点バッファを持たず `[[vertex_id]]` からフルスクリーンのクワッドを作り、
+// 深度 1.0（NDC の最奥）に置いて `lessEqual` で描く。3D ジオメトリが書いた場所は
+// 深度が 1.0 未満なので通らず、何も描かれていない画素にだけ環境が出る。
+//
+// レイ方向は逆ビュー射影行列で NDC を逆投影して求めるので、投影が透視でも正射でも、
+// Processing 由来の flipY が入っていても、そのまま正しい向きになる。
+
+struct SkyboxUniforms {
+    float4x4 inverseViewProjection;
+    float4 cameraPosition;   // xyz = カメラ位置
+    float4 params;           // x=強度, y=トーンマップモード, z=露出, w=予約
+};
+
+struct SkyboxVertexOut {
+    float4 position [[position]];
+    float2 ndc;
+};
+
+vertex SkyboxVertexOut metaphor_skyboxVertex(uint vertexID [[vertex_id]]) {
+    float2 positions[4] = {
+        float2(-1.0, -1.0),
+        float2( 1.0, -1.0),
+        float2(-1.0,  1.0),
+        float2( 1.0,  1.0),
+    };
+
+    SkyboxVertexOut out;
+    out.ndc = positions[vertexID];
+    // z = w = 1 → 深度 1.0（最奥）
+    out.position = float4(positions[vertexID], 1.0, 1.0);
+    return out;
+}
+
+fragment float4 metaphor_skyboxFragment(
+    SkyboxVertexOut in [[stage_in]],
+    constant SkyboxUniforms &uniforms [[buffer(0)]],
+    texturecube<float> envMap [[texture(0)]]
+) {
+    constexpr sampler envSampler(filter::linear, mip_filter::linear, address::clamp_to_edge);
+
+    float4 farPoint = uniforms.inverseViewProjection * float4(in.ndc, 1.0, 1.0);
+    float3 worldPos = farPoint.xyz / farPoint.w;
+    float3 dir = normalize(worldPos - uniforms.cameraPosition.xyz);
+
+    float3 color = envMap.sample(envSampler, dir).rgb * uniforms.params.x;
+    color = metaphorApplyToneMap(color, uniforms.params.y, uniforms.params.z);
+
+    return float4(color, 1.0);
+}

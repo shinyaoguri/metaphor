@@ -216,15 +216,25 @@ public final class ParticleSystem {
     ///   - device: リソース作成用の Metal デバイス
     ///   - shaderLibrary: パーティクルシェーダー関数を含むシェーダーライブラリ
     ///   - sampleCount: レンダーパイプラインの MSAA サンプル数
-    ///   - count: 最大パーティクル数
-    /// - Throws: GPU バッファの確保に失敗した場合、または必要なシェーダー関数が
-    ///   見つからない場合 ``MetaphorError/particle(_:)``
+    ///   - count: 最大パーティクル数。1 以上。
+    /// - Throws: `count` が 0 以下の場合、GPU バッファの確保に失敗した場合、
+    ///   または必要なシェーダー関数が見つからない場合 ``MetaphorError/particle(_:)``
     init(
         device: MTLDevice,
         shaderLibrary: ShaderLibrary,
         sampleCount: Int,
         count: Int
     ) throws {
+        // 個数の検証（#806）。`SketchContext.createParticleSystem` にも同じガードが
+        // あるが、そこを通らない内部の呼び出しから素通りしないよう最も内側にも置く。
+        // 実測では負の count でも `makeBuffer(length:)` が nil を返して
+        // `.bufferCreationFailed` に落ちるため abort はしないが、それは Metal 側の
+        // 実装依存で、意図した契約として持っておくべきものではない。
+        guard count > 0 else {
+            metaphorWarning("ParticleSystem: count must be positive (got \(count))")
+            throw MetaphorError.particle(.bufferCreationFailed)
+        }
+
         self.device = device
         self.count = count
 

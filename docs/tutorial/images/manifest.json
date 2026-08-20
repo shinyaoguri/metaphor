@@ -58,12 +58,16 @@
       "sha256": "e90c2bc655cab2543b1b0ffe00ef0c3773a9d2c24200768538d7022216a27ec7"
     },
     "02-Drawing2D/04-CustomShapes": {
-      "sourceHash": "a7878c21ee5d9b7e8ae1568ceff8622e3ef37ef9820bcecfa621636fc8819c94",
+      "sourceHash": "e61e0fa259d10683fcdc6392c6170f0540835ec137de84ab556b91d2ded919b7",
+      "provenance": {
+        "commit": "095c6e3e8225ce9a9dc45947e053fcb6091bf40b",
+        "dirty": false
+      },
       "width": 640,
-      "height": 360,
+      "height": 540,
       "frame": 1,
-      "url": "https://i.gyazo.com/63ad4de4b1183d3ad62cfcc4d70199a3.png",
-      "sha256": "2241cd9902af93df74f0cc55cf6950098c6dbbb1697c8ee7067e5de73d797536"
+      "url": "https://i.gyazo.com/04da23c3a3a263bd6f5f288219f8fba1.png",
+      "sha256": "a7771c5bd0172fa64deb973a6343cb0980d9cd8ae1359b53bfe585589a1803e1"
     },
     "02-Drawing2D/05-Transform": {
       "sourceHash": "32d2f843c6aa0784cfe096641cd84e45bfc038d924508dc53fa1419496e62d7e",
@@ -299,22 +303,34 @@
     },
     "05-ThreeD/01-Space": {
       "sourceHash": "0d26e1c1e172978a5036dd0c456fa89fcfc894bd48011c3c81985233355f9171",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/75fb68d168d6db9bf9bc0b1bb86e1964.png",
-      "sha256": "837f407db4c6272f1c8c4165c3d0efb90756b9f079fa3cf50144255cf46a3afa"
+      "url": "https://i.gyazo.com/ea5be98b90cf913c7f56bb920096b3cb.png",
+      "sha256": "b79c9bbf9887541e8fe2762e33372ebe699c4e3584131a45dedb575d8f965963"
     },
     "05-ThreeD/02-Primitives": {
       "sourceHash": "b1c1c6f41c049075cced6d0f8d9c1f567b213428c813819f4bef596467953193",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/426f150d266d5b6bb14db5d32eabe9c5.png",
-      "sha256": "c244d7d66faa96cb7afe0ff496aae7b5df4e50082cab03e3f22a6932d3d73d54"
+      "url": "https://i.gyazo.com/42183b7b46b9eca09648976455853c3b.png",
+      "sha256": "74165cc2be91a444a32f2e42bcbbb22324fcf3ffc75060ded58d952d4e279374"
     },
     "05-ThreeD/03-Transform": {
       "sourceHash": "c5760074ef1a2664329e9e4a2bc8f0f46e1dbd14af0cc8d3967caabe75a1d162",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
       "motion": {
@@ -324,17 +340,21 @@
         "fps": 15,
         "width": 640,
         "quality": null,
-        "bytes": 149816,
-        "url": "https://i.gyazo.com/76c06176e32fd10487219dd84900d41f.webp",
-        "sha256": "9f8edc4446d539b817a5c9c9c52e449a8dd7bb7377bbee39586d6b14b7f5a52a",
+        "bytes": 147240,
         "outputWidth": 640,
-        "outputHeight": 360
+        "outputHeight": 360,
+        "url": "https://i.gyazo.com/eaf904277cfb49d28e7024241cab86d5.webp",
+        "sha256": "f4b0888fc9a423f91aa15c702c361fd6f8e8aa7b361b944d5b03cd3814ff099f"
       },
-      "url": "https://i.gyazo.com/d097b3c93f47e2f19618325d1ca1d835.png",
-      "sha256": "f542cf54c3872bdfc47f79be535e1d8314b5ce6340d1e1aeca2e64507a7d15f4"
+      "url": "https://i.gyazo.com/861d8f38b40e64c02878c6d43512705b.png",
+      "sha256": "1c8ef448ee146b2ac093e62f7e5854fe3746045d9435b9474acb019d375878a2"
     },
     "05-ThreeD/04-Camera": {
-      "sourceHash": "b3d5c07b1b916e3b1ff8924018b53b13b0d1dcb1d1ad96728c578f90c2814a02",
+      "sourceHash": "8049c61bff56b08e1d79b13a3923c4c0650c111812eb0671a7b42c8997f1a3e3",
+      "provenance": {
+        "commit": "254a823b657bc8ac45351af21b9bc511197217a7",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
       "motion": {
@@ -344,14 +364,14 @@
         "fps": 15,
         "width": 640,
         "quality": null,
-        "bytes": 203270,
-        "url": "https://i.gyazo.com/4803701ef1a2faad4224d68002c1b241.webp",
-        "sha256": "8812a39639dc63eba2d5ddedadd2a3c3ca87936208b68ddea3c776797221c935",
+        "bytes": 181866,
         "outputWidth": 640,
-        "outputHeight": 360
+        "outputHeight": 360,
+        "url": "https://i.gyazo.com/621040c342be57e618f98cfbf6643c07.webp",
+        "sha256": "4e582b1d9c09adf024d1a74e3b81920b2c74ffbcbe5462b2e6d5363289ba338e"
       },
-      "url": "https://i.gyazo.com/bb81b5ee08cedaf5309c53b787fc5d64.png",
-      "sha256": "864e0ab5e416ea90e3cb2eb11c656256e804a17c746d55c026628d3e27c02f37"
+      "url": "https://i.gyazo.com/d5a5d40ee4e671c0be9ff17a3a663aa4.png",
+      "sha256": "c5047b7be43cb6063af6ab2529c661d557d2d62d13f69d16ab3548e6147da797"
     },
     "05-ThreeD/05-Lighting": {
       "sourceHash": "9abfbc04f26ba14a4d6edbda61a8b5daa957d23d7c78b9c6a205377b1c44e213",
@@ -379,19 +399,27 @@
     },
     "05-ThreeD/08-Texture": {
       "sourceHash": "2aeea7713be1a345fab6734a792e41422b3be3a90b6b4200eb3b4757b1b4ae4e",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/b3f55258588422edd77e14fdc16711a0.png",
-      "sha256": "a38ebc2af2b6b58e4989ec1b04641d2af78082392ddf88f51686e5024d4eb49a"
+      "url": "https://i.gyazo.com/8d1c84a350b21e68b07a7bd3bd49e66c.png",
+      "sha256": "097fc088a7f23c6b059b8765c4fa5a33a6c02cb5ce0b455f0d3fcbf0e0a59386"
     },
     "05-ThreeD/09-Mesh": {
       "sourceHash": "2306368af09aee88df139988c90ac6f0581682386561f2b2fde5912271dea5af",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/fd1f24de1b81015027160eff0451e01c.png",
-      "sha256": "8c83d6151e40a86de8061623a9975c0c43171a9ce3cb22ea77bf71ea45ccd162"
+      "url": "https://i.gyazo.com/1256178e86ad976538f9a3d611c96de6.png",
+      "sha256": "ee0b578c9ff9a3b0d64a2a2bf6b24deb0c62fc4ff8b5204a78fcdc4dd16d4d7f"
     },
     "05-ThreeD/10-Instancing": {
       "sourceHash": "1bcad6dcb175639fbecdcf93340cc985e3938f54bb966e3fa479341fdef1152b",
@@ -430,7 +458,7 @@
       "sha256": "d7aac71028bf95c18949a6e07a0d5fadd9b319e1b98d0cd442d397d7028661fa"
     },
     "06-GPU/03-PostProcess": {
-      "sourceHash": "0b45429f500a490338eccd1065ee0946688337a2ff361d5ee277822670d68c53",
+      "sourceHash": "2e32544b87688b50a5b94680932e236d286141821977bfcacdb53fc1ae2b1da1",
       "width": 640,
       "height": 360,
       "motion": {
@@ -441,21 +469,33 @@
         "width": 640,
         "quality": null,
         "bytes": 110180,
-        "url": "https://i.gyazo.com/5c4727eeab63d554e4b093b5d3743765.webp",
-        "sha256": "e50a28db9c40a4f70c698008162978e62a26abe2bc2e55562c19c49aa2fb643d",
         "outputWidth": 640,
-        "outputHeight": 360
+        "outputHeight": 360,
+        "url": "https://i.gyazo.com/5c4727eeab63d554e4b093b5d3743765.webp",
+        "sha256": "e50a28db9c40a4f70c698008162978e62a26abe2bc2e55562c19c49aa2fb643d"
       },
-      "url": "https://i.gyazo.com/dda4dd3bbf40a95bc833a885767807d0.png",
-      "sha256": "563cc7c8fd8974af340503cc030ce8b8e1c9b933e48ce82b6c4fb1c3d0d49c27"
+      "url": "https://i.gyazo.com/d0e134c2855732fac4734defc7b02bce.png",
+      "sha256": "bd3d399e64e47cb376d19421e7c00677a1da0582fe5bd4bc00117b9550efb8c6"
     },
     "06-GPU/04-CustomPostEffect": {
-      "sourceHash": "8c152d347801d7d556898e52d668da99a4c8454e8d8c3330a0b1a3dd8b6ff646",
+      "sourceHash": "0a630c9203382fec5d614af78b68684d5521bc46dc7b67568ba22a25b1a9a46a",
+      "width": 640,
+      "height": 360,
+      "frame": 3950,
+      "url": "https://i.gyazo.com/e042c95161502b815cc24aa8db5d93d5.png",
+      "sha256": "47b7a7aa2901e92ce39d30b9e874b5f1b4e04add98822cf7c474762308385c2b"
+    },
+    "06-GPU/05-ShapeShader": {
+      "sourceHash": "d27857cc6c84fdd91e12f6c551be466797d517d9cce00d7cc43ee09cc5846199",
+      "provenance": {
+        "commit": "7f7432c45c224fae131b954f5839984fb3f657f9",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1,
-      "url": "https://i.gyazo.com/3ddb574bfde49d497bebfa7db26be179.png",
-      "sha256": "2a0713deeb3645396c9df6cea86e653fd5c2afeeeb56e3f1e9bcb86d871f1be9"
+      "url": "https://i.gyazo.com/06a73f6ddc5efae52b6f9cb7e549a104.png",
+      "sha256": "bee0187438910a1c87ece2f8695b59372311d314a40f0691dcde204b90696678"
     },
     "07-Media/04-VideoPlayback": {
       "sourceHash": "5bc0288bbc65b9fd6bfb1696dc76f0afe8b6e71c401dbcd06eed8c851692ee09",

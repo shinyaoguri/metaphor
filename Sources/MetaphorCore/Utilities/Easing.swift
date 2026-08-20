@@ -12,6 +12,38 @@ public typealias EasingFunction = (Float) -> Float
 ///   - b: 終了値。
 ///   - f: 補間のカーブを決めるイージング関数。
 /// - Returns: a と b の間の補間された値。
+///
+/// ### 実行結果
+///
+/// 同じ `t` で動かした 2 つ。上が ``easeInOutCubic(_:)``、下が補間なし（線形）です。
+/// 上だけが両端でゆっくり、中ほどで速くなります。
+///
+/// <!-- reference-shot -->
+///
+/// @Row {
+///    @Column(size: 1) {
+///       ![ease(_:from:to:using:) の実行結果（動き）](https://i.gyazo.com/d3575413e871cb48991e71e3cf0f115f.gif)
+///    }
+///    @Column(size: 2) {
+///       ```swift
+///       background(18)
+///       noStroke()
+///
+///       let p = Float(frameCount % 72) / 36
+///       let t = p < 1 ? p : 2 - p
+///
+///       fill(120, 200, 255)
+///       circle(
+///           ease(t, from: 60, to: 420,
+///                using: easeInOutCubic),
+///           130, 56
+///       )
+///
+///       fill(130)
+///       circle(60 + t * 360, 240, 56)
+///       ```
+///    }
+/// }
 public func ease(_ t: Float, from a: Float, to b: Float, using f: EasingFunction) -> Float {
     a + (b - a) * f(t)
 }

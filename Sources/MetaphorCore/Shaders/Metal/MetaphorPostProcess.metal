@@ -1,24 +1,8 @@
-#include <metal_stdlib>
-using namespace metal;
+#include "MetaphorPostProcessTypes.h"
 
-struct PPVertexOut {
-    float4 position [[position]];
-    float2 texCoord;
-};
-
-struct PostProcessParams {
-    float2 texelSize;
-    float  intensity;
-    float  threshold;
-    float  brightness;
-    float  contrast;
-    float  saturation;
-    float  temperature;
-    float  radius;
-    float  smoothness;
-    float  _pad0;
-    float  _pad1;
-};
+// `PPVertexOut` / `PostProcessParams` は `MetaphorPostProcessTypes.h`（= カスタム
+// ポストエフェクトへ配る前文）にある。組み込みとカスタムで stage_in と
+// パラメータのレイアウトがずれないよう、定義は 1 箇所に置く。
 
 // MARK: - Invert
 
@@ -53,8 +37,15 @@ fragment float4 metaphor_postVignette(
     constexpr sampler s(filter::linear);
     float4 color = tex.sample(s, in.texCoord);
     float2 uv = in.texCoord - 0.5;
-    float dist = length(uv);
-    float vig = smoothstep(params.intensity, params.intensity - params.smoothness, dist);
+    float dist = length(uv);          // 中心 0 〜 隅 0.707
+    // intensity は 0（無効）〜 1（最も強い）の強度。内部で「黒に落ちきる半径」へ写す。
+    // 0 のとき inner = 1.25 - 0.5 = 0.75 > 隅の 0.707 なので、画面のどこも暗くならない。
+    // 以前は intensity をそのまま半径として使っていたため、既定値のままで
+    // dist >= 0.5 の領域（16:9 の画面の大半）が純黒に潰れていた（Issue #684）。
+    float strength = clamp(params.intensity, 0.0, 1.0);
+    float outer = mix(1.25, 0.65, strength);
+    float inner = outer - max(params.smoothness, 1e-4);
+    float vig = smoothstep(outer, inner, dist);
     return float4(color.rgb * vig, color.a);
 }
 
@@ -148,7 +139,9 @@ fragment float4 metaphor_postBloomExtract(
     float4 color = tex.sample(s, in.texCoord);
     float brightness = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
     float contribution = max(0.0, brightness - params.threshold) / max(brightness, 0.001);
-    return float4(color.rgb * contribution, 1.0);
+    // α は素通し。premultiplied な入力の rgb だけを弱めるので結果も premultiplied のまま
+    // （ADR-0012）。1.0 に固定すると透明な領域まで不透明を名乗る（#849）
+    return float4(color.rgb * contribution, color.a);
 }
 
 // MARK: - Bloom Composite

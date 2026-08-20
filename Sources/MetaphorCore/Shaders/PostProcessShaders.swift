@@ -7,42 +7,49 @@ import Foundation
 /// ガウシアンブラー（水平/垂直）、ブルーム抽出、ブルーム合成を含みます。
 public enum PostProcessShaders {
 
-    /// カスタムポストプロセスシェーダー用のMSL共通構造体定義。
+    /// カスタムポストプロセスシェーダーが受け取る stage_in と組み込みパラメータの MSL 定義。
     ///
-    /// カスタムポストプロセスシェーダー記述時にプレフィックスとして使用します。
+    /// `createPostEffect()` / `createPostEffectFromFile()` は ``postProcessPreamble``
+    /// （stdlib + これ）を**必ず**先頭へ足すので、ユーザーのソースでこれらを
+    /// 再定義しないでください。
+    ///
+    /// - `PPVertexOut`: 組み込みのポストプロセス頂点シェーダーの出力。`texCoord` が
+    ///   0〜1 の画面座標です。
+    /// - `PostProcessParams`: metaphor が `buffer(0)` へ自動供給する組み込みパラメータ
+    ///   （`texelSize` と ``CustomPostEffect/intensity`` などのマッピング先）。
+    ///
+    /// 2D / 3D の前文と同じく `#ifndef` ガードで包んであるので、これを自分で前置した
+    /// ソースを渡しても二重定義にはなりません（#718）。
+    ///
+    /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorPostProcessTypes.h` からの
+    /// 生成物です（#714）。
+    public static let commonStructs = BuiltinShadersGenerated.postProcessStructs
+
+    /// カスタムポストエフェクトのソースへ自動で足される前文（stdlib + ``commonStructs``）。
+    ///
+    /// 2D の ``BuiltinShaders/canvas2DPreamble``・3D の ``BuiltinShaders/canvas3DPreamble``
+    /// と対称です。フラグメント関数だけを書けば動きます。
+    ///
     /// ```swift
-    /// let source = PostProcessShaders.commonStructs + """
-    /// fragment float4 myEffect(
-    ///     PPVertexOut in [[stage_in]],
-    ///     texture2d<float> tex [[texture(0)]],
-    ///     constant PostProcessParams &params [[buffer(0)]]
-    /// ) {
-    ///     // ...
-    /// }
-    /// """
+    /// let effect = try createPostEffect(
+    ///     name: "myEffect",
+    ///     source: """
+    ///     fragment float4 myEffect(
+    ///         PPVertexOut in [[stage_in]],
+    ///         texture2d<float> tex [[texture(0)]],
+    ///         constant PostProcessParams &params [[buffer(0)]]
+    ///     ) {
+    ///         // ...
+    ///     }
+    ///     """,
+    ///     fragmentFunction: "myEffect"
+    /// )
     /// ```
-    public static let commonStructs = """
+    public static let postProcessPreamble = """
     #include <metal_stdlib>
     using namespace metal;
 
-    struct PPVertexOut {
-        float4 position [[position]];
-        float2 texCoord;
-    };
-
-    struct PostProcessParams {
-        float2 texelSize;
-        float  intensity;
-        float  threshold;
-        float  brightness;
-        float  contrast;
-        float  saturation;
-        float  temperature;
-        float  radius;
-        float  smoothness;
-        float  _pad0;
-        float  _pad1;
-    };
+    \(commonStructs)
     """
 
     /// ポストプロセスシェーダー関数名定数。

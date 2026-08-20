@@ -28,7 +28,7 @@ import QuartzCore
 ///   重い処理（GPU readback → PNG/JSON 書き出し）は**リクエスト時のみ**、かつ
 ///   `deferReadback`/completion handler 経由で**GPU 完了後・描画スレッド外**に実行する。
 ///   `performance`（#271）の syscall（メモリ・CPU・thermal）も**リクエスト時のみ**。
-///   実測 fps の元データは ``FrameRateTracker``（レンダラー側・プラグイン ON/OFF に
+///   実測 fps の元データは `FrameRateTracker`（レンダラー側・プラグイン ON/OFF に
 ///   よらずリングバッファ書き込み 1 回/フレーム、ns オーダー）が常時蓄積する。
 ///
 /// この契約は `Tests/metaphorTests/ObservabilityOverheadTests.swift` の回帰ガードで守る。
@@ -234,7 +234,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             warnings: [],
             stats: nil,
             performance: samplePerformance(),
-            params: sampleParams()
+            params: sampleParams(),
+            shaders: sampleShaders()
         )
 
         let outputDirectory = config.outputDirectory
@@ -328,6 +329,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         // `params` は逆に per-frame で載せる（#424）: メモリ内の読み取りだけで
         // syscall が無く、シーケンス中に外部が値を変えたフレームを revision で
         // 切り分けられる（キャプチャ中のパラメータ掃引がそのまま観測できる）。
+        // `shaders`（#671）も同じ理由で per-frame（キャプチャ中に着地したリロードを
+        // どのフレームから反映されたかまで切り分けられる）。
         let metadata = ProbeFrameMetadata(
             schemaVersion: 4,
             id: seq.id,
@@ -341,7 +344,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             warnings: [],
             stats: nil,
             performance: nil,
-            params: sampleParams()
+            params: sampleParams(),
+            shaders: sampleShaders()
         )
 
         let base = ProbeWriter.sequenceBaseName(index)
@@ -499,7 +503,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
             warnings: [warning],
             stats: nil,
             performance: nil,
-            params: nil
+            params: nil,
+            shaders: nil
         )
     }
 
@@ -536,6 +541,21 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         return ProbeFrameMetadata.Params(
             revision: store.revision,
             values: store.valuesSnapshot()
+        )
+    }
+
+    /// `frame.json` の `shaders` セクションを組み立てます（Issue #671）。
+    ///
+    /// ファイル由来のシェーダを 1 つも読んでいない（＝ホットリロード台帳が生えていない）
+    /// スケッチではキーごと省略します。`activeShaderHotReloader` を使うのは、観測が
+    /// リローダの生成という副作用を持たないようにするためです。
+    private func sampleShaders() -> ProbeFrameMetadata.Shaders? {
+        guard let reloader = sketch?._context?.activeShaderHotReloader,
+              let digest = reloader.contentDigest else { return nil }
+        return ProbeFrameMetadata.Shaders(
+            generation: reloader.generation,
+            digest: digest,
+            lastError: reloader.lastError
         )
     }
 

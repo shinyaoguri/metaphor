@@ -1,18 +1,9 @@
-#include "MetaphorShaderTypes.h"
+#include "MetaphorCanvas3DTypes.h"
 #include "MetaphorLighting.h"
 
-struct Canvas3DVertexIn {
-    float3 position [[attribute(0)]];
-    float3 normal   [[attribute(1)]];
-    float4 color    [[attribute(2)]];
-};
-
-struct Canvas3DVertexOut {
-    float4 position [[position]];
-    float3 worldPosition;
-    float3 normal;
-    float4 color;
-};
+// `Canvas3DVertexIn` / `Canvas3DVertexOut` は `MetaphorCanvas3DTypes.h`（= カスタム
+// マテリアルシェーダーへ配る前文）にある。組み込みとカスタムで stage_in の
+// レイアウトがずれないよう、定義は 1 箇所に置く。
 
 vertex Canvas3DVertexOut metaphor_canvas3DVertex(
     Canvas3DVertexIn in [[stage_in]],
@@ -53,9 +44,11 @@ fragment float4 metaphor_canvas3DFragment(
     constant Light3D *lights [[buffer(2)]],
     constant Material3D &material [[buffer(3)]],
     constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
-    texture2d<float> shadowMap [[texture(1)]]
+    texture2d<float> shadowMap [[texture(1)]],
+    texturecube<float> irradianceMap [[texture(2)]],
+    texturecube<float> prefilteredMap [[texture(3)]]
 ) {
-    if (uniforms.lightCount == 0) {
+    if (metaphorSkipsLighting(material, uniforms.lightCount)) {
         return in.color;
     }
 
@@ -73,7 +66,9 @@ fragment float4 metaphor_canvas3DFragment(
         lights,
         uniforms.lightCount,
         material,
-        shadow
+        shadow,
+        irradianceMap,
+        prefilteredMap
     );
 
     return float4(lit, in.color.a);

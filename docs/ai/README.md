@@ -37,6 +37,16 @@ here.
 - Tier 2 modules (`MetaphorNoise`, `MetaphorMPS`, `MetaphorCoreImage`,
   `MetaphorRenderGraph`, `MetaphorSceneGraph`, `MetaphorSyphon`) may depend on
   `MetaphorCore` and are surfaced through the umbrella under `Sources/metaphor/`.
+- `MetaphorLog` sits below Core (Tier 0, zero dependencies) so every tier can use
+  the same diagnostics. Never write `print("[metaphor] …")` outside `MetaphorCore`:
+  pick `metaphorWarning` (stdout, DEBUG only — the caller passed a bad value),
+  `metaphorAlert` (stderr, always — the caller is right but the environment is
+  silently broken), or `metaphorDiagnostic` (stderr, `METAPHOR_DEBUG=1` only —
+  ignorable internal events worth isolating). The table in
+  `Sources/MetaphorLog/Log.swift` is the source of truth, and
+  `Tests/metaphorTests/LogConventionTests.swift` enforces it. `MetaphorCore` still
+  holds a few raw `print`s on purpose (Probe / state write failures that must stay
+  visible in Release); they are exempt from the scan, not an invitation to add more.
 
 ## Debugging Map
 
@@ -53,6 +63,22 @@ here.
   (split by concern: `+Frame`, `+Recording`, `+Primitives`, `+Shapes`,
   `+ShapeDrawing`, `+MeshDrawing`), `Mesh.swift`, `PipelineFactory.swift`,
   shader files.
+- 2D drawn *after* a 3D object shows up *behind* it, or a sketch looks different
+  with `METAPHOR_COMMAND_RECORD=1`: the immediate path fixes z-order when a 2D
+  batch is **flushed**, not when the call is made, so 2D that overlaps 3D must sit
+  in the last batch of the frame. Batches flush early on a `blendMode()` change,
+  on alternating with `image()` / `text()` (textured vertices) or `circles()`
+  (instancing), on `beginClip()` / `endClip()`, on `loadPixels()` (the same-frame
+  readback splits the main pass), and when the vertex buffer cannot
+  grow — `Canvas2D.blendMode(_:)`, `Canvas2DVertexWriter.addVertex`,
+  `Canvas2D+Clipping.swift`, `SketchContext+Pixels.swift`. The record path (shadows
+  on, or the opt-in) replays in
+  call order via `Canvas3D.flushPending2D`, so the paths disagree exactly here.
+  Conditions and measurements: the 2026-08-16 and 2026-08-18 notes under the
+  Amendment in [ADR-0003](../adr/0003-unified-command-stream.md).
+  Note that the split point itself must flush in the *same order as* `endFrame()`
+  (`canvas3D.end()` → `canvas.end()`, i.e. 3D then 2D); flushing 2D first there
+  put pre-split 2D behind pre-split 3D (#832, fixed).
 - Shader failures: keep `Shaders/Metal/*.metal`, `Shaders/ShaderSources/*.txt`,
   and shader function constants in sync.
 - Export/readback bugs: `FrameExporter.swift`, `VideoExporter.swift`,
@@ -150,9 +176,19 @@ here.
   直接読み書きするので、更新差分がそのまま `git diff` に出る）
 - **ヘルパー**: `Sources/MetaphorTestSupport/GoldenImage.swift`
   （SHA256・閾値つき比較・PNG 入出力・GPU 読み戻し・差分画像）
-- **シーン**: 2D 図形 / ブレンドモード / 3D ライティング (Blinn-Phong・PBR) /
+- **シーン**: 2D 図形 / α 合成 / ブレンドモード / 3D ライティング (Blinn-Phong・PBR) /
   シャドウ / ポストプロセス。各シーンは 2 回レンダリングしてハッシュ一致
   （同一環境での決定論）も同時に検証する。
+
+### 半透明（α < 1）を含むシーンについて
+
+**ゴールデンは非不透明画素を含んでよい**（`alpha-compositing` がそれ）。以前は
+「PNG 往復が非可逆だから不透明であること」を `verify()` が要求していたが、非可逆
+だったのは `GoldenImage.rgba`（straight）を `premultipliedLast` と宣言して書いて
+いたためで、ImageIO が PNG（straight）へ書くときに α で割って飽和させていた
+（α=128 の白で誤差 127）。straight を `CGImageAlphaInfo.last` として書き、
+読みは生サンプルを採るようにして、**α の全域で往復がバイト一致する**（#850）。
+α = 255 では両者が同値なので、この修正で既存のゴールデン PNG は 1 バイトも変わっていない。
 
 ### 判定方式
 

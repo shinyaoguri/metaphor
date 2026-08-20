@@ -27,6 +27,28 @@ import MetalKit
 ///     }
 /// }
 /// ```
+///
+/// ## 制御 API
+///
+/// ``context`` の `loop()` / `noLoop()` / `redraw()` / `frameRate(_:)` / `createCanvas(width:height:)`
+/// は、**その窓のレンダーループとキャンバス**に効きます（プライマリには影響しません）。
+///
+/// ```swift
+/// preview?.context.createCanvas(width: 800, height: 600)
+/// preview?.context.frameRate(30)   // この窓だけ 30fps
+/// preview?.context.noLoop()        // この窓だけ止める
+/// preview?.context.redraw()        // 止めたまま 1 枚だけ描く
+/// ```
+///
+/// `createCanvas()` はプライマリの `setup()` から呼ぶのが安全です。この窓自身の描画
+/// クロージャの中から呼ぶと、リサイズがそのフレームの完了を待つぶん待たされます。
+///
+/// ## ヘッドレスモード
+///
+/// 環境変数 `METAPHOR_VIEWER=1`（`metaphor-cli` のライブビューアが子プロセスへ注入する
+/// ヘッドレス指定）で起動した場合、セカンダリウィンドウも **`NSWindow` を作らず**
+/// オフスクリーンで描画だけを回します（プライマリと同じ扱い）。``config`` の
+/// ``SketchWindowConfig/syphonName`` を設定していれば、そこへの publish は従来どおり続きます。
 @MainActor
 public final class SketchWindow {
     // MARK: - Public Properties
@@ -75,26 +97,74 @@ public final class SketchWindow {
     var onWindowClosed: ((@MainActor () -> Void))?
 
     private let renderer: MetaphorRenderer
+    private let isHeadless: Bool
     private var window: NSWindow?
     private var mtkView: MetaphorMTKView?
     private var windowDelegate: WindowDelegate?
     private var drawClosure: ((@MainActor (SketchContext) -> Void))?
     private var prevTime: Float = 0
     private var renderTimer: DispatchSourceTimer?
+    /// ``renderTimer`` を `suspend()` した状態かどうか。
+    ///
+    /// `DispatchSource` の suspend はカウント式なので、二重に掛けると同じ回数 resume するまで
+    /// 起き上がらず、掛かったまま解放するとクラッシュします。`noLoop()` / `loop()` の
+    /// 往復と teardown が釣り合うよう、`SketchRunner` と同じ形で状態を持ちます。
+    private var isRenderTimerSuspended = false
     private var activity: NSObjectProtocol?
 
-    private static var windowCounter: Int = 0
+    /// このウィンドウが使うカスケード配置のスロット（0 起点）。
+    ///
+    /// ``SketchContext/createWindow(_:)`` が「いま空いている最小のスロット」を選んで渡します。
+    /// ヘッドレスでは配置に使いませんが、値は保持します（テスト用の観測点でもある）。
+    let cascadeIndex: Int
+
+    /// ネイティブの `NSWindow` を実際に作ったかどうか（テスト用の観測点）。
+    /// ヘッドレスでは `false`。
+    var hasNativeWindow: Bool { window != nil }
 
     // MARK: - Initialization
 
-    init(config: SketchWindowConfig, sharedResources: SharedMetalResources) throws {
+    /// - Parameters:
+    ///   - config: ウィンドウ設定。
+    ///   - sharedResources: プライマリと共有する Metal リソース。
+    ///   - cascadeIndex: カスケード配置のスロット（0 起点。0 はオフセット無し）。
+    ///   - clockOffset: このウィンドウの時計に足す秒数。``SketchContext/createWindow(_:)``
+    ///     がプライマリの経過時間を渡し、`context.time` の起点をスケッチ開始時刻へ
+    ///     揃えます（#836）。
+    ///   - isHeadless: ウィンドウを作らずオフスクリーンで回すか。既定は環境変数
+    ///     `METAPHOR_VIEWER` からの解決（テストからの注入用に引数化している）。
+    /// - Throws: ``SketchWindowConfig/windowScale`` が 0 以下のとき
+    ///   ``MetaphorError/invalidParameter(_:)``。キャンバス寸法が範囲外のときは
+    ///   ``MetaphorRenderer`` 経由で ``MetaphorError/textureCreationFailed(width:height:format:)``。
+    init(
+        config: SketchWindowConfig,
+        sharedResources: SharedMetalResources,
+        cascadeIndex: Int = 0,
+        clockOffset: Double = 0,
+        isHeadless: Bool = SketchWindow.resolveHeadless(env: ProcessInfo.processInfo.environment)
+    ) throws {
+        // windowScale の検証（#842）。0 だと 0×0 pt のウィンドウが「開いている」ことになり、
+        // 見えないのに isOpen == true のまま残る。キャンバス側（テクスチャ）の寸法は
+        // 正常なので TextureManager のガードには掛からず、ここでしか止められない。
+        guard config.windowScale > 0 else {
+            throw MetaphorError.invalidParameter(
+                "windowScale must be greater than 0 (got \(config.windowScale))"
+            )
+        }
+
         self.config = config
+        self.cascadeIndex = cascadeIndex
+        self.isHeadless = isHeadless
 
         let renderer = try MetaphorRenderer(
             sharedResources: sharedResources,
             width: config.width,
             height: config.height
         )
+        // レンダーループを組む前に時計を合わせる。setupRenderLoop() のタイマーは
+        // `deadline: .now()` で resume するので、生成後に外から入れると最初の
+        // 1 フレームだけ 0 起点で描かれてしまう（#836）。
+        renderer.clockOffset = clockOffset
         self.renderer = renderer
 
         let canvas = try Canvas2D(renderer: renderer)
@@ -111,8 +181,14 @@ public final class SketchWindow {
             input: renderer.input
         )
 
+        // 時計を引き継いだぶん、deltaTime の起点も寄せる。合わせないと最初の 1 フレームの
+        // deltaTime が「スケッチ開始からの経過時間まるごと」になり、それを積分に使う側が
+        // 1 回で吹き飛ぶ（SketchRunner が preserveClock で FrameClock を resync するのと同じ理屈。#793）
+        self.prevTime = Float(clockOffset)
+
         setupWindow()
         setupRenderLoop()
+        connectControls()
         connectInput()
 
         // 出力（Syphon 等）は MetaphorOutputRegistry 経由で間接的に起動する（Core は Syphon を
@@ -162,30 +238,75 @@ public final class SketchWindow {
         }
     }
 
+    // MARK: - Environment Resolution
+
+    /// ヘッドレス（ウィンドウを開かない）で動かすかを環境変数から解決します。
+    ///
+    /// `METAPHOR_VIEWER=1` は `metaphor-cli` のライブビューアが子プロセスへ注入する
+    /// ヘッドレス指定で、プライマリ（``SketchRunner``）と同じ変数を見ます。
+    ///
+    /// - Parameter env: 参照する環境変数（テストから注入可能）。
+    /// - Returns: ヘッドレスなら `true`。
+    nonisolated static func resolveHeadless(env: [String: String]) -> Bool {
+        env["METAPHOR_VIEWER"] == "1"
+    }
+
+    /// 実効レンダーループモードを解決します。
+    ///
+    /// - ヘッドレスでは `MTKView` が無くディスプレイリンクを駆動できないため、常にタイマー。
+    /// - ``SketchWindowConfig/syphonName`` があり `.displayLink` のままなら、出力の安定のため
+    ///   タイマーへ切り替える（従来どおり）。
+    ///
+    /// - Parameters:
+    ///   - config: ウィンドウ設定。
+    ///   - isHeadless: ヘッドレスかどうか。
+    /// - Returns: 実際に使うレンダーループモード。
+    nonisolated static func resolveLoopMode(
+        config: SketchWindowConfig, isHeadless: Bool
+    ) -> RenderLoopMode {
+        if isHeadless { return .timer(fps: config.fps) }
+        if config.syphonName != nil, config.renderLoopMode == .displayLink {
+            return .timer(fps: config.fps)
+        }
+        return config.renderLoopMode
+    }
+
+    // MARK: - Window Placement
+
+    /// カスケードスロットに対応する配置オフセット（ポイント）。
+    ///
+    /// スロット 0 は中央（オフセット無し）で、1 枚増えるごとに右下へ 30pt ずらします。
+    ///
+    /// - Parameter slot: カスケードスロット（0 起点）。
+    /// - Returns: 中央からずらす量（ポイント）。
+    nonisolated static func cascadeOffset(slot: Int) -> CGFloat {
+        CGFloat(30 * slot)
+    }
+
     // MARK: - Private Setup
 
     private func setupWindow() {
+        // ヘッドレスではネイティブウィンドウも `MTKView` も作らない（プライマリと同じ扱い）。
+        // 描画は setupRenderLoop() のタイマーが `renderFrame()` を回して継続する。
+        if isHeadless { return }
+
         let windowWidth = CGFloat(Float(config.width) * config.windowScale)
         let windowHeight = CGFloat(Float(config.height) * config.windowScale)
 
-        let windowRect = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
-        let win = NSWindow(
-            contentRect: windowRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
+        // 生成は SketchWindowFactory へ集約（isReleasedWhenClosed = false を含む。#835）。
+        let win = SketchWindowFactory.makeWindow(
+            contentSize: NSSize(width: windowWidth, height: windowHeight),
+            title: config.title,
+            aspectRatio: NSSize(width: config.width, height: config.height)
         )
-        win.title = config.title
-        win.contentAspectRatio = NSSize(width: config.width, height: config.height)
-        win.center()
 
-        // ウィンドウを重ならないようにカスケード
-        let offset = CGFloat(30 * SketchWindow.windowCounter)
+        // ウィンドウを重ならないようにカスケード。スロットは開いている枚数に連動し、
+        // 閉じれば空く（単調増加のカウンタだと開き直すたびに 30pt ずつ流れた。#837）
+        let offset = Self.cascadeOffset(slot: cascadeIndex)
         win.setFrameOrigin(NSPoint(
             x: win.frame.origin.x + offset,
             y: win.frame.origin.y - offset
         ))
-        SketchWindow.windowCounter += 1
 
         let mtkView = MetaphorMTKView()
         mtkView.frame = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
@@ -208,15 +329,9 @@ public final class SketchWindow {
     }
 
     private func setupRenderLoop() {
-        // レンダーループモードの決定。
-        // syphonName が設定されているが renderLoopMode が displayLink のままの場合、
-        // Syphon 互換性のため自動的にタイマーモードに切り替え。
-        let loopMode: RenderLoopMode
-        if config.syphonName != nil && config.renderLoopMode == .displayLink {
-            loopMode = .timer(fps: config.fps)
-        } else {
-            loopMode = config.renderLoopMode
-        }
+        // レンダーループモードの決定（ヘッドレスは常にタイマー / syphonName ありの
+        // displayLink はタイマーへ切り替え）。
+        let loopMode = Self.resolveLoopMode(config: config, isHeadless: isHeadless)
 
         switch loopMode {
         case .displayLink:
@@ -280,6 +395,122 @@ public final class SketchWindow {
         }
     }
 
+    /// ``SketchContext`` の制御 API（`loop()` / `noLoop()` / `redraw()` / `frameRate()` /
+    /// `createCanvas()`）をこの窓のレンダラへ配線します（#857）。
+    ///
+    /// `SketchContext` はハンドラが `nil` なら状態だけ変えて黙って返るので、配線が無いと
+    /// 呼び出しはすべて no-op に落ちます（`SketchView` 経路の #808 / #828 と同じ穴）。
+    ///
+    /// 宛先は**この窓のレンダーループ**で、`SketchView` 経路の写経では足りません。
+    /// ``resolveLoopMode(config:isHeadless:)`` のとおり `SketchWindow` は 2 系統を持ち、
+    /// ヘッドレスと ``SketchWindowConfig/syphonName`` ありは**タイマー駆動**になります。
+    /// タイマーは `MTKView.isPaused` では止まらず（そもそもヘッドレスでは `mtkView` が `nil`）、
+    /// フレームレートも `preferredFramesPerSecond` ではなくタイマーの再スケジュールで変わります。
+    /// そのため `SketchRunner` と同じく `renderTimer` の有無で宛先を分けます。
+    private func connectControls() {
+        context.onLoop = { [weak self] in
+            guard let self else { return }
+            // 時計（renderer.elapsedTime）は止めている間も進むので、再開の前に deltaTime の
+            // 起点を寄せ直す。寄せないと再開後の最初のフレームへ「止めていた実時間まるごと」が
+            // 渡り、それを積分に使う側が 1 回で吹き飛ぶ（#793。SketchRunner.handleLoop と同じ）。
+            self.prevTime = Float(self.renderer.elapsedTime)
+            if let renderTimer = self.renderTimer {
+                self.resumeRenderTimerIfNeeded(renderTimer)
+            } else {
+                self.mtkView?.isPaused = false
+            }
+            self.renderer.notifyPluginsStart()
+        }
+
+        context.onNoLoop = { [weak self] in
+            guard let self else { return }
+            if let renderTimer = self.renderTimer {
+                self.suspendRenderTimerIfNeeded(renderTimer)
+            } else {
+                self.mtkView?.isPaused = true
+            }
+            self.renderer.notifyPluginsStop()
+        }
+
+        context.onRedraw = { [weak self] in
+            guard let self else { return }
+            if self.renderTimer != nil {
+                // タイマーモードは useExternalRenderLoop = true で、`MTKView.draw()` は
+                // 再レンダリングせずブリットするだけ。先にオフスクリーンを 1 枚描く。
+                // ヘッドレスは mtkView が無いので、この 1 回がそのまま redraw の実体になる。
+                self.renderer.renderFrame()
+            }
+            // ディスプレイリンクモード: draw(in:) が renderFrame() + ブリットを 1 回で行う。
+            self.mtkView?.draw()
+        }
+
+        context.onFrameRate = { [weak self] fps in
+            guard let self else { return }
+            // 0 以下のクランプは全経路で共通（#358）。
+            let clampedFPS = clampedFrameRate(fps)
+            self.renderer.targetFPS = clampedFPS
+            if let renderTimer = self.renderTimer {
+                let interval = 1.0 / Double(clampedFPS)
+                renderTimer.schedule(
+                    deadline: .now(), repeating: interval, leeway: .milliseconds(1)
+                )
+            } else {
+                self.mtkView?.preferredFramesPerSecond = clampedFPS
+            }
+        }
+
+        context.onCreateCanvas = { [weak self] width, height in
+            self?.handleCreateCanvas(width: width, height: height)
+        }
+    }
+
+    /// テクスチャ・キャンバスを新しいキャンバスサイズに合わせて再構築します（#857）。
+    ///
+    /// `SketchRunner.handleCreateCanvas` と同じ手順ですが、**窓を中央へ寄せ直しません**。
+    /// セカンダリ窓は開いている枚数に応じてカスケード配置されており（#837）、
+    /// `center()` を呼ぶとそのオフセットが消えて窓同士が重なるためです。
+    ///
+    /// - Note: `MetaphorRenderer.resizeCanvas` はインフライトフレームを枯らすため
+    ///   `inflightSemaphore` を 3 つ取りに行きます。この窓自身の描画クロージャの**中**から
+    ///   呼ぶと、そのフレームが 1 つ掴んだままで取り切れないので、`SketchContext.createCanvas`
+    ///   が警告を出して弾きます（#856）。プライマリの `setup()` から
+    ///   `window.context.createCanvas(...)` と呼ぶのが安全な呼び出し位置です（#828 と同じ性質）。
+    ///
+    /// - Parameters:
+    ///   - width: 新しいキャンバスの幅（ピクセル単位）。
+    ///   - height: 新しいキャンバスの高さ（ピクセル単位）。
+    private func handleCreateCanvas(width: Int, height: Int) {
+        renderer.resizeCanvas(width: width, height: height)
+
+        guard let newCanvas = try? Canvas2D(renderer: renderer),
+              let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+            metaphorWarning("createCanvas(\(width), \(height)) failed to rebuild canvases")
+            return
+        }
+        newCanvas.onSetClearColor = { [weak renderer] r, g, b, a in
+            renderer?.setClearColor(r, g, b, a)
+        }
+        context.rebuildCanvas(canvas: newCanvas, canvas3D: newCanvas3D)
+
+        // 窓を持つときは中身の比率にも追随させる（ヘッドレスでは window が nil で no-op）。
+        let windowWidth = CGFloat(Float(width) * config.windowScale)
+        let windowHeight = CGFloat(Float(height) * config.windowScale)
+        window?.setContentSize(NSSize(width: windowWidth, height: windowHeight))
+        window?.contentAspectRatio = NSSize(width: width, height: height)
+    }
+
+    private func suspendRenderTimerIfNeeded(_ timer: DispatchSourceTimer) {
+        guard !isRenderTimerSuspended else { return }
+        timer.suspend()
+        isRenderTimerSuspended = true
+    }
+
+    private func resumeRenderTimerIfNeeded(_ timer: DispatchSourceTimer) {
+        guard isRenderTimerSuspended else { return }
+        timer.resume()
+        isRenderTimerSuspended = false
+    }
+
     private func connectInput() {
         let input = renderer.input
         input.onMousePressed = { [weak self] _, _, _ in
@@ -338,6 +569,11 @@ public final class SketchWindow {
     private func stopRenderTimer() {
         if let renderTimer {
             renderTimer.cancel()
+            // cancel 後に resume するのは、suspend されたまま（noLoop 中に閉じた場合など）の
+            // DispatchSource は解放時にクラッシュするため — cancel 済みなので resume で
+            // イベントハンドラが再発火することはなく、suspend カウントだけが 0 に戻る
+            // （`SketchRunner.applicationWillTerminate` と対称）。
+            resumeRenderTimerIfNeeded(renderTimer)
             self.renderTimer = nil
         }
         if let activity {

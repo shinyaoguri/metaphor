@@ -17,6 +17,12 @@ import Metal
 ///     }
 /// }
 /// ```
+///
+/// このプロトコルは `@MainActor` です。スケッチの外へアセットや状態を切り出す型
+/// （シーン、アセット束、ゲーム状態など）を作るときは、**その型にも `@MainActor` を
+/// 付けてください**。`loadImage` / `loadModel` / `loadSound` / `loadVideo` と、それらが
+/// 返す ``MImage`` / ``Mesh`` / `SoundFile` / `VideoPlayer` のメンバーはすべて main actor
+/// 隔離されており、素の `class` からは呼べません。
 @MainActor
 public protocol Sketch: AnyObject {
     /// 引数なしの新しいインスタンスを作成します（`@main` で必須）。
@@ -135,9 +141,12 @@ extension Sketch {
     /// アクティブなコンテキスト。Runner の初期化前（または teardown 後）に
     /// 描画 API を呼ぶと明確なメッセージでクラッシュします。
     ///
-    /// 失敗モードの方針: 描画系はここで fatalError（初期化前の呼び出しはプログラミング
-    /// エラー）、`probe()` は無言 no-op（観測は本体挙動を変えない）、`pixels` は
-    /// 空バッファを返す（読み取り系はクラッシュより空が安全）。
+    /// 失敗モードの方針（ADR-0005）: 描画系はここで fatalError（初期化前の呼び出しは
+    /// プログラミングエラー）、`probe()` は無言 no-op（観測は本体挙動を変えない）、
+    /// `pixels` は空バッファを返す（読み取り系はクラッシュより空が安全）。
+    ///
+    /// 後の 2 つは **この getter を経由しない**ことで成立している（`_context?` を直接読む）。
+    /// context 未初期化でも `probe()` は黙り、`pixels` は空を返す（#356）。
     @MainActor
     public var context: SketchContext {
         guard let ctx = _context else {
@@ -284,6 +293,21 @@ public struct SketchConfig: Sendable {
     /// ``Sketch/saveState()`` による状態の保存とは独立に使えます。
     public var preserveClock: Bool
 
+    /// ファイルから読んだシェーダを保存のたびに自動リロードするか
+    /// （既定は **DEBUG ビルドで `true`**、Release ビルドで `false`）。
+    ///
+    /// `loadShader()` / `createMaterialFromFile()` / `createPostEffectFromFile()` で読んだ
+    /// `.metal` ファイルが監視され、保存するとビルド無しで再コンパイルされます（#648）。
+    /// 書きかけの MSL でコンパイルに失敗しても**直前の動くシェーダのまま描き続け**、
+    /// エラーだけがコンソールに出ます。
+    ///
+    /// 既定を Release で `false` にしているのは、作品として配布するビルドに
+    /// ファイル監視スレッドを残さないためです。監視が起きるのはファイル由来の
+    /// シェーダを実際に読んだときだけなので、使わないスケッチのコストはゼロです。
+    /// 環境変数 `METAPHOR_SHADER_HOT_RELOAD`（`1` で有効・`0` で無効）があれば
+    /// そちらが優先されます。
+    public var shaderHotReload: Bool
+
     /// スケッチセットアップ時に登録するプラグインファクトリ。
     ///
     /// プラグインは ``Sketch/setup()`` が呼ばれる前にインスタンス化されスケッチに接続されます。
@@ -309,6 +333,7 @@ public struct SketchConfig: Sendable {
     ///   - preventAppNap: スケッチ実行中に App Nap を抑止するか（デフォルト: `true`）。
     ///   - msaa: MSAA サンプル数（デフォルト: `4`。`1` で無効、非対応値は `1` にフォールバック）。
     ///   - preserveClock: リロードをまたいで `frameCount` / `time` を復元するか（デフォルト: `false`）。
+    ///   - shaderHotReload: シェーダファイルの自動リロード（デフォルト: DEBUG ビルドで `true`）。
     ///   - plugins: スケッチに登録するプラグインファクトリの配列。
     public init(
         width: Int = 1920,
@@ -323,6 +348,7 @@ public struct SketchConfig: Sendable {
         preventAppNap: Bool = true,
         msaa: Int = 4,
         preserveClock: Bool = false,
+        shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault,
         plugins: [PluginFactory] = []
     ) {
         self.width = width
@@ -337,6 +363,20 @@ public struct SketchConfig: Sendable {
         self.preventAppNap = preventAppNap
         self.msaa = msaa
         self.preserveClock = preserveClock
+        self.shaderHotReload = shaderHotReload
         self.plugins = plugins
+    }
+
+    /// ``shaderHotReload`` の既定値。DEBUG ビルドでのみ `true`。
+    ///
+    /// SwiftPM は依存パッケージも同じコンフィギュレーションでビルドするので、
+    /// スケッチを `swift run`（debug）すれば有効・`swift build -c release` なら
+    /// 無効、が再コンパイル無しで成り立ちます。
+    public static var shaderHotReloadDefault: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
     }
 }

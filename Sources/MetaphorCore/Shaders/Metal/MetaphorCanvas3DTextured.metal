@@ -1,18 +1,8 @@
-#include "MetaphorShaderTypes.h"
+#include "MetaphorCanvas3DTypes.h"
 #include "MetaphorLighting.h"
 
-struct Canvas3DTexVertexIn {
-    float3 position [[attribute(0)]];
-    float3 normal   [[attribute(1)]];
-    float2 uv       [[attribute(2)]];
-};
-
-struct Canvas3DTexVertexOut {
-    float4 position [[position]];
-    float3 worldPosition;
-    float3 normal;
-    float2 uv;
-};
+// `Canvas3DTexVertexIn` / `Canvas3DTexVertexOut` は `MetaphorCanvas3DTypes.h` にある
+// （非テクスチャ経路と同じ理由 — カスタムマテリアルへ配る前文と定義を共有する）。
 
 vertex Canvas3DTexVertexOut metaphor_canvas3DTexturedVertex(
     Canvas3DTexVertexIn in [[stage_in]],
@@ -34,13 +24,15 @@ fragment float4 metaphor_canvas3DTexturedFragment(
     constant Material3D &material [[buffer(3)]],
     constant ShadowFragmentUniforms &shadowUniforms [[buffer(5)]],
     texture2d<float> tex [[texture(0)]],
-    texture2d<float> shadowMap [[texture(1)]]
+    texture2d<float> shadowMap [[texture(1)]],
+    texturecube<float> irradianceMap [[texture(2)]],
+    texturecube<float> prefilteredMap [[texture(3)]]
 ) {
     constexpr sampler s(filter::linear, address::repeat);
     float4 texColor = tex.sample(s, in.uv);
     float4 tintedColor = texColor * uniforms.color;
 
-    if (uniforms.lightCount == 0) {
+    if (metaphorSkipsLighting(material, uniforms.lightCount)) {
         return tintedColor;
     }
 
@@ -56,7 +48,9 @@ fragment float4 metaphor_canvas3DTexturedFragment(
         lights,
         uniforms.lightCount,
         material,
-        shadow
+        shadow,
+        irradianceMap,
+        prefilteredMap
     );
 
     return float4(lit, tintedColor.a);

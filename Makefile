@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
 
 # Default target
 all: setup build
@@ -117,6 +117,12 @@ clean-all: clean
 	rm -rf Vendor/Syphon-Framework
 
 # Check if setup is complete
+#
+# Frameworks/Syphon.xcframework が無くても Package.swift は release URL の
+# binaryTarget へフォールバックするので、そこが MISSING でも swift build /
+# swift test は通る（Issue #935）。submodule 側は「ディレクトリがある」だけでは
+# 足りない — git submodule update を通していない worktree には空ディレクトリだけが
+# 生えるので、xcodebuild が必要とする実体（Syphon.xcodeproj）の有無を見る。
 check:
 	@if [ -d "Frameworks/Syphon.xcframework" ]; then \
 		current=$$(git submodule status Vendor/Syphon-Framework 2>/dev/null | awk '{print $$1}'); \
@@ -127,10 +133,12 @@ check:
 			echo "Syphon.xcframework: OK"; \
 		fi; \
 	else \
-		echo "Syphon.xcframework: MISSING - run 'make setup'"; \
+		echo "Syphon.xcframework: MISSING - swift build falls back to the release binaryTarget (run 'make setup' to build it locally)"; \
 	fi
-	@if [ -d "Vendor/Syphon-Framework" ]; then \
+	@if [ -e "Vendor/Syphon-Framework/Syphon.xcodeproj" ]; then \
 		echo "Syphon submodule: OK"; \
+	elif [ -d "Vendor/Syphon-Framework" ]; then \
+		echo "Syphon submodule: NOT INITIALIZED (empty checkout) - run 'make submodules'"; \
 	else \
 		echo "Syphon submodule: MISSING - run 'make submodules'"; \
 	fi
@@ -138,12 +146,32 @@ check:
 # Extract symbol graphs (shared step for docs and llms-txt)
 # Each module is independent — run extraction in parallel via xargs -P.
 # Saves ~60s on CI (12 modules × ~7s sequential → bounded by core count).
+#
+# -F の解決先は 2 通りある（Issue #935）。Package.swift は Frameworks/Syphon.xcframework
+# が無ければ release URL の binaryTarget へフォールバックし、そのとき Syphon.framework は
+# swift build が .build/arm64-apple-macosx/debug/ へ置く。片方を決め打ちすると
+# `make setup` を通していない worktree で symbol-graphs だけが落ち、llms.txt の鮮度を
+# 見る pre-push フックごと push が通らなくなる（build / test は green のままなので
+# 原因に辿り着きにくい）。どちらの経路でも採れる symbol graph は同一なので、実在する
+# 方をレシピ内シェルで選ぶ。`:=` + $(shell) は build 依存より先に評価されてしまい、
+# 初回ビルド前は必ずフォールバック側に倒れるため、変数ではなくレシピ内で判定する。
+#
+# 説明をレシピの外（この位置）に置いているのは 2 つの理由による。レシピ本体は `\` 継続行の
+# ひとかたまりなので、途中に `#` を挟むと以降が丸ごとシェルコメントに飲まれる。加えて
+# scripts/validate-ai-docs.sh が `awk '/^symbol-graphs:/,/^# Generate llms.txt/'` で
+# このブロックを読み、`Metaphor*` 語を拾ってモジュール網羅を判定するので、ブロック内に
+# 語彙を増やすと網羅判定が鈍る。下の `# Generate llms.txt` は境界なので消さないこと。
 symbol-graphs: build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
-	export SDK_PATH; \
-	printf '%s\n' metaphor MetaphorCore \
+	if [ -d Frameworks/Syphon.xcframework/macos-arm64_x86_64 ]; then \
+		SYPHON_F=Frameworks/Syphon.xcframework/macos-arm64_x86_64; \
+	else \
+		SYPHON_F=.build/arm64-apple-macosx/debug; \
+	fi; \
+	export SDK_PATH SYPHON_F; \
+	printf '%s\n' metaphor MetaphorCore MetaphorLog \
 		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML MetaphorVideo \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
 		MetaphorRenderGraph MetaphorSceneGraph MetaphorSyphon \
@@ -153,7 +181,7 @@ symbol-graphs: build
 		-sdk "$$SDK_PATH" \
 		-I .build/arm64-apple-macosx/debug/Modules \
 		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorSyphonBootstrap.build/module.modulemap \
-		-F Frameworks/Syphon.xcframework/macos-arm64_x86_64 \
+		-F "$$SYPHON_F" \
 		-minimum-access-level public \
 		-skip-inherited-docs \
 		-emit-extension-block-symbols \
@@ -181,13 +209,57 @@ lint-workflows:
 # Uses manual symbol graph extraction to work around SPM binary target issue
 # base path は公開時と同じ /metaphor/reference/（DocC は baseUrl を出力へ焼き込む
 # ので、ここが CI とずれるとローカルでは気付けない不具合になる — Issue #529）
-docs: symbol-graphs
-	@echo "Building DocC documentation..."
-	xcrun docc convert Sources/metaphor/metaphor.docc \
+# 日本語版は同じ骨格を /metaphor/reference/ja/ へもう一度出す（DOCC_BASE_PATH）。
+DOCC_CATALOG ?= Sources/metaphor/metaphor.docc
+DOCC_BASE_PATH ?= metaphor/reference
+DOCC_OUTPUT ?= .build/docs
+
+# header.html（言語切替）は --experimental-enable-custom-templates が無いと注入されない。
+# コマンド本体は docs と docs-check で共有する（片方だけフラグが増えると、
+# 「手元では出ない警告で CI が落ちる」が起きるため）。
+DOCC_CONVERT = xcrun docc convert $(DOCC_CATALOG) \
 		--additional-symbol-graph-dir .build/symbol-graphs \
 		--transform-for-static-hosting \
-		--hosting-base-path metaphor/reference \
-		--output-path .build/docs
+		--experimental-enable-custom-templates \
+		--hosting-base-path $(DOCC_BASE_PATH) \
+		--output-path $(DOCC_OUTPUT)
+
+docs: symbol-graphs
+	@echo "Building DocC documentation..."
+	$(DOCC_CONVERT)
+
+# DocC の警告 0 を要求する（Issue #396）。閾値ではなく 0 件固定。
+# 警告のほとんどは**解決できないシンボルリンク**で、internal 型を指す ``…`` や
+# オーバーロードの曖昧参照は放置すると必ず増える（起票時 11 件 → 31 件）。
+# docs.yml は **main への push でしか走らない**ため、PR 時点では誰も気付けなかった。
+# symbol-graphs は llms.txt の鮮度検査と同じものを使い回す（抽出は並列で数秒）。
+docs-check: symbol-graphs
+	@echo "Checking DocC warnings (must be zero)..."
+	$(DOCC_CONVERT) --warnings-as-errors
+
+# Build the Japanese reference (ADR-0011)
+# 英語の doc コメントが正典で、日本語は台帳 docs/reference/i18n/ja.json を当てた生成物。
+# 訳が無い箇所は英語のまま残る（落とさない）ので、#334 の英語化が進むほど日本語化も進む。
+# DocC が読むヘッダーはカタログ直下の header.html 1 本きりなので、カタログを複製して
+# 日本語版のヘッダーへ差し替えてから convert する。
+# カタログの**ディレクトリ名がドキュメントのルート名になる**ので、複製先でも
+# metaphor.docc の名前を保つ（metaphor-ja.docc にすると日本語版だけ
+# /ja/documentation/metaphor-ja/ に出て、英語版とのパスの 1:1 対応が壊れる）。
+docs-ja:
+	@rm -rf .build/ja-catalog
+	@mkdir -p .build/ja-catalog
+	@cp -R $(DOCC_CATALOG) .build/ja-catalog/$(notdir $(DOCC_CATALOG))
+	@cp docs/reference/i18n/header.ja.html .build/ja-catalog/$(notdir $(DOCC_CATALOG))/header.html
+	@$(MAKE) docs DOCC_CATALOG=.build/ja-catalog/$(notdir $(DOCC_CATALOG)) \
+		DOCC_BASE_PATH=metaphor/reference/ja DOCC_OUTPUT=.build/docs-ja
+	@python3 scripts/translate-reference.py --apply --docs-dir .build/docs-ja
+
+# Update the Japanese reference ledger
+# 既定は未訳の書き出し（何で訳しても良い → --import で戻す）。
+# ARGS="--engine google" なら Cloud Translation で直接埋める（GOOGLE_API_KEY が要る）。
+reference-i18n: docs
+	@python3 scripts/translate-reference.py --docs-dir .build/docs \
+		--export .build/reference-untranslated.json $(ARGS)
 
 # Preview DocC documentation locally
 docs-preview: symbol-graphs
@@ -237,6 +309,12 @@ tutorial-shots:
 tutorial-status:
 	@python3 scripts/generate-tutorial-status.py
 
+# Shoot the DocC reference images by running the snippets in doc comments (needs a GPU)
+# 正典は doc コメントの ```swift フェンス。画像行は生成物で、URL は Gyazo（ADR-0008）。
+# 撮影はローカル専用。CI は --check（鮮度）と --compile-only（例が壊れていないか）を見る。
+reference-shots:
+	@python3 scripts/generate-reference-shots.py $(ARGS)
+
 help:
 	@echo "metaphor Makefile"
 	@echo ""
@@ -260,6 +338,9 @@ help:
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make docs           - Build DocC documentation"
+	@echo "  make docs-check     - Build DocC and fail on any warning (CI と同条件)"
+	@echo "  make docs-ja        - Build the Japanese reference from the ledger (ADR-0011)"
+	@echo "  make reference-i18n - Export untranslated reference strings (ARGS=\"--engine google\")"
 	@echo "  make docs-preview   - Preview DocC documentation locally"
 	@echo "  make examples       - Run examples in parallel (10 workers)"
 	@echo "  make examples-seq   - Run examples sequentially (interactive)"
@@ -270,4 +351,5 @@ help:
 	@echo "  make tutorial-snippets - Embed Examples/Tutorial code into docs/tutorial"
 	@echo "  make tutorial-shots - Re-shoot tutorial result images (needs a GPU)"
 	@echo "  make tutorial-status - Write the tutorial publication status into the READMEs"
+	@echo "  make reference-shots - Re-shoot DocC reference result images (needs a GPU)"
 	@echo "  make help           - Show this help"

@@ -13,7 +13,7 @@ extension Sketch {
     /// - Returns: 新しい ``MetaphorAudio/AudioAnalyzer`` インスタンス。
     public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
         guard fftSize >= 2, (fftSize & (fftSize - 1)) == 0 else {
-            print("[metaphor] Warning: createAudioInput: fftSize must be a power of two (got \(fftSize)); using 1024")
+            metaphorWarning("createAudioInput: fftSize must be a power of two (got \(fftSize)); using 1024")
             return AudioAnalyzer(fftSize: 1024)
         }
         return AudioAnalyzer(fftSize: fftSize)

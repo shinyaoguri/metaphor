@@ -124,7 +124,55 @@ public final class Canvas3D: CanvasStyle {
 
     // MARK: - マテリアル状態
 
-    var currentMaterial: Material3D = .default
+    var currentMaterial: Material3D = .default {
+        didSet {
+            // トーンマッピングは画面全体の性質なので、マテリアルの差し替えでは
+            // 巻き戻らない。`currentMaterial` は pushStyle/popStyle・記録経路の
+            // スナップショット復元・`MShape` のマテリアル適用で丸ごと代入される
+            // ため、書き込みのたびにここで現在値へ焼き直す（Issue #706）。
+            if currentMaterial.toneMapParams != toneMapParams {
+                currentMaterial.toneMapParams = toneMapParams
+            }
+        }
+    }
+
+    // MARK: - トーンマッピング状態
+
+    /// トーンマッピングと環境の実体（x=モード, y=露出, z=環境強度, w=予約）。
+    ///
+    /// GPU へは ``Material3D/toneMapParams`` に相乗りして運ぶが、値の持ち主はこちら。
+    /// いずれも「画面全体の性質」なので、マテリアルの差し替えでは巻き戻らない
+    /// （`currentMaterial` の `didSet` が現在値へ焼き直す）。
+    var toneMapParams: SIMD4<Float> = SIMD4(0, 1, 0, 0)
+
+    /// `toneMapping()` がユーザーから明示的に呼ばれたか。
+    ///
+    /// `environment()` はトーンマップ未指定のときだけ `.acesFilmic` へ自動昇格させる
+    /// （IBL を入れると輝度が 1.0 を超えるのは必然だが、明示指定は上書きしない）。
+    var userSetToneMapping: Bool = false
+
+    // MARK: - 環境（IBL / skybox）状態
+
+    /// 有効な環境。`environment()` 未設定なら `nil`。
+    var environment: IBLEnvironment?
+
+    /// 環境の強度。GPU へは `toneMapParams.z` で運ぶ。
+    var environmentIntensity: Float = 1
+
+    /// 環境を背景（skybox）としても描くか。
+    var environmentShowsBackground: Bool = true
+
+    /// このフレームで skybox を描画済みか（最初の 3D 描画の直前に 1 回だけ描く）。
+    var skyboxDrawnThisFrame: Bool = false
+
+    /// skybox 用のパイプライン（初回の描画時に遅延生成）。
+    var skyboxPipelineState: MTLRenderPipelineState?
+
+    /// skybox 用のデプスステート（`lessEqual` / 書き込み無効）。
+    var skyboxDepthState: MTLDepthStencilState?
+
+    /// 環境無効時にバインドする 1x1 のダミーキューブ。
+    let dummyEnvironmentCube: MTLTexture
 
     // MARK: - テクスチャ状態
 
@@ -390,6 +438,9 @@ public final class Canvas3D: CanvasStyle {
             throw MetaphorError.textureCreationFailed(width: 1, height: 1, format: "depth32Float")
         }
         self.dummyShadowTexture = dummyTex
+
+        // ダミー 1x1 環境キューブ（IBL 無効時にバインド、#710）
+        self.dummyEnvironmentCube = try IBLEnvironment.makeDummyCube(device: device)
     }
 
     // MARK: - プライベートヘルパー
@@ -448,6 +499,16 @@ public final class Canvas3D: CanvasStyle {
     /// `ambientLight(Canvas3D.defaultAmbientRatio * <colorMode の最大値>)` だと読み取れる。
     /// 正規化後の値は `colorMode` 設定によらず `defaultAmbientRatio`（= 0.3）で不変。
     func applyDefaultAmbient() {
+        // 環境（IBL）が有効なときは、フラットな既定アンビエントを 0 にする。
+        // IBL の拡散項が同じ役割を果たしており、両方足すと二重計上になって
+        // せっかくの環境のコントラストが眠くなる。`ambientLight()` を明示した
+        // 場合は `userSetAmbient` が立つのでここへは来ない（#710）。
+        if environment != nil {
+            ambientColor = .zero
+            currentMaterial.ambientColor = SIMD4(0, 0, 0, 0)
+            return
+        }
+
         let c = colorModeConfig.toGray(Canvas3D.defaultAmbientRatio * colorModeConfig.max1)
         ambientColor = SIMD3(c.r, c.g, c.b)
         currentMaterial.ambientColor = SIMD4(c.r, c.g, c.b, 0)

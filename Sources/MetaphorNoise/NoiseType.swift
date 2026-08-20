@@ -44,9 +44,17 @@ public struct NoiseConfig: Sendable {
     public var voronoiDistanceEnabled: Bool
 
     /// Sampling scale (maps to noiseMap's sampleSize).
+    ///
+    /// - Important: Grid-only. It steers ``GKNoiseWrapper/sampleGrid(width:height:)``,
+    ///   ``GKNoiseWrapper/texture(width:height:)``, ``GKNoiseWrapper/image(width:height:)``
+    ///   and ``GKNoiseWrapper/colorMappedTexture(width:height:colorStops:)``;
+    ///   ``GKNoiseWrapper/sample(x:y:)-(Double,_)`` ignores it entirely.
     public var sampleScale: SIMD2<Double>
 
     /// Sampling offset.
+    ///
+    /// - Important: Grid-only, like ``sampleScale``. It is the noise-space point the
+    ///   grid starts from, and ``GKNoiseWrapper/sample(x:y:)-(Double,_)`` ignores it entirely.
     public var origin: SIMD2<Double>
 
     /// Creates a noise configuration with the given parameters.
@@ -58,8 +66,10 @@ public struct NoiseConfig: Sendable {
     ///   - persistence: Amplitude decay rate (default is 0.5).
     ///   - normalized: Remaps output to 0.0-1.0 (default is true).
     ///   - voronoiDistanceEnabled: Use distance as the Voronoi value (default is true).
-    ///   - sampleScale: Sampling scale (default is (1.0, 1.0)).
-    ///   - origin: Sampling offset (default is zero).
+    ///   - sampleScale: Sampling scale for the grid-based entry points only
+    ///     (default is (1.0, 1.0)).
+    ///   - origin: Sampling offset for the grid-based entry points only
+    ///     (default is zero).
     public init(
         octaves: Int = 6,
         frequency: Double = 1.0,

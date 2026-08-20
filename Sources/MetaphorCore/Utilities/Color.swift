@@ -124,6 +124,12 @@ public struct Color: Sendable, Equatable {
 
     /// 0xRRGGBB または 0xAARRGGBB 形式の整数16進数値からカラーを作成します。
     ///
+    /// 桁数は**値の大小**で判別します。整数リテラルは先頭の `0` が値に残らないため、
+    /// これ以外に区別する手掛かりがありません。結果として **アルファ `0x00` は表現できません** —
+    /// `0x00FFFFFF` は `0xFFFFFF` と同じ値なので RGB として読まれ、アルファは `1.0` になります。
+    /// 透明を含む色は ``init(hex:)-(String)``（8 桁の綴りは常に AARRGGBB として読まれます）か
+    /// ``withAlpha(_:)`` で作ってください。
+    ///
     /// - Parameter hex: 16進数カラー値。0xFFFFFF より大きい値は AARRGGBB として解釈されます。
     public init(hex: UInt32) {
         if hex > 0xFFFFFF {
@@ -139,14 +145,35 @@ public struct Color: Sendable, Equatable {
         }
     }
 
-    /// "#RRGGBB" または "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+    /// "#RGB" / "#RRGGBB" / "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+    ///
+    /// 受け付けるのは **3 桁・6 桁・8 桁のみ**で、それ以外の桁数と、16進数字以外を含む文字列は
+    /// `nil` を返します。3 桁は CSS と同じ短縮形として各桁を 2 倍に展開します（"#FFF" は白）。
+    ///
+    /// **4 桁の短縮形は受け付けません。** このライブラリの 8 桁は AARRGGBB（アルファ先頭）で
+    /// CSS の RRGGBBAA と順序が逆なため、4 桁は ARGB とも RGBA とも読めます。どちらに決めても
+    /// もう一方の綴りが黙って別の色になるので、`nil` で綴りの誤りとして返します。
+    ///
+    /// 8 桁のアルファは `00`（完全透明）も綴りどおりに読まれます。桁数を綴りから数えるため、
+    /// ``init(hex:)-(UInt32)`` が値の大小で判別せざるを得ない曖昧さはここには残りません。
     ///
     /// - Parameter hex: 16進数カラー文字列。"#" プレフィックスは省略可能。
     public init?(hex: String) {
         var str = hex
         if str.hasPrefix("#") { str.removeFirst() }
-        guard let value = UInt32(str, radix: 16) else { return nil }
-        self.init(hex: value)
+        // 桁数だけでは足りない: `UInt32(_:radix:)` は先頭の符号を受けるので "+FFFFF" が 6 桁として
+        // 通ってしまう。全角の "ＦＦＦＦＦＦ" は `isHexDigit` が true になるため `isASCII` も要る。
+        guard str.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
+        // CSS の 3 桁短縮形を展開する（"0AF" → "00AAFF"）。
+        if str.count == 3 { str = String(str.flatMap { [$0, $0] }) }
+        guard str.count == 6 || str.count == 8, let value = UInt32(str, radix: 16) else { return nil }
+        // `init(hex: UInt32)` へは委譲しない。整数側は値の大小で桁数を判別するため
+        // `0x00FFFFFF == 0xFFFFFF` が RGB として読まれ、アルファ 00 だけが 1.0 に化ける。
+        // ここは綴りの長さで桁数が分かるので、8 桁は無条件に AARRGGBB として分解する。
+        self.a = str.count == 8 ? Float((value >> 24) & 0xFF) / 255.0 : 1.0
+        self.r = Float((value >> 16) & 0xFF) / 255.0
+        self.g = Float((value >> 8) & 0xFF) / 255.0
+        self.b = Float(value & 0xFF) / 255.0
     }
 
     // MARK: - SIMD Conversion

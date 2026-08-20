@@ -124,14 +124,42 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
     case exclusion
 
     /// このブレンドモードがフレームバッファフェッチを必要とするかどうか
+    ///
+    /// 分離可能ブレンドモードは `mix(dst, blend(src, dst), src.a)` という形をとる
+    /// （src の α は「混ぜ方をどれだけ効かせるか」。ADR-0012）。これは固定関数の
+    /// ブレンド係数の積和に乗らないので、キャンバスの値をフラグメントで読んで合成する。
+    /// 実装は `Shaders/Metal/MetaphorCanvas2DBlend.h`。
     public var requiresFramebufferFetch: Bool {
         switch self {
-        case .difference, .exclusion: return true
-        default: return false
+        case .multiply, .screen, .subtract, .lightest, .darkest, .difference, .exclusion:
+            return true
+        case .opaque, .alpha, .additive:
+            return false
+        }
+    }
+
+    /// フェッチ経路のフラグメント関数名に使う接尾辞。固定関数で足りるモードでは `nil`。
+    ///
+    /// 関数名は `metaphor_canvas2D<系統><接尾辞>Fragment` の形に揃えてあり、
+    /// `Canvas2DPipelineStore` がここから組み立てます（`.metal` 側は
+    /// `METAPHOR_CANVAS2D_BLEND_FRAGMENT` マクロが同じ名前で定義する）。
+    var fragmentFunctionSuffix: String? {
+        switch self {
+        case .multiply: return "Multiply"
+        case .screen: return "Screen"
+        case .subtract: return "Subtract"
+        case .lightest: return "Lightest"
+        case .darkest: return "Darkest"
+        case .difference: return "Difference"
+        case .exclusion: return "Exclusion"
+        case .opaque, .alpha, .additive: return nil
         }
     }
 
     /// このブレンドモードの設定をカラーアタッチメントデスクリプタに適用します。
+    ///
+    /// **組み込みフラグメントは premultiplied alpha を返す**（ADR-0012）。ここの係数は
+    /// その前提で書かれているので、`src.a` を掛け直してはいけない。
     ///
     /// - Parameter attachment: 設定するカラーアタッチメントデスクリプタ
     func apply(to attachment: MTLRenderPipelineColorAttachmentDescriptor) {
@@ -140,66 +168,29 @@ public enum BlendMode: CaseIterable, Hashable, Sendable {
             attachment.isBlendingEnabled = false
 
         case .alpha:
+            // premultiplied over: final.rgb = src.rgb + dst.rgb * (1 - src.a)
+            //                     final.a   = src.a   + dst.a   * (1 - src.a)
+            // src.rgb には既に α が掛かっている（フラグメントが premultiplied を返す）。
+            // 以前はここで `.sourceAlpha` を掛けていたが、それだと premultiplied な
+            // テクスチャ（グリフアトラス・読み込んだ画像・オフスクリーン）を貼るたびに
+            // α が二重に掛かっていた（#846 / #847）。
             attachment.isBlendingEnabled = true
-            attachment.sourceRGBBlendFactor = .sourceAlpha
+            attachment.sourceRGBBlendFactor = .one
             attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
-            // 標準的な straight-alpha over: final.a = src.a + dst.a * (1 - src.a)
-            // 以前は sourceAlphaBlendFactor = .sourceAlpha だったが、
-            // それだと src.a が二乗されて出力テクスチャの α が極端に減衰し、
-            // Syphon 等でアルファ合成する用途で透明と区別がつかなくなる。
             attachment.sourceAlphaBlendFactor = .one
             attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
 
         case .additive:
-            attachment.isBlendingEnabled = true
-            attachment.sourceRGBBlendFactor = .sourceAlpha
-            attachment.destinationRGBBlendFactor = .one
-            attachment.sourceAlphaBlendFactor = .one
-            attachment.destinationAlphaBlendFactor = .one
-
-        case .multiply:
-            attachment.isBlendingEnabled = true
-            attachment.sourceRGBBlendFactor = .destinationColor
-            attachment.destinationRGBBlendFactor = .zero
-            attachment.sourceAlphaBlendFactor = .destinationAlpha
-            attachment.destinationAlphaBlendFactor = .zero
-
-        case .screen:
+            // final.rgb = dst.rgb + src.a * src_straight.rgb（= premultiplied な src.rgb）
             attachment.isBlendingEnabled = true
             attachment.sourceRGBBlendFactor = .one
-            attachment.destinationRGBBlendFactor = .oneMinusSourceColor
-            attachment.sourceAlphaBlendFactor = .one
-            attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
-
-        case .subtract:
-            attachment.isBlendingEnabled = true
-            attachment.rgbBlendOperation = .reverseSubtract
-            attachment.alphaBlendOperation = .reverseSubtract
-            attachment.sourceRGBBlendFactor = .sourceAlpha
             attachment.destinationRGBBlendFactor = .one
             attachment.sourceAlphaBlendFactor = .one
             attachment.destinationAlphaBlendFactor = .one
 
-        case .lightest:
-            attachment.isBlendingEnabled = true
-            attachment.rgbBlendOperation = .max
-            attachment.alphaBlendOperation = .max
-            attachment.sourceRGBBlendFactor = .one
-            attachment.destinationRGBBlendFactor = .one
-            attachment.sourceAlphaBlendFactor = .one
-            attachment.destinationAlphaBlendFactor = .one
-
-        case .darkest:
-            attachment.isBlendingEnabled = true
-            attachment.rgbBlendOperation = .min
-            attachment.alphaBlendOperation = .min
-            attachment.sourceRGBBlendFactor = .one
-            attachment.destinationRGBBlendFactor = .one
-            attachment.sourceAlphaBlendFactor = .one
-            attachment.destinationAlphaBlendFactor = .one
-
-        case .difference, .exclusion:
-            // コンポジットはフレームバッファフェッチ経由でシェーダー側で処理
+        case .multiply, .screen, .subtract, .lightest, .darkest, .difference, .exclusion:
+            // 分離可能ブレンドモードは固定関数では書けない（`requiresFramebufferFetch`）。
+            // 合成はフレームバッファフェッチでシェーダー側が行うので、ここでは無効にする。
             attachment.isBlendingEnabled = false
         }
     }

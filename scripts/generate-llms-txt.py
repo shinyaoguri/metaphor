@@ -16,6 +16,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
@@ -224,13 +225,88 @@ def get_type_references(symbol: dict) -> set[str]:
     return refs
 
 
-def get_doc_summary(symbol: dict) -> str:
-    """Return the first meaningful line of the doc comment."""
+# DocC callouts worth republishing in llms.txt: the ones that constrain *how
+# you call the symbol*. `- Parameters:` / `- Parameter x:` / `- Returns:` /
+# `- Throws:` are structural — the rendered signature already carries them.
+# `- SeeAlso:` is navigational, and every one reaching these symbol graphs comes
+# from Apple's SwiftUI docs rather than from metaphor sources (#786).
+_CALLOUT_KINDS = (
+    "Note", "Important", "Warning", "Attention", "Tip",
+    "Precondition", "Postcondition", "Invariant", "Requires", "Complexity",
+)
+
+# Matched case-insensitively, as DocC itself does, so a `- note:` renders the
+# same way in the DocC reference and here rather than silently vanishing from
+# one of them. What separates a callout from a parameter is therefore purely
+# indentation: callouts sit at the top level of the comment, while MIDIManager's
+# parameter literally named `note` reaches the graph as an *indented* `- note:`
+# child of `- Parameters:`. Output is re-spelled to the canonical form.
+_CALLOUT_RE = re.compile(
+    r"-\s*(" + "|".join(_CALLOUT_KINDS) + r")\s*:\s*(.*)", re.IGNORECASE)
+_CANONICAL_CALLOUT = {kind.lower(): kind for kind in _CALLOUT_KINDS}
+
+# ``symbol(_:)`` is a DocC symbol *link*. llms.txt is plain text for an agent,
+# where the doubled delimiter carries no meaning — only noise.
+_DOCC_SYMBOL_LINK_RE = re.compile(r"``([^`]+)``")
+
+
+def flatten_doc_text(text: str) -> str:
+    """Collapse DocC-only markup that means nothing outside DocC."""
+    return _DOCC_SYMBOL_LINK_RE.sub(r"`\1`", text)
+
+
+def _is_wide(char: str) -> bool:
+    """True for CJK ideographs, kana, and full-width forms."""
+    return unicodedata.east_asian_width(char) in ("W", "F")
+
+
+def _is_wide_punctuation(char: str) -> bool:
+    return _is_wide(char) and unicodedata.category(char).startswith("P")
+
+
+def _needs_space(left: str, right: str) -> bool:
+    """Decide whether a doc comment's line wrap should re-join with a space.
+
+    The wrap position is arbitrary, so the join has to reproduce what the
+    author would have typed on one line. These sources write
+    ``Darwin の `sys/tty.h` にある`` (spaced) but ``になります。`metaphor` は``
+    (unspaced), so full-width punctuation is what decides it — not the script.
+    """
+    # Full-width punctuation carries its own visual padding on both sides.
+    if _is_wide_punctuation(left) or _is_wide_punctuation(right):
+        return False
+    # Japanese never spaces between words, but does separate a run of Japanese
+    # from an adjacent inline code span or Latin word.
+    return not (_is_wide(left) and _is_wide(right))
+
+
+def _doc_lines(symbol: dict) -> list[str]:
+    """Return the raw doc comment lines, indentation intact."""
     doc = symbol.get("docComment")
     if not doc:
-        return ""
-    for line in doc.get("lines", []):
-        text = line.get("text", "").strip()
+        return []
+    return [line.get("text", "") for line in doc.get("lines", [])]
+
+
+def _is_indented(line: str) -> bool:
+    return line[:1].isspace()
+
+
+def _join_wrapped(parts: list[str]) -> str:
+    """Re-join lines that a doc comment wrapped, respecting CJK spacing."""
+    joined = ""
+    for part in parts:
+        if not joined:
+            joined = part
+            continue
+        joined += (" " if _needs_space(joined[-1], part[0]) else "") + part
+    return joined
+
+
+def get_doc_summary(symbol: dict) -> str:
+    """Return the first meaningful line of the doc comment."""
+    for text in _doc_lines(symbol):
+        text = text.strip()
         if not text:
             continue
         # Any `- …` line is a DocC list item (`- Parameters:` and its indented
@@ -239,8 +315,45 @@ def get_doc_summary(symbol: dict) -> str:
         # — better empty than a stray "- wrappedValue: …" fragment.
         if text.startswith("-"):
             continue
-        return text
+        return flatten_doc_text(text)
     return ""
+
+
+def get_doc_callouts(symbol: dict) -> list[str]:
+    """Return each callout body as `"Note: …"`, in source order.
+
+    The one-line abstract cannot hold "call this wrong and it breaks"
+    knowledge, so llms.txt used to drop it entirely (#786). Continuation lines
+    are folded back in: two thirds of the real callouts wrap onto indented
+    follow-on lines, and first-line-only capture would cut them mid-sentence.
+    """
+    lines = _doc_lines(symbol)
+    callouts: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        index += 1
+        if _is_indented(line):
+            continue
+        match = _CALLOUT_RE.fullmatch(line.strip())
+        if not match:
+            continue
+        kind = _CANONICAL_CALLOUT[match.group(1).lower()]
+        first = match.group(2).strip()
+        parts = [first] if first else []
+        while index < len(lines):
+            follow = lines[index]
+            # Stops at the blank line ending the callout, at un-indented prose,
+            # and at the next list item (`- Parameters:`, another callout).
+            if not follow.strip() or not _is_indented(follow) \
+                    or follow.strip().startswith("-"):
+                break
+            parts.append(follow.strip())
+            index += 1
+        body = _join_wrapped(parts)
+        if body:  # a bodiless `- Note:` has nothing to republish
+            callouts.append(flatten_doc_text(f"{kind}: {body}"))
+    return callouts
 
 
 def symbol_sort_key(sym: dict) -> tuple:
@@ -550,13 +663,42 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def code_span(text: str) -> str:
+    """Wrap a declaration in a Markdown code span that survives inner backticks.
+
+    Swift spells a keyword used as an identifier with backticks around it
+    (`case `default``, `static let `return``), so the declaration itself can
+    contain the very delimiter we wrap it in. CommonMark closes a code span at
+    the first backtick run of the *same* length as the opener, so a single
+    backtick fence would end mid-declaration and spill the rest into prose
+    (#961). Widening the fence past the longest inner run fixes that.
+
+    The padding spaces are symmetric on purpose: CommonMark strips one space
+    from each end only when *both* ends carry one, so padding just the side
+    that touches a backtick would leave a stray space in the rendered output.
+    """
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
+def fmt_callouts(sym: dict) -> list[str]:
+    """Render a symbol's callouts as lines nested under its declaration.
+
+    Indented one level so a type's own callout can never be misread as one of
+    its members, which sit at column 0.
+    """
+    return [f"  - {callout}" for callout in get_doc_callouts(sym)]
+
+
 def fmt_symbol(sym: dict) -> str:
-    """Format a symbol as a markdown list item."""
+    """Format a symbol as a markdown list item, with its callouts beneath."""
     decl = get_declaration(sym)
     doc = get_doc_summary(sym)
-    if doc:
-        return f"- `{decl}` -- {doc}"
-    return f"- `{decl}`"
+    head = (f"- {code_span(decl)} -- {doc}" if doc
+            else f"- {code_span(decl)}")
+    return "\n".join([head, *fmt_callouts(sym)])
 
 
 def emit_type_section(name: str, info: dict, lines: list,
@@ -570,7 +712,8 @@ def emit_type_section(name: str, info: dict, lines: list,
         summary = condensed[name]
         if sym:
             decl = get_declaration(sym)
-            lines.append(f"{heading} `{decl}` -- {summary}")
+            lines.append(f"{heading} {code_span(decl)} -- {summary}")
+            lines.extend(fmt_callouts(sym))
         else:
             lines.append(f"{heading} {name} -- {summary}")
         lines.append("")
@@ -591,8 +734,9 @@ def emit_type_section(name: str, info: dict, lines: list,
     if sym:
         doc = get_doc_summary(sym)
         decl = get_declaration(sym)
-        lines.append(f"{heading} `{decl}` -- {doc}" if doc
-                     else f"{heading} `{decl}`")
+        lines.append(f"{heading} {code_span(decl)} -- {doc}" if doc
+                     else f"{heading} {code_span(decl)}")
+        lines.extend(fmt_callouts(sym))
     else:
         lines.append(f"{heading} {name}")
 

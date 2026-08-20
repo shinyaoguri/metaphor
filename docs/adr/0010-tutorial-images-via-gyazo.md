@@ -19,6 +19,8 @@ DocC リファレンスの画像を Gyazo へ移したが、チュートリア�
 - 縦糸（第 1〜10 部）は完結したが、横糸（[#550](https://github.com/shinyaoguri/metaphor/issues/550) の部末ミニプロジェクト節など）で節は増え続ける
 - 画像は Probe から**再生成できる**。つまり API の描画を直せば 65 点が一斉に撮り直しになる。
   GPU の出力はビット単位で再現しないので、撮り直せば中身が同じでも必ず新しい blob になる
+  （この 1 行は誤り。下の [Amendment 2026-08-16](#amendment-2026-08-16--gpu-の出力は再現する)
+  を参照。結論そのものは変わらない）
 
 という構造上、「1 回の描画修正 = 数 MiB の恒久的な増加」が今後も繰り返される。history は
 書き換えない方針なので、増えたぶんは永久に残る。判断を先送りするほど、移行時に外部化できる
@@ -84,6 +86,48 @@ Gyazo の URL を本文に置いてビルドして確かめた。アニメーシ
 - Pros: 既存の pack が実際に縮む。
 - Cons: 全クローン・fork・過去 PR の参照が壊れ、ルールセット（直接 push 不可）の一時解除も
   要る。tutorial 分は pack の 12.5% しかなく、得られるものが釣り合わない。
+
+#### 追記（2026-08-15）— 対象を最大化しても、そして費用対効果以前に採らない
+
+「v1.0.0 の前に過去のメディアを一掃できないか」と再検討したので、結論と根拠を残す。**Option D
+は却下のまま**で、判断は 2 段階で決まる。
+
+**1. 対象を tutorial から全メディアへ広げても釣り合わない。** 実測（pack 38.25 MB）:
+
+| | サイズ |
+|---|---|
+| HEAD にあるメディア（png/jpg/gif/mp4） | 21.5 MB |
+| **HEAD から到達できない = 書き換えで回収できる上限** | **4.07 MB / 81 blob（pack の 10.6%）** |
+
+回収対象の実体はほぼ本 ADR で外部化した `docs/tutorial/images/*` と Examples の撮り直し前の
+PNG で、残る 21.5 MB は Examples の実行結果画像（上記「適用範囲」により対象外）。つまり全力で
+回しても 38 MB → 34 MB にしかならない。
+
+**2. そもそも配布の同一性が壊れる。** こちらが決定的で、削減量が増えても覆らない。metaphor は
+SwiftPM ライブラリで、タグ 16 本すべての SHA が変わる:
+
+- 利用者の `Package.resolved` が持つ revision と一致しなくなり、`swift package resolve` が壊れる
+  （metaphor-cli・metaphor-sketches を含む）
+- Release の source tarball の SHA256 が変わる
+
+「開発者が 1 人だから安全」は成り立たない。壊れるのは開発者の作業環境ではなく、既に配布した
+タグを解決済みの利用者側だからで、[#314](https://github.com/shinyaoguri/metaphor/issues/314) が 1.0 昇格条件に利用者の存在（スター 100）を
+置いている以上、むしろ v1.0.0 が近づくほど採りにくくなる。
+
+**Issue / PR の参照は、上の Cons が言うほど一様には壊れない**（再検討で分解した）。同じ懸念から
+検討を蒸し返さないよう、切れる境界だけ記録しておく:
+
+- **無傷** — `#123` 形式の番号・相互参照・レビューコメント・ラベル（GitHub の DB 側）。PR の
+  Files changed / Commits タブも `refs/pull/N/head` が GitHub 側に保持されるため残る
+- **切れうる** — `refs/pull/*` から到達できない SHA、すなわち squash merge で main に生まれた
+  コミットへの `/commit/<sha>` リンクと `blob/<sha>/...` の permalink。unreachable なオブジェクトが
+  即座に消えるわけではないが、保証は無い
+- **副作用** — コミット要約に `(#PR番号)` を必ず入れる運用のため、force push で全コミットが
+  再走査され、多数の Issue に "referenced this issue" が再生成されうる
+
+そして重要なのは、**リンク保持とサイズ削減は原理的に両立しない**こと。旧 SHA を確実に生かす
+唯一の手段は書き換え前の main を別ブランチとして残すことだが、それをすると旧 blob も
+reachable のままになり、削減効果そのものが消える。
 
 ## Decision
 
@@ -163,13 +207,33 @@ Examples 側の運用は [Examples/README.md](../../Examples/README.md) と
   画像・README のサムネイル・Processing 由来の入力データが混ざっており用途が違うので、
   別途切り分ける。
 
+## Amendment 2026-08-16 — GPU の出力は再現する
+
+Context の「GPU の出力はビット単位で再現しない」は誤りだった。
+[#586](https://github.com/shinyaoguri/metaphor/issues/586) で実測したところ、**同じマシン・
+同じ実装で撮り直せば、静止画も動きの WebP もバイト単位で一致する**（2D・3D・ライティング・
+画像リソースを読む節、frameCount で駆動する動きの節、いずれも一致）。一致しないのは
+`time` / `deltaTime` を題材そのものにしている節だけで、これは `docs/tutorial/README.md` が
+すでに例外として書いていたもの。
+
+**この ADR の決定は変わらない。** 撮り直しが新しい blob を積むかどうかは「不変・追記型で
+運用する」という決定の理由の 1 つでしかなく、外部化の主たる理由（増え方が構造的で、history を
+書き換えない以上その増加は永久に残る）はそのまま成り立つ。既存 65 点を撮り直さずに移した
+判断（Decision）も、余計な差分を避けるという意味で妥当なまま。
+
+更新されるのは**運用の見通し**のほうで、Gyazo が同じバイト列に同じ URL を返す性質と合わせると、
+「撮り直して URL が変わったか」がそのまま「絵が変わったか」の判定に使える。実装変更による
+陳腐化を検出する手段としてこの道が開いたことは #586 で扱う。
+
 ## References
 
 - [ADR-0008](0008-docc-reference-images-via-gyazo.md) — DocC の画像を Gyazo へ（本 ADR は
   その「tutorial はスコープ外」という限定を更新する）
+- [Issue #586](https://github.com/shinyaoguri/metaphor/issues/586) — 実行結果画像の鮮度
+  フィンガープリント（上の Amendment の出どころ）
 - [Issue #511](https://github.com/shinyaoguri/metaphor/issues/511) — Gyazo 外部化の可否と
   サイズ規律。本 ADR はこの決定を更新する
 - `scripts/generate-tutorial-shots.py` — 撮影・アップロード・台帳・本文の書き換え
-- `scripts/check-tutorial-image-urls.py` / `.github/workflows/asset-health.yml` — 週次の死活監視
+- `scripts/check-image-urls.py` / `.github/workflows/asset-health.yml` — 週次の死活監視
 - `website/astro.config.mjs` — `image.remotePatterns` と `cacheDir`
 - `docs/tutorial/README.md` — 画像の規約（正本）

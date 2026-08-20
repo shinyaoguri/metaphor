@@ -393,6 +393,9 @@ public final class GIFExporter {
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
+                // フレームの中身は premultiplied（ADR-0012）。宣言を実体に合わせておくと、
+                // ImageIO が GIF 化のときに割り戻すので **ファイルは straight** になる
+                // （GIF の α は 1bit なので、実際には透明か不透明かに丸められる）。
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
             ) else { return nil }
             return context.makeImage()

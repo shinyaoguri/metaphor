@@ -6,6 +6,13 @@ extension SketchContext {
     // MARK: - 3D Custom Shapes (beginShape / endShape)
 
     /// 3D 頂点ベースのカスタムシェイプの記録を開始します。
+    ///
+    /// 現在の色は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の間で
+    /// 色を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
+    /// 使われるのは面モード（`.polygon` / `.triangles` など）では `fill`、
+    /// **`.lines` / `.points` では `stroke`** です（Processing の LINES / POINTS と同じ。
+    /// `noStroke()` のときは `fill` に戻ります）。
+    ///
     /// - Parameter mode: シェイプの描画モード（デフォルト `.polygon`）。
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         activeShapeRecording = .threeD
@@ -30,6 +37,10 @@ extension SketchContext {
     }
 
     /// 頂点カラー付き 3D 頂点を追加します。
+    ///
+    /// 与えた色は現在の `fill` に左右されず、そのまま出ます。
+    /// `texture()` を貼ったシェイプでは頂点カラーは使われません（テクスチャの色が出ます）。
+    ///
     /// - Parameters:
     ///   - x: x 座標。
     ///   - y: y 座標。
@@ -61,7 +72,7 @@ extension SketchContext {
         }
     }
 
-    /// 次の 3D 頂点の法線ベクトルを設定します。
+    /// 以降の 3D 頂点の法線ベクトルを設定します（`endShape3D()` まで持続。#876）。
     /// - Parameters:
     ///   - nx: 法線の x 成分。
     ///   - ny: 法線の y 成分。
@@ -106,17 +117,20 @@ extension SketchContext {
     }
 
     /// 正射影に切り替えます。
+    ///
+    /// 省略した面は既定カメラと噛み合う範囲（原点＝画面中央を挟む形）で埋まります。
+    /// `bottom` / `top` はビュー空間の y が小さい側が `bottom`（＝画面の上端）です。
     /// - Parameters:
-    ///   - left: 左クリッピング面（nil の場合はキャンバス境界を使用）。
-    ///   - right: 右クリッピング面（nil の場合はキャンバス境界を使用）。
-    ///   - bottom: 下クリッピング面（nil の場合はキャンバス境界を使用）。
-    ///   - top: 上クリッピング面（nil の場合はキャンバス境界を使用）。
-    ///   - near: ニアクリッピング面の距離（デフォルト -1000）。
-    ///   - far: ファークリッピング面の距離（デフォルト 1000）。
+    ///   - left: 左クリッピング面（nil の場合は `-width / 2`）。
+    ///   - right: 右クリッピング面（nil の場合は `width / 2`）。
+    ///   - bottom: 下クリッピング面（nil の場合は `-height / 2`）。
+    ///   - top: 上クリッピング面（nil の場合は `height / 2`）。
+    ///   - near: ニアクリッピング面の距離（nil の場合は既定カメラ距離の -10 倍）。
+    ///   - far: ファークリッピング面の距離（nil の場合は既定カメラ距離の 10 倍）。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
-        near: Float = -1000, far: Float = 1000
+        near: Float? = nil, far: Float? = nil
     ) {
         canvas3D.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far)
     }
@@ -136,23 +150,17 @@ extension SketchContext {
         canvas3D.noLights()
     }
 
-    /// ディレクショナルライトの方向を設定します。
+    /// ディレクショナルライトの方向・色・強度を設定します。
     /// - Parameters:
     ///   - x: 方向の x 成分。
     ///   - y: 方向の y 成分。
     ///   - z: 方向の z 成分。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
-        canvas3D.directionalLight(x, y, z)
-    }
-
-    /// ディレクショナルライトの方向と色を設定します。
-    /// - Parameters:
-    ///   - x: 方向の x 成分。
-    ///   - y: 方向の y 成分。
-    ///   - z: 方向の z 成分。
-    ///   - color: ライトの色。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
-        canvas3D.directionalLight(x, y, z, color: color)
+    ///   - color: ライトの色（デフォルト白）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
+    public func directionalLight(
+        _ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0
+    ) {
+        canvas3D.directionalLight(x, y, z, color: color, intensity: intensity)
     }
 
     /// シーンにポイントライトを追加します。
@@ -162,12 +170,14 @@ extension SketchContext {
     ///   - z: ライトの z 位置。
     ///   - color: ライトの色（デフォルト白）。
     ///   - falloff: 減衰係数（デフォルト 0.1）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
         color: Color = .white,
-        falloff: Float = 0.1
+        falloff: Float = 0.1,
+        intensity: Float = 1.0
     ) {
-        canvas3D.pointLight(x, y, z, color: color, falloff: falloff)
+        canvas3D.pointLight(x, y, z, color: color, falloff: falloff, intensity: intensity)
     }
 
     /// シーンにスポットライトを追加します。
@@ -181,14 +191,19 @@ extension SketchContext {
     ///   - angle: ラジアン単位のコーン角度（デフォルト pi/6）。
     ///   - falloff: 減衰係数（デフォルト 0.01）。
     ///   - color: ライトの色（デフォルト白）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
         angle: Float = Float.pi / 6,
         falloff: Float = 0.01,
-        color: Color = .white
+        color: Color = .white,
+        intensity: Float = 1.0
     ) {
-        canvas3D.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
+        canvas3D.spotLight(
+            x, y, z, dirX, dirY, dirZ,
+            angle: angle, falloff: falloff, color: color, intensity: intensity
+        )
     }
 
     /// アンビエントライトの強度を設定します。
@@ -260,6 +275,17 @@ extension SketchContext {
         canvas3D.specular(color)
     }
 
+    /// チャンネル値でスペキュラーハイライトの色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) {
+        canvas3D.specular(v1, v2, v3)
+    }
+
     /// グレースケール値でスペキュラーハイライトの色を設定します。
     ///
     /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
@@ -278,6 +304,17 @@ extension SketchContext {
     /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) {
         canvas3D.emissive(color)
+    }
+
+    /// チャンネル値でエミッシブ色を設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) {
+        canvas3D.emissive(v1, v2, v3)
     }
 
     /// グレースケール値でエミッシブ色を設定します。
@@ -312,12 +349,56 @@ extension SketchContext {
         canvas3D.pbr(enabled)
     }
 
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) {
+        canvas3D.toneMapping(mode)
+    }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    /// - Parameter value: 露出倍率（既定 1.0）。
+    public func exposure(_ value: Float) {
+        canvas3D.exposure(value)
+    }
+
+    // MARK: - 3D Environment (IBL / skybox)
+
+    /// 環境（IBL と背景の skybox）を設定します。
+    /// - Parameters:
+    ///   - preset: 環境プリセット。
+    ///   - intensity: 環境の強度（既定 1.0）。0 以下で無効。
+    ///   - background: `true` なら背景としても描く。
+    public func environment(
+        _ preset: EnvironmentPreset,
+        intensity: Float = 1.0,
+        background: Bool = true
+    ) {
+        canvas3D.environment(preset, intensity: intensity, background: background)
+    }
+
+    /// 環境（IBL と skybox）を無効化します。
+    public func noEnvironment() {
+        canvas3D.noEnvironment()
+    }
+
     // MARK: - 3D Custom Material
 
     /// MSL シェーダーソースからカスタムマテリアルを作成します。
     ///
-    /// MSL ソースをコンパイルし、指定したフラグメント関数から `CustomMaterial` を構築します。
-    /// ソースには `BuiltinShaders.canvas3DStructs` をプレフィクスとして含める必要があります。
+    /// ``BuiltinShaders/canvas3DPreamble``（`#include <metal_stdlib>` +
+    /// `using namespace metal;` + 3D 用の構造体定義 + ライティング関数）を**必ず**
+    /// 先頭へ足すので、フラグメント関数だけを書けば動きます（#713）。
+    /// `Canvas3DUniforms` / `Canvas3DVertexOut` などは自分で定義しないでください。
+    ///
+    /// ```swift
+    /// let mat = try createMaterial(source: """
+    /// fragment float4 myFragment(Canvas3DVertexOut in [[stage_in]],
+    ///                            constant Canvas3DUniforms &u [[buffer(1)]]) {
+    ///     return float4(abs(normalize(in.normal)), 1.0);
+    /// }
+    /// """, fragmentFunction: "myFragment")
+    /// ```
+    ///
     /// - Parameters:
     ///   - source: MSL シェーダーソースコード。
     ///   - fragmentFunction: フラグメントシェーダー関数名。
@@ -329,7 +410,7 @@ extension SketchContext {
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
-        try renderer.shaderLibrary.register(source: source, as: key)
+        try renderer.shaderLibrary.register(source: Shader3DSource.complete(source), as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
             throw MetaphorError.material(.shaderNotFound(fragmentFunction))
         }
@@ -804,6 +885,16 @@ extension SketchContext {
     }
 
     /// 外部 MSL ファイルからカスタムマテリアルを作成します。
+    ///
+    /// ``createMaterial(source:fragmentFunction:vertexFunction:)`` と同じく
+    /// ``BuiltinShaders/canvas3DPreamble`` を**必ず**先頭へ足すので、`.metal` には
+    /// フラグメント関数だけを書けば動きます（#713）。
+    ///
+    /// 読み込んだファイルは**自動で監視対象**になります（#648）。保存するとビルド無しで
+    /// 再コンパイルされ、絵がその場で変わります。コンパイルに失敗しても直前の動く
+    /// シェーダのまま描き続け、エラーだけがコンソールに出ます。無効化は
+    /// ``SketchConfig/shaderHotReload`` か環境変数 `METAPHOR_SHADER_HOT_RELOAD=0`。
+    ///
     /// - Parameters:
     ///   - path: MSL ソースのファイルパス。
     ///   - fragmentFunction: フラグメントシェーダー関数名。
@@ -816,7 +907,16 @@ extension SketchContext {
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
     public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
-        try renderer.shaderLibrary.registerFromFile(path: path, as: key)
+        // `registerFromFile` ではなく自分で読むのは、前文を足してから登録するため
+        // （2D の `loadShader` と同じ形）。
+        let source: String
+        do {
+            source = try String(contentsOfFile: path, encoding: .utf8)
+        } catch {
+            throw MetaphorError.shaderSourceLoadFailed(
+                path: path, detail: error.localizedDescription)
+        }
+        try renderer.shaderLibrary.register(source: Shader3DSource.complete(source), as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
             throw MetaphorError.material(.shaderNotFound(fragmentFunction))
         }
@@ -829,10 +929,13 @@ extension SketchContext {
             vtxFn = vf
         }
 
-        return CustomMaterial(
+        let material = CustomMaterial(
             fragmentFunction: fn, functionName: fragmentFunction, libraryKey: key,
             vertexFunction: vtxFn, vertexFunctionName: vertexFunction
         )
+        shaderHotReloader?.register(
+            material: material, path: path, fragment: fragmentFunction)
+        return material
     }
 
     // MARK: - Tween
@@ -883,36 +986,26 @@ extension SketchContext {
     }
 
     /// GIF 記録を終了しファイルに書き出します。
-    /// - Parameter path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    /// - Parameter path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。フレーム未キャプチャなら
     ///   ``MetaphorError/ExportFailure/noFrames``、ファイナライズ失敗なら
     ///   ``MetaphorError/ExportFailure/finalizationFailed``、出力ファイルの
     ///   書き出しに失敗した場合は ``MetaphorError/ExportFailure/fileWriteFailed(path:detail:)``。
     public func endGIFRecord(_ path: String? = nil) throws {
-        let actualPath: String
-        if let path {
-            actualPath = path
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
-        }
+        let actualPath = MetaphorOutputPaths.recording(
+            path, fileExtension: "gif", timestamp: MetaphorOutputPaths.timestamp())
         renderer.onCaptureOutput = nil
         try gifExporter.endRecord(to: actualPath)
     }
 
     /// GIF 記録を終了しバックグラウンドスレッドで非同期にファイルを書き出します。
-    /// - Parameter path: 出力ファイルパス（nil の場合はデスクトップに自動生成）。
+    /// - Parameter path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.gif`）。
+    ///   相対パスはプロジェクト直下から解決されます（絶対パスと `~` 始まりはそのまま）。
     /// - Throws: ``MetaphorError/export(_:)``。ケースは ``endGIFRecord(_:)`` と同じです。
     public func endGIFRecordAsync(_ path: String? = nil) async throws {
-        let actualPath: String
-        if let path {
-            actualPath = path
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            actualPath = NSHomeDirectory() + "/Desktop/metaphor_\(formatter.string(from: Date())).gif"
-        }
+        let actualPath = MetaphorOutputPaths.recording(
+            path, fileExtension: "gif", timestamp: MetaphorOutputPaths.timestamp())
         renderer.onCaptureOutput = nil
         try await gifExporter.endRecordAsync(to: actualPath)
     }
@@ -945,4 +1038,18 @@ extension SketchContext {
         canvas3D.camera(eye: orbitCamera.eye, center: orbitCamera.target, up: orbitCamera.up)
     }
 
+}
+
+/// カスタムマテリアルシェーダのソース整形（#713）。
+enum Shader3DSource {
+    /// 前文（stdlib + 3D 構造体 + ライティング関数）を先頭へ足した完全なソースを返します。
+    ///
+    /// **常に足します。**2D（``Shader2DSource/complete(_:)``）と同じ判断で、
+    /// 「ソースに前文があれば素通しする」という条件付きの規約は採りません。
+    /// 3D は前文を自分で前置する作法が長く案内されていたので、二重に前置される
+    /// ケースが必ず出ますが、前文そのものが `#ifndef` ガードを持つため
+    /// 2 回目は空になります（`BuiltinShaders.canvas3DPreamble`）。
+    static func complete(_ source: String) -> String {
+        BuiltinShaders.canvas3DPreamble + "\n\n" + source
+    }
 }

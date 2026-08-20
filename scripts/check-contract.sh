@@ -76,6 +76,11 @@ case "$REPO" in
     # sourceStamp provenance env var read by the probe plugin (contract point 2).
     check "Sources/MetaphorCore/Probe/MetaphorProbePlugin.swift" \
       METAPHOR_SOURCE_STAMP
+    # Base directory for every .metaphor/ file protocol (contract point 2; applies to
+    # points 4/7/8). A .app launched by LaunchServices has cwd=/, so the producer and the
+    # consumer must agree on this variable or none of the file protocols work.
+    check "Sources/MetaphorCore/Utilities/MetaphorPaths.swift" \
+      METAPHOR_STATE_DIR
     # Schema version VALUES — a bump here is a breaking change; CONTRACT.md must move too.
     check "Sources/MetaphorCore/Probe/MetaphorProbePlugin.swift" \
       "schemaVersion: 4" "schemaVersion: 1"
@@ -102,11 +107,15 @@ case "$REPO" in
     check "llms-sketch.txt"
     check "docs/ai/examples-index.md"
     check "docs/ai/examples-index.json"
+    # `api_reference doc=contract` serves the wire schema straight out of this
+    # checkout, so the path itself is now part of contract point 6 (cli #86).
+    # Byte-identity of contract/ is enforced separately by check-contract-identity.sh.
+    check "contract/frame.schema.json"
     ;;
   metaphor-cli)
     # Env vars set when spawning the child sketch (contract point 2).
     check "Sources/MetaphorViewer/ViewerWatch.swift" \
-      METAPHOR_VIEWER METAPHOR_SYPHON_NAME METAPHOR_PROBE METAPHOR_FPS
+      METAPHOR_VIEWER METAPHOR_SYPHON_NAME METAPHOR_PROBE METAPHOR_FPS METAPHOR_STATE_DIR
     # METAPHOR_FPS is also wired on the --no-viewer path.
     check "Sources/MetaphorCLICore/WatchCommand.swift" \
       METAPHOR_FPS
@@ -116,9 +125,21 @@ case "$REPO" in
     # stdin JSON Lines input event tags emitted to the child (contract point 3).
     check "Sources/MetaphorViewer/ViewerWindow.swift" \
       mouseDown mouseUp mouseMove mouseDrag scroll keyDown keyUp
-    # MCP `input` builder + `capture_sequence` tool: event field names + tool name.
+    # MCP `input` builder + the tool NAMES this repo exposes to agents. The tool set is
+    # documented in CONTRACT.md ("リポジトリの役割") and in metaphor's README/design docs,
+    # so a tool added or renamed here without updating those drifts silently (Issue
+    # metaphor#585, where `params`/`set_param` were missing from every prose list for
+    # two releases). Keep this list in sync with the `tools` definition.
+    # Match the DEFINITION form (`name: "<tool>"`), not a bare substring: every tool name
+    # also appears in other tools' prose descriptions, so a bare grep would still pass
+    # after a rename.
     check "Sources/MetaphorCLICore/MCP/SketchToolHandler.swift" \
-      button code chars repeat dx dy capture_sequence
+      button code chars repeat dx dy \
+      'name: "snapshot"' 'name: "capture_sequence"' 'name: "input"' \
+      'name: "params"' 'name: "set_param"' 'name: "build_status"' 'name: "api_reference"'
+    # Parameter Store consumer: root path + atomic set-request write (contract point 7).
+    check "Sources/MetaphorCLICore/MCP/ParameterStoreTool.swift" \
+      ".metaphor/params" "set-request.json.tmp"
     # Probe request.json is written ATOMICALLY (.tmp -> rename) by both tools (contract point 4).
     # The JSON structure of request.json/sequence.json is verified by contract/*.schema.json
     # (check-contract-schema.sh + consumer conformance tests), so only the atomic-write token
@@ -131,6 +152,11 @@ case "$REPO" in
     # var handed to the next child (contract point 8).
     check "Sources/MetaphorCLICore/StateHandoff.swift" \
       ".metaphor" "save-request.json.tmp" METAPHOR_RESTORE_STATE
+    # Base directory for every .metaphor/ file protocol (contract point 2). The consumer
+    # resolves it the same way the producer does, and hands the resolved value to the
+    # child so the two never disagree because of cwd.
+    check "Sources/MetaphorCLICore/MetaphorStateDirectory.swift" \
+      METAPHOR_STATE_DIR
     # watch opts the child into the state plugin explicitly (contract point 8).
     check "Sources/MetaphorCLICore/WatchSession.swift" \
       METAPHOR_STATE
@@ -154,10 +180,12 @@ case "$REPO" in
     check ".github/workflows/release-on-merge.yml" \
       "release:patch"
     # AI doc filenames the `api_reference` MCP tool reads from the metaphor package.
+    # `contract/frame.schema.json` is the doc=contract default; the other six schemas
+    # are addressed as contract/<schema>.schema.json via the `schema` argument (#86).
     check "Sources/MetaphorCLICore/MCP/MetaphorDocsLocator.swift" \
       "llms.txt"
     check "Sources/MetaphorCLICore/MCP/SketchToolHandler.swift" \
-      "llms-sketch.txt" "llms.txt" "docs/ai/examples-index.md"
+      "llms-sketch.txt" "llms.txt" "docs/ai/examples-index.md" "contract/frame.schema.json"
     ;;
 esac
 

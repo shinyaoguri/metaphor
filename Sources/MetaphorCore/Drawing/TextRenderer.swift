@@ -37,6 +37,47 @@ struct PositionedGlyph {
     let u0: Float, v0: Float, u1: Float, v1: Float
 }
 
+// MARK: - Text Metrics
+
+/// 1 文字ぶんのタイポグラフィック計測を 1 か所に集めます。
+///
+/// 測る側（``TextRenderer/textWidth(string:fontSize:fontFamily:)``）と描く側
+/// （``GlyphAtlas``）で物差しがずれないよう、advance はここでしか計算しません（#802）。
+///
+/// 文字列全体をシェーピングすると隣り合う字のカーニングが入りますが、`text()` の描画は
+/// 1 文字ずつ置くので、計測も 1 文字ずつ行います。こうすると幅が加法的になり
+/// （`textWidth("ab") == textWidth("a") + textWidth("b")`）、語ごとに測って組版できます。
+enum TextMetrics {
+
+    /// 1 文字ぶんの計測結果。`line` は描画にも使えます（同じシェーピング結果を共有するため）。
+    struct CharMetrics {
+        let line: CTLine
+        let advance: Float
+        let ascent: CGFloat
+        let descent: CGFloat
+    }
+
+    /// 1 文字を単独でシェーピングして計測します。
+    ///
+    /// - Parameters:
+    ///   - char: 計測する文字。
+    ///   - font: 計測に使うフォント。
+    ///   - attributes: 追加の属性（描画に使う `line` が要るときの前景色など）。
+    /// - Returns: advance とベースライン基準の高さ、およびそれらを得た `CTLine`。
+    static func measure(
+        _ char: Character, font: CTFont, attributes: [NSAttributedString.Key: Any] = [:]
+    ) -> CharMetrics {
+        var attributes = attributes
+        attributes[.font] = font
+        let attrString = NSAttributedString(string: String(char), attributes: attributes)
+        let line = CTLineCreateWithAttributedString(attrString)
+
+        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+        let advance = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        return CharMetrics(line: line, advance: Float(advance), ascent: ascent, descent: descent)
+    }
+}
+
 // MARK: - Glyph Atlas
 
 /// シェルフパッキングを使用してフォントとサイズごとのグリフアトラスを管理します。
@@ -144,19 +185,15 @@ final class GlyphAtlas {
     // MARK: - Private
 
     private func addGlyph(_ char: Character) -> GlyphInfo? {
-        // Core Text 経由でグリフメトリクスを取得
-        let str = String(char)
-        let attrString = NSAttributedString(
-            string: str,
-            attributes: [.font: font, .foregroundColor: PlatformColor.white]
-        )
-        let line = CTLineCreateWithAttributedString(attrString)
+        // Core Text 経由でグリフメトリクスを取得（textWidth と同じ物差しを使う）
+        let metrics = TextMetrics.measure(
+            char, font: font, attributes: [.foregroundColor: PlatformColor.white])
+        let line = metrics.line
+        let ascent = metrics.ascent
+        let descent = metrics.descent
+        let advance = metrics.advance
 
-        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
-        let lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-        let advance = Float(lineWidth)
-
-        let glyphW = Int(ceil(lineWidth)) + 2
+        let glyphW = Int(ceil(CGFloat(advance))) + 2
         let glyphH = Int(ceil(ascent + descent)) + 2
         guard glyphW > 0, glyphH > 0 else { return nil }
 
@@ -191,7 +228,10 @@ final class GlyphAtlas {
             v1: Float(py + glyphH) / Float(atlasHeight),
             width: Float(glyphW),
             height: Float(glyphH),
-            bearingX: 0,
+            // ビットマップは左右に 1px の余白を持つ（textPosition.x = 1）。その 1px を
+            // 引かないと、文字が送り位置より 1px 右へずれて描かれる — 縦は bearingY が
+            // 同じ 1px を織り込み済み。これで advance の箱を左右対称にはみ出す形になる。
+            bearingX: -1,
             bearingY: Float(ascent) + 1,
             advance: advance
         )
@@ -298,6 +338,16 @@ final class TextRenderer {
     /// フォントを生成していたコストを回収する。
     private var fontCache: [GlyphAtlas.Key: CTFont] = [:]
 
+    /// 1 文字ぶんの advance のキャッシュキー。
+    private struct AdvanceKey: Hashable {
+        let fontFamily: String
+        let fontSize: Float
+        let char: Character
+    }
+
+    /// `textWidth` が使う 1 文字ぶんの advance キャッシュ。
+    private var advanceCache: [AdvanceKey: Float] = [:]
+
     /// テスト用: 現在保持しているアトラス数。
     var atlasCount: Int { atlases.count }
 
@@ -364,6 +414,7 @@ final class TextRenderer {
         atlases.removeAll()
         atlasLastUse.removeAll()
         fontCache.removeAll()
+        advanceCache.removeAll()
     }
 
     /// キャッシュからテキストテクスチャを取得するか、新しいものをレンダリングします。
@@ -403,18 +454,40 @@ final class TextRenderer {
 
     /// テキスト文字列の幅をレンダリングせずに計算します。
     ///
+    /// 1 文字ずつの advance を足した値で、`GlyphAtlas` がグリフを置くときの送り量と
+    /// 同じ物差しです（#802）。切り上げず、末尾の空白も数えます。
+    ///
     /// - Parameters:
     ///   - string: 計測するテキスト。
     ///   - fontSize: ポイント単位のフォントサイズ。
     ///   - fontFamily: フォントファミリー名。
     /// - Returns: ピクセル単位のテキスト幅。
     func textWidth(string: String, fontSize: Float, fontFamily: String) -> Float {
+        guard !string.isEmpty else { return 0 }
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let attrString = NSAttributedString(string: string, attributes: attributes)
-        let line = CTLineCreateWithAttributedString(attrString)
-        let bounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
-        return Float(ceil(bounds.width))
+        var width: Float = 0
+        for char in string {
+            width += advance(of: char, font: font, fontSize: fontSize, fontFamily: fontFamily)
+        }
+        return width
+    }
+
+    /// キャッシュ経由で 1 文字ぶんの advance を取得します。
+    ///
+    /// 1 文字ごとに `CTLine` を作るので、キャッシュが無いと文字数ぶんのシェーピングが
+    /// 毎フレーム走ります（`textWidth()` は行の配置計算で毎フレーム呼ばれます）。
+    private func advance(
+        of char: Character, font: CTFont, fontSize: Float, fontFamily: String
+    ) -> Float {
+        let key = AdvanceKey(fontFamily: fontFamily, fontSize: fontSize, char: char)
+        if let cached = advanceCache[key] { return cached }
+        let advance = TextMetrics.measure(char, font: font).advance
+        // フォントサイズアニメーション等でのキー増殖を防ぐ（cachedFont と同じ扱い）
+        if advanceCache.count >= 4096 {
+            advanceCache.removeAll()
+        }
+        advanceCache[key] = advance
+        return advance
     }
 
     /// フォントのアセント（ベースラインより上の高さ）を取得します。
@@ -447,7 +520,7 @@ final class TextRenderer {
     ///   - fontFamily: フォントファミリー名。
     ///   - maxWidth: 行折り返しの最大幅。
     ///   - maxHeight: 最大高さ。0で無制限。
-    ///   - leading: 行間隔の倍率。
+    ///   - leading: 行の高さ（ピクセル単位）。
     ///   - frameCount: LRU トラッキング用の現在のフレーム番号。
     /// - Returns: キャッシュされたテキストエントリ。レンダリングに失敗した場合は nil。
     func textTextureMultiline(
@@ -531,6 +604,178 @@ final class TextRenderer {
         return (texture, glyphs)
     }
 
+    // MARK: - Outline API
+
+    /// 文字列のグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 座標は**ベースライン左端が原点**で、y は metaphor の 2D 座標系に合わせて下向き
+    /// （Core Text のグリフパスは y 上向きなので反転している）。各ポリラインは終点に
+    /// 始点を重ねません（閉じているものとして扱ってください）。
+    ///
+    /// 文字の穴（`o` の内側など）も 1 本の輪郭として返ります。どれが穴かは呼び出し側で
+    /// 包含関係から判定します — TrueType と CFF で外周の巻き方向の慣習が逆で、
+    /// 巻き方向からは決められないためです。
+    ///
+    /// 字送りは ``GlyphAtlas/layoutGlyphs(string:)`` と同じく **1 文字ずつ
+    /// ``TextMetrics/measure(_:font:attributes:)`` の advance** で進めます。文字列全体を
+    /// 1 本の `CTLine` に通すとカーニングが入って `text()` の描画と字間がずれるためです
+    /// （#821）。その代わり、**複数文字にまたがるシェーピング（リガチャ、アラビア文字の
+    /// 連結形、インド系文字の並べ替え）は掛かりません** — 1 文字ぶんのシェーピング結果を
+    /// 順に置いた輪郭になります。これは `text()` の描画と `textWidth()` の加法性
+    /// （`textWidth("ab") == textWidth("a") + textWidth("b")`、#802）に合わせた選択で、
+    /// Processing がカーニングを掛けないのとも揃っています。フォントに無い文字の
+    /// フォールバックは 1 文字ぶんの `CTLine` が解決するので従来どおり効きます。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - fontSize: ポイント単位のフォントサイズ。
+    ///   - fontFamily: フォントファミリー名（`MFont` の PostScript 名も可）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリラインの配列。
+    func glyphContours(
+        string: String, fontSize: Float, fontFamily: String, sampleFactor: Float
+    ) -> [[Vec2]] {
+        guard !string.isEmpty else { return [] }
+        let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
+
+        var result: [[Vec2]] = []
+        var cursorX: CGFloat = 0
+        for char in string {
+            // 描く側と同じ物差しで送る。1 文字ずつ測るので隣の字のカーニングが入らない。
+            let metrics = TextMetrics.measure(char, font: font)
+            appendContours(
+                of: metrics.line, fallbackFont: font, cursorX: cursorX,
+                sampleFactor: sampleFactor, into: &result)
+            cursorX += CGFloat(metrics.advance)
+        }
+        return result
+    }
+
+    /// 1 文字ぶんの `CTLine` からグリフ輪郭を取り出し、`cursorX` へ寄せて積みます。
+    private func appendContours(
+        of line: CTLine, fallbackFont: CTFont, cursorX: CGFloat,
+        sampleFactor: Float, into result: inout [[Vec2]]
+    ) {
+        guard let runs = CTLineGetGlyphRuns(line) as? [CTRun] else { return }
+        for run in runs {
+            let count = CTRunGetGlyphCount(run)
+            guard count > 0 else { continue }
+            // run ごとにフォントが違いうる（要求フォントに無い文字はフォールバックへ回る）
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            let runFont = attributes[kCTFontAttributeName as String] as! CTFont? ?? fallbackFont
+
+            var glyphs = [CGGlyph](repeating: 0, count: count)
+            var positions = [CGPoint](repeating: .zero, count: count)
+            let range = CFRange(location: 0, length: count)
+            CTRunGetGlyphs(run, range, &glyphs)
+            CTRunGetPositions(run, range, &positions)
+
+            for i in 0..<count {
+                guard let path = CTFontCreatePathForGlyph(runFont, glyphs[i], nil) else {
+                    continue  // 空白など輪郭を持たないグリフ
+                }
+                // 1 文字が複数グリフ（結合文字など）でも、その中の相対位置は活かす
+                let offset = CGPoint(x: cursorX + positions[i].x, y: positions[i].y)
+                result.append(contentsOf: Self.flatten(
+                    path: path, offset: offset, sampleFactor: sampleFactor))
+            }
+        }
+    }
+
+    /// `CGPath` を輪郭ごとの折れ線へ変換します（`offset` 平行移動 + y 反転こみ）。
+    private static func flatten(
+        path: CGPath, offset: CGPoint, sampleFactor: Float
+    ) -> [[Vec2]] {
+        // applyWithBlock のブロックはエスケープ扱いのため、状態はクラスに逃がす
+        final class State {
+            var contours: [[Vec2]] = []
+            var current: [Vec2] = []
+            var cursor: CGPoint = .zero
+            var start: CGPoint = .zero
+        }
+        let state = State()
+
+        func map(_ p: CGPoint) -> Vec2 {
+            Vec2(Float(offset.x + p.x), Float(-(offset.y + p.y)))
+        }
+        // 制御点を結んだ折れ線の長さから分割数を決める（曲率が強いほど点が増える）
+        // 式を細かく分けているのは Swift 5.10 の型チェッカ対策（#650）。
+        func segmentCount(_ points: [CGPoint]) -> Int {
+            var length: CGFloat = 0
+            for i in 1..<points.count {
+                let dx: CGFloat = points[i].x - points[i - 1].x
+                let dy: CGFloat = points[i].y - points[i - 1].y
+                length += (dx * dx + dy * dy).squareRoot()
+            }
+            let scaled: CGFloat = length * CGFloat(sampleFactor)
+            let count = Int(scaled.rounded(.up))
+            return min(64, max(2, count))
+        }
+        func flushContour() {
+            if state.current.count > 2 { state.contours.append(state.current) }
+            state.current = []
+        }
+
+        path.applyWithBlock { elementPointer in
+            let element = elementPointer.pointee
+            switch element.type {
+            case .moveToPoint:
+                flushContour()
+                state.cursor = element.points[0]
+                state.start = state.cursor
+                state.current.append(map(state.cursor))
+
+            case .addLineToPoint:
+                state.cursor = element.points[0]
+                state.current.append(map(state.cursor))
+
+            case .addQuadCurveToPoint:
+                let control = element.points[0], end = element.points[1]
+                let start = state.cursor
+                let n = segmentCount([start, control, end])
+                for step in 1...n {
+                    let t: CGFloat = CGFloat(step) / CGFloat(n)
+                    let u: CGFloat = 1 - t
+                    // 重みを先に畳む（1 行に詰めると Swift 5.10 の型チェッカが落ちる）
+                    let w0: CGFloat = u * u
+                    let w1: CGFloat = 2 * u * t
+                    let w2: CGFloat = t * t
+                    let px: CGFloat = w0 * start.x + w1 * control.x + w2 * end.x
+                    let py: CGFloat = w0 * start.y + w1 * control.y + w2 * end.y
+                    state.current.append(map(CGPoint(x: px, y: py)))
+                }
+                state.cursor = end
+
+            case .addCurveToPoint:
+                let c1 = element.points[0], c2 = element.points[1], end = element.points[2]
+                let start = state.cursor
+                let n = segmentCount([start, c1, c2, end])
+                for step in 1...n {
+                    let t: CGFloat = CGFloat(step) / CGFloat(n)
+                    let u: CGFloat = 1 - t
+                    let w0: CGFloat = u * u * u
+                    let w1: CGFloat = 3 * u * u * t
+                    let w2: CGFloat = 3 * u * t * t
+                    let w3: CGFloat = t * t * t
+                    let px: CGFloat = w0 * start.x + w1 * c1.x + w2 * c2.x + w3 * end.x
+                    let py: CGFloat = w0 * start.y + w1 * c1.y + w2 * c2.y + w3 * end.y
+                    state.current.append(map(CGPoint(x: px, y: py)))
+                }
+                state.cursor = end
+
+            case .closeSubpath:
+                // 閉じた輪郭として扱うので始点を重ねて追加しない
+                flushContour()
+                state.cursor = state.start
+
+            @unknown default:
+                break
+            }
+        }
+        flushContour()
+        return state.contours
+    }
+
     // MARK: - Private
 
     private func renderText(string: String, fontSize: Float, fontFamily: String) -> CachedText? {
@@ -595,9 +840,12 @@ final class TextRenderer {
     ) -> CachedText? {
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
 
-        // 段落スタイル（行間隔）
+        // 段落スタイル（行の高さ）。leading はピクセル単位の行の高さなので、最小と最大を
+        // 揃えて固定する（lineSpacing で「足す」形だと、leading が自然な行高より小さい
+        // ときに詰められず、3 引数版の text() と行ピッチがずれる）。
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = CGFloat(fontSize) * CGFloat(leading - 1.0)
+        paragraphStyle.minimumLineHeight = CGFloat(leading)
+        paragraphStyle.maximumLineHeight = CGFloat(leading)
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,

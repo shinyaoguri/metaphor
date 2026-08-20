@@ -13,260 +13,82 @@ import Foundation
 /// 新しいシェーダーは `Shaders/Metal/` 配下に `.metal` ファイルとして追加し、
 /// `python3 scripts/generate-shader-sources.py` で `.txt` を再生成してください
 /// （陳腐化は pre-push フックと CI が検出します）。
+///
+/// カスタムシェーダー向けの前文（``canvas2DStructs`` / ``canvas3DStructs`` /
+/// ``canvas3DLightingFn`` / ``PostProcessShaders/commonStructs``）も同じスクリプトが
+/// `.h` から生成します（実体は `BuiltinShaders+Generated.swift`）。
 public enum BuiltinShaders {
 
-    // MARK: - 共通構造体
+    // MARK: - Canvas2D カスタムシェーダ用の構造体 (#647 / Epic #291 E2)
 
-    /// すべてのシェーダーで共有されるMSL構造体定義。
-    static let commonStructs = """
-    struct MetaphorUniforms {
-        float4x4 modelMatrix;
-        float4x4 viewProjectionMatrix;
-        float4 color;
-        float3 lightDirection;
-        float time;
-    };
+    /// カスタム 2D フラグメントシェーダが受け取る stage_in と uniform の MSL 定義。
+    ///
+    /// `loadShader()` / `createShader()` は ``canvas2DPreamble``（stdlib + これ）を
+    /// **必ず**先頭へ足すので、ユーザーのソースでこれらを再定義しないでください。
+    ///
+    /// - `Canvas2DVertexOut`: `rect()` / `circle()` / `line()` などカラー系の stage_in。
+    ///   color / instanced / massive のどの経路でも同じ型です。
+    /// - `Canvas2DTexVertexOut`: `image()` / `text()` のテクスチャ系の stage_in。
+    /// - `Canvas2DShaderUniforms`: metaphor が `buffer(3)` へ自動供給する組み込み uniform。
+    /// - `Canvas2DVertexIn` / `Canvas2DTexVertexIn`: 組み込み頂点シェーダーの入力
+    ///   （頂点は差し替えられないので、通常は読むだけです）。
+    ///
+    /// 2D のカラー頂点は UV を持たないので、uv はフラグメントの `[[position]]`（画面ピクセル座標）を
+    /// `resolution` で割って作ります（Shadertoy の `fragCoord / iResolution` と同じ形）。
+    ///
+    /// 3D の前文と同じく `#ifndef` ガードで包んであるので、これを自分で前置したソースを
+    /// 渡しても二重定義にはなりません（#713）。
+    ///
+    /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorCanvas2DTypes.h` からの
+    /// 生成物です（#714）。
+    public static let canvas2DStructs = BuiltinShadersGenerated.canvas2DStructs
+
+    /// カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
+    public static let canvas2DPreamble = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    \(canvas2DStructs)
     """
 
     // MARK: - Canvas3D 共有構造体 (共通3Dシェーダー定義)
 
     /// Canvas3D の非テクスチャおよびテクスチャシェーダーで共有されるMSL構造体定義。
     ///
-    /// カスタムマテリアルシェーダー記述時にプレフィックスとして使用します。
-    /// ```swift
-    /// let source = """
-    /// #include <metal_stdlib>
-    /// using namespace metal;
-    /// \(BuiltinShaders.canvas3DStructs)
-    /// // カスタムフラグメントシェーダー ...
-    /// """
-    /// ```
-    public static let canvas3DStructs = """
-    struct Canvas3DUniforms {
-        float4x4 modelMatrix;
-        float4x4 viewProjectionMatrix;
-        float4x4 normalMatrix;
-        float4 color;
-        float4 cameraPosition;
-        float time;
-        uint lightCount;
-        uint hasTexture;
-        uint _pad;
-    };
-
-    struct Light3D {
-        float4 positionAndType;
-        float4 directionAndCutoff;
-        float4 colorAndIntensity;
-        float4 attenuationAndOuterCutoff;
-    };
-
-    struct Material3D {
-        float4 ambientColor;
-        float4 specularAndShininess;
-        float4 emissiveAndMetallic;
-        float4 pbrParams;
-    };
-
-    struct ShadowFragmentUniforms {
-        float4x4 lightSpaceMatrix;
-        float shadowBias;
-        float shadowEnabled;
-        float2 _pad;
-    };
-    """
+    /// `createMaterial()` / `createMaterialFromFile()` は ``canvas3DPreamble``（stdlib +
+    /// これ + ``canvas3DLightingFn``）を**必ず**先頭へ足すので、通常は自分で前置する
+    /// 必要はありません。`Canvas3DUniforms` / `Light3D` / `Material3D` /
+    /// `ShadowFragmentUniforms` と、stage_in の `Canvas3DVertexOut` /
+    /// `Canvas3DTexVertexOut`（+ 頂点入力の 2 型）が入っています。
+    ///
+    /// 前置しても壊れません（`#ifndef` ガードで包んであるため）。以前の作法で書かれた
+    /// ソースはそのまま動きます（#713）。
+    ///
+    /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorCanvas3DTypes.h` からの
+    /// 生成物です（#707）。
+    public static let canvas3DStructs = BuiltinShadersGenerated.canvas3DStructs
 
     /// MSLライティング関数 (Blinn-Phong + PBR Cook-Torrance GGX)。
     ///
-    /// カスタムマテリアルシェーダーで組み込みライティング計算が必要な場合に使用します。
-    public static let canvas3DLightingFn = """
-    // Shadow calculation (PCF 3x3)
-    float calculateShadow(
-        float3 worldPos,
-        constant ShadowFragmentUniforms &shadowUniforms,
-        texture2d<float> shadowMap,
-        sampler shadowSampler
-    ) {
-        if (shadowUniforms.shadowEnabled < 0.5) return 1.0;
-        float4 lightSpacePos = shadowUniforms.lightSpaceMatrix * float4(worldPos, 1.0);
-        float3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
-        float2 shadowUV = projCoords.xy * 0.5 + 0.5;
-        shadowUV.y = 1.0 - shadowUV.y;
-        if (shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1) return 1.0;
-        float currentDepth = projCoords.z;
-        if (currentDepth > 1.0) return 1.0;
-        float bias = shadowUniforms.shadowBias;
-        float shadow = 0.0;
-        float2 texelSize = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                float closestDepth = shadowMap.sample(shadowSampler, shadowUV + float2(x, y) * texelSize).r;
-                shadow += (currentDepth - bias > closestDepth) ? 0.0 : 1.0;
-            }
-        }
-        return shadow / 9.0;
-    }
+    /// ``canvas3DPreamble`` の一部として自動で足されるので、カスタムマテリアルの中では
+    /// `calculateLighting()` などをそのまま呼べます。単体で前置するときは構造体を
+    /// 参照するので ``canvas3DStructs`` と**セットで**使ってください。
+    ///
+    /// 中身は組み込みシェーダーと同じ `Shaders/Metal/MetaphorLighting.h` からの生成物
+    /// です（#707）。ライティングの実装を直せば、ここで配られる前文も一緒に動きます。
+    public static let canvas3DLightingFn = BuiltinShadersGenerated.canvas3DLightingFn
 
-    // PBR helper functions
-    float DistributionGGX(float3 N, float3 H, float roughness) {
-        float a = roughness * roughness;
-        float a2 = a * a;
-        float NdotH = max(dot(N, H), 0.0);
-        float NdotH2 = NdotH * NdotH;
-        float denom = NdotH2 * (a2 - 1.0) + 1.0;
-        denom = M_PI_F * denom * denom;
-        return a2 / max(denom, 0.0000001);
-    }
+    /// カスタムマテリアルシェーダのソースへ自動で足される前文
+    /// （stdlib + ``canvas3DStructs`` + ``canvas3DLightingFn``）。
+    ///
+    /// 2D の ``canvas2DPreamble`` と対称です。フラグメント関数だけを書けば動きます。
+    public static let canvas3DPreamble = """
+    #include <metal_stdlib>
+    using namespace metal;
 
-    float GeometrySchlickGGX(float NdotV, float roughness) {
-        float r = roughness + 1.0;
-        float k = (r * r) / 8.0;
-        return NdotV / (NdotV * (1.0 - k) + k);
-    }
+    \(canvas3DStructs)
 
-    float GeometrySmith(float3 N, float3 V, float3 L, float roughness) {
-        float NdotV = max(dot(N, V), 0.0);
-        float NdotL = max(dot(N, L), 0.0);
-        return GeometrySchlickGGX(NdotV, roughness) * GeometrySchlickGGX(NdotL, roughness);
-    }
-
-    float3 FresnelSchlick(float cosTheta, float3 F0) {
-        return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-    }
-
-    // PBR (Cook-Torrance GGX) lighting
-    //
-    // `shadow` はシャドウマップの可視率（1 = 完全に照らされる / 0 = 完全な影）。
-    // 影は直接光（diffuse + specular）にのみ掛かる（Issue #364）。
-    float3 calculatePBRLighting(
-        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material, float shadow
-    ) {
-        float3 N = normalize(normal);
-        float3 V = normalize(cameraPos - worldPos);
-        float metallic = material.emissiveAndMetallic.w;
-        float roughness = clamp(material.pbrParams.x, 0.04, 1.0);
-        float ao = material.pbrParams.z;
-        float3 F0 = mix(float3(0.04), baseColor, metallic);
-        float3 Lo = float3(0.0);
-
-        for (uint i = 0; i < lightCount; i++) {
-            float3 lightColor = lights[i].colorAndIntensity.xyz * lights[i].colorAndIntensity.w;
-            uint lightType = uint(lights[i].positionAndType.w);
-            float3 L; float attenuation = 1.0;
-
-            if (lightType == 0) {
-                L = normalize(-lights[i].directionAndCutoff.xyz);
-            } else {
-                float3 lightVec = lights[i].positionAndType.xyz - worldPos;
-                float dist = length(lightVec);
-                L = lightVec / max(dist, 0.0001);
-                float3 att = lights[i].attenuationAndOuterCutoff.xyz;
-                attenuation = 1.0 / (att.x + att.y * dist + att.z * dist * dist);
-                if (lightType == 2) {
-                    float3 spotDir = normalize(lights[i].directionAndCutoff.xyz);
-                    float theta = dot(L, -spotDir);
-                    float innerCutoff = lights[i].directionAndCutoff.w;
-                    float outerCutoff = lights[i].attenuationAndOuterCutoff.w;
-                    float epsilon = innerCutoff - outerCutoff;
-                    attenuation *= clamp((theta - outerCutoff) / max(epsilon, 0.001), 0.0, 1.0);
-                }
-            }
-
-            float3 H = normalize(V + L);
-            float NdotL = max(dot(N, L), 0.0);
-            float D = DistributionGGX(N, H, roughness);
-            float G = GeometrySmith(N, V, L, roughness);
-            float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-            float3 specular = (D * G * F) / (4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001);
-            float3 kD = (1.0 - F) * (1.0 - metallic);
-            Lo += (kD * baseColor / M_PI_F + specular) * lightColor * NdotL * attenuation;
-        }
-
-        return material.ambientColor.xyz * baseColor * ao + material.emissiveAndMetallic.xyz + Lo * shadow;
-    }
-
-    // Blinn-Phong lighting
-    float3 calculateBlinnPhongLighting(
-        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material, float shadow
-    ) {
-        float3 N = normalize(normal);
-        float3 V = normalize(cameraPos - worldPos);
-        float3 ambient = material.ambientColor.xyz * baseColor;
-        float3 direct = float3(0.0);
-        float metallic = material.emissiveAndMetallic.w;
-        float shininess = max(material.specularAndShininess.w, 1.0);
-        float3 specColor = mix(material.specularAndShininess.xyz, baseColor, metallic);
-        float3 diffColor = baseColor * (1.0 - metallic);
-
-        for (uint i = 0; i < lightCount; i++) {
-            float3 lightColor = lights[i].colorAndIntensity.xyz * lights[i].colorAndIntensity.w;
-            uint lightType = uint(lights[i].positionAndType.w);
-            float3 L; float attenuation = 1.0;
-
-            if (lightType == 0) {
-                L = normalize(-lights[i].directionAndCutoff.xyz);
-            } else {
-                float3 lightVec = lights[i].positionAndType.xyz - worldPos;
-                float dist = length(lightVec);
-                L = lightVec / max(dist, 0.0001);
-                float3 att = lights[i].attenuationAndOuterCutoff.xyz;
-                attenuation = 1.0 / (att.x + att.y * dist + att.z * dist * dist);
-                if (lightType == 2) {
-                    float3 spotDir = normalize(lights[i].directionAndCutoff.xyz);
-                    float theta = dot(L, -spotDir);
-                    float innerCutoff = lights[i].directionAndCutoff.w;
-                    float outerCutoff = lights[i].attenuationAndOuterCutoff.w;
-                    float epsilon = innerCutoff - outerCutoff;
-                    attenuation *= clamp((theta - outerCutoff) / max(epsilon, 0.001), 0.0, 1.0);
-                }
-            }
-
-            float NdotL = max(dot(N, L), 0.0);
-            float3 diffuse = diffColor * NdotL;
-            float3 H = normalize(L + V);
-            float NdotH = max(dot(N, H), 0.0);
-            float spec = (NdotL > 0.0) ? pow(NdotH, shininess) : 0.0;
-            float3 specular = specColor * spec;
-            direct += (diffuse + specular) * lightColor * attenuation;
-        }
-
-        return ambient + material.emissiveAndMetallic.xyz + direct * shadow;
-    }
-
-    // Unified entry point: auto-switch based on pbrParams.y
-    float3 calculateLighting(
-        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material, float shadow
-    ) {
-        if (material.pbrParams.y > 0.5) {
-            return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
-        }
-        return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, shadow);
-    }
-
-    // 影なし版（後方互換）。従来のシグネチャで呼ぶカスタムシェーダー向け。
-    float3 calculateLighting(
-        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material
-    ) {
-        return calculateLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
-    }
-
-    float3 calculatePBRLighting(
-        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material
-    ) {
-        return calculatePBRLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
-    }
-
-    float3 calculateBlinnPhongLighting(
-        float3 worldPos, float3 normal, float3 cameraPos, float3 baseColor,
-        constant Light3D *lights, uint lightCount, Material3D material
-    ) {
-        return calculateBlinnPhongLighting(worldPos, normal, cameraPos, baseColor, lights, lightCount, material, 1.0);
-    }
+    \(canvas3DLightingFn)
     """
 
     // MARK: - シェーダー関数名
@@ -307,6 +129,13 @@ public enum BuiltinShaders {
         public static let canvas2DTexturedVertex = "metaphor_canvas2DTexturedVertex"
         /// Canvas2D テクスチャ付きフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedFragment = "metaphor_canvas2DTexturedFragment"
+        /// Canvas2D straight alpha テクスチャ用フラグメントシェーダーのMSL関数名。
+        ///
+        /// `updatePixels()` のように**テクスチャが既に straight**な経路で使います
+        /// （既定の ``canvas2DTexturedFragment`` は premultiplied を前提に割り戻す。
+        /// ADR-0012 / #848）。
+        public static let canvas2DStraightTexturedFragment =
+            "metaphor_canvas2DStraightTexturedFragment"
         /// Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
         public static let canvas2DTexturedDifferenceFragment = "metaphor_canvas2DTexturedDifferenceFragment"
         /// Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。

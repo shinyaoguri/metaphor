@@ -23,19 +23,20 @@ public final class Canvas2D: CanvasStyle {
 
     let device: MTLDevice
     let shaderLibrary: ShaderLibrary
-    let pipelineStates: [BlendMode: MTLRenderPipelineState]
-    let texturedPipelineStates: [BlendMode: MTLRenderPipelineState]
+
+    /// 2D 描画パイプラインの一元的な保持先（#646 / Epic #291 E1）。
+    /// 記録側は ``Canvas2DPipelineKey`` を確定させ、再生側はここを引くだけにする。
+    let pipelineStore: Canvas2DPipelineStore
+
     let depthStencilState: MTLDepthStencilState?
 
     // MARK: - 2D インスタンシングリソース
 
-    let instancedPipelineStates: [BlendMode: MTLRenderPipelineState]
     let instanceBatcher2D: InstanceBatcher2D
     let unitCircleBuffer: MTLBuffer
     let unitCircleVertexCount: Int
     let unitRectBuffer: MTLBuffer
     let unitRectVertexCount: Int
-    let massiveCirclePipelineStates: [BlendMode: MTLRenderPipelineState]
     let massiveCircleBuffer: GrowableGPUBuffer<CircleInstance>
 
     // CPU/GPU 同期競合を回避するトリプルバッファ
@@ -48,6 +49,13 @@ public final class Canvas2D: CanvasStyle {
     var texturedBufferOffset: Int = 0
     var massiveCircleBufferOffset: Int = 0
     var currentBoundTexture: MTLTexture?
+
+    /// 蓄積中のテクスチャバッチが「straight なテクスチャ」かどうか（`updatePixels()`。#848）。
+    ///
+    /// 既定は `false` = premultiplied（グリフアトラス・読み込んだ画像・オフスクリーン。
+    /// ADR-0012）。`drawTexturedQuad(straightAlpha:)` が切り替え時にバッチを閉じるので、
+    /// 蓄積中のバッチは常に単一の系統に属します。
+    var texturedIsStraightAlpha: Bool = false
 
     // 現在のバッファの頂点ポインタ
     var vertices: UnsafeMutablePointer<Vertex2D> {
@@ -117,6 +125,11 @@ public final class Canvas2D: CanvasStyle {
     /// このフレームで 3D 側に記録済みのドローコールがあるかを返すフック
     /// （SketchContext が配線）。遅延モードのフレーム途中 background() 判定に使う。
     var hasRecorded3D: (() -> Bool)?
+
+    /// カスタム 2D シェーダへ渡す組み込み uniform のうち、Canvas2D が持たない値
+    /// （時間・マウス・フレーム数）を供給するフック（SketchContext が配線・#647）。
+    /// 未注入なら時間 0 / マウス原点で描く（`Graphics` を単体で使う場合など）。
+    var shaderInputs: (() -> Canvas2DShaderInputs)?
     var vertexCount: Int = 0
     var bufferOffset: Int = 0
     let projectionMatrix: float4x4
@@ -138,13 +151,34 @@ public final class Canvas2D: CanvasStyle {
     var currentStrokeCap: StrokeCap = .round
     var currentStrokeJoin: StrokeJoin = .miter
 
+    /// 適用中のカスタムフラグメントシェーダ（#647 / Epic #291 E2）。nil なら組み込みシェーダ。
+    var currentShader: Shader2D?
+
+    /// `blendMode(.difference)` / `.exclusion` を通常ブレンドへ落とした警告を出したかどうか。
+    private var didWarnBlendFallback = false
+
+    /// `arc()` に `stop <= start` の角度が渡され、何も描かなかった警告を出したかどうか（#743）。
+    /// 診断の発火条件はテストから観測する（`metaphorWarning` は print のため）。
+    var didWarnArcReversedAngles = false
+
+    /// `arc()` の角度が逆転している（= 何も描かれない）ことを初回だけ警告します。
+    func warnArcReversedAnglesOnce() {
+        guard !didWarnArcReversedAngles else { return }
+        didWarnArcReversedAngles = true
+        metaphorWarning(
+            "arc(): stopAngle は startAngle より大きい必要があります（Processing 互換）。"
+                + "この呼び出しは何も描きません。角度を入れ替えるか、stopAngle に 2π を足してください")
+    }
+
     // MARK: - テキスト状態
 
     var currentTextSize: Float = 32
     var currentFontFamily: String = "Helvetica"
     var currentTextAlignH: TextAlignH = .left
     var currentTextAlignV: TextAlignV = .baseline
-    var currentTextLeading: Float = 1.2
+    /// 明示された行の高さ（ピクセル単位）。nil ならフォントから導出します
+    /// （``Canvas2D/effectiveTextLeading``）。`textSize()` / `textFont()` で nil に戻ります。
+    var currentTextLeading: Float?
     let textRenderer: TextRenderer
     var frameCounter: Int = 0
 
@@ -234,7 +268,7 @@ public final class Canvas2D: CanvasStyle {
         var fontFamily: String
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
-        var textLeading: Float
+        var textLeading: Float?
         var curveDetail: Int
         var curveTightness: Float
         var strokeCap: StrokeCap
@@ -355,77 +389,11 @@ public final class Canvas2D: CanvasStyle {
             label: "metaphor.canvas2D.massiveCircles"
         )
 
-        // カラーパイプライン（BlendMode ごとに1つ）
-        let vertexFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DVertex,
-            from: ShaderLibrary.BuiltinKey.canvas2D
+        // 描画パイプライン（系統 × BlendMode の全組み合わせ）は
+        // Canvas2DPipelineStore が生成・保持する（#646）。
+        self.pipelineStore = try Canvas2DPipelineStore(
+            device: device, shaderLibrary: shaderLibrary, sampleCount: sampleCount
         )
-        let fragmentFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DFragment,
-            from: ShaderLibrary.BuiltinKey.canvas2D
-        )
-        let diffFragFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DDifferenceFragment,
-            from: ShaderLibrary.BuiltinKey.canvas2D
-        )
-        let exclFragFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DExclusionFragment,
-            from: ShaderLibrary.BuiltinKey.canvas2D
-        )
-
-        var colorPipelines: [BlendMode: MTLRenderPipelineState] = [:]
-        for mode in BlendMode.allCases {
-            let fragFn: MTLFunction?
-            switch mode {
-            case .difference: fragFn = diffFragFn
-            case .exclusion: fragFn = exclFragFn
-            default: fragFn = fragmentFn
-            }
-            colorPipelines[mode] = try PipelineFactory(device: device)
-                .vertex(vertexFn)
-                .fragment(fragFn)
-                .vertexLayout(.position2DColor)
-                .blending(mode)
-                .sampleCount(sampleCount)
-                .build()
-        }
-        self.pipelineStates = colorPipelines
-
-        // テクスチャパイプライン（BlendMode ごとに1つ）
-        let texVertexFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DTexturedVertex,
-            from: ShaderLibrary.BuiltinKey.canvas2DTextured
-        )
-        let texFragmentFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DTexturedFragment,
-            from: ShaderLibrary.BuiltinKey.canvas2DTextured
-        )
-        let texDiffFragFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DTexturedDifferenceFragment,
-            from: ShaderLibrary.BuiltinKey.canvas2DTextured
-        )
-        let texExclFragFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.canvas2DTexturedExclusionFragment,
-            from: ShaderLibrary.BuiltinKey.canvas2DTextured
-        )
-
-        var texPipelines: [BlendMode: MTLRenderPipelineState] = [:]
-        for mode in BlendMode.allCases {
-            let fragFn: MTLFunction?
-            switch mode {
-            case .difference: fragFn = texDiffFragFn
-            case .exclusion: fragFn = texExclFragFn
-            default: fragFn = texFragmentFn
-            }
-            texPipelines[mode] = try PipelineFactory(device: device)
-                .vertex(texVertexFn)
-                .fragment(fragFn)
-                .vertexLayout(.position2DTexCoordColor)
-                .blending(mode)
-                .sampleCount(sampleCount)
-                .build()
-        }
-        self.texturedPipelineStates = texPipelines
 
         // 深度テスト無効
         self.depthStencilState = depthStencilCache.state(for: .disabled)
@@ -464,59 +432,6 @@ public final class Canvas2D: CanvasStyle {
         self.unitRectBuffer = rectBuf
         self.unitRectVertexCount = rectCount
         self.instanceBatcher2D = try InstanceBatcher2D(device: device)
-
-        // インスタンスパイプライン（BlendMode ごとに1つ）
-        let instVertexFn = shaderLibrary.function(
-            named: Canvas2DInstancedShaders.vertexFunctionName,
-            from: ShaderLibrary.BuiltinKey.canvas2DInstanced
-        )
-        var instPipelines: [BlendMode: MTLRenderPipelineState] = [:]
-        for mode in BlendMode.allCases {
-            let fragName: String
-            switch mode {
-            case .difference: fragName = Canvas2DInstancedShaders.differenceFragmentFunctionName
-            case .exclusion: fragName = Canvas2DInstancedShaders.exclusionFragmentFunctionName
-            default: fragName = Canvas2DInstancedShaders.fragmentFunctionName
-            }
-            let fragFn = shaderLibrary.function(
-                named: fragName,
-                from: ShaderLibrary.BuiltinKey.canvas2DInstanced
-            )
-            instPipelines[mode] = try PipelineFactory(device: device)
-                .vertex(instVertexFn)
-                .fragment(fragFn)
-                .vertexLayout(.position2DOnly)
-                .blending(mode)
-                .sampleCount(sampleCount)
-                .build()
-        }
-        self.instancedPipelineStates = instPipelines
-
-        let massiveCircleVertexFn = shaderLibrary.function(
-            named: Canvas2DMassiveShaders.circleVertexFunctionName,
-            from: ShaderLibrary.BuiltinKey.canvas2DMassive
-        )
-        var massiveCirclePipelines: [BlendMode: MTLRenderPipelineState] = [:]
-        for mode in BlendMode.allCases {
-            let fragName: String
-            switch mode {
-            case .difference: fragName = Canvas2DMassiveShaders.differenceFragmentFunctionName
-            case .exclusion: fragName = Canvas2DMassiveShaders.exclusionFragmentFunctionName
-            default: fragName = Canvas2DMassiveShaders.fragmentFunctionName
-            }
-            let fragFn = shaderLibrary.function(
-                named: fragName,
-                from: ShaderLibrary.BuiltinKey.canvas2DMassive
-            )
-            massiveCirclePipelines[mode] = try PipelineFactory(device: device)
-                .vertex(massiveCircleVertexFn)
-                .fragment(fragFn)
-                .vertexLayout(.position2DOnly)
-                .blending(mode)
-                .sampleCount(sampleCount)
-                .build()
-        }
-        self.massiveCirclePipelineStates = massiveCirclePipelines
     }
 
     // MARK: - フレーム制御
@@ -539,6 +454,7 @@ public final class Canvas2D: CanvasStyle {
         self.texturedBufferOffset = 0
         self.massiveCircleBufferOffset = 0
         self.currentBoundTexture = nil
+        self.texturedIsStraightAlpha = false
         self.currentTransform = float3x3(1)
         self.stateStack.removeAll(keepingCapacity: true)
         // 不均衡な pushMatrix()/pushStyle() が draw() 内に残っていても、
@@ -614,20 +530,24 @@ public final class Canvas2D: CanvasStyle {
 
     /// 遅延コマンド1件を指定エンコーダへ実エンコードする（#71）。
     /// 頂点バッファ・投影行列・デプスステンシルステートはフレーム内で安定な Canvas2D の状態を使う。
+    ///
+    /// パイプラインはコマンドが持つキーから引くだけで、`currentBlendMode` のような
+    /// 可変状態は参照しない（#646）。記録時と再生時で結果が食い違わないための性質。
     func encode(_ command: Deferred2DCommand, into encoder: MTLRenderCommandEncoder) {
         switch command {
-        case .colorBatch(let blend, let vertexStart, let vertexCount):
-            guard let pipeline = pipelineStates[blend] else { return }
+        case .colorBatch(let key, let vertexStart, let vertexCount, let shaderParams):
+            guard let pipeline = pipelineStore.state(for: key) else { return }
             encoder.setRenderPipelineState(pipeline)
             if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
             encoder.setCullMode(.none)
             encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             var p = projectionMatrix
             encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            bindShaderResources(key, params: shaderParams, on: encoder)
             encoder.drawPrimitives(type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
 
-        case .texturedBatch(let blend, let vertexStart, let vertexCount, let texture):
-            guard let texPipeline = texturedPipelineStates[blend] else { return }
+        case .texturedBatch(let key, let vertexStart, let vertexCount, let texture, let shaderParams):
+            guard let texPipeline = pipelineStore.state(for: key) else { return }
             encoder.setRenderPipelineState(texPipeline)
             if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
             encoder.setCullMode(.none)
@@ -635,10 +555,13 @@ public final class Canvas2D: CanvasStyle {
             var p = projectionMatrix
             encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
             encoder.setFragmentTexture(texture, index: 0)
+            bindShaderResources(key, params: shaderParams, on: encoder)
             encoder.drawPrimitives(type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
 
-        case .instancedBatch(let blend, let shape, let instanceBuffer, let instanceOffset, let instanceCount):
-            guard let pipeline = instancedPipelineStates[blend] else { return }
+        case .instancedBatch(
+            let key, let shape, let instanceBuffer, let instanceOffset, let instanceCount,
+            let shaderParams):
+            guard let pipeline = pipelineStore.state(for: key) else { return }
             let (meshBuffer, meshVertexCount) = unitMeshFor(shape)
             encoder.setRenderPipelineState(pipeline)
             if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
@@ -647,13 +570,16 @@ public final class Canvas2D: CanvasStyle {
             encoder.setVertexBuffer(instanceBuffer, offset: instanceOffset, index: 6)
             var p = projectionMatrix
             encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
+            bindShaderResources(key, params: shaderParams, on: encoder)
             encoder.drawPrimitives(
                 type: .triangle, vertexStart: 0,
                 vertexCount: meshVertexCount, instanceCount: instanceCount)
 
-        case .massiveCircles(let blend, let dataBuffer, let byteOffset, let count, let transform):
-            guard let pipeline = massiveCirclePipelineStates[blend] else { return }
+        case .massiveCircles(
+            let key, let dataBuffer, let byteOffset, let count, let transform, let shaderParams):
+            guard let pipeline = pipelineStore.state(for: key) else { return }
             encoder.setRenderPipelineState(pipeline)
+            bindShaderResources(key, params: shaderParams, on: encoder)
             if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
             encoder.setCullMode(.none)
             encoder.setVertexBuffer(unitCircleBuffer, offset: 0, index: 0)
@@ -698,6 +624,97 @@ public final class Canvas2D: CanvasStyle {
             flushColorVertices()
             flushTexturedVertices()
             currentBlendMode = mode
+        }
+    }
+
+    // MARK: - カスタムシェーダ（#647 / Epic #291 E2）
+
+    /// 以降の 2D 描画にカスタムフラグメントシェーダを適用します。
+    ///
+    /// 呼ぶたびに保留中のバッチをフラッシュします。``Shader2D/setParameters(_:)`` の値は
+    /// バッチが確定した時点のものが焼き込まれるため、図形ごとにパラメータを変えたいときは
+    /// `setParameters()` のあとにこのメソッドを呼び直してください。
+    ///
+    /// - Parameter shader: 適用するシェーダ。
+    public func shader(_ shader: Shader2D) {
+        flush()
+        currentShader = shader
+        currentShaderParams = shader.parameters
+        pipelineStore.register(shader)
+    }
+
+    /// カスタムシェーダを解除し、組み込みシェーダへ戻します。
+    public func resetShader() {
+        guard currentShader != nil else { return }
+        flush()
+        currentShader = nil
+        currentShaderParams = nil
+    }
+
+    /// 記録時にパイプラインキーを確定させます（#646 の性質を保つ入口）。
+    ///
+    /// カスタムシェーダ適用中の分離可能ブレンドモード（`.multiply` / `.screen` /
+    /// `.subtract` / `.lightest` / `.darkest` / `.difference` / `.exclusion`）は `.alpha` へ
+    /// 正規化します。これらは `float4 dest [[color(0)]]` を読む専用フラグメントで実装されていて
+    /// カスタムフラグメントと原理的に排他だからです（#647 の規約）。正規化を**記録時**に
+    /// 行うのは、コマンド列が「実際にどう描かれたか」をそのまま語るようにするためです。
+    func pipelineKey(_ kind: Canvas2DPipelineKind, blend: BlendMode) -> Canvas2DPipelineKey {
+        guard let shader = currentShader else { return Canvas2DPipelineKey(kind, blend) }
+        guard blend.requiresFramebufferFetch else {
+            return Canvas2DPipelineKey(kind, blend, shader: shader.id)
+        }
+        if !didWarnBlendFallback {
+            didWarnBlendFallback = true
+            metaphorAlert("""
+            blendMode(.multiply / .screen / .subtract / .lightest / .darkest / \
+            .difference / .exclusion) はカスタム 2D シェーダと同時には使えません\
+            （フレームバッファフェッチ用の組み込みフラグメントで実装されているため）。\
+            通常のアルファブレンドで描画します。
+            """)
+        }
+        return Canvas2DPipelineKey(kind, .alpha, shader: shader.id)
+    }
+
+    /// 記録中のバッチへ焼き込むカスタムシェーダのパラメータ。適用中でなければ nil。
+    ///
+    /// **バッチの先頭で取り込む**（flush 時点の ``Shader2D/parameters`` を読むのではなく）。
+    /// flush 時点で読むと、`setParameters()` → `shader()` の順で書いたコードで
+    /// 「バッチを閉じる直前に新しい値へ差し替わる」ため、直前のバッチまで新しい値で
+    /// 描かれてしまう。バッチ先頭で取り込めば、どちらの順序で書いても
+    /// 「その図形を描いた時点の値」になる。
+    private(set) var currentShaderParams: [UInt8]?
+
+    /// 空のバッチへ最初の要素を積む直前に呼び、適用中シェーダのパラメータを取り込みます。
+    /// - Parameter isEmpty: 対象バッチが空（＝これが先頭要素）かどうか。
+    func captureShaderParams(ifBatchEmpty isEmpty: Bool) {
+        guard isEmpty, let shader = currentShader else { return }
+        currentShaderParams = shader.parameters
+    }
+
+    /// 再生時にフラグメントへ渡す組み込み uniform を組み立てます。
+    /// 解像度とフレーム数は Canvas2D 自身が持ち、時間とマウスは注入フックから受け取ります。
+    private func makeShaderUniforms() -> Canvas2DShaderUniforms {
+        let inputs = shaderInputs?()
+        return Canvas2DShaderUniforms(
+            resolution: SIMD2<Float>(width, height),
+            mouse: inputs?.mouse ?? SIMD2<Float>(0, 0),
+            time: inputs?.time ?? 0,
+            frameCount: inputs?.frameCount ?? UInt32(truncatingIfNeeded: frameCounter)
+        )
+    }
+
+    /// カスタムシェーダ適用中のフラグメント資源をバインドします。
+    /// 組み込み uniform は `buffer(3)`、ユーザーパラメータは `buffer(4)`
+    /// （3D の ``CustomMaterial`` と同じ index に揃えています）。
+    private func bindShaderResources(
+        _ key: Canvas2DPipelineKey, params: [UInt8]?, on encoder: MTLRenderCommandEncoder
+    ) {
+        guard key.shader != nil else { return }
+        var uniforms = makeShaderUniforms()
+        encoder.setFragmentBytes(
+            &uniforms, length: MemoryLayout<Canvas2DShaderUniforms>.stride, index: 3)
+        if var bytes = params, !bytes.isEmpty {
+            encoder.setFragmentBytes(&bytes, length: bytes.count, index: 4)
         }
     }
 
@@ -801,7 +818,12 @@ public final class Canvas2D: CanvasStyle {
     func flushInstancedBatch() {
         guard instanceBatcher2D.instanceCount > 0,
               let batchKey = instanceBatcher2D.currentBatchKey else { return }
-        guard instancedPipelineStates[batchKey.blendMode] != nil else { return }
+        // インスタンスバッチのブレンドモードは蓄積開始時のもの。currentBlendMode ではなく
+        // こちらでキーを立てる（blendMode() の切替時に先にフラッシュされるため一致する）。
+        // カスタムシェーダも shader() / resetShader() が先にフラッシュするので、
+        // 蓄積中のバッチは常に単一のシェーダに属する（BatchKey2D にも入れて二重に守る）。
+        let key = pipelineKey(.instanced, blend: batchKey.blendMode)
+        guard pipelineStore.state(for: key) != nil else { return }
         guard isDeferring || encoder != nil else { return }
 
         let instanceBuffer = instanceBatcher2D.currentBuffer
@@ -811,9 +833,9 @@ public final class Canvas2D: CanvasStyle {
         instanceBatcher2D.reset()
 
         emit(.instancedBatch(
-            blend: batchKey.blendMode, shape: shape,
+            pipeline: key, shape: shape,
             instanceBuffer: instanceBuffer, instanceOffset: instanceOffset,
-            instanceCount: instanceCount))
+            instanceCount: instanceCount, shaderParams: currentShaderParams))
     }
 
     // シェイプをインスタンスバッチに追加。
@@ -833,7 +855,8 @@ public final class Canvas2D: CanvasStyle {
 
         let key = BatchKey2D(
             shapeType: shapeType,
-            blendMode: currentBlendMode
+            blendMode: currentBlendMode,
+            shader: currentShader?.id
         )
 
         // currentTransform * translate(cx,cy) * scale(sx,sy) を float4x4 に変換
@@ -845,8 +868,12 @@ public final class Canvas2D: CanvasStyle {
         let combined = currentTransform * shapeLocal
         let transform = Canvas2D.embed2DTransform(combined)
 
+        // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
+        captureShaderParams(ifBatchEmpty: instanceBatcher2D.instanceCount == 0)
+
         if !instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor) {
             flushInstancedBatch()
+            captureShaderParams(ifBatchEmpty: true)
             if !instanceBatcher2D.tryAddInstance(key: key, transform: transform, color: fillColor) {
                 // このフレームでインスタンスバッファが枯渇 — カラー頂点にフォールバック
                 addShapeFallback(shapeType, cx: cx, cy: cy, sx: sx, sy: sy)

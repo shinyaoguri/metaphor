@@ -1,20 +1,44 @@
 import Metal
+import MetaphorCore
 
 /// Builds a Metal texture from an array of noise values.
 enum NoiseTextureBuilder {
+    /// テクスチャを作れる寸法か検証します。
+    ///
+    /// `MTLTextureDescriptor` は範囲外の寸法を `makeTexture` の nil ではなく
+    /// `validateWithDevice:` のアサーションで返すため（プロセスごと落ちる）、
+    /// descriptor を組む前にここで弾きます（#806）。呼び出し元はいずれも
+    /// `MTLTexture?` を返すので、`nil` へ degrade できる。
+    ///
+    /// ``GKNoiseWrapper`` 側は **`sampleGrid` を回す前に**これを呼びます。
+    /// 上限超え（例: 65536 角 = 17GiB 相当）はグリッドを先に確保してしまうと
+    /// ガードへ辿り着く前にメモリを食い尽くすため、順序に意味があります。
+    static func isValidSize(_ width: Int, _ height: Int, api: String) -> Bool {
+        guard width > 0, height > 0,
+              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            metaphorWarning(
+                "\(api): size must be within 1...\(TextureManager.maxDimension) "
+                + "(got \(width)x\(height))")
+            return false
+        }
+        return true
+    }
+
     /// Creates a grayscale BGRA8 texture from a float array (0.0-1.0).
     /// - Parameters:
     ///   - device: The Metal device to create the texture on.
     ///   - values: A flat, row-major array of noise values.
     ///   - width: The texture width, in pixels.
     ///   - height: The texture height, in pixels.
-    /// - Returns: A Metal texture containing the grayscale noise, or nil on failure.
+    /// - Returns: A Metal texture containing the grayscale noise, or nil on failure
+    ///   (including a width or height outside `1...TextureManager.maxDimension`).
     static func buildTexture(
         device: MTLDevice,
         values: [Float],
         width: Int,
         height: Int
     ) -> MTLTexture? {
+        guard isValidSize(width, height, api: "noise texture") else { return nil }
         guard values.count == width * height else { return nil }
 
         var pixels = [UInt8](repeating: 255, count: width * height * 4)
@@ -58,7 +82,8 @@ enum NoiseTextureBuilder {
     ///   - colorStops: An array of (position, BGRA color) pairs defining the
     ///     gradient. At least 2 stops are required.
     /// - Returns: A Metal texture containing the color-mapped noise, or nil
-    ///   if `values.count != width * height`, fewer than 2 color stops are
+    ///   if the width or height is outside `1...TextureManager.maxDimension`,
+    ///   `values.count != width * height`, fewer than 2 color stops are
     ///   given, or texture allocation fails.
     static func buildColorMappedTexture(
         device: MTLDevice,
@@ -67,6 +92,7 @@ enum NoiseTextureBuilder {
         height: Int,
         colorStops: [(Float, SIMD4<UInt8>)]
     ) -> MTLTexture? {
+        guard isValidSize(width, height, api: "noise colorMappedTexture") else { return nil }
         guard values.count == width * height, colorStops.count >= 2 else { return nil }
 
         var pixels = [UInt8](repeating: 255, count: width * height * 4)

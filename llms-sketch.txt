@@ -7,6 +7,10 @@
 
 Generate complete, real-time-safe creative coding sketches for metaphor users.
 Prefer one self-contained `App.swift` unless the user asks for multiple files.
+When you do split the sketch up, mark **every** extracted type `@MainActor`:
+`Sketch` is `@MainActor`, and so are `loadImage` / `loadModel` / `loadSound` /
+`loadVideo` and the members of the `MImage` / `Mesh` / `SoundFile` / `VideoPlayer`
+values they return — a plain `class` holding assets does not compile.
 
 ## Minimal Shape
 
@@ -147,6 +151,21 @@ rotateY(time)
 box(120)
 pop()
 ```
+
+For metal, glass, or any shiny PBR material, set an environment first —
+otherwise raising `metallic` removes diffuse light with nothing to reflect and
+the surface collapses into a flat grey blob:
+
+```swift
+func setup() {
+    environment(.studio)   // also .sunset / .overcast; draws a skybox too
+}
+```
+
+`environment(_:)` needs no asset, promotes tone mapping to `.acesFilmic`, and
+applies to the PBR path (`roughness(...)` / `pbr(true)`). Pass
+`background: false` to keep your own background, and `noEnvironment()` to turn
+it off.
 
 ### Audio Reactive
 

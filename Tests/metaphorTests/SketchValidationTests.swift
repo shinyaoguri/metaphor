@@ -81,6 +81,46 @@ struct SketchAPIValidationTests {
                 "3D 記録中の vertex(x,y,z) は正しい使い方なので警告しない")
     }
 
+    @Test("beginContour inside beginShape3D warns and leaves the 2D builder alone")
+    func contourInside3DShapeWarns() throws {
+        let (_, ctx) = try makeContext()
+        #expect(ctx.didWarnContourIn3D == false, "初期状態では未発火")
+
+        ctx.beginShape3D()
+        ctx.vertex(0, 0, 0)
+        ctx.vertex(10, 0, 0)
+        ctx.vertex(10, 10, 0)
+        ctx.beginContour()      // 3D では穴を開けられない
+        ctx.vertex(2, 2, 0)
+        ctx.vertex(4, 2, 0)
+        ctx.vertex(4, 4, 0)
+        ctx.endContour()
+        ctx.endShape3D(.close)
+
+        #expect(ctx.didWarnContourIn3D, "3D 記録中の beginContour() で診断が発火する")
+        #expect(ctx.canvas.isRecordingContour == false,
+                "3D 記録中の contour は 2D ビルダーの状態を触らない")
+    }
+
+    @Test("beginContour inside 2D beginShape does not raise the diagnostic")
+    func contourInside2DShapeDoesNotWarn() throws {
+        let (_, ctx) = try makeContext()
+        ctx.beginShape()
+        ctx.vertex(0, 0)
+        ctx.vertex(10, 0)
+        ctx.vertex(10, 10)
+        ctx.beginContour()
+        #expect(ctx.canvas.isRecordingContour, "2D 記録中の contour はそのまま 2D ビルダーへ")
+        ctx.vertex(2, 2)
+        ctx.vertex(4, 2)
+        ctx.vertex(4, 4)
+        ctx.endContour()
+        ctx.endShape(.close)
+
+        #expect(ctx.didWarnContourIn3D == false,
+                "2D 記録中の beginContour() は正しい使い方なので警告しない")
+    }
+
     @Test("vertex(x,y) inside beginShape3D routes to the 3D shape")
     func vertex2ArgsInside3DShape() throws {
         let (_, ctx) = try makeContext()

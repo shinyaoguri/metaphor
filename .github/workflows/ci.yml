@@ -67,6 +67,11 @@ jobs:
         # 通る（再実行はペイロードを古いまま再生するため、payload 参照だと
         # 直したはずのタイトルで落ち続ける）。
         #
+        # 取得は scripts/gh-retry.sh 経由。GitHub の GraphQL が瞬断すると、中身が
+        # 正しい PR がこのステップだけで赤くなり auto-merge が止まっていた
+        # （Issue #949）。一過性の失敗だけを 3 回リトライし、定義的な失敗
+        # （403/404 等）は即落とす。
+        #
         # pull_request 以外（push / workflow_dispatch / merge_group）には検証
         # すべきタイトルが無いので skip。release.yml が開く "Release vX.Y.Z" PR は
         # workflow_dispatch 経由で CI に入るため、ここで落ちることはない。
@@ -76,7 +81,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
+          TITLE=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json title --jq '.title')
           echo "PR title: ${TITLE}"
           # 寛容に見る: type と区切りだけを強制し、要約の中身（日本語・記号）は
           # 一切問わない。scope は任意、`!` は破壊的変更の接尾辞。
@@ -133,7 +138,8 @@ jobs:
           # タイトルもラベルもイベントペイロードではなく実行時に API から引く
           # （上のタイトル lint と同じ理由）。こうしておくとエントリを足すか
           # ラベルを貼るかしたあと `gh run rerun --failed <run-id>` だけで通る。
-          PR_JSON=$(gh pr view "$PR_NUMBER" --json title,labels)
+          # 一過性の 5xx で赤くならないよう gh-retry.sh 経由で引く（Issue #949）。
+          PR_JSON=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json title,labels)
           TITLE=$(jq -r '.title' <<<"$PR_JSON")
           LABEL_ARGS=()
           while IFS= read -r label; do
@@ -173,8 +179,8 @@ jobs:
           set -euo pipefail
           # 本文もラベルも実行時に API から引く（上の 2 つと同じ理由）。画像を
           # 貼るかラベルを付けるかしたあと `gh run rerun --failed <run-id>` だけで
-          # 通り、push は要らない。
-          PR_JSON=$(gh pr view "$PR_NUMBER" --json body,labels)
+          # 通り、push は要らない。取得は gh-retry.sh 経由（Issue #949）。
+          PR_JSON=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json body,labels)
           BODY=$(jq -r '.body // ""' <<<"$PR_JSON")
           LABEL_ARGS=()
           while IFS= read -r label; do
@@ -225,6 +231,7 @@ jobs:
           # Initial push (no prior tip) — assume Sources may have changed.
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "docc=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # After a force push the old tip can be unreachable; fall back to
@@ -234,6 +241,7 @@ jobs:
           if ! changed_files=$(scripts/pr-changed-files.sh "$base" "$head" \
               -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' 2>/dev/null); then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "docc=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # Trigger the llms.txt staleness check when either the inputs
@@ -242,6 +250,19 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          # DocC の警告チェック（下）の入力は doc コメントだけではない。カタログ
+          # (Sources/metaphor/metaphor.docc/**) は .swift ではないので上の判定に
+          # 乗らず、カタログだけ直した PR を取りこぼす。取りこぼすと**次に Sources を
+          # 触った無関係な PR**が、自分が入れていない警告で落ちる（責めるべき PR が
+          # ずれる）ので、判定はここで分けて持つ。逆に llms.txt / リファレンス
+          # スニペットの検査はカタログとは無関係なので、上の `changed` には混ぜない。
+          if echo "$changed_files" | grep -q . || \
+             scripts/pr-changed-files.sh "$base" "$head" \
+               -- 'Sources/**/*.docc/**' 2>/dev/null | grep -q .; then
+            echo "docc=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docc=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Check cross-repo contract
         run: ./scripts/check-contract.sh
@@ -262,6 +283,14 @@ jobs:
       # 静かに穴になる。マニフェスト側の取りこぼしを機械的に潰す（Issue #328 段階 4）。
       - name: Check strict concurrency coverage
         run: python3 scripts/check-strict-concurrency.py
+      # stdout は metaphor-cli との JSON Lines と同じチャネルなので、Release でも出る
+      # ものを生の print() で書くと契約側のパースを壊しうる（CONTRACT.md 契約点 4）。
+      # #805 でその規約を Sources/MetaphorLog/Log.swift に明文化したのに、Sources には
+      # 生の print が 17 箇所残ったまま気付かれなかった（Issue #896）＝ 文章では
+      # 止まらない形の失敗なので、決定論的に落とす。判定規則と例外はスクリプト側が
+      # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
+      - name: Check for raw print() in Sources
+        run: python3 scripts/check-no-raw-print.py
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Get Syphon submodule hash
@@ -323,6 +352,16 @@ jobs:
       # 「スケッチを変えたのに撮り直していない」だけを捕まえる（#486）。
       - name: Verify tutorial result images are up to date
         run: python3 scripts/generate-tutorial-shots.py --check
+      # リファレンス（DocC）の実行結果画像。台帳との突き合わせはチュートリアルと
+      # 同じ理屈だが、正典は doc コメントのスニペットで、画像は Gyazo（ADR-0008）。
+      - name: Verify reference result images are up to date
+        run: python3 scripts/generate-reference-shots.py --check
+      # doc コメントのスニペットが**実際にコンパイルできる**ことの保証（#531）。
+      # p5.js の「リファレンスの例は実行される」に相当するものを Swift で置く。
+      # 撮影と違って GPU もトークンも要らないので per-PR で走らせられる。
+      - name: Verify reference snippets compile
+        if: steps.source-changed.outputs.changed == 'true'
+        run: python3 scripts/generate-reference-shots.py --compile-only
       - name: Verify llms.txt is up to date
         if: steps.source-changed.outputs.changed == 'true'
         run: |
@@ -332,6 +371,20 @@ jobs:
             git diff llms.txt
             exit 1
           fi
+      # DocC の警告 0 を per-PR で要求する（Issue #396）。ドキュメントを公開する
+      # docs.yml は **main への push でしか走らない**うえ警告で落ちないので、壊れた
+      # シンボルリンクは誰にも気付かれずに溜まっていた（起票時 11 件 → 31 件）。
+      #
+      # 閾値ではなく 0 件固定にできる: 警告は「internal 型を指す ``…``」「モジュール
+      # 跨ぎ」「オーバーロードの曖昧参照」「- Parameter の不備」の 4 種しかなく、
+      # どれも書き手がその場で直せる（直し方は Issue #396 のコメント）。
+      #
+      # コストは軽い。ビルドは上で済んでおり、symbol-graphs の抽出は並列（数秒）、
+      # docc convert 本体は数秒。ローカルの `make docs-check` と同じ実体を呼ぶので、
+      # 手元と CI で結果が食い違わない。
+      - name: Verify DocC builds without warnings
+        if: steps.source-changed.outputs.docc == 'true'
+        run: make docs-check
       - name: Auto-regenerate examples index (PR only)
         # Only run for PRs from the same repository — fork PRs can't push back
         # because the GITHUB_TOKEN is restricted to read-only on forks.

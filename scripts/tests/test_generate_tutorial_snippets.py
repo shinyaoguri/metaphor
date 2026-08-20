@@ -56,6 +56,7 @@ class SnippetTestCase(unittest.TestCase):
 
     def add_doc(self, name: str, text: str) -> Path:
         path = self.docs / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
         return path
 
@@ -128,6 +129,153 @@ class TestRenderSnippet(SnippetTestCase):
 
         self.assertEqual(self.run_main()[0], 0)
         self.assertEqual(doc.read_text(encoding="utf-8"), original)
+
+
+class TestTranslations(SnippetTestCase):
+    """英語版（`en/NN-slug.md`、#548）も同じ正典からコードを埋める。
+
+    訳すのは散文だけで、コードは 1 本を ja / en が共有する。en を対象から外すと
+    英語版だけコードが埋まらず、正典が変わっても誰も気付けない。
+    """
+
+    MARKER = "<!-- tutorial-snippet: 01-Part/02-Section -->\n<!-- /tutorial-snippet -->\n"
+
+    def test_en_is_in_the_document_list(self) -> None:
+        self.add_doc("01-part.md", self.MARKER)
+        self.add_doc("en/01-part.md", self.MARKER)
+        self.assertEqual(
+            [p.relative_to(self.docs).as_posix() for p in gen.tutorial_documents()],
+            ["01-part.md", "en/01-part.md"],
+        )
+
+    def test_en_gets_the_same_code(self) -> None:
+        self.add_package("01-Part/02-Section", {"App.swift": "import metaphor\n"})
+        ja = self.add_doc("01-part.md", self.MARKER)
+        en = self.add_doc("en/01-part.md", self.MARKER)
+
+        self.assertEqual(self.run_main()[0], 0)
+        self.assertIn("```swift\nimport metaphor\n```", en.read_text(encoding="utf-8"))
+        # コードは訳さないので、埋め込まれた中身は ja / en で同一。
+        self.assertEqual(ja.read_text(encoding="utf-8"), en.read_text(encoding="utf-8"))
+
+    def test_check_catches_drift_in_the_translation(self) -> None:
+        self.add_package("01-Part/02-Section", {"App.swift": "import metaphor\n"})
+        self.add_doc("en/01-part.md", self.MARKER)
+        self.run_main()
+
+        (self.code / "01-Part/02-Section/Section/App.swift").write_text(
+            "import metaphor\n// 追記\n", encoding="utf-8"
+        )
+
+        code, stdout, _ = self.run_main("--check")
+        self.assertEqual(code, 1)
+        self.assertIn("docs/tutorial/en/01-part.md", stdout)
+
+    def test_en_readme_is_not_scanned(self) -> None:
+        doc = self.add_doc(
+            "en/README.md",
+            "<!-- tutorial-snippet: 99-Missing/99-Missing -->\n<!-- /tutorial-snippet -->\n",
+        )
+        original = doc.read_text(encoding="utf-8")
+
+        self.assertEqual(self.run_main()[0], 0)
+        self.assertEqual(doc.read_text(encoding="utf-8"), original)
+
+
+class TestTranslationStructure(SnippetTestCase):
+    """ja / en の節構造の突き合わせ（Issue #956）。
+
+    訳すのは散文だけなので、`<ref>` の並びは順序込みで一致するはず。ここが無いと
+    「日本語版にはある節が英語版に無い」がレビューでしか捕まらない。
+
+    `docs/tutorial/en/` がまだ空（訳が 1 節も無い）現状でも検査は生きている
+    ことを、en を 1 枚置いたときの挙動で示す。
+    """
+
+    A = "01-Part/02-Section"
+    B = "01-Part/03-Another"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.add_package(self.A, {"App.swift": "// a\n"})
+        self.add_package(self.B, {"App.swift": "// b\n"})
+
+    @staticmethod
+    def body(*refs: str) -> str:
+        return "".join(
+            f"## Section {i}\n\n"
+            f"<!-- tutorial-snippet: {ref} -->\n<!-- /tutorial-snippet -->\n\n"
+            for i, ref in enumerate(refs, start=1)
+        )
+
+    def test_no_translation_yet_is_green_and_the_guard_still_arms(self) -> None:
+        # 現状（en/ が無い）。検査は何も言わないが、無効化されているわけではない。
+        self.add_doc("01-part.md", self.body(self.A, self.B))
+        self.assertEqual(self.run_main()[0], 0)
+        self.assertEqual(gen.check_translations(), [])
+
+        # ダミーの訳を 1 枚置いた瞬間から突き合わせが効く。
+        self.add_doc("en/01-part.md", self.body(self.A))
+        self.assertEqual(len(gen.check_translations()), 1)
+
+    def test_matching_structure_passes(self) -> None:
+        self.add_doc("01-part.md", self.body(self.A, self.B))
+        self.add_doc("en/01-part.md", self.body(self.A, self.B))
+        self.assertEqual(self.run_main()[0], 0)
+
+    def test_a_dropped_section_fails(self) -> None:
+        # 訳で 1 節まるごと落とした（英語だけ静かに欠ける）。
+        self.add_doc("01-part.md", self.body(self.A, self.B))
+        self.add_doc("en/01-part.md", self.body(self.A))
+
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("docs/tutorial/en/01-part.md", err)
+        self.assertIn("にある節が無い", err)
+        self.assertIn(self.B, err)
+
+    def test_a_reordered_section_fails(self) -> None:
+        # 集合は同じで順だけ違う。集合比較では捕まらないので順序込みで見る。
+        self.add_doc("01-part.md", self.body(self.A, self.B))
+        self.add_doc("en/01-part.md", self.body(self.B, self.A))
+
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("節の順が", err)
+        self.assertIn(f"ja: {self.A} → {self.B}", err)
+        self.assertIn(f"en: {self.B} → {self.A}", err)
+
+    def test_an_extra_section_fails(self) -> None:
+        self.add_doc("01-part.md", self.body(self.A))
+        self.add_doc("en/01-part.md", self.body(self.A, self.B))
+
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("に無い節がある", err)
+
+    def test_a_translation_without_a_japanese_original_fails(self) -> None:
+        # ファイル名を打ち間違えた訳。website も website の collection も拾えない。
+        self.add_doc("en/01-part.md", self.body(self.A))
+
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("対応する日本語版", err)
+
+    def test_check_mode_reports_the_same_problem(self) -> None:
+        # 埋め込みが最新でも構造のずれは残る（再生成では直らない）。
+        self.add_doc("01-part.md", self.body(self.A, self.B))
+        self.add_doc("en/01-part.md", self.body(self.A))
+        self.run_main()
+
+        code, _, err = self.run_main("--check")
+        self.assertEqual(code, 1)
+        self.assertIn("にある節が無い", err)
+
+    def test_the_en_readme_is_exempt(self) -> None:
+        # 設計文書。日本語版と対応させる対象ではない。
+        self.add_doc("01-part.md", self.body(self.A))
+        self.add_doc("en/README.md", "# Conventions\n")
+        self.assertEqual(gen.check_translations(), [])
 
 
 class TestCheckMode(SnippetTestCase):

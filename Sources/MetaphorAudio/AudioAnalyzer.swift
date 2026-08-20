@@ -131,8 +131,26 @@ public final class AudioAnalyzer {
 
     // MARK: - パブリックプロパティ
 
-    /// RMS volume level (0.0-1.0).
+    /// Display-oriented level: the frame's RMS multiplied by 4, clamped to 1.0.
+    ///
+    /// The x4 gain makes everyday input levels visible without extra scaling, at
+    /// the cost of saturating early — a sine wave already reads `1.0` from an
+    /// amplitude of about 0.354 (`= sqrt(2) / 4`) upwards, so louder input no
+    /// longer moves the value. Below saturation the raw RMS is `volume / 4`;
+    /// above it the input level is no longer recoverable from this value, so
+    /// read ``rms`` instead when you need the level itself.
     public private(set) var volume: Float = 0
+
+    /// The unscaled RMS of the current frame (0.0-1.0).
+    ///
+    /// This is the value ``volume`` is derived from, before the x4 gain and the
+    /// clamp to 1.0. Because that clamp saturates from an RMS of 0.25 upwards
+    /// (a sine wave of amplitude 0.354), `volume` stops distinguishing loud
+    /// inputs from each other while this keeps rising. Read it when you want the
+    /// level rather than a display bar — metering, thresholds, headroom checks.
+    ///
+    /// - SeeAlso: ``volume``
+    public private(set) var rms: Float = 0
 
     /// Normalized FFT spectrum (0.0-1.0).
     public private(set) var spectrum: [Float] = []
@@ -160,6 +178,11 @@ public final class AudioAnalyzer {
     /// automatically from the input device. When analyzing external samples
     /// via ``injectSamples(_:)``, it is used for the frequency-to-bin
     /// conversion in ``bandEnergy(lowFreq:highFreq:)``.
+    ///
+    /// - Important: On the ``injectSamples(_:)`` path this is **required** for
+    ///   ``bandEnergy(lowFreq:highFreq:)``. Leaving it `nil` makes that method
+    ///   return `0` (`spectrum`, ``volume`` and ``band(_:)`` keep working, so the
+    ///   symptom looks like a silent band rather than a missing setting).
     public var sampleRate: Double?
 
     /// Called (on the main thread) when the audio engine's configuration
@@ -177,6 +200,22 @@ public final class AudioAnalyzer {
     /// `nil` にする（= 解放する）だけで通知の解除が済む。``NotificationObserverToken``
     /// の deinit が `removeObserver` を呼ぶ。
     private var configurationObserver: NotificationObserverToken?
+
+    // MARK: - 権限待ちの観測（Issue #685）
+
+    /// 直近の `start()` の時刻（`CACurrentMediaTime()`）。未開始なら nil。
+    private var startedAt: Double?
+
+    /// タップから 1 度でもサンプルを受け取ったか（無音でも受け取りは起きる）。
+    private var hasDeliveredSamples = false
+
+    /// 「権限が未決のままサンプルが来ない」警告を出したか（1 回だけ出す）。
+    private var didWarnAboutPendingPermission = false
+
+    // MARK: - サンプルレート未設定の観測（Issue #783）
+
+    /// 「`sampleRate` が無いので `bandEnergy` が 0 になる」警告を出したか（1 回だけ出す）。
+    private(set) var didWarnAboutMissingSampleRate = false
 
     // MARK: - vDSP FFT
 
@@ -207,6 +246,8 @@ public final class AudioAnalyzer {
     ///   - fftSize: The FFT size (must be a power of 2; defaults to 1024).
     ///   - sampleRate: The sample rate (Hz) when analyzing via ``injectSamples(_:)``.
     ///     Not needed when using ``start()`` (obtained automatically from the input device).
+    ///     Required for ``bandEnergy(lowFreq:highFreq:)`` on the ``injectSamples(_:)``
+    ///     path — see ``sampleRate``.
     public init(fftSize: Int = 1024, sampleRate: Double? = nil) {
         self.fftSize = fftSize
         self.halfFFTSize = fftSize / 2
@@ -296,6 +337,7 @@ public final class AudioAnalyzer {
 
         self.engine = engine
         self.isRunning = true
+        self.startedAt = CACurrentMediaTime()
     }
 
     /// Stops audio capture.
@@ -319,14 +361,73 @@ public final class AudioAnalyzer {
     /// updates `volume`, `spectrum`, `waveform`, and `isBeat`.
     public func update() {
         if sampleBuffer.take(into: &tapSamples) {
+            hasDeliveredSamples = true
             injectedSamples = nil
             processSamples(tapSamples)
         } else if let samples = injectedSamples {
             injectedSamples = nil
             processSamples(samples)
         } else {
+            warnIfPermissionDialogWillNeverAppear()
             isBeat = false
         }
+    }
+
+    // MARK: - 権限の無言待ち（Issue #685）
+
+    /// マイク（TCC）の権限状態。
+    ///
+    /// - Important: `.notDetermined` のままサンプルが来ないことがあります。macOS は
+    ///   `Info.plist` に `NSMicrophoneUsageDescription` を持つ**バンドル済みアプリにしか**
+    ///   許可ダイアログを出さないため、`swift run` で作る素の実行ファイルでは
+    ///   `.notDetermined` から動きません（カメラと同じ穴。Issue #685）。
+    public var authorizationStatus: MicrophoneAuthorizationStatus {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized: return .authorized
+        case .denied: return .denied
+        case .restricted: return .restricted
+        case .notDetermined: return .notDetermined
+        @unknown default: return .notDetermined
+        }
+    }
+
+    /// マイクの使用が許可されているか（``authorizationStatus`` == `.authorized`）。
+    public var isAuthorized: Bool { authorizationStatus == .authorized }
+
+    /// `.notDetermined` のままサンプルが 0 のときに警告を出すまでの猶予（秒）。
+    static let pendingPermissionWarningDelay: Double = 3.0
+
+    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    static func shouldWarnAboutPendingPermission(
+        status: MicrophoneAuthorizationStatus,
+        isRunning: Bool,
+        hasDeliveredSamples: Bool,
+        elapsed: Double,
+        alreadyWarned: Bool
+    ) -> Bool {
+        guard !alreadyWarned, isRunning, !hasDeliveredSamples else { return false }
+        guard status == .notDetermined else { return false }
+        return elapsed >= pendingPermissionWarningDelay
+    }
+
+    /// 「許可ダイアログが出ないまま無音で死ぬ」状態を一度だけ報告します。
+    private func warnIfPermissionDialogWillNeverAppear() {
+        guard let startedAt else { return }
+        guard Self.shouldWarnAboutPendingPermission(
+            status: authorizationStatus,
+            isRunning: isRunning,
+            hasDeliveredSamples: hasDeliveredSamples,
+            elapsed: CACurrentMediaTime() - startedAt,
+            alreadyWarned: didWarnAboutPendingPermission
+        ) else { return }
+        didWarnAboutPendingPermission = true
+        audioAlert(
+            "Microphone permission is still 'notDetermined' and no samples have arrived "
+                + "after \(Int(Self.pendingPermissionWarningDelay))s. macOS only shows the "
+                + "permission dialog for a bundled app that declares NSMicrophoneUsageDescription — "
+                + "a plain executable (swift run) never gets asked, so the input stays silent. "
+                + "Wrap the sketch in a .app to be prompted, or grant it in "
+                + "System Settings > Privacy & Security > Microphone.")
     }
 
     /// Injects samples from an external source (used by SoundFile).
@@ -361,10 +462,12 @@ public final class AudioAnalyzer {
             waveform[i] = 0
         }
 
-        // RMS 音量を計算
-        var rms: Float = 0
-        vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
-        volume = min(rms * 4.0, 1.0)
+        // RMS 音量を計算。
+        // vDSP へは必ずローカル変数を渡す（`&self.rms` はプロパティの inout 渡しになる）。
+        var frameRMS: Float = 0
+        vDSP_rmsqv(samples, 1, &frameRMS, vDSP_Length(samples.count))
+        rms = frameRMS
+        volume = min(frameRMS * 4.0, 1.0)
 
         // FFT
         performFFT(samples)
@@ -373,9 +476,25 @@ public final class AudioAnalyzer {
         detectBeat()
     }
 
-    /// Returns the energy of a frequency band.
+    /// Returns the energy of one of three fixed frequency bands.
+    ///
+    /// The band edges are FFT bin ratios, not hertz: band 0 spans bins
+    /// `0..<bins/8`, band 1 `bins/8..<bins/2`, band 2 `bins/2..<bins`, where
+    /// `bins` is `fftSize / 2`. A bin is `sampleRate / fftSize` wide, so the
+    /// edges in hertz depend only on the sample rate — not on the FFT size —
+    /// and land at `sampleRate/16`, `sampleRate/4` and `sampleRate/2`.
+    ///
+    /// At 44.1 kHz that means roughly **0-2.8 kHz / 2.8-11 kHz / 11-22 kHz**,
+    /// which is far wider than a musical bass/mid/treble split: a 2 kHz tone is
+    /// still "low" here. Use ``bandEnergy(lowFreq:highFreq:)`` to cut at
+    /// frequencies of your own choosing.
+    ///
+    /// - Note: The result averages ``spectrum``, which is renormalized every
+    ///   frame against that frame's loudest bin. It therefore describes how the
+    ///   energy is *distributed* rather than how loud the input is, and barely
+    ///   moves when the same sound merely gets quieter. Use ``volume`` for level.
     /// - Parameter index: The band index (0 = low, 1 = mid, 2 = high).
-    /// - Returns: The band energy (0.0-1.0).
+    /// - Returns: The band energy (0.0-1.0), or 0 for an out-of-range index.
     public func band(_ index: Int) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
@@ -387,13 +506,13 @@ public final class AudioAnalyzer {
         switch index {
         case 0:
             start = 0
-            end = bins / 8           // 低音（〜0-250 Hz）
+            end = bins / 8           // 低域: 0 〜 sampleRate/16（44.1 kHz で 〜2.8 kHz）
         case 1:
             start = bins / 8
-            end = bins / 2           // 中音（〜250-2 kHz）
+            end = bins / 2           // 中域: sampleRate/16 〜 sampleRate/4（44.1 kHz で 2.8〜11 kHz）
         case 2:
             start = bins / 2
-            end = bins               // 高音（〜2 kHz+）
+            end = bins               // 高域: sampleRate/4 〜 sampleRate/2（44.1 kHz で 11〜22 kHz）
         default:
             return 0
         }
@@ -408,6 +527,16 @@ public final class AudioAnalyzer {
     }
 
     /// Returns the energy of an arbitrary frequency range.
+    ///
+    /// Converting hertz to FFT bins needs the sample rate. With ``start()`` it is
+    /// read from the input device, but when analyzing external samples via
+    /// ``injectSamples(_:)`` you must supply it yourself — through
+    /// ``init(fftSize:sampleRate:)`` or the ``sampleRate`` property.
+    ///
+    /// - Note: Without a sample rate this returns `0`, which is indistinguishable
+    ///   from "the band is silent". A warning is logged once (DEBUG builds) so the
+    ///   missing setting does not pass unnoticed.
+    ///
     /// - Parameters:
     ///   - lowFreq: The lower bound frequency (Hz).
     ///   - highFreq: The upper bound frequency (Hz).
@@ -415,10 +544,10 @@ public final class AudioAnalyzer {
     public func bandEnergy(lowFreq: Float, highFreq: Float) -> Float {
         guard !spectrum.isEmpty else { return 0 }
 
-        // engine 稼働中は入力デバイスの実サンプルレートを優先し、
-        // injectSamples 経由の解析では ``sampleRate`` プロパティを使う
-        let engineRate = engine.map { $0.inputNode.outputFormat(forBus: 0).sampleRate }
-        guard let rate = engineRate ?? sampleRate, rate > 0 else { return 0 }
+        guard let rate = resolvedSampleRate() else {
+            warnAboutMissingSampleRate()
+            return 0
+        }
         let binWidth = Float(rate) / Float(fftSize)
 
         let lowBin = max(0, Int(lowFreq / binWidth))
@@ -431,6 +560,45 @@ public final class AudioAnalyzer {
             sum += spectrum[i]
         }
         return sum / Float(highBin - lowBin + 1)
+    }
+
+    // MARK: - サンプルレートの解決（Issue #783）
+
+    /// 周波数→ビン変換に使うサンプルレート。解決できなければ `nil`。
+    ///
+    /// engine 稼働中は入力デバイスの実サンプルレートを優先し、
+    /// `injectSamples` 経由の解析では ``sampleRate`` プロパティを使う。
+    func resolvedSampleRate() -> Double? {
+        let engineRate = engine.map { $0.inputNode.outputFormat(forBus: 0).sampleRate }
+        guard let rate = engineRate ?? sampleRate, rate > 0 else { return nil }
+        return rate
+    }
+
+    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    static func shouldWarnAboutMissingSampleRate(
+        resolvedRate: Double?,
+        alreadyWarned: Bool
+    ) -> Bool {
+        guard !alreadyWarned else { return false }
+        return resolvedRate == nil
+    }
+
+    /// 「`sampleRate` が無いので `bandEnergy` が 0 になる」状態を一度だけ報告します。
+    ///
+    /// `spectrum` と ``band(_:)`` は正常に動き続けるため、黙って 0 を返すと
+    /// 「その帯域にエネルギーが無い」ケースと区別が付かない（Issue #783）。
+    private func warnAboutMissingSampleRate() {
+        guard Self.shouldWarnAboutMissingSampleRate(
+            resolvedRate: resolvedSampleRate(),
+            alreadyWarned: didWarnAboutMissingSampleRate
+        ) else { return }
+        didWarnAboutMissingSampleRate = true
+        debugWarning(
+            "bandEnergy(lowFreq:highFreq:) returned 0 because the sample rate is unknown — "
+                + "this is not the same as 'the band is silent'. Analyzing injected samples "
+                + "needs the rate for the frequency-to-bin conversion, so pass it as "
+                + "AudioAnalyzer(fftSize:sampleRate:) or assign analyzer.sampleRate. "
+                + "(start() takes it from the input device automatically.)")
     }
 
     // MARK: - プライベート: FFT
@@ -508,6 +676,21 @@ public final class AudioAnalyzer {
 }
 
 // MARK: - エラー
+
+/// マイク（TCC）の権限状態。
+///
+/// `AVCaptureDevice.authorizationStatus(for: .audio)` をそのまま写したものです
+/// （利用側に AVFoundation の import を強いないための独自型）。
+public enum MicrophoneAuthorizationStatus: String, Sendable, Codable {
+    /// 許可済み。サンプルが流れる。
+    case authorized
+    /// ユーザーが拒否した。システム設定から変える必要がある。
+    case denied
+    /// ペアレンタルコントロール等で制限されている。
+    case restricted
+    /// まだ誰も答えていない。**素の実行ファイルではここから動かない**。
+    case notDetermined
+}
 
 /// Represents errors that can occur during `AudioAnalyzer` operations.
 ///

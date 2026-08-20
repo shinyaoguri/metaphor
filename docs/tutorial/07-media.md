@@ -57,7 +57,7 @@ func draw() {
 
 ### volume は思ったより小さい
 
-`volume` は RMS（二乗平均平方根）で、0.0 から 1.0 の範囲です。ただし**ふつうに話しかけても 0.1 前後にしかなりません**。1.0 に近づくのは、マイクに息を吹きかけるような極端な音量のときだけです。
+`volume` は RMS（二乗平均平方根）を 4 倍して 1.0 で頭打ちにした値で、0.0 から 1.0 の範囲です。4 倍のゲインが最初から掛かっているのに、**ふつうに話しかけても 0.1 前後にしかなりません**。1.0 に近づくのは、マイクに息を吹きかけるような極端な音量のときだけです。
 
 そのまま図形の大きさに使うと、ほとんど変化が見えません。何倍かしてから範囲に収めます。
 
@@ -133,8 +133,8 @@ final class AudioInput: Sketch {
         // draw() の先頭で 1 回呼ぶ。これで volume / spectrum / isBeat が更新される
         audio.update()
 
-        // volume は RMS なので、ふつうに話しても 0.1 前後にしかならない。
-        // 6 倍してから 0...1 に収め、絵に使える範囲へ広げる
+        // volume は RMS を 4 倍した値だが、それでもふつうに話して 0.1 前後にしかならない。
+        // さらに 6 倍してから 0...1 に収め、絵に使える範囲へ広げる
         let loudness = constrain(audio.volume * 6, 0, 1)
         // 第 3 部 3.3 のイージング。跳ねる値をそのまま見せると絵が落ち着かない
         level = lerp(level, loudness, 0.25)
@@ -182,14 +182,15 @@ final class AudioInput: Sketch {
 
 - [ ] `createAudioInput()` で作ったあと `start()` を呼ぶまで解析が始まらないと分かった
 - [ ] `update()` を `draw()` の先頭で呼ぶ必要があると分かった
-- [ ] `volume` は RMS で、実用には拡大してから使うと分かった
+- [ ] `volume` は RMS を 4 倍した値で、実用にはさらに拡大してから使うと分かった
 - [ ] マイクの権限がターミナルに対して聞かれる理由が分かった
 
 ### もっと詳しく
 
+- [`createAudioInput(fftSize:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createaudioinput%28fftsize:%29) — `import metaphor` で生えるブリッジ API です
 - [`AudioAnalyzer`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer), [`volume`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer/volume), [`start()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer/start%28%29), [`update()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/audioanalyzer/update%28%29)
 - [マイク・カメラの権限（TCC）](https://github.com/shinyaoguri/metaphor/blob/main/docs/permissions.md) — ダイアログの主体、拒否したあとの復旧、Continuity Camera の制約
-- 音声ファイルを再生しながら解析するなら [`SoundFile`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/soundfile)。マイクの代わりに同じ `spectrum` が取れます
+- 音声ファイルを再生しながら解析するなら [`loadSound(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/loadsound%28_:%29) と [`SoundFile`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphoraudio/soundfile)。マイクの代わりに同じ `spectrum` が取れます
 
 ## 7.2 音を分析する
 
@@ -230,6 +231,8 @@ let high = audio.bandEnergy(lowFreq: 2000, highFreq: 8000)
 ```
 
 キックドラムに反応させたいなら低音、声なら中音、シンバルやノイズなら高音を見ます。配列の添字（`band(_:)`）より、こちらのほうが意図がコードに残ります。
+
+`band(0)` / `band(1)` / `band(2)` という 3 分割も用意されていますが、こちらの境目はヘルツではなく FFT のビン数で決まっていて、44.1 kHz だとおよそ 0-2.8 kHz / 2.8-11 kHz / 11-22 kHz です。音楽でいう低音・中音・高音よりずっと広く、**2 kHz の音でも `band(0)` に入ります**。狙った帯域を見たいなら `bandEnergy` を使ってください。
 
 ### ビートは「立った瞬間」しか分からない
 
@@ -696,6 +699,7 @@ final class VideoPlayback: Sketch {
 
 ### もっと詳しく
 
+- [`loadVideo(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/loadvideo%28_:%29) と、フレームをそのまま描く [`image(_:_:_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/image%28_:_:_:%29) / [`image(_:_:_:_:_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/image%28_:_:_:_:_:%29) — `import metaphor` で生えるブリッジ API です
 - [`VideoPlayer`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorvideo/videoplayer) — `position` / `rate` / `duration` / `isLooping` の一覧
 - ドラッグ＆ドロップでファイルを受け取る例: [`Examples/Basics/Video/VideoPlayback`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Basics/Video/VideoPlayback)
 - 同梱動画の作り方は [`Examples/Tutorial/07-Media/04-VideoPlayback/README.md`](https://github.com/shinyaoguri/metaphor/blob/main/Examples/Tutorial/07-Media/04-VideoPlayback/README.md) にあります
@@ -831,6 +835,7 @@ final class FaceDetection: Sketch {
 
 ### もっと詳しく
 
+- [`createMLTextureConverter()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/metaphorcore/sketch/createmltextureconverter%28%29) — `import metaphor` で生えるブリッジ API です
 - [`MLTextureConverter`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorml/mltextureconverter) — `CGImage` や `MLMultiArray` との変換もここにあります
 - 人物分割・画像分類・スタイル変換の例: [`Examples/ML`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/ML)
 - 探しているものが Examples にあるか引くときは [docs/ai/examples-index.md](https://github.com/shinyaoguri/metaphor/blob/main/docs/ai/examples-index.md)

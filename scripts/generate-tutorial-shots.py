@@ -24,7 +24,7 @@
 アップロードには 1Password 上の Gyazo トークンが要るため、撮影と同じくローカルでのみ
 行う。`--check` はネットワークにもトークンにも触れず、台帳と本文の突き合わせだけで
 鮮度を判定する（CI で走るのはこちら）。URL の生死は週次のワークフローが見る
-（scripts/check-tutorial-image-urls.py）。
+（scripts/check-image-urls.py）。
 
 ## 動きが要る節（#507）
 
@@ -97,6 +97,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
     ShotError,
+    capture_provenance,
+    drift_summary,
     image_size,
     load_input_script,
     send_input_script,
@@ -631,7 +633,13 @@ def capture(ref: str, motion: dict | None = None, recorded: dict | None = None) 
         shutil.rmtree(probe_dir, ignore_errors=True)
 
     entry = publish(ref, entry, motion, recorded)
-    return {"sourceHash": source_hash(package_dir), **entry}
+    fingerprint = {"sourceHash": source_hash(package_dir)}
+    # 指紋はパッケージ配下しか見ないので、ライブラリ本体の変更は拾えない（#586）。
+    # せめて「どの実装で撮ったか」を残し、あとから隔たりを数えられるようにする。
+    provenance = capture_provenance(REPO_ROOT)
+    if provenance:
+        fingerprint["provenance"] = provenance
+    return {**fingerprint, **entry}
 
 
 def publish(
@@ -719,7 +727,7 @@ def collect_sequence(
         sheet = manifest.get("contactSheet")
         if not sheet or not (sequence_dir / sheet).is_file():
             raise ShotError(f"'{ref}' のコンタクトシートが出ていない")
-        shutil.copyfile(sequence_dir / sheet, output)
+        collect_contact_sheet(ref, sequence_dir / sheet, output, motion["width"])
     else:
         render_webp(ref, frames, output, motion, manifest)
 
@@ -747,6 +755,33 @@ def collect_sequence(
     }
 
 
+def collect_contact_sheet(ref: str, sheet: Path, output: Path, width: int) -> None:
+    """Probe が合成したコンタクトシートを、幅の上限を守って staging へ置く。
+
+    `width` は kind に依らない「幅の上限」（docs/tutorial/README.md の表）。以前は
+    webp の経路にしか縮小が無く、**シートでは素通りしていた**（#521）。
+
+    比較の相手が webp と違うことに注意する。webp は 1 フレームずつ縮めるので台帳の
+    `size.width`（= 1 フレームの幅）と比べればよいが、シートは**格子に並べたぶん
+    1 フレームより遥かに広い**ので、同じ比較をすると「元より大きいので拡大しない」と
+    誤って判定して上限が効かなくなる。出来上がったシートの実測値と比べる。
+    """
+    sheet_width, _ = image_size(sheet)
+    if 0 < width < sheet_width:
+        # 上限より大きいときだけ縮める（拡大はしない）。
+        resample_width(ref, sheet, output, width, "コンタクトシートの縮小")
+        return
+    shutil.copyfile(sheet, output)
+
+
+def resample_width(ref: str, source: Path, output: Path, width: int, what: str) -> None:
+    """`sips` で 1 枚を指定幅へ縮める（縦横比は保たれる）。"""
+    run_or_raise(
+        ["sips", "--resampleWidth", str(width), str(source), "--out", str(output)],
+        f"'{ref}' の{what}",
+    )
+
+
 def render_webp(
     ref: str, frames: list[Path], output: Path, motion: dict, manifest: dict
 ) -> None:
@@ -765,11 +800,7 @@ def render_webp(
             scaled = []
             for path in frames:
                 target = work / path.name
-                run_or_raise(
-                    ["sips", "--resampleWidth", str(motion["width"]),
-                     str(path), "--out", str(target)],
-                    f"'{ref}' のフレーム縮小",
-                )
+                resample_width(ref, path, target, motion["width"], "フレーム縮小")
                 scaled.append(target)
             frames = scaled
         run_or_raise(
@@ -833,6 +864,20 @@ def check(
             continue
         stale += external_stale(ref, package_dir, recorded, motion, body)
     return stale
+
+
+def report_drift(shots: dict, refs: list[str]) -> None:
+    """「撮影後に実装が変わっている節がいくつあるか」を要約して伝える（#586）。
+
+    合否には混ぜない。実装が変わっても絵が変わったとは限らず、描画に触るあらゆる
+    PR を画像の撮り直しで止めることになるため。
+    """
+    for line in drift_summary(
+        (shots.get(ref) for ref in refs if ref in shots),
+        "スケッチと撮影設定",
+        REPO_ROOT,
+    ):
+        print(line)
 
 
 def external_stale(
@@ -963,7 +1008,13 @@ def main() -> int:
             if not stale:
                 skipped = [r for r in refs if no_capture_reason(CODE_DIR / r, r)]
                 aside = f"（うち {len(skipped)} 節は {NO_CAPTURE_NAME} で撮らない）" if skipped else ""
-                print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある{aside}")
+                # 「最新の画像がある」とは書かない。見ているのはスケッチと撮影設定
+                # だけで、ライブラリ実装の変更は含まない（#586）。
+                print(
+                    f"OK: 参照されている {len(refs)} 節すべてで、"
+                    f"スケッチと撮影設定は撮影時から変わっていない{aside}"
+                )
+                report_drift(shots, refs)
                 return 0
             print("error: 実行結果画像が古い:", file=sys.stderr)
             for line in stale:
@@ -987,7 +1038,11 @@ def main() -> int:
         if skipped:
             save_manifest(shots)
         if not targets:
-            print(f"OK: 参照されている {len(refs)} 節すべてに最新の画像がある")
+            print(
+                f"OK: 参照されている {len(refs)} 節すべてで、"
+                "スケッチと撮影設定は撮影時から変わっていない"
+            )
+            report_drift(shots, refs)
             return 0
 
         for ref in targets:

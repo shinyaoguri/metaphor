@@ -79,9 +79,9 @@ public struct GoldenImage: Sendable, Equatable {
 
     /// 全画素が不透明（A=255）かどうか。
     ///
-    /// ゴールデンは PNG 経由で保存するため、非不透明画素があると
-    /// ImageIO のプリマルチプライで往復が非可逆になり得る。
-    /// ``GoldenImageStore/verify(_:name:in:tolerance:sourceLocation:)`` はこれを前提条件として検査する。
+    /// 以前はゴールデンの前提条件（非不透明画素があると PNG 往復が非可逆）でしたが、
+    /// 非可逆だったのは**バッファを premultiplied と宣言していたから**で、straight を
+    /// straight として宣言すれば往復はバイト一致します（#850）。今は診断・検査用の情報。
     public var isOpaque: Bool {
         for i in stride(from: 3, to: rgba.count, by: 4) where rgba[i] != 255 { return false }
         return true
@@ -165,11 +165,17 @@ public struct GoldenImage: Sendable, Equatable {
     /// `CGColorSpaceCreateDeviceRGB()` で統一する（往復一致は
     /// `GoldenImageTests` の PNG ラウンドトリップテストで固定）。
     ///
+    /// ``rgba`` は straight（非プリマルチプライ）なので、`CGImageAlphaInfo.last` で
+    /// **そのとおりに宣言する**。以前は `premultipliedLast` と宣言していたため、
+    /// ImageIO が PNG（straight）へ書くときに α で割って飽和させ、非不透明画素の
+    /// 往復が壊れていた（α=128 の白で誤差 127。#850）。α=255 では両者は同値なので、
+    /// 既存のゴールデン PNG はバイト単位で変わらない。
+    ///
     /// - Throws: `CGImage` 化・PNG エンコードに失敗した場合
     ///   ``GoldenImageError/pngEncodingFailed``
     public func pngData() throws -> Data {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue)
         guard let provider = CGDataProvider(data: Data(rgba) as CFData),
               let cgImage = CGImage(
                   width: width,
@@ -202,6 +208,11 @@ public struct GoldenImage: Sendable, Equatable {
 
     /// PNG ファイルを読み込みます。
     ///
+    /// 8bit RGBA（straight）としてデコードできた PNG は**生サンプルをそのまま**採る。
+    /// `CGContext` は straight alpha を扱えず `premultipliedLast` しか選べないため、
+    /// 描き込ませると α が掛かって非不透明画素が変わってしまう（#850）。
+    /// その形に載らない PNG だけ `CGContext` 経由で読み、CPU で割り戻す。
+    ///
     /// - Throws: ``GoldenImageError``。読み込みに失敗した場合は
     ///   ``GoldenImageError/fileReadFailed(url:detail:)``、PNG として解釈できない
     ///   場合は ``GoldenImageError/pngDecodingFailed(_:)``。
@@ -217,8 +228,43 @@ public struct GoldenImage: Sendable, Equatable {
         else {
             throw GoldenImageError.pngDecodingFailed(url)
         }
-        let w = cgImage.width
-        let h = cgImage.height
+        if let straight = straightSamples(of: cgImage) {
+            return try GoldenImage(width: cgImage.width, height: cgImage.height, rgba: straight)
+        }
+        return try GoldenImage(
+            width: cgImage.width, height: cgImage.height,
+            rgba: try premultipliedSamples(of: cgImage, url: url)
+        )
+    }
+
+    /// 8bit RGBA（straight）としてデコード済みの `CGImage` から生サンプルを取り出します。
+    /// 形が合わなければ `nil`（呼び出し側が `CGContext` 経由へ落ちる）。
+    private static func straightSamples(of image: CGImage) -> [UInt8]? {
+        guard image.bitsPerComponent == 8, image.bitsPerPixel == 32,
+              image.alphaInfo == .last,
+              let data = image.dataProvider?.data as Data? else { return nil }
+        let w = image.width
+        let h = image.height
+        let stride = image.bytesPerRow
+        guard data.count >= stride * h else { return nil }
+        var bytes = [UInt8](repeating: 0, count: w * h * 4)
+        data.withUnsafeBytes { src in
+            let base = src.bindMemory(to: UInt8.self).baseAddress!
+            for y in 0..<h {
+                let row = base + y * stride
+                bytes.withUnsafeMutableBytes { dst in
+                    dst.baseAddress!.advanced(by: y * w * 4)
+                        .copyMemory(from: row, byteCount: w * 4)
+                }
+            }
+        }
+        return bytes
+    }
+
+    /// `CGContext`（`premultipliedLast` しか選べない）で読んで straight へ割り戻します。
+    private static func premultipliedSamples(of image: CGImage, url: URL) throws -> [UInt8] {
+        let w = image.width
+        let h = image.height
         var bytes = [UInt8](repeating: 0, count: w * h * 4)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
@@ -232,11 +278,18 @@ public struct GoldenImage: Sendable, Equatable {
                 space: colorSpace,
                 bitmapInfo: bitmapInfo.rawValue
             ) else { return false }
-            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
             return true
         }
         guard ok else { throw GoldenImageError.pngDecodingFailed(url) }
-        return try GoldenImage(width: w, height: h, rgba: bytes)
+        for i in stride(from: 0, to: bytes.count, by: 4) {
+            let a = Int(bytes[i + 3])
+            guard a != 0, a != 255 else { continue }
+            for ch in 0..<3 {
+                bytes[i + ch] = UInt8(min(255, (Int(bytes[i + ch]) * 255 + a / 2) / a))
+            }
+        }
+        return bytes
     }
 
     /// PNG ファイルとして書き出します（親ディレクトリは自動作成）。
@@ -438,15 +491,9 @@ public enum GoldenImageStore {
     ) throws {
         let goldenURL = directory.appendingPathComponent("\(name).png")
 
-        // PNG 往復が非可逆になるため、ゴールデンは不透明でなければならない。
-        #expect(
-            actual.isOpaque,
-            """
-            ゴールデン '\(name)' に A<255 の画素がある。PNG 保存は premultiplied 往復のため
-            非不透明画素は再現しない。シーンの背景を不透明にするか、アルファを固定すること。
-            """,
-            sourceLocation: sourceLocation
-        )
+        // 以前はここで「ゴールデンは不透明であること」を要求していた。PNG 往復が
+        // 非可逆だったのはバッファを premultiplied と宣言していたからで、straight を
+        // straight として書けば往復はバイト一致する（#850）。α<1 のシーンも照合できる。
 
         if isUpdateMode {
             try actual.write(pngTo: goldenURL)

@@ -4,8 +4,8 @@ import simd
 /// 頂点を動的に追加・変更できる3Dメッシュを提供します。
 ///
 /// openFrameworks の ofMesh や p5.js の p5.Geometry に相当する機能を提供します。
-/// 頂点データが変更されると isDirty フラグが設定され、描画時に GPU バッファが
-/// 自動的に再構築されます。
+/// 頂点データが変更されると dirty フラグが設定され、描画時に GPU バッファが
+/// 自動的に更新されます（変更された種類だけを、可能なら確保し直さずに）。
 ///
 /// ```swift
 /// let mesh = createDynamicMesh()
@@ -25,7 +25,21 @@ public final class DynamicMesh {
     private var indices: [UInt32] = []
     // 頂点と同じ添字で並ぶ UV。UV を一度も宣言していないメッシュでは空のまま
     private var uvs: [SIMD2<Float>] = []
-    private var isDirty = true
+
+    // dirty は種類ごとに分ける。頂点を動かすアニメーションで**一度も変わらない
+    // インデックス**まで作り直していたため（128×128 のハイトフィールドで
+    // 378KB/フレーム）、頂点・インデックス・UV を別々に見る（Issue #686）。
+    private var verticesDirty = true
+    private var indicesDirty = true
+    private var uvDirty = true
+
+    // 種類ごとのリングバッファ。容量が足りていれば `contents()` へ memcpy し、
+    // 足りないときだけ確保し直す。リングの深さはレンダラーのトリプルバッファリングに
+    // 合わせてあり、GPU がまだ読んでいるバッファを上書きしないための猶予になる。
+    private var vertexRing = BufferRing()
+    private var indexRing = BufferRing()
+    private var uvRing = BufferRing()
+
     private var cachedVertexBuffer: MTLBuffer?
     private var cachedIndexBuffer: MTLBuffer?
     private var cachedUVVertexBuffer: MTLBuffer?
@@ -53,7 +67,8 @@ public final class DynamicMesh {
             color: pendingColor
         ))
         uvs.append(pendingUV)
-        isDirty = true
+        verticesDirty = true
+        uvDirty = true
     }
 
     /// 指定された x, y, z 座標に頂点を追加します。
@@ -101,13 +116,13 @@ public final class DynamicMesh {
     /// インデックスを1つ追加します。
     public func addIndex(_ i: UInt32) {
         indices.append(i)
-        isDirty = true
+        indicesDirty = true
     }
 
     /// 三角形を構成する3つのインデックスを追加します。
     public func addTriangle(_ i0: UInt32, _ i1: UInt32, _ i2: UInt32) {
         indices.append(contentsOf: [i0, i1, i2])
-        isDirty = true
+        indicesDirty = true
     }
 
     // MARK: - Access & Modify
@@ -126,19 +141,23 @@ public final class DynamicMesh {
     /// 指定インデックスの頂点位置を設定します。
     public func setVertex(_ index: Int, _ position: SIMD3<Float>) {
         vertices[index].position = position
-        isDirty = true
+        verticesDirty = true
+        uvDirty = true  // UV 付き頂点列は position / normal を含むので作り直す
     }
 
     /// 指定インデックスの頂点法線を設定します。
     public func setNormal(_ index: Int, _ normal: SIMD3<Float>) {
         vertices[index].normal = normal
-        isDirty = true
+        verticesDirty = true
+        uvDirty = true  // UV 付き頂点列は position / normal を含むので作り直す
     }
 
     /// 指定インデックスの頂点カラーを設定します。
     public func setColor(_ index: Int, _ color: SIMD4<Float>) {
         vertices[index].color = color
-        isDirty = true
+        // UV 付き頂点（``Vertex3DTextured``）は position / normal / uv だけを持ち
+        // カラーを含まないため、色の変更で UV 側を作り直す必要はない
+        verticesDirty = true
     }
 
     /// 指定インデックスの頂点のテクスチャ座標を設定します。
@@ -149,7 +168,7 @@ public final class DynamicMesh {
     public func setTexCoord(_ index: Int, _ uv: SIMD2<Float>) {
         uvs[index] = uv
         hasExplicitUV = true
-        isDirty = true
+        uvDirty = true
     }
 
     /// すべての頂点とインデックスを削除します。
@@ -159,23 +178,34 @@ public final class DynamicMesh {
         uvs.removeAll(keepingCapacity: true)
         pendingUV = .zero
         hasExplicitUV = false
-        isDirty = true
+        verticesDirty = true
+        indicesDirty = true
+        uvDirty = true
     }
 
     // MARK: - Internal GPU Buffer Management
 
-    /// データが変更された場合に GPU バッファを再構築します。
+    /// データが変更された場合に GPU バッファを更新します。
+    ///
+    /// 変更された種類だけを触ります。頂点を動かすアニメーションでは、
+    /// **インデックスバッファは一度も作り直されません**（`indicesDirty` が立たないため）。
+    /// 更新は既存バッファへの memcpy が既定で、容量が足りないときだけ確保し直します。
     internal func ensureBuffers() {
-        guard isDirty else { return }
+        guard verticesDirty || indicesDirty || uvDirty else { return }
         guard !vertices.isEmpty else {
             cachedVertexBuffer = nil
             cachedIndexBuffer = nil
             cachedUVVertexBuffer = nil
-            isDirty = false
+            vertexRing.reset()
+            indexRing.reset()
+            uvRing.reset()
+            verticesDirty = false
+            indicesDirty = false
+            uvDirty = false
             return
         }
 
-        // 頂点・インデックス・UV をすべて確保してからアトミックに差し替える。
+        // 更新した結果はすべて揃ってからアトミックに差し替える。
         // 一部だけ成功した状態でキャッシュを更新すると「新頂点 × 旧インデックス」の
         // 不整合が生じ、インデックスが新頂点数を超えて GPU が範囲外を読み得る。
         func dropCaches(_ message: String) {
@@ -185,45 +215,54 @@ public final class DynamicMesh {
             cachedUVVertexBuffer = nil
         }
 
-        guard let vb = device.makeBuffer(
-            bytes: vertices,
-            length: MemoryLayout<Vertex3D>.stride * vertices.count,
-            options: .storageModeShared
-        ) else {
-            dropCaches("DynamicMesh: Failed to allocate vertex buffer (\(vertices.count) vertices)")
-            return
-        }
-
-        var newIndexBuffer: MTLBuffer?
-        if !indices.isEmpty {
-            guard let ib = device.makeBuffer(
-                bytes: indices,
-                length: MemoryLayout<UInt32>.stride * indices.count,
-                options: .storageModeShared
-            ) else {
-                dropCaches("DynamicMesh: Failed to allocate index buffer (\(indices.count) indices)")
+        var newVertexBuffer = cachedVertexBuffer
+        if verticesDirty || newVertexBuffer == nil {
+            guard let vb = vertices.withUnsafeBytes({ raw in
+                vertexRing.update(device: device, bytes: raw)
+            }) else {
+                dropCaches("DynamicMesh: Failed to allocate vertex buffer (\(vertices.count) vertices)")
                 return
             }
-            newIndexBuffer = ib
+            newVertexBuffer = vb
         }
 
-        var newUVVertexBuffer: MTLBuffer?
-        if let uvVertices = makeUVVertices() {
-            guard let uvb = device.makeBuffer(
-                bytes: uvVertices,
-                length: MemoryLayout<Vertex3DTextured>.stride * uvVertices.count,
-                options: .storageModeShared
-            ) else {
-                dropCaches("DynamicMesh: Failed to allocate UV vertex buffer (\(uvVertices.count) vertices)")
-                return
+        var newIndexBuffer = cachedIndexBuffer
+        if indicesDirty || (newIndexBuffer == nil && !indices.isEmpty) {
+            if indices.isEmpty {
+                newIndexBuffer = nil
+            } else {
+                guard let ib = indices.withUnsafeBytes({ raw in
+                    indexRing.update(device: device, bytes: raw)
+                }) else {
+                    dropCaches("DynamicMesh: Failed to allocate index buffer (\(indices.count) indices)")
+                    return
+                }
+                newIndexBuffer = ib
             }
-            newUVVertexBuffer = uvb
         }
 
-        cachedVertexBuffer = vb
+        var newUVVertexBuffer = cachedUVVertexBuffer
+        if uvDirty || (newUVVertexBuffer == nil && hasExplicitUV) {
+            if let uvVertices = makeUVVertices() {
+                guard let uvb = uvVertices.withUnsafeBytes({ raw in
+                    uvRing.update(device: device, bytes: raw)
+                }) else {
+                    dropCaches(
+                        "DynamicMesh: Failed to allocate UV vertex buffer (\(uvVertices.count) vertices)")
+                    return
+                }
+                newUVVertexBuffer = uvb
+            } else {
+                newUVVertexBuffer = nil
+            }
+        }
+
+        cachedVertexBuffer = newVertexBuffer
         cachedIndexBuffer = newIndexBuffer
         cachedUVVertexBuffer = newUVVertexBuffer
-        isDirty = false
+        verticesDirty = false
+        indicesDirty = false
+        uvDirty = false
     }
 
     /// UV を宣言済みのときだけ、位置・法線と同じ添字で並ぶ ``Vertex3DTextured`` 列を組み立てます。
@@ -260,4 +299,53 @@ public final class DynamicMesh {
 
     /// インデックスバッファを返します（ensureBuffers 呼び出し後に有効）。
     public var indexBuffer: MTLBuffer? { cachedIndexBuffer }
+}
+
+// MARK: - BufferRing
+
+/// 毎フレーム内容が変わりうるデータ 1 種類ぶんの、多重化された GPU バッファ（Issue #686）。
+///
+/// 更新のたびにスロットを 1 つ進め、そのスロットのバッファに**容量が足りていれば
+/// memcpy**、足りなければ確保し直します。以前は `makeBuffer(bytes:)` で毎回
+/// 確保していたため、128×128 のハイトフィールドを動かすだけで 60MB/s の確保が
+/// 走っていました。
+///
+/// スロット数はレンダラーのトリプルバッファリングと同じ 3 です。GPU は最大で
+/// 2 フレーム前のコマンドを実行中であり得るので、3 枚を巡回していれば
+/// 「まだ読まれているバッファを上書きする」ことがありません。
+///
+/// 縮んだときにバッファは小さくし直しません（`length` は「確保済み容量」であって
+/// 描画に使う量ではないため、余りは無害）。churn を避けるための意図的な選択で、
+/// 全部返したいときは ``reset()`` を呼びます。
+private struct BufferRing {
+    private static let slotCount = 3
+
+    private var buffers = [MTLBuffer?](repeating: nil, count: slotCount)
+    private var slot = 0
+
+    /// 次のスロットへ内容を書き込み、そのバッファを返します。
+    /// - Returns: 確保に失敗した場合は `nil`（呼び出し側はキャッシュを捨てる）。
+    mutating func update(device: MTLDevice, bytes: UnsafeRawBufferPointer) -> MTLBuffer? {
+        guard let base = bytes.baseAddress, bytes.count > 0 else { return nil }
+        slot = (slot + 1) % Self.slotCount
+
+        if let existing = buffers[slot], existing.length >= bytes.count {
+            existing.contents().copyMemory(from: base, byteCount: bytes.count)
+            return existing
+        }
+
+        guard let buffer = device.makeBuffer(
+            bytes: base, length: bytes.count, options: .storageModeShared
+        ) else {
+            return nil
+        }
+        buffers[slot] = buffer
+        return buffer
+    }
+
+    /// 確保済みのバッファをすべて手放します。
+    mutating func reset() {
+        for index in buffers.indices { buffers[index] = nil }
+        slot = 0
+    }
 }

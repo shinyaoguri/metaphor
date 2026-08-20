@@ -1,3 +1,4 @@
+import MetaphorLog
 import simd
 
 /// Manages a 2D physics world using Verlet integration.
@@ -27,9 +28,18 @@ public final class Physics2D {
     /// The spatial hash used for broad-phase collision detection.
     private let spatialHash: SpatialHash2D
 
+    /// The approach speed below which a contact is treated as inelastic (set per step).
+    private var restitutionThreshold: Float = 0
+
     /// An optional bounding box that confines all bodies within its limits.
     ///
-    /// When set, bodies are clamped to the `min`-`max` range on each iteration.
+    /// When set, bodies are kept inside the `min`-`max` range on each iteration.
+    /// Each wall behaves like an immovable body carrying the same coefficients as
+    /// the body it touches, so ``PhysicsBody2D/restitution`` and
+    /// ``PhysicsBody2D/friction`` apply exactly as they do against a static body
+    /// added with ``addRect(x:y:width:height:mass:)``. Set `restitution` to `0`
+    /// (and `friction` to `0`) on a body that should simply come to rest against
+    /// the walls.
     public var bounds: (min: SIMD2<Float>, max: SIMD2<Float>)?
 
     /// Creates a new 2D physics world.
@@ -118,10 +128,94 @@ public final class Physics2D {
 
     // MARK: - シミュレーション
 
+    /// The default fixed time step: two sub-steps per frame at 60 fps.
+    private static let defaultFixedTimeStep: Float = 1.0 / 120.0
+
+    private var storedFixedTimeStep: Float = Physics2D.defaultFixedTimeStep
+    private var storedMaxSubSteps: Int = 8
+
+    /// 未消化の経過時間（``advance(_:iterations:)`` のアキュムレータ）。
+    private var accumulator: Float = 0
+
+    /// The fixed time step, in seconds, that ``advance(_:iterations:)`` integrates with.
+    ///
+    /// Defaults to `1.0 / 120.0`. Verlet integration is stiffer and constraints converge
+    /// better at a smaller step, and 1/120 divides evenly into both the 60 Hz and 120 Hz
+    /// display rates, so the common case runs a whole number of sub-steps per frame.
+    ///
+    /// A value that is not finite or not positive is rejected and resets the property to
+    /// the default — a zero or negative step would either freeze the world or run it
+    /// backwards.
+    public var fixedTimeStep: Float {
+        get { storedFixedTimeStep }
+        set {
+            storedFixedTimeStep =
+                (newValue.isFinite && newValue > 0) ? newValue : Self.defaultFixedTimeStep
+        }
+    }
+
+    /// The largest number of fixed sub-steps ``advance(_:iterations:)`` runs for one call.
+    ///
+    /// Defaults to `8`, which is `1/15` s of simulation at the default
+    /// ``fixedTimeStep`` — enough to absorb an ordinary frame-rate dip. Time beyond the
+    /// budget is dropped rather than carried, so a machine that cannot keep up runs the
+    /// simulation in slow motion instead of spiralling (each long frame asking for more
+    /// sub-steps, which makes the next frame longer still).
+    ///
+    /// Values below `1` are clamped to `1`.
+    public var maxSubSteps: Int {
+        get { storedMaxSubSteps }
+        set { storedMaxSubSteps = max(1, newValue) }
+    }
+
+    /// Advances the simulation by `elapsed` seconds, integrating at ``fixedTimeStep``.
+    ///
+    /// This is the entry point to use when the caller has real frame time in hand —
+    /// including the automatic subsystem update that `import metaphor` installs. Verlet
+    /// integration carries velocity as *displacement per step*, so feeding it a varying
+    /// `dt` adds or removes energy: the same sketch then falls a different distance on
+    /// every run and on every machine (Issue #756). Buffering the elapsed time and
+    /// spending it in fixed-size steps keeps the result independent of frame-time jitter.
+    ///
+    /// Time smaller than one step is kept for the next call, so no time is lost.
+    ///
+    /// ```swift
+    /// // 描画ループ内: 実フレーム時間をそのまま渡してよい
+    /// physics.advance(deltaTime)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - elapsed: The wall-clock time to simulate, in seconds. Non-finite and negative
+    ///     values are ignored.
+    ///   - iterations: The number of constraint/collision resolution iterations passed to
+    ///     each ``step(_:iterations:)`` (defaults to 4). Negative values are ignored and
+    ///     the whole call is skipped.
+    public func advance(_ elapsed: Float, iterations: Int = 4) {
+        guard elapsed.isFinite, elapsed >= 0 else { return }
+        guard iterations >= 0 else { return }
+
+        accumulator += elapsed
+        // 消化しきれない余りは持ち越さず捨てる（持ち越すと、遅れたフレームほど
+        // 多くの step を呼び、それが次のフレームを更に遅らせる悪循環になる）
+        accumulator = min(accumulator, Float(storedMaxSubSteps) * storedFixedTimeStep)
+
+        while accumulator >= storedFixedTimeStep {
+            accumulator -= storedFixedTimeStep
+            step(storedFixedTimeStep, iterations: iterations)
+        }
+    }
+
     /// Advances the simulation by one time step.
     ///
     /// Applies gravity, updates positions with Verlet integration, then
     /// iteratively solves constraints and resolves collisions.
+    ///
+    /// - Important: Pass a **fixed** `dt`. Verlet carries velocity as displacement per
+    ///   step and the resting-contact threshold scales with `dt²`, so a `dt` that varies
+    ///   between calls changes the simulation's energy and its bounce settling — the
+    ///   same sequence of positions is not reproduced. Drive the world with
+    ///   ``advance(_:iterations:)`` when the time you have is real frame time; use this
+    ///   method when you own the schedule (a fixed-step loop, offline rendering, tests).
     ///
     /// - Parameters:
     ///   - dt: The time step (seconds).
@@ -140,9 +234,13 @@ public final class Physics2D {
         // 半端に進んだワールドを残さないよう、dt と同じく入口で step ごと捨てる。
         // iterations == 0 は「積分だけ行い拘束・衝突・境界を解かない」用途として
         // 許可する（dt == 0 と対）。
-        // MetaphorPhysics は Core 非依存（Tier 1）で metaphorWarning を使えないため、
-        // dt guard と同じく無言で返す
-        guard iterations >= 0 else { return }
+        guard iterations >= 0 else {
+            metaphorWarning("Physics2D.step: iterations must not be negative (got \(iterations)); skipping the step")
+            return
+        }
+
+        // 休止接触を静定させる反発の下限（このステップで重力が生む接近速度の 1.5 倍）
+        restitutionThreshold = 1.5 * simd_length(gravity) * dt * dt
 
         // 重力を適用
         for body in bodies {
@@ -277,8 +375,8 @@ public final class Physics2D {
         let totalMass = (a.isStatic ? 0 : a.mass) + (b.isStatic ? 0 : b.mass)
         guard totalMass > 0 else { return }
 
-        if !a.isStatic { a.position -= normal * overlap * (b.isStatic ? 1 : b.mass / totalMass) }
-        if !b.isStatic { b.position += normal * overlap * (a.isStatic ? 1 : a.mass / totalMass) }
+        correctPosition(a, by: -normal * overlap * (b.isStatic ? 1 : b.mass / totalMass))
+        correctPosition(b, by: normal * overlap * (a.isStatic ? 1 : a.mass / totalMass))
         applyCollisionResponse(a, b, normal: normal)
     }
 
@@ -315,8 +413,8 @@ public final class Physics2D {
         let totalMass = (circle.isStatic ? 0 : circle.mass) + (rect.isStatic ? 0 : rect.mass)
         guard totalMass > 0 else { return }
 
-        if !circle.isStatic { circle.position += normal * overlap * (rect.isStatic ? 1 : rect.mass / totalMass) }
-        if !rect.isStatic { rect.position -= normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass) }
+        correctPosition(circle, by: normal * overlap * (rect.isStatic ? 1 : rect.mass / totalMass))
+        correctPosition(rect, by: -normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass))
         applyCollisionResponse(rect, circle, normal: normal)
     }
 
@@ -340,18 +438,33 @@ public final class Physics2D {
 
         if overlapX < overlapY {
             let sign: Float = dx > 0 ? 1 : -1
-            if !a.isStatic { a.position.x -= sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass) }
-            if !b.isStatic { b.position.x += sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass) }
+            correctPosition(a, by: SIMD2(-sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass), 0))
+            correctPosition(b, by: SIMD2(sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass), 0))
             applyCollisionResponse(a, b, normal: SIMD2(sign, 0))
         } else {
             let sign: Float = dy > 0 ? 1 : -1
-            if !a.isStatic { a.position.y -= sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass) }
-            if !b.isStatic { b.position.y += sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass) }
+            correctPosition(a, by: SIMD2(0, -sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass)))
+            correctPosition(b, by: SIMD2(0, sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass)))
             applyCollisionResponse(a, b, normal: SIMD2(0, sign))
         }
     }
 
-    /// Updates Verlet's `previousPosition` and applies the public restitution/friction coefficients to the collision response.
+    /// Moves a body out of an overlap without turning the correction into velocity.
+    ///
+    /// Verlet の速度は `position - previousPosition` なので、重なり解消で位置だけ
+    /// 動かすと補正量がそのまま速度になる。補正は接近分をちょうど打ち消す量なので、
+    /// `applyCollisionResponse` が見る接近速度が消え、`restitution` / `friction` が
+    /// 一度も適用されなかった（#755）。`previousPosition` も同量ずらして速度を不変に保つ。
+    private func correctPosition(_ body: PhysicsBody2D, by delta: SIMD2<Float>) {
+        guard !body.isStatic else { return }
+        body.position += delta
+        body.previousPosition += delta
+    }
+
+    /// Applies the restitution/friction impulse by rewriting Verlet's `previousPosition`.
+    ///
+    /// 速度は 1 ステップあたりの変位（px/step）なので、インパルスも同じ単位で
+    /// 扱い、最後に `previousPosition` を置き直して反映する。
     private func applyCollisionResponse(_ a: PhysicsBody2D, _ b: PhysicsBody2D, normal: SIMD2<Float>) {
         let invMassA = inverseMass(a)
         let invMassB = inverseMass(b)
@@ -364,7 +477,10 @@ public final class Physics2D {
         let normalSpeed = simd_dot(relativeVelocity, normal)
         guard normalSpeed < 0 else { return }
 
-        let restitution = min(a.restitution, b.restitution)
+        // 床に載ったボディは重力で毎ステップ `g * dt^2` だけ接近する。これを跳ね返すと
+        // 休止接触が永久に微振動するので、1 ステップ分の重力による接近は反発させない
+        // （摩擦は下で従来どおり効く）。重力ゼロのワールドでは閾値も 0 になる。
+        let restitution = -normalSpeed <= restitutionThreshold ? 0 : min(a.restitution, b.restitution)
         let impulseMagnitude = -(1 + restitution) * normalSpeed / invMassSum
         let impulse = impulseMagnitude * normal
 
@@ -394,19 +510,75 @@ public final class Physics2D {
         body.isStatic ? 0 : 1 / body.mass
     }
 
-    /// Clamps all non-static bodies within the world bounds, accounting for shape size.
+    /// Confines all non-static bodies within the world bounds, accounting for shape size.
+    ///
+    /// 壁は「ボディと同じ係数を持つ無限質量の静的ボディ」として扱う。押し戻しは
+    /// ``correctPosition(_:by:)`` で速度中立に行い、そのうえで反発・摩擦を当てる。
     private func applyBounds(_ bounds: (min: SIMD2<Float>, max: SIMD2<Float>)) {
         for body in bodies where !body.isStatic {
+            let half: SIMD2<Float>
             switch body.shape {
             case .circle(let r):
-                body.position.x = max(bounds.min.x + r, min(bounds.max.x - r, body.position.x))
-                body.position.y = max(bounds.min.y + r, min(bounds.max.y - r, body.position.y))
+                half = SIMD2(r, r)
             case .rect(let w, let h):
-                let hw = w * 0.5
-                let hh = h * 0.5
-                body.position.x = max(bounds.min.x + hw, min(bounds.max.x - hw, body.position.x))
-                body.position.y = max(bounds.min.y + hh, min(bounds.max.y - hh, body.position.y))
+                half = SIMD2(w * 0.5, h * 0.5)
             }
+
+            // 角では x → y の順に 2 面へ当たるが、2 面目の応答は法線成分の接近速度が
+            // 残っていないぶんだけしか効かない（`applyWallResponse` の接近ガード）
+            resolveWall(body, axis: 0, low: bounds.min.x + half.x, high: bounds.max.x - half.x)
+            resolveWall(body, axis: 1, low: bounds.min.y + half.y, high: bounds.max.y - half.y)
         }
+    }
+
+    /// Pushes a body back inside one axis of the world bounds and applies the wall response.
+    private func resolveWall(_ body: PhysicsBody2D, axis: Int, low: Float, high: Float) {
+        var normal = SIMD2<Float>(0, 0)
+        var overlap: Float = 0
+
+        // ボディより狭い bounds では両側が同時にはみ出す。従来のクランプ
+        // （`max(low, min(high, x))`）と同じく low 側を優先する
+        if body.position[axis] > high {
+            normal[axis] = -1
+            overlap = body.position[axis] - high
+        }
+        if body.position[axis] < low {
+            normal[axis] = 1
+            overlap = low - body.position[axis]
+        }
+
+        guard overlap > 0 else { return }
+
+        correctPosition(body, by: normal * overlap)
+        applyWallResponse(body, normal: normal)
+    }
+
+    /// Applies restitution/friction for a contact with a world bounds wall.
+    ///
+    /// ``applyCollisionResponse(_:_:normal:)`` の片側が無限質量（`invMass == 0`）の場合に
+    /// 相当し、質量は式から消えるので速度の単位のまま計算する。壁は係数を持たないので
+    /// ボディ自身の値を使う（`min` も平均もボディ側の値になり、同じ係数の静的ボディを
+    /// 置いた場合と一致する）。`normal` は壁からボディへ向かう単位ベクトル。
+    private func applyWallResponse(_ body: PhysicsBody2D, normal: SIMD2<Float>) {
+        var velocity = body.velocity
+        let normalSpeed = simd_dot(velocity, normal)
+        guard normalSpeed < 0 else { return }
+
+        // ボディ同士の接触と同じく、1 ステップ分の重力による接近は反発させない
+        // （壁に載ったボディが永久に微振動しないように）
+        let restitution = -normalSpeed <= restitutionThreshold ? 0 : body.restitution
+        let normalImpulse = -(1 + restitution) * normalSpeed
+        velocity += normalImpulse * normal
+
+        let tangentVelocity = velocity - simd_dot(velocity, normal) * normal
+        let tangentLength = simd_length(tangentVelocity)
+        if tangentLength > 0.0001 {
+            let tangent = tangentVelocity / tangentLength
+            let maxFrictionImpulse = normalImpulse * body.friction
+            let tangentImpulse = -simd_dot(velocity, tangent)
+            velocity += max(-maxFrictionImpulse, min(maxFrictionImpulse, tangentImpulse)) * tangent
+        }
+
+        body.previousPosition = body.position - velocity
     }
 }

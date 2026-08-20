@@ -1,17 +1,8 @@
-#include <metal_stdlib>
-using namespace metal;
+#include "MetaphorCanvas2DTypes.h"
+#include "MetaphorCanvas2DBlend.h"
 
-struct Canvas2DTexVertexIn {
-    float2 position [[attribute(0)]];
-    float2 texCoord [[attribute(1)]];
-    float4 color [[attribute(2)]];
-};
-
-struct Canvas2DTexVertexOut {
-    float4 position [[position]];
-    float2 texCoord;
-    float4 color;
-};
+// `Canvas2DTexVertexIn` / `Canvas2DTexVertexOut` は `MetaphorCanvas2DTypes.h`（= カスタム
+// 2D シェーダへ配る前文）にある。
 
 vertex Canvas2DTexVertexOut metaphor_canvas2DTexturedVertex(
     Canvas2DTexVertexIn in [[stage_in]],
@@ -24,37 +15,62 @@ vertex Canvas2DTexVertexOut metaphor_canvas2DTexturedVertex(
     return out;
 }
 
+// テクスチャは premultiplied で入ってくる（グリフアトラスは `premultipliedLast` で焼かれ、
+// 読み込んだ画像は `MTKTextureLoader` が、オフスクリーンは `.alpha` 合成がそうする）。
+// 一方 `in.color`（tint / fill）は straight なので、**掛ける前に straight へ戻す**。
+// 戻さずに掛けると α が二重に乗り、文字の AA が二乗され半透明画像が暗く沈む
+//（ADR-0012 / #846 / #847）。返す値は再び premultiplied。
 fragment float4 metaphor_canvas2DTexturedFragment(
     Canvas2DTexVertexOut in [[stage_in]],
     texture2d<float> tex [[texture(0)]]
 ) {
     constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float4 texColor = metaphorUnpremultiply(tex.sample(s, in.texCoord));
+    return metaphorPremultiply(texColor * in.color);
+}
+
+// `pixels` / `updatePixels()` 用（ADR-0012 / #848）。こちらのテクスチャは
+// **straight で入ってくる** — `loadPixels()` が読み戻しのあと割り戻し、利用者は
+// `color(r, g, b, a)`（straight を詰める helper）で書くため。割り戻さずに
+// 頂点色を掛け、premultiplied にして返す。
+fragment float4 metaphor_canvas2DStraightTexturedFragment(
+    Canvas2DTexVertexOut in [[stage_in]],
+    texture2d<float> tex [[texture(0)]]
+) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
     float4 texColor = tex.sample(s, in.texCoord);
-    return texColor * in.color;
+    return metaphorPremultiply(texColor * in.color);
 }
 
-fragment float4 metaphor_canvas2DTexturedDifferenceFragment(
-    Canvas2DTexVertexOut in [[stage_in]],
-    texture2d<float> tex [[texture(0)]],
-    float4 dest [[color(0)]]
-) {
-    constexpr sampler s(filter::linear, address::clamp_to_edge);
-    float4 src = tex.sample(s, in.texCoord) * in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = abs(src.rgb - dest.rgb);
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// フレームバッファフェッチで合成するモード。式は `MetaphorCanvas2DBlend.h`。
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DTexturedExclusionFragment, metaphorBlendExclusion)
 
-fragment float4 metaphor_canvas2DTexturedExclusionFragment(
-    Canvas2DTexVertexOut in [[stage_in]],
-    texture2d<float> tex [[texture(0)]],
-    float4 dest [[color(0)]]
-) {
-    constexpr sampler s(filter::linear, address::clamp_to_edge);
-    float4 src = tex.sample(s, in.texCoord) * in.color;
-    float a = src.a + dest.a * (1.0 - src.a);
-    float3 blended = src.rgb + dest.rgb - 2.0 * src.rgb * dest.rgb;
-    float3 result = mix(dest.rgb, blended, src.a);
-    return float4(result, a);
-}
+// straight なテクスチャ側のフェッチ経路。`updatePixels()` は現在のブレンドモードに
+// 従って描くので、分離可能ブレンドも同数だけ要る。
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedMultiplyFragment, metaphorBlendMultiply)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedScreenFragment, metaphorBlendScreen)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedSubtractFragment, metaphorBlendSubtract)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedLightestFragment, metaphorBlendLightest)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedDarkestFragment, metaphorBlendDarkest)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedDifferenceFragment, metaphorBlendDifference)
+METAPHOR_CANVAS2D_STRAIGHT_TEXTURED_BLEND_FRAGMENT(
+    metaphor_canvas2DStraightTexturedExclusionFragment, metaphorBlendExclusion)

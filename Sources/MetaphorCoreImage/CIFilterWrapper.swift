@@ -238,6 +238,19 @@ public final class CIFilterWrapper {
     }
 
     private func getOrCreateTexture(width: Int, height: Int, tag: String) -> MTLTexture? {
+        // 寸法は Metal へ渡す前に検証する（#806）。`MTLTextureDescriptor` は
+        // 範囲外を `makeTexture` の nil ではなく `validateWithDevice:` の
+        // アサーションで返すため、ここを通すと `MTLTexture?` / `MImage?` という
+        // 戻り値の契約を裏切ってプロセスごと落ちる（呼び出し側の `guard let`
+        // では守れない）。generate / apply の両経路がここを通る。
+        guard width > 0, height > 0,
+              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            metaphorWarning(
+                "CoreImage \(tag): size must be within 1...\(TextureManager.maxDimension) "
+                + "(got \(width)x\(height))")
+            return nil
+        }
+
         let key = "\(width)_\(height)_\(tag)"
         if let cached = texturePool[key] { return cached }
 
@@ -297,6 +310,6 @@ public final class CIFilterWrapper {
     /// (post-processing runs every frame, so this prevents a log flood).
     private func warnOnce(_ message: String) {
         guard warnedMessages.insert(message).inserted else { return }
-        print("[metaphor.CoreImage] Warning: \(message)")
+        metaphorAlert("CoreImage: \(message)")
     }
 }

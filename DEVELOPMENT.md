@@ -126,12 +126,17 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 | `llms.txt` | `Sources/**/*.swift`, `scripts/generate-llms-txt.py` | `make llms-txt` |
 | `docs/ai/examples-index.{md,json}` | `Examples/**`, `scripts/generate-examples-index.py` | `make examples-index` |
 | `Sources/MetaphorCore/Shaders/ShaderSources/*.txt` | `Shaders/Metal/*.metal`, `scripts/generate-shader-sources.py` | `python3 scripts/generate-shader-sources.py` |
-| `docs/tutorial/*.md` の埋め込みコードブロック | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
+| `Sources/MetaphorCore/Shaders/BuiltinShaders+Generated.swift`（カスタムシェーダーへ配る 2D / 3D / postFX の MSL 前文） | `Shaders/Metal/*.h`, `scripts/generate-shader-sources.py` | `python3 scripts/generate-shader-sources.py` |
+| `docs/tutorial/{,en/}*.md` の埋め込みコードブロック | `Examples/Tutorial/**`, `scripts/generate-tutorial-snippets.py` | `make tutorial-snippets` |
 | `docs/tutorial/images/**` + `manifest.json` | `Examples/Tutorial/**` の実行結果, `docs/tutorial/images/motion.json`, `scripts/generate-tutorial-shots.py` | `make tutorial-shots`（GPU が要るのでローカル専用） |
-| README 群の「どこまで公開されているか」（`README.md` / `README.en.md` / `docs/README.md` / `docs/README.en.md` / `Examples/README.md` の `<!-- tutorial-status: … -->` ブロック） | `docs/tutorial/*.md` の frontmatter（`part` / `title` / `draft`）, `scripts/generate-tutorial-status.py` | `make tutorial-status` |
+| README 群の「どこまで公開されているか」と「訳がどこまで入っているか」（`README.md` / `README.en.md` / `docs/README.md` / `docs/README.en.md` / `Examples/README.md` の `<!-- tutorial-status: … -->` ブロック） | `docs/tutorial/*.md` の frontmatter（`part` / `title` / `draft`）, `docs/tutorial/en/` にある訳の有無, `scripts/generate-tutorial-status.py` | `make tutorial-status` |
+| doc コメントの**画像行**（`![…](https://i.gyazo.com/…)`）+ `docs/reference/images/manifest.json` | doc コメントの `<!-- reference-shot -->` 付きスニペットの実行結果, `docs/reference/shots.config.json`, `scripts/generate-reference-shots.py` | `make reference-shots`（GPU が要るのでローカル専用。規約は [docs/reference/README.md](docs/reference/README.md)） |
 
+- **`git merge origin/main` で main を取り込んだら、生成物は必ず再生成してコミットします**（上の表の再生成コマンド。GPU が要るものは、その入力を触ったときだけ）。**conflict が出なかったことは「最新である」根拠になりません** — 片方が新規に足した行の中に、もう片方が直した内容が埋まっていると、行単位マージは衝突を検出できず、生成物は黙って古いまま残ります（実例: #396 のシンボルリンク曖昧性解消が、PR #969 が `llms.txt` へ新規に足した callout 行の中で落ちた）。`.gitattributes` の `-diff` は差分表示にしか効かず、マージ戦略には影響しません。
 - 生成器は**決定的**であること（全コレクションをソート）。非決定的出力は auto-fix bot が毎回 push する原因になります。
+- **前文（カスタムシェーダーへ配る MSL の頭）は 2D / 3D / postFX とも `.h` からの生成物**です（3D は #707、postFX は #718、2D は #714）。構造体を直すときは `Shaders/Metal/Metaphor{Canvas2D,Canvas3D,PostProcess}Types.h` を直して再生成します — Swift 側に前文の文字列を書き足さないでください。組み込みシェーダーも同じ `.h` を include するので、片方だけ直して食い違うことがありません（`ShaderPreludeTests` が Swift 側とのレイアウト一致まで見ます）。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
+- **テストの中で一時リポジトリを `git init` するときは `scripts/tests/_git_helpers.py` の `init_repo()` / `git()` を使います**（#979）。素の `git` は開発機のグローバル設定を継ぐので、コミット署名を設定したマシンではテスト中の `git commit` まで署名を要求され、署名エージェントが使えなければ exit 128、ロック中なら応答待ちで止まります。CI の runner には署名設定が無く常に green なので、**このずれは CI からは永久に見えません**。密封の中身と、それが効いていることの回帰テストは `scripts/tests/test_git_helpers.py`。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
 
 ## 公開サイトの構成を手元で確認する
@@ -142,18 +147,28 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 |---|---|
 | `/` · `/en/` · `/tutorial/` | Astro（`website/`） |
 | `/reference/` | DocC（`make docs` の `.build/docs` を丸ごと配置） |
+| `/reference/ja/` | DocC の日本語版（`make docs-ja` の `.build/docs-ja`。[ADR-0011](docs/adr/0011-docc-english-canon-japanese-generated.md)） |
 
 `docs.yml` がやっているのは「Astro の `dist` へ `.build/docs` を `reference/` として置く」だけなので、手元でも同じ形を組み立てられます。**DocC は `--hosting-base-path metaphor/reference` を焼き込むため、`/metaphor/` をルートに見せる形で配信しないと CSS も配色も当たりません**（この足場を作らずに `dist` を直接開くと壊れて見えます）。
 
 ```bash
 make docs                                   # .build/docs
+make docs-ja                                # .build/docs-ja（英語版と同じ構造の日本語版）
 cd website && npm ci && npm run build && cd ..
 cp -R .build/docs website/dist/reference
+cp -R .build/docs-ja website/dist/reference/ja
 mkdir -p /tmp/site/metaphor && cp -R website/dist/. /tmp/site/metaphor/
 cd /tmp/site && python3 -m http.server 8000  # → http://localhost:8000/metaphor/
 ```
 
 `/metaphor/reference/theme-settings.json` が 200 で引ければ、リファレンス面の配色（`Sources/metaphor/metaphor.docc/theme-settings.json`）が公開サイトでも効きます。
+
+日本語版を触ったときは、**英語版とページ構造が 1:1 で一致していること**も確かめてください（言語切替のリンクがこの対応を前提にしています。カタログの複製名を間違えると日本語版だけ別のルート名で出ます）:
+
+```bash
+diff <(cd .build/docs && find documentation -name index.html | sort) \
+     <(cd .build/docs-ja && find documentation -name index.html | sort)
+```
 
 ### `theme-settings.json` を触るときの制約
 
@@ -164,6 +179,27 @@ DocC-Render はこのファイルの `theme.color` を**そのままの階層で
 - そのため上書きする色は**両モードでコントラスト比 4.5:1 を満たす明度**を選びます（白背景と黒背景の両方で 4.5 を超えられる帯は狭く、相対輝度 0.18 前後が上限です）。
 
 確認は `make docs` 後の実ページで行います（`getComputedStyle(document.body).getPropertyValue('--color-standard-blue')` が期待値かどうか）。JSON を書いただけでは効いたことになりません。
+
+#### 書けるキーは決まっている（`scripts/check-theme-settings.py`）
+
+DocC はこのファイルをスキーマ検証せず、DocC-Render は知らないキーを黙って無視します。**間違いが一切表に出ない**ので、書いた本人は効いたつもりで公開ページだけが既定のまま出ます（#529 の色グループ、#763 の `i18n` フラグと `meta.title`）。そこで、書いてよいキーを機械で検査します。
+
+```bash
+python3 scripts/check-theme-settings.py                  # 効かないキーが入っていたら赤
+python3 scripts/check-theme-settings.py --against-render # DocC を更新したとき、下の表のずれを見る
+```
+
+正本は Xcode 同梱の DocC-Render（`$(xcrun --find docc)/../../share/docc/render/js/*.js`）で、そこで `getSetting([...])` に渡されているパスがこのファイルから読まれるキーのすべてです。実測した結果:
+
+| キー | 効くか | 備考 |
+|---|---|---|
+| `theme.color.*` / `theme.typography.*` / `theme.borderRadius` | ✅ | CSS 変数へ展開される（上記の制約つき） |
+| `theme.icons.<名前>` / `theme.device-frames.<名前>` | ✅ | 組み込み SVG の差し替え。未使用 |
+| `theme.code.indentationWidth` | ✅ | 未使用（既定 4） |
+| `features.docs.quickNavigation.enable` | ✅ | 使用中 |
+| `features.docs.onThisPageNavigator.disable` | ✅ | **`enable` ではありません**（既定 ON を切るためのキー）。未使用 |
+| `meta.title` | ❌ | render は読むが、モジュール読み込み時に既定値 `"Documentation"` へ束縛され、`theme-settings.json` の取得はそのあと。`<title>` も `og:site_name` も変わりません（#763 で実測） |
+| `features.docs.i18n.enable` | ❌ 単体では | 有効化の条件が `availableLocales.length > 1`。availableLocales は render JSON の `metadata.availableLocales` からしか埋まらず、DocC 本体はこれを出力しません（#763） |
 
 ## Syphon Framework Handling
 
@@ -177,6 +213,8 @@ DocC-Render はこのファイルの `theme.color` を**そのままの階層で
 **描画結果が変わる PR(シェーダ・ライティング・変換・レイアウト・ゴールデン更新・example の見た目)には、before/after の画像を PR 本文に載せる**。レビューで diff から見た目を想像させない。**動きが変わる PR(アニメーション・パーティクル・物理・イージング・orbitControl 等のインタラクション・時間依存シェーダ)には、画像に加えて GIF も載せる** — 時間方向の変化は静止画を何枚並べても判定できない。
 
 リポジトリに画像・GIF をコミットしない(容量を圧迫する)。ゴールデン PNG のように既にコミットされているもの以外は Gyazo へ上げて URL を貼る。ドキュメントの画像も同じ方針で、DocC は [ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)、チュートリアルは [ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)(撮影からアップロード・本文の URL 書き戻しまで `make tutorial-shots` が行う)。
+
+**禁じているのは画像を*コミットする*ことであって、既にコミット済みの生成物(ゴールデン PNG・example の実行結果)を PR 本文から*参照する*ことではない**(#843)。後者は raw URL でそのまま貼ってよく、Gyazo へ上げ直すと同じ絵が追記型のアセットに二重に増えるだけで得るものが無い。
 
 ### CI が検査する(Issue #631)
 
@@ -200,6 +238,12 @@ DocC-Render はこのファイルの `theme.color` を**そのままの階層で
   `<base-sha>` は分岐元の main、`<head-sha>` は PR の先頭コミット。GitHub の
   Files changed でも画像 diff(2-up / swipe / onion skin)が見られるが、
   PR 本文に並べておくとレビューの入口で意図が伝わる。
+
+  この形は上の CI 検査も満たす(#843)。`github.com/shinyaoguri/metaphor/raw/...`
+  と `.../blob/...?raw=true` も同じく画像として通る。**通らないのは
+  他リポジトリの raw URL と、`?raw=` の付かない `blob/` リンク** — 後者は
+  画像ではなくページなので、これを認めると「このファイルを見て」のリンクが
+  全部証跡になってしまう。
 - **ゴールデンにないシーンの見た目変更**: まず「そのシーンをゴールデン化できないか」を
   検討する(証跡と回帰検出網を同時に得られる)。ゴールデン化が不適切な場合は
   Probe でヘッドレスにスクリーンショットを撮る — `METAPHOR_PROBE=1` で起動し

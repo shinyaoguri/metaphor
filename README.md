@@ -119,7 +119,7 @@ final class MySketch: Sketch {
 | [第 9 部 作品にする](docs/tutorial/09-artwork.md) | 静止画・動画・GIF・SVG の書き出し、決定論的な焼き出し、長時間の運用 |
 | [第 10 部 AI と作る](docs/tutorial/10-ai.md) | 観測ループ、`probe()` による状態の申告、MCP、共有セッション、AI へ渡す文脈 |
 
-<!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->です（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md)、英語版は [#548](https://github.com/shinyaoguri/metaphor/issues/548) で後追いします。読み終えたあとの引き先は下の「引くためのドキュメント」と [Examples](#examples) です。
+<!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->です（Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)）。全体の章立ては [docs/tutorial/README.md](docs/tutorial/README.md)、<!-- tutorial-status: ja-translation -->英語版は [#548](https://github.com/shinyaoguri/metaphor/issues/548) で後追いします<!-- /tutorial-status -->。読み終えたあとの引き先は下の「引くためのドキュメント」と [Examples](#examples) です。
 
 ### 引くためのドキュメント
 
@@ -137,11 +137,15 @@ metaphor は、AI エージェントが**実行中のスケッチを観測しな
 |---|---|
 | `snapshot` | 現在フレームの画像（PNG）と内部状態（`frameCount` / `time` / `probe()` 値 / 色・領域統計 / 警告）を返す |
 | `capture_sequence` | 連続フレーム列を採取し、コンタクトシート画像とフレーム別 manifest を返す（動き・リズム・遷移を観測する） |
-| `input` | 実行中のスケッチへマウス・キー入力を送る |
+| `input` | 実行中のスケッチへマウス・キー入力を送る（単独モードのみ） |
+| `params` | スケッチが `@Param` で宣言したパラメータの一覧（型・現在値・レンジ・`choices`）を返す |
+| `set_param` | パラメータ値を**再ビルドなしで**書き換え、反映後の値を返す |
 | `build_status` | 直近の `swift build` の成否とエラーを返す |
 | `api_reference` | metaphor の API ドキュメント（作法ガイド / 全 API / サンプル索引）を返す。新しい API を使う前に参照する |
 
-さらに、人間が `metaphor watch` を起動しておくと、AI の `metaphor mcp` は**同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。
+`params` / `set_param` があるので、AI は**絵を見るだけでなく値を動かして試せます**。「半径を 40〜120 で振って一番良い値を探して」のような指示が、ソースを書き換えずに 1 フレームで反映されます（対象はスケッチが [`@Param`](docs/tutorial/08-connect.md) で宣言した値）。
+
+さらに、人間が `metaphor watch` を起動しておくと、AI の `metaphor mcp` は**同じ実行中スケッチにアタッチ**して観測します（共有セッション）。人間はライブビューア窓で見ながら編集し、AI はファイル編集と `snapshot` で協調できます。共有セッションで使えないのは `input` だけで、`@Param` の値は AI の `set_param` からも再ビルドなしに変えられます（人間の GUI スライダーと同一ストアの対称なクライアントで、ライブビューア窓にも即座に反映されます）。
 
 この観測の仕組み自体は metaphor 本体の機能（**Probe** プラグイン）です。内部状態を AI に渡すには `draw()` 内で `probe("count", n)` のように申告します（例: [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)）。
 
@@ -155,7 +159,7 @@ metaphor は、AI エージェントが**実行中のスケッチを観測しな
 
 ## Examples
 
-[Examples/](Examples/) には、Processing 公式サンプルの Swift / Metal 移植と、metaphor 独自機能のサンプルが 282 本揃っています。各サンプルは独立した SwiftPM パッケージです。
+[Examples/](Examples/) には、Processing 公式サンプルの Swift / Metal 移植と、metaphor 独自機能のサンプルが 286 本揃っています。各サンプルは独立した SwiftPM パッケージです。
 
 ```bash
 cd Examples/Basics/Form/ShapePrimitives
@@ -189,7 +193,7 @@ CLI を使わず、`metaphor` を通常の Swift Package として依存に追�
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.10.0"),
 ]
 ```
 
@@ -253,4 +257,4 @@ metaphor は**個人が単独でメンテナンスしているプロジェクト
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
 
-GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。
+[Examples/](Examples/) に同梱しているフォント（Source Code Pro / Space Mono / Merriweather）はいずれも SIL Open Font License 1.1 です。ライセンス全文は [OFL.txt](OFL.txt)、フォントごとの著作権表示・同梱パスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります。GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文も同じファイルにまとめています。

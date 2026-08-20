@@ -10,18 +10,20 @@ metaphor の体系的チュートリアル（読み物）の設計図です。�
 
 現在の本文:
 
-| 部 | ファイル | 状態 |
-|---|---|---|
-| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 |
-| 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 |
-| 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 |
-| 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 |
-| 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 |
-| 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 |
-| 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 |
-| 第 8 部 外とつなぐ | [`08-connect.md`](08-connect.md) | 公開 |
-| 第 9 部 作品にする | [`09-artwork.md`](09-artwork.md) | 公開 |
-| 第 10 部 AI と作る | [`10-ai.md`](10-ai.md) | 公開 |
+| 部 | ファイル | 状態 | 英語版 |
+|---|---|---|---|
+| 第 1 部 入門 | [`01-getting-started.md`](01-getting-started.md) | 公開 | 未 |
+| 第 2 部 2D を描く | [`02-drawing-2d.md`](02-drawing-2d.md) | 公開 | 未 |
+| 第 3 部 動かす | [`03-motion.md`](03-motion.md) | 公開 | 未 |
+| 第 4 部 入力を受ける | [`04-input.md`](04-input.md) | 公開 | 未 |
+| 第 5 部 3D へ | [`05-3d.md`](05-3d.md) | 公開 | 未 |
+| 第 6 部 GPU を使う | [`06-gpu.md`](06-gpu.md) | 公開 | 未 |
+| 第 7 部 メディア | [`07-media.md`](07-media.md) | 公開 | 未 |
+| 第 8 部 外とつなぐ | [`08-connect.md`](08-connect.md) | 公開 | 未 |
+| 第 9 部 作品にする | [`09-artwork.md`](09-artwork.md) | 公開 | 未 |
+| 第 10 部 AI と作る | [`10-ai.md`](10-ai.md) | 公開 | 未 |
+
+「状態」は日本語版の公開状況（正典は各ファイルの frontmatter）、「英語版」は `en/<同じファイル名>` があるか（`済` / `未`）です。どちらも `--check`（pre-push と CI）が実体と突き合わせます（[#548](https://github.com/shinyaoguri/metaphor/issues/548)）。
 
 ## 対象読者と、他ドキュメントとの役割分担
 
@@ -118,8 +120,9 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 | 6.1 GPU に計算させる | `compute()` フックの位置づけ、MSL カーネルを書いて呼ぶ、CPU との往復の考え方 | `createComputeKernel`, `compute()` | — |
 | 6.2 GPU パーティクル | 100 万粒子を CPU に降ろさず動かす | `createParticleSystem` | `Demos/Performance/DynamicParticlesImmediate` |
 | 6.3 ポストプロセス | 描き終えた絵に効果をかける、組み込みエフェクトの重ねがけ | `addPostEffect`, `BloomEffect` ほか | — |
-| 6.4 カスタムポストエフェクト | 自分の MSL フラグメントシェーダーを効果として差し込む、ホットリロード | `createPostEffect` | — |
-| 6.5 いまできないこと | 描画そのもののシェーダー差し替え（[#291](https://github.com/shinyaoguri/metaphor/issues/291)）は未実装。`Topics/Shaders/` の各例は元の GLSL を CPU で近似したもので、カスタムシェーダーの書き方の参考にはならない | — | — |
+| 6.4 カスタムポストエフェクト | 自分の MSL フラグメントシェーダーを効果として差し込む、保存だけで効く自動ホットリロード | `createPostEffect`, `createPostEffectFromFile` | — |
+| 6.5 図形をシェーダーで塗る | 図形の塗り方そのものを自分の MSL フラグメントシェーダーへ置き換える、組み込み uniform と自前パラメータ、`.metal` ファイルの自動ホットリロード | `loadShader`, `createShader`, `shader`, `resetShader` | `Topics/Shaders/CustomShader2D` |
+| 6.6 いまできないこと | 2D で差し替えられるのはフラグメントだけ（頂点シェーダーの口は無い）。`Topics/Shaders/` の各例は元の GLSL を CPU で近似したもので、カスタムシェーダーの書き方の参考にはならない | — | — |
 
 ### 第 7 部 メディア
 
@@ -162,15 +165,14 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 
 ## 未実装領域の扱い
 
-未実装の機能について**章や節を立てません**。関係する節の末尾に「いまできないこと」として現状と対応 Issue を書きます（例: 2.7 テキストにフォント読み込みの制約、6.5 に描画シェーダーの差し替え）。
+未実装の機能について**章や節を立てません**。関係する節の末尾に「いまできないこと」として現状と対応 Issue を書きます（例: 2.7 テキストに書体の太さ切り替えの制約、6.6 に 2D の頂点シェーダー差し替え）。
 
 | 領域 | Issue | 書く場所 |
 |---|---|---|
-| 2D カスタムシェーダ（`loadShader` / `shader`） | [#291](https://github.com/shinyaoguri/metaphor/issues/291) | 6.5 |
-| タイポグラフィ（フォントファイル / textToPoints / text-on-path） | [#292](https://github.com/shinyaoguri/metaphor/issues/292) | 2.7 |
+| タイポグラフィ（text-on-path / 書体を変えない太さ切り替え） | [#651](https://github.com/shinyaoguri/metaphor/issues/651) / [#816](https://github.com/shinyaoguri/metaphor/issues/816) | 2.7 |
 | モダン 3D（UV / PBR テクスチャ / IBL / glTF） | [#293](https://github.com/shinyaoguri/metaphor/issues/293) | 5.6, 5.8, 5.9 |
 
-実装されたら、その節の「いまできないこと」を本文に昇格させます。
+実装されたら、その節の「いまできないこと」を本文に昇格させます。実例が 2 つあります — 2D カスタムシェーダ（`loadShader` / `shader`、[Epic #291](https://github.com/shinyaoguri/metaphor/issues/291)）は 6.5 の本文へ（[#670](https://github.com/shinyaoguri/metaphor/issues/670)）、フォントファイル読み込みと `textToPoints`（[#649](https://github.com/shinyaoguri/metaphor/issues/649) / [#650](https://github.com/shinyaoguri/metaphor/issues/650)）は 2.7 の本文へ（[#673](https://github.com/shinyaoguri/metaphor/issues/673)）昇格しました。**この昇格は自動では起きません**——機能を入れる PR でチュートリアルまで見るか、この表から消えた領域を後で拾い直します。後者は実際に起きていて、タイポグラフィの 2 本は実装から 2 日ほど遅れて拾い直しました。
 
 ## 執筆規約
 
@@ -285,9 +287,11 @@ make tutorial-shots ARGS="--force"                                    # 全部
 
 本文の書き換えはスクリプトが行います。**台帳を正として、節の構造（節見出しと `<!-- tutorial-snippet: … -->`）から画像行の位置を決めて URL を上書きする**ため、初回の外部化・撮り直し・中断後の再実行がすべて同じ操作になります。本文の URL を手で書き換える必要はありません（書き換えても次回の実行で台帳の値に戻ります）。
 
-鮮度の見方は他の生成物と違い、**画像のバイト比較ではありません**。GPU の出力は環境によってビット単位には一致しないためです。代わりに `images/manifest.json` が「撮影したときのスケッチの指紋」を持ち、`--check`（pre-push と CI）が現在のソースと突き合わせて「コードを変えたのに撮り直していない」だけを検出します。指紋の材料はパッケージ配下の全ファイル（`.build` / `.swiftpm` / `.metaphor` を除く）なので、Swift だけでなく同梱リソースの差し替えも拾います（[#505](https://github.com/shinyaoguri/metaphor/issues/505)）。あわせて「本文が指す URL が台帳と揃っているか」も見ます。台帳の `sha256` は鮮度判定には使いません（上げたバイト列の指紋で、URL の中身が入れ替わっていないことを後から確かめるためのものです）。
+鮮度の見方は他の生成物と違い、**画像のバイト比較ではありません**。CI に GPU が無く、別の GPU・OS で同じバイト列になる保証も無いためです（同じマシン・同じ実装で撮り直したときは静止画も WebP もバイト単位で一致します。[#586](https://github.com/shinyaoguri/metaphor/issues/586) の実測）。代わりに `images/manifest.json` が「撮影したときのスケッチの指紋」を持ち、`--check`（pre-push と CI）が現在のソースと突き合わせて「コードを変えたのに撮り直していない」だけを検出します。指紋の材料はパッケージ配下の全ファイル（`.build` / `.swiftpm` / `.metaphor` を除く）なので、Swift だけでなく同梱リソースの差し替えも拾います（[#505](https://github.com/shinyaoguri/metaphor/issues/505)）。あわせて「本文が指す URL が台帳と揃っているか」も見ます。台帳の `sha256` は鮮度判定には使いません（上げたバイト列の指紋で、URL の中身が入れ替わっていないことを後から確かめるためのものです）。
 
-外部 URL は**死んでも本文の変換もサイトのビルドも成功してしまう**ので、生死は週次の [`asset-health.yml`](../../.github/workflows/asset-health.yml) が見張ります（`scripts/check-tutorial-image-urls.py`）。per-PR の CI には入れません（ネットワークの一時的な不調で PR を止めないため）。
+**この検査が見ていないもの**: 指紋の材料はパッケージ配下だけで、`Package.swift` が path 依存で参照する metaphor 本体（`Sources/`）は入りません。**ライブラリの実装だけが変わって絵が変わっても、`--check` は「変わっていない」と答えます**（[#586](https://github.com/shinyaoguri/metaphor/issues/586)）。埋め合わせとして台帳は撮影時の来歴（`provenance`: 撮った commit と、そのとき `Sources/` に未コミットの変更があったか）を持ち、`--check` は最後に「N 点は撮影後に `Sources/` が変わっている」と要約だけ伝えます。**合否には混ぜません** — 実装が変わっても絵が変わったとは限らず、描画に触るあらゆる PR を画像の撮り直しで止めることになるためです。来歴は撮り直したものから順に入るので、それ以前に撮った画像は「未記録」と数えられます。
+
+外部 URL は**死んでも本文の変換もサイトのビルドも成功してしまう**ので、生死は週次の [`asset-health.yml`](../../.github/workflows/asset-health.yml) が見張ります（`scripts/check-image-urls.py`）。per-PR の CI には入れません（ネットワークの一時的な不調で PR を止めないため）。
 
 外部化のトレードオフとして、**fork や外部コントリビュータは画像を差し替えられません**（アップロードにトークンが要るため、メンテナのアップロード待ちになります）。コードだけの PR は従来どおり出せます。また**オフラインでは本文の画像が出ません**。
 
@@ -309,7 +313,7 @@ make tutorial-shots ARGS="--force"                                    # 全部
 | `frames` | 採取枚数。**上限 64**（Probe 側のクランプ値。超えると設定エラー） |
 | `every` | 採取間隔。`4` なら 60fps 実行の 4 フレームごと＝約 4.3 秒ぶん |
 | `fps` | 書き出すアニメーションのフレームレート（既定 15） |
-| `width` | 幅の上限（既定 720。元より大きくても拡大はしません） |
+| `width` | 幅の上限（既定 720。元より大きくても拡大はしません）。`sheet` では**格子全体**の幅で、1 フレームぶんではありません |
 | `quality` | 省略すると `img2webp` に lossy / lossless を選ばせます。明示すると lossy 固定 |
 
 `kind` を指定した節でも**代表静止画は作られます**（連続キャプチャの真ん中のフレーム）。本文の頭に 1 枚置き、その下に動きを貼る形になります。台帳では静止画が `url`、動きの証跡が `motion.url` で、本文の画像行もその順に並びます。
@@ -444,11 +448,39 @@ Examples の本数やバージョン番号のような、増減する数値を�
 
 `LEARNING_PATH.md` を残す理由: 読者と目的が違うためです。チュートリアルは日本語ファーストで**代表コードを通しで読む**もの、`LEARNING_PATH.md` は英語で **Examples 全体をどの順に開くか**の地図です。統合すると Examples 側の入口が消え、英語の資産も失われます。重複する入門部分（"First shapes" など）はチュートリアルへの導線に置き換えます。
 
-なお `LEARNING_PATH.md` には GPU shader 節が実態と食い違う問題が別にあります（[#489](https://github.com/shinyaoguri/metaphor/issues/489)）。チュートリアル 6.5 が同じ誤解を引き継がないよう、そちらを先に解消します。
+なお `LEARNING_PATH.md` の GPU shader 節は、実態と食い違う記述を 2 度直しています（[#489](https://github.com/shinyaoguri/metaphor/issues/489) で「`Topics/Shaders/` は CPU 近似」、[#670](https://github.com/shinyaoguri/metaphor/issues/670) で「2D カスタムシェーダは実装済み」）。チュートリアル 6.5 / 6.6 と同じことを書く場所なので、片方だけ直さないようにします。
 
 ## 英語版
 
-日本語ファーストで書き、英語は後追いです（[docs/README.md](../README.md) の「英語化の対象境界」と、ロードマップの「docs 翻訳は定型作業として委譲する」方針に従います）。本文が溜まってから `docs/tutorial/en/` として起票します。
+日本語ファーストで書き、英語は後追いです（[docs/README.md](../README.md) の「英語化の対象境界」と、ロードマップの「docs 翻訳は定型作業として委譲する」方針に従います）。置き場は `docs/tutorial/en/<日本語版と同じファイル名>` で、翻訳の進行は [#548](https://github.com/shinyaoguri/metaphor/issues/548) が追います。
+
+**訳すのは散文だけです。** コードも画像も日本語版と同じ 1 つの正典を共有し、生成物として両言語へ書き込まれます。
+
+| 要素 | 誰が書くか |
+|---|---|
+| 節見出し・本文・alt | 訳者（手で書く） |
+| ` ```swift ` ブロックと実行方法の 1 行 | `make tutorial-snippets`（正典は `Examples/Tutorial/**`） |
+| 画像行の URL | `make tutorial-shots`（正典は `images/manifest.json`） |
+
+**画像は撮り直しません。** [ADR-0010](../adr/0010-tutorial-images-via-gyazo.md) 以降、画像は Gyazo の絶対 URL なので ja / en がまったく同じ文字列を書けます（相対パスだった頃に必要だった `images/…` → `../images/…` の書き換えも要りません）。
+
+### en 側が満たす構造
+
+書き換えも検査も**節の構造に乗っている**ため、`en/` 側も次を守ります。日本語版と同じ形なので、素直に訳せば自然に満たせます。守られていないと `--check` がエラーで教えます。
+
+- frontmatter は日本語版と同じキー（`title` / `part` / `slug` / `description` / `draft`）。`part` と `slug` は日本語版に合わせる（並び順と URL は言語で変えない）
+- 節は `## ` 見出しで始める
+- その節に `<!-- tutorial-snippet: <ref> -->`（日本語版と同じ `<ref>`）を置く。**どの節の画像か**を決めるキーになる。`<ref>` の並びは日本語版と**順序込みで**一致させる（節を落とす・増やす・入れ替えるのは不可。`make tutorial-snippets` が同名の日本語版と突き合わせます）
+- 画像は**独立した 1 行**で書く（文中に混ぜない）。1 節に最大 2 本で、**静止画 → 動きの証跡**の順
+- URL は手で書かない。空でも壊れていても、`make tutorial-shots` が台帳の値で上書きする（alt はそのまま残るので、alt は英語で書く）
+
+### 訳が入ったときにすること
+
+1. `make tutorial-snippets` でコードを埋め、`make tutorial-shots ARGS="--check"` で画像行を確かめる（撮り直しは要りません）。このとき `<ref>` の並びが日本語版と順序込みで一致していることも同時に見ます（[#956](https://github.com/shinyaoguri/metaphor/issues/956)）
+2. 上の章立て表の「英語版」の欄を `済` にする（`make tutorial-status` の `--check` が `en/` の実体と突き合わせるので、忘れると CI が落ちます）
+3. `make tutorial-status` を流し直す。入口ドキュメントの「訳がどこまで入っているか」は `<!-- tutorial-status: {ja,en}-translation -->` の**生成物**なので、手で書き換えません（[#956](https://github.com/shinyaoguri/metaphor/issues/956)。全部そろうと追跡 Issue への言及ごと消えます）
+
+website 側の受け入れは済んでいます（[#487](https://github.com/shinyaoguri/metaphor/issues/487)）。英語版が無い部は日本語の本文をそのまま出し、記事の頭に「翻訳準備中」の告知が出ます（`website/src/lib/tutorial.ts` の `translated`）。訳を置くだけで、その部から順に英語へ切り替わります。
 
 ## 関連 Issue
 

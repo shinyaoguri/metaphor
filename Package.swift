@@ -34,8 +34,8 @@ let syphonTarget: Target = useLocalSyphon
     ? .binaryTarget(name: "Syphon", path: localFrameworkPath)
     : .binaryTarget(
         name: "Syphon",
-        url: "https://github.com/shinyaoguri/metaphor/releases/download/v0.9.0/Syphon.xcframework.zip",
-        checksum: "aa90fa9f6873d05301389653f1e8b82cbc41657cb68e4d9159f858193985c48c"
+        url: "https://github.com/shinyaoguri/metaphor/releases/download/v0.10.0/Syphon.xcframework.zip",
+        checksum: "fb0a30178dfc31dcc4236750b12cb0debf57c4455c2fe4d806c2e8a22bddc0f2"
     )
 
 let package = Package(
@@ -64,11 +64,18 @@ let package = Package(
     targets: [
         syphonTarget,
 
+        // Tier 0: 依存ゼロの診断ログ（Issue #805）。Core 非依存の Tier 1 からも
+        // 同じ `metaphorWarning` / `metaphorAlert` / `metaphorDiagnostic` を使えるよう、
+        // Core より下に置く。製品（product）には出さず、`MetaphorCore` が
+        // `@_exported import` で再輸出する（利用者から見える名前は従来どおり）。
+        .target(name: "MetaphorLog", swiftSettings: strictConcurrency),
+
         // Core: rendering engine, drawing, sketch protocol, shaders, and all tightly-coupled subsystems.
         // NOTE: Core does NOT depend on Syphon. Frame output (Syphon etc.) lives in separate targets
         // (e.g. MetaphorSyphon) and registers itself via MetaphorOutputRegistry at load time. See ADR.
         .target(
             name: "MetaphorCore",
+            dependencies: ["MetaphorLog"],
             resources: [
                 .copy("Shaders/Metal"),
                 .copy("Shaders/ShaderSources"),
@@ -92,11 +99,12 @@ let package = Package(
 
         // Tier 1 modules: zero dependency on MetaphorCore.
         // strict concurrency 適用済み（Issue #328 段階 2）。Core / Tier 2 は段階 3。
-        .target(name: "MetaphorAudio", swiftSettings: strictConcurrency),
-        .target(name: "MetaphorNetwork", swiftSettings: strictConcurrency),
-        .target(name: "MetaphorPhysics", swiftSettings: strictConcurrency),
-        .target(name: "MetaphorML", swiftSettings: strictConcurrency),
-        .target(name: "MetaphorVideo", swiftSettings: strictConcurrency),
+        // MetaphorLog は依存ゼロの Tier 0 なので、Tier 1 の「Core 非依存」は保たれる。
+        .target(name: "MetaphorAudio", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorNetwork", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorPhysics", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorML", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(name: "MetaphorVideo", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
 
         // Tier 2 modules: depend on MetaphorCore
         .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
@@ -137,8 +145,10 @@ let package = Package(
         .testTarget(
             name: "MetaphorNetworkTests", dependencies: ["MetaphorNetwork"],
             swiftSettings: strictConcurrency),
+        // MetaphorLog は「Core 非依存の Tier 1 からも診断ログを使える」ことの
+        // 検証（LogVisibilityTests）のために明示的に依存させる（Issue #805）。
         .testTarget(
-            name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics"],
+            name: "MetaphorPhysicsTests", dependencies: ["MetaphorPhysics", "MetaphorLog"],
             swiftSettings: strictConcurrency),
         .testTarget(
             name: "MetaphorMLTests", dependencies: ["MetaphorML"],
@@ -166,7 +176,7 @@ let package = Package(
         .testTarget(
             name: "metaphorTests",
             dependencies: ["metaphor", "MetaphorTestSupport"],
-            exclude: ["Golden"],
+            exclude: ["Golden", "Fixtures"],
             swiftSettings: strictConcurrency
         ),
     ]

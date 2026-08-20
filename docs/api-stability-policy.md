@@ -48,7 +48,7 @@ Still explicitly **not** public API:
   uses `@_spi` today**, and adding it means recording the reason here.
 - `MetaphorTestSupport` — a target, not a library product, so no package can
   depend on it.
-- `Examples/` (282 standalone packages), the DocC catalog, and the generated
+- `Examples/` (286 standalone packages), the DocC catalog, and the generated
   files (`llms.txt`, `llms-sketch.txt`, `docs/ai/examples-index.*`,
   `Sources/MetaphorCore/Shaders/ShaderSources/*.txt`). `llms.txt` mirrors the
   public API surface but is a derived artifact and carries no separate promise.

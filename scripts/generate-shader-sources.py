@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""Shaders/Metal/*.metal から Shaders/ShaderSources/*.txt を生成する。
+"""Shaders/Metal/ から 2 系統の生成物を作る。
 
-正典は `.metal`（プリコンパイル用）。`.txt` はランタイムコンパイル /
-ホットリロード用の**生成物**で、手で編集しないこと（llms.txt と同じ運用）。
+正典は `.metal` / `.h`。生成物は手で編集しないこと（llms.txt と同じ運用）。
+
+1. `Shaders/ShaderSources/*.txt` — ランタイムコンパイル / ホットリロード用。
+2. `Shaders/BuiltinShaders+Generated.swift` — ユーザーのカスタムシェーダーへ配る
+   MSL 前文（`BuiltinShaders.canvas2DStructs` / `canvas3DStructs` /
+   `canvas3DLightingFn` / `PostProcessShaders.commonStructs` の実体）。以前は Swift の
+   文字列リテラルとして手書きされており、`.metal` / `.h` と二重管理になっていた
+   （#707 / #714）。
 
 生成規則:
 - `Metaphor<Name>.metal` → `<name>.txt`（先頭 1 文字を小文字化。連続大文字の
@@ -11,6 +17,8 @@
   （ランタイムコンパイルはヘッダを解決できないため）。同一ヘッダは 1 回のみ。
 - ヘッダのインクルードガード（#ifndef/#define/#endif）は除去する。
 - `#include <metal_stdlib>` と `using namespace metal;` は最初の 1 回だけ出力する。
+- 前文（Swift）は `SWIFT_PRELUDES` の 1 ヘッダから展開する。stdlib と
+  `using namespace metal;` は**出力しない**（利用者が自分で書く前提）。
 
 生成は決定的（入力が同じなら出力はバイト単位で同じ）。
 `--check` で陳腐化検出（差分があれば exit 1）。
@@ -24,6 +32,48 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 METAL_DIR = REPO_ROOT / "Sources/MetaphorCore/Shaders/Metal"
 TXT_DIR = REPO_ROOT / "Sources/MetaphorCore/Shaders/ShaderSources"
+SWIFT_PRELUDE_PATH = REPO_ROOT / "Sources/MetaphorCore/Shaders/BuiltinShaders+Generated.swift"
+
+# Swift 定数名 → (ルートヘッダ, 展開済みとして扱うヘッダ, ガードマクロ, 由来の説明)
+#
+# ルートは**必ず 1 本**にする。`expand()` はルート自身を「展開済み」に登録しない
+# ため、推移的に include されるヘッダ（例: MetaphorLighting.h → MetaphorPBR.h）を
+# 一緒に並べると二重展開になり、MSL が二重定義でコンパイル不能になる。
+#
+# ガードマクロは前文が**二重に前置されても壊れない**ようにするためのもの（#713 / #718）。
+# `createMaterial()` / `createPostEffect()` が前文を必ず足すようになった一方、以前の
+# 作法どおり自分で `BuiltinShaders.canvas3DStructs` や
+# `PostProcessShaders.commonStructs` を前置しているソースも動き続ける必要がある。
+SWIFT_PRELUDES = [
+    (
+        "canvas2DStructs",
+        "MetaphorCanvas2DTypes.h",
+        (),
+        "METAPHOR_PRELUDE_CANVAS2D_STRUCTS",
+        "MetaphorCanvas2DTypes.h",
+    ),
+    (
+        "canvas3DStructs",
+        "MetaphorCanvas3DTypes.h",
+        (),
+        "METAPHOR_PRELUDE_CANVAS3D_STRUCTS",
+        "MetaphorCanvas3DTypes.h",
+    ),
+    (
+        "canvas3DLightingFn",
+        "MetaphorLighting.h",
+        ("MetaphorCanvas3DTypes.h",),  # 構造体は canvas3DStructs 側が配る
+        "METAPHOR_PRELUDE_CANVAS3D_LIGHTING",
+        "MetaphorLighting.h（MetaphorPBR.h / MetaphorToneMapping.h を推移的に含む）",
+    ),
+    (
+        "postProcessStructs",
+        "MetaphorPostProcessTypes.h",
+        (),
+        "METAPHOR_PRELUDE_POSTPROCESS_STRUCTS",
+        "MetaphorPostProcessTypes.h",
+    ),
+]
 
 LOCAL_INCLUDE_RE = re.compile(r'^\s*#include\s+"([^"]+)"\s*$')
 STDLIB_INCLUDE_RE = re.compile(r'^\s*#include\s+<metal_stdlib>\s*$')
@@ -102,10 +152,77 @@ def generate(metal_path: Path) -> str:
     return text
 
 
+def generate_prelude(root: str, preincluded: tuple, guard: str) -> str:
+    """`.h` 1 本を展開して、カスタムシェーダ前文の本文を返す。
+
+    `generate()` は通さない（あちらは stdlib が 1 度も出なければ先頭に補うので、
+    前文の頭に `#include <metal_stdlib>` が生えてしまう）。ここでは stdlib と
+    `using namespace metal;` を「出力済み」と種蒔きして、どちらも落とす。
+
+    出力はインクルードガードで包む。`createMaterial()` / `createPostEffect()` は前文を
+    必ず前置するので、以前の作法どおり自分でも前置しているソースでは前文が 2 回
+    現れる。ガードが無いと MSL が構造体の二重定義で落ちる（#713 / #718）。
+    """
+    path = METAL_DIR / root
+    if not path.is_file():
+        sys.exit(f"error: missing prelude header {root}")
+    state = {
+        "included": set(preincluded),
+        "stdlib_emitted": True,
+        "using_emitted": True,
+    }
+    body = "\n".join(expand(path, state)).strip("\n")
+    return f"#ifndef {guard}\n#define {guard}\n\n{body}\n\n#endif"
+
+
+SWIFT_FILE_HEADER = '''\
+// このファイルは生成物です。手で編集しないでください。
+//
+// 生成元: Sources/MetaphorCore/Shaders/Metal/*.h
+// 再生成: python3 scripts/generate-shader-sources.py
+//
+// 公開 API（`BuiltinShaders.canvas3DStructs` / `PostProcessShaders.commonStructs`
+// など）とその doc コメントは `BuiltinShaders.swift` / `PostProcessShaders.swift`
+// 側にあります。ここが持つのは中身だけです。
+
+/// ``BuiltinShaders`` / ``PostProcessShaders`` が公開する MSL 前文の実体。
+///
+/// 組み込みシェーダーと同じ `Shaders/Metal/*.h` から生成されるので、ライティングの
+/// 実装や構造体のレイアウトを直せばカスタムシェーダーへ配られる前文も一緒に
+/// 動きます（#707 / #718）。
+///
+/// 各定数は `#ifndef` ガードで包まれています。前文は `createMaterial()` /
+/// `createPostEffect()` が必ず前置するので、以前の作法どおり自分でも前置している
+/// ソースでは前文が 2 回現れます。ガードが 2 回目を空にします（#713 / #718）。
+///
+/// 定数そのものは `#include <metal_stdlib>` と `using namespace metal;` を持ちません
+/// （それらを足した完全な前文が ``BuiltinShaders/canvas3DPreamble`` や
+/// ``PostProcessShaders/postProcessPreamble``）。
+enum BuiltinShadersGenerated {
+'''
+
+
+def generate_swift_preludes() -> str:
+    parts = [SWIFT_FILE_HEADER]
+    for name, root, preincluded, guard, origin in SWIFT_PRELUDES:
+        payload = generate_prelude(root, preincluded, guard)
+        # raw string リテラルを閉じてしまう並びが入ると、生成された Swift が
+        # 静かに壊れる（今の `.h` には無いが、将来の追記で踏みうる）。
+        for forbidden in ('"""#', '\\#'):
+            if forbidden in payload:
+                sys.exit(f"error: {root}: prelude must not contain {forbidden!r}")
+        parts.append(f"\n    /// 生成元: {origin}\n")
+        # payload と閉じデリミタはどちらも 0 桁に置く。Swift は閉じデリミタの
+        # インデント量を全行から剥がすので、字下げするとインデントの浅い行で落ちる。
+        parts.append(f'    static let {name} = #"""\n{payload}\n"""#\n')
+    parts.append("}\n")
+    return "".join(parts)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true",
-                        help="生成せず、既存の .txt が最新かを検証する（差分で exit 1）")
+                        help="生成せず、既存の生成物が最新かを検証する（差分で exit 1）")
     args = parser.parse_args()
 
     metal_files = sorted(METAL_DIR.glob("Metaphor*.metal"))
@@ -124,15 +241,27 @@ def main() -> int:
             txt_path.write_text(generated, encoding="utf-8")
             print(f"generated {txt_path.relative_to(REPO_ROOT)}")
 
+    swift_generated = generate_swift_preludes()
+    swift_current = (SWIFT_PRELUDE_PATH.read_text(encoding="utf-8")
+                     if SWIFT_PRELUDE_PATH.is_file() else None)
+    if args.check:
+        if swift_current != swift_generated:
+            stale.append(f"{SWIFT_PRELUDE_PATH.relative_to(REPO_ROOT)} (from Metal/*.h)")
+    elif swift_current != swift_generated:
+        SWIFT_PRELUDE_PATH.write_text(swift_generated, encoding="utf-8")
+        print(f"generated {SWIFT_PRELUDE_PATH.relative_to(REPO_ROOT)}")
+
     if args.check and stale:
-        print("error: shader sources are stale. Run: python3 scripts/generate-shader-sources.py",
+        print("error: generated shader sources are stale. "
+              "Run: python3 scripts/generate-shader-sources.py",
               file=sys.stderr)
         for s in stale:
             print(f"  {s}", file=sys.stderr)
         return 1
 
     if args.check:
-        print(f"shader sources up to date ({len(metal_files)} pairs)")
+        print(f"shader sources up to date ({len(metal_files)} pairs "
+              f"+ {len(SWIFT_PRELUDES)} Swift preludes)")
     return 0
 
 

@@ -18,9 +18,11 @@ Run from the repository root:
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "generate-example-shots.py"
@@ -189,7 +191,7 @@ class TestInputScript(ExampleShotsTestCase):
         shots = {
             PATH: {
                 "origin": gen.ORIGIN_CAPTURED,
-                "sourceHash": gen.source_hash(package),
+                "sourceHash": gen.source_fingerprint(PATH),
                 "width": 640,
                 "height": 360,
             }
@@ -221,12 +223,12 @@ class TestManifest(ExampleShotsTestCase):
         self.assertEqual(gen.adopted([], recorded), {})
 
     def test_a_captured_entry_is_left_alone(self) -> None:
-        package = self.package()
+        self.package()
         self.image()
         recorded = {
             PATH: {
                 "origin": gen.ORIGIN_CAPTURED,
-                "sourceHash": gen.source_hash(package),
+                "sourceHash": gen.source_fingerprint(PATH),
                 "width": 640,
                 "height": 360,
             }
@@ -237,31 +239,40 @@ class TestManifest(ExampleShotsTestCase):
 class TestStaleness(ExampleShotsTestCase):
     """鮮度判定。原典由来は対象外で、撮ったものだけがソース変更で古くなる。"""
 
-    def captured(self, package: Path) -> dict:
+    def captured(self) -> dict:
         return {
             PATH: {
                 "origin": gen.ORIGIN_CAPTURED,
-                "sourceHash": gen.source_hash(package),
+                "sourceHash": gen.source_fingerprint(PATH),
                 "width": 640,
                 "height": 360,
             }
         }
 
     def test_an_unchanged_capture_is_fresh(self) -> None:
-        package = self.package()
+        self.package()
         self.image()
-        self.assertEqual(gen.stale_entries([self.entry()], self.captured(package)), [])
+        self.assertEqual(gen.stale_entries([self.entry()], self.captured()), [])
 
     def test_changing_the_sketch_makes_it_stale(self) -> None:
         package = self.package()
         self.image()
-        shots = self.captured(package)
+        shots = self.captured()
         (package / "Sketch/App.swift").write_text("func draw() { circle(0, 0, 10) }\n")
         self.assertEqual(len(gen.stale_entries([self.entry()], shots)), 1)
 
+    def test_replacing_the_image_alone_is_not_stale(self) -> None:
+        # 指紋は入力の指紋。実行結果画像は出力なので、差し替えても
+        # 「ソースが変わった」にはならない（#820）。
+        self.package()
+        image = self.image()
+        shots = self.captured()
+        image.write_bytes(image.read_bytes() + b"\x00")
+        self.assertEqual(gen.stale_entries([self.entry()], shots), [])
+
     def test_a_missing_image_makes_it_stale(self) -> None:
-        package = self.package()
-        shots = self.captured(package)
+        self.package()
+        shots = self.captured()
         self.assertEqual(len(gen.stale_entries([self.entry()], shots)), 1)
 
     def test_a_processing_image_never_goes_stale(self) -> None:
@@ -275,7 +286,7 @@ class TestStaleness(ExampleShotsTestCase):
     def test_a_skipped_example_does_not_go_stale(self) -> None:
         package = self.package()
         self.image()
-        shots = self.captured(package)
+        shots = self.captured()
         (package / gen.NO_CAPTURE_NAME).write_text("実行環境に依存する\n")
         (package / "Sketch/App.swift").write_text("func draw() { circle(0, 0, 10) }\n")
         self.assertEqual(gen.stale_entries([self.entry()], shots), [])
@@ -303,6 +314,52 @@ class TestSettle(ExampleShotsTestCase):
         self.write_config({"settings": {PATH: {"settle": "しばらく"}}})
         with self.assertRaises(gen.ShotError):
             gen.settle_for(PATH, gen.load_config())
+
+
+class TestReleaseBuild(ExampleShotsTestCase):
+    """release ビルドの申告（#727）。
+
+    画面に fps を出す example は、debug で撮ると「利用者が見ない数字」を焼く。
+    どの example を release で撮るかは手書き設定に持たせる。
+    """
+
+    def write_config(self, payload: dict) -> None:
+        gen.CONFIG.write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_the_default_build_is_debug(self) -> None:
+        self.assertFalse(gen.release_for(PATH, gen.load_config()))
+
+    def test_a_config_entry_asks_for_release(self) -> None:
+        self.write_config({"settings": {PATH: {"release": True}}})
+        self.assertTrue(gen.release_for(PATH, gen.load_config()))
+
+    def test_a_non_boolean_release_is_an_error(self) -> None:
+        # "yes" や 1 を真と読むと、申告のつもりが黙って debug のままになる。
+        self.write_config({"settings": {PATH: {"release": "yes"}}})
+        with self.assertRaises(gen.ShotError):
+            gen.release_for(PATH, gen.load_config())
+
+    def test_the_flag_reaches_both_build_and_run(self) -> None:
+        # ビルドだけ release にしても、走らせるのが debug なら数字は変わらない。
+        self.assertEqual(gen.swift_command("build", True), ["swift", "build", "-c", "release"])
+        self.assertEqual(gen.swift_command("run", True), ["swift", "run", "-c", "release"])
+        self.assertEqual(gen.swift_command("build", False), ["swift", "build"])
+        self.assertEqual(gen.swift_command("run", False), ["swift", "run"])
+
+    def test_capture_builds_with_the_declared_configuration(self) -> None:
+        # 申告を読めても capture() が渡さなければ意味がない。ビルドを失敗させて
+        # 起動まで進ませず、swift build に渡った引数だけを見る。
+        self.package()
+        recorded: list[list[str]] = []
+
+        def fake_run(command, **_kwargs):
+            recorded.append(list(command))
+            return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+
+        with unittest.mock.patch.object(gen.subprocess, "run", fake_run):
+            with self.assertRaises(gen.ShotError):
+                gen.capture(PATH, self.root / "shot.png", 0.0, release=True)
+        self.assertEqual(recorded[0], ["swift", "build", "-c", "release"])
 
 
 if __name__ == "__main__":

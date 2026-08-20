@@ -10,7 +10,7 @@ draft: false
 
 ここまでのスケッチでも GPU は動いていました。`circle()` や `box()` を呼ぶたびに、metaphor が図形を GPU へ送って描かせていたからです。ただし**何を描くかを決めているのは、いつも CPU 側の Swift のコード**でした。
 
-この部では、その分担を動かします。やることは 3 つです。**計算そのものを GPU にさせる**（`compute()`）、**データを CPU に降ろさずに動かし続ける**（GPU パーティクル）、**描き終えた絵にまとめて効果をかける**（ポストプロセス）。どれも「1 つずつ Swift で処理していたら間に合わない量」を扱うための道具です。
+この部では、その分担を動かします。やることは 4 つです。**計算そのものを GPU にさせる**（`compute()`）、**データを CPU に降ろさずに動かし続ける**（GPU パーティクル）、**描き終えた絵にまとめて効果をかける**（ポストプロセス）、**図形をどう塗るかを自分のシェーダーで決める**（2D カスタムシェーダー）。前の 3 つは「1 つずつ Swift で処理していたら間に合わない量」を扱うための道具で、最後の 1 つは「Swift の側では書けない絵」を図形に流し込むための口です。
 
 新しく覚える言語が 1 つあります。**MSL（Metal Shading Language）**です。C++ に似た小さな言語で、GPU 上で動く関数を書きます。この部で書くのは 20 行程度のものだけです。
 
@@ -367,7 +367,7 @@ final class Particles: Sketch {
 
 ## 6.3 ポストプロセス
 
-![黄色い点の輪と中央の白い点に Bloom と Vignette がかかり、光がにじんで四隅が落ちている](https://i.gyazo.com/dda4dd3bbf40a95bc833a885767807d0.png)
+![黄色い点の輪と中央の白い点に Bloom と Vignette がかかり、光がにじんで四隅が落ちている](https://i.gyazo.com/d0e134c2855732fac4734defc7b02bce.png)
 
 ![同じ絵に、効果無し → Bloom → Bloom + Vignette → Grayscale の 4 通りを順にかけていく](https://i.gyazo.com/5c4727eeab63d554e4b093b5d3743765.webp)
 
@@ -391,6 +391,8 @@ metaphor は、まずオフスクリーンのテクスチャに 1 フレーム�
 | `GrayscaleEffect` / `InvertEffect` | 灰色化 / 反転 | — |
 
 `BloomEffect` の `threshold` は「どれくらい明るい画素をにじませるか」です。このスケッチでは 0.45 にしてあるので、明るい点だけがにじみ、暗い点はそのまま残ります。
+
+`VignetteEffect` の `intensity` は **0.0 で無効、1.0 で最も強い**という素直な強度です。このスケッチは 0.4 にしてあるので、四隅がうっすら落ちる程度に留まります。
 
 ### 並べる、入れ替える
 
@@ -434,7 +436,7 @@ final class PostProcess: Sketch {
         case 2:
             setPostEffects([
                 BloomEffect(intensity: 2.2, threshold: 0.45),
-                VignetteEffect(intensity: 1.0, smoothness: 0.35),
+                VignetteEffect(intensity: 0.4, smoothness: 0.35),
             ])
         default:
             setPostEffects([GrayscaleEffect()])
@@ -498,16 +500,16 @@ final class PostProcess: Sketch {
 
 ## 6.4 カスタムポストエフェクト
 
-![自作シェーダーで波打たせた市松模様の上に、オレンジ色の円がひとつ乗っている](https://i.gyazo.com/3ddb574bfde49d497bebfa7db26be179.png)
+![自作シェーダーで波打たせた市松模様の上に、オレンジ色の円がひとつ乗っている](https://i.gyazo.com/e042c95161502b815cc24aa8db5d93d5.png)
 
 組み込みのエフェクトで足りないときは、フラグメントシェーダーを自分で書いて同じ列に並べられます。ここでは画面中心からの距離に応じてサンプリング位置をずらし、格子を波打たせています。
 
-### 共通の構造体に自作の関数を足す
+### フラグメント関数を書く
 
-`createPostEffect(name:source:fragmentFunction:)` に MSL のソースを渡します。ソースの先頭には `PostProcessShaders.commonStructs` を置きます。これに `PPVertexOut`（頂点シェーダーからの入力）と `PostProcessParams`（組み込みのパラメータ）の定義が入っています。
+`createPostEffect(name:source:fragmentFunction:)` に MSL のソースを渡します。ソースに書くのは**フラグメント関数だけ**です。前文（Metal 標準ライブラリの取り込みと、`PPVertexOut`（頂点シェーダーからの入力）・`PostProcessParams`（組み込みのパラメータ）の定義）は metaphor が**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。
 
 ```swift
-let source = PostProcessShaders.commonStructs + """
+let source = """
 fragment float4 ripple(
     PPVertexOut in [[stage_in]],                       // in.texCoord が 0〜1 の画面座標
     texture2d<float> tex [[texture(0)]],               // 直前までに描き上がった絵
@@ -541,12 +543,25 @@ effect.setParameters(RippleParams(frequency: 42, phase: Float(frameCount) * 0.08
 
 ### 書き換えながら試す
 
-シェーダーを書くときは、値を少し変えては絵を見る往復になります。手段は 2 つあります。
+シェーダーを書くときは、値を少し変えては絵を見る往復になります。**MSL を別ファイルに置いて `createPostEffectFromFile(name:path:fragmentFunction:)` で読む**と、この往復からビルドが消えます。
 
-- `metaphor watch` で走らせる（保存のたびに再ビルドされ、ウィンドウは開いたまま）
-- MSL を別ファイルに置き、`reloadShaderFromFile(key:path:)` で読み直す。キーは `createPostEffect(name:)` の名前から決まり、`"user.posteffect.<name>"` になります
+```swift
+effect = try createPostEffectFromFile(
+    name: "ripple", path: "Sources/Ripple/ripple.metal", fragmentFunction: "ripple")
+```
 
-後者は再ビルドが要らない代わりに、読み直す操作を自分で呼ぶ必要があります（キー入力に割り当てるなど）。
+読み込んだ `.metal` ファイルは自動で監視されます。**保存するとその場で再コンパイルされ、絵が変わります**——ウィンドウは開いたまま、Swift の再ビルドもありません。同じことが 3D の `createMaterialFromFile()` と、次の 6.5 で扱う 2D の `loadShader()` でも起きます。
+
+書きかけの MSL はコンパイルに落ちますが、そのとき画面は**直前の動くシェーダーのまま**で、エラーだけがコンソールに出ます。直して保存すればそのまま戻ります。
+
+| | 何が要るか |
+|---|---|
+| ファイルを保存する | 何も要らない（自動リロード） |
+| Swift のコードを変えた | `metaphor watch`（保存のたびに再ビルド、ウィンドウは開いたまま） |
+
+自動リロードが働くのは開発中のビルド（`swift run`）だけで、`swift build -c release` で作った配布用のビルドではファイル監視は起きません。切り替えたいときは `SketchConfig(shaderHotReload:)` か、環境変数 `METAPHOR_SHADER_HOT_RELOAD`（`1` で有効・`0` で無効）を使います。
+
+ソース文字列から作った `createPostEffect(name:source:)` にはファイルがないので、この自動リロードは働きません。任意のタイミングで自分で読み直したいときは `reloadShaderFromFile(key:path:)` が残っています（キーは `"user.posteffect.<name>"`）。
 
 <!-- tutorial-snippet: 06-GPU/04-CustomPostEffect -->
 ```swift
@@ -567,9 +582,9 @@ final class Ripple: Sketch {
 
     var effect: CustomPostEffect?
 
-    // 共通の構造体定義（PPVertexOut / PostProcessParams）に自作の関数を足す
-    let source = PostProcessShaders.commonStructs + """
-
+    // 前文（PPVertexOut / PostProcessParams の定義）は metaphor が足すので、
+    // 書くのは自作の構造体とフラグメント関数だけ
+    let source = """
     struct RippleParams {
         float frequency;
         float phase;
@@ -645,45 +660,244 @@ final class Ripple: Sketch {
 ### ふりかえり
 
 - [ ] 自作のフラグメントシェーダーを組み込みエフェクトと同じ列に並べられると分かった
-- [ ] ソースの先頭に `PostProcessShaders.commonStructs` が要ると分かった
+- [ ] MSL に書くのはフラグメント関数だけで、前文は metaphor が足すと分かった
 - [ ] 入力の絵が `texture(0)`、組み込みパラメータが `buffer(0)` で来ると分かった
 - [ ] 自前の値は `setParameters()` で `buffer(1)` へ渡すと分かった
-- [ ] シェーダーを書き換えながら試す手段が 2 つあると分かった
+- [ ] MSL を別ファイルに置けば、保存するだけでビルド無しに反映されると分かった
+- [ ] 壊れたシェーダーを保存しても、直前のシェーダーのまま描き続けると分かった
 
 ### もっと詳しく
 
 - [`createPostEffect(name:source:fragmentFunction:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createposteffect%28name:source:fragmentfunction:%29), [`CustomPostEffect`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/customposteffect), [`PostProcessShaders`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/postprocessshaders)
-- [`reloadShaderFromFile(key:path:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/reloadshaderfromfile%28key:path:%29)
+- [`createPostEffectFromFile(name:path:fragmentFunction:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createposteffectfromfile%28name:path:fragmentfunction:%29), [`reloadShaderFromFile(key:path:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/reloadshaderfromfile%28key:path:%29)
 
-## 6.5 いまできないこと
+## 6.5 図形をシェーダーで塗る
 
-GPU まわりには、まだ口が開いていない場所があります。作品を組み立て始める前に、境界を知っておくと遠回りをせずに済みます。
+![橙と紺の同心円の縞で塗られた画面。中央の円だけ縞が細かく明るく、下の帯に「矩形と円はシェーダー、この帯と文字は resetShader() のあと」と出ている](https://i.gyazo.com/06a73f6ddc5efae52b6f9cb7e549a104.png)
 
-### 2D の描画シェーダーは差し替えられない
+同心円の縞を GPU で計算し、その縞で矩形と円を塗っています。図形の側で呼んでいるのは `rect()` と `circle()` だけで、**どの画素を何色にするかを決めているのは自分で書いたフラグメントシェーダー**です。
 
-Processing / p5.js の `loadShader()` / `shader()` にあたるもの、つまり**図形そのものをどう塗るかを自分のシェーダーで置き換える**手段は、2D にはまだありません（[#291](https://github.com/shinyaoguri/metaphor/issues/291)）。
+6.3 / 6.4 のポストプロセスが「描き終えた絵にかける」ものだったのに対し、こちらは**描いている最中の塗り方**を置き換えます。Processing / p5.js の `loadShader()` / `shader()` にあたる口です。`fill()` に色ではなく関数を渡すようなもの、と考えると近いです。
 
-いまできるのは次の 2 つです。
+### 適用して、描いて、解除する
 
-| やりたいこと | いまの手段 |
+型は 3 つの呼び出しです。
+
+```swift
+let paint = try createShader(source: source, fragment: "paint")
+
+shader(paint)              // ここから
+rect(0, 0, width, height)  // 図形が「シェーダーを通す面」になる
+circle(320, 170, 220)
+resetShader()              // ここまで
+```
+
+`shader()` から `resetShader()` までに描いた図形は、組み込みのシェーダーではなく自分の関数で塗られます。`fill()` や `noStroke()` と同じく**以降の描画すべてに効く設定**で、解除するまで続きます。
+
+シェーダーの作り方は 2 通りあります。どちらも返るものは同じ `Shader2D` です。
+
+| 作り方 | いつ使うか |
 |---|---|
-| 画面全体を加工する | 6.3 / 6.4 のポストプロセス |
-| 3D の面の塗り方を変える | `createMaterial()` で作って `material()` で適用する |
+| `createShader(source:fragment:)` | MSL を Swift の文字列で持つ。スケッチが 1 ファイルで完結する |
+| `loadShader(_:fragment:)` | MSL を `.metal` ファイルに置く。保存するだけで絵が変わる（後述） |
 
-2D で「シェーダーらしい絵」を出したいときは、当面はポストプロセス側に寄せるか、6.1 のように値を GPU で計算して図形で表現することになります。
+### 前文は metaphor が足す
 
-### Topics/Shaders の例は参考にならない
+ソースに書くのは**フラグメント関数だけ**です。6.4 のポストエフェクトと同じく、2D の描画シェーダーでも 3D のカスタムマテリアル（`createMaterial()`）でも metaphor が前文（Metal 標準ライブラリの取り込みと構造体の定義）を**必ず**足します。規約は 1 行で言えます——**足される構造体を自分で定義しない**。定義すると再定義エラーになります。
 
-[`Examples/Topics/Shaders/`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders) には Monjori や Nebula といった名前のサンプルが並んでいますが、これらは**元の GLSL の絵を CPU 側で近似したもの**で、`.metal` ファイルは 1 つも入っていません。カスタムシェーダーの書き方を探しているなら、この節までの 6.1 と 6.4 が実際の入口です。
+```metal
+fragment float4 paint(
+    Canvas2DVertexOut in [[stage_in]],                 // 図形の頂点から来るもの
+    constant Canvas2DShaderUniforms &u [[buffer(3)]],  // metaphor が入れる組み込みの値
+    constant PaintParams &p [[buffer(4)]]              // 自分で渡す値
+) { ... }
+```
 
-### 実装されたら本文へ
+`Canvas2DVertexOut` は `rect()` / `circle()` / `line()` などが流す stage_in です（`image()` / `text()` のテクスチャ系は `Canvas2DTexVertexOut`）。`in.color` に `fill()` の色とアルファが入っているので、返す色に掛ければ図形ごとの色分けをそのまま残せます。
 
-これらの制約は、機能が入った時点でこの節から本文の節へ移ります。現状は [`docs/README.md`](https://github.com/shinyaoguri/metaphor/blob/main/docs/README.md) から辿れる Issue が最新の状態を持っています。
+### 返す色は premultiplied にする
+
+metaphor のキャンバスは**アルファを掛けた後の色**（premultiplied alpha）を持ちます。`in.color` はアルファを掛ける前の値（straight）で渡ってくるので、**返す直前に前文のヘルパで掛けます**。
+
+```metal
+return metaphorPremultiply(float4(rgb, 1.0) * in.color);
+```
+
+掛け忘れると、半透明で描いたところが明るく浮きます。逆に**不透明しか返さないシェーダーでは値が変わらない**ので、アルファを使っていなければ気にしなくて構いません。割り戻す `metaphorUnpremultiply()` も同じ前文に入っていて、`Canvas2DTexVertexOut` の経路でテクスチャを読むとき（テクスチャも premultiplied です）に使います。
+
+### 座標は自分で作る
+
+2D の頂点は UV を持ちません。テクスチャ座標を運ぶ代わりに、フラグメントの `in.position` が**画面のピクセル座標**になっているので、`u.resolution` で割って 0〜1 を作ります。Shadertoy の `fragCoord / iResolution` がそのまま移ります。
+
+```metal
+float2 uv = in.position.xy / u.resolution;
+```
+
+`buffer(3)` で受け取れる組み込みの値は 4 つです。
+
+| フィールド | 中身 |
+|---|---|
+| `resolution` | キャンバスの寸法（ピクセル） |
+| `mouse` | マウス位置（ピクセル） |
+| `time` | スケッチ開始からの経過時間（秒） |
+| `frameCount` | 描画したフレーム数 |
+
+### 自前の値は setParameters() で渡す
+
+それ以外の値は `setParameters()` で `buffer(4)` へ渡します。6.1 や 6.4 と同じく、**Swift と MSL でレイアウトを合わせる**必要があります。
+
+```swift
+paint.setParameters(PaintParams(phase: phase, bands: 14))
+shader(paint)
+rect(0, 0, width, height)
+
+paint.setParameters(PaintParams(phase: -phase, bands: 40))  // 値を変えたら
+shader(paint)                                               // 呼び直す
+circle(320, 170, 220)
+```
+
+値は**描画バッチが確定した時点**のものが焼き込まれます。metaphor は同じ設定の図形をまとめて GPU へ送るので、`setParameters()` だけを呼んで図形を描き続けると、最後に渡した値で全部が塗られます。`shader()` は呼ぶたびにバッチをそこで切るため、図形ごとに値を変えたいときは**値を変えるたびに呼び直します**。
+
+### 保存するだけで書き換わる
+
+`loadShader()` で `.metal` ファイルから読むと、6.4 のポストエフェクトとまったく同じ自動リロードが効きます。**保存すればその場で再コンパイルされ、ウィンドウは開いたまま絵が変わります**。書きかけの MSL を保存しても画面は直前の動くシェーダーのままで、エラーだけがコンソールに出ます。有効・無効の切り替え（`SketchConfig(shaderHotReload:)` と `METAPHOR_SHADER_HOT_RELOAD`）も 6.4 と共通です。
+
+`.metal` ファイルを使う形は [`Examples/Topics/Shaders/CustomShader2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/CustomShader2D) にあります。走らせたまま `wave.metal` の数値を書き換えて保存すると、往復からビルドが消えていることが分かります。
+
+### 一緒に使えないもの
+
+`blendMode()` のうち **`.multiply` / `.screen` / `.subtract` / `.lightest` / `.darkest` / `.difference` / `.exclusion`** は、カスタムシェーダーとは同時に使えません。これらは「描き込み先の色を読む」専用のフラグメントで実装されていて、自分の関数と入れ替える場所が同じだからです。カスタムシェーダーの適用中は通常のアルファ合成に落ち、コンソールへ 1 度だけ警告が出ます。`.alpha` / `.additive` / `.opaque` はそのまま使えます。
+
+<!-- tutorial-snippet: 06-GPU/05-ShapeShader -->
+```swift
+import metaphor
+
+/// シェーダーの buffer(4) へ渡す自前のパラメータ。
+/// MSL 側の struct と並びと大きさを合わせます。
+struct PaintParams {
+    var phase: Float
+    var bands: Float
+}
+
+@main
+final class ShapeShader: Sketch {
+    var config: SketchConfig {
+        SketchConfig(width: 640, height: 360, title: "ShapeShader")
+    }
+
+    var paint: Shader2D?
+
+    // 前文（Metal 標準ライブラリと Canvas2DVertexOut / Canvas2DShaderUniforms の定義）は
+    // metaphor が必ず先頭へ足すので、フラグメント関数だけを書きます
+    let source = """
+    struct PaintParams {
+        float phase;
+        float bands;
+    };
+
+    fragment float4 paint(
+        Canvas2DVertexOut in [[stage_in]],
+        constant Canvas2DShaderUniforms &u [[buffer(3)]],
+        constant PaintParams &p [[buffer(4)]]
+    ) {
+        // 2D の頂点は UV を持たないので、画面ピクセル座標を resolution で割って作る
+        float2 uv = in.position.xy / u.resolution;
+        float2 c = uv * 2.0 - 1.0;
+        c.x *= u.resolution.x / u.resolution.y;   // 縦横比を戻して同心円を真円にする
+
+        float wave = sin(length(c) * p.bands - p.phase);
+        float band = smoothstep(-0.6, 0.6, wave);
+        float3 rgb = mix(float3(0.09, 0.13, 0.30), float3(0.98, 0.55, 0.25), band);
+
+        // fill() の色とアルファを掛け、premultiplied にして返す（キャンバスの規範）
+        return metaphorPremultiply(float4(rgb, 1.0) * in.color);
+    }
+    """
+
+    func setup() {
+        paint = try? createShader(source: source, fragment: "paint")
+        noStroke()
+    }
+
+    func draw() {
+        background(14, 16, 26)
+        guard let paint else { return }
+
+        // 位相はフレーム数から作る（同じフレームなら必ず同じ絵になる）
+        let phase = Float(frameCount) * 0.06
+
+        // 画面いっぱいの矩形。fill() の色が掛かるので、暗い灰色で敷いて奥へ下げる
+        paint.setParameters(PaintParams(phase: phase, bands: 14))
+        fill(110)
+        shader(paint)
+        rect(0, 0, width, height)
+
+        // 同じシェーダーを別のパラメータで円に掛ける。
+        // shader() を呼び直すとバッチが切れ、その時点のパラメータが焼き込まれる
+        paint.setParameters(PaintParams(phase: -phase * 1.6, bands: 40))
+        fill(255)
+        shader(paint)
+        circle(320, 170, 220)
+
+        resetShader()
+
+        // 解除したので、ここから下は組み込みシェーダーに戻る
+        fill(0, 150)
+        rect(0, 316, width, 44)
+        fill(255)
+        textSize(15)
+        textAlign(.center)
+        text("矩形と円はシェーダー、この帯と文字は resetShader() のあと", 320, 342)
+    }
+}
+```
+
+実行: `cd Examples/Tutorial/06-GPU/05-ShapeShader && swift run`
+<!-- /tutorial-snippet -->
+
+### 試してみる
+
+- `bands` を 4 まで下げると、縞は何本になりますか
+- 矩形の `fill(110)` を `fill(255)` に戻すと、円と背景の関係はどう変わりますか
+- `phase` を `Float(frameCount) * 0.06` から `u.time * 3.0`（MSL 側で計算）に変えると、動きは同じに見えますか
+- `resetShader()` を消すと、下の帯と文字はどう描かれますか
 
 ### ふりかえり
 
-- [ ] 2D の描画シェーダー差し替えが未実装だと分かった
-- [ ] 3D にはカスタムマテリアルという別の口があると分かった
+- [ ] `shader()` から `resetShader()` までの図形が自分のシェーダーで塗られると分かった
+- [ ] MSL に書くのはフラグメント関数だけで、前文は metaphor が足すと分かった
+- [ ] 2D には UV が無く、`in.position` を `u.resolution` で割って座標を作ると分かった
+- [ ] 自前の値は `setParameters()` で渡し、値を変えたら `shader()` を呼び直すと分かった
+- [ ] `.metal` ファイルから読めば、保存するだけで絵が変わると分かった
+
+### もっと詳しく
+
+- [`createShader(source:fragment:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createshader%28source:fragment:%29), [`loadShader(_:fragment:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/loadshader%28_:fragment:%29), [`shader(_:)`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/shader%28_:%29), [`resetShader()`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/resetshader%28%29)
+- [`Shader2D`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/shader2d), [`Canvas2DShaderUniforms`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/canvas2dshaderuniforms)
+- [`Examples/Topics/Shaders/CustomShader2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/CustomShader2D)
+
+## 6.6 いまできないこと
+
+GPU まわりには、まだ口が開いていない場所があります。作品を組み立て始める前に、境界を知っておくと遠回りをせずに済みます。
+
+### 2D で差し替えられるのはフラグメントだけ
+
+6.5 で置き換えたのは「画素の色を決める関数」です。**頂点をどこへ動かすかを決める頂点シェーダーは、2D では組み込みのまま**で、差し替える口がありません。図形の形そのものを GPU で歪ませたいときは、Swift 側で座標を作って `beginShape()` / `vertex()` で流すか、6.1 のように GPU で計算した値を読んで図形に反映させます。
+
+3D は事情が違い、`createMaterial(source:fragmentFunction:vertexFunction:)` で頂点シェーダーも一緒に渡せます。面の塗り方を変えるだけなら 2D と同じくフラグメントだけで足ります（前文も 2D と同じく metaphor が足すので、`Canvas3DVertexOut` や `Canvas3DUniforms` は自分で定義しません）。実物は [`Examples/Topics/Shaders/ToonShading`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/ToonShading) で、明るさを 4 段に量子化するフラグメント関数だけを書き、頂点は組み込みのまま使っています。
+
+### Topics/Shaders の大半は参考にならない
+
+[`Examples/Topics/Shaders/`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders) には Monjori や Nebula といった名前のサンプルが並んでいますが、これらは**元の GLSL の絵を CPU 側で近似したもの**で、`.metal` ファイルが入っていません。Processing の移植として残しているだけなので、シェーダーの書き方を探しているなら 6.4 / 6.5 と、実際に `.metal` を読む 2 本 — 2D の [`CustomShader2D`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/CustomShader2D) と 3D の [`ToonShading`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Topics/Shaders/ToonShading) — が実際の入口です。
+
+### 実装されたら本文へ
+
+こうした制約は、機能が入った時点でこの節から本文の節へ移ります。6.5 はまさにそれで、長らくこの節に「2D の描画シェーダーは差し替えられない」と書かれていたものが実装されて昇格しました。最新の状態は [`docs/README.md`](https://github.com/shinyaoguri/metaphor/blob/main/docs/README.md) から辿れる Issue が持っています。
+
+### ふりかえり
+
+- [ ] 2D で差し替えられるのはフラグメントシェーダーだけだと分かった
+- [ ] 3D のカスタムマテリアルは頂点シェーダーも渡せると分かった
 - [ ] `Topics/Shaders/` が CPU 近似で、シェーダーの参考にはならないと分かった
 
 ### もっと詳しく

@@ -36,6 +36,9 @@ public final class Graphics3D {
     private let inflightSemaphore = DispatchSemaphore(value: inflightCount)
     private var bufferIndex = 0
 
+    /// 描画先テクスチャの copy-on-write ローテーション（#745）。
+    private let targetRotator: OffscreenTargetRotator
+
     /// 幅をピクセル単位で返します。
     public var width: Float { canvas3D.width }
 
@@ -43,7 +46,13 @@ public final class Graphics3D {
     public var height: Float { canvas3D.height }
 
     /// 内部カラーテクスチャを返します。
-    public var texture: MTLTexture { textureManager.colorTexture }
+    ///
+    /// 返したテクスチャの内容は次の ``beginDraw(time:)`` で凍結されます（描き先が
+    /// 別のテクスチャへ回るため、`image()` で貼った絵が後から書き換わらない。#745）。
+    public var texture: MTLTexture {
+        targetRotator.markHandedOut()
+        return textureManager.colorTexture
+    }
 
     // MARK: - Initialization
 
@@ -70,6 +79,13 @@ public final class Graphics3D {
             height: Float(height),
             sampleCount: 1
         )
+        self.targetRotator = OffscreenTargetRotator(textureManager: textureManager)
+    }
+
+    /// 描画先テクスチャの使い回し判定に使うフレーム番号を配線します
+    /// （`SketchContext.createGraphics3D` から呼ばれます）。
+    func wireFrameCount(_ provider: @escaping () -> UInt32) {
+        targetRotator.frameCountProvider = provider
     }
 
     // MARK: - Draw Lifecycle
@@ -79,6 +95,9 @@ public final class Graphics3D {
     public func beginDraw(time: Float = 0) {
         // endDraw 漏れの不均衡呼び出しでもセマフォが詰まらないよう先に閉じる
         if commandBuffer != nil { endDraw() }
+
+        // 前のパスの絵を外へ渡していたら、描き先を別のテクスチャへ回す（#745）
+        targetRotator.rotateIfNeeded(commandQueue: commandQueue)
 
         // GPU が inflightCount フレーム以上遅れている場合はここでブロックし、
         // GPU がまだ読んでいるバッファスロットへの上書きを防ぐ
@@ -129,13 +148,97 @@ public final class Graphics3D {
     // MARK: - MImage Conversion
 
     /// オフスクリーンテクスチャを MImage として返します。
+    ///
+    /// `image()` で貼ると**そのとき見えていた内容**が描かれます。同じバッファを同一
+    /// フレーム内で描き換えて何度でも貼れます（描き換えるたびに描き先が別のテクスチャへ
+    /// 回るため、内部テクスチャは描き換えた回数ぶん増えます。#745）。
+    ///
     /// - Returns: 内部カラーテクスチャをラップした MImage。
     public func toImage() -> MImage {
         let image = MImage(texture: textureManager.colorTexture)
         // リードバックを描画と同じキューに載せ、endDraw(wait: false) 直後の
         // loadPixels でも commit 順序で最新内容が読めるようにする
         image.preferredReadbackQueue = commandQueue
+        targetRotator.markHandedOut(image)
         return image
+    }
+
+    // MARK: - Background
+
+    /// 下地（背景）を単色で塗り替えます。
+    ///
+    /// **背景は合成ではなく置き換え**です（ADR-0012 / #829）。α < 1 の背景色は下地と
+    /// 混ざらずそのまま入り、`background(0, 0, 0, 0)` は下地を透明に戻します。
+    /// これで `Graphics3D` の層を `MergePass(.alpha)` の前景に置けます（#830）。
+    ///
+    /// 既定の下地は ``Graphics``（2D オフスクリーン）と揃えて**不透明な黒**です。
+    /// 透明で始めたい層では明示的に `background(0, 0, 0, 0)` を呼んでください。
+    ///
+    /// ``beginDraw(time:)`` と ``endDraw(wait:)`` の間で呼ぶと**そのフレームに効きます**。
+    /// 外で呼んだ場合は次の ``beginDraw(time:)`` から効きます。`Graphics3D` は
+    /// ``beginDraw(time:)`` のたびに下地をクリアし、設定した背景色は次のフレーム以降も
+    /// 保たれるので、毎フレーム呼び直す必要はありません。
+    ///
+    /// - Parameter color: 背景色（straight alpha）。
+    public func background(_ color: Color) {
+        let c = color.simd
+        // キャンバスの中身は premultiplied（ADR-0012）。クリアはブレンドを通らず値を
+        // そのまま書くので、ここで α を掛けてから渡す。
+        textureManager.setClearColor(
+            TextureManager.premultipliedClearColor(
+                Double(c.x), Double(c.y), Double(c.z), Double(c.w)
+            )
+        )
+        restartPassWithNewClearColor()
+    }
+
+    /// グレースケール値で背景を塗りつぶします。
+    ///
+    /// 値は `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameter gray: グレースケールの明度値。
+    public func background(_ gray: Float) {
+        background(canvas3D.colorModeConfig.toGray(gray))
+    }
+
+    /// カラーモード値で背景を塗りつぶします。
+    ///
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。現在のカラーモードに従って解釈されます。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    ///   - a: オプションのアルファ値。
+    public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        background(canvas3D.colorModeConfig.toColor(v1, v2, v3, a))
+    }
+
+    /// いま開いているレンダーパスを捨てて、新しいクリア色で開き直します。
+    ///
+    /// `Graphics3D` は 2D のような背景クワッドの経路を持たず、下地は必ずレンダーパスの
+    /// `loadAction = .clear` が作ります。クリア色はパスを**開いた時点で確定する**ので、
+    /// パスの途中で色を変えてもそのパスには効きません。`beginDraw()` の後に
+    /// `background()` を書くという素直な形（``Graphics`` の例と同じ）をそのフレームで
+    /// 効かせるため、ここで開き直します。
+    ///
+    /// 開き直したパスはカラーもデプスもクリアされるので、先に描いた 3D は残りません
+    /// — これが「背景は合成ではなく置き換え」（ADR-0012 / #829）の 3D 版です。
+    /// カメラ・ライト・変換などのフレーム状態は
+    /// ``Canvas3D/begin(encoder:time:bufferIndex:)`` を呼び直さないため保たれます。
+    ///
+    /// 判定を「このパスで何か描いたか」に絞れば捨てるパスを省けますが、それには
+    /// Canvas3D の描画経路すべてに印を付けて回ることになり、経路が増えるたびに
+    /// 漏れます。捨てるパスはクリア結果を 1 度書き出すだけなので、常に開き直す側を採ります。
+    private func restartPassWithNewClearColor() {
+        guard let cb = commandBuffer, let enc = encoder else { return }
+        // 保留中のインスタンスバッチは捨てるパスへ出し切る。持ち越すと
+        // `background()` より前に積んだものが、後から描いたように現れてしまう。
+        canvas3D.end()
+        enc.endEncoding()
+        encoder = nil
+        guard let next = cb.makeRenderCommandEncoder(
+            descriptor: textureManager.renderPassDescriptor
+        ) else { return }
+        encoder = next
+        canvas3D.rebindEncoder(next)
     }
 
     // MARK: - Camera
@@ -159,17 +262,20 @@ public final class Graphics3D {
     ) { canvas3D.perspective(fov: fov, near: near, far: far) }
 
     /// 正射影投影を設定します。
+    ///
+    /// 省略した面は既定カメラと噛み合う範囲（原点＝画面中央を挟む形）で埋まります。
+    /// `bottom` / `top` はビュー空間の y が小さい側が `bottom`（＝画面の上端）です。
     /// - Parameters:
-    ///   - left: 左クリッピング面。
-    ///   - right: 右クリッピング面。
-    ///   - bottom: 下クリッピング面。
-    ///   - top: 上クリッピング面。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
+    ///   - left: 左クリッピング面（nil の場合は `-width / 2`）。
+    ///   - right: 右クリッピング面（nil の場合は `width / 2`）。
+    ///   - bottom: 下クリッピング面（nil の場合は `-height / 2`）。
+    ///   - top: 上クリッピング面（nil の場合は `height / 2`）。
+    ///   - near: ニアクリッピング面の距離（nil の場合は既定カメラ距離の -10 倍）。
+    ///   - far: ファークリッピング面の距離（nil の場合は既定カメラ距離の 10 倍）。
     public func ortho(
         left: Float? = nil, right: Float? = nil,
         bottom: Float? = nil, top: Float? = nil,
-        near: Float = -10, far: Float = 10000
+        near: Float? = nil, far: Float? = nil
     ) { canvas3D.ortho(left: left, right: right, bottom: bottom, top: top, near: near, far: far) }
 
     // MARK: - Lighting
@@ -183,23 +289,17 @@ public final class Graphics3D {
     /// すべてのライティングを無効にします。
     public func noLights() { canvas3D.noLights() }
 
-    /// 指定された方向でディレクショナルライトを追加します。
+    /// 指定された方向・色・強度でディレクショナルライトを追加します。
     /// - Parameters:
     ///   - x: ライト方向のX成分。
     ///   - y: ライト方向のY成分。
     ///   - z: ライト方向のZ成分。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float) {
-        canvas3D.directionalLight(x, y, z)
-    }
-
-    /// 指定された方向と色でディレクショナルライトを追加します。
-    /// - Parameters:
-    ///   - x: ライト方向のX成分。
-    ///   - y: ライト方向のY成分。
-    ///   - z: ライト方向のZ成分。
-    ///   - color: ライトの色。
-    public func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color) {
-        canvas3D.directionalLight(x, y, z, color: color)
+    ///   - color: ライトの色（デフォルト白）。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
+    public func directionalLight(
+        _ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0
+    ) {
+        canvas3D.directionalLight(x, y, z, color: color, intensity: intensity)
     }
 
     /// 指定された位置にポイントライトを追加します。
@@ -209,11 +309,12 @@ public final class Graphics3D {
     ///   - z: ライト位置Z。
     ///   - color: ライトの色。
     ///   - falloff: 減衰ファクター。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
     public func pointLight(
         _ x: Float, _ y: Float, _ z: Float,
-        color: Color = .white, falloff: Float = 0.1
+        color: Color = .white, falloff: Float = 0.1, intensity: Float = 1.0
     ) {
-        canvas3D.pointLight(x, y, z, color: color, falloff: falloff)
+        canvas3D.pointLight(x, y, z, color: color, falloff: falloff, intensity: intensity)
     }
 
     /// 指定された位置と方向でスポットライトを追加します。
@@ -227,12 +328,17 @@ public final class Graphics3D {
     ///   - angle: ラジアン単位のコーン半角。
     ///   - falloff: 減衰ファクター。
     ///   - color: ライトの色。
+    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
     public func spotLight(
         _ x: Float, _ y: Float, _ z: Float,
         _ dirX: Float, _ dirY: Float, _ dirZ: Float,
-        angle: Float = .pi / 6, falloff: Float = 0.01, color: Color = .white
+        angle: Float = .pi / 6, falloff: Float = 0.01, color: Color = .white,
+        intensity: Float = 1.0
     ) {
-        canvas3D.spotLight(x, y, z, dirX, dirY, dirZ, angle: angle, falloff: falloff, color: color)
+        canvas3D.spotLight(
+            x, y, z, dirX, dirY, dirZ,
+            angle: angle, falloff: falloff, color: color, intensity: intensity
+        )
     }
 
     /// アンビエントライトの強度を設定します。
@@ -261,6 +367,15 @@ public final class Graphics3D {
     /// - Parameter color: スペキュラ色。
     public func specular(_ color: Color) { canvas3D.specular(color) }
 
+    /// スペキュラハイライトの色をチャンネル値で設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func specular(_ v1: Float, _ v2: Float, _ v3: Float) { canvas3D.specular(v1, v2, v3) }
+
     /// スペキュラハイライトをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
     public func specular(_ gray: Float) { canvas3D.specular(gray) }
@@ -272,6 +387,15 @@ public final class Graphics3D {
     /// エミッシブ色を設定します。
     /// - Parameter color: エミッシブ色。
     public func emissive(_ color: Color) { canvas3D.emissive(color) }
+
+    /// エミッシブ色をチャンネル値で設定します。
+    ///
+    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// - Parameters:
+    ///   - v1: 第1カラーチャンネル値。
+    ///   - v2: 第2カラーチャンネル値。
+    ///   - v3: 第3カラーチャンネル値。
+    public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) { canvas3D.emissive(v1, v2, v3) }
 
     /// エミッシブをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
@@ -292,6 +416,30 @@ public final class Graphics3D {
     /// PBR シェーディングを有効または無効にします。
     /// - Parameter enabled: PBR シェーディングを使用するかどうか。
     public func pbr(_ enabled: Bool) { canvas3D.pbr(enabled) }
+
+    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    /// - Parameter mode: トーンマッピングの方法。
+    public func toneMapping(_ mode: ToneMapMode) { canvas3D.toneMapping(mode) }
+
+    /// トーンマッピング前に掛ける露出倍率を設定します。
+    /// - Parameter value: 露出倍率（既定 1.0）。
+    public func exposure(_ value: Float) { canvas3D.exposure(value) }
+
+    /// 環境（IBL と背景の skybox）を設定します。
+    /// - Parameters:
+    ///   - preset: 環境プリセット。
+    ///   - intensity: 環境の強度（既定 1.0）。0 以下で無効。
+    ///   - background: `true` なら背景としても描く。
+    public func environment(
+        _ preset: EnvironmentPreset,
+        intensity: Float = 1.0,
+        background: Bool = true
+    ) {
+        canvas3D.environment(preset, intensity: intensity, background: background)
+    }
+
+    /// 環境（IBL と skybox）を無効化します。
+    public func noEnvironment() { canvas3D.noEnvironment() }
 
     /// 後続の描画呼び出しにカスタムマテリアルを設定します。
     /// - Parameter custom: 適用するカスタムマテリアル。

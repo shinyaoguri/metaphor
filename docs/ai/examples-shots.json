@@ -53,7 +53,11 @@
     },
     "Examples/Basics/Color/WaveGradient": {
       "origin": "captured",
-      "sourceHash": "c8b2acce5841ea7b13128865b9aed8898ad4ab1dc0e7c5094ecadb0c786815af",
+      "sourceHash": "1345a1ac3a7169f089aaaf4bd3dffcaf6525c46b45caed9c3bf40b1b27729d1f",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1
@@ -144,9 +148,15 @@
       "height": 720
     },
     "Examples/Basics/Form/Primitives3D": {
-      "origin": "processing",
-      "width": 1280,
-      "height": 720
+      "origin": "captured",
+      "sourceHash": "1683c2f9a8d18c0cd5f1f4458ca6fbdc1519de81773bf0ccdd8075ab0f616a08",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 1
     },
     "Examples/Basics/Form/RegularPolygon": {
       "origin": "processing",
@@ -424,9 +434,15 @@
       "height": 720
     },
     "Examples/Basics/Shape/LoadDisplayOBJ": {
-      "origin": "processing",
-      "width": 1280,
-      "height": 720
+      "origin": "captured",
+      "sourceHash": "0f126bef36a25904725d388055e9e4cd6e6d700b7f89410f74225409eb20cbfe",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 99
     },
     "Examples/Basics/Shape/ScaleShape": {
       "origin": "processing",
@@ -519,19 +535,25 @@
       "height": 720
     },
     "Examples/Basics/Typography/Letters": {
-      "origin": "processing",
-      "width": 2560,
-      "height": 1440
+      "origin": "captured",
+      "sourceHash": "d55b2404e962fa172a72264f37a25208407c5203b8241b8e4c6def7318131c80",
+      "width": 640,
+      "height": 360,
+      "frame": 98
     },
     "Examples/Basics/Typography/TextRotation": {
-      "origin": "processing",
-      "width": 2560,
-      "height": 1440
+      "origin": "captured",
+      "sourceHash": "48946520919c0274f81a45d7713af012891aa2f26587b21909970c6d015e2219",
+      "width": 640,
+      "height": 360,
+      "frame": 99
     },
     "Examples/Basics/Typography/Words": {
-      "origin": "processing",
-      "width": 2560,
-      "height": 1440
+      "origin": "captured",
+      "sourceHash": "570d8a1d7d19e0c5f5ae0069a27edc4f422f6a01efe78b3c0073d98a8c095056",
+      "width": 640,
+      "height": 360,
+      "frame": 96
     },
     "Examples/Basics/Web/EmbeddedLinks": {
       "origin": "processing",
@@ -545,255 +567,365 @@
     },
     "Examples/Demos/Graphics/DepthSort": {
       "origin": "captured",
-      "sourceHash": "1edfd339cc266686855dfd44ca72f50a7f8924cc52585e98d5871c0d99462a43",
+      "sourceHash": "5259e304aceecdb0ed285dd6bd54fc15062fdd0b207e25de63e7bc6acae52893",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 720,
-      "frame": 106
+      "frame": 95
     },
     "Examples/Demos/Graphics/Patch": {
       "origin": "captured",
-      "sourceHash": "0bc19326b146705db17569e474934fb2ac22d0c7ae3958f0492fd50d6ce9da8d",
+      "sourceHash": "b6fde45a0755a13696343e893f11a75f88a34825c01f76156d385b5ae53d0aa6",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 1024,
       "height": 768,
-      "frame": 109
+      "frame": 432
+    },
+    "Examples/Demos/Graphics/Planets": {
+      "origin": "captured",
+      "sourceHash": "10299f19034ea2a43cbd4212412a0b7fb342ece97626b03ed51a635aff9df12d",
+      "width": 1024,
+      "height": 768,
+      "frame": 107
     },
     "Examples/Demos/Graphics/RotatingArcs": {
       "origin": "captured",
-      "sourceHash": "01f5cb24174f39a623296f78b30874a96247b0ad08c62239537e8841431ada4c",
+      "sourceHash": "290afb72df16603a6551c0752ab0f23ab1542228a96151688345d46ad4ef66b3",
       "width": 1024,
       "height": 768,
       "frame": 13
     },
-    "Examples/Demos/Graphics/Yellowtail": {
+    "Examples/Demos/Graphics/Trefoil": {
       "origin": "captured",
-      "sourceHash": "4d78ac3d6bc6205691f69ee0f6797f7d2db40b730cefa9a3ed26eb259bf310b2",
+      "sourceHash": "87a7ed2179d9cc292adb152132e609c519188d14fd373f4bd833d9b7250cfae5",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 1024,
       "height": 768,
-      "frame": 378
+      "frame": 105
+    },
+    "Examples/Demos/Graphics/Wiggling": {
+      "origin": "captured",
+      "sourceHash": "d7d36195196c5b35bd2e3d19e73f7af19df83dd001b13d50729b4795aeeeeae5",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
+      "width": 1024,
+      "height": 768,
+      "frame": 99
+    },
+    "Examples/Demos/Graphics/Yellowtail": {
+      "origin": "captured",
+      "sourceHash": "c27e97f85ddbd347bdec5e6c2bfea96404a6ec903d5392d9fd3223119709461e",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
+      "width": 1024,
+      "height": 768,
+      "frame": 387
     },
     "Examples/Demos/Performance/CubicGridImmediate": {
       "origin": "captured",
-      "sourceHash": "f0bccb51a087e2de08776a2cdad1cf80d27690c30955213c73b53e207b5b4c43",
+      "sourceHash": "f631c64f47e0918db58acd18dac228e8b72f412b2f8e1fe0661b67c6606965ad",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 21
+      "frame": 141
     },
     "Examples/Demos/Performance/DynamicParticlesImmediate": {
       "origin": "captured",
-      "sourceHash": "25d10615fc1ca4c1a9854336029e374232bbe693bfe8176da8e6afa340548212",
+      "sourceHash": "4a8e2037ad79ce24837423860b3ede74ef6a3dbe966ae6ceebcd89d5c041a08f",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 640,
       "height": 480,
-      "frame": 188
+      "frame": 433
     },
     "Examples/Demos/Performance/Esfera": {
       "origin": "captured",
-      "sourceHash": "bfa342ae8d95984c8ca8bca2e96679aaffc66d6b1d075fba3d0a38f9c15258c9",
+      "sourceHash": "598c6018e66d113245744f5a987e68bb68eca81cdc1dd0a2585348b7c95c202d",
+      "provenance": {
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
+        "dirty": false
+      },
       "width": 1024,
       "height": 768,
-      "frame": 21
+      "frame": 20
     },
     "Examples/Demos/Performance/LineRendering": {
       "origin": "captured",
-      "sourceHash": "94617d46c6d82c4981b923c8d2340ccb1fbacd88def61f9be22f05317f15c94e",
+      "sourceHash": "7f76f09d05224c341d6afe1b03917a8aadf1a2030a623bb8e1d1ce5ad55f2020",
       "width": 800,
       "height": 600,
       "frame": 16
     },
     "Examples/Demos/Performance/MassiveCircles": {
       "origin": "captured",
-      "sourceHash": "fb5c2f4cadd5c95810b7cfba8fb85405944d5dd2ce58351b6e3e1e9961510646",
+      "sourceHash": "9d64826eb12965237d5405ce09bf4474b96d865cf8ee602cdd32b8ffd65aa1ba",
       "width": 960,
       "height": 540,
       "frame": 36
     },
     "Examples/Demos/Performance/QuadRendering": {
       "origin": "captured",
-      "sourceHash": "8dbf37207cc67e053f5575b8bbcea9b250684be3bcc239e724fe16ff9109fa34",
+      "sourceHash": "acde7f609689223f54c8cbee488c3867157f7d17c4dbffee87fd17f8b204263c",
       "width": 800,
       "height": 600,
       "frame": 107
     },
     "Examples/Demos/Performance/StaticParticlesImmediate": {
       "origin": "captured",
-      "sourceHash": "b4dec3ff65508816f3bbcdd768338194313fd283d40cf019f15a0c5cafbf2f13",
+      "sourceHash": "bbfeb31bcb4a0b4563b6e73740e302a715fecaee117770656c5431555adcc82d",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
       "width": 800,
       "height": 600,
-      "frame": 104
+      "frame": 213
+    },
+    "Examples/Demos/Performance/StaticParticlesRetained": {
+      "origin": "captured",
+      "sourceHash": "b1b9efa451b4f336bdddcc6a4b5ffd8c26b8040aac10198cb2dc905ce32fe8d2",
+      "build": "release",
+      "provenance": {
+        "commit": "585f6e50fe0f60c48751f030c6ba7ded8da62c29",
+        "dirty": false
+      },
+      "width": 800,
+      "height": 600,
+      "frame": 219
     },
     "Examples/Demos/Performance/TextRendering": {
       "origin": "captured",
-      "sourceHash": "6ebb74de65300aee4baaae8698f688f6a27641901395240ed5fe50c0deaedbe9",
+      "sourceHash": "299d7107fe5781e39796526251d4884ea68558f598233cb32651b7fdf5ae1dd0",
       "width": 800,
       "height": 600,
       "frame": 102
     },
     "Examples/Demos/Tests/MultipleWindows": {
       "origin": "captured",
-      "sourceHash": "98388aedfcf56358dfa0ffcecb6f00275b40d6250e5305fc1c215c148791b7ab",
+      "sourceHash": "0c7b9ca72ac3d2bfa1bc31067b3cd4ce39f97966c9659425b2e6e1f08cfa6b74",
       "width": 320,
       "height": 240,
       "frame": 103
     },
     "Examples/Demos/Tests/NoBackgroundTest": {
       "origin": "captured",
-      "sourceHash": "1d05eb1da8a9ee3ee9fa3f74eb59e30e5466996b7b2ae883e1989688e5c9b81a",
+      "sourceHash": "099b24df46f2935e3d98a4eb58196719264c5898efb56af6d6f51cfe316e8d07",
       "width": 400,
       "height": 400,
       "frame": 105
     },
     "Examples/Demos/Tests/OffscreenTest": {
       "origin": "captured",
-      "sourceHash": "fdf49ffa77d221c808a66386e9e208279ba95cf8eb254b42cf1624a01bc1c52c",
+      "sourceHash": "314a166db7af0a7d772159d46ced73812f762be9597a7ad84fb3813e66ad6491",
       "width": 400,
       "height": 400,
       "frame": 55
     },
     "Examples/Demos/Tests/RedrawTest": {
       "origin": "captured",
-      "sourceHash": "05304a440ff6b38a39fe8e55537a12047879bb788822f5fbf1fcede3c3ea32f1",
+      "sourceHash": "e02637137ef22de02186bcb08596a38a0926c5b52b5f511c67166a66661d3720",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 400,
       "height": 400,
       "frame": 1
     },
     "Examples/Demos/Tests/ResizeTest": {
       "origin": "captured",
-      "sourceHash": "c1aeab04b75a63958cf106cb7c6f59e4a563222a10900e9466240be9f75501c6",
+      "sourceHash": "560f0f9f62400eff5ee8319450ffd458e2012edb87abdf71c49fd253650ac340",
       "width": 400,
       "height": 400,
       "frame": 103
     },
     "Examples/ML/ImageClassification": {
       "origin": "captured",
-      "sourceHash": "2069856335e0d3c187edcade1f4f2cb813f12d640c38aba389148d857d5e2c67",
+      "sourceHash": "b7bd4b12491fc57d6822ccba87b5ad0b2cf79788f780848a747f7e49c51dd618",
       "width": 800,
       "height": 600,
       "frame": 105
     },
     "Examples/ML/StyleTransfer": {
       "origin": "captured",
-      "sourceHash": "f2ce74c0f92303e46995430d5c373d3274db23a98cef62906bb8ad27285d2125",
+      "sourceHash": "046e74096d7e4ba08cbdf880639cc62013b0fa94fe555cbde14ac8ee3cc7a051",
       "width": 800,
       "height": 600,
       "frame": 105
     },
     "Examples/Samples/DynamicMeshTexture": {
       "origin": "captured",
-      "sourceHash": "293ec2ca437b0941522e985bdf0dfeb5483b345c82a12c283e95f22dec8a64ff",
+      "sourceHash": "6a3898ee858bcd69c58fa87aae71d63ad3aa3415e774ba898e8e431340cdb723",
       "width": 800,
+      "height": 600,
+      "frame": 100
+    },
+    "Examples/Samples/EnvironmentIBL": {
+      "origin": "captured",
+      "sourceHash": "60d0ac65d962623af58a98f5e26b34479ec804ac6c16520915b0d08a0e069e91",
+      "width": 900,
       "height": 600,
       "frame": 100
     },
     "Examples/Samples/InstancedCubes": {
       "origin": "captured",
-      "sourceHash": "0d6f329c8f8394508e4d15129c8556a5afa09442b01c99e34b95a0ab9cedb2d8",
+      "sourceHash": "95a9ea4a9b2166fba5a61af2ba5b860ecc64d8fbc1f12a1698c032d274d45bed",
       "width": 900,
       "height": 700,
       "frame": 104
     },
     "Examples/Samples/OSCLoopback": {
       "origin": "captured",
-      "sourceHash": "3f27b2c9264c4d7593633a436ad5abedd863fd9542f8d8f94e5a266747d95031",
+      "sourceHash": "bf1800c0d090c41bdaf85bfe87a80e9c654436a64f332d1633c63a6957d5e5a6",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 106
+      "frame": 103
     },
     "Examples/Samples/ParameterPanel": {
       "origin": "captured",
-      "sourceHash": "59efc965f9481abbaecdce43b64d49de9979012d1c2a62fc7e1c96763528df83",
+      "sourceHash": "061b204ec81ca33c8442b643c668d87ba7440a3010f3c3409ec7b697d4ad311f",
       "width": 800,
       "height": 600,
-      "frame": 95
+      "frame": 99
     },
     "Examples/Samples/PluginFPSLogger": {
       "origin": "captured",
-      "sourceHash": "2e00a81a010e46815c70d7a05db37935ddde780713d1aba2daf5348e6122096a",
+      "sourceHash": "a6e37c6d83f4101e75cac678f13ace1ae5620f9e9367f609a862e69e0ca58c65",
       "width": 640,
       "height": 360,
       "frame": 97
     },
     "Examples/Samples/PluginMouseTrail": {
       "origin": "captured",
-      "sourceHash": "d47a701d96dc00bd795f8afbac92a1d3d71064f3401f95564f1bdc51bb9a5cd0",
+      "sourceHash": "557df491e142ac2d753e0a26b71a9989d0c7ab7dbbba1be4f0d403c92ca92dff",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 800,
       "height": 600,
-      "frame": 97
+      "frame": 98
     },
     "Examples/Samples/ProbeBenchmark": {
       "origin": "captured",
-      "sourceHash": "7671d0dbc69891a577f4c1b4a44f51391036ebb28db34853a740f38855eecd31",
+      "sourceHash": "a02c980ea030df806f454c9ccb4969361bcca57e79ec0678cd854c6f5aba6c6e",
       "width": 800,
       "height": 600,
       "frame": 107
     },
     "Examples/Samples/ProbeSnapshot": {
       "origin": "captured",
-      "sourceHash": "ef3097f7efe56bcd14ebc856639aa258a32155d499ebdbd794577952028a9b95",
+      "sourceHash": "1ee36f2956d49aa85b90920b12334a0c377685984df14a9cacb64829616abf70",
       "width": 640,
       "height": 360,
       "frame": 102
     },
     "Examples/Samples/RayTracing": {
       "origin": "captured",
-      "sourceHash": "a3ced0dd9ea80f8a93b32c21af8c57336e3d29698213d8bfd572a02bc8da8482",
+      "sourceHash": "fccdf5696410bc93f890899bf8a2f05d2efd548a76c4523be49ded4875ac8422",
       "width": 960,
       "height": 320,
       "frame": 50
     },
     "Examples/Samples/RenderGraphCompose": {
       "origin": "captured",
-      "sourceHash": "9542e83f8905aaf2900f54f6185e4b5bd859b90c55336b33203846f9459376a8",
+      "sourceHash": "454eb7100beca2fb2fd1b383b5fa8f896a1f1e5a28964a3f6610f7d772cb872e",
+      "provenance": {
+        "commit": "07b62dae64784b6402ea949e0d9f23a75958af4c",
+        "dirty": false
+      },
       "width": 960,
       "height": 540,
-      "frame": 99
+      "frame": 129
     },
     "Examples/Samples/SVGExport": {
       "origin": "captured",
-      "sourceHash": "efc71dd4e2b166cf944b68f5850f725f266c41c2e3e13b766bb187fdc18eb2f2",
+      "sourceHash": "09f77cbf5bc740d62b0c4fb9973d1ae0ae9332409ffeb31b7760ec941f709b05",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1
     },
     "Examples/Samples/SceneGraphBasics": {
       "origin": "captured",
-      "sourceHash": "2b7c8a6ee2126613ff7792c8d59c215744b7ead5d73b55c1cbe09777b9a998a1",
+      "sourceHash": "e4acea6f572109677cca65c7990c20e7867f8bb880bf278bef1cb312800280db",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 800,
       "height": 600,
-      "frame": 102
+      "frame": 97
     },
     "Examples/Samples/SceneGraphHybrid": {
       "origin": "captured",
-      "sourceHash": "25cb4a1ad9abbdcb21c14eab6ba5358214a44b885bea101de7cb06068bcd03cc",
+      "sourceHash": "6a00666ac9cce2aeefb75e022ad301c04d9b86a7ca5fba7c8073246e44baed15",
       "width": 800,
       "height": 600,
       "frame": 607
     },
     "Examples/Samples/StatePreservation": {
       "origin": "captured",
-      "sourceHash": "77add9b7bf514174ff0a2933bea7fdd5f57eb9cdaa23c37534a339f1134337ff",
+      "sourceHash": "e3e06e711ecf95d72758dd53bda88d98d1bd120748a680cbf932262c7b947a26",
       "width": 900,
       "height": 600,
-      "frame": 95
+      "frame": 100
     },
     "Examples/Samples/Syphon/SyphonMultiWindow": {
       "origin": "captured",
-      "sourceHash": "5656074a3422c46016a0c7a1bb25ba9dd1a614cdb4d39fe414c34248395d61fd",
+      "sourceHash": "992f744d5b4cd20fd54aa03dd0b97b28b250b8b75d343a925f23bfb3787e1213",
       "width": 1920,
       "height": 1080,
       "frame": 111
     },
     "Examples/Samples/Syphon/SyphonOutput": {
       "origin": "captured",
-      "sourceHash": "58caaca686e93a3a4bf2d848b8b2254637e1486392da94bab4e951302a764c02",
+      "sourceHash": "0c3281f9e475e1dcaf5239ca713425f15940c8f084f947dd84b382c09e9fc2df",
       "width": 1920,
       "height": 1080,
       "frame": 109
     },
     "Examples/Samples/Syphon/SyphonTripleWindow": {
       "origin": "captured",
-      "sourceHash": "fd91f0bc58dd8729e81c5aafd9f1ab3ad27c4c5e5ea4c7e684c9570d8761adde",
+      "sourceHash": "64483a71eb3980bf1e294a89bbf57613e190c91bac951fae3990fff7a167af34",
       "width": 1920,
       "height": 1080,
       "frame": 70
+    },
+    "Examples/Samples/ToneMapping": {
+      "origin": "captured",
+      "sourceHash": "7722c76f2be6f429f2dad1102d83633fdc1f6c8031d78b577fc48c943d0f507f",
+      "width": 900,
+      "height": 520,
+      "frame": 104
     },
     "Examples/Topics/Advanced Data/ArrayListClass": {
       "origin": "processing",
@@ -802,14 +934,14 @@
     },
     "Examples/Topics/Advanced Data/CountingStrings": {
       "origin": "captured",
-      "sourceHash": "6bded783fe2bdadf2c1f528bb5e21af3983b8383f9f3313c366842bf6fa5408c",
+      "sourceHash": "0f98c44cf54cb8b816499da634add817d1c319a07bc094e67ce3bf181e3a716f",
       "width": 640,
       "height": 360,
       "frame": 96
     },
     "Examples/Topics/Advanced Data/HashMapClass": {
       "origin": "captured",
-      "sourceHash": "185f48484a100d8b4eaf285cb630ab75efdee50701d6712842508d3064b13e68",
+      "sourceHash": "1a3c052ad77753ace8605c49d335fc356fc159ab3e7dde3ca197ded67f445697",
       "width": 640,
       "height": 360,
       "frame": 48
@@ -831,14 +963,18 @@
     },
     "Examples/Topics/Advanced Data/Regex": {
       "origin": "captured",
-      "sourceHash": "490819e9b369f71c90e46805a5243a30418b7223bc7a94bf3cec71b0b269d1a9",
+      "sourceHash": "867099dc9ceae691b95a4a4483b9e17f84870aaf4960999f41b4f00c238930fc",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 94
+      "frame": 98
     },
     "Examples/Topics/Advanced Data/Threads": {
       "origin": "captured",
-      "sourceHash": "4432d59f50eed449d92d635ea91fc05811acc41a370375d8b1b50a2555597e67",
+      "sourceHash": "670849597955cf64b7c0b02b5643da829b659c1db6185066df70f3f978665eeb",
       "width": 640,
       "height": 360,
       "frame": 102
@@ -860,14 +996,14 @@
     },
     "Examples/Topics/Cellular Automata/Spore1": {
       "origin": "captured",
-      "sourceHash": "814599d0879ff396bb4d5dc4967b3dd5ade8ad96179cdefaef7751f612b9a796",
+      "sourceHash": "e85f684093f1141720bc2f17d7efd7a3c1a9e8d2c4f1eeede3acdda7df30d32f",
       "width": 640,
       "height": 360,
       "frame": 16
     },
     "Examples/Topics/Cellular Automata/Spore2": {
       "origin": "captured",
-      "sourceHash": "e7ce851054e06e627ca78ef99b156270f76b5a27e8022437e19cc825df828b65",
+      "sourceHash": "8f8455be818b6f9eda89f95fa92201db07c118486be17c48be55935f0b341735",
       "width": 640,
       "height": 360,
       "frame": 16
@@ -879,70 +1015,86 @@
     },
     "Examples/Topics/Create Shapes/BeginEndContour": {
       "origin": "captured",
-      "sourceHash": "844f1b5efc0196e545902e9c6f93c55eea91904c19935822e696efd6445b3ffb",
+      "sourceHash": "3dcb186c6f2755492550906a62ba0305b8b01c64a102e2f79e6d9f952878bb90",
       "width": 640,
       "height": 360,
       "frame": 97
     },
     "Examples/Topics/Create Shapes/GroupPShape": {
       "origin": "captured",
-      "sourceHash": "fbf67e30d2e9acd807f01cb2ff6caf4d9a2f2faec6d3feb3cfb6d20e20cd2128",
+      "sourceHash": "39d7fcf412227151f0ae2d60f12c7cf1c032928a7fc49e22d7b75dca3fea421a",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 108
+    },
+    "Examples/Topics/Create Shapes/PathPShape": {
+      "origin": "captured",
+      "sourceHash": "83486d47d2e19029b77f6134a3867f0ea7e4559a83b42d620cdcf6f611877688",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 104
     },
-    "Examples/Topics/Create Shapes/PathPShape": {
-      "origin": "captured",
-      "sourceHash": "7df3edd90a505fc9ef84c73453624bb7ba6fb2ac95b7596316bf2a68734e8190",
-      "width": 640,
-      "height": 360,
-      "frame": 105
-    },
     "Examples/Topics/Create Shapes/PolygonPShape": {
       "origin": "captured",
-      "sourceHash": "652801ddb754f2977811bfee938b4c149d474b9606decda5cde421a5456db614",
+      "sourceHash": "d356bef088a985f2843be25923487199770143211e1ad18af8d33baf390ae937",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 100
+      "frame": 103
     },
     "Examples/Topics/Create Shapes/PolygonPShapeOOP": {
       "origin": "captured",
-      "sourceHash": "725f5904a119794fbc38301bb37952e6227fe9466d6e7dd02cdc300d23d52870",
+      "sourceHash": "d7437e2a5ffccfb22cf37dbafd0f6d2345ee9adb1f5947fddb946e44f152a996",
       "width": 640,
       "height": 360,
       "frame": 94
     },
     "Examples/Topics/Create Shapes/PolygonPShapeOOP2": {
       "origin": "captured",
-      "sourceHash": "f6eee4feb8f9caefd187c2edb3e3fdd59e9f52d5b3d6ff5e036c061fbe493187",
+      "sourceHash": "50f090d7c725f966d3b906ff456068c1274a073e47eb781d204c480ec5aa8621",
       "width": 640,
       "height": 360,
       "frame": 95
     },
     "Examples/Topics/Create Shapes/PolygonPShapeOOP3": {
       "origin": "captured",
-      "sourceHash": "44768472ccea15d146c7688061238ebfe481f87eec867bea91d712d3c26a3dfd",
+      "sourceHash": "3b98e835ef0eabb816511499f5af7c90b19b639f41ecffe00c05294eece94166",
       "width": 640,
       "height": 360,
       "frame": 104
     },
     "Examples/Topics/Create Shapes/PrimitivePShape": {
       "origin": "captured",
-      "sourceHash": "08564657c3c543249756637ce9b886256ab7cdb7f35bdbd170a3310f17f121d9",
+      "sourceHash": "48e056715777efd74d9c0c52ab8b7119deee8c1eaa383054ae4657df6e34f7fb",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 102
+      "frame": 100
     },
     "Examples/Topics/Create Shapes/WigglePShape": {
       "origin": "captured",
-      "sourceHash": "39524de2874e213a27f4e9e648d9b789c8e8e17e364a3f7f74fbbcfcbf36bb7a",
+      "sourceHash": "f1a80f185eae063f2c74cf96fb572719baa507128b9d6a3385d3d4b7a58d8514",
       "width": 640,
       "height": 360,
       "frame": 101
     },
     "Examples/Topics/Curves/ArcLengthParametrization": {
       "origin": "captured",
-      "sourceHash": "b4dc63e3643b7f10241ce07ebe9f1996e7220440f7033e62a30a6dfad75386a3",
+      "sourceHash": "ddf808702c92b0dcb03a0d9ee970949a5b5fabc7c070e807e528d91df6a47b63",
       "width": 640,
       "height": 360,
       "frame": 96
@@ -964,7 +1116,7 @@
     },
     "Examples/Topics/File IO/DropImage": {
       "origin": "captured",
-      "sourceHash": "facb6344878997017600b1125c29de69393d55a12edc7ab69d87b335e8ae95d2",
+      "sourceHash": "e36b7162b04184ffd6aaa87562da02c6a9002092ddb2df39fac98150f06daa9d",
       "width": 640,
       "height": 360,
       "frame": 99
@@ -981,21 +1133,29 @@
     },
     "Examples/Topics/File IO/SaveFile1": {
       "origin": "captured",
-      "sourceHash": "1605ff1da637c466dd5ebd94e31ff5c6dd1769ec6cd0a33e56fc6734587ef832",
+      "sourceHash": "276b5527b772507ac6e96db9be5a6b7fc1529579243412d801cf9ed54c097f74",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 142
+      "frame": 136
     },
     "Examples/Topics/File IO/SaveFile2": {
       "origin": "captured",
-      "sourceHash": "d45962d6d0054c2563495220c89c77efa5fde43f289ee73f04c7f0b5885b4f62",
+      "sourceHash": "0e7b7a0e7dc78fef777ec0a7c72e8f6619ab21975d8d67fb53accfe47f6f1b81",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 40
+      "frame": 42
     },
     "Examples/Topics/File IO/SaveFrames": {
       "origin": "captured",
-      "sourceHash": "f9d7e1be2b0f6e9c92e79f02a87fd4dac20ef7355dd76c35172e30793f9b7b39",
+      "sourceHash": "cc69e127485718dc5e54d361e7265ac53f8c8330ba6a95dea2cbe4085111a2c6",
       "width": 640,
       "height": 360,
       "frame": 96
@@ -1057,59 +1217,87 @@
     },
     "Examples/Topics/Geometry/Icosahedra": {
       "origin": "captured",
-      "sourceHash": "b4435acf532c032bf53dcccba2f17c696e542b2f5e3769cd0d876035978efb44",
+      "sourceHash": "56f41af12b499948fde3acafe758ae80f293cb4a904446e6088647b3daab2b31",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 94
+      "frame": 102
     },
     "Examples/Topics/Geometry/NoiseSphere": {
       "origin": "captured",
-      "sourceHash": "3aaddde8396e10cbeebc6a8fe7032015744e38775f870d90ab7600c3457848ca",
+      "sourceHash": "f6d48725ab2b5f03801ff043c975c06b78b2bd3127b6a2a6e0dd915c7c9d71d3",
+      "provenance": {
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 70
+      "frame": 108
     },
     "Examples/Topics/Geometry/RGBCube": {
       "origin": "captured",
-      "sourceHash": "b7fd1b27d42e4fd2288b6f017929ac35f79bb3bc6022d20766d5dc356dd1a632",
+      "sourceHash": "e6276e67db0859370d74f3f7f3182560006ac65a039ff482c9047e44da767674",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 101
+      "frame": 100
     },
     "Examples/Topics/Geometry/ShapeTransform": {
       "origin": "captured",
-      "sourceHash": "5229424869ba861005d839d9fe7eceb14dd64dc26cb2ca75735471c76f6e03c3",
+      "sourceHash": "6b76f56652516cf44336c95051575d2819893a8d77f4514517611c1e8e99ace3",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 99
+      "frame": 100
     },
     "Examples/Topics/Geometry/SpaceJunk": {
       "origin": "captured",
-      "sourceHash": "de6b441614b336fe70588ede080d9c0584b48ede8712cd2752b6cf0d4c77e96b",
+      "sourceHash": "d1fb6949289a7bc392ce8591a175ac27d6b6d283b8fa1f633e41b183bdc73c6b",
       "width": 640,
       "height": 360,
       "frame": 94
     },
     "Examples/Topics/Geometry/Toroid": {
       "origin": "captured",
-      "sourceHash": "348460b36a544d7134c1be40bb80f8f4c82516db71d26f054932c418fa8c22dd",
+      "sourceHash": "1e5ed96c51defb9727efe491ffece50baae203eca37c16012b9bf0055bef0412",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 95
+      "frame": 112
     },
     "Examples/Topics/Geometry/Vertices": {
       "origin": "captured",
-      "sourceHash": "40d6df34de9faf36a4873b02aaa32d60ad257118894f494714b2e565e5231d06",
+      "sourceHash": "06fe156fdbfa688605db99fcf3956210d8c52ecd3f90c1237f049263e3be64d1",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 101
     },
     "Examples/Topics/Image Processing/Blending": {
       "origin": "captured",
-      "sourceHash": "a776c6b2dd0a63fa1209a2264c4c0ead543c3c8ea40cc23b328417f755aa22a1",
+      "sourceHash": "31fbb895f5ff67e1d5285c9fd2127651eb904b129cc6fc0d4603db02281c2698",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 98
+      "frame": 101
     },
     "Examples/Topics/Image Processing/Blur": {
       "origin": "processing",
@@ -1133,17 +1321,21 @@
     },
     "Examples/Topics/Image Processing/Explode": {
       "origin": "captured",
-      "sourceHash": "9032683f7637a0b6463b41bc206c116d40251f96a665128610f530312408a50e",
+      "sourceHash": "c77679daedf32926c3c1c820415bceb7e4dc798e6e0a9df6e85df7bfa7fca07f",
       "width": 640,
       "height": 360,
       "frame": 19
     },
     "Examples/Topics/Image Processing/Extrusion": {
       "origin": "captured",
-      "sourceHash": "0f184fb5d41bd765c668bc346299e7743a7c03e0ce676af99fdb3feacc857407",
+      "sourceHash": "24193f3ad34eb36ccb34aa3e094d7277a060cd5cb3b9f42b9d39d408904fbbd6",
+      "provenance": {
+        "commit": "0f494b1d6b705d15eeb99f753d5b1874f171d91d",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 98
+      "frame": 100
     },
     "Examples/Topics/Image Processing/Histogram": {
       "origin": "processing",
@@ -1152,7 +1344,7 @@
     },
     "Examples/Topics/Image Processing/LinearImage": {
       "origin": "captured",
-      "sourceHash": "1f5b7beb4ec3bb5180722ea7f21f2ce1e712d045a68f6a4474f3ea806b8455b0",
+      "sourceHash": "b1464670c466bc2d261b4de22d35bcbc7c608a8f9c005f4fb8517efcf8cf7555",
       "width": 640,
       "height": 360,
       "frame": 24
@@ -1164,17 +1356,25 @@
     },
     "Examples/Topics/Image Processing/Sharpen": {
       "origin": "captured",
-      "sourceHash": "433692abb860c099bc6fe6380f0ea028ae9cc40597559fbe8034d1943da55e85",
+      "sourceHash": "7f159f7be7319c93e31bc5324a0fcf900f5d41eb45889ea62e16715d5e3328c4",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1
     },
     "Examples/Topics/Image Processing/Zoom": {
       "origin": "captured",
-      "sourceHash": "e9e8317618934304b9173f66e2aa8d71633b0785fb4e4670b52f1996179ef11d",
+      "sourceHash": "5159614c59ed45f6eea859952808e9dcd1f1a09d391f2345aa60284c8cc923f0",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 159
+      "frame": 153
     },
     "Examples/Topics/Interaction/Follow1": {
       "origin": "processing",
@@ -1233,10 +1433,14 @@
     },
     "Examples/Topics/Motion/CubesWithinCube": {
       "origin": "captured",
-      "sourceHash": "67e92d90e284f04e1305cd5ba336c0d456036f19c6d52df02673468e8bad0bec",
+      "sourceHash": "20b0b7c927e635bd4fe176a0529921ffe6e221646b8bfcf16c1f2bac71a9f5f5",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 99
+      "frame": 97
     },
     "Examples/Topics/Motion/Linear": {
       "origin": "processing",
@@ -1265,94 +1469,136 @@
     },
     "Examples/Topics/Shaders/BlurFilter": {
       "origin": "captured",
-      "sourceHash": "d9f66b7da25d17840279078d86b8b63157367ddbe62fde3a4096cd022be889a7",
+      "sourceHash": "9da6476f235571060df5317ccae986c7993d0a811599d7a3e4332f83c9677206",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 114
+      "frame": 116
     },
     "Examples/Topics/Shaders/Conway": {
       "origin": "captured",
-      "sourceHash": "9c53bba03abb9bf5867cd51c85dbeead4cef40fca01d9205ee9be377fac3c672",
+      "sourceHash": "0c56c925991b23285d55b076becaa76167eae277cee5bc7ac3912bf19266f12d",
       "width": 400,
       "height": 400,
       "frame": 53
     },
     "Examples/Topics/Shaders/CustomBlend": {
       "origin": "captured",
-      "sourceHash": "0111ced297fefd6c5f958306d9a6a9031ced9f5d548268ce289ec42adb4e7f6a",
+      "sourceHash": "5f5b549b4f6eb4bc1ed4bb5229b8478073eedbbeea04ef3b72e23a29e9a43288",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1
     },
+    "Examples/Topics/Shaders/CustomShader2D": {
+      "origin": "captured",
+      "sourceHash": "9e5b0c2f2a48f1368db215eaca54527a725723fc46d1f1001bd724f49454ee70",
+      "provenance": {
+        "commit": "91c1ea8ee173988b587b4cb63910b891d67c1b82",
+        "dirty": false
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 105
+    },
     "Examples/Topics/Shaders/Deform": {
       "origin": "captured",
-      "sourceHash": "d9ed1304f16a9c1ca9a36b36d89ddf4d91efc73f6888b8779c587b643416a62f",
+      "sourceHash": "6424078ce3e9b227281f279fa5631c865f3a9069fe8630969ea7a991b98ed7a4",
       "width": 640,
       "height": 360,
       "frame": 85
     },
     "Examples/Topics/Shaders/EdgeDetect": {
       "origin": "captured",
-      "sourceHash": "88c06cf4defe0f379138724051497ac180a9635ee2ab2eabbdf7edb36f61191f",
+      "sourceHash": "4c693cd830de78e2656850fb04a9c6f9102ae4960afb0615b19991c2ffd3d304",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 1
     },
     "Examples/Topics/Shaders/EdgeFilter": {
       "origin": "captured",
-      "sourceHash": "da6783bb9253593c31c29f2a5bd057652364e7fe48638825f2841ce8b96fcf47",
+      "sourceHash": "b81cab762a51e75558cd6f2986e8cb84c620116aab4d05a304fcbd275dc47ce2",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 105
+      "frame": 117
     },
     "Examples/Topics/Shaders/GlossyFishEye": {
       "origin": "captured",
-      "sourceHash": "4e3dbb705d320b919aeee0dee7f9a8f158f73ac1df995cddae31663ee34bb382",
+      "sourceHash": "68bc091a813fedb571c5139b4bd7c0905bf78ae7b604687956e4c95e2dd9a776",
       "width": 640,
       "height": 640,
       "frame": 103
     },
     "Examples/Topics/Shaders/ImageMask": {
       "origin": "captured",
-      "sourceHash": "94caa4b9a61b5d4c595bf4c47c135513f3a2d534bc451b01b2aea6d81beb020b",
+      "sourceHash": "0663c73dd5f6add97f570db9287974f87aed1e0e07ea94854d7a2ceddfbf7fb9",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 16
+      "frame": 11
     },
     "Examples/Topics/Shaders/InfiniteTiles": {
       "origin": "captured",
-      "sourceHash": "78bffa59e901bd9921c09e39efa71b2d4c48e8db1a8b2a063b9008b3e801c684",
+      "sourceHash": "d2a512c3cb43ab167fa3d30e0e39224ca1500b9075c5db760b978dfe4d46eda2",
       "width": 640,
       "height": 480,
       "frame": 20
     },
     "Examples/Topics/Shaders/Landscape": {
       "origin": "captured",
-      "sourceHash": "293b6980306a1eb8ee77c4f5d8f7ca4cf736604ac8f64f58de54e2bdfa9035f7",
+      "sourceHash": "51ce3289f2b7cb4f38dc54d0a7cbad5c919283789d168b12b674f5de6d8ff18a",
       "width": 640,
       "height": 360,
       "frame": 51
     },
     "Examples/Topics/Shaders/Monjori": {
       "origin": "captured",
-      "sourceHash": "607118985dd74b9bb8fd2bb6fd1b57a8585f5a9fe89ab2b321e980b2f0a93b78",
+      "sourceHash": "a1e4444a2f2fa91f9031aeb4ca231dd604e4469185eb983650126921aefa8ba3",
       "width": 640,
       "height": 360,
       "frame": 88
     },
     "Examples/Topics/Shaders/Nebula": {
       "origin": "captured",
-      "sourceHash": "d459ff78b6d986b08700725c1aeabee820061c17b29832c3986a3129a59ab3e1",
+      "sourceHash": "9a18c902b83d6cbf467413168ff955c6cb6a3142f8e409aadc8ac587ab63581d",
       "width": 640,
       "height": 360,
       "frame": 79
     },
     "Examples/Topics/Shaders/SepBlur": {
       "origin": "captured",
-      "sourceHash": "e3ae3f40216dc30741d791a9fb51d50621bc19820b03942250d4de5f43d517aa",
+      "sourceHash": "19efe5df7aa224c6b0f5f5bf1aacb2987aec5d9fbcb8a267bbdf56e9ebca6e81",
       "width": 640,
       "height": 360,
       "frame": 100
+    },
+    "Examples/Topics/Shaders/ToonShading": {
+      "origin": "captured",
+      "sourceHash": "eeb850701148bebdc8cc8c9b11d53102f9ec42849e842264c5d6e2227ea20028",
+      "provenance": {
+        "commit": "8ce361fd9387dc3a582ee7285220f5f56a27954e",
+        "dirty": false
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 80
     },
     "Examples/Topics/Simulate/Flocking": {
       "origin": "processing",
@@ -1366,10 +1612,14 @@
     },
     "Examples/Topics/Simulate/GravitationalAttraction3D": {
       "origin": "captured",
-      "sourceHash": "51906b10138077579c0ab74886f129be812c9589b64c96db410521156216b42c",
+      "sourceHash": "ec99fd4ac2f68ee126da9c47c1117c7bd7d9103a8ee61de9a9d0145a5731a0c1",
+      "provenance": {
+        "commit": "3912676580c3f9939a749242df874a44d3c26927",
+        "dirty": true
+      },
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 100
     },
     "Examples/Topics/Simulate/MultipleParticleSystems": {
       "origin": "processing",
@@ -1388,52 +1638,83 @@
     },
     "Examples/Topics/Simulate/SoftBody": {
       "origin": "captured",
-      "sourceHash": "dd79f96de3bdf87b8c58d78aa11b1da363ab37f6ab05ffb8c4da69af0e526439",
+      "sourceHash": "5812480c9b110746c625fbd040ce79e875ffbfdc9c389b3eb1cae0b2effb3629",
       "width": 640,
       "height": 360,
       "frame": 36
     },
     "Examples/Topics/Subsystems/AutoSubsystems": {
       "origin": "captured",
-      "sourceHash": "ac7a8c220e58fb5799a840a6d29eb9164e9287ac1acffe921b63675c1965c530",
-      "width": 640,
-      "height": 360,
-      "frame": 100
-    },
-    "Examples/Topics/Textures/TextureCube": {
-      "origin": "captured",
-      "sourceHash": "ec258e3896828fbf0274d5b18393dcd3df2e3a34afd34fe717f0ddc96a32e0ca",
-      "width": 640,
-      "height": 360,
-      "frame": 94
-    },
-    "Examples/Topics/Textures/TextureCylinder": {
-      "origin": "captured",
-      "sourceHash": "6851bb1a4e8a7b6cd9f730d299dcfb029113e20adaa2039f678c69dde6e97690",
+      "sourceHash": "1b048e58da4fdf2b1ef9344d0071dd040b9b133af04b92f7b105f6f90404b5e3",
+      "provenance": {
+        "commit": "c60ce9bc55157fd5aa8b30e92c95b502a3d7a4e1",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
       "frame": 96
     },
-    "Examples/Topics/Textures/TextureQuad": {
+    "Examples/Topics/Textures/TextureCube": {
       "origin": "captured",
-      "sourceHash": "477b71eeb4ca8420a96fb783b21a0f9f3619d95a0258731130d59b0b35a80912",
+      "sourceHash": "66ed7d4d1633eacd262973eaf06760cf45eaa9e93c424ec9ca6ad3ffa2040381",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 97
+      "frame": 104
+    },
+    "Examples/Topics/Textures/TextureCylinder": {
+      "origin": "captured",
+      "sourceHash": "ac2d87a50331238fe49bc8f8cc1c71c4ae6fbe6a0928c6657fa69eceddf73a73",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 100
+    },
+    "Examples/Topics/Textures/TextureQuad": {
+      "origin": "captured",
+      "sourceHash": "90ae9ab16f2b1b4243fa987a7597df929bfeb381d4e755961d34d31b28bab598",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
+      "width": 640,
+      "height": 360,
+      "frame": 96
     },
     "Examples/Topics/Textures/TextureSphere": {
       "origin": "captured",
-      "sourceHash": "4e913ecbdf7fa9b56d4c7675dfa6d195ac40a05bc13a6dc6237c0b9331d822de",
+      "sourceHash": "117fbdf40a14d45cb2f1d2d6fe4050789dfe46f914b0fa635ba779235a30bcf0",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 106
+      "frame": 102
     },
     "Examples/Topics/Textures/TextureTriangle": {
       "origin": "captured",
-      "sourceHash": "d98641e0385a8677a515c84798472b178fae0c7bd63d1f656a4a2fc8affaeb59",
+      "sourceHash": "ebc905f4cd30072870c138242a3cba99a56907525872bd96434e174840ce5e0b",
+      "provenance": {
+        "commit": "74c28bd0a55ff583da672eb356b6661aa7e9d794",
+        "dirty": false
+      },
       "width": 640,
       "height": 360,
-      "frame": 106
+      "frame": 95
+    },
+    "Examples/Topics/Typography/TextParticles": {
+      "origin": "captured",
+      "sourceHash": "89ebee10c2318982cce67adf5e80e2b19a07db65be2c7d2590528447a0445df9",
+      "width": 640,
+      "height": 360,
+      "frame": 103
     },
     "Examples/Topics/Vectors/AccelerationWithVectors": {
       "origin": "processing",

@@ -15,8 +15,11 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 
 `import metaphor`（アンブレラ。全モジュールを `@_exported import` で再エクスポート）か、個別モジュールを import します。
 
+- **Tier 0（依存ゼロ）**: MetaphorLog（診断ログ `metaphorWarning` / `metaphorAlert` / `metaphorDiagnostic` の実体。product には出さず `MetaphorCore` が `@_exported import` で再輸出）
 - **Tier 1（Core 非依存）**: MetaphorAudio / MetaphorNetwork / MetaphorPhysics / MetaphorML / MetaphorVideo
 - **Tier 2（MetaphorCore 依存）**: MetaphorNoise / MetaphorMPS / MetaphorCoreImage / MetaphorRenderGraph / MetaphorSceneGraph / MetaphorSyphon
+
+**ライブラリのメッセージは素の `print()` で書かない**。3 関数の使い分け表は [`Sources/MetaphorLog/Log.swift`](Sources/MetaphorLog/Log.swift) が正本で、`Sources/` に生の `print()` が戻らないことは CI（`scripts/check-no-raw-print.py`）が機械で守る（#896。正当な例外はスクリプトの `ALLOWLIST` に理由つきで載せる）。
 
 Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのターゲットだけ。`MetaphorCore` は Syphon 非依存で、出力は `MetaphorOutputRegistry` 経由（`import metaphor` なら自動登録により従来どおり `config.syphon` が使えます）。
 
@@ -98,7 +101,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 ## 規約
 
 - Swift Testing フレームワーク（`@Suite`, `@Test`）を使う。XCTest は使わない。
-- **ドキュメントの画像はリポジトリに置かず Gyazo へ上げて外部 URL で参照する**（`![alt](https://i.gyazo.com/<hash>.png)`）。DocC は `.docc/Resources/` に画像を置かない（[ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)。DocC は WebP を無言で落とすため動きは GIF、ダーク/Retina の出し分けは効かない）。チュートリアル `docs/tutorial/` も同様で、**画像は `make tutorial-shots` が撮影・アップロード・本文の URL 書き戻しまで行う**（[ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)。台帳は `docs/tutorial/images/manifest.json`、動きはアニメーション WebP のまま、本文の URL を手で書かない）。アセットは不変・追記型で、撮り直しは新規アップロード + URL 更新とし、古い URL は消さない。
+- **ドキュメントの画像はリポジトリに置かず Gyazo へ上げて外部 URL で参照する**（`![alt](https://i.gyazo.com/<hash>.png)`）。DocC は `.docc/Resources/` に画像を置かない（[ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)。DocC は WebP を無言で落とすため動きは GIF、ダーク/Retina の出し分けは効かない）。**API リファレンスの実行結果は doc コメントに `<!-- reference-shot -->` 付きのスニペットを書き、`make reference-shots` が撮影・アップロード・画像行の書き戻しまで行う**（規約は [docs/reference/README.md](docs/reference/README.md)。コードが正典で画像行は生成物、手で URL を書かない）。チュートリアル `docs/tutorial/` も同様で、**画像は `make tutorial-shots` が撮影・アップロード・本文の URL 書き戻しまで行う**（[ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)。台帳は `docs/tutorial/images/manifest.json`、動きはアニメーション WebP のまま、本文の URL を手で書かない）。アセットは不変・追記型で、撮り直しは新規アップロード + URL 更新とし、古い URL は消さない。
 - 新しい example は既存のレイアウト `Examples/{Category}/{Subcategory}/{Name}/` に従い、各々が自己完結した SwiftPM パッケージ（[Examples/README.md](Examples/README.md) 参照）。追加後は `make examples-index` で索引を再生成。
 
 ## ブランチ運用（GitHub Flow）
@@ -114,7 +117,8 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 - merge は `gh pr merge --squash --auto` で手離れさせる（CI green で自動 merge され、BEHIND でも追随不要 — [docs/releasing.md](docs/releasing.md) の "Merging PRs"）。green を待つために CI を watch して手動 merge する運用はしない。
 - ただし**赤い CI を残したままセッションを終えない**。push した PR の CI は Stop hook（個人環境の `repo-standards` プラグインが供給。このリポには同梱していない）が見張り、赤いまま終わろうとすると失敗ジョブとログ取得コマンドを添えて差し戻してくる。そのまま原因を直して追加コミットする（自動修正は 3 回で打ち切り、それ以降は状況を報告して人間に返す）。仕組みの詳細は [DEVELOPMENT.md](DEVELOPMENT.md) の「CI が赤いまま終わらせない（Stop hook）」。
 - 描画結果が変わる PR には before/after 画像を、**動きが変わる PR には GIF も**載せる（手順は [DEVELOPMENT.md](DEVELOPMENT.md) の「PR に見た目の証跡を載せる」）。
-- 並行してエージェント/PR を走らせるときの合流点ルール: 同時 in-flight PR は 3 本程度まで / 同じファイル群（特に Sources 全域・生成物）を触るタスク同士は直列に / Sources 系と docs 系を混ぜてバッチを組む / 生成物が conflict したら `git merge origin/main` 後に再生成すれば常に正。
+- 並行してエージェント/PR を走らせるときの合流点ルール: 同時 in-flight PR は 3 本程度まで / 同じファイル群（特に Sources 全域・生成物）を触るタスク同士は直列に / Sources 系と docs 系を混ぜてバッチを組む。
+- **`git merge origin/main` で main を取り込んだら、生成物は必ず再生成する**（`make llms-txt` / `make examples-index` ほか、対応表は [DEVELOPMENT.md](DEVELOPMENT.md) の「生成物の管理」）。**conflict の有無は判断材料にならない** — 片方が新規に足した行の中に、もう片方が直した内容が埋まっていると、行単位マージは衝突を検出できず、生成物は黙って古いまま残る（実例: #396 のシンボルリンク曖昧性解消が、PR #969 が `llms.txt` へ新規に足した callout 行の中で落ちた）。
 - merge 後は main に戻って pull し、`git fetch -p` でローカルブランチを掃除する。
 
 ### 気付きは Issue へ

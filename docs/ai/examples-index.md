@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 282
+Example count: 286
 
-Status: supported 262, partial 0, stub 10, obsolete 10
+Status: supported 270, partial 0, stub 6, obsolete 10
 
 ## How To Use
 
@@ -20,10 +20,11 @@ Status: supported 262, partial 0, stub 10, obsolete 10
   post-process API (`addPostEffect`, `createPostEffect`, `createMaterial`,
   `createEffectPass`, ...) or ships its own `.metal` source.
   `cpu-approximation` marks the opposite case — a port of a Processing
-  sample whose original was GLSL, redone with CPU pixel loops. Everything
-  under `Examples/Topics/Shaders/` is `cpu-approximation`: read those for
-  the effect, never as shader references. 2D custom shaders
-  (`loadShader()` / `shader()`) are not implemented yet — issue #291.
+  sample whose original was GLSL, redone with CPU pixel loops. Every
+  example under `Examples/Topics/Shaders/` except `CustomShader2D` is
+  `cpu-approximation`: read those for the effect, never as shader
+  references. For 2D custom shaders (`loadShader()` / `createShader()` /
+  `shader()` / `resetShader()`), `CustomShader2D` is the reference.
 
 ## Machine-Readable Access
 
@@ -56,7 +57,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Array](../../Examples/Basics/Arrays/Array) [Beginner] (Arrays) -- An array is a list of data. Each piece of data in an array is identified by an index number representing its position in the array. Arrays are zero based, which means that the first element in the array is [0], the seco... Tags: array, arrays, basics.
 - [Array 2D](../../Examples/Basics/Arrays/Array2D) [Intermediate] (Arrays) -- Demonstrates the syntax for creating a two-dimensional (2D) array. Values in a 2D array are accessed through two index values. 2D arrays are useful for storing images. In this example, each dot is colored in relation to... Tags: array2d, arrays, basics, image.
 - [Array Objects](../../Examples/Basics/Arrays/ArrayObjects) [Advanced] (Arrays) -- Demonstrates the syntax for creating an array of custom objects. Tags: arrayobjects, arrays, basics.
-- [Brightness](../../Examples/Basics/Color/Brightness) [Intermediate] (Color) -- Brightness is the relative lightness or darkness of a color. Move the cursor vertically over each bar to alter its brightness. Tags: 3d, basics, brightness, color.
+- [Brightness](../../Examples/Basics/Color/Brightness) [Intermediate] (Color) -- Brightness is the relative lightness or darkness of a color. Move the cursor vertically over each bar to alter its brightness. Tags: basics, brightness, color.
 - [Color Variables (Homage to Albers)](../../Examples/Basics/Color/ColorVariables) [Beginner] (Color) -- This example creates variables for colors that may be referred to in the program by a name, rather than a number. Tags: basics, color, colorvariables.
 - [Hue](../../Examples/Basics/Color/Hue) [Beginner] (Color) -- Hue is the color reflected from or transmitted through an object and is typically referred to as the name of the color such as red, blue, or yellow. In this example, move the cursor vertically over each bar to alter its... Tags: basics, color, hue.
 - [Simple Linear Gradient](../../Examples/Basics/Color/LinearGradient) [Intermediate] (Color) -- The lerpColor() function is useful for interpolating between two colors. Tags: basics, color, lineargradient.
@@ -68,10 +69,10 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Perspective vs Ortho](../../Examples/Basics/Control/Camera/Orthographic) [Intermediate] (Control) -- Move the mouse left to right to change the "far" parameter for the perspective() and ortho() functions. This parameter sets the maximum distance from the origin away from the viewer and will clip the geometry. Click a m... Tags: 3d, basics, camera, control, interaction, orthographic.
 - [Perspective](../../Examples/Basics/Control/Camera/Perspective) [Intermediate] (Control) -- Move the mouse left and right to change the field of view (fov). Click to modify the aspect ratio. The perspective() function sets a perspective projection applying foreshortening, making distant objects appear smaller... Tags: 3d, basics, camera, control, interaction, perspective.
 - [Conditionals 1](../../Examples/Basics/Control/Conditionals1) [Beginner] (Control) -- Conditions are like questions. They allow a program to decide to take one action if the answer to a question is "true" or to do another action if the answer to the question is "false."<br /> The questions asked within a... Tags: basics, conditionals1, control.
-- [Conditionals 2](../../Examples/Basics/Control/Conditionals2) [Beginner] (Control) -- We extend the language of conditionals from the previous example by adding the keyword "else". This allows conditionals to ask two or more sequential questions, each with a different action. Tags: basics, conditionals2, control, typography.
+- [Conditionals 2](../../Examples/Basics/Control/Conditionals2) [Beginner] (Control) -- We extend the language of conditionals from the previous example by adding the keyword "else". This allows conditionals to ask two or more sequential questions, each with a different action. Tags: basics, conditionals2, control.
 - [Embedding Iteration](../../Examples/Basics/Control/EmbeddedIteration) [Beginner] (Control) -- Embedding "for" structures allows repetition in two dimensions. Tags: basics, control, embeddediteration.
 - [Iteration](../../Examples/Basics/Control/Iteration) [Beginner] (Control) -- Iteration with a "for" structure to construct repetitive forms. Tags: basics, control, iteration.
-- [Logical Operators](../../Examples/Basics/Control/LogicalOperators) [Beginner] (Control) -- The logical operators for AND (&&) and OR (||) are used to combine simple relational statements into more complex expressions. The NOT (!) operator is used to negate a boolean statement. Tags: basics, control, interaction, logicaloperators.
+- [Logical Operators](../../Examples/Basics/Control/LogicalOperators) [Beginner] (Control) -- The logical operators for AND (&&) and OR (||) are used to combine simple relational statements into more complex expressions. The NOT (!) operator is used to negate a boolean statement. Tags: basics, control, logicaloperators.
 - [Characters Strings](../../Examples/Basics/Data/CharactersStrings) [Beginner] (Data) -- The character datatype, abbreviated as char, stores letters and symbols in the Unicode format, a coding system developed to support a variety of world languages. Characters are distinguished from other symbols by puttin... Tags: basics, charactersstrings, data, image, interaction, typography.
 - [Datatype Conversion](../../Examples/Basics/Data/DatatypeConversion) [Intermediate] (Data) -- It is sometimes beneficial to convert a value from one type of data to another. Each of the conversion functions converts its parameter to an equivalent representation within its datatype. The conversion functions inclu... Tags: basics, data, datatypeconversion.
 - [Integers Floats](../../Examples/Basics/Data/IntegersFloats) [Beginner] (Data) -- Integers and floats are two different kinds of numerical data. An integer (more commonly called an int) is a number without a decimal point. A float is a floating-point number, which means it is a number that has a deci... Tags: basics, data, integersfloats.
@@ -94,14 +95,14 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Request Image](../../Examples/Basics/Image/RequestImage) [Intermediate] (Image) -- Shows how to use the requestImage() function with preloader animation. The requestImage() function loads images on a separate thread so that the sketch does not freeze while they load. It's very useful when you are load... Tags: basics, image, requestimage.
 - [Transparency](../../Examples/Basics/Image/Transparency) [Intermediate] (Image) -- Move the pointer left and right across the image to change its position. This program overlays one image over another by modifying the alpha value of the image with the tint() function. Tags: basics, image, transparency.
 - [Clock](../../Examples/Basics/Input/Clock) [Intermediate] (Input) -- The current time can be read with the second(), minute(), and hour() functions. In this example, sin() and cos() values are used to set the position of the hands. Tags: basics, clock, input, interaction.
-- [Constrain](../../Examples/Basics/Input/Constrain) [Beginner] (Input) -- Move the mouse across the screen to move the circle. The program constrains the circle to its box. Tags: 3d, basics, constrain, input, interaction.
+- [Constrain](../../Examples/Basics/Input/Constrain) [Beginner] (Input) -- Move the mouse across the screen to move the circle. The program constrains the circle to its box. Tags: basics, constrain, input, interaction.
 - [Easing](../../Examples/Basics/Input/Easing) [Beginner] (Input) -- Move the mouse across the screen and the symbol will follow. Between drawing each frame of the animation, the program calculates the difference between the position of the symbol and the cursor. If the distance is large... Tags: basics, easing, image, input, interaction.
 - [Keyboard](../../Examples/Basics/Input/Keyboard) [Beginner] (Input) -- Click on the image to give it focus and press the letter keys to create forms in time and space. Each key has a unique identifying number. These numbers can be used to position shapes in space. Tags: basics, image, input, interaction, keyboard, typography.
 - [Keyboard Functions](../../Examples/Basics/Input/KeyboardFunctions) [Intermediate] (Input) -- Click on the window to give it focus and press the letter keys to type colors. The keyboard function keyPressed() is called whenever a key is pressed. keyReleased() is another keyboard function that is called when a key... Tags: basics, input, interaction, keyboardfunctions, typography.
 - [Milliseconds](../../Examples/Basics/Input/Milliseconds) [Beginner] (Input) -- A millisecond is 1/1000 of a second. Processing keeps track of the number of milliseconds a program has run. By modifying this number with the modulo(%) operator, different patterns in time are created. Tags: basics, input, interaction, milliseconds.
 - [Mouse 1D](../../Examples/Basics/Input/Mouse1D) [Beginner] (Input) -- Move the mouse left and right to shift the balance. The "mouseX" variable is used to control both the size and color of the rectangles. Tags: basics, input, interaction, mouse1d.
-- [Mouse 2D](../../Examples/Basics/Input/Mouse2D) [Beginner] (Input) -- Moving the mouse changes the position and size of each box. Tags: 3d, basics, input, interaction, mouse2d.
-- [Mouse Functions](../../Examples/Basics/Input/MouseFunctions) [Intermediate] (Input) -- Click on the box and drag it across the screen. Tags: 3d, basics, input, interaction, mousefunctions.
+- [Mouse 2D](../../Examples/Basics/Input/Mouse2D) [Beginner] (Input) -- Moving the mouse changes the position and size of each box. Tags: basics, input, interaction, mouse2d.
+- [Mouse Functions](../../Examples/Basics/Input/MouseFunctions) [Intermediate] (Input) -- Click on the box and drag it across the screen. Tags: basics, input, interaction, mousefunctions.
 - [Mouse Press](../../Examples/Basics/Input/MousePress) [Beginner] (Input) -- Move the mouse to position the shape. Press the mouse button to invert the color. Tags: basics, input, interaction, mousepress.
 - [Mouse Signals](../../Examples/Basics/Input/MouseSignals) [Beginner] (Input) -- Move and click the mouse to generate signals. The top row is the signal from "mouseX", the middle row is the signal from "mouseY", and the bottom row is the signal from "mousePressed". Tags: basics, input, interaction, mousesignals.
 - [Storing Input](../../Examples/Basics/Input/StoringInput) [Beginner] (Input) -- Move the mouse across the screen to change the position of the circles. The positions of the mouse are recorded into an array and played back every frame. Between each frame, the newest value are added to the end of eac... Tags: basics, export, input, interaction, storinginput.
@@ -121,10 +122,10 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Linear Interpolation](../../Examples/Basics/Math/Interpolate) [Beginner] (Math) -- Move the mouse across the screen and the symbol will follow. Between drawing each frame of the animation, the ellipse moves part of the distance (0.05) from its current position toward the cursor using the lerp() functi... Tags: basics, interaction, interpolate, math.
 - [Map](../../Examples/Basics/Math/Map) [Beginner] (Math) -- Use the map() function to take any number and scale it to a new number that is more useful for the project that you are working on. For example, use the numbers from the mouse position to control the size or color of a... Tags: basics, interaction, map, math.
 - [Noise 1D](../../Examples/Basics/Math/Noise1D) [Beginner] (Math) -- Using 1D Perlin Noise to assign location. Tags: basics, math, noise1d.
-- [Noise2D](../../Examples/Basics/Math/Noise2D) [Beginner] (Math) -- Using 2D noise to create simple texture. Tags: basics, math, noise2d, typography.
-- [Noise 3D](../../Examples/Basics/Math/Noise3D) [Intermediate] (Math) -- Using 3D noise to create simple animated texture. Here, the third dimension ('z') is treated as time. Tags: 3d, basics, math, noise3d, typography.
+- [Noise2D](../../Examples/Basics/Math/Noise2D) [Beginner] (Math) -- Using 2D noise to create simple texture. Tags: basics, math, noise2d.
+- [Noise 3D](../../Examples/Basics/Math/Noise3D) [Intermediate] (Math) -- Using 3D noise to create simple animated texture. Here, the third dimension ('z') is treated as time. Tags: basics, math, noise3d.
 - [Noise Wave](../../Examples/Basics/Math/NoiseWave) [Intermediate] (Math) -- Using Perlin Noise to generate a wave-like pattern. Tags: basics, math, noisewave.
-- [Operator Precedence](../../Examples/Basics/Math/OperatorPrecedence) [Beginner] (Math) -- If you don't direction state the order in which an expression is evaluated, it is decided by the operator precedence. For example, in the expression 4+2*8, the 2 will first be multiplied by 8 and then the result will be... Tags: basics, interaction, math, operatorprecedence.
+- [Operator Precedence](../../Examples/Basics/Math/OperatorPrecedence) [Beginner] (Math) -- If you don't direction state the order in which an expression is evaluated, it is decided by the operator precedence. For example, in the expression 4+2*8, the 2 will first be multiplied by 8 and then the result will be... Tags: basics, math, operatorprecedence.
 - [PolarToCartesian](../../Examples/Basics/Math/PolarToCartesian) [Intermediate] (Math) -- Convert a polar coordinate (r,theta) to cartesian (x,y). The calculations are x=r*cos(theta) and y=r*sin(theta). Tags: basics, math, polartocartesian.
 - [Random](../../Examples/Basics/Math/Random) [Beginner] (Math) -- Random numbers create the basis of this image. Each time the program is loaded the result is different. Tags: basics, image, math, random.
 - [Random Gaussian](../../Examples/Basics/Math/RandomGaussian) [Beginner] (Math) -- This sketch draws ellipses with x and y locations tied to a gaussian distribution of random numbers. Tags: basics, math, randomgaussian.
@@ -137,12 +138,12 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Objects](../../Examples/Basics/Objects/Objects) [Intermediate] (Objects) -- Move the cursor across the image to change the speed and positions of the geometry. The class MRect defines a group of lines. Tags: basics, image, objects.
 - [Disable Style](../../Examples/Basics/Shape/DisableStyle) [Intermediate] (Shape) -- Shapes are loaded with style information that tells them how to draw (e.g. color, stroke weight). The disableStyle() method of PShape turns off this information so functions like stroke() and fill() change the SVGs colo... Tags: basics, disablestyle, shape.
 - [Get Child](../../Examples/Basics/Shape/GetChild) [Intermediate] (Shape) -- SVG files can be made of many individual shapes. Each of these shapes (called a "child") has its own name that can be used to extract it from the "parent" file. This example loads a map of the United States and creates... Tags: basics, getchild, shape.
-- [Load and Display an OBJ Shape](../../Examples/Basics/Shape/LoadDisplayOBJ) [Intermediate] (Shape) -- The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an OBJ file of a rocket and displays it to the screen. Tags: basics, loaddisplayobj, shape.
+- [Load and Display an OBJ Shape](../../Examples/Basics/Shape/LoadDisplayOBJ) [Intermediate] (Shape) -- The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an OBJ file of a rocket and displays it to the screen. Tags: 3d, basics, loaddisplayobj, shape.
 - [Load and Display a Shape Illustration](../../Examples/Basics/Shape/LoadDisplaySVG) [Beginner] [stub] (Shape) -- The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an SVG file of a monster robot face and displays it to the screen. Tags: basics, loaddisplaysvg, shape.
 - [Scale Shape Illustration](../../Examples/Basics/Shape/ScaleShape) [Beginner] (Shape) -- Move the mouse left and right to zoom the SVG file. This shows how, unlike an imported image, the lines remain smooth at any size. Tags: basics, image, interaction, scaleshape, shape.
 - [Shape Vertices](../../Examples/Basics/Shape/ShapeVertices) [Intermediate] (Shape) -- How to iterate over the vertices of a shape. When loading an obj or SVG, getVertexCount() will typically return 0 since all the vertices are in the child shapes. You should iterate through the children and then iterate... Tags: basics, shape, shapevertices.
 - [Coordinates](../../Examples/Basics/Structure/Coordinates) [Beginner] (Structure) -- All shapes drawn to the screen have a position that is specified as a coordinate. All coordinates are measured as the distance from the origin in units of pixels. The origin (0, 0) is the coordinate is in the upper left... Tags: basics, coordinates, image, structure.
-- [Create Graphics](../../Examples/Basics/Structure/CreateGraphics) [Intermediate] (Structure) -- The createGraphics() function creates an object from the PGraphics class. PGraphics is the main graphics and rendering context for Processing. The beginDraw() method is necessary to prepare for drawing and endDraw() is... Tags: basics, creategraphics, structure, typography.
+- [Create Graphics](../../Examples/Basics/Structure/CreateGraphics) [Intermediate] (Structure) -- The createGraphics() function creates an object from the PGraphics class. PGraphics is the main graphics and rendering context for Processing. The beginDraw() method is necessary to prepare for drawing and endDraw() is... Tags: basics, creategraphics, structure.
 - [Functions](../../Examples/Basics/Structure/Functions) [Beginner] (Structure) -- The drawTarget() function makes it easy to draw many distinct targets. Each call to drawTarget() specifies the position, size, and number of rings for each target. Tags: basics, functions, structure.
 - [Loop](../../Examples/Basics/Structure/Loop) [Beginner] (Structure) -- If noLoop() is run in setup(), the code in draw() is only run once. In this example, click the mouse to run the loop() function to cause the draw() the run continuously. Tags: basics, interaction, loop, structure.
 - [No Loop](../../Examples/Basics/Structure/NoLoop) [Beginner] (Structure) -- The noLoop() function causes draw() to only run once. Without calling noLoop(), the code inside draw() is run continually. Tags: basics, noloop, structure.
@@ -153,47 +154,47 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Width and Height](../../Examples/Basics/Structure/WidthHeight) [Beginner] (Structure) -- The 'width' and 'height' variables contain the width and height of the display window as defined in the size() function. Tags: basics, structure, widthheight.
 - [Arm](../../Examples/Basics/Transform/Arm) [Beginner] (Transform) -- The angle of each segment is controlled with the mouseX and mouseY position. The transformations applied to the first segment are also applied to the second segment because they are inside the same pushMatrix() and popM... Tags: arm, basics, interaction, transform.
 - [Rotate](../../Examples/Basics/Transform/Rotate) [Beginner] (Transform) -- Rotating a square around the Z axis. To get the results you expect, send the rotate function angle parameters that are values between 0 and PI2 (TWO_PI which is roughly 6.28). If you prefer to think about angles as degr... Tags: basics, rotate, transform.
-- [Rotate Push Pop](../../Examples/Basics/Transform/RotatePushPop) [Intermediate] (Transform) -- The push() and pop() functions allow for more control over transformations. The push function saves the current coordinate system to the stack and pop() restores the prior coordinate system. Tags: basics, rotatepushpop, transform.
-- [Rotate 1](../../Examples/Basics/Transform/RotateXY) [Intermediate] (Transform) -- Rotating simultaneously in the X and Y axis. Transformation functions such as rotate() are additive. Successively calling rotate(1.0) and rotate(2.0) is equivalent to calling rotate(3.0). Tags: basics, rotatexy, transform.
+- [Rotate Push Pop](../../Examples/Basics/Transform/RotatePushPop) [Intermediate] (Transform) -- The push() and pop() functions allow for more control over transformations. The push function saves the current coordinate system to the stack and pop() restores the prior coordinate system. Tags: 3d, basics, rotatepushpop, transform.
+- [Rotate 1](../../Examples/Basics/Transform/RotateXY) [Intermediate] (Transform) -- Rotating simultaneously in the X and Y axis. Transformation functions such as rotate() are additive. Successively calling rotate(1.0) and rotate(2.0) is equivalent to calling rotate(3.0). Tags: 3d, basics, rotatexy, transform.
 - [Scale](../../Examples/Basics/Transform/Scale) [Beginner] (Transform) -- Paramenters for the scale() function are values specified as decimal percentages. For example, the method call scale(2.0) will increase the dimension of the shape by 200 percent. Objects always scale from the origin. Tags: basics, scale, transform.
 - [Translate](../../Examples/Basics/Transform/Translate) [Beginner] (Transform) -- The translate() function allows objects to be moved to any location within the window. The first parameter sets the x-axis offset and the second parameter sets the y-axis offset. Tags: basics, transform, translate.
 - [Letters](../../Examples/Basics/Typography/Letters) [Beginner] (Typography) -- Draws letters to the screen. This requires loading a font, setting the font, and then drawing the letters. Tags: basics, letters, typography.
 - [Text Rotation](../../Examples/Basics/Typography/TextRotation) [Intermediate] (Typography) -- Draws letters to the screen and rotates them at different angles. Tags: basics, textrotation, typography.
 - [Words](../../Examples/Basics/Typography/Words) [Beginner] (Typography) -- The text() function is used for writing words to the screen. The letters can be aligned left, center, or right with the textAlign() function. Tags: basics, typography, words.
-- [Camera Switching](../../Examples/Basics/Video/CameraSwitching) [Beginner] (Video) -- Lists the connected cameras with listCaptureDevices() and switches between them with the number keys. Shows explicit device selection via createCapture(device:), the actual capture resolution chosen for the request (act... Tags: 3d, basics, cameraswitching, export, video.
+- [Camera Switching](../../Examples/Basics/Video/CameraSwitching) [Beginner] (Video) -- Lists the connected cameras with listCaptureDevices() and switches between them with the number keys. Shows explicit device selection via createCapture(device:), the actual capture resolution chosen for the request (act... Tags: basics, cameraswitching, export, video.
 - [VideoPlayback](../../Examples/Basics/Video/VideoPlayback) (Video) Tags: basics, export, video, videoplayback.
 - [Loading URLs](../../Examples/Basics/Web/EmbeddedLinks) [Intermediate] (Web) -- Click on the button to open a URL in a browser. Tags: basics, embeddedlinks, web.
 - [Loading Images](../../Examples/Basics/Web/LoadingImages) [Intermediate] (Web) -- Processing applications can load images from the network. Tags: basics, image, loadingimages, web.
 
 ## Demos
 
-- [DepthSort](../../Examples/Demos/Graphics/DepthSort) (Graphics) Tags: demos, depthsort, graphics.
+- [DepthSort](../../Examples/Demos/Graphics/DepthSort) (Graphics) Tags: 3d, demos, depthsort, graphics.
 - [GetTessGroups](../../Examples/Demos/Graphics/GetTessGroups) [obsolete] (Graphics) -- Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal. Tags: demos, gettessgroups, graphics.
 - [LowLevelGLVboInterleaved](../../Examples/Demos/Graphics/LowLevelGLVboInterleaved) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvbointerleaved.
 - [LowLevelGLVboSeparate](../../Examples/Demos/Graphics/LowLevelGLVboSeparate) [obsolete] (Graphics) -- Requires raw OpenGL access (beginPGL/endPGL). metaphor is Metal-only and deliberately exposes no OpenGL compatibility layer; non-goal. Tags: demos, graphics, lowlevelglvboseparate.
-- [MeshTweening](../../Examples/Demos/Graphics/MeshTweening) [stub] (Graphics) Tags: 3d, demos, graphics, meshtweening.
+- [MeshTweening](../../Examples/Demos/Graphics/MeshTweening) [stub] (Graphics) Tags: demos, graphics, meshtweening.
 - [MultipleWindows](../../Examples/Demos/Graphics/MultipleWindows) [obsolete] (Graphics) -- Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal. Tags: demos, graphics, multiplewindows.
 - [Particles](../../Examples/Demos/Graphics/Particles) [stub] (Graphics) Tags: demos, graphics, particles.
-- [Patch](../../Examples/Demos/Graphics/Patch) (Graphics) Tags: demos, graphics, patch.
-- [Planets](../../Examples/Demos/Graphics/Planets) [stub] (Graphics) Tags: demos, graphics, planets.
+- [Patch](../../Examples/Demos/Graphics/Patch) (Graphics) Tags: 3d, demos, graphics, patch.
+- [Planets](../../Examples/Demos/Graphics/Planets) (Graphics) Tags: 3d, demos, graphics, planets.
 - [Ribbons](../../Examples/Demos/Graphics/Ribbons) [obsolete] (Graphics) -- Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal. Tags: demos, graphics, ribbons.
-- [RotatingArcs](../../Examples/Demos/Graphics/RotatingArcs) (Graphics) Tags: demos, graphics, rotatingarcs.
+- [RotatingArcs](../../Examples/Demos/Graphics/RotatingArcs) (Graphics) Tags: 3d, demos, graphics, rotatingarcs.
 - [TessUpdate](../../Examples/Demos/Graphics/TessUpdate) [obsolete] (Graphics) -- Requires Processing's PShape tessellation API (setVertex on tessellated shapes). metaphor does not expose tessellated-geometry introspection; non-goal. Tags: demos, graphics, tessupdate.
-- [Trefoil](../../Examples/Demos/Graphics/Trefoil) [stub] (Graphics) Tags: demos, graphics, trefoil.
-- [Wiggling](../../Examples/Demos/Graphics/Wiggling) [stub] (Graphics) Tags: demos, graphics, wiggling.
+- [Trefoil](../../Examples/Demos/Graphics/Trefoil) (Graphics) Tags: 3d, demos, graphics, trefoil.
+- [Wiggling](../../Examples/Demos/Graphics/Wiggling) (Graphics) Tags: 3d, demos, graphics, wiggling.
 - [Yellowtail](../../Examples/Demos/Graphics/Yellowtail) (Graphics) Tags: demos, graphics, yellowtail.
-- [CubicGridImmediate](../../Examples/Demos/Performance/CubicGridImmediate) (Performance) Tags: cubicgridimmediate, demos, performance.
+- [CubicGridImmediate](../../Examples/Demos/Performance/CubicGridImmediate) (Performance) Tags: 3d, cubicgridimmediate, demos, performance.
 - [CubicGridRetained](../../Examples/Demos/Performance/CubicGridRetained) [stub] (Performance) Tags: cubicgridretained, demos, performance.
 - [DynamicParticlesImmediate](../../Examples/Demos/Performance/DynamicParticlesImmediate) (Performance) Tags: demos, dynamicparticlesimmediate, particles, performance.
 - [DynamicParticlesRetained](../../Examples/Demos/Performance/DynamicParticlesRetained) [stub] (Performance) Tags: demos, dynamicparticlesretained, particles, performance.
-- [Esfera](../../Examples/Demos/Performance/Esfera) (Performance) Tags: demos, esfera, performance.
+- [Esfera](../../Examples/Demos/Performance/Esfera) (Performance) Tags: 3d, demos, esfera, performance.
 - [LineRendering](../../Examples/Demos/Performance/LineRendering) (Performance) Tags: demos, linerendering, performance.
 - [Massive Circles](../../Examples/Demos/Performance/MassiveCircles) [Intermediate] (Performance) -- Draws 100,000 moving circles with the explicit massive drawing API. Uses CircleInstance arrays and a single circles() call instead of thousands of circle() calls. Tags: demos, massivecircles, performance.
 - [QuadRendering](../../Examples/Demos/Performance/QuadRendering) (Performance) Tags: demos, performance, quadrendering.
-- [StaticParticlesImmediate](../../Examples/Demos/Performance/StaticParticlesImmediate) (Performance) Tags: demos, particles, performance, staticparticlesimmediate.
-- [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) [stub] (Performance) Tags: demos, particles, performance, staticparticlesretained.
+- [StaticParticlesImmediate](../../Examples/Demos/Performance/StaticParticlesImmediate) (Performance) Tags: 3d, demos, particles, performance, staticparticlesimmediate.
+- [StaticParticlesRetained](../../Examples/Demos/Performance/StaticParticlesRetained) (Performance) Tags: 3d, demos, particles, performance, staticparticlesretained.
 - [TextRendering](../../Examples/Demos/Performance/TextRendering) (Performance) Tags: demos, performance, textrendering, typography.
-- [MultipleWindows](../../Examples/Demos/Tests/MultipleWindows) (Tests) Tags: demos, multiplewindows, tests.
+- [MultipleWindows](../../Examples/Demos/Tests/MultipleWindows) (Tests) Tags: 3d, demos, multiplewindows, tests.
 - [NoBackgroundTest](../../Examples/Demos/Tests/NoBackgroundTest) (Tests) Tags: demos, nobackgroundtest, tests.
 - [OffscreenTest](../../Examples/Demos/Tests/OffscreenTest) (Tests) Tags: demos, offscreentest, tests.
 - [RedrawTest](../../Examples/Demos/Tests/RedrawTest) (Tests) Tags: demos, redrawtest, tests.
@@ -214,23 +215,25 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 
 ## Samples
 
-- [DynamicMeshTexture](../../Examples/Samples/DynamicMeshTexture) Tags: 3d, dynamicmeshtexture, samples, typography.
-- [InstancedCubes](../../Examples/Samples/InstancedCubes) Tags: instancedcubes, samples.
+- [DynamicMeshTexture](../../Examples/Samples/DynamicMeshTexture) Tags: 3d, dynamicmeshtexture, samples.
+- [EnvironmentIBL](../../Examples/Samples/EnvironmentIBL) Tags: 3d, environmentibl, samples.
+- [InstancedCubes](../../Examples/Samples/InstancedCubes) Tags: 3d, instancedcubes, samples.
 - [OSC Loopback](../../Examples/Samples/OSCLoopback) [Intermediate] -- Sends the mouse position over OSC with OSCSender and draws whatever an OSCReceiver on the same port gets back. Change the host/port to talk to TouchDesigner, Max, or TouchOSC instead of the local loopback. Tags: interaction, live, oscloopback, samples.
 - [ParameterPanel](../../Examples/Samples/ParameterPanel) Tags: parameterpanel, samples.
 - [PluginFPSLogger](../../Examples/Samples/PluginFPSLogger) Tags: pluginfpslogger, samples.
 - [PluginMouseTrail](../../Examples/Samples/PluginMouseTrail) Tags: interaction, pluginmousetrail, samples.
-- [ProbeBenchmark](../../Examples/Samples/ProbeBenchmark) Tags: probebenchmark, samples.
+- [ProbeBenchmark](../../Examples/Samples/ProbeBenchmark) Tags: 3d, probebenchmark, samples.
 - [ProbeSnapshot](../../Examples/Samples/ProbeSnapshot) Tags: probesnapshot, samples.
-- [RayTracing](../../Examples/Samples/RayTracing) Tags: 3d, raytracing, samples.
+- [RayTracing](../../Examples/Samples/RayTracing) Tags: raytracing, samples.
 - [RenderGraphCompose](../../Examples/Samples/RenderGraphCompose) Tags: rendergraphcompose, samples, shader.
 - [SVG Export](../../Examples/Samples/SVGExport) [Intermediate] -- Generative line art for pen plotters (AxiDraw). Press S to save the current frame as a true vector SVG via beginSVGRecord()/endSVGRecord() — the file is generated from the same draw calls as the raster output, so what y... Tags: export, interaction, samples, svgexport.
-- [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: samples, scenegraphbasics.
-- [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: samples, scenegraphhybrid.
+- [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: 3d, samples, scenegraphbasics.
+- [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: 3d, samples, scenegraphhybrid.
 - [StatePreservation](../../Examples/Samples/StatePreservation) Tags: samples, statepreservation.
-- [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: live, samples, syphon, syphonmultiwindow.
+- [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: 3d, live, samples, syphon, syphonmultiwindow.
 - [SyphonOutput](../../Examples/Samples/Syphon/SyphonOutput) (Syphon) Tags: live, samples, syphon, syphonoutput.
 - [SyphonTripleWindow](../../Examples/Samples/Syphon/SyphonTripleWindow) (Syphon) Tags: live, samples, syphon, syphontriplewindow.
+- [ToneMapping](../../Examples/Samples/ToneMapping) Tags: 3d, samples, tonemapping.
 
 ## Topics
 
@@ -280,28 +283,28 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Pentigree L-System](../../Examples/Topics/Fractals%20and%20L-Systems/Pentigree) [Advanced] (Fractals and L-Systems) -- This code was based on Patrick Dwyer's L-System class. Tags: fractals-and-l-systems, pentigree, topics.
 - [Recursive Tree](../../Examples/Topics/Fractals%20and%20L-Systems/Tree) [Intermediate] (Fractals and L-Systems) -- Renders a simple tree-like structure via recursion. The branching angle is calculated as a function of the horizontal mouse location. Move the mouse left and right to change the angle. Tags: fractals-and-l-systems, interaction, topics, tree.
 - [Button](../../Examples/Topics/GUI/Button) [Intermediate] (GUI) -- Click on one of the colored shapes in the center of the image to change the color of the background. Tags: button, gui, image, interaction, topics.
-- [Handles](../../Examples/Topics/GUI/Handles) [Intermediate] (GUI) -- Click and drag the white boxes to change their position. Tags: 3d, gui, handles, interaction, topics.
+- [Handles](../../Examples/Topics/GUI/Handles) [Intermediate] (GUI) -- Click and drag the white boxes to change their position. Tags: gui, handles, interaction, topics.
 - [Rollover](../../Examples/Topics/GUI/Rollover) [Intermediate] (GUI) -- Roll over the colored squares in the center of the image to change the color of the outside rectangle. Tags: gui, image, rollover, topics.
 - [Scrollbar](../../Examples/Topics/GUI/Scrollbar) [Advanced] (GUI) -- Move the scrollbars left and right to change the positions of the images. Tags: gui, image, scrollbar, topics.
-- [Icosahedra](../../Examples/Topics/Geometry/Icosahedra) (Geometry) Tags: geometry, icosahedra, topics.
+- [Icosahedra](../../Examples/Topics/Geometry/Icosahedra) (Geometry) Tags: 3d, geometry, icosahedra, topics.
 - [NoiseSphere](../../Examples/Topics/Geometry/NoiseSphere) (Geometry) Tags: 3d, geometry, noisesphere, topics.
-- [RGBCube](../../Examples/Topics/Geometry/RGBCube) (Geometry) Tags: geometry, rgbcube, topics.
-- [ShapeTransform](../../Examples/Topics/Geometry/ShapeTransform) (Geometry) Tags: geometry, shapetransform, topics.
-- [SpaceJunk](../../Examples/Topics/Geometry/SpaceJunk) (Geometry) Tags: geometry, spacejunk, topics.
-- [Toroid](../../Examples/Topics/Geometry/Toroid) (Geometry) Tags: geometry, topics, toroid.
-- [Vertices](../../Examples/Topics/Geometry/Vertices) (Geometry) Tags: geometry, topics, vertices.
+- [RGBCube](../../Examples/Topics/Geometry/RGBCube) (Geometry) Tags: 3d, geometry, rgbcube, topics.
+- [ShapeTransform](../../Examples/Topics/Geometry/ShapeTransform) (Geometry) Tags: 3d, geometry, shapetransform, topics.
+- [SpaceJunk](../../Examples/Topics/Geometry/SpaceJunk) (Geometry) Tags: 3d, geometry, spacejunk, topics.
+- [Toroid](../../Examples/Topics/Geometry/Toroid) (Geometry) Tags: 3d, geometry, topics, toroid.
+- [Vertices](../../Examples/Topics/Geometry/Vertices) (Geometry) Tags: 3d, geometry, topics, vertices.
 - [Blending](../../Examples/Topics/Image%20Processing/Blending) (Image Processing) Tags: blending, image, image-processing, topics.
 - [Blur](../../Examples/Topics/Image%20Processing/Blur) [Intermediate] (Image Processing) -- A low-pass filter blurs an image. This program analyzes every pixel in an image and blends it with the neighboring pixels to blur the image. Tags: blur, image, image-processing, topics.
 - [Brightness pixels](../../Examples/Topics/Image%20Processing/BrightnessPixels) [Intermediate] (Image Processing) -- This program adjusts the brightness of a part of the image by calculating the distance of each pixel to the mouse. Tags: brightnesspixels, image, image-processing, interaction, topics.
 - [Convolution](../../Examples/Topics/Image%20Processing/Convolution) [Advanced] (Image Processing) -- Applies a convolution matrix to a portion of an image. Move mouse to apply filter to different parts of the image. Tags: convolution, image, image-processing, interaction, topics.
 - [Edge Detection](../../Examples/Topics/Image%20Processing/EdgeDetection) [Advanced] (Image Processing) -- A high-pass filter sharpens an image. This program analyzes every pixel in an image in relation to the neighboring pixels to sharpen the image. Tags: edgedetection, image, image-processing, topics.
-- [Explode](../../Examples/Topics/Image%20Processing/Explode) (Image Processing) Tags: explode, image, image-processing, topics.
-- [Extrusion](../../Examples/Topics/Image%20Processing/Extrusion) (Image Processing) Tags: extrusion, image, image-processing, topics.
+- [Explode](../../Examples/Topics/Image%20Processing/Explode) (Image Processing) Tags: 3d, explode, image, image-processing, topics.
+- [Extrusion](../../Examples/Topics/Image%20Processing/Extrusion) (Image Processing) Tags: 3d, extrusion, image, image-processing, topics.
 - [Histogram](../../Examples/Topics/Image%20Processing/Histogram) [Intermediate] (Image Processing) -- Calculates the histogram of an image. A histogram is the frequency distribution of the gray levels with the number of pure black values displayed on the left and number of pure white values on the right. Note that this... Tags: histogram, image, image-processing, topics.
 - [LinearImage](../../Examples/Topics/Image%20Processing/LinearImage) (Image Processing) Tags: image, image-processing, linearimage, topics.
 - [Pixel Array](../../Examples/Topics/Image%20Processing/PixelArray) [Intermediate] (Image Processing) -- Click and drag the mouse up and down to control the signal and press and hold any key to see the current pixel being read. This program sequentially reads the color of every pixel of an image and displays this color to... Tags: image, image-processing, interaction, pixelarray, topics.
 - [Sharpen](../../Examples/Topics/Image%20Processing/Sharpen) (Image Processing) Tags: image, image-processing, sharpen, topics.
-- [Zoom](../../Examples/Topics/Image%20Processing/Zoom) (Image Processing) Tags: image, image-processing, topics, zoom.
+- [Zoom](../../Examples/Topics/Image%20Processing/Zoom) (Image Processing) Tags: 3d, image, image-processing, topics, zoom.
 - [Follow 1](../../Examples/Topics/Interaction/Follow1) [Intermediate] (Interaction) -- A line segment is pushed and pulled by the cursor. Tags: follow1, interaction, topics.
 - [Follow 2](../../Examples/Topics/Interaction/Follow2) [Intermediate] (Interaction) -- A two-segmented arm follows the cursor position. The relative angle between the segments is calculated with atan2() and the position calculated with sin() and cos(). Tags: follow2, interaction, topics.
 - [Follow 3](../../Examples/Topics/Interaction/Follow3) [Intermediate] (Interaction) -- A segmented line follows the mouse. The relative angle from each segment to the next is calculated with atan2() and the position of the next is calculated with sin() and cos(). Tags: follow3, interaction, topics.
@@ -313,7 +316,7 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Bouncy Bubbles](../../Examples/Topics/Motion/BouncyBubbles) [Intermediate] (Motion) -- Multiple-object collision. Tags: bouncybubbles, motion, physics, topics.
 - [Brownian motion](../../Examples/Topics/Motion/Brownian) [Intermediate] (Motion) -- Recording random movement as a continuous line. Tags: brownian, export, motion, topics.
 - [Circle Collision with Swapping Velocities](../../Examples/Topics/Motion/CircleCollision) [Advanced] (Motion) -- Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move! Tags: circlecollision, motion, physics, topics.
-- [CubesWithinCube](../../Examples/Topics/Motion/CubesWithinCube) (Motion) Tags: cubeswithincube, motion, topics.
+- [CubesWithinCube](../../Examples/Topics/Motion/CubesWithinCube) (Motion) Tags: 3d, cubeswithincube, motion, topics.
 - [Linear Motion](../../Examples/Topics/Motion/Linear) [Beginner] (Motion) -- Changing a variable to create a moving line. When the line moves off the edge of the window, the variable is set to 0, which places the line back at the bottom of the screen. Tags: linear, motion, topics.
 - [Morph](../../Examples/Topics/Motion/Morph) [Advanced] (Motion) -- Changing one shape into another by interpolating vertices from one to another Tags: morph, motion, topics.
 - [Moving On Curves](../../Examples/Topics/Motion/MovingOnCurves) [Intermediate] (Motion) -- In this example, the circles moves along the curve y = x^4. Click the mouse to have it move to a new position. Tags: interaction, motion, movingoncurves, topics.
@@ -322,18 +325,19 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [BlurFilter](../../Examples/Topics/Shaders/BlurFilter) (Shaders) Tags: blurfilter, cpu-approximation, image, shaders, topics.
 - [Conway](../../Examples/Topics/Shaders/Conway) (Shaders) Tags: conway, cpu-approximation, shaders, topics.
 - [CustomBlend](../../Examples/Topics/Shaders/CustomBlend) (Shaders) Tags: cpu-approximation, customblend, shaders, topics.
+- [Custom Shader 2D](../../Examples/Topics/Shaders/CustomShader2D) [Intermediate] (Shaders) -- Apply a custom Metal fragment shader to 2D shapes. loadShader() reads the MSL file, shader() applies it so rect()/circle() become surfaces the shader runs on, and resetShader() goes back to the built-in shader. Built-in... Tags: customshader2d, interaction, shader, shaders, topics.
 - [Deform](../../Examples/Topics/Shaders/Deform) (Shaders) Tags: cpu-approximation, deform, shaders, topics.
 - [DomeProjection](../../Examples/Topics/Shaders/DomeProjection) [obsolete] (Shaders) -- Requires cubemap-based dome projection rendering, not on metaphor's roadmap; non-goal for now. Tags: domeprojection, shaders, topics.
 - [EdgeDetect](../../Examples/Topics/Shaders/EdgeDetect) (Shaders) Tags: cpu-approximation, edgedetect, shaders, topics.
-- [EdgeFilter](../../Examples/Topics/Shaders/EdgeFilter) (Shaders) Tags: cpu-approximation, edgefilter, image, shaders, topics.
-- [GlossyFishEye](../../Examples/Topics/Shaders/GlossyFishEye) (Shaders) Tags: cpu-approximation, glossyfisheye, shaders, topics.
+- [EdgeFilter](../../Examples/Topics/Shaders/EdgeFilter) (Shaders) Tags: 3d, cpu-approximation, edgefilter, image, shaders, topics.
+- [GlossyFishEye](../../Examples/Topics/Shaders/GlossyFishEye) (Shaders) Tags: 3d, cpu-approximation, glossyfisheye, shaders, topics.
 - [ImageMask](../../Examples/Topics/Shaders/ImageMask) (Shaders) Tags: cpu-approximation, image, imagemask, shaders, topics.
 - [InfiniteTiles](../../Examples/Topics/Shaders/InfiniteTiles) (Shaders) Tags: cpu-approximation, infinitetiles, shaders, topics.
 - [Landscape](../../Examples/Topics/Shaders/Landscape) (Shaders) Tags: cpu-approximation, landscape, shaders, topics.
 - [Monjori](../../Examples/Topics/Shaders/Monjori) (Shaders) Tags: cpu-approximation, monjori, shaders, topics.
 - [Nebula](../../Examples/Topics/Shaders/Nebula) (Shaders) Tags: cpu-approximation, nebula, shaders, topics.
 - [SepBlur](../../Examples/Topics/Shaders/SepBlur) (Shaders) Tags: cpu-approximation, sepblur, shaders, topics.
-- [ToonShading](../../Examples/Topics/Shaders/ToonShading) (Shaders) Tags: cpu-approximation, shaders, toonshading, topics.
+- [ToonShading](../../Examples/Topics/Shaders/ToonShading) (Shaders) Tags: 3d, shader, shaders, toonshading, topics.
 - [Flocking](../../Examples/Topics/Simulate/Flocking) [Advanced] (Simulate) -- An implementation of Craig Reynold's Boids program to simulate the flocking behavior of birds. Each boid steers itself based on rules of avoidance, alignment, and coherence. Click the mouse to add a new boid. Tags: flocking, interaction, simulate, topics.
 - [Forces (Gravity and Fluid Resistence) with Vectors](../../Examples/Topics/Simulate/ForcesWithVectors) [Advanced] (Simulate) -- Demonstration of multiple forces acting on bodies. Bodies experience gravity continuously and fluid resistance when in simulated water. Tags: forceswithvectors, physics, simulate, topics.
 - [GravitationalAttraction3D](../../Examples/Topics/Simulate/GravitationalAttraction3D) (Simulate) Tags: 3d, gravitationalattraction3d, simulate, topics.
@@ -342,11 +346,12 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [Smoke Particle System](../../Examples/Topics/Simulate/SmokeParticleSystem) [Advanced] (Simulate) -- A basic smoke effect using a particle system. Each particle is rendered as an alpha masked image. Tags: image, particles, simulate, smokeparticlesystem, topics.
 - [SoftBody](../../Examples/Topics/Simulate/SoftBody) (Simulate) Tags: simulate, softbody, topics.
 - [Auto Subsystems (lifecycle)](../../Examples/Topics/Subsystems/AutoSubsystems) [Intermediate] (Subsystems) -- Registers a Physics2D world as a SketchSubsystem with AutoSubsystemManager so its per-frame step() is driven automatically — draw() only renders. Demonstrates the opt-in subsystem lifecycle (audio/video/physics also con... Tags: audio, autosubsystems, export, physics, subsystems, topics, video.
-- [TextureCube](../../Examples/Topics/Textures/TextureCube) (Textures) Tags: texturecube, textures, topics, typography.
-- [TextureCylinder](../../Examples/Topics/Textures/TextureCylinder) (Textures) Tags: texturecylinder, textures, topics, typography.
-- [TextureQuad](../../Examples/Topics/Textures/TextureQuad) (Textures) Tags: texturequad, textures, topics, typography.
-- [TextureSphere](../../Examples/Topics/Textures/TextureSphere) (Textures) Tags: 3d, textures, texturesphere, topics, typography.
-- [TextureTriangle](../../Examples/Topics/Textures/TextureTriangle) (Textures) Tags: textures, texturetriangle, topics, typography.
+- [TextureCube](../../Examples/Topics/Textures/TextureCube) (Textures) Tags: 3d, texturecube, textures, topics.
+- [TextureCylinder](../../Examples/Topics/Textures/TextureCylinder) (Textures) Tags: 3d, texturecylinder, textures, topics.
+- [TextureQuad](../../Examples/Topics/Textures/TextureQuad) (Textures) Tags: 3d, texturequad, textures, topics.
+- [TextureSphere](../../Examples/Topics/Textures/TextureSphere) (Textures) Tags: 3d, textures, texturesphere, topics.
+- [TextureTriangle](../../Examples/Topics/Textures/TextureTriangle) (Textures) Tags: 3d, textures, texturetriangle, topics.
+- [Text Particles](../../Examples/Topics/Typography/TextParticles) [Intermediate] (Typography) -- Generative typography with textToPoints(). Glyph outlines become a point cloud that particles fly into; textToContours() draws the same outlines as strokes behind them. Move the mouse to push the particles away and watc... Tags: interaction, particles, textparticles, topics, typography.
 - [Acceleration with Vectors](../../Examples/Topics/Vectors/AccelerationWithVectors) [Advanced] (Vectors) -- Demonstration of the basics of motion with vector. A 'Mover' object stores location, velocity, and acceleration as vectors. The motion is controlled by affecting the acceleration (in this case towards the mouse). Tags: accelerationwithvectors, interaction, topics, vectors.
 - [Bouncing Ball with Vectors](../../Examples/Topics/Vectors/BouncingBall) [Intermediate] (Vectors) -- Demonstration of using vectors to control motion of a body. This example is not object-oriented See AccelerationWithVectors for an example of how to simulate motion using vectors in an object. Tags: bouncingball, topics, vectors.
 - [Vector](../../Examples/Topics/Vectors/VectorMath) [Intermediate] (Vectors) -- Demonstration of some basic vector math: subtraction, normalization, scaling. Normalizing a vector sets its length to 1. Tags: topics, vectormath, vectors.

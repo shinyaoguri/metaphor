@@ -42,12 +42,100 @@ extension Sketch {
         try await context.resourceLoader.loadImageAsync(named: name)
     }
 
+    /// テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    ///
+    /// 現在の ``textSize(_:)`` / ``textFont(_:)-(String)`` / ``textAlign(_:_:)`` を
+    /// `text()` と同じように解釈するため、同じ引数で呼べば描画結果と同じ位置の輪郭が
+    /// 得られます。文字の穴（`o` の内側など）も 1 本の輪郭として返ります。
+    ///
+    /// 改行を含む文字列は ``text(_:_:_:)`` と同じく行ごとに分けて配置され、行の高さは
+    /// ``textLeading(_:)`` に従います。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 輪郭ごとのポリライン。
+    public func textToContours(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [[Vec2]] {
+        context.textToContours(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
+    ///
+    /// 輪郭の区切りは失われます。文字を粒子や図形の配置元として使うときに向きます。
+    ///
+    /// ```swift
+    /// for p in textToPoints("metaphor", 40, 200) {
+    ///     circle(p.x, p.y, 4)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: アウトライン上の点。
+    public func textToPoints(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> [Vec2] {
+        context.textToPoints(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
+    ///
+    /// 返るのは外周ごとの子を持つグループシェイプ。`o` の内側のような穴はコンターとして
+    /// 子に載るため、``shape(_:_:_:)`` でそのまま塗り分けられます。
+    ///
+    /// - Parameters:
+    ///   - string: アウトラインを取り出すテキスト。
+    ///   - x: テキストの x 座標（`text()` と同じ意味）。
+    ///   - y: テキストの y 座標（`text()` と同じ意味）。
+    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
+    /// - Returns: 現在のスタイルをキャプチャしたグループシェイプ。
+    public func textToShape(
+        _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
+    ) -> MShape {
+        context.textToShape(string, x, y, sampleFactor: sampleFactor)
+    }
+
+    /// 指定したファイルパスからフォントを読み込みます。
+    ///
+    /// フォントは現在のプロセスにだけ登録されます（システムのフォント設定は変更しません）。
+    /// 返された ``MFont`` を ``textFont(_:)-(MFont)`` へ渡すと、以降のテキスト描画・計測が
+    /// そのフォントで行われます。既定でパスキーのキャッシュが効くため、`draw()` 内で
+    /// 呼んでも毎フレームの再登録は起きません。
+    ///
+    /// ```swift
+    /// func setup() {
+    ///     guard let path = Bundle.module.path(
+    ///         forResource: "SpaceMono-Regular", ofType: "ttf", inDirectory: "Resources")
+    ///     else { return }
+    ///     textFont(try! loadFont(path))
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - path: フォントファイル（`.ttf` / `.otf` / `.ttc` / `.otc` / `.dfont`）のパス。
+    ///   - cache: キャッシュを使うか（既定 true）。
+    /// - Returns: 読み込まれたフォント。
+    /// - Throws: ``MetaphorError/font(_:)``。ファイルが無い場合は
+    ///   ``MetaphorError/FontFailure/fileNotFound(path:)``、フォントとして読めない場合は
+    ///   ``MetaphorError/FontFailure/noFontsInFile(path:)``、登録に失敗した場合は
+    ///   ``MetaphorError/FontFailure/registrationFailed(path:detail:)``。
+    public func loadFont(_ path: String, cache: Bool = true) throws -> MFont {
+        try context.loadFont(path, cache: cache)
+    }
+
     /// 指定したサイズの空白画像を作成します。
     ///
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。
-    ///   - height: 画像の高さ（ピクセル単位）。
-    /// - Returns: 新しい空白画像。作成に失敗した場合は `nil`。
+    ///   - width: 画像の幅（ピクセル単位）。1 以上。
+    ///   - height: 画像の高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい空白画像。作成に失敗した場合（幅・高さが 1 未満を含む）は `nil`。
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         context.createImage(width, height)
     }
@@ -95,9 +183,10 @@ extension Sketch {
     /// 2D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい ``Graphics`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい ``Graphics`` インスタンス。作成に失敗した場合
+    ///   （幅・高さが 1 未満を含む）は `nil`。
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
         context.createGraphics(w, h)
     }
@@ -105,9 +194,10 @@ extension Sketch {
     /// 3D オフスクリーングラフィックスバッファを作成します。
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。
-    ///   - h: バッファの高さ（ピクセル単位）。
-    /// - Returns: 新しい ``Graphics3D`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - w: バッファの幅（ピクセル単位）。1 以上。
+    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
+    /// - Returns: 新しい ``Graphics3D`` インスタンス。作成に失敗した場合
+    ///   （幅・高さが 1 未満を含む）は `nil`。
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         context.createGraphics3D(w, h)
     }
@@ -299,6 +389,9 @@ extension Sketch {
 
     /// 以降のテキスト描画のテキストサイズを設定します。
     ///
+    /// Processing と同じく、行間（``textLeading(_:)``）はフォントから導出される
+    /// 既定値へ戻ります。行間を指定するときはこの後に呼んでください。
+    ///
     /// - Parameter size: フォントサイズ（ポイント単位）。
     public func textSize(_ size: Float) {
         context.textSize(size)
@@ -311,6 +404,13 @@ extension Sketch {
         context.textFont(family)
     }
 
+    /// 以降のテキスト描画に使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
+    ///
+    /// - Parameter font: 読み込み済みのフォント。
+    public func textFont(_ font: MFont) {
+        context.textFont(font)
+    }
+
     /// テキストの配置を設定します。
     ///
     /// - Parameters:
@@ -320,7 +420,10 @@ extension Sketch {
         context.textAlign(horizontal, vertical)
     }
 
-    /// 複数行テキストの行間を設定します。
+    /// 複数行テキストの行間（行の高さ）を設定します。
+    ///
+    /// 隣り合う行のベースライン同士の距離です。``textSize(_:)`` / ``textFont(_:)-(String)``
+    /// を呼ぶと既定値へ戻るので、この後に呼んでください。
     ///
     /// - Parameter leading: 行の高さ（ピクセル単位）。
     public func textLeading(_ leading: Float) {
@@ -328,6 +431,17 @@ extension Sketch {
     }
 
     /// 指定位置にテキスト文字列を描画します。
+    ///
+    /// 改行 (`\n`) を含む文字列は複数行として描かれます（行の高さは ``textLeading(_:)``）。
+    ///
+    /// 文字は常に現在の `fill()` 色で塗られます。``noFill()`` は図形にだけ効き、
+    /// **テキストには効きません**（Processing は `noFill()` で文字が消えますが、metaphor の
+    /// テキストに stroke 経路が無いため、あえて揃えていません。[#519] の判断）。
+    /// 文字を出さないときは呼び出し自体をやめるか、`fill(255, 0)` のように
+    /// アルファ 0 の fill を使ってください（アルファはグリフまで届きます）。
+    /// `tint()` は画像用で、文字色には効きません。
+    ///
+    /// [#519]: https://github.com/shinyaoguri/metaphor/issues/519
     ///
     /// - Parameters:
     ///   - string: 描画するテキスト。
@@ -338,6 +452,10 @@ extension Sketch {
     }
 
     /// バウンディングボックス内にテキスト文字列を描画します。
+    ///
+    /// 箱の幅で自動的に折り返します。箱の高さに入り切らない行は描かれません。
+    ///
+    /// 色の扱いは ``text(_:_:_:)`` と同じで、``noFill()`` はテキストに効きません。
     ///
     /// - Parameters:
     ///   - string: 描画するテキスト。
@@ -350,6 +468,13 @@ extension Sketch {
     }
 
     /// 現在のフォント設定でテキスト文字列の幅を計算します。
+    ///
+    /// 返るのは 1 文字ずつの advance（送り量）を足した幅で、``text(_:_:_:)`` が実際に
+    /// 文字を置く幅・``textAlign(_:_:)`` が揃えに使う幅と一致します。加法的なので
+    /// （`textWidth("ab") == textWidth("a") + textWidth("b")`）語ごとに測って行を組めます。
+    /// 前後どちらの空白も数え、Processing と同じくカーニングは掛かりません。
+    ///
+    /// 改行を含む文字列では最も長い行の幅を返します。
     ///
     /// - Parameter string: 計測するテキスト。
     /// - Returns: テキストの幅（ピクセル単位）。
@@ -375,12 +500,18 @@ extension Sketch {
 
     /// 現在のフレームを指定したファイルパスに保存します。
     ///
+    /// 相対パスは**プロジェクト直下**（`swift run` ならパッケージ直下、`metaphor run` /
+    /// `watch` ならそのプロジェクト）から解決されます。絶対パスと `~` 始まりはそのままです。
+    ///
+    /// ``saveFrame(_:)`` と同じく、同一フレーム内で複数回呼べばすべての保存先へ
+    /// 同じ絵（そのフレームの最終出力）が書き出されます。
+    ///
     /// - Parameter path: 出力ファイルパス。
     public func save(_ path: String) {
         context.save(path)
     }
 
-    /// 現在のフレームをデフォルトの場所に保存します。
+    /// 現在のフレームを `output/metaphor_<timestamp>.png` に保存します。
     public func save() {
         context.save()
     }
@@ -419,7 +550,9 @@ extension Sketch {
     /// 連番ファイル名で `directory` へ書き出されます。
     ///
     /// - Parameters:
-    ///   - directory: 出力ディレクトリ（`nil` の場合はデフォルトを使用）。
+    ///   - directory: 出力ディレクトリ（`nil` の場合は
+    ///     `output/metaphor_frames_<timestamp>/`）。相対パスはプロジェクト直下から
+    ///     解決されます。
     ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
     public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
         context.beginFrameRecord(directory: directory, pattern: pattern)
@@ -432,6 +565,16 @@ extension Sketch {
 
     /// 単一フレームを画像ファイルに保存します。
     ///
+    /// 保存先は次の規則で決まります。
+    ///
+    /// - `saveFrame()` — `output/screen-<フレーム番号>.png`（プロジェクトの中）
+    /// - `saveFrame("shots/a.png")` — プロジェクト直下からの相対
+    /// - `saveFrame("/tmp/a.png")` / `saveFrame("~/Pictures/a.png")` — そのまま
+    ///
+    /// 同一フレーム内で複数回呼べば、そのフレームがすべての保存先へ書き出されます
+    /// （更新用の固定パスと履歴用の連番を同時に出す、など）。保存されるのは呼んだ時点の
+    /// 途中経過ではなく**そのフレームの最終出力**なので、複数の保存先の中身は同一です。
+    ///
     /// - Parameter filename: 出力ファイル名（`nil` の場合は自動生成）。
     public func saveFrame(_ filename: String? = nil) {
         context.saveFrame(filename)
@@ -442,7 +585,8 @@ extension Sketch {
     /// 動画出力の録画を開始します。
     ///
     /// - Parameters:
-    ///   - path: 出力ファイルパス（`nil` の場合は自動生成）。
+    ///   - path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.<拡張子>`）。
+    ///     相対パスはプロジェクト直下から解決されます。
     ///   - config: 動画エクスポート設定。
     public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
         context.beginVideoRecord(path, config: config)

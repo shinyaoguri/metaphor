@@ -5,12 +5,6 @@ import Testing
 
 @testable import MetaphorCore
 
-/// ゴールデンの標準解像度。小さいほど速く、退行の検出力は十分に残る。
-///
-/// `@MainActor` なスイート内の `static let` は既定引数から参照できないため、
-/// ファイルスコープに置く。
-private let goldenImageSize = 128
-
 /// ゴールデンイメージ回帰（Issue #330）。
 ///
 /// #70 / ADR-0002 で決定論レンダリング（同一入力 → 同一スナップショット）は保証済みだが、
@@ -22,6 +16,9 @@ private let goldenImageSize = 128
 ///
 /// を代表シーンごとに固定する。ゴールデンの更新手順は
 /// `docs/ai/README.md`「ゴールデンイメージ回帰」を参照。
+///
+/// シーンの定義は ``GoldenScenes``、レンダリングハーネスは ``OffscreenSketchHarness``
+/// にあり、どちらもコマンド記録パリティ（``CommandRecordParityTests``）と共有している。
 ///
 /// ## 比較方式について
 ///
@@ -46,301 +43,130 @@ struct GoldenImageTests {
         .deletingLastPathComponent()
         .appendingPathComponent("Golden", isDirectory: true)
 
-    // MARK: - レンダリングハーネス
-
-    /// 実スケッチ（`SketchRunner`）と同じ結線でオフスクリーン 1 フレームを描き、
-    /// フレームバッファ全体を読み戻す。
-    ///
-    /// - Parameters:
-    ///   - shadows: true なら記録 → shadow → 再生の影オン経路（ADR-0002 フェーズ 3）を通す。
-    ///   - effects: 空でなければ、描画後のカラーテクスチャへポストプロセスを適用した結果を返す。
-    private func render(
-        size: Int = goldenImageSize,
-        shadows: Bool = false,
-        effects: [any PostEffect] = [],
-        draw: @escaping (SketchContext) -> Void
-    ) throws -> GoldenImage {
-        let renderer = try MetaphorRenderer(width: size, height: size)
-        let canvas = try Canvas2D(renderer: renderer)
-        let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(
-            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input
-        )
-
-        // SketchRunner と同じ配線（DeterminismTests のハーネスと同型）。
-        canvas.onSetClearColor = { [weak renderer] r, g, b, a in
-            renderer?.setClearColor(r, g, b, a)
-        }
-        // 時間依存を排除するため time/deltaTime は常に 0 を渡す（決定論の前提）。
-        renderer.onDraw = { encoder, _ in
-            context.beginFrame(encoder: encoder, time: 0, deltaTime: 0)
-            draw(context)
-            context.endFrame()
-        }
-        renderer.onAfterDraw = { commandBuffer in
-            context.canvas3D.performShadowPass(commandBuffer: commandBuffer)
-        }
-        renderer.shadowDeferActive = { context.canvas3D.shouldRecordMainPass }
-        renderer.onRecordFrame = { _ in
-            context.beginRecordingFrame(time: 0, deltaTime: 0)
-            draw(context)
-            context.endRecordingFrame()
-        }
-        renderer.onReplayMain = { encoder, _ in
-            context.replayDeferredMain(encoder: encoder, time: 0)
-        }
-        renderer.useExternalRenderLoop = true
-
-        if shadows { context.enableShadows(resolution: 512) }
-        renderer.renderFrame()
-
-        var output: MTLTexture = renderer.textureManager.colorTexture
-        if !effects.isEmpty {
-            // renderer.setPostEffects() 経由だと結果が private な lastOutputTexture に
-            // 入って読めないため、パイプラインを直接駆動して出力テクスチャを受け取る。
-            let pipeline = try #require(renderer.postProcessPipeline)
-            pipeline.set(effects)
-            let cb = try #require(renderer.commandQueue.makeCommandBuffer())
-            output = pipeline.apply(source: output, commandBuffer: cb)
-            try MetalTestHelper.commit(cb)
-        }
-        return try GoldenImage.readback(texture: output, commandQueue: renderer.commandQueue)
-    }
+    // MARK: - 代表シーン
 
     /// 1 シーンぶんの検証: 決定論（2 回描いてハッシュ一致）+ ゴールデン照合。
     ///
     /// 2 回描くコストはハーネス生成込みでも軽く、「非決定論なのかゴールデンが古いのか」を
     /// 失敗メッセージだけで切り分けられる価値の方が大きい。
-    private func verifyScene(
-        _ name: String,
-        size: Int = goldenImageSize,
-        shadows: Bool = false,
-        tolerance: GoldenTolerance = .default,
-        effects: @autoclosure () -> [any PostEffect] = [],
-        draw: @escaping (SketchContext) -> Void,
-        sourceLocation: SourceLocation = #_sourceLocation
-    ) throws {
-        let first = try render(size: size, shadows: shadows, effects: effects(), draw: draw)
-        let second = try render(size: size, shadows: shadows, effects: effects(), draw: draw)
+    @Test("ゴールデン照合", arguments: goldenSceneNames)
+    func goldenScene(name: String) throws {
+        let scene = try GoldenScenes.scene(named: name)
+        let first = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
+        let second = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
 
         // CI と手元でハッシュを突き合わせられるよう、必ずログに残す。
-        print("[golden] \(name) \(size)x\(size) sha256=\(first.sha256)")
+        print("[golden] \(scene.name) \(scene.size)x\(scene.size) sha256=\(first.sha256)")
 
         if first.sha256 != second.sha256 {
             let drift = first.compare(to: second)
             Issue.record(
                 """
-                シーン '\(name)' が同一環境で再現しない（非決定論）。
+                シーン '\(scene.name)' が同一環境で再現しない（非決定論）。
                 \(drift.summary)
                 1回目 sha256=\(first.sha256) / 2回目 sha256=\(second.sha256)
-                """,
-                sourceLocation: sourceLocation
+                """
             )
         }
 
         try GoldenImageStore.verify(
-            first,
-            name: name,
-            in: Self.goldenDirectory,
-            tolerance: tolerance,
-            sourceLocation: sourceLocation
+            first, name: scene.name, in: Self.goldenDirectory, tolerance: scene.tolerance
         )
     }
 
-    // MARK: - 代表シーン
+    // MARK: - ゴールデンの検出力
 
-    @Test("ゴールデン: 2D 図形（矩形・円・三角形・円弧・線）")
-    func shapes2D() throws {
-        try verifyScene("shapes-2d") { c in
-            c.background(Color(r: 0.08, g: 0.09, b: 0.12))
-            c.noStroke()
-            c.fill(Color(r: 0.90, g: 0.30, b: 0.25))
-            c.rect(10, 10, 44, 30)
-            c.fill(Color(r: 0.20, g: 0.70, b: 0.90))
-            c.circle(92, 30, 40)
-            c.fill(Color(r: 0.95, g: 0.80, b: 0.20))
-            c.triangle(20, 118, 60, 62, 100, 118)
-            c.noFill()
-            c.stroke(Color(r: 1, g: 1, b: 1))
-            c.strokeWeight(3)
-            c.arc(64, 64, 90, 90, 0, Float.pi)
-            c.stroke(Color(r: 0.35, g: 1.0, b: 0.55))
-            c.strokeWeight(1)
-            c.line(4, 64, 124, 64)
-        }
-    }
-
-    @Test("ゴールデン: ブレンドモード（additive / multiply / screen / alpha）")
-    func blendModes() throws {
-        try verifyScene("blend-modes") { c in
-            c.background(Color(r: 0.10, g: 0.10, b: 0.12))
-            c.noStroke()
-            c.fill(Color(r: 0.55, g: 0.20, b: 0.20))
-            c.rect(0, 0, 128, 128)
-
-            c.blendMode(.additive)
-            c.fill(Color(r: 0.30, g: 0.30, b: 0.60))
-            c.rect(8, 8, 56, 56)
-
-            c.blendMode(.multiply)
-            c.fill(Color(r: 0.90, g: 0.90, b: 0.30))
-            c.rect(64, 8, 56, 56)
-
-            c.blendMode(.screen)
-            c.fill(Color(r: 0.20, g: 0.60, b: 0.30))
-            c.rect(8, 64, 56, 56)
-
-            c.blendMode(.alpha)
-            c.fill(Color(r: 1, g: 1, b: 1, alpha: 0.5))
-            c.rect(64, 64, 56, 56)
-        }
-    }
-
-    /// `ambientLight` は 2D の `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）。
-    /// もとは `0.35`（= 0.35/255 ≒ 実質 0）で、環境光の退行をまったく検出できなかった
-    /// （Issue #392）。レンジの 35% = `90` に直したことで、光が当たらない面の明るさが
-    /// ゴールデンに写り、ambient が消える／変わる退行を捉えられる。
+    /// ライティングのゴールデンは「絵が変わったら落ちる」だけなので、**そもそも絵に
+    /// 写っていない要素**の退行はいくら比較しても落とせない。`ambientLight` が実質 0 で
+    /// 環境光を写していなかった #392 と同じ穴が鏡面にも空いていた（#535）ため、
+    /// 「その要素を殺したら許容差を超えて絵が動く」ことを検査として明示的に固定する。
     ///
-    /// `specular` も同じく colorMode 基準（#527 でグレー値が素通しだったのを直した）。
-    /// もとは `0.9` と書かれていて、素通しだったため偶然ほぼ同じ値
-    /// （`230/255 ≒ 0.902`）で描かれていた。そのため単位を直してもゴールデンは変わらない。
-    /// なお **`shininess(48)` のハイライトはこのシーンの可視面にほとんど乗っていない**ため、
-    /// 鏡面の強さを変えても絵が動かない（＝鏡面の退行はまだ捉えられていない）。#535。
-    @Test("ゴールデン: 3D ライティング（Blinn-Phong）")
-    func lightingBlinnPhong() throws {
-        try verifyScene("lighting-blinn-phong", tolerance: .shaded) { c in
-            c.background(Color(r: 0.05, g: 0.05, b: 0.10))
-            c.pbr(false)
-            // カメラ（-z 方向を向く）側から当てて前面を照らす。真下からの光だと
-            // 可視面がほぼ環境光だけになり、ゴールデンの識別力が落ちる。
-            c.ambientLight(90)  // colorMode 基準（既定 0〜255）= レンジの約 35%
-            c.directionalLight(-0.4, -0.5, -1)
-            c.specular(230)  // colorMode 基準（既定 0〜255）= レンジの 90%
-            c.shininess(48)
-            c.fill(Color(r: 0.85, g: 0.55, b: 0.25))
-            c.pushMatrix()
-            c.translate(64, 64, 0)
-            c.rotateY(0.6)
-            c.rotateX(0.35)
-            c.box(58)
-            c.popMatrix()
-        }
+    /// 許容差 `GoldenTolerance.shaded`（`maxChannelDiff = 4`）は GPU 世代差の量子化揺れを
+    /// 吸収するための下駄なので、**それを超える**ことを条件にする。超えなければ、
+    /// 鏡面項がまるごと消えてもゴールデン照合は緑のまま通る。
+    @Test("Blinn-Phong のゴールデンが鏡面の消失を検出できる")
+    func blinnPhongGoldenDetectsSpecularLoss() throws {
+        let scene = try GoldenScenes.scene(named: "lighting-blinn-phong")
+        let withSpecular = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
+        // 鏡面色を 0 にすると Blinn-Phong の鏡面項がまるごと落ちる
+        // （metallic 既定 0 なので specColor = specular 色そのもの）。
+        let withoutSpecular = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: GoldenScenes.blinnPhongDraw(specular: 0)
+        )
+
+        let diff = withSpecular.compare(
+            to: withoutSpecular, channelTolerance: scene.tolerance.maxChannelDiff
+        )
+        print("[golden-power] lighting-blinn-phong specular(230) vs specular(0): \(diff.summary)")
+        #expect(
+            diff.maxChannelDiff > scene.tolerance.maxChannelDiff,
+            """
+            鏡面を殺しても許容差を超えて絵が動かない（\(diff.summary)）。
+            この構図ではハイライトが可視面に乗っておらず、ゴールデンは鏡面の退行を検出できない。
+            shininess／ライト方向／カメラを見直してハイライトを可視面へ乗せること（#535）。
+            """
+        )
+        // 1 画素だけ動く状態を「検出できる」と呼ぶと、閾値超過ピクセル比率
+        // （`maxExceedingRatio = 0.002`）に飲まれてゴールデン照合は通ってしまう。
+        #expect(
+            diff.exceedingRatio > scene.tolerance.maxExceedingRatio,
+            "鏡面の消失が許容ピクセル比率に飲まれる（\(diff.summary)）"
+        )
     }
 
-    /// ambient は `colorMode` のレンジ基準（既定 0〜255）。もとは `0.75`（実質 0）だった
-    /// ため、環境光の寄与がまったく写っていなかった（Issue #392）。`120` は
-    /// 「鏡面ハイライトが 255 に張り付かない上限」で選んだ値で、拡散・鏡面・環境光の
-    /// 3 つが同時に識別できる（レンジをこれ以上上げるとハイライトが飽和して
-    /// 鏡面側の検出力が落ちる）。
-    @Test("ゴールデン: 3D ライティング（PBR）")
-    func lightingPBR() throws {
-        try verifyScene("lighting-pbr", tolerance: .shaded) { c in
-            c.background(Color(r: 0.03, g: 0.03, b: 0.05))
-            c.pbr(true)
-            // 環境マップを持たないため metallic を上げすぎると真っ黒になる。
-            // 拡散と鏡面が両方見える範囲に収める（ゴールデンの識別力を確保）。
-            c.metallic(0.25)
-            c.roughness(0.45)
-            c.ambientLight(120)  // colorMode 基準（既定 0〜255）
-            c.directionalLight(-0.4, -0.5, -1)
-            c.pointLight(30, 20, 140, color: Color(r: 1.0, g: 0.8, b: 0.6))
-            c.fill(Color(r: 0.75, g: 0.75, b: 0.80))
-            c.pushMatrix()
-            c.translate(64, 64, 0)
-            c.sphere(40, detail: 24)
-            c.popMatrix()
-        }
+    /// PBR 側も同じ物差しで測る。#535 は Blinn-Phong の穴だったが、PBR の doc が
+    /// 「拡散・鏡面・環境光の 3 つが同時に識別できる」と主張している以上、その主張自体を
+    /// 検査で裏づけておく（主張だけが残って中身が空洞化するのを防ぐ）。
+    ///
+    /// PBR に `specular()` は効かないため、鏡面だけを動かすつまみは `roughness`
+    /// （直接光では `DistributionGGX` / `GeometrySmith` にしか入らない）。
+    @Test("PBR のゴールデンが鏡面ローブの変化を検出できる")
+    func pbrGoldenDetectsSpecularChange() throws {
+        let scene = try GoldenScenes.scene(named: "lighting-pbr")
+        let glossy = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
+        // roughness = 1.0 は GGX のローブが最大に広がる端で、鏡面ハイライトが消えた
+        // （= 一様に鈍い）状態にあたる。
+        let rough = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: GoldenScenes.pbrDraw(roughness: 1.0)
+        )
+
+        let diff = glossy.compare(
+            to: rough, channelTolerance: scene.tolerance.maxChannelDiff
+        )
+        print("[golden-power] lighting-pbr roughness(0.45) vs roughness(1.0): \(diff.summary)")
+        #expect(
+            diff.maxChannelDiff > scene.tolerance.maxChannelDiff,
+            "鏡面ローブを潰しても許容差を超えて絵が動かない（\(diff.summary)）"
+        )
+        #expect(
+            diff.exceedingRatio > scene.tolerance.maxExceedingRatio,
+            "鏡面ローブの変化が許容ピクセル比率に飲まれる（\(diff.summary)）"
+        )
     }
 
-    /// 「床 + 上から差す光 + 影を落とす箱」という、影のもっとも自然な構図。
-    ///
-    /// `ambientLight` は 2D の `fill` と同じく **`colorMode` のレンジ基準**（既定 0〜255）
-    /// なので、`0.35` のような 0〜1 のつもりの値を渡すと実質 0 になる。ここで
-    /// 意味のある値（60）を使うのは、影の中の明るさ = ambient が保たれること
-    /// （Issue #364 で修正した合成則）をゴールデンに写し込むため。
-    ///
-    /// ライト方向は「光が進む向き」で、y は画面下向き。したがって
-    /// `directionalLight(_, +y, _)` が「上から差す光」になる。
-    @Test("ゴールデン: シャドウマッピング（記録→shadow→再生 経路）")
-    func shadowCast() throws {
-        try verifyScene("shadow-cast", shadows: true, tolerance: .shaded) { c in
-            c.background(Color(r: 0.08, g: 0.08, b: 0.12))
-            c.ambientLight(60)
-            c.directionalLight(-0.35, 0.9, -0.5)
-            c.noStroke()
-            c.fill(Color(r: 0.85, g: 0.85, b: 0.88))
-            c.pushMatrix()
-            c.translate(64, 96, 0)
-            c.box(120, 6, 120)                 // 影を受ける床
-            c.popMatrix()
-            c.fill(Color(r: 0.90, g: 0.40, b: 0.30))
-            c.pushMatrix()
-            c.translate(58, 56, 10)
-            c.rotateY(0.5)
-            c.box(34)                          // 影を落とす箱
-            c.popMatrix()
-        }
-    }
-
-    @Test("ゴールデン: ポストプロセス（Grayscale → Vignette）")
-    func postProcess() throws {
-        try verifyScene(
-            "post-process",
-            tolerance: .shaded,
-            effects: [GrayscaleEffect(), VignetteEffect(intensity: 0.6, smoothness: 0.4)]
-        ) { c in
-            c.background(Color(r: 0.10, g: 0.12, b: 0.20))
-            c.noStroke()
-            c.fill(Color(r: 0.95, g: 0.35, b: 0.20))
-            c.circle(48, 48, 60)
-            c.fill(Color(r: 0.20, g: 0.80, b: 0.95))
-            c.rect(60, 60, 56, 44)
-        }
-    }
-
-    /// 2D 変換（`translate`/`rotate`/`scale` の 2D 側オーバーロード）が 3D 描画にも
-    /// 効くこと（ADR-0005 Amendment 2026-08-02 の P3D 意味論統一）を画素で凍結する。
-    ///
-    /// 既存の 3D シーンはすべて 3 引数 `translate` を使っているため、統一前後で
-    /// 1 画素も動かなかった。**このシーンだけが変換ファミリの適用先に検出力を持つ**
-    /// （Issue #325 / #385）。統一を戻すと 3 つのボックスがすべてワールド原点
-    /// （= 左上）へ集まり、画像が壊れる。
-    ///
-    /// ambient はもとは `0.45`（`colorMode` レンジ基準なので実質 0）だった（Issue #392）。
-    /// `40` は「明るい面の R チャンネルが 255 に張り付かない上限」で選んだ値。
-    /// これで光の当たらない面にも階調が残り、環境光の退行も検出できる。
-    @Test("ゴールデン: 2D 変換 + 3D 描画（P3D 意味論統一の検出用）")
-    func transform2DAppliedTo3D() throws {
-        try verifyScene("transform-2d-on-3d", tolerance: .shaded) { c in
-            c.background(Color(r: 0.06, g: 0.07, b: 0.10))
-            c.pbr(false)
-            c.ambientLight(40)  // colorMode 基準（既定 0〜255）
-            c.directionalLight(-0.4, -0.5, -1)
-            c.noStroke()
-
-            // 1) translate(x, y): 中央寄せしてから箱を置く（P3D 移植の最頻出イディオム）。
-            c.pushMatrix()
-            c.fill(Color(r: 0.90, g: 0.40, b: 0.30))
-            c.translate(40, 44)
-            c.box(30)
-            c.popMatrix()
-
-            // 2) translate + rotate(a): 2D の rotate が 3D では z 軸回転になる。
-            c.pushMatrix()
-            c.fill(Color(r: 0.30, g: 0.75, b: 0.90))
-            c.translate(92, 40)
-            c.rotate(0.6)
-            c.box(34, 16, 16)
-            c.popMatrix()
-
-            // 3) translate + scale(sx, sy): 非均一スケールが z 等倍で効く。
-            c.pushMatrix()
-            c.fill(Color(r: 0.95, g: 0.82, b: 0.25))
-            c.translate(64, 98)
-            c.scale(1.6, 0.6)
-            c.box(28)
-            c.popMatrix()
-        }
+    /// カタログに足したシーンを名前リストへ書き忘れると、そのシーンは**どのテストからも
+    /// 呼ばれない**まま緑になる。名前リストとカタログの対応をここで固定する。
+    @Test("シーン名リストがカタログを網羅している")
+    func sceneNameListsCoverCatalog() {
+        let catalog = Set(GoldenScenes.all.map(\.name))
+        let referenced = Set(goldenSceneNames).union(commandRecordParitySceneNames)
+        #expect(referenced.subtracting(catalog).isEmpty, "カタログに無いシーン名がある")
+        #expect(catalog.subtracting(referenced).isEmpty, "どのテストからも参照されないシーンがある")
+        #expect(Set(goldenSceneNames).count == goldenSceneNames.count, "ゴールデン名が重複している")
     }
 
     /// 影オフ（既定）経路と記録経路が、**1 フレーム描画**で同じ画素を出す（Issue #373）。
@@ -363,8 +189,12 @@ struct GoldenImageTests {
             c.fill(Color(r: 0.20, g: 0.70, b: 0.90))
             c.circle(92, 30, 40)
         }
-        let immediate = try render(shadows: false, draw: scene)
-        let recorded = try render(shadows: true, draw: scene)
+        let immediate = try OffscreenSketchHarness.render(
+            size: goldenImageSize, mode: .immediate, draw: scene
+        )
+        let recorded = try OffscreenSketchHarness.render(
+            size: goldenImageSize, mode: .shadows, draw: scene
+        )
 
         let diff = immediate.compare(to: recorded)
         #expect(diff.isIdentical, "\(diff.summary)")
@@ -404,6 +234,38 @@ struct GoldenImageTests {
 
             #expect(reloaded.width == w && reloaded.height == h)
             #expect(reloaded.rgba == original.rgba, "PNG 往復で画素が変化した")
+            #expect(reloaded.sha256 == original.sha256)
+        }
+    }
+
+    /// **半透明の画素も** PNG 往復で 1 バイトも変わらないこと（#850）。
+    ///
+    /// 以前は `rgba`（straight）を `premultipliedLast` と宣言して書いていたため、
+    /// ImageIO が PNG（straight）へ書くときに α で割って飽和させ、
+    /// **α=128 の白で 127 もずれて**いた。「非不透明画素は再現しない」という
+    /// ゴールデンの前提はこの取り違えから来ていたので、往復が可逆であることを
+    /// α の全域で固定する。
+    @Test("PNG ラウンドトリップが半透明の画素も変えない")
+    func pngRoundTripPreservesTranslucentPixels() throws {
+        let alphas: [UInt8] = [0, 1, 4, 16, 64, 128, 192, 254, 255]
+        let colors: [(UInt8, UInt8, UInt8)] = [
+            (255, 255, 255), (128, 128, 128), (51, 204, 102), (255, 0, 0), (0, 0, 0),
+        ]
+        var bytes: [UInt8] = []
+        for a in alphas {
+            for c in colors {
+                bytes.append(contentsOf: [c.0, c.1, c.2, a])
+            }
+        }
+        let original = try GoldenImage(width: colors.count, height: alphas.count, rgba: bytes)
+
+        try TempFileHelper.withTemporaryDirectory { dir in
+            let url = dir.appendingPathComponent("roundtrip-alpha.png")
+            try original.write(pngTo: url)
+            let reloaded = try GoldenImage.load(pngAt: url)
+
+            #expect(reloaded.rgba == original.rgba,
+                    "半透明の画素が PNG 往復で変化した — #850")
             #expect(reloaded.sha256 == original.sha256)
         }
     }

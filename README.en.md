@@ -106,7 +106,7 @@ final class MySketch: Sketch {
 
 [docs/tutorial/](docs/tutorial/) holds a guided tutorial that assumes no Processing background. Read it in the browser at **[metaphor Tutorial](https://shinyaoguri.github.io/metaphor/en/tutorial/)**. Every section is one self-contained sketch: the code in the text is embedded from the real packages under [`Examples/Tutorial/`](Examples/Tutorial/), and the rendered images come from those same sketches, so **the code on the page runs as printed**.
 
-**The prose is Japanese for now** (an English edition is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548)); the code, API names, and images are language-independent.
+**<!-- tutorial-status: en-translation -->The prose is Japanese for now — an English edition is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548)<!-- /tutorial-status -->**. The code, API names, and images are language-independent.
 
 | Part | What you learn |
 |---|---|
@@ -121,7 +121,7 @@ final class MySketch: Sketch {
 | [Part 9 — Shipping a piece](docs/tutorial/09-artwork.md) | Stills, video, GIF and SVG export, deterministic renders, long runs |
 | [Part 10 — Making things with an AI](docs/tutorial/10-ai.md) | The observation loop, declaring state with `probe()`, MCP, shared sessions, the context an AI needs |
 
-<!-- tutorial-status: en-status -->Parts 1–10 are published<!-- /tutorial-status --> (Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)). The full outline lives in [docs/tutorial/README.md](docs/tutorial/README.md); an English translation is tracked in [#548](https://github.com/shinyaoguri/metaphor/issues/548). Once you have read it, use the reference documentation below and [Examples](#examples).
+<!-- tutorial-status: en-status -->Parts 1–10 are published<!-- /tutorial-status --> (Epic [#483](https://github.com/shinyaoguri/metaphor/issues/483)). The full outline lives in [docs/tutorial/README.md](docs/tutorial/README.md). Once you have read it, use the reference documentation below and [Examples](#examples).
 
 ### Reference documentation
 
@@ -139,11 +139,15 @@ metaphor is designed so AI agents can develop while **observing a running sketch
 |---|---|
 | `snapshot` | Returns image (PNG) and internal state of the current frame (`frameCount` / `time` / `probe()` values / color & region stats / warnings) |
 | `capture_sequence` | Captures a sequence of frames, returns contact sheet image and per-frame manifest (observe motion / rhythm / transitions) |
-| `input` | Sends mouse & keyboard input to the running sketch |
+| `input` | Sends mouse & keyboard input to the running sketch (standalone mode only) |
+| `params` | Returns the parameters the sketch declared with `@Param` (type, current value, range, `choices`) |
+| `set_param` | Rewrites a parameter value **without a rebuild** and returns the applied value |
 | `build_status` | Returns success/failure and errors from the most recent `swift build` |
 | `api_reference` | Returns metaphor API documentation (usage guide / all APIs / sample index). Consult before using new APIs |
 
-When a human runs `metaphor watch`, the AI's `metaphor mcp` **attaches to the same running sketch** (shared session). The human edits while watching the live viewer; AI cooperates via file edits and `snapshot`.
+With `params` / `set_param` the AI can **do more than look at the picture — it can turn the knobs**. A request like "sweep the radius from 40 to 120 and find the best value" lands in a single frame without editing any source (the values in play are the ones the sketch declared with [`@Param`](docs/tutorial/08-connect.md)).
+
+When a human runs `metaphor watch`, the AI's `metaphor mcp` **attaches to the same running sketch** (shared session). The human edits while watching the live viewer; AI cooperates via file edits and `snapshot`. `input` is the only tool unavailable in a shared session — `@Param` values can still be changed from the AI's `set_param` without a rebuild (the human's GUI sliders and `set_param` are symmetric clients of the same store, and both show up in the live viewer window immediately).
 
 The observation mechanism itself is metaphor's **Probe** plugin. To pass internal state to AI, declare it in `draw()` like `probe("count", n)` (example: [`Examples/Samples/ProbeSnapshot`](Examples/Samples/ProbeSnapshot)).
 
@@ -191,7 +195,7 @@ You can also add `metaphor` as a normal Swift Package dependency without the CLI
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.9.0"),
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.10.0"),
 ]
 ```
 
@@ -255,6 +259,9 @@ Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](h
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
 
-For the copyright notice and full license text of `Syphon.xcframework`
-(Simplified BSD License), redistributed as a GitHub Release asset, see
-[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+The fonts bundled in [Examples/](Examples/) (Source Code Pro, Space Mono and
+Merriweather) are all under the SIL Open Font License 1.1. The license text is
+in [OFL.txt](OFL.txt); the per-font copyright notices and the paths each font is
+bundled at are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), together
+with the copyright notice and full license text of `Syphon.xcframework`
+(Simplified BSD License), redistributed as a GitHub Release asset.
