@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows lint-python
 
 # Default target
 all: setup build
@@ -205,6 +205,14 @@ contract-schema:
 lint-workflows:
 	@./scripts/lint-workflows.sh
 
+# Lint Python scripts with ruff (same version as CI)
+#
+# 未使用 import ほか pyflakes 相当の指摘を機械で拾う（Issue #1022）。
+# ruff は stdlib ではないので、バージョンの pin と venv への隔離は
+# スクリプト側が持つ（ci.yml もこれと同じ実体を呼ぶ）。
+lint-python:
+	@./scripts/lint-python.sh
+
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
 # base path は公開時と同じ /metaphor/reference/（DocC は baseUrl を出力へ焼き込む
@@ -337,6 +345,7 @@ help:
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
+	@echo "  make lint-python    - Lint scripts/*.py with ruff (same as CI)"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-check     - Build DocC and fail on any warning (CI と同条件)"
 	@echo "  make docs-ja        - Build the Japanese reference from the ledger (ADR-0011)"

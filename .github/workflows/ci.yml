@@ -214,6 +214,12 @@ jobs:
         # を合成シンボルグラフで固定する（Issue #298 / #421）。
         # ビルド不要なので Xcode / Syphon の手前に置く。
         run: python3 -m unittest discover -s scripts/tests
+      - name: Lint Python scripts
+        # 未使用 import ほか pyflakes 相当の指摘（Issue #1022）。ruff の
+        # バージョン pin と venv への隔離はスクリプト側が持ち、手元の
+        # `make lint-python` と同じ実体を呼ぶので結果が食い違わない。
+        # ビルド不要なので Xcode / Syphon の手前に置く。
+        run: ./scripts/lint-python.sh
       - name: Detect Source changes
         id: source-changed
         run: |
