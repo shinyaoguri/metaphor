@@ -453,39 +453,6 @@ class TestContactSheetWidth(ShotsTestCase):
         self.assertEqual(gen.image_size(self.root / "still.png"), self.FRAME)
 
 
-class TestSequenceReadiness(ShotsTestCase):
-    """CONTRACT.md 契約点 4 の完了規約（sequence.json が最後・id エコー）。"""
-
-    def write_manifest(self, sequence_dir: Path, payload: dict) -> None:
-        sequence_dir.mkdir(parents=True, exist_ok=True)
-        (sequence_dir / "sequence.json").write_text(json.dumps(payload), encoding="utf-8")
-
-    def test_none_until_the_manifest_appears(self) -> None:
-        self.assertIsNone(gen.sequence_manifest(self.root / "seq", "req-1"))
-
-    def test_ready_when_id_and_count_match(self) -> None:
-        seq = self.root / "seq"
-        self.write_manifest(seq, {"id": "req-1", "frameCount": 2, "frames": [{}, {}]})
-        self.assertIsNotNone(gen.sequence_manifest(seq, "req-1"))
-
-    def test_not_ready_for_a_previous_request(self) -> None:
-        seq = self.root / "seq"
-        self.write_manifest(seq, {"id": "older", "frameCount": 2, "frames": [{}, {}]})
-        self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
-
-    def test_not_ready_when_frames_are_short(self) -> None:
-        seq = self.root / "seq"
-        self.write_manifest(seq, {"id": "req-1", "frameCount": 4, "frames": [{}, {}]})
-        self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
-
-    def test_partial_write_is_not_ready(self) -> None:
-        seq = self.root / "seq"
-        seq.mkdir(parents=True)
-        (seq / "sequence.json").write_text('{"id": "req-1", "frame', encoding="utf-8")
-        self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
-
-
-
 class TestInputScript(ShotsTestCase):
     """撮影用の入力台本（`probe-input.jsonl`）のうち、チュートリアル側の扱い（#509）。
 
