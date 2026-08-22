@@ -39,7 +39,7 @@
 
 | # | Status | Title |
 |---|---|---|
-| [0001](0001-separate-syphon-into-its-own-target.md) | Accepted | Syphon を MetaphorCore から別ターゲットへ分離する |
+| [0001](0001-separate-syphon-into-its-own-target.md) | Accepted（packaging は 0014 が置換） | Syphon を MetaphorCore から別ターゲットへ分離する |
 | [0002](0002-deterministic-render-pipeline.md) | Accepted | 決定論レンダリングを段階導入する（noLoop 単一フレーム化 + シャドウ同一フレーム化） |
 | [0003](0003-unified-command-stream.md) | Accepted | 即時描画を順序保持コマンド記録へ統一する（main パス 2D/3D の単一ストリーム化） |
 | [0004](0004-wire-schema-canon-vs-shared-types.md) | Accepted | 契約ドリフトを共有型ではなく wire スキーマ正典で防ぐ（Issue #119 案C+） |
@@ -52,6 +52,7 @@
 | [0011](0011-docc-english-canon-japanese-generated.md) | Accepted | リファレンスは英語を正典とし、日本語版は機械翻訳の生成物として並べる |
 | [0012](0012-alpha-semantics.md) | Accepted | アルファは公開 API が straight、内部と出力が premultiplied と定める |
 | [0013](0013-companion-over-dedicated-editor.md) | Accepted | 専用エディタを作らず、既存エディタ + コンパニオンへ投資する（エディタ連携は in scope） |
+| [0014](0014-viewer-frame-ipc-and-syphon-plugin.md) | Accepted | ビューアのフレーム転送を専用 IPC（Unix socket + 匿名 POSIX shm）にし、Syphon を独立 Package の plugin へ分離する |
 
 ## 参考
 

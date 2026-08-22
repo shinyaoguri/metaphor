@@ -1,6 +1,6 @@
 # ADR-0001: Syphon を MetaphorCore から別ターゲットへ分離する
 
-- **Status**: Accepted
+- **Status**: Accepted — **packaging 部分は [ADR-0014](0014-viewer-frame-ipc-and-syphon-plugin.md) が置換**（2026-08-22）。置き換わるのは「`Syphon` binaryTarget と `MetaphorSyphon` を root `Package.swift` に置き、umbrella 経由の自動登録で `import metaphor` の体験を不変に保つ」部分（不変条件②③と CONTRACT 点 5 の Syphon 前提）。**ランタイム分離の判断（`MetaphorOutputPlugin` + レジストリ + C constructor による自動登録 = Option A）は生きており、独立リポジトリ `metaphor-syphon` でもそのまま使う**
 - **Date**: 2026-06-29
 - **Deciders**: shinyaoguri（PR レビュー）
 - **PR / Commit**: refactor/syphon-target-separation
