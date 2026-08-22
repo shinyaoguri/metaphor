@@ -409,7 +409,8 @@ GitHub の main ブランチではなく **checkout から読むこと自体が�
   小文字にしたもの。`https://github.com/shinyaoguri/metaphor-syphon.git` → `metaphor-syphon`）。
 - url 依存なら `<sketch>/.build/checkouts/<identity>/llms.txt`（初回の resolve 後に出現）、
   path 依存なら `Package.swift` の `.package(path:)` のうち末尾要素の identity が一致する
-  ディレクトリの `llms.txt`。
+  ディレクトリの `llms.txt`（旧形式の `.package(name: "metaphor", path:)` は `name:` を identity
+  とみなす。worktree のようにディレクトリ名が identity にならない checkout はこの形で参照する）。
 - identity の**完全一致**で選ぶので、`.package(path: "../metaphor-syphon")` のような
   プラグインの path 依存が本体より先に並んでいても、本体の docs に取り違えない（逆も同じ）。
 - プラグインに要求するのは `llms.txt` だけ。`llms-sketch.txt` / `docs/ai/examples-index.md` /
