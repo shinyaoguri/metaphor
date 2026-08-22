@@ -207,6 +207,24 @@ def get_declaration(symbol: dict) -> str:
     return "".join(parts).strip()
 
 
+def get_parameter_type_references(symbol: dict) -> set[str]:
+    """Type names a caller has to *pass* to this symbol (parameter types only).
+
+    Properties and return types are what a caller *receives*; they are reachable
+    by calling members on the value and need no spelling, so they do not widen
+    the surface. A type that appears as a parameter (of an init, a method, or a
+    protocol requirement) must be constructed by the caller and therefore needs
+    its own entry (#1046).
+    """
+    refs: set[str] = set()
+    sig = symbol.get("functionSignature", {})
+    for param in sig.get("parameters", []):
+        for f in param.get("declarationFragments", []):
+            if f["kind"] == "typeIdentifier" and f["spelling"][0].isupper():
+                refs.add(f["spelling"])
+    return refs
+
+
 def get_type_references(symbol: dict) -> set[str]:
     """Extract type names referenced in a symbol's declaration fragments."""
     refs: set[str] = set()
@@ -577,13 +595,43 @@ def build_api_model(modules: dict, module_order: list[str]) -> dict:
     referenced_types = compute_api_referenced_types(all_sketch_syms)
 
     # Also include types referenced transitively (one level deep) from
-    # already-referenced types' init/factory signatures.
+    # already-referenced types' member signatures — returns and properties
+    # included, so what a sketch author *receives* (Canvas3D, TweenManager, …)
+    # keeps its entry.
     for type_name in list(referenced_types):
         info = types.get(type_name)
         if not info:
             continue
         for m in info["members"]:
             referenced_types |= get_type_references(m)
+
+    # Then close the graph over *parameter* types: a type a caller has to
+    # construct to call something that is already in the surface is part of the
+    # surface too, however many hops away. Two hops was not enough —
+    # `SketchConfig(plugins:)` → `PluginFactory(requirements:)` →
+    # `PluginRequirements` — and the `MetaphorOutputContext` a provider receives
+    # is referenced only from a protocol requirement (#1046). Protocols and
+    # property wrappers are always emitted, so their members are seeds too. Only
+    # parameters are followed from here on: following returns and properties
+    # would drag the renderer's internal collaborators (`TextureManager`,
+    # `DepthStencilCache`, …) in through `MetaphorPlugin.onAttach(renderer:)`.
+    frontier = set(referenced_types)
+    for type_name, info in types.items():
+        sym = info.get("symbol")
+        if sym and (sym["kind"]["identifier"] == KIND_PROTOCOL or is_property_wrapper(sym)):
+            frontier.add(type_name)
+    while frontier:
+        next_frontier: set[str] = set()
+        for type_name in frontier:
+            info = types.get(type_name)
+            if not info:
+                continue
+            for m in info["members"]:
+                for ref in get_parameter_type_references(m):
+                    if ref not in referenced_types:
+                        referenced_types.add(ref)
+                        next_frontier.add(ref)
+        frontier = next_frontier
 
     # Collect protocol precise IDs that are in the referenced set
     referenced_protocol_ids: set[str] = set()
