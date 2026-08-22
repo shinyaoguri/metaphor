@@ -729,36 +729,6 @@ class TestExternalStaleness(ShotsTestCase):
         self.assertEqual(gen.check([REF], self.external()), [])
 
 
-class TestGyazoResponse(ShotsTestCase):
-    """Upload API の応答の検証（形式が変換されたら黙って進めない）。"""
-
-    def test_url_is_taken_from_the_response(self) -> None:
-        body = json.dumps({"url": STILL_URL, "type": "png"})
-        self.assertEqual(gen.gyazo_url_from_response(body, ".png"), STILL_URL)
-
-    def test_animated_webp_keeps_its_extension(self) -> None:
-        body = json.dumps({"url": MOTION_URL, "type": "webp"})
-        self.assertEqual(gen.gyazo_url_from_response(body, ".webp"), MOTION_URL)
-
-    def test_a_converted_format_is_an_error(self) -> None:
-        body = json.dumps({"url": STILL_URL, "type": "png"})
-        with self.assertRaises(gen.ShotError):
-            gen.gyazo_url_from_response(body, ".webp")
-
-    def test_another_host_is_an_error(self) -> None:
-        body = json.dumps({"url": "https://example.com/x.png"})
-        with self.assertRaises(gen.ShotError):
-            gen.gyazo_url_from_response(body, ".png")
-
-    def test_an_error_response_is_reported(self) -> None:
-        with self.assertRaises(gen.ShotError):
-            gen.gyazo_url_from_response('{"message":"unauthorized"}', ".png")
-
-    def test_a_non_json_response_is_reported(self) -> None:
-        with self.assertRaises(gen.ShotError):
-            gen.gyazo_url_from_response("<html>502</html>", ".png")
-
-
 class TestUploadSkipsUnchangedAssets(ShotsTestCase):
     """同じバイト列を上げ直さない（アップロードだけ失敗した再実行を速くする）。"""
 

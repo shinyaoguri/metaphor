@@ -13,10 +13,13 @@
 - **画像の縦横**（`image_size`）— 台帳に実寸を持たせるため
 - **入力台本**（`probe-input.jsonl` の読み取りと送出）— マウス・キーボードが要る
   スケッチを撮るための唯一の経路。規約（#509）が 1 つなので実装も 1 つにする（#610）
+- **Gyazo への上げ口**（`gyazo_token` / `upload_to_gyazo` ほか）— チュートリアルと
+  DocC リファレンスが使う。トークンの読み方という**変わりうる 1 点**を 2 実装持って
+  いたせいで、`op read` から `secret-read` へ移すときに片方が取り残された
 
-画像の置き場は用途で違います（チュートリアルは Gyazo = ADR-0010、Examples は
-リポジトリ内）。撮り方・台帳・本文の書き換えも用途ごとに違うので、各スクリプトが
-持ちます。
+画像の置き場は用途で違います（チュートリアルと DocC リファレンスは Gyazo =
+ADR-0010 / ADR-0008、Examples はリポジトリ内）。**上げ口は共通でも、撮り方・台帳・
+本文の書き換えは用途ごとに違う**ので、そちらは各スクリプトが持ちます。
 """
 
 from __future__ import annotations
@@ -24,7 +27,10 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import os
+import shutil
 import subprocess
+import sys
 import time
 from collections.abc import Iterable
 from pathlib import Path
@@ -314,3 +320,116 @@ def send_input_script(process: subprocess.Popen, events: list[dict], ref: str) -
             raise ShotError(f"'{ref}' が stdin を閉じた（入力を受け取れていない）") from exc
         time.sleep(INPUT_INTERVAL_SEC)
     time.sleep(INPUT_SETTLE_SEC)
+
+
+# --- Gyazo -------------------------------------------------------------------
+#
+# 画像の実体は Gyazo に置き、リポジトリは URL だけを持つ（DocC リファレンスは
+# ADR-0008、チュートリアルは ADR-0010）。上げる経路をここ 1 か所に集めているのは、
+# **2 実装あると片方だけ直るから**。実際そうなった: トークンの読み口を `op read` から
+# `secret-read` へ移したとき、同じ関数のコピーがもう 1 つあることに気付かず、
+# チュートリアル側だけが古い読み方のまま残った。
+
+GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
+GYAZO_HOST = "i.gyazo.com"
+# トークンは都度読む（平文の環境変数として常駐させない）。環境変数に持たせてよいのは
+# 参照文字列だけで、値ではない。
+GYAZO_TOKEN_REF = os.environ.get(
+    "GYAZO_TOKEN_REF", "op://Automation/Gyazo API/credential"
+)
+
+_GYAZO_TOKEN: list[str] = []
+
+
+def gyazo_token() -> str:
+    """Gyazo のアクセストークンを 1 度だけ読む。
+
+    正本は 1Password で、読み口は `secret-read`（低権限の秘密だけを macOS Keychain へ
+    キャッシュするラッパー）。キャッシュが効くので **1Password がロックされていても
+    止まらない**。
+
+    `secret-read` が無い環境では `op read` に落ちる。そちらはロック中に承認待ちで
+    返らない（実測で 2 分以上ハングした）ので、落ちたことは黙らず 1 度だけ知らせる。
+
+    `--check` / `--compile-only` からは決して呼ばない（CI にトークンは無い）。
+    """
+    if _GYAZO_TOKEN:
+        return _GYAZO_TOKEN[0]
+
+    reader = shutil.which("secret-read")
+    if reader is not None:
+        command = [reader, GYAZO_TOKEN_REF]
+    elif shutil.which("op") is not None:
+        print(
+            "警告: secret-read が見つからないので op read で読みます"
+            "（1Password がロックされていると承認待ちで止まります）。",
+            file=sys.stderr,
+        )
+        command = ["op", "read", GYAZO_TOKEN_REF]
+    else:
+        raise ShotError(
+            "Gyazo のトークンを読む手段が無い。画像のアップロードにはトークンが要ります"
+            "（setup リポジトリの bin/ を PATH へ通すか、brew install 1password-cli）"
+        )
+
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ShotError(
+            f"Gyazo のトークンを読めなかった（{GYAZO_TOKEN_REF}）:\n{result.stderr.strip()}"
+        )
+    token = result.stdout.strip()
+    if not token:
+        raise ShotError(f"Gyazo のトークンが空だった（{GYAZO_TOKEN_REF}）")
+    _GYAZO_TOKEN.append(token)
+    return token
+
+
+def gyazo_url_from_response(body: str, expected_suffix: str) -> str:
+    """Upload API の応答から URL を取り出して検証する。"""
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise ShotError(f"Gyazo の応答が JSON として読めない: {body[:200]}") from exc
+    url = data.get("url")
+    if not isinstance(url, str) or not url.startswith(f"https://{GYAZO_HOST}/"):
+        raise ShotError(f"Gyazo の応答に想定した URL が無い: {body[:200]}")
+    if not url.endswith(expected_suffix):
+        # 形式が変換されたら本文や DocC での見え方が変わる。黙って進めない。
+        raise ShotError(f"Gyazo が別の形式で返した（{expected_suffix} を上げたのに {url}）")
+    return url
+
+
+def file_sha256(path: Path) -> str:
+    """上げたバイト列の指紋。URL が指す中身が入れ替わっていないことの確認用。"""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def upload_to_gyazo(path: Path, title: str) -> str:
+    """画像を Gyazo へ上げて URL を返す。
+
+    アセットは不変・追記型なので、既にある URL を差し替えることはしない。撮り直しは
+    常に新しい URL になり、古い URL は過去のリビジョンのために残る。
+    """
+    token = gyazo_token()
+    result = subprocess.run(
+        [
+            "curl", "-sS", "--fail", "--retry", "3", "--retry-delay", "2",
+            "-F", f"access_token={token}",
+            "-F", f"imagedata=@{path}",
+            "-F", f"title={title}",
+            GYAZO_UPLOAD_URL,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        # コマンド列にはトークンが入っているので、決してそのまま出さない。
+        raise ShotError(
+            f"'{title}' の {path.name} をアップロードできなかった"
+            f"（curl exit {result.returncode}）:\n{result.stderr.strip()[-500:]}"
+        )
+    return gyazo_url_from_response(result.stdout, path.suffix)

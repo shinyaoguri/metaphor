@@ -16,7 +16,11 @@ Run from the repository root:
 実装を使う（#610）。
 """
 
+import contextlib
 import importlib.util
+import io
+import json
+import os
 import shutil
 import sys
 import tempfile
@@ -320,6 +324,167 @@ class TestInputScript(CommonTestCase):
             '{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8"
         )
         self.assertEqual(len(common.load_input_script(self.root, "ref") or []), 1)
+
+
+STILL_URL = "https://i.gyazo.com/1111111111111111111111111111aaaa.png"
+MOTION_URL = "https://i.gyazo.com/2222222222222222222222222222bbbb.webp"
+
+
+class TestGyazoResponse(CommonTestCase):
+    """Upload API の応答の検証（形式が変換されたら黙って進めない）。"""
+
+    def test_url_is_taken_from_the_response(self) -> None:
+        body = json.dumps({"url": STILL_URL, "type": "png"})
+        self.assertEqual(common.gyazo_url_from_response(body, ".png"), STILL_URL)
+
+    def test_animated_webp_keeps_its_extension(self) -> None:
+        body = json.dumps({"url": MOTION_URL, "type": "webp"})
+        self.assertEqual(common.gyazo_url_from_response(body, ".webp"), MOTION_URL)
+
+    def test_a_converted_format_is_an_error(self) -> None:
+        body = json.dumps({"url": STILL_URL, "type": "png"})
+        with self.assertRaises(common.ShotError):
+            common.gyazo_url_from_response(body, ".webp")
+
+    def test_another_host_is_an_error(self) -> None:
+        body = json.dumps({"url": "https://example.com/x.png"})
+        with self.assertRaises(common.ShotError):
+            common.gyazo_url_from_response(body, ".png")
+
+    def test_an_error_response_is_reported(self) -> None:
+        with self.assertRaises(common.ShotError):
+            common.gyazo_url_from_response('{"message":"unauthorized"}', ".png")
+
+    def test_a_non_json_response_is_reported(self) -> None:
+        with self.assertRaises(common.ShotError):
+            common.gyazo_url_from_response("<html>502</html>", ".png")
+
+
+class TestGyazoToken(CommonTestCase):
+    """トークンの読み口。
+
+    正本は 1Password、読み口は `secret-read`（Keychain にキャッシュするラッパー）。
+    **`secret-read` が居るのにそれを使わない**と、1Password のロックで無人の撮影が
+    止まる — 実際に `op read` 直で 2 分ハングした。だからここは「どちらを選んだか」を
+    見る。本物を呼ばずに済むよう、PATH の先頭に偽物を置いて差し替える。
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.log = self.root / "calls.log"
+        # 読み取りは 1 プロセス 1 回のキャッシュなので、テストごとに剥がす
+        common._GYAZO_TOKEN.clear()
+        self.addCleanup(common._GYAZO_TOKEN.clear)
+        self._path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{self.bin}:/usr/bin:/bin"
+        self.addCleanup(os.environ.__setitem__, "PATH", self._path)
+
+    def install(self, name: str, body: str) -> None:
+        path = self.bin / name
+        path.write_text(f"#!/bin/sh\nprintf '%s\\n' \"{name} $*\" >> {self.log}\n{body}\n")
+        path.chmod(0o755)
+
+    def calls(self) -> list[str]:
+        if not self.log.exists():
+            return []
+        return [line for line in self.log.read_text().splitlines() if line]
+
+    def test_secret_read_is_preferred(self) -> None:
+        self.install("secret-read", "printf 'from-keychain\\n'")
+        self.install("op", "printf 'from-1password\\n'")
+        self.assertEqual(common.gyazo_token(), "from-keychain")
+        self.assertEqual(len(self.calls()), 1, "op も呼んでいる")
+        self.assertTrue(self.calls()[0].startswith("secret-read "))
+
+    def test_op_is_the_fallback_and_says_so(self) -> None:
+        self.install("op", "printf 'from-1password\\n'")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            self.assertEqual(common.gyazo_token(), "from-1password")
+        self.assertIn("secret-read", stderr.getvalue(), "黙って op に落ちている")
+
+    def test_neither_reader_is_an_error(self) -> None:
+        with self.assertRaises(common.ShotError):
+            common.gyazo_token()
+
+    def test_a_failing_reader_is_reported(self) -> None:
+        self.install("secret-read", "echo 'item not found' >&2; exit 1")
+        with self.assertRaises(common.ShotError):
+            common.gyazo_token()
+
+    def test_an_empty_value_is_an_error(self) -> None:
+        """空文字を掴んだまま進むと、curl が意味の分からない失敗をする。"""
+        self.install("secret-read", "printf '\\n'")
+        with self.assertRaises(common.ShotError):
+            common.gyazo_token()
+
+    def test_the_value_is_read_only_once(self) -> None:
+        self.install("secret-read", "printf 'from-keychain\\n'")
+        common.gyazo_token()
+        common.gyazo_token()
+        self.assertEqual(len(self.calls()), 1, "呼ぶたびに読み直している")
+
+    def test_the_error_never_carries_the_token(self) -> None:
+        """エラー文に値を載せない（ログや Issue に貼られる先まで漏れる）。"""
+        self.install("secret-read", "printf 'super-secret-token\\n'; exit 1")
+        with self.assertRaises(common.ShotError) as caught:
+            common.gyazo_token()
+        self.assertNotIn("super-secret-token", str(caught.exception))
+
+
+class TestUploadCommand(CommonTestCase):
+    """curl へ渡す組み立て。
+
+    ここを実際に走らせて確かめると Gyazo にテスト用の画像が積み上がる（アセットは
+    不変・追記型なので消せない）ので、ネットワークには出ず**組み立てだけ**を見る。
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        common._GYAZO_TOKEN.clear()
+        common._GYAZO_TOKEN.append("token-abc")
+        self.addCleanup(common._GYAZO_TOKEN.clear)
+        self.path = self.root / "shot.png"
+        self.path.write_bytes(b"\x89PNG\r\n\x1a\n")
+        self.commands: list[list[str]] = []
+
+    def fake_run(self, returncode: int = 0, stdout: str = "") -> None:
+        class Result:
+            pass
+
+        def run(command, capture_output=False, text=False):  # noqa: ANN001
+            self.commands.append(command)
+            result = Result()
+            result.returncode = returncode
+            result.stdout = stdout
+            result.stderr = "curl: (22) unauthorized"
+            return result
+
+        original = common.subprocess.run
+        common.subprocess.run = run
+        self.addCleanup(setattr, common.subprocess, "run", original)
+
+    def test_the_title_reaches_gyazo(self) -> None:
+        self.fake_run(stdout=json.dumps({"url": STILL_URL}))
+        url = common.upload_to_gyazo(self.path, "metaphor reference circle(_:_:_:)")
+        self.assertEqual(url, STILL_URL)
+        command = self.commands[0]
+        self.assertIn("title=metaphor reference circle(_:_:_:)", command)
+        self.assertIn("access_token=token-abc", command)
+        self.assertIn(f"imagedata=@{self.path}", command)
+        self.assertEqual(command[-1], common.GYAZO_UPLOAD_URL)
+
+    def test_a_failed_upload_names_the_subject_without_the_token(self) -> None:
+        """どれが失敗したかは分かり、トークンは出ない。"""
+        self.fake_run(returncode=22)
+        with self.assertRaises(common.ShotError) as caught:
+            common.upload_to_gyazo(self.path, "metaphor tutorial 01/02")
+        message = str(caught.exception)
+        self.assertIn("metaphor tutorial 01/02", message)
+        self.assertIn("shot.png", message)
+        self.assertNotIn("token-abc", message)
 
 
 if __name__ == "__main__":
