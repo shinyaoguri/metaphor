@@ -1,7 +1,7 @@
 {
-  "count": 286,
+  "count": 283,
   "statusCounts": {
-    "supported": 270,
+    "supported": 267,
     "partial": 0,
     "stub": 6,
     "obsolete": 10
@@ -2854,55 +2854,6 @@
       "tags": [
         "samples",
         "statepreservation"
-      ]
-    },
-    {
-      "title": "SyphonMultiWindow",
-      "path": "Examples/Samples/Syphon/SyphonMultiWindow",
-      "group": "Samples",
-      "subcategory": "Syphon",
-      "level": "",
-      "status": "supported",
-      "description": "",
-      "featured": [],
-      "tags": [
-        "3d",
-        "live",
-        "samples",
-        "syphon",
-        "syphonmultiwindow"
-      ]
-    },
-    {
-      "title": "SyphonOutput",
-      "path": "Examples/Samples/Syphon/SyphonOutput",
-      "group": "Samples",
-      "subcategory": "Syphon",
-      "level": "",
-      "status": "supported",
-      "description": "",
-      "featured": [],
-      "tags": [
-        "live",
-        "samples",
-        "syphon",
-        "syphonoutput"
-      ]
-    },
-    {
-      "title": "SyphonTripleWindow",
-      "path": "Examples/Samples/Syphon/SyphonTripleWindow",
-      "group": "Samples",
-      "subcategory": "Syphon",
-      "level": "",
-      "status": "supported",
-      "description": "",
-      "featured": [],
-      "tags": [
-        "live",
-        "samples",
-        "syphon",
-        "syphontriplewindow"
       ]
     },
     {

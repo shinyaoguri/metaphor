@@ -68,7 +68,7 @@ for tag in "$@"; do
     continue
   fi
 
-  # The remote branch of the `useLocalSyphon ? .binaryTarget(path:) : ...`
+  # The remote branch of the (pre-v0.12.0) `useLocalSyphon ? .binaryTarget(path:) : ...`
   # ternary. Anchored on `url: "https://…"` so the local-path branch and any
   # other quoted string are ignored.
   #
@@ -79,9 +79,16 @@ for tag in "$@"; do
   url=${urls%%$'\n'*}
 
   if [ -z "$url" ]; then
-    echo "::error::$tag — no binaryTarget url found in Package.swift."
-    echo "          If the Package.swift layout changed, update this script's extraction."
-    fail=1
+    # Tags from v0.12.0 on declare no binaryTarget at all (the Syphon artifact moved
+    # to metaphor-syphon, #792 / ADR-0014), so there is nothing that resolve() could
+    # fail to fetch. Older tags still point at their asset and stay under watch.
+    if printf '%s\n' "$package" | grep -q 'binaryTarget'; then
+      echo "::error::$tag — binaryTarget declared but no url found in Package.swift."
+      echo "          If the Package.swift layout changed, update this script's extraction."
+      fail=1
+    else
+      printf 'SKIP  %-24s (no binaryTarget)\n' "$tag"
+    fi
     continue
   fi
 

@@ -2,7 +2,7 @@
 title: 外とつなぐ
 part: 8
 slug: connect
-description: OSC・MIDI・Syphon・パラメータで、スケッチを他のアプリや機材とつなぎます。
+description: OSC・MIDI・パラメータ（と別パッケージの Syphon）で、スケッチを他のアプリや機材とつなぎます。
 draft: false
 ---
 
@@ -465,154 +465,13 @@ final class MIDISketch: Sketch {
 
 ## 8.3 Syphon
 
-![Syphon で配信している同心円の絵。下に配信名 metaphor-tutorial と 1280x720 の表示](https://i.gyazo.com/181125a27366540735a7c533574881f4.png)
-
-実行すると円弧が回り続けます。画面だけを見ていると、ここまでのスケッチと何も変わりません。違うのは、**同じ絵が Syphon サーバー `metaphor-tutorial` としても出ている**ことです。MadMapper・Resolume・VDMX や Syphon Simple Client のような受け側のアプリを開くと、サーバーの一覧にこの名前が現れ、選べば映像が届きます。
-
-### Syphon は映像の出口
-
-Syphon は、**macOS のアプリ同士が GPU 上のテクスチャをそのまま共有する仕組み**です。画面を録画したりキャプチャ機材を挟んだりせず、描いた絵が別のアプリの素材になります。metaphor でジェネラティブな映像を作り、投影やマッピングは専用ソフトに任せる、といった分担ができます。
-
-### 有効化は名前を付けるだけ
-
-```swift
-SketchConfig(
-    width: 1280, height: 720,
-    title: "Syphon Share",
-    syphonName: "metaphor-tutorial",
-    windowScale: 0.5
-)
-```
-
-`syphonName` を書いた時点で出力が始まります。名前にこだわらないなら `syphon: true` でよく、その場合は `title` がサーバー名になります。名前は受け側のアプリの一覧に出るものなので、複数のスケッチを同時に動かすなら区別できる名前を付けます。
-
-`import metaphor` していれば、これだけで動きます。Syphon の実装は `MetaphorSyphon` という別のモジュールにありますが、アンブレラの `import metaphor` が出力の実装を自動で登録するためです（個別のモジュールだけを import している場合は `MetaphorSyphon.enable()` を明示的に呼びます）。
-
-名前をコードに固定したくないときは、環境変数で上書きできます。
-
-```bash
-METAPHOR_SYPHON_NAME=live swift run
-```
-
-### 送るのは「最終的な絵」
-
-第 1 部 1.4 で、metaphor はレンダリング解像度とウィンドウサイズを分けている、と書きました。オフスクリーンのテクスチャに描いてから、画面へ転送するときにアスペクト比を保って収める、という 2 段構えです。
-
-**Syphon が publish するのは、その転送より前の最終テクスチャ**です。ポストプロセス（6.3）を掛けたあと、画面へ収める前の絵になります。
-
-ここから 2 つのことが決まります。
-
-- **窓の大きさを変えても、送り出す解像度は変わりません**。上のコードの `windowScale: 0.5` は手元の窓を 640×360 にするだけで、受け側には 1280×720 で届きます。出す解像度を固定したまま、手元では小さい窓で作業できます
-- **レターボックスの黒帯は送られません**。窓の縦横比が合わないときに画面へ出る余白は転送のときに足されるもので、テクスチャには入っていません
-
-### 隠れても止まらない
-
-Syphon を有効にすると、レンダーループが自動でタイマー駆動へ切り替わります。macOS はウィンドウが隠れると画面の更新を間引くので、そのままでは**他のアプリの後ろに回した瞬間に送り出す映像が止まってしまう**からです。本番では metaphor の窓は隠れているのが普通なので、この切り替えが要ります。
-
-同じ理由で、metaphor はスケッチが背面にあるときの省電力（App Nap）も既定で抑止しています。
-
-### 出ているかどうかは受け側でしか分からない
-
-Syphon を有効にしても、**スケッチの画面には何の変化もありません**。うまくいっているかを確かめるには受け側のアプリが要ります。手軽なのは Syphon の配布物に付いてくる Simple Client で、サーバーの一覧を出して選ぶだけのアプリです。
-
-一覧に名前が出てこないときは、次を疑います。
-
-| 見るところ | よくある原因 |
-|---|---|
-| サーバー名 | 環境変数 `METAPHOR_SYPHON_NAME` が残っていて、別の名前で出ている |
-| 受け側アプリの起動順 | 先に開いていた一覧が更新されていない（開き直すと出る） |
-| import | 個別モジュール構成で `MetaphorSyphon.enable()` を呼んでいない |
-
-<!-- tutorial-snippet: 08-Connect/03-Syphon -->
-```swift
-import metaphor
-
-@main
-final class SyphonShare: Sketch {
-    var config: SketchConfig {
-        SketchConfig(
-            width: 1280,  // 送り出す解像度。受け側にはこの大きさで届く
-            height: 720,
-            title: "Syphon Share",
-            // 名前を決めた時点で Syphon 出力が有効になる。受け側にはこの名前で見える
-            syphonName: "metaphor-tutorial",
-            windowScale: 0.5  // 手元の窓だけ半分。送る絵は 1280x720 のまま
-        )
-    }
-
-    let ringCount = 5
-
-    func draw() {
-        background(10, 12, 18)
-
-        let t = Float(frameCount) * 0.01
-        push()
-        translate(width / 2, height / 2)
-
-        // 送り出す素材そのもの。描き方は 2D の章までと何も変わらない
-        noFill()
-        for ring in 0..<ringCount {
-            let ringF = Float(ring)
-            let radius = 90 + ringF * 55
-            stroke(Color(r: 0.3 + ringF * 0.12, g: 0.7, b: 1, alpha: 0.9 - ringF * 0.12))
-            strokeWeight(4)
-            let sweep = PI + sin(t + ringF * 0.7) * PI * 0.6
-            arc(0, 0, radius * 2, radius * 2, t * (ringF + 1) * 0.3, t * (ringF + 1) * 0.3 + sweep)
-        }
-
-        noStroke()
-        fill(Color(r: 1, g: 0.9, b: 0.5))
-        circle(0, 0, 60)
-        pop()
-
-        drawOverlay()
-    }
-
-    /// 受け側で名前と解像度を確かめられるよう、絵に焼き込んでおく
-    private func drawOverlay() {
-        noStroke()
-        fill(Color(gray: 0, alpha: 0.55))
-        rect(0, height - 92, width, 92)
-
-        fill(Color(gray: 0.95))
-        textSize(22)
-        textAlign(.left, .top)
-        text("Syphon サーバー名: \(config.syphonName ?? "（無効）")", 32, height - 78)
-
-        fill(Color(gray: 0.7))
-        textSize(17)
-        text("\(Int(width)) x \(Int(height))  /  手元の窓はその \(config.windowScale) 倍", 32, height - 44)
-
-        // 受け側で切れていないかを確かめるための隅の目印
-        stroke(Color(gray: 0.5))
-        strokeWeight(3)
-        noFill()
-        rect(8, 8, width - 16, height - 16)
-    }
-}
-```
-
-実行: `cd Examples/Tutorial/08-Connect/03-Syphon && swift run`
-<!-- /tutorial-snippet -->
-
-### 試してみる
-
-- `windowScale` を `0.25` に変えても、受け側に届く映像の大きさが変わらないことを確かめてください
-- `syphonName` を消して `syphon: true` にすると、受け側の一覧に出る名前はどうなりますか
-- スケッチの窓を他のアプリで完全に隠しても、受け側の映像が止まらないことを確かめてください
-
-### ふりかえり
-
-- [ ] `syphonName` を書くだけで映像の共有が始まると分かった
-- [ ] 送り出す解像度が `config` の `width` / `height` で決まり、窓の大きさとは無関係だと分かった
-- [ ] publish されるのがポストプロセス後・画面へ収める前のテクスチャだと分かった
-- [ ] 出ているかどうかは受け側のアプリでしか確かめられないと分かった
-
-### もっと詳しく
-
-- [`SketchConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchconfig) — `syphonName` / `syphon` / `windowScale`
-- [`SyphonOutput`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorsyphon/syphonoutput) — 自分でテクスチャを publish したいとき
-- 複数の窓からそれぞれ別の名前で出す例: [`Examples/Samples/Syphon`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Samples/Syphon)
+> **移行中（2026-08-23）**: Syphon の実装は metaphor 本体から独立パッケージ
+> [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) へ移りました（[ADR-0014](../adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）。
+> `import metaphor` だけでは Syphon 出力は有効になりません。`Package.swift` に metaphor-syphon を 1 行足し、
+> `import MetaphorSyphon` のうえで `SketchConfig(plugins: [.syphon(name: "metaphor-tutorial")])` と書きます。
+> この節のスケッチ `08-Connect/03-Syphon` と解説は、metaphor-syphon の v0.1.0 が出たあとに
+> その依存で書き直します（[#792](https://github.com/shinyaoguri/metaphor/issues/792) の M4b）。
+> それまでの内容は [v0.11.0 時点の本節](https://github.com/shinyaoguri/metaphor/blob/v0.11.0/docs/tutorial/08-connect.md#83-syphon) を参照してください。
 
 ## 8.4 パラメータを外に出す
 

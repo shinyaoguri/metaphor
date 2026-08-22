@@ -123,7 +123,7 @@ extension MetaphorOutputProvider {
 ///
 /// ## 登録の仕組み
 /// 出力モジュールは C の `__attribute__((constructor))` → `@_cdecl` 関数からプロセス起動時に
-/// ``register(_:)`` を呼びます（`MetaphorSyphon` の `CMetaphorSyphonBootstrap` と同じ型）。
+/// ``register(_:)`` を呼びます（metaphor-syphon の C bootstrap target がこの型）。
 /// 登録はロード時の単一スレッドが主ですが、明示的な `enable()` から実行時に呼ばれることもあるため
 /// ロックで守ります。走査（`makeOutputs(context:)`）は `MainActor` 上で行われます。
 public enum MetaphorOutputProviders {

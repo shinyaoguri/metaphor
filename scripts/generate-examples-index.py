@@ -169,9 +169,9 @@ THREE_D_CALL = re.compile(
     + r")\s*\("
 )
 
-# Comments describe intent, not what runs. `SyphonTripleWindow` documents a
-# "Morphing wireframe sphere" and then hand-rolls the projection with 2D lines —
-# reading its comments would tag it `3d` for a sphere it never calls.
+# Comments describe intent, not what runs. The old `SyphonTripleWindow` sample
+# documented a "Morphing wireframe sphere" and then hand-rolled the projection with
+# 2D lines — reading its comments would have tagged it `3d` for a sphere it never called.
 LINE_COMMENT = re.compile(r"//.*")
 
 

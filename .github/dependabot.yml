@@ -1,7 +1,7 @@
 # 依存の更新追従（Issue #148, #319）。
 # Swift パッケージは remote 依存を持たないため対象外。
 # 実際に監視するのは GitHub Actions・website の npm 依存（docs.yml が npm ci →
-# GitHub Pages デプロイする本番経路）・Syphon submodule（Vendor/Syphon-Framework）。
+# GitHub Pages デプロイする本番経路）。
 version: 2
 updates:
   # GitHub Actions は **束ねない**。1 PR = 1 アクションのまま。
@@ -35,11 +35,3 @@ updates:
         update-types:
           - minor
           - patch
-
-  # submodule は Vendor/Syphon-Framework の 1 本だけなので束ねる意味がない。
-  - package-ecosystem: gitsubmodule
-    directory: /
-    schedule:
-      interval: weekly
-    labels:
-      - dependencies

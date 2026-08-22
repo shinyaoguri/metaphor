@@ -16,7 +16,7 @@ struct SketchConfigTests {
         #expect(config.height == 1080)
         #expect(config.title == "metaphor")
         #expect(config.fps == 60)
-        #expect(config.syphonName == nil)
+        #expect(config.legacySyphonName == nil, "旧 syphonName の実体は既定で nil（deprecated 窓）")
         #expect(config.windowScale == 0.5)
         #expect(config.preventAppNap == true)
     }
@@ -28,7 +28,6 @@ struct SketchConfigTests {
             height: 720,
             title: "Test",
             fps: 30,
-            syphonName: "TestSyphon",
             windowScale: 1.0,
             preventAppNap: false
         )
@@ -36,9 +35,55 @@ struct SketchConfigTests {
         #expect(config.height == 720)
         #expect(config.title == "Test")
         #expect(config.fps == 30)
-        #expect(config.syphonName == "TestSyphon")
         #expect(config.windowScale == 1.0)
         #expect(config.preventAppNap == false)
+    }
+}
+
+// MARK: - Deprecated Syphon fields（deprecation 窓・#1040）
+
+/// 旧 `syphonName:` / `syphon:` を取る init と computed property は deprecated だが、M6 で削除するまで
+/// 実体（`legacySyphon*`）へ落ちて metaphor-syphon の provider から読める。
+/// deprecated な宣言の中では deprecation 警告が出ない（CI は `-warnings-as-errors`）ので、
+/// テスト関数自体を deprecated にして旧 API を呼ぶ。
+@Suite("SketchConfig deprecated Syphon fields")
+struct SketchConfigDeprecatedSyphonTests {
+
+    @available(*, deprecated)
+    @Test("syphon: true は title 名の要求として実体へ落ちる")
+    func syphonFlagInit() {
+        let config = SketchConfig(title: "T", syphon: true)
+        #expect(config.legacySyphonEnabled == true)
+        #expect(config.legacySyphonName == nil)
+        #expect(config.syphon == true)
+    }
+
+    @available(*, deprecated)
+    @Test("syphonName: は名前として実体へ落ち、setter も実体を書く")
+    func syphonNameInit() {
+        var config = SketchConfig(title: "T", syphonName: "Preview")
+        #expect(config.legacySyphonName == "Preview")
+        #expect(config.syphonName == "Preview")
+        config.syphonName = "Other"
+        #expect(config.legacySyphonName == "Other")
+        config.syphon = true
+        #expect(config.legacySyphonEnabled == true)
+    }
+
+    @Test("新しい init（syphon 引数なし）は実体を空にする")
+    func plainInitIsEmpty() {
+        let config = SketchConfig(title: "T", fps: 30)
+        #expect(config.legacySyphonEnabled == false)
+        #expect(config.legacySyphonName == nil)
+    }
+
+    @available(*, deprecated)
+    @Test("SketchWindowConfig(syphonName:) も実体へ落ちる")
+    func windowConfig() {
+        let config = SketchWindowConfig(title: "W", syphonName: "Win")
+        #expect(config.legacySyphonName == "Win")
+        #expect(config.syphonName == "Win")
+        #expect(SketchWindowConfig(title: "W").legacySyphonName == nil)
     }
 }
 

@@ -14,7 +14,7 @@ swift run
 | [Basics/](Basics/) | Processing 標準サンプルの移植。Form / Color / Image / Lights / Math / Transform / Input / Typography など基礎トピック別 |
 | [Topics/](Topics/) | 応用トピック別。Curves / Shaders / Simulate / Motion / Fractals and L-Systems / Cellular Automata / GUI / Drawing など |
 | [Demos/](Demos/) | パフォーマンス系デモ（GPU パーティクル、インスタンシング比較など） |
-| [Samples/](Samples/) | metaphor 独自機能。RayTracing / SceneGraph / Syphon / Plugins / ProbeSnapshot（AI 観測） |
+| [Samples/](Samples/) | metaphor 独自機能。RayTracing / SceneGraph / Plugins / ProbeSnapshot（AI 観測） |
 | [ML/](ML/) | Core ML / Vision 連携（顔検出、スタイル変換、画像分類、人物セグメンテーション） |
 | [Plugins/](Plugins/) | `MetaphorPlugin` による拡張のサンプル |
 

@@ -72,9 +72,12 @@ _CONDENSED_OVERLAP_THRESHOLD = 0.60
 def discover_package_version(readme_file: Path, package_file: Path) -> str:
     """Infer the SPM snippet version from repository metadata.
 
-    Stable release automation updates README.md's `from:` example. Pre-release
-    automation may update Package.swift's Syphon URL without changing the stable
-    install snippet, so prefer README.md and fall back to Package.swift.
+    Stable release automation updates README.md's `from:` example, so that is
+    the first choice. The fallback reads `Metaphor.version` from
+    Sources/MetaphorCore/Core/MetaphorVersion.swift (bumped on every release,
+    prereleases included). Package.swift used to carry the version in its
+    Syphon binaryTarget URL; that artifact moved to metaphor-syphon (#792), so
+    `package_file` is kept only for the command-line interface.
     """
     try:
         text = readme_file.read_text(encoding="utf-8")
@@ -85,21 +88,22 @@ def discover_package_version(readme_file: Path, package_file: Path) -> str:
     except OSError:
         pass
 
+    version_file = package_file.parent / "Sources" / "MetaphorCore" / "Core" / "MetaphorVersion.swift"
     try:
-        text = package_file.read_text(encoding="utf-8")
+        text = version_file.read_text(encoding="utf-8")
     except OSError:
         print(
-            "warning: could not read README.md/Package.swift to infer the package "
+            "warning: could not read README.md or MetaphorVersion.swift to infer the package "
             "version — falling back to 0.0.0 (the generated SPM snippet will be wrong)",
             file=sys.stderr,
         )
         return "0.0.0"
 
-    match = re.search(r"releases/download/v([^/]+)/Syphon\.xcframework\.zip", text)
+    match = re.search(r'public static let version = "([^"]+)"', text)
     if match:
         return match.group(1)
     print(
-        "warning: no version pattern found in README.md/Package.swift — falling "
+        "warning: no version pattern found in README.md/MetaphorVersion.swift — falling "
         "back to 0.0.0 (the generated SPM snippet will be wrong)",
         file=sys.stderr,
     )

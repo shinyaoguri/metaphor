@@ -34,9 +34,6 @@ playground.xcworkspace
 # Coverage reports (CI artifact; reproducible locally — see .github/workflows/ci.yml)
 coverage/
 
-# Syphon XCFramework (built locally via make setup)
-Frameworks/
-
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However

@@ -4,9 +4,9 @@ This file is generated from `Examples/**/Package.swift` and adjacent
 `*.json` metadata. Use it to find a nearby working sketch before
 generating new metaphor content.
 
-Example count: 286
+Example count: 283
 
-Status: supported 270, partial 0, stub 6, obsolete 10
+Status: supported 267, partial 0, stub 6, obsolete 10
 
 ## How To Use
 
@@ -230,9 +230,6 @@ jq -r '.examples[] | select(.featured | index("PVector"))
 - [SceneGraphBasics](../../Examples/Samples/SceneGraphBasics) Tags: 3d, samples, scenegraphbasics.
 - [SceneGraphHybrid](../../Examples/Samples/SceneGraphHybrid) Tags: 3d, samples, scenegraphhybrid.
 - [StatePreservation](../../Examples/Samples/StatePreservation) Tags: samples, statepreservation.
-- [SyphonMultiWindow](../../Examples/Samples/Syphon/SyphonMultiWindow) (Syphon) Tags: 3d, live, samples, syphon, syphonmultiwindow.
-- [SyphonOutput](../../Examples/Samples/Syphon/SyphonOutput) (Syphon) Tags: live, samples, syphon, syphonoutput.
-- [SyphonTripleWindow](../../Examples/Samples/Syphon/SyphonTripleWindow) (Syphon) Tags: live, samples, syphon, syphontriplewindow.
 - [ToneMapping](../../Examples/Samples/ToneMapping) Tags: 3d, samples, tonemapping.
 
 ## Topics

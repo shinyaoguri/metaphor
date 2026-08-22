@@ -15,4 +15,4 @@
 @_exported import MetaphorCoreImage
 @_exported import MetaphorRenderGraph
 @_exported import MetaphorSceneGraph
-@_exported import MetaphorSyphon
+// Syphon は別パッケージ `metaphor-syphon`（ADR-0014）。`Package.swift` に足して `import MetaphorSyphon` する。

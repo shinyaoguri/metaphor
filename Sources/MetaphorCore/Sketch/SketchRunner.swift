@@ -25,7 +25,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private var activity: NSObjectProtocol?
     private var sharedResources: SharedMetalResources?
 
-    /// ヘッドレス（ウィンドウ無し・Syphon 出力のみ）で起動しているかどうか。
+    /// ヘッドレス（ウィンドウ無し・出力プラグインのみ）で起動しているかどうか。
     /// 環境変数 `METAPHOR_VIEWER=1` で有効化され、metaphor-cli のライブビューアが
     /// 子プロセスとしてスケッチを実行する際に利用します。
     private var isHeadless = false
@@ -131,11 +131,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// スケッチを構成して実行します。
     ///
     /// 通常はウィンドウ + `MTKView` を構築しますが、環境変数 `METAPHOR_VIEWER=1`
-    /// が設定されている場合はヘッドレス（ウィンドウ無し・Syphon 出力のみ）で起動します。
+    /// が設定されている場合はヘッドレス（ウィンドウ無し・出力プラグインのみ）で起動します。
     /// ヘッドレスモードは metaphor-cli のライブビューアが子プロセスとして利用します。
     ///
     /// レンダラー・キャンバス・描画コールバックの構成は両モードで共通で、
-    /// フレーム出力先（ウィンドウへのブリット or Syphon publish）とレンダーループ駆動
+    /// フレーム出力先（ウィンドウへのブリット or 出力プラグインの publish）とレンダーループ駆動
     /// （ディスプレイリンク/タイマー）のみがモードごとに異なります。
     ///
     /// - Parameter sketch: 設定がセットアップを駆動するスケッチインスタンス。
@@ -283,7 +283,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // シェーダ監視の DispatchSource を止める（#648）。
         context?.stopShaderHotReload()
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
-        // SyphonPlugin はここで Syphon サーバーを停止する。
+        // 出力プラグイン（viewer / Syphon 等）はここで接続やサーバーを閉じる。
         renderer?.shutdown()
         // Sketch → SketchContext ストレージからエントリを削除し、
         // context（renderer 一式）への強参照を解放する（teardown 経路）
@@ -456,7 +456,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// 出力が要求されているのに provider が 1 つも出力を返さなかったか（診断用）。
     ///
     /// 「要求」は明示の入口そのもの: 環境変数 `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）、
-    /// ``SketchConfig/syphon``、``SketchConfig/syphonName``。ヘッドレス起動（ウィンドウ無し）は
+    /// 旧 `SketchConfig.syphon` / `syphonName`（deprecated。実体の `legacySyphon*` を読む）。ヘッドレス起動（ウィンドウ無し）は
     /// **何も見えないプロセス**になり得るので、viewer socket（`METAPHOR_VIEWER_SOCKET`）も
     /// Probe（`METAPHOR_PROBE=1`）も出力も無いときだけ要求扱いにする（ADR-0014: ヘッドレスが
     /// Syphon を暗黙に立てることはもう無い）。
@@ -466,7 +466,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     ) -> Bool {
         guard outputs.isEmpty else { return false }
         if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return true }
-        if config.syphon || config.syphonName != nil { return true }
+        if config.legacySyphonEnabled || config.legacySyphonName != nil { return true }
         guard isHeadless else { return false }
         let hasViewerSocket = !(env["METAPHOR_VIEWER_SOCKET"] ?? "").isEmpty
         let hasProbe = env["METAPHOR_PROBE"] == "1"
@@ -524,10 +524,10 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     /// 出力 provider が返した出力プラグインをレンダラーへ接続します（ウィンドウ / ヘッドレス共通）。
     ///
-    /// 出力が要求されているのに provider が 1 つも無い（出力 target が未リンク = 例えば
-    /// `MetaphorCore` 単体で `syphon: true`）場合は警告を出して何もしません。`import metaphor`
-    /// （アンブレラ）経由では `MetaphorSyphon` がリンクされ、provider がロード時に自動登録される
-    /// ため、従来どおり透過的に Syphon が起動します。
+    /// 出力が要求されているのに provider が 1 つも無い（例えば Syphon を要求したのに
+    /// `metaphor-syphon` パッケージが依存に入っていない）場合は警告を出して何もしません。
+    /// metaphor-syphon を `Package.swift` に足すとロード時に provider が自動登録され、
+    /// `plugins: [.syphon(name:)]` でも旧 `syphon:` / `METAPHOR_SYPHON_NAME` でも起動します。
     private func attachOutputs(
         _ outputs: [MetaphorOutputProviders.ResolvedOutput],
         renderer: MetaphorRenderer, config: SketchConfig, env: [String: String]
@@ -541,12 +541,13 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             // 出力先が無いままレンダーループだけ回り続けると原因の手掛かりが
             // 一切出ないため明示する。ヘッドレスモードは「ウィンドウ無し・
             // 出力のみ」なので error 級（Release でも stderr に出す）
-            let message = isHeadless && !config.syphon && config.syphonName == nil
+            let message = isHeadless && !config.legacySyphonEnabled && config.legacySyphonName == nil
                 && (env["METAPHOR_SYPHON_NAME"] ?? "").isEmpty
                 ? "headless (METAPHOR_VIEWER=1) but nothing will observe the frames: set METAPHOR_VIEWER_SOCKET "
-                    + "(metaphor watch --viewer), METAPHOR_PROBE=1, or request an output (syphon / METAPHOR_SYPHON_NAME)."
+                    + "(metaphor watch --viewer), METAPHOR_PROBE=1, or request an output (METAPHOR_SYPHON_NAME with metaphor-syphon)."
                 : "an output (syphon / syphonName / METAPHOR_SYPHON_NAME) was requested but no output module is linked. "
-                    + "Import the umbrella 'metaphor' (or 'MetaphorSyphon'), or call MetaphorSyphon.enable()."
+                    + "Add the 'metaphor-syphon' package to Package.swift and pass plugins: [.syphon(name:)] "
+                    + "(https://github.com/shinyaoguri/metaphor-syphon)."
             if isHeadless {
                 FileHandle.standardError.write(
                     "[metaphor] ERROR: \(message)\n".data(using: .utf8)!

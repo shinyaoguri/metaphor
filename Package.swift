@@ -1,13 +1,13 @@
 // swift-tools-version: 5.10
 
 import PackageDescription
-import Foundation
 
-// Get the directory containing this Package.swift
-let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
-let localFrameworkPath = "Frameworks/Syphon.xcframework"
-let absoluteFrameworkPath = packageDir + "/" + localFrameworkPath
-let useLocalSyphon = FileManager.default.fileExists(atPath: absoluteFrameworkPath)
+// NOTE: this manifest declares NO binaryTarget on purpose. A remote binary artifact is
+// downloaded by every consumer that resolves the package, even when no product that
+// depends on it is used (SwiftPM resolves before it links; package traits do not gate
+// resolution either). Syphon, the one binary dependency, therefore lives in its own
+// package `shinyaoguri/metaphor-syphon` (#792 / ADR-0014). `scripts/check-no-binary-targets.sh`
+// keeps it that way.
 
 // Swift 6 strict concurrency の段階導入（Issue #328）。適用済みのターゲットにだけ
 // `swiftSettings: strictConcurrency` を付ける。未適用のターゲットは従来どおり。
@@ -30,14 +30,6 @@ let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurren
 let strictConcurrency: [SwiftSetting] = [.enableExperimentalFeature("StrictConcurrency")]
 #endif
 
-let syphonTarget: Target = useLocalSyphon
-    ? .binaryTarget(name: "Syphon", path: localFrameworkPath)
-    : .binaryTarget(
-        name: "Syphon",
-        url: "https://github.com/shinyaoguri/metaphor/releases/download/v0.11.0/Syphon.xcframework.zip",
-        checksum: "bdc4b3accc697bd7a513e9341adb56ff8857d67390a11c8c806c7e5e0a255fa1"
-    )
-
 let package = Package(
     name: "metaphor",
     platforms: [
@@ -56,13 +48,11 @@ let package = Package(
         .library(name: "MetaphorRenderGraph", targets: ["MetaphorRenderGraph"]),
         .library(name: "MetaphorSceneGraph", targets: ["MetaphorSceneGraph"]),
         .library(name: "MetaphorVideo", targets: ["MetaphorVideo"]),
-        .library(name: "MetaphorSyphon", targets: ["MetaphorSyphon"]),
     ],
     // 外部依存なし。ドキュメント生成は `xcrun docc` を直接呼ぶ（Makefile / docs.yml）ため
     // swift-docc-plugin は不要（ライブラリ利用者の resolve 時 fetch を増やさない）。
     dependencies: [],
     targets: [
-        syphonTarget,
 
         // Tier 0: 依存ゼロの診断ログ（Issue #805）。Core 非依存の Tier 1 からも
         // 同じ `metaphorWarning` / `metaphorAlert` / `metaphorDiagnostic` を使えるよう、
@@ -71,8 +61,10 @@ let package = Package(
         .target(name: "MetaphorLog", swiftSettings: strictConcurrency),
 
         // Core: rendering engine, drawing, sketch protocol, shaders, and all tightly-coupled subsystems.
-        // NOTE: Core does NOT depend on Syphon. Frame output (Syphon etc.) lives in separate targets
-        // (e.g. MetaphorSyphon) and registers itself via MetaphorOutputRegistry at load time. See ADR.
+        // NOTE: Core does NOT depend on any output backend. Frame output (Syphon etc.) lives in
+        // separate packages (e.g. metaphor-syphon) that register a MetaphorOutputProvider at load
+        // time (ADR-0001 runtime split, ADR-0014 packaging split). The live viewer transport
+        // (ViewerOutputPlugin) is the only output built into Core.
         // viewer frame IPC (CONTRACT.md point 5 / ADR-0014). `shm_open` and the
         // `CMSG_*` macros are not callable from Swift, so this thin C target owns them.
         .target(name: "CMetaphorIPC"),
@@ -82,20 +74,6 @@ let package = Package(
             resources: [
                 .copy("Shaders/Metal"),
                 .copy("Shaders/ShaderSources"),
-            ],
-            swiftSettings: strictConcurrency
-        ),
-
-        // Syphon frame output, split out of MetaphorCore (Issue #73 / ADR). Owns the Syphon binaryTarget.
-        // The C bootstrap target runs an __attribute__((constructor)) at load that registers the output
-        // factory, so `import metaphor` users get transparent Syphon output without referencing this module.
-        .target(name: "CMetaphorSyphonBootstrap"),
-        .target(
-            name: "MetaphorSyphon",
-            dependencies: [
-                "MetaphorCore",
-                "Syphon",
-                "CMetaphorSyphonBootstrap",
             ],
             swiftSettings: strictConcurrency
         ),
@@ -131,7 +109,6 @@ let package = Package(
                 "MetaphorCoreImage",
                 "MetaphorRenderGraph",
                 "MetaphorSceneGraph",
-                "MetaphorSyphon",
             ],
             swiftSettings: strictConcurrency
         ),

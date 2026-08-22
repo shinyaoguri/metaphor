@@ -140,7 +140,7 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 |---|---|---|---|
 | 8.1 OSC | 送受信、他アプリ・他マシンから操作する | `OSCSender`, `OSCReceiver`, `createOSCReceiver` | `Samples/OSCLoopback` |
 | 8.2 MIDI | コントローラのノブを値に結ぶ | MIDI 入出力 API | — |
-| 8.3 Syphon | 映像を他アプリへ流す、固定解像度出力 | `SketchConfig.syphonName`, `MetaphorSyphon` | `Samples/Syphon/SyphonOutput`, `Samples/Syphon/SyphonMultiWindow` |
+| 8.3 Syphon | 映像を他アプリへ流す、固定解像度出力（別パッケージ metaphor-syphon へ移行中・M4b で書き直す） | `plugins: [.syphon(name:)]`（metaphor-syphon） | （metaphor-syphon の Samples） |
 | 8.4 パラメータを外に出す | `@Param` で調整値を宣言し、GUI と外部から動かす | `@Param`, `params`, `gui.params()` | `Samples/ParameterPanel` |
 
 ### 第 9 部 作品にする

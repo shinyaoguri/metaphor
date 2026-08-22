@@ -148,13 +148,16 @@ apply to it the same way.
 Sending/receiving external control signals and outputting to other apps.
 
 - [Samples/OSCLoopback](Samples/OSCLoopback) — `OSCSender` / `OSCReceiver` round-tripping the mouse position.
-- [Samples/Syphon/SyphonOutput](Samples/Syphon/SyphonOutput) — publishing frames to other Syphon-compatible apps (VJ software, TouchDesigner, etc.).
 - [Samples/ParameterPanel](Samples/ParameterPanel) — `@Param` declarations driving both a live GUI panel and the `.metaphor/params/` file contract.
 
-MIDI has no sample outside the tutorial. Part 8 of the tutorial covers all four
+Publishing frames to other Syphon-compatible apps (VJ software, TouchDesigner, etc.)
+lives in the separate [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon)
+package, together with its samples (ADR-0014).
+
+MIDI has no sample outside the tutorial. Part 8 of the tutorial covers the
 topics with a sketch each — `Examples/Tutorial/08-Connect/01-OSC` (loopback),
-`02-MIDI` (knobs and pads), `03-Syphon` (fixed-resolution output) and
-`04-Parameters` (`@Param` plus `gui.params()`).
+`02-MIDI` (knobs and pads) and `04-Parameters` (`@Param` plus `gui.params()`);
+the Syphon sketch moves to metaphor-syphon.
 
 ## 10. Exporting your work
 

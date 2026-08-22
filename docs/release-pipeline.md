@@ -1,5 +1,12 @@
 # リリースパイプライン全体地図（metaphor / metaphor-cli / homebrew-tap）
 
+> **変更（2026-08-23・#792 M4 / [ADR-0014](adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）**: metaphor v0.12.0 と
+> metaphor-cli v0.14.0 から、**② Syphon.xcframework の pin と段 1〜2（`syphon-release` の dispatch / pin bump PR）は存在しません**。
+> 本体のリリースは asset を持たず cli のリリースを起こさない（cli は Syphon.framework を同梱せず、ライブビューアは
+> 契約点 5 の frame IPC で受ける）。Syphon の asset・self-pin は独立パッケージ
+> [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) の Release が担う。以下の図と表は M5（#1041）で
+> 書き直すまで **v0.11.0 / cli v0.13.x 時点の記録**として残す。
+
 3 つのリポジトリがどう結合し、リリースがどう自動で流れるかの**全体像**です。
 このページは地図に徹します — 各部分の詳細な正本は[末尾の表](#正本への導線)から辿ってください。
 metaphor 側の具体的なリリース手順は [releasing.md](releasing.md)、

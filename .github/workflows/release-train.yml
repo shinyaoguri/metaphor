@@ -3,12 +3,11 @@ name: Release train
 # Weekly departure: every Monday, look at what landed on main since the latest
 # stable tag and release it — or don't, if nothing user-facing landed.
 #
-# Why a train and not a release per merge: metaphor is a SwiftPM library whose
-# every release builds and publishes a Syphon.xcframework asset and dispatches a
-# pin bump into metaphor-cli (which then cuts its own release). Releasing on
-# each feat/fix merge would have produced 19 releases in the nine days after
-# v0.8.0 — and 19 downstream ones. Batching keeps the CHANGELOG readable at a
-# version's granularity and the cross-repo chatter weekly.
+# Why a train and not a release per merge: releasing on each feat/fix merge
+# would have produced 19 releases in the nine days after v0.8.0 (and, while the
+# Syphon.xcframework asset and the cli pin-bump dispatch still lived here, 19
+# downstream ones). Batching keeps the CHANGELOG readable at a version's
+# granularity. The Syphon asset moved to metaphor-syphon (#792 / ADR-0014).
 #
 # Why a train and not a label: the label path (release-on-merge.yml) sat unused
 # for 40 consecutive merged PRs while 19 feat/fix commits piled up, because
@@ -43,29 +42,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the bump is derived from history since the latest tag
-
-      # A release hands off to metaphor-cli with a GitHub App installation token
-      # (release.yml, "Dispatch Syphon pin bump"). That step runs only when a
-      # release actually departs — a few times a month — so a mistyped secret, a
-      # rotated private key or a narrowed App installation would sit unnoticed
-      # until the next release, and the hand-off would fail after the ~10 min
-      # Syphon build and a full CI run.
-      #
-      # The train runs EVERY Monday, bump or no bump. Minting the token here (and
-      # throwing it away) turns that weekly tick into a liveness check on the
-      # credential: it costs one API call, and it fails loudly on the week the
-      # credential dies rather than on the release that needed it.
-      #
-      # This is not redundant with metaphor-cli's release-pipeline-audit.yml —
-      # that one reports a delivery that already failed to arrive; this one
-      # reports the cause before anything is dispatched.
-      - name: Verify downstream dispatch credentials
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.REPO_AUTOMATION_APP_CLIENT_ID }}
-          private-key: ${{ secrets.REPO_AUTOMATION_APP_PRIVATE_KEY }}
-          owner: shinyaoguri
-          repositories: metaphor-cli
 
       # A breaking change (`!` in a subject, or a `changelog.d/*.breaking.md`
       # entry) raises the bump to at least minor and is annotated as a warning:

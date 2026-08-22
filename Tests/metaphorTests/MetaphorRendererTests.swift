@@ -1,9 +1,6 @@
 import Testing
 import Metal
 @testable import MetaphorCore
-// startSyphonServer / syphonOutput は public facade だが、`SyphonPlugin` 自体は internal
-// （ADR-0007 論点 6 / #388）。プラグイン ID 照合のため @testable で取り込む。
-@testable import MetaphorSyphon
 import MetaphorTestSupport
 
 @Suite("MetaphorRenderer", .enabled(if: MetalTestHelper.isGPUAvailable))
@@ -164,50 +161,8 @@ struct MetaphorRendererTests {
         #expect(p.g < 8, "Headless clear G=\(p.g)")
     }
 
-    /// ヘッドレスモードのフレーム出力先 Syphon サーバーが起動でき、`syphonOutput` facade
-    /// （= 登録済み ``SyphonPlugin`` の ``SyphonOutput``）から参照できる。
-    @Test("startSyphonServer activates the headless frame sink")
-    func headlessSyphonServerActivates() throws {
-        let renderer = try MetaphorRenderer(width: 32, height: 32)
-        #expect(renderer.syphonOutput == nil)
-        #expect(renderer.plugin(id: SyphonPlugin.id) == nil)
-        renderer.startSyphonServer(name: "metaphor-headless-test")
-        #expect(renderer.syphonOutput?.isActive == true)
-        #expect(renderer.plugin(id: SyphonPlugin.id) != nil)
-    }
-
-    /// MetaphorSyphon がリンクされていれば、ロード時の C コンストラクタ経由で
-    /// `SyphonOutputProvider` が `MetaphorOutputProviders` に自動登録され、SketchRunner の自動配線
-    /// （`config.syphon` / `METAPHOR_SYPHON_NAME` / ヘッドレス）が透過的に機能する。
-    /// このテスト target は umbrella `metaphor` 経由で MetaphorSyphon をリンクしている。
-    @Test("MetaphorSyphon auto-registers an output provider at load")
-    func outputProviderAutoRegistered() throws {
-        let provider = try #require(
-            MetaphorOutputProviders.registered.first { $0.id == SyphonOutputProvider.providerID }
-        )
-        #expect(provider.requirements == [.externalRenderLoop], "Syphon はウィンドウが隠れても publish を続ける = timer を要求")
-
-        let context = MetaphorOutputContext(
-            scope: .primary(SketchConfig(title: "metaphor-registry-test", syphon: true)),
-            environment: [:], isHeadless: false
-        )
-        let output = provider.makeOutput(context: context)
-        #expect(output is SyphonPlugin)
-
-        // 走査結果にも Syphon が含まれ、要件が集計される（= 従来の自動タイマー切替）。
-        let outputs = MetaphorOutputProviders.makeOutputs(context: context)
-        #expect(outputs.contains { $0.providerID == SyphonOutputProvider.providerID && $0.plugin is SyphonPlugin })
-        #expect(
-            SketchRunner.resolveLoopMode(
-                config: SketchConfig(syphon: true), fps: 60,
-                requirements: SketchRunner.aggregateRequirements(config: SketchConfig(syphon: true), outputs: outputs),
-                isHeadless: false
-            ) == .timer(fps: 60)
-        )
-    }
-
     /// `shutdown()` は全プラグインを onStop → onDetach し、プラグイン配列をクリアする。
-    /// （Syphon サーバーの停止は ``SyphonPlugin/onDetach()`` が担うため、ここでは実サーバーを
+    /// （出力プラグインのサーバー停止は各 `onDetach()` が担うため、ここでは実サーバーを
     /// 立てずに ``MockPlugin`` で teardown の挙動のみ検証する。）
     @Test("shutdown detaches all plugins (onStop then onDetach)")
     func shutdownDetachesPlugins() throws {

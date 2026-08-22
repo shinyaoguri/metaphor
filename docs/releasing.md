@@ -11,8 +11,12 @@ workflow. No PAT required — the workflow re-enters CI on its own release branc
 using `workflow_dispatch` (which is exempt from the `GITHUB_TOKEN` recursion
 guard).
 
-`release.yml` はリリースロジックの唯一の在処（Syphon ビルド、`Package.swift` と
-バージョン定数の bump、タグ、GitHub Release、metaphor-cli への pin dispatch）で、
+> **変更（2026-08-23・#792 M4 / [ADR-0014](adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）**: v0.12.0 から本体のリリースは
+> **Syphon.xcframework の asset を持たず、metaphor-cli への pin dispatch も行いません**。Syphon のビルド・asset・self-pin は
+> 独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) の Release が担います。本書の Syphon / asset /
+> 4 段パイプラインの記述は **v0.11.0 以前のタグ**に対してのみ有効で、M5（#1041）で全面的に書き直します。
+
+`release.yml` はリリースロジックの唯一の在処（バージョン定数の bump、タグ、GitHub Release）で、
 その引き金を引くものが 3 つあります。**どれも `release.yml` 自体は変えず、
 「出すかどうか」と「どれだけ上げるか」だけを決めます**:
 
@@ -25,8 +29,8 @@ guard).
 バージョン bump のコミットは `git commit` ではなく GitHub の GraphQL
 `createCommitOnBranch` で作ります（[`scripts/signed-commit.py`](../scripts/signed-commit.py)）。
 main は**署名必須**（ruleset、2026-08-04 追加）で runner に署名鍵が無いため、
-`git commit` した unsigned コミットではリリース PR をマージできず、**Syphon ビルドと
-CI が終わったあとで**止まります（2026-08-10 の v0.9.0 で実際に起きました）。
+`git commit` した unsigned コミットではリリース PR をマージできず、**CI が終わったあとで**
+止まります（2026-08-10 の v0.9.0 で実際に起きました。当時は 10 分の Syphon ビルドも無駄になりました）。
 API 経由のコミットは GitHub 自身が署名するので、Actions に ruleset の bypass を
 与える（＝他のすべてのルールも回避できるようになる）ことなくルールを満たせます。
 
@@ -63,10 +67,10 @@ type がそのまま信用できます。**トレインは状態を持ちませ�
   PR は 40 連続で 0 件、その間に feat 9 本・fix 10 本・`changelog.d/` 13 件が
   滞留しました。`gh pr merge --auto` は required checks が green になった瞬間に
   マージするので、ラベルを貼る安定した瞬間が構造的に存在しません。
-- **マージごとのリリースは粒度が細かすぎる**（metaphor-cli はこの方式）。metaphor は
-  リリースのたびに Syphon.xcframework asset を焼いて publish し、metaphor-cli へ
-  pin bump を dispatch します（cli 側はそれでまた 1 リリース）。同じ 9 日間で
-  19 リリース + 下流 19 リリースになる計算で、ライブラリの版数としては細かすぎます。
+- **マージごとのリリースは粒度が細かすぎる**（metaphor-cli はこの方式）。同じ 9 日間で
+  19 リリースになる計算で、ライブラリの版数としては細かすぎます（v0.11.0 までは
+  リリースのたびに Syphon.xcframework asset を焼いて metaphor-cli へ pin bump を
+  dispatch していたので、下流にも 19 リリースが連鎖するところでした）。
 
 ### 破壊的変更は `0.x` のうちは minor に載せる（`1.0.0` から停車）
 
@@ -258,6 +262,10 @@ python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changel
 > 資格情報まで含めた全体地図は [release-pipeline.md](release-pipeline.md)。
 > 本節はこのリポジトリ視点での要約です。
 
+> **v0.12.0 以降**: 段 1〜2（Syphon pin の dispatch と bump）は無くなりました。metaphor-cli は本体に
+> SwiftPM 依存せず Syphon.framework も同梱しないので、本体のリリースは cli のリリースを起こしません
+> （cli は自分のマージごとに出る）。以下は v0.11.0 以前の記録です。
+
 metaphor のタグを打った時点では、**まだ誰の手元も変わっていません**。
 `brew install shinyaoguri/tap/metaphor` のユーザーに届くまでに 4 段あります:
 
@@ -300,6 +308,11 @@ metaphor-cli 側の手順・GitHub App に必要な権限・bottle の扱いは 
 
 ## 配布防御(タグと Release asset)
 
+> **v0.12.0 以降のタグは Release asset を持たない**（root の `Package.swift` に binaryTarget が無い。
+> `scripts/check-no-binary-targets.sh` が CI で守る）。以下は **v0.11.0 以前のタグの asset を守る**ための規則で、
+> それらの asset は今後も消さない（`from: "0.x"` の利用者が resolve できなくなる）。週次の
+> `asset-health.yml` は binaryTarget を持つタグだけを検査し、持たないタグは SKIP と報告する。
+
 公開済みのタグと Release asset は **不変** として扱う。理由は SwiftPM の
 `binaryTarget(url:)` にある — 依存解決のたびに Release asset(`Syphon.xcframework.zip`)
 を実際に取りに行くため、**asset を消すとそのタグは恒久的に resolve 不能**になる。
@@ -333,7 +346,7 @@ metaphor-cli 側の手順・GitHub App に必要な権限・bottle の扱いは 
 
 | いつ | 何を | どこ |
 |------|------|------|
-| リリース時 | 公開した asset を実際にダウンロードし、Package.swift に書いた checksum と照合 | `release.yml` の *Verify published Syphon asset* ステップ(metaphor-cli への pin 通知より前に落ちる) |
+| リリース時（v0.11.0 まで） | 公開した asset を実際にダウンロードし、Package.swift に書いた checksum と照合 | 旧 `release.yml` の *Verify published Syphon asset* ステップ（v0.12.0 で撤去。metaphor-syphon の Release が同等の検証を持つ） |
 | 週次(月曜 05:00 JST) | 全 `v*` タグの binaryTarget URL が 200 を返すか | `.github/workflows/asset-health.yml` → `scripts/check-release-assets.sh` |
 | 毎日(16:00 JST) | 最新安定版が homebrew-tap の Formula まで届いたか(上の 4 段) | metaphor-cli `release-pipeline-audit.yml` → `scripts/audit-release-pipeline.py` |
 

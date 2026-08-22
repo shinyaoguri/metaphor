@@ -17,22 +17,22 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 
 - **Tier 0（依存ゼロ）**: MetaphorLog（診断ログ `metaphorWarning` / `metaphorAlert` / `metaphorDiagnostic` の実体。product には出さず `MetaphorCore` が `@_exported import` で再輸出）
 - **Tier 1（Core 非依存）**: MetaphorAudio / MetaphorNetwork / MetaphorPhysics / MetaphorML / MetaphorVideo
-- **Tier 2（MetaphorCore 依存）**: MetaphorNoise / MetaphorMPS / MetaphorCoreImage / MetaphorRenderGraph / MetaphorSceneGraph / MetaphorSyphon
+- **Tier 2（MetaphorCore 依存）**: MetaphorNoise / MetaphorMPS / MetaphorCoreImage / MetaphorRenderGraph / MetaphorSceneGraph
 
 **ライブラリのメッセージは素の `print()` で書かない**。3 関数の使い分け表は [`Sources/MetaphorLog/Log.swift`](Sources/MetaphorLog/Log.swift) が正本で、`Sources/` に生の `print()` が戻らないことは CI（`scripts/check-no-raw-print.py`）が機械で守る（#896。正当な例外はスクリプトの `ALLOWLIST` に理由つきで載せる）。
 
-Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのターゲットだけ。`MetaphorCore` は Syphon 非依存で、出力は `MetaphorOutputProviders` に登録された provider の走査で決まります（`import metaphor` なら自動登録により従来どおり `config.syphon` が使えます。`MetaphorOutputRegistry` は deprecated な shim）。
+**root の `Package.swift` に binaryTarget は置かない**（`scripts/check-no-binary-targets.sh` が CI で守る。使わない product 経由でも消費者が artifact を download してしまうため — [ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）。Syphon は独立パッケージ `shinyaoguri/metaphor-syphon` が持ち、利用者は `Package.swift` に 1 行足して `plugins: [.syphon(name:)]` を渡す。`MetaphorCore` は出力バックエンド非依存で、出力は `MetaphorOutputProviders` に登録された provider の走査で決まる（ライブビューア向けの `ViewerOutputPlugin` だけが Core 内蔵）。`SketchConfig.syphon` / `syphonName` と `MetaphorOutputRegistry` は deprecated（次の minor で削除）。
 
 アンブレラターゲット `Sources/metaphor/` はブリッジ拡張（`Sketch+AudioBridge.swift` 等）を持ち、`import metaphor` 利用者に `createAudioInput()` / `createOSCReceiver()` / `createPhysics2D()` などの便利メソッドを提供します。
 
 ## ビルド・開発コマンド
 
 ```bash
-make setup    # 初回: サブモジュール初期化 + Syphon.xcframework ビルド
+make setup    # 初回: ツールの確認 + git hooks の導入
 make build    # swift build
 make test     # swift test
 make ci-check # CI と同条件（-Xswiftc -warnings-as-errors）で build + test — push 前に通す
-make check    # セットアップ状態を確認（Syphon.xcframework / submodules）
+make check    # セットアップ状態を確認（git hooks / ツールチェーン）
 make llms-txt # llms.txt（AI 向け API リファレンス）を生成
 ```
 
@@ -60,7 +60,7 @@ Sketch protocol extensions  ← ユーザー向け（_activeSketchContext 経由
   Canvas2D / Canvas3D        ← 低レベル Metal レンダリング
 ```
 
-レンダリングは 2 パス。**オフスクリーンパス**（compute → MTLEvent バリア → draw → shadow → RenderGraph → PostProcess → Export/Syphon）の後、**ブリットパス**でアスペクト比を保ってオフスクリーンテクスチャを画面へ転送（レターボックス/ピラーボックス）。これによりレンダリング解像度とウィンドウサイズを分離し、固定解像度 Syphon 出力を可能にします。
+レンダリングは 2 パス。**オフスクリーンパス**（compute → MTLEvent バリア → draw → shadow → RenderGraph → PostProcess → Export/出力プラグイン）の後、**ブリットパス**でアスペクト比を保ってオフスクリーンテクスチャを画面へ転送（レターボックス/ピラーボックス）。これによりレンダリング解像度とウィンドウサイズを分離し、固定解像度 Syphon 出力を可能にします。
 
 主要な設計パターン（GPU インスタンシング、トリプルバッファリング、PBR/Blinn-Phong 切替、シャドウマッピング、シェーダーホットリロード、compute→render の MTLEvent 同期、`MetaphorPlugin` ライフサイクルフック等）と、実装の詳細・デバッグ・拡張ノートは [docs/ai/README.md](docs/ai/README.md) を参照。
 
@@ -96,7 +96,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 
 ## クロスリポジトリ契約（metaphor ⇄ metaphor-cli）
 
-`metaphor-cli`（別リポジトリ `shinyaoguri/metaphor-cli`）とは実行時/バイナリ契約（環境変数、stdin JSON Lines 入力、Probe ファイル、Syphon Release pin）で結合しています。**契約対象に触れる変更は metaphor 単独で完了できません** — 常に metaphor-cli 側と揃えます。対象・変更ルールは [CONTRACT.md](CONTRACT.md) が正本で、契約ファイルに触れると metaphor-contrib:cross-repo-contract スキルが手順を案内します。
+`metaphor-cli`（別リポジトリ `shinyaoguri/metaphor-cli`）とは実行時/バイナリ契約（環境変数、stdin JSON Lines 入力、Probe ファイル、viewer frame IPC）で結合しています。**契約対象に触れる変更は metaphor 単独で完了できません** — 常に metaphor-cli 側と揃えます。対象・変更ルールは [CONTRACT.md](CONTRACT.md) が正本で、契約ファイルに触れると metaphor-contrib:cross-repo-contract スキルが手順を案内します。
 
 ## 規約
 

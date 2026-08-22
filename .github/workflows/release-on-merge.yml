@@ -18,8 +18,8 @@ name: Release on merge
 # normal case, and why the train had to exist: labels are easy to forget when
 # `gh pr merge --auto` merges the moment CI turns green.
 #
-# release.yml stays the single source of release logic (Syphon build,
-# Package.swift/version bump, tag, GitHub Release, cli Syphon-pin dispatch);
+# release.yml stays the single source of release logic (version bump, tag,
+# GitHub Release);
 # both entry points only decide *whether* and *how much* to bump. The Release
 # workflow's own "Release vX.Y.Z" PR merges unlabelled, so it never re-fires
 # this workflow — no loop.
