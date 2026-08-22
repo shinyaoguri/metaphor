@@ -29,7 +29,7 @@ Return the complete Swift file.
 
 ## Good Sketch Structure
 
-- `config`: canvas size, title, render loop mode, Syphon if needed.
+- `config`: canvas size, title, render loop mode, plugins if needed (Syphon output is the separate `metaphor-syphon` package: `plugins: [.syphon()]`).
 - properties: long-lived state, resources, arrays, user parameters.
 - `setup()`: load assets, create audio/video/physics/particles/shaders.
 - `compute()`: GPU compute or particle update when needed.

@@ -11,7 +11,7 @@
 
 **The feel of Processing × Apple Silicon native × an AI that creates while observing "what's on screen right now".**
 
-`metaphor` is a Swift + Metal creative coding runtime. Write `setup()` / `draw()` and a window opens. One continuous API covers 2D / 3D rendering, GPU compute, post-effects, audio & video, OSC / MIDI, Core ML, ray tracing, and Syphon output. And with **Probe + live viewer + local MCP**, an AI agent can observe rendering results and internal state, building the same artwork together with you.
+`metaphor` is a Swift + Metal creative coding runtime. Write `setup()` / `draw()` and a window opens. One continuous API covers 2D / 3D rendering, GPU compute, post-effects, audio & video, OSC / MIDI, Core ML, and ray tracing (Syphon output is one line away with the official [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) plugin). And with **Probe + live viewer + local MCP**, an AI agent can observe rendering results and internal state, building the same artwork together with you.
 
 <table>
   <tr>
@@ -56,7 +56,7 @@ Replace `metaphor run` with `metaphor watch` to rebuild on every file save while
 
 1. **AI can fix "what's on screen right now" while looking at the rendered frame.** Most LLMs can only read source code, but metaphor's Probe plugin writes frame images and internal state, and `metaphor mcp` passes them to AI agents as MCP tools. AI can run **observe → edit → re-observe → verify** loops on its own—the differentiation isn't Swift/Metal itself, but this observation loop. → [Collaborating with AI](#collaborating-with-ai-observation--manipulation--iteration)
 2. **Processing's feel, Metal's speed.** Laying out circles automatically batches them into **GPU instancing** (10,000 circles = 1 draw call). A million-particle GPU particle system is one line: `createParticleSystem`. Vocabulary like `fill` / `push` / `translate` feels the same in 2D and 3D.
-3. **All of Apple's graphics frameworks included, end-to-end.** Metal / MPS (including ray tracing) / Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Core MIDI / Syphon—all available through one unified API from a single `Sketch`. Includes shader hot-reload, OSC / MIDI, Performance HUD for live/VJ work, and video / GIF / still-image export plus deterministic rendering (fixed-FPS high-res baking).
+3. **All of Apple's graphics frameworks included, end-to-end.** Metal / MPS (including ray tracing) / Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Core MIDI—all available through one unified API from a single `Sketch` (Syphon output is an official plugin). Includes shader hot-reload, OSC / MIDI, Performance HUD for live/VJ work, and video / GIF / still-image export plus deterministic rendering (fixed-FPS high-res baking).
 
 ## Capabilities
 
@@ -70,7 +70,7 @@ Replace `metaphor run` with `metaphor watch` to rebuild on every file save while
 | Video | Camera input, video playback, video / GIF export |
 | Input | OSC, MIDI input & output, mouse, keyboard, orbit camera |
 | ML | Core ML, Vision (classification / detection / pose / segmentation / OCR / face, etc.) |
-| Advanced | RenderGraph, SceneGraph, 2D physics, Syphon output, MPS ray tracing |
+| Advanced | RenderGraph, SceneGraph, 2D physics, MPS ray tracing, Syphon output ([metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) plugin) |
 
 ## Your first sketch
 
@@ -171,7 +171,7 @@ swift run
 - [Basics/](Examples/Basics/) — Processing standard examples ported (Form / Color / Image / Lights / Math / Transform …)
 - [Topics/](Examples/Topics/) — Topic-organized (Curves / Shaders / Simulate / Fractals / GUI, etc.)
 - [Demos/](Examples/Demos/) — Performance-focused demos
-- [Samples/](Examples/Samples/) — metaphor-specific (RayTracing / SceneGraph / Syphon / Plugins / Probe, etc.)
+- [Samples/](Examples/Samples/) — metaphor-specific (RayTracing / SceneGraph / Plugins / Probe, etc.; the Syphon samples live in [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon))
 - [ML/](Examples/ML/) — Vision / CoreML integration
 
 To find "what you want to do," [docs/ai/examples-index.md](docs/ai/examples-index.md) (all samples with tags and difficulty) is handy.
@@ -220,11 +220,11 @@ To decide how to bound that version requirement, see [docs/api-stability-policy.
 
 ## Troubleshooting
 
-If you have [metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) installed, run `metaphor doctor` first — it checks your Swift/Xcode versions, template availability, and whether `Syphon.framework` loaded, which covers the most common setup problems in one shot.
+If you have [metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) installed, run `metaphor doctor` first — it checks your Swift/Xcode versions, template availability, the metaphor version the live viewer needs, and your editor setup, which covers the most common setup problems in one shot.
 
 - **It won't build or run on my Intel Mac** — metaphor targets **Apple Silicon only** (see [Requirements](#requirements)); there's no Intel code path and none is planned. `swift build` isn't gated against Intel at the package-manifest level, so it may appear to build, but running is untested and unsupported — expect Metal feature or performance failures at runtime rather than a clean build error.
-- **`swift build` / `swift run` fails while resolving dependencies** (a checksum mismatch, "unable to download", or a 404 fetching `Syphon.xcframework.zip`) — The `Syphon` binary target is fetched from a pinned GitHub Release asset URL in `Package.swift`. Try clearing SwiftPM's cache and re-resolving: `swift package purge-cache && swift build` (or delete `.build` in your sketch's directory). If that doesn't help, check whether something between you and `github.com` (a corporate proxy or firewall) is blocking the release asset download — published tags and their assets are protected and health-checked weekly, so a 404 on a current release would be a bug worth [reporting](#feedback--issue-reports).
-- **`make build` fails / Syphon.xcframework is missing** — On first run, execute `make setup` to initialize submodules and build Syphon.xcframework. Check status with `make check`.
+- **`swift build` / `swift run` fails while resolving dependencies** (a checksum mismatch, "unable to download") — Try clearing SwiftPM's cache and re-resolving: `swift package purge-cache && swift build` (or delete `.build` in your sketch's directory). If that doesn't help, check whether something between you and `github.com` (a corporate proxy or firewall) is blocking the download. metaphor itself ships no binary asset (since v0.12.0); a failure fetching `Syphon.xcframework.zip` concerns sketches that depend on [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon), whose releases carry that asset (a 404 on a current release is worth [reporting there](https://github.com/shinyaoguri/metaphor-syphon/issues)).
+- **`make build` fails** — On first run, execute `make setup` (tool preflight and git hooks) and check the status with `make check`. Building Syphon is no longer part of it.
 - **Live viewer (`metaphor watch`) is black** — That's a CLI issue. See [metaphor-cli Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting).
 - **Can't observe "what's on screen" from AI** — Verify `metaphor watch` is running and `metaphor mcp` is executing in the same directory.
 - **Microphone or camera doesn't work, or the permission dialog never appeared** — See [docs/permissions.md](docs/permissions.md) for how TCC permissions work for a `swift run` binary (the dialog is attributed to your terminal app, not your sketch) and how to recover from a denied prompt.
@@ -250,7 +250,7 @@ metaphor is maintained by **one person**, on a **best-effort** basis. Issues and
 
 ## Library development
 
-Library development (setup, testing, Syphon.xcframework handling, generated-file management, release procedure) is in [DEVELOPMENT.md](DEVELOPMENT.md). For the full documentation map, see [docs/README.en.md](docs/README.en.md). When maintaining with an AI agent, start at [CLAUDE.md](CLAUDE.md).
+Library development (setup, testing, generated-file management, release procedure) is in [DEVELOPMENT.md](DEVELOPMENT.md). For the full documentation map, see [docs/README.en.md](docs/README.en.md). When maintaining with an AI agent, start at [CLAUDE.md](CLAUDE.md).
 
 ## Acknowledgements
 
@@ -262,6 +262,6 @@ Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](h
 The fonts bundled in [Examples/](Examples/) (Source Code Pro, Space Mono and
 Merriweather) are all under the SIL Open Font License 1.1. The license text is
 in [OFL.txt](OFL.txt); the per-font copyright notices and the paths each font is
-bundled at are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), together
-with the copyright notice and full license text of `Syphon.xcframework`
-(Simplified BSD License), redistributed as a GitHub Release asset.
+bundled at are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). The
+redistribution of `Syphon.xcframework` and its license notice moved to
+[metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) in v0.12.0.

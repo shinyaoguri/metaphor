@@ -8,27 +8,18 @@
 
 ## Repository Setup
 
-サブモジュールごとクローンし、ローカル開発用の Syphon.xcframework をビルドします。
-
 ```bash
-git clone --recursive https://github.com/shinyaoguri/metaphor.git
+git clone https://github.com/shinyaoguri/metaphor.git
 cd metaphor
 make setup
 ```
 
-既にクローン済みの場合:
-
-```bash
-git submodule update --init --recursive
-make setup
-```
-
-`make setup` は pre-push フック（生成物の鮮度チェックなど）も導入します。
+`make setup` はツールの事前確認（`scripts/preflight-check.sh`）と pre-push フック（生成物の鮮度チェックなど）の導入を行います。サブモジュールもバイナリのビルドもありません — Syphon は v0.12.0 から独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) が持ち、本体の `Package.swift` は binaryTarget を宣言しません（[ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。`scripts/check-no-binary-targets.sh` が CI で守ります）。
 
 ## Build Commands
 
 ```bash
-make setup      # サブモジュール初期化 + Syphon.xcframework ビルド
+make setup      # ツールの事前確認 + git hooks の導入
 make build      # swift build
 make test       # swift test
 make ci-check   # CI と同条件（-warnings-as-errors）で build + test
@@ -201,12 +192,15 @@ python3 scripts/check-theme-settings.py --against-render # DocC を更新した�
 | `meta.title` | ❌ | render は読むが、モジュール読み込み時に既定値 `"Documentation"` へ束縛され、`theme-settings.json` の取得はそのあと。`<title>` も `og:site_name` も変わりません（#763 で実測） |
 | `features.docs.i18n.enable` | ❌ 単体では | 有効化の条件が `availableLocales.length > 1`。availableLocales は render JSON の `metadata.availableLocales` からしか埋まらず、DocC 本体はこれを出力しません（#763） |
 
-## Syphon Framework Handling
+## Syphon（別パッケージ）
 
-- ローカル開発では `Frameworks/Syphon.xcframework` が存在する場合、`Package.swift` はローカルパスを使用します。
-- SPM ユーザー向けには、`Package.swift` が GitHub Releases からビルド済み XCFramework を取得します。
-- `Frameworks/Syphon.xcframework` は `make setup` で生成されます。
-- Syphon に依存するのは `MetaphorSyphon` ターゲットだけです（[ADR-0001](docs/adr/0001-separate-syphon-into-its-own-target.md)）。
+Syphon 出力は v0.12.0 から本体に含まれません。`Syphon.xcframework` のビルド・Release asset・`binaryTarget` はすべて [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) 側にあり、本体は出力 provider の登録口（`MetaphorOutputProviders`）だけを持ちます（[ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。分離前の経緯は [ADR-0001](docs/adr/0001-separate-syphon-into-its-own-target.md)）。
+
+本体の変更が metaphor-syphon を壊していないかは、metaphor-syphon 側の CI が本体 `main` に対する互換ビルドで見ます。Core の plugin / provider API（`MetaphorPlugin` / `MetaphorOutputPlugin` / `MetaphorOutputProviders` / `PluginFactory(requirements:)` / `MetaphorRenderer` の `addPlugin` / `removePlugin` / `plugin(id:)`）は metaphor-syphon が依存する面なので、変更は deprecate → 次の minor で削除の手順を踏んでください。
+
+### ローカル checkout で metaphor-syphon 依存の例題を建てるとき
+
+metaphor-syphon は本体を URL（`from: "0.12.0"`）で参照します。本体のローカル checkout を `.package(path:)` で指す例題にさらに metaphor-syphon を足すと、root の path 依存が transitive の URL 依存を上書きして 1 つの `metaphor` に畳まれます — ただし **path 依存の package identity は checkout のディレクトリ名**なので、`metaphor` 以外の名前（worktree の `issue-123` など）からは `multiple similar targets` で失敗します。`.package(name: "metaphor", path:)` でも回避できません（identity は変わらない）。ディレクトリ名が `metaphor` の作業コピーから建ててください（CI の checkout 名は `metaphor` なので CI では問題になりません）。
 
 ## PR に見た目の証跡を載せる
 
@@ -319,13 +313,13 @@ dependabot の PR は PR head だけで CI が回ります。ルールセット�
 |---|---|
 | `website/**` | `npm ci && npm run build`（CI の `website-build` ジョブと同じコマンド） |
 | `.github/workflows/**` | ローカル検証は無し（PR の checks が正）。runner 一覧だけ出して、Node 版縛りのある `actions/*` bump の判断材料にする |
-| `Sources/**` · `Package.swift` · `Vendor/**` | 対象外（`Syphon.xcframework` が要る）。セットアップ済みの手元ツリーで `make ci-check` |
+| `Sources/**` · `Package.swift` | 対象外。セットアップ済みの手元ツリーで `make ci-check` |
 
 領域を指定して回すこともできます（`--only website`）。PR 以外の ref も `--ref <git-ref> --only website` で同じ検証にかけられます。
 
 ## Cross-Repo Contract
 
-環境変数・stdin JSON Lines・Probe ファイル・Syphon pin など、[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) との実行時契約に触れる変更は、**両リポジトリの同時更新**が必要です。対象と変更ルールは [CONTRACT.md](CONTRACT.md) を参照し、`./scripts/check-contract.sh` が green であることを確認してください。
+環境変数・stdin JSON Lines・Probe ファイル・viewer frame IPC・AI ドキュメントのパスなど、[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) との実行時契約に触れる変更は、**両リポジトリの同時更新**が必要です。対象と変更ルールは [CONTRACT.md](CONTRACT.md) を参照し、`./scripts/check-contract.sh` が green であることを確認してください。
 
 ## Release Process
 
@@ -334,8 +328,6 @@ dependabot の PR は PR head だけで CI が回ります。ルールセット�
 ```bash
 python3 scripts/release-bump.py --explain   # 次のトレインが何を出すかを手元で確認
 ```
-
-release workflow は Syphon.xcframework をビルドして GitHub Release asset として公開し、`Package.swift` の binary target URL/checksum を更新します。
 
 ユーザー影響のある変更は [CHANGELOG.md](CHANGELOG.md) を直接編集せず、[`changelog.d/`](changelog.d/README.md) に 1 変更 = 1 ファイル（`<slug>.<category>.md`）を置いてください（並行 PR が同じ行で conflict しないため）。リリース時に `scripts/changelog.py` がそれらを `## [Unreleased]` へ集約し、`## [X.Y.Z] - YYYY-MM-DD` へ昇格して GitHub Release 本文の先頭へ転記します。**`changelog.d/` と Unreleased がどちらも空だとリリースは冒頭で中断します**（`python3 scripts/changelog.py check` で手元でも確認可）。
 

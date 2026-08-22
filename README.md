@@ -11,7 +11,7 @@
 
 **Processing の書き味 × Apple Silicon ネイティブ × AI が「いま見えている絵」を観測しながら作れる。**
 
-`metaphor` は Swift + Metal のクリエイティブコーディング・ランタイムです。`setup()` / `draw()` を書けばウィンドウが開き、2D / 3D 描画、GPU compute、ポストエフェクト、音声・映像、OSC / MIDI、Core ML、レイトレーシング、Syphon 出力までを、ひと続きの API で扱えます。そして **Probe + ライブビューア + ローカル MCP** により、AI エージェントがレンダリング結果と内部状態を観測しながら、人間と同じ作品を一緒に作れます。
+`metaphor` は Swift + Metal のクリエイティブコーディング・ランタイムです。`setup()` / `draw()` を書けばウィンドウが開き、2D / 3D 描画、GPU compute、ポストエフェクト、音声・映像、OSC / MIDI、Core ML、レイトレーシングまでを、ひと続きの API で扱えます（Syphon 出力は公式プラグイン [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) を 1 行足すだけ）。そして **Probe + ライブビューア + ローカル MCP** により、AI エージェントがレンダリング結果と内部状態を観測しながら、人間と同じ作品を一緒に作れます。
 
 <table>
   <tr>
@@ -56,7 +56,7 @@ metaphor run                            # 解決・ビルド・ウィンドウ�
 
 1. **AI が「いま見えている絵」を見ながら直せる。** 一般的な LLM はソースコードしか読めませんが、metaphor では Probe プラグインがフレーム画像と内部状態を書き出し、`metaphor mcp` がそれを MCP ツールとして AI エージェントに渡します。AI が **観測 → 編集 → 再観測 → 検証** のループを自分で回せる — 差別化は Swift/Metal そのものではなく、この観測ループにあります。→ [AI と協調する](#ai-と協調する観測--操作--反復)
 2. **Processing の書き味のまま、Metal の速度。** `circle` を並べて書くだけで同じ形状の連続描画が **GPU インスタンシングに自動バッチ** されます（10,000 個の円でも draw call 1 回）。100 万粒子の GPU パーティクルも `createParticleSystem` 1 行。`fill` / `push` / `translate` などの語彙は 2D でも 3D でも同じ感覚で使えます。
-3. **Apple のグラフィックス関連フレームワーク全部入り、書き出しまで完結。** Metal / MPS（レイトレーシング含む）/ Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Core MIDI / Syphon を 1 枚の `Sketch` から統一 API で。シェーダーホットリロード、OSC / MIDI、Performance HUD などライブ / VJ 装備も標準。動画 / GIF / 静止画エクスポートと決定論レンダリング（fixed-FPS の高解像度焼き出し）まで揃います。
+3. **Apple のグラフィックス関連フレームワーク全部入り、書き出しまで完結。** Metal / MPS（レイトレーシング含む）/ Core ML & Vision / Core Image / AVFoundation / GameplayKit Noise / Core MIDI を 1 枚の `Sketch` から統一 API で（Syphon 出力は公式プラグイン）。シェーダーホットリロード、OSC / MIDI、Performance HUD などライブ / VJ 装備も標準。動画 / GIF / 静止画エクスポートと決定論レンダリング（fixed-FPS の高解像度焼き出し）まで揃います。
 
 ## できること
 
@@ -70,7 +70,7 @@ metaphor run                            # 解決・ビルド・ウィンドウ�
 | 映像 | カメラ入力、動画再生、動画 / GIF エクスポート |
 | 入力 | OSC、MIDI 入出力、マウス、キー、オービットカメラ |
 | ML | Core ML、Vision（分類 / 検出 / ポーズ / セグメント / OCR / 顔 など） |
-| 高度な機能 | RenderGraph、SceneGraph、2D 物理、Syphon 出力、MPS レイトレーシング |
+| 高度な機能 | RenderGraph、SceneGraph、2D 物理、MPS レイトレーシング、Syphon 出力（[metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) プラグイン） |
 
 ## はじめてのスケッチ
 
@@ -169,7 +169,7 @@ swift run
 - [Basics/](Examples/Basics/) — Processing 標準サンプルの移植（Form / Color / Image / Lights / Math / Transform …）
 - [Topics/](Examples/Topics/) — Curves / Shaders / Simulate / Fractals / GUI などトピック別
 - [Demos/](Examples/Demos/) — パフォーマンス系デモ
-- [Samples/](Examples/Samples/) — RayTracing / SceneGraph / Syphon / Plugins / Probe など metaphor 独自機能
+- [Samples/](Examples/Samples/) — RayTracing / SceneGraph / Plugins / Probe など metaphor 独自機能（Syphon の例題は [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) 側）
 - [ML/](Examples/ML/) — Vision / CoreML 連携
 
 「やりたいこと」から探すには [docs/ai/examples-index.md](docs/ai/examples-index.md)（タグ・難度つきの全サンプル索引）が便利です。
@@ -218,11 +218,11 @@ dependencies: [
 
 ## Troubleshooting
 
-[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) を導入済みなら、まず `metaphor doctor` を実行してください。Swift / Xcode のバージョン、テンプレートの有無、`Syphon.framework` のロード状況をまとめて確認でき、よくあるセットアップの詰まりの大半をこれ一つでカバーできます。
+[metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) を導入済みなら、まず `metaphor doctor` を実行してください。Swift / Xcode のバージョン、テンプレートの有無、ライブビューアに必要な本体の版、エディタ環境をまとめて確認でき、よくあるセットアップの詰まりの大半をこれ一つでカバーできます。
 
 - **Intel Mac でビルド・実行できない** — metaphor は **Apple Silicon 専用**です（[Requirements](#requirements) 参照）。Intel 向けのコードパスは無く、対応予定もありません。`swift build` 自体は Package マニフェスト上で Intel を弾いていないため一見ビルドが通ることもありますが、実行は未検証・非サポートです。ビルドエラーではなく実行時に Metal の機能不足や性能問題として現れる可能性があります。
-- **`swift build` / `swift run` が依存解決で失敗する**（checksum 不一致、"unable to download"、`Syphon.xcframework.zip` の 404 など）— `Syphon` バイナリターゲットは `Package.swift` に固定された GitHub Release asset の URL から取得されます。まず SwiftPM のキャッシュをクリアして再解決してください: `swift package purge-cache && swift build`（またはスケッチのディレクトリで `.build` を削除）。改善しない場合は `github.com` との間に（社内プロキシ・ファイアウォールなど）通信を妨げるものが無いか確認してください。公開済みタグと asset は保護され週次で死活監視されているため、現行リリースで 404 が出る場合はバグの可能性が高く、[報告](#フィードバック--issue-報告)してもらえると助かります。
-- **`make build` が失敗する / Syphon.xcframework が無い** — 初回は `make setup` を実行してサブモジュール初期化と Syphon.xcframework のビルドを済ませてください。状態は `make check` で確認できます。
+- **`swift build` / `swift run` が依存解決で失敗する**（checksum 不一致、"unable to download" など）— まず SwiftPM のキャッシュをクリアして再解決してください: `swift package purge-cache && swift build`（またはスケッチのディレクトリで `.build` を削除）。改善しない場合は `github.com` との間に（社内プロキシ・ファイアウォールなど）通信を妨げるものが無いか確認してください。metaphor 本体はバイナリ asset を持ちません（v0.12.0 以降）。`Syphon.xcframework.zip` の取得で失敗するのは [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) に依存するスケッチで、asset はそのリポジトリの Release にあります（404 が出る場合はそちらへ[報告](https://github.com/shinyaoguri/metaphor-syphon/issues)してください）。
+- **`make build` が失敗する** — 初回は `make setup`（ツールの確認と git hooks の導入）を実行し、状態を `make check` で確認してください。Syphon のビルドは不要になりました。
 - **ライブビューア（`metaphor watch`）が真っ黒** — CLI 側の事象です。[metaphor-cli の Troubleshooting](https://github.com/shinyaoguri/metaphor-cli#troubleshooting) を参照してください。
 - **AI から「いま見えている絵」を観測できない** — `metaphor watch`（共有セッション）が動いているか、`metaphor mcp` を同じディレクトリで実行しているかを確認してください。
 - **マイクやカメラが動かない、権限ダイアログが出ない** — [docs/permissions.md](docs/permissions.md)（英語）に、`swift run` バイナリでの TCC 権限の仕組み（ダイアログはスケッチではなくターミナルアプリに紐づく）と、拒否後の復旧手順をまとめています。
@@ -248,7 +248,7 @@ metaphor は**個人が単独でメンテナンスしているプロジェクト
 
 ## ライブラリ本体の開発
 
-`metaphor` 本体の開発（セットアップ、テスト、Syphon.xcframework の取り扱い、生成物の管理、リリース手順）は [DEVELOPMENT.md](DEVELOPMENT.md) に、ドキュメント全体の地図は [docs/README.md](docs/README.md) にまとめています。AI エージェントと保守する場合の起点は [CLAUDE.md](CLAUDE.md) です。
+`metaphor` 本体の開発（セットアップ、テスト、生成物の管理、リリース手順）は [DEVELOPMENT.md](DEVELOPMENT.md) に、ドキュメント全体の地図は [docs/README.md](docs/README.md) にまとめています。AI エージェントと保守する場合の起点は [CLAUDE.md](CLAUDE.md) です。
 
 ## Acknowledgements
 
@@ -257,4 +257,4 @@ metaphor は**個人が単独でメンテナンスしているプロジェクト
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
 
-[Examples/](Examples/) に同梱しているフォント（Source Code Pro / Space Mono / Merriweather）はいずれも SIL Open Font License 1.1 です。ライセンス全文は [OFL.txt](OFL.txt)、フォントごとの著作権表示・同梱パスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります。GitHub Release で再頒布している `Syphon.xcframework`（Simplified BSD ライセンス）の著作権表示・ライセンス全文も同じファイルにまとめています。
+[Examples/](Examples/) に同梱しているフォント（Source Code Pro / Space Mono / Merriweather）はいずれも SIL Open Font License 1.1 です。ライセンス全文は [OFL.txt](OFL.txt)、フォントごとの著作権表示・同梱パスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります（`Syphon.xcframework` の再頒布とそのライセンス表示は v0.12.0 から [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) 側）。

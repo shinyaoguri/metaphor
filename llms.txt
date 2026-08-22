@@ -41,7 +41,8 @@ SPM dependency:
 - User-facing calls flow through `Sketch` protocol extensions to `SketchContext`,
   then into `Canvas2D` / `Canvas3D` Metal backends.
 - Each frame renders offscreen first, then blits to the window while preserving
-  aspect ratio. Post-processing, RenderGraph, export, and Syphon operate on the
+  aspect ratio. Post-processing, RenderGraph, export, and output plugins (the
+  live viewer, Syphon via the separate `metaphor-syphon` package) operate on the
   offscreen texture.
 - `MetaphorCore` owns rendering, drawing, shaders, sketch lifecycle, resources,
   compute, export, and test support. Tier 1 modules avoid a Core dependency;
