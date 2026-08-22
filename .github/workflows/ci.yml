@@ -278,10 +278,32 @@ jobs:
           # 突然壊れないように）
           pip3 install --quiet --break-system-packages check-jsonschema==0.37.4
           ./scripts/check-contract-schema.sh
+      # identity セット（CONTRACT.md / contract/** / scripts/check-contract*.sh）は
+      # 両リポで byte 同一でなければならない。ただし PR でこの検査を**毎回**走らせると、
+      # 契約を変えた PR が片方のリポに先にマージされてから対 PR がマージされるまでの
+      # 窓で、契約に一切触れていない PR まで相手リポの既定ブランチ（旧契約）との比較で
+      # 落ちる（Issue #1049。実例 #1048）。identity セットに触れていない PR の検査結果は
+      # main のそれと同じで PR 固有の情報を持たないので、PR では触れたときだけ走らせる。
+      # main への push・merge_group・release ブランチ（workflow_dispatch）では従来どおり
+      # 無条件に走る（時間差そのものは main 側の赤で見える）。
       - name: Check CONTRACT.md identity across repos
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/check-contract-identity.sh
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            # merge-base 起点（3 点表記）で取る（scripts/pr-changed-files.sh が正本）。
+            # 辿れないとき（force push 等）は安全側に倒して検査する。
+            if changed=$(scripts/pr-changed-files.sh "$BASE_SHA" "$HEAD_SHA" \
+                -- CONTRACT.md 'contract/**' 'scripts/check-contract*.sh' 2>/dev/null) \
+               && [ -z "$changed" ]; then
+              echo "This PR does not touch the contract identity set; skipping the cross-repo comparison (Issue #1049)."
+              exit 0
+            fi
+          fi
+          ./scripts/check-contract-identity.sh
       # 下の Build / Test は `-warnings-as-errors` 付きなので、strict concurrency の
       # 警告が入り込めばそこで落ちる（＝ゲートは実質そこ）。ただしそれは
       # 「設定が付いているターゲット」の話で、新しいターゲットで
