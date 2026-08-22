@@ -80,13 +80,10 @@ GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビッ�
 
 import argparse
 import json
-import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -97,14 +94,13 @@ from shots_common import (  # noqa: E402
     NO_CAPTURE_NAME,
     ShotError,
     capture_provenance,
-    current_frame,
     drift_summary,
     file_sha256,
     image_size,
     load_input_script,
     no_capture_reason,
+    probe_capture,
     run_or_raise,
-    send_input_script,
     source_hash,
     upload_to_gyazo,
 )
@@ -410,130 +406,59 @@ def capture(ref: str, motion: dict | None = None, recorded: dict | None = None) 
     if not (package_dir / "Package.swift").is_file():
         raise ShotError(f"'{ref}' に対応する SwiftPM パッケージが無い")
 
-    probe_dir = package_dir / ".metaphor/probe"
-    output_dir = probe_dir / "current"
-    shutil.rmtree(probe_dir, ignore_errors=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     input_script = load_input_script(package_dir, ref)
 
     request_id = f"tutorial-shot-{ref}"
     # 入力台本がある節では、まず 1 枚撮らせて「描画ループが回っている」ことを
-    # 確かめてから入力を流す（後述）。その下見用のリクエストと本番を id で分ける。
+    # 確かめてから入力を流す。その下見用のリクエストと本番を id で分ける。
     warmup_id = f"{request_id}-warmup"
     request = {"id": request_id, "label": ref, "scale": 1.0}
     if motion:
         request["frames"] = motion["frames"]
         request["every"] = motion["every"]
 
-    def place_request(payload: dict) -> None:
-        tmp = probe_dir / "request.json.tmp"
-        tmp.write_text(json.dumps(payload), encoding="utf-8")
-        tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
-
-    # リクエストは**起動前**に置く。noLoop のスケッチは最初の 1 フレームしか
-    # 描かないため、起動後に置いても処理する機会が来ない。
-    # 入力台本がある節は、代わりに下見用のリクエストを置く（本番は入力を
-    # 流し終えてから。#509）。
-    place_request(
-        {"id": warmup_id, "label": f"{ref} (warmup)", "scale": 1.0}
-        if input_script is not None
-        else request
-    )
-
-    print(f"  building {ref} ...", flush=True)
-    build = subprocess.run(
-        ["swift", "build"], cwd=package_dir, capture_output=True, text=True
-    )
-    if build.returncode != 0:
-        raise ShotError(f"'{ref}' のビルドに失敗した:\n{build.stdout}\n{build.stderr}")
-
-    env = dict(os.environ)
-    env["METAPHOR_PROBE"] = "1"
-    env["METAPHOR_VIEWER"] = "1"  # ヘッドレス（ウィンドウを開かない）
-
-    print(f"  running  {ref} ...", flush=True)
-    process = subprocess.Popen(
-        ["swift", "run"],
+    with probe_capture(
+        ref=ref,
         cwd=package_dir,
-        env=env,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    sequence_dir = output_dir / "sequence"
-    frame_png = output_dir / "frame.png"
-    entry: dict = {}
-    ready: dict | None = None
-
-    def fail_if_dead() -> None:
-        if process.poll() is None:
-            return
-        stderr = (process.stderr.read() if process.stderr else "") or ""
-        raise ShotError(
-            f"'{ref}' が画像を書く前に終了した（exit {process.returncode}）\n{stderr[-2000:]}"
+        timeout=CAPTURE_TIMEOUT_SEC,
+        poll_interval=POLL_INTERVAL_SEC,
+    ) as probe:
+        # リクエストは**起動前**に置く。noLoop のスケッチは最初の 1 フレームしか
+        # 描かないため、起動後に置いても処理する機会が来ない。
+        # 入力台本がある節は、代わりに下見用のリクエストを置く（本番は入力を
+        # 流し終えてから。#509）。
+        probe.place_request(
+            {"id": warmup_id, "label": f"{ref} (warmup)", "scale": 1.0}
+            if input_script is not None
+            else request
         )
 
-    def wait_for(what: str, poll) -> dict:
-        """`poll()` が応答を返すまで待つ（返り値が None の間は待ち続ける）。"""
-        deadline = time.monotonic() + CAPTURE_TIMEOUT_SEC
-        while time.monotonic() < deadline:
-            answer = poll()
-            if answer is not None:
-                return answer
-            fail_if_dead()
-            time.sleep(POLL_INTERVAL_SEC)
-        raise ShotError(
-            f"'{ref}' が {CAPTURE_TIMEOUT_SEC:.0f} 秒以内に {what} を書かなかった"
-        )
+        print(f"  building {ref} ...", flush=True)
+        probe.build(["swift", "build"])
 
-    try:
+        print(f"  running  {ref} ...", flush=True)
+        probe.start(["swift", "run"], stdin=input_script is not None)
+
         if input_script is not None:
-            # 下見の 1 枚を待つ。**描画ループが回り始めてから入力を流す**ため。
-            # 起動直後（Metal パイプラインの構築中）に送ったイベントは stdin に
-            # 溜まり、最初のフレームでまとめて処理されてしまう（＝軌跡の中間点が
-            # 消え、1 フレームに集約された線が 1 本だけ残る）。
-            wait_for(f"frame.json（下見 id={warmup_id}）",
-                     lambda: current_frame(output_dir, warmup_id))
+            probe.warmup(warmup_id)
             print(f"  input    {ref} ({len(input_script)} events) ...", flush=True)
-            send_input_script(process, input_script, ref)
-            place_request(request)
-
-        if motion:
-            # 完了規約: sequence.json が最後に書かれる（CONTRACT.md 契約点 4）。
-            ready = wait_for("sequence.json", lambda: sequence_manifest(sequence_dir, request_id))
-        else:
-            metadata = wait_for("frame.png", lambda: current_frame(output_dir, request_id))
-            if not frame_png.is_file():
-                # id が一致する frame.json に PNG が伴わないのは失敗応答（契約点 4）。
-                warnings = "; ".join(metadata.get("warnings") or []) or "理由の申告なし"
-                raise ShotError(f"'{ref}' の撮影が失敗応答を返した: {warnings}")
+            probe.send_input(input_script)
+            probe.place_request(request)
 
         still = staging_path_for(ref)
         still.parent.mkdir(parents=True, exist_ok=True)
         if motion:
-            entry = collect_sequence(ref, sequence_dir, ready, motion, still)
+            ready = probe.wait_sequence(request_id)
+            entry = collect_sequence(ref, probe.sequence_dir, ready, motion, still)
         else:
-            shutil.copyfile(frame_png, still)
+            metadata = probe.wait_still(request_id)
+            shutil.copyfile(probe.frame_png, still)
             size = metadata.get("size", {})
             entry = {
                 "width": size.get("width"),
                 "height": size.get("height"),
                 "frame": metadata.get("frame"),
             }
-    finally:
-        if process.stdin is not None and not process.stdin.closed:
-            try:
-                process.stdin.close()
-            except BrokenPipeError:
-                pass
-        process.terminate()
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-        shutil.rmtree(probe_dir, ignore_errors=True)
 
     entry = publish(ref, entry, motion, recorded)
     fingerprint = {"sourceHash": source_hash(package_dir)}
@@ -571,28 +496,6 @@ def retire_local_files(ref: str) -> None:
     image_path_for(ref).unlink(missing_ok=True)
     for kind in MOTION_KINDS:
         motion_path_for(ref, kind).unlink(missing_ok=True)
-
-
-
-def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
-    """連続キャプチャが完了していれば `sequence.json` の中身を返す。
-
-    consumer 規約（CONTRACT.md 契約点 4）どおり「manifest が存在し、id が
-    リクエストと一致し、frames の数が frameCount と揃っている」で ready と見る。
-    """
-    manifest = sequence_dir / "sequence.json"
-    if not manifest.is_file():
-        return None
-    try:
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None  # 書き込み途中を読んだ。次のポーリングで見直す
-    if data.get("id") != request_id:
-        return None
-    frames = data.get("frames")
-    if not isinstance(frames, list) or len(frames) != data.get("frameCount"):
-        return None
-    return data
 
 
 def collect_sequence(

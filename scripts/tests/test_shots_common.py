@@ -12,8 +12,10 @@ Run from the repository root:
   画像が古い」を検出する土台。ここが壊れると全部の `--check` が同時に嘘をつく
 - **撮影時の来歴とそこから数える実装の隔たり**（#586）
 - **入力台本の読み取り規則**（#610）
-- **Probe の応答の読み方** — `frame.json` を id 一致で見る（CONTRACT.md 契約点 4）。
-  実装が分かれていると契約の解釈が分かれるので、ここが唯一の置き場
+- **Probe の応答の読み方** — `frame.json` / `sequence.json` を id 一致で見る
+  （CONTRACT.md 契約点 4）。実装が分かれていると契約の解釈が分かれるので、ここが唯一の置き場
+- **撮影の骨格** — request をいつ置き、どう待ち、どう後片付けするか（契約点 4 の
+  producer 側。#1024）。絵は GPU が要るので撮れないが、段取りは偽の Probe で確かめる
 - **撮らない申告の読み取り**（#544）と **Gyazo への上げ口**（#1021）
 """
 
@@ -23,12 +25,14 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from _git_helpers import git as hermetic_git, init_repo
+from _probe_fakes import DeadSketch, FakeSketch
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "shots_common.py"
 _spec = importlib.util.spec_from_file_location("shots_common", _SCRIPT)
@@ -368,6 +372,233 @@ class TestCurrentFrame(CommonTestCase):
         self.write_frame(json.dumps({"id": "req-1", "warnings": ["no staging texture"]}))
         answer = common.current_frame(self.root, "req-1")
         self.assertEqual((answer or {}).get("warnings"), ["no staging texture"])
+
+
+class TestSequenceReadiness(CommonTestCase):
+    """連続キャプチャの完了規約（sequence.json が最後・id エコー。契約点 4）。"""
+
+    def write_manifest(self, sequence_dir: Path, payload: dict) -> None:
+        sequence_dir.mkdir(parents=True, exist_ok=True)
+        (sequence_dir / "sequence.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_none_until_the_manifest_appears(self) -> None:
+        self.assertIsNone(common.sequence_manifest(self.root / "seq", "req-1"))
+
+    def test_ready_when_id_and_count_match(self) -> None:
+        seq = self.root / "seq"
+        self.write_manifest(seq, {"id": "req-1", "frameCount": 2, "frames": [{}, {}]})
+        self.assertIsNotNone(common.sequence_manifest(seq, "req-1"))
+
+    def test_not_ready_for_a_previous_request(self) -> None:
+        seq = self.root / "seq"
+        self.write_manifest(seq, {"id": "older", "frameCount": 2, "frames": [{}, {}]})
+        self.assertIsNone(common.sequence_manifest(seq, "req-1"))
+
+    def test_not_ready_when_frames_are_short(self) -> None:
+        """frames が揃うより先に manifest を読んだ（＝書いている途中）。"""
+        seq = self.root / "seq"
+        self.write_manifest(seq, {"id": "req-1", "frameCount": 4, "frames": [{}, {}]})
+        self.assertIsNone(common.sequence_manifest(seq, "req-1"))
+
+    def test_partial_write_is_not_ready(self) -> None:
+        seq = self.root / "seq"
+        seq.mkdir(parents=True)
+        (seq / "sequence.json").write_text('{"id": "req-1", "frame', encoding="utf-8")
+        self.assertIsNone(common.sequence_manifest(seq, "req-1"))
+
+
+class TestProbeCapture(CommonTestCase):
+    """撮影の骨格（CONTRACT.md 契約点 4 の producer 側。#1024）。
+
+    絵そのものは GPU が要るので撮れないが、**段取り**は偽の Probe で確かめられる。
+    3 スクリプトが各々持っていた頃は、この段取りの検査もリファレンス側にしか無かった。
+    """
+
+    REF = "Basics/Form/Thing"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.probe_dir = self.root / ".metaphor/probe"
+        self.launched: list[FakeSketch] = []
+        self.write_png = True
+        saved = {
+            "Popen": common.subprocess.Popen,
+            "lead": common.INPUT_LEAD_SEC,
+            "interval": common.INPUT_INTERVAL_SEC,
+            "settle": common.INPUT_SETTLE_SEC,
+        }
+
+        def restore() -> None:
+            common.subprocess.Popen = saved["Popen"]
+            common.INPUT_LEAD_SEC = saved["lead"]
+            common.INPUT_INTERVAL_SEC = saved["interval"]
+            common.INPUT_SETTLE_SEC = saved["settle"]
+
+        self.addCleanup(restore)
+        common.subprocess.Popen = self._popen
+        # 台本の送出そのものは TestInputScript が見る。ここは順番だけなので待たない。
+        common.INPUT_LEAD_SEC = 0.0
+        common.INPUT_INTERVAL_SEC = 0.0
+        common.INPUT_SETTLE_SEC = 0.0
+
+    def _popen(self, command, **kwargs) -> FakeSketch:
+        process = FakeSketch(
+            self.probe_dir,
+            stdin=kwargs.get("stdin") is not None,
+            write_png=self.write_png,
+        )
+        self.launched.append(process)
+        return process
+
+    def session(self, timeout: float = 5.0):
+        return common.probe_capture(
+            ref=self.REF, cwd=self.root, timeout=timeout, poll_interval=0.01
+        )
+
+    # --- 起動前にリクエストを置く（#784）------------------------------------
+
+    def test_starting_without_a_request_is_refused(self) -> None:
+        """置く前に起動したら止める。
+
+        noLoop のスケッチは最初の 1 フレームしか描かないので、起動後に置いた
+        リクエストは処理されない。動くスケッチも、置くまでに進んだフレーム数が
+        実行ごとに変わって撮り始めの位相がぶれる。順番は呼び出し側が書くので、
+        守れているかはここで機械が見る。
+        """
+        with self.session() as probe:
+            with self.assertRaises(common.ShotError) as raised:
+                probe.start(["swift", "run"])
+        self.assertIn("#784", str(raised.exception))
+        self.assertEqual(self.launched, [], "止めたのに起動している")
+
+    def test_the_placed_request_is_there_at_launch(self) -> None:
+        with self.session() as probe:
+            probe.place_request({"id": "req-1", "label": "Thing"})
+            probe.start(["swift", "run"])
+            metadata = probe.wait_still("req-1")
+        self.assertEqual(metadata["size"], {"width": 480, "height": 360})
+        self.assertEqual(self.launched[0].request_at_launch["id"], "req-1")
+
+    # --- 下見 → 入力 → 本番（#509 / #610）-----------------------------------
+
+    def test_the_input_script_goes_out_after_the_warmup_frame(self) -> None:
+        """入力は**描画ループが回り始めてから**流す。
+
+        起動直後に送ると stdin に溜まり、最初のフレームでまとめて処理されて軌跡の
+        中間点が消える。下見の 1 枚を待ってから流していれば、届いた時点で frame.json
+        が書かれている。
+        """
+        events = [{"t": "mouseMove", "x": 1, "y": 2}, {"t": "mouseMove", "x": 3, "y": 4}]
+        with self.session() as probe:
+            probe.place_request({"id": "warmup"})
+            probe.start(["swift", "run"], stdin=True)
+            probe.warmup("warmup")
+            probe.send_input(events)
+            probe.place_request({"id": "req-1"})
+            probe.wait_still("req-1")
+        sketch = self.launched[0]
+        self.assertEqual(sketch.request_at_launch["id"], "warmup")
+        self.assertEqual(sketch.stdin.events, events)
+        self.assertTrue(
+            all(sketch.stdin.after_first_frame),
+            "下見の応答より先に入力が届いている（軌跡の中間点が消える）",
+        )
+        self.assertEqual(sketch.request_at_exit["id"], "req-1", "本番を置いていない")
+
+    def test_input_without_a_running_sketch_is_refused(self) -> None:
+        with self.session() as probe:
+            probe.place_request({"id": "req-1"})
+            with self.assertRaises(common.ShotError):
+                probe.send_input([{"t": "mouseMove", "x": 1, "y": 2}])
+
+    # --- 応答の受け取り -------------------------------------------------------
+
+    def test_a_failure_response_is_not_a_shot(self) -> None:
+        """id が一致する frame.json に PNG が伴わないのは失敗応答（契約点 4）。
+
+        ここを黙って通すと、前の絵をそのまま撮ったことにしてしまう。
+        """
+        self.write_png = False
+        with self.assertRaises(common.ShotError) as raised:
+            with self.session() as probe:
+                probe.place_request({"id": "req-1"})
+                probe.start(["swift", "run"])
+                probe.wait_still("req-1")
+        self.assertIn("失敗応答", str(raised.exception))
+
+    def test_a_sequence_is_ready_when_the_manifest_lands(self) -> None:
+        with self.session() as probe:
+            probe.place_request({"id": "req-1", "frames": 3, "every": 2})
+            probe.start(["swift", "run"])
+            manifest = probe.wait_sequence("req-1")
+        self.assertEqual(manifest["frameCount"], 3)
+
+    def test_a_dead_sketch_is_reported_with_its_stderr(self) -> None:
+        """落ちたスケッチはタイムアウトを待たずに理由ごと諦める。"""
+        common.subprocess.Popen = lambda *args, **kwargs: DeadSketch()
+        with self.assertRaises(common.ShotError) as raised:
+            with self.session(timeout=30.0) as probe:
+                probe.place_request({"id": "req-1"})
+                probe.start(["swift", "run"])
+                probe.wait_still("req-1")
+        self.assertIn("exit 1", str(raised.exception))
+        self.assertIn("no Metal device", str(raised.exception))
+
+    def test_a_silent_sketch_times_out(self) -> None:
+        """応答が来ないまま上限に達したら、何を待っていたかを添えて諦める。"""
+        with self.assertRaises(common.ShotError) as raised:
+            with self.session(timeout=0.05) as probe:
+                probe.place_request({"id": "req-1"})
+                probe.start(["swift", "run"])
+                probe.wait_still("never-asked")
+        self.assertIn("frame.png", str(raised.exception))
+
+    # --- 後片付け -------------------------------------------------------------
+
+    def test_the_probe_directory_is_gone_afterwards(self) -> None:
+        with self.session() as probe:
+            probe.place_request({"id": "req-1"})
+            probe.start(["swift", "run"])
+            probe.wait_still("req-1")
+        self.assertFalse(self.probe_dir.exists())
+        self.assertTrue(self.launched[0].stdin is None or self.launched[0].stdin.closed)
+
+    def test_the_build_runs_in_the_package_being_shot(self) -> None:
+        """`swift build` は cwd の Package.swift を見る。
+
+        渡し忘れるとリポジトリ直下の metaphor 本体が建って**成功してしまい**、撮る
+        対象はビルドされないまま `swift run` へ進む。絵は出る（そちらが結局ビルドする）
+        ので気付けず、対象のビルドが壊れている場合だけ「起動したのに終了した」という
+        遠い顔で出てくる。
+        """
+        seen: list = []
+        saved = common.subprocess.run
+        self.addCleanup(lambda: setattr(common.subprocess, "run", saved))
+
+        def fake_run(command, **kwargs):
+            seen.append(kwargs.get("cwd"))
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+        common.subprocess.run = fake_run
+        with self.session() as probe:
+            probe.build(["swift", "build"])
+        self.assertEqual(seen, [self.root])
+
+    def test_a_build_failure_leaves_nothing_behind(self) -> None:
+        """ビルドで抜けても request.json は残らない（3 実装あった頃はここだけ漏れた）。"""
+        saved = common.subprocess.run
+        self.addCleanup(lambda: setattr(common.subprocess, "run", saved))
+        common.subprocess.run = lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0] if args else [], 1, stdout="", stderr="no such module 'metaphor'"
+        )
+        with self.assertRaises(common.ShotError) as raised:
+            with self.session() as probe:
+                probe.place_request({"id": "req-1"})
+                probe.build(["swift", "build"])
+                probe.start(["swift", "run"])
+        self.assertIn("のビルドに失敗した", str(raised.exception))
+        self.assertEqual(self.launched, [], "ビルドに失敗したのに起動している")
+        self.assertFalse(self.probe_dir.exists())
 
 
 class TestNoCaptureReason(CommonTestCase):

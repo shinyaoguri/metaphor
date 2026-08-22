@@ -85,7 +85,6 @@ GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビッ�
 
 import argparse
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -98,12 +97,11 @@ from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
     ShotError,
     capture_provenance,
-    current_frame,
     drift_summary,
     image_size,
     load_input_script,
     no_capture_reason,
-    send_input_script,
+    probe_capture,
     source_hash,
 )
 
@@ -313,98 +311,41 @@ def capture(path: str, destination: Path, settle: float, release: bool = False) 
     if not (package / "Package.swift").is_file():
         raise ShotError(f"'{path}' に Package.swift が無い")
 
-    probe_dir = package / ".metaphor/probe"
-    output_dir = probe_dir / "current"
-    shutil.rmtree(probe_dir, ignore_errors=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     request_id = f"example-shot-{package.name}"
     warmup_id = f"{request_id}-warmup"
     request = {"id": request_id, "label": package.name, "scale": 1.0}
     still = uses_no_loop(package)
     input_script = input_script_for(package, path, still)
 
-    def place_request(payload: dict) -> None:
-        tmp = probe_dir / "request.json.tmp"
-        tmp.write_text(json.dumps(payload), encoding="utf-8")
-        tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
-
-    # noLoop のスケッチは起動前に置いた 1 通しか処理できない。動くスケッチは
-    # 下見を先に置き、絵が出来上がってから本番を置く。
-    place_request(
-        request if still else {"id": warmup_id, "label": f"{package.name} (warmup)", "scale": 1.0}
-    )
-
-    build = subprocess.run(
-        swift_command("build", release), cwd=package, capture_output=True, text=True
-    )
-    if build.returncode != 0:
-        raise ShotError(f"'{path}' のビルドに失敗した:\n{build.stdout[-1500:]}\n{build.stderr[-1500:]}")
-
-    env = dict(os.environ)
-    env["METAPHOR_PROBE"] = "1"
-    env["METAPHOR_VIEWER"] = "1"  # ヘッドレス（ウィンドウを開かない）
-    process = subprocess.Popen(
-        swift_command("run", release),
+    with probe_capture(
+        ref=path,
         cwd=package,
-        env=env,
-        stdin=subprocess.PIPE,  # 入力台本を流す経路（#610）
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
-    def fail_if_dead() -> None:
-        if process.poll() is None:
-            return
-        stderr = (process.stderr.read() if process.stderr else "") or ""
-        raise ShotError(
-            f"'{path}' が画像を書く前に終了した（exit {process.returncode}）\n{stderr[-2000:]}"
+        timeout=CAPTURE_TIMEOUT_SEC,
+        poll_interval=POLL_INTERVAL_SEC,
+    ) as probe:
+        # noLoop のスケッチは起動前に置いた 1 通しか処理できない。動くスケッチは
+        # 下見を先に置き、絵が出来上がってから本番を置く。
+        probe.place_request(
+            request
+            if still
+            else {"id": warmup_id, "label": f"{package.name} (warmup)", "scale": 1.0}
         )
+        probe.build(swift_command("build", release))
+        probe.start(swift_command("run", release), stdin=True)
 
-    def wait_for(what: str, request: str) -> dict:
-        deadline = time.monotonic() + CAPTURE_TIMEOUT_SEC
-        while time.monotonic() < deadline:
-            answer = current_frame(output_dir, request)
-            if answer is not None:
-                return answer
-            fail_if_dead()
-            time.sleep(POLL_INTERVAL_SEC)
-        raise ShotError(f"'{path}' が {CAPTURE_TIMEOUT_SEC:.0f} 秒以内に {what} を書かなかった")
-
-    try:
         if not still:
-            # 下見を待つのは、**描画ループが回り始めてから**次へ進むため。起動直後
-            # （Metal パイプラインの構築中）に送った入力は stdin に溜まり、最初の
-            # フレームでまとめて処理される（＝軌跡の中間点が消える）。
-            wait_for(f"frame.json（下見 id={warmup_id}）", warmup_id)
+            probe.warmup(warmup_id)
             if input_script is not None:
                 # 待ちは台本の {"wait": ミリ秒} が持つので settle は使わない。
                 print(f"  input {len(input_script)} events", flush=True)
-                send_input_script(process, input_script, path)
+                probe.send_input(input_script)
             else:
                 time.sleep(settle)
-            place_request(request)
-        metadata = wait_for("frame.png", request_id)
-        frame_png = output_dir / "frame.png"
-        if not frame_png.is_file():
-            # id が一致する frame.json に PNG が伴わないのは失敗応答（契約点 4）。
-            warnings = "; ".join(metadata.get("warnings") or []) or "理由の申告なし"
-            raise ShotError(f"'{path}' の撮影が失敗応答を返した: {warnings}")
+            probe.place_request(request)
+
+        metadata = probe.wait_still(request_id)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(frame_png, destination)
-    finally:
-        if process.stdin is not None and not process.stdin.closed:
-            try:
-                process.stdin.close()
-            except BrokenPipeError:
-                pass
-        process.terminate()
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-        shutil.rmtree(probe_dir, ignore_errors=True)
+        shutil.copyfile(probe.frame_png, destination)
 
     size = metadata.get("size", {})
     entry = {

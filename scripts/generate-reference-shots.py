@@ -90,13 +90,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -104,10 +102,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     ShotError,
     capture_provenance,
-    current_frame,
     drift_summary,
     file_sha256,
     image_size,
+    probe_capture,
     run_capturing,
     run_or_raise,
     upload_to_gyazo,
@@ -638,35 +636,14 @@ def build_package(snippets: list[Snippet]) -> None:
 # --- 撮影 ---------------------------------------------------------------------
 
 
-
-def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
-    """連続キャプチャが完了していれば `sequence.json` の中身を返す。"""
-    manifest = sequence_dir / "sequence.json"
-    if not manifest.is_file():
-        return None
-    try:
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if data.get("id") != request_id:
-        return None
-    frames = data.get("frames")
-    if not isinstance(frames, list) or len(frames) != data.get("frameCount"):
-        return None
-    return data
-
-
 def capture(snippet: Snippet, settings: dict, symmetric: str | None = None) -> dict:
     """スニペット 1 本を走らせて撮り、台帳のエントリ（URL 抜き）を返す。
 
     `symmetric` は「反転しても同じ絵でよい」の申告（`Snippet.symmetric`）。撮った絵が
     反転と一致しすぎていないかの検査（#985）を黙らせるために渡す。
-    """
-    probe_dir = WORK_DIR / ".metaphor/probe"
-    output_dir = probe_dir / "current"
-    shutil.rmtree(probe_dir, ignore_errors=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
+    ビルドはここでは行わない（`build_package` が全スニペットを一括で通してある）。
+    """
     motion = settings.get("motion")
     request_id = f"reference-shot-{snippet.target}"
     request = {"id": request_id, "label": snippet.symbol, "scale": 1.0}
@@ -674,89 +651,43 @@ def capture(snippet: Snippet, settings: dict, symmetric: str | None = None) -> d
         request["frames"] = motion["frames"]
         request["every"] = motion["every"]
 
-    # リクエストは静止画も動きも**起動前**に置く。
-    #
-    # 静止画（noLoop）は最初の 1 フレームしか描かないので、起動後に置いても処理する
-    # 機会が来ません。動きは起動後でも処理はされますが、置くまでに進んだフレーム数が
-    # 実行ごとに変わるため、`Float(frameCount)` で駆動するスニペットは毎回違う位相
-    # から撮れてしまいます（#784。撮り直すたびに別の GIF になり、#781 の鮮度照合が
-    # 成り立たない）。起動前に置けば Probe は最初の `pre()` で受け取るので、撮り始め
-    # のフレームが常に同じになります。
-    #
-    # 「数フレーム走らせてから撮りたい」は、この経路では**決定的にできません**
-    # （待ちを秒で測るしかなく、それが上のずれの原因）。要るならスニペット側で
-    # `frameCount` から作ってください。
-    tmp = probe_dir / "request.json.tmp"
-    tmp.write_text(json.dumps(request), encoding="utf-8")
-    tmp.replace(probe_dir / "request.json")  # 契約点 4: アトミックに置く
+    still = STAGING_DIR / f"{snippet.target}.png"
+    still.parent.mkdir(parents=True, exist_ok=True)
 
-    env = dict(os.environ)
-    env["METAPHOR_PROBE"] = "1"
-    env["METAPHOR_VIEWER"] = "1"  # ヘッドレス（ウィンドウを開かない）
-    print(f"  running  {snippet.symbol} ...", flush=True)
-    process = subprocess.Popen(
-        ["swift", "run", snippet.target],
+    with probe_capture(
+        ref=snippet.symbol,
         cwd=WORK_DIR,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    sequence_dir = output_dir / "sequence"
-    entry: dict = {}
+        timeout=CAPTURE_TIMEOUT_SEC,
+        poll_interval=POLL_INTERVAL_SEC,
+    ) as probe:
+        # リクエストは静止画も動きも**起動前**に置く。
+        #
+        # 静止画（noLoop）は最初の 1 フレームしか描かないので、起動後に置いても処理
+        # する機会が来ません。動きは起動後でも処理はされますが、置くまでに進んだ
+        # フレーム数が実行ごとに変わるため、`Float(frameCount)` で駆動するスニペットは
+        # 毎回違う位相から撮れてしまいます（#784。撮り直すたびに別の GIF になり、
+        # #781 の鮮度照合が成り立たない）。起動前に置けば Probe は最初の `pre()` で
+        # 受け取るので、撮り始めのフレームが常に同じになります。
+        #
+        # 「数フレーム走らせてから撮りたい」は、この経路では**決定的にできません**
+        # （待ちを秒で測るしかなく、それが上のずれの原因）。要るならスニペット側で
+        # `frameCount` から作ってください。
+        probe.place_request(request)
 
-    def fail_if_dead() -> None:
-        if process.poll() is None:
-            return
-        stderr = (process.stderr.read() if process.stderr else "") or ""
-        raise ShotError(
-            f"'{snippet.symbol}' が画像を書く前に終了した（exit {process.returncode}）"
-            f"\n{stderr[-2000:]}"
-        )
+        print(f"  running  {snippet.symbol} ...", flush=True)
+        probe.start(["swift", "run", snippet.target])
 
-    def wait_for(what: str, poll) -> dict:
-        deadline = time.monotonic() + CAPTURE_TIMEOUT_SEC
-        while time.monotonic() < deadline:
-            answer = poll()
-            if answer is not None:
-                return answer
-            fail_if_dead()
-            time.sleep(POLL_INTERVAL_SEC)
-        raise ShotError(
-            f"'{snippet.symbol}' が {CAPTURE_TIMEOUT_SEC:.0f} 秒以内に {what} を書かなかった"
-        )
-
-    try:
-        still = STAGING_DIR / f"{snippet.target}.png"
-        still.parent.mkdir(parents=True, exist_ok=True)
         if motion:
-            # 完了規約: sequence.json が最後に書かれる（CONTRACT.md 契約点 4）。
-            ready = wait_for(
-                "sequence.json", lambda: sequence_manifest(sequence_dir, request_id)
-            )
-            entry = collect_sequence(snippet, sequence_dir, ready, motion, still)
+            ready = probe.wait_sequence(request_id)
+            entry = collect_sequence(snippet, probe.sequence_dir, ready, motion, still)
         else:
-            metadata = wait_for(
-                "frame.png", lambda: current_frame(output_dir, request_id)
-            )
-            frame_png = output_dir / "frame.png"
-            if not frame_png.is_file():
-                # id が一致する frame.json に PNG が伴わないのは失敗応答（契約点 4）。
-                warnings = "; ".join(metadata.get("warnings") or []) or "理由の申告なし"
-                raise ShotError(f"'{snippet.symbol}' の撮影が失敗応答を返した: {warnings}")
-            shutil.copyfile(frame_png, still)
+            metadata = probe.wait_still(request_id)
+            shutil.copyfile(probe.frame_png, still)
             size = metadata.get("size", {})
             entry = {"width": size.get("width"), "height": size.get("height")}
         # 動きの側も代表静止画を同じ `still` に書くので、ここ 1 箇所で両方を通せる。
         for warning in symmetry_warnings(snippet, still, symmetric):
             print(warning, flush=True)
-    finally:
-        process.terminate()
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-        shutil.rmtree(probe_dir, ignore_errors=True)
     return entry
 
 
@@ -836,8 +767,6 @@ def render_gif(
         )
     finally:
         shutil.rmtree(work, ignore_errors=True)
-
-
 
 
 # --- 反転一致の検査（#985）----------------------------------------------------

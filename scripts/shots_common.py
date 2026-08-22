@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """スケッチの実行結果画像を撮るスクリプトが共有する部品。
 
-チュートリアル（`generate-tutorial-shots.py`）と Examples
-（`generate-example-shots.py`）で共通なのは 4 つです。
+チュートリアル（`generate-tutorial-shots.py`）・Examples
+（`generate-example-shots.py`）・DocC リファレンス（`generate-reference-shots.py`）で
+共通なのは次のものです。
 
 - **撮影時のソースの指紋**（`source_hash`）— 「コードを変えたのに画像が古い」を
   検出する仕組みの土台。ここを 2 実装持つと、片側だけ検出が弱る（#505）
@@ -16,6 +17,10 @@
 - **Gyazo への上げ口**（`gyazo_token` / `upload_to_gyazo` ほか）— チュートリアルと
   DocC リファレンスが使う。トークンの読み方という**変わりうる 1 点**を 2 実装持って
   いたせいで、`op read` から `secret-read` へ移すときに片方が取り残された
+- **Probe の応答の読み方**（`current_frame` / `sequence_manifest`）と**撮影の骨格**
+  （`probe_capture`）— どちらも CONTRACT.md 契約点 4 そのもの。読み方は consumer 規約、
+  骨格は producer 側の手順（いつ request を置き、どう待ち、どう後片付けするか）で、
+  3 実装あると cli 側が wire format を変えた日に 1 つだけ直る（#1024）
 
 画像の置き場は用途で違います（チュートリアルと DocC リファレンスは Gyazo =
 ADR-0010 / ADR-0008、Examples はリポジトリ内）。**上げ口は共通でも、撮り方・台帳・
@@ -24,6 +29,7 @@ ADR-0010 / ADR-0008、Examples はリポジトリ内）。**上げ口は共通�
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import hashlib
 import json
@@ -32,7 +38,7 @@ import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -368,21 +374,257 @@ def no_capture_reason(package_dir: Path, ref: str) -> str | None:
 # --- 外部コマンド ---------------------------------------------------------------
 
 
-def run_capturing(command: list[str], what: str) -> str:
+def run_capturing(command: list[str], what: str, *, cwd: Path | None = None) -> str:
     """コマンドを走らせ、成功したら stdout を返す。失敗は `ShotError`。
 
     出力を捨てずに抱えるのは、失敗したときに何が起きたかを添えるため（ビルドの
     エラーは stdout 側に出ることがある）。
+
+    `cwd` を渡せる口があるのは、**どこで走らせるかが結果を変える**コマンドがあるため
+    （`swift build` は cwd の Package.swift を見る。省略するとリポジトリ直下の
+    metaphor 本体をビルドしてしまい、撮る対象がビルドされないまま素通りする）。
     """
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
     if result.returncode != 0:
         raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
     return result.stdout
 
 
-def run_or_raise(command: list[str], what: str) -> None:
+def run_or_raise(command: list[str], what: str, *, cwd: Path | None = None) -> None:
     """戻り値の要らない `run_capturing`。"""
-    run_capturing(command, what)
+    run_capturing(command, what, cwd=cwd)
+
+
+# --- Probe を起動して撮る -------------------------------------------------------
+#
+# 「probe ディレクトリを掃除して request を置き、起動して、応答を待って、後片付け
+# する」という骨格は、3 スクリプトのどれでも同じです。ここは CONTRACT.md 契約点 4 の
+# **producer 側の手順**そのもの（いつ request を置くか・完了をどう判定するか・落ちた
+# スケッチをどう諦めるか）なので、実装が 3 つあると「片方だけ直る」が起きます（#1024）。
+#
+# 用途で本当に違うのは骨格ではなく段取り — 下見を挟むか、連番で撮るか、ビルドを
+# 自分で持つか — なので、**順番は呼び出し側が書き、契約に触れる操作はこのクラスの
+# メソッド越しにだけ行う**形にしています。
+
+# 応答を待つあいだのポーリング間隔。タイムアウトは用途で違う（撮る前にビルドを挟む
+# かどうかで妥当な上限が変わる）ので、呼び出し側が渡す。
+POLL_INTERVAL_SEC = 0.2
+# terminate してから kill に切り替えるまで。
+TERMINATE_GRACE_SEC = 10.0
+
+
+def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
+    """連続キャプチャが完了していれば `sequence.json` の中身を返す。
+
+    consumer 規約（CONTRACT.md 契約点 4）どおり「manifest が存在し、id がリクエストと
+    一致し、frames の数が frameCount と揃っている」で ready と見る。`current_frame` と
+    同じく契約の読み方そのものなので、実装は 1 つでなければならない。
+    """
+    manifest = sequence_dir / "sequence.json"
+    if not manifest.is_file():
+        return None
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None  # 書き込み途中を読んだ。次のポーリングで見直す
+    if data.get("id") != request_id:
+        return None
+    frames = data.get("frames")
+    if not isinstance(frames, list) or len(frames) != data.get("frameCount"):
+        return None
+    return data
+
+
+class ProbeCapture:
+    """Probe を有効にしたスケッチを 1 回走らせて撮る、その 1 回ぶんの持ち物。
+
+    `probe_capture()` から受け取って使う。呼ぶ順は用途ごとに違うが、どの順でも
+
+    1. `place_request()` で撮ってほしいものを置く（**起動前**。理由は下記）
+    2. `start()` で走らせる
+    3. `wait_still()` / `wait_sequence()` で応答を待つ
+
+    が芯で、動くスケッチはこのあいだに `warmup()` と `send_input()` が挟まる。
+    """
+
+    def __init__(
+        self,
+        *,
+        ref: str,
+        cwd: Path,
+        timeout: float,
+        poll_interval: float = POLL_INTERVAL_SEC,
+    ) -> None:
+        self.ref = ref  # 失敗を伝えるときの呼び名（節・example のパス・シンボル）
+        self.cwd = Path(cwd)
+        self.timeout = timeout
+        self.poll_interval = poll_interval
+        self.probe_dir = self.cwd / ".metaphor/probe"
+        self.output_dir = self.probe_dir / "current"
+        self.sequence_dir = self.output_dir / "sequence"
+        self.frame_png = self.output_dir / "frame.png"
+        self.process: subprocess.Popen | None = None
+        self._requested = False
+
+    # --- 段取り -------------------------------------------------------------
+
+    def prepare(self) -> None:
+        """前回の残骸を消して出力先を作る（`probe_capture()` が入口で呼ぶ）。"""
+        shutil.rmtree(self.probe_dir, ignore_errors=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    def build(self, command: list[str]) -> None:
+        """撮る前に、**撮る対象のパッケージで**ビルドする。失敗は出力ごと `ShotError`。
+
+        `cwd` を渡し忘れると `swift build` はリポジトリ直下の metaphor 本体を建てて
+        成功し、対象がビルドされないまま `swift run` へ進む（そちらが結局ビルドするので
+        絵は出るが、ビルドの失敗がここではなく「起動したのに終了した」として出る）。
+
+        リファレンスのように事前に一括ビルドしてある用途では呼ばない。
+        """
+        run_or_raise(command, f"'{self.ref}' のビルド", cwd=self.cwd)
+
+    def place_request(self, payload: dict) -> None:
+        """撮ってほしいものを置く（契約点 4: tmp へ書いて rename でアトミックに）。"""
+        tmp = self.probe_dir / "request.json.tmp"
+        tmp.write_text(json.dumps(payload), encoding="utf-8")
+        tmp.replace(self.probe_dir / "request.json")
+        self._requested = True
+
+    def start(self, command: list[str], *, stdin: bool = False) -> subprocess.Popen:
+        """ヘッドレス（`METAPHOR_VIEWER=1`）で Probe つきに走らせる。
+
+        **1 通も置かずに起動することは許さない**。noLoop のスケッチは最初の 1
+        フレームしか描かないので起動後に置いても処理する機会が来ず、動くスケッチも
+        置くまでに進んだフレーム数が実行ごとに変わって撮り始めの位相がぶれる
+        （#784）。順番そのものは呼び出し側が書くので、守れているかはここで見る。
+
+        `stdin` は入力台本を流す経路（#610）。要らない用途では開かない。
+        """
+        if not self._requested:
+            raise ShotError(
+                f"'{self.ref}' を request.json を置く前に起動しようとした"
+                "（起動後に置くと撮り始めが実行ごとに変わる。#784）"
+            )
+        env = dict(os.environ)
+        env["METAPHOR_PROBE"] = "1"
+        env["METAPHOR_VIEWER"] = "1"  # ヘッドレス（ウィンドウを開かない）
+        self.process = subprocess.Popen(
+            command,
+            cwd=self.cwd,
+            env=env,
+            stdin=subprocess.PIPE if stdin else None,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return self.process
+
+    # --- 応答を待つ ---------------------------------------------------------
+
+    def _fail_if_dead(self) -> None:
+        """走らせたものが死んでいたら、タイムアウトを待たずに理由ごと諦める。"""
+        process = self.process
+        if process is None or process.poll() is None:
+            return
+        stderr = (process.stderr.read() if process.stderr else "") or ""
+        raise ShotError(
+            f"'{self.ref}' が画像を書く前に終了した（exit {process.returncode}）"
+            f"\n{stderr[-2000:]}"
+        )
+
+    def wait_for(self, what: str, poll) -> dict:
+        """`poll()` が応答を返すまで待つ（返り値が None の間は待ち続ける）。"""
+        deadline = time.monotonic() + self.timeout
+        while time.monotonic() < deadline:
+            answer = poll()
+            if answer is not None:
+                return answer
+            self._fail_if_dead()
+            time.sleep(self.poll_interval)
+        raise ShotError(
+            f"'{self.ref}' が {self.timeout:.0f} 秒以内に {what} を書かなかった"
+        )
+
+    def warmup(self, request_id: str) -> dict:
+        """下見の 1 枚を待つ。**描画ループが回り始めてから**次へ進むため。
+
+        起動直後（Metal パイプラインの構築中）に送った入力は stdin に溜まり、最初の
+        フレームでまとめて処理される（＝軌跡の中間点が消え、1 フレームに集約された
+        線が 1 本だけ残る）。本番のリクエストを置き直すのもこれを待ってから。
+        """
+        return self.wait_for(
+            f"frame.json（下見 id={request_id}）",
+            lambda: current_frame(self.output_dir, request_id),
+        )
+
+    def send_input(self, events: list[dict]) -> None:
+        """入力台本を流す（`warmup()` を待ってから呼ぶ）。"""
+        if self.process is None:
+            raise ShotError(f"'{self.ref}' をまだ起動していない（入力を流せない）")
+        send_input_script(self.process, events, self.ref)
+
+    def wait_still(self, request_id: str) -> dict:
+        """単一フレームの応答を待って `frame.json` の中身を返す。
+
+        id が一致する `frame.json` に PNG が伴わないのは失敗応答（契約点 4）。撮れて
+        いないことを黙って進めると、直前の絵を撮ったことにしてしまう。
+        """
+        metadata = self.wait_for(
+            "frame.png", lambda: current_frame(self.output_dir, request_id)
+        )
+        if not self.frame_png.is_file():
+            warnings = "; ".join(metadata.get("warnings") or []) or "理由の申告なし"
+            raise ShotError(f"'{self.ref}' の撮影が失敗応答を返した: {warnings}")
+        return metadata
+
+    def wait_sequence(self, request_id: str) -> dict:
+        """連続キャプチャの完了を待つ（完了規約: `sequence.json` が最後に書かれる）。"""
+        return self.wait_for(
+            "sequence.json", lambda: sequence_manifest(self.sequence_dir, request_id)
+        )
+
+    # --- 後片付け -----------------------------------------------------------
+
+    def close(self) -> None:
+        """スケッチを終わらせて probe ディレクトリを消す（成否によらず必ず通る）。"""
+        process = self.process
+        if process is not None:
+            stdin = process.stdin
+            if stdin is not None and not stdin.closed:
+                try:
+                    stdin.close()
+                except BrokenPipeError:
+                    pass
+            process.terminate()
+            try:
+                process.wait(timeout=TERMINATE_GRACE_SEC)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        shutil.rmtree(self.probe_dir, ignore_errors=True)
+
+
+@contextlib.contextmanager
+def probe_capture(
+    *,
+    ref: str,
+    cwd: Path,
+    timeout: float,
+    poll_interval: float = POLL_INTERVAL_SEC,
+) -> Iterator[ProbeCapture]:
+    """撮影 1 回ぶんを囲む。抜けるときに必ずスケッチを終わらせて掃除する。
+
+    掃除を出口 1 か所に集めてあるので、**ビルドに失敗して抜けても** request.json が
+    残らない（3 実装あった頃は、ビルド失敗の経路だけ掃除を通らなかった）。
+    """
+    session = ProbeCapture(
+        ref=ref, cwd=cwd, timeout=timeout, poll_interval=poll_interval
+    )
+    session.prepare()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 # --- Gyazo -------------------------------------------------------------------

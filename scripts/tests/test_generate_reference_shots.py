@@ -26,15 +26,18 @@ import io
 import json
 import sys
 import tempfile
-import threading
 import unittest
 from pathlib import Path
+
+from _probe_fakes import DeadSketch, FakeSketch
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "generate-reference-shots.py"
 _spec = importlib.util.spec_from_file_location("generate_reference_shots", _SCRIPT)
 shots = importlib.util.module_from_spec(_spec)
 sys.modules["generate_reference_shots"] = shots
 _spec.loader.exec_module(shots)
+# 撮影の骨格（Popen も含む）は shots_common 側にある。差し替えるのはそちら。
+common = sys.modules["shots_common"]
 
 
 SOURCE = '''// MARK: - Shapes
@@ -436,118 +439,6 @@ class ReferenceShotsTestCase(unittest.TestCase):
         self.assertEqual(shots.check(self.extract(), {}, {}), 1)
 
 
-class FakeSketch:
-    """`swift run <target>` の代わり。`request.json` に応えるだけの最小 Probe。
-
-    **置かれたリクエストが何であっても同じように応える**ので、テストの主張
-    （＝どのリクエストを、いつ置いたか）だけが結果を分ける。撮影側が下見を挟んでも
-    挟まなくても素通しするため、直っていない実装はタイムアウトではなく主張の失敗で
-    落ちる。
-    """
-
-    POLL_SEC = 0.01
-
-    def __init__(self, probe_dir: Path) -> None:
-        self.probe_dir = probe_dir
-        # 起動時点と終了時点の request.json。撮影側が起動後に置き直したかが分かる。
-        self.request_at_launch = self._read_request()
-        self.request_at_exit: dict | None = None
-        self.returncode: int | None = None
-        self.stdin = None
-        self.stderr = None
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._serve, daemon=True)
-        self._thread.start()
-
-    # --- subprocess.Popen として振る舞う ---------------------------------------
-
-    def poll(self) -> int | None:
-        return self.returncode
-
-    def terminate(self) -> None:
-        self.request_at_exit = self._read_request()
-        self._stop.set()
-        self.returncode = 0
-
-    def kill(self) -> None:
-        self.terminate()
-
-    def wait(self, timeout: float | None = None) -> int | None:
-        self._thread.join(timeout)
-        return self.returncode
-
-    # --- 最小 Probe -----------------------------------------------------------
-
-    def _read_request(self) -> dict | None:
-        path = self.probe_dir / "request.json"
-        if not path.is_file():
-            return None
-        return json.loads(path.read_text(encoding="utf-8"))
-
-    def _serve(self) -> None:
-        handled: set[str] = set()
-        while not self._stop.wait(self.POLL_SEC):
-            request = self._read_request()
-            if request is None or request["id"] in handled:
-                continue
-            handled.add(request["id"])
-            if (request.get("frames") or 1) >= 2:
-                self._write_sequence(request)
-            else:
-                self._write_frame(request)
-
-    def _write_frame(self, request: dict) -> None:
-        current = self.probe_dir / "current"
-        current.mkdir(parents=True, exist_ok=True)
-        (current / "frame.png").write_bytes(b"png")
-        (current / "frame.json").write_text(
-            json.dumps({"id": request["id"], "size": {"width": 480, "height": 360}}),
-            encoding="utf-8",
-        )
-
-    def _write_sequence(self, request: dict) -> None:
-        directory = self.probe_dir / "current/sequence"
-        directory.mkdir(parents=True, exist_ok=True)
-        frames = [
-            {"index": index, "file": f"frame.{index:04d}.png"}
-            for index in range(request["frames"])
-        ]
-        # 完了規約: sequence.json が最後（CONTRACT.md 契約点 4）。
-        (directory / "sequence.json").write_text(
-            json.dumps(
-                {
-                    "id": request["id"],
-                    "frameCount": len(frames),
-                    "every": request.get("every", 1),
-                    "size": {"width": 480, "height": 360},
-                    "frames": frames,
-                }
-            ),
-            encoding="utf-8",
-        )
-
-
-class DeadSketch:
-    """起動直後に落ちたスケッチ。撮影側が待ち続けずに諦めることの確認用。"""
-
-    def __init__(self, message: str = "Fatal error: no Metal device") -> None:
-        self.returncode = 1
-        self.stdin = None
-        self.stderr = io.StringIO(message)
-
-    def poll(self) -> int:
-        return self.returncode
-
-    def terminate(self) -> None:
-        pass
-
-    def kill(self) -> None:
-        pass
-
-    def wait(self, timeout: float | None = None) -> int:
-        return self.returncode
-
-
 class CaptureTestCase(unittest.TestCase):
     """撮影の段取り（#784）。
 
@@ -567,7 +458,7 @@ class CaptureTestCase(unittest.TestCase):
             "POLL_INTERVAL_SEC": shots.POLL_INTERVAL_SEC,
             "collect_sequence": shots.collect_sequence,
             "flip_psnr": shots.flip_psnr,
-            "Popen": shots.subprocess.Popen,
+            "Popen": common.subprocess.Popen,
         }
         shots.REPO_ROOT = self.work
         shots.WORK_DIR = self.work / "build"
@@ -585,7 +476,7 @@ class CaptureTestCase(unittest.TestCase):
 
         self.probe_dir = shots.WORK_DIR / ".metaphor/probe"
         self.launched: list[FakeSketch] = []
-        shots.subprocess.Popen = self._popen
+        common.subprocess.Popen = self._popen
 
     def tearDown(self) -> None:
         shots.REPO_ROOT = self._saved["REPO_ROOT"]
@@ -595,7 +486,7 @@ class CaptureTestCase(unittest.TestCase):
         shots.POLL_INTERVAL_SEC = self._saved["POLL_INTERVAL_SEC"]
         shots.collect_sequence = self._saved["collect_sequence"]
         shots.flip_psnr = self._saved["flip_psnr"]
-        shots.subprocess.Popen = self._saved["Popen"]
+        common.subprocess.Popen = self._saved["Popen"]
 
     def _popen(self, *args, **kwargs) -> FakeSketch:
         process = FakeSketch(self.probe_dir)
@@ -684,7 +575,7 @@ class CaptureTestCase(unittest.TestCase):
 
     def test_a_sketch_that_dies_is_reported_with_its_stderr(self):
         """起動に失敗したら、タイムアウトを待たずに理由ごと止まる。"""
-        shots.subprocess.Popen = lambda *args, **kwargs: DeadSketch()
+        common.subprocess.Popen = lambda *args, **kwargs: DeadSketch()
         snippet = self._snippet()
         with self.assertRaises(shots.ShotError) as raised:
             shots.capture(snippet, snippet.settings({}))
