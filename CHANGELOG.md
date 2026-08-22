@@ -41,6 +41,271 @@ Maintaining this file
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-22
+
+### Breaking Changes
+
+- The alpha label deprecated in v0.10.0 on the RGB initializer of `Color` is **removed** ([#566](https://github.com/shinyaoguri/metaphor/issues/566) phase 2, [#655](https://github.com/shinyaoguri/metaphor/issues/655)). It warned for one minor release; the compiler now rejects it:
+
+  | Removed | Use instead |
+  |---|---|
+  | `Color(r:g:b:a:)` | `Color(r:g:b:alpha:)` |
+
+  **Three-argument calls need no change.** `Color(r: 1, g: 0, b: 0)` still resolves to the surviving initializer and still defaults to fully opaque — the deprecated overload deliberately had no default for `a`, so nothing about that call was ever ambiguous. Only a call that spells the alpha argument out has to rename `a:` to `alpha:`.
+
+  The `a` property is untouched: `color.a` still reads and writes the alpha component, alongside `r` / `g` / `b`. This change is about the initializer label only, which now agrees with `Color(gray:alpha:)` and `Color(hue:saturation:brightness:alpha:)`.
+
+### Added
+
+- Output plugins are now wired through a provider registry instead of a single
+  factory. `MetaphorOutputProviders.register(_:)` accepts any number of
+  `MetaphorOutputProvider`s (identified by `id`); `SketchRunner` and
+  `SketchWindow` scan all of them with a `MetaphorOutputContext` (config,
+  environment, headless) and attach every `MetaphorOutputPlugin` they return, so
+  two output modules no longer overwrite each other. `PluginFactory` gained a
+  declarative `requirements:` (`PluginRequirements`, e.g. `.externalRenderLoop`)
+  and `SketchWindowConfig` gained `plugins:`, and the render-loop mode is now
+  resolved from those declarations before any plugin is instantiated
+  (`RenderLoopMode.resolve(requested:fps:requirements:isHeadless:)`). Syphon
+  behaves exactly as before (`syphon: true` / `syphonName:` /
+  `METAPHOR_SYPHON_NAME` / headless still publish and switch to the timer loop)
+  ([#1036](https://github.com/shinyaoguri/metaphor/issues/1036), part of
+  [#792](https://github.com/shinyaoguri/metaphor/issues/792))
+- `ViewerOutputPlugin`: the live viewer (`metaphor watch --viewer`) now receives
+  frames over a parent/child-only transport instead of Syphon. When the
+  environment variable `METAPHOR_VIEWER_SOCKET` names a Unix domain socket the
+  parent is listening on, the sketch connects, sends a `hello` carrying the fd
+  of an anonymous POSIX shared-memory region (3 slots, `bgra8Unorm`,
+  premultiplied alpha, row 0 = top) via `SCM_RIGHTS`, blits every frame into a
+  free slot and announces it with `frame {slot, seq, frameCount, time}`; the
+  parent hands slots back with `release {slot}`. No deprecated API, no install
+  footprint, and nothing else on the machine can reach the frames. The wire
+  format is CONTRACT.md point 5 (`contract/viewer-*.schema.json`,
+  `protocolVersion: 1`). Sketches that are not started by `metaphor watch` pay
+  nothing: the plugin is only registered when the variable is set
+  ([#1037](https://github.com/shinyaoguri/metaphor/issues/1037), part of
+  [#792](https://github.com/shinyaoguri/metaphor/issues/792) /
+  [ADR-0014](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md))
+- Attribution for the three fonts bundled in `Examples/` and `Tests/` (Source
+  Code Pro, Space Mono, Merriweather — all SIL Open Font License 1.1), which
+  were previously redistributed with no notice at all. `OFL.txt` at the
+  repository root carries the license text verbatim, `THIRD_PARTY_LICENSES.md`
+  records the per-font copyright holder, designer, Reserved Font Name and
+  SHA-256, and the three example bundles that load a font at runtime
+  (`Letters`, `Words`, `TextRotation`) now ship `OFL.txt` alongside the `.ttf`
+  as OFL clause 2 requires
+  ([#653](https://github.com/shinyaoguri/metaphor/issues/653))
+- `Graphics` (the offscreen buffer from `createGraphics()`) forwards the
+  bounding-box form of `text()`: `text(string, x, y, w, h)` wraps at the box
+  width, honors `textLeading()`, and clips lines that do not fit the box
+  height — the same behavior as drawing to the main canvas. Only the
+  three-argument `text()` was forwarded before, so wrapped text could not be
+  drawn into an offscreen buffer at all
+  ([#747](https://github.com/shinyaoguri/metaphor/issues/747))
+- `get()` / `set()` on the canvas, so reading or writing a single pixel no longer
+  means unpacking the `UInt32` in `pixels[]` by hand
+  ([#812](https://github.com/shinyaoguri/metaphor/issues/812)):
+  - `get(_ x: Int, _ y: Int) -> Color` — the pixel colour, in straight alpha
+    (the same value you passed to `fill()`).
+  - `get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage?` — a copy of that
+    rectangle, ready for `image()`. As in Processing the result is always the
+    requested `w`×`h`, with anything outside the canvas left transparent.
+  - `set(_ x: Int, _ y: Int, _ color: Color)` — writes into the pixel buffer;
+    call `updatePixels()` to put it on the canvas.
+
+  Unlike Processing, **none of these read the canvas back implicitly**: before
+  `loadPixels()`, `get()` returns black and `set()` does nothing (warned once, in
+  DEBUG builds). metaphor's readback blocks on the GPU *and splits the render
+  pass* — which clears depth and reorders 2D against 3D — so an implicit
+  per-pixel readback would change the picture, not merely slow it down.
+- `modelX(x, y, z)` / `modelY(…)` / `modelZ(…)` — the Processing parity partner of
+  `screenX/Y/Z`. They return the **world** coordinates of a point after the current
+  transform stack (`translate` / `rotateX/Y/Z` / `scale` / `applyMatrix`) is applied,
+  so you can record where something lands inside `pushMatrix()` … `popMatrix()` and
+  put another object there afterwards
+  ([#814](https://github.com/shinyaoguri/metaphor/issues/814)):
+
+  ```swift
+  pushMatrix()
+  translate(100, 50, 0)
+  rotateY(angle)
+  translate(0, 0, 60)
+  let wx = modelX(0, 0, 0), wy = modelY(0, 0, 0), wz = modelZ(0, 0, 0)
+  popMatrix()
+
+  translate(wx, wy, wz)   // the same place, from outside the stack
+  box(10)
+  ```
+
+  As in Processing, the result does **not** depend on the camera: `camera()` and
+  `perspective()` do not change it. If you want to go the other way — a screen
+  coordinate back into 3D space, as p5.js `screenToWorld()` does — that is a
+  separate API and is not this one.
+- `MShape` shape definitions accept the channel form of `fill` and `stroke`:
+  `fill(v1, v2, v3, a?)` and `stroke(v1, v2, v3, a?)` now exist inside
+  `beginShape()` / `endShape()`, matching the sketch-level API. The values are
+  read in the color space and ranges of the `colorMode()` that was in effect
+  when `createShape()` was called, so
+  `colorMode(.hsb, 360, 100, 100)` + `fill(180, 100, 100)` gives the same cyan
+  inside a shape as outside it. Previously the only way to set a non-grayscale
+  color inside a shape was to build a `Color` by hand and normalize the
+  components yourself
+  ([#897](https://github.com/shinyaoguri/metaphor/issues/897))
+- `AudioAnalyzer.rms` and `SoundFile.analysisRMS` — the frame's raw RMS, before
+  the x4 gain and the clamp that produce `volume` / `analysisVolume`. Those
+  display-oriented values saturate at 1.0 from an RMS of 0.25 upwards (a sine
+  wave of amplitude 0.354), and dividing by 4 only recovers the level *below*
+  saturation — above it, louder and much louder read the same. Reach for the new
+  properties when the loud end has to stay distinguishable: metering, threshold
+  detection, headroom and recording-level checks. `volume` is unchanged
+  ([#941](https://github.com/shinyaoguri/metaphor/issues/941))
+- `Tween.isWaiting` — `true` while a tween sits in the `delay(_:)` it was given,
+  between `start()` and the moment it actually begins moving. `isActive` and
+  `isComplete` are both `false` during that window, so until now a tween waiting
+  in the wings looked exactly like one that had never been started (or had been
+  `reset()`). Use `isActive || isWaiting` to ask "has this been started and not
+  finished". `isActive` still means `.running` only — nothing existing changes
+  behavior ([#946](https://github.com/shinyaoguri/metaphor/issues/946))
+
+### Changed
+
+- Headless sketches (`METAPHOR_VIEWER=1`) no longer start a Syphon server
+  implicitly. Syphon is published only when asked for (`SketchConfig(syphon:)`,
+  `syphonName:`, or `METAPHOR_SYPHON_NAME`); the live viewer uses the new frame
+  IPC (`METAPHOR_VIEWER_SOCKET`) and `METAPHOR_PROBE=1` keeps working as before.
+  A headless sketch with none of those now logs one error line explaining what
+  to set. Existing `metaphor-cli` releases still inject `METAPHOR_SYPHON_NAME`,
+  so `metaphor watch --viewer` keeps showing frames with an older cli
+  ([#1037](https://github.com/shinyaoguri/metaphor/issues/1037))
+- The performance HUD (`enablePerformanceHUD()`) now reads its FPS and frame
+  time from the same source as `performance.fps` and the Probe `frame.json`
+  `performance` section — the renderer's frame-rate tracker over the last
+  second — instead of its own 60-sample moving average. The on-screen numbers
+  can no longer disagree with what the sketch or an agent reads. Two visible
+  consequences: the readout settles differently (a fixed one-second window
+  rather than a fixed sample count), and when there are not enough frames to
+  measure (right after launch, or while stopped by `noLoop()`) it shows `--`
+  instead of a misleading `0`. `PerformanceHUD.fps` / `.frameTime` are
+  `Float?` accordingly; GPU time is unchanged
+  ([#698](https://github.com/shinyaoguri/metaphor/issues/698))
+- Documentation fix — no behavior change, but two audio values did not mean what
+  they said. `AudioAnalyzer.volume` / `SoundFile.analysisVolume` are the frame's
+  RMS **multiplied by 4 and clamped to 1.0**, not the raw RMS, so they saturate
+  from a sine amplitude of about 0.354 upwards (divide by 4 to recover the RMS
+  below saturation). `AudioAnalyzer.band(_:)` / `SoundFile.band(_:)` split on FFT
+  bin ratios rather than the "0-250 Hz / 250 Hz-2 kHz / 2 kHz+" the source
+  comments claimed: in hertz the edges follow the sample rate and land at
+  `sampleRate/16`, `sampleRate/4`, `sampleRate/2` — roughly 0-2.8 kHz /
+  2.8-11 kHz / 11-22 kHz at 44.1 kHz, so even a 2 kHz tone reads as "low". Reach
+  for `bandEnergy(lowFreq:highFreq:)` when you need edges you chose
+  ([#782](https://github.com/shinyaoguri/metaphor/issues/782))
+- `llms.txt` now carries the `- Note:` / `- Important:` bodies from the doc
+  comments, not just the one-line abstract. 143 callouts across the public API
+  were previously readable only in the Swift sources, including several that
+  decide whether a call works at all — `resizeCanvas(width:height:)` must be
+  called from outside the frame, `screenPosition(_:_:_:)` returns mirrored
+  values behind the camera, `KeyCode` exists because `import Foundation` makes
+  `RETURN` / `TAB` / `BACKSPACE` / `CONTROL` ambiguous, and writing
+  `GKNoiseWrapper.config` discards composition such as `invert()`. Each callout
+  is emitted indented under the declaration it belongs to, so the existing
+  one-line-per-symbol shape is unchanged. DocC symbol links (` ``foo(_:)`` `)
+  are also flattened to plain code spans throughout the file
+  ([#786](https://github.com/shinyaoguri/metaphor/issues/786))
+- Diagnostics that used to go to **stdout** as a raw `print("[metaphor] …")` now go
+  through `MetaphorLog`, so a Release build no longer writes them to the channel it
+  shares with `metaphor-cli` (the JSON Lines protocol and the Probe files). 19 call
+  sites moved: failures that leave something silently not working (canvas resize,
+  mesh creation, shader compilation, `MImage.loadPixels()` / `updatePixels()` on an
+  unsupported pixel format, every `.metaphor/` file write) now use `metaphorAlert`
+  and go to **stderr**; Probe frame downscaling falling back to full size uses
+  `metaphorDiagnostic` (stderr, `METAPHOR_DEBUG=1` only); dropped degenerate
+  triangles in `MetaphorMPS` use `metaphorWarning` (DEBUG builds only). The messages
+  themselves are unchanged apart from the `[metaphor]` prefix now being added by the
+  logger ([#896](https://github.com/shinyaoguri/metaphor/issues/896))
+
+### Deprecated
+
+- `MetaphorOutputRegistry.factory` and `MetaphorOutputRegistry.makeOutput(name:)`
+  are deprecated in favour of `MetaphorOutputProviders.register(_:)`. A factory
+  that is still assigned keeps working for now (it is consulted after the
+  registered providers, with the previous name resolution) and will be removed
+  in a later minor release
+  ([#1036](https://github.com/shinyaoguri/metaphor/issues/1036))
+
+### Fixed
+
+- `pixels` no longer traps when read before the sketch is running. It now returns
+  an empty buffer whenever there is no active `SketchContext` — inside `init`, in
+  a property initializer, or after teardown — which is what the documented
+  failure-mode policy has always said it did (drawing APIs `fatalError`, `probe()`
+  is a silent no-op, reads return empty). It previously went through
+  `Sketch.context` and hit that `fatalError` instead
+  ([#356](https://github.com/shinyaoguri/metaphor/issues/356))
+- The DocC reference no longer ships broken cross references: all 31 warnings
+  `make docs` emitted are gone, and CI now fails a pull request that adds one
+  back. Two of them were wrong documentation rather than a dead link —
+  `mouseButton` told you to pair it with a `mousePressed` property that does not
+  exist (it is `isMousePressed`, and the sample code did not compile), and
+  `AudioAnalyzerError` rendered with no description at all because its doc
+  comment had been glued onto the type declared above it. Links that pointed at
+  internal symbols are now plain code spans, cross-module links are qualified
+  (`MetaphorCore/MetaphorError`), and links to overloaded methods
+  (`sample(x:y:)`, `textFont(_:)`, `setFill(_:)`) now resolve to a specific
+  overload ([#396](https://github.com/shinyaoguri/metaphor/issues/396))
+- `docs/ai/examples-index.{md,json}`: keyword tags are now matched as *words*
+  rather than as bare substrings, so 13 examples no longer carry a tag they never
+  earned — `Topics/Textures/*` and `Samples/DynamicMeshTexture` were `typography`
+  because "Texture" contains "text", `Basics/Color/Brightness` was `3d` because
+  "lightness" contains "light", and `Basics/Math/OperatorPrecedence` was
+  `interaction` because "expression" contains "press". Inflected forms (images /
+  pixels / boxes / recorded) and `CamelCase` identifiers still match, so no
+  example lost a tag it did earn
+  ([#497](https://github.com/shinyaoguri/metaphor/issues/497))
+- `updatePixels()` now draws the pixel buffer 1:1 on the pixel grid. The 2D
+  projection offsets integer coordinates by half a pixel (so `strokeWeight(1)`
+  lands crisply on one pixel), which left the full-screen quad half a texel off:
+  every fragment sampled a texel *boundary*, and `filter::linear` blended the
+  four neighbours at 25% each. Changing a single pixel produced a blur across
+  four, and `loadPixels()` → `updatePixels()` feedback smeared a little more
+  every frame. Uniform edits (`pixels[i] ^= 0x00FF_FFFF` and friends) were
+  unaffected, which is why it went unnoticed
+  ([#812](https://github.com/shinyaoguri/metaphor/issues/812))
+- `loadPixels()` no longer changes how the frame looks when 2D and 3D overlap.
+  The same-frame readback splits the main render pass, and the split point
+  flushed the pending batches in the opposite order from the end of a frame
+  (2D then 3D, where `endFrame()` does 3D then 2D). Because `box()` and friends
+  accumulate into an instance batch rather than encoding immediately, that one
+  spot inverted the compositing order: 2D drawn before the `loadPixels()` call
+  fell *behind* 3D drawn before it — adding a single `loadPixels()` line at the
+  end of `draw()` was enough to push a 2D overlay behind a box, and changing `z`
+  did not help (the immediate path orders by encode order, not by depth).
+  Sketches that do not call `loadPixels()` render exactly as before
+  ([#832](https://github.com/shinyaoguri/metaphor/issues/832))
+- `docs/ai/examples-index.{md,json}`: the `3d` tag is now derived from the
+  example's own source — a sketch earns it by calling a 3D-exclusive metaphor API
+  (`box()`, `sphere()`, `camera()`, `lights()`, `rotateX()`, `loadModel()`, …) —
+  instead of from words in its path and description. Prose could only ever match
+  the right *word* with the wrong *meaning*: `Basics/Video/CameraSwitching` was
+  `3d` because its "cameras" are video capture devices, `Topics/GUI/Handles`
+  because its "boxes" are 2D rectangles, and `Basics/Input/Mouse2D` — a sketch
+  with 2D in its name — because its description mentions a box. 8 examples lose a
+  tag they never earned and **38 gain one they always had**, including
+  `Topics/Geometry/*`, `Topics/Textures/*` and `Samples/EnvironmentIBL`. The tag
+  now follows the code, so it flips on its own as an example is ported
+  ([#940](https://github.com/shinyaoguri/metaphor/issues/940))
+- `llms.txt`: declarations whose identifier is a Swift keyword escaped in
+  backticks are no longer cut in half by their own code span. `case `default``
+  (`ArcMode`) and `static let `return`: UInt16` (`KeyCode`) were wrapped in a
+  single-backtick fence, and CommonMark closes a code span at the first backtick
+  run of the *same* length as the opener — so the span ended inside the
+  declaration and the remainder spilled out as prose. The fence is now widened
+  past the longest backtick run inside the declaration, and padded with a space
+  at **both** ends when either end touches a backtick (CommonMark strips one
+  space per end only when both carry one). All four places the generator wraps a
+  declaration — the member line and the three type-heading paths — share one
+  helper, so a heading for such a type renders correctly too
+  ([#961](https://github.com/shinyaoguri/metaphor/issues/961))
+
 ## [0.10.0] - 2026-08-17
 
 ### Breaking Changes
@@ -2051,7 +2316,8 @@ Adds `PixelBuffer`, multi-window improvements, Core ML examples (face detection,
 
 First public release. [Release notes](https://github.com/shinyaoguri/metaphor/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/shinyaoguri/metaphor/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/shinyaoguri/metaphor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/shinyaoguri/metaphor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/shinyaoguri/metaphor/compare/v0.7.0...v0.8.0
