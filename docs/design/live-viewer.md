@@ -5,6 +5,13 @@
 > Phase 2（`saveState`/`restoreState`）は producer 側を実装済み（Issue #451。トランスポートは
 > 当初案の stdin/stdout ではなくファイル契約 = [CONTRACT.md](../../CONTRACT.md) 契約点 8 へ改訂。
 > §A-3 参照）。本書は当初の設計提案であり、確定仕様は実装と各 PR を正とする。
+>
+> **改訂（2026-08-22・[#792](https://github.com/shinyaoguri/metaphor/issues/792) /
+> [ADR-0014](../adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）**: フレーム転送は当初 Syphon
+> （global IOSurface）で実装したが、**Unix socket + 匿名 POSIX 共有メモリの親子専用 frame IPC** へ改訂した
+> （§2-2 / §3 / §7-4 を更新）。本文の他の箇所で Syphon をビューアの転送路として書いている部分
+> （§4 A-1・§5・§6・§9）は当初案の記述で、確定仕様は ADR-0014 と、M2（[#1037](https://github.com/shinyaoguri/metaphor/issues/1037)）で
+> 書き換わる [CONTRACT.md](../../CONTRACT.md) 契約点 5 を正とする。Syphon 自体は MadMapper 等への外部出力として独立 Package `metaphor-syphon` に残る。
 > 対象: metaphor 本体（ライブラリ側の小〜中規模変更）+ metaphor-cli（ビューア本体）
 > 関連: Syphon 統合、Probe プラグイン、`RenderLoopMode`、`SketchRunner`
 
@@ -50,6 +57,15 @@ hot reload できるが、スケッチロジックの反復は Processing/p5.js 
    に IOSurface のゼロコピー共有。したがって「子プロセス + IOSurface」のフレーム経路は新規 IPC
    コードゼロで v1 が作れる。
 
+   > **改訂（#792 / ADR-0014）**: v1 はこのとおり Syphon で作った。しかし Syphon の転送は
+   > `kIOSurfaceIsGlobal`（macOS 10.11 で deprecated）に乗っており、ビューアのために root `Package.swift` に
+   > `Syphon` binaryTarget を置き続ける代償（#578・resolve 失敗・毎リリースの pin 更新）が大きい。
+   > そこで出力プラグインを差し替え、**`ViewerOutputPlugin`（Core 内）が最終テクスチャを匿名 POSIX 共有メモリ
+   > （3 slot）へ GPU blit し、Unix socket の `hello` / `frame` / `release` で同期する**経路に改訂した。
+   > 「出力 plugin の `post()` が最終 texture を受け取る」という既存の組み替え可能性はそのまま効いており、
+   > 定常コストも Syphon と同等（1080p で 0.05 ms）。親が shm の mapping を握っている限り子の終了後も
+   > フレームは残るので、「reload 中は最後の絵を保持」も追加実装なしで成立する。
+
 3. **画面ブリットは MTKView デリゲート（`draw(in:)`）にしかない。**
    `renderFrame()` はオフスクリーンテクスチャへの描画 + Syphon publish + エクスポート + Probe で
    完結する。ウィンドウを作らず timer で `renderFrame()` を回すだけで描画は動き、ブリットパスは
@@ -68,17 +84,24 @@ hot reload できるが、スケッチロジックの反復は Processing/p5.js 
 ## 3. アーキテクチャ
 
 ```
-metaphor-cli (親/常駐)              スケッチ (子/使い捨て)
- watch ──build──┐                   ┌─ ヘッドレス起動
- supervisor ───spawn──────────────→ │  timer→renderFrame()
- viewer window                      │  Syphon publish ──┐
-   ↑ Syphon client ─────────────────────────────────────┘ (IOSurface zero-copy)
+metaphor-cli (親/常駐)                          スケッチ (子/使い捨て)
+ watch ──build──┐                               ┌─ ヘッドレス起動 (METAPHOR_VIEWER=1)
+ listen(METAPHOR_VIEWER_SOCKET) ─ spawn ──────→ │  timer→renderFrame()
+ viewer window                                  │  ViewerOutputPlugin ──GPU blit──▶ 匿名 POSIX shm (3 slot)
+   ↑ FrameIPCSource ◀── mmap + MTLBuffer(bytesNoCopy:) + linear texture view ──┘
+   │   ◀── Unix socket: hello (+ shm fd via SCM_RIGHTS) / frame {slot} ── 子
+   │   ─── release {slot} ──────────────────────────────────────────────▶ 子
    └ input events ──stdin(JSON lines)──→ InputInjectionPlugin → InputManager
    overlay: build error / crash log / FPS・probe HUD
 ```
 
-保存 → 増分ビルド → 子のみ再起動。ビューアは最終フレームを表示し続け、新しい子の最初のフレームで
-切り替わる。クラッシュ時は stderr をオーバーレイ表示し、次の保存で復帰。
+保存 → 増分ビルド → 子のみ再起動。ビューアは最終フレームを表示し続け（共有メモリの mapping は子の
+終了後も有効）、新しい子 = 新しい socket 接続 = 新しい世代の最初の `frame` で切り替わる。クラッシュ時は
+stderr をオーバーレイ表示し、次の保存で復帰。
+
+当初は子が Syphon サーバーへ publish し、ビューアが Syphon client（IOSurface ゼロコピー）で受ける構成だった。
+専用 IPC へ改訂した経緯と却下した候補（global IOSurface / Mach port / XPC 等）は
+[ADR-0014](../adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。
 
 ## 4. ワークストリーム A: ライブラリ側（本リポジトリ）
 
@@ -170,7 +193,9 @@ Phase 0 → 1 の順なら途中で止めても損が出ない。
    MetaphorNetwork に依存不可なので OSC は使わない）。
 3. **座標逆変換ロジック**: MetaphorMTKView の既存変換と同式を CLI 側にも持つ（唯一の二重実装。
    仕様として明記）。
-4. **再起動時の Syphon 名衝突**: 新旧オーバーラップ中は別名 / 世代サフィックス。
+4. **再起動時の世代の切り替え**（当初は「Syphon 名衝突: 新旧オーバーラップ中は別名 / 世代サフィックス」）:
+   専用 IPC には名前空間が無いので衝突そのものが消える。世代は **socket 接続の順序**（親の accept 順 =
+   子の起動順）で決まり、親は新世代の最初の `frame` が届くまで旧世代のテクスチャを表示し続ける。
 
 ## 8. 制約（計画に織り込み済み）
 
