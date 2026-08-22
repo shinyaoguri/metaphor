@@ -374,21 +374,25 @@ def no_capture_reason(package_dir: Path, ref: str) -> str | None:
 # --- 外部コマンド ---------------------------------------------------------------
 
 
-def run_capturing(command: list[str], what: str) -> str:
+def run_capturing(command: list[str], what: str, *, cwd: Path | None = None) -> str:
     """コマンドを走らせ、成功したら stdout を返す。失敗は `ShotError`。
 
     出力を捨てずに抱えるのは、失敗したときに何が起きたかを添えるため（ビルドの
     エラーは stdout 側に出ることがある）。
+
+    `cwd` を渡せる口があるのは、**どこで走らせるかが結果を変える**コマンドがあるため
+    （`swift build` は cwd の Package.swift を見る。省略するとリポジトリ直下の
+    metaphor 本体をビルドしてしまい、撮る対象がビルドされないまま素通りする）。
     """
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
     if result.returncode != 0:
         raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
     return result.stdout
 
 
-def run_or_raise(command: list[str], what: str) -> None:
+def run_or_raise(command: list[str], what: str, *, cwd: Path | None = None) -> None:
     """戻り値の要らない `run_capturing`。"""
-    run_capturing(command, what)
+    run_capturing(command, what, cwd=cwd)
 
 
 # --- Probe を起動して撮る -------------------------------------------------------
@@ -470,11 +474,15 @@ class ProbeCapture:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def build(self, command: list[str]) -> None:
-        """撮る前にビルドする。失敗したら出力ごと `ShotError`。
+        """撮る前に、**撮る対象のパッケージで**ビルドする。失敗は出力ごと `ShotError`。
+
+        `cwd` を渡し忘れると `swift build` はリポジトリ直下の metaphor 本体を建てて
+        成功し、対象がビルドされないまま `swift run` へ進む（そちらが結局ビルドするので
+        絵は出るが、ビルドの失敗がここではなく「起動したのに終了した」として出る）。
 
         リファレンスのように事前に一括ビルドしてある用途では呼ばない。
         """
-        run_or_raise(command, f"'{self.ref}' のビルド")
+        run_or_raise(command, f"'{self.ref}' のビルド", cwd=self.cwd)
 
     def place_request(self, payload: dict) -> None:
         """撮ってほしいものを置く（契約点 4: tmp へ書いて rename でアトミックに）。"""

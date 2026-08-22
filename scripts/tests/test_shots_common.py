@@ -563,6 +563,27 @@ class TestProbeCapture(CommonTestCase):
         self.assertFalse(self.probe_dir.exists())
         self.assertTrue(self.launched[0].stdin is None or self.launched[0].stdin.closed)
 
+    def test_the_build_runs_in_the_package_being_shot(self) -> None:
+        """`swift build` は cwd の Package.swift を見る。
+
+        渡し忘れるとリポジトリ直下の metaphor 本体が建って**成功してしまい**、撮る
+        対象はビルドされないまま `swift run` へ進む。絵は出る（そちらが結局ビルドする）
+        ので気付けず、対象のビルドが壊れている場合だけ「起動したのに終了した」という
+        遠い顔で出てくる。
+        """
+        seen: list = []
+        saved = common.subprocess.run
+        self.addCleanup(lambda: setattr(common.subprocess, "run", saved))
+
+        def fake_run(command, **kwargs):
+            seen.append(kwargs.get("cwd"))
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+        common.subprocess.run = fake_run
+        with self.session() as probe:
+            probe.build(["swift", "build"])
+        self.assertEqual(seen, [self.root])
+
     def test_a_build_failure_leaves_nothing_behind(self) -> None:
         """ビルドで抜けても request.json は残らない（3 実装あった頃はここだけ漏れた）。"""
         saved = common.subprocess.run
