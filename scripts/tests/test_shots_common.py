@@ -644,6 +644,22 @@ class TestRunCapturing(CommonTestCase):
         self.assertIn("ビルド", message)
         self.assertIn("なにか", message)
 
+    def test_stderr_is_left_out_unless_asked_for(self) -> None:
+        """既定は stdout だけ。診断の雑音を出力の解析に混ぜない。"""
+        self.assertEqual(
+            common.run_capturing(["sh", "-c", "echo out; echo err >&2"], "確認"),
+            "out\n",
+        )
+
+    def test_include_stderr_brings_back_both_streams(self) -> None:
+        """読みたい出力が stderr に出るコマンドがある（ffmpeg の psnr 要約 ＝ #1030）。"""
+        self.assertEqual(
+            common.run_capturing(
+                ["sh", "-c", "echo out; echo err >&2"], "確認", include_stderr=True
+            ),
+            "out\nerr\n",
+        )
+
     def test_run_or_raise_is_the_same_check(self) -> None:
         self.assertIsNone(common.run_or_raise(["true"], "確認"))
         with self.assertRaises(common.ShotError):

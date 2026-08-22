@@ -5,7 +5,7 @@ Run from the repository root:
 
     python3 -m unittest discover -s scripts/tests
 
-確かめるのは、GPU とネットワークと Gyazo トークンが要らない 6 つ。
+確かめるのは、GPU とネットワークと Gyazo トークンが要らない 7 つ。
 
 - **抽出** — doc コメントから撮影対象を拾い、宣言から DocC と同じシンボル表記を作る。
   ここが狂うと、別のシンボルのページに絵が出る
@@ -16,6 +16,10 @@ Run from the repository root:
 - **台帳の掃除** — `--only` で絞っているときは掃除しない。絞ったまま掃除すると、
   視界の外のエントリを「消えたスニペット」と取り違えて台帳ごと消す（実際に踏んだ）
 - **鮮度検査** — コードを変えたら赤くなり、URL がずれても赤くなる
+- **反転一致の計測** — ffmpeg の出力から PSNR を読み取れる。判定ロジックは `flip_psnr`
+  を差し替えて見るので、**ffmpeg を呼ぶ 1 行だけはここで実際に呼ぶ**（画像は Python で
+  書くので GPU は要らない。ffmpeg が無い環境では飛ばす）。読み口が壊れると撮影が最後で
+  丸ごと止まる（#1030）
 - **撮影の段取り** — 本番のリクエストを**起動前**に置く（#784）。絵そのものは GPU が
   要るので撮れないが、「いつリクエストを置くか」は偽の Probe で確かめられる。ここが
   ずれると、動きのスニペットは実行ごとに違う位相から撮れて撮り直しが毎回別物になる
@@ -24,9 +28,12 @@ Run from the repository root:
 import importlib.util
 import io
 import json
+import shutil
+import struct
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 from _probe_fakes import DeadSketch, FakeSketch
@@ -437,6 +444,69 @@ class ReferenceShotsTestCase(unittest.TestCase):
 
     def test_check_reports_missing_image(self):
         self.assertEqual(shots.check(self.extract(), {}, {}), 1)
+
+
+class FlipPsnrTestCase(unittest.TestCase):
+    """`flip_psnr` が **実際に ffmpeg を呼んで**数値を持ち帰れるか（#1030）。
+
+    他の反転一致の検査は `flip_psnr` ごと差し替えて判定ロジックだけを見ているので、
+    ffmpeg を呼ぶ 1 行は誰も踏まない。そこが壊れていた（要約は stdout ではなく stderr
+    に出るのに stdout だけを見ていた）ため、リファレンスの実行結果画像は 1 枚も撮り
+    直せない状態が #985 以降ずっと残った。
+
+    絵は Python で書いた 8x8 の PNG で足り、GPU も撮影も要らない。ffmpeg が無い環境
+    （python テストだけを回す CI のステップ）では飛ばす。
+    """
+
+    @staticmethod
+    def write_png(path: Path, rows: list[list[int]]) -> None:
+        """RGB8 の PNG を書く（1 行 ＝ ピクセルごとに R, G, B を並べたバイト列）。
+
+        画像ライブラリを足さないのは、この検査に要るのが「上下対称な絵」と「そうで
+        ない絵」の 2 枚だけで、zlib と struct で足りるため。
+        """
+        height = len(rows)
+        width = len(rows[0]) // 3
+        raw = b"".join(b"\x00" + bytes(row) for row in rows)
+
+        def chunk(kind: bytes, payload: bytes) -> bytes:
+            body = kind + payload
+            return (
+                struct.pack(">I", len(payload))
+                + body
+                + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+            )
+
+        path.write_bytes(
+            b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw))
+            + chunk(b"IEND", b"")
+        )
+
+    def setUp(self):
+        if shutil.which("ffmpeg") is None:
+            self.skipTest("ffmpeg が無いので実測できない")
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_a_vertically_symmetric_image_measures_as_a_perfect_match(self):
+        """全面同色 ＝ 上下反転しても同じ絵。ffmpeg は `average:inf` と言う。"""
+        still = self.dir / "flat.png"
+        self.write_png(still, [[10, 20, 30] * 8 for _ in range(8)])
+        self.assertEqual(shots.flip_psnr(still, "vflip"), float("inf"))
+
+    def test_an_asymmetric_image_measures_as_a_finite_value(self):
+        """上半分が白・下半分が黒 ＝ 上下反転で完全に別の絵。有限値が返る。"""
+        still = self.dir / "half.png"
+        self.write_png(
+            still,
+            [[255, 255, 255] * 8 if y < 4 else [0, 0, 0] * 8 for y in range(8)],
+        )
+        value = shots.flip_psnr(still, "vflip")
+        self.assertIsNotNone(value)
+        self.assertLess(value, shots.FLIP_PSNR_WARN_DB)
 
 
 class CaptureTestCase(unittest.TestCase):
