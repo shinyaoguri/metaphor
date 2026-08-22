@@ -702,6 +702,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var hasStroke: Bool` -- ストロークが有効かどうか。
 - `var strokeColor: SIMD4<Float>` -- ストローク色（RGBA）。
 
+### `struct MetaphorOutputContext` -- 出力 provider が「この起動で出力を提供するか」を判断するための材料。
+
+- `case primary(SketchConfig)` -- プライマリスケッチ（`Sketch.main()` / `SketchRunner`）。
+- `case window(SketchWindowConfig)` -- `SketchWindow`（セカンダリウィンドウ）。
+- `let environment: [String : String]` -- 参照する環境変数（テストから注入できるよう `ProcessInfo` を直接読みません）。
+- `let isHeadless: Bool` -- ヘッドレス起動（ウィンドウを開かない）かどうか。
+- `let scope: MetaphorOutputContext.Scope` -- 出力を要求している側。
+- `var sketchConfig: SketchConfig? { get }` -- `scope` がプライマリならその `SketchConfig`。
+- `var windowConfig: SketchWindowConfig? { get }` -- `scope` がセカンダリウィンドウならその `SketchWindowConfig`。
+- `init(scope: MetaphorOutputContext.Scope, environment: [String : String], isHeadless: Bool)`
+
 ### `struct MFont` -- `SketchContext/loadFont(_:cache:)` が読み込んだフォントファイルへのハンドル。
 
 - `let familyName: String` -- フォントのファミリー名（例: `Space Mono`）。
@@ -721,6 +732,33 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let requirements: PluginRequirements` -- このプラグインがレンダーループに求める条件（既定は空）。
 - `init(requirements: PluginRequirements = [], _ create: @MainActor () -> any MetaphorPlugin)` -- プラグインを生成するクロージャからファクトリを作成します。
 - `func create() -> any MetaphorPlugin` -- プラグインをインスタンス化します。
+
+### `struct PluginRequirements` -- プラグインがレンダーループに求める条件。
+
+- `static let externalRenderLoop: PluginRequirements` -- ウィンドウのディスプレイリンクから独立したレンダーループ（`RenderLoopMode/timer(fps:)`）を
+- `var isEmpty: Bool { get }` -- A Boolean value that indicates whether the set has no elements.
+- `let rawValue: UInt8`
+- `init()` -- Creates an empty option set.
+- `init<S>(_ sequence: S) where S : Sequence, Self.Element == S.Element` -- Creates a new set from a finite sequence of items.
+- `init(arrayLiteral: Self.Element...)` -- Creates a set containing the elements of the given array literal.
+- `init(rawValue: UInt8)`
+- `func contains(_ member: Self) -> Bool` -- Returns a Boolean value that indicates whether a given element is a
+- `mutating func formIntersection(_ other: Self)` -- Removes all elements of this option set that are not
+- `mutating func formSymmetricDifference(_ other: Self)` -- Replaces this set with a new set containing all elements
+- `mutating func formUnion(_ other: Self)` -- Inserts the elements of another set into this option set.
+- `mutating func insert(_ newMember: Self.Element) -> (inserted: Bool, memberAfterInsert: Self.Element)` -- Adds the given element to the option set if it is not already a member.
+- `func intersection(_ other: Self) -> Self` -- Returns a new option set with only the elements contained in both this
+- `func isDisjoint(with other: Self) -> Bool` -- Returns a Boolean value that indicates whether the set has no members in
+- `func isStrictSubset(of other: Self) -> Bool` -- Returns a Boolean value that indicates whether this set is a strict
+- `func isStrictSuperset(of other: Self) -> Bool` -- Returns a Boolean value that indicates whether this set is a strict
+- `func isSubset(of other: Self) -> Bool` -- Returns a Boolean value that indicates whether the set is a subset of
+- `func isSuperset(of other: Self) -> Bool` -- Returns a Boolean value that indicates whether the set is a superset of
+- `mutating func remove(_ member: Self.Element) -> Self.Element?` -- Removes the given element and all elements subsumed by it.
+- `mutating func subtract(_ other: Self)` -- Removes the elements of the given set from this set.
+- `func subtracting(_ other: Self) -> Self` -- Returns a new set containing the elements of this set that do not occur
+- `func symmetricDifference(_ other: Self) -> Self` -- Returns a new option set with the elements contained in this set or in
+- `func union(_ other: Self) -> Self` -- Returns a new option set of the elements contained in this set, in the
+- `mutating func update(with newMember: Self.Element) -> Self.Element?` -- Inserts the given element into the set.
 
 ### `struct ShapeStyle` -- シェイプ作成時にキャプチャされるビジュアルスタイルプロパティのスナップショット。
 
@@ -1444,6 +1482,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func reload(shaderLibrary: ShaderLibrary) throws` -- ホットリロード後にシェーダーライブラリからシェーダー関数を再取得します。
 - `func setParameters<T>(_ value: T)` -- シェーダーに buffer(1) として渡すカスタムパラメータを設定します。
 
+### `final class DepthStencilCache` -- 同一デプスモードの冗長な作成を回避するためにデプスステンシルステートをキャッシュします。
+
+- `init(device: any MTLDevice)` -- 指定された Metal デバイスにバインドされた新しいデプスステンシルキャッシュを作成します。
+- `func clear()` -- キャッシュ済みデプスステンシルステートをすべて破棄します。
+- `func state(for mode: DepthMode) -> (any MTLDepthStencilState)?` -- 指定されたモードのデプスステンシルステートを取得します。キャッシュ済みインスタンスがあればそれを使用します。
+
 ### `final class DynamicMesh` -- 頂点を動的に追加・変更できる3Dメッシュを提供します。
 
 - `var hasUVs: Bool { get }` -- このメッシュが UV 座標を持つかどうか。
@@ -1854,6 +1898,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func registerFromFile(path: String, as key: String) throws` -- ディスクから MSL ソースファイルを読み込み、登録します。
 - `func reload(key: String, source: String) throws` -- MSL ソースから再コンパイルして既存ライブラリを置換し、シェーダーをリロードします。
 - `func reloadFromFile(key: String, path: String) throws` -- ディスク上のファイルからシェーダーをリロードし、既存ライブラリを置換します。
+
+### `final class SharedMetalResources` -- 複数のウィンドウやレンダラー間で共有可能な Metal リソースを保持します。
+
+- `let commandQueue: any MTLCommandQueue` -- GPU へのワーク送信に使用されるコマンドキュー
+- `let depthStencilCache: DepthStencilCache` -- レンダラー間で共有されるデプスステンシルステートキャッシュ
+- `let device: any MTLDevice` -- 全 GPU リソース作成に使用される Metal デバイス
+- `let shaderLibrary: ShaderLibrary` -- コンパイル済み Metal シェーダー関数を含むシェーダーライブラリ
+- `init(device: (any MTLDevice)? = nil) throws` -- 共有 Metal リソースを作成します。
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 

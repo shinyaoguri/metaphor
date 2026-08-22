@@ -124,6 +124,131 @@ class PropertyWrapperTests(unittest.TestCase):
         self.assertNotIn("FrameBudget", out)
 
 
+# ---------------------------------------------------------------------------
+# Reachability: which types earn an entry (#1046)
+# ---------------------------------------------------------------------------
+
+
+def struct(name: str) -> dict:
+    return symbol(gen.KIND_STRUCT, [name], [
+        frag("keyword", "struct"),
+        frag("text", " "),
+        frag("identifier", name),
+    ], [f"{name} の説明。"])
+
+
+def protocol(name: str) -> dict:
+    return symbol(gen.KIND_PROTOCOL, [name], [
+        frag("keyword", "protocol"),
+        frag("text", " "),
+        frag("identifier", name),
+    ], [f"{name} の説明。"])
+
+
+def init_taking(owner: str, label: str, param_type: str) -> dict:
+    """`init(<label>: <Type>)` on <owner>, with the functionSignature block the
+    symbol graph emits for parameters (what the generator follows)."""
+    sym = symbol(gen.KIND_INIT, [owner, f"init({label}:)"], [
+        frag("keyword", "init"),
+        frag("text", f"({label}: "),
+        frag("typeIdentifier", param_type),
+        frag("text", ")"),
+    ])
+    sym["functionSignature"] = {"parameters": [{
+        "name": label,
+        "declarationFragments": [
+            frag("identifier", label), frag("text", ": "), frag("typeIdentifier", param_type),
+        ],
+    }]}
+    return sym
+
+
+def method_taking(owner: str, name: str, label: str, param_type: str) -> dict:
+    sym = symbol(gen.KIND_METHOD, [owner, f"{name}({label}:)"], [
+        frag("keyword", "func"),
+        frag("text", " "),
+        frag("identifier", name),
+        frag("text", f"({label}: "),
+        frag("typeIdentifier", param_type),
+        frag("text", ")"),
+    ])
+    sym["functionSignature"] = {"parameters": [{
+        "name": label,
+        "declarationFragments": [
+            frag("identifier", label), frag("text", ": "), frag("typeIdentifier", param_type),
+        ],
+    }]}
+    return sym
+
+
+def property_of(owner: str, name: str, prop_type: str) -> dict:
+    return symbol(gen.KIND_PROPERTY, [owner, name], [
+        frag("keyword", "var"),
+        frag("text", " "),
+        frag("identifier", name),
+        frag("text", ": "),
+        frag("typeIdentifier", prop_type),
+    ])
+
+
+class ReachabilityTests(unittest.TestCase):
+    """Sketch API → SketchConfig-like A → PluginFactory-like B → PluginRequirements-like C."""
+
+    def setUp(self):
+        # `func configure(_ a: A)` on Sketch seeds the surface with A.
+        self.sketch_api = method_taking(gen._SKETCH_TYPE, "configure", "a", "A")
+
+    def test_parameter_type_two_hops_away_is_included(self):
+        # A.init(b: B) → B.init(c: C): C was unreachable before #1046.
+        out = render(MetaphorCore=module(
+            self.sketch_api,
+            struct("A"), init_taking("A", "b", "B"),
+            struct("B"), init_taking("B", "c", "C"),
+            struct("C"),
+        ))
+        self.assertIn("struct B", out)
+        self.assertIn("struct C", out)
+
+    def test_protocol_requirement_parameter_is_included(self):
+        # Protocols are always emitted; the type a conformer has to accept in a
+        # requirement (`func makeOutput(context: Context)`) must be spelled too.
+        out = render(MetaphorCore=module(
+            protocol("OutputProvider"),
+            method_taking("OutputProvider", "makeOutput", "context", "Context"),
+            struct("Context"),
+        ))
+        self.assertIn("protocol OutputProvider", out)
+        self.assertIn("struct Context", out)
+
+    def test_received_types_are_still_included_one_hop_away(self):
+        # What a sketch author *receives* from a reachable type (property / return)
+        # keeps its entry — the pre-#1046 behaviour for Canvas3D, TweenManager, ….
+        out = render(MetaphorCore=module(
+            self.sketch_api,
+            struct("A"), property_of("A", "received", "Received"),
+            struct("Received"),
+        ))
+        self.assertIn("struct Received", out)
+
+    def test_received_types_are_not_followed_beyond_one_hop(self):
+        # Past the first hop only parameters are followed: a property on a
+        # two-hop type must not drag the renderer's collaborators in.
+        out = render(MetaphorCore=module(
+            self.sketch_api,
+            struct("A"), init_taking("A", "b", "B"),
+            struct("B"), init_taking("B", "c", "C"),
+            struct("C"), property_of("C", "internal", "Collaborator"),
+            struct("Collaborator"),
+        ))
+        self.assertIn("struct C", out)
+        self.assertNotIn("struct Collaborator", out)
+
+    def test_unreachable_struct_stays_excluded(self):
+        out = render(MetaphorCore=module(self.sketch_api, struct("A"), struct("Orphan")))
+        self.assertIn("struct A", out)
+        self.assertNotIn("struct Orphan", out)
+
+
 class ForeignExtensionTests(unittest.TestCase):
     """Extensions on types declared outside the package (SIMD2, Float, …)."""
 
