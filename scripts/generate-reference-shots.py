@@ -105,7 +105,9 @@ from shots_common import (  # noqa: E402
     ShotError,
     capture_provenance,
     drift_summary,
+    file_sha256,
     image_size,
+    upload_to_gyazo,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -159,12 +161,7 @@ MAX_ROW_LINE = 38
 # 消してしまう可能性があるので止める（印から下はスクリプトが所有する規約）。
 SCAFFOLD_RE = re.compile(r"^(@Row\s*\{|@Column(\(size:\s*\d+\))?\s*\{|\}|)$")
 
-GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
-GYAZO_HOST = "i.gyazo.com"
-# トークンは 1Password から都度読む（平文の環境変数として常駐させない）。
-GYAZO_TOKEN_REF = os.environ.get(
-    "GYAZO_TOKEN_REF", "op://Automation/Gyazo API/credential"
-)
+# Gyazo の定数と上げ口は shots_common にある。
 
 # 起動から frame.png が書かれるまでの待ち時間。初回はシェーダーのコンパイルが入る。
 CAPTURE_TIMEOUT_SEC = 120.0
@@ -942,57 +939,9 @@ def symmetry_warnings(
 
 
 # --- Gyazo -------------------------------------------------------------------
-
-
-_GYAZO_TOKEN: list[str] = []
-
-
-def gyazo_token() -> str:
-    """1Password から Gyazo のアクセストークンを 1 度だけ読む。
-
-    `--check` / `--compile-only` からは決して呼ばない（CI にはトークンが無い）。
-    """
-    if _GYAZO_TOKEN:
-        return _GYAZO_TOKEN[0]
-    if shutil.which("op") is None:
-        raise ShotError(
-            "1Password CLI（op）が見つからない。画像のアップロードにはトークンが要る。"
-            "brew install 1password-cli で入ります"
-        )
-    result = subprocess.run(["op", "read", GYAZO_TOKEN_REF], capture_output=True, text=True)
-    if result.returncode != 0:
-        raise ShotError(
-            f"Gyazo のトークンを読めなかった（{GYAZO_TOKEN_REF}）:\n{result.stderr.strip()}"
-        )
-    token = result.stdout.strip()
-    if not token:
-        raise ShotError(f"Gyazo のトークンが空だった（{GYAZO_TOKEN_REF}）")
-    _GYAZO_TOKEN.append(token)
-    return token
-
-
-def gyazo_url_from_response(body: str, expected_suffix: str) -> str:
-    """Upload API の応答から URL を取り出して検証する。"""
-    try:
-        data = json.loads(body)
-    except json.JSONDecodeError as exc:
-        raise ShotError(f"Gyazo の応答が JSON として読めない: {body[:200]}") from exc
-    url = data.get("url")
-    if not isinstance(url, str) or not url.startswith(f"https://{GYAZO_HOST}/"):
-        raise ShotError(f"Gyazo の応答に想定した URL が無い: {body[:200]}")
-    if not url.endswith(expected_suffix):
-        # 形式が変換されたら DocC での見え方が変わる。黙って進めない。
-        raise ShotError(f"Gyazo が別の形式で返した（{expected_suffix} を上げたのに {url}）")
-    return url
-
-
-def file_sha256(path: Path) -> str:
-    """上げたバイト列の指紋。URL が指す中身が入れ替わっていないことの確認用。"""
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+#
+# 上げ口そのもの（トークンの読み方・curl・応答の検証）は shots_common に置いてある。
+# ここに残すのは、リファレンス固有の「中身が同じなら上げ直さない」だけ。
 
 
 def upload(path: Path, snippet: Snippet, recorded: dict | None) -> tuple[str, str]:
@@ -1004,25 +953,7 @@ def upload(path: Path, snippet: Snippet, recorded: dict | None) -> tuple[str, st
     digest = file_sha256(path)
     if recorded and recorded.get("sha256") == digest and recorded.get("url"):
         return recorded["url"], digest
-    token = gyazo_token()
-    result = subprocess.run(
-        [
-            "curl", "-sS", "--fail", "--retry", "3", "--retry-delay", "2",
-            "-F", f"access_token={token}",
-            "-F", f"imagedata=@{path}",
-            "-F", f"title=metaphor reference {snippet.symbol}",
-            GYAZO_UPLOAD_URL,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        # コマンド列にはトークンが入っているので、決してそのまま出さない。
-        raise ShotError(
-            f"'{snippet.symbol}' の {path.name} をアップロードできなかった"
-            f"（curl exit {result.returncode}）:\n{result.stderr.strip()[-500:]}"
-        )
-    return gyazo_url_from_response(result.stdout, path.suffix), digest
+    return upload_to_gyazo(path, f"metaphor reference {snippet.symbol}"), digest
 
 
 def publish(snippet: Snippet, entry: dict, recorded: dict | None) -> dict:

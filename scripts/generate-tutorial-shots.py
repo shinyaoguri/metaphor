@@ -79,7 +79,6 @@ GPU レンダリングの出力は環境（GPU・ドライバ・OS）でビッ�
 """
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -99,11 +98,13 @@ from shots_common import (  # noqa: E402
     ShotError,
     capture_provenance,
     drift_summary,
+    file_sha256,
     image_size,
     load_input_script,
     send_input_script,
     source_files,
     source_hash,
+    upload_to_gyazo,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -126,14 +127,8 @@ IMAGE_LINE_RE = re.compile(
 )
 
 # 画像の実体の置き場（ADR-0010）。チュートリアルの本文だけが外部 URL を指す
-# （Examples の画像はリポジトリ内に置くので、この経路を使わない）。
-GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
-GYAZO_HOST = "i.gyazo.com"
-# トークンは 1Password から都度読む（平文の環境変数として常駐させない）。参照先を
-# 環境変数で差し替えられるようにしておくのは DEVELOPMENT.md の手順と同じ流儀。
-GYAZO_TOKEN_REF = os.environ.get(
-    "GYAZO_TOKEN_REF", "op://Automation/Gyazo API/credential"
-)
+# （Examples の画像はリポジトリ内に置くので、この経路を使わない）。定数と上げ口は
+# shots_common にある。
 
 # 起動から frame.png が書かれるまでの待ち時間。初回はシェーダーのコンパイルが
 # 入るぶん遅い。
@@ -187,86 +182,8 @@ def staging_path_for(ref: str, kind: str | None = None) -> Path:
     return STAGING_DIR / part / f"{section}.{suffix}"
 
 
-def file_sha256(path: Path) -> str:
-    """上げたバイト列の指紋。URL の中身が入れ替わっていないことを後から確かめる。"""
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-_GYAZO_TOKEN: list[str] = []
-
-
-def gyazo_token() -> str:
-    """1Password から Gyazo のアクセストークンを 1 度だけ読む。
-
-    `--check` からは決して呼ばない（CI にはトークンが無いため）。
-    """
-    if _GYAZO_TOKEN:
-        return _GYAZO_TOKEN[0]
-    if shutil.which("op") is None:
-        raise ShotError(
-            "1Password CLI（op）が見つからない。画像のアップロードにはトークンが要る。"
-            "brew install 1password-cli で入ります"
-        )
-    result = subprocess.run(
-        ["op", "read", GYAZO_TOKEN_REF], capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        raise ShotError(
-            f"Gyazo のトークンを読めなかった（{GYAZO_TOKEN_REF}）:\n{result.stderr.strip()}"
-        )
-    token = result.stdout.strip()
-    if not token:
-        raise ShotError(f"Gyazo のトークンが空だった（{GYAZO_TOKEN_REF}）")
-    _GYAZO_TOKEN.append(token)
-    return token
-
-
-def gyazo_url_from_response(body: str, expected_suffix: str) -> str:
-    """Upload API の応答から URL を取り出して検証する（組み立てだけを切り出す）。"""
-    try:
-        data = json.loads(body)
-    except json.JSONDecodeError as exc:
-        raise ShotError(f"Gyazo の応答が JSON として読めない: {body[:200]}") from exc
-    url = data.get("url")
-    if not isinstance(url, str) or not url.startswith(f"https://{GYAZO_HOST}/"):
-        raise ShotError(f"Gyazo の応答に想定した URL が無い: {body[:200]}")
-    if not url.endswith(expected_suffix):
-        # 形式が変換されたら本文の見え方が変わる。黙って進めない。
-        raise ShotError(
-            f"Gyazo が別の形式で返した（{expected_suffix} を上げたのに {url}）"
-        )
-    return url
-
-
-def upload_to_gyazo(path: Path, ref: str) -> str:
-    """画像を Gyazo へ上げて URL を返す。
-
-    アセットは不変・追記型なので、既にある URL を差し替えることはしない。
-    撮り直しは常に新しい URL になり、古い URL は過去のリビジョンのために残る。
-    """
-    token = gyazo_token()
-    result = subprocess.run(
-        [
-            "curl", "-sS", "--fail", "--retry", "3", "--retry-delay", "2",
-            "-F", f"access_token={token}",
-            "-F", f"imagedata=@{path}",
-            "-F", f"title=metaphor tutorial {ref}",
-            GYAZO_UPLOAD_URL,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        # コマンド列にはトークンが入っているので、決してそのまま出さない。
-        raise ShotError(
-            f"'{ref}' の {path.name} をアップロードできなかった"
-            f"（curl exit {result.returncode}）:\n{result.stderr.strip()[-500:]}"
-        )
-    return gyazo_url_from_response(result.stdout, path.suffix)
+# 上げ口そのもの（トークンの読み方・curl・応答の検証）は shots_common に置いてある。
+# ここに残すのは、チュートリアル固有の「中身が同じなら上げ直さない」だけ。
 
 
 def upload_asset(ref: str, path: Path, recorded: dict | None) -> tuple[str, str]:
@@ -278,7 +195,7 @@ def upload_asset(ref: str, path: Path, recorded: dict | None) -> tuple[str, str]
     digest = file_sha256(path)
     if recorded and recorded.get("sha256") == digest and recorded.get("url"):
         return recorded["url"], digest
-    return upload_to_gyazo(path, ref), digest
+    return upload_to_gyazo(path, f"metaphor tutorial {ref}"), digest
 
 
 def doc_paths() -> list[Path]:

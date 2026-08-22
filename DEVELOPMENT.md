@@ -285,13 +285,24 @@ Gyazo の Upload API へ渡すと `https://i.gyazo.com/<id>.gif` が返る。Git
 経由で配信するが、アニメーションはそのまま再生される。
 
 ```bash
-curl -s -F "access_token=$(op read "${GYAZO_TOKEN_REF:-op://Automation/Gyazo API/credential}")" \
+curl -s -F "access_token=$(secret-read "${GYAZO_TOKEN_REF:-op://Automation/Gyazo API/credential}")" \
   -F "imagedata=@motion.gif" https://upload.gyazo.com/api/upload
 ```
 
 返り値 `url` を `![説明](URL)` で PR 本文に貼り、**どこを見てほしいか**を本文で補う。
-アクセストークンは 1Password から都度読む(平文の環境変数として常駐させない)。
-手順の一般形は repo-standards プラグインの gyazo-capture スキルにある。
+
+アクセストークンは都度読む(平文の環境変数として常駐させない。環境変数に持たせてよいのは
+参照文字列だけ)。読み口が `op read` ではなく `secret-read` なのは、**1Password が
+ロックされていると `op read` が承認待ちのまま返らない**ため — 無人セッションはそこで
+黙って止まる。`secret-read` は低権限の秘密だけを macOS Keychain にキャッシュするので、
+ロック中でも読めて、正本(1Password)のローテートにも自動で追随する。`make reference-shots` /
+`make tutorial-shots` も同じ読み口を使う([`scripts/shots_common.py`](scripts/shots_common.py)
+の `gyazo_token`)。
+
+`secret-read` は個人環境のセットアップリポジトリが `bin/` に置くもので、metaphor の
+必須依存ではない。無ければ `op read` に落ちる(そのときは上のロックの問題を抱えるので、
+スクリプトは落ちたことを警告する)。手順の一般形は repo-standards プラグインの
+gyazo-capture スキルにある。
 
 ## 依存更新 PR（dependabot）を手元で検証する
 
