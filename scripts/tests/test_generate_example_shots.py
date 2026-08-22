@@ -140,15 +140,25 @@ class TestNoCapture(ExampleShotsTestCase):
     def test_no_capture_reports_the_written_reason(self) -> None:
         package = self.package()
         (package / gen.NO_CAPTURE_NAME).write_text("カメラの映像は撮る場所で変わる\n")
-        self.assertEqual(gen.no_capture_reason(package), "カメラの映像は撮る場所で変わる")
+        self.assertEqual(
+            gen.no_capture_reason(package, "Basics/Form/Example"),
+            "カメラの映像は撮る場所で変わる",
+        )
 
-    def test_an_empty_no_capture_still_skips(self) -> None:
+    def test_an_empty_no_capture_is_rejected(self) -> None:
+        """空の申告は通さない（#1021 の共通化で tutorial 側の厳しさに揃えた）。
+
+        以前はここで「理由が書かれていない」という文言を返して撮影を飛ばしていた。
+        止めない方が親切に見えるが、**撮り忘れと見分けが付かなくなる**のが実際の困り方で、
+        理由を書かせること自体が申告の目的なので、書かれていなければ止める。
+        """
         package = self.package()
         (package / gen.NO_CAPTURE_NAME).write_text("\n")
-        self.assertIn(gen.NO_CAPTURE_NAME, gen.no_capture_reason(package) or "")
+        with self.assertRaises(gen.ShotError):
+            gen.no_capture_reason(package, "Basics/Form/Example")
 
     def test_a_plain_package_is_captured(self) -> None:
-        self.assertIsNone(gen.no_capture_reason(self.package()))
+        self.assertIsNone(gen.no_capture_reason(self.package(), "Basics/Form/Example"))
 
 
 class TestInputScript(ExampleShotsTestCase):
@@ -161,7 +171,7 @@ class TestInputScript(ExampleShotsTestCase):
 
     def test_an_input_script_is_captured_not_skipped(self) -> None:
         # 台本は「撮らない申告」ではなく「こう撮る」という指定（#610 以前は除外していた）
-        self.assertIsNone(gen.no_capture_reason(self.with_script()))
+        self.assertIsNone(gen.no_capture_reason(self.with_script(), "Basics/Form/Example"))
 
     def test_the_script_is_read_from_the_package_root(self) -> None:
         package = self.with_script()
