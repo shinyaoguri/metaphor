@@ -94,7 +94,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # （generate-example-shots.py）と共通。実装を 2 つ持つと、片側だけ鮮度検出が
 # 弱り（#505）、片側だけ入力を流せない（#610）。
 from shots_common import (  # noqa: E402
-    INPUT_SCRIPT_NAME,
     NO_CAPTURE_NAME,
     ShotError,
     capture_provenance,
@@ -106,7 +105,6 @@ from shots_common import (  # noqa: E402
     no_capture_reason,
     run_or_raise,
     send_input_script,
-    source_files,
     source_hash,
     upload_to_gyazo,
 )

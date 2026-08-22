@@ -26,6 +26,13 @@ gen = importlib.util.module_from_spec(_spec)
 sys.modules["generate_tutorial_shots"] = gen
 _spec.loader.exec_module(gen)
 
+# 撮らない申告・入力台本のファイル名は shots_common が正本で、generate-*-shots.py
+# はそれを import して使うだけ。テストのフィクスチャも正本から取る — `gen.` 経由に
+# すると、(a) 生成器が別の名前へ乗り換えたときテストが黙って追従してしまい、
+# (b) 生成器自身が使っていない定数まで import で持ち続けることになる（Issue #1022）。
+sys.path.insert(0, str(_SCRIPT.parent))
+from shots_common import INPUT_SCRIPT_NAME, NO_CAPTURE_NAME  # noqa: E402
+
 REF = "01-Part/02-Section"
 
 
@@ -306,7 +313,7 @@ class TestNoCapture(ShotsTestCase):
     """撮れない節の申告（no-capture.txt）の扱い（#544）。"""
 
     def declare(self, ref: str = REF, reason: str = "マイク入力は環境で絵が変わる") -> None:
-        (self.code / ref / gen.NO_CAPTURE_NAME).write_text(reason + "\n", encoding="utf-8")
+        (self.code / ref / NO_CAPTURE_NAME).write_text(reason + "\n", encoding="utf-8")
 
     def test_fresh_without_any_image(self) -> None:
         # 撮らないと申告した節は、画像が無くても鮮度検査を通る。
@@ -489,7 +496,7 @@ class TestInputScript(ShotsTestCase):
         # 台本はパッケージ配下なので指紋に入る（絵が変わるため撮り直しが要る）
         package_dir = self.add_package()
         self.add_body()
-        script = package_dir / gen.INPUT_SCRIPT_NAME
+        script = package_dir / INPUT_SCRIPT_NAME
         script.write_text('{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8")
         shots = self.record()
         self.assertEqual(gen.check([REF], shots), [])

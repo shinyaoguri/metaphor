@@ -31,6 +31,13 @@ gen = importlib.util.module_from_spec(_spec)
 sys.modules["generate_example_shots"] = gen
 _spec.loader.exec_module(gen)
 
+# 撮らない申告・入力台本のファイル名は shots_common が正本で、generate-*-shots.py
+# はそれを import して使うだけ。テストのフィクスチャも正本から取る — `gen.` 経由に
+# すると、(a) 生成器が別の名前へ乗り換えたときテストが黙って追従してしまい、
+# (b) 生成器自身が使っていない定数まで import で持ち続けることになる（Issue #1022）。
+sys.path.insert(0, str(_SCRIPT.parent))
+from shots_common import INPUT_SCRIPT_NAME, NO_CAPTURE_NAME  # noqa: E402
+
 PATH = "Examples/Topics/Geometry/Toroid"
 
 
@@ -139,7 +146,7 @@ class TestNoCapture(ExampleShotsTestCase):
 
     def test_no_capture_reports_the_written_reason(self) -> None:
         package = self.package()
-        (package / gen.NO_CAPTURE_NAME).write_text("カメラの映像は撮る場所で変わる\n")
+        (package / NO_CAPTURE_NAME).write_text("カメラの映像は撮る場所で変わる\n")
         self.assertEqual(
             gen.no_capture_reason(package, "Basics/Form/Example"),
             "カメラの映像は撮る場所で変わる",
@@ -153,7 +160,7 @@ class TestNoCapture(ExampleShotsTestCase):
         理由を書かせること自体が申告の目的なので、書かれていなければ止める。
         """
         package = self.package()
-        (package / gen.NO_CAPTURE_NAME).write_text("\n")
+        (package / NO_CAPTURE_NAME).write_text("\n")
         with self.assertRaises(gen.ShotError):
             gen.no_capture_reason(package, "Basics/Form/Example")
 
@@ -166,7 +173,7 @@ class TestInputScript(ExampleShotsTestCase):
 
     def with_script(self, source: str = "func draw() {}\n") -> Path:
         package = self.package(source=source)
-        (package / gen.INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":1,"y":2}\n')
+        (package / INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":1,"y":2}\n')
         return package
 
     def test_an_input_script_is_captured_not_skipped(self) -> None:
@@ -190,7 +197,7 @@ class TestInputScript(ExampleShotsTestCase):
 
     def test_a_broken_script_is_an_error(self) -> None:
         package = self.package()
-        (package / gen.INPUT_SCRIPT_NAME).write_text('{"x":1,"y":2}\n')
+        (package / INPUT_SCRIPT_NAME).write_text('{"x":1,"y":2}\n')
         with self.assertRaises(gen.ShotError):
             gen.input_script_for(package, PATH, still=False)
 
@@ -207,7 +214,7 @@ class TestInputScript(ExampleShotsTestCase):
             }
         }
         self.assertEqual(gen.stale_entries([self.entry()], shots), [])
-        (package / gen.INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":9,"y":9}\n')
+        (package / INPUT_SCRIPT_NAME).write_text('{"t":"mouseMove","x":9,"y":9}\n')
         self.assertEqual(len(gen.stale_entries([self.entry()], shots)), 1)
 
 
@@ -297,7 +304,7 @@ class TestStaleness(ExampleShotsTestCase):
         package = self.package()
         self.image()
         shots = self.captured()
-        (package / gen.NO_CAPTURE_NAME).write_text("実行環境に依存する\n")
+        (package / NO_CAPTURE_NAME).write_text("実行環境に依存する\n")
         (package / "Sketch/App.swift").write_text("func draw() { circle(0, 0, 10) }\n")
         self.assertEqual(gen.stale_entries([self.entry()], shots), [])
 
