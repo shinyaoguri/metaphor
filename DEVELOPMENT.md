@@ -210,9 +210,9 @@ python3 scripts/check-theme-settings.py --against-render # DocC を更新した�
 
 ## PR に見た目の証跡を載せる
 
-**描画結果が変わる PR(シェーダ・ライティング・変換・レイアウト・ゴールデン更新・example の見た目)には、before/after の画像を PR 本文に載せる**。レビューで diff から見た目を想像させない。**動きが変わる PR(アニメーション・パーティクル・物理・イージング・orbitControl 等のインタラクション・時間依存シェーダ)には、画像に加えて GIF も載せる** — 時間方向の変化は静止画を何枚並べても判定できない。
+**描画結果が変わる PR(シェーダ・ライティング・変換・レイアウト・ゴールデン更新・example の見た目)には、before/after の画像を PR 本文に載せる**。レビューで diff から見た目を想像させない。**動きが変わる PR(アニメーション・パーティクル・物理・イージング・orbitControl 等のインタラクション・時間依存シェーダ)には、画像に加えて動きの証跡(アニメーション WebP)も載せる** — 時間方向の変化は静止画を何枚並べても判定できない。
 
-リポジトリに画像・GIF をコミットしない(容量を圧迫する)。ゴールデン PNG のように既にコミットされているもの以外は Gyazo へ上げて URL を貼る。ドキュメントの画像も同じ方針で、DocC は [ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)、チュートリアルは [ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)(撮影からアップロード・本文の URL 書き戻しまで `make tutorial-shots` が行う)。
+リポジトリに画像・動きの証跡をコミットしない(容量を圧迫する)。ゴールデン PNG のように既にコミットされているもの以外は Gyazo へ上げて URL を貼る。ドキュメントの画像も同じ方針で、DocC は [ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)、チュートリアルは [ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)(撮影からアップロード・本文の URL 書き戻しまで `make tutorial-shots` が行う)。
 
 **禁じているのは画像を*コミットする*ことであって、既にコミット済みの生成物(ゴールデン PNG・example の実行結果)を PR 本文から*参照する*ことではない**(#843)。後者は raw URL でそのまま貼ってよく、Gyazo へ上げ直すと同じ絵が追記型のアセットに二重に増えるだけで得るものが無い。
 
@@ -222,7 +222,7 @@ python3 scripts/check-theme-settings.py --against-render # DocC を更新した�
 
 落ちたら、どちらかで通る。
 
-1. before/after を撮って本文に貼る(動きが変わるなら GIF も)
+1. before/after を撮って本文に貼る(動きが変わるなら動きの証跡も)
 2. 本当に絵が変わらないなら PR に `no-visual-change` ラベルを貼る(内部リファクタ・境界値の修正など。「絵は変わらない」という判断が PR に残る)
 
 本文とラベルは実行時に API から読むので、直したあと `gh run rerun --failed <run-id>` だけで通り、push は要らない。対象ディレクトリの判定は [`scripts/require-visual-evidence.py`](scripts/require-visual-evidence.py) が正本(`python3 -m unittest discover -s scripts/tests` で検証)。
@@ -262,22 +262,28 @@ python3 scripts/check-theme-settings.py --against-render # DocC を更新した�
   バグはそこでは再現しない**。数フレーム走らせてから request.json を書く。どちらも
   「撮ったのに差が出ない → 修正が効いていないと誤読する」に直結する。
 
-### 動きの証跡を GIF で撮る
+### 動きの証跡を撮る
 
 Probe は時間軸も撮れる。`request.json` に `frames`(採取枚数、上限 64)と `every`(ストライド)を
 書くと `.metaphor/probe/current/sequence/frame.NNNN.png`(0 始まり 4 桁)と `sequence.json` が出る
-(MCP 経由なら `capture_sequence`)。この連番を GIF にまとめる:
+(MCP 経由なら `capture_sequence`)。この連番をアニメーション WebP にまとめる:
 
 ```bash
-ffmpeg -y -framerate 15 -start_number 0 \
-  -i .metaphor/probe/current/sequence/frame.%04d.png \
-  -filter_complex "[0:v]fps=15,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5" \
-  -loop 0 motion.gif
+img2webp -loop 0 -mixed -d 67 \
+  .metaphor/probe/current/sequence/frame.*.png -o motion.webp
 ```
 
+`-d` はフレーム間隔(ミリ秒。15fps なら 67)。幅を変えたいときだけ ffmpeg で連番を縮めてから渡す。
+
+**GIF ではなく WebP なのは、同じ絵で小さく・きれいだから**。同じ連番から作り比べると
+GIF 3335KB に対し WebP 21KB だった(720x405 / 15fps / 3 秒、グラデ背景に動く矩形)。GIF は
+256 色パレットへ落とすので色数の多い絵で目に見えて劣化し、ディザで補うとフレーム間差分が
+効かなくなって今度はサイズが膨らむ。GitHub も camo 経由でバイト同一のまま配信する
+(手順と実測値の正本は `gyazo-capture` スキル)。
+
 画面収録ではなくレンダラ由来のフレームから作るので、他アプリの映り込みもウィンドウ位置への
-依存もない。目安は幅 720 / 15fps / 3〜6 秒(1200x800 の 60 枚で 1MB 弱)。**GIF は静止画の
-置き換えではなく併載** — 差分の精査は静止画の方が向く。
+依存もない。目安は幅 720 / 15fps / 3〜6 秒。**動きの証跡は静止画の置き換えではなく併載** —
+差分の精査は静止画の方が向く。
 
 ### Gyazo へ上げる
 
@@ -285,7 +291,7 @@ Gyazo の Upload API へ渡すと `https://i.gyazo.com/<id>.gif` が返る。Git
 経由で配信するが、アニメーションはそのまま再生される。返り値 `url` を `![説明](URL)` で
 PR 本文に貼り、**どこを見てほしいか**を本文で補う。
 
-**手順の正本は repo-standards プラグインの `gyazo-capture` スキル**(GIF の作り方・
+**手順の正本は repo-standards プラグインの `gyazo-capture` スキル**(動きの証跡の作り方・
 アップロードのコマンド・撮影範囲の書き方)。ここにコマンドを再掲すると、片方だけ直る。
 
 metaphor 固有の事情として 1 つだけ: アクセストークンの読み口は `op read` ではなく
