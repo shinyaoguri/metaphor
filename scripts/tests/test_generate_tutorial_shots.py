@@ -478,42 +478,6 @@ class TestSequenceReadiness(ShotsTestCase):
         self.assertIsNone(gen.sequence_manifest(seq, "req-1"))
 
 
-class TestCurrentFrame(ShotsTestCase):
-    """単一フレームの応答も **id 一致**で見る（下見の応答と取り違えないため。#509）。"""
-
-    def write_frame(self, output_dir: Path, payload: dict, png: bool = True) -> None:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / "frame.json").write_text(json.dumps(payload), encoding="utf-8")
-        if png:
-            (output_dir / "frame.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-
-    def test_none_until_the_frame_appears(self) -> None:
-        self.assertIsNone(gen.current_frame(self.root / "current", "req-1"))
-
-    def test_ready_when_id_matches(self) -> None:
-        current = self.root / "current"
-        self.write_frame(current, {"id": "req-1", "frame": 12})
-        self.assertEqual(gen.current_frame(current, "req-1"), {"id": "req-1", "frame": 12})
-
-    def test_not_ready_for_the_warmup_response(self) -> None:
-        current = self.root / "current"
-        self.write_frame(current, {"id": "req-1-warmup", "frame": 3})
-        self.assertIsNone(gen.current_frame(current, "req-1"))
-
-    def test_failure_response_is_returned_without_a_png(self) -> None:
-        # 失敗応答は frame.json だけが書かれる（契約点 4）。ready として返し、
-        # 呼び出し側が PNG の不在を見て warnings をエラーにする
-        current = self.root / "current"
-        self.write_frame(current, {"id": "req-1", "warnings": ["no staging texture"]}, png=False)
-        answer = gen.current_frame(current, "req-1")
-        self.assertEqual(answer.get("warnings"), ["no staging texture"])
-
-    def test_partial_write_is_not_ready(self) -> None:
-        current = self.root / "current"
-        current.mkdir(parents=True)
-        (current / "frame.json").write_text('{"id": "req-', encoding="utf-8")
-        self.assertIsNone(gen.current_frame(current, "req-1"))
-
 
 class TestInputScript(ShotsTestCase):
     """撮影用の入力台本（`probe-input.jsonl`）のうち、チュートリアル側の扱い（#509）。

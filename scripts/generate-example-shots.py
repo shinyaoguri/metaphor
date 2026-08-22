@@ -96,11 +96,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
+    NO_CAPTURE_NAME,
     ShotError,
     capture_provenance,
+    current_frame,
     drift_summary,
     image_size,
     load_input_script,
+    no_capture_reason,
     send_input_script,
     source_hash,
 )
@@ -125,7 +128,6 @@ SETTLE_SEC = 1.5
 
 # 撮らない申告（#544）。パッケージ直下に置く（入力台本 INPUT_SCRIPT_NAME は
 # shots_common が持つ。撮らない申告ではなく「こう撮る」という指定なので分ける）。
-NO_CAPTURE_NAME = "no-capture.txt"
 
 # `noLoop()` の呼び出し。コメント行は数えない（絵が止まるかどうかの判定なので、
 # 実際に呼んでいる行だけを見る）。
@@ -170,14 +172,6 @@ def source_fingerprint(path: str) -> str:
     """
     return source_hash(package_dir_for(path), exclude=[image_path_for(path)])
 
-
-def no_capture_reason(package: Path) -> str | None:
-    """撮らない申告があればその理由を返す。"""
-    marker = package / NO_CAPTURE_NAME
-    if marker.is_file():
-        reason = marker.read_text(encoding="utf-8").strip().split("\n")[0]
-        return reason or f"{NO_CAPTURE_NAME} に理由が書かれていない"
-    return None
 
 
 def uses_no_loop(package: Path) -> bool:
@@ -304,7 +298,7 @@ def stale_entries(entries: list[dict], shots: dict) -> list[str]:
         if not recorded or recorded.get("origin") != ORIGIN_CAPTURED:
             continue
         package = package_dir_for(path)
-        if no_capture_reason(package):
+        if no_capture_reason(package, path):
             continue
         if not image_path_for(path).is_file():
             stale.append(f"{path}（画像が無い）")
@@ -312,21 +306,6 @@ def stale_entries(entries: list[dict], shots: dict) -> list[str]:
             stale.append(f"{path}（撮影後にソースが変わった）")
     return stale
 
-
-def current_frame(output_dir: Path, request_id: str) -> dict | None:
-    """単一フレームの応答が来ていれば `frame.json` の中身を返す。
-
-    consumer 規約（CONTRACT.md 契約点 4）どおり **id 一致**で見る。ファイルの有無だけで
-    見ると、下見のリクエストへの応答を本番の応答と取り違える。
-    """
-    frame_json = output_dir / "frame.json"
-    if not frame_json.is_file():
-        return None
-    try:
-        data = json.loads(frame_json.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None  # 書き込み途中を読んだ。次のポーリングで見直す
-    return data if data.get("id") == request_id else None
 
 
 def capture(path: str, destination: Path, settle: float, release: bool = False) -> dict:
@@ -541,7 +520,7 @@ def main() -> int:
             targets = [e["path"] for e in entries if image_path_for(e["path"]).is_file()]
             skipped = [
                 e["path"] for e in entries
-                if no_capture_reason(package_dir_for(e["path"]))
+                if no_capture_reason(package_dir_for(e["path"]), e["path"])
             ]
             targets = [p for p in targets if p not in skipped]
             if not targets:
@@ -575,7 +554,7 @@ def main() -> int:
             missing = [
                 e["path"] for e in entries
                 if not image_path_for(e["path"]).is_file()
-                and not no_capture_reason(package_dir_for(e["path"]))
+                and not no_capture_reason(package_dir_for(e["path"]), e["path"])
             ]
             # 「すべて最新」とは書かない。見ているのは撮影したものの
             # ソースだけで、ライブラリ実装の変更は含まない（#586）。
@@ -611,7 +590,7 @@ def main() -> int:
         for entry in entries:
             path = entry["path"]
             package = package_dir_for(path)
-            reason = no_capture_reason(package)
+            reason = no_capture_reason(package, path)
             if reason:
                 if args.only:
                     print(f"skipping {path}（{reason}）")

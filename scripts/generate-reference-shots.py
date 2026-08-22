@@ -104,9 +104,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     ShotError,
     capture_provenance,
+    current_frame,
     drift_summary,
     file_sha256,
     image_size,
+    run_capturing,
+    run_or_raise,
     upload_to_gyazo,
 )
 
@@ -635,17 +638,6 @@ def build_package(snippets: list[Snippet]) -> None:
 # --- 撮影 ---------------------------------------------------------------------
 
 
-def current_frame(output_dir: Path, request_id: str) -> dict | None:
-    """撮影が終わっていれば `frame.json` の中身を返す（CONTRACT.md 契約点 4）。"""
-    metadata = output_dir / "frame.json"
-    if not metadata.is_file():
-        return None
-    try:
-        data = json.loads(metadata.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None  # 書き込み途中を読んだ。次のポーリングで見直す
-    return data if data.get("id") == request_id else None
-
 
 def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
     """連続キャプチャが完了していれば `sequence.json` の中身を返す。"""
@@ -846,16 +838,6 @@ def render_gif(
         shutil.rmtree(work, ignore_errors=True)
 
 
-def run_or_raise(command: list[str], what: str) -> None:
-    run_capturing(command, what)
-
-
-def run_capturing(command: list[str], what: str) -> str:
-    """コマンドを走らせ、stdout と stderr を繋いで返す。"""
-    result = subprocess.run(command, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
-    return result.stdout + result.stderr
 
 
 # --- 反転一致の検査（#985）----------------------------------------------------

@@ -95,12 +95,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # 弱り（#505）、片側だけ入力を流せない（#610）。
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
+    NO_CAPTURE_NAME,
     ShotError,
     capture_provenance,
+    current_frame,
     drift_summary,
     file_sha256,
     image_size,
     load_input_script,
+    no_capture_reason,
+    run_or_raise,
     send_input_script,
     source_files,
     source_hash,
@@ -135,8 +139,6 @@ IMAGE_LINE_RE = re.compile(
 CAPTURE_TIMEOUT_SEC = 90.0
 POLL_INTERVAL_SEC = 0.2
 
-# 撮らない節の申告（#544）。パッケージ直下に置くと撮影も鮮度検査も飛ばす。
-NO_CAPTURE_NAME = "no-capture.txt"
 
 # 動きの証跡の既定値と上限（docs/tutorial/README.md の規約と対）。
 MOTION_KINDS = ("webp", "sheet")
@@ -375,20 +377,6 @@ def webp_command(frame_paths: list[Path], output: Path, fps: int, quality) -> li
     return command
 
 
-def no_capture_reason(package_dir: Path, ref: str) -> str | None:
-    """節が「撮らない」と申告していれば、その理由を返す（申告が無ければ None）。
-
-    音・カメラ・ML の節は実行環境で絵が変わり、ヘッドレスでは権限も降りない。
-    理由を書かせるのは、あとから読む人が「撮り忘れ」と区別できるようにするため。
-    """
-    path = package_dir / NO_CAPTURE_NAME
-    if not path.is_file():
-        return None
-    reason = " ".join(path.read_text(encoding="utf-8").split())
-    if not reason:
-        raise ShotError(f"'{ref}' の {NO_CAPTURE_NAME} に撮らない理由が書かれていない")
-    return reason
-
 
 def load_manifest() -> dict:
     if not MANIFEST.is_file():
@@ -587,23 +575,6 @@ def retire_local_files(ref: str) -> None:
         motion_path_for(ref, kind).unlink(missing_ok=True)
 
 
-def current_frame(output_dir: Path, request_id: str) -> dict | None:
-    """単一フレームの応答が来ていれば `frame.json` の中身を返す。
-
-    consumer 規約（CONTRACT.md 契約点 4）どおり **id 一致**で見る。ファイルの
-    有無だけで見ると、下見のリクエストへの応答を本番の応答と取り違える。
-    """
-    frame_json = output_dir / "frame.json"
-    if not frame_json.is_file():
-        return None
-    try:
-        data = json.loads(frame_json.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None  # 書き込み途中を読んだ。次のポーリングで見直す
-    if data.get("id") != request_id:
-        return None
-    return data
-
 
 def sequence_manifest(sequence_dir: Path, request_id: str) -> dict | None:
     """連続キャプチャが完了していれば `sequence.json` の中身を返す。
@@ -727,11 +698,6 @@ def render_webp(
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
-
-def run_or_raise(command: list[str], what: str) -> None:
-    result = subprocess.run(command, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
 
 
 def motion_settings(entry: dict | None) -> dict | None:

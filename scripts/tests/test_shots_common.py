@@ -5,15 +5,16 @@ Run from the repository root:
 
     python3 -m unittest discover -s scripts/tests
 
-チュートリアル（generate-tutorial-shots.py）と Examples（generate-example-shots.py）が
-共有する部分だけをここで確かめる。確かめるのは 4 つ — **台帳に入れる実寸をヘッダから
-読めること**、**撮影時のソースの指紋が「絵を変えうる変更」だけで動くこと**、
-**撮影時の来歴とそこから数える実装の隔たり**、**入力台本の読み取り規則**。指紋は
-どちらのスクリプトでも「コードを変えたのに画像が古い」を検出する土台なので、ここが
-壊れると両方の `--check` が同時に嘘をつく。来歴は指紋が拾えないライブラリ実装の変更を
-あとから言うためのもので、リファレンス（generate-reference-shots.py）もこれを使う
-（#586）。台本は入力が要るスケッチを撮る唯一の経路で、こちらも両スクリプトが同じ
-実装を使う（#610）。
+3 つの撮影スクリプト（tutorial / example / reference）が共有する部分をここで確かめる。
+
+- **台帳に入れる実寸をヘッダから読めること**
+- **撮影時のソースの指紋が「絵を変えうる変更」だけで動くこと** — 「コードを変えたのに
+  画像が古い」を検出する土台。ここが壊れると全部の `--check` が同時に嘘をつく
+- **撮影時の来歴とそこから数える実装の隔たり**（#586）
+- **入力台本の読み取り規則**（#610）
+- **Probe の応答の読み方** — `frame.json` を id 一致で見る（CONTRACT.md 契約点 4）。
+  実装が分かれていると契約の解釈が分かれるので、ここが唯一の置き場
+- **撮らない申告の読み取り**（#544）と **Gyazo への上げ口**（#1021）
 """
 
 import contextlib
@@ -324,6 +325,98 @@ class TestInputScript(CommonTestCase):
             '{"t":"mouseMove","x":5,"y":6}\n', encoding="utf-8"
         )
         self.assertEqual(len(common.load_input_script(self.root, "ref") or []), 1)
+
+
+class TestCurrentFrame(CommonTestCase):
+    """Probe の応答の読み方（CONTRACT.md 契約点 4 の consumer 規約）。
+
+    3 スクリプトが各々実装を持っていた時期があり、cli 側が wire format を変えたときに
+    1 つだけ直る形になっていた。ここが唯一の置き場になったので、契約の肝はここで守る。
+    """
+
+    def write_frame(self, body: str) -> None:
+        (self.root / "frame.json").write_text(body, encoding="utf-8")
+
+    def test_a_matching_id_is_the_answer(self) -> None:
+        self.write_frame(json.dumps({"id": "req-1", "size": {"width": 4, "height": 3}}))
+        answer = common.current_frame(self.root, "req-1")
+        self.assertEqual((answer or {}).get("size"), {"width": 4, "height": 3})
+
+    def test_a_different_id_is_not_the_answer(self) -> None:
+        """契約の肝。**下見の応答を本番の応答と取り違えない**。
+
+        ファイルの有無だけで見ると、下見で書かれた frame.json をそのまま本番の結果として
+        拾ってしまう（撮りたかった絵ではなく、起動直後の絵が台帳へ入る）。
+        """
+        self.write_frame(json.dumps({"id": "warmup"}))
+        self.assertIsNone(common.current_frame(self.root, "req-1"))
+
+    def test_no_file_yet_is_not_an_error(self) -> None:
+        self.assertIsNone(common.current_frame(self.root, "req-1"))
+
+    def test_a_half_written_file_is_retried(self) -> None:
+        """書き込み途中を読んだだけ。次のポーリングで見直せばよいので落とさない。"""
+        self.write_frame('{"id": "req-1", ')
+        self.assertIsNone(common.current_frame(self.root, "req-1"))
+
+    def test_a_failure_response_still_counts_as_an_answer(self) -> None:
+        """失敗応答は `frame.json` だけが書かれる（契約点 4）。
+
+        ここで None を返すと、撮影が失敗しているのにポーリングが続いてタイムアウトまで
+        待つことになる。応答として返し、PNG が無いことは呼び出し側が見る。
+        """
+        self.write_frame(json.dumps({"id": "req-1", "warnings": ["no staging texture"]}))
+        answer = common.current_frame(self.root, "req-1")
+        self.assertEqual((answer or {}).get("warnings"), ["no staging texture"])
+
+
+class TestNoCaptureReason(CommonTestCase):
+    """撮らない申告（#544）。"""
+
+    def write_marker(self, body: str) -> None:
+        (self.root / common.NO_CAPTURE_NAME).write_text(body, encoding="utf-8")
+
+    def test_the_written_reason_comes_back(self) -> None:
+        self.write_marker("カメラの映像は撮る場所で変わる\n")
+        self.assertEqual(
+            common.no_capture_reason(self.root, "07-Media/03-Camera"),
+            "カメラの映像は撮る場所で変わる",
+        )
+
+    def test_several_lines_are_joined(self) -> None:
+        self.write_marker("マイク入力は環境で決まる。\n無音だと何も動かない。\n")
+        self.assertEqual(
+            common.no_capture_reason(self.root, "07-Media/01-AudioInput"),
+            "マイク入力は環境で決まる。 無音だと何も動かない。",
+        )
+
+    def test_no_marker_means_capture_it(self) -> None:
+        self.assertIsNone(common.no_capture_reason(self.root, "01-Getting/01-First"))
+
+    def test_an_empty_marker_is_rejected(self) -> None:
+        """理由を書かせること自体が申告の目的。空だと撮り忘れと見分けが付かない。"""
+        self.write_marker("\n   \n")
+        with self.assertRaises(common.ShotError):
+            common.no_capture_reason(self.root, "07-Media/03-Camera")
+
+
+class TestRunCapturing(CommonTestCase):
+    """外部コマンドの実行。失敗は必ず `ShotError` にして、出力を添える。"""
+
+    def test_stdout_comes_back_on_success(self) -> None:
+        self.assertEqual(common.run_capturing(["echo", "done"], "確認"), "done\n")
+
+    def test_a_failure_carries_the_output(self) -> None:
+        with self.assertRaises(common.ShotError) as caught:
+            common.run_capturing(["sh", "-c", "echo なにか >&2; exit 3"], "ビルド")
+        message = str(caught.exception)
+        self.assertIn("ビルド", message)
+        self.assertIn("なにか", message)
+
+    def test_run_or_raise_is_the_same_check(self) -> None:
+        self.assertIsNone(common.run_or_raise(["true"], "確認"))
+        with self.assertRaises(common.ShotError):
+            common.run_or_raise(["false"], "確認")
 
 
 STILL_URL = "https://i.gyazo.com/1111111111111111111111111111aaaa.png"

@@ -322,6 +322,69 @@ def send_input_script(process: subprocess.Popen, events: list[dict], ref: str) -
     time.sleep(INPUT_SETTLE_SEC)
 
 
+# --- Probe の応答を読む -------------------------------------------------------
+
+
+def current_frame(output_dir: Path, request_id: str) -> dict | None:
+    """単一フレームの応答が来ていれば `frame.json` の中身を返す。
+
+    consumer 規約（CONTRACT.md 契約点 4）どおり **id 一致**で見る。ファイルの有無だけで
+    見ると、下見のリクエストへの応答を本番の応答と取り違える。
+
+    これは契約の読み方そのものなので、実装は 1 つでなければならない。3 スクリプトが
+    各々持っていた時期があり、cli 側が wire format を変えたときに 1 つだけ直る形に
+    なっていた（#1021 で Gyazo のトークンに起きたのと同じ構図）。
+    """
+    frame_json = output_dir / "frame.json"
+    if not frame_json.is_file():
+        return None
+    try:
+        data = json.loads(frame_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None  # 書き込み途中を読んだ。次のポーリングで見直す
+    return data if data.get("id") == request_id else None
+
+
+# 撮らない申告（#544）。パッケージ直下に置くと撮影も鮮度検査も飛ばす。
+NO_CAPTURE_NAME = "no-capture.txt"
+
+
+def no_capture_reason(package_dir: Path, ref: str) -> str | None:
+    """「撮らない」と申告していれば、その理由を返す（申告が無ければ None）。
+
+    音・カメラ・ML は実行環境で絵が変わり、ヘッドレスでは権限も降りない。理由を
+    **書かせる**のは、あとから読む人が「撮り忘れ」と区別できるようにするため。だから
+    空の申告は黙って通さず止める（緩く受けると、書き忘れが撮り忘れと同じ顔で残る）。
+    """
+    path = package_dir / NO_CAPTURE_NAME
+    if not path.is_file():
+        return None
+    reason = " ".join(path.read_text(encoding="utf-8").split())
+    if not reason:
+        raise ShotError(f"'{ref}' の {NO_CAPTURE_NAME} に撮らない理由が書かれていない")
+    return reason
+
+
+# --- 外部コマンド ---------------------------------------------------------------
+
+
+def run_capturing(command: list[str], what: str) -> str:
+    """コマンドを走らせ、成功したら stdout を返す。失敗は `ShotError`。
+
+    出力を捨てずに抱えるのは、失敗したときに何が起きたかを添えるため（ビルドの
+    エラーは stdout 側に出ることがある）。
+    """
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
+    return result.stdout
+
+
+def run_or_raise(command: list[str], what: str) -> None:
+    """戻り値の要らない `run_capturing`。"""
+    run_capturing(command, what)
+
+
 # --- Gyazo -------------------------------------------------------------------
 #
 # 画像の実体は Gyazo に置き、リポジトリは URL だけを持つ（DocC リファレンスは
