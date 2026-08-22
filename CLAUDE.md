@@ -101,7 +101,7 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 ## 規約
 
 - Swift Testing フレームワーク（`@Suite`, `@Test`）を使う。XCTest は使わない。
-- **ドキュメントの画像はリポジトリに置かず Gyazo へ上げて外部 URL で参照する**（`![alt](https://i.gyazo.com/<hash>.png)`）。DocC は `.docc/Resources/` に画像を置かない（[ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)。DocC は WebP を無言で落とすため動きは GIF、ダーク/Retina の出し分けは効かない）。**API リファレンスの実行結果は doc コメントに `<!-- reference-shot -->` 付きのスニペットを書き、`make reference-shots` が撮影・アップロード・画像行の書き戻しまで行う**（規約は [docs/reference/README.md](docs/reference/README.md)。コードが正典で画像行は生成物、手で URL を書かない）。チュートリアル `docs/tutorial/` も同様で、**画像は `make tutorial-shots` が撮影・アップロード・本文の URL 書き戻しまで行う**（[ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)。台帳は `docs/tutorial/images/manifest.json`、動きはアニメーション WebP のまま、本文の URL を手で書かない）。アセットは不変・追記型で、撮り直しは新規アップロード + URL 更新とし、古い URL は消さない。
+- **ドキュメントの画像はリポジトリに置かず Gyazo へ上げて外部 URL で参照する**（`![alt](https://i.gyazo.com/<hash>.png)`）。アセットは不変・追記型で、撮り直しは新規アップロード + URL 更新とし、古い URL は消さない。**実行結果画像はコードが正典で画像行は生成物** — `make reference-shots` / `make tutorial-shots` / `make example-shots` が撮影・アップロード・書き戻しまで行うので、手で URL を書かない。3 つの使い分け・台帳・鮮度検査・落とし穴は [`.claude/skills/shots/`](.claude/skills/shots/SKILL.md) が案内し、根拠は [ADR-0008](docs/adr/0008-docc-reference-images-via-gyazo.md)（DocC）と [ADR-0010](docs/adr/0010-tutorial-images-via-gyazo.md)（チュートリアル）。
 - 新しい example は既存のレイアウト `Examples/{Category}/{Subcategory}/{Name}/` に従い、各々が自己完結した SwiftPM パッケージ（[Examples/README.md](Examples/README.md) 参照）。追加後は `make examples-index` で索引を再生成。
 
 ## ブランチ運用（GitHub Flow）
