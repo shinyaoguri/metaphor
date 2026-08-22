@@ -1980,6 +1980,23 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func clear()` -- 登録済みのすべてのトゥイーンを削除します。
 - `func update(_ deltaTime: Float)` -- 指定されたデルタタイムで登録済みの全トゥイーンを更新します（毎フレーム1回呼び出し）。
 
+### `final class ViewerOutputPlugin` -- `metaphor watch --viewer` のライブビューア（親プロセス）へ最終フレームを送る出力プラグイン
+
+- `static let id: String` -- 安定したプラグイン識別子（provider の id と同じ。nonisolated なので provider からも読める）。
+- `let pluginID: String`
+- `let socketPath: String` -- 親が listen している socket のパス（`METAPHOR_VIEWER_SOCKET`）。
+- `init(socketPath: String)`
+- `func keyEvent(key: Character?, keyCode: UInt16, type: KeyEventType)`
+- `func mouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType)`
+- `func onAttach(renderer: MetaphorRenderer)`
+- `func onAttach(sketch: any Sketch)`
+- `func onDetach()`
+- `func onResize(width: Int, height: Int)`
+- `func onStart()`
+- `func onStop()`
+- `func post(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer)`
+- `func pre(commandBuffer: any MTLCommandBuffer, time: Double)`
+
 ### `final class VignetteEffect` -- エッジを暗くするビネットエフェクトを適用します。
 
 - `var intensity: Float` -- 周辺減光の強度。**0.0 で無効、1.0 で最も強い**（範囲外はクランプされます）。

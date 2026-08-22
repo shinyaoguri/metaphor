@@ -173,6 +173,10 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             )
         }
 
+        // Core 内蔵の出力 provider（METAPHOR_VIEWER_SOCKET → ViewerOutputPlugin。契約点 5）を
+        // 走査の前に登録する（冪等）。Syphon 等の外部モジュールはロード時に自分で登録している。
+        ViewerOutputProvider.register()
+
         // レンダーループとフレーム出力先を構成（モード別）。
         if isHeadless {
             configureHeadlessLoop(config: config)
@@ -451,16 +455,22 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     /// 出力が要求されているのに provider が 1 つも出力を返さなかったか（診断用）。
     ///
-    /// 「要求」は旧来の入口そのもの: 環境変数 `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）、
-    /// ``SketchConfig/syphon``、``SketchConfig/syphonName``、そしてヘッドレス起動（ウィンドウ無し・
-    /// 出力のみなので、出力が無ければ何も見えないプロセスになる）。
+    /// 「要求」は明示の入口そのもの: 環境変数 `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）、
+    /// ``SketchConfig/syphon``、``SketchConfig/syphonName``。ヘッドレス起動（ウィンドウ無し）は
+    /// **何も見えないプロセス**になり得るので、viewer socket（`METAPHOR_VIEWER_SOCKET`）も
+    /// Probe（`METAPHOR_PROBE=1`）も出力も無いときだけ要求扱いにする（ADR-0014: ヘッドレスが
+    /// Syphon を暗黙に立てることはもう無い）。
     nonisolated static func outputRequestedButMissing(
         config: SketchConfig, env: [String: String], isHeadless: Bool,
         outputs: [MetaphorOutputProviders.ResolvedOutput]
     ) -> Bool {
         guard outputs.isEmpty else { return false }
         if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return true }
-        return config.syphon || config.syphonName != nil || isHeadless
+        if config.syphon || config.syphonName != nil { return true }
+        guard isHeadless else { return false }
+        let hasViewerSocket = !(env["METAPHOR_VIEWER_SOCKET"] ?? "").isEmpty
+        let hasProbe = env["METAPHOR_PROBE"] == "1"
+        return !hasViewerSocket && !hasProbe
     }
 
     /// App Nap 抑止の assertion を張るべきかを解決します。
@@ -531,9 +541,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             // 出力先が無いままレンダーループだけ回り続けると原因の手掛かりが
             // 一切出ないため明示する。ヘッドレスモードは「ウィンドウ無し・
             // 出力のみ」なので error 級（Release でも stderr に出す）
-            let message = "an output (syphon / syphonName / METAPHOR_SYPHON_NAME / headless) was requested "
-                + "but no output module is linked. "
-                + "Import the umbrella 'metaphor' (or 'MetaphorSyphon'), or call MetaphorSyphon.enable()."
+            let message = isHeadless && !config.syphon && config.syphonName == nil
+                && (env["METAPHOR_SYPHON_NAME"] ?? "").isEmpty
+                ? "headless (METAPHOR_VIEWER=1) but nothing will observe the frames: set METAPHOR_VIEWER_SOCKET "
+                    + "(metaphor watch --viewer), METAPHOR_PROBE=1, or request an output (syphon / METAPHOR_SYPHON_NAME)."
+                : "an output (syphon / syphonName / METAPHOR_SYPHON_NAME) was requested but no output module is linked. "
+                    + "Import the umbrella 'metaphor' (or 'MetaphorSyphon'), or call MetaphorSyphon.enable()."
             if isHeadless {
                 FileHandle.standardError.write(
                     "[metaphor] ERROR: \(message)\n".data(using: .utf8)!
@@ -557,9 +570,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
 
-        // 出力は provider の走査で決まる。ヘッドレスは「ウィンドウ無し・出力のみ」なので、
-        // provider はその旨（`isHeadless`）を見て出力を用意する（Syphon は config.syphon に
-        // 関わらず title 名で publish する = 従来どおり）。
+        // 出力は provider の走査で決まる。ヘッドレスの観測手段は viewer socket
+        // （METAPHOR_VIEWER_SOCKET → ViewerOutputPlugin）/ Probe / 明示の外部出力で、
+        // Syphon を暗黙に立てることはしない（ADR-0014）。
         let outputs = MetaphorOutputProviders.makeOutputs(
             context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: true)
         )

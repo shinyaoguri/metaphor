@@ -138,8 +138,8 @@ struct OutputProvidersTests {
         #expect(legacy(primaryContext(SketchConfig(title: "MyTitle"))) == nil)
         #expect(legacy(primaryContext(SketchConfig(), env: ["METAPHOR_SYPHON_NAME": ""])) == nil)
 
-        // ヘッドレスは出力しか無いので syphon: false でも title へ落ちる。
-        #expect(legacy(primaryContext(SketchConfig(title: "MyTitle"), isHeadless: true))?.plugin.pluginID == "legacy:MyTitle")
+        // ヘッドレスでも暗黙には立てない（ADR-0014。旧 API の橋渡しも同じ規則）。
+        #expect(legacy(primaryContext(SketchConfig(title: "MyTitle"), isHeadless: true)) == nil)
 
         // セカンダリウィンドウは syphonName のみ（env / syphon フラグは見ない）。
         let window = MetaphorOutputContext(
@@ -239,8 +239,40 @@ struct RenderLoopResolutionTests {
         #expect(SketchRunner.outputRequestedButMissing(config: plain, env: ["METAPHOR_SYPHON_NAME": "n"], isHeadless: false, outputs: []))
         #expect(!SketchRunner.outputRequestedButMissing(config: plain, env: ["METAPHOR_SYPHON_NAME": ""], isHeadless: false, outputs: []),
                 "空文字の環境変数は未設定")
-        #expect(SketchRunner.outputRequestedButMissing(config: plain, env: [:], isHeadless: true, outputs: []),
-                "ヘッドレスは出力しか無いので要求扱い")
+        // ヘッドレス: viewer socket も Probe も出力も無いときだけ error 級（何も見えないプロセスになる）。
+        #expect(SketchRunner.outputRequestedButMissing(config: plain, env: [:], isHeadless: true, outputs: []))
+        #expect(!SketchRunner.outputRequestedButMissing(
+            config: plain, env: ["METAPHOR_VIEWER_SOCKET": "/tmp/v.sock"], isHeadless: true, outputs: []
+        ), "viewer socket があれば観測手段がある")
+        #expect(!SketchRunner.outputRequestedButMissing(
+            config: plain, env: ["METAPHOR_PROBE": "1"], isHeadless: true, outputs: []
+        ), "Probe があれば観測手段がある")
+        #expect(SketchRunner.outputRequestedButMissing(
+            config: plain, env: ["METAPHOR_VIEWER_SOCKET": ""], isHeadless: true, outputs: []
+        ), "空文字の socket パスは未設定")
+    }
+
+    @Test("ViewerOutputProvider は METAPHOR_VIEWER_SOCKET があるプライマリだけに出力を返す")
+    @MainActor
+    func viewerOutputProvider() {
+        let provider = ViewerOutputProvider()
+        #expect(provider.id == ViewerOutputPlugin.id)
+        #expect(provider.requirements == [.externalRenderLoop])
+
+        #expect(provider.makeOutput(context: primaryContext()) == nil)
+        #expect(provider.makeOutput(context: primaryContext(env: ["METAPHOR_VIEWER_SOCKET": ""])) == nil)
+        let output = provider.makeOutput(context: primaryContext(env: ["METAPHOR_VIEWER_SOCKET": "/tmp/v.sock"]))
+        #expect((output as? ViewerOutputPlugin)?.socketPath == "/tmp/v.sock")
+
+        let window = MetaphorOutputContext(
+            scope: .window(SketchWindowConfig()), environment: ["METAPHOR_VIEWER_SOCKET": "/tmp/v.sock"], isHeadless: true
+        )
+        #expect(provider.makeOutput(context: window) == nil, "セカンダリウィンドウはビューアに出さない")
+
+        // SketchRunner が登録すると走査に現れる（同 id は置換されるので何度でも）。
+        ViewerOutputProvider.register()
+        ViewerOutputProvider.register()
+        #expect(MetaphorOutputProviders.registered.filter { $0.id == ViewerOutputPlugin.id }.count == 1)
     }
 }
 

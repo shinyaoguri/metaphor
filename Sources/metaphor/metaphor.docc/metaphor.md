@@ -320,6 +320,7 @@ final class MySketch: Sketch {
 - ``MetaphorCore/MetaphorOutputProviders``
 - ``MetaphorCore/MetaphorOutputContext``
 - ``MetaphorCore/PluginRequirements``
+- ``MetaphorCore/ViewerOutputPlugin``
 - ``MetaphorCore/MetaphorOutputRegistry``
 
 ### Syphon

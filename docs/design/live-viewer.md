@@ -10,8 +10,9 @@
 > [ADR-0014](../adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）**: フレーム転送は当初 Syphon
 > （global IOSurface）で実装したが、**Unix socket + 匿名 POSIX 共有メモリの親子専用 frame IPC** へ改訂した
 > （§2-2 / §3 / §7-4 を更新）。本文の他の箇所で Syphon をビューアの転送路として書いている部分
-> （§4 A-1・§5・§6・§9）は当初案の記述で、確定仕様は ADR-0014 と、M2（[#1037](https://github.com/shinyaoguri/metaphor/issues/1037)）で
-> 書き換わる [CONTRACT.md](../../CONTRACT.md) 契約点 5 を正とする。Syphon 自体は MadMapper 等への外部出力として独立 Package `metaphor-syphon` に残る。
+> （§4 A-1・§5・§6・§9）は当初案の記述で、確定仕様は ADR-0014 と [CONTRACT.md](../../CONTRACT.md) 契約点 5 を正とする。
+> 本体側の producer（`ViewerOutputPlugin`・§A-4）は M2（[#1037](https://github.com/shinyaoguri/metaphor/issues/1037)）で実装済み。
+> Syphon 自体は MadMapper 等への外部出力として独立 Package `metaphor-syphon` に残る。
 > 対象: metaphor 本体（ライブラリ側の小〜中規模変更）+ metaphor-cli（ビューア本体）
 > 関連: Syphon 統合、Probe プラグイン、`RenderLoopMode`、`SketchRunner`
 
@@ -158,6 +159,23 @@ stderr をオーバーレイ表示し、次の保存で復帰。
   初期状態へフォールバック。
 - 時計（`frameCount` / `time`）は `state.json` の `runtime` 節として metaphor 自身が復元する
   （`SketchConfig(preserveClock: true)` のときだけ。**スケッチコードゼロで t が巻き戻らない**）。
+
+### A-4. frame IPC producer（実装済み・#792 M2）
+
+- 新規: `Sources/MetaphorCore/Viewer/`（`ViewerOutputPlugin` / `ViewerFrameLayout` /
+  `ViewerSlotState` / `ViewerTransport` / `ViewerFrameIPC`）と C シム `Sources/CMetaphorIPC/`
+  （`shm_open` と `SCM_RIGHTS` は Swift から呼べない）
+- トリガ: 環境変数 `METAPHOR_VIEWER_SOCKET`（CLI が listen してから子に注入）。あれば
+  `ViewerOutputProvider` が `ViewerOutputPlugin` を出力 plugin として自動登録する
+  （**`SketchConfig` には触らない**。通常実行では登録されずフレームループのコストはゼロ）
+- 流れ: `onAttach` で socket に接続 → 最初の `post()` で出力テクスチャの幅高から匿名 POSIX 共有メモリ
+  （3 slot・page 境界）を作り、fd を `SCM_RIGHTS` で添えた `hello` を送る → 毎フレーム、親が握っていない
+  slot へ最終テクスチャを GPU blit し、command buffer の完了ハンドラから `frame {slot, seq, frameCount, time}`
+  → 親は読み終えた slot を `release {slot}` で返す。3 枚とも親が握っていれば publish を飛ばす（latest-wins）。
+  resize は新しい共有メモリ + `hello` 再送
+- ヘッドレスが Syphon を暗黙に立てることは無くなった（観測手段は socket / Probe / 明示の外部出力）。
+  旧 cli が注入する `METAPHOR_SYPHON_NAME` は従来どおり効くので移行窓は要らない
+- 確定仕様は [CONTRACT.md](../../CONTRACT.md) 契約点 5 と `contract/viewer-*.schema.json`
 
 ## 5. ワークストリーム B: CLI ビューア（metaphor-cli リポジトリ）
 

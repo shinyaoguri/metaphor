@@ -37,8 +37,9 @@ public enum MetaphorOutputRegistry {
     ///
     /// 名前解決は旧 `SketchRunner.resolveSyphonName` / `SketchWindow` と同じ:
     /// プライマリは `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）> ``SketchConfig/syphonName`` >
-    /// （``SketchConfig/syphon`` が `true` かヘッドレスなら ``SketchConfig/title``）、
-    /// セカンダリウィンドウは ``SketchWindowConfig/syphonName`` のみ。名前が決まらなければ `nil`。
+    /// （``SketchConfig/syphon`` が `true` なら ``SketchConfig/title``）、
+    /// セカンダリウィンドウは ``SketchWindowConfig/syphonName`` のみ。名前が決まらなければ `nil`
+    /// （ヘッドレスでも暗黙には立てない。ADR-0014）。
     /// 旧ファクトリの出力は Syphon 相当として ``PluginRequirements/externalRenderLoop`` を宣言する。
     @MainActor
     static func makeLegacyOutput(context: MetaphorOutputContext) -> MetaphorOutputProviders.ResolvedOutput? {
@@ -59,7 +60,7 @@ public enum MetaphorOutputRegistry {
         case .primary(let config):
             if let name = context.environment["METAPHOR_SYPHON_NAME"], !name.isEmpty { return name }
             if let name = config.syphonName { return name }
-            if config.syphon || context.isHeadless { return config.title }
+            if config.syphon { return config.title }
             return nil
         case .window(let config):
             return config.syphonName

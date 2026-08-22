@@ -91,6 +91,12 @@ here.
 - Observability (Probe / input injection) runtime cost: `MetaphorProbePlugin.swift`,
   `InputInjectionPlugin.swift`, plugin dispatch in `MetaphorRenderer.swift`,
   `MetaphorRenderer.probePlugin` cache used by `Sketch+Probe.swift`.
+- Live viewer frames (CONTRACT.md point 5 / ADR-0014): `Viewer/ViewerOutputPlugin.swift`
+  (auto-registered by `ViewerOutputProvider` when `METAPHOR_VIEWER_SOCKET` is set;
+  blits the final texture into anonymous POSIX shm and talks JSON Lines over a
+  Unix socket — `hello` carries the shm fd via `SCM_RIGHTS`), `ViewerFrameLayout.swift`
+  (slot geometry), `ViewerSlotState.swift` (free → inFlight → heldByParent state
+  machine), `ViewerTransport.swift` (socket + reader thread), C shim `CMetaphorIPC`.
 - `@Param` not persisting / external writes ignored: `Parameters/ParameterPlugin.swift`
   (mtime polling of `set-request.json`, debounced write of `params.json`),
   `Parameters/ParameterStore.swift` (Mirror discovery, type/range/choices checks),
