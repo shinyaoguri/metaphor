@@ -41,6 +41,45 @@ Maintaining this file
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-22
+
+### Breaking Changes
+
+- Syphon left the `metaphor` package. The root `Package.swift` no longer
+  declares the `Syphon` binaryTarget, and the `MetaphorSyphon` module is no
+  longer part of `import metaphor`: `SketchConfig(syphon: true)` /
+  `syphonName:` and `METAPHOR_SYPHON_NAME` do nothing until you add the
+  [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) package,
+  which registers the Syphon output provider at load. Every consumer stops
+  downloading `Syphon.xcframework.zip` on resolve (which also fixes the
+  sourcekit-lsp background-indexing failure, #578), `make setup` no longer
+  needs the Syphon submodule or a ~10 min Xcode build, and releases carry no
+  binary asset. Migration:
+
+  | Before | After |
+  |---|---|
+  | `import metaphor` only | `Package.swift`: `.package(url: "https://github.com/shinyaoguri/metaphor-syphon.git", from: "0.1.0")` + product `MetaphorSyphon` |
+  | `SketchConfig(syphon: true)` | `import MetaphorSyphon` + `SketchConfig(plugins: [.syphon()])` (publishes under `title`) |
+  | `SketchConfig(syphonName: "Preview")` | `SketchConfig(plugins: [.syphon(name: "Preview")])` |
+  | `SketchWindowConfig(syphonName:)` | `SketchWindowConfig(plugins: [.syphon(name:)])` |
+  | `metaphor run --syphon` / `watch --syphon-name` / `mcp` publishing implicitly | only when the sketch links metaphor-syphon; otherwise one diagnostic line |
+  | `Examples/Samples/Syphon/*`, tutorial 8.3 | move to metaphor-syphon (the tutorial section is rewritten once metaphor-syphon v0.1.0 is out) |
+
+  The old fields keep working for one minor release (see the deprecation
+  entry) as long as metaphor-syphon is linked
+  ([#1040](https://github.com/shinyaoguri/metaphor/issues/1040), [#792](https://github.com/shinyaoguri/metaphor/issues/792),
+  [ADR-0014](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md))
+
+### Deprecated
+
+- `SketchConfig.syphon`, `SketchConfig.syphonName`, `SketchWindowConfig.syphonName`
+  and the `init(…, syphonName:, syphon:, …)` overloads that set them are
+  deprecated. Pass `plugins: [.syphon(name:)]` from the metaphor-syphon package
+  instead. The fields still reach the Syphon provider during this deprecation
+  window and are removed in the next minor release, together with
+  `MetaphorOutputRegistry` (deprecated since 0.11.0)
+  ([#1040](https://github.com/shinyaoguri/metaphor/issues/1040))
+
 ## [0.11.0] - 2026-08-22
 
 ### Breaking Changes
@@ -2316,7 +2355,8 @@ Adds `PixelBuffer`, multi-window improvements, Core ML examples (face detection,
 
 First public release. [Release notes](https://github.com/shinyaoguri/metaphor/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/shinyaoguri/metaphor/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/shinyaoguri/metaphor/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/shinyaoguri/metaphor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/shinyaoguri/metaphor/compare/v0.8.0...v0.9.0
