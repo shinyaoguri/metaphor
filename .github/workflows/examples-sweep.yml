@@ -34,3 +34,10 @@ jobs:
       - uses: actions/checkout@v7
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      - name: Build examples
+        run: |
+          if [ "${{ inputs.full }}" = "true" ]; then
+            ./scripts/run-examples.sh --build-only
+          else
+            ./scripts/run-examples.sh --build-only --smoke
+          fi

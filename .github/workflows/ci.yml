@@ -325,3 +325,398 @@ jobs:
         run: ./scripts/check-no-binary-targets.sh
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      # NOTE: SPM 依存キャッシュは撤去した。remote 依存が存在しないため
+      # （swift-docc-plugin は未使用につき削除済み）、キャッシュ対象が空だった。
+      - name: Build
+        run: swift build -Xswiftc -warnings-as-errors
+      - name: Test with Coverage
+        env:
+          # 「このランナーには GPU がある」の宣言。GPU 依存テストは
+          # `.enabled(if: MetalTestHelper.isGPUAvailable)` でゲートされており、
+          # Metal が消えると数百件が skip に変わるだけで swift test は green を返す。
+          # この env が立っていると CIEnvironmentGuard がデバイス不在で fail する
+          # （Issue #329 / G5）。ローカルの GPU なし環境では未設定 = 従来どおり skip。
+          METAPHOR_REQUIRE_GPU: '1'
+        run: swift test --enable-code-coverage -Xswiftc -warnings-as-errors
+      # ゴールデンイメージ回帰（Issue #330）が落ちたときだけ、実画像・期待画像・
+      # 差分画像をアーティファクトとして残す。ログのハッシュだけでは「どこが
+      # どう変わったか」が分からず、ローカル再現が必須になってしまうため。
+      - name: Upload golden image diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-image-failures
+          path: .build/golden-failures/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Verify shader sources are up to date
+        run: python3 scripts/generate-shader-sources.py --check
+      # チュートリアル本文に埋め込まれたコードの正典は Examples/Tutorial/** の
+      # 実パッケージ（#485）。ここが緑であることと、examples-diff-build が
+      # Tutorial 配下もビルドすることの組み合わせで、「本文のコードは必ず
+      # コンパイルを通っている」が構造的に保証される。
+      - name: Verify tutorial snippets are up to date
+        run: python3 scripts/generate-tutorial-snippets.py --check
+      # 「どこまで公開されているか」の正典は本文の frontmatter（#584）。README 群の
+      # 案内は生成物なので、部を 1 つ公開するたびに 5 ファイルを手で直す運用に
+      # 戻さない。公開済みの部への導線の有無もここで見る。
+      - name: Verify tutorial publication status is up to date
+        run: python3 scripts/generate-tutorial-status.py --check
+      # 画像そのものは比較しない（GPU 出力はビット単位で再現しない）。
+      # manifest に記録した撮影時のソース指紋と現在のソースを突き合わせ、
+      # 「スケッチを変えたのに撮り直していない」だけを捕まえる（#486）。
+      - name: Verify tutorial result images are up to date
+        run: python3 scripts/generate-tutorial-shots.py --check
+      # リファレンス（DocC）の実行結果画像。台帳との突き合わせはチュートリアルと
+      # 同じ理屈だが、正典は doc コメントのスニペットで、画像は Gyazo（ADR-0008）。
+      - name: Verify reference result images are up to date
+        run: python3 scripts/generate-reference-shots.py --check
+      # doc コメントのスニペットが**実際にコンパイルできる**ことの保証（#531）。
+      # p5.js の「リファレンスの例は実行される」に相当するものを Swift で置く。
+      # 撮影と違って GPU もトークンも要らないので per-PR で走らせられる。
+      - name: Verify reference snippets compile
+        if: steps.source-changed.outputs.changed == 'true'
+        run: python3 scripts/generate-reference-shots.py --compile-only
+      - name: Verify llms.txt is up to date
+        if: steps.source-changed.outputs.changed == 'true'
+        run: |
+          make llms-txt
+          if ! git diff --quiet llms.txt; then
+            echo "::error::llms.txt is out of date. Run 'make llms-txt' and commit the result."
+            git diff llms.txt
+            exit 1
+          fi
+      # DocC の警告 0 を per-PR で要求する（Issue #396）。ドキュメントを公開する
+      # docs.yml は **main への push でしか走らない**うえ警告で落ちないので、壊れた
+      # シンボルリンクは誰にも気付かれずに溜まっていた（起票時 11 件 → 31 件）。
+      #
+      # 閾値ではなく 0 件固定にできる: 警告は「internal 型を指す ``…``」「モジュール
+      # 跨ぎ」「オーバーロードの曖昧参照」「- Parameter の不備」の 4 種しかなく、
+      # どれも書き手がその場で直せる（直し方は Issue #396 のコメント）。
+      #
+      # コストは軽い。ビルドは上で済んでおり、symbol-graphs の抽出は並列（数秒）、
+      # docc convert 本体は数秒。ローカルの `make docs-check` と同じ実体を呼ぶので、
+      # 手元と CI で結果が食い違わない。
+      - name: Verify DocC builds without warnings
+        if: steps.source-changed.outputs.docc == 'true'
+        run: make docs-check
+      - name: Auto-regenerate examples index (PR only)
+        # Only run for PRs from the same repository — fork PRs can't push back
+        # because the GITHUB_TOKEN is restricted to read-only on forks.
+        if: |
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          # Passed via env (not inline interpolation) so branch names containing
+          # shell metacharacters can't inject into this script.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          # この run の実行中に PR が squash merge されるとブランチが auto-delete
+          # され、下の fetch が exit 128 で job ごと落ちる（Issue #383）。落ちるのは
+          # この後始末ステップだけなのに merge 済み PR に赤 X が残り、履歴上
+          # 「必須チェックが落ちた PR が merge されている」ように見えてしまう。
+          # ブランチが消えている＝もう push し戻す先が無いので、黙って降りる。
+          # 生成物の鮮度は下の `Validate AI-facing docs`（PR / push の両方で走る）
+          # が引き続き見るので、このスキップで検証は漏れない。
+          #
+          # fetch の失敗をまとめて握り潰すのではなく ls-remote の終了コードで
+          # 分岐する: ref 不在（2）だけを無害化し、通信エラー等は従来どおり
+          # 落とす（静かにスキップすると生成物の再生成が飛ぶため）。
+          # `if ! cmd` だと `$?` が `!` の反転後（0）になるので、`|| status=$?`
+          # で拾う（`set -e` もこの形なら発火しない）。
+          status=0
+          git ls-remote --exit-code --heads origin "$HEAD_REF" >/dev/null || status=$?
+          if [ "$status" -ne 0 ]; then
+            if [ "$status" -ne 2 ]; then
+              echo "::error::Failed to query origin for $HEAD_REF (git ls-remote exited $status)."
+              exit "$status"
+            fi
+            echo "::notice::Head branch $HEAD_REF is gone (PR merged and auto-deleted) — skipping examples index regeneration."
+            exit 0
+          fi
+          # Default checkout is the merge commit. Switch to the PR head branch
+          # so we can commit + push back without rebasing.
+          git fetch origin "$HEAD_REF"
+          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+
+          python3 scripts/generate-examples-index.py
+
+          if git diff --quiet docs/ai/examples-index.md docs/ai/examples-index.json; then
+            echo "Examples index up to date."
+            exit 0
+          fi
+
+          echo "Examples index out of date — regenerating and pushing back to $HEAD_REF."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ai/examples-index.md docs/ai/examples-index.json
+          git commit -m "ci: regenerate examples index"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:$HEAD_REF"
+          # GITHUB_TOKEN pushes do NOT fire push/pull_request workflows (GitHub
+          # recursion guard), so the new head SHA would never receive the
+          # required build-and-test check and the PR would become unmergeable.
+          # workflow_dispatch is exempt from the guard — re-enter CI explicitly,
+          # same trick the Release workflow uses.
+          gh workflow run ci.yml --ref "$HEAD_REF"
+          # Continue so the immediate validate step also passes locally on this
+          # runner; the dispatched run validates (and statuses) the new SHA.
+      - name: Validate AI-facing docs
+        run: ./scripts/validate-ai-docs.sh
+      # NOTE: legacy status ブリッジはここには無い。required check は集約ゲート
+      # `ci-gate` 1 本（Issue #411）で、ブリッジも ci-gate ジョブ側に一本化した。
+      # カバレッジは以前ログに印字するだけで、run が流れると消えていた（G18）。
+      # ファイル別レポート・lcov・モジュール別サマリを artifact として残し、
+      # サマリはジョブ要約にも出す（PR コメントは権限と保守コストの割に得るものが
+      # 少ないので採らない — artifact + Summary で十分に追える）。
+      - name: Coverage Report
+        # `if: always()` なので、前段が落ちて .build が無い run でもここへ来る。
+        # 「データが無ければ warning + skip」の判断はスクリプト側が持ち、
+        # scripts/tests/test_coverage_report.py がその挙動を固定する（Issue #639
+        # — インラインの run: だった頃はガードが set -e で到達不能だった）。
+        if: always()
+        run: ./scripts/coverage-report.sh
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # 最小サポートの Swift 5.10（Xcode 15.4 / macos-14）でライブラリ本体が
+  # ビルドできることを検証する（Issue #256）。build-and-test は Xcode 26.4 で
+  # 走るため、新しい SDK にしかないシンボルの混入は per-PR では捕まらず、
+  # リリース時の example smoke-build（macos-14）で初めて発覚していた
+  # （実例: #246 の通知購読 API → v0.5.3 リリース失敗 → #254 で修正）。
+  # ビルドのみでテストは走らせない: 目的は API/SDK 互換の検証であることに
+  # 加え、テストが使う Swift Testing は Xcode 16+ 同梱で 5.10 には存在しない。
+  #
+  # -warnings-as-errors は付ける（Issue #328 段階 4）。strict concurrency の警告集合は
+  # ツールチェーン/SDK 世代で異なり、**5.10 でしか出ない警告が実在する**
+  # （`MTKViewDelegate` の nonisolated 要件、`[MTKTextureLoader.Option: Any]` の受け渡し、
+  # `mach_task_self_` など。実測は Issue #328 のコメント）。ここを緩めたままだと、
+  # 開発者の手元（新しい Xcode のみ）にも build-and-test にも現れない警告が
+  # 際限なく溜まる — 最小サポート側の警告ゼロを守れる場所はここしかない。
+  # 導入時点で 5.10 の警告は 0 件（run 30729134167 で実測）。
+  # もし将来 macos-14 ランナーの既定 Xcode/SDK が変わって *コードと無関係な* 警告で
+  # 落ちるようになったら、このフラグを外して Issue #328 に理由を記録すること。
+  #
+  # macos-14 でのテスト実行は Issue #332 で検証済み・見送り。
+  # swift-testing を明示パッケージ依存として追加すれば 5.10 でもビルド・実行
+  # 自体は可能と実測で確認したが、この macos-14 GitHub-hosted ランナーは
+  # MTLCreateSystemDefaultDevice() が nil を返す（GPU 無し）ため、
+  # MetalTestHelper.isGPUAvailable でゲートされた大半の suite（描画・Golden
+  # Image・Probe 等）が軒並み skip され、統合コスト（Package.swift のツール
+  # チェーン条件分岐・リモート依存ゼロ方針からの逸脱）に見合う検証価値が無い。
+  # 詳細・再評価条件は Issue #332 のコメント参照。
+  # macos-14 ランナー廃止 = Xcode 15.4 が使えなくなったときが最小サポートを
+  # 引き上げる判断タイミング（README の Requirements も併せて更新する）。
+  build-swift-5-10:
+    runs-on: macos-14
+    # ビルドのみ（テストなし）で通常数分。build-and-test と同じ理由で上限を明示。
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select Xcode
+        # macos-14 のデフォルト Xcode（15.4）。release.yml の smoke-build と同じ環境
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Build (Swift 5.10)
+        # アンブレラターゲットのみ（依存として全ライブラリモジュールがビルドされる）。
+        # 全ターゲットの swift build は MetaphorTestSupport が import する
+        # Swift Testing（Xcode 16+ 同梱、5.10 に無い）で失敗する。検証対象は
+        # 「利用者・example がビルドするライブラリ本体」なのでこの範囲で十分
+        # （example は umbrella のみに依存 = release.yml smoke-build と同じ面）
+        run: swift build --target metaphor -Xswiftc -warnings-as-errors
+
+  # website（Astro のランディングページ。DocC の出力もここへ載せて Pages へ出る）
+  # をビルドするのは docs.yml だけで、あれは **main への push でしか走らない**。
+  # そのため Astro を壊す PR がそのまま main に入り、デプロイが落ちて初めて
+  # 気付く状態だった（Issue #491）。
+  # `website/**` を触った PR だけに絞る条件分岐は入れない: ubuntu ランナーで
+  # 1 分弱、build-and-test（~6 分）と並列なので merge 所要時間に影響せず、
+  # 常に走って常に報告するジョブのほうが（skip され得るジョブが必要とする
+  # ci-gate 側の畳み込みを考えなくてよい分）単純に済む。
+  website-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+      - name: Cache remote tutorial images
+        # docs.yml と同じ理由（ADR-0010）。本文の画像は Gyazo にあり、Astro が
+        # ビルド時に取りに行く。ここでキャッシュしておくと、PR ごとのビルドが
+        # 毎回 65 点を取り直さずに済む。
+        uses: actions/cache@v6
+        with:
+          path: website/.astro-cache
+          key: tutorial-images-${{ hashFiles('docs/tutorial/images/manifest.json') }}
+          restore-keys: tutorial-images-
+      - name: Build website
+        # docs.yml の "Build Landing Page" と同じコマンド。あちらは DocC を
+        # 載せ替えて Pages へ公開する本番経路で、こちらは PR 時点で
+        # 構文・依存・Astro のビルドが通ることだけを見る。
+        working-directory: website
+        run: |
+          npm ci
+          npm run build
+
+  # Examples の *全数*（278 本）は per-PR では建てない。各 example は独立した
+  # SwiftPM パッケージで metaphor をフルビルドし直すため、全数は時間もコストも
+  # 見合わない（macOS ランナーは 10 倍課金）。分担は次のとおり:
+  #   - PR が Examples/ を触ったとき → 触った example だけを下の 2 ジョブが建てる
+  #     （Issue #329 / W2-7。壊れた example が最も入りやすい瞬間を押さえる）
+  #   - 週次 + リリース前 → 代表セット（~19 本）を examples-sweep.yml と
+  #     release.yml が建てて公開 API ドリフトを検出する（Issue #147）
+  #   - 全数スイープ → examples-sweep.yml の workflow_dispatch（full=true）
+  # 手元での確認: `make examples-check`（全数）/
+  # `./scripts/run-examples.sh --build-only --smoke`（代表セット）。
+  #
+  # 検出は Linux ランナー（1 倍課金）で行い、変更が無ければ macOS ジョブ自体を
+  # 起動しない。
+  examples-detect:
+    # PR 以外（push / workflow_dispatch）には比較すべき base が無い。必須チェックは
+    # build-and-test だけなので、このジョブが skip されても merge は妨げられない。
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      count: ${{ steps.detect.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # merge-base を解決するため全履歴が要る（差分は BASE...HEAD の 3 点表記）。
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Detect changed example packages
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          ./scripts/changed-examples.sh "$BASE_SHA" "$HEAD_SHA" > changed-examples.txt
+          count=$(grep -c . changed-examples.txt || true)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "変更された example パッケージ: ${count} 件"
+          cat changed-examples.txt
+
+  # このジョブ自体は直接 required ではないが、集約ゲート `ci-gate`（下）が
+  # needs に含めて failure を fail に畳むため、**実質 required**（Issue #411）。
+  # Examples/ を触らない PR ではジョブごと skip され、ci-gate は skipped を
+  # success 扱いに畳むので、通常 PR の merge 所要時間（build-and-test ~6 分）は
+  # 変わらない。Examples を触る PR だけがこのジョブの完走（最大 60 分）を待つ。
+  # ジョブ単体を required にしない理由: 条件付きジョブは skip されると legacy
+  # Statuses API に何も報告せず、この個人リポの ruleset は required_status_checks
+  # を legacy status で評価している疑いが強い（だから ci-gate がブリッジを持つ）。
+  # skip があり得るジョブを直接 required にすると「実行されない PR」で永久
+  # pending になり auto-merge が詰まる恐れがある。
+  examples-diff-build:
+    needs: examples-detect
+    if: needs.examples-detect.outputs.count != '0'
+    runs-on: macos-26
+    # 1 本あたり metaphor のフルビルドを含むので、上限（下の MAX）× 数分を見込む。
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      - name: Build changed examples
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # API 全面改修などで一度に大量の example が変わることがある。全部建てると
+          # 数時間コースなので上限を設ける（超過分は週次スイープとリリース前の
+          # 代表セットビルドで拾う）。
+          MAX: '6'
+        run: |
+          set -eu
+          ./scripts/changed-examples.sh "$BASE_SHA" "$HEAD_SHA" > changed-examples.txt
+          total=$(grep -c . changed-examples.txt || true)
+          if [ "$total" -gt "$MAX" ]; then
+            echo "::notice::変更された example は ${total} 件。先頭 ${MAX} 件のみビルドします（残りは週次の examples-sweep が担当）。"
+          fi
+          i=0
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            i=$((i + 1))
+            [ "$i" -le "$MAX" ] || break
+            echo "::group::swift build ${dir}"
+            # debug ビルド: 目的は「公開 API に対して example がコンパイルできる」
+            # ことの確認で、最適化の検証ではない（release より大幅に速い）。
+            (cd "$dir" && swift build)
+            echo "::endgroup::"
+          done < changed-examples.txt
+      # NOTE: 以前ここにあった「失敗時に PR へ警告コメントを残す」ステップは撤去した
+      # （Issue #411）。ci-gate 経由で required になったため赤が merge をブロックし、
+      # 「赤が誰にも届かないまま消える」という前提そのものが消えたため。
+
+  # 集約ゲート（Issue #411）。ruleset の required check は **このジョブ 1 本だけ**。
+  # 条件付きジョブ（examples-detect / examples-diff-build）の skip をここで
+  # success 扱いに畳むことで、legacy status 評価の「skip されたジョブは何も
+  # 報告しない → required が永久 pending」問題を回避する（ci-gate 自身は常に
+  # 走り、常に報告する）。将来ジョブを足すときは needs に追加するだけでよく、
+  # ruleset を触る必要はない。
+  ci-gate:
+    needs: [build-and-test, build-swift-5-10, website-build, examples-detect, examples-diff-build]
+    # 既定では upstream の失敗時にこのジョブごと skip されてしまい、legacy status
+    # 評価では「報告なし = 永久 pending」になる。always() で必ず走らせ、結果は
+    # 下のステップで needs.*.result から自前で判定する。
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write   # legacy status ブリッジ（下）のため
+    steps:
+      - name: Require every upstream job to be success or skipped
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          set -eu
+          echo "$NEEDS_JSON"
+          bad=$(printf '%s' "$NEEDS_JSON" \
+            | jq -r 'to_entries[]
+                     | select(.value.result != "success" and .value.result != "skipped")
+                     | .key' \
+            | tr '\n' ' ')
+          if [ -n "${bad% }" ]; then
+            echo "::error::Upstream job(s) failed or were cancelled: ${bad}"
+            exit 1
+          fi
+          echo "OK: every upstream job succeeded or was skipped."
+      - name: Bridge to legacy status (workflow_dispatch / merge_group)
+        # Repository rulesets on personal repos evaluate required_status_checks
+        # against the legacy Statuses API. pull_request runs satisfy it through
+        # the normal path, but workflow_dispatch runs (release branches, the
+        # examples-index auto-push re-dispatch) and merge_group runs (merge
+        # queue temporary branches) only produce a check_run, so mirror the
+        # green result as a status on the commit we just tested.
+        # 前ステップが fail したらこのステップは走らない（暗黙の success()）ので、
+        # 失敗が success として報告されることはない。
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=ci-gate \
+            -f description="CI passed via ${{ github.event_name }} run"
