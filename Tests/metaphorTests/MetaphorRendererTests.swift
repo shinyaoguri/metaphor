@@ -177,14 +177,33 @@ struct MetaphorRendererTests {
     }
 
     /// MetaphorSyphon がリンクされていれば、ロード時の C コンストラクタ経由で
-    /// `MetaphorOutputRegistry.factory` が自動登録され、SketchRunner の自動配線
+    /// `SyphonOutputProvider` が `MetaphorOutputProviders` に自動登録され、SketchRunner の自動配線
     /// （`config.syphon` / `METAPHOR_SYPHON_NAME` / ヘッドレス）が透過的に機能する。
     /// このテスト target は umbrella `metaphor` 経由で MetaphorSyphon をリンクしている。
-    @Test("MetaphorSyphon auto-registers an output factory at load")
-    func outputRegistryAutoRegistered() throws {
-        #expect(MetaphorOutputRegistry.factory != nil)
-        let output = MetaphorOutputRegistry.makeOutput(name: "metaphor-registry-test")
+    @Test("MetaphorSyphon auto-registers an output provider at load")
+    func outputProviderAutoRegistered() throws {
+        let provider = try #require(
+            MetaphorOutputProviders.registered.first { $0.id == SyphonOutputProvider.providerID }
+        )
+        #expect(provider.requirements == [.externalRenderLoop], "Syphon はウィンドウが隠れても publish を続ける = timer を要求")
+
+        let context = MetaphorOutputContext(
+            scope: .primary(SketchConfig(title: "metaphor-registry-test", syphon: true)),
+            environment: [:], isHeadless: false
+        )
+        let output = provider.makeOutput(context: context)
         #expect(output is SyphonPlugin)
+
+        // 走査結果にも Syphon が含まれ、要件が集計される（= 従来の自動タイマー切替）。
+        let outputs = MetaphorOutputProviders.makeOutputs(context: context)
+        #expect(outputs.contains { $0.providerID == SyphonOutputProvider.providerID && $0.plugin is SyphonPlugin })
+        #expect(
+            SketchRunner.resolveLoopMode(
+                config: SketchConfig(syphon: true), fps: 60,
+                requirements: SketchRunner.aggregateRequirements(config: SketchConfig(syphon: true), outputs: outputs),
+                isHeadless: false
+            ) == .timer(fps: 60)
+        )
     }
 
     /// `shutdown()` は全プラグインを onStop → onDetach し、プラグイン配列をクリアする。

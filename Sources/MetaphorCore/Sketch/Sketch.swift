@@ -209,9 +209,22 @@ extension Sketch {
 public struct PluginFactory: @unchecked Sendable {
     private let _create: @MainActor () -> MetaphorPlugin
 
+    /// このプラグインがレンダーループに求める条件（既定は空）。
+    ///
+    /// プラグインの生成は `setup()` の直前まで遅延されるため、レンダーループの駆動方法は
+    /// インスタンスに尋ねずにここから決まります。ウィンドウが隠れても処理を止めたくない
+    /// 出力系プラグインは ``PluginRequirements/externalRenderLoop`` を宣言してください。
+    public let requirements: PluginRequirements
+
     /// プラグインを生成するクロージャからファクトリを作成します。
-    /// - Parameter create: 新しいプラグインインスタンスを返すクロージャ。
-    public init(_ create: @MainActor @escaping () -> MetaphorPlugin) {
+    /// - Parameters:
+    ///   - requirements: レンダーループに求める条件（既定は空）。
+    ///   - create: 新しいプラグインインスタンスを返すクロージャ。
+    public init(
+        requirements: PluginRequirements = [],
+        _ create: @MainActor @escaping () -> MetaphorPlugin
+    ) {
+        self.requirements = requirements
         self._create = create
     }
 

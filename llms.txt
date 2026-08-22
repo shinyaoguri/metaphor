@@ -604,6 +604,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `protocol MetaphorOutputPlugin : MetaphorPlugin` -- 最終フレームを外部へ出力（publish / stream / record）するプラグインのマーカープロトコル。
 
+### `protocol MetaphorOutputProvider : Sendable` -- 出力プラグイン（Syphon / NDI / 開発ツール向け転送など）を起動時に自動配線するための provider。
+
+- `var id: String { get }` -- 安定した識別子。同じ `id` の再登録は置換になります（二重登録に寛容）。
+- `var requirements: PluginRequirements { get }` -- この provider が返す出力プラグインがレンダーループに求める条件（既定は空）。
+- `func makeOutput(context: MetaphorOutputContext) -> (any MetaphorOutputPlugin)?` -- この起動で出力を提供するなら出力プラグインを返し、提供しないなら `nil` を返します。
+
 ### `protocol MetaphorPlugin : AnyObject` -- metaphor レンダリングライフサイクルにフックするプラグイン
 
 - `var pluginID: String { get }` -- このプラグインの一意な識別子
@@ -712,7 +718,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `struct PluginFactory` -- `SketchConfig` で使用するプラグインインスタンスを生成するファクトリ。
 
-- `init(_ create: @MainActor () -> any MetaphorPlugin)` -- プラグインを生成するクロージャからファクトリを作成します。
+- `let requirements: PluginRequirements` -- このプラグインがレンダーループに求める条件（既定は空）。
+- `init(requirements: PluginRequirements = [], _ create: @MainActor () -> any MetaphorPlugin)` -- プラグインを生成するクロージャからファクトリを作成します。
 - `func create() -> any MetaphorPlugin` -- プラグインをインスタンス化します。
 
 ### `struct ShapeStyle` -- シェイプ作成時にキャプチャされるビジュアルスタイルプロパティのスナップショット。
@@ -761,12 +768,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var fps: Int` -- 目標フレームレート。
 - `var height: Int` -- オフスクリーンレンダーテクスチャの高さ（ピクセル単位）。
+- `var plugins: [PluginFactory]` -- このウィンドウのレンダラーに登録するプラグインファクトリ（既定は空）。
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
 - `var syphonName: String?` -- Syphon サーバー名。Syphon 出力を無効にするには `nil`。
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, syphonName: String? = nil, renderLoopMode: RenderLoopMode = .displayLink)` -- 新しいセカンダリウィンドウ設定を作成します。
+- `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, syphonName: String? = nil, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいセカンダリウィンドウ設定を作成します。
 
 ### `struct VideoExportConfig` -- ビデオエクスポートのパラメータ設定
 
@@ -1086,10 +1094,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `enum MetaphorOutputRegistry` -- 出力プラグイン（Syphon / NDI 等）のファクトリ登録ポイント。
+### `enum MetaphorOutputProviders` -- 出力 provider の登録ポイント。
 
-- `(unsafe) static var factory: (@MainActor (String) -> any MetaphorOutputPlugin)?` -- 名前から出力プラグインを生成するファクトリ。
-- `static func makeOutput(name: String) -> (any MetaphorOutputPlugin)?` -- 登録済みファクトリで出力プラグインを生成します。未登録なら `nil`。
+- `static var registered: [any MetaphorOutputProvider] { get }` -- 登録済み provider（登録順）。
+- `static func register(_ provider: any MetaphorOutputProvider)` -- provider を登録します。同じ `MetaphorOutputProvider/id` が既にあれば置き換えます
+- `static func unregister(id: String)` -- 指定した `id` の provider を登録から外します。無ければ何もしません。
+
+### `enum MetaphorOutputRegistry` -- 出力プラグイン（Syphon / NDI 等）の**旧**ファクトリ登録ポイント。
 
 ### `enum MouseButton` -- マウスのボタン種別。
   - Note: Processing の `LEFT` / `RIGHT` / `CENTER` は metaphor では **キーコード定数**（`LEFT: UInt16 = 123` は左矢印キー）であり、マウスボタンではありません。以前 `Sketch/mouseButton` は `Int` だったため `mouseButton == LEFT` が異種整数比較として合法になり、コンパイルも警告も通ったうえで常に `false` になっていました（Issue #382）。型を分けたことでこの書き間違いはコンパイルエラーになります。
@@ -1173,6 +1184,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `case displayLink` -- MTKView 内蔵のディスプレイリンク駆動レンダリング（デフォルト）
 - `case timer(fps: Int)` -- 独立したフレームタイミング用の DispatchSourceTimer を使用
+- `static func resolve(requested: RenderLoopMode, fps: Int, requirements: PluginRequirements, isHeadless: Bool) -> RenderLoopMode` -- 要求されたモードと、プラグイン / 出力 provider が宣言した要件から、実際に使うモードを決めます
 
 ### `enum ShadowShaders` -- シャドウマッピングシェーダー関数名定数。
 
@@ -2804,7 +2816,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `enum MetaphorSyphon` -- The Syphon output module.
 
-- `static func enable()` -- Explicitly registers the Syphon output factory.
+- `static func enable()` -- Explicitly registers the Syphon output provider.
 
 ### `final class SyphonOutput` -- Publish Metal textures to other applications via a Syphon server.
 
