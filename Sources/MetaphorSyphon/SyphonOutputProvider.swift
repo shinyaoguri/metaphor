@@ -28,15 +28,15 @@ struct SyphonOutputProvider: MetaphorOutputProvider {
 
     /// この起動で publish する Syphon サーバー名（無効なら `nil`）。
     ///
-    /// プライマリは `resolveSyphonName(config:env:requiresOutput:)`（ヘッドレスは出力しか無いので
-    /// `requiresOutput: true` = `config.syphon` に関わらず `title` へ落ちる）、セカンダリウィンドウは
+    /// プライマリは `resolveSyphonName(config:env:)`、セカンダリウィンドウは
     /// ``MetaphorCore/SketchWindowConfig/syphonName`` のみ（環境変数・`syphon` フラグは見ない = 従来どおり）。
+    /// ヘッドレス（`METAPHOR_VIEWER=1`）でも**明示の要求が無ければ publish しない**
+    /// （ADR-0014。ライブビューアへの転送は viewer frame IPC が担い、`metaphor watch` が
+    /// `METAPHOR_SYPHON_NAME` を注入するのは `--syphon-name` / `--syphon` を明示したときだけ）。
     nonisolated static func resolveOutputName(context: MetaphorOutputContext) -> String? {
         switch context.scope {
         case .primary(let config):
-            return resolveSyphonName(
-                config: config, env: context.environment, requiresOutput: context.isHeadless
-            )
+            return resolveSyphonName(config: config, env: context.environment)
         case .window(let config):
             return config.syphonName
         }
@@ -48,22 +48,14 @@ struct SyphonOutputProvider: MetaphorOutputProvider {
     /// （``MetaphorCore/SketchConfig/syphon`` が `true` なら ``MetaphorCore/SketchConfig/title``）。
     /// いずれも無ければ `nil`（= 出力無効）。空文字の環境変数は未設定として扱います。
     ///
-    /// ヘッドレス（`METAPHOR_VIEWER=1`）は「ウィンドウ無し・出力のみ」で、名前が決まらないと
-    /// 何も見えないプロセスになります。この経路は `requiresOutput: true` を渡し、
-    /// ``MetaphorCore/SketchConfig/syphon`` が `false` でも `title` へ落ちる（= 戻り値は
-    /// 必ず非 `nil`）ようにします。
-    ///
     /// - Parameters:
     ///   - config: スケッチ設定。
     ///   - env: 参照する環境変数（テストから注入可能）。
-    ///   - requiresOutput: 出力が必須の経路（= ヘッドレス）なら `true`。
-    /// - Returns: 出力サーバー名。無効なら `nil`（`requiresOutput: true` では `nil` にならない）。
-    nonisolated static func resolveSyphonName(
-        config: SketchConfig, env: [String: String], requiresOutput: Bool = false
-    ) -> String? {
+    /// - Returns: 出力サーバー名。無効なら `nil`。
+    nonisolated static func resolveSyphonName(config: SketchConfig, env: [String: String]) -> String? {
         if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return name }
         if let name = config.syphonName { return name }
-        if config.syphon || requiresOutput { return config.title }
+        if config.syphon { return config.title }
         return nil
     }
 }

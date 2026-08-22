@@ -73,9 +73,12 @@ let package = Package(
         // Core: rendering engine, drawing, sketch protocol, shaders, and all tightly-coupled subsystems.
         // NOTE: Core does NOT depend on Syphon. Frame output (Syphon etc.) lives in separate targets
         // (e.g. MetaphorSyphon) and registers itself via MetaphorOutputRegistry at load time. See ADR.
+        // viewer frame IPC (CONTRACT.md point 5 / ADR-0014). `shm_open` and the
+        // `CMSG_*` macros are not callable from Swift, so this thin C target owns them.
+        .target(name: "CMetaphorIPC"),
         .target(
             name: "MetaphorCore",
-            dependencies: ["MetaphorLog"],
+            dependencies: ["MetaphorLog", "CMetaphorIPC"],
             resources: [
                 .copy("Shaders/Metal"),
                 .copy("Shaders/ShaderSources"),
@@ -175,7 +178,8 @@ let package = Package(
         // "unhandled files" 警告を出す）。
         .testTarget(
             name: "metaphorTests",
-            dependencies: ["metaphor", "MetaphorTestSupport"],
+            // CMetaphorIPC: the viewer frame IPC tests play the parent (recv_fd) in-process.
+            dependencies: ["metaphor", "MetaphorTestSupport", "CMetaphorIPC"],
             exclude: ["Golden", "Fixtures"],
             swiftSettings: strictConcurrency
         ),

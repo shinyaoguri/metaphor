@@ -181,6 +181,7 @@ symbol-graphs: build
 		-sdk "$$SDK_PATH" \
 		-I .build/arm64-apple-macosx/debug/Modules \
 		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorSyphonBootstrap.build/module.modulemap \
+		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorIPC.build/module.modulemap \
 		-F "$$SYPHON_F" \
 		-minimum-access-level public \
 		-skip-inherited-docs \

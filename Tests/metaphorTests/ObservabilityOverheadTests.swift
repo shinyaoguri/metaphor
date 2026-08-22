@@ -218,6 +218,40 @@ struct IdleHotPathTests {
     }
 }
 
+// MARK: - viewer 出力（未接続）は idle
+
+@Suite("ObservabilityOverhead: idle viewer output", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct IdleViewerOutputTests {
+
+    /// `METAPHOR_VIEWER_SOCKET` に親がいない（接続失敗）`ViewerOutputPlugin` は、`post()` で
+    /// 共有メモリも blit も作らず即 return する（通常実行では登録すらされないのでゼロコスト）。
+    @Test("未接続の ViewerOutputPlugin は pre()/post() を回しても何も作らない")
+    func unconnectedViewerOutputIsInert() throws {
+        let plugin = ViewerOutputPlugin(socketPath: "/nonexistent/metaphor-viewer-idle.sock")
+        let renderer = try MetaphorRenderer(width: 64, height: 64)
+        renderer.addPlugin(plugin)
+        #expect(!plugin.isConnected)
+
+        let cb = try #require(renderer.commandQueue.makeCommandBuffer())
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: 8, height: 8, mipmapped: false
+        )
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        let tex = try #require(renderer.device.makeTexture(descriptor: desc))
+
+        for _ in 0..<5000 {
+            plugin.pre(commandBuffer: cb, time: 0)
+            plugin.post(texture: tex, commandBuffer: cb)
+        }
+        // blit encoder を 1 つも積んでいなければ、コマンドバッファはそのまま commit できる。
+        cb.commit()
+        cb.waitUntilCompleted()
+        #expect(cb.status == .completed)
+    }
+}
+
 // MARK: - 入力注入 idle は dispatch しない
 
 @Suite("ObservabilityOverhead: idle input injection", .enabled(if: MetalTestHelper.isGPUAvailable))

@@ -50,11 +50,6 @@ struct SyphonOutputNameResolutionTests {
         #expect(SyphonOutputProvider.resolveSyphonName(
             config: SketchConfig(), env: ["METAPHOR_SYPHON_NAME": ""]
         ) == nil)
-        // ヘッドレスでも同じ（= 名前が "" のサーバーを publish しない）。
-        #expect(SyphonOutputProvider.resolveSyphonName(
-            config: SketchConfig(title: "MyTitle"),
-            env: ["METAPHOR_SYPHON_NAME": ""], requiresOutput: true
-        ) == "MyTitle")
     }
 
     @Test("windowed path yields nil when nothing asks for output")
@@ -64,24 +59,6 @@ struct SyphonOutputNameResolutionTests {
         ) == nil)
     }
 
-    @Test("requiresOutput: true (headless) always resolves a name")
-    func headlessAlwaysResolves() {
-        // ヘッドレスは「ウィンドウ無し・出力のみ」なので、syphon フラグ抜きでも title へ落とす。
-        #expect(SyphonOutputProvider.resolveSyphonName(
-            config: SketchConfig(title: "MyTitle", syphon: false),
-            env: [:], requiresOutput: true
-        ) == "MyTitle")
-
-        // 優先順位そのものは requiresOutput では変わらない。
-        #expect(SyphonOutputProvider.resolveSyphonName(
-            config: SketchConfig(title: "MyTitle", syphonName: "FromConfig"),
-            env: [:], requiresOutput: true
-        ) == "FromConfig")
-        #expect(SyphonOutputProvider.resolveSyphonName(
-            config: SketchConfig(title: "MyTitle", syphonName: "FromConfig"),
-            env: ["METAPHOR_SYPHON_NAME": "FromEnv"], requiresOutput: true
-        ) == "FromEnv")
-    }
 }
 
 // MARK: - provider の判定
@@ -96,7 +73,7 @@ struct SyphonOutputProviderTests {
         #expect(provider.requirements == [.externalRenderLoop])
     }
 
-    @Test("プライマリ: env > syphonName > syphon フラグ、ヘッドレスは title へ落ちる")
+    @Test("プライマリ: env > syphonName > syphon フラグ。ヘッドレスでも暗黙には publish しない（ADR-0014）")
     func primaryScope() {
         func name(_ config: SketchConfig, env: [String: String] = [:], headless: Bool = false) -> String? {
             SyphonOutputProvider.resolveOutputName(context: MetaphorOutputContext(
@@ -107,7 +84,10 @@ struct SyphonOutputProviderTests {
         #expect(name(SketchConfig(title: "T", syphon: true)) == "T")
         #expect(name(SketchConfig(title: "T", syphonName: "N")) == "N")
         #expect(name(SketchConfig(title: "T", syphonName: "N"), env: ["METAPHOR_SYPHON_NAME": "E"]) == "E")
-        #expect(name(SketchConfig(title: "T"), headless: true) == "T", "ヘッドレスは出力しか無いので必ず publish する")
+        #expect(name(SketchConfig(title: "T"), headless: true) == nil,
+                "ヘッドレスの観測は viewer socket / Probe が担う。Syphon は明示の要求だけ")
+        #expect(name(SketchConfig(title: "T"), env: ["METAPHOR_SYPHON_NAME": "W"], headless: true) == "W",
+                "旧 cli が注入する METAPHOR_SYPHON_NAME は従来どおり効く")
     }
 
     @Test("セカンダリウィンドウ: syphonName だけを見る（env / syphon フラグは見ない）")
