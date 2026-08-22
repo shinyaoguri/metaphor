@@ -282,27 +282,22 @@ ffmpeg -y -framerate 15 -start_number 0 \
 ### Gyazo へ上げる
 
 Gyazo の Upload API へ渡すと `https://i.gyazo.com/<id>.gif` が返る。GitHub は外部画像を camo
-経由で配信するが、アニメーションはそのまま再生される。
+経由で配信するが、アニメーションはそのまま再生される。返り値 `url` を `![説明](URL)` で
+PR 本文に貼り、**どこを見てほしいか**を本文で補う。
 
-```bash
-curl -s -F "access_token=$(secret-read "${GYAZO_TOKEN_REF:-op://Automation/Gyazo API/credential}")" \
-  -F "imagedata=@motion.gif" https://upload.gyazo.com/api/upload
-```
+**手順の正本は repo-standards プラグインの `gyazo-capture` スキル**(GIF の作り方・
+アップロードのコマンド・撮影範囲の書き方)。ここにコマンドを再掲すると、片方だけ直る。
 
-返り値 `url` を `![説明](URL)` で PR 本文に貼り、**どこを見てほしいか**を本文で補う。
+metaphor 固有の事情として 1 つだけ: アクセストークンの読み口は `op read` ではなく
+`secret-read`。**1Password がロックされていると `op read` は承認待ちのまま返らず**、
+無人セッションがそこで止まるため。`secret-read` は低権限の秘密だけを macOS Keychain へ
+キャッシュするのでロック中でも読め、正本(1Password)のローテートにも追随する。
+`make reference-shots` / `make tutorial-shots` も同じ読み口を使う
+([`scripts/shots_common.py`](scripts/shots_common.py) の `gyazo_token`)。`secret-read` が
+無い環境では `op read` に落ちるが、そのときはスクリプトが警告する。
 
-アクセストークンは都度読む(平文の環境変数として常駐させない。環境変数に持たせてよいのは
-参照文字列だけ)。読み口が `op read` ではなく `secret-read` なのは、**1Password が
-ロックされていると `op read` が承認待ちのまま返らない**ため — 無人セッションはそこで
-黙って止まる。`secret-read` は低権限の秘密だけを macOS Keychain にキャッシュするので、
-ロック中でも読めて、正本(1Password)のローテートにも自動で追随する。`make reference-shots` /
-`make tutorial-shots` も同じ読み口を使う([`scripts/shots_common.py`](scripts/shots_common.py)
-の `gyazo_token`)。
-
-`secret-read` は個人環境のセットアップリポジトリが `bin/` に置くもので、metaphor の
-必須依存ではない。無ければ `op read` に落ちる(そのときは上のロックの問題を抱えるので、
-スクリプトは落ちたことを警告する)。手順の一般形は repo-standards プラグインの
-gyazo-capture スキルにある。
+ドキュメント本文に載り続ける実行結果画像はこれとは別の話で、`.claude/skills/shots/` が
+案内する。
 
 ## 依存更新 PR（dependabot）を手元で検証する
 
