@@ -374,8 +374,14 @@ def no_capture_reason(package_dir: Path, ref: str) -> str | None:
 # --- 外部コマンド ---------------------------------------------------------------
 
 
-def run_capturing(command: list[str], what: str, *, cwd: Path | None = None) -> str:
-    """コマンドを走らせ、成功したら stdout を返す。失敗は `ShotError`。
+def run_capturing(
+    command: list[str],
+    what: str,
+    *,
+    cwd: Path | None = None,
+    include_stderr: bool = False,
+) -> str:
+    """コマンドを走らせ、成功したら出力を返す。失敗は `ShotError`。
 
     出力を捨てずに抱えるのは、失敗したときに何が起きたかを添えるため（ビルドの
     エラーは stdout 側に出ることがある）。
@@ -383,11 +389,16 @@ def run_capturing(command: list[str], what: str, *, cwd: Path | None = None) -> 
     `cwd` を渡せる口があるのは、**どこで走らせるかが結果を変える**コマンドがあるため
     （`swift build` は cwd の Package.swift を見る。省略するとリポジトリ直下の
     metaphor 本体をビルドしてしまい、撮る対象がビルドされないまま素通りする）。
+
+    `include_stderr` は stdout に stderr を継ぎ足して返す。**読みたい出力がどちらの
+    ストリームに出るかはコマンドが決める**ためで、ffmpeg はフィルタの要約（psnr の
+    `average:` 行など）を stderr へ書く。stdout だけを返す口しか無いと、その出力を
+    読む側は成功したコマンドから空文字を受け取って必ず空振りする（#1030）。
     """
     result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
     if result.returncode != 0:
         raise ShotError(f"{what}に失敗した:\n{result.stdout}\n{result.stderr}")
-    return result.stdout
+    return result.stdout + result.stderr if include_stderr else result.stdout
 
 
 def run_or_raise(command: list[str], what: str, *, cwd: Path | None = None) -> None:

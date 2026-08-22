@@ -785,7 +785,9 @@ def flip_psnr(still: Path, flip: str) -> float | None:
     これを差し替えるだけで判定ロジックを確かめられる。
 
     psnr の要約は info で出るため `-loglevel error` にはできない
-    （`-nostats` で進捗行だけ黙らせる）。
+    （`-nostats` で進捗行だけ黙らせる）。**要約は stdout ではなく stderr に出る**ので
+    `include_stderr` で受ける（stdout だけを見ていた間、この検査は撮影のたびに
+    「読み取れなかった」で落ちていた ＝ #1030）。
     """
     if shutil.which("ffmpeg") is None:
         return None
@@ -797,6 +799,7 @@ def flip_psnr(still: Path, flip: str) -> float | None:
             "-f", "null", "-",
         ],
         f"{still.name} の {flip} との PSNR 計測",
+        include_stderr=True,
     )
     matched = PSNR_AVERAGE_RE.search(output)
     if not matched:
