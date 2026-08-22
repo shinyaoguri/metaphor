@@ -161,7 +161,9 @@ metaphor の開発環境は VSCode / Xcode を想定しているが、「**よ�
 ### Negative / Trade-offs
 
 - **開発体験の一部を他人の実装に預ける**。VSCode / SourceKit-LSP 側が壊れると
-  metaphor の体験も壊れる（[#578](https://github.com/shinyaoguri/metaphor/issues/578) が現に発生中）。回避策の同梱で対処するが、根治はできない
+  metaphor の体験も壊れる（[#578](https://github.com/shinyaoguri/metaphor/issues/578) は起票時に現に発生していた。
+  根本原因は root manifest の binaryTarget で、v0.12.0 の Syphon 分離（ADR-0014）で根治。cli が同梱していた回避策も
+  撤去済み — 2026-08-23 追記）
 - **④ 未経験者のオンボーディングは空いたまま**。ターミナルを越えられない層には届かない。
   ゲート 1 が観測されるまで意図的に空けておく
 - Xcode と VSCode の二刀流になるため、**どちらをいつ使うかを利用者に説明する責任が残る**
@@ -169,10 +171,10 @@ metaphor の開発環境は VSCode / Xcode を想定しているが、「**よ�
 
 ### Follow-ups / 残課題
 
-- **README / チュートリアル 01 への二刀流の明記は [#578](https://github.com/shinyaoguri/metaphor/issues/578) 待ち**。現在
-  README の VSCode 言及は 0 件、チュートリアル 01 の動作環境表も「Swift 5.10 以降（Xcode 15.4 以降）」だけで、
-  **いま「日常は VSCode」と書くと補完が全滅する環境を推奨することになる**。本リポジトリに
-  `.sourcekit-lsp/` はまだ無い（2026-08-18 実測）。#578 で回避策が入ってから書く
+- **README / チュートリアル 01 への二刀流の明記**。起票時は [#578](https://github.com/shinyaoguri/metaphor/issues/578)
+  （背景インデックスで補完が全滅）待ちだったが、v0.12.0 で根治し待ちは解除（2026-08-23）。生成物に
+  `.sourcekit-lsp/` は**同梱しない**のが最終形（cli#168 で撤去）なので、「日常は VSCode + `metaphor watch`、
+  GPU デバッグだけ Xcode」は前提なしに書ける。README / チュートリアル 01 への記載は未着手
 - Step 1（[cli#126](https://github.com/shinyaoguri/metaphor-cli/issues/126)）は metaphor-cli 側が持つ。本リポジトリの作業ではない
 - [#501](https://github.com/shinyaoguri/metaphor/issues/501)（example のスクリーンショット 162 枚がどこからも参照されていない）は、
   VSCode 拡張のサンプル挿入（Step 1）の出口になりうる

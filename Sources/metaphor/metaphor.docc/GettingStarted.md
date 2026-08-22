@@ -92,7 +92,7 @@ final class MySketch: Sketch {
 
 ## 設定
 
-ウィンドウサイズ・タイトル・フレームレート・Syphon 出力などは ``MetaphorCore/SketchConfig`` で指定し、
+ウィンドウサイズ・タイトル・フレームレート・プラグイン（Syphon 出力など）は ``MetaphorCore/SketchConfig`` で指定し、
 ``/MetaphorCore/Sketch`` の `config` プロパティから返します。すべてのパラメータに既定値があるため、
 `SketchConfig()` だけで 1920×1080・60fps のキャンバスが得られます。個々のパラメータは
 ``MetaphorCore/SketchConfig`` を参照してください。

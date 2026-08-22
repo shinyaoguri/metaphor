@@ -11,10 +11,10 @@ workflow. No PAT required — the workflow re-enters CI on its own release branc
 using `workflow_dispatch` (which is exempt from the `GITHUB_TOKEN` recursion
 guard).
 
-> **変更（2026-08-23・#792 M4 / [ADR-0014](adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）**: v0.12.0 から本体のリリースは
-> **Syphon.xcframework の asset を持たず、metaphor-cli への pin dispatch も行いません**。Syphon のビルド・asset・self-pin は
-> 独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) の Release が担います。本書の Syphon / asset /
-> 4 段パイプラインの記述は **v0.11.0 以前のタグ**に対してのみ有効で、M5（#1041）で全面的に書き直します。
+> v0.12.0 から本体のリリースは **Syphon.xcframework の asset を持たず、metaphor-cli への pin dispatch も行いません**
+> （#792 / [ADR-0014](adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）。Syphon のビルド・asset・self-pin は独立パッケージ
+> [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) の Release が担い、本体のタグは Swift のソースだけを指します。
+> v0.11.0 以前のタグが持つ asset の扱いは「[配布防御](#配布防御タグと-release-asset)」に残してあります。
 
 `release.yml` はリリースロジックの唯一の在処（バージョン定数の bump、タグ、GitHub Release）で、
 その引き金を引くものが 3 つあります。**どれも `release.yml` 自体は変えず、
@@ -217,9 +217,9 @@ conflict — 全 PR が `## [Unreleased]` の同じ行を触ると、並行 PR �
 | **PR ごと**(`ci.yml` の *Lint changelog.d entries*) | `changelog.py lint` — 置かれたファイルの**名前と中身だけ**を検証(カテゴリ typo・区切りなし・`.md` 以外・空ファイル)。**エントリの有無は問わない**。`build-and-test` のステップとして走り、その失敗は required check `ci-gate` が fail に畳むのでマージをブロックする | **PR がマージ不能**。typo を書いた本人がその場で直す(Issue #405 — 以前はリリース時まで発覚しなかった) |
 | **PR ごと**(`ci.yml` の *Require a changelog.d entry for user-facing PRs*) | `require-changelog-entry.py` — 有無の方を見る。PR タイトルの type が**単独でリリースを起こす**(`feat` / `fix` / `perf`。判定は `release-bump.py` の `BUMP_BY_TYPE` を import して共有)か `!` 付きなら、`changelog.d/` にファイルを追加していることを要求する。判断は書き手に残っており、`no-changelog` ラベルを貼れば通る | **PR がマージ不能**。エントリを足すか `no-changelog` を貼る。どちらもタイトル・ラベルを API から読むので `gh run rerun --failed <run-id>` だけで通る(Issue #461 — 以前は下の 2 つで週明けに発覚していた) |
 | 発車前(`release-train.yml` の *Require CHANGELOG entries*) | 同じ `changelog.py check`。bump が決まった週だけ走る | **トレインが fail**。dispatch されないので Release ワークフローは起動しない。エントリを足して手で `workflow_dispatch`(dry_run=false)するか、翌週に乗せる |
-| ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `changelog.d/` にエントリがあるか、`## [Unreleased]` の中身が空でないこと(両対応)。ファイル名の不備(カテゴリ不明・区切りなし・`.md` 以外・空ファイル)もここで弾く | **リリース中断**。Syphon ビルド前・タグ発行前なので損失なし |
+| ジョブ冒頭(*Require CHANGELOG entries*) | `changelog.py check` — `changelog.d/` にエントリがあるか、`## [Unreleased]` の中身が空でないこと(両対応)。ファイル名の不備(カテゴリ不明・区切りなし・`.md` 以外・空ファイル)もここで弾く | **リリース中断**。タグ発行前なので損失なし |
 | *Push release branch*(stable のみ) | `changelog.py release <version>` — まず `changelog.d/*.md` を `## [Unreleased]` へ集約してファイルを削除し、続けて `## [X.Y.Z] - YYYY-MM-DD` へ昇格、空の Unreleased を上に開き、末尾のリンク定義を更新。**削除も含めて**バージョンバンプと同じコミットに入る(`git add ... changelog.d`) | 同上(タグ前) |
-| *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書き、Syphon checksum を足す。`unreleased` 指定時は未集約の `changelog.d/` も表示用に畳み込む。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |
+| *Compose release notes* | `changelog.py notes <section>` — 該当節を `## Highlights` として `$RUNNER_TEMP/release-body.md` に書く。`unreleased` 指定時は未集約の `changelog.d/` も表示用に畳み込む。`Create Release` は `body_path` でこれを読む | **落とさない設計**。notes は常に exit 0 で、最悪ハイライトが出ないだけ(タグ発行後に落ちるステップを増やさないため) |
 
 設計上の約束:
 
@@ -262,49 +262,25 @@ python3 scripts/changelog.py --path /tmp/sim/CHANGELOG.md --dir /tmp/sim/changel
 > 資格情報まで含めた全体地図は [release-pipeline.md](release-pipeline.md)。
 > 本節はこのリポジトリ視点での要約です。
 
-> **v0.12.0 以降**: 段 1〜2（Syphon pin の dispatch と bump）は無くなりました。metaphor-cli は本体に
-> SwiftPM 依存せず Syphon.framework も同梱しないので、本体のリリースは cli のリリースを起こしません
-> （cli は自分のマージごとに出る）。以下は v0.11.0 以前の記録です。
+v0.12.0 以降、本体のタグを打った時点で**ライブラリのリリースは完結**しています。
+metaphor-cli は本体に SwiftPM 依存せず（Syphon.framework の同梱も無い）、スケッチ側が
+`.package(url:from:)` で本体の版を解決するだけなので、本体のリリースが下流のリリースを
+起こすことはありません。下流はそれぞれ自分の都合で出ます:
 
-metaphor のタグを打った時点では、**まだ誰の手元も変わっていません**。
-`brew install shinyaoguri/tap/metaphor` のユーザーに届くまでに 4 段あります:
-
-| 段 | 何が起きる | どこ |
+| 下流 | いつ出るか | 本体との結びつき |
 |---|---|---|
-| 1 | 安定版リリースが `repository_dispatch`(`syphon-release`) を撃つ | `release.yml` の *Dispatch Syphon pin bump to metaphor-cli* |
-| 2 | metaphor-cli が `Package.swift` の Syphon pin を上げる PR を出し、CI green で auto-merge | metaphor-cli `syphon-bump.yml` |
-| 3 | その PR の `release:patch` ラベルで metaphor-cli のリリースが出る | metaphor-cli `release-on-merge.yml` → `release.yml` |
-| 4 | homebrew-tap へ Formula 更新 PR が出て、brew test-bot が green なら bottle 込みで main へ | metaphor-cli `release.yml` → homebrew-tap `publish.yml` |
+| [metaphor-cli](https://github.com/shinyaoguri/metaphor-cli) | 自分のマージごと（`release-on-merge.yml`） | `metaphor new` が生成時に本体の最新 Release を `from:` の下限に使う（リリースビルドは `BuildInfo.defaultMetaphorVersion` を最新安定版へ pin）。本体の**最小版**は `BuildInfo.minimumMetaphorVersionForViewer` が持ち、`doctor` / `watch` が案内する |
+| [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) | 自分のタグ駆動 | 本体を `from:` で参照し、本体 `main` への互換ビルドを自前の CI で毎晩確認。本体の minor が plugin / provider API を壊したときだけ追随リリースが要る |
+| homebrew-tap | metaphor-cli のリリースから Formula 更新 PR（bottle 込みで main へ） | 本体は関与しない |
 
-**どの段が止まっても、前後の段は緑のままに見えます。** 実際、段 1 の資格情報
-(`CLI_DISPATCH_TOKEN`)は一度も設定されておらず、`v0.1.0` から `v0.9.0` まで
-dispatch は毎回 `::notice::` を出して黙って skip し、リリースは常に成功でした。
-生きていたのは metaphor-cli 側の週次 poll だけで、`v0.8.0` が pin に反映されるまで
-9 日かかっています。
+metaphor-cli → homebrew-tap の 1 段は metaphor-cli の `release-pipeline-audit.yml`
+（`scripts/audit-release-pipeline.py`）が毎日確かめ、48 時間経っても届いていなければ Issue を
+立てます。手順・GitHub App に必要な権限・bottle の扱いは metaphor-cli の `docs/homebrew.md` が正本です。
 
-そのため、いまは次の仕組みで守っています:
-
-- **段 1 は失敗させる**。dispatch に使うのは GitHub App のインストールトークン
-  (`REPO_AUTOMATION_APP_*`)で、取得や dispatch に失敗すれば **release ジョブが赤に
-  なります**。タグと Release はその手前で公開済みなので、赤は「リリースは出たが
-  引き継ぎに失敗した」という意味であって、リリースのやり直しは不要です。
-  metaphor-cli の週次 poll は依然として backstop として残ります。
-- **段 2→3 の結合は契約チェックで守る**。pin bump PR をリリースへ接続する
-  `release:patch` ラベル(`chore:` タイトル単独では release-on-merge が発火しない)は、
-  両リポの `scripts/check-contract.sh` が機械検査します(cli#117)。ラベルを消す・
-  改名する変更は監査を待たず PR の CI で止まります。
-- **端から端を毎日確かめる**。metaphor-cli の
-  `release-pipeline-audit.yml`(`scripts/audit-release-pipeline.py`)が tap の Formula
-  から逆算し、48 時間経っても届いていなければ詰まっている段を名指しして Issue を
-  立てます。全段揃うと自動でクローズされます。手元でも同じ判定を出せます:
-
-  ```bash
-  # metaphor-cli で
-  python3 scripts/audit-release-pipeline.py --dry-run
-  ```
-
-metaphor-cli 側の手順・GitHub App に必要な権限・bottle の扱いは metaphor-cli の
-`docs/homebrew.md` が正本です。
+v0.11.0 までは本体のリリースが `repository_dispatch` で metaphor-cli の Syphon pin bump PR を起こし、
+cli のリリース → tap まで 4 段が連鎖していました（段 1 の資格情報が一度も設定されず `v0.9.0` まで
+黙って skip していた事故も含め、経緯は metaphor-cli の [ADR 0003](https://github.com/shinyaoguri/metaphor-cli/blob/main/docs/decisions/0003-syphon-pin-automation.md)
+→ [ADR 0014](https://github.com/shinyaoguri/metaphor-cli/blob/main/docs/decisions/0014-viewer-frame-ipc-drops-syphon-bundle.md)）。
 
 ## 配布防御(タグと Release asset)
 
@@ -348,7 +324,7 @@ metaphor-cli 側の手順・GitHub App に必要な権限・bottle の扱いは 
 |------|------|------|
 | リリース時（v0.11.0 まで） | 公開した asset を実際にダウンロードし、Package.swift に書いた checksum と照合 | 旧 `release.yml` の *Verify published Syphon asset* ステップ（v0.12.0 で撤去。metaphor-syphon の Release が同等の検証を持つ） |
 | 週次(月曜 05:00 JST) | 全 `v*` タグの binaryTarget URL が 200 を返すか | `.github/workflows/asset-health.yml` → `scripts/check-release-assets.sh` |
-| 毎日(16:00 JST) | 最新安定版が homebrew-tap の Formula まで届いたか(上の 4 段) | metaphor-cli `release-pipeline-audit.yml` → `scripts/audit-release-pipeline.py` |
+| 毎日(16:00 JST) | metaphor-cli の最新リリースが homebrew-tap の Formula まで届いたか（本体は対象外） | metaphor-cli `release-pipeline-audit.yml` → `scripts/audit-release-pipeline.py` |
 
 手元でも同じチェックを走らせられる:
 
@@ -363,12 +339,13 @@ metaphor-cli 側の手順・GitHub App に必要な権限・bottle の扱いは 
   Release への asset 追加はタグ操作ではないので ruleset に阻まれない。
 
   ```bash
-  gh release upload <tag> Frameworks/Syphon.xcframework.zip --clobber
+  gh release upload <tag> Syphon.xcframework.zip --clobber
   ```
 
-  元の zip が手元に無い場合、そのタグの Syphon submodule を
-  `./scripts/build-syphon.sh` で再ビルドしても、Package.swift の checksum と
-  一致する保証はない(ビルド非決定性)。**まず既存 asset を消さないことが唯一の防御**。
+  元の zip が手元に無い場合、そのタグの checkout にある `Vendor/Syphon-Framework`
+  submodule と `scripts/build-syphon.sh`（v0.11.0 以前のタグにだけ存在。現行 `main` には無い）で
+  再ビルドしても、Package.swift の checksum と一致する保証はない(ビルド非決定性)。
+  **まず既存 asset を消さないことが唯一の防御**。
 - **どうしてもタグ操作が必要**: bypass actor は設定していないので、
   リポジトリ設定 → Rules → *tag protection* の Enforcement を一時的に
   Disabled にしてから操作し、直後に Active へ戻す(意図的・記録が残る手順にしてある)。
