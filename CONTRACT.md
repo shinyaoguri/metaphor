@@ -51,7 +51,7 @@
 | 3 | **stdin 入力イベント（JSON Lines）**<br>キー `t` の値 `mouseDown` `mouseUp` `mouseMove` `mouseDrag` `scroll` `keyDown` `keyUp`、フィールド `x` `y` `button` `code` `chars` `repeat` `dx` `dy`。バージョン番号は持たず、未知の `t` / 未知のフィールドは無視される（下記補足） | `metaphor` が解析（`InputInjectionPlugin.swift`） | `metaphor-cli` が送出（`ViewerWindow.swift`） |
 | 4 | **Probe ファイル契約**<br>`.metaphor/probe/request.json`（リクエスト）/ `.metaphor/probe/current/frame.{png,json}`（単一フレーム出力）/ `.metaphor/probe/current/sequence/`（連続フレーム出力）と `frame.json` / `sequence.json` スキーマ、`ProbeRequest` のフィールド（`id` / `label` / `scale` / `frames` / `every`） | `metaphor`（`MetaphorProbeConfig.swift` / `ProbeFrameMetadata.swift` / `ProbeSequenceManifest.swift` / `ProbeRequest.swift`） | AI エージェント・ツール（`metaphor-cli` の `snapshot` / `capture_sequence`） |
 | 5 | **viewer frame IPC**<br>親（cli）が `AF_UNIX` / `SOCK_STREAM` の socket を listen してから子（スケッチ）を `METAPHOR_VIEWER_SOCKET=<パス>` で起動し、子は接続して共有メモリ（匿名 POSIX shm・3 slot）の fd を `hello` に添えて送り、フレームごとに `frame {slot}`、親は読み終えた slot を `release {slot}` で返す。メッセージは JSON Lines で `contract/viewer-{hello,frame,release}.schema.json` が正典（`protocolVersion: 1`）。**slot の内容は `bgra8Unorm` / premultiplied alpha / row 0 = top**（下記補足） | `metaphor`（`Sources/MetaphorCore/Viewer/ViewerOutputPlugin.swift` ほか） | `metaphor-cli`（`Sources/MetaphorViewer/FrameIPCSource.swift` / `Sources/MetaphorCLICore/Viewer/`） |
-| 6 | **AI ドキュメント／wire スキーマのパス・ファイル名**<br>`llms.txt` / `llms-sketch.txt` / `docs/ai/examples-index.{md,json}` / `contract/*.schema.json` | `metaphor` が用意（`llms.txt` / `examples-index` は生成物＝`make llms-txt` / `make examples-index`、`llms-sketch.txt` は**手書き**。`contract/` は両リポ identical な正典。いずれもリポジトリにコミット） | `metaphor-cli` の MCP `api_reference` ツール（`MetaphorDocsLocator.swift` / `SketchToolHandler.swift`） |
+| 6 | **AI ドキュメント／wire スキーマのパス・ファイル名**<br>`llms.txt` / `llms-sketch.txt` / `docs/ai/examples-index.{md,json}` / `contract/*.schema.json`。**公式プラグイン**（[metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) 等・別リポジトリ）は自前の **`llms.txt` をリポジトリ直下**に置く（下記補足） | `metaphor` が用意（`llms.txt` / `examples-index` は生成物＝`make llms-txt` / `make examples-index`、`llms-sketch.txt` は**手書き**。`contract/` は両リポ identical な正典。いずれもリポジトリにコミット）。プラグインの `llms.txt` は各プラグインが用意（手書きでよい。`llms-sketch.txt` / `examples-index` / `contract/` は本体だけが持つ） | `metaphor-cli` の MCP `api_reference` ツール（`MetaphorDocsLocator.swift` / `SketchToolHandler.swift`。`package` 引数 = package identity、既定 `metaphor`） |
 | 7 | **Parameter Store ファイル契約**<br>`.metaphor/params/params.json`（現在値 + 宣言情報の出力）/ `.metaphor/params/set-request.json`（外部からの更新要求）と `params.schema.json` / `param-set-request.schema.json`、環境変数 `METAPHOR_PARAMS`（`0` でオプトアウト） | `metaphor`（`Sources/MetaphorCore/Parameters/` の `ParameterPlugin.swift` / `ParameterFile.swift` / `ParameterStore.swift`） | AI エージェント・ツール（`metaphor-cli` の `params` / `set_param` MCP ツール = `MCP/ParameterStoreTool.swift`） |
 | 8 | **状態保持リロードのファイル契約**<br>`.metaphor/state/state.json`（保存された状態）/ `.metaphor/state/save-request.json`（外部からの保存要求）と `state.schema.json` / `state-save-request.schema.json`、環境変数 `METAPHOR_STATE`（`1` で明示有効・`0` でオプトアウト）/ `METAPHOR_RESTORE_STATE`（復元元のパス） | `metaphor`（`Sources/MetaphorCore/State/` の `StatePlugin.swift` / `SketchStateFile.swift`） | `metaphor-cli` の watch（リビルド時の保存 → 再起動時の注入） |
 
@@ -398,6 +398,27 @@ GitHub の main ブランチではなく **checkout から読むこと自体が�
   生成物の出力先や手書きファイルの名前を変えるときは、本表とファイル名を更新し
   `metaphor-cli` 側に対応 PR/Issue を立てる。
 
+#### プラグインの `llms.txt`（2026-08-23・[ADR-0014](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md) D10）
+
+本体から分離した公式プラグイン（metaphor-syphon 等）は、本体の `llms.txt` に載らない
+自分の API を**自前の `llms.txt`**（リポジトリ直下・手書きでよい）で供給する。cli の
+`api_reference` は `package` 引数（省略時 `metaphor` = 本体）でどのパッケージの docs を
+読むかを選び、**本体もプラグインも同じ探索規則**で docs ルートを解決する:
+
+- 規則の鍵は SwiftPM の **package identity**（URL / パスの末尾要素から `.git` を落として
+  小文字にしたもの。`https://github.com/shinyaoguri/metaphor-syphon.git` → `metaphor-syphon`）。
+- url 依存なら `<sketch>/.build/checkouts/<identity>/llms.txt`（初回の resolve 後に出現）、
+  path 依存なら `Package.swift` の `.package(path:)` のうち末尾要素の identity が一致する
+  ディレクトリの `llms.txt`（旧形式の `.package(name: "metaphor", path:)` は `name:` を identity
+  とみなす。worktree のようにディレクトリ名が identity にならない checkout はこの形で参照する）。
+- identity の**完全一致**で選ぶので、`.package(path: "../metaphor-syphon")` のような
+  プラグインの path 依存が本体より先に並んでいても、本体の docs に取り違えない（逆も同じ）。
+- プラグインに要求するのは `llms.txt` だけ。`llms-sketch.txt` / `docs/ai/examples-index.md` /
+  `contract/` は本体の docs ルートにしか無いので、`api_reference` はプラグインでは
+  `doc=full` を既定にし、他の `doc` は「無い」と graceful に答える。
+- soft contract: 未解決のパッケージ名を渡されたら、`.build/checkouts/*/llms.txt` を持つ
+  identity の一覧を添えてエラーにする（クラッシュしない）。
+
 ## 契約のフリーズ点
 
 v1.0 は SemVer 契約の凍結宣言です（昇格条件は `docs/design/v1-release-plan.md`）。
@@ -497,4 +518,4 @@ v1.0 は SemVer 契約の凍結宣言です（昇格条件は `docs/design/v1-re
 - `Sources/MetaphorViewer/ViewerWindow.swift` — 入力イベントの JSON Lines 送出
 - `Sources/MetaphorViewer/FrameIPCSource.swift` / `Sources/MetaphorCLICore/Viewer/` — viewer frame IPC の consumer（契約点 5。`hello` の fd を mmap し、`frame` を表示、`release` を返す）
 - `Sources/MetaphorCLICore/MCP/ProbeSnapshotTool.swift` / `MCP/ProbeSequenceTool.swift` — `snapshot` / `capture_sequence`（契約点 4。`request.json` をアトミックに書き、`frame.json` / `sequence.json` の ready 規約で読む）
-- `Sources/MetaphorCLICore/MCP/MetaphorDocsLocator.swift` / `MCP/SketchToolHandler.swift` — `api_reference`（契約点 6）
+- `Sources/MetaphorCLICore/MCP/MetaphorDocsLocator.swift` / `MCP/SketchToolHandler.swift` — `api_reference`（契約点 6。docs ルートは package identity で解決し、`package` 引数で本体とプラグインを切り替える）
