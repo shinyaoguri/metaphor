@@ -45,7 +45,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # 指紋の材料から外すもの。ビルド生成物・IDE 設定・Probe の作業ディレクトリ・
 # Finder のメタデータで、いずれも絵には影響しない（すべて gitignore 済み）。
-EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store"}
+# `Package.resolved` は url 依存を持つパッケージ（Tutorial/08-Connect/03-Syphon が
+# metaphor-syphon を引く）で swift build のたびに生まれる解決結果であって、絵を
+# 変える入力ではない。材料に入れると「手元でビルドした」だけで --check が
+# 「撮影後にスケッチが変わった」と言い出す（#1055）。
+EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store", "Package.resolved"}
 
 # 撮影用の入力台本（#509）。パッケージ直下に置くと起動後に stdin へ流す。
 INPUT_SCRIPT_NAME = "probe-input.jsonl"

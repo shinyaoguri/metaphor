@@ -841,7 +841,7 @@ final class Window: Sketch {
 ### もっと詳しく
 
 - [`SketchConfig`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchconfig/), [`createCanvas`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createcanvas%28width:height:%29), [`createWindow`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/createwindow%28_:%29), [`SketchWindow`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketchwindow/), [`noCursor`](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphorcore/sketch/nocursor%28%29)
-- [`Demos/Tests/MultipleWindows`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Demos/Tests/MultipleWindows)
+- [`Demos/Tests/MultipleWindows`](https://github.com/shinyaoguri/metaphor/tree/main/Examples/Demos/Tests/MultipleWindows), metaphor-syphon の [`Samples/Syphon/SyphonMultiWindow`](https://github.com/shinyaoguri/metaphor-syphon/tree/main/Examples/Samples/Syphon/SyphonMultiWindow)（窓ごとに別の Syphon サーバー）
 
 ---
 

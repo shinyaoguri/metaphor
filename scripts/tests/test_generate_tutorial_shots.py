@@ -231,6 +231,8 @@ class TestStaleness(ShotsTestCase):
             directory.mkdir(parents=True)
             (directory / name).write_text(body)
         (package_dir / ".DS_Store").write_bytes(b"\x00\x00\x00\x01Bud1")
+        # url 依存を持つパッケージは swift build のたびに Package.resolved を生む（#1055）。
+        (package_dir / "Package.resolved").write_text('{"pins": [], "version": 3}\n')
         self.assertEqual(gen.source_hash(package_dir), before)
 
 

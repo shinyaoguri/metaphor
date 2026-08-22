@@ -25,6 +25,11 @@ playground.xcworkspace
 # Package.resolved
 # *.xcodeproj
 #
+# Examples は path 依存だけなので普段は Package.resolved が生まれないが、
+# url 依存（metaphor-syphon）を持つ Tutorial/08-Connect/03-Syphon はビルドのたびに作る。
+# pin を固定する理由が無い（from: の最新を使う）ので commit しない。
+Examples/**/Package.resolved
+#
 # Xcode automatically generates this directory with a .xcworkspacedata file and xcuserdata
 # hence it is not needed unless you have added a package configuration file to your project
 .swiftpm/
