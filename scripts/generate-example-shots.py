@@ -96,7 +96,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shots_common import (  # noqa: E402
     INPUT_SCRIPT_NAME,
-    NO_CAPTURE_NAME,
     ShotError,
     capture_provenance,
     current_frame,
