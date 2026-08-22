@@ -316,6 +316,10 @@ final class MySketch: Sketch {
 ### 出力（拡張ポイント）
 
 - ``MetaphorCore/MetaphorOutputPlugin``
+- ``MetaphorCore/MetaphorOutputProvider``
+- ``MetaphorCore/MetaphorOutputProviders``
+- ``MetaphorCore/MetaphorOutputContext``
+- ``MetaphorCore/PluginRequirements``
 - ``MetaphorCore/MetaphorOutputRegistry``
 
 ### Syphon

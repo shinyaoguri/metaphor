@@ -186,16 +186,34 @@ public final class SketchWindow {
         // 1 回で吹き飛ぶ（SketchRunner が preserveClock で FrameClock を resync するのと同じ理屈。#793）
         self.prevTime = Float(clockOffset)
 
+        // 出力（Syphon 等）は登録済み provider の走査で決まる（Core は出力実装を名指ししない）。
+        // 出力 target 未リンク時は何も返らず no-op。レンダーループの駆動方法は、config.plugins と
+        // 出力の要件を集計してから決める（プラグイン生成より前 = SketchRunner と同じ順序）。
+        let outputs = MetaphorOutputProviders.makeOutputs(
+            context: MetaphorOutputContext(
+                scope: .window(config),
+                environment: ProcessInfo.processInfo.environment,
+                isHeadless: isHeadless
+            )
+        )
+        let loopMode = Self.resolveLoopMode(
+            config: config,
+            requirements: Self.aggregateRequirements(config: config, outputs: outputs),
+            isHeadless: isHeadless
+        )
+
         setupWindow()
-        setupRenderLoop()
+        setupRenderLoop(loopMode)
         connectControls()
         connectInput()
 
-        // 出力（Syphon 等）は MetaphorOutputRegistry 経由で間接的に起動する（Core は Syphon を
-        // 名指ししない）。出力 target 未リンク時は no-op。
-        if let syphonName = config.syphonName,
-           let output = MetaphorOutputRegistry.makeOutput(name: syphonName) {
-            renderer.addPlugin(output)
+        // config のプラグインはこのウィンドウ専用のレンダラーへ（プライマリとは独立。
+        // セカンダリには Sketch が無いので onAttach(renderer:) のみ）。
+        for factory in config.plugins {
+            renderer.addPlugin(factory.create())
+        }
+        for output in outputs {
+            renderer.addPlugin(output.plugin)
         }
     }
 
@@ -251,24 +269,35 @@ public final class SketchWindow {
         env["METAPHOR_VIEWER"] == "1"
     }
 
-    /// 実効レンダーループモードを解決します。
+    /// 実効レンダーループモードを解決します
+    /// （純粋関数。``RenderLoopMode/resolve(requested:fps:requirements:isHeadless:)`` に委譲）。
     ///
     /// - ヘッドレスでは `MTKView` が無くディスプレイリンクを駆動できないため、常にタイマー。
-    /// - ``SketchWindowConfig/syphonName`` があり `.displayLink` のままなら、出力の安定のため
-    ///   タイマーへ切り替える（従来どおり）。
+    /// - `.displayLink` のままでも、``PluginRequirements/externalRenderLoop`` を宣言する
+    ///   プラグインか出力（Syphon 等）があれば出力の安定のためタイマーへ切り替える（従来どおり）。
     ///
     /// - Parameters:
     ///   - config: ウィンドウ設定。
+    ///   - requirements: `aggregateRequirements(config:outputs:)` の結果。
     ///   - isHeadless: ヘッドレスかどうか。
     /// - Returns: 実際に使うレンダーループモード。
     nonisolated static func resolveLoopMode(
-        config: SketchWindowConfig, isHeadless: Bool
+        config: SketchWindowConfig, requirements: PluginRequirements, isHeadless: Bool
     ) -> RenderLoopMode {
-        if isHeadless { return .timer(fps: config.fps) }
-        if config.syphonName != nil, config.renderLoopMode == .displayLink {
-            return .timer(fps: config.fps)
-        }
-        return config.renderLoopMode
+        RenderLoopMode.resolve(
+            requested: config.renderLoopMode, fps: config.fps,
+            requirements: requirements, isHeadless: isHeadless
+        )
+    }
+
+    /// ``SketchWindowConfig/plugins`` のファクトリと、出力 provider が返した出力の要件の和を取ります。
+    nonisolated static func aggregateRequirements(
+        config: SketchWindowConfig, outputs: [MetaphorOutputProviders.ResolvedOutput]
+    ) -> PluginRequirements {
+        var requirements = PluginRequirements()
+        for factory in config.plugins { requirements.formUnion(factory.requirements) }
+        for output in outputs { requirements.formUnion(output.requirements) }
+        return requirements
     }
 
     // MARK: - Window Placement
@@ -328,11 +357,9 @@ public final class SketchWindow {
         win.makeKeyAndOrderFront(nil)
     }
 
-    private func setupRenderLoop() {
-        // レンダーループモードの決定（ヘッドレスは常にタイマー / syphonName ありの
-        // displayLink はタイマーへ切り替え）。
-        let loopMode = Self.resolveLoopMode(config: config, isHeadless: isHeadless)
-
+    /// - Parameter loopMode: `resolveLoopMode(config:requirements:isHeadless:)` で決めた
+    ///   実効モード（ヘッドレスは常にタイマー / 外部ループを要する出力があればタイマー）。
+    private func setupRenderLoop(_ loopMode: RenderLoopMode) {
         switch loopMode {
         case .displayLink:
             mtkView?.preferredFramesPerSecond = config.fps
@@ -402,8 +429,8 @@ public final class SketchWindow {
     /// 呼び出しはすべて no-op に落ちます（`SketchView` 経路の #808 / #828 と同じ穴）。
     ///
     /// 宛先は**この窓のレンダーループ**で、`SketchView` 経路の写経では足りません。
-    /// ``resolveLoopMode(config:isHeadless:)`` のとおり `SketchWindow` は 2 系統を持ち、
-    /// ヘッドレスと ``SketchWindowConfig/syphonName`` ありは**タイマー駆動**になります。
+    /// `resolveLoopMode(config:requirements:isHeadless:)` のとおり `SketchWindow` は 2 系統を持ち、
+    /// ヘッドレスと、外部ループを要する出力（``SketchWindowConfig/syphonName`` 等）ありは**タイマー駆動**になります。
     /// タイマーは `MTKView.isPaused` では止まらず（そもそもヘッドレスでは `mtkView` が `nil`）、
     /// フレームレートも `preferredFramesPerSecond` ではなくタイマーの再スケジュールで変わります。
     /// そのため `SketchRunner` と同じく `renderTimer` の有無で宛先を分けます。

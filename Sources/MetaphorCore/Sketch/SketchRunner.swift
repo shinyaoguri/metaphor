@@ -383,30 +383,25 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
 
-        // Syphon 実効名の解決（環境変数 > config.syphonName > (config.syphon ? title : nil)）。
-        // ウィンドウ表示でも MadMapper 等へ publish できるよう、env / syphon フラグを尊重する。
-        let effectiveSyphonName = Self.resolveSyphonName(config: config, env: env)
-
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードでも尊重）。
         let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
-        // レンダーループモードの決定。
-        // Syphon を publish するが renderLoopMode が displayLink のままの場合、
-        // Syphon 互換性のため自動的にタイマーモードに切り替え。
-        let loopMode: RenderLoopMode
-        if effectiveSyphonName != nil && config.renderLoopMode == .displayLink {
-            loopMode = .timer(fps: fps)
-        } else {
-            loopMode = config.renderLoopMode
-        }
+        // 出力（Syphon 等）は登録済み provider の走査で決まる（Core は出力実装を名指ししない）。
+        // ウィンドウ表示でも MadMapper 等へ publish できるよう、provider には env / config を渡す。
+        let outputs = MetaphorOutputProviders.makeOutputs(
+            context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: false)
+        )
 
-        // 出力（オプトイン: config.syphon / config.syphonName / 環境変数のいずれか）。
-        // 具体的な出力実装（Syphon 等）は MetaphorOutputRegistry 経由で間接的に起動する
-        // （Core は Syphon を名指ししない）。
-        if let effectiveSyphonName {
-            startOutput(renderer: renderer, name: effectiveSyphonName)
-        }
+        // レンダーループモードの決定。config.plugins と出力 provider が宣言した要件を
+        // プラグイン生成より前に集計する（外部ループが要る出力があれば displayLink → timer）。
+        let loopMode = Self.resolveLoopMode(
+            config: config, fps: fps,
+            requirements: Self.aggregateRequirements(config: config, outputs: outputs),
+            isHeadless: false
+        )
+
+        attachOutputs(outputs, renderer: renderer, config: config, env: env)
 
         // レンダーループの構成。
         // 両モードとも、onDraw のセットアップ前に CVDisplayLink が発火する
@@ -428,29 +423,44 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// 出力（Syphon 等）サーバーの実効名を解決します（ウィンドウ / ヘッドレス共通）。
-    ///
-    /// 優先順位: 環境変数 `METAPHOR_SYPHON_NAME` > ``SketchConfig/syphonName`` >
-    /// （``SketchConfig/syphon`` が `true` なら ``SketchConfig/title``）。いずれも無ければ
-    /// `nil`（= 出力無効）。空文字の環境変数は未設定として扱います。
-    ///
-    /// ヘッドレス（`METAPHOR_VIEWER=1`）は「ウィンドウ無し・出力のみ」で、名前が決まらないと
-    /// 何も見えないプロセスになります。この経路は `requiresOutput: true` を渡し、
-    /// ``SketchConfig/syphon`` が `false` でも ``SketchConfig/title`` へ落ちる（= 戻り値は
-    /// 必ず非 `nil`）ようにします。
+    /// 実効レンダーループモードを解決します（純粋関数。``RenderLoopMode/resolve(requested:fps:requirements:isHeadless:)`` に委譲）。
     ///
     /// - Parameters:
-    ///   - config: スケッチ設定。
-    ///   - env: 参照する環境変数（テストから注入可能）。
-    ///   - requiresOutput: 出力が必須の経路（= ヘッドレス）なら `true`。
-    /// - Returns: 出力サーバー名。無効なら `nil`（`requiresOutput: true` では `nil` にならない）。
-    nonisolated static func resolveSyphonName(
-        config: SketchConfig, env: [String: String], requiresOutput: Bool = false
-    ) -> String? {
-        if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return name }
-        if let name = config.syphonName { return name }
-        if config.syphon || requiresOutput { return config.title }
-        return nil
+    ///   - config: スケッチ設定（``SketchConfig/renderLoopMode`` が要求モード）。
+    ///   - fps: 実効 FPS（`resolveFPS(config:env:)` の結果）。
+    ///   - requirements: `aggregateRequirements(config:outputs:)` の結果。
+    ///   - isHeadless: ヘッドレスかどうか。
+    nonisolated static func resolveLoopMode(
+        config: SketchConfig, fps: Int, requirements: PluginRequirements, isHeadless: Bool
+    ) -> RenderLoopMode {
+        RenderLoopMode.resolve(
+            requested: config.renderLoopMode, fps: fps,
+            requirements: requirements, isHeadless: isHeadless
+        )
+    }
+
+    /// ``SketchConfig/plugins`` のファクトリと、出力 provider が返した出力の要件の和を取ります。
+    nonisolated static func aggregateRequirements(
+        config: SketchConfig, outputs: [MetaphorOutputProviders.ResolvedOutput]
+    ) -> PluginRequirements {
+        var requirements = PluginRequirements()
+        for factory in config.plugins { requirements.formUnion(factory.requirements) }
+        for output in outputs { requirements.formUnion(output.requirements) }
+        return requirements
+    }
+
+    /// 出力が要求されているのに provider が 1 つも出力を返さなかったか（診断用）。
+    ///
+    /// 「要求」は旧来の入口そのもの: 環境変数 `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）、
+    /// ``SketchConfig/syphon``、``SketchConfig/syphonName``、そしてヘッドレス起動（ウィンドウ無し・
+    /// 出力のみなので、出力が無ければ何も見えないプロセスになる）。
+    nonisolated static func outputRequestedButMissing(
+        config: SketchConfig, env: [String: String], isHeadless: Bool,
+        outputs: [MetaphorOutputProviders.ResolvedOutput]
+    ) -> Bool {
+        guard outputs.isEmpty else { return false }
+        if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return true }
+        return config.syphon || config.syphonName != nil || isHeadless
     }
 
     /// App Nap 抑止の assertion を張るべきかを解決します。
@@ -502,19 +512,27 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         return fps
     }
 
-    /// 解決済みの出力名で、登録済みファクトリ（例: `MetaphorSyphon`）から出力プラグインを
-    /// 起動します。
+    /// 出力 provider が返した出力プラグインをレンダラーへ接続します（ウィンドウ / ヘッドレス共通）。
     ///
-    /// 出力 target が未リンク（＝ ``MetaphorOutputRegistry/factory`` 未登録）の場合は
-    /// 警告を出して何もしません。これにより `MetaphorCore` 単体（Syphon 抜き）でも安全に
-    /// 動作します。`import metaphor`（アンブレラ）経由では `MetaphorSyphon` がリンクされ、
-    /// ファクトリがロード時に自動登録されるため、従来どおり透過的に Syphon が起動します。
-    private func startOutput(renderer: MetaphorRenderer, name: String) {
-        guard let plugin = MetaphorOutputRegistry.makeOutput(name: name) else {
+    /// 出力が要求されているのに provider が 1 つも無い（出力 target が未リンク = 例えば
+    /// `MetaphorCore` 単体で `syphon: true`）場合は警告を出して何もしません。`import metaphor`
+    /// （アンブレラ）経由では `MetaphorSyphon` がリンクされ、provider がロード時に自動登録される
+    /// ため、従来どおり透過的に Syphon が起動します。
+    private func attachOutputs(
+        _ outputs: [MetaphorOutputProviders.ResolvedOutput],
+        renderer: MetaphorRenderer, config: SketchConfig, env: [String: String]
+    ) {
+        for output in outputs {
+            renderer.addPlugin(output.plugin)
+        }
+        if Self.outputRequestedButMissing(
+            config: config, env: env, isHeadless: isHeadless, outputs: outputs
+        ) {
             // 出力先が無いままレンダーループだけ回り続けると原因の手掛かりが
             // 一切出ないため明示する。ヘッドレスモードは「ウィンドウ無し・
             // 出力のみ」なので error 級（Release でも stderr に出す）
-            let message = "output '\(name)' was requested but no output module is linked. "
+            let message = "an output (syphon / syphonName / METAPHOR_SYPHON_NAME / headless) was requested "
+                + "but no output module is linked. "
                 + "Import the umbrella 'metaphor' (or 'MetaphorSyphon'), or call MetaphorSyphon.enable()."
             if isHeadless {
                 FileHandle.standardError.write(
@@ -523,16 +541,14 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             } else {
                 metaphorWarning(message)
             }
-            return
         }
-        renderer.addPlugin(plugin)
     }
 
-    /// ヘッドレス（ウィンドウ無し）モードのレンダーループと Syphon 出力を構成します。
+    /// ヘッドレス（ウィンドウ無し）モードのレンダーループと出力を構成します。
     ///
     /// ウィンドウ/`MTKView`/ブリットパスを生成せず、常にタイマー駆動で `renderFrame()` を
-    /// 回し、結果を Syphon 経由で publish します。Syphon サーバー名と FPS は環境変数で
-    /// 上書きできます（`METAPHOR_SYPHON_NAME` / `METAPHOR_FPS`）。
+    /// 回し、結果を出力 provider（Syphon 等）経由で publish します。Syphon サーバー名と FPS は
+    /// 環境変数で上書きできます（`METAPHOR_SYPHON_NAME` / `METAPHOR_FPS`）。
     private func configureHeadlessLoop(config: SketchConfig) {
         guard let renderer else { return }
 
@@ -541,19 +557,20 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         let env = ProcessInfo.processInfo.environment
 
-        // 出力サーバー名: 環境変数 > config.syphonName > タイトル の優先順。ヘッドレスは
-        // 出力しか無いので requiresOutput: true（= config.syphon に関わらず必ず非 nil）。
-        if let syphonName = Self.resolveSyphonName(
-            config: config, env: env, requiresOutput: true
-        ) {
-            startOutput(renderer: renderer, name: syphonName)
-        }
+        // 出力は provider の走査で決まる。ヘッドレスは「ウィンドウ無し・出力のみ」なので、
+        // provider はその旨（`isHeadless`）を見て出力を用意する（Syphon は config.syphon に
+        // 関わらず title 名で publish する = 従来どおり）。
+        let outputs = MetaphorOutputProviders.makeOutputs(
+            context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: true)
+        )
+        attachOutputs(outputs, renderer: renderer, config: config, env: env)
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
         let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
         // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。
+        // resolveLoopMode(isHeadless: true) も同じ答えを返す（規則は 1 箇所）。
         startTimerLoop(fps: fps)
     }
 

@@ -37,6 +37,14 @@ public struct SketchWindowConfig: Sendable {
     /// ``RenderLoopMode/timer(fps:)`` に切り替わります。
     public var renderLoopMode: RenderLoopMode = .displayLink
 
+    /// このウィンドウのレンダラーに登録するプラグインファクトリ（既定は空）。
+    ///
+    /// プライマリの ``SketchConfig/plugins`` と同じ型で、ウィンドウ生成時にインスタンス化されて
+    /// このウィンドウ専用のレンダラーへ接続されます（プライマリのプラグインとは独立）。
+    /// ``PluginRequirements/externalRenderLoop`` を宣言するファクトリがあれば、``renderLoopMode`` が
+    /// `.displayLink` のままでもタイマー駆動に切り替わります。
+    public var plugins: [PluginFactory] = []
+
     /// 新しいセカンダリウィンドウ設定を作成します。
     ///
     /// - Parameters:
@@ -47,6 +55,7 @@ public struct SketchWindowConfig: Sendable {
     ///   - windowScale: ウィンドウのスケール係数。
     ///   - syphonName: Syphon サーバー名。無効にするには `nil`。
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
+    ///   - plugins: このウィンドウのレンダラーに登録するプラグインファクトリ（デフォルト: 空）。
     public init(
         width: Int = 800,
         height: Int = 600,
@@ -54,7 +63,8 @@ public struct SketchWindowConfig: Sendable {
         fps: Int = 60,
         windowScale: Float = 1.0,
         syphonName: String? = nil,
-        renderLoopMode: RenderLoopMode = .displayLink
+        renderLoopMode: RenderLoopMode = .displayLink,
+        plugins: [PluginFactory] = []
     ) {
         self.width = width
         self.height = height
@@ -63,5 +73,6 @@ public struct SketchWindowConfig: Sendable {
         self.windowScale = windowScale
         self.syphonName = syphonName
         self.renderLoopMode = renderLoopMode
+        self.plugins = plugins
     }
 }

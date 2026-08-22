@@ -21,7 +21,7 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 
 **ライブラリのメッセージは素の `print()` で書かない**。3 関数の使い分け表は [`Sources/MetaphorLog/Log.swift`](Sources/MetaphorLog/Log.swift) が正本で、`Sources/` に生の `print()` が戻らないことは CI（`scripts/check-no-raw-print.py`）が機械で守る（#896。正当な例外はスクリプトの `ALLOWLIST` に理由つきで載せる）。
 
-Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのターゲットだけ。`MetaphorCore` は Syphon 非依存で、出力は `MetaphorOutputRegistry` 経由（`import metaphor` なら自動登録により従来どおり `config.syphon` が使えます）。
+Syphon 出力は `MetaphorSyphon` が持ち、`Syphon` binaryTarget もこのターゲットだけ。`MetaphorCore` は Syphon 非依存で、出力は `MetaphorOutputProviders` に登録された provider の走査で決まります（`import metaphor` なら自動登録により従来どおり `config.syphon` が使えます。`MetaphorOutputRegistry` は deprecated な shim）。
 
 アンブレラターゲット `Sources/metaphor/` はブリッジ拡張（`Sketch+AudioBridge.swift` 等）を持ち、`import metaphor` 利用者に `createAudioInput()` / `createOSCReceiver()` / `createPhysics2D()` などの便利メソッドを提供します。
 
