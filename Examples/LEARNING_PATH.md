@@ -154,10 +154,10 @@ Publishing frames to other Syphon-compatible apps (VJ software, TouchDesigner, e
 lives in the separate [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon)
 package, together with its samples (ADR-0014).
 
-MIDI has no sample outside the tutorial. Part 8 of the tutorial covers the
+MIDI has no sample outside the tutorial. Part 8 of the tutorial covers all four
 topics with a sketch each — `Examples/Tutorial/08-Connect/01-OSC` (loopback),
-`02-MIDI` (knobs and pads) and `04-Parameters` (`@Param` plus `gui.params()`);
-the Syphon sketch moves to metaphor-syphon.
+`02-MIDI` (knobs and pads), `03-Syphon` (fixed-resolution output through the
+metaphor-syphon package) and `04-Parameters` (`@Param` plus `gui.params()`).
 
 ## 10. Exporting your work
 
