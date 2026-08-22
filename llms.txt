@@ -783,12 +783,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
 - `var shaderHotReload: Bool` -- ファイルから読んだシェーダを保存のたびに自動リロードするか
 - `static var shaderHotReloadDefault: Bool { get }` -- `shaderHotReload` の既定値。DEBUG ビルドでのみ `true`。
-- `var syphon: Bool` -- Syphon 出力を有効化するか（既定 `false`）。
-- `var syphonName: String?` -- Syphon サーバー名（`nil` で Syphon 出力を無効化）。
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, syphonName: String? = nil, syphon: Bool = false, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, preserveClock: Bool = false, shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, preserveClock: Bool = false, shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
 ### `struct SketchPerformance` -- スケッチ自身が読める実行時パフォーマンスの一式（Issue #692）。
   - Note: 採取にコストがある項目（`memoryMB` / `cpuPercent` は syscall）は最短 0.5 秒間隔でしか更新されません。毎フレーム読んでも syscall は増えません。
@@ -808,11 +806,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var height: Int` -- オフスクリーンレンダーテクスチャの高さ（ピクセル単位）。
 - `var plugins: [PluginFactory]` -- このウィンドウのレンダラーに登録するプラグインファクトリ（既定は空）。
 - `var renderLoopMode: RenderLoopMode` -- レンダーループモード。
-- `var syphonName: String?` -- Syphon サーバー名。Syphon 出力を無効にするには `nil`。
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, syphonName: String? = nil, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいセカンダリウィンドウ設定を作成します。
+- `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいセカンダリウィンドウ設定を作成します。
 
 ### `struct VideoExportConfig` -- ビデオエクスポートのパラメータ設定
 
@@ -2874,27 +2871,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static func render(node: Node, canvas: Canvas3D)` -- Traverses the node tree depth-first, rendering each visible node.
 - `static func render(node: Node, canvas: Canvas3D, frustumPlanes: [SIMD4<Float>]?)` -- Traverses the node tree depth-first, rendering each visible node.
   - Important: Culling decisions are made using `Node/worldTransform` (relative to the tree), while drawing uses the canvas's matrix stack at call time. To keep the two consistent, when culling is enabled, call this with the root node while the canvas transform is identity (calling it under an existing transform will make culling and drawing disagree).
-
-## MetaphorSyphon
-
-### `extension MetaphorRenderer`
-
-- `var syphonOutput: SyphonOutput? { get }` -- An optional Syphon output for sharing video between applications.
-- `func startSyphonServer(name: String)` -- Starts a Syphon server under the given name for sharing textures between applications.
-- `func stopSyphonServer()` -- Stops the Syphon server and releases its resources.
-
-### `enum MetaphorSyphon` -- The Syphon output module.
-
-- `static func enable()` -- Explicitly registers the Syphon output provider.
-
-### `final class SyphonOutput` -- Publish Metal textures to other applications via a Syphon server.
-
-- `var isActive: Bool { get }` -- Indicate whether the Syphon server is currently active.
-- `var serverName: String? { get }` -- The name of the Syphon server as seen by client applications.
-- `init(device: any MTLDevice, name: String)` -- Create a new Syphon output server.
-- `func publish(texture: any MTLTexture, commandBuffer: any MTLCommandBuffer, region: NSRect? = nil, flipped: Bool = false)` -- Publish a texture frame to all connected Syphon clients.
-- `func rename(_ name: String)` -- Rename the Syphon server by stopping the current one and creating a new one.
-- `func stop()` -- Stop and release the Syphon server.
 
 ## MetaphorVideo
 

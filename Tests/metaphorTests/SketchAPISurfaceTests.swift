@@ -515,10 +515,9 @@ struct SketchLifecycleTests {
 @Suite("SketchConfig reflection")
 struct SketchConfigReflectionTests {
 
-    @Test("既定値（syphon / fullScreen / renderLoopMode / msaa / plugins）")
+    @Test("既定値（fullScreen / renderLoopMode / msaa / plugins）")
     func remainingDefaults() {
         let config = SketchConfig()
-        #expect(config.syphon == false, "Syphon はオプトイン")
         #expect(config.fullScreen == false)
         #expect(config.renderLoopMode == .displayLink)
         #expect(config.msaa == 4)
@@ -542,7 +541,7 @@ struct SketchConfigReflectionTests {
         }
     }
 
-    @Test("RenderLoopMode の等価性（Syphon 自動切替の判定が依存する）")
+    @Test("RenderLoopMode の等価性（外部ループ要件による自動切替の判定が依存する）")
     func renderLoopModeEquality() {
         // SketchRunner は `config.renderLoopMode == .displayLink` で
         // タイマーモードへの自動切替を判断する。

@@ -14,14 +14,14 @@ swift run
 | [Basics/](Basics/) | Processing 標準サンプルの移植。Form / Color / Image / Lights / Math / Transform / Input / Typography など基礎トピック別 |
 | [Topics/](Topics/) | 応用トピック別。Curves / Shaders / Simulate / Motion / Fractals and L-Systems / Cellular Automata / GUI / Drawing など |
 | [Demos/](Demos/) | パフォーマンス系デモ（GPU パーティクル、インスタンシング比較など） |
-| [Samples/](Samples/) | metaphor 独自機能。RayTracing / SceneGraph / Syphon / Plugins / ProbeSnapshot（AI 観測） |
+| [Samples/](Samples/) | metaphor 独自機能。RayTracing / SceneGraph / Plugins / ProbeSnapshot（AI 観測） |
 | [ML/](ML/) | Core ML / Vision 連携（顔検出、スタイル変換、画像分類、人物セグメンテーション） |
 | [Plugins/](Plugins/) | `MetaphorPlugin` による拡張のサンプル |
 
 ## 探し方
 
 - **はじめて metaphor を使う** → [docs/tutorial/](../docs/tutorial/)。順に読んで作品を作れるようになるための読み物（日本語。<!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->）。Examples を掘るのはその後で構いません。
-- **順番に学ぶ** → [LEARNING_PATH.md](LEARNING_PATH.md)（英語）。286 本の索引ではなく、難度タグを使ったカテゴリ別の推奨順路（代表 3〜5 本 x 各カテゴリ）です。
+- **順番に学ぶ** → [LEARNING_PATH.md](LEARNING_PATH.md)（英語）。283 本の索引ではなく、難度タグを使ったカテゴリ別の推奨順路（代表 3〜5 本 x 各カテゴリ）です。
 - **やりたいことから探す** → [docs/ai/examples-index.md](../docs/ai/examples-index.md)。全サンプルをタグ・難度つきで索引化しています（AI エージェントは MCP の `api_reference` ツールでも同じ索引を引けます）。
 - **Processing のサンプル名で探す** → `Basics/` / `Topics/` は Processing 公式サンプルとほぼ同じ階層・名前です。多くのサンプルに元の `.pde` とスクリーンショット `.png` が同梱されています。
 

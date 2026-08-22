@@ -513,14 +513,6 @@
       "url": "https://i.gyazo.com/4c0d6e2b508ac72a98094d230f3bb975.png",
       "sha256": "de83ccaddb57b5510b84bc2649510d0219c49e048d3443a157768886882a5161"
     },
-    "08-Connect/03-Syphon": {
-      "sourceHash": "c67d443735d663ffcd9592c2ae4a32e57c8097799d9220b4ef22006d0dd2731c",
-      "width": 1280,
-      "height": 720,
-      "frame": 1,
-      "url": "https://i.gyazo.com/181125a27366540735a7c533574881f4.png",
-      "sha256": "15b369300f699527815a1c6681fa90101623fc3afaee7f41b87e3126ab8539ff"
-    },
     "08-Connect/04-Parameters": {
       "sourceHash": "ee625bd2508c5417f55cb181fab0999fc38973077ce9cfe0e82e8db8cbb93955",
       "width": 640,

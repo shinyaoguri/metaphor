@@ -48,7 +48,7 @@ import MetalKit
 /// 環境変数 `METAPHOR_VIEWER=1`（`metaphor-cli` のライブビューアが子プロセスへ注入する
 /// ヘッドレス指定）で起動した場合、セカンダリウィンドウも **`NSWindow` を作らず**
 /// オフスクリーンで描画だけを回します（プライマリと同じ扱い）。``config`` の
-/// ``SketchWindowConfig/syphonName`` を設定していれば、そこへの publish は従来どおり続きます。
+/// 出力プラグイン（``SketchWindowConfig/plugins``）があれば、そこへの publish は従来どおり続きます。
 @MainActor
 public final class SketchWindow {
     // MARK: - Public Properties
@@ -430,7 +430,7 @@ public final class SketchWindow {
     ///
     /// 宛先は**この窓のレンダーループ**で、`SketchView` 経路の写経では足りません。
     /// `resolveLoopMode(config:requirements:isHeadless:)` のとおり `SketchWindow` は 2 系統を持ち、
-    /// ヘッドレスと、外部ループを要する出力（``SketchWindowConfig/syphonName`` 等）ありは**タイマー駆動**になります。
+    /// ヘッドレスと、外部ループを要する出力（Syphon 等のプラグイン）ありは**タイマー駆動**になります。
     /// タイマーは `MTKView.isPaused` では止まらず（そもそもヘッドレスでは `mtkView` が `nil`）、
     /// フレームレートも `preferredFramesPerSecond` ではなくタイマーの再スケジュールで変わります。
     /// そのため `SketchRunner` と同じく `renderTimer` の有無で宛先を分けます。
@@ -580,8 +580,8 @@ public final class SketchWindow {
         guard isOpen else { return }
         isOpen = false
         stopRenderTimer()
-        // プラグイン解放（onStop → onDetach）。SyphonPlugin はここで Syphon サーバーを停止し、
-        // 閉じたウィンドウのサーバー名が Syphon 上に残るのを防ぐ。
+        // プラグイン解放（onStop → onDetach）。出力プラグイン（Syphon 等）はここでサーバーを停止し、
+        // 閉じたウィンドウの出力が外部に残るのを防ぐ。
         // 以前は UI の閉じるボタン経由でこの shutdown が呼ばれていなかった。
         renderer.shutdown()
         drawClosure = nil

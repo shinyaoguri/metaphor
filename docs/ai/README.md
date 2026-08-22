@@ -28,19 +28,21 @@ here.
 - `MetaphorRenderer` owns the frame lifecycle: compute, render, shadow,
   RenderGraph, post-process, then plugin `post()` (output phase), then blit.
 - Frame output (Syphon etc.) is a plugin via `MetaphorOutputPlugin.post()`, not
-  hardcoded in the renderer. `MetaphorCore` does NOT depend on Syphon; the
-  `MetaphorSyphon` target owns the `Syphon` binaryTarget and registers a
-  `MetaphorOutputProvider` into `MetaphorOutputProviders` at load (C constructor).
-  `SketchRunner` / `SketchWindow` scan every registered provider with a
+  hardcoded in the renderer. `MetaphorCore` does NOT depend on Syphon, and the
+  root `Package.swift` declares no binaryTarget (`scripts/check-no-binary-targets.sh`
+  guards it): Syphon lives in the separate `shinyaoguri/metaphor-syphon` package,
+  which registers a `MetaphorOutputProvider` into `MetaphorOutputProviders` at
+  load (C constructor). `SketchRunner` / `SketchWindow` scan every registered provider with a
   `MetaphorOutputContext` (config + env + headless) and attach whatever they
   return; providers and `PluginFactory` declare `PluginRequirements`
   (`.externalRenderLoop`) so the render-loop mode is decided before plugins are
-  instantiated. `MetaphorOutputRegistry.factory` is a deprecated shim. See ADR 0001
+  instantiated. `MetaphorOutputRegistry.factory` and `SketchConfig.syphon` /
+  `syphonName` are deprecated shims (removed in the next minor). See ADR 0001
   (runtime split) and ADR 0014 (provider registration / Syphon plugin split).
 - Tier 1 modules (`MetaphorAudio`, `MetaphorNetwork`, `MetaphorPhysics`,
   `MetaphorML`, `MetaphorVideo`) must not depend on `MetaphorCore`.
 - Tier 2 modules (`MetaphorNoise`, `MetaphorMPS`, `MetaphorCoreImage`,
-  `MetaphorRenderGraph`, `MetaphorSceneGraph`, `MetaphorSyphon`) may depend on
+  `MetaphorRenderGraph`, `MetaphorSceneGraph`) may depend on
   `MetaphorCore` and are surfaced through the umbrella under `Sources/metaphor/`.
 - `MetaphorLog` sits below Core (Tier 0, zero dependencies) so every tier can use
   the same diagnostics. Never write `print("[metaphor] …")` outside `MetaphorCore`:
@@ -55,8 +57,7 @@ here.
 
 ## Debugging Map
 
-- Build/setup failures: `Package.swift`, `Makefile`, `scripts/preflight-check.sh`,
-  `scripts/build-syphon.sh`.
+- Build/setup failures: `Package.swift`, `Makefile`, `scripts/preflight-check.sh`.
 - Missing public API in AI docs: `Makefile` `symbol-graphs`, then
   `scripts/generate-llms-txt.py` (its inclusion rules are pinned by
   `scripts/tests/test_generate_llms_txt.py`), then regenerate `llms.txt`.

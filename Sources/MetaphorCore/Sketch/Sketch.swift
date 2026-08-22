@@ -251,16 +251,39 @@ public struct SketchConfig: Sendable {
     /// 目標フレームレート。
     public var fps: Int
 
+    /// 旧 ``syphonName`` の実体（deprecation 窓の間だけ。ADR-0014 / #1040）。
+    ///
+    /// Core は Syphon を持たなくなったので、この値を読むのは metaphor-syphon の provider と
+    /// 「出力が要求されたのに出力モジュールが無い」診断だけ。公開 API は deprecated な
+    /// ``syphonName`` で、CI（`-warnings-as-errors`）が Core 自身に deprecated を参照させないため
+    /// 実体は非 deprecated な internal ストレージに置く。次の minor で削除する（M6）。
+    var legacySyphonName: String?
+
+    /// 旧 ``syphon`` の実体（``legacySyphonName`` と同じ扱い）。
+    var legacySyphonEnabled: Bool
+
     /// Syphon サーバー名（`nil` で Syphon 出力を無効化）。
-    public var syphonName: String?
+    ///
+    /// **Deprecated**: Syphon は別パッケージ `metaphor-syphon` へ移りました（ADR-0014）。
+    /// `Package.swift` に metaphor-syphon を足して `plugins: [.syphon(name:)]` を使ってください。
+    /// 移行期間中は metaphor-syphon の provider がこの値も読みます。
+    @available(*, deprecated, message: "Syphon moved to the metaphor-syphon package: add it to Package.swift and pass plugins: [.syphon(name:)]")
+    public var syphonName: String? {
+        get { legacySyphonName }
+        set { legacySyphonName = newValue }
+    }
 
     /// Syphon 出力を有効化するか（既定 `false`）。
     ///
-    /// `true` かつ ``syphonName`` が `nil` のとき、``title`` をサーバー名として Syphon を
-    /// publish します（MadMapper 等のプロジェクションツールから安定した名前で参照可能）。
-    /// 任意名にしたい場合は ``syphonName`` を指定してください（指定があれば Syphon は自動で
-    /// 有効になります）。環境変数 `METAPHOR_SYPHON_NAME` があればそれが最優先されます。
-    public var syphon: Bool
+    /// **Deprecated**: Syphon は別パッケージ `metaphor-syphon` へ移りました（ADR-0014）。
+    /// `Package.swift` に metaphor-syphon を足して `plugins: [.syphon()]` を使ってください
+    /// （`.syphon()` は ``title`` をサーバー名にします）。移行期間中は metaphor-syphon の
+    /// provider がこの値も読みます。環境変数 `METAPHOR_SYPHON_NAME` は従来どおり最優先です。
+    @available(*, deprecated, message: "Syphon moved to the metaphor-syphon package: add it to Package.swift and pass plugins: [.syphon(name:)]")
+    public var syphon: Bool {
+        get { legacySyphonEnabled }
+        set { legacySyphonEnabled = newValue }
+    }
 
     /// ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
     public var windowScale: Float
@@ -272,7 +295,7 @@ public struct SketchConfig: Sendable {
     ///
     /// `.displayLink`（デフォルト）はディスプレイのリフレッシュレートに連動した
     /// 標準レンダリングです。`.timer(fps:)` はフレームタイミングを分離し、
-    /// ウィンドウが隠れた際にレンダリングが停止しない Syphon 出力や
+    /// ウィンドウが隠れた際にレンダリングが停止しない外部出力（Syphon 等のプラグイン）や
     /// 動画録画に適しています。
     public var renderLoopMode: RenderLoopMode
 
@@ -338,8 +361,6 @@ public struct SketchConfig: Sendable {
     ///   - height: オフスクリーンテクスチャの高さ（ピクセル単位）。
     ///   - title: ウィンドウタイトル。
     ///   - fps: 目標フレームレート。
-    ///   - syphonName: Syphon サーバー名（`nil` で無効化）。
-    ///   - syphon: Syphon 出力を有効化するか（既定 `false`。`true` で ``title`` 名で publish）。
     ///   - windowScale: ウィンドウサイズのスケール係数。
     ///   - fullScreen: フルスクリーンモードで起動するかどうか。
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
@@ -347,14 +368,12 @@ public struct SketchConfig: Sendable {
     ///   - msaa: MSAA サンプル数（デフォルト: `4`。`1` で無効、非対応値は `1` にフォールバック）。
     ///   - preserveClock: リロードをまたいで `frameCount` / `time` を復元するか（デフォルト: `false`）。
     ///   - shaderHotReload: シェーダファイルの自動リロード（デフォルト: DEBUG ビルドで `true`）。
-    ///   - plugins: スケッチに登録するプラグインファクトリの配列。
+    ///   - plugins: スケッチに登録するプラグインファクトリの配列（Syphon は metaphor-syphon の `.syphon(name:)`）。
     public init(
         width: Int = 1920,
         height: Int = 1080,
         title: String = "metaphor",
         fps: Int = 60,
-        syphonName: String? = nil,
-        syphon: Bool = false,
         windowScale: Float = 0.5,
         fullScreen: Bool = false,
         renderLoopMode: RenderLoopMode = .displayLink,
@@ -368,8 +387,8 @@ public struct SketchConfig: Sendable {
         self.height = height
         self.title = title
         self.fps = fps
-        self.syphonName = syphonName
-        self.syphon = syphon
+        self.legacySyphonName = nil
+        self.legacySyphonEnabled = false
         self.windowScale = windowScale
         self.fullScreen = fullScreen
         self.renderLoopMode = renderLoopMode
@@ -378,6 +397,62 @@ public struct SketchConfig: Sendable {
         self.preserveClock = preserveClock
         self.shaderHotReload = shaderHotReload
         self.plugins = plugins
+    }
+
+    /// `syphonName:` を取る旧 init（deprecated）。
+    ///
+    /// `syphonName` に既定値が無いのは、引数を省略した呼び出しが新しい init と曖昧にならないようにするため
+    /// （#566 と同じ型）。`SketchConfig(syphonName: "Preview")` / `SketchConfig(syphonName: "Preview", syphon: true)`
+    /// はこちらに解決されて deprecation 警告が出る。
+    @available(*, deprecated, message: "Syphon moved to the metaphor-syphon package: add it to Package.swift and pass plugins: [.syphon(name:)]")
+    public init(
+        width: Int = 1920,
+        height: Int = 1080,
+        title: String = "metaphor",
+        fps: Int = 60,
+        syphonName: String?,
+        syphon: Bool = false,
+        windowScale: Float = 0.5,
+        fullScreen: Bool = false,
+        renderLoopMode: RenderLoopMode = .displayLink,
+        preventAppNap: Bool = true,
+        msaa: Int = 4,
+        preserveClock: Bool = false,
+        shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault,
+        plugins: [PluginFactory] = []
+    ) {
+        self.init(
+            width: width, height: height, title: title, fps: fps, windowScale: windowScale,
+            fullScreen: fullScreen, renderLoopMode: renderLoopMode, preventAppNap: preventAppNap,
+            msaa: msaa, preserveClock: preserveClock, shaderHotReload: shaderHotReload, plugins: plugins
+        )
+        self.legacySyphonName = syphonName
+        self.legacySyphonEnabled = syphon
+    }
+
+    /// `syphon:` だけを取る旧 init（deprecated）。`SketchConfig(syphon: true)` はこちらに解決される。
+    @available(*, deprecated, message: "Syphon moved to the metaphor-syphon package: add it to Package.swift and pass plugins: [.syphon(name:)]")
+    public init(
+        width: Int = 1920,
+        height: Int = 1080,
+        title: String = "metaphor",
+        fps: Int = 60,
+        syphon: Bool,
+        windowScale: Float = 0.5,
+        fullScreen: Bool = false,
+        renderLoopMode: RenderLoopMode = .displayLink,
+        preventAppNap: Bool = true,
+        msaa: Int = 4,
+        preserveClock: Bool = false,
+        shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault,
+        plugins: [PluginFactory] = []
+    ) {
+        self.init(
+            width: width, height: height, title: title, fps: fps, windowScale: windowScale,
+            fullScreen: fullScreen, renderLoopMode: renderLoopMode, preventAppNap: preventAppNap,
+            msaa: msaa, preserveClock: preserveClock, shaderHotReload: shaderHotReload, plugins: plugins
+        )
+        self.legacySyphonEnabled = syphon
     }
 
     /// ``shaderHotReload`` の既定値。DEBUG ビルドでのみ `true`。

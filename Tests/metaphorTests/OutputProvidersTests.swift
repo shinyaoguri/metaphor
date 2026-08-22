@@ -127,11 +127,16 @@ struct OutputProvidersTests {
                 .first { $0.providerID == "org.metaphor.legacy-output-factory" }
         }
 
-        // 優先順位: env > syphonName > (syphon ? title : nil)。Syphon 相当なので外部ループを要求する。
-        let config = SketchConfig(title: "MyTitle", syphonName: "FromConfig", syphon: true)
+        // 優先順位: env > 旧 syphonName > (旧 syphon ? title : nil)。Syphon 相当なので外部ループを要求する。
+        // 旧フィールドは deprecated なので、テストは実体（legacySyphon*）を直接セットする。
+        var config = SketchConfig(title: "MyTitle")
+        config.legacySyphonName = "FromConfig"
+        config.legacySyphonEnabled = true
+        var flagOnly = SketchConfig(title: "MyTitle")
+        flagOnly.legacySyphonEnabled = true
         #expect(legacy(primaryContext(config, env: ["METAPHOR_SYPHON_NAME": "FromEnv"]))?.plugin.pluginID == "legacy:FromEnv")
         #expect(legacy(primaryContext(config))?.plugin.pluginID == "legacy:FromConfig")
-        #expect(legacy(primaryContext(SketchConfig(title: "MyTitle", syphon: true)))?.plugin.pluginID == "legacy:MyTitle")
+        #expect(legacy(primaryContext(flagOnly))?.plugin.pluginID == "legacy:MyTitle")
         #expect(legacy(primaryContext(config))?.requirements == [.externalRenderLoop])
 
         // 要求が無ければ無し。空文字の env は未設定。
@@ -141,9 +146,11 @@ struct OutputProvidersTests {
         // ヘッドレスでも暗黙には立てない（ADR-0014。旧 API の橋渡しも同じ規則）。
         #expect(legacy(primaryContext(SketchConfig(title: "MyTitle"), isHeadless: true)) == nil)
 
-        // セカンダリウィンドウは syphonName のみ（env / syphon フラグは見ない）。
+        // セカンダリウィンドウは旧 syphonName のみ（env / syphon フラグは見ない）。
+        var windowConfig = SketchWindowConfig()
+        windowConfig.legacySyphonName = "Win"
         let window = MetaphorOutputContext(
-            scope: .window(SketchWindowConfig(syphonName: "Win")),
+            scope: .window(windowConfig),
             environment: ["METAPHOR_SYPHON_NAME": "FromEnv"], isHeadless: false
         )
         #expect(legacy(window)?.plugin.pluginID == "legacy:Win")
@@ -158,9 +165,9 @@ struct OutputProvidersTests {
         let saved = MetaphorOutputRegistry.legacyFactory
         MetaphorOutputRegistry.legacyFactory = nil
         defer { MetaphorOutputRegistry.legacyFactory = saved }
-        #expect(MetaphorOutputRegistry.makeLegacyOutput(
-            context: primaryContext(SketchConfig(syphon: true))
-        ) == nil)
+        var requested = SketchConfig()
+        requested.legacySyphonEnabled = true
+        #expect(MetaphorOutputRegistry.makeLegacyOutput(context: primaryContext(requested)) == nil)
     }
 }
 
@@ -234,8 +241,12 @@ struct RenderLoopResolutionTests {
     func outputRequestedButMissing() {
         let plain = SketchConfig()
         #expect(!SketchRunner.outputRequestedButMissing(config: plain, env: [:], isHeadless: false, outputs: []))
-        #expect(SketchRunner.outputRequestedButMissing(config: SketchConfig(syphon: true), env: [:], isHeadless: false, outputs: []))
-        #expect(SketchRunner.outputRequestedButMissing(config: SketchConfig(syphonName: "n"), env: [:], isHeadless: false, outputs: []))
+        var flagOnly = SketchConfig()
+        flagOnly.legacySyphonEnabled = true
+        var nameOnly = SketchConfig()
+        nameOnly.legacySyphonName = "n"
+        #expect(SketchRunner.outputRequestedButMissing(config: flagOnly, env: [:], isHeadless: false, outputs: []))
+        #expect(SketchRunner.outputRequestedButMissing(config: nameOnly, env: [:], isHeadless: false, outputs: []))
         #expect(SketchRunner.outputRequestedButMissing(config: plain, env: ["METAPHOR_SYPHON_NAME": "n"], isHeadless: false, outputs: []))
         #expect(!SketchRunner.outputRequestedButMissing(config: plain, env: ["METAPHOR_SYPHON_NAME": ""], isHeadless: false, outputs: []),
                 "空文字の環境変数は未設定")

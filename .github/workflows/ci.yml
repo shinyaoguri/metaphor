@@ -26,7 +26,7 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: macos-26
-    # 通常 3〜6 分（Syphon キャッシュミス時でも 15 分以内）。ハングした場合の
+    # 通常 3〜6 分。ハングした場合の
     # 既定値は 6 時間で、macOS ランナーは 10 倍課金なので上限を明示する。
     timeout-minutes: 45
     permissions:
@@ -39,7 +39,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
           # Need history for diffing against the push base / PR base to decide
           # whether to run the llms.txt staleness check.
           fetch-depth: 0
@@ -56,7 +55,7 @@ jobs:
       # examples-index 自動 push の再ディスパッチの両方に dispatch 行を足す
       # 必要があり、片方でも書き忘れるとその PR は required check が永久に
       # 報告されずデッドロックする（詳細は PR 本文）。
-      # 実行順は checkout 直後 — 数秒で落ちるものを Xcode / Syphon ビルドの
+      # 実行順は checkout 直後 — 数秒で落ちるものを Xcode / Swift ビルドの
       # 手前に置く。
       - name: Lint PR title (Conventional Commits)
         # squash マージのコミット件名は PR タイトルそのもの（リポ設定で
@@ -212,13 +211,13 @@ jobs:
         # 「生成物が最新か」のチェック（下）では守れない — 生成器が API 面を
         # 取りこぼしても出力は自己整合したまま緑になるため、フィルタ規則そのもの
         # を合成シンボルグラフで固定する（Issue #298 / #421）。
-        # ビルド不要なので Xcode / Syphon の手前に置く。
+        # ビルド不要なので Xcode / Swift ビルドの手前に置く。
         run: python3 -m unittest discover -s scripts/tests
       - name: Lint Python scripts
         # 未使用 import ほか pyflakes 相当の指摘（Issue #1022）。ruff の
         # バージョン pin と venv への隔離はスクリプト側が持ち、手元の
         # `make lint-python` と同じ実体を呼ぶので結果が食い違わない。
-        # ビルド不要なので Xcode / Syphon の手前に置く。
+        # ビルド不要なので Xcode / Swift ビルドの手前に置く。
         run: ./scripts/lint-python.sh
       - name: Detect Source changes
         id: source-changed
@@ -319,25 +318,13 @@ jobs:
       # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
       - name: Check for raw print() in Sources
         run: python3 scripts/check-no-raw-print.py
+      # root manifest に binaryTarget を置かない（#792 / ADR-0014）。使わない product 経由でも
+      # 消費者が artifact を download してしまうので、Syphon は metaphor-syphon へ出した。
+      # 一時 consumer の resolve を含むが数秒で終わるので build の手前に置く。
+      - name: Check that the root manifest has no binary targets
+        run: ./scripts/check-no-binary-targets.sh
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
-      - name: Get Syphon submodule hash
-        id: syphon-hash
-        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-      # ビルド環境（Xcode 版）をキーに含める。ランナー/Xcode が異なる workflow 間で
-      # 同一キーのキャッシュを共有すると ABI/SDK 差異を拾い得るため
-      - name: Get Xcode version
-        id: xcode-version
-        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
-      - name: Cache Syphon.xcframework
-        id: cache-syphon
-        uses: actions/cache@v6
-        with:
-          path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
-      - name: Build Syphon
-        if: steps.cache-syphon.outputs.cache-hit != 'true'
-        run: make setup
       # NOTE: SPM 依存キャッシュは撤去した。remote 依存が存在しないため
       # （swift-docc-plugin は未使用につき削除済み）、キャッシュ対象が空だった。
       - name: Build
@@ -536,28 +523,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
           persist-credentials: false
       - name: Select Xcode
         # macos-14 のデフォルト Xcode（15.4）。release.yml の smoke-build と同じ環境
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-      - name: Get Syphon submodule hash
-        id: syphon-hash
-        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-      # キーの規則は build-and-test / release.yml と共通。同じ Xcode 版の
-      # release.yml smoke-build とはキャッシュを共有できる
-      - name: Get Xcode version
-        id: xcode-version
-        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
-      - name: Cache Syphon.xcframework
-        id: cache-syphon
-        uses: actions/cache@v6
-        with:
-          path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
-      - name: Build Syphon
-        if: steps.cache-syphon.outputs.cache-hit != 'true'
-        run: ./scripts/build-syphon.sh
       - name: Build (Swift 5.10)
         # アンブレラターゲットのみ（依存として全ライブラリモジュールがビルドされる）。
         # 全ターゲットの swift build は MetaphorTestSupport が import する
@@ -667,27 +636,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
           fetch-depth: 0
           persist-credentials: false
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
-      - name: Get Syphon submodule hash
-        id: syphon-hash
-        run: echo "hash=$(git submodule status Vendor/Syphon-Framework | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-      - name: Get Xcode version
-        id: xcode-version
-        run: echo "version=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
-      # build-and-test / release.yml と同じキー規則（同一環境ならキャッシュを共有）。
-      - name: Cache Syphon.xcframework
-        id: cache-syphon
-        uses: actions/cache@v6
-        with:
-          path: Frameworks/Syphon.xcframework
-          key: syphon-xcframework-${{ steps.syphon-hash.outputs.hash }}-${{ hashFiles('scripts/build-syphon.sh') }}-${{ steps.xcode-version.outputs.version }}
-      - name: Build Syphon
-        if: steps.cache-syphon.outputs.cache-hit != 'true'
-        run: make setup
       - name: Build changed examples
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

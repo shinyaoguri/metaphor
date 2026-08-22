@@ -33,11 +33,11 @@ struct SketchWindowHeadlessResolutionTests {
                 == .displayLink
         )
 
-        // syphonName ありは Syphon provider が .externalRenderLoop を宣言する（集計結果で timer へ）。
-        let syphon = SketchWindowConfig(fps: 60, syphonName: "test", renderLoopMode: .displayLink)
+        // 外部ループを要する出力（Syphon 等の provider）が .externalRenderLoop を宣言すると timer へ。
+        let external = SketchWindowConfig(fps: 60, renderLoopMode: .displayLink)
         #expect(
             SketchWindow.resolveLoopMode(
-                config: syphon, requirements: [.externalRenderLoop], isHeadless: false
+                config: external, requirements: [.externalRenderLoop], isHeadless: false
             ) == .timer(fps: 60)
         )
 

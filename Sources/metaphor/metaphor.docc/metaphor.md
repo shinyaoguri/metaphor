@@ -323,10 +323,6 @@ final class MySketch: Sketch {
 - ``MetaphorCore/ViewerOutputPlugin``
 - ``MetaphorCore/MetaphorOutputRegistry``
 
-### Syphon
-
-- ``MetaphorSyphon/SyphonOutput``
-
 ### カラー
 
 - ``MetaphorCore/Color``

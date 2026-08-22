@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check syphon preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows lint-python
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows lint-python
 
 # Default target
 all: setup build
@@ -7,23 +7,16 @@ all: setup build
 preflight:
 	@./scripts/preflight-check.sh
 
-# Initial setup - clone submodules, build Syphon, install git hooks
-setup: preflight submodules syphon hooks
+# Initial setup - verify tools, install git hooks
+#
+# Syphon の submodule と xcframework のビルドはここから消えた（#792 / ADR-0014）。
+# Syphon は別パッケージ shinyaoguri/metaphor-syphon が持つ。
+setup: preflight hooks
 
 # Install git hooks (pre-push llms.txt staleness check)
 hooks:
 	@echo "Installing git hooks (core.hooksPath=scripts/hooks)..."
 	@git config core.hooksPath scripts/hooks
-
-# Update git submodules
-submodules:
-	@echo "Updating submodules..."
-	git submodule update --init --recursive
-
-# Build Syphon.xcframework
-syphon:
-	@echo "Building Syphon.xcframework..."
-	./scripts/build-syphon.sh
 
 # Build the Swift package
 build:
@@ -101,7 +94,6 @@ clean: clean-examples
 	@echo "Cleaning..."
 	swift package clean
 	rm -rf .build
-	rm -rf Frameworks/Syphon.xcframework
 
 # Remove per-example SPM build artifacts.
 # Each example under Examples/ is an independent SwiftPM package, so each grows
@@ -111,50 +103,32 @@ clean-examples:
 	@echo "Cleaning Examples/**/.build ..."
 	@find Examples -type d -name .build -prune -exec rm -rf {} + 2>/dev/null || true
 
-# Full clean including submodules
+# Full clean (kept as an alias; there is nothing beyond `clean` to remove any more)
 clean-all: clean
-	@echo "Removing submodules..."
-	rm -rf Vendor/Syphon-Framework
 
-# Check if setup is complete
-#
-# Frameworks/Syphon.xcframework が無くても Package.swift は release URL の
-# binaryTarget へフォールバックするので、そこが MISSING でも swift build /
-# swift test は通る（Issue #935）。submodule 側は「ディレクトリがある」だけでは
-# 足りない — git submodule update を通していない worktree には空ディレクトリだけが
-# 生えるので、xcodebuild が必要とする実体（Syphon.xcodeproj）の有無を見る。
+# Check if setup is complete (git hooks + toolchain). There are no vendored
+# binaries to verify since Syphon moved to metaphor-syphon (#792 / ADR-0014).
 check:
-	@if [ -d "Frameworks/Syphon.xcframework" ]; then \
-		current=$$(git submodule status Vendor/Syphon-Framework 2>/dev/null | awk '{print $$1}'); \
-		built=$$(cat Frameworks/.syphon-build-stamp 2>/dev/null || true); \
-		if [ -n "$$built" ] && [ "$$built" != "$$current" ]; then \
-			echo "Syphon.xcframework: STALE (built from $$built, submodule at $$current) - run 'make syphon'"; \
-		else \
-			echo "Syphon.xcframework: OK"; \
-		fi; \
+	@if [ "$$(git config core.hooksPath)" = "scripts/hooks" ]; then \
+		echo "git hooks: OK (core.hooksPath=scripts/hooks)"; \
 	else \
-		echo "Syphon.xcframework: MISSING - swift build falls back to the release binaryTarget (run 'make setup' to build it locally)"; \
+		echo "git hooks: NOT INSTALLED - run 'make hooks'"; \
 	fi
-	@if [ -e "Vendor/Syphon-Framework/Syphon.xcodeproj" ]; then \
-		echo "Syphon submodule: OK"; \
-	elif [ -d "Vendor/Syphon-Framework" ]; then \
-		echo "Syphon submodule: NOT INITIALIZED (empty checkout) - run 'make submodules'"; \
-	else \
-		echo "Syphon submodule: MISSING - run 'make submodules'"; \
-	fi
+	@./scripts/preflight-check.sh
+
+# Root manifest must stay free of binaryTargets (#792 / ADR-0014): a remote binary
+# artifact is downloaded by every consumer that resolves the package, even when the
+# product that needs it is unused. Same check as CI.
+check-binary-targets:
+	@./scripts/check-no-binary-targets.sh
 
 # Extract symbol graphs (shared step for docs and llms-txt)
 # Each module is independent — run extraction in parallel via xargs -P.
 # Saves ~60s on CI (12 modules × ~7s sequential → bounded by core count).
 #
-# -F の解決先は 2 通りある（Issue #935）。Package.swift は Frameworks/Syphon.xcframework
-# が無ければ release URL の binaryTarget へフォールバックし、そのとき Syphon.framework は
-# swift build が .build/arm64-apple-macosx/debug/ へ置く。片方を決め打ちすると
-# `make setup` を通していない worktree で symbol-graphs だけが落ち、llms.txt の鮮度を
-# 見る pre-push フックごと push が通らなくなる（build / test は green のままなので
-# 原因に辿り着きにくい）。どちらの経路でも採れる symbol graph は同一なので、実在する
-# 方をレシピ内シェルで選ぶ。`:=` + $(shell) は build 依存より先に評価されてしまい、
-# 初回ビルド前は必ずフォールバック側に倒れるため、変数ではなくレシピ内で判定する。
+# C target（CMetaphorIPC）のモジュールは modulemap を -Xcc で渡す（Swift から見える
+# 型を symbol graph が解決するため）。Syphon の framework 探索（-F）は metaphor-syphon へ
+# 移った（#792 / ADR-0014）。
 #
 # 説明をレシピの外（この位置）に置いているのは 2 つの理由による。レシピ本体は `\` 継続行の
 # ひとかたまりなので、途中に `#` を挟むと以降が丸ごとシェルコメントに飲まれる。加えて
@@ -165,24 +139,17 @@ symbol-graphs: build
 	@echo "Extracting symbol graphs..."
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
-	if [ -d Frameworks/Syphon.xcframework/macos-arm64_x86_64 ]; then \
-		SYPHON_F=Frameworks/Syphon.xcframework/macos-arm64_x86_64; \
-	else \
-		SYPHON_F=.build/arm64-apple-macosx/debug; \
-	fi; \
-	export SDK_PATH SYPHON_F; \
+	export SDK_PATH; \
 	printf '%s\n' metaphor MetaphorCore MetaphorLog \
 		MetaphorAudio MetaphorNetwork MetaphorPhysics MetaphorML MetaphorVideo \
 		MetaphorNoise MetaphorMPS MetaphorCoreImage \
-		MetaphorRenderGraph MetaphorSceneGraph MetaphorSyphon \
+		MetaphorRenderGraph MetaphorSceneGraph \
 	| xargs -n1 -P8 -I{} xcrun swift-symbolgraph-extract \
 		-module-name {} \
 		-target arm64-apple-macosx14.0 \
 		-sdk "$$SDK_PATH" \
 		-I .build/arm64-apple-macosx/debug/Modules \
-		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorSyphonBootstrap.build/module.modulemap \
 		-Xcc -fmodule-map-file=.build/arm64-apple-macosx/debug/CMetaphorIPC.build/module.modulemap \
-		-F "$$SYPHON_F" \
 		-minimum-access-level public \
 		-skip-inherited-docs \
 		-emit-extension-block-symbols \
@@ -329,7 +296,7 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make preflight      - Check required tools and environment"
-	@echo "  make setup          - Initialize submodules, build Syphon, install hooks"
+	@echo "  make setup          - Verify tools and install git hooks"
 	@echo "  make hooks          - Install git hooks only (core.hooksPath=scripts/hooks)"
 	@echo "  make build          - Build the Swift package"
 	@echo "  make release        - Build release version"

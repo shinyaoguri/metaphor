@@ -899,27 +899,6 @@
       "height": 600,
       "frame": 100
     },
-    "Examples/Samples/Syphon/SyphonMultiWindow": {
-      "origin": "captured",
-      "sourceHash": "992f744d5b4cd20fd54aa03dd0b97b28b250b8b75d343a925f23bfb3787e1213",
-      "width": 1920,
-      "height": 1080,
-      "frame": 111
-    },
-    "Examples/Samples/Syphon/SyphonOutput": {
-      "origin": "captured",
-      "sourceHash": "0c3281f9e475e1dcaf5239ca713425f15940c8f084f947dd84b382c09e9fc2df",
-      "width": 1920,
-      "height": 1080,
-      "frame": 109
-    },
-    "Examples/Samples/Syphon/SyphonTripleWindow": {
-      "origin": "captured",
-      "sourceHash": "64483a71eb3980bf1e294a89bbf57613e190c91bac951fae3990fff7a167af34",
-      "width": 1920,
-      "height": 1080,
-      "frame": 70
-    },
     "Examples/Samples/ToneMapping": {
       "origin": "captured",
       "sourceHash": "7722c76f2be6f429f2dad1102d83633fdc1f6c8031d78b577fc48c943d0f507f",
