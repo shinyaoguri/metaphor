@@ -96,7 +96,7 @@ if [ -z "$ONLY" ]; then
   # 本文側の変更でビルドが壊れる PR を取りこぼす。
   if grep -qE '^(website/|docs/tutorial/)' <<<"$changed"; then areas="$areas website"; fi
   if grep -q '^\.github/workflows/' <<<"$changed"; then areas="$areas workflows"; fi
-  if grep -qE '^(Sources/|Package\.swift|Vendor/)' <<<"$changed"; then areas="$areas swift"; fi
+  if grep -qE '^(Sources/|Package\.swift)' <<<"$changed"; then areas="$areas swift"; fi
 else
   areas="$ONLY"
 fi
@@ -129,9 +129,23 @@ for area in $areas; do
       grep -h "runs-on:" "$WT"/.github/workflows/*.yml | sed 's/^[[:space:]]*/    /' | sort -u
       ;;
     swift)
-      # Syphon.xcframework が要るので worktree では回せない（make setup 相当が
-      # 走ってしまう）。ライブラリ側は手元のセットアップ済みツリーで見る。
-      echo "==> [swift] このスクリプトの対象外。手元で make ci-check を回してください"
+      # CI の build-and-test ジョブと同じコマンド（.github/workflows/ci.yml）＝
+      # `make ci-check` 相当。#792 / ADR-0014 で Syphon が metaphor-syphon へ
+      # 出て root manifest から binaryTarget が消えたので、`make setup` を通して
+      # いない素の checkout でも回る（この worktree がまさにそれ）。
+      #
+      # METAPHOR_REQUIRE_GPU=1 も CI に合わせる。Metal デバイスが見えない環境では
+      # GPU 依存テストが軒並み skip されたまま green を返すため、「回したのに何も
+      # 見ていない」を明示的に fail させる（Makefile の ci-check と同じ理由）。
+      echo "==> [swift] swift build && swift test（CI parity）"
+      if ( cd "$WT" \
+             && swift build -Xswiftc -warnings-as-errors \
+             && METAPHOR_REQUIRE_GPU=1 swift test -Xswiftc -warnings-as-errors ); then
+        echo "==> [swift] OK"
+      else
+        echo "==> [swift] FAILED" >&2
+        status=1
+      fi
       ;;
     *)
       echo "unknown area: $area" >&2
