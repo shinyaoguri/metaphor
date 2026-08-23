@@ -15,6 +15,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 | マイク・カメラを使うスケッチを書く人 | 権限ダイアログや拒否後の詰まりを解消する | [permissions.md](permissions.md)（英語。TCC の仕組みと復旧手順） |
 | AI と一緒に作る人 | AI に観測させながら反復する | [README「AI と協調する」](../README.md#ai-と協調する観測--操作--反復) → [metaphor-cli の「AI と協調する」](https://github.com/shinyaoguri/metaphor-cli#ai-と協調する) → [ai/prompts/](ai/prompts/) |
 | ライブラリ本体の開発者 | metaphor 自体を変更する | [DEVELOPMENT.md](../DEVELOPMENT.md) → [ai/README.md](ai/README.md)（実装デバッグ・不変条件） → [adr/](adr/) |
+| 公開 API に doc コメントを書く人 | 何語でどう書くかを知る | [doc-comment-style.md](doc-comment-style.md)（英語で書く理由・文体・語彙・対訳台帳の扱い） |
 | AI エージェント | 本リポジトリで作業する | [CLAUDE.md](../CLAUDE.md)（起点） → 各ファイルへ委譲 |
 | metaphor に依存する人 | バージョン指定の判断材料・何が壊れうるかを知る | [api-stability-policy.md](api-stability-policy.md)（英語）→ [CHANGELOG.md](../CHANGELOG.md) |
 | クロスリポ変更を扱う人 | metaphor ⇄ metaphor-cli の契約に触れる | [CONTRACT.md](../CONTRACT.md) |
@@ -39,6 +40,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 - **[processing-migration-guide.md](processing-migration-guide.md)** — Processing / p5.js 移行ガイド（英語）。カテゴリ別 API 対応表、落とし穴集、未対応 API とロードマップへの導線
 - **[permissions.md](permissions.md)** — マイク・カメラの TCC 権限（英語）。`swift run` バイナリでの権限要求の仕組み、拒否後の復旧手順、Info.plist の扱い
 - **[api-stability-policy.md](api-stability-policy.md)** — API 安定性ポリシー（英語）。4 層のどこまでが公開 API か、ソース互換のみ（ABI 非保証）、deprecation 窓、描画結果 / Probe wire schema / stdin / 環境変数が SemVer のどこに載るか、1.0 までは breaking を minor で許容する規律（[ADR-0009](adr/0009-unfreeze-api-until-1-0.md)）
+- **[doc-comment-style.md](doc-comment-style.md)** — 公開 API の doc コメントの規約。英語で書く理由（`llms.txt` / DocC / 対訳生成の上流だから）、文体、Processing / p5.js に合わせる語彙、`<!-- reference-shot -->` 領域を触らない理由、元の日本語を対訳台帳へ移す運用。CI の CJK 検査（`scripts/check-doc-comment-language.py`）がこれを機械で守る
 - **[adr/](adr/)** — Architecture Decision Records。設計判断の蓄積（append-only）。書き方は [adr/README.md](adr/README.md)
 - **[design/](design/)** — 進行中 / 過去プロジェクトの設計ドキュメント。確定仕様は実装と [CONTRACT.md](../CONTRACT.md) が正
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
