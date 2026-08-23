@@ -218,6 +218,33 @@ cli を先に出すと `hello` が来ず viewer が使えないので、**本体
 未決の細部（実装 PR で決めてよい）: `hello` の `colorSpace` の語彙、`frame` に `frameCount` / `time` を載せるか、
 `bye` の要否、`ViewerOutputPlugin` の public 可否、C シムの関数名。
 
+### 実装の完了と計画からの変更（2026-08-23 追記）
+
+子 Issue はすべて 2026-08-22〜23 に完了した（[#792](https://github.com/shinyaoguri/metaphor/issues/792) をクローズ）。到達点:
+
+| リポジトリ | リリース |
+|---|---|
+| metaphor | N = **v0.11.0**（M1 / M2）、N+1 = **v0.12.0**（M4。M4b = [#1055](https://github.com/shinyaoguri/metaphor/issues/1055) でチュートリアル 8.3 を metaphor-syphon 依存で復帰）、N+2 = **v0.13.0**（M6） |
+| metaphor-cli | **v0.14.0**（C1 + C2）→ **v0.15.0**（C4）→ **v0.16.0**（C5）。C3 / C6 は同日中にマージ |
+| [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) | **v0.1.0**（S0、`from: "0.12.0"`）→ **v0.1.1**（依存を `"0.12.0"..<"0.13.0"` に締める）→ **v0.2.0**（旧フィールドの読み取り窓を外して `from: "0.13.0"`） |
+
+計画から変えた点:
+
+- **S0 と M4 の順序を入れ替えた**（[#1039 の確認](https://github.com/shinyaoguri/metaphor/issues/1039#issuecomment-5381521581)）。SwiftPM は依存グラフ内のターゲット名を使っていなくても一意に要求する
+  （`moduleAliases` でも回避できない）ので、本体の root manifest に in-tree の `MetaphorSyphon` / `Syphon` / `CMetaphorSyphonBootstrap`
+  が残る 0.11.0 に対して同名ターゲットの metaphor-syphon は manifest ロード時に落ちる。M4（0.12.0）を先に出し、S0 は同名のまま
+  `from: "0.12.0"` でタグした。0.12.0 のリリースから v0.1.0 のタグまでの窓（同日・数十分）は利用者がいないので許容（D9）。
+- **M6 は metaphor-syphon 0.1.1 → 本体 0.13.0 → metaphor-syphon 0.2.0 の順**（[#1042 のコメント](https://github.com/shinyaoguri/metaphor/issues/1042#issuecomment-5382755870)）。
+  0.1.1 で依存の上限を締めないと、本体 0.13.0 が出た瞬間に `metaphor from: "0.12.0"` + `metaphor-syphon from: "0.1.0"` の利用者が
+  0.13.0 + 0.1.0 に解決されて壊れる（SwiftPM は 0.x の minor を breaking と扱わない）。0.13.0 から 0.2.0 までの窓は
+  `metaphor new --template syphon` が依存解決に失敗するので、0.13.0 は `release:now` で出して窓を数十分に収めた。
+- 未決だった細部の結論: `colorSpace` は `"sRGB"` / `"displayP3"` の語彙（v1 は sRGB。受け手の解釈には影響しない）、`frame` に `frameCount` / `time` を載せる（producer は必ず送り、consumer は無くても読む）、
+  `bye` あり（子の明示終了。EOF でも同じ扱い）、`ViewerOutputPlugin` は public、C シムは `metaphor_shm_open_anon` / `metaphor_send_fd` / `metaphor_recv_fd`（cli 側は `CMetaphorFrameIPC`）。
+- R9 の実測（cli#171）: 子の fps / CPU / mem と viewer CPU は Syphon 版と同等、frame→表示の遅延は 1080p 8–13 ms / 4K 15 ms、drop なし。
+
+残した副産物: [#1058](https://github.com/shinyaoguri/metaphor/issues/1058)（`make symbol-graphs` が消えたモジュールの graph を残す）、
+[cli#170](https://github.com/shinyaoguri/metaphor-cli/issues/170)（viewer 窓がキーのとき窓の外の mouseMoved を転送する）。
+
 ## References
 
 - Issue [#792](https://github.com/shinyaoguri/metaphor/issues/792) — 設計 Issue。本文は当初案（IOSurface + Mach IPC）で、以下のコメント群が上書きする
