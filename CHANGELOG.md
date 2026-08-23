@@ -41,6 +41,25 @@ Maintaining this file
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-23
+
+### Breaking Changes
+
+- **Removed** the Syphon-specific API that 0.12.0 had deprecated: `SketchConfig.syphon` /
+  `SketchConfig.syphonName` (and the `SketchConfig(syphon:)` / `SketchConfig(syphonName:)`
+  initializers), `SketchWindowConfig.syphonName` (and `SketchWindowConfig(syphonName:)`), and
+  `MetaphorOutputRegistry`. Syphon output lives in the separate
+  [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) package: add it to
+  `Package.swift`, `import MetaphorSyphon`, and pass `plugins: [.syphon()]` (or `.syphon(name:)`)
+  to `SketchConfig` / `SketchWindowConfig`. The `METAPHOR_SYPHON_NAME` environment variable is
+  unchanged. Output modules register a `MetaphorOutputProvider` with `MetaphorOutputProviders`
+  instead of the removed registry
+  ([#1042](https://github.com/shinyaoguri/metaphor/issues/1042), [#792](https://github.com/shinyaoguri/metaphor/issues/792))
+
+### Changed
+
+- チュートリアル 8.3 Syphon と `Examples/Tutorial/08-Connect/03-Syphon` を、別パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) v0.1.0 への依存で復活（`import MetaphorSyphon` + `plugins: [.syphon(name:)]`。0.12.0 で外していたもの）
+
 ## [0.12.0] - 2026-08-22
 
 ### Breaking Changes
@@ -2355,7 +2374,8 @@ Adds `PixelBuffer`, multi-window improvements, Core ML examples (face detection,
 
 First public release. [Release notes](https://github.com/shinyaoguri/metaphor/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/shinyaoguri/metaphor/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/shinyaoguri/metaphor/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/shinyaoguri/metaphor/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/shinyaoguri/metaphor/compare/v0.9.0...v0.10.0
