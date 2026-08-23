@@ -130,6 +130,12 @@ check-binary-targets:
 # 型を symbol graph が解決するため）。Syphon の framework 探索（-F）は metaphor-syphon へ
 # 移った（#792 / ADR-0014）。
 #
+# 抽出は上書きなので、出力ディレクトリを先に消す（Issue #1058）。消さないと Package から
+# 消えたモジュールの symbol graph が残り続け、llms.txt と DocC に「もう無いモジュール」の節が
+# 復活する。CI は毎回クリーンな checkout なので気付けず、手元で再生成した llms.txt を
+# コミットすると pre-push の鮮度検査も（比較対象が同じ stale な出力なので）「一致」と答える。
+# 増分ビルド自体は build ターゲットが持つので、消してもフルビルドにはならない。
+#
 # 説明をレシピの外（この位置）に置いているのは 2 つの理由による。レシピ本体は `\` 継続行の
 # ひとかたまりなので、途中に `#` を挟むと以降が丸ごとシェルコメントに飲まれる。加えて
 # scripts/validate-ai-docs.sh が `awk '/^symbol-graphs:/,/^# Generate llms.txt/'` で
@@ -137,6 +143,7 @@ check-binary-targets:
 # 語彙を増やすと網羅判定が鈍る。下の `# Generate llms.txt` は境界なので消さないこと。
 symbol-graphs: build
 	@echo "Extracting symbol graphs..."
+	@rm -rf .build/symbol-graphs
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
 	export SDK_PATH; \

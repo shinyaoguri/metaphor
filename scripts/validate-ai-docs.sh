@@ -136,6 +136,16 @@ for mod in $pkg_modules; do
     fi
 done
 
+# 抽出は上書きなので、レシピが出力ディレクトリを先に畳んでいないと Package から消えた
+# モジュールの symbol graph が残り、llms.txt と DocC に「もう無いモジュール」の節が復活する
+# （Issue #1058）。CI は毎回クリーンな checkout なので気付けず、手元で再生成した llms.txt を
+# コミットすると pre-push の鮮度検査も「一致」と答えてしまう。レシピ側の 1 行をここで固定する。
+if printf '%s\n' "$symbol_graph_block" | grep -q 'rm -rf .build/symbol-graphs'; then
+    pass "symbol-graphs clears its output dir before extracting"
+else
+    fail "symbol-graphs must 'rm -rf .build/symbol-graphs' before extraction (Issue #1058)"
+fi
+
 # --------------------------------------------------------------------------
 # 6. SPM dependency snippet versions
 # --------------------------------------------------------------------------
