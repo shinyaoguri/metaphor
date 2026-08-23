@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import MetaphorCore
 
@@ -11,6 +12,7 @@ struct HeadlessStatusItemTests {
     /// 検証しやすい既定値のスナップショット。
     private func snapshot(
         title: String = "Test Sketch",
+        location: String = "/Users/example/sketches/test",
         measuredFPS: Double? = 59.84,
         frameCount: Int = 12345,
         elapsed: Double = 201,
@@ -18,6 +20,7 @@ struct HeadlessStatusItemTests {
     ) -> HeadlessStatusSnapshot {
         HeadlessStatusSnapshot(
             title: title,
+            location: location,
             version: "0.13.0",
             pid: 4242,
             width: 1920,
@@ -105,5 +108,82 @@ struct HeadlessStatusItemTests {
             HeadlessStatusSnapshot.outputLabel(
                 pluginID: "com.example.recorder", viewerConnected: nil
             ) == "com.example.recorder")
+    }
+
+    @Test("location folds the home directory, and says so when there is no project")
+    func locationFormatting() {
+        #expect(
+            HeadlessStatusSnapshot.locationText("/Users/example/sketches/test")
+                == "/Users/example/sketches/test")
+        #expect(
+            HeadlessStatusSnapshot.locationText("\(NSHomeDirectory())/sketches/test")
+                == "~/sketches/test")
+        // `.app` を LaunchServices から起動すると cwd が `/` になる（CONTRACT.md）。
+        // そこで動いていると読めてしまうので、素の `/` とは書かない。
+        #expect(HeadlessStatusSnapshot.locationText("/") == "/ (no project directory)")
+    }
+
+    @Test("a long location is shortened from the front, keeping the telling end")
+    func locationTruncation() {
+        // この 1 行がメニュー幅の下限を決めてしまうので畳む。区別が付くのは末尾側。
+        #expect(
+            HeadlessStatusSnapshot.locationText(
+                "/Users/example/very/deeply/nested/place/for/sketches/test", maxLength: 24
+            ) == "…/for/sketches/test")
+        // 上限ちょうどは畳まない。
+        #expect(
+            HeadlessStatusSnapshot.locationText("/Users/example/test", maxLength: 19)
+                == "/Users/example/test")
+        // 末尾 1 つでも収まらないときは、それでも末尾を出す（何も出ないよりよい）。
+        #expect(
+            HeadlessStatusSnapshot.locationText("/Users/example/very-long-name", maxLength: 8)
+                == "…/very-long-name")
+    }
+
+    @Test("the saved path is written relative to where the process lives")
+    func savedTextFormatting() {
+        // 場所はすぐ上の行に出ている。絶対パスを繰り返すとメニュー幅の下限になる。
+        #expect(
+            HeadlessStatusSnapshot.savedText(
+                path: "/Users/example/sketches/test/output/metaphor_1.png",
+                base: "/Users/example/sketches/test"
+            ) == "Saved to output/metaphor_1.png")
+        // 外へ逃がしたときは、どこへ行ったかが分からないと困るので全体を出す。
+        #expect(
+            HeadlessStatusSnapshot.savedText(
+                path: "\(NSHomeDirectory())/Desktop/metaphor_1.png", base: "/"
+            ) == "Saved to ~/Desktop/metaphor_1.png")
+    }
+
+    @Test("the item hides only while the live viewer is watching")
+    func visibilityRule() {
+        // 親のウィンドウが無い実行（mcp / Syphon / 素のヘッドレス）は常に出す。
+        #expect(
+            HeadlessStatusItem.shouldShow(viewerSocketConfigured: false, viewerConnected: false))
+        #expect(
+            HeadlessStatusItem.shouldShow(viewerSocketConfigured: false, viewerConnected: true))
+        // watch 中は親のウィンドウが同じものを出しているので引っ込む。
+        #expect(
+            !HeadlessStatusItem.shouldShow(viewerSocketConfigured: true, viewerConnected: true))
+        // 親が落ちたら（＝孤児になったら）出る。ここがこの面の存在意義。
+        #expect(
+            HeadlessStatusItem.shouldShow(viewerSocketConfigured: true, viewerConnected: false))
+    }
+
+    @Test("saving falls back to the Desktop when the project directory is not writable")
+    func saveDestinationFallback() {
+        #expect(
+            HeadlessStatusItem.saveDestination(
+                base: "/Users/example/sketches/test",
+                timestamp: "20260823_120000",
+                isWritable: { _ in true }
+            ) == "/Users/example/sketches/test/output/metaphor_20260823_120000.png")
+
+        // `.app` 起動で基準が `/` になる経路。黙って保存されないのがいちばん悪い。
+        let desktop = NSString(string: "~/Desktop").expandingTildeInPath
+        #expect(
+            HeadlessStatusItem.saveDestination(
+                base: "/", timestamp: "20260823_120000", isWritable: { _ in false }
+            ) == "\(desktop)/metaphor_20260823_120000.png")
     }
 }

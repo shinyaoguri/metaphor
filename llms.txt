@@ -982,12 +982,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case horizontal` -- 左から右へグラデーションを適用。
 - `case vertical` -- 上から下へグラデーションを適用。
 
-### `enum HeadlessIndicator` -- ヘッドレス（オフスクリーン）実行中であることを、どこに出すか。
+### `enum HeadlessIndicator` -- Where to show that a headless (offscreen) run is in progress.
 
-- `case both` -- メニューバーと Dock の両方に出す。
-- `case dock` -- Dock にアイコンを出す。
-- `case hidden` -- どこにも出さない（従来の挙動）。
-- `case menuBar` -- メニューバーに状態項目を出す（既定）。
+- `case both` -- Shows both the menu bar item and the Dock icon.
+- `case dock` -- Shows an icon in the Dock.
+- `case hidden` -- Shows nothing anywhere (the behaviour before this setting existed).
+- `case menuBar` -- Shows a status item in the menu bar (the default).
 - `var hashValue: Int { get }`
 - `init?(rawValue: String)`
 - `func hash(into hasher: inout Hasher)`

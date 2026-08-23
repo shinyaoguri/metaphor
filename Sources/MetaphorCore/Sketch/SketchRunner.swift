@@ -665,6 +665,11 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             width: config.width, height: config.height, box: Self.headlessPreviewBox
         )
 
+        // ライブビューアが繋がっている間は、同じ絵と数値を親のウィンドウが出している。
+        // socket が要求されている実行だけが「観測者が来る / 去る」の対象になる。
+        let viewerSocketConfigured =
+            ProcessInfo.processInfo.environment["METAPHOR_VIEWER_SOCKET"]?.isEmpty == false
+
         headlessStatusItem = HeadlessStatusItem(
             snapshotProvider: { [weak self] in
                 guard let self else { return Self.idleHeadlessSnapshot(config: config) }
@@ -673,12 +678,53 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             previewProvider: { [weak tap] in tap?.latestFrame },
             previewSize: NSSize(width: thumbnail.width, height: thumbnail.height),
             setPreviewActive: { [weak tap] active in tap?.isCapturing = active },
+            visibilityProvider: { [weak self] in
+                HeadlessStatusItem.shouldShow(
+                    viewerSocketConfigured: viewerSocketConfigured,
+                    viewerConnected: self?.isViewerConnected ?? false
+                )
+            },
+            onSaveFrame: { [weak self] in self?.saveHeadlessFrame() },
             onQuit: { NSApp.terminate(nil) }
         )
     }
 
+    /// Whether the live viewer is attached (`false` when there is none).
+    private var isViewerConnected: Bool {
+        let viewer = renderer?.plugin(id: ViewerOutputPlugin.id) as? ViewerOutputPlugin
+        return viewer?.isConnected ?? false
+    }
+
+    /// "Save Frame" in the status item: writes out the picture as it stands.
+    ///
+    /// No new frame is drawn, so this works on a `noLoop()` piece and never
+    /// advances time from the outside. The destination is the same `output/` as
+    /// ``Sketch/save()``, falling back to `~/Desktop` when that cannot be written
+    /// to (a `.app` launch can leave the base directory at `/`).
+    ///
+    /// - Returns: Where the frame went, or `nil` when the write could not be started.
+    private func saveHeadlessFrame() -> String? {
+        guard let renderer else { return nil }
+        let path = HeadlessStatusItem.saveDestination(
+            base: MetaphorPaths.baseDirectory,
+            timestamp: MetaphorOutputPaths.timestamp()
+        )
+        guard renderer.saveLastOutput(to: path) else {
+            // 押したのに何も起きない、が最悪。`.app` 起動でも見える経路で言う。
+            metaphorAlert("save frame: nothing has been drawn yet; not saving")
+            return nil
+        }
+        // 成功したことは呼び出し元がメニューへ「Saved to …」として出す。ここは
+        // 切り分け用の控え（黙って別の場所へ落ちていないかを追えるように）。
+        metaphorDiagnostic("save frame: \(path)")
+        return path
+    }
+
     /// The box the in-menu preview fits into, in points. The actual texture is twice this size (Retina).
-    private static let headlessPreviewBox = (width: 240, height: 180)
+    ///
+    /// The sketch name and the location are what the menu is for, so the thumbnail
+    /// is kept small enough to stay subordinate to them (Issue #1071).
+    private static let headlessPreviewBox = (width: 160, height: 120)
 
     /// Dock に出すときだけ、空のメニューバーを避けるための最小限のメニューを組みます。
     ///
@@ -734,6 +780,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private static func idleHeadlessSnapshot(config: SketchConfig) -> HeadlessStatusSnapshot {
         HeadlessStatusSnapshot(
             title: config.title,
+            // 同名のスケッチが複数走ったとき、どれがどれかはここでしか分からない。
+            // 基準は `.metaphor/` と同じ（`METAPHOR_STATE_DIR` があればそちら）。
+            location: MetaphorPaths.baseDirectory,
             version: Metaphor.version,
             pid: ProcessInfo.processInfo.processIdentifier,
             width: config.width,

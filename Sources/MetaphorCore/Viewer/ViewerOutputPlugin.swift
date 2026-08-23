@@ -123,8 +123,14 @@ public final class ViewerOutputPlugin: MetaphorOutputPlugin {
     private let parentDisconnected = OSAllocatedUnfairLock(initialState: false)
     private var warnedUnsupportedFormat = false
 
-    /// 接続できていて、`post()` がフレームを送る状態か（テスト用）。
-    var isConnected: Bool { transport != nil }
+    /// Whether the parent (the live viewer) is attached and the frames are reaching someone.
+    ///
+    /// The transport is only torn down by the next `post()` (that is, the next
+    /// frame), but this turns `false` **as soon as the reader thread sees the
+    /// disconnection**. A sketch halted by `noLoop()` gets no more posts once its
+    /// parent dies, so looking at the transport alone would report "connected"
+    /// forever and nobody would ever learn that it had been orphaned (Issue #1071).
+    var isConnected: Bool { transport != nil && !parentDisconnected.withLock { $0 } }
 
     /// - Parameter socketPath: 親が listen している Unix domain socket のパス。
     public init(socketPath: String) {

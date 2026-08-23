@@ -831,6 +831,66 @@ public final class MetaphorRenderer: NSObject {
         pendingSavePaths.append(path)
     }
 
+    /// Writes out the most recently drawn frame **without drawing a new one**.
+    ///
+    /// ``saveScreenshot(to:)`` rides along with the next frame to write its file,
+    /// which means a sketch halted by `noLoop()` **never saves at all**. Driving
+    /// `redraw()` from the outside instead would be advancing time from the
+    /// outside, a separate decision that touches deterministic rendering
+    /// (ADR-0002, Issue #1083). So this copies the last output texture as it
+    /// stands. "Save Frame" in the headless status item takes this path.
+    ///
+    /// The write happens asynchronously in the GPU completion handler, so the file
+    /// does not exist yet when this returns — `true` means "started", not "done".
+    ///
+    /// - Parameter path: The file path to write the PNG to.
+    /// - Returns: `true` when the write could be started. `false` when no frame has
+    ///   been drawn yet, or GPU resources are unavailable (no file is created then).
+    @discardableResult
+    func saveLastOutput(to path: String) -> Bool {
+        guard let source = lastOutputTexture else { return false }
+        guard source.pixelFormat == .bgra8Unorm else {
+            metaphorWarning(
+                "save frame: output texture format \(source.pixelFormat) is not supported "
+                    + "(bgra8Unorm only)")
+            return false
+        }
+
+        // フレーム毎の staging はスロットを回して使い回しているので、レンダーループの
+        // 外から触らない（ここは 1 回きりの操作なので、その場で確保して捨てる）。
+        let width = source.width
+        let height = source.height
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = .shaderRead
+        descriptor.storageMode = .shared
+
+        guard let staging = device.makeTexture(descriptor: descriptor),
+            let commandBuffer = commandQueue.makeCommandBuffer(),
+            let blitEncoder = commandBuffer.makeBlitCommandEncoder()
+        else {
+            metaphorWarning("save frame: could not allocate GPU resources for \(path)")
+            return false
+        }
+
+        blitEncoder.copy(
+            from: source,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: width, height: height, depth: 1),
+            to: staging,
+            destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        blitEncoder.endEncoding()
+        commandBuffer.addCompletedHandler { _ in
+            MetaphorRenderer.writePNG(
+                texture: staging, width: width, height: height, paths: [path])
+        }
+        commandBuffer.commit()
+        return true
+    }
+
     // MARK: - 座標変換
 
     /// ビュー座標からオフスクリーンテクスチャ座標に変換します。

@@ -1,60 +1,68 @@
 import Foundation
 
-/// ヘッドレス（オフスクリーン）実行中であることを、どこに出すか。
+/// Where to show that a headless (offscreen) run is in progress.
 ///
-/// ヘッドレス起動（`METAPHOR_VIEWER=1`）したスケッチはウィンドウを持たないため、
-/// 何も出さないと **走っているのか・何本走っているのか・どう止めるのかが分かりません**
-/// （既定では App Nap も抑止するので、見えないまま GPU を回し続けます）。この設定は
-/// 「見えないプロセスが必ずどこかに現れ、そこから終了できる」ことを保証します。
+/// A sketch started headless (`METAPHOR_VIEWER=1`) has no window, so showing
+/// nothing at all leaves **no way to tell whether it is running, how many are
+/// running, or how to stop them** — and App Nap is suppressed by default, so it
+/// keeps the GPU busy out of sight. This setting guarantees that an invisible
+/// process always surfaces somewhere, and can be quit from there.
 ///
-/// 既定は ``menuBar`` です。バックグラウンドで走り続けるプロセスを表す macOS の
-/// 作法に沿い、Dock を占有しません。環境変数 `METAPHOR_HEADLESS_INDICATOR`
-/// （`menubar` / `dock` / `both` / `none`）を設定すると、ビルド済みのスケッチを
-/// 再コンパイルせずにそちらが優先されます。
+/// The default is ``menuBar``, which follows the macOS convention for a process
+/// that keeps running in the background and leaves the Dock alone. Setting the
+/// environment variable `METAPHOR_HEADLESS_INDICATOR` (`menubar` / `dock` /
+/// `both` / `none`) takes precedence, so a built sketch can be switched over
+/// without recompiling it.
 ///
 /// ```swift
 /// var config: SketchConfig {
-///     SketchConfig(headlessIndicator: .both)   // メニューバーと Dock の両方に出す
+///     SketchConfig(headlessIndicator: .both)   // show in both the menu bar and the Dock
 /// }
 /// ```
 ///
-/// > Note: `metaphor watch` はリビルドのたびに子プロセスを作り直すため、
-/// > メニューバーの項目もそのたびに出入りします。気になる場合は ``hidden``
-/// > （環境変数なら `METAPHOR_HEADLESS_INDICATOR=none`）で消せます。
+/// > Note: the ``menuBar`` status item **stays hidden while the live viewer
+/// > (`metaphor watch`) is attached** — the parent window is already showing the
+/// > same picture and the same numbers, so there is nothing to gain from listing
+/// > it twice. It appears once the parent is gone and nobody is watching any
+/// > more, which makes **its very presence the signal that this process is
+/// > unobserved**. Runs with no parent window, such as `metaphor mcp` or a Syphon
+/// > output, show it as they always did.
 ///
-/// ウィンドウを持つ通常実行には影響しません（Dock アイコンは従来どおり出ます）。
+/// Runs with a window are unaffected (the Dock icon appears as before).
 public enum HeadlessIndicator: String, Sendable, CaseIterable {
-    /// メニューバーに状態項目を出す（既定）。
+    /// Shows a status item in the menu bar (the default).
     ///
-    /// クリックするとスケッチ名・PID・解像度・目標/実測 fps・経過時間・出力先が読め、
-    /// そこからプロセスを終了できます。
+    /// Clicking it reads out the sketch name, **where the process lives**, the
+    /// PID, the resolution, the target and measured fps, the elapsed time and the
+    /// outputs, and it can save the frame being drawn. The process can also be
+    /// quit from there.
     case menuBar = "menubar"
 
-    /// Dock にアイコンを出す。
+    /// Shows an icon in the Dock.
     ///
-    /// Cmd+Tab にも現れ、Dock アイコンの右クリックから終了できます。
+    /// It also appears in Cmd+Tab, and can be quit from the Dock icon's context menu.
     case dock = "dock"
 
-    /// メニューバーと Dock の両方に出す。
+    /// Shows both the menu bar item and the Dock icon.
     case both = "both"
 
-    /// どこにも出さない（従来の挙動）。
+    /// Shows nothing anywhere (the behaviour before this setting existed).
     case hidden = "hidden"
 
-    /// メニューバーに状態項目を出すか。
+    /// Whether to show a status item in the menu bar.
     var showsMenuBarItem: Bool { self == .menuBar || self == .both }
 
-    /// Dock にアイコンを出すか（`NSApplication.ActivationPolicy.regular`）。
+    /// Whether to show a Dock icon (`NSApplication.ActivationPolicy.regular`).
     var showsDockIcon: Bool { self == .dock || self == .both }
 
-    /// 環境変数の値を解釈します。
+    /// Interprets the value of the environment variable.
     ///
-    /// 前後の空白と大文字小文字は無視し、綴りの揺れ（`menu-bar` / `none` / `off`）も
-    /// 受け付けます。解釈できない値は `nil` を返します（呼び出し側が設定値へ
-    /// フォールバックします）。
+    /// Surrounding whitespace and letter case are ignored, and spelling variants
+    /// (`menu-bar` / `none` / `off`) are accepted. A value that cannot be
+    /// interpreted returns `nil`, and the caller falls back to the configured value.
     ///
-    /// - Parameter raw: 環境変数から読んだ生の文字列。
-    /// - Returns: 対応する指標。解釈できなければ `nil`。
+    /// - Parameter raw: The raw string read from the environment variable.
+    /// - Returns: The matching indicator, or `nil` when it cannot be interpreted.
     static func parse(_ raw: String) -> HeadlessIndicator? {
         switch raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "menubar", "menu-bar", "menu", "statusitem": return .menuBar
