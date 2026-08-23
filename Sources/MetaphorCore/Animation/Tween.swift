@@ -174,7 +174,8 @@ public final class Tween<T: Interpolatable> {
     ///   - to: 終了値。
     ///   - duration: アニメーション時間（秒）。
     ///   - easing: 適用するイージング関数（デフォルト: easeInOutCubic）。
-    public init(from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic) {
+    public init(from: T, to: T, duration: Float, easing: @escaping EasingFunction = easeInOutCubic)
+    {
         self.fromValue = from
         self.toValue = to
         self.duration = max(0.001, duration)

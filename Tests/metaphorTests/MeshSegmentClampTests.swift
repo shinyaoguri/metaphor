@@ -25,8 +25,9 @@ struct MeshSegmentClampTests {
 
     // MARK: - Mesh ファクトリ直呼び
 
-    @Test("Mesh ファクトリは 0 以下の分割数でも落ちず、有限な頂点を返す",
-          arguments: degenerateDetails)
+    @Test(
+        "Mesh ファクトリは 0 以下の分割数でも落ちず、有限な頂点を返す",
+        arguments: degenerateDetails)
     func meshFactoriesSurviveDegenerateSegments(detail: Int) throws {
         let device = try #require(MetalTestHelper.device)
 
@@ -34,9 +35,12 @@ struct MeshSegmentClampTests {
             ("sphere", try Mesh.sphere(device: device, radius: 1, segments: detail, rings: detail)),
             ("cylinder", try Mesh.cylinder(device: device, radius: 1, height: 1, segments: detail)),
             ("cone", try Mesh.cone(device: device, radius: 1, height: 1, segments: detail)),
-            ("torus", try Mesh.torus(
-                device: device, ringRadius: 1, tubeRadius: 0.3,
-                segments: detail, tubeSegments: detail)),
+            (
+                "torus",
+                try Mesh.torus(
+                    device: device, ringRadius: 1, tubeRadius: 0.3,
+                    segments: detail, tubeSegments: detail)
+            ),
         ]
 
         for (label, mesh) in meshes {
@@ -54,38 +58,49 @@ struct MeshSegmentClampTests {
         // sphere: segments = 3 / rings = 2 が下限
         let clampedSphere = try Mesh.sphere(device: device, segments: -5, rings: -5)
         let atMinimum = try Mesh.sphere(device: device, segments: 3, rings: 2)
-        #expect(clampedSphere.vertexCount == atMinimum.vertexCount,
-                "sphere: 下限へ張り付いていない（\(clampedSphere.vertexCount) != \(atMinimum.vertexCount)）")
+        #expect(
+            clampedSphere.vertexCount == atMinimum.vertexCount,
+            "sphere: 下限へ張り付いていない（\(clampedSphere.vertexCount) != \(atMinimum.vertexCount)）")
 
         let finer = try Mesh.sphere(device: device, segments: 8, rings: 5)
         #expect(finer.vertexCount > atMinimum.vertexCount, "sphere: 下限より上の値まで丸められている")
 
         // cylinder / cone / torus は segments = 3 が下限
         let clampedCylinder = try Mesh.cylinder(device: device, segments: 0)
-        #expect(clampedCylinder.vertexCount == (try Mesh.cylinder(device: device, segments: 3)).vertexCount,
-                "cylinder: 下限へ張り付いていない")
+        #expect(
+            clampedCylinder.vertexCount
+                == (try Mesh.cylinder(device: device, segments: 3)).vertexCount,
+            "cylinder: 下限へ張り付いていない")
         let clampedCone = try Mesh.cone(device: device, segments: 0)
-        #expect(clampedCone.vertexCount == (try Mesh.cone(device: device, segments: 3)).vertexCount,
-                "cone: 下限へ張り付いていない")
+        #expect(
+            clampedCone.vertexCount == (try Mesh.cone(device: device, segments: 3)).vertexCount,
+            "cone: 下限へ張り付いていない")
         let clampedTorus = try Mesh.torus(device: device, segments: 0, tubeSegments: 0)
-        #expect(clampedTorus.vertexCount == (try Mesh.torus(device: device, segments: 3, tubeSegments: 3)).vertexCount,
-                "torus: 下限へ張り付いていない")
+        #expect(
+            clampedTorus.vertexCount
+                == (try Mesh.torus(device: device, segments: 3, tubeSegments: 3)).vertexCount,
+            "torus: 下限へ張り付いていない")
     }
 
     // MARK: - 生成 API（Canvas3D 経由）
 
-    @Test("createXxxMesh は 0 以下の detail でも nil にならず落ちない",
-          arguments: degenerateDetails)
+    @Test(
+        "createXxxMesh は 0 以下の detail でも nil にならず落ちない",
+        arguments: degenerateDetails)
     func createMeshAPIsSurviveDegenerateDetail(detail: Int) throws {
         let c = try makeContext()
 
-        #expect(c.createSphereMesh(50, detail: detail) != nil, "createSphereMesh(detail: \(detail))")
-        #expect(c.createCylinderMesh(radius: 20, height: 40, detail: detail) != nil,
-                "createCylinderMesh(detail: \(detail))")
-        #expect(c.createConeMesh(radius: 20, height: 40, detail: detail) != nil,
-                "createConeMesh(detail: \(detail))")
-        #expect(c.createTorusMesh(ringRadius: 30, tubeRadius: 10, detail: detail) != nil,
-                "createTorusMesh(detail: \(detail))")
+        #expect(
+            c.createSphereMesh(50, detail: detail) != nil, "createSphereMesh(detail: \(detail))")
+        #expect(
+            c.createCylinderMesh(radius: 20, height: 40, detail: detail) != nil,
+            "createCylinderMesh(detail: \(detail))")
+        #expect(
+            c.createConeMesh(radius: 20, height: 40, detail: detail) != nil,
+            "createConeMesh(detail: \(detail))")
+        #expect(
+            c.createTorusMesh(ringRadius: 30, tubeRadius: 10, detail: detail) != nil,
+            "createTorusMesh(detail: \(detail))")
     }
 
     // MARK: - 描画経路

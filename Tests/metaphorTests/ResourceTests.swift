@@ -414,11 +414,11 @@ struct OBJParserTests {
     func negativeIndices() {
         // OBJ 仕様: -1 は最後に定義された頂点。三角形 1 枚を相対参照で定義
         let source = """
-        v 0 0 0
-        v 1 0 0
-        v 0.5 1 0
-        f -3 -2 -1
-        """
+            v 0 0 0
+            v 1 0 0
+            v 0.5 1 0
+            f -3 -2 -1
+            """
         let mesh = Mesh.loadOBJ(device: device, source: source)
         #expect(mesh != nil)
         #expect(mesh?.vertexCount == 3)
@@ -429,12 +429,12 @@ struct OBJParserTests {
     func outOfRangeFaceSkipped() {
         // 2 枚目の面が存在しない頂点 99 を参照。従来は配列アクセスで即クラッシュ
         let source = """
-        v 0 0 0
-        v 1 0 0
-        v 0.5 1 0
-        f 1 2 3
-        f 1 2 99
-        """
+            v 0 0 0
+            v 1 0 0
+            v 0.5 1 0
+            f 1 2 3
+            f 1 2 99
+            """
         let mesh = Mesh.loadOBJ(device: device, source: source)
         #expect(mesh != nil)
         #expect(mesh?.indexCount == 3)  // 有効な面 1 枚だけ
@@ -443,12 +443,12 @@ struct OBJParserTests {
     @Test("zero index face is skipped (OBJ indices are 1-based)")
     func zeroIndexFaceSkipped() {
         let source = """
-        v 0 0 0
-        v 1 0 0
-        v 0.5 1 0
-        f 0 1 2
-        f 1 2 3
-        """
+            v 0 0 0
+            v 1 0 0
+            v 0.5 1 0
+            f 0 1 2
+            f 1 2 3
+            """
         let mesh = Mesh.loadOBJ(device: device, source: source)
         #expect(mesh != nil)
         #expect(mesh?.indexCount == 3)
@@ -457,12 +457,12 @@ struct OBJParserTests {
     @Test("out-of-range vt/vn fall back to defaults without dropping the face")
     func outOfRangeAttributesTolerated() {
         let source = """
-        v 0 0 0
-        v 1 0 0
-        v 0.5 1 0
-        vt 0 0
-        f 1/9/9 2/9/9 3/9/9
-        """
+            v 0 0 0
+            v 1 0 0
+            v 0.5 1 0
+            vt 0 0
+            f 1/9/9 2/9/9 3/9/9
+            """
         let mesh = Mesh.loadOBJ(device: device, source: source)
         #expect(mesh != nil)
         #expect(mesh?.indexCount == 3)
@@ -471,10 +471,10 @@ struct OBJParserTests {
     @Test("fully broken OBJ returns nil instead of crashing")
     func fullyBrokenOBJ() {
         let source = """
-        v 0 0 0
-        f 5 6 7
-        f -99 -98 -97
-        """
+            v 0 0 0
+            f 5 6 7
+            f -99 -98 -97
+            """
         let mesh = Mesh.loadOBJ(device: device, source: source)
         #expect(mesh == nil)  // 有効な面ゼロ
     }

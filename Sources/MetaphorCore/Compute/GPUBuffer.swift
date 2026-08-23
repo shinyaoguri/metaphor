@@ -29,7 +29,8 @@ public final class GPUBuffer<T> {
     public init?(device: MTLDevice, count: Int) {
         let byteLength = MemoryLayout<T>.stride * count
         guard byteLength > 0,
-              let buffer = device.makeBuffer(length: byteLength, options: .storageModeShared) else {
+            let buffer = device.makeBuffer(length: byteLength, options: .storageModeShared)
+        else {
             return nil
         }
         self.buffer = buffer
@@ -46,7 +47,8 @@ public final class GPUBuffer<T> {
         let count = data.count
         let byteLength = MemoryLayout<T>.stride * count
         guard byteLength > 0,
-              let buffer = device.makeBuffer(length: byteLength, options: .storageModeShared) else {
+            let buffer = device.makeBuffer(length: byteLength, options: .storageModeShared)
+        else {
             return nil
         }
         self.buffer = buffer
@@ -67,11 +69,13 @@ public final class GPUBuffer<T> {
     /// ``count`` で事前に検証してください。
     public subscript(index: Int) -> T {
         get {
-            precondition(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
+            precondition(
+                index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
             return pointer[index]
         }
         set {
-            precondition(index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
+            precondition(
+                index >= 0 && index < count, "GPUBuffer index \(index) out of range [0..<\(count)]")
             pointer[index] = newValue
         }
     }

@@ -29,7 +29,10 @@ struct ViewerFrameLayout: Equatable, Sendable {
     ///   - linearAlignment: linear texture の行 alignment（`minimumLinearTextureAlignment(for:)`）。
     ///   - pageSize: `getpagesize()`。
     ///   - slots: slot 枚数（既定 ``slotCount``）。
-    init(width: Int, height: Int, linearAlignment: Int, pageSize: Int, slots: Int = ViewerFrameLayout.slotCount) {
+    init(
+        width: Int, height: Int, linearAlignment: Int, pageSize: Int,
+        slots: Int = ViewerFrameLayout.slotCount
+    ) {
         precondition(width > 0 && height > 0, "viewer frame layout needs a non-empty canvas")
         precondition(linearAlignment > 0 && pageSize > 0 && slots > 0)
         self.width = width

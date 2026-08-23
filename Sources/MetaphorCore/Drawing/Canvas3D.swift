@@ -477,12 +477,13 @@ public final class Canvas3D: CanvasStyle {
             SIMD3(model.columns.2.x, model.columns.2.y, model.columns.2.z)
         )
         let invT = m3.inverse.transpose
-        return float4x4(columns: (
-            SIMD4(invT.columns.0.x, invT.columns.0.y, invT.columns.0.z, 0),
-            SIMD4(invT.columns.1.x, invT.columns.1.y, invT.columns.1.z, 0),
-            SIMD4(invT.columns.2.x, invT.columns.2.y, invT.columns.2.z, 0),
-            SIMD4(0, 0, 0, 1)
-        ))
+        return float4x4(
+            columns: (
+                SIMD4(invT.columns.0.x, invT.columns.0.y, invT.columns.0.z, 0),
+                SIMD4(invT.columns.1.x, invT.columns.1.y, invT.columns.1.z, 0),
+                SIMD4(invT.columns.2.x, invT.columns.2.y, invT.columns.2.z, 0),
+                SIMD4(0, 0, 0, 1)
+            ))
     }
 
     // 最初のライト追加時にデフォルトのアンビエント値を設定

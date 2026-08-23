@@ -214,7 +214,8 @@ struct GoldenImageTests {
     /// 書き込み・読み込みとも DeviceRGB で統一していることをここで固定する。
     @Test("PNG ラウンドトリップが画素を変えない")
     func pngRoundTripIsLossless() throws {
-        let w = 37, h = 23  // 4 の倍数でない幅 = 行パディングの取り違えも検出する
+        let w = 37
+        let h = 23  // 4 の倍数でない幅 = 行パディングの取り違えも検出する
         var bytes = [UInt8](repeating: 0, count: w * h * 4)
         for y in 0..<h {
             for x in 0..<w {
@@ -264,8 +265,9 @@ struct GoldenImageTests {
             try original.write(pngTo: url)
             let reloaded = try GoldenImage.load(pngAt: url)
 
-            #expect(reloaded.rgba == original.rgba,
-                    "半透明の画素が PNG 往復で変化した — #850")
+            #expect(
+                reloaded.rgba == original.rgba,
+                "半透明の画素が PNG 往復で変化した — #850")
             #expect(reloaded.sha256 == original.sha256)
         }
     }
@@ -273,7 +275,8 @@ struct GoldenImageTests {
     /// 許容差の意味（`maxChannelDiff` を超えた画素の割合で判定する）を固定する。
     @Test("許容差の判定: 微差は通り、局所的な大差は落ちる")
     func toleranceSemantics() throws {
-        let w = 16, h = 16
+        let w = 16
+        let h = 16
         var base = [UInt8](repeating: 128, count: w * h * 4)
         for i in stride(from: 3, to: base.count, by: 4) { base[i] = 255 }
         let a = try GoldenImage(width: w, height: h, rgba: base)
@@ -281,7 +284,9 @@ struct GoldenImageTests {
         // 全画素が 2 だけずれる → 既定の許容差（<=2）内なので超過ゼロ。
         var tinyBytes = base
         for i in stride(from: 0, to: tinyBytes.count, by: 4) {
-            tinyBytes[i] = 130; tinyBytes[i + 1] = 126; tinyBytes[i + 2] = 130
+            tinyBytes[i] = 130
+            tinyBytes[i + 1] = 126
+            tinyBytes[i + 2] = 130
         }
         let tiny = try GoldenImage(width: w, height: h, rgba: tinyBytes)
         let tinyResult = a.matches(tiny, tolerance: .default)

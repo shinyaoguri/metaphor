@@ -535,8 +535,8 @@ struct TweenRegistrationLifetimeTests {
         // start() すると再登録が走るので、そこで二重登録にならないことを見る。
         let manager = TweenManager()
         let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 1.0, easing: { $0 })
-        manager.add(tw)   // ファクトリ相当（まだ .idle）
-        tw.start()        // ここで再登録が走る
+        manager.add(tw)  // ファクトリ相当（まだ .idle）
+        tw.start()  // ここで再登録が走る
         #expect(manager.count == 1)
 
         manager.update(0.5)
@@ -599,7 +599,7 @@ struct TweenInvalidDeltaTests {
         #expect(abs(tw.value - 50.0) < 0.01)
 
         tw.update(-0.75)
-        #expect(tw.value >= 0)                // from を下回らない
+        #expect(tw.value >= 0)  // from を下回らない
         #expect(abs(tw.value - 50.0) < 0.01)  // 進みも戻りもしない
 
         tw.update(0.25)  // 続きは通常どおり
@@ -639,8 +639,9 @@ struct TweenInvalidDeltaTests {
         #expect(abs(tw.value - 50.0) < 0.01)
     }
 
-    @Test("有限リピートに巨大な刻みを渡すと全サイクル経過とみなして完了する",
-          .timeLimit(.minutes(1)))
+    @Test(
+        "有限リピートに巨大な刻みを渡すと全サイクル経過とみなして完了する",
+        .timeLimit(.minutes(1)))
     @MainActor
     func hugeFiniteDeltaWithFiniteRepeatCompletes() {
         let tw = Tween(from: 0.0 as Float, to: 100.0, duration: 0.5, easing: { $0 })

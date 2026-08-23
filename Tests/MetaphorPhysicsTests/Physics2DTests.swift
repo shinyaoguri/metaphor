@@ -239,7 +239,9 @@ struct Physics2DCollisionResponseTests {
     func circleRectRestitution(approach: Float) {
         let bounce = bounceBackFromRect(approach: approach)
         let expected = 0.9 * approach
-        #expect(abs(bounce - expected) < expected * 0.05, "接近 \(approach) → 期待 \(expected), 実測 \(bounce)")
+        #expect(
+            abs(bounce - expected) < expected * 0.05,
+            "接近 \(approach) → 期待 \(expected), 実測 \(bounce)")
     }
 
     @Test("restitution bounces a circle off another circle")
@@ -343,8 +345,8 @@ struct Physics2DCollisionResponseTests {
             if bounced { peakAfterBounce = max(peakAfterBounce, ball.position.y) }
         }
 
-        let fall = drop - 10                       // 接触までの落差
-        let rise = peakAfterBounce - 10            // 跳ね上がった高さ
+        let fall = drop - 10  // 接触までの落差
+        let rise = peakAfterBounce - 10  // 跳ね上がった高さ
         #expect(bounced, "跳ね返る")
         #expect(rise / fall > 0.6, "e = 0.9 に見合う高さまで戻る: 比 \(rise / fall)")
         #expect(rise / fall < 1.0, "エネルギーが増えない: 比 \(rise / fall)")
@@ -427,7 +429,9 @@ struct Physics2DBoundsResponseTests {
     func wallRestitution(approach: Float) {
         let bounce = drop(intoBounds: true, approach: approach).velocity.y
         let expected = 0.9 * approach
-        #expect(abs(bounce - expected) < expected * 0.05, "接近 \(approach) → 期待 \(expected), 実測 \(bounce)")
+        #expect(
+            abs(bounce - expected) < expected * 0.05,
+            "接近 \(approach) → 期待 \(expected), 実測 \(bounce)")
     }
 
     @Test("restitution 0 absorbs the approach speed at the wall")
@@ -491,8 +495,8 @@ struct Physics2DBoundsResponseTests {
             #expect(ball.position.y >= 10 - 0.001, "壁を抜けない: \(ball.position.y)")
         }
 
-        let fall = drop - 10                       // 接触までの落差
-        let rise = peakAfterBounce - 10            // 跳ね上がった高さ
+        let fall = drop - 10  // 接触までの落差
+        let rise = peakAfterBounce - 10  // 跳ね上がった高さ
         #expect(bounced, "跳ね返る")
         #expect(rise / fall > 0.6, "e = 0.9 に見合う高さまで戻る: 比 \(rise / fall)")
         #expect(rise / fall < 1.0, "エネルギーが増えない: 比 \(rise / fall)")
@@ -539,7 +543,9 @@ struct Physics2DBoundsResponseTests {
         // 各軸とも e = 0.9 で反射する → (3.6, 3.6)
         #expect(abs(ball.velocity.x - 3.6) < 0.18, "x が反射する: \(ball.velocity.x)")
         #expect(abs(ball.velocity.y - 3.6) < 0.18, "y が反射する: \(ball.velocity.y)")
-        #expect(abs(ball.position.x - 10) < 0.001 && abs(ball.position.y - 10) < 0.001, "角の内側へ収まる: \(ball.position)")
+        #expect(
+            abs(ball.position.x - 10) < 0.001 && abs(ball.position.y - 10) < 0.001,
+            "角の内側へ収まる: \(ball.position)")
     }
 }
 
@@ -644,7 +650,9 @@ struct PhysicsNonFiniteTests {
         #expect(hash.queryPairs().isEmpty)
     }
 
-    @Test("negative iterations are rejected without trapping or half-updating the world", arguments: [-1, -4, Int.min])
+    @Test(
+        "negative iterations are rejected without trapping or half-updating the world",
+        arguments: [-1, -4, Int.min])
     func negativeIterations(iterations: Int) {
         let world = Physics2D(cellSize: 50)
         world.setGravity(0, 980)

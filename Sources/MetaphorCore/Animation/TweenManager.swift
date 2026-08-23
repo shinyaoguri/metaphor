@@ -42,11 +42,12 @@ public final class TweenManager {
         // 外れたあとに start() されたら戻れるよう、登録先を覚えさせる（弱参照）。
         tween.registrar = self
 
-        tweens.append(AnyTween(
-            id: id,
-            update: { dt in tween.update(dt) },
-            isDormant: { tween.isDormant }
-        ))
+        tweens.append(
+            AnyTween(
+                id: id,
+                update: { dt in tween.update(dt) },
+                isDormant: { tween.isDormant }
+            ))
     }
 
     /// 指定されたデルタタイムで登録済みの全トゥイーンを更新します（毎フレーム1回呼び出し）。

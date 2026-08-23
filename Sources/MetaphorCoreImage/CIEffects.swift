@@ -20,7 +20,8 @@ public enum CIFilterValue: Sendable {
         case .double(let v): return v
         case .int(let v): return v
         case .string(let v): return v
-        case .vector(let v): return CIVector(x: CGFloat(v.x), y: CGFloat(v.y), z: CGFloat(v.z), w: CGFloat(v.w))
+        case .vector(let v):
+            return CIVector(x: CGFloat(v.x), y: CGFloat(v.y), z: CGFloat(v.z), w: CGFloat(v.w))
         case .bool(let v): return v
         }
     }
@@ -39,12 +40,17 @@ public final class CIFilterEffect: PostEffect {
         self.preset = preset
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let w = wrapper ?? {
-            let f = CIFilterWrapper(device: context.device, commandQueue: context.commandQueue)
-            wrapper = f
-            return f
-        }()
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let w =
+            wrapper
+            ?? {
+                let f = CIFilterWrapper(device: context.device, commandQueue: context.commandQueue)
+                wrapper = f
+                return f
+            }()
         let texSize = CGSize(width: input.width, height: input.height)
         if preset.isGenerator {
             // ジェネレーターは入力画像を取らない。kCIInputImageKey を setValue すると
@@ -79,12 +85,17 @@ public final class CIFilterRawEffect: PostEffect {
         self.parameters = parameters
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let w = wrapper ?? {
-            let f = CIFilterWrapper(device: context.device, commandQueue: context.commandQueue)
-            wrapper = f
-            return f
-        }()
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let w =
+            wrapper
+            ?? {
+                let f = CIFilterWrapper(device: context.device, commandQueue: context.commandQueue)
+                wrapper = f
+                return f
+            }()
         let anyParams = self.parameters.mapValues { $0.anyValue }
         w.apply(
             filterName: filterName,

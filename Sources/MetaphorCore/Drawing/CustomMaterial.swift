@@ -56,8 +56,10 @@ public final class CustomMaterial {
     /// 格納されたパラメータバイト列を返します。パラメータが未設定の場合は nil。
     var parameters: [UInt8]? { parameterData }
 
-    init(fragmentFunction: MTLFunction, functionName: String, libraryKey: String,
-         vertexFunction: MTLFunction? = nil, vertexFunctionName: String? = nil) {
+    init(
+        fragmentFunction: MTLFunction, functionName: String, libraryKey: String,
+        vertexFunction: MTLFunction? = nil, vertexFunctionName: String? = nil
+    ) {
         self.fragmentFunction = fragmentFunction
         self.fragmentFunctionName = functionName
         self.libraryKey = libraryKey

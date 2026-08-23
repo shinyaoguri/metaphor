@@ -22,7 +22,8 @@ func metaphorAtomicReplace(tmp: URL, final: URL, label: String) {
         }
     }
     if result != 0 {
-        metaphorAlert("\(label): failed to rename \(tmp.lastPathComponent) -> "
-            + "\(final.lastPathComponent) (errno \(errno))")
+        metaphorAlert(
+            "\(label): failed to rename \(tmp.lastPathComponent) -> "
+                + "\(final.lastPathComponent) (errno \(errno))")
     }
 }

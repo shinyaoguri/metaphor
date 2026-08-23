@@ -34,7 +34,8 @@ struct RenderGraphTests {
         pass.onDraw = { _, _ in called = true }
 
         guard let queue = device.makeCommandQueue(),
-              let cmdBuf = queue.makeCommandBuffer() else {
+            let cmdBuf = queue.makeCommandBuffer()
+        else {
             return
         }
 
@@ -86,7 +87,8 @@ struct RenderGraphTests {
 
         let graph = RenderGraph(root: pass)
         guard let queue = device.makeCommandQueue(),
-              let cmdBuf = queue.makeCommandBuffer() else {
+            let cmdBuf = queue.makeCommandBuffer()
+        else {
             return
         }
 
@@ -202,8 +204,9 @@ struct MergePassSizeFormatTests {
         )
         desc.storageMode = .shared
         guard let staging = device.makeTexture(descriptor: desc),
-              let cmdBuf = queue.makeCommandBuffer(),
-              let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
+            let cmdBuf = queue.makeCommandBuffer(),
+            let blit = cmdBuf.makeBlitCommandEncoder()
+        else { return nil }
         blit.copy(from: texture, to: staging)
         blit.endEncoding()
         cmdBuf.commit()
@@ -223,13 +226,15 @@ struct MergePassSizeFormatTests {
 
         // A: 64x64 全面 0x40、B: 32x32 全面 0x20
         guard let texA = makeFilledTexture(width: 64, height: 64, byte: 0x40),
-              let texB = makeFilledTexture(width: 32, height: 32, byte: 0x20) else {
+            let texB = makeFilledTexture(width: 32, height: 32, byte: 0x20)
+        else {
             Issue.record("Failed to create test textures")
             return
         }
         let passA = StubTexturePass(label: "a", texture: texA)
         let passB = StubTexturePass(label: "b", texture: texB)
-        let merge = try MergePass(passA, passB, blend: .add, device: device, shaderLibrary: shaderLib)
+        let merge = try MergePass(
+            passA, passB, blend: .add, device: device, shaderLibrary: shaderLib)
 
         let renderer = try MetaphorRenderer(device: device, width: 64, height: 64)
         guard let cmdBuf = queue.makeCommandBuffer() else { return }
@@ -257,8 +262,10 @@ struct MergePassSizeFormatTests {
         let queue = device.makeCommandQueue()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        guard let texA = makeFilledTexture(width: 32, height: 32, byte: 0, pixelFormat: .rgba16Float),
-              let texB = makeFilledTexture(width: 32, height: 32, byte: 0x20) else {
+        guard
+            let texA = makeFilledTexture(width: 32, height: 32, byte: 0, pixelFormat: .rgba16Float),
+            let texB = makeFilledTexture(width: 32, height: 32, byte: 0x20)
+        else {
             Issue.record("Failed to create test textures")
             return
         }
@@ -292,7 +299,8 @@ struct MergePassAlphaTests {
     /// BGRA の 8bit 値を敷き詰めたテクスチャを作る。
     ///
     /// 呼び出し側は premultiplied な値（`rgb <= a`）を渡す。
-    private func makeSolidTexture(size: Int, b: UInt8, g: UInt8, r: UInt8, a: UInt8) -> MTLTexture? {
+    private func makeSolidTexture(size: Int, b: UInt8, g: UInt8, r: UInt8, a: UInt8) -> MTLTexture?
+    {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: size, height: size, mipmapped: false
         )
@@ -342,8 +350,9 @@ struct MergePassAlphaTests {
         )
         desc.storageMode = .shared
         guard let staging = device.makeTexture(descriptor: desc),
-              let blitBuf = queue.makeCommandBuffer(),
-              let blit = blitBuf.makeBlitCommandEncoder() else {
+            let blitBuf = queue.makeCommandBuffer(),
+            let blit = blitBuf.makeBlitCommandEncoder()
+        else {
             Issue.record("Failed to create staging texture")
             return []
         }
@@ -384,7 +393,8 @@ struct MergePassAlphaTests {
         // 前景 B: straight rgb(0.200, 0.800, 0.400) / α=0.502 を premultiplied で格納
         //         = BGRA(51, 102, 26, 128)
         guard let texA = makeSolidTexture(size: 16, b: 26, g: 51, r: 153, a: 255),
-              let texB = makeSolidTexture(size: 16, b: 51, g: 102, r: 26, a: 128) else {
+            let texB = makeSolidTexture(size: 16, b: 51, g: 102, r: 26, a: 128)
+        else {
             Issue.record("Failed to create test textures")
             return
         }
@@ -399,7 +409,8 @@ struct MergePassAlphaTests {
     @Test("透明な下地への合成は前景そのまま（over の単位元）")
     func alphaOverTransparentIsIdentity() throws {
         guard let texA = makeSolidTexture(size: 16, b: 0, g: 0, r: 0, a: 0),
-              let texB = makeSolidTexture(size: 16, b: 128, g: 128, r: 128, a: 128) else {
+            let texB = makeSolidTexture(size: 16, b: 128, g: 128, r: 128, a: 128)
+        else {
             Issue.record("Failed to create test textures")
             return
         }
@@ -410,7 +421,8 @@ struct MergePassAlphaTests {
     @Test("α=0 の前景は下地を変えない（境界値）")
     func alphaOverFullyTransparentForeground() throws {
         guard let texA = makeSolidTexture(size: 16, b: 26, g: 51, r: 153, a: 255),
-              let texB = makeSolidTexture(size: 16, b: 0, g: 0, r: 0, a: 0) else {
+            let texB = makeSolidTexture(size: 16, b: 0, g: 0, r: 0, a: 0)
+        else {
             Issue.record("Failed to create test textures")
             return
         }
@@ -420,7 +432,8 @@ struct MergePassAlphaTests {
     @Test("α=1 の前景は下地を完全に隠す（境界値）")
     func alphaOverFullyOpaqueForeground() throws {
         guard let texA = makeSolidTexture(size: 16, b: 26, g: 51, r: 153, a: 255),
-              let texB = makeSolidTexture(size: 16, b: 51, g: 204, r: 102, a: 255) else {
+            let texB = makeSolidTexture(size: 16, b: 51, g: 204, r: 102, a: 255)
+        else {
             Issue.record("Failed to create test textures")
             return
         }

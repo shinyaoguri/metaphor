@@ -60,19 +60,22 @@ struct AppNapPreventionTests {
 
     @Test("METAPHOR_ALLOW_APP_NAP=1 overrides config")
     func envOverridesConfig() {
-        #expect(!SketchRunner.resolvePreventAppNap(
-            config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": "1"]
-        ))
+        #expect(
+            !SketchRunner.resolvePreventAppNap(
+                config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": "1"]
+            ))
     }
 
     @Test("METAPHOR_ALLOW_APP_NAP with non-1 value is ignored")
     func envNonOneIgnored() {
-        #expect(SketchRunner.resolvePreventAppNap(
-            config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": "0"]
-        ))
-        #expect(SketchRunner.resolvePreventAppNap(
-            config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": ""]
-        ))
+        #expect(
+            SketchRunner.resolvePreventAppNap(
+                config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": "0"]
+            ))
+        #expect(
+            SketchRunner.resolvePreventAppNap(
+                config: SketchConfig(), env: ["METAPHOR_ALLOW_APP_NAP": ""]
+            ))
     }
 }
 
@@ -89,13 +92,15 @@ struct FPSResolutionTests {
 
     @Test("METAPHOR_FPS overrides config")
     func envOverridesConfig() {
-        #expect(SketchRunner.resolveFPS(
-            config: SketchConfig(fps: 60), env: ["METAPHOR_FPS": "30"]
-        ) == 30)
+        #expect(
+            SketchRunner.resolveFPS(
+                config: SketchConfig(fps: 60), env: ["METAPHOR_FPS": "30"]
+            ) == 30)
         // cli の `--fps` は下げるだけでなく上げる向きにも使うので両方向を固定する。
-        #expect(SketchRunner.resolveFPS(
-            config: SketchConfig(fps: 30), env: ["METAPHOR_FPS": "120"]
-        ) == 120)
+        #expect(
+            SketchRunner.resolveFPS(
+                config: SketchConfig(fps: 30), env: ["METAPHOR_FPS": "120"]
+            ) == 120)
     }
 
     @Test("unparsable METAPHOR_FPS falls back to config.fps")
@@ -119,9 +124,10 @@ struct HeadlessIndicatorResolutionTests {
     @Test("falls back to config when unset")
     func fallsBackToConfig() {
         #expect(SketchRunner.resolveHeadlessIndicator(config: SketchConfig(), env: [:]) == .menuBar)
-        #expect(SketchRunner.resolveHeadlessIndicator(
-            config: SketchConfig(headlessIndicator: .hidden), env: [:]
-        ) == .hidden)
+        #expect(
+            SketchRunner.resolveHeadlessIndicator(
+                config: SketchConfig(headlessIndicator: .hidden), env: [:]
+            ) == .hidden)
     }
 
     @Test("METAPHOR_HEADLESS_INDICATOR overrides config")
@@ -144,18 +150,21 @@ struct HeadlessIndicatorResolutionTests {
     func lenientParsing() {
         let config = SketchConfig(headlessIndicator: .menuBar)
         for raw in [" DOCK", "Dock ", "dock"] {
-            #expect(SketchRunner.resolveHeadlessIndicator(
-                config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
-            ) == .dock, "METAPHOR_HEADLESS_INDICATOR=\(raw)")
+            #expect(
+                SketchRunner.resolveHeadlessIndicator(
+                    config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
+                ) == .dock, "METAPHOR_HEADLESS_INDICATOR=\(raw)")
         }
         for raw in ["none", "off", "hidden", "0"] {
-            #expect(SketchRunner.resolveHeadlessIndicator(
-                config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
-            ) == .hidden, "METAPHOR_HEADLESS_INDICATOR=\(raw)")
+            #expect(
+                SketchRunner.resolveHeadlessIndicator(
+                    config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
+                ) == .hidden, "METAPHOR_HEADLESS_INDICATOR=\(raw)")
         }
-        #expect(SketchRunner.resolveHeadlessIndicator(
-            config: config, env: ["METAPHOR_HEADLESS_INDICATOR": "menu-bar"]
-        ) == .menuBar)
+        #expect(
+            SketchRunner.resolveHeadlessIndicator(
+                config: config, env: ["METAPHOR_HEADLESS_INDICATOR": "menu-bar"]
+            ) == .menuBar)
     }
 
     @Test("unparsable value falls back to config")
@@ -175,10 +184,12 @@ struct HeadlessIndicatorResolutionTests {
 
     @Test("indicator maps to the surfaces it shows")
     func surfaces() {
-        #expect(HeadlessIndicator.menuBar.showsMenuBarItem && !HeadlessIndicator.menuBar.showsDockIcon)
+        #expect(
+            HeadlessIndicator.menuBar.showsMenuBarItem && !HeadlessIndicator.menuBar.showsDockIcon)
         #expect(!HeadlessIndicator.dock.showsMenuBarItem && HeadlessIndicator.dock.showsDockIcon)
         #expect(HeadlessIndicator.both.showsMenuBarItem && HeadlessIndicator.both.showsDockIcon)
-        #expect(!HeadlessIndicator.hidden.showsMenuBarItem && !HeadlessIndicator.hidden.showsDockIcon)
+        #expect(
+            !HeadlessIndicator.hidden.showsMenuBarItem && !HeadlessIndicator.hidden.showsDockIcon)
     }
 }
 
@@ -239,22 +250,26 @@ struct TerminationSignalTests {
 
     @Test("METAPHOR_SIGNAL_HANDLERS=0 opts out")
     func envOptOut() {
-        #expect(!SketchRunner.resolveInstallSignalHandlers(
-            env: ["METAPHOR_SIGNAL_HANDLERS": "0"]
-        ))
-        #expect(SketchRunner.installTerminationSignalHandlers(
-            env: ["METAPHOR_SIGNAL_HANDLERS": "0"]
-        ).isEmpty)
+        #expect(
+            !SketchRunner.resolveInstallSignalHandlers(
+                env: ["METAPHOR_SIGNAL_HANDLERS": "0"]
+            ))
+        #expect(
+            SketchRunner.installTerminationSignalHandlers(
+                env: ["METAPHOR_SIGNAL_HANDLERS": "0"]
+            ).isEmpty)
     }
 
     @Test("METAPHOR_SIGNAL_HANDLERS with non-0 value is ignored")
     func envNonZeroIgnored() {
-        #expect(SketchRunner.resolveInstallSignalHandlers(
-            env: ["METAPHOR_SIGNAL_HANDLERS": "1"]
-        ))
-        #expect(SketchRunner.resolveInstallSignalHandlers(
-            env: ["METAPHOR_SIGNAL_HANDLERS": ""]
-        ))
+        #expect(
+            SketchRunner.resolveInstallSignalHandlers(
+                env: ["METAPHOR_SIGNAL_HANDLERS": "1"]
+            ))
+        #expect(
+            SketchRunner.resolveInstallSignalHandlers(
+                env: ["METAPHOR_SIGNAL_HANDLERS": ""]
+            ))
     }
 }
 
@@ -269,7 +284,8 @@ struct SketchContextTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(context.width == 1920)
         #expect(context.height == 1080)
     }
@@ -279,7 +295,8 @@ struct SketchContextTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(context.time == 0)
         #expect(context.deltaTime == 0)
         #expect(context.frameCount == 0)
@@ -290,7 +307,8 @@ struct SketchContextTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(context.renderer === renderer)
         #expect(context.canvas === canvas)
         #expect(context.input === renderer.input)
@@ -301,7 +319,8 @@ struct SketchContextTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(context.encoder == nil)
     }
 
@@ -310,7 +329,8 @@ struct SketchContextTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         var loopCount = 0
         var noLoopCount = 0
@@ -344,12 +364,12 @@ struct SketchContextComputeTests {
         )
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void test(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = 1.0;
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void test(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = 1.0;
+            }
+            """
         let kernel = try context.createComputeKernel(source: source, function: "test")
         #expect(kernel.maxTotalThreadsPerThreadgroup > 0)
     }
@@ -400,7 +420,8 @@ struct SketchContextStorageTests {
         let renderer = try MetaphorRenderer(width: 64, height: 64)
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        return SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        return SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
     }
 
     @Test("assigning nil removes the storage entry")

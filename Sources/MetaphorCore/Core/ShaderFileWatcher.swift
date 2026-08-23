@@ -54,7 +54,8 @@ final class ShaderFileWatcher: @unchecked Sendable {
     /// - Parameters:
     ///   - debounce: 連続イベントをまとめる秒数（既定 0.12 秒）。
     ///   - onChange: 変化したファイルパスの通知先。メインスレッドで呼ばれます。
-    init(debounce: TimeInterval = 0.12, onChange: @escaping @Sendable @MainActor ([String]) -> Void) {
+    init(debounce: TimeInterval = 0.12, onChange: @escaping @Sendable @MainActor ([String]) -> Void)
+    {
         self.debounce = debounce
         self.onChange = onChange
     }
@@ -170,9 +171,11 @@ final class ShaderFileWatcher: @unchecked Sendable {
         sources.removeValue(forKey: directory)?.cancel()
         // 置き換え途中で一瞬消えることがあるので、デバウンス後に開き直す。
         queue.asyncAfter(deadline: .now() + debounce) { [self] in
-            guard let path = watched.first(where: {
-                ($0 as NSString).deletingLastPathComponent == directory
-            }) else { return }
+            guard
+                let path = watched.first(where: {
+                    ($0 as NSString).deletingLastPathComponent == directory
+                })
+            else { return }
             startWatchingDirectory(of: path)
         }
     }
@@ -210,7 +213,8 @@ final class ShaderFileWatcher: @unchecked Sendable {
     /// ファイルの指紋を採ります。読めない場合は `nil`。
     private static func stamp(of path: String) -> Stamp? {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
-              let modified = attributes[.modificationDate] as? Date else {
+            let modified = attributes[.modificationDate] as? Date
+        else {
             return nil
         }
         let size = (attributes[.size] as? NSNumber)?.intValue ?? 0

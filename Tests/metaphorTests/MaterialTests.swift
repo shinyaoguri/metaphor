@@ -17,26 +17,27 @@ struct CustomMaterialPropertyTests {
 
         // カスタムフラグメントシェーダーソース
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 testCustomFragment(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]]
-        ) {
-            return in.color;
-        }
-        """
+            fragment float4 testCustomFragment(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                return in.color;
+            }
+            """
 
         let key = "test.material.testCustomFragment"
         try library.register(source: source, as: key)
         let fn = library.function(named: "testCustomFragment", from: key)!
 
-        let mat = CustomMaterial(fragmentFunction: fn, functionName: "testCustomFragment", libraryKey: key)
+        let mat = CustomMaterial(
+            fragmentFunction: fn, functionName: "testCustomFragment", libraryKey: key)
         #expect(mat.fragmentFunctionName == "testCustomFragment")
         #expect(mat.libraryKey == key)
     }
@@ -47,27 +48,28 @@ struct CustomMaterialPropertyTests {
         let library = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 testParamFragment(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]],
-            constant float &customParam [[buffer(4)]]
-        ) {
-            return float4(customParam, 0, 0, 1);
-        }
-        """
+            fragment float4 testParamFragment(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]],
+                constant float &customParam [[buffer(4)]]
+            ) {
+                return float4(customParam, 0, 0, 1);
+            }
+            """
 
         let key = "test.material.testParamFragment"
         try library.register(source: source, as: key)
         let fn = library.function(named: "testParamFragment", from: key)!
 
-        let mat = CustomMaterial(fragmentFunction: fn, functionName: "testParamFragment", libraryKey: key)
+        let mat = CustomMaterial(
+            fragmentFunction: fn, functionName: "testParamFragment", libraryKey: key)
 
         #expect(mat.parameters == nil)
 
@@ -82,32 +84,33 @@ struct CustomMaterialPropertyTests {
         let library = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        struct CustomParams {
-            float4 tintColor;
-            float intensity;
-        };
+            struct CustomParams {
+                float4 tintColor;
+                float intensity;
+            };
 
-        fragment float4 testStructParamFragment(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]],
-            constant CustomParams &params [[buffer(4)]]
-        ) {
-            return in.color * params.tintColor * params.intensity;
-        }
-        """
+            fragment float4 testStructParamFragment(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]],
+                constant CustomParams &params [[buffer(4)]]
+            ) {
+                return in.color * params.tintColor * params.intensity;
+            }
+            """
 
         let key = "test.material.testStructParamFragment"
         try library.register(source: source, as: key)
         let fn = library.function(named: "testStructParamFragment", from: key)!
 
-        let mat = CustomMaterial(fragmentFunction: fn, functionName: "testStructParamFragment", libraryKey: key)
+        let mat = CustomMaterial(
+            fragmentFunction: fn, functionName: "testStructParamFragment", libraryKey: key)
 
         struct CustomParams {
             var tintColor: SIMD4<Float>
@@ -134,20 +137,20 @@ struct CustomMaterialPipelineTests {
         let library = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 testUntexturedCustom(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]]
-        ) {
-            return float4(in.normal * 0.5 + 0.5, 1.0);
-        }
-        """
+            fragment float4 testUntexturedCustom(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                return float4(in.normal * 0.5 + 0.5, 1.0);
+            }
+            """
 
         let key = "test.material.testUntexturedCustom"
         try library.register(source: source, as: key)
@@ -173,23 +176,23 @@ struct CustomMaterialPipelineTests {
         let library = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 testTexturedCustom(
-            Canvas3DTexVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]],
-            texture2d<float> tex [[texture(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            float4 texColor = tex.sample(s, in.uv);
-            return texColor;
-        }
-        """
+            fragment float4 testTexturedCustom(
+                Canvas3DTexVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]],
+                texture2d<float> tex [[texture(0)]]
+            ) {
+                constexpr sampler s(filter::linear);
+                float4 texColor = tex.sample(s, in.uv);
+                return texColor;
+            }
+            """
 
         let key = "test.material.testTexturedCustom"
         try library.register(source: source, as: key)
@@ -248,25 +251,26 @@ struct Canvas3DCustomMaterialStateTests {
 
         // Create a custom material and set it
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 testStateMaterial(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]]
-        ) {
-            return in.color;
-        }
-        """
+            fragment float4 testStateMaterial(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                return in.color;
+            }
+            """
 
         let key = "test.material.testStateMaterial"
         try library.register(source: source, as: key)
         let fn = library.function(named: "testStateMaterial", from: key)!
-        let mat = CustomMaterial(fragmentFunction: fn, functionName: "testStateMaterial", libraryKey: key)
+        let mat = CustomMaterial(
+            fragmentFunction: fn, functionName: "testStateMaterial", libraryKey: key)
 
         // material() should be callable
         canvas3D.material(mat)
@@ -290,18 +294,18 @@ struct CustomMaterialPreambleTests {
 
     /// 前文を 1 行も書かない、フラグメント関数だけのソース。
     private static let bareSource = """
-    fragment float4 bareFragment(
-        Canvas3DVertexOut in [[stage_in]],
-        constant Canvas3DUniforms &uniforms [[buffer(1)]],
-        constant Light3D *lights [[buffer(2)]],
-        constant Material3D &material [[buffer(3)]]
-    ) {
-        float3 lit = calculateLighting(
-            in.worldPosition, in.normal, uniforms.cameraPosition.xyz,
-            in.color.rgb, lights, uniforms.lightCount, material);
-        return float4(lit, in.color.a);
-    }
-    """
+        fragment float4 bareFragment(
+            Canvas3DVertexOut in [[stage_in]],
+            constant Canvas3DUniforms &uniforms [[buffer(1)]],
+            constant Light3D *lights [[buffer(2)]],
+            constant Material3D &material [[buffer(3)]]
+        ) {
+            float3 lit = calculateLighting(
+                in.worldPosition, in.normal, uniforms.cameraPosition.xyz,
+                in.color.rgb, lights, uniforms.lightCount, material);
+            return float4(lit, in.color.a);
+        }
+        """
 
     private func makeContext() throws -> SketchContext {
         let renderer = try MetaphorRenderer(width: 32, height: 32)
@@ -326,14 +330,14 @@ struct CustomMaterialPreambleTests {
         // #713 以前に案内していた書き方。ガードが効いていないと、前文が 2 回現れて
         // `redefinition of 'Canvas3DUniforms'` で落ちる。
         let legacy = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
-        \(BuiltinShaders.canvas3DLightingFn)
+            \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DLightingFn)
 
-        \(Self.bareSource)
-        """
+            \(Self.bareSource)
+            """
         let context = try makeContext()
         let material = try context.createMaterial(
             source: legacy, fragmentFunction: "bareFragment")

@@ -119,12 +119,14 @@ public final class GIFExporter {
         let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(tempName)
         self.temporaryURL = tempURL
 
-        guard let dest = CGImageDestinationCreateWithURL(
-            tempURL as CFURL,
-            UTType.gif.identifier as CFString,
-            0,
-            nil
-        ) else {
+        guard
+            let dest = CGImageDestinationCreateWithURL(
+                tempURL as CFURL,
+                UTType.gif.identifier as CFString,
+                0,
+                nil
+            )
+        else {
             self.temporaryURL = nil
             return
         }
@@ -149,7 +151,8 @@ public final class GIFExporter {
     ///   - texture: キャプチャ対象の Metal テクスチャ。
     ///   - device: ステージングテクスチャ作成に使用する Metal デバイス。
     ///   - commandQueue: ブリットコマンドの発行に使用するコマンドキュー。
-    public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) {
+    public func captureFrame(texture: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue)
+    {
         guard isRecording else { return }
         guard let cmdBuf = commandQueue.makeCommandBuffer() else { return }
         captureFrame(texture: texture, device: device, commandBuffer: cmdBuf)
@@ -166,7 +169,9 @@ public final class GIFExporter {
     ///   - texture: キャプチャ対象の Metal テクスチャ。
     ///   - device: ステージングテクスチャ作成に使用する Metal デバイス。
     ///   - commandBuffer: blit を追加するコマンドバッファ（呼び出し側がコミットする）。
-    public func captureFrame(texture: MTLTexture, device: MTLDevice, commandBuffer: MTLCommandBuffer) {
+    public func captureFrame(
+        texture: MTLTexture, device: MTLDevice, commandBuffer: MTLCommandBuffer
+    ) {
         guard isRecording, let dest = destination else { return }
 
         let w = captureWidth > 0 ? captureWidth : texture.width
@@ -189,7 +194,9 @@ public final class GIFExporter {
                 stagingRing.removeAll()
                 ringWidth = 0
                 ringHeight = 0
-                metaphorWarning("GIFExporter: staging ring allocation failed (\(newRing.count)/\(Self.ringSize)); frame skipped")
+                metaphorWarning(
+                    "GIFExporter: staging ring allocation failed (\(newRing.count)/\(Self.ringSize)); frame skipped"
+                )
                 return
             }
             stagingRing = newRing
@@ -241,7 +248,8 @@ public final class GIFExporter {
                     semaphore.signal()
                     group.leave()
                 }
-                guard let image = Self.makeCGImage(from: capturedStaging, width: w, height: h) else {
+                guard let image = Self.makeCGImage(from: capturedStaging, width: w, height: h)
+                else {
                     return
                 }
                 let frameProperties: [String: Any] = [
@@ -249,7 +257,7 @@ public final class GIFExporter {
                         kCGImagePropertyGIFDelayTime as String: capturedDelay,
                         // 多くのデコーダは DelayTime < 0.02s を 0.1s に丸めるため、
                         // 高 fps 用に Unclamped も併記する
-                        kCGImagePropertyGIFUnclampedDelayTime as String: capturedDelay
+                        kCGImagePropertyGIFUnclampedDelayTime as String: capturedDelay,
                     ]
                 ]
                 CGImageDestinationAddImage(capturedDest, image, frameProperties as CFDictionary)
@@ -366,8 +374,9 @@ public final class GIFExporter {
         staging.getBytes(
             &pixelData,
             bytesPerRow: bytesPerRow,
-            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                           size: MTLSize(width: width, height: height, depth: 1)),
+            from: MTLRegion(
+                origin: MTLOrigin(x: 0, y: 0, z: 0),
+                size: MTLSize(width: width, height: height, depth: 1)),
             mipmapLevel: 0
         )
 
@@ -386,18 +395,20 @@ public final class GIFExporter {
         // makeImage() まで withUnsafeMutableBytes のスコープ内で完結させる
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
         return pixelData.withUnsafeMutableBytes { buf -> CGImage? in
-            guard let context = CGContext(
-                data: buf.baseAddress,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow,
-                space: colorSpace,
-                // フレームの中身は premultiplied（ADR-0012）。宣言を実体に合わせておくと、
-                // ImageIO が GIF 化のときに割り戻すので **ファイルは straight** になる
-                // （GIF の α は 1bit なので、実際には透明か不透明かに丸められる）。
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ) else { return nil }
+            guard
+                let context = CGContext(
+                    data: buf.baseAddress,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: bytesPerRow,
+                    space: colorSpace,
+                    // フレームの中身は premultiplied（ADR-0012）。宣言を実体に合わせておくと、
+                    // ImageIO が GIF 化のときに割り戻すので **ファイルは straight** になる
+                    // （GIF の α は 1bit なので、実際には透明か不透明かに丸められる）。
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                )
+            else { return nil }
             return context.makeImage()
         }
     }

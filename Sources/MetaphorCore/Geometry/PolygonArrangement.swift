@@ -97,8 +97,14 @@ enum PolygonArrangement {
             for j in (i + 1)..<edgeCount {
                 guard edgeLength[j] > tolerance else { continue }
                 // バウンディングボックスが離れていれば交差しない。
-                if boxLow[i].x > boxHigh[j].x + tolerance || boxLow[j].x > boxHigh[i].x + tolerance { continue }
-                if boxLow[i].y > boxHigh[j].y + tolerance || boxLow[j].y > boxHigh[i].y + tolerance { continue }
+                if boxLow[i].x > boxHigh[j].x + tolerance || boxLow[j].x > boxHigh[i].x + tolerance
+                {
+                    continue
+                }
+                if boxLow[i].y > boxHigh[j].y + tolerance || boxLow[j].y > boxHigh[i].y + tolerance
+                {
+                    continue
+                }
 
                 let hits = intersections(
                     edgeOrigin[i], edgeDelta[i],
@@ -262,7 +268,8 @@ enum PolygonArrangement {
             let tTolerance = tolerance / pLength
             let uTolerance = tolerance / qLength
             guard t >= -tTolerance, t <= 1 + tTolerance,
-                  u >= -uTolerance, u <= 1 + uTolerance else { return [] }
+                u >= -uTolerance, u <= 1 + uTolerance
+            else { return [] }
             return [(clamped(t), clamped(u))]
         }
 
@@ -320,11 +327,15 @@ enum PolygonArrangement {
         }
 
         /// 既存ノードが許容誤差内にあればそのインデックスを、無ければ追加して新しいインデックスを返します。
-        mutating func insert(_ p: SIMD2<Double>, origin vertexOrigin: EarClipTriangulator.VertexOrigin) -> Int {
+        mutating func insert(
+            _ p: SIMD2<Double>, origin vertexOrigin: EarClipTriangulator.VertexOrigin
+        ) -> Int {
             let base = cell(p)
             for dx in -1...1 {
                 for dy in -1...1 {
-                    guard let bucket = buckets[Cell(x: base.x + dx, y: base.y + dy)] else { continue }
+                    guard let bucket = buckets[Cell(x: base.x + dx, y: base.y + dy)] else {
+                        continue
+                    }
                     for index in bucket where isNear(points[index], p, tolerance) {
                         return index
                     }

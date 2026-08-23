@@ -185,8 +185,11 @@ struct SVGExportTests {
         canvas.endClip()
         canvas.rect(0, 0, 5, 5)
         let svg = recorder.svgString()
-        #expect(svg.contains(#"<clipPath id="clip1"><rect x="10" y="10" width="50" height="50"/></clipPath>"#))
-        #expect(svg.contains(#"<g clip-path="url(#clip1)"><rect x="0" y="0" width="100" height="100""#))
+        #expect(
+            svg.contains(
+                #"<clipPath id="clip1"><rect x="10" y="10" width="50" height="50"/></clipPath>"#))
+        #expect(
+            svg.contains(#"<g clip-path="url(#clip1)"><rect x="0" y="0" width="100" height="100""#))
         // クリップ外の要素は g で包まれない
         #expect(svg.contains(#"<rect x="0" y="0" width="5" height="5""#))
     }

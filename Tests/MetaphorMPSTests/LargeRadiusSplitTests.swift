@@ -90,7 +90,8 @@ struct MPSLargeRadiusSplitTests {
         for radius in radii {
             let out = try makeTexture(device, bytes: nil)
             let size = radius * 2 + 1
-            let kernel: MPSUnaryImageKernel = max
+            let kernel: MPSUnaryImageKernel =
+                max
                 ? MPSImageAreaMax(device: device, kernelWidth: size, kernelHeight: size)
                 : MPSImageAreaMin(device: device, kernelWidth: size, kernelHeight: size)
             kernel.edgeMode = .clamp
@@ -157,8 +158,9 @@ struct MPSLargeRadiusSplitTests {
             wrapper.encodeErode(commandBuffer: cb, source: src, destination: dst, radius: radius)
         }
         let passes = MPSImageFilterWrapper.areaRadiusPasses(radius)
-        #expect(split == (try reference(radii: passes)),
-                "パス数 \(passes.count)（\(passes)）で結果が食い違う")
+        #expect(
+            split == (try reference(radii: passes)),
+            "パス数 \(passes.count)（\(passes)）で結果が食い違う")
     }
 
     // MARK: 効きすぎていないこと

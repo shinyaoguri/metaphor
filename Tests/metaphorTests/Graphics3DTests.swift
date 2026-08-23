@@ -243,7 +243,9 @@ struct Graphics3DTransformTests {
                 }
             }
         }
-        #expect(nonBlackCount > 0, "Box with lights: nonBlack=\(nonBlackCount), maxRGB=(\(maxR),\(maxG),\(maxB))")
+        #expect(
+            nonBlackCount > 0,
+            "Box with lights: nonBlack=\(nonBlackCount), maxRGB=(\(maxR),\(maxG),\(maxB))")
     }
 
     @Test("box without lights produces non-black pixels (unlit)")
@@ -274,7 +276,9 @@ struct Graphics3DTransformTests {
                 }
             }
         }
-        #expect(nonBlackCount > 0, "Box unlit: nonBlack=\(nonBlackCount), maxRGB=(\(maxR),\(maxG),\(maxB))")
+        #expect(
+            nonBlackCount > 0,
+            "Box unlit: nonBlack=\(nonBlackCount), maxRGB=(\(maxR),\(maxG),\(maxB))")
     }
 
     @Test("Primitives3D exact reproduction - box at (130, 180, 0)")
@@ -349,8 +353,9 @@ struct Graphics3DTransformTests {
 
         // lights + box via Canvas3D
         canvas3D.lights()
-        canvas3D.translate(Float(renderer.textureManager.width) / 2,
-                          Float(renderer.textureManager.height) / 2, 0)
+        canvas3D.translate(
+            Float(renderer.textureManager.width) / 2,
+            Float(renderer.textureManager.height) / 2, 0)
         canvas3D.box(100)
 
         // endFrame: flush both
@@ -375,22 +380,25 @@ struct Graphics3DTransformTests {
         }
 
         guard let blitCB = renderer.commandQueue.makeCommandBuffer(),
-              let blit = blitCB.makeBlitCommandEncoder() else {
+            let blit = blitCB.makeBlitCommandEncoder()
+        else {
             Issue.record("Failed to create blit encoder")
             return
         }
-        blit.copy(from: tex, sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: w, height: h, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(
+            from: tex, sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         blitCB.commit()
         blitCB.waitUntilCompleted()
 
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        staging.getBytes(&pixels, bytesPerRow: w * 4,
-                        from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        staging.getBytes(
+            &pixels, bytesPerRow: w * 4,
+            from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
 
         var nonBlackCount = 0
         var maxVal: UInt8 = 0
@@ -403,8 +411,10 @@ struct Graphics3DTransformTests {
                 nonBlackCount += 1
             }
         }
-        #expect(nonBlackCount > 100,
-                "Canvas2D+Canvas3D: nonBlack=\(nonBlackCount), maxVal=\(maxVal), sampleCount=\(renderer.textureManager.sampleCount)")
+        #expect(
+            nonBlackCount > 100,
+            "Canvas2D+Canvas3D: nonBlack=\(nonBlackCount), maxVal=\(maxVal), sampleCount=\(renderer.textureManager.sampleCount)"
+        )
     }
 
     @Test("noLoop two-frame rendering reproduces Primitives3D")
@@ -489,22 +499,25 @@ struct Graphics3DTransformTests {
             return
         }
         guard let blitCB = renderer.commandQueue.makeCommandBuffer(),
-              let blit = blitCB.makeBlitCommandEncoder() else {
+            let blit = blitCB.makeBlitCommandEncoder()
+        else {
             Issue.record("blit failed")
             return
         }
-        blit.copy(from: tex, sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: width, height: height, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(
+            from: tex, sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: width, height: height, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         blitCB.commit()
         blitCB.waitUntilCompleted()
 
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        staging.getBytes(&pixels, bytesPerRow: width * 4,
-                        from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+        staging.getBytes(
+            &pixels, bytesPerRow: width * 4,
+            from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
 
         var nonBlackCount = 0
         var maxVal: UInt8 = 0
@@ -515,8 +528,9 @@ struct Graphics3DTransformTests {
             maxVal = max(maxVal, r, g, b)
             if r > 2 || g > 2 || b > 2 { nonBlackCount += 1 }
         }
-        #expect(nonBlackCount > 100,
-                "noLoop 2-frame: nonBlack=\(nonBlackCount), maxVal=\(maxVal)")
+        #expect(
+            nonBlackCount > 100,
+            "noLoop 2-frame: nonBlack=\(nonBlackCount), maxVal=\(maxVal)")
     }
 }
 
@@ -534,20 +548,23 @@ struct Canvas3DBatchFlushTests {
             pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         desc.storageMode = .shared
         guard let staging = renderer.device.makeTexture(descriptor: desc),
-              let blitCB = renderer.commandQueue.makeCommandBuffer(),
-              let blit = blitCB.makeBlitCommandEncoder() else { return -1 }
-        blit.copy(from: renderer.textureManager.colorTexture,
-                  sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: w, height: h, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            let blitCB = renderer.commandQueue.makeCommandBuffer(),
+            let blit = blitCB.makeBlitCommandEncoder()
+        else { return -1 }
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         blitCB.commit()
         blitCB.waitUntilCompleted()
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        staging.getBytes(&pixels, bytesPerRow: w * 4,
-                         from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        staging.getBytes(
+            &pixels, bytesPerRow: w * 4,
+            from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
         var nonBlack = 0
         for i in stride(from: 0, to: pixels.count, by: 4) {
             if pixels[i] > 2 || pixels[i + 1] > 2 || pixels[i + 2] > 2 { nonBlack += 1 }
@@ -587,11 +604,14 @@ struct Canvas3DBatchFlushTests {
                 if c.r > 0.01 || c.g > 0.01 || c.b > 0.01 { nonBlack += 1 }
             }
         }
-        #expect(nonBlack > 100,
-                "Box must be rendered with the camera that was active when it was submitted (nonBlack=\(nonBlack))")
+        #expect(
+            nonBlack > 100,
+            "Box must be rendered with the camera that was active when it was submitted (nonBlack=\(nonBlack))"
+        )
     }
 
-    @Test("beginShape polygon with more than 85 vertices renders (exceeds setVertexBytes 4KB limit)")
+    @Test(
+        "beginShape polygon with more than 85 vertices renders (exceeds setVertexBytes 4KB limit)")
     func largeBeginShapePolygon() throws {
         let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
@@ -609,8 +629,9 @@ struct Canvas3DBatchFlushTests {
         canvas3D.begin(encoder: encoder, time: 0)
         canvas3D.fill(.white)
         canvas3D.noStroke()
-        canvas3D.translate(Float(renderer.textureManager.width) / 2,
-                           Float(renderer.textureManager.height) / 2, 0)
+        canvas3D.translate(
+            Float(renderer.textureManager.width) / 2,
+            Float(renderer.textureManager.height) / 2, 0)
         // 120 頂点の多角形 → 三角形化で 354 頂点 ≒ 17KB（4KB 制限を大きく超える）
         canvas3D.beginShape()
         let n = 120
@@ -625,11 +646,14 @@ struct Canvas3DBatchFlushTests {
         commandBuffer.waitUntilCompleted()
 
         let nonBlack = countNonBlackPixels(renderer: renderer)
-        #expect(nonBlack > 1000,
-                "120-vertex polygon should render via the transient-buffer path (nonBlack=\(nonBlack))")
+        #expect(
+            nonBlack > 1000,
+            "120-vertex polygon should render via the transient-buffer path (nonBlack=\(nonBlack))")
     }
 
-    @Test("multiple large beginShape polygons in one frame render independently (#250 bump-allocated ring)")
+    @Test(
+        "multiple large beginShape polygons in one frame render independently (#250 bump-allocated ring)"
+    )
     func multipleLargeBeginShapePolygons() throws {
         let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
@@ -679,23 +703,26 @@ struct Canvas3DBatchFlushTests {
             pixelFormat: .bgra8Unorm, width: texW, height: texH, mipmapped: false)
         desc.storageMode = .shared
         guard let staging = renderer.device.makeTexture(descriptor: desc),
-              let blitCB = renderer.commandQueue.makeCommandBuffer(),
-              let blit = blitCB.makeBlitCommandEncoder() else {
+            let blitCB = renderer.commandQueue.makeCommandBuffer(),
+            let blit = blitCB.makeBlitCommandEncoder()
+        else {
             Issue.record("Failed to create readback resources")
             return
         }
-        blit.copy(from: renderer.textureManager.colorTexture,
-                  sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: texW, height: texH, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: texW, height: texH, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         blitCB.commit()
         blitCB.waitUntilCompleted()
         var pixels = [UInt8](repeating: 0, count: texW * texH * 4)
-        staging.getBytes(&pixels, bytesPerRow: texW * 4,
-                         from: MTLRegionMake2D(0, 0, texW, texH), mipmapLevel: 0)
+        staging.getBytes(
+            &pixels, bytesPerRow: texW * 4,
+            from: MTLRegionMake2D(0, 0, texW, texH), mipmapLevel: 0)
         var nonBlackLeft = 0
         var nonBlackRight = 0
         for y in 0..<texH {
@@ -706,10 +733,14 @@ struct Canvas3DBatchFlushTests {
                 }
             }
         }
-        #expect(nonBlackLeft > 500,
-                "First large polygon (left) must survive the second bump allocation (nonBlackLeft=\(nonBlackLeft))")
-        #expect(nonBlackRight > 500,
-                "Second large polygon (right) must render at its own ring offset (nonBlackRight=\(nonBlackRight))")
+        #expect(
+            nonBlackLeft > 500,
+            "First large polygon (left) must survive the second bump allocation (nonBlackLeft=\(nonBlackLeft))"
+        )
+        #expect(
+            nonBlackRight > 500,
+            "Second large polygon (right) must render at its own ring offset (nonBlackRight=\(nonBlackRight))"
+        )
     }
 }
 
@@ -720,27 +751,31 @@ struct Canvas3DBatchFlushTests {
 struct Canvas3DShapeStrokeTests {
 
     /// colorTexture を BGRA8 で読み戻します。
-    private func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)? {
+    private func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)?
+    {
         let w = renderer.textureManager.width
         let h = renderer.textureManager.height
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         desc.storageMode = .shared
         guard let staging = renderer.device.makeTexture(descriptor: desc),
-              let blitCB = renderer.commandQueue.makeCommandBuffer(),
-              let blit = blitCB.makeBlitCommandEncoder() else { return nil }
-        blit.copy(from: renderer.textureManager.colorTexture,
-                  sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: w, height: h, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            let blitCB = renderer.commandQueue.makeCommandBuffer(),
+            let blit = blitCB.makeBlitCommandEncoder()
+        else { return nil }
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         blitCB.commit()
         blitCB.waitUntilCompleted()
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        staging.getBytes(&pixels, bytesPerRow: w * 4,
-                         from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        staging.getBytes(
+            &pixels, bytesPerRow: w * 4,
+            from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
         return (pixels, w, h)
     }
 
@@ -804,7 +839,8 @@ struct Canvas3DShapeStrokeTests {
         for y in 0..<texH {
             for x in 0..<texW {
                 let i = (y * texW + x) * 4  // BGRA
-                let b = pixels[i], r = pixels[i + 2]
+                let b = pixels[i]
+                let r = pixels[i + 2]
                 if x < texW / 2 {
                     if r > 128 && b < 64 { redLeft += 1 }
                 } else {
@@ -812,10 +848,13 @@ struct Canvas3DShapeStrokeTests {
                 }
             }
         }
-        #expect(redLeft > 100,
-                "Stroke-only shape must keep its own stroke color next to a filled one (redLeft=\(redLeft))")
-        #expect(blueRight > 100,
-                "Filled shape must render (blueRight=\(blueRight))")
+        #expect(
+            redLeft > 100,
+            "Stroke-only shape must keep its own stroke color next to a filled one (redLeft=\(redLeft))"
+        )
+        #expect(
+            blueRight > 100,
+            "Filled shape must render (blueRight=\(blueRight))")
     }
 
     @Test("stroke is visible on a shape that also has fill (#429)")
@@ -857,14 +896,16 @@ struct Canvas3DShapeStrokeTests {
         for y in 0..<texH {
             for x in 0..<texW {
                 let i = (y * texW + x) * 4  // BGRA
-                let b = pixels[i], r = pixels[i + 2]
+                let b = pixels[i]
+                let r = pixels[i + 2]
                 if r > 128 && b < 64 { redPixels += 1 }
                 if b > 128 && r < 64 { bluePixels += 1 }
             }
         }
         #expect(bluePixels > 100, "Fill must render (bluePixels=\(bluePixels))")
-        #expect(redPixels > 50,
-                "Stroke must be visible over the fill of the same shape (redPixels=\(redPixels))")
+        #expect(
+            redPixels > 50,
+            "Stroke must be visible over the fill of the same shape (redPixels=\(redPixels))")
     }
 
     @Test("stroke on a primitive mesh uses the stroke color, not the fill color (#429)")
@@ -906,14 +947,16 @@ struct Canvas3DShapeStrokeTests {
         for y in 0..<texH {
             for x in 0..<texW {
                 let i = (y * texW + x) * 4  // BGRA
-                let b = pixels[i], r = pixels[i + 2]
+                let b = pixels[i]
+                let r = pixels[i + 2]
                 if r > 128 && b < 64 { redPixels += 1 }
                 if b > 128 && r < 64 { bluePixels += 1 }
             }
         }
         #expect(bluePixels > 100, "Box fill must render (bluePixels=\(bluePixels))")
-        #expect(redPixels > 50,
-                "Box wireframe must be drawn in the stroke color (redPixels=\(redPixels))")
+        #expect(
+            redPixels > 50,
+            "Box wireframe must be drawn in the stroke color (redPixels=\(redPixels))")
     }
 }
 
@@ -922,30 +965,34 @@ struct Canvas3DShapeStrokeTests {
 /// UV 付き描画のピクセル検証で使う共通処理。`beginShape3D`（#433）と
 /// `DynamicMesh`（#435）のどちらのテストからも使う。
 @MainActor
-fileprivate enum UVTestSupport {
+private enum UVTestSupport {
 
     /// colorTexture を BGRA8 で読み戻します。
-    static func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)? {
+    static func readback(renderer: MetaphorRenderer) -> (pixels: [UInt8], width: Int, height: Int)?
+    {
         let w = renderer.textureManager.width
         let h = renderer.textureManager.height
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         desc.storageMode = .shared
         guard let staging = renderer.device.makeTexture(descriptor: desc),
-              let blitCB = renderer.commandQueue.makeCommandBuffer(),
-              let blit = blitCB.makeBlitCommandEncoder() else { return nil }
-        blit.copy(from: renderer.textureManager.colorTexture,
-                  sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: w, height: h, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            let blitCB = renderer.commandQueue.makeCommandBuffer(),
+            let blit = blitCB.makeBlitCommandEncoder()
+        else { return nil }
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         blitCB.commit()
         blitCB.waitUntilCompleted()
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        staging.getBytes(&pixels, bytesPerRow: w * 4,
-                         from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        staging.getBytes(
+            &pixels, bytesPerRow: w * 4,
+            from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
         return (pixels, w, h)
     }
 
@@ -957,32 +1004,47 @@ fileprivate enum UVTestSupport {
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         // BGRA 並び: 左 = 赤(0,0,255,255)、右 = 緑(0,255,0,255)
         let bytes: [UInt8] = [0, 0, 255, 255, 0, 255, 0, 255]
-        tex.replace(region: MTLRegionMake2D(0, 0, 2, 1), mipmapLevel: 0,
-                    withBytes: bytes, bytesPerRow: 2 * 4)
+        tex.replace(
+            region: MTLRegionMake2D(0, 0, 2, 1), mipmapLevel: 0,
+            withBytes: bytes, bytesPerRow: 2 * 4)
         return MImage(texture: tex)
     }
 
     /// 赤画素・緑画素の個数と平均 x を数えます。
     static func scanRedGreen(_ pixels: [UInt8], _ texW: Int, _ texH: Int)
-        -> (red: Int, green: Int, redMeanX: Float, greenMeanX: Float) {
-        var red = 0, green = 0
-        var redSumX = 0, greenSumX = 0
+        -> (red: Int, green: Int, redMeanX: Float, greenMeanX: Float)
+    {
+        var red = 0
+        var green = 0
+        var redSumX = 0
+        var greenSumX = 0
         for y in 0..<texH {
             for x in 0..<texW {
                 let i = (y * texW + x) * 4  // BGRA
-                let b = pixels[i], g = pixels[i + 1], r = pixels[i + 2]
-                if r > 128 && g < 96 && b < 96 { red += 1; redSumX += x }
-                if g > 128 && r < 96 && b < 96 { green += 1; greenSumX += x }
+                let b = pixels[i]
+                let g = pixels[i + 1]
+                let r = pixels[i + 2]
+                if r > 128 && g < 96 && b < 96 {
+                    red += 1
+                    redSumX += x
+                }
+                if g > 128 && r < 96 && b < 96 {
+                    green += 1
+                    greenSumX += x
+                }
             }
         }
-        return (red, green,
-                red > 0 ? Float(redSumX) / Float(red) : 0,
-                green > 0 ? Float(greenSumX) / Float(green) : 0)
+        return (
+            red, green,
+            red > 0 ? Float(redSumX) / Float(red) : 0,
+            green > 0 ? Float(greenSumX) / Float(green) : 0
+        )
     }
 
     /// 1 フレーム描画して読み戻す共通ハーネス。
     static func render(_ body: (Canvas3D, Float, Float) -> Void) throws
-        -> (pixels: [UInt8], width: Int, height: Int)? {
+        -> (pixels: [UInt8], width: Int, height: Int)?
+    {
         let renderer = try MetaphorRenderer()
         let canvas3D = try Canvas3D(renderer: renderer)
 
@@ -1024,9 +1086,13 @@ struct Canvas3DShapeUVTests {
     }
 
     /// 画面中央に一辺 `size` の quad を UV つきで描きます（左端 u=0 / 右端 u=1）。
-    private func texturedQuad(_ canvas3D: Canvas3D, w: Float, h: Float, size: Float,
-                              mode: ShapeMode = .polygon) {
-        let cx = w / 2, cy = h / 2, s = size / 2
+    private func texturedQuad(
+        _ canvas3D: Canvas3D, w: Float, h: Float, size: Float,
+        mode: ShapeMode = .polygon
+    ) {
+        let cx = w / 2
+        let cy = h / 2
+        let s = size / 2
         canvas3D.beginShape(mode)
         switch mode {
         case .triangleStrip:
@@ -1052,32 +1118,39 @@ struct Canvas3DShapeUVTests {
             return
         }
 
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            // fill は白。テクスチャ色は fill 色で tint されるため、UV が効かなければ全面白になる
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                // fill は白。テクスチャ色は fill 色で tint されるため、UV が効かなければ全面白になる
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "Left half must sample the red texel (red=\(scan.red))")
         #expect(scan.green > 100, "Right half must sample the green texel (green=\(scan.green))")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "u=0 must land left of u=1 (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "u=0 must land left of u=1 (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
     }
 
     @Test("UV is ignored when no texture is bound")
     func uvWithoutTextureFallsBackToFill() throws {
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
-            texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
+                texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "Shape must still be filled (red=\(scan.red))")
-        #expect(scan.green == 0, "No texture is bound, so no texel color may appear (green=\(scan.green))")
+        #expect(
+            scan.green == 0,
+            "No texture is bound, so no texel color may appear (green=\(scan.green))")
     }
 
     @Test("texture() without UV vertices keeps the plain fill path")
@@ -1090,20 +1163,24 @@ struct Canvas3DShapeUVTests {
 
         // texture() を呼んでも vertex(x,y,z) だけで組んだシェイプは従来どおり fill で塗る
         // （テクスチャ座標がないため。UV 対応の前後で挙動が変わらないことを固定する）
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            // fill は白。UV 経路へ誤って入ると全頂点 uv=(0,0) でテクスチャ左端の
-            // 赤をサンプルするため、赤画素の有無で取り違えを検出できる
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            let cx = w / 2, cy = h / 2, s = min(w, h) * 0.3
-            canvas3D.beginShape()
-            canvas3D.vertex(cx - s, cy - s, 0)
-            canvas3D.vertex(cx + s, cy - s, 0)
-            canvas3D.vertex(cx + s, cy + s, 0)
-            canvas3D.vertex(cx - s, cy + s, 0)
-            canvas3D.endShape(.close)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                // fill は白。UV 経路へ誤って入ると全頂点 uv=(0,0) でテクスチャ左端の
+                // 赤をサンプルするため、赤画素の有無で取り違えを検出できる
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                let cx = w / 2
+                let cy = h / 2
+                let s = min(w, h) * 0.3
+                canvas3D.beginShape()
+                canvas3D.vertex(cx - s, cy - s, 0)
+                canvas3D.vertex(cx + s, cy - s, 0)
+                canvas3D.vertex(cx + s, cy + s, 0)
+                canvas3D.vertex(cx - s, cy + s, 0)
+                canvas3D.endShape(.close)
+            })
+        else { return }
 
         // 正しい挙動では quad は fill 色の白のまま。テクスチャ経路へ入ると
         // 全頂点 uv=(0,0) でテクセルをサンプルし、白ではなくなる
@@ -1111,11 +1188,14 @@ struct Canvas3DShapeUVTests {
         for y in 0..<texH {
             for x in 0..<texW {
                 let i = (y * texW + x) * 4  // BGRA
-                if pixels[i] > 200 && pixels[i + 1] > 200 && pixels[i + 2] > 200 { whitePixels += 1 }
+                if pixels[i] > 200 && pixels[i + 1] > 200 && pixels[i + 2] > 200 {
+                    whitePixels += 1
+                }
             }
         }
-        #expect(whitePixels > 100,
-                "Shape without UV must stay on the plain fill path (whitePixels=\(whitePixels))")
+        #expect(
+            whitePixels > 100,
+            "Shape without UV must stay on the plain fill path (whitePixels=\(whitePixels))")
     }
 
     @Test("UV follows the vertices through triangleStrip tessellation")
@@ -1126,18 +1206,22 @@ struct Canvas3DShapeUVTests {
             return
         }
 
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6, mode: .triangleStrip)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                texturedQuad(canvas3D, w: w, h: h, size: min(w, h) * 0.6, mode: .triangleStrip)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "red=\(scan.red)")
         #expect(scan.green > 100, "green=\(scan.green)")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "Reordering must carry UV with its vertex (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "Reordering must carry UV with its vertex (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))"
+        )
     }
 
     @Test("textured shape larger than the setVertexBytes limit uses the ring buffer")
@@ -1150,26 +1234,32 @@ struct Canvas3DShapeUVTests {
 
         // setVertexBytes は 4096B まで = 48B stride で 85 頂点。三角形ファンで
         // 128 頂点（= 378 頂点へ展開）を描き、リングバッファ経路を通す
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            let cx = w / 2, cy = h / 2, radius = min(w, h) * 0.35
-            canvas3D.beginShape(.polygon)
-            for i in 0..<128 {
-                let a = Float(i) / 128 * 2 * Float.pi
-                // u は x に対応させる（左半分 = 赤、右半分 = 緑）
-                canvas3D.vertex(cx + cos(a) * radius, cy + sin(a) * radius, 0,
-                                (cos(a) + 1) / 2, (sin(a) + 1) / 2)
-            }
-            canvas3D.endShape(.close)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                let cx = w / 2
+                let cy = h / 2
+                let radius = min(w, h) * 0.35
+                canvas3D.beginShape(.polygon)
+                for i in 0..<128 {
+                    let a = Float(i) / 128 * 2 * Float.pi
+                    // u は x に対応させる（左半分 = 赤、右半分 = 緑）
+                    canvas3D.vertex(
+                        cx + cos(a) * radius, cy + sin(a) * radius, 0,
+                        (cos(a) + 1) / 2, (sin(a) + 1) / 2)
+                }
+                canvas3D.endShape(.close)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "red=\(scan.red)")
         #expect(scan.green > 100, "green=\(scan.green)")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
     }
 }
 
@@ -1184,9 +1274,13 @@ struct Canvas3DDynamicMeshUVTests {
     /// - Parameters:
     ///   - indexed: true なら 4 頂点 + インデックス、false なら 6 頂点の非インデックス描画。
     ///   - withUV: false なら `addTexCoord` を一度も呼ばない（UV 未宣言のメッシュ）。
-    private func quadMesh(device: MTLDevice, w: Float, h: Float, size: Float,
-                          indexed: Bool, withUV: Bool = true) -> DynamicMesh {
-        let cx = w / 2, cy = h / 2, s = size / 2
+    private func quadMesh(
+        device: MTLDevice, w: Float, h: Float, size: Float,
+        indexed: Bool, withUV: Bool = true
+    ) -> DynamicMesh {
+        let cx = w / 2
+        let cy = h / 2
+        let s = size / 2
         let corners: [(SIMD3<Float>, SIMD2<Float>)] = [
             (SIMD3(cx - s, cy - s, 0), SIMD2(0, 0)),
             (SIMD3(cx + s, cy - s, 0), SIMD2(1, 0)),
@@ -1232,20 +1326,24 @@ struct Canvas3DDynamicMeshUVTests {
             return
         }
 
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            // fill は白。UV が効かなければ全面白のまま（テクスチャ色は fill で tint される）
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                // fill は白。UV が効かなければ全面白のまま（テクスチャ色は fill で tint される）
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                let mesh = quadMesh(
+                    device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "Left half must sample the red texel (red=\(scan.red))")
         #expect(scan.green > 100, "Right half must sample the green texel (green=\(scan.green))")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "u=0 must land left of u=1 (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "u=0 must land left of u=1 (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
     }
 
     @Test("UV follows the vertices on the non-indexed draw path")
@@ -1256,19 +1354,24 @@ struct Canvas3DDynamicMeshUVTests {
             return
         }
 
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: false)
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                let mesh = quadMesh(
+                    device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: false)
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "red=\(scan.red)")
         #expect(scan.green > 100, "green=\(scan.green)")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "UV must stay aligned with its vertex (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "UV must stay aligned with its vertex (redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX))"
+        )
     }
 
     @Test("texture() without addTexCoord keeps the plain fill path")
@@ -1281,33 +1384,42 @@ struct Canvas3DDynamicMeshUVTests {
 
         // UV を宣言していないメッシュはテクスチャ経路へ入れない。誤って入ると
         // 全頂点 uv=(0,0) でテクスチャ左端の赤をサンプルするため白が消える
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
-            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6,
-                                indexed: true, withUV: false)
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
+                let mesh = quadMesh(
+                    device: device, w: w, h: h, size: min(w, h) * 0.6,
+                    indexed: true, withUV: false)
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
-        #expect(countWhite(pixels, texW, texH) > 100,
-                "Mesh without UV must stay on the plain fill path")
+        #expect(
+            countWhite(pixels, texW, texH) > 100,
+            "Mesh without UV must stay on the plain fill path")
     }
 
     @Test("UV is ignored when no texture is bound")
     func uvWithoutTextureFallsBackToFill() throws {
         let device = MetalTestHelper.device!
 
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
-            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 0, 0)  // 赤の fill だけで塗られること
+                let mesh = quadMesh(
+                    device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "Mesh must still be filled (red=\(scan.red))")
-        #expect(scan.green == 0, "No texture is bound, so no texel color may appear (green=\(scan.green))")
+        #expect(
+            scan.green == 0,
+            "No texture is bound, so no texel color may appear (green=\(scan.green))")
     }
 
     @Test("setTexCoord respreads the UV of an existing vertex")
@@ -1320,33 +1432,38 @@ struct Canvas3DDynamicMeshUVTests {
 
         // 全頂点 uv=(0,0)（= 一様に赤）で組んでから、右側 2 頂点だけ u=1 へ差し替える。
         // 差し替えが GPU バッファへ反映されなければ緑は 1 画素も出ない
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
 
-            let cx = w / 2, cy = h / 2, s = min(w, h) * 0.3
-            let mesh = DynamicMesh(device: device)
-            mesh.addNormal(SIMD3(0, 0, 1))
-            mesh.addTexCoord(0, 0)
-            mesh.addVertex(cx - s, cy - s, 0)
-            mesh.addVertex(cx + s, cy - s, 0)
-            mesh.addVertex(cx + s, cy + s, 0)
-            mesh.addVertex(cx - s, cy + s, 0)
-            mesh.addTriangle(0, 1, 2)
-            mesh.addTriangle(0, 2, 3)
+                let cx = w / 2
+                let cy = h / 2
+                let s = min(w, h) * 0.3
+                let mesh = DynamicMesh(device: device)
+                mesh.addNormal(SIMD3(0, 0, 1))
+                mesh.addTexCoord(0, 0)
+                mesh.addVertex(cx - s, cy - s, 0)
+                mesh.addVertex(cx + s, cy - s, 0)
+                mesh.addVertex(cx + s, cy + s, 0)
+                mesh.addVertex(cx - s, cy + s, 0)
+                mesh.addTriangle(0, 1, 2)
+                mesh.addTriangle(0, 2, 3)
 
-            mesh.setTexCoord(1, SIMD2(1, 0))
-            mesh.setTexCoord(2, SIMD2(1, 1))
+                mesh.setTexCoord(1, SIMD2(1, 0))
+                mesh.setTexCoord(2, SIMD2(1, 1))
 
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
         let scan = UVTestSupport.scanRedGreen(pixels, texW, texH)
         #expect(scan.red > 100, "red=\(scan.red)")
         #expect(scan.green > 100, "setTexCoord must reach the GPU buffer (green=\(scan.green))")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)")
     }
 
     /// 全面が赤の 1×1 テクスチャ（BGRA8）。
@@ -1355,8 +1472,9 @@ struct Canvas3DDynamicMeshUVTests {
             pixelFormat: .bgra8Unorm, width: 1, height: 1, mipmapped: false)
         desc.usage = [.shaderRead]
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
-        tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,
-                    withBytes: [0, 0, 255, 255] as [UInt8], bytesPerRow: 4)
+        tex.replace(
+            region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,
+            withBytes: [0, 0, 255, 255] as [UInt8], bytesPerRow: 4)
         return MImage(texture: tex)
     }
 
@@ -1372,14 +1490,17 @@ struct Canvas3DDynamicMeshUVTests {
         // 通常パイプライン + UV なしの頂点列へ戻さないと線もテクスチャを
         // サンプルしてしまう。赤一色のテクスチャ × 緑の stroke なら
         // 貼り直しに失敗した線は黒（赤 × 緑）になり、緑画素が消える
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            // 塗りを消してワイヤーだけにし、テクスチャ経路からの貼り直しだけを見る
-            canvas3D.noFill()
-            canvas3D.stroke(0, 255, 0)
-            canvas3D.texture(img)
-            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                // 塗りを消してワイヤーだけにし、テクスチャ経路からの貼り直しだけを見る
+                canvas3D.noFill()
+                canvas3D.stroke(0, 255, 0)
+                canvas3D.texture(img)
+                let mesh = quadMesh(
+                    device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
         // ワイヤーは quad の外周に出る。緑（stroke 色）の画素が残っていること
         var greenLine = 0
@@ -1402,27 +1523,33 @@ struct Canvas3DDynamicMeshUVTests {
 
         // UV 付きで一度組んだメッシュを clear() し、UV なしで組み直す。宣言フラグが
         // 残っていると（前回の pending UV で）テクスチャ経路へ入り白が消える
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noStroke()
-            canvas3D.fill(255, 255, 255)
-            canvas3D.texture(img)
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noStroke()
+                canvas3D.fill(255, 255, 255)
+                canvas3D.texture(img)
 
-            let mesh = quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
-            mesh.ensureBuffers()
-            mesh.clear()
+                let mesh = quadMesh(
+                    device: device, w: w, h: h, size: min(w, h) * 0.6, indexed: true)
+                mesh.ensureBuffers()
+                mesh.clear()
 
-            let cx = w / 2, cy = h / 2, s = min(w, h) * 0.3
-            mesh.addNormal(SIMD3(0, 0, 1))
-            mesh.addVertex(cx - s, cy - s, 0)
-            mesh.addVertex(cx + s, cy - s, 0)
-            mesh.addVertex(cx + s, cy + s, 0)
-            mesh.addTriangle(0, 1, 2)
+                let cx = w / 2
+                let cy = h / 2
+                let s = min(w, h) * 0.3
+                mesh.addNormal(SIMD3(0, 0, 1))
+                mesh.addVertex(cx - s, cy - s, 0)
+                mesh.addVertex(cx + s, cy - s, 0)
+                mesh.addVertex(cx + s, cy + s, 0)
+                mesh.addTriangle(0, 1, 2)
 
-            canvas3D.dynamicMesh(mesh)
-        }) else { return }
+                canvas3D.dynamicMesh(mesh)
+            })
+        else { return }
 
-        #expect(countWhite(pixels, texW, texH) > 100,
-                "clear() must drop the UV declaration and fall back to the plain fill path")
+        #expect(
+            countWhite(pixels, texW, texH) > 100,
+            "clear() must drop the UV declaration and fall back to the plain fill path")
     }
 }
 
@@ -1433,9 +1560,13 @@ struct Canvas3DDynamicMeshUVTests {
 struct Canvas3DDynamicMeshStrokeTests {
 
     /// 画面中央の quad を組んだ ``DynamicMesh``。`color` を渡すと頂点カラーを付けます。
-    private func quadMesh(device: MTLDevice, w: Float, h: Float, size: Float,
-                          color: SIMD4<Float>? = nil) -> DynamicMesh {
-        let cx = w / 2, cy = h / 2, s = size / 2
+    private func quadMesh(
+        device: MTLDevice, w: Float, h: Float, size: Float,
+        color: SIMD4<Float>? = nil
+    ) -> DynamicMesh {
+        let cx = w / 2
+        let cy = h / 2
+        let s = size / 2
         let mesh = DynamicMesh(device: device)
         mesh.addNormal(SIMD3(0, 0, 1))
         if let color { mesh.addColor(color) }
@@ -1449,12 +1580,17 @@ struct Canvas3DDynamicMeshStrokeTests {
     }
 
     private func countRedGreenBlue(_ pixels: [UInt8], _ texW: Int, _ texH: Int)
-        -> (red: Int, green: Int, blue: Int) {
-        var red = 0, green = 0, blue = 0
+        -> (red: Int, green: Int, blue: Int)
+    {
+        var red = 0
+        var green = 0
+        var blue = 0
         for y in 0..<texH {
             for x in 0..<texW {
                 let i = (y * texW + x) * 4  // BGRA
-                let b = pixels[i], g = pixels[i + 1], r = pixels[i + 2]
+                let b = pixels[i]
+                let g = pixels[i + 1]
+                let r = pixels[i + 2]
                 if r > 128 && g < 96 && b < 96 { red += 1 }
                 if g > 128 && r < 96 && b < 96 { green += 1 }
                 if b > 128 && r < 96 && g < 96 { blue += 1 }
@@ -1469,17 +1605,22 @@ struct Canvas3DDynamicMeshStrokeTests {
 
         // 頂点カラー赤 × stroke 緑。`wirePipelineState` を通らないと
         // フラグメントは `in.color * uniforms.color` = 黒になり、緑が 1 画素も残らない
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.noFill()
-            canvas3D.stroke(0, 255, 0)
-            canvas3D.dynamicMesh(quadMesh(device: device, w: w, h: h,
-                                          size: min(w, h) * 0.6,
-                                          color: SIMD4(1, 0, 0, 1)))
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.noFill()
+                canvas3D.stroke(0, 255, 0)
+                canvas3D.dynamicMesh(
+                    quadMesh(
+                        device: device, w: w, h: h,
+                        size: min(w, h) * 0.6,
+                        color: SIMD4(1, 0, 0, 1)))
+            })
+        else { return }
 
         let scan = countRedGreenBlue(pixels, texW, texH)
-        #expect(scan.green > 50,
-                "Wireframe must be drawn in the stroke color (green=\(scan.green))")
+        #expect(
+            scan.green > 50,
+            "Wireframe must be drawn in the stroke color (green=\(scan.green))")
     }
 
     @Test("stroke stays visible over the fill of the same dynamic mesh (#436)")
@@ -1488,16 +1629,19 @@ struct Canvas3DDynamicMeshStrokeTests {
 
         // fill と stroke は同一ジオメトリを 2 パスで描く。深度バイアスを掛けないと
         // 線は深度比較 `.less` で塗りに負けて 1 本も残らない（#429 と同じ症状）
-        guard let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
-            canvas3D.fill(0, 0, 255)
-            canvas3D.stroke(255, 0, 0)
-            canvas3D.dynamicMesh(quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6))
-        }) else { return }
+        guard
+            let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
+                canvas3D.fill(0, 0, 255)
+                canvas3D.stroke(255, 0, 0)
+                canvas3D.dynamicMesh(quadMesh(device: device, w: w, h: h, size: min(w, h) * 0.6))
+            })
+        else { return }
 
         let scan = countRedGreenBlue(pixels, texW, texH)
         #expect(scan.blue > 100, "Fill must render (blue=\(scan.blue))")
-        #expect(scan.red > 50,
-                "Stroke must be visible over the fill of the same mesh (red=\(scan.red))")
+        #expect(
+            scan.red > 50,
+            "Stroke must be visible over the fill of the same mesh (red=\(scan.red))")
     }
 }
 
@@ -1540,8 +1684,9 @@ struct Graphics3DLoadPixelsFreshnessTests {
         // リードバックが別キューだと commit 順序が保証されず、endDraw(wait: false)
         // 直後の loadPixels が描画完了前のテクスチャ（＝全黒）を読み得る。
         // CI で Graphics3D 系テストが nonBlackCount = 0 で落ちる flaky の原因（#353）。
-        #expect(img.preferredReadbackQueue === queue,
-                "toImage() は描画キューをリードバックキューとして引き継ぐ")
+        #expect(
+            img.preferredReadbackQueue === queue,
+            "toImage() は描画キューをリードバックキューとして引き継ぐ")
     }
 
     @Test("draw then loadPixels immediately reads the latest content")
@@ -1570,8 +1715,9 @@ struct Graphics3DLoadPixelsFreshnessTests {
         pg3d.endDraw(wait: false)
 
         let green = centerPixel(img)
-        #expect(green.g > 0.9 && green.r < 0.1,
-                "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
+        #expect(
+            green.g > 0.9 && green.r < 0.1,
+            "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
     }
 }
 
@@ -1610,9 +1756,11 @@ struct Graphics3DSameFrameRedrawTests {
 
         let left = pixel(16, 16)
         let right = pixel(48, 16)
-        #expect(left.z > 200 && left.y < 60,
-                "先に貼った側は image() 時点の青のままであるべき (got \(left)) — #745")
-        #expect(right.y > 200 && right.z < 60,
-                "後に貼った側は緑 (got \(right))")
+        #expect(
+            left.z > 200 && left.y < 60,
+            "先に貼った側は image() 時点の青のままであるべき (got \(left)) — #745")
+        #expect(
+            right.y > 200 && right.z < 60,
+            "後に貼った側は緑 (got \(right))")
     }
 }

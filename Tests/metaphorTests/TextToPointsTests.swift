@@ -26,19 +26,25 @@ struct TextToPointsTests {
         return context
     }
 
-    private func boundingBox(_ points: [Vec2]) -> (minX: Float, minY: Float, maxX: Float, maxY: Float) {
-        (points.map(\.x).min()!, points.map(\.y).min()!,
-         points.map(\.x).max()!, points.map(\.y).max()!)
+    private func boundingBox(_ points: [Vec2]) -> (
+        minX: Float, minY: Float, maxX: Float, maxY: Float
+    ) {
+        (
+            points.map(\.x).min()!, points.map(\.y).min()!,
+            points.map(\.x).max()!, points.map(\.y).max()!
+        )
     }
 
     // MARK: - 輪郭の数
 
-    @Test("contour counts match the glyph topology", arguments: [
-        ("l", 1),   // 単純な軸のみ
-        ("o", 2),   // 外周 + 穴
-        ("i", 2),   // 点と軸（穴ではなく離れた外周が 2 つ）
-        ("B", 3),   // 外周 + 穴 2 つ
-    ])
+    @Test(
+        "contour counts match the glyph topology",
+        arguments: [
+            ("l", 1),  // 単純な軸のみ
+            ("o", 2),  // 外周 + 穴
+            ("i", 2),  // 点と軸（穴ではなく離れた外周が 2 つ）
+            ("B", 3),  // 外周 + 穴 2 つ
+        ])
     func contourCounts(character: String, expected: Int) throws {
         let context = try makeContext()
         let contours = context.textToContours(character, 0, 0)
@@ -186,9 +192,11 @@ struct TextToPointsTests {
         #expect(second.maxX - second.minX < first.maxX - first.minX)
     }
 
-    @Test("vertical align treats every row as one block", arguments: [
-        TextAlignV.baseline, .top, .center, .bottom,
-    ])
+    @Test(
+        "vertical align treats every row as one block",
+        arguments: [
+            TextAlignV.baseline, .top, .center, .bottom,
+        ])
     func verticalAlignLiftsTheBlock(align: TextAlignV) throws {
         let context = try makeContext()
         context.textAlign(.left, align)
@@ -257,7 +265,8 @@ struct TextToPointsTests {
         // Helvetica 64pt の "AV" は CTLine に通すと約 4.7px 詰まるカーニングペア。
         // 描画側 text() は 1 文字ずつ advance で送るので詰まらない。
         let together = context.textToContours("AV", 0, 0)
-        let separate = context.textToContours("A", 0, 0)
+        let separate =
+            context.textToContours("A", 0, 0)
             + context.textToContours("V", context.canvas.textWidth("A"), 0)
 
         #expect(!together.isEmpty)
@@ -282,7 +291,8 @@ struct TextToPointsTests {
         let context = try makeContext()
         // "ov" は Helvetica にカーニングペアが無い（詰めても詰めなくても同じ位置）
         let together = context.textToContours("ov", 0, 0)
-        let separate = context.textToContours("o", 0, 0)
+        let separate =
+            context.textToContours("o", 0, 0)
             + context.textToContours("v", context.canvas.textWidth("o"), 0)
         #expect(maxPointDistance(together, separate) < 0.01)
     }
@@ -297,7 +307,8 @@ struct TextToPointsTests {
 
         // 混在した並びでも、字送りは 1 文字ずつの advance で積まれる
         let mixed = context.textToContours("Aあ", 0, 0)
-        let separate = context.textToContours("A", 0, 0)
+        let separate =
+            context.textToContours("A", 0, 0)
             + context.textToContours("あ", context.canvas.textWidth("A"), 0)
         #expect(maxPointDistance(mixed, separate) < 0.01)
     }

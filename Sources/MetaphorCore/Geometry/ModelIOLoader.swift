@@ -39,7 +39,9 @@ enum ModelIOLoader {
         }
     }
 
-    nonisolated private static func loadModelData(device: MTLDevice, url: URL, normalize: Bool) throws -> LoadedModelData {
+    nonisolated private static func loadModelData(device: MTLDevice, url: URL, normalize: Bool)
+        throws -> LoadedModelData
+    {
         let allocator = MTKMeshBufferAllocator(device: device)
         let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
 
@@ -53,9 +55,11 @@ enum ModelIOLoader {
         }
 
         // 頂点属性データを読み取り
-        let positionAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition)
+        let positionAttr = mdlMesh.vertexAttributeData(
+            forAttributeNamed: MDLVertexAttributePosition)
         let normalAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeNormal)
-        let uvAttr = mdlMesh.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate)
+        let uvAttr = mdlMesh.vertexAttributeData(
+            forAttributeNamed: MDLVertexAttributeTextureCoordinate)
 
         guard let posData = positionAttr else {
             throw MetaphorError.mesh(.parseError("No position data in mesh"))
@@ -190,7 +194,9 @@ enum ModelIOLoader {
             let halfs = ptr.assumingMemoryBound(to: UInt16.self)
             return SIMD3(halfToFloat(halfs[0]), halfToFloat(halfs[1]), halfToFloat(halfs[2]))
         default:
-            metaphorWarning("Unsupported vertex format \(data.format.rawValue) for float3 attribute, using zero vector")
+            metaphorWarning(
+                "Unsupported vertex format \(data.format.rawValue) for float3 attribute, using zero vector"
+            )
             return .zero
         }
     }
@@ -213,7 +219,9 @@ enum ModelIOLoader {
             let halfs = ptr.assumingMemoryBound(to: UInt16.self)
             return SIMD2(halfToFloat(halfs[0]), halfToFloat(halfs[1]))
         default:
-            metaphorWarning("Unsupported vertex format \(data.format.rawValue) for float2 attribute, using zero vector")
+            metaphorWarning(
+                "Unsupported vertex format \(data.format.rawValue) for float2 attribute, using zero vector"
+            )
             return .zero
         }
     }

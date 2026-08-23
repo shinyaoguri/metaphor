@@ -337,7 +337,8 @@ extension SketchContext {
     ///   - v: V テクスチャ座標。
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         if activeShapeRecording == .threeD {
-            metaphorWarning("vertex(x:y:u:v:) inside beginShape3D() is not supported; UV is dropped")
+            metaphorWarning(
+                "vertex(x:y:u:v:) inside beginShape3D() is not supported; UV is dropped")
             canvas3D.vertex(x, y, 0)
         } else {
             canvas.vertex(x, y, u, v)

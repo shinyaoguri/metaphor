@@ -88,11 +88,12 @@ struct GlyphAtlasTests {
             // 送り位置を 0 としたときのビットマップの範囲は [bearingX, bearingX + width]
             let leftOverhang = -g.bearingX
             let rightOverhang = g.bearingX + g.width - g.advance
-            #expect(abs(leftOverhang - rightOverhang) <= 1,
-                    """
-                    \(char) のはみ出しが左 \(leftOverhang)px / 右 \(rightOverhang)px と非対称 \
-                    （advance \(g.advance) / ビットマップ幅 \(g.width)）
-                    """)
+            #expect(
+                abs(leftOverhang - rightOverhang) <= 1,
+                """
+                \(char) のはみ出しが左 \(leftOverhang)px / 右 \(rightOverhang)px と非対称 \
+                （advance \(g.advance) / ビットマップ幅 \(g.width)）
+                """)
         }
     }
 
@@ -137,8 +138,9 @@ struct GlyphAtlasTests {
         }
         #expect(first.count == second.count)
         for (a, b) in zip(first, second) {
-            #expect(a.v0 == b.v0 && a.v1 == b.v1,
-                    "UV mismatch across expansion: \(a.v0)..\(a.v1) vs \(b.v0)..\(b.v1)")
+            #expect(
+                a.v0 == b.v0 && a.v1 == b.v1,
+                "UV mismatch across expansion: \(a.v0)..\(a.v1) vs \(b.v0)..\(b.v1)")
             #expect(a.u0 == b.u0 && a.u1 == b.u1)
         }
     }
@@ -184,10 +186,12 @@ struct TextRendererAtlasTests {
         let renderer = TextRenderer(device: device)
         // textSize() アニメーション相当: 32 種類のサイズでアトラスを要求
         for size in 0..<32 {
-            _ = renderer.textGlyphs(string: "A", fontSize: Float(10 + size), fontFamily: "Helvetica")
+            _ = renderer.textGlyphs(
+                string: "A", fontSize: Float(10 + size), fontFamily: "Helvetica")
         }
-        #expect(renderer.atlasCount <= renderer.maxAtlases,
-                "atlases: \(renderer.atlasCount) > cap \(renderer.maxAtlases)")
+        #expect(
+            renderer.atlasCount <= renderer.maxAtlases,
+            "atlases: \(renderer.atlasCount) > cap \(renderer.maxAtlases)")
 
         // 直近に使ったサイズは生き残っている（LRU）
         let result = renderer.textGlyphs(string: "A", fontSize: 41, fontFamily: "Helvetica")

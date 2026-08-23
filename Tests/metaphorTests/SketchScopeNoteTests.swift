@@ -29,9 +29,13 @@ struct SketchScopeNoteTests {
     }
 
     static let auditedFiles: [AuditedFile] = [
-        AuditedFile(relativePath: "Sources/MetaphorCore/Sketch/Sketch+3D.swift", minimumDeclarations: 60),
-        AuditedFile(relativePath: "Sources/MetaphorCore/Sketch/Sketch+Style.swift", minimumDeclarations: 25),
-        AuditedFile(relativePath: "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift", minimumDeclarations: 48),
+        AuditedFile(
+            relativePath: "Sources/MetaphorCore/Sketch/Sketch+3D.swift", minimumDeclarations: 60),
+        AuditedFile(
+            relativePath: "Sources/MetaphorCore/Sketch/Sketch+Style.swift", minimumDeclarations: 25),
+        AuditedFile(
+            relativePath: "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift", minimumDeclarations: 48
+        ),
     ]
 
     /// ADR-0005 の作用先区分に対応する doc 上の目印。
@@ -117,7 +121,8 @@ struct SketchScopeNoteTests {
     /// `public func` / `public var` などの宣言行か（`public` を含むコメント行は除く）。
     private static func isPublicDeclaration(_ trimmed: String) -> Bool {
         guard !trimmed.hasPrefix("//") else { return false }
-        for keyword in ["func ", "var ", "let ", "subscript", "init"] where
+        for keyword in ["func ", "var ", "let ", "subscript", "init"]
+        where
             trimmed.hasPrefix("public " + keyword)
         {
             return true

@@ -185,8 +185,9 @@ struct MPSImageFilterKernelRadiusTests {
         let d3 = try median(diameter: 3)
         // 色 3 チャンネルで見る（`MPSImageMedian` はアルファを中央値の対象にせず素通しする）
         let colors = d3.enumerated().filter { $0.offset % 4 != 3 }.map(\.element)
-        #expect(colors.allSatisfy { $0 == 200 },
-                "1 点の外れ値が中央値で消えていないか、縁が暗く落ちている（#920）")
+        #expect(
+            colors.allSatisfy { $0 == 200 },
+            "1 点の外れ値が中央値で消えていないか、縁が暗く落ちている（#920）")
         #expect(d3 != Self.makePattern(), "median が何も変えていない")
     }
 }

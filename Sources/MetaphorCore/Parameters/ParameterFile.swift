@@ -48,18 +48,20 @@ extension ParameterFile {
     /// 未知の `schemaVersion` は `nil` を返し、呼び出し側はコード既定値のまま進みます。
     static func decode(from data: Data) -> ParameterFile? {
         guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dict = object as? [String: Any],
-              let schemaVersion = dict["schemaVersion"] as? Int,
-              schemaVersion == currentSchemaVersion else {
+            let dict = object as? [String: Any],
+            let schemaVersion = dict["schemaVersion"] as? Int,
+            schemaVersion == currentSchemaVersion
+        else {
             return nil
         }
         let revision = dict["revision"] as? Int ?? 0
         let rawParams = dict["params"] as? [[String: Any]] ?? []
         let entries: [Entry] = rawParams.compactMap { raw in
             guard let name = raw["name"] as? String,
-                  let type = raw["type"] as? String,
-                  let rawValue = raw["value"],
-                  let value = ParamValue.from(json: rawValue, typeTag: type) else {
+                let type = raw["type"] as? String,
+                let rawValue = raw["value"],
+                let value = ParamValue.from(json: rawValue, typeTag: type)
+            else {
                 return nil
             }
             return Entry(
@@ -99,9 +101,10 @@ struct ParameterSetRequest {
 
     static func decode(from data: Data) -> ParameterSetRequest? {
         guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dict = object as? [String: Any],
-              let id = dict["id"] as? String,
-              let values = dict["values"] as? [String: Any] else {
+            let dict = object as? [String: Any],
+            let id = dict["id"] as? String,
+            let values = dict["values"] as? [String: Any]
+        else {
             return nil
         }
         return ParameterSetRequest(id: id, values: values)

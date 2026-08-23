@@ -138,10 +138,12 @@ public class MetaphorMTKView: MTKView {
     }
 
     public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        guard let urls = sender.draggingPasteboard.readObjects(
-            forClasses: [NSURL.self],
-            options: [.urlReadingFileURLsOnly: true]
-        ) as? [URL] else { return false }
+        guard
+            let urls = sender.draggingPasteboard.readObjects(
+                forClasses: [NSURL.self],
+                options: [.urlReadingFileURLsOnly: true]
+            ) as? [URL]
+        else { return false }
         let paths = urls.map(\.path)
         guard !paths.isEmpty else { return false }
         rendererRef?.input.handleFileDrop(paths: paths)

@@ -142,7 +142,7 @@ struct ProbeParamsSectionTests {
             #expect(waitForFile(jsonURL))
             let json = try readJSON(jsonURL)
             #expect(json?["params"] == nil)
-            #expect(json?["schemaVersion"] as? Int == 4)   // additive なので版は据え置き
+            #expect(json?["schemaVersion"] as? Int == 4)  // additive なので版は据え置き
         }
     }
 

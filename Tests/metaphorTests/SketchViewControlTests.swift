@@ -72,8 +72,9 @@ struct SketchViewControlTests {
 
         context.noLoop()
         #expect(context.isLooping == false)
-        #expect(harness.view.isPaused == true,
-                "未配線だと isLooping だけ false になり、フレームは回り続ける(#808)")
+        #expect(
+            harness.view.isPaused == true,
+            "未配線だと isLooping だけ false になり、フレームは回り続ける(#808)")
 
         context.loop()
         #expect(context.isLooping == true)
@@ -91,8 +92,9 @@ struct SketchViewControlTests {
 
         context.redraw()
 
-        #expect(harness.drawCalls == before + 1,
-                "実測 \(harness.drawCalls - before) フレーム: 0 なら未配線、2 以上なら二重描画")
+        #expect(
+            harness.drawCalls == before + 1,
+            "実測 \(harness.drawCalls - before) フレーム: 0 なら未配線、2 以上なら二重描画")
     }
 
     // 境界値(#358 と同じクランプ): 0 以下は 1 へ丸め、両方の宛先へ同じ値を渡す。
@@ -105,8 +107,9 @@ struct SketchViewControlTests {
 
         context.frameRate(0)
         #expect(renderer.targetFPS == 1, "targetFPS は 1 にクランプされるべき")
-        #expect(harness.view.preferredFramesPerSecond == 1,
-                "MTKView.preferredFramesPerSecond も 1 にクランプされるべき")
+        #expect(
+            harness.view.preferredFramesPerSecond == 1,
+            "MTKView.preferredFramesPerSecond も 1 にクランプされるべき")
 
         context.frameRate(-5)
         #expect(renderer.targetFPS == 1)
@@ -186,8 +189,9 @@ struct SketchViewCreateCanvasTests {
         try harness.renderer.renderFrame()
         let elapsed = ContinuousClock.now - started
 
-        #expect(elapsed < resizeDrainTimeout / 2,
-                "実測 \(elapsed): タイムアウト(\(resizeDrainTimeout))級なら setup がフレームの中で走っている(#828)")
+        #expect(
+            elapsed < resizeDrainTimeout / 2,
+            "実測 \(elapsed): タイムアウト(\(resizeDrainTimeout))級なら setup がフレームの中で走っている(#828)")
     }
 
     // 回帰テスト(#828): setup をフレームの外へ移した副作用の押さえ。
@@ -212,8 +216,9 @@ struct SketchViewCreateCanvasTests {
 
         // 2 フレーム目が勝手に走らないこと（止め忘れの検出）。
         renderer.renderFrame()
-        #expect(harness.drawCalls == 2,
-                "renderFrame() を直接叩けば描かれる。止めているのは MTKView 側の駆動だけ")
+        #expect(
+            harness.drawCalls == 2,
+            "renderFrame() を直接叩けば描かれる。止めているのは MTKView 側の駆動だけ")
     }
 
     // setup で noLoop() を呼ばない通常のスケッチが、初回フレームの後で止まらないこと。
@@ -266,8 +271,9 @@ struct SketchViewCreateCanvasInDrawTests {
         renderer.renderFrame()
         let elapsed = ContinuousClock.now - started
 
-        #expect(elapsed < resizeDrainTimeout / 2,
-                "実測 \(elapsed): タイムアウト(\(resizeDrainTimeout))級ならドレイン待ちに落ちている(#856)")
+        #expect(
+            elapsed < resizeDrainTimeout / 2,
+            "実測 \(elapsed): タイムアウト(\(resizeDrainTimeout))級ならドレイン待ちに落ちている(#856)")
     }
 
     // 回帰テスト(#856): 弾くだけでなく「半端に効かせない」ことも見る。リサイズを飛ばしても
@@ -289,12 +295,15 @@ struct SketchViewCreateCanvasInDrawTests {
 
         renderer.renderFrame()
 
-        #expect(probe.isRenderingFrameDuringDraw,
-                "draw() の中なのに isRenderingFrame が立っていない(#856)")
-        #expect(probe.canvasAfter === probe.canvasBefore,
-                "フレームの途中で Canvas2D が差し替わると、以降の描画はエンコーダの無い新品へ落ちて消える(#856)")
-        #expect(probe.widthDuringDraw == 64,
-                "実測 \(probe.widthDuringDraw): 寸法だけ先に動くと draw() の残りが食い違う")
+        #expect(
+            probe.isRenderingFrameDuringDraw,
+            "draw() の中なのに isRenderingFrame が立っていない(#856)")
+        #expect(
+            probe.canvasAfter === probe.canvasBefore,
+            "フレームの途中で Canvas2D が差し替わると、以降の描画はエンコーダの無い新品へ落ちて消える(#856)")
+        #expect(
+            probe.widthDuringDraw == 64,
+            "実測 \(probe.widthDuringDraw): 寸法だけ先に動くと draw() の残りが食い違う")
         #expect(context.width == 64)
         #expect(context.height == 64)
         #expect(renderer.textureManager.width == 64, "リサイズは行われないべき")

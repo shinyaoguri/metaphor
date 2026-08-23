@@ -121,7 +121,8 @@ struct ShadowMapTests {
         shadow.updateLightSpaceMatrix(lightDirection: SIMD3(0, -1, 0.5))
 
         guard let queue = device.makeCommandQueue(),
-              let cmdBuf = queue.makeCommandBuffer() else {
+            let cmdBuf = queue.makeCommandBuffer()
+        else {
             return
         }
 

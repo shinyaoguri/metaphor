@@ -84,7 +84,10 @@ public final class CustomPostEffect: PostEffect {
 
     // MARK: - PostEffect
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
         let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
         let params = PostProcessParams(
             texelSize: texelSize,

@@ -2,7 +2,7 @@
 @inline(__always)
 func debugWarning(_ message: @autoclosure () -> String) {
     #if DEBUG
-    print("[MetaphorAudio] Warning:", message())
+        print("[MetaphorAudio] Warning:", message())
     #endif
 }
 

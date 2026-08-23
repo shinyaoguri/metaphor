@@ -128,7 +128,8 @@ enum ContourNesting {
             var smallestArea = Float.greatestFiniteMagnitude
             for j in contours.indices where i != j {
                 guard contains(boxes[j], boxes[i]),
-                      contains(polygon: contours[j], point: contours[i][0]) else { continue }
+                    contains(polygon: contours[j], point: contours[i][0])
+                else { continue }
                 let area = (boxes[j].maxX - boxes[j].minX) * (boxes[j].maxY - boxes[j].minY)
                 if area < smallestArea {
                     smallestArea = area
@@ -182,7 +183,8 @@ enum ContourNesting {
         var inside = false
         var j = polygon.count - 1
         for i in polygon.indices {
-            let a = polygon[i], b = polygon[j]
+            let a = polygon[i]
+            let b = polygon[j]
             if (a.y > point.y) != (b.y > point.y) {
                 let t = (point.y - a.y) / (b.y - a.y)
                 if point.x < a.x + t * (b.x - a.x) { inside.toggle() }

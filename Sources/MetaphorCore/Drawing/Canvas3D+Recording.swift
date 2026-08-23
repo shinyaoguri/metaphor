@@ -28,12 +28,14 @@ extension Canvas3D {
     func snapshotForRecording() -> RenderStateSnapshot3D {
         let vp = computeViewProjection()
         if let snap = currentStateSnapshot,
-           snap.viewProjection == vp,
-           snap.cameraEye == cameraEye,
-           snap.lights == lightArray {
+            snap.viewProjection == vp,
+            snap.cameraEye == cameraEye,
+            snap.lights == lightArray
+        {
             return snap
         }
-        let snap = RenderStateSnapshot3D(viewProjection: vp, cameraEye: cameraEye, lights: lightArray)
+        let snap = RenderStateSnapshot3D(
+            viewProjection: vp, cameraEye: cameraEye, lights: lightArray)
         currentStateSnapshot = snap
         return snap
     }

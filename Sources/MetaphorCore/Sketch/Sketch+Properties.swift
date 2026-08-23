@@ -3,11 +3,13 @@
 extension Sketch {
     /// キャンバスの幅（ピクセル単位）。
     public var width: Float {
-        context.width    }
+        context.width
+    }
 
     /// キャンバスの高さ（ピクセル単位）。
     public var height: Float {
-        context.height    }
+        context.height
+    }
 
     /// 入力マネージャ（イベントハンドラ内で使用）。
     public var input: InputManager {
@@ -16,31 +18,38 @@ extension Sketch {
 
     /// 現在のマウス x 座標。
     public var mouseX: Float {
-        context.input.mouseX    }
+        context.input.mouseX
+    }
 
     /// 現在のマウス y 座標。
     public var mouseY: Float {
-        context.input.mouseY    }
+        context.input.mouseY
+    }
 
     /// 前フレームのマウス x 座標。
     public var pmouseX: Float {
-        context.input.pmouseX    }
+        context.input.pmouseX
+    }
 
     /// 前フレームのマウス y 座標。
     public var pmouseY: Float {
-        context.input.pmouseY    }
+        context.input.pmouseY
+    }
 
     /// マウスボタンが現在押されているかどうか。
     public var isMousePressed: Bool {
-        context.input.isMouseDown    }
+        context.input.isMouseDown
+    }
 
     /// 現在のフレームの水平スクロール量。
     public var scrollX: Float {
-        context.input.scrollX    }
+        context.input.scrollX
+    }
 
     /// 現在のフレームの垂直スクロール量。
     public var scrollY: Float {
-        context.input.scrollY    }
+        context.input.scrollY
+    }
 
     /// 最後に**押された**マウスボタン。まだ一度も押されていなければ `nil`。
     ///
@@ -60,11 +69,13 @@ extension Sketch {
     /// if isMousePressed && mouseButton == .right { … }
     /// ```
     public var mouseButton: MouseButton? {
-        context.input.mouseButton    }
+        context.input.mouseButton
+    }
 
     /// キーが現在押されているかどうか。
     public var isKeyPressed: Bool {
-        context.input.isKeyPressed    }
+        context.input.isKeyPressed
+    }
 
     /// 最後に**押された**キー。
     ///
@@ -105,26 +116,31 @@ extension Sketch {
     /// - Parameter keyCode: 確認するハードウェアキーコード。
     /// - Returns: キーが現在押されている場合は `true`。
     public func isKeyDown(_ keyCode: UInt16) -> Bool {
-        context.input.isKeyDown(keyCode)    }
+        context.input.isKeyDown(keyCode)
+    }
 
     /// 最新のキーダウンイベントがオートリピートかどうか。
     public var isKeyRepeat: Bool {
-        context.input.isKeyRepeat    }
+        context.input.isKeyRepeat
+    }
 
     /// スケッチ開始からの経過時間（秒単位）。
     public var time: Float {
-        context.time    }
+        context.time
+    }
 
     /// 前フレームからの経過時間（秒単位）。
     ///
     /// ``noLoop()`` で止めていた時間はここに乗りません。``loop()`` で再開した直後の
     /// フレームも 1 フレームぶんの経過になります（``time`` のほうは実時間に追いつきます）。
     public var deltaTime: Float {
-        context.deltaTime    }
+        context.deltaTime
+    }
 
     /// これまでにレンダリングされた総フレーム数。
     public var frameCount: Int {
-        context.frameCount    }
+        context.frameCount
+    }
 }
 
 // MARK: - Canvas Setup
@@ -173,7 +189,8 @@ extension Sketch {
 extension Sketch {
     /// アニメーションループが現在実行中かどうか。
     public var isLooping: Bool {
-        context.isLooping    }
+        context.isLooping
+    }
 
     /// アニメーションループを再開します。
     ///

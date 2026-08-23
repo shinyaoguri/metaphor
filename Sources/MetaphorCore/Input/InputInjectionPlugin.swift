@@ -109,7 +109,7 @@ public final class InputInjectionPlugin: MetaphorPlugin {
             while let line = nextLine() {
                 if line.isEmpty { continue }
                 guard let data = line.data(using: .utf8),
-                      let event = try? JSONDecoder().decode(RawInputEvent.self, from: data)
+                    let event = try? JSONDecoder().decode(RawInputEvent.self, from: data)
                 else {
                     // 不正な入力イベントは無視するが、なぜ反映されないのかを切り分け
                     // できるよう METAPHOR_DEBUG=1 のときだけ診断を残す。

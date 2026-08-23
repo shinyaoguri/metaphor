@@ -284,8 +284,9 @@ public final class CaptureDevice {
     convenience init(
         device: MTLDevice, width: Int = 1280, height: Int = 720, position: CameraPosition? = nil
     ) {
-        self.init(device: device, width: width, height: height,
-                  camera: Self.resolveCamera(position: position))
+        self.init(
+            device: device, width: width, height: height,
+            camera: Self.resolveCamera(position: position))
     }
 
     /// 列挙したデバイス情報を指定してカメラキャプチャデバイスを作成します。
@@ -297,10 +298,12 @@ public final class CaptureDevice {
     ///   - captureDevice: ``CaptureDevice/list()`` で取得したデバイス情報。
     ///     既に切断されている場合、``isAvailable`` は `false` になります。
     convenience init(
-        device: MTLDevice, width: Int = 1280, height: Int = 720, captureDevice info: CaptureDeviceInfo
+        device: MTLDevice, width: Int = 1280, height: Int = 720,
+        captureDevice info: CaptureDeviceInfo
     ) {
-        self.init(device: device, width: width, height: height,
-                  camera: AVCaptureDevice(uniqueID: info.id))
+        self.init(
+            device: device, width: width, height: height,
+            camera: AVCaptureDevice(uniqueID: info.id))
     }
 
     /// デバイス名を指定してカメラキャプチャデバイスを作成します。
@@ -317,8 +320,9 @@ public final class CaptureDevice {
         device: MTLDevice, width: Int = 1280, height: Int = 720, deviceName: String
     ) {
         let info = Self.match(deviceName: deviceName, in: Self.list())
-        self.init(device: device, width: width, height: height,
-                  camera: info.flatMap { AVCaptureDevice(uniqueID: $0.id) })
+        self.init(
+            device: device, width: width, height: height,
+            camera: info.flatMap { AVCaptureDevice(uniqueID: $0.id) })
     }
 
     /// 解決済みの AVCaptureDevice からセットアップする指定イニシャライザ
@@ -396,8 +400,8 @@ public final class CaptureDevice {
         )
 
         guard status == kCVReturnSuccess, let cvTex = cvTexture,
-              let baseTexture = CVMetalTextureGetTexture(cvTex),
-              let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
+            let baseTexture = CVMetalTextureGetTexture(cvTex),
+            let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
         else { return }
         // CoreVideo の契約上、MTLTexture はラッパー（cvTex）が生存している間のみ
         // 有効。トリプルバッファリングでは前々フレームのコマンドがまだ GPU 実行中
@@ -553,25 +557,28 @@ public final class CaptureDevice {
         // ゲート）でビルドできない。両 SDK で有効な旧グローバル通知名を使う。
         let center = NotificationCenter.default
         observers.append(
-            NotificationObserverToken(center.addObserver(
-                forName: .AVCaptureDeviceWasDisconnected,
-                object: camera, queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    self?.markUnavailable(reason: "device disconnected")
-                }
-            }, center: center))
+            NotificationObserverToken(
+                center.addObserver(
+                    forName: .AVCaptureDeviceWasDisconnected,
+                    object: camera, queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        self?.markUnavailable(reason: "device disconnected")
+                    }
+                }, center: center))
         observers.append(
-            NotificationObserverToken(center.addObserver(
-                forName: .AVCaptureSessionRuntimeError,
-                object: session, queue: .main
-            ) { [weak self] note in
-                let message = (note.userInfo?[AVCaptureSessionErrorKey] as? NSError)?
-                    .localizedDescription ?? "unknown error"
-                MainActor.assumeIsolated {
-                    self?.markUnavailable(reason: "session runtime error: \(message)")
-                }
-            }, center: center))
+            NotificationObserverToken(
+                center.addObserver(
+                    forName: .AVCaptureSessionRuntimeError,
+                    object: session, queue: .main
+                ) { [weak self] note in
+                    let message =
+                        (note.userInfo?[AVCaptureSessionErrorKey] as? NSError)?
+                        .localizedDescription ?? "unknown error"
+                    MainActor.assumeIsolated {
+                        self?.markUnavailable(reason: "session runtime error: \(message)")
+                    }
+                }, center: center))
     }
 
     // MARK: - 権限の無言待ち（Issue #685）
@@ -606,13 +613,15 @@ public final class CaptureDevice {
     /// 「許可ダイアログが出ないまま無音で死ぬ」状態を一度だけ報告します。
     private func warnIfPermissionDialogWillNeverAppear() {
         guard let startedAt else { return }
-        guard Self.shouldWarnAboutPendingPermission(
-            status: authorizationStatus,
-            isRunning: isRunning,
-            hasDeliveredFrame: hasDeliveredFrame,
-            elapsed: CACurrentMediaTime() - startedAt,
-            alreadyWarned: didWarnAboutPendingPermission
-        ) else { return }
+        guard
+            Self.shouldWarnAboutPendingPermission(
+                status: authorizationStatus,
+                isRunning: isRunning,
+                hasDeliveredFrame: hasDeliveredFrame,
+                elapsed: CACurrentMediaTime() - startedAt,
+                alreadyWarned: didWarnAboutPendingPermission
+            )
+        else { return }
         didWarnAboutPendingPermission = true
         metaphorAlert(
             "Camera permission is still 'notDetermined' and no frames have arrived "
@@ -627,8 +636,9 @@ public final class CaptureDevice {
     func markUnavailable(reason: String) {
         guard isAvailable else { return }
         isAvailable = false
-        metaphorWarning("Capture device \"\(deviceInfo?.name ?? "unknown")\" is "
-            + "no longer available (\(reason))")
+        metaphorWarning(
+            "Capture device \"\(deviceInfo?.name ?? "unknown")\" is "
+                + "no longer available (\(reason))")
         onDisconnect?()
     }
 
@@ -646,9 +656,11 @@ public final class CaptureDevice {
             let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
             return (Int(dims.width), Int(dims.height))
         }
-        guard let index = Self.closestFormatIndex(
-            toWidth: width, height: height, in: dimensions
-        ) else { return }
+        guard
+            let index = Self.closestFormatIndex(
+                toWidth: width, height: height, in: dimensions
+            )
+        else { return }
         do {
             try camera.lockForConfiguration()
             camera.activeFormat = formats[index]

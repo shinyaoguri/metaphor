@@ -139,7 +139,8 @@ public final class ShaderLibrary {
         }
 
         guard let library = libraries[key],
-              let function = library.makeFunction(name: name) else {
+            let function = library.makeFunction(name: name)
+        else {
             return nil
         }
 
@@ -232,11 +233,13 @@ public final class ShaderLibrary {
     /// - Parameter name: シェーダーソース名（拡張子なし）
     /// - Returns: MSL ソース文字列。リソースが見つからない場合は `nil`
     public nonisolated static func loadShaderSource(_ name: String) -> String? {
-        guard let url = Bundle.module.url(
-            forResource: name,
-            withExtension: "txt",
-            subdirectory: "ShaderSources"
-        ) else {
+        guard
+            let url = Bundle.module.url(
+                forResource: name,
+                withExtension: "txt",
+                subdirectory: "ShaderSources"
+            )
+        else {
             return nil
         }
         return try? String(contentsOf: url, encoding: .utf8)
@@ -247,7 +250,8 @@ public final class ShaderLibrary {
     private func loadBuiltins() throws {
         // preferSourceCompilation が true の場合、常にソースからコンパイル
         if !preferSourceCompilation,
-           let metallib = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+            let metallib = try? device.makeDefaultLibrary(bundle: Bundle.module)
+        {
             for key in BuiltinKey.all {
                 libraries[key] = metallib
             }
@@ -281,7 +285,8 @@ public final class ShaderLibrary {
 
     private func registerBuiltinsFromSource() throws {
         var missingResources: [String] = []
-        let sources: [(source: String, key: String)] = Self.shaderResourceNames.compactMap { entry in
+        let sources: [(source: String, key: String)] = Self.shaderResourceNames.compactMap {
+            entry in
             guard let source = Self.loadShaderSource(entry.resource) else {
                 missingResources.append(entry.resource)
                 return nil
@@ -293,13 +298,15 @@ public final class ShaderLibrary {
             throw MetaphorError.shaderCompilationFailed(
                 name: "builtins",
                 underlying: SimpleError(
-                    message: "Missing shader resource(s): \(missingResources.joined(separator: ", "))"
+                    message:
+                        "Missing shader resource(s): \(missingResources.joined(separator: ", "))"
                 )
             )
         }
 
         // 並列コンパイル（device.makeLibrary はスレッドセーフ）
-        let results = UnsafeMutablePointer<(key: String, lib: MTLLibrary)?>.allocate(capacity: sources.count)
+        let results = UnsafeMutablePointer<(key: String, lib: MTLLibrary)?>.allocate(
+            capacity: sources.count)
         results.initialize(repeating: nil, count: sources.count)
         defer {
             results.deinitialize(count: sources.count)
@@ -332,7 +339,8 @@ public final class ShaderLibrary {
             let detail = errors.map { "  \($0.key): \($0.error)" }.joined(separator: "\n")
             throw MetaphorError.shaderCompilationFailed(
                 name: "builtins (\(errors.count) failed)",
-                underlying: SimpleError(message: "Failed to compile \(errors.count) shader(s):\n\(detail)")
+                underlying: SimpleError(
+                    message: "Failed to compile \(errors.count) shader(s):\n\(detail)")
             )
         }
 

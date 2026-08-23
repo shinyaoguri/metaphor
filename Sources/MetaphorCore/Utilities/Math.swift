@@ -13,12 +13,13 @@ extension float4x4 {
     public init(rotationX angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
-        self.init(columns: (
-            SIMD4<Float>(1, 0, 0, 0),
-            SIMD4<Float>(0, c, s, 0),
-            SIMD4<Float>(0, -s, c, 0),
-            SIMD4<Float>(0, 0, 0, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(1, 0, 0, 0),
+                SIMD4<Float>(0, c, s, 0),
+                SIMD4<Float>(0, -s, c, 0),
+                SIMD4<Float>(0, 0, 0, 1)
+            ))
     }
 
     /// Y軸まわりの回転行列を作成します。
@@ -27,12 +28,13 @@ extension float4x4 {
     public init(rotationY angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
-        self.init(columns: (
-            SIMD4<Float>(c, 0, -s, 0),
-            SIMD4<Float>(0, 1, 0, 0),
-            SIMD4<Float>(s, 0, c, 0),
-            SIMD4<Float>(0, 0, 0, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(c, 0, -s, 0),
+                SIMD4<Float>(0, 1, 0, 0),
+                SIMD4<Float>(s, 0, c, 0),
+                SIMD4<Float>(0, 0, 0, 1)
+            ))
     }
 
     /// Z軸まわりの回転行列を作成します。
@@ -41,24 +43,26 @@ extension float4x4 {
     public init(rotationZ angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
-        self.init(columns: (
-            SIMD4<Float>(c, s, 0, 0),
-            SIMD4<Float>(-s, c, 0, 0),
-            SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(0, 0, 0, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(c, s, 0, 0),
+                SIMD4<Float>(-s, c, 0, 0),
+                SIMD4<Float>(0, 0, 1, 0),
+                SIMD4<Float>(0, 0, 0, 1)
+            ))
     }
 
     /// 3Dベクトルから平行移動行列を作成します。
     ///
     /// - Parameter translation: 各軸方向の平行移動オフセット。
     public init(translation: SIMD3<Float>) {
-        self.init(columns: (
-            SIMD4<Float>(1, 0, 0, 0),
-            SIMD4<Float>(0, 1, 0, 0),
-            SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(translation.x, translation.y, translation.z, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(1, 0, 0, 0),
+                SIMD4<Float>(0, 1, 0, 0),
+                SIMD4<Float>(0, 0, 1, 0),
+                SIMD4<Float>(translation.x, translation.y, translation.z, 1)
+            ))
     }
 
     /// 非均一スケール行列を作成します。
@@ -95,12 +99,13 @@ extension float4x4 {
         let x = normalize(xRaw)
         let y = cross(z, x)
 
-        self.init(columns: (
-            SIMD4<Float>(x.x, y.x, z.x, 0),
-            SIMD4<Float>(x.y, y.y, z.y, 0),
-            SIMD4<Float>(x.z, y.z, z.z, 0),
-            SIMD4<Float>(-dot(x, eye), -dot(y, eye), -dot(z, eye), 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(x.x, y.x, z.x, 0),
+                SIMD4<Float>(x.y, y.y, z.y, 0),
+                SIMD4<Float>(x.z, y.z, z.z, 0),
+                SIMD4<Float>(-dot(x, eye), -dot(y, eye), -dot(z, eye), 1)
+            ))
     }
 
     /// 透視投影行列を作成します。
@@ -115,12 +120,13 @@ extension float4x4 {
         let x = y / aspect
         let z = far / (near - far)
 
-        self.init(columns: (
-            SIMD4<Float>(x, 0, 0, 0),
-            SIMD4<Float>(0, y, 0, 0),
-            SIMD4<Float>(0, 0, z, -1),
-            SIMD4<Float>(0, 0, z * near, 0)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(x, 0, 0, 0),
+                SIMD4<Float>(0, y, 0, 0),
+                SIMD4<Float>(0, 0, z, -1),
+                SIMD4<Float>(0, 0, z * near, 0)
+            ))
     }
 
     /// 正射影行列を作成します。
@@ -132,7 +138,9 @@ extension float4x4 {
     ///   - top: ビューボリュームの上端。
     ///   - near: ニアクリッピング面の距離。
     ///   - far: ファークリッピング面の距離。
-    public init(orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float) {
+    public init(
+        orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float
+    ) {
         let sx = 2 / (right - left)
         let sy = 2 / (top - bottom)
         let sz = 1 / (near - far)
@@ -140,12 +148,13 @@ extension float4x4 {
         let ty = (top + bottom) / (bottom - top)
         let tz = near / (near - far)
 
-        self.init(columns: (
-            SIMD4<Float>(sx, 0, 0, 0),
-            SIMD4<Float>(0, sy, 0, 0),
-            SIMD4<Float>(0, 0, sz, 0),
-            SIMD4<Float>(tx, ty, tz, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Float>(sx, 0, 0, 0),
+                SIMD4<Float>(0, sy, 0, 0),
+                SIMD4<Float>(0, 0, sz, 0),
+                SIMD4<Float>(tx, ty, tz, 1)
+            ))
     }
 }
 
@@ -248,7 +257,9 @@ public func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float {
 ///   - stop2: 変換先の範囲の上限。
 /// - Returns: リマップされた値。元の範囲がゼロ幅（`start1 == stop1`）の場合は
 ///   NaN/∞ の伝播を避けるため `start2` を返します。
-public func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float {
+public func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float)
+    -> Float
+{
     let range = stop1 - start1
     guard range != 0 else { return start2 }
     return start2 + (stop2 - start2) * ((value - start1) / range)
@@ -305,7 +316,9 @@ public func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float {
 ///   - y2: 2番目の点のy座標。
 ///   - z2: 2番目の点のz座標。
 /// - Returns: 2点間の距離。
-public func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float) -> Float {
+public func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float)
+    -> Float
+{
     let dx = x2 - x1
     let dy = y2 - y1
     let dz = z2 - z1
@@ -352,7 +365,7 @@ struct SeededRandomNumberGenerator: RandomNumberGenerator {
     }
 
     mutating func next() -> UInt64 {
-        state = state &* 6364136223846793005 &+ 1442695040888963407
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
         return state
     }
 }
@@ -457,10 +470,8 @@ public func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: F
 public func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
     let t2 = t * t
     let t3 = t2 * t
-    return 0.5 * ((2 * b) +
-                   (-a + c) * t +
-                   (2 * a - 5 * b + 4 * c - d) * t2 +
-                   (-a + 3 * b - 3 * c + d) * t3)
+    return 0.5
+        * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3)
 }
 
 /// `curveTightness` を反映した Catmull-Rom スプライン上の点を評価します。
@@ -478,7 +489,9 @@ public func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Floa
 ///   - s: タイトネス（0 が標準 Catmull-Rom）。
 ///   - t: スプライン上のパラメータ。通常 [0, 1] の範囲。
 /// - Returns: パラメータ `t` におけるスプライン上の値。
-func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, tightness s: Float, _ t: Float) -> Float {
+func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, tightness s: Float, _ t: Float)
+    -> Float
+{
     let t2 = t * t
     let t3 = t2 * t
     let k3 = (s - 1) / 2 * a + (s + 3) / 2 * b + (-3 - s) / 2 * c + (1 - s) / 2 * d
@@ -498,7 +511,6 @@ func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, tightness s: Flo
 /// - Returns: パラメータ `t` における Catmull-Rom スプラインの接線値。
 public func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
     let t2 = t * t
-    return 0.5 * ((-a + c) +
-                   (4 * a - 10 * b + 8 * c - 2 * d) * t +
-                   (-3 * a + 9 * b - 9 * c + 3 * d) * t2)
+    return 0.5
+        * ((-a + c) + (4 * a - 10 * b + 8 * c - 2 * d) * t + (-3 * a + 9 * b - 9 * c + 3 * d) * t2)
 }

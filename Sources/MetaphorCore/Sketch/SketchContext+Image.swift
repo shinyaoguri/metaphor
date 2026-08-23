@@ -232,8 +232,9 @@ extension SketchContext {
         desc.storageMode = .private
         desc.usage = [.shaderRead]
         guard let regionTexture = renderer.device.makeTexture(descriptor: desc),
-              let commandBuffer = renderer.commandQueue.makeCommandBuffer(),
-              let blit = commandBuffer.makeBlitCommandEncoder() else {
+            let commandBuffer = renderer.commandQueue.makeCommandBuffer(),
+            let blit = commandBuffer.makeBlitCommandEncoder()
+        else {
             metaphorWarning("copy: failed to allocate copy resources")
             return
         }
@@ -314,8 +315,9 @@ extension SketchContext {
         )
         // オフスクリーンでもカスタム 2D シェーダの time / mouse が効くようにする（#647）。
         graphics?.wireShaderInputs { [weak self] in
-            self?.shaderInputs() ?? Canvas2DShaderInputs(
-                time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0)
+            self?.shaderInputs()
+                ?? Canvas2DShaderInputs(
+                    time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0)
         }
         return graphics
     }
@@ -361,8 +363,11 @@ extension SketchContext {
     ///   - position: カメラの位置。`nil`（デフォルト）の場合は
     ///     ユーザー/システムの優先カメラを使用します。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
-    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice {
-        let capture = CaptureDevice(device: renderer.device, width: width, height: height, position: position)
+    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil)
+        -> CaptureDevice
+    {
+        let capture = CaptureDevice(
+            device: renderer.device, width: width, height: height, position: position)
         capture.start()
         return capture
     }
@@ -374,8 +379,11 @@ extension SketchContext {
     ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
     ///   - info: ``listCaptureDevices()`` で取得したデバイス情報。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
-    public func createCapture(width: Int = 1280, height: Int = 720, device info: CaptureDeviceInfo) -> CaptureDevice {
-        let capture = CaptureDevice(device: renderer.device, width: width, height: height, captureDevice: info)
+    public func createCapture(width: Int = 1280, height: Int = 720, device info: CaptureDeviceInfo)
+        -> CaptureDevice
+    {
+        let capture = CaptureDevice(
+            device: renderer.device, width: width, height: height, captureDevice: info)
         capture.start()
         return capture
     }
@@ -387,8 +395,11 @@ extension SketchContext {
     ///   - height: 要求するキャプチャ高さ（ピクセル単位、デフォルト 720）。
     ///   - deviceName: 選択するカメラの名前（大文字小文字を無視した完全一致優先、次に部分一致）。
     /// - Returns: 開始済みの `CaptureDevice` インスタンス。
-    public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice {
-        let capture = CaptureDevice(device: renderer.device, width: width, height: height, deviceName: deviceName)
+    public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String)
+        -> CaptureDevice
+    {
+        let capture = CaptureDevice(
+            device: renderer.device, width: width, height: height, deviceName: deviceName)
         capture.start()
         return capture
     }
@@ -615,7 +626,9 @@ extension SketchContext {
     ///   - path: 出力ファイルパス（nil の場合は `output/metaphor_<timestamp>.<拡張子>`）。
     ///     相対パスはプロジェクト直下から解決されます。
     ///   - config: 動画エクスポート設定。
-    public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
+    public func beginVideoRecord(
+        _ path: String? = nil, config: VideoExportConfig = VideoExportConfig()
+    ) {
         let actualPath = MetaphorOutputPaths.recording(
             path,
             fileExtension: config.format.fileExtension,

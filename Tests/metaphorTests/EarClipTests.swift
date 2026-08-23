@@ -27,7 +27,7 @@ struct EarClipTriangulationTests {
     @Test("convex pentagon produces 9 indices")
     func convexPentagon() {
         let polygon: [(Float, Float)] = [
-            (0.5, 0), (1, 0.4), (0.8, 1), (0.2, 1), (0, 0.4)
+            (0.5, 0), (1, 0.4), (0.8, 1), (0.2, 1), (0, 0.4),
         ]
         let indices = EarClipTriangulator.triangulate(polygon)
         #expect(indices.count == 9)
@@ -42,7 +42,7 @@ struct EarClipConcaveTests {
     @Test("concave arrow (L-shape) produces 12 indices")
     func concaveArrow() {
         let polygon: [(Float, Float)] = [
-            (0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)
+            (0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2),
         ]
         let indices = EarClipTriangulator.triangulate(polygon)
         #expect(indices.count == 12)
@@ -56,7 +56,7 @@ struct EarClipConcaveTests {
         let polygon: [(Float, Float)] = [
             (0.5, 0), (0.6, 0.35), (1, 0.35),
             (0.7, 0.55), (0.8, 0.9),
-            (0.5, 0.7), (0.2, 0.9), (0.3, 0.55)
+            (0.5, 0.7), (0.2, 0.9), (0.3, 0.55),
         ]
         let indices = EarClipTriangulator.triangulate(polygon)
         #expect(indices.count == 18)
@@ -90,7 +90,8 @@ private func pointInPolygon(_ p: (Float, Float), _ poly: [(Float, Float)]) -> Bo
         let a = poly[i]
         let b = poly[j]
         if (a.1 > p.1) != (b.1 > p.1),
-           p.0 < (b.0 - a.0) * (p.1 - a.1) / (b.1 - a.1) + a.0 {
+            p.0 < (b.0 - a.0) * (p.1 - a.1) / (b.1 - a.1) + a.0
+        {
             inside.toggle()
         }
         j = i
@@ -99,7 +100,9 @@ private func pointInPolygon(_ p: (Float, Float), _ poly: [(Float, Float)]) -> Bo
 }
 
 /// テスト用ヘルパー: 全三角形の重心がポリゴン内部にあるか検証。
-private func allCentroidsInside(_ verts: [(Float, Float)], _ indices: [Int], polygon: [(Float, Float)]) -> Bool {
+private func allCentroidsInside(
+    _ verts: [(Float, Float)], _ indices: [Int], polygon: [(Float, Float)]
+) -> Bool {
     for i in stride(from: 0, to: indices.count, by: 3) {
         let a = verts[indices[i]]
         let b = verts[indices[i + 1]]
@@ -129,7 +132,7 @@ struct EarClipWindingTests {
     func clockwiseConcaveLShape() {
         // CCW の L 字を反転した CW 入力。鏡映バグがあると三角形がポリゴン外にはみ出す。
         let cw: [(Float, Float)] = [
-            (0, 2), (1, 2), (1, 1), (2, 1), (2, 0), (0, 0)
+            (0, 2), (1, 2), (1, 1), (2, 1), (2, 0), (0, 0),
         ]
         let indices = EarClipTriangulator.triangulate(cw)
         #expect(indices.count == 12)
@@ -143,7 +146,7 @@ struct EarClipWindingTests {
         let ccw: [(Float, Float)] = [
             (0.5, 0), (0.6, 0.35), (1, 0.35),
             (0.7, 0.55), (0.8, 0.9),
-            (0.5, 0.7), (0.2, 0.9), (0.3, 0.55)
+            (0.5, 0.7), (0.2, 0.9), (0.3, 0.55),
         ]
         let cw = Array(ccw.reversed())
         let indices = EarClipTriangulator.triangulate(cw)
@@ -154,7 +157,7 @@ struct EarClipWindingTests {
     @Test("CCW and CW inputs produce equivalent fills")
     func windingEquivalence() {
         let ccw: [(Float, Float)] = [
-            (0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)
+            (0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2),
         ]
         let cw = Array(ccw.reversed())
         let indicesCCW = EarClipTriangulator.triangulate(ccw)
@@ -230,7 +233,7 @@ struct EarClipHoleTests {
         // 右側が開いた U 字の左腕に穴。ブリッジが外周と交差すると
         // 三角形が切り欠き部分（ポリゴン外）にはみ出す。
         let outer: [(Float, Float)] = [
-            (0, 0), (10, 0), (10, 3), (3, 3), (3, 7), (10, 7), (10, 10), (0, 10)
+            (0, 0), (10, 0), (10, 3), (3, 3), (3, 7), (10, 7), (10, 10), (0, 10),
         ]
         let hole: [(Float, Float)] = [(1, 4), (2, 4), (2, 6), (1, 6)]
         let (merged, indices) = EarClipTriangulator.triangulateWithHoles(

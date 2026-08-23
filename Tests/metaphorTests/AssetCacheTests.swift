@@ -64,7 +64,9 @@ struct AssetCacheTests {
         let context = try makeContext()
         let path = try writeTempPNG(name: "c")
         // "/dir/./c.png" と "/dir/c.png" は同一キーに正規化される
-        let dotted = (path as NSString).deletingLastPathComponent + "/./" + (path as NSString).lastPathComponent
+        let dotted =
+            (path as NSString).deletingLastPathComponent + "/./"
+            + (path as NSString).lastPathComponent
         let first = try context.loadImage(path)
         let second = try context.loadImage(dotted)
         #expect(first === second)

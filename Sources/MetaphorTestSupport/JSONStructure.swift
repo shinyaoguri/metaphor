@@ -36,8 +36,10 @@ public func assertStructurallyEqual(_ actual: Any, _ expected: Any, path: String
         let e = expected as! [String: Any]
         let aKeys = Set(a.keys)
         let eKeys = Set(e.keys)
-        #expect(aKeys == eKeys,
-                "\(path): キー集合が不一致 — encoder のみ=\(aKeys.subtracting(eKeys).sorted()) example のみ=\(eKeys.subtracting(aKeys).sorted())")
+        #expect(
+            aKeys == eKeys,
+            "\(path): キー集合が不一致 — encoder のみ=\(aKeys.subtracting(eKeys).sorted()) example のみ=\(eKeys.subtracting(aKeys).sorted())"
+        )
         for key in aKeys.intersection(eKeys).sorted() {
             try assertStructurallyEqual(a[key]!, e[key]!, path: "\(path).\(key)")
         }
@@ -64,7 +66,8 @@ public func loadContractExample(
         .deletingLastPathComponent()  // テストターゲット
         .deletingLastPathComponent()  // Tests
         .deletingLastPathComponent()  // repo root
-    let url = repoRoot
+    let url =
+        repoRoot
         .appendingPathComponent("contract/examples")
         .appendingPathComponent(name)
     let data = try Data(contentsOf: url)

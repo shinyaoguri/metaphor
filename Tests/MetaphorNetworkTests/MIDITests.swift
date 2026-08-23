@@ -126,7 +126,9 @@ struct MIDIEventListParsingTests {
             // タイムスタンプを変えて個別のパケットに分割させる
             packet = MIDIEventListAdd(listPtr, capacity, packet, MIDITimeStamp(k + 1), 1, &word)
         }
-        #expect(listPtr.pointee.numPackets > 1, "Test requires multiple packets to exercise packet iteration")
+        #expect(
+            listPtr.pointee.numPackets > 1,
+            "Test requires multiple packets to exercise packet iteration")
 
         let messages = MIDIManager.parseEventList(UnsafePointer(listPtr))
         #expect(messages.count == noteCount)
@@ -155,7 +157,8 @@ struct MIDIEventListParsingTests {
         _ = packet
 
         let messages = MIDIManager.parseEventList(UnsafePointer(listPtr))
-        #expect(messages.count == 1, "Only the real type-2 word should parse (got \(messages.count))")
+        #expect(
+            messages.count == 1, "Only the real type-2 word should parse (got \(messages.count))")
         #expect(messages.first?.status == 0x91)
         #expect(messages.first?.data1 == 0x3C)
         #expect(messages.first?.data2 == 0x40)
@@ -177,7 +180,8 @@ private func dataBytes(of word: UInt32) -> (data1: UInt8, data2: UInt8) {
 @Suite("MIDI 7-bit data bytes")
 struct MIDIDataByteRangeTests {
 
-    @Test("in-range data bytes pass through unchanged", arguments: [UInt8(0), 1, 64, 100, 126, 127])
+    @Test(
+        "in-range data bytes pass through unchanged", arguments: [UInt8(0), 1, 64, 100, 126, 127])
     func inRangeUnchanged(value: UInt8) {
         let word = MIDIManager.makeChannelVoiceWord(status: 0x90, data1: value, data2: value)
         let bytes = dataBytes(of: word)
@@ -218,7 +222,9 @@ struct MIDIDataByteRangeTests {
 
     /// data byte の clamp が status byte（上位ニブル + channel）と UMP の
     /// message type を巻き添えにしないこと。
-    @Test("status byte and UMP message type survive clamping", arguments: [UInt8(0x90), 0x80, 0xB0, 0x9F, 0xBF])
+    @Test(
+        "status byte and UMP message type survive clamping",
+        arguments: [UInt8(0x90), 0x80, 0xB0, 0x9F, 0xBF])
     func statusPreserved(status: UInt8) {
         let word = MIDIManager.makeChannelVoiceWord(status: status, data1: 255, data2: 255)
         #expect(UInt8((word >> 16) & 0xFF) == status)
@@ -229,7 +235,8 @@ struct MIDIDataByteRangeTests {
     /// data byte の clamp を入れても意味が変わらないこと。
     @Test("channel mask keeps wrapping as before")
     func channelMaskUnchanged() {
-        let word = MIDIManager.makeChannelVoiceWord(status: 0x90 | (UInt8(20) & 0x0F), data1: 60, data2: 100)
+        let word = MIDIManager.makeChannelVoiceWord(
+            status: 0x90 | (UInt8(20) & 0x0F), data1: 60, data2: 100)
         #expect(UInt8((word >> 16) & 0xFF) == 0x94, "channel 20 は 4 へ折り返す（従来どおり）")
     }
 

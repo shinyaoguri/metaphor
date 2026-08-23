@@ -94,44 +94,51 @@ final class SVGRecorder {
         if let corners {
             if corners.tl == corners.tr && corners.tr == corners.br && corners.br == corners.bl {
                 // 均一角丸は rect の rx で表現
-                append(Element(
+                append(
+                    Element(
+                        tag: "rect",
+                        attributes: [
+                            ("x", fmt(x)), ("y", fmt(y)),
+                            ("width", fmt(w)), ("height", fmt(h)),
+                            ("rx", fmt(min(corners.tl, min(w, h) / 2))),
+                        ],
+                        style: style, strokeOnly: false, clipID: activeClipID))
+            } else {
+                // 個別角丸は path で構築
+                append(
+                    Element(
+                        tag: "path",
+                        attributes: [
+                            ("d", roundedRectPath(x: x, y: y, w: w, h: h, corners: corners))
+                        ],
+                        style: style, strokeOnly: false, clipID: activeClipID))
+            }
+        } else {
+            append(
+                Element(
                     tag: "rect",
                     attributes: [
                         ("x", fmt(x)), ("y", fmt(y)),
                         ("width", fmt(w)), ("height", fmt(h)),
-                        ("rx", fmt(min(corners.tl, min(w, h) / 2))),
                     ],
                     style: style, strokeOnly: false, clipID: activeClipID))
-            } else {
-                // 個別角丸は path で構築
-                append(Element(
-                    tag: "path",
-                    attributes: [("d", roundedRectPath(x: x, y: y, w: w, h: h, corners: corners))],
-                    style: style, strokeOnly: false, clipID: activeClipID))
-            }
-        } else {
-            append(Element(
-                tag: "rect",
-                attributes: [
-                    ("x", fmt(x)), ("y", fmt(y)),
-                    ("width", fmt(w)), ("height", fmt(h)),
-                ],
-                style: style, strokeOnly: false, clipID: activeClipID))
         }
     }
 
     func recordEllipse(cx: Float, cy: Float, rx: Float, ry: Float, style: Style) {
-        append(Element(
-            tag: "ellipse",
-            attributes: [("cx", fmt(cx)), ("cy", fmt(cy)), ("rx", fmt(rx)), ("ry", fmt(ry))],
-            style: style, strokeOnly: false, clipID: activeClipID))
+        append(
+            Element(
+                tag: "ellipse",
+                attributes: [("cx", fmt(cx)), ("cy", fmt(cy)), ("rx", fmt(rx)), ("ry", fmt(ry))],
+                style: style, strokeOnly: false, clipID: activeClipID))
     }
 
     func recordLine(x1: Float, y1: Float, x2: Float, y2: Float, style: Style) {
-        append(Element(
-            tag: "line",
-            attributes: [("x1", fmt(x1)), ("y1", fmt(y1)), ("x2", fmt(x2)), ("y2", fmt(y2))],
-            style: style, strokeOnly: true, clipID: activeClipID))
+        append(
+            Element(
+                tag: "line",
+                attributes: [("x1", fmt(x1)), ("y1", fmt(y1)), ("x2", fmt(x2)), ("y2", fmt(y2))],
+                style: style, strokeOnly: true, clipID: activeClipID))
     }
 
     func recordPolygon(_ points: [(Float, Float)], closed: Bool, style: Style) {
@@ -141,9 +148,10 @@ final class SVGRecorder {
             d += "L" + point(p)
         }
         if closed { d += "Z" }
-        append(Element(
-            tag: "path", attributes: [("d", d)],
-            style: style, strokeOnly: !closed, clipID: activeClipID))
+        append(
+            Element(
+                tag: "path", attributes: [("d", d)],
+                style: style, strokeOnly: !closed, clipID: activeClipID))
     }
 
     func recordPoint(x: Float, y: Float, style: Style) {
@@ -152,10 +160,13 @@ final class SVGRecorder {
         var pointStyle = style
         pointStyle.fill = strokeColor
         pointStyle.stroke = nil
-        append(Element(
-            tag: "circle",
-            attributes: [("cx", fmt(x)), ("cy", fmt(y)), ("r", fmt(max(style.strokeWeight / 2, 0.5)))],
-            style: pointStyle, strokeOnly: false, clipID: activeClipID))
+        append(
+            Element(
+                tag: "circle",
+                attributes: [
+                    ("cx", fmt(x)), ("cy", fmt(y)), ("r", fmt(max(style.strokeWeight / 2, 0.5))),
+                ],
+                style: pointStyle, strokeOnly: false, clipID: activeClipID))
     }
 
     func recordArc(
@@ -174,7 +185,8 @@ final class SVGRecorder {
         let ey = cy + ry * sin(stop)
         let largeArc = abs(sweep) > Float.pi ? "1" : "0"
         let sweepFlag = sweep > 0 ? "1" : "0"
-        var d = "M\(fmt(sx)) \(fmt(sy))"
+        var d =
+            "M\(fmt(sx)) \(fmt(sy))"
             + "A\(fmt(rx)) \(fmt(ry)) 0 \(largeArc) \(sweepFlag) \(fmt(ex)) \(fmt(ey))"
         var strokeOnly = false
         switch mode {
@@ -188,33 +200,38 @@ final class SVGRecorder {
             if style.fill != nil && style.stroke != nil {
                 var fillStyle = style
                 fillStyle.stroke = nil
-                append(Element(
-                    tag: "path", attributes: [("d", d + "Z")],
-                    style: fillStyle, strokeOnly: false, clipID: activeClipID))
+                append(
+                    Element(
+                        tag: "path", attributes: [("d", d + "Z")],
+                        style: fillStyle, strokeOnly: false, clipID: activeClipID))
                 var strokeStyle = style
                 strokeStyle.fill = nil
-                append(Element(
-                    tag: "path", attributes: [("d", d)],
-                    style: strokeStyle, strokeOnly: true, clipID: activeClipID))
+                append(
+                    Element(
+                        tag: "path", attributes: [("d", d)],
+                        style: strokeStyle, strokeOnly: true, clipID: activeClipID))
                 return
             }
             strokeOnly = style.fill == nil
             if style.fill != nil { d += "Z" }
         }
-        append(Element(
-            tag: "path", attributes: [("d", d)],
-            style: style, strokeOnly: strokeOnly, clipID: activeClipID))
+        append(
+            Element(
+                tag: "path", attributes: [("d", d)],
+                style: style, strokeOnly: strokeOnly, clipID: activeClipID))
     }
 
     func recordBezier(
         x1: Float, y1: Float, cx1: Float, cy1: Float,
         cx2: Float, cy2: Float, x2: Float, y2: Float, style: Style
     ) {
-        let d = "M\(fmt(x1)) \(fmt(y1))"
+        let d =
+            "M\(fmt(x1)) \(fmt(y1))"
             + "C\(fmt(cx1)) \(fmt(cy1)) \(fmt(cx2)) \(fmt(cy2)) \(fmt(x2)) \(fmt(y2))"
-        append(Element(
-            tag: "path", attributes: [("d", d)],
-            style: style, strokeOnly: true, clipID: activeClipID))
+        append(
+            Element(
+                tag: "path", attributes: [("d", d)],
+                style: style, strokeOnly: true, clipID: activeClipID))
     }
 
     /// Catmull-Rom 曲線 1 区間（p1→p2、p0/p3 は制御点）を cubic bezier で出力します。
@@ -222,10 +239,13 @@ final class SVGRecorder {
         p0: (Float, Float), p1: (Float, Float), p2: (Float, Float), p3: (Float, Float),
         tightness: Float, style: Style
     ) {
-        let d = "M\(fmt(p1.0)) \(fmt(p1.1))" + catmullRomSegment(p0: p0, p1: p1, p2: p2, p3: p3, tightness: tightness)
-        append(Element(
-            tag: "path", attributes: [("d", d)],
-            style: style, strokeOnly: true, clipID: activeClipID))
+        let d =
+            "M\(fmt(p1.0)) \(fmt(p1.1))"
+            + catmullRomSegment(p0: p0, p1: p1, p2: p2, p3: p3, tightness: tightness)
+        append(
+            Element(
+                tag: "path", attributes: [("d", d)],
+                style: style, strokeOnly: true, clipID: activeClipID))
     }
 
     // MARK: - beginShape / endShape
@@ -243,7 +263,9 @@ final class SVGRecorder {
         appendShapeVertex(.vertex(x, y))
     }
 
-    func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float) {
+    func bezierVertex(
+        _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float
+    ) {
         appendShapeVertex(.bezierVertex(cx1, cy1, cx2, cy2, x, y))
     }
 
@@ -287,10 +309,11 @@ final class SVGRecorder {
             if !shapeContours.isEmpty {
                 attributes.append(("fill-rule", "evenodd"))
             }
-            append(Element(
-                tag: "path", attributes: attributes,
-                style: style, strokeOnly: !close && shapeContours.isEmpty && style.fill == nil,
-                clipID: activeClipID))
+            append(
+                Element(
+                    tag: "path", attributes: attributes,
+                    style: style, strokeOnly: !close && shapeContours.isEmpty && style.fill == nil,
+                    clipID: activeClipID))
         case .points:
             for case .vertex(let x, let y) in shapeVertices {
                 recordPoint(x: x, y: y, style: style)
@@ -484,7 +507,8 @@ final class SVGRecorder {
         let (c, d) = (m.columns.1.x, m.columns.1.y)
         let (e, f) = (m.columns.2.x, m.columns.2.y)
         if a == 1, b == 0, c == 0, d == 1, e == 0, f == 0 { return "" }
-        return #" transform="matrix(\#(fmt(a)) \#(fmt(b)) \#(fmt(c)) \#(fmt(d)) \#(fmt(e)) \#(fmt(f)))""#
+        return
+            #" transform="matrix(\#(fmt(a)) \#(fmt(b)) \#(fmt(c)) \#(fmt(d)) \#(fmt(e)) \#(fmt(f)))""#
     }
 
     private func rgb(_ color: SIMD4<Float>) -> String {
@@ -516,8 +540,10 @@ final class SVGRecorder {
         corners: (tl: Float, tr: Float, br: Float, bl: Float)
     ) -> String {
         let maxR = min(w, h) / 2
-        let tl = min(corners.tl, maxR), tr = min(corners.tr, maxR)
-        let br = min(corners.br, maxR), bl = min(corners.bl, maxR)
+        let tl = min(corners.tl, maxR)
+        let tr = min(corners.tr, maxR)
+        let br = min(corners.br, maxR)
+        let bl = min(corners.bl, maxR)
         var d = "M\(fmt(x + tl)) \(fmt(y))"
         d += "L\(fmt(x + w - tr)) \(fmt(y))"
         if tr > 0 { d += "A\(fmt(tr)) \(fmt(tr)) 0 0 1 \(fmt(x + w)) \(fmt(y + tr))" }

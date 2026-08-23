@@ -77,16 +77,18 @@ struct RestoredSketchState {
     /// 呼び出し側は通常起動（初期状態）へフォールバックします。
     static func decode(from data: Data) -> RestoredSketchState? {
         guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dict = object as? [String: Any],
-              let schemaVersion = dict["schemaVersion"] as? Int,
-              schemaVersion == SketchStateFile.currentSchemaVersion else {
+            let dict = object as? [String: Any],
+            let schemaVersion = dict["schemaVersion"] as? Int,
+            schemaVersion == SketchStateFile.currentSchemaVersion
+        else {
             return nil
         }
         let runtime = dict["runtime"] as? [String: Any]
         var payload: Data?
         if let user = dict["user"] as? [String: Any],
-           let encoding = user["encoding"] as? String,
-           let encoded = user["data"] as? String {
+            let encoding = user["encoding"] as? String,
+            let encoded = user["data"] as? String
+        {
             // 未知のエンコーディングは「ペイロード無し」として扱う（時計だけは復元できる）。
             if encoding == "base64" {
                 payload = Data(base64Encoded: encoded)
@@ -118,8 +120,9 @@ struct SketchStateSaveRequest {
 
     static func decode(from data: Data) -> SketchStateSaveRequest? {
         guard let object = try? JSONSerialization.jsonObject(with: data),
-              let dict = object as? [String: Any],
-              let id = dict["id"] as? String else {
+            let dict = object as? [String: Any],
+            let id = dict["id"] as? String
+        else {
             return nil
         }
         return SketchStateSaveRequest(id: id)

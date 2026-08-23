@@ -37,10 +37,11 @@ private final class StatelessSketch: Sketch {}
 struct StatePluginSaveTests {
 
     private func makePlugin(in dir: URL) -> StatePlugin {
-        StatePlugin(config: SketchStateConfig(
-            directory: dir.path,
-            saveRequestFilePath: dir.appendingPathComponent("save-request.json").path
-        ))
+        StatePlugin(
+            config: SketchStateConfig(
+                directory: dir.path,
+                saveRequestFilePath: dir.appendingPathComponent("save-request.json").path
+            ))
     }
 
     private func writeSaveRequest(id: String, to dir: URL) throws {
@@ -103,9 +104,10 @@ struct StatePluginSaveTests {
 
             for tick in 0..<10 { plugin.tick(elapsedSeconds: Double(tick)) }
 
-            #expect(FileManager.default.fileExists(
-                atPath: dir.appendingPathComponent("state.json").path
-            ) == false)
+            #expect(
+                FileManager.default.fileExists(
+                    atPath: dir.appendingPathComponent("state.json").path
+                ) == false)
         }
     }
 
@@ -139,9 +141,10 @@ struct StatePluginSaveTests {
             let requestURL = dir.appendingPathComponent("save-request.json")
             try Data("{ not json".utf8).write(to: requestURL)
             plugin.tick(elapsedSeconds: 1)
-            #expect(FileManager.default.fileExists(
-                atPath: dir.appendingPathComponent("state.json").path
-            ) == false)
+            #expect(
+                FileManager.default.fileExists(
+                    atPath: dir.appendingPathComponent("state.json").path
+                ) == false)
 
             try writeSaveRequest(id: "after-garbage", to: dir)
             plugin.tick(elapsedSeconds: 2)
@@ -154,9 +157,10 @@ struct StatePluginSaveTests {
         #expect(StatePlugin.shouldAutoRegister(env: [:]) == false)
         #expect(StatePlugin.shouldAutoRegister(env: ["METAPHOR_VIEWER": "1"]) == true)
         #expect(StatePlugin.shouldAutoRegister(env: ["METAPHOR_STATE": "1"]) == true)
-        #expect(StatePlugin.shouldAutoRegister(
-            env: ["METAPHOR_VIEWER": "1", "METAPHOR_STATE": "0"]
-        ) == false)
+        #expect(
+            StatePlugin.shouldAutoRegister(
+                env: ["METAPHOR_VIEWER": "1", "METAPHOR_STATE": "0"]
+            ) == false)
     }
 }
 
@@ -215,7 +219,8 @@ struct StateRestoreTests {
 
             let future = dir.appendingPathComponent("future.json")
             try writeState(
-                ["schemaVersion": 99, "runtime": ["frameCount": 1, "elapsedSeconds": 1.0]], to: future
+                ["schemaVersion": 99, "runtime": ["frameCount": 1, "elapsedSeconds": 1.0]],
+                to: future
             )
             #expect(SketchStateRestore.load(env: ["METAPHOR_RESTORE_STATE": future.path]) == nil)
         }
@@ -225,22 +230,26 @@ struct StateRestoreTests {
     func unknownEncodingKeepsClock() throws {
         try TempFileHelper.withTemporaryDirectory { dir in
             let unknown = dir.appendingPathComponent("unknown-encoding.json")
-            try writeState([
-                "schemaVersion": 1,
-                "runtime": ["frameCount": 12, "elapsedSeconds": 0.5],
-                "user": ["encoding": "protobuf", "data": "AAAA"],
-            ], to: unknown)
-            let a = try #require(SketchStateRestore.load(env: ["METAPHOR_RESTORE_STATE": unknown.path]))
+            try writeState(
+                [
+                    "schemaVersion": 1,
+                    "runtime": ["frameCount": 12, "elapsedSeconds": 0.5],
+                    "user": ["encoding": "protobuf", "data": "AAAA"],
+                ], to: unknown)
+            let a = try #require(
+                SketchStateRestore.load(env: ["METAPHOR_RESTORE_STATE": unknown.path]))
             #expect(a.payload == nil)
             #expect(a.frameCount == 12)
 
             let badBase64 = dir.appendingPathComponent("bad-base64.json")
-            try writeState([
-                "schemaVersion": 1,
-                "runtime": ["frameCount": 7, "elapsedSeconds": 0.25],
-                "user": ["encoding": "base64", "data": "!!! not base64 !!!"],
-            ], to: badBase64)
-            let b = try #require(SketchStateRestore.load(env: ["METAPHOR_RESTORE_STATE": badBase64.path]))
+            try writeState(
+                [
+                    "schemaVersion": 1,
+                    "runtime": ["frameCount": 7, "elapsedSeconds": 0.25],
+                    "user": ["encoding": "base64", "data": "!!! not base64 !!!"],
+                ], to: badBase64)
+            let b = try #require(
+                SketchStateRestore.load(env: ["METAPHOR_RESTORE_STATE": badBase64.path]))
             #expect(b.payload == nil)
             #expect(b.frameCount == 7)
         }
@@ -286,10 +295,11 @@ struct StateRoundTripTests {
             firstContext.frameCount = 240
             first.payload = StatefulSketch.Payload(particles: [7, 8], label: "before reload")
 
-            let plugin = StatePlugin(config: SketchStateConfig(
-                directory: dir.path,
-                saveRequestFilePath: dir.appendingPathComponent("save-request.json").path
-            ))
+            let plugin = StatePlugin(
+                config: SketchStateConfig(
+                    directory: dir.path,
+                    saveRequestFilePath: dir.appendingPathComponent("save-request.json").path
+                ))
             plugin.onAttach(sketch: first)
             try JSONSerialization.data(withJSONObject: ["id": "reload-1"])
                 .write(to: dir.appendingPathComponent("save-request.json"))
@@ -305,7 +315,8 @@ struct StateRoundTripTests {
                 config: SketchConfig(preserveClock: true), env: env
             )
 
-            #expect(second.payload == StatefulSketch.Payload(particles: [7, 8], label: "before reload"))
+            #expect(
+                second.payload == StatefulSketch.Payload(particles: [7, 8], label: "before reload"))
             #expect(second.restoreCallCount == 1)
             // preserveClock: 時計も引き継ぐ。
             #expect(secondContext.frameCount == 240)

@@ -86,14 +86,14 @@ struct ColorHexStringTests {
     @Test(
         "桁数が合っていても 16 進数字でなければ nil",
         arguments: [
-            "#GGGGGG",       // 16 進の範囲外
-            "+FFFFF",        // UInt32(_:radix:) が受ける先頭の符号（6 文字なので桁数だけでは通る）
+            "#GGGGGG",  // 16 進の範囲外
+            "+FFFFF",  // UInt32(_:radix:) が受ける先頭の符号（6 文字なので桁数だけでは通る）
             "-FFFFF",
-            " FFFFF",        // 空白
-            "ＦＦＦＦＦＦ",    // 全角（isHexDigit は true になるが ASCII ではない）
-            "0x1234",        // 0x プレフィックス付き
-            "FF FFFF",       // 途中の空白（7 文字）
-            "not a color"
+            " FFFFF",  // 空白
+            "ＦＦＦＦＦＦ",  // 全角（isHexDigit は true になるが ASCII ではない）
+            "0x1234",  // 0x プレフィックス付き
+            "FF FFFF",  // 途中の空白（7 文字）
+            "not a color",
         ]
     )
     func nonHexDigitsAreNil(spelling: String) {

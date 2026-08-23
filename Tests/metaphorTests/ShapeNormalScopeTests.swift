@@ -42,14 +42,15 @@ struct ShapeNormalScopeTests {
     func retainedNormalPersists() {
         let s = makeShape()
         s.beginShape(.triangles)
-        s.normal(1, 0, 0)   // 1 回だけ
+        s.normal(1, 0, 0)  // 1 回だけ
         for p in Self.triangle { s.vertex(p.x, p.y, p.z) }
         s.endShape()
 
         #expect(s.vertices3D.count == 3)
         for (i, v) in s.vertices3D.enumerated() {
-            #expect(v.normal == SIMD3<Float>(1, 0, 0),
-                    "頂点 \(i) にも (1, 0, 0) が効く: \(v.normal) — #876")
+            #expect(
+                v.normal == SIMD3<Float>(1, 0, 0),
+                "頂点 \(i) にも (1, 0, 0) が効く: \(v.normal) — #876")
         }
     }
 
@@ -60,7 +61,7 @@ struct ShapeNormalScopeTests {
         s.normal(1, 0, 0)
         s.vertex(0, 0, 0)
         s.vertex(1, 0, 0)
-        s.normal(0, 0, 1)   // ここで差し替え
+        s.normal(0, 0, 1)  // ここで差し替え
         s.vertex(0, 1, 0)
         s.vertex(1, 1, 0)
         s.endShape()
@@ -125,8 +126,9 @@ struct ShapeNormalScopeTests {
         // 記録段階では既定値が入っている。
         #expect(s.usedExplicitNormal3D == false, "2 回目のシェイプは normal() 未使用 — #876")
         for (i, v) in s.vertices3D.enumerated() {
-            #expect(v.normal == SIMD3<Float>(0, 1, 0),
-                    "頂点 \(i) は前のシェイプの (1, 0, 0) を継がない: \(v.normal) — #876")
+            #expect(
+                v.normal == SIMD3<Float>(0, 1, 0),
+                "頂点 \(i) は前のシェイプの (1, 0, 0) を継がない: \(v.normal) — #876")
         }
     }
 
@@ -138,12 +140,13 @@ struct ShapeNormalScopeTests {
         s.beginShape(.triangles)
         s.normal(1, 0, 0)
         for p in Self.triangle { s.vertex(p.x, p.y, p.z) }
-        s.normal(0, 0, 1)   // 頂点はもう積まれない
+        s.normal(0, 0, 1)  // 頂点はもう積まれない
         s.endShape()
 
         for (i, v) in s.vertices3D.enumerated() {
-            #expect(v.normal == SIMD3<Float>(1, 0, 0),
-                    "頂点 \(i) は後から呼んだ (0, 0, 1) に書き換わらない: \(v.normal) — #876")
+            #expect(
+                v.normal == SIMD3<Float>(1, 0, 0),
+                "頂点 \(i) は後から呼んだ (0, 0, 1) に書き換わらない: \(v.normal) — #876")
         }
     }
 
@@ -165,7 +168,8 @@ struct ShapeNormalScopeTests {
 
         let retained = s.vertices3D.map(\.normal)
         let immediate = canvas.shapeVertices3D.map(\.normal)
-        #expect(retained == immediate,
-                "retained=\(retained) immediate=\(immediate) — #876")
+        #expect(
+            retained == immediate,
+            "retained=\(retained) immediate=\(immediate) — #876")
     }
 }

@@ -110,7 +110,8 @@ public struct GoldenImage: Sendable, Equatable {
         for i in stride(from: 0, to: rgba.count, by: 4) {
             var pixelMax = 0
             for c in 0..<4 {
-                let d = Int(rgba[i + c]) > Int(other.rgba[i + c])
+                let d =
+                    Int(rgba[i + c]) > Int(other.rgba[i + c])
                     ? Int(rgba[i + c]) - Int(other.rgba[i + c])
                     : Int(other.rgba[i + c]) - Int(rgba[i + c])
                 sumDiff += d
@@ -177,26 +178,28 @@ public struct GoldenImage: Sendable, Equatable {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue)
         guard let provider = CGDataProvider(data: Data(rgba) as CFData),
-              let cgImage = CGImage(
-                  width: width,
-                  height: height,
-                  bitsPerComponent: 8,
-                  bitsPerPixel: 32,
-                  bytesPerRow: width * 4,
-                  space: colorSpace,
-                  bitmapInfo: bitmapInfo,
-                  provider: provider,
-                  decode: nil,
-                  shouldInterpolate: false,
-                  intent: .defaultIntent
-              )
+            let cgImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: colorSpace,
+                bitmapInfo: bitmapInfo,
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+            )
         else {
             throw GoldenImageError.pngEncodingFailed
         }
         let data = NSMutableData()
-        guard let dest = CGImageDestinationCreateWithData(
-            data, UTType.png.identifier as CFString, 1, nil
-        ) else {
+        guard
+            let dest = CGImageDestinationCreateWithData(
+                data, UTType.png.identifier as CFString, 1, nil
+            )
+        else {
             throw GoldenImageError.pngEncodingFailed
         }
         CGImageDestinationAddImage(dest, cgImage, nil)
@@ -224,7 +227,7 @@ public struct GoldenImage: Sendable, Equatable {
             throw GoldenImageError.fileReadFailed(url: url, detail: error.localizedDescription)
         }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil)
+            let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
             throw GoldenImageError.pngDecodingFailed(url)
         }
@@ -241,8 +244,9 @@ public struct GoldenImage: Sendable, Equatable {
     /// 形が合わなければ `nil`（呼び出し側が `CGContext` 経由へ落ちる）。
     private static func straightSamples(of image: CGImage) -> [UInt8]? {
         guard image.bitsPerComponent == 8, image.bitsPerPixel == 32,
-              image.alphaInfo == .last,
-              let data = image.dataProvider?.data as Data? else { return nil }
+            image.alphaInfo == .last,
+            let data = image.dataProvider?.data as Data?
+        else { return nil }
         let w = image.width
         let h = image.height
         let stride = image.bytesPerRow
@@ -269,15 +273,17 @@ public struct GoldenImage: Sendable, Equatable {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
         let ok = bytes.withUnsafeMutableBytes { buf -> Bool in
-            guard let ctx = CGContext(
-                data: buf.baseAddress,
-                width: w,
-                height: h,
-                bitsPerComponent: 8,
-                bytesPerRow: w * 4,
-                space: colorSpace,
-                bitmapInfo: bitmapInfo.rawValue
-            ) else { return false }
+            guard
+                let ctx = CGContext(
+                    data: buf.baseAddress,
+                    width: w,
+                    height: h,
+                    bitsPerComponent: 8,
+                    bytesPerRow: w * 4,
+                    space: colorSpace,
+                    bitmapInfo: bitmapInfo.rawValue
+                )
+            else { return false }
             ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
             return true
         }
@@ -340,7 +346,7 @@ public struct GoldenImage: Sendable, Equatable {
             throw GoldenImageError.stagingTextureCreationFailed
         }
         guard let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder()
+            let blit = cb.makeBlitCommandEncoder()
         else {
             throw GoldenImageError.stagingTextureCreationFailed
         }
@@ -462,7 +468,8 @@ public enum GoldenImageStore {
     /// `.build/golden-failures`（CI はここを artifact としてアップロードする）。
     public static var failureArtifactDirectory: URL {
         if let override = ProcessInfo.processInfo.environment["METAPHOR_GOLDEN_ARTIFACT_DIR"],
-           !override.isEmpty {
+            !override.isEmpty
+        {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
         return URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)

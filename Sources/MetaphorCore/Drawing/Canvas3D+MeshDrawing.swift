@@ -17,20 +17,21 @@ extension Canvas3D {
         if shouldRecordMainPass && !isReplaying {
             // 2D の保留バッチを先に確定し、その seq を「この 3D 記録より前」に固定する（宿題①）。
             flushPending2D?()
-            recordedDrawCalls.append(DrawCall3D(
-                mesh: mesh,
-                transform: currentTransform,
-                fillColor: fillColor,
-                material: currentMaterial,
-                customMaterial: currentCustomMaterial,
-                texture: currentTexture,
-                isTextured: isTextured,
-                hasFill: hasFill,
-                hasStroke: hasStroke,
-                strokeColor: strokeColor,
-                seq: seqProvider?() ?? 0,
-                stateSnapshot: snapshotForRecording()
-            ))
+            recordedDrawCalls.append(
+                DrawCall3D(
+                    mesh: mesh,
+                    transform: currentTransform,
+                    fillColor: fillColor,
+                    material: currentMaterial,
+                    customMaterial: currentCustomMaterial,
+                    texture: currentTexture,
+                    isTextured: isTextured,
+                    hasFill: hasFill,
+                    hasStroke: hasStroke,
+                    strokeColor: strokeColor,
+                    seq: seqProvider?() ?? 0,
+                    stateSnapshot: snapshotForRecording()
+                ))
             return
         }
 
@@ -127,20 +128,21 @@ extension Canvas3D {
             let seq = seqProvider?() ?? 0
             recordedDrawCalls.reserveCapacity(recordedDrawCalls.count + transforms.count)
             for (i, local) in transforms.enumerated() {
-                recordedDrawCalls.append(DrawCall3D(
-                    mesh: mesh,
-                    transform: baseTransform * local,
-                    fillColor: color(i),
-                    material: currentMaterial,
-                    customMaterial: currentCustomMaterial,
-                    texture: currentTexture,
-                    isTextured: isTextured,
-                    hasFill: hasFill,
-                    hasStroke: hasStroke,
-                    strokeColor: strokeColor,
-                    seq: seq,
-                    stateSnapshot: snapshot
-                ))
+                recordedDrawCalls.append(
+                    DrawCall3D(
+                        mesh: mesh,
+                        transform: baseTransform * local,
+                        fillColor: color(i),
+                        material: currentMaterial,
+                        customMaterial: currentCustomMaterial,
+                        texture: currentTexture,
+                        isTextured: isTextured,
+                        hasFill: hasFill,
+                        hasStroke: hasStroke,
+                        strokeColor: strokeColor,
+                        seq: seq,
+                        stateSnapshot: snapshot
+                    ))
             }
             return
         }
@@ -212,8 +214,9 @@ extension Canvas3D {
     /// 蓄積されたインスタンスを単一のインスタンス描画コールとしてフラッシュします。
     func flushInstanceBatch() {
         guard let encoder = encoder,
-              instanceBatcher.instanceCount > 0,
-              let mesh = instanceBatcher.currentMesh else { return }
+            instanceBatcher.instanceCount > 0,
+            let mesh = instanceBatcher.currentMesh
+        else { return }
 
         ensureSkyboxDrawn()
 
@@ -223,7 +226,8 @@ extension Canvas3D {
 
         // カスタムマテリアルはバッチへ入らない（drawMesh がイミディエイトへ落とす #717）
         // ので、パイプラインは常に組み込みのインスタンス版
-        encoder.setRenderPipelineState(isTextured ? instancedTexturedPipelineState : instancedPipelineState)
+        encoder.setRenderPipelineState(
+            isTextured ? instancedTexturedPipelineState : instancedPipelineState)
 
         if let depthState = depthState {
             encoder.setDepthStencilState(depthState)
@@ -239,7 +243,8 @@ extension Canvas3D {
         }
 
         // インスタンスバッファを buffer(6) に設定
-        encoder.setVertexBuffer(instanceBatcher.currentBuffer, offset: instanceBatcher.currentBufferOffset, index: 6)
+        encoder.setVertexBuffer(
+            instanceBatcher.currentBuffer, offset: instanceBatcher.currentBufferOffset, index: 6)
 
         // --- 塗りつぶしパス ---
         if batchHasFill {
@@ -250,8 +255,10 @@ extension Canvas3D {
                 lightCount: UInt32(lightArray.count),
                 hasTexture: isTextured ? 1 : 0
             )
-            encoder.setVertexBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &sceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
 
             // ライト
             if lightArray.isEmpty {
@@ -259,7 +266,9 @@ extension Canvas3D {
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
             } else {
                 lightArray.withUnsafeBufferPointer { ptr in
-                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                    encoder.setFragmentBytes(
+                        ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2
+                    )
                 }
             }
 
@@ -312,8 +321,10 @@ extension Canvas3D {
                 lightCount: 0,
                 hasTexture: 0
             )
-            encoder.setVertexBytes(&wireSceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&wireSceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &wireSceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &wireSceneUniforms, length: MemoryLayout<InstancedSceneUniforms>.stride, index: 1)
 
             var dummy = Light3D.zero
             encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -357,7 +368,10 @@ extension Canvas3D {
         let isTextured = currentTexture != nil && mesh.hasUVs
 
         if let customMat = currentCustomMaterial,
-           let customPipeline = getCustomPipeline(fragmentFunction: customMat.fragmentFunction, isTextured: isTextured, customVertexFunction: customMat.vertexFunction) {
+            let customPipeline = getCustomPipeline(
+                fragmentFunction: customMat.fragmentFunction, isTextured: isTextured,
+                customVertexFunction: customMat.vertexFunction)
+        {
             encoder.setRenderPipelineState(customPipeline)
         } else {
             encoder.setRenderPipelineState(isTextured ? texturedPipelineState : pipelineState)
@@ -390,22 +404,28 @@ extension Canvas3D {
                 hasTexture: isTextured ? 1 : 0
             )
 
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             if lightArray.isEmpty {
                 var dummy = Light3D.zero
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
             } else {
                 lightArray.withUnsafeBufferPointer { ptr in
-                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                    encoder.setFragmentBytes(
+                        ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2
+                    )
                 }
             }
 
             var mat = currentMaterial
             encoder.setFragmentBytes(&mat, length: MemoryLayout<Material3D>.stride, index: 3)
 
-            if let customMat = currentCustomMaterial, var params = customMat.parameters, !params.isEmpty {
+            if let customMat = currentCustomMaterial, var params = customMat.parameters,
+                !params.isEmpty
+            {
                 encoder.setFragmentBytes(&params, length: params.count, index: 4)
             }
 
@@ -448,8 +468,10 @@ extension Canvas3D {
             // 頂点カラーを無視して stroke 色だけで描く（#429）
             encoder.setRenderPipelineState(wirePipelineState)
             encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
-            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             var dummy = Light3D.zero
             encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -486,7 +508,9 @@ extension Canvas3D {
     }
 
     // キャッシュ済みカスタムシェーダーパイプラインを取得または生成
-    private func getCustomPipeline(fragmentFunction: MTLFunction, isTextured: Bool, customVertexFunction: MTLFunction? = nil) -> MTLRenderPipelineState? {
+    private func getCustomPipeline(
+        fragmentFunction: MTLFunction, isTextured: Bool, customVertexFunction: MTLFunction? = nil
+    ) -> MTLRenderPipelineState? {
         let vtxName = customVertexFunction?.name ?? "default"
         let cacheKey = "\(fragmentFunction.name)_\(vtxName)_\(isTextured)_\(sampleCount)"
         if var cached = customPipelineCache[cacheKey] {
@@ -515,20 +539,24 @@ extension Canvas3D {
             layout = .positionNormalColor
         }
 
-        guard let pipeline = try? PipelineFactory(device: device)
-            .vertex(vertexFn)
-            .fragment(fragmentFunction)
-            .vertexLayout(layout)
-            .blending(.alpha)
-            .sampleCount(sampleCount)
-            .build()
+        guard
+            let pipeline = try? PipelineFactory(device: device)
+                .vertex(vertexFn)
+                .fragment(fragmentFunction)
+                .vertexLayout(layout)
+                .blending(.alpha)
+                .sampleCount(sampleCount)
+                .build()
         else {
             return nil
         }
 
-        customPipelineCache[cacheKey] = CachedPipeline(pipeline: pipeline, lastUsedFrame: meshCacheFrameCounter)
+        customPipelineCache[cacheKey] = CachedPipeline(
+            pipeline: pipeline, lastUsedFrame: meshCacheFrameCounter)
         if customPipelineCache.count > 32 {
-            let sorted = customPipelineCache.sorted { $0.value.lastUsedFrame < $1.value.lastUsedFrame }
+            let sorted = customPipelineCache.sorted {
+                $0.value.lastUsedFrame < $1.value.lastUsedFrame
+            }
             let removeCount = customPipelineCache.count - 16
             for (key, _) in sorted.prefix(removeCount) {
                 customPipelineCache.removeValue(forKey: key)

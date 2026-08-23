@@ -39,7 +39,8 @@ public enum VertexLayout {
             descriptor.attributes[1].format = .float4
             descriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
             descriptor.attributes[1].bufferIndex = 0
-            descriptor.layouts[0].stride = MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride =
+                MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
 
         case .positionNormalColor:
             descriptor.attributes[0].format = .float3
@@ -51,7 +52,8 @@ public enum VertexLayout {
             descriptor.attributes[2].format = .float4
             descriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride * 2
             descriptor.attributes[2].bufferIndex = 0
-            descriptor.layouts[0].stride = MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride =
+                MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
 
         case .positionNormalUV:
             descriptor.attributes[0].format = .float3
@@ -73,19 +75,21 @@ public enum VertexLayout {
             descriptor.attributes[1].format = .float4
             descriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.stride
             descriptor.attributes[1].bufferIndex = 0
-            descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride =
+                MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
 
         case .position2DTexCoordColor:
-            descriptor.attributes[0].format = .float2   // 位置
+            descriptor.attributes[0].format = .float2  // 位置
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
-            descriptor.attributes[1].format = .float2   // テクスチャ座標
+            descriptor.attributes[1].format = .float2  // テクスチャ座標
             descriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.stride
             descriptor.attributes[1].bufferIndex = 0
-            descriptor.attributes[2].format = .float4   // カラー (ティント)
+            descriptor.attributes[2].format = .float4  // カラー (ティント)
             descriptor.attributes[2].offset = MemoryLayout<SIMD2<Float>>.stride * 2
             descriptor.attributes[2].bufferIndex = 0
-            descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride =
+                MemoryLayout<SIMD2<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
 
         case .position2DOnly:
             descriptor.attributes[0].format = .float2

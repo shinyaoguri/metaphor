@@ -413,13 +413,15 @@ public final class AudioAnalyzer {
     /// 「許可ダイアログが出ないまま無音で死ぬ」状態を一度だけ報告します。
     private func warnIfPermissionDialogWillNeverAppear() {
         guard let startedAt else { return }
-        guard Self.shouldWarnAboutPendingPermission(
-            status: authorizationStatus,
-            isRunning: isRunning,
-            hasDeliveredSamples: hasDeliveredSamples,
-            elapsed: CACurrentMediaTime() - startedAt,
-            alreadyWarned: didWarnAboutPendingPermission
-        ) else { return }
+        guard
+            Self.shouldWarnAboutPendingPermission(
+                status: authorizationStatus,
+                isRunning: isRunning,
+                hasDeliveredSamples: hasDeliveredSamples,
+                elapsed: CACurrentMediaTime() - startedAt,
+                alreadyWarned: didWarnAboutPendingPermission
+            )
+        else { return }
         didWarnAboutPendingPermission = true
         audioAlert(
             "Microphone permission is still 'notDetermined' and no samples have arrived "
@@ -506,13 +508,13 @@ public final class AudioAnalyzer {
         switch index {
         case 0:
             start = 0
-            end = bins / 8           // 低域: 0 〜 sampleRate/16（44.1 kHz で 〜2.8 kHz）
+            end = bins / 8  // 低域: 0 〜 sampleRate/16（44.1 kHz で 〜2.8 kHz）
         case 1:
             start = bins / 8
-            end = bins / 2           // 中域: sampleRate/16 〜 sampleRate/4（44.1 kHz で 2.8〜11 kHz）
+            end = bins / 2  // 中域: sampleRate/16 〜 sampleRate/4（44.1 kHz で 2.8〜11 kHz）
         case 2:
             start = bins / 2
-            end = bins               // 高域: sampleRate/4 〜 sampleRate/2（44.1 kHz で 11〜22 kHz）
+            end = bins  // 高域: sampleRate/4 〜 sampleRate/2（44.1 kHz で 11〜22 kHz）
         default:
             return 0
         }
@@ -588,10 +590,12 @@ public final class AudioAnalyzer {
     /// `spectrum` と ``band(_:)`` は正常に動き続けるため、黙って 0 を返すと
     /// 「その帯域にエネルギーが無い」ケースと区別が付かない（Issue #783）。
     private func warnAboutMissingSampleRate() {
-        guard Self.shouldWarnAboutMissingSampleRate(
-            resolvedRate: resolvedSampleRate(),
-            alreadyWarned: didWarnAboutMissingSampleRate
-        ) else { return }
+        guard
+            Self.shouldWarnAboutMissingSampleRate(
+                resolvedRate: resolvedSampleRate(),
+                alreadyWarned: didWarnAboutMissingSampleRate
+            )
+        else { return }
         didWarnAboutMissingSampleRate = true
         debugWarning(
             "bandEnergy(lowFreq:highFreq:) returned 0 because the sample rate is unknown — "
@@ -670,7 +674,8 @@ public final class AudioAnalyzer {
     // MARK: - プライベート: 構成変化
 
     private func handleConfigurationChange() {
-        debugWarning("Audio engine configuration changed (device disconnected or sample rate changed?)")
+        debugWarning(
+            "Audio engine configuration changed (device disconnected or sample rate changed?)")
         onConfigurationChange?()
     }
 }

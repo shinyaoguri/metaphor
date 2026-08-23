@@ -26,10 +26,10 @@ struct MLTextureConverterTests {
         // Fill with solid red (BGRA: 0, 0, 255, 255)
         var pixels = [UInt8](repeating: 0, count: 4 * 4 * 4)
         for i in stride(from: 0, to: pixels.count, by: 4) {
-            pixels[i] = 0       // B
-            pixels[i + 1] = 0   // G
-            pixels[i + 2] = 255 // R
-            pixels[i + 3] = 255 // A
+            pixels[i] = 0  // B
+            pixels[i + 1] = 0  // G
+            pixels[i + 2] = 255  // R
+            pixels[i + 3] = 255  // A
         }
         texture.replace(
             region: MTLRegionMake2D(0, 0, 4, 4),
@@ -56,9 +56,10 @@ struct MLTextureConverterTests {
         var pixelBuffer: CVPixelBuffer?
         let attrs: [String: Any] = [
             kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:],
         ]
-        CVPixelBufferCreate(nil, 8, 8, kCVPixelFormatType_32BGRA, attrs as CFDictionary, &pixelBuffer)
+        CVPixelBufferCreate(
+            nil, 8, 8, kCVPixelFormatType_32BGRA, attrs as CFDictionary, &pixelBuffer)
         #expect(pixelBuffer != nil)
 
         if let pb = pixelBuffer {
@@ -79,12 +80,14 @@ struct MLTextureConverterTests {
         let width = 4
         let height = 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: nil, width: width, height: height,
-            bitsPerComponent: 8, bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
+        guard
+            let context = CGContext(
+                data: nil, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else {
             Issue.record("Failed to create CGContext")
             return
         }
@@ -120,7 +123,7 @@ struct MLTextureConverterTests {
             kCVPixelBufferWidthKey as String: 64,
             kCVPixelBufferHeightKey as String: 64,
             kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:],
         ]
         var poolOut: CVPixelBufferPool?
         CVPixelBufferPoolCreate(nil, nil, poolAttrs as CFDictionary, &poolOut)
@@ -163,7 +166,7 @@ struct MLTextureConverterTests {
             kCVPixelBufferWidthKey as String: 4,
             kCVPixelBufferHeightKey as String: 4,
             kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:],
         ]
         var poolOut: CVPixelBufferPool?
         CVPixelBufferPoolCreate(nil, nil, poolAttrs as CFDictionary, &poolOut)

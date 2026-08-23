@@ -327,13 +327,13 @@ enum GoldenScenes {
         c.fill(Color(r: 0.85, g: 0.85, b: 0.88))
         c.pushMatrix()
         c.translate(64, 96, 0)
-        c.box(120, 6, 120)                 // 影を受ける床
+        c.box(120, 6, 120)  // 影を受ける床
         c.popMatrix()
         c.fill(Color(r: 0.90, g: 0.40, b: 0.30))
         c.pushMatrix()
         c.translate(58, 56, 10)
         c.rotateY(0.5)
-        c.box(34)                          // 影を落とす箱
+        c.box(34)  // 影を落とす箱
         c.popMatrix()
     }
 

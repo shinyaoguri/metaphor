@@ -44,7 +44,7 @@ struct AlphaSemanticsTests {
         pg.beginDraw()
         pg.noStroke()
         pg.blendMode(.opaque)
-        pg.fill(Color(r: 0.40, g: 0.30, b: 0.20))   // 下地 rgb(102,77,51)
+        pg.fill(Color(r: 0.40, g: 0.30, b: 0.20))  // 下地 rgb(102,77,51)
         pg.rect(0, 0, Float(Self.size), Float(Self.size))
         if let src {
             pg.blendMode(mode)
@@ -64,7 +64,7 @@ struct AlphaSemanticsTests {
     /// **完全に透明な色を重ねただけで下地が変わっていた**（#801）。
     @Test("alpha = 0 leaves the destination untouched", arguments: BlendMode.allCases)
     func zeroAlphaIsNoOp(mode: BlendMode) throws {
-        guard mode != .opaque else { return }   // .opaque は α を見ない（置換）モード
+        guard mode != .opaque else { return }  // .opaque は α を見ない（置換）モード
         let got = try compose(
             src: Color(r: Self.srcColor.r, g: Self.srcColor.g, b: Self.srcColor.b, alpha: 0),
             mode: mode
@@ -94,9 +94,10 @@ struct AlphaSemanticsTests {
                 mode: mode
             )
             // 8bit の丸めで ±1 はずれる
-            #expect(abs(got.r - want.r) <= 1 && abs(got.g - want.g) <= 1
+            #expect(
+                abs(got.r - want.r) <= 1 && abs(got.g - want.g) <= 1
                     && abs(got.b - want.b) <= 1 && abs(got.a - want.a) <= 1,
-                    "\(mode) の α=0.5: got \(got), want \(want) — #801")
+                "\(mode) の α=0.5: got \(got), want \(want) — #801")
         }
     }
 
@@ -125,8 +126,9 @@ struct AlphaSemanticsTests {
 
         let got = center(pg)
         // 完全被覆の画素は黒と白の中点。二重掛けだと 64 付近まで落ちる
-        #expect(abs(got.r - 128) <= 6 && abs(got.g - 128) <= 6 && abs(got.b - 128) <= 6,
-                "半透明の文字に α が二重に掛かっている: \(got) — #846")
+        #expect(
+            abs(got.r - 128) <= 6 && abs(got.g - 128) <= 6 && abs(got.b - 128) <= 6,
+            "半透明の文字に α が二重に掛かっている: \(got) — #846")
     }
 
     /// 透明なオフスクリーンへ描いた半透明の色を戻しても、α は二重に掛からない。
@@ -149,7 +151,7 @@ struct AlphaSemanticsTests {
         pg.beginDraw()
         pg.blendMode(.opaque)
         pg.noStroke()
-        pg.fill(Color(r: 1, g: 1, b: 1))            // 白い下地
+        pg.fill(Color(r: 1, g: 1, b: 1))  // 白い下地
         pg.rect(0, 0, Float(Self.size), Float(Self.size))
         pg.blendMode(.alpha)
         pg.image(layer.toImage(), 0, 0, Float(Self.size), Float(Self.size))
@@ -157,8 +159,9 @@ struct AlphaSemanticsTests {
 
         let got = center(pg)
         // 白 + 赤 50% = rgb(255,128,128)。二重掛けだと緑と青がさらに落ちる
-        #expect(got.r >= 250 && abs(got.g - 128) <= 6 && abs(got.b - 128) <= 6,
-                "オフスクリーンの戻しで α が二重に掛かっている: \(got) — #847")
+        #expect(
+            got.r >= 250 && abs(got.g - 128) <= 6 && abs(got.b - 128) <= 6,
+            "オフスクリーンの戻しで α が二重に掛かっている: \(got) — #847")
     }
 
     // MARK: - background は合成ではなく置き換え（#829）
@@ -201,8 +204,9 @@ struct AlphaSemanticsTests {
 
         // 置き換えなら赤の半透明。α ブレンドだと白が透けて (255,128,128,255) になる
         let got = center(pg)
-        #expect(abs(got.r - 255) <= 1 && got.g <= 1 && got.b <= 1 && abs(got.a - 128) <= 1,
-                "半透明の background が下地と合成されている: \(got) — #829")
+        #expect(
+            abs(got.r - 255) <= 1 && got.g <= 1 && got.b <= 1 && abs(got.a - 128) <= 1,
+            "半透明の background が下地と合成されている: \(got) — #829")
     }
 
     /// フレーム途中の `background(α < 1)` も置き換え。先に描いた図形は残らない。
@@ -220,8 +224,9 @@ struct AlphaSemanticsTests {
         pg.endDraw(wait: true)
 
         let got = center(pg)
-        #expect(got == (0, 0, 0, 0),
-                "フレーム途中の background(α=0) が先に描いた図形を消していない: \(got) — #829")
+        #expect(
+            got == (0, 0, 0, 0),
+            "フレーム途中の background(α=0) が先に描いた図形を消していない: \(got) — #829")
     }
 
     /// `blendMode()` は背景に効かない。背景は合成ではなく置き換えだから。
@@ -238,9 +243,10 @@ struct AlphaSemanticsTests {
 
         // 置き換えなら 128。乗算に乗ると 0.5 * 0.5 = 64 まで落ちる
         let got = center(pg)
-        #expect(abs(got.r - 128) <= 1 && abs(got.g - 128) <= 1 && abs(got.b - 128) <= 1
+        #expect(
+            abs(got.r - 128) <= 1 && abs(got.g - 128) <= 1 && abs(got.b - 128) <= 1
                 && got.a == 255,
-                "background に blendMode が効いている: \(got) — #829")
+            "background に blendMode が効いている: \(got) — #829")
     }
 
     // MARK: - ピクセルの読み書き（#848）
@@ -268,13 +274,15 @@ struct AlphaSemanticsTests {
         img.loadPixels()
         let after = img.get(Self.size / 2, Self.size / 2)
 
-        #expect(abs(before.r - after.r) < 0.02 && abs(before.g - after.g) < 0.02
+        #expect(
+            abs(before.r - after.r) < 0.02 && abs(before.g - after.g) < 0.02
                 && abs(before.b - after.b) < 0.02 && abs(before.a - after.a) < 0.02,
-                "set(get()) が恒等でない: \(before) → \(after) — #848")
+            "set(get()) が恒等でない: \(before) → \(after) — #848")
         // 読んだ値そのものが straight であること（fill した色が返る）
-        #expect(abs(before.r - 0.2) < 0.02 && abs(before.g - 0.8) < 0.02
+        #expect(
+            abs(before.r - 0.2) < 0.02 && abs(before.g - 0.8) < 0.02
                 && abs(before.b - 0.4) < 0.02 && abs(before.a - 0.5) < 0.02,
-                "get() が premultiplied のまま返している: \(before) — #848")
+            "get() が premultiplied のまま返している: \(before) — #848")
     }
 
     /// α = 1 は「そのモードの混ぜ方をそのまま当てる」。
@@ -296,9 +304,10 @@ struct AlphaSemanticsTests {
                 src: Color(r: Self.srcColor.r, g: Self.srcColor.g, b: Self.srcColor.b, alpha: 1),
                 mode: mode
             )
-            #expect(abs(got.r - want.r) <= 1 && abs(got.g - want.g) <= 1
+            #expect(
+                abs(got.r - want.r) <= 1 && abs(got.g - want.g) <= 1
                     && abs(got.b - want.b) <= 1 && abs(got.a - want.a) <= 1,
-                    "\(mode) の α=1: got \(got), want \(want)")
+                "\(mode) の α=1: got \(got), want \(want)")
         }
     }
 }
@@ -373,8 +382,9 @@ struct Graphics3DBackgroundTests {
         pg3d.endDraw(wait: true)
 
         let got = center(pg3d)
-        #expect(got == (0, 0, 0, 0),
-                "background(α=0) が呼んだフレームに効いていない: \(got) — #830")
+        #expect(
+            got == (0, 0, 0, 0),
+            "background(α=0) が呼んだフレームに効いていない: \(got) — #830")
     }
 
     /// α < 1 の背景も「置き換え」。前フレームの絵は残らず、指定した色と α がそのまま入る。
@@ -392,8 +402,9 @@ struct Graphics3DBackgroundTests {
 
         // 置き換えなら赤の半透明。合成だと白が透けて (255,128,128,255) になる
         let got = center(pg3d)
-        #expect(abs(got.r - 255) <= 1 && got.g <= 1 && got.b <= 1 && abs(got.a - 128) <= 1,
-                "半透明の background が下地と合成されている: \(got) — #830")
+        #expect(
+            abs(got.r - 255) <= 1 && got.g <= 1 && got.b <= 1 && abs(got.a - 128) <= 1,
+            "半透明の background が下地と合成されている: \(got) — #830")
     }
 
     /// フレーム途中の `background(α = 0)` は、先に描いた 3D を色ごと消す。
@@ -413,8 +424,9 @@ struct Graphics3DBackgroundTests {
         pg3d.endDraw(wait: true)
 
         let got = center(pg3d)
-        #expect(got == (0, 0, 0, 0),
-                "フレーム途中の background(α=0) が先に描いた 3D を消していない: \(got) — #830")
+        #expect(
+            got == (0, 0, 0, 0),
+            "フレーム途中の background(α=0) が先に描いた 3D を消していない: \(got) — #830")
     }
 
     /// 設定した背景色は次のフレーム以降も保たれる（毎フレーム呼び直さなくてよい）。

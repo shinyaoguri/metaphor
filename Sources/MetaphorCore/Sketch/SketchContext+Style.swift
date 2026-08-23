@@ -50,7 +50,10 @@ extension SketchContext {
     ///   - max2: 第2チャンネルの最大値。省略時は現在値を維持。
     ///   - max3: 第3チャンネルの最大値。省略時は現在値を維持。
     ///   - maxA: アルファチャンネルの最大値。省略時は現在値を維持。
-    public func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil) {
+    public func colorMode(
+        _ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil,
+        _ maxA: Float? = nil
+    ) {
         canvas.colorMode(space, max1, max2, max3, maxA)
         canvas3D.colorMode(space, max1, max2, max3, maxA)
     }

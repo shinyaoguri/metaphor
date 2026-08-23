@@ -41,7 +41,8 @@ struct OrthoSampleRangeTests {
             for case let url as URL in files where url.pathExtension == "swift" {
                 guard !url.path.contains("/.build/") else { continue }
                 guard let text = try? String(contentsOf: url, encoding: .utf8),
-                      text.contains("ortho(") else { continue }
+                    text.contains("ortho(")
+                else { continue }
                 for range in Self.orthoRanges(in: text) {
                     inspected += 1
                     guard Self.isFlipped(range) else { continue }
@@ -53,7 +54,9 @@ struct OrthoSampleRangeTests {
 
         // 拾えた件数も見る（パーサが壊れて 0 件になると、上の判定が黙って素通りするため）。
         #expect(inspected >= 3, "bottom/top を明示した呼び出しを拾えていない: \(inspected) 件")
-        #expect(offenders.isEmpty, """
+        #expect(
+            offenders.isEmpty,
+            """
             上下が反転する範囲（bottom > top）を渡している。符号を入れ替えるか、省略時の
             範囲でよければ ortho() だけにする(#903):
             \(offenders.joined(separator: "\n"))
@@ -83,10 +86,11 @@ struct OrthoSampleRangeTests {
             ortho(left: -w, right: w, bottom: -h, top: h)
             """
         let ranges = Self.orthoRanges(in: sample)
-        #expect(ranges == [
-            Range(bottom: "height / 2", top: "-height / 2"),
-            Range(bottom: "-h", top: "h"),
-        ], "実測 \(ranges)")
+        #expect(
+            ranges == [
+                Range(bottom: "height / 2", top: "-height / 2"),
+                Range(bottom: "-h", top: "h"),
+            ], "実測 \(ranges)")
         #expect(ranges.map(Self.isFlipped) == [true, false])
     }
 
@@ -97,7 +101,8 @@ struct OrthoSampleRangeTests {
     /// doc コメントのスニペットも対象なので、行頭の `///` を落としてから見る。
     /// 引数が行をまたぐため、`ortho(` から対応する `)` までを 1 本の文字列として扱う。
     static func orthoRanges(in text: String) -> [Range] {
-        let stripped = text
+        let stripped =
+            text
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map { line -> String in
                 let trimmed = line.drop { $0 == " " }
@@ -109,12 +114,14 @@ struct OrthoSampleRangeTests {
         var cursor = stripped.startIndex
         while let call = stripped.range(of: "ortho(", range: cursor..<stripped.endIndex) {
             cursor = call.upperBound
-            guard let close = matchingParenthesis(in: stripped, after: call.upperBound) else { break }
+            guard let close = matchingParenthesis(in: stripped, after: call.upperBound) else {
+                break
+            }
             let arguments = String(stripped[call.upperBound..<close])
             cursor = stripped.index(after: close)
             guard let bottom = argument("bottom", in: arguments),
-                  let top = argument("top", in: arguments),
-                  isValueExpression(bottom), isValueExpression(top)
+                let top = argument("top", in: arguments),
+                isValueExpression(bottom), isValueExpression(top)
             else { continue }
             ranges.append(Range(bottom: bottom, top: top))
         }
@@ -187,16 +194,18 @@ struct OrthoExplicitRangeDirectionTests {
         let w = canvas3D.width
         let h = canvas3D.height
 
-        let perspective = yShift(canvas3D)   // 既定は透視投影
+        let perspective = yShift(canvas3D)  // 既定は透視投影
         canvas3D.ortho(left: -w / 2, right: w / 2, bottom: -h / 2, top: h / 2)
         let upright = yShift(canvas3D)
         canvas3D.ortho(left: -w / 2, right: w / 2, bottom: h / 2, top: -h / 2)
         let flipped = yShift(canvas3D)
 
         #expect(perspective > 0, "透視投影ではワールド +y が画面下向き (実測 \(perspective))")
-        #expect(abs(upright - perspective) < 0.01,
-                "bottom < top は透視投影と同じ向き (実測 \(upright) / 基準 \(perspective))")
-        #expect(abs(flipped + perspective) < 0.01,
-                "bottom > top は符号だけが逆になる (実測 \(flipped) / 基準 \(perspective))")
+        #expect(
+            abs(upright - perspective) < 0.01,
+            "bottom < top は透視投影と同じ向き (実測 \(upright) / 基準 \(perspective))")
+        #expect(
+            abs(flipped + perspective) < 0.01,
+            "bottom > top は符号だけが逆になる (実測 \(flipped) / 基準 \(perspective))")
     }
 }

@@ -180,7 +180,8 @@ struct ErrorThrowingTests {
         #expect(throws: MetaphorError.self) {
             _ = try ComputeKernel(
                 device: device,
-                source: "kernel void validKernel(device float* buf [[buffer(0)]], uint id [[thread_position_in_grid]]) { buf[id] = 0; }",
+                source:
+                    "kernel void validKernel(device float* buf [[buffer(0)]], uint id [[thread_position_in_grid]]) { buf[id] = 0; }",
                 functionName: "nonExistentFunction"
             )
         }
@@ -206,8 +207,9 @@ struct ErrorContractTests {
     ) {
         do {
             try body()
-            Issue.record("expected a throw but the call succeeded: \(what)",
-                         sourceLocation: sourceLocation)
+            Issue.record(
+                "expected a throw but the call succeeded: \(what)",
+                sourceLocation: sourceLocation)
         } catch let error as MetaphorError {
             #expect(matches(error), what, sourceLocation: sourceLocation)
         } catch {
@@ -221,72 +223,84 @@ struct ErrorContractTests {
     @Test("register(source:) wraps Metal compile errors as shaderCompilationFailed")
     func registerWrapsMetalError() throws {
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        expectMetaphorError({
-            try shaderLib.register(source: "NOT VALID MSL !!!", as: "badShader")
-        }, matches: {
-            if case .shaderCompilationFailed(let name, _) = $0 { return name == "badShader" }
-            return false
-        }, "MSL コンパイル失敗は shaderCompilationFailed へ包まれる")
+        expectMetaphorError(
+            {
+                try shaderLib.register(source: "NOT VALID MSL !!!", as: "badShader")
+            },
+            matches: {
+                if case .shaderCompilationFailed(let name, _) = $0 { return name == "badShader" }
+                return false
+            }, "MSL コンパイル失敗は shaderCompilationFailed へ包まれる")
     }
 
     @Test("registerFromFile wraps missing-file IO errors as shaderSourceLoadFailed")
     func registerFromFileWrapsIOError() throws {
         let shaderLib = try MetalTestHelper.shaderLibrary()
         let missing = "/nonexistent/metaphor-test/never.metal"
-        expectMetaphorError({
-            try shaderLib.registerFromFile(path: missing, as: "fromMissingFile")
-        }, matches: {
-            if case .shaderSourceLoadFailed(let path, _) = $0 { return path == missing }
-            return false
-        }, "シェーダーソースの読み込み失敗は shaderSourceLoadFailed へ包まれる")
+        expectMetaphorError(
+            {
+                try shaderLib.registerFromFile(path: missing, as: "fromMissingFile")
+            },
+            matches: {
+                if case .shaderSourceLoadFailed(let path, _) = $0 { return path == missing }
+                return false
+            }, "シェーダーソースの読み込み失敗は shaderSourceLoadFailed へ包まれる")
     }
 
     @Test("reloadFromFile wraps missing-file IO errors as shaderSourceLoadFailed")
     func reloadFromFileWrapsIOError() throws {
         let shaderLib = try MetalTestHelper.shaderLibrary()
         let missing = "/nonexistent/metaphor-test/never.metal"
-        expectMetaphorError({
-            try shaderLib.reloadFromFile(key: "anyKey", path: missing)
-        }, matches: {
-            if case .shaderSourceLoadFailed(let path, _) = $0 { return path == missing }
-            return false
-        }, "ホットリロードの読み込み失敗も shaderSourceLoadFailed へ包まれる")
+        expectMetaphorError(
+            {
+                try shaderLib.reloadFromFile(key: "anyKey", path: missing)
+            },
+            matches: {
+                if case .shaderSourceLoadFailed(let path, _) = $0 { return path == missing }
+                return false
+            }, "ホットリロードの読み込み失敗も shaderSourceLoadFailed へ包まれる")
     }
 
     @Test("ComputeKernel wraps Metal compile errors as shaderCompilationFailed")
     func computeKernelWrapsCompileError() throws {
         let device = MetalTestHelper.device!
-        expectMetaphorError({
-            _ = try ComputeKernel(
-                device: device, source: "NOT VALID MSL !!!", functionName: "k")
-        }, matches: {
-            if case .shaderCompilationFailed = $0 { return true }
-            return false
-        }, "ComputeKernel の MSL コンパイル失敗は shaderCompilationFailed へ包まれる")
+        expectMetaphorError(
+            {
+                _ = try ComputeKernel(
+                    device: device, source: "NOT VALID MSL !!!", functionName: "k")
+            },
+            matches: {
+                if case .shaderCompilationFailed = $0 { return true }
+                return false
+            }, "ComputeKernel の MSL コンパイル失敗は shaderCompilationFailed へ包まれる")
     }
 
     @Test("MImage wraps MetalKit loader errors as image(.loadFailed)")
     func imageWrapsLoaderError() throws {
         let device = MetalTestHelper.device!
         let missing = "/nonexistent/metaphor-test/never.png"
-        expectMetaphorError({
-            _ = try MImage(path: missing, device: device)
-        }, matches: {
-            if case .image(.loadFailed(let source, _)) = $0 { return source == missing }
-            return false
-        }, "画像の読み込み失敗は image(.loadFailed) へ包まれる")
+        expectMetaphorError(
+            {
+                _ = try MImage(path: missing, device: device)
+            },
+            matches: {
+                if case .image(.loadFailed(let source, _)) = $0 { return source == missing }
+                return false
+            }, "画像の読み込み失敗は image(.loadFailed) へ包まれる")
     }
 
     @Test("Mesh.loadOBJ wraps Foundation IO errors as mesh(.loadFailed)")
     func meshWrapsIOError() throws {
         let device = MetalTestHelper.device!
         let missing = URL(fileURLWithPath: "/nonexistent/metaphor-test/never.obj")
-        expectMetaphorError({
-            _ = try Mesh.loadOBJ(device: device, url: missing)
-        }, matches: {
-            if case .mesh(.loadFailed(let path, _)) = $0 { return path == missing.path }
-            return false
-        }, "OBJ の読み込み失敗は mesh(.loadFailed) へ包まれる")
+        expectMetaphorError(
+            {
+                _ = try Mesh.loadOBJ(device: device, url: missing)
+            },
+            matches: {
+                if case .mesh(.loadFailed(let path, _)) = $0 { return path == missing.path }
+                return false
+            }, "OBJ の読み込み失敗は mesh(.loadFailed) へ包まれる")
     }
 
     @Test("ResourceLoader wraps MetalKit loader errors as image(.loadFailed)")

@@ -136,7 +136,8 @@ final class ShaderHotReloader {
         // ここへ渡さない。public API のシグネチャを変えるより、登録時 1 回だけ読み直す。
         // 直後に書き換わっても watcher が追いかけて直すので実害は無い。
         if loadedDigests[target] == nil,
-           let source = try? String(contentsOfFile: target, encoding: .utf8) {
+            let source = try? String(contentsOfFile: target, encoding: .utf8)
+        {
             loadedDigests[target] = Self.digest(of: source)
         }
         startWatchingIfNeeded()

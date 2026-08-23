@@ -55,7 +55,8 @@ struct LightIntensityTests {
         var sum = 0.0
         var count = 0
         for i in stride(from: 0, to: image.rgba.count, by: 4) {
-            sum += 0.2126 * Double(image.rgba[i])
+            sum +=
+                0.2126 * Double(image.rgba[i])
                 + 0.7152 * Double(image.rgba[i + 1])
                 + 0.0722 * Double(image.rgba[i + 2])
             count += 1
@@ -93,12 +94,14 @@ struct LightIntensityTests {
 
     @Test("intensity を省くと 1.0 指定と全画素一致する")
     func defaultIntensityMatchesExplicitOne() throws {
-        let implicit = try render(draw: sphereScene { c in
-            c.directionalLight(-0.4, 0.6, -0.7)
-        })
-        let explicit = try render(draw: sphereScene { c in
-            c.directionalLight(-0.4, 0.6, -0.7, intensity: 1.0)
-        })
+        let implicit = try render(
+            draw: sphereScene { c in
+                c.directionalLight(-0.4, 0.6, -0.7)
+            })
+        let explicit = try render(
+            draw: sphereScene { c in
+                c.directionalLight(-0.4, 0.6, -0.7, intensity: 1.0)
+            })
         #expect(implicit.rgba == explicit.rgba)
     }
 
@@ -106,12 +109,14 @@ struct LightIntensityTests {
 
     @Test("PBR 単灯は intensity で持ち上がる")
     func pbrDirectionalBrightensWithIntensity() throws {
-        let dim = try render(draw: sphereScene(pbr: true) { c in
-            c.directionalLight(-0.4, 0.6, -0.7)
-        })
-        let bright = try render(draw: sphereScene(pbr: true) { c in
-            c.directionalLight(-0.4, 0.6, -0.7, intensity: 3.0)
-        })
+        let dim = try render(
+            draw: sphereScene(pbr: true) { c in
+                c.directionalLight(-0.4, 0.6, -0.7)
+            })
+        let bright = try render(
+            draw: sphereScene(pbr: true) { c in
+                c.directionalLight(-0.4, 0.6, -0.7, intensity: 3.0)
+            })
 
         let dimPixel = pixel(dim, Self.litSurface)
         let brightPixel = pixel(bright, Self.litSurface)
@@ -122,20 +127,23 @@ struct LightIntensityTests {
 
     @Test("intensity 0 は直接光を消す（黒い灯と同じ絵になる）")
     func zeroIntensityKillsDirectLight() throws {
-        let zeroIntensity = try render(draw: sphereScene { c in
-            c.directionalLight(-0.4, 0.6, -0.7, intensity: 0)
-        })
+        let zeroIntensity = try render(
+            draw: sphereScene { c in
+                c.directionalLight(-0.4, 0.6, -0.7, intensity: 0)
+            })
         // 「灯はあるが色が黒」＝直接光の寄与がゼロ。灯を足さない場合とは
         // アンビエントの既定挿入（ensureAmbientIfFirstLight）が違うので、
         // 比較対象は「黒い灯」にする。
-        let blackLight = try render(draw: sphereScene { c in
-            c.directionalLight(-0.4, 0.6, -0.7, color: Color(r: 0, g: 0, b: 0))
-        })
+        let blackLight = try render(
+            draw: sphereScene { c in
+                c.directionalLight(-0.4, 0.6, -0.7, color: Color(r: 0, g: 0, b: 0))
+            })
         #expect(zeroIntensity.rgba == blackLight.rgba)
 
-        let lit = try render(draw: sphereScene { c in
-            c.directionalLight(-0.4, 0.6, -0.7)
-        })
+        let lit = try render(
+            draw: sphereScene { c in
+                c.directionalLight(-0.4, 0.6, -0.7)
+            })
         #expect(meanLuminance(lit) > meanLuminance(zeroIntensity))
     }
 
@@ -143,25 +151,29 @@ struct LightIntensityTests {
 
     @Test("pointLight にも intensity が効く")
     func pointLightRespectsIntensity() throws {
-        let dim = try render(draw: sphereScene { c in
-            c.pointLight(20, 20, 120, color: .white, falloff: 0.001)
-        })
-        let bright = try render(draw: sphereScene { c in
-            c.pointLight(20, 20, 120, color: .white, falloff: 0.001, intensity: 2.5)
-        })
+        let dim = try render(
+            draw: sphereScene { c in
+                c.pointLight(20, 20, 120, color: .white, falloff: 0.001)
+            })
+        let bright = try render(
+            draw: sphereScene { c in
+                c.pointLight(20, 20, 120, color: .white, falloff: 0.001, intensity: 2.5)
+            })
         #expect(meanLuminance(bright) > meanLuminance(dim))
     }
 
     @Test("spotLight にも intensity が効く")
     func spotLightRespectsIntensity() throws {
-        let dim = try render(draw: sphereScene { c in
-            c.spotLight(48, 48, 160, 0, 0, -1, angle: .pi / 4, falloff: 0.001)
-        })
-        let bright = try render(draw: sphereScene { c in
-            c.spotLight(
-                48, 48, 160, 0, 0, -1, angle: .pi / 4, falloff: 0.001, intensity: 2.5
-            )
-        })
+        let dim = try render(
+            draw: sphereScene { c in
+                c.spotLight(48, 48, 160, 0, 0, -1, angle: .pi / 4, falloff: 0.001)
+            })
+        let bright = try render(
+            draw: sphereScene { c in
+                c.spotLight(
+                    48, 48, 160, 0, 0, -1, angle: .pi / 4, falloff: 0.001, intensity: 2.5
+                )
+            })
         #expect(meanLuminance(bright) > meanLuminance(dim))
     }
 

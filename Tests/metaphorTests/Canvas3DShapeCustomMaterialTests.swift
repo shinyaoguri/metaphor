@@ -92,20 +92,23 @@ struct Canvas3DShapeCustomMaterialTests {
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         // BGRA 並びで青
         let bytes: [UInt8] = [255, 0, 0, 255]
-        tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,
-                    withBytes: bytes, bytesPerRow: 4)
+        tex.replace(
+            region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,
+            withBytes: bytes, bytesPerRow: 4)
         return MImage(texture: tex)
     }
 
-    @Test("カスタムマテリアルが beginShape3D のシェイプに効く",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        "カスタムマテリアルが beginShape3D のシェイプに効く",
+        arguments: [MainPassMode.immediate, .shadows])
     func customMaterialAppliesToShape(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
             ctx.noLights()
             ctx.noStroke()
-            guard let material = try? ctx.createMaterial(
-                source: Self.solidRedSource, fragmentFunction: "shapeSolidRed")
+            guard
+                let material = try? ctx.createMaterial(
+                    source: Self.solidRedSource, fragmentFunction: "shapeSolidRed")
             else {
                 Issue.record("カスタムマテリアルを作れなかった")
                 return
@@ -114,20 +117,23 @@ struct Canvas3DShapeCustomMaterialTests {
             self.quad(ctx)
         }
 
-        #expect(center(fb) == SIMD3(255, 0, 0),
-                "beginShape3D のシェイプにカスタムマテリアルが効いていない: \(center(fb)) — #826")
+        #expect(
+            center(fb) == SIMD3(255, 0, 0),
+            "beginShape3D のシェイプにカスタムマテリアルが効いていない: \(center(fb)) — #826")
         #expect(pixel(fb, 2, 2) == SIMD3(0, 0, 0), "背景まで塗られている")
     }
 
-    @Test(".points にもカスタムマテリアルが効く",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        ".points にもカスタムマテリアルが効く",
+        arguments: [MainPassMode.immediate, .shadows])
     func customMaterialAppliesToPoints(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
             ctx.noLights()
             ctx.noStroke()
-            guard let material = try? ctx.createMaterial(
-                source: Self.solidRedSource, fragmentFunction: "shapeSolidRed")
+            guard
+                let material = try? ctx.createMaterial(
+                    source: Self.solidRedSource, fragmentFunction: "shapeSolidRed")
             else {
                 Issue.record("カスタムマテリアルを作れなかった")
                 return
@@ -143,19 +149,22 @@ struct Canvas3DShapeCustomMaterialTests {
 
         // 点の三角形は中心のわずかに下（y+）へ張り出すので、重心あたりを見る
         let p = pixel(fb, Self.size / 2, Self.size / 2 + 4)
-        #expect(p == SIMD3(255, 0, 0),
-                ".points にカスタムマテリアルが効いていない: \(p) — #826")
+        #expect(
+            p == SIMD3(255, 0, 0),
+            ".points にカスタムマテリアルが効いていない: \(p) — #826")
     }
 
-    @Test("テクスチャを貼ったシェイプでもカスタムマテリアルが勝つ",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        "テクスチャを貼ったシェイプでもカスタムマテリアルが勝つ",
+        arguments: [MainPassMode.immediate, .shadows])
     func customMaterialAppliesToTexturedShape(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
             ctx.noLights()
             ctx.noStroke()
-            guard let material = try? ctx.createMaterial(
-                source: Self.solidRedTexturedSource, fragmentFunction: "shapeSolidRedTextured"),
+            guard
+                let material = try? ctx.createMaterial(
+                    source: Self.solidRedTexturedSource, fragmentFunction: "shapeSolidRedTextured"),
                 let img = Self.solidBlueTexture(device: ctx.renderer.device)
             else {
                 Issue.record("カスタムマテリアルまたはテクスチャを作れなかった")
@@ -166,19 +175,22 @@ struct Canvas3DShapeCustomMaterialTests {
             self.texturedQuad(ctx)
         }
 
-        #expect(center(fb) == SIMD3(255, 0, 0),
-                "テクスチャ経路でカスタムマテリアルが効いていない（青ならテクセルのまま）: \(center(fb)) — #826")
+        #expect(
+            center(fb) == SIMD3(255, 0, 0),
+            "テクスチャ経路でカスタムマテリアルが効いていない（青ならテクセルのまま）: \(center(fb)) — #826")
     }
 
-    @Test("noMaterial() すれば組み込みのシェーディングへ戻る",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        "noMaterial() すれば組み込みのシェーディングへ戻る",
+        arguments: [MainPassMode.immediate, .shadows])
     func noMaterialRestoresBuiltinShading(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
             ctx.noLights()
             ctx.noStroke()
-            guard let material = try? ctx.createMaterial(
-                source: Self.solidRedSource, fragmentFunction: "shapeSolidRed")
+            guard
+                let material = try? ctx.createMaterial(
+                    source: Self.solidRedSource, fragmentFunction: "shapeSolidRed")
             else {
                 Issue.record("カスタムマテリアルを作れなかった")
                 return
@@ -190,7 +202,8 @@ struct Canvas3DShapeCustomMaterialTests {
         }
 
         let c = center(fb)
-        #expect(c.x < 32 && c.y > 200 && c.z < 32,
-                "noMaterial() 後は fill 色（緑）で塗られるべき: \(c) — #826")
+        #expect(
+            c.x < 32 && c.y > 200 && c.z < 32,
+            "noMaterial() 後は fill 色（緑）で塗られるべき: \(c) — #826")
     }
 }

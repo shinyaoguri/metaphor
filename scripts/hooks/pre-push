@@ -47,6 +47,7 @@ needs_shaders=0
 needs_tutorial=0
 needs_reference=0
 needs_status=0
+needs_format=0
 zero=0000000000000000000000000000000000000000
 
 while read -r _ local_sha _ remote_sha; do
@@ -123,6 +124,15 @@ while read -r _ local_sha _ remote_sha; do
            'scripts/generate-tutorial-status.py' \
         | grep -q .; then
         needs_status=1
+    fi
+    # swift-format は Swift のソース、設定、検査スクリプトのどれが動いても
+    # 結果が変わりうる。CI の required ステップと同じものをここでも先に鳴らす
+    # （新しい規則は導入していない — 失敗を早めるだけ。#333）。
+    if git diff --name-only "$range" \
+        -- 'Sources/**/*.swift' 'Tests/' 'Package.swift' \
+           '.swift-format' 'scripts/lint-swift.sh' \
+        | grep -q .; then
+        needs_format=1
     fi
 done
 
@@ -240,6 +250,21 @@ if [ "$needs_status" -eq 1 ]; then
         exit 1
     fi
     echo "[pre-push] ✅ tutorial publication status is up to date."
+fi
+
+# --- swift-format check -------------------------------------------------------
+if [ "$needs_format" -eq 1 ]; then
+    echo "[pre-push] Swift sources or .swift-format changed — verifying formatting..."
+    if ! ./scripts/lint-swift.sh > /dev/null; then
+        echo "[pre-push] ❌ .swift-format どおりに整形されていないファイルがある。" >&2
+        echo "[pre-push] 整形してコミットしてください:" >&2
+        echo "" >&2
+        echo "    make format" >&2
+        echo "" >&2
+        echo "[pre-push] 対象の一覧は make lint-swift で出ます。" >&2
+        exit 1
+    fi
+    echo "[pre-push] ✅ Swift sources are formatted."
 fi
 
 exit 0

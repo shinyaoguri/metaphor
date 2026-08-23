@@ -195,8 +195,11 @@ extension Sketch {
     ///   失敗した場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、
     ///   指定した関数が見つからない場合は ``MetaphorError/material(_:)`` の
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
-    public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
-        try context.createMaterialFromFile(path: path, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
+    public func createMaterialFromFile(
+        path: String, fragmentFunction: String, vertexFunction: String? = nil
+    ) throws -> CustomMaterial {
+        try context.createMaterialFromFile(
+            path: path, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
 }
 
@@ -254,7 +257,9 @@ extension Sketch {
     /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
     ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
     ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
-    public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
+    public func createPostEffect(name: String, source: String, fragmentFunction: String) throws
+        -> CustomPostEffect
+    {
         try context.createPostEffect(name: name, source: source, fragmentFunction: fragmentFunction)
     }
 

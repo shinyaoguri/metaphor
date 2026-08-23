@@ -60,7 +60,7 @@ cd metaphor
 make setup    # submodules + Syphon.xcframework
 make build
 make test
-make ci-check # before pushing: build + test with CI's -warnings-as-errors
+make ci-check # before pushing: formatting + build + test with CI's -warnings-as-errors
 ```
 
 Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
@@ -69,6 +69,14 @@ Tests use the **Swift Testing** framework (`@Suite` / `@Test`), not XCTest.
 but CI builds and tests with `-Xswiftc -warnings-as-errors` — run
 `make ci-check` before you push so a warning doesn't turn into a red CI on a
 green local run ([#448](https://github.com/shinyaoguri/metaphor/issues/448)).
+
+Formatting is handled by
+[swift-format](https://github.com/swiftlang/swift-format) (bundled with Xcode) —
+don't hand-align anything. Run `make format` when you're done writing and it
+matches `.swift-format` at the repository root; `make lint-swift` checks without
+rewriting. CI and the pre-push hook run the same check, so a missed run shows up
+before your push lands
+([#333](https://github.com/shinyaoguri/metaphor/issues/333)).
 
 ## Sending a pull request
 

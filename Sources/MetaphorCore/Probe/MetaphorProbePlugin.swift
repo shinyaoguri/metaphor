@@ -123,7 +123,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     private static func resolveSourceStamp(config: MetaphorProbeConfig) -> String? {
         if let stamp = config.sourceStamp, !stamp.isEmpty { return stamp }
         if let env = ProcessInfo.processInfo.environment["METAPHOR_SOURCE_STAMP"],
-           !env.isEmpty {
+            !env.isEmpty
+        {
             return env
         }
         return nil
@@ -181,12 +182,14 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let width = texture.width
         let height = texture.height
 
-        guard let staging = getOrCreateStaging(
-            device: texture.device,
-            width: width,
-            height: height,
-            bufferIndex: bufferIndex
-        ) else {
+        guard
+            let staging = getOrCreateStaging(
+                device: texture.device,
+                width: width,
+                height: height,
+                bufferIndex: bufferIndex
+            )
+        else {
             // 失敗を無応答にしない: warnings 付きの frame.json（PNG なし）で応答し、
             // consumer がタイムアウトではなく id 一致で失敗を検知できるようにする
             //（シーケンス経路の warning 付き manifest と対称）。
@@ -287,9 +290,11 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         let height = texture.height
         let bufferIndex = renderer?.frameBufferIndex ?? 0
 
-        guard let staging = getOrCreateStaging(
-            device: texture.device, width: width, height: height, bufferIndex: bufferIndex
-        ) else {
+        guard
+            let staging = getOrCreateStaging(
+                device: texture.device, width: width, height: height, bufferIndex: bufferIndex
+            )
+        else {
             // ステージング確保失敗。ここまでの結果で manifest を書いて中断する。
             finishSequenceWithoutFrame(
                 seq, commandBuffer: commandBuffer,
@@ -349,13 +354,14 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
         )
 
         let base = ProbeWriter.sequenceBaseName(index)
-        seq.entries.append(ProbeSequenceManifest.Entry(
-            index: index,
-            file: "\(base).png",
-            metadata: "\(base).json",
-            frame: frameNo,
-            time: lastFrameTime
-        ))
+        seq.entries.append(
+            ProbeSequenceManifest.Entry(
+                index: index,
+                file: "\(base).png",
+                metadata: "\(base).json",
+                frame: frameNo,
+                time: lastFrameTime
+            ))
         seq.captured += 1
 
         let isLast = seq.captured >= seq.total
@@ -363,18 +369,20 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
 
         // 最後のフレームでは contact sheet と manifest も書く。完了ハンドラはコミット順に
         // 直列実行されるため、この時点で先行フレームの PNG はすべて出揃っている。
-        let manifestBase: ProbeSequenceManifest? = isLast ? ProbeSequenceManifest(
-            schemaVersion: 1,
-            id: seq.id,
-            label: seq.label,
-            frameCount: seq.captured,
-            requestedFrames: seq.requested,
-            every: seq.every,
-            size: ProbeFrameMetadata.Size(width: seq.refWidth, height: seq.refHeight),
-            contactSheet: nil,
-            warnings: seq.warnings,
-            frames: seq.entries
-        ) : nil
+        let manifestBase: ProbeSequenceManifest? =
+            isLast
+            ? ProbeSequenceManifest(
+                schemaVersion: 1,
+                id: seq.id,
+                label: seq.label,
+                frameCount: seq.captured,
+                requestedFrames: seq.requested,
+                every: seq.every,
+                size: ProbeFrameMetadata.Size(width: seq.refWidth, height: seq.refHeight),
+                contactSheet: nil,
+                warnings: seq.warnings,
+                frames: seq.entries
+            ) : nil
         let frameFiles = isLast ? seq.entries.map { $0.file } : []
         let refW = seq.refWidth
         let refH = seq.refHeight
@@ -446,7 +454,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     private func pollRequestFile() {
         let path = config.requestFilePath
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-              let mtime = attrs[.modificationDate] as? Date else {
+            let mtime = attrs[.modificationDate] as? Date
+        else {
             return
         }
 
@@ -551,7 +560,8 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     /// リローダの生成という副作用を持たないようにするためです。
     private func sampleShaders() -> ProbeFrameMetadata.Shaders? {
         guard let reloader = sketch?._context?.activeShaderHotReloader,
-              let digest = reloader.contentDigest else { return nil }
+            let digest = reloader.contentDigest
+        else { return nil }
         return ProbeFrameMetadata.Shaders(
             generation: reloader.generation,
             digest: digest,
@@ -611,8 +621,9 @@ public final class MetaphorProbePlugin: MetaphorPlugin {
     ) -> MTLTexture? {
         let index = max(0, min(bufferIndex, stagingPool.count - 1))
         if let existing = stagingPool[index],
-           existing.width == width,
-           existing.height == height {
+            existing.width == width,
+            existing.height == height
+        {
             return existing
         }
 

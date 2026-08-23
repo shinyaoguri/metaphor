@@ -13,7 +13,8 @@ extension Sketch {
     /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。作成に失敗した場合は `nil`。
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
         guard width > 0, height > 0 else {
-            metaphorWarning("createSourcePass: dimensions must be positive (got \(width)x\(height))")
+            metaphorWarning(
+                "createSourcePass: dimensions must be positive (got \(width)x\(height))")
             return nil
         }
         do {
@@ -35,7 +36,8 @@ extension Sketch {
     ///   - input: 入力レンダーパスノード。
     ///   - effects: 適用するポストプロセスエフェクト。
     /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。作成に失敗した場合は `nil`。
-    public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass? {
+    public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass?
+    {
         guard !effects.isEmpty else {
             metaphorWarning("createEffectPass: effects must not be empty")
             return nil
@@ -61,7 +63,9 @@ extension Sketch {
     ///   - b: 2つ目の入力レンダーパスノード。
     ///   - blend: 合成用のブレンドタイプ。
     /// - Returns: 新しい ``MetaphorRenderGraph/MergePass`` インスタンス。作成に失敗した場合は `nil`。
-    public func createMergePass(_ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType) -> MergePass? {
+    public func createMergePass(
+        _ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType
+    ) -> MergePass? {
         do {
             return try MergePass(
                 a, b,

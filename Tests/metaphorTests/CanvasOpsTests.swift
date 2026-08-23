@@ -391,9 +391,12 @@ struct CanvasCopyTests {
         let dstR = (dst >> 16) & 0xFF
         let dstG = (dst >> 8) & 0xFF
         let dstB = dst & 0xFF
-        #expect(dstR > 200, "copy destination should be red (R=\(dstR), pixel=\(String(dst, radix: 16)))")
-        #expect(dstG < 50 && dstB < 50,
-                "copy destination should be pure red, not garbage (G=\(dstG), B=\(dstB))")
+        #expect(
+            dstR > 200,
+            "copy destination should be red (R=\(dstR), pixel=\(String(dst, radix: 16)))")
+        #expect(
+            dstG < 50 && dstB < 50,
+            "copy destination should be pure red, not garbage (G=\(dstG), B=\(dstB))")
         // コピーされていない左下 (8, 48) は黒のまま
         let untouched = pb.pixels[48 * 64 + 8]
         #expect((untouched >> 16) & 0xFF < 50, "area outside copy destination stays black")
@@ -427,7 +430,8 @@ struct CanvasCopyTests {
         let dstR = (dst >> 16) & 0xFF
         let dstG = (dst >> 8) & 0xFF
         let dstB = dst & 0xFF
-        #expect(dstR > 200 && dstG < 50 && dstB < 50,
-                "first-frame copy should show the clear color (red), got \(String(dst, radix: 16))")
+        #expect(
+            dstR > 200 && dstG < 50 && dstB < 50,
+            "first-frame copy should show the clear color (red), got \(String(dst, radix: 16))")
     }
 }

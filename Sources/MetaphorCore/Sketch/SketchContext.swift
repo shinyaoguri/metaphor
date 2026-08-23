@@ -142,7 +142,7 @@ public final class SketchContext {
         guard !renderer.isRenderingFrame else {
             metaphorWarning(
                 "createCanvas(\(width), \(height)) ignored: it cannot run inside draw(). "
-                + "Call it from setup() instead."
+                    + "Call it from setup() instead."
             )
             return
         }
@@ -454,8 +454,11 @@ public final class SketchContext {
         }
         // カスタム 2D シェーダの組み込み uniform（#647）。Canvas2D は解像度とフレーム数を
         // 自分で持てるが、時間とマウスは Context 側にしか無いのでここから供給する。
-        canvas.shaderInputs = { [weak self] in self?.shaderInputs() ?? Canvas2DShaderInputs(
-            time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0) }
+        canvas.shaderInputs = { [weak self] in
+            self?.shaderInputs()
+                ?? Canvas2DShaderInputs(
+                    time: 0, mouse: SIMD2<Float>(0, 0), frameCount: 0)
+        }
     }
 
     /// カスタム 2D シェーダへ渡す組み込み uniform の現在値（#647）。
@@ -568,7 +571,9 @@ public final class SketchContext {
             // （レンダラーのトラッカーの直近ウィンドウ）から取る（#698）。
             hud.update(stats: renderer.frameRateTracker.windowStats(now: CACurrentMediaTime()))
             hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
-            hud.draw(canvas: canvas, width: Float(renderer.textureManager.width), height: Float(renderer.textureManager.height))
+            hud.draw(
+                canvas: canvas, width: Float(renderer.textureManager.width),
+                height: Float(renderer.textureManager.height))
         }
         canvas3D.end()
         canvas.end()

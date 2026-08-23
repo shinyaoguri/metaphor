@@ -152,7 +152,8 @@ public final class StatePlugin: MetaphorPlugin {
     private func pollSaveRequestFile() -> SketchStateSaveRequest? {
         let path = config.saveRequestFilePath
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-              let mtime = attrs[.modificationDate] as? Date else {
+            let mtime = attrs[.modificationDate] as? Date
+        else {
             return nil
         }
         if let last = lastRequestMTime, last == mtime { return nil }

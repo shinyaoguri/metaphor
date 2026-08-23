@@ -211,7 +211,9 @@ struct DeterminismTests {
         var prevTime: Float = 0
         // 影オフ時のフォールバック経路。
         renderer.onDraw = { encoder, time in
-            let t = Float(time); let dt = t - prevTime; prevTime = t
+            let t = Float(time)
+            let dt = t - prevTime
+            prevTime = t
             context.beginFrame(encoder: encoder, time: t, deltaTime: dt)
             draw(context)
             context.endFrame()
@@ -222,7 +224,9 @@ struct DeterminismTests {
         // 影オン時の記録→再生経路（SketchRunner と同じ）。
         renderer.shadowDeferActive = { context.canvas3D.shouldRecordMainPass }
         renderer.onRecordFrame = { time in
-            let t = Float(time); let dt = t - prevTime; prevTime = t
+            let t = Float(time)
+            let dt = t - prevTime
+            prevTime = t
             context.beginRecordingFrame(time: t, deltaTime: dt)
             draw(context)
             context.endRecordingFrame()
@@ -240,23 +244,24 @@ struct DeterminismTests {
     func shadowPath2DForegroundOnTop() throws {
         let w: Float = 64
         let (renderer, context) = try makeShadowHarness { c in
-            c.background(Color(r: 0, g: 0, b: 1))      // 青背景（クリア）
+            c.background(Color(r: 0, g: 0, b: 1))  // 青背景（クリア）
             c.lights()
             c.fill(Color(r: 1, g: 1, b: 1))
             c.pushMatrix()
             c.translate(w / 2, w / 2, 0)
-            c.box(w)                                    // 中央に大きな箱
+            c.box(w)  // 中央に大きな箱
             c.popMatrix()
-            c.fill(Color(r: 1, g: 0, b: 0))             // 赤
+            c.fill(Color(r: 1, g: 0, b: 0))  // 赤
             c.noStroke()
-            c.rect(0, 0, w, w)                          // フルスクリーン前景
+            c.rect(0, 0, w, w)  // フルスクリーン前景
         }
-        context.enableShadows()                          // setup 相当: 初回フレーム前に有効化
+        context.enableShadows()  // setup 相当: 初回フレーム前に有効化
         renderer.renderFrame()
 
         let p = try readbackCenterPixel(renderer)
-        #expect(p.r > 250 && p.g < 8 && p.b < 8,
-                "2D前景(赤)が3Dの上に合成されるべき: \(p)")
+        #expect(
+            p.r > 250 && p.g < 8 && p.b < 8,
+            "2D前景(赤)が3Dの上に合成されるべき: \(p)")
         #expect(context.frameCount == 1, "影経路でも frameCount は 1")
     }
 
@@ -284,10 +289,12 @@ struct DeterminismTests {
         noBox.renderer.renderFrame()
         let empty = try readbackCenterPixel(noBox.renderer)
 
-        #expect(empty.b > 250 && empty.r < 8,
-                "箱なしは青背景のまま: \(empty)")
-        #expect(boxed != empty,
-                "箱ありは中心ピクセルが背景と異なるべき（3Dが再生された）: box=\(boxed) bg=\(empty)")
+        #expect(
+            empty.b > 250 && empty.r < 8,
+            "箱なしは青背景のまま: \(empty)")
+        #expect(
+            boxed != empty,
+            "箱ありは中心ピクセルが背景と異なるべき（3Dが再生された）: box=\(boxed) bg=\(empty)")
     }
 
     /// 影オン経路も決定論的（同一入力 → 同一 snapshot）。

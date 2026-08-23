@@ -155,7 +155,7 @@ struct ParameterGUIStoreTests {
         context.input.handleMouseDown(x: 114, y: 34, button: .left)
         renderer.renderFrame()
 
-        #expect(host.radius == 105)                     // 10 + 190 * 0.5
+        #expect(host.radius == 105)  // 10 + 190 * 0.5
         #expect(context.params.value("radius") == .float(105))
         #expect(context.params.revision > 0)
 
@@ -231,9 +231,9 @@ struct ParameterGUIStoreTests {
         }
         context.params.discover(in: host)
 
-        renderer.renderFrame()                 // 30 → 0…100
+        renderer.renderFrame()  // 30 → 0…100
         host.speed = 3
-        renderer.renderFrame()                 // 値が動いてもレンジは固定
+        renderer.renderFrame()  // 値が動いてもレンジは固定
         #expect(ranges.count == 2)
         #expect(ranges[0] == ranges[1])
         #expect(ranges[0].min == 0)
@@ -248,6 +248,6 @@ struct ParameterGUIStoreTests {
         #expect(isClose(ParameterGUI.niceCeil(1.2), 2))
         #expect(isClose(ParameterGUI.niceCeil(6), 10))
         #expect(isClose(ParameterGUI.niceCeil(60), 100))
-        #expect(isClose(ParameterGUI.niceCeil(0), 1))      // 値 0 でも潰れない
+        #expect(isClose(ParameterGUI.niceCeil(0), 1))  // 値 0 でも潰れない
     }
 }

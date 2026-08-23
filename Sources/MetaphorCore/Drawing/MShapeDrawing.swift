@@ -161,9 +161,12 @@ extension SketchContext {
         if canvas.hasFill, let tris = s.cachedTriangles2D, !tris.isEmpty {
             // 頂点カラー / UV は 2D 描画経路では未対応。黙って捨てず一度だけ警告する
             if !s.warned2DVertexAttributes,
-               s.vertices2D.contains(where: { $0.color != nil || $0.uv != nil }) {
+                s.vertices2D.contains(where: { $0.color != nil || $0.uv != nil })
+            {
                 s.warned2DVertexAttributes = true
-                metaphorWarning("MShape: per-vertex color/UV are not yet supported in the 2D draw path and are ignored")
+                metaphorWarning(
+                    "MShape: per-vertex color/UV are not yet supported in the 2D draw path and are ignored"
+                )
             }
             let fillColor = canvas.fillColor
             for (v0, v1, v2) in tris {
@@ -188,7 +191,9 @@ extension SketchContext {
         if style.hasTint { s.warnTintIgnoredOnce() }
     }
 
-    private func computeBounds2D(_ s: MShape) -> (minX: Float, minY: Float, width: Float, height: Float) {
+    private func computeBounds2D(_ s: MShape) -> (
+        minX: Float, minY: Float, width: Float, height: Float
+    ) {
         guard !s.vertices2D.isEmpty else { return (0, 0, 0, 0) }
         var minX: Float = .greatestFiniteMagnitude
         var minY: Float = .greatestFiniteMagnitude
@@ -293,13 +298,15 @@ extension SketchContext {
                 s.warned3DStrokeOnlyMode = true
                 metaphorWarning(
                     "MShape: beginShape(.lines) / beginShape(.points) draws with stroke only — "
-                    + "noStroke() leaves nothing to draw")
+                        + "noStroke() leaves nothing to draw")
             }
         }
     }
 
-    private func drawShape3DWithSize(_ s: MShape, tx: Float, ty: Float, tz: Float,
-                                      w: Float, h: Float) {
+    private func drawShape3DWithSize(
+        _ s: MShape, tx: Float, ty: Float, tz: Float,
+        w: Float, h: Float
+    ) {
         canvas3D.pushState()
         canvas3D.translate(tx, ty, tz)
 
@@ -368,15 +375,19 @@ extension SketchContext {
                 s.primitiveMesh3D = try Mesh.box(device: device, width: w, height: h, depth: d)
             case .sphere(let r, let detail):
                 let rings = max(detail / 2, 4)
-                s.primitiveMesh3D = try Mesh.sphere(device: device, radius: r, segments: detail, rings: rings)
+                s.primitiveMesh3D = try Mesh.sphere(
+                    device: device, radius: r, segments: detail, rings: rings)
             case .plane(let w, let h):
                 s.primitiveMesh3D = try Mesh.plane(device: device, width: w, height: h)
             case .cylinder(let r, let h, let detail):
-                s.primitiveMesh3D = try Mesh.cylinder(device: device, radius: r, height: h, segments: detail)
+                s.primitiveMesh3D = try Mesh.cylinder(
+                    device: device, radius: r, height: h, segments: detail)
             case .cone(let r, let h, let detail):
-                s.primitiveMesh3D = try Mesh.cone(device: device, radius: r, height: h, segments: detail)
+                s.primitiveMesh3D = try Mesh.cone(
+                    device: device, radius: r, height: h, segments: detail)
             case .torus(let rr, let tr, let detail):
-                s.primitiveMesh3D = try Mesh.torus(device: device, ringRadius: rr, tubeRadius: tr, segments: detail)
+                s.primitiveMesh3D = try Mesh.torus(
+                    device: device, ringRadius: rr, tubeRadius: tr, segments: detail)
             default:
                 break
             }

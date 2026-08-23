@@ -51,7 +51,7 @@ import Foundation
 @inline(__always)
 public func metaphorWarning(_ message: @autoclosure () -> String) {
     #if DEBUG
-    print("[metaphor] Warning:", message())
+        print("[metaphor] Warning:", message())
     #endif
 }
 

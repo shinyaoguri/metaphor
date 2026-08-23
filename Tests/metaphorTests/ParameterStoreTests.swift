@@ -122,9 +122,9 @@ struct ParameterStoreTests {
             values: [
                 "radius": 120.5,
                 "showGrid": false,
-                "blend": "subtract",     // choices 外 → 拒否
-                "count": true,           // 型不一致 → 拒否
-                "nope": 1,               // 未知 → 拒否
+                "blend": "subtract",  // choices 外 → 拒否
+                "count": true,  // 型不一致 → 拒否
+                "nope": 1,  // 未知 → 拒否
             ]
         )
         let applied = store.apply(request)
@@ -146,10 +146,11 @@ struct ParameterStoreTests {
         let host = ParamHost()
         let store = makeStore(host)
 
-        store.apply(ParameterSetRequest(
-            id: "req-2",
-            values: ["origin": [320, 180], "tint": [1, 0.5, 0.25, 1]]
-        ))
+        store.apply(
+            ParameterSetRequest(
+                id: "req-2",
+                values: ["origin": [320, 180], "tint": [1, 0.5, 0.25, 1]]
+            ))
 
         #expect(host.origin == Vec2(320, 180))
         #expect(host.tint == Color(r: 1, g: 0.5, b: 0.25, alpha: 1))
@@ -161,33 +162,34 @@ struct ParameterStoreTests {
         let store = makeStore(host)
 
         let json = """
-        {
-          "schemaVersion": 1,
-          "revision": 7,
-          "warnings": [],
-          "params": [
-            {"name": "radius", "type": "float", "value": 150},
-            {"name": "showGrid", "type": "int", "value": 3},
-            {"name": "gone", "type": "float", "value": 1},
-            {"name": "count", "type": "int", "value": 9999}
-          ]
-        }
-        """
+            {
+              "schemaVersion": 1,
+              "revision": 7,
+              "warnings": [],
+              "params": [
+                {"name": "radius", "type": "float", "value": 150},
+                {"name": "showGrid", "type": "int", "value": 3},
+                {"name": "gone", "type": "float", "value": 1},
+                {"name": "count", "type": "int", "value": 9999}
+              ]
+            }
+            """
         let file = try #require(ParameterFile.decode(from: Data(json.utf8)))
         store.applyPersisted(file)
 
-        #expect(host.radius == 150)          // 復元される
-        #expect(host.showGrid == true)       // 型が違うので破棄（既定値のまま）
-        #expect(host.count == 512)           // 復元時も min/max でクランプ
-        #expect(store.revision == 7)         // revision は永続値を引き継ぐ
+        #expect(host.radius == 150)  // 復元される
+        #expect(host.showGrid == true)  // 型が違うので破棄（既定値のまま）
+        #expect(host.count == 512)  // 復元時も min/max でクランプ
+        #expect(store.revision == 7)  // revision は永続値を引き継ぐ
     }
 
     @Test("壊れた params.json / 未知の schemaVersion は無視される")
     func decodeRejectsBrokenFiles() {
         #expect(ParameterFile.decode(from: Data("{ not json".utf8)) == nil)
-        #expect(ParameterFile.decode(
-            from: Data(#"{"schemaVersion":99,"revision":1,"warnings":[],"params":[]}"#.utf8)
-        ) == nil)
+        #expect(
+            ParameterFile.decode(
+                from: Data(#"{"schemaVersion":99,"revision":1,"warnings":[],"params":[]}"#.utf8)
+            ) == nil)
         #expect(ParameterSetRequest.decode(from: Data(#"{"values":{}}"#.utf8)) == nil)
     }
 }
@@ -214,8 +216,9 @@ struct ParameterPluginFileTests {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if let data = try? Data(contentsOf: url),
-               let file = ParameterFile.decode(from: data),
-               predicate(file) {
+                let file = ParameterFile.decode(from: data),
+                predicate(file)
+            {
                 return file
             }
             Thread.sleep(forTimeInterval: 0.02)
@@ -224,11 +227,12 @@ struct ParameterPluginFileTests {
     }
 
     private func makePlugin(in dir: URL) -> ParameterPlugin {
-        ParameterPlugin(config: ParameterStoreConfig(
-            directory: dir.path,
-            setRequestFilePath: dir.appendingPathComponent("set-request.json").path,
-            writeDebounce: 0.05
-        ))
+        ParameterPlugin(
+            config: ParameterStoreConfig(
+                directory: dir.path,
+                setRequestFilePath: dir.appendingPathComponent("set-request.json").path,
+                writeDebounce: 0.05
+            ))
     }
 
     @Test("attach で宣言（型・レンジ・choices）が params.json に書き出される")
@@ -243,7 +247,10 @@ struct ParameterPluginFileTests {
 
             let file = try #require(ParameterFile.decode(from: try Data(contentsOf: paramsURL)))
             #expect(file.schemaVersion == ParameterFile.currentSchemaVersion)
-            #expect(file.params.map(\.name) == ["radius", "showGrid", "blend", "tint", "origin", "count"])
+            #expect(
+                file.params.map(\.name) == [
+                    "radius", "showGrid", "blend", "tint", "origin", "count",
+                ])
             let radius = try #require(file.params.first)
             #expect(radius.min == 10)
             #expect(radius.max == 200)
@@ -264,9 +271,12 @@ struct ParameterPluginFileTests {
             firstPlugin.tick(now: 10)  // デバウンス経過
 
             let paramsURL = dir.appendingPathComponent("params.json")
-            #expect(waitForParams(paramsURL, until: { file in
-                file.params.contains { $0.name == "radius" && $0.value == .float(137) }
-            }) != nil)
+            #expect(
+                waitForParams(
+                    paramsURL,
+                    until: { file in
+                        file.params.contains { $0.name == "radius" && $0.value == .float(137) }
+                    }) != nil)
 
             // 2 回目の起動: 同じディレクトリで attach すると復元される。
             let second = ParamHost()
@@ -285,17 +295,20 @@ struct ParameterPluginFileTests {
             plugin.attach(store: store, sketch: host)
 
             let requestURL = dir.appendingPathComponent("set-request.json")
-            let payload: [String: Any] = ["id": "set-1", "values": ["radius": 88, "blend": "multiply"]]
+            let payload: [String: Any] = [
+                "id": "set-1", "values": ["radius": 88, "blend": "multiply"],
+            ]
             try JSONSerialization.data(withJSONObject: payload).write(to: requestURL)
 
             plugin.tick(now: 1)
             #expect(host.radius == 88)
             #expect(host.mode == "multiply")
 
-            let file = try #require(waitForParams(
-                dir.appendingPathComponent("params.json"),
-                until: { $0.appliedRequestId == "set-1" }
-            ))
+            let file = try #require(
+                waitForParams(
+                    dir.appendingPathComponent("params.json"),
+                    until: { $0.appliedRequestId == "set-1" }
+                ))
             #expect(file.revision == store.revision)
             #expect(file.warnings.isEmpty)
         }
@@ -334,10 +347,11 @@ struct ParameterPluginFileTests {
             try JSONSerialization.data(withJSONObject: payload).write(to: requestURL)
             plugin.tick(now: 1)
 
-            let file = try #require(waitForParams(
-                dir.appendingPathComponent("params.json"),
-                until: { $0.appliedRequestId == "bad-1" }
-            ))
+            let file = try #require(
+                waitForParams(
+                    dir.appendingPathComponent("params.json"),
+                    until: { $0.appliedRequestId == "bad-1" }
+                ))
             #expect(file.warnings.contains { $0.contains("radius") })
             #expect(host.radius == 50)
         }
@@ -350,12 +364,16 @@ struct ParameterPluginFileTests {
             plugin.attach(store: ParameterStore(), sketch: ParamHost())
             let paramsURL = dir.appendingPathComponent("params.json")
             #expect(waitForFile(paramsURL))
-            let before = try FileManager.default.attributesOfItem(atPath: paramsURL.path)[.modificationDate] as? Date
+            let before =
+                try FileManager.default.attributesOfItem(atPath: paramsURL.path)[.modificationDate]
+                as? Date
 
             for tick in 0..<10 { plugin.tick(now: Double(tick)) }
             Thread.sleep(forTimeInterval: 0.2)
 
-            let after = try FileManager.default.attributesOfItem(atPath: paramsURL.path)[.modificationDate] as? Date
+            let after =
+                try FileManager.default.attributesOfItem(atPath: paramsURL.path)[.modificationDate]
+                as? Date
             #expect(before == after)
         }
     }
@@ -374,9 +392,10 @@ struct ParameterPluginFileTests {
             func draw() {}
         }
         #expect(ParameterPlugin.shouldAutoRegister(sketch: WithParams(), env: [:]) == true)
-        #expect(ParameterPlugin.shouldAutoRegister(
-            sketch: WithParams(), env: ["METAPHOR_PARAMS": "0"]
-        ) == false)
+        #expect(
+            ParameterPlugin.shouldAutoRegister(
+                sketch: WithParams(), env: ["METAPHOR_PARAMS": "0"]
+            ) == false)
     }
 }
 
@@ -403,17 +422,29 @@ struct ParameterSchemaConformanceTests {
             appliedRequestId: "01J2ZK9M3QW8XV4T7YB0C5D6EF",
             warnings: ["unknown parameter 'radiuss'"],
             params: [
-                .init(name: "radius", type: "float", value: .float(120), min: 10, max: 200, choices: nil),
+                .init(
+                    name: "radius", type: "float", value: .float(120), min: 10, max: 200,
+                    choices: nil),
                 .init(name: "count", type: "int", value: .int(128), min: 1, max: 512, choices: nil),
-                .init(name: "showGrid", type: "bool", value: .bool(false), min: nil, max: nil, choices: nil),
-                .init(name: "mode", type: "string", value: .string("add"), min: nil, max: nil,
-                      choices: ["add", "multiply"]),
-                .init(name: "tint", type: "color", value: .color(1, 0.5, 0.25, 1), min: nil, max: nil, choices: nil),
-                .init(name: "origin", type: "vec2", value: .vec2(640, 360), min: nil, max: nil, choices: nil),
-                .init(name: "wind", type: "vec3", value: .vec3(0.1, 0, -0.2), min: nil, max: nil, choices: nil),
+                .init(
+                    name: "showGrid", type: "bool", value: .bool(false), min: nil, max: nil,
+                    choices: nil),
+                .init(
+                    name: "mode", type: "string", value: .string("add"), min: nil, max: nil,
+                    choices: ["add", "multiply"]),
+                .init(
+                    name: "tint", type: "color", value: .color(1, 0.5, 0.25, 1), min: nil, max: nil,
+                    choices: nil),
+                .init(
+                    name: "origin", type: "vec2", value: .vec2(640, 360), min: nil, max: nil,
+                    choices: nil),
+                .init(
+                    name: "wind", type: "vec3", value: .vec3(0.1, 0, -0.2), min: nil, max: nil,
+                    choices: nil),
             ]
         )
-        try assertStructurallyEqual(encode(file), loadContractExample("params.json"), path: "params")
+        try assertStructurallyEqual(
+            encode(file), loadContractExample("params.json"), path: "params")
     }
 
     @Test("params.json (minimal) は optional 省略時の構造と一致する")
@@ -424,7 +455,9 @@ struct ParameterSchemaConformanceTests {
             appliedRequestId: nil,
             warnings: [],
             params: [
-                .init(name: "radius", type: "float", value: .float(50), min: nil, max: nil, choices: nil)
+                .init(
+                    name: "radius", type: "float", value: .float(50), min: nil, max: nil,
+                    choices: nil)
             ]
         )
         try assertStructurallyEqual(

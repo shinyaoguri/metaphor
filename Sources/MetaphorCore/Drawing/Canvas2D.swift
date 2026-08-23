@@ -408,21 +408,25 @@ public final class Canvas2D: CanvasStyle {
         // テストするため、このオフセットが必要です。これがないと、整数xでの
         // strokeWeight(1) ラインが1ピクセルをクリスプに塗りつぶす代わりに
         // 2ピクセルにまたがってしまいます。
-        self.projectionMatrix = float4x4(columns: (
-            SIMD4<Float>(2.0 / width, 0, 0, 0),
-            SIMD4<Float>(0, -2.0 / height, 0, 0),
-            SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(-1.0 + 1.0 / width, 1.0 - 1.0 / height, 0, 1)
-        ))
+        self.projectionMatrix = float4x4(
+            columns: (
+                SIMD4<Float>(2.0 / width, 0, 0, 0),
+                SIMD4<Float>(0, -2.0 / height, 0, 0),
+                SIMD4<Float>(0, 0, 1, 0),
+                SIMD4<Float>(-1.0 + 1.0 / width, 1.0 - 1.0 / height, 0, 1)
+            ))
 
-        precondition(MemoryLayout<Vertex2D>.stride == 24,
-                     "Vertex2D stride must be 24 to match position2DColor layout")
-        precondition(MemoryLayout<TexturedVertex2D>.stride == 32,
-                     "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
+        precondition(
+            MemoryLayout<Vertex2D>.stride == 24,
+            "Vertex2D stride must be 24 to match position2DColor layout")
+        precondition(
+            MemoryLayout<TexturedVertex2D>.stride == 32,
+            "TexturedVertex2D stride must be 32 to match position2DTexCoordColor layout")
 
         // 2D インスタンシングリソース
         guard let (circleBuf, circleCount) = UnitMesh2D.createCircle(device: device) else {
-            throw MetaphorError.bufferCreationFailed(size: 64 * 3 * MemoryLayout<SIMD2<Float>>.stride)
+            throw MetaphorError.bufferCreationFailed(
+                size: 64 * 3 * MemoryLayout<SIMD2<Float>>.stride)
         }
         self.unitCircleBuffer = circleBuf
         self.unitCircleVertexCount = circleCount
@@ -544,9 +548,11 @@ public final class Canvas2D: CanvasStyle {
             var p = projectionMatrix
             encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
             bindShaderResources(key, params: shaderParams, on: encoder)
-            encoder.drawPrimitives(type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
 
-        case .texturedBatch(let key, let vertexStart, let vertexCount, let texture, let shaderParams):
+        case .texturedBatch(
+            let key, let vertexStart, let vertexCount, let texture, let shaderParams):
             guard let texPipeline = pipelineStore.state(for: key) else { return }
             encoder.setRenderPipelineState(texPipeline)
             if let depthState = depthStencilState { encoder.setDepthStencilState(depthState) }
@@ -556,7 +562,8 @@ public final class Canvas2D: CanvasStyle {
             encoder.setVertexBytes(&p, length: MemoryLayout<float4x4>.size, index: 1)
             encoder.setFragmentTexture(texture, index: 0)
             bindShaderResources(key, params: shaderParams, on: encoder)
-            encoder.drawPrimitives(type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
+            encoder.drawPrimitives(
+                type: .triangle, vertexStart: vertexStart, vertexCount: vertexCount)
 
         case .instancedBatch(
             let key, let shape, let instanceBuffer, let instanceOffset, let instanceCount,
@@ -665,12 +672,13 @@ public final class Canvas2D: CanvasStyle {
         }
         if !didWarnBlendFallback {
             didWarnBlendFallback = true
-            metaphorAlert("""
-            blendMode(.multiply / .screen / .subtract / .lightest / .darkest / \
-            .difference / .exclusion) はカスタム 2D シェーダと同時には使えません\
-            （フレームバッファフェッチ用の組み込みフラグメントで実装されているため）。\
-            通常のアルファブレンドで描画します。
-            """)
+            metaphorAlert(
+                """
+                blendMode(.multiply / .screen / .subtract / .lightest / .darkest / \
+                .difference / .exclusion) はカスタム 2D シェーダと同時には使えません\
+                （フレームバッファフェッチ用の組み込みフラグメントで実装されているため）。\
+                通常のアルファブレンドで描画します。
+                """)
         }
         return Canvas2DPipelineKey(kind, .alpha, shader: shader.id)
     }
@@ -817,7 +825,8 @@ public final class Canvas2D: CanvasStyle {
     // 現在のインスタンスバッチを GPU に送信
     func flushInstancedBatch() {
         guard instanceBatcher2D.instanceCount > 0,
-              let batchKey = instanceBatcher2D.currentBatchKey else { return }
+            let batchKey = instanceBatcher2D.currentBatchKey
+        else { return }
         // インスタンスバッチのブレンドモードは蓄積開始時のもの。currentBlendMode ではなく
         // こちらでキーを立てる（blendMode() の切替時に先にフラッシュされるため一致する）。
         // カスタムシェーダも shader() / resetShader() が先にフラッシュするので、
@@ -832,10 +841,11 @@ public final class Canvas2D: CanvasStyle {
         let shape = batchKey.shapeType
         instanceBatcher2D.reset()
 
-        emit(.instancedBatch(
-            pipeline: key, shape: shape,
-            instanceBuffer: instanceBuffer, instanceOffset: instanceOffset,
-            instanceCount: instanceCount, shaderParams: currentShaderParams))
+        emit(
+            .instancedBatch(
+                pipeline: key, shape: shape,
+                instanceBuffer: instanceBuffer, instanceOffset: instanceOffset,
+                instanceCount: instanceCount, shaderParams: currentShaderParams))
     }
 
     // シェイプをインスタンスバッチに追加。
@@ -860,11 +870,12 @@ public final class Canvas2D: CanvasStyle {
         )
 
         // currentTransform * translate(cx,cy) * scale(sx,sy) を float4x4 に変換
-        let shapeLocal = float3x3(columns: (
-            SIMD3<Float>(sx, 0, 0),
-            SIMD3<Float>(0, sy, 0),
-            SIMD3<Float>(cx, cy, 1)
-        ))
+        let shapeLocal = float3x3(
+            columns: (
+                SIMD3<Float>(sx, 0, 0),
+                SIMD3<Float>(0, sy, 0),
+                SIMD3<Float>(cx, cy, 1)
+            ))
         let combined = currentTransform * shapeLocal
         let transform = Canvas2D.embed2DTransform(combined)
 
@@ -882,7 +893,9 @@ public final class Canvas2D: CanvasStyle {
     }
 
     /// フォールバック: インスタンスバッファが満杯の場合、非インスタンスカラー頂点としてシェイプを描画します。
-    private func addShapeFallback(_ shapeType: Shape2DType, cx: Float, cy: Float, sx: Float, sy: Float) {
+    private func addShapeFallback(
+        _ shapeType: Shape2DType, cx: Float, cy: Float, sx: Float, sy: Float
+    ) {
         let color = fillColor
         switch shapeType {
         case .ellipse:

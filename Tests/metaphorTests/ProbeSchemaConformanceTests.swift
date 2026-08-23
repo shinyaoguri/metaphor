@@ -116,7 +116,8 @@ struct ProbeSchemaConformanceTests {
             params: nil,
             shaders: nil
         )
-        try assertStructurallyEqual(encode(metadata), loadExample("frame-minimal.json"), path: "frame-minimal")
+        try assertStructurallyEqual(
+            encode(metadata), loadExample("frame-minimal.json"), path: "frame-minimal")
     }
 
     @Test("frame.json (failure) は失敗応答（PNG なし・warnings のみ）の構造と一致する")
@@ -139,21 +140,25 @@ struct ProbeSchemaConformanceTests {
             params: nil,
             shaders: nil
         )
-        try assertStructurallyEqual(encode(metadata), loadExample("frame-failure.json"), path: "frame-failure")
+        try assertStructurallyEqual(
+            encode(metadata), loadExample("frame-failure.json"), path: "frame-failure")
     }
 
     // MARK: request.json
 
     @Test("request.json (full) は実 ProbeRequest と構造一致する")
     func requestFullMatchesExample() throws {
-        let request = ProbeRequest(id: "01HXYZABCDEF0123456789", label: "baseline", scale: 1.0, frames: 8, every: 2)
+        let request = ProbeRequest(
+            id: "01HXYZABCDEF0123456789", label: "baseline", scale: 1.0, frames: 8, every: 2)
         try assertStructurallyEqual(encode(request), loadExample("request.json"), path: "request")
     }
 
     @Test("request.json (minimal) は id のみの構造と一致する")
     func requestMinimalMatchesExample() throws {
-        let request = ProbeRequest(id: "01HXYZABCDEF0123456789", label: nil, scale: nil, frames: nil, every: nil)
-        try assertStructurallyEqual(encode(request), loadExample("request-minimal.json"), path: "request-minimal")
+        let request = ProbeRequest(
+            id: "01HXYZABCDEF0123456789", label: nil, scale: nil, frames: nil, every: nil)
+        try assertStructurallyEqual(
+            encode(request), loadExample("request-minimal.json"), path: "request-minimal")
     }
 
     // MARK: sequence.json
@@ -171,10 +176,15 @@ struct ProbeSchemaConformanceTests {
             contactSheet: "contact_sheet.png",
             warnings: ["frames clamped from 8 to 2"],
             frames: [
-                .init(index: 0, file: "frame.0000.png", metadata: "frame.0000.json", frame: 100, time: 0.0),
-                .init(index: 1, file: "frame.0001.png", metadata: "frame.0001.json", frame: 102, time: 0.033),
+                .init(
+                    index: 0, file: "frame.0000.png", metadata: "frame.0000.json", frame: 100,
+                    time: 0.0),
+                .init(
+                    index: 1, file: "frame.0001.png", metadata: "frame.0001.json", frame: 102,
+                    time: 0.033),
             ]
         )
-        try assertStructurallyEqual(encode(manifest), loadExample("sequence.json"), path: "sequence")
+        try assertStructurallyEqual(
+            encode(manifest), loadExample("sequence.json"), path: "sequence")
     }
 }

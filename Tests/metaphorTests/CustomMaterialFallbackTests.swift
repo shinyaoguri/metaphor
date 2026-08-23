@@ -46,8 +46,9 @@ struct CustomMaterialFallbackTests {
     private func drawSolidRedBox(_ c: SketchContext) {
         c.background(Color(r: 0, g: 0, b: 0))
         c.noStroke()
-        guard let material = try? c.createMaterial(
-            source: Self.solidRedSource, fragmentFunction: "fallbackSolidRed")
+        guard
+            let material = try? c.createMaterial(
+                source: Self.solidRedSource, fragmentFunction: "fallbackSolidRed")
         else {
             Issue.record("カスタムマテリアルを作れなかった")
             return
@@ -65,8 +66,9 @@ struct CustomMaterialFallbackTests {
     func rendersOnImmediatePath() throws {
         let image = try OffscreenSketchHarness.render(size: Self.size, draw: drawSolidRedBox)
 
-        #expect(pixel(image, Self.center) == SIMD3(255, 0, 0),
-                "box が消えている: center=\(pixel(image, Self.center)) (#717)")
+        #expect(
+            pixel(image, Self.center) == SIMD3(255, 0, 0),
+            "box が消えている: center=\(pixel(image, Self.center)) (#717)")
         #expect(pixel(image, Self.corner) == SIMD3(0, 0, 0), "背景まで塗られている")
     }
 
@@ -75,8 +77,9 @@ struct CustomMaterialFallbackTests {
         let image = try OffscreenSketchHarness.render(
             size: Self.size, mode: .shadows, draw: drawSolidRedBox)
 
-        #expect(pixel(image, Self.center) == SIMD3(255, 0, 0),
-                "記録 → 再生経路で box が消えている: center=\(pixel(image, Self.center)) (#717)")
+        #expect(
+            pixel(image, Self.center) == SIMD3(255, 0, 0),
+            "記録 → 再生経路で box が消えている: center=\(pixel(image, Self.center)) (#717)")
         #expect(pixel(image, Self.corner) == SIMD3(0, 0, 0), "背景まで塗られている")
     }
 
@@ -89,8 +92,9 @@ struct CustomMaterialFallbackTests {
         let image = try OffscreenSketchHarness.render(size: Self.size) { c in
             c.background(Color(r: 0, g: 0, b: 0))
             c.noStroke()
-            guard let material = try? c.createMaterial(
-                source: Self.solidRedSource, fragmentFunction: "fallbackSolidRed"),
+            guard
+                let material = try? c.createMaterial(
+                    source: Self.solidRedSource, fragmentFunction: "fallbackSolidRed"),
                 let mesh = try? Mesh.box(
                     device: c.renderer.device, width: 24, height: 24, depth: 24)
             else {
@@ -102,8 +106,9 @@ struct CustomMaterialFallbackTests {
         }
 
         for p in [(38, 38), (90, 38), (38, 90), (90, 90)] {
-            #expect(pixel(image, (x: p.0, y: p.1)) == SIMD3(255, 0, 0),
-                    "(\(p.0), \(p.1)) のインスタンスが消えている (#717)")
+            #expect(
+                pixel(image, (x: p.0, y: p.1)) == SIMD3(255, 0, 0),
+                "(\(p.0), \(p.1)) のインスタンスが消えている (#717)")
         }
         #expect(pixel(image, (x: 64, y: 4)) == SIMD3(0, 0, 0), "背景まで塗られている")
     }

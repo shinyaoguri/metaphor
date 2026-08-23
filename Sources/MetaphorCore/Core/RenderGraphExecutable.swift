@@ -14,5 +14,6 @@ public protocol RenderGraphExecutable: AnyObject {
     ///   - time: 経過時間（秒）
     ///   - renderer: 共有リソースを提供する ``MetaphorRenderer`` 参照
     /// - Returns: 最終出力テクスチャ。実行に失敗した場合は `nil`
-    func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer) -> MTLTexture?
+    func execute(commandBuffer: MTLCommandBuffer, time: Double, renderer: MetaphorRenderer)
+        -> MTLTexture?
 }

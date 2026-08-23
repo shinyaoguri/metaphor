@@ -54,9 +54,9 @@ public final class FrameExporter {
             self.filenamePattern = pattern
         } else {
             metaphorWarning(
-                "FrameExporter: invalid filename pattern '\(pattern)' " +
-                "(must contain exactly one integer format specifier like %05d); " +
-                "using '\(Self.defaultPattern)'"
+                "FrameExporter: invalid filename pattern '\(pattern)' "
+                    + "(must contain exactly one integer format specifier like %05d); "
+                    + "using '\(Self.defaultPattern)'"
             )
             self.filenamePattern = Self.defaultPattern
         }

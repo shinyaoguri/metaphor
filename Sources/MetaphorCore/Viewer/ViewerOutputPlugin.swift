@@ -23,9 +23,11 @@ final class ViewerWorld: @unchecked Sendable {
         var description: String {
             switch self {
             case .shmOpen(let errno): return "shm_open failed: \(String(cString: strerror(errno)))"
-            case .ftruncate(let errno): return "ftruncate failed: \(String(cString: strerror(errno)))"
+            case .ftruncate(let errno):
+                return "ftruncate failed: \(String(cString: strerror(errno)))"
             case .mmap(let errno): return "mmap failed: \(String(cString: strerror(errno)))"
-            case .makeBuffer: return "MTLDevice.makeBuffer(bytesNoCopy:) rejected the shared memory mapping"
+            case .makeBuffer:
+                return "MTLDevice.makeBuffer(bytesNoCopy:) rejected the shared memory mapping"
             }
         }
     }
@@ -48,16 +50,19 @@ final class ViewerWorld: @unchecked Sendable {
             throw Failure.ftruncate(errno: saved)
         }
         guard let base = mmap(nil, layout.totalBytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0),
-              base != MAP_FAILED
+            base != MAP_FAILED
         else {
             let saved = errno
             Darwin.close(fd)
             throw Failure.mmap(errno: saved)
         }
         // page 境界・page の倍数の長さ（layout が保証）なので bytesNoCopy が受け付ける。
-        guard let buffer = device.makeBuffer(
-            bytesNoCopy: base, length: layout.totalBytes, options: .storageModeShared, deallocator: nil
-        ) else {
+        guard
+            let buffer = device.makeBuffer(
+                bytesNoCopy: base, length: layout.totalBytes, options: .storageModeShared,
+                deallocator: nil
+            )
+        else {
             munmap(base, layout.totalBytes)
             Darwin.close(fd)
             throw Failure.makeBuffer
@@ -145,7 +150,7 @@ public final class ViewerOutputPlugin: MetaphorOutputPlugin {
             // 出力先が無いまま黙って回り続けないよう 1 行だけ残す。スケッチは止めない。
             metaphorWarning(
                 "viewer: could not connect to METAPHOR_VIEWER_SOCKET (\(socketPath)): \(error). "
-                + "Frames will not be sent to the live viewer."
+                    + "Frames will not be sent to the live viewer."
             )
         }
     }
@@ -176,15 +181,19 @@ public final class ViewerOutputPlugin: MetaphorOutputPlugin {
                 warnedUnsupportedFormat = true
                 metaphorWarning(
                     "viewer: output texture format \(texture.pixelFormat) is not supported by the "
-                    + "live viewer transport (bgra8Unorm only); frames will not be sent"
+                        + "live viewer transport (bgra8Unorm only); frames will not be sent"
                 )
             }
             return
         }
 
         // world（共有メモリ）は最初の post で遅延生成し、幅高が変わったら作り直す（= resize）。
-        if world == nil || world?.layout.width != texture.width || world?.layout.height != texture.height {
-            guard let fresh = makeWorld(device: device, width: texture.width, height: texture.height) else {
+        if world == nil || world?.layout.width != texture.width
+            || world?.layout.height != texture.height
+        {
+            guard
+                let fresh = makeWorld(device: device, width: texture.width, height: texture.height)
+            else {
                 tearDown()
                 return
             }
@@ -193,7 +202,9 @@ public final class ViewerOutputPlugin: MetaphorOutputPlugin {
             let hello = ViewerFrameIPC.Hello(
                 pid: Int(getpid()), metaphor: Metaphor.version, layout: fresh.layout
             )
-            guard let line = try? ViewerFrameIPC.encodeLine(hello), transport.send(line, attachingFD: fresh.fd) else {
+            guard let line = try? ViewerFrameIPC.encodeLine(hello),
+                transport.send(line, attachingFD: fresh.fd)
+            else {
                 metaphorDiagnostic("viewer: could not send hello; stopping frame output")
                 tearDown()
                 return
@@ -250,7 +261,9 @@ public final class ViewerOutputPlugin: MetaphorOutputPlugin {
         do {
             return try ViewerWorld(device: device, layout: layout)
         } catch {
-            metaphorWarning("viewer: could not create shared frame memory (\(layout.totalBytes) bytes): \(error)")
+            metaphorWarning(
+                "viewer: could not create shared frame memory (\(layout.totalBytes) bytes): \(error)"
+            )
             return nil
         }
     }
@@ -280,7 +293,7 @@ struct ViewerOutputProvider: MetaphorOutputProvider {
     @MainActor
     func makeOutput(context: MetaphorOutputContext) -> MetaphorOutputPlugin? {
         guard case .primary = context.scope,
-              let path = context.environment["METAPHOR_VIEWER_SOCKET"], !path.isEmpty
+            let path = context.environment["METAPHOR_VIEWER_SOCKET"], !path.isEmpty
         else { return nil }
         return ViewerOutputPlugin(socketPath: path)
     }

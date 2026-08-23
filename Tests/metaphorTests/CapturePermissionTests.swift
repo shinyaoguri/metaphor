@@ -19,50 +19,57 @@ struct CapturePermissionTests {
 
     @Test("notDetermined のままフレーム 0 で猶予を過ぎたら警告する")
     func warnsWhenPermissionNeverResolves() {
-        #expect(CaptureDevice.shouldWarnAboutPendingPermission(
-            status: .notDetermined, isRunning: true, hasDeliveredFrame: false,
-            elapsed: delay, alreadyWarned: false
-        ))
+        #expect(
+            CaptureDevice.shouldWarnAboutPendingPermission(
+                status: .notDetermined, isRunning: true, hasDeliveredFrame: false,
+                elapsed: delay, alreadyWarned: false
+            ))
     }
 
     @Test("猶予の前には警告しない（.app なら この間にダイアログが出て解決する）")
     func staysQuietBeforeTheGracePeriod() {
-        #expect(!CaptureDevice.shouldWarnAboutPendingPermission(
-            status: .notDetermined, isRunning: true, hasDeliveredFrame: false,
-            elapsed: delay - 0.1, alreadyWarned: false
-        ))
+        #expect(
+            !CaptureDevice.shouldWarnAboutPendingPermission(
+                status: .notDetermined, isRunning: true, hasDeliveredFrame: false,
+                elapsed: delay - 0.1, alreadyWarned: false
+            ))
     }
 
     @Test("フレームが来ていれば警告しない")
     func staysQuietOnceFramesArrive() {
-        #expect(!CaptureDevice.shouldWarnAboutPendingPermission(
-            status: .notDetermined, isRunning: true, hasDeliveredFrame: true,
-            elapsed: delay * 10, alreadyWarned: false
-        ))
+        #expect(
+            !CaptureDevice.shouldWarnAboutPendingPermission(
+                status: .notDetermined, isRunning: true, hasDeliveredFrame: true,
+                elapsed: delay * 10, alreadyWarned: false
+            ))
     }
 
     @Test("start() していなければ警告しない（フレームが来ないのは当然）")
     func staysQuietWhenNotRunning() {
-        #expect(!CaptureDevice.shouldWarnAboutPendingPermission(
-            status: .notDetermined, isRunning: false, hasDeliveredFrame: false,
-            elapsed: delay * 10, alreadyWarned: false
-        ))
+        #expect(
+            !CaptureDevice.shouldWarnAboutPendingPermission(
+                status: .notDetermined, isRunning: false, hasDeliveredFrame: false,
+                elapsed: delay * 10, alreadyWarned: false
+            ))
     }
 
-    @Test("denied / restricted はセットアップ時に別の警告が出るのでここでは出さない",
-          arguments: [CaptureAuthorizationStatus.denied, .restricted, .authorized])
+    @Test(
+        "denied / restricted はセットアップ時に別の警告が出るのでここでは出さない",
+        arguments: [CaptureAuthorizationStatus.denied, .restricted, .authorized])
     func staysQuietForResolvedStatuses(status: CaptureAuthorizationStatus) {
-        #expect(!CaptureDevice.shouldWarnAboutPendingPermission(
-            status: status, isRunning: true, hasDeliveredFrame: false,
-            elapsed: delay * 10, alreadyWarned: false
-        ))
+        #expect(
+            !CaptureDevice.shouldWarnAboutPendingPermission(
+                status: status, isRunning: true, hasDeliveredFrame: false,
+                elapsed: delay * 10, alreadyWarned: false
+            ))
     }
 
     @Test("同じ警告は 1 度だけ（毎フレーム出さない）")
     func warnsOnlyOnce() {
-        #expect(!CaptureDevice.shouldWarnAboutPendingPermission(
-            status: .notDetermined, isRunning: true, hasDeliveredFrame: false,
-            elapsed: delay * 10, alreadyWarned: true
-        ))
+        #expect(
+            !CaptureDevice.shouldWarnAboutPendingPermission(
+                status: .notDetermined, isRunning: true, hasDeliveredFrame: false,
+                elapsed: delay * 10, alreadyWarned: true
+            ))
     }
 }

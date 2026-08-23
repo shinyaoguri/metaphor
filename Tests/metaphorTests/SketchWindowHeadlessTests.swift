@@ -58,7 +58,8 @@ struct SketchWindowHeadlessResolutionTests {
         let requirements = SketchWindow.aggregateRequirements(config: config, outputs: [])
         #expect(requirements.contains(.externalRenderLoop))
         #expect(
-            SketchWindow.resolveLoopMode(config: config, requirements: requirements, isHeadless: false)
+            SketchWindow.resolveLoopMode(
+                config: config, requirements: requirements, isHeadless: false)
                 == .timer(fps: 60)
         )
 

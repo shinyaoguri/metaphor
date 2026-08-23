@@ -41,7 +41,8 @@ private struct DegenerateSize: Sendable, CustomTestStringConvertible {
 struct NoiseDegenerateSizeTests {
 
     private func makeNoise() -> GKNoiseWrapper {
-        GKNoiseWrapper(type: .perlin, config: NoiseConfig(), device: MTLCreateSystemDefaultDevice()!)
+        GKNoiseWrapper(
+            type: .perlin, config: NoiseConfig(), device: MTLCreateSystemDefaultDevice()!)
     }
 
     /// `sampleGrid` は Metal を通らずに落ちるため、GPU の有無と無関係に踏める口。

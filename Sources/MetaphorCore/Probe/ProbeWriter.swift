@@ -157,7 +157,8 @@ enum ProbeWriter {
         var outWidth = width
         var outHeight = height
         if normalizeScale(scale) < 1,
-           let scaled = scaleRGBA(pixels: pixels, width: width, height: height, scale: scale) {
+            let scaled = scaleRGBA(pixels: pixels, width: width, height: height, scale: scale)
+        {
             (pixels, outWidth, outHeight) = scaled
         }
 
@@ -276,17 +277,19 @@ enum ProbeWriter {
         let sheetH = rows * cellH
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil,
-            width: sheetW,
-            height: sheetH,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: colorSpace,
-            // 貼り込むフレームが premultiplied（ADR-0012）なので、下地も同じ表現で
-            // 用意して合成に変換を挟ませない。
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        guard
+            let ctx = CGContext(
+                data: nil,
+                width: sheetW,
+                height: sheetH,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                // 貼り込むフレームが premultiplied（ADR-0012）なので、下地も同じ表現で
+                // 用意して合成に変換を挟ませない。
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else { return nil }
 
         // 背景（暗いグレー）。
         ctx.setFillColor(CGColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1))
@@ -299,7 +302,8 @@ enum ProbeWriter {
         for (i, name) in frameFiles.enumerated() {
             let url = dirURL.appendingPathComponent(name)
             guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-                  let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else { continue }
+                let img = CGImageSourceCreateImageAtIndex(src, 0, nil)
+            else { continue }
             let col = i % cols
             let row = i / cols
             let cell = CGRect(
@@ -313,9 +317,11 @@ enum ProbeWriter {
         let name = "contact_sheet.png"
         let finalURL = dirURL.appendingPathComponent(name)
         let tmpURL = dirURL.appendingPathComponent(name + ".tmp")
-        guard let dest = CGImageDestinationCreateWithURL(
-            tmpURL as CFURL, "public.png" as CFString, 1, nil
-        ) else { return nil }
+        guard
+            let dest = CGImageDestinationCreateWithURL(
+                tmpURL as CFURL, "public.png" as CFString, 1, nil
+            )
+        else { return nil }
         CGImageDestinationAddImage(dest, sheet, nil)
         guard CGImageDestinationFinalize(dest) else { return nil }
         atomicReplace(tmp: tmpURL, final: finalURL)
@@ -402,34 +408,38 @@ enum ProbeWriter {
 
         var src = pixels
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let srcCtx = CGContext(
-            data: &src,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: colorSpace,
-            // 縮小は premultiplied のまま行う（ADR-0012）。straight のまま平均すると
-            // 透明画素の色が混ざって、半透明の縁に黒や別の色が滲む。
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ),
-        let image = srcCtx.makeImage() else {
+        guard
+            let srcCtx = CGContext(
+                data: &src,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: colorSpace,
+                // 縮小は premultiplied のまま行う（ADR-0012）。straight のまま平均すると
+                // 透明画素の色が混ざって、半透明の縁に黒や別の色が滲む。
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ),
+            let image = srcCtx.makeImage()
+        else {
             metaphorDiagnostic("Probe: failed to build image for scaling — writing full size")
             return nil
         }
 
         var dst = [UInt8](repeating: 0, count: outW * outH * 4)
         let ok = dst.withUnsafeMutableBytes { buf -> Bool in
-            guard let dstCtx = CGContext(
-                data: buf.baseAddress,
-                width: outW,
-                height: outH,
-                bitsPerComponent: 8,
-                bytesPerRow: outW * 4,
-                space: colorSpace,
-                // 出力側も premultiplied で受ける（入力と揃えて変換を挟ませない）。
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ) else { return false }
+            guard
+                let dstCtx = CGContext(
+                    data: buf.baseAddress,
+                    width: outW,
+                    height: outH,
+                    bitsPerComponent: 8,
+                    bytesPerRow: outW * 4,
+                    space: colorSpace,
+                    // 出力側も premultiplied で受ける（入力と揃えて変換を挟ませない）。
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                )
+            else { return false }
             dstCtx.interpolationQuality = .high
             dstCtx.draw(image, in: CGRect(x: 0, y: 0, width: outW, height: outH))
             return true
@@ -447,22 +457,24 @@ enum ProbeWriter {
     ) {
         let bytesPerRow = width * 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: &rgba,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            // 読み戻したテクスチャの中身は premultiplied（ADR-0012）。宣言を実体に
-            // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
-            // **frame.png は straight** になる（受け手はそのまま読めばよい）。
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ),
-        let cgImage = ctx.makeImage(),
-        let dest = CGImageDestinationCreateWithURL(
-            url as CFURL, "public.png" as CFString, 1, nil
-        ) else {
+        guard
+            let ctx = CGContext(
+                data: &rgba,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                // 読み戻したテクスチャの中身は premultiplied（ADR-0012）。宣言を実体に
+                // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
+                // **frame.png は straight** になる（受け手はそのまま読めばよい）。
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ),
+            let cgImage = ctx.makeImage(),
+            let dest = CGImageDestinationCreateWithURL(
+                url as CFURL, "public.png" as CFString, 1, nil
+            )
+        else {
             metaphorAlert("Probe: failed to encode PNG at \(url.path)")
             return
         }
@@ -490,7 +502,9 @@ enum ProbeWriter {
         let samplesPerSide = 32
         let n = samplesPerSide * samplesPerSide
 
-        var sumR: Float = 0, sumG: Float = 0, sumB: Float = 0
+        var sumR: Float = 0
+        var sumG: Float = 0
+        var sumB: Float = 0
         var samplesR = [Float](repeating: 0, count: n)
         var samplesG = [Float](repeating: 0, count: n)
         var samplesB = [Float](repeating: 0, count: n)
@@ -508,7 +522,9 @@ enum ProbeWriter {
                 samplesR[idx] = r
                 samplesG[idx] = g
                 samplesB[idx] = b
-                sumR += r; sumG += g; sumB += b
+                sumR += r
+                sumG += g
+                sumB += b
                 idx += 1
             }
         }
@@ -531,18 +547,26 @@ enum ProbeWriter {
         // 背景色 = 四隅サンプルの平均。idx = sy * samplesPerSide + sx。
         let last = samplesPerSide - 1
         let corners = [0, last, last * samplesPerSide, last * samplesPerSide + last]
-        var bgR: Float = 0, bgG: Float = 0, bgB: Float = 0
+        var bgR: Float = 0
+        var bgG: Float = 0
+        var bgB: Float = 0
         for c in corners {
-            bgR += samplesR[c]; bgG += samplesG[c]; bgB += samplesB[c]
+            bgR += samplesR[c]
+            bgG += samplesG[c]
+            bgB += samplesB[c]
         }
-        bgR /= 4; bgG /= 4; bgB /= 4
+        bgR /= 4
+        bgG /= 4
+        bgB /= 4
 
         // 背景から十分離れたサンプルを「コンテンツ」とみなす。
         // 閾値 0.10（RGB ユークリッド距離、約 ±15/255）= 目に見える差。
         let contentThresholdSq: Float = 0.10 * 0.10
         var contentCount = 0
-        var minSx = samplesPerSide, maxSx = -1
-        var minSy = samplesPerSide, maxSy = -1
+        var minSx = samplesPerSide
+        var maxSx = -1
+        var minSy = samplesPerSide
+        var maxSy = -1
         for sy in 0..<samplesPerSide {
             for sx in 0..<samplesPerSide {
                 let k = sy * samplesPerSide + sx
@@ -560,7 +584,8 @@ enum ProbeWriter {
         }
 
         let side = Float(samplesPerSide)
-        let contentBounds: ProbeFrameMetadata.Bounds? = contentCount > 0
+        let contentBounds: ProbeFrameMetadata.Bounds? =
+            contentCount > 0
             ? ProbeFrameMetadata.Bounds(
                 x: Float(minSx) / side,
                 y: Float(minSy) / side,
@@ -581,7 +606,8 @@ enum ProbeWriter {
         // 全画素がほぼ同色なら blank。閾値 0.0001 はおおよそ
         // 1 channel あたり ±0.005 (約 ±1/255) 程度の揺らぎまで「flat」と判定。
         if variance < 0.0001 {
-            warnings.append("frame appears nearly blank (variance=\(String(format: "%.6f", variance)))")
+            warnings.append(
+                "frame appears nearly blank (variance=\(String(format: "%.6f", variance)))")
         }
 
         return Analysis(warnings: warnings, stats: stats)

@@ -36,8 +36,9 @@ struct TextWidthMetricsTests {
 
         for n in [2, 4, 8, 16] {
             let repeated = canvas.textWidth(String(repeating: "i", count: n))
-            #expect(abs(repeated - unit * Float(n)) < Self.epsilon,
-                    "×\(n) が \(repeated) — 1 文字 \(unit) の \(n) 倍 \(unit * Float(n)) と食い違う")
+            #expect(
+                abs(repeated - unit * Float(n)) < Self.epsilon,
+                "×\(n) が \(repeated) — 1 文字 \(unit) の \(n) 倍 \(unit * Float(n)) と食い違う")
         }
     }
 
@@ -46,8 +47,9 @@ struct TextWidthMetricsTests {
         let canvas = try canvas(fontFamily: "Menlo", fontSize: 17)
         let narrow = canvas.textWidth("i")
         let wide = canvas.textWidth("W")
-        #expect(abs(narrow - wide) < Self.epsilon,
-                "等幅なのに i=\(narrow) と W=\(wide) で幅が違う（墨面の広さを測っている）")
+        #expect(
+            abs(narrow - wide) < Self.epsilon,
+            "等幅なのに i=\(narrow) と W=\(wide) で幅が違う（墨面の広さを測っている）")
     }
 
     @Test("textWidth() は連結しても幅が合う（プロポーショナルフォント）")
@@ -56,8 +58,9 @@ struct TextWidthMetricsTests {
         let t = canvas.textWidth("T")
         let o = canvas.textWidth("o")
         let to = canvas.textWidth("To")
-        #expect(abs(to - (t + o)) < Self.epsilon,
-                "textWidth(\"To\")=\(to) が textWidth(\"T\")+textWidth(\"o\")=\(t + o) と食い違う")
+        #expect(
+            abs(to - (t + o)) < Self.epsilon,
+            "textWidth(\"To\")=\(to) が textWidth(\"T\")+textWidth(\"o\")=\(t + o) と食い違う")
     }
 
     @Test("textWidth() は前後の空白を対称に数える")
@@ -69,10 +72,12 @@ struct TextWidthMetricsTests {
 
         let trailing = canvas.textWidth("A ")
         let leading = canvas.textWidth(" A")
-        #expect(abs(trailing - (a + space)) < Self.epsilon,
-                "\"A \"=\(trailing) が \"A\"+\" \"=\(a + space) と食い違う（末尾の空白が落ちている）")
-        #expect(abs(trailing - leading) < Self.epsilon,
-                "\"A \"=\(trailing) と \" A\"=\(leading) が非対称")
+        #expect(
+            abs(trailing - (a + space)) < Self.epsilon,
+            "\"A \"=\(trailing) が \"A\"+\" \"=\(a + space) と食い違う（末尾の空白が落ちている）")
+        #expect(
+            abs(trailing - leading) < Self.epsilon,
+            "\"A \"=\(trailing) と \" A\"=\(leading) が非対称")
     }
 
     @Test("textWidth() は空文字列で 0 を返す")
@@ -140,11 +145,12 @@ struct TextAlignWidthTests {
 
         // 左サイドベアリングが相殺される形で揃え幅を逆算する
         let alignWidth = xRight + Float(left.left) - xLeft - Float(right.left)
-        #expect(abs(alignWidth - left.width) <= 1.0,
-                """
-                揃えに使われた幅 \(alignWidth) が textWidth() \(left.width) と \
-                \(alignWidth - left.width)px 食い違う（size \(size)）
-                """)
+        #expect(
+            abs(alignWidth - left.width) <= 1.0,
+            """
+            揃えに使われた幅 \(alignWidth) が textWidth() \(left.width) と \
+            \(alignWidth - left.width)px 食い違う（size \(size)）
+            """)
     }
 
     @Test("textAlign(.center) は textWidth() の半分だけ左へ寄せる")
@@ -159,7 +165,8 @@ struct TextAlignWidthTests {
         // ink 左端 = xCenter - W/2 + lsb なので、W = 2 × (xCenter + lsb - inkL(center))
         // 逆算で 2 倍するぶん、画素へ丸めた誤差も 2 倍になるので許容は右揃えより広く取る。
         let alignWidth = 2 * (xCenter + Float(left.left) - xLeft - Float(center.left))
-        #expect(abs(alignWidth - left.width) <= 1.5,
-                "中央揃えの幅 \(alignWidth) が textWidth() \(left.width) と食い違う")
+        #expect(
+            abs(alignWidth - left.width) <= 1.5,
+            "中央揃えの幅 \(alignWidth) が textWidth() \(left.width) と食い違う")
     }
 }

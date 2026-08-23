@@ -76,8 +76,11 @@ struct Phase3ShaderSourceTests {
     func functionNamesMatchExpected() {
         #expect(BuiltinShaders.FunctionName.canvas3DVertex == "metaphor_canvas3DVertex")
         #expect(BuiltinShaders.FunctionName.canvas3DFragment == "metaphor_canvas3DFragment")
-        #expect(BuiltinShaders.FunctionName.canvas3DTexturedVertex == "metaphor_canvas3DTexturedVertex")
-        #expect(BuiltinShaders.FunctionName.canvas3DTexturedFragment == "metaphor_canvas3DTexturedFragment")
+        #expect(
+            BuiltinShaders.FunctionName.canvas3DTexturedVertex == "metaphor_canvas3DTexturedVertex")
+        #expect(
+            BuiltinShaders.FunctionName.canvas3DTexturedFragment
+                == "metaphor_canvas3DTexturedFragment")
     }
 }
 
@@ -245,12 +248,13 @@ struct Phase3NormalMatrixTests {
             SIMD3(model.columns.2.x, model.columns.2.y, model.columns.2.z)
         )
         let invT = m3.inverse.transpose
-        return float4x4(columns: (
-            SIMD4(invT.columns.0.x, invT.columns.0.y, invT.columns.0.z, 0),
-            SIMD4(invT.columns.1.x, invT.columns.1.y, invT.columns.1.z, 0),
-            SIMD4(invT.columns.2.x, invT.columns.2.y, invT.columns.2.z, 0),
-            SIMD4(0, 0, 0, 1)
-        ))
+        return float4x4(
+            columns: (
+                SIMD4(invT.columns.0.x, invT.columns.0.y, invT.columns.0.z, 0),
+                SIMD4(invT.columns.1.x, invT.columns.1.y, invT.columns.1.z, 0),
+                SIMD4(invT.columns.2.x, invT.columns.2.y, invT.columns.2.z, 0),
+                SIMD4(0, 0, 0, 1)
+            ))
     }
 }
 
@@ -400,7 +404,8 @@ struct Phase3Canvas3DFillStrokeTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         // Should not crash — dispatches to both canvases
         context.fill(0.5 as Float)
         context.fill(0.2, 0.4, 0.6)
@@ -412,7 +417,8 @@ struct Phase3Canvas3DFillStrokeTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         // Should not crash — dispatches to both canvases
         context.stroke(Color.red)
         context.stroke(0.5 as Float)
@@ -425,7 +431,8 @@ struct Phase3Canvas3DFillStrokeTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         // Should not crash — dispatches to both canvases
         context.colorMode(.hsb, 360, 100, 100)
         context.fill(180, 50, 50)
@@ -436,7 +443,8 @@ struct Phase3Canvas3DFillStrokeTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         // fill() は 2D・3D 両方へ書き込まれる
         context.fill(255.0, 0.0, 0.0)  // 赤（デフォルト colorMode は 0-255）
@@ -457,7 +465,8 @@ struct Phase3Canvas3DFillStrokeTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         context.stroke(255.0, 0.0, 0.0)
         let savedShininess = canvas3D.currentMaterial.specularAndShininess.w
@@ -476,7 +485,8 @@ struct Phase3Canvas3DFillStrokeTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let context = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let context = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         context.pushStyle()
         canvas3D.translate(1, 2, 3)
@@ -568,9 +578,11 @@ struct MaterialGrayUnitTests {
 
         canvas3D.specular(230)
         #expect(abs(canvas3D.currentMaterial.specularAndShininess.x - 230.0 / 255.0) < 1e-5)
-        #expect(canvas3D.currentMaterial.specularAndShininess.y
+        #expect(
+            canvas3D.currentMaterial.specularAndShininess.y
                 == canvas3D.currentMaterial.specularAndShininess.x)
-        #expect(canvas3D.currentMaterial.specularAndShininess.z
+        #expect(
+            canvas3D.currentMaterial.specularAndShininess.z
                 == canvas3D.currentMaterial.specularAndShininess.x)
 
         // 0〜1 スケールのつもりで書くと 0.9/255 ≒ 0.0035 = ハイライトがほぼ消える

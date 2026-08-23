@@ -127,7 +127,8 @@ struct ParticleForceTests {
     func gravityForceBuffer() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
 
         system.addForce(.gravity(0, -9.8, 0))
         #expect(system.forces.count == 1)
@@ -141,7 +142,8 @@ struct ParticleForceTests {
     func multipleForceTypes() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
 
         system.addForce(.gravity(0, -9.8, 0))
         system.addForce(.noise(scale: 0.01, strength: 2.0))
@@ -182,7 +184,8 @@ struct ParticleEmissionRateTests {
     func exactEmissionPerFrame() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
         system.emissionRate = 600
         system.particleLife = 100  // テスト中は死なない
 
@@ -196,7 +199,8 @@ struct ParticleEmissionRateTests {
     func noDecayAtHighFill() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
         system.emissionRate = 600
         system.particleLife = 100
 
@@ -215,7 +219,8 @@ struct ParticleEmissionRateTests {
     func fractionalAccumulation() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
         system.emissionRate = 30  // 0.5 個/フレーム @ 60fps
         system.particleLife = 100
 
@@ -235,10 +240,12 @@ struct EmitterShapeTests {
     func setEmitterChanges() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 10)
 
         // デフォルトは point(0,0,0)
-        if case .point = system.emitter {} else {
+        if case .point = system.emitter {
+        } else {
             Issue.record("Expected default point emitter")
         }
 
@@ -251,7 +258,8 @@ struct EmitterShapeTests {
         }
 
         system.setEmitter(.line(x1: 0, y1: 0, z1: 0, x2: 10, y2: 0, z2: 0))
-        if case .line = system.emitter {} else {
+        if case .line = system.emitter {
+        } else {
             Issue.record("Expected line emitter after setEmitter")
         }
     }
@@ -267,7 +275,8 @@ struct ParticleSystemCreationTests {
     func createSystem() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 1000)
         #expect(system.count == 1000)
     }
 
@@ -276,7 +285,8 @@ struct ParticleSystemCreationTests {
     func defaultProperties() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
 
         #expect(system.emissionRate == 10000)
         #expect(system.particleLife == 2.0)
@@ -289,7 +299,8 @@ struct ParticleSystemCreationTests {
     func forceManagement() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
 
         system.addForce(.gravity(0, -9.8, 0))
         system.addForce(.noise(scale: 0.01, strength: 2.0))
@@ -304,7 +315,8 @@ struct ParticleSystemCreationTests {
     func setEmitter() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let lib = try ShaderLibrary(device: device)
-        let system = try ParticleSystem(device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
+        let system = try ParticleSystem(
+            device: device, shaderLibrary: lib, sampleCount: 1, count: 100)
 
         system.setEmitter(.sphere(x: 0, y: 0, z: 0, radius: 1.0))
         if case .sphere(_, _, _, let r) = system.emitter {

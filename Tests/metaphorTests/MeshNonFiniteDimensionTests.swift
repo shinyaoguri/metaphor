@@ -71,8 +71,9 @@ struct MeshNonFiniteDimensionTests {
 
     // MARK: - 生成 API（キャッシュを汚さないこと）
 
-    @Test("非有限な寸法の createXxxMesh は nil を返し、キャッシュへ載らない",
-          arguments: nonFiniteDimensions)
+    @Test(
+        "非有限な寸法の createXxxMesh は nil を返し、キャッシュへ載らない",
+        arguments: nonFiniteDimensions)
     func createMeshRejectsNonFiniteAndKeepsCacheClean(bad: Float) throws {
         let canvas3D = try makeCanvas3D()
         let before = canvas3D.meshCacheCountForTesting
@@ -85,10 +86,12 @@ struct MeshNonFiniteDimensionTests {
         #expect(canvas3D.createConeMesh(radius: 1, height: bad) == nil)
         #expect(canvas3D.createTorusMesh(ringRadius: bad, tubeRadius: 0.2) == nil)
 
-        #expect(canvas3D.meshCacheCountForTesting == before,
-                "非有限な寸法でキャッシュが増えた（\(canvas3D.meshCacheCountForTesting) != \(before)）")
-        #expect(canvas3D.meshCache.keys.allSatisfy { !$0.contains("nan") && !$0.contains("inf") },
-                "非有限値がキーに載っている: \(Array(canvas3D.meshCache.keys))")
+        #expect(
+            canvas3D.meshCacheCountForTesting == before,
+            "非有限な寸法でキャッシュが増えた（\(canvas3D.meshCacheCountForTesting) != \(before)）")
+        #expect(
+            canvas3D.meshCache.keys.allSatisfy { !$0.contains("nan") && !$0.contains("inf") },
+            "非有限値がキーに載っている: \(Array(canvas3D.meshCache.keys))")
     }
 
     /// 描画側で唯一寸法をキーに載せている `torus(ringRadius:tubeRadius:detail:)` も汚さない。
@@ -113,8 +116,9 @@ struct MeshNonFiniteDimensionTests {
 
         let box = try Mesh.box(device: device, width: value, height: value, depth: value)
         #expect(box.vertexCount == 24)
-        #expect(nonFinitePositionCount(of: box) == 0,
-                "有限な寸法から非有限な座標が出ている（width = \(value)）")
+        #expect(
+            nonFinitePositionCount(of: box) == 0,
+            "有限な寸法から非有限な座標が出ている（width = \(value)）")
 
         #expect(try Mesh.plane(device: device, width: value, height: value).vertexCount == 4)
         #expect(canvas3D.createBoxMesh(value, value, value) != nil)

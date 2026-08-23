@@ -30,8 +30,9 @@ struct SubsystemTests {
         #expect(b.started == 1 && b.stopped == 1)
     }
 
-    @Test("pre() drives update with computed deltaTime",
-          .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+    @Test(
+        "pre() drives update with computed deltaTime",
+        .enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func updateDeltaTime() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let queue = try #require(device.makeCommandQueue())
@@ -40,9 +41,9 @@ struct SubsystemTests {
 
         manager.onStart()
         let cb1 = try #require(queue.makeCommandBuffer())
-        manager.pre(commandBuffer: cb1, time: 0.0)   // 初回は delta 0
+        manager.pre(commandBuffer: cb1, time: 0.0)  // 初回は delta 0
         let cb2 = try #require(queue.makeCommandBuffer())
-        manager.pre(commandBuffer: cb2, time: 0.5)   // 0.5 秒経過
+        manager.pre(commandBuffer: cb2, time: 0.5)  // 0.5 秒経過
 
         #expect(sub.deltas.count == 2)
         #expect(sub.deltas[0] == 0)

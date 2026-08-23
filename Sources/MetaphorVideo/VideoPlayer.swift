@@ -243,9 +243,10 @@ public final class VideoPlayer {
         // この時点で lastError に立てておく（AVPlayerItem.status の .failed は
         // 再生を試みるまで確定しないことがあるため、ここが最初の検出点）
         if !metadata.hasVideoTrack {
-            errorBox.store(VideoPlayerError.playbackFailed(
-                "no playable video track (corrupt file or unsupported codec?): \(path)"
-            ))
+            errorBox.store(
+                VideoPlayerError.playbackFailed(
+                    "no playable video track (corrupt file or unsupported codec?): \(path)"
+                ))
         }
 
         // CVMetalTextureCache を作成
@@ -340,7 +341,8 @@ public final class VideoPlayer {
         // ネットワークマウント上のパス等でメタデータ読込が返らない場合に
         // メインスレッドが永久にハングしないようタイムアウトを設ける
         if semaphore.wait(timeout: .now() + 10) == .timedOut {
-            metaphorAlert("VideoPlayer: asset metadata load timed out (>10s) — continuing with defaults")
+            metaphorAlert(
+                "VideoPlayer: asset metadata load timed out (>10s) — continuing with defaults")
         }
         let (hasVideoTrack, duration, size) = box.get()
         return (hasVideoTrack, duration, size)
@@ -385,9 +387,11 @@ public final class VideoPlayer {
         let currentTime = playback.player.currentTime()
         guard playback.videoOutput.hasNewPixelBuffer(forItemTime: currentTime) else { return }
 
-        guard let pixelBuffer = playback.videoOutput.copyPixelBuffer(
-            forItemTime: currentTime, itemTimeForDisplay: nil
-        ) else { return }
+        guard
+            let pixelBuffer = playback.videoOutput.copyPixelBuffer(
+                forItemTime: currentTime, itemTimeForDisplay: nil
+            )
+        else { return }
 
         guard let cache = textureCache else { return }
 
@@ -406,8 +410,8 @@ public final class VideoPlayer {
         )
 
         guard status == kCVReturnSuccess, let cvTex = cvTexture,
-              let baseTexture = CVMetalTextureGetTexture(cvTex),
-              let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
+            let baseTexture = CVMetalTextureGetTexture(cvTex),
+            let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
         else { return }
 
         // CoreVideo の契約上、MTLTexture はラッパー（cvTex）が生存している間のみ

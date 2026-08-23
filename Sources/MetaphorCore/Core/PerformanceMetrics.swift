@@ -164,7 +164,8 @@ final class ProcessStatsSampler {
             lastSampleTime = now
         }
         guard let lastCPU = lastCPUSeconds, let lastTime = lastSampleTime,
-              now > lastTime else {
+            now > lastTime
+        else {
             return nil
         }
         return (cpuNow - lastCPU) / (now - lastTime) * 100

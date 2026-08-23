@@ -8,7 +8,8 @@ extension Sketch {
     ///
     /// - Returns: 新しい ``MetaphorMPS/MPSImageFilterWrapper`` インスタンス。
     public func createMPSFilter() -> MPSImageFilterWrapper {
-        MPSImageFilterWrapper(device: context.renderer.device, commandQueue: context.renderer.commandQueue)
+        MPSImageFilterWrapper(
+            device: context.renderer.device, commandQueue: context.renderer.commandQueue)
     }
 
     /// GPU アクセラレーションによるレイ交差クエリ用のレイトレーサーを作成します。
@@ -26,6 +27,8 @@ extension Sketch {
     ///   コンピュートパイプラインを作成できない場合は
     ///   ``MetaphorCore/MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
-        try MPSRayTracer(device: context.renderer.device, commandQueue: context.renderer.commandQueue, width: width, height: height)
+        try MPSRayTracer(
+            device: context.renderer.device, commandQueue: context.renderer.commandQueue,
+            width: width, height: height)
     }
 }

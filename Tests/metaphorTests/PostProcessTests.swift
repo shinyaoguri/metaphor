@@ -156,16 +156,16 @@ struct CustomPostEffectPreambleTests {
 
     /// 前文を 1 行も書かない、フラグメント関数だけのソース。
     private static let bareSource = """
-    fragment float4 bareEffect(
-        PPVertexOut in [[stage_in]],
-        texture2d<float> tex [[texture(0)]],
-        constant PostProcessParams &params [[buffer(0)]]
-    ) {
-        constexpr sampler s(filter::linear);
-        float4 color = tex.sample(s, in.texCoord);
-        return float4(color.rgb * params.intensity, color.a);
-    }
-    """
+        fragment float4 bareEffect(
+            PPVertexOut in [[stage_in]],
+            texture2d<float> tex [[texture(0)]],
+            constant PostProcessParams &params [[buffer(0)]]
+        ) {
+            constexpr sampler s(filter::linear);
+            float4 color = tex.sample(s, in.texCoord);
+            return float4(color.rgb * params.intensity, color.a);
+        }
+        """
 
     private func makeContext() throws -> SketchContext {
         let renderer = try MetaphorRenderer(width: 32, height: 32)
@@ -189,11 +189,12 @@ struct CustomPostEffectPreambleTests {
     func selfPrefixedSourceStillCompiles() throws {
         // #718 以前に案内していた書き方。ガードが効いていないと、前文が 2 回現れて
         // `redefinition of 'PPVertexOut'` で落ちる。
-        let legacy = PostProcessShaders.postProcessPreamble + """
+        let legacy =
+            PostProcessShaders.postProcessPreamble + """
 
 
-        \(Self.bareSource)
-        """
+                \(Self.bareSource)
+                """
         let context = try makeContext()
         let effect = try context.createPostEffect(
             name: "legacy", source: legacy, fragmentFunction: "bareEffect")
@@ -239,18 +240,19 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.postProcessPreamble + """
+        let source =
+            PostProcessShaders.postProcessPreamble + """
 
-        fragment float4 testCustomInvert(
-            PPVertexOut in [[stage_in]],
-            texture2d<float> tex [[texture(0)]],
-            constant PostProcessParams &params [[buffer(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            float4 color = tex.sample(s, in.texCoord);
-            return float4(1.0 - color.rgb * params.intensity, color.a);
-        }
-        """
+                fragment float4 testCustomInvert(
+                    PPVertexOut in [[stage_in]],
+                    texture2d<float> tex [[texture(0)]],
+                    constant PostProcessParams &params [[buffer(0)]]
+                ) {
+                    constexpr sampler s(filter::linear);
+                    float4 color = tex.sample(s, in.texCoord);
+                    return float4(1.0 - color.rgb * params.intensity, color.a);
+                }
+                """
 
         let key = "user.posteffect.testInvert"
         try shaderLib.register(source: source, as: key)
@@ -264,25 +266,26 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.postProcessPreamble + """
+        let source =
+            PostProcessShaders.postProcessPreamble + """
 
-        struct MyCustomParams {
-            float amount;
-            float3 tintColor;
-        };
+                struct MyCustomParams {
+                    float amount;
+                    float3 tintColor;
+                };
 
-        fragment float4 testCustomTint(
-            PPVertexOut in [[stage_in]],
-            texture2d<float> tex [[texture(0)]],
-            constant PostProcessParams &params [[buffer(0)]],
-            constant MyCustomParams &custom [[buffer(1)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            float4 color = tex.sample(s, in.texCoord);
-            color.rgb = mix(color.rgb, custom.tintColor, custom.amount);
-            return color;
-        }
-        """
+                fragment float4 testCustomTint(
+                    PPVertexOut in [[stage_in]],
+                    texture2d<float> tex [[texture(0)]],
+                    constant PostProcessParams &params [[buffer(0)]],
+                    constant MyCustomParams &custom [[buffer(1)]]
+                ) {
+                    constexpr sampler s(filter::linear);
+                    float4 color = tex.sample(s, in.texCoord);
+                    color.rgb = mix(color.rgb, custom.tintColor, custom.amount);
+                    return color;
+                }
+                """
 
         let key = "user.posteffect.testTint"
         try shaderLib.register(source: source, as: key)
@@ -296,16 +299,17 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.postProcessPreamble + """
+        let source =
+            PostProcessShaders.postProcessPreamble + """
 
-        fragment float4 testBuildPipeline(
-            PPVertexOut in [[stage_in]],
-            texture2d<float> tex [[texture(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            return tex.sample(s, in.texCoord);
-        }
-        """
+                fragment float4 testBuildPipeline(
+                    PPVertexOut in [[stage_in]],
+                    texture2d<float> tex [[texture(0)]]
+                ) {
+                    constexpr sampler s(filter::linear);
+                    return tex.sample(s, in.texCoord);
+                }
+                """
 
         let key = "user.posteffect.testBuild"
         try shaderLib.register(source: source, as: key)
@@ -329,18 +333,19 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.postProcessPreamble + """
+        let source =
+            PostProcessShaders.postProcessPreamble + """
 
-        fragment float4 testChainEffect(
-            PPVertexOut in [[stage_in]],
-            texture2d<float> tex [[texture(0)]],
-            constant PostProcessParams &params [[buffer(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            float4 color = tex.sample(s, in.texCoord);
-            return float4(color.rgb * params.intensity, color.a);
-        }
-        """
+                fragment float4 testChainEffect(
+                    PPVertexOut in [[stage_in]],
+                    texture2d<float> tex [[texture(0)]],
+                    constant PostProcessParams &params [[buffer(0)]]
+                ) {
+                    constexpr sampler s(filter::linear);
+                    float4 color = tex.sample(s, in.texCoord);
+                    return float4(color.rgb * params.intensity, color.a);
+                }
+                """
 
         let key = "user.posteffect.testChain"
         try shaderLib.register(source: source, as: key)
@@ -353,7 +358,8 @@ struct CustomPostEffectPipelineTests {
         custom.intensity = 0.5
 
         let queue = device.makeCommandQueue()!
-        let pipeline = try PostProcessPipeline(device: device, commandQueue: queue, shaderLibrary: shaderLib)
+        let pipeline = try PostProcessPipeline(
+            device: device, commandQueue: queue, shaderLibrary: shaderLib)
         pipeline.add(custom)
 
         #expect(pipeline.effects.count == 1)
@@ -377,16 +383,17 @@ struct CustomPostEffectPipelineTests {
         let device = MTLCreateSystemDefaultDevice()!
         let shaderLib = try ShaderLibrary(device: device)
 
-        let source = PostProcessShaders.postProcessPreamble + """
+        let source =
+            PostProcessShaders.postProcessPreamble + """
 
-        fragment float4 existingFunction(
-            PPVertexOut in [[stage_in]],
-            texture2d<float> tex [[texture(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            return tex.sample(s, in.texCoord);
-        }
-        """
+                fragment float4 existingFunction(
+                    PPVertexOut in [[stage_in]],
+                    texture2d<float> tex [[texture(0)]]
+                ) {
+                    constexpr sampler s(filter::linear);
+                    return tex.sample(s, in.texCoord);
+                }
+                """
 
         let key = "user.posteffect.testNonexistent"
         try shaderLib.register(source: source, as: key)

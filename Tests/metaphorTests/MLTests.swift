@@ -17,7 +17,8 @@ struct SketchContextMLTextureConverterTests {
     func createMLTextureConverter() throws {
         let renderer = try MetaphorRenderer()
 
-        let converter = MLTextureConverter(device: renderer.device, commandQueue: renderer.commandQueue)
+        let converter = MLTextureConverter(
+            device: renderer.device, commandQueue: renderer.commandQueue)
         // Converter should be functional
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: 2, height: 2, mipmapped: false)

@@ -23,14 +23,26 @@ extension Canvas2D {
     ///   - w: 幅。
     ///   - h: 高さ。
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
-        let dx: Float, dy: Float, dw: Float, dh: Float
+        let dx: Float
+        let dy: Float
+        let dw: Float
+        let dh: Float
         switch currentImageMode {
         case .corner:
-            dx = x; dy = y; dw = w; dh = h
+            dx = x
+            dy = y
+            dw = w
+            dh = h
         case .center:
-            dx = x - w / 2; dy = y - h / 2; dw = w; dh = h
+            dx = x - w / 2
+            dy = y - h / 2
+            dw = w
+            dh = h
         case .corners:
-            dx = min(x, w); dy = min(y, h); dw = abs(w - x); dh = abs(h - y)
+            dx = min(x, w)
+            dy = min(y, h)
+            dw = abs(w - x)
+            dh = abs(h - y)
         }
         drawTexturedQuad(texture: img.texture, x: dx, y: dy, w: dw, h: dh)
     }
@@ -53,14 +65,26 @@ extension Canvas2D {
     ) {
         // Processing 互換: 描画先座標は imageMode に従って解釈する
         // （従来は 9 引数版だけ imageMode を無視して corner 固定だった）
-        let x: Float, y: Float, w: Float, h: Float
+        let x: Float
+        let y: Float
+        let w: Float
+        let h: Float
         switch currentImageMode {
         case .corner:
-            x = dx; y = dy; w = dw; h = dh
+            x = dx
+            y = dy
+            w = dw
+            h = dh
         case .center:
-            x = dx - dw / 2; y = dy - dh / 2; w = dw; h = dh
+            x = dx - dw / 2
+            y = dy - dh / 2
+            w = dw
+            h = dh
         case .corners:
-            x = min(dx, dw); y = min(dy, dh); w = abs(dw - dx); h = abs(dh - dy)
+            x = min(dx, dw)
+            y = min(dy, dh)
+            w = abs(dw - dx)
+            h = abs(dh - dy)
         }
         drawTexturedQuad(
             texture: img.texture, x: x, y: y, w: w, h: h,
@@ -138,7 +162,10 @@ extension Canvas2D {
         let v1 = (srcY + (srcH ?? th)) / th
 
         let vertexColor = color ?? (hasTint ? tintColor : SIMD4<Float>(1, 1, 1, 1))
-        let r = vertexColor.x, g = vertexColor.y, b = vertexColor.z, a = vertexColor.w
+        let r = vertexColor.x
+        let g = vertexColor.y
+        let b = vertexColor.z
+        let a = vertexColor.w
         let p0 = currentTransform * SIMD3<Float>(x, y, 1)
         let p1 = currentTransform * SIMD3<Float>(x + w, y, 1)
         let p2 = currentTransform * SIMD3<Float>(x + w, y + h, 1)
@@ -147,12 +174,18 @@ extension Canvas2D {
         let verts = texturedVertices
         let off = texturedBufferOffset + texturedVertexCount
 
-        verts[off + 0] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: r, g: g, b: b, a: a)
-        verts[off + 1] = TexturedVertex2D(posX: p1.x, posY: p1.y, u: u1, v: v0, r: r, g: g, b: b, a: a)
-        verts[off + 2] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: r, g: g, b: b, a: a)
-        verts[off + 3] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: u0, v: v0, r: r, g: g, b: b, a: a)
-        verts[off + 4] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: u1, v: v1, r: r, g: g, b: b, a: a)
-        verts[off + 5] = TexturedVertex2D(posX: p3.x, posY: p3.y, u: u0, v: v1, r: r, g: g, b: b, a: a)
+        verts[off + 0] = TexturedVertex2D(
+            posX: p0.x, posY: p0.y, u: u0, v: v0, r: r, g: g, b: b, a: a)
+        verts[off + 1] = TexturedVertex2D(
+            posX: p1.x, posY: p1.y, u: u1, v: v0, r: r, g: g, b: b, a: a)
+        verts[off + 2] = TexturedVertex2D(
+            posX: p2.x, posY: p2.y, u: u1, v: v1, r: r, g: g, b: b, a: a)
+        verts[off + 3] = TexturedVertex2D(
+            posX: p0.x, posY: p0.y, u: u0, v: v0, r: r, g: g, b: b, a: a)
+        verts[off + 4] = TexturedVertex2D(
+            posX: p2.x, posY: p2.y, u: u1, v: v1, r: r, g: g, b: b, a: a)
+        verts[off + 5] = TexturedVertex2D(
+            posX: p3.x, posY: p3.y, u: u0, v: v1, r: r, g: g, b: b, a: a)
 
         texturedVertexCount += 6
     }
@@ -194,7 +227,8 @@ extension Canvas2D {
                 usedCount: texturedBufferOffset + texturedVertexCount
             ) {
                 flushTexturedVertices()
-                if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices {
+                if texturedBufferOffset + texturedVertexCount + verticesNeeded > maxTexturedVertices
+                {
                     return
                 }
             }
@@ -204,7 +238,10 @@ extension Canvas2D {
         // 掛けるとその色の文字になる。ここは tint ではなく fill 色を使う（#516）。
         // tint() は image() 用の API で、文字色ではない。
         let textColor = fillColor
-        let r = textColor.x, g = textColor.y, b = textColor.z, a = textColor.w
+        let r = textColor.x
+        let g = textColor.y
+        let b = textColor.z
+        let a = textColor.w
         // カスタムシェーダのパラメータはバッチ先頭で取り込む（#647）
         captureShaderParams(ifBatchEmpty: texturedVertexCount == 0)
         let verts = texturedVertices
@@ -221,12 +258,18 @@ extension Canvas2D {
             let p2 = currentTransform * SIMD3<Float>(gx + gw, gy + gh, 1)
             let p3 = currentTransform * SIMD3<Float>(gx, gy + gh, 1)
 
-            verts[off + 0] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a)
-            verts[off + 1] = TexturedVertex2D(posX: p1.x, posY: p1.y, u: glyph.u1, v: glyph.v0, r: r, g: g, b: b, a: a)
-            verts[off + 2] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a)
-            verts[off + 3] = TexturedVertex2D(posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a)
-            verts[off + 4] = TexturedVertex2D(posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a)
-            verts[off + 5] = TexturedVertex2D(posX: p3.x, posY: p3.y, u: glyph.u0, v: glyph.v1, r: r, g: g, b: b, a: a)
+            verts[off + 0] = TexturedVertex2D(
+                posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a)
+            verts[off + 1] = TexturedVertex2D(
+                posX: p1.x, posY: p1.y, u: glyph.u1, v: glyph.v0, r: r, g: g, b: b, a: a)
+            verts[off + 2] = TexturedVertex2D(
+                posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a)
+            verts[off + 3] = TexturedVertex2D(
+                posX: p0.x, posY: p0.y, u: glyph.u0, v: glyph.v0, r: r, g: g, b: b, a: a)
+            verts[off + 4] = TexturedVertex2D(
+                posX: p2.x, posY: p2.y, u: glyph.u1, v: glyph.v1, r: r, g: g, b: b, a: a)
+            verts[off + 5] = TexturedVertex2D(
+                posX: p3.x, posY: p3.y, u: glyph.u0, v: glyph.v1, r: r, g: g, b: b, a: a)
             off += 6
         }
 

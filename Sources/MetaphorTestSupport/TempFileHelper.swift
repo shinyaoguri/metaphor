@@ -36,7 +36,8 @@ public struct TempFileHelper: Sendable {
         body: (URL) throws -> T
     ) rethrows -> T {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("metaphor_test_\(ProcessInfo.processInfo.globallyUniqueString).\(ext)")
+            .appendingPathComponent(
+                "metaphor_test_\(ProcessInfo.processInfo.globallyUniqueString).\(ext)")
         defer { try? FileManager.default.removeItem(at: url) }
         return try body(url)
     }
@@ -50,7 +51,8 @@ public struct TempFileHelper: Sendable {
         body: (URL) async throws -> T
     ) async rethrows -> T {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("metaphor_test_\(ProcessInfo.processInfo.globallyUniqueString).\(ext)")
+            .appendingPathComponent(
+                "metaphor_test_\(ProcessInfo.processInfo.globallyUniqueString).\(ext)")
         defer { try? FileManager.default.removeItem(at: url) }
         return try await body(url)
     }

@@ -108,13 +108,13 @@ struct ShadowLightingTests {
             let floor = {
                 c.pushMatrix()
                 c.translate(64, 96, 0)
-                c.box(120, 4, 120)         // 影を受ける床
+                c.box(120, 4, 120)  // 影を受ける床
                 c.popMatrix()
             }
             let caster = {
                 c.pushMatrix()
                 c.translate(64, 56, 0)
-                c.box(30)                  // 影を落とす箱
+                c.box(30)  // 影を落とす箱
                 c.popMatrix()
             }
 
@@ -286,9 +286,11 @@ struct ShadowLightingTests {
         var geometryPixels = 0
         var darkened = 0
         for i in stride(from: 0, to: withoutShadows.rgba.count, by: 4) {
-            let before = Int(withoutShadows.rgba[i]) + Int(withoutShadows.rgba[i + 1])
+            let before =
+                Int(withoutShadows.rgba[i]) + Int(withoutShadows.rgba[i + 1])
                 + Int(withoutShadows.rgba[i + 2])
-            let after = Int(withShadows.rgba[i]) + Int(withShadows.rgba[i + 1])
+            let after =
+                Int(withShadows.rgba[i]) + Int(withShadows.rgba[i + 1])
                 + Int(withShadows.rgba[i + 2])
             guard before > 30 else { continue }  // 背景（黒）を除く
             geometryPixels += 1

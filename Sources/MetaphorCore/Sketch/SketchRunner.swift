@@ -92,11 +92,12 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     ) -> [any DispatchSourceSignal] {
         guard resolveInstallSignalHandlers(env: env) else { return [] }
 
-        let terminate = onTerminate ?? {
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { NSApp.terminate(nil) }
+        let terminate =
+            onTerminate ?? {
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { NSApp.terminate(nil) }
+                }
             }
-        }
 
         return [SIGINT, SIGTERM].map { sig in
             // デフォルト動作（即時終了）を無効にしないと DispatchSource へ届く前に殺される。
@@ -162,8 +163,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // レンダラー・キャンバス・コンテキストを初期化（ウィンドウ非依存）。
         guard setupCore(sketch: sketch, config: config),
-              let renderer = self.renderer,
-              let context = self.context else {
+            let renderer = self.renderer,
+            let context = self.context
+        else {
             return
         }
 
@@ -206,7 +208,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // METAPHOR_PROBE=1 が設定されていれば AI 向け観測プラグインを自動登録
         if ProcessInfo.processInfo.environment["METAPHOR_PROBE"] == "1",
-           renderer.plugin(id: MetaphorProbePlugin.id) == nil {
+            renderer.plugin(id: MetaphorProbePlugin.id) == nil
+        {
             renderer.addPlugin(MetaphorProbePlugin(), sketch: sketch)
         }
 
@@ -224,14 +227,16 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // （`metaphor watch` の子プロセス = save-request を書く相手が居る経路）だけ。
         // METAPHOR_STATE=1 で明示有効・=0 でオプトアウト。
         if StatePlugin.shouldAutoRegister(env: ProcessInfo.processInfo.environment),
-           renderer.plugin(id: StatePlugin.id) == nil {
+            renderer.plugin(id: StatePlugin.id) == nil
+        {
             renderer.addPlugin(StatePlugin(), sketch: sketch)
         }
 
         // ヘッドレス（ライブビューア）モードでは stdin 入力注入プラグインを自動登録。
         // 親プロセス（metaphor-cli）が JSON Lines でイベントを送る。
         if isHeadless,
-           renderer.plugin(id: InputInjectionPlugin.id) == nil {
+            renderer.plugin(id: InputInjectionPlugin.id) == nil
+        {
             renderer.addPlugin(InputInjectionPlugin(), sketch: sketch)
         }
 
@@ -345,7 +350,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         self.context = context
         context.isPrimary = true
         context._sharedResources = shared
-        assert(sketch._context == nil, "Sketch context already set — this may indicate duplicate setup")
+        assert(
+            sketch._context == nil, "Sketch context already set — this may indicate duplicate setup"
+        )
         sketch._context = context
 
         // createCanvas コールバック（setup() 内でのリサイズを許可）
@@ -407,7 +414,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // 出力（Syphon 等）は登録済み provider の走査で決まる（Core は出力実装を名指ししない）。
         // ウィンドウ表示でも MadMapper 等へ publish できるよう、provider には env / config を渡す。
         let outputs = MetaphorOutputProviders.makeOutputs(
-            context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: false)
+            context: MetaphorOutputContext(
+                scope: .primary(config), environment: env, isHeadless: false)
         )
 
         // レンダーループモードの決定。config.plugins と出力 provider が宣言した要件を
@@ -522,7 +530,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         guard let parsed = HeadlessIndicator.parse(raw) else {
             metaphorWarning(
                 "METAPHOR_HEADLESS_INDICATOR=\(raw) is not one of menubar / dock / both / none; "
-                + "using \(config.headlessIndicator.rawValue)"
+                    + "using \(config.headlessIndicator.rawValue)"
             )
             return config.headlessIndicator
         }
@@ -579,7 +587,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             // 出力先が無いままレンダーループだけ回り続けると原因の手掛かりが
             // 一切出ないため明示する。ヘッドレスモードは「ウィンドウ無し・
             // 出力のみ」なので error 級（Release でも stderr に出す）
-            let message = isHeadless && (env["METAPHOR_SYPHON_NAME"] ?? "").isEmpty
+            let message =
+                isHeadless && (env["METAPHOR_SYPHON_NAME"] ?? "").isEmpty
                 ? "headless (METAPHOR_VIEWER=1) but nothing will observe the frames: set METAPHOR_VIEWER_SOCKET "
                     + "(metaphor watch --viewer), METAPHOR_PROBE=1, or request an output (METAPHOR_SYPHON_NAME with metaphor-syphon)."
                 : "an output (METAPHOR_SYPHON_NAME) was requested but no output module is linked. "
@@ -619,7 +628,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         // （METAPHOR_VIEWER_SOCKET → ViewerOutputPlugin）/ Probe / 明示の外部出力で、
         // Syphon を暗黙に立てることはしない（ADR-0014）。
         let outputs = MetaphorOutputProviders.makeOutputs(
-            context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: true)
+            context: MetaphorOutputContext(
+                scope: .primary(config), environment: env, isHeadless: true)
         )
         attachOutputs(outputs, renderer: renderer, env: env)
         headlessOutputPluginIDs = outputs.map { $0.plugin.pluginID }
@@ -989,7 +999,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
         // Canvas2D / Canvas3D を再構築
         guard let newCanvas = try? Canvas2D(renderer: renderer),
-              let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+            let newCanvas3D = try? Canvas3D(renderer: renderer)
+        else {
             return
         }
         newCanvas.onSetClearColor = { [weak renderer] r, g, b, a in
@@ -1058,7 +1069,8 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             if Self.producesCharacter(characters) {
                 sketch?.keyTyped()
             }
-            renderer?.notifyPluginsKeyEvent(key: characters?.first, keyCode: keyCode, type: .pressed)
+            renderer?.notifyPluginsKeyEvent(
+                key: characters?.first, keyCode: keyCode, type: .pressed)
         }
         input.onKeyUp = { [weak sketch, weak renderer] keyCode in
             sketch?.keyReleased()

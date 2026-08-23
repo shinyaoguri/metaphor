@@ -115,7 +115,7 @@ public final class AssetCache {
         // 容量超過時は最も古くアクセスされたエントリを退去
         // （capacity は小さいので線形スキャンで十分）
         if storage.count > capacity,
-           let oldest = storage.min(by: { $0.value.tick < $1.value.tick })?.key
+            let oldest = storage.min(by: { $0.value.tick < $1.value.tick })?.key
         {
             storage.removeValue(forKey: oldest)
         }

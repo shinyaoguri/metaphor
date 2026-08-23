@@ -43,7 +43,8 @@ struct Canvas2DMassiveShaderTests {
 
         #expect(lib.makeFunction(name: Canvas2DMassiveShaders.circleVertexFunctionName) != nil)
         #expect(lib.makeFunction(name: Canvas2DMassiveShaders.fragmentFunctionName) != nil)
-        #expect(lib.makeFunction(name: Canvas2DMassiveShaders.differenceFragmentFunctionName) != nil)
+        #expect(
+            lib.makeFunction(name: Canvas2DMassiveShaders.differenceFragmentFunctionName) != nil)
         #expect(lib.makeFunction(name: Canvas2DMassiveShaders.exclusionFragmentFunctionName) != nil)
     }
 
@@ -52,23 +53,26 @@ struct Canvas2DMassiveShaderTests {
         let shaderLib = try MetalTestHelper.shaderLibrary()
 
         #expect(shaderLib.hasLibrary(for: ShaderLibrary.BuiltinKey.canvas2DMassive))
-        #expect(shaderLib.function(
-            named: Canvas2DMassiveShaders.circleVertexFunctionName,
-            from: ShaderLibrary.BuiltinKey.canvas2DMassive
-        ) != nil)
-        #expect(shaderLib.function(
-            named: Canvas2DMassiveShaders.fragmentFunctionName,
-            from: ShaderLibrary.BuiltinKey.canvas2DMassive
-        ) != nil)
+        #expect(
+            shaderLib.function(
+                named: Canvas2DMassiveShaders.circleVertexFunctionName,
+                from: ShaderLibrary.BuiltinKey.canvas2DMassive
+            ) != nil)
+        #expect(
+            shaderLib.function(
+                named: Canvas2DMassiveShaders.fragmentFunctionName,
+                from: ShaderLibrary.BuiltinKey.canvas2DMassive
+            ) != nil)
     }
 
     @Test("Canvas2D initializes massive circle pipelines")
     func canvasInitializesPipelines() throws {
         let canvas = try MetalTestHelper.canvas2D(width: 64, height: 64)
         // massive 系パイプラインは全ブレンドモード分そろっている（#646 で store へ移譲）。
-        #expect(BlendMode.allCases.allSatisfy {
-            canvas.pipelineStore.state(for: Canvas2DPipelineKey(.massiveCircle, $0)) != nil
-        })
+        #expect(
+            BlendMode.allCases.allSatisfy {
+                canvas.pipelineStore.state(for: Canvas2DPipelineKey(.massiveCircle, $0)) != nil
+            })
     }
 }
 
@@ -92,21 +96,26 @@ struct Canvas2DMassiveRenderTests {
         }
 
         let red = helper.readPixel(x: 16, y: 32)
-        #expect(red.r > 200 && red.g < 50 && red.b < 50,
-                "Expected red circle: R=\(red.r) G=\(red.g) B=\(red.b)")
+        #expect(
+            red.r > 200 && red.g < 50 && red.b < 50,
+            "Expected red circle: R=\(red.r) G=\(red.g) B=\(red.b)")
 
         let green = helper.readPixel(x: 48, y: 32)
-        #expect(green.g > 200 && green.r < 50 && green.b < 50,
-                "Expected green circle: R=\(green.r) G=\(green.g) B=\(green.b)")
+        #expect(
+            green.g > 200 && green.r < 50 && green.b < 50,
+            "Expected green circle: R=\(green.r) G=\(green.g) B=\(green.b)")
     }
 
     @Test("GPUBuffer circles render without CPU staging copy")
     func gpuBufferCirclesRender() throws {
         var helper = try RenderTestHelper(width: 64, height: 64)
         helper.setClearColor(r: 0, g: 0, b: 0)
-        let buffer = try #require(GPUBuffer<CircleInstance>(device: helper.device, data: [
-            CircleInstance(x: 32, y: 32, diameter: 24, color: .blue),
-        ]))
+        let buffer = try #require(
+            GPUBuffer<CircleInstance>(
+                device: helper.device,
+                data: [
+                    CircleInstance(x: 32, y: 32, diameter: 24, color: .blue)
+                ]))
 
         try helper.render { canvas in
             canvas.noStroke()
@@ -114,8 +123,9 @@ struct Canvas2DMassiveRenderTests {
         }
 
         let center = helper.readPixel(x: 32, y: 32)
-        #expect(center.b > 200 && center.r < 50 && center.g < 50,
-                "Expected blue circle: R=\(center.r) G=\(center.g) B=\(center.b)")
+        #expect(
+            center.b > 200 && center.r < 50 && center.g < 50,
+            "Expected blue circle: R=\(center.r) G=\(center.g) B=\(center.b)")
     }
 
     @Test("circles preserve order with regular Canvas2D batches")
@@ -128,19 +138,22 @@ struct Canvas2DMassiveRenderTests {
             canvas.fill(.white)
             canvas.rect(24, 24, 16, 16)
             canvas.circles([
-                CircleInstance(x: 32, y: 32, diameter: 28, color: .red),
+                CircleInstance(x: 32, y: 32, diameter: 28, color: .red)
             ])
             canvas.fill(.green)
             canvas.rect(30, 30, 4, 4)
         }
 
         let center = helper.readPixel(x: 32, y: 32)
-        #expect(center.g > 200 && center.r < 50 && center.b < 50,
-                "Last rect should cover circles: R=\(center.r) G=\(center.g) B=\(center.b)")
+        #expect(
+            center.g > 200 && center.r < 50 && center.b < 50,
+            "Last rect should cover circles: R=\(center.r) G=\(center.g) B=\(center.b)")
 
         let ring = helper.readPixel(x: 32, y: 22)
-        #expect(ring.r > 200 && ring.g < 50 && ring.b < 50,
-                "Circle should cover earlier rect outside final rect: R=\(ring.r) G=\(ring.g) B=\(ring.b)")
+        #expect(
+            ring.r > 200 && ring.g < 50 && ring.b < 50,
+            "Circle should cover earlier rect outside final rect: R=\(ring.r) G=\(ring.g) B=\(ring.b)"
+        )
     }
 
     @Test("circles respect current transform")
@@ -152,7 +165,7 @@ struct Canvas2DMassiveRenderTests {
             canvas.noStroke()
             canvas.translate(10, 0)
             canvas.circles([
-                CircleInstance(x: 22, y: 32, diameter: 16, color: .white),
+                CircleInstance(x: 22, y: 32, diameter: 16, color: .white)
             ])
         }
 

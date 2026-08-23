@@ -65,7 +65,7 @@ public final class SpatialHash2D {
 
         for x in clampedMinX...maxX {
             for y in clampedMinY...maxY {
-                let key = Int64(x) << 32 | Int64(y) & 0xFFFFFFFF
+                let key = Int64(x) << 32 | Int64(y) & 0xFFFF_FFFF
                 grid[key, default: []].append(index)
             }
         }
@@ -94,7 +94,7 @@ public final class SpatialHash2D {
 
         for (_, indices) in grid {
             for i in 0..<indices.count {
-                for j in (i+1)..<indices.count {
+                for j in (i + 1)..<indices.count {
                     let a = min(indices[i], indices[j])
                     let b = max(indices[i], indices[j])
                     let key = Int64(a) << 32 | Int64(b)

@@ -10,9 +10,10 @@ struct JSONValueTests {
 
     @Test("parses nested JSON and chains subscripts")
     func parseNested() throws {
-        let json = try JSONValue(string: """
-            {"bubbles": [{"position": {"x": 160, "y": 103}, "diameter": 43.5, "label": "Happy"}]}
-            """)
+        let json = try JSONValue(
+            string: """
+                {"bubbles": [{"position": {"x": 160, "y": 103}, "diameter": 43.5, "label": "Happy"}]}
+                """)
         #expect(json["bubbles"].count == 1)
         let bubble = json["bubbles"][0]
         #expect(bubble["position"]["x"].intValue == 160)
@@ -225,7 +226,8 @@ struct TableTests {
         // Double へは変換できるが Int では表現できない値。修正前の getInt は
         // Int(Double(...)) をそのまま通し、「Double value cannot be converted to
         // Int because it is either infinite or NaN」でプロセスごと終了していた
-        let table = try Table(string: "v\nnan\ninf\n-inf\n1e999\n1e30\n-1e30\n9223372036854775808\n")
+        let table = try Table(
+            string: "v\nnan\ninf\n-inf\n1e999\n1e30\n-1e30\n9223372036854775808\n")
         let expected = [0, 0, 0, 0, 0, 0, 0]
         for (index, want) in expected.enumerated() {
             let row = try #require(table.getRow(index))
@@ -421,7 +423,12 @@ struct DataIOFileTests {
         #expect(loaded["k"].count == 3)
 
         let tablePath = dir.appendingPathComponent("t.csv").path
-        try DataIO.saveTable({ let t = Table(columnTitles: ["a"]); t.addRow(["1"]); return t }(), toPath: tablePath)
+        try DataIO.saveTable(
+            {
+                let t = Table(columnTitles: ["a"])
+                t.addRow(["1"])
+                return t
+            }(), toPath: tablePath)
         let table = try await DataIO.loadTableAsync(tablePath)
         #expect(table.rowCount == 1)
 

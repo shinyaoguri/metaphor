@@ -37,9 +37,10 @@ final class ViewerSlotState: @unchecked Sendable {
     init(slots: Int = ViewerFrameLayout.slotCount) {
         precondition(slots > 0)
         self.slots = slots
-        self.state = OSAllocatedUnfairLock(initialState: Snapshot(
-            free: Set(0..<slots), inFlight: [], heldByParent: [], nextSeq: 0, generation: 0
-        ))
+        self.state = OSAllocatedUnfairLock(
+            initialState: Snapshot(
+                free: Set(0..<slots), inFlight: [], heldByParent: [], nextSeq: 0, generation: 0
+            ))
     }
 
     /// 空いている slot を 1 つ取り、`inFlight` にする。無ければ `nil`。
@@ -58,7 +59,7 @@ final class ViewerSlotState: @unchecked Sendable {
     func complete(_ ticket: Ticket) -> Int? {
         state.withLock { snapshot in
             guard ticket.generation == snapshot.generation,
-                  snapshot.inFlight.remove(ticket.slot) != nil
+                snapshot.inFlight.remove(ticket.slot) != nil
             else { return nil }
             snapshot.heldByParent.insert(ticket.slot)
             let seq = snapshot.nextSeq
@@ -71,7 +72,7 @@ final class ViewerSlotState: @unchecked Sendable {
     func abandon(_ ticket: Ticket) {
         state.withLock { snapshot in
             guard ticket.generation == snapshot.generation,
-                  snapshot.inFlight.remove(ticket.slot) != nil
+                snapshot.inFlight.remove(ticket.slot) != nil
             else { return }
             snapshot.free.insert(ticket.slot)
         }

@@ -16,10 +16,10 @@ struct ShaderHotReloadTests {
         let library = try ShaderLibrary(device: device)
 
         let source1 = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void myKernel(uint gid [[thread_position_in_grid]]) {}
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void myKernel(uint gid [[thread_position_in_grid]]) {}
+            """
         let key = "test.hotreload"
         try library.register(source: source1, as: key)
 
@@ -29,11 +29,11 @@ struct ShaderHotReloadTests {
 
         // reload で再登録
         let source2 = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void myKernel(uint gid [[thread_position_in_grid]]) {}
-        kernel void myKernel2(uint gid [[thread_position_in_grid]]) {}
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void myKernel(uint gid [[thread_position_in_grid]]) {}
+            kernel void myKernel2(uint gid [[thread_position_in_grid]]) {}
+            """
         try library.reload(key: key, source: source2)
 
         // 新しい関数が取得できる
@@ -51,10 +51,10 @@ struct ShaderHotReloadTests {
         let library = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void cacheTestKernel(uint gid [[thread_position_in_grid]]) {}
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void cacheTestKernel(uint gid [[thread_position_in_grid]]) {}
+            """
         let key = "test.cache"
         try library.register(source: source, as: key)
 
@@ -75,26 +75,27 @@ struct ShaderHotReloadTests {
         let library = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 reloadTestFrag(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]]
-        ) {
-            return in.color;
-        }
-        """
+            fragment float4 reloadTestFrag(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                return in.color;
+            }
+            """
 
         let key = "test.material.reloadTest"
         try library.register(source: source, as: key)
         let fn = library.function(named: "reloadTestFrag", from: key)!
 
-        let mat = CustomMaterial(fragmentFunction: fn, functionName: "reloadTestFrag", libraryKey: key)
+        let mat = CustomMaterial(
+            fragmentFunction: fn, functionName: "reloadTestFrag", libraryKey: key)
 
         // reload（同じソース）
         library.invalidateFunctionCache(for: key)
@@ -153,7 +154,8 @@ struct ParameterGUITests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let ctx = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
         #expect(ctx.gui.isVisible == true)
     }
 }
@@ -214,7 +216,8 @@ struct OfflineRenderingTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let ctx = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         #expect(ctx.isOfflineRendering == false)
         ctx.beginOfflineRender(fps: 24)
@@ -243,7 +246,8 @@ struct FBOFeedbackTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let ctx = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         ctx.enableFeedback()
         #expect(renderer.feedbackEnabled == true)
@@ -256,7 +260,8 @@ struct FBOFeedbackTests {
         let renderer = try MetaphorRenderer()
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
-        let ctx = SketchContext(renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        let ctx = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
 
         let img = ctx.previousFrame()
         #expect(img == nil)
@@ -309,8 +314,9 @@ struct FBOFeedbackTests {
         let img = try #require(harness.context.previousFrame())
         // リードバックが別キューだと commit 順序が保証されず、loadPixels()/get() が
         // 「そのフレーム冒頭のコピー完了前」の内容を読み得る（#479。3D の同型欠陥が #353）。
-        #expect(img.preferredReadbackQueue === harness.renderer.commandQueue,
-                "previousFrame() は描画キューをリードバックキューとして引き継ぐ")
+        #expect(
+            img.preferredReadbackQueue === harness.renderer.commandQueue,
+            "previousFrame() は描画キューをリードバックキューとして引き継ぐ")
     }
 
     @Test("previousFrame loadPixels reads the frame copied at this frame's start")
@@ -327,15 +333,17 @@ struct FBOFeedbackTests {
         let img = try #require(harness.context.previousFrame())
         img.loadPixels()
         let afterSecond = img.get(Int(img.width) / 2, Int(img.height) / 2)
-        #expect(afterSecond.r > 0.9 && afterSecond.g < 0.1,
-                "フレーム 2 冒頭でコピーされた前フレーム（赤）が読める (got \(afterSecond))")
+        #expect(
+            afterSecond.r > 0.9 && afterSecond.g < 0.1,
+            "フレーム 2 冒頭でコピーされた前フレーム（赤）が読める (got \(afterSecond))")
 
         // フレーム 3: 冒頭で「緑」がコピーされる → 同じ MImage から最新が読める
         harness.renderer.renderFrame()
         img.loadPixels()
         let afterThird = img.get(Int(img.width) / 2, Int(img.height) / 2)
-        #expect(afterThird.g > 0.9 && afterThird.r < 0.1,
-                "再コピー後の loadPixels が古いキャッシュを返さない (got \(afterThird))")
+        #expect(
+            afterThird.g > 0.9 && afterThird.r < 0.1,
+            "再コピー後の loadPixels が古いキャッシュを返さない (got \(afterThird))")
     }
 }
 
@@ -349,7 +357,8 @@ struct IndirectDrawParticleTests {
     func defaultsOff() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let library = try ShaderLibrary(device: device)
-        let ps = try ParticleSystem(device: device, shaderLibrary: library, sampleCount: 4, count: 1000)
+        let ps = try ParticleSystem(
+            device: device, shaderLibrary: library, sampleCount: 4, count: 1000)
         #expect(ps.useIndirectDraw == false)
     }
 
@@ -357,7 +366,8 @@ struct IndirectDrawParticleTests {
     func enableIndirectDraw() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let library = try ShaderLibrary(device: device)
-        let ps = try ParticleSystem(device: device, shaderLibrary: library, sampleCount: 4, count: 1000)
+        let ps = try ParticleSystem(
+            device: device, shaderLibrary: library, sampleCount: 4, count: 1000)
         ps.useIndirectDraw = true
         #expect(ps.useIndirectDraw == true)
     }
@@ -366,7 +376,8 @@ struct IndirectDrawParticleTests {
     func indirectDrawUpdate() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let library = try ShaderLibrary(device: device)
-        let ps = try ParticleSystem(device: device, shaderLibrary: library, sampleCount: 4, count: 100)
+        let ps = try ParticleSystem(
+            device: device, shaderLibrary: library, sampleCount: 4, count: 100)
         ps.useIndirectDraw = true
 
         let queue = device.makeCommandQueue()!

@@ -332,10 +332,11 @@ public final class SketchWindow {
         // ウィンドウを重ならないようにカスケード。スロットは開いている枚数に連動し、
         // 閉じれば空く（単調増加のカウンタだと開き直すたびに 30pt ずつ流れた。#837）
         let offset = Self.cascadeOffset(slot: cascadeIndex)
-        win.setFrameOrigin(NSPoint(
-            x: win.frame.origin.x + offset,
-            y: win.frame.origin.y - offset
-        ))
+        win.setFrameOrigin(
+            NSPoint(
+                x: win.frame.origin.x + offset,
+                y: win.frame.origin.y - offset
+            ))
 
         let mtkView = MetaphorMTKView()
         mtkView.frame = NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight)
@@ -510,7 +511,8 @@ public final class SketchWindow {
         renderer.resizeCanvas(width: width, height: height)
 
         guard let newCanvas = try? Canvas2D(renderer: renderer),
-              let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+            let newCanvas3D = try? Canvas3D(renderer: renderer)
+        else {
             metaphorWarning("createCanvas(\(width), \(height)) failed to rebuild canvases")
             return
         }

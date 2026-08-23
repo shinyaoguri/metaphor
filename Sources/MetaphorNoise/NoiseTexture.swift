@@ -15,10 +15,11 @@ enum NoiseTextureBuilder {
     /// ガードへ辿り着く前にメモリを食い尽くすため、順序に意味があります。
     static func isValidSize(_ width: Int, _ height: Int, api: String) -> Bool {
         guard width > 0, height > 0,
-              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            width <= TextureManager.maxDimension, height <= TextureManager.maxDimension
+        else {
             metaphorWarning(
                 "\(api): size must be within 1...\(TextureManager.maxDimension) "
-                + "(got \(width)x\(height))")
+                    + "(got \(width)x\(height))")
             return false
         }
         return true
@@ -47,10 +48,10 @@ enum NoiseTextureBuilder {
             let scaled = values[i] * 255
             let v = scaled.isFinite ? UInt8(max(0, min(255, scaled))) : 0
             let j = i * 4
-            pixels[j]     = v   // B
-            pixels[j + 1] = v   // G
-            pixels[j + 2] = v   // R
-            pixels[j + 3] = 255 // A
+            pixels[j] = v  // B
+            pixels[j + 1] = v  // G
+            pixels[j + 2] = v  // R
+            pixels[j + 3] = 255  // A
         }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -102,10 +103,10 @@ enum NoiseTextureBuilder {
             let t = max(0, min(1, values[i]))
             let color = interpolateColor(t: t, stops: sortedStops)
             let j = i * 4
-            pixels[j]     = color.x // B
-            pixels[j + 1] = color.y // G
-            pixels[j + 2] = color.z // R
-            pixels[j + 3] = color.w // A
+            pixels[j] = color.x  // B
+            pixels[j + 1] = color.y  // G
+            pixels[j + 2] = color.z  // R
+            pixels[j + 3] = color.w  // A
         }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -137,8 +138,12 @@ enum NoiseTextureBuilder {
             if t >= stops[i].0 && t <= stops[i + 1].0 {
                 let range = stops[i + 1].0 - stops[i].0
                 let localT = range > 0 ? (t - stops[i].0) / range : 0
-                let a = SIMD4<Float>(Float(stops[i].1.x), Float(stops[i].1.y), Float(stops[i].1.z), Float(stops[i].1.w))
-                let b = SIMD4<Float>(Float(stops[i + 1].1.x), Float(stops[i + 1].1.y), Float(stops[i + 1].1.z), Float(stops[i + 1].1.w))
+                let a = SIMD4<Float>(
+                    Float(stops[i].1.x), Float(stops[i].1.y), Float(stops[i].1.z),
+                    Float(stops[i].1.w))
+                let b = SIMD4<Float>(
+                    Float(stops[i + 1].1.x), Float(stops[i + 1].1.y), Float(stops[i + 1].1.z),
+                    Float(stops[i + 1].1.w))
                 let mixed = a + (b - a) * localT
                 return SIMD4<UInt8>(
                     UInt8(max(0, min(255, mixed.x))),

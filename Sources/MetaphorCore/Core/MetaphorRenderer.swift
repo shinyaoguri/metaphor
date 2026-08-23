@@ -306,7 +306,9 @@ public final class MetaphorRenderer: NSObject {
             )
             self.isPostProcessAvailable = true
         } catch {
-            metaphorWarning("PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
+            metaphorWarning(
+                "PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled."
+            )
         }
     }
 
@@ -362,7 +364,9 @@ public final class MetaphorRenderer: NSObject {
             )
             self.isPostProcessAvailable = true
         } catch {
-            metaphorWarning("PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled.")
+            metaphorWarning(
+                "PostProcessPipeline unavailable: \(error). Post-processing effects will be disabled."
+            )
         }
     }
 
@@ -399,7 +403,9 @@ public final class MetaphorRenderer: NSObject {
     /// （`plugin(id:)` / `removePlugin(id:)` は最初の 1 つにしか届かないため）。
     private func warnIfDuplicatePluginID(_ plugin: MetaphorPlugin) {
         if plugins.contains(where: { $0.pluginID == plugin.pluginID }) {
-            metaphorWarning("addPlugin: a plugin with id '\(plugin.pluginID)' is already registered; plugin(id:)/removePlugin(id:) will only reach the first one")
+            metaphorWarning(
+                "addPlugin: a plugin with id '\(plugin.pluginID)' is already registered; plugin(id:)/removePlugin(id:) will only reach the first one"
+            )
         }
     }
 
@@ -431,7 +437,9 @@ public final class MetaphorRenderer: NSObject {
     // MARK: - プラグイン入力転送
 
     /// 全登録済みプラグインにマウスイベントを転送します。
-    internal func notifyPluginsMouseEvent(x: Float, y: Float, button: MouseButton?, type: MouseEventType) {
+    internal func notifyPluginsMouseEvent(
+        x: Float, y: Float, button: MouseButton?, type: MouseEventType
+    ) {
         for plugin in plugins {
             plugin.mouseEvent(x: x, y: y, button: button, type: type)
         }
@@ -574,10 +582,12 @@ public final class MetaphorRenderer: NSObject {
         pass.commandBuffer.waitUntilCompleted()
 
         guard let nextBuffer = commandQueue.makeCommandBuffer(),
-              let nextEncoder = nextBuffer.makeRenderCommandEncoder(
-                  descriptor: continuationRenderPassDescriptor()
-              ) else {
-            metaphorWarning("loadPixels: failed to continue the main pass after readback. Frame aborted.")
+            let nextEncoder = nextBuffer.makeRenderCommandEncoder(
+                descriptor: continuationRenderPassDescriptor()
+            )
+        else {
+            metaphorWarning(
+                "loadPixels: failed to continue the main pass after readback. Frame aborted.")
             return nil
         }
         mainPass = MainPass(commandBuffer: nextBuffer, encoder: nextEncoder)
@@ -654,9 +664,10 @@ public final class MetaphorRenderer: NSObject {
     /// を実行する。MSAA 有効時はリゾルブ込みでクリアされる。
     private func clearOffscreenTexture() {
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(
-                  descriptor: textureManager.renderPassDescriptor
-              ) else { return }
+            let encoder = commandBuffer.makeRenderCommandEncoder(
+                descriptor: textureManager.renderPassDescriptor
+            )
+        else { return }
         encoder.endEncoding()
         commandBuffer.commit()
     }
@@ -671,7 +682,7 @@ public final class MetaphorRenderer: NSObject {
         guard !isRenderingFrame else {
             metaphorWarning(
                 "resizeCanvas(\(width), \(height)) ignored: cannot resize while a frame is "
-                + "being rendered. Call it outside draw() (e.g. from setup())."
+                    + "being rendered. Call it outside draw() (e.g. from setup())."
             )
             return
         }
@@ -849,8 +860,11 @@ public final class MetaphorRenderer: NSObject {
             targetAspect: textureManager.aspectRatio
         )
 
-        let texX = (drawX - Float(viewport.originX)) / Float(viewport.width) * Float(textureManager.width)
-        let texY = (drawY - Float(viewport.originY)) / Float(viewport.height) * Float(textureManager.height)
+        let texX =
+            (drawX - Float(viewport.originX)) / Float(viewport.width) * Float(textureManager.width)
+        let texY =
+            (drawY - Float(viewport.originY)) / Float(viewport.height)
+            * Float(textureManager.height)
 
         return (texX, texY)
     }
@@ -880,7 +894,8 @@ public final class MetaphorRenderer: NSObject {
         }
 
         guard let dst = previousFrameTexture,
-              let blit = commandBuffer.makeBlitCommandEncoder() else { return }
+            let blit = commandBuffer.makeBlitCommandEncoder()
+        else { return }
         blit.copy(
             from: src,
             sourceSlice: 0, sourceLevel: 0,
@@ -894,16 +909,20 @@ public final class MetaphorRenderer: NSObject {
     }
 
     private func buildBlitPipeline() throws {
-        guard let vertexFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.blitVertex,
-            from: ShaderLibrary.BuiltinKey.blit
-        ) else {
+        guard
+            let vertexFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitVertex,
+                from: ShaderLibrary.BuiltinKey.blit
+            )
+        else {
             throw MetaphorError.shaderNotFound("blitVertex")
         }
-        guard let fragmentFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.blitFragment,
-            from: ShaderLibrary.BuiltinKey.blit
-        ) else {
+        guard
+            let fragmentFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitFragment,
+                from: ShaderLibrary.BuiltinKey.blit
+            )
+        else {
             throw MetaphorError.shaderNotFound("blitFragment")
         }
 
@@ -963,8 +982,9 @@ public final class MetaphorRenderer: NSObject {
     private func createOrReuseStagingTexture(cache: inout [MTLTexture?]) -> MTLTexture? {
         let index = frameBufferIndex
         if let existing = cache[index],
-           existing.width == textureManager.width,
-           existing.height == textureManager.height {
+            existing.width == textureManager.width,
+            existing.height == textureManager.height
+        {
             return existing
         }
 
@@ -1048,18 +1068,20 @@ public final class MetaphorRenderer: NSObject {
         // makeImage() まで withUnsafeMutableBytes のスコープ内で完結させる
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let cgImageOrNil: CGImage? = pixels.withUnsafeMutableBytes { buf in
-            guard let ctx = CGContext(
-                data: buf.baseAddress,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow,
-                space: colorSpace,
-                // レンダーターゲットの中身は premultiplied（ADR-0012）。宣言を実体に
-                // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
-                // **ファイルは straight** になる（PNG に premultiplied は無い）。
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ) else { return nil }
+            guard
+                let ctx = CGContext(
+                    data: buf.baseAddress,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: bytesPerRow,
+                    space: colorSpace,
+                    // レンダーターゲットの中身は premultiplied（ADR-0012）。宣言を実体に
+                    // 合わせておくと、ImageIO が PNG 化のときに割り戻すので
+                    // **ファイルは straight** になる（PNG に premultiplied は無い）。
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                )
+            else { return nil }
             return ctx.makeImage()
         }
         guard let cgImage = cgImageOrNil else {
@@ -1077,9 +1099,11 @@ public final class MetaphorRenderer: NSObject {
             return
         }
 
-        guard let dest = CGImageDestinationCreateWithURL(
-            url as CFURL, "public.png" as CFString, 1, nil
-        ) else {
+        guard
+            let dest = CGImageDestinationCreateWithURL(
+                url as CFURL, "public.png" as CFString, 1, nil
+            )
+        else {
             metaphorWarning("Failed to create image destination: \(path)")
             return
         }
@@ -1239,9 +1263,10 @@ public final class MetaphorRenderer: NSObject {
         // レンダーグラフを実行（構成時はグラフ出力をベーステクスチャとして使用）
         let baseTexture: MTLTexture
         if let graph = renderGraph,
-           let graphOutput = graph.execute(
-               commandBuffer: commandBuffer, time: time, renderer: self
-           ) {
+            let graphOutput = graph.execute(
+                commandBuffer: commandBuffer, time: time, renderer: self
+            )
+        {
             baseTexture = graphOutput
         } else {
             baseTexture = textureManager.colorTexture
@@ -1385,15 +1410,17 @@ extension MetaphorRenderer: MTKViewDelegate {
         // noLoop() スケッチがウィンドウのオクルージョン状態更新前にコンテンツを表示できるよう、
         // 最初のブリットは常に許可します。
         if hasBlittedOnce,
-           let window = view.window,
-           !window.occlusionState.contains(.visible) {
+            let window = view.window,
+            !window.occlusionState.contains(.visible)
+        {
             return
         }
 
         // 画面にブリット（プレビュー表示）
         guard let drawable = view.currentDrawable,
-              let descriptor = view.currentRenderPassDescriptor,
-              let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+            let descriptor = view.currentRenderPassDescriptor,
+            let commandBuffer = commandQueue.makeCommandBuffer()
+        else { return }
 
         let viewport = calculateViewport(
             drawableSize: view.drawableSize,

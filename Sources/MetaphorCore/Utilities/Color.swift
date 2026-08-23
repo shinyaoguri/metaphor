@@ -90,16 +90,21 @@ public struct Color: Sendable, Equatable {
         if hue.isFinite {
             safeHue = hue
         } else {
-            metaphorWarning("Color(hue:saturation:brightness:) received non-finite hue (\(hue)); using 0")
+            metaphorWarning(
+                "Color(hue:saturation:brightness:) received non-finite hue (\(hue)); using 0")
             safeHue = 0
         }
-        let h = ((safeHue.truncatingRemainder(dividingBy: 1.0)) + 1.0)
+        let h =
+            ((safeHue.truncatingRemainder(dividingBy: 1.0)) + 1.0)
             .truncatingRemainder(dividingBy: 1.0) * 6.0
         let s = max(0, min(1, saturation))
         let v = max(0, min(1, brightness))
 
         if s == 0 {
-            self.r = v; self.g = v; self.b = v; self.a = alpha
+            self.r = v
+            self.g = v
+            self.b = v
+            self.a = alpha
             return
         }
 
@@ -110,12 +115,30 @@ public struct Color: Sendable, Equatable {
         let t = v * (1 - s * (1 - f))
 
         switch i % 6 {
-        case 0: self.r = v; self.g = t; self.b = p
-        case 1: self.r = q; self.g = v; self.b = p
-        case 2: self.r = p; self.g = v; self.b = t
-        case 3: self.r = p; self.g = q; self.b = v
-        case 4: self.r = t; self.g = p; self.b = v
-        default: self.r = v; self.g = p; self.b = q
+        case 0:
+            self.r = v
+            self.g = t
+            self.b = p
+        case 1:
+            self.r = q
+            self.g = v
+            self.b = p
+        case 2:
+            self.r = p
+            self.g = v
+            self.b = t
+        case 3:
+            self.r = p
+            self.g = q
+            self.b = v
+        case 4:
+            self.r = t
+            self.g = p
+            self.b = v
+        default:
+            self.r = v
+            self.g = p
+            self.b = q
         }
         self.a = alpha
     }
@@ -166,7 +189,9 @@ public struct Color: Sendable, Equatable {
         guard str.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
         // CSS の 3 桁短縮形を展開する（"0AF" → "00AAFF"）。
         if str.count == 3 { str = String(str.flatMap { [$0, $0] }) }
-        guard str.count == 6 || str.count == 8, let value = UInt32(str, radix: 16) else { return nil }
+        guard str.count == 6 || str.count == 8, let value = UInt32(str, radix: 16) else {
+            return nil
+        }
         // `init(hex: UInt32)` へは委譲しない。整数側は値の大小で桁数を判別するため
         // `0x00FFFFFF == 0xFFFFFF` が RGB として読まれ、アルファ 00 だけが 1.0 に化ける。
         // ここは綴りの長さで桁数が分かるので、8 桁は無条件に AARRGGBB として分解する。

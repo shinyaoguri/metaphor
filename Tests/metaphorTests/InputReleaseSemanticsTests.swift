@@ -46,9 +46,9 @@ struct InputReleaseSemanticsTests {
             charInKeyUp = input.lastKey
         }
 
-        input.handleKeyDown(keyCode: 0, characters: "a", isRepeat: false)   // A
+        input.handleKeyDown(keyCode: 0, characters: "a", isRepeat: false)  // A
         input.handleKeyDown(keyCode: 11, characters: "b", isRepeat: false)  // B（A は押したまま）
-        input.handleKeyUp(keyCode: 0)                                       // A を離す
+        input.handleKeyUp(keyCode: 0)  // A を離す
 
         // Processing なら離した A を指すが、metaphor は最後に押した B のまま
         #expect(codeInKeyUp == 11, "keyCode が最後に押されたキー（B）でなくなっている")
@@ -82,8 +82,8 @@ struct InputReleaseSemanticsTests {
         }
 
         input.handleMouseDown(x: 0, y: 0, button: .left)
-        input.handleMouseDown(x: 0, y: 0, button: .right)   // 左は押したまま
-        input.handleMouseUp(x: 0, y: 0, button: .left)      // 左を離す
+        input.handleMouseDown(x: 0, y: 0, button: .right)  // 左は押したまま
+        input.handleMouseUp(x: 0, y: 0, button: .left)  // 左を離す
 
         // Processing なら離した .left を指すが、metaphor は最後に押した .right のまま
         #expect(observed == .right, "mouseButton が最後に押されたボタン（.right）でなくなっている")

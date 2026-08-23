@@ -85,9 +85,11 @@ public final class SourcePass: RenderPassNode {
         guard lastExecutedToken != renderer.frameToken else { return }
         lastExecutedToken = renderer.frameToken
 
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(
-            descriptor: textureManager.renderPassDescriptor
-        ) else { return }
+        guard
+            let encoder = commandBuffer.makeRenderCommandEncoder(
+                descriptor: textureManager.renderPassDescriptor
+            )
+        else { return }
         encoder.label = "SourcePass:\(label)"
         onDraw?(encoder, time)
         encoder.endEncoding()

@@ -1059,8 +1059,11 @@ extension Sketch {
     ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
     ///   関数が見つからない場合は ``MetaphorError/material(_:)`` の
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
-    public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
-        try context.createMaterial(source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
+    public func createMaterial(
+        source: String, fragmentFunction: String, vertexFunction: String? = nil
+    ) throws -> CustomMaterial {
+        try context.createMaterial(
+            source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
 
     /// カスタムマテリアルを以降の 3D 描画に適用します。

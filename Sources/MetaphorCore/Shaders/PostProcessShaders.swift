@@ -46,11 +46,11 @@ public enum PostProcessShaders {
     /// )
     /// ```
     public static let postProcessPreamble = """
-    #include <metal_stdlib>
-    using namespace metal;
+        #include <metal_stdlib>
+        using namespace metal;
 
-    \(commonStructs)
-    """
+        \(commonStructs)
+        """
 
     /// ポストプロセスシェーダー関数名定数。
     public enum FunctionName {

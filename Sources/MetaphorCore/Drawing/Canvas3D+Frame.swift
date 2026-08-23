@@ -77,7 +77,9 @@ extension Canvas3D {
 
         // 最初のディレクショナルライトからライト空間行列を計算
         if let dirLight = lightArray.first(where: { UInt32($0.positionAndType.w) == 0 }) {
-            let lightDir = SIMD3(dirLight.directionAndCutoff.x, dirLight.directionAndCutoff.y, dirLight.directionAndCutoff.z)
+            let lightDir = SIMD3(
+                dirLight.directionAndCutoff.x, dirLight.directionAndCutoff.y,
+                dirLight.directionAndCutoff.z)
             shadow.updateLightSpaceMatrix(lightDirection: lightDir, sceneCenter: cameraCenter)
         }
 
@@ -111,7 +113,8 @@ extension Canvas3D {
                 shadowBias: shadow.shadowBias,
                 shadowEnabled: 1.0
             )
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+            encoder.setFragmentBytes(
+                &uniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
             encoder.setFragmentTexture(shadow.shadowTexture, index: 1)
         } else {
             var uniforms = ShadowFragmentUniforms(
@@ -119,7 +122,8 @@ extension Canvas3D {
                 shadowBias: 0,
                 shadowEnabled: 0
             )
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
+            encoder.setFragmentBytes(
+                &uniforms, length: MemoryLayout<ShadowFragmentUniforms>.stride, index: 5)
             encoder.setFragmentTexture(dummyShadowTexture, index: 1)
         }
     }

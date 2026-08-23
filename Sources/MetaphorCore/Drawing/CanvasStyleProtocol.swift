@@ -80,7 +80,9 @@ extension CanvasStyle {
     private func validatedMax(_ value: Float?, current: Float, label: String) -> Float {
         guard let value else { return current }
         guard value.isFinite, value > 0 else {
-            metaphorWarning("colorMode: \(label) must be a positive finite value (got \(value)); keeping \(current)")
+            metaphorWarning(
+                "colorMode: \(label) must be a positive finite value (got \(value)); keeping \(current)"
+            )
             return current
         }
         return value
@@ -105,7 +107,8 @@ extension CanvasStyle {
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         let current = colorModeConfig
         let safe = validatedMax(maxAll, current: current.max1, label: "max")
-        colorModeConfig = ColorModeConfig(space: space, max1: safe, max2: safe, max3: safe, maxAlpha: safe)
+        colorModeConfig = ColorModeConfig(
+            space: space, max1: safe, max2: safe, max3: safe, maxAlpha: safe)
     }
 }
 

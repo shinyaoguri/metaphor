@@ -9,7 +9,9 @@ struct ViewerSlotStateTests {
     @Test("3 slot を順に取り、4 つ目は取れない（latest-wins で publish を飛ばす）")
     func exhaustion() {
         let state = ViewerSlotState(slots: 3)
-        let a = state.acquire(), b = state.acquire(), c = state.acquire()
+        let a = state.acquire()
+        let b = state.acquire()
+        let c = state.acquire()
         #expect(a?.slot == 0 && b?.slot == 1 && c?.slot == 2)
         #expect(state.acquire() == nil)
         #expect(state.snapshot.inFlight == [0, 1, 2])
@@ -36,12 +38,12 @@ struct ViewerSlotStateTests {
     func bogusRelease() {
         let state = ViewerSlotState(slots: 3)
         let ticket = state.acquire()!
-        state.release(slot: 0)            // まだ inFlight → 無視
+        state.release(slot: 0)  // まだ inFlight → 無視
         #expect(state.snapshot.inFlight == [0])
-        state.release(slot: 7)            // 範囲外 → 無視
+        state.release(slot: 7)  // 範囲外 → 無視
         _ = state.complete(ticket)
         state.release(slot: 0)
-        state.release(slot: 0)            // 二重 → 無視
+        state.release(slot: 0)  // 二重 → 無視
         #expect(state.snapshot.free == [0, 1, 2])
     }
 

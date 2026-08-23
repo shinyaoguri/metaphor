@@ -19,7 +19,8 @@ final class ViewerTransport: @unchecked Sendable {
         var description: String {
             switch self {
             case .pathTooLong(let count):
-                return "socket path is \(count) bytes; sun_path allows at most \(ViewerTransport.maxPathBytes)"
+                return
+                    "socket path is \(count) bytes; sun_path allows at most \(ViewerTransport.maxPathBytes)"
             case .socket(let errno):
                 return "socket() failed: \(String(cString: strerror(errno)))"
             case .connect(let errno):
@@ -133,7 +134,9 @@ final class ViewerTransport: @unchecked Sendable {
                 while let newline = pending.firstIndex(of: 0x0A) {
                     let lineData = pending[pending.startIndex..<newline]
                     pending.removeSubrange(pending.startIndex...newline)
-                    guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
+                    guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else {
+                        continue
+                    }
                     switch ViewerFrameIPC.decodeIncoming(line) {
                     case .release(let slot):
                         onRelease(slot)

@@ -465,20 +465,23 @@ struct MissingSampleRateWarningTests {
 
     @Test("解決できなければ警告する")
     func warnsWhenRateCannotBeResolved() {
-        #expect(AudioAnalyzer.shouldWarnAboutMissingSampleRate(
-            resolvedRate: nil, alreadyWarned: false))
+        #expect(
+            AudioAnalyzer.shouldWarnAboutMissingSampleRate(
+                resolvedRate: nil, alreadyWarned: false))
     }
 
     @Test("解決できていれば警告しない")
     func staysQuietWhenRateIsKnown() {
-        #expect(!AudioAnalyzer.shouldWarnAboutMissingSampleRate(
-            resolvedRate: 44_100, alreadyWarned: false))
+        #expect(
+            !AudioAnalyzer.shouldWarnAboutMissingSampleRate(
+                resolvedRate: 44_100, alreadyWarned: false))
     }
 
     @Test("同じ警告は 1 度だけ")
     func warnsOnlyOnce() {
-        #expect(!AudioAnalyzer.shouldWarnAboutMissingSampleRate(
-            resolvedRate: nil, alreadyWarned: true))
+        #expect(
+            !AudioAnalyzer.shouldWarnAboutMissingSampleRate(
+                resolvedRate: nil, alreadyWarned: true))
     }
 
     @Test("bandEnergy を何度呼んでもフラグは 1 度しか立たない")

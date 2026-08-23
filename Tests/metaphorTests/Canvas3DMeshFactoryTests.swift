@@ -94,8 +94,9 @@ struct Canvas3DMeshFactoryTests {
             c.mesh(mesh)
         }
 
-        #expect(nonBlackCount(direct) > 100,
-                "\(label): 基準側が何も描けていない（nonBlack=\(nonBlackCount(direct))）")
+        #expect(
+            nonBlackCount(direct) > 100,
+            "\(label): 基準側が何も描けていない（nonBlack=\(nonBlackCount(direct))）")
         let comparison = viaMesh.compare(to: direct)
         #expect(comparison.isIdentical, "\(label): 描画プリミティブと不一致: \(comparison.summary)")
     }
@@ -206,9 +207,13 @@ struct Canvas3DMeshFactoryTests {
         let mesh = try #require(c.createBoxMesh(40, 24, 32))
         let (minP, maxP) = boundingBox(of: mesh)
 
-        #expect(abs(maxP.x - 20) < 1e-5 && abs(minP.x + 20) < 1e-5, "x 幅が 40 でない: \(minP.x)…\(maxP.x)")
-        #expect(abs(maxP.y - 12) < 1e-5 && abs(minP.y + 12) < 1e-5, "y 高さが 24 でない: \(minP.y)…\(maxP.y)")
-        #expect(abs(maxP.z - 16) < 1e-5 && abs(minP.z + 16) < 1e-5, "z 奥行きが 32 でない: \(minP.z)…\(maxP.z)")
+        #expect(
+            abs(maxP.x - 20) < 1e-5 && abs(minP.x + 20) < 1e-5, "x 幅が 40 でない: \(minP.x)…\(maxP.x)")
+        #expect(
+            abs(maxP.y - 12) < 1e-5 && abs(minP.y + 12) < 1e-5, "y 高さが 24 でない: \(minP.y)…\(maxP.y)")
+        #expect(
+            abs(maxP.z - 16) < 1e-5 && abs(minP.z + 16) < 1e-5, "z 奥行きが 32 でない: \(minP.z)…\(maxP.z)"
+        )
     }
 
     /// メッシュの頂点バッファを読み、AABB を返します。
@@ -267,7 +272,8 @@ struct Canvas3DMeshFactoryTests {
         }
 
         #expect(nonBlackCount(loop) > 100, "基準側が何も描けていない")
-        #expect(instanced.compare(to: loop).isIdentical,
-                "drawInstanced と手書きループが不一致: \(instanced.compare(to: loop).summary)")
+        #expect(
+            instanced.compare(to: loop).isIdentical,
+            "drawInstanced と手書きループが不一致: \(instanced.compare(to: loop).summary)")
     }
 }

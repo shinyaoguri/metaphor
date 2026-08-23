@@ -37,7 +37,7 @@ public final class PerformanceHUD {
     ///   - start: GPU開始タイムスタンプ（秒）。
     ///   - end: GPU終了タイムスタンプ（秒）。
     func updateGPUTime(start: Double, end: Double) {
-        gpuTime = Float((end - start) * 1000) // ms
+        gpuTime = Float((end - start) * 1000)  // ms
     }
 
     // MARK: - 表示文字列

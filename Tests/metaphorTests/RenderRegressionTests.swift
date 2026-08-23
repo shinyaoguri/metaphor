@@ -150,9 +150,13 @@ struct RenderRegressionTests {
 
         let over = try renderGray(alpha: 1.5)
         let opaque = try renderGray(alpha: 1.0)
-        #expect(over.r == opaque.r && over.g == opaque.g && over.b == opaque.b,
-                "a=1.5 gave (\(over.r),\(over.g),\(over.b)), a=1.0 gave (\(opaque.r),\(opaque.g),\(opaque.b))")
-        #expect(abs(Int(opaque.r) - 128) <= 1, "gray(0.5) over white should stay mid-gray, got \(opaque.r)")
+        #expect(
+            over.r == opaque.r && over.g == opaque.g && over.b == opaque.b,
+            "a=1.5 gave (\(over.r),\(over.g),\(over.b)), a=1.0 gave (\(opaque.r),\(opaque.g),\(opaque.b))"
+        )
+        #expect(
+            abs(Int(opaque.r) - 128) <= 1,
+            "gray(0.5) over white should stay mid-gray, got \(opaque.r)")
     }
 
     @Test("negative components do not darken under additive blend")
@@ -168,8 +172,10 @@ struct RenderRegressionTests {
         }
         let inside = helper.readPixel(x: 16, y: 16)
         let outside = helper.readPixel(x: 2, y: 2)
-        #expect(inside.r == outside.r,
-                "Negative red should leave the background untouched: inside=\(inside.r) outside=\(outside.r)")
+        #expect(
+            inside.r == outside.r,
+            "Negative red should leave the background untouched: inside=\(inside.r) outside=\(outside.r)"
+        )
     }
 
     /// 単色テクスチャの MImage を作成します（描画順テスト用）。
@@ -184,7 +190,10 @@ struct RenderRegressionTests {
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
         for i in stride(from: 0, to: pixels.count, by: 4) {
-            pixels[i] = b; pixels[i + 1] = g; pixels[i + 2] = r; pixels[i + 3] = a
+            pixels[i] = b
+            pixels[i + 1] = g
+            pixels[i + 2] = r
+            pixels[i + 3] = a
         }
         pixels.withUnsafeBytes { buf in
             texture.replace(
@@ -198,8 +207,9 @@ struct RenderRegressionTests {
     func imageDrawnAfterCircleIsOnTop() throws {
         var helper = try RenderTestHelper(width: 64, height: 64)
         helper.setClearColor(r: 0, g: 0, b: 0)
-        let white = try #require(makeSolidImage(
-            device: helper.device, width: 16, height: 16, b: 255, g: 255, r: 255))
+        let white = try #require(
+            makeSolidImage(
+                device: helper.device, width: 16, height: 16, b: 255, g: 255, r: 255))
         try helper.render { canvas in
             // インスタンス化される円 → 後から描く画像が上に来なければならない。
             // 画像描画がインスタンスバッチをフラッシュしないと、画像が先に
@@ -210,8 +220,9 @@ struct RenderRegressionTests {
             canvas.image(white, 24, 24, 16, 16)
         }
         let center = helper.readPixel(x: 32, y: 32)
-        #expect(center.r > 200 && center.g > 200 && center.b > 200,
-                "Image should cover the circle: got R=\(center.r) G=\(center.g) B=\(center.b)")
+        #expect(
+            center.r > 200 && center.g > 200 && center.b > 200,
+            "Image should cover the circle: got R=\(center.r) G=\(center.g) B=\(center.b)")
         // 画像の外側はまだ円（赤）のまま
         let ring = helper.readPixel(x: 32, y: 14)
         #expect(ring.r > 200 && ring.g < 50, "Circle should remain outside the image")
@@ -221,8 +232,9 @@ struct RenderRegressionTests {
     func shapeDrawnAfterImageIsOnTop() throws {
         var helper = try RenderTestHelper(width: 64, height: 64)
         helper.setClearColor(r: 0, g: 0, b: 0)
-        let white = try #require(makeSolidImage(
-            device: helper.device, width: 32, height: 32, b: 255, g: 255, r: 255))
+        let white = try #require(
+            makeSolidImage(
+                device: helper.device, width: 32, height: 32, b: 255, g: 255, r: 255))
         try helper.render { canvas in
             canvas.image(white, 16, 16, 32, 32)
             canvas.fill(.red)
@@ -230,8 +242,9 @@ struct RenderRegressionTests {
             canvas.circle(32, 32, 16)
         }
         let center = helper.readPixel(x: 32, y: 32)
-        #expect(center.r > 200 && center.g < 50,
-                "Circle should cover the image: got R=\(center.r) G=\(center.g)")
+        #expect(
+            center.r > 200 && center.g < 50,
+            "Circle should cover the image: got R=\(center.r) G=\(center.g)")
     }
 
     @Test("beginClip intersects negative-origin rect with the canvas")
@@ -283,8 +296,10 @@ struct RenderRegressionTests {
             // pop 後の図形は通常合成に戻る
         }
         let p = helper.readPixel(x: 16, y: 16)
-        #expect(p.r > 220,
-                "Two additive 0.5-gray rects should accumulate to ~white (got R=\(p.r)); pop() restoring the blend mode before flushing renders them with .alpha instead")
+        #expect(
+            p.r > 220,
+            "Two additive 0.5-gray rects should accumulate to ~white (got R=\(p.r)); pop() restoring the blend mode before flushing renders them with .alpha instead"
+        )
     }
 
     /// 回帰: 1フレーム内で頂点バッファ成長が起きても表示が壊れないこと（#70）。
@@ -310,9 +325,13 @@ struct RenderRegressionTests {
             canvas.strokeWeight(1)
             var x: Float = 2
             while x < Float(size) - 2 {
-                if Int(x) % 20 == 0 { canvas.stroke(.white) }
-                else if Int(x) % 10 == 0 { canvas.stroke(Color(r: 0.6, g: 0.6, b: 0.6)) }
-                else { canvas.stroke(Color(r: 0.4, g: 0.4, b: 0.4)) }
+                if Int(x) % 20 == 0 {
+                    canvas.stroke(.white)
+                } else if Int(x) % 10 == 0 {
+                    canvas.stroke(Color(r: 0.6, g: 0.6, b: 0.6))
+                } else {
+                    canvas.stroke(Color(r: 0.4, g: 0.4, b: 0.4))
+                }
                 canvas.line(x, 16, x, Float(size) - 16)
                 x += 0.05  // 約2520本×6=約15120頂点 → 4096→8192→16384 と成長
             }
@@ -320,8 +339,9 @@ struct RenderRegressionTests {
 
         // 1回目: フレーム途中で成長が起きるフレーム（修正前は破損）。
         try helper.render(scene)
-        #expect(helper.canvas.colorBuffer.capacity > 4096,
-                "Test must exercise buffer growth; capacity=\(helper.canvas.colorBuffer.capacity)")
+        #expect(
+            helper.canvas.colorBuffer.capacity > 4096,
+            "Test must exercise buffer growth; capacity=\(helper.canvas.colorBuffer.capacity)")
         var first = [RenderTestHelper.Pixel]()
         first.reserveCapacity(size * size)
         for y in 0..<size { for x in 0..<size { first.append(helper.readPixel(x: x, y: y)) } }
@@ -337,7 +357,9 @@ struct RenderRegressionTests {
                 if a.r != b.r || a.g != b.g || a.b != b.b { mismatches += 1 }
             }
         }
-        #expect(mismatches == 0,
-                "Growing frame must match the stable (no-growth) frame pixel-for-pixel; \(mismatches)/\(size * size) pixels differ → mid-frame buffer growth corruption")
+        #expect(
+            mismatches == 0,
+            "Growing frame must match the stable (no-growth) frame pixel-for-pixel; \(mismatches)/\(size * size) pixels differ → mid-frame buffer growth corruption"
+        )
     }
 }

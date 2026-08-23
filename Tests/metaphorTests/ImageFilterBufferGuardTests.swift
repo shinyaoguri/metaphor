@@ -47,12 +47,14 @@ private let malformedBuffers: [MalformedBuffer] = [
 @MainActor
 struct ImageFilterBufferGuardTests {
 
-    @Test("寸法と長さが一致しない入力は no-op（クラッシュしない）",
-          arguments: malformedBuffers, allFilters)
+    @Test(
+        "寸法と長さが一致しない入力は no-op（クラッシュしない）",
+        arguments: malformedBuffers, allFilters)
     fileprivate func malformedBuffersAreNoOp(buffer: MalformedBuffer, filter: FilterType) {
         let original = [UInt8](repeating: 128, count: buffer.count)
         var pixels = original
-        ImageFilter.applyToPixels(filter, pixels: &pixels, width: buffer.width, height: buffer.height)
+        ImageFilter.applyToPixels(
+            filter, pixels: &pixels, width: buffer.width, height: buffer.height)
         #expect(pixels == original, "\(buffer.name)")
     }
 

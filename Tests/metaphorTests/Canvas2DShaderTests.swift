@@ -18,31 +18,31 @@ struct Canvas2DShaderTests {
 
     /// 前文（stdlib + 2D 構造体）を持たないソース。`createShader` が補完してくれる前提。
     private static let bareSource = """
-    fragment float4 testFragment(Canvas2DVertexOut in [[stage_in]],
-                                 constant Canvas2DShaderUniforms &u [[buffer(3)]]) {
-        float2 uv = in.position.xy / u.resolution;
-        return float4(uv, u.time, 1.0);
-    }
-    """
+        fragment float4 testFragment(Canvas2DVertexOut in [[stage_in]],
+                                     constant Canvas2DShaderUniforms &u [[buffer(3)]]) {
+            float2 uv = in.position.xy / u.resolution;
+            return float4(uv, u.time, 1.0);
+        }
+        """
 
     /// stdlib を自分で include したソース。前文が重ねて足されても壊れないことを見る。
     private static let redundantIncludeSource = """
-    #include <metal_stdlib>
-    using namespace metal;
+        #include <metal_stdlib>
+        using namespace metal;
 
-    fragment float4 redundantFragment(Canvas2DVertexOut in [[stage_in]]) {
-        return in.color;
-    }
-    """
+        fragment float4 redundantFragment(Canvas2DVertexOut in [[stage_in]]) {
+            return in.color;
+        }
+        """
 
     /// 前文の有無を「コメントに `#include <metal_stdlib>` と書いてあるか」で判定していた頃、
     /// このソースは前文を足してもらえずコンパイルに落ちていた（#647 の実装中に踏んだ）。
     private static let sourceMentioningStdlibInComment = """
-    // #include <metal_stdlib> は書かなくてよい（metaphor が足す）
-    fragment float4 commentFragment(Canvas2DVertexOut in [[stage_in]]) {
-        return in.color;
-    }
-    """
+        // #include <metal_stdlib> は書かなくてよい（metaphor が足す）
+        fragment float4 commentFragment(Canvas2DVertexOut in [[stage_in]]) {
+            return in.color;
+        }
+        """
 
     private struct TestParams {
         var amount: Float
@@ -113,10 +113,10 @@ struct Canvas2DShaderTests {
     func brokenSourceThrows() throws {
         let context = try makeContext()
         let broken = """
-        fragment float4 brokenFragment(Canvas2DVertexOut in [[stage_in]]) {
-            return this_symbol_does_not_exist;
-        }
-        """
+            fragment float4 brokenFragment(Canvas2DVertexOut in [[stage_in]]) {
+                return this_symbol_does_not_exist;
+            }
+            """
         do {
             _ = try context.createShader(source: broken, fragment: "brokenFragment")
             Issue.record("コンパイルエラーは throw されるべき")
@@ -254,7 +254,9 @@ struct Canvas2DShaderTests {
     /// 記録済みコマンドから ``TestParams/amount`` を読み出します。
     private func recordedAmounts(_ canvas: Canvas2D) -> [Float?] {
         recordedShaderParams(canvas).map { params -> Float? in
-            guard let bytes = params, bytes.count == MemoryLayout<TestParams>.size else { return nil }
+            guard let bytes = params, bytes.count == MemoryLayout<TestParams>.size else {
+                return nil
+            }
             return bytes.withUnsafeBytes { $0.loadUnaligned(as: TestParams.self).amount }
         }
     }
@@ -320,8 +322,9 @@ struct Canvas2DShaderTests {
         let key = Canvas2DPipelineKey(.color, .alpha, shader: shader.id)
 
         let fallback = canvas.pipelineStore.state(for: key)
-        #expect(fallback === canvas.pipelineStore.state(for: Canvas2DPipelineKey(.color, .alpha)),
-                "同じ系統・ブレンドの組み込みパイプラインを返すこと")
+        #expect(
+            fallback === canvas.pipelineStore.state(for: Canvas2DPipelineKey(.color, .alpha)),
+            "同じ系統・ブレンドの組み込みパイプラインを返すこと")
     }
 
     @Test("stage_in が経路と合わないシェーダでも描画を落とさない")
@@ -332,16 +335,18 @@ struct Canvas2DShaderTests {
         // Apple Silicon の AGX はパイプライン生成を拒否するが、CI の paravirtualized GPU は
         // 通してしまう。どちらに転んでも守るべき性質は「nil を返さない」— nil だと
         // flush が draw ごと捨てて絵が消える。どのパイプラインが返るかは固定しない。
-        let textured = try context.createShader(source: """
-            fragment float4 texturedOnlyFragment(Canvas2DTexVertexOut in [[stage_in]]) {
-                return float4(in.texCoord, 0.0, 1.0);
-            }
-            """, fragment: "texturedOnlyFragment")
+        let textured = try context.createShader(
+            source: """
+                fragment float4 texturedOnlyFragment(Canvas2DTexVertexOut in [[stage_in]]) {
+                    return float4(in.texCoord, 0.0, 1.0);
+                }
+                """, fragment: "texturedOnlyFragment")
         canvas.pipelineStore.register(textured)
 
         let key = Canvas2DPipelineKey(.color, .alpha, shader: textured.id)
-        #expect(canvas.pipelineStore.state(for: key) != nil,
-                "生成に失敗しても組み込みへ逃がして描画を落とさないこと")
+        #expect(
+            canvas.pipelineStore.state(for: key) != nil,
+            "生成に失敗しても組み込みへ逃がして描画を落とさないこと")
     }
 
     @Test("reload で revision が進み、別のパイプラインキーになる")

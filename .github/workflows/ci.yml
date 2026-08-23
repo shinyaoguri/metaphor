@@ -325,6 +325,13 @@ jobs:
         run: ./scripts/check-no-binary-targets.sh
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      # スタイルの一貫性を機械で保証する（Issue #333）。他の lint と違って
+      # checkout 直後ではなく Select Xcode の後に置く — swift-format は Xcode 同梱で、
+      # 手前に置くとランナー既定の Xcode 側が使われて版が固定されない。整形結果は
+      # 版によって変わるので、そこがずれると「手元は緑・CI は赤」が恒常化する。
+      # ビルドより手前なのは、数十秒で落ちるものを数分のビルドの前に置くため。
+      - name: Check Swift formatting
+        run: ./scripts/lint-swift.sh
       # NOTE: SPM 依存キャッシュは撤去した。remote 依存が存在しないため
       # （swift-docc-plugin は未使用につき削除済み）、キャッシュ対象が空だった。
       - name: Build

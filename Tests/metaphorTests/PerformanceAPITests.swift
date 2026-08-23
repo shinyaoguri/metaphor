@@ -16,7 +16,8 @@ struct PerformanceAPITests {
 
     /// 1 秒間 60fps 相当のフレーム時刻を流し込んだトラッカー。
     private func tracker(frames: Int = 60, interval: Double = 1.0 / 60, from: Double = 1000)
-        -> FrameRateTracker {
+        -> FrameRateTracker
+    {
         let tracker = FrameRateTracker()
         for i in 0..<frames {
             tracker.record(at: from + Double(i) * interval)
@@ -63,8 +64,8 @@ struct PerformanceAPITests {
 
         let monitor = PerformanceMonitor(tracker: tracker)
         let frameTime = try #require(monitor.snapshot(now: t, targetFPS: 60).frameTimeMs)
-        #expect(frameTime.max > 60)      // 16.7 + 50 ≒ 66.7ms
-        #expect(frameTime.mean < 30)     // 平均はスパイクに埋もれない
+        #expect(frameTime.max > 60)  // 16.7 + 50 ≒ 66.7ms
+        #expect(frameTime.mean < 30)  // 平均はスパイクに埋もれない
     }
 
     // MARK: - syscall のキャッシュ

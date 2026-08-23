@@ -61,18 +61,20 @@ struct StrokeJoinRoundTests {
     @Test("角の外側が弧で塗られる")
     func fillsTheOuterWedge() throws {
         let fb = try chevron(.round)
-        #expect(outward(fb, distance: 7) > 200,
-                """
-                頂点の外側 7 px（弧の半径 10 px の内側）が塗られていない。
-                内側の弧を塗ってしまうと外側が V 字に欠ける — #769
-                """)
+        #expect(
+            outward(fb, distance: 7) > 200,
+            """
+            頂点の外側 7 px（弧の半径 10 px の内側）が塗られていない。
+            内側の弧を塗ってしまうと外側が V 字に欠ける — #769
+            """)
     }
 
     @Test("弧は半径 strokeWeight / 2 を超えて広がらない")
     func doesNotSpillPastTheRadius() throws {
         let fb = try chevron(.round)
-        #expect(outward(fb, distance: 18) < 40,
-                "頂点の外側 18 px は弧の半径 10 px の外なので背景のままであるべき")
+        #expect(
+            outward(fb, distance: 18) < 40,
+            "頂点の外側 18 px は弧の半径 10 px の外なので背景のままであるべき")
     }
 
     /// `.bevel` は同じ土地を弦で切り落とす。`.round` の検査点が
@@ -80,7 +82,8 @@ struct StrokeJoinRoundTests {
     @Test("bevel は同じ点を塗らない（round との対比）")
     func bevelCutsTheCorner() throws {
         let fb = try chevron(.bevel)
-        #expect(outward(fb, distance: 7) < 40,
-                "bevel は外側オフセット 2 点を結ぶ弦で切り落とすので、7 px 先は背景")
+        #expect(
+            outward(fb, distance: 7) < 40,
+            "bevel は外側オフセット 2 点を結ぶ弦で切り落とすので、7 px 先は背景")
     }
 }

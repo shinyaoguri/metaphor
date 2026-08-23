@@ -8,7 +8,7 @@ import simd
 /// どちらも同じ ``ParameterStore`` を叩く**対称なクライアント**です。GUI 側が独自に値を
 /// 持たないので、ドラッグした値はそのまま `params.json` に永続化され、次回起動で復元されます。
 @MainActor
-public extension ParameterGUI {
+extension ParameterGUI {
 
     // MARK: - 自動パネル
 
@@ -31,11 +31,11 @@ public extension ParameterGUI {
     ///
     /// - Returns: パネルの矩形 (x, y, width, height)。パラメータが無い / 非表示のときは高さ 0。
     @discardableResult
-    func params() -> (Float, Float, Float, Float) {
+    public func params() -> (Float, Float, Float, Float) {
         guard let context = boundContext else {
             metaphorDiagnostic(
                 "gui.params(): Sketch に接続されていない ParameterGUI では描画できません"
-                + "（params(store:canvas:input:) を使ってください）"
+                    + "（params(store:canvas:input:) を使ってください）"
             )
             return (x, y, 0, 0)
         }
@@ -49,7 +49,7 @@ public extension ParameterGUI {
     ///   - input: マウス状態を提供する InputManager。
     /// - Returns: パネルの矩形 (x, y, width, height)。
     @discardableResult
-    func params(
+    public func params(
         store: ParameterStore,
         canvas: Canvas2D,
         input: InputManager
@@ -95,7 +95,7 @@ public extension ParameterGUI {
     /// ```
     ///
     /// - Parameter name: `@Param` で宣言した名前。未宣言なら何も描かず診断を出します。
-    func param(_ name: String) {
+    public func param(_ name: String) {
         guard let context = boundContext else {
             metaphorDiagnostic(
                 "gui.param(\(name)): Sketch に接続されていない ParameterGUI では描画できません"
@@ -111,7 +111,7 @@ public extension ParameterGUI {
     ///   - store: 描画対象のパラメータストア。
     ///   - canvas: 描画に使用する Canvas2D インスタンス。
     ///   - input: マウス状態を提供する InputManager。
-    func param(
+    public func param(
         _ name: String,
         store: ParameterStore,
         canvas: Canvas2D,
@@ -221,10 +221,12 @@ extension ParameterGUI {
             drawLabel(name, at: x + padding, y: currentY, canvas: canvas)
             currentY += labelRowHeight
             var components = SIMD2<Float>(vx, vy)
-            slider("  x", &components.x, min: range.min, max: range.max,
-                   canvas: canvas, input: input, valueText: nil)
-            slider("  y", &components.y, min: range.min, max: range.max,
-                   canvas: canvas, input: input, valueText: nil)
+            slider(
+                "  x", &components.x, min: range.min, max: range.max,
+                canvas: canvas, input: input, valueText: nil)
+            slider(
+                "  y", &components.y, min: range.min, max: range.max,
+                canvas: canvas, input: input, valueText: nil)
             commit(
                 .vec2(components.x, components.y),
                 original: value, name: name, store: store
@@ -238,20 +240,24 @@ extension ParameterGUI {
             drawLabel(name, at: x + padding, y: currentY, canvas: canvas)
             currentY += labelRowHeight
             var components = SIMD3<Float>(vx, vy, vz)
-            slider("  x", &components.x, min: range.min, max: range.max,
-                   canvas: canvas, input: input, valueText: nil)
-            slider("  y", &components.y, min: range.min, max: range.max,
-                   canvas: canvas, input: input, valueText: nil)
-            slider("  z", &components.z, min: range.min, max: range.max,
-                   canvas: canvas, input: input, valueText: nil)
+            slider(
+                "  x", &components.x, min: range.min, max: range.max,
+                canvas: canvas, input: input, valueText: nil)
+            slider(
+                "  y", &components.y, min: range.min, max: range.max,
+                canvas: canvas, input: input, valueText: nil)
+            slider(
+                "  z", &components.z, min: range.min, max: range.max,
+                canvas: canvas, input: input, valueText: nil)
             commit(
                 .vec3(components.x, components.y, components.z),
                 original: value, name: name, store: store
             )
 
         case .string(let s):
-            drawChoice(name, current: s, descriptor: descriptor,
-                       store: store, canvas: canvas, input: input)
+            drawChoice(
+                name, current: s, descriptor: descriptor,
+                store: store, canvas: canvas, input: input)
         }
     }
 
@@ -308,8 +314,9 @@ extension ParameterGUI {
 
         widgetCounter += 1
         if input.isMouseDown, !wasMouseDown,
-           input.mouseX >= originX, input.mouseX <= originX + widgetWidth,
-           input.mouseY >= boxY, input.mouseY <= boxY + sliderHeight {
+            input.mouseX >= originX, input.mouseX <= originX + widgetWidth,
+            input.mouseY >= boxY, input.mouseY <= boxY + sliderHeight
+        {
             let next = choices[(index + 1) % choices.count]
             store.setValue(.string(next), for: name)
         }

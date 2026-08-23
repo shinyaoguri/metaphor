@@ -53,7 +53,8 @@ struct LogConventionTests {
             guard !exempt.contains(where: { url.path.hasPrefix($0) }) else { continue }
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false)
-            .enumerated() where line.contains("print(\"[metaphor]") {
+                .enumerated() where line.contains("print(\"[metaphor]")
+            {
                 // 規約そのものを説明するコメント（`print("[metaphor] …") は使わない` 等）は
                 // 違反ではないので数えない。
                 let trimmed = line.trimmingCharacters(in: .whitespaces)

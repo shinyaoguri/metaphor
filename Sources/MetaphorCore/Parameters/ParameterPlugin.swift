@@ -188,7 +188,8 @@ public final class ParameterPlugin: MetaphorPlugin {
     private func pollSetRequestFile(into store: ParameterStore) -> Bool {
         let path = config.setRequestFilePath
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-              let mtime = attrs[.modificationDate] as? Date else {
+            let mtime = attrs[.modificationDate] as? Date
+        else {
             return false
         }
         if let last = lastRequestMTime, last == mtime { return false }

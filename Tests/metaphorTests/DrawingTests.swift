@@ -68,7 +68,9 @@ struct BeginShapeTests {
             height: 1080
         )
 
-        let modes: [ShapeMode] = [.polygon, .points, .lines, .triangles, .triangleStrip, .triangleFan]
+        let modes: [ShapeMode] = [
+            .polygon, .points, .lines, .triangles, .triangleStrip, .triangleFan,
+        ]
         for mode in modes {
             canvas.beginShape(mode)
             canvas.vertex(100, 100)
@@ -144,7 +146,8 @@ struct CurveVertexTests {
     @Test("tightness を変えても端点は制御点に固定される", arguments: [Float(-5), -1, 0, 1, 5])
     func tightnessKeepsEndpoints(_ tightness: Float) throws {
         let canvas = try makeCanvas()
-        let verts = expand(canvas, [(0, 50), (20, 20), (80, 80), (100, 50)], tightness: tightness, detail: 12)
+        let verts = expand(
+            canvas, [(0, 50), (20, 20), (80, 80), (100, 50)], tightness: tightness, detail: 12)
 
         let first = try #require(verts.first)
         let last = try #require(verts.last)
@@ -157,7 +160,9 @@ struct CurveVertexTests {
     @Test("円周上に打った点は円の内側に収まる（拡大・平行移動しない）")
     func staysOnCircle() throws {
         let canvas = try makeCanvas()
-        let cx: Float = 320, cy: Float = 180, r: Float = 100
+        let cx: Float = 320
+        let cy: Float = 180
+        let r: Float = 100
         var pts: [(Float, Float)] = []
         for i in -1...74 {
             let a = Float(i) / 72 * TWO_PI
@@ -419,7 +424,8 @@ struct Canvas3DUniformsTests {
 
     @Test("viewProjectionMatrix is at offset 64")
     func viewProjectionOffset() {
-        let offset = MemoryLayout<Canvas3DUniforms>.offset(of: \Canvas3DUniforms.viewProjectionMatrix)!
+        let offset = MemoryLayout<Canvas3DUniforms>.offset(
+            of: \Canvas3DUniforms.viewProjectionMatrix)!
         #expect(offset == 64)
     }
 
