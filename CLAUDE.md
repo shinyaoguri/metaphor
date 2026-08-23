@@ -31,7 +31,7 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 make setup    # 初回: ツールの確認 + git hooks の導入
 make build    # swift build
 make test     # swift test
-make ci-check # CI と同条件（-Xswiftc -warnings-as-errors）で build + test — push 前に通す
+make ci-check # CI と同条件（-Xswiftc -warnings-as-errors）で整形検査 + build + test — push 前に通す
 make check    # セットアップ状態を確認（git hooks / ツールチェーン）
 make llms-txt # llms.txt（AI 向け API リファレンス）を生成
 ```

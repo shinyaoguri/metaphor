@@ -22,7 +22,7 @@ make setup
 make setup      # ツールの事前確認 + git hooks の導入
 make build      # swift build
 make test       # swift test
-make ci-check   # CI と同条件（-warnings-as-errors）で build + test
+make ci-check   # CI と同条件（-warnings-as-errors）で整形検査 + build + test
 make clean      # ビルド成果物をクリーン
 make check      # セットアップ状態を確認
 make docs       # DocC ドキュメントをビルド
