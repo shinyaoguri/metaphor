@@ -38,8 +38,21 @@ make llms-txt   # AI-readable API reference を生成
 日常のターゲットは試行錯誤しやすいよう緩いまま残し、CI と同じ厳しさは `make ci-check` に集約しています。push / PR の前にこれを通してください。
 
 ```bash
-make ci-check   # swift build / swift test を -Xswiftc -warnings-as-errors 付きで（METAPHOR_REQUIRE_GPU=1 も CI に合わせる）
+make ci-check   # swift-format の検査 + swift build / swift test を -Xswiftc -warnings-as-errors 付きで（METAPHOR_REQUIRE_GPU=1 も CI に合わせる）
 ```
+
+### 整形は swift-format に任せる
+
+スタイルは `.swift-format`（リポジトリルート）が正本で、**手で揃える必要はありません**。書き終えたら整形するだけです。
+
+```bash
+make format       # Sources / Tests を .swift-format どおりに整形する
+make lint-swift   # 整形されているかの検査だけ（CI と同じ実体）
+```
+
+CI（`build-and-test` の `Check Swift formatting`）と pre-push フックの両方が同じ `scripts/lint-swift.sh` を呼ぶので、整形忘れは push の前に鳴ります。設定は Xcode 同梱の `swift-format` の既定から 2 か所だけ変えています（インデント 4 スペース = 実態に合わせ、`AlwaysUseLowerCamelCase` は無効 = `PI` / `TWO_PI` / `LEFT` など Processing 互換の意図的な命名を守るため）。
+
+対象は `Sources/` と `Tests/` です。`Examples/` と生成物（`BuiltinShaders+Generated.swift`）は外してあります（理由は `scripts/lint-swift.sh` の冒頭）。
 
 `make ci-check` で再現できないものは次の 4 つです。
 
