@@ -272,9 +272,9 @@ public final class SketchWindow {
     /// 実効レンダーループモードを解決します
     /// （純粋関数。``RenderLoopMode/resolve(requested:fps:requirements:isHeadless:)`` に委譲）。
     ///
-    /// - ヘッドレスでは `MTKView` が無くディスプレイリンクを駆動できないため、常にタイマー。
-    /// - `.displayLink` のままでも、``PluginRequirements/externalRenderLoop`` を宣言する
-    ///   プラグインか出力（Syphon 等）があれば出力の安定のためタイマーへ切り替える（従来どおり）。
+    /// - 明示的な `.timer(fps:)` はヘッドレスでもそのまま（``SketchWindowConfig/fps`` には潰さない）。
+    /// - `.displayLink` はヘッドレスではタイマーへ（`MTKView` が無く駆動できないため）。ウィンドウ表示でも
+    ///   ``PluginRequirements/externalRenderLoop`` を宣言するプラグインか出力（Syphon 等）があれば同じ。
     ///
     /// - Parameters:
     ///   - config: ウィンドウ設定。

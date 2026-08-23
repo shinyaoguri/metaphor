@@ -25,6 +25,21 @@ struct SketchWindowHeadlessResolutionTests {
         )
     }
 
+    @Test("ヘッドレスでも明示された timer(fps:) は config.fps に潰されない")
+    func headlessKeepsExplicitTimerFPS() {
+        // ウィンドウ表示と同じ 30fps で回ること（経路でレートが変わらない）。#1063
+        let config = SketchWindowConfig(fps: 60, renderLoopMode: .timer(fps: 30))
+        #expect(
+            SketchWindow.resolveLoopMode(config: config, requirements: [], isHeadless: true)
+                == .timer(fps: 30)
+        )
+        #expect(
+            SketchWindow.resolveLoopMode(
+                config: config, requirements: [.externalRenderLoop], isHeadless: true
+            ) == .timer(fps: 30)
+        )
+    }
+
     @Test("ウィンドウ表示では従来どおりの解決（外部ループを要する出力があるときだけタイマーへ）")
     func windowedResolutionIsUnchanged() {
         let plain = SketchWindowConfig(fps: 60, renderLoopMode: .displayLink)

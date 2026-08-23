@@ -147,16 +147,29 @@ struct OutputContextTests {
 @Suite("RenderLoopMode.resolve（宣言的な要件からの loop 決定）")
 struct RenderLoopResolutionTests {
 
-    @Test("ヘッドレスは要件に関わらず常に timer")
-    func headlessAlwaysTimer() {
+    @Test("ヘッドレスは displayLink を要件に関わらず実効 fps の timer へ倒す")
+    func headlessFallsBackToTimer() {
         #expect(
             RenderLoopMode.resolve(
                 requested: .displayLink, fps: 30, requirements: [], isHeadless: true)
                 == .timer(fps: 30))
         #expect(
             RenderLoopMode.resolve(
-                requested: .timer(fps: 24), fps: 30, requirements: [], isHeadless: true)
+                requested: .displayLink, fps: 30, requirements: [.externalRenderLoop],
+                isHeadless: true) == .timer(fps: 30))
+    }
+
+    @Test("ヘッドレスでも明示された timer(fps:) は実効 fps に潰されない")
+    func headlessKeepsExplicitTimerFPS() {
+        // ウィンドウ経路と同じ結論になること（同じ設定が経路でレートを変えない）。#1063
+        #expect(
+            RenderLoopMode.resolve(
+                requested: .timer(fps: 30), fps: 60, requirements: [], isHeadless: true)
                 == .timer(fps: 30))
+        #expect(
+            RenderLoopMode.resolve(
+                requested: .timer(fps: 30), fps: 60, requirements: [.externalRenderLoop],
+                isHeadless: true) == .timer(fps: 30))
     }
 
     @Test("displayLink + externalRenderLoop → timer(fps)、要件なし → 据え置き、明示 timer は不変")
@@ -192,6 +205,13 @@ struct RenderLoopResolutionTests {
         #expect(
             SketchRunner.resolveLoopMode(
                 config: config, fps: 45, requirements: [], isHeadless: true) == .timer(fps: 45))
+
+        // 明示 timer は実効 fps（METAPHOR_FPS / config.fps）より優先される。#1063
+        let explicitTimer = SketchConfig(fps: 60, renderLoopMode: .timer(fps: 30))
+        #expect(
+            SketchRunner.resolveLoopMode(
+                config: explicitTimer, fps: 45, requirements: [], isHeadless: true)
+                == .timer(fps: 30))
     }
 
     @Test("SketchRunner.aggregateRequirements は config.plugins と出力の要件の和")
