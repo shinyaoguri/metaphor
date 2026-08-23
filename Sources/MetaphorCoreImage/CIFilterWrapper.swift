@@ -1,5 +1,5 @@
-import Metal
 import CoreImage
+import Metal
 import MetaphorCore
 
 /// A wrapper that applies CoreImage filters directly to Metal textures.
@@ -26,14 +26,15 @@ public final class CIFilterWrapper {
         // ブラー系で暗部が沈む等の色ズレが出るため使わない。extended にするのは
         // 中間値のクランプによる階調落ちを避けるため。
         self.colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
-        let workingSpace = CGColorSpace(name: CGColorSpace.extendedLinearSRGB) ?? CGColorSpaceCreateDeviceRGB()
+        let workingSpace =
+            CGColorSpace(name: CGColorSpace.extendedLinearSRGB) ?? CGColorSpaceCreateDeviceRGB()
         self.ciContext = CIContext(
             mtlCommandQueue: commandQueue,
             options: [
                 .workingColorSpace: workingSpace,
                 .outputColorSpace: colorSpace,
                 .outputPremultiplied: true,
-                .cacheIntermediates: false
+                .cacheIntermediates: false,
             ]
         )
     }
@@ -68,8 +69,9 @@ public final class CIFilterWrapper {
         // 入力画像を取らないフィルタ（ジェネレーター）へ kCIInputImageKey を
         // setValue すると NSException でプロセスごと落ちるため、inputKeys で振り分ける。
         guard filter.inputKeys.contains(kCIInputImageKey) else {
-            generate(filterName: filterName, parameters: parameters,
-                     destination: destination, commandBuffer: commandBuffer)
+            generate(
+                filterName: filterName, parameters: parameters,
+                destination: destination, commandBuffer: commandBuffer)
             return
         }
 
@@ -122,19 +124,23 @@ public final class CIFilterWrapper {
         to image: MImage
     ) {
         let src = image.texture
-        let w = src.width, h = src.height
+        let w = src.width
+        let h = src.height
 
         guard let outTex = getOrCreateTexture(width: w, height: h, tag: "ci_output"),
-              let cmdBuf = commandQueue.makeCommandBuffer() else { return }
+            let cmdBuf = commandQueue.makeCommandBuffer()
+        else { return }
 
-        apply(filterName: filterName, parameters: parameters,
-              source: src, destination: outTex, commandBuffer: cmdBuf)
+        apply(
+            filterName: filterName, parameters: parameters,
+            source: src, destination: outTex, commandBuffer: cmdBuf)
 
         cmdBuf.commit()
         cmdBuf.waitUntilCompleted()
 
         image.replaceTexture(outTex)
-        recycleInPlaceTextures(replacedSource: src, newOutput: outTex, poolKey: "\(w)_\(h)_ci_output")
+        recycleInPlaceTextures(
+            replacedSource: src, newOutput: outTex, poolKey: "\(w)_\(h)_ci_output")
     }
 
     /// Reclaims textures after in-place application (ping-pong, #251).
@@ -154,7 +160,8 @@ public final class CIFilterWrapper {
             texturePool.removeValue(forKey: poolKey)
         }
         // サイズ変更時に旧サイズの ping-pong 相手が残留しないよう掃除
-        for staleKey in texturePool.keys where staleKey.hasSuffix("_ci_output") && staleKey != poolKey {
+        for staleKey in texturePool.keys
+        where staleKey.hasSuffix("_ci_output") && staleKey != poolKey {
             texturePool.removeValue(forKey: staleKey)
         }
         lastInPlaceOutputID = ObjectIdentifier(newOutput)
@@ -182,7 +189,8 @@ public final class CIFilterWrapper {
         height: Int
     ) -> MTLTexture? {
         guard let outTex = getOrCreateTexture(width: width, height: height, tag: "ci_gen"),
-              let cmdBuf = commandQueue.makeCommandBuffer() else { return nil }
+            let cmdBuf = commandQueue.makeCommandBuffer()
+        else { return nil }
 
         generate(
             filterName: filterName,
@@ -226,8 +234,9 @@ public final class CIFilterWrapper {
         let extent = CGRect(x: 0, y: 0, width: destination.width, height: destination.height)
         let cropped = output.cropped(to: extent)
 
-        ciContext.render(cropped, to: destination, commandBuffer: commandBuffer,
-                         bounds: extent, colorSpace: colorSpace)
+        ciContext.render(
+            cropped, to: destination, commandBuffer: commandBuffer,
+            bounds: extent, colorSpace: colorSpace)
     }
 
     // MARK: - テクスチャ管理
@@ -244,10 +253,11 @@ public final class CIFilterWrapper {
         // 戻り値の契約を裏切ってプロセスごと落ちる（呼び出し側の `guard let`
         // では守れない）。generate / apply の両経路がここを通る。
         guard width > 0, height > 0,
-              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            width <= TextureManager.maxDimension, height <= TextureManager.maxDimension
+        else {
             metaphorWarning(
                 "CoreImage \(tag): size must be within 1...\(TextureManager.maxDimension) "
-                + "(got \(width)x\(height))")
+                    + "(got \(width)x\(height))")
             return nil
         }
 
@@ -271,12 +281,14 @@ public final class CIFilterWrapper {
 
     /// Sets parameters via KVC. Keys the filter does not have do not cause a crash —
     /// they are logged and ignored (this prevents an NSException from a typo in a key name).
-    private func setParameters(_ parameters: [String: Any], on filter: CIFilter, filterName: String) {
+    private func setParameters(_ parameters: [String: Any], on filter: CIFilter, filterName: String)
+    {
         let inputKeys = filter.inputKeys
         for (key, value) in parameters {
             guard inputKeys.contains(key) else {
-                warnOnce("CIFilter '\(filterName)' has no input key '\(key)' — ignored "
-                    + "(available: \(inputKeys.joined(separator: ", ")))")
+                warnOnce(
+                    "CIFilter '\(filterName)' has no input key '\(key)' — ignored "
+                        + "(available: \(inputKeys.joined(separator: ", ")))")
                 continue
             }
             filter.setValue(value, forKey: key)
@@ -285,12 +297,16 @@ public final class CIFilterWrapper {
 
     /// Fallback for when filter application fails: copies the source straight through,
     /// preventing the previous frame's content or garbage from flowing to the next stage of the post-process chain.
-    private func blitCopy(from source: MTLTexture, to destination: MTLTexture, commandBuffer: MTLCommandBuffer) {
+    private func blitCopy(
+        from source: MTLTexture, to destination: MTLTexture, commandBuffer: MTLCommandBuffer
+    ) {
         guard source !== destination else { return }
         guard source.pixelFormat == destination.pixelFormat,
-              source.sampleCount == destination.sampleCount else {
-            warnOnce("passthrough blit skipped: pixel format mismatch "
-                + "(\(source.pixelFormat.rawValue) → \(destination.pixelFormat.rawValue))")
+            source.sampleCount == destination.sampleCount
+        else {
+            warnOnce(
+                "passthrough blit skipped: pixel format mismatch "
+                    + "(\(source.pixelFormat.rawValue) → \(destination.pixelFormat.rawValue))")
             return
         }
         guard let blit = commandBuffer.makeBlitCommandEncoder() else { return }

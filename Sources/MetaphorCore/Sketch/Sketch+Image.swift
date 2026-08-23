@@ -235,7 +235,9 @@ extension Sketch {
     ///     カメラが位置情報を持たないため、特定のカメラを選ぶには
     ///     ``createCapture(width:height:device:)`` を使用してください。
     /// - Returns: 開始済みのキャプチャデバイス。
-    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice {
+    public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil)
+        -> CaptureDevice
+    {
         context.createCapture(width: width, height: height, position: position)
     }
 
@@ -254,7 +256,9 @@ extension Sketch {
     ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
     ///     既に切断されている場合は `isAvailable == false` のデバイスが返ります。
     /// - Returns: 開始済みのキャプチャデバイス。
-    public func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice {
+    public func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo)
+        -> CaptureDevice
+    {
         context.createCapture(width: width, height: height, device: device)
     }
 
@@ -273,7 +277,9 @@ extension Sketch {
     ///   - deviceName: 選択するカメラの名前。一致するカメラがない場合は
     ///     `isAvailable == false` のデバイスが返ります。
     /// - Returns: 開始済みのキャプチャデバイス。
-    public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice {
+    public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String)
+        -> CaptureDevice
+    {
         context.createCapture(width: width, height: height, deviceName: deviceName)
     }
 
@@ -588,7 +594,9 @@ extension Sketch {
     ///   - path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.<拡張子>`）。
     ///     相対パスはプロジェクト直下から解決されます。
     ///   - config: 動画エクスポート設定。
-    public func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig()) {
+    public func beginVideoRecord(
+        _ path: String? = nil, config: VideoExportConfig = VideoExportConfig()
+    ) {
         context.beginVideoRecord(path, config: config)
     }
 

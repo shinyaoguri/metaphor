@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - InstanceData2D Layout Tests
 
@@ -202,11 +203,12 @@ struct TransformEmbeddingTests {
 
     @Test("Translation embeds correctly")
     func translationEmbedding() {
-        let t = float3x3(columns: (
-            SIMD3<Float>(1, 0, 0),
-            SIMD3<Float>(0, 1, 0),
-            SIMD3<Float>(100, 200, 1)
-        ))
+        let t = float3x3(
+            columns: (
+                SIMD3<Float>(1, 0, 0),
+                SIMD3<Float>(0, 1, 0),
+                SIMD3<Float>(100, 200, 1)
+            ))
         let m = Canvas2D.embed2DTransform(t)
         #expect(m.columns.3.x == 100)
         #expect(m.columns.3.y == 200)
@@ -216,11 +218,12 @@ struct TransformEmbeddingTests {
 
     @Test("Scale embeds correctly")
     func scaleEmbedding() {
-        let t = float3x3(columns: (
-            SIMD3<Float>(2, 0, 0),
-            SIMD3<Float>(0, 3, 0),
-            SIMD3<Float>(0, 0, 1)
-        ))
+        let t = float3x3(
+            columns: (
+                SIMD3<Float>(2, 0, 0),
+                SIMD3<Float>(0, 3, 0),
+                SIMD3<Float>(0, 0, 1)
+            ))
         let m = Canvas2D.embed2DTransform(t)
         #expect(m.columns.0.x == 2)
         #expect(m.columns.1.y == 3)
@@ -229,14 +232,15 @@ struct TransformEmbeddingTests {
 
     @Test("Rotation embeds correctly")
     func rotationEmbedding() {
-        let angle = Float.pi / 4 // 45 degrees
+        let angle = Float.pi / 4  // 45 degrees
         let c = cos(angle)
         let s = sin(angle)
-        let t = float3x3(columns: (
-            SIMD3<Float>(c, s, 0),
-            SIMD3<Float>(-s, c, 0),
-            SIMD3<Float>(0, 0, 1)
-        ))
+        let t = float3x3(
+            columns: (
+                SIMD3<Float>(c, s, 0),
+                SIMD3<Float>(-s, c, 0),
+                SIMD3<Float>(0, 0, 1)
+            ))
         let m = Canvas2D.embed2DTransform(t)
         #expect(abs(m.columns.0.x - c) < 1e-6)
         #expect(abs(m.columns.0.y - s) < 1e-6)
@@ -268,9 +272,10 @@ struct Canvas2DInstancingIntegrationTests {
         #expect(canvas.unitCircleVertexCount == 192)
         #expect(canvas.unitRectVertexCount == 6)
         // インスタンス系パイプラインは全ブレンドモード分そろっている（#646 で store へ移譲）。
-        #expect(BlendMode.allCases.allSatisfy {
-            canvas.pipelineStore.state(for: Canvas2DPipelineKey(.instanced, $0)) != nil
-        })
+        #expect(
+            BlendMode.allCases.allSatisfy {
+                canvas.pipelineStore.state(for: Canvas2DPipelineKey(.instanced, $0)) != nil
+            })
     }
 
     @Test("Shader library registers canvas2DInstanced")

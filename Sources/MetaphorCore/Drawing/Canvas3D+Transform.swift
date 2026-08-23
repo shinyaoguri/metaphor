@@ -6,17 +6,18 @@ extension Canvas3D {
 
     /// 変換、スタイル、マテリアルを含む全状態を保存します。
     public func pushState() {
-        stateStack.append(StyleState3D(
-            transform: currentTransform,
-            fillColor: fillColor,
-            hasFill: hasFill,
-            hasStroke: hasStroke,
-            strokeColor: strokeColor,
-            material: currentMaterial,
-            customMaterial: currentCustomMaterial,
-            texture: currentTexture,
-            colorModeConfig: colorModeConfig
-        ))
+        stateStack.append(
+            StyleState3D(
+                transform: currentTransform,
+                fillColor: fillColor,
+                hasFill: hasFill,
+                hasStroke: hasStroke,
+                strokeColor: strokeColor,
+                material: currentMaterial,
+                customMaterial: currentCustomMaterial,
+                texture: currentTexture,
+                colorModeConfig: colorModeConfig
+            ))
     }
 
     /// 直前に保存した状態を復元します。
@@ -36,17 +37,18 @@ extension Canvas3D {
     /// 変換を除くスタイル状態（fill/stroke/material/texture/colorMode）のみを
     /// スタイル専用スタックに保存します。
     public func pushStyle() {
-        styleOnlyStack.append(StyleState3D(
-            transform: currentTransform,
-            fillColor: fillColor,
-            hasFill: hasFill,
-            hasStroke: hasStroke,
-            strokeColor: strokeColor,
-            material: currentMaterial,
-            customMaterial: currentCustomMaterial,
-            texture: currentTexture,
-            colorModeConfig: colorModeConfig
-        ))
+        styleOnlyStack.append(
+            StyleState3D(
+                transform: currentTransform,
+                fillColor: fillColor,
+                hasFill: hasFill,
+                hasStroke: hasStroke,
+                strokeColor: strokeColor,
+                material: currentMaterial,
+                customMaterial: currentCustomMaterial,
+                texture: currentTexture,
+                colorModeConfig: colorModeConfig
+            ))
     }
 
     /// スタイル専用スタックからスタイル状態のみを復元します。変換は変更しません。
@@ -86,17 +88,23 @@ extension Canvas3D {
     /// 現在の変換をx軸周りに回転させます。
     ///
     /// - Parameter angle: 回転角度（ラジアン）。
-    public func rotateX(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationX: angle) }
+    public func rotateX(_ angle: Float) {
+        currentTransform = currentTransform * float4x4(rotationX: angle)
+    }
 
     /// 現在の変換をy軸周りに回転させます。
     ///
     /// - Parameter angle: 回転角度（ラジアン）。
-    public func rotateY(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationY: angle) }
+    public func rotateY(_ angle: Float) {
+        currentTransform = currentTransform * float4x4(rotationY: angle)
+    }
 
     /// 現在の変換をz軸周りに回転させます。
     ///
     /// - Parameter angle: 回転角度（ラジアン）。
-    public func rotateZ(_ angle: Float) { currentTransform = currentTransform * float4x4(rotationZ: angle) }
+    public func rotateZ(_ angle: Float) {
+        currentTransform = currentTransform * float4x4(rotationZ: angle)
+    }
 
     /// 各軸に沿った非均一スケールを現在の変換に適用します。
     ///

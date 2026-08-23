@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - Processing Parity Tests
 

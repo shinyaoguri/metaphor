@@ -28,30 +28,34 @@ struct MetaphorPathsTests {
     @Test("空文字・空白だけの指定は無視する")
     func ignoresEmptyValues() {
         for value in ["", "   "] {
-            #expect(MetaphorPaths.resolveBaseDirectory(
-                environment: ["METAPHOR_STATE_DIR": value], currentDirectory: cwd) == cwd)
+            #expect(
+                MetaphorPaths.resolveBaseDirectory(
+                    environment: ["METAPHOR_STATE_DIR": value], currentDirectory: cwd) == cwd)
         }
     }
 
     @Test("絶対パスの指定はそのまま基準になる")
     func absolutePathWins() {
-        #expect(MetaphorPaths.resolveBaseDirectory(
-            environment: ["METAPHOR_STATE_DIR": "/tmp/state-here"],
-            currentDirectory: cwd) == "/tmp/state-here")
+        #expect(
+            MetaphorPaths.resolveBaseDirectory(
+                environment: ["METAPHOR_STATE_DIR": "/tmp/state-here"],
+                currentDirectory: cwd) == "/tmp/state-here")
     }
 
     @Test("末尾スラッシュや冗長な要素は正規化される")
     func normalizesPaths() {
-        #expect(MetaphorPaths.resolveBaseDirectory(
-            environment: ["METAPHOR_STATE_DIR": "/tmp/a/../state-here/"],
-            currentDirectory: cwd) == "/tmp/state-here")
+        #expect(
+            MetaphorPaths.resolveBaseDirectory(
+                environment: ["METAPHOR_STATE_DIR": "/tmp/a/../state-here/"],
+                currentDirectory: cwd) == "/tmp/state-here")
     }
 
     @Test("相対指定は cwd 基準で絶対化する")
     func relativeResolvesAgainstCurrentDirectory() {
-        #expect(MetaphorPaths.resolveBaseDirectory(
-            environment: ["METAPHOR_STATE_DIR": "state"],
-            currentDirectory: cwd) == "\(cwd)/state")
+        #expect(
+            MetaphorPaths.resolveBaseDirectory(
+                environment: ["METAPHOR_STATE_DIR": "state"],
+                currentDirectory: cwd) == "\(cwd)/state")
     }
 
     @Test("~ は展開される")

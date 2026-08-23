@@ -88,7 +88,10 @@ extension Canvas2D {
     /// - Returns: ピクセル単位の幅。
     public func textWidth(_ string: String) -> Float {
         Self.lines(of: string)
-            .map { textRenderer.textWidth(string: $0, fontSize: currentTextSize, fontFamily: currentFontFamily) }
+            .map {
+                textRenderer.textWidth(
+                    string: $0, fontSize: currentTextSize, fontFamily: currentFontFamily)
+            }
             .max() ?? 0
     }
 
@@ -212,12 +215,14 @@ extension Canvas2D {
             return
         }
 
-        guard let cached = textRenderer.textTexture(
-            string: string,
-            fontSize: currentTextSize,
-            fontFamily: currentFontFamily,
-            frameCount: frameCounter
-        ) else { return }
+        guard
+            let cached = textRenderer.textTexture(
+                string: string,
+                fontSize: currentTextSize,
+                fontFamily: currentFontFamily,
+                frameCount: frameCounter
+            )
+        else { return }
 
         var drawX = x
         var drawY = y
@@ -256,15 +261,17 @@ extension Canvas2D {
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         svgRecorder?.recordUnsupported("text() (planned: textToPoints in Epic F)")
         guard !string.isEmpty else { return }
-        guard let cached = textRenderer.textTextureMultiline(
-            string: string,
-            fontSize: currentTextSize,
-            fontFamily: currentFontFamily,
-            maxWidth: w,
-            maxHeight: h,
-            leading: effectiveTextLeading,
-            frameCount: frameCounter
-        ) else { return }
+        guard
+            let cached = textRenderer.textTextureMultiline(
+                string: string,
+                fontSize: currentTextSize,
+                fontFamily: currentFontFamily,
+                maxWidth: w,
+                maxHeight: h,
+                leading: effectiveTextLeading,
+                frameCount: frameCounter
+            )
+        else { return }
 
         var drawX = x
         var drawY = y

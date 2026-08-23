@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 /// パフォーマンス HUD の見た目（Issue #574）。
 ///
@@ -52,7 +53,6 @@ struct PerformanceHUDAppearanceTests {
         #expect(canvas.fillColor == PerformanceHUD.textColor.simd)
     }
 }
-
 
 // MARK: - 採取経路（Issue #698）
 
@@ -110,7 +110,8 @@ struct PerformanceHUDMetricsTests {
         let hud = PerformanceHUD()
         let tracker = FrameRateTracker()
         let monitor = PerformanceMonitor(tracker: tracker)
-        let now = feed(hud: hud, tracker: tracker, intervals: Array(repeating: 1.0 / 60.0, count: 40))
+        let now = feed(
+            hud: hud, tracker: tracker, intervals: Array(repeating: 1.0 / 60.0, count: 40))
 
         let snapshot = monitor.snapshot(now: now, targetFPS: 60)
         #expect(hud.fps == snapshot.fps)
@@ -162,7 +163,9 @@ struct PerformanceHUDMetricsTests {
         #expect(hud.frameTimeText == "Frame: -- ms")
 
         // noLoop() 停止中（記録が窓の外へ出た）も同じ
-        feed(hud: hud, tracker: tracker, intervals: Array(repeating: 1.0 / 60.0, count: 29), from: 101)
+        feed(
+            hud: hud, tracker: tracker, intervals: Array(repeating: 1.0 / 60.0, count: 29),
+            from: 101)
         #expect(hud.fps != nil)
         hud.update(stats: tracker.windowStats(now: 200))
         #expect(hud.fps == nil)

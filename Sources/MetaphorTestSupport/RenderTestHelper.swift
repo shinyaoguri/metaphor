@@ -83,7 +83,8 @@ public struct RenderTestHelper {
         desc.usage = .shaderRead
         desc.storageMode = .shared
         guard let staging = dev.makeTexture(descriptor: desc) else {
-            throw MetaphorError.textureCreationFailed(width: width, height: height, format: "staging")
+            throw MetaphorError.textureCreationFailed(
+                width: width, height: height, format: "staging")
         }
         self.stagingTexture = staging
         self.pixelData = [UInt8](repeating: 0, count: width * height * 4)
@@ -157,7 +158,7 @@ public struct RenderTestHelper {
             r: pixelData[offset + 2],  // BGRA → R
             g: pixelData[offset + 1],  // BGRA → G
             b: pixelData[offset + 0],  // BGRA → B
-            a: pixelData[offset + 3]   // BGRA → A
+            a: pixelData[offset + 3]  // BGRA → A
         )
     }
 
@@ -175,7 +176,9 @@ public struct RenderTestHelper {
     }
 
     /// Average color of a region.
-    public func averageColor(inRect x: Int, y: Int, width w: Int, height h: Int) -> (r: Float, g: Float, b: Float, a: Float) {
+    public func averageColor(inRect x: Int, y: Int, width w: Int, height h: Int) -> (
+        r: Float, g: Float, b: Float, a: Float
+    ) {
         var totalR: Float = 0
         var totalG: Float = 0
         var totalB: Float = 0

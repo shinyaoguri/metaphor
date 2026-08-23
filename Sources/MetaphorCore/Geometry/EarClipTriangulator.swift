@@ -50,7 +50,8 @@ enum EarClipTriangulator {
         }
         guard let arrangement = PolygonArrangement.decompose(polygon) else {
             // 自己交差なし。従来どおり入力頂点をそのまま参照する。
-            return Tessellation(vertices: polygon, indices: triangulate(polygon), origins: identityOrigins)
+            return Tessellation(
+                vertices: polygon, indices: triangulate(polygon), origins: identityOrigins)
         }
 
         var indices: [Int] = []
@@ -123,7 +124,10 @@ enum EarClipTriangulator {
                 let prev = (i + n - 1) % n
                 let next = (i + 1) % n
 
-                if isEar(verts, indices, prev: indices[prev], curr: indices[i], next: indices[next], allIndices: indices, count: n) {
+                if isEar(
+                    verts, indices, prev: indices[prev], curr: indices[i], next: indices[next],
+                    allIndices: indices, count: n)
+                {
                     result.append(indices[prev])
                     result.append(indices[i])
                     result.append(indices[next])
@@ -262,9 +266,11 @@ enum EarClipTriangulator {
 
             let p = verts[idx]
             // 三角形の頂点と一致する頂点はスキップ
-            if (p.0 == a.0 && p.1 == a.1) ||
-               (p.0 == b.0 && p.1 == b.1) ||
-               (p.0 == c.0 && p.1 == c.1) { continue }
+            if (p.0 == a.0 && p.1 == a.1) || (p.0 == b.0 && p.1 == b.1)
+                || (p.0 == c.0 && p.1 == c.1)
+            {
+                continue
+            }
 
             if pointInTriangle(p, a, b, c) {
                 return false

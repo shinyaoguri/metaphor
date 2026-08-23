@@ -1,5 +1,6 @@
 import Testing
 import simd
+
 @testable import MetaphorCore
 @testable import MetaphorSceneGraph
 
@@ -37,7 +38,7 @@ struct NodeTests {
         node.orientation = simd_quatf(angle: Float.pi / 2, axis: SIMD3(0, 1, 0))
         let m = node.localTransform
         // 90° rotation around Y: x→z, z→-x
-        #expect(abs(m[0][0]) < 1e-4)      // cos(90°) ≈ 0
+        #expect(abs(m[0][0]) < 1e-4)  // cos(90°) ≈ 0
         #expect(abs(m[2][0] - 1) < 1e-4)  // sin(90°) ≈ 1
     }
 
@@ -250,11 +251,11 @@ struct AABBTests {
         let aabb = AABB(min: SIMD3(-1, -1, -1), max: SIMD3(1, 1, 1))
         // Large frustum enclosing everything
         let planes: [SIMD4<Float>] = [
-            SIMD4(1, 0, 0, 100),   // left:   x > -100
+            SIMD4(1, 0, 0, 100),  // left:   x > -100
             SIMD4(-1, 0, 0, 100),  // right:  x < 100
-            SIMD4(0, 1, 0, 100),   // bottom: y > -100
+            SIMD4(0, 1, 0, 100),  // bottom: y > -100
             SIMD4(0, -1, 0, 100),  // top:    y < 100
-            SIMD4(0, 0, 1, 100),   // near:   z > -100
+            SIMD4(0, 0, 1, 100),  // near:   z > -100
             SIMD4(0, 0, -1, 100),  // far:    z < 100
         ]
         #expect(aabb.intersects(frustum: planes) == true)
@@ -293,7 +294,7 @@ struct SceneRendererTests {
 
     @Test("extract frustum planes from identity VP returns 6 planes")
     func extractFrustumPlanes() {
-        let vp = float4x4(1) // identity
+        let vp = float4x4(1)  // identity
         let planes = SceneRenderer.extractFrustumPlanes(from: vp)
         #expect(planes.count == 6)
     }
@@ -473,8 +474,8 @@ struct NodeRegressionTests {
 
 // MARK: - Node + float4x4 extension helpers
 
-fileprivate extension float4x4 {
-    init(translation t: SIMD3<Float>) {
+extension float4x4 {
+    fileprivate init(translation t: SIMD3<Float>) {
         self = float4x4(
             SIMD4(1, 0, 0, 0),
             SIMD4(0, 1, 0, 0),
@@ -483,7 +484,7 @@ fileprivate extension float4x4 {
         )
     }
 
-    init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float) {
+    fileprivate init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float) {
         let y = 1 / tan(fov * 0.5)
         let x = y / aspect
         let z = far / (near - far)
@@ -495,7 +496,7 @@ fileprivate extension float4x4 {
         )
     }
 
-    init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) {
+    fileprivate init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) {
         let z = normalize(eye - center)
         let x = normalize(cross(up, z))
         let y = cross(z, x)

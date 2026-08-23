@@ -8,8 +8,8 @@ import simd
 /// `VertexLayout.positionNormalColor` に一致するメモリレイアウトを持ちます。
 public struct Vertex3D: Sendable {
     public var position: SIMD3<Float>  // 16バイト（SIMD3 ストライド）
-    public var normal: SIMD3<Float>    // 16バイト
-    public var color: SIMD4<Float>     // 16バイト
+    public var normal: SIMD3<Float>  // 16バイト
+    public var color: SIMD4<Float>  // 16バイト
 }
 
 // MARK: - Vertex3DTextured
@@ -20,8 +20,8 @@ public struct Vertex3D: Sendable {
 /// SIMD3 アラインメント（16バイト）により、ストライドは48です（uv の後に8バイトのパディング）。
 struct Vertex3DTextured: Sendable {
     var position: SIMD3<Float>  // 16バイト
-    var normal: SIMD3<Float>    // 16バイト
-    var uv: SIMD2<Float>        // 8バイト + 8バイトのアラインメントパディング = 48ストライド
+    var normal: SIMD3<Float>  // 16バイト
+    var uv: SIMD2<Float>  // 8バイト + 8バイトのアラインメントパディング = 48ストライド
 }
 
 // MARK: - Mesh
@@ -64,16 +64,20 @@ public final class Mesh {
 
     // MARK: - Initialization
 
-    init(device: MTLDevice, vertices: [Vertex3D], indices: [UInt16]? = nil,
-         uvVertices: [Vertex3DTextured]? = nil) throws {
+    init(
+        device: MTLDevice, vertices: [Vertex3D], indices: [UInt16]? = nil,
+        uvVertices: [Vertex3DTextured]? = nil
+    ) throws {
         self.vertexCount = vertices.count
 
         let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
-        guard let vb = device.makeBuffer(
-            bytes: vertices,
-            length: vertexSize,
-            options: .storageModeShared
-        ) else {
+        guard
+            let vb = device.makeBuffer(
+                bytes: vertices,
+                length: vertexSize,
+                options: .storageModeShared
+            )
+        else {
             throw MetaphorError.bufferCreationFailed(size: vertexSize)
         }
         self.vertexBuffer = vb
@@ -110,16 +114,20 @@ public final class Mesh {
     }
 
     /// 大規模メッシュ用の UInt32 インデックスで初期化します。
-    init(device: MTLDevice, vertices: [Vertex3D], indices32: [UInt32],
-         uvVertices: [Vertex3DTextured]? = nil) throws {
+    init(
+        device: MTLDevice, vertices: [Vertex3D], indices32: [UInt32],
+        uvVertices: [Vertex3DTextured]? = nil
+    ) throws {
         self.vertexCount = vertices.count
 
         let vertexSize = vertices.count * MemoryLayout<Vertex3D>.stride
-        guard let vb = device.makeBuffer(
-            bytes: vertices,
-            length: vertexSize,
-            options: .storageModeShared
-        ) else {
+        guard
+            let vb = device.makeBuffer(
+                bytes: vertices,
+                length: vertexSize,
+                options: .storageModeShared
+            )
+        else {
             throw MetaphorError.bufferCreationFailed(size: vertexSize)
         }
         self.vertexBuffer = vb
@@ -225,7 +233,9 @@ extension Mesh {
     ) throws -> Mesh {
         try requireFiniteDimensions(
             ["width": width, "height": height, "depth": depth], of: "box")
-        let hw = width / 2, hh = height / 2, hd = depth / 2
+        let hw = width / 2
+        let hh = height / 2
+        let hd = depth / 2
         let white = SIMD4<Float>(1, 1, 1, 1)
 
         // 各面のUV座標（左下、右下、右上、左上）
@@ -235,35 +245,53 @@ extension Mesh {
 
         let faces: [(normal: SIMD3<Float>, corners: [SIMD3<Float>])] = [
             // +Z（前面）
-            (SIMD3(0, 0, 1), [
-                SIMD3(-hw, -hh, hd), SIMD3(hw, -hh, hd),
-                SIMD3(hw, hh, hd), SIMD3(-hw, hh, hd),
-            ]),
+            (
+                SIMD3(0, 0, 1),
+                [
+                    SIMD3(-hw, -hh, hd), SIMD3(hw, -hh, hd),
+                    SIMD3(hw, hh, hd), SIMD3(-hw, hh, hd),
+                ]
+            ),
             // -Z（背面）
-            (SIMD3(0, 0, -1), [
-                SIMD3(hw, -hh, -hd), SIMD3(-hw, -hh, -hd),
-                SIMD3(-hw, hh, -hd), SIMD3(hw, hh, -hd),
-            ]),
+            (
+                SIMD3(0, 0, -1),
+                [
+                    SIMD3(hw, -hh, -hd), SIMD3(-hw, -hh, -hd),
+                    SIMD3(-hw, hh, -hd), SIMD3(hw, hh, -hd),
+                ]
+            ),
             // +Y（上面）
-            (SIMD3(0, 1, 0), [
-                SIMD3(-hw, hh, hd), SIMD3(hw, hh, hd),
-                SIMD3(hw, hh, -hd), SIMD3(-hw, hh, -hd),
-            ]),
+            (
+                SIMD3(0, 1, 0),
+                [
+                    SIMD3(-hw, hh, hd), SIMD3(hw, hh, hd),
+                    SIMD3(hw, hh, -hd), SIMD3(-hw, hh, -hd),
+                ]
+            ),
             // -Y（底面）
-            (SIMD3(0, -1, 0), [
-                SIMD3(-hw, -hh, -hd), SIMD3(hw, -hh, -hd),
-                SIMD3(hw, -hh, hd), SIMD3(-hw, -hh, hd),
-            ]),
+            (
+                SIMD3(0, -1, 0),
+                [
+                    SIMD3(-hw, -hh, -hd), SIMD3(hw, -hh, -hd),
+                    SIMD3(hw, -hh, hd), SIMD3(-hw, -hh, hd),
+                ]
+            ),
             // +X（右面）
-            (SIMD3(1, 0, 0), [
-                SIMD3(hw, -hh, hd), SIMD3(hw, -hh, -hd),
-                SIMD3(hw, hh, -hd), SIMD3(hw, hh, hd),
-            ]),
+            (
+                SIMD3(1, 0, 0),
+                [
+                    SIMD3(hw, -hh, hd), SIMD3(hw, -hh, -hd),
+                    SIMD3(hw, hh, -hd), SIMD3(hw, hh, hd),
+                ]
+            ),
             // -X（左面）
-            (SIMD3(-1, 0, 0), [
-                SIMD3(-hw, -hh, -hd), SIMD3(-hw, -hh, hd),
-                SIMD3(-hw, hh, hd), SIMD3(-hw, hh, -hd),
-            ]),
+            (
+                SIMD3(-1, 0, 0),
+                [
+                    SIMD3(-hw, -hh, -hd), SIMD3(-hw, -hh, hd),
+                    SIMD3(-hw, hh, hd), SIMD3(-hw, hh, -hd),
+                ]
+            ),
         ]
 
         var vertices: [Vertex3D] = []
@@ -277,12 +305,14 @@ extension Mesh {
             let base = UInt16(vertices.count)
             for (idx, corner) in corners.enumerated() {
                 vertices.append(Vertex3D(position: corner, normal: normal, color: white))
-                uvVertices.append(Vertex3DTextured(position: corner, normal: normal, uv: faceUVs[idx]))
+                uvVertices.append(
+                    Vertex3DTextured(position: corner, normal: normal, uv: faceUVs[idx]))
             }
             indices.append(contentsOf: [base, base + 1, base + 2, base, base + 2, base + 3])
         }
 
-        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(
+            device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -328,7 +358,8 @@ extension Mesh {
                 )
                 let position = normal * radius
                 vertices.append(Vertex3D(position: position, normal: normal, color: white))
-                uvVertices.append(Vertex3DTextured(position: position, normal: normal, uv: SIMD2(u, v)))
+                uvVertices.append(
+                    Vertex3DTextured(position: position, normal: normal, uv: SIMD2(u, v)))
             }
         }
 
@@ -342,9 +373,12 @@ extension Mesh {
         }
 
         if vertices.count <= 65535 {
-            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices: indices.map { UInt16($0) },
+                uvVertices: uvVertices)
         } else {
-            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
         }
     }
 }
@@ -364,7 +398,8 @@ extension Mesh {
         height: Float = 1
     ) throws -> Mesh {
         try requireFiniteDimensions(["width": width, "height": height], of: "plane")
-        let hw = width / 2, hh = height / 2
+        let hw = width / 2
+        let hh = height / 2
         let normal = SIMD3<Float>(0, 0, 1)
         let white = SIMD4<Float>(1, 1, 1, 1)
 
@@ -382,7 +417,8 @@ extension Mesh {
         ]
         let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
 
-        return try Mesh(device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
+        return try Mesh(
+            device: device, vertices: vertices, indices: indices, uvVertices: uvVertices)
     }
 }
 
@@ -412,7 +448,8 @@ extension Mesh {
         // --- 側面 ---
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
-            let c = cos(angle), s = sin(angle)
+            let c = cos(angle)
+            let s = sin(angle)
             let normal = SIMD3<Float>(c, 0, s)
             let u = Float(i) / Float(segments)
 
@@ -439,16 +476,19 @@ extension Mesh {
         let topCenterPos = SIMD3<Float>(0, hh, 0)
         let topNormal = SIMD3<Float>(0, 1, 0)
         vertices.append(Vertex3D(position: topCenterPos, normal: topNormal, color: white))
-        uvVertices.append(Vertex3DTextured(position: topCenterPos, normal: topNormal, uv: SIMD2(0.5, 0.5)))
+        uvVertices.append(
+            Vertex3DTextured(position: topCenterPos, normal: topNormal, uv: SIMD2(0.5, 0.5)))
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
-            let c = cos(angle), s = sin(angle)
+            let c = cos(angle)
+            let s = sin(angle)
             let pos = SIMD3(c * radius, hh, s * radius)
             vertices.append(Vertex3D(position: pos, normal: topNormal, color: white))
-            uvVertices.append(Vertex3DTextured(
-                position: pos, normal: topNormal,
-                uv: SIMD2(0.5 + c * 0.5, 0.5 + s * 0.5)
-            ))
+            uvVertices.append(
+                Vertex3DTextured(
+                    position: pos, normal: topNormal,
+                    uv: SIMD2(0.5 + c * 0.5, 0.5 + s * 0.5)
+                ))
         }
         for i in 0..<segments {
             let a = topCenter + 1 + UInt32(i)
@@ -460,16 +500,19 @@ extension Mesh {
         let botCenterPos = SIMD3<Float>(0, -hh, 0)
         let botNormal = SIMD3<Float>(0, -1, 0)
         vertices.append(Vertex3D(position: botCenterPos, normal: botNormal, color: white))
-        uvVertices.append(Vertex3DTextured(position: botCenterPos, normal: botNormal, uv: SIMD2(0.5, 0.5)))
+        uvVertices.append(
+            Vertex3DTextured(position: botCenterPos, normal: botNormal, uv: SIMD2(0.5, 0.5)))
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
-            let c = cos(angle), s = sin(angle)
+            let c = cos(angle)
+            let s = sin(angle)
             let pos = SIMD3(c * radius, -hh, s * radius)
             vertices.append(Vertex3D(position: pos, normal: botNormal, color: white))
-            uvVertices.append(Vertex3DTextured(
-                position: pos, normal: botNormal,
-                uv: SIMD2(0.5 + c * 0.5, 0.5 + s * 0.5)
-            ))
+            uvVertices.append(
+                Vertex3DTextured(
+                    position: pos, normal: botNormal,
+                    uv: SIMD2(0.5 + c * 0.5, 0.5 + s * 0.5)
+                ))
         }
         for i in 0..<segments {
             let a = botCenter + 1 + UInt32(i)
@@ -477,9 +520,12 @@ extension Mesh {
         }
 
         if vertices.count <= 65535 {
-            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices: indices.map { UInt16($0) },
+                uvVertices: uvVertices)
         } else {
-            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
         }
     }
 }
@@ -510,7 +556,8 @@ extension Mesh {
         // --- 側面 ---
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
-            let c = cos(angle), s = sin(angle)
+            let c = cos(angle)
+            let s = sin(angle)
             let normal = normalize(SIMD3<Float>(c * height, radius, s * height))
             let u = Float(i) / Float(segments)
 
@@ -536,16 +583,19 @@ extension Mesh {
         let botCenterPos = SIMD3<Float>(0, -hh, 0)
         let botNormal = SIMD3<Float>(0, -1, 0)
         vertices.append(Vertex3D(position: botCenterPos, normal: botNormal, color: white))
-        uvVertices.append(Vertex3DTextured(position: botCenterPos, normal: botNormal, uv: SIMD2(0.5, 0.5)))
+        uvVertices.append(
+            Vertex3DTextured(position: botCenterPos, normal: botNormal, uv: SIMD2(0.5, 0.5)))
         for i in 0...segments {
             let angle = Float(i) / Float(segments) * Float.pi * 2
-            let c = cos(angle), s = sin(angle)
+            let c = cos(angle)
+            let s = sin(angle)
             let pos = SIMD3(c * radius, -hh, s * radius)
             vertices.append(Vertex3D(position: pos, normal: botNormal, color: white))
-            uvVertices.append(Vertex3DTextured(
-                position: pos, normal: botNormal,
-                uv: SIMD2(0.5 + c * 0.5, 0.5 + s * 0.5)
-            ))
+            uvVertices.append(
+                Vertex3DTextured(
+                    position: pos, normal: botNormal,
+                    uv: SIMD2(0.5 + c * 0.5, 0.5 + s * 0.5)
+                ))
         }
         for i in 0..<segments {
             let a = botCenter + 1 + UInt32(i)
@@ -553,9 +603,12 @@ extension Mesh {
         }
 
         if vertices.count <= 65535 {
-            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices: indices.map { UInt16($0) },
+                uvVertices: uvVertices)
         } else {
-            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
         }
     }
 }
@@ -590,12 +643,14 @@ extension Mesh {
 
         for i in 0...segments {
             let uAngle = Float(i) / Float(segments) * Float.pi * 2
-            let cu = cos(uAngle), su = sin(uAngle)
+            let cu = cos(uAngle)
+            let su = sin(uAngle)
             let uCoord = Float(i) / Float(segments)
 
             for j in 0...tubeSegments {
                 let vAngle = Float(j) / Float(tubeSegments) * Float.pi * 2
-                let cv = cos(vAngle), sv = sin(vAngle)
+                let cv = cos(vAngle)
+                let sv = sin(vAngle)
                 let vCoord = Float(j) / Float(tubeSegments)
 
                 let r = ringRadius + tubeRadius * cv
@@ -604,7 +659,8 @@ extension Mesh {
                 let normal = normalize(position - center)
 
                 vertices.append(Vertex3D(position: position, normal: normal, color: white))
-                uvVertices.append(Vertex3DTextured(position: position, normal: normal, uv: SIMD2(uCoord, vCoord)))
+                uvVertices.append(
+                    Vertex3DTextured(position: position, normal: normal, uv: SIMD2(uCoord, vCoord)))
             }
         }
 
@@ -618,15 +674,17 @@ extension Mesh {
         }
 
         if vertices.count <= 65535 {
-            return try Mesh(device: device, vertices: vertices, indices: indices.map { UInt16($0) }, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices: indices.map { UInt16($0) },
+                uvVertices: uvVertices)
         } else {
-            return try Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+            return try Mesh(
+                device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
         }
     }
 }
 
 // MARK: - OBJ Loader
-
 
 extension Mesh {
     /// 指定されたURLのOBJファイルからメッシュを読み込みます。
@@ -701,7 +759,8 @@ extension Mesh {
         func resolveIndex(_ token: String) -> (index: Int, hasUV: Bool, hasNormal: Bool)? {
             let parts = token.split(separator: "/", omittingEmptySubsequences: false)
             guard let viRaw = Int(parts[0]),
-                  let vi = resolveOBJIndex(viRaw, count: positions.count) else { return nil }
+                let vi = resolveOBJIndex(viRaw, count: positions.count)
+            else { return nil }
             var vti = -1
             var vni = -1
             var foundUV = false
@@ -709,13 +768,15 @@ extension Mesh {
 
             // UV / 法線は範囲外でも面ごと落とさず「無し」として続行する
             if parts.count > 1 && !parts[1].isEmpty, let vtiRaw = Int(parts[1]),
-               let resolved = resolveOBJIndex(vtiRaw, count: texCoords.count) {
+                let resolved = resolveOBJIndex(vtiRaw, count: texCoords.count)
+            {
                 vti = resolved
                 foundUV = true
             }
 
             if parts.count > 2 && !parts[2].isEmpty, let vniRaw = Int(parts[2]),
-               let resolved = resolveOBJIndex(vniRaw, count: normals.count) {
+                let resolved = resolveOBJIndex(vniRaw, count: normals.count)
+            {
                 vni = resolved
                 foundNormal = true
             }
@@ -746,22 +807,25 @@ extension Mesh {
             switch parts[0] {
             case "v":
                 guard parts.count >= 4,
-                      let x = Float(parts[1]),
-                      let y = Float(parts[2]),
-                      let z = Float(parts[3]) else { continue }
+                    let x = Float(parts[1]),
+                    let y = Float(parts[2]),
+                    let z = Float(parts[3])
+                else { continue }
                 positions.append(SIMD3(x, y, z))
 
             case "vn":
                 guard parts.count >= 4,
-                      let x = Float(parts[1]),
-                      let y = Float(parts[2]),
-                      let z = Float(parts[3]) else { continue }
+                    let x = Float(parts[1]),
+                    let y = Float(parts[2]),
+                    let z = Float(parts[3])
+                else { continue }
                 normals.append(SIMD3(x, y, z))
 
             case "vt":
                 guard parts.count >= 3,
-                      let u = Float(parts[1]),
-                      let v = Float(parts[2]) else { continue }
+                    let u = Float(parts[1]),
+                    let v = Float(parts[2])
+                else { continue }
                 texCoords.append(SIMD2(u, v))
 
             case "f":
@@ -782,7 +846,8 @@ extension Mesh {
                 // 範囲外参照などの壊れた面はスキップしてロード全体は継続する
                 // （外部ファイルは信頼できない入力。従来は配列アクセスで即クラッシュ）
                 guard faceIsValid else {
-                    metaphorWarning("OBJ: skipping face with invalid vertex reference: '\(trimmed)'")
+                    metaphorWarning(
+                        "OBJ: skipping face with invalid vertex reference: '\(trimmed)'")
                     continue
                 }
 

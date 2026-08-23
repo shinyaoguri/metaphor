@@ -8,11 +8,11 @@ import simd
 /// 頂点シェーダーが `instance_id` でインデックスし、各インスタンスのトランスフォームと色を読み取ります。
 struct InstanceData3D {
     /// このインスタンスのモデル変換行列。
-    var modelMatrix: float4x4       // 64 bytes
+    var modelMatrix: float4x4  // 64 bytes
     /// このインスタンスの法線変換行列。
-    var normalMatrix: float4x4      // 64 bytes
+    var normalMatrix: float4x4  // 64 bytes
     /// このインスタンスのティント色（RGBA）。
-    var color: SIMD4<Float>         // 16 bytes
+    var color: SIMD4<Float>  // 16 bytes
     /// 16バイトアライメント用パディング。
     var _pad: SIMD4<Float> = .zero  // 16 bytes (alignment)
 }
@@ -26,15 +26,15 @@ struct InstancedSceneUniforms {
     /// 結合されたビュー・プロジェクション行列。
     var viewProjectionMatrix: float4x4  // 64 bytes
     /// ワールド空間でのカメラ位置。
-    var cameraPosition: SIMD4<Float>    // 16 bytes
+    var cameraPosition: SIMD4<Float>  // 16 bytes
     /// 現在のフレーム時間。
-    var time: Float                      // 4 bytes
+    var time: Float  // 4 bytes
     /// アクティブなライトの数。
-    var lightCount: UInt32               // 4 bytes
+    var lightCount: UInt32  // 4 bytes
     /// メッシュにテクスチャがバインドされているかどうか。
-    var hasTexture: UInt32 = 0           // 4 bytes
+    var hasTexture: UInt32 = 0  // 4 bytes
     /// アライメント用パディング。
-    var _pad2: UInt32 = 0                // 4 bytes
+    var _pad2: UInt32 = 0  // 4 bytes
 }
 
 // MARK: - Batch Key
@@ -60,15 +60,15 @@ struct BatchKey3D: Equatable {
 
     static func == (lhs: BatchKey3D, rhs: BatchKey3D) -> Bool {
         lhs.meshID == rhs.meshID
-        && lhs.isTextured == rhs.isTextured
-        && lhs.textureID == rhs.textureID
-        && lhs.hasFill == rhs.hasFill
-        && lhs.hasStroke == rhs.hasStroke
-        && lhs.strokeColor == rhs.strokeColor
-        && lhs.material.ambientColor == rhs.material.ambientColor
-        && lhs.material.specularAndShininess == rhs.material.specularAndShininess
-        && lhs.material.emissiveAndMetallic == rhs.material.emissiveAndMetallic
-        && lhs.material.pbrParams == rhs.material.pbrParams
+            && lhs.isTextured == rhs.isTextured
+            && lhs.textureID == rhs.textureID
+            && lhs.hasFill == rhs.hasFill
+            && lhs.hasStroke == rhs.hasStroke
+            && lhs.strokeColor == rhs.strokeColor
+            && lhs.material.ambientColor == rhs.material.ambientColor
+            && lhs.material.specularAndShininess == rhs.material.specularAndShininess
+            && lhs.material.emissiveAndMetallic == rhs.material.emissiveAndMetallic
+            && lhs.material.pbrParams == rhs.material.pbrParams
     }
 }
 
@@ -139,11 +139,12 @@ final class InstanceBatcher3D {
             currentStrokeColor = strokeColor
         }
 
-        batcher.addInstance(InstanceData3D(
-            modelMatrix: transform,
-            normalMatrix: normalMatrix,
-            color: color
-        ))
+        batcher.addInstance(
+            InstanceData3D(
+                modelMatrix: transform,
+                normalMatrix: normalMatrix,
+                color: color
+            ))
         return true
     }
 

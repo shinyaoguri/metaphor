@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - VertexLayout Tests
 
@@ -93,9 +94,11 @@ struct BlendModeTests {
 
     /// 分離可能ブレンドモードは固定関数では書けないので、フラグメント側で合成する
     /// （ADR-0012 / #801）。パイプラインではブレンドを無効にしておく。
-    @Test("separable blend modes composite in the fragment", arguments: [
-        BlendMode.multiply, .screen, .subtract, .lightest, .darkest, .difference, .exclusion,
-    ])
+    @Test(
+        "separable blend modes composite in the fragment",
+        arguments: [
+            BlendMode.multiply, .screen, .subtract, .lightest, .darkest, .difference, .exclusion,
+        ])
     func separableModesUseFramebufferFetch(mode: BlendMode) {
         let desc = MTLRenderPipelineColorAttachmentDescriptor()
         mode.apply(to: desc)
@@ -105,9 +108,11 @@ struct BlendModeTests {
     }
 
     /// 固定関数で足りるモードはフェッチを要求しない（専用フラグメントも持たない）。
-    @Test("fixed-function modes need no framebuffer fetch", arguments: [
-        BlendMode.opaque, .alpha, .additive,
-    ])
+    @Test(
+        "fixed-function modes need no framebuffer fetch",
+        arguments: [
+            BlendMode.opaque, .alpha, .additive,
+        ])
     func fixedFunctionModes(mode: BlendMode) {
         #expect(mode.requiresFramebufferFetch == false)
         #expect(mode.fragmentFunctionSuffix == nil)
@@ -170,10 +175,15 @@ struct BuiltinShadersTests {
     @Test("shader resource files contain metal_stdlib")
     func shaderResourcesIncludeMetalStdlib() {
         #expect(ShaderLibrary.loadShaderSource("blit")?.contains("#include <metal_stdlib>") == true)
-        #expect(ShaderLibrary.loadShaderSource("flatColor")?.contains("#include <metal_stdlib>") == true)
-        #expect(ShaderLibrary.loadShaderSource("vertexColor")?.contains("#include <metal_stdlib>") == true)
+        #expect(
+            ShaderLibrary.loadShaderSource("flatColor")?.contains("#include <metal_stdlib>") == true
+        )
+        #expect(
+            ShaderLibrary.loadShaderSource("vertexColor")?.contains("#include <metal_stdlib>")
+                == true)
         #expect(ShaderLibrary.loadShaderSource("lit")?.contains("#include <metal_stdlib>") == true)
-        #expect(ShaderLibrary.loadShaderSource("canvas2D")?.contains("#include <metal_stdlib>") == true)
+        #expect(
+            ShaderLibrary.loadShaderSource("canvas2D")?.contains("#include <metal_stdlib>") == true)
     }
 }
 
@@ -270,13 +280,13 @@ struct ShaderLibraryTests {
         let library = try ShaderLibrary(device: device)
 
         let customSource = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        vertex float4 customVertex(uint vid [[vertex_id]]) {
-            return float4(0, 0, 0, 1);
-        }
-        """
+            vertex float4 customVertex(uint vid [[vertex_id]]) {
+                return float4(0, 0, 0, 1);
+            }
+            """
 
         try library.register(source: customSource, as: "custom")
         #expect(library.hasLibrary(for: "custom"))

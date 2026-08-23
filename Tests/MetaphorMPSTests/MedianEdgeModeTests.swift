@@ -1,6 +1,7 @@
-import Testing
 import Metal
 import MetalPerformanceShaders
+import Testing
+
 @testable import MetaphorCore
 @testable import MetaphorMPS
 
@@ -86,8 +87,9 @@ struct MedianEdgeModeTests {
             wrapper.encodeMedian(
                 commandBuffer: cb, source: src, destination: dst, diameter: diameter)
         }
-        #expect(darkest(out) == Self.level,
-                "直径 \(diameter): 入力に無い暗い画素が出た（最小値 \(darkest(out))）")
+        #expect(
+            darkest(out) == Self.level,
+            "直径 \(diameter): 入力に無い暗い画素が出た（最小値 \(darkest(out))）")
         #expect(out == Self.uniform())
     }
 

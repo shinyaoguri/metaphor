@@ -1,9 +1,10 @@
 import Foundation
-import Testing
 import Metal
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - loadFont (#649)
 

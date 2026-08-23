@@ -38,9 +38,10 @@ extension Canvas2D {
         }
         if hasStroke {
             flushInstancedBatch()
-            strokePolyline([
-                (rx, ry), (rx + rw, ry), (rx + rw, ry + rh), (rx, ry + rh)
-            ], closed: true)
+            strokePolyline(
+                [
+                    (rx, ry), (rx + rw, ry), (rx + rw, ry + rh), (rx, ry + rh),
+                ], closed: true)
         }
     }
 
@@ -110,7 +111,8 @@ extension Canvas2D {
             let cy = ry + rh * 0.5
             for i in 0..<outline.count {
                 let next = (i + 1) % outline.count
-                addTriangle(cx, cy, outline[i].0, outline[i].1, outline[next].0, outline[next].1, fillColor)
+                addTriangle(
+                    cx, cy, outline[i].0, outline[i].1, outline[next].0, outline[next].1, fillColor)
             }
         }
 
@@ -178,15 +180,26 @@ extension Canvas2D {
         let sc1 = color1.simd
         let sc2 = color2.simd
 
-        let tl: SIMD4<Float>, tr: SIMD4<Float>, bl: SIMD4<Float>, br: SIMD4<Float>
+        let tl: SIMD4<Float>
+        let tr: SIMD4<Float>
+        let bl: SIMD4<Float>
+        let br: SIMD4<Float>
         switch axis {
         case .vertical:
-            tl = sc1; tr = sc1; bl = sc2; br = sc2
+            tl = sc1
+            tr = sc1
+            bl = sc2
+            br = sc2
         case .horizontal:
-            tl = sc1; tr = sc2; bl = sc1; br = sc2
+            tl = sc1
+            tr = sc2
+            bl = sc1
+            br = sc2
         case .diagonal:
-            tl = sc1; tr = lerp(sc1, sc2, 0.5)
-            bl = lerp(sc1, sc2, 0.5); br = sc2
+            tl = sc1
+            tr = lerp(sc1, sc2, 0.5)
+            bl = lerp(sc1, sc2, 0.5)
+            br = sc2
         }
 
         addVertex(x, y, tl)
@@ -405,9 +418,10 @@ extension Canvas2D {
                 for i in 0..<segments {
                     let a0 = startAngle + step * Float(i)
                     let a1 = startAngle + step * Float(i + 1)
-                    addTriangle(x, y,
-                                x + rx * cos(a0), y + ry * sin(a0),
-                                x + rx * cos(a1), y + ry * sin(a1), fillColor)
+                    addTriangle(
+                        x, y,
+                        x + rx * cos(a0), y + ry * sin(a0),
+                        x + rx * cos(a1), y + ry * sin(a1), fillColor)
                 }
             case .open, .chord:
                 // Processing 互換: open/chord の fill は弦で閉じた弓形
@@ -417,9 +431,10 @@ extension Canvas2D {
                 for i in 1..<segments {
                     let a0 = startAngle + step * Float(i)
                     let a1 = startAngle + step * Float(i + 1)
-                    addTriangle(fx, fy,
-                                x + rx * cos(a0), y + ry * sin(a0),
-                                x + rx * cos(a1), y + ry * sin(a1), fillColor)
+                    addTriangle(
+                        fx, fy,
+                        x + rx * cos(a0), y + ry * sin(a0),
+                        x + rx * cos(a1), y + ry * sin(a1), fillColor)
                 }
             }
         }

@@ -88,8 +88,10 @@ extension Canvas2D {
     }
 
     /// オプションの始端・終端キャップ付きでストロークラインをクワッドとして描画します。
-    func strokeLine(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float,
-                    capStart: Bool = true, capEnd: Bool = true) {
+    func strokeLine(
+        _ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float,
+        capStart: Bool = true, capEnd: Bool = true
+    ) {
         let dx = x2 - x1
         let dy = y2 - y1
         let len = sqrt(dx * dx + dy * dy)
@@ -101,10 +103,19 @@ extension Canvas2D {
         let tx = dx / len * hw
         let ty = dy / len * hw
 
-        var sx1 = x1, sy1 = y1, sx2 = x2, sy2 = y2
+        var sx1 = x1
+        var sy1 = y1
+        var sx2 = x2
+        var sy2 = y2
         if currentStrokeCap == .square {
-            if capStart { sx1 -= tx; sy1 -= ty }
-            if capEnd   { sx2 += tx; sy2 += ty }
+            if capStart {
+                sx1 -= tx
+                sy1 -= ty
+            }
+            if capEnd {
+                sx2 += tx
+                sy2 += ty
+            }
         }
 
         addVertex(sx1 + nx, sy1 + ny, strokeColor)
@@ -120,7 +131,8 @@ extension Canvas2D {
                 let baseAngle = atan2(-dy, -dx)
                 for i in 0..<capSegments {
                     let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(capSegments)
-                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(capSegments)
+                    let a1 =
+                        baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(capSegments)
                     addVertex(x1, y1, strokeColor)
                     addVertex(x1 + hw * cos(a0), y1 + hw * sin(a0), strokeColor)
                     addVertex(x1 + hw * cos(a1), y1 + hw * sin(a1), strokeColor)
@@ -130,7 +142,8 @@ extension Canvas2D {
                 let baseAngle = atan2(dy, dx)
                 for i in 0..<capSegments {
                     let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(capSegments)
-                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(capSegments)
+                    let a1 =
+                        baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(capSegments)
                     addVertex(x2, y2, strokeColor)
                     addVertex(x2 + hw * cos(a0), y2 + hw * sin(a0), strokeColor)
                     addVertex(x2 + hw * cos(a1), y2 + hw * sin(a1), strokeColor)
@@ -148,8 +161,11 @@ extension Canvas2D {
         let joinSegments = 8
 
         struct SegInfo {
-            var dx: Float; var dy: Float; var len: Float
-            var nx: Float; var ny: Float
+            var dx: Float
+            var dy: Float
+            var len: Float
+            var nx: Float
+            var ny: Float
         }
 
         let segCount = closed ? count : count - 1
@@ -162,8 +178,10 @@ extension Canvas2D {
             let dy = points[j].1 - points[i].1
             let len = sqrt(dx * dx + dy * dy)
             if len > 0 {
-                segs.append(SegInfo(dx: dx, dy: dy, len: len,
-                                    nx: -dy / len * hw, ny: dx / len * hw))
+                segs.append(
+                    SegInfo(
+                        dx: dx, dy: dy, len: len,
+                        nx: -dy / len * hw, ny: dx / len * hw))
             } else {
                 segs.append(SegInfo(dx: 0, dy: 0, len: 0, nx: 0, ny: 0))
             }
@@ -294,7 +312,8 @@ extension Canvas2D {
                 let p = points[0]
                 for i in 0..<joinSegments {
                     let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(joinSegments)
-                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(joinSegments)
+                    let a1 =
+                        baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(joinSegments)
                     addVertex(p.0, p.1, strokeColor)
                     addVertex(p.0 + hw * cos(a0), p.1 + hw * sin(a0), strokeColor)
                     addVertex(p.0 + hw * cos(a1), p.1 + hw * sin(a1), strokeColor)
@@ -316,7 +335,8 @@ extension Canvas2D {
                 let p = points[count - 1]
                 for i in 0..<joinSegments {
                     let a0 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i) / Float(joinSegments)
-                    let a1 = baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(joinSegments)
+                    let a1 =
+                        baseAngle - Float.pi * 0.5 + Float.pi * Float(i + 1) / Float(joinSegments)
                     addVertex(p.0, p.1, strokeColor)
                     addVertex(p.0 + hw * cos(a0), p.1 + hw * sin(a0), strokeColor)
                     addVertex(p.0 + hw * cos(a1), p.1 + hw * sin(a1), strokeColor)

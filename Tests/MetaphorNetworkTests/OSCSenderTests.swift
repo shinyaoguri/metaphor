@@ -1,6 +1,7 @@
-import Testing
-@testable import MetaphorNetwork
 import Foundation
+import Testing
+
+@testable import MetaphorNetwork
 
 // MARK: - OSC Encoder (#283)
 
@@ -33,13 +34,25 @@ struct OSCEncoderTests {
         #expect(parsed.count == 1)
         #expect(message.address == "/synth/freq")
         #expect(message.values.count == 4)
-        guard case .int(let i) = message.values[0] else { Issue.record("expected int"); return }
+        guard case .int(let i) = message.values[0] else {
+            Issue.record("expected int")
+            return
+        }
         #expect(i == -42)
-        guard case .float(let f) = message.values[1] else { Issue.record("expected float"); return }
+        guard case .float(let f) = message.values[1] else {
+            Issue.record("expected float")
+            return
+        }
         #expect(f == 3.5)
-        guard case .string(let s) = message.values[2] else { Issue.record("expected string"); return }
+        guard case .string(let s) = message.values[2] else {
+            Issue.record("expected string")
+            return
+        }
         #expect(s == "hello")
-        guard case .blob(let b) = message.values[3] else { Issue.record("expected blob"); return }
+        guard case .blob(let b) = message.values[3] else {
+            Issue.record("expected blob")
+            return
+        }
         #expect(b == Data([1, 2, 3, 4, 5]))
     }
 
@@ -76,9 +89,18 @@ struct OSCEncoderTests {
     @Test("OSCValue literals map to int/float/string")
     func valueLiterals() {
         let values: [OSCValue] = [60, 0.5, "on"]
-        guard case .int(60) = values[0] else { Issue.record("expected .int(60)"); return }
-        guard case .float(0.5) = values[1] else { Issue.record("expected .float(0.5)"); return }
-        guard case .string("on") = values[2] else { Issue.record("expected .string(on)"); return }
+        guard case .int(60) = values[0] else {
+            Issue.record("expected .int(60)")
+            return
+        }
+        guard case .float(0.5) = values[1] else {
+            Issue.record("expected .float(0.5)")
+            return
+        }
+        guard case .string("on") = values[2] else {
+            Issue.record("expected .string(on)")
+            return
+        }
     }
 }
 
@@ -131,7 +153,10 @@ struct OSCSenderTests {
         let byAddress = Dictionary(grouping: received, by: \.address)
         let note = try #require(byAddress["/note"]?.first)
         #expect(note.values.count == 3)
-        guard case .int(60) = note.values[0] else { Issue.record("expected .int(60)"); return }
+        guard case .int(60) = note.values[0] else {
+            Issue.record("expected .int(60)")
+            return
+        }
         #expect(byAddress["/bundle/a"]?.isEmpty == false)
         #expect(byAddress["/bundle/b"]?.isEmpty == false)
     }

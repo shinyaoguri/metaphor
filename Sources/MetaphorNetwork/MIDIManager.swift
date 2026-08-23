@@ -58,9 +58,18 @@ private final class MIDIPortState: Sendable {
 
     func dispose() {
         state.withLock { s in
-            if s.inputPort != 0 { MIDIPortDispose(s.inputPort); s.inputPort = 0 }
-            if s.outputPort != 0 { MIDIPortDispose(s.outputPort); s.outputPort = 0 }
-            if s.client != 0 { MIDIClientDispose(s.client); s.client = 0 }
+            if s.inputPort != 0 {
+                MIDIPortDispose(s.inputPort)
+                s.inputPort = 0
+            }
+            if s.outputPort != 0 {
+                MIDIPortDispose(s.outputPort)
+                s.outputPort = 0
+            }
+            if s.client != 0 {
+                MIDIClientDispose(s.client)
+                s.client = 0
+            }
             s.connectedSources.removeAll()
         }
     }
@@ -124,7 +133,8 @@ public final class MIDIManager {
         // 設定変更で呼ばれる（ホットプラグ対応。CoreMIDI が任意スレッドで
         // 呼び得るため、Sendable な portState 経由の nonisolated 実装で張り直す）
         var clientRef: MIDIClientRef = 0
-        var status = MIDIClientCreateWithBlock("metaphor.midi" as CFString, &clientRef) { notification in
+        var status = MIDIClientCreateWithBlock("metaphor.midi" as CFString, &clientRef) {
+            notification in
             switch notification.pointee.messageID {
             case .msgObjectAdded, .msgObjectRemoved, .msgSetupChanged:
                 MIDIManager.reconnectSources(portState: ports)
@@ -265,19 +275,25 @@ public final class MIDIManager {
 
     /// Registers a Note On callback.
     /// - Parameter handler: A closure called with (channel, note, velocity).
-    public func onNoteOn(_ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void) {
+    public func onNoteOn(
+        _ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void
+    ) {
         noteOnHandler = handler
     }
 
     /// Registers a Note Off callback.
     /// - Parameter handler: A closure called with (channel, note, velocity).
-    public func onNoteOff(_ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void) {
+    public func onNoteOff(
+        _ handler: @escaping (_ channel: UInt8, _ note: UInt8, _ velocity: UInt8) -> Void
+    ) {
         noteOffHandler = handler
     }
 
     /// Registers a Control Change callback.
     /// - Parameter handler: A closure called with (channel, cc, value).
-    public func onControlChange(_ handler: @escaping (_ channel: UInt8, _ cc: UInt8, _ value: UInt8) -> Void) {
+    public func onControlChange(
+        _ handler: @escaping (_ channel: UInt8, _ cc: UInt8, _ value: UInt8) -> Void
+    ) {
         controlChangeHandler = handler
     }
 
@@ -369,8 +385,11 @@ public final class MIDIManager {
     /// instead of the highest. Clamping pins an out-of-range parameter at the top
     /// of the range, where it is audible as saturation rather than as a jump.
     // internal: テストから生成ワードのビット列を直接検証できるようにする
-    nonisolated static func makeChannelVoiceWord(status: UInt8, data1: UInt8, data2: UInt8) -> UInt32 {
-        UInt32(0x20000000) | UInt32(status) << 16 | UInt32(min(data1, 127)) << 8 | UInt32(min(data2, 127))
+    nonisolated static func makeChannelVoiceWord(status: UInt8, data1: UInt8, data2: UInt8)
+        -> UInt32
+    {
+        UInt32(0x2000_0000) | UInt32(status) << 16 | UInt32(min(data1, 127)) << 8
+            | UInt32(min(data2, 127))
     }
 
     /// The word count per UMP message type (MIDI 2.0 UMP spec). Used to skip
@@ -387,7 +406,9 @@ public final class MIDIManager {
     }
 
     // internal: テストから直接イベントリストを与えて検証できるようにする
-    nonisolated static func parseEventList(_ eventList: UnsafePointer<MIDIEventList>) -> [MIDIMessage] {
+    nonisolated static func parseEventList(_ eventList: UnsafePointer<MIDIEventList>)
+        -> [MIDIMessage]
+    {
         var messages: [MIDIMessage] = []
 
         // MIDIEventList は可変長構造体。`pointee` でローカルにコピーすると
@@ -400,7 +421,8 @@ public final class MIDIManager {
 
             // パケットは詰めて配置されるため、words はコピーせず元バッファ上で
             // wordCount 分だけ読む
-            let wordsBase = (UnsafeRawPointer(packetPtr) + MemoryLayout<MIDIEventPacket>.offset(of: \.words)!)
+            let wordsBase =
+                (UnsafeRawPointer(packetPtr) + MemoryLayout<MIDIEventPacket>.offset(of: \.words)!)
                 .assumingMemoryBound(to: UInt32.self)
 
             var i = 0
@@ -414,13 +436,14 @@ public final class MIDIManager {
                     let channel = statusByte & 0x0F
                     let d1 = UInt8((word >> 8) & 0x7F)
                     let d2 = UInt8(word & 0x7F)
-                    messages.append(MIDIMessage(
-                        status: statusByte,
-                        channel: channel,
-                        data1: d1,
-                        data2: d2,
-                        timestamp: timestamp
-                    ))
+                    messages.append(
+                        MIDIMessage(
+                            status: statusByte,
+                            channel: channel,
+                            data1: d1,
+                            data2: d2,
+                            timestamp: timestamp
+                        ))
                 }
 
                 // マルチワードメッセージはペイロードごとスキップ
@@ -471,7 +494,8 @@ final class MIDIMessageBuffer: Sendable {
             return (msgs, dropped)
         }
         if dropped > 0 {
-            debugWarning("MIDI message buffer overflowed: dropped \(dropped) message(s) since last poll()")
+            debugWarning(
+                "MIDI message buffer overflowed: dropped \(dropped) message(s) since last poll()")
         }
         return msgs
     }

@@ -1,7 +1,8 @@
-import Testing
-import Metal
 import GameplayKit
+import Metal
+import Testing
 import simd
+
 @testable import MetaphorNoise
 
 // MARK: - NoiseType Tests
@@ -132,7 +133,8 @@ struct GKNoiseWrapperTests {
     @Test("constant noise creation")
     @MainActor func constantCreation() {
         let device = MTLCreateSystemDefaultDevice()!
-        let wrapper = GKNoiseWrapper(type: .constant(value: 0.5), config: NoiseConfig(), device: device)
+        let wrapper = GKNoiseWrapper(
+            type: .constant(value: 0.5), config: NoiseConfig(), device: device)
         _ = wrapper
     }
 

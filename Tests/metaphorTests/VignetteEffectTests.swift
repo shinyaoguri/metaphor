@@ -34,9 +34,11 @@ struct VignetteEffectTests {
         pass.colorAttachments[0].texture = texture
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].storeAction = .store
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1)
+        pass.colorAttachments[0].clearColor = MTLClearColor(
+            red: 0.6, green: 0.6, blue: 0.6, alpha: 1)
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
+            let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass)
+        else {
             throw TestHelperError.noDevice
         }
         encoder.endEncoding()
@@ -94,8 +96,11 @@ struct VignetteEffectTests {
         #expect(after > before * 0.6)
 
         // 中央は素通しのまま、隅だけが落ちる。
-        #expect(pixel(vignetted, x: center.x, y: center.y) == pixel(untouched, x: center.x, y: center.y))
-        #expect(pixel(vignetted, x: corner.x, y: corner.y) < pixel(untouched, x: corner.x, y: corner.y))
+        #expect(
+            pixel(vignetted, x: center.x, y: center.y) == pixel(untouched, x: center.x, y: center.y)
+        )
+        #expect(
+            pixel(vignetted, x: corner.x, y: corner.y) < pixel(untouched, x: corner.x, y: corner.y))
     }
 
     // MARK: - 強度として単調
@@ -127,7 +132,8 @@ struct VignetteEffectTests {
         var sum = 0.0
         var count = 0
         for i in stride(from: 0, to: image.rgba.count, by: 4) {
-            sum += 0.2126 * Double(image.rgba[i])
+            sum +=
+                0.2126 * Double(image.rgba[i])
                 + 0.7152 * Double(image.rgba[i + 1])
                 + 0.0722 * Double(image.rgba[i + 2])
             count += 1

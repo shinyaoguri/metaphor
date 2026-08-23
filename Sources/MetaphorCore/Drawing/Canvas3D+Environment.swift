@@ -92,9 +92,10 @@ extension Canvas3D {
     func ensureSkyboxDrawn() {
         guard !skyboxDrawnThisFrame else { return }
         guard let environment = environment,
-              environmentShowsBackground,
-              environmentIntensity > 0,
-              let encoder = encoder else { return }
+            environmentShowsBackground,
+            environmentIntensity > 0,
+            let encoder = encoder
+        else { return }
 
         skyboxDrawnThisFrame = true
 
@@ -138,7 +139,8 @@ extension Canvas3D {
                 try shaderLibrary.register(source: source, as: key)
             }
             guard let vertexFn = shaderLibrary.function(named: "metaphor_skyboxVertex", from: key),
-                  let fragmentFn = shaderLibrary.function(named: "metaphor_skyboxFragment", from: key) else {
+                let fragmentFn = shaderLibrary.function(named: "metaphor_skyboxFragment", from: key)
+            else {
                 throw MetaphorError.shaderNotFound("metaphor_skyboxVertex/Fragment")
             }
 

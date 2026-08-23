@@ -17,9 +17,13 @@ extension Canvas3D {
         // 寸法入りキー（"box_w_h_d"）だと box(sin(t)*100) のような寸法アニメーションで
         // 毎フレーム新規メッシュ生成 + キャッシュ追い出しが起きる。法線は
         // normalMatrix（逆転置）で補正されるため非一様スケールでも正しい。
-        guard let mesh = cachedMesh(key: "box_unit", create: {
-            try Mesh.box(device: device, width: 1, height: 1, depth: 1)
-        }) else { return }
+        guard
+            let mesh = cachedMesh(
+                key: "box_unit",
+                create: {
+                    try Mesh.box(device: device, width: 1, height: 1, depth: 1)
+                })
+        else { return }
         drawMeshScaled(mesh, scale: SIMD3(width, height, depth))
     }
 
@@ -37,9 +41,13 @@ extension Canvas3D {
         let rings = max(detail / 2, 4)
         // 半径はモデル変換へ畳み込み、キーはテッセレーション詳細度のみにする
         let key = "sphere_unit_\(detail)_\(rings)"
-        guard let mesh = cachedMesh(key: key, create: {
-            try Mesh.sphere(device: device, radius: 1, segments: detail, rings: rings)
-        }) else { return }
+        guard
+            let mesh = cachedMesh(
+                key: key,
+                create: {
+                    try Mesh.sphere(device: device, radius: 1, segments: detail, rings: rings)
+                })
+        else { return }
         drawMeshScaled(mesh, scale: SIMD3(repeating: radius))
     }
 
@@ -49,9 +57,13 @@ extension Canvas3D {
     ///   - width: 平面の幅。
     ///   - height: 平面の高さ。
     public func plane(_ width: Float, _ height: Float) {
-        guard let mesh = cachedMesh(key: "plane_unit", create: {
-            try Mesh.plane(device: device, width: 1, height: 1)
-        }) else { return }
+        guard
+            let mesh = cachedMesh(
+                key: "plane_unit",
+                create: {
+                    try Mesh.plane(device: device, width: 1, height: 1)
+                })
+        else { return }
         drawMeshScaled(mesh, scale: SIMD3(width, height, 1))
     }
 
@@ -63,9 +75,13 @@ extension Canvas3D {
     ///   - detail: 放射方向のセグメント数。
     public func cylinder(radius: Float, height: Float, detail: Int = 24) {
         let key = "cylinder_unit_\(detail)"
-        guard let mesh = cachedMesh(key: key, create: {
-            try Mesh.cylinder(device: device, radius: 1, height: 1, segments: detail)
-        }) else { return }
+        guard
+            let mesh = cachedMesh(
+                key: key,
+                create: {
+                    try Mesh.cylinder(device: device, radius: 1, height: 1, segments: detail)
+                })
+        else { return }
         drawMeshScaled(mesh, scale: SIMD3(radius, height, radius))
     }
 
@@ -77,9 +93,13 @@ extension Canvas3D {
     ///   - detail: 放射方向のセグメント数。
     public func cone(radius: Float, height: Float, detail: Int = 24) {
         let key = "cone_unit_\(detail)"
-        guard let mesh = cachedMesh(key: key, create: {
-            try Mesh.cone(device: device, radius: 1, height: 1, segments: detail)
-        }) else { return }
+        guard
+            let mesh = cachedMesh(
+                key: key,
+                create: {
+                    try Mesh.cone(device: device, radius: 1, height: 1, segments: detail)
+                })
+        else { return }
         drawMeshScaled(mesh, scale: SIMD3(radius, height, radius))
     }
 
@@ -92,7 +112,15 @@ extension Canvas3D {
     public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) {
         let tubeDetail = max(detail / 2, 8)
         let key = "torus_\(ringRadius)_\(tubeRadius)_\(detail)_\(tubeDetail)"
-        guard let mesh = cachedMesh(key: key, create: { try Mesh.torus(device: device, ringRadius: ringRadius, tubeRadius: tubeRadius, segments: detail, tubeSegments: tubeDetail) }) else { return }
+        guard
+            let mesh = cachedMesh(
+                key: key,
+                create: {
+                    try Mesh.torus(
+                        device: device, ringRadius: ringRadius, tubeRadius: tubeRadius,
+                        segments: detail, tubeSegments: tubeDetail)
+                })
+        else { return }
         drawMesh(mesh)
     }
 
@@ -234,9 +262,11 @@ extension Canvas3D {
     private func drawMeshScaled(_ mesh: Mesh, scale: SIMD3<Float>) {
         func safe(_ v: Float) -> Float { v == 0 ? 1e-6 : v }
         let saved = currentTransform
-        currentTransform = currentTransform * float4x4(
-            scale: SIMD3(safe(scale.x), safe(scale.y), safe(scale.z))
-        )
+        currentTransform =
+            currentTransform
+            * float4x4(
+                scale: SIMD3(safe(scale.x), safe(scale.y), safe(scale.z))
+            )
         drawMesh(mesh)
         currentTransform = saved
     }
@@ -283,7 +313,8 @@ extension Canvas3D {
 
         mesh.ensureBuffers()
         guard let encoder = encoder,
-              let vb = mesh.vertexBuffer else { return }
+            let vb = mesh.vertexBuffer
+        else { return }
 
         ensureSkyboxDrawn()
 
@@ -319,15 +350,19 @@ extension Canvas3D {
                 hasTexture: isTextured ? 1 : 0
             )
 
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             if lightArray.isEmpty {
                 var dummy = Light3D.zero
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
             } else {
                 lightArray.withUnsafeBufferPointer { ptr in
-                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                    encoder.setFragmentBytes(
+                        ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2
+                    )
                 }
             }
 
@@ -346,7 +381,8 @@ extension Canvas3D {
                     indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0
                 )
             } else {
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
+                encoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
             }
         }
 
@@ -370,8 +406,10 @@ extension Canvas3D {
                 hasTexture: 0
             )
 
-            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             var dummy = Light3D.zero
             encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -389,7 +427,8 @@ extension Canvas3D {
                     indexType: .uint32, indexBuffer: ib, indexBufferOffset: 0
                 )
             } else {
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
+                encoder.drawPrimitives(
+                    type: .triangle, vertexStart: 0, vertexCount: mesh.vertexCount)
             }
             Canvas3D.endStrokeDepthBias(on: encoder)
 
@@ -398,7 +437,6 @@ extension Canvas3D {
     }
 
     // MARK: - メッシュキャッシュ
-
 
     /// メッシュキャッシュをクリアし、キャッシュ済みの GPU メッシュバッファをすべて解放します。
     public func clearMeshCache() {

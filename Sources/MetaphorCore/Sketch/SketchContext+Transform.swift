@@ -18,7 +18,9 @@ extension SketchContext {
     /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
     ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
     ///   フラグメント関数が見つからない場合は ``MetaphorError/shaderNotFound(_:)``。
-    public func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect {
+    public func createPostEffect(name: String, source: String, fragmentFunction: String) throws
+        -> CustomPostEffect
+    {
         let key = "user.posteffect.\(name)"
         try renderer.shaderLibrary.register(source: PostEffectSource.complete(source), as: key)
         guard renderer.shaderLibrary.function(named: fragmentFunction, from: key) != nil else {

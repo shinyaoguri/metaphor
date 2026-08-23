@@ -2,6 +2,7 @@
 ///
 /// プラットフォーム固有の UI 型をライブラリ全体で使用される統一名にマッピングします。
 import AppKit
+
 /// プラットフォームネイティブのビュー型（macOS では NSView）。
 public typealias PlatformView = NSView
 /// プラットフォームネイティブのフォント型（macOS では NSFont）。

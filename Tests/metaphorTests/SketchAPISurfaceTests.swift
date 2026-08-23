@@ -1,11 +1,12 @@
-import Testing
-import Metal
 import Foundation
+import Metal
+import MetaphorTestSupport
+import Testing
 import os
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
-import MetaphorTestSupport
+@testable import metaphor
 
 // このファイルは公開 API の中心である `Sources/MetaphorCore/Sketch/`
 // （SketchConfig / SketchRunner / ライフサイクル / イベント配送 / 二層 API）の
@@ -292,8 +293,9 @@ struct SketchLifecycleTests {
         harness.renderer.renderFrame()
         harness.renderer.renderFrame()
 
-        #expect(sketch.log == ["setup", "compute", "draw", "compute", "draw"],
-                "setup() は最初のフレームより前に 1 回だけ、以降は毎フレーム compute → draw の順に 1 回ずつ: \(sketch.log)")
+        #expect(
+            sketch.log == ["setup", "compute", "draw", "compute", "draw"],
+            "setup() は最初のフレームより前に 1 回だけ、以降は毎フレーム compute → draw の順に 1 回ずつ: \(sketch.log)")
     }
 
     @Test("frameCount は draw の入口で加算され compute からは前フレーム値が見える")
@@ -306,10 +308,12 @@ struct SketchLifecycleTests {
         harness.renderer.renderFrame()
 
         // compute は beginFrame より前なので「まだ加算されていない」値を見る。
-        #expect(sketch.frameCountAtCompute == [0, 1],
-                "compute は前フレームまでの frameCount を見る: \(sketch.frameCountAtCompute)")
-        #expect(sketch.frameCountAtDraw == [1, 2],
-                "draw は加算後の frameCount を見る: \(sketch.frameCountAtDraw)")
+        #expect(
+            sketch.frameCountAtCompute == [0, 1],
+            "compute は前フレームまでの frameCount を見る: \(sketch.frameCountAtCompute)")
+        #expect(
+            sketch.frameCountAtDraw == [1, 2],
+            "draw は加算後の frameCount を見る: \(sketch.frameCountAtDraw)")
         #expect(harness.context.frameCount == 2)
     }
 
@@ -327,15 +331,18 @@ struct SketchLifecycleTests {
         for i in 0..<2 {
             // prevTime を更新するのは draw だけ。compute が更新すると draw の
             // deltaTime が 0 に潰れる（この不変条件を固定する）。
-            #expect(sketch.clockAtCompute[i].time == sketch.clockAtDraw[i].time,
-                    "frame \(i): time が compute/draw で一致すべき")
-            #expect(sketch.clockAtCompute[i].delta == sketch.clockAtDraw[i].delta,
-                    "frame \(i): deltaTime が compute/draw で一致すべき")
+            #expect(
+                sketch.clockAtCompute[i].time == sketch.clockAtDraw[i].time,
+                "frame \(i): time が compute/draw で一致すべき")
+            #expect(
+                sketch.clockAtCompute[i].delta == sketch.clockAtDraw[i].delta,
+                "frame \(i): deltaTime が compute/draw で一致すべき")
         }
         // 2 フレーム目の deltaTime は 1 フレーム目の time との差（累積時刻ではない）。
         let expectedDelta = sketch.clockAtDraw[1].time - sketch.clockAtDraw[0].time
-        #expect(abs(sketch.clockAtDraw[1].delta - expectedDelta) < 1e-4,
-                "2 フレーム目の deltaTime は前フレームからの差分: \(sketch.clockAtDraw[1].delta) vs \(expectedDelta)")
+        #expect(
+            abs(sketch.clockAtDraw[1].delta - expectedDelta) < 1e-4,
+            "2 フレーム目の deltaTime は前フレームからの差分: \(sketch.clockAtDraw[1].delta) vs \(expectedDelta)")
     }
 
     @Test("setup() 内の noLoop() は起動前にループ停止状態を確定する")
@@ -399,8 +406,9 @@ struct SketchLifecycleTests {
         sketch.frameRate(0)
         sketch.frameRate(-5)
 
-        #expect(harness.frameRateCalls == [24, 120, 0, -5],
-                "値も順序も加工されずに届く: \(harness.frameRateCalls)")
+        #expect(
+            harness.frameRateCalls == [24, 120, 0, -5],
+            "値も順序も加工されずに届く: \(harness.frameRateCalls)")
     }
 
     // 回帰テスト(#358): handleFrameRate のクランプ(max(fps, 1))が以前はタイマー経路の
@@ -418,8 +426,9 @@ struct SketchLifecycleTests {
 
         runner.handleFrameRate(0)
         #expect(runner.renderer?.targetFPS == 1, "targetFPS は 1 にクランプされるべき")
-        #expect(runner.mtkView?.preferredFramesPerSecond == 1,
-                "MTKView.preferredFramesPerSecond も 1 にクランプされるべき")
+        #expect(
+            runner.mtkView?.preferredFramesPerSecond == 1,
+            "MTKView.preferredFramesPerSecond も 1 にクランプされるべき")
 
         runner.handleFrameRate(-5)
         #expect(runner.renderer?.targetFPS == 1)
@@ -459,8 +468,9 @@ struct SketchLifecycleTests {
 
         runner.handleLoop()
 
-        #expect(runner.frameClock.previousTime >= 5.0,
-                "起点が 0 のままだと、再開後の最初の deltaTime に 5 秒が乗る")
+        #expect(
+            runner.frameClock.previousTime >= 5.0,
+            "起点が 0 のままだと、再開後の最初の deltaTime に 5 秒が乗る")
         // 再開直後のフレーム（1/60 秒後）の deltaTime は 1 フレームぶんに収まる。
         let firstFrameDelta = runner.frameClock.advance(to: elapsedAtResume + 1.0 / 60)
         #expect(firstFrameDelta < 0.1, "実測 \(firstFrameDelta)s: 止めていた時間が乗っている")
@@ -479,9 +489,9 @@ struct SketchLifecycleTests {
         )
         #expect(context.isLooping)
 
-        context.redraw()          // onRedraw 未設定
-        context.frameRate(30)     // onFrameRate 未設定
-        context.noLoop()          // onNoLoop 未設定
+        context.redraw()  // onRedraw 未設定
+        context.frameRate(30)  // onFrameRate 未設定
+        context.noLoop()  // onNoLoop 未設定
         #expect(!context.isLooping, "コールバックが無くても状態は遷移する")
         context.loop()
         #expect(context.isLooping)
@@ -547,8 +557,9 @@ struct SketchConfigReflectionTests {
         // タイマーモードへの自動切替を判断する。
         #expect(RenderLoopMode.displayLink == .displayLink)
         #expect(RenderLoopMode.timer(fps: 60) != .displayLink)
-        #expect(RenderLoopMode.timer(fps: 30) != RenderLoopMode.timer(fps: 60),
-                "associated value の違いが等価性に効く")
+        #expect(
+            RenderLoopMode.timer(fps: 30) != RenderLoopMode.timer(fps: 60),
+            "associated value の違いが等価性に効く")
         #expect(RenderLoopMode.timer(fps: 30) == RenderLoopMode.timer(fps: 30))
     }
 
@@ -615,8 +626,9 @@ struct SketchConfigRendererTests {
             sketch: RecordingSketch(),
             config: SketchConfig(width: 64, height: 64, msaa: target)
         )
-        #expect(harness.renderer.textureManager.sampleCount == 1,
-                "非対応の msaa=\(target) は 1 へフォールバック")
+        #expect(
+            harness.renderer.textureManager.sampleCount == 1,
+            "非対応の msaa=\(target) は 1 へフォールバック")
     }
 
     @Test("config.plugins は setup() より前に登録され plugin(id:) で引ける")
@@ -631,8 +643,9 @@ struct SketchConfigRendererTests {
         let harness = try SketchRunnerHarness(sketch: sketch)
         harness.start(plugins: [PluginFactory { MockPlugin(id: "config-plugin") }])
 
-        #expect(pluginIDInSetup == "config-plugin",
-                "setup() 内でプラグインが解決できるべき: \(String(describing: pluginIDInSetup))")
+        #expect(
+            pluginIDInSetup == "config-plugin",
+            "setup() 内でプラグインが解決できるべき: \(String(describing: pluginIDInSetup))")
 
         let registered = try #require(
             harness.renderer.plugin(id: "config-plugin") as? MockPlugin
@@ -652,7 +665,9 @@ struct SketchInputDispatchTests {
     /// 入力注入プラグインを配線したハーネスを作る。
     private func makeInjectedHarness(
         _ lines: [String]
-    ) throws -> (harness: SketchRunnerHarness, sketch: RecordingSketch, plugin: InputInjectionPlugin) {
+    ) throws -> (
+        harness: SketchRunnerHarness, sketch: RecordingSketch, plugin: InputInjectionPlugin
+    ) {
         let sketch = RecordingSketch()
         let harness = try SketchRunnerHarness(sketch: sketch)
         harness.connectInput()
@@ -667,13 +682,14 @@ struct SketchInputDispatchTests {
     func mouseDownUpDeliversClick() throws {
         let (harness, sketch, plugin) = try makeInjectedHarness([
             #"{"t":"mouseDown","x":12.0,"y":34.0,"button":0}"#,
-            #"{"t":"mouseUp","x":12.0,"y":34.0,"button":0}"#
+            #"{"t":"mouseUp","x":12.0,"y":34.0,"button":0}"#,
         ])
         pumpInjection(harness.renderer, plugin, until: { sketch.log.contains("mouseClicked") })
 
         let events = sketch.log.filter { $0.hasPrefix("mouse") }
-        #expect(events == ["mousePressed", "mouseReleased", "mouseClicked"],
-                "ドラッグなしの押下→解放はクリックを生む: \(events)")
+        #expect(
+            events == ["mousePressed", "mouseReleased", "mouseClicked"],
+            "ドラッグなしの押下→解放はクリックを生む: \(events)")
         #expect(sketch.mouseX == 12)
         #expect(sketch.mouseY == 34)
     }
@@ -683,13 +699,14 @@ struct SketchInputDispatchTests {
         let (harness, sketch, plugin) = try makeInjectedHarness([
             #"{"t":"mouseDown","x":10.0,"y":10.0,"button":0}"#,
             #"{"t":"mouseDrag","x":40.0,"y":50.0}"#,
-            #"{"t":"mouseUp","x":40.0,"y":50.0,"button":0}"#
+            #"{"t":"mouseUp","x":40.0,"y":50.0,"button":0}"#,
         ])
         pumpInjection(harness.renderer, plugin, until: { sketch.log.contains("mouseReleased") })
 
         let events = sketch.log.filter { $0.hasPrefix("mouse") }
-        #expect(events == ["mousePressed", "mouseDragged", "mouseReleased"],
-                "ドラッグ後の解放はクリック扱いにしない: \(events)")
+        #expect(
+            events == ["mousePressed", "mouseDragged", "mouseReleased"],
+            "ドラッグ後の解放はクリック扱いにしない: \(events)")
         #expect(!sketch.log.contains("mouseClicked"))
     }
 
@@ -715,8 +732,9 @@ struct SketchInputDispatchTests {
         ])
         pumpInjection(harness.renderer, plugin, until: { sketch.log.contains("keyPressed") })
 
-        #expect(sketch.log.filter { $0.hasPrefix("key") } == ["keyPressed"],
-                "機能キーで keyTyped は呼ばれない: \(sketch.log)")
+        #expect(
+            sketch.log.filter { $0.hasPrefix("key") } == ["keyPressed"],
+            "機能キーで keyTyped は呼ばれない: \(sketch.log)")
         #expect(sketch.isKeyDown(126))
     }
 
@@ -724,7 +742,7 @@ struct SketchInputDispatchTests {
     func keyUpReleasesKey() throws {
         let (harness, sketch, plugin) = try makeInjectedHarness([
             #"{"t":"keyDown","code":49,"chars":" ","repeat":false}"#,
-            #"{"t":"keyUp","code":49}"#
+            #"{"t":"keyUp","code":49}"#,
         ])
         pumpInjection(harness.renderer, plugin, until: { sketch.log.contains("keyReleased") })
 
@@ -736,7 +754,7 @@ struct SketchInputDispatchTests {
     func scrollAccumulatesWithinFrame() throws {
         let (harness, sketch, plugin) = try makeInjectedHarness([
             #"{"t":"scroll","dx":1.0,"dy":-2.0}"#,
-            #"{"t":"scroll","dx":2.0,"dy":-3.0}"#
+            #"{"t":"scroll","dx":2.0,"dy":-3.0}"#,
         ])
         pumpInjection(harness.renderer, plugin, until: { sketch.scrollY == -5 })
 
@@ -755,7 +773,7 @@ struct SketchInputDispatchTests {
         // 境界: x/y/button を省略しても落とさず 0 として扱う（CONTRACT の既定値）。
         let (harness, sketch, plugin) = try makeInjectedHarness([
             #"{"t":"mouseMove","x":80.0,"y":90.0}"#,
-            #"{"t":"mouseDown"}"#
+            #"{"t":"mouseDown"}"#,
         ])
         pumpInjection(harness.renderer, plugin, until: { sketch.log.contains("mousePressed") })
 
@@ -775,8 +793,9 @@ struct SketchInputDispatchTests {
         harness.renderer.input.handleFileDrop(paths: ["/tmp/a.png", "/tmp/b.png"])
 
         #expect(sketch.log.contains("fileDropped"))
-        #expect(sketch.droppedPaths == [["/tmp/a.png", "/tmp/b.png"]],
-                "配列の内容と順序がそのまま届く: \(sketch.droppedPaths)")
+        #expect(
+            sketch.droppedPaths == [["/tmp/a.png", "/tmp/b.png"]],
+            "配列の内容と順序がそのまま届く: \(sketch.droppedPaths)")
     }
 
     @Test("detach 後に溜まったイベントを pre() で捌いてもクラッシュしない")
@@ -798,7 +817,7 @@ struct SketchInputDispatchTests {
 
         plugin.onDetach()
         let cb = try #require(renderer.commandQueue.makeCommandBuffer())
-        plugin.pre(commandBuffer: cb, time: 0)   // renderer は nil
+        plugin.pre(commandBuffer: cb, time: 0)  // renderer は nil
         cb.commit()
         #expect(renderer.input.mouseX == 0, "detach 済みのプラグインは入力へ届かない")
     }
@@ -825,8 +844,9 @@ struct SketchInputDispatchTests {
         harness.renderer.renderFrame()
 
         let seen = sketch.mouseAtDraw.map { [$0.pmouse, $0.mouse] }
-        #expect(seen == [[0, 10], [10, 30], [30, 60]],
-                "各フレームの pmouse は直前フレームの mouse: \(seen)")
+        #expect(
+            seen == [[0, 10], [10, 30], [30, 60]],
+            "各フレームの pmouse は直前フレームの mouse: \(seen)")
     }
 
     @Test("pmouse は draw から見て 1 フレーム前を指す（イベントがフレーム頭の前に届く経路）")
@@ -846,8 +866,9 @@ struct SketchInputDispatchTests {
         harness.renderer.renderFrame()
 
         let seen = sketch.mouseAtDraw.map { [$0.pmouse, $0.mouse] }
-        #expect(seen == [[10, 10], [10, 30], [30, 60]],
-                "1 フレーム目は前フレームが無いので pmouse == mouse: \(seen)")
+        #expect(
+            seen == [[10, 10], [10, 30], [30, 60]],
+            "1 フレーム目は前フレームが無いので pmouse == mouse: \(seen)")
     }
 }
 
@@ -987,8 +1008,9 @@ struct TwoLayerSymmetryTests {
 
         h.sketch.tint(255, 128, 0)
         #expect(h.context.canvas.hasTint)
-        #expect(abs(h.context.canvas.tintColor.y - 128.0 / 255) < 1e-5,
-                "第 2 チャンネルが G に入る")
+        #expect(
+            abs(h.context.canvas.tintColor.y - 128.0 / 255) < 1e-5,
+            "第 2 チャンネルが G に入る")
 
         h.sketch.noTint()
         #expect(!h.context.canvas.hasTint)
@@ -1024,7 +1046,7 @@ struct TwoLayerSymmetryTests {
 
         h.sketch.push()
         h.sketch.translate(11, 22)
-        h.sketch.translate(1, 2, 3)   // 3D 側
+        h.sketch.translate(1, 2, 3)  // 3D 側
         #expect(h.context.canvas.currentTransform != base2D)
         #expect(h.context.canvas3D.currentTransform != base3D)
 
@@ -1170,7 +1192,9 @@ struct SketchFailureModeTests {
         if case .int(let n) = snapshot["particles.count"] {
             #expect(n == 3)
         } else {
-            Issue.record("particles.count が Int として記録されていない: \(String(describing: snapshot["particles.count"]))")
+            Issue.record(
+                "particles.count が Int として記録されていない: \(String(describing: snapshot["particles.count"]))"
+            )
         }
         if case .string(let s) = snapshot["phase"] {
             #expect(s == "warmup")

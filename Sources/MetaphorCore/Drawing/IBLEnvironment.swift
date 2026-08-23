@@ -79,7 +79,8 @@ final class IBLEnvironment {
         let key = CacheKey(device: ObjectIdentifier(device), preset: preset.rawValue)
         if let cached = cache[key] { return cached }
 
-        let environment = try IBLEnvironment(preset: preset, device: device, shaderLibrary: shaderLibrary)
+        let environment = try IBLEnvironment(
+            preset: preset, device: device, shaderLibrary: shaderLibrary)
         cache[key] = environment
         return environment
     }
@@ -91,7 +92,8 @@ final class IBLEnvironment {
 
     // MARK: - Initialization
 
-    private init(preset: EnvironmentPreset, device: MTLDevice, shaderLibrary: ShaderLibrary) throws {
+    private init(preset: EnvironmentPreset, device: MTLDevice, shaderLibrary: ShaderLibrary) throws
+    {
         self.preset = preset
 
         self.environmentTexture = try Self.makeCube(
@@ -123,7 +125,8 @@ final class IBLEnvironment {
         // ベイクは 1 プリセットにつき 1 回きりなので、毎フレームの compute フェーズには
         // 相乗りせず専用のコマンドバッファで完了まで待つ（環境が揃う前に描き始めない）。
         guard let queue = device.makeCommandQueue(),
-              let commandBuffer = queue.makeCommandBuffer() else {
+            let commandBuffer = queue.makeCommandBuffer()
+        else {
             throw MetaphorError.commandQueueCreationFailed
         }
         commandBuffer.label = "IBL Bake (\(preset))"
@@ -232,12 +235,14 @@ final class IBLEnvironment {
     /// compute から `texturecube` へ直接書く代わりに、`texture2d_array<access::write>`
     /// として書き込むための入り口。
     private static func arrayView(of texture: MTLTexture, level: Int) throws -> MTLTexture {
-        guard let view = texture.makeTextureView(
-            pixelFormat: texture.pixelFormat,
-            textureType: .type2DArray,
-            levels: level..<(level + 1),
-            slices: 0..<6
-        ) else {
+        guard
+            let view = texture.makeTextureView(
+                pixelFormat: texture.pixelFormat,
+                textureType: .type2DArray,
+                levels: level..<(level + 1),
+                slices: 0..<6
+            )
+        else {
             let size = max(texture.width >> level, 1)
             throw MetaphorError.textureCreationFailed(
                 width: size, height: size, format: "ibl_cube_array_view")
@@ -267,7 +272,8 @@ final class IBLEnvironment {
         descriptor.storageMode = .private
 
         guard let texture = device.makeTexture(descriptor: descriptor) else {
-            throw MetaphorError.textureCreationFailed(width: size, height: size, format: "rgba16Float_cube")
+            throw MetaphorError.textureCreationFailed(
+                width: size, height: size, format: "rgba16Float_cube")
         }
         texture.label = label
         return texture
@@ -296,7 +302,8 @@ final class IBLEnvironment {
         descriptor.storageMode = .private
 
         guard let texture = device.makeTexture(descriptor: descriptor) else {
-            throw MetaphorError.textureCreationFailed(width: 1, height: 1, format: "rgba16Float_cube")
+            throw MetaphorError.textureCreationFailed(
+                width: 1, height: 1, format: "rgba16Float_cube")
         }
         texture.label = "IBL Dummy Cube"
         return texture

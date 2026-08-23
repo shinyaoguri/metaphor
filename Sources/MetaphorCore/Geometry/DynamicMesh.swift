@@ -61,11 +61,12 @@ public final class DynamicMesh {
 
     /// 指定位置に頂点を追加します。
     public func addVertex(_ position: SIMD3<Float>) {
-        vertices.append(Vertex3D(
-            position: position,
-            normal: pendingNormal,
-            color: pendingColor
-        ))
+        vertices.append(
+            Vertex3D(
+                position: position,
+                normal: pendingNormal,
+                color: pendingColor
+            ))
         uvs.append(pendingUV)
         verticesDirty = true
         uvDirty = true
@@ -217,10 +218,13 @@ public final class DynamicMesh {
 
         var newVertexBuffer = cachedVertexBuffer
         if verticesDirty || newVertexBuffer == nil {
-            guard let vb = vertices.withUnsafeBytes({ raw in
-                vertexRing.update(device: device, bytes: raw)
-            }) else {
-                dropCaches("DynamicMesh: Failed to allocate vertex buffer (\(vertices.count) vertices)")
+            guard
+                let vb = vertices.withUnsafeBytes({ raw in
+                    vertexRing.update(device: device, bytes: raw)
+                })
+            else {
+                dropCaches(
+                    "DynamicMesh: Failed to allocate vertex buffer (\(vertices.count) vertices)")
                 return
             }
             newVertexBuffer = vb
@@ -231,10 +235,13 @@ public final class DynamicMesh {
             if indices.isEmpty {
                 newIndexBuffer = nil
             } else {
-                guard let ib = indices.withUnsafeBytes({ raw in
-                    indexRing.update(device: device, bytes: raw)
-                }) else {
-                    dropCaches("DynamicMesh: Failed to allocate index buffer (\(indices.count) indices)")
+                guard
+                    let ib = indices.withUnsafeBytes({ raw in
+                        indexRing.update(device: device, bytes: raw)
+                    })
+                else {
+                    dropCaches(
+                        "DynamicMesh: Failed to allocate index buffer (\(indices.count) indices)")
                     return
                 }
                 newIndexBuffer = ib
@@ -244,11 +251,14 @@ public final class DynamicMesh {
         var newUVVertexBuffer = cachedUVVertexBuffer
         if uvDirty || (newUVVertexBuffer == nil && hasExplicitUV) {
             if let uvVertices = makeUVVertices() {
-                guard let uvb = uvVertices.withUnsafeBytes({ raw in
-                    uvRing.update(device: device, bytes: raw)
-                }) else {
+                guard
+                    let uvb = uvVertices.withUnsafeBytes({ raw in
+                        uvRing.update(device: device, bytes: raw)
+                    })
+                else {
                     dropCaches(
-                        "DynamicMesh: Failed to allocate UV vertex buffer (\(uvVertices.count) vertices)")
+                        "DynamicMesh: Failed to allocate UV vertex buffer (\(uvVertices.count) vertices)"
+                    )
                     return
                 }
                 newUVVertexBuffer = uvb
@@ -283,9 +293,11 @@ public final class DynamicMesh {
         guard !vertices.isEmpty else { return nil }
         let uvVertices = makeUVVertices()
         if indices.isEmpty {
-            return try? Mesh(device: device, vertices: vertices, indices: nil, uvVertices: uvVertices)
+            return try? Mesh(
+                device: device, vertices: vertices, indices: nil, uvVertices: uvVertices)
         }
-        return try? Mesh(device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
+        return try? Mesh(
+            device: device, vertices: vertices, indices32: indices, uvVertices: uvVertices)
     }
 
     /// このメッシュが UV 座標を持つかどうか。
@@ -334,9 +346,11 @@ private struct BufferRing {
             return existing
         }
 
-        guard let buffer = device.makeBuffer(
-            bytes: base, length: bytes.count, options: .storageModeShared
-        ) else {
+        guard
+            let buffer = device.makeBuffer(
+                bytes: base, length: bytes.count, options: .storageModeShared
+            )
+        else {
             return nil
         }
         buffers[slot] = buffer

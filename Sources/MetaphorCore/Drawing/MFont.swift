@@ -62,8 +62,9 @@ enum FontRegistry {
         }
 
         // 記述子は登録前でも読める。ここで名前が取れないファイルはフォントではない。
-        guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL)
-            as? [CTFontDescriptor], !descriptors.isEmpty
+        guard
+            let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL)
+                as? [CTFontDescriptor], !descriptors.isEmpty
         else {
             throw MetaphorError.font(.noFontsInFile(path: path))
         }

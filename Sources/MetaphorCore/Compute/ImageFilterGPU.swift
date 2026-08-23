@@ -105,9 +105,10 @@ public final class ImageFilterGPU {
     /// （ユーザー由来のテクスチャを誤って共有しない）。
     private func recycleIntoPool(_ texture: MTLTexture, tag: String) {
         guard texture.storageMode == .private,
-              texture.pixelFormat == .bgra8Unorm,
-              texture.usage.contains(.shaderWrite),
-              texture.usage.contains(.shaderRead) else { return }
+            texture.pixelFormat == .bgra8Unorm,
+            texture.usage.contains(.shaderWrite),
+            texture.usage.contains(.shaderRead)
+        else { return }
         texturePool["\(texture.width)_\(texture.height)_\(tag)"] = texture
     }
 
@@ -133,19 +134,26 @@ public final class ImageFilterGPU {
         // MPS フィルターは専用の MPS パスに委譲
         switch filter {
         case .mpsBlur(let sigma):
-            applyMPS(image) { self.getOrCreateGaussian(sigma: sigma) }; return
+            applyMPS(image) { self.getOrCreateGaussian(sigma: sigma) }
+            return
         case .mpsSobel:
-            applyMPS(image) { self.getOrCreateSobel() }; return
+            applyMPS(image) { self.getOrCreateSobel() }
+            return
         case .mpsLaplacian:
-            applyMPS(image) { self.getOrCreateLaplacian() }; return
+            applyMPS(image) { self.getOrCreateLaplacian() }
+            return
         case .mpsErode(let radius):
-            applyMPS(image) { self.getOrCreateAreaMin(size: radius * 2 + 1) }; return
+            applyMPS(image) { self.getOrCreateAreaMin(size: radius * 2 + 1) }
+            return
         case .mpsDilate(let radius):
-            applyMPS(image) { self.getOrCreateAreaMax(size: radius * 2 + 1) }; return
+            applyMPS(image) { self.getOrCreateAreaMax(size: radius * 2 + 1) }
+            return
         case .mpsMedian(let diameter):
-            applyMPS(image) { self.getOrCreateMedian(diameter: diameter) }; return
+            applyMPS(image) { self.getOrCreateMedian(diameter: diameter) }
+            return
         case .mpsThreshold(let value):
-            applyMPS(image) { self.getOrCreateThreshold(value: value) }; return
+            applyMPS(image) { self.getOrCreateThreshold(value: value) }
+            return
         default:
             break
         }
@@ -154,9 +162,12 @@ public final class ImageFilterGPU {
 
         switch filter {
         case .blur(let radius):
-            applyGaussianBlur(src: srcTex, dst: outTex, radius: max(1, radius), width: w, height: h, externalCommandBuffer: nil)
+            applyGaussianBlur(
+                src: srcTex, dst: outTex, radius: max(1, radius), width: w, height: h,
+                externalCommandBuffer: nil)
         default:
-            applySinglePass(filter, src: srcTex, dst: outTex, width: w, height: h, externalCommandBuffer: nil)
+            applySinglePass(
+                filter, src: srcTex, dst: outTex, width: w, height: h, externalCommandBuffer: nil)
         }
 
         image.replaceTexture(outTex)
@@ -189,8 +200,11 @@ public final class ImageFilterGPU {
 
         // MPS フィルターは MPS カーネルを外部コマンドバッファへ直接エンコード
         if let mpsKernel = mpsKernel(for: filter) {
-            guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output") else { return }
-            mpsKernel.encode(commandBuffer: commandBuffer, sourceTexture: srcTex, destinationTexture: dst)
+            guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output") else {
+                return
+            }
+            mpsKernel.encode(
+                commandBuffer: commandBuffer, sourceTexture: srcTex, destinationTexture: dst)
             image.replaceTexture(dst)
             texturePool.removeValue(forKey: "\(w)_\(h)_mps_output")
             recycleIntoPool(srcTex, tag: "mps_output")
@@ -201,9 +215,13 @@ public final class ImageFilterGPU {
 
         switch filter {
         case .blur(let radius):
-            applyGaussianBlur(src: srcTex, dst: outTex, radius: max(1, radius), width: w, height: h, externalCommandBuffer: commandBuffer)
+            applyGaussianBlur(
+                src: srcTex, dst: outTex, radius: max(1, radius), width: w, height: h,
+                externalCommandBuffer: commandBuffer)
         default:
-            applySinglePass(filter, src: srcTex, dst: outTex, width: w, height: h, externalCommandBuffer: commandBuffer)
+            applySinglePass(
+                filter, src: srcTex, dst: outTex, width: w, height: h,
+                externalCommandBuffer: commandBuffer)
         }
 
         image.replaceTexture(outTex)
@@ -233,9 +251,11 @@ public final class ImageFilterGPU {
     /// レンダリングループ内では ``encode(_:to:commandBuffer:)`` を使うこと。
     private func applyMPS(_ image: MImage, kernel: () -> MPSUnaryImageKernel) {
         let src = image.texture
-        let w = src.width, h = src.height
+        let w = src.width
+        let h = src.height
         guard let dst = getOrCreateTexture(width: w, height: h, tag: "mps_output"),
-              let cb = commandQueue.makeCommandBuffer() else { return }
+            let cb = commandQueue.makeCommandBuffer()
+        else { return }
         kernel().encode(commandBuffer: cb, sourceTexture: src, destinationTexture: dst)
         cb.commit()
         cb.waitUntilCompleted()
@@ -288,7 +308,8 @@ public final class ImageFilterGPU {
 
     private func getOrCreateThreshold(value: Float) -> MPSImageThresholdBinary {
         if let cached = thresholdCache[value] { return cached }
-        let k = MPSImageThresholdBinary(device: device, thresholdValue: value, maximumValue: 1.0, linearGrayColorTransform: nil)
+        let k = MPSImageThresholdBinary(
+            device: device, thresholdValue: value, maximumValue: 1.0, linearGrayColorTransform: nil)
         thresholdCache[value] = k
         return k
     }
@@ -341,8 +362,9 @@ public final class ImageFilterGPU {
         externalCommandBuffer: MTLCommandBuffer?
     ) {
         guard let tempTex = getOrCreateTexture(width: width, height: height, tag: "blur_temp"),
-              let hPipeline = getOrCreatePipeline(functionName: "filter_gaussian_h"),
-              let vPipeline = getOrCreatePipeline(functionName: "filter_gaussian_v") else { return }
+            let hPipeline = getOrCreatePipeline(functionName: "filter_gaussian_h"),
+            let vPipeline = getOrCreatePipeline(functionName: "filter_gaussian_v")
+        else { return }
         let cb: MTLCommandBuffer
         if let ext = externalCommandBuffer {
             cb = ext
@@ -413,7 +435,9 @@ public final class ImageFilterGPU {
 
         // ShaderLibrary パス (metallib) をランタイムコンパイルより優先
         let function: MTLFunction?
-        if let fn = shaderLibrary?.function(named: functionName, from: ShaderLibrary.BuiltinKey.imageFilter) {
+        if let fn = shaderLibrary?.function(
+            named: functionName, from: ShaderLibrary.BuiltinKey.imageFilter)
+        {
             function = fn
         } else if let lib = ensureLibrary() {
             function = lib.makeFunction(name: functionName)
@@ -467,11 +491,13 @@ public final class ImageFilterGPU {
         }
         for i in 0..<size { weights[i] /= sum }
 
-        guard let buffer = device.makeBuffer(
-            bytes: weights,
-            length: weights.count * MemoryLayout<Float>.size,
-            options: .storageModeShared
-        ) else { return nil }
+        guard
+            let buffer = device.makeBuffer(
+                bytes: weights,
+                length: weights.count * MemoryLayout<Float>.size,
+                options: .storageModeShared
+            )
+        else { return nil }
 
         weightBufferCache[radius] = buffer
         return buffer

@@ -32,7 +32,7 @@ public struct NoiseGenerator: Sendable {
         if seed != 0 {
             var rng = seed
             for i in stride(from: 255, through: 1, by: -1) {
-                rng = rng &* 6364136223846793005 &+ 1442695040888963407
+                rng = rng &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
                 let j = Int(rng >> 33) % (i + 1)
                 base.swapAt(i, j)
             }

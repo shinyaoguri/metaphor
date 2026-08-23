@@ -123,8 +123,14 @@ extension Canvas2D {
 
         guard !shapeVertexList.isEmpty else { return }
 
-        let hasPerVertexColor = shapeVertexList.contains { if case .colored = $0 { return true }; return false }
-        let hasUV = shapeVertexList.contains { if case .textured = $0 { return true }; return false }
+        let hasPerVertexColor = shapeVertexList.contains {
+            if case .colored = $0 { return true }
+            return false
+        }
+        let hasUV = shapeVertexList.contains {
+            if case .textured = $0 { return true }
+            return false
+        }
 
         if hasPerVertexColor || hasUV {
             let exVerts = expandShapeVerticesEx()
@@ -233,18 +239,22 @@ extension Canvas2D {
             return result
         }
 
-        var lastX: Float = 0, lastY: Float = 0
+        var lastX: Float = 0
+        var lastY: Float = 0
         for v in shapeVertexList {
             switch v {
             case .normal(let x, let y):
                 result.append(ExpandedVertex(x: x, y: y))
-                lastX = x; lastY = y
+                lastX = x
+                lastY = y
             case .colored(let x, let y, let c):
                 result.append(ExpandedVertex(x: x, y: y, color: c))
-                lastX = x; lastY = y
+                lastX = x
+                lastY = y
             case .textured(let x, let y, let u, let v):
                 result.append(ExpandedVertex(x: x, y: y, u: u, v: v))
-                lastX = x; lastY = y
+                lastX = x
+                lastY = y
             case .bezier(let cx1, let cy1, let cx2, let cy2, let x, let y):
                 let segments = curveDetailCount
                 for step in 1...segments {
@@ -253,7 +263,8 @@ extension Canvas2D {
                     let py = bezierPoint(lastY, cy1, cy2, y, t)
                     result.append(ExpandedVertex(x: px, y: py))
                 }
-                lastX = x; lastY = y
+                lastX = x
+                lastY = y
             case .curve:
                 break
             }
@@ -337,7 +348,8 @@ extension Canvas2D {
     func drawTriangleStripShape(_ verts: [(Float, Float)]) {
         guard verts.count >= 3 else { return }
         for i in 0..<(verts.count - 2) {
-            let (a, b, c) = i % 2 == 0
+            let (a, b, c) =
+                i % 2 == 0
                 ? (verts[i], verts[i + 1], verts[i + 2])
                 : (verts[i + 1], verts[i], verts[i + 2])
 
@@ -409,13 +421,13 @@ extension Canvas2D {
         while i + 2 < verts.count {
             if hasFill {
                 addVertex(verts[i].x, verts[i].y, verts[i].color ?? fillColor)
-                addVertex(verts[i+1].x, verts[i+1].y, verts[i+1].color ?? fillColor)
-                addVertex(verts[i+2].x, verts[i+2].y, verts[i+2].color ?? fillColor)
+                addVertex(verts[i + 1].x, verts[i + 1].y, verts[i + 1].color ?? fillColor)
+                addVertex(verts[i + 2].x, verts[i + 2].y, verts[i + 2].color ?? fillColor)
             }
             if hasStroke {
-                strokeLine(verts[i].x, verts[i].y, verts[i+1].x, verts[i+1].y)
-                strokeLine(verts[i+1].x, verts[i+1].y, verts[i+2].x, verts[i+2].y)
-                strokeLine(verts[i+2].x, verts[i+2].y, verts[i].x, verts[i].y)
+                strokeLine(verts[i].x, verts[i].y, verts[i + 1].x, verts[i + 1].y)
+                strokeLine(verts[i + 1].x, verts[i + 1].y, verts[i + 2].x, verts[i + 2].y)
+                strokeLine(verts[i + 2].x, verts[i + 2].y, verts[i].x, verts[i].y)
             }
             i += 3
         }
@@ -424,7 +436,8 @@ extension Canvas2D {
     func drawTriangleStripShapeEx(_ verts: [ExpandedVertex]) {
         guard verts.count >= 3 else { return }
         for i in 0..<(verts.count - 2) {
-            let (a, b, c) = i % 2 == 0
+            let (a, b, c) =
+                i % 2 == 0
                 ? (verts[i], verts[i + 1], verts[i + 2])
                 : (verts[i + 1], verts[i], verts[i + 2])
             if hasFill {
@@ -446,11 +459,11 @@ extension Canvas2D {
             if hasFill {
                 addVertex(verts[0].x, verts[0].y, verts[0].color ?? fillColor)
                 addVertex(verts[i].x, verts[i].y, verts[i].color ?? fillColor)
-                addVertex(verts[i+1].x, verts[i+1].y, verts[i+1].color ?? fillColor)
+                addVertex(verts[i + 1].x, verts[i + 1].y, verts[i + 1].color ?? fillColor)
             }
             if hasStroke {
                 strokeLine(verts[0].x, verts[0].y, verts[i].x, verts[i].y)
-                strokeLine(verts[i].x, verts[i].y, verts[i+1].x, verts[i+1].y)
+                strokeLine(verts[i].x, verts[i].y, verts[i + 1].x, verts[i + 1].y)
             }
         }
         if hasStroke && verts.count >= 3 {

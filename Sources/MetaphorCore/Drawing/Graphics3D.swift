@@ -111,9 +111,11 @@ public final class Graphics3D {
         self.commandBuffer = cb
         self.drawTime = time
 
-        guard let enc = cb.makeRenderCommandEncoder(
-            descriptor: textureManager.renderPassDescriptor
-        ) else {
+        guard
+            let enc = cb.makeRenderCommandEncoder(
+                descriptor: textureManager.renderPassDescriptor
+            )
+        else {
             // commit して completed handler を発火させ、セマフォを返す
             cb.commit()
             self.commandBuffer = nil
@@ -234,9 +236,11 @@ public final class Graphics3D {
         canvas3D.end()
         enc.endEncoding()
         encoder = nil
-        guard let next = cb.makeRenderCommandEncoder(
-            descriptor: textureManager.renderPassDescriptor
-        ) else { return }
+        guard
+            let next = cb.makeRenderCommandEncoder(
+                descriptor: textureManager.renderPassDescriptor
+            )
+        else { return }
         encoder = next
         canvas3D.rebindEncoder(next)
     }
@@ -507,7 +511,9 @@ public final class Graphics3D {
     ///   - v2: 第2カラーチャンネル値。
     ///   - v3: 第3カラーチャンネル値。
     ///   - a: オプションのアルファ値。
-    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas3D.fill(v1, v2, v3, a) }
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas3D.fill(v1, v2, v3, a)
+    }
 
     /// 塗りつぶしをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
@@ -532,7 +538,9 @@ public final class Graphics3D {
     ///   - v2: 第2カラーチャンネル値。
     ///   - v3: 第3カラーチャンネル値。
     ///   - a: オプションのアルファ値。
-    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas3D.stroke(v1, v2, v3, a) }
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas3D.stroke(v1, v2, v3, a)
+    }
 
     /// ストロークをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
@@ -563,7 +571,9 @@ public final class Graphics3D {
     /// - Parameters:
     ///   - space: カラースペース。
     ///   - maxAll: 全チャンネルに適用される最大値。
-    public func colorMode(_ space: ColorSpace, _ maxAll: Float) { canvas3D.colorMode(space, maxAll) }
+    public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
+        canvas3D.colorMode(space, maxAll)
+    }
 
     // MARK: - Primitives
 
@@ -572,7 +582,9 @@ public final class Graphics3D {
     ///   - width: ボックスの幅。
     ///   - height: ボックスの高さ。
     ///   - depth: ボックスの奥行き。
-    public func box(_ width: Float, _ height: Float, _ depth: Float) { canvas3D.box(width, height, depth) }
+    public func box(_ width: Float, _ height: Float, _ depth: Float) {
+        canvas3D.box(width, height, depth)
+    }
 
     /// 均一なサイズでキューブを描画します。
     /// - Parameter size: 辺の長さ。
@@ -582,7 +594,9 @@ public final class Graphics3D {
     /// - Parameters:
     ///   - radius: 球体の半径。
     ///   - detail: テッセレーションの詳細レベル。
-    public func sphere(_ radius: Float, detail: Int = 24) { canvas3D.sphere(radius, detail: detail) }
+    public func sphere(_ radius: Float, detail: Int = 24) {
+        canvas3D.sphere(radius, detail: detail)
+    }
 
     /// 平面を描画します。
     /// - Parameters:
@@ -595,21 +609,27 @@ public final class Graphics3D {
     ///   - radius: シリンダーの半径。
     ///   - height: シリンダーの高さ。
     ///   - detail: テッセレーションの詳細レベル。
-    public func cylinder(radius: Float, height: Float, detail: Int = 24) { canvas3D.cylinder(radius: radius, height: height, detail: detail) }
+    public func cylinder(radius: Float, height: Float, detail: Int = 24) {
+        canvas3D.cylinder(radius: radius, height: height, detail: detail)
+    }
 
     /// コーンを描画します。
     /// - Parameters:
     ///   - radius: 底面の半径。
     ///   - height: コーンの高さ。
     ///   - detail: テッセレーションの詳細レベル。
-    public func cone(radius: Float, height: Float, detail: Int = 24) { canvas3D.cone(radius: radius, height: height, detail: detail) }
+    public func cone(radius: Float, height: Float, detail: Int = 24) {
+        canvas3D.cone(radius: radius, height: height, detail: detail)
+    }
 
     /// トーラスを描画します。
     /// - Parameters:
     ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
     ///   - tubeRadius: チューブの半径。
     ///   - detail: テッセレーションの詳細レベル。
-    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) { canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail) }
+    public func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24) {
+        canvas3D.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
+    }
 
     /// カスタムメッシュを描画します。
     /// - Parameter mesh: レンダリングするメッシュ。

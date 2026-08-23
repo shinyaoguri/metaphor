@@ -1,7 +1,8 @@
 import Foundation
-import Testing
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 /// `@Param` を宣言したスケッチ（`frame.json` の `params` 節の被写体）。
 @MainActor
@@ -142,7 +143,7 @@ struct ProbeParamsSectionTests {
             #expect(waitForFile(jsonURL))
             let json = try readJSON(jsonURL)
             #expect(json?["params"] == nil)
-            #expect(json?["schemaVersion"] as? Int == 4)   // additive なので版は据え置き
+            #expect(json?["schemaVersion"] as? Int == 4)  // additive なので版は据え置き
         }
     }
 

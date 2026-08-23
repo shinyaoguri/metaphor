@@ -1,8 +1,9 @@
-import Testing
 import Metal
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - ブレンドモードが結果のアルファに与える影響（#800）
 
@@ -57,8 +58,9 @@ struct BlendModeAlphaTests {
         for mode in BlendMode.allCases {
             let pg = try makeGraphics()
             let result = compose(dst: dst, src: src, mode: mode, in: pg)
-            #expect(result.a > 0.99,
-                    "\(mode) が不透明な領域のアルファを削っている (got \(result.a)) — #800")
+            #expect(
+                result.a > 0.99,
+                "\(mode) が不透明な領域のアルファを削っている (got \(result.a)) — #800")
         }
     }
 
@@ -78,8 +80,9 @@ struct BlendModeAlphaTests {
             in: pg
         )
         // 旧実装は 0.5 - 1.0 = 0（穴が開く）、#800 の手当てでは 0.5 のままだった
-        #expect(abs(result.a - 1.0) < 0.02,
-                "不透明な src を重ねたら結果も不透明 (got \(result.a)) — ADR-0012")
+        #expect(
+            abs(result.a - 1.0) < 0.02,
+            "不透明な src を重ねたら結果も不透明 (got \(result.a)) — ADR-0012")
     }
 
     /// RGB 側は従来どおり `dst - src`（#800 で変えていないことの固定）。

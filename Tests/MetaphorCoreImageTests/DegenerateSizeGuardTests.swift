@@ -1,6 +1,7 @@
-import Testing
 import Metal
 import MetaphorCore
+import Testing
+
 @testable import MetaphorCoreImage
 
 /// 幅・高さのどちらか (または両方) が 1 未満の、テクスチャを作れないサイズ。

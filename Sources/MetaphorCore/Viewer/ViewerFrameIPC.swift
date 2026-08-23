@@ -106,7 +106,7 @@ enum ViewerFrameIPC {
     /// 1 行をデコードする。不正な JSON / `t` 欠落は `nil`（呼び出し側は読み飛ばす）。
     static func decodeIncoming(_ line: String) -> Incoming? {
         guard let data = line.data(using: .utf8),
-              let raw = try? JSONDecoder().decode(RawIncoming.self, from: data)
+            let raw = try? JSONDecoder().decode(RawIncoming.self, from: data)
         else { return nil }
         switch raw.t {
         case "release":

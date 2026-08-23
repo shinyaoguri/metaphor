@@ -49,8 +49,9 @@ struct Canvas3DShapeFillTests {
         pixel(fb, fb.width / 2, fb.height / 2)
     }
 
-    @Test("fill は beginShape3D のシェイプへ 1 回だけ掛かる",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        "fill は beginShape3D のシェイプへ 1 回だけ掛かる",
+        arguments: [MainPassMode.immediate, .shadows])
     func fillAppliesOnce(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
@@ -61,8 +62,9 @@ struct Canvas3DShapeFillTests {
         }
 
         let c = center(fb)
-        #expect(abs(c.x - 128) <= 8,
-                "fill(0.5) の板は 128 前後になるべき（二重に掛かると 64）: \(c) — #825")
+        #expect(
+            abs(c.x - 128) <= 8,
+            "fill(0.5) の板は 128 前後になるべき（二重に掛かると 64）: \(c) — #825")
     }
 
     @Test("beginShape3D と plane() が同じ fill 色になる")
@@ -87,8 +89,9 @@ struct Canvas3DShapeFillTests {
 
         let a = center(shape)
         let b = center(primitive)
-        #expect(abs(a.x - b.x) <= 4 && abs(a.y - b.y) <= 4 && abs(a.z - b.z) <= 4,
-                "同じ寸法・同じ fill なら組み方で色が変わらないべき: shape \(a) / plane \(b) — #825")
+        #expect(
+            abs(a.x - b.x) <= 4 && abs(a.y - b.y) <= 4 && abs(a.z - b.z) <= 4,
+            "同じ寸法・同じ fill なら組み方で色が変わらないべき: shape \(a) / plane \(b) — #825")
     }
 
     @Test("vertex(x,y,z,color) の色は fill に左右されない")
@@ -107,14 +110,17 @@ struct Canvas3DShapeFillTests {
         let onWhite = try render(fill: Color(r: 1, g: 1, b: 1))
         let onGray = try render(fill: Color(r: 0.5, g: 0.5, b: 0.5))
 
-        #expect(abs(onWhite.x - 230) <= 8 && abs(onWhite.y - 64) <= 8 && abs(onWhite.z - 51) <= 8,
-                "頂点カラーは指定どおり出るべき: \(onWhite) — #825")
-        #expect(onWhite == onGray,
-                "fill を変えても頂点カラーは変わらないべき: 白 \(onWhite) / 灰 \(onGray) — #825")
+        #expect(
+            abs(onWhite.x - 230) <= 8 && abs(onWhite.y - 64) <= 8 && abs(onWhite.z - 51) <= 8,
+            "頂点カラーは指定どおり出るべき: \(onWhite) — #825")
+        #expect(
+            onWhite == onGray,
+            "fill を変えても頂点カラーは変わらないべき: 白 \(onWhite) / 灰 \(onGray) — #825")
     }
 
-    @Test(".points は点ごとの頂点カラーで描かれる",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        ".points は点ごとの頂点カラーで描かれる",
+        arguments: [MainPassMode.immediate, .shadows])
     func pointsKeepOwnColor(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
@@ -137,16 +143,24 @@ struct Canvas3DShapeFillTests {
         for y in 0..<fb.height {
             for x in 0..<fb.width {
                 let p = pixel(fb, x, y)
-                if p.x > 120 && p.y < 60 && p.z < 60 { red += 1; redSumX += x }
-                if p.y > 120 && p.x < 60 && p.z < 60 { green += 1; greenSumX += x }
+                if p.x > 120 && p.y < 60 && p.z < 60 {
+                    red += 1
+                    redSumX += x
+                }
+                if p.y > 120 && p.x < 60 && p.z < 60 {
+                    green += 1
+                    greenSumX += x
+                }
             }
         }
 
-        #expect(red > 0 && green > 0,
-                "2 点はそれぞれの色で描かれるべき（先頭頂点の色が全点に乗ると片方が消える）: red \(red) / green \(green) — #825")
+        #expect(
+            red > 0 && green > 0,
+            "2 点はそれぞれの色で描かれるべき（先頭頂点の色が全点に乗ると片方が消える）: red \(red) / green \(green) — #825")
         if red > 0 && green > 0 {
-            #expect(redSumX / red < greenSumX / green,
-                    "左が赤・右が緑になるべき: red x \(redSumX / red) / green x \(greenSumX / green)")
+            #expect(
+                redSumX / red < greenSumX / green,
+                "左が赤・右が緑になるべき: red x \(redSumX / red) / green x \(greenSumX / green)")
         }
     }
 }

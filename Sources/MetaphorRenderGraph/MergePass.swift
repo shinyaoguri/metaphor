@@ -33,10 +33,10 @@ public final class MergePass: RenderPassNode {
         /// The raw index value passed to the merge compute shader.
         var rawIndex: UInt32 {
             switch self {
-            case .add:      return 0
-            case .alpha:    return 1
+            case .add: return 0
+            case .alpha: return 1
             case .multiply: return 2
-            case .screen:   return 3
+            case .screen: return 3
             }
         }
     }
@@ -114,11 +114,14 @@ public final class MergePass: RenderPassNode {
         self.device = device
 
         // マージコンピュートパイプラインを作成
-        guard let function = shaderLibrary.function(
-            named: MergeShaders.FunctionName.mergeTextures,
-            from: ShaderLibrary.BuiltinKey.merge
-        ) else {
-            throw MetaphorError.renderGraph(.shaderNotFound(MergeShaders.FunctionName.mergeTextures))
+        guard
+            let function = shaderLibrary.function(
+                named: MergeShaders.FunctionName.mergeTextures,
+                from: ShaderLibrary.BuiltinKey.merge
+            )
+        else {
+            throw MetaphorError.renderGraph(
+                .shaderNotFound(MergeShaders.FunctionName.mergeTextures))
         }
         self.mergePipeline = try PipelineFactory.buildCompute(device: device, function: function)
     }
@@ -149,7 +152,8 @@ public final class MergePass: RenderPassNode {
         ensureOutputTexture(width: w, height: h, pixelFormat: texA.pixelFormat)
 
         guard let outTex = outputTexture,
-              let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { return }
 
         encoder.label = "MergePass:\(label)"
         encoder.setComputePipelineState(mergePipeline)
@@ -180,8 +184,10 @@ public final class MergePass: RenderPassNode {
 
     /// Ensures an output texture of the required size and format exists, recreating it if necessary.
     private func ensureOutputTexture(width: Int, height: Int, pixelFormat: MTLPixelFormat) {
-        guard width != outputWidth || height != outputHeight
-                || outputTexture?.pixelFormat != pixelFormat else { return }
+        guard
+            width != outputWidth || height != outputHeight
+                || outputTexture?.pixelFormat != pixelFormat
+        else { return }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: pixelFormat,

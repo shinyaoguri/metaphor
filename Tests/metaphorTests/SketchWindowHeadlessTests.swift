@@ -1,7 +1,8 @@
-import Testing
 import Metal
-@testable import metaphor
+import Testing
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - 環境変数・ループモードの解決（純粋関数）
 
@@ -58,7 +59,8 @@ struct SketchWindowHeadlessResolutionTests {
         let requirements = SketchWindow.aggregateRequirements(config: config, outputs: [])
         #expect(requirements.contains(.externalRenderLoop))
         #expect(
-            SketchWindow.resolveLoopMode(config: config, requirements: requirements, isHeadless: false)
+            SketchWindow.resolveLoopMode(
+                config: config, requirements: requirements, isHeadless: false)
                 == .timer(fps: 60)
         )
 

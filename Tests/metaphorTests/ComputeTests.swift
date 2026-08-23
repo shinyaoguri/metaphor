@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - ComputeKernel Tests
 
@@ -14,12 +15,12 @@ struct ComputeKernelTests {
     func createFromSource() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void testKernel(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = float(id);
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void testKernel(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = float(id);
+            }
+            """
         let kernel = try ComputeKernel(device: device, source: source, functionName: "testKernel")
         #expect(kernel.maxTotalThreadsPerThreadgroup > 0)
         #expect(kernel.threadExecutionWidth > 0)
@@ -29,12 +30,12 @@ struct ComputeKernelTests {
     func invalidFunction() {
         let device = MTLCreateSystemDefaultDevice()!
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void realFunction(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = 0;
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void realFunction(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = 0;
+            }
+            """
         #expect(throws: MetaphorError.self) {
             try ComputeKernel(device: device, source: source, functionName: "nonExistent")
         }
@@ -44,12 +45,12 @@ struct ComputeKernelTests {
     func createFromFunction() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void testFn(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = 1.0;
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void testFn(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = 1.0;
+            }
+            """
         let library = try device.makeLibrary(source: source, options: nil)
         let function = library.makeFunction(name: "testFn")!
         let kernel = try ComputeKernel(device: device, function: function)
@@ -152,12 +153,12 @@ struct ComputeIntegrationTests {
     func dispatchAndRead() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void fillBuffer(device float *output [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            output[id] = float(id) * 2.0;
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void fillBuffer(device float *output [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                output[id] = float(id) * 2.0;
+            }
+            """
         let kernel = try ComputeKernel(device: device, source: source, functionName: "fillBuffer")
         let buffer = GPUBuffer<Float>(device: device, count: 64)!
 
@@ -186,15 +187,15 @@ struct ComputeIntegrationTests {
     func doubleDispatchWithBarrier() throws {
         let device = MTLCreateSystemDefaultDevice()!
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void step1(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = float(id);
-        }
-        kernel void step2(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = buf[id] * 3.0;
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void step1(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = float(id);
+            }
+            kernel void step2(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = buf[id] * 3.0;
+            }
+            """
         let kernel1 = try ComputeKernel(device: device, source: source, functionName: "step1")
         let kernel2 = try ComputeKernel(device: device, source: source, functionName: "step2")
         let buffer = GPUBuffer<Float>(device: device, count: 32)!

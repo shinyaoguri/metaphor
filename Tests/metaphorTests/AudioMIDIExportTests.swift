@@ -1,11 +1,12 @@
-import Testing
 import Foundation
-import simd
-import Metal
 import ImageIO
-@testable import metaphor
+import Metal
+import Testing
+import simd
+
 @testable import MetaphorCore
 @testable import MetaphorTestSupport
+@testable import metaphor
 
 // MARK: - D-19: GIF Export
 
@@ -41,8 +42,12 @@ struct GIFExporterTests {
     @Test("MetaphorError.export descriptions")
     func errorDescriptions() {
         #expect(MetaphorError.export(.noFrames).errorDescription?.contains("frames") == true)
-        #expect(MetaphorError.export(.destinationCreationFailed).errorDescription?.contains("destination") == true)
-        #expect(MetaphorError.export(.finalizationFailed).errorDescription?.contains("finalize") == true)
+        #expect(
+            MetaphorError.export(.destinationCreationFailed).errorDescription?.contains(
+                "destination") == true)
+        #expect(
+            MetaphorError.export(.finalizationFailed).errorDescription?.contains("finalize") == true
+        )
     }
 
     /// 実フレームを ringSize 超えてキャプチャし、in-flight backpressure と
@@ -50,7 +55,8 @@ struct GIFExporterTests {
     @Test("end-to-end capture with backpressure", .enabled(if: MetalTestHelper.isGPUAvailable))
     func endToEndCapture() throws {
         guard let device = MetalTestHelper.device,
-              let queue = device.makeCommandQueue() else { return }
+            let queue = device.makeCommandQueue()
+        else { return }
 
         // 各フレームを単色で塗ったテクスチャを 8 枚（リングサイズ 3 を超える）
         let width = 32
@@ -58,7 +64,7 @@ struct GIFExporterTests {
         let frameColors: [(UInt8, UInt8, UInt8)] = [
             (255, 0, 0), (0, 255, 0), (0, 0, 255),
             (255, 255, 0), (0, 255, 255), (255, 0, 255),
-            (128, 128, 128), (255, 255, 255)
+            (128, 128, 128), (255, 255, 255),
         ]
 
         let exporter = GIFExporter()
@@ -111,11 +117,13 @@ struct GIFExporterTests {
 
     /// 記録中の寸法変更（リサイズ）でステージングリング再構築を跨いでも
     /// クラッシュせず全フレームが書き出されること。
-    @Test("resize during recording rebuilds staging ring without crashing",
-          .enabled(if: MetalTestHelper.isGPUAvailable))
+    @Test(
+        "resize during recording rebuilds staging ring without crashing",
+        .enabled(if: MetalTestHelper.isGPUAvailable))
     func resizeDuringRecording() throws {
         guard let device = MetalTestHelper.device,
-              let queue = device.makeCommandQueue() else { return }
+            let queue = device.makeCommandQueue()
+        else { return }
 
         func makeTexture(_ size: Int) -> MTLTexture? {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -153,11 +161,13 @@ struct GIFExporterTests {
 
     /// 連続録画: セッション 1 の endRecord 後に即セッション 2 を開始しても、
     /// 両ファイルが独立にファイナライズされること（DispatchGroup のセッション分離）。
-    @Test("back-to-back recording sessions finalize independently",
-          .enabled(if: MetalTestHelper.isGPUAvailable))
+    @Test(
+        "back-to-back recording sessions finalize independently",
+        .enabled(if: MetalTestHelper.isGPUAvailable))
     func backToBackSessions() throws {
         guard let device = MetalTestHelper.device,
-              let queue = device.makeCommandQueue() else { return }
+            let queue = device.makeCommandQueue()
+        else { return }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: 16, height: 16, mipmapped: false
@@ -190,8 +200,9 @@ struct GIFExporterTests {
     /// onCaptureOutput フック経由のキャプチャが「今描いたフレーム」を記録すること。
     /// 旧実装（endFrame で独自コマンドバッファを即コミット）は同一キュー上で
     /// メインコマンドバッファより先に実行され、1 フレーム前を記録していた。
-    @Test("renderer hook captures the current frame, not the previous one",
-          .enabled(if: MetalTestHelper.isGPUAvailable))
+    @Test(
+        "renderer hook captures the current frame, not the previous one",
+        .enabled(if: MetalTestHelper.isGPUAvailable))
     func rendererHookCapturesCurrentFrame() throws {
         let renderer = try MetaphorRenderer(width: 32, height: 32)
         let exporter = GIFExporter()
@@ -228,11 +239,13 @@ struct GIFExporterTests {
                 continue
             }
             var pixel = [UInt8](repeating: 0, count: 4)
-            guard let ctx = CGContext(
-                data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-                space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ) else {
+            guard
+                let ctx = CGContext(
+                    data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                    space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                )
+            else {
                 Issue.record("Failed to create context")
                 continue
             }
@@ -242,8 +255,10 @@ struct GIFExporterTests {
             let expected: [UInt8] = [UInt8(r * 255), UInt8(g * 255), UInt8(b * 255)]
             for c in 0..<3 {
                 let diff = abs(Int(pixel[c]) - Int(expected[c]))
-                #expect(diff < 64,
-                        "Frame \(i) channel \(c): got \(pixel[c]), expected ~\(expected[c]) — off-by-one-frame capture?")
+                #expect(
+                    diff < 64,
+                    "Frame \(i) channel \(c): got \(pixel[c]), expected ~\(expected[c]) — off-by-one-frame capture?"
+                )
             }
         }
     }

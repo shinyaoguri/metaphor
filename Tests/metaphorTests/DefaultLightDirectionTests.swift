@@ -1,9 +1,10 @@
-import Testing
-import Metal
 import Foundation
-@testable import metaphor
-@testable import MetaphorCore
+import Metal
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - 既定 lights() の向き (#774)
 

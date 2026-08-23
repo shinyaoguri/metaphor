@@ -1,8 +1,9 @@
-import Testing
 import Metal
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - VideoExportConfig Tests
 
@@ -141,7 +142,9 @@ struct VideoExporterStateTests {
     @Test("beginRecord clamps non-positive fps instead of producing invalid CMTime")
     func fpsClamped() throws {
         let exporter = VideoExporter()
-        let path = NSTemporaryDirectory() + "test_video_fps0_\(ProcessInfo.processInfo.globallyUniqueString).mp4"
+        let path =
+            NSTemporaryDirectory()
+            + "test_video_fps0_\(ProcessInfo.processInfo.globallyUniqueString).mp4"
         defer { try? FileManager.default.removeItem(atPath: path) }
 
         // fps 0 は timescale 0 の不正 CMTime を作っていた。クランプされて begin が成功する
@@ -176,8 +179,9 @@ struct VideoExporterEndToEndTests {
         await renderer.videoExporter.endRecordAsync()
 
         #expect(FileManager.default.fileExists(atPath: path))
-        #expect(renderer.videoExporter.lastError == nil,
-                "finalize error: \(String(describing: renderer.videoExporter.lastError))")
+        #expect(
+            renderer.videoExporter.lastError == nil,
+            "finalize error: \(String(describing: renderer.videoExporter.lastError))")
         #expect(renderer.videoExporter.droppedFrameCount == 0)
 
         // 空でない mp4 が書かれていること
@@ -193,21 +197,25 @@ struct VideoExporterEndToEndTests {
 @MainActor
 struct FrameExporterPatternTests {
 
-    @Test("valid patterns", arguments: [
-        "frame_%05d.png", "%d.png", "img%03u.png", "f_%x.png", "cap %04d.png", "100%%_%d.png"
-    ])
+    @Test(
+        "valid patterns",
+        arguments: [
+            "frame_%05d.png", "%d.png", "img%03u.png", "f_%x.png", "cap %04d.png", "100%%_%d.png",
+        ])
     func validPatterns(pattern: String) {
         #expect(FrameExporter.isValidPattern(pattern) == true)
     }
 
-    @Test("invalid patterns", arguments: [
-        "frame.png",        // 指定子なし: 全フレームが同名で上書きされる
-        "frame_%@.png",     // %@: String(format:) でクラッシュ
-        "frame_%s.png",     // %s: 未サポート
-        "a%d_b%d.png",      // 指定子 2 個
-        "frame_%f.png",     // 浮動小数
-        "trailing%"         // 不完全な指定子
-    ])
+    @Test(
+        "invalid patterns",
+        arguments: [
+            "frame.png",  // 指定子なし: 全フレームが同名で上書きされる
+            "frame_%@.png",  // %@: String(format:) でクラッシュ
+            "frame_%s.png",  // %s: 未サポート
+            "a%d_b%d.png",  // 指定子 2 個
+            "frame_%f.png",  // 浮動小数
+            "trailing%",  // 不完全な指定子
+        ])
     func invalidPatterns(pattern: String) {
         #expect(FrameExporter.isValidPattern(pattern) == false)
     }

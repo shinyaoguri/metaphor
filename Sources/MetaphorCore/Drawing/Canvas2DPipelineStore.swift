@@ -147,11 +147,12 @@ final class Canvas2DPipelineStore {
     private func warnFallback(kind: Canvas2DPipelineKind, error: Error) {
         guard !didWarnFallback else { return }
         didWarnFallback = true
-        metaphorAlert("""
-        カスタム 2D シェーダを \(kind) 経路のパイプラインに載せられませんでした。\
-        組み込みシェーダで描画します（フラグメント関数の stage_in が \
-        この経路の頂点出力と合っていない可能性があります）: \(error)
-        """)
+        metaphorAlert(
+            """
+            カスタム 2D シェーダを \(kind) 経路のパイプラインに載せられませんでした。\
+            組み込みシェーダで描画します（フラグメント関数の stage_in が \
+            この経路の頂点出力と合っていない可能性があります）: \(error)
+            """)
     }
 
     // MARK: - パイプラインの生成
@@ -210,30 +211,40 @@ final class Canvas2DPipelineStore {
     ) -> (libraryKey: String, vertex: String, fragment: String, infix: String) {
         switch kind {
         case .color:
-            return (ShaderLibrary.BuiltinKey.canvas2D,
-                    BuiltinShaders.FunctionName.canvas2DVertex,
-                    BuiltinShaders.FunctionName.canvas2DFragment,
-                    "")
+            return (
+                ShaderLibrary.BuiltinKey.canvas2D,
+                BuiltinShaders.FunctionName.canvas2DVertex,
+                BuiltinShaders.FunctionName.canvas2DFragment,
+                ""
+            )
         case .textured:
-            return (ShaderLibrary.BuiltinKey.canvas2DTextured,
-                    BuiltinShaders.FunctionName.canvas2DTexturedVertex,
-                    BuiltinShaders.FunctionName.canvas2DTexturedFragment,
-                    "Textured")
+            return (
+                ShaderLibrary.BuiltinKey.canvas2DTextured,
+                BuiltinShaders.FunctionName.canvas2DTexturedVertex,
+                BuiltinShaders.FunctionName.canvas2DTexturedFragment,
+                "Textured"
+            )
         case .straightTextured:
-            return (ShaderLibrary.BuiltinKey.canvas2DTextured,
-                    BuiltinShaders.FunctionName.canvas2DTexturedVertex,
-                    BuiltinShaders.FunctionName.canvas2DStraightTexturedFragment,
-                    "StraightTextured")
+            return (
+                ShaderLibrary.BuiltinKey.canvas2DTextured,
+                BuiltinShaders.FunctionName.canvas2DTexturedVertex,
+                BuiltinShaders.FunctionName.canvas2DStraightTexturedFragment,
+                "StraightTextured"
+            )
         case .instanced:
-            return (ShaderLibrary.BuiltinKey.canvas2DInstanced,
-                    Canvas2DInstancedShaders.vertexFunctionName,
-                    Canvas2DInstancedShaders.fragmentFunctionName,
-                    "Instanced")
+            return (
+                ShaderLibrary.BuiltinKey.canvas2DInstanced,
+                Canvas2DInstancedShaders.vertexFunctionName,
+                Canvas2DInstancedShaders.fragmentFunctionName,
+                "Instanced"
+            )
         case .massiveCircle:
-            return (ShaderLibrary.BuiltinKey.canvas2DMassive,
-                    Canvas2DMassiveShaders.circleVertexFunctionName,
-                    Canvas2DMassiveShaders.fragmentFunctionName,
-                    "Massive")
+            return (
+                ShaderLibrary.BuiltinKey.canvas2DMassive,
+                Canvas2DMassiveShaders.circleVertexFunctionName,
+                Canvas2DMassiveShaders.fragmentFunctionName,
+                "Massive"
+            )
         }
     }
 

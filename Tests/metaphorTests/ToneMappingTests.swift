@@ -158,9 +158,11 @@ struct ToneMappingTests {
     func modeOrdering() throws {
         let none = pixel(try render(draw: overexposedPlane()), Self.center).x
         let aces = pixel(
-            try render(draw: overexposedPlane { $0.toneMapping(.acesFilmic) }), Self.center).x
+            try render(draw: overexposedPlane { $0.toneMapping(.acesFilmic) }), Self.center
+        ).x
         let reinhard = pixel(
-            try render(draw: overexposedPlane { $0.toneMapping(.reinhard) }), Self.center).x
+            try render(draw: overexposedPlane { $0.toneMapping(.reinhard) }), Self.center
+        ).x
 
         #expect(reinhard < aces)
         #expect(aces < none)
@@ -168,10 +170,11 @@ struct ToneMappingTests {
 
     @Test("toneMapping(.none) に戻すとクランプ挙動へ戻る")
     func canBeTurnedOff() throws {
-        let turnedOff = try render(draw: overexposedPlane {
-            $0.toneMapping(.acesFilmic)
-            $0.toneMapping(.none)
-        })
+        let turnedOff = try render(
+            draw: overexposedPlane {
+                $0.toneMapping(.acesFilmic)
+                $0.toneMapping(.none)
+            })
         let stillOn = try render(draw: overexposedPlane { $0.toneMapping(.acesFilmic) })
 
         #expect(pixel(turnedOff, Self.center) == SIMD3(255, 255, 255))
@@ -187,10 +190,11 @@ struct ToneMappingTests {
         // トーンマップする。`calculatePBRLighting` を経由する実装に戻すと二重適用に
         // なるので、そのときの値（aces(aces(x))）とも、未適用の値（クランプ）とも
         // 明確に離れていることを見る。
-        let image = try render(draw: overexposedPlane {
-            $0.toneMapping(.acesFilmic)
-            $0.roughness(0.5)  // PBR 分岐へ入れる
-        })
+        let image = try render(
+            draw: overexposedPlane {
+                $0.toneMapping(.acesFilmic)
+                $0.roughness(0.5)  // PBR 分岐へ入れる
+            })
         let got = pixel(image, Self.center).x
         let doubled = Self.expected255(Self.acesFilmic(Self.acesFilmic(Self.rawLuminance)))
 
@@ -252,17 +256,22 @@ struct ToneMappingTests {
     @Test("exposure はトーンマップ前に掛かり、輝度に対して単調")
     func exposureIsMonotonic() throws {
         let dim = pixel(
-            try render(draw: overexposedPlane {
-                $0.toneMapping(.acesFilmic)
-                $0.exposure(0.5)
-            }), Self.center).x
+            try render(
+                draw: overexposedPlane {
+                    $0.toneMapping(.acesFilmic)
+                    $0.exposure(0.5)
+                }), Self.center
+        ).x
         let normal = pixel(
-            try render(draw: overexposedPlane { $0.toneMapping(.acesFilmic) }), Self.center).x
+            try render(draw: overexposedPlane { $0.toneMapping(.acesFilmic) }), Self.center
+        ).x
         let bright = pixel(
-            try render(draw: overexposedPlane {
-                $0.toneMapping(.acesFilmic)
-                $0.exposure(2.0)
-            }), Self.center).x
+            try render(
+                draw: overexposedPlane {
+                    $0.toneMapping(.acesFilmic)
+                    $0.exposure(2.0)
+                }), Self.center
+        ).x
 
         #expect(dim < normal)
         #expect(normal < bright)
@@ -282,11 +291,12 @@ struct ToneMappingTests {
 
     @Test("pushStyle / popStyle では巻き戻らない")
     func survivesStyleStack() throws {
-        let image = try render(draw: overexposedPlane { c in
-            c.pushStyle()
-            c.toneMapping(.acesFilmic)
-            c.popStyle()
-        })
+        let image = try render(
+            draw: overexposedPlane { c in
+                c.pushStyle()
+                c.toneMapping(.acesFilmic)
+                c.popStyle()
+            })
         let got = pixel(image, Self.center).x
         let want = Self.expected255(Self.acesFilmic(Self.rawLuminance))
 
@@ -295,7 +305,8 @@ struct ToneMappingTests {
 
     @Test("記録経路（影あり）でも巻き戻らない")
     func survivesRecordingPath() throws {
-        let image = try render(shadows: true, draw: overexposedPlane { $0.toneMapping(.acesFilmic) })
+        let image = try render(
+            shadows: true, draw: overexposedPlane { $0.toneMapping(.acesFilmic) })
         let got = pixel(image, Self.center).x
 
         #expect(got < 255, "記録経路のスナップショット復元で設定が失われてはいけない: got=\(got)")

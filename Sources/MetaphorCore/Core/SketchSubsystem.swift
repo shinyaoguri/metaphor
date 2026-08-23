@@ -21,8 +21,8 @@ public protocol SketchSubsystem: AnyObject {
     func update(deltaTime: Float)
 }
 
-public extension SketchSubsystem {
-    func onStart() {}
-    func onStop() {}
-    func update(deltaTime: Float) {}
+extension SketchSubsystem {
+    public func onStart() {}
+    public func onStop() {}
+    public func update(deltaTime: Float) {}
 }

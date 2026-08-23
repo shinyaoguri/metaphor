@@ -168,7 +168,8 @@ public enum TestHelperError: Error, CustomStringConvertible {
         switch self {
         case .noDevice: "No Metal device available"
         case .commandBufferFailed(let error): "Command buffer failed: \(error)"
-        case .commandBufferIncomplete(let status): "Command buffer did not complete (status: \(status.rawValue))"
+        case .commandBufferIncomplete(let status):
+            "Command buffer did not complete (status: \(status.rawValue))"
         }
     }
 }

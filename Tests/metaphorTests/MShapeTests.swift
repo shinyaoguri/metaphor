@@ -1,6 +1,7 @@
-import Testing
 import Metal
+import Testing
 import simd
+
 @testable import MetaphorCore
 
 // MARK: - ShapeKind Tests
@@ -16,7 +17,9 @@ struct ShapeKindTests {
         #expect(!ShapeKind.quad(x1: 0, y1: 0, x2: 1, y2: 0, x3: 1, y3: 1, x4: 0, y4: 1).is3D)
         #expect(!ShapeKind.line(x1: 0, y1: 0, x2: 1, y2: 1).is3D)
         #expect(!ShapeKind.point(x: 0, y: 0).is3D)
-        #expect(!ShapeKind.arc(x: 0, y: 0, width: 100, height: 100, start: 0, stop: .pi, mode: .open).is3D)
+        #expect(
+            !ShapeKind.arc(x: 0, y: 0, width: 100, height: 100, start: 0, stop: .pi, mode: .open)
+                .is3D)
         #expect(!ShapeKind.path2D.is3D)
         #expect(!ShapeKind.group.is3D)
     }
@@ -470,7 +473,7 @@ struct MShapeVertexAccessTests {
         s.beginShape()
         s.vertex(0, 0)
         s.endShape()
-        s.setVertex(5, 10, 20) // out of range
+        s.setVertex(5, 10, 20)  // out of range
         #expect(s.vertices2D[0].position == SIMD2<Float>(0, 0))
     }
 
@@ -502,7 +505,7 @@ struct MShapeTessellationTests {
         s.ensureCacheValid()
         #expect(s.isDirty == false)
         #expect(s.cachedTriangles2D != nil)
-        #expect(s.cachedTriangles2D!.count == 2) // quad = 2 triangles
+        #expect(s.cachedTriangles2D!.count == 2)  // quad = 2 triangles
     }
 
     @Test("triangle mode produces correct triangle count")
@@ -539,7 +542,7 @@ struct MShapeTessellationTests {
     func triangleFanMode() {
         let s = MShape(device: device, kind: .path2D)
         s.beginShape(.triangleFan)
-        s.vertex(0, 0) // center
+        s.vertex(0, 0)  // center
         s.vertex(1, 0)
         s.vertex(0.7, 0.7)
         s.vertex(0, 1)
@@ -746,8 +749,9 @@ struct MShapeDegenerateVertexCountTests {
         return s
     }
 
-    @Test("3D triangle strip survives every vertex count below a full triangle",
-          arguments: [0, 1, 2])
+    @Test(
+        "3D triangle strip survives every vertex count below a full triangle",
+        arguments: [0, 1, 2])
     func triangleStrip3DBelowThreshold(vertexCount: Int) {
         let s = make3D(.triangleStrip, vertexCount: vertexCount)
         s.ensureCacheValid()
@@ -755,8 +759,9 @@ struct MShapeDegenerateVertexCountTests {
         #expect(s.isDirty == false)
     }
 
-    @Test("3D triangle fan survives every vertex count below a full triangle",
-          arguments: [0, 1, 2])
+    @Test(
+        "3D triangle fan survives every vertex count below a full triangle",
+        arguments: [0, 1, 2])
     func triangleFan3DBelowThreshold(vertexCount: Int) {
         let s = make3D(.triangleFan, vertexCount: vertexCount)
         s.ensureCacheValid()
@@ -781,8 +786,9 @@ struct MShapeDegenerateVertexCountTests {
     }
 
     /// 2D 側は元から `guard count >= 3` を持つ。3D を直したあとも規則が 2 つに割れないよう固定する。
-    @Test("2D triangle strip / fan stay empty below three vertices",
-          arguments: [ShapeMode.triangleStrip, .triangleFan], [0, 1, 2])
+    @Test(
+        "2D triangle strip / fan stay empty below three vertices",
+        arguments: [ShapeMode.triangleStrip, .triangleFan], [0, 1, 2])
     func triangleStripFan2DBelowThreshold(mode: ShapeMode, vertexCount: Int) throws {
         let s = MShape(device: device, kind: .path2D)
         s.beginShape(mode)
@@ -872,8 +878,9 @@ struct MShapeAutoNormalTests {
 
         let normals = try fillNormals(s)
         for n in normals {
-            #expect(abs(n.x - 1) < 0.001 && abs(n.y) < 0.001 && abs(n.z) < 0.001,
-                    "明示した (1, 0, 0) がそのまま残る: \(n)")
+            #expect(
+                abs(n.x - 1) < 0.001 && abs(n.y) < 0.001 && abs(n.z) < 0.001,
+                "明示した (1, 0, 0) がそのまま残る: \(n)")
         }
     }
 
@@ -885,14 +892,15 @@ struct MShapeAutoNormalTests {
         s.beginShape(.triangles)
         s.vertex(0, 0, 0)
         s.vertex(1, 0, 0)
-        s.vertex(2, 0, 0)   // 一直線
+        s.vertex(2, 0, 0)  // 一直線
         s.endShape()
 
         let normals = try fillNormals(s)
         for n in normals {
             #expect(!n.x.isNaN && !n.y.isNaN && !n.z.isNaN, "NaN を書き込まない: \(n)")
-            #expect(abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
-                    "既定の (0, 1, 0) へ落ちる: \(n)")
+            #expect(
+                abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
+                "既定の (0, 1, 0) へ落ちる: \(n)")
         }
     }
 
@@ -970,8 +978,9 @@ struct MShapeSizedDrawTests {
 
         // サイズ指定描画は別スロット（sizedMesh3D）に入り、元メッシュは不変
         ctx.shape(box, 0, 0, 10, 20)
-        #expect(box.primitiveMesh3D === originalMesh,
-                "サイズ指定 shape() が primitiveMesh3D を上書きしない")
+        #expect(
+            box.primitiveMesh3D === originalMesh,
+            "サイズ指定 shape() が primitiveMesh3D を上書きしない")
         #expect(box.sizedMesh3D != nil)
 
         // 同一寸法の再描画では sizedMesh3D を再利用（毎フレーム生成しない）
@@ -1002,8 +1011,9 @@ struct Canvas3DUnitMeshCacheTests {
             canvas3D.sphere(Float(i) * 0.5 + 1)
         }
         // 単位メッシュ 2 種（box_unit / sphere_unit_24_12）だけがキャッシュされる
-        #expect(canvas3D.meshCacheCountForTesting <= 2,
-                "寸法アニメーションでメッシュキャッシュが増殖しない (count: \(canvas3D.meshCacheCountForTesting))")
+        #expect(
+            canvas3D.meshCacheCountForTesting <= 2,
+            "寸法アニメーションでメッシュキャッシュが増殖しない (count: \(canvas3D.meshCacheCountForTesting))")
     }
 }
 
@@ -1034,8 +1044,9 @@ struct MShapeBuilderColorModeTests {
         _ label: String, sourceLocation: SourceLocation = #_sourceLocation
     ) {
         let d = abs(actual - expected)
-        #expect(d.max() < 0.001, "\(label): got \(actual), want \(expected)",
-                sourceLocation: sourceLocation)
+        #expect(
+            d.max() < 0.001, "\(label): got \(actual), want \(expected)",
+            sourceLocation: sourceLocation)
     }
 
     // MARK: 既定（rgb 0-255）は今までどおり
@@ -1119,7 +1130,8 @@ struct MShapeBuilderColorModeTests {
         s.fill(128, 64)
         s.endShape()
 
-        expectClose(s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 64 / 255), "fill")
+        expectClose(
+            s.capturedStyle.fillColor, SIMD4(128 / 255, 128 / 255, 128 / 255, 64 / 255), "fill")
     }
 
     @Test("stroke(gray, alpha) carries the alpha through")
@@ -1331,8 +1343,9 @@ struct MShapeSetTintDiagnosticTests {
         s.setTint(Color(r: 0, g: 1, b: 0))
 
         ctx.shape(s, 0, 0)
-        #expect(s.didWarnTintIgnored,
-                "3D のテクスチャは fillColor で着色するので setTint() は 3D でも効かない")
+        #expect(
+            s.didWarnTintIgnored,
+            "3D のテクスチャは fillColor で着色するので setTint() は 3D でも効かない")
     }
 
     @Test("a shape that never sets a tint stays quiet")
@@ -1352,8 +1365,9 @@ struct MShapeSetTintDiagnosticTests {
         s.disableStyle()
 
         ctx.shape(s, 0, 0)
-        #expect(s.didWarnTintIgnored == false,
-                "styleEnabled == false ならシェイプのスタイル自体が使われないので警告の出番も無い")
+        #expect(
+            s.didWarnTintIgnored == false,
+            "styleEnabled == false ならシェイプのスタイル自体が使われないので警告の出番も無い")
     }
 
     @Test("the warning fires once however many times the shape is drawn")
@@ -1368,8 +1382,9 @@ struct MShapeSetTintDiagnosticTests {
         // フラグが立ったままで、警告経路へ再突入しないこと。
         s.didWarnTintIgnored = false
         ctx.shape(s, 0, 0)
-        #expect(s.didWarnTintIgnored,
-                "フラグを戻せば再度出る = 抑止しているのはフラグだけで、条件判定は毎回通る")
+        #expect(
+            s.didWarnTintIgnored,
+            "フラグを戻せば再度出る = 抑止しているのはフラグだけで、条件判定は毎回通る")
     }
 
     @Test("setTint records the color even though nothing reads it back")

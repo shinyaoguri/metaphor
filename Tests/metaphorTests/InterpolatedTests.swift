@@ -75,8 +75,8 @@ struct InterpolatedTests {
 
     @Test("Int は四捨五入で補間される")
     func intRounds() {
-        #expect(Profile.blend(dawn, dusk, 0.1).bands == 4)   // 4.4 → 4
-        #expect(Profile.blend(dawn, dusk, 0.2).bands == 5)   // 4.8 → 5
+        #expect(Profile.blend(dawn, dusk, 0.1).bands == 4)  // 4.4 → 4
+        #expect(Profile.blend(dawn, dusk, 0.2).bands == 5)  // 4.8 → 5
         #expect(Profile.blend(dawn, dusk, 0.75).bands == 7)
     }
 

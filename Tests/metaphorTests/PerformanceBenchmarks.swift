@@ -1,9 +1,10 @@
 import Foundation
-import Testing
 import Metal
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - Performance Benchmarks
 
@@ -15,8 +16,9 @@ import MetaphorTestSupport
 ///     METAPHOR_PERF_TESTS=1 swift test --filter "Performance Benchmarks"
 @Suite(
     "Performance Benchmarks",
-    .enabled(if: MetalTestHelper.isGPUAvailable
-        && ProcessInfo.processInfo.environment["METAPHOR_PERF_TESTS"] == "1")
+    .enabled(
+        if: MetalTestHelper.isGPUAvailable
+            && ProcessInfo.processInfo.environment["METAPHOR_PERF_TESTS"] == "1")
 )
 @MainActor
 struct PerformanceBenchmarks {
@@ -43,12 +45,12 @@ struct PerformanceBenchmarks {
     func computeKernelCompile() throws {
         let device = MetalTestHelper.device!
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
-        kernel void testKernel(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
-            buf[id] = buf[id] * 2.0;
-        }
-        """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void testKernel(device float *buf [[buffer(0)]], uint id [[thread_position_in_grid]]) {
+                buf[id] = buf[id] * 2.0;
+            }
+            """
         let elapsed = try measure {
             _ = try ComputeKernel(device: device, source: source, functionName: "testKernel")
         }
@@ -149,8 +151,9 @@ struct PerformanceBenchmarks {
         /// 1 フレーム分の CPU エンコード時間（GPU 完了待ちは含めない）。
         func encodeFrame(_ body: () -> Void) throws -> Duration {
             guard let commandBuffer = renderer.commandQueue.makeCommandBuffer(),
-                  let encoder = commandBuffer.makeRenderCommandEncoder(
-                    descriptor: renderer.textureManager.renderPassDescriptor) else {
+                let encoder = commandBuffer.makeRenderCommandEncoder(
+                    descriptor: renderer.textureManager.renderPassDescriptor)
+            else {
                 Issue.record("Failed to create encoder")
                 return .zero
             }
@@ -176,13 +179,14 @@ struct PerformanceBenchmarks {
         }
         let instancedBody = { canvas3D.drawInstanced(mesh, transforms: transforms) }
 
-        _ = try encodeFrame(loopBody)          // ウォームアップ（パイプライン構築を計測から外す）
+        _ = try encodeFrame(loopBody)  // ウォームアップ（パイプライン構築を計測から外す）
         _ = try encodeFrame(instancedBody)
 
         let loop = try encodeFrame(loopBody)
         let instanced = try encodeFrame(instancedBody)
 
-        #expect(instanced <= loop,
-                "drawInstanced=\(instanced) が手書きループ=\(loop) より遅い（\(count) インスタンス）")
+        #expect(
+            instanced <= loop,
+            "drawInstanced=\(instanced) が手書きループ=\(loop) より遅い（\(count) インスタンス）")
     }
 }

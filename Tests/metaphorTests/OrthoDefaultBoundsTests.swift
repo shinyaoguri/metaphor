@@ -1,9 +1,10 @@
-import Testing
 import Metal
-import simd
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+import simd
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - ortho() の省略時の範囲 (#777)
 

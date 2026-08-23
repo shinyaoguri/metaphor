@@ -136,7 +136,9 @@ public final class Node {
 
     /// Marks the local and world transforms as dirty and propagates this to all descendants.
     private func invalidateTransform() {
-        guard !_localTransformDirty || !_worldTransformDirty || !_worldOrientationDirty else { return }
+        guard !_localTransformDirty || !_worldTransformDirty || !_worldOrientationDirty else {
+            return
+        }
         _localTransformDirty = true
         invalidateWorldTransform()
     }
@@ -171,9 +173,10 @@ public final class Node {
     ///   - y: The rotation around the y axis, in radians.
     ///   - z: The rotation around the z axis, in radians.
     public func setRotation(x: Float = 0, y: Float = 0, z: Float = 0) {
-        orientation = simd_quatf(angle: z, axis: SIMD3(0, 0, 1))
-                    * simd_quatf(angle: y, axis: SIMD3(0, 1, 0))
-                    * simd_quatf(angle: x, axis: SIMD3(1, 0, 0))
+        orientation =
+            simd_quatf(angle: z, axis: SIMD3(0, 0, 1))
+            * simd_quatf(angle: y, axis: SIMD3(0, 1, 0))
+            * simd_quatf(angle: x, axis: SIMD3(1, 0, 0))
     }
 
     /// Rotates the node by a quaternion, relative to its current orientation.
@@ -337,9 +340,10 @@ public final class Node {
     ///   - target: The point to look at.
     ///   - worldUp: The world up direction (defaults to +Y).
     public func lookAt(_ target: SIMD3<Float>, worldUp: SIMD3<Float> = SIMD3(0, 1, 0)) {
-        let worldPos = SIMD3<Float>(worldTransform.columns.3.x,
-                                     worldTransform.columns.3.y,
-                                     worldTransform.columns.3.z)
+        let worldPos = SIMD3<Float>(
+            worldTransform.columns.3.x,
+            worldTransform.columns.3.y,
+            worldTransform.columns.3.z)
         let delta = target - worldPos
         guard simd_length(delta) > 1e-6 else { return }
         let dir = normalize(delta)

@@ -145,9 +145,10 @@ final class MPSRayScene {
             let i1 = Int(raw1)
             let i2 = Int(raw2)
             guard i0 < vertexCount, i1 < vertexCount, i2 < vertexCount else {
-                throw MetaphorError.mps(.invalidScene(
-                    "Triangle \(t) references out-of-range vertex (max=\(vertexCount - 1))"
-                ))
+                throw MetaphorError.mps(
+                    .invalidScene(
+                        "Triangle \(t) references out-of-range vertex (max=\(vertexCount - 1))"
+                    ))
             }
             let v0 = allPositions[i0]
             let v1 = allPositions[i1]
@@ -165,9 +166,10 @@ final class MPSRayScene {
         }
 
         guard !validIndices.isEmpty else {
-            throw MetaphorError.mps(.invalidScene(
-                "All \(inputTriangleCount) triangles are degenerate"
-            ))
+            throw MetaphorError.mps(
+                .invalidScene(
+                    "All \(inputTriangleCount) triangles are degenerate"
+                ))
         }
 
         if droppedTriangleCount > 0 {
@@ -182,28 +184,37 @@ final class MPSRayScene {
         let triangleCount = allIndices.count / 3
 
         // GPU バッファを作成
-        guard let vertexBuffer = device.makeBuffer(
-            bytes: allPositions,
-            length: allPositions.count * MemoryLayout<SIMD3<Float>>.stride,
-            options: .storageModeShared
-        ) else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create vertex buffer"))
+        guard
+            let vertexBuffer = device.makeBuffer(
+                bytes: allPositions,
+                length: allPositions.count * MemoryLayout<SIMD3<Float>>.stride,
+                options: .storageModeShared
+            )
+        else {
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to create vertex buffer"))
         }
 
-        guard let indexBuffer = device.makeBuffer(
-            bytes: allIndices,
-            length: allIndices.count * MemoryLayout<UInt32>.stride,
-            options: .storageModeShared
-        ) else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create index buffer"))
+        guard
+            let indexBuffer = device.makeBuffer(
+                bytes: allIndices,
+                length: allIndices.count * MemoryLayout<UInt32>.stride,
+                options: .storageModeShared
+            )
+        else {
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to create index buffer"))
         }
 
-        guard let normalBuffer = device.makeBuffer(
-            bytes: allNormals,
-            length: allNormals.count * MemoryLayout<SIMD3<Float>>.stride,
-            options: .storageModeShared
-        ) else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create normal buffer"))
+        guard
+            let normalBuffer = device.makeBuffer(
+                bytes: allNormals,
+                length: allNormals.count * MemoryLayout<SIMD3<Float>>.stride,
+                options: .storageModeShared
+            )
+        else {
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to create normal buffer"))
         }
 
         // Metal ネイティブアクセラレーション構造を構築
@@ -220,23 +231,33 @@ final class MPSRayScene {
 
         let sizes = device.accelerationStructureSizes(descriptor: accelDesc)
 
-        guard let accelerationStructure = device.makeAccelerationStructure(size: sizes.accelerationStructureSize) else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create acceleration structure"))
+        guard
+            let accelerationStructure = device.makeAccelerationStructure(
+                size: sizes.accelerationStructureSize)
+        else {
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to create acceleration structure"))
         }
 
-        guard let scratchBuffer = device.makeBuffer(
-            length: sizes.buildScratchBufferSize,
-            options: .storageModePrivate
-        ) else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create scratch buffer"))
+        guard
+            let scratchBuffer = device.makeBuffer(
+                length: sizes.buildScratchBufferSize,
+                options: .storageModePrivate
+            )
+        else {
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to create scratch buffer"))
         }
 
         guard let cb = commandQueue.makeCommandBuffer() else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create command buffer"))
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to create command buffer"))
         }
 
         guard let encoder = cb.makeAccelerationStructureCommandEncoder() else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to create acceleration structure command encoder"))
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed(
+                    "Failed to create acceleration structure command encoder"))
         }
         encoder.build(
             accelerationStructure: accelerationStructure,

@@ -1,9 +1,10 @@
-import Foundation
-import Testing
-import Metal
 import AppKit
-@testable import metaphor
+import Foundation
+import Metal
+import Testing
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - Asset Cache (#284)
 
@@ -64,7 +65,9 @@ struct AssetCacheTests {
         let context = try makeContext()
         let path = try writeTempPNG(name: "c")
         // "/dir/./c.png" と "/dir/c.png" は同一キーに正規化される
-        let dotted = (path as NSString).deletingLastPathComponent + "/./" + (path as NSString).lastPathComponent
+        let dotted =
+            (path as NSString).deletingLastPathComponent + "/./"
+            + (path as NSString).lastPathComponent
         let first = try context.loadImage(path)
         let second = try context.loadImage(dotted)
         #expect(first === second)

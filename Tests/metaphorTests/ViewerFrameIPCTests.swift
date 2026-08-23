@@ -1,7 +1,8 @@
 import Foundation
-import Testing
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 // viewer frame IPC の wire 型（CONTRACT.md 契約点 5）。
 //
@@ -19,13 +20,15 @@ struct ViewerFrameIPCConformanceTests {
         return try #require(object as? [String: Any])
     }
 
-    private let layout = ViewerFrameLayout(width: 1920, height: 1080, linearAlignment: 256, pageSize: 16384)
+    private let layout = ViewerFrameLayout(
+        width: 1920, height: 1080, linearAlignment: 256, pageSize: 16384)
 
     @Test("hello は contract/examples/viewer-hello.json と構造一致し、固定値は仕様どおり")
     func helloMatchesExample() throws {
         let hello = ViewerFrameIPC.Hello(pid: 48213, metaphor: Metaphor.version, layout: layout)
         let encoded = try encodeLine(hello)
-        try assertStructurallyEqual(encoded, try loadContractExample("viewer-hello.json"), path: "hello")
+        try assertStructurallyEqual(
+            encoded, try loadContractExample("viewer-hello.json"), path: "hello")
 
         #expect(encoded["t"] as? String == "hello")
         #expect(encoded["protocolVersion"] as? Int == 1)
@@ -45,14 +48,16 @@ struct ViewerFrameIPCConformanceTests {
     func frameMatchesExample() throws {
         let frame = ViewerFrameIPC.Frame(slot: 2, seq: 41, frameCount: 120, time: 2.0166)
         let encoded = try encodeLine(frame)
-        try assertStructurallyEqual(encoded, try loadContractExample("viewer-frame.json"), path: "frame")
+        try assertStructurallyEqual(
+            encoded, try loadContractExample("viewer-frame.json"), path: "frame")
         #expect(encoded["t"] as? String == "frame")
     }
 
     @Test("release は contract/examples/viewer-release.json と構造一致する")
     func releaseMatchesExample() throws {
         let encoded = try encodeLine(ViewerFrameIPC.Release(slot: 2))
-        try assertStructurallyEqual(encoded, try loadContractExample("viewer-release.json"), path: "release")
+        try assertStructurallyEqual(
+            encoded, try loadContractExample("viewer-release.json"), path: "release")
         #expect(encoded["t"] as? String == "release")
     }
 
@@ -73,7 +78,9 @@ struct ViewerFrameIPCDecodingTests {
     @Test("未知の t は unknown（読み飛ばす側の判断に委ねる）、未知フィールドは無視")
     func forwardCompatibility() {
         #expect(ViewerFrameIPC.decodeIncoming(#"{"t":"pause"}"#) == .unknown("pause"))
-        #expect(ViewerFrameIPC.decodeIncoming(#"{"t":"release","slot":2,"extra":true}"#) == .release(slot: 2))
+        #expect(
+            ViewerFrameIPC.decodeIncoming(#"{"t":"release","slot":2,"extra":true}"#)
+                == .release(slot: 2))
     }
 
     @Test("不正な行・t 欠落・slot 欠落の release は nil")

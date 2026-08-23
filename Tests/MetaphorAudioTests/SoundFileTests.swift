@@ -1,6 +1,7 @@
-import Testing
-import Foundation
 import AVFoundation
+import Foundation
+import Testing
+
 @testable import MetaphorAudio
 
 // MARK: - SoundFile

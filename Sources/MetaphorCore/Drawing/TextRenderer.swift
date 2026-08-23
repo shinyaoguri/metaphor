@@ -1,6 +1,6 @@
-import Metal
 import AppKit
 import CoreText
+import Metal
 
 // MARK: - Text Alignment
 
@@ -72,7 +72,9 @@ enum TextMetrics {
         let attrString = NSAttributedString(string: String(char), attributes: attributes)
         let line = CTLineCreateWithAttributedString(attrString)
 
-        var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+        var ascent: CGFloat = 0
+        var descent: CGFloat = 0
+        var leading: CGFloat = 0
         let advance = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
         return CharMetrics(line: line, advance: Float(advance), ascent: ascent, descent: descent)
     }
@@ -157,13 +159,14 @@ final class GlyphAtlas {
 
         for char in string {
             guard let g = glyphMap[char] else { return nil }
-            result.append(PositionedGlyph(
-                x: cursorX + g.bearingX,
-                y: -g.bearingY,
-                width: g.width,
-                height: g.height,
-                u0: g.u0, v0: g.v0, u1: g.u1, v1: g.v1
-            ))
+            result.append(
+                PositionedGlyph(
+                    x: cursorX + g.bearingX,
+                    y: -g.bearingY,
+                    width: g.width,
+                    height: g.height,
+                    u0: g.u0, v0: g.v0, u1: g.u1, v1: g.v1
+                ))
             cursorX += g.advance
         }
         return result
@@ -202,12 +205,14 @@ final class GlyphAtlas {
 
         // グリフをビットマップにレンダリング
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil, width: glyphW, height: glyphH,
-            bitsPerComponent: 8, bytesPerRow: glyphW * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        guard
+            let ctx = CGContext(
+                data: nil, width: glyphW, height: glyphH,
+                bitsPerComponent: 8, bytesPerRow: glyphW * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else { return nil }
 
         ctx.setTextDrawingMode(.fill)
         ctx.textPosition = CGPoint(x: 1, y: CGFloat(descent) + 1)
@@ -305,11 +310,13 @@ final class GlyphAtlas {
         let bytesPerRow = width * 4
         let totalBytes = bytesPerRow * height
         var buffer = [UInt8](repeating: 0, count: totalBytes)
-        src.getBytes(&buffer, bytesPerRow: bytesPerRow,
-                     from: MTLRegion(origin: .init(), size: .init(width: width, height: height, depth: 1)),
-                     mipmapLevel: 0)
-        dst.replace(region: MTLRegion(origin: .init(), size: .init(width: width, height: height, depth: 1)),
-                    mipmapLevel: 0, withBytes: buffer, bytesPerRow: bytesPerRow)
+        src.getBytes(
+            &buffer, bytesPerRow: bytesPerRow,
+            from: MTLRegion(origin: .init(), size: .init(width: width, height: height, depth: 1)),
+            mipmapLevel: 0)
+        dst.replace(
+            region: MTLRegion(origin: .init(), size: .init(width: width, height: height, depth: 1)),
+            mipmapLevel: 0, withBytes: buffer, bytesPerRow: bytesPerRow)
     }
 }
 
@@ -383,8 +390,10 @@ final class TextRenderer {
         }
 
         /// 複数行テキスト用のキャッシュキーを初期化します。
-        init(string: String, fontSize: Float, fontFamily: String,
-             maxWidth: Float, maxHeight: Float, leading: Float) {
+        init(
+            string: String, fontSize: Float, fontFamily: String,
+            maxWidth: Float, maxHeight: Float, leading: Float
+        ) {
             self.string = string
             self.fontSize = fontSize
             self.fontFamily = fontFamily
@@ -439,7 +448,8 @@ final class TextRenderer {
             return cached
         }
 
-        guard var result = renderText(string: string, fontSize: fontSize, fontFamily: fontFamily) else {
+        guard var result = renderText(string: string, fontSize: fontSize, fontFamily: fontFamily)
+        else {
             return nil
         }
         result.lastUsedFrame = frameCount
@@ -543,10 +553,12 @@ final class TextRenderer {
             return cached
         }
 
-        guard var result = renderTextMultiline(
-            string: string, fontSize: fontSize, fontFamily: fontFamily,
-            maxWidth: maxWidth, maxHeight: maxHeight, leading: leading
-        ) else { return nil }
+        guard
+            var result = renderTextMultiline(
+                string: string, fontSize: fontSize, fontFamily: fontFamily,
+                maxWidth: maxWidth, maxHeight: maxHeight, leading: leading
+            )
+        else { return nil }
 
         result.lastUsedFrame = frameCount
         cache[key] = result
@@ -576,7 +588,8 @@ final class TextRenderer {
         // 上限到達時は最も使われていないアトラスを追い出す
         // （テクスチャは in-flight コマンドバッファが参照中でも Metal 側で保持される）
         if atlases.count >= maxAtlases,
-           let evictKey = atlasLastUse.min(by: { $0.value < $1.value })?.key {
+            let evictKey = atlasLastUse.min(by: { $0.value < $1.value })?.key
+        {
             atlases.removeValue(forKey: evictKey)
             atlasLastUse.removeValue(forKey: evictKey)
         }
@@ -600,7 +613,8 @@ final class TextRenderer {
     ) -> (texture: MTLTexture, glyphs: [PositionedGlyph])? {
         let atlas = getAtlas(fontSize: fontSize, fontFamily: fontFamily)
         guard let glyphs = atlas.layoutGlyphs(string: string),
-              let texture = atlas.texture else { return nil }
+            let texture = atlas.texture
+        else { return nil }
         return (texture, glyphs)
     }
 
@@ -676,8 +690,9 @@ final class TextRenderer {
                 }
                 // 1 文字が複数グリフ（結合文字など）でも、その中の相対位置は活かす
                 let offset = CGPoint(x: cursorX + positions[i].x, y: positions[i].y)
-                result.append(contentsOf: Self.flatten(
-                    path: path, offset: offset, sampleFactor: sampleFactor))
+                result.append(
+                    contentsOf: Self.flatten(
+                        path: path, offset: offset, sampleFactor: sampleFactor))
             }
         }
     }
@@ -730,7 +745,8 @@ final class TextRenderer {
                 state.current.append(map(state.cursor))
 
             case .addQuadCurveToPoint:
-                let control = element.points[0], end = element.points[1]
+                let control = element.points[0]
+                let end = element.points[1]
                 let start = state.cursor
                 let n = segmentCount([start, control, end])
                 for step in 1...n {
@@ -747,7 +763,9 @@ final class TextRenderer {
                 state.cursor = end
 
             case .addCurveToPoint:
-                let c1 = element.points[0], c2 = element.points[1], end = element.points[2]
+                let c1 = element.points[0]
+                let c2 = element.points[1]
+                let end = element.points[2]
                 let start = state.cursor
                 let n = segmentCount([start, c1, c2, end])
                 for step in 1...n {
@@ -782,7 +800,7 @@ final class TextRenderer {
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: PlatformColor.white
+            .foregroundColor: PlatformColor.white,
         ]
         let attrString = NSAttributedString(string: string, attributes: attributes)
         let line = CTLineCreateWithAttributedString(attrString)
@@ -794,15 +812,17 @@ final class TextRenderer {
 
         // CGBitmapContext（RGBA プリマルチプライド）
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil,
-            width: texWidth,
-            height: texHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: texWidth * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        guard
+            let ctx = CGContext(
+                data: nil,
+                width: texWidth,
+                height: texHeight,
+                bitsPerComponent: 8,
+                bytesPerRow: texWidth * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else { return nil }
 
         // 透明な背景に白いテキストを描画
         ctx.setTextDrawingMode(.fill)
@@ -822,7 +842,8 @@ final class TextRenderer {
         descriptor.storageMode = .managed
 
         guard let texture = device.makeTexture(descriptor: descriptor),
-              let data = ctx.data else { return nil }
+            let data = ctx.data
+        else { return nil }
 
         texture.replace(
             region: MTLRegionMake2D(0, 0, texWidth, texHeight),
@@ -850,7 +871,7 @@ final class TextRenderer {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: PlatformColor.white,
-            .paragraphStyle: paragraphStyle
+            .paragraphStyle: paragraphStyle,
         ]
         let attrString = NSAttributedString(string: string, attributes: attributes)
 
@@ -871,15 +892,17 @@ final class TextRenderer {
 
         // CGBitmapContext（RGBA プリマルチプライド）
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(
-            data: nil,
-            width: texWidth,
-            height: texHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: texWidth * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        guard
+            let ctx = CGContext(
+                data: nil,
+                width: texWidth,
+                height: texHeight,
+                bitsPerComponent: 8,
+                bytesPerRow: texWidth * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else { return nil }
 
         // ここで垂直反転してはいけない（#504）。CGBitmapContext の座標系はボトム
         // レフト原点だが、バイト列は先頭行が画像の上端。CTFrameDraw をそのまま
@@ -908,7 +931,8 @@ final class TextRenderer {
         descriptor.storageMode = .managed
 
         guard let texture = device.makeTexture(descriptor: descriptor),
-              let data = ctx.data else { return nil }
+            let data = ctx.data
+        else { return nil }
 
         texture.replace(
             region: MTLRegionMake2D(0, 0, texWidth, texHeight),

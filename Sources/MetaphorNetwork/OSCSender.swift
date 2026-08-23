@@ -140,11 +140,13 @@ public final class OSCSender {
             return
         }
         let errors = errorBox
-        connection.send(content: data, completion: .contentProcessed { error in
-            if let error {
-                errors.store(error)
-            }
-        })
+        connection.send(
+            content: data,
+            completion: .contentProcessed { error in
+                if let error {
+                    errors.store(error)
+                }
+            })
     }
 }
 

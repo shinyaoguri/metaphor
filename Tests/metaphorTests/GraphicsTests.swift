@@ -1,9 +1,10 @@
-import Testing
 import Metal
-import simd
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+import simd
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - Graphics (createGraphics) offscreen buffer
 
@@ -31,11 +32,14 @@ struct GraphicsTests {
         // 以前は毎フレーム スロット 0 を使い回し、GPU がまだ読んでいる
         // 共有頂点バッファを CPU が上書きしていた
         #expect(pg.nextBufferIndexForTesting == 0)
-        pg.beginDraw(); pg.endDraw()
+        pg.beginDraw()
+        pg.endDraw()
         #expect(pg.nextBufferIndexForTesting == 1)
-        pg.beginDraw(); pg.endDraw()
+        pg.beginDraw()
+        pg.endDraw()
         #expect(pg.nextBufferIndexForTesting == 2)
-        pg.beginDraw(); pg.endDraw()
+        pg.beginDraw()
+        pg.endDraw()
         #expect(pg.nextBufferIndexForTesting == 0)
     }
 
@@ -58,10 +62,11 @@ struct GraphicsTests {
             let img = pg.toImage()
             img.loadPixels()
             let c = img.get(32, 32)
-            #expect(abs(c.r - expected.0) < 0.1 &&
-                    abs(c.g - expected.1) < 0.1 &&
-                    abs(c.b - expected.2) < 0.1,
-                    "Cycle should render its own color: got (\(c.r), \(c.g), \(c.b)), expected \(expected)")
+            #expect(
+                abs(c.r - expected.0) < 0.1 && abs(c.g - expected.1) < 0.1
+                    && abs(c.b - expected.2) < 0.1,
+                "Cycle should render its own color: got (\(c.r), \(c.g), \(c.b)), expected \(expected)"
+            )
         }
     }
 
@@ -150,8 +155,9 @@ struct GraphicsCurveSettingsTests {
         let pg = try makeGraphics()
         drawCurve(pg) { $0.curveTightness(1) }
         let span = litRowSpan(pg)
-        #expect(span < 10,
-                "実測 \(span) 行: 弓なりのままなら curveTightness が canvas へ届いていない(#540)")
+        #expect(
+            span < 10,
+            "実測 \(span) 行: 弓なりのままなら curveTightness が canvas へ届いていない(#540)")
     }
 
     // 回帰テスト(#540): detail = 1 は p1 → p2 の 1 セグメント = 直線。
@@ -160,8 +166,9 @@ struct GraphicsCurveSettingsTests {
         let pg = try makeGraphics()
         drawCurve(pg) { $0.curveDetail(1) }
         let span = litRowSpan(pg)
-        #expect(span < 10,
-                "実測 \(span) 行: 弓なりのままなら curveDetail が canvas へ届いていない(#540)")
+        #expect(
+            span < 10,
+            "実測 \(span) 行: 弓なりのままなら curveDetail が canvas へ届いていない(#540)")
     }
 
     // 境界値: Canvas2D 側は `max(1, n)` で 1 へ丸める。転送が値をいじらずそのまま渡すので、
@@ -218,8 +225,9 @@ struct GraphicsLoadPixelsFreshnessTests {
 
         img.loadPixels()
         let green = img.get(8, 8)
-        #expect(green.g > 0.9 && green.r < 0.1,
-                "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
+        #expect(
+            green.g > 0.9 && green.r < 0.1,
+            "再描画後の loadPixels が古いキャッシュを返さない (got \(green))")
     }
 }
 
@@ -271,10 +279,12 @@ struct GraphicsSameFrameRedrawTests {
 
         let left = pixel(16, 16)
         let right = pixel(48, 16)
-        #expect(left.z > 200 && left.y < 60,
-                "先に貼った側は image() 時点の青のままであるべき (got \(left)) — #745")
-        #expect(right.y > 200 && right.z < 60,
-                "後に貼った側は緑 (got \(right))")
+        #expect(
+            left.z > 200 && left.y < 60,
+            "先に貼った側は image() 時点の青のままであるべき (got \(left)) — #745")
+        #expect(
+            right.y > 200 && right.z < 60,
+            "後に貼った側は緑 (got \(right))")
     }
 
     /// 貸し出し後にローテーションしても、`background()` を呼ばないフレームの
@@ -307,8 +317,9 @@ struct GraphicsSameFrameRedrawTests {
         let inside = img.get(4, 4)
         let outside = img.get(12, 12)
         #expect(inside.b > 0.9 && inside.r < 0.1, "重ねた矩形が出る (got \(inside))")
-        #expect(outside.r > 0.9 && outside.b < 0.1,
-                "ローテーションを跨いでも前の内容が引き継がれる (got \(outside))")
+        #expect(
+            outside.r > 0.9 && outside.b < 0.1,
+            "ローテーションを跨いでも前の内容が引き継がれる (got \(outside))")
     }
 
     /// 描き換えなければテクスチャは入れ替わらない（無駄な確保をしない）。
@@ -347,8 +358,9 @@ struct GraphicsSameFrameRedrawTests {
         }
 
         // メインの in-flight は 3 フレームなので、現行 1 枚 + 手放した 3 枚で足りる
-        #expect(seen.count <= 4,
-                "フレームが進めばテクスチャは使い回される (distinct=\(seen.count))")
+        #expect(
+            seen.count <= 4,
+            "フレームが進めばテクスチャは使い回される (distinct=\(seen.count))")
     }
 
     /// `wireShaderInputs` に渡すクロージャから見えるフレーム番号。
@@ -426,12 +438,13 @@ struct GraphicsAPIParityTests {
         let pg = try makeGraphics()
         let img = render(pg) {
             $0.fill(Color(r: 1, g: 1, b: 1))
-            $0.beginClip(0, 0, 16, 32)   // 左半分だけ描けるようにする
-            $0.rect(0, 0, 32, 32)        // 全面を塗ろうとする
+            $0.beginClip(0, 0, 16, 32)  // 左半分だけ描けるようにする
+            $0.rect(0, 0, 32, 32)  // 全面を塗ろうとする
         }
         #expect(img.get(8, 16).r > 0.9, "クリップ内（左半分）は塗られる")
-        #expect(img.get(24, 16).r < 0.1,
-                "クリップ外（右半分）が塗られている: beginClip が canvas へ届いていない(#908)")
+        #expect(
+            img.get(24, 16).r < 0.1,
+            "クリップ外（右半分）が塗られている: beginClip が canvas へ届いていない(#908)")
     }
 
     // 「クリップ中は落ちる」「解除後は描ける」の両方を 1 枚で見る。片方だけだと
@@ -442,18 +455,20 @@ struct GraphicsAPIParityTests {
         let img = render(pg) {
             $0.fill(Color(r: 1, g: 1, b: 1))
             $0.beginClip(0, 0, 16, 32)
-            $0.rect(0, 0, 32, 32)        // 白は左半分にしか出ない
+            $0.rect(0, 0, 32, 32)  // 白は左半分にしか出ない
             $0.endClip()
             $0.fill(Color(r: 1, g: 0, b: 0))
-            $0.rect(16, 0, 8, 32)        // 解除後は x = 16..24 へ描ける
+            $0.rect(16, 0, 8, 32)  // 解除後は x = 16..24 へ描ける
         }
         let left = img.get(8, 16)
         #expect(left.r > 0.9 && left.g > 0.9, "クリップ内は白 (got \(left))")
         let released = img.get(20, 16)
-        #expect(released.r > 0.9 && released.g < 0.1,
-                "endClip 後の赤が出ていない (got \(released))")
-        #expect(img.get(28, 16).r < 0.1,
-                "どちらも描いていない領域が白い: クリップが効いていない(#908)")
+        #expect(
+            released.r > 0.9 && released.g < 0.1,
+            "endClip 後の赤が出ていない (got \(released))")
+        #expect(
+            img.get(28, 16).r < 0.1,
+            "どちらも描いていない領域が白い: クリップが効いていない(#908)")
     }
 
     // 境界値: キャンバス外の矩形は空のシザーへ潰れる（範囲外のシザー矩形は Metal の
@@ -490,15 +505,22 @@ struct GraphicsAPIParityTests {
         let img = render(pg) {
             $0.fill(Color(r: 1, g: 1, b: 1))
             $0.beginShape()
-            $0.vertex(2, 2); $0.vertex(30, 2); $0.vertex(30, 30); $0.vertex(2, 30)
+            $0.vertex(2, 2)
+            $0.vertex(30, 2)
+            $0.vertex(30, 30)
+            $0.vertex(2, 30)
             $0.beginContour()
-            $0.vertex(10, 10); $0.vertex(10, 22); $0.vertex(22, 22); $0.vertex(22, 10)
+            $0.vertex(10, 10)
+            $0.vertex(10, 22)
+            $0.vertex(22, 22)
+            $0.vertex(22, 10)
             $0.endContour()
             $0.endShape(.close)
         }
         #expect(img.get(5, 16).r > 0.9, "外周の内側（穴の外）は塗られる")
-        #expect(img.get(16, 16).r < 0.1,
-                "コンターの内側が塗られている: beginContour / endContour が canvas へ届いていない(#908)")
+        #expect(
+            img.get(16, 16).r < 0.1,
+            "コンターの内側が塗られている: beginContour / endContour が canvas へ届いていない(#908)")
     }
 
     // 境界値: 頂点が 3 つ未満のコンターは捨てられる（穴にならない）。
@@ -511,23 +533,33 @@ struct GraphicsAPIParityTests {
             $0.fill(Color(r: 1, g: 1, b: 1))
             // 左: 2 頂点のコンター（捨てられる）
             $0.beginShape()
-            $0.vertex(1, 2); $0.vertex(15, 2); $0.vertex(15, 30); $0.vertex(1, 30)
+            $0.vertex(1, 2)
+            $0.vertex(15, 2)
+            $0.vertex(15, 30)
+            $0.vertex(1, 30)
             $0.beginContour()
-            $0.vertex(4, 10); $0.vertex(12, 20)
+            $0.vertex(4, 10)
+            $0.vertex(12, 20)
             $0.endContour()
             $0.endShape(.close)
             // 右: 3 頂点のコンター（穴になる）
             $0.beginShape()
-            $0.vertex(17, 2); $0.vertex(31, 2); $0.vertex(31, 30); $0.vertex(17, 30)
+            $0.vertex(17, 2)
+            $0.vertex(31, 2)
+            $0.vertex(31, 30)
+            $0.vertex(17, 30)
             $0.beginContour()
-            $0.vertex(20, 10); $0.vertex(28, 10); $0.vertex(24, 22)
+            $0.vertex(20, 10)
+            $0.vertex(28, 10)
+            $0.vertex(24, 22)
             $0.endContour()
             $0.endShape(.close)
         }
         #expect(img.get(8, 16).r > 0.9, "3 頂点未満のコンターは捨てられ、塗りは埋まったまま")
         #expect(img.get(18, 16).r > 0.9, "右のシェイプもコンターの外は塗られる")
-        #expect(img.get(24, 14).r < 0.1,
-                "3 頂点のコンターは穴になる: 塗られていれば contour が届いていない(#908)")
+        #expect(
+            img.get(24, 14).r < 0.1,
+            "3 頂点のコンターは穴になる: 塗られていれば contour が届いていない(#908)")
     }
 
     // MARK: - グラデーション
@@ -540,8 +572,9 @@ struct GraphicsAPIParityTests {
         }
         let top = img.get(16, 2).r
         let bottom = img.get(16, 29).r
-        #expect(bottom - top > 0.7,
-                "上端 \(top) → 下端 \(bottom): linearGradient が canvas へ届いていない(#908)")
+        #expect(
+            bottom - top > 0.7,
+            "上端 \(top) → 下端 \(bottom): linearGradient が canvas へ届いていない(#908)")
     }
 
     // 名前付き引数まで届いているか（既定と違う軸を渡すと明るくなる向きが変わる）。
@@ -549,8 +582,9 @@ struct GraphicsAPIParityTests {
     func linearGradientAxisIsForwarded() throws {
         let pg = try makeGraphics()
         let img = render(pg) {
-            $0.linearGradient(0, 0, 32, 32, Color(r: 0, g: 0, b: 0), Color(r: 1, g: 1, b: 1),
-                              axis: .horizontal)
+            $0.linearGradient(
+                0, 0, 32, 32, Color(r: 0, g: 0, b: 0), Color(r: 1, g: 1, b: 1),
+                axis: .horizontal)
         }
         let left = img.get(2, 16).r
         let right = img.get(29, 16).r
@@ -564,10 +598,11 @@ struct GraphicsAPIParityTests {
             $0.radialGradient(16, 16, 15, Color(r: 1, g: 1, b: 1), Color(r: 0, g: 0, b: 0))
         }
         let center = img.get(16, 16).r
-        let edge = img.get(16, 29).r   // 中心から 13px（半径 15 のほぼ外縁）
+        let edge = img.get(16, 29).r  // 中心から 13px（半径 15 のほぼ外縁）
         #expect(center > 0.9, "中心は innerColor になる (got \(center))")
-        #expect(center - edge > 0.7,
-                "中心 \(center) → 外縁 \(edge): radialGradient が canvas へ届いていない(#908)")
+        #expect(
+            center - edge > 0.7,
+            "中心 \(center) → 外縁 \(edge): radialGradient が canvas へ届いていない(#908)")
     }
 
     // MARK: - 行間・テキストのアウトライン
@@ -579,7 +614,7 @@ struct GraphicsAPIParityTests {
         let pg = try makeGraphics(width: 128, height: 128)
         // アウトラインの形は書体に依存するので、システムに必ずある書体で固定する。
         pg.textFont("Helvetica")
-        pg.textSize(16)   // textSize は行間を既定へ戻すので、textLeading は後に呼ぶ
+        pg.textSize(16)  // textSize は行間を既定へ戻すので、textLeading は後に呼ぶ
 
         pg.textLeading(10)
         let tight = ySpan(pg.textToContours("H\nH", 0, 40).flatMap { $0 })
@@ -587,8 +622,9 @@ struct GraphicsAPIParityTests {
         let loose = ySpan(pg.textToContours("H\nH", 0, 40).flatMap { $0 })
 
         #expect(tight > 0, "実測 \(tight): 輪郭が取れていない")
-        #expect(abs((loose - tight) - 30) < 1,
-                "行間 10 → 40 で 2 行の高さは 30 増えるはず (実測 \(tight) → \(loose))")
+        #expect(
+            abs((loose - tight) - 30) < 1,
+            "行間 10 → 40 で 2 行の高さは 30 増えるはず (実測 \(tight) → \(loose))")
     }
 
     // MARK: - 矩形を取る text()（#747）
@@ -618,10 +654,13 @@ struct GraphicsAPIParityTests {
         let wide = try drawn(boxWidth: 120)
 
         #expect(narrow.lines >= 2, "狭い箱で折り返していない（行 \(narrow.lines) 本）")
-        #expect(narrow.lines > wide.lines,
-                "箱の幅で行数が変わらない: 幅 40 で \(narrow.lines) 行、幅 120 で \(wide.lines) 行 — w/h が canvas へ届いていない(#747)")
-        #expect(narrow.inkRows > wide.inkRows,
-                "狭い箱の方が縦に伸びるはず（実測 \(narrow.inkRows) vs \(wide.inkRows) 行）")
+        #expect(
+            narrow.lines > wide.lines,
+            "箱の幅で行数が変わらない: 幅 40 で \(narrow.lines) 行、幅 120 で \(wide.lines) 行 — w/h が canvas へ届いていない(#747)"
+        )
+        #expect(
+            narrow.inkRows > wide.inkRows,
+            "狭い箱の方が縦に伸びるはず（実測 \(narrow.inkRows) vs \(wide.inkRows) 行）")
     }
 
     // 境界(#747): 1 行も入らない高さの箱では 1 ピクセルも描かない。
@@ -643,8 +682,9 @@ struct GraphicsAPIParityTests {
             $0.text("wrap this sentence into several lines", 4, 4, 40, 8)
         }
         let rows = inkRows(img, 128)
-        #expect(rows.isEmpty,
-                "行の高さ 20 に対し箱の高さ 8 なので 1 行も入らないはず（実測 \(rows.count) 行にインク）")
+        #expect(
+            rows.isEmpty,
+            "行の高さ 20 に対し箱の高さ 8 なので 1 行も入らないはず（実測 \(rows.count) 行にインク）")
     }
 
     // 矩形版は `textTextureMultiline(leading:)` を包むので `textLeading` を尊重する。
@@ -659,7 +699,7 @@ struct GraphicsAPIParityTests {
             pg.textLeading(leading)
             let img = render(pg) {
                 $0.fill(Color(r: 1, g: 1, b: 1))
-                $0.text("MM MM", 4, 4, 30, 120)   // 幅 30 は "MM" 2 行に割れる
+                $0.text("MM MM", 4, 4, 30, 120)  // 幅 30 は "MM" 2 行に割れる
             }
             return inkBandStarts(inkRows(img, 128))
         }
@@ -669,10 +709,12 @@ struct GraphicsAPIParityTests {
         #expect(tight.count == 2, "leading 20 で 2 行にならなかった（帯 \(tight.count) 本）")
         #expect(loose.count == 2, "leading 40 で 2 行にならなかった（帯 \(loose.count) 本）")
         guard tight.count == 2, loose.count == 2 else { return }
-        #expect(abs((tight[1] - tight[0]) - 20) <= 1,
-                "leading 20 の行送りが \(tight[1] - tight[0])px")
-        #expect(abs((loose[1] - loose[0]) - 40) <= 1,
-                "leading 40 の行送りが \(loose[1] - loose[0])px — textLeading が矩形版へ効いていない(#747)")
+        #expect(
+            abs((tight[1] - tight[0]) - 20) <= 1,
+            "leading 20 の行送りが \(tight[1] - tight[0])px")
+        #expect(
+            abs((loose[1] - loose[0]) - 40) <= 1,
+            "leading 40 の行送りが \(loose[1] - loose[0])px — textLeading が矩形版へ効いていない(#747)")
     }
 
     @Test("textToPoints / textToContours がグリフのアウトラインを返す")
@@ -684,14 +726,16 @@ struct GraphicsAPIParityTests {
         let contours = pg.textToContours("o", 10, 60)
         let points = pg.textToPoints("o", 10, 60)
         #expect(contours.count == 2, "'o' は外周 + 穴の 2 輪郭 (実測 \(contours.count))")
-        #expect(!points.isEmpty && points.count == contours.reduce(0) { $0 + $1.count },
-                "textToPoints は輪郭を平らに繋いだもの (実測 \(points.count))")
+        #expect(
+            !points.isEmpty && points.count == contours.reduce(0) { $0 + $1.count },
+            "textToPoints は輪郭を平らに繋いだもの (実測 \(points.count))")
 
         // 位置の意味は text() と同じ（原点はベースライン左端）。
         let xs = points.map(\.x)
         #expect((xs.min() ?? -1) >= 9, "左端がほぼ x = 10 (実測 \(xs.min() ?? -1))")
-        #expect((xs.max() ?? .infinity) <= 10 + pg.textWidth("o") + 1,
-                "右端が advance の範囲に収まる (実測 \(xs.max() ?? .infinity))")
+        #expect(
+            (xs.max() ?? .infinity) <= 10 + pg.textWidth("o") + 1,
+            "右端が advance の範囲に収まる (実測 \(xs.max() ?? .infinity))")
     }
 
     // 境界値: 空文字は空の輪郭（行分割や advance の計算で落ちない）。
@@ -721,8 +765,9 @@ struct GraphicsAPIParityTests {
             $0.fill(Color(r: 1, g: 1, b: 1))
             $0.rect(0, 0, 4, 4)
         }
-        #expect(reported.x == 8 && reported.y == 8,
-                "translate(8, 8) 後の原点は (8, 8) (実測 \(reported))")
+        #expect(
+            reported.x == 8 && reported.y == 8,
+            "translate(8, 8) 後の原点は (8, 8) (実測 \(reported))")
         #expect(img.get(10, 10).r > 0.9, "報告された位置に実際に描かれている")
         #expect(img.get(4, 4).r < 0.1, "変換前の位置には描かれていない")
     }
@@ -733,12 +778,16 @@ struct GraphicsAPIParityTests {
         var reported = SIMD2<Float>(-1, -1)
         inDraw(pg) {
             $0.translate(4, 0)
-            $0.applyMatrix(float3x3(columns: (
-                SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(6, 9, 1))))
+            $0.applyMatrix(
+                float3x3(
+                    columns: (
+                        SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(6, 9, 1)
+                    )))
             reported = $0.screenPosition(0, 0)
         }
-        #expect(reported.x == 10 && reported.y == 9,
-                "既存の変換へ合成される (実測 \(reported))")
+        #expect(
+            reported.x == 10 && reported.y == 9,
+            "既存の変換へ合成される (実測 \(reported))")
     }
 
     @Test("applyMatrix(6 成分) が Processing 形式で乗る")
@@ -750,8 +799,9 @@ struct GraphicsAPIParityTests {
             $0.applyMatrix(1, 0, 5, 0, 1, 7)
             reported = $0.screenPosition(0, 0)
         }
-        #expect(reported.x == 5 && reported.y == 7,
-                "成分は行優先で解釈される (実測 \(reported))")
+        #expect(
+            reported.x == 5 && reported.y == 7,
+            "成分は行優先で解釈される (実測 \(reported))")
     }
 
     // 単位行列は `screenPosition` の「壊れ方」（恒等写像）と区別が付かないので、
@@ -768,8 +818,9 @@ struct GraphicsAPIParityTests {
             $0.fill(Color(r: 1, g: 1, b: 1))
             $0.rect(0, 0, 6, 6)
         }
-        #expect(reported.x == 3 && reported.y == 4,
-                "変換が残っている: resetMatrix が canvas へ届いていない(#908) (実測 \(reported))")
+        #expect(
+            reported.x == 3 && reported.y == 4,
+            "変換が残っている: resetMatrix が canvas へ届いていない(#908) (実測 \(reported))")
         #expect(img.get(3, 3).r > 0.9, "変換を戻した位置（左上）に描かれる")
     }
 
@@ -778,11 +829,12 @@ struct GraphicsAPIParityTests {
         let pg = try makeGraphics()
         var reported = SIMD2<Float>(-1, -1)
         inDraw(pg) {
-            $0.shearX(.pi / 4)   // x' = x + tan(45°) * y
+            $0.shearX(.pi / 4)  // x' = x + tan(45°) * y
             reported = $0.screenPosition(0, 10)
         }
-        #expect(abs(reported.x - 10) < 0.01 && abs(reported.y - 10) < 0.01,
-                "y = 10 の点が x へ 10 ずれるはず (実測 \(reported))")
+        #expect(
+            abs(reported.x - 10) < 0.01 && abs(reported.y - 10) < 0.01,
+            "y = 10 の点が x へ 10 ずれるはず (実測 \(reported))")
     }
 
     @Test("shearY が y 方向にせん断する")
@@ -790,11 +842,12 @@ struct GraphicsAPIParityTests {
         let pg = try makeGraphics()
         var reported = SIMD2<Float>(-1, -1)
         inDraw(pg) {
-            $0.shearY(.pi / 4)   // y' = y + tan(45°) * x
+            $0.shearY(.pi / 4)  // y' = y + tan(45°) * x
             reported = $0.screenPosition(10, 0)
         }
-        #expect(abs(reported.x - 10) < 0.01 && abs(reported.y - 10) < 0.01,
-                "x = 10 の点が y へ 10 ずれるはず (実測 \(reported))")
+        #expect(
+            abs(reported.x - 10) < 0.01 && abs(reported.y - 10) < 0.01,
+            "x = 10 の点が y へ 10 ずれるはず (実測 \(reported))")
     }
 
     // MARK: - 変換・スタイルの個別スタック
@@ -809,16 +862,18 @@ struct GraphicsAPIParityTests {
             $0.fill(Color(r: 0, g: 0, b: 1))
             $0.pushMatrix()
             $0.translate(10, 10)
-            $0.fill(Color(r: 1, g: 0, b: 0))   // スタイルは積んでいない
+            $0.fill(Color(r: 1, g: 0, b: 0))  // スタイルは積んでいない
             $0.popMatrix()
             afterPop = $0.screenPosition(0, 0)
             $0.rect(0, 0, 8, 8)
         }
-        #expect(afterPop.x == 0 && afterPop.y == 0,
-                "popMatrix で変換が戻る (実測 \(afterPop))")
+        #expect(
+            afterPop.x == 0 && afterPop.y == 0,
+            "popMatrix で変換が戻る (実測 \(afterPop))")
         let c = img.get(4, 4)
-        #expect(c.r > 0.9 && c.b < 0.1,
-                "popMatrix はスタイルを戻さない = 赤のまま (got \(c))")
+        #expect(
+            c.r > 0.9 && c.b < 0.1,
+            "popMatrix はスタイルを戻さない = 赤のまま (got \(c))")
     }
 
     @Test("popStyle はスタイルだけ戻し、変換は戻さない")
@@ -829,13 +884,14 @@ struct GraphicsAPIParityTests {
             $0.fill(Color(r: 0, g: 0, b: 1))
             $0.pushStyle()
             $0.fill(Color(r: 1, g: 0, b: 0))
-            $0.translate(10, 10)               // 変換は積んでいない
+            $0.translate(10, 10)  // 変換は積んでいない
             $0.popStyle()
             afterPop = $0.screenPosition(0, 0)
             $0.rect(0, 0, 8, 8)
         }
-        #expect(afterPop.x == 10 && afterPop.y == 10,
-                "popStyle は変換を戻さない (実測 \(afterPop))")
+        #expect(
+            afterPop.x == 10 && afterPop.y == 10,
+            "popStyle は変換を戻さない (実測 \(afterPop))")
         let c = img.get(14, 14)
         #expect(c.b > 0.9 && c.r < 0.1, "popStyle で fill が青へ戻る (got \(c))")
     }
@@ -851,7 +907,8 @@ struct GraphicsAPIParityTests {
             $0.popStyle()
             reported = $0.screenPosition(0, 0)
         }
-        #expect(reported.x == 6 && reported.y == 7,
-                "空の pop で変換が壊れない (実測 \(reported))")
+        #expect(
+            reported.x == 6 && reported.y == 7,
+            "空の pop で変換が壊れない (実測 \(reported))")
     }
 }

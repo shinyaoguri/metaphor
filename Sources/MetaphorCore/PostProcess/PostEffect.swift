@@ -66,9 +66,13 @@ public final class BloomEffect: PostEffect {
         self.threshold = threshold
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
         let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
-        let params = PostProcessParams(texelSize: texelSize, intensity: intensity, threshold: threshold)
+        let params = PostProcessParams(
+            texelSize: texelSize, intensity: intensity, threshold: threshold)
 
         // 1. 明るい領域を抽出: input → output (一時)
         context.renderPass(
@@ -76,7 +80,8 @@ public final class BloomEffect: PostEffect {
             fragmentName: PostProcessShaders.FunctionName.postBloomExtract, params: params
         )
         // 2. Kawase ブラー: output → scratch
-        guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else {
+        guard let scratch = context.getScratchTexture(width: input.width, height: input.height)
+        else {
             // スクラッチ確保失敗時は「輝度抽出のみ」の画像を出力せず、ソースを
             // そのままパススルーする（output には手順 1 の抽出結果が残っているため）
             if let blit = commandBuffer.makeBlitCommandEncoder() {
@@ -85,7 +90,8 @@ public final class BloomEffect: PostEffect {
             }
             return
         }
-        context.applyKawaseBlur(commandBuffer: commandBuffer, source: output, output: scratch, iterations: 4)
+        context.applyKawaseBlur(
+            commandBuffer: commandBuffer, source: output, output: scratch, iterations: 4)
         // 3. コンポジット: 元画像 + ブルーム → output
         context.renderCompositePass(
             commandBuffer: commandBuffer, original: input, bloom: scratch,
@@ -106,14 +112,19 @@ public final class BlurEffect: PostEffect {
         self.radius = radius
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
         if radius >= 4 {
             let iterations = max(2, min(Int(log2(radius)), 6))
-            context.applyKawaseBlur(commandBuffer: commandBuffer, source: input, output: output, iterations: iterations)
+            context.applyKawaseBlur(
+                commandBuffer: commandBuffer, source: input, output: output, iterations: iterations)
         } else {
             let texelSize = SIMD2<Float>(1.0 / Float(input.width), 1.0 / Float(input.height))
             let params = PostProcessParams(texelSize: texelSize, radius: radius)
-            guard let scratch = context.getScratchTexture(width: input.width, height: input.height) else {
+            guard let scratch = context.getScratchTexture(width: input.width, height: input.height)
+            else {
                 // スクラッチ確保失敗時は未初期化の output を出さずソースをパススルー
                 if let blit = commandBuffer.makeBlitCommandEncoder() {
                     blit.copy(from: input, to: output)
@@ -141,8 +152,12 @@ public final class InvertEffect: PostEffect {
     public let name = "invert"
     public init() {}
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let params = PostProcessParams(texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)))
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let params = PostProcessParams(
+            texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)))
         context.renderPass(
             commandBuffer: commandBuffer, input: input, output: output,
             fragmentName: PostProcessShaders.FunctionName.postInvert, params: params
@@ -156,8 +171,12 @@ public final class GrayscaleEffect: PostEffect {
     public let name = "grayscale"
     public init() {}
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let params = PostProcessParams(texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)))
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let params = PostProcessParams(
+            texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)))
         context.renderPass(
             commandBuffer: commandBuffer, input: input, output: output,
             fragmentName: PostProcessShaders.FunctionName.postGrayscale, params: params
@@ -195,7 +214,10 @@ public final class VignetteEffect: PostEffect {
         self.smoothness = smoothness
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
         let params = PostProcessParams(
             texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)),
             intensity: intensity, smoothness: smoothness
@@ -217,7 +239,10 @@ public final class ChromaticAberrationEffect: PostEffect {
         self.intensity = intensity
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
         let params = PostProcessParams(
             texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)),
             intensity: intensity
@@ -238,14 +263,20 @@ public final class ColorGradeEffect: PostEffect {
     public var saturation: Float
     public var temperature: Float
 
-    public init(brightness: Float = 0.0, contrast: Float = 1.0, saturation: Float = 1.0, temperature: Float = 0.0) {
+    public init(
+        brightness: Float = 0.0, contrast: Float = 1.0, saturation: Float = 1.0,
+        temperature: Float = 0.0
+    ) {
         self.brightness = brightness
         self.contrast = contrast
         self.saturation = saturation
         self.temperature = temperature
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
         let params = PostProcessParams(
             texelSize: SIMD2(1.0 / Float(input.width), 1.0 / Float(input.height)),
             brightness: brightness, contrast: contrast,

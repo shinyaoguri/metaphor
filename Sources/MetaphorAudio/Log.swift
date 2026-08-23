@@ -1,12 +1,12 @@
+import Foundation
+
 @usableFromInline
 @inline(__always)
 func debugWarning(_ message: @autoclosure () -> String) {
     #if DEBUG
-    print("[MetaphorAudio] Warning:", message())
+        print("[MetaphorAudio] Warning:", message())
     #endif
 }
-
-import Foundation
 
 /// **Release ビルドでも必ず** stderr に出す警告。
 ///

@@ -132,7 +132,8 @@ public final class ParameterGUI {
         canvas: Canvas2D,
         input: InputManager
     ) {
-        slider(label, &value, min: minVal, max: maxVal, canvas: canvas, input: input, valueText: nil)
+        slider(
+            label, &value, min: minVal, max: maxVal, canvas: canvas, input: input, valueText: nil)
     }
 
     /// スライダー本体。`valueText` を渡すと右肩の値表示を差し替えます
@@ -183,8 +184,9 @@ public final class ParameterGUI {
             // 押下エッジ + トラック上のときだけ掴む（押したままトラックを
             // 通過しても途中から掴まない）
             if activeSliderID == nil, !wasMouseDown,
-               mx >= sliderX, mx <= sliderX + widgetWidth,
-               my >= trackY, my <= trackY + sliderHeight {
+                mx >= sliderX, mx <= sliderX + widgetWidth,
+                my >= trackY, my <= trackY + sliderHeight
+            {
                 activeSliderID = id
             }
             if activeSliderID == id {
@@ -251,8 +253,9 @@ public final class ParameterGUI {
         let mx = input.mouseX
         let my = input.mouseY
         if input.isMouseDown && !wasMouseDown {
-            if mx >= toggleX && mx <= toggleX + widgetWidth &&
-               my >= toggleY && my <= toggleY + toggleSize + 2 {
+            if mx >= toggleX && mx <= toggleX + widgetWidth && my >= toggleY
+                && my <= toggleY + toggleSize + 2
+            {
                 value.toggle()
             }
         }

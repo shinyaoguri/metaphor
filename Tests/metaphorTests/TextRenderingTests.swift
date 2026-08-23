@@ -1,7 +1,8 @@
-import Testing
 import Metal
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 // MARK: - テキストの色
 
@@ -38,15 +39,17 @@ struct TextRenderingColorTests {
             canvas.text("MW", 10, 50)
         }
         #expect(warm.r > 0.01, "文字が描かれていない（平均 R=\(warm.r)）")
-        #expect(warm.r > warm.g * 1.5 && warm.g > warm.b,
-                "fill(230, 90, 70) の色相になっていない: R=\(warm.r) G=\(warm.g) B=\(warm.b)")
+        #expect(
+            warm.r > warm.g * 1.5 && warm.g > warm.b,
+            "fill(230, 90, 70) の色相になっていない: R=\(warm.r) G=\(warm.g) B=\(warm.b)")
 
         let cool = try renderText { canvas in
             canvas.fill(70, 90, 230)
             canvas.text("MW", 10, 50)
         }
-        #expect(cool.b > cool.r * 1.5 && cool.g > cool.r,
-                "fill(70, 90, 230) の色相になっていない: R=\(cool.r) G=\(cool.g) B=\(cool.b)")
+        #expect(
+            cool.b > cool.r * 1.5 && cool.g > cool.r,
+            "fill(70, 90, 230) の色相になっていない: R=\(cool.r) G=\(cool.g) B=\(cool.b)")
     }
 
     @Test("text() の色は fill を変えると変わる")
@@ -63,10 +66,12 @@ struct TextRenderingColorTests {
             canvas.text("M", 90, 50)
         }
         // 同じ位置・同じ字形なので、fill を変えた分だけ B が増え R が減る
-        #expect(differentFill.b > sameFill.b + 0.005,
-                "2 文字目の fill が反映されていない: B \(sameFill.b) → \(differentFill.b)")
-        #expect(differentFill.r < sameFill.r,
-                "2 文字目が赤のまま描かれている: R \(sameFill.r) → \(differentFill.r)")
+        #expect(
+            differentFill.b > sameFill.b + 0.005,
+            "2 文字目の fill が反映されていない: B \(sameFill.b) → \(differentFill.b)")
+        #expect(
+            differentFill.r < sameFill.r,
+            "2 文字目が赤のまま描かれている: R \(sameFill.r) → \(differentFill.r)")
     }
 
     @Test("tint() は文字色を変えない（画像専用）")
@@ -78,8 +83,9 @@ struct TextRenderingColorTests {
         }
         #expect(tinted.r > 0.01, "文字が描かれていない（平均 R=\(tinted.r)）")
         // 白い fill なので、tint を無視していれば 3 チャンネルがほぼ揃う
-        #expect(tinted.g > tinted.r * 0.9 && tinted.b > tinted.r * 0.9,
-                "tint が文字色に漏れている: R=\(tinted.r) G=\(tinted.g) B=\(tinted.b)")
+        #expect(
+            tinted.g > tinted.r * 0.9 && tinted.b > tinted.r * 0.9,
+            "tint が文字色に漏れている: R=\(tinted.r) G=\(tinted.g) B=\(tinted.b)")
     }
 
     @Test("矩形を取る text() も fill 色で塗られる")
@@ -90,8 +96,9 @@ struct TextRenderingColorTests {
             canvas.text("MW MW", 10, 6, 140, 52)
         }
         #expect(warm.r > 0.01, "文字が描かれていない（平均 R=\(warm.r)）")
-        #expect(warm.r > warm.g * 1.5 && warm.g > warm.b,
-                "fill(230, 90, 70) の色相になっていない: R=\(warm.r) G=\(warm.g) B=\(warm.b)")
+        #expect(
+            warm.r > warm.g * 1.5 && warm.g > warm.b,
+            "fill(230, 90, 70) の色相になっていない: R=\(warm.r) G=\(warm.g) B=\(warm.b)")
     }
 
     /// `noFill()` は `text()` に効かない（#519 で意図的にそう決めた）。
@@ -110,17 +117,19 @@ struct TextRenderingColorTests {
             canvas.noFill()
             canvas.text("MW", 10, 50)
         }
-        #expect(afterNoFill.r > 0.01,
-                "noFill() の後で文字が消えている（平均 R=\(afterNoFill.r)）")
+        #expect(
+            afterNoFill.r > 0.01,
+            "noFill() の後で文字が消えている（平均 R=\(afterNoFill.r)）")
         // 「描かれる」だけでなく「直前の fill 色のまま」であることまで見る
-        #expect(abs(afterNoFill.r - filled.r) < 0.005
+        #expect(
+            abs(afterNoFill.r - filled.r) < 0.005
                 && abs(afterNoFill.g - filled.g) < 0.005
                 && abs(afterNoFill.b - filled.b) < 0.005,
-                """
-                noFill() が文字色を変えている: \
-                fill 時 R=\(filled.r) G=\(filled.g) B=\(filled.b) / \
-                noFill 後 R=\(afterNoFill.r) G=\(afterNoFill.g) B=\(afterNoFill.b)
-                """)
+            """
+            noFill() が文字色を変えている: \
+            fill 時 R=\(filled.r) G=\(filled.g) B=\(filled.b) / \
+            noFill 後 R=\(afterNoFill.r) G=\(afterNoFill.g) B=\(afterNoFill.b)
+            """)
     }
 
     /// 文字を消したいときの案内（移行ガイドに書いた代替手段）が実際に効くこと。
@@ -131,11 +140,12 @@ struct TextRenderingColorTests {
             canvas.fill(230, 90, 70, 0)
             canvas.text("MW", 10, 50)
         }
-        #expect(transparent.r < 0.001 && transparent.g < 0.001 && transparent.b < 0.001,
-                """
-                アルファ 0 の fill でも文字が見えている: \
-                R=\(transparent.r) G=\(transparent.g) B=\(transparent.b)
-                """)
+        #expect(
+            transparent.r < 0.001 && transparent.g < 0.001 && transparent.b < 0.001,
+            """
+            アルファ 0 の fill でも文字が見えている: \
+            R=\(transparent.r) G=\(transparent.g) B=\(transparent.b)
+            """)
     }
 }
 
@@ -203,8 +213,9 @@ struct TextOrientationTests {
         }
         let (top, bottom) = balance(rowInk(helper))
         #expect(top + bottom > 0.01, "文字が描かれていない（総インク \(top + bottom)）")
-        #expect(top > bottom * 3,
-                "1 行目が下に来ている（上半分 \(top) / 下半分 \(bottom)）")
+        #expect(
+            top > bottom * 3,
+            "1 行目が下に来ている（上半分 \(top) / 下半分 \(bottom)）")
     }
 
     @Test("矩形を取る text() のグリフが上下反転しない")
@@ -217,8 +228,9 @@ struct TextOrientationTests {
         }
         let (top, bottom) = balance(rowInk(helper))
         #expect(top + bottom > 0.01, "文字が描かれていない（総インク \(top + bottom)）")
-        #expect(top > bottom * 1.5,
-                "グリフが上下反転している（上半分 \(top) / 下半分 \(bottom)）")
+        #expect(
+            top > bottom * 1.5,
+            "グリフが上下反転している（上半分 \(top) / 下半分 \(bottom)）")
     }
 
     @Test("矩形を取る text() のグリフが左右反転しない")
@@ -232,8 +244,9 @@ struct TextOrientationTests {
         }
         let (left, right) = balance(columnInk(helper))
         #expect(left + right > 0.01, "文字が描かれていない（総インク \(left + right)）")
-        #expect(left > right * 3,
-                "グリフが左右反転している（左半分 \(left) / 右半分 \(right)）")
+        #expect(
+            left > right * 3,
+            "グリフが左右反転している（左半分 \(left) / 右半分 \(right)）")
     }
 
     @Test("3 引数の text() と同じ向きで描かれる")
@@ -250,10 +263,12 @@ struct TextOrientationTests {
         }
         let plainRows = balance(rowInk(plain))
         let wrappedRows = balance(rowInk(wrapped))
-        #expect(plainRows.leading > plainRows.trailing,
-                "基準側が壊れている（上半分 \(plainRows.leading) / 下半分 \(plainRows.trailing)）")
-        #expect(wrappedRows.leading > wrappedRows.trailing,
-                "矩形版だけ向きが違う（上半分 \(wrappedRows.leading) / 下半分 \(wrappedRows.trailing)）")
+        #expect(
+            plainRows.leading > plainRows.trailing,
+            "基準側が壊れている（上半分 \(plainRows.leading) / 下半分 \(plainRows.trailing)）")
+        #expect(
+            wrappedRows.leading > wrappedRows.trailing,
+            "矩形版だけ向きが違う（上半分 \(wrappedRows.leading) / 下半分 \(wrappedRows.trailing)）")
     }
 }
 
@@ -314,7 +329,10 @@ struct MultilineTextTests {
         var sum: Float = 0
         for i in profile.indices {
             if profile[i] > Self.inkThreshold {
-                if start == nil { start = i; sum = 0 }
+                if start == nil {
+                    start = i
+                    sum = 0
+                }
                 sum += profile[i]
             } else if let s = start {
                 bands.append((s, i - 1, sum))
@@ -333,11 +351,13 @@ struct MultilineTextTests {
             canvas.text("MMM\nM", 20, 20)
         }
         let bands = inkBands(rowInk(helper))
-        #expect(bands.count == 2,
-                "2 行に分かれていない（インクの帯 \(bands.count) 本: \(bands.map { "\($0.first)...\($0.last)" })）")
+        #expect(
+            bands.count == 2,
+            "2 行に分かれていない（インクの帯 \(bands.count) 本: \(bands.map { "\($0.first)...\($0.last)" })）")
         if bands.count == 2 {
-            #expect(bands[0].ink > bands[1].ink,
-                    "1 行目が下に来ている（上の帯 \(bands[0].ink) / 下の帯 \(bands[1].ink)）")
+            #expect(
+                bands[0].ink > bands[1].ink,
+                "1 行目が下に来ている（上の帯 \(bands[0].ink) / 下の帯 \(bands[1].ink)）")
         }
     }
 
@@ -356,10 +376,12 @@ struct MultilineTextTests {
             return
         }
         let drawn = Float(extent.last - extent.first + 1)
-        #expect(drawn < widths.joined * 0.75,
-                "\\n が捨てられて 1 行に連結された（描画幅 \(drawn) / textWidth(\"AABB\") \(widths.joined)）")
-        #expect(widths.split == canvas2DTextWidth(helper, "AA\nBB"),
-                "textWidth() が改行を含む文字列で最長行の幅を返していない")
+        #expect(
+            drawn < widths.joined * 0.75,
+            "\\n が捨てられて 1 行に連結された（描画幅 \(drawn) / textWidth(\"AABB\") \(widths.joined)）")
+        #expect(
+            widths.split == canvas2DTextWidth(helper, "AA\nBB"),
+            "textWidth() が改行を含む文字列で最長行の幅を返していない")
     }
 
     /// `textWidth()` を描画後のキャンバスから引く（`render` の外でも同じ状態で測るため）。
@@ -381,8 +403,9 @@ struct MultilineTextTests {
             return
         }
         let drawnHeight = extent.last - extent.first + 1
-        #expect(drawnHeight > 26,
-                "折り返していない（インクの高さ \(drawnHeight)px — 1 行ぶんしかない）")
+        #expect(
+            drawnHeight > 26,
+            "折り返していない（インクの高さ \(drawnHeight)px — 1 行ぶんしかない）")
     }
 
     @Test("textLeading() はピクセル単位で行間を決める")
@@ -433,7 +456,8 @@ struct MultilineTextTests {
             canvas.textSize(20)
         }
         #expect(auto > 0, "既定の行間を測れなかった")
-        #expect(abs(reset - auto) <= 2,
-                "textSize() の後も textLeading(60) が残っている（\(reset)px / 既定 \(auto)px）")
+        #expect(
+            abs(reset - auto) <= 2,
+            "textSize() の後も textLeading(60) が残っている（\(reset)px / 既定 \(auto)px）")
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import MetalKit
+import SwiftUI
 
 /// クロージャベースの描画によるクリエイティブコーディング用 SwiftUI ビュー
 ///
@@ -217,7 +217,8 @@ public struct SketchView: NSViewRepresentable {
             renderer.resizeCanvas(width: width, height: height)
 
             guard let newCanvas = try? Canvas2D(renderer: renderer),
-                  let newCanvas3D = try? Canvas3D(renderer: renderer) else {
+                let newCanvas3D = try? Canvas3D(renderer: renderer)
+            else {
                 metaphorWarning("createCanvas(\(width), \(height)) failed to rebuild canvases")
                 return
             }

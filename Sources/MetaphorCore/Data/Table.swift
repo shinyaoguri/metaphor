@@ -78,7 +78,8 @@ public final class Table {
     ///   - format: 区切り形式
     ///   - header: 先頭行を列タイトルとして扱うか
     /// - Throws: ``MetaphorError/data(_:)`` 行の列数がヘッダと一致しない場合
-    public convenience init(string: String, format: TableFormat = .csv, header: Bool = true) throws {
+    public convenience init(string: String, format: TableFormat = .csv, header: Bool = true) throws
+    {
         var records = try Self.parseRecords(string, delimiter: format.delimiter)
         let titles: [String]
         if header {
@@ -90,8 +91,9 @@ public final class Table {
             titles = (0..<(records.first?.count ?? 0)).map(String.init)
         }
         for (index, record) in records.enumerated() where record.count != titles.count {
-            throw MetaphorError.data(.parseFailed(
-                detail: "row \(index) has \(record.count) fields, expected \(titles.count)"))
+            throw MetaphorError.data(
+                .parseFailed(
+                    detail: "row \(index) has \(record.count) fields, expected \(titles.count)"))
         }
         self.init(columnTitles: titles)
         for record in records {
@@ -117,7 +119,9 @@ public final class Table {
     public func addRow(_ values: [String]) -> TableRow {
         var cells = values
         if cells.count > columnCount {
-            metaphorWarning("Table.addRow: \(cells.count) values exceed \(columnCount) columns; extra values dropped")
+            metaphorWarning(
+                "Table.addRow: \(cells.count) values exceed \(columnCount) columns; extra values dropped"
+            )
             cells = Array(cells.prefix(columnCount))
         } else if cells.count < columnCount {
             cells += Array(repeating: "", count: columnCount - cells.count)
@@ -239,7 +243,8 @@ public final class Table {
     private static func serializeRecord(_ fields: [String], delimiter: Character) -> String {
         fields.map { field in
             // CRLF は 1 Character のため "\n"/"\r" の contains にかからない — 明示的に含める
-            let needsQuoting = field.contains(delimiter) || field.contains("\"")
+            let needsQuoting =
+                field.contains(delimiter) || field.contains("\"")
                 || field.contains("\n") || field.contains("\r") || field.contains("\r\n")
             return if needsQuoting {
                 "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
@@ -274,7 +279,8 @@ public final class TableRow {
             return nil
         }
         guard let index = table.columnIndex(of: column) else {
-            metaphorWarning("TableRow: column '\(column)' not found (columns: \(table.columnTitles))")
+            metaphorWarning(
+                "TableRow: column '\(column)' not found (columns: \(table.columnTitles))")
             return nil
         }
         return index

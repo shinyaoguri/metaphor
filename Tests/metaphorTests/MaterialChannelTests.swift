@@ -114,7 +114,9 @@ struct MaterialChannelTests {
         // emissive と specular を別の色で呼び、転送先を取り違えていれば落ちる。
         context.emissive(255, 0, 0)
         context.specular(0, 0, 255)
-        expectClose(canvas3D.currentMaterial.emissiveAndMetallic, SIMD3(1, 0, 0), "context.emissive")
-        expectClose(canvas3D.currentMaterial.specularAndShininess, SIMD3(0, 0, 1), "context.specular")
+        expectClose(
+            canvas3D.currentMaterial.emissiveAndMetallic, SIMD3(1, 0, 0), "context.emissive")
+        expectClose(
+            canvas3D.currentMaterial.specularAndShininess, SIMD3(0, 0, 1), "context.specular")
     }
 }

@@ -1,7 +1,7 @@
-import MetaphorCore
 import MetaphorAudio
-import MetaphorVideo
+import MetaphorCore
 import MetaphorPhysics
+import MetaphorVideo
 
 // MARK: - サブシステム自動管理ブリッジ
 //

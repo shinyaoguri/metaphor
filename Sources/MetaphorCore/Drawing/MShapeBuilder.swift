@@ -74,8 +74,9 @@ extension MShape {
         guard isRecording else { return }
         kind = .path3D
         let normal = pendingNormal3D ?? SIMD3(0, 1, 0)
-        vertices3D.append(ShapeVertex3D(
-            position: SIMD3(x, y, z), normal: normal, uv: SIMD2(u, v)))
+        vertices3D.append(
+            ShapeVertex3D(
+                position: SIMD3(x, y, z), normal: normal, uv: SIMD2(u, v)))
     }
 
     /// 以降の 3D 頂点に適用する法線ベクトルを設定します。
@@ -317,11 +318,12 @@ extension MShape {
         var tris: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)] = []
         var i = 0
         while i + 2 < vertices2D.count {
-            tris.append((
-                vertices2D[i].position,
-                vertices2D[i + 1].position,
-                vertices2D[i + 2].position
-            ))
+            tris.append(
+                (
+                    vertices2D[i].position,
+                    vertices2D[i + 1].position,
+                    vertices2D[i + 2].position
+                ))
             i += 3
         }
         cachedTriangles2D = tris
@@ -329,20 +331,25 @@ extension MShape {
 
     private func tessellateTriangleStrip2D() {
         var tris: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)] = []
-        guard vertices2D.count >= 3 else { cachedTriangles2D = []; return }
+        guard vertices2D.count >= 3 else {
+            cachedTriangles2D = []
+            return
+        }
         for i in 0..<(vertices2D.count - 2) {
             if i % 2 == 0 {
-                tris.append((
-                    vertices2D[i].position,
-                    vertices2D[i + 1].position,
-                    vertices2D[i + 2].position
-                ))
+                tris.append(
+                    (
+                        vertices2D[i].position,
+                        vertices2D[i + 1].position,
+                        vertices2D[i + 2].position
+                    ))
             } else {
-                tris.append((
-                    vertices2D[i + 1].position,
-                    vertices2D[i].position,
-                    vertices2D[i + 2].position
-                ))
+                tris.append(
+                    (
+                        vertices2D[i + 1].position,
+                        vertices2D[i].position,
+                        vertices2D[i + 2].position
+                    ))
             }
         }
         cachedTriangles2D = tris
@@ -350,7 +357,10 @@ extension MShape {
 
     private func tessellateTriangleFan2D() {
         var tris: [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)] = []
-        guard vertices2D.count >= 3 else { cachedTriangles2D = []; return }
+        guard vertices2D.count >= 3 else {
+            cachedTriangles2D = []
+            return
+        }
         let center = vertices2D[0].position
         for i in 1..<(vertices2D.count - 1) {
             tris.append((center, vertices2D[i].position, vertices2D[i + 1].position))
@@ -368,11 +378,12 @@ extension MShape {
             let p0 = points[indices[i]]
             let p1 = points[indices[i + 1]]
             let p2 = points[indices[i + 2]]
-            tris.append((
-                SIMD2(p0.0, p0.1),
-                SIMD2(p1.0, p1.1),
-                SIMD2(p2.0, p2.1)
-            ))
+            tris.append(
+                (
+                    SIMD2(p0.0, p0.1),
+                    SIMD2(p1.0, p1.1),
+                    SIMD2(p2.0, p2.1)
+                ))
             i += 3
         }
         return tris
@@ -409,9 +420,10 @@ extension MShape {
             let color = sv.color ?? white
             meshVertices.append(Vertex3D(position: sv.position, normal: sv.normal, color: color))
             if hasUVs {
-                uvVertices?.append(Vertex3DTextured(
-                    position: sv.position, normal: sv.normal,
-                    uv: sv.uv ?? SIMD2(0, 0)))
+                uvVertices?.append(
+                    Vertex3DTextured(
+                        position: sv.position, normal: sv.normal,
+                        uv: sv.uv ?? SIMD2(0, 0)))
             }
         }
 
@@ -537,9 +549,12 @@ extension MShape {
             let s: Float = 0.5
             verts.reserveCapacity(vertices3D.count * 3)
             for v in vertices3D {
-                verts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: normal, color: white))
-                verts.append(Vertex3D(position: v.position + SIMD3(s, -s, 0), normal: normal, color: white))
-                verts.append(Vertex3D(position: v.position + SIMD3(0, s, 0), normal: normal, color: white))
+                verts.append(
+                    Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: normal, color: white))
+                verts.append(
+                    Vertex3D(position: v.position + SIMD3(s, -s, 0), normal: normal, color: white))
+                verts.append(
+                    Vertex3D(position: v.position + SIMD3(0, s, 0), normal: normal, color: white))
             }
 
         case .triangles, .triangleStrip, .triangleFan:

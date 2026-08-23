@@ -61,7 +61,8 @@ public enum ImageFilter {
     public static func apply(_ filter: FilterType, to image: MImage) {
         image.loadPixels()
         guard !image.pixels.isEmpty else { return }
-        applyToPixels(filter, pixels: &image.pixels, width: Int(image.width), height: Int(image.height))
+        applyToPixels(
+            filter, pixels: &image.pixels, width: Int(image.width), height: Int(image.height))
         image.updatePixels()
     }
 
@@ -78,7 +79,9 @@ public enum ImageFilter {
     ///   - pixels: インプレースで変更する RGBA ピクセルデータ。
     ///   - width: 画像の幅（ピクセル単位）。
     ///   - height: 画像の高さ（ピクセル単位）。
-    public static func applyToPixels(_ filter: FilterType, pixels: inout [UInt8], width: Int, height: Int) {
+    public static func applyToPixels(
+        _ filter: FilterType, pixels: inout [UInt8], width: Int, height: Int
+    ) {
         guard isValidBuffer(pixels, width: width, height: height) else { return }
         switch filter {
         case .threshold(let level):
@@ -102,7 +105,8 @@ public enum ImageFilter {
         case .sepia:
             applySepia(pixels: &pixels)
         case .pixelate(let blockSize):
-            applyPixelate(pixels: &pixels, width: width, height: height, blockSize: max(1, blockSize))
+            applyPixelate(
+                pixels: &pixels, width: width, height: height, blockSize: max(1, blockSize))
         // MPS フィルタは GPU 専用; CPU フォールバックは何もしない
         case .mpsBlur, .mpsSobel, .mpsLaplacian, .mpsErode, .mpsDilate, .mpsMedian, .mpsThreshold:
             break
@@ -132,11 +136,13 @@ public enum ImageFilter {
         }
         let (expected, byteCountOverflowed) = area.multipliedReportingOverflow(by: 4)
         guard !byteCountOverflowed else {
-            metaphorWarning("ImageFilter: \(width)x\(height) RGBA byte count overflows Int; skipping")
+            metaphorWarning(
+                "ImageFilter: \(width)x\(height) RGBA byte count overflows Int; skipping")
             return false
         }
         guard pixels.count == expected else {
-            metaphorWarning("""
+            metaphorWarning(
+                """
                 ImageFilter: pixels.count \(pixels.count) does not match \
                 \(width) * \(height) * 4 (\(expected)); skipping
                 """)
@@ -151,7 +157,9 @@ public enum ImageFilter {
     private static func applyThreshold(pixels: inout [UInt8], level: Float) {
         let threshold = UInt8(max(0, min(255, level * 255)))
         for i in stride(from: 0, to: pixels.count, by: 4) {
-            let luma = UInt8((UInt16(pixels[i]) * 77 + UInt16(pixels[i + 1]) * 150 + UInt16(pixels[i + 2]) * 29) >> 8)
+            let luma = UInt8(
+                (UInt16(pixels[i]) * 77 + UInt16(pixels[i + 1]) * 150 + UInt16(pixels[i + 2]) * 29)
+                    >> 8)
             let val: UInt8 = luma >= threshold ? 255 : 0
             pixels[i] = val
             pixels[i + 1] = val
@@ -161,7 +169,9 @@ public enum ImageFilter {
 
     private static func applyGray(pixels: inout [UInt8]) {
         for i in stride(from: 0, to: pixels.count, by: 4) {
-            let luma = UInt8((UInt16(pixels[i]) * 77 + UInt16(pixels[i + 1]) * 150 + UInt16(pixels[i + 2]) * 29) >> 8)
+            let luma = UInt8(
+                (UInt16(pixels[i]) * 77 + UInt16(pixels[i + 1]) * 150 + UInt16(pixels[i + 2]) * 29)
+                    >> 8)
             pixels[i] = luma
             pixels[i + 1] = luma
             pixels[i + 2] = luma
@@ -180,8 +190,10 @@ public enum ImageFilter {
         let levelsF = Float(levels - 1)
         for i in stride(from: 0, to: pixels.count, by: 4) {
             pixels[i] = UInt8((Float(pixels[i]) / 255.0 * levelsF).rounded() / levelsF * 255)
-            pixels[i + 1] = UInt8((Float(pixels[i + 1]) / 255.0 * levelsF).rounded() / levelsF * 255)
-            pixels[i + 2] = UInt8((Float(pixels[i + 2]) / 255.0 * levelsF).rounded() / levelsF * 255)
+            pixels[i + 1] = UInt8(
+                (Float(pixels[i + 1]) / 255.0 * levelsF).rounded() / levelsF * 255)
+            pixels[i + 2] = UInt8(
+                (Float(pixels[i + 2]) / 255.0 * levelsF).rounded() / levelsF * 255)
         }
     }
 
@@ -192,7 +204,10 @@ public enum ImageFilter {
         // 水平パス
         for y in 0..<height {
             for x in 0..<width {
-                var rSum: Int = 0, gSum: Int = 0, bSum: Int = 0, aSum: Int = 0
+                var rSum: Int = 0
+                var gSum: Int = 0
+                var bSum: Int = 0
+                var aSum: Int = 0
                 var count: Int = 0
                 for dx in -radius...radius {
                     let sx = x + dx
@@ -215,7 +230,10 @@ public enum ImageFilter {
         // 垂直パス
         for y in 0..<height {
             for x in 0..<width {
-                var rSum: Int = 0, gSum: Int = 0, bSum: Int = 0, aSum: Int = 0
+                var rSum: Int = 0
+                var gSum: Int = 0
+                var bSum: Int = 0
+                var aSum: Int = 0
                 var count: Int = 0
                 for dy in -radius...radius {
                     let sy = y + dy
@@ -240,13 +258,16 @@ public enum ImageFilter {
         let temp = pixels
         for y in 0..<height {
             for x in 0..<width {
-                var gx: Float = 0, gy: Float = 0
+                var gx: Float = 0
+                var gy: Float = 0
                 for dy in -1...1 {
                     for dx in -1...1 {
                         let sx = max(0, min(width - 1, x + dx))
                         let sy = max(0, min(height - 1, y + dy))
                         let i = (sy * width + sx) * 4
-                        let luma = Float(temp[i]) * 0.299 + Float(temp[i + 1]) * 0.587 + Float(temp[i + 2]) * 0.114
+                        let luma =
+                            Float(temp[i]) * 0.299 + Float(temp[i + 1]) * 0.587 + Float(temp[i + 2])
+                            * 0.114
                         let wx = Float(dx) * (dy == 0 ? 2.0 : 1.0)
                         let wy = Float(dy) * (dx == 0 ? 2.0 : 1.0)
                         gx += luma * wx
@@ -262,12 +283,15 @@ public enum ImageFilter {
         }
     }
 
-    private static func applySharpen(pixels: inout [UInt8], width: Int, height: Int, amount: Float) {
+    private static func applySharpen(pixels: inout [UInt8], width: Int, height: Int, amount: Float)
+    {
         let temp = pixels
         for y in 0..<height {
             for x in 0..<width {
                 let ci = (y * width + x) * 4
-                var nr: Float = 0, ng: Float = 0, nb: Float = 0
+                var nr: Float = 0
+                var ng: Float = 0
+                var nb: Float = 0
                 var count: Float = 0
                 for dy in -1...1 {
                     for dx in -1...1 {
@@ -281,7 +305,9 @@ public enum ImageFilter {
                         count += 1
                     }
                 }
-                nr /= count; ng /= count; nb /= count
+                nr /= count
+                ng /= count
+                nb /= count
                 let r = Float(temp[ci]) + (Float(temp[ci]) - nr) * amount
                 let g = Float(temp[ci + 1]) + (Float(temp[ci + 1]) - ng) * amount
                 let b = Float(temp[ci + 2]) + (Float(temp[ci + 2]) - nb) * amount
@@ -294,14 +320,18 @@ public enum ImageFilter {
 
     private static func applySepia(pixels: inout [UInt8]) {
         for i in stride(from: 0, to: pixels.count, by: 4) {
-            let r = Float(pixels[i]), g = Float(pixels[i + 1]), b = Float(pixels[i + 2])
+            let r = Float(pixels[i])
+            let g = Float(pixels[i + 1])
+            let b = Float(pixels[i + 2])
             pixels[i] = UInt8(min(255, r * 0.393 + g * 0.769 + b * 0.189))
             pixels[i + 1] = UInt8(min(255, r * 0.349 + g * 0.686 + b * 0.168))
             pixels[i + 2] = UInt8(min(255, r * 0.272 + g * 0.534 + b * 0.131))
         }
     }
 
-    private static func applyPixelate(pixels: inout [UInt8], width: Int, height: Int, blockSize: Int) {
+    private static func applyPixelate(
+        pixels: inout [UInt8], width: Int, height: Int, blockSize: Int
+    ) {
         let temp = pixels
         for y in 0..<height {
             for x in 0..<width {
@@ -317,7 +347,9 @@ public enum ImageFilter {
         }
     }
 
-    private static func applyErodeOrDilate(pixels: inout [UInt8], width: Int, height: Int, erode: Bool) {
+    private static func applyErodeOrDilate(
+        pixels: inout [UInt8], width: Int, height: Int, erode: Bool
+    ) {
         let temp = pixels
         for y in 0..<height {
             for x in 0..<width {

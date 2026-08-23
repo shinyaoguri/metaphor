@@ -36,7 +36,8 @@ public enum ParamValue: Sendable, Equatable {
         switch self {
         case .float(let v): return [v]
         case .int(let v): return [Double(v)]
-        case .color(let r, let g, let b, let a): return [Double(r), Double(g), Double(b), Double(a)]
+        case .color(let r, let g, let b, let a):
+            return [Double(r), Double(g), Double(b), Double(a)]
         case .vec2(let x, let y): return [Double(x), Double(y)]
         case .vec3(let x, let y, let z): return [Double(x), Double(y), Double(z)]
         case .bool, .string: return nil

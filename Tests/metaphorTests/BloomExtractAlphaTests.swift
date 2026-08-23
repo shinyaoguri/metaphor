@@ -65,7 +65,8 @@ struct BloomExtractAlphaTests {
         pass.colorAttachments[0].storeAction = .store
         pass.colorAttachments[0].clearColor = MTLClearColor(red: r, green: g, blue: b, alpha: a)
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
+            let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass)
+        else {
             throw TestHelperError.noDevice
         }
         encoder.endEncoding()

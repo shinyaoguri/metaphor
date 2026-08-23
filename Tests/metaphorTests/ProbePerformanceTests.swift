@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import MetaphorCore
 
 // MARK: - FrameRateTracker（#271）
@@ -41,9 +42,15 @@ struct FrameRateTrackerTests {
         let tracker = FrameRateTracker()
         // 60fps で 30 フレーム → 100ms のスパイク 1 回 → さらに 30 フレーム。
         var t = 100.0
-        for _ in 0..<30 { tracker.record(at: t); t += 1.0 / 60.0 }
+        for _ in 0..<30 {
+            tracker.record(at: t)
+            t += 1.0 / 60.0
+        }
         t += 0.1 - 1.0 / 60.0  // スパイク: このフレームだけ 100ms
-        for _ in 0..<30 { tracker.record(at: t); t += 1.0 / 60.0 }
+        for _ in 0..<30 {
+            tracker.record(at: t)
+            t += 1.0 / 60.0
+        }
 
         let stats = tracker.windowStats(now: t - 1.0 / 60.0)
         #expect(stats != nil)
@@ -58,9 +65,15 @@ struct FrameRateTrackerTests {
         let tracker = FrameRateTracker()
         // 10fps で 1 秒分（古い）→ 2 秒の空白 → 60fps で 0.5 秒分（新しい）。
         var t = 100.0
-        for _ in 0..<10 { tracker.record(at: t); t += 0.1 }
+        for _ in 0..<10 {
+            tracker.record(at: t)
+            t += 0.1
+        }
         t += 2.0
-        for _ in 0..<30 { tracker.record(at: t); t += 1.0 / 60.0 }
+        for _ in 0..<30 {
+            tracker.record(at: t)
+            t += 1.0 / 60.0
+        }
         let last = t - 1.0 / 60.0
 
         let stats = tracker.windowStats(now: last)

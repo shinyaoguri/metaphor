@@ -50,8 +50,9 @@ struct Canvas3DShapeAutoNormalTests {
         let ns = normals(canvas)
         #expect(ns.count == 5)
         for (i, n) in ns.enumerated() {
-            #expect(abs(abs(n.z) - 1) < 0.001,
-                    "頂点 \(i) にも面法線が付く（既定の (0, 1, 0) が残っていない）: \(n) — #875")
+            #expect(
+                abs(abs(n.z) - 1) < 0.001,
+                "頂点 \(i) にも面法線が付く（既定の (0, 1, 0) が残っていない）: \(n) — #875")
         }
         // 巻き方向の反転はインデックスを組む側が補正済みなので、全体で向きが揃う。
         let first = ns[0]
@@ -74,8 +75,9 @@ struct Canvas3DShapeAutoNormalTests {
         let ns = normals(canvas)
         #expect(ns.count == 5)
         for (i, n) in ns.enumerated() {
-            #expect(abs(abs(n.z) - 1) < 0.001,
-                    "頂点 \(i) にも面法線が付く: \(n) — #875")
+            #expect(
+                abs(abs(n.z) - 1) < 0.001,
+                "頂点 \(i) にも面法線が付く: \(n) — #875")
         }
     }
 
@@ -97,12 +99,14 @@ struct Canvas3DShapeAutoNormalTests {
         let ns = normals(canvas)
         #expect(ns.count == 6)
         for i in 0..<3 {
-            #expect(abs(ns[i].z - 1) < 0.001 && abs(ns[i].x) < 0.001 && abs(ns[i].y) < 0.001,
-                    "1 枚目は +z: \(ns[i])")
+            #expect(
+                abs(ns[i].z - 1) < 0.001 && abs(ns[i].x) < 0.001 && abs(ns[i].y) < 0.001,
+                "1 枚目は +z: \(ns[i])")
         }
         for i in 3..<6 {
-            #expect(abs(ns[i].z + 1) < 0.001 && abs(ns[i].x) < 0.001 && abs(ns[i].y) < 0.001,
-                    "2 枚目は -z: \(ns[i])")
+            #expect(
+                abs(ns[i].z + 1) < 0.001 && abs(ns[i].x) < 0.001 && abs(ns[i].y) < 0.001,
+                "2 枚目は -z: \(ns[i])")
         }
     }
 
@@ -121,8 +125,9 @@ struct Canvas3DShapeAutoNormalTests {
         let ns = normals(canvas)
         #expect(ns.count == 5)
         for (i, n) in ns.enumerated() {
-            #expect(abs(n.z - 1) < 0.001 && abs(n.x) < 0.001 && abs(n.y) < 0.001,
-                    "頂点 \(i) は +z の面法線: \(n)")
+            #expect(
+                abs(n.z - 1) < 0.001 && abs(n.x) < 0.001 && abs(n.y) < 0.001,
+                "頂点 \(i) は +z の面法線: \(n)")
         }
     }
 
@@ -135,7 +140,7 @@ struct Canvas3DShapeAutoNormalTests {
         canvas.vertex(0, 0, 0)
         canvas.vertex(1, 0, 0)
         canvas.vertex(1, 1, 0)
-        canvas.vertex(0, 1, 1)   // z = 0 平面から外す
+        canvas.vertex(0, 1, 1)  // z = 0 平面から外す
         canvas.endShape(.close)
 
         let ns = normals(canvas)
@@ -143,8 +148,9 @@ struct Canvas3DShapeAutoNormalTests {
         // 頂点 1 は z = 0 平面の三角形にしか属さないので (0, 0, 1) のまま。
         #expect(abs(ns[1].z - 1) < 0.001, "頂点 1 は面 1 枚ぶんのまま: \(ns[1]) — #875")
         // 平面から外れた頂点 3 は傾いた三角形の法線を受けるので +z ではなくなる。
-        #expect(abs(ns[3].x) > 0.1 && abs(ns[3].y) > 0.1,
-                "頂点 3 は傾いた面法線になる（先頭 3 頂点の面法線ではない）: \(ns[3]) — #875")
+        #expect(
+            abs(ns[3].x) > 0.1 && abs(ns[3].y) > 0.1,
+            "頂点 3 は傾いた面法線になる（先頭 3 頂点の面法線ではない）: \(ns[3]) — #875")
         for (i, n) in ns.enumerated() {
             #expect(abs(simd_length(n) - 1) < 0.001, "頂点 \(i) は正規化済み: \(n)")
         }
@@ -166,8 +172,9 @@ struct Canvas3DShapeAutoNormalTests {
         let ns = normals(canvas)
         #expect(ns.count == 4)
         for (i, n) in ns.enumerated() {
-            #expect(abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
-                    "\(mode) の頂点 \(i) は既定の (0, 1, 0) のまま: \(n) — #875")
+            #expect(
+                abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
+                "\(mode) の頂点 \(i) は既定の (0, 1, 0) のまま: \(n) — #875")
         }
     }
 
@@ -187,8 +194,9 @@ struct Canvas3DShapeAutoNormalTests {
         let ns = normals(canvas)
         #expect(ns.count == 5)
         for (i, n) in ns.enumerated() {
-            #expect(abs(n.x - 1) < 0.001 && abs(n.y) < 0.001 && abs(n.z) < 0.001,
-                    "頂点 \(i) は明示した (1, 0, 0) のまま: \(n) — #875")
+            #expect(
+                abs(n.x - 1) < 0.001 && abs(n.y) < 0.001 && abs(n.z) < 0.001,
+                "頂点 \(i) は明示した (1, 0, 0) のまま: \(n) — #875")
         }
     }
 
@@ -200,15 +208,16 @@ struct Canvas3DShapeAutoNormalTests {
         canvas.beginShape(.triangles)
         canvas.vertex(0, 0, 0)
         canvas.vertex(1, 0, 0)
-        canvas.vertex(2, 0, 0)   // 一直線
+        canvas.vertex(2, 0, 0)  // 一直線
         canvas.endShape()
 
         let ns = normals(canvas)
         #expect(ns.count == 3)
         for (i, n) in ns.enumerated() {
             #expect(!n.x.isNaN && !n.y.isNaN && !n.z.isNaN, "頂点 \(i) に NaN を書き込まない: \(n)")
-            #expect(abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
-                    "頂点 \(i) は既定の (0, 1, 0) へ落ちる: \(n)")
+            #expect(
+                abs(n.x) < 0.001 && abs(n.y - 1) < 0.001 && abs(n.z) < 0.001,
+                "頂点 \(i) は既定の (0, 1, 0) へ落ちる: \(n)")
         }
     }
 

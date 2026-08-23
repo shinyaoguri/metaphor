@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - Math Utility Tests
 
@@ -272,7 +273,7 @@ struct ColorTests {
 
     @Test("hex 0xAARRGGBB")
     func hexARGB() {
-        let c = Color(hex: 0x80FF0000)
+        let c = Color(hex: 0x80FF_0000)
         #expect(abs(c.a - 0.502) < 0.01)
         #expect(abs(c.r - 1.0) < 0.01)
         #expect(abs(c.g - 0.0) < 0.01)

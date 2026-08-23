@@ -1,7 +1,7 @@
+import AppKit
 import Metal
 import MetalKit
 import MetalPerformanceShaders
-import AppKit
 
 /// `MTLTexture` をラップして画像を表現します。
 @MainActor
@@ -33,7 +33,7 @@ public final class MImage {
         let options: [MTKTextureLoader.Option: Any] = [
             .textureUsage: MTLTextureUsage.shaderRead.rawValue,
             .textureStorageMode: MTLStorageMode.private.rawValue,
-            .SRGB: false
+            .SRGB: false,
         ]
         do {
             self.texture = try loader.newTexture(URL: url, options: options)
@@ -57,7 +57,7 @@ public final class MImage {
         let options: [MTKTextureLoader.Option: Any] = [
             .textureUsage: MTLTextureUsage.shaderRead.rawValue,
             .textureStorageMode: MTLStorageMode.private.rawValue,
-            .SRGB: false
+            .SRGB: false,
         ]
         do {
             self.texture = try loader.newTexture(
@@ -86,7 +86,7 @@ public final class MImage {
         let options: [MTKTextureLoader.Option: Any] = [
             .textureUsage: MTLTextureUsage.shaderRead.rawValue,
             .textureStorageMode: MTLStorageMode.private.rawValue,
-            .SRGB: false
+            .SRGB: false,
         ]
         do {
             self.texture = try loader.newTexture(cgImage: cgImage, options: options)
@@ -155,7 +155,8 @@ public final class MImage {
     /// このメソッドは即座に返ります — 割り当て、リードバック、変換のオーバーヘッドを回避します。
     public func loadPixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
-            metaphorAlert("Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
+            metaphorAlert(
+                "Unsupported MImage pixelFormat for loadPixels: \(texture.pixelFormat.rawValue)")
             pixels = []
             needsGPUReadback = true
             return
@@ -176,8 +177,9 @@ public final class MImage {
             pixels = [UInt8](repeating: 0, count: count)
         }
 
-        let region = MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                               size: MTLSize(width: w, height: h, depth: 1))
+        let region = MTLRegion(
+            origin: MTLOrigin(x: 0, y: 0, z: 0),
+            size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
             // プライベートテクスチャ: 共有ステージングテクスチャにブリットしてリードバック。
@@ -185,8 +187,10 @@ public final class MImage {
             // 別のキューだと commit 順序が保証されず、直前の描画完了前に古い内容を
             // 読み得る（毎回の makeCommandQueue 生成コストも回避）。
             let device = texture.device
-            guard let commandQueue = preferredReadbackQueue ?? Self.sharedReadbackQueue(for: device),
-                  let commandBuffer = commandQueue.makeCommandBuffer() else {
+            guard
+                let commandQueue = preferredReadbackQueue ?? Self.sharedReadbackQueue(for: device),
+                let commandBuffer = commandQueue.makeCommandBuffer()
+            else {
                 pixels = [UInt8](repeating: 0, count: count)
                 return
             }
@@ -195,15 +199,17 @@ public final class MImage {
             desc.storageMode = .shared
             desc.usage = .shaderRead
             guard let staging = device.makeTexture(descriptor: desc),
-                  let blit = commandBuffer.makeBlitCommandEncoder() else {
+                let blit = commandBuffer.makeBlitCommandEncoder()
+            else {
                 pixels = [UInt8](repeating: 0, count: count)
                 return
             }
-            blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
-                      sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                      sourceSize: MTLSize(width: w, height: h, depth: 1),
-                      to: staging, destinationSlice: 0, destinationLevel: 0,
-                      destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            blit.copy(
+                from: texture, sourceSlice: 0, sourceLevel: 0,
+                sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                sourceSize: MTLSize(width: w, height: h, depth: 1),
+                to: staging, destinationSlice: 0, destinationLevel: 0,
+                destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
             blit.endEncoding()
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
@@ -271,7 +277,8 @@ public final class MImage {
     /// ``texture`` の実体は別インスタンスに変わります。
     public func updatePixels() {
         guard let byteOrder = Self.pixelByteOrder(for: texture.pixelFormat) else {
-            metaphorAlert("Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
+            metaphorAlert(
+                "Unsupported MImage pixelFormat for updatePixels: \(texture.pixelFormat.rawValue)")
             return
         }
 
@@ -296,8 +303,9 @@ public final class MImage {
             }
         }
 
-        let region = MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                               size: MTLSize(width: w, height: h, depth: 1))
+        let region = MTLRegion(
+            origin: MTLOrigin(x: 0, y: 0, z: 0),
+            size: MTLSize(width: w, height: h, depth: 1))
 
         if texture.storageMode == .private {
             let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -309,10 +317,12 @@ public final class MImage {
             guard let newTexture = texture.device.makeTexture(descriptor: desc) else {
                 return
             }
-            newTexture.replace(region: region, mipmapLevel: 0, withBytes: uploadPixels, bytesPerRow: bytesPerRow)
+            newTexture.replace(
+                region: region, mipmapLevel: 0, withBytes: uploadPixels, bytesPerRow: bytesPerRow)
             self.texture = newTexture
         } else {
-            texture.replace(region: region, mipmapLevel: 0, withBytes: uploadPixels, bytesPerRow: bytesPerRow)
+            texture.replace(
+                region: region, mipmapLevel: 0, withBytes: uploadPixels, bytesPerRow: bytesPerRow)
         }
 
         needsGPUReadback = false
@@ -416,8 +426,9 @@ public final class MImage {
         desc.usage = [.shaderRead, .shaderWrite]
         desc.storageMode = .private
         guard let destination = device.makeTexture(descriptor: desc),
-              let queue = preferredReadbackQueue ?? Self.sharedReadbackQueue(for: device),
-              let commandBuffer = queue.makeCommandBuffer() else {
+            let queue = preferredReadbackQueue ?? Self.sharedReadbackQueue(for: device),
+            let commandBuffer = queue.makeCommandBuffer()
+        else {
             metaphorWarning("MImage.resize: failed to allocate GPU resources")
             return
         }
@@ -448,7 +459,7 @@ public final class MImage {
         guard Int(maskImage.width) == Int(width), Int(maskImage.height) == Int(height) else {
             metaphorWarning(
                 "MImage.mask: mask size \(Int(maskImage.width))x\(Int(maskImage.height)) "
-                + "does not match image size \(Int(width))x\(Int(height))")
+                    + "does not match image size \(Int(width))x\(Int(height))")
             return
         }
         loadPixels()
@@ -486,10 +497,11 @@ public final class MImage {
         // `TextureManager` は #842 で上限を塞いだが、この static 版は
         // `TextureManager` を通らず自前で descriptor を組むため外側に残っていた。
         guard width > 0, height > 0,
-              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            width <= TextureManager.maxDimension, height <= TextureManager.maxDimension
+        else {
             metaphorWarning(
                 "createImage: dimensions must be within 1...\(TextureManager.maxDimension) "
-                + "(got \(width)x\(height))")
+                    + "(got \(width)x\(height))")
             return nil
         }
         let desc = MTLTextureDescriptor.texture2DDescriptor(

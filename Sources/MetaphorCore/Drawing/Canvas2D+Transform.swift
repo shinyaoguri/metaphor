@@ -8,30 +8,31 @@ extension Canvas2D {
     ///
     /// ``pop()`` で保存した状態を復元します。Processing API と互換です。
     public func push() {
-        stateStack.append(StyleState(
-            transform: currentTransform,
-            fillColor: fillColor,
-            strokeColor: strokeColor,
-            strokeWeight: currentStrokeWeight,
-            hasFill: hasFill,
-            hasStroke: hasStroke,
-            blendMode: currentBlendMode,
-            rectMode: currentRectMode,
-            ellipseMode: currentEllipseMode,
-            imageMode: currentImageMode,
-            colorModeConfig: colorModeConfig,
-            tintColor: tintColor,
-            hasTint: hasTint,
-            textSize: currentTextSize,
-            fontFamily: currentFontFamily,
-            textAlignH: currentTextAlignH,
-            textAlignV: currentTextAlignV,
-            textLeading: currentTextLeading,
-            curveDetail: curveDetailCount,
-            curveTightness: curveTightnessValue,
-            strokeCap: currentStrokeCap,
-            strokeJoin: currentStrokeJoin
-        ))
+        stateStack.append(
+            StyleState(
+                transform: currentTransform,
+                fillColor: fillColor,
+                strokeColor: strokeColor,
+                strokeWeight: currentStrokeWeight,
+                hasFill: hasFill,
+                hasStroke: hasStroke,
+                blendMode: currentBlendMode,
+                rectMode: currentRectMode,
+                ellipseMode: currentEllipseMode,
+                imageMode: currentImageMode,
+                colorModeConfig: colorModeConfig,
+                tintColor: tintColor,
+                hasTint: hasTint,
+                textSize: currentTextSize,
+                fontFamily: currentFontFamily,
+                textAlignH: currentTextAlignH,
+                textAlignV: currentTextAlignV,
+                textLeading: currentTextLeading,
+                curveDetail: curveDetailCount,
+                curveTightness: curveTightnessValue,
+                strokeCap: currentStrokeCap,
+                strokeJoin: currentStrokeJoin
+            ))
     }
 
     /// 直前に保存した変換とスタイル状態をスタックから復元します。
@@ -71,30 +72,31 @@ extension Canvas2D {
 
     /// 変換を除くスタイル状態のみをスタイル専用スタックに保存します。
     public func pushStyle() {
-        styleOnlyStack.append(StyleState(
-            transform: currentTransform,
-            fillColor: fillColor,
-            strokeColor: strokeColor,
-            strokeWeight: currentStrokeWeight,
-            hasFill: hasFill,
-            hasStroke: hasStroke,
-            blendMode: currentBlendMode,
-            rectMode: currentRectMode,
-            ellipseMode: currentEllipseMode,
-            imageMode: currentImageMode,
-            colorModeConfig: colorModeConfig,
-            tintColor: tintColor,
-            hasTint: hasTint,
-            textSize: currentTextSize,
-            fontFamily: currentFontFamily,
-            textAlignH: currentTextAlignH,
-            textAlignV: currentTextAlignV,
-            textLeading: currentTextLeading,
-            curveDetail: curveDetailCount,
-            curveTightness: curveTightnessValue,
-            strokeCap: currentStrokeCap,
-            strokeJoin: currentStrokeJoin
-        ))
+        styleOnlyStack.append(
+            StyleState(
+                transform: currentTransform,
+                fillColor: fillColor,
+                strokeColor: strokeColor,
+                strokeWeight: currentStrokeWeight,
+                hasFill: hasFill,
+                hasStroke: hasStroke,
+                blendMode: currentBlendMode,
+                rectMode: currentRectMode,
+                ellipseMode: currentEllipseMode,
+                imageMode: currentImageMode,
+                colorModeConfig: colorModeConfig,
+                tintColor: tintColor,
+                hasTint: hasTint,
+                textSize: currentTextSize,
+                fontFamily: currentFontFamily,
+                textAlignH: currentTextAlignH,
+                textAlignV: currentTextAlignV,
+                textLeading: currentTextLeading,
+                curveDetail: curveDetailCount,
+                curveTightness: curveTightnessValue,
+                strokeCap: currentStrokeCap,
+                strokeJoin: currentStrokeJoin
+            ))
     }
 
     /// スタイル専用スタックからスタイル状態のみを復元します。変換は変更しません。
@@ -144,11 +146,12 @@ extension Canvas2D {
     ///   - x: ピクセル単位の水平方向移動量。
     ///   - y: ピクセル単位の垂直方向移動量。
     public func translate(_ x: Float, _ y: Float) {
-        let t = float3x3(columns: (
-            SIMD3<Float>(1, 0, 0),
-            SIMD3<Float>(0, 1, 0),
-            SIMD3<Float>(x, y, 1)
-        ))
+        let t = float3x3(
+            columns: (
+                SIMD3<Float>(1, 0, 0),
+                SIMD3<Float>(0, 1, 0),
+                SIMD3<Float>(x, y, 1)
+            ))
         currentTransform = currentTransform * t
     }
 
@@ -158,11 +161,12 @@ extension Canvas2D {
     public func rotate(_ angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
-        let r = float3x3(columns: (
-            SIMD3<Float>(c, s, 0),
-            SIMD3<Float>(-s, c, 0),
-            SIMD3<Float>(0, 0, 1)
-        ))
+        let r = float3x3(
+            columns: (
+                SIMD3<Float>(c, s, 0),
+                SIMD3<Float>(-s, c, 0),
+                SIMD3<Float>(0, 0, 1)
+            ))
         currentTransform = currentTransform * r
     }
 
@@ -172,11 +176,12 @@ extension Canvas2D {
     ///   - sx: 水平方向のスケール係数。
     ///   - sy: 垂直方向のスケール係数。
     public func scale(_ sx: Float, _ sy: Float) {
-        let s = float3x3(columns: (
-            SIMD3<Float>(sx, 0, 0),
-            SIMD3<Float>(0, sy, 0),
-            SIMD3<Float>(0, 0, 1)
-        ))
+        let s = float3x3(
+            columns: (
+                SIMD3<Float>(sx, 0, 0),
+                SIMD3<Float>(0, sy, 0),
+                SIMD3<Float>(0, 0, 1)
+            ))
         currentTransform = currentTransform * s
     }
 
@@ -201,11 +206,13 @@ extension Canvas2D {
         _ n00: Float, _ n01: Float, _ n02: Float,
         _ n10: Float, _ n11: Float, _ n12: Float
     ) {
-        applyMatrix(float3x3(columns: (
-            SIMD3<Float>(n00, n10, 0),
-            SIMD3<Float>(n01, n11, 0),
-            SIMD3<Float>(n02, n12, 1)
-        )))
+        applyMatrix(
+            float3x3(
+                columns: (
+                    SIMD3<Float>(n00, n10, 0),
+                    SIMD3<Float>(n01, n11, 0),
+                    SIMD3<Float>(n02, n12, 1)
+                )))
     }
 
     /// 現在の 2D 変換行列を単位行列にリセットします。
@@ -219,11 +226,12 @@ extension Canvas2D {
     ///
     /// - Parameter angle: ラジアン単位のせん断角度。
     public func shearX(_ angle: Float) {
-        let m = float3x3(columns: (
-            SIMD3<Float>(1, 0, 0),
-            SIMD3<Float>(tan(angle), 1, 0),
-            SIMD3<Float>(0, 0, 1)
-        ))
+        let m = float3x3(
+            columns: (
+                SIMD3<Float>(1, 0, 0),
+                SIMD3<Float>(tan(angle), 1, 0),
+                SIMD3<Float>(0, 0, 1)
+            ))
         currentTransform = currentTransform * m
     }
 
@@ -233,11 +241,12 @@ extension Canvas2D {
     ///
     /// - Parameter angle: ラジアン単位のせん断角度。
     public func shearY(_ angle: Float) {
-        let m = float3x3(columns: (
-            SIMD3<Float>(1, tan(angle), 0),
-            SIMD3<Float>(0, 1, 0),
-            SIMD3<Float>(0, 0, 1)
-        ))
+        let m = float3x3(
+            columns: (
+                SIMD3<Float>(1, tan(angle), 0),
+                SIMD3<Float>(0, 1, 0),
+                SIMD3<Float>(0, 0, 1)
+            ))
         currentTransform = currentTransform * m
     }
 

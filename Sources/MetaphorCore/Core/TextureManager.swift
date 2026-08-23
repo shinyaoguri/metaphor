@@ -80,7 +80,8 @@ public final class TextureManager {
         // `validateWithDevice:` のアサーションでプロセスを終了させるため、
         // ここを通してしまうと throws でも Optional でも失敗を拾えない。
         guard width > 0, height > 0,
-              width <= Self.maxDimension, height <= Self.maxDimension else {
+            width <= Self.maxDimension, height <= Self.maxDimension
+        else {
             throw MetaphorError.textureCreationFailed(width: width, height: height, format: "color")
         }
 
@@ -90,10 +91,12 @@ public final class TextureManager {
 
         // サンプル数の検証: 1 未満・デバイス非対応は 1 にフォールバック
         if sampleCount < 1 {
-            metaphorWarning("sampleCount must be at least 1 (got \(sampleCount)). Falling back to 1.")
+            metaphorWarning(
+                "sampleCount must be at least 1 (got \(sampleCount)). Falling back to 1.")
             self.sampleCount = 1
         } else if sampleCount > 1 && !device.supportsTextureSampleCount(sampleCount) {
-            metaphorWarning("sampleCount \(sampleCount) is not supported by this device. Falling back to 1.")
+            metaphorWarning(
+                "sampleCount \(sampleCount) is not supported by this device. Falling back to 1.")
             self.sampleCount = 1
         } else {
             self.sampleCount = sampleCount
@@ -138,7 +141,8 @@ public final class TextureManager {
             msaaColorDesc.usage = .renderTarget
             msaaColorDesc.storageMode = .private
             guard let msaaColorTex = device.makeTexture(descriptor: msaaColorDesc) else {
-                throw MetaphorError.textureCreationFailed(width: width, height: height, format: "msaaColor")
+                throw MetaphorError.textureCreationFailed(
+                    width: width, height: height, format: "msaaColor")
             }
             msaaColorTexture = msaaColorTex
 
@@ -151,7 +155,8 @@ public final class TextureManager {
             msaaDepthDesc.usage = .renderTarget
             msaaDepthDesc.storageMode = .private
             guard let msaaDepthTex = device.makeTexture(descriptor: msaaDepthDesc) else {
-                throw MetaphorError.textureCreationFailed(width: width, height: height, format: "msaaDepth")
+                throw MetaphorError.textureCreationFailed(
+                    width: width, height: height, format: "msaaDepth")
             }
             msaaDepthTexture = msaaDepthTex
         }
@@ -187,8 +192,12 @@ public final class TextureManager {
     ///   - sampleCount: MSAA サンプル数
     /// - Returns: 1920x1080 で構成された新しい `TextureManager`
     /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
-    public static func fullHD(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
-        try TextureManager(device: device, width: 1920, height: 1080, clearColor: clearColor, sampleCount: sampleCount)
+    public static func fullHD(
+        device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4
+    ) throws -> TextureManager {
+        try TextureManager(
+            device: device, width: 1920, height: 1080, clearColor: clearColor,
+            sampleCount: sampleCount)
     }
 
     /// 4K UHD (3840x2160) のテクスチャマネージャーを作成します。
@@ -199,8 +208,12 @@ public final class TextureManager {
     ///   - sampleCount: MSAA サンプル数
     /// - Returns: 3840x2160 で構成された新しい `TextureManager`
     /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
-    public static func uhd4K(device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
-        try TextureManager(device: device, width: 3840, height: 2160, clearColor: clearColor, sampleCount: sampleCount)
+    public static func uhd4K(
+        device: MTLDevice, clearColor: MTLClearColor = .black, sampleCount: Int = 4
+    ) throws -> TextureManager {
+        try TextureManager(
+            device: device, width: 3840, height: 2160, clearColor: clearColor,
+            sampleCount: sampleCount)
     }
 
     /// 指定サイズの正方形テクスチャマネージャーを作成します。
@@ -212,8 +225,12 @@ public final class TextureManager {
     ///   - sampleCount: MSAA サンプル数
     /// - Returns: 幅と高さが等しい新しい `TextureManager`
     /// - Throws: テクスチャを作成できなかった場合 ``MetaphorError/textureCreationFailed(width:height:format:)``
-    public static func square(device: MTLDevice, size: Int, clearColor: MTLClearColor = .black, sampleCount: Int = 4) throws -> TextureManager {
-        try TextureManager(device: device, width: size, height: size, clearColor: clearColor, sampleCount: sampleCount)
+    public static func square(
+        device: MTLDevice, size: Int, clearColor: MTLClearColor = .black, sampleCount: Int = 4
+    ) throws -> TextureManager {
+        try TextureManager(
+            device: device, width: size, height: size, clearColor: clearColor,
+            sampleCount: sampleCount)
     }
 
     // MARK: - カラーテクスチャの差し替え（オフスクリーンバッファの copy-on-write、#745）
@@ -250,8 +267,10 @@ public final class TextureManager {
     /// - Parameter texture: 新しい描画先。``makeMatchingColorTexture()`` で作ったもの。
     public func replaceColorTexture(_ texture: MTLTexture) {
         guard texture.width == width, texture.height == height,
-              texture.pixelFormat == colorTexture.pixelFormat else {
-            metaphorWarning("replaceColorTexture requires a texture of the same size and format. Ignoring.")
+            texture.pixelFormat == colorTexture.pixelFormat
+        else {
+            metaphorWarning(
+                "replaceColorTexture requires a texture of the same size and format. Ignoring.")
             return
         }
         colorTexture = texture

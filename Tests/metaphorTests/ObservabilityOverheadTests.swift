@@ -1,9 +1,10 @@
-import Testing
-import Metal
 import Foundation
-import os
-@testable import MetaphorCore
+import Metal
 import MetaphorTestSupport
+import Testing
+import os
+
+@testable import MetaphorCore
 
 // MARK: - 観測・操作機構のランタイム性能「非侵害」ガード（Issue #118）
 //
@@ -148,7 +149,9 @@ struct SketchProbeRoutingTests {
 
 // MARK: - idle ホットパスのコストと副作用ゼロ
 
-@Suite("ObservabilityOverhead: idle hot path", .serialized, .enabled(if: MetalTestHelper.isGPUAvailable))
+@Suite(
+    "ObservabilityOverhead: idle hot path", .serialized,
+    .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
 struct IdleHotPathTests {
 
@@ -201,12 +204,14 @@ struct IdleHotPathTests {
             }
 
             // リクエストが無い間は frame.png も sequence/ も一切作られない。
-            #expect(!FileManager.default.fileExists(
-                atPath: outputDir.appendingPathComponent("frame.png").path
-            ))
-            #expect(!FileManager.default.fileExists(
-                atPath: outputDir.appendingPathComponent("sequence").path
-            ))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: outputDir.appendingPathComponent("frame.png").path
+                ))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: outputDir.appendingPathComponent("sequence").path
+                ))
 
             // 桁変化の劣化ガード（同期 readback 混入等）。CI 変動を見込んだ緩い上限:
             // 5000 反復で 2 秒未満（= 1 反復あたり 400µs 未満）。実測はこれより桁違いに小さい。

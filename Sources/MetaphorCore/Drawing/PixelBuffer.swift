@@ -67,7 +67,8 @@ public final class PixelBuffer {
             // ゼロコピーパス: バッファバックド共有テクスチャ。
             // CPU が統合メモリに直接書き込み、GPU が同じバイトを読み取る。
             let totalBytes = rawBytesPerRow * height
-            guard let buffer = device.makeBuffer(length: totalBytes, options: .storageModeShared) else {
+            guard let buffer = device.makeBuffer(length: totalBytes, options: .storageModeShared)
+            else {
                 return nil
             }
             memset(buffer.contents(), 0, totalBytes)
@@ -81,11 +82,13 @@ public final class PixelBuffer {
             desc.storageMode = .shared
             desc.usage = [.shaderRead]
 
-            guard let tex = buffer.makeTexture(
-                descriptor: desc,
-                offset: 0,
-                bytesPerRow: rawBytesPerRow
-            ) else {
+            guard
+                let tex = buffer.makeTexture(
+                    descriptor: desc,
+                    offset: 0,
+                    bytesPerRow: rawBytesPerRow
+                )
+            else {
                 return nil
             }
 
@@ -161,8 +164,11 @@ public final class PixelBuffer {
     @discardableResult
     func encodeDownload(from source: MTLTexture, into commandBuffer: MTLCommandBuffer) -> Bool {
         guard source.width == width, source.height == height,
-              source.pixelFormat == texture.pixelFormat else {
-            metaphorWarning("PixelBuffer.download: source mismatch (\(source.width)x\(source.height) \(source.pixelFormat.rawValue) vs \(width)x\(height))")
+            source.pixelFormat == texture.pixelFormat
+        else {
+            metaphorWarning(
+                "PixelBuffer.download: source mismatch (\(source.width)x\(source.height) \(source.pixelFormat.rawValue) vs \(width)x\(height))"
+            )
             return false
         }
         guard let blit = commandBuffer.makeBlitCommandEncoder() else { return false }
@@ -186,8 +192,9 @@ public final class PixelBuffer {
         if let mem = rawMemory {
             texture.getBytes(
                 mem, bytesPerRow: bytesPerRow,
-                from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-                                size: MTLSize(width: width, height: height, depth: 1)),
+                from: MTLRegion(
+                    origin: MTLOrigin(x: 0, y: 0, z: 0),
+                    size: MTLSize(width: width, height: height, depth: 1)),
                 mipmapLevel: 0
             )
         }
@@ -214,7 +221,10 @@ public final class PixelBuffer {
             let a = (packed >> 24) & 0xFF
             if a == 255 { continue }
             // α = 0 の画素は色を持たない（premultiplied では RGB も 0）
-            if a == 0 { base[i] = 0; continue }
+            if a == 0 {
+                base[i] = 0
+                continue
+            }
             let r = Self.divide((packed >> 16) & 0xFF, by: a)
             let g = Self.divide((packed >> 8) & 0xFF, by: a)
             let b = Self.divide(packed & 0xFF, by: a)

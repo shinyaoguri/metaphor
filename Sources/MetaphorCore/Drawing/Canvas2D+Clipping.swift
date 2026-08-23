@@ -62,9 +62,10 @@ extension Canvas2D {
         bufferOffset += vertexCount
         vertexCount = 0
 
-        emit(.colorBatch(
-            pipeline: key, vertexStart: vStart, vertexCount: vCount,
-            shaderParams: currentShaderParams))
+        emit(
+            .colorBatch(
+                pipeline: key, vertexStart: vStart, vertexCount: vCount,
+                shaderParams: currentShaderParams))
     }
 
     // テクスチャ頂点バッチのみをフラッシュ（遅延モードでは明示コマンドとして積む。#70 / #71）
@@ -83,8 +84,9 @@ extension Canvas2D {
         texturedBufferOffset += texturedVertexCount
         texturedVertexCount = 0
 
-        emit(.texturedBatch(
-            pipeline: key, vertexStart: vStart, vertexCount: vCount, texture: texture,
-            shaderParams: currentShaderParams))
+        emit(
+            .texturedBatch(
+                pipeline: key, vertexStart: vStart, vertexCount: vCount, texture: texture,
+                shaderParams: currentShaderParams))
     }
 }

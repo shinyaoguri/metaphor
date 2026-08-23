@@ -78,7 +78,9 @@ public final class Physics2D {
     ///   - mass: The body's mass (defaults to 1.0).
     /// - Returns: The newly created ``PhysicsBody2D`` instance.
     @discardableResult
-    public func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0) -> PhysicsBody2D {
+    public func addRect(x: Float, y: Float, width: Float, height: Float, mass: Float = 1.0)
+        -> PhysicsBody2D
+    {
         let body = PhysicsBody2D(x: x, y: y, shape: .rect(width: width, height: height), mass: mass)
         bodies.append(body)
         return body
@@ -106,7 +108,9 @@ public final class Physics2D {
     ///     the current distance at creation time is used.
     /// - Returns: The newly created ``PhysicsConstraint2D`` instance.
     @discardableResult
-    public func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil) -> PhysicsConstraint2D {
+    public func addConstraint(_ a: PhysicsBody2D, _ b: PhysicsBody2D, distance: Float? = nil)
+        -> PhysicsConstraint2D
+    {
         let c = PhysicsConstraint2D(a, b, distance: distance)
         constraints.append(c)
         return c
@@ -235,7 +239,9 @@ public final class Physics2D {
         // iterations == 0 は「積分だけ行い拘束・衝突・境界を解かない」用途として
         // 許可する（dt == 0 と対）。
         guard iterations >= 0 else {
-            metaphorWarning("Physics2D.step: iterations must not be negative (got \(iterations)); skipping the step")
+            metaphorWarning(
+                "Physics2D.step: iterations must not be negative (got \(iterations)); skipping the step"
+            )
             return
         }
 
@@ -362,7 +368,9 @@ public final class Physics2D {
     }
 
     /// Resolves overlap between two circles using mass-weighted position correction.
-    private func resolveCircleCircle(_ a: PhysicsBody2D, _ ra: Float, _ b: PhysicsBody2D, _ rb: Float) {
+    private func resolveCircleCircle(
+        _ a: PhysicsBody2D, _ ra: Float, _ b: PhysicsBody2D, _ rb: Float
+    ) {
         let delta = b.position - a.position
         let dist = simd_length(delta)
         let minDist = ra + rb
@@ -381,7 +389,9 @@ public final class Physics2D {
     }
 
     /// Resolves overlap between a circle and a rectangle using closest-point projection.
-    private func resolveCircleRect(_ circle: PhysicsBody2D, _ r: Float, _ rect: PhysicsBody2D, _ w: Float, _ h: Float) {
+    private func resolveCircleRect(
+        _ circle: PhysicsBody2D, _ r: Float, _ rect: PhysicsBody2D, _ w: Float, _ h: Float
+    ) {
         let hw = w * 0.5
         let hh = h * 0.5
         let delta = circle.position - rect.position
@@ -414,12 +424,15 @@ public final class Physics2D {
         guard totalMass > 0 else { return }
 
         correctPosition(circle, by: normal * overlap * (rect.isStatic ? 1 : rect.mass / totalMass))
-        correctPosition(rect, by: -normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass))
+        correctPosition(
+            rect, by: -normal * overlap * (circle.isStatic ? 1 : circle.mass / totalMass))
         applyCollisionResponse(rect, circle, normal: normal)
     }
 
     /// Resolves overlap between two axis-aligned rectangles using the minimum penetration axis.
-    private func resolveRectRect(_ a: PhysicsBody2D, _ wa: Float, _ ha: Float, _ b: PhysicsBody2D, _ wb: Float, _ hb: Float) {
+    private func resolveRectRect(
+        _ a: PhysicsBody2D, _ wa: Float, _ ha: Float, _ b: PhysicsBody2D, _ wb: Float, _ hb: Float
+    ) {
         // AABB 衝突
         let hwa = wa * 0.5
         let hha = ha * 0.5
@@ -438,13 +451,17 @@ public final class Physics2D {
 
         if overlapX < overlapY {
             let sign: Float = dx > 0 ? 1 : -1
-            correctPosition(a, by: SIMD2(-sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass), 0))
-            correctPosition(b, by: SIMD2(sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass), 0))
+            correctPosition(
+                a, by: SIMD2(-sign * overlapX * (b.isStatic ? 1 : b.mass / totalMass), 0))
+            correctPosition(
+                b, by: SIMD2(sign * overlapX * (a.isStatic ? 1 : a.mass / totalMass), 0))
             applyCollisionResponse(a, b, normal: SIMD2(sign, 0))
         } else {
             let sign: Float = dy > 0 ? 1 : -1
-            correctPosition(a, by: SIMD2(0, -sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass)))
-            correctPosition(b, by: SIMD2(0, sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass)))
+            correctPosition(
+                a, by: SIMD2(0, -sign * overlapY * (b.isStatic ? 1 : b.mass / totalMass)))
+            correctPosition(
+                b, by: SIMD2(0, sign * overlapY * (a.isStatic ? 1 : a.mass / totalMass)))
             applyCollisionResponse(a, b, normal: SIMD2(0, sign))
         }
     }
@@ -465,7 +482,9 @@ public final class Physics2D {
     ///
     /// 速度は 1 ステップあたりの変位（px/step）なので、インパルスも同じ単位で
     /// 扱い、最後に `previousPosition` を置き直して反映する。
-    private func applyCollisionResponse(_ a: PhysicsBody2D, _ b: PhysicsBody2D, normal: SIMD2<Float>) {
+    private func applyCollisionResponse(
+        _ a: PhysicsBody2D, _ b: PhysicsBody2D, normal: SIMD2<Float>
+    ) {
         let invMassA = inverseMass(a)
         let invMassB = inverseMass(b)
         let invMassSum = invMassA + invMassB
@@ -480,7 +499,8 @@ public final class Physics2D {
         // 床に載ったボディは重力で毎ステップ `g * dt^2` だけ接近する。これを跳ね返すと
         // 休止接触が永久に微振動するので、1 ステップ分の重力による接近は反発させない
         // （摩擦は下で従来どおり効く）。重力ゼロのワールドでは閾値も 0 になる。
-        let restitution = -normalSpeed <= restitutionThreshold ? 0 : min(a.restitution, b.restitution)
+        let restitution =
+            -normalSpeed <= restitutionThreshold ? 0 : min(a.restitution, b.restitution)
         let impulseMagnitude = -(1 + restitution) * normalSpeed / invMassSum
         let impulse = impulseMagnitude * normal
 
@@ -488,14 +508,16 @@ public final class Physics2D {
         if !b.isStatic { velocityB += impulse * invMassB }
 
         let updatedRelativeVelocity = velocityB - velocityA
-        let tangentVelocity = updatedRelativeVelocity - simd_dot(updatedRelativeVelocity, normal) * normal
+        let tangentVelocity =
+            updatedRelativeVelocity - simd_dot(updatedRelativeVelocity, normal) * normal
         let tangentLength = simd_length(tangentVelocity)
         if tangentLength > 0.0001 {
             let tangent = tangentVelocity / tangentLength
             let friction = (a.friction + b.friction) * 0.5
             let tangentImpulseMagnitude = -simd_dot(updatedRelativeVelocity, tangent) / invMassSum
             let maxFrictionImpulse = impulseMagnitude * friction
-            let clampedTangentImpulse = max(-maxFrictionImpulse, min(maxFrictionImpulse, tangentImpulseMagnitude))
+            let clampedTangentImpulse = max(
+                -maxFrictionImpulse, min(maxFrictionImpulse, tangentImpulseMagnitude))
             let tangentImpulse = clampedTangentImpulse * tangent
 
             if !a.isStatic { velocityA -= tangentImpulse * invMassA }

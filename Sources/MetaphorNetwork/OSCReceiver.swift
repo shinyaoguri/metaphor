@@ -64,7 +64,8 @@ private final class OSCMessageQueue: Sendable {
             return (msgs, dropped)
         }
         if dropped > 0 {
-            debugWarning("OSC message queue overflowed: dropped \(dropped) message(s) since last poll()")
+            debugWarning(
+                "OSC message queue overflowed: dropped \(dropped) message(s) since last poll()")
         }
         return msgs
     }
@@ -323,7 +324,9 @@ enum OSCParser {
     /// - Parameter data: The raw OSC binary data.
     /// - Returns: The parsed OSC messages.
     static func parse(data: Data) -> [OSCMessage] {
-        if data.count >= 8, String(data: data.prefix(8), encoding: .ascii)?.hasPrefix("#bundle") == true {
+        if data.count >= 8,
+            String(data: data.prefix(8), encoding: .ascii)?.hasPrefix("#bundle") == true
+        {
             return parseBundle(data: data)
         } else {
             if let msg = parseMessage(data: data, offset: 0) {
@@ -356,7 +359,9 @@ enum OSCParser {
     }
 
     /// Parses a single OSC message.
-    private static func parseMessage(data: Data, offset: Int) -> (message: OSCMessage, bytesRead: Int)? {
+    private static func parseMessage(data: Data, offset: Int) -> (
+        message: OSCMessage, bytesRead: Int
+    )? {
         var pos = offset
 
         // アドレスパターン
@@ -441,10 +446,8 @@ enum OSCParser {
     private static func readInt32(data: Data, offset: Int) -> Int32 {
         guard offset >= 0, offset + 4 <= data.count else { return 0 }
         let raw =
-            (UInt32(data[offset]) << 24) |
-            (UInt32(data[offset + 1]) << 16) |
-            (UInt32(data[offset + 2]) << 8) |
-            UInt32(data[offset + 3])
+            (UInt32(data[offset]) << 24) | (UInt32(data[offset + 1]) << 16)
+            | (UInt32(data[offset + 2]) << 8) | UInt32(data[offset + 3])
         return Int32(bitPattern: raw)
     }
 
@@ -452,10 +455,8 @@ enum OSCParser {
     private static func readFloat32(data: Data, offset: Int) -> Float {
         guard offset >= 0, offset + 4 <= data.count else { return 0 }
         let bits =
-            (UInt32(data[offset]) << 24) |
-            (UInt32(data[offset + 1]) << 16) |
-            (UInt32(data[offset + 2]) << 8) |
-            UInt32(data[offset + 3])
+            (UInt32(data[offset]) << 24) | (UInt32(data[offset + 1]) << 16)
+            | (UInt32(data[offset + 2]) << 8) | UInt32(data[offset + 3])
         return Float(bitPattern: bits)
     }
 

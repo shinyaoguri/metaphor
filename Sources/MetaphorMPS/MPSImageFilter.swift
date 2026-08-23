@@ -95,7 +95,8 @@ public final class MPSImageFilterWrapper {
     ///     applied in several passes, which produces an identical image.
     public func dilate(_ image: MImage, radius: Int = 1) {
         guard let (src, dst, cb) = prepareInPlace(image) else { return }
-        encodeArea(commandBuffer: cb, source: src, destination: dst, radius: radius, api: "dilate") {
+        encodeArea(commandBuffer: cb, source: src, destination: dst, radius: radius, api: "dilate")
+        {
             getOrCreateAreaMax(size: $0 * 2 + 1)
         }
         finalize(image: image, src: src, dst: dst, commandBuffer: cb)
@@ -140,7 +141,8 @@ public final class MPSImageFilterWrapper {
         sigma: Float
     ) {
         let kernel = getOrCreateGaussian(sigma: sigma)
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        kernel.encode(
+            commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
     /// Encodes a Sobel edge detection operation into a command buffer.
@@ -154,7 +156,8 @@ public final class MPSImageFilterWrapper {
         destination: MTLTexture
     ) {
         let kernel = getOrCreateSobel()
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        kernel.encode(
+            commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
     /// Encodes a Laplacian filter operation into a command buffer.
@@ -168,7 +171,8 @@ public final class MPSImageFilterWrapper {
         destination: MTLTexture
     ) {
         let kernel = getOrCreateLaplacian()
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        kernel.encode(
+            commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
     /// Encodes a morphological erosion operation into a command buffer.
@@ -230,7 +234,8 @@ public final class MPSImageFilterWrapper {
         diameter: Int = 3
     ) {
         let kernel = getOrCreateMedian(diameter: diameter)
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        kernel.encode(
+            commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
     /// Encodes binary threshold processing into a command buffer.
@@ -246,7 +251,8 @@ public final class MPSImageFilterWrapper {
         value: Float = 0.5
     ) {
         let kernel = getOrCreateThreshold(value: value)
-        kernel.encode(commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
+        kernel.encode(
+            commandBuffer: commandBuffer, sourceTexture: source, destinationTexture: destination)
     }
 
     // MARK: - キャッシュ管理
@@ -286,7 +292,7 @@ public final class MPSImageFilterWrapper {
         if clamped != radius {
             metaphorWarning(
                 "MPSImageFilter: \(api) radius must be within 0...\(limit) for a "
-                + "\(source.width)x\(source.height) texture (got \(radius)); using \(clamped)")
+                    + "\(source.width)x\(source.height) texture (got \(radius)); using \(clamped)")
         }
         return clamped
     }
@@ -320,7 +326,8 @@ public final class MPSImageFilterWrapper {
     static func areaRadiusPasses(_ radius: Int) -> [Int] {
         guard radius > maxRadiusPerPass else { return [radius] }
         let count = (radius + maxRadiusPerPass - 1) / maxRadiusPerPass
-        let base = radius / count, extra = radius % count
+        let base = radius / count
+        let extra = radius % count
         return (0..<count).map { base + ($0 < extra ? 1 : 0) }
     }
 
@@ -344,16 +351,18 @@ public final class MPSImageFilterWrapper {
                 sourceTexture: source, destinationTexture: destination)
             return
         }
-        guard let scratch = getOrCreateTexture(
-            width: source.width, height: source.height,
-            pixelFormat: source.pixelFormat, tag: "mps_area_split"
-        ) else {
+        guard
+            let scratch = getOrCreateTexture(
+                width: source.width, height: source.height,
+                pixelFormat: source.pixelFormat, tag: "mps_area_split"
+            )
+        else {
             // 中間テクスチャを取れないときも 1 パスには落とさない（それがハングの正体）。
             // 上限までの erosion / dilation を掛けて、効きが足りないことを知らせる
             metaphorAlert(
                 "MPSImageFilter: \(api) could not allocate the scratch texture needed to apply "
-                + "radius \(clamped) in \(passes.count) passes; applying "
-                + "\(Self.maxRadiusPerPass) instead")
+                    + "radius \(clamped) in \(passes.count) passes; applying "
+                    + "\(Self.maxRadiusPerPass) instead")
             kernel(Self.maxRadiusPerPass).encode(
                 commandBuffer: commandBuffer,
                 sourceTexture: source, destinationTexture: destination)
@@ -361,7 +370,7 @@ public final class MPSImageFilterWrapper {
         }
         metaphorDiagnostic(
             "MPSImageFilter: \(api) radius \(clamped) applied in \(passes.count) passes "
-            + "(at most \(Self.maxRadiusPerPass) per pass; MPS hangs from radius 241)")
+                + "(at most \(Self.maxRadiusPerPass) per pass; MPS hangs from radius 241)")
 
         // destination と scratch を交互に使い、最後の書き込みが destination になるよう
         // 開始側をパス数の偶奇で選ぶ。隣り合うパスで入力と出力が同じテクスチャにならない
@@ -389,7 +398,7 @@ public final class MPSImageFilterWrapper {
         let lower = MPSImageMedian.minKernelDiameter() | 1
         let upperRaw = MPSImageMedian.maxKernelDiameter()
         let upper = upperRaw.isMultiple(of: 2) ? upperRaw - 1 : upperRaw
-        let odd = diameter | 1 // 偶数は 1 つ上の奇数へ（負数も奇数のまま下限で拾われる）
+        let odd = diameter | 1  // 偶数は 1 つ上の奇数へ（負数も奇数のまま下限で拾われる）
         return min(max(odd, lower), max(lower, upper))
     }
 
@@ -456,8 +465,8 @@ public final class MPSImageFilterWrapper {
         if d != diameter {
             metaphorWarning(
                 "MPSImageFilter: median diameter must be an odd number within "
-                + "\(MPSImageMedian.minKernelDiameter())...\(MPSImageMedian.maxKernelDiameter()) "
-                + "(got \(diameter)); using \(d)")
+                    + "\(MPSImageMedian.minKernelDiameter())...\(MPSImageMedian.maxKernelDiameter()) "
+                    + "(got \(diameter)); using \(d)")
         }
         if let cached = medianCache[d] { return cached }
         if medianCache.count >= Self.maxAreaCacheSize {
@@ -489,19 +498,25 @@ public final class MPSImageFilterWrapper {
 
     private func prepareInPlace(_ image: MImage) -> (MTLTexture, MTLTexture, MTLCommandBuffer)? {
         let src = image.texture
-        let w = src.width, h = src.height
+        let w = src.width
+        let h = src.height
         // 出力は入力と同じ pixelFormat で作る（bgra8Unorm 固定だと rgba16Float 等の
         // MImage へのフィルタ適用でフォーマットが暗黙に変わり精度が落ちる）
-        guard let dst = getOrCreateTexture(
-                  width: w, height: h, pixelFormat: src.pixelFormat, tag: "mps_output"),
-              let cb = commandQueue.makeCommandBuffer() else { return nil }
+        guard
+            let dst = getOrCreateTexture(
+                width: w, height: h, pixelFormat: src.pixelFormat, tag: "mps_output"),
+            let cb = commandQueue.makeCommandBuffer()
+        else { return nil }
         return (src, dst, cb)
     }
 
-    private func finalize(image: MImage, src: MTLTexture, dst: MTLTexture, commandBuffer: MTLCommandBuffer) {
+    private func finalize(
+        image: MImage, src: MTLTexture, dst: MTLTexture, commandBuffer: MTLCommandBuffer
+    ) {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        let w = dst.width, h = dst.height
+        let w = dst.width
+        let h = dst.height
         image.replaceTexture(dst)
         // in-place 適用後のテクスチャ回収（ping-pong、#251）。MImage へ渡した出力は
         // プールから外し、置き換えられた旧テクスチャが「前回この filter が出力した
@@ -517,7 +532,8 @@ public final class MPSImageFilterWrapper {
             texturePool.removeValue(forKey: key)
         }
         // サイズ・フォーマット変更時に旧 ping-pong 相手が残留しないよう掃除
-        for staleKey in texturePool.keys where staleKey.hasSuffix("_mps_output") && staleKey != key {
+        for staleKey in texturePool.keys where staleKey.hasSuffix("_mps_output") && staleKey != key
+        {
             texturePool.removeValue(forKey: staleKey)
         }
         lastInPlaceOutputID = ObjectIdentifier(dst)

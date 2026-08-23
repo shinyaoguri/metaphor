@@ -13,7 +13,8 @@ extension SketchContext {
             objc_getAssociatedObject(self, &Self._pixelBufferKey) as? PixelBuffer
         }
         set {
-            objc_setAssociatedObject(self, &Self._pixelBufferKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(
+                self, &Self._pixelBufferKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 
@@ -67,9 +68,11 @@ extension SketchContext {
             canvas3D.flushInstanceBatch()
             canvas.flush()
 
-            guard let continuation = renderer.splitMainPassForReadback({ commandBuffer in
-                pb.encodeDownload(from: source, into: commandBuffer)
-            }) else {
+            guard
+                let continuation = renderer.splitMainPassForReadback({ commandBuffer in
+                    pb.encodeDownload(from: source, into: commandBuffer)
+                })
+            else {
                 // 継続パスを作れなかった。renderer 側がフレームを畳むので何もしない。
                 return
             }
@@ -83,7 +86,7 @@ extension SketchContext {
             didWarnDeferredPixelReadback = true
             metaphorWarning(
                 "loadPixels(): same-frame readback is unavailable while shadows are enabled "
-                + "(the draw pass is recorded first). Reading the last committed frame instead."
+                    + "(the draw pass is recorded first). Reading the last committed frame instead."
             )
         }
 
@@ -230,8 +233,8 @@ extension SketchContext {
         didWarnPixelAccessBeforeLoad = true
         metaphorWarning(
             "\(api) requires loadPixels() first — metaphor does not read back the canvas "
-            + "implicitly (the readback blocks on the GPU and splits the render pass). "
-            + "Call loadPixels() before reading or writing pixels."
+                + "implicitly (the readback blocks on the GPU and splits the render pass). "
+                + "Call loadPixels() before reading or writing pixels."
         )
     }
 

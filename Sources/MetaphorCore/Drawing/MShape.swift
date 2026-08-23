@@ -19,11 +19,13 @@ public enum ShapeKind: Sendable {
     /// 3つの頂点で定義される三角形。
     case triangle(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float)
     /// 4つの頂点で定義される四角形。
-    case quad(x1: Float, y1: Float, x2: Float, y2: Float,
-              x3: Float, y3: Float, x4: Float, y4: Float)
+    case quad(
+        x1: Float, y1: Float, x2: Float, y2: Float,
+        x3: Float, y3: Float, x4: Float, y4: Float)
     /// 中心、サイズ、角度範囲、閉じモードで定義される弧。
-    case arc(x: Float, y: Float, width: Float, height: Float,
-             start: Float, stop: Float, mode: ArcMode)
+    case arc(
+        x: Float, y: Float, width: Float, height: Float,
+        start: Float, stop: Float, mode: ArcMode)
     /// 2点間の線分。
     case line(x1: Float, y1: Float, x2: Float, y2: Float)
     /// 単一の点。
@@ -101,8 +103,10 @@ public struct ShapeVertex3D: Sendable {
     /// テクスチャ座標。nil の場合はテクスチャマッピングなし。
     public var uv: SIMD2<Float>?
 
-    public init(position: SIMD3<Float>, normal: SIMD3<Float> = SIMD3(0, 1, 0),
-                color: SIMD4<Float>? = nil, uv: SIMD2<Float>? = nil) {
+    public init(
+        position: SIMD3<Float>, normal: SIMD3<Float> = SIMD3(0, 1, 0),
+        color: SIMD4<Float>? = nil, uv: SIMD2<Float>? = nil
+    ) {
         self.position = position
         self.normal = normal
         self.color = color
@@ -454,10 +458,13 @@ public final class MShape {
 
     /// シェイプを2Dで回転します（ラジアン）。
     public func rotate(_ angle: Float) {
-        let c = cos(angle), s = sin(angle)
+        let c = cos(angle)
+        let s = sin(angle)
         var r = float3x3(1)
-        r[0][0] = c; r[0][1] = s
-        r[1][0] = -s; r[1][1] = c
+        r[0][0] = c
+        r[0][1] = s
+        r[1][0] = -s
+        r[1][1] = c
         localTransform2D = localTransform2D * r
     }
 
@@ -479,14 +486,16 @@ public final class MShape {
     /// シェイプを2Dで均一にスケーリングします。
     public func scale(_ s: Float) {
         var m = float3x3(1)
-        m[0][0] = s; m[1][1] = s
+        m[0][0] = s
+        m[1][1] = s
         localTransform2D = localTransform2D * m
     }
 
     /// シェイプを2Dで非均一にスケーリングします。
     public func scale(_ sx: Float, _ sy: Float) {
         var m = float3x3(1)
-        m[0][0] = sx; m[1][1] = sy
+        m[0][0] = sx
+        m[1][1] = sy
         localTransform2D = localTransform2D * m
     }
 

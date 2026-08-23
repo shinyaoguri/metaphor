@@ -105,7 +105,8 @@ public final class ShadowMap {
         texDesc.usage = [.renderTarget, .shaderRead]
 
         guard let tex = device.makeTexture(descriptor: texDesc) else {
-            throw MetaphorError.textureCreationFailed(width: resolution, height: resolution, format: "shadow_depth")
+            throw MetaphorError.textureCreationFailed(
+                width: resolution, height: resolution, format: "shadow_depth")
         }
         tex.label = "ShadowMap Depth"
         self.shadowTexture = tex
@@ -126,7 +127,10 @@ public final class ShadowMap {
             }
             try shaderLibrary.register(source: shadowSource, as: shadowKey)
         }
-        guard let vertexFn = shaderLibrary.function(named: "metaphor_shadowDepthVertex", from: shadowKey) else {
+        guard
+            let vertexFn = shaderLibrary.function(
+                named: "metaphor_shadowDepthVertex", from: shadowKey)
+        else {
             throw MetaphorError.shaderNotFound("metaphor_shadowDepthVertex")
         }
 
@@ -135,7 +139,8 @@ public final class ShadowMap {
         untexDesc.vertexFunction = vertexFn
         untexDesc.fragmentFunction = nil
         untexDesc.depthAttachmentPixelFormat = .depth32Float
-        untexDesc.vertexDescriptor = Self.makeShadowVertexDescriptor(stride: MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride)
+        untexDesc.vertexDescriptor = Self.makeShadowVertexDescriptor(
+            stride: MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride)
         untexDesc.rasterSampleCount = 1
         // 生 NSError を漏らさない（エラー契約: MetaphorError.swift の「エラー契約」節）
         do {
@@ -150,7 +155,8 @@ public final class ShadowMap {
         texPipeDesc.vertexFunction = vertexFn
         texPipeDesc.fragmentFunction = nil
         texPipeDesc.depthAttachmentPixelFormat = .depth32Float
-        texPipeDesc.vertexDescriptor = Self.makeShadowVertexDescriptor(stride: MemoryLayout<SIMD3<Float>>.stride * 3)
+        texPipeDesc.vertexDescriptor = Self.makeShadowVertexDescriptor(
+            stride: MemoryLayout<SIMD3<Float>>.stride * 3)
         texPipeDesc.rasterSampleCount = 1
         do {
             self.depthPipelineTextured = try device.makeRenderPipelineState(descriptor: texPipeDesc)
@@ -174,7 +180,9 @@ public final class ShadowMap {
     ///   - lightDirection: ライトの方向ベクトル。
     ///   - sceneCenter: シャドウを適用するシーンの中心。
     ///   - sceneRadius: シーンのバウンディング球の半径。
-    func updateLightSpaceMatrix(lightDirection: SIMD3<Float>, sceneCenter: SIMD3<Float> = .zero, sceneRadius: Float = 500) {
+    func updateLightSpaceMatrix(
+        lightDirection: SIMD3<Float>, sceneCenter: SIMD3<Float> = .zero, sceneRadius: Float = 500
+    ) {
         let dir = normalize(lightDirection)
         let lightPos = sceneCenter - dir * sceneRadius
 
@@ -201,7 +209,8 @@ public final class ShadowMap {
     ///   - drawCalls: 記録された3D描画呼び出しの配列。
     ///   - commandBuffer: エンコード先のコマンドバッファ。
     func render(drawCalls: [DrawCall3D], commandBuffer: MTLCommandBuffer) {
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
+        else { return }
         encoder.label = "Shadow Depth Pass"
 
         if let ds = depthStencilState {

@@ -32,7 +32,10 @@ public final class PostEffectContext {
     private var heapWidth: Int = 0
     private var heapHeight: Int = 0
 
-    init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary, blitVertexFunction: MTLFunction) {
+    init(
+        device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary,
+        blitVertexFunction: MTLFunction
+    ) {
         self.device = device
         self.commandQueue = commandQueue
         self.shaderLibrary = shaderLibrary
@@ -71,7 +74,7 @@ public final class PostEffectContext {
         rpd.colorAttachments[0].storeAction = .store
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd),
-              let pipeline = getOrCreatePipeline(fragmentName: fragmentName, libraryKey: libraryKey)
+            let pipeline = getOrCreatePipeline(fragmentName: fragmentName, libraryKey: libraryKey)
         else { return }
 
         encoder.setRenderPipelineState(pipeline)
@@ -104,7 +107,7 @@ public final class PostEffectContext {
         rpd.colorAttachments[0].storeAction = .store
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd),
-              let pipeline = getOrCreateBloomCompositePipeline()
+            let pipeline = getOrCreateBloomCompositePipeline()
         else { return }
 
         encoder.setRenderPipelineState(pipeline)
@@ -166,12 +169,16 @@ public final class PostEffectContext {
 
     // MARK: - パイプライン管理
 
-    func getOrCreatePipeline(fragmentName: String, libraryKey: String? = nil) -> MTLRenderPipelineState? {
+    func getOrCreatePipeline(fragmentName: String, libraryKey: String? = nil)
+        -> MTLRenderPipelineState?
+    {
         let cacheKey = libraryKey.map { "\($0).\(fragmentName)" } ?? fragmentName
         if let cached = pipelineCache[cacheKey] { return cached }
 
         let key = libraryKey ?? ShaderLibrary.BuiltinKey.postProcess
-        guard let fragmentFn = shaderLibrary.function(named: fragmentName, from: key) else { return nil }
+        guard let fragmentFn = shaderLibrary.function(named: fragmentName, from: key) else {
+            return nil
+        }
 
         do {
             let pipeline = try PipelineFactory(device: device)
@@ -219,7 +226,10 @@ public final class PostEffectContext {
         // チェーンは縮めない: iterations の異なるエフェクト併用（Bloom=4 と
         // Blur=6 等）で毎フレーム全テクスチャを破棄・再確保するのを防ぐ。
         if width == kawaseChainWidth && height == kawaseChainHeight
-            && kawaseChain.count >= iterations { return }
+            && kawaseChain.count >= iterations
+        {
+            return
+        }
 
         if width != kawaseChainWidth || height != kawaseChainHeight {
             kawaseChain.removeAll()
@@ -303,10 +313,11 @@ public final class PostEffectContext {
         rpd.colorAttachments[0].storeAction = .store
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd),
-              let pipeline = getOrCreatePipeline(
-                  fragmentName: functionName,
-                  libraryKey: ShaderLibrary.BuiltinKey.kawaseBlur
-              ) else { return }
+            let pipeline = getOrCreatePipeline(
+                fragmentName: functionName,
+                libraryKey: ShaderLibrary.BuiltinKey.kawaseBlur
+            )
+        else { return }
 
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentTexture(input, index: 0)
@@ -318,10 +329,12 @@ public final class PostEffectContext {
     private func getOrCreateBloomCompositePipeline() -> MTLRenderPipelineState? {
         if let cached = bloomCompositePipeline { return cached }
 
-        guard let fragmentFn = shaderLibrary.function(
-            named: PostProcessShaders.FunctionName.postBloomComposite,
-            from: ShaderLibrary.BuiltinKey.postProcess
-        ) else { return nil }
+        guard
+            let fragmentFn = shaderLibrary.function(
+                named: PostProcessShaders.FunctionName.postBloomComposite,
+                from: ShaderLibrary.BuiltinKey.postProcess
+            )
+        else { return nil }
 
         do {
             let pipeline = try PipelineFactory(device: device)
@@ -370,14 +383,18 @@ public final class PostProcessPipeline {
     ///   - shaderLibrary: 組み込みブリットシェーダーを含むシェーダーライブラリ
     /// - Throws: 全画面ブリット用の頂点関数が見つからない場合
     ///   ``MetaphorError/shaderNotFound(_:)``
-    public init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary) throws {
+    public init(device: MTLDevice, commandQueue: MTLCommandQueue, shaderLibrary: ShaderLibrary)
+        throws
+    {
         self.device = device
         self.commandQueue = commandQueue
 
-        guard let vertexFn = shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.blitVertex,
-            from: ShaderLibrary.BuiltinKey.blit
-        ) else {
+        guard
+            let vertexFn = shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitVertex,
+                from: ShaderLibrary.BuiltinKey.blit
+            )
+        else {
             throw MetaphorError.shaderNotFound("blitVertex")
         }
 
@@ -426,7 +443,8 @@ public final class PostProcessPipeline {
 
         for effect in effects {
             let output = useA ? texA : texB
-            effect.apply(input: currentInput, output: output, commandBuffer: commandBuffer, context: context)
+            effect.apply(
+                input: currentInput, output: output, commandBuffer: commandBuffer, context: context)
             currentInput = output
             useA = !useA
         }

@@ -1,6 +1,7 @@
-import Testing
-@testable import MetaphorNetwork
 import Foundation
+import Testing
+
+@testable import MetaphorNetwork
 
 // MARK: - OSC Binary Helpers
 
@@ -136,15 +137,21 @@ struct OSCParserTests {
 
         if case .int(let v) = messages[0].values[0] {
             #expect(v == 100)
-        } else { Issue.record("Expected .int") }
+        } else {
+            Issue.record("Expected .int")
+        }
 
         if case .float(let v) = messages[0].values[1] {
             #expect(abs(v - 3.14) < 0.01)
-        } else { Issue.record("Expected .float") }
+        } else {
+            Issue.record("Expected .float")
+        }
 
         if case .string(let v) = messages[0].values[2] {
             #expect(v == "world")
-        } else { Issue.record("Expected .string") }
+        } else {
+            Issue.record("Expected .string")
+        }
     }
 
     @Test("parse no-arg message")
@@ -192,7 +199,9 @@ struct OSCParserTests {
         #expect(messages[0].address == "/bundled")
         if case .int(let v) = messages[0].values[0] {
             #expect(v == 99)
-        } else { Issue.record("Expected .int") }
+        } else {
+            Issue.record("Expected .int")
+        }
     }
 
     @Test("parse bundle with multiple messages")
@@ -252,7 +261,9 @@ struct OSCParserTests {
         let messages = OSCParser.parse(data: data)
         if case .int(let v) = messages[0].values[0] {
             #expect(v == -123)
-        } else { Issue.record("Expected .int") }
+        } else {
+            Issue.record("Expected .int")
+        }
     }
 
     @Test("long address pattern")
@@ -280,7 +291,7 @@ struct OSCValueTests {
             .int(42),
             .float(1.5),
             .string("test"),
-            .blob(Data([0x01, 0x02]))
+            .blob(Data([0x01, 0x02])),
         ]
         let _: [any Sendable] = values
         #expect(values.count == 4)
@@ -358,13 +369,14 @@ struct OSCParserTruncationTests {
         OSCBinaryHelper.appendOSCString("/b", to: &data)
         OSCBinaryHelper.appendOSCString(",bi", to: &data)
         OSCBinaryHelper.appendInt32(1024, to: &data)  // ペイロードのない blob サイズ
-        OSCBinaryHelper.appendInt32(99, to: &data)    // 後続の int（blob 欠落により到達不能）
+        OSCBinaryHelper.appendInt32(99, to: &data)  // 後続の int（blob 欠落により到達不能）
 
         let messages = OSCParser.parse(data: data)
         #expect(messages.count == 1)
         // blob が壊れている時点で打ち切り。ずれた位置から int を拾わないこと。
-        #expect(messages[0].values.isEmpty,
-                "Parsing must stop at the malformed blob (got \(messages[0].values))")
+        #expect(
+            messages[0].values.isEmpty,
+            "Parsing must stop at the malformed blob (got \(messages[0].values))")
     }
 
     /// 未知のタイプタグはペイロード長が不明なため、それ以降は打ち切ること。

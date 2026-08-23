@@ -15,12 +15,18 @@ public final class MPSBlurEffect: PostEffect {
         self.sigma = sigma
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let f = filter ?? {
-            let w = MPSImageFilterWrapper(device: context.device, commandQueue: context.commandQueue)
-            filter = w
-            return w
-        }()
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let f =
+            filter
+            ?? {
+                let w = MPSImageFilterWrapper(
+                    device: context.device, commandQueue: context.commandQueue)
+                filter = w
+                return w
+            }()
         f.encodeGaussianBlur(
             commandBuffer: commandBuffer, source: input, destination: output, sigma: sigma
         )
@@ -35,12 +41,18 @@ public final class MPSSobelEffect: PostEffect {
 
     public init() {}
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let f = filter ?? {
-            let w = MPSImageFilterWrapper(device: context.device, commandQueue: context.commandQueue)
-            filter = w
-            return w
-        }()
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let f =
+            filter
+            ?? {
+                let w = MPSImageFilterWrapper(
+                    device: context.device, commandQueue: context.commandQueue)
+                filter = w
+                return w
+            }()
         f.encodeSobel(
             commandBuffer: commandBuffer, source: input, destination: output
         )
@@ -58,12 +70,18 @@ public final class MPSErodeEffect: PostEffect {
         self.radius = radius
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let f = filter ?? {
-            let w = MPSImageFilterWrapper(device: context.device, commandQueue: context.commandQueue)
-            filter = w
-            return w
-        }()
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let f =
+            filter
+            ?? {
+                let w = MPSImageFilterWrapper(
+                    device: context.device, commandQueue: context.commandQueue)
+                filter = w
+                return w
+            }()
         f.encodeErode(
             commandBuffer: commandBuffer, source: input, destination: output, radius: radius
         )
@@ -81,12 +99,18 @@ public final class MPSDilateEffect: PostEffect {
         self.radius = radius
     }
 
-    public func apply(input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer, context: PostEffectContext) {
-        let f = filter ?? {
-            let w = MPSImageFilterWrapper(device: context.device, commandQueue: context.commandQueue)
-            filter = w
-            return w
-        }()
+    public func apply(
+        input: MTLTexture, output: MTLTexture, commandBuffer: MTLCommandBuffer,
+        context: PostEffectContext
+    ) {
+        let f =
+            filter
+            ?? {
+                let w = MPSImageFilterWrapper(
+                    device: context.device, commandQueue: context.commandQueue)
+                filter = w
+                return w
+            }()
         f.encodeDilate(
             commandBuffer: commandBuffer, source: input, destination: output, radius: radius
         )

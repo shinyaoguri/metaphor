@@ -1,9 +1,10 @@
 import CMetaphorIPC
 import Foundation
 import Metal
-import Testing
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 // MARK: - Fake parent (in-process viewer)
 
@@ -74,7 +75,9 @@ final class FakeViewerParent: @unchecked Sendable {
     func send(_ object: [String: Any]) throws {
         var data = try JSONSerialization.data(withJSONObject: object)
         data.append(0x0A)
-        let written = data.withUnsafeBytes { raw in Darwin.write(connectionFD, raw.baseAddress, raw.count) }
+        let written = data.withUnsafeBytes { raw in
+            Darwin.write(connectionFD, raw.baseAddress, raw.count)
+        }
         try #require(written == data.count)
     }
 
@@ -83,7 +86,10 @@ final class FakeViewerParent: @unchecked Sendable {
     }
 
     func close() {
-        if connectionFD >= 0 { Darwin.close(connectionFD); connectionFD = -1 }
+        if connectionFD >= 0 {
+            Darwin.close(connectionFD)
+            connectionFD = -1
+        }
         Darwin.close(listenFD)
         unlink(path)
     }
@@ -97,7 +103,9 @@ final class FakeViewerParent: @unchecked Sendable {
 }
 
 /// 共有メモリの fd を読み取り専用で mmap し、slot の先頭ピクセル（BGRA）を返す。
-private func readFirstPixel(fd: Int32, layout: (slotBytes: Int, totalBytes: Int), slot: Int) throws -> [UInt8] {
+private func readFirstPixel(fd: Int32, layout: (slotBytes: Int, totalBytes: Int), slot: Int) throws
+    -> [UInt8]
+{
     var info = stat()
     try #require(fstat(fd, &info) == 0)
     #expect(Int(info.st_size) == layout.totalBytes, "fstat のサイズが hello の slotBytes*slots と一致する")
@@ -110,7 +118,9 @@ private func readFirstPixel(fd: Int32, layout: (slotBytes: Int, totalBytes: Int)
 
 // MARK: - Tests
 
-@Suite("ViewerOutputPlugin（fake 親との end-to-end）", .serialized, .enabled(if: MetalTestHelper.isGPUAvailable))
+@Suite(
+    "ViewerOutputPlugin（fake 親との end-to-end）", .serialized,
+    .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
 struct ViewerOutputPluginTests {
 
@@ -156,7 +166,8 @@ struct ViewerOutputPluginTests {
         let pixel = try readFirstPixel(
             fd: parent.receivedFD, layout: (slotBytes, slotBytes * slots), slot: 0
         )
-        #expect(pixel == [0x33, 0x66, 0xCC, 0xFF], "BGRA premultiplied の clear color がそのまま slot にある")
+        #expect(
+            pixel == [0x33, 0x66, 0xCC, 0xFF], "BGRA premultiplied の clear color がそのまま slot にある")
     }
 
     @Test("3 枚とも親が握ると publish を飛ばし、release で再開する")
@@ -168,7 +179,7 @@ struct ViewerOutputPluginTests {
         try parent.accept()
 
         renderer.renderFrame()
-        _ = try #require(try parent.nextLine())          // hello
+        _ = try #require(try parent.nextLine())  // hello
         var slotsSeen: [Int] = []
         slotsSeen.append(try #require(try parent.nextLine())["slot"] as? Int ?? -1)
         renderer.renderFrame()
@@ -204,8 +215,8 @@ struct ViewerOutputPluginTests {
         try parent.accept()
 
         renderer.renderFrame()
-        _ = try #require(try parent.nextLine())          // hello
-        _ = try #require(try parent.nextLine())          // frame
+        _ = try #require(try parent.nextLine())  // hello
+        _ = try #require(try parent.nextLine())  // frame
         let firstFD = parent.receivedFD
 
         renderer.resizeCanvas(width: 32, height: 32)
@@ -239,7 +250,7 @@ struct ViewerOutputPluginTests {
         let plugin = ViewerOutputPlugin(socketPath: "/nonexistent/metaphor-viewer-test.sock")
         renderer.addPlugin(plugin)
         #expect(!plugin.isConnected)
-        renderer.renderFrame()   // クラッシュしない・ハングしない
+        renderer.renderFrame()  // クラッシュしない・ハングしない
     }
 
     @Test("socket のパスが 103 byte を超えると接続しない")

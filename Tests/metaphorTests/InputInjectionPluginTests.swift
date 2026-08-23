@@ -1,9 +1,10 @@
-import Testing
-import Metal
 import Foundation
-import os
-@testable import MetaphorCore
+import Metal
 import MetaphorTestSupport
+import Testing
+import os
+
+@testable import MetaphorCore
 
 // MARK: - Test line source
 
@@ -101,7 +102,7 @@ struct InputInjectionPluginTests {
             "not json at all",
             "{ broken",
             #"{"t":"unknownEvent","x":1.0}"#,
-            #"{"t":"mouseMove","x":99.0,"y":88.0}"#
+            #"{"t":"mouseMove","x":99.0,"y":88.0}"#,
         ])
         let plugin = InputInjectionPlugin(lineSource: { feeder.next() })
         renderer.addPlugin(plugin)

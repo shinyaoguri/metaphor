@@ -1,7 +1,7 @@
+import MetaphorTestSupport
 import Testing
 
 @testable import MetaphorCore
-import MetaphorTestSupport
 
 /// 描画クロージャが最初に見た値を持ち帰るための箱。
 private final class FirstFrame: @unchecked Sendable {

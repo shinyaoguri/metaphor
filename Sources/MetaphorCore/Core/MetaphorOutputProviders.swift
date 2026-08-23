@@ -170,9 +170,10 @@ public enum MetaphorOutputProviders {
         var outputs: [ResolvedOutput] = []
         for provider in registered {
             if let plugin = provider.makeOutput(context: context) {
-                outputs.append(ResolvedOutput(
-                    providerID: provider.id, plugin: plugin, requirements: provider.requirements
-                ))
+                outputs.append(
+                    ResolvedOutput(
+                        providerID: provider.id, plugin: plugin, requirements: provider.requirements
+                    ))
             }
         }
         return outputs

@@ -53,11 +53,13 @@ extension Canvas2D {
         guard hasFill, !instances.isEmpty, encoder != nil || isDeferring else { return }
         let count = instances.count
         let needed = massiveCircleBufferOffset + count
-        guard massiveCircleBuffer.ensureCapacity(
-            needed,
-            activeIndex: currentBufferIndex,
-            usedCount: 0
-        ) else {
+        guard
+            massiveCircleBuffer.ensureCapacity(
+                needed,
+                activeIndex: currentBufferIndex,
+                usedCount: 0
+            )
+        else {
             return
         }
 
@@ -105,9 +107,10 @@ extension Canvas2D {
 
         // 遅延モードでは記録（影オン時の宿題②を根治）。即時モードでは即座にエンコード。
         // massive は変換を描画時に適用するため、記録時の変換を埋め込んで保持する。
-        emit(.massiveCircles(
-            pipeline: key, dataBuffer: buffer, byteOffset: byteOffset, count: count,
-            transform: Canvas2D.embed2DTransform(currentTransform),
-            shaderParams: currentShaderParams))
+        emit(
+            .massiveCircles(
+                pipeline: key, dataBuffer: buffer, byteOffset: byteOffset, count: count,
+                transform: Canvas2D.embed2DTransform(currentTransform),
+                shaderParams: currentShaderParams))
     }
 }

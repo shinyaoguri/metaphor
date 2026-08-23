@@ -18,23 +18,26 @@ struct CommandStreamTests {
     func mergeInterleaved() {
         // 3D が seq 0,2,3 / 2D が seq 1,4 で記録された ＝ box, rect, box, box, rect の順。
         let order = DrawStreamMerge.mergeOrder(threeDSeqs: [0, 2, 3], twoDSeqs: [1, 4])
-        #expect(order == [
-            .threeD(index: 0),
-            .twoD(index: 0),
-            .threeD(index: 1),
-            .threeD(index: 2),
-            .twoD(index: 1),
-        ])
+        #expect(
+            order == [
+                .threeD(index: 0),
+                .twoD(index: 0),
+                .threeD(index: 1),
+                .threeD(index: 2),
+                .twoD(index: 1),
+            ])
     }
 
     @Test("片方が空でも順序を保つ")
     func mergeEmptyStreams() {
-        #expect(DrawStreamMerge.mergeOrder(threeDSeqs: [0, 1, 2], twoDSeqs: []) == [
-            .threeD(index: 0), .threeD(index: 1), .threeD(index: 2),
-        ])
-        #expect(DrawStreamMerge.mergeOrder(threeDSeqs: [], twoDSeqs: [0, 1]) == [
-            .twoD(index: 0), .twoD(index: 1),
-        ])
+        #expect(
+            DrawStreamMerge.mergeOrder(threeDSeqs: [0, 1, 2], twoDSeqs: []) == [
+                .threeD(index: 0), .threeD(index: 1), .threeD(index: 2),
+            ])
+        #expect(
+            DrawStreamMerge.mergeOrder(threeDSeqs: [], twoDSeqs: [0, 1]) == [
+                .twoD(index: 0), .twoD(index: 1),
+            ])
         #expect(DrawStreamMerge.mergeOrder(threeDSeqs: [], twoDSeqs: []).isEmpty)
     }
 
@@ -42,12 +45,13 @@ struct CommandStreamTests {
     func mergeBackgroundThenForeground() {
         // 2D 背景(seq0) → 3D(seq1,2) → 2D 前景(seq3) のパターン（宿題①の支配ケース）。
         let order = DrawStreamMerge.mergeOrder(threeDSeqs: [1, 2], twoDSeqs: [0, 3])
-        #expect(order == [
-            .twoD(index: 0),     // 背景
-            .threeD(index: 0),
-            .threeD(index: 1),
-            .twoD(index: 1),     // 前景
-        ])
+        #expect(
+            order == [
+                .twoD(index: 0),  // 背景
+                .threeD(index: 0),
+                .threeD(index: 1),
+                .twoD(index: 1),  // 前景
+            ])
     }
 
     @Test("Deferred2DCommand と slot を seq 付きで構築できる")
@@ -160,10 +164,13 @@ struct CommandStreamSeqTests {
         cb.waitUntilCompleted()
         var px = [UInt8](repeating: 0, count: w * h * 4)
         staging.getBytes(&px, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
-        return (w, h, { x, y in
-            let off = (y * w + x) * 4
-            return (r: px[off + 2], g: px[off + 1], b: px[off + 0])
-        })
+        return (
+            w, h,
+            { x, y in
+                let off = (y * w + x) * 4
+                return (r: px[off + 2], g: px[off + 1], b: px[off + 0])
+            }
+        )
     }
 
     /// 宿題②: massive 2D（`circles`）が影オン記録経路でも描画される
@@ -171,9 +178,9 @@ struct CommandStreamSeqTests {
     @Test("影オン記録経路で massive circles が描画される")
     func massiveCirclesDrawnInShadowPath() throws {
         let (renderer, context) = try makeShadowHarness { c in
-            c.background(Color(r: 0, g: 0, b: 0))   // 黒背景
+            c.background(Color(r: 0, g: 0, b: 0))  // 黒背景
             c.lights()
-            c.fill(Color(r: 0, g: 1, b: 0))          // hasFill を有効化（massive 色は instance 側）
+            c.fill(Color(r: 0, g: 1, b: 0))  // hasFill を有効化（massive 色は instance 側）
             c.circles([CircleInstance(x: 32, y: 32, diameter: 56, color: Color(r: 0, g: 1, b: 0))])
         }
         context.enableShadows()
@@ -189,12 +196,12 @@ struct CommandStreamSeqTests {
     @Test("影オン記録経路で 2D クリップが効く")
     func clipRespectedInShadowPath() throws {
         let (renderer, context) = try makeShadowHarness { c in
-            c.background(Color(r: 0, g: 0, b: 0))   // 黒背景
+            c.background(Color(r: 0, g: 0, b: 0))  // 黒背景
             c.lights()
-            c.beginClip(0, 0, 32, 32)                // 左上 1/4 にクリップ
+            c.beginClip(0, 0, 32, 32)  // 左上 1/4 にクリップ
             c.fill(Color(r: 1, g: 0, b: 0))
             c.noStroke()
-            c.rect(0, 0, 64, 64)                     // フルスクリーン矩形（クリップで左上のみ）
+            c.rect(0, 0, 64, 64)  // フルスクリーン矩形（クリップで左上のみ）
             c.endClip()
         }
         context.enableShadows()
@@ -204,8 +211,9 @@ struct CommandStreamSeqTests {
         let inside = sample(16, 16)
         let outside = sample(48, 48)
         #expect(inside.r > 200 && inside.g < 60, "クリップ内は赤であるべき: \(inside)")
-        #expect(outside.r < 60 && outside.g < 60 && outside.b < 60,
-                "クリップ外は黒のままであるべき（clip が効いている）: \(outside)")
+        #expect(
+            outside.r < 60 && outside.g < 60 && outside.b < 60,
+            "クリップ外は黒のままであるべき（clip が効いている）: \(outside)")
     }
 
     /// 宿題①: 呼び出し順が保持され、**後から描いた 3D が先に描いた 2D の前面**に来る。
@@ -214,25 +222,26 @@ struct CommandStreamSeqTests {
     func callOrder3DOverEarlier2D() throws {
         let (renderer, context) = try makeShadowHarness { c in
             c.background(Color(r: 0, g: 0, b: 0))
-            c.fill(Color(r: 1, g: 0, b: 0))      // 赤
+            c.fill(Color(r: 1, g: 0, b: 0))  // 赤
             c.noStroke()
-            c.rect(0, 0, 64, 64)                  // 先に全面赤（背後になるべき）
+            c.rect(0, 0, 64, 64)  // 先に全面赤（背後になるべき）
             c.lights()
             c.fill(Color(r: 1, g: 1, b: 1))
             c.pushMatrix()
             c.translate(32, 32, 0)
-            c.box(64)                             // 後から中央に箱（前面になるべき）
+            c.box(64)  // 後から中央に箱（前面になるべき）
             c.popMatrix()
         }
         context.enableShadows()
         renderer.renderFrame()
 
         let (_, _, sample) = try readbackPixels(renderer)
-        let center = sample(32, 32)   // 箱の中央
+        let center = sample(32, 32)  // 箱の中央
         // 後から描いた箱が前面に来れば、純赤（g≈0）ではなく箱の明度（g が高い）になる。
         // #70 の固定順（3D→2D）では 2D 赤矩形が常に上に出て中央は純赤だった。
-        #expect(center.g > 100,
-                "中央は後から描いた箱が前面に来るはず（呼び出し順保持・純赤でない）: \(center)")
+        #expect(
+            center.g > 100,
+            "中央は後から描いた箱が前面に来るはず（呼び出し順保持・純赤でない）: \(center)")
     }
 
     /// コマンド記録 opt-in（`commandRecordEnabled`）で、**影なしでも**呼び出し順が保持される
@@ -243,15 +252,15 @@ struct CommandStreamSeqTests {
             c.background(Color(r: 0, g: 0, b: 0))
             c.fill(Color(r: 1, g: 0, b: 0))
             c.noStroke()
-            c.rect(0, 0, 64, 64)                  // 先に全面赤
+            c.rect(0, 0, 64, 64)  // 先に全面赤
             c.lights()
             c.fill(Color(r: 1, g: 1, b: 1))
             c.pushMatrix()
             c.translate(32, 32, 0)
-            c.box(64)                             // 後から箱
+            c.box(64)  // 後から箱
             c.popMatrix()
         }
-        context.canvas3D.commandRecordEnabled = true   // 影なしで記録経路を有効化
+        context.canvas3D.commandRecordEnabled = true  // 影なしで記録経路を有効化
         #expect(context.canvas3D.shadowMap == nil, "この経路は影オフで動くべき")
         renderer.renderFrame()
 
@@ -266,12 +275,12 @@ struct CommandStreamSeqTests {
         let w: Float = 32
         renderer.onRecordFrame = { time in
             context.beginRecordingFrame(time: Float(time), deltaTime: 0)
-            context.background(Color(r: 0, g: 0, b: 1))   // 2D: PR-1 では seq を消費しない
+            context.background(Color(r: 0, g: 0, b: 1))  // 2D: PR-1 では seq を消費しない
             context.lights()
             context.fill(Color(r: 1, g: 1, b: 1))
-            context.box(w / 4)                             // 3D #0
-            context.box(w / 4)                             // 3D #1
-            context.box(w / 4)                             // 3D #2
+            context.box(w / 4)  // 3D #0
+            context.box(w / 4)  // 3D #1
+            context.box(w / 4)  // 3D #2
             context.endRecordingFrame()
         }
         renderer.onAfterDraw = { cb in context.canvas3D.performShadowPass(commandBuffer: cb) }
@@ -302,14 +311,14 @@ struct CommandStreamSeqTests {
                 img?.loadPixels()
                 if let image = img {
                     for i in stride(from: 0, to: image.pixels.count, by: 4) {
-                        image.pixels[i] = 255      // R
+                        image.pixels[i] = 255  // R
                         image.pixels[i + 3] = 255  // A
                     }
                     image.updatePixels()
                 }
             }
             if let image = img {
-                c.canvas.image(image, 24, 24)   // 中央付近に 16x16 の赤画像
+                c.canvas.image(image, 24, 24)  // 中央付近に 16x16 の赤画像
             }
         }
         context.enableShadows()
@@ -401,19 +410,20 @@ struct CommandStreamSeqTests {
         let (renderer, context) = try makeShadowHarness { c in
             c.fill(Color(r: 1, g: 0, b: 0))
             c.noStroke()
-            c.rect(0, 0, 64, 64)                     // 先に全面赤
-            c.background(Color(r: 0, g: 0, b: 1))    // フレーム途中で青背景
+            c.rect(0, 0, 64, 64)  // 先に全面赤
+            c.background(Color(r: 0, g: 0, b: 1))  // フレーム途中で青背景
             c.fill(Color(r: 0, g: 1, b: 0))
-            c.circle(32, 32, 16)                     // 上に小さい緑円
+            c.circle(32, 32, 16)  // 上に小さい緑円
         }
         context.enableShadows()
         renderer.renderFrame()
 
         let (_, _, sample) = try readbackPixels(renderer)
-        let corner = sample(4, 4)     // 円の外・矩形の内
-        let center = sample(32, 32)   // 円の中心
-        #expect(corner.b > 200 && corner.r < 60,
-                "background() 以降は先行の赤矩形が覆われて青になるべき: \(corner)")
+        let corner = sample(4, 4)  // 円の外・矩形の内
+        let center = sample(32, 32)  // 円の中心
+        #expect(
+            corner.b > 200 && corner.r < 60,
+            "background() 以降は先行の赤矩形が覆われて青になるべき: \(corner)")
         #expect(center.g > 200, "background() 後の円は描画されるべき: \(center)")
     }
 }
@@ -457,7 +467,8 @@ struct CommandStreamStateSnapshotTests {
         return (renderer, context)
     }
 
-    private func centerPixel(_ renderer: MetaphorRenderer) throws -> (r: UInt8, g: UInt8, b: UInt8) {
+    private func centerPixel(_ renderer: MetaphorRenderer) throws -> (r: UInt8, g: UInt8, b: UInt8)
+    {
         let w = renderer.textureManager.width
         let h = renderer.textureManager.height
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -468,12 +479,13 @@ struct CommandStreamStateSnapshotTests {
         let staging = try #require(renderer.device.makeTexture(descriptor: desc))
         let cb = try #require(renderer.commandQueue.makeCommandBuffer())
         let blit = try #require(cb.makeBlitCommandEncoder())
-        blit.copy(from: renderer.textureManager.colorTexture,
-                  sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: w, height: h, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         cb.commit()
         cb.waitUntilCompleted()
@@ -494,18 +506,20 @@ struct CommandStreamStateSnapshotTests {
             c.fill(Color(r: 1, g: 1, b: 1))
             c.pushMatrix()
             c.translate(32, 32, 0)
-            c.box(40)                                 // デフォルトカメラで中央に描画
+            c.box(40)  // デフォルトカメラで中央に描画
             c.popMatrix()
             // フレーム末尾でカメラを遠方へ（このカメラでは box は映らない）
-            c.camera(eye: SIMD3(100_000, 100_000, 100_000),
-                     center: SIMD3(200_000, 200_000, 200_000))
+            c.camera(
+                eye: SIMD3(100_000, 100_000, 100_000),
+                center: SIMD3(200_000, 200_000, 200_000))
         }
         context.enableShadows()
         renderer.renderFrame()
 
         let p = try centerPixel(renderer)
-        #expect(p.r > 60 || p.g > 60,
-                "box は呼び出し時点のカメラで描画されるべき（フレーム末尾のカメラに影響されない）: \(p)")
+        #expect(
+            p.r > 60 || p.g > 60,
+            "box は呼び出し時点のカメラで描画されるべき（フレーム末尾のカメラに影響されない）: \(p)")
     }
 
     /// フレーム途中のライト変更が後続コールにのみ効く（先行コールは呼び出し時点の
@@ -517,11 +531,11 @@ struct CommandStreamStateSnapshotTests {
         let (renderer, context) = try makeShadowHarness { c in
             c.background(Color(r: 0, g: 0, b: 0))
             c.canvas3D.noLights()
-            c.canvas3D.directionalLight(0, 0, 1)      // 手前からの光のみ
+            c.canvas3D.directionalLight(0, 0, 1)  // 手前からの光のみ
             c.fill(Color(r: 1, g: 0, b: 0))
             c.pushMatrix()
             c.translate(32, 32, 0)
-            c.box(40)                                 // このコールは directional のみで照らされる
+            c.box(40)  // このコールは directional のみで照らされる
             c.popMatrix()
             // フレーム末尾で強いアンビエントを追加（先行コールには効かないはず）。
             // ambientLight は colorMode 基準（既定 0〜255）なので全開は 255（Issue #392）。
@@ -587,8 +601,9 @@ struct Canvas2DPipelineKeyRecordingTests {
         let keys = recordedPipelineKeys(canvas)
         #expect(keys.count == 2, "blendMode の切替でバッチが 2 本に割れるべき: \(keys)")
         #expect(keys.allSatisfy { $0.kind == .color })
-        #expect(keys.map(\.blend) == [.alpha, .additive],
-                "各バッチは記録時点のブレンドモードを持つべき（再生時の状態ではなく）: \(keys)")
+        #expect(
+            keys.map(\.blend) == [.alpha, .additive],
+            "各バッチは記録時点のブレンドモードを持つべき（再生時の状態ではなく）: \(keys)")
     }
 
     @Test("インスタンスバッチは蓄積開始時のブレンドモードをキーに焼き込む")
@@ -606,8 +621,9 @@ struct Canvas2DPipelineKeyRecordingTests {
         let keys = recordedPipelineKeys(canvas)
         #expect(keys.count == 2, "blendMode の切替でバッチが 2 本に割れるべき: \(keys)")
         #expect(keys.allSatisfy { $0.kind == .instanced })
-        #expect(keys.map(\.blend) == [.alpha, .multiply],
-                "各バッチは蓄積開始時のブレンドモードを持つべき: \(keys)")
+        #expect(
+            keys.map(\.blend) == [.alpha, .multiply],
+            "各バッチは蓄積開始時のブレンドモードを持つべき: \(keys)")
     }
 
     @Test("massive 円は記録時点のブレンドモードをキーに焼き込む")

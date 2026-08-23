@@ -9,7 +9,8 @@ public enum RayTraceMode: Sendable {
     /// Ambient occlusion with configurable sample count and radius.
     case ambientOcclusion(samples: Int = 16, radius: Float = 2.0)
     /// Soft shadow from a directional light source.
-    case softShadow(lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)
+    case softShadow(
+        lightDirection: SIMD3<Float> = SIMD3(1, 2, 1), softness: Float = 0.1, samples: Int = 16)
     /// Simple diffuse shading.
     case diffuse
 }
@@ -90,10 +91,11 @@ public final class MPSRayTracer {
         // この init が `throws` であっても呼び出し側は失敗を捕まえられない
         // （`try` を書いていてもプロセスごと落ちる）。
         guard width > 0, height > 0,
-              width <= TextureManager.maxDimension, height <= TextureManager.maxDimension else {
+            width <= TextureManager.maxDimension, height <= TextureManager.maxDimension
+        else {
             metaphorWarning(
                 "MPSRayTracer: size must be within 1...\(TextureManager.maxDimension) "
-                + "(got \(width)x\(height))")
+                    + "(got \(width)x\(height))")
             throw MetaphorError.textureCreationFailed(
                 width: width, height: height, format: "rayTracerOutput")
         }
@@ -122,7 +124,8 @@ public final class MPSRayTracer {
     /// - Parameters:
     ///   - mesh: The dynamic mesh to add.
     ///   - transform: The world-space transform matrix to apply.
-    public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4) {
+    public func addDynamicMesh(_ mesh: DynamicMesh, transform: float4x4 = matrix_identity_float4x4)
+    {
         scene.addDynamicMesh(mesh, transform: transform)
     }
 
@@ -173,7 +176,8 @@ public final class MPSRayTracer {
         commandBuffer: MTLCommandBuffer
     ) {
         guard let accel = accelerationStructure,
-              let output = _outputTexture else { return }
+            let output = _outputTexture
+        else { return }
 
         let view = float4x4(lookAt: camera.eye, center: camera.center, up: camera.up)
         let aspect = Float(width) / Float(height)
@@ -229,8 +233,9 @@ public final class MPSRayTracer {
         commandBuffer: MTLCommandBuffer
     ) {
         guard let normalBuf = normalBuffer,
-              let encoder = commandBuffer.makeComputeCommandEncoder(),
-              let pipeline = traceAOPipeline else { return }
+            let encoder = commandBuffer.makeComputeCommandEncoder(),
+            let pipeline = traceAOPipeline
+        else { return }
 
         var uniforms = RayTraceUniforms(
             inverseView: inverseView, inverseProjection: inverseProjection,
@@ -261,8 +266,9 @@ public final class MPSRayTracer {
         commandBuffer: MTLCommandBuffer
     ) {
         guard let normalBuf = normalBuffer,
-              let encoder = commandBuffer.makeComputeCommandEncoder(),
-              let pipeline = traceSoftShadowPipeline else { return }
+            let encoder = commandBuffer.makeComputeCommandEncoder(),
+            let pipeline = traceSoftShadowPipeline
+        else { return }
 
         var uniforms = RayTraceUniforms(
             inverseView: inverseView, inverseProjection: inverseProjection,
@@ -292,8 +298,9 @@ public final class MPSRayTracer {
         commandBuffer: MTLCommandBuffer
     ) {
         guard let normalBuf = normalBuffer,
-              let encoder = commandBuffer.makeComputeCommandEncoder(),
-              let pipeline = traceDiffusePipeline else { return }
+            let encoder = commandBuffer.makeComputeCommandEncoder(),
+            let pipeline = traceDiffusePipeline
+        else { return }
 
         var uniforms = RayTraceUniforms(
             inverseView: inverseView, inverseProjection: inverseProjection,
@@ -315,7 +322,8 @@ public final class MPSRayTracer {
 
     private func setupPipelines() throws {
         guard let source = ShaderLibrary.loadShaderSource("mpsRayTracer") else {
-            throw MetaphorError.mps(.accelerationStructureBuildFailed("Failed to load mpsRayTracer shader source"))
+            throw MetaphorError.mps(
+                .accelerationStructureBuildFailed("Failed to load mpsRayTracer shader source"))
         }
 
         let options = MTLCompileOptions()
@@ -330,7 +338,8 @@ public final class MPSRayTracer {
 
         func makePipeline(_ name: String) throws -> MTLComputePipelineState {
             guard let fn = lib.makeFunction(name: name) else {
-                throw MetaphorError.mps(.accelerationStructureBuildFailed("Shader function '\(name)' not found"))
+                throw MetaphorError.mps(
+                    .accelerationStructureBuildFailed("Shader function '\(name)' not found"))
             }
             let descriptor = MTLComputePipelineDescriptor()
             descriptor.computeFunction = fn
@@ -360,7 +369,8 @@ public final class MPSRayTracer {
         _outputTexture = device.makeTexture(descriptor: desc)
     }
 
-    private func dispatchGrid(encoder: MTLComputeCommandEncoder, pipeline: MTLComputePipelineState) {
+    private func dispatchGrid(encoder: MTLComputeCommandEncoder, pipeline: MTLComputePipelineState)
+    {
         let w = pipeline.threadExecutionWidth
         let h = max(1, pipeline.maxTotalThreadsPerThreadgroup / w)
         encoder.dispatchThreads(

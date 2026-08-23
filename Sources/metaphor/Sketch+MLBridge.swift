@@ -11,6 +11,7 @@ extension Sketch {
     ///
     /// - Returns: 新しい ``MetaphorML/MLTextureConverter`` インスタンス。
     public func createMLTextureConverter() -> MLTextureConverter {
-        MLTextureConverter(device: context.renderer.device, commandQueue: context.renderer.commandQueue)
+        MLTextureConverter(
+            device: context.renderer.device, commandQueue: context.renderer.commandQueue)
     }
 }

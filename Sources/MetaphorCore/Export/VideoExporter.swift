@@ -1,13 +1,13 @@
-// @preconcurrency: ステージングテクスチャを writerQueue（`@Sendable` クロージャ）へ渡す。
-// Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
-// で、metaphor 側でも直列化・排他済み（Issue #328）。
-@preconcurrency import Metal
 // @preconcurrency: `AVAssetWriterInput` / `AVAssetWriterInputPixelBufferAdaptor` を writerQueue へ渡す
 // （すべてのアクセスがそのシリアルキューで直列化されている）。Swift 5.10 でのみ出る警告。
 // AVFoundation の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
 @preconcurrency import AVFoundation
 import CoreVideo
 import Foundation
+// @preconcurrency: ステージングテクスチャを writerQueue（`@Sendable` クロージャ）へ渡す。
+// Metal の型は Sendable 注釈を持たないが、これらのオブジェクト自体はスレッドセーフ
+// で、metaphor 側でも直列化・排他済み（Issue #328）。
+@preconcurrency import Metal
 
 /// ビデオエンコードに使用するコーデック
 public enum VideoCodec: Sendable {
@@ -200,7 +200,7 @@ public final class VideoExporter {
             AVVideoHeightKey: height,
             AVVideoCompressionPropertiesKey: [
                 AVVideoAverageBitRateKey: config.bitrate
-            ]
+            ],
         ]
 
         let input = AVAssetWriterInput(
@@ -212,7 +212,7 @@ public final class VideoExporter {
         let sourcePixelBufferAttributes: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferWidthKey as String: width,
-            kCVPixelBufferHeightKey as String: height
+            kCVPixelBufferHeightKey as String: height,
         ]
 
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
@@ -234,7 +234,8 @@ public final class VideoExporter {
         self.writerInput = input
         self.pixelBufferAdaptor = adaptor
         if config.fps <= 0 {
-            metaphorWarning("VideoExporter: fps must be positive (got \(config.fps)); clamping to 1")
+            metaphorWarning(
+                "VideoExporter: fps must be positive (got \(config.fps)); clamping to 1")
         }
         self.currentFPS = max(1, config.fps)
         self.frameIndex = 0
@@ -256,8 +257,9 @@ public final class VideoExporter {
     ) {
         Task { @MainActor in
             guard let exporter,
-                  let writer = exporter.assetWriter,
-                  ObjectIdentifier(writer) == sessionID else { return }
+                let writer = exporter.assetWriter,
+                ObjectIdentifier(writer) == sessionID
+            else { return }
             exporter.droppedFrameCount += 1
             exporter.onFrameDropped?(frameIndex)
         }
@@ -274,8 +276,9 @@ public final class VideoExporter {
     ) {
         guard isRecording else { return }
         guard let adaptor = pixelBufferAdaptor,
-              let input = writerInput,
-              let writer = assetWriter else { return }
+            let input = writerInput,
+            let writer = assetWriter
+        else { return }
 
         // このフレームが属するセッションの識別子。遅延到着するドロップ報告を
         // 現行セッションと突き合わせるために完了ハンドラへ渡す。
@@ -394,7 +397,8 @@ public final class VideoExporter {
         isRecording = false
 
         guard let writer = assetWriter,
-              let input = writerInput else {
+            let input = writerInput
+        else {
             completion?()
             return
         }
@@ -418,10 +422,12 @@ public final class VideoExporter {
                 if capturedWriter.status == .completed {
                     finishError = nil
                 } else {
-                    finishError = capturedWriter.error
-                        ?? MetaphorError.export(.writerFailed(
-                            "finishWriting ended with status \(capturedWriter.status.rawValue)"
-                        ))
+                    finishError =
+                        capturedWriter.error
+                        ?? MetaphorError.export(
+                            .writerFailed(
+                                "finishWriting ended with status \(capturedWriter.status.rawValue)"
+                            ))
                 }
 
                 Task { @MainActor [weak self] in

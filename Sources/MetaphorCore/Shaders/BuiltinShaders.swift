@@ -45,11 +45,11 @@ public enum BuiltinShaders {
 
     /// カスタム 2D シェーダのソースへ自動で足される前文（stdlib + ``canvas2DStructs``）。
     public static let canvas2DPreamble = """
-    #include <metal_stdlib>
-    using namespace metal;
+        #include <metal_stdlib>
+        using namespace metal;
 
-    \(canvas2DStructs)
-    """
+        \(canvas2DStructs)
+        """
 
     // MARK: - Canvas3D 共有構造体 (共通3Dシェーダー定義)
 
@@ -83,13 +83,13 @@ public enum BuiltinShaders {
     ///
     /// 2D の ``canvas2DPreamble`` と対称です。フラグメント関数だけを書けば動きます。
     public static let canvas3DPreamble = """
-    #include <metal_stdlib>
-    using namespace metal;
+        #include <metal_stdlib>
+        using namespace metal;
 
-    \(canvas3DStructs)
+        \(canvas3DStructs)
 
-    \(canvas3DLightingFn)
-    """
+        \(canvas3DLightingFn)
+        """
 
     // MARK: - シェーダー関数名
 
@@ -137,9 +137,11 @@ public enum BuiltinShaders {
         public static let canvas2DStraightTexturedFragment =
             "metaphor_canvas2DStraightTexturedFragment"
         /// Canvas2D テクスチャ付き差分ブレンドフラグメントシェーダーのMSL関数名。
-        public static let canvas2DTexturedDifferenceFragment = "metaphor_canvas2DTexturedDifferenceFragment"
+        public static let canvas2DTexturedDifferenceFragment =
+            "metaphor_canvas2DTexturedDifferenceFragment"
         /// Canvas2D テクスチャ付き除外ブレンドフラグメントシェーダーのMSL関数名。
-        public static let canvas2DTexturedExclusionFragment = "metaphor_canvas2DTexturedExclusionFragment"
+        public static let canvas2DTexturedExclusionFragment =
+            "metaphor_canvas2DTexturedExclusionFragment"
         /// Canvas3D テクスチャ付き頂点シェーダーのMSL関数名。
         public static let canvas3DTexturedVertex = "metaphor_canvas3DTexturedVertex"
         /// Canvas3D テクスチャ付きフラグメントシェーダーのMSL関数名。
@@ -149,8 +151,10 @@ public enum BuiltinShaders {
         /// Canvas2D インスタンス描画フラグメントシェーダーのMSL関数名。
         public static let canvas2DInstancedFragment = "metaphor_canvas2DInstancedFragment"
         /// Canvas2D インスタンス描画差分ブレンドフラグメントシェーダーのMSL関数名。
-        public static let canvas2DInstancedDifferenceFragment = "metaphor_canvas2DInstancedDifferenceFragment"
+        public static let canvas2DInstancedDifferenceFragment =
+            "metaphor_canvas2DInstancedDifferenceFragment"
         /// Canvas2D インスタンス描画除外ブレンドフラグメントシェーダーのMSL関数名。
-        public static let canvas2DInstancedExclusionFragment = "metaphor_canvas2DInstancedExclusionFragment"
+        public static let canvas2DInstancedExclusionFragment =
+            "metaphor_canvas2DInstancedExclusionFragment"
     }
 }

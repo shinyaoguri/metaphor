@@ -26,13 +26,19 @@ struct Canvas3DShapeStrokeColorTests {
 
     /// 非黒画素を「赤寄り」「緑寄り」に数える。
     private func tally(_ fb: GoldenImage) -> (red: Int, green: Int, other: Int) {
-        var red = 0, green = 0, other = 0
+        var red = 0
+        var green = 0
+        var other = 0
         for y in 0..<fb.height {
             for x in 0..<fb.width {
                 let i = (y * fb.width + x) * 4
-                let r = Int(fb.rgba[i]), g = Int(fb.rgba[i + 1]), b = Int(fb.rgba[i + 2])
+                let r = Int(fb.rgba[i])
+                let g = Int(fb.rgba[i + 1])
+                let b = Int(fb.rgba[i + 2])
                 if r + g + b == 0 { continue }
-                if r > 32 && g <= 32 && b <= 32 { red += 1 } else if g > 32 && r <= 32 && b <= 32 {
+                if r > 32 && g <= 32 && b <= 32 {
+                    red += 1
+                } else if g > 32 && r <= 32 && b <= 32 {
                     green += 1
                 } else {
                     other += 1
@@ -70,8 +76,9 @@ struct Canvas3DShapeStrokeColorTests {
         ctx.popMatrix()
     }
 
-    @Test(".lines は fill ではなく stroke の色で描かれる",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        ".lines は fill ではなく stroke の色で描かれる",
+        arguments: [MainPassMode.immediate, .shadows])
     func linesUseStrokeColor(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
@@ -86,8 +93,9 @@ struct Canvas3DShapeStrokeColorTests {
         #expect(t.red == 0, "線に fill 色（赤）が残っている: \(t) — #739")
     }
 
-    @Test(".points は fill ではなく stroke の色で描かれる",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        ".points は fill ではなく stroke の色で描かれる",
+        arguments: [MainPassMode.immediate, .shadows])
     func pointsUseStrokeColor(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
@@ -119,12 +127,14 @@ struct Canvas3DShapeStrokeColorTests {
 
         // 完全一致まで求めるとストロークの深度バイアス由来の 1 画素差で折れるので、
         // 「どちらの色がどれだけ出るか」で比べる（fill 色一色 ↔ fill+stroke 混在は桁で違う）
-        #expect(immediate.red == shadows.red && immediate.green > 0 && shadows.green > 0,
-                "shadows() の有無で .points の絵が変わる: immediate \(immediate) / shadows \(shadows) — #739")
+        #expect(
+            immediate.red == shadows.red && immediate.green > 0 && shadows.green > 0,
+            "shadows() の有無で .points の絵が変わる: immediate \(immediate) / shadows \(shadows) — #739")
     }
 
-    @Test("明示した頂点カラーは stroke より優先される（#825 を保つ）",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        "明示した頂点カラーは stroke より優先される（#825 を保つ）",
+        arguments: [MainPassMode.immediate, .shadows])
     func explicitVertexColorWinsOverStroke(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
@@ -141,12 +151,14 @@ struct Canvas3DShapeStrokeColorTests {
         }
 
         let t = tally(fb)
-        #expect(t.red > 0,
-                "vertex(x, y, z, color) の赤が stroke 色に潰されている: \(t) — #825 / #739")
+        #expect(
+            t.red > 0,
+            "vertex(x, y, z, color) の赤が stroke 色に潰されている: \(t) — #825 / #739")
     }
 
-    @Test("noStroke() の .lines / .points は従来どおり fill 色で描かれる",
-          arguments: [MainPassMode.immediate, .shadows])
+    @Test(
+        "noStroke() の .lines / .points は従来どおり fill 色で描かれる",
+        arguments: [MainPassMode.immediate, .shadows])
     func noStrokeFallsBackToFill(mode: MainPassMode) throws {
         let fb = try OffscreenSketchHarness.render(size: Self.size, mode: mode) { ctx in
             ctx.background(Color(r: 0, g: 0, b: 0))
@@ -157,7 +169,8 @@ struct Canvas3DShapeStrokeColorTests {
         }
 
         let t = tally(fb)
-        #expect(t.red > 0 && t.green == 0,
-                "noStroke() のときは fill 色で描かれるべき: \(t) — #739")
+        #expect(
+            t.red > 0 && t.green == 0,
+            "noStroke() のときは fill 色で描かれるべき: \(t) — #739")
     }
 }

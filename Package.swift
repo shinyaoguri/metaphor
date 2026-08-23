@@ -25,9 +25,9 @@ import PackageDescription
 // `.unsafeFlags(["-strict-concurrency=complete"])` は挙動こそ同じだが、版指定で
 // 依存された瞬間に SwiftPM が解決を拒否する（ライブラリでは採用不可）。
 #if compiler(>=6.0)
-let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurrency")]
+    let strictConcurrency: [SwiftSetting] = [.enableUpcomingFeature("StrictConcurrency")]
 #else
-let strictConcurrency: [SwiftSetting] = [.enableExperimentalFeature("StrictConcurrency")]
+    let strictConcurrency: [SwiftSetting] = [.enableExperimentalFeature("StrictConcurrency")]
 #endif
 
 let package = Package(
@@ -81,18 +81,33 @@ let package = Package(
         // Tier 1 modules: zero dependency on MetaphorCore.
         // strict concurrency 適用済み（Issue #328 段階 2）。Core / Tier 2 は段階 3。
         // MetaphorLog は依存ゼロの Tier 0 なので、Tier 1 の「Core 非依存」は保たれる。
-        .target(name: "MetaphorAudio", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorNetwork", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorPhysics", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorML", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorVideo", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorAudio", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorNetwork", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency
+        ),
+        .target(
+            name: "MetaphorPhysics", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency
+        ),
+        .target(
+            name: "MetaphorML", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorVideo", dependencies: ["MetaphorLog"], swiftSettings: strictConcurrency),
 
         // Tier 2 modules: depend on MetaphorCore
-        .target(name: "MetaphorNoise", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorMPS", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorCoreImage", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorRenderGraph", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
-        .target(name: "MetaphorSceneGraph", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorNoise", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorMPS", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorCoreImage", dependencies: ["MetaphorCore"],
+            swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorRenderGraph", dependencies: ["MetaphorCore"],
+            swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorSceneGraph", dependencies: ["MetaphorCore"],
+            swiftSettings: strictConcurrency),
 
         // Umbrella: re-exports everything for backward compatibility
         .target(
@@ -114,7 +129,9 @@ let package = Package(
         ),
 
         // Test support (internal only, not a published product)
-        .target(name: "MetaphorTestSupport", dependencies: ["MetaphorCore"], swiftSettings: strictConcurrency),
+        .target(
+            name: "MetaphorTestSupport", dependencies: ["MetaphorCore"],
+            swiftSettings: strictConcurrency),
 
         // Tests
         // Tier 1 のテストも本体と同じ設定で建てる（テスト側から非 Sendable な
@@ -136,7 +153,9 @@ let package = Package(
         .testTarget(
             name: "MetaphorVideoTests", dependencies: ["MetaphorVideo"],
             swiftSettings: strictConcurrency),
-        .testTarget(name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"], swiftSettings: strictConcurrency),
+        .testTarget(
+            name: "MetaphorNoiseTests", dependencies: ["MetaphorNoise"],
+            swiftSettings: strictConcurrency),
         .testTarget(
             name: "MetaphorMPSTests", dependencies: ["MetaphorMPS", "MetaphorCore"],
             swiftSettings: strictConcurrency),
@@ -144,7 +163,8 @@ let package = Package(
             name: "MetaphorCoreImageTests", dependencies: ["MetaphorCoreImage"],
             swiftSettings: strictConcurrency),
         .testTarget(
-            name: "MetaphorRenderGraphTests", dependencies: ["MetaphorRenderGraph", "MetaphorCore"],
+            name: "MetaphorRenderGraphTests",
+            dependencies: ["MetaphorRenderGraph", "MetaphorCore"],
             swiftSettings: strictConcurrency),
         .testTarget(
             name: "MetaphorSceneGraphTests", dependencies: ["MetaphorSceneGraph", "MetaphorCore"],

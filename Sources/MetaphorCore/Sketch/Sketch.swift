@@ -152,7 +152,9 @@ extension Sketch {
         guard let ctx = _context else {
             // 注: この検出は「Runner が context を初期化する前 / 破棄した後」のみ。
             // setup()/draw() の外（init やプロパティ初期化子など）での呼び出しが典型例。
-            fatalError("[metaphor] Drawing APIs require an active SketchContext. This usually means the call happened before SketchRunner initialized the sketch (e.g. in init or a property initializer) or after teardown. Move the call into setup()/draw().")
+            fatalError(
+                "[metaphor] Drawing APIs require an active SketchContext. This usually means the call happened before SketchRunner initialized the sketch (e.g. in init or a property initializer) or after teardown. Move the call into setup()/draw()."
+            )
         }
         return ctx
     }
@@ -382,9 +384,9 @@ public struct SketchConfig: Sendable {
     /// 無効、が再コンパイル無しで成り立ちます。
     public static var shaderHotReloadDefault: Bool {
         #if DEBUG
-        return true
+            return true
         #else
-        return false
+            return false
         #endif
     }
 }

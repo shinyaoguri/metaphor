@@ -1,7 +1,8 @@
-import Testing
-import Metal
 import CoreImage
+import Metal
 import MetaphorCore
+import Testing
+
 @testable import MetaphorCoreImage
 
 // MARK: - CIFilterPreset Tests
@@ -103,7 +104,8 @@ struct CIFilterPresetTests {
 
     @Test("starShine is generator")
     func starShineIsGenerator() {
-        let preset = CIFilterPreset.starShine(radius: 50, crossScale: 15, crossAngle: 0.6, crossOpacity: -2)
+        let preset = CIFilterPreset.starShine(
+            radius: 50, crossScale: 15, crossAngle: 0.6, crossOpacity: -2)
         #expect(preset.isGenerator)
     }
 
@@ -228,7 +230,8 @@ struct PostEffectCITests {
 
     @Test("CIFilterRaw post effect")
     func ciFilterRawPostEffect() {
-        let effect = CIFilterRawEffect(name: "CISepiaTone", parameters: ["inputIntensity": .double(0.8)])
+        let effect = CIFilterRawEffect(
+            name: "CISepiaTone", parameters: ["inputIntensity": .double(0.8)])
         #expect(effect.filterName == "CISepiaTone")
         if case .double(let v) = effect.parameters["inputIntensity"] {
             #expect(v == 0.8)
@@ -245,7 +248,9 @@ struct PostEffectCITests {
 struct CIFilterWrapperTests {
 
     /// CPU から読み書きできるテスト用テクスチャを作成します。
-    private static func makeTexture(device: MTLDevice, width: Int = 64, height: Int = 64) -> MTLTexture? {
+    private static func makeTexture(device: MTLDevice, width: Int = 64, height: Int = 64)
+        -> MTLTexture?
+    {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false
         )
@@ -277,18 +282,19 @@ struct CIFilterWrapperTests {
     @Test("initialization")
     func initialization() {
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper
     }
 
-    @Test("generator presets applied via image path do not crash",
-          arguments: [
+    @Test(
+        "generator presets applied via image path do not crash",
+        arguments: [
             CIFilterPreset.checkerboard(),
             .stripes(),
             .starShine(),
-            .sunbeams()
-          ])
+            .sunbeams(),
+        ])
     func generatorPresetsDoNotCrash(preset: CIFilterPreset) {
         let device = MTLCreateSystemDefaultDevice()!
         let queue = device.makeCommandQueue()!
@@ -298,7 +304,8 @@ struct CIFilterWrapperTests {
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         // 修正前はジェネレーターへ kCIInputImageKey を setValue して
         // NSException でプロセスごとクラッシュしていた経路。
-        let params = preset.parameters(textureSize: CGSize(width: source.width, height: source.height))
+        let params = preset.parameters(
+            textureSize: CGSize(width: source.width, height: source.height))
         wrapper.apply(
             filterName: preset.filterName, parameters: params,
             source: source, destination: destination, commandBuffer: cmdBuf
@@ -351,7 +358,7 @@ struct CIFilterWrapperTests {
     @Test("generate with unknown filter name does not crash")
     func generateUnknownFilter() {
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let wrapper = CIFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper.generate(filterName: "CINotARealFilter", parameters: [:], width: 32, height: 32)
     }

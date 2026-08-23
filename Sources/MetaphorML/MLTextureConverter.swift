@@ -1,7 +1,7 @@
 import CoreML
-import MetaphorLog
 import CoreVideo
 import Metal
+import MetaphorLog
 import ObjectiveC.runtime
 
 /// Provides conversion utilities between `MTLTexture`, `CVPixelBuffer`, and `CGImage`.
@@ -34,7 +34,8 @@ public final class MLTextureConverter {
 
     private func getOrCreateStagingTexture(width: Int, height: Int) -> MTLTexture? {
         if let existing = stagingTextureCache,
-           existing.width == width, existing.height == height {
+            existing.width == width, existing.height == height
+        {
             return existing
         }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -55,7 +56,7 @@ public final class MLTextureConverter {
             kCVPixelBufferWidthKey as String: width,
             kCVPixelBufferHeightKey as String: height,
             kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:],
         ]
         var pool: CVPixelBufferPool?
         CVPixelBufferPoolCreate(nil, nil, attrs as CFDictionary, &pool)
@@ -78,13 +79,17 @@ public final class MLTextureConverter {
         // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
         // チャンネル化けになる前に弾く
         guard texture.pixelFormat == .bgra8Unorm else {
-            metaphorWarning("MLTextureConverter.pixelBuffer(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
+            metaphorWarning(
+                "MLTextureConverter.pixelBuffer(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)"
+            )
             return nil
         }
         let width = texture.width
         let height = texture.height
 
-        guard let pool = getOrCreatePixelBufferPool(width: width, height: height) else { return nil }
+        guard let pool = getOrCreatePixelBufferPool(width: width, height: height) else {
+            return nil
+        }
         var pixelBuffer: CVPixelBuffer?
         let status = CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
         guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return nil }
@@ -97,17 +102,20 @@ public final class MLTextureConverter {
 
         if texture.storageMode == .private {
             guard let staging = getOrCreateStagingTexture(width: width, height: height),
-                  let cmdBuf = commandQueue.makeCommandBuffer(),
-                  let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
+                let cmdBuf = commandQueue.makeCommandBuffer(),
+                let blit = cmdBuf.makeBlitCommandEncoder()
+            else { return nil }
             blit.copy(from: texture, to: staging)
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
-            staging.getBytes(baseAddress, bytesPerRow: bytesPerRow,
-                           from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+            staging.getBytes(
+                baseAddress, bytesPerRow: bytesPerRow,
+                from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         } else {
-            texture.getBytes(baseAddress, bytesPerRow: bytesPerRow,
-                           from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+            texture.getBytes(
+                baseAddress, bytesPerRow: bytesPerRow,
+                from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         }
 
         return buffer
@@ -133,9 +141,9 @@ public final class MLTextureConverter {
             .bgra8Unorm, width, height, 0, &cvTexture
         )
         guard status == kCVReturnSuccess,
-              let cvTex = cvTexture,
-              let baseTexture = CVMetalTextureGetTexture(cvTex),
-              let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
+            let cvTex = cvTexture,
+            let baseTexture = CVMetalTextureGetTexture(cvTex),
+            let mtlTexture = baseTexture.makeTextureView(pixelFormat: baseTexture.pixelFormat)
         else { return nil }
 
         // CoreVideo の契約上、`CVMetalTextureGetTexture` が返す MTLTexture は
@@ -173,12 +181,15 @@ public final class MLTextureConverter {
 
         let bytesPerRow = width * 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: nil, width: width, height: height,
-            bitsPerComponent: 8, bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        ) else { return nil }
+        guard
+            let context = CGContext(
+                data: nil, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                    | CGBitmapInfo.byteOrder32Little.rawValue
+            )
+        else { return nil }
 
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         guard let data = context.data else { return nil }
@@ -205,7 +216,9 @@ public final class MLTextureConverter {
         // BGRA8 前提のバイトコピーのため、他フォーマットは silent な
         // チャンネル化けになる前に弾く
         guard texture.pixelFormat == .bgra8Unorm else {
-            metaphorWarning("MLTextureConverter.cgImage(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)")
+            metaphorWarning(
+                "MLTextureConverter.cgImage(from:) requires bgra8Unorm, got \(texture.pixelFormat.rawValue)"
+            )
             return nil
         }
         let width = texture.width
@@ -215,26 +228,32 @@ public final class MLTextureConverter {
 
         if texture.storageMode == .private {
             guard let staging = getOrCreateStagingTexture(width: width, height: height),
-                  let cmdBuf = commandQueue.makeCommandBuffer(),
-                  let blit = cmdBuf.makeBlitCommandEncoder() else { return nil }
+                let cmdBuf = commandQueue.makeCommandBuffer(),
+                let blit = cmdBuf.makeBlitCommandEncoder()
+            else { return nil }
             blit.copy(from: texture, to: staging)
             blit.endEncoding()
             cmdBuf.commit()
             cmdBuf.waitUntilCompleted()
-            staging.getBytes(&pixels, bytesPerRow: bytesPerRow,
-                           from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+            staging.getBytes(
+                &pixels, bytesPerRow: bytesPerRow,
+                from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         } else {
-            texture.getBytes(&pixels, bytesPerRow: bytesPerRow,
-                           from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+            texture.getBytes(
+                &pixels, bytesPerRow: bytesPerRow,
+                from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         }
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: &pixels, width: width, height: height,
-            bitsPerComponent: 8, bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        ) else { return nil }
+        guard
+            let context = CGContext(
+                data: &pixels, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                    | CGBitmapInfo.byteOrder32Little.rawValue
+            )
+        else { return nil }
 
         return context.makeImage()
     }
@@ -307,7 +326,8 @@ public final class MLTextureConverter {
             if multiArray.dataType.rawValue == 131080 {
                 copyElements(Int8.self) { Float($0) }
             } else {
-                metaphorWarning("Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
+                metaphorWarning(
+                    "Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
                 return nil
             }
         }
@@ -328,10 +348,10 @@ public final class MLTextureConverter {
         for i in 0..<count {
             let v = UInt8(max(0, min(255, floatData[i] * 255)))
             let j = i * 4
-            pixels[j] = v     // B
-            pixels[j + 1] = v // G
-            pixels[j + 2] = v // R
-            pixels[j + 3] = 255 // A
+            pixels[j] = v  // B
+            pixels[j + 1] = v  // G
+            pixels[j + 2] = v  // R
+            pixels[j + 3] = 255  // A
         }
 
         let desc = MTLTextureDescriptor.texture2DDescriptor(

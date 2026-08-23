@@ -1,6 +1,7 @@
-import Testing
 import Metal
+import Testing
 import simd
+
 @testable import MetaphorCore
 @testable import MetaphorMPS
 
@@ -170,7 +171,7 @@ struct MPSImageFilterWrapperTests {
     @Test("initialization")
     @MainActor func initialization() {
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let wrapper = MPSImageFilterWrapper(device: device, commandQueue: queue)
         _ = wrapper  // Verify construction succeeds
     }
@@ -192,7 +193,7 @@ struct MPSRayTracerTests {
     @Test("initialization compiles shaders")
     @MainActor func initialization() throws {
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 64, height: 64)
         #expect(rt.outputTexture != nil)
         #expect(rt.outputTexture?.width == 64)
@@ -203,7 +204,7 @@ struct MPSRayTracerTests {
     @MainActor func clearScene() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -218,7 +219,7 @@ struct MPSRayTracerTests {
     @MainActor func addMeshAndBuild() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -229,7 +230,7 @@ struct MPSRayTracerTests {
     @MainActor func traceDiffuse() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 32, height: 32)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -246,7 +247,7 @@ struct MPSRayTracerTests {
     @MainActor func traceAO() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let mesh = try Mesh.box(device: device)
         rt.addMesh(mesh)
@@ -263,7 +264,7 @@ struct MPSRayTracerTests {
     @MainActor func addMeshWithTransform() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let mesh = try Mesh.box(device: device)
         let t = float4x4(translation: SIMD3<Float>(0, 1, 0))
@@ -275,14 +276,16 @@ struct MPSRayTracerTests {
     @MainActor func allDegenerateThrows() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let dm = DynamicMesh(device: device)
         // 3 coincident vertices → zero-area triangle
         dm.addVertex(0, 0, 0)
         dm.addVertex(0, 0, 0)
         dm.addVertex(0, 0, 0)
-        dm.addIndex(0); dm.addIndex(1); dm.addIndex(2)
+        dm.addIndex(0)
+        dm.addIndex(1)
+        dm.addIndex(2)
         rt.addDynamicMesh(dm)
         #expect(throws: MetaphorError.self) {
             try rt.buildAccelerationStructure()
@@ -293,7 +296,7 @@ struct MPSRayTracerTests {
     @MainActor func mixedSceneDropsDegenerate() throws {
         guard Self.gpuSupportsRayTracing else { return }
         let device = MTLCreateSystemDefaultDevice()!
-              let queue = device.makeCommandQueue()!
+        let queue = device.makeCommandQueue()!
         let rt = try MPSRayTracer(device: device, commandQueue: queue, width: 16, height: 16)
         let dm = DynamicMesh(device: device)
         // Valid triangle (positive area)
@@ -304,8 +307,12 @@ struct MPSRayTracerTests {
         dm.addVertex(2, 0, 0)
         dm.addVertex(3, 0, 0)
         dm.addVertex(4, 0, 0)
-        dm.addIndex(0); dm.addIndex(1); dm.addIndex(2)
-        dm.addIndex(3); dm.addIndex(4); dm.addIndex(5)
+        dm.addIndex(0)
+        dm.addIndex(1)
+        dm.addIndex(2)
+        dm.addIndex(3)
+        dm.addIndex(4)
+        dm.addIndex(5)
         rt.addDynamicMesh(dm)
         try rt.buildAccelerationStructure()  // Should succeed with 1 valid triangle
     }
@@ -325,7 +332,8 @@ struct MPSPostEffectExecutionTests {
         let device = MTLCreateSystemDefaultDevice()!
         let queue = try #require(device.makeCommandQueue())
         let shaderLib = try ShaderLibrary(device: device)
-        let pipeline = try PostProcessPipeline(device: device, commandQueue: queue, shaderLibrary: shaderLib)
+        let pipeline = try PostProcessPipeline(
+            device: device, commandQueue: queue, shaderLibrary: shaderLib)
         pipeline.add(MPSBlurEffect(sigma: 4))
 
         // 中央に白い 8x8 ブロックを持つソーステクスチャ
@@ -339,12 +347,16 @@ struct MPSPostEffectExecutionTests {
         for y in 28..<36 {
             for x in 28..<36 {
                 let i = (y * size + x) * 4
-                pixels[i] = 255; pixels[i + 1] = 255; pixels[i + 2] = 255; pixels[i + 3] = 255
+                pixels[i] = 255
+                pixels[i + 1] = 255
+                pixels[i + 2] = 255
+                pixels[i + 3] = 255
             }
         }
         pixels.withUnsafeBytes { buf in
-            source.replace(region: MTLRegionMake2D(0, 0, size, size),
-                           mipmapLevel: 0, withBytes: buf.baseAddress!, bytesPerRow: size * 4)
+            source.replace(
+                region: MTLRegionMake2D(0, 0, size, size),
+                mipmapLevel: 0, withBytes: buf.baseAddress!, bytesPerRow: size * 4)
         }
 
         let commandBuffer = try #require(queue.makeCommandBuffer())
@@ -357,22 +369,25 @@ struct MPSPostEffectExecutionTests {
         stagingDesc.storageMode = .shared
         let staging = try #require(device.makeTexture(descriptor: stagingDesc))
         let blit = try #require(commandBuffer.makeBlitCommandEncoder())
-        blit.copy(from: output, sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: size, height: size, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(
+            from: output, sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: size, height: size, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
         var out = [UInt8](repeating: 0, count: size * size * 4)
-        staging.getBytes(&out, bytesPerRow: size * 4,
-                         from: MTLRegionMake2D(0, 0, size, size), mipmapLevel: 0)
+        staging.getBytes(
+            &out, bytesPerRow: size * 4,
+            from: MTLRegionMake2D(0, 0, size, size), mipmapLevel: 0)
 
         // 中央はまだ明るく、ブロックの外（ブラーの裾）にもエネルギーが漏れている
         let centerIdx = (32 * size + 32) * 4
-        #expect(out[centerIdx] > 30, "Center should remain bright after blur (got \(out[centerIdx]))")
+        #expect(
+            out[centerIdx] > 30, "Center should remain bright after blur (got \(out[centerIdx]))")
         let tailIdx = (32 * size + 40) * 4  // ブロック境界から 4px 外側
         #expect(out[tailIdx] > 0, "Blur tail should spread outside the block (got \(out[tailIdx]))")
         let farIdx = (4 * size + 4) * 4

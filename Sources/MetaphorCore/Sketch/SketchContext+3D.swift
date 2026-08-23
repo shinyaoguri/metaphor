@@ -236,7 +236,8 @@ extension SketchContext {
     /// - Parameter resolution: シャドウマップの解像度（ピクセル単位、デフォルト 2048）。
     public func enableShadows(resolution: Int = 2048) {
         guard resolution > 0 else {
-            metaphorWarning("enableShadows: resolution must be positive (got \(resolution)); ignored")
+            metaphorWarning(
+                "enableShadows: resolution must be positive (got \(resolution)); ignored")
             return
         }
         // 既存 shadowMap と同じ解像度なら再利用。解像度が変わったら再生成する
@@ -252,7 +253,8 @@ extension SketchContext {
             )
         } catch {
             // 失敗を黙殺しない（影が出ない原因を追えるように）
-            metaphorWarning("enableShadows: failed to create shadow map (resolution \(resolution)): \(error)")
+            metaphorWarning(
+                "enableShadows: failed to create shadow map (resolution \(resolution)): \(error)")
         }
     }
 
@@ -408,7 +410,9 @@ extension SketchContext {
     ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
     ///   関数が見つからない場合は ``MetaphorError/material(_:)`` の
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
-    public func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
+    public func createMaterial(
+        source: String, fragmentFunction: String, vertexFunction: String? = nil
+    ) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         try renderer.shaderLibrary.register(source: Shader3DSource.complete(source), as: key)
         guard let fn = renderer.shaderLibrary.function(named: fragmentFunction, from: key) else {
@@ -681,7 +685,8 @@ extension SketchContext {
             return cached
         }
         let url = URL(fileURLWithPath: path)
-        guard let mesh = try? Mesh.load(device: renderer.device, url: url, normalize: normalize) else {
+        guard let mesh = try? Mesh.load(device: renderer.device, url: url, normalize: normalize)
+        else {
             return nil
         }
         if cache {
@@ -782,7 +787,8 @@ extension SketchContext {
         configure: (MTLComputeCommandEncoder) -> Void
     ) {
         guard width > 0, height > 0 else {
-            metaphorWarning("dispatch: width/height must be positive (got \(width)x\(height)); skipped")
+            metaphorWarning(
+                "dispatch: width/height must be positive (got \(width)x\(height)); skipped")
             return
         }
         guard let encoder = ensureComputeEncoder() else { return }
@@ -905,7 +911,9 @@ extension SketchContext {
     ///   失敗した場合は ``MetaphorError/shaderCompilationFailed(name:underlying:)``、
     ///   指定した関数が見つからない場合は ``MetaphorError/material(_:)`` の
     ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
-    public func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial {
+    public func createMaterialFromFile(
+        path: String, fragmentFunction: String, vertexFunction: String? = nil
+    ) throws -> CustomMaterial {
         let key = "user.material.\(fragmentFunction)"
         // `registerFromFile` ではなく自分で読むのは、前文を足してから登録するため
         // （2D の `loadShader` と同じ形）。
@@ -973,7 +981,9 @@ extension SketchContext {
         // onCaptureOutput は単一スロット。他の利用者（カスタムキャプチャ等）が
         // 設定済みの場合は黙って奪わず警告する
         if renderer.onCaptureOutput != nil {
-            metaphorWarning("beginGIFRecord: renderer.onCaptureOutput was already set and will be replaced (single slot)")
+            metaphorWarning(
+                "beginGIFRecord: renderer.onCaptureOutput was already set and will be replaced (single slot)"
+            )
         }
         renderer.onCaptureOutput = { [weak self] texture, commandBuffer in
             guard let self, self.gifExporter.isRecording else { return }

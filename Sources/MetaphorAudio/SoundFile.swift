@@ -252,7 +252,8 @@ public final class SoundFile {
             // pause() 時点でキャッシュした位置を返す
             if let pausedPosition { return pausedPosition }
             guard let nodeTime = audioEngine.playerNode.lastRenderTime,
-                  let playerTime = audioEngine.playerNode.playerTime(forNodeTime: nodeTime) else {
+                let playerTime = audioEngine.playerNode.playerTime(forNodeTime: nodeTime)
+            else {
                 return scheduledBaseTime
             }
             // sampleTime はスケジュール開始からの経過。シーク位置を加算して

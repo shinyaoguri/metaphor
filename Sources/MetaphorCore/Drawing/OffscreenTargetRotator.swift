@@ -96,15 +96,19 @@ final class OffscreenTargetRotator {
 
     private func acquireTexture(frame: UInt32) -> MTLTexture? {
         if frameCountProvider != nil,
-           let index = retired.firstIndex(where: { frame &- $0.frame >= Self.mainInflightFrames }) {
+            let index = retired.firstIndex(where: { frame &- $0.frame >= Self.mainInflightFrames })
+        {
             return retired.remove(at: index).texture
         }
         return try? textureManager.makeMatchingColorTexture()
     }
 
-    private func copy(from source: MTLTexture, to destination: MTLTexture, commandQueue: MTLCommandQueue) {
+    private func copy(
+        from source: MTLTexture, to destination: MTLTexture, commandQueue: MTLCommandQueue
+    ) {
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeBlitCommandEncoder() else { return }
+            let encoder = commandBuffer.makeBlitCommandEncoder()
+        else { return }
         encoder.copy(
             from: source,
             sourceSlice: 0,

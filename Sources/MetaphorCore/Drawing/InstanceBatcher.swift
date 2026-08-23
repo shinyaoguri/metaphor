@@ -42,7 +42,8 @@ final class InstanceBatcher<T> {
         var buffers: [MTLBuffer] = []
         var pointers: [UnsafeMutablePointer<T>] = []
         for i in 0..<Self.bufferCount {
-            guard let buf = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
+            guard let buf = device.makeBuffer(length: bufferSize, options: .storageModeShared)
+            else {
                 throw MetaphorError.bufferCreationFailed(size: bufferSize)
             }
             buf.label = "\(label).\(i)"

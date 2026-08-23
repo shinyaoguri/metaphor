@@ -52,9 +52,10 @@ extension Sketch {
     public func ciFilter(_ image: MImage, _ preset: CIFilterPreset) {
         context.ensureCIFilterWrapper().apply(
             filterName: preset.filterName,
-            parameters: preset.parameters(textureSize: CGSize(
-                width: CGFloat(image.width), height: CGFloat(image.height)
-            )),
+            parameters: preset.parameters(
+                textureSize: CGSize(
+                    width: CGFloat(image.width), height: CGFloat(image.height)
+                )),
             to: image
         )
     }
@@ -77,12 +78,14 @@ extension Sketch {
     ///   - height: 出力画像の高さ（ピクセル単位）。
     /// - Returns: 生成された画像。生成に失敗した場合は `nil`。
     public func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage? {
-        guard let tex = context.ensureCIFilterWrapper().generate(
-            filterName: preset.filterName,
-            parameters: preset.parameters(textureSize: CGSize(width: width, height: height)),
-            width: width,
-            height: height
-        ) else { return nil }
+        guard
+            let tex = context.ensureCIFilterWrapper().generate(
+                filterName: preset.filterName,
+                parameters: preset.parameters(textureSize: CGSize(width: width, height: height)),
+                width: width,
+                height: height
+            )
+        else { return nil }
         return MImage(texture: tex)
     }
 }

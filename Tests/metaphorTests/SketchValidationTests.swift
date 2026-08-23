@@ -1,8 +1,9 @@
-import Testing
 import Metal
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - Sketch API 引数検証（#150）
 
@@ -10,7 +11,9 @@ import MetaphorTestSupport
 @MainActor
 struct SketchAPIValidationTests {
 
-    private func makeContext(width: Int = 64, height: Int = 64) throws -> (MetaphorRenderer, SketchContext) {
+    private func makeContext(width: Int = 64, height: Int = 64) throws -> (
+        MetaphorRenderer, SketchContext
+    ) {
         let renderer = try MetaphorRenderer(width: width, height: height)
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
@@ -41,11 +44,12 @@ struct SketchAPIValidationTests {
     func vertex3ArgsInside2DShape() throws {
         let (_, ctx) = try makeContext()
         ctx.beginShape()
-        ctx.vertex(0, 0, 0)      // 3 引数だが 2D 記録中 → 2D へ（z 無視）
+        ctx.vertex(0, 0, 0)  // 3 引数だが 2D 記録中 → 2D へ（z 無視）
         ctx.vertex(10, 0, 0)
         ctx.vertex(5, 10, 0)
-        #expect(ctx.canvas.shapeVertexList.count == 3,
-                "2D 記録中の vertex(x,y,z) は 2D シェイプへルーティングされる")
+        #expect(
+            ctx.canvas.shapeVertexList.count == 3,
+            "2D 記録中の vertex(x,y,z) は 2D シェイプへルーティングされる")
         ctx.endShape(.close)
         #expect(ctx.activeShapeRecording == .none)
     }
@@ -77,8 +81,9 @@ struct SketchAPIValidationTests {
         ctx.vertex(10, 0, 5)
         ctx.vertex(5, 10, -5)
         ctx.endShape3D(.close)
-        #expect(ctx.didWarnVertexZIgnored == false,
-                "3D 記録中の vertex(x,y,z) は正しい使い方なので警告しない")
+        #expect(
+            ctx.didWarnVertexZIgnored == false,
+            "3D 記録中の vertex(x,y,z) は正しい使い方なので警告しない")
     }
 
     @Test("beginContour inside beginShape3D warns and leaves the 2D builder alone")
@@ -90,7 +95,7 @@ struct SketchAPIValidationTests {
         ctx.vertex(0, 0, 0)
         ctx.vertex(10, 0, 0)
         ctx.vertex(10, 10, 0)
-        ctx.beginContour()      // 3D では穴を開けられない
+        ctx.beginContour()  // 3D では穴を開けられない
         ctx.vertex(2, 2, 0)
         ctx.vertex(4, 2, 0)
         ctx.vertex(4, 4, 0)
@@ -98,8 +103,9 @@ struct SketchAPIValidationTests {
         ctx.endShape3D(.close)
 
         #expect(ctx.didWarnContourIn3D, "3D 記録中の beginContour() で診断が発火する")
-        #expect(ctx.canvas.isRecordingContour == false,
-                "3D 記録中の contour は 2D ビルダーの状態を触らない")
+        #expect(
+            ctx.canvas.isRecordingContour == false,
+            "3D 記録中の contour は 2D ビルダーの状態を触らない")
     }
 
     @Test("beginContour inside 2D beginShape does not raise the diagnostic")
@@ -117,19 +123,21 @@ struct SketchAPIValidationTests {
         ctx.endContour()
         ctx.endShape(.close)
 
-        #expect(ctx.didWarnContourIn3D == false,
-                "2D 記録中の beginContour() は正しい使い方なので警告しない")
+        #expect(
+            ctx.didWarnContourIn3D == false,
+            "2D 記録中の beginContour() は正しい使い方なので警告しない")
     }
 
     @Test("vertex(x,y) inside beginShape3D routes to the 3D shape")
     func vertex2ArgsInside3DShape() throws {
         let (_, ctx) = try makeContext()
         ctx.beginShape3D()
-        ctx.vertex(0, 0)         // 2 引数だが 3D 記録中 → z=0 で 3D へ
+        ctx.vertex(0, 0)  // 2 引数だが 3D 記録中 → z=0 で 3D へ
         ctx.vertex(10, 0)
         ctx.vertex(5, 10)
-        #expect(ctx.canvas.shapeVertexList.isEmpty,
-                "3D 記録中の vertex(x,y) は 2D シェイプに入らない")
+        #expect(
+            ctx.canvas.shapeVertexList.isEmpty,
+            "3D 記録中の vertex(x,y) は 2D シェイプに入らない")
         ctx.endShape3D()
         #expect(ctx.activeShapeRecording == .none)
     }
@@ -140,7 +148,7 @@ struct SketchAPIValidationTests {
         ctx.isPrimary = true
         // 100,000 秒（約 27.8 時間）+ 1.5ms。Float 経由では ulp ≈ 7.8ms で丸まる
         ctx.beginFrame(encoder: nil, time: 100000.0015, deltaTime: 0, preciseTime: 100000.0015)
-        #expect(millis() == 100000001, "Double 精度で ms 分解能が保たれる (got \(millis()))")
+        #expect(millis() == 100_000_001, "Double 精度で ms 分解能が保たれる (got \(millis()))")
         ctx.beginFrame(encoder: nil, time: 0, deltaTime: 0, preciseTime: 0)  // 復元
     }
 }
@@ -168,7 +176,8 @@ struct ArcPointParityTests {
         }
         renderer.renderFrame()
 
-        let w = 64, h = 64
+        let w = 64
+        let h = 64
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         desc.usage = .shaderRead
@@ -176,12 +185,13 @@ struct ArcPointParityTests {
         let staging = try #require(renderer.device.makeTexture(descriptor: desc))
         let cb = try #require(renderer.commandQueue.makeCommandBuffer())
         let blit = try #require(cb.makeBlitCommandEncoder())
-        blit.copy(from: renderer.textureManager.colorTexture,
-                  sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: w, height: h, depth: 1),
-                  to: staging, destinationSlice: 0, destinationLevel: 0,
-                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.copy(
+            from: renderer.textureManager.colorTexture,
+            sourceSlice: 0, sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: w, height: h, depth: 1),
+            to: staging, destinationSlice: 0, destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
         cb.commit()
         cb.waitUntilCompleted()
@@ -266,7 +276,8 @@ struct ArcPointParityTests {
             c.point(32, 32)
         }
         let p = sample(32, 32)
-        #expect(p.r < 30 && p.g < 30 && p.b < 30,
-                "noStroke() 中の point() は描画されない: \(p)")
+        #expect(
+            p.r < 30 && p.g < 30 && p.b < 30,
+            "noStroke() 中の point() は描画されない: \(p)")
     }
 }

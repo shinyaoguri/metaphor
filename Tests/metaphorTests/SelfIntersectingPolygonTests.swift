@@ -2,6 +2,7 @@ import Foundation
 import Metal
 import MetaphorTestSupport
 import Testing
+
 @testable import MetaphorCore
 
 // MARK: - テスト用ヘルパー
@@ -98,7 +99,8 @@ extension EarClipTriangulator.Tessellation {
     fileprivate var totalArea: Float {
         var total: Float = 0
         for i in stride(from: 0, to: indices.count, by: 3) {
-            total += triangleArea(vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]])
+            total += triangleArea(
+                vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]])
         }
         return total
     }
@@ -166,7 +168,7 @@ struct PentagramFillTests {
     func issueVertexListFillsAsStar() {
         // Issue 本文のスケッチと同じ頂点列（480x360）。
         let polygon: [(Float, Float)] = [
-            (240, 60), (330, 300), (90, 150), (390, 150), (150, 300)
+            (240, 60), (330, 300), (90, 150), (390, 150), (150, 300),
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
@@ -193,8 +195,8 @@ struct FigureEightFillTests {
         let polygon: [(Float, Float)] = [(0, 0), (1, 0), (0, 1), (1, 1)]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
-        #expect(tess.covers((0.5, 0.2)))   // 下のループ
-        #expect(tess.covers((0.5, 0.8)))   // 上のループ
+        #expect(tess.covers((0.5, 0.2)))  // 下のループ
+        #expect(tess.covers((0.5, 0.8)))  // 上のループ
         #expect(!tess.covers((0.15, 0.5)))  // 左の空き
         #expect(!tess.covers((0.85, 0.5)))  // 右の空き
         // 三角形 2 つぶん（それぞれ底辺 1・高さ 0.5）。
@@ -250,16 +252,16 @@ struct SelfIntersectingDegenerateTests {
         // 閉じる辺 (10,10)-(0,0) はその点を内部に通るので、乗られた側だけを
         // 割らないと平面分割にならない（交点は既存の頂点にまとめる）。
         let polygon: [(Float, Float)] = [
-            (0, 0), (10, 0), (5, 5), (0, 10), (10, 10)
+            (0, 0), (10, 0), (5, 5), (0, 10), (10, 10),
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
         // (5,5) は既にある頂点なので、交点として増えない。
         #expect(tess.vertices.count == 5)
-        #expect(tess.covers((5, 2)))    // 下のループ
-        #expect(tess.covers((5, 8)))    // 上のループ
-        #expect(!tess.covers((1, 5)))   // 左の空き
-        #expect(!tess.covers((9, 5)))   // 右の空き
+        #expect(tess.covers((5, 2)))  // 下のループ
+        #expect(tess.covers((5, 8)))  // 上のループ
+        #expect(!tess.covers((1, 5)))  // 左の空き
+        #expect(!tess.covers((9, 5)))  // 右の空き
         #expect(abs(tess.totalArea - 50) < 1e-2)
     }
 
@@ -268,12 +270,12 @@ struct SelfIntersectingDegenerateTests {
         // 正方形の上辺を (5,10) で折り、そこから三角の突起が生える。
         // 頂点が 2 度現れる（座標が一致する頂点）ケース。
         let polygon: [(Float, Float)] = [
-            (0, 0), (10, 0), (10, 10), (5, 10), (7, 14), (3, 14), (5, 10), (0, 10)
+            (0, 0), (10, 0), (10, 10), (5, 10), (7, 14), (3, 14), (5, 10), (0, 10),
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
-        #expect(tess.covers((5, 5)))    // 正方形の中
-        #expect(tess.covers((5, 12)))   // 突起の中
+        #expect(tess.covers((5, 5)))  // 正方形の中
+        #expect(tess.covers((5, 12)))  // 突起の中
         #expect(!tess.covers((1, 13)))  // 突起の外
         #expect(abs(tess.totalArea - (100 + 8)) < 1e-2)
     }
@@ -282,7 +284,7 @@ struct SelfIntersectingDegenerateTests {
     func degenerateSpikeAddsNoArea() {
         // 正方形の右辺から水平に出て同じ経路で戻る棘。
         let polygon: [(Float, Float)] = [
-            (0, 0), (10, 0), (10, 5), (15, 5), (10, 5), (10, 10), (0, 10)
+            (0, 0), (10, 0), (10, 5), (15, 5), (10, 5), (10, 10), (0, 10),
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
@@ -293,8 +295,8 @@ struct SelfIntersectingDegenerateTests {
     @Test("2 つのループが 1 点だけで接する形は両方塗られる")
     func loopsTouchingAtSinglePointAreBothFilled() {
         let polygon: [(Float, Float)] = [
-            (0, 0), (10, 0), (5, 5),   // 下のループ
-            (10, 10), (0, 10), (5, 5)  // 上のループ（(5,5) を共有）
+            (0, 0), (10, 0), (5, 5),  // 下のループ
+            (10, 10), (0, 10), (5, 5),  // 上のループ（(5,5) を共有）
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
@@ -310,11 +312,11 @@ struct SelfIntersectingDegenerateTests {
         // 内側の巻き数は 1 - 1 = 0 なので nonzero では抜ける。
         let polygon: [(Float, Float)] = [
             (0, 0), (10, 0), (10, 10), (0, 10),
-            (0, 0), (1, 3), (4, 4), (3, 1)
+            (0, 0), (1, 3), (4, 4), (3, 1),
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
-        #expect(tess.covers((8, 8)))     // 外周と内側のあいだ
+        #expect(tess.covers((8, 8)))  // 外周と内側のあいだ
         #expect(!tess.covers((2.5, 2.5)))  // 内側（抜ける）
         #expect(abs(tess.totalArea - (100 - 8)) < 1e-2)
     }
@@ -324,7 +326,7 @@ struct SelfIntersectingDegenerateTests {
         // 上と同じ形で内側だけ CCW。巻き数 2 なので塗られるが、面積は外周ぶんだけ。
         let polygon: [(Float, Float)] = [
             (0, 0), (10, 0), (10, 10), (0, 10),
-            (0, 0), (3, 1), (4, 4), (1, 3)
+            (0, 0), (3, 1), (4, 4), (1, 3),
         ]
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.isWellFormed)
@@ -353,17 +355,19 @@ struct SelfIntersectingDegenerateTests {
 @Suite("Self-Intersecting Fill: Simple Polygons Unchanged")
 struct SimplePolygonRegressionTests {
 
-    @Test("自己交差が無ければ triangulate と同じ結果を返す", arguments: [
-        [(0, 0), (1, 0), (0.5, 1)] as [(Float, Float)],
-        [(0, 0), (1, 0), (1, 1), (0, 1)] as [(Float, Float)],
-        [(0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)] as [(Float, Float)],
-        [(0, 2), (1, 2), (1, 1), (2, 1), (2, 0), (0, 0)] as [(Float, Float)],
-        [
-            (0.5, 0), (0.6, 0.35), (1, 0.35),
-            (0.7, 0.55), (0.8, 0.9),
-            (0.5, 0.7), (0.2, 0.9), (0.3, 0.55)
-        ] as [(Float, Float)]
-    ])
+    @Test(
+        "自己交差が無ければ triangulate と同じ結果を返す",
+        arguments: [
+            [(0, 0), (1, 0), (0.5, 1)] as [(Float, Float)],
+            [(0, 0), (1, 0), (1, 1), (0, 1)] as [(Float, Float)],
+            [(0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)] as [(Float, Float)],
+            [(0, 2), (1, 2), (1, 1), (2, 1), (2, 0), (0, 0)] as [(Float, Float)],
+            [
+                (0.5, 0), (0.6, 0.35), (1, 0.35),
+                (0.7, 0.55), (0.8, 0.9),
+                (0.5, 0.7), (0.2, 0.9), (0.3, 0.55),
+            ] as [(Float, Float)],
+        ])
     func matchesPlainTriangulation(polygon: [(Float, Float)]) {
         let tess = EarClipTriangulator.triangulateNonZero(polygon)
         #expect(tess.indices == EarClipTriangulator.triangulate(polygon))
@@ -403,7 +407,8 @@ struct MShapeSelfIntersectingFillTests {
     /// 頂点列を `beginShape()` / `vertex()` / `endShape(.close)` で流し込み、
     /// テッセレーション済みの三角形を返します。
     private func tessellate(_ polygon: [(Float, Float)]) throws
-        -> [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)] {
+        -> [(SIMD2<Float>, SIMD2<Float>, SIMD2<Float>)]
+    {
         let device = try #require(MetalTestHelper.device)
         let s = MShape(device: device, kind: .path2D)
         s.beginShape()
@@ -444,7 +449,7 @@ struct MShapeSelfIntersectingFillTests {
     func issueVertexListFillsAsStar() throws {
         // Issue 本文のスケッチと同じ頂点列。
         let tris = try tessellate([
-            (240, 60), (330, 300), (90, 150), (390, 150), (150, 300)
+            (240, 60), (330, 300), (90, 150), (390, 150), (150, 300),
         ])
         #expect(covers(tris, (240, 80)))
         #expect(!covers(tris, (160, 120)))
@@ -468,7 +473,7 @@ struct MShapeSelfIntersectingFillTests {
         // 正方形と凹 L 字。従来経路（triangulate）が返す三角形と並びまで同じであること。
         for polygon in [
             [(0, 0), (100, 0), (100, 100), (0, 100)] as [(Float, Float)],
-            [(0, 0), (200, 0), (200, 100), (100, 100), (100, 200), (0, 200)] as [(Float, Float)]
+            [(0, 0), (200, 0), (200, 100), (100, 100), (100, 200), (0, 200)] as [(Float, Float)],
         ] {
             let tris = try tessellate(polygon)
             #expect(flattened(tris) == flattened(earClippedTriangles(polygon)))
@@ -502,7 +507,7 @@ struct MShapeSelfIntersectingFillTests {
         s.ensureCacheValid()
 
         let tris = try #require(s.cachedTriangles2D)
-        #expect(covers(tris, (25, 100)))    // 外周と穴のあいだ
+        #expect(covers(tris, (25, 100)))  // 外周と穴のあいだ
         #expect(!covers(tris, (100, 100)))  // 穴の中
         #expect(abs(totalArea(tris) - (40000 - 10000)) < 1e-1)
     }
@@ -543,7 +548,8 @@ struct SelfIntersectingRenderTests {
         for k in 0..<5 {
             let arm = polar(center: Self.center, radius: Self.radius * 0.8, degrees: Float(k) * 72)
             #expect(isLit(image, arm), "腕 \(k) が塗られていない")
-            let notch = polar(center: Self.center, radius: Self.radius * 0.6, degrees: Float(k) * 72 + 36)
+            let notch = polar(
+                center: Self.center, radius: Self.radius * 0.6, degrees: Float(k) * 72 + 36)
             #expect(!isLit(image, notch), "腕 \(k) と \(k + 1) のあいだが塗られている")
         }
         #expect(isLit(image, Self.center), "中央（巻き数 2）が塗られていない")

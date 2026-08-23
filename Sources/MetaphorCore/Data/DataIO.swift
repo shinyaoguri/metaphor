@@ -36,7 +36,8 @@ public enum DataIO {
         do {
             return try Data(contentsOf: url)
         } catch {
-            throw MetaphorError.data(.loadFailed(source: source, detail: error.localizedDescription))
+            throw MetaphorError.data(
+                .loadFailed(source: source, detail: error.localizedDescription))
         }
     }
 
@@ -53,7 +54,8 @@ public enum DataIO {
             } catch let error as MetaphorError {
                 throw error
             } catch {
-                throw MetaphorError.data(.loadFailed(source: source, detail: error.localizedDescription))
+                throw MetaphorError.data(
+                    .loadFailed(source: source, detail: error.localizedDescription))
             }
         }
         let path = source
@@ -95,7 +97,8 @@ public enum DataIO {
             try validate(response: response, source: url.absoluteString)
             return data
         case .failure(let error):
-            throw MetaphorError.data(.loadFailed(source: url.absoluteString, detail: error.localizedDescription))
+            throw MetaphorError.data(
+                .loadFailed(source: url.absoluteString, detail: error.localizedDescription))
         case nil:
             throw MetaphorError.data(.loadFailed(source: url.absoluteString, detail: "no response"))
         }
@@ -143,7 +146,8 @@ public enum DataIO {
             throw MetaphorError.data(.loadFailed(source: source, detail: "not valid UTF-8 text"))
         }
         let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
-        var lines = normalized.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var lines = normalized.split(separator: "\n", omittingEmptySubsequences: false).map(
+            String.init)
         if lines.last == "" { lines.removeLast() }
         return lines
     }
@@ -182,7 +186,9 @@ public enum DataIO {
     ///   - source: ファイルパスまたは URL 文字列
     ///   - type: デコード先の型
     /// - Throws: ``MetaphorError/data(_:)`` 読み込み・デコードに失敗した場合
-    public static func loadJSONAsync<T: Decodable>(_ source: String, as type: T.Type) async throws -> T {
+    public static func loadJSONAsync<T: Decodable>(_ source: String, as type: T.Type) async throws
+        -> T
+    {
         try decodeJSON(await readDataAsync(source), as: type)
     }
 
@@ -193,7 +199,9 @@ public enum DataIO {
     ///   - path: 出力ファイルパス
     ///   - pretty: インデント付きで整形するか（キーは常にソートされ決定的）
     /// - Throws: ``MetaphorError/data(_:)`` エンコード・書き込みに失敗した場合
-    public static func saveJSON(_ value: some Encodable, toPath path: String, pretty: Bool = true) throws {
+    public static func saveJSON(_ value: some Encodable, toPath path: String, pretty: Bool = true)
+        throws
+    {
         let encoder = JSONEncoder()
         encoder.outputFormatting = pretty ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
         let data: Data
@@ -211,7 +219,8 @@ public enum DataIO {
         do {
             return try JSONDecoder().decode(type, from: data)
         } catch {
-            throw MetaphorError.data(.decodeFailed(type: String(describing: type), detail: "\(error)"))
+            throw MetaphorError.data(
+                .decodeFailed(type: String(describing: type), detail: "\(error)"))
         }
     }
 

@@ -70,7 +70,8 @@ public final class Graphics {
         // pg.texture を読む際に Metal の同一キュー内 commit-order 保証で
         // 自動的に順序付けされ、明示的な GPU 待機が不要になる。
         self.commandQueue = commandQueue
-        self.textureManager = try TextureManager(device: device, width: width, height: height, sampleCount: 1)
+        self.textureManager = try TextureManager(
+            device: device, width: width, height: height, sampleCount: 1)
         self.canvas = try Canvas2D(
             device: device,
             shaderLibrary: shaderLibrary,
@@ -107,7 +108,8 @@ public final class Graphics {
         cb.addCompletedHandler { @Sendable _ in semaphore.signal() }
         self.commandBuffer = cb
 
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: textureManager.renderPassDescriptor) else {
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: textureManager.renderPassDescriptor)
+        else {
             // commit して completed handler を発火させ、セマフォを返す
             cb.commit()
             self.commandBuffer = nil
@@ -181,7 +183,9 @@ public final class Graphics {
     ///   - v2: 第2カラーチャンネル値。
     ///   - v3: 第3カラーチャンネル値。
     ///   - a: オプションのアルファ値。
-    public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.background(v1, v2, v3, a) }
+    public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.background(v1, v2, v3, a)
+    }
 
     /// 塗りつぶし色を設定します。
     /// - Parameter color: 塗りつぶし色。
@@ -193,7 +197,9 @@ public final class Graphics {
     ///   - v2: 第2カラーチャンネル値。
     ///   - v3: 第3カラーチャンネル値。
     ///   - a: オプションのアルファ値。
-    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.fill(v1, v2, v3, a) }
+    public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.fill(v1, v2, v3, a)
+    }
 
     /// 塗りつぶしをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
@@ -218,7 +224,9 @@ public final class Graphics {
     ///   - v2: 第2カラーチャンネル値。
     ///   - v3: 第3カラーチャンネル値。
     ///   - a: オプションのアルファ値。
-    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.stroke(v1, v2, v3, a) }
+    public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.stroke(v1, v2, v3, a)
+    }
 
     /// ストロークをグレースケール値で設定します。
     /// - Parameter gray: グレースケール値。
@@ -277,7 +285,10 @@ public final class Graphics {
     ///   - max2: 第2チャンネルの最大値。
     ///   - max3: 第3チャンネルの最大値。
     ///   - maxA: アルファチャンネルの最大値。
-    public func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil) { canvas.colorMode(space, max1, max2, max3, maxA) }
+    public func colorMode(
+        _ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil,
+        _ maxA: Float? = nil
+    ) { canvas.colorMode(space, max1, max2, max3, maxA) }
 
     /// 全チャンネルに均一な最大値を持つカラーモードを設定します。
     /// - Parameters:
@@ -307,7 +318,9 @@ public final class Graphics {
     ///   - v2: 第2カラーチャンネル値。
     ///   - v3: 第3カラーチャンネル値。
     ///   - a: オプションのアルファ値。
-    public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) { canvas.tint(v1, v2, v3, a) }
+    public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
+        canvas.tint(v1, v2, v3, a)
+    }
 
     /// 画像のティントを無効にします。
     public func noTint() { canvas.noTint() }
@@ -393,7 +406,9 @@ public final class Graphics {
     ///   - x: モデル座標の x。
     ///   - y: モデル座標の y。
     /// - Returns: バッファ内のピクセル座標。
-    public func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float> { canvas.screenPosition(x, y) }
+    public func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float> {
+        canvas.screenPosition(x, y)
+    }
 
     /// 指定した矩形に後続の描画をクリッピングします。
     ///
@@ -409,7 +424,9 @@ public final class Graphics {
     ///   - y: クリップ領域のY座標。
     ///   - w: クリップ領域の幅。
     ///   - h: クリップ領域の高さ。
-    public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.beginClip(x, y, w, h) }
+    public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.beginClip(x, y, w, h)
+    }
 
     /// 現在のクリップ領域を終了し、前のクリップ領域を復元します。
     public func endClip() { canvas.endClip() }
@@ -435,7 +452,9 @@ public final class Graphics {
     ///   - y: Y座標。
     ///   - w: 幅。
     ///   - h: 高さ。
-    public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.ellipse(x, y, w, h) }
+    public func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.ellipse(x, y, w, h)
+    }
 
     /// 円を描画します。
     /// - Parameters:
@@ -462,7 +481,9 @@ public final class Graphics {
     ///   - y1: 始点Y。
     ///   - x2: 終点X。
     ///   - y2: 終点Y。
-    public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) { canvas.line(x1, y1, x2, y2) }
+    public func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) {
+        canvas.line(x1, y1, x2, y2)
+    }
 
     /// 三角形を描画します。
     /// - Parameters:
@@ -472,7 +493,9 @@ public final class Graphics {
     ///   - y2: 第2頂点Y。
     ///   - x3: 第3頂点X。
     ///   - y3: 第3頂点Y。
-    public func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float) { canvas.triangle(x1, y1, x2, y2, x3, y3) }
+    public func triangle(
+        _ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float
+    ) { canvas.triangle(x1, y1, x2, y2, x3, y3) }
 
     /// 四角形を描画します。
     /// - Parameters:
@@ -484,7 +507,10 @@ public final class Graphics {
     ///   - y3: 第3頂点Y。
     ///   - x4: 第4頂点X。
     ///   - y4: 第4頂点Y。
-    public func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float) { canvas.quad(x1, y1, x2, y2, x3, y3, x4, y4) }
+    public func quad(
+        _ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float,
+        _ y4: Float
+    ) { canvas.quad(x1, y1, x2, y2, x3, y3, x4, y4) }
 
     /// 点を描画します。
     /// - Parameters:
@@ -504,7 +530,10 @@ public final class Graphics {
     ///
     /// 角度は Processing と同じく正規化されます（`stopAngle <= startAngle` は描かない・
     /// 2π 超は 0〜2π へクランプ）。
-    public func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .default) { canvas.arc(x, y, w, h, startAngle, stopAngle, mode) }
+    public func arc(
+        _ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float,
+        _ mode: ArcMode = .default
+    ) { canvas.arc(x, y, w, h, startAngle, stopAngle, mode) }
 
     /// ポイント配列からポリゴンを描画します。
     /// - Parameter points: ポリゴン頂点を定義する (x, y) タプルの配列。
@@ -553,7 +582,10 @@ public final class Graphics {
     ///   - cy2: 第2制御点Y。
     ///   - x2: 終点X。
     ///   - y2: 終点Y。
-    public func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float) { canvas.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2) }
+    public func bezier(
+        _ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float,
+        _ x2: Float, _ y2: Float
+    ) { canvas.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2) }
 
     /// Catmull-Rom スプライン曲線を描画します。
     /// - Parameters:
@@ -565,7 +597,10 @@ public final class Graphics {
     ///   - y3: 終点Y。
     ///   - x4: 第2制御点X。
     ///   - y4: 第2制御点Y。
-    public func curve(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float) { canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4) }
+    public func curve(
+        _ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float,
+        _ y4: Float
+    ) { canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4) }
 
     /// カスタムシェイプの頂点記録を開始します。
     /// - Parameter mode: シェイプモード（polygon、triangles など）。
@@ -585,7 +620,9 @@ public final class Graphics {
     ///   - cy2: 第2制御点Y。
     ///   - x: 終点X。
     ///   - y: 終点Y。
-    public func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float) { canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y) }
+    public func bezierVertex(
+        _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float
+    ) { canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y) }
 
     /// 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
     /// - Parameters:
@@ -633,7 +670,9 @@ public final class Graphics {
     ///   - y: Y座標。
     ///   - w: 幅。
     ///   - h: 高さ。
-    public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) { canvas.image(img, x, y, w, h) }
+    public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
+        canvas.image(img, x, y, w, h)
+    }
 
     /// テキストサイズを設定します。
     /// - Parameter size: ポイント単位のフォントサイズ。
@@ -647,7 +686,9 @@ public final class Graphics {
     /// - Parameters:
     ///   - horizontal: 水平方向の配置。
     ///   - vertical: 垂直方向の配置。
-    public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) { canvas.textAlign(horizontal, vertical) }
+    public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
+        canvas.textAlign(horizontal, vertical)
+    }
 
     /// テキストの行間（行の高さ）を設定します。
     ///

@@ -19,9 +19,9 @@ enum Shape2DType: UInt8, Hashable {
 /// `float3x3` の2Dアフィン変換は `float4x4` に埋め込まれます（3Dと同じパターン）。
 struct InstanceData2D {
     /// float4x4 に埋め込まれた2Dアフィン変換（currentTransform * shapeLocal）。
-    var transform: float4x4       // 64 bytes
+    var transform: float4x4  // 64 bytes
     /// 塗りつぶし色（RGBA）。
-    var color: SIMD4<Float>       // 16 bytes
+    var color: SIMD4<Float>  // 16 bytes
 }
 
 // MARK: - Batch Key
@@ -117,11 +117,13 @@ enum UnitMesh2D {
             verts.append(SIMD2(0.5 * cos(a0), 0.5 * sin(a0)))
             verts.append(SIMD2(0.5 * cos(a1), 0.5 * sin(a1)))
         }
-        guard let buf = device.makeBuffer(
-            bytes: verts,
-            length: verts.count * MemoryLayout<SIMD2<Float>>.stride,
-            options: .storageModeShared
-        ) else { return nil }
+        guard
+            let buf = device.makeBuffer(
+                bytes: verts,
+                length: verts.count * MemoryLayout<SIMD2<Float>>.stride,
+                options: .storageModeShared
+            )
+        else { return nil }
         buf.label = "metaphor.unitCircle"
         return (buf, verts.count)
     }
@@ -133,11 +135,13 @@ enum UnitMesh2D {
             SIMD2(-0.5, -0.5), SIMD2(0.5, -0.5), SIMD2(0.5, 0.5),
             SIMD2(-0.5, -0.5), SIMD2(0.5, 0.5), SIMD2(-0.5, 0.5),
         ]
-        guard let buf = device.makeBuffer(
-            bytes: verts,
-            length: verts.count * MemoryLayout<SIMD2<Float>>.stride,
-            options: .storageModeShared
-        ) else { return nil }
+        guard
+            let buf = device.makeBuffer(
+                bytes: verts,
+                length: verts.count * MemoryLayout<SIMD2<Float>>.stride,
+                options: .storageModeShared
+            )
+        else { return nil }
         buf.label = "metaphor.unitRect"
         return (buf, verts.count)
     }
@@ -156,11 +160,12 @@ extension Canvas2D {
     /// | m20  m21  0  1 |
     /// ```
     static func embed2DTransform(_ t: float3x3) -> float4x4 {
-        float4x4(columns: (
-            SIMD4<Float>(t.columns.0.x, t.columns.0.y, 0, 0),
-            SIMD4<Float>(t.columns.1.x, t.columns.1.y, 0, 0),
-            SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(t.columns.2.x, t.columns.2.y, 0, 1)
-        ))
+        float4x4(
+            columns: (
+                SIMD4<Float>(t.columns.0.x, t.columns.0.y, 0, 0),
+                SIMD4<Float>(t.columns.1.x, t.columns.1.y, 0, 0),
+                SIMD4<Float>(0, 0, 1, 0),
+                SIMD4<Float>(t.columns.2.x, t.columns.2.y, 0, 1)
+            ))
     }
 }

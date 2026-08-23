@@ -19,9 +19,9 @@ import Foundation
 /// 人間が触るパネルが要るときは `draw()` で ``ParameterGUI/params()`` を呼びます
 /// （`gui.params()` の 1 行。GUI と外部エージェントは同じストアの対称なクライアント）。
 @MainActor
-public extension Sketch {
+extension Sketch {
     /// `@Param` で宣言されたパラメータのストア。
-    var params: ParameterStore {
+    public var params: ParameterStore {
         context.params
     }
 }

@@ -64,7 +64,8 @@ public final class EffectPass: RenderPassNode {
     ) throws {
         self.label = "effect(\(input.label))"
         self.inputPass = input
-        self.pipeline = try PostProcessPipeline(device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
+        self.pipeline = try PostProcessPipeline(
+            device: device, commandQueue: commandQueue, shaderLibrary: shaderLibrary)
         self.pipeline.set(effects)
     }
 

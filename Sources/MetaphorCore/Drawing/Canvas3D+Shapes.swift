@@ -86,12 +86,14 @@ extension Canvas3D {
     }
 
     // 頂点と UV を対で積む。両配列の添字対応はテッセレーション（インデックス列）が前提にする。
-    private func appendShapeVertex3D(position: SIMD3<Float>, color: SIMD4<Float>, uv: SIMD2<Float>) {
-        shapeVertices3D.append(Vertex3D(
-            position: position,
-            normal: pendingNormal ?? SIMD3(0, 1, 0),
-            color: color
-        ))
+    private func appendShapeVertex3D(position: SIMD3<Float>, color: SIMD4<Float>, uv: SIMD2<Float>)
+    {
+        shapeVertices3D.append(
+            Vertex3D(
+                position: position,
+                normal: pendingNormal ?? SIMD3(0, 1, 0),
+                color: color
+            ))
         shapeUVs3D.append(uv)
     }
 
@@ -216,7 +218,8 @@ extension Canvas3D {
         for i in indices {
             let v = shapeVertices3D[i]
             vertices.append(v)
-            uvVertices.append(Vertex3DTextured(position: v.position, normal: v.normal, uv: shapeUVs3D[i]))
+            uvVertices.append(
+                Vertex3DTextured(position: v.position, normal: v.normal, uv: shapeUVs3D[i]))
         }
         drawShape3DTexturedVertices(vertices, uvVertices: uvVertices)
     }
@@ -256,7 +259,10 @@ extension Canvas3D {
             let p1 = shapeVertices3D[i + 1].position
             let dir = p1 - p0
             let len = simd_length(dir)
-            guard len > 0 else { i += 2; continue }
+            guard len > 0 else {
+                i += 2
+                continue
+            }
 
             // 線方向とビュー方向の外積を使用してオフセットを計算
             let viewDir = simd_normalize(cameraEye - (p0 + p1) * 0.5)

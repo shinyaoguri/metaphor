@@ -1,7 +1,8 @@
-import Testing
 import Metal
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 @Suite("MetaphorRenderer", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
@@ -96,8 +97,9 @@ struct MetaphorRendererTests {
         renderer.renderFrame()
         let elapsed = ContinuousClock.now - started
 
-        #expect(elapsed < timeout / 2,
-                "実測 \(elapsed): タイムアウト(\(timeout))級ならドレイン待ちに落ちている(#856)")
+        #expect(
+            elapsed < timeout / 2,
+            "実測 \(elapsed): タイムアウト(\(timeout))級ならドレイン待ちに落ちている(#856)")
         #expect(renderer.textureManager.width == 64, "フレーム中のリサイズは行われないべき")
         #expect(renderer.textureManager.height == 64)
         #expect(renderer.isRenderingFrame == false, "フレームを抜けたら印は下りているべき")
@@ -173,8 +175,8 @@ struct MetaphorRendererTests {
 
         renderer.shutdown()
 
-        #expect(plugin.stopCallCount == 1)       // onStop 経由
-        #expect(plugin.detached == true)         // onDetach 経由
+        #expect(plugin.stopCallCount == 1)  // onStop 経由
+        #expect(plugin.detached == true)  // onDetach 経由
         #expect(renderer.plugin(id: "shutdown-mock") == nil)
     }
 

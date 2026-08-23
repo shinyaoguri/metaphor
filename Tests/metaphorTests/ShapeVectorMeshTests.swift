@@ -1,8 +1,9 @@
-import Testing
 import Metal
+import Testing
 import simd
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - B-6: Per-vertex Color Shape Tests
 
@@ -149,7 +150,9 @@ struct BeginShape3DTests {
             depthStencilCache: depthCache, width: 800, height: 600
         )
 
-        let modes: [ShapeMode] = [.polygon, .triangles, .triangleStrip, .triangleFan, .points, .lines]
+        let modes: [ShapeMode] = [
+            .polygon, .triangles, .triangleStrip, .triangleFan, .points, .lines,
+        ]
         for mode in modes {
             canvas3D.beginShape(mode)
             canvas3D.vertex(0, 0, 0)
@@ -496,44 +499,44 @@ struct CustomVertexShaderTests {
 
         // Use full canvas3D source which includes VertexIn/VertexOut structs
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        struct VIn {
-            float3 position [[attribute(0)]];
-            float3 normal   [[attribute(1)]];
-            float4 color    [[attribute(2)]];
-        };
+            struct VIn {
+                float3 position [[attribute(0)]];
+                float3 normal   [[attribute(1)]];
+                float4 color    [[attribute(2)]];
+            };
 
-        struct VOut {
-            float4 position [[position]];
-            float3 worldPosition;
-            float3 normal;
-            float4 color;
-        };
+            struct VOut {
+                float4 position [[position]];
+                float3 worldPosition;
+                float3 normal;
+                float4 color;
+            };
 
-        vertex VOut myCustomVertex(
-            VIn in [[stage_in]],
-            constant Canvas3DUniforms &u [[buffer(1)]]
-        ) {
-            VOut out;
-            float4 worldPos = u.modelMatrix * float4(in.position, 1.0);
-            out.position = u.viewProjectionMatrix * worldPos;
-            out.worldPosition = worldPos.xyz;
-            out.normal = (u.normalMatrix * float4(in.normal, 0.0)).xyz;
-            out.color = u.color;
-            return out;
-        }
+            vertex VOut myCustomVertex(
+                VIn in [[stage_in]],
+                constant Canvas3DUniforms &u [[buffer(1)]]
+            ) {
+                VOut out;
+                float4 worldPos = u.modelMatrix * float4(in.position, 1.0);
+                out.position = u.viewProjectionMatrix * worldPos;
+                out.worldPosition = worldPos.xyz;
+                out.normal = (u.normalMatrix * float4(in.normal, 0.0)).xyz;
+                out.color = u.color;
+                return out;
+            }
 
-        fragment float4 myCustomFragment(
-            VOut in [[stage_in]],
-            constant Canvas3DUniforms &u [[buffer(1)]]
-        ) {
-            return in.color;
-        }
-        """
+            fragment float4 myCustomFragment(
+                VOut in [[stage_in]],
+                constant Canvas3DUniforms &u [[buffer(1)]]
+            ) {
+                return in.color;
+            }
+            """
 
         let key = "test.custom.vertex"
         try shaderLib.register(source: source, as: key)
@@ -559,23 +562,23 @@ struct CustomVertexShaderTests {
         let shaderLib = try ShaderLibrary(device: device)
 
         let source = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        struct VOut {
-            float4 position [[position]];
-            float4 color;
-        };
+            struct VOut {
+                float4 position [[position]];
+                float4 color;
+            };
 
-        fragment float4 simpleFragment(
-            VOut in [[stage_in]],
-            constant Canvas3DUniforms &u [[buffer(1)]]
-        ) {
-            return in.color;
-        }
-        """
+            fragment float4 simpleFragment(
+                VOut in [[stage_in]],
+                constant Canvas3DUniforms &u [[buffer(1)]]
+            ) {
+                return in.color;
+            }
+            """
 
         let key = "test.custom.novtx"
         try shaderLib.register(source: source, as: key)
@@ -678,7 +681,7 @@ struct RandomGaussianTests {
         }
         // Should have some variance
         let mean = values.reduce(0, +) / Float(values.count)
-        #expect(abs(mean) < 1.0) // mean should be near 0
+        #expect(abs(mean) < 1.0)  // mean should be near 0
     }
 
     @Test("randomGaussian respects mean and sd")
@@ -688,6 +691,6 @@ struct RandomGaussianTests {
             values.append(randomGaussian(10, 2))
         }
         let mean = values.reduce(0, +) / Float(values.count)
-        #expect(abs(mean - 10) < 1.0) // should be near 10
+        #expect(abs(mean - 10) < 1.0)  // should be near 10
     }
 }

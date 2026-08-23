@@ -17,24 +17,24 @@ struct ShaderFileHotReloadTests {
 
     /// `in.color` をそのまま返す 2D フラグメント。
     private static let passthroughSource = """
-    fragment float4 hotFragment(Canvas2DVertexOut in [[stage_in]]) {
-        return in.color;
-    }
-    """
+        fragment float4 hotFragment(Canvas2DVertexOut in [[stage_in]]) {
+            return in.color;
+        }
+        """
 
     /// 上と同じ関数名で中身だけ違うソース（リロードで差し替わったことを見る）。
     private static let invertedSource = """
-    fragment float4 hotFragment(Canvas2DVertexOut in [[stage_in]]) {
-        return float4(1.0 - in.color.rgb, in.color.a);
-    }
-    """
+        fragment float4 hotFragment(Canvas2DVertexOut in [[stage_in]]) {
+            return float4(1.0 - in.color.rgb, in.color.a);
+        }
+        """
 
     /// コンパイルに落ちるソース（書きかけの MSL の代役）。
     private static let brokenSource = """
-    fragment float4 hotFragment(Canvas2DVertexOut in [[stage_in]]) {
-        return this_symbol_does_not_exist;
-    }
-    """
+        fragment float4 hotFragment(Canvas2DVertexOut in [[stage_in]]) {
+            return this_symbol_does_not_exist;
+        }
+        """
 
     private func makeLibrary() throws -> ShaderLibrary {
         let device = try #require(MTLCreateSystemDefaultDevice())
@@ -165,20 +165,20 @@ struct ShaderFileHotReloadTests {
         let context = try makeContext()
 
         let materialSource = """
-        #include <metal_stdlib>
-        using namespace metal;
+            #include <metal_stdlib>
+            using namespace metal;
 
-        \(BuiltinShaders.canvas3DStructs)
+            \(BuiltinShaders.canvas3DStructs)
 
-        fragment float4 hotMaterialFragment(
-            Canvas3DVertexOut in [[stage_in]],
-            constant Canvas3DUniforms &uniforms [[buffer(1)]],
-            constant Light3D *lights [[buffer(2)]],
-            constant Material3D &material [[buffer(3)]]
-        ) {
-            return in.color;
-        }
-        """
+            fragment float4 hotMaterialFragment(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                return in.color;
+            }
+            """
         let materialPath = try writeShaderFile(materialSource)
         let material = try context.createMaterialFromFile(
             path: materialPath, fragmentFunction: "hotMaterialFragment")
@@ -186,15 +186,15 @@ struct ShaderFileHotReloadTests {
         // 前文（`PPVertexOut` / `PostProcessParams`）は読み込み時もリロード時も
         // 自動で足される（#718）。書くのはフラグメント関数だけ。
         let postSource = """
-        fragment float4 hotPostFragment(
-            PPVertexOut in [[stage_in]],
-            texture2d<float> tex [[texture(0)]],
-            constant PostProcessParams &params [[buffer(0)]]
-        ) {
-            constexpr sampler s(filter::linear);
-            return tex.sample(s, in.texCoord);
-        }
-        """
+            fragment float4 hotPostFragment(
+                PPVertexOut in [[stage_in]],
+                texture2d<float> tex [[texture(0)]],
+                constant PostProcessParams &params [[buffer(0)]]
+            ) {
+                constexpr sampler s(filter::linear);
+                return tex.sample(s, in.texCoord);
+            }
+            """
         let postPath = try writeShaderFile(postSource)
         let effect = try context.createPostEffectFromFile(
             name: "hot", path: postPath, fragmentFunction: "hotPostFragment")

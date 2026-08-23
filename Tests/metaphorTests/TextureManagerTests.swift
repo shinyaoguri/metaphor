@@ -1,7 +1,8 @@
-import Testing
 import Metal
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 @Suite("TextureManager", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor

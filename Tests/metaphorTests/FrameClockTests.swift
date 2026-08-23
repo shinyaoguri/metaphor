@@ -1,4 +1,5 @@
 import Testing
+
 @testable import MetaphorCore
 
 // `deltaTime` の起点を持つ ``FrameClock`` の単体テスト（Issue #793）。
@@ -43,8 +44,9 @@ struct FrameClockTests {
 
         // 再開後の最初のフレームは、再開時刻からの経過（＝ほぼ 1 フレームぶん）。
         let firstFrameAfterResume = clock.advance(to: resumeTime + 1.0 / 60)
-        #expect(abs(firstFrameAfterResume - 1.0 / 60) < 1e-6,
-                "止めていた 0.8 秒が deltaTime に乗ってはいけない")
+        #expect(
+            abs(firstFrameAfterResume - 1.0 / 60) < 1e-6,
+            "止めていた 0.8 秒が deltaTime に乗ってはいけない")
     }
 
     @Test("巻き戻り（過去時刻）は 0 に丸める")

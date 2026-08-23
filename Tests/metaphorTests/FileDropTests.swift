@@ -1,6 +1,7 @@
 import Testing
-@testable import metaphor
+
 @testable import MetaphorCore
+@testable import metaphor
 
 // MARK: - File Drop Callbacks (#281)
 

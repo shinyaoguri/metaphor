@@ -1,8 +1,9 @@
 import Foundation
 import ImageIO
-import Testing
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+
+@testable import MetaphorCore
 
 // MARK: - Request parsing
 
@@ -89,9 +90,10 @@ struct MetaphorProbePluginTests {
     /// PNG ファイルのピクセルサイズを返します。
     private func pngSize(of url: URL) -> (width: Int, height: Int)? {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
-              let w = props[kCGImagePropertyPixelWidth] as? Int,
-              let h = props[kCGImagePropertyPixelHeight] as? Int else {
+            let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+            let w = props[kCGImagePropertyPixelWidth] as? Int,
+            let h = props[kCGImagePropertyPixelHeight] as? Int
+        else {
             return nil
         }
         return (w, h)
@@ -116,9 +118,10 @@ struct MetaphorProbePluginTests {
             renderer.renderFrame()
 
             // リクエストが無ければ frame.png は作られない
-            #expect(!FileManager.default.fileExists(
-                atPath: outputDir.appendingPathComponent("frame.png").path
-            ))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: outputDir.appendingPathComponent("frame.png").path
+                ))
 
         }
     }
@@ -191,7 +194,8 @@ struct MetaphorProbePluginTests {
             // frame.json が出るのを少し待つ
             let deadline = Date().addingTimeInterval(2.0)
             while Date() < deadline,
-                  !FileManager.default.fileExists(atPath: jsonPath.path) {
+                !FileManager.default.fileExists(atPath: jsonPath.path)
+            {
                 Thread.sleep(forTimeInterval: 0.05)
             }
 
@@ -254,7 +258,8 @@ struct MetaphorProbePluginTests {
             let jsonPath = outputDir.appendingPathComponent("frame.json")
             let deadline = Date().addingTimeInterval(2.0)
             while Date() < deadline,
-                  !FileManager.default.fileExists(atPath: jsonPath.path) {
+                !FileManager.default.fileExists(atPath: jsonPath.path)
+            {
                 Thread.sleep(forTimeInterval: 0.05)
             }
 
@@ -288,7 +293,8 @@ struct MetaphorProbePluginTests {
             let jsonPath = outputDir.appendingPathComponent("frame.json")
             let deadline = Date().addingTimeInterval(2.0)
             while Date() < deadline,
-                  !FileManager.default.fileExists(atPath: jsonPath.path) {
+                !FileManager.default.fileExists(atPath: jsonPath.path)
+            {
                 Thread.sleep(forTimeInterval: 0.05)
             }
 
@@ -422,9 +428,10 @@ struct MetaphorProbePluginTests {
             #expect(waitForFrame(in: outputDir) != nil)
             let jsonURL = outputDir.appendingPathComponent("frame.json")
             #expect(waitForFile(jsonURL))
-            let json = try JSONSerialization.jsonObject(
-                with: Data(contentsOf: jsonURL)
-            ) as? [String: Any]
+            let json =
+                try JSONSerialization.jsonObject(
+                    with: Data(contentsOf: jsonURL)
+                ) as? [String: Any]
             #expect(json?["id"] as? String == "single-B")
 
         }
@@ -459,9 +466,10 @@ struct MetaphorProbePluginTests {
             // frame.json の size もスケール後の値になる
             let jsonURL = outputDir.appendingPathComponent("frame.json")
             #expect(waitForFile(jsonURL))
-            let json = try JSONSerialization.jsonObject(
-                with: Data(contentsOf: jsonURL)
-            ) as? [String: Any]
+            let json =
+                try JSONSerialization.jsonObject(
+                    with: Data(contentsOf: jsonURL)
+                ) as? [String: Any]
             let size = json?["size"] as? [String: Any]
             #expect(size?["width"] as? Int == 32)
             #expect(size?["height"] as? Int == 32)
@@ -597,18 +605,21 @@ struct ProbeWriterFailureResponseTests {
             let jsonURL = dir.appendingPathComponent("frame.json")
             let deadline = Date().addingTimeInterval(2.0)
             while Date() < deadline,
-                  !FileManager.default.fileExists(atPath: jsonURL.path) {
+                !FileManager.default.fileExists(atPath: jsonURL.path)
+            {
                 Thread.sleep(forTimeInterval: 0.05)
             }
 
             #expect(FileManager.default.fileExists(atPath: jsonURL.path))
-            #expect(!FileManager.default.fileExists(
-                atPath: dir.appendingPathComponent("frame.png").path
-            ))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: dir.appendingPathComponent("frame.png").path
+                ))
 
-            let json = try JSONSerialization.jsonObject(
-                with: Data(contentsOf: jsonURL)
-            ) as? [String: Any]
+            let json =
+                try JSONSerialization.jsonObject(
+                    with: Data(contentsOf: jsonURL)
+                ) as? [String: Any]
             #expect(json?["id"] as? String == "fail-1")
             let warnings = json?["warnings"] as? [String]
             #expect(warnings?.count == 1)
@@ -668,13 +679,15 @@ struct MetaphorProbeSequenceTests {
 
             for i in 0..<4 {
                 let name = String(format: "frame.%04d.png", i)
-                #expect(FileManager.default.fileExists(
-                    atPath: seqDir.appendingPathComponent(name).path
-                ))
+                #expect(
+                    FileManager.default.fileExists(
+                        atPath: seqDir.appendingPathComponent(name).path
+                    ))
             }
-            #expect(FileManager.default.fileExists(
-                atPath: seqDir.appendingPathComponent("contact_sheet.png").path
-            ))
+            #expect(
+                FileManager.default.fileExists(
+                    atPath: seqDir.appendingPathComponent("contact_sheet.png").path
+                ))
 
             let data = try Data(contentsOf: manifestURL)
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -721,12 +734,14 @@ struct MetaphorProbeSequenceTests {
             #expect(json?["frameCount"] as? Int == 2)
             #expect(json?["every"] as? Int == 2)
             // 採取されたのは index 0,1 の 2 枚だけ（スキップされた tick はファイルにならない）。
-            #expect(FileManager.default.fileExists(
-                atPath: seqDir.appendingPathComponent("frame.0001.png").path
-            ))
-            #expect(!FileManager.default.fileExists(
-                atPath: seqDir.appendingPathComponent("frame.0002.png").path
-            ))
+            #expect(
+                FileManager.default.fileExists(
+                    atPath: seqDir.appendingPathComponent("frame.0001.png").path
+                ))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: seqDir.appendingPathComponent("frame.0002.png").path
+                ))
 
         }
     }
@@ -753,9 +768,10 @@ struct MetaphorProbeSequenceTests {
 
             #expect(waitForFile(outputDir.appendingPathComponent("frame.png")))
             // sequence/ は作られない。
-            #expect(!FileManager.default.fileExists(
-                atPath: outputDir.appendingPathComponent("sequence").path
-            ))
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: outputDir.appendingPathComponent("sequence").path
+                ))
 
         }
     }
@@ -784,10 +800,19 @@ struct ProbeContactSheetTests {
             let half = CGRect(x: 0, y: 0, width: cellW / 2, height: cellH / 2)
             // CG の原点は左下なので、y=0 の行が画像の下端になる。
             let quadrants: [(CGRect, CGColor)] = [
-                (half.offsetBy(dx: 0, dy: CGFloat(cellH / 2)), .init(red: 1, green: 0, blue: 0, alpha: 1)),
-                (half.offsetBy(dx: CGFloat(cellW / 2), dy: CGFloat(cellH / 2)), .init(red: 0, green: 1, blue: 0, alpha: 1)),
+                (
+                    half.offsetBy(dx: 0, dy: CGFloat(cellH / 2)),
+                    .init(red: 1, green: 0, blue: 0, alpha: 1)
+                ),
+                (
+                    half.offsetBy(dx: CGFloat(cellW / 2), dy: CGFloat(cellH / 2)),
+                    .init(red: 0, green: 1, blue: 0, alpha: 1)
+                ),
                 (half, .init(red: 0, green: 0, blue: 1, alpha: 1)),
-                (half.offsetBy(dx: CGFloat(cellW / 2), dy: 0), .init(red: 1, green: 1, blue: 1, alpha: 1)),
+                (
+                    half.offsetBy(dx: CGFloat(cellW / 2), dy: 0),
+                    .init(red: 1, green: 1, blue: 1, alpha: 1)
+                ),
             ]
             for (rect, color) in quadrants {
                 ctx.setFillColor(color)
@@ -813,9 +838,10 @@ struct ProbeContactSheetTests {
         guard let ctx else { throw ContactSheetError.contextUnavailable }
         draw(ctx)
         guard let image = ctx.makeImage(),
-              let dest = CGImageDestinationCreateWithURL(
+            let dest = CGImageDestinationCreateWithURL(
                 url as CFURL, "public.png" as CFString, 1, nil
-              ) else { throw ContactSheetError.contextUnavailable }
+            )
+        else { throw ContactSheetError.contextUnavailable }
         CGImageDestinationAddImage(dest, image, nil)
         guard CGImageDestinationFinalize(dest) else { throw ContactSheetError.contextUnavailable }
     }
@@ -823,9 +849,12 @@ struct ProbeContactSheetTests {
     private enum ContactSheetError: Error { case contextUnavailable }
 
     /// PNG を読み、左上を原点とする (x, y) の RGB を返す。
-    private func pixels(of url: URL) throws -> (width: Int, height: Int, read: (Int, Int) -> (Int, Int, Int)) {
+    private func pixels(of url: URL) throws -> (
+        width: Int, height: Int, read: (Int, Int) -> (Int, Int, Int)
+    ) {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let image = CGImageSourceCreateImageAtIndex(src, 0, nil) else {
+            let image = CGImageSourceCreateImageAtIndex(src, 0, nil)
+        else {
             throw ContactSheetError.contextUnavailable
         }
         let width = image.width
@@ -843,10 +872,13 @@ struct ProbeContactSheetTests {
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         // bitmap のバイト列は行 0 が画像の上端。
         let snapshot = buffer
-        return (width, height, { x, y in
-            let offset = (y * width + x) * 4
-            return (Int(snapshot[offset]), Int(snapshot[offset + 1]), Int(snapshot[offset + 2]))
-        })
+        return (
+            width, height,
+            { x, y in
+                let offset = (y * width + x) * 4
+                return (Int(snapshot[offset]), Int(snapshot[offset + 1]), Int(snapshot[offset + 2]))
+            }
+        )
     }
 
     /// 期待した色かを、チャンネルが立っているかどうかだけで判定する。
@@ -861,7 +893,8 @@ struct ProbeContactSheetTests {
         func matches(_ value: Int, _ want: Int) -> Bool {
             want >= 128 ? value > 180 : value < 96
         }
-        let ok = matches(actual.0, expected.0)
+        let ok =
+            matches(actual.0, expected.0)
             && matches(actual.1, expected.1)
             && matches(actual.2, expected.2)
         #expect(ok, "\(label): \(actual) != \(expected)", sourceLocation: sourceLocation)
@@ -881,8 +914,10 @@ struct ProbeContactSheetTests {
             let sheet = try pixels(of: dir.appendingPathComponent("contact_sheet.png"))
             #expect(sheet.width == cellW)
             #expect(sheet.height == cellH)
-            let left = cellW / 4, right = cellW * 3 / 4
-            let top = cellH / 4, bottom = cellH * 3 / 4
+            let left = cellW / 4
+            let right = cellW * 3 / 4
+            let top = cellH / 4
+            let bottom = cellH * 3 / 4
             expectColor(sheet.read(left, top), (255, 0, 0), "左上は赤のまま")
             expectColor(sheet.read(right, top), (0, 255, 0), "右上は緑のまま")
             expectColor(sheet.read(left, bottom), (0, 0, 255), "左下は青のまま")

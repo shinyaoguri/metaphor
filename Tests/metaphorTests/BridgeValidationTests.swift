@@ -1,8 +1,9 @@
-import Testing
 import Metal
-@testable import metaphor
-@testable import MetaphorCore
 import MetaphorRenderGraph
+import Testing
+
+@testable import MetaphorCore
+@testable import metaphor
 
 /// ブリッジの `create*` に統合された引数検証（ADR-0005 フェーズ 2、#200）を確認する。
 /// 不正な引数は warning + 安全なフォールバック（またはコンテキスト非依存の nil）で

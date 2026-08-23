@@ -76,8 +76,8 @@ public enum EmitterShape {
 /// - `typeAndParams`: x = フォースタイプインデックス, yzw = 位置または方向パラメータ
 /// - `strengthAndExtra`: x = 強度, yzw = 追加パラメータ（例: ノイズスケール）
 struct ForceDescriptor {
-    var typeAndParams: SIMD4<Float>       // x=タイプ, yzw=パラメータ
-    var strengthAndExtra: SIMD4<Float>    // x=強度, yzw=追加
+    var typeAndParams: SIMD4<Float>  // x=タイプ, yzw=パラメータ
+    var strengthAndExtra: SIMD4<Float>  // x=強度, yzw=追加
 }
 
 /// パーティクル更新コンピュートシェーダー用のフレーム毎ユニフォームデータ
@@ -104,8 +104,8 @@ struct ParticleUniforms {
 /// パーティクルレンダー頂点シェーダー用のフレーム毎ユニフォームデータ (96 バイト)
 struct ParticleRenderUniforms {
     var viewProjection: float4x4
-    var cameraRight: SIMD4<Float>    // xyz を使用
-    var cameraUp: SIMD4<Float>       // xyz を使用
+    var cameraRight: SIMD4<Float>  // xyz を使用
+    var cameraUp: SIMD4<Float>  // xyz を使用
 }
 
 // MARK: - ParticleSystem
@@ -241,7 +241,8 @@ public final class ParticleSystem {
         // ダブルバッファリングパーティクルデータ
         let bufferSize = MemoryLayout<Particle>.stride * count
         guard let a = device.makeBuffer(length: bufferSize, options: .storageModeShared),
-              let b = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
+            let b = device.makeBuffer(length: bufferSize, options: .storageModeShared)
+        else {
             throw MetaphorError.particle(.bufferCreationFailed)
         }
         self.bufferA = a
@@ -252,43 +253,51 @@ public final class ParticleSystem {
         memset(b.contents(), 0, bufferSize)
 
         // パーティクル更新用コンピュートパイプライン
-        guard let updateFn = shaderLibrary.function(
-            named: ParticleShaders.FunctionName.update,
-            from: ShaderLibrary.BuiltinKey.particle
-        ) else {
+        guard
+            let updateFn = shaderLibrary.function(
+                named: ParticleShaders.FunctionName.update,
+                from: ShaderLibrary.BuiltinKey.particle
+            )
+        else {
             throw MetaphorError.particle(.shaderNotFound(ParticleShaders.FunctionName.update))
         }
         // 生 NSError を漏らさないよう PipelineFactory 経由で作る（エラー契約）
         self.updatePipeline = try PipelineFactory.buildCompute(device: device, function: updateFn)
 
         // 放出制御用アトミックカウンター（更新カーネルが毎フレーム参照する必須リソース）
-        guard let emitCounter = device.makeBuffer(
-            length: MemoryLayout<UInt32>.size, options: .storageModeShared
-        ) else {
+        guard
+            let emitCounter = device.makeBuffer(
+                length: MemoryLayout<UInt32>.size, options: .storageModeShared
+            )
+        else {
             throw MetaphorError.particle(.bufferCreationFailed)
         }
         self.emitCounterBuffer = emitCounter
         emitCounter.label = "metaphor.particle.emitCounter"
         memset(emitCounter.contents(), 0, MemoryLayout<UInt32>.size)
 
-        guard let resetFn = shaderLibrary.function(
-            named: ParticleShaders.FunctionName.resetCounter,
-            from: ShaderLibrary.BuiltinKey.particle
-        ) else {
+        guard
+            let resetFn = shaderLibrary.function(
+                named: ParticleShaders.FunctionName.resetCounter,
+                from: ShaderLibrary.BuiltinKey.particle
+            )
+        else {
             throw MetaphorError.particle(.shaderNotFound(ParticleShaders.FunctionName.resetCounter))
         }
         self.counterResetPipeline = try PipelineFactory.buildCompute(
             device: device, function: resetFn)
 
         // レンダーパイプライン（頂点デスクリプタなし: バッファから直接読み取り）
-        guard let vertexFn = shaderLibrary.function(
-            named: ParticleShaders.FunctionName.vertex,
-            from: ShaderLibrary.BuiltinKey.particle
-        ),
-              let fragmentFn = shaderLibrary.function(
-            named: ParticleShaders.FunctionName.fragment,
-            from: ShaderLibrary.BuiltinKey.particle
-        ) else {
+        guard
+            let vertexFn = shaderLibrary.function(
+                named: ParticleShaders.FunctionName.vertex,
+                from: ShaderLibrary.BuiltinKey.particle
+            ),
+            let fragmentFn = shaderLibrary.function(
+                named: ParticleShaders.FunctionName.fragment,
+                from: ShaderLibrary.BuiltinKey.particle
+            )
+        else {
             throw MetaphorError.particle(.shaderNotFound("particle vertex/fragment"))
         }
 
@@ -310,24 +319,30 @@ public final class ParticleSystem {
             named: ParticleShaders.FunctionName.compact,
             from: ShaderLibrary.BuiltinKey.particle
         ),
-           let buildArgsFn = shaderLibrary.function(
-            named: ParticleShaders.FunctionName.buildIndirectArgs,
-            from: ShaderLibrary.BuiltinKey.particle
-        ) {
+            let buildArgsFn = shaderLibrary.function(
+                named: ParticleShaders.FunctionName.buildIndirectArgs,
+                from: ShaderLibrary.BuiltinKey.particle
+            )
+        {
             self.compactPipeline = {
-                do { return try device.makeComputePipelineState(function: compactFn) }
-                catch { metaphorWarning("Indirect draw pipeline unavailable (compact): \(error)"); return nil }
+                do { return try device.makeComputePipelineState(function: compactFn) } catch {
+                    metaphorWarning("Indirect draw pipeline unavailable (compact): \(error)")
+                    return nil
+                }
             }()
             self.buildArgsPipeline = {
-                do { return try device.makeComputePipelineState(function: buildArgsFn) }
-                catch { metaphorWarning("Indirect draw pipeline unavailable (buildArgs): \(error)"); return nil }
+                do { return try device.makeComputePipelineState(function: buildArgsFn) } catch {
+                    metaphorWarning("Indirect draw pipeline unavailable (buildArgs): \(error)")
+                    return nil
+                }
             }()
 
             // 生存パーティクル用コンパクトバッファ
             self.compactBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared)
             self.compactBuffer?.label = "metaphor.particle.compact"
             // アトミックカウンターバッファ (4 バイト)
-            self.counterBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.size, options: .storageModeShared)
+            self.counterBuffer = device.makeBuffer(
+                length: MemoryLayout<UInt32>.size, options: .storageModeShared)
             self.counterBuffer?.label = "metaphor.particle.counter"
             // Indirect 引数バッファ (16 バイト)
             self.indirectArgsBuffer = device.makeBuffer(
@@ -400,8 +415,9 @@ public final class ParticleSystem {
         // 放出カウンターをリセットしてから更新カーネルを走らせる
         encoder.setComputePipelineState(counterResetPipeline)
         encoder.setBuffer(emitCounterBuffer, offset: 0, index: 0)
-        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
-                                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
         encoder.memoryBarrier(scope: .buffers)
 
         encoder.setComputePipelineState(updatePipeline)
@@ -440,13 +456,16 @@ public final class ParticleSystem {
     /// 生存パーティクルを連続バッファにコンパクトし、Indirect Draw 引数をビルドします。
     private func compactAliveParticles(encoder: MTLComputeCommandEncoder) {
         guard let compactPipe = compactPipeline,
-              let buildPipe = buildArgsPipeline,
-              let compactBuf = compactBuffer,
-              let counterBuf = counterBuffer,
-              let argsBuf = indirectArgsBuffer else {
+            let buildPipe = buildArgsPipeline,
+            let compactBuf = compactBuffer,
+            let counterBuf = counterBuffer,
+            let argsBuf = indirectArgsBuffer
+        else {
             if !warnedIndirectUnavailable {
                 warnedIndirectUnavailable = true
-                metaphorWarning("ParticleSystem: indirect draw resources unavailable; falling back to standard draw")
+                metaphorWarning(
+                    "ParticleSystem: indirect draw resources unavailable; falling back to standard draw"
+                )
             }
             return
         }
@@ -456,8 +475,9 @@ public final class ParticleSystem {
         // 1) アトミックカウンターをリセット
         encoder.setComputePipelineState(counterResetPipeline)
         encoder.setBuffer(counterBuf, offset: 0, index: 0)
-        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
-                                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
         encoder.memoryBarrier(scope: .buffers)
 
@@ -467,8 +487,9 @@ public final class ParticleSystem {
         encoder.setBuffer(compactBuf, offset: 0, index: 1)
         encoder.setBuffer(counterBuf, offset: 0, index: 2)
         let w = compactPipe.threadExecutionWidth
-        encoder.dispatchThreads(MTLSize(width: count, height: 1, depth: 1),
-                                threadsPerThreadgroup: MTLSize(width: w, height: 1, depth: 1))
+        encoder.dispatchThreads(
+            MTLSize(width: count, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: w, height: 1, depth: 1))
 
         encoder.memoryBarrier(scope: .buffers)
 
@@ -476,8 +497,9 @@ public final class ParticleSystem {
         encoder.setComputePipelineState(buildPipe)
         encoder.setBuffer(counterBuf, offset: 0, index: 0)
         encoder.setBuffer(argsBuf, offset: 0, index: 1)
-        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
-                                threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        encoder.dispatchThreads(
+            MTLSize(width: 1, height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
     }
 
     // MARK: - 描画（レンダーフェーズ）
@@ -508,12 +530,14 @@ public final class ParticleSystem {
             encoder.setDepthStencilState(ds)
         }
         encoder.setRenderPipelineState(renderPipeline)
-        encoder.setVertexBytes(&renderUniforms, length: MemoryLayout<ParticleRenderUniforms>.size, index: 1)
+        encoder.setVertexBytes(
+            &renderUniforms, length: MemoryLayout<ParticleRenderUniforms>.size, index: 1)
 
         if useIndirectDraw,
-           isIndirectDrawReady,
-           let compactBuf = compactBuffer,
-           let argsBuf = indirectArgsBuffer {
+            isIndirectDrawReady,
+            let compactBuf = compactBuffer,
+            let argsBuf = indirectArgsBuffer
+        {
             // Indirect Draw: コンパクト済み生存パーティクルのみレンダリング
             encoder.setVertexBuffer(compactBuf, offset: 0, index: 0)
             encoder.drawPrimitives(
@@ -547,7 +571,9 @@ public final class ParticleSystem {
     // MARK: - プライベートヘルパー
 
     /// パーティクル更新コンピュートカーネル用のユニフォーム構造体をビルドします。
-    private func makeUniforms(deltaTime: Float, time: Float, desiredEmit: UInt32) -> ParticleUniforms {
+    private func makeUniforms(deltaTime: Float, time: Float, desiredEmit: UInt32)
+        -> ParticleUniforms
+    {
         let (emitterType, param1, param2) = emitterParams()
 
         return ParticleUniforms(
@@ -587,35 +613,41 @@ public final class ParticleSystem {
         for force in forces {
             switch force {
             case .gravity(let x, let y, let z):
-                descriptors.append(ForceDescriptor(
-                    typeAndParams: SIMD4(0, x, y, z),
-                    strengthAndExtra: SIMD4(1, 0, 0, 0)
-                ))
+                descriptors.append(
+                    ForceDescriptor(
+                        typeAndParams: SIMD4(0, x, y, z),
+                        strengthAndExtra: SIMD4(1, 0, 0, 0)
+                    ))
             case .attraction(let x, let y, let z, let s):
-                descriptors.append(ForceDescriptor(
-                    typeAndParams: SIMD4(1, x, y, z),
-                    strengthAndExtra: SIMD4(s, 0, 0, 0)
-                ))
+                descriptors.append(
+                    ForceDescriptor(
+                        typeAndParams: SIMD4(1, x, y, z),
+                        strengthAndExtra: SIMD4(s, 0, 0, 0)
+                    ))
             case .repulsion(let x, let y, let z, let s):
-                descriptors.append(ForceDescriptor(
-                    typeAndParams: SIMD4(2, x, y, z),
-                    strengthAndExtra: SIMD4(s, 0, 0, 0)
-                ))
+                descriptors.append(
+                    ForceDescriptor(
+                        typeAndParams: SIMD4(2, x, y, z),
+                        strengthAndExtra: SIMD4(s, 0, 0, 0)
+                    ))
             case .noise(let scale, let strength):
-                descriptors.append(ForceDescriptor(
-                    typeAndParams: SIMD4(3, 0, 0, 0),
-                    strengthAndExtra: SIMD4(strength, scale, 0, 0)
-                ))
+                descriptors.append(
+                    ForceDescriptor(
+                        typeAndParams: SIMD4(3, 0, 0, 0),
+                        strengthAndExtra: SIMD4(strength, scale, 0, 0)
+                    ))
             case .vortex(let x, let y, let z, let s):
-                descriptors.append(ForceDescriptor(
-                    typeAndParams: SIMD4(4, x, y, z),
-                    strengthAndExtra: SIMD4(s, 0, 0, 0)
-                ))
+                descriptors.append(
+                    ForceDescriptor(
+                        typeAndParams: SIMD4(4, x, y, z),
+                        strengthAndExtra: SIMD4(s, 0, 0, 0)
+                    ))
             case .damping(let factor):
-                descriptors.append(ForceDescriptor(
-                    typeAndParams: SIMD4(5, 0, 0, 0),
-                    strengthAndExtra: SIMD4(factor, 0, 0, 0)
-                ))
+                descriptors.append(
+                    ForceDescriptor(
+                        typeAndParams: SIMD4(5, 0, 0, 0),
+                        strengthAndExtra: SIMD4(factor, 0, 0, 0)
+                    ))
             }
         }
 
@@ -633,9 +665,13 @@ public final class ParticleSystem {
         }
 
         // 追加のたびの再確保を避けるため余裕を持って確保（最低 8 個分）
-        let capacityBytes = max(needed, MemoryLayout<ForceDescriptor>.stride * max(descriptors.count * 2, 8))
-        guard let buffer = device.makeBuffer(length: capacityBytes, options: .storageModeShared) else {
-            metaphorWarning("ParticleSystem: Failed to allocate force buffer (\(descriptors.count) descriptors)")
+        let capacityBytes = max(
+            needed, MemoryLayout<ForceDescriptor>.stride * max(descriptors.count * 2, 8))
+        guard let buffer = device.makeBuffer(length: capacityBytes, options: .storageModeShared)
+        else {
+            metaphorWarning(
+                "ParticleSystem: Failed to allocate force buffer (\(descriptors.count) descriptors)"
+            )
             return
         }
         buffer.label = "metaphor.particle.forces"

@@ -46,7 +46,8 @@ public enum JSONValue: Sendable, Equatable {
         do {
             raw = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
         } catch {
-            throw MetaphorError.data(.parseFailed(detail: "invalid JSON: \(error.localizedDescription)"))
+            throw MetaphorError.data(
+                .parseFailed(detail: "invalid JSON: \(error.localizedDescription)"))
         }
         self = Self.fromJSONObject(raw)
     }
@@ -67,7 +68,8 @@ public enum JSONValue: Sendable, Equatable {
         var options: JSONSerialization.WritingOptions = [.fragmentsAllowed, .sortedKeys]
         if pretty { options.insert(.prettyPrinted) }
         // toJSONObject() は JSON 互換値のみを返すため、シリアライズは失敗しない
-        return (try? JSONSerialization.data(withJSONObject: toJSONObject(), options: options)) ?? Data()
+        return (try? JSONSerialization.data(withJSONObject: toJSONObject(), options: options))
+            ?? Data()
     }
 
     private static func fromJSONObject(_ raw: Any) -> JSONValue {
@@ -129,7 +131,8 @@ public enum JSONValue: Sendable, Equatable {
         }
         set {
             guard case .array(var array) = self, array.indices.contains(index) else {
-                metaphorWarning("JSONValue: cannot set index \(index) (not an array or out of bounds)")
+                metaphorWarning(
+                    "JSONValue: cannot set index \(index) (not an array or out of bounds)")
                 return
             }
             array[index] = newValue
@@ -159,7 +162,8 @@ public enum JSONValue: Sendable, Equatable {
     /// 配列でない・範囲外の場合は無視されます（警告のみ）。
     public mutating func remove(at index: Int) {
         guard case .array(var array) = self, array.indices.contains(index) else {
-            metaphorWarning("JSONValue: cannot remove index \(index) (not an array or out of bounds)")
+            metaphorWarning(
+                "JSONValue: cannot remove index \(index) (not an array or out of bounds)")
             return
         }
         array.remove(at: index)
@@ -291,7 +295,8 @@ extension JSONValue: Codable {
         } else if let object = try? container.decode([String: JSONValue].self) {
             self = .object(object)
         } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "unsupported JSON value")
+            throw DecodingError.dataCorruptedError(
+                in: container, debugDescription: "unsupported JSON value")
         }
     }
 

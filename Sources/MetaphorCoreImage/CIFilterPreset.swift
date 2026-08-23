@@ -40,23 +40,36 @@ public enum CIFilterPreset: Sendable {
     /// Applies a kaleidoscope effect.
     case kaleidoscope(count: Int = 6, center: SIMD2<Float>? = nil, angle: Float = 0)
     /// Applies a triangle kaleidoscope effect.
-    case triangleKaleidoscope(point: SIMD2<Float>? = nil, size: Float = 700, rotation: Float = 5.924, decay: Float = 0.85)
+    case triangleKaleidoscope(
+        point: SIMD2<Float>? = nil, size: Float = 700, rotation: Float = 5.924, decay: Float = 0.85)
 
     // MARK: - ジェネレーター（入力画像不要）
 
     /// Generates a checkerboard pattern.
-    case checkerboard(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)
+    case checkerboard(
+        center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black,
+        width: Float = 80, sharpness: Float = 1)
     /// Generates a stripe pattern.
-    case stripes(center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black, width: Float = 80, sharpness: Float = 1)
+    case stripes(
+        center: SIMD2<Float>? = nil, color0: CIColor = .white, color1: CIColor = .black,
+        width: Float = 80, sharpness: Float = 1)
     /// Generates a star-shine effect.
-    case starShine(center: SIMD2<Float>? = nil, color: CIColor = .white, radius: Float = 50, crossScale: Float = 15, crossAngle: Float = 0.6, crossOpacity: Float = -2, crossWidth: Float = 2.5, epsilon: Float = -2)
+    case starShine(
+        center: SIMD2<Float>? = nil, color: CIColor = .white, radius: Float = 50,
+        crossScale: Float = 15, crossAngle: Float = 0.6, crossOpacity: Float = -2,
+        crossWidth: Float = 2.5, epsilon: Float = -2)
     /// Generates a sunbeams effect.
-    case sunbeams(center: SIMD2<Float>? = nil, color: CIColor = .white, sunRadius: Float = 40, maxStriationRadius: Float = 2.58, striationStrength: Float = 0.5, striationContrast: Float = 1.375, time: Float = 0)
+    case sunbeams(
+        center: SIMD2<Float>? = nil, color: CIColor = .white, sunRadius: Float = 40,
+        maxStriationRadius: Float = 2.58, striationStrength: Float = 0.5,
+        striationContrast: Float = 1.375, time: Float = 0)
 
     // MARK: - カラーエフェクト
 
     /// Applies a false-color effect (two-color gradient mapping).
-    case falseColor(color0: CIColor = CIColor(red: 0.3, green: 0, blue: 0), color1: CIColor = CIColor(red: 1, green: 0.9, blue: 0.8))
+    case falseColor(
+        color0: CIColor = CIColor(red: 0.3, green: 0, blue: 0),
+        color1: CIColor = CIColor(red: 1, green: 0.9, blue: 0.8))
     /// Applies a color posterization effect.
     case colorPosterize(levels: Float = 6)
     /// Applies a monochrome photo effect.
@@ -127,15 +140,25 @@ public enum CIFilterPreset: Sendable {
 
         switch self {
         case .twirl(let c, let radius, let angle):
-            return [kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputAngleKey: angle]
+            return [
+                kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputAngleKey: angle,
+            ]
         case .vortex(let c, let radius, let angle):
-            return [kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputAngleKey: angle]
+            return [
+                kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputAngleKey: angle,
+            ]
         case .bump(let c, let radius, let scale):
-            return [kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputScaleKey: scale]
+            return [
+                kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputScaleKey: scale,
+            ]
         case .pinch(let c, let radius, let scale):
-            return [kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputScaleKey: scale]
+            return [
+                kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputScaleKey: scale,
+            ]
         case .circularWrap(let c, let radius, let angle):
-            return [kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputAngleKey: angle]
+            return [
+                kCIInputCenterKey: center(c), kCIInputRadiusKey: radius, kCIInputAngleKey: angle,
+            ]
         case .ciPixellate(let scale):
             return [kCIInputScaleKey: scale]
         case .crystallize(let radius):
@@ -151,22 +174,39 @@ public enum CIFilterPreset: Sendable {
         case .kaleidoscope(let count, let c, let angle):
             return ["inputCount": count, kCIInputCenterKey: center(c), kCIInputAngleKey: angle]
         case .triangleKaleidoscope(let point, let size, let rotation, let decay):
-            return ["inputPoint": point.map { CIVector(x: CGFloat($0.x), y: CGFloat($0.y)) } ?? defaultCenter,
-                    "inputSize": size, "inputRotation": rotation, "inputDecay": decay]
+            return [
+                "inputPoint": point.map { CIVector(x: CGFloat($0.x), y: CGFloat($0.y)) }
+                    ?? defaultCenter,
+                "inputSize": size, "inputRotation": rotation, "inputDecay": decay,
+            ]
         case .checkerboard(let c, let color0, let color1, let w, let sharpness):
-            return [kCIInputCenterKey: center(c), "inputColor0": color0, "inputColor1": color1,
-                    "inputWidth": w, kCIInputSharpnessKey: sharpness]
+            return [
+                kCIInputCenterKey: center(c), "inputColor0": color0, "inputColor1": color1,
+                "inputWidth": w, kCIInputSharpnessKey: sharpness,
+            ]
         case .stripes(let c, let color0, let color1, let w, let sharpness):
-            return [kCIInputCenterKey: center(c), "inputColor0": color0, "inputColor1": color1,
-                    "inputWidth": w, kCIInputSharpnessKey: sharpness]
-        case .starShine(let c, let color, let radius, let crossScale, let crossAngle, let crossOpacity, let crossWidth, let epsilon):
-            return [kCIInputCenterKey: center(c), "inputColor": color, kCIInputRadiusKey: radius,
-                    "inputCrossScale": crossScale, "inputCrossAngle": crossAngle,
-                    "inputCrossOpacity": crossOpacity, "inputCrossWidth": crossWidth, "inputEpsilon": epsilon]
-        case .sunbeams(let c, let color, let sunRadius, let maxStriationRadius, let striationStrength, let striationContrast, let time):
-            return [kCIInputCenterKey: center(c), "inputColor": color, "inputSunRadius": sunRadius,
-                    "inputMaxStriationRadius": maxStriationRadius, "inputStriationStrength": striationStrength,
-                    "inputStriationContrast": striationContrast, kCIInputTimeKey: time]
+            return [
+                kCIInputCenterKey: center(c), "inputColor0": color0, "inputColor1": color1,
+                "inputWidth": w, kCIInputSharpnessKey: sharpness,
+            ]
+        case .starShine(
+            let c, let color, let radius, let crossScale, let crossAngle, let crossOpacity,
+            let crossWidth, let epsilon):
+            return [
+                kCIInputCenterKey: center(c), "inputColor": color, kCIInputRadiusKey: radius,
+                "inputCrossScale": crossScale, "inputCrossAngle": crossAngle,
+                "inputCrossOpacity": crossOpacity, "inputCrossWidth": crossWidth,
+                "inputEpsilon": epsilon,
+            ]
+        case .sunbeams(
+            let c, let color, let sunRadius, let maxStriationRadius, let striationStrength,
+            let striationContrast, let time):
+            return [
+                kCIInputCenterKey: center(c), "inputColor": color, "inputSunRadius": sunRadius,
+                "inputMaxStriationRadius": maxStriationRadius,
+                "inputStriationStrength": striationStrength,
+                "inputStriationContrast": striationContrast, kCIInputTimeKey: time,
+            ]
         case .falseColor(let color0, let color1):
             return ["inputColor0": color0, "inputColor1": color1]
         case .colorPosterize(let levels):

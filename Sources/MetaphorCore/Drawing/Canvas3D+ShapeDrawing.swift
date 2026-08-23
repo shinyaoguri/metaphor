@@ -53,9 +53,11 @@ extension Canvas3D {
     // `Vertex3D`（positionNormalColor）と `Vertex3DTextured`（positionNormalUV）は
     // どちらも 48B stride のため、同じリングをバイト単位で共有します
     // （`Canvas3DShapeUVTests` が stride 一致を固定）。
-    private func bindShapeVertices<V>(_ vertices: [V], on encoder: MTLRenderCommandEncoder) -> Bool {
-        assert(MemoryLayout<V>.stride == MemoryLayout<Vertex3D>.stride,
-               "shapeVertexBuffer は 48B stride の頂点型のみ共有できる")
+    private func bindShapeVertices<V>(_ vertices: [V], on encoder: MTLRenderCommandEncoder) -> Bool
+    {
+        assert(
+            MemoryLayout<V>.stride == MemoryLayout<Vertex3D>.stride,
+            "shapeVertexBuffer は 48B stride の頂点型のみ共有できる")
         let length = MemoryLayout<V>.stride * vertices.count
         if length <= 4096 {
             vertices.withUnsafeBytes { buf in
@@ -72,7 +74,8 @@ extension Canvas3D {
             activeIndex: shapeVertexBufferIndex,
             usedCount: shapeVertexBufferUsed
         ) {
-            let dst = UnsafeMutableRawPointer(shapeVertexBuffer.pointer(for: shapeVertexBufferIndex) + alignedUsed)
+            let dst = UnsafeMutableRawPointer(
+                shapeVertexBuffer.pointer(for: shapeVertexBufferIndex) + alignedUsed)
             vertices.withUnsafeBytes { src in
                 dst.copyMemory(from: src.baseAddress!, byteCount: src.count)
             }
@@ -86,9 +89,12 @@ extension Canvas3D {
         }
         // リングの maxCapacity を超えるフレームのみ、従来の使い捨てバッファへ
         // フォールバック（機能は保つ）
-        guard let buffer = vertices.withUnsafeBytes({ src in
-            device.makeBuffer(bytes: src.baseAddress!, length: length, options: .storageModeShared)
-        }) else {
+        guard
+            let buffer = vertices.withUnsafeBytes({ src in
+                device.makeBuffer(
+                    bytes: src.baseAddress!, length: length, options: .storageModeShared)
+            })
+        else {
             return false
         }
         // コマンドバッファが完了まで buffer を保持するため、ここで参照を手放してよい
@@ -144,15 +150,19 @@ extension Canvas3D {
                 hasTexture: 0
             )
 
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             if lightArray.isEmpty {
                 var dummy = Light3D.zero
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
             } else {
                 lightArray.withUnsafeBufferPointer { ptr in
-                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                    encoder.setFragmentBytes(
+                        ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2
+                    )
                 }
             }
 
@@ -186,8 +196,10 @@ extension Canvas3D {
                 hasTexture: 0
             )
 
-            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             var dummy = Light3D.zero
             encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -215,7 +227,9 @@ extension Canvas3D {
         // drawMesh 側がテクスチャ付きと判定し、シャドウにも落ちる
         // （テクスチャなしの経路と同じ構造・#152 / #826）
         if shouldRouteShapeThroughMesh {
-            if let mesh = try? Mesh(device: device, vertices: vertices, indices: nil, uvVertices: uvVertices) {
+            if let mesh = try? Mesh(
+                device: device, vertices: vertices, indices: nil, uvVertices: uvVertices)
+            {
                 drawMesh(mesh)
             }
             return
@@ -250,15 +264,19 @@ extension Canvas3D {
                 hasTexture: 1
             )
 
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &uniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             if lightArray.isEmpty {
                 var dummy = Light3D.zero
                 encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
             } else {
                 lightArray.withUnsafeBufferPointer { ptr in
-                    encoder.setFragmentBytes(ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2)
+                    encoder.setFragmentBytes(
+                        ptr.baseAddress!, length: ptr.count * MemoryLayout<Light3D>.stride, index: 2
+                    )
                 }
             }
 
@@ -298,8 +316,10 @@ extension Canvas3D {
                 hasTexture: 0
             )
 
-            encoder.setVertexBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
-            encoder.setFragmentBytes(&wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setVertexBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
+            encoder.setFragmentBytes(
+                &wireUniforms, length: MemoryLayout<Canvas3DUniforms>.stride, index: 1)
 
             var dummy = Light3D.zero
             encoder.setFragmentBytes(&dummy, length: MemoryLayout<Light3D>.stride, index: 2)
@@ -347,9 +367,12 @@ extension Canvas3D {
 
         let s: Float = 0.5
         for v in shapeVertices3D {
-            allVerts.append(Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
-            allVerts.append(Vertex3D(position: v.position + SIMD3( s, -s, 0), normal: v.normal, color: v.color))
-            allVerts.append(Vertex3D(position: v.position + SIMD3( 0,  s, 0), normal: v.normal, color: v.color))
+            allVerts.append(
+                Vertex3D(position: v.position + SIMD3(-s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(
+                Vertex3D(position: v.position + SIMD3(s, -s, 0), normal: v.normal, color: v.color))
+            allVerts.append(
+                Vertex3D(position: v.position + SIMD3(0, s, 0), normal: v.normal, color: v.color))
         }
 
         drawShape3DVertices(allVerts)

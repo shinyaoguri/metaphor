@@ -1,8 +1,9 @@
-import Testing
 import Metal
-import simd
-@testable import MetaphorCore
 import MetaphorTestSupport
+import Testing
+import simd
+
+@testable import MetaphorCore
 
 @Suite("GrowableGPUBuffer", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
@@ -53,13 +54,14 @@ struct GrowableGPUBufferTests {
         let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 1024)
         let result = buf.ensureCapacity(512, activeIndex: 0, usedCount: 0)
         #expect(result == true)
-        #expect(buf.capacity == 1024) // no growth
+        #expect(buf.capacity == 1024)  // no growth
     }
 
     @Test("ensureCapacity grows when needed")
     func ensureCapacityGrows() throws {
         let device = MetalTestHelper.device!
-        let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 128, maxCapacity: 10000)
+        let buf = try GrowableGPUBuffer<Float>(
+            device: device, initialCapacity: 128, maxCapacity: 10000)
         let result = buf.ensureCapacity(200, activeIndex: 0, usedCount: 0)
         #expect(result == true)
         #expect(buf.capacity >= 200)
@@ -68,15 +70,17 @@ struct GrowableGPUBufferTests {
     @Test("growth doubles capacity")
     func growthDoubles() throws {
         let device = MetalTestHelper.device!
-        let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 128, maxCapacity: 10000)
+        let buf = try GrowableGPUBuffer<Float>(
+            device: device, initialCapacity: 128, maxCapacity: 10000)
         _ = buf.ensureCapacity(129, activeIndex: 0, usedCount: 0)
-        #expect(buf.capacity == 256) // doubled
+        #expect(buf.capacity == 256)  // doubled
     }
 
     @Test("maxCapacity blocks further growth")
     func maxCapacityBlock() throws {
         let device = MetalTestHelper.device!
-        let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 128, maxCapacity: 200)
+        let buf = try GrowableGPUBuffer<Float>(
+            device: device, initialCapacity: 128, maxCapacity: 200)
         let result = buf.ensureCapacity(300, activeIndex: 0, usedCount: 0)
         #expect(result == false)
     }
@@ -84,7 +88,8 @@ struct GrowableGPUBufferTests {
     @Test("data preserved after growth")
     func dataPreserved() throws {
         let device = MetalTestHelper.device!
-        let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 64, maxCapacity: 10000)
+        let buf = try GrowableGPUBuffer<Float>(
+            device: device, initialCapacity: 64, maxCapacity: 10000)
 
         // Write some data to buffer 0
         let ptr = buf.pointer(for: 0)
@@ -107,7 +112,8 @@ struct GrowableGPUBufferTests {
     @Test("buffer labels are set")
     func bufferLabels() throws {
         let device = MetalTestHelper.device!
-        let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 64, label: "test.buf")
+        let buf = try GrowableGPUBuffer<Float>(
+            device: device, initialCapacity: 64, label: "test.buf")
         #expect(buf.buffer(for: 0).label == "test.buf.0")
         #expect(buf.buffer(for: 1).label == "test.buf.1")
         #expect(buf.buffer(for: 2).label == "test.buf.2")

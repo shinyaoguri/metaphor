@@ -127,7 +127,10 @@ extension Sketch {
     ///       ```
     ///    }
     /// }
-    public func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil) {
+    public func colorMode(
+        _ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil,
+        _ maxA: Float? = nil
+    ) {
         context.colorMode(space, max1, max2, max3, maxA)
     }
 

@@ -105,19 +105,33 @@ struct Canvas3DInstancedTests {
 
     /// 「赤が優勢」「緑が優勢」な画素の個数と平均 x を数えます（陰影があっても色相で判定）。
     private func scanHues(_ image: GoldenImage)
-        -> (red: Int, green: Int, redMeanX: Float, greenMeanX: Float) {
-        var red = 0, green = 0, redSumX = 0, greenSumX = 0
+        -> (red: Int, green: Int, redMeanX: Float, greenMeanX: Float)
+    {
+        var red = 0
+        var green = 0
+        var redSumX = 0
+        var greenSumX = 0
         for y in 0..<image.height {
             for x in 0..<image.width {
                 let i = (y * image.width + x) * 4  // RGBA
-                let r = Int(image.rgba[i]), g = Int(image.rgba[i + 1]), b = Int(image.rgba[i + 2])
-                if r > 40 && r > g * 2 && r > b * 2 { red += 1; redSumX += x }
-                if g > 40 && g > r * 2 && g > b * 2 { green += 1; greenSumX += x }
+                let r = Int(image.rgba[i])
+                let g = Int(image.rgba[i + 1])
+                let b = Int(image.rgba[i + 2])
+                if r > 40 && r > g * 2 && r > b * 2 {
+                    red += 1
+                    redSumX += x
+                }
+                if g > 40 && g > r * 2 && g > b * 2 {
+                    green += 1
+                    greenSumX += x
+                }
             }
         }
-        return (red, green,
-                red > 0 ? Float(redSumX) / Float(red) : 0,
-                green > 0 ? Float(greenSumX) / Float(green) : 0)
+        return (
+            red, green,
+            red > 0 ? Float(redSumX) / Float(red) : 0,
+            green > 0 ? Float(greenSumX) / Float(green) : 0
+        )
     }
 
     // MARK: - 手書きループとの同値性
@@ -163,12 +177,18 @@ struct Canvas3DInstancedTests {
 
         let loop = try render { c, mesh in
             setupScene(c)
-            c.pushMatrix(); c.translate(64, 64, 0); c.mesh(other); c.popMatrix()
+            c.pushMatrix()
+            c.translate(64, 64, 0)
+            c.mesh(other)
+            c.popMatrix()
             drawByLoop(c, mesh)
         }
         let instanced = try render { c, mesh in
             setupScene(c)
-            c.pushMatrix(); c.translate(64, 64, 0); c.mesh(other); c.popMatrix()
+            c.pushMatrix()
+            c.translate(64, 64, 0)
+            c.mesh(other)
+            c.popMatrix()
             c.drawInstanced(mesh, transforms: Self.transforms)
         }
 
@@ -207,15 +227,17 @@ struct Canvas3DInstancedTests {
 
         let image = try render { c, mesh in
             setupScene(c)
-            c.drawInstanced(mesh, transforms: [left, right],
-                            colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
+            c.drawInstanced(
+                mesh, transforms: [left, right],
+                colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
         }
 
         let scan = scanHues(image)
         #expect(scan.red > 50, "1 つ目のインスタンスが赤で塗られていない（red=\(scan.red)）")
         #expect(scan.green > 50, "2 つ目のインスタンスが緑で塗られていない（green=\(scan.green)）")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "色がインスタンスと対応していない（redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)）")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "色がインスタンスと対応していない（redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)）")
     }
 
     @Test("colors が transforms より短いとき、不足分は現在の fill 色になる")
@@ -225,16 +247,18 @@ struct Canvas3DInstancedTests {
 
         let image = try render { c, mesh in
             setupScene(c)
-            c.fill(Color(r: 0, g: 1, b: 0))                       // 不足分に使われる色
-            c.drawInstanced(mesh, transforms: [left, right],
-                            colors: [Color(r: 1, g: 0, b: 0)])    // 1 つ分しか無い
+            c.fill(Color(r: 0, g: 1, b: 0))  // 不足分に使われる色
+            c.drawInstanced(
+                mesh, transforms: [left, right],
+                colors: [Color(r: 1, g: 0, b: 0)])  // 1 つ分しか無い
         }
 
         let scan = scanHues(image)
         #expect(scan.red > 50, "colors[0] が効いていない（red=\(scan.red)）")
         #expect(scan.green > 50, "不足分が現在の fill 色になっていない（green=\(scan.green)）")
-        #expect(scan.redMeanX < scan.greenMeanX,
-                "不足分が別のインスタンスに割り当たっている（redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)）")
+        #expect(
+            scan.redMeanX < scan.greenMeanX,
+            "不足分が別のインスタンスに割り当たっている（redMeanX=\(scan.redMeanX), greenMeanX=\(scan.greenMeanX)）")
     }
 
     @Test("colors が transforms より長いとき、余りは無視される")
@@ -246,9 +270,12 @@ struct Canvas3DInstancedTests {
         }
         let withExtras = try render { c, mesh in
             setupScene(c)
-            c.drawInstanced(mesh, transforms: only,
-                            colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0),
-                                     Color(r: 0, g: 0, b: 1)])
+            c.drawInstanced(
+                mesh, transforms: only,
+                colors: [
+                    Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0),
+                    Color(r: 0, g: 0, b: 1),
+                ])
         }
 
         let comparison = withExtras.compare(to: expected)
@@ -272,54 +299,55 @@ struct Canvas3DInstancedTests {
         }
 
         #expect(nonBlackCount(loop) > 50, "基準側に stroke が出ていない（nonBlack=\(nonBlackCount(loop))）")
-        #expect(instanced.compare(to: loop).isIdentical,
-                "stroke 経路で不一致: \(instanced.compare(to: loop).summary)")
+        #expect(
+            instanced.compare(to: loop).isIdentical,
+            "stroke 経路で不一致: \(instanced.compare(to: loop).summary)")
     }
 
     // MARK: - カスタム頂点シェーダー（イミディエイトへのフォールバック）
 
     /// 頂点カラーをそのまま出す最小のカスタム頂点 + フラグメントシェーダー。
     private static let customShaderSource = """
-    #include <metal_stdlib>
-    using namespace metal;
+        #include <metal_stdlib>
+        using namespace metal;
 
-    \(BuiltinShaders.canvas3DStructs)
+        \(BuiltinShaders.canvas3DStructs)
 
-    struct InstancedTestVertexIn {
-        float3 position [[attribute(0)]];
-        float3 normal   [[attribute(1)]];
-        float4 color    [[attribute(2)]];
-    };
+        struct InstancedTestVertexIn {
+            float3 position [[attribute(0)]];
+            float3 normal   [[attribute(1)]];
+            float4 color    [[attribute(2)]];
+        };
 
-    struct InstancedTestVertexOut {
-        float4 position [[position]];
-        float3 worldPosition;
-        float3 normal;
-        float4 color;
-    };
+        struct InstancedTestVertexOut {
+            float4 position [[position]];
+            float3 worldPosition;
+            float3 normal;
+            float4 color;
+        };
 
-    vertex InstancedTestVertexOut instancedTestVertex(
-        InstancedTestVertexIn in [[stage_in]],
-        constant Canvas3DUniforms &uniforms [[buffer(1)]]
-    ) {
-        InstancedTestVertexOut out;
-        float4 worldPos = uniforms.modelMatrix * float4(in.position, 1.0);
-        out.worldPosition = worldPos.xyz;
-        out.position = uniforms.viewProjectionMatrix * worldPos;
-        out.normal = (uniforms.normalMatrix * float4(in.normal, 0.0)).xyz;
-        out.color = in.color * uniforms.color;
-        return out;
-    }
+        vertex InstancedTestVertexOut instancedTestVertex(
+            InstancedTestVertexIn in [[stage_in]],
+            constant Canvas3DUniforms &uniforms [[buffer(1)]]
+        ) {
+            InstancedTestVertexOut out;
+            float4 worldPos = uniforms.modelMatrix * float4(in.position, 1.0);
+            out.worldPosition = worldPos.xyz;
+            out.position = uniforms.viewProjectionMatrix * worldPos;
+            out.normal = (uniforms.normalMatrix * float4(in.normal, 0.0)).xyz;
+            out.color = in.color * uniforms.color;
+            return out;
+        }
 
-    fragment float4 instancedTestFragment(
-        InstancedTestVertexOut in [[stage_in]],
-        constant Canvas3DUniforms &uniforms [[buffer(1)]],
-        constant Light3D *lights [[buffer(2)]],
-        constant Material3D &material [[buffer(3)]]
-    ) {
-        return in.color;
-    }
-    """
+        fragment float4 instancedTestFragment(
+            InstancedTestVertexOut in [[stage_in]],
+            constant Canvas3DUniforms &uniforms [[buffer(1)]],
+            constant Light3D *lights [[buffer(2)]],
+            constant Material3D &material [[buffer(3)]]
+        ) {
+            return in.color;
+        }
+        """
 
     @Test("カスタム頂点シェーダーではイミディエイトに落ちても全インスタンスが描かれる")
     func customVertexShaderFallbackMatchesLoop() throws {
@@ -337,22 +365,27 @@ struct Canvas3DInstancedTests {
             }
             c.material(material)
             if instanced {
-                c.drawInstanced(mesh, transforms: Self.transforms,
-                                colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
+                c.drawInstanced(
+                    mesh, transforms: Self.transforms,
+                    colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
             } else {
                 drawByLoop(c, mesh, colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
             }
             c.noMaterial()
             c.fill(Color(r: 0.5, g: 0.5, b: 1))
-            c.pushMatrix(); c.translate(64, 12, 0); c.mesh(mesh); c.popMatrix()
+            c.pushMatrix()
+            c.translate(64, 12, 0)
+            c.mesh(mesh)
+            c.popMatrix()
         }
 
         let loop = try render { c, mesh in scene(c, mesh, instanced: false) }
         let instanced = try render { c, mesh in scene(c, mesh, instanced: true) }
 
         #expect(nonBlackCount(loop) > 100, "基準側が何も描けていない（nonBlack=\(nonBlackCount(loop))）")
-        #expect(instanced.compare(to: loop).isIdentical,
-                "カスタム頂点シェーダー経路で不一致: \(instanced.compare(to: loop).summary)")
+        #expect(
+            instanced.compare(to: loop).isIdentical,
+            "カスタム頂点シェーダー経路で不一致: \(instanced.compare(to: loop).summary)")
     }
 }
 
@@ -378,7 +411,10 @@ struct Canvas3DInstancedRecordingTests {
         let mesh = try Mesh.box(device: renderer.device, width: 10, height: 10, depth: 10)
         canvas3D.commandRecordEnabled = true
         var seq: UInt32 = 0
-        canvas3D.seqProvider = { seq += 1; return seq }
+        canvas3D.seqProvider = {
+            seq += 1
+            return seq
+        }
         canvas3D.begin(encoder: nil, time: 0)
         return (canvas3D, mesh)
     }
@@ -386,12 +422,13 @@ struct Canvas3DInstancedRecordingTests {
     @Test("N インスタンスは 1 つの seq と 1 つのスナップショットを共有する")
     func sharesSeqAndSnapshot() throws {
         let (canvas3D, mesh) = try recordingCanvas()
-        canvas3D.mesh(mesh)                                          // 先行する通常描画（seq=1）
-        canvas3D.drawInstanced(mesh, transforms: Self.transforms)    // ここは全部 seq=2
+        canvas3D.mesh(mesh)  // 先行する通常描画（seq=1）
+        canvas3D.drawInstanced(mesh, transforms: Self.transforms)  // ここは全部 seq=2
 
         let calls = canvas3D.recordedDrawCalls
-        #expect(calls.count == 1 + Self.transforms.count,
-                "インスタンス数だけ記録されていない（count=\(calls.count)）")
+        #expect(
+            calls.count == 1 + Self.transforms.count,
+            "インスタンス数だけ記録されていない（count=\(calls.count)）")
 
         let instanced = Array(calls.dropFirst())
         let seqs = Set(instanced.map(\.seq))
@@ -399,8 +436,9 @@ struct Canvas3DInstancedRecordingTests {
         #expect(seqs.first != calls[0].seq, "先行する描画と seq が混ざっている")
 
         let snapshots = instanced.map(\.stateSnapshot)
-        #expect(snapshots.allSatisfy { $0 != nil && $0 === snapshots[0] },
-                "スナップショットがインスタンス間で共有されていない")
+        #expect(
+            snapshots.allSatisfy { $0 != nil && $0 === snapshots[0] },
+            "スナップショットがインスタンス間で共有されていない")
     }
 
     @Test("記録される transform は 現在の変換行列 × transforms[i]")
@@ -413,8 +451,9 @@ struct Canvas3DInstancedRecordingTests {
         let calls = canvas3D.recordedDrawCalls
         #expect(calls.count == Self.transforms.count)
         for (i, call) in calls.enumerated() {
-            #expect(call.transform == base * Self.transforms[i],
-                    "インスタンス \(i) の変換が currentTransform と合成されていない")
+            #expect(
+                call.transform == base * Self.transforms[i],
+                "インスタンス \(i) の変換が currentTransform と合成されていない")
         }
     }
 
@@ -422,12 +461,14 @@ struct Canvas3DInstancedRecordingTests {
     func recordsPerInstanceColors() throws {
         let (canvas3D, mesh) = try recordingCanvas()
         canvas3D.fillColor = SIMD4(0, 0, 1, 1)
-        canvas3D.drawInstanced(mesh, transforms: Self.transforms,
-                               colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
+        canvas3D.drawInstanced(
+            mesh, transforms: Self.transforms,
+            colors: [Color(r: 1, g: 0, b: 0), Color(r: 0, g: 1, b: 0)])
 
         let colors = canvas3D.recordedDrawCalls.map(\.fillColor)
-        #expect(colors == [SIMD4(1, 0, 0, 1), SIMD4(0, 1, 0, 1), SIMD4(0, 0, 1, 1)],
-                "colors の割り当てが違う（colors=\(colors)）")
+        #expect(
+            colors == [SIMD4(1, 0, 0, 1), SIMD4(0, 1, 0, 1), SIMD4(0, 0, 1, 1)],
+            "colors の割り当てが違う（colors=\(colors)）")
     }
 
     @Test("空の transforms・noFill + noStroke は 1 件も記録しない")
@@ -450,8 +491,9 @@ struct Canvas3DInstancedRecordingTests {
         let base = canvas3D.currentTransform
         let fill = canvas3D.fillColor
 
-        canvas3D.drawInstanced(mesh, transforms: Self.transforms,
-                               colors: [Color(r: 1, g: 0, b: 0)])
+        canvas3D.drawInstanced(
+            mesh, transforms: Self.transforms,
+            colors: [Color(r: 1, g: 0, b: 0)])
 
         #expect(canvas3D.currentTransform == base, "currentTransform が汚れている")
         #expect(canvas3D.fillColor == fill, "fillColor が汚れている")

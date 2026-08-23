@@ -59,7 +59,8 @@ public final class ParameterStore {
         for current in mirrors.reversed() {
             for child in current.children {
                 guard let param = child.value as? AnyParam else { continue }
-                let fallback = (child.label ?? "").hasPrefix("_")
+                let fallback =
+                    (child.label ?? "").hasPrefix("_")
                     ? String((child.label ?? "").dropFirst())
                     : (child.label ?? "")
                 register(param, name: param.explicitName ?? fallback)
@@ -185,7 +186,8 @@ public final class ParameterStore {
             }
             let descriptor = param.descriptor(name: entry.name)
             if let choices = descriptor.choices, case .string(let s) = entry.value,
-               !choices.contains(s) {
+                !choices.contains(s)
+            {
                 metaphorDiagnostic("params: choices に無い永続値を破棄しました: \(entry.name)=\(s)")
                 continue
             }

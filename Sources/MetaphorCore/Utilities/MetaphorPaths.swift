@@ -42,7 +42,8 @@ enum MetaphorPaths {
         environment: [String: String], currentDirectory: String
     ) -> String {
         guard let raw = environment[stateDirectoryEnvironmentKey],
-              !raw.trimmingCharacters(in: .whitespaces).isEmpty else {
+            !raw.trimmingCharacters(in: .whitespaces).isEmpty
+        else {
             return currentDirectory
         }
         let expanded = NSString(string: raw).expandingTildeInPath

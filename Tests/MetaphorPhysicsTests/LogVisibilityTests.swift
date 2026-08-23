@@ -1,5 +1,6 @@
 import MetaphorLog
 import Testing
+
 @testable import MetaphorPhysics
 
 /// Core 非依存（Tier 1）のモジュールからも共通の診断ログを使えること（Issue #805）。
