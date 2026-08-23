@@ -130,6 +130,12 @@ check-binary-targets:
 # 型を symbol graph が解決するため）。Syphon の framework 探索（-F）は metaphor-syphon へ
 # 移った（#792 / ADR-0014）。
 #
+# 抽出の前にディレクトリごと捨てるのは、swift-symbolgraph-extract が既存ファイルを上書き
+# するだけで消さないため。Package から消えたモジュールの symbol graph が残り続け、llms.txt
+# に消えたはずの節が復活し、DocC にも消えたページが混ざる（#1058。M4 / #1040 で Syphon が
+# root manifest から外れたあとに実際に起きた）。抽出は元から毎回全モジュールを回すので、
+# 増える手間はディレクトリ 1 つの削除だけで所要時間は実質変わらない。
+#
 # 説明をレシピの外（この位置）に置いているのは 2 つの理由による。レシピ本体は `\` 継続行の
 # ひとかたまりなので、途中に `#` を挟むと以降が丸ごとシェルコメントに飲まれる。加えて
 # scripts/validate-ai-docs.sh が `awk '/^symbol-graphs:/,/^# Generate llms.txt/'` で
@@ -137,6 +143,7 @@ check-binary-targets:
 # 語彙を増やすと網羅判定が鈍る。下の `# Generate llms.txt` は境界なので消さないこと。
 symbol-graphs: build
 	@echo "Extracting symbol graphs..."
+	@rm -rf .build/symbol-graphs
 	@mkdir -p .build/symbol-graphs
 	@SDK_PATH="$$(xcrun --show-sdk-path)"; \
 	export SDK_PATH; \

@@ -6,7 +6,8 @@
 #   2. Module names referenced match Package.swift library products
 #   3. Swift source files referenced exist under Sources/
 #   4. Example directories referenced exist
-#   5. Makefile symbol-graphs extracts every library product
+#   5. Makefile symbol-graphs extracts every library product, and clears
+#      stale output first
 #   6. SPM dependency snippets use the stable version from README.md
 #   7. Generated examples index is up to date
 #   8. Example counts written in prose match the generated index
@@ -135,6 +136,16 @@ for mod in $pkg_modules; do
         fail "symbol-graphs missing $mod from Package.swift products"
     fi
 done
+
+# A module dropped from Package.swift leaves its symbol graph behind unless the
+# output directory is cleared, and the stale file then resurrects the module in
+# llms.txt and DocC. CI always starts from an empty .build, so only a local
+# regeneration would show it (Issue #1058) — guard the line here instead.
+if printf '%s\n' "$symbol_graph_block" | grep -qE 'rm -rf[[:space:]]+\.build/symbol-graphs'; then
+    pass "symbol-graphs clears stale output before extracting"
+else
+    fail "symbol-graphs does not remove .build/symbol-graphs before extracting"
+fi
 
 # --------------------------------------------------------------------------
 # 6. SPM dependency snippet versions
