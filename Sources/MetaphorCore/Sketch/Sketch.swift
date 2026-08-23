@@ -276,6 +276,15 @@ public struct SketchConfig: Sendable {
     /// 再コンパイルせずに App Nap を許可することもできます（環境変数が優先）。
     public var preventAppNap: Bool
 
+    /// ヘッドレス（オフスクリーン）実行中であることをどこに出すか（既定 ``HeadlessIndicator/menuBar``）。
+    ///
+    /// ヘッドレス起動（`METAPHOR_VIEWER=1`）はウィンドウを持たないため、何も出さないと
+    /// 走っているのか・どう止めるのかが分かりません。既定ではメニューバーに状態項目を出し、
+    /// そこからスケッチ名・PID・実測 fps・出力先を読み、プロセスを終了できます。
+    /// 環境変数 `METAPHOR_HEADLESS_INDICATOR`（`menubar` / `dock` / `both` / `none`）が
+    /// 優先されます。ウィンドウを持つ通常実行には影響しません。
+    public var headlessIndicator: HeadlessIndicator
+
     /// MSAA（マルチサンプルアンチエイリアス）のサンプル数（既定 `4`）。
     ///
     /// `1`（無効）/ `2` / `4` / `8` を指定します。デバイスが対応しないサンプル数は
@@ -331,6 +340,7 @@ public struct SketchConfig: Sendable {
     ///   - fullScreen: フルスクリーンモードで起動するかどうか。
     ///   - renderLoopMode: レンダーループモード（デフォルト: `.displayLink`）。
     ///   - preventAppNap: スケッチ実行中に App Nap を抑止するか（デフォルト: `true`）。
+    ///   - headlessIndicator: ヘッドレス実行中であることをどこに出すか（デフォルト: `.menuBar`）。
     ///   - msaa: MSAA サンプル数（デフォルト: `4`。`1` で無効、非対応値は `1` にフォールバック）。
     ///   - preserveClock: リロードをまたいで `frameCount` / `time` を復元するか（デフォルト: `false`）。
     ///   - shaderHotReload: シェーダファイルの自動リロード（デフォルト: DEBUG ビルドで `true`）。
@@ -344,6 +354,7 @@ public struct SketchConfig: Sendable {
         fullScreen: Bool = false,
         renderLoopMode: RenderLoopMode = .displayLink,
         preventAppNap: Bool = true,
+        headlessIndicator: HeadlessIndicator = .menuBar,
         msaa: Int = 4,
         preserveClock: Bool = false,
         shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault,
@@ -357,6 +368,7 @@ public struct SketchConfig: Sendable {
         self.fullScreen = fullScreen
         self.renderLoopMode = renderLoopMode
         self.preventAppNap = preventAppNap
+        self.headlessIndicator = headlessIndicator
         self.msaa = msaa
         self.preserveClock = preserveClock
         self.shaderHotReload = shaderHotReload

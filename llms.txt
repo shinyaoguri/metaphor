@@ -776,6 +776,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `var fps: Int` -- 目標フレームレート。
 - `var fullScreen: Bool` -- フルスクリーンモードで起動するかどうか。
+- `var headlessIndicator: HeadlessIndicator` -- ヘッドレス（オフスクリーン）実行中であることをどこに出すか（既定 `HeadlessIndicator/menuBar`）。
 - `var height: Int` -- オフスクリーンテクスチャの高さ（ピクセル単位）。
 - `var msaa: Int` -- MSAA（マルチサンプルアンチエイリアス）のサンプル数（既定 `4`）。
 - `var plugins: [PluginFactory]` -- スケッチセットアップ時に登録するプラグインファクトリ。
@@ -787,7 +788,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var title: String` -- ウィンドウタイトル。
 - `var width: Int` -- オフスクリーンテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウサイズのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
-- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, msaa: Int = 4, preserveClock: Bool = false, shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
+- `init(width: Int = 1920, height: Int = 1080, title: String = "metaphor", fps: Int = 60, windowScale: Float = 0.5, fullScreen: Bool = false, renderLoopMode: RenderLoopMode = .displayLink, preventAppNap: Bool = true, headlessIndicator: HeadlessIndicator = .menuBar, msaa: Int = 4, preserveClock: Bool = false, shaderHotReload: Bool = SketchConfig.shaderHotReloadDefault, plugins: [PluginFactory] = [])` -- 新しいスケッチ設定を作成します。
 
 ### `struct SketchPerformance` -- スケッチ自身が読める実行時パフォーマンスの一式（Issue #692）。
   - Note: 採取にコストがある項目（`memoryMB` / `cpuPercent` は syscall）は最短 0.5 秒間隔でしか更新されません。毎フレーム読んでも syscall は増えません。
@@ -980,6 +981,16 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case diagonal` -- 左上から右下へ斜めにグラデーションを適用。
 - `case horizontal` -- 左から右へグラデーションを適用。
 - `case vertical` -- 上から下へグラデーションを適用。
+
+### `enum HeadlessIndicator` -- ヘッドレス（オフスクリーン）実行中であることを、どこに出すか。
+
+- `case both` -- メニューバーと Dock の両方に出す。
+- `case dock` -- Dock にアイコンを出す。
+- `case hidden` -- どこにも出さない（従来の挙動）。
+- `case menuBar` -- メニューバーに状態項目を出す（既定）。
+- `var hashValue: Int { get }`
+- `init?(rawValue: String)`
+- `func hash(into hasher: inout Hasher)`
 
 ### `enum ImageFilter` -- MImage ピクセル配列に対する CPU ベースのフィルタ操作を提供します。
 

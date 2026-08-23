@@ -1,5 +1,6 @@
 import AppKit
 import MetalKit
+import QuartzCore
 
 /// スケッチのライフサイクルを管理します。
 ///
@@ -29,6 +30,15 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// 環境変数 `METAPHOR_VIEWER=1` で有効化され、metaphor-cli のライブビューアが
     /// 子プロセスとしてスケッチを実行する際に利用します。
     private var isHeadless = false
+
+    /// ヘッドレス実行中であることを示すメニューバーの状態項目（出さない設定なら `nil`）。
+    private var headlessStatusItem: HeadlessStatusItem?
+
+    /// 状態項目に出す経過時間の起点（`CACurrentMediaTime()`）。
+    private var headlessIndicatorStart: Double = 0
+
+    /// 状態項目に出す出力先プラグインの識別子（ヘッドレス構成時に確定する）。
+    private var headlessOutputPluginIDs: [String] = []
 
     // MARK: - Entry Point
 
@@ -280,6 +290,9 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             ProcessInfo.processInfo.endActivity(activity)
             self.activity = nil
         }
+        // ヘッドレスの状態項目をメニューバーから外す（残すと終了後もアイコンが居座る）。
+        headlessStatusItem?.remove()
+        headlessStatusItem = nil
         // シェーダ監視の DispatchSource を止める（#648）。
         context?.stopShaderHotReload()
         // レンダーループ停止 → プラグイン解放（onStop → onDetach）。
@@ -489,6 +502,33 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         return config.preventAppNap
     }
 
+    /// ヘッドレス実行中であることをどこに出すかを解決します。
+    ///
+    /// 優先順位: 環境変数 `METAPHOR_HEADLESS_INDICATOR`（`menubar` / `dock` / `both` /
+    /// `none`）> ``SketchConfig/headlessIndicator``。ビルド済みのスケッチを再コンパイル
+    /// せずに切り替えるためのスイッチです（`METAPHOR_FPS` と同じ流儀）。解釈できない値は
+    /// 警告を出して設定値へフォールバックします。
+    ///
+    /// - Parameters:
+    ///   - config: スケッチ設定。
+    ///   - env: 参照する環境変数（テストから注入可能）。
+    /// - Returns: 実際に使う指標。
+    nonisolated static func resolveHeadlessIndicator(
+        config: SketchConfig, env: [String: String]
+    ) -> HeadlessIndicator {
+        guard let raw = env["METAPHOR_HEADLESS_INDICATOR"], !raw.isEmpty else {
+            return config.headlessIndicator
+        }
+        guard let parsed = HeadlessIndicator.parse(raw) else {
+            metaphorWarning(
+                "METAPHOR_HEADLESS_INDICATOR=\(raw) is not one of menubar / dock / both / none; "
+                + "using \(config.headlessIndicator.rawValue)"
+            )
+            return config.headlessIndicator
+        }
+        return parsed
+    }
+
     /// シェーダファイルの自動ホットリロードを有効にするか（#648）。
     ///
     /// 環境変数 `METAPHOR_SHADER_HOT_RELOAD` が最優先（`1` で有効・`0` で無効）。
@@ -563,10 +603,17 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     private func configureHeadlessLoop(config: SketchConfig) {
         guard let renderer else { return }
 
-        // Dock / メニューバーに出さない（バックグラウンドのレンダリングプロセス）。
-        NSApp.setActivationPolicy(.accessory)
-
         let env = ProcessInfo.processInfo.environment
+
+        // ウィンドウが無い実行が「どこにも現れない」状態にならないようにする。
+        // 既定はメニューバーの状態項目（Dock は占有しない）で、`.dock` / `.both` を
+        // 選んだときだけ Dock にも出す。項目そのものは出力を取り付けた後に作る
+        // （出力先をメニューに出すため）。
+        let indicator = Self.resolveHeadlessIndicator(config: config, env: env)
+        NSApp.setActivationPolicy(indicator.showsDockIcon ? .regular : .accessory)
+        if indicator.showsDockIcon {
+            installMinimalMainMenu(title: config.title)
+        }
 
         // 出力は provider の走査で決まる。ヘッドレスの観測手段は viewer socket
         // （METAPHOR_VIEWER_SOCKET → ViewerOutputPlugin）/ Probe / 明示の外部出力で、
@@ -575,14 +622,100 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: true)
         )
         attachOutputs(outputs, renderer: renderer, env: env)
+        headlessOutputPluginIDs = outputs.map { $0.plugin.pluginID }
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
         let fps = Self.resolveFPS(config: config, env: env)
         renderer.targetFPS = fps
 
+        if indicator.showsMenuBarItem {
+            installHeadlessStatusItem(config: config)
+        }
+
         // ヘッドレスは常にタイマー駆動（ディスプレイリンクは MTKView 前提のため）。
         // resolveLoopMode(isHeadless: true) も同じ答えを返す（規則は 1 箇所）。
         startTimerLoop(fps: fps)
+    }
+
+    /// ヘッドレス実行中であることを示すメニューバーの状態項目を出します。
+    ///
+    /// 中身はメニューを開いた瞬間に ``headlessSnapshot(config:)`` から作るので、
+    /// 開いていない間はレンダーループに一切触れません。
+    private func installHeadlessStatusItem(config: SketchConfig) {
+        headlessIndicatorStart = CACurrentMediaTime()
+        headlessStatusItem = HeadlessStatusItem(
+            snapshotProvider: { [weak self] in
+                guard let self else { return Self.idleHeadlessSnapshot(config: config) }
+                return self.headlessSnapshot(config: config)
+            },
+            onQuit: { NSApp.terminate(nil) }
+        )
+    }
+
+    /// Dock に出すときだけ、空のメニューバーを避けるための最小限のメニューを組みます。
+    ///
+    /// `NSApplication.ActivationPolicy.regular` はアプリメニューを表示しますが、
+    /// 本ライブラリは `NSApp.mainMenu` をどこでも組んでいないため、何もしないと
+    /// アプリ名すら出ない空のメニューバーになります（⌘Q も効かない）。
+    private func installMinimalMainMenu(title: String) {
+        // AppKit は `.regular` 化の時点で「アプリメニュー 1 枚だけ・中身は空」のメニューを
+        // 用意していることがある（実測）。`nil` かどうかで判定すると、その空メニューを
+        // 本物と見なして ⌘Q すら効かないメニューバーが残るため、**アプリメニューの中身**で
+        // 判定する。
+        guard NSApp.mainMenu?.items.first?.submenu?.items.isEmpty ?? true else { return }
+        let mainMenu = NSMenu()
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu(title: title)
+        appMenu.addItem(
+            withTitle: "Quit \(title)",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        )
+        appItem.submenu = appMenu
+        mainMenu.addItem(appItem)
+        NSApp.mainMenu = mainMenu
+    }
+
+    /// 状態項目に出す現在値を集めます（メニューを開いた瞬間に 1 回だけ）。
+    ///
+    /// 実測 fps は ``FrameRateTracker``、フレーム数は ``SketchContext`` から読むので、
+    /// Probe / ``Sketch/performance`` / PerformanceHUD と同じ値になります。
+    private func headlessSnapshot(config: SketchConfig) -> HeadlessStatusSnapshot {
+        var snapshot = Self.idleHeadlessSnapshot(config: config)
+        guard let renderer else { return snapshot }
+
+        // ライブビューアは接続状態まで出す（親が落ちても子は回り続けるため、
+        // 「誰も見ていない」ことがメニューから読み取れることに意味がある）。
+        let viewer = renderer.plugin(id: ViewerOutputPlugin.id) as? ViewerOutputPlugin
+        snapshot.outputs = headlessOutputPluginIDs.map {
+            HeadlessStatusSnapshot.outputLabel(pluginID: $0, viewerConnected: viewer?.isConnected)
+        }
+        // Probe は出力プラグインではないが、観測者が居るかどうかの一部なので併記する。
+        if renderer.plugin(id: MetaphorProbePlugin.id) != nil {
+            snapshot.outputs.append("Probe")
+        }
+
+        snapshot.targetFPS = renderer.targetFPS
+        snapshot.measuredFPS = renderer.frameRateTracker.windowStats(now: CACurrentMediaTime())?.fps
+        snapshot.frameCount = context?.frameCount ?? 0
+        snapshot.elapsed = CACurrentMediaTime() - headlessIndicatorStart
+        return snapshot
+    }
+
+    /// 設定だけから作れる部分のスナップショット（動的な値は既定のまま）。
+    private static func idleHeadlessSnapshot(config: SketchConfig) -> HeadlessStatusSnapshot {
+        HeadlessStatusSnapshot(
+            title: config.title,
+            version: Metaphor.version,
+            pid: ProcessInfo.processInfo.processIdentifier,
+            width: config.width,
+            height: config.height,
+            targetFPS: config.fps,
+            measuredFPS: nil,
+            frameCount: 0,
+            elapsed: 0,
+            outputs: []
+        )
     }
 
     /// `DispatchSourceTimer` ベースのレンダーループを開始します。
