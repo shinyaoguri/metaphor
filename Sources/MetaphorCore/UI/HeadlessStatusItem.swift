@@ -94,12 +94,23 @@ extension HeadlessStatusSnapshot {
 ///
 /// ``HeadlessIndicator/menuBar`` / ``HeadlessIndicator/both`` のときだけ
 /// ``SketchRunner`` が生成し、終了時に取り外します。中身はメニューを開いた瞬間に
-/// 組み立てるので、開いていない間のコストはゼロです。
+/// 組み立て、開いている間だけ ``refreshFPS`` で更新するので、開いていない間のコストは
+/// ゼロです（プレビューの取り出しも同じ期間だけ動きます）。
 @MainActor
 final class HeadlessStatusItem: NSObject, NSMenuDelegate {
+    /// メニューを開いている間の更新レート（数値・プレビューとも）。
+    private static let refreshFPS = 8.0
+
     private let statusItem: NSStatusItem
     private let snapshotProvider: () -> HeadlessStatusSnapshot
+    private let previewProvider: (() -> CGImage?)?
+    private let setPreviewActive: ((Bool) -> Void)?
+    private let previewSize: NSSize
     private let onQuit: () -> Void
+
+    private var infoItems: [NSMenuItem] = []
+    private var previewView: HeadlessPreviewView?
+    private var refreshTimer: Timer?
 
     /// 状態項目をメニューバーへ出します。
     ///
@@ -109,9 +120,15 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
     ///
     /// - Parameters:
     ///   - snapshotProvider: メニューを開いたときに現在値を返すクロージャ。
+    ///   - previewProvider: 直近のフレームを返すクロージャ（`nil` ならプレビューを出さない）。
+    ///   - previewSize: プレビューの大きさ（ポイント）。
+    ///   - setPreviewActive: プレビューの取り出しを開始 / 停止するクロージャ。
     ///   - onQuit: 「Quit」が選ばれたときの処理。
     init?(
         snapshotProvider: @escaping () -> HeadlessStatusSnapshot,
+        previewProvider: (() -> CGImage?)? = nil,
+        previewSize: NSSize = .zero,
+        setPreviewActive: ((Bool) -> Void)? = nil,
         onQuit: @escaping () -> Void
     ) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -122,6 +139,9 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
         }
         self.statusItem = item
         self.snapshotProvider = snapshotProvider
+        self.previewProvider = previewProvider
+        self.previewSize = previewSize
+        self.setPreviewActive = setPreviewActive
         self.onQuit = onQuit
         super.init()
 
@@ -144,6 +164,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
 
     /// 状態項目をメニューバーから取り外します（終了時の後始末）。
     func remove() {
+        stopRefreshing()
         statusItem.menu = nil
         NSStatusBar.system.removeStatusItem(statusItem)
     }
@@ -154,9 +175,19 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         let snapshot = snapshotProvider()
         menu.removeAllItems()
+        infoItems.removeAll()
+        previewView = nil
 
-        let header = NSMenuItem(title: snapshot.title, action: nil, keyEquivalent: "")
-        menu.addItem(header)
+        menu.addItem(NSMenuItem(title: snapshot.title, action: nil, keyEquivalent: ""))
+
+        if previewProvider != nil, previewSize.width > 0, previewSize.height > 0 {
+            let view = HeadlessPreviewView(previewSize: previewSize)
+            view.image = previewProvider?()
+            let item = NSMenuItem()
+            item.view = view
+            menu.addItem(item)
+            previewView = view
+        }
 
         let font = NSFont.monospacedDigitSystemFont(
             ofSize: NSFont.smallSystemFontSize, weight: .regular
@@ -165,6 +196,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
             let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
             item.attributedTitle = NSAttributedString(string: line, attributes: [.font: font])
             menu.addItem(item)
+            infoItems.append(item)
         }
 
         menu.addItem(.separator())
@@ -175,7 +207,106 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
         menu.addItem(quit)
     }
 
+    /// 開いている間だけ、数値とプレビューを更新し続けます。
+    func menuWillOpen(_ menu: NSMenu) {
+        setPreviewActive?(true)
+        // メニュー追跡中の run loop は `.eventTracking` なので、`.common` で登録しないと
+        // 開いている間だけ止まってしまう（＝いちばん動いてほしいときに動かない）。
+        let timer = Timer(timeInterval: 1.0 / Self.refreshFPS, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        stopRefreshing()
+    }
+
+    // MARK: - Helpers
+
+    /// 開いているメニューの数値とプレビューを差し替えます。
+    private func refresh() {
+        let snapshot = snapshotProvider()
+        let lines = HeadlessStatusSnapshot.menuLines(snapshot)
+        let font = NSFont.monospacedDigitSystemFont(
+            ofSize: NSFont.smallSystemFontSize, weight: .regular
+        )
+        for (item, line) in zip(infoItems, lines) {
+            item.attributedTitle = NSAttributedString(string: line, attributes: [.font: font])
+        }
+        previewView?.image = previewProvider?()
+    }
+
+    /// 更新を止め、プレビューの取り出しも止めます。
+    private func stopRefreshing() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+        setPreviewActive?(false)
+    }
+
     @objc private func quitSelected() {
         onQuit()
+    }
+}
+
+/// メニューの中に置くプレビュー（角丸で切り抜いた最新フレーム）。
+///
+/// まだ 1 枚も撮れていない間は薄い下地だけを描きます。`noLoop()` で止まっている
+/// スケッチは新しいフレームを描かないので、ここは下地のままになります。
+@MainActor
+final class HeadlessPreviewView: NSView {
+    /// 表示する絵。`nil` なら下地だけ。
+    var image: CGImage? {
+        didSet { needsDisplay = true }
+    }
+
+    private static let margin: CGFloat = 14
+    private static let cornerRadius: CGFloat = 4
+
+    init(previewSize: NSSize) {
+        super.init(frame: NSRect(
+            x: 0, y: 0,
+            width: previewSize.width + Self.margin * 2,
+            height: previewSize.height + Self.margin
+        ))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        let rect = NSRect(
+            x: Self.margin,
+            y: Self.margin / 2,
+            width: bounds.width - Self.margin * 2,
+            height: bounds.height - Self.margin
+        )
+        let path = NSBezierPath(roundedRect: rect, xRadius: Self.cornerRadius, yRadius: Self.cornerRadius)
+        NSColor.quaternaryLabelColor.setFill()
+        path.fill()
+
+        guard let image else { return }
+        context.saveGState()
+        path.addClip()
+        // 実行中に解像度が変わっても潰さないよう、絵の側の比率で内接させる。
+        context.draw(image, in: Self.aspectFit(
+            imageWidth: image.width, imageHeight: image.height, into: rect
+        ))
+        context.restoreGState()
+    }
+
+    /// 絵の比率を保ったまま `rect` に内接させます（純関数・テスト対象）。
+    static func aspectFit(imageWidth: Int, imageHeight: Int, into rect: NSRect) -> NSRect {
+        guard imageWidth > 0, imageHeight > 0 else { return rect }
+        let scale = min(rect.width / CGFloat(imageWidth), rect.height / CGFloat(imageHeight))
+        let size = NSSize(width: CGFloat(imageWidth) * scale, height: CGFloat(imageHeight) * scale)
+        return NSRect(
+            x: rect.midX - size.width / 2,
+            y: rect.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
     }
 }
