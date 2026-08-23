@@ -135,9 +135,9 @@ make reference-shots ARGS="--list"                    # 撮影対象を並べる
 | `--compile-only` | per-PR（Sources 変更時） | **doc コメントの例が実際にコンパイルできる** |
 | `scripts/check-image-urls.py` | 週次（`asset-health.yml`） | Gyazo の URL が生きている |
 
-画像そのものは比較しません（CI に GPU が無く、別の GPU・OS で同じバイト列になる保証も
-ないため）。鮮度は台帳 `images/manifest.json` の `snippetHash`（スニペット + 撮影設定の
-指紋）で見ます。
+画像そのものは比較しません（CI に GPU が無く撮影できないため。加えてバイト一致を当てに
+できる範囲も限られます → [ADR-0010 の Amendment 2026-08-23](../adr/0010-tutorial-images-via-gyazo.md#amendment-2026-08-23--再現性で保証する範囲しない範囲)）。
+鮮度は台帳 `images/manifest.json` の `snippetHash`（スニペット + 撮影設定の指紋）で見ます。
 
 **この検査が見ていないもの**: `snippetHash` の材料はスニペットと撮影設定だけで、
 `Sources/` の実装は入りません。**実装だけが変わって絵が変わっても「変わっていない」と
@@ -257,6 +257,12 @@ Gyazo URL が完全に同一だった」という副次的な観察）。だか�
 これが偶然でないことは [#586](https://github.com/shinyaoguri/metaphor/issues/586) で実測
 しました。**同じマシン・同じ実装で撮り直せば、静止画はバイト単位で一致します**（2D・3D・
 ライティング・画像リソースを読むもの、いずれも一致。1 本あたり 1〜2 秒）。
+
+ただし**この性質を当てにできるのは同じマシン・同じ OS の区間の中だけ**です。別のマシン・
+別の GPU・macOS のメジャーアップデートを挟んだ場合は測っていないので保証しません。範囲の
+正典と、環境が変わった後の初回の撮り直しを「基準の張り直し」として扱う規則は
+[ADR-0010 の Amendment 2026-08-23](../adr/0010-tutorial-images-via-gyazo.md#amendment-2026-08-23--再現性で保証する範囲しない範囲)
+にあります。
 
 **動きも一致します**（[#784](https://github.com/shinyaoguri/metaphor/issues/784)）。以前は
 下見を 1 枚撮って `settle` 秒待ってから本番のリクエストを置いていたため、待つあいだに進む

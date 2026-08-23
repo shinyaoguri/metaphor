@@ -66,6 +66,7 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 | 公開 API シグネチャ | [`llms.txt`](../llms.txt)（生成物） |
 | チュートリアルの章立て・執筆規約 | [tutorial/README.md](tutorial/README.md) |
 | リファレンスの実行結果画像の規約 | [reference/README.md](reference/README.md) |
+| 実行結果画像の再現性で保証する範囲・しない範囲 | [adr/0010](adr/0010-tutorial-images-via-gyazo.md) の Amendment 2026-08-23（3 面共通） |
 | 設計判断の根拠 | [adr/](adr/) |
 | 何が公開 API か・何が壊れうるか | [api-stability-policy.md](api-stability-policy.md) |
 | metaphor ⇄ metaphor-cli の契約 | [CONTRACT.md](../CONTRACT.md) と `contract/*.schema.json` |
