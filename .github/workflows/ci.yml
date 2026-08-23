@@ -327,6 +327,15 @@ jobs:
       # ビルド不要なので手前に置く。
       - name: Check doc comment language
         run: python3 scripts/check-doc-comment-language.py
+      # docs/** の相対リンクと ADR 索引の整合（Issue #1044）。docs/adr は append-only で
+      # 相互参照が増え続けるのに、リンクが切れても踏んだ人が現れるまで誰も気付けない
+      # （make docs-check は DocC の警告検査で Markdown を見ない）。#1035 では手元の
+      # 使い捨てスクリプトで代替した。外部 URL は対象外 — ネットワーク依存の flaky を
+      # 持ち込まない（DocC の URL は #987、Gyazo 画像は asset-health.yml が担当）。
+      # 判定規則はスクリプト側が正本（scripts/tests/ にユニットテストがある）。
+      # ビルド不要なので手前に置く。
+      - name: Check docs links
+        run: python3 scripts/check-docs-links.py
       # root manifest に binaryTarget を置かない（#792 / ADR-0014）。使わない product 経由でも
       # 消費者が artifact を download してしまうので、Syphon は metaphor-syphon へ出した。
       # 一時 consumer の resolve を含むが数秒で終わるので build の手前に置く。

@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows lint-python lint-swift format
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check docs-links-check hooks contract-schema lint-workflows lint-python lint-swift format
 
 # Default target
 all: setup build
@@ -172,6 +172,14 @@ llms-txt: symbol-graphs
 ai-docs-check:
 	@./scripts/validate-ai-docs.sh
 
+# Validate relative links in docs/** and the ADR index (Issue #1044)
+#
+# docs/adr は append-only で相互参照が増え続ける一方、リンクが切れても踏んだ人が
+# 現れるまで誰も気付けない。make docs-check は DocC の警告検査で Markdown を見ない。
+# 外部 URL は対象外（ネットワーク依存を持ち込まない）。判定規則はスクリプト側が正本。
+docs-links-check:
+	@python3 scripts/check-docs-links.py
+
 # Validate wire-schema contract (contract/examples/ against contract/*.schema.json).
 # Requires check-jsonschema (pip install check-jsonschema).
 contract-schema:
@@ -331,6 +339,7 @@ help:
 	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
+	@echo "  make docs-links-check - Check relative links in docs/** and the ADR index"
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make lint-python    - Lint scripts/*.py with ruff (same as CI)"
