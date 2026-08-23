@@ -445,6 +445,10 @@
       "en": "Conforms when",
       "ja": "準拠する条件"
     },
+    "28c2f4fe0b1a4fd5fe4fca957e602ada471798c018dec3bfe1a6524d4455a6f5": {
+      "en": "The status can stay ⟦0⟧ while no samples arrive. macOS shows the permission dialog ⟦1⟧ whose ⟦2⟧ carries ⟦3⟧, so a bare executable built by ⟦4⟧ never moves off ⟦5⟧ (the same gap as the camera — Issue #685).",
+      "ja": "⟦0⟧ のままサンプルが来ないことがあります。macOS は ⟦2⟧ に ⟦3⟧ を持つ⟦1⟧許可ダイアログを出さないため、⟦4⟧ で作る素の実行ファイルでは ⟦5⟧ から動きません（カメラと同じ穴。Issue #685）。"
+    },
     "28d4be0b82cc6890305304802d8f0365bc2cd8e5fbc3463cdcda6a18885d8ceb": {
       "en": "Updates analysis data once per frame (call this at the top of ⟦0⟧).",
       "ja": "1 フレームに 1 度、解析のデータを更新します（⟦0⟧ の先頭で呼んでください）。"
@@ -657,6 +661,10 @@
       "en": "Returns the normalized CC value (0.0-1.0).",
       "ja": "正規化した CC の値（0.0〜1.0）を返します。"
     },
+    "3972f79dc689ba1fde7fb8a169133acb62fdd3c7817221dad523a05c8cfe6ec2": {
+      "en": "Restricted, by parental controls or a similar policy.",
+      "ja": "ペアレンタルコントロール等で制限されている。"
+    },
     "3a5bd91941ab45db277c235da2b8a8aeee19132b292419df791e589211100a12": {
       "en": "The result averages ⟦0⟧, which is renormalized every frame against that frame’s loudest bin. It therefore describes how the energy is ⟦1⟧ rather than how loud the input is, and barely moves when the same sound merely gets quieter. Use ⟦2⟧ for level.",
       "ja": "返る値は ⟦0⟧ の平均で、⟦0⟧ はフレームごとにそのフレームで最も大きいビンを基準に正規化し直されます。したがってこの値が表すのは入力の大きさではなくエネルギーの ⟦1⟧ で、同じ音が小さくなっただけではほとんど動きません。音量が知りたいときは ⟦2⟧ を見てください。"
@@ -684,6 +692,10 @@
     "3c60d3cbcd99cc31e668d26a4f78b45e0f5f605b9fa8fa6c9806b2eabcd5b4d0": {
       "en": "Applies a box blur effect.",
       "ja": "ボックスブラー効果を適用します。"
+    },
+    "3c7ecf518589c9f4870e210bdd50b81abc0cd91ea964c6d27849b1d4220d4f75": {
+      "en": "Authorized. Samples flow.",
+      "ja": "許可済み。サンプルが流れる。"
     },
     "3de3e0ea71eb0b38e35226e922b9636438058be7ad1ca38e7b8b078fb1b289e1": {
       "en": "The image width, in pixels.",
@@ -1313,6 +1325,10 @@
       "en": "The list of values to include in the message.",
       "ja": "メッセージに含める値の一覧。"
     },
+    "732a85675f112500e25a2420c9ba219f73aa0c1a316f32aefd4c3a2d715b4f88": {
+      "en": "Whether microphone use is authorized (⟦0⟧ == ⟦1⟧).",
+      "ja": "マイクの使用が許可されているか（⟦0⟧ == ⟦1⟧）。"
+    },
     "734689aaebc46961e1fbd9a228fb9870430aacf1102268fb5be34feea7f88b68": {
       "en": "The seed value of the turbulence.",
       "ja": "乱流のシード値。"
@@ -1732,6 +1748,10 @@
     "9aa1cd1b648c4eccc75ad12cfda5c8f0bfff8d388b4dfab3ad09519e205c8164": {
       "en": "⟦0⟧ is ⟦1⟧.",
       "ja": "⟦0⟧ は ⟦1⟧ です。"
+    },
+    "9ac90e847f4536862bfcd42d39a3771023fda2106b5cb86debf051a9704c1282": {
+      "en": "Mirrors ⟦0⟧ — a dedicated type so that callers are not forced to import AVFoundation.",
+      "ja": "⟦0⟧ をそのまま写したものです（利用側に AVFoundation の import を強いないための独自型）。"
     },
     "9b4f44d1f115fbb898742d2d3df294e8233ba2b8f4fb340a338e3af68c2f5113": {
       "en": "Loading or playing the item failed (e.g. a corrupt file or unsupported codec).",
@@ -2273,6 +2293,10 @@
       "en": "Provides hardware-optimized image filters using Metal Performance Shaders.",
       "ja": "Metal Performance Shaders を使った、ハードウェア最適化済みの画像フィルタを提供します。"
     },
+    "cfd9cd0e221bee3454f6bb5ef3c3e3e87cc68becd4bb48cdf4daf9301732b3d7": {
+      "en": "The user denied access. It has to be changed in System Settings.",
+      "ja": "ユーザーが拒否した。システム設定から変える必要がある。"
+    },
     "cfe12237169963ee9bf55056bed25cb0e2190fcb85d3bd95b6614a5acbe2c300": {
       "en": "Supports multiple noise algorithms (Voronoi, Billow, Ridged, and others), providing both point sampling and texture generation.",
       "ja": "複数のノイズアルゴリズム（Voronoi・Billow・Ridged など）に対応し、点のサンプリングとテクスチャ生成の両方を提供します。"
@@ -2789,6 +2813,10 @@
       "en": "The MSAA sample count (defaults to 1 for post-processing compatibility).",
       "ja": "MSAA のサンプル数（ポストプロセスとの相性のため既定は 1）。"
     },
+    "fbb66a53b9d78effa5b5c40ab5cc0436ef71c3dcc0eadb8a6842844c693e99fc": {
+      "en": "Nobody has answered yet. ⟦0⟧.",
+      "ja": "まだ誰も答えていない。⟦0⟧。"
+    },
     "fc004740cc918082155fc392925895ba1d383c965bfad70ce11762fccf3e0317": {
       "en": "Lacunarity (frequency multiplier between octaves, default is 2.0).",
       "ja": "ラクナリティ（オクターブ間の周波数の倍率。既定は 2.0）。"
@@ -2832,6 +2860,10 @@
     "fef8c44c4f68ce50c90e0813abcc0b8bb424b8c8eccfdb2d140c89b4b7caeb2d": {
       "en": "The root node that produces the graph’s final output.",
       "ja": "グラフの最終出力を作るルートノード。"
+    },
+    "fefc794732d8ae65f9314b2b9547e04ef2c870dba2681807a0f55ea3cc444227": {
+      "en": "The microphone (TCC) authorization status.",
+      "ja": "マイク（TCC）の権限状態。"
     },
     "ff46eb1283287fb0e4a8e65d3ec607d1dd3ec057599283c54a632dd0e3ce7b09": {
       "en": "The upper bound frequency (Hz).",

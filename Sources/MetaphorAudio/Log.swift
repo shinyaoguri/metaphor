@@ -8,12 +8,13 @@ func debugWarning(_ message: @autoclosure () -> String) {
 
 import Foundation
 
-/// **Release ビルドでも必ず** stderr に出す警告。
+/// Writes a warning to stderr **in release builds as well**.
 ///
-/// 「ユーザーのコードは正しいのに、環境の都合で黙って動かない」条件だけに使います
-/// （マイク権限が `.notDetermined` のままサンプルが 1 つも来ない等・Issue #685）。
-/// `debugWarning` は DEBUG 限定なので、Release の `.app` では沈黙してしまいます。
-/// stdout を汚さないよう必ず stderr に書きます。
+/// Use this only for conditions where the user's code is correct but the
+/// environment silently prevents it from working — for example, microphone
+/// access left at `.notDetermined` so not a single sample ever arrives
+/// (Issue #685). `debugWarning` is DEBUG-only and stays silent in a release
+/// `.app`. Always writes to stderr so that stdout stays clean.
 func audioAlert(_ message: @autoclosure () -> String) {
     FileHandle.standardError.write("[MetaphorAudio] Warning: \(message())\n".data(using: .utf8)!)
 }

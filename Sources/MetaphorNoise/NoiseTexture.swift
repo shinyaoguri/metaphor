@@ -3,16 +3,17 @@ import MetaphorCore
 
 /// Builds a Metal texture from an array of noise values.
 enum NoiseTextureBuilder {
-    /// テクスチャを作れる寸法か検証します。
+    /// Validates that a texture of this size can be created.
     ///
-    /// `MTLTextureDescriptor` は範囲外の寸法を `makeTexture` の nil ではなく
-    /// `validateWithDevice:` のアサーションで返すため（プロセスごと落ちる）、
-    /// descriptor を組む前にここで弾きます（#806）。呼び出し元はいずれも
-    /// `MTLTexture?` を返すので、`nil` へ degrade できる。
+    /// `MTLTextureDescriptor` reports an out-of-range size through a
+    /// `validateWithDevice:` assertion rather than a nil result from
+    /// `makeTexture` — which takes the whole process down — so the size is
+    /// rejected here, before the descriptor is built (#806). Every caller
+    /// returns `MTLTexture?`, so they can degrade to `nil`.
     ///
-    /// ``GKNoiseWrapper`` 側は **`sampleGrid` を回す前に**これを呼びます。
-    /// 上限超え（例: 65536 角 = 17GiB 相当）はグリッドを先に確保してしまうと
-    /// ガードへ辿り着く前にメモリを食い尽くすため、順序に意味があります。
+    /// ``GKNoiseWrapper`` calls this **before running `sampleGrid`**. The order
+    /// matters: an over-limit size (65536 square, for instance, is about 17 GiB)
+    /// would exhaust memory while allocating the grid, before reaching the guard.
     static func isValidSize(_ width: Int, _ height: Int, api: String) -> Bool {
         guard width > 0, height > 0,
             width <= TextureManager.maxDimension, height <= TextureManager.maxDimension

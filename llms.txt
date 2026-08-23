@@ -2326,10 +2326,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class AudioAnalyzer` -- Performs FFT analysis and beat detection on microphone or line input.
 
-- `var authorizationStatus: MicrophoneAuthorizationStatus { get }` -- マイク（TCC）の権限状態。
-  - Important: `.notDetermined` のままサンプルが来ないことがあります。macOS は `Info.plist` に `NSMicrophoneUsageDescription` を持つ**バンドル済みアプリにしか** 許可ダイアログを出さないため、`swift run` で作る素の実行ファイルでは `.notDetermined` から動きません（カメラと同じ穴。Issue #685）。
+- `var authorizationStatus: MicrophoneAuthorizationStatus { get }` -- The microphone (TCC) authorization status.
+  - Important: The status can stay `.notDetermined` while no samples arrive. macOS shows the permission dialog **only for bundled apps** whose `Info.plist` carries `NSMicrophoneUsageDescription`, so a bare executable built by `swift run` never moves off `.notDetermined` (the same gap as the camera — Issue #685).
 - `var beatThreshold: Float` -- Beat detection sensitivity (higher values make detection less sensitive).
-- `var isAuthorized: Bool { get }` -- マイクの使用が許可されているか（`authorizationStatus` == `.authorized`）。
+- `var isAuthorized: Bool { get }` -- Whether microphone use is authorized (`authorizationStatus` == `.authorized`).
 - `var isBeat: Bool { get }` -- Beat detection flag (reset on every `update()` call).
 - `var onConfigurationChange: (() -> Void)?` -- Called (on the main thread) when the audio engine's configuration
 - `var rms: Float { get }` -- The unscaled RMS of the current frame (0.0-1.0).
@@ -2360,12 +2360,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var localizedDescription: String { get }` -- Retrieve the localized description for this error.
 - `var recoverySuggestion: String? { get }`
 
-### `enum MicrophoneAuthorizationStatus` -- マイク（TCC）の権限状態。
+### `enum MicrophoneAuthorizationStatus` -- The microphone (TCC) authorization status.
 
-- `case authorized` -- 許可済み。サンプルが流れる。
-- `case denied` -- ユーザーが拒否した。システム設定から変える必要がある。
-- `case notDetermined` -- まだ誰も答えていない。**素の実行ファイルではここから動かない**。
-- `case restricted` -- ペアレンタルコントロール等で制限されている。
+- `case authorized` -- Authorized. Samples flow.
+- `case denied` -- The user denied access. It has to be changed in System Settings.
+- `case notDetermined` -- Nobody has answered yet. **A bare executable never moves off this value**.
+- `case restricted` -- Restricted, by parental controls or a similar policy.
 - `var hashValue: Int { get }`
 - `init(from decoder: any Decoder) throws` -- Creates a new instance by decoding from the given decoder, when the
 - `init?(rawValue: String)`

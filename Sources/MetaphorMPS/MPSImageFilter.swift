@@ -271,21 +271,25 @@ public final class MPSImageFilterWrapper {
 
     // MARK: - プライベート: カーネルサイズのクランプ（#893）
 
-    /// erode / dilate の半径を丸めて、MPS へ渡してよいカーネル幅にします。
+    /// Rounds an erode / dilate radius to a kernel width that is safe to hand to MPS.
     ///
-    /// `radius * 2 + 1` を検証せずに `MPSImageAreaMin` / `MPSImageAreaMax` へ渡すと、
-    /// `throws` でも Optional でも表現できない 2 通りの壊れ方をします（いずれも実測）。
+    /// Passing `radius * 2 + 1` to `MPSImageAreaMin` / `MPSImageAreaMax` without
+    /// validating it breaks in two ways that neither `throws` nor an Optional can
+    /// express (both measured).
     ///
-    /// - **負の半径**: カーネル幅が負のまま `kernelWidth:`（`NSUInteger`）へ渡り、
-    ///   巨大な符号なし値として解釈されます。abort すらせず `waitUntilCompleted()` から
-    ///   二度と戻らないため、`erode(image, radius: -1)` はプロセスごと固まります。
-    /// - **巨大な半径**: `radius * 2 + 1` が `Int` をオーバーフローし、MPS に届く前に
-    ///   Swift の算術トラップ（SIGTRAP）でプロセスが落ちます（`radius: Int.max`）。
+    /// - **Negative radius**: the negative kernel width reaches `kernelWidth:`
+    ///   (an `NSUInteger`) and is read as a huge unsigned value. It does not even
+    ///   abort — `waitUntilCompleted()` never returns, so `erode(image, radius: -1)`
+    ///   hangs the whole process.
+    /// - **Huge radius**: `radius * 2 + 1` overflows `Int` and Swift's arithmetic
+    ///   trap (SIGTRAP) kills the process before MPS is ever reached
+    ///   (`radius: Int.max`).
     ///
-    /// 上限は「テクスチャの長辺 - 1」に置きます。`edgeMode = .clamp` なので、
-    /// 窓 `[x - r, x + r]` が全画素でテクスチャ全体を覆う `r >= max(width, height) - 1` に
-    /// 達した時点で出力は全画素が全体の min / max に飽和し、それ以上 `r` を増やしても
-    /// **絵は 1 ピクセルも変わりません**。よってこのクランプは効きすぎになりません。
+    /// The limit is the texture's longer side minus 1. Because `edgeMode = .clamp`,
+    /// once `r >= max(width, height) - 1` the window `[x - r, x + r]` covers the
+    /// whole texture at every pixel, the output saturates to the global min / max,
+    /// and raising `r` further **does not change a single pixel**. So this clamp
+    /// never cuts into results that would have differed.
     private func clampedAreaRadius(radius: Int, source: MTLTexture, api: String) -> Int {
         let limit = max(0, max(source.width, source.height) - 1)
         let clamped = min(max(radius, 0), limit)
@@ -299,30 +303,34 @@ public final class MPSImageFilterWrapper {
 
     // MARK: - プライベート: 大きな半径の分割適用（#919）
 
-    /// 1 パスで `MPSImageAreaMin` / `MPSImageAreaMax` へ渡してよい最大半径。
+    /// The largest radius that may go to `MPSImageAreaMin` / `MPSImageAreaMax` in one pass.
     ///
-    /// カーネル幅が 483（半径 241）以上になると **GPU のコマンドが完了しなくなります**。
-    /// 実測（macOS 26 / Apple Silicon）では幅 481 = 半径 240 までは 64x64 でも
-    /// 2048x2048 でも 12〜59ms で返り、幅 483 からはテクスチャの大きさに関係なく
-    /// `waitUntilCompleted()` から戻りません（CPU 0% でブロック。abort でもコマンド
-    /// バッファのエラーでもないのでログすら出ない）。#893 のクランプは半径を
-    /// 「長辺 - 1」までしか縮めないので、長辺 242px 以上のキャンバスなら
-    /// **正当な引数のまま**踏めます（`@Param` / OSC から半径を流すと射程内）。
+    /// At a kernel width of 483 (radius 241) or more, **the GPU command stops
+    /// completing**. Measured on macOS 26 / Apple Silicon: up to width 481
+    /// (radius 240) the call returns in 12–59 ms at both 64x64 and 2048x2048;
+    /// from width 483 on, `waitUntilCompleted()` never returns regardless of
+    /// texture size (blocked at 0% CPU — not an abort and not a command buffer
+    /// error, so nothing is even logged). The clamp from #893 only shrinks the
+    /// radius to "longer side - 1", so any canvas whose longer side is 242 px or
+    /// more can reach this **with perfectly valid arguments** (driving the radius
+    /// from `@Param` or OSC puts it in range).
     ///
-    /// 平坦な構造要素の erosion / dilation は分解できます —
-    /// `erode(r1 + r2) == erode(r2) ∘ erode(r1)`。`edgeMode = .clamp` でも成り立ちます
-    /// （clamp は単調かつ冪等なので、2 段で到達できる添字の範囲が 1 段の窓
-    /// `[x - (r1 + r2), x + (r1 + r2)] ∩ [0, W - 1]` と一致するため）。読み戻した画素が
-    /// **ビット単位で一致する**ことは `MPSLargeRadiusSplitTests` が実測で固定しています。
+    /// Erosion and dilation with a flat structuring element decompose:
+    /// `erode(r1 + r2) == erode(r2) ∘ erode(r1)`. This holds under
+    /// `edgeMode = .clamp` too, because clamping is monotone and idempotent, so
+    /// the index range reachable in two steps equals the single-step window
+    /// `[x - (r1 + r2), x + (r1 + r2)] ∩ [0, W - 1]`. That the read-back pixels
+    /// are **bit-for-bit identical** is pinned by `MPSLargeRadiusSplitTests`.
     ///
-    /// 実測の境界 240 のちょうど半分に取り、デバイスや OS で境界が下振れしても
-    /// 届かない位置に置いています。
+    /// The value is exactly half the measured boundary of 240, far enough below
+    /// it that a device or OS with a lower boundary still stays clear.
     private static let maxRadiusPerPass = 120
 
-    /// 半径を 1 パスあたりの上限以下へ分割します。上限以下ならそのまま 1 パス。
+    /// Splits a radius into passes that each stay within the per-pass limit.
     ///
-    /// 端数を最後へ寄せず均すので、よくある半径（1〜20）はこれまでどおり
-    /// `[radius]` の 1 要素が返り、コストも経路も変わりません。
+    /// A radius at or below the limit stays a single pass. The remainder is spread
+    /// evenly instead of being pushed onto the last pass, so common radii (1–20)
+    /// still return the single element `[radius]` — same cost, same code path.
     static func areaRadiusPasses(_ radius: Int) -> [Int] {
         guard radius > maxRadiusPerPass else { return [radius] }
         let count = (radius + maxRadiusPerPass - 1) / maxRadiusPerPass
@@ -331,10 +339,11 @@ public final class MPSImageFilterWrapper {
         return (0..<count).map { base + ($0 < extra ? 1 : 0) }
     }
 
-    /// erode / dilate を、必要なら複数パスに分けてエンコードします。
+    /// Encodes erode / dilate, splitting it across several passes when needed.
     ///
-    /// 半径のクランプ（#893）と分割（#919）が通る**最も内側の共有点**で、
-    /// `erode` / `dilate` / `encodeErode` / `encodeDilate` の 4 つがここを通ります。
+    /// This is the **innermost shared point** that both the radius clamp (#893)
+    /// and the split (#919) pass through; `erode`, `dilate`, `encodeErode` and
+    /// `encodeDilate` all funnel here.
     private func encodeArea(
         commandBuffer: MTLCommandBuffer,
         source: MTLTexture,
@@ -387,12 +396,13 @@ public final class MPSImageFilterWrapper {
         }
     }
 
-    /// median の直径を、奇数かつデバイスが受け付ける範囲へ丸めます。
+    /// Rounds a median diameter to an odd value inside the range the device accepts.
     ///
-    /// `MPSImageMedian` は範囲外の直径を戻り値ではなくアサーションで返す
-    /// （`Kernel diameter (1001) is larger than the supported max median filter
-    /// diameter allowed (127)` で `Abort trap: 6`）ため、`init` へ渡す前に丸めます。
-    /// 上下限はデバイスに問い合わせます（Apple Silicon では 3...127）。
+    /// `MPSImageMedian` reports an out-of-range diameter through an assertion
+    /// rather than a return value (`Kernel diameter (1001) is larger than the
+    /// supported max median filter diameter allowed (127)`, then `Abort trap: 6`),
+    /// so the value is rounded before it reaches `init`. The bounds are queried
+    /// from the device (3...127 on Apple Silicon).
     private static func clampedMedianDiameter(_ diameter: Int) -> Int {
         // 上下限が偶数で返っても範囲から出ないよう、下限は切り上げ・上限は切り下げで奇数にする
         let lower = MPSImageMedian.minKernelDiameter() | 1
