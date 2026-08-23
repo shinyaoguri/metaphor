@@ -318,6 +318,15 @@ jobs:
       # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
       - name: Check for raw print() in Sources
         run: python3 scripts/check-no-raw-print.py
+      # doc コメントは llms.txt（AI 向け API 正典）と DocC の入力で、日本語版
+      # /reference/ja/ は英語版から生成される（ADR-0011）＝ 英語が上流。PR #361 /
+      # #365 が周辺モジュールを英語化したのに検査が無く、93 行が静かに戻っていた
+      # （MetaphorCore に至っては約 220 行/日 で増えていた）。文章では止まらない
+      # 形の失敗なので決定論的に落とす。移行中のモジュールは行数を固定して増減
+      # 両方で落とす（規約は docs/doc-comment-style.md、進捗は Issue #334）。
+      # ビルド不要なので手前に置く。
+      - name: Check doc comment language
+        run: python3 scripts/check-doc-comment-language.py
       # root manifest に binaryTarget を置かない（#792 / ADR-0014）。使わない product 経由でも
       # 消費者が artifact を download してしまうので、Syphon は metaphor-syphon へ出した。
       # 一時 consumer の resolve を含むが数秒で終わるので build の手前に置く。

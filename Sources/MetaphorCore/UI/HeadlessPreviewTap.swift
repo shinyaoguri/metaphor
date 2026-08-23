@@ -3,29 +3,33 @@ import Metal
 import os
 import QuartzCore
 
-/// ヘッドレス実行の「いま描かれている絵」を、メニューを開いている間だけ CPU 側へ取り出すプラグイン。
+/// Pulls the currently drawn frame of a headless run to the CPU, but only while the menu is open.
 ///
-/// ウィンドウが無い実行では、状態項目の数値（実測 fps・frame 数）だけでは
-/// **何が描かれているか**まで分かりません。とはいえ、そのために毎フレーム GPU→CPU の
-/// 読み戻しを走らせると Probe の性能契約（Issue #118: ランタイムを侵さない）を破ります。
+/// With no window, the numbers in the status item (measured fps, frame count)
+/// do not tell you **what is being drawn**. Reading the frame back from GPU to
+/// CPU every frame to answer that would break the Probe performance contract
+/// (Issue #118: do not intrude on the runtime).
 ///
-/// そこで「メニューが開いている間だけ」に絞ります:
+/// So the work is confined to the time the menu is open:
 ///
-/// - ``isCapturing`` が `false` の間、``post(texture:commandBuffer:)`` は **Bool 1 回**で戻る
-///   （＝閉じているときのコストは実質ゼロ）。例外は**最初の 1 枚**だけで、これは開閉に
-///   関わらず取る（`noLoop()` の作品は以降フレームを描かないので、ここで取らないと
-///   メニューに永久に絵が出ない）
-/// - 開いている間も ``minimumInterval`` で間引き、読み戻しは 1 枚ずつ（前の完了を待つ）
-/// - 縮小は GPU 側（組み込みの blit シェーダで小さなテクスチャへ描く）で済ませるので、
-///   読み戻すのは常にサムネイル 1 枚ぶん（フルフレームは CPU へ渡らない）
+/// - While ``isCapturing`` is `false`, ``post(texture:commandBuffer:)`` returns
+///   after **a single Bool check** — the cost while closed is effectively zero.
+///   The one exception is the **very first frame**, which is taken either way: a
+///   piece using `noLoop()` draws no further frames, so skipping it would leave
+///   the menu without a picture forever.
+/// - While open, ``minimumInterval`` thins the rate out and only one read-back is
+///   in flight at a time (the previous one has to finish first).
+/// - Downscaling happens on the GPU (the built-in blit shader draws into a small
+///   texture), so what comes back is always one thumbnail — the full frame never
+///   reaches the CPU.
 @MainActor
 final class HeadlessPreviewTap: MetaphorPlugin {
-    /// 安定したプラグイン識別子。
+    /// The stable plugin identifier.
     static let id = "org.metaphor.headless-preview"
 
     let pluginID: String = HeadlessPreviewTap.id
 
-    /// 取り出しを行うか。メニューが開いている間だけ `true` にします。
+    /// Whether to capture. Set to `true` only while the menu is open.
     var isCapturing = false {
         didSet {
             guard isCapturing != oldValue else { return }
@@ -34,12 +38,14 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         }
     }
 
-    /// 直近に取り出せた絵。まだ 1 枚も撮れていなければ `nil`。
+    /// The most recently captured picture, or `nil` if none has been taken yet.
     ///
-    /// 読み戻したピクセルは GPU の完了ハンドラ（別スレッド）から ``pending`` へ置かれ、
-    /// 絵にするのはここを読んだとき（＝メニューを描くとき）です。**完了ハンドラから
-    /// メインアクターへ非同期に渡さない**のは、メインアクターが混んでいると受け渡しが
-    /// いつまでも走らないため（CI の並列実行で実際に取りこぼした）。
+    /// The GPU completion handler (on another thread) drops read-back pixels into
+    /// ``pending``, and they are turned into an image when this property is read
+    /// — that is, when the menu is drawn. The handler deliberately **does not
+    /// hand them to the main actor asynchronously**: when the main actor is busy,
+    /// that hand-off can be delayed indefinitely (frames were actually lost this
+    /// way under CI's parallel execution).
     var latestFrame: CGImage? {
         if let readback = pending.withLock({ $0 }), readback.generation != cachedGeneration {
             cachedImage = Self.makeImage(
@@ -50,32 +56,32 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         return cachedImage
     }
 
-    /// 読み戻したピクセル 1 枚ぶん（完了ハンドラ ⇄ メインアクターの受け渡し用）。
+    /// One frame of read-back pixels, handed from the completion handler to the main actor.
     private struct Readback: Sendable {
         let bytes: [UInt8]
         let width: Int
         let height: Int
-        /// 何枚目か。絵への変換を「新しいものが来たときだけ」に絞るための印。
+        /// Which frame this is — the marker that limits image conversion to newly arrived pixels.
         let generation: UInt64
     }
 
-    /// 完了ハンドラが最後に置いていったピクセル。
+    /// The pixels the completion handler left behind most recently.
     private let pending = OSAllocatedUnfairLock<Readback?>(initialState: nil)
 
-    /// 読み戻しが進行中か（完了ハンドラから下ろすのでロック越しに持つ）。
+    /// Whether a read-back is in flight (held behind a lock, since the completion handler clears it).
     private let inFlight = OSAllocatedUnfairLock<Bool>(initialState: false)
 
     private var cachedImage: CGImage?
     private var cachedGeneration: UInt64 = 0
     private var generation: UInt64 = 0
 
-    /// 縮小と読み戻しを実際に走らせた回数（「閉じている間は何もしない」をテストで押さえるため）。
+    /// How many times downscale + read-back actually ran (so tests can pin "does nothing while closed").
     private(set) var captureCount = 0
 
-    /// サムネイルを収める箱（ピクセル）。Retina を見込んで論理サイズの 2 倍で持ちます。
+    /// The box the thumbnail fits into, in pixels — twice the logical size, to allow for Retina.
     private let box: (width: Int, height: Int)
 
-    /// 取り出しの最小間隔（秒）。
+    /// The minimum interval between captures, in seconds.
     private let minimumInterval: Double
 
     private weak var renderer: MetaphorRenderer?
@@ -86,8 +92,8 @@ final class HeadlessPreviewTap: MetaphorPlugin {
     private var warnedUnsupportedFormat = false
 
     /// - Parameters:
-    ///   - box: サムネイルを収める箱（ピクセル）。
-    ///   - fps: 開いている間の更新レート。
+    ///   - box: The box the thumbnail fits into, in pixels.
+    ///   - fps: The refresh rate while the menu is open.
     init(box: (width: Int, height: Int) = (480, 360), fps: Double = 8) {
         self.box = box
         self.minimumInterval = 1.0 / max(fps, 1)
@@ -118,7 +124,7 @@ final class HeadlessPreviewTap: MetaphorPlugin {
                 warnedUnsupportedFormat = true
                 metaphorDiagnostic(
                     "headless preview: output texture format \(texture.pixelFormat) is not "
-                    + "supported (bgra8Unorm only); the menu will show no thumbnail"
+                        + "supported (bgra8Unorm only); the menu will show no thumbnail"
                 )
             }
             return
@@ -128,7 +134,8 @@ final class HeadlessPreviewTap: MetaphorPlugin {
             width: texture.width, height: texture.height, box: box
         )
         guard let staging = ensureStaging(width: size.width, height: size.height),
-              let pipeline = ensurePipeline() else { return }
+            let pipeline = ensurePipeline()
+        else { return }
 
         // 縮小は GPU で行う（組み込み blit シェーダ = リニア補間つきのフルスクリーン矩形）。
         let pass = MTLRenderPassDescriptor()
@@ -160,7 +167,10 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         commandBuffer.addCompletedHandler { _ in
             // 読み戻すのはサムネイル 1 枚ぶん（480×360 で 675KB 以下）。
             let pixels = [UInt8](unsafeUninitializedCapacity: width * height * 4) { buffer, count in
-                guard let base = buffer.baseAddress else { count = 0; return }
+                guard let base = buffer.baseAddress else {
+                    count = 0
+                    return
+                }
                 handoff.value.getBytes(
                     base,
                     bytesPerRow: width * 4,
@@ -180,30 +190,33 @@ final class HeadlessPreviewTap: MetaphorPlugin {
 
     // MARK: - Helpers
 
-    /// BGRA8 ピクセルから `CGImage` を作ります。
+    /// Builds a `CGImage` from BGRA8 pixels.
     ///
-    /// 読み戻した中身は premultiplied（ADR-0012）なので、宣言もそれに合わせます
-    /// （ProbeWriter の PNG 書き出しと同じ理由）。
+    /// The read-back content is premultiplied (ADR-0012), so the declaration
+    /// matches that — the same reason ProbeWriter's PNG export does.
     static func makeImage(bgra: [UInt8], width: Int, height: Int) -> CGImage? {
         var pixels = bgra
-        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+        let bitmapInfo =
+            CGImageAlphaInfo.premultipliedFirst.rawValue
             | CGBitmapInfo.byteOrder32Little.rawValue
-        guard let context = CGContext(
-            data: &pixels,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: bitmapInfo
-        ) else { return nil }
+        guard
+            let context = CGContext(
+                data: &pixels,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: bitmapInfo
+            )
+        else { return nil }
         return context.makeImage()
     }
 
-    /// 箱に収まるサムネイルの大きさ（純関数・テスト対象）。
+    /// The thumbnail size that fits the box (a pure function, covered by tests).
     ///
-    /// アスペクト比を保ったまま箱に内接させ、拡大はしません（元より大きくならない）。
-    /// 1px を下回らないよう丸めます。
+    /// Fits inside the box while preserving the aspect ratio, and never scales up
+    /// beyond the original. Rounds so the result never falls below 1 px.
     static func thumbnailSize(
         width: Int, height: Int, box: (width: Int, height: Int)
     ) -> (width: Int, height: Int) {
@@ -213,11 +226,13 @@ final class HeadlessPreviewTap: MetaphorPlugin {
             Double(box.height) / Double(height),
             1.0
         )
-        return (max(Int((Double(width) * scale).rounded()), 1),
-                max(Int((Double(height) * scale).rounded()), 1))
+        return (
+            max(Int((Double(width) * scale).rounded()), 1),
+            max(Int((Double(height) * scale).rounded()), 1)
+        )
     }
 
-    /// 縮小先のテクスチャを用意します（大きさが変わったら作り直す）。
+    /// Prepares the destination texture for the downscale, rebuilding it when the size changes.
     private func ensureStaging(width: Int, height: Int) -> MTLTexture? {
         if let staging, staging.width == width, staging.height == height { return staging }
         guard let device = renderer?.device else { return nil }
@@ -230,7 +245,8 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         // synchronize 無しでそのまま読める。
         descriptor.storageMode = .shared
         guard let texture = device.makeTexture(descriptor: descriptor) else {
-            metaphorDiagnostic("headless preview: could not create a \(width)×\(height) thumbnail texture")
+            metaphorDiagnostic(
+                "headless preview: could not create a \(width)×\(height) thumbnail texture")
             return nil
         }
         texture.label = "metaphor.headless-preview"
@@ -238,15 +254,18 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         return texture
     }
 
-    /// 縮小に使うパイプライン（組み込みの blit シェーダ）を用意します。
+    /// Prepares the pipeline used for the downscale (the built-in blit shader).
     private func ensurePipeline() -> MTLRenderPipelineState? {
         if let pipeline { return pipeline }
         guard let renderer else { return nil }
-        guard let vertexFn = renderer.shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.blitVertex, from: ShaderLibrary.BuiltinKey.blit
-        ), let fragmentFn = renderer.shaderLibrary.function(
-            named: BuiltinShaders.FunctionName.blitFragment, from: ShaderLibrary.BuiltinKey.blit
-        ) else {
+        guard
+            let vertexFn = renderer.shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitVertex, from: ShaderLibrary.BuiltinKey.blit
+            ),
+            let fragmentFn = renderer.shaderLibrary.function(
+                named: BuiltinShaders.FunctionName.blitFragment, from: ShaderLibrary.BuiltinKey.blit
+            )
+        else {
             metaphorDiagnostic("headless preview: built-in blit shader is unavailable")
             return nil
         }

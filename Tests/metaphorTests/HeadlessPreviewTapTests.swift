@@ -26,14 +26,16 @@ struct HeadlessPreviewTapTests {
     @Test("a small canvas is not blown up")
     func noUpscale() {
         // 拡大するとメニューの中でぼやけるだけなので、元より大きくしない。
-        #expect(HeadlessPreviewTap.thumbnailSize(width: 64, height: 64, box: (480, 360)) == (64, 64))
+        #expect(
+            HeadlessPreviewTap.thumbnailSize(width: 64, height: 64, box: (480, 360)) == (64, 64))
     }
 
     @Test("degenerate sizes never produce a zero-sized texture")
     func degenerate() {
         // 0 を返すと makeTexture が失敗する。1px に丸める。
         #expect(HeadlessPreviewTap.thumbnailSize(width: 0, height: 100, box: (480, 360)) == (1, 1))
-        #expect(HeadlessPreviewTap.thumbnailSize(width: 4000, height: 1, box: (480, 360)) == (480, 1))
+        #expect(
+            HeadlessPreviewTap.thumbnailSize(width: 4000, height: 1, box: (480, 360)) == (480, 1))
     }
 
     @Test("preview view fits the image inside its box")

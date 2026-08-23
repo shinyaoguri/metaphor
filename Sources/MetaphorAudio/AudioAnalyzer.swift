@@ -197,24 +197,24 @@ public final class AudioAnalyzer {
     private let fftSize: Int
     private let halfFFTSize: Int
     private var isRunning = false
-    /// `nil` にする（= 解放する）だけで通知の解除が済む。``NotificationObserverToken``
-    /// の deinit が `removeObserver` を呼ぶ。
+    /// Setting this to `nil` (releasing it) is all that is needed to unsubscribe:
+    /// ``NotificationObserverToken``'s deinit calls `removeObserver`.
     private var configurationObserver: NotificationObserverToken?
 
     // MARK: - 権限待ちの観測（Issue #685）
 
-    /// 直近の `start()` の時刻（`CACurrentMediaTime()`）。未開始なら nil。
+    /// The time of the most recent `start()` (`CACurrentMediaTime()`), or nil if never started.
     private var startedAt: Double?
 
-    /// タップから 1 度でもサンプルを受け取ったか（無音でも受け取りは起きる）。
+    /// Whether the tap has delivered a sample at least once (silence still counts as delivery).
     private var hasDeliveredSamples = false
 
-    /// 「権限が未決のままサンプルが来ない」警告を出したか（1 回だけ出す）。
+    /// Whether the "undetermined permission, no samples" warning has been emitted (once only).
     private var didWarnAboutPendingPermission = false
 
     // MARK: - サンプルレート未設定の観測（Issue #783）
 
-    /// 「`sampleRate` が無いので `bandEnergy` が 0 になる」警告を出したか（1 回だけ出す）。
+    /// Whether the "no `sampleRate`, so `bandEnergy` is 0" warning has been emitted (once only).
     private(set) var didWarnAboutMissingSampleRate = false
 
     // MARK: - vDSP FFT
@@ -375,12 +375,13 @@ public final class AudioAnalyzer {
 
     // MARK: - 権限の無言待ち（Issue #685）
 
-    /// マイク（TCC）の権限状態。
+    /// The microphone (TCC) authorization status.
     ///
-    /// - Important: `.notDetermined` のままサンプルが来ないことがあります。macOS は
-    ///   `Info.plist` に `NSMicrophoneUsageDescription` を持つ**バンドル済みアプリにしか**
-    ///   許可ダイアログを出さないため、`swift run` で作る素の実行ファイルでは
-    ///   `.notDetermined` から動きません（カメラと同じ穴。Issue #685）。
+    /// - Important: The status can stay `.notDetermined` while no samples arrive.
+    ///   macOS shows the permission dialog **only for bundled apps** whose
+    ///   `Info.plist` carries `NSMicrophoneUsageDescription`, so a bare
+    ///   executable built by `swift run` never moves off `.notDetermined`
+    ///   (the same gap as the camera — Issue #685).
     public var authorizationStatus: MicrophoneAuthorizationStatus {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized: return .authorized
@@ -391,13 +392,13 @@ public final class AudioAnalyzer {
         }
     }
 
-    /// マイクの使用が許可されているか（``authorizationStatus`` == `.authorized`）。
+    /// Whether microphone use is authorized (``authorizationStatus`` == `.authorized`).
     public var isAuthorized: Bool { authorizationStatus == .authorized }
 
-    /// `.notDetermined` のままサンプルが 0 のときに警告を出すまでの猶予（秒）。
+    /// The grace period, in seconds, before warning that no samples arrived while `.notDetermined`.
     static let pendingPermissionWarningDelay: Double = 3.0
 
-    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    /// Decides whether the warning should fire (side-effect free; split out for testing).
     static func shouldWarnAboutPendingPermission(
         status: MicrophoneAuthorizationStatus,
         isRunning: Bool,
@@ -410,7 +411,7 @@ public final class AudioAnalyzer {
         return elapsed >= pendingPermissionWarningDelay
     }
 
-    /// 「許可ダイアログが出ないまま無音で死ぬ」状態を一度だけ報告します。
+    /// Reports once that the sketch is silently dead because no permission dialog ever appeared.
     private func warnIfPermissionDialogWillNeverAppear() {
         guard let startedAt else { return }
         guard
@@ -566,17 +567,17 @@ public final class AudioAnalyzer {
 
     // MARK: - サンプルレートの解決（Issue #783）
 
-    /// 周波数→ビン変換に使うサンプルレート。解決できなければ `nil`。
+    /// The sample rate used to convert a frequency to a bin, or `nil` if it cannot be resolved.
     ///
-    /// engine 稼働中は入力デバイスの実サンプルレートを優先し、
-    /// `injectSamples` 経由の解析では ``sampleRate`` プロパティを使う。
+    /// While the engine runs, the input device's actual sample rate wins; for
+    /// analysis fed through `injectSamples`, the ``sampleRate`` property is used.
     func resolvedSampleRate() -> Double? {
         let engineRate = engine.map { $0.inputNode.outputFormat(forBus: 0).sampleRate }
         guard let rate = engineRate ?? sampleRate, rate > 0 else { return nil }
         return rate
     }
 
-    /// 警告を出すべきかの判定（副作用なし・テスト用に切り出したもの）。
+    /// Decides whether the warning should fire (side-effect free; split out for testing).
     static func shouldWarnAboutMissingSampleRate(
         resolvedRate: Double?,
         alreadyWarned: Bool
@@ -585,10 +586,10 @@ public final class AudioAnalyzer {
         return resolvedRate == nil
     }
 
-    /// 「`sampleRate` が無いので `bandEnergy` が 0 になる」状態を一度だけ報告します。
+    /// Reports once that `bandEnergy` returns 0 because no `sampleRate` is available.
     ///
-    /// `spectrum` と ``band(_:)`` は正常に動き続けるため、黙って 0 を返すと
-    /// 「その帯域にエネルギーが無い」ケースと区別が付かない（Issue #783）。
+    /// `spectrum` and ``band(_:)`` keep working, so returning 0 silently would be
+    /// indistinguishable from "that band genuinely has no energy" (Issue #783).
     private func warnAboutMissingSampleRate() {
         guard
             Self.shouldWarnAboutMissingSampleRate(
@@ -682,18 +683,18 @@ public final class AudioAnalyzer {
 
 // MARK: - エラー
 
-/// マイク（TCC）の権限状態。
+/// The microphone (TCC) authorization status.
 ///
-/// `AVCaptureDevice.authorizationStatus(for: .audio)` をそのまま写したものです
-/// （利用側に AVFoundation の import を強いないための独自型）。
+/// Mirrors `AVCaptureDevice.authorizationStatus(for: .audio)` — a dedicated type
+/// so that callers are not forced to import AVFoundation.
 public enum MicrophoneAuthorizationStatus: String, Sendable, Codable {
-    /// 許可済み。サンプルが流れる。
+    /// Authorized. Samples flow.
     case authorized
-    /// ユーザーが拒否した。システム設定から変える必要がある。
+    /// The user denied access. It has to be changed in System Settings.
     case denied
-    /// ペアレンタルコントロール等で制限されている。
+    /// Restricted, by parental controls or a similar policy.
     case restricted
-    /// まだ誰も答えていない。**素の実行ファイルではここから動かない**。
+    /// Nobody has answered yet. **A bare executable never moves off this value**.
     case notDetermined
 }
 

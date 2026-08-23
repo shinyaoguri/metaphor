@@ -1,37 +1,38 @@
 import AppKit
 
-/// ヘッドレス実行中のプロセスの「いまの状態」（メニュー表示用のスナップショット）。
+/// The current state of a headless process — a snapshot for display in the menu.
 ///
-/// メニューを開いた瞬間に組み立て、そのまま文字列へ落とします。値の取得元は
-/// 画面表示・Probe・``Sketch/performance`` と同じ（``FrameRateTracker``）なので、
-/// メニューに出る実測 fps は他の観測手段と一致します。
+/// Built the moment the menu opens and turned straight into strings. The values
+/// come from the same source as the on-screen display, Probe and
+/// ``Sketch/performance`` (``FrameRateTracker``), so the measured fps shown in
+/// the menu agrees with every other way of observing it.
 struct HeadlessStatusSnapshot {
-    /// スケッチ名（``SketchConfig/title``）。
+    /// The sketch name (``SketchConfig/title``).
     var title: String
-    /// 実行中の metaphor のバージョン。
+    /// The version of metaphor that is running.
     var version: String
-    /// プロセス ID。
+    /// The process ID.
     var pid: Int32
-    /// オフスクリーンテクスチャの幅。
+    /// The width of the offscreen texture.
     var width: Int
-    /// オフスクリーンテクスチャの高さ。
+    /// The height of the offscreen texture.
     var height: Int
-    /// 目標フレームレート。
+    /// The target frame rate.
     var targetFPS: Int
-    /// 直近ウィンドウの実測フレームレート。算出に足るフレームが無ければ `nil`。
+    /// The measured frame rate over the recent window, or `nil` without enough frames to compute it.
     var measuredFPS: Double?
-    /// 描画したフレーム数。
+    /// The number of frames drawn.
     var frameCount: Int
-    /// 指標を出してからの経過秒数。
+    /// Seconds elapsed since the metrics started.
     var elapsed: TimeInterval
-    /// 表示用に整形済みの出力先（``outputLabel(pluginID:viewerConnected:)`` の結果）。
+    /// The outputs, already formatted for display (the result of ``outputLabel(pluginID:viewerConnected:)``).
     var outputs: [String]
 }
 
 extension HeadlessStatusSnapshot {
-    /// メニューに並べる情報行を組み立てます（純関数・テスト対象）。
+    /// Builds the information rows shown in the menu (a pure function, covered by tests).
     ///
-    /// - Returns: 1 行 1 項目の文字列。スケッチ名は含みません（呼び出し側が見出しに使う）。
+    /// - Returns: One string per item. The sketch name is not included — the caller uses it as the heading.
     static func menuLines(_ s: HeadlessStatusSnapshot) -> [String] {
         [
             "metaphor \(s.version) · headless · PID \(s.pid)",
@@ -41,14 +42,14 @@ extension HeadlessStatusSnapshot {
         ]
     }
 
-    /// 実測 fps の表示。算出不能なときは `0` ではなく `--`
-    /// （``PerformanceHUD`` と同じ理由 — `noLoop()` の作品で `0` と出すと誤情報になる）。
+    /// The measured fps, shown as `--` rather than `0` when it cannot be computed
+    /// (the same reason as ``PerformanceHUD`` — printing `0` for a `noLoop()` piece would be misinformation).
     static func measuredText(_ fps: Double?) -> String {
         guard let fps else { return "--" }
         return String(format: "%.1f", fps)
     }
 
-    /// 経過時間の表示（`MM:SS`、1 時間を超えたら `H:MM:SS`）。
+    /// The elapsed time, as `MM:SS` (or `H:MM:SS` past an hour).
     static func elapsedText(_ elapsed: TimeInterval) -> String {
         let total = Int(max(elapsed, 0))
         let (h, m, sec) = (total / 3600, (total % 3600) / 60, total % 60)
@@ -58,22 +59,24 @@ extension HeadlessStatusSnapshot {
         return String(format: "%02d:%02d", m, sec)
     }
 
-    /// 出力先の行。1 つも無い状態＝誰もフレームを見ていない状態なので、そう明示します
-    /// （孤児になったヘッドレスプロセスを、メニューを開くだけで見分けられるようにする）。
+    /// The output rows. Having none means nobody is watching the frames, and that
+    /// is stated explicitly — so an orphaned headless process can be spotted just by opening the menu.
     static func outputsText(_ outputs: [String]) -> String {
         guard !outputs.isEmpty else { return "Output: none — nobody is watching these frames" }
         return "Output: " + outputs.joined(separator: ", ")
     }
 
-    /// 出力プラグインの識別子を人が読める名前へ変換します（純関数・テスト対象）。
+    /// Converts an output plugin identifier into a human-readable name (a pure function, covered by tests).
     ///
-    /// ライブビューアだけは接続状態まで出します（親が落ちても子は回り続けるため、
-    /// 「繋がっていたが切れた」を区別できることに意味があります）。外部モジュールの
-    /// 出力（metaphor-syphon 等）は識別子から慣習的な接頭辞・接尾辞を落として出します。
+    /// The live viewer is the one output whose connection state is also shown: a
+    /// child keeps running when its parent dies, so telling "was connected, now
+    /// disconnected" apart is worth something. Outputs from external modules
+    /// (metaphor-syphon and friends) are shown with the conventional prefix and
+    /// suffix stripped from the identifier.
     ///
     /// - Parameters:
-    ///   - pluginID: 出力プラグインの識別子。
-    ///   - viewerConnected: ライブビューアの接続状態（ビューア以外では無視）。
+    ///   - pluginID: The output plugin identifier.
+    ///   - viewerConnected: The live viewer's connection state (ignored for other outputs).
     static func outputLabel(pluginID: String, viewerConnected: Bool?) -> String {
         if pluginID == ViewerOutputPlugin.id {
             let state = (viewerConnected ?? false) ? "connected" : "disconnected"
@@ -90,15 +93,16 @@ extension HeadlessStatusSnapshot {
     }
 }
 
-/// ヘッドレス実行中であることをメニューバーに出す状態項目。
+/// The status item that shows a headless run in the menu bar.
 ///
-/// ``HeadlessIndicator/menuBar`` / ``HeadlessIndicator/both`` のときだけ
-/// ``SketchRunner`` が生成し、終了時に取り外します。中身はメニューを開いた瞬間に
-/// 組み立て、開いている間だけ ``refreshFPS`` で更新するので、開いていない間のコストは
-/// ゼロです（プレビューの取り出しも同じ期間だけ動きます）。
+/// ``SketchRunner`` creates it only for ``HeadlessIndicator/menuBar`` and
+/// ``HeadlessIndicator/both``, and removes it on exit. The contents are built the
+/// moment the menu opens and refreshed at ``refreshFPS`` only while it stays
+/// open, so the cost while closed is zero (frame capture runs for the same
+/// window of time).
 @MainActor
 final class HeadlessStatusItem: NSObject, NSMenuDelegate {
-    /// メニューを開いている間の更新レート（数値・プレビューとも）。
+    /// The refresh rate while the menu is open, for both the numbers and the preview.
     private static let refreshFPS = 8.0
 
     private let statusItem: NSStatusItem
@@ -112,18 +116,18 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
     private var previewView: HeadlessPreviewView?
     private var refreshTimer: Timer?
 
-    /// 状態項目をメニューバーへ出します。
+    /// Puts the status item into the menu bar.
     ///
-    /// ウィンドウサーバのセッションを持たない環境（CI 等）では項目のボタンが得られない
-    /// ことがあります。その場合は生成に失敗して `nil` を返し、スケッチの実行は続けます
-    /// （表示のために描画を止めない）。
+    /// In environments without a window server session (CI, for instance) the
+    /// item's button may be unavailable. Creation then fails and returns `nil`
+    /// while the sketch keeps running — drawing is never stopped for the sake of display.
     ///
     /// - Parameters:
-    ///   - snapshotProvider: メニューを開いたときに現在値を返すクロージャ。
-    ///   - previewProvider: 直近のフレームを返すクロージャ（`nil` ならプレビューを出さない）。
-    ///   - previewSize: プレビューの大きさ（ポイント）。
-    ///   - setPreviewActive: プレビューの取り出しを開始 / 停止するクロージャ。
-    ///   - onQuit: 「Quit」が選ばれたときの処理。
+    ///   - snapshotProvider: A closure returning the current values when the menu opens.
+    ///   - previewProvider: A closure returning the most recent frame (`nil` shows no preview).
+    ///   - previewSize: The preview size, in points.
+    ///   - setPreviewActive: A closure that starts and stops frame capture for the preview.
+    ///   - onQuit: What to do when "Quit" is chosen.
     init?(
         snapshotProvider: @escaping () -> HeadlessStatusSnapshot,
         previewProvider: (() -> CGImage?)? = nil,
@@ -162,7 +166,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
         item.menu = menu
     }
 
-    /// 状態項目をメニューバーから取り外します（終了時の後始末）。
+    /// Removes the status item from the menu bar (cleanup on exit).
     func remove() {
         stopRefreshing()
         statusItem.menu = nil
@@ -171,7 +175,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
 
     // MARK: - NSMenuDelegate
 
-    /// メニューが開かれる直前に中身を作り直します（常時ポーリングしない）。
+    /// Rebuilds the contents just before the menu opens, instead of polling continuously.
     func menuNeedsUpdate(_ menu: NSMenu) {
         let snapshot = snapshotProvider()
         menu.removeAllItems()
@@ -207,7 +211,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
         menu.addItem(quit)
     }
 
-    /// 開いている間だけ、数値とプレビューを更新し続けます。
+    /// Keeps refreshing the numbers and the preview, but only while the menu is open.
     func menuWillOpen(_ menu: NSMenu) {
         setPreviewActive?(true)
         // メニュー追跡中の run loop は `.eventTracking` なので、`.common` で登録しないと
@@ -225,7 +229,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
 
     // MARK: - Helpers
 
-    /// 開いているメニューの数値とプレビューを差し替えます。
+    /// Replaces the numbers and the preview in the open menu.
     private func refresh() {
         let snapshot = snapshotProvider()
         let lines = HeadlessStatusSnapshot.menuLines(snapshot)
@@ -238,7 +242,7 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
         previewView?.image = previewProvider?()
     }
 
-    /// 更新を止め、プレビューの取り出しも止めます。
+    /// Stops refreshing, and stops frame capture for the preview as well.
     private func stopRefreshing() {
         refreshTimer?.invalidate()
         refreshTimer = nil
@@ -250,13 +254,13 @@ final class HeadlessStatusItem: NSObject, NSMenuDelegate {
     }
 }
 
-/// メニューの中に置くプレビュー（角丸で切り抜いた最新フレーム）。
+/// The preview placed inside the menu — the latest frame, clipped to rounded corners.
 ///
-/// まだ 1 枚も撮れていない間は薄い下地だけを描きます。`noLoop()` で止まっている
-/// スケッチは新しいフレームを描かないので、ここは下地のままになります。
+/// Until a frame has been captured it draws only a faint backing. A sketch halted
+/// by `noLoop()` draws no new frames, so it stays at that backing.
 @MainActor
 final class HeadlessPreviewView: NSView {
-    /// 表示する絵。`nil` なら下地だけ。
+    /// The picture to show. `nil` draws the backing only.
     var image: CGImage? {
         didSet { needsDisplay = true }
     }
@@ -265,11 +269,12 @@ final class HeadlessPreviewView: NSView {
     private static let cornerRadius: CGFloat = 4
 
     init(previewSize: NSSize) {
-        super.init(frame: NSRect(
-            x: 0, y: 0,
-            width: previewSize.width + Self.margin * 2,
-            height: previewSize.height + Self.margin
-        ))
+        super.init(
+            frame: NSRect(
+                x: 0, y: 0,
+                width: previewSize.width + Self.margin * 2,
+                height: previewSize.height + Self.margin
+            ))
     }
 
     @available(*, unavailable)
@@ -283,7 +288,8 @@ final class HeadlessPreviewView: NSView {
             width: bounds.width - Self.margin * 2,
             height: bounds.height - Self.margin
         )
-        let path = NSBezierPath(roundedRect: rect, xRadius: Self.cornerRadius, yRadius: Self.cornerRadius)
+        let path = NSBezierPath(
+            roundedRect: rect, xRadius: Self.cornerRadius, yRadius: Self.cornerRadius)
         NSColor.quaternaryLabelColor.setFill()
         path.fill()
 
@@ -291,13 +297,15 @@ final class HeadlessPreviewView: NSView {
         context.saveGState()
         path.addClip()
         // 実行中に解像度が変わっても潰さないよう、絵の側の比率で内接させる。
-        context.draw(image, in: Self.aspectFit(
-            imageWidth: image.width, imageHeight: image.height, into: rect
-        ))
+        context.draw(
+            image,
+            in: Self.aspectFit(
+                imageWidth: image.width, imageHeight: image.height, into: rect
+            ))
         context.restoreGState()
     }
 
-    /// 絵の比率を保ったまま `rect` に内接させます（純関数・テスト対象）。
+    /// Fits the picture inside `rect` while preserving its aspect ratio (a pure function, covered by tests).
     static func aspectFit(imageWidth: Int, imageHeight: Int, into rect: NSRect) -> NSRect {
         guard imageWidth > 0, imageHeight > 0 else { return rect }
         let scale = min(rect.width / CGFloat(imageWidth), rect.height / CGFloat(imageHeight))

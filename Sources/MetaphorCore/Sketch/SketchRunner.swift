@@ -34,7 +34,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// ヘッドレス実行中であることを示すメニューバーの状態項目（出さない設定なら `nil`）。
     private var headlessStatusItem: HeadlessStatusItem?
 
-    /// メニューを開いている間だけ最新フレームを取り出すプラグイン（出さない設定なら `nil`）。
+    /// The plugin that captures the latest frame only while the menu is open (`nil` when no preview is shown).
     private var headlessPreviewTap: HeadlessPreviewTap?
 
     /// 状態項目に出す経過時間の起点（`CACurrentMediaTime()`）。
@@ -677,7 +677,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         )
     }
 
-    /// メニュー内プレビューを収める箱（ポイント）。実テクスチャはこの 2 倍（Retina）で作る。
+    /// The box the in-menu preview fits into, in points. The actual texture is twice this size (Retina).
     private static let headlessPreviewBox = (width: 240, height: 180)
 
     /// Dock に出すときだけ、空のメニューバーを避けるための最小限のメニューを組みます。

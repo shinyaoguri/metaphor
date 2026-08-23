@@ -138,7 +138,7 @@ public final class Physics2D {
     private var storedFixedTimeStep: Float = Physics2D.defaultFixedTimeStep
     private var storedMaxSubSteps: Int = 8
 
-    /// 未消化の経過時間（``advance(_:iterations:)`` のアキュムレータ）。
+    /// Elapsed time not yet consumed (the accumulator for ``advance(_:iterations:)``).
     private var accumulator: Float = 0
 
     /// The fixed time step, in seconds, that ``advance(_:iterations:)`` integrates with.
@@ -184,7 +184,7 @@ public final class Physics2D {
     /// Time smaller than one step is kept for the next call, so no time is lost.
     ///
     /// ```swift
-    /// // 描画ループ内: 実フレーム時間をそのまま渡してよい
+    /// // Inside the draw loop: pass the real frame time as is
     /// physics.advance(deltaTime)
     /// ```
     ///
@@ -468,10 +468,12 @@ public final class Physics2D {
 
     /// Moves a body out of an overlap without turning the correction into velocity.
     ///
-    /// Verlet の速度は `position - previousPosition` なので、重なり解消で位置だけ
-    /// 動かすと補正量がそのまま速度になる。補正は接近分をちょうど打ち消す量なので、
-    /// `applyCollisionResponse` が見る接近速度が消え、`restitution` / `friction` が
-    /// 一度も適用されなかった（#755）。`previousPosition` も同量ずらして速度を不変に保つ。
+    /// Verlet velocity is `position - previousPosition`, so moving only the
+    /// position to resolve an overlap turns the correction itself into velocity.
+    /// The correction cancels exactly the approach, which erased the approach
+    /// speed that `applyCollisionResponse` looks at — `restitution` and
+    /// `friction` were never applied at all (#755). Shifting `previousPosition`
+    /// by the same amount keeps the velocity unchanged.
     private func correctPosition(_ body: PhysicsBody2D, by delta: SIMD2<Float>) {
         guard !body.isStatic else { return }
         body.position += delta
@@ -480,8 +482,8 @@ public final class Physics2D {
 
     /// Applies the restitution/friction impulse by rewriting Verlet's `previousPosition`.
     ///
-    /// 速度は 1 ステップあたりの変位（px/step）なので、インパルスも同じ単位で
-    /// 扱い、最後に `previousPosition` を置き直して反映する。
+    /// Velocity is displacement per step (px/step), so the impulse is handled in
+    /// the same unit and applied by rewriting `previousPosition` at the end.
     private func applyCollisionResponse(
         _ a: PhysicsBody2D, _ b: PhysicsBody2D, normal: SIMD2<Float>
     ) {
@@ -534,8 +536,9 @@ public final class Physics2D {
 
     /// Confines all non-static bodies within the world bounds, accounting for shape size.
     ///
-    /// 壁は「ボディと同じ係数を持つ無限質量の静的ボディ」として扱う。押し戻しは
-    /// ``correctPosition(_:by:)`` で速度中立に行い、そのうえで反発・摩擦を当てる。
+    /// A wall is treated as a static body of infinite mass carrying the same
+    /// coefficients as the body itself. The push-out is velocity-neutral via
+    /// ``correctPosition(_:by:)``, and restitution and friction are applied on top.
     private func applyBounds(_ bounds: (min: SIMD2<Float>, max: SIMD2<Float>)) {
         for body in bodies where !body.isStatic {
             let half: SIMD2<Float>
@@ -577,10 +580,13 @@ public final class Physics2D {
 
     /// Applies restitution/friction for a contact with a world bounds wall.
     ///
-    /// ``applyCollisionResponse(_:_:normal:)`` の片側が無限質量（`invMass == 0`）の場合に
-    /// 相当し、質量は式から消えるので速度の単位のまま計算する。壁は係数を持たないので
-    /// ボディ自身の値を使う（`min` も平均もボディ側の値になり、同じ係数の静的ボディを
-    /// 置いた場合と一致する）。`normal` は壁からボディへ向かう単位ベクトル。
+    /// Equivalent to ``applyCollisionResponse(_:_:normal:)`` with one side at
+    /// infinite mass (`invMass == 0`): mass drops out of the equation, so the
+    /// math stays in velocity units. A wall carries no coefficients of its own,
+    /// so the body's values are used — both `min` and an average reduce to the
+    /// body's value, matching what a static body with the same coefficients
+    /// would give. `normal` is the unit vector pointing from the wall toward
+    /// the body.
     private func applyWallResponse(_ body: PhysicsBody2D, normal: SIMD2<Float>) {
         var velocity = body.velocity
         let normalSpeed = simd_dot(velocity, normal)
