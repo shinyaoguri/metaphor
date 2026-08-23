@@ -313,7 +313,7 @@ dependabot の PR は PR head だけで CI が回ります。ルールセット�
 |---|---|
 | `website/**` | `npm ci && npm run build`（CI の `website-build` ジョブと同じコマンド） |
 | `.github/workflows/**` | ローカル検証は無し（PR の checks が正）。runner 一覧だけ出して、Node 版縛りのある `actions/*` bump の判断材料にする |
-| `Sources/**` · `Package.swift` | 対象外。セットアップ済みの手元ツリーで `make ci-check` |
+| `Sources/**` · `Package.swift` | `swift build` + `swift test`（`-warnings-as-errors` と `METAPHOR_REQUIRE_GPU=1` 付き = `make ci-check` 相当。CI の `build-and-test` ジョブと同じコマンド） |
 
 領域を指定して回すこともできます（`--only website`）。PR 以外の ref も `--ref <git-ref> --only website` で同じ検証にかけられます。
 

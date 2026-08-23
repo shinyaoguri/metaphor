@@ -197,7 +197,7 @@ jobs:
           fi
           # The exact file set the bump is allowed to touch. Scoping matters:
           # unscoped, `git status` on a runner would also see build output that
-          # merely happens not to be ignored (Frameworks/, artifacts, caches).
+          # merely happens not to be ignored (artifacts, caches).
           BUMP_PATHS=(
             Sources/MetaphorCore/Core/MetaphorVersion.swift
             README.md
