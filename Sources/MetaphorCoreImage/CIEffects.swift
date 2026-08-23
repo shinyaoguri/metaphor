@@ -1,5 +1,5 @@
-import CoreImage
 import Metal
+import CoreImage
 import MetaphorCore
 
 // MARK: - CIFilterValue

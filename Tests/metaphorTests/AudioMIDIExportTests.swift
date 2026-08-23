@@ -1,12 +1,11 @@
-import Foundation
-import ImageIO
-import Metal
 import Testing
+import Foundation
 import simd
-
+import Metal
+import ImageIO
+@testable import metaphor
 @testable import MetaphorCore
 @testable import MetaphorTestSupport
-@testable import metaphor
 
 // MARK: - D-19: GIF Export
 

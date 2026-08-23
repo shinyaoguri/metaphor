@@ -1,8 +1,7 @@
+import Testing
 import Foundation
 import Metal
-import Testing
 import os
-
 @testable import MetaphorVideo
 
 @Suite("VideoPlayer", .enabled(if: MTLCreateSystemDefaultDevice() != nil))

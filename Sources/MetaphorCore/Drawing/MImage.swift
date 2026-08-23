@@ -1,7 +1,7 @@
-import AppKit
 import Metal
 import MetalKit
 import MetalPerformanceShaders
+import AppKit
 
 /// `MTLTexture` をラップして画像を表現します。
 @MainActor

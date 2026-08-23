@@ -1,5 +1,4 @@
 import Testing
-
 @testable import MetaphorCore
 
 // slot の状態機械（free → inFlight → heldByParent → free）。CONTRACT.md 契約点 5 の補足「同期」。

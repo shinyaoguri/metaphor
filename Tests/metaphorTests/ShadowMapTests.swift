@@ -1,7 +1,6 @@
-import Metal
 import Testing
+import Metal
 import simd
-
 @testable import MetaphorCore
 
 @Suite("ShadowMap", .enabled(if: MTLCreateSystemDefaultDevice() != nil))

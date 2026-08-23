@@ -1,9 +1,8 @@
-import Metal
-import MetaphorTestSupport
 import Testing
+import Metal
 import simd
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 @Suite("GrowableGPUBuffer", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor

@@ -1,5 +1,5 @@
-import MetalKit
 import SwiftUI
+import MetalKit
 
 /// SwiftUI ビュー階層内で Metal レンダリングコンテンツを表示します。
 ///

@@ -1,9 +1,8 @@
+import Testing
 import CoreML
 import CoreVideo
 import Metal
-import Testing
 import simd
-
 @testable import MetaphorML
 
 // MARK: - MLTextureConverter Tests

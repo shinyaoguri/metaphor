@@ -1,11 +1,10 @@
 import Foundation
-import Metal
-import MetaphorTestSupport
 import Testing
+import Metal
 import simd
-
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - サンプルコードが渡す ortho() の範囲 (#903)
 

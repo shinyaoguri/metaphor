@@ -1,9 +1,8 @@
-import Metal
-import MetaphorTestSupport
 import Testing
-
-@testable import MetaphorCore
+import Metal
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorTestSupport
 
 /// メインキャンバス loadPixels() の readback（Processing 互換、#202 / #326）。
 ///

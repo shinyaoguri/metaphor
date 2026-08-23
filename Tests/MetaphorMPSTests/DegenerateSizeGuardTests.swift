@@ -1,6 +1,5 @@
-import Metal
 import Testing
-
+import Metal
 @testable import MetaphorCore
 @testable import MetaphorMPS
 

@@ -1,7 +1,6 @@
-import Foundation
 import Testing
+import Foundation
 import os
-
 @testable import MetaphorAudio
 
 // MARK: - AudioAnalyzer

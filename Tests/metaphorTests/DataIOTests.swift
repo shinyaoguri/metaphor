@@ -1,8 +1,7 @@
 import Foundation
 import Testing
-
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - JSONValue Tests
 

@@ -1,8 +1,7 @@
 import Foundation
-import MetaphorTestSupport
 import Testing
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 /// `@Param` を宣言したスケッチ（`frame.json` の `params` 節の被写体）。
 @MainActor

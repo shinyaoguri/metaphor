@@ -1,8 +1,7 @@
-import Metal
 import Testing
-
-@testable import MetaphorCore
+import Metal
 @testable import metaphor
+@testable import MetaphorCore
 
 /// カスタムシェーダ用の前文（``BuiltinShaders/canvas2DStructs`` /
 /// ``BuiltinShaders/canvas3DStructs`` / ``BuiltinShaders/canvas3DLightingFn`` /

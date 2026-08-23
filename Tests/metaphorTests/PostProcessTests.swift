@@ -1,10 +1,9 @@
-import Metal
-import MetaphorMPS
 import Testing
+import Metal
 import simd
-
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorMPS
 
 // MARK: - CustomPostEffect Tests
 

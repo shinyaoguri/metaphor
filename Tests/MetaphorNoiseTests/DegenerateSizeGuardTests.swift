@@ -1,6 +1,5 @@
-import Metal
 import Testing
-
+import Metal
 @testable import MetaphorNoise
 
 /// 幅・高さのどちらか (または両方) が 1 未満の、グリッドもテクスチャも作れないサイズ。

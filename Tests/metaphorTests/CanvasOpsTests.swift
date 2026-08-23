@@ -1,9 +1,8 @@
-import Metal
 import Testing
+import Metal
 import simd
-
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - Canvas 2D Transform Ops (#280)
 

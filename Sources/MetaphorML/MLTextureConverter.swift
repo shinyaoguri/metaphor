@@ -1,7 +1,7 @@
 import CoreML
+import MetaphorLog
 import CoreVideo
 import Metal
-import MetaphorLog
 import ObjectiveC.runtime
 
 /// Provides conversion utilities between `MTLTexture`, `CVPixelBuffer`, and `CGImage`.

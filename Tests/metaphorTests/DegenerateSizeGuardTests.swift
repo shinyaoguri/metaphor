@@ -1,9 +1,9 @@
-import Metal
-import MetaphorTestSupport
 import Testing
+import Metal
 
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorTestSupport
 
 /// 幅・高さのどちらか (または両方) が 1 未満の、テクスチャを作れないサイズ。
 ///

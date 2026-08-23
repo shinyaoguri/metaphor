@@ -1,5 +1,4 @@
 import Testing
-
 @testable import MetaphorCore
 
 /// ヘッドレス実行中であることを示すメニューバー項目の**表示内容**を検証します。

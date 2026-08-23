@@ -1,10 +1,9 @@
-import AppKit
 import Foundation
-import Metal
 import Testing
-
-@testable import MetaphorCore
+import Metal
+import AppKit
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - Asset Cache (#284)
 

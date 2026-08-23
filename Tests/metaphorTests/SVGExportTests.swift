@@ -1,9 +1,8 @@
 import Foundation
-import Metal
 import Testing
-
-@testable import MetaphorCore
+import Metal
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - SVG Export (#285)
 

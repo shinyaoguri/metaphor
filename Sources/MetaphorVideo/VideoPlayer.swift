@@ -1,8 +1,8 @@
 import AVFoundation
 import CoreVideo
 import Foundation
-import Metal
 import MetaphorLog
+import Metal
 import ObjectiveC.runtime
 
 // MARK: - NotificationObserverToken

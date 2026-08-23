@@ -1,7 +1,7 @@
-import CoreGraphics
 import Foundation
-import ImageIO
 import Metal
+import CoreGraphics
+import ImageIO
 
 /// PNG / JSON のディスク書き出しを担当するヘルパー。
 ///

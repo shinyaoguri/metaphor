@@ -1,6 +1,5 @@
 import Testing
 import simd
-
 @testable import MetaphorCore
 @testable import MetaphorSceneGraph
 

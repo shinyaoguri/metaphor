@@ -1,5 +1,5 @@
-import MetalKit
 import SwiftUI
+import MetalKit
 
 /// クロージャベースの描画によるクリエイティブコーディング用 SwiftUI ビュー
 ///

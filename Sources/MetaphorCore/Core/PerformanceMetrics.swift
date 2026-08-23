@@ -1,5 +1,5 @@
-import Darwin
 import Foundation
+import Darwin
 import QuartzCore
 
 /// 実測フレームレートの軽量トラッカー。

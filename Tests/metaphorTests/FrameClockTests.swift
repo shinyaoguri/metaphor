@@ -1,5 +1,4 @@
 import Testing
-
 @testable import MetaphorCore
 
 // `deltaTime` の起点を持つ ``FrameClock`` の単体テスト（Issue #793）。

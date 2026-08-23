@@ -1,8 +1,7 @@
-import CoreImage
-import Metal
-import MetaphorCore
 import Testing
-
+import Metal
+import CoreImage
+import MetaphorCore
 @testable import MetaphorCoreImage
 
 // MARK: - CIFilterPreset Tests

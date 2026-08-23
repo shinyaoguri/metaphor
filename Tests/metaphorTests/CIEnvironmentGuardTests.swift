@@ -1,7 +1,7 @@
+import Testing
 import Foundation
 import MetaphorCore
 import MetaphorTestSupport
-import Testing
 
 // MARK: - CI 実行環境のガード（Issue #329 / v1-release-plan G5）
 //

@@ -1,9 +1,8 @@
+import Testing
 import Metal
 import MetalKit
-import MetaphorTestSupport
-import Testing
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // このファイルは `SketchView`（SwiftUI 埋め込み経路）のアニメーション制御の配線を固定する（#808）。
 //

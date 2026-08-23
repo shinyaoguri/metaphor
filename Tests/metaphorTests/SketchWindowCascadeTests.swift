@@ -1,7 +1,7 @@
-import MetaphorTestSupport
 import Testing
 
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - カスケードのスロットは閉じれば空く (Issue #837)
 

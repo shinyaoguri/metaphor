@@ -1,8 +1,7 @@
-import GameplayKit
-import Metal
 import Testing
+import Metal
+import GameplayKit
 import simd
-
 @testable import MetaphorNoise
 
 // MARK: - NoiseType Tests

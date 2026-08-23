@@ -2,7 +2,6 @@ import Foundation
 import Metal
 import MetaphorTestSupport
 import Testing
-
 @testable import MetaphorCore
 
 // MARK: - テスト用ヘルパー

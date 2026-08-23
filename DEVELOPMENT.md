@@ -50,7 +50,17 @@ make format       # Sources / Tests を .swift-format どおりに整形する
 make lint-swift   # 整形されているかの検査だけ（CI と同じ実体）
 ```
 
-CI（`build-and-test` の `Check Swift formatting`）と pre-push フックの両方が同じ `scripts/lint-swift.sh` を呼ぶので、整形忘れは push の前に鳴ります。設定は Xcode 同梱の `swift-format` の既定から 2 か所だけ変えています（インデント 4 スペース = 実態に合わせ、`AlwaysUseLowerCamelCase` は無効 = `PI` / `TWO_PI` / `LEFT` など Processing 互換の意図的な命名を守るため）。
+CI（`build-and-test` の `Check Swift formatting`）と pre-push フックの両方が同じ `scripts/lint-swift.sh` を呼ぶので、整形忘れは push の前に鳴ります。設定は Xcode 同梱の `swift-format` の既定から 3 か所だけ変えています。
+
+| キー | 既定 | 本リポ | 理由 |
+|---|---|---|---|
+| `indentation.spaces` | 2 | **4** | 実態に合わせる（既定のままだと差分が 14 倍に膨らむ） |
+| `rules.AlwaysUseLowerCamelCase` | true | **false** | `PI` / `TWO_PI` / `LEFT` など Processing 互換の意図的な命名を守るため |
+| `rules.OrderedImports` | true | **false** | **import の順序は Swift の意味論に影響する**（下記） |
+
+`OrderedImports` を切っているのは、**`@preconcurrency import` の効果が import の順序で変わる**からです。`ResourceLoader.swift` は `@preconcurrency import Metal` を先に置いていますが、アルファベット順に並べ替えると `import AppKit` が前に出て、AppKit 経由で Metal が preconcurrency なしに可視化され、`@preconcurrency` が効かなくなります。結果、**Swift 5.10 でだけ** strict concurrency のエラーになります（`build-swift-5-10` が実際に捕まえました — #333）。import の並び順は意味を持つので、人が決めます。
+
+**`rules` は全文で持つ必要があります** — 部分指定すると書かなかったルールが全て無効になります（6.3.0 で実測）。ルールを 1 つ変えるときも `.swift-format` の全文を編集してください。
 
 対象は `Sources/` と `Tests/` です。`Examples/` と生成物（`BuiltinShaders+Generated.swift`）は外してあります（理由は `scripts/lint-swift.sh` の冒頭）。
 

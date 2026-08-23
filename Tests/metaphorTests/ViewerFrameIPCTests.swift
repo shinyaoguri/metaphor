@@ -1,8 +1,7 @@
 import Foundation
-import MetaphorTestSupport
 import Testing
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // viewer frame IPC の wire 型（CONTRACT.md 契約点 5）。
 //

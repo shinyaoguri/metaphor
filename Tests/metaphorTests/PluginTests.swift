@@ -1,8 +1,7 @@
-import Metal
-import MetaphorTestSupport
 import Testing
-
+import Metal
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - Mock Plugin
 

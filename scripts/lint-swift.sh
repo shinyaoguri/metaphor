@@ -11,6 +11,15 @@
 # バージョンを pin して venv へ隔離する形は採れない（ツールチェーンに従属する）
 # ので、代わりに版を表示して「手元と CI で違う版だった」を後から追えるようにする。
 #
+# ## import は並べ替えない（OrderedImports を無効にしてある）
+#
+# `@preconcurrency import` の効果は import の順序で変わる。ResourceLoader.swift は
+# `@preconcurrency import Metal` を先に置いているが、アルファベット順に並べ替えると
+# `import AppKit` が前に出て、AppKit 経由で Metal が preconcurrency なしに可視化され、
+# `@preconcurrency` が効かなくなる。結果 **Swift 5.10 でだけ** strict concurrency の
+# エラーになる（この PR の CI で build-swift-5-10 が実際に捕まえた）。並び順が意味を
+# 持つ以上、機械が勝手に触ってよい対象ではない。
+#
 # ## なぜ `swift-format lint` ではなく整形差分の検査なのか
 #
 # `lint --strict` を CI ゲートにすると、整形とは無関係のルール指摘（forEach を

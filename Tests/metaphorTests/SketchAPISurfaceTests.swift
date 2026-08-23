@@ -1,12 +1,11 @@
-import Foundation
-import Metal
-import MetaphorTestSupport
 import Testing
+import Metal
+import Foundation
 import os
 import simd
-
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorTestSupport
 
 // このファイルは公開 API の中心である `Sources/MetaphorCore/Sketch/`
 // （SketchConfig / SketchRunner / ライフサイクル / イベント配送 / 二層 API）の

@@ -1,7 +1,6 @@
-import Foundation
 import Testing
-
 @testable import MetaphorNetwork
+import Foundation
 
 // MARK: - OSC Binary Helpers
 

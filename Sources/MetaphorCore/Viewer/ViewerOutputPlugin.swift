@@ -1,8 +1,8 @@
 import CMetaphorIPC
 import Foundation
 import Metal
-import QuartzCore
 import os
+import QuartzCore
 
 // MARK: - ViewerWorld
 

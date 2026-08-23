@@ -1,5 +1,4 @@
 import Testing
-
 @testable import MetaphorCore
 
 // MARK: - Color(hex: String) の綴り検証（Issue #799）

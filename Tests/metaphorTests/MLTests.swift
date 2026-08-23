@@ -1,12 +1,11 @@
+import Testing
 import CoreML
 import CoreVideo
 import Metal
-import MetaphorML
-import Testing
 import simd
-
-@testable import MetaphorCore
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorML
 
 // MARK: - SketchContext MLTextureConverter Factory Test
 

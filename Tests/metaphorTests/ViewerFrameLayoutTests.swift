@@ -1,5 +1,4 @@
 import Testing
-
 @testable import MetaphorCore
 
 // viewer frame IPC の共有メモリレイアウト（CONTRACT.md 契約点 5 の補足「共有メモリのレイアウト」）を固定する。

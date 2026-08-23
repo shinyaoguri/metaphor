@@ -1,10 +1,9 @@
-import Foundation
-import Metal
-import MetaphorTestSupport
 import Testing
+import Metal
+import Foundation
 import os
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - 観測・操作機構のランタイム性能「非侵害」ガード（Issue #118）
 //

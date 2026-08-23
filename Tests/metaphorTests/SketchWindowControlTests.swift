@@ -1,7 +1,7 @@
-import MetaphorTestSupport
 import Testing
 
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // このファイルは `SketchWindow`（セカンダリ窓経路）の制御 API の配線を固定する（#857）。
 //

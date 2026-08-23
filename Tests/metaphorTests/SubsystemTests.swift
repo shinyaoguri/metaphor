@@ -1,6 +1,5 @@
-import Metal
 import Testing
-
+import Metal
 @testable import MetaphorCore
 
 /// `AutoSubsystemManager` が登録サブシステムのライフサイクルと毎フレーム更新を

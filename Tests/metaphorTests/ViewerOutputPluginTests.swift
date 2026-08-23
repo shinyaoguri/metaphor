@@ -1,10 +1,9 @@
 import CMetaphorIPC
 import Foundation
 import Metal
-import MetaphorTestSupport
 import Testing
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - Fake parent (in-process viewer)
 

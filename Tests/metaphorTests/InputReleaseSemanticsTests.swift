@@ -1,5 +1,4 @@
 import Testing
-
 @testable import MetaphorCore
 
 /// `keyReleased()` / `mouseReleased()` の中で読む `key` / `keyCode` / `mouseButton` が

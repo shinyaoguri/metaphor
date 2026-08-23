@@ -1,8 +1,8 @@
-import Foundation
 // @preconcurrency: `MTLDevice` を `DispatchQueue.concurrentPerform` の `@Sendable` クロージャへ渡す
 // （`makeLibrary` はスレッドセーフ）。Swift 5.10 でのみ出る警告。
 // Metal の型は Sendable 注釈を持たないが、上記のとおり使い方は安全（Issue #328）。
 @preconcurrency import Metal
+import Foundation
 import os
 
 /// Metal シェーダーのコンパイルとキャッシュを管理します。

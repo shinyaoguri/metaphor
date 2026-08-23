@@ -1,6 +1,6 @@
+import Metal
 import AppKit
 import CoreText
-import Metal
 
 // MARK: - Text Alignment
 

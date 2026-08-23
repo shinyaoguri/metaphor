@@ -1,9 +1,8 @@
 import Foundation
 import ImageIO
-import MetaphorTestSupport
 import Testing
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - Request parsing
 

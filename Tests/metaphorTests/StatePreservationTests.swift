@@ -1,8 +1,7 @@
 import Foundation
-import MetaphorTestSupport
 import Testing
-
 @testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - テスト用スケッチ
 

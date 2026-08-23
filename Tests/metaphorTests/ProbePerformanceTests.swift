@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-
 @testable import MetaphorCore
 
 // MARK: - FrameRateTracker（#271）

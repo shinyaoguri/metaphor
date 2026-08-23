@@ -1,5 +1,5 @@
-import MetaphorAudio
 import MetaphorCore
+import MetaphorAudio
 
 // MARK: - オーディオブリッジ
 

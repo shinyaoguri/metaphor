@@ -1,6 +1,5 @@
 import Metal
 import Testing
-
 @testable import MetaphorCore
 
 // MARK: - CaptureDevice Tests

@@ -1,8 +1,7 @@
-import Metal
 import Testing
-
-@testable import MetaphorCore
+import Metal
 @testable import metaphor
+@testable import MetaphorCore
 
 // MARK: - 環境変数・ループモードの解決（純粋関数）
 

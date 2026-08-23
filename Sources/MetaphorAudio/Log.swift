@@ -1,5 +1,3 @@
-import Foundation
-
 @usableFromInline
 @inline(__always)
 func debugWarning(_ message: @autoclosure () -> String) {
@@ -7,6 +5,8 @@ func debugWarning(_ message: @autoclosure () -> String) {
         print("[MetaphorAudio] Warning:", message())
     #endif
 }
+
+import Foundation
 
 /// **Release ビルドでも必ず** stderr に出す警告。
 ///

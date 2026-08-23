@@ -1,5 +1,5 @@
-import CoreImage
 import Metal
+import CoreImage
 import MetaphorCore
 
 /// A wrapper that applies CoreImage filters directly to Metal textures.

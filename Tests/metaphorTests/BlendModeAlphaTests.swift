@@ -1,9 +1,8 @@
-import Metal
-import MetaphorTestSupport
 import Testing
-
-@testable import MetaphorCore
+import Metal
 @testable import metaphor
+@testable import MetaphorCore
+import MetaphorTestSupport
 
 // MARK: - ブレンドモードが結果のアルファに与える影響（#800）
 

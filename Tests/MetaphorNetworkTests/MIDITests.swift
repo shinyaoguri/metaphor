@@ -1,6 +1,4 @@
-import CoreMIDI
 import Testing
-
 @testable import MetaphorNetwork
 
 // MARK: - MIDI Message
@@ -101,6 +99,8 @@ struct MIDIManagerTests {
         #expect(midi.controllerValue(0, channel: 20) == 0)
     }
 }
+
+import CoreMIDI
 
 // MARK: - MIDIEventList parsing
 
