@@ -117,9 +117,9 @@ extension MetaphorOutputProvider {
 
 /// 出力 provider の登録ポイント。
 ///
-/// ``MetaphorOutputRegistry`` の後継です。旧 API は単一のファクトリしか持てず、複数の出力モジュールが
-/// 自動登録すると後勝ちで上書きされました。ここでは ``MetaphorOutputProvider/id`` で識別される provider を
-/// 複数保持し、起動時にすべて走査します。
+/// 旧 `MetaphorOutputRegistry`（v0.13.0 で削除）の後継です。旧 API は単一のファクトリしか持てず、
+/// 複数の出力モジュールが自動登録すると後勝ちで上書きされました。ここでは ``MetaphorOutputProvider/id`` で
+/// 識別される provider を複数保持し、起動時にすべて走査します。
 ///
 /// ## 登録の仕組み
 /// 出力モジュールは C の `__attribute__((constructor))` → `@_cdecl` 関数からプロセス起動時に
@@ -165,10 +165,6 @@ public enum MetaphorOutputProviders {
     }
 
     /// 登録済み provider をすべて走査し、この起動で提供される出力を集めます。
-    ///
-    /// 旧 API ``MetaphorOutputRegistry/factory``（deprecated）にファクトリが残っていれば、
-    /// 従来の名前解決（`METAPHOR_SYPHON_NAME` > `syphonName` > `syphon` / ヘッドレスなら `title`）で
-    /// 1 件生成して末尾に加えます（挙動互換。旧 API とともに削除予定）。
     @MainActor
     static func makeOutputs(context: MetaphorOutputContext) -> [ResolvedOutput] {
         var outputs: [ResolvedOutput] = []
@@ -178,9 +174,6 @@ public enum MetaphorOutputProviders {
                     providerID: provider.id, plugin: plugin, requirements: provider.requirements
                 ))
             }
-        }
-        if let legacy = MetaphorOutputRegistry.makeLegacyOutput(context: context) {
-            outputs.append(legacy)
         }
         return outputs
     }

@@ -405,7 +405,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
             isHeadless: false
         )
 
-        attachOutputs(outputs, renderer: renderer, config: config, env: env)
+        attachOutputs(outputs, renderer: renderer, env: env)
 
         // レンダーループの構成。
         // 両モードとも、onDraw のセットアップ前に CVDisplayLink が発火する
@@ -455,18 +455,17 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
 
     /// 出力が要求されているのに provider が 1 つも出力を返さなかったか（診断用）。
     ///
-    /// 「要求」は明示の入口そのもの: 環境変数 `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）、
-    /// 旧 `SketchConfig.syphon` / `syphonName`（deprecated。実体の `legacySyphon*` を読む）。ヘッドレス起動（ウィンドウ無し）は
-    /// **何も見えないプロセス**になり得るので、viewer socket（`METAPHOR_VIEWER_SOCKET`）も
-    /// Probe（`METAPHOR_PROBE=1`）も出力も無いときだけ要求扱いにする（ADR-0014: ヘッドレスが
-    /// Syphon を暗黙に立てることはもう無い）。
+    /// 「要求」は明示の入口そのもの: 環境変数 `METAPHOR_SYPHON_NAME`（空文字は未設定扱い）。
+    /// ヘッドレス起動（ウィンドウ無し）は**何も見えないプロセス**になり得るので、viewer socket
+    /// （`METAPHOR_VIEWER_SOCKET`）も Probe（`METAPHOR_PROBE=1`）も出力も無いときだけ要求扱いにする
+    /// （ADR-0014: ヘッドレスが Syphon を暗黙に立てることはもう無い。旧 `SketchConfig.syphon` /
+    /// `syphonName` は v0.13.0 で削除）。
     nonisolated static func outputRequestedButMissing(
-        config: SketchConfig, env: [String: String], isHeadless: Bool,
+        env: [String: String], isHeadless: Bool,
         outputs: [MetaphorOutputProviders.ResolvedOutput]
     ) -> Bool {
         guard outputs.isEmpty else { return false }
         if let name = env["METAPHOR_SYPHON_NAME"], !name.isEmpty { return true }
-        if config.legacySyphonEnabled || config.legacySyphonName != nil { return true }
         guard isHeadless else { return false }
         let hasViewerSocket = !(env["METAPHOR_VIEWER_SOCKET"] ?? "").isEmpty
         let hasProbe = env["METAPHOR_PROBE"] == "1"
@@ -527,25 +526,23 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
     /// 出力が要求されているのに provider が 1 つも無い（例えば Syphon を要求したのに
     /// `metaphor-syphon` パッケージが依存に入っていない）場合は警告を出して何もしません。
     /// metaphor-syphon を `Package.swift` に足すとロード時に provider が自動登録され、
-    /// `plugins: [.syphon(name:)]` でも旧 `syphon:` / `METAPHOR_SYPHON_NAME` でも起動します。
+    /// 出力 provider が返したプラグイン（`plugins: [.syphon(name:)]` や `METAPHOR_SYPHON_NAME` による
+    /// metaphor-syphon の出力など）を renderer に取り付けます。
     private func attachOutputs(
         _ outputs: [MetaphorOutputProviders.ResolvedOutput],
-        renderer: MetaphorRenderer, config: SketchConfig, env: [String: String]
+        renderer: MetaphorRenderer, env: [String: String]
     ) {
         for output in outputs {
             renderer.addPlugin(output.plugin)
         }
-        if Self.outputRequestedButMissing(
-            config: config, env: env, isHeadless: isHeadless, outputs: outputs
-        ) {
+        if Self.outputRequestedButMissing(env: env, isHeadless: isHeadless, outputs: outputs) {
             // 出力先が無いままレンダーループだけ回り続けると原因の手掛かりが
             // 一切出ないため明示する。ヘッドレスモードは「ウィンドウ無し・
             // 出力のみ」なので error 級（Release でも stderr に出す）
-            let message = isHeadless && !config.legacySyphonEnabled && config.legacySyphonName == nil
-                && (env["METAPHOR_SYPHON_NAME"] ?? "").isEmpty
+            let message = isHeadless && (env["METAPHOR_SYPHON_NAME"] ?? "").isEmpty
                 ? "headless (METAPHOR_VIEWER=1) but nothing will observe the frames: set METAPHOR_VIEWER_SOCKET "
                     + "(metaphor watch --viewer), METAPHOR_PROBE=1, or request an output (METAPHOR_SYPHON_NAME with metaphor-syphon)."
-                : "an output (syphon / syphonName / METAPHOR_SYPHON_NAME) was requested but no output module is linked. "
+                : "an output (METAPHOR_SYPHON_NAME) was requested but no output module is linked. "
                     + "Add the 'metaphor-syphon' package to Package.swift and pass plugins: [.syphon(name:)] "
                     + "(https://github.com/shinyaoguri/metaphor-syphon)."
             if isHeadless {
@@ -577,7 +574,7 @@ final class SketchRunner: NSObject, NSApplicationDelegate {
         let outputs = MetaphorOutputProviders.makeOutputs(
             context: MetaphorOutputContext(scope: .primary(config), environment: env, isHeadless: true)
         )
-        attachOutputs(outputs, renderer: renderer, config: config, env: env)
+        attachOutputs(outputs, renderer: renderer, env: env)
 
         // FPS: 環境変数 `METAPHOR_FPS` で上書き可能（ウィンドウモードと共通）。
         let fps = Self.resolveFPS(config: config, env: env)

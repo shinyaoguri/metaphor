@@ -321,7 +321,6 @@ final class MySketch: Sketch {
 - ``MetaphorCore/MetaphorOutputContext``
 - ``MetaphorCore/PluginRequirements``
 - ``MetaphorCore/ViewerOutputPlugin``
-- ``MetaphorCore/MetaphorOutputRegistry``
 
 ### カラー
 
