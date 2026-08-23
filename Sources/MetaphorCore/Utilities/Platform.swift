@@ -1,12 +1,12 @@
-/// macOS 用のクロスプラットフォーム型エイリアス。
+/// Cross-platform type aliases for macOS.
 ///
-/// プラットフォーム固有の UI 型をライブラリ全体で使用される統一名にマッピングします。
+/// Maps platform-specific UI types to the unified names used throughout the library.
 import AppKit
-/// プラットフォームネイティブのビュー型（macOS では NSView）。
+/// The platform-native view type (NSView on macOS).
 public typealias PlatformView = NSView
-/// プラットフォームネイティブのフォント型（macOS では NSFont）。
+/// The platform-native font type (NSFont on macOS).
 public typealias PlatformFont = NSFont
-/// プラットフォームネイティブのイメージ型（macOS では NSImage）。
+/// The platform-native image type (NSImage on macOS).
 public typealias PlatformImage = NSImage
-/// プラットフォームネイティブのカラー型（macOS では NSColor）。
+/// The platform-native color type (NSColor on macOS).
 public typealias PlatformColor = NSColor

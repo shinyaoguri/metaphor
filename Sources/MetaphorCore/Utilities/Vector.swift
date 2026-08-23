@@ -2,47 +2,47 @@ import simd
 
 // MARK: - Type Aliases
 
-/// `SIMD2<Float>` のエイリアスである2次元ベクトル。
+/// A two-dimensional vector, an alias for `SIMD2<Float>`.
 public typealias Vec2 = SIMD2<Float>
 
-/// `SIMD3<Float>` のエイリアスである3次元ベクトル。
+/// A three-dimensional vector, an alias for `SIMD3<Float>`.
 public typealias Vec3 = SIMD3<Float>
 
 // MARK: - SIMD2<Float> Processing-Style Extensions
 
 extension SIMD2 where Scalar == Float {
 
-    /// ベクトルの長さ（大きさ）を返します。
+    /// The length (magnitude) of the vector.
     public var magnitude: Float {
         simd_length(self)
     }
 
-    /// 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+    /// The squared length of the vector, which avoids the cost of a square root.
     public var magnitudeSquared: Float {
         simd_length_squared(self)
     }
 
-    /// 正のx軸から測定したベクトルの角度をラジアンで計算します。
+    /// Calculates the angle of the vector in radians, measured from the positive x-axis.
     ///
-    /// - Returns: ラジアン単位の方向角。
+    /// - Returns: The heading angle in radians.
     public func heading() -> Float {
         atan2(y, x)
     }
 
-    /// 指定された角度で回転した新しいベクトルを返します。
+    /// Returns a new vector rotated by the given angle.
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
-    /// - Returns: 回転されたベクトル。
+    /// - Parameter angle: The rotation angle in radians.
+    /// - Returns: The rotated vector.
     public func rotated(_ angle: Float) -> SIMD2<Float> {
         let c = cos(angle)
         let s = sin(angle)
         return SIMD2(x * c - y * s, x * s + y * c)
     }
 
-    /// 指定された最大値に大きさをクランプした新しいベクトルを返します。
+    /// Returns a new vector whose magnitude is clamped to the given maximum.
     ///
-    /// - Parameter max: 許容される最大の大きさ。
-    /// - Returns: 長さが `max` を超えないベクトル。
+    /// - Parameter max: The maximum allowed magnitude.
+    /// - Returns: A vector whose length does not exceed `max`.
     public func limited(_ max: Float) -> SIMD2<Float> {
         let m = simd_length(self)
         if m > max && m > 0 {
@@ -51,114 +51,114 @@ extension SIMD2 where Scalar == Float {
         return self
     }
 
-    /// 同じ方向を向いた単位ベクトルを返します。
+    /// Returns a unit vector pointing in the same direction.
     ///
-    /// - Returns: 正規化されたベクトル。元のベクトルの長さがゼロの場合はゼロベクトル。
+    /// - Returns: The normalized vector, or the zero vector when the original vector has zero length.
     public func normalized() -> SIMD2<Float> {
         let m = simd_length(self)
         guard m > 0 else { return .zero }
         return self / m
     }
 
-    /// 別のベクトルまでのユークリッド距離を計算します。
+    /// Calculates the Euclidean distance to another vector.
     ///
-    /// - Parameter other: 対象ベクトル。
-    /// - Returns: 2つのベクトル間の距離。
+    /// - Parameter other: The target vector.
+    /// - Returns: The distance between the two vectors.
     public func dist(to other: SIMD2<Float>) -> Float {
         simd_distance(self, other)
     }
 
-    /// 別のベクトルとの内積を計算します。
+    /// Calculates the dot product with another vector.
     ///
-    /// - Parameter other: もう一方のベクトル。
-    /// - Returns: スカラー内積。
+    /// - Parameter other: The other vector.
+    /// - Returns: The scalar dot product.
     public func dot(_ other: SIMD2<Float>) -> Float {
         simd_dot(self, other)
     }
 
-    /// 指定された角度から単位ベクトルを作成します。
+    /// Creates a unit vector from the given angle.
     ///
-    /// - Parameter angle: ラジアン単位の角度。
-    /// - Returns: `angle` の方向を向いた単位ベクトル。
+    /// - Parameter angle: The angle in radians.
+    /// - Returns: A unit vector pointing in the direction of `angle`.
     public static func fromAngle(_ angle: Float) -> SIMD2<Float> {
         SIMD2(cos(angle), sin(angle))
     }
 
-    /// 均一に分布した方向を持つランダムな単位ベクトルを作成します。
+    /// Creates a random unit vector with a uniformly distributed direction.
     ///
-    /// ``randomSeed(_:)`` で設定した共有シード RNG を使用するため、
-    /// シード設定後は決定論的に再現できます。
+    /// It uses the shared seeded pseudo-random generator set by ``randomSeed(_:)``, so it
+    /// reproduces deterministically once a seed has been set.
     ///
-    /// - Returns: ランダムな2D単位ベクトル。
+    /// - Returns: A random 2D unit vector.
     @MainActor
     public static func random2D() -> SIMD2<Float> {
         let angle = MetaphorCore.random(0, Float.pi * 2)
         return fromAngle(angle)
     }
 
-    /// 別のベクトルに向かって線形補間を行います。
+    /// Linearly interpolates toward another vector.
     ///
     /// - Parameters:
-    ///   - other: 目標ベクトル。
-    ///   - t: 補間係数。通常 0...1 の範囲。
-    /// - Returns: 補間されたベクトル。
+    ///   - other: The target vector.
+    ///   - t: The interpolation factor, normally in the range 0...1.
+    /// - Returns: The interpolated vector.
     public func lerp(to other: SIMD2<Float>, t: Float) -> SIMD2<Float> {
         self + (other - self) * t
     }
 
-    /// 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+    /// Returns a new vector with the given magnitude, preserving the direction.
     ///
-    /// - Parameter len: 目標の大きさ。
-    /// - Returns: 同じ方向で指定された長さを持つベクトル。
+    /// - Parameter len: The target magnitude.
+    /// - Returns: A vector with the same direction and the given length.
     public func withMagnitude(_ len: Float) -> SIMD2<Float> {
         normalized() * len
     }
 
-    /// 3D外積のz成分に相当する2D外積を計算します。
+    /// Calculates the 2D cross product, which corresponds to the z component of the 3D cross product.
     ///
-    /// - Parameter other: もう一方のベクトル。
-    /// - Returns: スカラー外積値。
+    /// - Parameter other: The other vector.
+    /// - Returns: The scalar cross product value.
     public func cross(_ other: SIMD2<Float>) -> Float {
         x * other.y - y * other.x
     }
 
-    /// このベクトルと別のベクトルの間の符号付き角度をラジアンで計算します。
+    /// Calculates the signed angle in radians between this vector and another vector.
     ///
-    /// - Parameter other: もう一方のベクトル。
-    /// - Returns: 2つのベクトル間のラジアン単位の角度。
+    /// - Parameter other: The other vector.
+    /// - Returns: The angle between the two vectors in radians.
     public func angleBetween(_ other: SIMD2<Float>) -> Float {
         atan2(cross(other), dot(other))
     }
 
     // MARK: Mutating (Processing PVector スタイル)
 
-    /// このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+    /// Makes this vector a unit vector in place (the mutating form of ``normalized()``).
     ///
-    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    /// When the length is zero, it stays the zero vector and does not change.
     public mutating func normalize() {
         self = normalized()
     }
 
-    /// このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+    /// Clamps this vector's magnitude to a maximum in place (the mutating form of ``limited(_:)``).
     ///
-    /// - Parameter max: 許容される最大の大きさ。
+    /// - Parameter max: The maximum allowed magnitude.
     public mutating func limit(_ max: Float) {
         self = limited(max)
     }
 
-    /// このベクトルをその場で回転します（``rotated(_:)`` の mutating 版）。
+    /// Rotates this vector in place (the mutating form of ``rotated(_:)``).
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     public mutating func rotate(_ angle: Float) {
         self = rotated(angle)
     }
 
-    /// 方向を維持したまま、このベクトルの大きさをその場で設定します
-    /// （``withMagnitude(_:)`` の mutating 版。Processing の `setMag()` に相当）。
+    /// Sets this vector's magnitude in place, preserving the direction
+    /// (the mutating form of ``withMagnitude(_:)``; the equivalent of Processing's `setMag()`).
     ///
-    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    /// When the length is zero, it stays the zero vector and does not change.
     ///
-    /// - Parameter len: 目標の大きさ。
+    /// - Parameter len: The target magnitude.
     public mutating func setMag(_ len: Float) {
         self = withMagnitude(len)
     }
@@ -168,20 +168,20 @@ extension SIMD2 where Scalar == Float {
 
 extension SIMD3 where Scalar == Float {
 
-    /// ベクトルの長さ（大きさ）を返します。
+    /// The length (magnitude) of the vector.
     public var magnitude: Float {
         simd_length(self)
     }
 
-    /// 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+    /// The squared length of the vector, which avoids the cost of a square root.
     public var magnitudeSquared: Float {
         simd_length_squared(self)
     }
 
-    /// 指定された最大値に大きさをクランプした新しいベクトルを返します。
+    /// Returns a new vector whose magnitude is clamped to the given maximum.
     ///
-    /// - Parameter max: 許容される最大の大きさ。
-    /// - Returns: 長さが `max` を超えないベクトル。
+    /// - Parameter max: The maximum allowed magnitude.
+    /// - Returns: A vector whose length does not exceed `max`.
     public func limited(_ max: Float) -> SIMD3<Float> {
         let m = simd_length(self)
         if m > max && m > 0 {
@@ -190,46 +190,46 @@ extension SIMD3 where Scalar == Float {
         return self
     }
 
-    /// 同じ方向を向いた単位ベクトルを返します。
+    /// Returns a unit vector pointing in the same direction.
     ///
-    /// - Returns: 正規化されたベクトル。元のベクトルの長さがゼロの場合はゼロベクトル。
+    /// - Returns: The normalized vector, or the zero vector when the original vector has zero length.
     public func normalized() -> SIMD3<Float> {
         let m = simd_length(self)
         guard m > 0 else { return .zero }
         return self / m
     }
 
-    /// 別のベクトルまでのユークリッド距離を計算します。
+    /// Calculates the Euclidean distance to another vector.
     ///
-    /// - Parameter other: 対象ベクトル。
-    /// - Returns: 2つのベクトル間の距離。
+    /// - Parameter other: The target vector.
+    /// - Returns: The distance between the two vectors.
     public func dist(to other: SIMD3<Float>) -> Float {
         simd_distance(self, other)
     }
 
-    /// 別のベクトルとの内積を計算します。
+    /// Calculates the dot product with another vector.
     ///
-    /// - Parameter other: もう一方のベクトル。
-    /// - Returns: スカラー内積。
+    /// - Parameter other: The other vector.
+    /// - Returns: The scalar dot product.
     public func dot(_ other: SIMD3<Float>) -> Float {
         simd_dot(self, other)
     }
 
-    /// 別のベクトルとの外積を計算します。
+    /// Calculates the cross product with another vector.
     ///
-    /// - Parameter other: もう一方のベクトル。
-    /// - Returns: 両方の入力ベクトルに垂直なベクトル。
+    /// - Parameter other: The other vector.
+    /// - Returns: A vector perpendicular to both input vectors.
     public func cross(_ other: SIMD3<Float>) -> SIMD3<Float> {
         simd_cross(self, other)
     }
 
-    /// 単位球の表面上に均一に分布するランダムな単位ベクトルを作成します。
+    /// Creates a random unit vector distributed uniformly over the surface of the unit sphere.
     ///
-    /// 均一な分布を生成するために Marsaglia 棄却法を使用します。
-    /// ``randomSeed(_:)`` で設定した共有シード RNG を使用するため、
-    /// シード設定後は決定論的に再現できます。
+    /// It uses the Marsaglia rejection method to produce a uniform distribution.
+    /// It uses the shared seeded pseudo-random generator set by ``randomSeed(_:)``, so it
+    /// reproduces deterministically once a seed has been set.
     ///
-    /// - Returns: ランダムな3D単位ベクトル。
+    /// - Returns: A random 3D unit vector.
     @MainActor
     public static func random3D() -> SIMD3<Float> {
         // Marsaglia 法
@@ -244,28 +244,28 @@ extension SIMD3 where Scalar == Float {
         return simd_normalize(v)
     }
 
-    /// 別のベクトルに向かって線形補間を行います。
+    /// Linearly interpolates toward another vector.
     ///
     /// - Parameters:
-    ///   - other: 目標ベクトル。
-    ///   - t: 補間係数。通常 0...1 の範囲。
-    /// - Returns: 補間されたベクトル。
+    ///   - other: The target vector.
+    ///   - t: The interpolation factor, normally in the range 0...1.
+    /// - Returns: The interpolated vector.
     public func lerp(to other: SIMD3<Float>, t: Float) -> SIMD3<Float> {
         self + (other - self) * t
     }
 
-    /// 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+    /// Returns a new vector with the given magnitude, preserving the direction.
     ///
-    /// - Parameter len: 目標の大きさ。
-    /// - Returns: 同じ方向で指定された長さを持つベクトル。
+    /// - Parameter len: The target magnitude.
+    /// - Returns: A vector with the same direction and the given length.
     public func withMagnitude(_ len: Float) -> SIMD3<Float> {
         normalized() * len
     }
 
-    /// このベクトルと別のベクトルの間の符号なし角度をラジアンで計算します。
+    /// Calculates the unsigned angle in radians between this vector and another vector.
     ///
-    /// - Parameter other: もう一方のベクトル。
-    /// - Returns: 2つのベクトル間のラジアン単位の角度。0...pi の範囲。
+    /// - Parameter other: The other vector.
+    /// - Returns: The angle between the two vectors in radians, in the range 0...pi.
     public func angleBetween(_ other: SIMD3<Float>) -> Float {
         let d = dot(other)
         let m = magnitude * other.magnitude
@@ -275,26 +275,26 @@ extension SIMD3 where Scalar == Float {
 
     // MARK: Mutating (Processing PVector スタイル)
 
-    /// このベクトルをその場で単位ベクトルにします（``normalized()`` の mutating 版）。
+    /// Makes this vector a unit vector in place (the mutating form of ``normalized()``).
     ///
-    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    /// When the length is zero, it stays the zero vector and does not change.
     public mutating func normalize() {
         self = normalized()
     }
 
-    /// このベクトルの大きさをその場で最大値にクランプします（``limited(_:)`` の mutating 版）。
+    /// Clamps this vector's magnitude to a maximum in place (the mutating form of ``limited(_:)``).
     ///
-    /// - Parameter max: 許容される最大の大きさ。
+    /// - Parameter max: The maximum allowed magnitude.
     public mutating func limit(_ max: Float) {
         self = limited(max)
     }
 
-    /// 方向を維持したまま、このベクトルの大きさをその場で設定します
-    /// （``withMagnitude(_:)`` の mutating 版。Processing の `setMag()` に相当）。
+    /// Sets this vector's magnitude in place, preserving the direction
+    /// (the mutating form of ``withMagnitude(_:)``; the equivalent of Processing's `setMag()`).
     ///
-    /// 長さがゼロの場合はゼロベクトルのまま変化しません。
+    /// When the length is zero, it stays the zero vector and does not change.
     ///
-    /// - Parameter len: 目標の大きさ。
+    /// - Parameter len: The target magnitude.
     public mutating func setMag(_ len: Float) {
         self = withMagnitude(len)
     }

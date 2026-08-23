@@ -1,51 +1,51 @@
 import Metal
 import simd
 
-/// 浮動小数点成分を持つ RGBA カラー。
+/// An RGBA color with floating-point components.
 ///
-/// 成分は 0.0 から 1.0 のスケールで表しますが、**この範囲に強制されるわけではありません**。
-/// RGB、HSB、グレースケール、16進数形式からの初期化をサポートします。
+/// Components are expressed on a 0.0 to 1.0 scale, but **they are not forced into that range**.
+/// Supports initialization from RGB, HSB, grayscale, and hexadecimal forms.
 ///
-/// ## 範囲外の成分
+/// ## Out-of-range components
 ///
-/// ``init(r:g:b:alpha:)`` と ``init(gray:alpha:)`` は引数をクランプせず、そのまま保持します。
-/// 範囲外の成分は意図的にも作られます — `Color` は ``Interpolatable`` に準拠して線形外挿するため、
-/// `easeOutBack` / `easeOutElastic` のようにオーバーシュートするイージングで `Tween<Color>` を回すと
-/// 0.0...1.0 を外れた成分が生まれます。
+/// ``init(r:g:b:alpha:)`` and ``init(gray:alpha:)`` keep their arguments as given instead of clamping them.
+/// Out-of-range components also arise on purpose — `Color` conforms to ``Interpolatable`` and extrapolates linearly,
+/// so running a `Tween<Color>` with an overshooting easing such as `easeOutBack` or `easeOutElastic` produces
+/// components outside 0.0...1.0.
 ///
-/// 描画に使うと、成分は **描画時に 0.0...1.0 へ飽和** します。オフスクリーンのレンダーターゲットが
-/// 正規化フォーマット（`bgra8Unorm`）で、GPU がフラグメント出力をブレンド**前**にクランプするためです。
-/// 結果として:
+/// When such a color is drawn, its components **saturate to 0.0...1.0 at draw time**. This is because the offscreen
+/// render target uses a normalized format (`bgra8Unorm`) and the GPU clamps fragment output **before** blending.
+/// As a result:
 ///
-/// - `a: 1.5` は `a: 1.0` と同じ絵になります（背景が引かれ過ぎることはありません）
-/// - 負の成分を ``BlendMode/additive`` で重ねても背景は暗くなりません（0 として扱われます）
-/// - 1.0 を超える輝度を保持する HDR 的な用途には使えません
-/// - ``clearColor`` 経由の背景色も同じく飽和します
+/// - `a: 1.5` draws the same as `a: 1.0` (the background is never over-subtracted)
+/// - Compositing a negative component with ``BlendMode/additive`` does not darken the background (it is treated as 0)
+/// - HDR-style uses that need to retain luminance above 1.0 are not possible
+/// - A background color set through ``clearColor`` saturates the same way
 ///
-/// 成分を他の表現へ変換するとき（シェーダへのバインド、`UInt8` 化、CSS 文字列化など）は
-/// 0.0...1.0 を不変条件として仮定せず、必要なら呼び出し側でクランプしてください。
+/// When converting components to another representation (binding them to a shader, converting to `UInt8`,
+/// formatting a CSS string, and so on), do not assume 0.0...1.0 as an invariant; clamp on the caller side if needed.
 public struct Color: Sendable, Equatable {
-    /// 赤成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+    /// The red component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
     public var r: Float
-    /// 緑成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+    /// The green component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
     public var g: Float
-    /// 青成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+    /// The blue component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
     public var b: Float
-    /// アルファ（不透明度）成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
+    /// The alpha (opacity) component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
     public var a: Float
 
     // MARK: - RGB
 
-    /// 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
+    /// Creates a color from RGB components on a 0.0 to 1.0 scale.
     ///
-    /// 引数はクランプされません。範囲外の値はそのまま保持され、描画時に飽和します
-    /// （``Color`` の「範囲外の成分」を参照）。
+    /// The arguments are not clamped. Out-of-range values are preserved as given and
+    /// saturate at draw time (see "Out-of-range components" in ``Color``).
     ///
     /// - Parameters:
-    ///   - r: 赤成分。
-    ///   - g: 緑成分。
-    ///   - b: 青成分。
-    ///   - alpha: アルファ成分。デフォルトは 1.0（完全に不透明）。
+    ///   - r: The red component.
+    ///   - g: The green component.
+    ///   - b: The blue component.
+    ///   - alpha: The alpha component. The default is 1.0 (fully opaque).
     public init(r: Float, g: Float, b: Float, alpha: Float = 1.0) {
         self.r = r
         self.g = g
@@ -55,13 +55,13 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Grayscale
 
-    /// グレースケールカラーを作成します。0.0 が黒、1.0 が白。
+    /// Creates a grayscale color, where 0.0 is black and 1.0 is white.
     ///
-    /// ``init(r:g:b:alpha:)`` と同じく引数はクランプされません。
+    /// As with ``init(r:g:b:alpha:)``, the arguments are not clamped.
     ///
     /// - Parameters:
-    ///   - gray: グレースケール値。
-    ///   - alpha: アルファ成分。デフォルトは 1.0（完全に不透明）。
+    ///   - gray: The grayscale value.
+    ///   - alpha: The alpha component. The default is 1.0 (fully opaque).
     public init(gray: Float, alpha: Float = 1.0) {
         self.r = gray
         self.g = gray
@@ -71,18 +71,19 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - HSB
 
-    /// 色相、彩度、明度の成分からカラーを作成します。
+    /// Creates a color from hue, saturation, and brightness components.
     ///
-    /// RGB 系の初期化子と違い、`saturation` と `brightness` はここで 0.0...1.0 へクランプされます。
-    /// 値域の約束ではなく、HSB→RGB 変換の前提を守るための防御です — 範囲外のまま計算すると
-    /// 中間値（`p` / `q` / `t`）が意味を失い、色相ごとに不連続な色が出ます。
-    /// `hue` は 0.0...1.0 を周期として巡回し、`alpha` はクランプされません。
+    /// Unlike the RGB initializers, `saturation` and `brightness` are clamped to 0.0...1.0 here.
+    /// This is not a promise about the value range but a guard that preserves the premise of the HSB-to-RGB
+    /// conversion — computing with out-of-range values makes the intermediates (`p` / `q` / `t`) meaningless
+    /// and produces colors that jump discontinuously from hue to hue.
+    /// `hue` wraps with a period of 0.0...1.0, and `alpha` is not clamped.
     ///
     /// - Parameters:
-    ///   - hue: 色相値。0.0 から 1.0 で一周し、範囲外の値は巡回します（1.25 は 0.25 と同じ）。
-    ///   - saturation: 彩度値。0.0 から 1.0 の範囲へクランプされます。
-    ///   - brightness: 明度値。0.0 から 1.0 の範囲へクランプされます。
-    ///   - alpha: アルファ成分。デフォルトは 1.0（完全に不透明）。クランプされません。
+    ///   - hue: The hue value. It completes one turn from 0.0 to 1.0, and out-of-range values wrap around (1.25 is the same as 0.25).
+    ///   - saturation: The saturation value. Clamped to the range 0.0 to 1.0.
+    ///   - brightness: The brightness value. Clamped to the range 0.0 to 1.0.
+    ///   - alpha: The alpha component. The default is 1.0 (fully opaque). Not clamped.
     public init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0) {
         // NaN/∞ の hue は後段の Int(h) 変換でトラップするため 0 にフォールバック
         // （saturation/brightness は下のクランプで防御済み）。
@@ -145,15 +146,15 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Hex
 
-    /// 0xRRGGBB または 0xAARRGGBB 形式の整数16進数値からカラーを作成します。
+    /// Creates a color from an integer hexadecimal value in 0xRRGGBB or 0xAARRGGBB form.
     ///
-    /// 桁数は**値の大小**で判別します。整数リテラルは先頭の `0` が値に残らないため、
-    /// これ以外に区別する手掛かりがありません。結果として **アルファ `0x00` は表現できません** —
-    /// `0x00FFFFFF` は `0xFFFFFF` と同じ値なので RGB として読まれ、アルファは `1.0` になります。
-    /// 透明を含む色は ``init(hex:)-(String)``（8 桁の綴りは常に AARRGGBB として読まれます）か
-    /// ``withAlpha(_:)`` で作ってください。
+    /// The number of digits is inferred from **the magnitude of the value**. An integer literal does not keep
+    /// its leading `0` in the value, so there is no other clue to tell the two forms apart. As a result
+    /// **an alpha of `0x00` cannot be expressed** — `0x00FFFFFF` is the same value as `0xFFFFFF`, so it is read
+    /// as RGB and the alpha becomes `1.0`. Build colors that include transparency with
+    /// ``init(hex:)-(String)`` (an eight-digit spelling is always read as AARRGGBB) or with ``withAlpha(_:)``.
     ///
-    /// - Parameter hex: 16進数カラー値。0xFFFFFF より大きい値は AARRGGBB として解釈されます。
+    /// - Parameter hex: The hexadecimal color value. Values greater than 0xFFFFFF are interpreted as AARRGGBB.
     public init(hex: UInt32) {
         if hex > 0xFFFFFF {
             self.a = Float((hex >> 24) & 0xFF) / 255.0
@@ -168,19 +169,21 @@ public struct Color: Sendable, Equatable {
         }
     }
 
-    /// "#RGB" / "#RRGGBB" / "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
+    /// Creates a color from a hexadecimal string in "#RGB", "#RRGGBB", or "#AARRGGBB" form.
     ///
-    /// 受け付けるのは **3 桁・6 桁・8 桁のみ**で、それ以外の桁数と、16進数字以外を含む文字列は
-    /// `nil` を返します。3 桁は CSS と同じ短縮形として各桁を 2 倍に展開します（"#FFF" は白）。
+    /// Only **three, six, and eight digits** are accepted; any other digit count, and any string containing
+    /// characters other than hexadecimal digits, returns `nil`. Three digits are expanded by doubling each digit,
+    /// the same shorthand as CSS ("#FFF" is white).
     ///
-    /// **4 桁の短縮形は受け付けません。** このライブラリの 8 桁は AARRGGBB（アルファ先頭）で
-    /// CSS の RRGGBBAA と順序が逆なため、4 桁は ARGB とも RGBA とも読めます。どちらに決めても
-    /// もう一方の綴りが黙って別の色になるので、`nil` で綴りの誤りとして返します。
+    /// **The four-digit shorthand is not accepted.** This library's eight-digit form is AARRGGBB (alpha first),
+    /// the reverse of the CSS RRGGBBAA order, so four digits could be read as either ARGB or RGBA. Whichever were
+    /// chosen, the other spelling would silently become a different color, so it is returned as `nil`, a misspelling.
     ///
-    /// 8 桁のアルファは `00`（完全透明）も綴りどおりに読まれます。桁数を綴りから数えるため、
-    /// ``init(hex:)-(UInt32)`` が値の大小で判別せざるを得ない曖昧さはここには残りません。
+    /// In the eight-digit form an alpha of `00` (fully transparent) is also read exactly as spelled. Because the
+    /// digit count is taken from the spelling, the ambiguity that forces ``init(hex:)-(UInt32)`` to infer it from
+    /// the magnitude does not arise here.
     ///
-    /// - Parameter hex: 16進数カラー文字列。"#" プレフィックスは省略可能。
+    /// - Parameter hex: The hexadecimal color string. The "#" prefix is optional.
     public init?(hex: String) {
         var str = hex
         if str.hasPrefix("#") { str.removeFirst() }
@@ -203,14 +206,14 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - SIMD Conversion
 
-    /// カラーを (r, g, b, a) 順の `SIMD4<Float>` として返します。
+    /// The color as a `SIMD4<Float>` in (r, g, b, a) order.
     public var simd: SIMD4<Float> {
         SIMD4<Float>(r, g, b, a)
     }
 
-    /// (r, g, b, a) として解釈される `SIMD4<Float>` ベクトルからカラーを作成します。
+    /// Creates a color from a `SIMD4<Float>` vector interpreted as (r, g, b, a).
     ///
-    /// - Parameter simd: カラー成分を含む SIMD ベクトル。
+    /// - Parameter simd: The SIMD vector holding the color components.
     public init(_ simd: SIMD4<Float>) {
         self.r = simd.x
         self.g = simd.y
@@ -220,29 +223,29 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Metal Conversion
 
-    /// Metal レンダーパスで使用するための `MTLClearColor` としてカラーを返します。
+    /// The color as an `MTLClearColor` for use in a Metal render pass.
     ///
-    /// 成分はクランプせずそのまま渡します。範囲外の値はクリア時に 0.0...1.0 へ飽和します。
+    /// The components are passed through without clamping. Out-of-range values saturate to 0.0...1.0 on clear.
     public var clearColor: MTLClearColor {
         MTLClearColor(red: Double(r), green: Double(g), blue: Double(b), alpha: Double(a))
     }
 
     // MARK: - Color Manipulation
 
-    /// 指定されたアルファ値を持つ新しいカラーを返します。
+    /// Returns a new color with the given alpha value.
     ///
-    /// - Parameter alpha: 新しいアルファ値。
-    /// - Returns: 指定されたアルファを持つこのカラーのコピー。
+    /// - Parameter alpha: The new alpha value.
+    /// - Returns: A copy of this color with the given alpha.
     public func withAlpha(_ alpha: Float) -> Color {
         Color(r: r, g: g, b: b, alpha: alpha)
     }
 
-    /// このカラーと別のカラーの間を線形補間します。
+    /// Linearly interpolates between this color and another color.
     ///
     /// - Parameters:
-    ///   - other: 目標カラー。
-    ///   - t: 補間係数。0...1 の範囲にクランプされます。
-    /// - Returns: 補間されたカラー。
+    ///   - other: The target color.
+    ///   - t: The interpolation factor. Clamped to the range 0...1.
+    /// - Returns: The interpolated color.
     public func lerp(to other: Color, t: Float) -> Color {
         let t = max(0, min(1, t))
         return Color(
@@ -255,82 +258,82 @@ public struct Color: Sendable, Equatable {
 
     // MARK: - Named Colors
 
-    /// 純粋な黒。
+    /// Pure black.
     public static let black = Color(gray: 0)
-    /// 純粋な白。
+    /// Pure white.
     public static let white = Color(gray: 1)
-    /// 純粋な赤。
+    /// Pure red.
     public static let red = Color(r: 1, g: 0, b: 0)
-    /// 純粋な緑。
+    /// Pure green.
     public static let green = Color(r: 0, g: 1, b: 0)
-    /// 純粋な青。
+    /// Pure blue.
     public static let blue = Color(r: 0, g: 0, b: 1)
-    /// 純粋な黄。
+    /// Pure yellow.
     public static let yellow = Color(r: 1, g: 1, b: 0)
-    /// 純粋なシアン。
+    /// Pure cyan.
     public static let cyan = Color(r: 0, g: 1, b: 1)
-    /// 純粋なマゼンタ。
+    /// Pure magenta.
     public static let magenta = Color(r: 1, g: 0, b: 1)
-    /// オレンジ。
+    /// Orange.
     public static let orange = Color(r: 1, g: 0.6, b: 0)
-    /// 完全に透明な黒。
+    /// Fully transparent black.
     public static let clear = Color(r: 0, g: 0, b: 0, alpha: 0)
 }
 
 // MARK: - Global Color Functions
 
-/// 2つのカラーの間を線形補間します。
+/// Linearly interpolates between two colors.
 ///
 /// - Parameters:
-///   - c1: 開始カラー。
-///   - c2: 終了カラー。
-///   - t: 補間係数。
-/// - Returns: 補間されたカラー。
+///   - c1: The starting color.
+///   - c2: The ending color.
+///   - t: The interpolation factor.
+/// - Returns: The interpolated color.
 public func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color {
     c1.lerp(to: c2, t: t)
 }
 
 // MARK: - Color Space
 
-/// カラー解釈に使用されるカラースペースを定義します。
+/// Defines the color space used to interpret colors.
 public enum ColorSpace: Sendable {
-    /// 赤、緑、青のカラースペース。
+    /// The red, green, and blue color space.
     case rgb
-    /// 色相、彩度、明度のカラースペース。
+    /// The hue, saturation, and brightness color space.
     case hsb
 }
 
 // MARK: - Color Mode Config
 
-/// `colorMode()` 関数の設定を保持します。
+/// Holds the configuration of the `colorMode()` function.
 ///
-/// ユーザーが指定した値を正規化し、``Color`` インスタンスに変換します。
+/// Normalizes the values the user supplies and converts them into ``Color`` instances.
 public struct ColorModeConfig: Sendable, Equatable {
-    /// アクティブなカラースペース。
+    /// The active color space.
     public var space: ColorSpace = .rgb
-    /// 1番目の成分（赤または色相）の最大値。
+    /// The maximum value of the first component (red or hue).
     public var max1: Float = 255.0
-    /// 2番目の成分（緑または彩度）の最大値。
+    /// The maximum value of the second component (green or saturation).
     public var max2: Float = 255.0
-    /// 3番目の成分（青または明度）の最大値。
+    /// The maximum value of the third component (blue or brightness).
     public var max3: Float = 255.0
-    /// アルファ成分の最大値。
+    /// The maximum value of the alpha component.
     public var maxAlpha: Float = 255.0
 
-    /// 3つの成分値とオプションのアルファをカラーに変換します。
+    /// Converts three component values and an optional alpha into a color.
     ///
-    /// 各成分を対応する最大値で割って正規化するだけで、上限は強制しません。
-    /// 既定の `max1 = 255` に対する `fill(300)` のように最大値を超える入力を渡すと、
-    /// ``ColorSpace/rgb`` では 0.0...1.0 を外れた成分を持つ ``Color`` になります（描画時に飽和します）。
-    /// ``ColorSpace/hsb`` では ``Color/init(hue:saturation:brightness:alpha:)`` が
-    /// 彩度・明度をクランプし、色相は巡回します。
+    /// Each component is only normalized by dividing it by the corresponding maximum; the upper bound is not enforced.
+    /// Passing input above the maximum, such as `fill(300)` against the default `max1 = 255`, yields a ``Color``
+    /// whose components fall outside 0.0...1.0 in ``ColorSpace/rgb`` (they saturate at draw time).
+    /// In ``ColorSpace/hsb``, ``Color/init(hue:saturation:brightness:alpha:)`` clamps saturation and brightness,
+    /// and the hue wraps around.
     ///
     /// - Parameters:
-    ///   - v1: 1番目の成分値（赤または色相）。
-    ///   - v2: 2番目の成分値（緑または彩度）。
-    ///   - v3: 3番目の成分値（青または明度）。
-    ///   - alpha: アルファ値。`nil` の場合は `maxAlpha` がデフォルト値となります。
-    /// - Returns: 正規化された成分を持つカラー。
+    ///   - v1: The first component value (red or hue).
+    ///   - v2: The second component value (green or saturation).
+    ///   - v3: The third component value (blue or brightness).
+    ///   - alpha: The alpha value. When `nil`, `maxAlpha` is used as the default.
+    /// - Returns: A color with normalized components.
     public func toColor(_ v1: Float, _ v2: Float, _ v3: Float, _ alpha: Float? = nil) -> Color {
         let nA = (alpha ?? maxAlpha) / maxAlpha
         switch space {
@@ -341,14 +344,14 @@ public struct ColorModeConfig: Sendable, Equatable {
         }
     }
 
-    /// グレースケール値とオプションのアルファをカラーに変換します。
+    /// Converts a grayscale value and an optional alpha into a color.
     ///
-    /// ``toColor(_:_:_:_:)`` と同じく `max1` で割るだけで、上限は強制しません。
+    /// As with ``toColor(_:_:_:_:)``, it only divides by `max1`; the upper bound is not enforced.
     ///
     /// - Parameters:
-    ///   - gray: グレースケール値。
-    ///   - alpha: アルファ値。`nil` の場合は `maxAlpha` がデフォルト値となります。
-    /// - Returns: 正規化された成分を持つグレースケールカラー。
+    ///   - gray: The grayscale value.
+    ///   - alpha: The alpha value. When `nil`, `maxAlpha` is used as the default.
+    /// - Returns: A grayscale color with normalized components.
     public func toGray(_ gray: Float, _ alpha: Float? = nil) -> Color {
         let nA = (alpha ?? maxAlpha) / maxAlpha
         return Color(gray: gray / max1, alpha: nA)

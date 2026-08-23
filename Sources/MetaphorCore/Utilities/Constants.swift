@@ -2,19 +2,19 @@ import Foundation
 
 // MARK: - Math Constants (Processing-compatible)
 
-/// 円の円周と直径の比率。
+/// The ratio of a circle's circumference to its diameter.
 public let PI: Float = .pi
 
-/// 2パイ（ラジアンでの全円）。
+/// Two pi (a full circle in radians).
 public let TWO_PI: Float = .pi * 2
 
-/// パイの半分（ラジアンでの四分円）。
+/// Half of pi (a quarter circle in radians).
 public let HALF_PI: Float = .pi / 2
 
-/// パイの4分の1（ラジアンでの八分円）。
+/// A quarter of pi (an eighth of a circle in radians).
 public let QUARTER_PI: Float = .pi / 4
 
-/// タウ。2パイに等しい（ラジアンでの全円）。
+/// Tau. Equal to two pi (a full circle in radians).
 public let TAU: Float = .pi * 2
 
 // MARK: - Key Code Constants (macOS Virtual Key Codes)
@@ -24,63 +24,64 @@ public let TAU: Float = .pi * 2
 // 同名マクロと衝突して書けなくなるものがあるため（Issue #794）、そのときは `KeyCode.return`
 // のように名前空間を経由してください。
 
-/// 左矢印キーの仮想キーコード。
+/// The virtual key code for the left arrow key.
 public let LEFT: UInt16 = KeyCode.left
-/// 右矢印キーの仮想キーコード。
+/// The virtual key code for the right arrow key.
 public let RIGHT: UInt16 = KeyCode.right
-/// 下矢印キーの仮想キーコード。
+/// The virtual key code for the down arrow key.
 public let DOWN: UInt16 = KeyCode.down
-/// 上矢印キーの仮想キーコード。
+/// The virtual key code for the up arrow key.
 public let UP: UInt16 = KeyCode.up
 
-/// Return キーの仮想キーコード。
+/// The virtual key code for the Return key.
 ///
-/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります
-///   （`metaphor.RETURN` と修飾しても絞れません）。``KeyCode/return`` を使うか、
-///   `let r: UInt16 = RETURN` のように型注釈を付けてください。
+/// - Important: When `import Foundation` is also in scope, this name becomes ambiguous
+///   with the Darwin macro of the same name (qualifying it as `metaphor.RETURN` does not
+///   narrow it either). Use ``KeyCode/return``, or add a type annotation such as
+///   `let r: UInt16 = RETURN`.
 public let RETURN: UInt16 = KeyCode.return
-/// テンキー Enter キーの仮想キーコード。
+/// The virtual key code for the numeric keypad Enter key.
 public let ENTER: UInt16 = KeyCode.enter
-/// Tab キーの仮想キーコード。
+/// The virtual key code for the Tab key.
 ///
-/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。
-///   ``KeyCode/tab`` を使うか型注釈を付けてください。
+/// - Important: When `import Foundation` is also in scope, this name becomes ambiguous
+///   with the Darwin macro of the same name. Use ``KeyCode/tab`` or add a type annotation.
 public let TAB: UInt16 = KeyCode.tab
-/// Space キーの仮想キーコード。
+/// The virtual key code for the Space key.
 public let SPACE: UInt16 = KeyCode.space
-/// Backspace (Delete) キーの仮想キーコード。
+/// The virtual key code for the Backspace (Delete) key.
 ///
-/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。
-///   ``KeyCode/backspace`` を使うか型注釈を付けてください。
+/// - Important: When `import Foundation` is also in scope, this name becomes ambiguous
+///   with the Darwin macro of the same name. Use ``KeyCode/backspace`` or add a type annotation.
 public let BACKSPACE: UInt16 = KeyCode.backspace
-/// Forward Delete キーの仮想キーコード。
+/// The virtual key code for the Forward Delete key.
 public let DELETE: UInt16 = KeyCode.delete
-/// Escape キーの仮想キーコード。
+/// The virtual key code for the Escape key.
 public let ESCAPE: UInt16 = KeyCode.escape
 
-/// Shift キーの仮想キーコード。
+/// The virtual key code for the Shift key.
 public let SHIFT: UInt16 = KeyCode.shift
-/// Control キーの仮想キーコード。
+/// The virtual key code for the Control key.
 ///
-/// - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。
-///   ``KeyCode/control`` を使うか型注釈を付けてください。
+/// - Important: When `import Foundation` is also in scope, this name becomes ambiguous
+///   with the Darwin macro of the same name. Use ``KeyCode/control`` or add a type annotation.
 public let CONTROL: UInt16 = KeyCode.control
-/// Option キーの仮想キーコード。
+/// The virtual key code for the Option key.
 public let OPTION: UInt16 = KeyCode.option
-/// Alt キーの仮想キーコード（Option のエイリアス）。
+/// The virtual key code for the Alt key (an alias for Option).
 public let ALT: UInt16 = KeyCode.alt
-/// Command キーの仮想キーコード。
+/// The virtual key code for the Command key.
 public let COMMAND: UInt16 = KeyCode.command
 
 // MARK: - Time
 
-/// SketchContext が毎フレーム更新する内部時間値。
-/// Double 精度で保持する（Float だと約 4.6 時間で ms 分解能が失われる）。
+/// The internal time value that SketchContext updates every frame.
+/// Held at Double precision (a Float loses millisecond resolution after about 4.6 hours).
 @MainActor
 var _sketchElapsedTime: Double = 0
 
-/// スケッチ開始からの経過時間をミリ秒で返します。
-/// - Returns: ミリ秒単位の経過時間。
+/// Returns the number of milliseconds elapsed since the sketch started.
+/// - Returns: The elapsed time in milliseconds.
 @MainActor
 public func millis() -> Int {
     Int(_sketchElapsedTime * 1000)
@@ -88,32 +89,32 @@ public func millis() -> Int {
 
 // MARK: - Calendar Time (Processing-compatible)
 
-/// 現在の秒（0〜59）を返します。
+/// Returns the current second as a value from 0 to 59.
 public func second() -> Int {
     Calendar.current.component(.second, from: Date())
 }
 
-/// 現在の分（0〜59）を返します。
+/// Returns the current minute as a value from 0 to 59.
 public func minute() -> Int {
     Calendar.current.component(.minute, from: Date())
 }
 
-/// 現在の時（0〜23）を返します。
+/// Returns the current hour as a value from 0 to 23.
 public func hour() -> Int {
     Calendar.current.component(.hour, from: Date())
 }
 
-/// 現在の日（1〜31）を返します。
+/// Returns the current day of the month as a value from 1 to 31.
 public func day() -> Int {
     Calendar.current.component(.day, from: Date())
 }
 
-/// 現在の月（1〜12）を返します。
+/// Returns the current month as a value from 1 to 12.
 public func month() -> Int {
     Calendar.current.component(.month, from: Date())
 }
 
-/// 現在の年を返します。
+/// Returns the current year.
 public func year() -> Int {
     Calendar.current.component(.year, from: Date())
 }

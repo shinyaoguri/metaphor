@@ -1,19 +1,19 @@
 import Foundation
 
-/// 一時ファイルから本番パスへの原子的なリネーム。
+/// Atomically renames a temporary file onto its final path.
 ///
-/// `rename(2)` は同一ボリューム内で既存の宛先を **原子的に** 置き換える
-/// （`removeItem` → `moveItem` の 2 段階だと、間に出力ファイルが存在しない
-/// 瞬間窓ができて「原子的リネーム」の契約が破れる）。
+/// `rename(2)` replaces an existing destination **atomically** within the same volume
+/// (a two-step `removeItem` → `moveItem` opens a brief window in which the output
+/// file does not exist, which breaks the "atomic rename" contract).
 ///
-/// `.metaphor/` 配下のファイル契約（Probe / Parameter Store）は「読み手が
-/// 部分書き込みを見ない」ことを producer 側の義務としているため、書き出しは
-/// 必ずこの関数を通します（CONTRACT.md 契約点 4 / 7）。
+/// The file contracts under `.metaphor/` (Probe / Parameter Store) make it the
+/// producer's obligation that "a reader never observes a partial write", so every
+/// write goes through this function (CONTRACT.md contract points 4 / 7).
 ///
 /// - Parameters:
-///   - tmp: 書き込み済みの一時ファイル。
-///   - final: 置き換え先の本番パス。
-///   - label: 失敗ログに出す発生源（`"Probe"` / `"Params"` など）。
+///   - tmp: The temporary file that has already been written.
+///   - final: The final path to replace.
+///   - label: The origin reported in failure logs (`"Probe"`, `"Params"`, and so on).
 func metaphorAtomicReplace(tmp: URL, final: URL, label: String) {
     let result = tmp.withUnsafeFileSystemRepresentation { tmpPath -> Int32 in
         final.withUnsafeFileSystemRepresentation { finalPath -> Int32 in
