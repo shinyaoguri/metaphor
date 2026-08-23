@@ -114,7 +114,8 @@ stderr をオーバーレイ表示し、次の保存で復帰。
   - `NSWindow` / `MetaphorMTKView` を生成しない
   - `renderer.configure(view:)` を呼ばない（→ ブリットが消える）
   - 強制的にタイマーモード + Syphon サーバー起動（既存経路を再利用）
-  - `app.setActivationPolicy(.regular)` → `.accessory`（Dock 非表示）
+  - `app.setActivationPolicy(.regular)` → `.accessory`（Dock 非表示。**現在は A-5 の
+    指標に応じて `.regular` に戻すことがある**）
   - `applicationShouldTerminateAfterLastWindowClosed` はヘッドレス時 `false`
 - トリガ: 環境変数 `METAPHOR_VIEWER=1`（CLI が子に注入）。Syphon 名・FPS も環境変数で受領。
   **`SketchConfig` には触らない**（ユーザー API を汚さない）。
@@ -176,6 +177,25 @@ stderr をオーバーレイ表示し、次の保存で復帰。
 - ヘッドレスが Syphon を暗黙に立てることは無くなった（観測手段は socket / Probe / 明示の外部出力）。
   旧 cli が注入する `METAPHOR_SYPHON_NAME` は従来どおり効くので移行窓は要らない
 - 確定仕様は [CONTRACT.md](../../CONTRACT.md) 契約点 5 と `contract/viewer-*.schema.json`
+
+### A-5. ヘッドレス実行の可視化（実装済み）
+
+- 新規: `Sources/MetaphorCore/Sketch/HeadlessIndicator.swift` /
+  `Sources/MetaphorCore/UI/HeadlessStatusItem.swift`
+- 背景: A-1 の `.accessory` は Dock を汚さないための判断だったが、その結果ヘッドレスの
+  プロセスは**どこにも現れなくなった** — 走っているのか・何本走っているのか・どう止めるのかが
+  分からず、既定で App Nap を抑止するので見えないまま GPU を回し続ける。親ビューアが切れても
+  `ViewerOutputPlugin` はフレーム送信をやめるだけで、プロセスは生き残る
+- 既定でメニューバーに状態項目を出す（``SketchConfig/headlessIndicator`` = `.menuBar`。
+  環境変数 `METAPHOR_HEADLESS_INDICATOR` = `menubar` / `dock` / `both` / `none` が優先）。
+  この環境変数は cli が設定しないので**クロスリポ契約ではない**（`METAPHOR_ALLOW_APP_NAP` と同じ扱い）
+- メニューの中身はスケッチ名 / バージョン・PID / 解像度・目標と実測 fps / frame と経過 /
+  出力先。出力が 1 つも無ければ "nobody is watching these frames" と明示するので、
+  **孤児になったヘッドレスプロセスをメニューを開くだけで見分けられる**。末尾の Quit で終了できる
+- `.dock` / `.both` では `.regular` へ戻し、AppKit が用意する**中身が空のアプリメニュー**を
+  最小限のもの（⌘Q）へ差し替える（空のままだと ⌘Q すら効かない）
+- 実行結果画像の撮影経路（`scripts/shots_common.py`）は連続起動でアイコンが出入りするため
+  `none` を渡す
 
 ## 5. ワークストリーム B: CLI ビューア（metaphor-cli リポジトリ）
 

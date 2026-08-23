@@ -18,6 +18,7 @@ struct SketchConfigTests {
         #expect(config.fps == 60)
         #expect(config.windowScale == 0.5)
         #expect(config.preventAppNap == true)
+        #expect(config.headlessIndicator == .menuBar)
     }
 
     @Test("custom config values")
@@ -107,6 +108,77 @@ struct FPSResolutionTests {
                 "METAPHOR_FPS=\(raw) should be ignored"
             )
         }
+    }
+}
+
+// MARK: - Headless Indicator Resolution Tests
+
+@Suite("Headless indicator resolution")
+struct HeadlessIndicatorResolutionTests {
+
+    @Test("falls back to config when unset")
+    func fallsBackToConfig() {
+        #expect(SketchRunner.resolveHeadlessIndicator(config: SketchConfig(), env: [:]) == .menuBar)
+        #expect(SketchRunner.resolveHeadlessIndicator(
+            config: SketchConfig(headlessIndicator: .hidden), env: [:]
+        ) == .hidden)
+    }
+
+    @Test("METAPHOR_HEADLESS_INDICATOR overrides config")
+    func envOverridesConfig() {
+        let config = SketchConfig(headlessIndicator: .menuBar)
+        let cases: [(String, HeadlessIndicator)] = [
+            ("dock", .dock), ("both", .both), ("none", .hidden), ("menubar", .menuBar),
+        ]
+        for (raw, expected) in cases {
+            #expect(
+                SketchRunner.resolveHeadlessIndicator(
+                    config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
+                ) == expected,
+                "METAPHOR_HEADLESS_INDICATOR=\(raw)"
+            )
+        }
+    }
+
+    @Test("value is case- and whitespace-insensitive, and accepts spelling variants")
+    func lenientParsing() {
+        let config = SketchConfig(headlessIndicator: .menuBar)
+        for raw in [" DOCK", "Dock ", "dock"] {
+            #expect(SketchRunner.resolveHeadlessIndicator(
+                config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
+            ) == .dock, "METAPHOR_HEADLESS_INDICATOR=\(raw)")
+        }
+        for raw in ["none", "off", "hidden", "0"] {
+            #expect(SketchRunner.resolveHeadlessIndicator(
+                config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
+            ) == .hidden, "METAPHOR_HEADLESS_INDICATOR=\(raw)")
+        }
+        #expect(SketchRunner.resolveHeadlessIndicator(
+            config: config, env: ["METAPHOR_HEADLESS_INDICATOR": "menu-bar"]
+        ) == .menuBar)
+    }
+
+    @Test("unparsable value falls back to config")
+    func unparsableFallsBack() {
+        // 綴りを間違えたときに「どこにも出ない」へ倒れると、この機能の目的
+        // （見えないプロセスを必ず見せる）が消えるので、必ず設定値へ戻す。
+        let config = SketchConfig(headlessIndicator: .both)
+        for raw in ["", "menubarr", "true", "yes", "1"] {
+            #expect(
+                SketchRunner.resolveHeadlessIndicator(
+                    config: config, env: ["METAPHOR_HEADLESS_INDICATOR": raw]
+                ) == .both,
+                "METAPHOR_HEADLESS_INDICATOR=\(raw) should be ignored"
+            )
+        }
+    }
+
+    @Test("indicator maps to the surfaces it shows")
+    func surfaces() {
+        #expect(HeadlessIndicator.menuBar.showsMenuBarItem && !HeadlessIndicator.menuBar.showsDockIcon)
+        #expect(!HeadlessIndicator.dock.showsMenuBarItem && HeadlessIndicator.dock.showsDockIcon)
+        #expect(HeadlessIndicator.both.showsMenuBarItem && HeadlessIndicator.both.showsDockIcon)
+        #expect(!HeadlessIndicator.hidden.showsMenuBarItem && !HeadlessIndicator.hidden.showsDockIcon)
     }
 }
 

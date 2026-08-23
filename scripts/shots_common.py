@@ -524,6 +524,10 @@ class ProbeCapture:
         env = dict(os.environ)
         env["METAPHOR_PROBE"] = "1"
         env["METAPHOR_VIEWER"] = "1"  # ヘッドレス（ウィンドウを開かない）
+        # ヘッドレスは既定でメニューバーに状態項目を出すが、撮影は数十〜百本を
+        # 連続で起動するのでアイコンが出入りし続ける。撮る絵には影響しないものの
+        # 実用上うるさいだけなので、撮影経路では出さない。
+        env["METAPHOR_HEADLESS_INDICATOR"] = "none"
         self.process = subprocess.Popen(
             command,
             cwd=self.cwd,
