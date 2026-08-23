@@ -4,13 +4,13 @@ import MetaphorAudio
 // MARK: - オーディオブリッジ
 
 extension Sketch {
-    /// リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
+    /// Creates an audio input analyzer for real-time FFT and beat detection.
     ///
-    /// 解析の開始には `start()` の呼び出しが必要です（自動では開始されません）。
+    /// Call `start()` to begin analysis — it does not start on its own.
     ///
-    /// - Parameter fftSize: FFT ウィンドウサイズ（2 の累乗）。2 の累乗でない場合は
-    ///   warning を出してデフォルト（1024）にフォールバックします。
-    /// - Returns: 新しい ``MetaphorAudio/AudioAnalyzer`` インスタンス。
+    /// - Parameter fftSize: The FFT window size, a power of two. A value that is
+    ///   not a power of two logs a warning and falls back to the default (1024).
+    /// - Returns: A new ``MetaphorAudio/AudioAnalyzer`` instance.
     public func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer {
         guard fftSize >= 2, (fftSize & (fftSize - 1)) == 0 else {
             metaphorWarning(
@@ -20,13 +20,13 @@ extension Sketch {
         return AudioAnalyzer(fftSize: fftSize)
     }
 
-    /// 再生と解析用のオーディオファイルを読み込みます。
+    /// Loads an audio file for playback and analysis.
     ///
-    /// - Parameter path: オーディオファイルのファイルパス。
-    /// - Returns: 新しい ``MetaphorAudio/SoundFile`` インスタンス。
-    /// - Throws: ファイルが存在しない場合は ``MetaphorAudio/SoundFileError/fileNotFound(_:)``、
-    ///   デコード・読み込みに失敗した場合は
-    ///   ``MetaphorAudio/SoundFileError/loadFailed(path:detail:)``。
+    /// - Parameter path: The file path of the audio file.
+    /// - Returns: A new ``MetaphorAudio/SoundFile`` instance.
+    /// - Throws: ``MetaphorAudio/SoundFileError/fileNotFound(_:)`` when the file
+    ///   does not exist, or ``MetaphorAudio/SoundFileError/loadFailed(path:detail:)``
+    ///   when decoding or loading fails.
     public func loadSound(_ path: String) throws -> SoundFile {
         try SoundFile(path: path)
     }

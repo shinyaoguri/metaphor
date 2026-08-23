@@ -4,13 +4,13 @@ import MetaphorRenderGraph
 // MARK: - レンダーグラフブリッジ
 
 extension Sketch {
-    /// レンダーグラフ用のソースパスを作成します。
+    /// Creates a source pass for a render graph.
     ///
     /// - Parameters:
-    ///   - label: パスのデバッグラベル。
-    ///   - width: レンダーターゲットの幅（ピクセル単位）。
-    ///   - height: レンダーターゲットの高さ（ピクセル単位）。
-    /// - Returns: 新しい ``MetaphorRenderGraph/SourcePass`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - label: A debug label for the pass.
+    ///   - width: The render target width, in pixels.
+    ///   - height: The render target height, in pixels.
+    /// - Returns: A new ``MetaphorRenderGraph/SourcePass`` instance, or `nil` if creation fails.
     public func createSourcePass(label: String, width: Int, height: Int) -> SourcePass? {
         guard width > 0, height > 0 else {
             metaphorWarning(
@@ -30,12 +30,12 @@ extension Sketch {
         }
     }
 
-    /// レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
+    /// Creates an effect pass that applies post-processing effects to a render pass.
     ///
     /// - Parameters:
-    ///   - input: 入力レンダーパスノード。
-    ///   - effects: 適用するポストプロセスエフェクト。
-    /// - Returns: 新しい ``MetaphorRenderGraph/EffectPass`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - input: The input render pass node.
+    ///   - effects: The post-processing effects to apply.
+    /// - Returns: A new ``MetaphorRenderGraph/EffectPass`` instance, or `nil` if creation fails.
     public func createEffectPass(_ input: RenderPassNode, effects: [any PostEffect]) -> EffectPass?
     {
         guard !effects.isEmpty else {
@@ -56,13 +56,13 @@ extension Sketch {
         }
     }
 
-    /// 2つのレンダーパスを合成するマージパスを作成します。
+    /// Creates a merge pass that composites two render passes.
     ///
     /// - Parameters:
-    ///   - a: 1つ目の入力レンダーパスノード。
-    ///   - b: 2つ目の入力レンダーパスノード。
-    ///   - blend: 合成用のブレンドタイプ。
-    /// - Returns: 新しい ``MetaphorRenderGraph/MergePass`` インスタンス。作成に失敗した場合は `nil`。
+    ///   - a: The first input render pass node.
+    ///   - b: The second input render pass node.
+    ///   - blend: The blend type used for compositing.
+    /// - Returns: A new ``MetaphorRenderGraph/MergePass`` instance, or `nil` if creation fails.
     public func createMergePass(
         _ a: RenderPassNode, _ b: RenderPassNode, blend: MergePass.BlendType
     ) -> MergePass? {
@@ -79,13 +79,13 @@ extension Sketch {
         }
     }
 
-    /// アクティブなレンダーグラフを設定またはクリアします。
+    /// Sets or clears the active render graph.
     ///
-    /// `nil` を渡すと現在のレンダーグラフが**クリア**され、以降のフレームは
-    /// レンダーグラフを経由しない通常の描画パスに戻ります（別途 `clearRenderGraph()`
-    /// のような削除用 API は用意していません）。
+    /// Passing `nil` **clears** the current render graph, and later frames go back
+    /// to the ordinary render pass without a graph. There is no separate removal
+    /// API such as `clearRenderGraph()`.
     ///
-    /// - Parameter graph: 使用するレンダーグラフ。無効化（クリア）するには `nil`。
+    /// - Parameter graph: The render graph to use, or `nil` to clear it.
     public func setRenderGraph(_ graph: RenderGraph?) {
         context.renderer.renderGraph = graph
     }

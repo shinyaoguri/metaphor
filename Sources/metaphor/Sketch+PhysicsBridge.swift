@@ -4,10 +4,10 @@ import MetaphorPhysics
 // MARK: - 物理ブリッジ
 
 extension Sketch {
-    /// 2D物理シミュレーションワールドを作成します。
+    /// Creates a 2D physics simulation world.
     ///
-    /// - Parameter cellSize: ブロードフェーズ衝突検出用の空間ハッシュセルサイズ。
-    /// - Returns: 新しい ``MetaphorPhysics/Physics2D`` インスタンス。
+    /// - Parameter cellSize: The spatial hash cell size used for broad-phase collision detection.
+    /// - Returns: A new ``MetaphorPhysics/Physics2D`` instance.
     public func createPhysics2D(cellSize: Float = 50) -> Physics2D {
         guard cellSize > 0 else {
             metaphorWarning(
@@ -21,20 +21,20 @@ extension Sketch {
 // MARK: - Node ↔ Physics2D ブリッジ
 
 extension Node {
-    /// 2D物理ボディからこのノードの XY 位置を同期します。
+    /// Syncs this node's XY position from a 2D physics body.
     ///
-    /// Z 位置は保持されます。`physics.step()` の後に毎フレーム呼び出してください。
+    /// The Z position is preserved. Call it every frame, after `physics.step()`.
     ///
-    /// - Parameter body: 位置を読み取る物理ボディ。
+    /// - Parameter body: The physics body to read the position from.
     public func syncFromPhysics(_ body: PhysicsBody2D) {
         position = SIMD3(body.position.x, body.position.y, position.z)
     }
 
-    /// このノードの XY 位置を2D物理ボディに書き戻します。
+    /// Writes this node's XY position back to a 2D physics body.
     ///
-    /// ボディをノードの位置にテレポートする場合に使用します。
+    /// Use it to teleport the body to the node's position.
     ///
-    /// - Parameter body: 位置を書き込む物理ボディ。
+    /// - Parameter body: The physics body to write the position to.
     public func syncToPhysics(_ body: PhysicsBody2D) {
         body.position = SIMD2(position.x, position.y)
         body.previousPosition = body.position
