@@ -4,7 +4,7 @@ extension Sketch {
 
     // MARK: - Shape Creation
 
-    /// ``ShapeKind`` からリテインドシェイプを作成します。
+    /// Creates a retained shape from a ``ShapeKind``.
     ///
     /// ```swift
     /// let box = createShape(.box(width: 1, height: 1, depth: 1))
@@ -15,7 +15,7 @@ extension Sketch {
         context.createShape(kind)
     }
 
-    /// カスタムジオメトリ用の空のリテインドシェイプを作成します。
+    /// Creates an empty retained shape for custom geometry.
     ///
     /// ```swift
     /// let s = createShape()
@@ -31,17 +31,17 @@ extension Sketch {
 
     // MARK: - Shape Display
 
-    /// リテインドシェイプを原点に描画します。
+    /// Draws a retained shape at the origin.
     public func shape(_ s: MShape) {
         context.shape(s)
     }
 
-    /// リテインドシェイプを指定位置に描画します。
+    /// Draws a retained shape at the given position.
     public func shape(_ s: MShape, _ x: Float, _ y: Float) {
         context.shape(s, x, y)
     }
 
-    /// リテインドシェイプを指定位置・サイズで描画します。
+    /// Draws a retained shape at the given position and size.
     public func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.shape(s, x, y, w, h)
     }

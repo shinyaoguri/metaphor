@@ -4,15 +4,16 @@ extension Sketch {
 
     // MARK: 2D Transform Stack
 
-    /// 現在の変換とスタイル状態をスタックに保存します。
+    /// Saves the current transform and style state onto the stack.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。``pushMatrix()`` との違いは作用先ではなく
-    ///   「スタイルを含むかどうか」で、こちらは変換 + スタイル、``pushMatrix()`` は変換のみです。
+    /// - Note: Affects **both 2D and 3D**. What separates it from ``pushMatrix()`` is not what it
+    ///   affects but whether style is included: this one saves transform + style, while
+    ///   ``pushMatrix()`` saves the transform only.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ``pop()`` を呼ぶと、あいだで変えた変換もスタイルも巻き戻ります
-    /// （青い矩形は ``translate(_:_:)`` の影響を受けません）。
+    /// Calling ``pop()`` rewinds both the transform and the style changed in between
+    /// (the blue rectangle is unaffected by ``translate(_:_:)``).
     ///
     /// <!-- reference-shot -->
     ///
@@ -38,40 +39,41 @@ extension Sketch {
         context.push()
     }
 
-    /// 最後に保存された変換とスタイル状態をスタックから復元します。
+    /// Restores the most recently saved transform and style state from the stack.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（``push()`` と対）。
+    /// - Note: Affects **both 2D and 3D** (the counterpart to ``push()``).
     public func pop() {
         context.pop()
     }
 
-    /// 現在のスタイル状態（fill、stroke など）をスタックに保存します。
+    /// Saves the current style state (fill, stroke, and so on) onto the stack.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。``push()`` との違いは変換を含まないことで、
-    ///   こちらはスタイルのみを保存します（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **both 2D and 3D**. What separates it from ``push()`` is that it does not
+    ///   include the transform: this one saves the style only (ADR-0005 Amendment 2026-08-02).
     public func pushStyle() {
         context.pushStyle()
     }
 
-    /// 最後に保存されたスタイル状態をスタックから復元します。
+    /// Restores the most recently saved style state from the stack.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（``pushStyle()`` と対）。
+    /// - Note: Affects **both 2D and 3D** (the counterpart to ``pushStyle()``).
     public func popStyle() {
         context.popStyle()
     }
 
-    /// 現在の変換に平行移動を適用します。
+    /// Applies a translation to the current transform.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（3D は z = 0 の平行移動。
-    ///   Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **both 2D and 3D** (in 3D it is a translation with z = 0, compatible with
+    ///   Processing P3D; ADR-0005 Amendment 2026-08-02).
     ///
     /// - Parameters:
-    ///   - x: 水平方向の移動量。
-    ///   - y: 垂直方向の移動量。
+    ///   - x: The amount to move horizontally.
+    ///   - y: The amount to move vertically.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 以降の描画の原点が動くので、同じ引数の ``rect(_:_:_:_:)`` が別の場所に出ます。
+    /// The origin of subsequent drawing moves, so the same ``rect(_:_:_:_:)`` arguments land
+    /// somewhere else.
     ///
     /// <!-- reference-shot -->
     ///
@@ -95,16 +97,17 @@ extension Sketch {
         context.translate(x, y)
     }
 
-    /// 現在の変換に回転を適用します。
+    /// Applies a rotation to the current transform.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（3D は z 軸まわりの回転 =
-    ///   ``rotateZ(_:)`` と同じ。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **both 2D and 3D** (in 3D it rotates around the z axis, the same as
+    ///   ``rotateZ(_:)``, compatible with Processing P3D; ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle, in radians.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 回転の中心は原点なので、``translate(_:_:)`` で中心を移してから回します。
+    /// Rotation is centered on the origin, so move the origin with ``translate(_:_:)`` before
+    /// rotating.
     ///
     /// <!-- reference-shot -->
     ///
@@ -127,18 +130,18 @@ extension Sketch {
         context.rotate(angle)
     }
 
-    /// 現在の変換に非均一スケールを適用します。
+    /// Applies a non-uniform scale to the current transform.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（3D は z 軸を等倍とする
-    ///   スケール。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **both 2D and 3D** (in 3D it scales with the z axis left at 1, compatible
+    ///   with Processing P3D; ADR-0005 Amendment 2026-08-02).
     ///
     /// - Parameters:
-    ///   - sx: 水平方向のスケール係数。
-    ///   - sy: 垂直方向のスケール係数。
+    ///   - sx: The horizontal scale factor.
+    ///   - sy: The vertical scale factor.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 拡大の基点は原点なので、位置も係数ぶん動きます。
+    /// Scaling is anchored at the origin, so the position moves by the factor as well.
     ///
     /// <!-- reference-shot -->
     ///
@@ -162,33 +165,35 @@ extension Sketch {
         context.scale(sx, sy)
     }
 
-    /// 現在の変換に均一スケールを適用します。
+    /// Applies a uniform scale to the current transform.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。
+    /// - Note: Affects **both 2D and 3D**.
     ///
-    /// - Parameter s: 均一スケール係数。
+    /// - Parameter s: The uniform scale factor.
     public func scale(_ s: Float) {
         context.scale(s)
     }
 
-    /// 現在の 2D 変換に 3x3 行列を乗算します。
+    /// Multiplies the current 2D transform by a 3x3 matrix.
     ///
-    /// - Note: **2D のみ**に作用します。3D は ``applyMatrix(_:)``（`float4x4` 版）を
-    ///   使用してください。P3D 意味論への統一は ``translate(_:_:)`` / ``rotate(_:)`` /
-    ///   ``scale(_:_:)`` の 3 本に限っており、行列の直接適用は対象外です
-    ///   （ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **2D only**. For 3D, use ``applyMatrix(_:)`` (the `float4x4` version). The
+    ///   unification with P3D semantics is limited to ``translate(_:_:)`` / ``rotate(_:)`` /
+    ///   ``scale(_:_:)``, and applying a matrix directly is out of scope
+    ///   (ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter matrix: 連結する 3x3 行列。
+    /// - Parameter matrix: The 3x3 matrix to concatenate.
     public func applyMatrix(_ matrix: float3x3) {
         context.applyMatrix(matrix)
     }
 
-    /// 現在の 2D 変換に Processing 形式の 6 成分アフィン行列を乗算します。
+    /// Multiplies the current 2D transform by a Processing-style six-component affine matrix.
     ///
-    /// 成分は行優先で、変換は `x' = n00*x + n01*y + n02`、`y' = n10*x + n11*y + n12`
-    /// （Processing の `applyMatrix(n00, n01, n02, n10, n11, n12)` と互換）。
+    /// The components are row-major and the transform is `x' = n00*x + n01*y + n02`,
+    /// `y' = n10*x + n11*y + n12` (compatible with Processing's
+    /// `applyMatrix(n00, n01, n02, n10, n11, n12)`).
     ///
-    /// - Note: **2D のみ**に作用します（ADR-0005 Amendment 2026-08-02。P3D 統一の対象外）。
+    /// - Note: Affects **2D only** (ADR-0005 Amendment 2026-08-02; out of scope for the P3D
+    ///   unification).
     public func applyMatrix(
         _ n00: Float, _ n01: Float, _ n02: Float,
         _ n10: Float, _ n11: Float, _ n12: Float
@@ -196,37 +201,37 @@ extension Sketch {
         context.applyMatrix(n00, n01, n02, n10, n11, n12)
     }
 
-    /// 現在の 3D 変換に 4x4 行列を乗算します。
+    /// Multiplies the current 3D transform by a 4x4 matrix.
     ///
-    /// - Note: **3D のみ**に作用します。2D は ``applyMatrix(_:)``（`float3x3` 版）を
-    ///   使用してください（ADR-0005）。
+    /// - Note: Affects **3D only**. For 2D, use ``applyMatrix(_:)`` (the `float3x3` version)
+    ///   (ADR-0005).
     ///
-    /// - Parameter matrix: 連結する 4x4 行列。
+    /// - Parameter matrix: The 4x4 matrix to concatenate.
     public func applyMatrix(_ matrix: float4x4) {
         context.applyMatrix(matrix)
     }
 
-    /// 現在の変換行列を単位行列にリセットします。
+    /// Resets the current transformation matrix to the identity matrix.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（``pushMatrix()``/``popMatrix()`` と
-    ///   同カテゴリ。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (the same category as ``pushMatrix()``/``popMatrix()``;
+    ///   ADR-0005).
     public func resetMatrix() {
         context.resetMatrix()
     }
 
-    /// 現在の変換に x 軸方向のせん断（シアー）を適用します。
+    /// Applies a shear along the x axis to the current transform.
     ///
-    /// `x' = x + tan(angle) * y`（Processing の `shearX()` と互換)。
+    /// `x' = x + tan(angle) * y` (compatible with Processing's `shearX()`).
     ///
-    /// - Note: **2D のみ**に作用します。P3D 意味論への統一は
-    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)`` の 3 本に限っており、
-    ///   せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **2D only**. The unification with P3D semantics is limited to
+    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)``, and shear is out of scope
+    ///   (ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter angle: ラジアン単位のせん断角度。
+    /// - Parameter angle: The shear angle, in radians.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// y が大きいところほど右へずれます（下が青、上が元の形）。
+    /// The larger the y, the further right it shifts (blue below, the original shape above).
     ///
     /// <!-- reference-shot -->
     ///
@@ -251,19 +256,20 @@ extension Sketch {
         context.shearX(angle)
     }
 
-    /// 現在の変換に y 軸方向のせん断（シアー）を適用します。
+    /// Applies a shear along the y axis to the current transform.
     ///
-    /// `y' = y + tan(angle) * x`（Processing の `shearY()` と互換)。
+    /// `y' = y + tan(angle) * x` (compatible with Processing's `shearY()`).
     ///
-    /// - Note: **2D のみ**に作用します。P3D 意味論への統一は
-    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)`` の 3 本に限っており、
-    ///   せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **2D only**. The unification with P3D semantics is limited to
+    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)``, and shear is out of scope
+    ///   (ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter angle: ラジアン単位のせん断角度。
+    /// - Parameter angle: The shear angle, in radians.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// x が大きいところほど下へずれます（右が青、左が元の形）。
+    /// The larger the x, the further down it shifts (blue on the right, the original shape on the
+    /// left).
     ///
     /// <!-- reference-shot -->
     ///
@@ -288,58 +294,60 @@ extension Sketch {
         context.shearY(angle)
     }
 
-    /// 2D モデル座標が描画されるスクリーン x 座標を返します。
+    /// Returns the screen x coordinate at which a 2D model coordinate is drawn.
     ///
-    /// - Note: **2D のみ**。3D は ``screenX(_:_:_:)``（3 引数）を使用してください。
+    /// - Note: **2D only**. For 3D, use ``screenX(_:_:_:)`` (the three-argument version).
     public func screenX(_ x: Float, _ y: Float) -> Float {
         context.screenPosition(x, y).x
     }
 
-    /// 2D モデル座標が描画されるスクリーン y 座標を返します。
+    /// Returns the screen y coordinate at which a 2D model coordinate is drawn.
     ///
-    /// - Note: **2D のみ**。3D は ``screenY(_:_:_:)``（3 引数）を使用してください。
+    /// - Note: **2D only**. For 3D, use ``screenY(_:_:_:)`` (the three-argument version).
     public func screenY(_ x: Float, _ y: Float) -> Float {
         context.screenPosition(x, y).y
     }
 
-    /// 3D モデル座標が描画されるスクリーン x 座標を返します。
+    /// Returns the screen x coordinate at which a 3D model coordinate is drawn.
     ///
-    /// - Note: **3D のみ**に作用します（2D の座標は ``screenX(_:_:)``（2 引数）です。ADR-0005）。
+    /// - Note: Affects **3D only** (for 2D coordinates use ``screenX(_:_:)``, the two-argument
+    ///   version; ADR-0005).
     ///
-    /// - Important: カメラ背後の点では値が原点対称に反転します。
-    ///   ``isInFront(_:_:_:)`` で判別してください。
+    /// - Important: For points behind the camera the value is flipped through the origin.
+    ///   Tell them apart with ``isInFront(_:_:_:)``.
     public func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.screenPosition(x, y, z).x
     }
 
-    /// 3D モデル座標が描画されるスクリーン y 座標を返します。
+    /// Returns the screen y coordinate at which a 3D model coordinate is drawn.
     ///
-    /// - Note: **3D のみ**に作用します（2D の座標は ``screenY(_:_:)``（2 引数）です。ADR-0005）。
+    /// - Note: Affects **3D only** (for 2D coordinates use ``screenY(_:_:)``, the two-argument
+    ///   version; ADR-0005).
     ///
-    /// - Important: カメラ背後の点では値が原点対称に反転します。
-    ///   ``isInFront(_:_:_:)`` で判別してください。
+    /// - Important: For points behind the camera the value is flipped through the origin.
+    ///   Tell them apart with ``isInFront(_:_:_:)``.
     public func screenY(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.screenPosition(x, y, z).y
     }
 
-    /// 3D モデル座標の正規化デバイス深度（0...1）を返します。
+    /// Returns the normalized device depth (0...1) of a 3D model coordinate.
     ///
-    /// 手前ほど小さい値になります（Processing の `screenZ()` 相当）。
+    /// The nearer the point, the smaller the value (the equivalent of Processing's `screenZ()`).
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画に深度はありません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing has no depth; ADR-0005).
     ///
-    /// - Important: 0...1 に収まるのは点が視錐台の内側にあるときだけです。
-    ///   カメラ背後では 1 を超え、カメラとニア平面のあいだでは負になります。
-    ///   ``isInFront(_:_:_:)`` で背後を弾いてから使ってください。
+    /// - Important: The value stays within 0...1 only while the point is inside the view frustum.
+    ///   Behind the camera it goes above 1, and between the camera and the near plane it goes
+    ///   negative. Reject points behind the camera with ``isInFront(_:_:_:)`` before using it.
     public func screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.screenPosition(x, y, z).z
     }
 
-    /// 3D モデル座標の点がカメラ平面より前にあるかを返します。
+    /// Returns whether a point in 3D model coordinates lies in front of the camera plane.
     ///
-    /// ``screenX(_:_:_:)`` / ``screenY(_:_:_:)`` / ``screenZ(_:_:_:)`` は
-    /// カメラ背後の点に対して反転した値を返し、戻り値だけでは前方の点と区別できません。
-    /// ラベル配置やカリングの前にこの判定を挟んでください。
+    /// ``screenX(_:_:_:)`` / ``screenY(_:_:_:)`` / ``screenZ(_:_:_:)`` return flipped values for
+    /// points behind the camera, and the return value alone cannot separate them from points in
+    /// front. Put this check in before placing labels or culling.
     ///
     /// ```swift
     /// if isInFront(px, py, pz) {
@@ -347,79 +355,79 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// - Note: **3D のみ**に作用します（カメラ平面を持つのは 3D だけです。ADR-0005）。
+    /// - Note: Affects **3D only** (only 3D has a camera plane; ADR-0005).
     ///
-    /// - Note: true は「反転していない」ことだけを保証し、「画面内にある」ことは
-    ///   保証しません。正射影では反転が起きないため常に true を返します。
+    /// - Note: true guarantees only that the value is not flipped; it does not guarantee that the
+    ///   point is on screen. An orthographic projection never flips, so it always returns true.
     public func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool {
         context.isInFront(x, y, z)
     }
 
-    /// 現在の変換を通した 3D モデル座標のワールド x 座標を返します。
+    /// Returns the world x coordinate of a 3D model coordinate taken through the current transform.
     ///
-    /// 変換スタックに積んだ `translate` / `rotateX/Y/Z` / `scale` の結果、その点が
-    /// ワールド空間のどこに来るかを返します（Processing の `modelX()` 相当）。
-    /// ``pushMatrix()`` 〜 ``popMatrix()`` の中で位置を控えておき、抜けた後に同じ場所へ
-    /// 別のものを置く、という使い方が典型です。
+    /// It returns where the point ends up in world space once the `translate`, `rotateX/Y/Z`, and
+    /// `scale` pushed onto the transform stack have been applied (the equivalent of Processing's
+    /// `modelX()`). The typical use is to note a position inside ``pushMatrix()`` …
+    /// ``popMatrix()`` and then place something else at the same spot after leaving it.
     ///
     /// ```swift
     /// pushMatrix()
     /// translate(100, 50, 0)
     /// rotateY(angle)
     /// translate(0, 0, 60)
-    /// // 回転の先端がワールドのどこに来るかを控える
+    /// // note where the tip of the rotation lands in the world
     /// let wx = modelX(0, 0, 0)
     /// let wy = modelY(0, 0, 0)
     /// let wz = modelZ(0, 0, 0)
     /// popMatrix()
     ///
     /// pushMatrix()
-    /// translate(wx, wy, wz)   // 変換スタックの外から同じ場所へ置ける
+    /// translate(wx, wy, wz)   // the same spot is reachable from outside the transform stack
     /// box(10)
     /// popMatrix()
     /// ```
     ///
-    /// - Note: **3D のみ**。スクリーン座標（ピクセル）が欲しいときは
-    ///   ``screenX(_:_:_:)`` を使ってください。
-    /// - Important: 返るのは**ワールド座標**で、カメラには依存しません。
-    ///   ``camera(eye:center:up:)`` や ``perspective(fov:near:far:)`` を変えても
-    ///   値は変わりません（Processing の `modelX()` と同じ意味論）。
+    /// - Note: **3D only**. Use ``screenX(_:_:_:)`` when you want screen coordinates in pixels.
+    /// - Important: What comes back is a **world coordinate**, independent of the camera. Changing
+    ///   ``camera(eye:center:up:)`` or ``perspective(fov:near:far:)`` does not change the value
+    ///   (the same semantics as Processing's `modelX()`).
     public func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.modelPosition(x, y, z).x
     }
 
-    /// 現在の変換を通した 3D モデル座標のワールド y 座標を返します。
+    /// Returns the world y coordinate of a 3D model coordinate taken through the current transform.
     ///
-    /// - Note: **3D のみ**。用例と注意点は ``modelX(_:_:_:)`` を参照してください。
-    /// - Important: カメラには依存しません（Processing の `modelY()` と同じ意味論）。
+    /// - Note: **3D only**. See ``modelX(_:_:_:)`` for an example and the caveats.
+    /// - Important: It is independent of the camera (same semantics as Processing's `modelY()`).
     public func modelY(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.modelPosition(x, y, z).y
     }
 
-    /// 現在の変換を通した 3D モデル座標のワールド z 座標を返します。
+    /// Returns the world z coordinate of a 3D model coordinate taken through the current transform.
     ///
-    /// - Note: **3D のみ**。用例と注意点は ``modelX(_:_:_:)`` を参照してください。
-    ///   スクリーン深度（0...1）が欲しいときは ``screenZ(_:_:_:)`` です。
-    /// - Important: カメラには依存しません（Processing の `modelZ()` と同じ意味論）。
+    /// - Note: **3D only**. See ``modelX(_:_:_:)`` for an example and the caveats.
+    ///   Use ``screenZ(_:_:_:)`` when you want the screen depth (0...1).
+    /// - Important: It is independent of the camera (same semantics as Processing's `modelZ()`).
     public func modelZ(_ x: Float, _ y: Float, _ z: Float) -> Float {
         context.modelPosition(x, y, z).z
     }
 
     // MARK: 2D Shapes
 
-    /// 矩形を描画します。
+    /// Draws a rectangle.
     ///
-    /// - Note: **2D のみ**に作用します（3D の直方体は ``box(_:_:_:)``、平面は ``plane(_:_:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D box is ``box(_:_:_:)`` and the 3D plane is
+    ///   ``plane(_:_:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - w: 幅。
-    ///   - h: 高さ。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// x, y の解釈は ``rectMode(_:)`` で変わります（既定は左上隅）。
+    /// How x and y are interpreted changes with ``rectMode(_:)`` (the top-left corner by default).
     ///
     /// <!-- reference-shot -->
     ///
@@ -440,18 +448,18 @@ extension Sketch {
         context.rect(x, y, w, h)
     }
 
-    /// 均一な角丸半径の角丸矩形を描画します。
+    /// Draws a rounded rectangle with a uniform corner radius.
     ///
-    /// - Note: **2D のみ**に作用します（3D に角丸のプリミティブはありません。ADR-0005）。
+    /// - Note: Affects **2D only** (there is no rounded 3D primitive; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - w: 幅。
-    ///   - h: 高さ。
-    ///   - r: 角丸半径。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
+    ///   - r: The corner radius.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -472,23 +480,23 @@ extension Sketch {
         context.rect(x, y, w, h, r)
     }
 
-    /// 各角に個別の角丸半径を持つ角丸矩形を描画します。
+    /// Draws a rounded rectangle with a separate corner radius for each corner.
     ///
-    /// - Note: **2D のみ**に作用します（3D に角丸のプリミティブはありません。ADR-0005）。
+    /// - Note: Affects **2D only** (there is no rounded 3D primitive; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - w: 幅。
-    ///   - h: 高さ。
-    ///   - tl: 左上の角丸半径。
-    ///   - tr: 右上の角丸半径。
-    ///   - br: 右下の角丸半径。
-    ///   - bl: 左下の角丸半径。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
+    ///   - tl: The top-left corner radius.
+    ///   - tr: The top-right corner radius.
+    ///   - br: The bottom-right corner radius.
+    ///   - bl: The bottom-left corner radius.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 半径は左上・右上・右下・左下の順に指定します。
+    /// The radii are given in the order top-left, top-right, bottom-right, bottom-left.
     ///
     /// <!-- reference-shot -->
     ///
@@ -515,20 +523,21 @@ extension Sketch {
         context.rect(x, y, w, h, tl, tr, br, bl)
     }
 
-    /// リニアグラデーション矩形を描画します。
+    /// Draws a rectangle filled with a linear gradient.
     ///
-    /// - Note: **2D のみ**に作用します（3D のグラデーションはシェーダか頂点カラーで作ります。ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D gradient is built with a shader or with vertex colors.
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - w: 幅。
-    ///   - h: 高さ。
-    ///   - c1: 開始色。
-    ///   - c2: 終了色。
-    ///   - axis: グラデーションの方向。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - w: The width.
+    ///   - h: The height.
+    ///   - c1: The start color.
+    ///   - c2: The end color.
+    ///   - axis: The direction of the gradient.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -554,19 +563,20 @@ extension Sketch {
         context.linearGradient(x, y, w, h, c1, c2, axis: axis)
     }
 
-    /// 放射状グラデーション円を描画します。
+    /// Draws a circle filled with a radial gradient.
     ///
-    /// - Note: **2D のみ**に作用します（3D のグラデーションはシェーダか頂点カラーで作ります。ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D gradient is built with a shader or with vertex colors.
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - cx: 中心の x 座標。
-    ///   - cy: 中心の y 座標。
-    ///   - radius: 外側の半径。
-    ///   - innerColor: 中心の色。
-    ///   - outerColor: 外周の色。
-    ///   - segments: 滑らかさのためのセグメント数。
+    ///   - cx: The x coordinate of the center.
+    ///   - cy: The y coordinate of the center.
+    ///   - radius: The outer radius.
+    ///   - innerColor: The color at the center.
+    ///   - outerColor: The color at the outer edge.
+    ///   - segments: The number of segments used for smoothness.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -593,19 +603,19 @@ extension Sketch {
         context.radialGradient(cx, cy, radius, innerColor, outerColor, segments: segments)
     }
 
-    /// 楕円を描画します。
+    /// Draws an ellipse.
     ///
-    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:detail:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D sphere is ``sphere(_:detail:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - w: 幅（水平方向の直径）。
-    ///   - h: 高さ（垂直方向の直径）。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - w: The width (the horizontal diameter).
+    ///   - h: The height (the vertical diameter).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// x, y の解釈は ``ellipseMode(_:)`` で変わります（既定は中心）。
+    /// How x and y are interpreted changes with ``ellipseMode(_:)`` (the center by default).
     ///
     /// <!-- reference-shot -->
     ///
@@ -626,16 +636,16 @@ extension Sketch {
         context.ellipse(x, y, w, h)
     }
 
-    /// 円を描画します。
+    /// Draws a circle.
     ///
-    /// - Note: **2D のみ**に作用します（3D の球は ``sphere(_:detail:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D sphere is ``sphere(_:detail:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: 中心の x 座標。
-    ///   - y: 中心の y 座標。
-    ///   - diameter: 円の直径。
+    ///   - x: The x coordinate of the center.
+    ///   - y: The y coordinate of the center.
+    ///   - diameter: The diameter of the circle.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -656,41 +666,44 @@ extension Sketch {
         context.circle(x, y, diameter)
     }
 
-    /// 複数の円を一括描画します。
+    /// Draws many circles in a single batch.
     ///
-    /// `circle()` を多数回呼ぶ代わりに、位置・直径・色を持つ ``CircleInstance`` 配列を
-    /// compact instancing path でまとめて描画します。
+    /// Instead of calling `circle()` many times over, it draws an array of ``CircleInstance``
+    /// values — each carrying a position, a diameter, and a color — together through the compact
+    /// instancing path.
     ///
-    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:transforms:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D batch draw is ``drawInstanced(_:transforms:)``.
+    ///   ADR-0005).
     ///
-    /// - Parameter instances: 描画する円インスタンス。
+    /// - Parameter instances: The circle instances to draw.
     public func circles(_ instances: [CircleInstance]) {
         context.circles(instances)
     }
 
-    /// GPU バッファ上の円インスタンスを一括描画します。
+    /// Draws circle instances held in a GPU buffer in a single batch.
     ///
-    /// - Note: **2D のみ**に作用します（3D の一括描画は ``drawInstanced(_:transforms:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D batch draw is ``drawInstanced(_:transforms:)``.
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - instances: ``CircleInstance`` を保持する GPU バッファ。
-    ///   - count: 描画するインスタンス数。省略時はバッファ全体。
+    ///   - instances: The GPU buffer holding the ``CircleInstance`` values.
+    ///   - count: The number of instances to draw. The whole buffer when omitted.
     public func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil) {
         context.circles(instances, count: count)
     }
 
-    /// 正方形を描画します。
+    /// Draws a square.
     ///
-    /// - Note: **2D のみ**に作用します（3D の立方体は ``box(_:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D cube is ``box(_:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - size: 辺の長さ。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - size: The length of a side.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// x, y の解釈は ``rectMode(_:)`` に従います（既定は左上隅）。
+    /// How x and y are interpreted follows ``rectMode(_:)`` (the top-left corner by default).
     ///
     /// <!-- reference-shot -->
     ///
@@ -711,23 +724,25 @@ extension Sketch {
         context.square(x, y, size)
     }
 
-    /// 4つの頂点で定義される四角形を描画します。
+    /// Draws a quadrilateral defined by four vertices.
     ///
-    /// - Note: **2D のみ**に作用します（3D で任意の四角形を組むには ``beginShape3D(_:)`` を使います。ADR-0005）。
+    /// - Note: Affects **2D only** (to build an arbitrary quadrilateral in 3D, use
+    ///   ``beginShape3D(_:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x1: 第1頂点の x 座標。
-    ///   - y1: 第1頂点の y 座標。
-    ///   - x2: 第2頂点の x 座標。
-    ///   - y2: 第2頂点の y 座標。
-    ///   - x3: 第3頂点の x 座標。
-    ///   - y3: 第3頂点の y 座標。
-    ///   - x4: 第4頂点の x 座標。
-    ///   - y4: 第4頂点の y 座標。
+    ///   - x1: The x coordinate of the first vertex.
+    ///   - y1: The y coordinate of the first vertex.
+    ///   - x2: The x coordinate of the second vertex.
+    ///   - y2: The y coordinate of the second vertex.
+    ///   - x3: The x coordinate of the third vertex.
+    ///   - y3: The y coordinate of the third vertex.
+    ///   - x4: The x coordinate of the fourth vertex.
+    ///   - y4: The y coordinate of the fourth vertex.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 頂点は順に結ばれるので、並べる順で凸にも凹にもなります。
+    /// The vertices are connected in order, so the order they are listed in decides whether the
+    /// shape comes out convex or concave.
     ///
     /// <!-- reference-shot -->
     ///
@@ -756,19 +771,21 @@ extension Sketch {
         context.quad(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
-    /// 2点間に線を描画します。
+    /// Draws a line between two points.
     ///
-    /// - Note: **2D のみ**に作用します（3D の線は ``beginShape3D(_:)`` に ``ShapeMode/lines`` を渡します。ADR-0005）。
+    /// - Note: Affects **2D only** (for a 3D line, pass ``ShapeMode/lines`` to
+    ///   ``beginShape3D(_:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x1: 始点の x 座標。
-    ///   - y1: 始点の y 座標。
-    ///   - x2: 終点の x 座標。
-    ///   - y2: 終点の y 座標。
+    ///   - x1: The x coordinate of the start point.
+    ///   - y1: The y coordinate of the start point.
+    ///   - x2: The x coordinate of the end point.
+    ///   - y2: The y coordinate of the end point.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 太さは ``strokeWeight(_:)``、端点の形は ``strokeCap(_:)`` で変わります。
+    /// The thickness changes with ``strokeWeight(_:)`` and the shape of the ends with
+    /// ``strokeCap(_:)``.
     ///
     /// <!-- reference-shot -->
     ///
@@ -789,19 +806,19 @@ extension Sketch {
         context.line(x1, y1, x2, y2)
     }
 
-    /// 3つの頂点で定義される三角形を描画します。
+    /// Draws a triangle defined by three vertices.
     ///
-    /// - Note: **2D のみ**に作用します（3D の三角形は ``beginShape3D(_:)`` で組みます。ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D triangle is built with ``beginShape3D(_:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x1: 第1頂点の x 座標。
-    ///   - y1: 第1頂点の y 座標。
-    ///   - x2: 第2頂点の x 座標。
-    ///   - y2: 第2頂点の y 座標。
-    ///   - x3: 第3頂点の x 座標。
-    ///   - y3: 第3頂点の y 座標。
+    ///   - x1: The x coordinate of the first vertex.
+    ///   - y1: The y coordinate of the first vertex.
+    ///   - x2: The x coordinate of the second vertex.
+    ///   - y2: The y coordinate of the second vertex.
+    ///   - x3: The x coordinate of the third vertex.
+    ///   - y3: The y coordinate of the third vertex.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -826,43 +843,46 @@ extension Sketch {
         context.triangle(x1, y1, x2, y2, x3, y3)
     }
 
-    /// 座標タプルの配列からポリゴンを描画します。
+    /// Draws a polygon from an array of coordinate tuples.
     ///
-    /// - Note: **2D のみ**に作用します（3D は ``beginShape3D(_:)`` で組みます。ADR-0005）。
+    /// - Note: Affects **2D only** (3D is built with ``beginShape3D(_:)``. ADR-0005).
     ///
-    /// - Parameter points: `(x, y)` タプルとしてのポリゴン頂点。
+    /// - Parameter points: The polygon vertices, as `(x, y)` tuples.
     public func polygon(_ points: [(Float, Float)]) {
         context.polygon(points)
     }
 
-    /// ``Vec2`` 配列からポリゴンを描画します。
+    /// Draws a polygon from an array of ``Vec2`` values.
     ///
-    /// - Note: **2D のみ**に作用します（3D は ``beginShape3D(_:)`` で組みます。ADR-0005）。
+    /// - Note: Affects **2D only** (3D is built with ``beginShape3D(_:)``. ADR-0005).
     ///
-    /// - Parameter points: ポリゴン頂点。
+    /// - Parameter points: The polygon vertices.
     public func polygon(_ points: [Vec2]) {
         context.polygon(points)
     }
 
-    /// 円弧を描画します（`stopAngle` は `startAngle` より大きいこと。2π 超は 1 周にクランプ）。
+    /// Draws an arc (`stopAngle` must be greater than `startAngle`; a sweep past 2π is clamped
+    /// to one turn).
     ///
-    /// - Note: **2D のみ**に作用します（3D に対応するプリミティブはありません。ADR-0005）。
+    /// - Note: Affects **2D only** (there is no corresponding 3D primitive; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: 円弧の中心の x 座標。
-    ///   - y: 円弧の中心の y 座標。
-    ///   - w: 円弧の外接楕円の幅。
-    ///   - h: 円弧の外接楕円の高さ。
-    ///   - startAngle: ラジアン単位の開始角度。
-    ///   - stopAngle: ラジアン単位の終了角度。`startAngle` 以下なら何も描きません。
-    ///   - mode: 円弧の描画モード。省略時は Processing のデフォルトと同じく
-    ///     「扇形の fill + 弧のみの stroke」（``ArcMode/default``）。明示 ``ArcMode/open`` の
-    ///     fill は弦で閉じた弓形になる点が省略時と異なる。
+    ///   - x: The x coordinate of the center of the arc.
+    ///   - y: The y coordinate of the center of the arc.
+    ///   - w: The width of the ellipse the arc is inscribed in.
+    ///   - h: The height of the ellipse the arc is inscribed in.
+    ///   - startAngle: The start angle, in radians.
+    ///   - stopAngle: The stop angle, in radians. Nothing is drawn when it is at or below
+    ///     `startAngle`.
+    ///   - mode: The arc drawing mode. When omitted it matches Processing's default: a pie-shaped
+    ///     fill plus a stroke along the arc only (``ArcMode/default``). An explicit
+    ///     ``ArcMode/open`` differs in that its fill is a segment closed off by the chord.
     ///
-    /// 角度は Processing と同じく描画前に正規化されます。`stopAngle <= startAngle` は何も描かず
-    /// （逆回りには描かない）、範囲が 2π を超える場合は 0〜2π へクランプします（重ね描きしない）。
+    /// As in Processing, the angles are normalized before drawing. `stopAngle <= startAngle` draws
+    /// nothing (it never sweeps backwards), and a range past 2π is clamped to 0...2π so nothing is
+    /// drawn twice.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -890,23 +910,24 @@ extension Sketch {
         context.arc(x, y, w, h, startAngle, stopAngle, mode)
     }
 
-    /// 3次ベジェ曲線を描画します。
+    /// Draws a cubic Bézier curve.
     ///
-    /// - Note: **2D のみ**に作用します（3D のベジェ曲線はありません。ADR-0005）。
+    /// - Note: Affects **2D only** (there is no 3D Bézier curve; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x1: 始点の x 座標。
-    ///   - y1: 始点の y 座標。
-    ///   - cx1: 第1制御点の x 座標。
-    ///   - cy1: 第1制御点の y 座標。
-    ///   - cx2: 第2制御点の x 座標。
-    ///   - cy2: 第2制御点の y 座標。
-    ///   - x2: 終点の x 座標。
-    ///   - y2: 終点の y 座標。
+    ///   - x1: The x coordinate of the start point.
+    ///   - y1: The y coordinate of the start point.
+    ///   - cx1: The x coordinate of the first control point.
+    ///   - cy1: The y coordinate of the first control point.
+    ///   - cx2: The x coordinate of the second control point.
+    ///   - cy2: The y coordinate of the second control point.
+    ///   - x2: The x coordinate of the end point.
+    ///   - y2: The y coordinate of the end point.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 制御点（灰色）は曲線上には乗らず、両端から引っぱる向きだけを決めます。
+    /// The control points (gray) do not sit on the curve; they only decide which way each end is
+    /// pulled.
     ///
     /// <!-- reference-shot -->
     ///
@@ -937,17 +958,18 @@ extension Sketch {
         context.bezier(x1, y1, cx1, cy1, cx2, cy2, x2, y2)
     }
 
-    /// 単一の点を描画します。
+    /// Draws a single point.
     ///
-    /// - Note: **2D のみ**に作用します（3D の点は ``beginShape3D(_:)`` に ``ShapeMode/points`` を渡します。ADR-0005）。
+    /// - Note: Affects **2D only** (for a 3D point, pass ``ShapeMode/points`` to
+    ///   ``beginShape3D(_:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 点の大きさは ``strokeWeight(_:)``、色は `stroke()` で決まります。
+    /// The size of a point comes from ``strokeWeight(_:)`` and its color from `stroke()`.
     ///
     /// <!-- reference-shot -->
     ///
@@ -973,17 +995,17 @@ extension Sketch {
 
     // MARK: Custom Shapes (beginShape / endShape)
 
-    /// カスタムシェイプの頂点記録を開始します。
+    /// Starts recording the vertices of a custom shape.
     ///
-    /// - Note: **2D のみ**に作用します（3D のカスタムシェイプは ``beginShape3D(_:)`` です。ADR-0005）。
+    /// - Note: Affects **2D only** (the 3D custom shape is ``beginShape3D(_:)``. ADR-0005).
     ///
-    /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
+    /// - Parameter mode: The shape mode (polygon, triangles, or lines, for example).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ``vertex(_:_:)`` で頂点を並べ、``endShape(_:)`` で閉じて描きます。
-    /// 星の順（5 点を 2 つ飛ばし）に並べると辺どうしが交差しますが、塗りは
-    /// nonzero winding 規則なので五芒星になります。
+    /// Lay the vertices out with ``vertex(_:_:)``, then close and draw with ``endShape(_:)``.
+    /// Listing them in star order (5 points, skipping two each time) makes the edges cross one
+    /// another, but because filling follows the nonzero winding rule the result is a pentagram.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1010,19 +1032,19 @@ extension Sketch {
         context.beginShape(mode)
     }
 
-    /// 現在のシェイプに 2D 頂点を追加します。
+    /// Adds a 2D vertex to the current shape.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape(_:)`` で始めていれば
-    ///   2D へ、``beginShape3D(_:)`` で始めていれば z = 0 の 3D 頂点として流れます
-    ///   （Processing 互換。ADR-0005）。
+    /// - Note: What it affects is decided by **the shape being recorded**. If recording started
+    ///   with ``beginShape(_:)`` it goes to 2D, and if it started with ``beginShape3D(_:)`` it
+    ///   flows through as a 3D vertex with z = 0 (compatible with Processing. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ``endShape(_:)`` を ``CloseMode/open`` のまま閉じないと折れ線になります。
+    /// Leaving ``endShape(_:)`` at ``CloseMode/open`` instead of closing it yields a polyline.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1050,50 +1072,51 @@ extension Sketch {
         context.vertex(x, y)
     }
 
-    /// 現在のシェイプに頂点カラー付き 2D 頂点を追加します。
+    /// Adds a 2D vertex with a vertex color to the current shape.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape(_:)`` で始めていれば
-    ///   2D へ、``beginShape3D(_:)`` で始めていれば z = 0 の 3D 頂点として流れます
-    ///   （ADR-0005）。
+    /// - Note: What it affects is decided by **the shape being recorded**. If recording started
+    ///   with ``beginShape(_:)`` it goes to 2D, and if it started with ``beginShape3D(_:)`` it
+    ///   flows through as a 3D vertex with z = 0 (ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - color: 頂点カラー。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - color: The vertex color.
     public func vertex(_ x: Float, _ y: Float, _ color: Color) {
         context.vertex(x, y, color)
     }
 
-    /// 現在のシェイプにテクスチャ座標付き 2D 頂点を追加します。
+    /// Adds a 2D vertex with texture coordinates to the current shape.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape(_:)`` で始めていれば
-    ///   2D へ流れます。``beginShape3D(_:)`` の記録中は UV を落として z = 0 の 3D 頂点に
-    ///   なり、初回だけ警告します（ADR-0005）。
+    /// - Note: What it affects is decided by **the shape being recorded**. If recording started
+    ///   with ``beginShape(_:)`` it goes to 2D. While ``beginShape3D(_:)`` is recording, the UVs
+    ///   are dropped and it becomes a 3D vertex with z = 0, warning once (ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - u: 水平テクスチャ座標。
-    ///   - v: 垂直テクスチャ座標。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - u: The horizontal texture coordinate.
+    ///   - v: The vertical texture coordinate.
     public func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float) {
         context.vertex(x, y, u, v)
     }
 
-    /// 現在のシェイプに3次ベジェ頂点を追加します。
+    /// Adds a cubic Bézier vertex to the current shape.
     ///
-    /// - Note: **2D のみ**に作用します（3D のシェイプにベジェ頂点はありません。ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
     ///
     /// - Parameters:
-    ///   - cx1: 第1制御点の x 座標。
-    ///   - cy1: 第1制御点の y 座標。
-    ///   - cx2: 第2制御点の x 座標。
-    ///   - cy2: 第2制御点の y 座標。
-    ///   - x: アンカーポイントの x 座標。
-    ///   - y: アンカーポイントの y 座標。
+    ///   - cx1: The x coordinate of the first control point.
+    ///   - cy1: The y coordinate of the first control point.
+    ///   - cx2: The x coordinate of the second control point.
+    ///   - cy2: The y coordinate of the second control point.
+    ///   - x: The x coordinate of the anchor point.
+    ///   - y: The y coordinate of the anchor point.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 直前の頂点が始点になるので、``vertex(_:_:)`` を 1 つ置いてから呼びます。
+    /// The preceding vertex becomes the start point, so place one ``vertex(_:_:)`` before calling
+    /// it.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1124,17 +1147,18 @@ extension Sketch {
         context.bezierVertex(cx1, cy1, cx2, cy2, x, y)
     }
 
-    /// 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
+    /// Adds a Catmull-Rom spline vertex to the current shape.
     ///
-    /// - Note: **2D のみ**に作用します（3D のシェイプにスプライン頂点はありません。ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D shape has no spline vertices; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 最初と最後の点は曲線の向きを決める制御点なので、同じ座標を 2 回置きます。
+    /// The first and last points are control points that decide the direction of the curve, so the
+    /// same coordinate is placed twice.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1163,42 +1187,42 @@ extension Sketch {
         context.curveVertex(x, y)
     }
 
-    /// カーブ補間のセグメント数を設定します。
+    /// Sets the number of segments used for curve interpolation.
     ///
-    /// - Note: **2D のみ**に作用します（``curveVertex(_:_:)`` /
-    ///   ``curve(_:_:_:_:_:_:_:_:)`` 用で、3D には効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (it is for ``curveVertex(_:_:)`` /
+    ///   ``curve(_:_:_:_:_:_:_:_:)`` and has no effect on 3D. ADR-0005).
     ///
-    /// - Parameter n: カーブの詳細度。
+    /// - Parameter n: The curve detail.
     public func curveDetail(_ n: Int) {
         context.curveDetail(n)
     }
 
-    /// Catmull-Rom スプラインカーブの張り具合を設定します。
+    /// Sets how tightly Catmull-Rom spline curves are drawn.
     ///
-    /// - Note: **2D のみ**に作用します（``curveVertex(_:_:)`` /
-    ///   ``curve(_:_:_:_:_:_:_:_:)`` 用で、3D には効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (it is for ``curveVertex(_:_:)`` /
+    ///   ``curve(_:_:_:_:_:_:_:_:)`` and has no effect on 3D. ADR-0005).
     ///
-    /// - Note: `-5.0` 〜 `5.0` が目安です。範囲外の値も受け付けます（Processing と同じく
-    ///   clamp しません）が、曲線が制御点から大きく外れます。
+    /// - Note: `-5.0` to `5.0` is the useful range. Values outside it are accepted as well (there
+    ///   is no clamping, as in Processing), but the curve strays far from the control points.
     ///
-    /// - Parameter t: 張り値（0 = デフォルト、1 = 直線）。
+    /// - Parameter t: The tightness value (0 = the default, 1 = straight lines).
     public func curveTightness(_ t: Float) {
         context.curveTightness(t)
     }
 
-    /// 現在のシェイプ内にコンター（穴）の定義を開始します（2D シェイプ専用）。
+    /// Starts defining a contour (a hole) inside the current shape. 2D shapes only.
     ///
-    /// `beginShape3D()` で組む 3D シェイプでは穴を開けられません（呼んでも何も起きず、
-    /// 初回だけ警告が出ます）。3D で穴の開いた面が要るときは、内側と外側のあいだの
-    /// 輪帯を自分で三角形に割ってください。
+    /// A 3D shape built with `beginShape3D()` cannot be given a hole (calling this does nothing,
+    /// and it warns once). When a face with a hole is needed in 3D, triangulate the ring between
+    /// the inner and outer boundaries yourself.
     ///
-    /// - Note: **2D のみ**に作用します（``beginShape3D(_:)`` の記録中は何もせず、
-    ///   初回だけ警告します。#736 / ADR-0005）。
+    /// - Note: Affects **2D only** (while ``beginShape3D(_:)`` is recording it does nothing and
+    ///   warns once. #736 / ADR-0005).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 穴は外周と逆まわりに並べます。``endContour()`` で閉じてから
-    /// ``endShape(_:)`` を呼びます。
+    /// Wind the hole in the opposite direction from the outer boundary. Close it with
+    /// ``endContour()`` before calling ``endShape(_:)``.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1230,27 +1254,27 @@ extension Sketch {
         context.beginContour()
     }
 
-    /// 現在のコンター定義を終了します（2D シェイプ専用）。
+    /// Ends the current contour definition. 2D shapes only.
     ///
-    /// - Note: **2D のみ**に作用します（``beginShape3D(_:)`` の記録中は何もせず、
-    ///   初回だけ警告します。#736 / ADR-0005）。
+    /// - Note: Affects **2D only** (while ``beginShape3D(_:)`` is recording it does nothing and
+    ///   warns once. #736 / ADR-0005).
     public func endContour() {
         context.endContour()
     }
 
-    /// 4点を通る Catmull-Rom スプラインカーブを描画します。
+    /// Draws a Catmull-Rom spline curve through four points.
     ///
-    /// - Note: **2D のみ**に作用します（3D のスプライン曲線はありません。ADR-0005）。
+    /// - Note: Affects **2D only** (there is no 3D spline curve; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x1: 第1制御点の x 座標。
-    ///   - y1: 第1制御点の y 座標。
-    ///   - x2: 始点の x 座標。
-    ///   - y2: 始点の y 座標。
-    ///   - x3: 終点の x 座標。
-    ///   - y3: 終点の y 座標。
-    ///   - x4: 第2制御点の x 座標。
-    ///   - y4: 第2制御点の y 座標。
+    ///   - x1: The x coordinate of the first control point.
+    ///   - y1: The y coordinate of the first control point.
+    ///   - x2: The x coordinate of the start point.
+    ///   - y2: The y coordinate of the start point.
+    ///   - x3: The x coordinate of the end point.
+    ///   - y3: The y coordinate of the end point.
+    ///   - x4: The x coordinate of the second control point.
+    ///   - y4: The y coordinate of the second control point.
     public func curve(
         _ x1: Float, _ y1: Float,
         _ x2: Float, _ y2: Float,
@@ -1260,38 +1284,40 @@ extension Sketch {
         context.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
-    /// 現在のシェイプの記録を終了し描画します。
+    /// Ends recording the current shape and draws it.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていた
-    ///   シェイプもこれで閉じられます（``endShape3D(_:)`` と同じ結果。ADR-0005）。
+    /// - Note: What it affects is decided by **the shape being recorded**. A shape started with
+    ///   ``beginShape3D(_:)`` can be closed with this one as well (with the same result as
+    ///   ``endShape3D(_:)``. ADR-0005).
     ///
-    /// - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います
-    ///   （Processing / p5.js と同じ）。巻き数が 0 でない領域が塗られるので、五芒星は
-    ///   中央の五角形まで塗られたべた塗りの星になります。
+    /// - Note: Filling a self-intersecting vertex sequence, such as a pentagram, follows the
+    ///   **nonzero winding** rule (the same as Processing and p5.js). Regions whose winding number
+    ///   is not 0 are filled, so a pentagram comes out as a solid star with the central pentagon
+    ///   filled in as well.
     ///
-    /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
+    /// - Parameter close: Whether to close the shape by connecting the last vertex to the first.
     public func endShape(_ close: CloseMode = .open) {
         context.endShape(close)
     }
 
     // MARK: - Clipping
 
-    /// 以降の描画を指定した矩形にクリッピングします。
+    /// Clips subsequent drawing to the given rectangle.
     ///
-    /// - Note: **2D のみ**に作用します（3D の描画はクリップされません。ADR-0005）。
+    /// - Note: Affects **2D only** (3D drawing is not clipped; ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: クリップ領域の x 座標。
-    ///   - y: クリップ領域の y 座標。
-    ///   - w: クリップ領域の幅。
-    ///   - h: クリップ領域の高さ。
+    ///   - x: The x coordinate of the clip region.
+    ///   - y: The y coordinate of the clip region.
+    ///   - w: The width of the clip region.
+    ///   - h: The height of the clip region.
     public func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.beginClip(x, y, w, h)
     }
 
-    /// 現在のクリップ領域を終了し、前の状態に復元します。
+    /// Ends the current clip region and restores the previous state.
     ///
-    /// - Note: **2D のみ**に作用します（3D の描画はクリップされません。ADR-0005）。
+    /// - Note: Affects **2D only** (3D drawing is not clipped; ADR-0005).
     public func endClip() {
         context.endClip()
     }

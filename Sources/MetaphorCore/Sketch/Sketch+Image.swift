@@ -4,68 +4,74 @@ extension Sketch {
 
     // MARK: Image
 
-    /// 指定したファイルパスから画像を読み込みます。
+    /// Loads an image from the given file path.
     ///
-    /// 既定でパスキーのキャッシュが効き、同じパスの再読込は同一の ``MImage``
-    /// インスタンスを返します（`draw()` 内で呼んでも毎フレームの再デコードは
-    /// 起きません）。独立したコピーが必要な場合は `cache: false` を指定します。
+    /// A path-keyed cache is enabled by default, so reloading the same path returns the same
+    /// ``MImage`` instance (calling it inside `draw()` does not re-decode the image every frame).
+    /// Pass `cache: false` when an independent copy is needed.
     ///
     /// - Parameters:
-    ///   - path: 画像のファイルパス。
-    ///   - cache: キャッシュを使うか（既定 true）。
-    /// - Returns: 読み込まれた画像。
-    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
-    ///   指定されたパスからテクスチャを読み込めない場合（不在・非対応フォーマット・I/O エラー）。
+    ///   - path: The file path of the image.
+    ///   - cache: Whether to use the cache (true by default).
+    /// - Returns: The loaded image.
+    /// - Throws: ``MetaphorError/image(_:)`` with ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   when the texture cannot be loaded from the given path (missing, unsupported format, or
+    ///   an I/O error).
     public func loadImage(_ path: String, cache: Bool = true) throws -> MImage {
         try context.loadImage(path, cache: cache)
     }
 
-    /// 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
+    /// Loads an image asynchronously, running the file I/O off the main thread.
     ///
     /// - Parameters:
-    ///   - path: 画像のファイルパス。
-    ///   - cache: キャッシュを使うか（既定 true）。
-    /// - Returns: 読み込まれた画像。
-    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
-    ///   指定されたパスからテクスチャを読み込めない場合（不在・非対応フォーマット・I/O エラー）。
+    ///   - path: The file path of the image.
+    ///   - cache: Whether to use the cache (true by default).
+    /// - Returns: The loaded image.
+    /// - Throws: ``MetaphorError/image(_:)`` with ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   when the texture cannot be loaded from the given path (missing, unsupported format, or
+    ///   an I/O error).
     public func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage {
         try await context.loadImageAsync(path, cache: cache)
     }
 
-    /// 名前付き画像リソースを非同期で読み込みます。
+    /// Loads a named image resource asynchronously.
     ///
-    /// - Parameter name: 画像リソースの名前。
-    /// - Returns: 読み込まれた画像。
-    /// - Throws: ``MetaphorError/image(_:)`` の ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
-    ///   名前付きリソースが見つからないか読み込めない場合。
+    /// - Parameter name: The name of the image resource.
+    /// - Returns: The loaded image.
+    /// - Throws: ``MetaphorError/image(_:)`` with ``MetaphorError/ImageFailure/loadFailed(source:detail:)``
+    ///   when the named resource cannot be found or loaded.
     public func loadImageAsync(named name: String) async throws -> MImage {
         try await context.resourceLoader.loadImageAsync(named: name)
     }
 
-    /// テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
+    /// Returns the glyph outlines of a text as closed polylines, one per contour.
     ///
-    /// 現在の ``textSize(_:)`` / ``textFont(_:)-(String)`` / ``textAlign(_:_:)`` を
-    /// `text()` と同じように解釈するため、同じ引数で呼べば描画結果と同じ位置の輪郭が
-    /// 得られます。文字の穴（`o` の内側など）も 1 本の輪郭として返ります。
+    /// The current ``textSize(_:)``, ``textFont(_:)-(String)``, and ``textAlign(_:_:)`` are
+    /// interpreted the same way `text()` interprets them, so calling it with the same arguments
+    /// yields outlines at the same position as the drawn result. Holes in a glyph, such as the
+    /// inside of an `o`, also come back as contours of their own.
     ///
-    /// 改行を含む文字列は ``text(_:_:_:)`` と同じく行ごとに分けて配置され、行の高さは
-    /// ``textLeading(_:)`` に従います。
+    /// A string containing newlines is laid out line by line just as ``text(_:_:_:)`` does, and the
+    /// line height follows ``textLeading(_:)``.
     ///
     /// - Parameters:
-    ///   - string: アウトラインを取り出すテキスト。
-    ///   - x: テキストの x 座標（`text()` と同じ意味）。
-    ///   - y: テキストの y 座標（`text()` と同じ意味）。
-    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
-    /// - Returns: 輪郭ごとのポリライン。
+    ///   - string: The text to take the outlines from.
+    ///   - x: The x coordinate of the text (the same meaning as in `text()`).
+    ///   - y: The y coordinate of the text (the same meaning as in `text()`).
+    ///   - sampleFactor: How finely curves are subdivided into line segments. Larger values produce
+    ///     more points.
+    /// - Returns: One polyline per contour.
     public func textToContours(
         _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
     ) -> [[Vec2]] {
         context.textToContours(string, x, y, sampleFactor: sampleFactor)
     }
 
-    /// テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
+    /// Returns the points along the glyph outlines of a text as a single flat array (the equivalent
+    /// of p5's `textToPoints`).
     ///
-    /// 輪郭の区切りは失われます。文字を粒子や図形の配置元として使うときに向きます。
+    /// The contour boundaries are lost. It suits using the letters as the source positions for
+    /// particles or shapes.
     ///
     /// ```swift
     /// for p in textToPoints("metaphor", 40, 200) {
@@ -74,40 +80,42 @@ extension Sketch {
     /// ```
     ///
     /// - Parameters:
-    ///   - string: アウトラインを取り出すテキスト。
-    ///   - x: テキストの x 座標（`text()` と同じ意味）。
-    ///   - y: テキストの y 座標（`text()` と同じ意味）。
-    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
-    /// - Returns: アウトライン上の点。
+    ///   - string: The text to take the outlines from.
+    ///   - x: The x coordinate of the text (the same meaning as in `text()`).
+    ///   - y: The y coordinate of the text (the same meaning as in `text()`).
+    ///   - sampleFactor: How finely curves are subdivided into line segments. Larger values produce
+    ///     more points.
+    /// - Returns: The points along the outlines.
     public func textToPoints(
         _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
     ) -> [Vec2] {
         context.textToPoints(string, x, y, sampleFactor: sampleFactor)
     }
 
-    /// テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
+    /// Converts the outlines of a text into a retained shape that can be drawn with its holes.
     ///
-    /// 返るのは外周ごとの子を持つグループシェイプ。`o` の内側のような穴はコンターとして
-    /// 子に載るため、``shape(_:_:_:)`` でそのまま塗り分けられます。
+    /// The result is a group shape with one child per outer contour. Holes such as the inside of an
+    /// `o` ride on the child as contours, so ``shape(_:_:_:)`` fills them correctly as they are.
     ///
     /// - Parameters:
-    ///   - string: アウトラインを取り出すテキスト。
-    ///   - x: テキストの x 座標（`text()` と同じ意味）。
-    ///   - y: テキストの y 座標（`text()` と同じ意味）。
-    ///   - sampleFactor: 曲線を折れ線へ分割する細かさ。大きいほど点が増えます。
-    /// - Returns: 現在のスタイルをキャプチャしたグループシェイプ。
+    ///   - string: The text to take the outlines from.
+    ///   - x: The x coordinate of the text (the same meaning as in `text()`).
+    ///   - y: The y coordinate of the text (the same meaning as in `text()`).
+    ///   - sampleFactor: How finely curves are subdivided into line segments. Larger values produce
+    ///     more points.
+    /// - Returns: A group shape that captured the current style.
     public func textToShape(
         _ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25
     ) -> MShape {
         context.textToShape(string, x, y, sampleFactor: sampleFactor)
     }
 
-    /// 指定したファイルパスからフォントを読み込みます。
+    /// Loads a font from the given file path.
     ///
-    /// フォントは現在のプロセスにだけ登録されます（システムのフォント設定は変更しません）。
-    /// 返された ``MFont`` を ``textFont(_:)-(MFont)`` へ渡すと、以降のテキスト描画・計測が
-    /// そのフォントで行われます。既定でパスキーのキャッシュが効くため、`draw()` 内で
-    /// 呼んでも毎フレームの再登録は起きません。
+    /// The font is registered with the current process only; it does not change the system font
+    /// settings. Passing the returned ``MFont`` to ``textFont(_:)-(MFont)`` makes subsequent text
+    /// drawing and measurement use that font. A path-keyed cache is enabled by default, so calling
+    /// it inside `draw()` does not re-register the font every frame.
     ///
     /// ```swift
     /// func setup() {
@@ -119,60 +127,62 @@ extension Sketch {
     /// ```
     ///
     /// - Parameters:
-    ///   - path: フォントファイル（`.ttf` / `.otf` / `.ttc` / `.otc` / `.dfont`）のパス。
-    ///   - cache: キャッシュを使うか（既定 true）。
-    /// - Returns: 読み込まれたフォント。
-    /// - Throws: ``MetaphorError/font(_:)``。ファイルが無い場合は
-    ///   ``MetaphorError/FontFailure/fileNotFound(path:)``、フォントとして読めない場合は
-    ///   ``MetaphorError/FontFailure/noFontsInFile(path:)``、登録に失敗した場合は
-    ///   ``MetaphorError/FontFailure/registrationFailed(path:detail:)``。
+    ///   - path: The path of the font file (`.ttf` / `.otf` / `.ttc` / `.otc` / `.dfont`).
+    ///   - cache: Whether to use the cache (true by default).
+    /// - Returns: The loaded font.
+    /// - Throws: ``MetaphorError/font(_:)``. A missing file raises
+    ///   ``MetaphorError/FontFailure/fileNotFound(path:)``, a file that cannot be read as a font
+    ///   raises ``MetaphorError/FontFailure/noFontsInFile(path:)``, and a failed registration
+    ///   raises ``MetaphorError/FontFailure/registrationFailed(path:detail:)``.
     public func loadFont(_ path: String, cache: Bool = true) throws -> MFont {
         try context.loadFont(path, cache: cache)
     }
 
-    /// 指定したサイズの空白画像を作成します。
+    /// Creates a blank image of the given size.
     ///
     /// - Parameters:
-    ///   - width: 画像の幅（ピクセル単位）。1 以上。
-    ///   - height: 画像の高さ（ピクセル単位）。1 以上。
-    /// - Returns: 新しい空白画像。作成に失敗した場合（幅・高さが 1 未満を含む）は `nil`。
+    ///   - width: The image width in pixels. 1 or greater.
+    ///   - height: The image height in pixels. 1 or greater.
+    /// - Returns: The new blank image, or `nil` when creation fails (including a width or height
+    ///   below 1).
     public func createImage(_ width: Int, _ height: Int) -> MImage? {
         context.createImage(width, height)
     }
 
-    /// 画像に GPU 画像フィルタを適用します（in-place）。
+    /// Applies a GPU image filter to an image, in place.
     ///
-    /// レンダラのコンピュートパイプライン上で処理するため、CPU 版の
-    /// ``MImage/filter(_:)`` よりも高速です。使い分け:
+    /// It runs on the renderer's compute pipeline, which makes it faster than the CPU version,
+    /// ``MImage/filter(_:)``. Which one to use:
     ///
-    /// - **GPU 版（本メソッド）**: スケッチ実行中（レンダラが生きている文脈）で使う。
-    ///   毎フレーム適用するような用途はこちら。
-    /// - **CPU 版 ``MImage/filter(_:)``**: レンダラを必要としないため、スケッチ外や
-    ///   単体画像の一括処理に使える。`loadPixels()` → 処理 → `updatePixels()` を
-    ///   まとめて実行する。
+    /// - **The GPU version (this method)**: use it while the sketch is running, in a context where
+    ///   the renderer is alive. This is the one for applying a filter every frame.
+    /// - **The CPU version, ``MImage/filter(_:)``**: it does not need the renderer, so it can be
+    ///   used outside a sketch or to batch-process standalone images. It runs
+    ///   `loadPixels()` → processing → `updatePixels()` in one go.
     ///
     /// - Parameters:
-    ///   - image: 対象の画像（内容が書き換わります）。
-    ///   - type: 適用するフィルタタイプ。
+    ///   - image: The target image (its contents are overwritten).
+    ///   - type: The filter type to apply.
     public func filter(_ image: MImage, _ type: FilterType) {
         context.filter(image, type)
     }
 
-    /// キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
+    /// Copies a rectangular region of the canvas into another rectangular region (compatible with
+    /// Processing's `copy()`).
     ///
-    /// コピー元はオフスクリーンレンダーターゲットの現在の内容（前フレームまでの
-    /// 描画結果）。サイズが異なる場合は拡縮されます。`imageMode`/`tint` の影響を
-    /// 受けない絶対座標で描かれます。
+    /// The source is the current contents of the offscreen render target, which is everything drawn
+    /// up to the previous frame. It is scaled when the sizes differ. It is drawn in absolute
+    /// coordinates, unaffected by `imageMode` and `tint`.
     ///
     /// - Parameters:
-    ///   - sx: コピー元矩形の x（ピクセル）。
-    ///   - sy: コピー元矩形の y（ピクセル）。
-    ///   - sw: コピー元矩形の幅（ピクセル）。
-    ///   - sh: コピー元矩形の高さ（ピクセル）。
-    ///   - dx: コピー先矩形の x（ピクセル）。
-    ///   - dy: コピー先矩形の y（ピクセル）。
-    ///   - dw: コピー先矩形の幅（ピクセル）。
-    ///   - dh: コピー先矩形の高さ（ピクセル）。
+    ///   - sx: The x of the source rectangle, in pixels.
+    ///   - sy: The y of the source rectangle, in pixels.
+    ///   - sw: The width of the source rectangle, in pixels.
+    ///   - sh: The height of the source rectangle, in pixels.
+    ///   - dx: The x of the destination rectangle, in pixels.
+    ///   - dy: The y of the destination rectangle, in pixels.
+    ///   - dw: The width of the destination rectangle, in pixels.
+    ///   - dh: The height of the destination rectangle, in pixels.
     public func copy(
         _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float,
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float
@@ -180,33 +190,34 @@ extension Sketch {
         context.copy(sx, sy, sw, sh, dx, dy, dw, dh)
     }
 
-    /// 2D オフスクリーングラフィックスバッファを作成します。
+    /// Creates a 2D offscreen graphics buffer.
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。1 以上。
-    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
-    /// - Returns: 新しい ``Graphics`` インスタンス。作成に失敗した場合
-    ///   （幅・高さが 1 未満を含む）は `nil`。
+    ///   - w: The buffer width in pixels. 1 or greater.
+    ///   - h: The buffer height in pixels. 1 or greater.
+    /// - Returns: The new ``Graphics`` instance, or `nil` when creation fails (including a width or
+    ///   height below 1).
     public func createGraphics(_ w: Int, _ h: Int) -> Graphics? {
         context.createGraphics(w, h)
     }
 
-    /// 3D オフスクリーングラフィックスバッファを作成します。
+    /// Creates a 3D offscreen graphics buffer.
     ///
     /// - Parameters:
-    ///   - w: バッファの幅（ピクセル単位）。1 以上。
-    ///   - h: バッファの高さ（ピクセル単位）。1 以上。
-    /// - Returns: 新しい ``Graphics3D`` インスタンス。作成に失敗した場合
-    ///   （幅・高さが 1 未満を含む）は `nil`。
+    ///   - w: The buffer width in pixels. 1 or greater.
+    ///   - h: The buffer height in pixels. 1 or greater.
+    /// - Returns: The new ``Graphics3D`` instance, or `nil` when creation fails (including a width
+    ///   or height below 1).
     public func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D? {
         context.createGraphics3D(w, h)
     }
 
-    /// 接続中のカメラを列挙します。
+    /// Lists the connected cameras.
     ///
-    /// 内蔵カメラ・外付け（USB）カメラ・Continuity Camera・デスクビューカメラが
-    /// 対象です。取得した ``CaptureDeviceInfo`` を ``createCapture(width:height:device:)``
-    /// へ渡すことで、複数カメラ環境で使用するカメラを明示的に選択できます。
+    /// Built-in cameras, external (USB) cameras, Continuity Camera, and Desk View cameras are all
+    /// covered. Passing the ``CaptureDeviceInfo`` you obtain to
+    /// ``createCapture(width:height:device:)`` selects explicitly which camera to use in a
+    /// multi-camera setup.
     ///
     /// ```swift
     /// for cam in listCaptureDevices() {
@@ -214,34 +225,33 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// - Returns: 接続中のカメラの一覧（接続がなければ空配列）。
+    /// - Returns: The list of connected cameras (an empty array when none are connected).
     public func listCaptureDevices() -> [CaptureDeviceInfo] {
         context.listCaptureDevices()
     }
 
-    /// カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
-    /// （`start()` を呼ぶ必要はありません。停止するには `stop()`）。
+    /// Creates a camera capture device and **starts capturing automatically**
+    /// (there is no need to call `start()`; call `stop()` to stop).
     ///
-    /// - Note: カメラ権限が拒否されている場合は `isAvailable == false` の
-    ///   デバイスが返ります。使用中のカメラの切断は
-    ///   ``CaptureDevice/onDisconnect`` で検知できます。
+    /// - Note: A device with `isAvailable == false` is returned when camera permission has been
+    ///   denied. Disconnection of the camera in use can be detected with
+    ///   ``CaptureDevice/onDisconnect``.
     ///
     /// - Parameters:
-    ///   - width: 要求するキャプチャ幅（デフォルト 1280）。最も近い対応解像度が
-    ///     選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
-    ///   - height: 要求するキャプチャ高さ（デフォルト 720）。
-    ///   - position: 使用するカメラ位置。`nil`（デフォルト）の場合は
-    ///     ユーザー/システムの優先カメラを使用します。macOS ではほとんどの
-    ///     カメラが位置情報を持たないため、特定のカメラを選ぶには
-    ///     ``createCapture(width:height:device:)`` を使用してください。
-    /// - Returns: 開始済みのキャプチャデバイス。
+    ///   - width: The requested capture width (1280 by default). The closest supported resolution
+    ///     is selected, and the actual value can be checked with ``CaptureDevice/actualWidth``.
+    ///   - height: The requested capture height (720 by default).
+    ///   - position: The camera position to use. When `nil` (the default), the user's or system's
+    ///     preferred camera is used. Most cameras on macOS carry no position information, so use
+    ///     ``createCapture(width:height:device:)`` to select a specific camera.
+    /// - Returns: The started capture device.
     public func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil)
         -> CaptureDevice
     {
         context.createCapture(width: width, height: height, position: position)
     }
 
-    /// 指定したカメラでキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
+    /// Creates a capture device for the given camera and **starts capturing automatically**.
     ///
     /// ```swift
     /// if let external = listCaptureDevices().first(where: { $0.kind == .external }) {
@@ -250,139 +260,140 @@ extension Sketch {
     /// ```
     ///
     /// - Parameters:
-    ///   - width: 要求するキャプチャ幅（デフォルト 1280）。最も近い対応解像度が
-    ///     選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
-    ///   - height: 要求するキャプチャ高さ（デフォルト 720）。
-    ///   - device: ``listCaptureDevices()`` で取得したデバイス情報。
-    ///     既に切断されている場合は `isAvailable == false` のデバイスが返ります。
-    /// - Returns: 開始済みのキャプチャデバイス。
+    ///   - width: The requested capture width (1280 by default). The closest supported resolution
+    ///     is selected, and the actual value can be checked with ``CaptureDevice/actualWidth``.
+    ///   - height: The requested capture height (720 by default).
+    ///   - device: The device information obtained from ``listCaptureDevices()``.
+    ///     A device with `isAvailable == false` is returned when it has already been disconnected.
+    /// - Returns: The started capture device.
     public func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo)
         -> CaptureDevice
     {
         context.createCapture(width: width, height: height, device: device)
     }
 
-    /// 名前でカメラを選択してキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
+    /// Creates a capture device by selecting a camera by name and **starts capturing
+    /// automatically**.
     ///
-    /// 大文字小文字を無視した完全一致を優先し、なければ部分一致で選択します。
+    /// A case-insensitive exact match takes priority; failing that, a partial match is used.
     ///
     /// ```swift
     /// capture = createCapture(deviceName: "FaceTime")
     /// ```
     ///
     /// - Parameters:
-    ///   - width: 要求するキャプチャ幅（デフォルト 1280）。最も近い対応解像度が
-    ///     選択され、実際の値は ``CaptureDevice/actualWidth`` で確認できます。
-    ///   - height: 要求するキャプチャ高さ（デフォルト 720）。
-    ///   - deviceName: 選択するカメラの名前。一致するカメラがない場合は
-    ///     `isAvailable == false` のデバイスが返ります。
-    /// - Returns: 開始済みのキャプチャデバイス。
+    ///   - width: The requested capture width (1280 by default). The closest supported resolution
+    ///     is selected, and the actual value can be checked with ``CaptureDevice/actualWidth``.
+    ///   - height: The requested capture height (720 by default).
+    ///   - deviceName: The name of the camera to select. A device with `isAvailable == false` is
+    ///     returned when no camera matches.
+    /// - Returns: The started capture device.
     public func createCapture(width: Int = 1280, height: Int = 720, deviceName: String)
         -> CaptureDevice
     {
         context.createCapture(width: width, height: height, deviceName: deviceName)
     }
 
-    /// キャプチャデバイスの最新フレームを指定位置に描画します。
+    /// Draws the latest frame of a capture device at the given position.
     ///
     /// - Parameters:
-    ///   - capture: 描画元のキャプチャデバイス。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
+    ///   - capture: The capture device to draw from.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
     public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float) {
         context.image(capture, x, y)
     }
 
-    /// キャプチャデバイスの最新フレームを指定位置・サイズで描画します。
+    /// Draws the latest frame of a capture device at the given position and size.
     ///
     /// - Parameters:
-    ///   - capture: 描画元のキャプチャデバイス。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
-    ///   - w: 表示幅。
-    ///   - h: 表示高さ。
+    ///   - capture: The capture device to draw from.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(capture, x, y, w, h)
     }
 
-    /// 2D オフスクリーングラフィックスバッファを指定位置に描画します。
+    /// Draws a 2D offscreen graphics buffer at the given position.
     ///
     /// - Parameters:
-    ///   - pg: 描画するグラフィックスバッファ。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
+    ///   - pg: The graphics buffer to draw.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
     public func image(_ pg: Graphics, _ x: Float, _ y: Float) {
         context.image(pg, x, y)
     }
 
-    /// 2D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
+    /// Draws a 2D offscreen graphics buffer at the given position and size.
     ///
     /// - Parameters:
-    ///   - pg: 描画するグラフィックスバッファ。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
-    ///   - w: 表示幅。
-    ///   - h: 表示高さ。
+    ///   - pg: The graphics buffer to draw.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(pg, x, y, w, h)
     }
 
-    /// 3D オフスクリーングラフィックスバッファを指定位置に描画します。
+    /// Draws a 3D offscreen graphics buffer at the given position.
     ///
     /// - Parameters:
-    ///   - pg: 描画する 3D グラフィックスバッファ。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
+    ///   - pg: The 3D graphics buffer to draw.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
     public func image(_ pg: Graphics3D, _ x: Float, _ y: Float) {
         context.image(pg, x, y)
     }
 
-    /// 3D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
+    /// Draws a 3D offscreen graphics buffer at the given position and size.
     ///
     /// - Parameters:
-    ///   - pg: 描画する 3D グラフィックスバッファ。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
-    ///   - w: 表示幅。
-    ///   - h: 表示高さ。
+    ///   - pg: The 3D graphics buffer to draw.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(pg, x, y, w, h)
     }
 
-    /// 画像を指定位置に描画します。
+    /// Draws an image at the given position.
     ///
     /// - Parameters:
-    ///   - img: 描画する画像。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
+    ///   - img: The image to draw.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
     public func image(_ img: MImage, _ x: Float, _ y: Float) {
         context.image(img, x, y)
     }
 
-    /// 画像を指定位置・サイズで描画します。
+    /// Draws an image at the given position and size.
     ///
     /// - Parameters:
-    ///   - img: 描画する画像。
-    ///   - x: 描画位置の x 座標。
-    ///   - y: 描画位置の y 座標。
-    ///   - w: 表示幅。
-    ///   - h: 表示高さ。
+    ///   - img: The image to draw.
+    ///   - x: The x coordinate of the drawing position.
+    ///   - y: The y coordinate of the drawing position.
+    ///   - w: The display width.
+    ///   - h: The display height.
     public func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.image(img, x, y, w, h)
     }
 
-    /// 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
+    /// Draws a subregion of an image, for sprite sheets and tile maps.
     ///
     /// - Parameters:
-    ///   - img: ソース画像。
-    ///   - dx: 描画先の x 座標。
-    ///   - dy: 描画先の y 座標。
-    ///   - dw: 描画先の幅。
-    ///   - dh: 描画先の高さ。
-    ///   - sx: ソース領域の x 座標。
-    ///   - sy: ソース領域の y 座標。
-    ///   - sw: ソース領域の幅。
-    ///   - sh: ソース領域の高さ。
+    ///   - img: The source image.
+    ///   - dx: The x coordinate of the destination.
+    ///   - dy: The y coordinate of the destination.
+    ///   - dw: The width of the destination.
+    ///   - dh: The height of the destination.
+    ///   - sx: The x coordinate of the source region.
+    ///   - sy: The y coordinate of the source region.
+    ///   - sw: The width of the source region.
+    ///   - sh: The height of the source region.
     public func image(
         _ img: MImage,
         _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float,
@@ -393,143 +404,147 @@ extension Sketch {
 
     // MARK: Text
 
-    /// 以降のテキスト描画のテキストサイズを設定します。
+    /// Sets the text size for subsequent text drawing.
     ///
-    /// Processing と同じく、行間（``textLeading(_:)``）はフォントから導出される
-    /// 既定値へ戻ります。行間を指定するときはこの後に呼んでください。
+    /// As in Processing, the leading (``textLeading(_:)``) returns to the default derived from the
+    /// font. Call ``textLeading(_:)`` after this one when you want to specify the leading.
     ///
-    /// - Parameter size: フォントサイズ（ポイント単位）。
+    /// - Parameter size: The font size, in points.
     public func textSize(_ size: Float) {
         context.textSize(size)
     }
 
-    /// 以降のテキスト描画のフォントファミリーを設定します。
+    /// Sets the font family for subsequent text drawing.
     ///
-    /// - Parameter family: フォントファミリー名。
+    /// - Parameter family: The font family name.
     public func textFont(_ family: String) {
         context.textFont(family)
     }
 
-    /// 以降のテキスト描画に使うフォントを ``loadFont(_:cache:)`` の結果から設定します。
+    /// Sets the font used for subsequent text drawing from the result of ``loadFont(_:cache:)``.
     ///
-    /// - Parameter font: 読み込み済みのフォント。
+    /// - Parameter font: The loaded font.
     public func textFont(_ font: MFont) {
         context.textFont(font)
     }
 
-    /// テキストの配置を設定します。
+    /// Sets the text alignment.
     ///
     /// - Parameters:
-    ///   - horizontal: 水平方向の配置。
-    ///   - vertical: 垂直方向の配置。
+    ///   - horizontal: The horizontal alignment.
+    ///   - vertical: The vertical alignment.
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         context.textAlign(horizontal, vertical)
     }
 
-    /// 複数行テキストの行間（行の高さ）を設定します。
+    /// Sets the leading (line height) for multi-line text.
     ///
-    /// 隣り合う行のベースライン同士の距離です。``textSize(_:)`` / ``textFont(_:)-(String)``
-    /// を呼ぶと既定値へ戻るので、この後に呼んでください。
+    /// It is the distance between the baselines of adjacent lines. Calling ``textSize(_:)`` or
+    /// ``textFont(_:)-(String)`` returns it to the default, so call this one afterwards.
     ///
-    /// - Parameter leading: 行の高さ（ピクセル単位）。
+    /// - Parameter leading: The line height, in pixels.
     public func textLeading(_ leading: Float) {
         context.textLeading(leading)
     }
 
-    /// 指定位置にテキスト文字列を描画します。
+    /// Draws a text string at the given position.
     ///
-    /// 改行 (`\n`) を含む文字列は複数行として描かれます（行の高さは ``textLeading(_:)``）。
+    /// A string containing newlines (`\n`) is drawn as multiple lines, with the line height taken
+    /// from ``textLeading(_:)``.
     ///
-    /// 文字は常に現在の `fill()` 色で塗られます。``noFill()`` は図形にだけ効き、
-    /// **テキストには効きません**（Processing は `noFill()` で文字が消えますが、metaphor の
-    /// テキストに stroke 経路が無いため、あえて揃えていません。[#519] の判断）。
-    /// 文字を出さないときは呼び出し自体をやめるか、`fill(255, 0)` のように
-    /// アルファ 0 の fill を使ってください（アルファはグリフまで届きます）。
-    /// `tint()` は画像用で、文字色には効きません。
+    /// Glyphs are always filled with the current `fill()` color. ``noFill()`` applies to shapes
+    /// only and **has no effect on text** (in Processing `noFill()` makes the glyphs disappear, but
+    /// metaphor's text has no stroke path, so the two were deliberately left out of step — the
+    /// decision in [#519]). To keep the glyphs from appearing, either drop the call itself or use a
+    /// fill with alpha 0 such as `fill(255, 0)` (alpha does reach the glyphs). `tint()` is for
+    /// images and has no effect on the text color.
     ///
     /// [#519]: https://github.com/shinyaoguri/metaphor/issues/519
     ///
     /// - Parameters:
-    ///   - string: 描画するテキスト。
-    ///   - x: x 座標。
-    ///   - y: y 座標。
+    ///   - string: The text to draw.
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
     public func text(_ string: String, _ x: Float, _ y: Float) {
         context.text(string, x, y)
     }
 
-    /// バウンディングボックス内にテキスト文字列を描画します。
+    /// Draws a text string inside a bounding box.
     ///
-    /// 箱の幅で自動的に折り返します。箱の高さに入り切らない行は描かれません。
+    /// It wraps automatically at the width of the box. Lines that do not fit within the height of
+    /// the box are not drawn.
     ///
-    /// 色の扱いは ``text(_:_:_:)`` と同じで、``noFill()`` はテキストに効きません。
+    /// Color is handled exactly as in ``text(_:_:_:)``, so ``noFill()`` has no effect on text.
     ///
     /// - Parameters:
-    ///   - string: 描画するテキスト。
-    ///   - x: バウンディングボックスの x 座標。
-    ///   - y: バウンディングボックスの y 座標。
-    ///   - w: バウンディングボックスの幅。
-    ///   - h: バウンディングボックスの高さ。
+    ///   - string: The text to draw.
+    ///   - x: The x coordinate of the bounding box.
+    ///   - y: The y coordinate of the bounding box.
+    ///   - w: The width of the bounding box.
+    ///   - h: The height of the bounding box.
     public func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         context.text(string, x, y, w, h)
     }
 
-    /// 現在のフォント設定でテキスト文字列の幅を計算します。
+    /// Computes the width of a text string with the current font settings.
     ///
-    /// 返るのは 1 文字ずつの advance（送り量）を足した幅で、``text(_:_:_:)`` が実際に
-    /// 文字を置く幅・``textAlign(_:_:)`` が揃えに使う幅と一致します。加法的なので
-    /// （`textWidth("ab") == textWidth("a") + textWidth("b")`）語ごとに測って行を組めます。
-    /// 前後どちらの空白も数え、Processing と同じくカーニングは掛かりません。
+    /// It returns the sum of the per-character advances, which matches both the width
+    /// ``text(_:_:_:)`` actually lays the glyphs out in and the width ``textAlign(_:_:)`` aligns
+    /// against. It is additive (`textWidth("ab") == textWidth("a") + textWidth("b")`), so lines can
+    /// be composed by measuring word by word. Whitespace at either end counts, and, as in
+    /// Processing, no kerning is applied.
     ///
-    /// 改行を含む文字列では最も長い行の幅を返します。
+    /// For a string containing newlines it returns the width of the longest line.
     ///
-    /// - Parameter string: 計測するテキスト。
-    /// - Returns: テキストの幅（ピクセル単位）。
+    /// - Parameter string: The text to measure.
+    /// - Returns: The width of the text, in pixels.
     public func textWidth(_ string: String) -> Float {
         context.textWidth(string)
     }
 
-    /// 現在のフォントのアセント値を返します。
+    /// Returns the ascent of the current font.
     ///
-    /// - Returns: アセント値（ピクセル単位）。
+    /// - Returns: The ascent, in pixels.
     public func textAscent() -> Float {
         context.textAscent()
     }
 
-    /// 現在のフォントのディセント値を返します。
+    /// Returns the descent of the current font.
     ///
-    /// - Returns: ディセント値（ピクセル単位）。
+    /// - Returns: The descent, in pixels.
     public func textDescent() -> Float {
         context.textDescent()
     }
 
     // MARK: Screenshot & Recording
 
-    /// 現在のフレームを指定したファイルパスに保存します。
+    /// Saves the current frame to the given file path.
     ///
-    /// 相対パスは**プロジェクト直下**（`swift run` ならパッケージ直下、`metaphor run` /
-    /// `watch` ならそのプロジェクト）から解決されます。絶対パスと `~` 始まりはそのままです。
+    /// A relative path is resolved from **the project root** (the package root under `swift run`,
+    /// or that project under `metaphor run` / `watch`). Absolute paths and paths starting with `~`
+    /// are used as they are.
     ///
-    /// ``saveFrame(_:)`` と同じく、同一フレーム内で複数回呼べばすべての保存先へ
-    /// 同じ絵（そのフレームの最終出力）が書き出されます。
+    /// As with ``saveFrame(_:)``, calling it several times within the same frame writes the same
+    /// image — the final output of that frame — to every destination.
     ///
-    /// - Parameter path: 出力ファイルパス。
+    /// - Parameter path: The output file path.
     public func save(_ path: String) {
         context.save(path)
     }
 
-    /// 現在のフレームを `output/metaphor_<timestamp>.png` に保存します。
+    /// Saves the current frame to `output/metaphor_<timestamp>.png`.
     public func save() {
         context.save()
     }
 
     // MARK: SVG Export
 
-    /// SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
+    /// Starts SVG recording (the equivalent of Processing's `beginRecord(SVG, path)`).
     ///
-    /// ``endSVGRecord()`` までの 2D 描画呼び出しが、画面へのラスタライズと並行して
-    /// 真のベクタ（`<circle>`/`<path>` 等）として記録されます。プロッタ
-    /// （AxiDraw 等）や印刷向けの出力に使えます。対応外の機能
-    /// （`image()`/`text()` 等）は警告を出力してスキップされます。
+    /// The 2D drawing calls up to ``endSVGRecord()`` are recorded as true vectors (`<circle>`,
+    /// `<path>`, and so on) in parallel with the rasterization to the screen. It suits output aimed
+    /// at plotters (AxiDraw and the like) or at print. Unsupported features (`image()`, `text()`,
+    /// and so on) emit a warning and are skipped.
     ///
     /// ```swift
     /// func draw() {
@@ -540,114 +555,114 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// - Parameter path: 出力する SVG ファイルパス。
+    /// - Parameter path: The path of the SVG file to write.
     public func beginSVGRecord(_ path: String) {
         context.beginSVGRecord(path)
     }
 
-    /// SVG 記録を終了し、``beginSVGRecord(_:)`` で指定したパスへ書き出します。
+    /// Ends SVG recording and writes the result to the path given to ``beginSVGRecord(_:)``.
     public func endSVGRecord() {
         context.endSVGRecord()
     }
 
-    /// フレーム連番の画像ファイルとしての記録を開始します。
+    /// Starts recording as a numbered sequence of image files.
     ///
-    /// ``endFrameRecord()`` を呼ぶまで、毎フレームが `pattern` に従った
-    /// 連番ファイル名で `directory` へ書き出されます。
+    /// Until ``endFrameRecord()`` is called, every frame is written to `directory` under a
+    /// sequential file name that follows `pattern`.
     ///
     /// - Parameters:
-    ///   - directory: 出力ディレクトリ（`nil` の場合は
-    ///     `output/metaphor_frames_<timestamp>/`）。相対パスはプロジェクト直下から
-    ///     解決されます。
-    ///   - pattern: フレーム番号プレースホルダー付きのファイル名パターン。
+    ///   - directory: The output directory (`output/metaphor_frames_<timestamp>/` when `nil`).
+    ///     A relative path is resolved from the project root.
+    ///   - pattern: The file name pattern, including the frame-number placeholder.
     public func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png") {
         context.beginFrameRecord(directory: directory, pattern: pattern)
     }
 
-    /// フレーム連番の記録を停止します。
+    /// Stops the numbered frame recording.
     public func endFrameRecord() {
         context.endFrameRecord()
     }
 
-    /// 単一フレームを画像ファイルに保存します。
+    /// Saves a single frame to an image file.
     ///
-    /// 保存先は次の規則で決まります。
+    /// The destination is decided by the following rules.
     ///
-    /// - `saveFrame()` — `output/screen-<フレーム番号>.png`（プロジェクトの中）
-    /// - `saveFrame("shots/a.png")` — プロジェクト直下からの相対
-    /// - `saveFrame("/tmp/a.png")` / `saveFrame("~/Pictures/a.png")` — そのまま
+    /// - `saveFrame()` — `output/screen-<frame number>.png` (inside the project)
+    /// - `saveFrame("shots/a.png")` — relative to the project root
+    /// - `saveFrame("/tmp/a.png")` / `saveFrame("~/Pictures/a.png")` — used as it is
     ///
-    /// 同一フレーム内で複数回呼べば、そのフレームがすべての保存先へ書き出されます
-    /// （更新用の固定パスと履歴用の連番を同時に出す、など）。保存されるのは呼んだ時点の
-    /// 途中経過ではなく**そのフレームの最終出力**なので、複数の保存先の中身は同一です。
+    /// Calling it several times within the same frame writes that frame to every destination (a
+    /// fixed path to keep updated plus a numbered sequence for history, for example). What gets
+    /// saved is **the final output of that frame**, not the work in progress at the moment of the
+    /// call, so the contents of every destination are identical.
     ///
-    /// - Parameter filename: 出力ファイル名（`nil` の場合は自動生成）。
+    /// - Parameter filename: The output file name (generated automatically when `nil`).
     public func saveFrame(_ filename: String? = nil) {
         context.saveFrame(filename)
     }
 
     // MARK: Video Recording
 
-    /// 動画出力の録画を開始します。
+    /// Starts recording the video output.
     ///
     /// - Parameters:
-    ///   - path: 出力ファイルパス（`nil` の場合は `output/metaphor_<timestamp>.<拡張子>`）。
-    ///     相対パスはプロジェクト直下から解決されます。
-    ///   - config: 動画エクスポート設定。
+    ///   - path: The output file path (`output/metaphor_<timestamp>.<extension>` when `nil`).
+    ///     A relative path is resolved from the project root.
+    ///   - config: The video export settings.
     public func beginVideoRecord(
         _ path: String? = nil, config: VideoExportConfig = VideoExportConfig()
     ) {
         context.beginVideoRecord(path, config: config)
     }
 
-    /// 動画の録画を停止しファイルを完成させます。
+    /// Stops the video recording and finalizes the file.
     ///
-    /// - Parameter completion: 書き込み完了時に呼ばれるオプションのコールバック。
+    /// - Parameter completion: An optional callback invoked when writing completes.
     public func endVideoRecord(completion: (@Sendable () -> Void)? = nil) {
         context.endVideoRecord(completion: completion)
     }
 
-    /// 動画の録画を非同期で停止しファイルを完成させます。
+    /// Stops the video recording asynchronously and finalizes the file.
     ///
-    /// ``endVideoRecord(completion:)`` の async/await 版です。
+    /// The async/await version of ``endVideoRecord(completion:)``.
     public func endVideoRecordAsync() async {
         await context.endVideoRecordAsync()
     }
 
     // MARK: Offline Rendering
 
-    /// オフラインレンダリングモードがアクティブかどうかを示します。
+    /// A Boolean value indicating whether offline rendering mode is active.
     public var isOfflineRendering: Bool {
         context.isOfflineRendering
     }
 
-    /// 決定論的タイミングのオフラインレンダリングモードを有効にします。
+    /// Enables offline rendering mode with deterministic timing.
     ///
-    /// - Parameter fps: 時間計算に使用する仮想フレームレート。
+    /// - Parameter fps: The virtual frame rate used for time calculations.
     public func beginOfflineRender(fps: Double = 60) {
         context.beginOfflineRender(fps: fps)
     }
 
-    /// オフラインレンダリングモードを無効にしリアルタイムタイミングに戻します。
+    /// Disables offline rendering mode and returns to real-time timing.
     public func endOfflineRender() {
         context.endOfflineRender()
     }
 
     // MARK: FBO Feedback
 
-    /// フレームバッファフィードバック（前フレームアクセス）を有効にします。
+    /// Enables framebuffer feedback, giving access to the previous frame.
     public func enableFeedback() {
         context.enableFeedback()
     }
 
-    /// フレームバッファフィードバックを無効にします。
+    /// Disables framebuffer feedback.
     public func disableFeedback() {
         context.disableFeedback()
     }
 
-    /// 前フレームのレンダリング結果を取得します。
+    /// Returns the rendering result of the previous frame.
     ///
-    /// - Returns: 前フレームの ``MImage``。フィードバックが無効の場合は `nil`。
+    /// - Returns: The previous frame as an ``MImage``, or `nil` when feedback is disabled.
     public func previousFrame() -> MImage? {
         context.previousFrame()
     }
